@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'company-document-status-groups-v49163-2026-07-03',
+    version: '4.9.163',
+    title: 'V4.9.163 — Unternehmensinformationen: ehrlicher Dokumentenstatus',
+    summary: [
+      'Dokumentenstatus in drei Gruppen: Verwaltbare Rechtstexte, Systemvorlagen, Noch nicht angebunden.',
+      'Button „AGB & Widerruf verwalten“ nur bei verwaltbaren Rechtstexten — nicht global irreführend.',
+      'Datenschutz und Telematik-Einwilligung klar als noch nicht angebunden markiert.',
+      'Mietvertrag und Übergabeprotokoll als Systemvorlagen ohne Upload-Eindruck.',
+      'Readiness Rechtstexte bewertet weiterhin nur AGB und Widerrufsbelehrung.',
+    ],
+    reason:
+      'Dokumentenstatus suggerierte verwaltbare Dokumente, die Legal Documents aktuell nicht unterstützt.',
+    previousBehavior:
+      'Flache Liste mit globalem „Dokumente verwalten“-Button für alle Dokumentarten.',
+    details:
+      'company-utils (buildDocumentStatusGroups, isLegalTextsComplete), CompanySections, Tests.',
+    affectsArchitecture: false,
+    module: 'Master Admin',
+    createdAt: '2026-07-03T16:00:00.000Z',
+  },
+  {
     id: 'company-taxid-legacy-removal-v49162-2026-07-03',
     version: '4.9.162',
     title: 'V4.9.162 — Unternehmensinformationen: Legacy Steuer-ID aus UI entfernt',

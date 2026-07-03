@@ -23,11 +23,12 @@ import {
   CompanyFieldGrid,
 } from './CompanyField';
 import {
-  buildDocumentStatusRows,
+  buildDocumentStatusGroups,
   LANGUAGE_OPTIONS,
   LEGAL_FORM_OPTIONS,
   TIMEZONE_OPTIONS,
   type CompanyDraft,
+  type DocumentStatusGroup,
   type DocumentStatusRow,
 } from './company-utils';
 
@@ -434,9 +435,9 @@ export function CompanyBrandingSection({
 
 const DOC_STATUS_LABEL: Record<DocumentStatusRow['status'], string> = {
   active: 'Hinterlegt',
-  missing: 'Fehlt',
+  missing: 'Nicht hinterlegt',
   generated: 'Systemvorlage',
-  unconnected: 'Nicht angebunden',
+  unconnected: 'Noch nicht angebunden',
   review: 'Prüfung nötig',
 };
 
@@ -451,6 +452,55 @@ const DOC_TONE: Record<
   review: 'warning',
 };
 
+function DocumentStatusGroupBlock({
+  group,
+  onManageDocuments,
+}: {
+  group: DocumentStatusGroup;
+  onManageDocuments?: () => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <h4 className="text-xs font-semibold text-foreground">{group.title}</h4>
+          {group.description ? (
+            <p className="mt-0.5 text-[11px] text-muted-foreground">{group.description}</p>
+          ) : null}
+        </div>
+        {group.id === 'manageable' && onManageDocuments ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            onClick={onManageDocuments}
+          >
+            AGB & Widerruf verwalten
+            <ExternalLink />
+          </Button>
+        ) : null}
+      </div>
+      <div className="divide-y divide-border/60 rounded-lg border border-border/60">
+        {group.rows.map((row) => (
+          <div
+            key={row.id}
+            className="flex items-center justify-between gap-3 px-3 py-2"
+          >
+            <div className="min-w-0">
+              <p className="truncate text-xs font-medium text-foreground">{row.label}</p>
+              <p className="truncate text-[11px] text-muted-foreground">{row.detail}</p>
+            </div>
+            <StatusChip tone={DOC_TONE[row.status]} className="shrink-0">
+              {DOC_STATUS_LABEL[row.status]}
+            </StatusChip>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 interface DocumentsSectionProps {
   legalDocs: LegalDocumentDto[];
   loading: boolean;
@@ -462,40 +512,26 @@ export function CompanyDocumentsSection({
   loading,
   onManageDocuments,
 }: DocumentsSectionProps) {
-  const rows = buildDocumentStatusRows(legalDocs);
+  const groups = buildDocumentStatusGroups(legalDocs);
 
   return (
     <DataCard
       title="Dokumentenstatus"
-      description="Übersicht — Verwaltung unter Rechtliche Dokumente."
-      actions={
-        <Button type="button" variant="outline" size="sm" onClick={onManageDocuments}>
-          Dokumente verwalten
-          <ExternalLink />
-        </Button>
-      }
+      description="Verwaltbare Rechtstexte, Systemvorlagen und geplante Anbindungen im Überblick."
     >
       {loading ? (
-        <p className="text-xs text-muted-foreground py-4 text-center">Dokumente werden geladen…</p>
+        <p className="py-4 text-center text-xs text-muted-foreground">Dokumente werden geladen…</p>
       ) : (
-        <div className="divide-y divide-border/60 rounded-lg border border-border/60">
-          {rows.map((row) => (
-            <div
-              key={row.id}
-              className="flex flex-col justify-between gap-2 px-3 py-2.5 sm:flex-row sm:items-center"
-            >
-              <div>
-                <p className="text-xs font-medium text-foreground">{row.label}</p>
-                <p className="text-[10px] text-muted-foreground">{row.detail}</p>
-              </div>
-              <StatusChip tone={DOC_TONE[row.status]}>{DOC_STATUS_LABEL[row.status]}</StatusChip>
-            </div>
+        <div className="space-y-4">
+          {groups.map((group) => (
+            <DocumentStatusGroupBlock
+              key={group.id}
+              group={group}
+              onManageDocuments={group.id === 'manageable' ? onManageDocuments : undefined}
+            />
           ))}
         </div>
       )}
-      <p className="mt-2.5 text-[11px] text-muted-foreground">
-        Datenschutz und Telematik-Einwilligung erscheinen nach Anbindung im Dokumentenmodul.
-      </p>
     </DataCard>
   );
 }

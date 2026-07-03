@@ -261,10 +261,7 @@ export function computeSetupChecklist(
   );
   const billingComplete = isBillingDataComplete(p);
   const brandingOk = Boolean(logoUrl?.trim());
-  const activeLegal = legalDocs.filter((d) => d.status === 'ACTIVE');
-  const legalOk =
-    activeLegal.some((d) => d.documentType === 'TERMS_AND_CONDITIONS') &&
-    activeLegal.some((d) => d.documentType === 'WITHDRAWAL_INFORMATION');
+  const legalOk = isLegalTextsComplete(legalDocs);
   const hasStations = stations.length > 0;
   const primaryStation = stations.some((s) => s.isPrimary);
   const stationOk = !hasStations || primaryStation;
@@ -300,9 +297,9 @@ export function computeSetupChecklist(
     {
       id: 'legal',
       label: 'Rechtstexte hinterlegt',
-      description: 'Aktive AGB und Widerrufsbelehrung im Dokumentenbereich.',
+      description: 'Aktive AGB und Widerrufsbelehrung.',
       status: legalOk ? 'done' : legalDocs.length > 0 ? 'review' : 'missing',
-      ctaLabel: 'Dokumente verwalten',
+      ctaLabel: 'AGB & Widerruf verwalten',
       ctaSection: 'documents',
     },
     {
@@ -350,7 +347,87 @@ export interface DocumentStatusRow {
   detail: string;
 }
 
-export function buildDocumentStatusRows(legalDocs: LegalDocumentDto[]): DocumentStatusRow[] {
+export type DocumentStatusCategory = 'manageable' | 'system' | 'unconnected';
+
+export interface DocumentStatusGroup {
+  id: DocumentStatusCategory;
+  title: string;
+  description?: string;
+  rows: DocumentStatusRow[];
+}
+
+const MANAGEABLE_LEGAL_TYPES = [
+  { type: 'TERMS_AND_CONDITIONS', label: 'AGB' },
+  { type: 'WITHDRAWAL_INFORMATION', label: 'Widerrufsbelehrung' },
+] as const;
+
+const SYSTEM_TEMPLATE_ROWS: DocumentStatusRow[] = [
+  {
+    id: 'RENTAL_CONTRACT',
+    label: 'Mietvertragsvorlage',
+    status: 'generated',
+    detail: 'Wird automatisch aus Buchungs- und Übergabedaten erzeugt.',
+  },
+  {
+    id: 'HANDOVER',
+    label: 'Übergabeprotokollvorlage',
+    status: 'generated',
+    detail: 'Wird automatisch aus Buchungs- und Übergabedaten erzeugt.',
+  },
+];
+
+const UNCONNECTED_ROWS: DocumentStatusRow[] = [
+  {
+    id: 'PRIVACY_POLICY',
+    label: 'Datenschutzerklärung',
+    status: 'unconnected',
+    detail: 'Wird später über Datenschutz / Data Authorization angebunden.',
+  },
+  {
+    id: 'TELEMATICS_CONSENT',
+    label: 'Telematik- / GPS-Einwilligung',
+    status: 'unconnected',
+    detail: 'Wird später über Datenschutz / Data Authorization angebunden.',
+  },
+];
+
+function buildManageableLegalRow(
+  legalDocs: LegalDocumentDto[],
+  activeByType: Map<string, LegalDocumentDto>,
+  type: string,
+  label: string,
+): DocumentStatusRow {
+  const doc = activeByType.get(type);
+  if (doc) {
+    return {
+      id: type,
+      label,
+      status: 'active',
+      detail: `Aktiv · Version ${doc.versionLabel}`,
+    };
+  }
+  const draft = legalDocs.find((d) => d.documentType === type);
+  if (draft) {
+    return {
+      id: type,
+      label,
+      status: 'review',
+      detail: `Entwurf vorhanden (${draft.versionLabel})`,
+    };
+  }
+  return { id: type, label, status: 'missing', detail: 'In Rechtliche Dokumente hinterlegen' };
+}
+
+/** Legal readiness — only AGB and Widerrufsbelehrung; ignores privacy/telematics/system templates. */
+export function isLegalTextsComplete(legalDocs: LegalDocumentDto[]): boolean {
+  const active = legalDocs.filter((d) => d.status === 'ACTIVE');
+  return (
+    active.some((d) => d.documentType === 'TERMS_AND_CONDITIONS') &&
+    active.some((d) => d.documentType === 'WITHDRAWAL_INFORMATION')
+  );
+}
+
+export function buildDocumentStatusGroups(legalDocs: LegalDocumentDto[]): DocumentStatusGroup[] {
   const activeByType = new Map<string, LegalDocumentDto>();
   for (const doc of legalDocs) {
     if (doc.status === 'ACTIVE' && !activeByType.has(doc.documentType)) {
@@ -358,56 +435,33 @@ export function buildDocumentStatusRows(legalDocs: LegalDocumentDto[]): Document
     }
   }
 
-  const legal = (type: string, label: string): DocumentStatusRow => {
-    const doc = activeByType.get(type);
-    if (doc) {
-      return {
-        id: type,
-        label,
-        status: 'active',
-        detail: `Aktiv · Version ${doc.versionLabel}`,
-      };
-    }
-    const draft = legalDocs.find((d) => d.documentType === type);
-    if (draft) {
-      return {
-        id: type,
-        label,
-        status: 'review' as DocumentStatusRow['status'],
-        detail: `Entwurf vorhanden (${draft.versionLabel})`,
-      };
-    }
-    return { id: type, label, status: 'missing', detail: 'Nicht hinterlegt' };
-  };
-
   return [
-    legal('TERMS_AND_CONDITIONS', 'AGB'),
-    legal('WITHDRAWAL_INFORMATION', 'Widerrufsbelehrung'),
     {
-      id: 'PRIVACY_POLICY',
-      label: 'Datenschutzerklärung',
-      status: 'unconnected',
-      detail: 'Noch nicht angebunden',
+      id: 'manageable',
+      title: 'Verwaltbare Rechtstexte',
+      description: 'AGB und Widerrufsbelehrung werden unter Rechtliche Dokumente gepflegt.',
+      rows: MANAGEABLE_LEGAL_TYPES.map(({ type, label }) =>
+        buildManageableLegalRow(legalDocs, activeByType, type, label),
+      ),
     },
     {
-      id: 'TELEMATICS_CONSENT',
-      label: 'Telematik- / GPS-Einwilligung',
-      status: 'unconnected',
-      detail: 'Noch nicht angebunden',
+      id: 'system',
+      title: 'Systemvorlagen',
+      description: 'Von SynqDrive automatisch erzeugt — kein Upload nötig.',
+      rows: SYSTEM_TEMPLATE_ROWS,
     },
     {
-      id: 'RENTAL_CONTRACT',
-      label: 'Mietvertragsvorlage',
-      status: 'generated',
-      detail: 'Wird von SynqDrive bei Buchungen generiert',
-    },
-    {
-      id: 'HANDOVER',
-      label: 'Übergabeprotokollvorlage',
-      status: 'generated',
-      detail: 'Wird von SynqDrive bei Übergabe generiert',
+      id: 'unconnected',
+      title: 'Noch nicht angebunden',
+      description: 'Geplante Anbindung über Datenschutz bzw. Data Authorization.',
+      rows: UNCONNECTED_ROWS,
     },
   ];
+}
+
+/** @deprecated Use buildDocumentStatusGroups for grouped document status UI. */
+export function buildDocumentStatusRows(legalDocs: LegalDocumentDto[]): DocumentStatusRow[] {
+  return buildDocumentStatusGroups(legalDocs).flatMap((g) => g.rows);
 }
 
 export function displayValue(value: string | null | undefined, editing = false): string {
