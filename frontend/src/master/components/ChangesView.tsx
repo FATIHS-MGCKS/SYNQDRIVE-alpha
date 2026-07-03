@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'business-pulse-ui-labels-v49178-2026-07-03',
+    version: '4.9.178',
+    title: 'V4.9.178 — Business Pulse: fachliche Labels ohne technische Subtexte',
+    summary: [
+      'Box-Titel: „Finanzen“ (i18n `dashboard.financesTitle`) statt „Business Pulse“.',
+      'Technische Subline entfernt (`Slice based`, `documents`, `Business Pulse · Invoices`).',
+      'KPI-Labels über i18n: Umsatz, Ergebnis, Offene Forderungen, Überfällig; optionale KPIs nur bei count > 0.',
+      'Ergebnis: Hint „Umsatz minus Ausgaben“, kein Count; Count-Hints nur für echte Rechnungs-/Forderungszahlen.',
+      'Business-Drilldown: Source-Zeile entfernt.',
+    ],
+    reason: 'Business Pulse zeigte technische Debug-/Source-Texte und irreführende Item-Counts.',
+    previousBehavior:
+      'Subline „Business Pulse · Rechnungen · Slice-basiert“, englische „items/documents“, Ergebnis mit Einträge-Count, Ausgaben dauerhaft sichtbar.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Dashboard',
+    createdAt: '2026-07-03T23:45:00.000Z',
+  },
+  {
     id: 'dashboard-legacy-business-cleanup-v49177-2026-07-03',
     version: '4.9.177',
     title: 'V4.9.177 — Dashboard: Legacy Business/Finance-Wahrheit aus aktivem Pfad entfernt',

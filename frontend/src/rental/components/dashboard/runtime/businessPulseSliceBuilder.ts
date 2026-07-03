@@ -233,7 +233,7 @@ export function buildBusinessPulseSlices(
     }),
     profit: makeSlice({
       id: 'profit',
-      title: label(input.locale, 'Ergebnis', 'Profit'),
+      title: label(input.locale, 'Ergebnis', 'Result'),
       rows: [
         summaryRow({
           id: 'business-summary:revenue',
@@ -276,7 +276,7 @@ export function buildBusinessPulseSlices(
     }),
     'overdue-receivables': makeSlice({
       id: 'overdue-receivables',
-      title: label(input.locale, 'Überfällige Forderungen', 'Overdue receivables'),
+      title: label(input.locale, 'Überfällig', 'Overdue'),
       rows: overdueReceivables.map((row) => ({ ...row, severity: 'critical' as const })),
       locale: input.locale,
       valueCents: sumCents(overdueReceivables),

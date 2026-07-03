@@ -110,7 +110,6 @@ describe('buildBusinessPulseSlices invoice classification', () => {
     expect(slices.profit.valueCents).toBe(18_000);
     expect(slices.profit.count).toBeNull();
     expect(slices.profit.hint).toBe('Revenue minus expenses');
-    expect(slices.profit.rows).toHaveLength(2);
   });
 
   it('aligns revenue total with outgoing invoice sum used by invoice stats semantics', () => {

@@ -1,6 +1,8 @@
 import { Icon } from '../ui/Icon';
 import { SkeletonRows } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
 import { panelShellClass } from './dashboardShell';
 import type {
   BusinessMetricId,
@@ -17,19 +19,29 @@ interface BusinessPulseProps {
   error?: boolean;
 }
 
-const BUSINESS_METRIC_ORDER: BusinessMetricId[] = [
+const PRIMARY_BUSINESS_METRICS: BusinessMetricId[] = [
   'revenue',
   'profit',
-  'expenses',
   'open-receivables',
   'overdue-receivables',
 ];
 
 const OPTIONAL_BUSINESS_METRICS: BusinessMetricId[] = [
-  'paid-invoices',
   'draft-invoices',
   'failed-payments',
+  'paid-invoices',
 ];
+
+const METRIC_TITLE_KEYS: Record<BusinessMetricId, TranslationKey> = {
+  revenue: 'dashboard.revenue',
+  profit: 'dashboard.result',
+  expenses: 'dashboard.expenses',
+  'open-receivables': 'dashboard.openReceivables',
+  'overdue-receivables': 'dashboard.overdueReceivables',
+  'paid-invoices': 'dashboard.paidInvoicesLabel',
+  'draft-invoices': 'dashboard.draftInvoicesLabel',
+  'failed-payments': 'dashboard.failedPaymentsLabel',
+};
 
 function formatMoney(cents: number, currency: string, locale: string): string {
   return new Intl.NumberFormat(locale === 'de' ? 'de-DE' : 'en-US', {
@@ -46,49 +58,78 @@ function toneTextClass(tone: BusinessPulseSlice['tone']): string {
   return 'text-foreground';
 }
 
-function metricValue(slice: BusinessPulseSlice | undefined, currency: string, locale: string): string {
-  if (!slice) return locale === 'de' ? 'Keine Daten' : 'No data';
-  if (slice.valueCents == null) return locale === 'de' ? 'Keine Daten' : 'No data';
+function metricValue(
+  slice: BusinessPulseSlice | undefined,
+  currency: string,
+  locale: string,
+  noDataLabel: string,
+): string {
+  if (!slice) return noDataLabel;
+  if (slice.valueCents == null) return noDataLabel;
   return formatMoney(slice.valueCents, slice.rows[0]?.currency ?? currency, locale);
 }
 
-function countHint(slice: BusinessPulseSlice | undefined, locale: string): string | undefined {
+function countHint(
+  slice: BusinessPulseSlice | undefined,
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string,
+): string | undefined {
   if (!slice) return undefined;
+
   if (slice.id === 'profit') {
-    return slice.hint;
+    return t('dashboard.profitHint');
   }
-  if (slice.count == null) return slice.hint;
-  const base = locale === 'de'
-    ? `${slice.count} Einträge`
-    : `${slice.count} item${slice.count === 1 ? '' : 's'}`;
-  return slice.hint ? `${base} · ${slice.hint}` : base;
+
+  if (slice.count == null || slice.count <= 0) {
+    return undefined;
+  }
+
+  switch (slice.id) {
+    case 'revenue':
+      return t('dashboard.invoicesShort', { count: slice.count });
+    case 'open-receivables':
+      return t('dashboard.openReceivableCount', { count: slice.count });
+    case 'overdue-receivables':
+      return t('dashboard.overdueReceivableCount', { count: slice.count });
+    case 'draft-invoices':
+      return t('dashboard.draftInvoiceCount', { count: slice.count });
+    case 'failed-payments':
+      return t('dashboard.failedPaymentCount', { count: slice.count });
+    case 'paid-invoices':
+      return t('dashboard.paidInvoiceCount', { count: slice.count });
+    default:
+      return slice.hint;
+  }
 }
 
 function CompactMetric({
+  metricId,
   slice,
   locale,
   currency,
+  title,
   disabled,
+  noDataLabel,
+  t,
   onSelect,
 }: {
+  metricId: BusinessMetricId;
   slice: BusinessPulseSlice | undefined;
   locale: string;
   currency: string;
+  title: string;
   disabled?: boolean;
+  noDataLabel: string;
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
   onSelect?: (metricId: BusinessMetricId) => void;
 }) {
   const clickable = Boolean(slice && !disabled && onSelect);
-  const value = metricValue(slice, currency, locale);
-  const hint = countHint(slice, locale);
+  const value = metricValue(slice, currency, locale, noDataLabel);
+  const hint = countHint(slice, t);
   return (
     <button
       type="button"
       disabled={!clickable}
-      onClick={
-        clickable && slice
-          ? () => onSelect?.(slice.id)
-          : undefined
-      }
+      onClick={clickable ? () => onSelect?.(metricId) : undefined}
       className={cn(
         'min-w-0 rounded-lg border border-border/35 bg-card/35 px-2 py-1.5 text-left transition-colors',
         clickable
@@ -97,7 +138,7 @@ function CompactMetric({
       )}
     >
       <p className="truncate text-[10.5px] font-medium tracking-[-0.01em] text-muted-foreground">
-        {slice?.title ?? (locale === 'de' ? 'Keine Daten' : 'No data')}
+        {title}
       </p>
       <p
         className={cn(
@@ -125,43 +166,32 @@ export function BusinessPulse({
   businessPulseSlices,
   onSelectBusinessMetric,
   onOpenBilling,
-  locale = 'de',
+  locale: localeProp,
   currency = 'EUR',
   loading = false,
   error = false,
 }: BusinessPulseProps) {
-  const de = locale === 'de';
+  const { locale: contextLocale, t } = useLanguage();
+  const locale = localeProp ?? contextLocale;
+  const noDataLabel = t('dashboard.noFinancialData');
+
   const visibleMetricIds = [
-    ...BUSINESS_METRIC_ORDER,
+    ...PRIMARY_BUSINESS_METRICS,
     ...OPTIONAL_BUSINESS_METRICS.filter((id) => (businessPulseSlices[id]?.count ?? 0) > 0),
   ];
-  const invoiceCount = businessPulseSlices.revenue?.count ?? 0;
-
-  const subline = [
-    de ? 'Business Pulse · Rechnungen' : 'Business Pulse · Invoices',
-    invoiceCount > 0
-      ? de
-        ? `${invoiceCount} Dokumente`
-        : `${invoiceCount} document${invoiceCount === 1 ? '' : 's'}`
-      : de
-        ? 'Slice-basiert'
-        : 'Slice based',
-  ]
-    .filter(Boolean)
-    .join(' · ');
 
   return (
     <section
       className={cn(
         panelShellClass('tertiary', 'h-full border-solid border-border/55 bg-card/55 shadow-none'),
       )}
-      aria-label="Business Pulse"
+      aria-label={t('dashboard.financesTitle')}
     >
       <div className="flex items-center justify-between gap-2 px-3.5 pt-2.5">
         <div className="flex min-w-0 items-center gap-2.5">
           <span className="h-2 w-2 shrink-0 rounded-full bg-[color:var(--brand)]" aria-hidden />
           <h2 className="text-[13px] font-semibold leading-tight tracking-[-0.01em] text-foreground">
-            Business Pulse
+            {t('dashboard.financesTitle')}
           </h2>
         </div>
         <button
@@ -169,11 +199,10 @@ export function BusinessPulse({
           onClick={onOpenBilling}
           className="sq-press inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md px-1.5 text-[11px] font-medium text-[color:var(--brand)] transition-colors hover:bg-[color:var(--brand-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
         >
-          {de ? 'Abrechnung öffnen' : 'Open billing'}
+          {t('dashboard.openBilling')}
           <Icon name="arrow-right" className="h-3 w-3" />
         </button>
       </div>
-      <p className="mt-0.5 truncate px-3.5 text-[11px] leading-snug text-muted-foreground">{subline}</p>
 
       {loading ? (
         <div className="px-3.5 py-3" aria-busy>
@@ -182,26 +211,28 @@ export function BusinessPulse({
       ) : error ? (
         <div className="px-3.5 py-3">
           <p className="text-[12px] font-medium text-foreground">
-            {de ? 'Finanzdaten nicht verfügbar' : 'Financial data unavailable'}
+            {t('dashboard.financialDataUnavailable')}
           </p>
           <p className="mt-1 text-[11px] text-muted-foreground text-pretty">
-            {de ? 'Rechnungen konnten nicht geladen werden.' : 'Invoices could not be loaded.'}
+            {t('dashboard.invoicesCouldNotLoad')}
           </p>
         </div>
       ) : (
-        <>
-          <div className="grid grid-cols-2 gap-2 px-3.5 pb-2.5 pt-2 sm:grid-cols-5">
-            {visibleMetricIds.map((metricId) => (
-              <CompactMetric
-                key={metricId}
-                slice={businessPulseSlices[metricId]}
-                locale={locale}
-                currency={currency}
-                onSelect={onSelectBusinessMetric}
-              />
-            ))}
-          </div>
-        </>
+        <div className="grid grid-cols-2 gap-2 px-3.5 pb-2.5 pt-2 sm:grid-cols-4">
+          {visibleMetricIds.map((metricId) => (
+            <CompactMetric
+              key={metricId}
+              metricId={metricId}
+              slice={businessPulseSlices[metricId]}
+              locale={locale}
+              currency={currency}
+              title={t(METRIC_TITLE_KEYS[metricId])}
+              noDataLabel={noDataLabel}
+              t={t}
+              onSelect={onSelectBusinessMetric}
+            />
+          ))}
+        </div>
       )}
     </section>
   );

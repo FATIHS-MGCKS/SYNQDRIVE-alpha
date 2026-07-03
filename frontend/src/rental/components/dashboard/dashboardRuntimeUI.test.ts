@@ -169,6 +169,17 @@ describe('dashboard runtime-only UI contracts', () => {
     expect(dashboardViewSrc).toMatch(/businessPulseSlices=\{vm\.businessPulseSlices\}/);
   });
 
+  it('keeps Business Pulse UI free of technical sublines and source labels', () => {
+    const businessPulseSrc = readFileSync(resolve(testDir, './BusinessPulse.tsx'), 'utf8');
+
+    expect(businessPulseSrc).toMatch(/dashboard\.financesTitle/);
+    expect(businessPulseSrc).not.toMatch(/Slice based|Slice-basiert|Business Pulse ·|Dokumente/);
+    expect(businessPulseSrc).not.toMatch(/Einträge|document\$\{/);
+    expect(businessPulseSrc).not.toMatch(/Source:|Quelle:/);
+    expect(businessPulseSrc).toMatch(/dashboard\.profitHint/);
+    expect(businessPulseSrc).not.toMatch(/'expenses'/);
+  });
+
   it('reads not-ready rows from groups only via dashboardSliceAccess', () => {
     const runtime = buildDashboardRuntimeModel({
       locale: 'en',

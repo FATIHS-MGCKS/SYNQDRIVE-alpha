@@ -129,11 +129,6 @@ function defaultInvoiceCta(de: boolean): string {
   return de ? 'Rechnung öffnen' : 'Open invoice';
 }
 
-function sourceLabel(kind: 'runtime' | 'business', de: boolean): string {
-  if (kind === 'business') return de ? 'Quelle: Business Pulse · Rechnungen' : 'Source: Business Pulse · Invoices';
-  return de ? 'Quelle: Runtime State · Fleet · Rental Health' : 'Source: Runtime State · Fleet · Rental Health';
-}
-
 function operativeEyebrow(sliceId: DashboardSliceId, de: boolean): string {
   if (sliceId === 'ready-to-rent') return de ? 'Mietbereitschaft' : 'Rental readiness';
   if (sliceId === 'critical-alerts') return de ? 'Alerts & Probleme' : 'Alerts & issues';
@@ -655,12 +650,7 @@ export function DashboardDrilldownDrawer({
       </div>
     )
     : businessSlice
-      ? (
-        <div className="space-y-1">
-          {businessSlice.hint ? <p>{businessSlice.hint}</p> : null}
-          <p className="text-[10px] text-muted-foreground/60">{sourceLabel('business', de)}</p>
-        </div>
-      )
+      ? businessSlice.hint ? <p className="text-[12px] text-muted-foreground">{businessSlice.hint}</p> : undefined
       : undefined;
 
   return (
