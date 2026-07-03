@@ -195,13 +195,6 @@ export function CompanyTaxSection({ editing, draft, onChange }: SectionProps) {
           editing={editing}
           onChange={(v) => onChange({ vatId: v })}
         />
-        <CompanyField
-          label="Legacy Steuer-ID"
-          value={draft.taxId}
-          editing={editing}
-          hint="Älteres kombiniertes Feld — optional, falls noch in Nutzung."
-          onChange={(v) => onChange({ taxId: v })}
-        />
         <div className="md:col-span-2">
           <CompanyField
             label="Kleinunternehmerregelung"

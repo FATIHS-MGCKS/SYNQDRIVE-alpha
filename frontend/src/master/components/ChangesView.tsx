@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'company-taxid-legacy-removal-v49162-2026-07-03',
+    version: '4.9.162',
+    title: 'V4.9.162 — Unternehmensinformationen: Legacy Steuer-ID aus UI entfernt',
+    summary: [
+      'Steuer & Rechnung: Feld „Legacy Steuer-ID“ (taxId) nicht mehr sichtbar oder editierbar.',
+      'Company Draft und Save-Payload senden taxId nicht mehr — bestehende DB-Werte bleiben unverändert.',
+      'Einrichtungsstatus Rechnungsdaten: taxId zählt nicht mehr; Vollständigkeit über Steuernummer/USt-ID, MwSt., Zahlungsziel, Präfix und Bankdaten.',
+    ],
+    reason:
+      'taxId ist deprecated; das neue SynqDrive UI soll nur moderne Steuerfelder als aktive Wahrheit nutzen.',
+    previousBehavior:
+      'Legacy Steuer-ID im Formular; Readiness konnte allein über taxId erfüllt werden.',
+    details:
+      'CompanySections, company-utils (CompanyDraft, draftToUpdatePayload, isBillingDataComplete). Backend/Prisma unverändert.',
+    affectsArchitecture: false,
+    module: 'Master Admin',
+    createdAt: '2026-07-03T15:00:00.000Z',
+  },
+  {
     id: 'company-information-ui-v49161-2026-07-03',
     version: '4.9.161',
     title: 'V4.9.161 — Unternehmensinformationen: Clean SaaS UI-Refactor',

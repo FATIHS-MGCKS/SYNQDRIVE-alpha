@@ -34,7 +34,6 @@ export interface CompanyDraft {
   invoiceEmail: string;
   taxNumber: string;
   vatId: string;
-  taxId: string;
   isSmallBusiness: boolean;
   defaultVatRate: string;
   paymentTermsDays: string;
@@ -109,7 +108,6 @@ export function draftFromProfile(p: TenantOrganizationProfileDto): CompanyDraft 
     invoiceEmail: p.invoiceEmail ?? '',
     taxNumber: p.taxNumber ?? '',
     vatId: p.vatId ?? '',
-    taxId: p.taxId ?? '',
     isSmallBusiness: p.isSmallBusiness ?? false,
     defaultVatRate: p.defaultVatRate != null ? String(p.defaultVatRate) : '',
     paymentTermsDays: String(p.paymentTermsDays ?? 7),
@@ -205,7 +203,6 @@ export function draftToUpdatePayload(draft: CompanyDraft): TenantOrganizationPro
     invoiceEmail: str(draft.invoiceEmail),
     taxNumber: str(draft.taxNumber),
     vatId: str(draft.vatId),
-    taxId: str(draft.taxId),
     isSmallBusiness: draft.isSmallBusiness,
     defaultVatRate: vat ? Number(vat) : null,
     paymentTermsDays: Number(draft.paymentTermsDays) || 0,
@@ -231,6 +228,22 @@ export interface SetupCheckItem {
   ctaSection?: CompanySection;
 }
 
+/** Billing readiness — legacy `taxId` is intentionally ignored. */
+export function isBillingDataComplete(
+  profile: TenantOrganizationProfileDto | null | undefined,
+): boolean {
+  if (!profile) return false;
+  const hasTaxIdentifier = Boolean(profile.taxNumber?.trim() || profile.vatId?.trim());
+  return Boolean(
+    hasTaxIdentifier &&
+      profile.invoicePrefix?.trim() &&
+      profile.paymentTermsDays != null &&
+      profile.defaultVatRate != null &&
+      profile.iban?.trim() &&
+      profile.bankName?.trim(),
+  );
+}
+
 export function computeSetupChecklist(
   profile: TenantOrganizationProfileDto | null,
   logoUrl: string | null,
@@ -246,12 +259,7 @@ export function computeSetupChecklist(
       p?.language?.trim() &&
       p?.timezone?.trim(),
   );
-  const billingComplete = Boolean(
-    (p?.taxNumber?.trim() || p?.vatId?.trim() || p?.taxId?.trim()) &&
-      p?.iban?.trim() &&
-      p?.bankName?.trim() &&
-      p?.invoicePrefix?.trim(),
-  );
+  const billingComplete = isBillingDataComplete(p);
   const brandingOk = Boolean(logoUrl?.trim());
   const activeLegal = legalDocs.filter((d) => d.status === 'ACTIVE');
   const legalOk =
@@ -276,7 +284,7 @@ export function computeSetupChecklist(
     {
       id: 'billing',
       label: 'Rechnungsdaten vollständig',
-      description: 'Steuer-ID, Bankverbindung und Rechnungspräfix für Ausgangsrechnungen.',
+      description: 'Steuernummer oder USt-ID, Bankverbindung, MwSt. und Rechnungspräfix.',
       status: billingComplete ? 'done' : 'missing',
       ctaLabel: billingComplete ? undefined : 'Steuer & Rechnung öffnen',
       ctaSection: 'tax',
