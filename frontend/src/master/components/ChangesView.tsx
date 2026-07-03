@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'company-profile-wiring-v49165-2026-07-03',
+    version: '4.9.165',
+    title: 'V4.9.165 — Company Profile: DTO/Contract-Verdrahtung verifiziert',
+    summary: [
+      'TenantOrganizationProfileController nutzt UpdateTenantOrganizationProfileDto (ValidationPipe).',
+      'TENANT_PROFILE_FORM_UPDATE_FIELDS dokumentiert alle UI-Formularfelder ohne legacy taxId.',
+      'Frontend TenantOrganizationProfileUiUpdate typisiert Company-Save-Payload ohne taxId.',
+      'Service-/DTO-/Payload-Tests für Basis, Kontakt, Steuer/Rechnung und Branding ergänzt.',
+    ],
+    reason:
+      'Sicherstellen, dass Company Information UI-Felder konsistent über den vorhandenen DTO gespeichert werden.',
+    previousBehavior:
+      'Verdrahtung funktional, aber Contract nicht explizit dokumentiert/getestet.',
+    details:
+      'tenant-profile-ui-fields.ts, organizations.service.spec.ts, company-profile-validation.spec.ts, api.ts, company-utils.',
+    affectsArchitecture: false,
+    module: 'Master Admin',
+    createdAt: '2026-07-03T18:00:00.000Z',
+  },
+  {
     id: 'company-activity-history-v49164-2026-07-03',
     version: '4.9.164',
     title: 'V4.9.164 — Unternehmensinformationen: lesbarer Änderungsverlauf',

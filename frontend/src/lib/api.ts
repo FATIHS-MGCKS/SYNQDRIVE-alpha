@@ -1673,6 +1673,12 @@ export type TenantOrganizationProfileUpdate = Partial<
   >
 >;
 
+/** Company Information form save — excludes legacy taxId (DB field preserved server-side). */
+export type TenantOrganizationProfileUiUpdate = Omit<
+  TenantOrganizationProfileUpdate,
+  'taxId' | 'logoDarkUrl' | 'pdfLogoUrl'
+>;
+
 export interface AccountMeDto {
   user: {
     id: string;

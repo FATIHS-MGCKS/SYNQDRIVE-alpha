@@ -67,11 +67,11 @@ export class TenantOrganizationProfileController {
   async updateProfile(
     @Param('orgId') orgId: string,
     @Req() req: AuthedRequest,
-    @Body() body: UpdateTenantOrganizationProfileDto,
+    @Body() dto: UpdateTenantOrganizationProfileDto,
   ) {
     this.assertCanWriteOrgProfile(req);
     const ctx = AuditService.contextFromRequest(req);
-    return this.organizationsService.updateTenantProfile(orgId, body, {
+    return this.organizationsService.updateTenantProfile(orgId, dto, {
       actorUserId: ctx.actorUserId,
       ip: ctx.ipAddress,
       userAgent: ctx.userAgent,

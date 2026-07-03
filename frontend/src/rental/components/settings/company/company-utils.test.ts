@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type { LegalDocumentDto } from '../../../../lib/api';
+import type { LegalDocumentDto, TenantOrganizationProfileDto } from '../../../../lib/api';
 import {
   buildDocumentStatusGroups,
+  draftFromProfile,
+  draftToUpdatePayload,
   isLegalTextsComplete,
 } from './company-utils';
 
@@ -24,6 +26,78 @@ function legalDoc(
     updatedAt: '2026-01-01T00:00:00.000Z',
   };
 }
+
+describe('draftToUpdatePayload', () => {
+  const profile: TenantOrganizationProfileDto = {
+    id: 'org-1',
+    companyName: 'Synq GmbH',
+    legalCompanyName: 'Synq GmbH',
+    legalForm: 'GMBH',
+    address: 'Straße 1',
+    city: 'Berlin',
+    state: null,
+    zip: '10115',
+    country: 'DE',
+    taxId: 'LEGACY',
+    taxNumber: 'TN-1',
+    vatId: 'DE123',
+    isSmallBusiness: false,
+    defaultVatRate: 19,
+    invoicePrefix: 'RE-',
+    nextInvoiceNumber: 10,
+    paymentTermsDays: 14,
+    invoiceEmail: null,
+    bankName: 'Bank',
+    iban: 'DE00',
+    bic: 'BIC',
+    pdfFooterText: null,
+    emailSignature: null,
+    phone: '+49',
+    email: 'info@synq.test',
+    website: 'https://synq.test',
+    timezone: 'Europe/Berlin',
+    language: 'de-DE',
+    managerName: 'Max',
+    managerEmail: 'max@synq.test',
+    logoUrl: null,
+    logoDarkUrl: null,
+    pdfLogoUrl: null,
+    accentColor: null,
+    businessType: 'RENTAL',
+  };
+
+  it('maps all company form fields and excludes legacy taxId', () => {
+    const payload = draftToUpdatePayload(draftFromProfile(profile));
+    expect(payload).toMatchObject({
+      companyName: 'Synq GmbH',
+      legalCompanyName: 'Synq GmbH',
+      legalForm: 'GMBH',
+      managerName: 'Max',
+      managerEmail: 'max@synq.test',
+      language: 'de-DE',
+      timezone: 'Europe/Berlin',
+      address: 'Straße 1',
+      zip: '10115',
+      city: 'Berlin',
+      country: 'DE',
+      phone: '+49',
+      email: 'info@synq.test',
+      website: 'https://synq.test',
+      taxNumber: 'TN-1',
+      vatId: 'DE123',
+      isSmallBusiness: false,
+      defaultVatRate: 19,
+      paymentTermsDays: 14,
+      invoicePrefix: 'RE-',
+      nextInvoiceNumber: 10,
+      bankName: 'Bank',
+      iban: 'DE00',
+      bic: 'BIC',
+    });
+    expect(payload).not.toHaveProperty('taxId');
+    expect(payload).not.toHaveProperty('logoUrl');
+  });
+});
 
 describe('buildDocumentStatusGroups', () => {
   it('groups manageable, system, and unconnected documents', () => {

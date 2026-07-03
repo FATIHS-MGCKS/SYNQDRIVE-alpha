@@ -2,7 +2,7 @@ import type {
   LegalDocumentDto,
   Station,
   TenantOrganizationProfileDto,
-  TenantOrganizationProfileUpdate,
+  TenantOrganizationProfileUiUpdate,
 } from '../../../../lib/api';
 
 export type CompanySection =
@@ -178,7 +178,7 @@ export function validateCompanyDraft(draft: CompanyDraft): string | null {
   return null;
 }
 
-export function draftToUpdatePayload(draft: CompanyDraft): TenantOrganizationProfileUpdate {
+export function draftToUpdatePayload(draft: CompanyDraft): TenantOrganizationProfileUiUpdate {
   const str = (v: string) => {
     const t = v.trim();
     return t.length ? t : null;
@@ -187,10 +187,10 @@ export function draftToUpdatePayload(draft: CompanyDraft): TenantOrganizationPro
   return {
     companyName: draft.companyName.trim(),
     legalCompanyName: str(draft.legalCompanyName),
-    legalForm: str(draft.legalForm) as TenantOrganizationProfileUpdate['legalForm'],
+    legalForm: str(draft.legalForm) as TenantOrganizationProfileUiUpdate['legalForm'],
     managerName: str(draft.managerName),
     managerEmail: str(draft.managerEmail),
-    language: str(draft.language) as TenantOrganizationProfileUpdate['language'],
+    language: str(draft.language) as TenantOrganizationProfileUiUpdate['language'],
     timezone: str(draft.timezone),
     address: str(draft.address),
     zip: str(draft.zip),

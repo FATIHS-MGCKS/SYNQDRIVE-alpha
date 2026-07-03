@@ -146,4 +146,169 @@ describe('OrganizationsService — tenant company profile', () => {
     prisma.organization.findUnique.mockResolvedValue(null);
     await expect(service.getTenantProfile(orgId)).rejects.toBeInstanceOf(NotFoundException);
   });
+
+  it('persists basis and localization fields from UI payload', async () => {
+    const updated = {
+      ...baseOrg,
+      companyName: 'Neu GmbH',
+      legalCompanyName: 'Neu GmbH',
+      legalForm: 'GMBH',
+      managerName: 'Erika Muster',
+      managerEmail: 'erika@synq.test',
+      language: 'de-DE',
+      timezone: 'Europe/Vienna',
+    };
+    prisma.organization.findUnique
+      .mockResolvedValueOnce(baseOrg)
+      .mockResolvedValueOnce(updated);
+    prisma.organization.update.mockResolvedValue({});
+
+    const result = await service.updateTenantProfile(orgId, {
+      companyName: 'Neu GmbH',
+      legalCompanyName: 'Neu GmbH',
+      legalForm: 'GMBH',
+      managerName: 'Erika Muster',
+      managerEmail: 'erika@synq.test',
+      language: 'de-DE',
+      timezone: 'Europe/Vienna',
+    });
+
+    expect(prisma.organization.update).toHaveBeenCalledWith({
+      where: { id: orgId },
+      data: expect.objectContaining({
+        companyName: 'Neu GmbH',
+        legalCompanyName: 'Neu GmbH',
+        legalForm: 'GMBH',
+        managerName: 'Erika Muster',
+        managerEmail: 'erika@synq.test',
+        language: 'de-DE',
+        timezone: 'Europe/Vienna',
+      }),
+    });
+    expect(result.managerName).toBe('Erika Muster');
+  });
+
+  it('persists address and contact fields from UI payload', async () => {
+    const updated = {
+      ...baseOrg,
+      address: 'Hauptstraße 9',
+      zip: '80331',
+      city: 'München',
+      state: 'Bayern',
+      country: 'DE',
+      phone: '+49 89 555',
+      email: 'kontakt@synq.test',
+      website: 'https://synq.test',
+      invoiceEmail: 'rechnung@synq.test',
+    };
+    prisma.organization.findUnique
+      .mockResolvedValueOnce(baseOrg)
+      .mockResolvedValueOnce(updated);
+    prisma.organization.update.mockResolvedValue({});
+
+    await service.updateTenantProfile(orgId, {
+      address: 'Hauptstraße 9',
+      zip: '80331',
+      city: 'München',
+      state: 'Bayern',
+      country: 'DE',
+      phone: '+49 89 555',
+      email: 'kontakt@synq.test',
+      website: 'synq.test',
+      invoiceEmail: 'rechnung@synq.test',
+    });
+
+    expect(prisma.organization.update).toHaveBeenCalledWith({
+      where: { id: orgId },
+      data: expect.objectContaining({
+        address: 'Hauptstraße 9',
+        zip: '80331',
+        city: 'München',
+        state: 'Bayern',
+        country: 'DE',
+        phone: '+49 89 555',
+        email: 'kontakt@synq.test',
+        website: 'https://synq.test',
+        invoiceEmail: 'rechnung@synq.test',
+      }),
+    });
+  });
+
+  it('persists tax, invoice and bank fields from UI payload', async () => {
+    const updated = {
+      ...baseOrg,
+      taxNumber: '12/345/67890',
+      vatId: 'DE123456789',
+      isSmallBusiness: true,
+      defaultVatRate: 0,
+      paymentTermsDays: 21,
+      invoicePrefix: 'RE-',
+      nextInvoiceNumber: 120,
+      bankName: 'Synq Bank',
+      iban: 'DE89370400440532013000',
+      bic: 'COBADEFFXXX',
+    };
+    prisma.organization.findUnique
+      .mockResolvedValueOnce(baseOrg)
+      .mockResolvedValueOnce(updated);
+    prisma.organization.update.mockResolvedValue({});
+
+    await service.updateTenantProfile(orgId, {
+      taxNumber: '12/345/67890',
+      vatId: 'DE123456789',
+      isSmallBusiness: true,
+      defaultVatRate: 0,
+      paymentTermsDays: 21,
+      invoicePrefix: 'RE-',
+      nextInvoiceNumber: 120,
+      bankName: 'Synq Bank',
+      iban: 'DE89370400440532013000',
+      bic: 'COBADEFFXXX',
+    });
+
+    expect(prisma.organization.update).toHaveBeenCalledWith({
+      where: { id: orgId },
+      data: expect.objectContaining({
+        taxNumber: '12/345/67890',
+        vatId: 'DE123456789',
+        isSmallBusiness: true,
+        defaultVatRate: 0,
+        paymentTermsDays: 21,
+        invoicePrefix: 'RE-',
+        nextInvoiceNumber: 120,
+        bankName: 'Synq Bank',
+        iban: 'DE89370400440532013000',
+        bic: 'COBADEFFXXX',
+      }),
+    });
+    expect(prisma.organization.update.mock.calls[0][0].data).not.toHaveProperty('taxId');
+  });
+
+  it('persists branding text fields from UI payload', async () => {
+    const updated = {
+      ...baseOrg,
+      accentColor: '#0F766E',
+      pdfFooterText: 'Fußzeile',
+      emailSignature: 'Mit freundlichen Grüßen',
+    };
+    prisma.organization.findUnique
+      .mockResolvedValueOnce(baseOrg)
+      .mockResolvedValueOnce(updated);
+    prisma.organization.update.mockResolvedValue({});
+
+    await service.updateTenantProfile(orgId, {
+      accentColor: '#0F766E',
+      pdfFooterText: 'Fußzeile',
+      emailSignature: 'Mit freundlichen Grüßen',
+    });
+
+    expect(prisma.organization.update).toHaveBeenCalledWith({
+      where: { id: orgId },
+      data: expect.objectContaining({
+        accentColor: '#0F766E',
+        pdfFooterText: 'Fußzeile',
+        emailSignature: 'Mit freundlichen Grüßen',
+      }),
+    });
+  });
 });
