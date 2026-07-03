@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'ready-kpi-card-layout-v49154-2026-07-03',
+    version: '4.9.154',
+    title: 'V4.9.154 — Dashboard Ready KPI: neues Ready-for-Renting Layout',
+    summary: [
+      'Ready-KPI-Box zeigt Titel „Ready for Renting“, große grüne Hauptzahl, „vehicles ready“, Separator und Footer mit Available / Not ready.',
+      'Zählungen kommen aus `dashboardRuntime.slices` (`slice.count` + `groups`) via `resolveReadyForRentingKpiCounts` — keine UI-Neuberechnung.',
+      'Redundante `slice.hint`-Zeile in der Ready Card entfernt; andere KPI Cards unverändert.',
+    ],
+    reason:
+      'Die Ready Box soll dem finalen UI-Entwurf entsprechen: luftiger, symmetrisch, ohne doppelte Verfügbarkeitszeile.',
+    previousBehavior:
+      'Kompakte KPI-Zeile mit Titel „Ready“, kleiner Zahl und Hint wie „6 available · 1 not ready“.',
+    details:
+      'ControlKpiStrip.tsx (ReadyForRentingKpiContent), dashboardSliceAccess.ts, dashboardSliceBuilder.ts, dashboardRuntimeUI.test.ts.',
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-07-03T09:25:00.000Z',
+  },
+  {
     id: 'brandlogo-mark-unified-v49153-2026-07-03',
     version: '4.9.153',
     title: 'V4.9.153 — BrandLogo: einheitliche 20px Marken-Icons in grauer Box',
