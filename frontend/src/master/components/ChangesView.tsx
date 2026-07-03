@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dark-theme-v2-charcoal-tokens-v49166-2026-07-03',
+    version: '4.9.166',
+    title: 'V4.9.166 — Dark Theme V2: zentrale Charcoal/Graphite Token-Palette',
+    summary: [
+      'Dark-Mode-Surfaces von Navy (#0B1220/#111A2E) auf near-black Charcoal (#0B0B0D/#121214) umgestellt.',
+      'Brand im Dark Mode neutralisiert: helles Grau statt Blue-400 (#60A5FA); Ring/Border auf weiße Hairlines.',
+      'Status-, Glass- und Map-Glass-Tokens auf V2-Zielwerte; Info-Status nicht mehr blau.',
+      'Body-Gradient und Map-Liquid-Glass ohne blauen Ambient-Glow — subtile neutrale Vignette.',
+      'Light Theme unverändert; Tailwind @theme-Bridge und Token-Namen beibehalten.',
+    ],
+    reason:
+      'Dark Theme wirkte zu blau/navy-lastig; zentrale Tokens sollen Richtung hochwertiges charcoal SaaS Dashboard vorbereiten.',
+    previousBehavior:
+      'Deep-Navy-Canvas, slate-blaue Surfaces, blauer Brand/Ring/Info-Status, blaue Body-Radialen.',
+    details:
+      'frontend/src/styles/theme.css (.dark block, .dark body, .dark .sq-map-liquid-glass). Keine Komponenten-/Layout-Änderungen.',
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-07-03T19:00:00.000Z',
+  },
+  {
     id: 'company-profile-wiring-v49165-2026-07-03',
     version: '4.9.165',
     title: 'V4.9.165 — Company Profile: DTO/Contract-Verdrahtung verifiziert',
