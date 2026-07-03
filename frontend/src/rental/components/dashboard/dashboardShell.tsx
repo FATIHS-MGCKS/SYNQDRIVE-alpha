@@ -10,7 +10,8 @@ export const DASHBOARD_LAYOUT = {
   opsStack: 'space-y-3.5',
   focusStack: 'space-y-4',
   opsGrid: 'grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.04fr)_minmax(0,0.96fr)] lg:items-stretch',
-  signalsGrid: 'grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch',
+  signalsGrid:
+    'grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch lg:gap-4 xl:gap-5',
   financeZone: 'border-t border-border/50 pt-7',
 } as const;
 
@@ -108,3 +109,14 @@ export function DashboardPanelHeader({
 }
 
 export const ACTION_QUEUE_LIST_CAP = 25;
+
+/** Shared compact KPI typography (Control Center strip + Business Pulse). */
+export const DASHBOARD_KPI_TITLE_CLASS =
+  'min-w-0 truncate text-[10.5px] font-medium tracking-[-0.01em] text-muted-foreground';
+export const DASHBOARD_KPI_NUMBER_CLASS =
+  'text-[21px] font-semibold tabular-nums leading-none tracking-[-0.03em]';
+export const DASHBOARD_KPI_HINT_CLASS = 'text-[10px] leading-snug text-muted-foreground';
+
+export function dashboardPanelHeaderClass(): string {
+  return 'flex shrink-0 items-center justify-between gap-2 border-b border-border/35 px-3.5 py-2.5';
+}

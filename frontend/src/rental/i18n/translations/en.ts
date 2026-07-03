@@ -338,6 +338,7 @@ export const en = {
   'dashboard.draftInvoicesLabel': 'Drafts',
   'dashboard.failedPaymentsLabel': 'Failed payments',
   'dashboard.openBilling': 'Open billing',
+  'dashboard.openInvoices': 'Open invoices',
   'dashboard.financialDataUnavailable': 'Financial data unavailable',
   'dashboard.invoicesCouldNotLoad': 'Invoices could not be loaded.',
   'dashboard.noFinancialData': 'No data',

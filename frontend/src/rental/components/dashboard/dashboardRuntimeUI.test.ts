@@ -173,6 +173,8 @@ describe('dashboard runtime-only UI contracts', () => {
     const businessPulseSrc = readFileSync(resolve(testDir, './BusinessPulse.tsx'), 'utf8');
 
     expect(businessPulseSrc).toMatch(/dashboard\.financesTitle/);
+    expect(businessPulseSrc).toMatch(/dashboard\.openInvoices/);
+    expect(businessPulseSrc).toMatch(/DASHBOARD_KPI_NUMBER_CLASS/);
     expect(businessPulseSrc).not.toMatch(/Slice based|Slice-basiert|Business Pulse ·|Dokumente/);
     expect(businessPulseSrc).not.toMatch(/Einträge|document\$\{/);
     expect(businessPulseSrc).not.toMatch(/Source:|Quelle:/);

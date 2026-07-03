@@ -410,6 +410,7 @@ export const de: Record<TranslationKey, string> = {
   'dashboard.draftInvoicesLabel': 'Entwürfe',
   'dashboard.failedPaymentsLabel': 'Fehlgeschlagene Zahlungen',
   'dashboard.openBilling': 'Abrechnung öffnen',
+  'dashboard.openInvoices': 'Rechnungen öffnen',
   'dashboard.financialDataUnavailable': 'Finanzdaten nicht verfügbar',
   'dashboard.invoicesCouldNotLoad': 'Rechnungen konnten nicht geladen werden.',
   'dashboard.noFinancialData': 'Keine Daten',

@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'business-pulse-clean-saas-ui-v49179-2026-07-03',
+    version: '4.9.179',
+    title: 'V4.9.179 — Business Pulse: Clean SaaS UI an Control Center angeglichen',
+    summary: [
+      'Business Pulse nutzt dieselbe KPI-Card-Sprache wie Control Center (rounded-2xl, shared Typography, Status-Akzente, Icon-Chip).',
+      'Header wie Notifications-Panel: Dot + Titel „Finanzen“, Link-CTA „Rechnungen öffnen →“, kein Subtext.',
+      '4 Haupt-KPIs im gleichmäßigen Grid; optionale Metriken als dezente Chips darunter.',
+      'Desktop: signalsGrid 2-spaltig neben Notifications; beide Panels `h-full` gestretcht.',
+    ],
+    reason: 'Business Pulse wirkte visuell wie Fremdkörper gegenüber Control Center KPIs und Notifications.',
+    previousBehavior: 'Eigene kompakte Innenrahmen-Cards, abweichende Typografie, volle Breite ohne Panel-Gleichgewicht.',
+    details: 'Keine Fachlogik-, API- oder Invoice-Berechnungsänderung — rein UI/UX in BusinessPulse + dashboardShell.',
+    affectsArchitecture: false,
+    module: 'Dashboard',
+    createdAt: '2026-07-03T23:55:00.000Z',
+  },
+  {
     id: 'business-pulse-ui-labels-v49178-2026-07-03',
     version: '4.9.178',
     title: 'V4.9.178 — Business Pulse: fachliche Labels ohne technische Subtexte',
