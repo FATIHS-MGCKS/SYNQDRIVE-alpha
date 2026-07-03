@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'brandlogo-mark-unified-v49153-2026-07-03',
+    version: '4.9.153',
+    title: 'V4.9.153 — BrandLogo: einheitliche 20px Marken-Icons in grauer Box',
+    summary: [
+      'Neue `BrandLogoMark`-Komponente + Konstanten `BRAND_LOGO_MARK_SIZE` (20px) und `BRAND_LOGO_MARK_BOX_CLASS` (36×36px, `bg-muted/70`).',
+      'Fleet Command, Fleet Condition, Dashboard Fleet-Popups, Bookings, Vehicle Detail Header und New Booking nutzen dieselbe Markenbox.',
+      'Default `BrandLogo`-Größe von 36px auf 20px angepasst.',
+    ],
+    reason:
+      'Markenlogos wirkten je nach Oberfläche unterschiedlich groß (14–28px) und hatten uneinheitliche graue Container.',
+    previousBehavior:
+      'Pro Surface eigene Box- und Icon-Größen (z. B. 14px in Dashboard-Popups, 28px im New-Booking-Picker, responsiv 22px im Vehicle Header).',
+    details:
+      'BrandLogo.tsx (BrandLogoMark), FleetOperatorRow.tsx, FleetConditionView.tsx, StatInlineDetail.tsx, BookingsView.tsx, VehicleDetailHeader.tsx, NewBookingView.tsx, BrandLogo.test.ts.',
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-07-03T08:15:00.000Z',
+  },
+  {
     id: 'operational-issue-taxonomy-v49151-2026-07-03',
     version: '4.9.151',
     title: 'V4.9.151 — Operative Meldungen: kanonische Severity-Taxonomie (Frontend)',

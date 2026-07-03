@@ -25,7 +25,7 @@ import {
   grossFromNetCents,
 } from '../pricing/pricingUtils';
 // V4.6.67 — share the same BrandLogo component used across Fleet / Booking surfaces.
-import { BrandLogo, getBrandFromModel } from './BrandLogo';
+import { BrandLogoMark, getBrandFromModel } from './BrandLogo';
 import { useDocumentDark } from '../hooks/useDocumentDark';
 import {
   buildCustomerCreatePayload,
@@ -1830,9 +1830,11 @@ export function NewBookingView({
                           className={`flex items-center gap-3 w-full text-left rounded-lg border px-3 py-2 transition-all duration-200 ${ offline ? 'border-border bg-muted/30 opacity-60 grayscale cursor-not-allowed' : isMaintenance ? selectedVehicle?.id === v.id ? 'border-[color:var(--brand)] ring-1 ring-[color:var(--brand-glow)] bg-[color:var(--brand-soft)] opacity-70 cursor-pointer' : 'border-[color:var(--status-critical)]/30 bg-muted/40 opacity-70 hover:border-[color:var(--status-critical)]/50 cursor-pointer' : selectedVehicle?.id === v.id ? 'border-[color:var(--brand)] ring-1 ring-[color:var(--brand-glow)] bg-[color:var(--brand-soft)] cursor-pointer' : 'border-border bg-muted/40 hover:border-border hover:bg-card cursor-pointer' }`}
                         >
                           {/* Brand Logo (shared Cardog component) */}
-                          <div className={`w-11 h-11 rounded-lg flex items-center justify-center shrink-0 p-1.5 ${ 'bg-muted/50' } ${(isMaintenance || offline) ? 'grayscale opacity-70' : ''}`}>
-                            <BrandLogo brand={brandKey} size={28} isDarkMode={isDarkMode} variant="icon" />
-                          </div>
+                          <BrandLogoMark
+                            brand={brandKey}
+                            isDarkMode={isDarkMode}
+                            boxClassName={(isMaintenance || offline) ? 'grayscale opacity-70' : undefined}
+                          />
 
                           {/* Vehicle Info */}
                           <div className="flex-1 min-w-0">
@@ -3006,17 +3008,13 @@ export function NewBookingView({
                       <div className="text-[11px] mb-1 text-muted-foreground">Fahrzeug</div>
                       {selectedVehicle ? (
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-md flex items-center justify-center shrink-0 p-1 bg-muted/50">
-                            <BrandLogo
-                              brand={getBrandFromModel({
-                                make: selectedVehicle.make,
-                                model: selectedVehicle.model,
-                              })}
-                              size={20}
-                              isDarkMode={isDarkMode}
-                              variant="icon"
-                            />
-                          </div>
+                          <BrandLogoMark
+                            brand={getBrandFromModel({
+                              make: selectedVehicle.make,
+                              model: selectedVehicle.model,
+                            })}
+                            isDarkMode={isDarkMode}
+                          />
                           <div className="min-w-0">
                             <p className="text-xs truncate text-foreground">{buildMMY(selectedVehicle)}</p>
                             <p className="text-[11px] text-muted-foreground">{selectedVehicle.license}</p>
