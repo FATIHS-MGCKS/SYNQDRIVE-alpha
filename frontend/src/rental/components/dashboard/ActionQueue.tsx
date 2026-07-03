@@ -543,7 +543,7 @@ export function ActionQueue({
             ? 'shadow-none ring-1 ring-border/30'
             : 'border-solid border-border/55 bg-card/55 shadow-none',
         ),
-        'h-full',
+        'w-full min-w-0',
       )}
       aria-label="Notifications"
     >

@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-signals-layout-v49180-2026-07-03',
+    version: '4.9.180',
+    title: 'V4.9.180 — Dashboard: Business Pulse + Notifications Layout finalisiert',
+    summary: [
+      '`signalsGrid`: Desktop 5/7-Spalten (Finanzen links, Notifications rechts), `items-start` statt Stretch.',
+      'Business Pulse: `h-full`/`flex-1` entfernt — kompaktes 2×2 KPI-Grid, kein künstlicher Leerraum.',
+      'Notifications: natürliche Höhe, mehr Platz in der breiteren rechten Spalte.',
+      'Mobile: Panels untereinander, `min-w-0` gegen Overflow.',
+    ],
+    reason: 'Business Pulse wirkte zu breit und wurde auf Desktop-Höhe der Notifications mitgestreckt.',
+    previousBehavior: '50/50 Grid mit `items-stretch` + `h-full` — Finanzpanel wuchs leer mit.',
+    details: 'Nur Layout in dashboardShell, DashboardView, BusinessPulse, ActionQueue — keine Fachlogik.',
+    affectsArchitecture: false,
+    module: 'Dashboard',
+    createdAt: '2026-07-04T00:05:00.000Z',
+  },
+  {
     id: 'business-pulse-clean-saas-ui-v49179-2026-07-03',
     version: '4.9.179',
     title: 'V4.9.179 — Business Pulse: Clean SaaS UI an Control Center angeglichen',

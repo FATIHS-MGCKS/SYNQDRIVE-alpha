@@ -224,7 +224,7 @@ function FinanceKpiCard({
       className={cn(financeKpiCardClass(metricId, slice), !clickable && 'cursor-default')}
       aria-label={`${title}: ${value}${hint ? `, ${hint}` : ''}`}
     >
-      <div className="flex h-full items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
           <p className={DASHBOARD_KPI_TITLE_CLASS}>{title}</p>
           <p
@@ -316,7 +316,10 @@ export function BusinessPulse({
   return (
     <section
       className={cn(
-        panelShellClass('tertiary', 'flex h-full min-h-0 flex-col border-solid border-border/55 bg-card/55 shadow-none'),
+        panelShellClass(
+          'tertiary',
+          'flex w-full min-w-0 flex-col border-solid border-border/55 bg-card/55 shadow-none',
+        ),
       )}
       aria-label={t('dashboard.financesTitle')}
     >
@@ -337,17 +340,17 @@ export function BusinessPulse({
         </button>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col px-3.5 py-3">
+      <div className="px-3.5 py-3">
         {loading ? (
-          <div className="flex flex-1 items-center" aria-busy>
+          <div aria-busy>
             <SkeletonMetricGrid
               count={4}
-              className="grid w-full grid-cols-2 gap-3 lg:grid-cols-4"
+              className="grid w-full grid-cols-2 gap-3"
               cardClassName="min-h-[92px] rounded-2xl bg-background/40"
             />
           </div>
         ) : error ? (
-          <div className="flex flex-1 flex-col justify-center py-2">
+          <div className="py-1">
             <p className="text-[12px] font-medium text-foreground">
               {t('dashboard.financialDataUnavailable')}
             </p>
@@ -357,7 +360,7 @@ export function BusinessPulse({
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="grid grid-cols-2 gap-3">
               {PRIMARY_BUSINESS_METRICS.map((metricId) => (
                 <FinanceKpiCard
                   key={metricId}

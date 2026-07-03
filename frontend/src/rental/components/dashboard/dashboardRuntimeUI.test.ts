@@ -171,7 +171,14 @@ describe('dashboard runtime-only UI contracts', () => {
 
   it('keeps Business Pulse UI free of technical sublines and source labels', () => {
     const businessPulseSrc = readFileSync(resolve(testDir, './BusinessPulse.tsx'), 'utf8');
+    const dashboardViewSrc = readFileSync(resolve(testDir, '../DashboardView.tsx'), 'utf8');
+    const shellSrc = readFileSync(resolve(testDir, './dashboardShell.tsx'), 'utf8');
 
+    expect(shellSrc).toMatch(/signalsGrid:[\s\S]*lg:grid-cols-\[minmax\(0,5fr\)_minmax\(0,7fr\)\]/);
+    expect(shellSrc).toMatch(/lg:items-start/);
+    expect(dashboardViewSrc).toMatch(/signalsFinanceSlot/);
+    expect(dashboardViewSrc).toMatch(/signalsNotificationsSlot/);
+    expect(businessPulseSrc).not.toMatch(/\bh-full\b/);
     expect(businessPulseSrc).toMatch(/dashboard\.financesTitle/);
     expect(businessPulseSrc).toMatch(/dashboard\.openInvoices/);
     expect(businessPulseSrc).toMatch(/DASHBOARD_KPI_NUMBER_CLASS/);

@@ -109,16 +109,20 @@ export function DashboardView({
         </div>
 
         <div className={`${DASHBOARD_LAYOUT.signalsGrid} animate-fade-up`} style={{ animationDelay: '70ms' }}>
-          <BusinessPulse
-            businessPulseSlices={vm.businessPulseSlices}
-            onSelectBusinessMetric={vm.openBusinessMetricDrilldown}
-            onOpenBilling={() => onOpenFinanceView?.('invoices')}
-            locale={vm.locale}
-            currency="EUR"
-            loading={!vm.dataFreshness.invoicesLoaded}
-            error={vm.dataFreshness.invoicesError}
-          />
-          <ActionQueue vm={vm} {...handlers} />
+          <div className={DASHBOARD_LAYOUT.signalsFinanceSlot}>
+            <BusinessPulse
+              businessPulseSlices={vm.businessPulseSlices}
+              onSelectBusinessMetric={vm.openBusinessMetricDrilldown}
+              onOpenBilling={() => onOpenFinanceView?.('invoices')}
+              locale={vm.locale}
+              currency="EUR"
+              loading={!vm.dataFreshness.invoicesLoaded}
+              error={vm.dataFreshness.invoicesError}
+            />
+          </div>
+          <div className={DASHBOARD_LAYOUT.signalsNotificationsSlot}>
+            <ActionQueue vm={vm} {...handlers} />
+          </div>
         </div>
 
         <div className={`${DASHBOARD_LAYOUT.opsStack} animate-fade-up`} style={{ animationDelay: '120ms' }}>
