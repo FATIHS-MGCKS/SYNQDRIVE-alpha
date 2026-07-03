@@ -63,6 +63,8 @@ type RuntimeGroupId =
   | 'critical-during-rental'
   | 'pickups-due-soon'
   | 'returns-due-soon'
+  | 'pickups-today'
+  | 'returns-today'
   | 'overdue-returns'
   | 'in-maintenance'
   | 'blocked-by-health'
@@ -239,6 +241,15 @@ function group(id: RuntimeGroupId, title: string, rows: DashboardSliceRow[]) {
   };
 }
 
+function kpiCountGroup(id: RuntimeGroupId, title: string, count: number) {
+  return {
+    id,
+    title,
+    count,
+    rows: [] as DashboardSliceRow[],
+  };
+}
+
 function dedupeRows(rows: DashboardSliceRow[]): DashboardSliceRow[] {
   const seen = new Set<string>();
   const result: DashboardSliceRow[] = [];
@@ -298,7 +309,7 @@ function insightVehicleIds(insight: DashboardInsight): string[] {
 function buildEmptySlice(id: DashboardSliceId, locale: string): DashboardSlice {
   const titles: Record<DashboardSliceId, string> = {
     'ready-to-rent': label(locale, 'Bereit zur Vermietung', 'Ready for Renting'),
-    'active-rented': label(locale, 'Aktiv vermietet', 'Active rented'),
+    'active-rented': label(locale, 'Heutige Operationen', "Today's Operations"),
     'due-soon': label(locale, 'Bald fällig', 'Due soon'),
     'overdue-returns': label(locale, 'Überfällige Rückgaben', 'Overdue returns'),
     'blocked-maintenance': label(locale, 'Blockiert & Wartung', 'Blocked & maintenance'),
@@ -345,7 +356,12 @@ function buildReadyToRentSlice(states: VehicleRuntimeState[], locale: string): D
   };
 }
 
-function buildActiveRentedSlice(states: VehicleRuntimeState[], locale: string): DashboardSlice {
+function buildActiveRentedSlice(
+  states: VehicleRuntimeState[],
+  locale: string,
+  pickupItems: PickupTileItem[],
+  returnItems: ReturnTileItem[],
+): DashboardSlice {
   const active = states
     .filter(
       (state) =>
@@ -380,6 +396,8 @@ function buildActiveRentedSlice(states: VehicleRuntimeState[], locale: string): 
       group('return-due-soon', label(locale, 'Rückgabe bald fällig', 'Return due soon'), dueSoonRows),
       group('return-overdue', label(locale, 'Rückgabe überfällig', 'Return overdue'), overdueRows),
       group('critical-during-rental', label(locale, 'Kritisch während Vermietung', 'Critical during rental'), criticalRows),
+      kpiCountGroup('pickups-today', label(locale, 'Übergaben heute', 'Pickups today'), pickupItems.length),
+      kpiCountGroup('returns-today', label(locale, 'Rückgaben heute', 'Returns today'), returnItems.length),
     ],
   };
 }
@@ -512,6 +530,8 @@ function buildCriticalAlertsSlice(input: BuildDashboardSlicesInput): DashboardSl
     'critical-during-rental': [],
     'pickups-due-soon': [],
     'returns-due-soon': [],
+    'pickups-today': [],
+    'returns-today': [],
     'overdue-returns': [],
     'in-maintenance': [],
     'blocked-by-health': [],
@@ -661,7 +681,7 @@ function buildCriticalAlertsSlice(input: BuildDashboardSlicesInput): DashboardSl
 function buildDashboardSlices(input: BuildDashboardSlicesInput): Record<DashboardSliceId, DashboardSlice> {
   return {
     'ready-to-rent': buildReadyToRentSlice(input.vehicleStates, input.locale),
-    'active-rented': buildActiveRentedSlice(input.vehicleStates, input.locale),
+    'active-rented': buildActiveRentedSlice(input.vehicleStates, input.locale, input.pickupItems, input.returnItems),
     'due-soon': buildDueSoonSlice(input),
     'overdue-returns': buildOverdueReturnsSlice(input),
     'blocked-maintenance': buildBlockedMaintenanceSlice(input.vehicleStates, input.locale),

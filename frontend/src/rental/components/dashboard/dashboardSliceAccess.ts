@@ -16,6 +16,29 @@ export function readyToRentReadyRows(slice: DashboardSlice): DashboardSliceRow[]
   return slice.groups?.find((group) => group.id === 'ready-now')?.rows ?? slice.rows;
 }
 
+export interface TodaysOperationsKpiCounts {
+  activeRentalsCount: number | null;
+  pickupsToday: number;
+  returnsToday: number;
+}
+
+/** KPI counts for Today's Operations card — reads runtime slice groups only. */
+export function resolveTodaysOperationsKpiCounts(slice: DashboardSlice): TodaysOperationsKpiCounts {
+  if (slice.id !== 'active-rented' || slice.count === null) {
+    return { activeRentalsCount: slice.count, pickupsToday: 0, returnsToday: 0 };
+  }
+
+  const activeRentalsCount = slice.count ?? slice.rows.length;
+  const pickupsToday = slice.groups?.find((group) => group.id === 'pickups-today')?.count ?? 0;
+  const returnsToday = slice.groups?.find((group) => group.id === 'returns-today')?.count ?? 0;
+
+  return {
+    activeRentalsCount,
+    pickupsToday,
+    returnsToday,
+  };
+}
+
 export interface ReadyForRentingKpiCounts {
   readyCount: number | null;
   availableCount: number;

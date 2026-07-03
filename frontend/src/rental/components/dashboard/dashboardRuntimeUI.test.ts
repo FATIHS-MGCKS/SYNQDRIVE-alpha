@@ -4,7 +4,8 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { VehicleData } from '../../../data/vehicles';
 import { buildDashboardGroups, collectDrawerRowIds } from './dashboardDrilldownGroups';
-import { readyToRentNotReadyRows, resolveReadyForRentingKpiCounts } from './dashboardSliceAccess';
+import { readyToRentNotReadyRows, resolveReadyForRentingKpiCounts, resolveTodaysOperationsKpiCounts } from './dashboardSliceAccess';
+import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
 import { buildDashboardRuntimeModel } from './runtime/dashboardSliceBuilder';
 import type { DashboardSliceId } from './runtime';
 
@@ -188,5 +189,85 @@ describe('dashboard runtime-only UI contracts', () => {
       availableCount: 6,
       notReadyCount: 1,
     });
+  });
+
+  it("resolves today's operations KPI counts from runtime slice groups only", () => {
+    const runtime = buildDashboardRuntimeModel({
+      locale: 'en',
+      fleetVehicles: [
+        vehicle({ id: 'rented-a', license: 'RENT-A', status: 'Active Rented' }),
+        vehicle({ id: 'rented-b', license: 'RENT-B', status: 'Active Rented' }),
+      ],
+      pickupItems: [
+        {
+          bookingId: 'p1',
+          time: '09:00',
+          vehicle: 'VW Golf',
+          plate: 'P1',
+          customer: 'A',
+          station: 'Zentrale',
+          done: false,
+          vehicleId: 'pickup-1',
+          needsCleaning: false,
+          hasAlert: false,
+          hasError: false,
+          startDate: NOW.toISOString(),
+          endDate: NOW.toISOString(),
+          isOverdue: false,
+          minutesOverdue: 0,
+        } satisfies PickupTileItem,
+        {
+          bookingId: 'p2',
+          time: '10:00',
+          vehicle: 'VW Polo',
+          plate: 'P2',
+          customer: 'B',
+          station: 'Zentrale',
+          done: false,
+          vehicleId: 'pickup-2',
+          needsCleaning: false,
+          hasAlert: false,
+          hasError: false,
+          startDate: NOW.toISOString(),
+          endDate: NOW.toISOString(),
+          isOverdue: false,
+          minutesOverdue: 0,
+        } satisfies PickupTileItem,
+      ],
+      returnItems: [
+        {
+          bookingId: 'r1',
+          time: '18:00',
+          vehicle: 'Audi A4',
+          plate: 'R1',
+          customer: 'C',
+          station: 'Zentrale',
+          done: false,
+          vehicleId: 'return-1',
+          hasError: false,
+          kmExceeded: false,
+          extraKm: null,
+          isOverdue: false,
+          returnProtocolStatus: null,
+          hasAlert: false,
+          startDate: NOW.toISOString(),
+          endDate: NOW.toISOString(),
+          pickupOdometerKm: null,
+        } satisfies ReturnTileItem,
+      ],
+      now: NOW,
+    });
+
+    const slice = runtime.slices['active-rented'];
+    expect(slice.title).toBe("Today's Operations");
+    expect(resolveTodaysOperationsKpiCounts(slice)).toEqual({
+      activeRentalsCount: 2,
+      pickupsToday: 2,
+      returnsToday: 1,
+    });
+
+    const drawerGroups = buildDashboardGroups(slice, 'en');
+    expect(drawerGroups.some((group) => group.id === 'pickups-today')).toBe(false);
+    expect(drawerGroups.some((group) => group.id === 'returns-today')).toBe(false);
   });
 });

@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'todays-operations-kpi-v49172-2026-07-03',
+    version: '4.9.172',
+    title: "V4.9.172 — Dashboard KPI: Active rented → Today's Operations",
+    summary: [
+      "Active-rented KPI Card umbenannt und als „Today's Operations“ im Ready-Card-Layout dargestellt.",
+      'Hauptzahl = aktive Vermietungen (slice.count); Footer: Pickups today / Returns today aus runtime groups.',
+      'Icon-Badge neutral grau (nicht grün); Typografie/Spacing identisch zur Ready-for-Renting Card.',
+      'pickups-today / returns-today KPI groups im dashboardSliceBuilder (leere rows, nur count).',
+      'Drilldown slice id active-rented unverändert; andere KPI Cards unberührt.',
+    ],
+    reason:
+      "Operative Tagesübersicht soll neben Ready-for-Renting als gleichwertiges Geschwister-Element erscheinen.",
+    previousBehavior:
+      'Kompakte Active-rented Card mit einzelner Zahl und Hint-Zeile.',
+    details:
+      'ControlKpiStrip.tsx, dashboardSliceBuilder.ts, dashboardSliceAccess.ts, dashboardRuntimeUI.test.ts.',
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-07-04T00:00:00.000Z',
+  },
+  {
     id: 'ready-kpi-card-layout-v49171-2026-07-03',
     version: '4.9.171',
     title: 'V4.9.171 — Dashboard Ready-for-Renting KPI Card: finale Typo & Symmetrie',

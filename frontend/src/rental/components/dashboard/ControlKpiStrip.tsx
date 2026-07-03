@@ -1,7 +1,7 @@
 import { Icon } from '../ui/Icon';
 import { SkeletonMetricGrid } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
-import { resolveReadyForRentingKpiCounts } from './dashboardSliceAccess';
+import { resolveReadyForRentingKpiCounts, resolveTodaysOperationsKpiCounts } from './dashboardSliceAccess';
 import type { DashboardRuntimeModel, DashboardSlice, DashboardSliceId } from './runtime';
 import type { DataFreshnessSummary } from './dashboardTypes';
 
@@ -103,6 +103,15 @@ function readyKpiLabels(locale?: string) {
   };
 }
 
+function operationsKpiLabels(locale?: string) {
+  const de = locale === 'de';
+  return {
+    activeRentals: de ? 'aktive Vermietungen' : 'active rentals',
+    pickupsToday: de ? 'Übergaben heute' : 'Pickups today',
+    returnsToday: de ? 'Rückgaben heute' : 'Returns today',
+  };
+}
+
 function formatKpiCount(value: number | null, disabled: boolean): string {
   if (disabled || value === null) return '—';
   return String(value);
@@ -177,6 +186,61 @@ function ReadyForRentingKpiContent({ slice, disabled, locale }: ReadyForRentingK
   );
 }
 
+function TodaysOperationsKpiContent({ slice, disabled, locale }: ReadyForRentingKpiContentProps) {
+  const labels = operationsKpiLabels(locale);
+  const { activeRentalsCount, pickupsToday, returnsToday } = resolveTodaysOperationsKpiCounts(slice);
+
+  return (
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="flex shrink-0 items-start justify-between gap-2">
+        <p className="min-w-0 truncate text-[10.5px] font-medium tracking-[-0.01em] text-muted-foreground">
+          {slice.title}
+        </p>
+        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground transition-colors">
+          <Icon name="car" className="h-3 w-3" />
+        </div>
+      </div>
+
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-1 pt-2 pb-1 text-center">
+        <p
+          className={cn(
+            'text-[42px] font-semibold tabular-nums leading-none tracking-[-0.03em] sm:text-[44px]',
+            disabled ? 'text-muted-foreground' : 'text-foreground',
+          )}
+        >
+          {formatKpiCount(activeRentalsCount, disabled)}
+        </p>
+        <p className="mt-2 text-[14px] font-medium leading-tight text-muted-foreground">{labels.activeRentals}</p>
+      </div>
+
+      <div
+        className="mx-1.5 shrink-0 border-t border-border/35"
+        role="separator"
+        aria-hidden
+      />
+
+      <div className="relative mt-2.5 grid shrink-0 grid-cols-2 items-end">
+        <div className="min-w-0 text-center">
+          <p className="text-[13px] font-medium leading-tight text-muted-foreground">{labels.pickupsToday}</p>
+          <p className="mt-0.5 text-[26px] font-semibold tabular-nums leading-none tracking-[-0.02em] text-foreground">
+            {formatKpiCount(pickupsToday, disabled)}
+          </p>
+        </div>
+        <div className="min-w-0 text-center">
+          <p className="text-[13px] font-medium leading-tight text-muted-foreground">{labels.returnsToday}</p>
+          <p className="mt-0.5 text-[26px] font-semibold tabular-nums leading-none tracking-[-0.02em] text-foreground">
+            {formatKpiCount(returnsToday, disabled)}
+          </p>
+        </div>
+        <div
+          className="pointer-events-none absolute left-1/2 top-1/2 h-9 w-px -translate-x-1/2 -translate-y-1/2 bg-border/35"
+          aria-hidden
+        />
+      </div>
+    </div>
+  );
+}
+
 export function ControlKpiStrip({
   dashboardRuntime,
   activeSliceId,
@@ -211,7 +275,9 @@ export function ControlKpiStrip({
         const { isCritical, isSuccess } = kpiVisualState(slice);
         const isActive = activeSliceId === id;
         const isReadyCard = id === 'ready-to-rent';
+        const isOperationsCard = id === 'active-rented';
         const readyCounts = isReadyCard ? resolveReadyForRentingKpiCounts(slice) : null;
+        const operationsCounts = isOperationsCard ? resolveTodaysOperationsKpiCounts(slice) : null;
 
         return (
           <button
@@ -223,19 +289,23 @@ export function ControlKpiStrip({
             disabled={disabled}
             className={cn(
               kpiCardClass(slice, embedded, isActive),
-              isReadyCard && embedded && 'min-h-[156px]',
-              isReadyCard && !embedded && 'min-h-[132px]',
+              (isReadyCard || isOperationsCard) && embedded && 'min-h-[156px]',
+              (isReadyCard || isOperationsCard) && !embedded && 'min-h-[132px]',
               disabled && 'cursor-not-allowed opacity-60',
             )}
             aria-label={
               isReadyCard && readyCounts
                 ? `${slice.title}: ${formatKpiCount(readyCounts.readyCount, disabled)} ready, ${formatKpiCount(readyCounts.availableCount, disabled)} available, ${formatKpiCount(readyCounts.notReadyCount, disabled)} not ready`
-                : `${slice.title}: ${displayValue}`
+                : isOperationsCard && operationsCounts
+                  ? `${slice.title}: ${formatKpiCount(operationsCounts.activeRentalsCount, disabled)} active rentals, ${formatKpiCount(operationsCounts.pickupsToday, disabled)} pickups today, ${formatKpiCount(operationsCounts.returnsToday, disabled)} returns today`
+                  : `${slice.title}: ${displayValue}`
             }
             aria-pressed={isActive}
           >
             {isReadyCard ? (
               <ReadyForRentingKpiContent slice={slice} disabled={disabled} locale={locale} />
+            ) : isOperationsCard ? (
+              <TodaysOperationsKpiContent slice={slice} disabled={disabled} locale={locale} />
             ) : (
               <div className="flex h-full items-start justify-between gap-2">
                 <div className="min-w-0">
