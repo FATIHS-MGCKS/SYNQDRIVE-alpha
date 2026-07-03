@@ -76,9 +76,9 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
   const [selectedFine, setSelectedFine] = useState<Fine | null>(null);
 
   const tp = isDarkMode ? 'text-white' : 'text-gray-900';
-  const ts = isDarkMode ? 'text-gray-400' : 'text-gray-500';
-  const card = `rounded-xl shadow-sm border ${isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`;
-  const inputCls = `w-full px-4 py-3 rounded-xl border text-xs ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white placeholder-gray-500' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'} outline-none`;
+  const ts = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
+  const card = `rounded-xl shadow-sm border ${isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'}`;
+  const inputCls = `w-full px-4 py-3 rounded-xl border text-xs ${isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'} outline-none`;
 
   const load = useCallback(async () => {
     if (!orgId) return;
@@ -289,7 +289,7 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative min-w-[240px] flex-1">
-            <Icon name="search" className={`absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+            <Icon name="search" className={`absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`} />
             <input
               type="text"
               placeholder="Bußgeld, Nummer, Ort oder Verstoß suchen..."
@@ -322,7 +322,7 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
             </button>
             {isStatusOpen && (
               <div className={`absolute right-0 top-full z-50 mt-2 min-w-[230px] overflow-hidden rounded-lg border shadow-xl sm:left-0 sm:right-auto ${
-                isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
+                isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'
               }`}>
                 {statusOptions.map(status => (
                   <button
@@ -335,7 +335,7 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
                     className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-xs font-medium transition-colors ${
                       status === statusFilter
                         ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600'
-                        : isDarkMode ? 'text-gray-300 hover:bg-neutral-800' : 'text-gray-700 hover:bg-gray-50'
+                        : isDarkMode ? 'text-foreground/85 hover:bg-muted' : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
                     <span>{status === 'all' ? 'Alle Status' : STATUS_MAP[status]?.label || status}</span>
@@ -364,17 +364,17 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px]">
               <thead>
-                <tr className={isDarkMode ? 'bg-neutral-800/50' : 'bg-muted/50'}>
+                <tr className={isDarkMode ? 'bg-muted/50' : 'bg-muted/50'}>
                   {['Typ / Titel', 'Betrag', 'Datum', 'Fahrzeug', 'Status', 'Kunde', 'Aufgabe'].map(h => (
                     <th key={h} className={`text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider ${ts}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className={`divide-y ${isDarkMode ? 'divide-neutral-700/30' : 'divide-gray-100'}`}>
+              <tbody className={`divide-y ${isDarkMode ? 'divide-border/30' : 'divide-gray-100'}`}>
                 {filtered.map(f => {
                   const st = STATUS_MAP[f.status] || STATUS_MAP.NEW;
                   return (
-                    <tr key={f.id} onClick={() => openDetail(f)} className={`cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-neutral-800/40' : 'hover:bg-gray-50/60'}`}>
+                    <tr key={f.id} onClick={() => openDetail(f)} className={`cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-muted/40' : 'hover:bg-gray-50/60'}`}>
                       <td className="px-4 py-3">
                         <p className={`text-xs font-semibold ${tp}`}>{f.title}</p>
                         <p className={`text-[10px] ${ts}`}>{f.offenseType || '—'}{f.fineNumber ? ` · #${f.fineNumber}` : ''}</p>
@@ -520,7 +520,7 @@ function CreateFineForm({ isDarkMode, orgId, vehicles, onClose, onCreated, card,
                 <button onClick={() => { setImageFile(null); setImagePreview(null); }} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center"><Icon name="x" className="w-3 h-3" /></button>
               </div>
             ) : (
-              <button onClick={() => fileRef.current?.click()} className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed text-xs font-medium transition-colors ${isDarkMode ? 'border-neutral-700 text-gray-400' : 'border-gray-300 text-gray-500'}`}>
+              <button onClick={() => fileRef.current?.click()} className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed text-xs font-medium transition-colors ${isDarkMode ? 'border-border text-muted-foreground' : 'border-gray-300 text-gray-500'}`}>
                 <Icon name="image" className="w-4 h-4" /> Bild/Dokument anhängen
               </button>
             )}
@@ -647,7 +647,7 @@ function AIUploadFlow({ isDarkMode, orgId, vehicles, onClose, onCreated, card, t
             onDrop={handleDrop}
             onDragOver={e => e.preventDefault()}
             onClick={() => !file && fileRef.current?.click()}
-            className={`relative p-8 rounded-xl border-2 border-dashed text-center cursor-pointer transition-all ${isDarkMode ? 'border-neutral-700 hover:border-purple-500/50 bg-neutral-800/30' : 'border-gray-300 hover:border-purple-400 bg-gray-50/40'}`}
+            className={`relative p-8 rounded-xl border-2 border-dashed text-center cursor-pointer transition-all ${isDarkMode ? 'border-border hover:border-status-ai/50 bg-muted/30' : 'border-gray-300 hover:border-purple-400 bg-gray-50/40'}`}
           >
             {preview ? (
               <div className="space-y-3">
@@ -822,13 +822,13 @@ function FineDetail({ isDarkMode, fine, orgId, onBack, onUpdate, card, tp, ts, i
             <p className={`text-xs mt-1 ${ts}`}>{fine.offenseType} · {formatAmount(fine.amountCents, fine.currency)}</p>
           </div>
           <div className="relative">
-            <button onClick={() => setShowStatusMenu(!showStatusMenu)} disabled={changingStatus} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border ${isDarkMode ? 'border-neutral-700 text-gray-300 hover:bg-neutral-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
+            <button onClick={() => setShowStatusMenu(!showStatusMenu)} disabled={changingStatus} className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border ${isDarkMode ? 'border-border text-foreground/85 hover:bg-muted' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
               {changingStatus ? <Icon name="loader-2" className="w-3 h-3 animate-spin" /> : <Icon name="edit-3" className="w-3 h-3" />} Status
             </button>
             {showStatusMenu && (
-              <div className={`absolute right-0 top-full mt-1 z-20 w-48 rounded-xl border shadow-xl overflow-hidden ${isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`}>
+              <div className={`absolute right-0 top-full mt-1 z-20 w-48 rounded-xl border shadow-xl overflow-hidden ${isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'}`}>
                 {Object.entries(STATUS_MAP).map(([key, val]) => (
-                  <button key={key} onClick={() => changeStatus(key)} className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-gray-300' : 'hover:bg-gray-50 text-gray-700'} ${fine.status === key ? 'font-bold' : ''}`}>
+                  <button key={key} onClick={() => changeStatus(key)} className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors ${isDarkMode ? 'hover:bg-muted text-foreground/85' : 'hover:bg-gray-50 text-gray-700'} ${fine.status === key ? 'font-bold' : ''}`}>
                     {val.label}
                   </button>
                 ))}
@@ -842,7 +842,7 @@ function FineDetail({ isDarkMode, fine, orgId, onBack, onUpdate, card, tp, ts, i
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className={`${card} p-5`}>
           <h3 className={`text-xs font-bold ${tp} mb-3 uppercase tracking-wider`}>Bußgeld-Details</h3>
-          <div className={`divide-y ${isDarkMode ? 'divide-neutral-700/30' : 'divide-gray-100'}`}>
+          <div className={`divide-y ${isDarkMode ? 'divide-border/30' : 'divide-gray-100'}`}>
             {row('Betrag', <span className="font-bold text-sm">{formatAmount(fine.amountCents, fine.currency)}</span>, DollarSign)}
             {row('Vergehensart', fine.offenseType, Tag)}
             {row('Behörde', fine.issuingAuthority, Building2)}
@@ -857,7 +857,7 @@ function FineDetail({ isDarkMode, fine, orgId, onBack, onUpdate, card, tp, ts, i
           {/* Linking */}
           <div className={`${card} p-5`}>
             <h3 className={`text-xs font-bold ${tp} mb-3 uppercase tracking-wider`}>Zuordnung</h3>
-            <div className={`divide-y ${isDarkMode ? 'divide-neutral-700/30' : 'divide-gray-100'}`}>
+            <div className={`divide-y ${isDarkMode ? 'divide-border/30' : 'divide-gray-100'}`}>
               {row('Fahrzeug', fine.vehicleId ? <span className="font-mono text-[11px]">{fine.vehicleId.slice(0, 12)}...</span> : '—', Car)}
               {row('Buchung', fine.bookingId ? <span className="text-emerald-500 font-medium">Automatisch zugeordnet</span> : <span className={ts}>Nicht zugeordnet</span>, Calendar)}
               {row('Kunde / Fahrer', fine.customerId ? <span className="text-emerald-500 font-medium">Automatisch zugeordnet</span> : <span className={ts}>Nicht zugeordnet</span>, User)}
@@ -869,7 +869,7 @@ function FineDetail({ isDarkMode, fine, orgId, onBack, onUpdate, card, tp, ts, i
             <div className={`${card} p-5`}>
               <h3 className={`text-xs font-bold ${tp} mb-3 uppercase tracking-wider`}>Verknüpfte Aufgabe</h3>
               {fine.tasks.map((t: any) => (
-                <div key={t.id} className={`flex items-center gap-3 p-3 rounded-xl border ${isDarkMode ? 'border-neutral-700/30 bg-neutral-800/30' : 'border-gray-100 bg-gray-50/50'}`}>
+                <div key={t.id} className={`flex items-center gap-3 p-3 rounded-xl border ${isDarkMode ? 'border-border/30 bg-muted/30' : 'border-gray-100 bg-gray-50/50'}`}>
                   <Icon name="list-todo" className={`w-4 h-4 ${t.status === 'DONE' ? 'text-green-500' : 'text-amber-500'}`} />
                   <div className="flex-1 min-w-0">
                     <p className={`text-xs font-medium ${tp} truncate`}>{t.title}</p>
@@ -915,7 +915,7 @@ function FineDetail({ isDarkMode, fine, orgId, onBack, onUpdate, card, tp, ts, i
       {fine.description && (
         <div className={`${card} p-5`}>
           <h3 className={`text-xs font-bold ${tp} mb-2 uppercase tracking-wider`}>Beschreibung</h3>
-          <p className={`text-xs leading-relaxed ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{fine.description}</p>
+          <p className={`text-xs leading-relaxed ${isDarkMode ? 'text-foreground/85' : 'text-gray-700'}`}>{fine.description}</p>
         </div>
       )}
     </div>

@@ -72,7 +72,7 @@ export function TariffGroupDrawer({
 
   const inputCls = `w-full rounded-lg border px-3 py-2 text-xs outline-none ${
     isDarkMode
-      ? 'border-neutral-700 bg-neutral-800 text-white'
+      ? 'border-border bg-muted text-foreground'
       : 'border-gray-200 bg-white text-gray-900'
   }`;
 
@@ -188,7 +188,7 @@ export function TariffGroupDrawer({
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
       <div
         className={`h-full w-full max-w-lg overflow-y-auto shadow-xl ${
-          isDarkMode ? 'bg-neutral-900' : 'bg-white'
+          isDarkMode ? 'bg-card' : 'bg-white'
         }`}
         onClick={(e) => e.stopPropagation()}
       >

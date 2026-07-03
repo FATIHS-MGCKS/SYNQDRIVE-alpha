@@ -760,10 +760,10 @@ export function HelpCenterView({
   const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
   const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textSecondary = isDarkMode ? 'text-gray-400' : 'text-gray-500';
-  const textMuted = isDarkMode ? 'text-gray-500' : 'text-gray-400';
-  const cardClass = `rounded-xl shadow-sm border ${isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`;
-  const dividerColor = isDarkMode ? 'border-neutral-700/40' : 'border-gray-200/60';
+  const textSecondary = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
+  const textMuted = isDarkMode ? 'text-muted-foreground' : 'text-gray-400';
+  const cardClass = `rounded-xl shadow-sm border ${isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'}`;
+  const dividerColor = isDarkMode ? 'border-border/40' : 'border-gray-200/60';
 
   const filteredSections = useMemo(() => {
     if (!searchTerm.trim()) return SECTIONS;
@@ -836,7 +836,7 @@ export function HelpCenterView({
           placeholder="Nach Themen, Funktionen oder Fragen suchen..."
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          className={`w-full pl-11 pr-4 py-3.5 rounded-xl border text-sm ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white placeholder-gray-500 focus:border-blue-500/50' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-400'} outline-none transition-all`}
+          className={`w-full pl-11 pr-4 py-3.5 rounded-xl border text-sm ${isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground focus:border-ring' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-400'} outline-none transition-all`}
         />
         {searchTerm && (
           <p className={`text-xs mt-2 ${textMuted}`}>
@@ -858,7 +858,7 @@ export function HelpCenterView({
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
                     expandedSection === sec.id
                       ? (isDarkMode ? 'bg-blue-600/20 text-blue-400 border-blue-500/30' : 'bg-blue-50 text-blue-600 border-blue-200')
-                      : (isDarkMode ? 'text-gray-400 border-neutral-700 hover:bg-neutral-800 hover:text-gray-300' : 'text-gray-600 border-gray-200 hover:bg-gray-50 hover:text-gray-800')
+                      : (isDarkMode ? 'text-muted-foreground border-border hover:bg-muted hover:text-foreground' : 'text-gray-600 border-gray-200 hover:bg-gray-50 hover:text-gray-800')
                   }`}
                 >
                   <sec.icon className="w-3 h-3" />
@@ -886,7 +886,7 @@ export function HelpCenterView({
               {/* Section Header */}
               <button
                 onClick={() => setExpandedSection(isExpanded ? null : section.id)}
-                className={`w-full flex items-center gap-3 p-5 text-left transition-colors ${isDarkMode ? 'hover:bg-neutral-800/30' : 'hover:bg-gray-50/40'} rounded-xl`}
+                className={`w-full flex items-center gap-3 p-5 text-left transition-colors ${isDarkMode ? 'hover:bg-muted/30' : 'hover:bg-gray-50/40'} rounded-xl`}
               >
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                   section.comingSoon
@@ -917,17 +917,17 @@ export function HelpCenterView({
                   {section.articles.map(article => {
                     const isArticleExpanded = expandedArticle === article.id;
                     return (
-                      <div key={article.id} className={`rounded-xl border overflow-hidden transition-all ${isDarkMode ? 'border-neutral-700/40' : 'border-gray-200/60'}`}>
+                      <div key={article.id} className={`rounded-xl border overflow-hidden transition-all ${isDarkMode ? 'border-border/40' : 'border-gray-200/60'}`}>
                         <button
                           onClick={() => setExpandedArticle(isArticleExpanded ? null : article.id)}
-                          className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${isDarkMode ? 'hover:bg-neutral-800/40' : 'hover:bg-gray-50/60'}`}
+                          className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${isDarkMode ? 'hover:bg-muted/40' : 'hover:bg-gray-50/60'}`}
                         >
                           <Icon name="chevron-right" className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${textMuted} ${isArticleExpanded ? 'rotate-90' : ''}`} />
                           <span className={`text-xs font-semibold ${textPrimary}`}>{article.title}</span>
                         </button>
                         {isArticleExpanded && (
                           <div className={`px-4 pb-4 pl-11 border-t ${dividerColor}`}>
-                            <div className={`pt-3 text-xs leading-[1.8] ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} help-content`}>
+                            <div className={`pt-3 text-xs leading-[1.8] ${isDarkMode ? 'text-foreground/85' : 'text-gray-700'} help-content`}>
                               <ArticleContent content={article.content} isDarkMode={isDarkMode} />
                             </div>
                           </div>
@@ -963,7 +963,7 @@ export function HelpCenterView({
 function ArticleContent({ content, isDarkMode }: { content: string; isDarkMode: boolean }) {
   const textStrong = isDarkMode ? 'text-white' : 'text-gray-900';
   const listBullet = isDarkMode ? 'text-blue-400' : 'text-blue-500';
-  const codeBg = isDarkMode ? 'bg-neutral-800 text-gray-300' : 'bg-gray-100 text-gray-700';
+  const codeBg = isDarkMode ? 'bg-muted text-foreground/85' : 'bg-gray-100 text-gray-700';
 
   const lines = content.split('\n');
   const elements: React.ReactNode[] = [];

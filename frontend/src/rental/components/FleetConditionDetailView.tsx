@@ -270,7 +270,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
                 )}
 
                 {/* Data Confidence */}
-                <div className="flex items-center gap-2 pt-2 border-t border-dashed border-gray-200 dark:border-neutral-700">
+                <div className="flex items-center gap-2 pt-2 border-t border-dashed border-gray-200 dark:border-border">
                   <span className={`text-[10px] font-semibold ${textMuted}`}>Data confidence:</span>
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                     aiResult.dataConfidence.level === 'high' ? (isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-50 text-emerald-600')

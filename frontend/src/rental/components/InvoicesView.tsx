@@ -158,9 +158,9 @@ export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
   const tp = isDarkMode ? 'text-white' : 'text-gray-900';
-  const ts = isDarkMode ? 'text-gray-400' : 'text-gray-500';
-  const card = `rounded-xl shadow-sm border ${isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`;
-  const inputCls = `w-full px-4 py-3 rounded-xl border text-xs ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white placeholder-gray-500' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'} outline-none`;
+  const ts = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
+  const card = `rounded-xl shadow-sm border ${isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'}`;
+  const inputCls = `w-full px-4 py-3 rounded-xl border text-xs ${isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'} outline-none`;
 
   const load = useCallback(async () => {
     if (!orgId) return;
@@ -380,7 +380,7 @@ export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative min-w-[240px] flex-1">
-            <Icon name="search" className={`absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+            <Icon name="search" className={`absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`} />
             <input
               type="text"
               placeholder="Rechnung, Nummer oder Lieferant suchen..."
@@ -388,7 +388,7 @@ export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
               onChange={e => setSearchTerm(e.target.value)}
               className={`w-full rounded-lg border py-2.5 pl-10 pr-4 text-xs outline-none transition-all ${
                 isDarkMode
-                  ? 'bg-neutral-800 border-neutral-700 text-gray-200 placeholder-gray-500 focus:border-blue-500/50'
+                  ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground focus:border-ring'
                   : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-300'
               }`}
             />
@@ -404,7 +404,7 @@ export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
                     ? 'bg-blue-900/30 border-blue-700/50 text-blue-400'
                     : 'bg-blue-50 border-blue-200 text-blue-700'
                   : isDarkMode
-                    ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-800'
+                    ? 'bg-muted border-border text-foreground/90 hover:bg-muted/80'
                     : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
               }`}
             >
@@ -413,7 +413,7 @@ export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
             </button>
             {isDirectionOpen && (
               <div className={`absolute left-0 top-full z-50 mt-2 min-w-[210px] overflow-hidden rounded-lg border shadow-xl ${
-                isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
+                isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'
               }`}>
                 {([
                   { value: 'all' as const, label: 'Alle Richtungen' },
@@ -430,7 +430,7 @@ export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
                     className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-xs font-medium transition-colors ${
                       option.value === directionFilter
                         ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600'
-                        : isDarkMode ? 'text-gray-300 hover:bg-neutral-800' : 'text-gray-700 hover:bg-gray-50'
+                        : isDarkMode ? 'text-foreground/90 hover:bg-muted' : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
                     <span>{option.label}</span>
@@ -453,7 +453,7 @@ export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
                     ? 'bg-blue-900/30 border-blue-700/50 text-blue-400'
                     : 'bg-blue-50 border-blue-200 text-blue-700'
                   : isDarkMode
-                    ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-800'
+                    ? 'bg-muted border-border text-foreground/90 hover:bg-muted/80'
                     : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
               }`}
             >
@@ -462,7 +462,7 @@ export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
             </button>
             {isStatusOpen && (
               <div className={`absolute right-0 top-full z-50 mt-2 min-w-[210px] overflow-hidden rounded-lg border shadow-xl sm:left-0 sm:right-auto ${
-                isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
+                isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'
               }`}>
                 {['all', 'DRAFT', 'ISSUED', 'SENT', 'NEEDS_REVIEW', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'CANCELLED'].map(status => (
                   <button
@@ -475,7 +475,7 @@ export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
                     className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-xs font-medium transition-colors ${
                       status === statusFilter
                         ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600'
-                        : isDarkMode ? 'text-gray-300 hover:bg-neutral-800' : 'text-gray-700 hover:bg-gray-50'
+                        : isDarkMode ? 'text-foreground/90 hover:bg-muted' : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
                     <span>{status === 'all' ? 'Alle Status' : STATUS_MAP[status]?.label || status}</span>
@@ -504,19 +504,19 @@ export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[850px]">
               <thead>
-                <tr className={isDarkMode ? 'bg-neutral-800/50' : 'bg-muted/50'}>
+                <tr className={isDarkMode ? 'bg-muted/50' : 'bg-muted/50'}>
                   {['Nr.', 'Typ', 'Titel', 'Betrag', 'Datum', 'Fällig', 'Status', 'Aufgabe'].map(h => (
                     <th key={h} className={`text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider ${ts}`}>{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className={`divide-y ${isDarkMode ? 'divide-neutral-700/30' : 'divide-gray-100'}`}>
+              <tbody className={`divide-y ${isDarkMode ? 'divide-border/30' : 'divide-gray-100'}`}>
                 {filtered.map(inv => {
                   const st = STATUS_MAP[inv.status] || STATUS_MAP.DRAFT;
                   const ty = TYPE_MAP[inv.type] || TYPE_MAP.OUTGOING_MANUAL;
                   const TypeIcon = ty.icon;
                   return (
-                    <tr key={inv.id} onClick={() => openDetail(inv)} className={`cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-neutral-800/40' : 'hover:bg-gray-50/60'}`}>
+                    <tr key={inv.id} onClick={() => openDetail(inv)} className={`cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-muted/40' : 'hover:bg-gray-50/60'}`}>
                       <td className={`px-4 py-3 text-xs font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>{displayNumber(inv)}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center gap-1 text-[10px] font-semibold ${ty.color}`}>
@@ -666,7 +666,7 @@ function CreateInvoiceForm({ isDarkMode, orgId, customers, vehicles, vendors, on
               { type: 'OUTGOING_MANUAL', label: 'Ausgangsrechnung', desc: 'Rechnung an Kunden', icon: ArrowUpRight, color: 'blue' },
               { type: 'INCOMING_VENDOR', label: 'Eingangsrechnung', desc: 'Rechnung von Lieferant/Werkstatt', icon: ArrowDownLeft, color: 'amber' },
             ].map(opt => (
-              <button key={opt.type} onClick={() => { set('type', opt.type); setStep('details'); }} className={`text-left p-4 rounded-xl border transition-all ${isDarkMode ? 'border-neutral-700/50 hover:border-neutral-600 hover:bg-neutral-800/40' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}>
+              <button key={opt.type} onClick={() => { set('type', opt.type); setStep('details'); }} className={`text-left p-4 rounded-xl border transition-all ${isDarkMode ? 'border-border/50 hover:border-border hover:bg-muted/40' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}>
                 <div className="flex items-center gap-3 mb-2">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isDarkMode ? `bg-${opt.color}-500/15` : `bg-${opt.color}-100/60`}`}>
                     <opt.icon className={`w-4 h-4 text-${opt.color}-500`} />
@@ -685,7 +685,7 @@ function CreateInvoiceForm({ isDarkMode, orgId, customers, vehicles, vendors, on
             <h3 className={`text-xs font-bold ${tp} mb-3`}>Oder Vorlage wählen</h3>
             <div className="grid grid-cols-2 gap-2">
               {TEMPLATES.map(t => (
-                <button key={t.id} onClick={() => { set('type', 'OUTGOING_MANUAL'); set('templateId', t.id); setStep('details'); }} className={`text-left p-3 rounded-xl border transition-all ${isDarkMode ? 'border-neutral-700/50 hover:border-neutral-600 hover:bg-neutral-800/40' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}>
+                <button key={t.id} onClick={() => { set('type', 'OUTGOING_MANUAL'); set('templateId', t.id); setStep('details'); }} className={`text-left p-3 rounded-xl border transition-all ${isDarkMode ? 'border-border/50 hover:border-border hover:bg-muted/40' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}`}>
                   <p className={`text-xs font-semibold ${tp}`}>{t.name}</p>
                   <p className={`text-[10px] ${ts}`}>{t.description}</p>
                 </button>
@@ -775,7 +775,7 @@ function CreateInvoiceForm({ isDarkMode, orgId, customers, vehicles, vendors, on
                   <button onClick={() => { setImageFile(null); setImagePreview(null); }} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center"><Icon name="x" className="w-3 h-3" /></button>
                 </div>
               ) : (
-                <button onClick={() => fileRef.current?.click()} className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed text-xs font-medium transition-colors ${isDarkMode ? 'border-neutral-700 text-gray-400' : 'border-gray-300 text-gray-500'}`}>
+                <button onClick={() => fileRef.current?.click()} className={`flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed text-xs font-medium transition-colors ${isDarkMode ? 'border-border text-muted-foreground' : 'border-gray-300 text-gray-500'}`}>
                   <Icon name="image" className="w-4 h-4" /> Datei anhängen
                 </button>
               )}
@@ -792,7 +792,7 @@ function CreateInvoiceForm({ isDarkMode, orgId, customers, vehicles, vendors, on
             </div>
             <div className="space-y-2">
               {lineItems.map((li, idx) => (
-                <div key={idx} className={`flex gap-2 items-center p-2 rounded-lg ${isDarkMode ? 'bg-neutral-800/30' : 'bg-gray-50/50'}`}>
+                <div key={idx} className={`flex gap-2 items-center p-2 rounded-lg ${isDarkMode ? 'bg-muted/30' : 'bg-gray-50/50'}`}>
                   <input value={li.description} onChange={e => updateLineItem(idx, 'description', e.target.value)} className={`${inputCls} flex-1 !py-2`} placeholder="Beschreibung" />
                   <input type="number" value={li.quantity} onChange={e => updateLineItem(idx, 'quantity', parseInt(e.target.value, 10) || 1)} className={`${inputCls} !w-16 !py-2 text-center`} />
                   <input type="number" step="0.01" value={li.unitPriceCents ? (li.unitPriceCents / 100).toFixed(2) : ''} onChange={e => updateLineItem(idx, 'unitPriceCents', Math.round(parseFloat(e.target.value || '0') * 100))} className={`${inputCls} !w-24 !py-2`} placeholder="€/Stk" />
@@ -1036,7 +1036,7 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
         </div>
 
         {showPaymentForm && (
-          <div className={`mt-4 pt-4 border-t grid grid-cols-1 sm:grid-cols-3 gap-3 ${isDarkMode ? 'border-neutral-700/50' : 'border-gray-100'}`}>
+          <div className={`mt-4 pt-4 border-t grid grid-cols-1 sm:grid-cols-3 gap-3 ${isDarkMode ? 'border-border/50' : 'border-gray-100'}`}>
             <div>
               <label className={`block text-[10px] font-semibold mb-1 ${ts}`}>Betrag (EUR)</label>
               <input type="number" step="0.01" min="0" value={paymentAmount} onChange={(e) => setPaymentAmount(e.target.value)} className={inputCls} />
@@ -1068,7 +1068,7 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className={`${card} p-5`}>
           <h3 className={`text-xs font-bold ${tp} mb-3 uppercase tracking-wider`}>Rechnungsdetails</h3>
-          <div className={`divide-y ${isDarkMode ? 'divide-neutral-700/30' : 'divide-gray-100'}`}>
+          <div className={`divide-y ${isDarkMode ? 'divide-border/30' : 'divide-gray-100'}`}>
             {row('Betrag', <span className="font-bold text-sm">{formatAmount(invoice.totalCents, invoice.currency)}</span>, DollarSign)}
             {invoice.subtotalCents !== invoice.totalCents && row('Netto', formatAmount(invoice.subtotalCents, invoice.currency))}
             {invoice.taxCents > 0 && row('MwSt', formatAmount(invoice.taxCents, invoice.currency))}
@@ -1086,7 +1086,7 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
         <div className="space-y-4">
           <div className={`${card} p-5`}>
             <h3 className={`text-xs font-bold ${tp} mb-3 uppercase tracking-wider`}>Zuordnung</h3>
-            <div className={`divide-y ${isDarkMode ? 'divide-neutral-700/30' : 'divide-gray-100'}`}>
+            <div className={`divide-y ${isDarkMode ? 'divide-border/30' : 'divide-gray-100'}`}>
               {invoice.customerId && row('Kunde', <span className="text-emerald-500 font-medium">Verknüpft</span>, User)}
               {invoice.vendorName && row('Lieferant', invoice.vendorName, Building2)}
               {invoice.bookingId && row('Buchung', <span className="text-blue-500 font-medium">Verknüpft</span>, Calendar)}
@@ -1127,7 +1127,7 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
             <div className={`${card} p-5`}>
               <h3 className={`text-xs font-bold ${tp} mb-3 uppercase tracking-wider`}>Verknüpfte Aufgabe</h3>
               {invoice.tasks.map((t) => (
-                <div key={t.id} className={`flex items-center gap-3 p-3 rounded-xl border ${isDarkMode ? 'border-neutral-700/30 bg-neutral-800/30' : 'border-gray-100 bg-gray-50/50'}`}>
+                <div key={t.id} className={`flex items-center gap-3 p-3 rounded-xl border ${isDarkMode ? 'border-border/30 bg-muted/30' : 'border-gray-100 bg-gray-50/50'}`}>
                   <Icon name="list-todo" className={`w-4 h-4 ${t.status === 'DONE' ? 'text-green-500' : 'text-amber-500'}`} />
                   <div className="flex-1 min-w-0">
                     <p className={`text-xs font-medium ${tp} truncate`}>{t.title}</p>
@@ -1146,14 +1146,14 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className={isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'}>
+                <tr className={isDarkMode ? 'bg-muted/50' : 'bg-gray-50/80'}>
                   <th className={`text-left px-3 py-2 text-[11px] font-semibold ${ts}`}>Datum</th>
                   <th className={`text-left px-3 py-2 text-[11px] font-semibold ${ts}`}>Methode</th>
                   <th className={`text-right px-3 py-2 text-[11px] font-semibold ${ts}`}>Betrag</th>
                   <th className={`text-left px-3 py-2 text-[11px] font-semibold ${ts}`}>Referenz</th>
                 </tr>
               </thead>
-              <tbody className={`divide-y ${isDarkMode ? 'divide-neutral-700/30' : 'divide-gray-100'}`}>
+              <tbody className={`divide-y ${isDarkMode ? 'divide-border/30' : 'divide-gray-100'}`}>
                 {payments.map((p) => (
                   <tr key={p.id}>
                     <td className={`px-3 py-2 text-xs ${tp}`}>{formatDate(p.paidAt)}</td>
@@ -1174,7 +1174,7 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className={isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/80'}>
+                <tr className={isDarkMode ? 'bg-muted/50' : 'bg-gray-50/80'}>
                   <th className={`text-left px-3 py-2 text-[11px] font-semibold ${ts}`}>Beschreibung</th>
                   <th className={`text-right px-3 py-2 text-[11px] font-semibold ${ts}`}>Menge</th>
                   <th className={`text-right px-3 py-2 text-[11px] font-semibold ${ts}`}>Einzelpreis (netto)</th>
@@ -1182,7 +1182,7 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
                   <th className={`text-right px-3 py-2 text-[11px] font-semibold ${ts}`}>Gesamt</th>
                 </tr>
               </thead>
-              <tbody className={`divide-y ${isDarkMode ? 'divide-neutral-700/30' : 'divide-gray-100'}`}>
+              <tbody className={`divide-y ${isDarkMode ? 'divide-border/30' : 'divide-gray-100'}`}>
                 {lineItems.map((li, i) => {
                   const unit = li.unitPriceNetCents ?? li.unitPriceCents ?? 0;
                   const gross = li.grossCents ?? li.totalCents ?? unit * (li.quantity || 1);
@@ -1236,7 +1236,7 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
       {invoice.description && (
         <div className={`${card} p-5`}>
           <h3 className={`text-xs font-bold ${tp} mb-2 uppercase tracking-wider`}>Beschreibung</h3>
-          <p className={`text-xs leading-relaxed ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{invoice.description}</p>
+          <p className={`text-xs leading-relaxed ${isDarkMode ? 'text-foreground/85' : 'text-gray-700'}`}>{invoice.description}</p>
         </div>
       )}
     </div>

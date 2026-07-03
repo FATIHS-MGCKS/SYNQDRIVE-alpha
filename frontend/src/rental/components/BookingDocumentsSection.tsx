@@ -137,8 +137,8 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
     [orgId, bookingId],
   );
 
-  const cardClass = `rounded-lg p-8 border shadow-sm ${isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`;
-  const subtle = isDarkMode ? 'text-gray-500' : 'text-gray-400';
+  const cardClass = `rounded-lg p-8 border shadow-sm ${isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'}`;
+  const subtle = isDarkMode ? 'text-muted-foreground' : 'text-gray-400';
   const bundleStatus = (view?.bundle.status ?? 'PENDING') as DocumentBundleStatus;
   const badge = BUNDLE_BADGE[bundleStatus] ?? BUNDLE_BADGE.PENDING;
   const legalMissing = (view?.legal.missing?.length ?? 0) > 0;
@@ -211,12 +211,12 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
                     <div
                       key={type}
                       className={`flex items-center justify-between px-3 py-3 rounded-lg border ${
-                        isDarkMode ? 'bg-neutral-800/50 border-neutral-700/40' : 'bg-white border-gray-200/60'
+                        isDarkMode ? 'bg-muted/50 border-border/40' : 'bg-white border-gray-200/60'
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-neutral-700/50' : 'bg-gray-100'}`}>
-                          <FileText className={`w-4 h-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`} />
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-muted/50' : 'bg-gray-100'}`}>
+                          <FileText className={`w-4 h-4 ${isDarkMode ? 'text-foreground/85' : 'text-gray-600'}`} />
                         </div>
                         <div className="min-w-0">
                           <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
@@ -237,7 +237,7 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
                         {doc ? (
                           <>
                             {doc.origin === 'STATIC_LEGAL' && (
-                              <span className={`hidden sm:inline-flex items-center gap-1 text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                              <span className={`hidden sm:inline-flex items-center gap-1 text-[10px] ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`}>
                                 <CheckCircle2 className="w-3 h-3" /> hochgeladen
                               </span>
                             )}
@@ -245,7 +245,7 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
                               type="button"
                               title="Herunterladen / Ansehen"
                               onClick={() => void api.documents.open(orgId, doc.id)}
-                              className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-neutral-700 text-gray-400 hover:text-blue-400' : 'hover:bg-gray-100 text-gray-500 hover:text-blue-600'}`}
+                              className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-muted/80 text-muted-foreground hover:text-status-info' : 'hover:bg-gray-100 text-gray-500 hover:text-blue-600'}`}
                             >
                               <Download className="w-4 h-4" />
                             </button>
@@ -255,7 +255,7 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
                                 title="Neu generieren"
                                 disabled={busyType === type}
                                 onClick={() => void handleRegenerate(type)}
-                                className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-neutral-700 text-gray-400 hover:text-amber-400' : 'hover:bg-gray-100 text-gray-500 hover:text-amber-600'} disabled:opacity-50`}
+                                className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-muted/80 text-muted-foreground hover:text-status-attention' : 'hover:bg-gray-100 text-gray-500 hover:text-amber-600'} disabled:opacity-50`}
                               >
                                 {busyType === type ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                               </button>

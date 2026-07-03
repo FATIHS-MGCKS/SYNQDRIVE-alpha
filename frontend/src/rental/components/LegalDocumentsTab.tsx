@@ -157,9 +157,9 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
   );
 
   const cardClass = `rounded-2xl border p-4 ${
-    isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'
+    isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'
   }`;
-  const subtle = isDarkMode ? 'text-neutral-400' : 'text-gray-500';
+  const subtle = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
 
   const statusBadge = (status: string) => {
     const map: Record<string, string> = {
@@ -244,8 +244,8 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
             <div key={type.key} className={cardClass}>
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-100'}`}>
-                    <FileText className={`w-4.5 h-4.5 ${isDarkMode ? 'text-neutral-300' : 'text-gray-600'}`} />
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isDarkMode ? 'bg-muted' : 'bg-gray-100'}`}>
+                    <FileText className={`w-4.5 h-4.5 ${isDarkMode ? 'text-foreground/85' : 'text-gray-600'}`} />
                   </div>
                   <div>
                     <div className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{type.title}</div>
@@ -265,7 +265,7 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
 
               {/* Upload (admin only) */}
               {isOrgAdmin && (
-                <div className={`mt-3 rounded-xl border border-dashed p-3 ${isDarkMode ? 'border-neutral-700' : 'border-gray-300'}`}>
+                <div className={`mt-3 rounded-xl border border-dashed p-3 ${isDarkMode ? 'border-border' : 'border-gray-300'}`}>
                   <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
                     <input
                       type="text"
@@ -273,7 +273,7 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
                       onChange={(e) => setUpload(type.key, { versionLabel: e.target.value })}
                       placeholder="Version (z. B. 2026-01)"
                       className={`flex-1 rounded-lg border px-3 py-1.5 text-sm ${
-                        isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500' : 'bg-white border-gray-300 text-gray-900'
+                        isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground' : 'bg-white border-gray-300 text-gray-900'
                       }`}
                     />
                     <input
@@ -282,7 +282,7 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
                       onChange={(e) => setUpload(type.key, { title: e.target.value })}
                       placeholder="Titel (optional)"
                       className={`flex-1 rounded-lg border px-3 py-1.5 text-sm ${
-                        isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white placeholder:text-neutral-500' : 'bg-white border-gray-300 text-gray-900'
+                        isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground' : 'bg-white border-gray-300 text-gray-900'
                       }`}
                     />
                     <input
@@ -316,7 +316,7 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
               {/* Version history */}
               <div className="mt-3 space-y-1.5">
                 {versions.length === 0 ? (
-                  <div className={`text-xs py-3 text-center rounded-lg border border-dashed ${isDarkMode ? 'border-neutral-700 text-neutral-500' : 'border-gray-200 text-gray-400'}`}>
+                  <div className={`text-xs py-3 text-center rounded-lg border border-dashed ${isDarkMode ? 'border-border text-muted-foreground' : 'border-gray-200 text-gray-400'}`}>
                     Noch keine Version hochgeladen.
                   </div>
                 ) : (
@@ -324,7 +324,7 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
                     <div
                       key={v.id}
                       className={`flex items-center justify-between gap-3 px-3 py-2 rounded-lg border ${
-                        isDarkMode ? 'border-neutral-700 bg-neutral-800/40' : 'border-gray-200 bg-gray-50'
+                        isDarkMode ? 'border-border bg-muted/40' : 'border-gray-200 bg-gray-50'
                       }`}
                     >
                       <div className="min-w-0">
@@ -343,7 +343,7 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
                           type="button"
                           title="Herunterladen"
                           onClick={() => void api.legalDocuments.open(orgId, v.id)}
-                          className={`p-1.5 rounded-lg ${isDarkMode ? 'hover:bg-neutral-700 text-neutral-300' : 'hover:bg-gray-200 text-gray-600'}`}
+                          className={`p-1.5 rounded-lg ${isDarkMode ? 'hover:bg-muted/80 text-foreground/85' : 'hover:bg-gray-200 text-gray-600'}`}
                         >
                           <Download className="w-4 h-4" />
                         </button>
@@ -362,7 +362,7 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
                           <button
                             type="button"
                             onClick={() => void handleArchive(v.id)}
-                            className={`text-xs font-medium px-2 py-1 rounded-lg ${isDarkMode ? 'text-neutral-400 hover:bg-neutral-700' : 'text-gray-500 hover:bg-gray-200'}`}
+                            className={`text-xs font-medium px-2 py-1 rounded-lg ${isDarkMode ? 'text-muted-foreground hover:bg-muted/80' : 'text-gray-500 hover:bg-gray-200'}`}
                           >
                             Archivieren
                           </button>

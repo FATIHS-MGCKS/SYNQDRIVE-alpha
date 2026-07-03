@@ -97,7 +97,7 @@ function toneRing(tone: Tone, dm: boolean): string {
     case 'critical':
       return dm ? 'bg-red-500/10 text-red-300 ring-red-500/25' : 'bg-red-50 text-red-700 ring-red-200';
     case 'neutral':
-      return dm ? 'bg-neutral-800/80 text-neutral-300 ring-neutral-700/70' : 'bg-slate-50 text-slate-500 ring-slate-200';
+      return dm ? 'bg-muted/80 text-muted-foreground ring-border/70' : 'bg-slate-50 text-slate-500 ring-slate-200';
   }
 }
 
@@ -212,17 +212,17 @@ export function VehicleInsightsCard({ vehicleId, isDarkMode }: VehicleInsightsCa
 
   return (
     <div className={`group flex h-full flex-col rounded-xl border bg-card p-3 shadow-sm transition-shadow duration-300 ease-[var(--ease-out-soft)] hover:shadow-md ${
-      dm ? 'border-white/10' : 'border-border'
+      dm ? 'border-border/60' : 'border-border'
     }`}>
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="mb-2.5 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${
-            dm ? 'border-white/10 bg-blue-500/10 text-blue-300' : 'border-blue-100 bg-blue-50 text-blue-600'
+            dm ? 'border-brand/20 bg-brand-soft text-brand' : 'border-blue-100 bg-blue-50 text-blue-600'
           }`}>
             <Sparkles className="h-3.5 w-3.5" />
           </span>
-          <h3 className={`text-[11px] font-bold tracking-[-0.01em] truncate ${dm ? 'text-white' : 'text-slate-900'}`}>
+          <h3 className={`text-[11px] font-bold tracking-[-0.01em] truncate ${dm ? 'text-foreground' : 'text-slate-900'}`}>
             Vehicle Insights
           </h3>
           {hasAnyData && (
@@ -234,9 +234,9 @@ export function VehicleInsightsCard({ vehicleId, isDarkMode }: VehicleInsightsCa
         </div>
         <div className="shrink-0 flex items-center gap-1.5">
           {loading ? (
-            <Icon name="loader-2" className={`h-3 w-3 animate-spin ${dm ? 'text-neutral-500' : 'text-slate-400'}`} />
+            <Icon name="loader-2" className={`h-3 w-3 animate-spin ${dm ? 'text-muted-foreground' : 'text-slate-400'}`} />
           ) : fetchedAt ? (
-            <span className={`text-[10px] font-semibold tabular-nums ${dm ? 'text-neutral-500' : 'text-slate-400'}`}>
+            <span className={`text-[10px] font-semibold tabular-nums ${dm ? 'text-muted-foreground' : 'text-slate-400'}`}>
               {fetchedAt.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}
             </span>
           ) : null}
@@ -250,12 +250,12 @@ export function VehicleInsightsCard({ vehicleId, isDarkMode }: VehicleInsightsCa
             {verdict}
           </div>
         ) : (
-          <p className={`mb-2.5 text-[10px] leading-snug font-medium ${dm ? 'text-gray-200' : 'text-slate-700'}`}>
+          <p className={`mb-2.5 text-[10px] leading-snug font-medium ${dm ? 'text-foreground/90' : 'text-slate-700'}`}>
             {verdict}
           </p>
         )
       ) : (
-        <p className={`mb-2.5 text-[10px] leading-snug ${dm ? 'text-gray-500' : 'text-slate-400'}`}>
+        <p className={`mb-2.5 text-[10px] leading-snug ${dm ? 'text-muted-foreground' : 'text-slate-400'}`}>
           No health tracking data configured for this vehicle.
         </p>
       )}
@@ -272,22 +272,22 @@ export function VehicleInsightsCard({ vehicleId, isDarkMode }: VehicleInsightsCa
       {/* ── Planning Horizon ───────────────────────────────────────────────── */}
       <div className="mb-3 flex-1 min-h-0">
         <div className="mb-1.5 flex items-center justify-between">
-          <span className={`text-[9.5px] font-bold uppercase tracking-[0.12em] ${dm ? 'text-neutral-500' : 'text-slate-400'}`}>
+          <span className={`text-[9.5px] font-bold uppercase tracking-[0.12em] ${dm ? 'text-muted-foreground' : 'text-slate-400'}`}>
             Planning Horizon
           </span>
           {hasAnyData && forecast.length > 0 && (
-            <span className={`text-[9.5px] font-semibold ${dm ? 'text-neutral-500' : 'text-slate-400'}`}>
+            <span className={`text-[9.5px] font-semibold ${dm ? 'text-muted-foreground' : 'text-slate-400'}`}>
               {forecast.length} item{forecast.length === 1 ? '' : 's'}
             </span>
           )}
         </div>
 
         {!hasAnyData ? (
-          <p className={`text-[11px] ${dm ? 'text-neutral-500' : 'text-slate-400'}`}>
+          <p className={`text-[11px] ${dm ? 'text-muted-foreground' : 'text-slate-400'}`}>
             Connect tracking data to see upcoming planning items.
           </p>
         ) : forecast.length > 0 ? (
-          <div className={`overflow-hidden rounded-[10px] border ${dm ? 'border-white/10 bg-white/[0.025]' : 'border-slate-100 bg-slate-50/60'}`}>
+          <div className={`overflow-hidden rounded-[10px] border ${dm ? 'border-border/60 bg-muted/30' : 'border-slate-100 bg-slate-50/60'}`}>
             {forecast.map((item: PlanningItem, i: number) => {
               const kmUrgent = kmDisplayIsUrgent(item.displayKm);
               const timeTextCls =
@@ -295,18 +295,18 @@ export function VehicleInsightsCard({ vehicleId, isDarkMode }: VehicleInsightsCa
                   ? dm ? 'text-red-300' : 'text-red-600'
                   : item.urgency === 'soon'
                   ? dm ? 'text-amber-300' : 'text-amber-600'
-                  : dm ? 'text-neutral-500' : 'text-slate-500';
+                  : dm ? 'text-muted-foreground' : 'text-slate-500';
               return (
                 <div
                   key={`${item.type}-${i}`}
                   className={`flex items-center gap-2 px-2.5 py-1.5 ${
                     i < forecast.length - 1
-                      ? `border-b ${dm ? 'border-white/5' : 'border-slate-100'}`
+                      ? `border-b ${dm ? 'border-border/40' : 'border-slate-100'}`
                       : ''
                   }`}
                 >
                   <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${urgencyDot(item.urgency)}`} />
-                  <span className={`flex-1 min-w-0 truncate text-[11px] font-semibold ${dm ? 'text-gray-200' : 'text-slate-800'}`}>
+                  <span className={`flex-1 min-w-0 truncate text-[11px] font-semibold ${dm ? 'text-foreground/90' : 'text-slate-800'}`}>
                     {item.title}
                   </span>
                   <div className="shrink-0 flex items-center gap-1 whitespace-nowrap">
@@ -314,13 +314,13 @@ export function VehicleInsightsCard({ vehicleId, isDarkMode }: VehicleInsightsCa
                       <span className={`font-mono text-[10px] font-semibold tabular-nums ${
                         kmUrgent
                           ? dm ? 'text-red-300' : 'text-red-600'
-                          : dm ? 'text-neutral-400' : 'text-slate-500'
+                          : dm ? 'text-muted-foreground' : 'text-slate-500'
                       }`}>
                         {item.displayKm}
                       </span>
                     )}
                     {item.displayKm && item.displayTime && (
-                      <span className={`text-[9px] ${dm ? 'text-neutral-600' : 'text-slate-300'}`}>·</span>
+                      <span className={`text-[9px] ${dm ? 'text-muted-foreground/70' : 'text-slate-300'}`}>·</span>
                     )}
                     {item.displayTime && (
                       <span className={`font-mono text-[10px] font-semibold tabular-nums ${timeTextCls}`}>
@@ -333,7 +333,7 @@ export function VehicleInsightsCard({ vehicleId, isDarkMode }: VehicleInsightsCa
             })}
           </div>
         ) : (
-          <p className={`text-[11px] ${dm ? 'text-neutral-500' : 'text-slate-400'}`}>
+          <p className={`text-[11px] ${dm ? 'text-muted-foreground' : 'text-slate-400'}`}>
             Nothing urgent within the next 5 months.
           </p>
         )}
@@ -342,18 +342,18 @@ export function VehicleInsightsCard({ vehicleId, isDarkMode }: VehicleInsightsCa
       {/* ── Next Action ────────────────────────────────────────────────────── */}
       {hasAnyData && (
         <div className={`mb-2 flex items-center gap-2 rounded-[10px] border px-2.5 py-2 ${
-          dm ? 'border-blue-500/20 bg-blue-500/8' : 'border-blue-100 bg-blue-50/70'
+          dm ? 'border-status-ai/25 bg-status-ai-soft' : 'border-blue-100 bg-blue-50/70'
         }`}>
           <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-md ${
-            dm ? 'bg-blue-500/15 text-blue-300' : 'bg-white text-blue-600 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
+            dm ? 'bg-status-ai-soft text-status-ai' : 'bg-white text-blue-600 shadow-[0_1px_2px_rgba(15,23,42,0.04)]'
           }`}>
             <Icon name="arrow-right" className="h-3 w-3" />
           </span>
           <div className="min-w-0 flex-1">
-            <div className={`text-[8.5px] font-bold uppercase tracking-[0.12em] ${dm ? 'text-blue-300/70' : 'text-blue-600/80'}`}>
+            <div className={`text-[8.5px] font-bold uppercase tracking-[0.12em] ${dm ? 'text-status-ai/70' : 'text-blue-600/80'}`}>
               Next Action
             </div>
-            <div className={`text-[11.5px] font-semibold leading-tight ${dm ? 'text-blue-100' : 'text-blue-900'}`}>
+            <div className={`text-[11.5px] font-semibold leading-tight ${dm ? 'text-foreground' : 'text-blue-900'}`}>
               {nextAction}
             </div>
           </div>
@@ -362,7 +362,7 @@ export function VehicleInsightsCard({ vehicleId, isDarkMode }: VehicleInsightsCa
 
       {/* ── Confidence footer ──────────────────────────────────────────────── */}
       {hasAnyData && (
-        <div className={`flex items-start gap-1.5 text-[9.5px] leading-snug ${dm ? 'text-neutral-500' : 'text-slate-400'}`}>
+        <div className={`flex items-start gap-1.5 text-[9.5px] leading-snug ${dm ? 'text-muted-foreground' : 'text-slate-400'}`}>
           <Icon name="lock" className="h-2.5 w-2.5 mt-px shrink-0 opacity-70" />
           <span>{confidence}</span>
         </div>

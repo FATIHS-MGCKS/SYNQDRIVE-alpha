@@ -17,8 +17,8 @@ type LayerChip = {
 };
 
 const CHIPS: LayerChip[] = [
-  { key: 'showSpeed', label: 'Geschwindigkeit', icon: 'gauge', activeClass: 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/25' },
-  { key: 'showStops', label: 'Stopps', icon: 'clock', activeClass: 'bg-slate-500/15 text-slate-600 dark:text-slate-300 border-slate-500/25' },
+  { key: 'showSpeed', label: 'Geschwindigkeit', icon: 'gauge', activeClass: 'bg-blue-500/15 text-blue-600 dark:bg-status-info-soft dark:text-status-info border-blue-500/25 dark:border-status-info/25' },
+  { key: 'showStops', label: 'Stopps', icon: 'clock', activeClass: 'bg-slate-500/15 text-slate-600 dark:bg-status-nodata-soft dark:text-status-nodata border-slate-500/25 dark:border-status-nodata/25' },
   { key: 'showDrivingEvents', label: 'Ereignisse', icon: 'zap', activeClass: 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/25' },
   { key: 'showAbuseEvents', label: 'Missbrauch', icon: 'shield', activeClass: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/25' },
 ];

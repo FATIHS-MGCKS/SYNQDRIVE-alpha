@@ -116,7 +116,7 @@ function InsightCard({ insight, isDarkMode }: { insight: DashboardInsight; isDar
 
   return (
     <article
-      className={`rounded-xl border p-3 ${isDarkMode ? 'bg-neutral-900/60 border-neutral-800' : 'bg-white border-gray-200'}`}
+      className={`rounded-xl border p-3 ${isDarkMode ? 'bg-card/60 border-border' : 'bg-white border-gray-200'}`}
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <h4 className="text-xs font-semibold text-foreground leading-snug">{insight.title}</h4>
@@ -233,7 +233,7 @@ function MisuseAbuseSection({ orgId, isDarkMode }: { orgId: string; isDarkMode: 
             return (
               <article
                 key={String(row.id)}
-                className={`rounded-xl border p-3 text-[11px] ${isDarkMode ? 'border-neutral-800' : 'border-gray-200'}`}
+                className={`rounded-xl border p-3 text-[11px] ${isDarkMode ? 'border-border' : 'border-gray-200'}`}
               >
                 <div className="flex items-center justify-between gap-2 mb-1">
                   <span className="font-semibold text-foreground">{title}</span>

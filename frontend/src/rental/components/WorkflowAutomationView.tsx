@@ -268,19 +268,19 @@ function relativeTime(dateStr: string | null) {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bgClass: string; textClass: string }> = {
-  ACTIVE: { label: 'Active', color: 'green', bgClass: 'bg-green-100 dark:bg-green-900/30', textClass: 'text-green-700 dark:text-green-400' },
-  DRAFT: { label: 'Draft', color: 'amber', bgClass: 'bg-amber-100 dark:bg-amber-900/30', textClass: 'text-amber-700 dark:text-amber-400' },
-  DISABLED: { label: 'Disabled', color: 'gray', bgClass: 'bg-gray-100 dark:bg-gray-800', textClass: 'text-gray-500 dark:text-gray-400' },
-  INVALID: { label: 'Invalid', color: 'red', bgClass: 'bg-red-100 dark:bg-red-900/30', textClass: 'text-red-700 dark:text-red-400' },
+  ACTIVE: { label: 'Active', color: 'green', bgClass: 'bg-green-100 dark:bg-status-positive-soft', textClass: 'text-green-700 dark:text-status-positive' },
+  DRAFT: { label: 'Draft', color: 'amber', bgClass: 'bg-amber-100 dark:bg-status-attention-soft', textClass: 'text-amber-700 dark:text-status-attention' },
+  DISABLED: { label: 'Disabled', color: 'gray', bgClass: 'bg-gray-100 dark:bg-muted', textClass: 'text-gray-500 dark:text-muted-foreground' },
+  INVALID: { label: 'Invalid', color: 'red', bgClass: 'bg-red-100 dark:bg-status-critical-soft', textClass: 'text-red-700 dark:text-status-critical' },
 };
 
 const RUN_STATUS_CONFIG: Record<string, { label: string; bgClass: string; textClass: string }> = {
-  SUCCESS: { label: 'Success', bgClass: 'bg-green-100 dark:bg-green-900/30', textClass: 'text-green-700 dark:text-green-400' },
-  FAILED: { label: 'Failed', bgClass: 'bg-red-100 dark:bg-red-900/30', textClass: 'text-red-700 dark:text-red-400' },
-  SKIPPED: { label: 'Skipped', bgClass: 'bg-gray-100 dark:bg-gray-800', textClass: 'text-gray-500 dark:text-gray-400' },
-  WAITING_APPROVAL: { label: 'Waiting approval', bgClass: 'bg-purple-100 dark:bg-purple-900/30', textClass: 'text-purple-700 dark:text-purple-400' },
-  RUNNING: { label: 'Running', bgClass: 'bg-blue-100 dark:bg-blue-900/30', textClass: 'text-blue-700 dark:text-blue-400' },
-  PENDING: { label: 'Pending', bgClass: 'bg-amber-100 dark:bg-amber-900/30', textClass: 'text-amber-700 dark:text-amber-400' },
+  SUCCESS: { label: 'Success', bgClass: 'bg-green-100 dark:bg-status-positive-soft', textClass: 'text-green-700 dark:text-status-positive' },
+  FAILED: { label: 'Failed', bgClass: 'bg-red-100 dark:bg-status-critical-soft', textClass: 'text-red-700 dark:text-status-critical' },
+  SKIPPED: { label: 'Skipped', bgClass: 'bg-gray-100 dark:bg-muted', textClass: 'text-gray-500 dark:text-muted-foreground' },
+  WAITING_APPROVAL: { label: 'Waiting approval', bgClass: 'bg-purple-100 dark:bg-status-ai-soft', textClass: 'text-purple-700 dark:text-status-ai' },
+  RUNNING: { label: 'Running', bgClass: 'bg-blue-100 dark:bg-status-info-soft', textClass: 'text-blue-700 dark:text-status-info' },
+  PENDING: { label: 'Pending', bgClass: 'bg-amber-100 dark:bg-status-attention-soft', textClass: 'text-amber-700 dark:text-status-attention' },
 };
 
 // ─── Main Component ──────────────────────────────

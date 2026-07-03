@@ -48,26 +48,26 @@ const OVERALL_CONFIG: Record<HmCompatibilityOverall, { label: string; color: str
 
 const ELIGIBILITY_CONFIG: Record<HmCompatibilityEligibilityMode, { label: string; color: string }> = {
   AVAILABLE:       { label: 'Available',       color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
-  NOT_AVAILABLE:   { label: 'Not Available',   color: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300' },
+  NOT_AVAILABLE:   { label: 'Not Available',   color: 'bg-slate-100 text-slate-700 dark:bg-muted dark:text-muted-foreground' },
   SUPPORT_REQUEST: { label: 'Support Request', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' },
   VIN_DEPENDENT:   { label: 'VIN Dependent',   color: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400' },
 };
 
 const ONBOARDING_CONFIG: Record<HmCompatibilityOnboardingMode, { label: string; color: string }> = {
-  PRECHECK_CONNECT: { label: 'Precheck + Connect', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' },
+  PRECHECK_CONNECT: { label: 'Precheck + Connect', color: 'bg-blue-100 text-blue-700 dark:bg-status-info-soft dark:text-status-info' },
   DIRECT_CONNECT:   { label: 'Direct Connect',     color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-400' },
   MANUAL_REVIEW:    { label: 'Manual Review',      color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' },
 };
 
 const CONFIDENCE_CONFIG: Record<HmCompatibilityConfidence, { label: string; color: string }> = {
   HIGH:   { label: 'High',   color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
-  MEDIUM: { label: 'Medium', color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400' },
-  LOW:    { label: 'Low',    color: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400' },
+  MEDIUM: { label: 'Medium', color: 'bg-blue-100 text-blue-700 dark:bg-status-info-soft dark:text-status-info' },
+  LOW:    { label: 'Low',    color: 'bg-slate-100 text-slate-600 dark:bg-muted dark:text-muted-foreground' },
 };
 
 const COVERAGE_CONFIG: Record<HmSignalCoverage, { label: string; color: string; dot: string }> = {
   CONFIRMED:  { label: 'Confirmed',  color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400', dot: 'bg-emerald-500' },
-  EXPECTED:   { label: 'Expected',   color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400',               dot: 'bg-blue-500' },
+  EXPECTED:   { label: 'Expected',   color: 'bg-blue-100 text-blue-700 dark:bg-status-info-soft dark:text-status-info',               dot: 'bg-blue-500' },
   UNVERIFIED: { label: 'Unverified', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400',           dot: 'bg-amber-500' },
   MISSING:    { label: 'Missing',    color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',                   dot: 'bg-red-500' },
 };
@@ -116,7 +116,7 @@ function CoveragePill({ coverage }: { coverage: HmSignalCoverage }) {
 // ── Card helpers ────────────────────────────────────────────────────────────
 
 function card(isDark: boolean): string {
-  return `rounded-xl border ${isDark ? 'bg-neutral-900 border-neutral-800' : 'bg-card border-border'}`;
+  return `rounded-xl border ${isDark ? 'bg-card border-border' : 'bg-card border-border'}`;
 }
 
 function cardHeader(title: string, subtitle: string | null, icon: typeof ShieldCheck, accent: string) {

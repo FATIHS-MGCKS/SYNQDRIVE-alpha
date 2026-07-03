@@ -222,7 +222,7 @@ function MisuseContextEvidence({ evidence }: { evidence: ContextEvidence }) {
           {evidence.contextClassifications!.map((c) => (
             <span
               key={c}
-              className="rounded-full border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[8px] font-medium text-sky-600 dark:text-sky-400"
+              className="rounded-full border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[8px] font-medium text-sky-600 dark:text-status-info"
             >
               {contextClassificationLabel(c)}
             </span>

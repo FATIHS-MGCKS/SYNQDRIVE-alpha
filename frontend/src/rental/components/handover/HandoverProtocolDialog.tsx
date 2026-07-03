@@ -249,11 +249,11 @@ export function HandoverProtocolDialog({
   const primaryColor = kind === 'PICKUP' ? 'blue' : 'emerald';
 
   const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
-  const textMuted = isDarkMode ? 'text-gray-400' : 'text-gray-500';
-  const textTertiary = isDarkMode ? 'text-gray-500' : 'text-gray-400';
-  const bg = isDarkMode ? 'bg-neutral-900' : 'bg-white';
-  const borderColor = isDarkMode ? 'border-neutral-700' : 'border-gray-200';
-  const cardBg = isDarkMode ? 'bg-neutral-800/50' : 'bg-gray-50/60';
+  const textMuted = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
+  const textTertiary = isDarkMode ? 'text-muted-foreground' : 'text-gray-400';
+  const bg = isDarkMode ? 'bg-card' : 'bg-white';
+  const borderColor = isDarkMode ? 'border-border' : 'border-gray-200';
+  const cardBg = isDarkMode ? 'bg-muted/50' : 'bg-gray-50/60';
   const inputCls = `w-full px-3 py-2 rounded-lg border text-sm ${
     isDarkMode
       ? 'bg-neutral-900 border-neutral-700 text-gray-100 placeholder-gray-500'
@@ -707,7 +707,7 @@ export function HandoverProtocolDialog({
             </div>
 
             {newDamageOpen && (
-              <div className={`mb-3 rounded-lg border p-3 ${borderColor} ${isDarkMode ? 'bg-neutral-900' : 'bg-white'}`}>
+              <div className={`mb-3 rounded-lg border p-3 ${borderColor} ${isDarkMode ? 'bg-card' : 'bg-white'}`}>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <select
                     value={newDamage.damageType}
@@ -751,7 +751,7 @@ export function HandoverProtocolDialog({
                     type="button"
                     onClick={() => setNewDamageOpen(false)}
                     className={`text-[11px] px-3 py-1.5 rounded-md ${
-                      isDarkMode ? 'text-gray-400 hover:bg-neutral-800' : 'text-gray-600 hover:bg-gray-100'
+                      isDarkMode ? 'text-muted-foreground hover:bg-muted' : 'text-gray-600 hover:bg-gray-100'
                     }`}
                   >
                     Abbrechen
@@ -1035,7 +1035,7 @@ function CheckRow({
         onChange={onToggle}
         className={accent === 'red' ? 'accent-red-500' : 'accent-blue-500'}
       />
-      <span className={`text-[11px] ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{label}</span>
+      <span className={`text-[11px] ${isDarkMode ? 'text-foreground/85' : 'text-gray-700'}`}>{label}</span>
     </label>
   );
 }

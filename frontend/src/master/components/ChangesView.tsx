@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dark-theme-hardcoded-cleanup-v49167-2026-07-03',
+    version: '4.9.167',
+    title: 'V4.9.167 — Dark Theme: hartkodierte slate/blue/neutral Flächen auf Tokens',
+    summary: [
+      'Dashboard-Drilldowns (StatInlineDetail), BusinessInsightsBox, Invoices, VehicleInsights, Price-Tariff-Drawer: isDarkMode-neutral/gray → bg-card/bg-muted/border-border/text-muted-foreground.',
+      'Workflow/Trip-Badges: dark:bg-blue/slate/gray → status-*-soft Tokens; Info/Running neutral-grau statt Blue-400.',
+      'FleetConditionDetailView, InsightsCockpit, Fines, LegalDocuments, HM-Admin-Badges: Oberflächen und Info-Badges tokenisiert.',
+      'Light-Theme-Zweige unverändert; nur Dark-Farbquellen, keine Layout-/Logik-Änderungen.',
+    ],
+    reason:
+      'Zentrale Charcoal-Tokens (V4.9.166) wurden von isDarkMode-neutral-800/900 und dark:bg-slate/blue in Komponenten überschrieben.',
+    previousBehavior:
+      'Viele Rental-Surfaces nutzten bg-neutral-800/900, dark:bg-blue-900/40, dark:text-slate-300 unabhängig vom Token-Layer.',
+    details:
+      'StatInlineDetail.tsx, BusinessInsightsBox.tsx, InvoicesView.tsx, VehicleInsightsCard.tsx, TariffGroupDrawer.tsx, WorkflowAutomationView.tsx, Trip*-Komponenten, FleetConditionDetailView.tsx, InsightsCockpit.tsx, FinesView.tsx, LegalDocumentsTab.tsx, HighMobility*.tsx u.a.',
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-07-03T20:00:00.000Z',
+  },
+  {
     id: 'dark-theme-v2-charcoal-tokens-v49166-2026-07-03',
     version: '4.9.166',
     title: 'V4.9.166 — Dark Theme V2: zentrale Charcoal/Graphite Token-Palette',
