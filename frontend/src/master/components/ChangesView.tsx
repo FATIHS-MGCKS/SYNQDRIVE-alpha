@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dark-theme-map-glass-v49169-2026-07-03',
+    version: '4.9.169',
+    title: 'V4.9.169 — Dark Theme: Map Controls & Liquid Glass (charcoal neutral)',
+    summary: [
+      'theme.css: Dark .sq-map-glass-controls nutzt --map-glass-* / --glass-edge-catch statt card-mix/brand-active.',
+      'Map-Control-Buttons: neutral graphite glass, dezente Border, Hover heller, Focus --ring, kein Brand-Glow.',
+      'Dark Liquid-Glass ::after Shine reduziert; inset edge-catch auf Token; globale .dark .mapboxgl-ctrl-group Styles.',
+      'TripsMapCard: Loader-Icons auf Glass-Overlays im Dark Mode text-foreground statt blue-400.',
+      'Light Theme, Marker, Map-Logik und Positionen unverändert.',
+    ],
+    reason:
+      'Map Controls und Glass-Flächen wirkten im Dark Mode noch navy/blau statt neutralem charcoal Liquid Glass.',
+    previousBehavior:
+      'Dark map-glass-controls mit card-mix-Gradient; active state brand-soft; mapbox zoom nur in LiveMapOverview inline gestylt.',
+    details:
+      'frontend/src/styles/theme.css (.dark .sq-map-glass-*, .dark .sq-map-liquid-*, .dark .mapboxgl-ctrl-group), TripsMapCard.tsx (Loader-Icon-Farbe dark).',
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-07-03T22:00:00.000Z',
+  },
+  {
     id: 'dark-theme-pattern-polish-v49168-2026-07-03',
     version: '4.9.168',
     title: 'V4.9.168 — Dark Theme: Pattern-Polish (Cards, Buttons, Badges, Tabs, Modals)',

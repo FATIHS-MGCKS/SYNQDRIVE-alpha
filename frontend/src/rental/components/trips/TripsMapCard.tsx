@@ -206,7 +206,7 @@ export function TripsMapCard({
         {!mapError && !mapLoaded && (
           <div className={`${tv.overlay} z-20`}>
             <div className="sq-map-liquid-loading flex flex-col items-center gap-2">
-              <Icon name="loader-2" className={`w-6 h-6 animate-spin ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+              <Icon name="loader-2" className={`w-6 h-6 animate-spin ${isDark ? 'text-foreground' : 'text-blue-600'}`} />
               <span className="text-xs font-medium text-muted-foreground">{TRIPS_COPY.loadingMap}</span>
             </div>
           </div>
@@ -215,7 +215,7 @@ export function TripsMapCard({
         {routeLoading && mapLoaded && !mapError && (
           <div className={`${tv.overlay} z-20 bg-background/35`}>
             <div className="sq-map-liquid-loading flex flex-col items-center gap-2">
-              <Icon name="loader-2" className={`w-6 h-6 animate-spin ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+              <Icon name="loader-2" className={`w-6 h-6 animate-spin ${isDark ? 'text-foreground' : 'text-blue-600'}`} />
               <span className="text-xs font-medium text-foreground">{TRIPS_COPY.loadingRoute}</span>
             </div>
           </div>
@@ -224,7 +224,7 @@ export function TripsMapCard({
         {enrichingTrip && mapLoaded && !mapError && !routeLoading && (
           <div className={`${tv.overlay} z-20 bg-background/25`}>
             <div className="sq-map-liquid-loading flex flex-col items-center gap-2">
-              <Icon name="loader-2" className={`w-5 h-5 animate-spin ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`} />
+              <Icon name="loader-2" className={`w-5 h-5 animate-spin ${isDark ? 'text-foreground' : 'text-indigo-600'}`} />
               <span className="text-xs font-medium text-muted-foreground">{TRIPS_COPY.enrichingTrip}</span>
             </div>
           </div>
