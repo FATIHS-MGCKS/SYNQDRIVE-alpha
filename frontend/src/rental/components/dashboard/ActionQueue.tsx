@@ -52,7 +52,6 @@ const FILTER_TABS: ActionQueueFilterTab[] = [
   'critical',
   'operations',
   'vehicle',
-  'financial',
   'notifications',
 ];
 

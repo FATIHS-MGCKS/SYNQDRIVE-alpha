@@ -2,6 +2,7 @@ import type { DashboardInsight, InsightType } from '../../DashboardInsightsConte
 import {
   isServiceOverdueKey,
   normalizeOperationalIssues,
+  shouldShowInDashboardAttention,
   type OperationalIssue,
 } from '../../lib/operational-issues';
 import type { ActionQueueItem } from './dashboardTypes';
@@ -97,7 +98,7 @@ export function buildRuntimeOperationalIssues(
     dashboardInsights: filterInsightsForRuntimeAttention(input.insights, runtime),
     predictiveInsights: filterPredictiveForRuntimeAttention(input.predictiveInsights, runtime),
     vehiclesById: input.fleetById,
-  }).filter((issue) => issue.visibility.dashboardAttention && issue.domain !== 'finance');
+  }).filter((issue) => shouldShowInDashboardAttention(issue));
 }
 
 function mergeAttentionItem(existing: ActionQueueItem, incoming: ActionQueueItem): ActionQueueItem {

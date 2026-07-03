@@ -1,6 +1,7 @@
 import type { RentalHealthModule, RentalHealthState, VehicleHealthResponse } from '../../lib/api';
 import type { StatusTone } from '../../components/patterns';
 import { RENTAL_HEALTH_MODULE_LABELS } from '../rental-health-ui';
+import { isOperativeRentalHealthModule } from './operational-issues/operationalIssueTaxonomy';
 
 export type OperatorStatusFilter =
   | 'all'
@@ -290,6 +291,7 @@ function collectIssueChips(
   const out: HealthIssueChip[] = [];
   for (const key of MODULE_ORDER) {
     const mod = health.modules[key];
+    if (!isOperativeRentalHealthModule(key, mod)) continue;
     if (mod.state !== 'critical' && mod.state !== 'warning') continue;
     out.push({
       key,
@@ -445,6 +447,7 @@ export function primaryOperatorReason(
     return health.blocking_reasons[0];
   }
   const modules = Object.entries(health.modules)
+    .filter(([key, m]) => isOperativeRentalHealthModule(key, m))
     .filter(([, m]) => m.state === 'critical' || m.state === 'warning')
     .sort(
       (a, b) =>

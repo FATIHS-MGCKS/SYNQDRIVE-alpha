@@ -6,6 +6,7 @@ import type { VehicleHealthAlert } from '../DashboardInsightsContext';
 import { deriveFleetVisualState, type FleetVisualState } from './fleetVisualState';
 import {
   formatUserFacingReasonLabel,
+  isOperativeRentalHealthModule,
   sanitizeUserFacingIssueText,
 } from './operational-issues';
 import {
@@ -435,7 +436,7 @@ function pickModuleReason(
   for (const severity of ['critical', 'warning'] as const) {
     for (const key of REASON_MODULE_ORDER) {
       const module = modules[key];
-      if (module && module.state === severity) {
+      if (module && isOperativeRentalHealthModule(key, module) && module.state === severity) {
         return moduleReasonText(key, module, de);
       }
     }

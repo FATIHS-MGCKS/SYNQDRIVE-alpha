@@ -18,6 +18,11 @@ import {
   uniqueSources,
 } from './operationalIssueSources';
 import { getDefaultOperationalIssueVisibility } from './operationalIssueVisibility';
+import {
+  applyCanonicalTaxonomyToDraft,
+  applyCanonicalTaxonomyToIssue,
+  isHmOemServiceTrackingMissingText,
+} from './operationalIssueTaxonomy';
 import type {
   DashboardInsightLike,
   OperationalIssue,
@@ -87,7 +92,13 @@ export function normalizeOperationalIssues(
   }
 
   return mergeDrafts(
-    suppressHealthWhenServiceOverdue(suppressGenericHealthFallbacks(drafts)),
+    suppressHealthWhenServiceOverdue(
+      suppressGenericHealthFallbacks(
+        drafts
+          .map((draft) => applyCanonicalTaxonomyToDraft(draft))
+          .filter((draft): draft is OperationalIssueDraft => Boolean(draft)),
+      ),
+    ),
     options,
   );
 }
@@ -164,6 +175,15 @@ function mapRuntimeReason(
   const text = `${source} ${title} ${reason.description ?? ''}`.toLowerCase();
   const critical = reason.severity === 'critical' || reason.blocking === true;
 
+  if ((reason.category === 'service' || reason.category === 'compliance') && isHmOemServiceTrackingMissingText(text)) {
+    return {
+      domain: 'data_quality',
+      issueType: 'hm_oem_service_tracking_missing',
+      semanticKey: createVehicleIssueKey(vehicleId, 'data_quality', 'hm_oem_service_tracking_missing'),
+      severity: 'info',
+      title: title || 'Kein HM/OEM Service-Tracking verfuegbar',
+    };
+  }
   if ((reason.category === 'service' || reason.category === 'compliance') && isOverdueText(text)) {
     return {
       domain: 'service_compliance',
@@ -196,7 +216,7 @@ function mapRuntimeReason(
       domain: 'vehicle_health',
       issueType: critical ? 'tire_critical' : 'tire_monitor',
       semanticKey: createVehicleIssueKey(vehicleId, 'vehicle_health', critical ? 'tires_critical' : 'tires_monitor'),
-      severity: critical ? 'critical' : 'attention',
+      severity: critical ? 'critical' : 'warning',
       title,
     };
   }
@@ -437,6 +457,19 @@ function healthModuleToIssueDraft(
 
   if (module.module === 'service_compliance') {
     const text = `${module.reason ?? ''} ${module.label ?? ''}`.toLowerCase();
+    if (isHmOemServiceTrackingMissingText(text) && !isOverdueText(text)) {
+      return vehicleIssueDraft({
+        semanticKey: createVehicleIssueKey(vehicleId, 'data_quality', 'hm_oem_service_tracking_missing'),
+        domain: 'data_quality',
+        issueType: 'hm_oem_service_tracking_missing',
+        severity: 'info',
+        title: module.reason || 'Kein HM/OEM Service-Tracking verfuegbar',
+        subtitle: module.dataStale ? 'Datenstand verzoegert' : undefined,
+        vehicleId,
+        vehicle,
+        source,
+      });
+    }
     const overdue = critical || isOverdueText(text);
     return vehicleIssueDraft({
       semanticKey: createVehicleIssueKey(vehicleId, 'service_compliance', overdue ? 'overdue' : 'due_soon'),
@@ -482,7 +515,7 @@ function healthModuleIssue(
       return {
         issueType: critical ? 'tire_critical' : 'tire_monitor',
         keyType: critical ? 'tires_critical' : 'tires_monitor',
-        severity: critical ? 'critical' : 'attention',
+        severity: critical ? 'critical' : 'warning',
         title: critical ? 'Reifen kritisch' : 'Reifen beobachten',
       };
     case 'brakes':
@@ -881,13 +914,14 @@ function choosePrimaryDraft(group: OperationalIssueDraft[], primarySource: Opera
 
 function finalizeIssue(issue: OperationalIssue, options: OperationalIssueNormalizerOptions): OperationalIssue {
   void options;
-  const title = formatOperationalIssueTitle(issue);
-  const subtitle = formatOperationalIssueSubtitle(issue);
+  const canonical = applyCanonicalTaxonomyToIssue(issue);
+  const title = formatOperationalIssueTitle(canonical);
+  const subtitle = formatOperationalIssueSubtitle(canonical);
   return {
-    ...issue,
+    ...canonical,
     title,
     subtitle,
-    evidence: issue.evidence?.map((evidence) => ({
+    evidence: canonical.evidence?.map((evidence) => ({
       ...evidence,
       label: sanitizeUserFacingIssueText(evidence.label),
       value: sanitizeUserFacingIssueText(evidence.value),

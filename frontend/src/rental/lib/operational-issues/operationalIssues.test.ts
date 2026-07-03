@@ -6,6 +6,7 @@ import {
   formatUserFacingReasonLabel,
   getDefaultOperationalIssueVisibility,
   normalizeOperationalIssues,
+  OPERATIONAL_ISSUE_SINGLE_SOURCE_CONTRACT,
   sanitizeUserFacingIssueText,
 } from './index';
 import type { RuntimeReasonLike, VehicleRuntimeStateLike } from './index';
@@ -18,6 +19,7 @@ function runtimeState(overrides: Partial<VehicleRuntimeStateLike> = {}): Vehicle
     model: overrides.model ?? 'C 63 AMG',
     year: overrides.year ?? 2016,
     displayName: overrides.displayName ?? 'KS MX 2024',
+    telemetryState: overrides.telemetryState,
     warningReasons: overrides.warningReasons ?? [],
     criticalReasons: overrides.criticalReasons ?? [],
     blockReasons: overrides.blockReasons ?? [],
@@ -119,7 +121,7 @@ describe('operational issue keys and visibility', () => {
     const systemDebug = getDefaultOperationalIssueVisibility('system_debug', 'raw_source');
     expect(dataQuality.debug).toBe(true);
     expect(dataQuality.dashboardAttention).toBe(false);
-    expect(dataQuality.vehicleHealth).toBe(false);
+    expect(dataQuality.fleetCommand).toBe(false);
     expect(systemDebug.debug).toBe(true);
     expect(systemDebug.dashboardAttention).toBe(false);
   });
@@ -133,6 +135,98 @@ describe('operational issue source priority', () => {
       { sourceType: 'runtime', debugLabel: 'vehicle-runtime' },
     ]);
     expect(primary.sourceType).toBe('runtime');
+  });
+});
+
+describe('operational issue taxonomy', () => {
+  it('documents the single-source contract', () => {
+    expect(OPERATIONAL_ISSUE_SINGLE_SOURCE_CONTRACT).toBe(
+      'OperationalIssue is the single source of truth for platform-wide operational messages.',
+    );
+  });
+
+  it('maps tire monitor to warning across normalization', () => {
+    const issues = normalizeOperationalIssues({
+      vehicleRuntimeStates: [
+        runtimeState({
+          vehicleId: 'v1',
+          warningReasons: [
+            reason({
+              id: 'tire-monitor',
+              category: 'tires',
+              severity: 'warning',
+              title: 'Reifen beobachten',
+              source: 'rental-health:tires',
+              blocking: false,
+            }),
+          ],
+        }),
+      ],
+      vehicleHealthAlerts: [
+        {
+          vehicleId: 'v1',
+          modules: [
+            {
+              module: 'tires',
+              severity: 'warning',
+              reason: 'Reifen beobachten',
+            },
+          ],
+        },
+      ],
+    });
+
+    const tireIssue = issues.find((issue) => issue.issueType === 'tire_monitor');
+    expect(tireIssue?.severity).toBe('warning');
+    expect(tireIssue?.visibility.dashboardAttention).toBe(true);
+  });
+
+  it('downgrades HM/OEM no-tracking to data-quality info without dashboard attention', () => {
+    const issues = normalizeOperationalIssues({
+      vehicleHealthAlerts: [
+        {
+          vehicleId: 'v1',
+          modules: [
+            {
+              module: 'service_compliance',
+              severity: 'warning',
+              reason: 'Kein HM/OEM Service-Tracking verfuegbar',
+            },
+          ],
+        },
+      ],
+    });
+
+    const [issue] = issues;
+    expect(issue.issueType).toBe('hm_oem_service_tracking_missing');
+    expect(issue.domain).toBe('data_quality');
+    expect(issue.severity).toBe('info');
+    expect(issue.visibility.dashboardAttention).toBe(false);
+    expect(issue.visibility.vehicleHealth).toBe(true);
+  });
+
+  it('keeps telemetry offline critical and soft offline as notice', () => {
+    const offline = normalizeOperationalIssues({
+      vehicleRuntimeStates: [
+        runtimeState({
+          vehicleId: 'v1',
+          telemetryState: 'offline',
+        }),
+      ],
+    });
+    const soft = normalizeOperationalIssues({
+      vehicleRuntimeStates: [
+        runtimeState({
+          vehicleId: 'v2',
+          telemetryState: 'soft_offline',
+        }),
+      ],
+    });
+
+    expect(offline[0]?.issueType).toBe('telemetry_offline');
+    expect(offline[0]?.severity).toBe('critical');
+    expect(soft[0]?.issueType).toBe('telemetry_soft_offline');
+    expect(soft[0]?.severity).toBe('attention');
   });
 });
 

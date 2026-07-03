@@ -3,4 +3,5 @@ export * from './operationalIssueKeys';
 export * from './operationalIssueLabels';
 export * from './operationalIssueSources';
 export * from './operationalIssueVisibility';
+export * from './operationalIssueTaxonomy';
 export * from './normalizeOperationalIssues';

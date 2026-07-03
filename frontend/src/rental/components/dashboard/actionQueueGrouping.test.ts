@@ -273,7 +273,7 @@ describe('groupActionQueueEntries', () => {
     expect(group.children.map((c) => c.severity)).toEqual([
       'critical',
       'overdue',
-      'attention',
+      'warning',
     ]);
   });
 

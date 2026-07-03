@@ -10,6 +10,7 @@ import {
   formatVehicleIssueEntityLabel,
   normalizeOperationalIssues,
   sanitizeUserFacingIssueText,
+  shouldShowInDashboardAttention,
   type OperationalIssue,
   type OperationalIssueDomain,
   type OperationalIssueSeverity,
@@ -363,7 +364,7 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
         dashboardInsights: input.insights,
         predictiveInsights: input.predictiveInsights,
         vehiclesById: input.fleetById,
-      }).filter((issue) => issue.visibility.dashboardAttention && issue.domain !== 'finance');
+      }).filter((issue) => shouldShowInDashboardAttention(issue));
 
   const items: ActionQueueItem[] = normalizedIssues.map((issue) =>
     mapOperationalIssueToActionQueueItem(issue, input),

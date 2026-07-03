@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operational-issue-taxonomy-v49151-2026-07-03',
+    version: '4.9.151',
+    title: 'V4.9.151 — Operative Meldungen: kanonische Severity-Taxonomie (Frontend)',
+    summary: [
+      'Neue zentrale Taxonomie unter `operational-issues/operationalIssueTaxonomy.ts` — OperationalIssue als Single Source of Truth.',
+      'Reifen beobachten / tire_monitor einheitlich `warning` (nicht mehr Notice in Notifications vs. Warning in Fleet/Health).',
+      'HM/OEM Service-Tracking fehlt → `data_quality` / `info`, nicht als Act-Now-Meldung in Dashboard Attention.',
+      'Finance-Tab aus Dashboard ActionQueue entfernt; Finanz-Themen bleiben in Business Pulse / Invoices.',
+      'Fleet Command, Fleet Health, Vehicle Detail und Rental-Health-Reasons nutzen dieselben Taxonomie-Helper.',
+    ],
+    reason:
+      'Dashboard Notifications, Fleet Command und Vehicle Health zeigten dieselben Themen mit widersprüchlichen Severity-Labels.',
+    previousBehavior:
+      'tire_monitor als `attention`/Notice in ActionQueue, aber Warning in Fleet/Health; HM/OEM No-Tracking wirkte wie operative Warnung; leerer Finance-Filter-Tab.',
+    details:
+      'operationalIssueTaxonomy.ts, normalizeOperationalIssues.ts, operationalIssueVisibility.ts, rental-health-ui.ts, fleet-health-control-center.ts, fleetVehicleDisplay.ts, ActionQueue.tsx, actionQueueBuilder.ts, dashboardAttentionBuilder.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-03T06:00:00.000Z',
+  },
+  {
     id: 'remove-insights-overnight-window-v49149-2026-07-03',
     version: '4.9.149',
     title: 'V4.9.149 — Business Insights: Nachtmodus (23–06 UTC) entfernt',
