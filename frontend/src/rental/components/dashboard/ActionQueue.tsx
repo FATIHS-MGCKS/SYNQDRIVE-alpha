@@ -25,13 +25,14 @@ import {
   ACTION_QUEUE_LIST_CAP,
   panelShellClass,
 } from './dashboardShell';
-import type {
-  ActionQueueChildAction,
-  ActionQueueCta,
-  ActionQueueFilterTab,
-  ActionQueueGroupItem,
-  ActionQueueItem,
-  DashboardViewModel,
+import {
+  ACTION_QUEUE_FILTER_TABS,
+  type ActionQueueChildAction,
+  type ActionQueueCta,
+  type ActionQueueFilterTab,
+  type ActionQueueGroupItem,
+  type ActionQueueItem,
+  type DashboardViewModel,
 } from './dashboardTypes';
 
 interface ActionQueueHandlers {
@@ -46,14 +47,6 @@ interface ActionQueueProps {
   onOpenBookingById?: (bookingId: string) => void;
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
 }
-
-const FILTER_TABS: ActionQueueFilterTab[] = [
-  'all',
-  'critical',
-  'operations',
-  'vehicle',
-  'notifications',
-];
 
 const STANDARD_VISIBLE_ITEMS = 8;
 const COLLAPSED_PREVIEW_COUNT = 3;
@@ -74,7 +67,6 @@ function tabLabel(tab: ActionQueueFilterTab, de: boolean): string {
     critical: ['Critical', 'Kritisch'],
     operations: ['Operations', 'Betrieb'],
     vehicle: ['Vehicle', 'Fahrzeug'],
-    financial: ['Financial', 'Finanzen'],
     notifications: ['Notifications', 'Hinweise'],
   };
   return de ? labels[tab][1] : labels[tab][0];
@@ -569,7 +561,7 @@ export function ActionQueue({
               role="tablist"
               aria-label={de ? 'Filter' : 'Filter'}
             >
-              {FILTER_TABS.map((tab) => (
+              {ACTION_QUEUE_FILTER_TABS.map((tab) => (
                 <button
                   key={tab}
                   type="button"

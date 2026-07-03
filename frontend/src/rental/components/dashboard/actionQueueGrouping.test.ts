@@ -5,7 +5,7 @@ import {
   filterActionQueueEntries,
   groupActionQueueEntries,
 } from './actionQueueGrouping';
-import type { ActionQueueGroupItem, ActionQueueItem } from './dashboardTypes';
+import { ACTION_QUEUE_FILTER_TABS, type ActionQueueGroupItem, type ActionQueueItem } from './dashboardTypes';
 import type { DashboardInsight, VehicleHealthAlert } from '../../DashboardInsightsContext';
 import type { VehicleData } from '../../data/vehicles';
 import type { PredictiveOperationsInsight } from './derivePredictiveOperationsInsights';
@@ -287,6 +287,19 @@ describe('groupActionQueueEntries', () => {
   });
 });
 
+describe('ACTION_QUEUE_FILTER_TABS', () => {
+  it('does not include a financial tab while finance is excluded from the queue', () => {
+    expect(ACTION_QUEUE_FILTER_TABS).toEqual([
+      'all',
+      'critical',
+      'operations',
+      'vehicle',
+      'notifications',
+    ]);
+    expect(ACTION_QUEUE_FILTER_TABS).not.toContain('financial');
+  });
+});
+
 describe('filterActionQueueEntries', () => {
   it('keeps a group in the critical filter when a child is critical or overdue', () => {
     const entries = groupActionQueueEntries(buildHealthOnly(), 'en');
@@ -298,7 +311,6 @@ describe('filterActionQueueEntries', () => {
   it('keeps health groups under the vehicle filter', () => {
     const entries = groupActionQueueEntries(buildHealthOnly(), 'en');
     expect(filterActionQueueEntries(entries, 'vehicle')).toHaveLength(1);
-    expect(filterActionQueueEntries(entries, 'financial')).toHaveLength(0);
   });
 });
 

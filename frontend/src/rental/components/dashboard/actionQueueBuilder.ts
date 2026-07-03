@@ -640,7 +640,6 @@ export function filterActionQueue(
   if (tab === 'vehicle') {
     return items.filter((i) => i.category === 'vehicle' || i.category === 'health');
   }
-  if (tab === 'financial') return items.filter((i) => i.category === 'financial');
   return items.filter((i) => i.category === 'notification');
 }
 
