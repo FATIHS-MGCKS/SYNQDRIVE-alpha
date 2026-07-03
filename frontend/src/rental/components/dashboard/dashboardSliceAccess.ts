@@ -28,12 +28,11 @@ export function resolveReadyForRentingKpiCounts(slice: DashboardSlice): ReadyFor
     return { readyCount: slice.count, availableCount: 0, notReadyCount: 0 };
   }
 
-  const readyGroupCount = slice.groups?.find((group) => group.id === 'ready-now')?.count ?? slice.rows.length;
-  const notReadyCount =
-    slice.groups?.find((group) => group.id === 'available-but-not-ready')?.count ??
-    slice.secondaryRows?.length ??
-    0;
   const readyCount = slice.count ?? slice.rows.length;
+  const readyGroupCount =
+    slice.groups?.find((group) => group.id === 'ready-now')?.count ?? readyCount;
+  const notReadyCount =
+    slice.groups?.find((group) => group.id === 'available-but-not-ready')?.count ?? 0;
 
   return {
     readyCount,

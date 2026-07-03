@@ -111,18 +111,17 @@ function formatKpiCount(value: number | null, disabled: boolean): string {
 interface ReadyForRentingKpiContentProps {
   slice: DashboardSlice;
   disabled: boolean;
-  embedded: boolean;
   locale?: string;
 }
 
-function ReadyForRentingKpiContent({ slice, disabled, embedded, locale }: ReadyForRentingKpiContentProps) {
+function ReadyForRentingKpiContent({ slice, disabled, locale }: ReadyForRentingKpiContentProps) {
   const labels = readyKpiLabels(locale);
   const { readyCount, availableCount, notReadyCount } = resolveReadyForRentingKpiCounts(slice);
   const { isSuccess } = kpiVisualState(slice);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex shrink-0 items-start justify-between gap-2">
         <p className="min-w-0 truncate text-[10.5px] font-medium tracking-[-0.01em] text-muted-foreground">
           {slice.title}
         </p>
@@ -136,11 +135,10 @@ function ReadyForRentingKpiContent({ slice, disabled, embedded, locale }: ReadyF
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col items-center justify-center px-1 py-2 text-center">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-1 pt-2 pb-1 text-center">
         <p
           className={cn(
-            'font-bold tabular-nums leading-none tracking-[-0.04em]',
-            embedded ? 'text-[48px]' : 'text-[44px]',
+            'text-[42px] font-semibold tabular-nums leading-none tracking-[-0.03em] sm:text-[44px]',
             disabled && 'text-muted-foreground',
             !disabled && isSuccess && 'text-[color:var(--status-positive)]',
             !disabled && !isSuccess && 'text-foreground',
@@ -148,29 +146,32 @@ function ReadyForRentingKpiContent({ slice, disabled, embedded, locale }: ReadyF
         >
           {formatKpiCount(readyCount, disabled)}
         </p>
-        <p className="mt-1.5 text-[13px] leading-tight text-muted-foreground">{labels.vehiclesReady}</p>
+        <p className="mt-2 text-[14px] font-medium leading-tight text-muted-foreground">{labels.vehiclesReady}</p>
       </div>
 
       <div
-        className="border-t border-[color:var(--status-positive)]/15"
+        className="mx-1.5 shrink-0 border-t border-[color:var(--status-positive)]/15"
         role="separator"
         aria-hidden
       />
 
-      <div className="mt-2.5 grid grid-cols-[1fr_auto_1fr] items-end gap-x-2">
+      <div className="relative mt-2.5 grid shrink-0 grid-cols-2 items-end">
         <div className="min-w-0 text-center">
-          <p className="text-[11px] font-medium leading-tight text-muted-foreground">{labels.available}</p>
-          <p className="mt-0.5 text-[22px] font-semibold tabular-nums leading-none tracking-[-0.02em] text-foreground">
+          <p className="text-[13px] font-medium leading-tight text-muted-foreground">{labels.available}</p>
+          <p className="mt-0.5 text-[26px] font-semibold tabular-nums leading-none tracking-[-0.02em] text-foreground">
             {formatKpiCount(availableCount, disabled)}
           </p>
         </div>
-        <div className="h-8 w-px self-center bg-border/35" aria-hidden />
         <div className="min-w-0 text-center">
-          <p className="text-[11px] font-medium leading-tight text-muted-foreground">{labels.notReady}</p>
-          <p className="mt-0.5 text-[22px] font-semibold tabular-nums leading-none tracking-[-0.02em] text-foreground">
+          <p className="text-[13px] font-medium leading-tight text-muted-foreground">{labels.notReady}</p>
+          <p className="mt-0.5 text-[26px] font-semibold tabular-nums leading-none tracking-[-0.02em] text-foreground">
             {formatKpiCount(notReadyCount, disabled)}
           </p>
         </div>
+        <div
+          className="pointer-events-none absolute left-1/2 top-1/2 h-9 w-px -translate-x-1/2 -translate-y-1/2 bg-border/35"
+          aria-hidden
+        />
       </div>
     </div>
   );
@@ -234,7 +235,7 @@ export function ControlKpiStrip({
             aria-pressed={isActive}
           >
             {isReadyCard ? (
-              <ReadyForRentingKpiContent slice={slice} disabled={disabled} embedded={embedded} locale={locale} />
+              <ReadyForRentingKpiContent slice={slice} disabled={disabled} locale={locale} />
             ) : (
               <div className="flex h-full items-start justify-between gap-2">
                 <div className="min-w-0">

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'ready-kpi-card-layout-v49171-2026-07-03',
+    version: '4.9.171',
+    title: 'V4.9.171 — Dashboard Ready-for-Renting KPI Card: finale Typo & Symmetrie',
+    summary: [
+      'Ready Card: Hauptzahl text-[42px]/sm:44px font-semibold, Label 14px, Footer-Labels 13px, Footer-Werte 26px.',
+      'Body (Zahl + „vehicles ready“) vertikal zentriert zwischen Header und Separator; Footer grid-cols-2 mit mittigem Divider.',
+      'Counts weiter aus runtime slice groups via resolveReadyForRentingKpiCounts (defensive Fallbacks).',
+      'Keine Änderung an anderen KPI Cards, Backend oder Statuslogik.',
+    ],
+    reason:
+      'Ready-for-Renting Box wirkte typografisch zu groß und nicht symmetrisch ausbalanciert im KPI-Raster.',
+    previousBehavior:
+      'Hauptzahl bis 48px bold, Footer 22px, Body nicht optimal zentriert.',
+    details:
+      'ControlKpiStrip.tsx (ReadyForRentingKpiContent), dashboardSliceAccess.ts (Fallback readyGroupCount).',
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-07-03T23:30:00.000Z',
+  },
+  {
     id: 'dark-theme-final-audit-v49170-2026-07-03',
     version: '4.9.170',
     title: 'V4.9.170 — Dark Theme Final Audit: letzte blue/slate Reste auf Hauptseiten',
