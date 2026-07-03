@@ -14,6 +14,7 @@ import {
   StatusChip,
   Timeline,
 } from '../../../../components/patterns';
+import { Button } from '../../../../components/ui/button';
 import type { LegalDocumentDto, TenantOrganizationProfileDto } from '../../../../lib/api';
 import type { ActivityLogRow } from './useCompanyCenter';
 import {
@@ -41,10 +42,7 @@ interface SectionProps {
 
 export function CompanyBasisSection({ editing, draft, onChange }: SectionProps) {
   return (
-    <DataCard
-      title="Basisdaten"
-      description="Identität und Lokalisierung Ihres Unternehmens im Mandanten."
-    >
+    <DataCard title="Basisdaten" description="Identität und Lokalisierung im Mandanten.">
       <CompanyFieldGrid>
         <div className="md:col-span-2">
           <CompanyField
@@ -105,7 +103,7 @@ export function CompanyBasisSection({ editing, draft, onChange }: SectionProps) 
 
 export function CompanyContactSection({ editing, draft, onChange }: SectionProps) {
   return (
-    <DataCard title="Adresse & Kontakt" description="Erreichbarkeit und Standort für Kunden und Dokumente.">
+    <DataCard title="Adresse & Kontakt" description="Erreichbarkeit und Standort.">
       <CompanyFieldGrid>
         <div className="md:col-span-2">
           <CompanyField
@@ -178,10 +176,7 @@ export function CompanyContactSection({ editing, draft, onChange }: SectionProps
 
 export function CompanyTaxSection({ editing, draft, onChange }: SectionProps) {
   return (
-    <DataCard
-      title="Steuer & Rechnung"
-      description="Steuerliche Angaben und Einstellungen für Ausgangsrechnungen."
-    >
+    <DataCard title="Steuer & Rechnung" description="Steuerliche Angaben für Ausgangsrechnungen.">
       <CompanyCriticalNotice>
         Änderungen an Rechnungspräfix und nächster Rechnungsnummer wirken sich auf{' '}
         <strong className="font-semibold text-foreground">künftige</strong> Rechnungen aus.
@@ -310,8 +305,8 @@ export function CompanyBrandingSection({
   };
 
   return (
-    <div className="space-y-4">
-      <DataCard title="Branding" description="Logo und Erscheinungsbild auf Dokumenten und in der App.">
+    <div className="space-y-3">
+      <DataCard title="Branding" description="Logo und Erscheinungsbild.">
         <input
           ref={fileRef}
           type="file"
@@ -324,7 +319,7 @@ export function CompanyBrandingSection({
           }}
         />
         <div
-          className={`border-2 border-dashed rounded-2xl p-6 text-center transition-colors ${
+          className={`rounded-xl border border-dashed p-4 text-center transition-colors ${
             dragOver ? 'border-[var(--brand)] bg-[var(--brand-soft)]/30' : 'border-border/70 bg-muted/20'
           }`}
           onDragOver={(e) => {
@@ -340,7 +335,7 @@ export function CompanyBrandingSection({
             if (f) void handleFile(f);
           }}
         >
-          <div className="w-20 h-20 mx-auto mb-3 rounded-2xl bg-muted flex items-center justify-center overflow-hidden">
+          <div className="mx-auto mb-2 flex h-16 w-16 items-center justify-center overflow-hidden rounded-xl bg-muted">
             {logoUrl && !logoBroken ? (
               <img
                 src={logoUrl}
@@ -352,43 +347,41 @@ export function CompanyBrandingSection({
               <ImageIcon className="w-6 h-6 text-muted-foreground" />
             )}
           </div>
-          <p className="text-xs font-semibold text-foreground">
+          <p className="text-xs font-medium text-foreground">
             {logoUrl ? 'Logo ersetzen' : 'Logo hochladen'}
           </p>
-          <p className="text-[11px] text-muted-foreground mt-1">
-            PNG, JPG oder WebP · maximal 2 MB
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            PNG, JPG oder WebP · max. 2 MB
           </p>
           {canEdit && (
-            <div className="flex flex-wrap justify-center gap-2 mt-3">
-              <button
+            <div className="mt-2.5 flex flex-wrap justify-center gap-1.5">
+              <Button
                 type="button"
+                variant="outline"
+                size="sm"
                 disabled={logoUploading}
                 onClick={() => fileRef.current?.click()}
-                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-[var(--brand)] text-[var(--brand-foreground)] disabled:opacity-50"
               >
-                {logoUploading ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Upload className="w-3.5 h-3.5" />
-                )}
+                {logoUploading ? <Loader2 className="animate-spin" /> : <Upload />}
                 Datei wählen
-              </button>
+              </Button>
               {logoUrl && (
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
                   disabled={logoUploading}
                   onClick={() => void onRemoveLogo()}
-                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 />
                   Entfernen
-                </button>
+                </Button>
               )}
             </div>
           )}
         </div>
 
-        <div className="mt-4 space-y-3">
+        <div className="mt-3 space-y-3">
           <CompanyField
             label="Akzentfarbe"
             value={draft.accentColor}
@@ -415,11 +408,11 @@ export function CompanyBrandingSection({
         </div>
       </DataCard>
 
-      <div className="sq-card rounded-2xl p-4 border border-border/60">
-        <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+      <div className="sq-card border border-border/60 p-3.5">
+        <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           Vorschau auf Dokumenten
         </p>
-        <div className="rounded-xl border border-border/60 bg-card p-4 space-y-3">
+        <div className="space-y-2 rounded-lg border border-border/60 bg-card p-3">
           <div className="flex items-center gap-3">
             {logoUrl && !logoBroken ? (
               <img src={logoUrl} alt="" className="h-8 max-w-[120px] object-contain" />
@@ -481,26 +474,22 @@ export function CompanyDocumentsSection({
   return (
     <DataCard
       title="Dokumentenstatus"
-      description="Übersicht — Verwaltung erfolgt im Bereich Rechtliche Dokumente."
+      description="Übersicht — Verwaltung unter Rechtliche Dokumente."
       actions={
-        <button
-          type="button"
-          onClick={onManageDocuments}
-          className="inline-flex items-center gap-1 text-[11px] font-semibold text-[var(--brand)] hover:underline"
-        >
+        <Button type="button" variant="outline" size="sm" onClick={onManageDocuments}>
           Dokumente verwalten
-          <ExternalLink className="w-3 h-3" />
-        </button>
+          <ExternalLink />
+        </Button>
       }
     >
       {loading ? (
         <p className="text-xs text-muted-foreground py-4 text-center">Dokumente werden geladen…</p>
       ) : (
-        <div className="space-y-2">
+        <div className="divide-y divide-border/60 rounded-lg border border-border/60">
           {rows.map((row) => (
             <div
               key={row.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-xl border border-border/60"
+              className="flex flex-col justify-between gap-2 px-3 py-2.5 sm:flex-row sm:items-center"
             >
               <div>
                 <p className="text-xs font-medium text-foreground">{row.label}</p>
@@ -511,9 +500,8 @@ export function CompanyDocumentsSection({
           ))}
         </div>
       )}
-      <p className="text-[10px] text-muted-foreground mt-3">
-        Datenschutz und Telematik-Einwilligung werden hier angezeigt, sobald die Anbindung im
-        Dokumentenmodul verfügbar ist.
+      <p className="mt-2.5 text-[11px] text-muted-foreground">
+        Datenschutz und Telematik-Einwilligung erscheinen nach Anbindung im Dokumentenmodul.
       </p>
     </DataCard>
   );
@@ -539,7 +527,7 @@ export function CompanyHistorySection({ activity, loading }: HistoryProps) {
   }
 
   return (
-    <DataCard title="Änderungsverlauf" description="Letzte Änderungen an den Unternehmensdaten.">
+    <DataCard title="Änderungsverlauf" description="Letzte Änderungen an Unternehmensdaten.">
       <Timeline
         items={activity.map((a) => ({
           id: a.id,

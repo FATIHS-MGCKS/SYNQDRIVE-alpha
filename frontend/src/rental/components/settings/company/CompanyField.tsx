@@ -35,8 +35,8 @@ export function CompanyField({
 
   if (!editing) {
     return (
-      <div className="py-2.5 border-b border-border/40 last:border-0">
-        <dt className="text-[11px] font-semibold text-muted-foreground mb-1">
+      <div className="border-b border-border/40 py-2 last:border-0">
+        <dt className="mb-0.5 text-[11px] font-medium text-muted-foreground">
           {label}
           {required && <span className="text-[color:var(--status-warning)] ml-0.5">*</span>}
         </dt>
@@ -117,7 +117,7 @@ export function CompanyFieldGrid({ children }: { children: ReactNode }) {
 
 export function CompanyCriticalNotice({ children }: { children: ReactNode }) {
   return (
-    <div className="mb-4 p-3 rounded-xl border border-[color:var(--status-warning-soft)] bg-[color:var(--status-warning-soft)]/25 text-[11px] text-muted-foreground">
+    <div className="mb-3 rounded-lg border border-[color:var(--status-warning-soft)] bg-[color:var(--status-warning-soft)]/25 p-2.5 text-[11px] text-muted-foreground">
       {children}
     </div>
   );

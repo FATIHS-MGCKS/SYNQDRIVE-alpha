@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'company-information-ui-v49161-2026-07-03',
+    version: '4.9.161',
+    title: 'V4.9.161 — Unternehmensinformationen: Clean SaaS UI-Refactor',
+    summary: [
+      'Interne Section-Tabs (Basisdaten … Änderungsverlauf) nutzen sq-tab-bar wie Vehicle Detail, Fleet und Administration.',
+      'Header-Actions (Bearbeiten, Speichern, Abbrechen) und Logo-/Dokumenten-Buttons auf einheitliche SynqDrive Button-Komponenten.',
+      'Einrichtungsstatus als kompakte Checklist-Rows statt großer wiederholter Cards.',
+      'Sections dichter: einheitliche DataCard-Header, kürzere Beschreibungen, kompaktere Dokumentenliste und Branding-Upload.',
+    ],
+    reason:
+      'Administration → Unternehmensinformationen soll visuell zur neuen Clean SaaS UI passen — ohne Fachlogik-Änderungen.',
+    previousBehavior:
+      'Brand-gefüllte Pill-Tabs, eigene Button-Styles, großer Einrichtungsstatus-Bereich.',
+    details:
+      'CompanySectionTabBar.tsx (neu), CompanyInformationTab, CompanySetupChecklist, CompanySections, CompanyField.',
+    affectsArchitecture: false,
+    module: 'Master Admin',
+    createdAt: '2026-07-03T14:00:00.000Z',
+  },
+  {
     id: 'remove-insights-overnight-window-v49149-2026-07-03',
     version: '4.9.149',
     title: 'V4.9.149 — Business Insights: Nachtmodus (23–06 UTC) entfernt',
