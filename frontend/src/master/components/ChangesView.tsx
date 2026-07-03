@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'backend-totp-2fa-mvp-v49159-2026-07-03',
+    version: '4.9.159',
+    title: 'V4.9.159 — Backend TOTP 2FA MVP (Setup, Login Challenge, Recovery Codes)',
+    summary: [
+      'Prisma: UserTwoFactorCredential, UserRecoveryCode, UserMfaLoginChallenge.',
+      'Account: POST /account/me/2fa/totp/setup|verify|disable, recovery-codes/regenerate.',
+      'Auth: Login mit aktivierter 2FA liefert mfaChallengeToken; POST /auth/2fa/verify gibt Tokens.',
+      'TOTP-Secrets AES-256-GCM verschlüsselt (TOTP_ENCRYPTION_KEY); Recovery Codes nur gehasht.',
+      'Audit-Events für Setup, Enable, Disable, Recovery-Nutzung, fehlgeschlagene MFA-Versuche.',
+    ],
+    reason:
+      'Echtes 2FA per Authenticator-App — sicherheitskritischer Auth-Ausbau ohne Fake-Placeholder.',
+    previousBehavior:
+      'twoFactorAvailable/enabled hardcoded false; Login gab immer direkt Tokens aus.',
+    details:
+      'account/two-factor/*, auth/mfa-login.service.ts, prisma migration add-user-totp-2fa, api.ts types.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-03T11:00:00.000Z',
+  },
+  {
     id: 'account-security-sessions-v49158-2026-07-03',
     version: '4.9.158',
     title: 'V4.9.158 — Kontoinformationen Sicherheit & Sitzungen: UX + Passwortpolicy',

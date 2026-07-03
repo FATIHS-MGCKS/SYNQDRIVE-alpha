@@ -86,7 +86,12 @@ describe('AccountService', () => {
     revokeSessionById: jest.fn().mockResolvedValue(true),
   } as unknown as RefreshTokenService;
 
-  const service = new AccountService(prisma, audit, refreshTokens);
+  const twoFactor = {
+    isEnabled: jest.fn().mockResolvedValue(false),
+    isAvailable: jest.fn().mockReturnValue(true),
+  } as unknown as import('./two-factor/account-two-factor.service').AccountTwoFactorService;
+
+  const service = new AccountService(prisma, audit, refreshTokens, twoFactor);
 
   function mockContext() {
     (prisma.user.findUnique as jest.Mock).mockResolvedValue(baseUser);
@@ -123,9 +128,19 @@ describe('AccountService', () => {
     expect(result.membership.role).toBe('ORG_ADMIN');
     expect(result.preferences.language).toBe('de');
     expect(result.notifications.length).toBeGreaterThan(0);
-    expect(result.security.twoFactorAvailable).toBe(false);
+    expect(result.security.twoFactorAvailable).toBe(true);
+    expect(result.security.twoFactorEnabled).toBe(false);
     expect(result.security.passkeysAvailable).toBe(false);
     expect(result.accountHealth.score).toBeGreaterThanOrEqual(0);
+  });
+
+  it('GET /account/me reflects enabled 2FA status', async () => {
+    (twoFactor.isEnabled as jest.Mock).mockResolvedValue(true);
+
+    const result = await service.getMe(userId, orgId);
+
+    expect(result.security.twoFactorEnabled).toBe(true);
+    expect(result.security.twoFactorAvailable).toBe(true);
   });
 
   it('updates own profile fields', async () => {

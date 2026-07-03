@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength, MaxLength, IsOptional } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class LoginDto {
   @IsEmail({}, { message: 'A valid email address is required' })
@@ -19,6 +19,20 @@ export class LogoutDto {
   @IsOptional()
   @IsString()
   refreshToken?: string;
+}
+
+export class VerifyMfaLoginDto {
+  @IsString()
+  @MinLength(1)
+  mfaChallengeToken!: string;
+
+  @IsOptional()
+  @IsString()
+  totpCode?: string;
+
+  @IsOptional()
+  @IsString()
+  recoveryCode?: string;
 }
 
 export class SeedAdminHeaderDto {

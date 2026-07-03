@@ -9,7 +9,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { join } from 'path';
 import Redis from 'ioredis';
 
-import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, aiConfig } from '@config/index';
+import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, aiConfig, securityConfig } from '@config/index';
 
 import { PrismaModule } from '@shared/database/prisma.module';
 import { RedisModule } from '@shared/redis/redis.module';
@@ -127,7 +127,7 @@ export class AppModule {
       imports: [
         ConfigModule.forRoot({
           isGlobal: true,
-          load: [appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, aiConfig],
+          load: [appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, aiConfig, securityConfig],
         }),
 
         // Global throttler: 200 requests per minute per IP (normal API usage)

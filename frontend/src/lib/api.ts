@@ -1744,7 +1744,32 @@ export interface AccountMeDto {
   };
 }
 
-export interface AccountSessionDto {
+export interface AuthLoginSuccessResponse {
+  token: string;
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: string;
+  mustChangePassword: boolean;
+  user: Record<string, unknown>;
+}
+
+export interface AuthLoginMfaChallengeResponse {
+  mfaRequired: true;
+  mfaChallengeToken: string;
+  expiresIn: number;
+}
+
+export type AuthLoginResponse = AuthLoginSuccessResponse | AuthLoginMfaChallengeResponse;
+
+export interface TotpSetupResponse {
+  otpauthUrl: string;
+  secretPreview: string;
+}
+
+export interface TotpVerifyResponse {
+  enabled: true;
+  recoveryCodes: string[];
+}
   id: string;
   current: boolean;
   userAgent: string | null;
@@ -2001,7 +2026,12 @@ function billingTenantQuery(orgId?: string, params?: Record<string, string>): st
 export const api = {
   auth: {
     login: (email: string, password: string) =>
-      post<{ token: string; user: any }>('/auth/login', { email, password }),
+      post<AuthLoginResponse>('/auth/login', { email, password }),
+    verifyMfa: (payload: {
+      mfaChallengeToken: string;
+      totpCode?: string;
+      recoveryCode?: string;
+    }) => post<AuthLoginSuccessResponse>('/auth/2fa/verify', payload),
     me: () => get<any>('/auth/me'),
     seedAdmin: () => post<any>('/auth/seed-admin', {}),
   },
@@ -2075,6 +2105,13 @@ export const api = {
       ),
     revokeSession: (sessionId: string) =>
       post<{ revoked: boolean }>(`/account/me/sessions/${sessionId}/revoke`, {}),
+    setupTotp: () => post<TotpSetupResponse>('/account/me/2fa/totp/setup', {}),
+    verifyTotp: (payload: { code: string }) =>
+      post<TotpVerifyResponse>('/account/me/2fa/totp/verify', payload),
+    disableTotp: (payload: { currentPassword?: string; totpCode?: string }) =>
+      post<{ disabled: true }>('/account/me/2fa/totp/disable', payload),
+    regenerateRecoveryCodes: (payload: { totpCode: string }) =>
+      post<{ recoveryCodes: string[] }>('/account/me/2fa/recovery-codes/regenerate', payload),
   },
   admin: {
     dashboard: () => get<any>('/admin/dashboard'),

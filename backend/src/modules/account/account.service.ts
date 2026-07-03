@@ -18,6 +18,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '@shared/database/prisma.service';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
+import { AccountTwoFactorService } from './two-factor/account-two-factor.service';
 import {
   NOTIFICATION_CATEGORY_META,
   NOTIFICATION_CATEGORY_ORDER,
@@ -49,6 +50,7 @@ export class AccountService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly refreshTokens: RefreshTokenService,
+    private readonly twoFactor: AccountTwoFactorService,
   ) {}
 
   async getMe(userId: string, jwtOrgId: string | null): Promise<AccountMeDto> {
@@ -66,6 +68,10 @@ export class AccountService {
 
     const currentSessionId = this.refreshTokens.resolveCurrentSessionId(sessions);
     const notifications = this.mapNotifications(notificationRows);
+    const [twoFactorEnabled, twoFactorAvailable] = await Promise.all([
+      this.twoFactor.isEnabled(userId),
+      Promise.resolve(this.twoFactor.isAvailable()),
+    ]);
 
     return this.buildViewModel(
       user,
@@ -75,6 +81,8 @@ export class AccountService {
       stationCount,
       sessions,
       currentSessionId,
+      twoFactorEnabled,
+      twoFactorAvailable,
     );
   }
 
@@ -377,6 +385,45 @@ export class AccountService {
     return { revoked: true };
   }
 
+  async setupTotp(
+    userId: string,
+    jwtOrgId: string | null,
+    auditCtx: { ip?: string; userAgent?: string; route?: string },
+  ) {
+    const { user } = await this.loadUserContext(userId, jwtOrgId);
+    return this.twoFactor.setupTotp(userId, user.email, auditCtx);
+  }
+
+  async verifyTotp(
+    userId: string,
+    jwtOrgId: string | null,
+    code: string,
+    auditCtx: { ip?: string; userAgent?: string; route?: string },
+  ) {
+    await this.loadUserContext(userId, jwtOrgId);
+    return this.twoFactor.verifyAndEnableTotp(userId, code, auditCtx);
+  }
+
+  async disableTotp(
+    userId: string,
+    jwtOrgId: string | null,
+    dto: { currentPassword?: string; totpCode?: string },
+    auditCtx: { ip?: string; userAgent?: string; route?: string },
+  ) {
+    await this.loadUserContext(userId, jwtOrgId);
+    return this.twoFactor.disableTotp(userId, dto, auditCtx);
+  }
+
+  async regenerateRecoveryCodes(
+    userId: string,
+    jwtOrgId: string | null,
+    totpCode: string,
+    auditCtx: { ip?: string; userAgent?: string; route?: string },
+  ) {
+    await this.loadUserContext(userId, jwtOrgId);
+    return this.twoFactor.regenerateRecoveryCodes(userId, totpCode, auditCtx);
+  }
+
   // ─── Private helpers ─────────────────────────────────────────────────────
 
   private async loadUserContext(
@@ -557,6 +604,8 @@ export class AccountService {
       createdAt: Date;
     }>,
     currentSessionId: string | null,
+    twoFactorEnabled: boolean,
+    twoFactorAvailable: boolean,
   ): AccountMeDto {
     const now = new Date();
     const activeSessions = sessions.filter(
@@ -580,6 +629,7 @@ export class AccountService {
       user,
       activeSessions.length,
       staleSessions.length,
+      twoFactorEnabled,
     );
 
     return {
@@ -627,8 +677,8 @@ export class AccountService {
       notifications,
       security: {
         hasPassword: Boolean(user.passwordHash),
-        twoFactorEnabled: false,
-        twoFactorAvailable: false,
+        twoFactorEnabled,
+        twoFactorAvailable,
         passkeysAvailable: false,
         lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
         lastLoginIp: user.lastLoginIp,
@@ -702,13 +752,17 @@ export class AccountService {
     user: User,
     activeSessionCount: number,
     longLivedSessionCount: number,
+    twoFactorEnabled: boolean,
   ) {
     const recommendations: string[] = [];
     let points = 0;
-    const max = 4;
+    const max = 5;
 
     if (user.passwordHash) points += 1;
     else recommendations.push('Passwort setzen');
+
+    if (twoFactorEnabled) points += 1;
+    else recommendations.push('Zwei-Faktor-Authentifizierung aktivieren');
 
     if (user.lastLoginAt) points += 1;
     else recommendations.push('Erste Anmeldung durchführen');
