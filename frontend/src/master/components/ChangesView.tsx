@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'account-information-ui-refactor-v49156-2026-07-03',
+    version: '4.9.156',
+    title: 'V4.9.156 — Kontoinformationen: kompaktes KPI-Layout & einheitliche Tabs',
+    summary: [
+      'Account Header Card kompakter: kleinerer Avatar, Outline-Button „Profil bearbeiten“.',
+      'Vier Summary-KPIs im Control-Center-Stil (`AccountSummaryKpiCard`) — 2-Spalten Mobile, 4 Desktop.',
+      'Account Section Tabs als `sq-tab-bar` wie Vehicle Detail / Fleet; zentrale `Button`-Komponente auf der Seite.',
+      'Profil-, Präferenzen- und Sicherheitsbereiche straffer; Radix `Switch` für Benachrichtigungen.',
+    ],
+    reason:
+      'Kontoinformationen wirkten visuell schwerer als die neue SynqDrive Clean SaaS UI-Linie.',
+    previousBehavior:
+      'Große sq-card KPIs mit viel Footer-Text, brand-farbene Pill-Tabs, dominanter Full-Width CTA, Custom-Button-Styles.',
+    details:
+      'AccountInformationTab.tsx, account/AccountHeaderCard.tsx, AccountSummaryKpiCard.tsx, AccountSectionTabBar.tsx, account-ui.ts, AccountHealthCard.tsx, AccountAccessCard.tsx, AccountSecurityCard.tsx, AccountProfileSection.tsx, AccountPreferencesSection.tsx, AccountNotificationsSection.tsx, AccountSessionsSection.tsx, ChangePasswordDialog.tsx.',
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-07-03T09:45:00.000Z',
+  },
+  {
     id: 'administration-tabbar-v49155-2026-07-03',
     version: '4.9.155',
     title: 'V4.9.155 — Administration: zentrale Tab-Navigation',

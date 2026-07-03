@@ -1,5 +1,7 @@
 import { Loader2, X } from 'lucide-react';
 import { useState } from 'react';
+import { Button } from '../../../../components/ui/button';
+import { accountFieldLabelClass, accountInputClass } from './account-ui';
 
 interface ChangePasswordDialogProps {
   open: boolean;
@@ -63,9 +65,6 @@ export function ChangePasswordDialog({ open, saving, onClose, onSubmit }: Change
     }
   };
 
-  const inputClass =
-    'w-full px-3 py-2.5 rounded-xl border border-border/70 bg-card text-xs text-foreground outline-none focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]';
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
@@ -75,63 +74,59 @@ export function ChangePasswordDialog({ open, saving, onClose, onSubmit }: Change
         onClick={() => !saving && resetAndClose()}
       />
       <div
-        className="relative w-full max-w-md sq-card rounded-2xl shadow-[var(--shadow-3)] p-5 animate-fade-up"
+        className="relative w-full max-w-md animate-fade-up rounded-2xl sq-card p-5 shadow-[var(--shadow-3)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="change-password-title"
       >
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex items-center justify-between">
           <h3 id="change-password-title" className="text-sm font-semibold text-foreground">
             Passwort ändern
           </h3>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon"
             onClick={resetAndClose}
             disabled={saving}
-            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground"
+            aria-label="Schließen"
           >
-            <X className="w-4 h-4" />
-          </button>
+            <X />
+          </Button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="block text-[11px] font-semibold mb-1.5 text-muted-foreground">
-              Aktuelles Passwort
-            </label>
+            <label className={accountFieldLabelClass}>Aktuelles Passwort</label>
             <input
               type="password"
               autoComplete="current-password"
-              className={inputClass}
+              className={accountInputClass}
               value={form.currentPassword}
               onChange={(e) => setForm((f) => ({ ...f, currentPassword: e.target.value }))}
             />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold mb-1.5 text-muted-foreground">
-              Neues Passwort
-            </label>
+            <label className={accountFieldLabelClass}>Neues Passwort</label>
             <input
               type="password"
               autoComplete="new-password"
-              className={inputClass}
+              className={accountInputClass}
               value={form.newPassword}
               onChange={(e) => setForm((f) => ({ ...f, newPassword: e.target.value }))}
             />
           </div>
           <div>
-            <label className="block text-[11px] font-semibold mb-1.5 text-muted-foreground">
-              Neues Passwort bestätigen
-            </label>
+            <label className={accountFieldLabelClass}>Neues Passwort bestätigen</label>
             <input
               type="password"
               autoComplete="new-password"
-              className={inputClass}
+              className={accountInputClass}
               value={form.confirmPassword}
               onChange={(e) => setForm((f) => ({ ...f, confirmPassword: e.target.value }))}
             />
           </div>
-          <label className="flex items-center gap-2 text-[11px] text-muted-foreground cursor-pointer">
+          <label className="flex cursor-pointer items-center gap-2 text-[11px] text-muted-foreground">
             <input
               type="checkbox"
               checked={form.revokeOtherSessions}
@@ -140,26 +135,17 @@ export function ChangePasswordDialog({ open, saving, onClose, onSubmit }: Change
             />
             Alle anderen Sitzungen abmelden
           </label>
-          {localError && (
+          {localError ? (
             <p className="text-xs text-[color:var(--status-critical)]">{localError}</p>
-          )}
+          ) : null}
           <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={resetAndClose}
-              disabled={saving}
-              className="px-3 py-2 rounded-xl text-xs font-semibold text-muted-foreground hover:bg-muted"
-            >
+            <Button type="button" variant="ghost" size="sm" onClick={resetAndClose} disabled={saving}>
               Abbrechen
-            </button>
-            <button
-              type="submit"
-              disabled={saving}
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--brand)] text-[var(--brand-foreground)] disabled:opacity-50"
-            >
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            </Button>
+            <Button type="submit" size="sm" disabled={saving}>
+              {saving ? <Loader2 className="animate-spin" /> : null}
               Passwort aktualisieren
-            </button>
+            </Button>
           </div>
         </form>
       </div>

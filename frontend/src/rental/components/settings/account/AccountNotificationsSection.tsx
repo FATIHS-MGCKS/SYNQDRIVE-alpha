@@ -1,5 +1,7 @@
 import { Loader2 } from 'lucide-react';
 import { DataCard } from '../../../../components/patterns';
+import { Button } from '../../../../components/ui/button';
+import { Switch } from '../../../../components/ui/switch';
 import {
   applyNotificationPreset,
   canToggleNotificationChannel,
@@ -14,35 +16,6 @@ const PRESETS: Array<{ id: NotificationPresetId; label: string }> = [
   { id: 'operational', label: 'Operativer Mitarbeiter' },
   { id: 'quiet_except_security', label: 'Alles außer Security aus' },
 ];
-
-function Toggle({
-  checked,
-  disabled,
-  onChange,
-}: {
-  checked: boolean;
-  disabled?: boolean;
-  onChange: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      disabled={disabled}
-      onClick={onChange}
-      className={`relative w-9 h-5 rounded-full transition-colors shrink-0 disabled:opacity-40 ${
-        checked ? 'bg-[var(--brand)]' : 'bg-muted'
-      }`}
-    >
-      <span
-        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
-          checked ? 'translate-x-4' : 'translate-x-0.5'
-        }`}
-      />
-    </button>
-  );
-}
 
 interface AccountNotificationsSectionProps {
   draft: NotificationRow[];
@@ -82,69 +55,98 @@ export function AccountNotificationsSection({
 
   return (
     <div id="account-section-notifications">
-    <DataCard
-      title="Benachrichtigungen"
-      description="Kategorien und Kanäle — Security-Benachrichtigungen benötigen mindestens In-App oder E-Mail."
-      actions={
-        <div className="flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={onReset}
-            disabled={!dirty || saving}
-            className="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold text-muted-foreground hover:bg-muted disabled:opacity-40"
-          >
-            Zurücksetzen
-          </button>
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={!dirty || saving}
-            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-[var(--brand)] text-[var(--brand-foreground)] disabled:opacity-50"
-          >
-            {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
-            Speichern
-          </button>
+      <DataCard
+        title="Benachrichtigungen"
+        description="Kategorien und Kanäle — Security-Benachrichtigungen benötigen mindestens In-App oder E-Mail."
+        actions={
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onReset}
+              disabled={!dirty || saving}
+            >
+              Zurücksetzen
+            </Button>
+            <Button type="button" size="sm" onClick={onSave} disabled={!dirty || saving}>
+              {saving ? <Loader2 className="animate-spin" /> : null}
+              Speichern
+            </Button>
+          </div>
+        }
+      >
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          {PRESETS.map((preset) => (
+            <Button
+              key={preset.id}
+              type="button"
+              variant="outline"
+              size="sm"
+              className="!text-[10px]"
+              onClick={() => onDraftChange(applyNotificationPreset(draft, preset.id))}
+            >
+              {preset.label}
+            </Button>
+          ))}
         </div>
-      }
-    >
-      <div className="flex flex-wrap gap-2 mb-4">
-        {PRESETS.map((preset) => (
-          <button
-            key={preset.id}
-            type="button"
-            onClick={() => onDraftChange(applyNotificationPreset(draft, preset.id))}
-            className="px-2.5 py-1 rounded-lg text-[10px] font-semibold border border-border/60 hover:bg-muted transition-colors"
-          >
-            {preset.label}
-          </button>
-        ))}
-      </div>
 
-      {/* Desktop matrix */}
-      <div className="hidden lg:block overflow-x-auto">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="border-b border-border/60">
-              <th className="py-2 pr-4 text-[10px] font-semibold text-muted-foreground uppercase">
-                Kategorie
-              </th>
-              {NOTIFICATION_CHANNELS.map((ch) => (
-                <th
-                  key={ch.key}
-                  className="py-2 px-2 text-center text-[10px] font-semibold text-muted-foreground uppercase w-16"
-                >
-                  {ch.short}
+        <div className="hidden overflow-x-auto lg:block">
+          <table className="w-full border-collapse text-left">
+            <thead>
+              <tr className="border-b border-border/60">
+                <th className="py-2 pr-4 text-[10px] font-semibold uppercase text-muted-foreground">
+                  Kategorie
                 </th>
+                {NOTIFICATION_CHANNELS.map((ch) => (
+                  <th
+                    key={ch.key}
+                    className="w-16 px-2 py-2 text-center text-[10px] font-semibold uppercase text-muted-foreground"
+                  >
+                    {ch.short}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {draft.map((row) => (
+                <tr key={row.category} className="border-b border-border/40 hover:bg-muted/20">
+                  <td className="py-2.5 pr-4">
+                    <p className="text-xs font-medium text-foreground">{row.label}</p>
+                    <p className="mt-0.5 max-w-xs text-[10px] text-muted-foreground">{row.description}</p>
+                  </td>
+                  {NOTIFICATION_CHANNELS.map((ch) => {
+                    const key = ch.key;
+                    const val = row[key] as boolean;
+                    const disabled =
+                      row.category === 'SECURITY' &&
+                      (key === 'inApp' || key === 'email') &&
+                      !canToggleNotificationChannel(row.category, key, row, !val);
+                    return (
+                      <td key={key} className="px-2 py-2.5 text-center">
+                        <div className="flex justify-center">
+                          <Switch
+                            checked={val}
+                            disabled={disabled}
+                            onCheckedChange={() => updateRow(row.category, key, !val)}
+                            aria-label={`${row.label} ${ch.label}`}
+                          />
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {draft.map((row) => (
-              <tr key={row.category} className="border-b border-border/40 hover:bg-muted/20">
-                <td className="py-3 pr-4">
-                  <p className="text-xs font-medium text-foreground">{row.label}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5 max-w-xs">{row.description}</p>
-                </td>
+            </tbody>
+          </table>
+        </div>
+
+        <div className="space-y-2 lg:hidden">
+          {draft.map((row) => (
+            <div key={row.category} className="rounded-xl border border-border/60 bg-muted/20 p-3">
+              <p className="text-xs font-medium text-foreground">{row.label}</p>
+              <p className="mb-2.5 mt-0.5 text-[10px] text-muted-foreground">{row.description}</p>
+              <div className="space-y-2">
                 {NOTIFICATION_CHANNELS.map((ch) => {
                   const key = ch.key;
                   const val = row[key] as boolean;
@@ -153,53 +155,22 @@ export function AccountNotificationsSection({
                     (key === 'inApp' || key === 'email') &&
                     !canToggleNotificationChannel(row.category, key, row, !val);
                   return (
-                    <td key={key} className="py-3 px-2 text-center">
-                      <div className="flex justify-center">
-                        <Toggle
-                          checked={val}
-                          disabled={disabled}
-                          onChange={() => updateRow(row.category, key, !val)}
-                        />
-                      </div>
-                    </td>
+                    <div key={key} className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-muted-foreground">{ch.label}</span>
+                      <Switch
+                        checked={val}
+                        disabled={disabled}
+                        onCheckedChange={() => updateRow(row.category, key, !val)}
+                        aria-label={`${row.label} ${ch.label}`}
+                      />
+                    </div>
                   );
                 })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Mobile stacked cards */}
-      <div className="lg:hidden space-y-3">
-        {draft.map((row) => (
-          <div key={row.category} className="rounded-xl border border-border/60 p-3 bg-muted/20">
-            <p className="text-xs font-medium text-foreground">{row.label}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5 mb-3">{row.description}</p>
-            <div className="space-y-2">
-              {NOTIFICATION_CHANNELS.map((ch) => {
-                const key = ch.key;
-                const val = row[key] as boolean;
-                const disabled =
-                  row.category === 'SECURITY' &&
-                  (key === 'inApp' || key === 'email') &&
-                  !canToggleNotificationChannel(row.category, key, row, !val);
-                return (
-                  <div key={key} className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] text-muted-foreground">{ch.label}</span>
-                    <Toggle
-                      checked={val}
-                      disabled={disabled}
-                      onChange={() => updateRow(row.category, key, !val)}
-                    />
-                  </div>
-                );
-              })}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-    </DataCard>
+          ))}
+        </div>
+      </DataCard>
     </div>
   );
 }
