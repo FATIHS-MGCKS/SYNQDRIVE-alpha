@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'kpi-twin-typography-v49173-2026-07-03',
+    version: '4.9.173',
+    title: 'V4.9.173 — Dashboard KPI Twins: Typografie & Symmetrie (Ready + Today’s Operations)',
+    summary: [
+      'Ready for Renting + Today’s Operations: einheitliche Pixel-Typografie (Titel 14px, Hauptzahl 42px, Label 14px, Footer 13px/26px).',
+      'Footer-Labels mit whitespace-nowrap (Pickups today / Returns today einzeilig).',
+      'Separator my-3, Footer items-center; gemeinsame KPI-Twin-Klassen in ControlKpiStrip.',
+      'Keine Logik-/Runtime-Änderungen.',
+    ],
+    reason:
+      'KPI-Twin-Cards wirkten typografisch zu groß und Footer-Labels brachen auf Mobile um.',
+    previousBehavior:
+      'Titel 10.5px, Hauptzahl bis sm:44px, inkonsistente leading-tight/mt-0.5 Footer-Abstände.',
+    details: 'frontend/src/rental/components/dashboard/ControlKpiStrip.tsx',
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-07-04T01:00:00.000Z',
+  },
+  {
     id: 'todays-operations-kpi-v49172-2026-07-03',
     version: '4.9.172',
     title: "V4.9.172 — Dashboard KPI: Active rented → Today's Operations",
