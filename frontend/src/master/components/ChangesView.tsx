@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-legacy-business-cleanup-v49177-2026-07-03',
+    version: '4.9.177',
+    title: 'V4.9.177 — Dashboard: Legacy Business/Finance-Wahrheit aus aktivem Pfad entfernt',
+    summary: [
+      'Aktiver Dashboard-Pfad nutzt nur noch `runtime/businessPulseSliceBuilder.ts` → `buildBusinessPulseSlices` für Business Pulse.',
+      '`useDashboardViewModel`: entfernt `monthlyKpis`, `financeKpis`, `fmtMonthlyEUR` und Importe aus `businessPulseBuilder` / `dashboardUtils.buildFinanceKpis`.',
+      '`dashboardUtils`: `computeMonthlyKpis` und `buildFinanceKpis` entfernt — keine zweite Finanz-Wahrheit parallel zum Runtime-Slice.',
+      '`BusinessInsightsBox` wird im Dashboard nicht gerendert; `DashboardNotificationItem` in neutrale `dashboardNotificationTypes.ts` ausgelagert.',
+      '`businessPulseBuilder.ts` bleibt mit `@deprecated`-Hinweis (Referenz), wird nicht mehr vom aktiven ViewModel importiert.',
+    ],
+    reason:
+      'Mehrere Legacy-Builder liefen noch im ViewModel, obwohl die UI nur Runtime-Slices rendert — Risiko divergierender Zahlen zu Invoices/Notifications.',
+    previousBehavior:
+      '`useDashboardViewModel` berechnete parallel `monthlyKpis`/`financeKpis` aus `businessPulseBuilder`, während `BusinessPulse.tsx` bereits `businessPulseSlices` anzeigte.',
+    details:
+      'Keine Backend-, Prisma- oder Invoices-Page-Änderung. Action Queue und Business Pulse bleiben getrennte Module.',
+    affectsArchitecture: true,
+    module: 'Dashboard',
+    createdAt: '2026-07-03T23:30:00.000Z',
+  },
+  {
     id: 'business-pulse-invoice-truth-v49176-2026-07-03',
     version: '4.9.176',
     title: 'V4.9.176 — Business Pulse: einheitliche Invoice-Klassifikation',

@@ -16,7 +16,7 @@ import {
   type OperationalIssueSeverity,
 } from '../../lib/operational-issues';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
-import type { DashboardNotificationItem } from '../BusinessInsightsBox';
+import type { DashboardNotificationItem } from './dashboardNotificationTypes';
 import type {
   ActionQueueCategory,
   ActionQueueChildSeverity,

@@ -13,23 +13,13 @@ import {
 import { useLanguage } from '../i18n/LanguageContext';
 import type { VehicleData } from '../data/vehicles';
 import { EmptyState } from '../../components/patterns';
+import type { DashboardNotificationItem } from './dashboard/dashboardNotificationTypes';
 
 type NavigableView = 'bookings' | 'stations';
 
 type InsightsTab = 'business' | 'vehicle-alerts' | 'financial' | 'notifications';
 
-/**
- * Notification row rendered inside the "Notifications" tab. The shape matches
- * `dashboardNotifications` in DashboardView so the Dashboard can forward its
- * already-derived list as a prop without any transformation.
- */
-export interface DashboardNotificationItem {
-  type: 'alert' | 'booking' | 'return' | 'maintenance' | 'feedback' | 'system';
-  title: string;
-  desc: string;
-  time: string;
-  unread: boolean;
-}
+export type { DashboardNotificationItem } from './dashboard/dashboardNotificationTypes';
 
 // ─── Severity config ─────────────────────────────────────────────────
 

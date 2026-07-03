@@ -7,7 +7,7 @@ import type { VehicleHealthResponse } from '../../../lib/api';
 import type { DashboardInsight } from '../../DashboardInsightsContext';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
 import type { PredictiveOperationsInsight } from './derivePredictiveOperationsInsights';
-import type { DashboardNotificationItem } from '../BusinessInsightsBox';
+import type { DashboardNotificationItem } from './dashboardNotificationTypes';
 import type { FleetStatusTabKey } from '../../lib/vehicle-status';
 import type { StatusTone } from '../../../components/patterns';
 import type { DashboardDrilldownTarget } from './dashboardDrilldownTypes';
@@ -71,6 +71,9 @@ export interface ControlCenterKpi {
   trustHint?: DashboardTrustHint;
 }
 
+/**
+ * @deprecated Legacy finance KPI cards — active dashboard uses `BusinessPulseSlice` from runtime.
+ */
 export interface FinanceKpi {
   id: string;
   label: string;
@@ -611,6 +614,7 @@ export interface DataFreshnessSummary {
   invoicesError: boolean;
 }
 
+/** @deprecated Legacy compact metric — use `BusinessPulseSlice` from runtime instead. */
 export interface BusinessPulseMetric {
   id: string;
   label: string;
@@ -619,8 +623,10 @@ export interface BusinessPulseMetric {
   hint?: string;
 }
 
-export type { BusinessPulseSnapshot, BusinessPulseMetricItem, BusinessPulseDrilldown } from './businessPulseBuilder';
 
+/**
+ * @deprecated Legacy monthly snapshot — active dashboard uses `buildBusinessPulseSlices` only.
+ */
 export interface MonthlyKpiSnapshot {
   revenueCents: number;
   expenseCents: number;
@@ -684,12 +690,6 @@ export interface DashboardViewModel {
   availableVehicles: VehicleData[];
   reservedVehicles: VehicleData[];
   activeRentedVehicles: VehicleData[];
-
-  invoicesLoaded: boolean;
-  invoicesError: boolean;
-  monthlyKpis: MonthlyKpiSnapshot;
-  fmtMonthlyEUR: (cents: number) => string;
-  financeKpis: FinanceKpi[];
 
   pickupItems: PickupTileItem[];
   returnItems: ReturnTileItem[];

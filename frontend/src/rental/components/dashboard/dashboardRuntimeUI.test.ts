@@ -158,6 +158,17 @@ describe('dashboard runtime-only UI contracts', () => {
     expect(existsSync(resolve(testDir, 'runtime/dashboardRuntimeViewModelAdapters.ts'))).toBe(false);
   });
 
+  it('does not wire legacy business/finance builders in the active dashboard path', () => {
+    const viewModelSrc = readFileSync(resolve(testDir, './useDashboardViewModel.ts'), 'utf8');
+    const dashboardViewSrc = readFileSync(resolve(testDir, '../DashboardView.tsx'), 'utf8');
+
+    expect(viewModelSrc).not.toMatch(/businessPulseBuilder/);
+    expect(viewModelSrc).not.toMatch(/computeMonthlyKpis|buildFinanceKpis|fmtMonthlyEUR|monthlyKpis|financeKpis/);
+    expect(viewModelSrc).toMatch(/buildBusinessPulseSlices/);
+    expect(dashboardViewSrc).not.toMatch(/BusinessInsightsBox/);
+    expect(dashboardViewSrc).toMatch(/businessPulseSlices=\{vm\.businessPulseSlices\}/);
+  });
+
   it('reads not-ready rows from groups only via dashboardSliceAccess', () => {
     const runtime = buildDashboardRuntimeModel({
       locale: 'en',

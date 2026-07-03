@@ -15,13 +15,10 @@ import type {
   DashboardTimeframe,
   DataFreshnessSummary,
   DataSyncStatus,
-  FinanceKpi,
   FleetStateTab,
   KpiTone,
-  MonthlyKpiSnapshot,
   TodayBookingApiRow,
 } from './dashboardTypes';
-import { computeMonthlyKpisFromInvoices } from './businessPulseBuilder';
 import {
   INCOMING_INVOICE_TYPES,
   OUTGOING_INVOICE_TYPES,
@@ -160,14 +157,6 @@ export function mapReturnItems(
       pickupOdometerKm: pickupProto?.odometerKm ?? null,
     };
   });
-}
-
-export function computeMonthlyKpis(
-  invoicesApi: DashboardInvoice[],
-  intlLocale: string,
-  vehicleIds: Set<string> | null = null,
-): MonthlyKpiSnapshot {
-  return computeMonthlyKpisFromInvoices(invoicesApi, intlLocale, vehicleIds);
 }
 
 export function countActiveRentedOverKm(vehicles: VehicleData[]): number {
@@ -504,63 +493,6 @@ export function buildControlCenterKpis(input: {
           ? input.locale === 'de'
             ? 'Alles ruhig'
             : 'All clear'
-          : undefined,
-    },
-  ];
-}
-
-export function buildFinanceKpis(
-  monthlyKpis: MonthlyKpiSnapshot,
-  fmtMonthlyEUR: (cents: number) => string,
-  labels: {
-    revenue: string;
-    profit: string;
-    expenses: string;
-    invoicesShort: (count: number) => string;
-  },
-): FinanceKpi[] {
-  return [
-    {
-      id: 'revenue',
-      label: labels.revenue,
-      value: fmtMonthlyEUR(monthlyKpis.revenueCents),
-      hint: `${monthlyKpis.monthLabel} · ${labels.invoicesShort(monthlyKpis.revenueCount)}`,
-      tone: 'success',
-      trend:
-        monthlyKpis.revenueDeltaPct != null
-          ? {
-              label: `${monthlyKpis.revenueDeltaPct >= 0 ? '+' : ''}${monthlyKpis.revenueDeltaPct.toFixed(1)}%`,
-              direction: monthlyKpis.revenueDeltaPct >= 0 ? 'up' : 'down',
-            }
-          : undefined,
-    },
-    {
-      id: 'profit',
-      label: labels.profit,
-      value: fmtMonthlyEUR(monthlyKpis.profitCents),
-      hint: monthlyKpis.monthLabel,
-      tone: monthlyKpis.profitCents >= 0 ? 'brand' : 'critical',
-      trend:
-        monthlyKpis.profitDeltaPct != null
-          ? {
-              label: `${monthlyKpis.profitDeltaPct >= 0 ? '+' : ''}${monthlyKpis.profitDeltaPct.toFixed(1)}%`,
-              direction: monthlyKpis.profitDeltaPct >= 0 ? 'up' : 'down',
-            }
-          : undefined,
-    },
-    {
-      id: 'expenses',
-      label: labels.expenses,
-      value: fmtMonthlyEUR(monthlyKpis.expenseCents),
-      hint: `${monthlyKpis.monthLabel} · ${labels.invoicesShort(monthlyKpis.expenseCount)}`,
-      tone: 'critical',
-      trend:
-        monthlyKpis.expenseDeltaPct != null
-          ? {
-              label: `${monthlyKpis.expenseDeltaPct >= 0 ? '+' : ''}${monthlyKpis.expenseDeltaPct.toFixed(1)}%`,
-              direction: monthlyKpis.expenseDeltaPct >= 0 ? 'up' : 'down',
-              invert: true,
-            }
           : undefined,
     },
   ];

@@ -1,3 +1,8 @@
+/**
+ * @deprecated Legacy Business Pulse builder — not used by the active dashboard.
+ * Active financial truth: `runtime/businessPulseSliceBuilder.ts` → `buildBusinessPulseSlices`.
+ * Kept for reference only; do not import from `useDashboardViewModel` or `DashboardView`.
+ */
 import {
   effectiveInvoiceDate,
   expensesInRange,
@@ -80,6 +85,9 @@ function deltaPct(curr: number, prev: number): number | null {
   return ((curr - prev) / prev) * 100;
 }
 
+/**
+ * @deprecated Legacy monthly KPI computation — use `buildBusinessPulseSlices` instead.
+ */
 export function computeMonthlyKpisFromInvoices(
   invoices: DashboardInvoice[],
   intlLocale: string,

@@ -16,7 +16,7 @@ import {
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
-import type { DashboardNotificationItem } from '../BusinessInsightsBox';
+import type { DashboardNotificationItem } from './dashboardNotificationTypes';
 import {
   dashboardStationIdToFilter,
   stationFilterToDashboardId,
@@ -54,9 +54,7 @@ import {
 import { buildNowNextTimeline, buildTodayOperations } from './operationsBuilder';
 import {
   buildControlCenterStatus,
-  buildFinanceKpis,
   buildVehicleLookup,
-  computeMonthlyKpis,
   countImportantEvents,
   deriveDataSyncStatus,
   filterFleetByStation,
@@ -535,24 +533,9 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
 
   const intlLocale = useMemo(() => resolveIntlLocale(locale), [locale]);
 
-  const fmtMonthlyEUR = useCallback(
-    (cents: number) =>
-      new Intl.NumberFormat(intlLocale, {
-        style: 'currency',
-        currency: 'EUR',
-        maximumFractionDigits: 0,
-      }).format(cents / 100),
-    [intlLocale],
-  );
-
   const filteredVehicleIds = useMemo(
     () => new Set(filteredFleetVehicles.map((v) => v.id)),
     [filteredFleetVehicles],
-  );
-
-  const monthlyKpis = useMemo(
-    () => computeMonthlyKpis(invoicesApi, intlLocale, selectedStationId ? filteredVehicleIds : null),
-    [invoicesApi, intlLocale, selectedStationId, filteredVehicleIds],
   );
 
   const openSliceDrilldown = useCallback(
@@ -580,17 +563,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
       year: 'numeric',
     });
   }, [intlLocale]);
-
-  const financeKpis = useMemo(
-    () =>
-      buildFinanceKpis(monthlyKpis, fmtMonthlyEUR, {
-        revenue: t('dashboard.revenue'),
-        profit: t('dashboard.profit'),
-        expenses: t('dashboard.expenses'),
-        invoicesShort: (count) => t('dashboard.invoicesShort', { count }),
-      }),
-    [monthlyKpis, fmtMonthlyEUR, t],
-  );
 
   const dashboardNotifications = useMemo<DashboardNotificationItem[]>(() => [], []);
 
@@ -990,11 +962,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     availableVehicles,
     reservedVehicles,
     activeRentedVehicles,
-    invoicesLoaded,
-    invoicesError,
-    monthlyKpis,
-    fmtMonthlyEUR,
-    financeKpis,
     pickupItems,
     returnItems,
     pickupNeedsCleaning,
