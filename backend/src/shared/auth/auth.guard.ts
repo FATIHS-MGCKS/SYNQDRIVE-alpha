@@ -8,6 +8,7 @@ import * as jwt from 'jsonwebtoken';
  */
 const PUBLIC_EXACT_PATHS = new Set<string>([
   '/api/v1/auth/login',
+  '/api/v1/auth/2fa/verify',
   '/api/v1/auth/refresh',
   '/api/v1/auth/logout',
   // Seed-admin bootstrap: still token-gated via SEED_ADMIN_TOKEN + ENABLE_SEED_ADMIN in controller.

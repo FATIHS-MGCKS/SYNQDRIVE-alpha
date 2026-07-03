@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BRAND_LOGO_MARK_SIZE,
   buildCardogIconName,
   CARDOG_UNSUPPORTED_BRAND_KEYS,
   getBrandFromModel,
@@ -111,5 +112,11 @@ describe('Cardog acceptance matrix (resolver + icon names)', () => {
   it('detects brand from make + model object', () => {
     expect(getBrandFromModel({ make: 'Audi', model: 'Q5' })).toBe('audi');
     expect(getBrandFromModel({ make: 'Volkswagen', model: 'Tiguan' })).toBe('volkswagen');
+  });
+});
+
+describe('BRAND_LOGO_MARK_SIZE', () => {
+  it('is the canonical 20px list/row icon size', () => {
+    expect(BRAND_LOGO_MARK_SIZE).toBe(20);
   });
 });

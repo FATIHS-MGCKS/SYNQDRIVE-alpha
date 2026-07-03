@@ -1,6 +1,6 @@
 import { Icon } from './ui/Icon';
 import { useMemo } from 'react';
-import { BrandLogo, getBrandFromModel } from './BrandLogo';
+import { BrandLogoMark, getBrandFromModel } from './BrandLogo';
 
 import { VehicleData, isVehicleOffline, VEHICLE_OFFLINE_LABEL } from '../data/vehicles';
 import { useFleetVehicles, useEffectiveHealth } from '../FleetContext';
@@ -117,14 +117,10 @@ function OdometerText({ v, isDarkMode }: { v: VehicleData; isDarkMode: boolean }
 
 function VehicleBrandMark({ vehicle, isDarkMode }: { vehicle: VehicleData; isDarkMode: boolean }) {
   return (
-    <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted/50">
-      <BrandLogo
-        brand={getBrandFromModel({ make: vehicle.make, model: vehicle.model })}
-        size={14}
-        isDarkMode={isDarkMode}
-        variant="icon"
-      />
-    </span>
+    <BrandLogoMark
+      brand={getBrandFromModel({ make: vehicle.make, model: vehicle.model })}
+      isDarkMode={isDarkMode}
+    />
   );
 }
 

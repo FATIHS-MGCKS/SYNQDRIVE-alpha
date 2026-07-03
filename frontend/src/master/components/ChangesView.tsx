@@ -35,6 +35,205 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'frontend-totp-2fa-flow-v49160-2026-07-03',
+    version: '4.9.160',
+    title: 'V4.9.160 — Frontend TOTP 2FA: Setup, Verwaltung, Login Challenge',
+    summary: [
+      'Kontoinformationen → Sicherheit: 2FA einrichten (QR + Verify + Recovery Codes), deaktivieren, Codes neu generieren.',
+      'Login: bei mfaRequired Challenge-Screen mit TOTP oder Recovery Code; kein dauerhaftes Speichern des Challenge Tokens.',
+      'API Client: setupTotp2FA, verifyTotp2FA, disableTotp2FA, regenerateRecoveryCodes, auth.verify2FA mit sauberen Typen.',
+      'Recovery Codes: einmalig anzeigen, kopieren, Download; Bestätigung vor Abschluss.',
+    ],
+    reason: 'Backend 2FA MVP benötigt produktionsnahen Frontend-Flow in Account-Settings und Login.',
+    previousBehavior: '2FA-Button disabled; Login kannte keinen MFA-Challenge-Flow.',
+    details:
+      'TwoFactorSetupDialog, TwoFactorDisableDialog, TwoFactorRegenerateDialog, LoginMfaPanel, totp-utils, api.ts.',
+    affectsArchitecture: false,
+    module: 'Master Admin',
+    createdAt: '2026-07-03T12:00:00.000Z',
+  },
+  {
+    id: 'backend-totp-2fa-mvp-v49159-2026-07-03',
+    version: '4.9.159',
+    title: 'V4.9.159 — Backend TOTP 2FA MVP (Setup, Login Challenge, Recovery Codes)',
+    summary: [
+      'Prisma: UserTwoFactorCredential, UserRecoveryCode, UserMfaLoginChallenge.',
+      'Account: POST /account/me/2fa/totp/setup|verify|disable, recovery-codes/regenerate.',
+      'Auth: Login mit aktivierter 2FA liefert mfaChallengeToken; POST /auth/2fa/verify gibt Tokens.',
+      'TOTP-Secrets AES-256-GCM verschlüsselt (TOTP_ENCRYPTION_KEY); Recovery Codes nur gehasht.',
+      'Audit-Events für Setup, Enable, Disable, Recovery-Nutzung, fehlgeschlagene MFA-Versuche.',
+    ],
+    reason:
+      'Echtes 2FA per Authenticator-App — sicherheitskritischer Auth-Ausbau ohne Fake-Placeholder.',
+    previousBehavior:
+      'twoFactorAvailable/enabled hardcoded false; Login gab immer direkt Tokens aus.',
+    details:
+      'account/two-factor/*, auth/mfa-login.service.ts, prisma migration add-user-totp-2fa, api.ts types.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-03T11:00:00.000Z',
+  },
+  {
+    id: 'account-security-sessions-v49158-2026-07-03',
+    version: '4.9.158',
+    title: 'V4.9.158 — Kontoinformationen Sicherheit & Sitzungen: UX + Passwortpolicy',
+    summary: [
+      'Session Cards zeigen Browser · OS · Gerätetyp statt roher User-Agent-Strings; IP dezent, letzte Aktivität lesbar.',
+      'Aktuelle Sitzung als Badge „Aktuelles Gerät“; Button „Andere Sitzungen abmelden“ im Outline-Stil.',
+      'Passwortpolicy mindestens 10 Zeichen (Frontend + Backend + DTO); Anforderungen im Dialog sichtbar.',
+      '2FA/Passkeys: API-Flags `twoFactorAvailable` / `passkeysAvailable` — Placeholder „Demnächst verfügbar“, kein Fake-Flow.',
+      'Backend liefert `os` in Session-DTO via User-Agent-Parsing.',
+    ],
+    reason:
+      'Sicherheit & Sitzungen wirkten debug-lastig und unfertig — rohe User-Agent-Daten, schwache Passwortregeln, uneinheitliche Buttons.',
+    previousBehavior:
+      'Rohe Browser/Device-Zeilen, technische IP-Zeilen, 2FA „Demnächst“ ohne klare Vorbereitung, Passwort min. 6 Zeichen.',
+    details:
+      'AccountSessionsSection.tsx, ChangePasswordDialog.tsx, password-policy.ts, session-display.utils.ts, account.service.ts, change-my-password.dto.ts, api.ts.',
+    affectsArchitecture: false,
+    module: 'Master Admin',
+    createdAt: '2026-07-03T10:00:00.000Z',
+  },
+  {
+    id: 'account-notifications-accordion-v49157-2026-07-03',
+    version: '4.9.157',
+    title: 'V4.9.157 — Kontoinformationen Benachrichtigungen: Matrix + Mobile Accordion',
+    summary: [
+      'Desktop: kompakte Benachrichtigungs-Matrix mit Header-Row und einheitlichen Switches.',
+      'Mobile: Accordion pro Kategorie mit Summary (`X Kanäle aktiv`, Badge „Nur kritisch“), Schalter erst beim Aufklappen.',
+      'Security-Regel bleibt: mindestens In-App oder E-Mail; UI zeigt Hinweis bei blockiertem Toggle.',
+      'Presets und Save/Reset unverändert in der Logik.',
+    ],
+    reason:
+      'Die Mobile-Ansicht war zu lang und repetitiv — fünf Schalter pro Kategorie dauerhaft sichtbar.',
+    previousBehavior:
+      'Mobile zeigte alle Kanal-Schalter pro Kategorie offen; wenig Scanbarkeit.',
+    details:
+      'AccountNotificationsSection.tsx, account-utils.ts (countEnabledNotificationChannels, securityChannelBlockMessage), account-notification-ui.test.ts.',
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-07-03T09:45:00.000Z',
+  },
+  {
+    id: 'account-information-ui-refactor-v49156-2026-07-03',
+    version: '4.9.156',
+    title: 'V4.9.156 — Kontoinformationen: kompaktes KPI-Layout & einheitliche Tabs',
+    summary: [
+      'Account Header Card kompakter: kleinerer Avatar, Outline-Button „Profil bearbeiten“.',
+      'Vier Summary-KPIs im Control-Center-Stil (`AccountSummaryKpiCard`) — 2-Spalten Mobile, 4 Desktop.',
+      'Account Section Tabs als `sq-tab-bar` wie Vehicle Detail / Fleet; zentrale `Button`-Komponente auf der Seite.',
+      'Profil-, Präferenzen- und Sicherheitsbereiche straffer; Radix `Switch` für Benachrichtigungen.',
+    ],
+    reason:
+      'Kontoinformationen wirkten visuell schwerer als die neue SynqDrive Clean SaaS UI-Linie.',
+    previousBehavior:
+      'Große sq-card KPIs mit viel Footer-Text, brand-farbene Pill-Tabs, dominanter Full-Width CTA, Custom-Button-Styles.',
+    details:
+      'AccountInformationTab.tsx, account/AccountHeaderCard.tsx, AccountSummaryKpiCard.tsx, AccountSectionTabBar.tsx, account-ui.ts, AccountHealthCard.tsx, AccountAccessCard.tsx, AccountSecurityCard.tsx, AccountProfileSection.tsx, AccountPreferencesSection.tsx, AccountNotificationsSection.tsx, AccountSessionsSection.tsx, ChangePasswordDialog.tsx.',
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-07-03T09:45:00.000Z',
+  },
+  {
+    id: 'administration-tabbar-v49155-2026-07-03',
+    version: '4.9.155',
+    title: 'V4.9.155 — Administration: zentrale Tab-Navigation',
+    summary: [
+      'Neue `AdministrationTabBar` unter dem Seitentitel „Verwaltung/Administration“ in `SettingsView`.',
+      'Acht Tabs (Unternehmen, Konto, Benutzer & Rollen, Fleet Connectivity, Abrechnung, Data Authorization, Legal Documents, Rental Rules) im `sq-tab-bar`-Stil wie Vehicle Detail / Fleet.',
+      'Mobile: horizontal scrollbar; Desktop: eine Zeile. Keine Fachlogik-, Route- oder Sidebar-Änderungen.',
+    ],
+    reason:
+      'Administration-Unterseiten wirkten wie lose Einzelseiten ohne klare In-Page-Navigation.',
+    previousBehavior:
+      'Tab-Wechsel nur über Sidebar; `SettingsView` renderte direkt den aktiven Tab-Inhalt ohne zentrale Tabbar.',
+    details:
+      'settings/AdministrationTabBar.tsx, settings/settingsTypes.ts, SettingsView.tsx, i18n adminTab.* keys (de/en).',
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-07-03T09:35:00.000Z',
+  },
+  {
+    id: 'ready-kpi-card-layout-v49154-2026-07-03',
+    version: '4.9.154',
+    title: 'V4.9.154 — Dashboard Ready KPI: neues Ready-for-Renting Layout',
+    summary: [
+      'Ready-KPI-Box zeigt Titel „Ready for Renting“, große grüne Hauptzahl, „vehicles ready“, Separator und Footer mit Available / Not ready.',
+      'Zählungen kommen aus `dashboardRuntime.slices` (`slice.count` + `groups`) via `resolveReadyForRentingKpiCounts` — keine UI-Neuberechnung.',
+      'Redundante `slice.hint`-Zeile in der Ready Card entfernt; andere KPI Cards unverändert.',
+    ],
+    reason:
+      'Die Ready Box soll dem finalen UI-Entwurf entsprechen: luftiger, symmetrisch, ohne doppelte Verfügbarkeitszeile.',
+    previousBehavior:
+      'Kompakte KPI-Zeile mit Titel „Ready“, kleiner Zahl und Hint wie „6 available · 1 not ready“.',
+    details:
+      'ControlKpiStrip.tsx (ReadyForRentingKpiContent), dashboardSliceAccess.ts, dashboardSliceBuilder.ts, dashboardRuntimeUI.test.ts.',
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-07-03T09:25:00.000Z',
+  },
+  {
+    id: 'brandlogo-mark-unified-v49153-2026-07-03',
+    version: '4.9.153',
+    title: 'V4.9.153 — BrandLogo: einheitliche 20px Marken-Icons in grauer Box',
+    summary: [
+      'Neue `BrandLogoMark`-Komponente + Konstanten `BRAND_LOGO_MARK_SIZE` (20px) und `BRAND_LOGO_MARK_BOX_CLASS` (36×36px, `bg-muted/70`).',
+      'Fleet Command, Fleet Condition, Dashboard Fleet-Popups, Bookings, Vehicle Detail Header und New Booking nutzen dieselbe Markenbox.',
+      'Default `BrandLogo`-Größe von 36px auf 20px angepasst.',
+    ],
+    reason:
+      'Markenlogos wirkten je nach Oberfläche unterschiedlich groß (14–28px) und hatten uneinheitliche graue Container.',
+    previousBehavior:
+      'Pro Surface eigene Box- und Icon-Größen (z. B. 14px in Dashboard-Popups, 28px im New-Booking-Picker, responsiv 22px im Vehicle Header).',
+    details:
+      'BrandLogo.tsx (BrandLogoMark), FleetOperatorRow.tsx, FleetConditionView.tsx, StatInlineDetail.tsx, BookingsView.tsx, VehicleDetailHeader.tsx, NewBookingView.tsx, BrandLogo.test.ts.',
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-07-03T08:15:00.000Z',
+  },
+  {
+    id: 'operational-issue-taxonomy-v49151-2026-07-03',
+    version: '4.9.151',
+    title: 'V4.9.151 — Operative Meldungen: kanonische Severity-Taxonomie (Frontend)',
+    summary: [
+      'Neue zentrale Taxonomie unter `operational-issues/operationalIssueTaxonomy.ts` — OperationalIssue als Single Source of Truth.',
+      'Reifen-Taxonomie `operationalIssueTireTaxonomy.ts` + `operationalHealthModuleSeverity.ts`: `Reifen beobachten` / check-soon → `warning` überall; forecast-only / no-action → keine Dashboard-Notification.',
+      'HM/OEM Service-Tracking fehlt → `data_quality` / `info`, gruppierte Dashboard-Data-Note statt pro-Fahrzeug Act-Now.',
+      'Finance-Tab aus Dashboard ActionQueue entfernt (`ACTION_QUEUE_FILTER_TABS` ohne `financial`); Filterlogik bereinigt.',
+      'Fleet Command, Fleet Health, Vehicle Detail und Rental-Health-Reasons nutzen dieselben Taxonomie-Helper.',
+    ],
+    reason:
+      'Dashboard Notifications, Fleet Command und Vehicle Health zeigten dieselben Themen mit widersprüchlichen Severity-Labels.',
+    previousBehavior:
+      'tire_monitor als `attention`/Notice in ActionQueue, aber Warning in Fleet/Health; HM/OEM No-Tracking wirkte wie operative Warnung; leerer Finance-Filter-Tab.',
+    details:
+      'operationalIssueTireTaxonomy.ts, operationalHealthModuleSeverity.ts, operationalIssueTaxonomy.ts, normalizeOperationalIssues.ts, operationalIssueVisibility.ts, rental-health-ui.ts, fleet-health-control-center.ts, fleetVehicleDisplay.ts, ActionQueue.tsx, actionQueueBuilder.ts, dashboardAttentionBuilder.ts, operationalIssueTireTaxonomy.test.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-03T06:00:00.000Z',
+  },
+  {
+    id: 'action-queue-render-pipeline-v49152-2026-07-03',
+    version: '4.9.152',
+    title: 'V4.9.152 — Dashboard ActionQueue: stabile Gruppierungs-Pipeline',
+    summary: [
+      'Zentrale Render-Pipeline `prepareActionQueueRenderModel`: dedupe → group → sort → filter → render.',
+      'Vehicle-Health-Gruppen: Parent collapsed, Children nur nach Expand; keine Leaf-Doppelung mehr.',
+      'Header-Counts zählen atomare Meldungen (`3 Meldungen` = 3 Module), nicht sichtbare Parent-Rows.',
+      'Critical-Filter trimmt Notice/Warning-Children aus Health-Gruppen.',
+      'Collapsed Preview nutzt dieselbe Pipeline wie die expandierte Liste (keine rohen Atomic-Leaves).',
+    ],
+    reason:
+      'Notifications wirkten redundant: Gruppen-Parent, Children und Einzelzeilen gleichzeitig; Counts passten nicht zur sichtbaren Zeilenanzahl.',
+    previousBehavior:
+      'Collapsed Preview zeigte ungruppierte Health-Module; Header zählte `actionQueue.length` ohne klare Semantik; Critical-Filter behielt alle Children.',
+    details:
+      'actionQueueGrouping.ts (`prepareActionQueueRenderModel`, `dedupeActionQueueItems`, `ACTION_QUEUE_ATOMIC_COUNT_RULE`), ActionQueue.tsx, actionQueueGrouping.test.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-03T06:18:00.000Z',
+  },
+  {
     id: 'remove-insights-overnight-window-v49149-2026-07-03',
     version: '4.9.149',
     title: 'V4.9.149 — Business Insights: Nachtmodus (23–06 UTC) entfernt',

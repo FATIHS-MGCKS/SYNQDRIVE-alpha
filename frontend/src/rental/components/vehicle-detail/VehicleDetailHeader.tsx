@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Icon } from '../ui/Icon';
-import { BrandLogo, getBrandFromModel } from '../BrandLogo';
+import { BrandLogoMark, getBrandFromModel } from '../BrandLogo';
 import { useDocumentDark } from '../../hooks/useDocumentDark';
 import { StatusChip, type StatusTone } from '../../../components/patterns';
 import type { VehicleData } from '../../data/vehicles';
@@ -142,9 +142,7 @@ export function VehicleDetailHeader({
           {/* Row 2 — Vehicle identity + status chips (responsive on mobile) */}
           <div className="flex flex-col gap-1.5 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between min-[420px]:gap-2 sm:flex-col sm:items-start">
             <div className="flex min-w-0 items-center gap-2">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-card sm:h-8 sm:w-8">
-                <BrandLogo brand={brand} size={22} isDarkMode={isDarkMode} variant="icon" />
-              </span>
+              <BrandLogoMark brand={brand} isDarkMode={isDarkMode} />
               <h1 className="min-w-0 truncate font-display text-[20px] font-bold leading-[1.2] tracking-[-0.02em] text-foreground sm:text-[24px] lg:text-[28px]">
                 {title}
               </h1>

@@ -15,3 +15,29 @@ export function readyToRentReadyRows(slice: DashboardSlice): DashboardSliceRow[]
   if (slice.id !== 'ready-to-rent') return slice.rows;
   return slice.groups?.find((group) => group.id === 'ready-now')?.rows ?? slice.rows;
 }
+
+export interface ReadyForRentingKpiCounts {
+  readyCount: number | null;
+  availableCount: number;
+  notReadyCount: number;
+}
+
+/** KPI footer counts for the Ready-for-Renting card — reads runtime slice groups only. */
+export function resolveReadyForRentingKpiCounts(slice: DashboardSlice): ReadyForRentingKpiCounts {
+  if (slice.id !== 'ready-to-rent' || slice.count === null) {
+    return { readyCount: slice.count, availableCount: 0, notReadyCount: 0 };
+  }
+
+  const readyGroupCount = slice.groups?.find((group) => group.id === 'ready-now')?.count ?? slice.rows.length;
+  const notReadyCount =
+    slice.groups?.find((group) => group.id === 'available-but-not-ready')?.count ??
+    slice.secondaryRows?.length ??
+    0;
+  const readyCount = slice.count ?? slice.rows.length;
+
+  return {
+    readyCount,
+    availableCount: readyGroupCount + notReadyCount,
+    notReadyCount,
+  };
+}

@@ -8,7 +8,7 @@ import { useFleetVehicles } from '../FleetContext';
 import { useHandover } from '../HandoverContext';
 import { api } from '../../lib/api';
 import { mapApiBooking, type BookingUiRow } from '../lib/entityMappers';
-import { BrandLogo, getBrandFromModel } from './BrandLogo';
+import { BrandLogoMark, getBrandFromModel } from './BrandLogo';
 import { BookingDocumentsSection } from './BookingDocumentsSection';
 import { EntityTasksSection } from './EntityTasksSection';
 import { MisuseCasesPanel } from './MisuseCasesPanel';
@@ -1185,9 +1185,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
             : getBrandFromModel(booking.vehicle);
           return (
             <div className="flex items-center gap-2 text-xs">
-              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted/50">
-                <BrandLogo brand={brand} size={16} isDarkMode={systemDark} variant="icon" />
-              </span>
+              <BrandLogoMark brand={brand} isDarkMode={systemDark} />
               <div className="min-w-0">
                 <div className="font-medium text-foreground truncate">{booking.vehicle}</div>
                 <div className="text-muted-foreground">{booking.plate}</div>
@@ -1614,14 +1612,10 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
                   <div>
                     <label className={`text-xs mb-1 block text-muted-foreground`}>Fahrzeug</label>
                     <div className="flex items-center gap-2">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-muted/50">
-                        <BrandLogo
-                          brand={getBrandFromModel(editForm.vehicle)}
-                          size={18}
-                          isDarkMode={systemDark}
-                          variant="icon"
-                        />
-                      </span>
+                      <BrandLogoMark
+                        brand={getBrandFromModel(editForm.vehicle)}
+                        isDarkMode={systemDark}
+                      />
                       <select
                         value={editForm.vehicle}
                         onChange={(e) => {

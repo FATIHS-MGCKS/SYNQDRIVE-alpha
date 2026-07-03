@@ -18,6 +18,7 @@ import * as bcrypt from 'bcrypt';
 import { PrismaService } from '@shared/database/prisma.service';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { RefreshTokenService } from '@modules/auth/refresh-token.service';
+import { AccountTwoFactorService } from './two-factor/account-two-factor.service';
 import {
   NOTIFICATION_CATEGORY_META,
   NOTIFICATION_CATEGORY_ORDER,
@@ -49,6 +50,7 @@ export class AccountService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly refreshTokens: RefreshTokenService,
+    private readonly twoFactor: AccountTwoFactorService,
   ) {}
 
   async getMe(userId: string, jwtOrgId: string | null): Promise<AccountMeDto> {
@@ -66,6 +68,10 @@ export class AccountService {
 
     const currentSessionId = this.refreshTokens.resolveCurrentSessionId(sessions);
     const notifications = this.mapNotifications(notificationRows);
+    const [twoFactorEnabled, twoFactorAvailable] = await Promise.all([
+      this.twoFactor.isEnabled(userId),
+      Promise.resolve(this.twoFactor.isAvailable()),
+    ]);
 
     return this.buildViewModel(
       user,
@@ -75,6 +81,8 @@ export class AccountService {
       stationCount,
       sessions,
       currentSessionId,
+      twoFactorEnabled,
+      twoFactorAvailable,
     );
   }
 
@@ -306,6 +314,7 @@ export class AccountService {
         userAgent: t.userAgent,
         browser: parsed.browser,
         device: parsed.device,
+        os: parsed.os,
         ipAddress: t.ipAddress,
         createdAt: t.createdAt.toISOString(),
         expiresAt: t.expiresAt.toISOString(),
@@ -374,6 +383,45 @@ export class AccountService {
     });
 
     return { revoked: true };
+  }
+
+  async setupTotp(
+    userId: string,
+    jwtOrgId: string | null,
+    auditCtx: { ip?: string; userAgent?: string; route?: string },
+  ) {
+    const { user } = await this.loadUserContext(userId, jwtOrgId);
+    return this.twoFactor.setupTotp(userId, user.email, auditCtx);
+  }
+
+  async verifyTotp(
+    userId: string,
+    jwtOrgId: string | null,
+    code: string,
+    auditCtx: { ip?: string; userAgent?: string; route?: string },
+  ) {
+    await this.loadUserContext(userId, jwtOrgId);
+    return this.twoFactor.verifyAndEnableTotp(userId, code, auditCtx);
+  }
+
+  async disableTotp(
+    userId: string,
+    jwtOrgId: string | null,
+    dto: { currentPassword?: string; totpCode?: string },
+    auditCtx: { ip?: string; userAgent?: string; route?: string },
+  ) {
+    await this.loadUserContext(userId, jwtOrgId);
+    return this.twoFactor.disableTotp(userId, dto, auditCtx);
+  }
+
+  async regenerateRecoveryCodes(
+    userId: string,
+    jwtOrgId: string | null,
+    totpCode: string,
+    auditCtx: { ip?: string; userAgent?: string; route?: string },
+  ) {
+    await this.loadUserContext(userId, jwtOrgId);
+    return this.twoFactor.regenerateRecoveryCodes(userId, totpCode, auditCtx);
   }
 
   // ─── Private helpers ─────────────────────────────────────────────────────
@@ -499,8 +547,9 @@ export class AccountService {
   }
 
   private assertPasswordPolicy(password: string) {
-    if (!password || password.length < 6) {
-      throw new BadRequestException('Password must be at least 6 characters');
+    const minLength = 10;
+    if (!password || password.length < minLength) {
+      throw new BadRequestException(`Password must be at least ${minLength} characters`);
     }
   }
 
@@ -513,8 +562,13 @@ export class AccountService {
     return 'active';
   }
 
-  private parseUserAgent(ua: string | null): { browser: string; device: string } {
-    if (!ua) return { browser: 'Unknown', device: 'Unknown' };
+  private parseUserAgent(ua: string | null): {
+    browser: string;
+    device: string;
+    os: string | null;
+  } {
+    if (!ua) return { browser: 'Unbekannt', device: 'Desktop', os: null };
+
     let browser = 'Browser';
     if (/Edg\//i.test(ua)) browser = 'Edge';
     else if (/Chrome\//i.test(ua)) browser = 'Chrome';
@@ -522,10 +576,18 @@ export class AccountService {
     else if (/Safari\//i.test(ua) && !/Chrome/i.test(ua)) browser = 'Safari';
 
     let device = 'Desktop';
-    if (/Mobile|Android|iPhone/i.test(ua)) device = 'Mobile';
-    else if (/iPad|Tablet/i.test(ua)) device = 'Tablet';
+    if (/iPad|Tablet/i.test(ua)) device = 'Tablet';
+    else if (/Mobile|Android|iPhone/i.test(ua)) device = 'Mobile';
 
-    return { browser, device };
+    let os: string | null = null;
+    if (/Windows NT/i.test(ua)) os = 'Windows';
+    else if (/iPad/i.test(ua)) os = 'iPadOS';
+    else if (/iPhone|iOS/i.test(ua)) os = 'iOS';
+    else if (/Mac OS X|Macintosh/i.test(ua)) os = 'macOS';
+    else if (/Android/i.test(ua)) os = 'Android';
+    else if (/Linux/i.test(ua)) os = 'Linux';
+
+    return { browser, device, os };
   }
 
   private buildViewModel(
@@ -542,6 +604,8 @@ export class AccountService {
       createdAt: Date;
     }>,
     currentSessionId: string | null,
+    twoFactorEnabled: boolean,
+    twoFactorAvailable: boolean,
   ): AccountMeDto {
     const now = new Date();
     const activeSessions = sessions.filter(
@@ -565,6 +629,7 @@ export class AccountService {
       user,
       activeSessions.length,
       staleSessions.length,
+      twoFactorEnabled,
     );
 
     return {
@@ -612,8 +677,8 @@ export class AccountService {
       notifications,
       security: {
         hasPassword: Boolean(user.passwordHash),
-        twoFactorEnabled: false,
-        twoFactorAvailable: false,
+        twoFactorEnabled,
+        twoFactorAvailable,
         passkeysAvailable: false,
         lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
         lastLoginIp: user.lastLoginIp,
@@ -687,13 +752,17 @@ export class AccountService {
     user: User,
     activeSessionCount: number,
     longLivedSessionCount: number,
+    twoFactorEnabled: boolean,
   ) {
     const recommendations: string[] = [];
     let points = 0;
-    const max = 4;
+    const max = 5;
 
     if (user.passwordHash) points += 1;
     else recommendations.push('Passwort setzen');
+
+    if (twoFactorEnabled) points += 1;
+    else recommendations.push('Zwei-Faktor-Authentifizierung aktivieren');
 
     if (user.lastLoginAt) points += 1;
     else recommendations.push('Erste Anmeldung durchführen');

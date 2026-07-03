@@ -3,4 +3,7 @@ export * from './operationalIssueKeys';
 export * from './operationalIssueLabels';
 export * from './operationalIssueSources';
 export * from './operationalIssueVisibility';
+export * from './operationalIssueTaxonomy';
+export * from './operationalIssueTireTaxonomy';
+export * from './operationalHealthModuleSeverity';
 export * from './normalizeOperationalIssues';
