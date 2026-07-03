@@ -216,8 +216,16 @@ export type ActionQueueFilterTab =
   | 'critical'
   | 'operations'
   | 'vehicle'
-  | 'financial'
   | 'notifications';
+
+/** Tabs rendered by Dashboard Notifications / ActionQueue (finance excluded — see Business Pulse). */
+export const ACTION_QUEUE_FILTER_TABS: ActionQueueFilterTab[] = [
+  'all',
+  'critical',
+  'operations',
+  'vehicle',
+  'notifications',
+];
 
 export interface ActionQueueEmptySummary {
   title: string;

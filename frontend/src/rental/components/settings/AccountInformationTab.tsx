@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { PageHeader, ErrorState, SkeletonCard } from '../../../components/patterns';
+import { ErrorState, SectionHeader, SkeletonCard } from '../../../components/patterns';
 import { useRentalOrg } from '../../RentalContext';
 import { AccountHeaderCard } from './account/AccountHeaderCard';
 import { AccountHealthCard } from './account/AccountHealthCard';
@@ -12,6 +12,7 @@ import { AccountProfileSection } from './account/AccountProfileSection';
 import { AccountPreferencesSection } from './account/AccountPreferencesSection';
 import { AccountNotificationsSection } from './account/AccountNotificationsSection';
 import { AccountSessionsSection } from './account/AccountSessionsSection';
+import { AccountSectionTabBar } from './account/AccountSectionTabBar';
 import { ChangePasswordDialog } from './account/ChangePasswordDialog';
 import { useAccountCenter } from './account/useAccountCenter';
 import {
@@ -27,13 +28,6 @@ import {
   type PreferencesDraft,
   type ProfileDraft,
 } from './account/account-utils';
-
-const SECTIONS: Array<{ id: AccountSection; label: string }> = [
-  { id: 'profile', label: 'Profil' },
-  { id: 'preferences', label: 'Arbeitspräferenzen' },
-  { id: 'notifications', label: 'Benachrichtigungen' },
-  { id: 'security', label: 'Sicherheit & Sitzungen' },
-];
 
 interface AccountInformationTabProps {
   onNavigateToUsers?: () => void;
@@ -157,9 +151,9 @@ export function AccountInformationTab({ onNavigateToUsers }: AccountInformationT
 
   if (loading && !account) {
     return (
-      <div className="max-w-[1600px] mx-auto space-y-5">
+      <div className="space-y-4">
         <SkeletonCard />
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 xl:grid-cols-4">
           <SkeletonCard />
           <SkeletonCard />
           <SkeletonCard />
@@ -172,14 +166,12 @@ export function AccountInformationTab({ onNavigateToUsers }: AccountInformationT
 
   if (loadError && !account) {
     return (
-      <div className="max-w-[1600px] mx-auto">
-        <ErrorState
-          title="Account konnte nicht geladen werden"
-          error={loadError}
-          onRetry={() => void loadAccount()}
-          retryLabel="Erneut laden"
-        />
-      </div>
+      <ErrorState
+        title="Account konnte nicht geladen werden"
+        error={loadError}
+        onRetry={() => void loadAccount()}
+        retryLabel="Erneut laden"
+      />
     );
   }
 
@@ -194,10 +186,8 @@ export function AccountInformationTab({ onNavigateToUsers }: AccountInformationT
   }
 
   return (
-    <div className="max-w-[1600px] mx-auto space-y-5 animate-fade-up">
-      <PageHeader
-        title="Kontoinformationen"
-      />
+    <div className="space-y-4 animate-fade-up pb-6">
+      <SectionHeader title="Kontoinformationen" />
 
       <AccountHeaderCard
         account={account}
@@ -207,7 +197,7 @@ export function AccountInformationTab({ onNavigateToUsers }: AccountInformationT
         }}
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 items-stretch gap-2.5 sm:gap-3 xl:grid-cols-4">
         <AccountHealthCard
           accountHealth={account.accountHealth}
           onImprove={() => scrollToSection('profile')}
@@ -227,24 +217,11 @@ export function AccountInformationTab({ onNavigateToUsers }: AccountInformationT
         />
       </div>
 
-      <nav className="flex flex-wrap gap-2 sticky top-0 z-10 py-2 bg-background/90 backdrop-blur-sm border-b border-border/40 -mx-1 px-1">
-        {SECTIONS.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            onClick={() => scrollToSection(s.id)}
-            className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
-              activeSection === s.id
-                ? 'bg-[var(--brand)] text-[var(--brand-foreground)]'
-                : 'text-muted-foreground hover:bg-muted hover:text-foreground'
-            }`}
-          >
-            {s.label}
-          </button>
-        ))}
-      </nav>
+      <div className="sticky top-0 z-10 -mx-1 bg-background/95 px-1 py-1 backdrop-blur-sm">
+        <AccountSectionTabBar activeSection={activeSection} onSectionChange={scrollToSection} />
+      </div>
 
-      <div className="space-y-5 pb-8">
+      <div className="space-y-4">
         <AccountProfileSection
           account={account}
           editing={profileEditing}

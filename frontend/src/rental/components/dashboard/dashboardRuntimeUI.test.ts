@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import type { VehicleData } from '../../../data/vehicles';
 import { buildDashboardGroups, collectDrawerRowIds } from './dashboardDrilldownGroups';
-import { readyToRentNotReadyRows } from './dashboardSliceAccess';
+import { readyToRentNotReadyRows, resolveReadyForRentingKpiCounts } from './dashboardSliceAccess';
 import { buildDashboardRuntimeModel } from './runtime/dashboardSliceBuilder';
 import type { DashboardSliceId } from './runtime';
 
@@ -165,5 +165,28 @@ describe('dashboard runtime-only UI contracts', () => {
     expect(notReady).toEqual(slice.groups?.find((group) => group.id === 'available-but-not-ready')?.rows);
     expect(groups.filter((group) => group.id === 'available-but-not-ready')).toHaveLength(1);
     expect(collectDrawerRowIds(groups)).toHaveLength(new Set(collectDrawerRowIds(groups)).size);
+  });
+
+  it('resolves ready-for-renting KPI counts from runtime slice groups only', () => {
+    const runtime = buildDashboardRuntimeModel({
+      locale: 'en',
+      fleetVehicles: [
+        vehicle({ id: 'r1', license: 'R1' }),
+        vehicle({ id: 'r2', license: 'R2' }),
+        vehicle({ id: 'r3', license: 'R3' }),
+        vehicle({ id: 'r4', license: 'R4' }),
+        vehicle({ id: 'r5', license: 'R5' }),
+        vehicle({ id: 'dirty', license: 'DIRTY', cleaningStatus: 'Needs Cleaning' }),
+      ],
+      now: NOW,
+    });
+
+    const slice = runtime.slices['ready-to-rent'];
+    expect(slice.title).toBe('Ready for Renting');
+    expect(resolveReadyForRentingKpiCounts(slice)).toEqual({
+      readyCount: 5,
+      availableCount: 6,
+      notReadyCount: 1,
+    });
   });
 });

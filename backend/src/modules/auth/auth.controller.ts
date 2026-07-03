@@ -14,9 +14,10 @@ import { Throttle } from '@nestjs/throttler';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RefreshTokenService } from './refresh-token.service';
-import { LoginDto, RefreshTokenDto, LogoutDto } from '@shared/dto/auth.dto';
+import { LoginDto, LogoutDto, RefreshTokenDto, VerifyMfaLoginDto } from '@shared/dto/auth.dto';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { ActivityAction, ActivityEntity } from '@prisma/client';
+import { MfaLoginService } from './mfa-login.service';
 import * as bcrypt from 'bcrypt';
 
 @Controller('auth')
@@ -29,6 +30,7 @@ export class AuthController {
     private readonly configService: ConfigService,
     private readonly refreshTokenService: RefreshTokenService,
     private readonly audit: AuditService,
+    private readonly mfaLogin: MfaLoginService,
   ) {
     // JWT_SECRET is validated at startup by app.config.ts; reading it here is safe
     this.jwtSecret = this.configService.get<string>('app.jwtSecret')!;
@@ -103,6 +105,11 @@ export class AuthController {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    const mfaChallenge = await this.mfaLogin.createChallengeIfRequired(user.id);
+    if (mfaChallenge) {
+      return mfaChallenge;
+    }
+
     await this.prisma.user.update({
       where: { id: user.id },
       data: {
@@ -169,6 +176,17 @@ export class AuthController {
         permissions: (membership?.permissions as Record<string, { read: boolean; write: boolean }>) ?? null,
       },
     };
+  }
+
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Post('2fa/verify')
+  @HttpCode(HttpStatus.OK)
+  async verifyMfaLogin(@Body() body: VerifyMfaLoginDto, @Req() req: any) {
+    return this.mfaLogin.verifyChallengeAndIssueTokens(body, {
+      ip: req?.ip ?? req?.connection?.remoteAddress,
+      userAgent: req?.headers?.['user-agent'],
+      route: 'POST /auth/2fa/verify',
+    });
   }
 
   /** Exchange a valid refresh token for a new access + refresh token pair (rotation). */

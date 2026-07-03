@@ -21,6 +21,9 @@ import {
   StatusChip,
   SectionHeader,
 } from '../../components/patterns';
+import { AdministrationTabBar } from './settings/AdministrationTabBar';
+import type { SettingsTab } from './settings/settingsTypes';
+import { useLanguage } from '../i18n/LanguageContext';
 
 function useDocumentDark(): boolean {
   return useSyncExternalStore(
@@ -40,7 +43,7 @@ interface SettingsViewProps {
   onNavigateToStations?: () => void;
 }
 
-type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization' | 'legal-documents' | 'rental-rules';
+export type { SettingsTab } from './settings/settingsTypes';
 
 // ============================================
 // STATIONS & BRANCHES TAB â€” fully live-wired
@@ -1820,6 +1823,7 @@ export function SettingsView({
   onNavigateToStations,
 }: SettingsViewProps) {
   const { orgId, hasPermission } = useRentalOrg();
+  const { t } = useLanguage();
   const activeTab = controlledTab;
   const canWriteDataAuth = hasPermission('data-authorization', 'write');
   const canManageDataAuth = hasPermission('data-authorization', 'manage');
@@ -1827,8 +1831,14 @@ export function SettingsView({
   const bridgeDark = useDocumentDark();
 
   return (
-    <div className="space-y-5">
-      {/* Tab Content */}
+    <div className="max-w-[1600px] mx-auto space-y-5 animate-fade-up">
+      <header className="space-y-3">
+        <PageHeader title={t('nav.administration')} />
+        {onTabChange ? (
+          <AdministrationTabBar activeTab={activeTab} onTabChange={onTabChange} />
+        ) : null}
+      </header>
+
       {activeTab === 'account' && (
         <AccountInformationTab onNavigateToUsers={() => onTabChange?.('users')} />
       )}

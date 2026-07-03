@@ -7,8 +7,153 @@ import type {
   ActionQueueItem,
   ActionQueueLeafItem,
 } from './dashboardTypes';
+import { HM_OEM_SERVICE_TRACKING_MISSING_ORG_KEY } from '../../lib/operational-issues';
+import { isGroupedHmOemServiceTrackingDataNote } from './hmOemServiceTrackingDataNote';
 
-// ─── Severity ordering ──────────────────────────────────────────────────
+/**
+ * Count contract for Dashboard Notifications / ActionQueue:
+ * Header badges, expand labels, and "+ N more" footers count **atomic actions**
+ * (grouped children + standalone leaves), never parent group rows.
+ * Example: one vehicle-health group with 3 modules → `3 Meldungen`, 1 visible parent row.
+ */
+export const ACTION_QUEUE_ATOMIC_COUNT_RULE =
+  'Atomic actions (group children + standalone leaves) are counted; parent group rows are not.';
+
+export interface ActionQueueRenderModel {
+  dedupedItems: ActionQueueItem[];
+  pinnedItems: ActionQueueItem[];
+  entries: ActionQueueEntry[];
+  filteredEntries: ActionQueueEntry[];
+  visibleEntries: ActionQueueEntry[];
+  /** Atomic issues after dedupe + tab filter (includes pinned leaves). */
+  atomicCount: number;
+  /** Atomic issues represented in the visible slice (includes pinned). */
+  visibleAtomicCount: number;
+}
+
+const PINNED_CAP = 5;
+
+function childIsCritical(child: ActionQueueChildAction): boolean {
+  return child.severity === 'critical' || child.severity === 'overdue' || child.isOverdue;
+}
+
+function rebuildGroup(
+  group: ActionQueueGroupItem,
+  children: ActionQueueChildAction[],
+  de: boolean,
+): ActionQueueGroupItem | null {
+  if (children.length === 0) return null;
+  const severity = children.reduce<ActionQueueChildSeverity>((worst, child) => {
+    return childSeverityRank(child.severity) > childSeverityRank(worst) ? child.severity : worst;
+  }, 'info');
+  return {
+    ...group,
+    children,
+    severity,
+    subtitle: groupSubtitle(group.groupType, children.length, de),
+  };
+}
+
+/**
+ * Semantic dedupe before grouping. One canonical OperationalIssue key must not
+ * produce multiple render paths (parent, child, and leaf).
+ */
+export function dedupeActionQueueItems(items: ActionQueueItem[]): ActionQueueItem[] {
+  const byKey = new Map<string, ActionQueueItem>();
+  const order: string[] = [];
+
+  for (const item of items) {
+    const key = item.semanticKey ?? item.id;
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, item);
+      order.push(key);
+      continue;
+    }
+    if (item.priority > existing.priority) {
+      byKey.set(key, item);
+    }
+  }
+
+  return order.map((key) => byKey.get(key)!);
+}
+
+/** Item ids that are rendered only as grouped children (never standalone leaves). */
+export function groupedChildItemIds(entries: ActionQueueEntry[]): Set<string> {
+  const ids = new Set<string>();
+  for (const entry of entries) {
+    if (entry.kind !== 'group') continue;
+    for (const child of entry.children) {
+      ids.add(child.itemId);
+    }
+  }
+  return ids;
+}
+
+/** Visible semantic keys — each atomic issue appears at most once in the render model. */
+export function visibleSemanticKeys(
+  pinnedItems: ActionQueueItem[],
+  entries: ActionQueueEntry[],
+): string[] {
+  const keys: string[] = [];
+  for (const item of pinnedItems) {
+    keys.push(item.semanticKey ?? item.id);
+  }
+  for (const entry of entries) {
+    if (entry.kind === 'leaf') {
+      keys.push(entry.semanticKey ?? entry.id);
+      continue;
+    }
+    for (const child of entry.children) {
+      keys.push(child.itemId);
+    }
+  }
+  return keys;
+}
+
+/**
+ * Render pipeline:
+ * 1. dedupe atomic items
+ * 2. split pinned vs groupable
+ * 3. group (vehicle-health always grouped; others when shared groupKey)
+ * 4. sort (inside groupActionQueueEntries)
+ * 5. filter tab
+ * 6. cap visible rows for the list
+ */
+export function prepareActionQueueRenderModel(input: {
+  items: ActionQueueItem[];
+  locale: string;
+  tab: ActionQueueFilterTab;
+  visibleEntryCap?: number;
+}): ActionQueueRenderModel {
+  const de = input.locale === 'de';
+  const dedupedItems = dedupeActionQueueItems(input.items);
+
+  const pinnedItems = dedupedItems
+    .filter((item) => item.pinned && item.groupType !== 'vehicle-health')
+    .slice(0, PINNED_CAP);
+  const pinnedIds = new Set(pinnedItems.map((item) => item.id));
+
+  const groupableItems = dedupedItems.filter((item) => !pinnedIds.has(item.id));
+  const entries = groupActionQueueEntries(groupableItems, input.locale);
+  const filteredEntries = filterActionQueueEntries(entries, input.tab, de);
+  const visibleEntryCap = input.visibleEntryCap ?? filteredEntries.length;
+  const visibleEntries = filteredEntries.slice(0, visibleEntryCap);
+
+  const atomicCount = countAtomicActions(filteredEntries) + pinnedItems.length;
+  const visibleAtomicCount = countAtomicActions(visibleEntries) + pinnedItems.length;
+
+  return {
+    dedupedItems,
+    pinnedItems,
+    entries,
+    filteredEntries,
+    visibleEntries,
+    atomicCount,
+    visibleAtomicCount,
+  };
+}
+
 // critical > overdue > warning > attention > info
 const CHILD_SEVERITY_RANK: Record<ActionQueueChildSeverity, number> = {
   critical: 5,
@@ -220,9 +365,11 @@ function leafIsCritical(leaf: ActionQueueLeafItem): boolean {
   return leaf.severity === 'critical' || leaf.isOverdue;
 }
 
-function groupIsCritical(group: ActionQueueGroupItem): boolean {
-  if (group.severity === 'critical' || group.severity === 'overdue') return true;
-  return group.children.some((c) => c.severity === 'critical' || c.severity === 'overdue' || c.isOverdue);
+function leafMatchesTab(leaf: ActionQueueLeafItem, tab: ActionQueueFilterTab): boolean {
+  if (categoryMatches(leaf.category, tab)) return true;
+  if (tab === 'vehicle' && isGroupedHmOemServiceTrackingDataNote(leaf)) return true;
+  if (tab === 'notifications' && leaf.semanticKey === HM_OEM_SERVICE_TRACKING_MISSING_ORG_KEY) return true;
+  return false;
 }
 
 function categoryMatches(
@@ -231,34 +378,42 @@ function categoryMatches(
 ): boolean {
   if (tab === 'operations') return category === 'operations' || category === 'handover';
   if (tab === 'vehicle') return category === 'vehicle' || category === 'health';
-  if (tab === 'financial') return category === 'financial';
   if (tab === 'notifications') return category === 'notification';
   return true;
 }
 
 /**
- * Filter entries while keeping groups intact: a group survives a category
- * filter when its own category or at least one child matches. The critical
- * filter keeps a group when any child is critical/overdue.
+ * Filter entries while keeping groups intact. Critical tab trims notice/warning
+ * children so expanded groups never show non-critical duplicates.
  */
 export function filterActionQueueEntries(
   entries: ActionQueueEntry[],
   tab: ActionQueueFilterTab,
+  de = false,
 ): ActionQueueEntry[] {
   if (tab === 'all') return entries;
 
   if (tab === 'critical') {
-    return entries.filter((entry) =>
-      entry.kind === 'group' ? groupIsCritical(entry) : leafIsCritical(entry),
-    );
+    const out: ActionQueueEntry[] = [];
+    for (const entry of entries) {
+      if (entry.kind === 'leaf') {
+        if (leafIsCritical(entry)) out.push(entry);
+        continue;
+      }
+      const filteredChildren = entry.children.filter(childIsCritical);
+      const rebuilt = rebuildGroup(entry, filteredChildren, de);
+      if (rebuilt) out.push(rebuilt);
+    }
+    return out;
   }
 
   return entries.filter((entry) => {
     if (entry.kind === 'group') {
+      if (entry.groupType === 'vehicle-health' && tab === 'vehicle') return true;
       if (categoryMatches(entry.category, tab)) return true;
       return entry.children.some((c) => categoryMatches(c.category, tab));
     }
-    return categoryMatches(entry.category, tab);
+    return leafMatchesTab(entry, tab);
   });
 }
 

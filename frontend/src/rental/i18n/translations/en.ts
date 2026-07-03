@@ -115,6 +115,16 @@ export const en = {
   'settingsTab.legalDocuments': 'Legal Documents',
   'settingsTab.rentalRules': 'Rental Rules',
 
+  // Administration in-page tab bar (short labels)
+  'adminTab.company': 'Company',
+  'adminTab.account': 'Account',
+  'adminTab.users': 'Users & Roles',
+  'adminTab.fleetConnection': 'Fleet Connectivity',
+  'adminTab.billing': 'Billing',
+  'adminTab.dataAuthorization': 'Data Authorization',
+  'adminTab.legalDocuments': 'Legal Documents',
+  'adminTab.rentalRules': 'Rental Rules',
+
   // ─── Finance Tabs ───
   'financeTab.invoices': 'Invoices',
   'financeTab.fines': 'Fines',

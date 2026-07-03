@@ -297,7 +297,7 @@ function insightVehicleIds(insight: DashboardInsight): string[] {
 
 function buildEmptySlice(id: DashboardSliceId, locale: string): DashboardSlice {
   const titles: Record<DashboardSliceId, string> = {
-    'ready-to-rent': label(locale, 'Bereit', 'Ready'),
+    'ready-to-rent': label(locale, 'Bereit zur Vermietung', 'Ready for Renting'),
     'active-rented': label(locale, 'Aktiv vermietet', 'Active rented'),
     'due-soon': label(locale, 'Bald fällig', 'Due soon'),
     'overdue-returns': label(locale, 'Überfällige Rückgaben', 'Overdue returns'),

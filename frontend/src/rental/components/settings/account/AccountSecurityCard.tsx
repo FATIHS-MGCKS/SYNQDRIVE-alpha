@@ -1,6 +1,8 @@
-import { Bell, MonitorSmartphone, Shield } from 'lucide-react';
+import { Bell, MonitorSmartphone } from 'lucide-react';
 import type { AccountMeDto } from '../../../../lib/api';
 import { countActiveNotificationCategories, countCriticalNotificationChannels } from './account-utils';
+import { AccountSummaryKpiCard } from './AccountSummaryKpiCard';
+import type { AccountKpiTone } from './account-ui';
 
 interface AccountNotificationsSummaryCardProps {
   notifications: AccountMeDto['notifications'];
@@ -15,31 +17,14 @@ export function AccountNotificationsSummaryCard({
   const critical = countCriticalNotificationChannels(notifications);
 
   return (
-    <div className="sq-card p-4 h-full flex flex-col">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[12px] font-medium text-muted-foreground">Benachrichtigungen</span>
-        <Bell className="w-4 h-4 text-muted-foreground/80" />
-      </div>
-      <p className="mt-2 font-mono text-[22px] font-bold tabular-nums text-foreground">
-        {activeCategories}
-      </p>
-      <p className="text-[12px] text-muted-foreground">von {notifications.length} Kategorien aktiv</p>
-      <div className="mt-auto pt-3 border-t border-border/50 space-y-2">
-        <p className="text-[10px] text-muted-foreground flex items-center gap-1.5">
-          <Shield className="w-3 h-3" />
-          {critical} mit „nur kritisch“
-        </p>
-        {onAdjust && (
-          <button
-            type="button"
-            onClick={onAdjust}
-            className="text-[10px] font-semibold text-[var(--brand)] hover:underline"
-          >
-            Benachrichtigungen anpassen
-          </button>
-        )}
-      </div>
-    </div>
+    <AccountSummaryKpiCard
+      label="Benachrichtigungen"
+      value={String(activeCategories)}
+      hint={`von ${notifications.length} Kategorien aktiv · ${critical} nur kritisch`}
+      icon={<Bell />}
+      tone="neutral"
+      onClick={onAdjust}
+    />
   );
 }
 
@@ -50,36 +35,22 @@ interface AccountSecuritySummaryCardProps {
 
 export function AccountSecuritySummaryCard({ security, onManage }: AccountSecuritySummaryCardProps) {
   const twoFaLabel = security.twoFactorEnabled
-    ? 'Aktiv'
+    ? '2FA aktiv'
     : security.twoFactorAvailable
-      ? 'Nicht aktiviert'
-      : 'Demnächst verfügbar';
+      ? '2FA nicht aktiv'
+      : '2FA demnächst';
+
+  const tone: AccountKpiTone =
+    security.securityScore >= 80 ? 'success' : security.securityScore < 50 ? 'watch' : 'neutral';
 
   return (
-    <div className="sq-card p-4 h-full flex flex-col">
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-[12px] font-medium text-muted-foreground">Sicherheit</span>
-        <MonitorSmartphone className="w-4 h-4 text-muted-foreground/80" />
-      </div>
-      <p className="mt-2 font-mono text-[22px] font-bold tabular-nums text-foreground">
-        {security.securityScore}%
-      </p>
-      <p className="text-[12px] text-muted-foreground">
-        {security.activeSessionCount} aktive Sitzung(en)
-      </p>
-      <div className="mt-auto pt-3 border-t border-border/50 space-y-1.5 text-[10px] text-muted-foreground">
-        <p>Passwort: {security.hasPassword ? 'gesetzt' : 'nicht gesetzt'}</p>
-        <p>2FA: {twoFaLabel}</p>
-        {onManage && (
-          <button
-            type="button"
-            onClick={onManage}
-            className="text-[10px] font-semibold text-[var(--brand)] hover:underline"
-          >
-            Sicherheit & Sitzungen
-          </button>
-        )}
-      </div>
-    </div>
+    <AccountSummaryKpiCard
+      label="Sicherheit"
+      value={`${security.securityScore}%`}
+      hint={`${security.activeSessionCount} Sitzung(en) · ${twoFaLabel}`}
+      icon={<MonitorSmartphone />}
+      tone={tone}
+      onClick={onManage}
+    />
   );
 }

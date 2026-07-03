@@ -16,6 +16,11 @@ import { UpdateMyPreferencesDto } from './dto/update-my-preferences.dto';
 import { UpdateMyNotificationPreferencesDto } from './dto/update-my-notification-preferences.dto';
 import { ChangeMyPasswordDto } from './dto/change-my-password.dto';
 import { RevokeOtherSessionsDto } from './dto/revoke-session.dto';
+import {
+  DisableTotpDto,
+  RegenerateRecoveryCodesDto,
+  VerifyTotpCodeDto,
+} from './dto/two-factor.dto';
 import { AuditService } from '@modules/activity-log/audit.service';
 
 type AuthedRequest = {
@@ -129,6 +134,57 @@ export class AccountController {
       ip: c.ipAddress,
       userAgent: c.userAgent,
       route: 'POST /account/me/sessions/:sessionId/revoke',
+    });
+  }
+
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @Post('me/2fa/totp/setup')
+  @HttpCode(HttpStatus.OK)
+  async setupTotp(@Req() req: AuthedRequest) {
+    const c = this.ctx(req);
+    return this.account.setupTotp(this.userId(req), this.orgId(req), {
+      ip: c.ipAddress,
+      userAgent: c.userAgent,
+      route: 'POST /account/me/2fa/totp/setup',
+    });
+  }
+
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @Post('me/2fa/totp/verify')
+  @HttpCode(HttpStatus.OK)
+  async verifyTotp(@Req() req: AuthedRequest, @Body() body: VerifyTotpCodeDto) {
+    const c = this.ctx(req);
+    return this.account.verifyTotp(this.userId(req), this.orgId(req), body.code, {
+      ip: c.ipAddress,
+      userAgent: c.userAgent,
+      route: 'POST /account/me/2fa/totp/verify',
+    });
+  }
+
+  @Throttle({ default: { ttl: 60_000, limit: 5 } })
+  @Post('me/2fa/totp/disable')
+  @HttpCode(HttpStatus.OK)
+  async disableTotp(@Req() req: AuthedRequest, @Body() body: DisableTotpDto) {
+    const c = this.ctx(req);
+    return this.account.disableTotp(this.userId(req), this.orgId(req), body, {
+      ip: c.ipAddress,
+      userAgent: c.userAgent,
+      route: 'POST /account/me/2fa/totp/disable',
+    });
+  }
+
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
+  @Post('me/2fa/recovery-codes/regenerate')
+  @HttpCode(HttpStatus.OK)
+  async regenerateRecoveryCodes(
+    @Req() req: AuthedRequest,
+    @Body() body: RegenerateRecoveryCodesDto,
+  ) {
+    const c = this.ctx(req);
+    return this.account.regenerateRecoveryCodes(this.userId(req), this.orgId(req), body.totpCode, {
+      ip: c.ipAddress,
+      userAgent: c.userAgent,
+      route: 'POST /account/me/2fa/recovery-codes/regenerate',
     });
   }
 }

@@ -10,6 +10,7 @@ import {
   formatVehicleIssueEntityLabel,
   normalizeOperationalIssues,
   sanitizeUserFacingIssueText,
+  shouldShowInDashboardAttention,
   type OperationalIssue,
   type OperationalIssueDomain,
   type OperationalIssueSeverity,
@@ -32,10 +33,16 @@ import type { PredictiveOperationsInsight } from './derivePredictiveOperationsIn
 import type { StatusTone } from '../../../components/patterns';
 import type { DashboardRuntimeModel } from './runtime';
 import {
-  buildRuntimeOperationalIssues,
+  filterInsightsForRuntimeAttention,
+  filterPredictiveForRuntimeAttention,
   normalizeAttentionItems,
   usesRuntimeAttentionSource,
 } from './dashboardAttentionBuilder';
+import {
+  buildHmOemServiceTrackingGroupedDataNote,
+  isIndividualHmOemServiceTrackingQueueItem,
+  partitionHmOemServiceTrackingIssues,
+} from './hmOemServiceTrackingDataNote';
 
 const VEHICLE_HEALTH_INSIGHT_TYPES = new Set<InsightType>([
   'BATTERY_CRITICAL',
@@ -355,15 +362,25 @@ export function mapOperationalIssueToActionQueueItem(
 
 export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQueueItem[] {
   const runtimeBacked = usesRuntimeAttentionSource(input.dashboardRuntime);
+  const runtime = input.dashboardRuntime;
+  const allOperationalIssues = normalizeOperationalIssues({
+    vehicleRuntimeStates: runtime?.vehicleStates,
+    vehicleHealthAlerts: runtimeBacked ? [] : input.vehicleHealthAlerts,
+    dashboardInsights: runtimeBacked && runtime
+      ? filterInsightsForRuntimeAttention(input.insights, runtime)
+      : input.insights,
+    predictiveInsights: runtimeBacked && runtime
+      ? filterPredictiveForRuntimeAttention(input.predictiveInsights, runtime)
+      : input.predictiveInsights,
+    vehiclesById: input.fleetById,
+  });
+
+  const { attentionIssues, hmOemTrackingIssues } = partitionHmOemServiceTrackingIssues(
+    allOperationalIssues,
+  );
   const normalizedIssues = runtimeBacked
-    ? buildRuntimeOperationalIssues(input)
-    : normalizeOperationalIssues({
-        vehicleRuntimeStates: input.dashboardRuntime?.vehicleStates,
-        vehicleHealthAlerts: input.vehicleHealthAlerts,
-        dashboardInsights: input.insights,
-        predictiveInsights: input.predictiveInsights,
-        vehiclesById: input.fleetById,
-      }).filter((issue) => issue.visibility.dashboardAttention && issue.domain !== 'finance');
+    ? attentionIssues.filter((issue) => shouldShowInDashboardAttention(issue))
+    : attentionIssues.filter((issue) => shouldShowInDashboardAttention(issue));
 
   const items: ActionQueueItem[] = normalizedIssues.map((issue) =>
     mapOperationalIssueToActionQueueItem(issue, input),
@@ -614,15 +631,24 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
     });
   }
 
-  const sorted = normalizeAttentionItems(items).sort((a, b) => {
+  const sorted = normalizeAttentionItems(
+    items.filter((item) => !isIndividualHmOemServiceTrackingQueueItem(item)),
+  ).sort((a, b) => {
     if (b.priority !== a.priority) return b.priority - a.priority;
     return a.timeSortMs - b.timeSortMs;
   });
 
-  const criticalIds = new Set(
-    sorted.filter((i) => i.severity === 'critical' || i.isOverdue).slice(0, 5).map((i) => i.id),
+  const groupedHmOemNote = buildHmOemServiceTrackingGroupedDataNote(
+    hmOemTrackingIssues,
+    allOperationalIssues,
+    input.locale,
   );
-  return sorted.map((i) => ({ ...i, pinned: criticalIds.has(i.id) }));
+  const withDataNotes = groupedHmOemNote ? [...sorted, groupedHmOemNote] : sorted;
+
+  const criticalIds = new Set(
+    withDataNotes.filter((i) => i.severity === 'critical' || i.isOverdue).slice(0, 5).map((i) => i.id),
+  );
+  return withDataNotes.map((i) => ({ ...i, pinned: criticalIds.has(i.id) }));
 }
 
 export function filterActionQueue(
@@ -639,7 +665,6 @@ export function filterActionQueue(
   if (tab === 'vehicle') {
     return items.filter((i) => i.category === 'vehicle' || i.category === 'health');
   }
-  if (tab === 'financial') return items.filter((i) => i.category === 'financial');
   return items.filter((i) => i.category === 'notification');
 }
 

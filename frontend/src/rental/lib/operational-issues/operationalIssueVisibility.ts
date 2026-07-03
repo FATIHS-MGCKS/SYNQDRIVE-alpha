@@ -2,6 +2,7 @@ import type {
   OperationalIssueDomain,
   OperationalIssueVisibility,
 } from './operationalIssueTypes';
+import { resolveCanonicalVisibility } from './operationalIssueTaxonomy';
 
 export const HIDDEN_OPERATIONAL_ISSUE_VISIBILITY: OperationalIssueVisibility = {
   dashboardAttention: false,
@@ -21,9 +22,11 @@ export function getDefaultOperationalIssueVisibility(
   issueType: string,
 ): OperationalIssueVisibility {
   const base = { ...HIDDEN_OPERATIONAL_ISSUE_VISIBILITY };
+  let visibility: OperationalIssueVisibility;
+
   switch (domain) {
     case 'service_compliance':
-      return {
+      visibility = {
         ...base,
         dashboardAttention: true,
         dashboardDrawer: true,
@@ -31,8 +34,9 @@ export function getDefaultOperationalIssueVisibility(
         vehicleOverview: true,
         vehicleHealth: true,
       };
+      break;
     case 'vehicle_health':
-      return {
+      visibility = {
         ...base,
         dashboardAttention: issueType !== 'health_review_required',
         dashboardDrawer: true,
@@ -40,16 +44,18 @@ export function getDefaultOperationalIssueVisibility(
         vehicleOverview: true,
         vehicleHealth: true,
       };
+      break;
     case 'telemetry':
-      return {
+      visibility = {
         ...base,
         dashboardAttention: issueType === 'telemetry_offline' || issueType === 'telemetry_soft_offline',
         dashboardDrawer: issueType !== 'telemetry_live' && issueType !== 'telemetry_standby',
         fleetCommand: true,
         vehicleOverview: true,
       };
+      break;
     case 'rental_readiness':
-      return {
+      visibility = {
         ...base,
         dashboardAttention: issueType !== 'ready_to_rent',
         dashboardDrawer: true,
@@ -57,10 +63,11 @@ export function getDefaultOperationalIssueVisibility(
         vehicleOverview: true,
         bookingDetail: true,
       };
+      break;
     case 'booking':
     case 'return':
     case 'handover':
-      return {
+      visibility = {
         ...base,
         dashboardAttention: true,
         dashboardDrawer: true,
@@ -68,59 +75,69 @@ export function getDefaultOperationalIssueVisibility(
         vehicleOverview: true,
         bookingDetail: true,
       };
+      break;
     case 'misuse':
-      return {
+      visibility = {
         ...base,
         dashboardAttention: issueType === 'damage_suspicion' || issueType === 'cold_engine_abuse',
         vehicleTrips: true,
         vehicleDamages: false,
         bookingDetail: true,
       };
+      break;
     case 'damage':
-      return {
+      visibility = {
         ...base,
         dashboardAttention: true,
         vehicleTrips: issueType.includes('suspicion'),
         vehicleDamages: true,
         bookingDetail: true,
       };
+      break;
     case 'documents':
     case 'rental_requirements':
-      return {
+      visibility = {
         ...base,
         dashboardAttention: issueType.includes('missing') || issueType.includes('expired') || issueType.includes('unmet'),
         vehicleOverview: true,
         bookingDetail: true,
       };
+      break;
     case 'finance':
-      return {
+      visibility = {
         ...base,
         dashboardAttention: issueType === 'receivable_overdue' || issueType === 'payment_failed',
         bookingDetail: true,
         finance: true,
       };
+      break;
     case 'station_operations':
-      return {
+      visibility = {
         ...base,
         dashboardAttention: true,
         dashboardDrawer: true,
       };
+      break;
     case 'task':
-      return {
+      visibility = {
         ...base,
         dashboardAttention: issueType === 'task_overdue',
         vehicleOverview: true,
         bookingDetail: true,
       };
+      break;
     case 'notification':
-      return {
+      visibility = {
         ...base,
         dashboardAttention: true,
       };
+      break;
     case 'data_quality':
     case 'system_debug':
-      return base;
     default:
-      return base;
+      visibility = base;
+      break;
   }
+
+  return resolveCanonicalVisibility(issueType, domain, visibility);
 }

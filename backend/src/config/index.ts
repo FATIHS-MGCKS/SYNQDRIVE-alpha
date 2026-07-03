@@ -14,3 +14,4 @@ export type { DiditWorkflowKind } from './didit.config';
 export { default as stripeConfig } from './stripe.config';
 export { default as aiConfig } from './ai.config';
 export type { AiProviderId } from './ai.config';
+export { default as securityConfig } from './security.config';

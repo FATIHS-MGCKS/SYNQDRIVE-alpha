@@ -1,6 +1,14 @@
 import { useIcon, type IconName } from '@cardog-icons/react';
+import { cn } from '../../components/ui/utils';
 
 /* eslint-disable react-refresh/only-export-components -- shared module exports BrandLogo + brand resolver helpers */
+
+/** Canonical OEM icon size inside list/row brand-mark boxes across rental surfaces. */
+export const BRAND_LOGO_MARK_SIZE = 20;
+
+/** Tailwind classes for the muted brand-mark container (36×36px box around a 20px icon). */
+export const BRAND_LOGO_MARK_BOX_CLASS =
+  'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted/70';
 
 export type BrandLogoVariant = 'icon' | 'logo' | 'logoHorizontal' | 'wordmark';
 export type BrandLogoTone = 'auto' | 'color' | 'dark';
@@ -363,7 +371,7 @@ function CardogBrandIcon({
 
 export function BrandLogo({
   brand,
-  size = 36,
+  size = BRAND_LOGO_MARK_SIZE,
   isDarkMode = false,
   variant = 'icon',
   tone = 'auto',
@@ -385,6 +393,34 @@ export function BrandLogo({
       className={className}
       title={title ?? brand}
     />
+  );
+}
+
+export interface BrandLogoMarkProps {
+  brand: string;
+  isDarkMode?: boolean;
+  /** Extra classes on the outer box (e.g. opacity/grayscale states). */
+  boxClassName?: string;
+  title?: string;
+}
+
+/** Standard muted box + 20px OEM icon — use for fleet rows, bookings, dashboard popups, headers. */
+export function BrandLogoMark({
+  brand,
+  isDarkMode = false,
+  boxClassName,
+  title,
+}: BrandLogoMarkProps) {
+  return (
+    <span className={cn(BRAND_LOGO_MARK_BOX_CLASS, boxClassName)}>
+      <BrandLogo
+        brand={brand}
+        size={BRAND_LOGO_MARK_SIZE}
+        isDarkMode={isDarkMode}
+        variant="icon"
+        title={title}
+      />
+    </span>
   );
 }
 
