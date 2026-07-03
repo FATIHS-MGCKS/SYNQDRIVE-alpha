@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'company-activity-history-v49164-2026-07-03',
+    version: '4.9.164',
+    title: 'V4.9.164 — Unternehmensinformationen: lesbarer Änderungsverlauf',
+    summary: [
+      'Activity-Mapper übersetzt technische Audit-Einträge in nutzerfreundliche Titel (z. B. Unternehmensprofil geändert, Logo aktualisiert).',
+      'HTTP-Routen und Debug-Sprache standardmäßig verborgen; optional aufklappbare Technische Details.',
+      'Redundante Events innerhalb 90 Sekunden werden UI-seitig zusammengeführt — Audit-Daten bleiben erhalten.',
+      'Kompakte Timeline mit Kategorie-Badge, Actor und Zeit rechts.',
+    ],
+    reason:
+      'Änderungsverlauf zeigte rohe PATCH/POST-Routen und doppelte Einträge pro Speichervorgang.',
+    previousBehavior:
+      'Timeline mit description/action als Titel, inkl. API-Routen und doppelter Audit-Interceptor-Einträge.',
+    details:
+      'company-activity-mapper.ts, CompanyActivityTimeline.tsx, CompanyHistorySection, Tests.',
+    affectsArchitecture: false,
+    module: 'Master Admin',
+    createdAt: '2026-07-03T17:00:00.000Z',
+  },
+  {
     id: 'company-document-status-groups-v49163-2026-07-03',
     version: '4.9.163',
     title: 'V4.9.163 — Unternehmensinformationen: ehrlicher Dokumentenstatus',

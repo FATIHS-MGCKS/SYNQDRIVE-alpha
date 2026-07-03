@@ -12,11 +12,12 @@ import {
   EmptyState,
   SkeletonCard,
   StatusChip,
-  Timeline,
 } from '../../../../components/patterns';
 import { Button } from '../../../../components/ui/button';
 import type { LegalDocumentDto, TenantOrganizationProfileDto } from '../../../../lib/api';
 import type { ActivityLogRow } from './useCompanyCenter';
+import { CompanyActivityTimeline } from './CompanyActivityTimeline';
+import { mapCompanyActivityLogEntries } from './company-activity-mapper';
 import {
   CompanyCriticalNotice,
   CompanyField,
@@ -542,6 +543,8 @@ interface HistoryProps {
 }
 
 export function CompanyHistorySection({ activity, loading }: HistoryProps) {
+  const items = mapCompanyActivityLogEntries(activity);
+
   if (loading) {
     return <SkeletonCard />;
   }
@@ -557,20 +560,7 @@ export function CompanyHistorySection({ activity, loading }: HistoryProps) {
 
   return (
     <DataCard title="Änderungsverlauf" description="Letzte Änderungen an Unternehmensdaten.">
-      <Timeline
-        items={activity.map((a) => ({
-          id: a.id,
-          title: a.description || a.action,
-          description: a.userName ? `${a.userName} · ${a.entity}` : a.entity,
-          time: new Date(a.createdAt).toLocaleString('de-DE', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-          }),
-        }))}
-      />
+      <CompanyActivityTimeline items={items} />
     </DataCard>
   );
 }
