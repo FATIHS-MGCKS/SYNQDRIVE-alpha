@@ -1318,6 +1318,14 @@ export interface EnergyEvent {
   odometerStartKm: number | null;
   odometerEndKm: number | null;
   confidence: EnergyEventConfidence;
+  locationDisplayName?: string | null;
+  locationSource?: string | null;
+  locationConfidence?: string | null;
+  stationName?: string | null;
+  locationName?: string | null;
+  placeName?: string | null;
+  addressLabel?: string | null;
+  address?: string | null;
 }
 
 export type TripTimelineItem =

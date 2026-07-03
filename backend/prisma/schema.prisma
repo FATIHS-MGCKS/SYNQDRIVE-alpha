@@ -4924,10 +4924,13 @@ model VehicleEnergyEvent {
   energyDeltaKwh     Float?                @map("energy_delta_kwh")
   odometerStartKm    Float?                @map("odometer_start_km")
   odometerEndKm      Float?                @map("odometer_end_km")
-  confidence         EnergyEventConfidence @default(MEDIUM)
-  rawDetectionMeta   Json?                 @map("raw_detection_meta")
-  createdAt          DateTime              @default(now()) @map("created_at")
-  updatedAt          DateTime              @updatedAt @map("updated_at")
+  confidence            EnergyEventConfidence @default(MEDIUM)
+  locationDisplayName   String?               @map("location_display_name")
+  locationSource        String?               @map("location_source")
+  locationConfidence    String?               @map("location_confidence")
+  rawDetectionMeta      Json?                 @map("raw_detection_meta")
+  createdAt             DateTime              @default(now()) @map("created_at")
+  updatedAt             DateTime              @updatedAt @map("updated_at")
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 

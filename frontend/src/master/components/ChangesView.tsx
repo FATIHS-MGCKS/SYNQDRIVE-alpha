@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'energy-event-location-display-v49150-2026-07-03',
+    version: '4.9.150',
+    title: 'V4.9.150 — Trip Timeline: Tank-/Ladestandort als Name statt Koordinaten',
+    summary: [
+      'Energy Events liefern jetzt `locationDisplayName` (persistiert) für Tank- und Ladestationen.',
+      'Backend reichert beim Upsert und beim Lesen über Mapbox POI/Adresse an (REFUEL + RECHARGE).',
+      'TripTimelineEnergyCard zeigt primär den Standortnamen; Koordinaten nicht mehr in der Hauptzeile.',
+    ],
+    reason:
+      'In der Timeline wurden Rohkoordinaten (z. B. 51.335, 9.506) angezeigt — operativ unbrauchbar für Disponenten.',
+    previousBehavior:
+      'EnergyEvent hatte nur startLatitude/startLongitude; UI renderte Koordinaten direkt.',
+    details:
+      'energy-event-location.service.ts, energy-events.service.ts, migration 20260703120000, trip-timeline-shared.tsx, energy-event-location.ts.',
+    affectsArchitecture: true,
+    module: 'Trips',
+    createdAt: '2026-07-03T04:45:00.000Z',
+  },
+  {
     id: 'remove-insights-overnight-window-v49149-2026-07-03',
     version: '4.9.149',
     title: 'V4.9.149 — Business Insights: Nachtmodus (23–06 UTC) entfernt',
