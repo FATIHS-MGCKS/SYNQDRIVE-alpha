@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'account-notifications-accordion-v49157-2026-07-03',
+    version: '4.9.157',
+    title: 'V4.9.157 — Kontoinformationen Benachrichtigungen: Matrix + Mobile Accordion',
+    summary: [
+      'Desktop: kompakte Benachrichtigungs-Matrix mit Header-Row und einheitlichen Switches.',
+      'Mobile: Accordion pro Kategorie mit Summary (`X Kanäle aktiv`, Badge „Nur kritisch“), Schalter erst beim Aufklappen.',
+      'Security-Regel bleibt: mindestens In-App oder E-Mail; UI zeigt Hinweis bei blockiertem Toggle.',
+      'Presets und Save/Reset unverändert in der Logik.',
+    ],
+    reason:
+      'Die Mobile-Ansicht war zu lang und repetitiv — fünf Schalter pro Kategorie dauerhaft sichtbar.',
+    previousBehavior:
+      'Mobile zeigte alle Kanal-Schalter pro Kategorie offen; wenig Scanbarkeit.',
+    details:
+      'AccountNotificationsSection.tsx, account-utils.ts (countEnabledNotificationChannels, securityChannelBlockMessage), account-notification-ui.test.ts.',
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-07-03T09:45:00.000Z',
+  },
+  {
     id: 'account-information-ui-refactor-v49156-2026-07-03',
     version: '4.9.156',
     title: 'V4.9.156 — Kontoinformationen: kompaktes KPI-Layout & einheitliche Tabs',
