@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'kpi-typography-unify-v49174-2026-07-03',
+    version: '4.9.174',
+    title: 'V4.9.174 — Dashboard KPI: einheitliche Typografie (alle 6 Boxen)',
+    summary: [
+      'Ready for Renting + Today’s Operations: Titel, Zahlen und Labels auf dieselben Werte wie Due soon / Overdue returns (10.5px Titel, 21px Zahlen, 10px Sekundärtext).',
+      'Gemeinsame KPI_TITLE / KPI_NUMBER / KPI_SECONDARY_TEXT Konstanten für alle sechs KPI-Cards in ControlKpiStrip.',
+      'Twin-Card Min-Höhen und Separator/Footer-Spacing an kompaktere Typografie angepasst.',
+      'Keine Logik-/Runtime-Änderungen.',
+    ],
+    reason: 'UI-Konsistenz: Twin-KPIs wirkten visuell größer als die übrigen Dashboard-Boxen.',
+    previousBehavior:
+      'Ready + Today’s Operations nutzten 14px/42px/26px Typografie; Due soon, Overdue returns u. a. 10.5px/21px.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-03T13:05:00.000Z',
+  },
+  {
     id: 'kpi-twin-typography-v49173-2026-07-03',
     version: '4.9.173',
     title: 'V4.9.173 — Dashboard KPI Twins: Typografie & Symmetrie (Ready + Today’s Operations)',
