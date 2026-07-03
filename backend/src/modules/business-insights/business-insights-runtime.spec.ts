@@ -105,30 +105,9 @@ describe('Debounce window logic', () => {
 // ─────────────── Active tenant scheduling ───────────────
 
 describe('Active tenant scheduling logic', () => {
-  it('overnight window is 23:00 - 06:00', () => {
-    const isOvernight = (hour: number) => hour >= 23 || hour < 6;
-    expect(isOvernight(23)).toBe(true);
-    expect(isOvernight(0)).toBe(true);
-    expect(isOvernight(3)).toBe(true);
-    expect(isOvernight(5)).toBe(true);
-    expect(isOvernight(6)).toBe(false);
-    expect(isOvernight(12)).toBe(false);
-    expect(isOvernight(22)).toBe(false);
-  });
-
-  it('overnight cycles skip 2 out of 3 runs', () => {
-    const results: boolean[] = [];
-    for (let cycle = 1; cycle <= 9; cycle++) {
-      results.push(cycle % 3 === 0);
-    }
-    const executed = results.filter(Boolean);
-    expect(executed).toHaveLength(3);
-  });
-
-  it('daytime runs process all active orgs', () => {
+  it('scheduler processes all active orgs every cycle', () => {
     const allOrgs = ['org1', 'org2', 'org3'];
-    const isOvernight = false;
-    const toProcess = isOvernight ? [] : allOrgs;
+    const toProcess = allOrgs;
     expect(toProcess).toHaveLength(3);
   });
 });
@@ -237,7 +216,7 @@ describe('Insight lifecycle: publish supersedes', () => {
 
 describe('Trigger source classification', () => {
   it('scheduled triggers are identifiable', () => {
-    const scheduled = ['scheduled_30min', 'scheduled_active', 'scheduled_overnight'];
+    const scheduled = ['scheduled_30min', 'scheduled_active'];
     for (const t of scheduled) {
       expect(t.startsWith('scheduled')).toBe(true);
     }

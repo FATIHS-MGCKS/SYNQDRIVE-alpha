@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'remove-insights-overnight-window-v49149-2026-07-03',
+    version: '4.9.149',
+    title: 'V4.9.149 — Business Insights: Nachtmodus (23–06 UTC) entfernt',
+    summary: [
+      'Business-Insights-Scheduler läuft jetzt 24/7 im gleichen 30-Minuten-Takt für alle aktiven Organisationen.',
+      'Entfernt: Overnight-Fenster (nur jeder 3. Zyklus + Filter auf orgs mit Buchungen in 12h).',
+      'Dashboard-Badge „Verzögert“ sollte nachts nicht mehr durch ausgelassene Insight-Läufe entstehen.',
+    ],
+    reason:
+      'Nachtreduktion war für Lastspitzen gedacht, führte aber zu veralteten Insights und „Verzögert“-Status im Control Center.',
+    previousBehavior:
+      '23:00–06:00 (Server-Stunde): 2 von 3 Zyklen übersprungen; nur orgs mit naher Buchungsaktivität.',
+    details:
+      'business-insights-scheduler.service.ts, business-insights-runtime.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-03T03:40:00.000Z',
+  },
+  {
     id: 'dtc-knowledge-stale-queue-fix-v49148-2026-07-02',
     version: '4.9.148',
     title: 'V4.9.148 — DTC AI-Einschätzung: stale QUEUED/FAILED nach Mistral-Migration',
