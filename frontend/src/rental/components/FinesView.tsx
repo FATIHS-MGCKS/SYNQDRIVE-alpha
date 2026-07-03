@@ -334,7 +334,7 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
                     }}
                     className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-xs font-medium transition-colors ${
                       status === statusFilter
-                        ? isDarkMode ? 'bg-blue-600/20 text-blue-400' : 'bg-blue-50 text-blue-600'
+                        ? isDarkMode ? 'bg-brand-soft text-brand' : 'bg-blue-50 text-blue-600'
                         : isDarkMode ? 'text-foreground/85 hover:bg-muted' : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
@@ -813,7 +813,7 @@ function FineDetail({ isDarkMode, fine, orgId, onBack, onUpdate, card, tp, ts, i
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              {fine.fineNumber && <span className={`text-xs font-bold ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>#{fine.fineNumber}</span>}
+              {fine.fineNumber && <span className={`text-xs font-bold ${isDarkMode ? 'text-brand' : 'text-blue-600'}`}>#{fine.fineNumber}</span>}
               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${st.bg} ${st.text}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} /> {st.label}
               </span>
@@ -895,7 +895,7 @@ function FineDetail({ isDarkMode, fine, orgId, onBack, onUpdate, card, tp, ts, i
         <div className="flex items-center justify-between mb-3">
           <h3 className={`text-xs font-bold ${tp} uppercase tracking-wider`}>Interne Notizen</h3>
           {!editingNotes && (
-            <button onClick={() => setEditingNotes(true)} className={`text-[11px] font-medium ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`}>Bearbeiten</button>
+            <button onClick={() => setEditingNotes(true)} className={`text-[11px] font-medium ${isDarkMode ? 'text-brand' : 'text-blue-600'}`}>Bearbeiten</button>
           )}
         </div>
         {editingNotes ? (

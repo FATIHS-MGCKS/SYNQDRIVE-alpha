@@ -76,14 +76,14 @@ const SEVERITY_CONFIG: Record<InsightSeverity, SeverityStyle> = {
     label: 'Opportunity',
     card: {
       light: 'bg-blue-50/60 border-blue-200/40',
-      dark: 'bg-blue-900/15 border-blue-800/20',
+      dark: 'bg-brand-soft border-brand/20',
     },
     badge: {
       light: 'bg-blue-500/15 text-blue-600',
-      dark: 'bg-blue-500/20 text-blue-400',
+      dark: 'bg-brand-soft text-brand',
     },
-    icon_color: { light: 'text-blue-600', dark: 'text-blue-400' },
-    text: { light: 'text-blue-700', dark: 'text-blue-400' },
+    icon_color: { light: 'text-blue-600', dark: 'text-brand' },
+    text: { light: 'text-blue-700', dark: 'text-brand' },
   },
   INFO: {
     icon: 'info',
@@ -559,7 +559,7 @@ const NOTIFICATION_ICON: Record<DashboardNotificationItem['type'], {
   iconDark: string;
 }> = {
   alert: { icon: 'alert-triangle', bgLight: 'bg-red-100', bgDark: 'bg-red-500/15', iconLight: 'text-red-500', iconDark: 'text-red-400' },
-  booking: { icon: 'calendar', bgLight: 'bg-blue-100', bgDark: 'bg-blue-500/15', iconLight: 'text-blue-500', iconDark: 'text-blue-400' },
+  booking: { icon: 'calendar', bgLight: 'bg-blue-100', bgDark: 'bg-status-info-soft', iconLight: 'text-blue-500', iconDark: 'text-status-info' },
   return: { icon: 'check-circle', bgLight: 'bg-green-100', bgDark: 'bg-green-500/15', iconLight: 'text-green-500', iconDark: 'text-green-400' },
   maintenance: { icon: 'wrench', bgLight: 'bg-amber-100', bgDark: 'bg-amber-500/15', iconLight: 'text-amber-500', iconDark: 'text-amber-400' },
   feedback: { icon: 'message-square', bgLight: 'bg-violet-100', bgDark: 'bg-violet-500/15', iconLight: 'text-violet-500', iconDark: 'text-violet-400' },
@@ -783,7 +783,7 @@ function ExpandedVehicleList({
               className={`shrink-0 inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-md transition-colors ${
                 canOpen
                   ? dm
-                    ? 'bg-blue-600/20 text-blue-300 hover:bg-blue-600/30'
+                    ? 'bg-brand-soft text-brand hover:bg-brand-soft/80'
                     : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
                   : dm
                     ? 'bg-muted text-muted-foreground/60 cursor-not-allowed'

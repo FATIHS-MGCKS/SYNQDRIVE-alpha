@@ -65,7 +65,7 @@ export function TripBehaviorEmptyState({
         {isLoading ? (
           <Icon
             name="loader-2"
-            className={`w-4 h-4 mt-0.5 shrink-0 animate-spin ${isDark ? 'text-indigo-400' : 'text-indigo-500'}`}
+            className={`w-4 h-4 mt-0.5 shrink-0 animate-spin ${isDark ? 'text-foreground' : 'text-indigo-500'}`}
           />
         ) : (
           <Icon

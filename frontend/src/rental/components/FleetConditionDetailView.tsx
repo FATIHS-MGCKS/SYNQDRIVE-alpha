@@ -125,7 +125,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
     finally { setAiLoading(false); }
   };
 
-  const cardClass = `rounded-2xl border shadow-sm ${isDark ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`;
+  const cardClass = `rounded-2xl border shadow-sm ${isDark ? 'bg-card border-border' : 'bg-white border-gray-200'}`;
   const textPrimary = isDark ? 'text-white' : 'text-gray-900';
   const textSecondary = isDark ? 'text-gray-400' : 'text-gray-500';
   const textMuted = isDark ? 'text-gray-500' : 'text-gray-400';
@@ -138,12 +138,12 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
           type="button"
           onClick={onBack}
           aria-label="Back to Fleet Health"
-          className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-neutral-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}
+          className={`p-2 rounded-xl transition-colors ${isDark ? 'hover:bg-muted text-muted-foreground' : 'hover:bg-gray-100 text-gray-500'}`}
         >
           <Icon name="arrow-left" className="w-5 h-5" />
         </button>
-        <div className={`p-2.5 rounded-xl ${isDark ? 'bg-blue-500/15' : 'bg-blue-50'}`}>
-          <CategoryIcon className={`w-5 h-5 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+        <div className={`p-2.5 rounded-xl ${isDark ? 'bg-brand-soft' : 'bg-blue-50'}`}>
+          <CategoryIcon className={`w-5 h-5 ${isDark ? 'text-brand' : 'text-blue-600'}`} />
         </div>
         <div>
           <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">{meta.label}</h1>
@@ -153,7 +153,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-24">
-          <div className={`w-8 h-8 border-2 border-t-transparent rounded-full animate-spin ${isDark ? 'border-blue-400' : 'border-blue-500'}`} />
+          <div className={`w-8 h-8 border-2 border-t-transparent rounded-full animate-spin ${isDark ? 'border-muted-foreground' : 'border-blue-500'}`} />
           <p className={`text-xs mt-3 ${textSecondary}`}>Loading analysis data...</p>
         </div>
       ) : (
@@ -261,7 +261,7 @@ export function FleetConditionDetailView({ isDarkMode, vehicleId, category, onBa
                     <ul className="space-y-1.5">
                       {aiResult.preventiveRecommendations.map((r, i) => (
                         <li key={i} className={`text-xs flex items-start gap-2 ${textSecondary}`}>
-                          <Icon name="check-circle" className={`w-3 h-3 mt-0.5 shrink-0 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
+                          <Icon name="check-circle" className={`w-3 h-3 mt-0.5 shrink-0 ${isDark ? 'text-status-positive' : 'text-blue-500'}`} />
                           {r}
                         </li>
                       ))}
@@ -328,7 +328,7 @@ function RecommendationList({ items, isDark, textSecondary }: { items: string[];
     <ul className="space-y-1.5">
       {items.map((r, i) => (
         <li key={i} className={`text-xs flex items-start gap-2 ${textSecondary}`}>
-          <Icon name="check-circle" className={`w-3 h-3 mt-0.5 shrink-0 ${isDark ? 'text-blue-400' : 'text-blue-500'}`} />
+          <Icon name="check-circle" className={`w-3 h-3 mt-0.5 shrink-0 ${isDark ? 'text-status-positive' : 'text-blue-500'}`} />
           {r}
         </li>
       ))}
@@ -359,7 +359,7 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
           {s.displayMode && (
             <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
               s.displayMode === 'MEASURED'
-                ? (isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-700')
+                ? (isDark ? 'bg-status-info-soft text-status-info' : 'bg-blue-50 text-blue-700')
                 : (isDark ? 'bg-violet-500/15 text-violet-400' : 'bg-violet-50 text-violet-700')
             }`}>
               {s.displayMode === 'MEASURED' ? 'Measured' : s.displayMode === 'ESTIMATED' ? 'Estimated' : 'Unknown'}
@@ -382,7 +382,7 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
           <ul className="space-y-1">
             {(s?.recommendations ?? []).slice(0, 4).map((rec, i) => (
               <li key={i} className={`text-xs flex items-start gap-2 ${p.textSecondary}`}>
-                <span className={`mt-1.5 w-1 h-1 rounded-full shrink-0 ${isDark ? 'bg-blue-400' : 'bg-blue-500'}`} />
+                <span className={`mt-1.5 w-1 h-1 rounded-full shrink-0 ${isDark ? 'bg-brand' : 'bg-blue-500'}`} />
                 {rec}
               </li>
             ))}
@@ -408,7 +408,7 @@ function TiresDetail({ isDark, summary, detail, ...p }: DetailProps & { summary:
                 : s.actionState === 'PLAN_SERVICE'
                 ? isDark ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700'
                 : s.actionState === 'CHECK_SOON'
-                ? isDark ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-700'
+                ? isDark ? 'bg-status-info-soft text-status-info' : 'bg-blue-50 text-blue-700'
                 : isDark ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700'
             }`}>
               {formatEnumLabel(s.actionState)}
@@ -599,7 +599,7 @@ function BrakesDetail({
             summary?.dataBasis === 'MEASURED' || summary?.dataBasis === 'DOCUMENTED'
               ? isDark ? 'text-emerald-400' : 'text-emerald-600'
               : summary?.dataBasis === 'ESTIMATED'
-                ? isDark ? 'text-blue-400' : 'text-blue-600'
+                ? isDark ? 'text-status-info' : 'text-blue-600'
                 : undefined
           }
         />
@@ -766,8 +766,8 @@ function BatteryDetail({ isDark, battery: bat, ...p }: DetailProps & { battery: 
         <div className={`${p.cardClass} p-5`}>
           <style>{`@keyframes calibDots { 0%,20%{opacity:.2} 50%{opacity:1} 100%{opacity:.2} }`}</style>
           <div className="flex items-center gap-2 mb-2">
-            <span className={`text-sm font-semibold ${isDark ? 'text-blue-400' : 'text-blue-600'}`}>Initial calibration in progress</span>
-            <span className="inline-flex">{[0,1,2].map(i => <span key={i} className={`inline-block w-1.5 h-1.5 rounded-full mx-0.5 ${isDark ? 'bg-blue-400' : 'bg-blue-500'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}</span>
+            <span className={`text-sm font-semibold ${isDark ? 'text-status-info' : 'text-blue-600'}`}>Initial calibration in progress</span>
+            <span className="inline-flex">{[0,1,2].map(i => <span key={i} className={`inline-block w-1.5 h-1.5 rounded-full mx-0.5 ${isDark ? 'bg-status-info' : 'bg-blue-500'}`} style={{ animation: `calibDots 1.4s infinite ${i * 0.2}s` }} />)}</span>
           </div>
           <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Collecting rest and start-cycle measurements for accurate SOH estimation</p>
         </div>
@@ -787,7 +787,7 @@ function BatteryDetail({ isDark, battery: bat, ...p }: DetailProps & { battery: 
           }
           colorClass={
             isCalib
-              ? (isDark ? 'text-blue-400' : 'text-blue-500')
+              ? (isDark ? 'text-status-info' : 'text-blue-500')
               : statusColor(estStatus)
           }
           sub={
@@ -829,7 +829,7 @@ function BatteryDetail({ isDark, battery: bat, ...p }: DetailProps & { battery: 
           }
           colorClass={
             isCalib
-              ? (isDark ? 'text-blue-400' : 'text-blue-500')
+              ? (isDark ? 'text-status-info' : 'text-blue-500')
               : isStab
                 ? (isDark ? 'text-amber-400' : 'text-amber-500')
                 : cond === 'good'

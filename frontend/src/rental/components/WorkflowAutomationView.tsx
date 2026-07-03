@@ -465,7 +465,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">Workflow Automation</h1>
-            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide ${isDarkMode ? 'bg-blue-900/40 text-blue-300' : 'bg-blue-50 text-blue-700'}`}>
+            <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wide ${isDarkMode ? 'bg-status-info-soft text-status-info' : 'bg-blue-50 text-blue-700'}`}>
               Beta Runtime
             </span>
           </div>
@@ -503,7 +503,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
           { label: 'Failed runs', value: stats.failedRuns ?? 0, icon: Pause, color: 'red' },
         ].map((s) => {
           const colors: Record<string, string> = {
-            blue: isDarkMode ? 'text-blue-400' : 'text-blue-600',
+            blue: isDarkMode ? 'text-brand' : 'text-blue-600',
             green: isDarkMode ? 'text-green-400' : 'text-green-600',
             amber: isDarkMode ? 'text-amber-400' : 'text-amber-600',
             gray: isDarkMode ? 'text-gray-400' : 'text-gray-500',
@@ -700,7 +700,7 @@ function WorkflowRow({ wf, isDarkMode, canWrite, onOpen, onEdit, onToggle, onDup
   const hoverBg = isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-50';
 
   const catColors: Record<string, string> = {
-    blue: isDarkMode ? 'text-blue-400' : 'text-blue-600',
+    blue: isDarkMode ? 'text-brand' : 'text-blue-600',
     green: isDarkMode ? 'text-green-400' : 'text-green-600',
     cyan: isDarkMode ? 'text-cyan-400' : 'text-cyan-600',
     orange: isDarkMode ? 'text-orange-400' : 'text-orange-600',
@@ -823,7 +823,7 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
   const isAi = wf.category === 'ai_permissions' || wf.actions?.some((a: ActionDef) => a.type.startsWith('ai_'));
 
   const catColors: Record<string, string> = {
-    blue: isDarkMode ? 'text-blue-400' : 'text-blue-600',
+    blue: isDarkMode ? 'text-brand' : 'text-blue-600',
     green: isDarkMode ? 'text-green-400' : 'text-green-600',
     cyan: isDarkMode ? 'text-cyan-400' : 'text-cyan-600',
     orange: isDarkMode ? 'text-orange-400' : 'text-orange-600',
@@ -922,7 +922,7 @@ function DetailView({ wf, orgId, isDarkMode, canWrite, onBack, onEdit, onToggle,
           <p className={`text-xs font-semibold ${textPrimary} mb-3`}>Workflow Logic</p>
           {/* Trigger */}
           <div className={`flex items-start gap-2 mb-3 p-2 rounded-lg ${isDarkMode ? 'bg-white/5' : 'bg-gray-50'}`}>
-            <Icon name="target" className={`w-4 h-4 mt-0.5 shrink-0 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+            <Icon name="target" className={`w-4 h-4 mt-0.5 shrink-0 ${isDarkMode ? 'text-brand' : 'text-blue-600'}`} />
             <div>
               <p className={labelClass}>Trigger</p>
               <p className={`text-xs font-medium ${textPrimary}`}>{getTriggerLabel(wf.trigger?.type)}</p>
@@ -1167,7 +1167,7 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
           {/* Trigger */}
           <div className={sectionClass}>
             <div className="flex items-center gap-2 mb-3">
-              <Icon name="target" className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+              <Icon name="target" className={`w-4 h-4 ${isDarkMode ? 'text-brand' : 'text-blue-600'}`} />
               <p className={`text-xs font-semibold ${textPrimary}`}>Trigger</p>
             </div>
             <select
@@ -1197,7 +1197,7 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
                 <p className={`text-xs font-semibold ${textPrimary}`}>Conditions</p>
                 <span className={`text-[9px] ${textSecondary}`}>optional</span>
               </div>
-              <button onClick={addCondition} className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium ${isDarkMode ? 'text-blue-400 hover:bg-blue-900/20' : 'text-blue-600 hover:bg-blue-50'}`}>
+              <button onClick={addCondition} className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium ${isDarkMode ? 'text-brand hover:bg-brand-soft' : 'text-blue-600 hover:bg-blue-50'}`}>
                 <Icon name="plus" className="w-3 h-3" /> Add
               </button>
             </div>
@@ -1228,7 +1228,7 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
                 <Icon name="zap" className={`w-4 h-4 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
                 <p className={`text-xs font-semibold ${textPrimary}`}>Actions</p>
               </div>
-              <button onClick={addAction} className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium ${isDarkMode ? 'text-blue-400 hover:bg-blue-900/20' : 'text-blue-600 hover:bg-blue-50'}`}>
+              <button onClick={addAction} className={`flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium ${isDarkMode ? 'text-brand hover:bg-brand-soft' : 'text-blue-600 hover:bg-blue-50'}`}>
                 <Icon name="plus" className="w-3 h-3" /> Add
               </button>
             </div>

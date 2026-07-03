@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dark-theme-final-audit-v49170-2026-07-03',
+    version: '4.9.170',
+    title: 'V4.9.170 — Dark Theme Final Audit: letzte blue/slate Reste auf Hauptseiten',
+    summary: [
+      'Dashboard/Business Insights: Opportunity-Cards, Booking-Notifications und Open-CTAs im Dark Mode neutral (brand/status-info statt blue-900).',
+      'Invoices, Fines, Workflow Automation, Fleet Health, Tasks, Trips, Help Center, AI Upload/Assistant: Dark-only blue/indigo Links/Badges/Spinner auf Tokens.',
+      'Price Tariffs: Kategorie „All“ dark neutral; MPV dark violet statt indigo-navy.',
+      'EntityTasksSection: card/muted Surfaces + Status-Badges tokenisiert.',
+      'Light Theme unverändert; semantische Chart-Farben (z. B. City-Usage-Bar) bewusst behalten.',
+    ],
+    reason:
+      'Finaler Dark-Mode-Visual-Audit — verbleibende isDarkMode-blue/slate Flächen auf den Hauptseiten neutralisieren.',
+    previousBehavior:
+      'Einzelne Dashboard-, Invoice-, Fleet-Health- und Trip-Surfaces nutzten noch text-blue-400, bg-blue-900/30 oder neutral-900 Karten.',
+    details:
+      'BusinessInsightsBox, InvoicesView, FinesView, WorkflowAutomationView, FleetConditionDetailView, StatInlineDetail, EntityTasksSection, TripsMapCard, Trip*-Overlays, tariffs.ts, HelpCenterView, DocumentUploadView, AIAssistantView.',
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-07-03T23:00:00.000Z',
+  },
+  {
     id: 'dark-theme-map-glass-v49169-2026-07-03',
     version: '4.9.169',
     title: 'V4.9.169 — Dark Theme: Map Controls & Liquid Glass (charcoal neutral)',

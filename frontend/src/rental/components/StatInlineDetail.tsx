@@ -479,7 +479,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                       <span
                         className={`shrink-0 inline-block min-w-[44px] text-center px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${
                           v.cleaningStatus === 'Clean'
-                            ? (isDarkMode ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-700')
+                            ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-blue-50 text-blue-700')
                             : (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
                         }`}
                         title={v.cleaningStatus === 'Clean' ? 'Clean' : 'Needs cleaning'}
@@ -1188,7 +1188,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         <span
                           className={`shrink-0 inline-block min-w-[44px] text-center px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${
                             isClean
-                              ? (isDarkMode ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-700')
+                              ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-blue-50 text-blue-700')
                               : (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
                           }`}
                           title={isClean ? 'Clean' : 'Needs cleaning'}
@@ -1199,7 +1199,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         <span
                           className={`shrink-0 inline-block w-[72px] text-center px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${
                             isPlanned
-                              ? (isDarkMode ? 'bg-blue-500/15 text-blue-400' : 'bg-blue-50 text-blue-700')
+                              ? (isDarkMode ? 'bg-status-info-soft text-status-info' : 'bg-blue-50 text-blue-700')
                               : isUnplanned
                                 ? (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
                                 : (isDarkMode ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700')

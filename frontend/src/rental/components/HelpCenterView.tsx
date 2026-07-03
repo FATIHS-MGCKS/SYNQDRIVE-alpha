@@ -800,7 +800,7 @@ export function HelpCenterView({
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-2">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDarkMode ? 'bg-blue-500/15' : 'bg-blue-100/60'}`}>
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDarkMode ? 'bg-brand-soft' : 'bg-blue-100/60'}`}>
             <Icon name="book-open" className="w-5 h-5 text-blue-500" />
           </div>
           <div>
@@ -857,7 +857,7 @@ export function HelpCenterView({
                   onClick={() => scrollToSection(sec.id)}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
                     expandedSection === sec.id
-                      ? (isDarkMode ? 'bg-blue-600/20 text-blue-400 border-blue-500/30' : 'bg-blue-50 text-blue-600 border-blue-200')
+                      ? (isDarkMode ? 'bg-brand-soft text-brand border-brand/25' : 'bg-blue-50 text-blue-600 border-blue-200')
                       : (isDarkMode ? 'text-muted-foreground border-border hover:bg-muted hover:text-foreground' : 'text-gray-600 border-gray-200 hover:bg-gray-50 hover:text-gray-800')
                   }`}
                 >
@@ -891,7 +891,7 @@ export function HelpCenterView({
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                   section.comingSoon
                     ? (isDarkMode ? 'bg-purple-500/15' : 'bg-purple-100/60')
-                    : (isDarkMode ? 'bg-blue-500/15' : 'bg-blue-100/60')
+                    : (isDarkMode ? 'bg-brand-soft' : 'bg-blue-100/60')
                 }`}>
                   <section.icon className={`w-4.5 h-4.5 ${section.comingSoon ? 'text-purple-400' : 'text-blue-500'}`} />
                 </div>
@@ -945,7 +945,7 @@ export function HelpCenterView({
       {/* Footer */}
       <div className={`${cardClass} p-5 text-center`}>
         <div className="flex items-center justify-center gap-2 mb-2">
-          <Icon name="headphones" className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-600'}`} />
+          <Icon name="headphones" className={`w-4 h-4 ${isDarkMode ? 'text-brand' : 'text-blue-600'}`} />
           <p className={`text-xs font-semibold ${textPrimary}`}>Noch Fragen?</p>
         </div>
         <p className={`text-xs ${textSecondary}`}>
@@ -962,7 +962,7 @@ export function HelpCenterView({
 
 function ArticleContent({ content, isDarkMode }: { content: string; isDarkMode: boolean }) {
   const textStrong = isDarkMode ? 'text-white' : 'text-gray-900';
-  const listBullet = isDarkMode ? 'text-blue-400' : 'text-blue-500';
+  const listBullet = isDarkMode ? 'text-brand' : 'text-blue-500';
   const codeBg = isDarkMode ? 'bg-muted text-foreground/85' : 'bg-gray-100 text-gray-700';
 
   const lines = content.split('\n');

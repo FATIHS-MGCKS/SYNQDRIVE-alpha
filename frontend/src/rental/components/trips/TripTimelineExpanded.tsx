@@ -103,7 +103,7 @@ export function TripTimelineExpanded({
     : 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all bg-slate-100 text-slate-700 hover:bg-slate-200';
 
   const primaryActionClass = isDark
-    ? 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all bg-indigo-600/20 text-indigo-400 hover:bg-indigo-600/30'
+    ? 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all bg-brand-soft text-brand hover:bg-brand-soft/80'
     : 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all bg-indigo-50 text-indigo-600 hover:bg-indigo-100';
 
   return (
@@ -111,7 +111,7 @@ export function TripTimelineExpanded({
       <div className="space-y-5 border-t border-border/40 pt-4">
         {enriching && (
           <div
-            className={`flex items-center gap-1.5 text-[11px] font-medium ${isDark ? 'text-indigo-400' : 'text-indigo-600'}`}
+            className={`flex items-center gap-1.5 text-[11px] font-medium ${isDark ? 'text-status-ai' : 'text-indigo-600'}`}
           >
             <Icon name="loader-2" className="h-3.5 w-3.5 animate-spin" /> {TRIPS_COPY.enrichingInline}
           </div>

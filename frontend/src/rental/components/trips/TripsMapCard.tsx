@@ -145,7 +145,7 @@ export function TripsMapCard({
       <div className="flex items-center justify-between mb-2.5 flex-wrap gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-border/50 bg-muted/30">
-            <Icon name="route" className={`w-4 h-4 shrink-0 ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />
+            <Icon name="route" className={`w-4 h-4 shrink-0 ${isDark ? 'text-brand' : 'text-blue-600'}`} />
           </div>
           <div className="min-w-0">
             <p className={tv.sectionEyebrow}>Kartenansicht</p>

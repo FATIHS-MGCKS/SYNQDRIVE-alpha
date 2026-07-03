@@ -497,8 +497,8 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                     )}
                   </div>
                   {msg.role === 'user' && (
-                    <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${isDarkMode ? 'bg-indigo-500/15' : 'bg-indigo-100/80'}`}>
-                      <Icon name="user" className={`w-5 h-5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
+                    <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${isDarkMode ? 'bg-status-ai-soft' : 'bg-indigo-100/80'}`}>
+                      <Icon name="user" className={`w-5 h-5 ${isDarkMode ? 'text-status-ai' : 'text-indigo-600'}`} />
                     </div>
                   )}
                 </div>
