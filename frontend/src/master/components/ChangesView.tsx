@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dark-theme-pattern-polish-v49168-2026-07-03',
+    version: '4.9.168',
+    title: 'V4.9.168 — Dark Theme: Pattern-Polish (Cards, Buttons, Badges, Tabs, Modals)',
+    summary: [
+      'theme.css: Dark-only Overrides für sq-card, sq-tab-bar, sq-3d-btn (Primary neutral-hell, Destructive soft-critical), sq-overlay, sq-table-row.',
+      'Primary CTA nutzt --brand-foreground statt hardcoded white (Light + Dark korrekt).',
+      'Badge: Status-Varianten (success/watch/warning/critical/info/noData/ai) + Dark-default auf accent.',
+      'TabsTrigger, Sheet/Dialog: popover charcoal + sq-backdrop; Button ghost/link Focus ring neutral.',
+      'Light Theme unverändert.',
+    ],
+    reason:
+      'Nach Token-Migration (V4.9.166/167) wirkten Pattern-Layer (3D-Buttons, Tab-Bar, Badges) im Dark Mode noch blau-lastig oder zu neon.',
+    previousBehavior:
+      'sq-tab-bar mit Brand-Tint, Primary-Button color:white + Blue-Glow-Focus, destructive full-neon, Badge default bg-primary.',
+    details:
+      'theme.css, button.tsx, badge.tsx, tabs.tsx, sheet.tsx, dialog.tsx, alert-dialog.tsx.',
+    affectsArchitecture: false,
+    module: 'Rental UI',
+    createdAt: '2026-07-03T21:00:00.000Z',
+  },
+  {
     id: 'dark-theme-hardcoded-cleanup-v49167-2026-07-03',
     version: '4.9.167',
     title: 'V4.9.167 — Dark Theme: hartkodierte slate/blue/neutral Flächen auf Tokens',

@@ -1445,7 +1445,7 @@
 
 .sq-3d-btn--primary {
   background: linear-gradient(180deg, color-mix(in srgb, var(--brand) 90%, white) 0%, var(--brand) 100%);
-  color: white;
+  color: var(--brand-foreground);
   border-color: color-mix(in srgb, var(--brand) 80%, black);
   box-shadow: 
     0 2px 6px color-mix(in srgb, var(--brand) 30%, transparent),
@@ -1460,9 +1460,9 @@
     inset 0 -1px 2px color-mix(in srgb, black 20%, transparent);
 }
 .sq-3d-btn--primary .icon-wrapper {
-  background: color-mix(in srgb, white 20%, transparent);
+  background: color-mix(in srgb, var(--brand-foreground) 12%, transparent);
   box-shadow: inset 0 1px 2px color-mix(in srgb, black 15%, transparent);
-  color: white;
+  color: var(--brand-foreground);
 }
 
 .sq-3d-btn--success {
@@ -1610,7 +1610,7 @@
 /* ── Primary brand CTA ── */
 .sq-cta {
   background: linear-gradient(180deg, color-mix(in srgb, var(--brand) 90%, white) 0%, var(--brand) 100%);
-  color: white;
+  color: var(--brand-foreground);
   border: 1px solid color-mix(in srgb, var(--brand) 80%, black);
   border-radius: 10px;
   padding: 0.5rem 0.9rem;
@@ -1754,6 +1754,142 @@
     inset 0 1px 0 var(--glass-edge-highlight),
     inset 0 -1px 0 var(--glass-edge-catch),
     var(--shadow-lg);
+}
+
+
+/* ═══════════════════════════════════════════════════════
+   Dark Theme V2 — Pattern surfaces (charcoal / graphite)
+   Light-theme rules above stay unchanged; overrides apply
+   only under `.dark` for cards, tabs, buttons, tables, overlays.
+   ═══════════════════════════════════════════════════════ */
+
+.dark .sq-card,
+.dark .sq-card-elevated {
+  box-shadow: var(--shadow-xs);
+}
+
+.dark .sq-card-elevated:hover {
+  border-color: color-mix(in srgb, var(--border) 72%, white 28%);
+  box-shadow: var(--shadow-md);
+}
+
+.dark .sq-tab-bar {
+  background: var(--muted);
+  border-color: var(--border);
+}
+
+.dark .sq-tab-bar button:hover {
+  background: color-mix(in srgb, var(--accent) 55%, transparent);
+}
+
+.dark .sq-tab-bar button[data-active="true"],
+.dark .sq-tab-bar button.active {
+  color: var(--foreground);
+  background: var(--card);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 1px 2px rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--border);
+}
+
+.dark .sq-3d-btn:focus-visible {
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--ring) 55%, transparent),
+    0 0 0 1px var(--ring),
+    inset 0 1px 1px rgba(255, 255, 255, 0.08);
+}
+
+.dark .sq-3d-btn--primary {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--foreground) 96%, white) 0%,
+    color-mix(in srgb, var(--foreground) 88%, var(--muted)) 100%
+  );
+  color: var(--brand-foreground);
+  border-color: color-mix(in srgb, var(--foreground) 22%, transparent);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.22);
+}
+
+.dark .sq-3d-btn--primary:hover {
+  background: linear-gradient(
+    180deg,
+    #ffffff 0%,
+    color-mix(in srgb, var(--foreground) 92%, white) 100%
+  );
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.22);
+}
+
+.dark .sq-3d-btn--destructive {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--status-critical-soft) 85%, var(--card)) 0%,
+    color-mix(in srgb, var(--status-critical) 72%, var(--card)) 100%
+  );
+  color: var(--status-critical);
+  border-color: color-mix(in srgb, var(--status-critical) 32%, transparent);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.dark .sq-3d-btn--destructive:hover {
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--status-critical-soft) 95%, var(--card)) 0%,
+    color-mix(in srgb, var(--status-critical) 78%, var(--card)) 100%
+  );
+  box-shadow:
+    0 4px 10px rgba(0, 0, 0, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.dark .sq-3d-btn--destructive .icon-wrapper {
+  color: var(--status-critical);
+}
+
+.dark .sq-3d-btn--neutral.active {
+  background: linear-gradient(180deg, var(--card) 0%, color-mix(in srgb, var(--card) 88%, var(--accent)) 100%);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+.dark .sq-table-row:hover {
+  background: color-mix(in srgb, var(--accent) 65%, transparent);
+}
+
+.dark .sq-nav-rail[data-active="true"],
+.dark .sq-nav-rail.active {
+  color: var(--foreground);
+}
+
+.dark .sq-overlay {
+  background: var(--popover);
+  border-color: var(--border);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    var(--shadow-overlay);
+}
+
+.dark .sq-inset {
+  background: color-mix(in srgb, var(--muted) 88%, var(--card));
+}
+
+.dark .sq-chip-neutral {
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+
+.dark .glass-card,
+.dark .glass-panel {
+  box-shadow:
+    inset 0 1px 0 var(--glass-edge-highlight),
+    var(--shadow-sm);
 }
 
 

@@ -10,13 +10,27 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default:
-          "border-transparent bg-primary text-primary-foreground [a&]:hover:bg-primary/90",
+          "border-transparent bg-primary text-primary-foreground [a&]:hover:bg-primary/90 dark:bg-accent dark:text-foreground dark:[a&]:hover:bg-accent/90",
         secondary:
           "border-transparent bg-secondary text-secondary-foreground [a&]:hover:bg-secondary/90",
         destructive:
-          "border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
+          "border-transparent bg-destructive text-white [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-status-critical-soft dark:text-status-critical dark:border-status-critical/20 dark:[a&]:hover:bg-status-critical-soft/90",
         outline:
-          "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+          "text-foreground border-border/70 [a&]:hover:bg-accent [a&]:hover:text-accent-foreground dark:[a&]:hover:bg-muted",
+        success:
+          "border-transparent bg-status-positive-soft text-status-positive [a&]:hover:opacity-90",
+        watch:
+          "border-transparent bg-status-attention-soft text-status-attention [a&]:hover:opacity-90",
+        warning:
+          "border-transparent bg-status-warning-soft text-status-warning [a&]:hover:opacity-90",
+        critical:
+          "border-transparent bg-status-critical-soft text-status-critical [a&]:hover:opacity-90",
+        info:
+          "border-transparent bg-status-info-soft text-status-info [a&]:hover:opacity-90",
+        noData:
+          "border-transparent bg-status-nodata-soft text-status-nodata [a&]:hover:opacity-90",
+        ai:
+          "border-transparent bg-status-ai-soft text-status-ai [a&]:hover:opacity-90",
       },
     },
     defaultVariants: {
