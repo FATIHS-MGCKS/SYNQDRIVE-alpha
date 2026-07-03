@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'account-security-sessions-v49158-2026-07-03',
+    version: '4.9.158',
+    title: 'V4.9.158 — Kontoinformationen Sicherheit & Sitzungen: UX + Passwortpolicy',
+    summary: [
+      'Session Cards zeigen Browser · OS · Gerätetyp statt roher User-Agent-Strings; IP dezent, letzte Aktivität lesbar.',
+      'Aktuelle Sitzung als Badge „Aktuelles Gerät“; Button „Andere Sitzungen abmelden“ im Outline-Stil.',
+      'Passwortpolicy mindestens 10 Zeichen (Frontend + Backend + DTO); Anforderungen im Dialog sichtbar.',
+      '2FA/Passkeys: API-Flags `twoFactorAvailable` / `passkeysAvailable` — Placeholder „Demnächst verfügbar“, kein Fake-Flow.',
+      'Backend liefert `os` in Session-DTO via User-Agent-Parsing.',
+    ],
+    reason:
+      'Sicherheit & Sitzungen wirkten debug-lastig und unfertig — rohe User-Agent-Daten, schwache Passwortregeln, uneinheitliche Buttons.',
+    previousBehavior:
+      'Rohe Browser/Device-Zeilen, technische IP-Zeilen, 2FA „Demnächst“ ohne klare Vorbereitung, Passwort min. 6 Zeichen.',
+    details:
+      'AccountSessionsSection.tsx, ChangePasswordDialog.tsx, password-policy.ts, session-display.utils.ts, account.service.ts, change-my-password.dto.ts, api.ts.',
+    affectsArchitecture: false,
+    module: 'Master Admin',
+    createdAt: '2026-07-03T10:00:00.000Z',
+  },
+  {
     id: 'account-notifications-accordion-v49157-2026-07-03',
     version: '4.9.157',
     title: 'V4.9.157 — Kontoinformationen Benachrichtigungen: Matrix + Mobile Accordion',

@@ -1,6 +1,11 @@
 import { Loader2, X } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '../../../../components/ui/button';
+import {
+  ACCOUNT_PASSWORD_MIN_LENGTH,
+  ACCOUNT_PASSWORD_REQUIREMENTS,
+  validateAccountPasswordChange,
+} from './password-policy';
 import { accountFieldLabelClass, accountInputClass } from './account-ui';
 
 interface ChangePasswordDialogProps {
@@ -34,28 +39,26 @@ export function ChangePasswordDialog({ open, saving, onClose, onSubmit }: Change
     onClose();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
     setLocalError(null);
-    const { currentPassword, newPassword, confirmPassword, revokeOtherSessions } = form;
-    if (!currentPassword.trim()) {
-      setLocalError('Aktuelles Passwort ist erforderlich');
+
+    const validationError = validateAccountPasswordChange({
+      currentPassword: form.currentPassword,
+      newPassword: form.newPassword,
+      confirmPassword: form.confirmPassword,
+    });
+    if (validationError) {
+      setLocalError(validationError);
       return;
     }
-    if (newPassword.length < 6) {
-      setLocalError('Neues Passwort muss mindestens 6 Zeichen haben');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setLocalError('Die neuen Passwörter stimmen nicht überein');
-      return;
-    }
+
     try {
       await onSubmit({
-        currentPassword,
-        newPassword,
-        confirmPassword,
-        revokeOtherSessions,
+        currentPassword: form.currentPassword,
+        newPassword: form.newPassword,
+        confirmPassword: form.confirmPassword,
+        revokeOtherSessions: form.revokeOtherSessions,
       });
       setForm(EMPTY_FORM);
       setLocalError(null);
@@ -95,56 +98,93 @@ export function ChangePasswordDialog({ open, saving, onClose, onSubmit }: Change
           </Button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <p className="mb-4 text-[11px] text-muted-foreground">
+          Geben Sie Ihr aktuelles Passwort ein und wählen Sie ein neues, sicheres Passwort.
+        </p>
+
+        <form onSubmit={(event) => void handleSubmit(event)} className="space-y-3">
           <div>
-            <label className={accountFieldLabelClass}>Aktuelles Passwort</label>
+            <label className={accountFieldLabelClass} htmlFor="account-current-password">
+              Aktuelles Passwort
+            </label>
             <input
+              id="account-current-password"
               type="password"
               autoComplete="current-password"
               className={accountInputClass}
               value={form.currentPassword}
-              onChange={(e) => setForm((f) => ({ ...f, currentPassword: e.target.value }))}
+              onChange={(event) => setForm((current) => ({ ...current, currentPassword: event.target.value }))}
+              disabled={saving}
             />
           </div>
           <div>
-            <label className={accountFieldLabelClass}>Neues Passwort</label>
+            <label className={accountFieldLabelClass} htmlFor="account-new-password">
+              Neues Passwort
+            </label>
             <input
+              id="account-new-password"
               type="password"
               autoComplete="new-password"
               className={accountInputClass}
               value={form.newPassword}
-              onChange={(e) => setForm((f) => ({ ...f, newPassword: e.target.value }))}
+              onChange={(event) => setForm((current) => ({ ...current, newPassword: event.target.value }))}
+              disabled={saving}
+              minLength={ACCOUNT_PASSWORD_MIN_LENGTH}
             />
           </div>
           <div>
-            <label className={accountFieldLabelClass}>Neues Passwort bestätigen</label>
+            <label className={accountFieldLabelClass} htmlFor="account-confirm-password">
+              Neues Passwort bestätigen
+            </label>
             <input
+              id="account-confirm-password"
               type="password"
               autoComplete="new-password"
               className={accountInputClass}
               value={form.confirmPassword}
-              onChange={(e) => setForm((f) => ({ ...f, confirmPassword: e.target.value }))}
+              onChange={(event) => setForm((current) => ({ ...current, confirmPassword: event.target.value }))}
+              disabled={saving}
+              minLength={ACCOUNT_PASSWORD_MIN_LENGTH}
             />
           </div>
+
+          <div className="rounded-xl border border-border/60 bg-muted/30 px-3 py-2.5">
+            <p className="text-[11px] font-medium text-foreground">Passwortanforderungen</p>
+            <ul className="mt-1.5 space-y-1">
+              {ACCOUNT_PASSWORD_REQUIREMENTS.map((requirement) => (
+                <li key={requirement} className="text-[11px] text-muted-foreground">
+                  · {requirement}
+                </li>
+              ))}
+            </ul>
+          </div>
+
           <label className="flex cursor-pointer items-center gap-2 text-[11px] text-muted-foreground">
             <input
               type="checkbox"
               checked={form.revokeOtherSessions}
-              onChange={(e) => setForm((f) => ({ ...f, revokeOtherSessions: e.target.checked }))}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, revokeOtherSessions: event.target.checked }))
+              }
               className="rounded border-border"
+              disabled={saving}
             />
             Alle anderen Sitzungen abmelden
           </label>
+
           {localError ? (
-            <p className="text-xs text-[color:var(--status-critical)]">{localError}</p>
+            <p className="text-xs text-[color:var(--status-critical)]" role="alert">
+              {localError}
+            </p>
           ) : null}
+
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="ghost" size="sm" onClick={resetAndClose} disabled={saving}>
+            <Button type="button" variant="outline" size="sm" onClick={resetAndClose} disabled={saving}>
               Abbrechen
             </Button>
             <Button type="submit" size="sm" disabled={saving}>
-              {saving ? <Loader2 className="animate-spin" /> : null}
-              Passwort aktualisieren
+              {saving ? <Loader2 className="animate-spin" aria-hidden /> : null}
+              Passwort speichern
             </Button>
           </div>
         </form>

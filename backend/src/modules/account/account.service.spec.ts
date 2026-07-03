@@ -226,12 +226,27 @@ describe('AccountService', () => {
         orgId,
         {
           currentPassword: 'wrong',
-          newPassword: 'newpass1',
-          confirmPassword: 'newpass1',
+          newPassword: 'newpassword1',
+          confirmPassword: 'newpassword1',
         },
         {},
       ),
     ).rejects.toBeInstanceOf(UnauthorizedException);
+  });
+
+  it('rejects passwords shorter than policy minimum', async () => {
+    await expect(
+      service.changePassword(
+        userId,
+        orgId,
+        {
+          currentPassword: 'oldpassword1',
+          newPassword: 'short',
+          confirmPassword: 'short',
+        },
+        {},
+      ),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('changes password when currentPassword is valid', async () => {
@@ -243,9 +258,9 @@ describe('AccountService', () => {
       userId,
       orgId,
       {
-        currentPassword: 'oldpass',
-        newPassword: 'newpass1',
-        confirmPassword: 'newpass1',
+        currentPassword: 'oldpassword1',
+        newPassword: 'newpassword1',
+        confirmPassword: 'newpassword1',
         revokeOtherSessions: true,
       },
       {},
