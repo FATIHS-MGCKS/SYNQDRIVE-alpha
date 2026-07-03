@@ -181,7 +181,7 @@ function mapRuntimeReason(
       issueType: 'hm_oem_service_tracking_missing',
       semanticKey: createVehicleIssueKey(vehicleId, 'data_quality', 'hm_oem_service_tracking_missing'),
       severity: 'info',
-      title: title || 'Kein HM/OEM Service-Tracking verfuegbar',
+      title: title || 'Service-Tracking nicht verfuegbar',
     };
   }
   if ((reason.category === 'service' || reason.category === 'compliance') && isOverdueText(text)) {
@@ -463,7 +463,7 @@ function healthModuleToIssueDraft(
         domain: 'data_quality',
         issueType: 'hm_oem_service_tracking_missing',
         severity: 'info',
-        title: module.reason || 'Kein HM/OEM Service-Tracking verfuegbar',
+        title: module.reason || 'Service-Tracking nicht verfuegbar',
         subtitle: module.dataStale ? 'Datenstand verzoegert' : undefined,
         vehicleId,
         vehicle,

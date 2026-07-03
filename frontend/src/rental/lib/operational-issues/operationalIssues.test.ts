@@ -203,6 +203,7 @@ describe('operational issue taxonomy', () => {
     expect(issue.severity).toBe('info');
     expect(issue.visibility.dashboardAttention).toBe(false);
     expect(issue.visibility.vehicleHealth).toBe(true);
+    expect(issue.title).toBe('Service-Tracking nicht verfuegbar');
   });
 
   it('keeps telemetry offline critical and soft offline as notice', () => {

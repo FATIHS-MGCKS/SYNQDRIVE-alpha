@@ -7,6 +7,8 @@ import type {
   ActionQueueItem,
   ActionQueueLeafItem,
 } from './dashboardTypes';
+import { HM_OEM_SERVICE_TRACKING_MISSING_ORG_KEY } from '../../lib/operational-issues';
+import { isGroupedHmOemServiceTrackingDataNote } from './hmOemServiceTrackingDataNote';
 
 // ─── Severity ordering ──────────────────────────────────────────────────
 // critical > overdue > warning > attention > info
@@ -225,6 +227,13 @@ function groupIsCritical(group: ActionQueueGroupItem): boolean {
   return group.children.some((c) => c.severity === 'critical' || c.severity === 'overdue' || c.isOverdue);
 }
 
+function leafMatchesTab(leaf: ActionQueueLeafItem, tab: ActionQueueFilterTab): boolean {
+  if (categoryMatches(leaf.category, tab)) return true;
+  if (tab === 'vehicle' && isGroupedHmOemServiceTrackingDataNote(leaf)) return true;
+  if (tab === 'notifications' && leaf.semanticKey === HM_OEM_SERVICE_TRACKING_MISSING_ORG_KEY) return true;
+  return false;
+}
+
 function categoryMatches(
   category: ActionQueueItem['category'],
   tab: ActionQueueFilterTab,
@@ -257,7 +266,7 @@ export function filterActionQueueEntries(
       if (categoryMatches(entry.category, tab)) return true;
       return entry.children.some((c) => categoryMatches(c.category, tab));
     }
-    return categoryMatches(entry.category, tab);
+    return leafMatchesTab(entry, tab);
   });
 }
 

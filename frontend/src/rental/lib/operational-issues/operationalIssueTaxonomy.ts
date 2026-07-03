@@ -32,7 +32,14 @@ const OVERDUE_TEXT =
   /overdue|ueberfaellig|überfällig|abgelaufen|massiv|seit\s+\d+\s+tag/i;
 
 const HM_OEM_NO_TRACKING_TEXT =
-  /kein hm\/oem|no hm\/oem|hm\/oem.*(nicht|kein|no|missing|unavailable)|kein.*service-?tracking|no.*service-?tracking|service-?tracking.*(missing|unavailable|nicht)|no tracking|kein tracking/i;
+  /kein hm\/oem|no hm\/oem|hm\/oem.*(nicht|kein|no|missing|unavailable|verf[uü]gbar)|kein.*service-?tracking|no.*service-?tracking|service-?tracking.*(missing|unavailable|nicht|verf[uü]gbar)|no tracking|kein tracking|tracking nicht verf[uü]gbar/i;
+
+/** Semantic key for the org-wide grouped dashboard data note (not per-vehicle). */
+export const HM_OEM_SERVICE_TRACKING_MISSING_ORG_KEY =
+  'org:data_quality:hm_oem_service_tracking_missing';
+
+export const HM_OEM_SERVICE_TRACKING_DATA_NOTE_LABEL_DE = 'Service-Tracking nicht verfügbar';
+export const HM_OEM_SERVICE_TRACKING_DATA_NOTE_LABEL_EN = 'Service tracking unavailable';
 
 const ISSUE_TYPE_SEVERITY: Record<string, OperationalIssueSeverity> = {
   tire_monitor: 'warning',
@@ -88,6 +95,55 @@ const FINANCE_ISSUE_TYPES = new Set([
 export function isOverdueIssueText(text: string | null | undefined): boolean {
   if (!text) return false;
   return OVERDUE_TEXT.test(text);
+}
+
+export function isHmOemServiceTrackingMissingIssue(
+  issue: Pick<OperationalIssue, 'issueType' | 'semanticKey' | 'title' | 'subtitle'>,
+): boolean {
+  if (
+    issue.issueType === 'hm_oem_service_tracking_missing'
+    || issue.issueType === 'service_tracking_missing'
+  ) {
+    return true;
+  }
+  if (issue.semanticKey?.includes('hm_oem_service_tracking_missing')) return true;
+  const text = `${issue.title ?? ''} ${issue.subtitle ?? ''}`;
+  return isHmOemServiceTrackingMissingText(text);
+}
+
+export function hmOemServiceTrackingDataNoteSubtitle(locale: string): string {
+  return locale === 'de'
+    ? HM_OEM_SERVICE_TRACKING_DATA_NOTE_LABEL_DE
+    : HM_OEM_SERVICE_TRACKING_DATA_NOTE_LABEL_EN;
+}
+
+export function formatHmOemServiceTrackingGroupedTitle(
+  vehicleCount: number,
+  locale: string,
+): string {
+  const de = locale === 'de';
+  if (vehicleCount <= 0) return hmOemServiceTrackingDataNoteSubtitle(locale);
+  if (de) {
+    return vehicleCount === 1
+      ? '1 Fahrzeug ohne HM/OEM Service-Tracking'
+      : `${vehicleCount} Fahrzeuge ohne HM/OEM Service-Tracking`;
+  }
+  return vehicleCount === 1
+    ? '1 vehicle without HM/OEM service tracking'
+    : `${vehicleCount} vehicles without HM/OEM service tracking`;
+}
+
+export function collectHmOemServiceTrackingVehicleIds(
+  issues: Array<Pick<OperationalIssue, 'issueType' | 'vehicleId' | 'semanticKey' | 'title' | 'subtitle'>>,
+  excludeVehicleIds: ReadonlySet<string> = new Set(),
+): string[] {
+  const ids = new Set<string>();
+  for (const issue of issues) {
+    if (!isHmOemServiceTrackingMissingIssue(issue)) continue;
+    if (!issue.vehicleId || excludeVehicleIds.has(issue.vehicleId)) continue;
+    ids.add(issue.vehicleId);
+  }
+  return Array.from(ids);
 }
 
 export function isHmOemServiceTrackingMissingText(text: string | null | undefined): boolean {

@@ -41,7 +41,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Neue zentrale Taxonomie unter `operational-issues/operationalIssueTaxonomy.ts` — OperationalIssue als Single Source of Truth.',
       'Reifen beobachten / tire_monitor einheitlich `warning` (nicht mehr Notice in Notifications vs. Warning in Fleet/Health).',
-      'HM/OEM Service-Tracking fehlt → `data_quality` / `info`, nicht als Act-Now-Meldung in Dashboard Attention.',
+      'HM/OEM Service-Tracking fehlt → `data_quality` / `info`, gruppierte Dashboard-Data-Note statt pro-Fahrzeug Act-Now.',
       'Finance-Tab aus Dashboard ActionQueue entfernt (`ACTION_QUEUE_FILTER_TABS` ohne `financial`); Filterlogik bereinigt.',
       'Fleet Command, Fleet Health, Vehicle Detail und Rental-Health-Reasons nutzen dieselben Taxonomie-Helper.',
     ],

@@ -115,6 +115,12 @@ export function formatUserFacingReasonLabel(
 }
 
 export function formatOperationalIssueTitle(issue: Pick<OperationalIssue, 'issueType' | 'title'>): string {
+  if (
+    issue.issueType === 'hm_oem_service_tracking_missing'
+    || issue.issueType === 'service_tracking_missing'
+  ) {
+    return defaultTitleForIssueType(issue.issueType);
+  }
   const sanitized = sanitizeUserFacingIssueText(issue.title);
   if (sanitized) return sanitized;
   return defaultTitleForIssueType(issue.issueType);
@@ -169,6 +175,9 @@ function defaultTitleForIssueType(issueType: string): string {
       return 'Schadensverdacht';
     case 'impact_suspicion':
       return 'Impact-Verdacht';
+    case 'hm_oem_service_tracking_missing':
+    case 'service_tracking_missing':
+      return 'Service-Tracking nicht verfuegbar';
     case 'receivable_overdue':
       return 'Zahlung ueberfaellig';
     default:

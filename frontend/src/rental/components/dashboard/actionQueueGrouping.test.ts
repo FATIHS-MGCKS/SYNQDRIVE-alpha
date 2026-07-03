@@ -6,6 +6,7 @@ import {
   groupActionQueueEntries,
 } from './actionQueueGrouping';
 import { ACTION_QUEUE_FILTER_TABS, type ActionQueueGroupItem, type ActionQueueItem } from './dashboardTypes';
+import { HM_OEM_SERVICE_TRACKING_MISSING_ORG_KEY } from '../../lib/operational-issues';
 import type { DashboardInsight, VehicleHealthAlert } from '../../DashboardInsightsContext';
 import type { VehicleData } from '../../data/vehicles';
 import type { PredictiveOperationsInsight } from './derivePredictiveOperationsInsights';
@@ -61,6 +62,30 @@ function healthAlert(): VehicleHealthAlert {
         label: 'Service & inspection',
         severity: 'critical',
         reason: 'Service überfällig',
+        dataStale: false,
+        lastUpdatedAt: null,
+      },
+    ],
+  };
+}
+
+function hmTrackingAlert(vehicleId: string): VehicleHealthAlert {
+  return {
+    vehicleId,
+    vehicle: null,
+    severity: 'warning',
+    kinds: [],
+    primaryReason: 'Service / TÜV: Kein HM/OEM Service-Tracking verfügbar',
+    secondaryReasons: [],
+    license: vehicleId === 'v1' ? 'KS MX 2024' : 'KS AB 123',
+    model: 'EV',
+    station: 'Kassel',
+    modules: [
+      {
+        module: 'service_compliance',
+        label: 'Service & inspection',
+        severity: 'warning',
+        reason: 'Kein HM/OEM Service-Tracking verfügbar',
         dataStale: false,
         lastUpdatedAt: null,
       },
@@ -487,5 +512,78 @@ describe('actionQueueBuilder — OperationalIssue normalization', () => {
     expect(countAtomicActions(all)).toBe(1);
     expect(countAtomicActions(critical)).toBe(1);
     expect(all[0].id).toBe(critical[0].id);
+  });
+});
+
+describe('HM/OEM service tracking data notes', () => {
+  it('groups two vehicles into one info notification instead of two act-now alerts', () => {
+    const v2 = vehicle({ id: 'v2', license: 'KS AB 123' });
+    const items = buildQueue({
+      locale: 'de',
+      fleetById: new Map<string, VehicleData>([
+        ['v1', vehicle()],
+        ['v2', v2],
+      ]),
+      vehicleHealthAlerts: [hmTrackingAlert('v1'), hmTrackingAlert('v2')],
+    });
+
+    const individualTracking = items.filter(
+      (item) =>
+        item.semanticKey?.includes('hm_oem_service_tracking_missing')
+        && item.semanticKey !== HM_OEM_SERVICE_TRACKING_MISSING_ORG_KEY,
+    );
+    expect(individualTracking).toHaveLength(0);
+
+    const grouped = items.filter(
+      (item) => item.semanticKey === HM_OEM_SERVICE_TRACKING_MISSING_ORG_KEY,
+    );
+    expect(grouped).toHaveLength(1);
+    expect(grouped[0]?.title).toBe('2 Fahrzeuge ohne HM/OEM Service-Tracking');
+    expect(grouped[0]?.severity).toBe('info');
+    expect(grouped[0]?.pinned).toBeFalsy();
+    expect(grouped[0]?.category).toBe('notification');
+
+    const entries = groupActionQueueEntries(items, 'de');
+    expect(filterActionQueueEntries(entries, 'critical')).toHaveLength(0);
+    expect(filterActionQueueEntries(entries, 'notifications')).toHaveLength(1);
+    expect(filterActionQueueEntries(entries, 'vehicle')).toHaveLength(1);
+  });
+
+  it('keeps service overdue critical and suppresses tracking note for the same vehicle', () => {
+    const items = buildQueue({
+      locale: 'de',
+      vehicleHealthAlerts: [
+        {
+          vehicleId: 'v1',
+          vehicle: null,
+          severity: 'critical',
+          kinds: [],
+          primaryReason: 'Service überfällig',
+          secondaryReasons: [],
+          license: 'KS MX 2024',
+          model: 'EV',
+          station: 'Kassel',
+          modules: [
+            {
+              module: 'service_compliance',
+              label: 'Service & inspection',
+              severity: 'critical',
+              reason: 'Service überfällig seit 117 Tagen (HM/OEM)',
+              dataStale: false,
+              lastUpdatedAt: null,
+            },
+          ],
+        },
+        hmTrackingAlert('v1'),
+      ],
+    });
+
+    const overdue = items.find((item) => item.module === 'service_compliance' && item.childSeverity === 'overdue');
+    expect(overdue).toBeTruthy();
+    expect(overdue?.severity).toBe('critical');
+    expect(items.some((item) => item.semanticKey === HM_OEM_SERVICE_TRACKING_MISSING_ORG_KEY)).toBe(false);
+    expect(
+      items.filter((item) => item.semanticKey?.includes('hm_oem_service_tracking_missing')).length,
+    ).toBeLessThanOrEqual(1);
   });
 });
