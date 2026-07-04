@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'ready-rent-drawer-ux-polish-v49190-2026-07-04',
+    version: '4.9.190',
+    title: 'V4.9.190 — Ready-for-Renting Drawer: UX-Feinschliff',
+    summary: [
+      'Fahrzeugzeilen: Fleet-Command-Layout (Badges + CTA rechts), Station/Telemetrie getrennt, Reason-Pill eigene Zeile, kompakter „Öffnen“-CTA.',
+      'Toolbar: Scope + Suche in dezenter Panel-Box; Gruppenüberschriften `sq-section-label`; engere Listenabstände.',
+      'Dark-Mode: `bg-card/40`, Suchfeld `bg-background/60` — keine Logikänderung.',
+    ],
+    reason: 'Header, Toolbar, Gruppen und Karten optisch enger an Fleet Command angleichen, ohne Drawer zu überladen.',
+    previousBehavior: 'Badges inline neben Kennzeichen; Station und Telemetrie in einer Zeile; voller CTA-Text.',
+    details: 'UI-only: CompactFleetDrawerVehicleRow, DashboardDrilldownDrawer.',
+    affectsArchitecture: false,
+    module: 'Dashboard',
+    createdAt: '2026-07-04T14:30:00.000Z',
+  },
+  {
     id: 'ready-rent-drawer-vehicle-rows-v49189-2026-07-04',
     version: '4.9.189',
     title: 'V4.9.189 — Ready-for-Renting Drawer: kompakte Fleet-Command-Fahrzeugzeilen',
