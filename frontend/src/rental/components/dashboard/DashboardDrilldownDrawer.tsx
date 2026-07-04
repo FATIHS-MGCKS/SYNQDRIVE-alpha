@@ -537,10 +537,10 @@ function ReadyToRentDrawerToolbar({
   searchPlaceholder: string;
 }) {
   return (
-    <div className="mb-3 space-y-2">
-      <div className="flex min-w-0 items-center gap-1.5 px-0.5 text-[11px] text-muted-foreground">
-        <Icon name="map-pin" className="h-3 w-3 shrink-0 opacity-80" />
-        <span className="truncate font-medium">{stationScopeLabel}</span>
+    <div className="mb-1 space-y-2 rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5 dark:bg-muted/10">
+      <div className="flex min-w-0 items-center gap-1.5">
+        <Icon name="map-pin" className="h-3 w-3 shrink-0 text-muted-foreground/80" />
+        <span className="sq-section-label truncate normal-case tracking-wide">{stationScopeLabel}</span>
       </div>
       <div className="relative">
         <Icon
@@ -552,7 +552,7 @@ function ReadyToRentDrawerToolbar({
           value={searchQuery}
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder={searchPlaceholder}
-          className="w-full rounded-xl border border-border/60 bg-muted/30 py-2 pl-8 pr-3 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[color:var(--brand)]"
+          className="w-full min-w-0 rounded-xl border border-border/55 bg-background/60 py-2 pl-8 pr-3 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[color:var(--brand)] dark:bg-card/50"
         />
       </div>
     </div>
@@ -608,7 +608,7 @@ function DashboardGroupList({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {isReadyToRent ? (
         <ReadyToRentDrawerToolbar
           searchQuery={searchQuery}
@@ -628,15 +628,18 @@ function DashboardGroupList({
           }
         />
       ) : (
-        filteredGroups.map((group) => (
-          <section key={group.id} className="space-y-2">
-            <div className="flex items-center justify-between gap-3 px-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{group.title}</p>
+        filteredGroups.map((group, index) => (
+          <section
+            key={group.id}
+            className={cn('space-y-2', isReadyToRent && index > 0 && 'border-t border-border/40 pt-3')}
+          >
+            <div className="flex items-center justify-between gap-3 px-0.5">
+              <p className="sq-section-label normal-case tracking-wide">{group.title}</p>
               <span className="rounded-md bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
                 {group.count}
               </span>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               {group.rows.map((row) => (
                 <DashboardRowCard
                   key={row.id}
@@ -761,7 +764,7 @@ export function DashboardDrilldownDrawer({
     ? (
       <div className="space-y-1">
         {dashboardSlice.id === 'ready-to-rent' ? (
-          <p className="text-[12px] text-muted-foreground">{readyToRentDrawerHint(dashboardSlice, locale)}</p>
+          <p className="text-[12px] leading-relaxed text-muted-foreground">{readyToRentDrawerHint(dashboardSlice, locale)}</p>
         ) : drawerHeaderHint(dashboardSlice, locale) ? (
           <p className="text-[12px] text-muted-foreground">{drawerHeaderHint(dashboardSlice, locale)}</p>
         ) : null}

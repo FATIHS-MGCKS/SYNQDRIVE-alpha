@@ -73,7 +73,7 @@ export function CompactFleetDrawerVehicleRow({
 }: CompactFleetDrawerVehicleRowProps) {
   const de = locale === 'de';
   const canOpen = Boolean(row.vehicleId && onOpenVehicle);
-  const ctaLabel = row.primaryActionLabel ?? (de ? 'Fahrzeug öffnen' : 'Open vehicle');
+  const ctaLabel = de ? 'Öffnen' : 'Open';
 
   const fleetDisplay = vehicle
     ? resolveFleetVehicleDisplayState(vehicle, { rentalHealth: health, locale })
@@ -84,6 +84,7 @@ export function CompactFleetDrawerVehicleRow({
   const station = vehicle ? vehicleStationLabel(vehicle) : row.stationLabel ?? runtimeState?.stationLabel;
   const telemetryLabel = fleetDisplay?.telemetryLabel
     ?? (runtimeState ? runtimeTelemetryLabel(runtimeState, de) : null);
+  const telemetryWarns = fleetDisplay?.showTelemetryWarning ?? runtimeState?.telemetryState === 'offline';
   const healthChip = fleetDisplay
     ? { label: fleetDisplay.healthDisplay.label, tone: fleetDisplay.healthDisplay.tone }
     : runtimeState
@@ -99,8 +100,7 @@ export function CompactFleetDrawerVehicleRow({
   const odometerLabel = fleetDisplay?.odometerLabel ?? null;
   const dimmed = fleetDisplay?.showTelemetryWarning && vehicle?.status === 'Available';
 
-  const locationParts = [station, telemetryLabel].filter(Boolean) as string[];
-  const locationLine = locationParts.length > 0 ? locationParts.join(' · ') : null;
+  const showOpsMeta = energy?.percent != null || odometerLabel || telemetryLabel;
 
   const tint =
     fleetDisplay?.primaryStatus === 'critical' || fleetDisplay?.primaryStatus === 'blocked'
@@ -113,56 +113,36 @@ export function CompactFleetDrawerVehicleRow({
             ? 'bg-[color:color-mix(in_srgb,var(--status-watch)_4%,transparent)]'
             : '';
 
-  const showMetaRow = (energy?.percent != null) || odometerLabel || reasonBadge;
-
   return (
     <article
       className={cn(
-        'rounded-lg border border-border/45 bg-card/45 px-2.5 py-2 shadow-sm shadow-black/[0.02] transition-colors hover:border-border/65 hover:bg-muted/10',
+        'rounded-xl border border-border/50 bg-card/50 px-2.5 py-2.5 transition-colors hover:border-border/70 hover:bg-muted/15 dark:bg-card/40',
         tint,
       )}
     >
-      <div className="flex items-start gap-2">
+      <div className="flex items-start gap-2.5">
         <div className={cn('min-w-0 flex-1 space-y-1', dimmed && 'opacity-80')}>
-          <div className="flex min-w-0 items-start justify-between gap-2">
-            <div className="flex min-w-0 items-baseline gap-1.5">
-              <span className="shrink-0 text-[12px] font-bold tabular-nums tracking-[-0.01em] text-foreground">
-                {license}
-              </span>
-              {modelLine ? (
-                <span className="truncate text-[10.5px] leading-snug text-muted-foreground">{modelLine}</span>
-              ) : null}
-            </div>
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
-              {healthChip ? (
-                <StatusChip
-                  tone={healthChip.tone}
-                  icon={<Icon name="heart" className="h-3 w-3" />}
-                  className="px-1.5 py-0.5 text-[9.5px] font-semibold"
-                >
-                  {healthChip.label}
-                </StatusChip>
-              ) : null}
-              {rentalChip ? (
-                <StatusChip tone={rentalChip.tone} className="px-1.5 py-0.5 text-[9.5px] font-semibold">
-                  {rentalChip.label}
-                </StatusChip>
-              ) : null}
-            </div>
+          <div className="flex min-w-0 items-baseline gap-1.5">
+            <span className="shrink-0 text-[12px] font-bold tabular-nums tracking-[-0.01em] text-foreground">
+              {license}
+            </span>
+            {modelLine ? (
+              <span className="truncate text-[10.5px] leading-snug text-muted-foreground">{modelLine}</span>
+            ) : null}
           </div>
 
-          {locationLine ? (
+          {station ? (
             <div
               className="flex min-w-0 items-center gap-1 text-[10px] text-muted-foreground"
-              title={locationLine}
+              title={station}
             >
               <Icon name="map-pin" className="h-3 w-3 shrink-0 text-muted-foreground/80" />
-              <span className="truncate">{locationLine}</span>
+              <span className="truncate">{station}</span>
             </div>
           ) : null}
 
-          {showMetaRow ? (
-            <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px] tabular-nums text-muted-foreground">
+          {showOpsMeta ? (
+            <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] tabular-nums text-muted-foreground">
               {energy?.percent != null ? (
                 <FleetEnergyIndicator
                   percent={energy.percent}
@@ -170,38 +150,65 @@ export function CompactFleetDrawerVehicleRow({
                   tone={energy.tone}
                 />
               ) : null}
-              {energy?.percent != null && (odometerLabel || reasonBadge) ? (
-                <span aria-hidden>·</span>
+              {energy?.percent != null && (odometerLabel || telemetryLabel) ? (
+                <span aria-hidden className="text-muted-foreground/50">·</span>
               ) : null}
               {odometerLabel ? <span>{odometerLabel}</span> : null}
-              {odometerLabel && reasonBadge ? <span aria-hidden>·</span> : null}
-              {reasonBadge ? (
-                <span
-                  className={cn(
-                    'inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[10px] font-medium',
-                    reasonChipClass(reasonBadge.tone),
-                  )}
-                >
-                  <span className="truncate">{reasonBadge.text}</span>
+              {odometerLabel && telemetryLabel ? (
+                <span aria-hidden className="text-muted-foreground/50">·</span>
+              ) : null}
+              {telemetryLabel ? (
+                <span className={cn(telemetryWarns && 'text-[color:var(--status-watch)]')}>
+                  {telemetryLabel}
                 </span>
               ) : null}
             </div>
           ) : null}
+
+          {reasonBadge ? (
+            <span
+              className={cn(
+                'inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[10px] font-medium',
+                reasonChipClass(reasonBadge.tone),
+              )}
+            >
+              <span className="truncate">{reasonBadge.text}</span>
+            </span>
+          ) : null}
         </div>
 
-        {canOpen ? (
-          <button
-            type="button"
-            onClick={() => {
-              if (row.vehicleId && onOpenVehicle) onOpenVehicle(row.vehicleId);
-              onClose();
-            }}
-            className="sq-btn sq-btn-secondary min-h-9 shrink-0 self-start px-2 text-[11px]"
-          >
-            {ctaLabel}
-            <Icon name="arrow-right" className="h-3.5 w-3.5 opacity-70" />
-          </button>
-        ) : null}
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <div className="flex flex-wrap items-center justify-end gap-1">
+            {healthChip ? (
+              <StatusChip
+                tone={healthChip.tone}
+                icon={<Icon name="heart" className="h-3 w-3" />}
+                className="px-1.5 py-0.5 text-[9.5px] font-semibold"
+              >
+                {healthChip.label}
+              </StatusChip>
+            ) : null}
+            {rentalChip ? (
+              <StatusChip tone={rentalChip.tone} className="px-1.5 py-0.5 text-[9.5px] font-semibold">
+                {rentalChip.label}
+              </StatusChip>
+            ) : null}
+          </div>
+
+          {canOpen ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (row.vehicleId && onOpenVehicle) onOpenVehicle(row.vehicleId);
+                onClose();
+              }}
+              className="sq-press inline-flex min-h-8 items-center gap-1 rounded-md px-2 text-[10.5px] font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+            >
+              {ctaLabel}
+              <Icon name="arrow-right" className="h-3 w-3 opacity-70" />
+            </button>
+          ) : null}
+        </div>
       </div>
     </article>
   );
