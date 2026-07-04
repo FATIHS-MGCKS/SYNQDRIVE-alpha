@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'ready-rent-drawer-vehicle-rows-v49189-2026-07-04',
+    version: '4.9.189',
+    title: 'V4.9.189 — Ready-for-Renting Drawer: kompakte Fleet-Command-Fahrzeugzeilen',
+    summary: [
+      'Neu: `CompactFleetDrawerVehicleRow` — Kennzeichen + Make/Model/Jahr, Health- und Rental-Badges via `resolveFleetVehicleDisplayState`, Station · Telemetrie, optional km/Energie + 1 Reason-Pill.',
+      'Drawer joined FleetContext (`fleetVehicles` + `healthMap`) — dieselbe Display-Schicht wie Fleet Command, keine parallele Health-Logik.',
+      'Fallback ohne Fleet-Daten: Runtime-State aus `dashboardRuntime.vehicleStates`. Ready/Not-Ready-Gruppen und Suche unverändert.',
+    ],
+    reason: 'Drawer-Einträge wirkten zu leer gegenüber Fleet Command; operativer Kontext fehlte.',
+    previousBehavior: '`VehicleDrawerRowCard` mit `composeVehicleDrawerRowDisplay` — wenig Meta, keine Fleet-Display-Badges/Energie/km.',
+    details: 'UI-only: CompactFleetDrawerVehicleRow.tsx, DashboardDrilldownDrawer.tsx. Keine KPI-/Runtime-/API-Änderung.',
+    affectsArchitecture: false,
+    module: 'Dashboard',
+    createdAt: '2026-07-04T14:15:00.000Z',
+  },
+  {
     id: 'ready-rent-drawer-search-v49188-2026-07-04',
     version: '4.9.188',
     title: 'V4.9.188 — Ready-for-Renting Drawer: Suche + Stations-Scope',
