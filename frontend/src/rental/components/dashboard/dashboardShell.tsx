@@ -10,11 +10,24 @@ export const DASHBOARD_LAYOUT = {
   opsStack: 'space-y-3.5',
   focusStack: 'space-y-4',
   opsGrid: 'grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.04fr)_minmax(0,0.96fr)] lg:items-stretch',
-  /** Business Pulse (left) + Notifications (right). Finance stays compact; notifications may grow taller. */
-  signalsGrid:
-    'grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] lg:items-start lg:gap-4 xl:gap-5',
-  signalsFinanceSlot: 'min-w-0 w-full lg:self-start',
-  signalsNotificationsSlot: 'min-w-0 w-full',
+  /**
+   * Desktop row 1: Control KPIs (left) + Finances / Business Pulse (right).
+   * Mobile: KPIs, then Finances (stacked).
+   */
+  controlFinanceGrid:
+    'grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start lg:gap-4 xl:gap-5',
+  controlKpiSlot: 'min-w-0 w-full',
+  financeSlot: 'min-w-0 w-full',
+  controlKpiShell:
+    'rounded-2xl border border-border/55 bg-card/60 px-4 py-4 shadow-none sm:p-5',
+  /**
+   * Desktop row 2: Notifications (left) + Day Plan (right).
+   * Mobile: Notifications, then Day Plan (stacked).
+   */
+  notificationsDayPlanGrid:
+    'grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start lg:gap-4 xl:gap-5',
+  notificationsSlot: 'min-w-0 w-full',
+  dayPlanSlot: 'min-w-0 w-full',
   financeZone: 'border-t border-border/50 pt-7',
 } as const;
 

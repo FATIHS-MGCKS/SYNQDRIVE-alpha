@@ -27,6 +27,9 @@ const LOWER_KPI_ORDER: DashboardSliceId[] = [
   'critical-alerts',
 ];
 
+/** Visible strip order — 2×3 grid on desktop when parent is half-width. */
+const VISIBLE_KPI_ORDER: DashboardSliceId[] = [...TOP_KPI_ORDER, ...LOWER_KPI_ORDER];
+
 const KPI_ICONS: Record<DashboardSliceId, string> = {
   'ready-to-rent': 'check-circle',
   'active-rented': 'car',
@@ -49,7 +52,7 @@ function kpiStripGapClass(embedded: boolean): string {
   return embedded ? 'gap-3 sm:gap-3.5' : 'gap-1.5';
 }
 
-function kpiRowGridClass(embedded: boolean): string {
+function kpiGridClass(embedded: boolean): string {
   return cn('grid grid-cols-2 items-stretch', kpiStripGapClass(embedded));
 }
 
@@ -376,46 +379,27 @@ export function ControlKpiStrip({
     : false;
 
   if (loading) {
-    const gapClass = kpiStripGapClass(embedded);
-    const rowClass = kpiRowGridClass(embedded);
+    const gridClass = kpiGridClass(embedded);
     const skeletonCardClass = embedded ? 'min-h-[112px] rounded-2xl bg-background/40 p-3' : undefined;
 
     return (
-      <div className={cn('flex flex-col', gapClass)}>
-        <SkeletonMetricGrid count={2} className={cn(rowClass, '!grid-cols-2')} cardClassName={skeletonCardClass} />
-        <SkeletonMetricGrid count={4} className={cn(rowClass, '!grid-cols-2')} cardClassName={skeletonCardClass} />
-      </div>
+      <SkeletonMetricGrid count={6} className={cn(gridClass, '!grid-cols-2')} cardClassName={skeletonCardClass} />
     );
   }
 
   return (
-    <div className={cn('flex flex-col', kpiStripGapClass(embedded))}>
-      <div className={kpiRowGridClass(embedded)}>
-        {TOP_KPI_ORDER.map((id) => (
-          <KpiStripButton
-            key={id}
-            id={id}
-            slice={dashboardRuntime.slices[id]}
-            embedded={embedded}
-            locale={locale}
-            activeSliceId={activeSliceId}
-            onSelectSlice={onSelectSlice}
-          />
-        ))}
-      </div>
-      <div className={kpiRowGridClass(embedded)}>
-        {LOWER_KPI_ORDER.map((id) => (
-          <KpiStripButton
-            key={id}
-            id={id}
-            slice={dashboardRuntime.slices[id]}
-            embedded={embedded}
-            locale={locale}
-            activeSliceId={activeSliceId}
-            onSelectSlice={onSelectSlice}
-          />
-        ))}
-      </div>
+    <div className={kpiGridClass(embedded)}>
+      {VISIBLE_KPI_ORDER.map((id) => (
+        <KpiStripButton
+          key={id}
+          id={id}
+          slice={dashboardRuntime.slices[id]}
+          embedded={embedded}
+          locale={locale}
+          activeSliceId={activeSliceId}
+          onSelectSlice={onSelectSlice}
+        />
+      ))}
     </div>
   );
 }

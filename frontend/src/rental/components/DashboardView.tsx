@@ -96,20 +96,23 @@ export function DashboardView({
     <>
       <div className={DASHBOARD_LAYOUT.shell}>
         <div className="animate-fade-up" style={{ animationDelay: '0ms' }}>
-          <DashboardControlHeader vm={vm}>
-            <ControlKpiStrip
-              dashboardRuntime={vm.dashboardRuntime}
-              activeSliceId={vm.activeDashboardSliceId}
-              onSelectSlice={vm.openSliceDrilldown}
-              embedded
-              locale={vm.locale}
-              dataFreshness={vm.dataFreshness}
-            />
-          </DashboardControlHeader>
+          <DashboardControlHeader vm={vm} />
         </div>
 
-        <div className={`${DASHBOARD_LAYOUT.signalsGrid} animate-fade-up`} style={{ animationDelay: '70ms' }}>
-          <div className={DASHBOARD_LAYOUT.signalsFinanceSlot}>
+        <div className={`${DASHBOARD_LAYOUT.controlFinanceGrid} animate-fade-up`} style={{ animationDelay: '50ms' }}>
+          <div className={DASHBOARD_LAYOUT.controlKpiSlot}>
+            <div className={DASHBOARD_LAYOUT.controlKpiShell}>
+              <ControlKpiStrip
+                dashboardRuntime={vm.dashboardRuntime}
+                activeSliceId={vm.activeDashboardSliceId}
+                onSelectSlice={vm.openSliceDrilldown}
+                embedded
+                locale={vm.locale}
+                dataFreshness={vm.dataFreshness}
+              />
+            </div>
+          </div>
+          <div className={DASHBOARD_LAYOUT.financeSlot}>
             <BusinessPulse
               businessPulseSlices={vm.businessPulseSlices}
               onSelectBusinessMetric={vm.openBusinessMetricDrilldown}
@@ -120,8 +123,17 @@ export function DashboardView({
               error={vm.dataFreshness.invoicesError}
             />
           </div>
-          <div className={DASHBOARD_LAYOUT.signalsNotificationsSlot}>
+        </div>
+
+        <div
+          className={`${DASHBOARD_LAYOUT.notificationsDayPlanGrid} animate-fade-up`}
+          style={{ animationDelay: '90ms' }}
+        >
+          <div className={DASHBOARD_LAYOUT.notificationsSlot}>
             <ActionQueue vm={vm} {...handlers} />
+          </div>
+          <div className={DASHBOARD_LAYOUT.dayPlanSlot}>
+            <OperationsSchedulePanel vm={vm} {...handlers} />
           </div>
         </div>
 
@@ -129,8 +141,6 @@ export function DashboardView({
           <DashboardSectionLabel>
             {vm.locale === 'de' ? 'Operative Steuerung' : 'Operational control'}
           </DashboardSectionLabel>
-
-          <OperationsSchedulePanel vm={vm} {...handlers} />
 
           <FleetCommandView
             vehicles={vm.filteredFleetVehicles}

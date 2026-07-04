@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-desktop-layout-v49186-2026-07-04',
+    version: '4.9.186',
+    title: 'V4.9.186 — Dashboard: Desktop-Layout Control Center / Finanzen / Notifications / Day Plan',
+    summary: [
+      'Desktop Zeile 1: links 6 operative KPIs (2×3 kompakt), rechts `BusinessPulse` / Finanzen — `controlFinanceGrid` in `dashboardShell.tsx`.',
+      'Desktop Zeile 2: links `ActionQueue` / Notifications, rechts `OperationsSchedulePanel` / Day Plan — `notificationsDayPlanGrid`.',
+      '`ControlKpiStrip`: einheitliches 2×3-Grid (`VISIBLE_KPI_ORDER`), kein Full-Width-Stretch mehr; KPI-Shell in linkem Slot.',
+      '`DashboardControlHeader` ohne eingebettete KPI-Children; `FleetCommandView` bleibt unterhalb in `opsStack`.',
+      'Mobile/Tablet: lineare Reihenfolge KPIs → Finanzen → Notifications → Day Plan.',
+    ],
+    reason: 'Desktop wirkte falsch gewichtet — KPIs über volle Breite, Finanzen darunter statt rechts oben.',
+    previousBehavior: 'KPI-Strip full-width, Business Pulse darunter; Notifications/Day Plan in separater Ops-Zeile.',
+    details: 'Nur Layout in DashboardView, dashboardShell, ControlKpiStrip, dashboardRuntimeUI.test — keine Datenlogik/API/Backend.',
+    affectsArchitecture: true,
+    module: 'Dashboard',
+    createdAt: '2026-07-04T13:00:00.000Z',
+  },
+  {
     id: 'fleet-health-service-dedup-v49185-2026-07-04',
     version: '4.9.185',
     title: 'V4.9.185 — Fleet Zustand & Service: Redundanzen entfernt',

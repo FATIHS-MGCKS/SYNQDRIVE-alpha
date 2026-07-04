@@ -20,15 +20,6 @@ const RUNTIME_SLICE_ORDER: DashboardSliceId[] = [
   'critical-alerts',
 ];
 
-const VISIBLE_KPI_ORDER: DashboardSliceId[] = [
-  'ready-to-rent',
-  'active-rented',
-  'overdue-returns',
-  'blocked-maintenance',
-  'overdue-pickups',
-  'critical-alerts',
-];
-
 function hoursAgoIso(hours: number): string {
   return new Date(NOW.getTime() - hours * 60 * 60_000).toISOString();
 }
@@ -174,10 +165,13 @@ describe('dashboard runtime-only UI contracts', () => {
     const dashboardViewSrc = readFileSync(resolve(testDir, '../DashboardView.tsx'), 'utf8');
     const shellSrc = readFileSync(resolve(testDir, './dashboardShell.tsx'), 'utf8');
 
-    expect(shellSrc).toMatch(/signalsGrid:[\s\S]*lg:grid-cols-\[minmax\(0,5fr\)_minmax\(0,7fr\)\]/);
+    expect(shellSrc).toMatch(/controlFinanceGrid:[\s\S]*lg:grid-cols-2/);
+    expect(shellSrc).toMatch(/notificationsDayPlanGrid:[\s\S]*lg:grid-cols-2/);
     expect(shellSrc).toMatch(/lg:items-start/);
-    expect(dashboardViewSrc).toMatch(/signalsFinanceSlot/);
-    expect(dashboardViewSrc).toMatch(/signalsNotificationsSlot/);
+    expect(dashboardViewSrc).toMatch(/controlFinanceGrid/);
+    expect(dashboardViewSrc).toMatch(/financeSlot/);
+    expect(dashboardViewSrc).toMatch(/notificationsDayPlanGrid/);
+    expect(dashboardViewSrc).toMatch(/dayPlanSlot/);
     expect(businessPulseSrc).not.toMatch(/\bh-full\b/);
     expect(businessPulseSrc).toMatch(/dashboard\.financesTitle/);
     expect(businessPulseSrc).toMatch(/dashboard\.openInvoices/);
