@@ -68,6 +68,8 @@ interface FleetConditionViewProps {
   embedded?: boolean;
   /** When embedded in FleetHub, header refresh is owned by the hub. */
   hideHeaderActions?: boolean;
+  /** Hide KPI strip when parent already shows triage KPIs (Zustand & Service Übersicht). */
+  hideKpiStrip?: boolean;
   onOpenServiceCenter?: () => void;
   onOpenExistingTask?: (taskId: string) => void;
   /** UI copy locale — Fleet Zustand & Service uses `de`. */
@@ -222,6 +224,7 @@ function toneClass(tone: Tone): string {
 export function FleetConditionView({
   embedded = false,
   hideHeaderActions = false,
+  hideKpiStrip = false,
   onOpenServiceCenter,
   onOpenExistingTask,
   uiLocale = 'en',
@@ -232,7 +235,8 @@ export function FleetConditionView({
   const DATA_QUALITY_OPTIONS = uiLocale === 'de' ? DATA_QUALITY_OPTIONS_DE : DATA_QUALITY_OPTIONS_EN;
   const SORT_OPTIONS = uiLocale === 'de' ? SORT_OPTIONS_DE : SORT_OPTIONS_EN;
   const searchPlaceholder =
-    uiLocale === 'de' ? 'Kennzeichen, Fahrzeug oder Station suchen…' : 'Search plate, vehicle or station…';
+    uiLocale === 'de' ? 'Kennzeichen suchen…' : 'Search plate, vehicle or station…';
+  const sortLabelPrefix = uiLocale === 'de' ? 'Sortierung' : 'Sort';
   const systemDark = useSyncExternalStore(
     (onStoreChange) => {
       const el = document.documentElement;
@@ -526,9 +530,9 @@ export function FleetConditionView({
         />
       )}
 
-      {healthLoading && kpis.total === 0 ? (
+      {healthLoading && kpis.total === 0 && !hideKpiStrip ? (
         <SkeletonMetricGrid count={4} />
-      ) : (
+      ) : !hideKpiStrip ? (
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {kpiCards.map((card) => {
             const active = statusFilter === card.filter && card.filter !== 'all';
@@ -548,7 +552,7 @@ export function FleetConditionView({
             );
           })}
         </div>
-      )}
+      ) : null}
 
       <div className="sq-card rounded-2xl p-3 shadow-[var(--shadow-1)]">
         <div className="flex flex-wrap items-center gap-2">
@@ -566,7 +570,7 @@ export function FleetConditionView({
           </div>
 
           <FilterDropdown
-            label={`Sort: ${SORT_OPTIONS.find((o) => o.value === sortMode)?.label ?? 'Priority'}`}
+            label={`${sortLabelPrefix}: ${SORT_OPTIONS.find((o) => o.value === sortMode)?.label ?? (uiLocale === 'de' ? 'Priorität' : 'Priority')}`}
             open={isSortOpen}
             onToggle={() => {
               setIsSortOpen(!isSortOpen);
@@ -631,8 +635,11 @@ export function FleetConditionView({
             <FilterDropdown
               label={
                 moduleFilter === 'all'
-                  ? 'Module'
-                  : MODULE_FILTER_OPTIONS.find((o) => o.value === moduleFilter)?.label ?? 'Module'
+                  ? uiLocale === 'de'
+                    ? 'Modul'
+                    : 'Module'
+                  : MODULE_FILTER_OPTIONS.find((o) => o.value === moduleFilter)?.label ??
+                    (uiLocale === 'de' ? 'Modul' : 'Module')
               }
               open={isModuleFilterOpen}
               onToggle={() => {
@@ -664,9 +671,11 @@ export function FleetConditionView({
             <FilterDropdown
               label={
                 dataQualityFilter === 'all'
-                  ? 'Data quality'
+                  ? uiLocale === 'de'
+                    ? 'Datenqualität'
+                    : 'Data quality'
                   : DATA_QUALITY_OPTIONS.find((o) => o.value === dataQualityFilter)?.label ??
-                    'Data quality'
+                    (uiLocale === 'de' ? 'Datenqualität' : 'Data quality')
               }
               open={isDataFilterOpen}
               onToggle={() => {
@@ -973,11 +982,14 @@ function OperatorVehicleRow({
           </div>
 
           <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
-            <span className="truncate">{vehicle.station || 'No station'}</span>
+            <span className="truncate">{vehicle.station || (uiLocale === 'de' ? 'Keine Station' : 'No station')}</span>
             <span aria-hidden>·</span>
             <span className="tabular-nums">{odometer}</span>
             <span aria-hidden>·</span>
-            <span>Health {healthLoading && !health ? '…' : lastUpdated}</span>
+            <span>
+              {uiLocale === 'de' ? 'Zustand' : 'Health'}{' '}
+              {healthLoading && !health ? '…' : lastUpdated}
+            </span>
             {display.rentalBlocked && (
               <>
                 <span aria-hidden>·</span>
@@ -1001,11 +1013,14 @@ function OperatorVehicleRow({
               <IssueChip key={chip.key} chip={chip} onClick={() => onModuleClick(chip.key)} />
             ))}
             {hiddenChipCount > 0 && (
-              <span className="text-[10px] font-medium text-muted-foreground">+{hiddenChipCount} more</span>
+              <span className="text-[10px] font-medium text-muted-foreground">
+                +{hiddenChipCount} {uiLocale === 'de' ? 'weitere' : 'more'}
+              </span>
             )}
             {showClearSummary && (
               <span className="text-[10px] text-muted-foreground">
-                {display.clearModuleCount} modules clear
+                {display.clearModuleCount}{' '}
+                {uiLocale === 'de' ? 'Module in Ordnung' : 'modules clear'}
               </span>
             )}
             {display.dataQualityNote && (

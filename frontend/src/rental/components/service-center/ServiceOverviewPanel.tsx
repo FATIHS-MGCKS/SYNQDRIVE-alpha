@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import { Activity, ChevronRight } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { EmptyState } from '../../../components/patterns';
 import { api, type ApiTask, type Vendor } from '../../../lib/api';
 import { useFleetVehicles } from '../../FleetContext';
 import { useRentalOrg } from '../../RentalContext';
-import type { VehicleData } from '../../data/vehicles';
 import { formatTaskDueDate } from '../../lib/task-display.utils';
 import { VehicleTaskDetailDrawer } from '../tasks/VehicleTaskDetailDrawer';
 import { sc } from './service-center-ui';
@@ -29,12 +28,6 @@ interface ServiceOverviewPanelProps {
   onReload?: () => void;
 }
 
-function buildMmy(vehicle: VehicleData): string {
-  const parts = [vehicle.make, vehicle.model].filter(Boolean).join(' ').trim();
-  const year = vehicle.year ? String(vehicle.year) : '';
-  return [parts || vehicle.model, year].filter(Boolean).join(' ');
-}
-
 export function ServiceOverviewPanel({
   activeTasks,
   historyTasks,
@@ -46,7 +39,7 @@ export function ServiceOverviewPanel({
   onReload,
 }: ServiceOverviewPanelProps) {
   const { orgId } = useRentalOrg();
-  const { fleetVehicles, healthMap, healthLoading } = useFleetVehicles();
+  const { fleetVehicles } = useFleetVehicles();
   const [localTasks, setLocalTasks] = useState(activeTasks);
   const [orgMembers, setOrgMembers] = useState<Array<{ id: string; name: string }>>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -90,18 +83,6 @@ export function ServiceOverviewPanel({
     () => selectRecentlyCompleted(historyTasks.length ? historyTasks : localTasks, 6),
     [historyTasks, localTasks],
   );
-
-  const healthServiceAlerts = useMemo(() => {
-    if (healthLoading || healthMap.size === 0) return [];
-    return fleetVehicles
-      .filter((v) => {
-        const h = healthMap.get(v.id);
-        if (!h) return false;
-        const mod = h.modules?.service_compliance?.state;
-        return mod === 'warning' || mod === 'critical' || h.rental_blocked;
-      })
-      .slice(0, 6);
-  }, [fleetVehicles, healthMap, healthLoading]);
 
   const resolveVehicle = useCallback(
     (task: ApiTask) => (task.vehicleId ? vehicleMap.get(task.vehicleId) ?? null : null),
@@ -162,59 +143,13 @@ export function ServiceOverviewPanel({
 
   return (
     <div className="space-y-4">
-      {healthMap.size > 0 && (
-        <section className={`${sc.controlBar} !p-3 sm:!p-3.5`}>
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2">
-              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted/50 text-muted-foreground">
-                <Activity className="w-3.5 h-3.5" />
-              </span>
-              <div>
-                <p className={sc.sectionEyebrow}>Health-Signale</p>
-                <h3 className={sc.sectionTitle}>Fahrzeuge mit Service-/Compliance-Hinweis</h3>
-              </div>
-            </div>
-            {healthLoading && (
-              <span className="text-[10px] text-muted-foreground animate-pulse">Health lädt…</span>
-            )}
-          </div>
-          {healthServiceAlerts.length === 0 && !healthLoading ? (
-            <p className="text-[11px] text-muted-foreground">
-              Keine Fahrzeuge mit kritischem Service-Compliance- oder Mietblock-Signal.
-            </p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {healthServiceAlerts.map((v) => {
-                const h = healthMap.get(v.id);
-                const mod = h?.modules?.service_compliance?.state;
-                const tone =
-                  mod === 'critical' || h?.rental_blocked
-                    ? 'border-red-500/30 bg-red-500/[0.04] text-red-700 dark:text-red-300'
-                    : 'border-amber-500/30 bg-amber-500/[0.04] text-amber-800 dark:text-amber-300';
-                return (
-                  <div
-                    key={v.id}
-                    className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-medium ${tone}`}
-                  >
-                    <span className="font-semibold">{v.license}</span>
-                    <span className="mx-1 opacity-60">·</span>
-                    {buildMmy(v)}
-                    {h?.rental_blocked && <span className="ml-1 opacity-80">· Miete blockiert</span>}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-      )}
-
       <section className={sc.panel}>
         <div className="flex items-center justify-between gap-2 mb-3">
           <div>
             <p className={sc.sectionEyebrow}>Sofort handeln</p>
-            <h3 className={sc.sectionTitle}>Action Required</h3>
+            <h3 className={sc.sectionTitle}>Handlungsbedarf</h3>
             <p className="text-[10px] text-muted-foreground mt-0.5">
-              Überfällig, kritisch, blockierend oder bald fällig
+              Überfällig, kritisch, blockierend oder bald fällig — nur operative Aufgaben
             </p>
           </div>
           {onOpenTasks && (
@@ -272,7 +207,7 @@ export function ServiceOverviewPanel({
           <div className="flex items-center justify-between gap-2 mb-3">
             <div>
               <p className={sc.sectionEyebrow}>Terminplan</p>
-              <h3 className={sc.sectionTitle}>Upcoming Service Schedule</h3>
+              <h3 className={sc.sectionTitle}>Geplante Termine</h3>
             </div>
             {onOpenSchedule && (
               <button
@@ -324,7 +259,7 @@ export function ServiceOverviewPanel({
         <section className={sc.panel}>
           <div className="mb-3">
             <p className={sc.sectionEyebrow}>Partner</p>
-            <h3 className={sc.sectionTitle}>Vendor Waiting</h3>
+            <h3 className={sc.sectionTitle}>Wartet Partner</h3>
             <p className="text-[10px] text-muted-foreground mt-0.5">
               Wartet auf Rückmeldung oder Abschluss durch Partner
             </p>
@@ -361,7 +296,7 @@ export function ServiceOverviewPanel({
       <section className={sc.panel}>
         <div className="mb-3">
           <p className={sc.sectionEyebrow}>Verlauf</p>
-          <h3 className={sc.sectionTitle}>Recently Completed</h3>
+          <h3 className={sc.sectionTitle}>Kürzlich erledigt</h3>
         </div>
 
         {loading && recentlyCompleted.length === 0 ? (
@@ -383,9 +318,7 @@ export function ServiceOverviewPanel({
                 <p className="text-[11px] font-semibold truncate">{task.title}</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5 truncate">
                   {resolveVehicle(task)?.license ?? '—'}
-                  {task.completedAt
-                    ? ` · ${formatTaskDueDate(task.completedAt)}`
-                    : ''}
+                  {task.completedAt ? ` · ${formatTaskDueDate(task.completedAt)}` : ''}
                 </p>
               </button>
             ))}

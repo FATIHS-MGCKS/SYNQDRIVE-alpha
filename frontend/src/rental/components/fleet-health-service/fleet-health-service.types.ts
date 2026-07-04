@@ -47,6 +47,7 @@ export function fleetSubTabFromServiceCenterNav(
 ): FleetHealthServiceTab {
   if (!nav) return 'overview';
   if (nav.focusTaskId) return 'tasks';
+  if (nav.vendorId) return 'vendors';
   if (nav.tab) return serviceCenterTabToFleetSubTab(nav.tab) ?? 'overview';
   if (nav.vehicleId) return 'tasks';
   return 'overview';

@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-service-dedup-v49185-2026-07-04',
+    version: '4.9.185',
+    title: 'V4.9.185 — Fleet Zustand & Service: Redundanzen entfernt',
+    summary: [
+      '`ServiceOverviewPanel`: Health-Signale-Sektion entfernt — nur noch operative Tasks/Termine/Partner/Verlauf.',
+      '`FleetConditionView`: `hideKpiStrip` im Fahrzeuge-Subtab — keine doppelten Health-KPIs neben Übersicht.',
+      'Legacy-Routing: `vendor-management` → Partner-Subtab; `fleetSubTabFromServiceCenterNav` mit `vendorId` → vendors.',
+      'Labels vereinheitlicht (DE): Handlungsbedarf, Geplante Termine, Wartet Partner, Kennzeichen suchen, etc.',
+      '`ServiceCenterView` als Legacy dokumentiert — nicht mehr im aktiven Fleet Top-Level Pfad.',
+      'Contract-Doc Redundanz-Tabelle auf bereinigt aktualisiert.',
+    ],
+    reason: 'Ein Fahrzeugproblem soll nicht parallel in mehreren Fleet-Listen als separate Wahrheit erscheinen.',
+    previousBehavior: 'ServiceOverviewPanel zeigte Health-Signale; Fahrzeuge-Subtab duplizierte KPI-Leiste; englische Service-Labels.',
+    details: 'Nur Frontend-UI/Routing; keine Health-/Task-/Vendor-Datenlogik geändert.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-04T12:30:00.000Z',
+  },
+  {
     id: 'fleet-health-service-ui-v49184-2026-07-04',
     version: '4.9.184',
     title: 'V4.9.184 — Fleet Zustand & Service: neue UI (alle Subtabs)',

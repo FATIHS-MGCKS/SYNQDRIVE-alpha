@@ -55,7 +55,7 @@ export function FleetHubView({
   onServiceCenterNavigationConsumed,
   onOpenServiceCenter,
 }: FleetHubViewProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { healthMap, healthLoading, reloadHealth } = useFleetVehicles();
 
   const activeTab = normalizeFleetTab(activeTabInput).tab;
@@ -96,7 +96,9 @@ export function FleetHubView({
   );
 
   const lastHealthUpdatedLabel = lastHealthUpdated
-    ? `Updated ${formatRelativeTime(lastHealthUpdated)}`
+    ? locale === 'de'
+      ? `Aktualisiert ${formatRelativeTime(lastHealthUpdated)}`
+      : `Updated ${formatRelativeTime(lastHealthUpdated)}`
     : null;
 
   const showHealthRefresh =
@@ -114,7 +116,7 @@ export function FleetHubView({
         className="hidden sm:inline-flex"
       >
         <RefreshCw className={`h-3.5 w-3.5 ${healthLoading ? 'animate-spin' : ''}`} />
-        Refresh
+        {locale === 'de' ? 'Aktualisieren' : 'Refresh'}
       </Button>
       {lastHealthUpdatedLabel ? (
         <span className="text-[10px] text-muted-foreground">{lastHealthUpdatedLabel}</span>

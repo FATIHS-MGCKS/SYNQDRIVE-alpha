@@ -47,6 +47,10 @@ const TAB_ICONS = {
   history: History,
 } as const;
 
+/**
+ * Standalone Service Center shell (legacy).
+ * Active Fleet UI uses `FleetHealthServiceView` — not this top-level view.
+ */
 export function ServiceCenterView({
   onOpenVendorDetail,
   onOpenGlobalTasks,

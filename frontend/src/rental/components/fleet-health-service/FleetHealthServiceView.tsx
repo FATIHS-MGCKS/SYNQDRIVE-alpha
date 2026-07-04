@@ -69,6 +69,7 @@ export function FleetHealthServiceView({
         <FleetConditionView
           embedded
           hideHeaderActions
+          hideKpiStrip
           uiLocale="de"
           onDrillDown={onDrillDown}
           onOpenExistingTask={onOpenGlobalTasks}

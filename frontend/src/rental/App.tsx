@@ -434,7 +434,8 @@ function RentalAppContent() {
     }
     if (view === 'vendor-management') {
       setCurrentView('fleet');
-      setFleetTabNormalized('service');
+      setFleetTab('condition-service');
+      setFleetHealthServiceSubTab('vendors');
       return;
     }
     if (view === 'fines') return;
