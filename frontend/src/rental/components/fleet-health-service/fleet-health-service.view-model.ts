@@ -1,3 +1,4 @@
+import type { StatusTone } from '../../../components/patterns';
 import type {
   ApiTask,
   ApiTaskSummary,
@@ -6,6 +7,7 @@ import type {
   Vendor,
 } from '../../../lib/api';
 import type { VehicleData } from '../../data/vehicles';
+import { fhsModuleLabelDe, FHS_HEALTH_BADGE_DE } from './fleet-health-service-labels';
 import {
   buildFleetHealthDisplay,
   computeFleetHealthKpis,
@@ -81,6 +83,24 @@ export interface FleetHealthServiceOverviewCounts {
   vendorWaitingTasks: number;
 }
 
+export type FleetHealthServiceOverviewRowKind = 'health' | 'task';
+
+export interface FleetHealthServiceOverviewRow {
+  id: string;
+  kind: FleetHealthServiceOverviewRowKind;
+  vehicleId: string;
+  plate: string;
+  makeModelYear: string;
+  statusLabel: string;
+  statusTone: StatusTone;
+  primaryReason: string;
+  sourceLabel: string;
+  recommendedAction: FleetHealthServiceRecommendedAction;
+  existingTaskId: string | null;
+  taskId?: string;
+  sortRank: number;
+}
+
 export interface FleetHealthServiceViewModel {
   loading: boolean;
   healthLoading: boolean;
@@ -92,6 +112,7 @@ export interface FleetHealthServiceViewModel {
   uiItems: FleetHealthServiceUiItem[];
   byVehicleId: Map<string, FleetHealthServiceUiItem>;
   overviewCounts: FleetHealthServiceOverviewCounts;
+  prioritizedOverviewRows: FleetHealthServiceOverviewRow[];
 }
 
 export interface BuildFleetHealthServiceViewModelInput {
@@ -250,6 +271,112 @@ function buildExecutionGroups(
   };
 }
 
+function healthStatusForItem(item: FleetHealthServiceUiItem): { label: string; tone: StatusTone } {
+  if (item.rentalBlocked) return FHS_HEALTH_BADGE_DE.blocked;
+  if (item.recommendedAction === 'create_task' || item.recommendedAction === 'open_task') {
+    return FHS_HEALTH_BADGE_DE.action;
+  }
+  if (item.recommendedAction === 'review_vehicle') return FHS_HEALTH_BADGE_DE.limited;
+  return FHS_HEALTH_BADGE_DE.review;
+}
+
+function healthSortRank(item: FleetHealthServiceUiItem): number {
+  if (item.rentalBlocked) return 10;
+  if (item.recommendedAction === 'open_task' || item.recommendedAction === 'create_task') return 20;
+  if (item.recommendedAction === 'review_vehicle') return 70;
+  return 50;
+}
+
+function taskSortRank(task: ApiTask): number {
+  if (deriveTaskIsOverdue(task)) return 30;
+  if (task.status === 'IN_PROGRESS') return 50;
+  if (task.status === 'WAITING' && task.vendorId) return 60;
+  return 80;
+}
+
+function taskStatusLabel(task: ApiTask): { label: string; tone: StatusTone } {
+  if (deriveTaskIsOverdue(task)) return FHS_HEALTH_BADGE_DE.overdue;
+  if (task.status === 'IN_PROGRESS') return FHS_HEALTH_BADGE_DE.in_progress;
+  if (task.status === 'WAITING' && task.vendorId) return FHS_HEALTH_BADGE_DE.vendor_waiting;
+  return { label: 'Offen', tone: 'neutral' };
+}
+
+/**
+ * Deduped triage list for Übersicht — one row per vehicle/problem band.
+ * Health rows first; execution-only tasks only when the vehicle is not already covered.
+ */
+export function buildPrioritizedOverviewRows(
+  uiItems: FleetHealthServiceUiItem[],
+  executionGroups: FleetHealthServiceExecutionGroups,
+  byVehicleId: Map<string, FleetHealthServiceUiItem>,
+): FleetHealthServiceOverviewRow[] {
+  const rows: FleetHealthServiceOverviewRow[] = [];
+  const coveredVehicleIds = new Set<string>();
+
+  const healthCandidates = uiItems
+    .filter((item) => item.recommendedAction !== 'no_action')
+    .sort((a, b) => healthSortRank(a) - healthSortRank(b));
+
+  for (const item of healthCandidates) {
+    coveredVehicleIds.add(item.vehicleId);
+    const status = healthStatusForItem(item);
+    rows.push({
+      id: `health-${item.vehicleId}`,
+      kind: 'health',
+      vehicleId: item.vehicleId,
+      plate: item.plate,
+      makeModelYear: item.makeModelYear,
+      statusLabel: status.label,
+      statusTone: status.tone,
+      primaryReason: item.primaryReason ?? 'Zustand prüfen',
+      sourceLabel: fhsModuleLabelDe(item.sourceModule),
+      recommendedAction: item.recommendedAction,
+      existingTaskId: item.existingTaskId,
+      sortRank: healthSortRank(item),
+    });
+  }
+
+  const linkedVehicleIds = new Set(
+    uiItems.filter((i) => i.recommendedAction === 'open_task').map((i) => i.vehicleId),
+  );
+
+  const executionCandidates = [
+    ...executionGroups.overdueServiceTasks,
+    ...executionGroups.inProgressServiceTasks,
+    ...executionGroups.vendorWaitingTasks,
+  ].filter((task) => {
+    if (!task.vehicleId) return true;
+    if (linkedVehicleIds.has(task.vehicleId)) return false;
+    if (coveredVehicleIds.has(task.vehicleId)) return false;
+    return true;
+  });
+
+  const seenTaskIds = new Set<string>();
+  for (const task of executionCandidates.sort((a, b) => taskSortRank(a) - taskSortRank(b))) {
+    if (seenTaskIds.has(task.id)) continue;
+    seenTaskIds.add(task.id);
+    const vehicleItem = task.vehicleId ? byVehicleId.get(task.vehicleId) : undefined;
+    const status = taskStatusLabel(task);
+    rows.push({
+      id: `task-${task.id}`,
+      kind: 'task',
+      vehicleId: task.vehicleId ?? '',
+      plate: vehicleItem?.plate ?? '—',
+      makeModelYear: vehicleItem?.makeModelYear ?? '',
+      statusLabel: status.label,
+      statusTone: status.tone,
+      primaryReason: task.title,
+      sourceLabel: 'Aufgabe',
+      recommendedAction: 'open_task',
+      existingTaskId: task.id,
+      taskId: task.id,
+      sortRank: taskSortRank(task),
+    });
+  }
+
+  return rows.sort((a, b) => a.sortRank - b.sortRank || a.plate.localeCompare(b.plate, 'de'));
+}
+
 function buildOverviewCounts(
   uiItems: FleetHealthServiceUiItem[],
   executionGroups: FleetHealthServiceExecutionGroups,
@@ -301,6 +428,7 @@ export function buildFleetHealthServiceViewModel(
   const healthGroups = buildHealthGroups(uiItems, healthMap);
   const executionGroups = buildExecutionGroups(taskList, vendors);
   const overviewCounts = buildOverviewCounts(uiItems, executionGroups);
+  const prioritizedOverviewRows = buildPrioritizedOverviewRows(uiItems, executionGroups, byVehicleId);
 
   return {
     loading: healthLoading || serviceLoading,
@@ -313,6 +441,7 @@ export function buildFleetHealthServiceViewModel(
     uiItems,
     byVehicleId,
     overviewCounts,
+    prioritizedOverviewRows,
   };
 }
 

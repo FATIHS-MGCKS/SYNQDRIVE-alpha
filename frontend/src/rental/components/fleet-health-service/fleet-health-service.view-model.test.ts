@@ -208,4 +208,68 @@ describe('fleet-health-service view model', () => {
     ];
     expect(matchOpenTaskForHealthSignal(openTasks, 'v1', health)).toBeNull();
   });
+
+  it('prioritized overview rows dedupe health + linked overdue task', () => {
+    const health = buildHealth({
+      vehicle_id: 'v1',
+      overall_state: 'critical',
+      modules: { brakes: mod('critical', 'Bremsen kritisch') },
+    });
+    const openTasks = [
+      task({
+        id: 't1',
+        vehicleId: 'v1',
+        type: 'BRAKE_CHECK',
+        status: 'OPEN',
+        isOverdue: true,
+        metadata: { healthModule: 'brakes' },
+        sourceType: 'HEALTH',
+      }),
+    ];
+    const vm = buildFleetHealthServiceViewModel({
+      vehicles: [vehicle('v1', 'B-XY 1')],
+      healthMap: new Map([['v1', health]]),
+      healthLoading: false,
+      taskSummary: null,
+      taskList: openTasks,
+      vendors: [],
+      serviceLoading: false,
+      serviceError: null,
+      serviceLoaded: true,
+    });
+
+    expect(vm.prioritizedOverviewRows).toHaveLength(1);
+    expect(vm.prioritizedOverviewRows[0]?.kind).toBe('health');
+    expect(vm.prioritizedOverviewRows[0]?.recommendedAction).toBe('open_task');
+  });
+
+  it('prioritized overview adds execution-only overdue when no health row', () => {
+    const openTasks = [
+      task({
+        id: 't-only',
+        vehicleId: 'v2',
+        status: 'OPEN',
+        isOverdue: true,
+        title: 'Ölwechsel',
+      }),
+    ];
+    const vm = buildFleetHealthServiceViewModel({
+      vehicles: [vehicle('v1', 'B-XY 1'), vehicle('v2', 'B-AB 2')],
+      healthMap: new Map([
+        ['v1', buildHealth({ vehicle_id: 'v1', overall_state: 'good' })],
+        ['v2', buildHealth({ vehicle_id: 'v2', overall_state: 'good' })],
+      ]),
+      healthLoading: false,
+      taskSummary: null,
+      taskList: openTasks,
+      vendors: [],
+      serviceLoading: false,
+      serviceError: null,
+      serviceLoaded: true,
+    });
+
+    const taskRows = vm.prioritizedOverviewRows.filter((r) => r.kind === 'task');
+    expect(taskRows).toHaveLength(1);
+    expect(taskRows[0]?.taskId).toBe('t-only');
+  });
 });

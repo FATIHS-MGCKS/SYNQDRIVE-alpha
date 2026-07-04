@@ -1,13 +1,13 @@
-import { ShieldAlert, ShieldCheck, AlertTriangle, CircleDot } from 'lucide-react';
 import { useCallback } from 'react';
 import type { Vendor } from '../../../lib/api';
-import type { StatusTone } from '../../../components/patterns';
 import { FleetConditionView, type ConditionCategory } from '../FleetConditionView';
-import { FleetHealthKpiCard } from '../fleet/FleetHealthKpiCard';
-import { ServiceCenterView } from '../service-center/ServiceCenterView';
-import type { ServiceCenterTab } from '../service-center/service-center.types';
 import type { ServiceCenterNavState } from '../../lib/service-center-navigation';
+import { FleetHealthServiceHistoryPanel } from './FleetHealthServiceHistoryPanel';
+import { FleetHealthServiceOverviewPanel } from './FleetHealthServiceOverviewPanel';
+import { FleetHealthServiceSchedulePanel } from './FleetHealthServiceSchedulePanel';
 import { FleetHealthServiceTabBar } from './FleetHealthServiceTabBar';
+import { FleetHealthServiceTasksPanel } from './FleetHealthServiceTasksPanel';
+import { FleetHealthServiceVendorsPanel } from './FleetHealthServiceVendorsPanel';
 import type { FleetHealthServiceTab } from './fleet-health-service.types';
 import { useFleetHealthServiceViewModel } from './useFleetHealthServiceViewModel';
 
@@ -24,11 +24,6 @@ interface FleetHealthServiceViewProps {
   onOpenServiceCenter?: (nav?: Partial<ServiceCenterNavState>) => void;
 }
 
-function fleetSubTabToServiceCenterTab(tab: FleetHealthServiceTab): ServiceCenterTab | null {
-  if (tab === 'vehicles') return null;
-  return tab;
-}
-
 export function FleetHealthServiceView({
   activeSubTab,
   onSubTabChange,
@@ -39,139 +34,83 @@ export function FleetHealthServiceView({
   onOpenVehicle,
   serviceCenterNavigation,
   onServiceCenterNavigationConsumed,
-  onOpenServiceCenter,
 }: FleetHealthServiceViewProps) {
   const vm = useFleetHealthServiceViewModel();
-  const { healthKpis, healthLoading } = vm;
 
-  const openServiceFromHealth = useCallback(() => {
-    onOpenServiceCenter?.();
-    onSubTabChange('overview');
-  }, [onOpenServiceCenter, onSubTabChange]);
+  const focusTaskId =
+    serviceCenterNavigation?.focusTaskId && activeSubTab === 'tasks'
+      ? serviceCenterNavigation.focusTaskId
+      : null;
 
-  const healthOverviewCards: Array<{
-    key: string;
-    label: string;
-    value: number;
-    hint: string;
-    tone: StatusTone;
-    icon: typeof ShieldAlert;
-    emphasize?: boolean;
-  }> = [
-    {
-      key: 'action',
-      label: 'Action required',
-      value: healthKpis.actionRequired,
-      hint: healthKpis.blocked > 0 ? `${healthKpis.blocked} blocked` : 'blocked or critical',
-      tone: 'critical',
-      icon: ShieldAlert,
-      emphasize: true,
-    },
-    {
-      key: 'review',
-      label: 'Needs review',
-      value: healthKpis.needsReview,
-      hint: 'inspect soon',
-      tone: 'warning',
-      icon: AlertTriangle,
-    },
-    {
-      key: 'healthy',
-      label: 'Healthy',
-      value: healthKpis.healthy,
-      hint: 'ready for rental',
-      tone: 'success',
-      icon: ShieldCheck,
-    },
-    {
-      key: 'limited',
-      label: 'Limited data',
-      value: healthKpis.limited,
-      hint:
-        healthKpis.naModuleVehicles > 0
-          ? `${healthKpis.naModuleVehicles} no tracking`
-          : 'not fully assessable',
-      tone: 'noData',
-      icon: CircleDot,
-    },
-  ];
+  const handleNavigationConsumed = useCallback(() => {
+    onServiceCenterNavigationConsumed?.();
+  }, [onServiceCenterNavigationConsumed]);
 
-  const serviceForcedTab = fleetSubTabToServiceCenterTab(activeSubTab);
+  const getExistingTaskId = useCallback(
+    (vehicleId: string) => vm.byVehicleId.get(vehicleId)?.existingTaskId ?? null,
+    [vm.byVehicleId],
+  );
 
   return (
     <div className="space-y-4">
       <FleetHealthServiceTabBar activeTab={activeSubTab} onTabChange={onSubTabChange} />
 
       {activeSubTab === 'overview' && (
-        <div className="space-y-4">
-          <section className="space-y-2">
-            <div className="flex items-center justify-between gap-2">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.07em] text-muted-foreground">
-                Zustand
-              </p>
-              <button
-                type="button"
-                onClick={() => onSubTabChange('vehicles')}
-                className="text-[11px] font-semibold text-[color:var(--brand-ink)] hover:underline"
-              >
-                Alle Fahrzeuge
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {healthOverviewCards.map((card) => {
-                const CardIcon = card.icon;
-                return (
-                  <FleetHealthKpiCard
-                    key={card.key}
-                    label={card.label}
-                    value={healthLoading && healthKpis.total === 0 ? 0 : card.value}
-                    hint={card.hint}
-                    tone={card.tone}
-                    icon={CardIcon}
-                    emphasize={card.emphasize}
-                    onClick={() => onSubTabChange('vehicles')}
-                  />
-                );
-              })}
-            </div>
-          </section>
-
-          <ServiceCenterView
-            hideHeader
-            hideSubTabBar
-            forcedTab="overview"
-            onOpenVendorDetail={onOpenVendorDetail}
-            onOpenGlobalTasks={onOpenGlobalTasks}
-            onCreateTask={onCreateTask}
-            onOpenVehicle={onOpenVehicle}
-            onNavigateToSubTab={(tab) => onSubTabChange(tab as FleetHealthServiceTab)}
-          />
-        </div>
+        <FleetHealthServiceOverviewPanel
+          vm={vm}
+          onNavigateSubTab={onSubTabChange}
+          onOpenVehicle={onOpenVehicle}
+          onOpenTask={onOpenGlobalTasks}
+          onCreateTask={onCreateTask}
+        />
       )}
 
       {activeSubTab === 'vehicles' && (
         <FleetConditionView
           embedded
           hideHeaderActions
+          uiLocale="de"
           onDrillDown={onDrillDown}
-          onOpenServiceCenter={openServiceFromHealth}
           onOpenExistingTask={onOpenGlobalTasks}
+          getExistingTaskId={getExistingTaskId}
         />
       )}
 
-      {serviceForcedTab != null && activeSubTab !== 'overview' && (
-        <ServiceCenterView
-          hideHeader
-          hideSubTabBar
-          forcedTab={serviceForcedTab}
-          showControlBar={false}
-          onOpenVendorDetail={onOpenVendorDetail}
-          onOpenGlobalTasks={onOpenGlobalTasks}
-          onCreateTask={onCreateTask}
+      {activeSubTab === 'tasks' && (
+        <FleetHealthServiceTasksPanel
+          tasks={vm.allTasks}
+          vendors={vm.vendors}
+          loading={vm.serviceLoading}
+          error={vm.serviceError}
+          onReload={() => void vm.reloadService()}
+          onOpenGlobalTasks={(taskId) => {
+            onOpenGlobalTasks?.(taskId);
+            handleNavigationConsumed();
+          }}
+          focusTaskId={focusTaskId}
+        />
+      )}
+
+      {activeSubTab === 'schedule' && (
+        <FleetHealthServiceSchedulePanel
+          tasks={vm.allTasks}
+          vendors={vm.vendors}
+          loading={vm.serviceLoading}
+          onSelectTask={onOpenGlobalTasks}
+        />
+      )}
+
+      {activeSubTab === 'vendors' && (
+        <FleetHealthServiceVendorsPanel onOpenVendorDetail={onOpenVendorDetail} />
+      )}
+
+      {activeSubTab === 'history' && (
+        <FleetHealthServiceHistoryPanel
+          tasks={vm.allTasks}
+          vendors={vm.vendors}
+          loading={vm.serviceLoading}
           onOpenVehicle={onOpenVehicle}
-          navigation={serviceCenterNavigation}
-          onNavigationConsumed={onServiceCenterNavigationConsumed}
-          onNavigateToSubTab={(tab) => onSubTabChange(tab as FleetHealthServiceTab)}
+          initialVehicleId={serviceCenterNavigation?.vehicleId ?? undefined}
         />
       )}
     </div>

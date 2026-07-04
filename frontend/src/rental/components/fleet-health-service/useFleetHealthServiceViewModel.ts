@@ -15,12 +15,16 @@ import {
  *
  * Does NOT compute health or mutate tasks — UI derivation only.
  */
-export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel {
+export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel & {
+  allTasks: ReturnType<typeof useServiceCenterData>['allTasks'];
+  vendors: ReturnType<typeof useServiceCenterData>['vendors'];
+  reloadService: ReturnType<typeof useServiceCenterData>['reload'];
+} {
   const { orgId } = useRentalOrg();
   const { fleetVehicles, healthMap, healthLoading } = useFleetVehicles();
   const service = useServiceCenterData(orgId);
 
-  return useMemo(
+  const vm = useMemo(
     () =>
       buildFleetHealthServiceViewModel({
         vehicles: fleetVehicles,
@@ -44,4 +48,11 @@ export function useFleetHealthServiceViewModel(): FleetHealthServiceViewModel {
       service.error,
     ],
   );
+
+  return {
+    ...vm,
+    allTasks: service.allTasks,
+    vendors: service.vendors,
+    reloadService: service.reload,
+  };
 }

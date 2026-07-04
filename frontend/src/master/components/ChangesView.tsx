@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-service-ui-v49184-2026-07-04',
+    version: '4.9.184',
+    title: 'V4.9.184 — Fleet Zustand & Service: neue UI (alle Subtabs)',
+    summary: [
+      'Übersicht: 7 deutsche KPI-Cards (Control-Center-Stil) + deduplizierte Liste „Priorisierte Fahrzeuge & Aufgaben“ (`buildPrioritizedOverviewRows`).',
+      'Fahrzeuge: `FleetConditionView` mit `uiLocale=de`, deutsche Filter/Labels, Aufgaben-Link aus ViewModel.',
+      'Aufgaben/Termine/Verlauf/Partner: eigene Fleet-Panels (`FleetHealthService*Panel`) — Tasks/Schedule/History via bestehende Service-Panels, Partner via `VendorManagementView`.',
+      'Kein `ServiceCenterView`-Embedding mehr in der Kombi-Ansicht; SynqDrive Button-Stil (`Button` neutral/ghost).',
+      'Neu: `fleet-health-service-shell.ts`, `FleetHealthServiceKpiStrip`, `FleetHealthServicePrioritizedList`, `FleetHealthServiceOverviewPanel`.',
+      'Tests: `fleet-health-service.view-model.test.ts` (10).',
+    ],
+    reason: 'Professionelle, nicht redundante Fleet-Ansicht für Zustand & Service ohne Vermischung der Datenwahrheiten.',
+    previousBehavior: 'Kombi-Tab nutzte englische KPIs, eingebettetes ServiceCenterView und redundante Health-Signale in der Übersicht.',
+    details: 'Nur Frontend-UI; keine Backend/API/Prisma/RentalHealthV1/Task-/Vendor-Speicherlogik geändert.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-04T12:00:00.000Z',
+  },
+  {
     id: 'fleet-health-service-viewmodel-v49183-2026-07-04',
     version: '4.9.183',
     title: 'V4.9.183 — Fleet Zustand & Service: gemeinsames ViewModel',

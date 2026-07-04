@@ -70,11 +70,15 @@ interface FleetConditionViewProps {
   hideHeaderActions?: boolean;
   onOpenServiceCenter?: () => void;
   onOpenExistingTask?: (taskId: string) => void;
+  /** UI copy locale — Fleet Zustand & Service uses `de`. */
+  uiLocale?: 'de' | 'en';
+  /** Optional task bridge from FleetHealthService view model. */
+  getExistingTaskId?: (vehicleId: string) => string | null;
 }
 
 type Tone = 'neutral' | 'success' | 'warning' | 'critical' | 'brand';
 
-const GROUP_CONFIG: Record<
+const GROUP_CONFIG_EN: Record<
   OperatorGroupKey,
   { title: string; subtitle: string; emptyTitle: string; tone: Tone; icon: LucideIcon }
 > = {
@@ -108,7 +112,41 @@ const GROUP_CONFIG: Record<
   },
 };
 
-const MODULE_FILTER_OPTIONS: Array<{ value: OperatorModuleFilter; label: string }> = [
+const GROUP_CONFIG_DE: Record<
+  OperatorGroupKey,
+  { title: string; subtitle: string; emptyTitle: string; tone: Tone; icon: LucideIcon }
+> = {
+  action_required: {
+    title: 'Handlungsbedarf',
+    subtitle: 'Blockiert oder kritisch — vor Vermietung klären',
+    emptyTitle: 'Aktuell keine kritischen Fahrzeuge.',
+    tone: 'critical',
+    icon: ShieldAlert,
+  },
+  needs_review: {
+    title: 'Prüfen',
+    subtitle: 'Warnsignale — Inspektion einplanen',
+    emptyTitle: 'Keine Fahrzeuge mit Prüfbedarf.',
+    tone: 'warning',
+    icon: AlertTriangle,
+  },
+  limited_data: {
+    title: 'Daten begrenzt',
+    subtitle: 'Zustand nicht voll bewertbar — Daten fehlen, verzögert oder nicht unterstützt.',
+    emptyTitle: 'Alle Fahrzeuge haben bewertbare Zustandsdaten.',
+    tone: 'neutral',
+    icon: CircleDot,
+  },
+  good: {
+    title: 'Gesund',
+    subtitle: 'Vermietungsbereit bestätigt',
+    emptyTitle: 'Kein Fahrzeug ist derzeit vollständig bereit.',
+    tone: 'success',
+    icon: ShieldCheck,
+  },
+};
+
+const MODULE_FILTER_OPTIONS_EN: Array<{ value: OperatorModuleFilter; label: string }> = [
   { value: 'all', label: 'All modules' },
   { value: 'battery', label: 'Battery' },
   { value: 'tires', label: 'Tires' },
@@ -119,7 +157,18 @@ const MODULE_FILTER_OPTIONS: Array<{ value: OperatorModuleFilter; label: string 
   { value: 'vehicle_alerts', label: 'OEM Alerts' },
 ];
 
-const DATA_QUALITY_OPTIONS: Array<{ value: OperatorDataQualityFilter; label: string }> = [
+const MODULE_FILTER_OPTIONS_DE: Array<{ value: OperatorModuleFilter; label: string }> = [
+  { value: 'all', label: 'Alle Module' },
+  { value: 'battery', label: 'Batterie' },
+  { value: 'tires', label: 'Reifen' },
+  { value: 'brakes', label: 'Bremsen' },
+  { value: 'error_codes', label: 'DTC' },
+  { value: 'service_compliance', label: 'Service / TÜV' },
+  { value: 'complaints', label: 'Beschwerden' },
+  { value: 'vehicle_alerts', label: 'OEM-Hinweise' },
+];
+
+const DATA_QUALITY_OPTIONS_EN: Array<{ value: OperatorDataQualityFilter; label: string }> = [
   { value: 'all', label: 'All data quality' },
   { value: 'fresh', label: 'Fresh' },
   { value: 'stale', label: 'Delayed data' },
@@ -127,12 +176,38 @@ const DATA_QUALITY_OPTIONS: Array<{ value: OperatorDataQualityFilter; label: str
   { value: 'estimated', label: 'Estimated' },
 ];
 
-const SORT_OPTIONS: Array<{ value: OperatorSortMode; label: string; helper: string }> = [
+const DATA_QUALITY_OPTIONS_DE: Array<{ value: OperatorDataQualityFilter; label: string }> = [
+  { value: 'all', label: 'Alle Datenqualität' },
+  { value: 'fresh', label: 'Aktuell' },
+  { value: 'stale', label: 'Verzögerte Daten' },
+  { value: 'no_tracking', label: 'Kein Tracking' },
+  { value: 'estimated', label: 'Geschätzt' },
+];
+
+const SORT_OPTIONS_EN: Array<{ value: OperatorSortMode; label: string; helper: string }> = [
   { value: 'priority', label: 'Priority', helper: 'blocked & critical first' },
   { value: 'station', label: 'Station', helper: 'A-Z' },
   { value: 'license', label: 'License plate', helper: 'A-Z' },
   { value: 'updated', label: 'Last updated', helper: 'newest first' },
 ];
+
+const SORT_OPTIONS_DE: Array<{ value: OperatorSortMode; label: string; helper: string }> = [
+  { value: 'priority', label: 'Priorität', helper: 'blockiert & kritisch zuerst' },
+  { value: 'station', label: 'Station', helper: 'A-Z' },
+  { value: 'license', label: 'Kennzeichen', helper: 'A-Z' },
+  { value: 'updated', label: 'Zuletzt aktualisiert', helper: 'neueste zuerst' },
+];
+
+function localizedHealthBadge(label: string, locale: 'de' | 'en'): string {
+  if (locale === 'en') return label;
+  const map: Record<string, string> = {
+    'Action required': 'Handlungsbedarf',
+    'Needs review': 'Prüfen',
+    Healthy: 'Gesund',
+    'Limited data': 'Daten begrenzt',
+  };
+  return map[label] ?? label;
+}
 
 const MAX_VISIBLE_ISSUE_CHIPS = 3;
 
@@ -149,7 +224,15 @@ export function FleetConditionView({
   hideHeaderActions = false,
   onOpenServiceCenter,
   onOpenExistingTask,
+  uiLocale = 'en',
+  getExistingTaskId,
 }: FleetConditionViewProps) {
+  const GROUP_CONFIG = uiLocale === 'de' ? GROUP_CONFIG_DE : GROUP_CONFIG_EN;
+  const MODULE_FILTER_OPTIONS = uiLocale === 'de' ? MODULE_FILTER_OPTIONS_DE : MODULE_FILTER_OPTIONS_EN;
+  const DATA_QUALITY_OPTIONS = uiLocale === 'de' ? DATA_QUALITY_OPTIONS_DE : DATA_QUALITY_OPTIONS_EN;
+  const SORT_OPTIONS = uiLocale === 'de' ? SORT_OPTIONS_DE : SORT_OPTIONS_EN;
+  const searchPlaceholder =
+    uiLocale === 'de' ? 'Kennzeichen, Fahrzeug oder Station suchen…' : 'Search plate, vehicle or station…';
   const systemDark = useSyncExternalStore(
     (onStoreChange) => {
       const el = document.documentElement;
@@ -326,9 +409,16 @@ export function FleetConditionView({
   const kpiCards = [
     {
       key: 'action',
-      label: 'Action required',
+      label: uiLocale === 'de' ? 'Handlungsbedarf' : 'Action required',
       value: kpis.actionRequired,
-      hint: kpis.blocked > 0 ? `${kpis.blocked} blocked` : 'blocked or critical',
+      hint:
+        kpis.blocked > 0
+          ? uiLocale === 'de'
+            ? `${kpis.blocked} blockiert`
+            : `${kpis.blocked} blocked`
+          : uiLocale === 'de'
+            ? 'kritisch oder gesperrt'
+            : 'blocked or critical',
       filter: 'action' as OperatorStatusFilter,
       tone: 'critical' as StatusTone,
       icon: ShieldAlert,
@@ -336,27 +426,34 @@ export function FleetConditionView({
     },
     {
       key: 'review',
-      label: 'Needs review',
+      label: uiLocale === 'de' ? 'Prüfen' : 'Needs review',
       value: kpis.needsReview,
-      hint: 'inspect soon',
+      hint: uiLocale === 'de' ? 'bald prüfen' : 'inspect soon',
       filter: 'review' as OperatorStatusFilter,
       tone: 'warning' as StatusTone,
       icon: AlertTriangle,
     },
     {
       key: 'healthy',
-      label: 'Healthy',
+      label: uiLocale === 'de' ? 'Gesund' : 'Healthy',
       value: kpis.healthy,
-      hint: 'ready for rental',
+      hint: uiLocale === 'de' ? 'vermietungsbereit' : 'ready for rental',
       filter: 'good' as OperatorStatusFilter,
       tone: 'success' as StatusTone,
       icon: ShieldCheck,
     },
     {
       key: 'limited',
-      label: 'Limited data',
+      label: uiLocale === 'de' ? 'Daten begrenzt' : 'Limited data',
       value: kpis.limited,
-      hint: kpis.naModuleVehicles > 0 ? `${kpis.naModuleVehicles} no tracking` : 'not fully assessable',
+      hint:
+        kpis.naModuleVehicles > 0
+          ? uiLocale === 'de'
+            ? `${kpis.naModuleVehicles} ohne Tracking`
+            : `${kpis.naModuleVehicles} no tracking`
+          : uiLocale === 'de'
+            ? 'nicht voll bewertbar'
+            : 'not fully assessable',
       filter: 'limited' as OperatorStatusFilter,
       tone: 'noData' as StatusTone,
       icon: CircleDot,
@@ -463,7 +560,7 @@ export function FleetConditionView({
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search plate, vehicle or station…"
+              placeholder={searchPlaceholder}
               className="w-full rounded-lg border border-border/70 bg-card py-2.5 pl-10 pr-4 text-xs text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]"
             />
           </div>
@@ -508,7 +605,7 @@ export function FleetConditionView({
             }`}
           >
             <SlidersHorizontal className="h-3.5 w-3.5" />
-            <span>More filters</span>
+            <span>{uiLocale === 'de' ? 'Mehr Filter' : 'More filters'}</span>
             {advancedActiveCount > 0 && (
               <span className="rounded-full bg-[color:var(--brand)] px-1.5 text-[9px] font-bold text-white">
                 {advancedActiveCount}
@@ -524,7 +621,7 @@ export function FleetConditionView({
               className="sq-press flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-2.5 py-2.5 text-[11px] font-semibold text-foreground transition-all hover:bg-muted"
             >
               <Icon name="x" className="h-3.5 w-3.5" />
-              Clear
+              {uiLocale === 'de' ? 'Zurücksetzen' : 'Clear'}
             </button>
           )}
         </div>
@@ -603,7 +700,9 @@ export function FleetConditionView({
             </FilterDropdown>
 
             <p className="ml-auto text-[10px] text-muted-foreground">
-              Showing {filtered.length} of {kpis.total} vehicles
+              {uiLocale === 'de'
+                ? `${filtered.length} von ${kpis.total} Fahrzeugen`
+                : `Showing ${filtered.length} of ${kpis.total} vehicles`}
             </p>
           </div>
         )}
@@ -613,7 +712,7 @@ export function FleetConditionView({
         <EmptyState
           compact
           icon={<Icon name="search" className="h-5 w-5" />}
-          title="No vehicles found for this filter."
+          title={uiLocale === 'de' ? 'Keine Fahrzeuge für diesen Filter.' : 'No vehicles found for this filter.'}
           className="sq-card rounded-2xl shadow-[var(--shadow-1)]"
         />
       ) : (
@@ -664,6 +763,9 @@ export function FleetConditionView({
                           healthLoading={healthLoading}
                           systemDark={systemDark}
                           selected={selectedVehicleId === vehicle.id}
+                          uiLocale={uiLocale}
+                          existingTaskId={getExistingTaskId?.(vehicle.id) ?? null}
+                          onOpenExistingTask={onOpenExistingTask}
                           onOpen={() => openVehicleDetail(vehicle.id)}
                           onModuleClick={(chipKey) =>
                             openVehicleDetail(vehicle.id, moduleKeyToTab(chipKey))
@@ -783,6 +885,9 @@ function OperatorVehicleRow({
   healthLoading,
   systemDark,
   selected,
+  uiLocale,
+  existingTaskId,
+  onOpenExistingTask,
   onOpen,
   onModuleClick,
 }: {
@@ -791,6 +896,9 @@ function OperatorVehicleRow({
   healthLoading: boolean;
   systemDark: boolean;
   selected: boolean;
+  uiLocale: 'de' | 'en';
+  existingTaskId: string | null;
+  onOpenExistingTask?: (taskId: string) => void;
   onOpen: () => void;
   onModuleClick: (moduleKey: HealthIssueChip['key']) => void;
 }) {
@@ -858,7 +966,9 @@ function OperatorVehicleRow({
               tone={display.primaryBadge.tone}
               className="shrink-0 px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide"
             >
-              {healthLoading && !health ? '…' : display.primaryBadge.label}
+              {healthLoading && !health
+                ? '…'
+                : localizedHealthBadge(display.primaryBadge.label, uiLocale)}
             </StatusChip>
           </div>
 
@@ -871,7 +981,9 @@ function OperatorVehicleRow({
             {display.rentalBlocked && (
               <>
                 <span aria-hidden>·</span>
-                <span className="font-medium text-[color:var(--status-critical)]">Rental blocked</span>
+                <span className="font-medium text-[color:var(--status-critical)]">
+                  {uiLocale === 'de' ? 'Vermietung blockiert' : 'Rental blocked'}
+                </span>
               </>
             )}
           </div>
@@ -908,6 +1020,16 @@ function OperatorVehicleRow({
           </div>
         )}
       </div>
+
+      {existingTaskId && onOpenExistingTask ? (
+        <button
+          type="button"
+          onClick={() => onOpenExistingTask(existingTaskId)}
+          className="sq-press inline-flex min-h-8 shrink-0 items-center gap-1 self-center rounded-md border border-border/60 px-2 text-[10px] font-semibold text-foreground opacity-90 transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+        >
+          {uiLocale === 'de' ? 'Aufgabe' : 'Task'}
+        </button>
+      ) : null}
 
       <button
         type="button"
