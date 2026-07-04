@@ -3,6 +3,10 @@ import { Icon } from '../ui/Icon';
 import { DetailDrawer } from '../../../components/patterns/detail-drawer';
 import { SkeletonRows, StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
+import type { VehicleHealthResponse } from '../../../lib/api';
+import type { VehicleData } from '../../data/vehicles';
+import { useFleetVehicles } from '../../FleetContext';
+import { CompactFleetDrawerVehicleRow } from './CompactFleetDrawerVehicleRow';
 import {
   dedupeDisplayReasons,
   formatRuntimeReasonLabel,
@@ -384,6 +388,8 @@ function DashboardRowCard({
   row,
   sliceId,
   state,
+  vehicle,
+  health,
   de,
   onOpenVehicle,
   onOpenBooking,
@@ -392,12 +398,28 @@ function DashboardRowCard({
   row: DashboardSliceRow;
   sliceId: DashboardSliceId;
   state?: VehicleRuntimeState;
+  vehicle?: VehicleData;
+  health?: VehicleHealthResponse | null;
   de: boolean;
   onOpenVehicle?: DashboardViewProps['onOpenVehicleById'];
   onOpenBooking?: DashboardViewProps['onOpenBookingById'];
   onClose: () => void;
 }) {
   const locale = de ? 'de' : 'en';
+  if (sliceId === 'ready-to-rent' && row.vehicleId && !row.bookingId) {
+    return (
+      <CompactFleetDrawerVehicleRow
+        row={row}
+        vehicle={vehicle}
+        health={health}
+        runtimeState={state}
+        locale={locale}
+        onOpenVehicle={onOpenVehicle}
+        onClose={onClose}
+      />
+    );
+  }
+
   if (row.vehicleId && !row.bookingId) {
     return (
       <VehicleDrawerRowCard
@@ -540,6 +562,8 @@ function ReadyToRentDrawerToolbar({
 function DashboardGroupList({
   slice,
   vehicleStates,
+  fleetVehicleById,
+  fleetHealthById,
   locale,
   de,
   selectedStationName,
@@ -549,6 +573,8 @@ function DashboardGroupList({
 }: {
   slice: DashboardSlice;
   vehicleStates: Map<string, VehicleRuntimeState>;
+  fleetVehicleById: Map<string, VehicleData>;
+  fleetHealthById: Map<string, VehicleHealthResponse>;
   locale: string;
   de: boolean;
   selectedStationName?: string | null;
@@ -617,6 +643,8 @@ function DashboardGroupList({
                   row={row}
                   sliceId={slice.id}
                   state={row.vehicleId ? vehicleStates.get(row.vehicleId) : undefined}
+                  vehicle={row.vehicleId ? fleetVehicleById.get(row.vehicleId) : undefined}
+                  health={row.vehicleId ? fleetHealthById.get(row.vehicleId) ?? null : null}
                   de={de}
                   onOpenVehicle={onOpenVehicle}
                   onOpenBooking={onOpenBooking}
@@ -707,6 +735,11 @@ export function DashboardDrilldownDrawer({
   onOpenBilling,
 }: DashboardDrilldownDrawerProps) {
   const de = locale === 'de';
+  const { fleetVehicles, healthMap } = useFleetVehicles();
+  const fleetVehicleById = useMemo(
+    () => new Map(fleetVehicles.map((vehicle) => [vehicle.id, vehicle])),
+    [fleetVehicles],
+  );
   const dashboardSlice = activeTargetId && isDashboardSliceId(activeTargetId)
     ? dashboardRuntime.slices[activeTargetId]
     : null;
@@ -779,6 +812,8 @@ export function DashboardDrilldownDrawer({
         <DashboardGroupList
           slice={dashboardSlice}
           vehicleStates={vehicleStatesById(dashboardRuntime.vehicleStates)}
+          fleetVehicleById={fleetVehicleById}
+          fleetHealthById={healthMap}
           locale={locale}
           de={de}
           selectedStationName={selectedStationName}
