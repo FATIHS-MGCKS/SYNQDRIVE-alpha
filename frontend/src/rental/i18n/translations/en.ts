@@ -48,8 +48,15 @@ export const en = {
 
   // ─── Fleet hub tabs ───
   'fleetTab.status': 'Status',
+  'fleetTab.conditionService': 'Condition & Service',
   'fleetTab.health': 'Health',
   'fleetTab.service': 'Maintenance',
+  'fleetHealthService.tab.overview': 'Overview',
+  'fleetHealthService.tab.vehicles': 'Vehicles',
+  'fleetHealthService.tab.tasks': 'Tasks',
+  'fleetHealthService.tab.schedule': 'Schedule',
+  'fleetHealthService.tab.vendors': 'Vendors',
+  'fleetHealthService.tab.history': 'History',
 
   // ─── Service Center (Fleet hub) ───
   'serviceCenter.eyebrow': 'Fleet operations',

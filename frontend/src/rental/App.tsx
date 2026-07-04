@@ -11,7 +11,8 @@ import { DashboardView } from './components/DashboardView';
 import { BookingsView } from './components/BookingsView';
 import { FinancialInsightsView } from './components/FinancialInsightsView';
 import { HealthErrorsView } from './components/HealthErrorsView';
-import { FleetHubView, type FleetTab } from './components/FleetHubView';
+import { FleetHubView, type FleetHealthServiceTab, type FleetTab, type FleetTabInput } from './components/FleetHubView';
+import { fleetSubTabFromServiceCenterNav, normalizeFleetTab } from './components/fleet-health-service/fleet-health-service.types';
 import { DamagesView } from './components/DamagesView';
 import { DocumentsView } from './components/DocumentsView';
 import { CustomersView } from './components/CustomersView';
@@ -174,6 +175,8 @@ function RentalAppContent() {
   }, [currentView, helpCenterAttempted]);
   const [settingsTab, setSettingsTab] = useState<RentalSettingsTab>(readPersistedSettingsTab);
   const [fleetTab, setFleetTab] = useState<FleetTab>('status');
+  const [fleetHealthServiceSubTab, setFleetHealthServiceSubTab] =
+    useState<FleetHealthServiceTab>('overview');
   const [serviceCenterNav, setServiceCenterNav] = useState<ServiceCenterNavState | null>(null);
   const [financeTab, setFinanceTab] = useState<FinanceTab>('invoices');
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleData | null>(null);
@@ -409,9 +412,16 @@ function RentalAppContent() {
     setFleetTab('status');
   };
 
+  const setFleetTabNormalized = useCallback((tab: FleetTabInput) => {
+    const normalized = normalizeFleetTab(tab);
+    setFleetTab(normalized.tab);
+    if (normalized.subTab) setFleetHealthServiceSubTab(normalized.subTab);
+  }, []);
+
   const openServiceCenter = useCallback((nav?: Partial<ServiceCenterNavState>) => {
     setServiceCenterNav(nav ?? {});
-    setFleetTab('service');
+    setFleetTab('condition-service');
+    setFleetHealthServiceSubTab(fleetSubTabFromServiceCenterNav(nav));
     setCurrentView('fleet');
   }, []);
 
@@ -419,12 +429,12 @@ function RentalAppContent() {
   const handleViewChange = (view: string) => {
     if (view === 'fleet-condition') {
       setCurrentView('fleet');
-      setFleetTab('health');
+      setFleetTabNormalized('health');
       return;
     }
     if (view === 'vendor-management') {
       setCurrentView('fleet');
-      setFleetTab('service');
+      setFleetTabNormalized('service');
       return;
     }
     if (view === 'fines') return;
@@ -487,7 +497,7 @@ function RentalAppContent() {
         onNewBookingClick={() => handleViewChange('new-booking')}
         currentView={currentView}
         onViewChange={handleViewChange}
-        onFleetTabChange={setFleetTab}
+        onFleetTabChange={setFleetTabNormalized}
         settingsTab={settingsTab}
         onSettingsTabChange={setSettingsTab}
         isCollapsed={isSidebarCollapsed}
@@ -761,6 +771,8 @@ function RentalAppContent() {
           <FleetHubView
             activeTab={fleetTab}
             onTabChange={setFleetTab}
+            healthServiceSubTab={fleetHealthServiceSubTab}
+            onHealthServiceSubTabChange={setFleetHealthServiceSubTab}
             onVehicleSelect={handleVehicleSelect}
             onOpenVendorDetail={(vendor) => { setDetailVendorId(vendor.id); setCurrentView('vendor-detail'); }}
             onOpenGlobalTasks={(taskId) => {
@@ -858,7 +870,12 @@ function RentalAppContent() {
         ) : currentView === 'vendor-detail' && detailVendorId ? (
           <VendorDetailView
             vendorId={detailVendorId}
-            onBack={() => { setCurrentView('fleet'); setFleetTab('service'); setDetailVendorId(null); }}
+            onBack={() => {
+              setCurrentView('fleet');
+              setFleetTab('condition-service');
+              setFleetHealthServiceSubTab('vendors');
+              setDetailVendorId(null);
+            }}
           />
         ) : currentView === 'tasks' ? (
           <TasksView

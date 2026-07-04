@@ -29,6 +29,14 @@ interface ServiceCenterViewProps {
   onNavigationConsumed?: () => void;
   /** Hide eyebrow/title/subtitle when nested in FleetHub Maintenance tab. */
   hideHeader?: boolean;
+  /** When true, sub-tab bar is hidden (parent owns navigation, e.g. FleetHealthServiceView). */
+  hideSubTabBar?: boolean;
+  /** Render only this panel — used when embedded in FleetHealthServiceView. */
+  forcedTab?: ServiceCenterTab;
+  /** Show KPI control bar (default: true unless forcedTab is set and not overview). */
+  showControlBar?: boolean;
+  /** Parent sub-tab navigation (FleetHealthServiceView). */
+  onNavigateToSubTab?: (tab: ServiceCenterTab) => void;
 }
 
 const TAB_ICONS = {
@@ -47,6 +55,10 @@ export function ServiceCenterView({
   navigation,
   onNavigationConsumed,
   hideHeader = false,
+  hideSubTabBar = false,
+  forcedTab,
+  showControlBar,
+  onNavigateToSubTab,
 }: ServiceCenterViewProps) {
   const { t } = useLanguage();
   const { orgId } = useRentalOrg();
@@ -81,16 +93,21 @@ export function ServiceCenterView({
         taskStatus: nav.taskStatus,
       });
     }
-    if (nav.tab) setTab(nav.tab);
+    if (nav.tab) {
+      if (onNavigateToSubTab) onNavigateToSubTab(nav.tab);
+      else setTab(nav.tab);
+    }
     if (nav.taskFilter) setTaskFilter(nav.taskFilter);
     if (nav.focusTaskId) {
       setFocusTaskId(nav.focusTaskId);
-      setTab('tasks');
+      if (onNavigateToSubTab) onNavigateToSubTab('tasks');
+      else setTab('tasks');
     } else if (nav.vehicleId && !nav.tab) {
-      setTab('tasks');
+      if (onNavigateToSubTab) onNavigateToSubTab('tasks');
+      else setTab('tasks');
     }
     onNavigationConsumed?.();
-  }, [navigation, onNavigationConsumed, clearNavContext]);
+  }, [navigation, onNavigationConsumed, clearNavContext, onNavigateToSubTab]);
 
   const filteredActiveTasks = useMemo(() => {
     if (!navContext.vehicleId) return data.activeTasks;
@@ -115,15 +132,30 @@ export function ServiceCenterView({
     { key: 'history', label: t('serviceCenter.tab.history') },
   ];
 
+  const goToTab = useCallback(
+    (next: ServiceCenterTab) => {
+      if (onNavigateToSubTab) {
+        onNavigateToSubTab(next);
+        return;
+      }
+      setTab(next);
+    },
+    [onNavigateToSubTab],
+  );
+
   const handleKpiFilter = useCallback((filter: ServiceTaskFilter) => {
     setTaskFilter(filter);
-    setTab('tasks');
-  }, []);
+    goToTab('tasks');
+  }, [goToTab]);
 
   const openTaskInPanel = useCallback((taskId: string) => {
     setFocusTaskId(taskId);
-    setTab('tasks');
-  }, []);
+    goToTab('tasks');
+  }, [goToTab]);
+
+  const activeTab = forcedTab ?? tab;
+  const shouldShowControlBar =
+    showControlBar ?? (forcedTab == null || forcedTab === 'overview');
 
   return (
     <div className={sc.shell}>
@@ -139,12 +171,14 @@ export function ServiceCenterView({
         </div>
       )}
 
-      <ServiceControlBar
-        kpis={data.kpis}
-        loading={data.loading}
-        activeFilter={tab === 'tasks' ? taskFilter : null}
-        onFilterSelect={handleKpiFilter}
-      />
+      {shouldShowControlBar && (
+        <ServiceControlBar
+          kpis={data.kpis}
+          loading={data.loading}
+          activeFilter={activeTab === 'tasks' ? taskFilter : null}
+          onFilterSelect={handleKpiFilter}
+        />
+      )}
 
       {hasServiceCenterContextFilters(navContext) && (
         <ServiceCenterContextBar
@@ -154,38 +188,40 @@ export function ServiceCenterView({
         />
       )}
 
-      <div className={sc.subTabBar}>
-        {tabs.map((item) => {
-          const Icon = TAB_ICONS[item.key];
-          const active = tab === item.key;
-          return (
-            <button
-              key={item.key}
-              type="button"
-              onClick={() => setTab(item.key)}
-              className={`${sc.subTabBtn} flex items-center gap-1.5 ${active ? sc.subTabActive : sc.subTabIdle}`}
-            >
-              <Icon className="w-3.5 h-3.5 shrink-0" />
-              {item.label}
-            </button>
-          );
-        })}
-      </div>
+      {!hideSubTabBar && (
+        <div className={sc.subTabBar}>
+          {tabs.map((item) => {
+            const Icon = TAB_ICONS[item.key];
+            const active = activeTab === item.key;
+            return (
+              <button
+                key={item.key}
+                type="button"
+                onClick={() => goToTab(item.key)}
+                className={`${sc.subTabBtn} flex items-center gap-1.5 ${active ? sc.subTabActive : sc.subTabIdle}`}
+              >
+                <Icon className="w-3.5 h-3.5 shrink-0" />
+                {item.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-      {tab === 'overview' && (
+      {activeTab === 'overview' && (
         <ServiceOverviewPanel
           activeTasks={data.activeTasks}
           historyTasks={data.historyTasks}
           vendors={data.vendors}
           loading={data.loading}
-          onOpenTasks={() => setTab('tasks')}
-          onOpenSchedule={() => setTab('schedule')}
+          onOpenTasks={() => goToTab('tasks')}
+          onOpenSchedule={() => goToTab('schedule')}
           onCreateTask={onCreateTask}
           onReload={data.reload}
         />
       )}
 
-      {tab === 'tasks' && (
+      {activeTab === 'tasks' && (
         <ServiceTasksPanel
           tasks={filteredAllTasks}
           vendors={data.vendors}
@@ -200,7 +236,7 @@ export function ServiceCenterView({
         />
       )}
 
-      {tab === 'schedule' && (
+      {activeTab === 'schedule' && (
         <ServiceSchedulePanel
           tasks={filteredActiveTasks}
           vendors={data.vendors}
@@ -209,11 +245,11 @@ export function ServiceCenterView({
         />
       )}
 
-      {tab === 'vendors' && (
+      {activeTab === 'vendors' && (
         <VendorManagementView embedded embeddedInServiceCenter onOpenDetail={onOpenVendorDetail} />
       )}
 
-      {tab === 'history' && (
+      {activeTab === 'history' && (
         <ServiceHistoryPanel
           tasks={filteredAllTasks}
           vendors={data.vendors}

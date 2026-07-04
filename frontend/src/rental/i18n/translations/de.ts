@@ -49,8 +49,15 @@ export const de: Record<TranslationKey, string> = {
   'nav.aiAssistant': 'KI-Assistent',
 
   'fleetTab.status': 'Status',
+  'fleetTab.conditionService': 'Zustand & Service',
   'fleetTab.health': 'Health',
   'fleetTab.service': 'Instandhaltung',
+  'fleetHealthService.tab.overview': 'Übersicht',
+  'fleetHealthService.tab.vehicles': 'Fahrzeuge',
+  'fleetHealthService.tab.tasks': 'Aufgaben',
+  'fleetHealthService.tab.schedule': 'Termine',
+  'fleetHealthService.tab.vendors': 'Partner',
+  'fleetHealthService.tab.history': 'Verlauf',
 
   // ─── Service Center (Fleet-Hub) ───
   'serviceCenter.eyebrow': 'Flottenbetrieb',

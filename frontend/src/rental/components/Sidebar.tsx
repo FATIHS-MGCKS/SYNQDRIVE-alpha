@@ -2,7 +2,7 @@ import { LayoutDashboard, DollarSign, Calendar, Car, Users, CheckSquare, FileTex
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
-import type { FleetTab } from './FleetHubView';
+import type { FleetTab, FleetTabInput } from './fleet-health-service/fleet-health-service.types';
 import {
   navItemClass,
   subNavItemClass,
@@ -20,7 +20,7 @@ interface SidebarProps {
   onNewBookingClick?: () => void;
   currentView?: string;
   onViewChange?: (view: any) => void;
-  onFleetTabChange?: (tab: FleetTab) => void;
+  onFleetTabChange?: (tab: FleetTabInput) => void;
   settingsTab?: SettingsTab;
   onSettingsTabChange?: (tab: SettingsTab) => void;
   isCollapsed?: boolean;

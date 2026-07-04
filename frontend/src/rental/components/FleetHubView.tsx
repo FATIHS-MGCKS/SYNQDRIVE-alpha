@@ -1,7 +1,13 @@
-import { Activity, Briefcase, Car, RefreshCw } from 'lucide-react';
+import { Activity, Car, RefreshCw } from 'lucide-react';
 import { FleetView } from './FleetView';
-import { FleetConditionView, type ConditionCategory } from './FleetConditionView';
-import { ServiceCenterView } from './service-center/ServiceCenterView';
+import { type ConditionCategory } from './FleetConditionView';
+import { FleetHealthServiceView } from './fleet-health-service/FleetHealthServiceView';
+import {
+  normalizeFleetTab,
+  type FleetHealthServiceTab,
+  type FleetTab,
+  type FleetTabInput,
+} from './fleet-health-service/fleet-health-service.types';
 import { Button } from '../../components/ui/button';
 import { useFleetVehicles } from '../FleetContext';
 import { useLanguage } from '../i18n/LanguageContext';
@@ -11,11 +17,13 @@ import type { Vendor } from '../../lib/api';
 import type { ServiceCenterNavState } from '../lib/service-center-navigation';
 import { useMemo } from 'react';
 
-export type FleetTab = 'status' | 'health' | 'service';
+export type { FleetTab, FleetTabInput, FleetHealthServiceTab };
 
 interface FleetHubViewProps {
-  activeTab: FleetTab;
+  activeTab: FleetTabInput;
   onTabChange: (tab: FleetTab) => void;
+  healthServiceSubTab: FleetHealthServiceTab;
+  onHealthServiceSubTabChange: (tab: FleetHealthServiceTab) => void;
   onVehicleSelect?: (vehicle: VehicleData) => void;
   onDrillDown?: (vehicleId: string, category: ConditionCategory) => void;
   onOpenVendorDetail?: (vendor: Vendor) => void;
@@ -29,13 +37,14 @@ interface FleetHubViewProps {
 
 const TAB_ICONS = {
   status: Car,
-  health: Activity,
-  service: Briefcase,
+  'condition-service': Activity,
 } as const;
 
 export function FleetHubView({
-  activeTab,
+  activeTab: activeTabInput,
   onTabChange,
+  healthServiceSubTab,
+  onHealthServiceSubTabChange,
   onVehicleSelect,
   onDrillDown,
   onOpenVendorDetail,
@@ -49,15 +58,16 @@ export function FleetHubView({
   const { t } = useLanguage();
   const { healthMap, healthLoading, reloadHealth } = useFleetVehicles();
 
+  const activeTab = normalizeFleetTab(activeTabInput).tab;
+
   const lastHealthUpdated = useMemo(
     () => latestHealthGeneratedAt(healthMap),
     [healthMap],
   );
 
-  const tabs: { key: FleetTab; labelKey: 'fleetTab.status' | 'fleetTab.health' | 'fleetTab.service' }[] = [
+  const tabs: { key: FleetTab; labelKey: 'fleetTab.status' | 'fleetTab.conditionService' }[] = [
     { key: 'status', labelKey: 'fleetTab.status' },
-    { key: 'health', labelKey: 'fleetTab.health' },
-    { key: 'service', labelKey: 'fleetTab.service' },
+    { key: 'condition-service', labelKey: 'fleetTab.conditionService' },
   ];
 
   const tabBar = (
@@ -89,25 +99,28 @@ export function FleetHubView({
     ? `Updated ${formatRelativeTime(lastHealthUpdated)}`
     : null;
 
-  const healthHeaderActions =
-    activeTab === 'health' ? (
-      <div className="flex flex-col items-end gap-1">
-        <Button
-          type="button"
-          variant="neutral"
-          size="sm"
-          disabled={healthLoading}
-          onClick={() => reloadHealth()}
-          className="hidden sm:inline-flex"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${healthLoading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-        {lastHealthUpdatedLabel ? (
-          <span className="text-[10px] text-muted-foreground">{lastHealthUpdatedLabel}</span>
-        ) : null}
-      </div>
-    ) : null;
+  const showHealthRefresh =
+    activeTab === 'condition-service' &&
+    (healthServiceSubTab === 'vehicles' || healthServiceSubTab === 'overview');
+
+  const healthHeaderActions = showHealthRefresh ? (
+    <div className="flex flex-col items-end gap-1">
+      <Button
+        type="button"
+        variant="neutral"
+        size="sm"
+        disabled={healthLoading}
+        onClick={() => reloadHealth()}
+        className="hidden sm:inline-flex"
+      >
+        <RefreshCw className={`h-3.5 w-3.5 ${healthLoading ? 'animate-spin' : ''}`} />
+        Refresh
+      </Button>
+      {lastHealthUpdatedLabel ? (
+        <span className="text-[10px] text-muted-foreground">{lastHealthUpdatedLabel}</span>
+      ) : null}
+    </div>
+  ) : null;
 
   return (
     <div className="mx-auto max-w-[1600px] space-y-5">
@@ -118,7 +131,7 @@ export function FleetHubView({
 
         <div className="mx-auto w-full lg:justify-self-center">
           {tabBar}
-          {activeTab === 'health' && lastHealthUpdatedLabel ? (
+          {showHealthRefresh && lastHealthUpdatedLabel ? (
             <p className="mt-1.5 text-center text-[12px] font-normal text-muted-foreground sm:hidden">
               {lastHealthUpdatedLabel}
             </p>
@@ -133,24 +146,18 @@ export function FleetHubView({
       {activeTab === 'status' && (
         <FleetView embedded onVehicleSelect={onVehicleSelect} />
       )}
-      {activeTab === 'health' && (
-        <FleetConditionView
-          embedded
-          hideHeaderActions
+      {activeTab === 'condition-service' && (
+        <FleetHealthServiceView
+          activeSubTab={healthServiceSubTab}
+          onSubTabChange={onHealthServiceSubTabChange}
           onDrillDown={onDrillDown}
-          onOpenServiceCenter={() => onOpenServiceCenter?.()}
-          onOpenExistingTask={onOpenGlobalTasks}
-        />
-      )}
-      {activeTab === 'service' && (
-        <ServiceCenterView
-          hideHeader
           onOpenVendorDetail={onOpenVendorDetail}
           onOpenGlobalTasks={onOpenGlobalTasks}
           onCreateTask={onCreateTask}
           onOpenVehicle={onOpenVehicle}
-          navigation={serviceCenterNavigation}
-          onNavigationConsumed={onServiceCenterNavigationConsumed}
+          serviceCenterNavigation={serviceCenterNavigation}
+          onServiceCenterNavigationConsumed={onServiceCenterNavigationConsumed}
+          onOpenServiceCenter={onOpenServiceCenter}
         />
       )}
     </div>
