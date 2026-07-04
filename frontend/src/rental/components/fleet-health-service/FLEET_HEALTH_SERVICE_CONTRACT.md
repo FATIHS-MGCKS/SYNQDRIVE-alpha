@@ -135,5 +135,6 @@ Datenquellen bleiben getrennt — nur Navigation zusammengeführt.
 
 **Health:** `FleetContext.tsx`, `useVehicleHealth.ts`, `fleet-health-control-center.ts`, `FleetConditionView.tsx`, `health/*`  
 **Service:** `useServiceCenterData.ts`, `service-center.utils.ts`, `ServiceCenterView.tsx`, `service-center/*`  
+**ViewModel (V4.9.183):** `useFleetHealthServiceViewModel.ts`, `fleet-health-service.view-model.ts` — UI-Ableitung ohne neue Health-Bewertung  
 **Brücke:** `health-task-bridge.utils.ts`, `HealthServiceActions.tsx`, `service-center-navigation.ts`  
 **Backend (read-only Contract):** `backend/src/modules/rental-health/*`, `backend/src/modules/tasks/*`, `backend/src/modules/vendors/*`

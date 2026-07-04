@@ -35,6 +35,43 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-service-viewmodel-v49183-2026-07-04',
+    version: '4.9.183',
+    title: 'V4.9.183 — Fleet Zustand & Service: gemeinsames ViewModel',
+    summary: [
+      'Neu: `useFleetHealthServiceViewModel` + `fleet-health-service.view-model.ts` — kombiniert `healthMap`, Tasks und Vendors ohne neue Health-Bewertung.',
+      'UI-Gruppen: Health/Triage (action, review, limited, healthy, blocked, warning, critical) + Service/Execution (open, overdue, in-progress, vendor-waiting, upcoming, completed, vendors).',
+      'Health→Task-Matching via bestehende `findDuplicateHealthTask`-Logik; `recommendedAction`: open_task | create_task | review_vehicle | no_action.',
+      'Dedup-Counts: `overdueExecutionOnlyTasks` schließt Fahrzeuge mit verknüpftem Health-Task aus.',
+      'Tests: `fleet-health-service.view-model.test.ts` (8). Minimaler Anschluss in `FleetHealthServiceView` (Overview-KPIs).',
+    ],
+    reason: 'Gemeinsame UI-Schicht für Zustand & Service ohne Vermischung der fachlichen Wahrheiten.',
+    previousBehavior: 'Health- und Service-Daten wurden in Komponenten separat aggregiert, ohne verknüpftes ViewModel.',
+    details: 'Nur Frontend-Ableitung; keine Backend/API/Fachlogik-Änderung.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-04T11:00:00.000Z',
+  },
+  {
+    id: 'fleet-health-service-nav-v49182-2026-07-04',
+    version: '4.9.182',
+    title: 'V4.9.182 — Fleet: Top-Level Navigation „Zustand & Service“',
+    summary: [
+      'Fleet Top-Tabs: `Status` + `Zustand & Service` (ehem. Health + Instandhaltung entfallen als Top-Level).',
+      'Neu: `FleetHealthServiceView` mit internen Subtabs (Übersicht, Fahrzeuge, Aufgaben, Termine, Partner, Verlauf) — `sq-tab-bar` wie Vehicle Detail/Administration.',
+      'Fahrzeuge = `FleetConditionView`; Service-Panels via `ServiceCenterView` (`forcedTab`, `hideSubTabBar`).',
+      'Legacy `health`/`service` States → `normalizeFleetTab()` mappt auf `condition-service` + passenden Subtab.',
+      'Keine Backend/API/Fachlogik-Änderung.',
+    ],
+    reason: 'UI-/Navigations-Zusammenführung von Health und Maintenance unter einem operativen Tab ohne Vermischung der Datenwahrheiten.',
+    previousBehavior: 'Drei Top-Level Tabs: Status, Health, Instandhaltung — getrennte Hub-Navigation.',
+    details:
+      'FleetHubView, FleetHealthServiceView, ServiceCenterView (embedded mode), App.tsx State, i18n, Contract-Doc.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-04T11:00:00.000Z',
+  },
+  {
     id: 'fleet-health-service-contract-v49181-2026-07-04',
     version: '4.9.181',
     title: 'V4.9.181 — Fleet Health/Service: Audit + fachlicher Contract (Vorbereitung)',

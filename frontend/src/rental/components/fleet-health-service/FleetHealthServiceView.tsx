@@ -1,16 +1,15 @@
 import { ShieldAlert, ShieldCheck, AlertTriangle, CircleDot } from 'lucide-react';
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import type { Vendor } from '../../../lib/api';
 import type { StatusTone } from '../../../components/patterns';
 import { FleetConditionView, type ConditionCategory } from '../FleetConditionView';
 import { FleetHealthKpiCard } from '../fleet/FleetHealthKpiCard';
 import { ServiceCenterView } from '../service-center/ServiceCenterView';
 import type { ServiceCenterTab } from '../service-center/service-center.types';
-import { useFleetVehicles } from '../../FleetContext';
-import { computeFleetHealthKpis } from '../../lib/fleet-health-control-center';
 import type { ServiceCenterNavState } from '../../lib/service-center-navigation';
 import { FleetHealthServiceTabBar } from './FleetHealthServiceTabBar';
 import type { FleetHealthServiceTab } from './fleet-health-service.types';
+import { useFleetHealthServiceViewModel } from './useFleetHealthServiceViewModel';
 
 interface FleetHealthServiceViewProps {
   activeSubTab: FleetHealthServiceTab;
@@ -42,13 +41,8 @@ export function FleetHealthServiceView({
   onServiceCenterNavigationConsumed,
   onOpenServiceCenter,
 }: FleetHealthServiceViewProps) {
-  const { fleetVehicles, healthMap, healthLoading } = useFleetVehicles();
-
-  const vehicleIds = useMemo(() => fleetVehicles.map((v) => v.id), [fleetVehicles]);
-  const healthKpis = useMemo(
-    () => computeFleetHealthKpis(vehicleIds, healthMap),
-    [vehicleIds, healthMap],
-  );
+  const vm = useFleetHealthServiceViewModel();
+  const { healthKpis, healthLoading } = vm;
 
   const openServiceFromHealth = useCallback(() => {
     onOpenServiceCenter?.();
