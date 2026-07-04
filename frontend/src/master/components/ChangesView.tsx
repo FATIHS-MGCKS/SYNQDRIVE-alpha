@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'ready-rent-drawer-search-v49188-2026-07-04',
+    version: '4.9.188',
+    title: 'V4.9.188 — Ready-for-Renting Drawer: Suche + Stations-Scope',
+    summary: [
+      '`DashboardDrilldownDrawer`: Ready-to-Rent-Liste mit clientseitiger Suche (Kennzeichen, Marke, Modell, Station) und Scope-Zeile (aktive Station oder „Alle Standorte“).',
+      'Toolbar im Fleet-Command-Stil oberhalb der Gruppenliste; KPI-Header (Titel, Count, Summary) unverändert.',
+      'Filter-Helfer: `readyToRentDrawerRowHaystack` / `filterReadyToRentDrawerGroups` in `dashboardDrilldownRowDisplay.ts`.',
+      'Keine neue API, keine KPI-/Runtime-Logik-Änderung — dieselbe `dashboardRuntime.slices[ready-to-rent]`-Quelle.',
+    ],
+    reason: 'Ready-for-Renting-Drawer wirkte zu leer und wenig operativ für schnelle Fahrzeugsuche im aktiven Stationskontext.',
+    previousBehavior: 'Drawer zeigte nur gruppierte Fahrzeugliste ohne Suche und ohne sichtbaren Stations-Scope.',
+    details: 'UI-only in DashboardDrilldownDrawer, DashboardView, dashboardDrilldownRowDisplay (+ Test).',
+    affectsArchitecture: false,
+    module: 'Dashboard',
+    createdAt: '2026-07-04T14:00:00.000Z',
+  },
+  {
     id: 'topbar-welcome-back-v49187-2026-07-04',
     version: '4.9.187',
     title: 'V4.9.187 — TopBar: „Willkommen zurück, {Name}“ statt „Eingeloggt als …“',

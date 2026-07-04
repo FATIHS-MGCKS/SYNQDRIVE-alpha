@@ -82,6 +82,7 @@ export function DashboardView({
           businessPulseSlices={vm.businessPulseSlices}
           loading={drawerLoading}
           locale={vm.locale}
+          selectedStationName={vm.selectedStationName}
           onClose={vm.closeDrilldown}
           onOpenVehicle={onOpenVehicleById}
           onOpenBooking={onOpenBookingById}
@@ -160,6 +161,7 @@ export function DashboardView({
         businessPulseSlices={vm.businessPulseSlices}
         loading={drawerLoading}
         locale={vm.locale}
+        selectedStationName={vm.selectedStationName}
         onClose={vm.closeDrilldown}
         onOpenVehicle={onOpenVehicleById}
         onOpenBooking={onOpenBookingById}

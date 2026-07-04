@@ -5,6 +5,7 @@ import { buildDashboardGroups } from './dashboardDrilldownGroups';
 import {
   buildReadyToRentDrawerGroups,
   composeVehicleDrawerRowDisplay,
+  filterReadyToRentDrawerGroups,
   readyToRentDrawerHint,
 } from './dashboardDrilldownRowDisplay';
 import { buildDashboardRuntimeModel } from './runtime/dashboardSliceBuilder';
@@ -168,5 +169,44 @@ describe('ready-to-rent drawer row display', () => {
     expect(display.healthLabel).toBe('Critical');
     expect(runtime.slices['ready-to-rent'].count).toBe(1);
     expect(buildReadyToRentDrawerGroups(runtime.slices['ready-to-rent'], 'en')[0]?.count).toBe(1);
+  });
+});
+
+describe('ready-to-rent drawer search filter', () => {
+  it('filters drawer groups by plate, make/model line, and station', () => {
+    const groups = [
+      {
+        id: 'ready-now',
+        title: 'Ready',
+        count: 2,
+        rows: [
+          {
+            id: 'r1',
+            vehicleId: 'v1',
+            title: 'KS-AB 100',
+            subtitle: 'VW Golf',
+            stationLabel: 'Zentrale',
+            severity: 'success' as const,
+          },
+          {
+            id: 'r2',
+            vehicleId: 'v2',
+            title: 'M-XY 200',
+            subtitle: 'Audi A4',
+            stationLabel: 'Flughafen',
+            severity: 'success' as const,
+          },
+        ],
+      },
+    ];
+    const states = new Map([
+      ['v1', { vehicleId: 'v1', license: 'KS-AB 100', displayName: 'KS-AB 100 · VW Golf', stationLabel: 'Zentrale' } as any],
+      ['v2', { vehicleId: 'v2', license: 'M-XY 200', displayName: 'M-XY 200 · Audi A4', stationLabel: 'Flughafen' } as any],
+    ]);
+
+    expect(filterReadyToRentDrawerGroups(groups, states, 'golf')[0]?.rows).toHaveLength(1);
+    expect(filterReadyToRentDrawerGroups(groups, states, 'zentrale')[0]?.rows[0]?.vehicleId).toBe('v1');
+    expect(filterReadyToRentDrawerGroups(groups, states, 'nomatch')).toHaveLength(0);
+    expect(filterReadyToRentDrawerGroups(groups, states, '')).toEqual(groups);
   });
 });

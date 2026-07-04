@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Icon } from '../ui/Icon';
 import { DetailDrawer } from '../../../components/patterns/detail-drawer';
 import { SkeletonRows, StatusChip } from '../../../components/patterns';
@@ -11,6 +12,7 @@ import { buildDashboardGroups } from './dashboardDrilldownGroups';
 import {
   composeBookingDrawerRowDisplay,
   composeVehicleDrawerRowDisplay,
+  filterReadyToRentDrawerGroups,
   readyToRentDrawerHint,
 } from './dashboardDrilldownRowDisplay';
 import { drawerHeaderHint } from './dashboardDrawerNormalize';
@@ -32,6 +34,7 @@ interface DashboardDrilldownDrawerProps {
   businessPulseSlices?: Record<BusinessMetricId, BusinessPulseSlice>;
   loading?: boolean;
   locale: DashboardViewModel['locale'];
+  selectedStationName?: string | null;
   onClose: () => void;
   onOpenVehicle?: DashboardViewProps['onOpenVehicleById'];
   onOpenBooking?: DashboardViewProps['onOpenBookingById'];
@@ -478,11 +481,68 @@ function BusinessRowCard({
   );
 }
 
+function EmptyState({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/60 bg-muted/10 px-4 py-10 text-center">
+      <div className="sq-tone-success flex h-10 w-10 items-center justify-center rounded-xl">
+        <Icon name="check-circle" className="h-5 w-5" />
+      </div>
+      <p className="text-[14px] font-semibold text-foreground">{title}</p>
+      <p className="max-w-[280px] text-[12px] text-muted-foreground text-pretty">{description}</p>
+    </div>
+  );
+}
+
+function readyToRentStationScopeLabel(
+  selectedStationName: string | null | undefined,
+  de: boolean,
+): string {
+  if (selectedStationName?.trim()) {
+    return de ? `Station: ${selectedStationName.trim()}` : `Station: ${selectedStationName.trim()}`;
+  }
+  return de ? 'Alle Standorte' : 'All Stations';
+}
+
+function ReadyToRentDrawerToolbar({
+  searchQuery,
+  onSearchChange,
+  stationScopeLabel,
+  searchPlaceholder,
+}: {
+  searchQuery: string;
+  onSearchChange: (value: string) => void;
+  stationScopeLabel: string;
+  searchPlaceholder: string;
+}) {
+  return (
+    <div className="mb-3 space-y-2">
+      <div className="flex min-w-0 items-center gap-1.5 px-0.5 text-[11px] text-muted-foreground">
+        <Icon name="map-pin" className="h-3 w-3 shrink-0 opacity-80" />
+        <span className="truncate font-medium">{stationScopeLabel}</span>
+      </div>
+      <div className="relative">
+        <Icon
+          name="search"
+          className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
+        />
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(event) => onSearchChange(event.target.value)}
+          placeholder={searchPlaceholder}
+          className="w-full rounded-xl border border-border/60 bg-muted/30 py-2 pl-8 pr-3 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[color:var(--brand)]"
+        />
+      </div>
+    </div>
+  );
+}
+
 function DashboardGroupList({
   slice,
   vehicleStates,
   locale,
   de,
+  selectedStationName,
   onOpenVehicle,
   onOpenBooking,
   onClose,
@@ -491,11 +551,27 @@ function DashboardGroupList({
   vehicleStates: Map<string, VehicleRuntimeState>;
   locale: string;
   de: boolean;
+  selectedStationName?: string | null;
   onOpenVehicle?: DashboardViewProps['onOpenVehicleById'];
   onOpenBooking?: DashboardViewProps['onOpenBookingById'];
   onClose: () => void;
 }) {
-  const groups = buildDashboardGroups(slice, locale);
+  const isReadyToRent = slice.id === 'ready-to-rent';
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    setSearchQuery('');
+  }, [slice.id]);
+
+  const groups = useMemo(() => buildDashboardGroups(slice, locale), [slice, locale]);
+  const filteredGroups = useMemo(() => {
+    if (!isReadyToRent || !searchQuery.trim()) return groups;
+    return filterReadyToRentDrawerGroups(groups, vehicleStates, searchQuery);
+  }, [groups, isReadyToRent, searchQuery, vehicleStates]);
+
+  const searchPlaceholder = de ? 'Kennzeichen, Marke, Modell…' : 'Plate, make, model…';
+  const stationScopeLabel = readyToRentStationScopeLabel(selectedStationName, de);
+
   if (groups.length === 0) {
     return (
       <EmptyState
@@ -507,30 +583,50 @@ function DashboardGroupList({
 
   return (
     <div className="space-y-4">
-      {groups.map((group) => (
-        <section key={group.id} className="space-y-2">
-          <div className="flex items-center justify-between gap-3 px-1">
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{group.title}</p>
-            <span className="rounded-md bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
-              {group.count}
-            </span>
-          </div>
-          <div className="space-y-2">
-            {group.rows.map((row) => (
-              <DashboardRowCard
-                key={row.id}
-                row={row}
-                sliceId={slice.id}
-                state={row.vehicleId ? vehicleStates.get(row.vehicleId) : undefined}
-                de={de}
-                onOpenVehicle={onOpenVehicle}
-                onOpenBooking={onOpenBooking}
-                onClose={onClose}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+      {isReadyToRent ? (
+        <ReadyToRentDrawerToolbar
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          stationScopeLabel={stationScopeLabel}
+          searchPlaceholder={searchPlaceholder}
+        />
+      ) : null}
+
+      {filteredGroups.length === 0 ? (
+        <EmptyState
+          title={de ? 'Keine Treffer' : 'No matches'}
+          description={
+            de
+              ? 'Passe die Suche an oder wähle eine andere Station.'
+              : 'Adjust your search or try a different station.'
+          }
+        />
+      ) : (
+        filteredGroups.map((group) => (
+          <section key={group.id} className="space-y-2">
+            <div className="flex items-center justify-between gap-3 px-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{group.title}</p>
+              <span className="rounded-md bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
+                {group.count}
+              </span>
+            </div>
+            <div className="space-y-2">
+              {group.rows.map((row) => (
+                <DashboardRowCard
+                  key={row.id}
+                  row={row}
+                  sliceId={slice.id}
+                  state={row.vehicleId ? vehicleStates.get(row.vehicleId) : undefined}
+                  de={de}
+                  onOpenVehicle={onOpenVehicle}
+                  onOpenBooking={onOpenBooking}
+                  onClose={onClose}
+                />
+              ))}
+            </div>
+          </section>
+        ))
+      )}
     </div>
   );
 }
@@ -597,24 +693,13 @@ function BusinessGroupList({
   );
 }
 
-function EmptyState({ title, description }: { title: string; description: string }) {
-  return (
-    <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/60 bg-muted/10 px-4 py-10 text-center">
-      <div className="sq-tone-success flex h-10 w-10 items-center justify-center rounded-xl">
-        <Icon name="check-circle" className="h-5 w-5" />
-      </div>
-      <p className="text-[14px] font-semibold text-foreground">{title}</p>
-      <p className="max-w-[280px] text-[12px] text-muted-foreground text-pretty">{description}</p>
-    </div>
-  );
-}
-
 export function DashboardDrilldownDrawer({
   activeTargetId,
   dashboardRuntime,
   businessPulseSlices,
   loading = false,
   locale,
+  selectedStationName,
   onClose,
   onOpenVehicle,
   onOpenBooking,
@@ -696,6 +781,7 @@ export function DashboardDrilldownDrawer({
           vehicleStates={vehicleStatesById(dashboardRuntime.vehicleStates)}
           locale={locale}
           de={de}
+          selectedStationName={selectedStationName}
           onOpenVehicle={onOpenVehicle}
           onOpenBooking={onOpenBooking}
           onClose={onClose}

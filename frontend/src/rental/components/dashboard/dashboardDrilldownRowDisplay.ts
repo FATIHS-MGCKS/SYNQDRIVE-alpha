@@ -219,3 +219,42 @@ export function composeBookingDrawerRowDisplay(row: DashboardSliceRow): {
     meta: sanitizeUserFacingIssueText(row.meta),
   };
 }
+
+/** Client-side haystack for ready-to-rent drawer search (plate, make, model, station). */
+export function readyToRentDrawerRowHaystack(
+  row: DashboardSliceRow,
+  state: VehicleRuntimeState | undefined,
+): string {
+  const parts = [
+    state?.license,
+    row.title,
+    row.subtitle,
+    row.meta,
+    row.stationLabel,
+    state?.stationLabel,
+    state?.displayName,
+  ];
+  return parts
+    .filter((value): value is string => Boolean(value?.trim()))
+    .join(' ')
+    .toLowerCase();
+}
+
+export function filterReadyToRentDrawerGroups(
+  groups: DashboardDrawerGroup[],
+  vehicleStates: Map<string, VehicleRuntimeState>,
+  query: string,
+): DashboardDrawerGroup[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return groups;
+
+  return groups
+    .map((group) => {
+      const rows = group.rows.filter((row) => {
+        const state = row.vehicleId ? vehicleStates.get(row.vehicleId) : undefined;
+        return readyToRentDrawerRowHaystack(row, state).includes(q);
+      });
+      return { ...group, rows, count: rows.length };
+    })
+    .filter((group) => group.rows.length > 0);
+}
