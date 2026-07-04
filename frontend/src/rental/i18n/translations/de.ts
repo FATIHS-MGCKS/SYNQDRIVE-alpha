@@ -78,6 +78,8 @@ export const de: Record<TranslationKey, string> = {
   'topbar.noResults': 'Keine Ergebnisse gefunden',
   'topbar.recentSearches': 'Letzte Suchen',
   'topbar.quickNavigation': 'Schnellnavigation',
+  'topbar.welcomeBack': 'Willkommen zurück, {name}',
+  'topbar.welcomeBackGeneric': 'Willkommen zurück',
 
   // TopBar breadcrumb view labels
   'view.overview': 'Uebersicht',

@@ -3,6 +3,7 @@ import { AlertCircle, ArrowRight, Calendar, Car, DollarSign, FileText, Home, Lis
 import { Icon } from './ui/Icon';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { clearAuth, getStoredUser } from '../../lib/auth';
+import { formatTopBarWelcomeLabel } from '../../lib/topbarUserLabel';
 import { VehicleData } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
 import { useRentalOrg } from '../RentalContext';
@@ -31,16 +32,15 @@ interface TopBarProps {
   onFinanceTabChange?: (tab: 'invoices' | 'price-tariffs') => void;
 }
 
-function formatLoggedInLabel(user: ReturnType<typeof getStoredUser>): string {
-  if (!user) return 'Eingeloggt';
-  const name = user.name?.trim();
-  if (name) return `Eingeloggt als ${name}`;
-  const email = user.email?.trim();
-  if (email) {
-    const localPart = email.split('@')[0]?.trim();
-    if (localPart) return `Eingeloggt als ${localPart}`;
-  }
-  return 'Eingeloggt als Nutzer';
+function formatLoggedInLabel(
+  user: ReturnType<typeof getStoredUser>,
+  t: (key: 'topbar.welcomeBack' | 'topbar.welcomeBackGeneric', vars?: Record<string, string | number>) => string,
+): string {
+  return formatTopBarWelcomeLabel(
+    user,
+    (name) => t('topbar.welcomeBack', { name }),
+    t('topbar.welcomeBackGeneric'),
+  );
 }
 
 export function TopBar({ isDarkMode, setIsDarkMode, onViewChange, onVehicleSelect, onSettingsTabChange, onFinanceTabChange }: TopBarProps) {
@@ -70,7 +70,7 @@ export function TopBar({ isDarkMode, setIsDarkMode, onViewChange, onVehicleSelec
     return 'U';
   }, [currentUser?.name, currentUser?.email]);
 
-  const loggedInLabel = useMemo(() => formatLoggedInLabel(currentUser), [currentUser]);
+  const loggedInLabel = useMemo(() => formatLoggedInLabel(currentUser, t), [currentUser, t]);
 
   const [searchCustomers, setSearchCustomers] = useState<any[]>([]);
   const [searchBookings, setSearchBookings] = useState<any[]>([]);

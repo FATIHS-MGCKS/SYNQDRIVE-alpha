@@ -77,6 +77,8 @@ export const en = {
   'topbar.noResults': 'No results found',
   'topbar.recentSearches': 'Recent Searches',
   'topbar.quickNavigation': 'Quick Navigation',
+  'topbar.welcomeBack': 'Welcome back, {name}',
+  'topbar.welcomeBackGeneric': 'Welcome back',
 
   // TopBar breadcrumb view labels
   'view.overview': 'Overview',

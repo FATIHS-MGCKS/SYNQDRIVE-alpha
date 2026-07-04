@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'topbar-welcome-back-v49187-2026-07-04',
+    version: '4.9.187',
+    title: 'V4.9.187 — TopBar: „Willkommen zurück, {Name}“ statt „Eingeloggt als …“',
+    summary: [
+      'Rental- und Master-TopBar: Login-Kontext zeigt „Willkommen zurück, {Vor- und Nachname}“ aus `getStoredUser().name` (Fallback: E-Mail-Local-Part).',
+      'Neu: `lib/topbarUserLabel.ts` — gemeinsame Anzeigenamen-Auflösung.',
+      'i18n: `topbar.welcomeBack` / `topbar.welcomeBackGeneric` in allen Rental-Locales.',
+    ],
+    reason: 'Freundlichere Begrüßung statt technischem Login-Status in der TopBar.',
+    previousBehavior: '„Eingeloggt als {name}“ (DE hardcoded in Master; Rental ohne i18n-Key).',
+    details: 'Nur UI-Copy/Label — keine Auth-, API- oder Backend-Änderung.',
+    affectsArchitecture: false,
+    module: 'UI',
+    createdAt: '2026-07-04T13:15:00.000Z',
+  },
+  {
     id: 'dashboard-desktop-layout-v49186-2026-07-04',
     version: '4.9.186',
     title: 'V4.9.186 — Dashboard: Desktop-Layout Control Center / Finanzen / Notifications / Day Plan',

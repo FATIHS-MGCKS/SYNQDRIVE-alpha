@@ -1,6 +1,7 @@
 import { Moon, Sun, Bell, Search, Settings, LogOut } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { clearAuth, getStoredUser } from '../../lib/auth';
+import { formatTopBarWelcomeLabel } from '../../lib/topbarUserLabel';
 import { OperatorEntryButton } from '../../operator/components/OperatorEntryButton';
 
 // ISO-2 code pills instead of emoji flags (anti-emoji design policy,
@@ -19,15 +20,11 @@ interface TopBarProps {
 }
 
 function formatLoggedInLabel(user: ReturnType<typeof getStoredUser>): string {
-  if (!user) return 'Eingeloggt';
-  const name = user.name?.trim();
-  if (name) return `Eingeloggt als ${name}`;
-  const email = user.email?.trim();
-  if (email) {
-    const localPart = email.split('@')[0]?.trim();
-    if (localPart) return `Eingeloggt als ${localPart}`;
-  }
-  return 'Eingeloggt als Nutzer';
+  return formatTopBarWelcomeLabel(
+    user,
+    (name) => `Willkommen zurück, ${name}`,
+    'Willkommen zurück',
+  );
 }
 
 export function TopBar({ isDarkMode, setIsDarkMode }: TopBarProps) {

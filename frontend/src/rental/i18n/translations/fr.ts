@@ -55,6 +55,8 @@ export const fr: Record<TranslationKey, string> = {
   'topbar.noResults': 'Aucun resultat trouve',
   'topbar.recentSearches': 'Recherches recentes',
   'topbar.quickNavigation': 'Navigation rapide',
+  'topbar.welcomeBack': 'Bon retour, {name}',
+  'topbar.welcomeBackGeneric': 'Bon retour',
   'view.overview': 'Apercu',
   'view.trips': 'Trajets',
   'view.dashboard': 'Tableau de bord',
