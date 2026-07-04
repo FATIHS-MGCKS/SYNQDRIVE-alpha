@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-service-contract-v49181-2026-07-04',
+    version: '4.9.181',
+    title: 'V4.9.181 — Fleet Health/Service: Audit + fachlicher Contract (Vorbereitung)',
+    summary: [
+      'Intensiver Audit des Fleet-Renderpfads: `FleetHubView` → Health (`FleetConditionView`) vs. Maintenance (`ServiceCenterView`).',
+      'Datenwahrheiten dokumentiert: `healthMap`/RentalHealthV1 strikt getrennt von Tasks/Vendors/Schedules.',
+      'Neu: `frontend/src/rental/components/fleet-health-service/FLEET_HEALTH_SERVICE_CONTRACT.md` — Grenzregeln, Redundanzen, Ziel-Navigation „Zustand & Service“ (nur Vorbereitung).',
+      'Redundanzen identifiziert: `ServiceOverviewPanel` Health-Signale, „Action Required“-Label-Kollision, TÜV/Overdue-Überlappung Health↔Tasks.',
+      'Keine Navigation-, UI-, Backend-, API- oder Fachlogik-Änderung.',
+    ],
+    reason: 'Vorbereitung für spätere Zusammenführung Health + Maintenance zu einem Tab „Zustand & Service“ ohne Vermischung der Wahrheiten.',
+    previousBehavior: 'Kein expliziter Frontend-Contract; Health-Signale teilweise auch im Service-Overview sichtbar.',
+    details:
+      'Audit-only. Contract-Datei + Changes. Architektur: Verweis auf Contract und Renderpfad ergänzt.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-04T10:45:00.000Z',
+  },
+  {
     id: 'dashboard-signals-layout-v49180-2026-07-03',
     version: '4.9.180',
     title: 'V4.9.180 — Dashboard: Business Pulse + Notifications Layout finalisiert',
