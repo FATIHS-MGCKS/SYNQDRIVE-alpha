@@ -34,6 +34,9 @@ export interface TripMapTripData {
     | 'FAILED_TRANSIENT'
     | 'FAILED_PERMANENT'
     | null;
+  tripAnalysisStatus?: 'PENDING' | 'IN_PROGRESS' | 'PARTIAL' | 'COMPLETED' | 'FAILED' | 'SKIPPED' | null;
+  tripAnalysisLabel?: string | null;
+  analysisInProgress?: boolean;
   detailsLimited?: boolean;
   gapEnded?: boolean;
   enrichedAt?: string;
