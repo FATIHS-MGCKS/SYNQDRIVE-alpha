@@ -10,12 +10,12 @@
 
 | Mode | Direction | Principles |
 |------|-----------|------------|
-| **Light** | Premium Soft Glass / Cool Offwhite | Cool canvas (`#F6F8FB`), white cards, silvery glass surfaces, subtle blue brand tint, navy foreground for SaaS readability |
+| **Light** | Premium Soft Glass / Cool Offwhite | Cool canvas (`#F2F3F5`), translucent glass cards, silvery surfaces, soft brand blue `#4F86E8`, graphite foreground `#111827` |
 | **Dark** | Premium Graphite / Charcoal | Near-black canvas (`#0B0B0D`), neutral dark cards (`#121214`), no navy/blue base surfaces, sparse high-quality accents (light gray brand, not blue canvas) |
 
 **Rules**
 
-1. **Brand Blue** (`#2563EB`) is used softly in Light Mode — CTAs, focus rings, nav rail, status-info — not as large canvas fills.
+1. **Brand Blue** (`#4F86E8`) is used softly in Light Mode — CTAs, focus rings, nav rail — not as large canvas fills. Info status uses neutral blue-gray (`#5B6B7F`).
 2. **Dark Mode** must not use blue/navy canvas or card bases; brand shifts to neutral light gray (`#E5E7EB`) for primary CTAs.
 3. **Status colors** stay semantic (`--status-positive`, `--status-warning`, etc.) — never decorative rainbow UI.
 4. **No large hardcoded Tailwind `blue-*` / `slate-*` surfaces** in feature code; prefer `bg-card`, `bg-muted`, `text-foreground`, `sq-tone-*`, `sq-chip-*`.
@@ -23,45 +23,45 @@
 
 ---
 
-## Light theme tokens (`:root`)
+## Light theme tokens (`:root`) — V4.9.192
 
 ### Core shadcn semantic palette
 
 | Token | Value | Role |
 |-------|-------|------|
-| `--background` | `#F6F8FB` | Cool off-white canvas |
-| `--foreground` | `#0F172A` | Deep navy text (Slate-900 family) |
-| `--card` | `#ffffff` | Primary elevated surface |
-| `--card-foreground` | `#0F172A` | Card text |
-| `--popover` | `#ffffff` | Dropdowns, menus |
-| `--popover-foreground` | `#0F172A` | Popover text |
-| `--primary` | `#0F172A` | Default primary (dark ink) |
+| `--background` | `#F2F3F5` | Cool off-white canvas |
+| `--foreground` | `#111827` | Graphite text |
+| `--card` | `rgba(255, 255, 255, 0.86)` | Translucent glass card |
+| `--card-foreground` | `#111827` | Card text |
+| `--popover` | `rgba(255, 255, 255, 0.92)` | Dropdowns, menus |
+| `--popover-foreground` | `#111827` | Popover text |
+| `--primary` | `#111827` | Default primary (dark ink) |
 | `--primary-foreground` | `#ffffff` | On primary |
-| `--secondary` | `#EEF2F7` | Secondary fill (cool gray) |
-| `--secondary-foreground` | `#0F172A` | On secondary |
-| `--muted` | `#EEF2F7` | Inset / subtle backgrounds |
-| `--muted-foreground` | `#64748B` | Muted text (Slate-500) |
-| `--accent` | `#EAF2FF` | Soft blue tint hover surface |
-| `--accent-foreground` | `#0F172A` | On accent |
+| `--secondary` | `#EAEDF1` | Secondary fill (soft grey) |
+| `--secondary-foreground` | `#111827` | On secondary |
+| `--muted` | `#EAEDF1` | Inset / subtle backgrounds |
+| `--muted-foreground` | `#7C8490` | Muted text |
+| `--accent` | `#EEF3FA` | Soft blue-grey hover surface |
+| `--accent-foreground` | `#111827` | On accent |
 | `--destructive` | `#EF4444` | Destructive actions |
 | `--destructive-foreground` | `#ffffff` | On destructive |
-| `--border` | `rgba(15, 23, 42, 0.08)` | Blue-tinted hairline |
-| `--input` | `transparent` | Input border mode |
-| `--input-background` | `#F3F6FA` | Input fill |
+| `--border` | `rgba(17, 24, 39, 0.075)` | Subtle hairline |
+| `--input` | `rgba(17, 24, 39, 0.075)` | Input border |
+| `--input-background` | `rgba(255, 255, 255, 0.72)` | Translucent input fill |
 | `--switch-background` | `#CBD5E1` | Switch track |
-| `--ring` | `rgba(37, 99, 235, 0.22)` | Focus ring (brand blue) |
+| `--ring` | `rgba(79, 134, 232, 0.28)` | Focus ring (soft brand blue) |
 
 ### Brand
 
 | Token | Value | Role |
 |-------|-------|------|
-| `--brand` | `#2563EB` | Primary brand blue |
-| `--brand-hover` | `#1D4ED8` | Hover |
-| `--brand-active` | `#1E40AF` | Active / pressed |
-| `--brand-soft` | `#EAF2FF` | Soft tint surface |
-| `--brand-glow` | `rgba(37, 99, 235, 0.22)` | Glow / pulse |
-| `--brand-foreground` | `#ffffff` | Text on brand buttons |
-| `--brand-ink` | `#1E40AF` | Deeper ink for chips, active tabs |
+| `--brand` | `#4F86E8` | Soft premium blue |
+| `--brand-hover` | `#3F76D8` | Hover |
+| `--brand-active` | `#3266C4` | Active / pressed |
+| `--brand-soft` | `rgba(79, 134, 232, 0.12)` | Soft tint surface |
+| `--brand-glow` | `rgba(79, 134, 232, 0.18)` | Glow / pulse |
+| `--brand-foreground` | `#FFFFFF` | Text on brand buttons |
+| `--brand-ink` | `#3266C4` | Deeper ink for chips, active tabs |
 
 Legacy aliases (keep): `--accent-indigo`, `--accent-indigo-soft`, `--accent-indigo-glow` → point to brand tokens.
 
@@ -70,40 +70,40 @@ Legacy aliases (keep): `--accent-indigo`, `--accent-indigo-soft`, `--accent-indi
 | Token | Light value |
 |-------|-------------|
 | `--status-positive` | `#16A34A` |
-| `--status-positive-soft` | `rgba(34, 197, 94, 0.12)` |
+| `--status-positive-soft` | `rgba(22, 163, 74, 0.10)` |
 | `--status-attention` / `--status-watch` | `#D97706` |
-| `--status-attention-soft` / `--status-watch-soft` | `rgba(245, 158, 11, 0.14)` |
+| `--status-attention-soft` / `--status-watch-soft` | `rgba(217, 119, 6, 0.11)` |
 | `--status-warning` | `#EA580C` |
-| `--status-warning-soft` | `rgba(234, 88, 12, 0.12)` |
+| `--status-warning-soft` | `rgba(234, 88, 12, 0.10)` |
 | `--status-critical` | `#DC2626` |
-| `--status-critical-soft` | `rgba(239, 68, 68, 0.12)` |
-| `--status-info` | `#2563EB` (= brand) |
-| `--status-info-soft` | `rgba(37, 99, 235, 0.12)` |
-| `--status-nodata` | `#64748B` |
-| `--status-nodata-soft` | `rgba(100, 116, 139, 0.10)` |
+| `--status-critical-soft` | `rgba(220, 38, 38, 0.10)` |
+| `--status-info` | `#5B6B7F` (neutral blue-gray) |
+| `--status-info-soft` | `rgba(91, 107, 127, 0.11)` |
+| `--status-nodata` | `#7C8490` |
+| `--status-nodata-soft` | `rgba(124, 132, 144, 0.09)` |
 | `--status-ai` | `#7C3AED` |
-| `--status-ai-soft` | `rgba(124, 58, 237, 0.10)` |
+| `--status-ai-soft` | `rgba(124, 58, 237, 0.09)` |
 
 ### Glass (light)
 
 | Token | Value |
 |-------|-------|
-| `--glass-bg` | `rgba(255, 255, 255, 0.76)` |
-| `--glass-border` | `rgba(15, 23, 42, 0.06)` |
+| `--glass-bg` | `rgba(255, 255, 255, 0.66)` |
+| `--glass-border` | `rgba(17, 24, 39, 0.08)` |
 | `--glass-blur` | `24px` |
-| `--glass-edge-highlight` | `rgba(255, 255, 255, 0.72)` |
-| `--glass-edge-catch` | `rgba(15, 23, 42, 0.03)` |
+| `--glass-edge-highlight` | `rgba(255, 255, 255, 0.75)` |
+| `--glass-edge-catch` | `rgba(17, 24, 39, 0.10)` |
 
 ### Map glass (light)
 
 | Token | Value |
 |-------|-------|
-| `--map-glass-bg` | `rgba(255, 255, 255, 0.42)` |
-| `--map-glass-bg-strong` | `rgba(255, 255, 255, 0.58)` |
-| `--map-glass-border` | `rgba(255, 255, 255, 0.62)` |
-| `--map-glass-highlight` | `rgba(255, 255, 255, 0.88)` |
-| `--map-glass-shine` | `rgba(255, 255, 255, 0.34)` |
-| `--map-glass-shadow` | navy-tinted multi-layer shadow |
+| `--map-glass-bg` | `rgba(255, 255, 255, 0.58)` |
+| `--map-glass-bg-strong` | `rgba(255, 255, 255, 0.76)` |
+| `--map-glass-border` | `rgba(17, 24, 39, 0.10)` |
+| `--map-glass-highlight` | `rgba(255, 255, 255, 0.82)` |
+| `--map-glass-shine` | `rgba(255, 255, 255, 0.42)` |
+| `--map-glass-shadow` | soft graphite multi-layer shadow |
 | `--map-glass-blur` | `20px` |
 
 ### Body ambient (light)
@@ -111,29 +111,30 @@ Legacy aliases (keep): `--accent-indigo`, `--accent-indigo-soft`, `--accent-indi
 ```css
 body {
   background-image:
-    radial-gradient(at 82% 4%,  rgba(37, 99, 235, 0.055), transparent 55%),
-    radial-gradient(at 16% 96%, rgba(37, 99, 235, 0.030), transparent 60%);
+    radial-gradient(at 78% 6%,  rgba(255, 255, 255, 0.55), transparent 58%),
+    radial-gradient(at 14% 94%, rgba(79, 134, 232, 0.016), transparent 64%),
+    radial-gradient(at 50% 48%, rgba(234, 237, 241, 0.35), transparent 72%);
 }
 ```
 
-Subtle brand glow on canvas — intentional for Premium Soft Glass direction.
+Whisper-soft offwhite lift with a barely perceptible blue hint — no strong SaaS-blue glow.
 
 ### Sidebar (light)
 
 | Token | Value |
 |-------|-------|
-| `--sidebar` | `#ffffff` |
-| `--sidebar-foreground` | `#0F172A` |
+| `--sidebar` | `rgba(255, 255, 255, 0.92)` |
+| `--sidebar-foreground` | `#111827` |
 | `--sidebar-primary` | `var(--brand)` |
 | `--sidebar-primary-foreground` | `#ffffff` |
-| `--sidebar-accent` | `#EAF2FF` |
-| `--sidebar-accent-foreground` | `#0F172A` |
-| `--sidebar-border` | `rgba(15, 23, 42, 0.06)` |
-| `--sidebar-ring` | `rgba(37, 99, 235, 0.18)` |
+| `--sidebar-accent` | `#EEF3FA` |
+| `--sidebar-accent-foreground` | `#111827` |
+| `--sidebar-border` | `rgba(17, 24, 39, 0.075)` |
+| `--sidebar-ring` | `rgba(79, 134, 232, 0.22)` |
 
 ### Elevation (light)
 
-Shadows use navy hue `rgba(15, 23, 42, …)` and brand-tinted hover `--shadow-hover` — cards float on cool canvas without flat black drops.
+Shadows use soft graphite `rgba(17, 24, 39, …)` — cards float on cool off-white without blue-tinted hover glow.
 
 ---
 
@@ -300,7 +301,12 @@ Dark overrides live under `.dark .sq-*` (Dark Theme V2 section).
 | `--foreground` (light) | `#0F172A` | Consider `#111827` (warmer graphite-navy) | Slightly less slate-cold; low priority |
 | Light body glow opacity | `0.055 / 0.030` | Could reduce to `0.04 / 0.02` | Even softer glass; cosmetic only |
 
-**No token changes applied in V4.9.191 audit** — current values match the stated contract.
+### V4.9.192 Light Theme V2 (applied)
+
+- Canvas shifted from `#F6F8FB` → `#F2F3F5` (cooler off-white, less blue SaaS canvas)
+- Cards/popovers translucent glass (`rgba(255,255,255,0.86/0.92)`)
+- Brand softened `#2563EB` → `#4F86E8`; body ambient blue reduced ~70%
+- Dark theme unchanged
 
 ### Hardcoded color debt (feature code)
 

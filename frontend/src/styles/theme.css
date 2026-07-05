@@ -2,11 +2,11 @@
 
 /* ═══════════════════════════════════════════════════════
    SynqDrive Design System — Token Layer
-   V4.6.88 — Premium Typography + Blue-Accented Pass
+   V4.9.192 — Light Theme V2: Premium Soft Glass / Cool Offwhite
 
    Font stack:  Manrope (body/UI/display) + Geist Mono (numeric/data)
-   Accent:      Premium Blue #2563EB (readable, calm, not loud)
-   Surfaces:    Cool off-white canvas, soft blue-tinted elevations
+   Accent:      Soft Brand Blue #4F86E8 (calm, readable, never loud)
+   Surfaces:    Cool off-white canvas (#F2F3F5), translucent glass cards
    ═══════════════════════════════════════════════════════ */
 
 :root {
@@ -55,41 +55,38 @@
   --space-3xl: 48px;
   --space-4xl: 64px;
 
-  /* ── Semantic palette — light (cool blue-tinted canvas) ──
-     Canvas:  #F6F8FB  ·  Card: #FFFFFF  ·  Deep navy foreground
-     Muted:   cool slate  ·  Border: blue-tinted hairline */
-  --background: #F6F8FB;
-  --foreground: #0F172A;              /* Deep Navy */
-  --card: #ffffff;
-  --card-foreground: #0F172A;
-  --popover: #ffffff;
-  --popover-foreground: #0F172A;
-  --primary: #0F172A;
+  /* ── Semantic palette — light V2 (Premium Soft Glass / Cool Offwhite) ──
+     Canvas:  #F2F3F5  ·  Card: translucent white  ·  Graphite foreground */
+  --background: #F2F3F5;
+  --foreground: #111827;
+  --card: rgba(255, 255, 255, 0.86);
+  --card-foreground: #111827;
+  --popover: rgba(255, 255, 255, 0.92);
+  --popover-foreground: #111827;
+  --primary: #111827;
   --primary-foreground: #ffffff;
-  --secondary: #EEF2F7;
-  --secondary-foreground: #0F172A;
-  --muted: #EEF2F7;
-  --muted-foreground: #64748B;        /* Muted Text (Slate-500) */
-  --accent: #EAF2FF;                  /* Soft Blue Tint */
-  --accent-foreground: #0F172A;
+  --secondary: #EAEDF1;
+  --secondary-foreground: #111827;
+  --muted: #EAEDF1;
+  --muted-foreground: #7C8490;
+  --accent: #EEF3FA;
+  --accent-foreground: #111827;
   --destructive: #EF4444;
   --destructive-foreground: #ffffff;
-  --border: rgba(15, 23, 42, 0.08);
-  --input: transparent;
-  --input-background: #F3F6FA;
+  --border: rgba(17, 24, 39, 0.075);
+  --input: rgba(17, 24, 39, 0.075);
+  --input-background: rgba(255, 255, 255, 0.72);
   --switch-background: #CBD5E1;
-  --ring: rgba(37, 99, 235, 0.22);
+  --ring: rgba(79, 134, 232, 0.28);
 
-  /* ── Brand accent — Premium Blue (calm, readable, never loud) ── */
-  --brand: #2563EB;                   /* Primary Blue */
-  --brand-hover: #1D4ED8;
-  --brand-active: #1E40AF;
-  --brand-soft: #EAF2FF;              /* Soft Blue Tint (named surface) */
-  --brand-glow: rgba(37, 99, 235, 0.22);
-  --brand-foreground: #ffffff;
-
-  /* Slightly deeper shade used for hover-on-soft, chip text, etc. */
-  --brand-ink: #1E40AF;
+  /* ── Brand accent — Soft Premium Blue (calm, readable, never loud) ── */
+  --brand: #4F86E8;
+  --brand-hover: #3F76D8;
+  --brand-active: #3266C4;
+  --brand-soft: rgba(79, 134, 232, 0.12);
+  --brand-glow: rgba(79, 134, 232, 0.18);
+  --brand-foreground: #FFFFFF;
+  --brand-ink: #3266C4;
 
   /* Legacy token name preserved so older components keep compiling */
   --accent-indigo: var(--brand);
@@ -107,32 +104,30 @@
        nodata   = not measured / disabled              → slate
        ai       = estimated / automation / assistant   → restrained violet */
   --status-positive: #16A34A;
-  --status-positive-soft: rgba(34, 197, 94, 0.12);
+  --status-positive-soft: rgba(22, 163, 74, 0.10);
   --status-attention: #D97706;
-  --status-attention-soft: rgba(245, 158, 11, 0.14);
+  --status-attention-soft: rgba(217, 119, 6, 0.11);
   /* `watch` is the canonical name for the amber attention tone */
   --status-watch: var(--status-attention);
   --status-watch-soft: var(--status-attention-soft);
   --status-warning: #EA580C;
-  --status-warning-soft: rgba(234, 88, 12, 0.12);
+  --status-warning-soft: rgba(234, 88, 12, 0.10);
   --status-critical: #DC2626;
-  --status-critical-soft: rgba(239, 68, 68, 0.12);
-  --status-info: #2563EB;
-  --status-info-soft: rgba(37, 99, 235, 0.12);
-  --status-nodata: #64748B;
-  --status-nodata-soft: rgba(100, 116, 139, 0.10);
+  --status-critical-soft: rgba(220, 38, 38, 0.10);
+  --status-info: #5B6B7F;
+  --status-info-soft: rgba(91, 107, 127, 0.11);
+  --status-nodata: #7C8490;
+  --status-nodata-soft: rgba(124, 132, 144, 0.09);
   --status-ai: #7C3AED;
-  --status-ai-soft: rgba(124, 58, 237, 0.10);
+  --status-ai-soft: rgba(124, 58, 237, 0.09);
 
-  /* ── Elevation — blue-tinted soft shadows (light) ──
-     Shadows carry a faint navy hue so cards sit on the cool canvas
-     without falling back to flat black drop-shadows. */
-  --shadow-xs:      0 1px 2px rgba(15, 23, 42, 0.05);
-  --shadow-sm:      0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-md:      0 4px 12px rgba(15, 23, 42, 0.07), 0 2px 4px rgba(15, 23, 42, 0.04);
-  --shadow-lg:      0 12px 32px rgba(15, 23, 42, 0.09), 0 4px 8px rgba(15, 23, 42, 0.05);
-  --shadow-hover:   0 8px 24px rgba(30, 64, 175, 0.10), 0 2px 6px rgba(15, 23, 42, 0.05);
-  --shadow-overlay: 0 24px 64px rgba(15, 23, 42, 0.16), 0 8px 16px rgba(15, 23, 42, 0.07);
+  /* ── Elevation — soft graphite shadows (light V2) ── */
+  --shadow-xs:      0 1px 2px rgba(17, 24, 39, 0.04);
+  --shadow-sm:      0 1px 3px rgba(17, 24, 39, 0.05), 0 1px 2px rgba(17, 24, 39, 0.03);
+  --shadow-md:      0 4px 12px rgba(17, 24, 39, 0.06), 0 2px 4px rgba(17, 24, 39, 0.03);
+  --shadow-lg:      0 12px 32px rgba(17, 24, 39, 0.08), 0 4px 8px rgba(17, 24, 39, 0.04);
+  --shadow-hover:   0 8px 24px rgba(17, 24, 39, 0.07), 0 2px 6px rgba(17, 24, 39, 0.04);
+  --shadow-overlay: 0 24px 64px rgba(17, 24, 39, 0.14), 0 8px 16px rgba(17, 24, 39, 0.06);
 
   /* V4.6.86 numeric aliases for step-based elevation usage in components. */
   --shadow-1: var(--shadow-xs);
@@ -140,20 +135,20 @@
   --shadow-3: var(--shadow-md);
   --shadow-4: var(--shadow-lg);
 
-  /* ── Glass surface — light (liquid-glass edge refraction) ── */
-  --glass-bg: rgba(255, 255, 255, 0.76);
-  --glass-border: rgba(15, 23, 42, 0.06);
+  /* ── Glass surface — light V2 (liquid-glass edge refraction) ── */
+  --glass-bg: rgba(255, 255, 255, 0.66);
+  --glass-border: rgba(17, 24, 39, 0.08);
   --glass-blur: 24px;
-  --glass-edge-highlight: rgba(255, 255, 255, 0.72);
-  --glass-edge-catch: rgba(15, 23, 42, 0.03);
+  --glass-edge-highlight: rgba(255, 255, 255, 0.75);
+  --glass-edge-catch: rgba(17, 24, 39, 0.10);
 
   /* Map HUD liquid glass — tuned for imagery overlays */
-  --map-glass-bg: rgba(255, 255, 255, 0.42);
-  --map-glass-bg-strong: rgba(255, 255, 255, 0.58);
-  --map-glass-border: rgba(255, 255, 255, 0.62);
-  --map-glass-highlight: rgba(255, 255, 255, 0.88);
-  --map-glass-shine: rgba(255, 255, 255, 0.34);
-  --map-glass-shadow: 0 14px 36px rgba(15, 23, 42, 0.16), 0 2px 8px rgba(15, 23, 42, 0.08);
+  --map-glass-bg: rgba(255, 255, 255, 0.58);
+  --map-glass-bg-strong: rgba(255, 255, 255, 0.76);
+  --map-glass-border: rgba(17, 24, 39, 0.10);
+  --map-glass-highlight: rgba(255, 255, 255, 0.82);
+  --map-glass-shine: rgba(255, 255, 255, 0.42);
+  --map-glass-shadow: 0 14px 36px rgba(17, 24, 39, 0.12), 0 2px 8px rgba(17, 24, 39, 0.06);
   --map-glass-blur: 20px;
 
   /* ── Radius system ── */
@@ -174,15 +169,15 @@
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
 
-  /* ── Sidebar — light (white chrome with cool-blue hairlines) ── */
-  --sidebar: #ffffff;
-  --sidebar-foreground: #0F172A;
+  /* ── Sidebar — light V2 (soft glass chrome) ── */
+  --sidebar: rgba(255, 255, 255, 0.92);
+  --sidebar-foreground: #111827;
   --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #EAF2FF;                      /* Soft Blue Tint */
-  --sidebar-accent-foreground: #0F172A;
-  --sidebar-border: rgba(15, 23, 42, 0.06);
-  --sidebar-ring: rgba(37, 99, 235, 0.18);
+  --sidebar-accent: #EEF3FA;
+  --sidebar-accent-foreground: #111827;
+  --sidebar-border: rgba(17, 24, 39, 0.075);
+  --sidebar-ring: rgba(79, 134, 232, 0.22);
 }
 
 .dark {
@@ -378,10 +373,11 @@
     line-height: 1.5;
     font-feature-settings: "ss02", "ss03";  /* Manrope stylistic alternates */
     font-variant-numeric: tabular-nums lining-nums;
-    /* V4.6.88 — cool blue-aligned ambient tint, softer than slate */
+    /* Light V2 — whisper-soft glass ambient (offwhite lift + faint blue hint) */
     background-image:
-      radial-gradient(at 82% 4%,  rgba(37, 99, 235, 0.055), transparent 55%),
-      radial-gradient(at 16% 96%, rgba(37, 99, 235, 0.030), transparent 60%);
+      radial-gradient(at 78% 6%,  rgba(255, 255, 255, 0.55), transparent 58%),
+      radial-gradient(at 14% 94%, rgba(79, 134, 232, 0.016), transparent 64%),
+      radial-gradient(at 50% 48%, rgba(234, 237, 241, 0.35), transparent 72%);
     background-attachment: fixed;
   }
   .dark body {

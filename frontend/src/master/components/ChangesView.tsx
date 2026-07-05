@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'light-theme-v2-soft-glass-v49192-2026-07-05',
+    version: '4.9.192',
+    title: 'V4.9.192 — Light Theme V2: Premium Soft Glass / Cool Offwhite',
+    summary: [
+      '`:root` Light Tokens auf V2 umgestellt: Canvas `#F2F3F5`, transluzente Cards/Popovers, Muted `#EAEDF1`, weichere Borders/Inputs.',
+      'Brand Blue abgeschwächt: `#4F86E8` (+ soft/glow rgba), Focus-Ring `rgba(79,134,232,0.28)`.',
+      'Glass/Map-Glass Light: transluzenter, stärkere Edge-Refraction; Body-Ambient ohne starken blauen Glow.',
+      'Status-Semantik erhalten; Info → neutral blau-grau `#5B6B7F`; Soft-Tokens leicht premium-weicher. Dark Theme unverändert.',
+    ],
+    reason: 'Light Mode wirkte zu klassisch blau-SaaS; Ziel ist hochwertiger Soft-Glass-/Neumorphism-Eindruck bei operativer Lesbarkeit.',
+    previousBehavior: 'Canvas `#F6F8FB`, opake weiße Cards, Brand `#2563EB`, stärkere blaue Body-Radialen und navy-tinted Shadows.',
+    details: 'Nur `frontend/src/styles/theme.css` `:root` + Light-Body-Gradient + THEME_COLOR_CONTRACT.md. Keine Layout-/Logik-/Dark-Änderung.',
+    affectsArchitecture: true,
+    module: 'Design System',
+    createdAt: '2026-07-05T02:00:00.000Z',
+  },
+  {
     id: 'theme-color-audit-contract-v49191-2026-07-05',
     version: '4.9.191',
     title: 'V4.9.191 — Theme-Farbwelt Audit + Color Contract',
