@@ -30,24 +30,41 @@ export interface DeviceConnectionEventRow {
 }
 
 /**
- * Collapse consecutive events of the same type (historical webhook spam or
- * pre-gating duplicates). Keeps only state transitions for display/counts.
+ * Collapse consecutive events of the same type and drop leading baseline
+ * PLUGGED_IN rows (device was already connected before monitoring started).
+ * Matches `shouldPersistObdPlugStateChange` intake semantics.
  */
-export function collapseConsecutiveDeviceConnectionEvents<T extends DeviceConnectionEventRow>(
+export function filterCanonicalDeviceConnectionEvents<T extends DeviceConnectionEventRow>(
   events: T[],
 ): T[] {
-  if (events.length <= 1) return [...events];
+  if (events.length === 0) return [];
   const sorted = [...events].sort(
     (a, b) => a.observedAt.getTime() - b.observedAt.getTime(),
   );
   const out: T[] = [];
-  let lastType: DimoDeviceConnectionEventType | null = null;
+  let current: 'plugged' | 'unplugged' | 'unknown' = 'unknown';
+
   for (const event of sorted) {
-    if (event.eventType === lastType) continue;
+    const isPlug = event.eventType === DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN;
+    if (current === 'unknown') {
+      if (isPlug) continue;
+      out.push(event);
+      current = 'unplugged';
+      continue;
+    }
+    const incoming = isPlug ? 'plugged' : 'unplugged';
+    if (current === incoming) continue;
     out.push(event);
-    lastType = event.eventType;
+    current = incoming;
   }
   return out;
+}
+
+/** @deprecated Use filterCanonicalDeviceConnectionEvents */
+export function collapseConsecutiveDeviceConnectionEvents<T extends DeviceConnectionEventRow>(
+  events: T[],
+): T[] {
+  return filterCanonicalDeviceConnectionEvents(events);
 }
 
 export interface DeviceConnectionEventView {
@@ -196,7 +213,7 @@ export function buildDeviceConnectionSummary(
     recentLimit = 10,
   } = input;
 
-  const sorted = [...collapseConsecutiveDeviceConnectionEvents(events)].sort(
+  const sorted = [...filterCanonicalDeviceConnectionEvents(events)].sort(
     (a, b) => b.observedAt.getTime() - a.observedAt.getTime(),
   );
   const since24h = nowMs - 24 * 60 * 60 * 1000;
@@ -297,7 +314,7 @@ export function buildTripDeviceConnectionFlags(
   const startMs = trip.startTime.getTime();
   const endMs = trip.endTime?.getTime() ?? nowMs;
 
-  const inWindow = collapseConsecutiveDeviceConnectionEvents(
+  const inWindow = filterCanonicalDeviceConnectionEvents(
     events.filter((e) => {
       const t = e.observedAt.getTime();
       return t >= startMs && t <= endMs;

@@ -3,7 +3,7 @@ import {
   buildDeviceConnectionSummary,
   buildFleetDeviceConnectionFields,
   buildTripDeviceConnectionFlags,
-  collapseConsecutiveDeviceConnectionEvents,
+  filterCanonicalDeviceConnectionEvents,
   severityForUnplugEvent,
 } from './device-connection-read-model';
 
@@ -78,6 +78,12 @@ describe('device-connection-read-model', () => {
       nowMs,
       events: [
         {
+          id: 'e0',
+          vehicleId: 'v-1',
+          eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
+          observedAt: new Date('2026-06-28T10:30:00.000Z'),
+        },
+        {
           id: 'e1',
           vehicleId: 'v-1',
           eventType: DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN,
@@ -133,8 +139,8 @@ describe('device-connection-read-model', () => {
     expect(flags.deviceConnectionSeverity).toBe('critical');
   });
 
-  it('collapses consecutive plug events from webhook spam', () => {
-    const collapsed = collapseConsecutiveDeviceConnectionEvents([
+  it('removes baseline and consecutive plug spam', () => {
+    const canonical = filterCanonicalDeviceConnectionEvents([
       {
         id: 'e1',
         vehicleId: 'v-1',
@@ -154,7 +160,30 @@ describe('device-connection-read-model', () => {
         observedAt: new Date('2026-06-28T20:51:03.000Z'),
       },
     ]);
-    expect(collapsed).toHaveLength(1);
-    expect(collapsed[0].id).toBe('e1');
+    expect(canonical).toHaveLength(0);
+  });
+
+  it('keeps real unplug then plug transitions', () => {
+    const canonical = filterCanonicalDeviceConnectionEvents([
+      {
+        id: 'e1',
+        vehicleId: 'v-1',
+        eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
+        observedAt: new Date('2026-06-28T10:00:00.000Z'),
+      },
+      {
+        id: 'e2',
+        vehicleId: 'v-1',
+        eventType: DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN,
+        observedAt: new Date('2026-06-28T10:05:00.000Z'),
+      },
+      {
+        id: 'e3',
+        vehicleId: 'v-1',
+        eventType: DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN,
+        observedAt: new Date('2026-06-28T10:05:26.000Z'),
+      },
+    ]);
+    expect(canonical.map((e) => e.id)).toEqual(['e1', 'e2']);
   });
 });

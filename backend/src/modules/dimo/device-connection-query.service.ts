@@ -3,7 +3,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import {
   buildDeviceConnectionSummary,
   buildTripDeviceConnectionFlags,
-  collapseConsecutiveDeviceConnectionEvents,
+  filterCanonicalDeviceConnectionEvents,
   mapDeviceConnectionEventView,
   type DeviceConnectionBookingWindow,
   type DeviceConnectionEventRow,
@@ -240,7 +240,7 @@ export class DeviceConnectionQueryService {
       return { events: [] };
     }
 
-    const collapsed = collapseConsecutiveDeviceConnectionEvents(events);
+    const collapsed = filterCanonicalDeviceConnectionEvents(events);
     const bookings = await this.loadBookings(vehicleId, trip.startTime);
     const trips = [trip];
 
