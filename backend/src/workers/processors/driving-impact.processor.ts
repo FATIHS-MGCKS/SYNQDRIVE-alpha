@@ -32,13 +32,18 @@ export class DrivingImpactProcessor extends WorkerHost {
 
     this.logger.log(`DrivingImpact compute started: trip=${tripId} vehicle=${vehicleId}`);
 
-    const processed = await this.drivingImpactService.computeForTrip(tripId, vehicleId);
+    try {
+      const processed = await this.drivingImpactService.computeForTrip(tripId, vehicleId);
 
-    if (processed) {
-      this.logger.log(`DrivingImpact compute complete: trip=${tripId}`);
-      // Record that driving impact has been computed for this trip
-      await this.orchestrator.markDrivingImpactComputed(tripId);
-      // Keep brake-health estimates fresher than hourly scheduler cycles.
+      if (processed) {
+        this.logger.log(`DrivingImpact compute complete: trip=${tripId}`);
+        await this.orchestrator.markDrivingImpactComputed(tripId, false);
+      } else {
+        this.logger.debug(`DrivingImpact compute skipped: trip=${tripId} (below threshold or missing data)`);
+        await this.orchestrator.markDrivingImpactComputed(tripId, true);
+      }
+
+      // Brake-health refresh is intentionally non-blocking for trip analysis status.
       try {
         await this.brakeHealthService.recalculate(vehicleId);
       } catch (err: any) {
@@ -46,8 +51,10 @@ export class DrivingImpactProcessor extends WorkerHost {
           `Brake health refresh after driving-impact failed: vehicle=${vehicleId} ${err?.message ?? 'unknown error'}`,
         );
       }
-    } else {
-      this.logger.debug(`DrivingImpact compute skipped: trip=${tripId} (below threshold or missing data)`);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`DrivingImpact compute failed: trip=${tripId} ${message}`);
+      await this.orchestrator.markDrivingImpactComputed(tripId, true);
     }
   }
 }

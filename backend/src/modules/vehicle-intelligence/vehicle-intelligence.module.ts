@@ -24,6 +24,7 @@ import { TripsService } from './trips/trips.service';
 import { TripDetectionOrchestrationService } from './trips/trip-detection-orchestration.service';
 import { TripBehaviorEnrichmentService } from './trips/trip-behavior-enrichment.service';
 import { TripEnrichmentOrchestratorService } from './trips/trip-enrichment-orchestrator.service';
+import { TripAnalysisCoordinatorService } from './trips/trip-analysis-coordinator.service';
 import { LteR1BehaviorEnrichmentService } from './trips/lte-r1-behavior-enrichment.service';
 import { EventContextEnrichmentService } from './event-context/event-context-enrichment.service';
 import { HfMirrorService } from './trips/hf-mirror.service';
@@ -113,6 +114,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     TripDetectionOrchestrationService,
     TripBehaviorEnrichmentService,
     TripEnrichmentOrchestratorService,
+    TripAnalysisCoordinatorService,
     EventContextEnrichmentService,
     LteR1BehaviorEnrichmentService,
     HfMirrorService,
@@ -180,6 +182,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     TripDetectionOrchestrationService,
     TripBehaviorEnrichmentService,
     TripEnrichmentOrchestratorService,
+    TripAnalysisCoordinatorService,
     LteR1BehaviorEnrichmentService,
     EventContextEnrichmentService,
     TripAssignmentService,

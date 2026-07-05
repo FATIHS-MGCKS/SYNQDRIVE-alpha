@@ -161,12 +161,23 @@ export function hasLegacyMeasurements(event: TripBehaviorEvent): boolean {
 }
 
 export function hfQualityLabel(trip: TripTimelineTrip): string {
+  if (trip.tripAnalysisLabel) return trip.tripAnalysisLabel;
   const status = trip.behaviorEnrichmentStatus;
   if (status === 'SKIPPED_NO_HF_DATA') return 'Nicht verfügbar';
   if (trip.detailsLimited) return 'Eingeschränkt';
   if (trip.behaviorReady) return 'Telemetrie verfügbar';
-  if (status === 'PENDING' || status === 'IN_PROGRESS') return 'Analyse läuft';
+  if (trip.analysisInProgress || status === 'PENDING' || status === 'IN_PROGRESS') {
+    return 'Analyse läuft noch';
+  }
   return 'Unbekannt';
+}
+
+export function isTripAnalysisRunning(trip: TripTimelineTrip): boolean {
+  if (trip.analysisInProgress === true) return true;
+  const status = trip.tripAnalysisStatus;
+  if (status === 'PENDING' || status === 'IN_PROGRESS') return true;
+  if (!trip.behaviorReady && status === 'PARTIAL') return false;
+  return trip.behaviorEnrichmentStatus === 'PENDING' || trip.behaviorEnrichmentStatus === 'IN_PROGRESS';
 }
 
 /**
@@ -238,17 +249,21 @@ export function formatBehaviorTime(iso: string): string {
 }
 
 export function enrichmentStatusLabel(
-  status: TripTimelineTrip['behaviorEnrichmentStatus'],
+  trip: TripTimelineTrip,
 ): string | null {
+  if (trip.tripAnalysisLabel) {
+    if (trip.tripAnalysisStatus === 'COMPLETED') return null;
+    return trip.tripAnalysisLabel;
+  }
+  const status = trip.behaviorEnrichmentStatus;
   switch (status) {
     case 'PENDING':
-      return 'Analyse ausstehend';
     case 'IN_PROGRESS':
-      return 'Analyse läuft';
+      return 'Analyse läuft noch';
     case 'COMPLETED':
       return null;
     case 'SKIPPED_NO_HF_DATA':
-      return 'Nicht analysierbar';
+      return 'Nicht genügend Daten';
     case 'FAILED_TRANSIENT':
     case 'FAILED_PERMANENT':
       return 'Analyse fehlgeschlagen';

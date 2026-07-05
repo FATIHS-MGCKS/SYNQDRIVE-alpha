@@ -43,7 +43,6 @@ import { HfMirrorService } from './hf-mirror.service';
 import { summarizeEvTractionPowerFromHf, type EvTractionPowerTripSummary } from './hf-recuperation';
 import { TripAssignmentService } from './trip-assignment.service';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
-import { MisuseCaseAggregatorService } from '../misuse-cases/misuse-case-aggregator.service';
 
 export interface BehaviorEnrichmentResult {
   accelerationEvents: number;
@@ -178,7 +177,6 @@ export class TripBehaviorEnrichmentService {
     private readonly segments: DimoSegmentsService,
     private readonly lteR1: LteR1BehaviorEnrichmentService,
     private readonly tripAssignmentService: TripAssignmentService,
-    private readonly misuseCaseAggregator: MisuseCaseAggregatorService,
     private readonly hfMirror: HfMirrorService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {}
@@ -213,21 +211,6 @@ export class TripBehaviorEnrichmentService {
           }`,
         );
       });
-  }
-
-  /**
-   * Misuse cases are informational/read-only hints. Aggregation must not block trip
-   * enrichment. Errors are logged with trip context and can be reprocessed later.
-   */
-  private scheduleMisuseCaseAggregation(tripId: string): void {
-    void this.misuseCaseAggregator.evaluateTrip(tripId).catch((err: unknown) => {
-      const message = err instanceof Error ? err.message : String(err);
-      const stack = err instanceof Error ? err.stack : undefined;
-      this.logger.error(
-        `Misuse case aggregation failed for trip ${tripId}: ${message}`,
-        stack,
-      );
-    });
   }
 
   async enrichTrip(tripId: string): Promise<BehaviorEnrichmentOutcome> {
@@ -608,7 +591,6 @@ export class TripBehaviorEnrichmentService {
       });
     });
     await this.tripAssignmentService.applyAssignmentToTrip(tripId);
-    this.scheduleMisuseCaseAggregation(tripId);
 
     // Phase 2: best-effort HF analytics mirror (disabled by default).
     this.scheduleHfMirror({
@@ -897,7 +879,6 @@ export class TripBehaviorEnrichmentService {
       });
     });
     await this.tripAssignmentService.applyAssignmentToTrip(tripId);
-    this.scheduleMisuseCaseAggregation(tripId);
 
     // Phase 2: best-effort HF analytics mirror (disabled by default). LTE_R1
     // native driving events stay canonical in PostgreSQL; this mirrors only the

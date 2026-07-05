@@ -1348,6 +1348,16 @@ export interface VehicleTripAnalytics {
   abuseEvents?: number;
   behaviorReady?: boolean;
   detailsLimited?: boolean;
+  tripAnalysisStatus?: 'PENDING' | 'IN_PROGRESS' | 'PARTIAL' | 'COMPLETED' | 'FAILED' | 'SKIPPED' | null;
+  tripAnalysisLabel?: string | null;
+  analysisInProgress?: boolean;
+  analysisQueuedAt?: string | null;
+  analysisStartedAt?: string | null;
+  analysisPartialAt?: string | null;
+  analysisCompletedAt?: string | null;
+  analysisFailedAt?: string | null;
+  analysisLatencyMs?: number | null;
+  totalAnalysisLatencyMs?: number | null;
   assignmentStatus?: TripAssignmentStatus | null;
   assignmentSubjectType?: TripAssignmentSubjectType | null;
   assignmentSubjectId?: string | null;

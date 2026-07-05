@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-analysis-status-v49201-2026-07-05',
+    version: '4.9.201',
+    title: 'V4.9.201 — Kanonischer Trip-Analyse-Status (Post-Trip Pipeline)',
+    summary: [
+      'Neuer persistierter `tripAnalysisStatus` pro Fahrt: PENDING → IN_PROGRESS → PARTIAL → COMPLETED | FAILED | SKIPPED — getrennt von `tripStatus=COMPLETED`.',
+      'API/UI-Mapping: PENDING/IN_PROGRESS/PARTIAL = „Analyse läuft noch“, COMPLETED = „Analyse abgeschlossen“, FAILED = „Analyse fehlgeschlagen“, SKIPPED = „Nicht genügend Daten“.',
+      'TripAnalysisCoordinatorService orchestriert Stages behavior → route → misuse → drivingImpact über denselben kanonischen TripEnrichmentOrchestrator.',
+      'Zeitstempel/Metriken: analysisQueuedAt, analysisStartedAt, analysisPartialAt, analysisCompletedAt, analysisFailedAt, analysisLatencyMs (+ API-Alias totalAnalysisLatencyMs).',
+      'BrakeHealth-Recalc nach DrivingImpact bleibt bewusst nicht-blockierend für den Trip-Analyse-Status.',
+    ],
+    reason:
+      'Trip-Ende und Post-Trip-Auswertung wurden semantisch vermischt; Kunden sollen sofort sehen, dass die Fahrt beendet ist, die Auswertung aber noch läuft.',
+    previousBehavior:
+      'Nur `behaviorEnrichmentStatus` sichtbar; Misuse/DrivingImpact ohne gemeinsamen Abschlussstatus; behaviorSummaryStatus/drivingImpactStatus oft dauerhaft PENDING.',
+    details:
+      'Prisma-Migration `20260705140000_trip_analysis_status`. Misuse-Aggregation aus TripBehaviorEnrichmentService in den Orchestrator verlagert. Kein sichtbarer Begriff FAST_POST_TRIP_ASSESSMENT.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-05T14:00:00.000Z',
+  },
+  {
     id: 'trip-tracking-queue-dedup-v49200-2026-07-05',
     version: '4.9.200',
     title: 'V4.9.200 — Trip-Tracking Queue: deterministische BullMQ Job-IDs',

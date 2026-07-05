@@ -4811,6 +4811,18 @@ model VehicleTrip {
   behaviorEnrichmentStartedAt DateTime? @map("behavior_enrichment_started_at")
   drivingImpactComputedAt     DateTime? @map("driving_impact_computed_at")
 
+  // ── Canonical post-trip analysis status (separate from trip COMPLETED) ───
+  // Values: PENDING | IN_PROGRESS | PARTIAL | COMPLETED | FAILED | SKIPPED
+  tripAnalysisStatus   String?   @map("trip_analysis_status")
+  analysisQueuedAt     DateTime? @map("analysis_queued_at")
+  analysisStartedAt    DateTime? @map("analysis_started_at")
+  analysisPartialAt    DateTime? @map("analysis_partial_at")
+  analysisCompletedAt  DateTime? @map("analysis_completed_at")
+  analysisFailedAt     DateTime? @map("analysis_failed_at")
+  analysisFailedReason String?   @map("analysis_failed_reason")
+  analysisLatencyMs    Int?      @map("analysis_latency_ms")
+  analysisStagesJson   Json?     @map("analysis_stages_json")
+
   detectionProfile         VehicleDetectionProfile? @map("detection_profile")
   startDetectionMode       String?                  @map("start_detection_mode")
   endDetectionMode         String?                  @map("end_detection_mode")
@@ -4861,6 +4873,7 @@ model VehicleTrip {
   @@index([assignmentSubjectType, assignmentSubjectId])
   @@index([assignedBookingId])
   @@index([behaviorEnrichmentStatus])
+  @@index([tripAnalysisStatus])
   // Composite index for the hot "trips by vehicle ordered by startTime desc"
   // query used by trips list, rental analysis, driver score and hydration.
   // PostgreSQL can walk this index in reverse for free, so no DESC clause.

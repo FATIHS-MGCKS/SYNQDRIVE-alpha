@@ -27,6 +27,8 @@ import { DtcVehicleContext } from './dtc-knowledge/dtc-knowledge.types';
 import { TripsService } from './trips/trips.service';
 import { TripBehaviorEnrichmentService } from './trips/trip-behavior-enrichment.service';
 import { TripEnrichmentOrchestratorService } from './trips/trip-enrichment-orchestrator.service';
+import { mapTripForVehicleApi } from './trips/trip-api.mapper';
+import { isTripAnalysisInProgress } from './trips/trip-analysis-status';
 import { TripReconciliationService } from './trips/reconciliation/trip-reconciliation.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
 import { TripAnalyticsCanonicalService } from './trips/trip-analytics-canonical.service';
@@ -885,47 +887,8 @@ export class VehicleIntelligenceController {
     });
     const hydratedTrips = await this.tripAnalyticsCanonicalService.hydrateTrips(trips as any);
 
-    // ── Compute simple UI-facing readiness flags ─────────────────────────
-    // Frontend only needs behaviorReady/detailsLimited — it should NOT need
-    // to interpret behaviorEnrichmentStatus internally.
-    const mapped = hydratedTrips.map((trip) => {
-      const { behaviorEnrichmentStatus, behaviorEnrichmentError, behaviorEnrichmentAttempts, ...rest } = trip as any;
-      return {
-        ...rest,
-        drivingScore:
-          trip.canonicalTripSummary?.scores?.drivingStressScore ??
-          trip.drivingScore ??
-          null,
-        drivingStressScore:
-          trip.canonicalTripSummary?.scores?.drivingStressScore ??
-          null,
-        stressLevel: trip.canonicalTripSummary?.scores?.stressLevel ?? null,
-        drivingStyleScore:
-          trip.canonicalTripSummary?.scores?.drivingStressScore ??
-          null,
-        scoreSource: trip.canonicalTripSummary?.scores?.scoreSource ?? 'derived',
-        totalAccelerationEvents: trip.canonicalTripSummary?.events?.totalAccelerationEvents ?? 0,
-        hardAccelerationEvents: trip.canonicalTripSummary?.events?.hardAccelerationEvents ?? 0,
-        totalBrakingEvents: trip.canonicalTripSummary?.events?.totalBrakingEvents ?? 0,
-        hardBrakingEvents: trip.canonicalTripSummary?.events?.hardBrakingEvents ?? 0,
-        fullBrakingEvents: trip.canonicalTripSummary?.events?.fullBrakingEvents ?? 0,
-        corneringEvents: trip.canonicalTripSummary?.events?.corneringEvents ?? 0,
-        abuseEvents: trip.canonicalTripSummary?.events?.abuseEvents ?? 0,
-        speedingEvents: trip.canonicalTripSummary?.events?.speedingEvents ?? 0,
-        assignmentStatus: trip.canonicalTripSummary?.assignment?.assignmentStatus ?? null,
-        assignmentSubjectType: trip.canonicalTripSummary?.assignment?.assignmentSubjectType ?? null,
-        assignmentSubjectId: trip.canonicalTripSummary?.assignment?.assignmentSubjectId ?? null,
-        assignedBookingId: trip.canonicalTripSummary?.assignment?.assignedBookingId ?? null,
-        isPrivateTrip: trip.canonicalTripSummary?.assignment?.isPrivateTrip ?? false,
-        scoreEligible: trip.canonicalTripSummary?.assignment?.scoreEligible ?? false,
-        behaviorReady: behaviorEnrichmentStatus === 'COMPLETED',
-        detailsLimited:
-          !trip.endTime ||
-          (trip as any).qualityStatus === 'LOW_DATA' ||
-          (trip as any).qualityStatus === 'ANOMALY',
-      };
-    });
-    return this.attachTripDeviceConnectionFlags(vehicleId, mapped);
+    const mapped = hydratedTrips.map((trip) => mapTripForVehicleApi(trip as any));
+    return this.attachTripDeviceConnectionFlags(vehicleId, mapped as any);
   }
 
   @Get('trips/stats')
@@ -1032,40 +995,8 @@ export class VehicleIntelligenceController {
     if (!trip || trip.vehicleId !== vehicleId) return null;
     const hydratedTrip = await this.tripAnalyticsCanonicalService.hydrateTrip(trip as any);
 
-    // ── Same readiness semantics as GET /trips list ──────────────────────
-    // Strip internal enrichment status fields; surface simple flags only.
-    const { behaviorEnrichmentStatus, behaviorEnrichmentError, behaviorEnrichmentAttempts, ...rest } = hydratedTrip as any;
-    const mapped = {
-      ...rest,
-      drivingScore:
-        hydratedTrip.canonicalTripSummary?.scores?.drivingStressScore ??
-        hydratedTrip.drivingScore ??
-        null,
-      drivingStressScore: hydratedTrip.canonicalTripSummary?.scores?.drivingStressScore ?? null,
-      stressLevel: hydratedTrip.canonicalTripSummary?.scores?.stressLevel ?? null,
-      drivingStyleScore: hydratedTrip.canonicalTripSummary?.scores?.drivingStressScore ?? null,
-      scoreSource: hydratedTrip.canonicalTripSummary?.scores?.scoreSource ?? 'derived',
-      totalAccelerationEvents: hydratedTrip.canonicalTripSummary?.events?.totalAccelerationEvents ?? 0,
-      hardAccelerationEvents: hydratedTrip.canonicalTripSummary?.events?.hardAccelerationEvents ?? 0,
-      totalBrakingEvents: hydratedTrip.canonicalTripSummary?.events?.totalBrakingEvents ?? 0,
-      hardBrakingEvents: hydratedTrip.canonicalTripSummary?.events?.hardBrakingEvents ?? 0,
-      fullBrakingEvents: hydratedTrip.canonicalTripSummary?.events?.fullBrakingEvents ?? 0,
-      corneringEvents: hydratedTrip.canonicalTripSummary?.events?.corneringEvents ?? 0,
-      abuseEvents: hydratedTrip.canonicalTripSummary?.events?.abuseEvents ?? 0,
-      speedingEvents: hydratedTrip.canonicalTripSummary?.events?.speedingEvents ?? 0,
-      assignmentStatus: hydratedTrip.canonicalTripSummary?.assignment?.assignmentStatus ?? null,
-      assignmentSubjectType: hydratedTrip.canonicalTripSummary?.assignment?.assignmentSubjectType ?? null,
-      assignmentSubjectId: hydratedTrip.canonicalTripSummary?.assignment?.assignmentSubjectId ?? null,
-      assignedBookingId: hydratedTrip.canonicalTripSummary?.assignment?.assignedBookingId ?? null,
-      isPrivateTrip: hydratedTrip.canonicalTripSummary?.assignment?.isPrivateTrip ?? false,
-      scoreEligible: hydratedTrip.canonicalTripSummary?.assignment?.scoreEligible ?? false,
-      behaviorReady: behaviorEnrichmentStatus === 'COMPLETED',
-      detailsLimited:
-        !hydratedTrip.endTime ||
-        (hydratedTrip as any).qualityStatus === 'LOW_DATA' ||
-        (hydratedTrip as any).qualityStatus === 'ANOMALY',
-    };
-    const [withFlags] = await this.attachTripDeviceConnectionFlags(vehicleId, [mapped]);
+    const mapped = mapTripForVehicleApi(hydratedTrip as any);
+    const [withFlags] = await this.attachTripDeviceConnectionFlags(vehicleId, [mapped as any]);
     return withFlags;
   }
 
@@ -1172,12 +1103,25 @@ export class VehicleIntelligenceController {
     // would be misinterpreted as "zero events". Return a pending status instead.
     const trip = await this.prisma.vehicleTrip.findUnique({
       where: { id: tripId },
-      select: { behaviorEnrichmentStatus: true },
+      select: {
+        behaviorEnrichmentStatus: true,
+        tripAnalysisStatus: true,
+        tripStatus: true,
+      },
     });
-    if (trip && trip.behaviorEnrichmentStatus !== 'COMPLETED') {
+    const behaviorReady = trip?.behaviorEnrichmentStatus === 'COMPLETED';
+    const analysisRunning =
+      trip != null &&
+      !behaviorReady &&
+      (isTripAnalysisInProgress(trip.tripAnalysisStatus) ||
+        trip.behaviorEnrichmentStatus === 'PENDING' ||
+        trip.behaviorEnrichmentStatus === 'IN_PROGRESS');
+    if (trip && analysisRunning) {
       return {
         status: 'pending',
         behaviorReady: false,
+        analysisInProgress: true,
+        tripAnalysisLabel: 'Analyse läuft noch',
         events: [],
       };
     }

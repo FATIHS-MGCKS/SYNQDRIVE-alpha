@@ -41,6 +41,16 @@ export interface TripTimelineTrip {
   behaviorReady?: boolean;
   behaviorEnrichedAt?: string;
   behaviorEnrichmentStatus?: BehaviorEnrichmentStatus;
+  tripAnalysisStatus?: 'PENDING' | 'IN_PROGRESS' | 'PARTIAL' | 'COMPLETED' | 'FAILED' | 'SKIPPED' | null;
+  tripAnalysisLabel?: string | null;
+  analysisInProgress?: boolean;
+  analysisQueuedAt?: string | null;
+  analysisStartedAt?: string | null;
+  analysisPartialAt?: string | null;
+  analysisCompletedAt?: string | null;
+  analysisFailedAt?: string | null;
+  analysisLatencyMs?: number | null;
+  totalAnalysisLatencyMs?: number | null;
   detailsLimited?: boolean;
   gapEnded?: boolean;
   enrichedAt?: string;

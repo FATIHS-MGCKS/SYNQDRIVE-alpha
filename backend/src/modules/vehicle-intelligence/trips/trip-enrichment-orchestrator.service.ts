@@ -35,6 +35,8 @@ import type { DrivingImpactJobData } from '../../../workers/processors/driving-i
 import { TripMetricsService } from '../../observability/trip-metrics.service';
 import { TripReconciliationService } from './reconciliation/trip-reconciliation.service';
 import { TripsService } from './trips.service';
+import { TripAnalysisCoordinatorService } from './trip-analysis-coordinator.service';
+import { MisuseCaseAggregatorService } from '../misuse-cases/misuse-case-aggregator.service';
 
 // ── Status constants ────────────────────────────────────────────────────────
 
@@ -127,6 +129,8 @@ export class TripEnrichmentOrchestratorService {
     @Optional() private readonly tripMetrics?: TripMetricsService,
     @Optional() private readonly reconciliation?: TripReconciliationService,
     @Optional() private readonly tripsService?: TripsService,
+    @Optional() private readonly analysisCoordinator?: TripAnalysisCoordinatorService,
+    @Optional() private readonly misuseCaseAggregator?: MisuseCaseAggregatorService,
   ) {}
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -196,6 +200,7 @@ export class TripEnrichmentOrchestratorService {
         },
       );
       this.logger.log(`Enqueued HF enrichment for trip ${tripId} (jobId=${jobId} delay=${delay}ms)`);
+      await this.analysisCoordinator?.onAnalysisEnqueued(tripId);
       // Update pending gauge asynchronously — don't block enqueue for metric update.
       // Failures are logged at debug but never bubble up, by design: this is purely
       // observability and must not poison a successful enqueue.
@@ -215,7 +220,11 @@ export class TripEnrichmentOrchestratorService {
       // Queue infrastructure failure — revert status
       await this.prisma.vehicleTrip.update({
         where: { id: tripId },
-        data: { behaviorEnrichmentStatus: null },
+        data: {
+          behaviorEnrichmentStatus: null,
+          tripAnalysisStatus: null,
+          analysisQueuedAt: null,
+        },
       });
       this.logger.error(`Failed to enqueue HF enrichment for trip ${tripId}: ${msg}`);
       return false;
@@ -251,6 +260,7 @@ export class TripEnrichmentOrchestratorService {
     }
 
     await this.markEnrichmentStarted(tripId);
+    await this.analysisCoordinator?.onAnalysisStarted(tripId);
 
     try {
       const outcome = await this.enrichmentService.enrichTrip(tripId);
@@ -259,7 +269,9 @@ export class TripEnrichmentOrchestratorService {
       if (outcome.status === 'COMPLETED') {
         const result = outcome.result;
         await this.markEnrichmentCompleted(tripId, finishedAt);
+        await this.analysisCoordinator?.markStage(tripId, 'behavior', 'done');
         await this.runRouteSafetyEnrichment(vehicleId, tripId);
+        this.scheduleMisuseCaseAggregation(tripId);
         await this.writePollLog(vehicleId, startedAt, finishedAt, DimoPollStatus.SUCCESS,
           `HF enrichment: ${result.totalEventsStored} events stored`);
         await this.enqueueDrivingImpact(tripId, vehicleId, orgId);
@@ -268,6 +280,7 @@ export class TripEnrichmentOrchestratorService {
       } else {
         const meta = SKIP_REASON_META[outcome.reason];
         await this.markEnrichmentSkipped(tripId, meta.code, finishedAt);
+        await this.analysisCoordinator?.onAnalysisSkipped(tripId, meta.code);
         await this.writePollLog(vehicleId, startedAt, finishedAt, DimoPollStatus.SUCCESS,
           `HF enrichment skipped — ${meta.label}`);
         this.logger.log(`Trip ${tripId} enrichment SKIPPED (${outcome.reason}: ${meta.label})`);
@@ -280,6 +293,9 @@ export class TripEnrichmentOrchestratorService {
       const failStatus = transient ? STATUS.FAILED_TRANSIENT : STATUS.FAILED_PERMANENT;
 
       await this.markEnrichmentFailed(tripId, errorMessage, transient, finishedAt);
+      if (!transient) {
+        await this.analysisCoordinator?.onAnalysisFailed(tripId, errorMessage, 'behavior');
+      }
       await this.writePollLog(vehicleId, startedAt, finishedAt, DimoPollStatus.FAILURE,
         `HF enrichment failed (${transient ? 'transient' : 'permanent'}): ${errorMessage}`);
 
@@ -301,14 +317,38 @@ export class TripEnrichmentOrchestratorService {
   }
 
   private async runRouteSafetyEnrichment(vehicleId: string, tripId: string): Promise<void> {
-    if (!this.tripsService) return;
+    if (!this.tripsService) {
+      await this.analysisCoordinator?.markStage(tripId, 'route', 'skipped');
+      return;
+    }
     try {
       await this.tripsService.enrichTrip(vehicleId, tripId);
+      await this.analysisCoordinator?.markStage(tripId, 'route', 'done');
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.tripMetrics?.enrichmentFailed.inc({ stage: 'route_safety' });
       this.logger.warn(`Route/speeding enrichment failed for trip ${tripId}: ${message}`);
+      await this.analysisCoordinator?.markStage(tripId, 'route', 'skipped');
     }
+  }
+
+  /**
+   * Misuse aggregation is part of the canonical post-trip analysis pipeline.
+   * Runs fire-and-forget but feeds tripAnalysisStatus via coordinator.
+   */
+  private scheduleMisuseCaseAggregation(tripId: string): void {
+    if (!this.misuseCaseAggregator) {
+      void this.analysisCoordinator?.markStage(tripId, 'misuse', 'skipped');
+      return;
+    }
+    void this.misuseCaseAggregator
+      .evaluateTrip(tripId)
+      .then(() => this.analysisCoordinator?.markStage(tripId, 'misuse', 'done'))
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.error(`Misuse case aggregation failed for trip ${tripId}: ${message}`);
+        void this.analysisCoordinator?.markStage(tripId, 'misuse', 'failed');
+      });
   }
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -321,7 +361,10 @@ export class TripEnrichmentOrchestratorService {
     organizationId: string | null,
   ): Promise<void> {
     const jobId = `driving-impact-${tripId}`;
-    if (!canEnqueueQueue(this.logger, 'driving-impact')) return;
+    if (!canEnqueueQueue(this.logger, 'driving-impact')) {
+      await this.analysisCoordinator?.markStage(tripId, 'drivingImpact', 'skipped');
+      return;
+    }
     try {
       await this.drivingImpactQueue.add(
         'driving-impact-compute',
@@ -334,18 +377,27 @@ export class TripEnrichmentOrchestratorService {
       // Duplicate jobId = already in queue, that is fine
       if (!msg.includes('already exists') && !msg.includes('duplicate')) {
         this.logger.warn(`Failed to enqueue driving impact for trip ${tripId}: ${msg}`);
+        await this.analysisCoordinator?.markStage(tripId, 'drivingImpact', 'skipped');
       }
     }
   }
 
   /**
-   * Mark driving impact computation as done (called from DrivingImpactProcessor).
+   * Mark driving impact computation stage (called from DrivingImpactProcessor).
+   * Brake-health recalculation stays outside this status — non-blocking follow-up.
    */
-  async markDrivingImpactComputed(tripId: string): Promise<void> {
-    await this.prisma.vehicleTrip.update({
-      where: { id: tripId },
-      data: { drivingImpactComputedAt: new Date() },
-    });
+  async markDrivingImpactComputed(tripId: string, skipped = false): Promise<void> {
+    if (!skipped) {
+      await this.prisma.vehicleTrip.update({
+        where: { id: tripId },
+        data: { drivingImpactComputedAt: new Date() },
+      });
+    }
+    await this.analysisCoordinator?.markStage(
+      tripId,
+      'drivingImpact',
+      skipped ? 'skipped' : 'done',
+    );
   }
 
   // ─────────────────────────────────────────────────────────────────────────

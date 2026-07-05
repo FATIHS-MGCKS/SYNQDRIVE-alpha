@@ -42,7 +42,10 @@ export function deriveTripMapQuality(
     hfAvailable: trip?.behaviorReady === true,
     hfLimited: hfStatus === 'SKIPPED_NO_HF_DATA' || trip?.detailsLimited === true,
     hfUnavailable: hfStatus === 'SKIPPED_NO_HF_DATA',
-    hfAnalyzing: behaviorLoading || hfStatus === 'PENDING' || hfStatus === 'IN_PROGRESS' || trip?.behaviorReady === false,
+    hfAnalyzing:
+      behaviorLoading ||
+      trip?.analysisInProgress === true ||
+      trip?.behaviorReady === false,
     gpsGap: Boolean(trip?.gapEnded),
     routeUpdatedAt: enrichment?.enrichedAt ?? trip?.enrichedAt ?? null,
     hasMatchedGeometry: hasMatched,

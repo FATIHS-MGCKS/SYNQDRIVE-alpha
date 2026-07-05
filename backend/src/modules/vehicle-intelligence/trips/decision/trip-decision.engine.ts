@@ -294,6 +294,7 @@ export class TripDecisionEngine {
         qualityStatus: 'VERIFIED',
         behaviorSummaryStatus: 'PENDING',
         drivingImpactStatus: 'PENDING',
+        tripAnalysisStatus: 'PENDING',
       },
     });
 
@@ -318,6 +319,7 @@ export class TripDecisionEngine {
         qualityStatus: 'LOW_DATA',
         behaviorSummaryStatus: 'SKIPPED',
         drivingImpactStatus: 'SKIPPED',
+        tripAnalysisStatus: 'SKIPPED',
       },
     });
 
@@ -522,6 +524,7 @@ export class TripDecisionEngine {
         qualityStatus: 'VERIFIED',
         behaviorSummaryStatus: 'PENDING',
         drivingImpactStatus: 'PENDING',
+        tripAnalysisStatus: 'PENDING',
       },
     });
 
