@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'ui-pattern-color-v2-finalization-v49195-2026-07-05',
+    version: '4.9.195',
+    title: 'V4.9.195 — UI-Pattern Farbwelt V2 Finalisierung',
+    summary: [
+      'Zentrale Pattern-Oberflächen auf Theme V2 Tokens ausgerichtet: Cards, Buttons, Badges, Tabs, Inputs, Dialog/Sheet/Popover.',
+      '`.sq-card`/`.sq-tab-bar`/`.sq-backdrop`/`.sq-overlay`/`.sq-3d-btn` — keine navy/blauen Active-Flächen in Tabs; neutraler Backdrop; Focus via `--ring`.',
+      'shadcn: Card shadow/border; Badge default→secondary/neutral + soft destructive; Tabs glass container; Input/Textarea `border-border`+`bg-input-background`; Dialog `sq-backdrop`+`sq-overlay`.',
+      'Patterns (`DataCard`, `AppDialog`, `DetailDrawer`) profitieren indirekt über `.sq-*` — keine Struktur-/Layout-Änderung.',
+    ],
+    reason: 'V2-Farbwelt soll in sichtbaren UI-Patterns wirken, nicht nur in theme.css Token-Werten.',
+    previousBehavior: 'Tab-Active nutzte brand-ink/blaue Ränder; Dialog-Overlay `bg-black/50`; Badge default `bg-primary`; Card ohne Shadow-Token; Input dark:bg-input/30.',
+    details: 'Nur Farb-/Token-Nutzung in `theme.css` Pattern-Section + `components/ui/*`. Keine Backend-, Layout-, Logik- oder Textänderung.',
+    affectsArchitecture: true,
+    module: 'Design System',
+    createdAt: '2026-07-05T03:00:00.000Z',
+  },
+  {
     id: 'hardcoded-colors-token-migration-v49194-2026-07-05',
     version: '4.9.194',
     title: 'V4.9.194 — Hardcoded Farben → Theme-Tokens (V2 Migration)',

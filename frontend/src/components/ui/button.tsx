@@ -26,7 +26,7 @@ const buttonVariants = cva(
         ai:
           "sq-3d-btn sq-3d-btn--ai",
         ghost:
-          "rounded-[10px] text-muted-foreground transition-[background-color,color,box-shadow,transform] duration-200 ease-out hover:bg-muted hover:text-foreground active:translate-y-px focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+          "rounded-[10px] text-muted-foreground transition-[background-color,color,box-shadow,transform] duration-200 ease-out hover:bg-muted/80 hover:text-foreground active:translate-y-px focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
         link: "text-[color:var(--brand)] underline-offset-4 transition-colors hover:underline focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring",
       },
       size: {

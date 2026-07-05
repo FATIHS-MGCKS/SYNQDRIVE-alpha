@@ -502,12 +502,14 @@
    SynqDrive Surface System — Soft Premium Direction
    ═══════════════════════════════════════════════════════ */
 
-/* ── Solid card — primary surface ── */
+/* ── Solid card — primary surface (V4.9.195: soft glass / graphite) ── */
 .sq-card {
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: calc(var(--radius) + 2px);
-  box-shadow: var(--shadow-xs);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--card) 88%, white 12%),
+    var(--shadow-xs);
 }
 
 /* ── Elevated card — hover lifts gently, no jitter ── */
@@ -515,16 +517,20 @@
   background: var(--card);
   border: 1px solid var(--border);
   border-radius: calc(var(--radius) + 2px);
-  box-shadow: var(--shadow-sm);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--card) 88%, white 12%),
+    var(--shadow-sm);
   transition:
     box-shadow var(--dur-base) var(--ease-out-soft),
     transform var(--dur-base) var(--ease-out-soft),
     border-color var(--dur-base) var(--ease-out-soft);
 }
 .sq-card-elevated:hover {
-  box-shadow: var(--shadow-hover);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--card) 90%, white 10%),
+    var(--shadow-hover);
   transform: translateY(-1px);
-  border-color: color-mix(in srgb, var(--border) 60%, var(--brand) 40%);
+  border-color: color-mix(in srgb, var(--border) 72%, var(--foreground) 28%);
 }
 
 /* ── Glass surface — LIQUID edge refraction (top highlight + bottom catch) ── */
@@ -574,7 +580,7 @@
   border: 1px solid var(--map-glass-border);
   background:
     radial-gradient(circle at 12% 0%, rgba(255, 255, 255, 0.78), transparent 38%),
-    radial-gradient(circle at 88% 100%, rgba(61, 90, 115, 0.12), transparent 42%),
+    radial-gradient(circle at 88% 100%, color-mix(in srgb, var(--foreground) 8%, transparent), transparent 42%),
     linear-gradient(145deg, var(--map-glass-bg-strong), var(--map-glass-bg));
   box-shadow:
     inset 0 1px 0 var(--map-glass-highlight),
@@ -626,7 +632,7 @@
   background: color-mix(in srgb, var(--card) 58%, var(--muted) 42%);
 }
 .sq-map-glass-control-btn:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--brand) 65%, transparent);
+  outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
 .sq-map-glass-control-btn:disabled {
@@ -1269,22 +1275,22 @@
 
 /* ── Overlay surface — modals, drawers, command palette ── */
 .sq-overlay {
-  background: var(--card);
+  background: var(--popover);
   border: 1px solid var(--border);
   border-radius: calc(var(--radius) + 4px);
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--card) 85%, white 15%),
+    inset 0 1px 0 color-mix(in srgb, var(--popover) 88%, white 12%),
     var(--shadow-overlay);
 }
 
-/* ── Overlay backdrop ── */
+/* ── Overlay backdrop — neutral graphite tint (no navy) ── */
 .sq-backdrop {
-  background: rgba(16, 24, 40, 0.35);
+  background: color-mix(in srgb, var(--foreground) 28%, transparent);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
 }
 .dark .sq-backdrop {
-  background: rgba(0, 0, 0, 0.55);
+  background: rgba(0, 0, 0, 0.58);
 }
 
 /* ── Inset surface ── */
@@ -1294,12 +1300,11 @@
   border-radius: var(--radius);
 }
 
-/* ── Tab bar (segmented control) — 13/600 per V4.6.88 typography ──
-   Inactive tabs sit quiet; active tab picks up a faint brand ink tone
-   so tabs + segmented controls feel more branded without shouting. */
+/* ── Tab bar (segmented control) — soft glass / graphite (V4.9.195) ──
+   Active tab is neutral foreground — brand blue reserved for primary nav only. */
 .sq-tab-bar {
-  background: color-mix(in srgb, var(--muted) 92%, var(--brand-soft) 8%);
-  border: 1px solid color-mix(in srgb, var(--border) 92%, var(--brand) 8%);
+  background: color-mix(in srgb, var(--muted) 94%, var(--card) 6%);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 3px;
   display: inline-flex;
@@ -1316,16 +1321,16 @@
 }
 .sq-tab-bar button:hover {
   color: var(--foreground);
-  background: color-mix(in srgb, var(--accent) 70%, transparent 30%);
+  background: color-mix(in srgb, var(--accent) 65%, transparent 35%);
 }
 .sq-tab-bar button[data-active="true"],
 .sq-tab-bar button.active {
   background: var(--card);
-  color: var(--brand-ink);
+  color: var(--foreground);
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--card) 85%, white 15%),
-    0 1px 2px rgba(15, 23, 42, 0.08),
-    0 0 0 1px color-mix(in srgb, var(--brand) 14%, transparent);
+    inset 0 1px 0 color-mix(in srgb, var(--card) 88%, white 12%),
+    var(--shadow-xs);
+  border: 1px solid color-mix(in srgb, var(--border) 88%, var(--foreground) 12%);
 }
 
 /* ── Section label (replaces extrabold+uppercase+widest pattern) ── */
@@ -1407,9 +1412,9 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--card) 85%, white 15%),
-    0 1px 2px rgba(16, 24, 40, 0.06),
-    0 2px 4px rgba(16, 24, 40, 0.04);
+    inset 0 1px 0 color-mix(in srgb, var(--card) 88%, white 12%),
+    var(--shadow-xs),
+    0 2px 4px color-mix(in srgb, var(--foreground) 4%, transparent);
   transition:
     transform var(--dur-fast) var(--ease-out-soft),
     box-shadow var(--dur-fast) var(--ease-out-soft),
@@ -1418,14 +1423,14 @@
 .sq-neo-press:hover {
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--card), var(--brand-soft) 30%) 0%,
+    color-mix(in srgb, var(--card), var(--accent) 35%) 0%,
     var(--card) 100%
   );
 }
 .sq-neo-press:active {
   transform: translateY(1px);
   box-shadow:
-    inset 0 2px 4px rgba(16, 24, 40, 0.06),
+    inset 0 2px 4px color-mix(in srgb, var(--foreground) 6%, transparent),
     0 0 0 rgba(0, 0, 0, 0);
 }
 
@@ -1470,10 +1475,9 @@
 .sq-3d-btn:focus-visible {
   outline: none;
   box-shadow:
-    0 0 0 3px var(--brand-soft),
-    0 0 0 1px color-mix(in srgb, var(--brand) 38%, transparent),
-    0 4px 10px color-mix(in srgb, var(--brand) 18%, transparent),
-    inset 0 1px 1px color-mix(in srgb, white 25%, transparent);
+    0 0 0 3px color-mix(in srgb, var(--ring) 55%, transparent),
+    0 0 0 1px var(--ring),
+    inset 0 1px 1px color-mix(in srgb, white 20%, transparent);
 }
 
 .sq-3d-btn:disabled,
@@ -1584,9 +1588,9 @@
   color: var(--foreground);
 }
 .sq-3d-btn--neutral.active {
-  background: linear-gradient(180deg, var(--card) 0%, color-mix(in srgb, var(--card) 90%, var(--brand-soft)) 100%);
-  color: var(--brand);
-  border-color: color-mix(in srgb, var(--brand) 30%, transparent);
+  background: linear-gradient(180deg, var(--card) 0%, color-mix(in srgb, var(--card) 90%, var(--accent)) 100%);
+  color: var(--foreground);
+  border-color: var(--border);
 }
 .sq-3d-btn--neutral .icon-wrapper {
   background: var(--muted);
@@ -1812,6 +1816,14 @@
 .dark .sq-card,
 .dark .sq-card-elevated {
   box-shadow: var(--shadow-xs);
+  /* Neutral charcoal inset — no blue glow */
+  background: var(--card);
+}
+
+.dark .sq-card {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    var(--shadow-xs);
 }
 
 .dark .sq-card-elevated:hover {

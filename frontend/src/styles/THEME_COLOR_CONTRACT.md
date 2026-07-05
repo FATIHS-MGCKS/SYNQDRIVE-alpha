@@ -258,9 +258,9 @@ Defined in `@theme inline` inside `theme.css`:
 | `--status-*` | `bg-status-warning`, `text-status-positive`, etc. |
 | `--sidebar-*` | `bg-sidebar`, `text-sidebar-foreground`, … |
 
-**shadcn/ui** components under `frontend/src/components/ui/**` consume these utilities (`bg-card`, `text-muted-foreground`, `ring-ring`). Buttons delegate to `.sq-3d-btn` surface classes defined in `theme.css`.
+**shadcn/ui** components under `frontend/src/components/ui/**` consume these utilities (`bg-card`, `text-muted-foreground`, `ring-ring`). Buttons delegate to `.sq-3d-btn` surface classes defined in `theme.css`. **V4.9.195**: Card uses `border-border` + `--shadow-xs`; Badge default/neutral → `secondary`/`muted` (not `bg-primary`); Tabs list glass container + neutral active; Input/Textarea unified on `bg-input-background` + `border-border`; Dialog uses `sq-backdrop` + `sq-overlay` + `bg-popover`.
 
-**Patterns** (`frontend/src/components/patterns/**`) use tokens exclusively — no hardcoded `bg-blue-*` / `bg-slate-*` found.
+**Patterns** (`frontend/src/components/patterns/**`) use tokens exclusively — no hardcoded `bg-blue-*` / `bg-slate-*` found. `DataCard` → `.sq-card`/`.sq-card-elevated`; `AppDialog` → `sq-backdrop` + `sq-overlay`; `DetailDrawer` → `bg-card` + token borders.
 
 ---
 
@@ -268,13 +268,13 @@ Defined in `@theme inline` inside `theme.css`:
 
 | Class | Purpose |
 |-------|---------|
-| `.sq-card`, `.sq-card-elevated` | Solid matte cards |
+| `.sq-card`, `.sq-card-elevated` | Glass inset highlight (light), charcoal matte (dark), neutral shadows |
 | `.sq-glass`, `.glass-card`, `.glass-panel` | Frosted glass |
 | `.sq-map-liquid-*` | Map HUD overlays |
-| `.sq-overlay`, `.sq-backdrop` | Modals / drawers |
+| `.sq-overlay`, `.sq-backdrop` | Modals / drawers — popover surface + neutral graphite backdrop |
 | `.sq-chip-*`, `.sq-tone-*`, `.sq-dot-*` | Status semantics |
-| `.sq-tab-bar`, `.sq-nav-rail` | Navigation chrome |
-| `.sq-3d-btn--*` | Tactile buttons |
+| `.sq-tab-bar`, `.sq-nav-rail` | Segmented tabs: neutral active (brand reserved for primary nav) |
+| `.sq-3d-btn--*` | Tactile buttons — primary brand in light, neutral primary in dark; focus via `--ring` |
 
 Dark overrides live under `.dark .sq-*` (Dark Theme V2 section).
 
