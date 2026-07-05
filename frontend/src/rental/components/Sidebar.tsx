@@ -13,6 +13,10 @@ import {
 } from '../../components/shell';
 import synqdriveLogo from '../../assets/synqdrive-logo-new.png';
 
+function SynqLogo({ className }: { className?: string }) {
+  return <img src={synqdriveLogo} alt="SYNQDRIVE" className={className ?? ''} />;
+}
+
 type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization' | 'legal-documents' | 'rental-rules';
 
 interface SidebarProps {
@@ -47,10 +51,6 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
   const currentSection = sectionForView(currentView);
   const [expandedSections, setExpandedSections] = useState<string[]>(() => currentSection ? [currentSection] : ['finance']);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const SynqLogo = ({ className }: { className?: string }) => (
-    <img src={synqdriveLogo} alt="SYNQDRIVE" className={className ?? ''} />
-  );
 
   // Close mobile menu on view change
   const handleViewChange = (view: any) => {
