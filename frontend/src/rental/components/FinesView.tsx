@@ -39,13 +39,13 @@ interface Stats {
 }
 
 const STATUS_MAP: Record<string, { label: string; bg: string; text: string; dot: string }> = {
-  NEW: { label: 'Neu', bg: 'bg-blue-500/15', text: 'text-blue-500', dot: 'bg-blue-500' },
+  NEW: { label: 'Neu', bg: 'bg-status-info-soft', text: 'text-status-info', dot: 'bg-status-info' },
   UNDER_REVIEW: { label: 'In Prüfung', bg: 'bg-amber-500/15', text: 'text-amber-500', dot: 'bg-amber-500' },
   MATCHED: { label: 'Zugeordnet', bg: 'bg-emerald-500/15', text: 'text-emerald-500', dot: 'bg-emerald-500' },
   FORWARDED: { label: 'Weitergeleitet', bg: 'bg-purple-500/15', text: 'text-purple-500', dot: 'bg-purple-500' },
   PENDING_RESPONSE: { label: 'Warte auf Antwort', bg: 'bg-orange-500/15', text: 'text-orange-500', dot: 'bg-orange-500' },
   RESOLVED: { label: 'Gelöst', bg: 'bg-green-500/15', text: 'text-green-600', dot: 'bg-green-600' },
-  CLOSED: { label: 'Geschlossen', bg: 'bg-gray-500/15', text: 'text-gray-400', dot: 'bg-gray-400' },
+  CLOSED: { label: 'Geschlossen', bg: 'bg-status-nodata-soft', text: 'text-muted-foreground', dot: 'bg-gray-400' },
 };
 
 const OFFENSE_TYPES = [
@@ -78,7 +78,7 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
   const tp = isDarkMode ? 'text-white' : 'text-gray-900';
   const ts = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
   const card = `rounded-xl shadow-sm border ${isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'}`;
-  const inputCls = `w-full px-4 py-3 rounded-xl border text-xs ${isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'} outline-none`;
+  const inputCls = `w-full px-4 py-3 rounded-xl border text-xs ${isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground' : 'bg-card border-border text-foreground placeholder:text-muted-foreground'} outline-none`;
 
   const load = useCallback(async () => {
     if (!orgId) return;
@@ -289,7 +289,7 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative min-w-[240px] flex-1">
-            <Icon name="search" className={`absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`} />
+            <Icon name="search" className={`absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
             <input
               type="text"
               placeholder="Bußgeld, Nummer, Ort oder Verstoß suchen..."
@@ -297,8 +297,8 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
               onChange={e => setSearchTerm(e.target.value)}
               className={`w-full rounded-lg border py-2.5 pl-10 pr-4 text-xs outline-none transition-all ${
                 isDarkMode
-                  ? 'bg-neutral-800 border-neutral-700 text-gray-200 placeholder-gray-500 focus:border-blue-500/50'
-                  : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-300'
+                  ? 'bg-card border-border text-foreground placeholder:text-muted-foreground focus:border-brand/50'
+                  : 'bg-card border-border text-foreground placeholder:text-muted-foreground focus:border-brand'
               }`}
             />
           </div>
@@ -310,10 +310,10 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
               className={`flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-xs font-medium transition-all ${
                 statusFilter !== 'all'
                   ? isDarkMode
-                    ? 'bg-blue-900/30 border-blue-700/50 text-blue-400'
-                    : 'bg-blue-50 border-blue-200 text-blue-700'
+                    ? 'bg-status-info-soft border-status-info/30 text-status-info'
+                    : 'bg-status-info-soft border-status-info/25 text-status-info'
                   : isDarkMode
-                    ? 'bg-neutral-800 border-neutral-700 text-gray-300 hover:bg-neutral-800'
+                    ? 'bg-card border-neutral-700 text-gray-300 hover:bg-card'
                     : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
               }`}
             >
@@ -334,7 +334,7 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
                     }}
                     className={`flex w-full items-center justify-between gap-3 px-3 py-2.5 text-left text-xs font-medium transition-colors ${
                       status === statusFilter
-                        ? isDarkMode ? 'bg-brand-soft text-brand' : 'bg-blue-50 text-blue-600'
+                        ? isDarkMode ? 'bg-brand-soft text-brand' : 'bg-status-info-soft text-status-info'
                         : isDarkMode ? 'text-foreground/85 hover:bg-muted' : 'text-gray-700 hover:bg-gray-50'
                     }`}
                   >
@@ -813,7 +813,7 @@ function FineDetail({ isDarkMode, fine, orgId, onBack, onUpdate, card, tp, ts, i
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              {fine.fineNumber && <span className={`text-xs font-bold ${isDarkMode ? 'text-brand' : 'text-blue-600'}`}>#{fine.fineNumber}</span>}
+              {fine.fineNumber && <span className={`text-xs font-bold ${isDarkMode ? 'text-brand' : 'text-brand'}`}>#{fine.fineNumber}</span>}
               <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${st.bg} ${st.text}`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} /> {st.label}
               </span>
@@ -895,7 +895,7 @@ function FineDetail({ isDarkMode, fine, orgId, onBack, onUpdate, card, tp, ts, i
         <div className="flex items-center justify-between mb-3">
           <h3 className={`text-xs font-bold ${tp} uppercase tracking-wider`}>Interne Notizen</h3>
           {!editingNotes && (
-            <button onClick={() => setEditingNotes(true)} className={`text-[11px] font-medium ${isDarkMode ? 'text-brand' : 'text-blue-600'}`}>Bearbeiten</button>
+            <button onClick={() => setEditingNotes(true)} className={`text-[11px] font-medium ${isDarkMode ? 'text-brand' : 'text-brand'}`}>Bearbeiten</button>
           )}
         </div>
         {editingNotes ? (

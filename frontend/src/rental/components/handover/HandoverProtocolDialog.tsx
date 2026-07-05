@@ -250,14 +250,14 @@ export function HandoverProtocolDialog({
 
   const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
   const textMuted = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
-  const textTertiary = isDarkMode ? 'text-muted-foreground' : 'text-gray-400';
+  const textTertiary = isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground';
   const bg = isDarkMode ? 'bg-card' : 'bg-white';
   const borderColor = isDarkMode ? 'border-border' : 'border-gray-200';
   const cardBg = isDarkMode ? 'bg-muted/50' : 'bg-gray-50/60';
   const inputCls = `w-full px-3 py-2 rounded-lg border text-sm ${
     isDarkMode
       ? 'bg-neutral-900 border-neutral-700 text-gray-100 placeholder-gray-500'
-      : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400'
+      : 'bg-card border-border text-foreground placeholder:text-muted-foreground'
   } focus:outline-none focus:ring-2 focus:ring-blue-500/40`;
 
   const canSubmit = useMemo(() => {
@@ -420,8 +420,8 @@ export function HandoverProtocolDialog({
                 className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                   kind === 'PICKUP'
                     ? isDarkMode
-                      ? 'bg-blue-500/20'
-                      : 'bg-blue-50'
+                      ? 'bg-brand-soft'
+                      : 'bg-brand-soft'
                     : isDarkMode
                     ? 'bg-emerald-500/20'
                     : 'bg-emerald-50'
@@ -431,8 +431,8 @@ export function HandoverProtocolDialog({
                   className={`w-5 h-5 ${
                     kind === 'PICKUP'
                       ? isDarkMode
-                        ? 'text-blue-400'
-                        : 'text-blue-600'
+                        ? 'text-status-info'
+                        : 'text-brand'
                       : isDarkMode
                       ? 'text-emerald-400'
                       : 'text-emerald-600'
@@ -451,7 +451,7 @@ export function HandoverProtocolDialog({
               onClick={onClose}
               className={`p-1.5 rounded-lg transition-colors ${
                 isDarkMode
-                  ? 'text-gray-500 hover:text-gray-300 hover:bg-neutral-800'
+                  ? 'text-gray-500 hover:text-gray-300 hover:bg-card'
                   : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
               }`}
             >
@@ -596,7 +596,7 @@ export function HandoverProtocolDialog({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className={`rounded-xl border p-4 ${borderColor} ${cardBg}`}>
               <div className="flex items-center gap-2 mb-2">
-                <Icon name="gauge" className={`w-4 h-4 ${isDarkMode ? 'text-blue-400' : 'text-blue-500'}`} />
+                <Icon name="gauge" className={`w-4 h-4 ${isDarkMode ? 'text-status-info' : 'text-status-info'}`} />
                 <label className={`text-xs font-semibold ${textPrimary}`}>Kilometerstand *</label>
               </div>
               <div className="flex items-center gap-2">
@@ -795,7 +795,7 @@ export function HandoverProtocolDialog({
                             ? 'bg-orange-500/10 border-orange-500/40'
                             : 'bg-orange-50 border-orange-200'
                           : isDarkMode
-                          ? 'border-neutral-700 hover:bg-neutral-800/60'
+                          ? 'border-neutral-700 hover:bg-card/60'
                           : 'border-gray-200 hover:bg-gray-50'
                       }`}
                     >
@@ -843,7 +843,7 @@ export function HandoverProtocolDialog({
           {/* Staff */}
           <div className={`rounded-xl border p-4 ${borderColor} ${cardBg}`}>
             <div className="flex items-center gap-2 mb-3">
-              <Icon name="user" className={`w-4 h-4 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-500'}`} />
+              <Icon name="user" className={`w-4 h-4 ${isDarkMode ? 'text-status-info' : 'text-status-info'}`} />
               <h3 className={`text-xs font-semibold ${textPrimary}`}>Übergabe durch *</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -960,7 +960,7 @@ export function HandoverProtocolDialog({
               disabled={submitting}
               className={`text-xs font-semibold px-4 py-2 rounded-lg ${
                 isDarkMode
-                  ? 'text-gray-300 hover:bg-neutral-800'
+                  ? 'text-gray-300 hover:bg-card'
                   : 'text-gray-600 hover:bg-gray-100'
               }`}
             >
@@ -973,10 +973,10 @@ export function HandoverProtocolDialog({
               className={`inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-lg text-white shadow-sm transition-all ${
                 !canSubmit || submitting
                   ? primaryColor === 'blue'
-                    ? 'bg-blue-300 cursor-not-allowed'
+                    ? 'bg-brand/40 cursor-not-allowed'
                     : 'bg-emerald-300 cursor-not-allowed'
                   : primaryColor === 'blue'
-                  ? 'bg-blue-600 hover:bg-blue-700'
+                  ? 'bg-brand hover:bg-brand-hover text-brand-foreground'
                   : 'bg-emerald-600 hover:bg-emerald-700'
               }`}
             >

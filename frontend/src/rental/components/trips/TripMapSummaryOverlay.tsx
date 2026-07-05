@@ -65,7 +65,7 @@ export function TripMapSummaryOverlay({ trip, isDark }: TripMapSummaryOverlayPro
             stressScore={stressScore}
             stressLevel={trip.stressLevel ?? null}
           />
-          <span className={`text-[9px] font-semibold uppercase tracking-wider ${isDark ? 'text-muted-foreground' : 'text-slate-500'}`}>
+          <span className={`text-[9px] font-semibold uppercase tracking-wider ${isDark ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
             {tripStressStatusLabel(trip)}
           </span>
           {trip.tripStatus === 'ONGOING' && (

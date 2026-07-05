@@ -125,7 +125,7 @@ export function NewTaskModal({ isOpen, onClose, isDarkMode }: NewTaskModalProps)
 
   const inputClass = `w-full px-3 py-2.5 rounded-xl border transition-all text-xs outline-none focus:ring-2 focus:ring-[color:var(--brand)]/30 ${
     isDarkMode
-      ? 'bg-neutral-800 border-neutral-700 text-white placeholder-gray-500'
+      ? 'bg-card border-neutral-700 text-white placeholder-gray-500'
       : 'bg-[color:var(--input-background)] border-border text-foreground'
   }`;
   const labelClass = 'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';

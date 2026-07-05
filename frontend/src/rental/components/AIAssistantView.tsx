@@ -214,7 +214,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
               <thead>
                 <tr className={isDarkMode ? 'border-b border-neutral-700' : 'border-b border-gray-200'}>
                   {tableHeaders.map((h, i) => (
-                    <th key={i} className={`px-3 py-2 text-left text-[11px] font-semibold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{h.trim()}</th>
+                    <th key={i} className={`px-3 py-2 text-left text-[11px] font-semibold ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{h.trim()}</th>
                   ))}
                 </tr>
               </thead>
@@ -264,7 +264,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
         const content = processed.replace(/^\d+\.\s/, '');
         elements.push(
           <div key={`li-${i}`} className="flex gap-2 ml-1 mb-1">
-            <span className={`text-xs shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{processed.match(/^\d+/)?.[0]}.</span>
+            <span className={`text-xs shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{processed.match(/^\d+/)?.[0]}.</span>
             <span className="text-[10px]" dangerouslySetInnerHTML={{ __html: content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
           </div>
         );
@@ -315,18 +315,18 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
 
         {/* Agent status */}
         <div className="px-3 pb-3">
-          <div className={`rounded-lg p-3 ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-50/80'}`}>
+          <div className={`rounded-lg p-3 ${isDarkMode ? 'bg-card' : 'bg-gray-50/80'}`}>
             <div className="flex items-center gap-2 mb-2">
               <div className={`w-2 h-2 rounded-full ${agentReady ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse`} />
               <span className={`text-[11px] font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
                 {agentReady ? 'DIMO Agent Connected' : 'Agent Initializing...'}
               </span>
             </div>
-            <p className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+            <p className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
               Powered by DIMO Vehicle Intelligence
             </p>
             {messageCount > 0 && (
-              <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+              <p className={`text-[10px] mt-1 ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
                 {messageCount} message{messageCount !== 1 ? 's' : ''} in this session
               </p>
             )}
@@ -335,22 +335,22 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
 
         {/* Capabilities */}
         <div className="flex-1 overflow-y-auto px-3 pb-3" style={{ scrollbarWidth: 'thin', scrollbarColor: isDarkMode ? 'rgba(100,100,100,0.3) transparent' : 'rgba(200,200,200,0.5) transparent' }}>
-          <div className={`text-xs font-semibold uppercase tracking-wider px-2 py-1.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>
+          <div className={`text-xs font-semibold uppercase tracking-wider px-2 py-1.5 ${isDarkMode ? 'text-gray-600' : 'text-muted-foreground'}`}>
             Capabilities
           </div>
           {capabilities.map(cap => {
             const Icon = cap.icon;
             return (
-              <div key={cap.key} className={`flex items-center gap-2 px-2 py-2 rounded-lg mb-0.5 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <div key={cap.key} className={`flex items-center gap-2 px-2 py-2 rounded-lg mb-0.5 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
                 <Icon className={`w-3.5 h-3.5 shrink-0 ${isDarkMode ? 'text-purple-500/60' : 'text-purple-400/60'}`} />
                 <span className="text-[11px] font-medium">{t(cap.key as any)}</span>
               </div>
             );
           })}
 
-          <div className={`mt-4 rounded-lg p-3 ${isDarkMode ? 'bg-neutral-800/40' : 'bg-gray-50/60'}`}>
-            <p className={`text-[10px] font-semibold mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>About this assistant</p>
-            <p className={`text-[10px] leading-relaxed ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+          <div className={`mt-4 rounded-lg p-3 ${isDarkMode ? 'bg-card/40' : 'bg-gray-50/60'}`}>
+            <p className={`text-[10px] font-semibold mb-1 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>About this assistant</p>
+            <p className={`text-[10px] leading-relaxed ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
               This AI assistant uses the DIMO Agents API to analyze your fleet data, vehicle telemetry, and operational metrics in real-time.
             </p>
           </div>
@@ -366,13 +366,13 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
           </div>
           <div className="flex-1">
             <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('aiChat.title')}</h2>
-            <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('aiChat.subtitle')}</p>
+            <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t('aiChat.subtitle')}</p>
           </div>
           {messages.length > 0 && (
             <button
               onClick={handleNewChat}
               title="Clear conversation"
-              className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}
+              className={`p-2 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-card text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}
             >
               <Icon name="trash-2" className="w-4 h-4" />
             </button>
@@ -402,14 +402,14 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                   <Icon name="sparkles" className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
                 </div>
                 <h2 className={`text-lg font-bold tracking-tight mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('aiChat.title')}</h2>
-                <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{t('aiChat.welcomeDesc')}</p>
+                <p className={`text-xs ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{t('aiChat.welcomeDesc')}</p>
               </div>
 
               <div className="grid grid-cols-3 gap-3 mb-3">
                 {capabilities.map(cap => {
                   const Icon = cap.icon;
                   return (
-                    <div key={cap.key} className={`flex items-center gap-2.5 px-3.5 py-3 rounded-lg ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-50/80'}`}>
+                    <div key={cap.key} className={`flex items-center gap-2.5 px-3.5 py-3 rounded-lg ${isDarkMode ? 'bg-card' : 'bg-gray-50/80'}`}>
                       <Icon className={`w-5 h-5 shrink-0 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
                       <span className={`text-[11px] font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{t(cap.key as any)}</span>
                     </div>
@@ -418,7 +418,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
               </div>
 
               <div>
-                <p className={`text-xs font-semibold uppercase tracking-wider mb-3 text-center ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                <p className={`text-xs font-semibold uppercase tracking-wider mb-3 text-center ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
                   Try asking...
                 </p>
                 <div className="grid grid-cols-2 gap-2.5">
@@ -430,7 +430,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                         onClick={() => handleSend(t(s.key as any))}
                         className={`flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all group ${
                           isDarkMode
-                            ? 'bg-neutral-800/40 hover:bg-neutral-800 border border-neutral-800 hover:border-neutral-700'
+                            ? 'bg-card/40 hover:bg-card border border-neutral-800 hover:border-neutral-700'
                             : 'bg-white hover:bg-gray-50 border border-gray-200/60 hover:border-gray-300'
                         }`}
                       >
@@ -438,7 +438,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                           <Icon className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
                         </div>
                         <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{t(s.key as any)}</span>
-                        <Icon name="chevron-right" className={`w-3.5 h-3.5 ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                        <Icon name="chevron-right" className={`w-3.5 h-3.5 ml-auto shrink-0 opacity-0 group-hover:opacity-100 transition-opacity ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`} />
                       </button>
                     );
                   })}
@@ -462,7 +462,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                           ? 'bg-purple-600/20 border border-purple-500/20'
                           : 'bg-purple-50 border border-purple-200/40'
                         : isDarkMode
-                          ? 'bg-neutral-800'
+                          ? 'bg-card'
                           : 'bg-gray-50/80'
                     }`}>
                       {msg.role === 'user' ? (
@@ -477,19 +477,19 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                       <div className="flex items-center gap-1 mt-1.5 ml-1">
                         <button
                           onClick={() => handleCopy(msg.id, msg.content)}
-                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}
+                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-card text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}
                         >
                           {copiedId === msg.id ? <Icon name="check" className="w-3 h-3 text-green-500" /> : <Icon name="copy" className="w-3 h-3" />}
                         </button>
-                        <button className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}>
+                        <button className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-card text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}>
                           <Icon name="thumbs-up" className="w-3 h-3" />
                         </button>
-                        <button className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}>
+                        <button className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-card text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}>
                           <Icon name="thumbs-down" className="w-3 h-3" />
                         </button>
                         <button
                           onClick={() => handleRetry(msg.id)}
-                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800 text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}
+                          className={`p-1.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-card text-gray-500' : 'hover:bg-gray-100 text-gray-400'}`}
                         >
                           <Icon name="rotate-ccw" className="w-3 h-3" />
                         </button>
@@ -497,8 +497,8 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                     )}
                   </div>
                   {msg.role === 'user' && (
-                    <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${isDarkMode ? 'bg-status-ai-soft' : 'bg-indigo-100/80'}`}>
-                      <Icon name="user" className={`w-5 h-5 ${isDarkMode ? 'text-status-ai' : 'text-indigo-600'}`} />
+                    <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${isDarkMode ? 'bg-status-ai-soft' : 'bg-status-info-soft/80'}`}>
+                      <Icon name="user" className={`w-5 h-5 ${isDarkMode ? 'text-status-ai' : 'text-status-info'}`} />
                     </div>
                   )}
                 </div>
@@ -509,10 +509,10 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                   <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-purple-500/15' : 'bg-purple-100/80'}`}>
                     <Icon name="sparkles" className={`w-5 h-5 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`} />
                   </div>
-                  <div className={`rounded-lg px-3 py-2 ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-50/80'}`}>
+                  <div className={`rounded-lg px-3 py-2 ${isDarkMode ? 'bg-card' : 'bg-gray-50/80'}`}>
                     <div className="flex items-center gap-2">
                       <Icon name="loader-2" className={`w-3.5 h-3.5 animate-spin ${isDarkMode ? 'text-purple-400' : 'text-purple-500'}`} />
-                      <span className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{thinkingLabel || t('aiChat.thinking')}</span>
+                      <span className={`text-xs ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{thinkingLabel || t('aiChat.thinking')}</span>
                     </div>
                   </div>
                 </div>
@@ -528,7 +528,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
           <div className="max-w-3xl mx-auto">
             <div className={`flex items-end gap-3 rounded-lg px-3 py-2 ${
               isDarkMode
-                ? 'bg-neutral-800 border border-neutral-700 focus-within:border-purple-500/40'
+                ? 'bg-card border border-neutral-700 focus-within:border-purple-500/40'
                 : 'bg-gray-50/80 border border-gray-200 focus-within:border-purple-300'
             } transition-colors`}>
               <textarea
@@ -560,7 +560,7 @@ export function AIAssistantView({ isDarkMode }: AIAssistantViewProps) {
                 <Icon name="send" className="w-3.5 h-3.5" />
               </button>
             </div>
-            <p className={`text-xs text-center mt-2 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>
+            <p className={`text-xs text-center mt-2 ${isDarkMode ? 'text-gray-600' : 'text-muted-foreground'}`}>
               SYNQDRIVE AI · Powered by DIMO Agents · Verify important fleet data
             </p>
           </div>

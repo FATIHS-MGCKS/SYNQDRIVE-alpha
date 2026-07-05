@@ -308,7 +308,7 @@ function ProvidersTab() {
                         className={`p-1.5 rounded-lg transition-colors hover:bg-muted`}
                       >
                         {testingId === p.id
-                          ? <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />
+                          ? <Loader2 className="w-4 h-4 animate-spin text-status-info" />
                           : <TestTube className={`w-4 h-4 text-muted-foreground`} />}
                       </button>
                     </div>

@@ -50,7 +50,7 @@ const SECTIONS: { id: Section; label: string; icon: React.ElementType; status: '
 function BatterySection({ d }: { d: boolean }) {
   const mono = `text-[11px] font-mono ${d ? 'text-violet-400' : 'text-violet-600'}`;
   const code = (s: string) => (
-    <code className={`px-1 py-0.5 rounded ${d ? 'bg-neutral-800' : 'bg-gray-100'} ${mono}`}>
+    <code className={`px-1 py-0.5 rounded ${d ? 'bg-card' : 'bg-gray-100'} ${mono}`}>
       {s}
     </code>
   );
@@ -58,9 +58,9 @@ function BatterySection({ d }: { d: boolean }) {
   const body = `text-xs leading-relaxed ${d ? 'text-neutral-400' : 'text-gray-500'}`;
 
   const FlowStep = ({ label, sub }: { label: string; sub: string }) => (
-    <div className={`flex-1 min-w-0 rounded-xl p-3 text-center ${d ? 'bg-neutral-800' : 'bg-gray-50'}`}>
+    <div className={`flex-1 min-w-0 rounded-xl p-3 text-center ${d ? 'bg-card' : 'bg-gray-50'}`}>
       <div className={`text-[11px] font-semibold ${d ? 'text-neutral-200' : 'text-gray-700'}`}>{label}</div>
-      <div className={`text-[10px] mt-0.5 ${d ? 'text-neutral-500' : 'text-gray-400'}`}>{sub}</div>
+      <div className={`text-[10px] mt-0.5 ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>{sub}</div>
     </div>
   );
 
@@ -134,7 +134,7 @@ function BatterySection({ d }: { d: boolean }) {
           </li>
           <li>After any capture, re-score SOC / SOH / confidence / badge and write a {code('BatteryHealthSnapshot')} record.</li>
         </ol>
-        <div className={`mt-3 p-3 rounded-xl text-[11px] ${d ? 'bg-neutral-800 text-neutral-400' : 'bg-amber-50 text-amber-700'}`}>
+        <div className={`mt-3 p-3 rounded-xl text-[11px] ${d ? 'bg-card text-neutral-400' : 'bg-amber-50 text-amber-700'}`}>
           <AlertTriangle size={12} className="inline mr-1" />
           Voltage plausibility guard: only values between 9.0 V and 16.0 V are accepted. Implausible readings are silently ignored.
         </div>
@@ -179,9 +179,9 @@ function BatterySection({ d }: { d: boolean }) {
         <div className={`mt-3 grid grid-cols-6 gap-1 text-center`}>
           {[['12.73+', '100%'], ['12.62', '90%'], ['12.50', '80%'], ['12.37', '70%'], ['12.24', '60%'], ['12.10', '50%'],
             ['11.96', '40%'], ['11.81', '30%'], ['11.66', '20%'], ['11.51', '10%'], ['≤11.30', '0%']].map(([v, s]) => (
-            <div key={v} className={`rounded-lg p-1.5 text-[10px] ${d ? 'bg-neutral-800' : 'bg-gray-50'}`}>
+            <div key={v} className={`rounded-lg p-1.5 text-[10px] ${d ? 'bg-card' : 'bg-gray-50'}`}>
               <div className={`font-mono font-semibold ${d ? 'text-neutral-300' : 'text-gray-700'}`}>{v} V</div>
-              <div className={`${d ? 'text-neutral-500' : 'text-gray-400'}`}>{s}</div>
+              <div className={`${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>{s}</div>
             </div>
           ))}
         </div>
@@ -190,7 +190,7 @@ function BatterySection({ d }: { d: boolean }) {
       {/* SOH */}
       <div className={`${CARD(d)} p-5`}>
         <div className="flex items-center gap-2 mb-3">
-          <Activity size={15} className="text-blue-400" />
+          <Activity size={15} className="text-status-info" />
           <h3 className={h2.replace('mb-2', '')}>SOH Scoring Formula</h3>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3">
@@ -200,10 +200,10 @@ function BatterySection({ d }: { d: boolean }) {
             { label: '5 s recovery', weight: '20 %', color: 'text-emerald-400', detail: 'vRecovery5s / vPreCrank ratio' },
             { label: 'ΔV stability', weight: '10 %', color: 'text-violet-400', detail: 'vOff6h − vOff60m (small = good)' },
           ].map((c) => (
-            <div key={c.label} className={`rounded-xl p-3 ${d ? 'bg-neutral-800' : 'bg-gray-50'}`}>
+            <div key={c.label} className={`rounded-xl p-3 ${d ? 'bg-card' : 'bg-gray-50'}`}>
               <div className={`text-lg font-bold ${c.color}`}>{c.weight}</div>
               <div className={`text-[11px] font-semibold mt-0.5 ${d ? 'text-neutral-200' : 'text-gray-700'}`}>{c.label}</div>
-              <div className={`text-[10px] mt-1 ${d ? 'text-neutral-500' : 'text-gray-400'}`}>{c.detail}</div>
+              <div className={`text-[10px] mt-1 ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>{c.detail}</div>
             </div>
           ))}
         </div>
@@ -218,7 +218,7 @@ function BatterySection({ d }: { d: boolean }) {
         <h3 className={h2}>Confidence & Badge</h3>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${d ? 'text-neutral-500' : 'text-gray-400'}`}>Confidence</p>
+            <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>Confidence</p>
             {[
               ['high', '≥ 85 % weight covered', 'bg-emerald-500/15 text-emerald-500'],
               ['medium', '50 – 85 % weight covered', 'bg-amber-500/15 text-amber-500'],
@@ -232,7 +232,7 @@ function BatterySection({ d }: { d: boolean }) {
             ))}
           </div>
           <div>
-            <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${d ? 'text-neutral-500' : 'text-gray-400'}`}>Badge</p>
+            <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>Badge</p>
             {[
               ['healthy', 'SOH ≥ 70 %', 'bg-emerald-500/15 text-emerald-500'],
               ['attention', 'SOH 50 – 70 %', 'bg-amber-500/15 text-amber-500'],
@@ -256,7 +256,7 @@ function BatterySection({ d }: { d: boolean }) {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${d ? 'text-neutral-500' : 'text-gray-400'}`}>battery_features (1 row / vehicle)</p>
+            <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>battery_features (1 row / vehicle)</p>
             {[
               'restWindowStartedAt', 'rest60mCapturedAt', 'rest6hCapturedAt',
               'vOff60m', 'vOff6h', 'deltaVRest',
@@ -264,20 +264,20 @@ function BatterySection({ d }: { d: boolean }) {
               'vPreCrank', 'vMinCrank', 'crankDrop', 'vRecovery5s', 'vRecovery30s',
               'estimatedSocPct', 'estimatedSohPct', 'confidence', 'badge', 'scoredAt',
             ].map((f) => (
-              <span key={f} className={`inline-block text-[10px] font-mono mr-1 mb-1 px-1.5 py-0.5 rounded ${d ? 'bg-neutral-800 text-neutral-300' : 'bg-gray-100 text-gray-600'}`}>{f}</span>
+              <span key={f} className={`inline-block text-[10px] font-mono mr-1 mb-1 px-1.5 py-0.5 rounded ${d ? 'bg-card text-neutral-300' : 'bg-gray-100 text-gray-600'}`}>{f}</span>
             ))}
           </div>
           <div>
-            <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${d ? 'text-neutral-500' : 'text-gray-400'}`}>battery_health_snapshots (still used)</p>
+            <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>battery_health_snapshots (still used)</p>
             <p className={`${body} mb-2`}>Formal snapshot records are written at every rest capture (60 m or 6 h) to keep the existing trend / history API populated.</p>
-            <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${d ? 'text-neutral-500' : 'text-gray-400'}`}>API contract</p>
+            <p className={`text-[10px] font-bold uppercase tracking-wider mb-2 ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>API contract</p>
             {[
               { path: 'GET /battery-health/latest', note: 'includes v2 block' },
               { path: 'GET /battery-health/v2', note: 'structured V2 summary + features' },
             ].map((e) => (
               <div key={e.path} className="mb-1.5">
                 <code className={`text-[10px] font-mono ${d ? 'text-cyan-400' : 'text-cyan-600'}`}>{e.path}</code>
-                <span className={`text-[10px] ml-1.5 ${d ? 'text-neutral-500' : 'text-gray-400'}`}>{e.note}</span>
+                <span className={`text-[10px] ml-1.5 ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>{e.note}</span>
               </div>
             ))}
           </div>
@@ -305,15 +305,15 @@ function BatterySection({ d }: { d: boolean }) {
 function ErrorCodesSection({ d }: { d: boolean }) {
   const mono = `text-[11px] font-mono ${d ? 'text-violet-400' : 'text-violet-600'}`;
   const code = (s: string) => (
-    <code className={`px-1 py-0.5 rounded ${d ? 'bg-neutral-800' : 'bg-gray-100'} ${mono}`}>{s}</code>
+    <code className={`px-1 py-0.5 rounded ${d ? 'bg-card' : 'bg-gray-100'} ${mono}`}>{s}</code>
   );
   const h2 = `text-sm font-semibold mb-2 ${d ? 'text-neutral-200' : 'text-gray-800'}`;
   const body = `text-xs leading-relaxed ${d ? 'text-neutral-400' : 'text-gray-500'}`;
 
   const FlowStep = ({ label, sub }: { label: string; sub: string }) => (
-    <div className={`flex-1 min-w-0 rounded-xl p-3 text-center ${d ? 'bg-neutral-800' : 'bg-gray-50'}`}>
+    <div className={`flex-1 min-w-0 rounded-xl p-3 text-center ${d ? 'bg-card' : 'bg-gray-50'}`}>
       <div className={`text-[11px] font-semibold ${d ? 'text-neutral-200' : 'text-gray-700'}`}>{label}</div>
-      <div className={`text-[10px] mt-0.5 ${d ? 'text-neutral-500' : 'text-gray-400'}`}>{sub}</div>
+      <div className={`text-[10px] mt-0.5 ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>{sub}</div>
     </div>
   );
 
@@ -372,11 +372,11 @@ function ErrorCodesSection({ d }: { d: boolean }) {
       <div className={`${CARD(d)} p-5`}>
         <h3 className={h2}>Current vs Historical State</h3>
         <div className="grid grid-cols-2 gap-4">
-          <div className={`rounded-xl p-4 ${d ? 'bg-neutral-800' : 'bg-gray-50'}`}>
+          <div className={`rounded-xl p-4 ${d ? 'bg-card' : 'bg-gray-50'}`}>
             <div className={`text-[11px] font-bold uppercase tracking-wider mb-2 ${d ? 'text-red-400' : 'text-red-500'}`}>Active</div>
             <p className={body}>{code('isActive = true')} — code is present in the latest successful poll. Updated on every tick where the code appears.</p>
           </div>
-          <div className={`rounded-xl p-4 ${d ? 'bg-neutral-800' : 'bg-gray-50'}`}>
+          <div className={`rounded-xl p-4 ${d ? 'bg-card' : 'bg-gray-50'}`}>
             <div className={`text-[11px] font-bold uppercase tracking-wider mb-2 ${d ? 'text-green-400' : 'text-green-600'}`}>Cleared</div>
             <p className={body}>{code('isActive = false')} + {code('clearedAt')} set. Code was active in a previous poll but absent from the current one. Permanently stored in history.</p>
           </div>
@@ -395,9 +395,9 @@ function ErrorCodesSection({ d }: { d: boolean }) {
             { status: 'clean', desc: 'Fresh check, no active codes', color: d ? 'bg-green-500/10 text-green-400' : 'bg-green-50 text-green-600' },
             { status: 'active_faults', desc: 'Fresh check, faults present', color: d ? 'bg-red-500/10 text-red-400' : 'bg-red-50 text-red-600' },
             { status: 'stale', desc: 'Last success > 6h ago', color: d ? 'bg-amber-500/10 text-amber-400' : 'bg-amber-50 text-amber-600' },
-            { status: 'unavailable', desc: 'No check yet', color: d ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-50 text-gray-400' },
+            { status: 'unavailable', desc: 'No check yet', color: d ? 'bg-card text-neutral-400' : 'bg-gray-50 text-gray-400' },
           ].map((s) => (
-            <div key={s.status} className={`rounded-xl p-3 ${d ? 'bg-neutral-800' : 'bg-gray-50'}`}>
+            <div key={s.status} className={`rounded-xl p-3 ${d ? 'bg-card' : 'bg-gray-50'}`}>
               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${s.color}`}>{s.status}</span>
               <p className={`${body} mt-2`}>{s.desc}</p>
             </div>
@@ -423,7 +423,7 @@ function ErrorCodesSection({ d }: { d: boolean }) {
             { prefix: 'C', cat: 'Chassis' },
             { prefix: 'U', cat: 'Network' },
           ].map((c) => (
-            <div key={c.prefix} className={`rounded-xl p-3 text-center ${d ? 'bg-neutral-800' : 'bg-gray-50'}`}>
+            <div key={c.prefix} className={`rounded-xl p-3 text-center ${d ? 'bg-card' : 'bg-gray-50'}`}>
               <div className={`text-lg font-bold font-mono mb-1 ${d ? 'text-violet-400' : 'text-violet-600'}`}>{c.prefix}xxxx</div>
               <div className={`text-[11px] ${d ? 'text-neutral-400' : 'text-gray-500'}`}>{c.cat}</div>
             </div>
@@ -439,7 +439,7 @@ function ErrorCodesSection({ d }: { d: boolean }) {
       <div className={`${CARD(d)} p-5`}>
         <h3 className={h2}>Storage Model</h3>
         <div className="space-y-3">
-          <div className={`rounded-xl p-4 ${d ? 'bg-neutral-800' : 'bg-gray-50'}`}>
+          <div className={`rounded-xl p-4 ${d ? 'bg-card' : 'bg-gray-50'}`}>
             <div className={`text-[11px] font-bold mb-2 ${d ? 'text-neutral-300' : 'text-gray-700'}`}>{code('vehicle_latest_states')} — per-vehicle DTC poll state</div>
             <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
               {[
@@ -451,12 +451,12 @@ function ErrorCodesSection({ d }: { d: boolean }) {
               ].map(([field, desc]) => (
                 <div key={field}>
                   <div className={mono}>{field}</div>
-                  <div className={`text-[10px] ${d ? 'text-neutral-500' : 'text-gray-400'}`}>{desc}</div>
+                  <div className={`text-[10px] ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>{desc}</div>
                 </div>
               ))}
             </div>
           </div>
-          <div className={`rounded-xl p-4 ${d ? 'bg-neutral-800' : 'bg-gray-50'}`}>
+          <div className={`rounded-xl p-4 ${d ? 'bg-card' : 'bg-gray-50'}`}>
             <div className={`text-[11px] font-bold mb-2 ${d ? 'text-neutral-300' : 'text-gray-700'}`}>{code('vehicle_dtc_events')} — persistent per-code history</div>
             <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
               {[
@@ -471,7 +471,7 @@ function ErrorCodesSection({ d }: { d: boolean }) {
               ].map(([field, desc]) => (
                 <div key={field}>
                   <div className={mono}>{field}</div>
-                  <div className={`text-[10px] ${d ? 'text-neutral-500' : 'text-gray-400'}`}>{desc}</div>
+                  <div className={`text-[10px] ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>{desc}</div>
                 </div>
               ))}
             </div>
@@ -519,9 +519,9 @@ function BrakeHealthSection({ d }: { d: boolean }) {
   const h2 = `text-base font-bold mb-3 ${d ? 'text-neutral-200' : 'text-gray-800'}`;
   const h3 = `text-sm font-semibold mb-2 ${d ? 'text-neutral-300' : 'text-gray-700'}`;
   const p = `text-sm leading-relaxed mb-3 ${d ? 'text-neutral-400' : 'text-gray-600'}`;
-  const code = `text-xs font-mono px-1.5 py-0.5 rounded ${d ? 'bg-neutral-800 text-amber-300' : 'bg-gray-100 text-amber-700'}`;
+  const code = `text-xs font-mono px-1.5 py-0.5 rounded ${d ? 'bg-card text-amber-300' : 'bg-gray-100 text-amber-700'}`;
   const li = `text-sm ${d ? 'text-neutral-400' : 'text-gray-600'}`;
-  const th = `text-xs font-semibold uppercase tracking-wider px-3 py-2 text-left ${d ? 'text-neutral-500 bg-neutral-800' : 'text-gray-400 bg-gray-50'}`;
+  const th = `text-xs font-semibold uppercase tracking-wider px-3 py-2 text-left ${d ? 'text-neutral-500 bg-card' : 'text-gray-400 bg-gray-50'}`;
   const td = `text-xs px-3 py-2 ${d ? 'text-neutral-400' : 'text-gray-600'}`;
 
   return (
@@ -693,7 +693,7 @@ function TireHealthSection({ d }: { d: boolean }) {
   const h2 = `text-base font-bold mb-3 ${d ? 'text-neutral-200' : 'text-gray-800'}`;
   const h3 = `text-sm font-semibold mb-2 ${d ? 'text-neutral-300' : 'text-gray-700'}`;
   const p = `text-sm leading-relaxed mb-3 ${d ? 'text-neutral-400' : 'text-gray-600'}`;
-  const code = (t: string) => <code className={`px-1.5 py-0.5 rounded text-xs font-mono ${d ? 'bg-neutral-800 text-amber-400' : 'bg-gray-100 text-amber-700'}`}>{t}</code>;
+  const code = (t: string) => <code className={`px-1.5 py-0.5 rounded text-xs font-mono ${d ? 'bg-card text-amber-400' : 'bg-gray-100 text-amber-700'}`}>{t}</code>;
   const mono = `text-xs font-mono ${d ? 'text-amber-400' : 'text-amber-700'}`;
 
   return (
@@ -734,7 +734,7 @@ function TireHealthSection({ d }: { d: boolean }) {
 
       <div className={`${CARD(d)} p-6`}>
         <h3 className={h3}>Wear Formula (spec §15)</h3>
-        <div className={`${d ? 'bg-neutral-800' : 'bg-gray-50'} rounded-lg p-4 text-xs font-mono leading-relaxed space-y-1`}>
+        <div className={`${d ? 'bg-card' : 'bg-gray-50'} rounded-lg p-4 text-xs font-mono leading-relaxed space-y-1`}>
           <div className={d ? 'text-amber-400' : 'text-amber-700'}>base_wear_mm_per_km = usable_tread / expected_life_km</div>
           <div className={d ? 'text-amber-400' : 'text-amber-700'}>effective_wear = base × axleFactor × usageFactor × behaviorFactor × temperatureFactor × pressureFactor × loadFactor × seasonMismatchFactor × regenFactor × kFactor × interactionPenalty</div>
           <div className={d ? 'text-amber-400' : 'text-amber-700'}>estimated_tread = anchor_tread - (distance_since_anchor × effective_wear)</div>
@@ -754,7 +754,7 @@ function TireHealthSection({ d }: { d: boolean }) {
             { label: 'k-Factor (Calibration)', desc: 'EMA from measurements: α=0.12 (1st), 0.18 (2–3), 0.24 (4+). Clamped [0.75..1.30]. Skips if predictedWear < 0.3 mm.' },
             { label: 'Regen Factor', desc: 'EV/PHEV only. Positional: FWD→front=0.80, AWD→both=0.84. ICE=1.0.' },
           ].map(f => (
-            <div key={f.label} className={`${d ? 'bg-neutral-800' : 'bg-gray-50'} rounded-lg p-3`}>
+            <div key={f.label} className={`${d ? 'bg-card' : 'bg-gray-50'} rounded-lg p-3`}>
               <div className={`text-xs font-bold mb-1 ${d ? 'text-amber-400' : 'text-amber-700'}`}>{f.label}</div>
               <div className={`text-[11px] leading-relaxed ${d ? 'text-neutral-400' : 'text-gray-600'}`}>{f.desc}</div>
             </div>
@@ -772,7 +772,7 @@ function TireHealthSection({ d }: { d: boolean }) {
             ['≥2000 km observed', '+5'], ['≥1 measurement', '+5'], ['≥2 measurements', '+5'],
             ['k-factor stabilized', '+5'], ['Pressure freshness/completeness', '+3'],
           ].map(([label, pts]) => (
-            <div key={label} className={`flex justify-between ${d ? 'bg-neutral-800' : 'bg-gray-50'} rounded px-2 py-1`}>
+            <div key={label} className={`flex justify-between ${d ? 'bg-card' : 'bg-gray-50'} rounded px-2 py-1`}>
               <span className={d ? 'text-neutral-400' : 'text-gray-600'}>{label}</span>
               <span className={`font-bold ${d ? 'text-amber-400' : 'text-amber-700'}`}>{pts}</span>
             </div>
@@ -786,14 +786,14 @@ function TireHealthSection({ d }: { d: boolean }) {
         <div className="grid grid-cols-5 gap-2 text-xs text-center">
           {[
             { label: 'Excellent', range: '≥85%', color: 'text-emerald-400' },
-            { label: 'Good', range: '70–84%', color: 'text-blue-400' },
+            { label: 'Good', range: '70–84%', color: 'text-status-info' },
             { label: 'Moderate', range: '50–69%', color: 'text-amber-400' },
             { label: 'Poor', range: '25–49%', color: 'text-orange-400' },
             { label: 'Replace', range: '<25% or ≤threshold', color: 'text-red-400' },
           ].map(h => (
-            <div key={h.label} className={`${d ? 'bg-neutral-800' : 'bg-gray-50'} rounded p-2`}>
+            <div key={h.label} className={`${d ? 'bg-card' : 'bg-gray-50'} rounded p-2`}>
               <div className={`font-bold ${h.color}`}>{h.label}</div>
-              <div className={d ? 'text-neutral-500' : 'text-gray-400'}>{h.range}</div>
+              <div className={d ? 'text-neutral-500' : 'text-muted-foreground'}>{h.range}</div>
             </div>
           ))}
         </div>
@@ -844,7 +844,7 @@ function TireHealthSection({ d }: { d: boolean }) {
             { cat: 'Rotation Review', items: 'normal=12000km, urbanHeavy=10000km, overdue=15000km' },
             { cat: 'Uneven Wear', items: 'attention=0.6mm, critical=1.0mm, axle=1.2mm' },
           ].map(c => (
-            <div key={c.cat} className={`${d ? 'bg-neutral-800' : 'bg-gray-50'} rounded p-2`}>
+            <div key={c.cat} className={`${d ? 'bg-card' : 'bg-gray-50'} rounded p-2`}>
               <div className={`font-bold mb-0.5 ${d ? 'text-amber-400' : 'text-amber-700'}`}>{c.cat}</div>
               <div className={d ? 'text-neutral-400' : 'text-gray-500'}>{c.items}</div>
             </div>
@@ -875,7 +875,7 @@ function DrivingImpactSection({ d }: { d: boolean }) {
   const p = `text-xs leading-relaxed ${d ? 'text-neutral-400' : 'text-gray-500'}`;
   const mono = `text-[11px] font-mono ${d ? 'text-orange-400' : 'text-orange-600'}`;
   const code = (s: string) => (
-    <code className={`px-1 py-0.5 rounded ${d ? 'bg-neutral-800' : 'bg-gray-100'} ${mono}`}>
+    <code className={`px-1 py-0.5 rounded ${d ? 'bg-card' : 'bg-gray-100'} ${mono}`}>
       {s}
     </code>
   );
@@ -936,7 +936,7 @@ function DrivingImpactSection({ d }: { d: boolean }) {
               {['distanceKm', 'citySharePercent', 'highwaySharePercent', 'countrySharePercent',
                 'hardAccelerationCount', 'hardBrakingCount', 'fullBrakingCount',
                 'kickdownCount', 'brakingEventCount'].map(f => (
-                <span key={f} className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${d ? 'bg-neutral-800 text-neutral-300' : 'bg-gray-100 text-gray-600'}`}>{f}</span>
+                <span key={f} className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${d ? 'bg-card text-neutral-300' : 'bg-gray-100 text-gray-600'}`}>{f}</span>
               ))}
             </div>
           </div>
@@ -945,7 +945,7 @@ function DrivingImpactSection({ d }: { d: boolean }) {
             <div className="flex flex-wrap gap-1">
               {['EXTREME classification counts', 'LAUNCH_CONTROL event count',
                 'peakValue (peakDecelMs2)', 'startSpeedKmh', 'endSpeedKmh'].map(f => (
-                <span key={f} className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${d ? 'bg-neutral-800 text-neutral-300' : 'bg-gray-100 text-gray-600'}`}>{f}</span>
+                <span key={f} className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${d ? 'bg-card text-neutral-300' : 'bg-gray-100 text-gray-600'}`}>{f}</span>
               ))}
             </div>
           </div>
@@ -977,9 +977,9 @@ function DrivingImpactSection({ d }: { d: boolean }) {
                 ['thermalBrakeStressScore', '0.30×highSpeedBrakeShare + 0.30×fullBrakingFactor + 0.25×energyFactor + 0.15×p95Factor'],
                 ['drivingStyleScore', '0.30×longitudinal + 0.35×braking + 0.20×stopGo + 0.15×highSpeed'],
               ].map(([name, formula]) => (
-                <div key={name} className={`${d ? 'bg-neutral-800' : 'bg-gray-50'} rounded px-3 py-2`}>
+                <div key={name} className={`${d ? 'bg-card' : 'bg-gray-50'} rounded px-3 py-2`}>
                   <div className={mono}>{name}</div>
-                  <div className={`text-[10px] mt-0.5 ${d ? 'text-neutral-500' : 'text-gray-400'}`}>{formula}</div>
+                  <div className={`text-[10px] mt-0.5 ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>{formula}</div>
                 </div>
               ))}
             </div>
@@ -998,7 +998,7 @@ function DrivingImpactSection({ d }: { d: boolean }) {
             If a vehicle has fewer than 30 days of data, all available trips are included.
             Distance-weighting ensures long highway trips don't get diluted by many short urban trips.
           </p>
-          <div className={`${d ? 'bg-neutral-800' : 'bg-gray-50'} rounded px-3 py-2 font-mono text-[10px] ${d ? 'text-neutral-400' : 'text-gray-500'}`}>
+          <div className={`${d ? 'bg-card' : 'bg-gray-50'} rounded px-3 py-2 font-mono text-[10px] ${d ? 'text-neutral-400' : 'text-gray-500'}`}>
             windowDays · windowStartedAt · windowEndedAt · distanceKmWindow · [all metric columns]
           </div>
         </div>
@@ -1011,7 +1011,7 @@ function DrivingImpactSection({ d }: { d: boolean }) {
             <div className="flex flex-wrap gap-1">
               {['citySharePct', 'highwaySharePct', 'countryRoadSharePct',
                 'longitudinalStressScore', 'brakingStressScore', 'drivingStyleScore'].map(f => (
-                <span key={f} className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${d ? 'bg-neutral-800 text-orange-300' : 'bg-orange-50 text-orange-700'}`}>{f}</span>
+                <span key={f} className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${d ? 'bg-card text-orange-300' : 'bg-orange-50 text-orange-700'}`}>{f}</span>
               ))}
             </div>
           </div>
@@ -1022,7 +1022,7 @@ function DrivingImpactSection({ d }: { d: boolean }) {
                 'thermalBrakeStressScore', 'hardBrakePer100Km', 'fullBrakingPer100Km',
                 'brakesPer100Km', 'stopDensity', 'highSpeedBrakeShare',
                 'meanBrakeEnergyPerKm', 'p95NegativeDecel'].map(f => (
-                <span key={f} className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${d ? 'bg-neutral-800 text-orange-300' : 'bg-orange-50 text-orange-700'}`}>{f}</span>
+                <span key={f} className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${d ? 'bg-card text-orange-300' : 'bg-orange-50 text-orange-700'}`}>{f}</span>
               ))}
             </div>
           </div>
@@ -1058,7 +1058,7 @@ function DrivingImpactSection({ d }: { d: boolean }) {
       ))}
 
       {section('Config Reference (driving-impact.config.ts)', (
-        <div className={`mt-2 ${d ? 'bg-neutral-800' : 'bg-gray-50'} rounded px-3 py-2 font-mono text-[10px] leading-relaxed ${d ? 'text-neutral-400' : 'text-gray-500'}`}>
+        <div className={`mt-2 ${d ? 'bg-card' : 'bg-gray-50'} rounded px-3 py-2 font-mono text-[10px] leading-relaxed ${d ? 'text-neutral-400' : 'text-gray-500'}`}>
           <div>ROLLING_WINDOW_DAYS: 30</div>
           <div>MINIMUM_RELIABLE_TRIP_KM: 2</div>
           <div>HIGH_SPEED_BRAKE_THRESHOLD_KMH: 80</div>
@@ -1126,7 +1126,7 @@ export function HealthTrackingView({ isDarkMode }: HealthTrackingViewProps) {
       {/* Left nav */}
       <nav className={`w-52 shrink-0 ${CARD(d)} p-2 self-start sticky top-4`}>
         <div className="px-3 pt-2 pb-3">
-          <span className={`text-xs font-bold uppercase tracking-widest ${d ? 'text-neutral-500' : 'text-gray-400'}`}>Health Tracking</span>
+          <span className={`text-xs font-bold uppercase tracking-widest ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>Health Tracking</span>
         </div>
         {SECTIONS.map((sec) => {
           const Icon = sec.icon;
@@ -1137,12 +1137,12 @@ export function HealthTrackingView({ isDarkMode }: HealthTrackingViewProps) {
               onClick={() => setActive(sec.id)}
               className={`w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-left text-sm transition-all ${
                 isActive
-                  ? d ? 'bg-neutral-800 text-white' : 'bg-gray-100 text-gray-900'
-                  : d ? 'text-neutral-400 hover:bg-neutral-800/50 hover:text-neutral-200' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                  ? d ? 'bg-card text-white' : 'bg-gray-100 text-gray-900'
+                  : d ? 'text-neutral-400 hover:bg-card/50 hover:text-neutral-200' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
               }`}
             >
               <div className="flex items-center gap-2">
-                <Icon size={14} className={isActive ? (d ? 'text-cyan-400' : 'text-blue-600') : ''} />
+                <Icon size={14} className={isActive ? (d ? 'text-cyan-400' : 'text-brand') : ''} />
                 <span className="font-medium text-[13px] truncate">{sec.label}</span>
               </div>
               {sec.status === 'live' && (

@@ -55,7 +55,7 @@ export function TripTimelineEnergyCard({ event, isDark }: { event: EnergyEvent; 
     event.confidence === 'HIGH'
       ? 'bg-emerald-500/10 text-emerald-500'
       : event.confidence === 'MEDIUM'
-        ? 'bg-blue-500/10 text-blue-500'
+        ? 'bg-status-info/10 text-status-info'
         : 'bg-muted text-muted-foreground';
 
   return (

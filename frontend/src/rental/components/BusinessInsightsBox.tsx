@@ -65,15 +65,15 @@ const SEVERITY_CONFIG: Record<InsightSeverity, SeverityStyle> = {
     icon: 'calendar',
     label: 'Opportunity',
     card: {
-      light: 'bg-blue-50/60 border-blue-200/40',
+      light: 'bg-status-info-soft border-status-info/20',
       dark: 'bg-brand-soft border-brand/20',
     },
     badge: {
-      light: 'bg-blue-500/15 text-blue-600',
+      light: 'bg-status-info-soft text-status-info',
       dark: 'bg-brand-soft text-brand',
     },
-    icon_color: { light: 'text-blue-600', dark: 'text-brand' },
-    text: { light: 'text-blue-700', dark: 'text-brand' },
+    icon_color: { light: 'text-brand', dark: 'text-brand' },
+    text: { light: 'text-status-info', dark: 'text-brand' },
   },
   INFO: {
     icon: 'info',
@@ -248,15 +248,15 @@ export function BusinessInsightsBox({ isDarkMode, onOpenVehicle, onOpenView, not
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2.5">
-          <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${dm ? 'bg-brand-soft' : 'bg-blue-100/80'}`}>
-            <Icon name="sparkles" className={`w-4 h-4 ${dm ? 'text-brand' : 'text-blue-600'}`} />
+          <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${dm ? 'bg-brand-soft' : 'bg-brand-soft'}`}>
+            <Icon name="sparkles" className={`w-4 h-4 ${dm ? 'text-brand' : 'text-brand'}`} />
           </div>
           <div>
             <h3 className={`text-[12px] font-semibold tracking-[-0.003em] leading-tight ${dm ? 'text-foreground' : 'text-gray-900'}`}>
               {locale === 'de' ? 'Insights aus deinem Business' : 'Insights from your Business'}
             </h3>
             {data && !loading && (businessInsights.length > 0 || vehicleHealthAlerts.length > 0) && (
-              <p className={`text-[10.5px] mt-0.5 ${dm ? 'text-muted-foreground' : 'text-gray-400'}`}>
+              <p className={`text-[10.5px] mt-0.5 ${dm ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
                 {formatRelativeTime(data.generatedAt)}
               </p>
             )}
@@ -410,13 +410,13 @@ function VehicleAlertsList({ alerts, isDarkMode, locale, onOpenVehicle }: Vehicl
             ? dm ? 'bg-red-500/20 text-red-400' : 'bg-red-100 text-red-700'
             : alert.severity === 'warning'
               ? dm ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-100 text-amber-700'
-              : dm ? 'bg-status-info-soft text-status-info' : 'bg-blue-100 text-blue-700';
+              : dm ? 'bg-status-info-soft text-status-info' : 'bg-status-info-soft text-status-info';
         const cardBg =
           alert.severity === 'critical'
             ? dm ? 'bg-red-900/15 border-red-800/30' : 'bg-red-50/80 border-red-200/60'
             : alert.severity === 'warning'
               ? dm ? 'bg-amber-900/15 border-amber-800/30' : 'bg-amber-50/80 border-amber-200/60'
-              : dm ? 'bg-status-info-soft border-status-info/30' : 'bg-blue-50/80 border-blue-200/60';
+              : dm ? 'bg-status-info-soft border-status-info/30' : 'bg-status-info-soft border-status-info/25';
         const canOpen = !!onOpenVehicle;
 
         return (
@@ -496,7 +496,7 @@ function NotificationsList({ notifications, isDarkMode, emptyLabel }: Notificati
           dm ? 'bg-muted/30 border-border/30' : 'bg-gray-50/40 border-gray-200/40'
         }`}
       >
-        <Icon name="bell" className={`w-4 h-4 ${dm ? 'text-muted-foreground' : 'text-gray-400'}`} />
+        <Icon name="bell" className={`w-4 h-4 ${dm ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
         <p className={`text-[11px] ${dm ? 'text-muted-foreground' : 'text-gray-500'}`}>{emptyLabel}</p>
       </div>
     );
@@ -533,7 +533,7 @@ function NotificationsList({ notifications, isDarkMode, emptyLabel }: Notificati
                 {n.desc}
               </p>
             </div>
-            <span className={`text-[10px] shrink-0 mt-0.5 ${dm ? 'text-muted-foreground' : 'text-gray-400'}`}>{n.time}</span>
+            <span className={`text-[10px] shrink-0 mt-0.5 ${dm ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{n.time}</span>
           </li>
         );
       })}
@@ -549,7 +549,7 @@ const NOTIFICATION_ICON: Record<DashboardNotificationItem['type'], {
   iconDark: string;
 }> = {
   alert: { icon: 'alert-triangle', bgLight: 'bg-red-100', bgDark: 'bg-red-500/15', iconLight: 'text-red-500', iconDark: 'text-red-400' },
-  booking: { icon: 'calendar', bgLight: 'bg-blue-100', bgDark: 'bg-status-info-soft', iconLight: 'text-blue-500', iconDark: 'text-status-info' },
+  booking: { icon: 'calendar', bgLight: 'bg-brand-soft', bgDark: 'bg-status-info-soft', iconLight: 'text-status-info', iconDark: 'text-status-info' },
   return: { icon: 'check-circle', bgLight: 'bg-green-100', bgDark: 'bg-green-500/15', iconLight: 'text-green-500', iconDark: 'text-green-400' },
   maintenance: { icon: 'wrench', bgLight: 'bg-amber-100', bgDark: 'bg-amber-500/15', iconLight: 'text-amber-500', iconDark: 'text-amber-400' },
   feedback: { icon: 'message-square', bgLight: 'bg-violet-100', bgDark: 'bg-violet-500/15', iconLight: 'text-violet-500', iconDark: 'text-violet-400' },
@@ -633,18 +633,18 @@ function InsightRow({ insight, isDarkMode, isExpanded, onToggle, fleetById, onOp
 
             {hasExpandable && (
               <div className="mt-1.5 flex items-center gap-1">
-                <span className={`text-[10px] font-medium ${dm ? 'text-muted-foreground' : 'text-gray-400'}`}>
+                <span className={`text-[10px] font-medium ${dm ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
                   {isExpanded ? 'Hide details' : insight.actionLabel || 'View details'}
                 </span>
                 <Icon name="chevron-down"
-                  className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''} ${dm ? 'text-muted-foreground' : 'text-gray-400'}`}
+                  className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-180' : ''} ${dm ? 'text-muted-foreground' : 'text-muted-foreground'}`}
                 />
               </div>
             )}
           </div>
 
           {insight.isGrouped && insight.groupCount > 1 && (
-            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 ${dm ? 'bg-muted/60 text-muted-foreground' : 'bg-gray-100 text-gray-500'}`}>
+            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 ${dm ? 'bg-muted/60 text-muted-foreground' : 'bg-muted text-muted-foreground'}`}>
               {insight.groupCount}x
             </span>
           )}
@@ -774,7 +774,7 @@ function ExpandedVehicleList({
                 canOpen
                   ? dm
                     ? 'bg-brand-soft text-brand hover:bg-brand-soft/80'
-                    : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                    : 'bg-status-info-soft text-status-info hover:bg-status-info-soft/80'
                   : dm
                     ? 'bg-muted text-muted-foreground/60 cursor-not-allowed'
                     : 'bg-gray-100 text-gray-400 cursor-not-allowed'
@@ -824,7 +824,7 @@ function ExpandedGenericBlock({
           type="button"
           onClick={() => onOpenView(targetView)}
           className={`inline-flex items-center gap-1 text-[10px] font-medium px-2 py-1 rounded-md transition-colors ${
-            dm ? 'bg-brand-soft text-brand hover:bg-brand-soft/80' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+            dm ? 'bg-brand-soft text-brand hover:bg-brand-soft/80' : 'bg-status-info-soft text-status-info hover:bg-status-info-soft/80'
           }`}
         >
           {insight.actionLabel ?? (targetView === 'stations' ? 'Open station' : 'Open bookings')}
@@ -885,7 +885,7 @@ function FinancialEmptyState({ isDarkMode, locale }: { isDarkMode: boolean; loca
 function ErrorState({ isDarkMode, onRetry }: { isDarkMode: boolean; onRetry: () => void }) {
   return (
     <div className={`rounded-lg border p-4 text-center ${isDarkMode ? 'bg-muted/30 border-border/30' : 'bg-gray-50/40 border-gray-200/40'}`}>
-      <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+      <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
         Could not load insights
       </p>
       <button

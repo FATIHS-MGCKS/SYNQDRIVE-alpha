@@ -42,7 +42,7 @@ const CLEARANCE_CONFIG: Record<HmClearanceStatus, { label: string; color: string
 
 const ELIGIBILITY_CONFIG: Record<HmEligibilityStatus, { label: string; color: string; icon: typeof CheckCircle2 }> = {
   UNKNOWN:    { label: 'Unknown',     color: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500', icon: Clock },
-  PENDING:    { label: 'Checking…',  color: 'bg-blue-100 text-blue-600 dark:bg-status-info-soft dark:text-status-info', icon: Loader2 },
+  PENDING:    { label: 'Checking…',  color: 'bg-brand-soft text-brand dark:bg-status-info-soft dark:text-status-info', icon: Loader2 },
   ELIGIBLE:   { label: 'Eligible',   color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400', icon: CheckCircle2 },
   INELIGIBLE: { label: 'Ineligible', color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400', icon: XCircle },
   ERROR:      { label: 'Error',      color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400', icon: AlertTriangle },
@@ -71,7 +71,7 @@ function EligibilityBadge({ status }: { status: HmEligibilityStatus }) {
 function DeliveryBadge({ mode }: { mode: HmDeliveryMode | null }) {
   if (!mode) return <span className="text-xs text-muted-foreground">—</span>;
   const color = mode === 'BOTH' ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400'
-    : mode === 'PUSH' ? 'bg-blue-100 text-blue-700 dark:bg-status-info-soft dark:text-status-info'
+    : mode === 'PUSH' ? 'bg-status-info-soft text-status-info dark:bg-status-info-soft dark:text-status-info'
     : 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-400';
   return (
     <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium ${color}`}>
@@ -83,12 +83,12 @@ function DeliveryBadge({ mode }: { mode: HmDeliveryMode | null }) {
 function PackageBadge({ pkg }: { pkg: HmPackageType }) {
   return pkg === 'HEALTH'
     ? <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-400"><Activity className="w-3 h-3" />Health</span>
-    : <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-indigo-100 text-indigo-700 dark:bg-status-ai-soft dark:text-status-ai"><Zap className="w-3 h-3" />Full Telemetry</span>;
+    : <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-status-info-soft text-status-info dark:bg-status-ai-soft dark:text-status-ai"><Zap className="w-3 h-3" />Full Telemetry</span>;
 }
 
 // Phase 2 badges
 const REGISTRATION_STATE_CONFIG: Record<HmRegistrationState, { label: string; color: string }> = {
-  NOT_REGISTERED:      { label: 'Not Registered',    color: 'bg-gray-100 text-gray-500 dark:bg-neutral-800 dark:text-neutral-500' },
+  NOT_REGISTERED:      { label: 'Not Registered',    color: 'bg-gray-100 text-gray-500 dark:bg-card dark:text-neutral-500' },
   REGISTRATION_PENDING:{ label: 'Reg. Pending',       color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400' },
   REGISTERED:          { label: 'Registered',         color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
   REGISTRATION_FAILED: { label: 'Reg. Failed',        color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400' },
@@ -104,8 +104,8 @@ function RegistrationStateBadge({ state }: { state: HmRegistrationState }) {
 }
 
 const STREAMING_STATE_CONFIG: Record<HmStreamingState, { label: string; color: string; icon: typeof Wifi }> = {
-  NOT_CONFIGURED: { label: 'Not Configured', color: 'bg-gray-100 text-gray-500 dark:bg-neutral-800 dark:text-neutral-500', icon: WifiOff },
-  CONFIGURED:     { label: 'Configured',     color: 'bg-blue-100 text-blue-600 dark:bg-status-info-soft dark:text-status-info', icon: Signal },
+  NOT_CONFIGURED: { label: 'Not Configured', color: 'bg-gray-100 text-gray-500 dark:bg-card dark:text-neutral-500', icon: WifiOff },
+  CONFIGURED:     { label: 'Configured',     color: 'bg-brand-soft text-brand dark:bg-status-info-soft dark:text-status-info', icon: Signal },
   CONNECTING:     { label: 'Connecting',     color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400', icon: Loader2 },
   CONNECTED:      { label: 'Streaming',      color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400', icon: Wifi },
   DISCONNECTED:   { label: 'Disconnected',   color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400', icon: WifiOff },
@@ -124,7 +124,7 @@ function StreamingStateBadge({ state }: { state: HmStreamingState }) {
 }
 
 const MQTT_STATE_CONFIG: Record<HmMqttConnectionState, { label: string; color: string; icon: typeof Wifi }> = {
-  DISABLED:     { label: 'Disabled',     color: 'bg-gray-100 text-gray-500 dark:bg-neutral-800 dark:text-neutral-500', icon: WifiOff },
+  DISABLED:     { label: 'Disabled',     color: 'bg-gray-100 text-gray-500 dark:bg-card dark:text-neutral-500', icon: WifiOff },
   DISCONNECTED: { label: 'Disconnected', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-400', icon: WifiOff },
   CONNECTING:   { label: 'Connecting',   color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400', icon: Loader2 },
   CONNECTED:    { label: 'Connected',    color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400', icon: Wifi },
@@ -268,7 +268,7 @@ function VehicleRow({
               >
                 Confirm
               </button>
-              <button onClick={() => setConfirmRemove(false)} className="px-2 py-1 rounded-lg text-[11px] font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-neutral-800 dark:text-neutral-400 transition-colors">
+              <button onClick={() => setConfirmRemove(false)} className="px-2 py-1 rounded-lg text-[11px] font-medium bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-card dark:text-neutral-400 transition-colors">
                 Cancel
               </button>
             </>
@@ -434,7 +434,7 @@ function AddVehicleModal({ onClose,
                     pkg === p
                       ? p === 'HEALTH'
                         ? 'border-teal-500 bg-teal-50 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400 dark:border-teal-700'
-                        : 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-status-ai-soft dark:text-status-ai dark:border-status-ai/30'
+                        : 'border-brand bg-status-info-soft text-status-info dark:bg-status-ai-soft dark:text-status-ai dark:border-status-ai/30'
                       : 'text-muted-foreground'
                   }`}
                 >
@@ -605,7 +605,7 @@ function EligibilityTab({ onAddToList,
         <div className={`${cardCls} overflow-hidden`}>
           {/* Header */}
           <div className={`px-5 py-4 flex items-start gap-4 border-b border-border`}>
-            <div className={`p-2 rounded-lg ${result.eligibilityStatus === 'ELIGIBLE' ? 'bg-emerald-100 dark:bg-emerald-900/30' : result.eligibilityStatus === 'INELIGIBLE' ? 'bg-red-100 dark:bg-red-900/30' : (result as any).eligibilityStatus === 'NOT_APPLICABLE' ? 'bg-violet-100 dark:bg-violet-900/30' : 'bg-gray-100 dark:bg-neutral-800'}`}>
+            <div className={`p-2 rounded-lg ${result.eligibilityStatus === 'ELIGIBLE' ? 'bg-emerald-100 dark:bg-emerald-900/30' : result.eligibilityStatus === 'INELIGIBLE' ? 'bg-red-100 dark:bg-red-900/30' : (result as any).eligibilityStatus === 'NOT_APPLICABLE' ? 'bg-violet-100 dark:bg-violet-900/30' : 'bg-gray-100 dark:bg-card'}`}>
               {result.eligibilityStatus === 'ELIGIBLE'
                 ? <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 : result.eligibilityStatus === 'INELIGIBLE'
@@ -859,7 +859,7 @@ function VehicleListTab({ }: {
             onFetchHealth={handleFetchHealth}
             onViewHistory={setHistoryVehicle}
             badge={
-              <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-indigo-100 text-indigo-700 dark:bg-status-ai-soft dark:text-status-ai">
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-status-info-soft text-status-info dark:bg-status-ai-soft dark:text-status-ai">
                 FULL_TELEMETRY · own lifecycle
               </span>
             }
@@ -1093,11 +1093,11 @@ function StreamingTab() {
   const fmtShort = (d: string | null) => d ? new Date(d).toLocaleDateString('de-DE') : '—';
 
   const INGEST_STATUS_COLOR: Record<string, string> = {
-    RECEIVED:      'bg-blue-100 text-blue-700 dark:bg-status-info-soft dark:text-status-info',
+    RECEIVED:      'bg-status-info-soft text-status-info dark:bg-status-info-soft dark:text-status-info',
     PARSED:        'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-400',
     STORED:        'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400',
     FAILED:        'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
-    DEDUPLICATED:  'bg-gray-100 text-gray-500 dark:bg-neutral-800 dark:text-neutral-500',
+    DEDUPLICATED:  'bg-gray-100 text-gray-500 dark:bg-card dark:text-neutral-500',
   };
 
   return (
@@ -1122,7 +1122,7 @@ function StreamingTab() {
               <div><div className={`${LABEL} mb-0.5`}>Application ID</div><span className="font-mono">{consumerStatus.applicationId || '—'}</span></div>
               <div><div className={`${LABEL} mb-0.5`}>Consumer Group</div><span className="font-mono text-[11px]">{consumerStatus.consumerGroup}</span></div>
               <div><div className={`${LABEL} mb-0.5`}>MQTT Enabled</div>
-                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${consumerStatus.mqttEnabled ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-gray-100 text-gray-500 dark:bg-neutral-800 dark:text-neutral-500'}`}>
+                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium ${consumerStatus.mqttEnabled ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' : 'bg-gray-100 text-gray-500 dark:bg-card dark:text-neutral-500'}`}>
                   {consumerStatus.mqttEnabled ? 'Yes' : 'No'}
                 </span>
               </div>
@@ -1221,7 +1221,7 @@ function StreamingTab() {
                 <span className="font-mono text-xs font-semibold">{log.vin ?? '—'}</span>
                 <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted/50`}>{log.topic}</span>
                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${INGEST_STATUS_COLOR[log.ingestStatus] ?? ''}`}>{log.ingestStatus}</span>
-                {log.isDuplicate && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 dark:bg-neutral-800 dark:text-neutral-500">DUPE</span>}
+                {log.isDuplicate && <span className="text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 dark:bg-card dark:text-neutral-500">DUPE</span>}
                 <span className={`ml-auto text-[10px] ${mutedFg}`}>{fmt(log.createdAt)}</span>
                 <button onClick={() => setExpandedLog(expandedLog === log.id ? null : log.id)} className={`p-1 rounded hover:bg-muted`}>
                   {expandedLog === log.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}

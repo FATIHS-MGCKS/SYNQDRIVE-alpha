@@ -35,7 +35,7 @@ interface FiledDocument {
 function getFileIcon(name: string) {
   const ext = name.split('.').pop()?.toLowerCase();
   if (ext === 'pdf') return <Icon name="file-text" className="w-5 h-5 text-red-500" />;
-  if (['jpg', 'jpeg', 'png', 'webp'].includes(ext || '')) return <Icon name="image" className="w-5 h-5 text-blue-500" />;
+  if (['jpg', 'jpeg', 'png', 'webp'].includes(ext || '')) return <Icon name="image" className="w-5 h-5 text-status-info" />;
   if (['xlsx', 'xls', 'csv'].includes(ext || '')) return <Icon name="file-spreadsheet" className="w-5 h-5 text-green-500" />;
   return <Icon name="file" className="w-5 h-5 text-gray-500" />;
 }
@@ -258,7 +258,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
       {/* Header */}
       <div className="mb-3">
         <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">{t('docUpload.title')}</h1>
-        <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{t('docUpload.subtitle')}</p>
+        <p className={`text-xs mt-1 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{t('docUpload.subtitle')}</p>
       </div>
 
       {/* Step indicator */}
@@ -273,22 +273,22 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                 <div className="flex items-center gap-3">
                   <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-300 ${
                     isDone ? 'bg-green-500/20' : isActive
-                      ? isDarkMode ? 'bg-brand-soft' : 'bg-blue-100'
-                      : isDarkMode ? 'bg-neutral-800' : 'bg-gray-100'
+                      ? isDarkMode ? 'bg-brand-soft' : 'bg-brand-soft'
+                      : isDarkMode ? 'bg-card' : 'bg-gray-100'
                   }`}>
                     {isDone ? (
                       <Icon name="check" className="w-4.5 h-4.5 text-green-500" />
                     ) : (
                       <StepIcon className={`w-5 h-5 ${isActive
-                        ? isDarkMode ? 'text-brand' : 'text-blue-600'
-                        : isDarkMode ? 'text-gray-500' : 'text-gray-400'
+                        ? isDarkMode ? 'text-brand' : 'text-brand'
+                        : isDarkMode ? 'text-gray-500' : 'text-muted-foreground'
                       }`} />
                     )}
                   </div>
                   <span className={`text-xs font-semibold ${
                     isDone ? 'text-green-500' : isActive
                       ? isDarkMode ? 'text-white' : 'text-gray-900'
-                      : isDarkMode ? 'text-gray-500' : 'text-gray-400'
+                      : isDarkMode ? 'text-gray-500' : 'text-muted-foreground'
                   }`}>{s.label}</span>
                 </div>
                 {i < stepConfig.length - 1 && (
@@ -309,15 +309,15 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
               <div className={`rounded-lg p-4 ${isDarkMode ? 'bg-neutral-900 border border-neutral-800' : 'bg-white border border-gray-200'}`}>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={`text-[10px] uppercase tracking-wider font-semibold mb-1 block ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Vehicle</label>
-                    <select value={selectedVehicleId} onChange={e => setSelectedVehicleId(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs font-medium ${isDarkMode ? 'bg-neutral-800 text-white border-neutral-700' : 'bg-white text-gray-900 border-gray-300'} border`}>
+                    <label className={`text-[10px] uppercase tracking-wider font-semibold mb-1 block ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>Vehicle</label>
+                    <select value={selectedVehicleId} onChange={e => setSelectedVehicleId(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs font-medium ${isDarkMode ? 'bg-card text-white border-neutral-700' : 'bg-white text-gray-900 border-gray-300'} border`}>
                       {vehicles.length === 0 && <option value="">No vehicles available</option>}
                       {vehicles.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className={`text-[10px] uppercase tracking-wider font-semibold mb-1 block ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Document Type</label>
-                    <select value={selectedDocType} onChange={e => setSelectedDocType(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs font-medium ${isDarkMode ? 'bg-neutral-800 text-white border-neutral-700' : 'bg-white text-gray-900 border-gray-300'} border`}>
+                    <label className={`text-[10px] uppercase tracking-wider font-semibold mb-1 block ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>Document Type</label>
+                    <select value={selectedDocType} onChange={e => setSelectedDocType(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs font-medium ${isDarkMode ? 'bg-card text-white border-neutral-700' : 'bg-white text-gray-900 border-gray-300'} border`}>
                       {Object.keys(EXTRACTION_TEMPLATES).map((k) => <option key={k} value={k}>{DOC_TYPE_LABELS[k] || k.replace(/_/g, ' ')}</option>)}
                     </select>
                   </div>
@@ -332,7 +332,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
               className={`rounded-lg p-12 text-center cursor-pointer transition-all duration-300 border-2 border-dashed ${
                 !selectedVehicleId ? (isDarkMode ? 'border-neutral-800 bg-neutral-900/30 opacity-60' : 'border-gray-200 bg-gray-50 opacity-60') :
                 dragActive
-                  ? isDarkMode ? 'border-brand bg-brand-soft' : 'border-blue-400 bg-blue-50'
+                  ? isDarkMode ? 'border-brand bg-brand-soft' : 'border-brand bg-brand-soft'
                   : isDarkMode ? 'border-neutral-700 bg-neutral-900/60 hover:border-neutral-600 hover:bg-neutral-900/80' : 'border-gray-300 bg-white/60 hover:border-gray-400 hover:bg-white/80'
               }`}
             >
@@ -343,16 +343,16 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                 accept={ACCEPT_ATTR}
                 onChange={(e) => { if (e.target.files?.[0] && selectedVehicleId) handleFile(e.target.files[0]); }}
               />
-              <div className={`w-16 h-16 rounded-lg mx-auto mb-3 flex items-center justify-center ${isDarkMode ? 'bg-brand-soft' : 'bg-blue-100/80'}`}>
-                <Icon name="upload" className={`w-7 h-7 ${isDarkMode ? 'text-brand' : 'text-blue-600'}`} />
+              <div className={`w-16 h-16 rounded-lg mx-auto mb-3 flex items-center justify-center ${isDarkMode ? 'bg-brand-soft' : 'bg-brand-soft'}`}>
+                <Icon name="upload" className={`w-7 h-7 ${isDarkMode ? 'text-brand' : 'text-brand'}`} />
               </div>
               <p className={`text-xs font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                 {dragActive ? t('docUpload.dropzoneActive') : t('docUpload.dropzone')}
               </p>
-              <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>PDF, JPG, PNG, WebP, TXT &middot; max 10 MB</p>
+              <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>PDF, JPG, PNG, WebP, TXT &middot; max 10 MB</p>
               {!selectedVehicleId && <p className={`mt-3 text-xs font-semibold ${isDarkMode ? 'text-amber-400' : 'text-amber-600'}`}>Please select a vehicle first</p>}
               <button disabled={!selectedVehicleId} className={`mt-5 px-3 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-                isDarkMode ? 'bg-primary text-primary-foreground hover:opacity-90' : 'bg-blue-600 hover:bg-blue-700 text-white'
+                isDarkMode ? 'bg-primary text-primary-foreground hover:opacity-90' : 'bg-brand text-brand-foreground hover:bg-brand-hover'
               } ${!selectedVehicleId ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 {t('docUpload.browse')}
               </button>
@@ -373,9 +373,9 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
               <p className={`text-xs font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                 {flow === 'uploading' ? 'Uploading document…' : flow === 'queued' ? 'Queued for extraction…' : t('docUpload.analyzing')}
               </p>
-              <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{uploadedFileName}</p>
+              <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{uploadedFileName}</p>
               <div className="mt-4">
-                <span className={`inline-block text-[10px] font-semibold px-2 py-1 rounded-full ${isDarkMode ? 'bg-neutral-800 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{statusLabel[flow]}</span>
+                <span className={`inline-block text-[10px] font-semibold px-2 py-1 rounded-full ${isDarkMode ? 'bg-card text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{statusLabel[flow]}</span>
               </div>
             </div>
           )}
@@ -386,13 +386,13 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                 <Icon name="alert-triangle" className={`w-7 h-7 ${isDarkMode ? 'text-red-400' : 'text-red-600'}`} />
               </div>
               <p className={`text-xs font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Extraction failed</p>
-              <p className={`text-xs mb-4 max-w-md mx-auto ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{errorMessage || 'Something went wrong while processing this document.'}</p>
+              <p className={`text-xs mb-4 max-w-md mx-auto ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{errorMessage || 'Something went wrong while processing this document.'}</p>
               <div className="flex items-center justify-center gap-3">
-                <button onClick={handleRetry} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-all">
+                <button onClick={handleRetry} className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold bg-brand hover:bg-brand text-brand-foreground transition-all">
                   <Icon name="rotate-ccw" className="w-3.5 h-3.5" />
                   Retry extraction
                 </button>
-                <button onClick={handleReset} className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${isDarkMode ? 'bg-neutral-800 hover:bg-neutral-700 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>
+                <button onClick={handleReset} className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${isDarkMode ? 'bg-card hover:bg-neutral-700 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>
                   Cancel
                 </button>
               </div>
@@ -410,7 +410,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                     </div>
                     <div>
                       <h3 className={`text-base font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('docUpload.analysisComplete')}</h3>
-                      <p className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Review &amp; confirm — nothing is applied until you confirm.</p>
+                      <p className={`text-xs ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>Review &amp; confirm — nothing is applied until you confirm.</p>
                     </div>
                   </div>
                   <button
@@ -418,7 +418,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                     disabled={flow === 'applying'}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
                       editingFields
-                        ? isDarkMode ? 'bg-brand-soft text-brand' : 'bg-blue-100 text-blue-600'
+                        ? isDarkMode ? 'bg-brand-soft text-brand' : 'bg-brand-soft text-brand'
                         : isDarkMode ? 'bg-muted text-muted-foreground hover:bg-muted/80' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     } ${flow === 'applying' ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
@@ -432,7 +432,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
               <div className={`px-3 py-2 border-b flex items-center gap-3 ${isDarkMode ? 'border-neutral-800 bg-neutral-900/40' : 'border-gray-200/60 bg-gray-50/40'}`}>
                 {getFileIcon(uploadedFileName)}
                 <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>{uploadedFileName}</span>
-                <span className={`ml-auto text-[10px] font-semibold px-2 py-1 rounded-full ${isDarkMode ? 'bg-neutral-800 text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{statusLabel[flow]}</span>
+                <span className={`ml-auto text-[10px] font-semibold px-2 py-1 rounded-full ${isDarkMode ? 'bg-card text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{statusLabel[flow]}</span>
               </div>
 
               {/* Apply error banner */}
@@ -446,12 +446,12 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                 {/* Document Type + Vehicle */}
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={`text-xs font-semibold uppercase tracking-wider mb-1.5 block ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('docUpload.documentType')}</label>
-                    <div className={`px-3 py-2 rounded-lg text-xs font-semibold ${isDarkMode ? 'bg-brand-soft text-brand' : 'bg-blue-50 text-blue-700'}`}>{DOC_TYPE_LABELS[confirmedDocType] || confirmedDocType}</div>
+                    <label className={`text-xs font-semibold uppercase tracking-wider mb-1.5 block ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t('docUpload.documentType')}</label>
+                    <div className={`px-3 py-2 rounded-lg text-xs font-semibold ${isDarkMode ? 'bg-brand-soft text-brand' : 'bg-status-info-soft text-status-info'}`}>{DOC_TYPE_LABELS[confirmedDocType] || confirmedDocType}</div>
                   </div>
                   <div>
-                    <label className={`text-xs font-semibold uppercase tracking-wider mb-1.5 block ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('docUpload.assignedTo')}</label>
-                    <div className={`px-3 py-2 rounded-lg text-xs font-semibold ${isDarkMode ? 'bg-neutral-800 text-gray-200' : 'bg-gray-100 text-gray-700'}`}>{vehicles.find(v => v.id === selectedVehicleId)?.name || ''}</div>
+                    <label className={`text-xs font-semibold uppercase tracking-wider mb-1.5 block ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t('docUpload.assignedTo')}</label>
+                    <div className={`px-3 py-2 rounded-lg text-xs font-semibold ${isDarkMode ? 'bg-card text-gray-200' : 'bg-gray-100 text-gray-700'}`}>{vehicles.find(v => v.id === selectedVehicleId)?.name || ''}</div>
                   </div>
                 </div>
 
@@ -459,7 +459,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                 {plausibility && (
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className={`text-xs font-semibold uppercase tracking-wider block ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Plausibility checks</label>
+                      <label className={`text-xs font-semibold uppercase tracking-wider block ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>Plausibility checks</label>
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${plausStyles(plausibility.overallStatus)}`}>{plausibility.overallStatus}</span>
                     </div>
                     {plausibility.checks.length === 0 ? (
@@ -478,7 +478,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                       </div>
                     )}
                     {plausibility.recommendedHumanReviewNotes && plausibility.recommendedHumanReviewNotes.length > 0 && (
-                      <ul className={`mt-2 list-disc list-inside text-[11px] ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <ul className={`mt-2 list-disc list-inside text-[11px] ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
                         {plausibility.recommendedHumanReviewNotes.map((n, i) => <li key={i}>{n}</li>)}
                       </ul>
                     )}
@@ -487,11 +487,11 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
 
                 {/* Extracted Fields */}
                 <div>
-                  <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('docUpload.detectedFields')}</label>
+                  <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t('docUpload.detectedFields')}</label>
                   <div className={`rounded-lg overflow-hidden border ${isDarkMode ? 'border-neutral-800' : 'border-gray-200/60'}`}>
                     {editedFields.map((field, i) => (
                       <div key={field.key} className={`flex items-center px-3 py-2.5 ${i > 0 ? (isDarkMode ? 'border-t border-neutral-800' : 'border-t border-gray-200/40') : ''}`}>
-                        <span className={`w-44 text-xs font-semibold shrink-0 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{field.label}</span>
+                        <span className={`w-44 text-xs font-semibold shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{field.label}</span>
                         {editingFields ? (
                           <input
                             value={field.value}
@@ -500,10 +500,10 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                               updated[i] = { ...updated[i], value: e.target.value };
                               setEditedFields(updated);
                             }}
-                            className={`flex-1 text-xs font-semibold px-2 py-1 rounded-md border ${isDarkMode ? 'bg-neutral-800 border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                            className={`flex-1 text-xs font-semibold px-2 py-1 rounded-md border ${isDarkMode ? 'bg-card border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
                           />
                         ) : (
-                          <span className={`text-xs font-semibold ${field.value ? (isDarkMode ? 'text-white' : 'text-gray-900') : (isDarkMode ? 'text-gray-600' : 'text-gray-400')}`}>{field.value || '—'}</span>
+                          <span className={`text-xs font-semibold ${field.value ? (isDarkMode ? 'text-white' : 'text-gray-900') : (isDarkMode ? 'text-gray-600' : 'text-muted-foreground')}`}>{field.value || '—'}</span>
                         )}
                       </div>
                     ))}
@@ -525,7 +525,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                     onClick={handleRetry}
                     disabled={flow === 'applying'}
                     className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                      isDarkMode ? 'bg-neutral-800 hover:bg-neutral-700 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                      isDarkMode ? 'bg-card hover:bg-neutral-700 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
                     } ${flow === 'applying' ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <Icon name="rotate-ccw" className="w-3.5 h-3.5" />
@@ -535,7 +535,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                     onClick={handleReset}
                     disabled={flow === 'applying'}
                     className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                      isDarkMode ? 'bg-neutral-800 hover:bg-neutral-700 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                      isDarkMode ? 'bg-card hover:bg-neutral-700 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
                     } ${flow === 'applying' ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     Cancel
@@ -551,12 +551,12 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                 <Icon name="check-circle" className={`w-5 h-5 ${isDarkMode ? 'text-green-400' : 'text-green-600'}`} />
               </div>
               <p className={`text-xs font-semibold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('docUpload.successFiled')}</p>
-              <p className={`text-xs mb-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+              <p className={`text-xs mb-3 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
                 Applied to {DOC_TYPE_LABELS[confirmedDocType] || confirmedDocType}.
               </p>
               <button
                 onClick={handleReset}
-                className="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white transition-all"
+                className="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg text-xs font-semibold bg-brand hover:bg-brand text-brand-foreground transition-all"
               >
                 <Icon name="upload" className="w-3.5 h-3.5" />
                 {t('docUpload.uploadAnother')}
@@ -579,8 +579,8 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
             </div>
             <div className="space-y-2">
               {['Service Record', 'Oil Change', 'Tire Service', 'Brake Service', 'Battery Service', 'TÜV / BOKraft', 'Invoice', 'Damage / Accident'].map((type) => (
-                <div key={type} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-50'}`}>
-                  <Icon name="file-text" className={`w-3 h-3 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
+                <div key={type} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${isDarkMode ? 'bg-card' : 'bg-gray-50'}`}>
+                  <Icon name="file-text" className={`w-3 h-3 ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`} />
                   <span className={`text-[11px] ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{type}</span>
                 </div>
               ))}
@@ -596,20 +596,20 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
               {filedDocuments.length === 0 ? (
                 <div className="py-8 text-center">
                   <Icon name="file-text" className={`w-5 h-5 mx-auto mb-2 ${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
-                  <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('docUpload.noUploads')}</p>
+                  <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t('docUpload.noUploads')}</p>
                 </div>
               ) : (
                 <div className="space-y-1.5">
                   {filedDocuments.map(doc => (
-                    <div key={doc.id} className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-neutral-800/60' : 'hover:bg-gray-50'}`}>
+                    <div key={doc.id} className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-card/60' : 'hover:bg-gray-50'}`}>
                       <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-green-500/10' : 'bg-green-50'}`}>
                         <Icon name="check-circle" className="w-5 h-5 text-green-500" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className={`text-[11px] font-semibold truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{doc.fileName}</p>
-                        <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{doc.type}</p>
+                        <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{doc.type}</p>
                       </div>
-                      <span className={`text-xs font-medium shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{doc.date}</span>
+                      <span className={`text-xs font-medium shrink-0 ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{doc.date}</span>
                     </div>
                   ))}
                 </div>

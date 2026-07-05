@@ -261,10 +261,10 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
   const card = 'sq-card rounded-2xl shadow-[var(--shadow-1)]';
   const inputCls = `w-full px-3 py-2 rounded-lg text-xs outline-none transition-colors ${
     isDarkMode
-      ? 'bg-neutral-800 border border-neutral-700 text-gray-200 focus:border-purple-500/50'
+      ? 'bg-card border border-neutral-700 text-gray-200 focus:border-purple-500/50'
       : 'bg-gray-50 border border-gray-200 text-gray-800 focus:border-purple-400'
   }`;
-  const labelCls = `block text-[11px] font-semibold mb-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`;
+  const labelCls = `block text-[11px] font-semibold mb-1 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`;
 
   const isActive = assistant?.status === 'ACTIVE';
   const canActivate = Boolean(readiness?.ready) || isActive;
@@ -464,25 +464,25 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
               placeholder="We're sorry, all agents are busy. Please call back later." />
           </div>
 
-          <h4 className={`text-xs font-bold mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Escalation Triggers</h4>
+          <h4 className={`text-xs font-bold mt-4 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>Escalation Triggers</h4>
           <div className="space-y-2">
             {([
               { key: 'escalateOnRequest', label: 'Caller requests a human agent', desc: 'Transfer when caller explicitly asks for a human' },
               { key: 'escalateOnLowConf', label: 'Low confidence answer', desc: 'Transfer when assistant is unsure about the answer' },
               { key: 'escalateOnSensitive', label: 'Sensitive topic detected', desc: 'Transfer for legal, complaint, or accident topics' },
             ] as const).map(t => (
-              <label key={t.key} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-neutral-800' : 'hover:bg-gray-50'}`}>
+              <label key={t.key} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-card' : 'hover:bg-gray-50'}`}>
                 <input type="checkbox" checked={boolField(t.key)} onChange={e => setBoolField(t.key, e.target.checked)}
                   className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
                 <div>
                   <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>{t.label}</div>
-                  <div className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t.desc}</div>
+                  <div className={`text-[10px] ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t.desc}</div>
                 </div>
               </label>
             ))}
           </div>
 
-          <h4 className={`text-xs font-bold mt-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Business Hours</h4>
+          <h4 className={`text-xs font-bold mt-4 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>Business Hours</h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className={labelCls}>Start</label>

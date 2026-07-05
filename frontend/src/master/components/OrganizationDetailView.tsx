@@ -92,10 +92,10 @@ export function OrganizationDetailView({ org, orgUsers, orgVehicles, onBack, onU
             <h3 className={`text-base font-bold mb-4 text-foreground`}>Quick Stats</h3>
             <div className="grid grid-cols-2 gap-5">
               {[
-                { label: 'Fleet Size', value: org.fleet_size.toString(), icon: Car, color: 'text-indigo-500', bg: 'sq-tone-brand' },
+                { label: 'Fleet Size', value: org.fleet_size.toString(), icon: Car, color: 'text-status-info', bg: 'sq-tone-brand' },
                 { label: 'Users', value: org.users.toString(), icon: Users, color: 'text-purple-500', bg: 'sq-tone-ai' },
                 { label: 'MRR', value: `€${org.mrr.toLocaleString()}`, icon: CreditCard, color: 'text-emerald-500', bg: 'sq-tone-success' },
-                { label: 'Products', value: org.products.filter(p => p.status === 'Active').length.toString(), icon: Package, color: 'text-blue-500', bg: 'sq-tone-info' },
+                { label: 'Products', value: org.products.filter(p => p.status === 'Active').length.toString(), icon: Package, color: 'text-status-info', bg: 'sq-tone-info' },
               ].map(stat => (
                 <div key={stat.label} className={`p-5 rounded-2xl border flex flex-col items-center justify-center text-center bg-muted/50 border-border`}>
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-3 ${stat.bg}`}>

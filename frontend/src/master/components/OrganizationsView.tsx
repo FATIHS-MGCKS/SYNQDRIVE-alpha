@@ -378,7 +378,7 @@ export function OrganizationsView({
                   {/* Section: Unternehmensinformationen */}
                   <div>
                     <div className={`flex items-center gap-2 mb-4 pb-2 border-b border-border`}>
-                      <Building2 className={`w-4 h-4 text-indigo-500`} />
+                      <Building2 className={`w-4 h-4 text-status-info`} />
                       <h3 className={`text-sm font-bold uppercase tracking-wide text-foreground`}>Unternehmensinformationen</h3>
                     </div>
 
@@ -511,7 +511,7 @@ export function OrganizationsView({
                   {/* Section: Geschäftsführer / Ansprechpartner */}
                   <div>
                     <div className={`flex items-center gap-2 mb-4 pb-2 border-b border-border`}>
-                      <User className={`w-4 h-4 text-indigo-500`} />
+                      <User className={`w-4 h-4 text-status-info`} />
                       <h3 className={`text-sm font-bold uppercase tracking-wide text-foreground`}>Geschäftsführer / Ansprechpartner</h3>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
@@ -535,7 +535,7 @@ export function OrganizationsView({
                   {/* Section: Firmenlogo (placeholder) */}
                   <div>
                     <div className={`flex items-center gap-2 mb-4 pb-2 border-b border-border`}>
-                      <ImageIcon className={`w-4 h-4 text-indigo-500`} />
+                      <ImageIcon className={`w-4 h-4 text-status-info`} />
                       <h3 className={`text-sm font-bold uppercase tracking-wide text-foreground`}>Firmenlogo</h3>
                     </div>
                     <div className="flex flex-col items-center justify-center py-6 rounded-lg border-2 border-dashed transition-colors border-border bg-muted/50">
@@ -543,7 +543,7 @@ export function OrganizationsView({
                         <Upload className={`w-6 h-6 text-muted-foreground`} />
                       </div>
                       <p className={`text-sm font-medium text-muted-foreground`}>Logo hochladen</p>
-                      <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>PNG, JPG bis 2MB</p>
+                      <p className={`text-xs mt-0.5 ${isDarkMode ? 'text-gray-600' : 'text-muted-foreground'}`}>PNG, JPG bis 2MB</p>
                       <button className="sq-3d-btn sq-3d-btn--neutral mt-3 px-4 py-1.5 text-xs font-semibold">
                         Datei auswählen
                       </button>

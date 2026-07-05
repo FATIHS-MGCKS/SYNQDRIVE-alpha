@@ -19,8 +19,8 @@ const STATUS_STYLES: Record<AnyBatteryStatus, StatusStyle> = {
   WATCH: { bars: 2, label: 'Watch', fill: 'bg-amber-500', textLight: 'text-amber-700', textDark: 'text-amber-400' },
   WARNING: { bars: 1, label: 'Warning', fill: 'bg-orange-500', textLight: 'text-orange-700', textDark: 'text-orange-400' },
   CRITICAL: { bars: 1, label: 'Critical', fill: 'bg-red-500', textLight: 'text-red-700', textDark: 'text-red-400' },
-  UNKNOWN: { bars: 0, label: 'Unknown', fill: 'bg-gray-400', textLight: 'text-gray-500', textDark: 'text-gray-400' },
-  UNSUPPORTED: { bars: 0, label: 'Not rated', fill: 'bg-gray-400', textLight: 'text-gray-500', textDark: 'text-gray-400' },
+  UNKNOWN: { bars: 0, label: 'Unknown', fill: 'bg-gray-400', textLight: 'text-gray-500', textDark: 'text-muted-foreground' },
+  UNSUPPORTED: { bars: 0, label: 'Not rated', fill: 'bg-gray-400', textLight: 'text-gray-500', textDark: 'text-muted-foreground' },
 };
 
 const SIZES = {

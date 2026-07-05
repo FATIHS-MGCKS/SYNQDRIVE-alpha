@@ -51,12 +51,12 @@ export const getVehicleCategory = (model: string, fuelType: string): VehicleCate
 };
 
 export const categoryConfig: Record<VehicleCategory, { icon: string; color: string; bg: string; darkBg: string; text: string; darkText: string; border: string; darkBorder: string }> = {
-  'All': { icon: '\u{1F697}', color: 'blue', bg: 'bg-blue-100', darkBg: 'bg-muted', text: 'text-blue-700', darkText: 'text-foreground', border: 'border-blue-400/60', darkBorder: 'border-border' },
+  'All': { icon: '\u{1F697}', color: 'blue', bg: 'bg-brand-soft', darkBg: 'bg-muted', text: 'text-status-info', darkText: 'text-foreground', border: 'border-brand/40', darkBorder: 'border-border' },
   'Compact': { icon: '\u{1F699}', color: 'emerald', bg: 'bg-emerald-100', darkBg: 'bg-emerald-900/30', text: 'text-emerald-700', darkText: 'text-emerald-400', border: 'border-emerald-400/60', darkBorder: 'border-emerald-500/60' },
   'Sedan': { icon: '\u{1F698}', color: 'amber', bg: 'bg-amber-100', darkBg: 'bg-amber-900/30', text: 'text-amber-700', darkText: 'text-amber-400', border: 'border-amber-400/60', darkBorder: 'border-amber-500/60' },
   'Premium': { icon: '\u2728', color: 'purple', bg: 'bg-purple-100', darkBg: 'bg-purple-900/30', text: 'text-purple-700', darkText: 'text-purple-400', border: 'border-purple-400/60', darkBorder: 'border-purple-500/60' },
   'Electric': { icon: '\u26A1', color: 'cyan', bg: 'bg-cyan-100', darkBg: 'bg-cyan-900/30', text: 'text-cyan-700', darkText: 'text-cyan-400', border: 'border-cyan-400/60', darkBorder: 'border-cyan-500/60' },
-  'MPV': { icon: '\u{1F690}', color: 'indigo', bg: 'bg-indigo-100', darkBg: 'bg-violet-500/15', text: 'text-indigo-700', darkText: 'text-violet-400', border: 'border-indigo-400/60', darkBorder: 'border-violet-500/40' },
+  'MPV': { icon: '\u{1F690}', color: 'indigo', bg: 'bg-status-info-soft', darkBg: 'bg-violet-500/15', text: 'text-status-info', darkText: 'text-violet-400', border: 'border-status-info/40', darkBorder: 'border-violet-500/40' },
 };
 
 export const defaultInsurances: InsuranceOption[] = [

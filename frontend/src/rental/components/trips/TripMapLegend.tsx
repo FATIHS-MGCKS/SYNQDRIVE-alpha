@@ -4,10 +4,10 @@ export function TripMapLegend() {
   return (
     <div className="pointer-events-none absolute bottom-2.5 left-2.5 z-10">
       <div className="sq-map-liquid-glass pointer-events-auto px-2.5 py-1.5 flex items-center gap-2.5 flex-wrap">
-        <LegendItem color="bg-blue-500" label={TRIPS_COPY.slow} line />
+        <LegendItem color="bg-status-info" label={TRIPS_COPY.slow} line />
         <LegendItem color="bg-green-500" label={TRIPS_COPY.normal} line />
         <LegendItem color="bg-yellow-500" label={TRIPS_COPY.fast} line />
-        <LegendItem color="border-slate-400" label={TRIPS_COPY.stop} ring />
+        <LegendItem color="border-muted-foreground" label={TRIPS_COPY.stop} ring />
         <LegendItem color="bg-emerald-500" label="Start" letter="A" />
         <LegendItem color="bg-red-500" label="Ziel" letter="B" />
       </div>

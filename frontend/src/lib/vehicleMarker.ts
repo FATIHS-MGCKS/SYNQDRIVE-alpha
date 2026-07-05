@@ -25,14 +25,14 @@ export interface StatusColor {
 
 const STATUS_COLORS: Record<VehicleStatusKey, StatusColor> = {
   Available: {
-    primary: '#3b82f6',
-    glow: 'rgba(59,130,246,0.35)',
-    bg: 'bg-blue-50',
-    darkBg: 'bg-blue-500/15',
-    text: 'text-blue-700',
-    darkText: 'text-blue-400',
-    badge: 'bg-blue-500',
-    ring: 'ring-blue-500/40',
+    primary: '#4F86E8',
+    glow: 'rgba(79,134,232,0.35)',
+    bg: 'bg-brand-soft',
+    darkBg: 'bg-status-info-soft',
+    text: 'text-status-info',
+    darkText: 'text-status-info',
+    badge: 'bg-status-info',
+    ring: 'ring-status-info/40',
     label: 'Available',
   },
   'Active Rented': {

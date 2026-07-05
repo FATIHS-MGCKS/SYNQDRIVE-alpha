@@ -138,7 +138,7 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
   );
 
   const cardClass = `rounded-lg p-8 border shadow-sm ${isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'}`;
-  const subtle = isDarkMode ? 'text-muted-foreground' : 'text-gray-400';
+  const subtle = isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground';
   const bundleStatus = (view?.bundle.status ?? 'PENDING') as DocumentBundleStatus;
   const badge = BUNDLE_BADGE[bundleStatus] ?? BUNDLE_BADGE.PENDING;
   const legalMissing = (view?.legal.missing?.length ?? 0) > 0;
@@ -158,7 +158,7 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
               disabled={generating}
               title="Buchungsdokumente generieren"
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
-                isDarkMode ? 'bg-white text-neutral-900 hover:bg-gray-100' : 'bg-neutral-900 text-white hover:bg-neutral-800'
+                isDarkMode ? 'bg-white text-neutral-900 hover:bg-gray-100' : 'bg-neutral-900 text-white hover:bg-card'
               } disabled:opacity-50`}
             >
               {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
@@ -200,7 +200,7 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
         <div className="space-y-4">
           {GROUPS.map((group) => (
             <div key={group.label}>
-              <div className={`text-[11px] font-semibold uppercase tracking-wider mb-2.5 ${isDarkMode ? 'text-gray-600' : 'text-gray-400'}`}>
+              <div className={`text-[11px] font-semibold uppercase tracking-wider mb-2.5 ${isDarkMode ? 'text-gray-600' : 'text-muted-foreground'}`}>
                 {group.label}
               </div>
               <div className="space-y-2.5">
@@ -237,7 +237,7 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
                         {doc ? (
                           <>
                             {doc.origin === 'STATIC_LEGAL' && (
-                              <span className={`hidden sm:inline-flex items-center gap-1 text-[10px] ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`}>
+                              <span className={`hidden sm:inline-flex items-center gap-1 text-[10px] ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
                                 <CheckCircle2 className="w-3 h-3" /> hochgeladen
                               </span>
                             )}
@@ -245,7 +245,7 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
                               type="button"
                               title="Herunterladen / Ansehen"
                               onClick={() => void api.documents.open(orgId, doc.id)}
-                              className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-muted/80 text-muted-foreground hover:text-status-info' : 'hover:bg-gray-100 text-gray-500 hover:text-blue-600'}`}
+                              className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-muted/80 text-muted-foreground hover:text-status-info' : 'hover:bg-muted text-muted-foreground hover:text-brand'}`}
                             >
                               <Download className="w-4 h-4" />
                             </button>
@@ -269,7 +269,7 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
                                   ? 'bg-amber-500/15 text-amber-400'
                                   : 'bg-amber-50 text-amber-700'
                                 : isDarkMode
-                                ? 'bg-neutral-800 text-gray-500'
+                                ? 'bg-card text-gray-500'
                                 : 'bg-gray-100 text-gray-400'
                             }`}
                           >

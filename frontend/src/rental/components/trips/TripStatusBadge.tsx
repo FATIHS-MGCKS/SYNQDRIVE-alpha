@@ -2,7 +2,7 @@ import { cn } from '../../../components/ui/utils';
 
 const TONE_CLASS: Record<string, string> = {
   neutral: 'bg-muted/70 text-muted-foreground border-border/50',
-  info: 'bg-blue-500/8 text-blue-700 dark:bg-status-info-soft dark:text-status-info border-blue-500/18 dark:border-status-info/20',
+  info: 'bg-status-info-soft text-status-info border-status-info/20',
   watch: 'bg-amber-500/8 text-amber-800 dark:text-amber-400 border-amber-500/18',
   notable: 'bg-orange-500/8 text-orange-800 dark:text-orange-400 border-orange-500/18',
   critical: 'bg-red-500/8 text-red-700 dark:text-red-400 border-red-500/22',

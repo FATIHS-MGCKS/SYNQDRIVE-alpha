@@ -302,6 +302,11 @@ Dark overrides live under `.dark .sq-*` (Dark Theme V2 section).
 | `--foreground` (light) | `#0F172A` | Consider `#111827` (warmer graphite-navy) | Slightly less slate-cold; low priority |
 | Light body glow opacity | `0.055 / 0.030` | Could reduce to `0.04 / 0.02` | Even softer glass; cosmetic only |
 
+### V4.9.194 Hardcoded color migration (applied)
+
+- Rental + components + lib: slate/blue/indigo UI surfaces → semantic tokens
+- Remaining intentional colors: fleet status map markers (purple/green/red), health severity tones, chart semantics
+
 ### V4.9.193 Dark Theme V2 (applied)
 
 - Dark palette confirmed/formalized; added missing `--input-background`

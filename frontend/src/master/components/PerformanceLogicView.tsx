@@ -43,9 +43,9 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
   const h2 = `text-base font-bold mb-1 ${d ? 'text-neutral-100' : 'text-gray-900'}`;
   const h3 = `text-sm font-semibold mb-2 ${d ? 'text-neutral-200' : 'text-gray-800'}`;
   const body = `text-xs leading-relaxed ${d ? 'text-neutral-400' : 'text-gray-600'}`;
-  const code = `px-1 py-0.5 rounded text-[11px] font-mono ${d ? 'bg-neutral-800 text-violet-400' : 'bg-gray-100 text-violet-600'}`;
+  const code = `px-1 py-0.5 rounded text-[11px] font-mono ${d ? 'bg-card text-violet-400' : 'bg-gray-100 text-violet-600'}`;
   const li = `text-xs ${d ? 'text-neutral-400' : 'text-gray-600'}`;
-  const sub = `text-[11px] ${d ? 'text-neutral-500' : 'text-gray-400'}`;
+  const sub = `text-[11px] ${d ? 'text-neutral-500' : 'text-muted-foreground'}`;
 
   return (
     <div className={`min-h-screen ${d ? 'bg-neutral-950' : 'bg-gray-50/80'}`}>
@@ -70,7 +70,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
           </p>
 
           {/* V3 hardware source split banner */}
-          <div className={`p-3 rounded-xl text-[11px] leading-relaxed mb-3 ${d ? 'bg-indigo-900/20 text-indigo-300 border border-indigo-800/30' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'}`}>
+          <div className={`p-3 rounded-xl text-[11px] leading-relaxed mb-3 ${d ? 'bg-status-info-soft text-status-info border border-border' : 'bg-status-info-soft text-status-info border border-border'}`}>
             <strong>V3 HARDWARE-AWARE SOURCE SPLIT:</strong>
             <br />
             <strong>LTE_R1:</strong> Driving Events (harsh braking, extreme braking, harsh acceleration, harsh cornering) are ingested from
@@ -111,7 +111,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                     active
                       ? d ? 'bg-orange-500/20 text-orange-300' : 'bg-orange-100 text-orange-700'
-                      : d ? 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                      : d ? 'text-neutral-400 hover:text-neutral-200 hover:bg-card' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                   }`}
                 >
                   <Icon size={13} />
@@ -142,8 +142,8 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                   '→ Tire Health V2 / Brake Health V2',
                 ].map((s, i) => (
                   <div key={i} className="flex items-center gap-1">
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full ${d ? 'bg-neutral-800 text-neutral-300' : 'bg-gray-100 text-gray-600'}`}>{s}</span>
-                    {i < 9 && <ChevronRight size={11} className={d ? 'text-neutral-600' : 'text-gray-400'} />}
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full ${d ? 'bg-card text-neutral-300' : 'bg-gray-100 text-gray-600'}`}>{s}</span>
+                    {i < 9 && <ChevronRight size={11} className={d ? 'text-neutral-600' : 'text-muted-foreground'} />}
                   </div>
                 ))}
               </div>
@@ -162,8 +162,8 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                   '→ Driving Impact Engine V1',
                 ].map((s, i) => (
                   <div key={i} className="flex items-center gap-1">
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full ${d ? 'bg-indigo-900/40 text-indigo-300' : 'bg-indigo-50 text-indigo-700'}`}>{s}</span>
-                    {i < 9 && <ChevronRight size={11} className={d ? 'text-neutral-600' : 'text-gray-400'} />}
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full ${d ? 'bg-status-info-soft text-status-info' : 'bg-status-info-soft text-status-info'}`}>{s}</span>
+                    {i < 9 && <ChevronRight size={11} className={d ? 'text-neutral-600' : 'text-muted-foreground'} />}
                   </div>
                 ))}
               </div>
@@ -295,7 +295,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                       { label: 'HARD', range: '3.5 – 5.0 m/s²', desc: 'Hard acceleration' },
                       { label: 'EXTREME', range: '≥ 5.0 m/s²', desc: 'Abuse-level event' },
                     ].map(t => (
-                      <div key={t.label} className={`flex gap-2 items-center text-xs rounded-lg px-2 py-1 ${d ? 'bg-neutral-800' : 'bg-gray-50'}`}>
+                      <div key={t.label} className={`flex gap-2 items-center text-xs rounded-lg px-2 py-1 ${d ? 'bg-card' : 'bg-gray-50'}`}>
                         <span className="font-semibold w-20 text-emerald-400">{t.label}</span>
                         <span className={`font-mono text-[11px] w-28 ${d ? 'text-neutral-300' : 'text-gray-700'}`}>{t.range}</span>
                         <span className={sub}>{t.desc}</span>
@@ -355,7 +355,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                       { label: 'HARD', range: '4.5 – 7.0 m/s²', desc: 'Hard braking event' },
                       { label: 'EXTREME', range: '≥ 7.0 m/s²', desc: 'Emergency / abuse level' },
                     ].map(t => (
-                      <div key={t.label} className={`flex gap-2 items-center text-xs rounded-lg px-2 py-1 ${d ? 'bg-neutral-800' : 'bg-gray-50'}`}>
+                      <div key={t.label} className={`flex gap-2 items-center text-xs rounded-lg px-2 py-1 ${d ? 'bg-card' : 'bg-gray-50'}`}>
                         <span className="font-semibold w-20 text-red-400">{t.label}</span>
                         <span className={`font-mono text-[11px] w-28 ${d ? 'text-neutral-300' : 'text-gray-700'}`}>{t.range}</span>
                         <span className={sub}>{t.desc}</span>
@@ -406,7 +406,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                 Abuse events are derived from the HF time-series and vehicle-specific RPM config
                 (idleRpm, maxRpm from vehicle record). Each event type targets a specific driving behavior.
               </p>
-              <div className={`mb-3 p-2 rounded-lg text-[11px] ${d ? 'bg-blue-900/20 text-blue-300 border border-blue-800/30' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+              <div className={`mb-3 p-2 rounded-lg text-[11px] ${d ? 'bg-status-info-soft text-brand border border-border' : 'bg-brand-soft text-status-info border border-border'}`}>
                 <strong>Signal availability:</strong> Coolant-dependent detectors (COLD_ENGINE_HIGH_RPM, COLD_ENGINE_FULL_THROTTLE, OVERHEATING_ENGINE) silently produce no events if ECT data is unavailable.
                 RPM-dependent detectors (ENGINE_REV_IN_IDLE, HIGH_RPM_CONSTANT, LAUNCH_LIKE_START, LONG_IDLE, ENGINE_SHUTDOWN_WHILE_DRIVING) require RPM data.
                 KICKDOWN requires throttle data. FULL_BRAKING and POSSIBLE_IMPACT only require speed (always available).
@@ -428,8 +428,8 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                   },
                   {
                     type: 'COLD_ENGINE_HIGH_RPM',
-                    color: 'text-blue-400',
-                    bg: d ? 'bg-blue-900/20' : 'bg-blue-50',
+                    color: 'text-status-info',
+                    bg: d ? 'bg-status-info-soft' : 'bg-brand-soft',
                     desc: 'High RPM while engine coolant is still cold.',
                     conditions: [
                       'entry: RPM > 75% maxRpm AND coolant < 60°C',
@@ -442,8 +442,8 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                   },
                   {
                     type: 'COLD_ENGINE_FULL_THROTTLE',
-                    color: 'text-blue-300',
-                    bg: d ? 'bg-blue-900/20' : 'bg-blue-50',
+                    color: 'text-brand',
+                    bg: d ? 'bg-status-info-soft' : 'bg-brand-soft',
                     desc: 'Full throttle application while engine is cold.',
                     conditions: [
                       'entry: throttle > 85% AND coolant < 60°C',
@@ -566,20 +566,20 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                       <div>
                         <p className={`text-[11px] font-semibold mb-1 ${d ? 'text-neutral-400' : 'text-gray-500'}`}>Conditions</p>
                         <ul className="space-y-0.5">
-                          {e.conditions.map(c => <li key={c} className={`text-[11px] ${d ? 'text-neutral-500' : 'text-gray-400'}`}>• {c}</li>)}
+                          {e.conditions.map(c => <li key={c} className={`text-[11px] ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>• {c}</li>)}
                         </ul>
                       </div>
                       <div>
                         <p className={`text-[11px] font-semibold mb-1 ${d ? 'text-neutral-400' : 'text-gray-500'}`}>Stored fields</p>
                         <ul className="space-y-0.5">
-                          {e.fields.map(f => <li key={f} className={`text-[11px] ${d ? 'text-neutral-500' : 'text-gray-400'}`}>• {f}</li>)}
+                          {e.fields.map(f => <li key={f} className={`text-[11px] ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>• {f}</li>)}
                         </ul>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
-              <div className={`mt-4 p-3 rounded-xl text-[11px] ${d ? 'bg-neutral-800 text-neutral-300' : 'bg-gray-50 text-gray-600'}`}>
+              <div className={`mt-4 p-3 rounded-xl text-[11px] ${d ? 'bg-card text-neutral-300' : 'bg-gray-50 text-gray-600'}`}>
                 <strong>Abuse Score (abuseScore, 0–100):</strong> Deterministic weighted sum of abuse events.
                 Each event type has a base weight (POSSIBLE_IMPACT=20, ENGINE_SHUTDOWN=15, OVERHEATING=10, FULL_BRAKING=8, LAUNCH_LIKE_START=6, COLD_ENGINE_*=5, HIGH_RPM_CONSTANT=4, ENGINE_REV_IN_IDLE=3, KICKDOWN=3, LONG_IDLE=2).
                 Severity multipliers: WARNING=1.0×, SEVERE=1.5×, CRITICAL=2.0×. Score is capped at 100.
@@ -663,7 +663,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                 (speeding exposure %, max / avg overspeed, section count). Both come from
                 <code className="font-mono ml-1">driving-impact-scorer.ts</code> (one canonical implementation).
               </div>
-              <div className={`mt-2 p-3 rounded-xl text-[11px] leading-relaxed ${d ? 'bg-blue-900/20 text-blue-300 border border-blue-800/30' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+              <div className={`mt-2 p-3 rounded-xl text-[11px] leading-relaxed ${d ? 'bg-status-info-soft text-brand border border-border' : 'bg-brand-soft text-status-info border border-border'}`}>
                 <strong>V4.6.95 hardening:</strong> <code className="font-mono">safetyScore</code> is
                 now <em>nullable</em> on <code className="font-mono">TripDrivingImpact</code>.
                 Helper <code className="font-mono">hasSpeedingDataFromTrip()</code> guards
@@ -720,7 +720,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                     fields: ['citySharePct → usage multiplier (city=1.35, highway=1.0)', 'stopGoStressScore → stop density factor', 'highSpeedStressScore → high-speed braking factor', 'p95DecelMs2 → hard braking factor', 'meanBrakeEnergyKjPerKm → full-braking factor', 'thermalBrakeStressScore → thermal wear factor'],
                   },
                 ].map(c => (
-                  <div key={c.title} className={`rounded-xl p-4 ${d ? 'bg-neutral-800' : 'bg-gray-50'}`}>
+                  <div key={c.title} className={`rounded-xl p-4 ${d ? 'bg-card' : 'bg-gray-50'}`}>
                     <p className={`text-sm font-bold mb-2 ${c.color}`}>{c.title}</p>
                     <ul className="space-y-1">
                       {c.fields.map(f => <li key={f} className={`text-[11px] ${d ? 'text-neutral-400' : 'text-gray-600'}`}>• {f}</li>)}
@@ -772,16 +772,16 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                   { method: 'POST', path: '/api/v1/vehicle-intelligence/trips/sync', desc: 'LEGACY V1 ignition-based manual sync. Returns warning field. NOT the live engine.', canonical: false },
                 ].map(e => (
                   <li key={e.path} className="flex gap-3 items-start">
-                    <span className={`flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${e.method === 'GET' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-blue-500/20 text-blue-400'}`}>{e.method}</span>
+                    <span className={`flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${e.method === 'GET' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-brand-soft text-status-info'}`}>{e.method}</span>
                     <div>
                       <code className={`${code} text-[10px]`}>{e.path}</code>
-                      <p className={`text-[11px] mt-0.5 ${d ? 'text-neutral-500' : 'text-gray-400'}`}>{e.desc}</p>
+                      <p className={`text-[11px] mt-0.5 ${d ? 'text-neutral-500' : 'text-muted-foreground'}`}>{e.desc}</p>
                     </div>
                     {!e.canonical && <span className={`flex-shrink-0 text-[9px] font-bold px-1.5 py-0.5 rounded-full self-start mt-0.5 ${d ? 'bg-amber-800/30 text-amber-400' : 'bg-amber-100 text-amber-700'}`}>LEGACY</span>}
                   </li>
                 ))}
               </ul>
-              <div className={`p-3 rounded-xl text-[11px] ${d ? 'bg-blue-900/20 text-blue-300 border border-blue-800/30' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+              <div className={`p-3 rounded-xl text-[11px] ${d ? 'bg-status-info-soft text-brand border border-border' : 'bg-brand-soft text-status-info border border-border'}`}>
                 <strong>Counter selection in health scoring:</strong> When a trip has <code className="font-mono">behaviorEnrichedAt</code> set,
                 the system uses <code className="font-mono">hardBrakingCount</code> (HF canonical).
                 For trips without HF enrichment, <code className="font-mono">harshBrakeCount</code> (legacy route enrichment) is the fallback.

@@ -2,20 +2,20 @@ import type { OrgInvoiceStatus } from './invoiceTypes';
 import { isOutgoingInvoice } from './invoiceClassification';
 
 export const STATUS_MAP: Record<string, { label: string; bg: string; text: string; dot: string }> = {
-  DRAFT: { label: 'Entwurf', bg: 'bg-gray-500/15', text: 'text-gray-400', dot: 'bg-gray-400' },
-  ISSUED: { label: 'Ausgestellt', bg: 'bg-indigo-500/15', text: 'text-indigo-500', dot: 'bg-indigo-500' },
-  SENT: { label: 'Gesendet', bg: 'bg-blue-500/15', text: 'text-blue-500', dot: 'bg-blue-500' },
-  PARTIALLY_PAID: { label: 'Teilweise bezahlt', bg: 'bg-amber-500/15', text: 'text-amber-500', dot: 'bg-amber-500' },
-  PAID: { label: 'Bezahlt', bg: 'bg-emerald-500/15', text: 'text-emerald-500', dot: 'bg-emerald-500' },
-  OVERDUE: { label: 'Überfällig', bg: 'bg-red-500/15', text: 'text-red-500', dot: 'bg-red-500' },
-  CANCELLED: { label: 'Storniert', bg: 'bg-gray-500/15', text: 'text-gray-400', dot: 'bg-gray-400' },
-  CREDITED: { label: 'Gutgeschrieben', bg: 'bg-violet-500/15', text: 'text-violet-500', dot: 'bg-violet-500' },
-  VOID: { label: 'Ungültig', bg: 'bg-gray-500/15', text: 'text-gray-400', dot: 'bg-gray-400' },
-  UPLOADED: { label: 'Hochgeladen', bg: 'bg-purple-500/15', text: 'text-purple-500', dot: 'bg-purple-500' },
-  NEEDS_REVIEW: { label: 'Prüfung nötig', bg: 'bg-amber-500/15', text: 'text-amber-500', dot: 'bg-amber-500' },
-  APPROVED: { label: 'Freigegeben', bg: 'bg-emerald-500/15', text: 'text-emerald-500', dot: 'bg-emerald-500' },
-  BOOKED: { label: 'Verbucht', bg: 'bg-blue-500/15', text: 'text-blue-500', dot: 'bg-blue-500' },
-  REJECTED: { label: 'Abgelehnt', bg: 'bg-red-500/15', text: 'text-red-500', dot: 'bg-red-500' },
+  DRAFT: { label: 'Entwurf', bg: 'bg-status-nodata-soft', text: 'text-status-nodata', dot: 'bg-status-nodata' },
+  ISSUED: { label: 'Ausgestellt', bg: 'bg-status-info-soft', text: 'text-status-info', dot: 'bg-status-info' },
+  SENT: { label: 'Gesendet', bg: 'bg-status-info-soft', text: 'text-status-info', dot: 'bg-status-info' },
+  PARTIALLY_PAID: { label: 'Teilweise bezahlt', bg: 'bg-status-watch-soft', text: 'text-status-watch', dot: 'bg-status-watch' },
+  PAID: { label: 'Bezahlt', bg: 'bg-status-positive-soft', text: 'text-status-positive', dot: 'bg-status-positive' },
+  OVERDUE: { label: 'Überfällig', bg: 'bg-status-critical-soft', text: 'text-status-critical', dot: 'bg-status-critical' },
+  CANCELLED: { label: 'Storniert', bg: 'bg-status-nodata-soft', text: 'text-status-nodata', dot: 'bg-status-nodata' },
+  CREDITED: { label: 'Gutgeschrieben', bg: 'bg-status-ai-soft', text: 'text-status-ai', dot: 'bg-status-ai' },
+  VOID: { label: 'Ungültig', bg: 'bg-status-nodata-soft', text: 'text-status-nodata', dot: 'bg-status-nodata' },
+  UPLOADED: { label: 'Hochgeladen', bg: 'bg-status-ai-soft', text: 'text-status-ai', dot: 'bg-status-ai' },
+  NEEDS_REVIEW: { label: 'Prüfung nötig', bg: 'bg-status-watch-soft', text: 'text-status-watch', dot: 'bg-status-watch' },
+  APPROVED: { label: 'Freigegeben', bg: 'bg-status-positive-soft', text: 'text-status-positive', dot: 'bg-status-positive' },
+  BOOKED: { label: 'Verbucht', bg: 'bg-status-info-soft', text: 'text-status-info', dot: 'bg-status-info' },
+  REJECTED: { label: 'Abgelehnt', bg: 'bg-status-critical-soft', text: 'text-status-critical', dot: 'bg-status-critical' },
 };
 
 export function isOutgoing(type: string) {

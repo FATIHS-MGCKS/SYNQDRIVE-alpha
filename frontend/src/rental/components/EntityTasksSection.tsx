@@ -35,7 +35,7 @@ function statusTone(status: ApiTaskStatus, isDark: boolean): string {
     case 'CANCELLED':
       return isDark ? 'bg-muted text-muted-foreground border-border' : 'bg-gray-100 text-gray-500 border-gray-200';
     default:
-      return isDark ? 'bg-status-info-soft text-status-info border-status-info/20' : 'bg-blue-100 text-blue-700 border-blue-200';
+      return isDark ? 'bg-status-info-soft text-status-info border-status-info/20' : 'bg-status-info-soft text-status-info border-border';
   }
 }
 
@@ -115,9 +115,9 @@ export function EntityTasksSection({ isDark = false, title, emptyHint, fetchTask
           <Icon name="loader-2" className={`w-5 h-5 animate-spin ${isDark ? 'text-muted-foreground' : 'text-gray-300'}`} />
         </div>
       ) : errored ? (
-        <p className={`text-[11px] ${isDark ? 'text-muted-foreground' : 'text-gray-400'}`}>Tasks konnten nicht geladen werden.</p>
+        <p className={`text-[11px] ${isDark ? 'text-muted-foreground' : 'text-muted-foreground'}`}>Tasks konnten nicht geladen werden.</p>
       ) : tasks.length === 0 ? (
-        <p className={`text-[11px] ${isDark ? 'text-muted-foreground' : 'text-gray-400'}`}>{emptyHint}</p>
+        <p className={`text-[11px] ${isDark ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{emptyHint}</p>
       ) : (
         <div className="space-y-2">
           {tasks.map((t) => {

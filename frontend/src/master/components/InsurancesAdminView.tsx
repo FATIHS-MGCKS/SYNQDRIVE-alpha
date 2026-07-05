@@ -57,7 +57,7 @@ const STATUS_TEXT: Record<string, string> = {
   healthy: 'text-emerald-500', HEALTHY: 'text-emerald-500',
   degraded: 'text-amber-500', DEGRADED: 'text-amber-500',
   down: 'text-red-500', DOWN: 'text-red-500',
-  unknown: 'text-gray-400', UNKNOWN: 'text-gray-400',
+  unknown: 'text-muted-foreground', UNKNOWN: 'text-muted-foreground',
 };
 
 function fmtDate(iso: string | null): string {
@@ -78,7 +78,7 @@ function ErrorBanner({ message, onRetry }: { message: string; onRetry: () => voi
     <div className={`${CARD} p-6 flex items-center gap-4`}>
       <AlertTriangle className="w-5 h-5 text-red-500 shrink-0" />
       <p className={`text-sm text-muted-foreground flex-1`}>{message}</p>
-      <button onClick={onRetry} className="text-xs font-semibold text-indigo-500 hover:underline flex items-center gap-1">
+      <button onClick={onRetry} className="text-xs font-semibold text-status-info hover:underline flex items-center gap-1">
         <RefreshCw className="w-3.5 h-3.5" /> Retry
       </button>
     </div>
@@ -183,7 +183,7 @@ function OverviewTab() {
               <div className="flex items-center gap-4 text-xs">
                 <span className={'text-muted-foreground'}>{p.communicationChannel}</span>
                 <span className={'text-muted-foreground'}>{p.isEnabled ? 'Enabled' : 'Disabled'}</span>
-                <span className={`capitalize font-semibold ${STATUS_TEXT[p.healthStatus] ?? 'text-gray-400'}`}>{p.healthStatus}</span>
+                <span className={`capitalize font-semibold ${STATUS_TEXT[p.healthStatus] ?? 'text-muted-foreground'}`}>{p.healthStatus}</span>
               </div>
             </div>
           ))}
@@ -313,13 +313,13 @@ function PartnersTab() {
             <div>
               <label className={LABEL}>Supported Inquiry Types</label>
               <div className="flex flex-wrap gap-1.5 mt-1">{INQUIRY_TYPES.map(t => (
-                <button key={t} onClick={() => toggleMulti('supportedInquiryTypes', t)} className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${form.supportedInquiryTypes?.includes(t) ? 'bg-indigo-600 text-white border-indigo-600' : 'border-border text-muted-foreground'}`}>{t.replace(/_/g, ' ')}</button>
+                <button key={t} onClick={() => toggleMulti('supportedInquiryTypes', t)} className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${form.supportedInquiryTypes?.includes(t) ? 'bg-brand text-brand-foreground border-brand' : 'border-border text-muted-foreground'}`}>{t.replace(/_/g, ' ')}</button>
               ))}</div>
             </div>
             <div>
               <label className={LABEL}>Insurance Models</label>
               <div className="flex flex-wrap gap-1.5 mt-1">{INSURANCE_MODELS.map(m => (
-                <button key={m} onClick={() => toggleMulti('supportedInsuranceModels', m)} className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${form.supportedInsuranceModels?.includes(m) ? 'bg-indigo-600 text-white border-indigo-600' : 'border-border text-muted-foreground'}`}>{m.replace(/_/g, ' ')}</button>
+                <button key={m} onClick={() => toggleMulti('supportedInsuranceModels', m)} className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors ${form.supportedInsuranceModels?.includes(m) ? 'bg-brand text-brand-foreground border-brand' : 'border-border text-muted-foreground'}`}>{m.replace(/_/g, ' ')}</button>
               ))}</div>
             </div>
           </div>
@@ -340,7 +340,7 @@ function PartnersTab() {
           <div className="flex flex-wrap gap-5">
             {(['supportsDynamicInsurance', 'supportsUsageBased', 'supportsKilometerBased', 'supportsDrivingScoreBased'] as const).map(k => (
               <button key={k} onClick={() => setForm(f => ({ ...f, [k]: !f[k] }))} className="flex items-center gap-2">
-                {form[k] ? <ToggleRight className="w-5 h-5 text-indigo-500" /> : <ToggleLeft className={`w-5 h-5 text-muted-foreground`} />}
+                {form[k] ? <ToggleRight className="w-5 h-5 text-status-info" /> : <ToggleLeft className={`w-5 h-5 text-muted-foreground`} />}
                 <span className={`text-xs font-semibold text-muted-foreground`}>{k.replace(/^supports/, '').replace(/([A-Z])/g, ' $1').trim()}</span>
               </button>
             ))}
@@ -394,7 +394,7 @@ function PartnersTab() {
                   <td className="px-5 py-3">
                     <span className="flex items-center gap-1.5">
                       <span className={`w-2 h-2 rounded-full ${STATUS_DOT[p.healthStatus] ?? STATUS_DOT.unknown}`} />
-                      <span className={`text-xs font-semibold capitalize ${STATUS_TEXT[p.healthStatus] ?? 'text-gray-400'}`}>{p.healthStatus}</span>
+                      <span className={`text-xs font-semibold capitalize ${STATUS_TEXT[p.healthStatus] ?? 'text-muted-foreground'}`}>{p.healthStatus}</span>
                     </span>
                   </td>
                   <td className={`px-5 py-3 text-xs text-muted-foreground`}>{fmtDate(p.lastTestedAt ?? null)}</td>
@@ -402,7 +402,7 @@ function PartnersTab() {
                     <div className="flex items-center gap-2">
                       <button onClick={() => openEdit(p)} className={`p-1.5 rounded-lg transition-colors hover:bg-muted`}><Settings2 className="w-3.5 h-3.5 text-gray-400" /></button>
                       <button onClick={() => handleTest(p.id)} disabled={testingId === p.id} className={`p-1.5 rounded-lg transition-colors hover:bg-muted`}>
-                        {testingId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" /> : <TestTube className="w-3.5 h-3.5 text-gray-400" />}
+                        {testingId === p.id ? <Loader2 className="w-3.5 h-3.5 animate-spin text-status-info" /> : <TestTube className="w-3.5 h-3.5 text-gray-400" />}
                       </button>
                     </div>
                   </td>
@@ -505,7 +505,7 @@ function ContactsTab() {
             <div><label className={LABEL}>Phone</label><input value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className={INPUT} /></div>
             <div className="flex items-end gap-3">
               <button onClick={() => setForm(f => ({ ...f, isPrimary: !f.isPrimary }))} className="flex items-center gap-2">
-                {form.isPrimary ? <ToggleRight className="w-5 h-5 text-indigo-500" /> : <ToggleLeft className={`w-5 h-5 text-muted-foreground`} />}
+                {form.isPrimary ? <ToggleRight className="w-5 h-5 text-status-info" /> : <ToggleLeft className={`w-5 h-5 text-muted-foreground`} />}
                 <span className={`text-xs font-semibold text-muted-foreground`}>Primary Contact</span>
               </button>
             </div>
@@ -539,7 +539,7 @@ function ContactsTab() {
                     <td className={`px-5 py-3 text-muted-foreground`}>{c.department ?? '—'}</td>
                     <td className="px-5 py-3"><span className={`flex items-center gap-1.5 text-muted-foreground`}><Mail className="w-3.5 h-3.5" />{c.email ?? '—'}</span></td>
                     <td className="px-5 py-3"><span className={`flex items-center gap-1.5 text-muted-foreground`}><Phone className="w-3.5 h-3.5" />{c.phone ?? '—'}</span></td>
-                    <td className="px-5 py-3">{c.isPrimary ? <Badge label="Primary" color="bg-indigo-500/20 text-indigo-400" /> : <span className="text-gray-500">—</span>}</td>
+                    <td className="px-5 py-3">{c.isPrimary ? <Badge label="Primary" color="bg-status-info-soft text-status-info" /> : <span className="text-gray-500">—</span>}</td>
                     <td className="px-5 py-3">
                       <button onClick={() => openEdit(c)} className={`p-1.5 rounded-lg transition-colors hover:bg-muted`}><Settings2 className="w-3.5 h-3.5 text-gray-400" /></button>
                     </td>
@@ -987,7 +987,7 @@ function HealthTab() {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {health.partners.map(p => {
           const statusDot = STATUS_DOT[p.healthStatus] ?? STATUS_DOT.unknown;
-          const statusTxt = STATUS_TEXT[p.healthStatus] ?? 'text-gray-400';
+          const statusTxt = STATUS_TEXT[p.healthStatus] ?? 'text-muted-foreground';
 
           return (
             <div key={p.id} className={`${CARD} p-5 space-y-3`}>

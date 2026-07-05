@@ -148,7 +148,7 @@ export function VoiceConversationsPanel({
   const inputCls = cn(
     'w-full rounded-lg px-3 py-2 text-xs outline-none transition-colors',
     isDarkMode
-      ? 'bg-neutral-800 border border-neutral-700 text-gray-200 focus:border-purple-500/50'
+      ? 'bg-card border border-neutral-700 text-gray-200 focus:border-purple-500/50'
       : 'bg-gray-50 border border-gray-200 text-gray-800 focus:border-purple-400',
   );
 
@@ -184,7 +184,7 @@ export function VoiceConversationsPanel({
           className={cn(
             'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-60',
             isDarkMode
-              ? 'bg-neutral-800 text-gray-300 hover:bg-neutral-700'
+              ? 'bg-card text-gray-300 hover:bg-neutral-700'
               : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
           )}
         >
@@ -336,7 +336,7 @@ export function VoiceConversationsPanel({
                   className={cn(
                     'p-3 rounded-lg transition-colors',
                     isDarkMode
-                      ? 'bg-neutral-900/50 hover:bg-neutral-800'
+                      ? 'bg-neutral-900/50 hover:bg-card'
                       : 'bg-gray-50/80 hover:bg-gray-100/80',
                   )}
                 >
@@ -346,7 +346,7 @@ export function VoiceConversationsPanel({
                         name={isInbound(conversation.direction) ? 'phone-incoming' : 'phone-outgoing'}
                         className={cn(
                           'w-3 h-3',
-                          isInbound(conversation.direction) ? 'text-emerald-500' : 'text-blue-500',
+                          isInbound(conversation.direction) ? 'text-emerald-500' : 'text-status-info',
                         )}
                       />
                       <span
@@ -391,7 +391,7 @@ export function VoiceConversationsPanel({
                       className={cn(
                         'px-2 py-1 rounded text-[10px] font-semibold disabled:opacity-60',
                         isDarkMode
-                          ? 'bg-neutral-800 text-gray-300 hover:bg-neutral-700'
+                          ? 'bg-card text-gray-300 hover:bg-neutral-700'
                           : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50',
                       )}
                     >
@@ -423,7 +423,7 @@ export function VoiceConversationsPanel({
                             ? 'bg-purple-500/20 text-purple-300'
                             : 'bg-purple-50 text-purple-700'
                           : isDarkMode
-                            ? 'bg-neutral-800 text-gray-300 hover:bg-neutral-700'
+                            ? 'bg-card text-gray-300 hover:bg-neutral-700'
                             : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50',
                       )}
                     >
@@ -447,7 +447,7 @@ export function VoiceConversationsPanel({
                           className={cn(
                             'mt-2 text-[10px] p-2 rounded whitespace-pre-wrap max-h-48 overflow-y-auto',
                             isDarkMode
-                              ? 'bg-neutral-800 text-gray-300'
+                              ? 'bg-card text-gray-300'
                               : 'bg-gray-100 text-gray-600',
                           )}
                         >

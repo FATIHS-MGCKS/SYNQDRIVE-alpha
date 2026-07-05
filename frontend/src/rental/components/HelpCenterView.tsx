@@ -761,7 +761,7 @@ export function HelpCenterView({
 
   const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
   const textSecondary = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
-  const textMuted = isDarkMode ? 'text-muted-foreground' : 'text-gray-400';
+  const textMuted = isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground';
   const cardClass = `rounded-xl shadow-sm border ${isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'}`;
   const dividerColor = isDarkMode ? 'border-border/40' : 'border-gray-200/60';
 
@@ -800,8 +800,8 @@ export function HelpCenterView({
       {/* Header */}
       <div>
         <div className="flex items-center gap-3 mb-2">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDarkMode ? 'bg-brand-soft' : 'bg-blue-100/60'}`}>
-            <Icon name="book-open" className="w-5 h-5 text-blue-500" />
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isDarkMode ? 'bg-brand-soft' : 'bg-brand-soft'}`}>
+            <Icon name="book-open" className="w-5 h-5 text-status-info" />
           </div>
           <div>
             <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">Help Center</h1>
@@ -818,7 +818,7 @@ export function HelpCenterView({
             onClick={onOpenSupport}
             className={`mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-semibold transition-colors ${
               isDarkMode
-                ? 'border-neutral-700 text-gray-200 hover:bg-neutral-800'
+                ? 'border-neutral-700 text-gray-200 hover:bg-card'
                 : 'border-gray-200 text-gray-800 hover:bg-gray-50'
             }`}
           >
@@ -836,7 +836,7 @@ export function HelpCenterView({
           placeholder="Nach Themen, Funktionen oder Fragen suchen..."
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          className={`w-full pl-11 pr-4 py-3.5 rounded-xl border text-sm ${isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground focus:border-ring' : 'bg-white border-gray-200 text-gray-900 placeholder-gray-400 focus:border-blue-400'} outline-none transition-all`}
+          className={`w-full pl-11 pr-4 py-3.5 rounded-xl border text-sm ${isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground focus:border-ring' : 'bg-card border-border text-foreground placeholder:text-muted-foreground focus:border-brand'} outline-none transition-all`}
         />
         {searchTerm && (
           <p className={`text-xs mt-2 ${textMuted}`}>
@@ -857,7 +857,7 @@ export function HelpCenterView({
                   onClick={() => scrollToSection(sec.id)}
                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
                     expandedSection === sec.id
-                      ? (isDarkMode ? 'bg-brand-soft text-brand border-brand/25' : 'bg-blue-50 text-blue-600 border-blue-200')
+                      ? (isDarkMode ? 'bg-brand-soft text-brand border-brand/25' : 'bg-brand-soft text-brand border-border')
                       : (isDarkMode ? 'text-muted-foreground border-border hover:bg-muted hover:text-foreground' : 'text-gray-600 border-gray-200 hover:bg-gray-50 hover:text-gray-800')
                   }`}
                 >
@@ -891,9 +891,9 @@ export function HelpCenterView({
                 <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                   section.comingSoon
                     ? (isDarkMode ? 'bg-purple-500/15' : 'bg-purple-100/60')
-                    : (isDarkMode ? 'bg-brand-soft' : 'bg-blue-100/60')
+                    : (isDarkMode ? 'bg-brand-soft' : 'bg-brand-soft')
                 }`}>
-                  <section.icon className={`w-4.5 h-4.5 ${section.comingSoon ? 'text-purple-400' : 'text-blue-500'}`} />
+                  <section.icon className={`w-4.5 h-4.5 ${section.comingSoon ? 'text-purple-400' : 'text-status-info'}`} />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
@@ -945,7 +945,7 @@ export function HelpCenterView({
       {/* Footer */}
       <div className={`${cardClass} p-5 text-center`}>
         <div className="flex items-center justify-center gap-2 mb-2">
-          <Icon name="headphones" className={`w-4 h-4 ${isDarkMode ? 'text-brand' : 'text-blue-600'}`} />
+          <Icon name="headphones" className={`w-4 h-4 ${isDarkMode ? 'text-brand' : 'text-brand'}`} />
           <p className={`text-xs font-semibold ${textPrimary}`}>Noch Fragen?</p>
         </div>
         <p className={`text-xs ${textSecondary}`}>
@@ -962,7 +962,7 @@ export function HelpCenterView({
 
 function ArticleContent({ content, isDarkMode }: { content: string; isDarkMode: boolean }) {
   const textStrong = isDarkMode ? 'text-white' : 'text-gray-900';
-  const listBullet = isDarkMode ? 'text-brand' : 'text-blue-500';
+  const listBullet = isDarkMode ? 'text-brand' : 'text-status-info';
   const codeBg = isDarkMode ? 'bg-muted text-foreground/85' : 'bg-gray-100 text-gray-700';
 
   const lines = content.split('\n');

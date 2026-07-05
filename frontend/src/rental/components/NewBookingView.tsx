@@ -1298,7 +1298,7 @@ export function NewBookingView({
                             <Icon name="eye" className="w-5 h-5" />
                           </button>
                           {selectedCustomer?.id === c.id && (
-                            <Icon name="check" className="w-5 h-5 text-blue-500 shrink-0" />
+                            <Icon name="check" className="w-5 h-5 text-status-info shrink-0" />
                           )}
                         </button>
                       ))}
@@ -1373,7 +1373,7 @@ export function NewBookingView({
                         return (
                           <div className="flex items-center gap-2.5 mb-3">
                             <div className="w-5 h-5 rounded-lg flex items-center justify-center sq-tone-info">
-                              <Icon className="w-5 h-5 text-blue-500" />
+                              <Icon className="w-5 h-5 text-status-info" />
                             </div>
                             <h3 className="text-base text-foreground">{title}</h3>
                           </div>
@@ -1488,7 +1488,7 @@ export function NewBookingView({
                                       <div className="flex gap-2">
                                         {(['Individual', 'Corporate'] as const).map(t => (
                                           <button key={t} onClick={() => setNewCustomer({ ...newCustomer, type: t })}
-                                            className={`flex-1 py-2.5 rounded-lg border text-xs font-semibold transition-all ${ newCustomer.type === t ? 'bg-blue-500 text-white border-blue-500 shadow-md' : 'bg-card border border-border text-muted-foreground hover:border-border' }`}>
+                                            className={`flex-1 py-2.5 rounded-lg border text-xs font-semibold transition-all ${ newCustomer.type === t ? 'bg-brand text-brand-foreground border-brand shadow-md' : 'bg-card border border-border text-muted-foreground hover:border-border' }`}>
                                             {t === 'Individual' ? 'Privat' : 'Firma'}
                                           </button>
                                         ))}
@@ -1892,7 +1892,7 @@ export function NewBookingView({
                               <p className="text-xs text-muted-foreground">pro Tag</p>
                             </div>
                             {selectedVehicle?.id === v.id && !offline ? (
-                              <div className={`w-5 h-5 rounded-full flex items-center justify-center ${isMaintenance ? 'bg-blue-600/50' : 'bg-blue-600'}`}>
+                              <div className={`w-5 h-5 rounded-full flex items-center justify-center ${isMaintenance ? 'bg-brand/50' : 'bg-brand'}`}>
                                 <Icon name="check" className="w-3.5 h-3.5 text-white" />
                               </div>
                             ) : (
@@ -2062,7 +2062,7 @@ export function NewBookingView({
                                 <span className={`text-xs ${isSelected ? ('text-[color:var(--status-info)]') : ('text-foreground')}`}>
                                   {formatOptionGrossLabel(opt.priceCents, opt.pricingType, taxRatePercent, displayRentalDays)}
                                 </span>
-                                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${ isSelected ? 'bg-blue-600 border-blue-600' : 'border-border' }`}>
+                                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${ isSelected ? 'bg-brand border-brand' : 'border-border' }`}>
                                   {isSelected && <Icon name="check" className="w-3 h-3 text-white" />}
                                 </div>
                               </div>
@@ -2389,7 +2389,7 @@ export function NewBookingView({
                                           : 'sq-tone-critical'
                                       }`
                                     : isStartDay(day)
-                                    ? 'bg-blue-600 text-white cursor-pointer hover:bg-blue-700 shadow-sm'
+                                    ? 'bg-brand text-brand-foreground cursor-pointer hover:bg-brand-hover shadow-sm'
                                     : isEndDay(day)
                                     ? 'bg-green-600 text-white cursor-pointer hover:bg-green-700 shadow-sm'
                                     : isInRange(day)
@@ -2435,7 +2435,7 @@ export function NewBookingView({
                       </div>
                       <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border/30">
                         <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded bg-blue-600"></div>
+                          <div className="w-3 h-3 rounded bg-brand"></div>
                           <span className="text-xs text-muted-foreground">Abholung</span>
                         </div>
                         <div className="flex items-center gap-1.5">
@@ -2499,7 +2499,7 @@ export function NewBookingView({
                           disabled={isInvoiceDisabled}
                           className={`p-3.5 rounded-lg border text-center transition-all ${ isInvoiceDisabled ? 'bg-muted/20 border border-border opacity-40 cursor-not-allowed' : paymentMethod === m.id ? 'sq-tone-brand border border-border ring-1 ring-[color:var(--brand-glow)]' : 'bg-muted/40 border border-border hover:border-border' }`}
                         >
-                          <m.icon className={`w-5 h-5 mx-auto mb-1.5 ${ isInvoiceDisabled ? 'text-muted-foreground' : paymentMethod === m.id ? 'text-blue-500' : 'text-muted-foreground' }`} />
+                          <m.icon className={`w-5 h-5 mx-auto mb-1.5 ${ isInvoiceDisabled ? 'text-muted-foreground' : paymentMethod === m.id ? 'text-status-info' : 'text-muted-foreground' }`} />
                           <p className="text-xs text-foreground">{m.label}</p>
                           <p className="text-[11px] text-muted-foreground">{m.desc}</p>
                           {isInvoiceDisabled && (
@@ -2846,13 +2846,13 @@ export function NewBookingView({
                       <label className="flex items-start gap-3 cursor-pointer">
                         <input type="checkbox" checked={agbAccepted} onChange={(e) => setAgbAccepted(e.target.checked)} className="mt-0.5 rounded" />
                         <span className="text-xs text-foreground">
-                          Kunde hat die <span className="text-blue-500 underline">Allgemeinen Geschäftsbedingungen (AGB)</span> und die Mietbedingungen erhalten.
+                          Kunde hat die <span className="text-status-info underline">Allgemeinen Geschäftsbedingungen (AGB)</span> und die Mietbedingungen erhalten.
                         </span>
                       </label>
                       <label className="flex items-start gap-3 cursor-pointer">
                         <input type="checkbox" checked={privacyAccepted} onChange={(e) => setPrivacyAccepted(e.target.checked)} className="mt-0.5 rounded" />
                         <span className="text-xs text-foreground">
-                          Kunde hat der <span className="text-blue-500 underline">Datenschutzerklärung</span> zugestimmt und wurde über die Verarbeitung seiner Daten informiert.
+                          Kunde hat der <span className="text-status-info underline">Datenschutzerklärung</span> zugestimmt und wurde über die Verarbeitung seiner Daten informiert.
                         </span>
                       </label>
                     </div>

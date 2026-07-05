@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'hardcoded-colors-token-migration-v49194-2026-07-05',
+    version: '4.9.194',
+    title: 'V4.9.194 — Hardcoded Farben → Theme-Tokens (V2 Migration)',
+    summary: [
+      'Repo-weite Migration: `bg-blue-*`/`bg-slate-*`/`text-indigo-*` in Rental-, Master- und Lib-UI durch semantische Tokens ersetzt (`bg-card`, `bg-muted`, `bg-brand`, `bg-status-*-soft`, `text-foreground`, `border-border`).',
+      'Dark/Light-Dual-Ternaries vereinfacht — Tokens tragen beide Modi zentral aus `theme.css`.',
+      'Status-Badges (Invoices, Fines, Trips) auf `status-*`-Tokens; Fleet-Map-Marker Available → Brand `#4F86E8`.',
+      'Rental + `components/` + `lib/` ohne verbleibende slate/blue/indigo-Klassen; Master-Admin-Docs-Views bereinigt.',
+    ],
+    reason: 'Hardcoded Tailwind-Farben überschrieben Light V2 Soft Glass und Dark V2 Graphite.',
+    previousBehavior: '~288 hardcoded blue/slate/indigo Treffer in Feature-Views; viele `isDarkMode ? token : bg-blue-50`-Zweige.',
+    details: 'Nur className/Farb-Token-Anbindung. Keine Layout-, Logik- oder API-Änderung. Migrations-Skripte unter `frontend/scripts/migrate-hardcoded-colors*.py`.',
+    affectsArchitecture: false,
+    module: 'Design System',
+    createdAt: '2026-07-05T02:30:00.000Z',
+  },
+  {
     id: 'dark-theme-v2-graphite-charcoal-v49193-2026-07-05',
     version: '4.9.193',
     title: 'V4.9.193 — Dark Theme V2: Premium Graphite / Charcoal',

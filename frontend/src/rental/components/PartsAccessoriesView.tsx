@@ -59,7 +59,7 @@ function availabilityBadge(status: string, dk: boolean) {
     return { label: 'Limited', bg: dk ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700' };
   if (status === 'out_of_stock')
     return { label: 'Out of Stock', bg: dk ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700' };
-  return { label: 'Unknown', bg: dk ? 'bg-neutral-500/15 text-neutral-400' : 'bg-gray-100 text-gray-500' };
+  return { label: 'Unknown', bg: dk ? 'bg-neutral-500/15 text-neutral-400' : 'bg-muted text-muted-foreground' };
 }
 
 function fitmentBadge(status: string, dk: boolean) {
@@ -67,7 +67,7 @@ function fitmentBadge(status: string, dk: boolean) {
     return { label: 'Exact Fit', bg: dk ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700' };
   if (status === 'likely_fit')
     return { label: 'Likely Fit', bg: dk ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700' };
-  return { label: 'Universal', bg: dk ? 'bg-neutral-500/15 text-neutral-400' : 'bg-gray-100 text-gray-500' };
+  return { label: 'Universal', bg: dk ? 'bg-neutral-500/15 text-neutral-400' : 'bg-muted text-muted-foreground' };
 }
 
 function formatPrice(value: number | undefined, currency: string) {
@@ -282,7 +282,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
             {i > 0 && (
               <div className={cls(
                 'w-6 h-px',
-                isDone ? (dk ? 'bg-blue-400' : 'bg-blue-500') : dk ? 'bg-white/10' : 'bg-gray-300',
+                isDone ? (dk ? 'bg-status-info' : 'bg-status-info') : dk ? 'bg-white/10' : 'bg-gray-300',
               )} />
             )}
             <button
@@ -290,9 +290,9 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               disabled={!isDone && !isActive}
               className={cls(
                 'flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all whitespace-nowrap',
-                isDone && (dk ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600'),
-                isActive && (dk ? 'bg-blue-500/30 text-white ring-1 ring-blue-500/50' : 'bg-blue-100 text-blue-700 ring-1 ring-blue-300'),
-                !isDone && !isActive && (dk ? 'text-white/30' : 'text-gray-400'),
+                isDone && (dk ? 'bg-brand-soft text-status-info' : 'bg-status-info-soft text-status-info'),
+                isActive && (dk ? 'bg-brand-soft text-white ring-1 ring-brand/50' : 'bg-status-info-soft text-status-info ring-1 ring-brand/30'),
+                !isDone && !isActive && (dk ? 'text-white/30' : 'text-muted-foreground'),
               )}
             >
               {isDone ? <Icon name="check" className="w-3 h-3" /> : <span className="w-4 text-center">{s}</span>}
@@ -319,7 +319,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
           </span>
         )}
         {selectedCategory && step > 2 && (
-          <span className={cls('px-2 py-0.5 rounded-full', dk ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-600')}>
+          <span className={cls('px-2 py-0.5 rounded-full', dk ? 'bg-brand-soft text-status-info' : 'bg-status-info-soft text-status-info')}>
             {selectedCategory}
           </span>
         )}
@@ -344,15 +344,15 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
         </p>
       </div>
       <div className="relative">
-        <Icon name="search" className={cls('absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4', dk ? 'text-white/40' : 'text-gray-400')} />
+        <Icon name="search" className={cls('absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4', dk ? 'text-white/40' : 'text-muted-foreground')} />
         <input
           value={vehicleSearch}
           onChange={(e) => setVehicleSearch(e.target.value)}
           placeholder="Search by plate, make, or model…"
           className={cls(
             'w-full pl-10 pr-4 py-2.5 rounded-xl text-sm outline-none transition',
-            dk ? 'bg-white/[0.06] text-white placeholder:text-white/30 border border-white/[0.08] focus:border-blue-500/50'
-               : 'bg-white text-gray-900 placeholder:text-gray-400 border border-gray-200 focus:border-blue-400',
+            dk ? 'bg-white/[0.06] text-white placeholder:text-white/30 border border-white/[0.08] focus:border-brand/50'
+               : 'bg-white text-gray-900 placeholder:text-gray-400 border border-gray-200 focus:border-brand',
           )}
         />
       </div>
@@ -364,7 +364,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
           ))}
         </div>
       ) : filteredVehicles.length === 0 ? (
-        <div className={cls('text-center py-16', dk ? 'text-white/40' : 'text-gray-400')}>
+        <div className={cls('text-center py-16', dk ? 'text-white/40' : 'text-muted-foreground')}>
           <Icon name="car" className="w-10 h-10 mx-auto mb-2 opacity-40" />
           <p className="text-sm">No vehicles found</p>
         </div>
@@ -392,12 +392,12 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                     </p>
                   </div>
                   {selected && (
-                    <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center shrink-0">
+                    <div className="w-5 h-5 rounded-full bg-status-info flex items-center justify-center shrink-0">
                       <Icon name="check" className="w-3 h-3 text-white" />
                     </div>
                   )}
                 </div>
-                <p className={cls('text-[10px] mt-2 font-mono', dk ? 'text-white/30' : 'text-gray-400')}>
+                <p className={cls('text-[10px] mt-2 font-mono', dk ? 'text-white/30' : 'text-muted-foreground')}>
                   VIN {truncateVin((v as any).vin)}
                 </p>
               </button>
@@ -435,8 +435,8 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               <div className={cls(
                 'w-11 h-11 rounded-xl flex items-center justify-center',
                 selected
-                  ? 'bg-blue-500 text-white'
-                  : dk ? 'bg-white/[0.06] text-white/60' : 'bg-gray-100 text-gray-500',
+                  ? 'bg-brand text-brand-foreground'
+                  : dk ? 'bg-white/[0.06] text-white/60' : 'bg-muted text-muted-foreground',
               )}>
                 <Icon className="w-5 h-5" />
               </div>
@@ -472,7 +472,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
           ))}
         </div>
       ) : filteredProviders.length === 0 ? (
-        <div className={cls('text-center py-16', dk ? 'text-white/40' : 'text-gray-400')}>
+        <div className={cls('text-center py-16', dk ? 'text-white/40' : 'text-muted-foreground')}>
           <Icon name="truck" className="w-10 h-10 mx-auto mb-2 opacity-40" />
           <p className="text-sm font-medium">No providers available</p>
           <p className="text-xs mt-1">No enabled providers support {selectedCategory || 'this category'}.</p>
@@ -506,7 +506,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                     )}
                   </div>
                   {selected && (
-                    <div className="w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center shrink-0 ml-2">
+                    <div className="w-5 h-5 rounded-full bg-status-info flex items-center justify-center shrink-0 ml-2">
                       <Icon name="check" className="w-3 h-3 text-white" />
                     </div>
                   )}
@@ -525,7 +525,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                     </span>
                   ))}
                 </div>
-                <p className={cls('text-[10px] mt-2', dk ? 'text-white/25' : 'text-gray-400')}>
+                <p className={cls('text-[10px] mt-2', dk ? 'text-white/25' : 'text-muted-foreground')}>
                   {p.integrationType}
                 </p>
               </button>
@@ -562,9 +562,9 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
           <div className="flex items-center gap-3">
             <div className={cls(
               'w-10 h-10 rounded-xl flex items-center justify-center',
-              dk ? 'bg-blue-500/20' : 'bg-blue-50',
+              dk ? 'bg-brand-soft' : 'bg-brand-soft',
             )}>
-              <Icon name="shield-check" className={cls('w-5 h-5', dk ? 'text-blue-400' : 'text-blue-600')} />
+              <Icon name="shield-check" className={cls('w-5 h-5', dk ? 'text-status-info' : 'text-brand')} />
             </div>
             <div>
               <p className={cls('font-semibold', dk ? 'text-white' : 'text-gray-900')}>
@@ -604,7 +604,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                       dk ? 'bg-white/[0.03]' : 'bg-gray-50',
                     )}
                   >
-                    <Icon name="info" className={cls('w-3.5 h-3.5 mt-0.5 shrink-0', dk ? 'text-blue-400/60' : 'text-blue-500/60')} />
+                    <Icon name="info" className={cls('w-3.5 h-3.5 mt-0.5 shrink-0', dk ? 'text-status-info/60' : 'text-status-info/60')} />
                     <div>
                       <span className={cls('font-medium', dk ? 'text-white/80' : 'text-gray-800')}>{field}</span>
                       {disclosedFields.descriptions[field] && (
@@ -625,7 +625,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               'flex items-center gap-3 px-4 py-3 rounded-xl',
               dk ? 'bg-white/[0.04]' : 'bg-gray-50',
             )}>
-              <Icon name="car" className={cls('w-4 h-4', dk ? 'text-white/40' : 'text-gray-400')} />
+              <Icon name="car" className={cls('w-4 h-4', dk ? 'text-white/40' : 'text-muted-foreground')} />
               <span className={cls('text-sm', dk ? 'text-white/70' : 'text-gray-700')}>
                 {selectedVehicle.make} {selectedVehicle.model} {selectedVehicle.year} — {selectedVehicle.license}
               </span>
@@ -634,7 +634,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
 
           {/* Notice meta */}
           {disclosure && (
-            <div className={cls('flex gap-4 text-[10px]', dk ? 'text-white/25' : 'text-gray-400')}>
+            <div className={cls('flex gap-4 text-[10px]', dk ? 'text-white/25' : 'text-muted-foreground')}>
               <span>Version {disclosure.version}</span>
               <span>Effective {new Date(disclosure.effectiveFrom).toLocaleDateString()}</span>
             </div>
@@ -649,7 +649,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               className={cls(
                 'w-5 h-5 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-colors',
                 authorized
-                  ? 'bg-blue-500 border-blue-500'
+                  ? 'bg-status-info border-brand'
                   : dk ? 'border-white/20 bg-white/[0.04]' : 'border-gray-300 bg-white',
               )}
             >
@@ -680,7 +680,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               className={cls(
                 'px-6 py-2.5 rounded-xl text-sm font-semibold transition flex items-center gap-2',
                 authorized
-                  ? 'bg-blue-500 text-white hover:bg-blue-600'
+                  ? 'bg-brand text-brand-foreground hover:bg-brand-hover'
                   : dk ? 'bg-white/[0.06] text-white/30 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed',
               )}
             >
@@ -718,7 +718,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
           {/* Sort */}
           <div className="relative">
             <div className="flex items-center gap-2">
-              <Icon name="arrow-up-down" className={cls('w-3.5 h-3.5', dk ? 'text-white/40' : 'text-gray-400')} />
+              <Icon name="arrow-up-down" className={cls('w-3.5 h-3.5', dk ? 'text-white/40' : 'text-muted-foreground')} />
               <select
                 value={sortBy}
                 onChange={(e) => handleSort(e.target.value as SortOption)}
@@ -741,7 +741,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
             {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} dk={dk} />)}
           </div>
         ) : !searchResults || searchResults.results.length === 0 ? (
-          <div className={cls('text-center py-20', dk ? 'text-white/40' : 'text-gray-400')}>
+          <div className={cls('text-center py-20', dk ? 'text-white/40' : 'text-muted-foreground')}>
             <Icon name="search" className="w-10 h-10 mx-auto mb-3 opacity-40" />
             <p className="font-medium">No products found</p>
             <p className="text-xs mt-1">Try adjusting your vehicle or category selection.</p>
@@ -772,7 +772,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                     <div className="p-4 flex flex-col flex-1">
                       {/* Brand */}
                       {product.brand && (
-                        <p className={cls('text-[10px] uppercase tracking-wider font-semibold mb-1', dk ? 'text-blue-400/70' : 'text-blue-600/70')}>
+                        <p className={cls('text-[10px] uppercase tracking-wider font-semibold mb-1', dk ? 'text-status-info/70' : 'text-brand/70')}>
                           {product.brand}
                         </p>
                       )}
@@ -793,7 +793,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
 
                       {/* Seller */}
                       {product.sellerName && (
-                        <p className={cls('text-[10px] mt-2', dk ? 'text-white/30' : 'text-gray-400')}>
+                        <p className={cls('text-[10px] mt-2', dk ? 'text-white/30' : 'text-muted-foreground')}>
                           Sold by {product.sellerName}
                         </p>
                       )}
@@ -805,7 +805,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                             {formatPrice(product.priceGross, product.currency)}
                           </p>
                           {product.priceNet != null && product.priceNet !== product.priceGross && (
-                            <p className={cls('text-[10px]', dk ? 'text-white/30' : 'text-gray-400')}>
+                            <p className={cls('text-[10px]', dk ? 'text-white/30' : 'text-muted-foreground')}>
                               {formatPrice(product.priceNet, product.currency)} net
                             </p>
                           )}
@@ -814,7 +814,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                           onClick={() => openDetail(product)}
                           className={cls(
                             'px-3 py-1.5 rounded-lg text-xs font-medium transition flex items-center gap-1',
-                            dk ? 'bg-blue-500/20 text-blue-400 hover:bg-blue-500/30' : 'bg-blue-50 text-blue-600 hover:bg-blue-100',
+                            dk ? 'bg-brand-soft text-status-info hover:bg-brand-soft' : 'bg-brand-soft text-brand hover:bg-brand-soft',
                           )}
                         >
                           <Icon name="eye" className="w-3 h-3" /> Details
@@ -905,7 +905,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
 
               {/* Brand + title */}
               {detailProduct.brand && (
-                <p className={cls('text-xs uppercase tracking-wider font-semibold', dk ? 'text-blue-400/70' : 'text-blue-600/70')}>
+                <p className={cls('text-xs uppercase tracking-wider font-semibold', dk ? 'text-status-info/70' : 'text-brand/70')}>
                   {detailProduct.brand}
                 </p>
               )}
@@ -928,14 +928,14 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                 </div>
                 {detailProduct.priceNet != null && (
                   <div className="flex justify-between items-baseline">
-                    <span className={cls('text-xs', dk ? 'text-white/35' : 'text-gray-400')}>Net price</span>
+                    <span className={cls('text-xs', dk ? 'text-white/35' : 'text-muted-foreground')}>Net price</span>
                     <span className={cls('text-sm', dk ? 'text-white/60' : 'text-gray-600')}>
                       {formatPrice(detailProduct.priceNet, detailProduct.currency)}
                     </span>
                   </div>
                 )}
                 {detailProduct.shippingInfo && (
-                  <p className={cls('text-xs', dk ? 'text-white/30' : 'text-gray-400')}>
+                  <p className={cls('text-xs', dk ? 'text-white/30' : 'text-muted-foreground')}>
                     {detailProduct.shippingInfo}
                   </p>
                 )}
@@ -959,7 +959,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                   'p-3 rounded-xl text-sm',
                   dk ? 'bg-white/[0.04] text-white/60' : 'bg-gray-50 text-gray-600',
                 )}>
-                  <p className={cls('text-[10px] uppercase tracking-wider font-semibold mb-1', dk ? 'text-white/30' : 'text-gray-400')}>
+                  <p className={cls('text-[10px] uppercase tracking-wider font-semibold mb-1', dk ? 'text-white/30' : 'text-muted-foreground')}>
                     Fitment Notes
                   </p>
                   {detailProduct.fitmentNotes}
@@ -969,7 +969,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               {/* Description */}
               {detailProduct.description && (
                 <div>
-                  <p className={cls('text-xs uppercase tracking-wider font-semibold mb-2', dk ? 'text-white/30' : 'text-gray-400')}>
+                  <p className={cls('text-xs uppercase tracking-wider font-semibold mb-2', dk ? 'text-white/30' : 'text-muted-foreground')}>
                     Description
                   </p>
                   <p className={cls('text-sm leading-relaxed', dk ? 'text-white/60' : 'text-gray-600')}>
@@ -981,7 +981,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
               {/* Specifications */}
               {detailProduct.specifications && Object.keys(detailProduct.specifications).length > 0 && (
                 <div>
-                  <p className={cls('text-xs uppercase tracking-wider font-semibold mb-2', dk ? 'text-white/30' : 'text-gray-400')}>
+                  <p className={cls('text-xs uppercase tracking-wider font-semibold mb-2', dk ? 'text-white/30' : 'text-muted-foreground')}>
                     Specifications
                   </p>
                   <div className={cls(card, 'overflow-hidden divide-y', dk ? 'divide-white/[0.06]' : 'divide-gray-100')}>
@@ -1013,7 +1013,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                     href={detailProduct.checkoutUrl || detailProduct.productUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl text-sm font-semibold bg-blue-500 text-white hover:bg-blue-600 transition"
+                    className="flex items-center justify-center gap-2 w-full px-6 py-3 rounded-xl text-sm font-semibold bg-brand text-brand-foreground hover:bg-brand-hover transition"
                   >
                     <Icon name="credit-card" className="w-4 h-4" />
                     Continue to Checkout
@@ -1027,7 +1027,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
                     No checkout link available for this product.
                   </div>
                 )}
-                <p className={cls('text-[10px] text-center', dk ? 'text-white/20' : 'text-gray-400')}>
+                <p className={cls('text-[10px] text-center', dk ? 'text-white/20' : 'text-muted-foreground')}>
                   You will be redirected to {selectedProvider?.displayName || 'the provider'}'s website.
                 </p>
               </div>
@@ -1093,7 +1093,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
           className={cls(
             'flex items-center gap-1 px-5 py-2 rounded-xl text-sm font-semibold transition',
             canContinue(step)
-              ? 'bg-blue-500 text-white hover:bg-blue-600'
+              ? 'bg-brand text-brand-foreground hover:bg-brand-hover'
               : dk ? 'bg-white/[0.06] text-white/20 cursor-not-allowed' : 'bg-gray-200 text-gray-400 cursor-not-allowed',
           )}
         >

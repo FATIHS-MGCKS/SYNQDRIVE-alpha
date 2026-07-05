@@ -48,26 +48,26 @@ const OVERALL_CONFIG: Record<HmCompatibilityOverall, { label: string; color: str
 
 const ELIGIBILITY_CONFIG: Record<HmCompatibilityEligibilityMode, { label: string; color: string }> = {
   AVAILABLE:       { label: 'Available',       color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
-  NOT_AVAILABLE:   { label: 'Not Available',   color: 'bg-slate-100 text-slate-700 dark:bg-muted dark:text-muted-foreground' },
+  NOT_AVAILABLE:   { label: 'Not Available',   color: 'bg-muted text-muted-foreground' },
   SUPPORT_REQUEST: { label: 'Support Request', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' },
   VIN_DEPENDENT:   { label: 'VIN Dependent',   color: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-400' },
 };
 
 const ONBOARDING_CONFIG: Record<HmCompatibilityOnboardingMode, { label: string; color: string }> = {
-  PRECHECK_CONNECT: { label: 'Precheck + Connect', color: 'bg-blue-100 text-blue-700 dark:bg-status-info-soft dark:text-status-info' },
+  PRECHECK_CONNECT: { label: 'Precheck + Connect', color: 'bg-status-info-soft text-status-info dark:bg-status-info-soft dark:text-status-info' },
   DIRECT_CONNECT:   { label: 'Direct Connect',     color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-400' },
   MANUAL_REVIEW:    { label: 'Manual Review',      color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400' },
 };
 
 const CONFIDENCE_CONFIG: Record<HmCompatibilityConfidence, { label: string; color: string }> = {
   HIGH:   { label: 'High',   color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400' },
-  MEDIUM: { label: 'Medium', color: 'bg-blue-100 text-blue-700 dark:bg-status-info-soft dark:text-status-info' },
-  LOW:    { label: 'Low',    color: 'bg-slate-100 text-slate-600 dark:bg-muted dark:text-muted-foreground' },
+  MEDIUM: { label: 'Medium', color: 'bg-status-info-soft text-status-info dark:bg-status-info-soft dark:text-status-info' },
+  LOW:    { label: 'Low',    color: 'bg-muted text-muted-foreground' },
 };
 
 const COVERAGE_CONFIG: Record<HmSignalCoverage, { label: string; color: string; dot: string }> = {
   CONFIRMED:  { label: 'Confirmed',  color: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-400', dot: 'bg-emerald-500' },
-  EXPECTED:   { label: 'Expected',   color: 'bg-blue-100 text-blue-700 dark:bg-status-info-soft dark:text-status-info',               dot: 'bg-blue-500' },
+  EXPECTED:   { label: 'Expected',   color: 'bg-status-info-soft text-status-info dark:bg-status-info-soft dark:text-status-info',               dot: 'bg-status-info' },
   UNVERIFIED: { label: 'Unverified', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400',           dot: 'bg-amber-500' },
   MISSING:    { label: 'Missing',    color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',                   dot: 'bg-red-500' },
 };
@@ -202,7 +202,7 @@ function LookupForm({
         'Lookup',
         'Check HM compatibility for brand, model, and model year',
         Search,
-        isDarkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600',
+        isDarkMode ? 'bg-status-info-soft text-status-info' : 'bg-status-info-soft text-status-info',
       )}
       <div className="px-5 py-4 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -266,7 +266,7 @@ function LookupForm({
           <button
             onClick={submit}
             disabled={!canRun || loading}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-brand text-brand-foreground hover:bg-brand-hover disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             Check Compatibility
@@ -332,7 +332,7 @@ function SummaryCard({
         'Compatibility Summary',
         s.overallNotes,
         ShieldCheck,
-        isDarkMode ? 'bg-indigo-900/30 text-indigo-400' : 'bg-indigo-50 text-indigo-600',
+        isDarkMode ? 'bg-status-info-soft text-status-info' : 'bg-status-info-soft text-status-info',
       )}
       <div className="px-5 py-4">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -392,7 +392,7 @@ function AppCard({
     : 'Location + trip-derivation signals (GPS, ignition, odometer)';
   const accent = isHealth
     ? (isDarkMode ? 'bg-teal-900/30 text-teal-400' : 'bg-teal-50 text-teal-600')
-    : (isDarkMode ? 'bg-indigo-900/30 text-indigo-400' : 'bg-indigo-50 text-indigo-600');
+    : (isDarkMode ? 'bg-status-info-soft text-status-info' : 'bg-status-info-soft text-status-info');
   const Icon = isHealth ? Activity : Zap;
 
   if (!summary) {
@@ -425,7 +425,7 @@ function AppCard({
             <div className="text-lg font-bold tabular-nums">
               {summary.coveredRequired} / {summary.totalRequired}
             </div>
-            <div className={`mt-1 h-1.5 w-28 rounded-full ${isDarkMode ? 'bg-neutral-800' : 'bg-gray-100'}`}>
+            <div className={`mt-1 h-1.5 w-28 rounded-full ${isDarkMode ? 'bg-card' : 'bg-gray-100'}`}>
               <div
                 className={`h-full rounded-full ${barColor}`}
                 style={{ width: `${Math.max(0, Math.min(100, ratio * 100))}%` }}
@@ -479,7 +479,7 @@ function SignalCoverageTable({
                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${COVERAGE_CONFIG[s.coverage].dot}`} />
                   <span className="text-sm font-medium truncate">{s.signalLabel}</span>
                   {s.required && (
-                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${isDarkMode ? 'bg-neutral-800 text-neutral-400' : 'bg-gray-100 text-gray-500'}`}>
+                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${isDarkMode ? 'bg-card text-neutral-400' : 'bg-muted text-muted-foreground'}`}>
                       REQUIRED
                     </span>
                   )}
@@ -525,7 +525,7 @@ function OnboardingCard({
         'Onboarding & Eligibility',
         'How to onboard this vehicle through HM',
         Link2,
-        isDarkMode ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-50 text-blue-600',
+        isDarkMode ? 'bg-status-info-soft text-status-info' : 'bg-status-info-soft text-status-info',
       )}
       <div className="px-5 py-4 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -545,7 +545,7 @@ function OnboardingCard({
           />
           {onb.routingNote && <KV label="Routing Note" value={onb.routingNote} />}
         </div>
-        <div className={`flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-xs ${isDarkMode ? 'bg-blue-900/20 text-blue-300 border border-blue-800/40' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+        <div className={`flex items-start gap-2.5 px-3 py-2.5 rounded-lg text-xs ${isDarkMode ? 'bg-status-info-soft text-brand border border-border' : 'bg-brand-soft text-status-info border border-border'}`}>
           <Info className="w-4 h-4 mt-0.5 shrink-0" />
           <span>{onb.guidance}</span>
         </div>
@@ -572,7 +572,7 @@ function SourceCard({
         'Source · Confidence · Notes',
         'Provenance of this compatibility entry',
         Wrench,
-        isDarkMode ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600',
+        isDarkMode ? 'bg-muted text-muted-foreground' : 'bg-muted text-muted-foreground',
       )}
       <div className="px-5 py-4 space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -688,13 +688,13 @@ export function HighMobilityCompatibilityView({ isDarkMode }: Props) {
     <div className="flex flex-col h-full min-h-0 px-4 sm:px-6 py-5 space-y-5">
       {/* Header */}
       <div className="flex items-start gap-3 flex-wrap">
-        <div className={`p-2 rounded-xl ${isDarkMode ? 'bg-neutral-800' : 'bg-indigo-50'}`}>
-          <ShieldCheck className={`w-5 h-5 ${isDarkMode ? 'text-indigo-400' : 'text-indigo-600'}`} />
+        <div className={`p-2 rounded-xl ${isDarkMode ? 'bg-card' : 'bg-status-info-soft'}`}>
+          <ShieldCheck className={`w-5 h-5 ${isDarkMode ? 'text-status-info' : 'text-status-info'}`} />
         </div>
         <div className="flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">High Mobility Compatibility Check</h1>
-            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-indigo-900/40 text-indigo-400' : 'bg-indigo-100 text-indigo-700'}`}>
+            <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-status-info-soft text-status-info' : 'bg-status-info-soft text-status-info'}`}>
               Internal Master Admin
             </span>
           </div>
@@ -705,7 +705,7 @@ export function HighMobilityCompatibilityView({ isDarkMode }: Props) {
       </div>
 
       {/* Domain rules notice */}
-      <div className={`flex items-start gap-2.5 px-4 py-3 rounded-xl border text-xs ${isDarkMode ? 'bg-indigo-900/20 border-indigo-800/40 text-indigo-300' : 'bg-indigo-50 border-indigo-200 text-indigo-700'}`}>
+      <div className={`flex items-start gap-2.5 px-4 py-3 rounded-xl border text-xs ${isDarkMode ? 'bg-status-info-soft border-border text-status-info' : 'bg-status-info-soft border-border text-status-info'}`}>
         <Info className="w-4 h-4 mt-0.5 shrink-0" />
         <div>
           <span className="font-semibold">Product rules: </span>

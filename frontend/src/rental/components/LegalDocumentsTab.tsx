@@ -303,7 +303,7 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
                       disabled={up?.busy}
                       onClick={() => fileRefs.current[type.key]?.click()}
                       className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium ${
-                        isDarkMode ? 'bg-white text-neutral-900 hover:bg-gray-100' : 'bg-neutral-900 text-white hover:bg-neutral-800'
+                        isDarkMode ? 'bg-white text-neutral-900 hover:bg-gray-100' : 'bg-neutral-900 text-white hover:bg-card'
                       } disabled:opacity-50`}
                     >
                       {up?.busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
@@ -316,7 +316,7 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
               {/* Version history */}
               <div className="mt-3 space-y-1.5">
                 {versions.length === 0 ? (
-                  <div className={`text-xs py-3 text-center rounded-lg border border-dashed ${isDarkMode ? 'border-border text-muted-foreground' : 'border-gray-200 text-gray-400'}`}>
+                  <div className={`text-xs py-3 text-center rounded-lg border border-dashed ${isDarkMode ? 'border-border text-muted-foreground' : 'border-border text-muted-foreground'}`}>
                     Noch keine Version hochgeladen.
                   </div>
                 ) : (

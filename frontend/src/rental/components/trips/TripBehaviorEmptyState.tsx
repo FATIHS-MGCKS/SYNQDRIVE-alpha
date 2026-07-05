@@ -65,7 +65,7 @@ export function TripBehaviorEmptyState({
         {isLoading ? (
           <Icon
             name="loader-2"
-            className={`w-4 h-4 mt-0.5 shrink-0 animate-spin ${isDark ? 'text-foreground' : 'text-indigo-500'}`}
+            className={`w-4 h-4 mt-0.5 shrink-0 animate-spin ${isDark ? 'text-foreground' : 'text-status-info'}`}
           />
         ) : (
           <Icon
@@ -95,7 +95,7 @@ export function TripBehaviorEmptyState({
               </button>
             )}
             {variant === 'not_started' && onAnalyze && (
-              <button type="button" onClick={onAnalyze} className={`${tv.focusRing} text-[10px] font-semibold px-2.5 py-1.5 rounded-lg border border-indigo-500/30 bg-indigo-500/10 text-indigo-700 dark:border-status-ai/30 dark:bg-status-ai-soft dark:text-status-ai`}>
+              <button type="button" onClick={onAnalyze} className={`${tv.focusRing} text-[10px] font-semibold px-2.5 py-1.5 rounded-lg border border-brand/30 bg-brand-soft text-brand dark:border-status-ai/30 dark:bg-status-ai-soft dark:text-status-ai`}>
                 {BEHAVIOR_COPY.analyze}
               </button>
             )}

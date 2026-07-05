@@ -100,18 +100,18 @@ export function TripTimelineExpanded({
 
   const actionBtnClass = isDark
     ? 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all bg-white/[0.04] text-foreground hover:bg-white/[0.08]'
-    : 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all bg-slate-100 text-slate-700 hover:bg-slate-200';
+    : 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all bg-muted text-foreground/90 hover:bg-muted/80';
 
   const primaryActionClass = isDark
     ? 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all bg-brand-soft text-brand hover:bg-brand-soft/80'
-    : 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all bg-indigo-50 text-indigo-600 hover:bg-indigo-100';
+    : 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all bg-status-info-soft text-status-info hover:bg-status-info-soft/80';
 
   return (
     <div className="px-4 pb-4 pt-0" onClick={(e) => e.stopPropagation()}>
       <div className="space-y-5 border-t border-border/40 pt-4">
         {enriching && (
           <div
-            className={`flex items-center gap-1.5 text-[11px] font-medium ${isDark ? 'text-status-ai' : 'text-indigo-600'}`}
+            className={`flex items-center gap-1.5 text-[11px] font-medium ${isDark ? 'text-status-ai' : 'text-status-info'}`}
           >
             <Icon name="loader-2" className="h-3.5 w-3.5 animate-spin" /> {TRIPS_COPY.enrichingInline}
           </div>

@@ -1783,7 +1783,7 @@ export function HealthErrorsView({
                     </div>
                     {soh != null && (
                       <div className={`w-full h-1.5 rounded-full overflow-hidden mb-1 bg-muted`}>
-                        <div className={`h-full bg-blue-400/60 rounded-full transition-all`} style={{ width: `${soh}%` }} />
+                        <div className={`h-full bg-status-info/60 rounded-full transition-all`} style={{ width: `${soh}%` }} />
                       </div>
                     )}
                     <p className={`text-[10px] text-muted-foreground`}>Collecting charge and discharge data</p>
@@ -2062,7 +2062,7 @@ export function HealthErrorsView({
               {lvNoBatteryDetected ? (
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${'sq-chip-neutral'}`}>Not detected</span>
               ) : lvIsCalibrating ? (
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-blue-100 text-blue-700">Calibrating</span>
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-status-info-soft text-status-info">Calibrating</span>
               ) : lvIsStabilizing ? (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-100 text-amber-700">Estimated · Stabilizing</span>
               ) : (
@@ -2380,8 +2380,8 @@ export function HealthErrorsView({
                 <div className="space-y-2">
                   {batteryMeasurementRows.map((row) => (
                     <div key={row.id} className="flex items-start gap-3 px-3 py-2.5 rounded-xl bg-muted">
-                      <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-indigo-100">
-                        <Icon name={row.kind === 'service' ? 'wrench' : 'activity'} className={`w-3 h-3 ${row.kind === 'service' ? 'text-blue-600' : 'text-indigo-600'}`} />
+                      <div className="w-6 h-6 rounded-full flex items-center justify-center shrink-0 bg-status-info-soft">
+                        <Icon name={row.kind === 'service' ? 'wrench' : 'activity'} className={`w-3 h-3 ${row.kind === 'service' ? 'text-brand' : 'text-status-info'}`} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold text-foreground">{row.label}</p>
@@ -2656,7 +2656,7 @@ export function HealthErrorsView({
                             <h3 className={hSec}>Open Alerts</h3>
                             {bhs.openAlerts.map((a, i) => (
                               <div key={i} className={`flex items-start gap-2 rounded-lg px-3 py-2 ${a.severity === 'critical' ? 'sq-tone-critical' : a.severity === 'warning' ? 'sq-tone-watch' : 'sq-tone-info'}`}>
-                                <span className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${a.severity === 'critical' ? 'bg-red-500' : a.severity === 'warning' ? 'bg-amber-500' : 'bg-blue-500'}`} />
+                                <span className={`mt-1 w-1.5 h-1.5 rounded-full shrink-0 ${a.severity === 'critical' ? 'bg-red-500' : a.severity === 'warning' ? 'bg-amber-500' : 'bg-status-info'}`} />
                                 <p className="text-[11px] text-foreground">{a.message}</p>
                               </div>
                             ))}
@@ -3305,8 +3305,8 @@ export function HealthErrorsView({
                                 </div>
                                 {Boolean(aiTireResult.manufacturerSourceUrl || aiTireResult.labelSourceUrl) && (
                                   <div className={`mt-2 pt-2 border-t border-border`}>
-                                    {Boolean(aiTireResult.manufacturerSourceUrl) && <a href={String(aiTireResult.manufacturerSourceUrl)} target="_blank" rel="noopener noreferrer" className="text-[9px] text-blue-500 hover:underline block truncate">Manufacturer source</a>}
-                                    {Boolean(aiTireResult.labelSourceUrl) && <a href={String(aiTireResult.labelSourceUrl)} target="_blank" rel="noopener noreferrer" className="text-[9px] text-blue-500 hover:underline block truncate">Label source</a>}
+                                    {Boolean(aiTireResult.manufacturerSourceUrl) && <a href={String(aiTireResult.manufacturerSourceUrl)} target="_blank" rel="noopener noreferrer" className="text-[9px] text-status-info hover:underline block truncate">Manufacturer source</a>}
+                                    {Boolean(aiTireResult.labelSourceUrl) && <a href={String(aiTireResult.labelSourceUrl)} target="_blank" rel="noopener noreferrer" className="text-[9px] text-status-info hover:underline block truncate">Label source</a>}
                                   </div>
                                 )}
                                 <div className="flex gap-2 mt-3">
@@ -3331,7 +3331,7 @@ export function HealthErrorsView({
 
                           <div className="flex gap-2 justify-end pt-1">
                             <button onClick={() => setShowEditSetup(false)} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${'text-muted-foreground hover:bg-muted'}`}>Cancel</button>
-                            <button onClick={handleSaveEditSetup} disabled={submittingEditSetup} className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white transition-colors disabled:opacity-50 flex items-center gap-1.5">
+                            <button onClick={handleSaveEditSetup} disabled={submittingEditSetup} className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-status-info hover:bg-brand text-brand-foreground transition-colors disabled:opacity-50 flex items-center gap-1.5">
                               {submittingEditSetup && <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />}Save Setup
                             </button>
                           </div>
@@ -3418,7 +3418,7 @@ export function HealthErrorsView({
                         <div className="flex flex-col sm:flex-row gap-2 mt-3 pt-3 border-t border-border">
                           <button
                             onClick={() => setShowRotation(true)}
-                            className="flex-1 sm:flex-none px-4 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold transition-colors text-center"
+                            className="flex-1 sm:flex-none px-4 py-2 rounded-lg bg-status-info hover:bg-brand text-brand-foreground text-xs font-semibold transition-colors text-center"
                           >
                             Rotate
                           </button>
@@ -3469,7 +3469,7 @@ export function HealthErrorsView({
                 <div className={`rounded-lg p-5 mb-5 bg-muted`}>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className={`text-xs font-semibold uppercase tracking-wider text-muted-foreground`}>Manual Measurement</h3>
-                    {!showMeasurement && <button onClick={() => { setShowMeasurement(true); setMeasurementMode(null); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white transition-colors"><Icon name="plus" className="w-3.5 h-3.5" /> Record</button>}
+                    {!showMeasurement && <button onClick={() => { setShowMeasurement(true); setMeasurementMode(null); }} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-status-info hover:bg-brand text-brand-foreground transition-colors"><Icon name="plus" className="w-3.5 h-3.5" /> Record</button>}
                   </div>
                   {showMeasurement && !measurementMode && (
                     <div className="flex gap-3">
@@ -3494,7 +3494,7 @@ export function HealthErrorsView({
                       </div>
                       <div className="flex gap-2 justify-end">
                         <button onClick={() => { setShowMeasurement(false); setMeasurementMode(null); }} className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${'text-muted-foreground hover:bg-muted'}`}>Cancel</button>
-                        <button onClick={handleSubmitMeasurement} disabled={submittingMeasurement} className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white transition-colors disabled:opacity-50 flex items-center gap-1.5">{submittingMeasurement && <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />}Confirm & Calibrate</button>
+                        <button onClick={handleSubmitMeasurement} disabled={submittingMeasurement} className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-status-info hover:bg-brand text-brand-foreground transition-colors disabled:opacity-50 flex items-center gap-1.5">{submittingMeasurement && <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />}Confirm & Calibrate</button>
                       </div>
                     </div>
                   )}
@@ -3535,7 +3535,7 @@ export function HealthErrorsView({
                     </div>
                     <div className="flex gap-2 justify-end">
                       <button onClick={() => setShowRotation(false)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${'text-muted-foreground hover:bg-muted'}`}>Cancel</button>
-                      <button onClick={handleRotateTires} disabled={submittingRotation} className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50 flex items-center gap-1.5">{submittingRotation && <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />}Confirm Rotation</button>
+                      <button onClick={handleRotateTires} disabled={submittingRotation} className="px-4 py-1.5 rounded-lg text-xs font-semibold bg-status-info hover:bg-brand text-brand-foreground disabled:opacity-50 flex items-center gap-1.5">{submittingRotation && <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />}Confirm Rotation</button>
                     </div>
                   </div>
                 )}
@@ -3655,7 +3655,7 @@ export function HealthErrorsView({
                                 onClick={() => setActivatingStoredSetId(s.id)}
                                 className={`w-full text-left px-3 py-2 rounded-lg border text-xs ${
                                   activatingStoredSetId === s.id
-                                    ? 'border-blue-400 bg-blue-500/10'
+                                    ? 'border-brand bg-status-info/10'
                                     : 'border-border'
                                 }`}
                               >
@@ -3675,7 +3675,7 @@ export function HealthErrorsView({
                             <button
                               onClick={handleActivateStoredSet}
                               disabled={!activatingStoredSetId || submittingTireChange}
-                              className="px-4 py-2 rounded-lg text-xs font-semibold bg-blue-500 hover:bg-blue-600 text-white disabled:opacity-50"
+                              className="px-4 py-2 rounded-lg text-xs font-semibold bg-status-info hover:bg-brand text-brand-foreground disabled:opacity-50"
                             >
                               Activate
                             </button>
@@ -3698,7 +3698,7 @@ export function HealthErrorsView({
                       <div key={entry.id} className="relative flex items-start gap-3 py-4">
                         {i < (tireDetail?.rotationHistory?.length ?? 0) - 1 && <div className={`absolute left-[9px] w-px bg-muted`} style={{ top: 'calc(50% + 4px)', height: '100%' }} />}
                         <div className="relative z-10 mt-1 shrink-0">
-                          {entry.changeType === 'ROTATION' ? <Icon name="refresh-cw" className="w-[18px] h-[18px] text-blue-500" /> : entry.changeType === 'TIRE_CHANGE' ? <Icon name="circle" className="w-[18px] h-[18px] text-red-500" /> : <Icon name="plus" className="w-[18px] h-[18px] text-green-500" />}
+                          {entry.changeType === 'ROTATION' ? <Icon name="refresh-cw" className="w-[18px] h-[18px] text-status-info" /> : entry.changeType === 'TIRE_CHANGE' ? <Icon name="circle" className="w-[18px] h-[18px] text-red-500" /> : <Icon name="plus" className="w-[18px] h-[18px] text-green-500" />}
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
@@ -3769,7 +3769,7 @@ export function HealthErrorsView({
                   ].map(f => (
                     <div key={f.label} className="flex items-start gap-3">
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${f.warn(f.val) ? ('sq-tone-watch') : ('sq-tone-info')}`}>
-                        <f.icon className={`w-4 h-4 ${f.warn(f.val) ? 'text-amber-500' : 'text-blue-500'}`} />
+                        <f.icon className={`w-4 h-4 ${f.warn(f.val) ? 'text-amber-500' : 'text-status-info'}`} />
                       </div>
                       <div className="min-w-0">
                         <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>{f.label}</p>
@@ -3857,7 +3857,7 @@ export function HealthErrorsView({
                         <div>
                           <p className={`text-[9px] uppercase text-muted-foreground/70`}>Tire Spec</p>
                           <div className={`w-full h-1.5 rounded-full overflow-hidden mt-1 bg-muted`}>
-                            <div className="h-full bg-blue-500 rounded-full" style={{ width: `${tireDetail.summary.tireSpecConfidence}%` }} />
+                            <div className="h-full bg-status-info rounded-full" style={{ width: `${tireDetail.summary.tireSpecConfidence}%` }} />
                           </div>
                           <p className={`text-[9px] font-semibold mt-0.5 text-muted-foreground`}>{tireDetail.summary.tireSpecConfidence}%</p>
                         </div>
@@ -3932,7 +3932,7 @@ export function HealthErrorsView({
                   <h3 className={`text-sm font-semibold text-foreground`}>State of Health</h3>
                   {hvBatteryStatus?.publicationState && (
                     <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${
-                      hvBatteryStatus.publicationState === 'INITIAL_CALIBRATION' ? 'bg-blue-100 text-blue-700' :
+                      hvBatteryStatus.publicationState === 'INITIAL_CALIBRATION' ? 'bg-status-info-soft text-status-info' :
                       hvBatteryStatus.publicationState === 'STABILIZING' ? 'bg-amber-100 text-amber-700' :
                       'bg-green-100 text-green-700'
                     }`}>{hvBatteryStatus.publicationState === 'INITIAL_CALIBRATION' ? 'Calibrating' : hvBatteryStatus.publicationState === 'STABILIZING' ? 'Stabilizing' : 'Stable'}</span>

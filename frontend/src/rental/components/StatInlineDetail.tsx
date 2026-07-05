@@ -64,17 +64,17 @@ function FuelStripe({ v, isDarkMode }: { v: VehicleData; isDarkMode: boolean }) 
   if (value == null) {
     return (
       <div className="flex items-center gap-1.5">
-        <Icon name="fuel" className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`} />
+        <Icon name="fuel" className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
         <div className={`w-12 h-1 rounded-full overflow-hidden shrink-0 ${isDarkMode ? 'bg-muted' : 'bg-gray-100'}`} />
-        <span className={`text-[10px] font-semibold shrink-0 w-8 text-right tabular-nums ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`}>—</span>
+        <span className={`text-[10px] font-semibold shrink-0 w-8 text-right tabular-nums ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`}>—</span>
       </div>
     );
   }
   const pct = Math.max(0, Math.min(100, Math.round(value)));
   const isCriticallyLow = pct < 20;
   const fuelLabel = v.isElectric ? 'SoC' : 'Tank';
-  const idleIconCls = isDarkMode ? 'text-muted-foreground' : 'text-gray-400';
-  const idleTextCls = isDarkMode ? 'text-muted-foreground' : 'text-gray-400';
+  const idleIconCls = isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground';
+  const idleTextCls = isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground';
   const criticalCls =
     'text-[color:var(--status-critical)] drop-shadow-[0_0_4px_color-mix(in_srgb,var(--status-critical)_55%,transparent)]';
   return (
@@ -109,7 +109,7 @@ function FuelStripe({ v, isDarkMode }: { v: VehicleData; isDarkMode: boolean }) 
 function OdometerText({ v, isDarkMode }: { v: VehicleData; isDarkMode: boolean }) {
   const km = canonicalOdometer(v);
   return (
-    <span className={`text-[10px] font-semibold inline-block w-[68px] text-right tabular-nums shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`}>
+    <span className={`text-[10px] font-semibold inline-block w-[68px] text-right tabular-nums shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
       {formatOdometerKmFloor(km)}
     </span>
   );
@@ -431,7 +431,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
           <>
             {!hideHeader && <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-100 flex items-center justify-center"><Icon name="car" className="w-4 h-4 text-blue-600" /></div>
+                <div className="w-9 h-9 rounded-xl bg-brand-soft flex items-center justify-center"><Icon name="car" className="w-4 h-4 text-brand" /></div>
                 <div>
                   <h3 className={`text-sm font-bold ${isDarkMode ? 'text-foreground' : 'text-gray-900'}`}>Available Vehicles</h3>
                   <p className={`text-[11px] ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>{vehicles.length} vehicles ready for rental</p>
@@ -464,7 +464,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       <VehicleBrandMark vehicle={v} isDarkMode={isDarkMode} />
                       <span className={`text-[10.5px] font-bold leading-tight shrink-0 ${isDarkMode ? 'text-foreground' : 'text-gray-900'}`}>{v.license}</span>
-                      <span className={`text-[10px] font-semibold tracking-wide truncate ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`}>{fleetTitle(v)}</span>
+                      <span className={`text-[10px] font-semibold tracking-wide truncate ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{fleetTitle(v)}</span>
                       <BlockingBadge vehicleId={v.id} />
                     </div>
                     {/* V4.6.94 — Badge-Farbsemantik vereinheitlicht:
@@ -479,7 +479,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                       <span
                         className={`shrink-0 inline-block min-w-[44px] text-center px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${
                           v.cleaningStatus === 'Clean'
-                            ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-blue-50 text-blue-700')
+                            ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-status-info-soft text-status-info')
                             : (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
                         }`}
                         title={v.cleaningStatus === 'Clean' ? 'Clean' : 'Needs cleaning'}
@@ -490,7 +490,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                       <span
                         className={`shrink-0 inline-block w-[72px] text-center px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${
                           offline
-                            ? (isDarkMode ? 'bg-muted/60 text-foreground/85' : 'bg-gray-100 text-gray-500')
+                            ? (isDarkMode ? 'bg-muted/60 text-foreground/85' : 'bg-muted text-muted-foreground')
                             : !isBlocked
                               ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700')
                               : (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
@@ -511,14 +511,14 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                       wird gar nichts gerendert (kein false-positive AWAY). */}
                   {offline ? (
                     <div className={`flex items-center gap-1.5 pt-1.5 border-t min-w-0 overflow-hidden ${isDarkMode ? 'border-border/40' : 'border-gray-100'}`}>
-                      <Icon name="wifi-off" className={`w-2.5 h-2.5 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`} />
+                      <Icon name="wifi-off" className={`w-2.5 h-2.5 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
                       <span className={`truncate min-w-0 flex-1 text-[10px] font-semibold ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
                         {VEHICLE_OFFLINE_LABEL}
                       </span>
                     </div>
                   ) : (
                     <div className={`flex items-center gap-1.5 pt-1.5 border-t min-w-0 overflow-hidden ${isDarkMode ? 'border-border/40' : 'border-gray-100'}`}>
-                      <Icon name="map-pin" className={`w-2.5 h-2.5 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`} />
+                      <Icon name="map-pin" className={`w-2.5 h-2.5 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
                       <div className="truncate min-w-0 flex-1 text-[10px]">
                         <VehicleAddress v={v} isDarkMode={isDarkMode} />
                       </div>
@@ -622,7 +622,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                               } ${
                                 isDarkMode
                                   ? `bg-muted/60 text-muted-foreground ${clickable ? 'hover:bg-brand-soft hover:text-brand' : ''}`
-                                  : `bg-gray-100 text-gray-500 ${clickable ? 'hover:bg-blue-50 hover:text-blue-700' : ''}`
+                                  : `bg-gray-100 text-gray-500 ${clickable ? 'hover:bg-brand-soft hover:text-brand' : ''}`
                               }`}
                             >
                               {bkRef}
@@ -681,7 +681,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         Reservierungs-Dauer, damit kein Detail verloren
                         geht. */}
                     <div className={`flex items-center gap-1.5 pt-1.5 border-t min-w-0 overflow-hidden ${isDarkMode ? 'border-border/40' : 'border-gray-100'}`}>
-                      <Icon name="map-pin" className={`w-2.5 h-2.5 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`} />
+                      <Icon name="map-pin" className={`w-2.5 h-2.5 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
                       <div
                         className={`truncate min-w-0 flex-1 text-[10px] ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}
                         title={footerTooltip}
@@ -762,7 +762,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
                         <VehicleBrandMark vehicle={v} isDarkMode={isDarkMode} />
                         <span className={`text-[10.5px] font-bold leading-tight shrink-0 ${isDarkMode ? 'text-foreground' : 'text-gray-900'}`}>{v.license}</span>
-                        <span className={`text-[10px] font-semibold tracking-wide truncate ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`}>{fleetTitle(v)}</span>
+                        <span className={`text-[10px] font-semibold tracking-wide truncate ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{fleetTitle(v)}</span>
                         <BlockingBadge vehicleId={v.id} />
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
@@ -824,7 +824,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         tragend wirkt. */}
                     <div className="flex items-center gap-2 mb-1.5 min-w-0 text-[10.5px]">
                       <span className={`inline-flex items-center gap-1 truncate min-w-0 ${isOverdue ? 'flex-1' : 'max-w-[55%]'} ${isDarkMode ? 'text-foreground/85' : 'text-gray-700'}`}>
-                        <Icon name="users" className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`} />
+                        <Icon name="users" className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
                         <span className="truncate font-medium">{v.activeCustomerName || 'Nicht zugeordnet'}</span>
                       </span>
                       {(() => {
@@ -848,7 +848,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                             } ${
                               isDarkMode
                                 ? `bg-muted/60 text-muted-foreground ${clickable ? 'hover:bg-brand-soft hover:text-brand' : ''}`
-                                : `bg-gray-100 text-gray-500 ${clickable ? 'hover:bg-blue-50 hover:text-blue-700' : ''}`
+                                : `bg-gray-100 text-gray-500 ${clickable ? 'hover:bg-brand-soft hover:text-brand' : ''}`
                             }`}
                           >
                             {bkRef}
@@ -870,7 +870,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                     {/* Row 3: Time progress + Km progress mini bars */}
                     <div className="flex items-center gap-3 mb-1.5">
                       <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                        <Icon name="clock" className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`} />
+                        <Icon name="clock" className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
                         <div className={`flex-1 h-1 rounded-full overflow-hidden ${isDarkMode ? 'bg-muted' : 'bg-gray-100'}`}>
                           <div
                             className={`h-full rounded-full ${
@@ -890,7 +890,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                        <Icon name="gauge" className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`} />
+                        <Icon name="gauge" className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
                         <div className={`flex-1 h-1 rounded-full overflow-hidden ${isDarkMode ? 'bg-muted' : 'bg-gray-100'}`}>
                           <div
                             className={`h-full rounded-full ${
@@ -916,7 +916,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         Fahrzeug schon zurück an seiner Station?" auf einen
                         Blick (Return-Inspector-Workflow). */}
                     <div className={`flex items-center gap-1.5 pt-1.5 border-t min-w-0 overflow-hidden ${isDarkMode ? 'border-border/40' : 'border-gray-100'}`}>
-                      <Icon name="map-pin" className={`w-2.5 h-2.5 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`} />
+                      <Icon name="map-pin" className={`w-2.5 h-2.5 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
                       <div className="truncate min-w-0 flex-1 text-[10px]">
                         <VehicleAddress v={v} isDarkMode={isDarkMode} />
                       </div>
@@ -1012,7 +1012,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                           )}
                           {!p.done && !showOverdue && hasAlertOrError && <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />}
                         </div>
-                        <div className={`text-[11px] ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`}>{p.customer} · {p.station}</div>
+                        <div className={`text-[11px] ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{p.customer} · {p.station}</div>
                         {!p.done && hasIssues && (
                           <div className="flex items-center gap-1 mt-1 flex-wrap">
                             {p.needsCleaning && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-amber-100 text-amber-700"><Icon name="sparkles" className="w-2.5 h-2.5" />Cleaning</span>}
@@ -1029,7 +1029,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         <button
                           onClick={(e) => { e.stopPropagation(); onConfirmPickup?.(p); }}
                           className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold text-white transition-colors shadow-sm shrink-0 ${
-                            showOverdue ? 'bg-rose-600 hover:bg-rose-700' : 'bg-blue-600 hover:bg-blue-700'
+                            showOverdue ? 'bg-rose-600 hover:bg-rose-700' : 'bg-brand hover:bg-brand-hover text-brand-foreground'
                           }`}
                           title={showOverdue ? 'Pickup jetzt nachtragen' : 'Pickup bestätigen'}
                         >
@@ -1037,7 +1037,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                           {showOverdue ? 'Nachtragen' : 'Übergabe'}
                         </button>
                       ) : (
-                        <Icon name="chevron-right" className={`w-3.5 h-3.5 shrink-0 ${linkedVehicle ? (isDarkMode ? 'text-muted-foreground' : 'text-gray-400') : (isDarkMode ? 'text-muted-foreground/60' : 'text-gray-200')}`} />
+                        <Icon name="chevron-right" className={`w-3.5 h-3.5 shrink-0 ${linkedVehicle ? (isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground') : (isDarkMode ? 'text-muted-foreground/60' : 'text-gray-200')}`} />
                       )}
                     </div>
                   </div>
@@ -1092,7 +1092,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                           <span className={`text-[12px] font-semibold ${r.done ? (isDarkMode ? 'text-muted-foreground line-through' : 'text-gray-400 line-through') : hasAlertOrError ? (isDarkMode ? 'text-red-400' : 'text-red-700') : (isDarkMode ? 'text-foreground' : 'text-gray-900')}`}>{r.vehicle} ({r.plate})</span>
                           {!r.done && hasAlertOrError && <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0" />}
                         </div>
-                        <div className={`text-[11px] ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`}>{r.customer} · {r.station}</div>
+                        <div className={`text-[11px] ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{r.customer} · {r.station}</div>
                         {!r.done && hasIssues && (
                           <div className="flex items-center gap-1 mt-1 flex-wrap">
                             {r.hasError && <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold bg-red-100 text-red-700"><Icon name="shield-alert" className="w-2.5 h-2.5" />Error</span>}
@@ -1130,7 +1130,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                           Rückgabe
                         </button>
                       ) : (
-                        <Icon name="chevron-right" className={`w-3.5 h-3.5 shrink-0 ${linkedVehicle ? (isDarkMode ? 'text-muted-foreground' : 'text-gray-400') : (isDarkMode ? 'text-muted-foreground/60' : 'text-gray-200')}`} />
+                        <Icon name="chevron-right" className={`w-3.5 h-3.5 shrink-0 ${linkedVehicle ? (isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground') : (isDarkMode ? 'text-muted-foreground/60' : 'text-gray-200')}`} />
                       )}
                     </div>
                   </div>
@@ -1181,14 +1181,14 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                       <div className="flex items-center gap-1.5 min-w-0 flex-1">
                         <VehicleBrandMark vehicle={v} isDarkMode={isDarkMode} />
                         <span className={`text-[10.5px] font-bold leading-tight shrink-0 ${isDarkMode ? 'text-foreground' : 'text-gray-900'}`}>{v.license}</span>
-                        <span className={`text-[10px] font-semibold tracking-wide truncate ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`}>{fleetTitle(v)}</span>
+                        <span className={`text-[10px] font-semibold tracking-wide truncate ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`}>{fleetTitle(v)}</span>
                         <BlockingBadge vehicleId={v.id} />
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <span
                           className={`shrink-0 inline-block min-w-[44px] text-center px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${
                             isClean
-                              ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-blue-50 text-blue-700')
+                              ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-400' : 'bg-status-info-soft text-status-info')
                               : (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
                           }`}
                           title={isClean ? 'Clean' : 'Needs cleaning'}
@@ -1199,7 +1199,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         <span
                           className={`shrink-0 inline-block w-[72px] text-center px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${
                             isPlanned
-                              ? (isDarkMode ? 'bg-status-info-soft text-status-info' : 'bg-blue-50 text-blue-700')
+                              ? (isDarkMode ? 'bg-status-info-soft text-status-info' : 'bg-status-info-soft text-status-info')
                               : isUnplanned
                                 ? (isDarkMode ? 'bg-red-500/15 text-red-400' : 'bg-red-50 text-red-700')
                                 : (isDarkMode ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700')
@@ -1214,7 +1214,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                     {/* Row 2: Reason · (urgent flag) */}
                     <div className="flex items-center gap-2 mb-1.5 min-w-0 text-[10.5px]">
                       <span className={`inline-flex items-center gap-1 truncate min-w-0 flex-1 ${isDarkMode ? 'text-foreground/85' : 'text-gray-700'}`}>
-                        <Icon name="wrench" className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`} />
+                        <Icon name="wrench" className={`w-3 h-3 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
                         <span className="truncate font-semibold">
                           {reasonLabel !== '—' ? reasonLabel : 'In Wartung'}
                         </span>
@@ -1234,7 +1234,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         in der Werkstatt der eigenen Station steht oder
                         extern (Vendor / Auswärtsservice). */}
                     <div className={`flex items-center gap-1.5 pt-1.5 border-t min-w-0 overflow-hidden ${isDarkMode ? 'border-border/40' : 'border-gray-100'}`}>
-                      <Icon name="map-pin" className={`w-2.5 h-2.5 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-400'}`} />
+                      <Icon name="map-pin" className={`w-2.5 h-2.5 shrink-0 ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`} />
                       <div className="truncate min-w-0 flex-1 text-[10px]">
                         <VehicleAddress v={v} isDarkMode={isDarkMode} />
                       </div>

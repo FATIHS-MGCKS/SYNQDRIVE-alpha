@@ -423,14 +423,14 @@ export function ExteriorImagesEditor({
   };
 
   const cardClass = `rounded-xl border ${
-    isDarkMode ? 'bg-neutral-800/40 border-neutral-700' : 'bg-gray-50/60 border-gray-200'
+    isDarkMode ? 'bg-card/40 border-neutral-700' : 'bg-gray-50/60 border-gray-200'
   }`;
 
   return (
     <div className="space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+          <p className={`text-xs font-bold uppercase tracking-wider ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
             {title}
           </p>
           <p className={`text-[11px] mt-0.5 ${isDarkMode ? 'text-gray-500' : 'text-gray-500'}`}>
@@ -463,7 +463,7 @@ export function ExteriorImagesEditor({
               ? (isDarkMode ? 'bg-emerald-500/15 text-emerald-300' : 'bg-emerald-50 text-emerald-700')
               : filledCount > 0
                 ? (isDarkMode ? 'bg-amber-500/15 text-amber-300' : 'bg-amber-50 text-amber-700')
-                : (isDarkMode ? 'bg-neutral-700/60 text-gray-400' : 'bg-gray-100 text-gray-500')
+                : (isDarkMode ? 'bg-neutral-700/60 text-gray-400' : 'bg-muted text-muted-foreground')
           }`}>
             <Camera className="w-3 h-3" /> {filledCount}/5
           </span>
@@ -524,7 +524,7 @@ export function ExteriorImagesEditor({
                 className={`relative w-full aspect-[4/3] rounded-lg overflow-hidden border transition-all flex items-center justify-center ${
                   dataUrl
                     ? (isDarkMode ? 'border-neutral-700' : 'border-gray-200')
-                    : `border-dashed ${isDarkMode ? 'border-neutral-700 hover:border-indigo-500/50 bg-neutral-900/40' : 'border-gray-300 hover:border-indigo-400 bg-white'}`
+                    : `border-dashed ${isDarkMode ? 'border-neutral-700 hover:border-brand/50 bg-neutral-900/40' : 'border-gray-300 hover:border-brand bg-white'}`
                 } disabled:opacity-60 disabled:cursor-not-allowed`}
               >
                 {dataUrl ? (
@@ -543,7 +543,7 @@ export function ExteriorImagesEditor({
                     {sourceLabel && (
                       <span className={`absolute top-1 left-1 inline-flex items-center px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider ${
                         sourceLabel === 'Model'
-                          ? 'bg-indigo-500/80 text-white'
+                          ? 'bg-brand text-brand-foreground'
                           : 'bg-emerald-500/80 text-white'
                       }`}>
                         {sourceLabel}
@@ -554,7 +554,7 @@ export function ExteriorImagesEditor({
                     </span>
                   </>
                 ) : (
-                  <div className={`flex flex-col items-center gap-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                  <div className={`flex flex-col items-center gap-1 ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
                     {isBusy ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
@@ -566,7 +566,7 @@ export function ExteriorImagesEditor({
                   </div>
                 )}
               </button>
-              <p className={`text-[10px] leading-tight ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+              <p className={`text-[10px] leading-tight ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>
                 {v.hint}
               </p>
               {persisted && (
@@ -578,8 +578,8 @@ export function ExteriorImagesEditor({
                       onClick={() => saveVehicleImageAsModel(v.key)}
                       className={`w-full px-2 py-1 rounded-lg text-[10px] font-semibold transition-colors ${
                         isDarkMode
-                          ? 'bg-indigo-500/10 text-indigo-300 hover:bg-indigo-500/15'
-                          : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100'
+                          ? 'bg-brand-soft text-brand hover:bg-brand-soft/80'
+                          : 'bg-status-info-soft text-status-info hover:bg-status-info-soft'
                       } disabled:opacity-50`}
                     >
                       Save as model template
