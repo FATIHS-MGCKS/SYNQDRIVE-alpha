@@ -3,6 +3,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import {
   buildDeviceConnectionSummary,
   buildTripDeviceConnectionFlags,
+  collapseConsecutiveDeviceConnectionEvents,
   mapDeviceConnectionEventView,
   type DeviceConnectionBookingWindow,
   type DeviceConnectionEventRow,
@@ -239,10 +240,11 @@ export class DeviceConnectionQueryService {
       return { events: [] };
     }
 
+    const collapsed = collapseConsecutiveDeviceConnectionEvents(events);
     const bookings = await this.loadBookings(vehicleId, trip.startTime);
     const trips = [trip];
 
-    const mapped = events.map((event, index) => {
+    const mapped = collapsed.map((event, index) => {
       const view = mapDeviceConnectionEventView(event, bookings, trips);
 
       if (event.eventType !== 'OBD_DEVICE_UNPLUGGED') {
@@ -255,7 +257,7 @@ export class DeviceConnectionQueryService {
         };
       }
 
-      const recovery = events
+      const recovery = collapsed
         .slice(index + 1)
         .find((e) => e.eventType === 'OBD_DEVICE_PLUGGED_IN');
 

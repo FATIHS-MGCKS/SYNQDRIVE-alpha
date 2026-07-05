@@ -3,6 +3,7 @@ import {
   buildDeviceConnectionSummary,
   buildFleetDeviceConnectionFields,
   buildTripDeviceConnectionFlags,
+  collapseConsecutiveDeviceConnectionEvents,
   severityForUnplugEvent,
 } from './device-connection-read-model';
 
@@ -130,5 +131,30 @@ describe('device-connection-read-model', () => {
     expect(flags.hasOpenDeviceUnplug).toBe(false);
     expect(flags.deviceConnectionRentalRelevant).toBe(true);
     expect(flags.deviceConnectionSeverity).toBe('critical');
+  });
+
+  it('collapses consecutive plug events from webhook spam', () => {
+    const collapsed = collapseConsecutiveDeviceConnectionEvents([
+      {
+        id: 'e1',
+        vehicleId: 'v-1',
+        eventType: DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN,
+        observedAt: new Date('2026-06-28T20:50:11.000Z'),
+      },
+      {
+        id: 'e2',
+        vehicleId: 'v-1',
+        eventType: DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN,
+        observedAt: new Date('2026-06-28T20:50:37.000Z'),
+      },
+      {
+        id: 'e3',
+        vehicleId: 'v-1',
+        eventType: DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN,
+        observedAt: new Date('2026-06-28T20:51:03.000Z'),
+      },
+    ]);
+    expect(collapsed).toHaveLength(1);
+    expect(collapsed[0].id).toBe('e1');
   });
 });

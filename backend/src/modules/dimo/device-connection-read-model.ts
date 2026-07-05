@@ -29,6 +29,27 @@ export interface DeviceConnectionEventRow {
   observedAt: Date;
 }
 
+/**
+ * Collapse consecutive events of the same type (historical webhook spam or
+ * pre-gating duplicates). Keeps only state transitions for display/counts.
+ */
+export function collapseConsecutiveDeviceConnectionEvents<T extends DeviceConnectionEventRow>(
+  events: T[],
+): T[] {
+  if (events.length <= 1) return [...events];
+  const sorted = [...events].sort(
+    (a, b) => a.observedAt.getTime() - b.observedAt.getTime(),
+  );
+  const out: T[] = [];
+  let lastType: DimoDeviceConnectionEventType | null = null;
+  for (const event of sorted) {
+    if (event.eventType === lastType) continue;
+    out.push(event);
+    lastType = event.eventType;
+  }
+  return out;
+}
+
 export interface DeviceConnectionEventView {
   id: string;
   eventType: DimoDeviceConnectionEventType;
@@ -175,7 +196,7 @@ export function buildDeviceConnectionSummary(
     recentLimit = 10,
   } = input;
 
-  const sorted = [...events].sort(
+  const sorted = [...collapseConsecutiveDeviceConnectionEvents(events)].sort(
     (a, b) => b.observedAt.getTime() - a.observedAt.getTime(),
   );
   const since24h = nowMs - 24 * 60 * 60 * 1000;
@@ -276,10 +297,12 @@ export function buildTripDeviceConnectionFlags(
   const startMs = trip.startTime.getTime();
   const endMs = trip.endTime?.getTime() ?? nowMs;
 
-  const inWindow = events.filter((e) => {
-    const t = e.observedAt.getTime();
-    return t >= startMs && t <= endMs;
-  });
+  const inWindow = collapseConsecutiveDeviceConnectionEvents(
+    events.filter((e) => {
+      const t = e.observedAt.getTime();
+      return t >= startMs && t <= endMs;
+    }),
+  );
 
   if (inWindow.length === 0) {
     return { ...EMPTY_TRIP_DEVICE_CONNECTION_FLAGS };

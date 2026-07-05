@@ -5,7 +5,9 @@
  * (signal: obdIsPluggedIn). These are connectivity/tamper evidence events —
  * NOT misuse cases and NOT engine-context anchors.
  *
- * Idempotent: repeated firings within the dedup window collapse to one row.
+ * Idempotent layers:
+ *   1. State-change gating — ignore repeated webhooks with unchanged plug state
+ *   2. Time-bucket dedup — collapse burst duplicates within 30s
  */
 import { Injectable, Logger } from '@nestjs/common';
 import { DimoDeviceConnectionEventType } from '@prisma/client';
@@ -18,6 +20,8 @@ export type DeviceConnectionIntakeOutcome =
   | 'duplicate'
   | 'ignored';
 
+export type ObdPlugState = 'plugged' | 'unplugged' | 'unknown';
+
 export interface DeviceConnectionVehicle {
   id: string;
   organizationId: string;
@@ -29,6 +33,43 @@ export interface IngestDeviceConnectionInput {
   pluggedIn: boolean;
   observedAt: Date;
   rawPayload: unknown;
+}
+
+/** Derive current plug state from the most recent persisted connection event. */
+export function inferObdPlugStateFromLastEvent(
+  lastEventType: DimoDeviceConnectionEventType | null | undefined,
+): ObdPlugState {
+  if (!lastEventType) return 'unknown';
+  if (lastEventType === DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN) return 'plugged';
+  return 'unplugged';
+}
+
+/**
+ * Whether an incoming webhook represents a real state transition worth persisting.
+ *
+ * - First observation with plugged=true → baseline only (device was already connected).
+ * - First observation with plugged=false → real unplug event.
+ * - Repeated same-state webhooks → ignored (DIMO may fire every ~26s while plugged).
+ */
+export function shouldPersistObdPlugStateChange(
+  incomingPluggedIn: boolean,
+  lastEventType: DimoDeviceConnectionEventType | null | undefined,
+): { persist: boolean; reason?: string } {
+  const current = inferObdPlugStateFromLastEvent(lastEventType);
+  const incoming = incomingPluggedIn ? 'plugged' : 'unplugged';
+
+  if (current === 'unknown') {
+    if (incomingPluggedIn) {
+      return { persist: false, reason: 'baseline_already_plugged' };
+    }
+    return { persist: true };
+  }
+
+  if (current === incoming) {
+    return { persist: false, reason: 'no_state_change' };
+  }
+
+  return { persist: true };
 }
 
 @Injectable()
@@ -71,14 +112,25 @@ export class DeviceConnectionWebhookService {
       : DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED;
   }
 
+  static pluggedInFromEventType(eventType: DimoDeviceConnectionEventType): boolean {
+    return eventType === DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN;
+  }
+
   /**
-   * Persist an OBD plug/unplug webhook event. Best-effort snapshot update on
-   * VehicleLatestState; failures never lose the event row.
+   * Persist an OBD plug/unplug webhook event only on real state transitions.
    */
   async ingestObdPlugStateChange(
     input: IngestDeviceConnectionInput,
   ): Promise<{ outcome: DeviceConnectionIntakeOutcome; eventId?: string; eventType?: DimoDeviceConnectionEventType }> {
     const eventType = DeviceConnectionWebhookService.eventTypeForPlugState(input.pluggedIn);
+    const gate = await this.evaluateStateChangeGate(input.vehicle.id, input.pluggedIn);
+    if (!gate.persist) {
+      this.logger.debug(
+        `Device connection ignored for vehicle ${input.vehicle.id}: ${gate.reason} pluggedIn=${input.pluggedIn}`,
+      );
+      return { outcome: 'ignored', eventType };
+    }
+
     return this.persistDeviceConnectionEvent({
       ...input,
       eventType,
@@ -91,7 +143,28 @@ export class DeviceConnectionWebhookService {
       eventType: DimoDeviceConnectionEventType;
     },
   ): Promise<{ outcome: DeviceConnectionIntakeOutcome; eventId?: string; eventType?: DimoDeviceConnectionEventType }> {
+    const pluggedIn = DeviceConnectionWebhookService.pluggedInFromEventType(input.eventType);
+    const gate = await this.evaluateStateChangeGate(input.vehicle.id, pluggedIn);
+    if (!gate.persist) {
+      this.logger.debug(
+        `Device connection ignored for vehicle ${input.vehicle.id}: ${gate.reason} eventType=${input.eventType}`,
+      );
+      return { outcome: 'ignored', eventType: input.eventType };
+    }
+
     return this.persistDeviceConnectionEvent(input);
+  }
+
+  private async evaluateStateChangeGate(
+    vehicleId: string,
+    incomingPluggedIn: boolean,
+  ): Promise<{ persist: boolean; reason?: string }> {
+    const lastEvent = await this.prisma.dimoDeviceConnectionEvent.findFirst({
+      where: { vehicleId, provider: 'DIMO' },
+      orderBy: { observedAt: 'desc' },
+      select: { eventType: true },
+    });
+    return shouldPersistObdPlugStateChange(incomingPluggedIn, lastEvent?.eventType);
   }
 
   private async persistDeviceConnectionEvent(
