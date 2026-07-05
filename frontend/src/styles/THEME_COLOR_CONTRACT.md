@@ -162,7 +162,7 @@ Shadows use soft graphite `rgba(17, 24, 39, …)` — cards float on cool off-wh
 | `--destructive-foreground` | `#ffffff` | On destructive |
 | `--border` | `rgba(255, 255, 255, 0.075)` | Neutral hairline |
 | `--input` | `rgba(255, 255, 255, 0.06)` | Input border |
-| `--input-background` | *(inherits / same layer as input)* | — |
+| `--input-background` | `rgba(255, 255, 255, 0.055)` | Charcoal input fill |
 | `--ring` | `rgba(255, 255, 255, 0.16)` | Neutral focus ring |
 
 > **Note:** Dark mode intentionally avoids `#0B1220`, `#111A2E`, `#141E36` navy bases from earlier iterations.
@@ -219,12 +219,13 @@ Shadows use soft graphite `rgba(17, 24, 39, …)` — cards float on cool off-wh
 ```css
 .dark body {
   background-image:
-    radial-gradient(at 82% 4%,  rgba(255, 255, 255, 0.018), transparent 55%),
-    radial-gradient(at 16% 96%, rgba(0, 0, 0, 0.22), transparent 62%);
+    radial-gradient(at 78% 6%,  rgba(255, 255, 255, 0.014), transparent 58%),
+    radial-gradient(at 18% 94%, rgba(0, 0, 0, 0.18), transparent 64%),
+    radial-gradient(at 50% 48%, rgba(24, 26, 29, 0.22), transparent 72%);
 }
 ```
 
-Neutral charcoal vignette — **no blue ambient glow**.
+Neutral graphite vignette only — no blue/navy ambient glow.
 
 ### Sidebar (dark)
 
@@ -300,6 +301,12 @@ Dark overrides live under `.dark .sq-*` (Dark Theme V2 section).
 |-------|---------|------------|-----------|
 | `--foreground` (light) | `#0F172A` | Consider `#111827` (warmer graphite-navy) | Slightly less slate-cold; low priority |
 | Light body glow opacity | `0.055 / 0.030` | Could reduce to `0.04 / 0.02` | Even softer glass; cosmetic only |
+
+### V4.9.193 Dark Theme V2 (applied)
+
+- Dark palette confirmed/formalized; added missing `--input-background`
+- Body ambient: neutral graphite triple-vignette (no blue)
+- Legacy navy `#0B1220`/`#111A2E` removed from active tokens (changelog history only)
 
 ### V4.9.192 Light Theme V2 (applied)
 

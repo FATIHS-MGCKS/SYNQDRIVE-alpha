@@ -181,7 +181,7 @@
 }
 
 .dark {
-  /* Dark Theme V2 — charcoal / graphite / near-black SaaS canvas */
+  /* Dark Theme V2 — Premium Graphite / Charcoal (V4.9.193) */
   --background: #0B0B0D;
   --foreground: #F3F4F6;
   --card: #121214;
@@ -200,6 +200,7 @@
   --destructive-foreground: #ffffff;
   --border: rgba(255, 255, 255, 0.075);
   --input: rgba(255, 255, 255, 0.06);
+  --input-background: rgba(255, 255, 255, 0.055);
   --ring: rgba(255, 255, 255, 0.16);
 
   --brand: #E5E7EB;
@@ -381,10 +382,12 @@
     background-attachment: fixed;
   }
   .dark body {
-    /* Neutral charcoal vignette — no blue/navy ambient glow */
+    /* V4.9.193 — neutral graphite vignette only (no blue/navy ambient) */
     background-image:
-      radial-gradient(at 82% 4%,  rgba(255, 255, 255, 0.018), transparent 55%),
-      radial-gradient(at 16% 96%, rgba(0, 0, 0, 0.22), transparent 62%);
+      radial-gradient(at 78% 6%,  rgba(255, 255, 255, 0.014), transparent 58%),
+      radial-gradient(at 18% 94%, rgba(0, 0, 0, 0.18), transparent 64%),
+      radial-gradient(at 50% 48%, rgba(24, 26, 29, 0.22), transparent 72%);
+    background-attachment: fixed;
   }
 
   /* ── Typography hierarchy — V4.6.88 rules
@@ -953,7 +956,7 @@
   animation: trips-map-pulse 2s ease-in-out infinite;
 }
 .trips-map-event-marker--dark {
-  background: rgba(15, 23, 42, 0.92);
+  background: rgba(18, 18, 20, 0.92);
 }
 @keyframes trips-map-pulse {
   0%, 100% { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15), 0 2px 8px rgba(239, 68, 68, 0.25); }

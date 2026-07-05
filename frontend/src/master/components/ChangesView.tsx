@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dark-theme-v2-graphite-charcoal-v49193-2026-07-05',
+    version: '4.9.193',
+    title: 'V4.9.193 — Dark Theme V2: Premium Graphite / Charcoal',
+    summary: [
+      '`.dark` Token-Set formalisiert: near-black Canvas `#0B0B0D`, graphite Cards `#121214`, charcoal Popovers `#161719`, neutrale Brand-Akzente (`#E5E7EB`).',
+      'Ergänzt: `--input-background: rgba(255,255,255,0.055)` — Dark-Inputs erben nicht mehr Light-Translucency.',
+      'Body-Ambient: dreistufige neutrale Graphite-Vignette, kein blau/navy Glow; Map-Event-Marker Dark: Navy → Charcoal.',
+      'Glass/Map-Glass/Status-Dark-Tokens bestätigt (bereits V2-konform). Light Theme unverändert.',
+    ],
+    reason: 'Dark Mode soll hochwertiges SaaS-Graphite sein — keine navy-blauen Grundflächen, semantische Status nur als Akzente.',
+    previousBehavior: 'Palette bereits weitgehend charcoal; fehlendes Dark `--input-background` ließ Inputs im Dark Mode zu hell wirken; Trip-Map-Marker nutzte navy `rgba(15,23,42)`.',
+    details: 'Nur `theme.css` `.dark` + `.dark body` + `trips-map-event-marker--dark`. Keine Layout-/Logik-/Light-Änderung.',
+    affectsArchitecture: true,
+    module: 'Design System',
+    createdAt: '2026-07-05T02:15:00.000Z',
+  },
+  {
     id: 'light-theme-v2-soft-glass-v49192-2026-07-05',
     version: '4.9.192',
     title: 'V4.9.192 — Light Theme V2: Premium Soft Glass / Cool Offwhite',
