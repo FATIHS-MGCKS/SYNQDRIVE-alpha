@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'theme-color-audit-contract-v49191-2026-07-05',
+    version: '4.9.191',
+    title: 'V4.9.191 — Theme-Farbwelt Audit + Color Contract',
+    summary: [
+      'Intensives Audit von Light (Premium Soft Glass / Cool Offwhite) und Dark (Premium Graphite / Charcoal) in `frontend/src/styles/theme.css`.',
+      'Neu: `frontend/src/styles/THEME_COLOR_CONTRACT.md` — vollständige Token-Tabellen (Light/Dark), Brand/Status/Glass/Map-Glass, Body-Ambient, Tailwind-v4-Bridge, Hardcoded-Color-Inventar.',
+      'Bestätigt: Dark-Canvas bereits charcoal (`#0B0B0D`/`#121214`), kein navy-blauer Grundflächen-Canvas; shadcn/ui + patterns tokenbasiert. Keine zentralen Token-Werte geändert.',
+      'Repo-Scan: ~286 hardcoded `bg-blue-*`/`bg-slate-*`/…-Treffer in 42 Feature-Dateien dokumentiert (noch nicht migriert).',
+    ],
+    reason: 'Konsistente Premium-Farbwelt braucht einen zentralen Contract und Inventar, bevor Komponenten-Migration startet.',
+    previousBehavior: 'Tokens existierten in theme.css, aber kein dediziertes Farbcontract-Dokument; verstreute hardcoded Tailwind-Farben in älteren Views.',
+    details: 'Dokumentation-only: THEME_COLOR_CONTRACT.md + Changes/Architektur. Keine Layout-, Logik- oder API-Änderung.',
+    affectsArchitecture: true,
+    module: 'Design System',
+    createdAt: '2026-07-05T01:45:00.000Z',
+  },
+  {
     id: 'ready-rent-drawer-ux-polish-v49190-2026-07-04',
     version: '4.9.190',
     title: 'V4.9.190 — Ready-for-Renting Drawer: UX-Feinschliff',
