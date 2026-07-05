@@ -516,6 +516,10 @@ export interface TripAssessabilityInput {
 
   hasNativeEvents: boolean;
 
+  analysisAssessability?: 'FULL' | 'LIMITED' | 'NOT_ASSESSABLE' | null;
+
+  shortTermMisuseAssessable?: boolean;
+
 }
 
 
@@ -574,9 +578,25 @@ export function deriveTripAssessability(
 
   }
 
+  if (input.analysisAssessability === 'FULL' || input.shortTermMisuseAssessable === true) {
+
+    return {
+
+      assessable: true,
+
+      source: 'HF_SUFFICIENT',
+
+      note: 'Trip-Signalanalyse mit ausreichender Datenqualität abgeschlossen.',
+
+    };
+
+  }
+
   const status = input.enrichmentStatus ?? null;
 
-  if (status === 'COMPLETED' && !input.detailsLimited) {
+  const completed = status === 'COMPLETED' || input.behaviorReady === true;
+
+  if (completed && !input.detailsLimited) {
 
     return {
 
@@ -598,7 +618,7 @@ export function deriveTripAssessability(
 
     status === 'FAILED_PERMANENT' ||
 
-    status == null
+    (!completed && status == null)
 
   ) {
 

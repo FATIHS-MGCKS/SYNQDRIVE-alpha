@@ -198,6 +198,25 @@ export function deriveAnalysisAssessability(trip: {
   const hfPointsCleaned = readNumber(summary, 'hfPointsCleaned');
 
   if (isValidAssessability(persistedAssess)) {
+    const nativeQuerySucceeded = readBoolean(summary, 'nativeQuerySucceeded') === true;
+    const reconciledCalmLteR1 =
+      persistedAssess === 'NOT_ASSESSABLE' &&
+      persistedReason === 'NO_NATIVE_EVENTS' &&
+      nativeQuerySucceeded &&
+      (nativeEventCount ?? 0) === 0 &&
+      !hfInsufficient;
+
+    if (reconciledCalmLteR1) {
+      return buildAssessabilityForLteR1Completed({
+        nativeEventCount: 0,
+        nativeQuerySucceeded: true,
+        hfInsufficientForAbuse: false,
+        hfPointsTotal: hfPointsTotal ?? 0,
+        hfPointsCleaned: hfPointsCleaned ?? 0,
+        hardwareType: trip.hardwareType ?? readString(summary, 'hardwareType') ?? undefined,
+      });
+    }
+
     return {
       analysisAssessability: persistedAssess,
       analysisLimitReason: isValidLimitReason(persistedReason) ? persistedReason : null,
@@ -383,12 +402,27 @@ export function buildAssessabilityForLteR1Completed(params: {
   }
 
   if (params.nativeQuerySucceeded) {
+    // Native DIMO query succeeded with zero events: the absence of harsh events
+    // is itself a reliable signal on LTE_R1 when HF quality is sufficient.
+    if (!params.hfInsufficientForAbuse) {
+      return {
+        analysisAssessability: 'FULL',
+        analysisLimitReason: null,
+        shortTermMisuseAssessable: true,
+        nativeBehaviorEventsAvailable: false,
+        hfInsufficientForAbuse: false,
+        nativeEventCount: 0,
+        hfPointsTotal: params.hfPointsTotal,
+        hfPointsCleaned: params.hfPointsCleaned,
+        hardwareType: params.hardwareType,
+      };
+    }
     return {
       analysisAssessability: 'NOT_ASSESSABLE',
       analysisLimitReason: 'NO_NATIVE_EVENTS',
-      shortTermMisuseAssessable: !params.hfInsufficientForAbuse,
+      shortTermMisuseAssessable: false,
       nativeBehaviorEventsAvailable: false,
-      hfInsufficientForAbuse: params.hfInsufficientForAbuse,
+      hfInsufficientForAbuse: true,
       nativeEventCount: 0,
       hfPointsTotal: params.hfPointsTotal,
       hfPointsCleaned: params.hfPointsCleaned,

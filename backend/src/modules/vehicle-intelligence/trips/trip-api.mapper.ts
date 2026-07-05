@@ -41,6 +41,7 @@ export function mapTripForVehicleApi(
 
   return {
     ...rest,
+    behaviorEnrichmentStatus,
     drivingScore:
       summary?.scores?.drivingStressScore ?? trip.drivingScore ?? null,
     drivingStressScore: summary?.scores?.drivingStressScore ?? null,

@@ -249,6 +249,25 @@ describe('deriveTripAssessability', () => {
     expect(a.source).toBe('HF_SUFFICIENT');
   });
 
+  it('is assessable when behaviorReady is set without enrichment status', () => {
+    const a = deriveTripAssessability({
+      behaviorReady: true,
+      detailsLimited: false,
+      hasNativeEvents: false,
+    });
+    expect(a.assessable).toBe(true);
+    expect(a.source).toBe('HF_SUFFICIENT');
+  });
+
+  it('is assessable when backend reports FULL assessability', () => {
+    const a = deriveTripAssessability({
+      analysisAssessability: 'FULL',
+      hasNativeEvents: false,
+    });
+    expect(a.assessable).toBe(true);
+    expect(a.source).toBe('HF_SUFFICIENT');
+  });
+
   it('is NOT assessable on skipped/failed/not-run with no source', () => {
     expect(
       deriveTripAssessability({

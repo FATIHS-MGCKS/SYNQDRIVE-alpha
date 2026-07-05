@@ -26,6 +26,8 @@ export function TripBehaviorSummary({ trip, events }: TripBehaviorSummaryProps) 
     detailsLimited: trip.detailsLimited,
     behaviorReady: trip.behaviorReady,
     hasNativeEvents: hasNative,
+    analysisAssessability: trip.analysisAssessability ?? null,
+    shortTermMisuseAssessable: trip.shortTermMisuseAssessable,
   });
 
   const overall = deriveBehaviorOverallStatus(trip, events, {

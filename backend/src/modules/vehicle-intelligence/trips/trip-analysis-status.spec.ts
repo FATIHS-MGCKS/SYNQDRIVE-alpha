@@ -114,6 +114,47 @@ describe('trip-analysis-status', () => {
       expect(shouldFullySkipAnalysis(ctx)).toBe(true);
     });
 
+    it('LTE_R1 zero native events with sufficient HF after successful query is FULL', () => {
+      const ctx = buildAssessabilityForLteR1Completed({
+        nativeEventCount: 0,
+        nativeQuerySucceeded: true,
+        hfInsufficientForAbuse: false,
+        hfPointsTotal: 120,
+        hfPointsCleaned: 95,
+        hardwareType: 'LTE_R1',
+      });
+      expect(ctx.analysisAssessability).toBe('FULL');
+      expect(ctx.analysisLimitReason).toBeNull();
+      expect(ctx.shortTermMisuseAssessable).toBe(true);
+      expect(isTripDetailsLimited({
+        endTime: new Date(),
+        behaviorEnrichmentStatus: 'COMPLETED',
+        behaviorSummaryJson: {
+          analysisAssessability: ctx.analysisAssessability,
+          nativeQuerySucceeded: true,
+          nativeEventCount: 0,
+          hfInsufficientForAbuse: false,
+        },
+      })).toBe(false);
+    });
+
+    it('reconciles persisted LTE_R1 calm-trip NOT_ASSESSABLE to FULL', () => {
+      const assess = deriveAnalysisAssessability({
+        behaviorEnrichmentStatus: 'COMPLETED',
+        behaviorSummaryJson: {
+          analysisAssessability: 'NOT_ASSESSABLE',
+          analysisLimitReason: 'NO_NATIVE_EVENTS',
+          nativeQuerySucceeded: true,
+          nativeEventCount: 0,
+          hfInsufficientForAbuse: false,
+          hfPointsTotal: 180,
+          hfPointsCleaned: 150,
+        },
+      });
+      expect(assess.analysisAssessability).toBe('FULL');
+      expect(assess.shortTermMisuseAssessable).toBe(true);
+    });
+
     it('SMART5 insufficient HF points is NOT_ASSESSABLE', () => {
       const ctx = buildAssessabilityForSmart5Skip('INSUFFICIENT_POINTS', 'SMART5', 4, 2);
       expect(ctx.analysisAssessability).toBe('NOT_ASSESSABLE');

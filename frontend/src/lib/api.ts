@@ -1347,7 +1347,10 @@ export interface VehicleTripAnalytics {
   corneringEvents?: number;
   abuseEvents?: number;
   behaviorReady?: boolean;
+  behaviorEnrichmentStatus?: string | null;
   detailsLimited?: boolean;
+  analysisAssessability?: 'FULL' | 'LIMITED' | 'NOT_ASSESSABLE' | null;
+  shortTermMisuseAssessable?: boolean;
   tripAnalysisStatus?: 'PENDING' | 'IN_PROGRESS' | 'PARTIAL' | 'COMPLETED' | 'FAILED' | 'SKIPPED' | null;
   tripAnalysisLabel?: string | null;
   analysisInProgress?: boolean;

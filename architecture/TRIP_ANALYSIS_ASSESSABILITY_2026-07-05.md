@@ -31,7 +31,9 @@ Fields covered: `trip_analysis_status`, `analysis_*` timestamps/latency/stages,
 - Native DIMO driving events = primary behavior source.
 - Sparse HF sets `hfInsufficientForAbuse=true`, `shortTermMisuseAssessable=false`.
 - Does **not** set `tripAnalysisStatus=SKIPPED` when native path completes.
-- Zero native events after successful query → `COMPLETED` + `NOT_ASSESSABLE` / `NO_NATIVE_EVENTS`.
+- Zero native events after **successful** native query + sufficient HF → `FULL` (calm trip; absence of events is a reliable signal).
+- Zero native events after successful query + insufficient HF → `NOT_ASSESSABLE` / `NO_NATIVE_EVENTS`.
+- Legacy persisted `NOT_ASSESSABLE` rows with `nativeQuerySucceeded=true` and sufficient HF are reconciled to `FULL` at read time.
 
 ### SMART5 / UNKNOWN
 - HF &lt;10 raw or &lt;5 clean → behavior stage skipped, `NOT_ASSESSABLE` / `INSUFFICIENT_HF`.
@@ -69,6 +71,12 @@ DIMO `obdIsPluggedIn` triggers may fire every ~26s while state is unchanged.
 - 30s bucket dedup remains as secondary layer
 
 **Read-model:** `collapseConsecutiveDeviceConnectionEvents` filters historical spam for display/counts.
+
+## Timeline API mapping (2026-07-05 evening)
+
+`GET /vehicles/:vehicleId/trips-timeline` now applies `mapTripForVehicleApi` (same as `GET /trips` and `GET /trips/:id`) before device-connection flags and merge — exposes `behaviorReady`, `behaviorEnrichmentStatus`, `detailsLimited`, and assessability fields to the Trips tab without a second detail fetch.
+
+**Frontend:** `deriveTripAssessability` trusts `analysisAssessability=FULL`, `shortTermMisuseAssessable`, and `behaviorReady` when enrichment status is stripped after detail hydration.
 
 ## `detailsLimited` (API)
 

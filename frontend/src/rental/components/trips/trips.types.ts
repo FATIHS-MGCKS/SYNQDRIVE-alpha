@@ -52,6 +52,8 @@ export interface TripTimelineTrip {
   analysisLatencyMs?: number | null;
   totalAnalysisLatencyMs?: number | null;
   detailsLimited?: boolean;
+  analysisAssessability?: 'FULL' | 'LIMITED' | 'NOT_ASSESSABLE' | null;
+  shortTermMisuseAssessable?: boolean;
   gapEnded?: boolean;
   enrichedAt?: string;
   totalAccelerationEvents?: number;

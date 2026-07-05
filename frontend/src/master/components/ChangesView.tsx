@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'lte-r1-calm-trip-assessability-v49202-2026-07-05',
+    version: '4.9.202',
+    title: 'V4.9.202 — LTE_R1 ruhige Fahrten: „Unauffällig“ statt falscher „Nicht belastbar“-Warnung',
+    summary: [
+      'LTE_R1: erfolgreiche Native-Query mit 0 Events + ausreichender HF → `analysisAssessability=FULL` (kein Fehlalarm mehr).',
+      'Legacy `behaviorSummaryJson` mit `NOT_ASSESSABLE/NO_NATIVE_EVENTS` wird bei `nativeQuerySucceeded` + ausreichender HF beim Lesen zu FULL reconciled.',
+      '`GET /trips-timeline` nutzt jetzt `mapTripForVehicleApi` wie `GET /trips` — Assessability-Felder direkt in der Timeline.',
+      'Frontend `deriveTripAssessability`: `behaviorReady`, `analysisAssessability`, `shortTermMisuseAssessable` als belastbare Quellen.',
+      'API behält `behaviorEnrichmentStatus` im gemappten Trip-Response für UI-Kompatibilität.',
+    ],
+    reason:
+      'HMÜ C 215 (LTE_R1) zeigte trotz COMPLETED/VERIFIED-Trips „Nicht belastbar bewertet“ — Timeline lieferte keine Assessability-Felder, Detail-Hydration strippte Enrichment-Status, 0 Native Events wurden fälschlich als nicht bewertbar behandelt.',
+    previousBehavior:
+      'Ruhe-Fahrten mit 0 Native Events → `NOT_ASSESSABLE`; Timeline ohne Mapper; UI fiel auf NOT_RUN wenn `behaviorEnrichmentStatus` nach Detail-Fetch fehlte.',
+    details:
+      'Backend: `trip-analysis-status.ts`, `trip-api.mapper.ts`, `vehicle-intelligence.controller.ts`. Frontend: `event-context-ui.ts`, `TripBehaviorSummary.tsx`, Types in `trips.types.ts` + `api.ts`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-05T20:30:00.000Z',
+  },
+  {
     id: 'trip-analysis-status-v49201-2026-07-05',
     version: '4.9.201',
     title: 'V4.9.201 — Kanonischer Trip-Analyse-Status (Post-Trip Pipeline)',

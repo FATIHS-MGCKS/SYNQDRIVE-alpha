@@ -945,9 +945,10 @@ export class VehicleIntelligenceController {
       trips as any,
     );
 
+    const mapped = hydratedTrips.map((trip) => mapTripForVehicleApi(trip as any));
     const withFlags = await this.attachTripDeviceConnectionFlags(
       vehicleId,
-      hydratedTrips as any,
+      mapped as any,
     );
 
     return this.energyEventsService.buildTripsTimeline(
