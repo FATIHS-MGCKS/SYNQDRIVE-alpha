@@ -2,6 +2,7 @@ import {
   buildDimoVerificationResponse,
   inferObdPlugStateFromWebhookContext,
   isBlockedEngineWebhookSignal,
+  isDimoTriggerPayload,
   isDimoVerificationRequest,
   normalizeDimoWebhookPayload,
   parseTokenIdFromAssetDid,
@@ -12,6 +13,16 @@ describe('isDimoVerificationRequest', () => {
     expect(isDimoVerificationRequest({ verification: 'test' })).toBe(true);
     expect(isDimoVerificationRequest({ verification: 'other' })).toBe(false);
     expect(isDimoVerificationRequest({ type: 'dimo.trigger' })).toBe(false);
+  });
+});
+
+describe('isDimoTriggerPayload', () => {
+  it('accepts CloudEvent and legacy trigger shapes', () => {
+    expect(isDimoTriggerPayload({ type: 'dimo.trigger', data: { metricName: 'vss.obdIsPluggedIn' } })).toBe(true);
+    expect(isDimoTriggerPayload({ tokenId: 42, signal: 'speed', value: 80 })).toBe(true);
+    expect(isDimoTriggerPayload({ subject: 'did:erc721:137:0xabc:1', data: { signal: { name: 'speed' } } })).toBe(true);
+    expect(isDimoTriggerPayload({ verification: 'test' })).toBe(false);
+    expect(isDimoTriggerPayload({ foo: 'bar' })).toBe(false);
   });
 });
 

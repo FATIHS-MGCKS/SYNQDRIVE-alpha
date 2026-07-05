@@ -26,6 +26,18 @@ export function isDimoVerificationRequest(body: unknown): boolean {
   return (body as Record<string, unknown>).verification === 'test';
 }
 
+/** True when the body looks like a DIMO Vehicle Triggers CloudEvent or legacy trigger payload. */
+export function isDimoTriggerPayload(body: unknown): boolean {
+  const root = asRecord(body);
+  if (!root) return false;
+  if (root.type === 'dimo.trigger') return true;
+  if (root.tokenId != null) return true;
+  if (typeof root.subject === 'string' && root.subject.includes('did:erc721')) return true;
+  const data = asRecord(root.data);
+  if (!data) return false;
+  return Boolean(data.assetDID ?? data.assetDid ?? data.signal ?? data.metricName ?? data.webhookId);
+}
+
 /** DIMO expects the verification token echoed as a plain/text body (not JSON). */
 export function buildDimoVerificationResponse(verificationToken: string): string {
   return verificationToken;

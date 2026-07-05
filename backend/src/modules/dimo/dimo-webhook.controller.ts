@@ -21,6 +21,7 @@ import {
   buildDimoVerificationResponse,
   inferObdPlugStateFromWebhookContext,
   isBlockedEngineWebhookSignal,
+  isDimoTriggerPayload,
   isDimoVerificationRequest,
   normalizeDimoWebhookPayload,
 } from './dimo-webhook-payload.util';
@@ -31,8 +32,7 @@ import dimoConfig from '@config/dimo.config';
 export class DimoWebhookController {
   private readonly logger = new Logger(DimoWebhookController.name);
   private readonly nodeEnv = process.env.NODE_ENV ?? 'development';
-  // Only strict local dev may accept unsigned webhooks. Staging / test / preview
-  // environments MUST provide DIMO_WEBHOOK_SECRET — otherwise we fail closed.
+  // Only strict local dev may accept unsigned webhooks without verification token.
   private readonly allowUnsignedInDev = this.nodeEnv === 'development';
 
   constructor(
@@ -41,15 +41,9 @@ export class DimoWebhookController {
     private readonly dtcService: DtcService,
     private readonly deviceConnection: DeviceConnectionWebhookService,
   ) {
-    const secret = process.env.DIMO_WEBHOOK_SECRET;
-    if (!this.allowUnsignedInDev && !secret) {
-      this.logger.error(
-        `DIMO_WEBHOOK_SECRET is not set (NODE_ENV=${this.nodeEnv}). All inbound DIMO webhooks will be rejected until this is fixed.`,
-      );
-    }
     if (!this.resolveVerificationToken() && !this.allowUnsignedInDev) {
-      this.logger.warn(
-        'DIMO_WEBHOOK_VERIFICATION_TOKEN is not set — DIMO Developer Console webhook URL verification will return 503.',
+      this.logger.error(
+        `DIMO_WEBHOOK_VERIFICATION_TOKEN is not set (NODE_ENV=${this.nodeEnv}). DIMO Vehicle Triggers cannot be verified and trigger payloads will be rejected until this is fixed.`,
       );
     }
   }
@@ -84,36 +78,45 @@ export class DimoWebhookController {
       return buildDimoVerificationResponse(verificationToken);
     }
 
-    // ── 2) HMAC verification for real trigger payloads ───────────────────────
-    const secret = process.env.DIMO_WEBHOOK_SECRET;
-
-    if (!secret) {
-      if (!this.allowUnsignedInDev) {
-        this.logger.warn(
-          `DIMO webhook rejected: DIMO_WEBHOOK_SECRET not configured (NODE_ENV=${this.nodeEnv})`,
-        );
-        return { status: 'rejected', reason: 'webhook_not_configured' };
-      }
-      this.logger.debug(
-        'DIMO webhook received without signature check (NODE_ENV=development, secret absent)',
+    // ── 2) Auth for real trigger payloads ────────────────────────────────────
+    // DIMO Vehicle Triggers API authenticates via verificationToken at registration.
+    // Trigger POSTs do not include x-dimo-signature today — optional HMAC when present.
+    const verificationToken = this.resolveVerificationToken();
+    if (!verificationToken && !this.allowUnsignedInDev) {
+      this.logger.warn(
+        `DIMO webhook rejected: DIMO_WEBHOOK_VERIFICATION_TOKEN not configured (NODE_ENV=${this.nodeEnv})`,
       );
-    } else {
-      if (!signature) {
-        this.logger.warn('DIMO webhook rejected: missing x-dimo-signature header');
-        return { status: 'rejected', reason: 'missing_signature' };
-      }
+      return { status: 'rejected', reason: 'verification_not_configured' };
+    }
+
+    if (!isDimoTriggerPayload(body)) {
+      this.logger.warn('DIMO webhook rejected: payload does not match Vehicle Triggers shape');
+      return { status: 'rejected', reason: 'invalid_payload' };
+    }
+
+    const secret = process.env.DIMO_WEBHOOK_SECRET?.trim();
+    if (secret && signature) {
       const toSign: Buffer | string = req.rawBody ?? JSON.stringify(body);
       const expected = createHmac('sha256', secret).update(toSign).digest('hex');
       const expectedPrefixed = `sha256=${expected}`;
 
       const sigBuf = Buffer.from(signature);
       const rawMatch = sigBuf.length === expected.length && timingSafeEqual(sigBuf, Buffer.from(expected));
-      const prefixedMatch = sigBuf.length === expectedPrefixed.length && timingSafeEqual(sigBuf, Buffer.from(expectedPrefixed));
+      const prefixedMatch =
+        sigBuf.length === expectedPrefixed.length && timingSafeEqual(sigBuf, Buffer.from(expectedPrefixed));
 
       if (!rawMatch && !prefixedMatch) {
         this.logger.warn('DIMO webhook rejected: invalid signature');
         return { status: 'rejected', reason: 'invalid_signature' };
       }
+    } else if (secret && !signature) {
+      this.logger.debug(
+        'DIMO webhook accepted without x-dimo-signature (Vehicle Triggers API does not sign trigger POSTs)',
+      );
+    } else if (!secret && !this.allowUnsignedInDev) {
+      this.logger.debug(
+        'DIMO webhook accepted without HMAC (verification token configured; DIMO_WEBHOOK_SECRET optional)',
+      );
     }
 
     const payload = normalizeDimoWebhookPayload(body);
@@ -197,6 +200,7 @@ export class DimoWebhookController {
       service: 'dimo-webhook',
       verificationConfigured: Boolean(this.resolveVerificationToken()),
       hmacConfigured: Boolean(process.env.DIMO_WEBHOOK_SECRET?.trim()),
+      authMode: 'verification_token_with_optional_hmac',
     };
   }
 

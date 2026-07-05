@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-webhook-auth-fix-v49196-2026-07-05',
+    version: '4.9.196',
+    title: 'V4.9.196 — DIMO Webhook Intake: Verification-Token Auth (kein Pflicht-HMAC)',
+    summary: [
+      'Fix: DIMO Vehicle Triggers senden keine `x-dimo-signature` — ~8k+ Webhooks seit 28.06. wurden fälschlich abgelehnt (`missing_signature`).',
+      'Production-Auth jetzt: `DIMO_WEBHOOK_VERIFICATION_TOKEN` Pflicht (URL-Registrierung), Trigger-POSTs ohne Signatur werden akzeptiert; optional HMAC wenn Header + `DIMO_WEBHOOK_SECRET` gesetzt.',
+      'Neu: `isDimoTriggerPayload()` filtert Nicht-DIMO-POSTs; Health-Endpoint `authMode: verification_token_with_optional_hmac`.',
+      'OBD plug/unplug Events (`vss.obdIsPluggedIn`) werden wieder in `DimoDeviceConnectionEvent` persistiert.',
+    ],
+    reason:
+      'DIMO Vehicle Triggers API nutzt nur Verification-Token beim URL-Handshake — kein HMAC auf Trigger-Payloads. SynqDrive fail-closed auf fehlende Signatur blockierte alle echten Events.',
+    previousBehavior:
+      'Mit gesetztem `DIMO_WEBHOOK_SECRET` wurden alle Trigger ohne `x-dimo-signature` rejected — 0 erfolgreiche Webhooks in Production trotz aktiver Console-Triggers.',
+    details:
+      '**Geändert**: `dimo-webhook.controller.ts` (Auth-Flow), `dimo-webhook-payload.util.ts` (+ Spec), `dimo-webhook.controller.spec.ts`, `.env.example`. Keine Schema-/UI-Änderung.',
+    affectsArchitecture: true,
+    module: 'DIMO Integration',
+    createdAt: '2026-07-05T11:30:00.000Z',
+  },
+  {
     id: 'ui-pattern-color-v2-finalization-v49195-2026-07-05',
     version: '4.9.195',
     title: 'V4.9.195 — UI-Pattern Farbwelt V2 Finalisierung',

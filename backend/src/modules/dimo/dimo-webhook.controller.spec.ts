@@ -85,10 +85,12 @@ describe('DimoWebhookController — verification handshake', () => {
 
 describe('DimoWebhookController — device connection CloudEvent', () => {
   const originalSecret = process.env.DIMO_WEBHOOK_SECRET;
+  const originalVerificationToken = process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN;
   const originalNodeEnv = process.env.NODE_ENV;
 
   afterEach(() => {
     process.env.DIMO_WEBHOOK_SECRET = originalSecret;
+    process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN = originalVerificationToken;
     process.env.NODE_ENV = originalNodeEnv;
   });
 
@@ -154,5 +156,61 @@ describe('DimoWebhookController — device connection CloudEvent', () => {
     const result = await controller.handleWebhook({ rawBody: Buffer.from(JSON.stringify(body)) } as never, body, undefined, mockRes);
     expect(result).toEqual({ status: 'ignored', reason: 'blocked_engine_signal' });
     expect(deviceConnection.ingestObdPlugStateChange).not.toHaveBeenCalled();
+  });
+
+  it('processes unsigned dimo.trigger in production when verification token is configured', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN = 'synqdrive-prod-token';
+    process.env.DIMO_WEBHOOK_SECRET = 'hmac-secret';
+
+    const vehicle = { id: 'veh-1', organizationId: 'org-1' };
+    const { controller, deviceConnection } = makeController({
+      verificationToken: 'synqdrive-prod-token',
+      prisma: {
+        vehicle: { findFirst: jest.fn().mockResolvedValue(vehicle) },
+      },
+    });
+
+    const body = {
+      type: 'dimo.trigger',
+      subject: 'did:erc721:137:0xabc:777',
+      data: {
+        metricName: 'vss.obdIsPluggedIn',
+        webhookName: 'OBD Device unplugged',
+        signal: { name: 'obdIsPluggedIn', value: false },
+      },
+    };
+
+    const result = await controller.handleWebhook(
+      { rawBody: Buffer.from(JSON.stringify(body)) } as never,
+      body,
+      undefined,
+      mockRes,
+    );
+
+    expect(result).toMatchObject({ status: 'processed', type: 'device_connection' });
+    expect(deviceConnection.ingestObdPlugStateChange).toHaveBeenCalled();
+  });
+
+  it('rejects trigger payloads in production when verification token is missing', async () => {
+    process.env.NODE_ENV = 'production';
+    delete process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN;
+    process.env.DIMO_WEBHOOK_SECRET = 'hmac-secret';
+
+    const { controller } = makeController({ verificationToken: '' });
+    const body = {
+      type: 'dimo.trigger',
+      subject: 'did:erc721:137:0xabc:1',
+      data: { signal: { name: 'obdIsPluggedIn', value: true } },
+    };
+
+    const result = await controller.handleWebhook(
+      { rawBody: Buffer.from(JSON.stringify(body)) } as never,
+      body,
+      undefined,
+      mockRes,
+    );
+
+    expect(result).toEqual({ status: 'rejected', reason: 'verification_not_configured' });
   });
 });
