@@ -56,6 +56,20 @@ with `misuse=pending` after process restarts (every 5 min + on boot).
 Per-trip structured log via `TripAnalysisCoordinatorService.logAnalysisDiagnostics`:
 tripId, vehicleId, hardwareType, statuses, assessability, HF points, native event count.
 
+---
+
+## OBD plug state gating (2026-07-05)
+
+DIMO `obdIsPluggedIn` triggers may fire every ~26s while state is unchanged.
+
+**Intake (`DeviceConnectionWebhookService`):**
+- `shouldPersistObdPlugStateChange` — only persist on real transitions
+- First `plugged=true` without history → baseline ignored (`baseline_already_plugged`)
+- Repeated same-state webhooks → `ignored` (`no_state_change`)
+- 30s bucket dedup remains as secondary layer
+
+**Read-model:** `collapseConsecutiveDeviceConnectionEvents` filters historical spam for display/counts.
+
 ## `detailsLimited` (API)
 
 True when: no endTime, quality LOW_DATA/ANOMALY, `tripAnalysisStatus=SKIPPED`,
