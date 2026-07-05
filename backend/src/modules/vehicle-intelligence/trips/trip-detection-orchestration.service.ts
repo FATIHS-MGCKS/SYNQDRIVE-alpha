@@ -50,6 +50,8 @@ import { DETECTION_PHASES } from './detectors/detector.interfaces';
 import { DetectorRegistry } from './detectors/detector.registry';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
 
+type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
+
 @Injectable()
 export class TripDetectionOrchestrationService {
   private readonly logger = new Logger(TripDetectionOrchestrationService.name);
@@ -232,28 +234,145 @@ export class TripDetectionOrchestrationService {
   //  SCHEDULING
   // ══════════════════════════════════════════════════════════
 
+  private tripTrackingJobId(
+    phase: TripTrackingSchedulePhase,
+    vehicleId: string,
+    activeTripId?: string | null,
+  ): string {
+    if (phase === 'ps') {
+      return `trip-ps-${vehicleId}`;
+    }
+    const tripKey = activeTripId ?? 'pending';
+    return `trip-${phase}-${vehicleId}-${tripKey}`;
+  }
+
+  private async resolveActiveTripIdForScheduling(
+    vehicleId: string,
+  ): Promise<string | null> {
+    const det = await this.prisma.vehicleTripDetectionState.findUnique({
+      where: { vehicleId },
+      select: { activeTripId: true },
+    });
+    return det?.activeTripId ?? null;
+  }
+
+  /**
+   * Enqueue a trip-tracking job with a stable per-vehicle/phase/trip jobId so
+   * concurrent schedule calls do not pile up duplicate BullMQ jobs.
+   *
+   * Completed jobs are removed (`removeOnComplete`) so legitimate follow-up
+   * ticks can reuse the same id after the previous run finishes. When the
+   * matching job is still active (self-reschedule from inside the worker),
+   * enqueue is deferred to the next event-loop turn.
+   */
+  private async enqueueTripTrackingJob(
+    phase: TripTrackingSchedulePhase,
+    vehicleId: string,
+    organizationId: string | null,
+    dimoTokenId: number,
+    trigger: TripTrackingJobData['trigger'],
+    opts?: {
+      delayMs?: number;
+      activeTripId?: string | null;
+      allowDeferIfActive?: boolean;
+    },
+  ): Promise<void> {
+    if (!canEnqueueQueue(this.logger, 'trip-tracking')) return;
+
+    const activeTripId =
+      opts?.activeTripId !== undefined
+        ? opts.activeTripId
+        : phase === 'ps'
+          ? null
+          : await this.resolveActiveTripIdForScheduling(vehicleId);
+
+    const jobId = this.tripTrackingJobId(phase, vehicleId, activeTripId);
+    const delayMs = opts?.delayMs ?? 0;
+    const allowDeferIfActive = opts?.allowDeferIfActive !== false;
+
+    const attemptAdd = async (): Promise<void> => {
+      try {
+        const existing = await this.trackingQueue.getJob(jobId);
+        if (existing) {
+          const state = await existing.getState();
+          if (state === 'failed' || state === 'completed') {
+            await existing.remove();
+          } else if (state === 'waiting' || state === 'delayed') {
+            this.logger.debug(
+              `Trip tracking job not re-enqueued (already queued): jobId=${jobId} state=${state} trigger=${trigger}`,
+            );
+            return;
+          } else if (state === 'active') {
+            if (allowDeferIfActive) {
+              this.logger.debug(
+                `Trip tracking job deferred until active job completes: jobId=${jobId} trigger=${trigger}`,
+              );
+              setImmediate(() => {
+                void this.enqueueTripTrackingJob(
+                  phase,
+                  vehicleId,
+                  organizationId,
+                  dimoTokenId,
+                  trigger,
+                  { delayMs, activeTripId, allowDeferIfActive: false },
+                );
+              });
+              return;
+            }
+            this.logger.debug(
+              `Trip tracking job not re-enqueued (still active): jobId=${jobId} trigger=${trigger}`,
+            );
+            return;
+          }
+        }
+
+        await this.trackingQueue.add(
+          'trip-tracking',
+          {
+            vehicleId,
+            organizationId,
+            dimoTokenId,
+            trigger,
+            requestedAt: new Date().toISOString(),
+          } satisfies TripTrackingJobData,
+          {
+            delay: delayMs,
+            jobId,
+            removeOnComplete: true,
+            removeOnFail: 5,
+          },
+        );
+      } catch (err: unknown) {
+        const msg = (err as Error).message ?? '';
+        if (
+          msg.toLowerCase().includes('duplicate') ||
+          msg.toLowerCase().includes('already exists')
+        ) {
+          this.logger.debug(
+            `Trip tracking job not re-enqueued (duplicate jobId): jobId=${jobId} trigger=${trigger}`,
+          );
+          return;
+        }
+        throw err;
+      }
+    };
+
+    await attemptAdd();
+  }
+
   async schedulePossibleStart(
     vehicleId: string,
     organizationId: string | null,
     dimoTokenId: number,
     delayMs = 0,
   ): Promise<void> {
-    if (!canEnqueueQueue(this.logger, 'trip-tracking')) return;
-    await this.trackingQueue.add(
-      'trip-tracking',
-      {
-        vehicleId,
-        organizationId,
-        dimoTokenId,
-        trigger: TRIP_TRACKING_TRIGGERS.POSSIBLE_START,
-        requestedAt: new Date().toISOString(),
-      } satisfies TripTrackingJobData,
-      {
-        delay: delayMs,
-        jobId: `trip-ps-${vehicleId}-${Date.now()}`,
-        removeOnComplete: true,
-        removeOnFail: 5,
-      },
+    await this.enqueueTripTrackingJob(
+      'ps',
+      vehicleId,
+      organizationId,
+      dimoTokenId,
+      TRIP_TRACKING_TRIGGERS.POSSIBLE_START,
+      { delayMs },
     );
   }
 
@@ -263,22 +382,13 @@ export class TripDetectionOrchestrationService {
     dimoTokenId: number,
     delayMs?: number,
   ): Promise<void> {
-    if (!canEnqueueQueue(this.logger, 'trip-tracking')) return;
-    await this.trackingQueue.add(
-      'trip-tracking',
-      {
-        vehicleId,
-        organizationId,
-        dimoTokenId,
-        trigger: TRIP_TRACKING_TRIGGERS.ACTIVE_TICK,
-        requestedAt: new Date().toISOString(),
-      } satisfies TripTrackingJobData,
-      {
-        delay: delayMs ?? this.TRACKING_INTERVAL_MS,
-        jobId: `trip-at-${vehicleId}-${Date.now()}`,
-        removeOnComplete: true,
-        removeOnFail: 5,
-      },
+    await this.enqueueTripTrackingJob(
+      'at',
+      vehicleId,
+      organizationId,
+      dimoTokenId,
+      TRIP_TRACKING_TRIGGERS.ACTIVE_TICK,
+      { delayMs: delayMs ?? this.TRACKING_INTERVAL_MS },
     );
   }
 
@@ -288,22 +398,13 @@ export class TripDetectionOrchestrationService {
     dimoTokenId: number,
     delayMs?: number,
   ): Promise<void> {
-    if (!canEnqueueQueue(this.logger, 'trip-tracking')) return;
-    await this.trackingQueue.add(
-      'trip-tracking',
-      {
-        vehicleId,
-        organizationId,
-        dimoTokenId,
-        trigger: TRIP_TRACKING_TRIGGERS.POSSIBLE_END_CHECK,
-        requestedAt: new Date().toISOString(),
-      } satisfies TripTrackingJobData,
-      {
-        delay: delayMs ?? this.TRACKING_INTERVAL_MS,
-        jobId: `trip-pec-${vehicleId}-${Date.now()}`,
-        removeOnComplete: true,
-        removeOnFail: 5,
-      },
+    await this.enqueueTripTrackingJob(
+      'pec',
+      vehicleId,
+      organizationId,
+      dimoTokenId,
+      TRIP_TRACKING_TRIGGERS.POSSIBLE_END_CHECK,
+      { delayMs: delayMs ?? this.TRACKING_INTERVAL_MS },
     );
   }
 
@@ -313,22 +414,13 @@ export class TripDetectionOrchestrationService {
     dimoTokenId: number,
     delayMs?: number,
   ): Promise<void> {
-    if (!canEnqueueQueue(this.logger, 'trip-tracking')) return;
-    await this.trackingQueue.add(
-      'trip-tracking',
-      {
-        vehicleId,
-        organizationId,
-        dimoTokenId,
-        trigger: TRIP_TRACKING_TRIGGERS.END_VALIDATION,
-        requestedAt: new Date().toISOString(),
-      } satisfies TripTrackingJobData,
-      {
-        delay: delayMs ?? 0,
-        jobId: `trip-ev-${vehicleId}-${Date.now()}`,
-        removeOnComplete: true,
-        removeOnFail: 5,
-      },
+    await this.enqueueTripTrackingJob(
+      'ev',
+      vehicleId,
+      organizationId,
+      dimoTokenId,
+      TRIP_TRACKING_TRIGGERS.END_VALIDATION,
+      { delayMs: delayMs ?? 0 },
     );
   }
 
@@ -337,21 +429,13 @@ export class TripDetectionOrchestrationService {
     organizationId: string | null,
     dimoTokenId: number,
   ): Promise<void> {
-    if (!canEnqueueQueue(this.logger, 'trip-tracking')) return;
-    await this.trackingQueue.add(
-      'trip-tracking',
-      {
-        vehicleId,
-        organizationId,
-        dimoTokenId,
-        trigger: TRIP_TRACKING_TRIGGERS.FINALIZE,
-        requestedAt: new Date().toISOString(),
-      } satisfies TripTrackingJobData,
-      {
-        jobId: `trip-fin-${vehicleId}-${Date.now()}`,
-        removeOnComplete: true,
-        removeOnFail: 5,
-      },
+    await this.enqueueTripTrackingJob(
+      'fin',
+      vehicleId,
+      organizationId,
+      dimoTokenId,
+      TRIP_TRACKING_TRIGGERS.FINALIZE,
+      { delayMs: 0 },
     );
   }
 

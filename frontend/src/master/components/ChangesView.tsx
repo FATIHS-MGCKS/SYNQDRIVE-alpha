@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-tracking-queue-dedup-v49200-2026-07-05',
+    version: '4.9.200',
+    title: 'V4.9.200 — Trip-Tracking Queue: deterministische BullMQ Job-IDs',
+    summary: [
+      'Trip-Tracking-Jobs nutzen stabile jobIds pro Fahrzeug + Phase + activeTripId statt `Date.now()` — weniger doppelte ACTIVE_TICK/POSSIBLE_END/FINALIZE Jobs.',
+      'IDs: `trip-ps-${vehicleId}`, `trip-at|pec|ev|fin-${vehicleId}-${activeTripId ?? pending}`.',
+      'Dedup: waiting/delayed → skip + Log; completed/failed → remove + re-enqueue; active (Self-Reschedule) → defer per setImmediate.',
+      'activeTripId wird aus `vehicleTripDetectionState` aufgelöst, wenn nicht übergeben.',
+    ],
+    reason:
+      'Date.now()-jobIds verhinderten BullMQ-Deduplizierung und konnten Queue-Backlog bei parallelen Schedule-Aufrufen erzeugen.',
+    previousBehavior:
+      'Jeder Schedule-Aufruf erzeugte eine neue jobId — mehrere gleichzeitige Ticks/End-Checks pro Fahrzeug möglich.',
+    details:
+      '**Geändert**: `trip-detection-orchestration.service.ts` (`enqueueTripTrackingJob`). Snapshot-Queue unverändert. Keine FSM-/UI-Änderung.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-05T16:45:00.000Z',
+  },
+  {
     id: 'trip-end-detection-tuning-v49199-2026-07-05',
     version: '4.9.199',
     title: 'V4.9.199 — Trip-End-Erkennung: schnellere Defaults + Observability',
