@@ -154,17 +154,42 @@ export function normalizeDimoWebhookPayload(body: unknown): NormalizedDimoWebhoo
   };
 }
 
-/** Engine/RPM webhook signals are not offered by DIMO — ignore if they arrive. */
+/** True when the signal/metric is engine RPM from a Vehicle Triggers webhook. */
+export function isRpmWebhookSignal(signalName: unknown, metricName?: unknown): boolean {
+  const candidates = [signalName, metricName];
+  for (const raw of candidates) {
+    if (typeof raw !== 'string' || !raw.trim()) continue;
+    const normalized = raw.trim().toLowerCase();
+    const base = normalized.includes('.') ? normalized.split('.').pop()! : normalized;
+    if (
+      base === 'powertraincombustionenginespeed' ||
+      base === 'rpm' ||
+      base === 'enginespeed' ||
+      base.includes('enginespeed')
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+export function parseRpmWebhookValue(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const n = Number.parseFloat(value.trim());
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+/** Throttle/engine-load webhooks remain blocked — RPM is handled by RpmWebhookCandidate intake. */
 export function isBlockedEngineWebhookSignal(signalName: unknown): boolean {
   if (typeof signalName !== 'string') return false;
+  if (isRpmWebhookSignal(signalName)) return false;
   const s = signalName.trim().toLowerCase();
   return (
-    s === 'powertraincombustionenginespeed' ||
-    s === 'rpm' ||
-    s === 'enginespeed' ||
     s === 'throttle' ||
     s === 'engineload' ||
-    s.includes('enginespeed') ||
     s.includes('throttleposition') ||
     s.includes('engine load')
   );

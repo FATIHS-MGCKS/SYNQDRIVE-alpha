@@ -668,9 +668,8 @@ enum DrivingEventSource {
   HF_DERIVED
 }
 
-// ── DEPRECATED: RPM webhook candidate intake (V4.9.92 removed — no reads/writes) ──
-// DIMO Developer Console does not expose RPM/throttle/engine-load webhooks.
-// Table `rpm_webhook_candidates` retained for audit history only.
+// ── RPM webhook candidate intake (V4.9.197) ─────────────────────────────────
+// DIMO Developer Console supports vss.powertrainCombustionEngineSpeed triggers.
 enum TelemetryTriggerType {
   RPM_THRESHOLD
 }
@@ -4022,10 +4021,8 @@ model DrivingEvent {
   @@map("driving_events")
 }
 
-// ------------------------------------------------
-// DEPRECATED — RPM WEBHOOK CANDIDATE (audit-only, intake removed V4.9.92)
-// ------------------------------------------------
-// No application code reads or writes this model. Use DimoDeviceConnectionEvent.
+// ── RPM webhook candidate intake (re-enabled V4.9.197) ────────────────────────
+// DIMO Developer Console supports vss.powertrainCombustionEngineSpeed triggers.
 model RpmWebhookCandidate {
   id             String                    @id @default(uuid())
   organizationId String                    @map("organization_id")

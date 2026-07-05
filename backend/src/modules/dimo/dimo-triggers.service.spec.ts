@@ -18,11 +18,10 @@ describe('DimoTriggersService', () => {
     jest.clearAllMocks();
   });
 
-  it('never subscribes RPM/engine signals', async () => {
+  it('filters throttle/engineLoad but allows RPM subscription', async () => {
     mockedAxios.post.mockResolvedValue({ data: { ok: true } });
 
     await service.subscribeVehicle('wh_1', 99, [
-      'powertrainCombustionEngineSpeed',
       'throttle',
       'engineLoad',
     ]);
@@ -30,14 +29,14 @@ describe('DimoTriggersService', () => {
     expect(mockedAxios.post).not.toHaveBeenCalled();
   });
 
-  it('filters blocked engine signals and subscribes allowed ones', async () => {
+  it('filters blocked throttle signals and subscribes allowed ones including RPM', async () => {
     mockedAxios.post.mockResolvedValue({ data: { ok: true } });
 
-    await service.subscribeVehicle('wh_1', 99, ['obdIsPluggedIn', 'powertrainCombustionEngineSpeed']);
+    await service.subscribeVehicle('wh_1', 99, ['obdIsPluggedIn', 'powertrainCombustionEngineSpeed', 'throttle']);
 
     expect(mockedAxios.post).toHaveBeenCalledWith(
       'https://vehicle-triggers-api.dimo.zone/v1/webhooks/wh_1/vehicles/99',
-      { signals: ['obdIsPluggedIn'] },
+      { signals: ['obdIsPluggedIn', 'powertrainCombustionEngineSpeed'] },
       expect.objectContaining({ headers: { Authorization: 'Bearer jwt' } }),
     );
   });

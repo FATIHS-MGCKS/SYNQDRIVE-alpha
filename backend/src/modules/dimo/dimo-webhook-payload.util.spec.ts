@@ -4,7 +4,9 @@ import {
   isBlockedEngineWebhookSignal,
   isDimoTriggerPayload,
   isDimoVerificationRequest,
+  isRpmWebhookSignal,
   normalizeDimoWebhookPayload,
+  parseRpmWebhookValue,
   parseTokenIdFromAssetDid,
 } from './dimo-webhook-payload.util';
 
@@ -93,9 +95,27 @@ describe('inferObdPlugStateFromWebhookContext', () => {
 });
 
 describe('isBlockedEngineWebhookSignal', () => {
-  it('blocks RPM/throttle/engine load signals', () => {
-    expect(isBlockedEngineWebhookSignal('powertrainCombustionEngineSpeed')).toBe(true);
+  it('blocks throttle/engine load but not RPM webhook signals', () => {
+    expect(isBlockedEngineWebhookSignal('throttle')).toBe(true);
+    expect(isBlockedEngineWebhookSignal('engineLoad')).toBe(true);
+    expect(isBlockedEngineWebhookSignal('powertrainCombustionEngineSpeed')).toBe(false);
     expect(isBlockedEngineWebhookSignal('obdIsPluggedIn')).toBe(false);
+  });
+});
+
+describe('isRpmWebhookSignal', () => {
+  it('detects RPM metric and signal names', () => {
+    expect(isRpmWebhookSignal('powertrainCombustionEngineSpeed')).toBe(true);
+    expect(isRpmWebhookSignal(null, 'vss.powertrainCombustionEngineSpeed')).toBe(true);
+    expect(isRpmWebhookSignal('obdIsPluggedIn')).toBe(false);
+  });
+});
+
+describe('parseRpmWebhookValue', () => {
+  it('parses numeric rpm values', () => {
+    expect(parseRpmWebhookValue(5200)).toBe(5200);
+    expect(parseRpmWebhookValue('5100.5')).toBe(5100.5);
+    expect(parseRpmWebhookValue('n/a')).toBeNull();
   });
 });
 

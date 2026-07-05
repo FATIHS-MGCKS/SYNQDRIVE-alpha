@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'rpm-webhook-intake-restore-v49197-2026-07-05',
+    version: '4.9.197',
+    title: 'V4.9.197 — RPM Webhook Candidate Intake wieder aktiv',
+    summary: [
+      'DIMO Console-Trigger `vss.powertrainCombustionEngineSpeed > 5000` (Cooldown 10s) werden wieder als `RpmWebhookCandidate` persistiert — tenant-scoped, idempotent (10s Dedup-Bucket).',
+      'Neu: `RpmWebhookCandidateService` + `isRpmWebhookSignal`/`parseRpmWebhookValue`; Webhook-Route `type=rpm_candidate`. Nur LTE_R1/ICE (`shouldRunIceEventContextEnrichment`); Tesla/EV → `skipped_powertrain`.',
+      'Best-effort HF Context Enrichment via `EventContextEnrichmentService.enrichAnchorContext` → Status CONTEXT_ENRICHED / INSUFFICIENT_CONTEXT / FAILED.',
+      'Throttle/EngineLoad-Webhooks bleiben blockiert; OBD plug/unplug unverändert.',
+    ],
+    reason:
+      'Nutzer hat High-RPM-Trigger in DIMO Developer Console aktiviert (>5000 RPM, 10s Cooldown, 6 Fahrzeuge) — Intake war in V4.9.92 entfernt worden.',
+    previousBehavior:
+      'RPM-Webhooks wurden mit `blocked_engine_signal` ignoriert; `rpm_webhook_candidates` Tabelle ohne neue Writes.',
+    details:
+      '**Neu**: `rpm-webhook-candidate.service.ts` (+ Spec). **Geändert**: `dimo-webhook.controller.ts`, `dimo-webhook-payload.util.ts`, `dimo.module.ts`, `dimo-triggers.service.spec.ts`, `rpm-webhook-vocabulary.spec.ts`, `schema.prisma` (Kommentar). Keine UI-Änderung in diesem Schritt.',
+    affectsArchitecture: true,
+    module: 'DIMO Integration',
+    createdAt: '2026-07-05T13:55:00.000Z',
+  },
+  {
     id: 'dimo-webhook-auth-fix-v49196-2026-07-05',
     version: '4.9.196',
     title: 'V4.9.196 — DIMO Webhook Intake: Verification-Token Auth (kein Pflicht-HMAC)',

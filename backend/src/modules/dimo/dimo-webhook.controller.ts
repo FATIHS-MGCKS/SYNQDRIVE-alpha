@@ -23,10 +23,13 @@ import {
   isBlockedEngineWebhookSignal,
   isDimoTriggerPayload,
   isDimoVerificationRequest,
+  isRpmWebhookSignal,
   normalizeDimoWebhookPayload,
+  parseRpmWebhookValue,
 } from './dimo-webhook-payload.util';
 import { createHmac, timingSafeEqual } from 'crypto';
 import dimoConfig from '@config/dimo.config';
+import { RpmWebhookCandidateService } from './rpm-webhook-candidate.service';
 
 @Controller('webhooks/dimo')
 export class DimoWebhookController {
@@ -40,6 +43,7 @@ export class DimoWebhookController {
     private readonly prisma: PrismaService,
     private readonly dtcService: DtcService,
     private readonly deviceConnection: DeviceConnectionWebhookService,
+    private readonly rpmWebhookCandidate: RpmWebhookCandidateService,
   ) {
     if (!this.resolveVerificationToken() && !this.allowUnsignedInDev) {
       this.logger.error(
@@ -139,6 +143,12 @@ export class DimoWebhookController {
 
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { dimoVehicle: { tokenId } },
+      select: {
+        id: true,
+        organizationId: true,
+        hardwareType: true,
+        fuelType: true,
+      },
     });
 
     if (!vehicle) {
@@ -153,6 +163,37 @@ export class DimoWebhookController {
     if (signalName === 'obdDTCList' && value) {
       await this.handleDtcEvent(vehicle.id, value);
       return { status: 'processed', type: 'dtc' };
+    }
+
+    if (isRpmWebhookSignal(signalName, payload.metricName)) {
+      const rpm = parseRpmWebhookValue(value);
+      if (rpm == null) {
+        this.logger.warn(`RPM webhook for vehicle ${vehicle.id} had no parseable rpm value`);
+        return { status: 'ignored', reason: 'non_numeric_rpm' };
+      }
+
+      const observedAt = timestamp ? new Date(timestamp) : new Date();
+      const { outcome, candidateId, status } = await this.rpmWebhookCandidate.ingestRpmThresholdEvent({
+        vehicle,
+        tokenId,
+        observedAt: Number.isNaN(observedAt.getTime()) ? new Date() : observedAt,
+        observedValue: rpm,
+        rawPayload: body,
+      });
+
+      return {
+        status: outcome === 'ignored' || outcome === 'skipped_powertrain' ? 'ignored' : 'processed',
+        type: 'rpm_candidate',
+        outcome,
+        candidateId,
+        candidateStatus: status,
+        reason:
+          outcome === 'skipped_powertrain'
+            ? 'not_applicable_powertrain'
+            : outcome === 'ignored'
+              ? 'below_threshold_or_intake_error'
+              : undefined,
+      };
     }
 
     // ── OBD device plug/unplug (connectivity / tamper evidence) ───────────────

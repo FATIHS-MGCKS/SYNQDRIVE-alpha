@@ -1,14 +1,16 @@
 /**
- * Guardrails: DIMO Developer Console does NOT offer RPM/throttle/engine-load
- * webhooks. These tests document forbidden vocabulary so future work cannot
- * silently re-introduce RPM webhook intake.
+ * RPM webhook intake is re-enabled for vss.powertrainCombustionEngineSpeed triggers.
+ * Throttle/engine-load webhooks remain blocked on intake.
  */
 import {
   ANCHOR_TYPES,
   CONTEXT_REASON_CODES,
   FUTURE_ONLY_CONTEXT_CLASSIFICATIONS,
 } from './event-context.types';
-import { isBlockedEngineWebhookSignal } from '../../dimo/dimo-webhook-payload.util';
+import {
+  isBlockedEngineWebhookSignal,
+  isRpmWebhookSignal,
+} from '../../dimo/dimo-webhook-payload.util';
 
 describe('RPM webhook vocabulary guardrails', () => {
   it('AnchorType is native DIMO behavior events only', () => {
@@ -25,9 +27,11 @@ describe('RPM webhook vocabulary guardrails', () => {
     expect(FUTURE_ONLY_CONTEXT_CLASSIFICATIONS).toContain('HIGH_RPM_UNDER_LOAD');
   });
 
-  it('blocked engine webhook signals include RPM (intake must ignore)', () => {
-    expect(isBlockedEngineWebhookSignal('powertrainCombustionEngineSpeed')).toBe(true);
-    expect(isBlockedEngineWebhookSignal('rpm')).toBe(true);
+  it('RPM webhook signals are routed to candidate intake, throttle remains blocked', () => {
+    expect(isRpmWebhookSignal('powertrainCombustionEngineSpeed')).toBe(true);
+    expect(isRpmWebhookSignal(null, 'vss.powertrainCombustionEngineSpeed')).toBe(true);
+    expect(isBlockedEngineWebhookSignal('powertrainCombustionEngineSpeed')).toBe(false);
+    expect(isBlockedEngineWebhookSignal('throttle')).toBe(true);
     expect(isBlockedEngineWebhookSignal('obdIsPluggedIn')).toBe(false);
   });
 });

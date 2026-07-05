@@ -11,6 +11,7 @@ import { DimoSegmentsService } from './dimo-segments.service';
 import { DimoTriggersService } from './dimo-triggers.service';
 import { DimoTriggersBootstrapService } from './dimo-triggers-bootstrap.service';
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
+import { RpmWebhookCandidateService } from './rpm-webhook-candidate.service';
 import { DeviceConnectionQueryService } from './device-connection-query.service';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 
@@ -27,6 +28,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DimoTriggersBootstrapService,
     DeviceConnectionWebhookService,
     DeviceConnectionQueryService,
+    RpmWebhookCandidateService,
   ],
   exports: [
     DimoAuthService,
