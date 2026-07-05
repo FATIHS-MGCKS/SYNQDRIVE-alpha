@@ -50,6 +50,18 @@ export class TripTrackingProcessor extends WorkerHost {
       }
 
       const finishedAt = new Date();
+      const durationMs = finishedAt.getTime() - startedAt.getTime();
+
+      if (
+        trigger === TRIP_TRACKING_TRIGGERS.POSSIBLE_END_CHECK ||
+        trigger === TRIP_TRACKING_TRIGGERS.END_VALIDATION ||
+        trigger === TRIP_TRACKING_TRIGGERS.FINALIZE
+      ) {
+        this.logger.debug(
+          `Trip tracking [${trigger}] completed vehicle=${vehicleId} durationMs=${durationMs}`,
+        );
+      }
+
       await this.prisma.dimoPollLog.create({
         data: {
           vehicleId,

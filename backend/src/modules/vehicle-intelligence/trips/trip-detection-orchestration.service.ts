@@ -124,19 +124,28 @@ export class TripDetectionOrchestrationService {
     private readonly detectorRegistry: DetectorRegistry,
     @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {
-    this.TRACKING_INTERVAL_MS = this.configService.get<number>('worker.tripTrackingIntervalMs') ?? 60_000;
+    this.TRACKING_INTERVAL_MS = this.configService.get<number>('worker.tripTrackingIntervalMs') ?? 30_000;
     this.TRIP_CONTINUITY_CORE_WINDOW_MS = this.configService.get<number>('worker.tripContinuityCoreWindowMs') ?? 120_000;
     this.TRIP_CONTINUITY_PERF_WINDOW_MS = this.configService.get<number>('worker.tripContinuityPerfWindowMs') ?? 90_000;
     this.TRIP_END_TIMEOUT_MS = this.configService.get<number>('worker.tripEndTimeoutMs') ?? 1_800_000;
-    this.TRIP_END_STABILITY_WINDOW_MS = this.configService.get<number>('worker.tripEndStabilityWindowMs') ?? 180_000;
-    this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS = this.configService.get<number>('worker.tripEndMinInactivityBeforeCusumMs') ?? 180_000;
-    this.TRIP_END_VALIDATION_RETRY_MS = this.configService.get<number>('worker.tripEndValidationRetryMs') ?? 120_000;
+    this.TRIP_END_STABILITY_WINDOW_MS = this.configService.get<number>('worker.tripEndStabilityWindowMs') ?? 90_000;
+    this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS = this.configService.get<number>('worker.tripEndMinInactivityBeforeCusumMs') ?? 120_000;
+    this.TRIP_END_VALIDATION_RETRY_MS = this.configService.get<number>('worker.tripEndValidationRetryMs') ?? 60_000;
     this.TRIP_END_VALIDATION_MAX_ATTEMPTS = this.configService.get<number>('worker.tripEndValidationMaxAttempts') ?? 3;
     this.TRIP_END_SEGMENT_LOOKBACK_MS = this.configService.get<number>('worker.tripEndSegmentLookbackMs') ?? 900_000;
     this.TRIP_END_SEGMENT_LOOKAHEAD_MS = this.configService.get<number>('worker.tripEndSegmentLookaheadMs') ?? 300_000;
     this.TRIP_MID_GAP_SPLIT_MS = this.configService.get<number>('worker.tripMidGapSplitMs') ?? 180_000;
     this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M = this.configService.get<number>('worker.tripMidGapMaxStationaryDriftM') ?? 200;
     this.TRIP_MID_GAP_MIN_PRE_DURATION_MS = this.configService.get<number>('worker.tripMidGapMinPreDurationMs') ?? 60_000;
+
+    this.logger.log(
+      `Trip end detection config: trackingIntervalMs=${this.TRACKING_INTERVAL_MS} ` +
+        `minInactivityBeforeCusumMs=${this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS} ` +
+        `stabilityWindowMs=${this.TRIP_END_STABILITY_WINDOW_MS} ` +
+        `validationRetryMs=${this.TRIP_END_VALIDATION_RETRY_MS} ` +
+        `validationMaxAttempts=${this.TRIP_END_VALIDATION_MAX_ATTEMPTS} ` +
+        `timeoutMs=${this.TRIP_END_TIMEOUT_MS}`,
+    );
   }
 
   // ══════════════════════════════════════════════════════════
@@ -965,6 +974,12 @@ export class TripDetectionOrchestrationService {
             cusumSegmentStart: null,
             cusumSegmentEnd: null,
           });
+          this.logTripEndTimeline('possible_end_entered', {
+            vehicleId,
+            tripId,
+            lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt ?? anchorAt,
+            possibleEndAt: anchorAt,
+          });
           await this.schedulePossibleEndCheck(
             vehicleId,
             organizationId,
@@ -1524,23 +1539,35 @@ export class TripDetectionOrchestrationService {
 
         case 'POSSIBLE_END':
           resultState = TripDetectionState.POSSIBLE_END;
-          await this.transitionState(
-            vehicleId,
-            TripDetectionState.POSSIBLE_END,
-            {
-              ...stateUpdateBase,
-              possibleEndAt: now,
-              endValidationAttempts: 0,
-              endDetectionMode:
-                effectiveContinuityDecision.endMode ?? END_DETECTION_MODES.COMPOSITE_INACTIVITY,
-              endConfidence:
-                effectiveContinuityDecision.endConfidence === 'HIGH'
-                  ? DetectionConfidence.HIGH
-                  : effectiveContinuityDecision.endConfidence === 'MEDIUM'
-                    ? DetectionConfidence.MEDIUM
-                    : DetectionConfidence.LOW,
-            },
-          );
+          {
+            const possibleEndAt =
+              det.lastMeaningfulMovementAt ??
+              det.lastActivityAt ??
+              now;
+            await this.transitionState(
+              vehicleId,
+              TripDetectionState.POSSIBLE_END,
+              {
+                ...stateUpdateBase,
+                possibleEndAt,
+                endValidationAttempts: 0,
+                endDetectionMode:
+                  effectiveContinuityDecision.endMode ?? END_DETECTION_MODES.COMPOSITE_INACTIVITY,
+                endConfidence:
+                  effectiveContinuityDecision.endConfidence === 'HIGH'
+                    ? DetectionConfidence.HIGH
+                    : effectiveContinuityDecision.endConfidence === 'MEDIUM'
+                      ? DetectionConfidence.MEDIUM
+                      : DetectionConfidence.LOW,
+              },
+            );
+            this.logTripEndTimeline('possible_end_entered', {
+              vehicleId,
+              tripId,
+              lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
+              possibleEndAt,
+            });
+          }
           await this.schedulePossibleEndCheck(
             vehicleId,
             organizationId,
@@ -1719,8 +1746,24 @@ export class TripDetectionOrchestrationService {
       // ── Step 4: Gate elapsed — trigger CUSUM end validation ──
       const attempts = det.endValidationAttempts ?? 0;
       if (attempts < this.TRIP_END_VALIDATION_MAX_ATTEMPTS) {
+        const validationStartedAt = now;
+        const priorSummary =
+          (det.lastEvidenceSummary as Record<string, unknown> | null) ?? {};
         await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
           endValidationAttempts: attempts + 1,
+          lastEvidenceSummary: {
+            ...priorSummary,
+            endValidationStartedAt: validationStartedAt.toISOString(),
+          },
+        });
+        this.logTripEndTimeline('end_validation_started', {
+          vehicleId,
+          tripId: det.activeTripId,
+          lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
+          possibleEndAt: det.possibleEndAt,
+          endValidationStartedAt: validationStartedAt,
+          attempt: attempts + 1,
+          maxAttempts: this.TRIP_END_VALIDATION_MAX_ATTEMPTS,
         });
         await this.scheduleEndValidation(vehicleId, organizationId, dimoTokenId);
         await this.logTrackingRun({
@@ -1869,6 +1912,23 @@ export class TripDetectionOrchestrationService {
         this.logger.log(
           `CUSUM: change-point detected for ${vehicleId} at ${validatedEndTime.toISOString()} [${endDecision.confidence}]`,
         );
+
+        this.logTripEndTimeline('cusum_confirmed', {
+          vehicleId,
+          tripId: det.activeTripId,
+          lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
+          possibleEndAt: det.possibleEndAt,
+          endValidationStartedAt: this.parseEvidenceTimestamp(
+            det.lastEvidenceSummary,
+            'endValidationStartedAt',
+          ),
+          finalizedAt: validatedEndTime,
+          latencyFromMovementMs:
+            det.lastMeaningfulMovementAt != null
+              ? validatedEndTime.getTime() - det.lastMeaningfulMovementAt.getTime()
+              : null,
+          endSource: 'cusum_segment_end',
+        });
 
         await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
           cusumValidatedAt: now,
@@ -2080,6 +2140,37 @@ export class TripDetectionOrchestrationService {
               { profile: profileLabel },
               durationMs / 1000,
             );
+
+            const movementAnchor =
+              (det as any).lastMeaningfulMovementAt ??
+              det.possibleEndAt ??
+              null;
+            if (movementAnchor) {
+              const latencyFromMovementMs = endTime.getTime() - movementAnchor.getTime();
+              if (latencyFromMovementMs >= 0) {
+                this.tripMetrics?.tripEndLatencyFromMovement.observe(
+                  { profile: profileLabel, end_source: chosenEndSource },
+                  latencyFromMovementMs / 1000,
+                );
+              }
+            }
+
+            this.logTripEndTimeline('trip_finalized', {
+              vehicleId,
+              tripId,
+              lastMeaningfulMovementAt: (det as any).lastMeaningfulMovementAt ?? null,
+              possibleEndAt: det.possibleEndAt,
+              endValidationStartedAt: this.parseEvidenceTimestamp(
+                det.lastEvidenceSummary,
+                'endValidationStartedAt',
+              ),
+              finalizedAt: endTime,
+              endSource: chosenEndSource,
+              latencyFromMovementMs:
+                movementAnchor != null
+                  ? endTime.getTime() - movementAnchor.getTime()
+                  : null,
+            });
 
             // V2 finalize: enqueue enrichment through canonical orchestrator
             this.enrichmentOrchestrator
@@ -2456,6 +2547,57 @@ export class TripDetectionOrchestrationService {
   // ══════════════════════════════════════════════════════════
   //  OBSERVABILITY
   // ══════════════════════════════════════════════════════════
+
+  private parseEvidenceTimestamp(
+    summary: unknown,
+    key: string,
+  ): Date | null {
+    if (!summary || typeof summary !== 'object') return null;
+    const raw = (summary as Record<string, unknown>)[key];
+    if (typeof raw !== 'string') return null;
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  private logTripEndTimeline(
+    phase:
+      | 'possible_end_entered'
+      | 'end_validation_started'
+      | 'cusum_confirmed'
+      | 'trip_finalized',
+    input: {
+      vehicleId: string;
+      tripId?: string | null;
+      lastMeaningfulMovementAt?: Date | null;
+      possibleEndAt?: Date | null;
+      endValidationStartedAt?: Date | null;
+      finalizedAt?: Date | null;
+      endSource?: string;
+      latencyFromMovementMs?: number | null;
+      attempt?: number;
+      maxAttempts?: number;
+    },
+  ): void {
+    const fmt = (d?: Date | null) => (d ? d.toISOString() : '—');
+    const latencySec =
+      input.latencyFromMovementMs != null
+        ? Math.round(input.latencyFromMovementMs / 1000)
+        : null;
+
+    this.logger.log(
+      `TRIP_END_TIMELINE phase=${phase} vehicle=${input.vehicleId}` +
+        (input.tripId ? ` trip=${input.tripId}` : '') +
+        ` lastMeaningfulMovementAt=${fmt(input.lastMeaningfulMovementAt)}` +
+        ` possibleEndAt=${fmt(input.possibleEndAt)}` +
+        ` endValidationStartedAt=${fmt(input.endValidationStartedAt)}` +
+        ` finalizedAt=${fmt(input.finalizedAt)}` +
+        (latencySec != null ? ` latencyFromMovementSec=${latencySec}` : '') +
+        (input.endSource ? ` endSource=${input.endSource}` : '') +
+        (input.attempt != null
+          ? ` cusumAttempt=${input.attempt}/${input.maxAttempts ?? '?'}`
+          : ''),
+    );
+  }
 
   async logTrackingRun(input: {
     vehicleId: string;

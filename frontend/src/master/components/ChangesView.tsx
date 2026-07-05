@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-end-detection-tuning-v49199-2026-07-05',
+    version: '4.9.199',
+    title: 'V4.9.199 — Trip-End-Erkennung: schnellere Defaults + Observability',
+    summary: [
+      'ACTIVE_TICK-Intervall-Default 60s → 30s (`WORKER_TRIP_TRACKING_INTERVAL_MS`); Snapshot-Worker bleibt 30s.',
+      'Trip-End-Tuning: minInactivityBeforeCusum 180s → 120s, stabilityWindow 180s → 90s, validationRetry 120s → 60s; timeout 30min Last-Resort unverändert; maxAttempts=3.',
+      'CUSUM-Gate = max(stability, minInactivity) → effektiv 120s vor erster Validierung (vorher 180s). ENV/Config behalten Vorrang.',
+      'Neue strukturierte Logs `TRIP_END_TIMELINE` + Prometheus-Histogram `synqdrive_trip_end_latency_from_movement_seconds`.',
+      '`possibleEndAt` nutzt `lastMeaningfulMovementAt` statt Tick-Zeitpunkt — präzisere Endzeit ohne frühere Splits.',
+    ],
+    reason:
+      'Fahrten wurden zu konservativ als „ongoing“ gehalten; Ziel ist schnellere Finalisierung nach Parken ohne falsche Splits bei Ampeln/Tankstellen/Tunneln.',
+    previousBehavior:
+      'Defaults: 60s Tracking-Tick, 180s Inaktivitäts-/Stabilitätsfenster, 120s CUSUM-Retry — typisch 3+ Minuten bis Finalize nach letzter Bewegung.',
+    details:
+      '**Geändert**: `worker.config.ts`, `trip-detection-orchestration.service.ts`, `trip-metrics.service.ts`, `trip-tracking.processor.ts`, `.env.example`. Recovery-Scheduler unverändert (recovery-only). Keine UI, keine V1-Pfade, keine Vehicle Triggers.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-05T16:15:00.000Z',
+  },
+  {
     id: 'rpm-webhook-intake-restore-v49197-2026-07-05',
     version: '4.9.197',
     title: 'V4.9.197 — RPM Webhook Candidate Intake wieder aktiv',

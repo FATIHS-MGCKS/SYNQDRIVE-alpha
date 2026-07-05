@@ -68,6 +68,8 @@ export class TripMetricsService implements OnModuleInit {
   // ═══════════════════════════════════════════════════════════════
 
   readonly tripFinalizeLatency: Histogram<string>;
+  /** Seconds from last meaningful movement to trip finalization. */
+  readonly tripEndLatencyFromMovement: Histogram<string>;
   readonly detectorLatency: Histogram<string>;
   readonly queueLag: Histogram<string>;
 
@@ -254,6 +256,14 @@ export class TripMetricsService implements OnModuleInit {
       help: 'Time from trip start to finalization in seconds',
       buckets: [60, 300, 900, 1800, 3600, 7200, 18000],
       labelNames: ['profile'],
+      registers: [this.registry],
+    });
+
+    this.tripEndLatencyFromMovement = new Histogram({
+      name: 'synqdrive_trip_end_latency_from_movement_seconds',
+      help: 'Time from last meaningful movement to trip finalization in seconds',
+      buckets: [30, 60, 120, 180, 300, 600, 900, 1800],
+      labelNames: ['profile', 'end_source'],
       registers: [this.registry],
     });
 

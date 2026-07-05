@@ -2,7 +2,7 @@ import { registerAs } from '@nestjs/config';
 
 export default registerAs('worker', () => ({
   snapshotIntervalMs: parseInt(process.env.WORKER_SNAPSHOT_INTERVAL_MS || '30000', 10),
-  tripTrackingIntervalMs: parseInt(process.env.WORKER_TRIP_TRACKING_INTERVAL_MS || '60000', 10),
+  tripTrackingIntervalMs: parseInt(process.env.WORKER_TRIP_TRACKING_INTERVAL_MS || '30000', 10),
   tripTrackingConcurrency: parseInt(process.env.WORKER_TRIP_TRACKING_CONCURRENCY || '5', 10),
 
   // ── Trip Active Continuity: time-based evaluation windows ──
@@ -18,20 +18,19 @@ export default registerAs('worker', () => ({
 
   // ── Trip End: Stability window before triggering CUSUM validation ──
   // Trip must remain in POSSIBLE_END for this duration before CUSUM runs.
-  tripEndStabilityWindowMs: parseInt(process.env.TRIP_END_STABILITY_WINDOW_MS || '180000', 10),
+  tripEndStabilityWindowMs: parseInt(process.env.TRIP_END_STABILITY_WINDOW_MS || '90000', 10),
 
   // ── Trip End: Min inactivity before CUSUM is triggered ──
-  // Must be <= stability window.  Enforced as a guard in POSSIBLE_END_CHECK before
-  // scheduling END_VALIDATION.  Prevents premature CUSUM calls when inactivity is
-  // very short.  Default equals the stability window so the two are equivalent unless
-  // explicitly overridden.
+  // Enforced as a guard in POSSIBLE_END_CHECK before scheduling END_VALIDATION.
+  // CUSUM gate = max(stabilityWindow, minInactivity). Defaults: 90s stability,
+  // 120s min inactivity → 120s gate before first CUSUM attempt.
   tripEndMinInactivityBeforeCusumMs: parseInt(
-    process.env.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS || '180000',
+    process.env.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS || '120000',
     10,
   ),
 
   // ── Trip End: Retry interval between CUSUM validation attempts ──
-  tripEndValidationRetryMs: parseInt(process.env.TRIP_END_VALIDATION_RETRY_MS || '120000', 10),
+  tripEndValidationRetryMs: parseInt(process.env.TRIP_END_VALIDATION_RETRY_MS || '60000', 10),
 
   // ── Trip End: Max CUSUM validation attempts before accepting timeout fallback ──
   tripEndValidationMaxAttempts: parseInt(process.env.TRIP_END_VALIDATION_MAX_ATTEMPTS || '3', 10),
