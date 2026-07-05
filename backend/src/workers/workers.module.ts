@@ -21,6 +21,7 @@ import { DimoVehicleSyncScheduler } from './schedulers/dimo-vehicle-sync.schedul
 import { TireRecalculationScheduler } from './schedulers/tire-recalculation.scheduler';
 import { BrakeRecalculationScheduler } from './schedulers/brake-recalculation.scheduler';
 import { TripTrackingRecoveryScheduler } from './schedulers/trip-tracking-recovery.scheduler';
+import { TripAnalysisRecoveryScheduler } from './schedulers/trip-analysis-recovery.scheduler';
 import { TripReconciliationScheduler } from './schedulers/trip-reconciliation.scheduler';
 import { HmHealthPollingScheduler } from './schedulers/hm-health-polling.scheduler';
 import { DataRetentionScheduler } from './schedulers/data-retention.scheduler';
@@ -60,6 +61,7 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
     TireRecalculationScheduler,
     BrakeRecalculationScheduler,
     TripTrackingRecoveryScheduler,
+    TripAnalysisRecoveryScheduler,
     TripReconciliationScheduler,
     HmHealthPollingScheduler,
     DataRetentionScheduler,

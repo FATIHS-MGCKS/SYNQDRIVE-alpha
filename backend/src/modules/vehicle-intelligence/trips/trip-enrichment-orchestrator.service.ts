@@ -269,7 +269,7 @@ export class TripEnrichmentOrchestratorService {
       if (outcome.status === 'COMPLETED') {
         const result = outcome.result;
         await this.markEnrichmentCompleted(tripId, finishedAt);
-        await this.analysisCoordinator?.markStage(tripId, 'behavior', 'done');
+        await this.analysisCoordinator?.onBehaviorCompleted(tripId, outcome.assessability);
         await this.runRouteSafetyEnrichment(vehicleId, tripId);
         this.scheduleMisuseCaseAggregation(tripId);
         await this.writePollLog(vehicleId, startedAt, finishedAt, DimoPollStatus.SUCCESS,
@@ -280,7 +280,7 @@ export class TripEnrichmentOrchestratorService {
       } else {
         const meta = SKIP_REASON_META[outcome.reason];
         await this.markEnrichmentSkipped(tripId, meta.code, finishedAt);
-        await this.analysisCoordinator?.onAnalysisSkipped(tripId, meta.code);
+        await this.analysisCoordinator?.onBehaviorSkipped(tripId, meta.code, outcome.assessability);
         await this.writePollLog(vehicleId, startedAt, finishedAt, DimoPollStatus.SUCCESS,
           `HF enrichment skipped — ${meta.label}`);
         this.logger.log(`Trip ${tripId} enrichment SKIPPED (${outcome.reason}: ${meta.label})`);
@@ -335,8 +335,9 @@ export class TripEnrichmentOrchestratorService {
   /**
    * Misuse aggregation is part of the canonical post-trip analysis pipeline.
    * Runs fire-and-forget but feeds tripAnalysisStatus via coordinator.
+   * Recovery for stuck pending misuse stages: TripAnalysisRecoveryScheduler.
    */
-  private scheduleMisuseCaseAggregation(tripId: string): void {
+  scheduleMisuseCaseAggregation(tripId: string): void {
     if (!this.misuseCaseAggregator) {
       void this.analysisCoordinator?.markStage(tripId, 'misuse', 'skipped');
       return;
@@ -349,6 +350,22 @@ export class TripEnrichmentOrchestratorService {
         this.logger.error(`Misuse case aggregation failed for trip ${tripId}: ${message}`);
         void this.analysisCoordinator?.markStage(tripId, 'misuse', 'failed');
       });
+  }
+
+  /**
+   * Re-run misuse aggregation for trips stuck in PARTIAL after a process restart.
+   */
+  async recoverStuckMisuseStages(limit = 50): Promise<number> {
+    if (!this.analysisCoordinator || !this.misuseCaseAggregator) return 0;
+
+    const tripIds = await this.analysisCoordinator.findStuckMisuseTrips(limit);
+    if (tripIds.length === 0) return 0;
+
+    this.logger.warn(`Recovering ${tripIds.length} trip(s) with stuck misuse stage`);
+    for (const tripId of tripIds) {
+      this.scheduleMisuseCaseAggregation(tripId);
+    }
+    return tripIds.length;
   }
 
   // ─────────────────────────────────────────────────────────────────────────

@@ -43,6 +43,13 @@ import { HfMirrorService } from './hf-mirror.service';
 import { summarizeEvTractionPowerFromHf, type EvTractionPowerTripSummary } from './hf-recuperation';
 import { TripAssignmentService } from './trip-assignment.service';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
+import {
+  type AnalysisAssessabilityContext,
+  buildAssessabilityForLteR1Completed,
+  buildAssessabilityForSmart5Completed,
+  buildAssessabilityForSmart5Skip,
+  mergeAssessabilityIntoSummary,
+} from './trip-analysis-status';
 
 export interface BehaviorEnrichmentResult {
   accelerationEvents: number;
@@ -73,8 +80,8 @@ export type EnrichmentSkipReason = 'CAPABILITY' | 'INSUFFICIENT_POINTS' | 'NO_HF
  * reason can travel back to the orchestrator instead of an opaque `null`.
  */
 export type BehaviorEnrichmentOutcome =
-  | { status: 'COMPLETED'; result: BehaviorEnrichmentResult }
-  | { status: 'SKIPPED'; reason: EnrichmentSkipReason };
+  | { status: 'COMPLETED'; result: BehaviorEnrichmentResult; assessability: AnalysisAssessabilityContext }
+  | { status: 'SKIPPED'; reason: EnrichmentSkipReason; assessability: AnalysisAssessabilityContext };
 
 /**
  * Compute fuel-consumption enrichment from a DIMO fuel summary for the trip.
@@ -234,8 +241,17 @@ export class TripBehaviorEnrichmentService {
 
     if (!trip || !trip.vehicle?.dimoVehicle?.tokenId) {
       this.logger.warn(`Cannot enrich trip ${tripId}: missing vehicle or DIMO token`);
-      return { status: 'SKIPPED', reason: 'CAPABILITY' };
+      return {
+        status: 'SKIPPED',
+        reason: 'CAPABILITY',
+        assessability: buildAssessabilityForSmart5Skip(
+          'CAPABILITY',
+          trip?.vehicle?.hardwareType ?? undefined,
+        ),
+      };
     }
+
+    const hardwareType = trip.vehicle.hardwareType ?? 'UNKNOWN';
 
     // ── V3: Hardware-aware source routing ─────────────────────────────────────
     // Resolve capabilities from the vehicle's hardware type.
@@ -251,13 +267,21 @@ export class TripBehaviorEnrichmentService {
 
     if (!trip.endTime) {
       this.logger.warn(`Cannot enrich trip ${tripId}: no endTime (still ongoing?)`);
-      return { status: 'SKIPPED', reason: 'NO_HF_DATA' };
+      return {
+        status: 'SKIPPED',
+        reason: 'NO_HF_DATA',
+        assessability: buildAssessabilityForSmart5Skip('NO_HF_DATA', hardwareType),
+      };
     }
 
     const durationMs = trip.endTime.getTime() - trip.startTime.getTime();
     if (durationMs < MIN_TRIP_DURATION_MS) {
       this.logger.debug(`Trip ${tripId} too short (${durationMs}ms) for HF enrichment`);
-      return { status: 'SKIPPED', reason: 'NO_HF_DATA' };
+      return {
+        status: 'SKIPPED',
+        reason: 'NO_HF_DATA',
+        assessability: buildAssessabilityForSmart5Skip('NO_HF_DATA', hardwareType),
+      };
     }
 
     const tokenId = trip.vehicle.dimoVehicle.tokenId;
@@ -278,13 +302,31 @@ export class TripBehaviorEnrichmentService {
 
     if (rawReadings.length < 10) {
       this.logger.warn(`Trip ${tripId}: only ${rawReadings.length} HF points, skipping`);
-      return { status: 'SKIPPED', reason: 'INSUFFICIENT_POINTS' };
+      return {
+        status: 'SKIPPED',
+        reason: 'INSUFFICIENT_POINTS',
+        assessability: buildAssessabilityForSmart5Skip(
+          'INSUFFICIENT_POINTS',
+          hardwareType,
+          rawReadings.length,
+          0,
+        ),
+      };
     }
 
     const cleaned = preprocessHighFrequency(rawReadings);
     if (cleaned.length < 5) {
       this.logger.warn(`Trip ${tripId}: only ${cleaned.length} clean points after preprocessing`);
-      return { status: 'SKIPPED', reason: 'INSUFFICIENT_POINTS' };
+      return {
+        status: 'SKIPPED',
+        reason: 'INSUFFICIENT_POINTS',
+        assessability: buildAssessabilityForSmart5Skip(
+          'INSUFFICIENT_POINTS',
+          hardwareType,
+          rawReadings.length,
+          cleaned.length,
+        ),
+      };
     }
 
     const segs = splitByGaps(cleaned);
@@ -547,7 +589,8 @@ export class TripBehaviorEnrichmentService {
           behaviorEnrichedAt: new Date(),
 
           // Signal-aware behavior summary (Fix I + B)
-          behaviorSummaryJson: {
+          behaviorSummaryJson: mergeAssessabilityIntoSummary(
+            {
             hfPointsTotal: rawReadings.length,
             hfPointsCleaned: cleaned.length,
             segments: segs.length,
@@ -586,7 +629,13 @@ export class TripBehaviorEnrichmentService {
               idleRpm: rpmConfig.idleRpm ?? 800,
               maxRpm: rpmConfig.maxRpm ?? 6500,
             },
-          } as any,
+          },
+            buildAssessabilityForSmart5Completed({
+              hfPointsTotal: rawReadings.length,
+              hfPointsCleaned: cleaned.length,
+              hardwareType,
+            }),
+          ) as any,
         },
       });
     });
@@ -610,6 +659,11 @@ export class TripBehaviorEnrichmentService {
 
     return {
       status: 'COMPLETED',
+      assessability: buildAssessabilityForSmart5Completed({
+        hfPointsTotal: rawReadings.length,
+        hfPointsCleaned: cleaned.length,
+        hardwareType,
+      }),
       result: {
         accelerationEvents: allAccel.length,
         brakingEvents: allBrake.length,
@@ -648,10 +702,24 @@ export class TripBehaviorEnrichmentService {
       };
     },
   ): Promise<BehaviorEnrichmentOutcome> {
-    if (!trip.endTime) return { status: 'SKIPPED', reason: 'NO_HF_DATA' };
+    const hardwareType = trip.vehicle.hardwareType ?? 'LTE_R1';
+
+    if (!trip.endTime) {
+      return {
+        status: 'SKIPPED',
+        reason: 'NO_HF_DATA',
+        assessability: buildAssessabilityForSmart5Skip('NO_HF_DATA', hardwareType),
+      };
+    }
 
     const tokenId = trip.vehicle.dimoVehicle?.tokenId;
-    if (!tokenId) return { status: 'SKIPPED', reason: 'CAPABILITY' };
+    if (!tokenId) {
+      return {
+        status: 'SKIPPED',
+        reason: 'CAPABILITY',
+        assessability: buildAssessabilityForSmart5Skip('CAPABILITY', hardwareType),
+      };
+    }
     const vehicleId = trip.vehicleId;
     const organizationId = trip.vehicle.organizationId;
 
@@ -663,6 +731,8 @@ export class TripBehaviorEnrichmentService {
 
     // ── 1. Ingest Driving Events from DIMO Telemetry API ─────────────────────
     const drivingResult = await this.lteR1.enrichTrip(tripId);
+    const nativeEventCount = drivingResult?.drivingEventsIngested ?? 0;
+    const nativeQuerySucceeded = drivingResult !== null;
 
     // ── 2. HF data fetch for abuse-only pipeline ──────────────────────────────
     const rawReadings = await this.segments.fetchHighFrequency(tokenId, trip.startTime, trip.endTime);
@@ -850,13 +920,16 @@ export class TripBehaviorEnrichmentService {
           }),
           fuelConfidence: fuelUpdate.fuelConfidence,
           behaviorEnrichedAt: new Date(),
-          behaviorSummaryJson: {
+          behaviorSummaryJson: mergeAssessabilityIntoSummary(
+            {
             hfPointsTotal: rawReadings.length,
             hfPointsCleaned,
             segments: segmentCount,
             abuseTotal: allAbuse.length,
             abuseScore,
             drivingEventsSource: 'TELEMETRY_EVENTS',
+            nativeEventCount,
+            nativeQuerySucceeded,
             hfInsufficientForAbuse,
             coolantAvailable: signalAvail.coolantAvailable,
             rpmAvailable: signalAvail.rpmAvailable,
@@ -874,11 +947,29 @@ export class TripBehaviorEnrichmentService {
               ? summarizeDetectorFeasibility(detectorFeasibilityLte)
               : null,
             rpmConfig: { idleRpm: rpmConfig.idleRpm ?? 800, maxRpm: rpmConfig.maxRpm ?? 6500 },
-          } as any,
+          },
+            buildAssessabilityForLteR1Completed({
+              nativeEventCount,
+              nativeQuerySucceeded,
+              hfInsufficientForAbuse,
+              hfPointsTotal: rawReadings.length,
+              hfPointsCleaned,
+              hardwareType,
+            }),
+          ) as any,
         },
       });
     });
     await this.tripAssignmentService.applyAssignmentToTrip(tripId);
+
+    const lteAssessability = buildAssessabilityForLteR1Completed({
+      nativeEventCount,
+      nativeQuerySucceeded,
+      hfInsufficientForAbuse,
+      hfPointsTotal: rawReadings.length,
+      hfPointsCleaned,
+      hardwareType,
+    });
 
     // Phase 2: best-effort HF analytics mirror (disabled by default). LTE_R1
     // native driving events stay canonical in PostgreSQL; this mirrors only the
@@ -900,6 +991,7 @@ export class TripBehaviorEnrichmentService {
 
     return {
       status: 'COMPLETED',
+      assessability: lteAssessability,
       result: {
         accelerationEvents: 0,
         brakingEvents: 0,
@@ -907,7 +999,7 @@ export class TripBehaviorEnrichmentService {
         hardAccelerationCount: drivingResult?.harshAccelerationCount ?? 0,
         hardBrakingCount: (drivingResult?.harshBrakingCount ?? 0) + (drivingResult?.extremeBrakingCount ?? 0),
         abuseScore,
-        totalEventsStored: abuseRows.length + (drivingResult?.drivingEventsIngested ?? 0),
+        totalEventsStored: abuseRows.length + nativeEventCount,
         fuelUsedLiters: fuelUpdate.fuelUsedLiters,
         avgConsumptionLPer100Km: fuelUpdate.avgConsumptionLPer100Km,
         fuelConfidence: (fuelUpdate.fuelConfidence as 'high' | 'medium' | 'low' | null) ?? null,

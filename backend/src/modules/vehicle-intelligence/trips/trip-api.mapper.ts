@@ -1,4 +1,9 @@
-import { buildTripAnalysisApiFields } from './trip-analysis-status';
+import {
+  buildTripAnalysisApiFields,
+  deriveAnalysisAssessability,
+  isTripDetailsLimited,
+  parseBehaviorSummaryJson,
+} from './trip-analysis-status';
 
 /** Strip internal enrichment fields and attach canonical trip analysis API surface. */
 export function mapTripForVehicleApi(
@@ -6,9 +11,12 @@ export function mapTripForVehicleApi(
     behaviorEnrichmentStatus?: string | null;
     behaviorEnrichmentError?: string | null;
     behaviorEnrichmentAttempts?: number | null;
+    behaviorSummaryJson?: unknown;
     tripStatus?: string | null;
+    tripAnalysisStatus?: string | null;
     endTime?: Date | string | null;
     qualityStatus?: string | null;
+    hardwareType?: string | null;
     canonicalTripSummary?: {
       scores?: { drivingStressScore?: number | null; stressLevel?: string | null; scoreSource?: string };
       events?: Record<string, number | undefined>;
@@ -27,6 +35,8 @@ export function mapTripForVehicleApi(
   } = trip;
 
   const summary = trip.canonicalTripSummary;
+  const behaviorSummary = parseBehaviorSummaryJson(trip.behaviorSummaryJson);
+  const assessability = deriveAnalysisAssessability(trip);
   const analysisFields = buildTripAnalysisApiFields(trip as any);
 
   return {
@@ -52,10 +62,17 @@ export function mapTripForVehicleApi(
     isPrivateTrip: summary?.assignment?.isPrivateTrip ?? false,
     scoreEligible: summary?.assignment?.scoreEligible ?? false,
     behaviorReady: behaviorEnrichmentStatus === 'COMPLETED',
-    detailsLimited:
-      !trip.endTime ||
-      trip.qualityStatus === 'LOW_DATA' ||
-      trip.qualityStatus === 'ANOMALY',
+    detailsLimited: isTripDetailsLimited(trip),
+    behaviorSummaryAssessability: {
+      analysisAssessability: assessability.analysisAssessability,
+      analysisLimitReason: assessability.analysisLimitReason,
+      shortTermMisuseAssessable: assessability.shortTermMisuseAssessable,
+      nativeBehaviorEventsAvailable: assessability.nativeBehaviorEventsAvailable,
+      hfInsufficientForAbuse: assessability.hfInsufficientForAbuse,
+      nativeEventCount: assessability.nativeEventCount ?? null,
+      hfPointsTotal: assessability.hfPointsTotal ?? behaviorSummary.hfPointsTotal ?? null,
+      hfPointsCleaned: assessability.hfPointsCleaned ?? behaviorSummary.hfPointsCleaned ?? null,
+    },
     ...analysisFields,
   };
 }
