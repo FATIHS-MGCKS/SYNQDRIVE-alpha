@@ -3082,6 +3082,10 @@ export const api = {
         `/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/device-connection-events${qs}`,
       );
     },
+    rpmWebhookCandidates: (orgId: string, vehicleId: string) =>
+      get<VehicleRpmWebhookSummary>(
+        `/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/rpm-webhook-candidates`,
+      ),
     signalGroups: (orgId: string, vehicleId?: string) => {
       const qs = vehicleId ? `?vehicleId=${encodeURIComponent(vehicleId)}` : '';
       return get<DataAnalyseSignalGroup[]>(`/organizations/${orgId}/data-analyse/signal-groups${qs}`);
@@ -3730,6 +3734,10 @@ export const api = {
     tripDeviceConnectionEvidence: (vehicleId: string, tripId: string) =>
       get<TripDeviceConnectionEvidenceResponse>(
         `/vehicles/${vehicleId}/trips/${tripId}/device-connection-evidence`,
+      ),
+    tripRpmCandidates: (vehicleId: string, tripId: string) =>
+      get<TripRpmCandidatesResponse>(
+        `/vehicles/${vehicleId}/trips/${tripId}/rpm-candidates`,
       ),
     enrichTripBehavior: (vehicleId: string, tripId: string) =>
       post<any>(`/vehicles/${vehicleId}/trips/${tripId}/behavior-enrich`, {}),
@@ -5409,6 +5417,48 @@ export interface TripDeviceConnectionEvidenceResponse {
   events: TripDeviceConnectionEvidenceItem[];
 }
 
+export type RpmWebhookCandidateStatus =
+  | 'RECEIVED'
+  | 'CONTEXT_ENRICHED'
+  | 'INSUFFICIENT_CONTEXT'
+  | 'CLASSIFIED'
+  | 'FAILED';
+
+export interface RpmCandidateContextSummary {
+  status: string | null;
+  confidence: string | null;
+  evidenceGrade: string | null;
+  classifications: string[];
+}
+
+export interface RpmCandidateView {
+  id: string;
+  observedAt: string;
+  observedValue: number;
+  threshold: number;
+  status: RpmWebhookCandidateStatus;
+  tripId: string | null;
+  tokenId: number;
+  source: 'DIMO Vehicle Trigger';
+  context: RpmCandidateContextSummary | null;
+}
+
+export interface TripRpmCandidatesResponse {
+  candidates: RpmCandidateView[];
+  count: number;
+}
+
+export interface VehicleRpmWebhookSummary {
+  lteR1IceCapable: boolean;
+  webhookConfigured: 'active' | 'not_configured' | 'unknown';
+  count24h: number;
+  count7d: number;
+  lastObservedAt: string | null;
+  maxObservedRpm7d: number | null;
+  thresholdDefault: number;
+  recentCandidates: RpmCandidateView[];
+}
+
 export type FleetConnectivityReadinessLevel =
   | 'good'
   | 'watch'
@@ -5794,11 +5844,13 @@ export interface DataAnalyseEventArchitecture {
   powertrainNote: string;
   nativeEventIntake: DataAnalyseEventLayer;
   deviceConnectionWebhookIntake: DataAnalyseEventLayer;
+  rpmWebhookIntake: DataAnalyseEventLayer;
   eventContextEnrichment: DataAnalyseEventLayer;
   tripSignalSummaryEnrichment: DataAnalyseEventLayer;
   detectorFeasibility: {
     nativeBehaviorEvents: boolean;
     deviceConnectionWebhooks: boolean;
+    rpmWebhooks: boolean;
     contextClassification: boolean;
     shortEventHfDerivedDetection: 'disabled' | 'not_reliable';
     notes: string[];
@@ -5810,6 +5862,7 @@ export interface DataAnalyseEventArchitecture {
     missingSignals: string[];
     contextWindowsProcessed: number;
     deviceConnectionEvents7d: number;
+    rpmWebhookCandidates7d: number;
     openUnpluggedEpisode: boolean;
   };
 }

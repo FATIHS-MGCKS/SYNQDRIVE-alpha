@@ -83,6 +83,15 @@ export class DataAnalyseController {
     });
   }
 
+  @Get('vehicles/:vehicleId/rpm-webhook-candidates')
+  @RequirePermission(DATA_ANALYSE_MODULE, 'read')
+  rpmWebhookCandidates(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+  ) {
+    return this.service.getRpmWebhookCandidates(orgId, vehicleId);
+  }
+
   @Get('signal-groups')
   @RequirePermission(DATA_ANALYSE_MODULE, 'read')
   signalGroups(

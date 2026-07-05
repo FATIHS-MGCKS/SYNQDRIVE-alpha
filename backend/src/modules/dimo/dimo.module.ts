@@ -12,6 +12,7 @@ import { DimoTriggersService } from './dimo-triggers.service';
 import { DimoTriggersBootstrapService } from './dimo-triggers-bootstrap.service';
 import { DeviceConnectionWebhookService } from './device-connection-webhook.service';
 import { RpmWebhookCandidateService } from './rpm-webhook-candidate.service';
+import { RpmWebhookQueryService } from './rpm-webhook-query.service';
 import { DeviceConnectionQueryService } from './device-connection-query.service';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 
@@ -29,6 +30,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DeviceConnectionWebhookService,
     DeviceConnectionQueryService,
     RpmWebhookCandidateService,
+    RpmWebhookQueryService,
   ],
   exports: [
     DimoAuthService,
@@ -38,6 +40,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     DimoSegmentsService,
     DimoTriggersService,
     DeviceConnectionQueryService,
+    RpmWebhookQueryService,
   ],
 })
 export class DimoModule {}

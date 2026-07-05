@@ -66,6 +66,7 @@ import { Inject, forwardRef, Logger } from '@nestjs/common';
 import { InvoicesService } from '@modules/invoices/invoices.service';
 import { AiTireSpecJobService } from '@modules/ai/vehicle-specs/ai-tire-spec-job.service';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
+import { RpmWebhookQueryService } from '@modules/dimo/rpm-webhook-query.service';
 import { normalizeAiTireSpecResult, buildPersistedAiTireSpec, validateAiTireSpec } from './tires/ai-tire-spec-normalizer';
 import {
   CreateTireSetupDto,
@@ -138,6 +139,7 @@ export class VehicleIntelligenceController {
     @Inject(forwardRef(() => AiTireSpecJobService))
     private readonly aiTireSpecJobService: AiTireSpecJobService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
+    private readonly rpmWebhookQuery: RpmWebhookQueryService,
   ) {}
 
   // --- Composite Intelligence Endpoint ---
@@ -1242,6 +1244,25 @@ export class VehicleIntelligenceController {
       throw new BadRequestException('Vehicle not found');
     }
     return this.deviceConnectionQuery.getTripEvidence(
+      vehicle.organizationId,
+      vehicleId,
+      tripId,
+    );
+  }
+
+  @Get('trips/:tripId/rpm-candidates')
+  async getTripRpmCandidates(
+    @Param('vehicleId') vehicleId: string,
+    @Param('tripId') tripId: string,
+  ) {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    if (!vehicle) {
+      throw new BadRequestException('Vehicle not found');
+    }
+    return this.rpmWebhookQuery.getTripCandidates(
       vehicle.organizationId,
       vehicleId,
       tripId,
