@@ -36,6 +36,8 @@ storage growth. These are deliberately **not** wired into the app (no automatic
 | `nginx-csp-didit-frame-src.snippet` | CSP `frame-src` for Didit SDK iframe on app.synqdrive.eu | manual nginx apply |
 | `sync-mistral-env-to-vps.sh` | Copy `AI_*` / `MISTRAL_*` / `DOCUMENT_AI_*` from local `backend/.env` → VPS `backend.env` | secrets — backup remote env first |
 | `partition-time-series.sql` | Reviewed template to RANGE-partition time-series tables | NEEDS APPROVAL — backup + maintenance window |
+| `cleanup-dimo-device-connection-duplicates.ts` | Remove historical OBD plug/unplug duplicate rows (canonical state transitions only) | mutating — run `--dry-run` first |
+| `prod-cleanup-dimo-device-connection-duplicates.sh` | VPS wrapper for the cleanup script above | mutating — backup first |
 
 ### Partitioning (P2)
 
