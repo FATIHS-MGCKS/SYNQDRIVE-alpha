@@ -6,6 +6,7 @@ import { ClickHouseService } from '@modules/clickhouse/clickhouse.service';
 import { ClickHouseHfService } from '@modules/clickhouse/clickhouse-hf.service';
 import { VehiclesService } from '@modules/vehicles/vehicles.service';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
+import { RpmWebhookQueryService } from '@modules/dimo/rpm-webhook-query.service';
 import { ONLINE_MAX_MS, STANDBY_MAX_MS } from '@modules/vehicles/fleet-connectivity.util';
 import {
   CLICKHOUSE_ANALYSIS_WINDOW_HOURS,
@@ -91,6 +92,7 @@ export class DataAnalyseService {
     private readonly vehiclesService: VehiclesService,
     private readonly clickHouseHf: ClickHouseHfService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
+    private readonly rpmWebhookQuery: RpmWebhookQueryService,
   ) {}
 
   async listConnectedVehicles(orgId: string): Promise<DataAnalyseVehicleDto[]> {
@@ -531,6 +533,17 @@ export class DataAnalyseService {
       !!lastUnplugged &&
       (!lastPlugged || lastUnplugged.observedAt.getTime() > lastPlugged.observedAt.getTime());
 
+    const rpmCandidates = await this.prisma.rpmWebhookCandidate.findMany({
+      where: { vehicleId, observedAt: { gte: since7d } },
+      select: { id: true, observedAt: true, observedValue: true, status: true, threshold: true },
+      orderBy: { observedAt: 'desc' },
+    });
+    const rpmCandidates7d = rpmCandidates.length;
+    const rpmCandidates24h = rpmCandidates.filter((r) => r.observedAt >= since24h).length;
+    const lastRpm = rpmCandidates[0] ?? null;
+    const maxRpm7d =
+      rpmCandidates.length > 0 ? Math.max(...rpmCandidates.map((r) => r.observedValue)) : null;
+
     const hasDimoLink = vehicle.dimoVehicleId != null;
 
     // ── HF cadence / trip signal summary (reuse existing read model) ──────────
@@ -613,6 +626,52 @@ export class DataAnalyseService {
       };
     })();
 
+    const rpmWebhookIntake = ((): EventArchitectureDto['rpmWebhookIntake'] => {
+      if (!powertrainApplicable) {
+        return {
+          status: 'skipped',
+          label: 'Übersprungen',
+          detail: 'RPM-Webhooks nur für LTE_R1/ICE — Tesla/EV nicht anwendbar.',
+        };
+      }
+      let status: EventLayerStatus = 'unknown';
+      if (rpmCandidates7d > 0) status = 'active';
+      else if (hasDimoLink) status = 'not_configured';
+
+      const labelMap: Record<string, string> = {
+        active: 'Aktiv',
+        not_configured: 'Nicht konfiguriert',
+        unknown: 'Unbekannt',
+        skipped: 'Übersprungen',
+      };
+      const detailMap: Record<string, string> = {
+        active:
+          'High-RPM-Events (vss.powertrainCombustionEngineSpeed) werden über DIMO Vehicle Triggers empfangen.',
+        not_configured:
+          'DIMO-Fahrzeug vorhanden, aber keine RPM-Webhook-Kandidaten in den letzten 7 Tagen.',
+        unknown: 'Keine RPM-Webhook-Events beobachtet.',
+        skipped: 'Antrieb nicht ICE-fähig.',
+      };
+      const counters: Array<{ label: string; value: string }> = [
+        { label: 'Kandidaten (24h/7d)', value: `${rpmCandidates24h} / ${rpmCandidates7d}` },
+      ];
+      if (lastRpm) {
+        counters.push({
+          label: 'Letzter Trigger',
+          value: `${Math.round(lastRpm.observedValue)} rpm @ ${lastRpm.observedAt.toISOString()}`,
+        });
+      }
+      if (maxRpm7d != null) {
+        counters.push({ label: 'Max RPM (7d)', value: `${Math.round(maxRpm7d)} rpm` });
+      }
+      return {
+        status,
+        label: labelMap[status] ?? 'Unbekannt',
+        detail: detailMap[status] ?? detailMap.unknown,
+        counters,
+      };
+    })();
+
     const eventContextEnrichment = ((): EventArchitectureDto['eventContextEnrichment'] => {
       if (!powertrainApplicable) {
         return {
@@ -673,16 +732,19 @@ export class DataAnalyseService {
           : 'Kein LTE_R1-Gerät — neue Event-Context-Architektur nicht anwendbar.',
       nativeEventIntake,
       deviceConnectionWebhookIntake,
+      rpmWebhookIntake,
       eventContextEnrichment,
       tripSignalSummaryEnrichment,
       detectorFeasibility: {
         nativeBehaviorEvents: nativeCapable,
         deviceConnectionWebhooks: !!hasDimoLink,
+        rpmWebhooks: powertrainApplicable && rpmCandidates7d > 0,
         contextClassification: powertrainApplicable,
         shortEventHfDerivedDetection: nativeCapable ? 'disabled' : 'not_reliable',
         notes: [
           'Kurzzeit-Misuse stützt sich auf native Events + Ereigniskontext, nicht auf sparse Whole-Trip-HF.',
           'OBD Ein-/Aus-Events dienen der Konnektivitäts-/Tamper-Evidenz — kein Motormisuse.',
+          'RPM-Webhooks sind Evidenz-Anker (>5000 rpm), keine automatischen Misuse-Cases.',
           ...(powertrainApplicable
             ? []
             : ['Tesla/EV: ICE-Motorkontext wird bewusst nicht angewendet.']),
@@ -695,6 +757,7 @@ export class DataAnalyseService {
         missingSignals,
         contextWindowsProcessed: ctxWindows,
         deviceConnectionEvents7d: deviceEvents7d,
+        rpmWebhookCandidates7d: rpmCandidates7d,
         openUnpluggedEpisode,
       },
     };
@@ -709,6 +772,10 @@ export class DataAnalyseService {
       eventLimit: 50,
       includeRawPayload: opts?.debugRaw === true,
     });
+  }
+
+  async getRpmWebhookCandidates(orgId: string, vehicleId: string) {
+    return this.rpmWebhookQuery.getVehicleSummary(orgId, vehicleId, { limit: 50 });
   }
 
   async getLaunchFeasibility(

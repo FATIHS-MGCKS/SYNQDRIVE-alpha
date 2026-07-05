@@ -25,6 +25,7 @@ import {
   type DataAnalyseTelemetryOverview,
   type DataAnalyseVehicle,
   type DeviceConnectionSummary,
+  type VehicleRpmWebhookSummary,
 } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
 import {
@@ -36,6 +37,17 @@ import {
   sortDeviceConnectionEvents,
   webhookConfiguredLabel,
 } from '../lib/device-connection-ui';
+import {
+  RPM_WEBHOOK_LABELS,
+  formatRpmTimestamp,
+  formatRpmValue,
+  rpmCandidateHeadline,
+  rpmCandidateStatusLabel,
+  rpmCandidateStatusTone,
+  rpmContextSummary,
+  rpmWebhookConfiguredLabel,
+  sortRpmCandidates,
+} from '../lib/rpm-webhook-ui';
 
 /**
  * Canonical operator legend for the aggregated HF-availability status. Single
@@ -79,6 +91,7 @@ type TabKey =
   | 'hf'
   | 'events'
   | 'deviceConnection'
+  | 'rpmWebhooks'
   | 'launch'
   | 'health'
   | 'pipeline'
@@ -90,6 +103,7 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'hf', label: 'High Frequency' },
   { key: 'events', label: 'Event-Architektur' },
   { key: 'deviceConnection', label: 'Device Connection' },
+  { key: 'rpmWebhooks', label: 'RPM Webhooks' },
   { key: 'launch', label: 'Launch Feasibility' },
   { key: 'health', label: 'Health Trace' },
   { key: 'pipeline', label: 'Pipeline' },
@@ -182,6 +196,7 @@ function EventArchitectureTab({ data }: { data: DataAnalyseEventArchitecture }) 
       <div className="grid gap-3 sm:grid-cols-2">
         <EventLayerCard title="LTE_R1 Native Event Intake" layer={data.nativeEventIntake} />
         <EventLayerCard title="Device Connection Webhook Intake" layer={data.deviceConnectionWebhookIntake} />
+        <EventLayerCard title="RPM Webhook Intake" layer={data.rpmWebhookIntake} />
         <EventLayerCard title="Event Context Enrichment" layer={data.eventContextEnrichment} />
         <EventLayerCard title="Trip Signal Summary Enrichment" layer={data.tripSignalSummaryEnrichment} />
       </div>
@@ -194,6 +209,9 @@ function EventArchitectureTab({ data }: { data: DataAnalyseEventArchitecture }) 
           </StatusChip>
           <StatusChip tone={feas.deviceConnectionWebhooks ? 'success' : 'neutral'}>
             Device Connection Webhooks: {feas.deviceConnectionWebhooks ? 'verfügbar' : 'nein'}
+          </StatusChip>
+          <StatusChip tone={feas.rpmWebhooks ? 'success' : 'neutral'}>
+            RPM Webhooks: {feas.rpmWebhooks ? 'verfügbar' : 'nein'}
           </StatusChip>
           <StatusChip tone={feas.contextClassification ? 'success' : 'neutral'}>
             Context Classification: {feas.contextClassification ? 'verfügbar' : 'nein'}
@@ -217,6 +235,7 @@ function EventArchitectureTab({ data }: { data: DataAnalyseEventArchitecture }) 
         <MetricCard label="P95 Intervall" value={formatMs(m.p95IntervalMs)} />
         <MetricCard label="Kontextfenster verarbeitet" value={String(m.contextWindowsProcessed)} />
         <MetricCard label="Device-Events (7d)" value={String(m.deviceConnectionEvents7d)} />
+        <MetricCard label="RPM-Kandidaten (7d)" value={String(m.rpmWebhookCandidates7d)} />
         <MetricCard
           label="Offene Aussteck-Episode"
           value={m.openUnpluggedEpisode ? 'ja' : 'nein'}
@@ -327,6 +346,69 @@ function DeviceConnectionTab({
   );
 }
 
+function RpmWebhookTab({ data }: { data: VehicleRpmWebhookSummary }) {
+  const candidates = sortRpmCandidates(data.recentCandidates);
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <StatusChip tone={data.lteR1IceCapable ? 'success' : 'neutral'}>
+          {data.lteR1IceCapable ? RPM_WEBHOOK_LABELS.lteR1Ice : RPM_WEBHOOK_LABELS.notLteR1Ice}
+        </StatusChip>
+        <StatusChip tone={EVENT_LAYER_TONE[data.webhookConfigured] ?? 'neutral'}>
+          {rpmWebhookConfiguredLabel(data.webhookConfigured)}
+        </StatusChip>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <MetricCard label="Kandidaten (24h)" value={String(data.count24h)} />
+        <MetricCard label="Kandidaten (7d)" value={String(data.count7d)} />
+        <MetricCard
+          label="Letzter Trigger"
+          value={formatRpmTimestamp(data.lastObservedAt)}
+        />
+        <MetricCard
+          label="Max RPM (7d)"
+          value={formatRpmValue(data.maxObservedRpm7d)}
+        />
+        <MetricCard
+          label="Standard-Schwellwert"
+          value={formatRpmValue(data.thresholdDefault)}
+        />
+      </div>
+
+      <div className="rounded-xl border border-border/60 p-4 space-y-2">
+        <p className="text-sm font-semibold">DIMO RPM Webhook Kandidaten</p>
+        {candidates.length === 0 ? (
+          <p className="text-xs text-muted-foreground">{RPM_WEBHOOK_LABELS.noCandidates}</p>
+        ) : (
+          <ul className="space-y-2">
+            {candidates.map((candidate) => {
+              const contextSummary = rpmContextSummary(candidate);
+              return (
+                <li
+                  key={candidate.id}
+                  className="flex flex-wrap items-center justify-between gap-2 text-xs border-b border-border/30 pb-2 last:border-0"
+                >
+                  <span className="font-medium">{rpmCandidateHeadline(candidate)}</span>
+                  <span className="text-muted-foreground">
+                    {formatRpmTimestamp(candidate.observedAt)}
+                  </span>
+                  <StatusChip tone={rpmCandidateStatusTone(candidate.status)} className="text-[10px]">
+                    {rpmCandidateStatusLabel(candidate.status)}
+                  </StatusChip>
+                  {contextSummary && (
+                    <span className="text-[10px] text-muted-foreground w-full">{contextSummary}</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function DataAnalyseView() {
   const { orgId, hasPermission } = useRentalOrg();
   const canAccess = hasPermission('data-analyse', 'read');
@@ -348,6 +430,7 @@ export function DataAnalyseView() {
   const [eventArch, setEventArch] = useState<DataAnalyseEventArchitecture | null>(null);
   const [deviceConnection, setDeviceConnection] = useState<DeviceConnectionSummary | null>(null);
   const [deviceConnectionDebugRaw, setDeviceConnectionDebugRaw] = useState(false);
+  const [rpmWebhooks, setRpmWebhooks] = useState<VehicleRpmWebhookSummary | null>(null);
 
   const [signalSearch, setSignalSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('all');
@@ -385,7 +468,7 @@ export function DataAnalyseView() {
     setLoadingData(true);
     setError(null);
     try {
-      const [ov, sig, hfRes, launchRes, healthRes, pipe, grp, evArch, devConn] = await Promise.all([
+      const [ov, sig, hfRes, launchRes, healthRes, pipe, grp, evArch, devConn, rpm] = await Promise.all([
         api.dataAnalyse.telemetryOverview(orgId, selectedId),
         api.dataAnalyse.signals(orgId, selectedId),
         api.dataAnalyse.highFrequency(orgId, selectedId),
@@ -395,6 +478,7 @@ export function DataAnalyseView() {
         api.dataAnalyse.signalGroups(orgId, selectedId),
         api.dataAnalyse.eventArchitecture(orgId, selectedId),
         api.dataAnalyse.deviceConnectionEvents(orgId, selectedId, deviceConnectionDebugRaw),
+        api.dataAnalyse.rpmWebhookCandidates(orgId, selectedId),
       ]);
       setOverview(ov);
       setSignals(sig);
@@ -405,6 +489,7 @@ export function DataAnalyseView() {
       setGroups(grp);
       setEventArch(evArch);
       setDeviceConnection(devConn);
+      setRpmWebhooks(rpm);
     } catch {
       setError('Analysis data could not be loaded for the selected vehicle.');
     } finally {
@@ -775,6 +860,10 @@ export function DataAnalyseView() {
               </label>
               <DeviceConnectionTab data={deviceConnection} debugRaw={deviceConnectionDebugRaw} />
             </div>
+          )}
+
+          {tab === 'rpmWebhooks' && rpmWebhooks && (
+            <RpmWebhookTab data={rpmWebhooks} />
           )}
 
           {tab === 'launch' && launch && (

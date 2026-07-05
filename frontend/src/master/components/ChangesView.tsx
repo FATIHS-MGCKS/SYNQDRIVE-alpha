@@ -118,6 +118,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-07-05T16:15:00.000Z',
   },
   {
+    id: 'rpm-webhook-ui-read-models-v49198-2026-07-05',
+    version: '4.9.198',
+    title: 'V4.9.198 — RPM Webhook UI in Trips & Data Analyse',
+    summary: [
+      'Trip Detail: `TripRpmCandidatesList` zeigt High-RPM-Webhook-Kandidaten (>5000 rpm) im Fahrtfenster — Quelle DIMO Vehicle Trigger, Status, optional HF-Kontext.',
+      'Read-Model matcht per `observedAt` im Trip-Zeitfenster (nicht nur `tripId`) — Echtzeit-Webhooks gehen bei späterer Fahrtanalyse nicht verloren.',
+      'Data Analyse: neuer Tab „RPM Webhooks“ + Event-Architektur-Layer `rpmWebhookIntake` mit Kandidaten-Metriken (24h/7d, max RPM).',
+      'Read-Model Endpoints: `GET …/trips/:tripId/rpm-candidates`, `GET …/data-analyse/vehicles/:vehicleId/rpm-webhook-candidates` via `RpmWebhookQueryService` + `rpm-candidate-read-model.ts`.',
+      'Reine Evidenz-Anzeige — keine automatischen Misuse-Cases.',
+    ],
+    reason:
+      'Nach Wiederherstellung des RPM-Webhook-Intakes (V4.9.197) fehlte die operative UI in Trips und Data Analyse; Kandidaten mussten auch ohne sofortige `tripId`-Verknüpfung im Fahrtfenster sichtbar bleiben.',
+    previousBehavior:
+      'RPM-Kandidaten wurden persistiert, aber weder in Trip-Detail noch in Data Analyse sichtbar gemacht; Anzeige hing nur an `tripId` zur Intake-Zeit.',
+    details:
+      '**Backend (neu)**: `rpm-candidate-read-model.ts` (+ Spec), `rpm-webhook-query.service.ts`. **Geändert**: `vehicle-intelligence.controller.ts`, `data-analyse.controller.ts`, `data-analyse.service.ts`, `data-analyse.types.ts`, `dimo.module.ts`. **Frontend (neu)**: `rpm-webhook-ui.ts`, `TripRpmCandidatesList.tsx`. **Geändert**: `TripTimelineExpanded.tsx`, `DataAnalyseView.tsx`, `api.ts`.',
+    affectsArchitecture: true,
+    module: 'DIMO Integration',
+    createdAt: '2026-07-05T15:30:00.000Z',
+  },
+  {
     id: 'rpm-webhook-intake-restore-v49197-2026-07-05',
     version: '4.9.197',
     title: 'V4.9.197 — RPM Webhook Candidate Intake wieder aktiv',

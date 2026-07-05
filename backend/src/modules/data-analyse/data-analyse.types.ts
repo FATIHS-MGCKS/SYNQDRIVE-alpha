@@ -303,6 +303,7 @@ export interface EventLayerDto {
 export interface DetectorFeasibilityDto {
   nativeBehaviorEvents: boolean;
   deviceConnectionWebhooks: boolean;
+  rpmWebhooks: boolean;
   contextClassification: boolean;
   /** Whole-trip HF-derived SHORT-event detection is intentionally not relied on. */
   shortEventHfDerivedDetection: 'disabled' | 'not_reliable';
@@ -316,6 +317,7 @@ export interface EventArchitectureMetricsDto {
   missingSignals: string[];
   contextWindowsProcessed: number;
   deviceConnectionEvents7d: number;
+  rpmWebhookCandidates7d: number;
   openUnpluggedEpisode: boolean;
 }
 
@@ -325,6 +327,7 @@ export interface EventArchitectureDto {
   powertrainNote: string;
   nativeEventIntake: EventLayerDto;
   deviceConnectionWebhookIntake: EventLayerDto;
+  rpmWebhookIntake: EventLayerDto;
   eventContextEnrichment: EventLayerDto;
   tripSignalSummaryEnrichment: EventLayerDto;
   detectorFeasibility: DetectorFeasibilityDto;

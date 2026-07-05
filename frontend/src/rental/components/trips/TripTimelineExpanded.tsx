@@ -8,6 +8,7 @@ import { hasNativeBehaviorEvents } from './event-context-ui';
 import { resolveBehaviorEventCount } from './trip-assessment-copy';
 import { TripEvidencePanel } from './TripEvidencePanel';
 import { TripDeviceConnectionEvidence } from './TripDeviceConnectionEvidence';
+import { TripRpmCandidatesList } from './TripRpmCandidatesList';
 import { TIMELINE_COPY, RENTAL_COPY, TRIPS_COPY, tv } from './trips-view-ui';
 import type { TripRentalContextView } from './utils/tripRentalContext';
 import type { TripBehaviorEvent, TripEnrichment, TripTimelineTrip } from './timeline.types';
@@ -180,6 +181,8 @@ export function TripTimelineExpanded({
         </div>
 
         <TripDeviceConnectionEvidence vehicleId={vehicleId} tripId={trip.id} />
+
+        <TripRpmCandidatesList vehicleId={vehicleId} tripId={trip.id} />
 
         <TimelineSection title={TIMELINE_COPY.sectionBehavior}>
           <TripBehaviorPanel
