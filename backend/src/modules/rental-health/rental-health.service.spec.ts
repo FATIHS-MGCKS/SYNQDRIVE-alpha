@@ -32,6 +32,7 @@ describe('RentalHealthService (unit)', () => {
     (svc as any).evaluateBattery(summary, hmAi);
   const evaluateErrorCodes = (summary: any) =>
     (svc as any).evaluateErrorCodes(summary);
+  const evaluateBrakes = (summary: any) => (svc as any).evaluateBrakes(summary);
 
   const batterySummary = (overrides: {
     healthStatus?: string;
@@ -137,6 +138,51 @@ describe('RentalHealthService (unit)', () => {
       activeFaultPreview: [],
     });
     expect(res.state).toBe('critical');
+  });
+
+  it('brake DOCUMENTED basis maps to evidence_type document (not provider)', () => {
+    const res = evaluateBrakes({
+      overallCondition: 'GOOD',
+      dataBasis: 'DOCUMENTED',
+      frontDataBasis: 'DOCUMENTED',
+      rearDataBasis: 'DOCUMENTED',
+      confidenceLevel: 'LOW',
+      updatedAt: '2026-07-06T12:00:00.000Z',
+    });
+    expect(res.state).toBe('good');
+    expect(res.evidence_type).toBe('document');
+  });
+
+  it('brake SENSOR basis maps to evidence_type sensor', () => {
+    const res = evaluateBrakes({
+      overallCondition: 'WATCH',
+      dataBasis: 'SENSOR',
+      frontDataBasis: 'SENSOR',
+      updatedAt: '2026-07-06T12:00:00.000Z',
+    });
+    expect(res.evidence_type).toBe('sensor');
+  });
+
+  it('brake ESTIMATED CRITICAL does not imply rental block without measured basis', () => {
+    const modules = {
+      service_compliance: { state: 'good', reason: 'ok' },
+      brakes: { state: 'critical', reason: 'critical' },
+      tires: { state: 'good', reason: 'ok' },
+      error_codes: { state: 'good', reason: 'ok' },
+    };
+    const reasons = collectBlockingReasons(
+      modules,
+      [],
+      null,
+      { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
+      null,
+      {
+        overallCondition: 'CRITICAL',
+        dataBasis: 'ESTIMATED',
+        openAlerts: [],
+      },
+    );
+    expect(reasons).toHaveLength(0);
   });
 
   it('complaints load failure => unknown not good', () => {

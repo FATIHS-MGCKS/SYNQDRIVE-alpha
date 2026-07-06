@@ -10,6 +10,7 @@ import {
   classifyMeasuredThickness,
   conditionToBars,
   conditionToLegacyStatus,
+  dataBasisFromAnchorValidation,
   dtcConditionToAlertSeverity,
   evidenceSourceToDataBasis,
   harshBrakeWearMultiplier,
@@ -208,6 +209,21 @@ describe('evidenceSourceToDataBasis', () => {
   });
   it('telematics → ESTIMATED', () => {
     expect(evidenceSourceToDataBasis('TELEMATICS_ESTIMATION')).toBe('ESTIMATED');
+  });
+});
+
+describe('dataBasisFromAnchorValidation', () => {
+  it('maps measured_anchor to MEASURED', () => {
+    expect(dataBasisFromAnchorValidation('measured_anchor', 'ESTIMATED')).toBe('MEASURED');
+  });
+
+  it('maps spec_fallback_anchor to DOCUMENTED (registration/manual nominal baseline)', () => {
+    expect(dataBasisFromAnchorValidation('spec_fallback_anchor', 'ESTIMATED')).toBe('DOCUMENTED');
+  });
+
+  it('falls back to state class when anchor status is absent', () => {
+    expect(dataBasisFromAnchorValidation(null, 'WARNING_ONLY')).toBe('SENSOR');
+    expect(dataBasisFromAnchorValidation(undefined, 'NO_BASELINE')).toBe('UNKNOWN');
   });
 });
 

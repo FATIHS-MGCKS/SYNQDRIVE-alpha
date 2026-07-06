@@ -100,6 +100,7 @@ export function evidenceLabel(mod: RentalHealthModule): string {
       provider: 'Provider signal',
       manual: 'Manual entry',
       document: 'Document',
+      sensor: 'Sensor',
       complaint: 'Complaint',
       unknown: 'Unknown',
     };

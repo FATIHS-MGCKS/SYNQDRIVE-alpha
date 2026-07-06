@@ -3,6 +3,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { CanonicalBatteryHealthService } from '../vehicle-intelligence/battery-health/canonical-battery-health.service';
 import { TireHealthService, TireHealthSummary } from '../vehicle-intelligence/tires/tire-health.service';
 import { BrakeHealthService, BrakeHealthSummaryDto } from '../vehicle-intelligence/brakes/brake-health.service';
+import { strongerDataBasis, type BrakeDataBasis } from '../vehicle-intelligence/brakes/brake-status';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
 import { HmSignalUsageService } from '../high-mobility/high-mobility-signal-usage.service';
 import type { ServiceComplianceEvaluation } from '../vehicle-intelligence/service-compliance/service-compliance.types';
@@ -502,13 +503,32 @@ export class RentalHealthService {
       last_updated_at: toIso(updatedAt),
       data_stale: isStale(updatedAt),
       source: 'brake_health',
-      evidence_type:
-        summary.dataBasis === 'MEASURED' || summary.frontDataBasis === 'MEASURED'
-          ? 'measured'
-          : summary.dataBasis === 'ESTIMATED'
-            ? 'estimated'
-            : 'provider',
+      evidence_type: this.brakeDataBasisToEvidenceType(summary),
     };
+  }
+
+  private resolveBrakeDataBasis(summary: BrakeHealthSummaryDto): BrakeDataBasis {
+    return strongerDataBasis(
+      strongerDataBasis(summary.dataBasis ?? 'UNKNOWN', summary.frontDataBasis ?? 'UNKNOWN'),
+      summary.rearDataBasis ?? 'UNKNOWN',
+    );
+  }
+
+  private brakeDataBasisToEvidenceType(
+    summary: BrakeHealthSummaryDto,
+  ): ModuleHealth['evidence_type'] {
+    switch (this.resolveBrakeDataBasis(summary)) {
+      case 'MEASURED':
+        return 'measured';
+      case 'DOCUMENTED':
+        return 'document';
+      case 'SENSOR':
+        return 'sensor';
+      case 'ESTIMATED':
+        return 'estimated';
+      default:
+        return 'unknown';
+    }
   }
 
   /**

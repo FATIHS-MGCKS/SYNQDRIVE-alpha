@@ -30,6 +30,7 @@ export interface ModuleHealth {
     | 'provider'
     | 'manual'
     | 'document'
+    | 'sensor'
     | 'complaint'
     | 'unknown';
 }

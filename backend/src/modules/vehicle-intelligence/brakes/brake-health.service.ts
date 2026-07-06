@@ -19,6 +19,7 @@ import {
   classifyMeasuredThickness,
   classifyDiscConditionLabel,
   conditionToLegacyStatus,
+  dataBasisFromAnchorValidation,
   evidenceSourceToDataBasis,
   isAlertableCondition,
   strongerDataBasis,
@@ -1755,8 +1756,11 @@ export class BrakeHealthService {
       ? classifyEstimatedCondition(rearHealth, rearRemaining)
       : 'UNKNOWN';
 
-    let frontBasis: BrakeDataBasis = initialized ? 'ESTIMATED' : 'UNKNOWN';
-    let rearBasis: BrakeDataBasis = initialized ? 'ESTIMATED' : 'UNKNOWN';
+    const anchorBasis: BrakeDataBasis = initialized
+      ? dataBasisFromAnchorValidation(current?.anchorValidationStatus, current?.stateClass)
+      : 'UNKNOWN';
+    let frontBasis: BrakeDataBasis = anchorBasis;
+    let rearBasis: BrakeDataBasis = anchorBasis;
 
     const frontMeas = latestMeasurementForAxle('FRONT');
     if (frontMeas?.measuredPadMm != null) {

@@ -110,6 +110,7 @@ export function evidenceTypeToTone(
       return 'info';
     case 'manual':
     case 'document':
+    case 'sensor':
     case 'complaint':
       return 'neutral';
     case 'unknown':
@@ -129,6 +130,7 @@ export function evidenceTypeLabel(
       provider: 'Provider signal',
       manual: 'Manual entry',
       document: 'Document',
+      sensor: 'Sensor',
       complaint: 'Complaint',
       unknown: 'Unknown',
     };
