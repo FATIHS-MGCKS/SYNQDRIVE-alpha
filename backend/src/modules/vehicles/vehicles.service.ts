@@ -37,6 +37,14 @@ import {
 } from './fleet-connectivity.util';
 import type { FleetConnectivityResponseDto } from './fleet-connectivity.types';
 import { TireLifecycleService } from '@modules/vehicle-intelligence/tires/tire-lifecycle.service';
+import { BrakeLifecycleService } from '@modules/vehicle-intelligence/brakes/brake-lifecycle.service';
+import {
+  applyNewBrakeDefaults,
+  hasRegistrationBrakeSpecValues,
+  normalizeRegistrationBrakeCondition,
+  shouldInitializeBrakesFromRegistration,
+  type RegistrationBrakeManualSpec,
+} from '@modules/vehicle-intelligence/brakes/register-brake-baseline';
 import { DataAuthorizationsService } from '@modules/data-authorizations/data-authorizations.service';
 import { DataAuthorizationEnforcementService } from '@modules/data-authorizations/data-authorization-enforcement.service';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
@@ -230,6 +238,8 @@ export class VehiclesService {
     private readonly providerConsent: VehicleProviderConsentService,
     @Inject(forwardRef(() => TireLifecycleService))
     private readonly tireLifecycleService: TireLifecycleService,
+    @Inject(forwardRef(() => BrakeLifecycleService))
+    private readonly brakeLifecycleService: BrakeLifecycleService,
     private readonly dataAuthorizations: DataAuthorizationsService,
     private readonly dataAuthEnforcement: DataAuthorizationEnforcementService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
@@ -1738,14 +1748,7 @@ export class VehiclesService {
         batteryAmpere?: number | null;
         batteryVolt?: number | null;
       };
-      brakes?: {
-        frontRotorDiameter?: number | null;
-        frontRotorWidth?: number | null;
-        frontPadThickness?: number | null;
-        rearRotorDiameter?: number | null;
-        rearRotorWidth?: number | null;
-        rearPadThickness?: number | null;
-      };
+      brakes?: RegistrationBrakeManualSpec;
       tires?: {
         frontDimension?: string | null;
         rearDimension?: string | null;
@@ -1841,28 +1844,45 @@ export class VehiclesService {
     }
 
     if (manualSpecs?.brakes) {
-      const br = manualSpecs.brakes;
-      const hasAny = [
-        br.frontRotorDiameter,
-        br.frontRotorWidth,
-        br.frontPadThickness,
-        br.rearRotorDiameter,
-        br.rearRotorWidth,
-        br.rearPadThickness,
-      ].some((v) => v != null && !Number.isNaN(Number(v)));
-      if (hasAny) {
+      const rawBrakes = manualSpecs.brakes;
+      const condition = normalizeRegistrationBrakeCondition(rawBrakes.condition);
+      const brakesForSpec = applyNewBrakeDefaults(rawBrakes, condition);
+      const shouldCreateSpec =
+        condition === 'NEW' || hasRegistrationBrakeSpecValues(brakesForSpec);
+
+      if (shouldCreateSpec) {
         await this.prisma.vehicleBrakeReferenceSpec.create({
           data: {
             vehicleId: vehicle.id,
-            frontRotorDiameter: br.frontRotorDiameter ?? null,
-            frontRotorWidth: br.frontRotorWidth ?? null,
-            frontPadThickness: br.frontPadThickness ?? null,
-            rearRotorDiameter: br.rearRotorDiameter ?? null,
-            rearRotorWidth: br.rearRotorWidth ?? null,
-            rearPadThickness: br.rearPadThickness ?? null,
-            sourceType: 'MANUAL',
+            frontRotorDiameter: brakesForSpec.frontRotorDiameter ?? null,
+            frontRotorWidth: brakesForSpec.frontRotorWidth ?? null,
+            frontPadThickness: brakesForSpec.frontPadThickness ?? null,
+            rearRotorDiameter: brakesForSpec.rearRotorDiameter ?? null,
+            rearRotorWidth: brakesForSpec.rearRotorWidth ?? null,
+            rearPadThickness: brakesForSpec.rearPadThickness ?? null,
+            sourceType: rawBrakes.source?.trim() || 'manual_registration',
           },
         });
+      }
+
+      if (shouldInitializeBrakesFromRegistration(rawBrakes)) {
+        const latestState = await this.prisma.vehicleLatestState.findUnique({
+          where: { vehicleId: vehicle.id },
+          select: { odometerKm: true },
+        });
+        try {
+          await this.brakeLifecycleService.initializeFromRegistration({
+            vehicleId: vehicle.id,
+            brakes: rawBrakes,
+            registrationMileageKm: vehicle.mileageKm,
+            latestStateOdometerKm: latestState?.odometerKm ?? null,
+          });
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          this.logger.warn(
+            `Brake registration baseline init failed for vehicle ${vehicle.id}: ${msg}`,
+          );
+        }
       }
     }
 

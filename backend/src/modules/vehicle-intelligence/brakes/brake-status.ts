@@ -248,6 +248,21 @@ export function dataBasisFromStateClass(
   }
 }
 
+/**
+ * Map anchor provenance to the public data basis before evidence upgrades.
+ * Spec-fallback anchors (e.g. registration nominal values) are DOCUMENTED,
+ * not ESTIMATED wear-model output.
+ */
+export function dataBasisFromAnchorValidation(
+  anchorValidationStatus: string | null | undefined,
+  stateClass?: string | null | undefined,
+): BrakeDataBasis {
+  const status = String(anchorValidationStatus ?? '').toLowerCase();
+  if (status.includes('measured')) return 'MEASURED';
+  if (status.includes('spec_fallback')) return 'DOCUMENTED';
+  return dataBasisFromStateClass(stateClass);
+}
+
 /** Map a brake-evidence source to the public data basis it provides. */
 export function evidenceSourceToDataBasis(source: string | null | undefined): BrakeDataBasis {
   switch ((source ?? '').toUpperCase()) {

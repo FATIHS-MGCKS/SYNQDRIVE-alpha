@@ -12,6 +12,7 @@ import { BrakesService } from './brakes/brakes.service';
 import { BrakeHealthService } from './brakes/brake-health.service';
 import { BrakeEvidenceService } from './brakes/brake-evidence.service';
 import { BrakeLifecycleService } from './brakes/brake-lifecycle.service';
+import { BrakeRegistrationBackfillService } from './brakes/brake-registration-backfill.service';
 import { ServiceEventsService } from './service-events/service-events.service';
 import { EnrichmentJobsService } from './enrichment-jobs/enrichment-jobs.service';
 import { DtcService } from './dtc/dtc.service';
@@ -102,6 +103,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     BrakeHealthService,
     BrakeEvidenceService,
     BrakeLifecycleService,
+    BrakeRegistrationBackfillService,
     ServiceEventsService,
     EnrichmentJobsService,
     DtcService,
@@ -172,6 +174,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     BrakeHealthService,
     BrakeEvidenceService,
     BrakeLifecycleService,
+    BrakeRegistrationBackfillService,
     ServiceEventsService,
     EnrichmentJobsService,
     DtcService,

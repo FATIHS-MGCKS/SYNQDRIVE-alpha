@@ -32,6 +32,7 @@ describe('RentalHealthService (unit)', () => {
     (svc as any).evaluateBattery(summary, hmAi);
   const evaluateErrorCodes = (summary: any) =>
     (svc as any).evaluateErrorCodes(summary);
+  const evaluateBrakes = (summary: any) => (svc as any).evaluateBrakes(summary);
 
   const batterySummary = (overrides: {
     healthStatus?: string;
@@ -137,6 +138,149 @@ describe('RentalHealthService (unit)', () => {
       activeFaultPreview: [],
     });
     expect(res.state).toBe('critical');
+  });
+
+  it('brake DOCUMENTED basis maps to evidence_type document (not provider)', () => {
+    const res = evaluateBrakes({
+      overallCondition: 'GOOD',
+      dataBasis: 'DOCUMENTED',
+      frontDataBasis: 'DOCUMENTED',
+      rearDataBasis: 'DOCUMENTED',
+      confidenceLevel: 'LOW',
+      updatedAt: '2026-07-06T12:00:00.000Z',
+    });
+    expect(res.state).toBe('good');
+    expect(res.evidence_type).toBe('document');
+  });
+
+  it('brake SENSOR basis maps to evidence_type sensor', () => {
+    const res = evaluateBrakes({
+      overallCondition: 'WATCH',
+      dataBasis: 'SENSOR',
+      frontDataBasis: 'SENSOR',
+      updatedAt: '2026-07-06T12:00:00.000Z',
+    });
+    expect(res.evidence_type).toBe('sensor');
+  });
+
+  it('evaluateBrakes never promotes unknown to good', () => {
+    const unknownSummary = evaluateBrakes({
+      overallCondition: 'UNKNOWN',
+      dataBasis: 'UNKNOWN',
+      updatedAt: '2026-07-06T12:00:00.000Z',
+    });
+    expect(unknownSummary.state).toBe('unknown');
+    expect(unknownSummary.state).not.toBe('good');
+
+    const nullSummary = evaluateBrakes(null);
+    expect(nullSummary.state).toBe('unknown');
+    expect(nullSummary.evidence_type).toBe('unknown');
+  });
+
+  it('evaluateBrakes is read-only (no prisma or brake service writes)', () => {
+    const writeSpy = jest.spyOn(prisma.vehicle, 'findFirst');
+    const brakesSpy = jest.spyOn(brakes, 'getSummary');
+
+    evaluateBrakes({
+      overallCondition: 'GOOD',
+      dataBasis: 'DOCUMENTED',
+      updatedAt: '2026-07-06T12:00:00.000Z',
+    });
+
+    expect(writeSpy).not.toHaveBeenCalled();
+    expect(brakesSpy).not.toHaveBeenCalled();
+    writeSpy.mockRestore();
+    brakesSpy.mockRestore();
+  });
+
+  it('DOCUMENTED/ESTIMATED GOOD never blocks rental', () => {
+    const modules = {
+      service_compliance: { state: 'good', reason: 'ok' },
+      brakes: { state: 'good', reason: 'Bremszustand: GOOD' },
+      tires: { state: 'good', reason: 'ok' },
+      error_codes: { state: 'good', reason: 'ok' },
+    };
+    for (const dataBasis of ['DOCUMENTED', 'ESTIMATED'] as const) {
+      const reasons = collectBlockingReasons(
+        modules,
+        [],
+        null,
+        { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
+        null,
+        {
+          overallCondition: 'GOOD',
+          dataBasis,
+          openAlerts: [],
+        },
+      );
+      expect(reasons).toHaveLength(0);
+    }
+  });
+
+  it('MEASURED CRITICAL blocks rental', () => {
+    const modules = {
+      service_compliance: { state: 'good', reason: 'ok' },
+      brakes: { state: 'critical', reason: 'Kritischer Bremsbelag' },
+      tires: { state: 'good', reason: 'ok' },
+      error_codes: { state: 'good', reason: 'ok' },
+    };
+    const reasons = collectBlockingReasons(
+      modules,
+      [],
+      null,
+      { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
+      null,
+      {
+        overallCondition: 'CRITICAL',
+        dataBasis: 'MEASURED',
+        openAlerts: [],
+      },
+    );
+    expect(reasons.some((r: string) => /Bremsen:/i.test(r))).toBe(true);
+  });
+
+  it('CRITICAL with critical openAlert blocks even when dataBasis is SENSOR', () => {
+    const modules = {
+      service_compliance: { state: 'good', reason: 'ok' },
+      brakes: { state: 'critical', reason: 'Sofortiger Bremsenersatz' },
+      tires: { state: 'good', reason: 'ok' },
+      error_codes: { state: 'good', reason: 'ok' },
+    };
+    const reasons = collectBlockingReasons(
+      modules,
+      [],
+      null,
+      { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
+      null,
+      {
+        overallCondition: 'CRITICAL',
+        dataBasis: 'SENSOR',
+        openAlerts: [{ severity: 'critical', code: 'immediate_replacement', message: 'Sofort' }],
+      },
+    );
+    expect(reasons.some((r: string) => /Bremsen:/i.test(r))).toBe(true);
+  });
+
+  it('brake ESTIMATED CRITICAL does not imply rental block without measured basis', () => {
+    const modules = {
+      service_compliance: { state: 'good', reason: 'ok' },
+      brakes: { state: 'critical', reason: 'critical' },
+      tires: { state: 'good', reason: 'ok' },
+      error_codes: { state: 'good', reason: 'ok' },
+    };
+    const reasons = collectBlockingReasons(
+      modules,
+      [],
+      null,
+      { tuvBokraft: { tuvOverdue: false, bokraftOverdue: false } },
+      null,
+      {
+        overallCondition: 'CRITICAL',
+        dataBasis: 'ESTIMATED',
+        openAlerts: [],
+      },
+    );
+    expect(reasons).toHaveLength(0);
   });
 
   it('complaints load failure => unknown not good', () => {

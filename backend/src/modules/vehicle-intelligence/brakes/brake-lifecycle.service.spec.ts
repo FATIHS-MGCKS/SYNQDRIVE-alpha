@@ -51,4 +51,50 @@ describe('BrakeLifecycleService.recordService', () => {
 
     expect(mockBrakeEvidence.recordMany).not.toHaveBeenCalled();
   });
+
+  it('initializeFromRegistration uses manual_registration and spec fallback for NEW', async () => {
+    const result = await svc.initializeFromRegistration({
+      vehicleId: 'v1',
+      brakes: { condition: 'NEW' },
+      registrationMileageKm: null,
+      latestStateOdometerKm: null,
+    });
+
+    expect(result?.initialized).toBe(true);
+    expect(mockPrisma.vehicleServiceEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          brakeServiceSource: 'API',
+          brakeServiceKind: 'FULL_BRAKE_SERVICE',
+        }),
+      }),
+    );
+    expect(mockBrakeHealth.initializeFromService).toHaveBeenCalledWith(
+      'v1',
+      expect.objectContaining({ odometerKm: 0 }),
+    );
+    expect(mockBrakeEvidence.recordMany).not.toHaveBeenCalled();
+  });
+
+  it('initializeFromRegistration writes evidence for user-submitted measurements', async () => {
+    await svc.initializeFromRegistration({
+      vehicleId: 'v1',
+      brakes: {
+        condition: 'NEW',
+        frontPadThickness: 10.5,
+        rearPadThickness: 10.2,
+        odometerKm: 12,
+      },
+    });
+
+    expect(mockBrakeEvidence.recordMany).toHaveBeenCalledTimes(1);
+    expect(mockBrakeHealth.initializeFromService).toHaveBeenCalledWith(
+      'v1',
+      expect.objectContaining({
+        odometerKm: 12,
+        frontPadMm: 10.5,
+        rearPadMm: 10.2,
+      }),
+    );
+  });
 });

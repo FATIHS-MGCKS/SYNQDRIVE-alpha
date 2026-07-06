@@ -59,6 +59,7 @@ export interface RentalHealthModule {
     | 'provider'
     | 'manual'
     | 'document'
+    | 'sensor'
     | 'complaint'
     | 'unknown';
 }

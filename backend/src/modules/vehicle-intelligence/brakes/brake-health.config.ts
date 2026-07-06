@@ -266,6 +266,13 @@ export const BRAKE_HEALTH_CONFIG = {
     /** A measured baseline older than this is considered stale for confidence. */
     staleDays: 540,
   },
+
+  // ── Registration defaults (documented nominal baseline, not measured truth) ─
+
+  registration: {
+    /** Nominal new pad thickness when registration declares NEW without mm input. */
+    defaultNewPadThicknessMm: 10,
+  },
 } as const;
 
 export type BrakeHealthConfig = typeof BRAKE_HEALTH_CONFIG;
