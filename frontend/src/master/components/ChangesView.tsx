@@ -46,13 +46,14 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'RentalHealth `modules.brakes.state` liefert nach Registrierung mit NEW-Baseline `good` (über BrakeHealthService, read-only unverändert).',
       'Data-Basis-Mapping: spec_fallback_anchor → DOCUMENTED; RentalHealth evidence_type mappt MEASURED/DOCUMENTED/SENSOR/ESTIMATED/UNKNOWN korrekt (inkl. `sensor`).',
       'Ops-Backfill: `backfill-brake-health-from-registration-specs.ts` initialisiert historische Fahrzeuge mit MANUAL/manual_registration Spec + fehlender BrakeHealthCurrent über BrakeLifecycleService (dry-run Stats).',
+      'Regression-Tests: `brake-registration-regression.spec.ts` (register-from-dimo-Pipeline + getSummary + RentalHealth read) und erweiterte `rental-health.service.spec.ts` (read-only, Blocking-Regeln).',
     ],
     reason:
       'Neu registrierte Fahrzeuge mit manuellen/neuen Bremsen blieben auf UNKNOWN, weil nur ReferenceSpec gespeichert wurde — ohne BrakeHealthCurrent-Initialisierung.',
     previousBehavior:
       'Registration schrieb nur `VehicleBrakeReferenceSpec` (source MANUAL) und queued BRAKE-Enrichment ohne Processor; `BrakeHealthCurrent` blieb leer → RentalHealth brakes=unknown.',
     details:
-      'backend: `register-brake-baseline.ts`, `brake-lifecycle.service.ts`, `vehicles.service.ts`, `vehicles.controller.ts`, `brake-mutation.dto.ts`, Tests. Keine UI-/RentalHealth-Logik-Änderung.',
+      'backend: `register-brake-baseline.ts`, `brake-lifecycle.service.ts`, `vehicles.service.ts`, `vehicles.controller.ts`, `brake-mutation.dto.ts`, `brake-registration-regression.spec.ts`, `rental-health.service.spec.ts`. Keine UI-/RentalHealth-Logik-Änderung.',
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
     createdAt: '2026-07-06T22:15:00.000Z',
