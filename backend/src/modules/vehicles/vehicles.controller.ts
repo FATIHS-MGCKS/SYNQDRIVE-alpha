@@ -13,6 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { VehiclesService } from './vehicles.service';
+import type { RegistrationBrakeManualSpec } from '@modules/vehicle-intelligence/brakes/register-brake-baseline';
 import { VehicleExteriorImagesService } from './vehicle-exterior-images.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
@@ -151,14 +152,7 @@ export class VehiclesController {
           batteryAmpere?: number | null;
           batteryVolt?: number | null;
         };
-        brakes?: {
-          frontRotorDiameter?: number | null;
-          frontRotorWidth?: number | null;
-          frontPadThickness?: number | null;
-          rearRotorDiameter?: number | null;
-          rearRotorWidth?: number | null;
-          rearPadThickness?: number | null;
-        };
+        brakes?: RegistrationBrakeManualSpec;
         tires?: {
           frontDimension?: string | null;
           rearDimension?: string | null;

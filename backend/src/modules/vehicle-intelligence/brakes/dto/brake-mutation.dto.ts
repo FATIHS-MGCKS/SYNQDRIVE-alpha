@@ -164,3 +164,18 @@ export class CreateBrakeSpecDto {
 }
 
 export class UpdateBrakeSpecDto extends CreateBrakeSpecDto {}
+
+// ── Vehicle registration manual brake baseline ──────────────────────────────
+
+export const REGISTRATION_BRAKE_CONDITIONS = ['NEW', 'USED', 'UNKNOWN'] as const;
+
+export class RegistrationBrakeManualSpecDto extends CreateBrakeSpecDto {
+  @IsOptional() @IsIn(REGISTRATION_BRAKE_CONDITIONS as unknown as string[])
+  condition?: (typeof REGISTRATION_BRAKE_CONDITIONS)[number];
+
+  @IsOptional() @IsISO8601()
+  serviceDate?: string;
+
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(ODO_MAX)
+  odometerKm?: number;
+}

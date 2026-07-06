@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'brake-registration-init-v49209-2026-07-06',
+    version: '4.9.209',
+    title: 'V4.9.209 — Brake Health Initialisierung bei Fahrzeug-Registrierung',
+    summary: [
+      '`register-from-dimo` erweitert `manualSpecs.brakes` um Lifecycle-Baseline: `condition` (NEW/USED/UNKNOWN), `serviceDate`, `odometerKm`, Pad/Rotor-mm.',
+      'Nach `VehicleBrakeReferenceSpec` ruft `VehiclesService` kanonisch `BrakeLifecycleService.initializeFromRegistration()` auf — kein paralleler BrakeHealth-Write.',
+      'NEW ohne Messwerte: dokumentierte Nominal-Pad-Defaults (10 mm) in Spec + ESTIMATED-Baseline; gemessene mm → MEASURED + BrakeEvidence.',
+      'Odometer-Priorität: brakes.odometerKm → vehicle.mileageKm → latestState → 0 nur bei NEW.',
+      'RentalHealth `modules.brakes.state` liefert nach Registrierung mit NEW-Baseline `good` (über BrakeHealthService, read-only unverändert).',
+    ],
+    reason:
+      'Neu registrierte Fahrzeuge mit manuellen/neuen Bremsen blieben auf UNKNOWN, weil nur ReferenceSpec gespeichert wurde — ohne BrakeHealthCurrent-Initialisierung.',
+    previousBehavior:
+      'Registration schrieb nur `VehicleBrakeReferenceSpec` (source MANUAL) und queued BRAKE-Enrichment ohne Processor; `BrakeHealthCurrent` blieb leer → RentalHealth brakes=unknown.',
+    details:
+      'backend: `register-brake-baseline.ts`, `brake-lifecycle.service.ts`, `vehicles.service.ts`, `vehicles.controller.ts`, `brake-mutation.dto.ts`, Tests. Keine UI-/RentalHealth-Logik-Änderung.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-06T22:15:00.000Z',
+  },
+  {
     id: 'fleet-connectivity-cleanup-v49208-2026-07-06',
     version: '4.9.208',
     title: 'V4.9.208 — Fleet Connectivity Cleanup (Pfad, i18n, Tab-Persistenz)',

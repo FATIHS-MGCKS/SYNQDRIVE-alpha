@@ -10,6 +10,14 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { BrakeEvidenceService, BrakeEvidenceWriteInput } from './brake-evidence.service';
 import { BrakeHealthService } from './brake-health.service';
+import {
+  applyNewBrakeDefaults,
+  normalizeRegistrationBrakeCondition,
+  type RegistrationBrakeManualSpec,
+  registrationBrakeMeasuredSnapshot,
+  resolveRegistrationBrakeOdometerKm,
+  shouldInitializeBrakesFromRegistration,
+} from './register-brake-baseline';
 
 export type BrakeLifecycleKind =
   | 'inspection_only'
@@ -18,7 +26,7 @@ export type BrakeLifecycleKind =
   | 'brake_fluid_service'
   | 'full_brake_service';
 
-export type BrakeLifecycleSource = 'manual' | 'ai_document' | 'api';
+export type BrakeLifecycleSource = 'manual' | 'ai_document' | 'api' | 'manual_registration';
 
 export type BrakeLifecycleScope =
   | 'front_pads'
@@ -164,6 +172,55 @@ export class BrakeLifecycleService {
     };
   }
 
+  /**
+   * Canonical registration write-path: records a BRAKE_SERVICE event and
+   * initializes BrakeHealthCurrent via initializeFromService — never writes
+   * brake health rows directly from VehiclesService.
+   */
+  async initializeFromRegistration(input: {
+    vehicleId: string;
+    brakes: RegistrationBrakeManualSpec;
+    registrationMileageKm?: number | null;
+    latestStateOdometerKm?: number | null;
+  }): Promise<RecordBrakeServiceResult | null> {
+    const condition = normalizeRegistrationBrakeCondition(input.brakes.condition);
+    if (!shouldInitializeBrakesFromRegistration(input.brakes)) {
+      return null;
+    }
+
+    const brakesForInit = applyNewBrakeDefaults(input.brakes, condition);
+    const odometerKm = resolveRegistrationBrakeOdometerKm({
+      brakesOdometerKm: brakesForInit.odometerKm,
+      registrationMileageKm: input.registrationMileageKm,
+      latestStateOdometerKm: input.latestStateOdometerKm,
+      condition,
+    });
+
+    if (odometerKm == null) {
+      this.logger.warn(
+        `Skipping brake registration init for vehicle ${input.vehicleId}: no odometer anchor`,
+      );
+      return null;
+    }
+
+    // Only user-submitted mm values become measured evidence — NEW defaults stay spec-only.
+    const measured = registrationBrakeMeasuredSnapshot(input.brakes);
+    const hasMeasured = measured != null;
+    const kind: BrakeLifecycleKind =
+      condition === 'NEW' || hasMeasured ? 'full_brake_service' : 'pads_service';
+
+    return this.recordService({
+      vehicleId: input.vehicleId,
+      serviceDate: brakesForInit.serviceDate ?? new Date().toISOString(),
+      odometerKm,
+      source: 'manual_registration',
+      kind,
+      measured,
+      notes: 'Vehicle registration brake baseline (manual_registration)',
+      initializeIfPossible: true,
+    });
+  }
+
   private async recordMeasuredEvidence(
     input: RecordBrakeServiceInput,
     serviceEventId: string,
@@ -180,7 +237,7 @@ export class BrakeLifecycleService {
         ? Math.round(input.odometerKm)
         : null;
     const evidenceSource =
-      input.source === 'api'
+      input.source === 'api' || input.source === 'manual_registration'
         ? BrakeEvidenceSource.MANUAL_MEASUREMENT
         : BrakeEvidenceSource.WORKSHOP_REPORT;
 
@@ -269,7 +326,7 @@ export class BrakeLifecycleService {
 
   private toSourceEnum(source?: BrakeLifecycleSource): BrakeServiceSource {
     if (source === 'ai_document') return BrakeServiceSource.AI_DOCUMENT;
-    if (source === 'api') return BrakeServiceSource.API;
+    if (source === 'api' || source === 'manual_registration') return BrakeServiceSource.API;
     return BrakeServiceSource.MANUAL;
   }
 
