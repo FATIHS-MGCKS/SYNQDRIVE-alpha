@@ -4,6 +4,7 @@ import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import { useRentalOrg } from '../../RentalContext';
 import { countVehiclesAtStation, syncStatusLabel, syncStatusTone } from './dashboardUtils';
+import { DASHBOARD_LAYOUT } from './dashboardShell';
 import type { DashboardViewModel } from './dashboardTypes';
 
 interface DashboardControlHeaderProps {
@@ -47,7 +48,12 @@ export function DashboardControlHeader({ vm, children }: DashboardControlHeaderP
   const syncTone = syncStatusTone(controlCenterStatus.syncStatus);
 
   return (
-    <section className="rounded-2xl border border-border/55 bg-card/60 px-4 py-4 shadow-none sm:p-5 lg:p-6">
+    <section
+      className={cn(
+        DASHBOARD_LAYOUT.controlCenterCard,
+        DASHBOARD_LAYOUT.controlCenterCardPadding,
+      )}
+    >
       <div className="flex items-center justify-between gap-2">
         <h1 className="min-w-0 truncate font-display text-[16px] font-semibold leading-tight tracking-[-0.02em] text-foreground sm:text-[17px]">
           {copy.title}
@@ -140,11 +146,9 @@ export function DashboardControlHeader({ vm, children }: DashboardControlHeaderP
         </p>
       </div>
 
-      {children && (
-        <div className="mt-4 sm:mt-5">
-          {children}
-        </div>
-      )}
+      {children ? (
+        <div className={DASHBOARD_LAYOUT.controlCenterKpiSection}>{children}</div>
+      ) : null}
     </section>
   );
 }

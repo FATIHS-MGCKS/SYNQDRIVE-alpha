@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-control-center-unified-card-v49204-2026-07-06',
+    version: '4.9.204',
+    title: 'V4.9.204 — Dashboard Control Center: Header + KPI in einer Card',
+    summary: [
+      '`DashboardControlHeader` umschließt `ControlKpiStrip` (embedded) in einer gemeinsamen äußeren Control-Center-Card.',
+      'Entfernt: separate Header-Zeile + `controlKpiShell`-Outer-Card und `space-y` Lücke dazwischen.',
+      'Dezente Divider-Linie zwischen Kontext-Header und 2×3 KPI-Grid; einzelne KPI-Kacheln unverändert.',
+    ],
+    reason:
+      'Header-Box und KPI-Block wirkten wie zwei getrennte Module — gewünscht ist ein zusammenhängendes Control Center.',
+    previousBehavior:
+      'Obere Kontext-Card und darunter separater KPI-Block mit eigener Border/Radius und vertikalem Abstand.',
+    details:
+      'Nur Layout: `DashboardView.tsx`, `DashboardControlHeader.tsx`, `dashboardShell.tsx` — keine KPI-/Filter-/API-Logik.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-06T18:15:00.000Z',
+  },
+  {
     id: 'device-connection-connectivity-reconcile-v49203-2026-07-06',
     version: '4.9.203',
     title: 'V4.9.203 — OBD Webhook-Abgleich mit DIMO Connection Status + Impuls-Filter',

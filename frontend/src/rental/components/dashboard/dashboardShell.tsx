@@ -18,8 +18,11 @@ export const DASHBOARD_LAYOUT = {
     'grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start lg:gap-4 xl:gap-5',
   controlKpiSlot: 'min-w-0 w-full',
   financeSlot: 'min-w-0 w-full',
-  controlKpiShell:
-    'rounded-2xl border border-border/55 bg-card/60 px-4 py-4 shadow-none sm:p-5',
+  /** Shared outer surface for Control Center header + embedded KPI strip. */
+  controlCenterCard:
+    'rounded-2xl border border-border/55 bg-card/60 shadow-none',
+  controlCenterCardPadding: 'px-4 py-4 sm:p-5 lg:p-6',
+  controlCenterKpiSection: 'mt-4 border-t border-border/35 pt-4 sm:mt-5 sm:pt-5',
   /**
    * Desktop row 2: Notifications (left) + Day Plan (right).
    * Mobile: Notifications, then Day Plan (stacked).

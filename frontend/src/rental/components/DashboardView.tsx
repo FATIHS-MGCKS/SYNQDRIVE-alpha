@@ -96,13 +96,9 @@ export function DashboardView({
   return (
     <>
       <div className={DASHBOARD_LAYOUT.shell}>
-        <div className="animate-fade-up" style={{ animationDelay: '0ms' }}>
-          <DashboardControlHeader vm={vm} />
-        </div>
-
-        <div className={`${DASHBOARD_LAYOUT.controlFinanceGrid} animate-fade-up`} style={{ animationDelay: '50ms' }}>
+        <div className={`${DASHBOARD_LAYOUT.controlFinanceGrid} animate-fade-up`} style={{ animationDelay: '0ms' }}>
           <div className={DASHBOARD_LAYOUT.controlKpiSlot}>
-            <div className={DASHBOARD_LAYOUT.controlKpiShell}>
+            <DashboardControlHeader vm={vm}>
               <ControlKpiStrip
                 dashboardRuntime={vm.dashboardRuntime}
                 activeSliceId={vm.activeDashboardSliceId}
@@ -111,7 +107,7 @@ export function DashboardView({
                 locale={vm.locale}
                 dataFreshness={vm.dataFreshness}
               />
-            </div>
+            </DashboardControlHeader>
           </div>
           <div className={DASHBOARD_LAYOUT.financeSlot}>
             <BusinessPulse

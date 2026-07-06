@@ -170,6 +170,8 @@ describe('dashboard runtime-only UI contracts', () => {
     expect(shellSrc).toMatch(/lg:items-start/);
     expect(dashboardViewSrc).toMatch(/controlFinanceGrid/);
     expect(dashboardViewSrc).toMatch(/financeSlot/);
+    expect(dashboardViewSrc).toMatch(/<DashboardControlHeader vm=\{vm\}>[\s\S]*<ControlKpiStrip/);
+    expect(dashboardViewSrc).not.toMatch(/controlKpiShell/);
     expect(dashboardViewSrc).toMatch(/notificationsDayPlanGrid/);
     expect(dashboardViewSrc).toMatch(/dayPlanSlot/);
     expect(businessPulseSrc).not.toMatch(/\bh-full\b/);
