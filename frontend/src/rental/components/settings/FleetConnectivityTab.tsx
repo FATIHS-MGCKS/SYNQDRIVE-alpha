@@ -6,11 +6,11 @@ import {
   Link2,
   Plug,
   Radio,
+  RefreshCw,
   Search,
   ShieldAlert,
   Signal,
   SignalZero,
-  Wifi,
   WifiOff,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -18,15 +18,25 @@ import {
   DataTable,
   EmptyState,
   ErrorState,
-  MetricCard,
-  PageHeader,
   SkeletonMetricGrid,
   SkeletonRows,
   StatusChip,
   type DataTableColumn,
+  type StatusTone,
 } from '../../../components/patterns';
+import { Button } from '../../../components/ui/button';
+import { cn } from '../../../components/ui/utils';
 import { api, type FleetConnectivityResponse, type FleetConnectivityVehicle } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations/en';
+import {
+  DashboardSectionLabel,
+  META_TEXT_CLASS,
+  ROW_BODY_CLASS,
+  ROW_TITLE_CLASS,
+} from '../dashboard/dashboardShell';
+import { fhs } from '../fleet-health-service/fleet-health-service-shell';
 import { FleetConnectivityDetailDrawer } from './fleet-connectivity/FleetConnectivityDetailDrawer';
 import {
   ConnectionStatusChip,
@@ -44,12 +54,37 @@ import {
 } from './fleet-connectivity/fleet-connectivity.utils';
 
 interface FleetConnectivityTabProps {
-  /** When true, omits the page header (Fleet hub already provides top-level chrome). */
+  /** When true, omits the standalone page header (Fleet hub provides top-level chrome). */
   embedded?: boolean;
+}
+
+const KPI_TONE: Record<
+  'neutral' | 'info' | 'success' | 'watch' | 'critical' | 'warning',
+  StatusTone
+> = {
+  neutral: 'neutral',
+  info: 'info',
+  success: 'success',
+  watch: 'warning',
+  critical: 'critical',
+  warning: 'warning',
+};
+
+function ConnectivityVehicleIdentity({ vehicle }: { vehicle: FleetConnectivityVehicle }) {
+  const title = [vehicle.make, vehicle.model, vehicle.year].filter(Boolean).join(' ');
+  return (
+    <div className="min-w-[168px]">
+      <p className={cn(ROW_TITLE_CLASS, 'text-[13px] tabular-nums')}>
+        {vehicle.licensePlate ?? '—'}
+      </p>
+      <p className={cn(ROW_BODY_CLASS, 'mt-0.5 truncate text-[11px]')}>{title || vehicle.vin}</p>
+    </div>
+  );
 }
 
 export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabProps) {
   const { orgId } = useRentalOrg();
+  const { t, locale } = useLanguage();
   const [data, setData] = useState<FleetConnectivityResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,11 +107,11 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
       setData(res);
     } catch {
       setData(null);
-      setError('Fleet connectivity data could not be loaded');
+      setError(t('fleetConnectivity.loadError'));
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [orgId, t]);
 
   useEffect(() => {
     void load();
@@ -110,98 +145,101 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
   const kpiCards = useMemo(
     (): Array<{
       id: string;
-      label: string;
+      labelKey: TranslationKey;
       value: string | number;
       status: 'neutral' | 'info' | 'success' | 'watch' | 'critical' | 'warning';
       icon: LucideIcon;
       onClick: () => void;
       active: boolean;
-      hint?: string;
+      hintKey?: TranslationKey;
     }> => [
       {
         id: 'total',
-        label: 'Total Vehicles',
+        labelKey: 'fleetConnectivity.kpi.total',
         value: s?.total ?? 0,
-        status: 'neutral' as const,
+        status: 'neutral',
         icon: Car,
-        onClick: () => setStatusFilter('all'),
+        onClick: () => {
+          setStatusFilter('all');
+          setSignalFilter('all');
+          setReadinessFilter('all');
+        },
         active: statusFilter === 'all' && signalFilter === 'all' && readinessFilter === 'all',
       },
       {
         id: 'connected',
-        label: 'Connected',
+        labelKey: 'fleetConnectivity.kpi.connected',
         value: s?.connected ?? 0,
-        status: 'info' as const,
+        status: 'info',
         icon: Link2,
         onClick: () => setStatusFilter('connected'),
         active: statusFilter === 'connected',
       },
       {
         id: 'online',
-        label: 'Online',
+        labelKey: 'fleetConnectivity.kpi.online',
         value: s?.online ?? 0,
-        status: 'success' as const,
+        status: 'success',
         icon: Signal,
         onClick: () => setStatusFilter('online'),
         active: statusFilter === 'online',
       },
       {
         id: 'standby',
-        label: 'Standby',
+        labelKey: 'fleetConnectivity.kpi.standby',
         value: s?.standby ?? 0,
-        status: 'watch' as const,
+        status: 'watch',
         icon: Activity,
         onClick: () => setStatusFilter('standby'),
         active: statusFilter === 'standby',
       },
       {
         id: 'offline',
-        label: 'Offline',
+        labelKey: 'fleetConnectivity.kpi.offline',
         value: s?.offline ?? 0,
-        status: 'critical' as const,
+        status: 'critical',
         icon: SignalZero,
         onClick: () => setStatusFilter('offline'),
         active: statusFilter === 'offline',
       },
       {
         id: 'not_connected',
-        label: 'Not Connected',
+        labelKey: 'fleetConnectivity.kpi.notConnected',
         value: s?.notConnected ?? 0,
-        status: 'neutral' as const,
+        status: 'neutral',
         icon: WifiOff,
         onClick: () => setStatusFilter('not_connected'),
         active: statusFilter === 'not_connected',
       },
       {
         id: 'obd_unplugged',
-        label: 'OBD Unplugged (Snapshot)',
+        labelKey: 'fleetConnectivity.kpi.obdUnplugged',
         value: s?.obdUnplugged ?? 0,
-        status: 'warning' as const,
+        status: 'warning',
         icon: Plug,
         onClick: () => setSignalFilter('obd_unplugged'),
         active: signalFilter === 'obd_unplugged',
-        hint: 'Latest telemetry snapshot only',
+        hintKey: 'fleetConnectivity.kpi.hint.obd',
       },
       {
         id: 'device_unplugged_webhook',
-        label: 'Device Unplugged (Webhook)',
+        labelKey: 'fleetConnectivity.kpi.deviceUnplugged',
         value: s?.deviceUnpluggedOpenEpisodes ?? 0,
-        status: 'critical' as const,
+        status: 'critical',
         icon: ShieldAlert,
         onClick: () => setSignalFilter('device_unplugged_webhook'),
         active: signalFilter === 'device_unplugged_webhook',
-        hint: 'Explicit DIMO trigger — not offline/stale',
+        hintKey: 'fleetConnectivity.kpi.hint.webhook',
       },
       {
         id: 'readiness',
-        label: 'Avg Readiness',
-        value:
-          s?.avgReadinessScore != null ? `${s.avgReadinessScore}%` : '—',
-        status: 'info' as const,
+        labelKey: 'fleetConnectivity.kpi.avgReadiness',
+        value: s?.avgReadinessScore != null ? `${s.avgReadinessScore}%` : '—',
+        status: 'info',
         icon: Radio,
         onClick: () => setReadinessFilter('watch'),
         active: readinessFilter === 'watch',
-        hint: 'Telemetry data confidence',
+        hintKey: 'fleetConnectivity.kpi.hint.readiness',
       },
     ],
     [s, statusFilter, signalFilter, readinessFilter],
@@ -211,55 +249,26 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
     () => [
       {
         key: 'vehicle',
-        header: 'Vehicle',
-        cell: (v) => (
-          <div className="min-w-[180px]">
-            <p className="text-[13px] font-semibold text-foreground">
-              {v.make} {v.model}
-              {v.year ? ` ${v.year}` : ''}
-            </p>
-            <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
-              {v.licensePlate ? `${v.licensePlate} · ` : ''}
-              {v.vin}
-            </p>
-          </div>
-        ),
-      },
-      {
-        key: 'station',
-        header: 'Station',
-        className: 'hidden lg:table-cell',
-        cell: (v) => (
-          <span className="text-[12px] text-muted-foreground">{v.station ?? '—'}</span>
-        ),
-      },
-      {
-        key: 'provider',
-        header: 'Provider',
-        className: 'hidden md:table-cell',
-        cell: (v) => (
-          <div className="text-[12px]">
-            <p className="font-medium">{v.provider}</p>
-            <p className="text-muted-foreground">{v.connectionType}</p>
-          </div>
-        ),
+        header: t('fleetConnectivity.col.vehicle'),
+        cell: (v) => <ConnectivityVehicleIdentity vehicle={v} />,
       },
       {
         key: 'status',
-        header: 'Status',
+        header: t('fleetConnectivity.col.status'),
         cell: (v) => <ConnectionStatusChip status={v.connectionStatus} />,
       },
       {
         key: 'freshness',
-        header: 'Last signal',
+        header: t('fleetConnectivity.col.lastSignal'),
         className: 'hidden sm:table-cell',
         cell: (v) => (
           <span
-            className={`text-[12px] tabular-nums ${
+            className={cn(
+              'text-[12px] tabular-nums',
               v.freshnessLabel === 'Live'
-                ? 'text-[color:var(--status-positive)] font-medium'
-                : 'text-muted-foreground'
-            }`}
+                ? 'font-medium text-[color:var(--status-positive)]'
+                : 'text-muted-foreground',
+            )}
           >
             {v.freshnessLabel}
           </span>
@@ -267,47 +276,89 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
       },
       {
         key: 'readiness',
-        header: 'Telemetry readiness',
-        className: 'hidden xl:table-cell',
-        cell: (v) => (
-          <ReadinessChip level={v.readinessLevel} score={v.readinessScore} />
-        ),
+        header: t('fleetConnectivity.col.readiness'),
+        className: 'hidden lg:table-cell',
+        cell: (v) => <ReadinessChip level={v.readinessLevel} score={v.readinessScore} />,
       },
       {
         key: 'coverage',
-        header: 'Coverage',
+        header: t('fleetConnectivity.col.coverage'),
         className: 'hidden xl:table-cell',
         numeric: true,
         cell: (v) => (
-          <span className="text-[12px] tabular-nums">{v.signalCoveragePercent}%</span>
+          <span className="text-[12px] tabular-nums text-muted-foreground">
+            {v.signalCoveragePercent}%
+          </span>
         ),
       },
       {
         key: 'obd',
-        header: 'OBD Snapshot',
+        header: t('fleetConnectivity.col.obd'),
         className: 'hidden lg:table-cell',
         cell: (v) => <ObdRowChip plugged={v.obdIsPluggedIn} />,
       },
       {
         key: 'deviceWebhook',
-        header: 'Device Webhook',
-        className: 'hidden lg:table-cell',
+        header: t('fleetConnectivity.col.webhook'),
+        className: 'hidden xl:table-cell',
         cell: (v) => <DeviceConnectionWebhookChip device={v.deviceConnection} />,
       },
       {
+        key: 'station',
+        header: t('fleetConnectivity.col.station'),
+        className: 'hidden md:table-cell',
+        cell: (v) => (
+          <span className={META_TEXT_CLASS}>{v.station ?? '—'}</span>
+        ),
+      },
+      {
+        key: 'provider',
+        header: t('fleetConnectivity.col.provider'),
+        className: 'hidden xl:table-cell',
+        cell: (v) => (
+          <span className={cn(META_TEXT_CLASS, 'truncate')}>{v.provider}</span>
+        ),
+      },
+      {
         key: 'jamming',
-        header: 'Jamming',
-        className: 'hidden lg:table-cell',
+        header: t('fleetConnectivity.col.jamming'),
+        className: 'hidden xl:table-cell',
         cell: (v) => <JammingSnapshotChip count={v.jammingDetectedCount} />,
       },
     ],
-    [],
+    [t],
+  );
+
+  const snapshotLabel = data?.generatedAt
+    ? t('fleetConnectivity.snapshot', {
+        time: new Date(data.generatedAt).toLocaleString(locale === 'de' ? 'de-DE' : 'en-GB'),
+      })
+    : null;
+
+  const contextHeader = (
+    <header className="space-y-2">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 space-y-1">
+          {!embedded ? (
+            <h1 className="font-display text-[length:var(--text-display-md)] font-bold tracking-[var(--tracking-display)] text-foreground">
+              {t('fleetTab.connectivity')}
+            </h1>
+          ) : (
+            <DashboardSectionLabel className="mb-0">{t('fleetTab.connectivity')}</DashboardSectionLabel>
+          )}
+          <p className={META_TEXT_CLASS}>{t('fleetConnectivity.subtitle')}</p>
+        </div>
+        <StatusChip tone="info" className="max-w-sm text-[10px] leading-snug">
+          {t('fleetConnectivity.monitoringBadge')}
+        </StatusChip>
+      </div>
+    </header>
   );
 
   if (loading) {
     return (
-      <div className="max-w-[1600px] mx-auto space-y-5">
-        <div className="h-16 rounded-2xl bg-muted/40 animate-pulse" />
+      <div className="mx-auto max-w-[1600px] space-y-4">
+        {contextHeader}
         <SkeletonMetricGrid count={8} />
         <SkeletonRows rows={8} className="sq-card rounded-2xl p-4" />
       </div>
@@ -316,109 +367,116 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
 
   if (error || !data) {
     return (
-      <div className="max-w-[1600px] mx-auto">
+      <div className="mx-auto max-w-[1600px] space-y-4">
+        {contextHeader}
         <ErrorState
-          title="Fleet connectivity data could not be loaded"
+          title={t('fleetConnectivity.loadError')}
           error={error ?? 'Unknown error'}
           onRetry={() => void load()}
-          retryLabel="Retry"
+          retryLabel={t('fleetConnectivity.retry')}
         />
       </div>
     );
   }
 
   return (
-    <div className="max-w-[1600px] mx-auto space-y-5">
-      {!embedded ? (
-        <PageHeader
-          title="Fleet Connectivity"
-          status={
-            <StatusChip tone="info" className="text-[11px]">
-              Read-only technical overview
-            </StatusChip>
-          }
-        />
-      ) : (
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusChip tone="info" className="text-[11px]">
-            Read-only technical overview
-          </StatusChip>
+    <div className="mx-auto max-w-[1600px] space-y-4">
+      {contextHeader}
+
+      <section className="space-y-2">
+        <DashboardSectionLabel>{t('fleetConnectivity.kpiSection')}</DashboardSectionLabel>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          {kpiCards.map((kpi) => {
+            const KpiIcon = kpi.icon;
+            const tone = KPI_TONE[kpi.status];
+            return (
+              <button
+                key={kpi.id}
+                type="button"
+                onClick={kpi.onClick}
+                aria-pressed={kpi.active}
+                className={cn(
+                  fhs.kpiCard,
+                  kpi.active && fhs.kpiCardActive,
+                  kpi.status === 'critical' && Number(kpi.value) > 0 && fhs.kpiCardCritical,
+                  kpi.status === 'warning' && Number(kpi.value) > 0 && fhs.kpiCardWarning,
+                  kpi.status === 'success' && Number(kpi.value) > 0 && fhs.kpiCardSuccess,
+                )}
+              >
+                <div className="flex items-center gap-1">
+                  <KpiIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
+                  <p className={fhs.kpiTitle}>{t(kpi.labelKey)}</p>
+                </div>
+                <p
+                  className={cn(
+                    'mt-1',
+                    fhs.kpiNumber,
+                    tone === 'critical' && 'text-[color:var(--status-critical)]',
+                    tone === 'warning' && 'text-[color:var(--status-watch)]',
+                    tone === 'success' && 'text-[color:var(--status-positive)]',
+                    tone === 'info' && 'text-[color:var(--brand-ink)]',
+                    tone === 'neutral' && 'text-foreground',
+                  )}
+                >
+                  {kpi.value}
+                </p>
+                {kpi.hintKey ? <p className={cn('mt-0.5 truncate', fhs.kpiHint)}>{t(kpi.hintKey)}</p> : null}
+              </button>
+            );
+          })}
         </div>
-      )}
+      </section>
 
-      <div className="rounded-xl border border-border/60 bg-muted/25 px-4 py-3 text-[12px] text-muted-foreground flex gap-2.5">
-        <Wifi className="w-4 h-4 shrink-0 mt-0.5 text-muted-foreground" />
-        <p>
-          This page shows technical telemetry availability only. Connection setup
-          and data authorization are handled in their dedicated areas.
-        </p>
-      </div>
-
-      <div className="flex gap-3 overflow-x-auto pb-1 snap-x snap-mandatory md:grid md:grid-cols-2 xl:grid-cols-4 md:overflow-visible">
-        {kpiCards.map((kpi) => {
-          const KpiIcon = kpi.icon;
-          return (
-          <button
-            key={kpi.id}
-            type="button"
-            onClick={kpi.onClick}
-            className={`min-w-[148px] snap-start text-left transition-all rounded-2xl ${
-              kpi.active ? 'ring-1 ring-[var(--brand)]' : ''
-            }`}
-            aria-pressed={kpi.active}
-          >
-            <MetricCard
-              label={kpi.label}
-              value={kpi.value}
-              status={kpi.status}
-              icon={<KpiIcon className="w-5 h-5" />}
-              hint={kpi.hint}
-              className="h-full hover:shadow-[var(--shadow-2)]"
-            />
-          </button>
-          );
-        })}
-      </div>
-
-      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)] space-y-3">
+      <section className={cn(fhs.filterBar, 'space-y-3')}>
         <div className="flex flex-wrap items-start justify-between gap-3">
-          <div>
-            <p className="text-[13px] font-semibold text-foreground">Search & filters</p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Showing {vehicles.length} of {s?.total ?? 0} vehicles
-              {data.generatedAt
-                ? ` · snapshot ${new Date(data.generatedAt).toLocaleString('de-DE')}`
-                : ''}
+          <div className="min-w-0">
+            <DashboardSectionLabel className="mb-1">{t('fleetConnectivity.filterSection')}</DashboardSectionLabel>
+            <p className={META_TEXT_CLASS}>
+              {t('fleetConnectivity.showing', { shown: vehicles.length, total: s?.total ?? 0 })}
+              {snapshotLabel ? ` · ${snapshotLabel}` : ''}
             </p>
           </div>
-          {filtersActive && (
-            <button
+          <div className="flex items-center gap-2">
+            {filtersActive ? (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="text-[11px] font-semibold rounded-lg px-2.5 py-1.5 text-[var(--brand)] hover:bg-[var(--brand-soft)]"
+              >
+                {t('fleetConnectivity.clearFilters')}
+              </button>
+            ) : null}
+            <Button
               type="button"
-              onClick={clearFilters}
-              className="text-[11px] font-semibold px-2.5 py-1.5 rounded-lg text-[var(--brand)] hover:bg-[var(--brand-soft)]"
+              variant="neutral"
+              size="sm"
+              disabled={loading}
+              onClick={() => void load()}
+              className="h-8 gap-1.5"
             >
-              Clear filters
-            </button>
-          )}
+              <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+              <span className="hidden sm:inline">{t('fleetConnectivity.refresh')}</span>
+            </Button>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_180px_180px_200px] gap-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[minmax(0,1fr)_160px_160px_180px]">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="VIN, plate, make, model, masked serial, station…"
-              className="w-full pl-9 pr-3 py-2.5 rounded-xl text-xs border border-border/70 bg-card outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]"
+              placeholder={t('fleetConnectivity.searchPlaceholder')}
+              className="w-full rounded-xl border border-border/60 bg-background/50 py-2 pl-9 pr-3 text-xs outline-none transition-colors focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as FleetConnectionScopeFilter)}
-            className="px-3 py-2.5 rounded-xl border border-border/70 bg-card text-xs font-medium"
+            className="rounded-xl border border-border/60 bg-background/50 px-3 py-2 text-xs font-medium text-foreground"
           >
-            <option value="all">All statuses</option>
+            <option value="all">{t('fleetConnectivity.filter.allStatuses')}</option>
             <option value="connected">Connected</option>
             <option value="online">Online</option>
             <option value="standby">Standby</option>
@@ -428,9 +486,9 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
           <select
             value={readinessFilter}
             onChange={(e) => setReadinessFilter(e.target.value as FleetReadinessFilter)}
-            className="px-3 py-2.5 rounded-xl border border-border/70 bg-card text-xs font-medium"
+            className="rounded-xl border border-border/60 bg-background/50 px-3 py-2 text-xs font-medium text-foreground"
           >
-            <option value="all">All readiness</option>
+            <option value="all">{t('fleetConnectivity.filter.allReadiness')}</option>
             <option value="good">Good</option>
             <option value="watch">Watch</option>
             <option value="warning">Warning</option>
@@ -439,9 +497,9 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
           <select
             value={signalFilter}
             onChange={(e) => setSignalFilter(e.target.value as FleetSignalFilter)}
-            className="px-3 py-2.5 rounded-xl border border-border/70 bg-card text-xs font-medium"
+            className="rounded-xl border border-border/60 bg-background/50 px-3 py-2 text-xs font-medium text-foreground sm:col-span-2 lg:col-span-1"
           >
-            <option value="all">All signals</option>
+            <option value="all">{t('fleetConnectivity.filter.allSignals')}</option>
             <option value="obd_unplugged">OBD unplugged (snapshot)</option>
             <option value="device_unplugged_webhook">Device unplugged (webhook)</option>
             <option value="jamming">Jamming snapshot</option>
@@ -451,33 +509,33 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {signalFilter === 'jamming' && (
+          {signalFilter === 'jamming' ? (
             <StatusChip tone="watch" className="text-[10px]">
-              <ShieldAlert className="w-3 h-3 mr-1 inline" />
-              Jamming snapshot filter active
+              <ShieldAlert className="mr-1 inline h-3 w-3" />
+              {t('fleetConnectivity.filter.jammingActive')}
             </StatusChip>
-          )}
-          {data.thresholds && (
+          ) : null}
+          {data.thresholds ? (
             <StatusChip tone="neutral" className="text-[10px]">
               Online &lt; {data.thresholds.onlineMaxMinutes}m · Standby &lt;{' '}
               {data.thresholds.standbyMaxHours}h
             </StatusChip>
-          )}
+          ) : null}
         </div>
-      </div>
+      </section>
 
       {vehicles.length === 0 ? (
         <EmptyState
-          icon={<Car className="w-5 h-5" />}
+          icon={<Car className="h-5 w-5" />}
           title={
             filtersActive
-              ? 'No vehicles match the selected filters'
-              : 'No vehicles available for connectivity overview'
+              ? t('fleetConnectivity.emptyFiltered')
+              : t('fleetConnectivity.emptyDefault')
           }
           description={
             filtersActive
-              ? 'Try adjusting search or filter criteria.'
-              : 'Vehicles appear here once registered in your fleet.'
+              ? t('fleetConnectivity.emptyFilteredHint')
+              : t('fleetConnectivity.emptyDefaultHint')
           }
         />
       ) : (
@@ -488,39 +546,31 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
               rows={vehicles}
               getRowKey={(v) => v.vehicleId}
               onRowClick={(v) => setSelectedVehicle(v)}
-              rowActions={() => (
-                <ChevronRight className="w-4 h-4 text-muted-foreground" />
-              )}
+              rowActions={() => <ChevronRight className="h-4 w-4 text-muted-foreground" />}
               card
             />
           </div>
 
-          <div className="md:hidden space-y-2">
+          <div className="space-y-2 md:hidden">
             {vehicles.map((v) => (
               <button
                 key={v.vehicleId}
                 type="button"
                 onClick={() => setSelectedVehicle(v)}
-                className="sq-card w-full text-left rounded-2xl p-4 shadow-[var(--shadow-1)] hover:shadow-[var(--shadow-2)] transition-shadow"
+                className="sq-card w-full rounded-2xl p-3 text-left shadow-[var(--shadow-xs)] transition-shadow hover:shadow-[var(--shadow-1)]"
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-semibold truncate">
-                      {v.make} {v.model} {v.year ?? ''}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
-                      {v.licensePlate ?? v.vin}
-                    </p>
-                  </div>
+                  <ConnectivityVehicleIdentity vehicle={v} />
                   <ConnectionStatusChip status={v.connectionStatus} />
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2">
+                <div className="mt-2.5 flex flex-wrap gap-1.5">
                   <ReadinessChip level={v.readinessLevel} score={v.readinessScore} />
                   <ObdRowChip plugged={v.obdIsPluggedIn} />
+                  <DeviceConnectionWebhookChip device={v.deviceConnection} />
                   <JammingSnapshotChip count={v.jammingDetectedCount} />
                 </div>
-                <p className="mt-2 text-[11px] text-muted-foreground">
-                  {v.freshnessLabel} · {v.signalCoveragePercent}% coverage
+                <p className={cn(META_TEXT_CLASS, 'mt-2 tabular-nums')}>
+                  {v.freshnessLabel} · {v.signalCoveragePercent}% {t('fleetConnectivity.col.coverage').toLowerCase()}
                 </p>
               </button>
             ))}
