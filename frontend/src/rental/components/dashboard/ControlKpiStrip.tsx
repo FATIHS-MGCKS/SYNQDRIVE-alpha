@@ -2,6 +2,12 @@ import { Icon } from '../ui/Icon';
 import { SkeletonMetricGrid } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import { resolveReadyForRentingKpiCounts, resolveTodaysOperationsKpiCounts } from './dashboardSliceAccess';
+import {
+  getOperationalKpiVisualState,
+  isReadySlice,
+  operationalKpiIconToneClass,
+  operationalKpiValueToneClass,
+} from './dashboardKpiVisual';
 import type { DashboardRuntimeModel, DashboardSlice, DashboardSliceId } from './runtime';
 import type { DataFreshnessSummary } from './dashboardTypes';
 
@@ -40,14 +46,6 @@ const KPI_ICONS: Record<DashboardSliceId, string> = {
   'critical-alerts': 'shield-alert',
 };
 
-/** Slices where a zero count is the calm, positive state. */
-const ZERO_IS_POSITIVE = new Set<DashboardSliceId>([
-  'overdue-returns',
-  'overdue-pickups',
-  'blocked-maintenance',
-  'critical-alerts',
-]);
-
 function kpiStripGapClass(embedded: boolean): string {
   return embedded ? 'gap-3 sm:gap-3.5' : 'gap-1.5';
 }
@@ -56,31 +54,13 @@ function kpiGridClass(embedded: boolean): string {
   return cn('grid grid-cols-2 items-stretch', kpiStripGapClass(embedded));
 }
 
-interface KpiVisualState {
-  isCritical: boolean;
-  isWatch: boolean;
-  isSuccess: boolean;
-  isCalmZero: boolean;
-}
-
-function kpiVisualState(slice: DashboardSlice): KpiVisualState {
-  const count = slice.count ?? 0;
-  const isCalmZero = ZERO_IS_POSITIVE.has(slice.id) && slice.count === 0;
-  return {
-    isCritical: slice.tone === 'critical' && count > 0,
-    isWatch: slice.tone === 'watch' && count > 0,
-    isSuccess: slice.tone === 'success',
-    isCalmZero,
-  };
-}
-
 function kpiCardClass(
   slice: DashboardSlice,
   embedded: boolean,
   isActive: boolean,
   size: 'twin' | 'compact' | 'standard' = 'standard',
 ): string {
-  const { isCritical, isWatch, isSuccess, isCalmZero } = kpiVisualState(slice);
+  const { isCritical, isWatch, isCardSuccess } = getOperationalKpiVisualState(slice);
   const sizeClass =
     size === 'twin'
       ? embedded
@@ -101,19 +81,10 @@ function kpiCardClass(
     sizeClass,
     isCritical && 'border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.035]',
     isWatch && 'border-[color:var(--status-watch)]/30 bg-card/55',
-    (isSuccess || isCalmZero) && 'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
-    !isCritical && !isWatch && !isSuccess && !isCalmZero && 'border-border/45',
+    isCardSuccess && 'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
+    !isCritical && !isWatch && !isCardSuccess && 'border-border/45',
     isActive && 'ring-2 ring-[color:var(--brand)]/55',
   );
-}
-
-function kpiIconToneClass(slice: DashboardSlice): string {
-  const count = slice.count ?? 0;
-  if (slice.tone === 'critical' && count > 0) return 'sq-tone-critical';
-  if (slice.tone === 'success') return 'sq-tone-success';
-  if (slice.tone === 'watch' && count > 0) return 'sq-tone-watch';
-  if (slice.tone === 'info') return 'sq-tone-info';
-  return 'bg-muted text-muted-foreground';
 }
 
 function readyKpiLabels(locale?: string) {
@@ -157,13 +128,14 @@ const KPI_FOOTER_DIVIDER_CLASS =
 interface KpiTwinFooterColumnProps {
   label: string;
   value: string;
+  valueClassName?: string;
 }
 
-function KpiTwinFooterColumn({ label, value }: KpiTwinFooterColumnProps) {
+function KpiTwinFooterColumn({ label, value, valueClassName }: KpiTwinFooterColumnProps) {
   return (
     <div className="min-w-0 text-center">
       <p className={KPI_FOOTER_LABEL_CLASS}>{label}</p>
-      <p className={KPI_FOOTER_VALUE_CLASS}>{value}</p>
+      <p className={cn(KPI_FOOTER_VALUE_CLASS, valueClassName)}>{value}</p>
     </div>
   );
 }
@@ -177,7 +149,7 @@ interface ReadyForRentingKpiContentProps {
 function ReadyForRentingKpiContent({ slice, disabled, locale }: ReadyForRentingKpiContentProps) {
   const labels = readyKpiLabels(locale);
   const { readyCount, availableCount, notReadyCount } = resolveReadyForRentingKpiCounts(slice);
-  const { isSuccess } = kpiVisualState(slice);
+  const notReadyIsCritical = !disabled && notReadyCount != null && notReadyCount > 0;
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -186,7 +158,7 @@ function ReadyForRentingKpiContent({ slice, disabled, locale }: ReadyForRentingK
         <div
           className={cn(
             'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors',
-            kpiIconToneClass(slice),
+            operationalKpiIconToneClass(slice),
           )}
         >
           <Icon name="check-circle" className="h-3 w-3" />
@@ -198,8 +170,8 @@ function ReadyForRentingKpiContent({ slice, disabled, locale }: ReadyForRentingK
           className={cn(
             KPI_NUMBER_CLASS,
             disabled && 'text-muted-foreground',
-            !disabled && isSuccess && 'text-[color:var(--status-positive)]',
-            !disabled && !isSuccess && 'text-foreground',
+            !disabled &&
+              operationalKpiValueToneClass(slice, { emphasizePositiveMainValue: true }),
           )}
         >
           {formatKpiCount(readyCount, disabled)}
@@ -207,15 +179,25 @@ function ReadyForRentingKpiContent({ slice, disabled, locale }: ReadyForRentingK
         <p className={KPI_MAIN_LABEL_CLASS}>{labels.vehiclesReady}</p>
       </div>
 
-      <div
-        className={cn(KPI_SEPARATOR_CLASS, 'border-[color:var(--status-positive)]/12')}
-        role="separator"
-        aria-hidden
-      />
+      <div className={KPI_SEPARATOR_CLASS} role="separator" aria-hidden />
 
       <div className={KPI_FOOTER_GRID_CLASS}>
-        <KpiTwinFooterColumn label={labels.available} value={formatKpiCount(availableCount, disabled)} />
-        <KpiTwinFooterColumn label={labels.notReady} value={formatKpiCount(notReadyCount, disabled)} />
+        <KpiTwinFooterColumn
+          label={labels.available}
+          value={formatKpiCount(availableCount, disabled)}
+          valueClassName={disabled ? 'text-muted-foreground' : 'text-foreground'}
+        />
+        <KpiTwinFooterColumn
+          label={labels.notReady}
+          value={formatKpiCount(notReadyCount, disabled)}
+          valueClassName={
+            disabled
+              ? 'text-muted-foreground'
+              : notReadyIsCritical
+                ? 'text-[color:var(--status-critical)]'
+                : 'text-foreground'
+          }
+        />
         <div className={KPI_FOOTER_DIVIDER_CLASS} aria-hidden />
       </div>
     </div>
@@ -230,7 +212,12 @@ function TodaysOperationsKpiContent({ slice, disabled, locale }: ReadyForRenting
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex shrink-0 items-start justify-between gap-2">
         <p className={KPI_TITLE_CLASS}>{slice.title}</p>
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground transition-colors">
+        <div
+          className={cn(
+            'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors',
+            operationalKpiIconToneClass(slice),
+          )}
+        >
           <Icon name="car" className="h-3 w-3" />
         </div>
       </div>
@@ -258,18 +245,9 @@ interface CompactKpiContentProps {
   sliceId: DashboardSliceId;
   disabled: boolean;
   displayValue: string;
-  isCritical: boolean;
-  isSuccess: boolean;
 }
 
-function CompactKpiContent({
-  slice,
-  sliceId,
-  disabled,
-  displayValue,
-  isCritical,
-  isSuccess,
-}: CompactKpiContentProps) {
+function CompactKpiContent({ slice, sliceId, disabled, displayValue }: CompactKpiContentProps) {
   return (
     <div className="flex h-full items-start justify-between gap-2">
       <div className="min-w-0">
@@ -279,8 +257,7 @@ function CompactKpiContent({
             'mt-1',
             KPI_NUMBER_CLASS,
             disabled && 'text-muted-foreground',
-            isCritical && 'text-[color:var(--status-critical)]',
-            isSuccess && 'text-[color:var(--status-positive)]',
+            !disabled && operationalKpiValueToneClass(slice),
           )}
         >
           {displayValue}
@@ -292,7 +269,7 @@ function CompactKpiContent({
       <div
         className={cn(
           'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors',
-          kpiIconToneClass(slice),
+          operationalKpiIconToneClass(slice),
         )}
       >
         <Icon name={KPI_ICONS[sliceId] as 'car'} className="h-3 w-3" />
@@ -313,9 +290,9 @@ interface KpiStripButtonProps {
 function KpiStripButton({ id, slice, embedded, locale, activeSliceId, onSelectSlice }: KpiStripButtonProps) {
   const disabled = slice.count === null;
   const displayValue = disabled ? '—' : String(slice.count);
-  const { isCritical, isSuccess } = kpiVisualState(slice);
+  const { isCritical } = getOperationalKpiVisualState(slice);
   const isActive = activeSliceId === id;
-  const isReadyCard = id === 'ready-to-rent';
+  const isReadyCard = isReadySlice(id);
   const isOperationsCard = id === 'active-rented';
   const isTwinCard = isReadyCard || isOperationsCard;
   const readyCounts = isReadyCard ? resolveReadyForRentingKpiCounts(slice) : null;
@@ -352,8 +329,6 @@ function KpiStripButton({ id, slice, embedded, locale, activeSliceId, onSelectSl
           sliceId={id}
           disabled={disabled}
           displayValue={displayValue}
-          isCritical={isCritical}
-          isSuccess={isSuccess}
         />
       )}
       {isCritical && (

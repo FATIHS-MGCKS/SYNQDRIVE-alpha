@@ -10,6 +10,7 @@ import {
   dashboardPanelHeaderClass,
   panelShellClass,
 } from './dashboardShell';
+import { formatDashboardMoney } from './dashboardKpiFormat';
 import type {
   BusinessMetricId,
   BusinessPulseSlice,
@@ -60,14 +61,6 @@ const METRIC_ICONS: Record<BusinessMetricId, IconName> = {
   'failed-payments': 'alert-circle',
 };
 
-function formatMoney(cents: number, currency: string, locale: string): string {
-  return new Intl.NumberFormat(locale === 'de' ? 'de-DE' : 'en-US', {
-    style: 'currency',
-    currency,
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
-}
-
 function metricValue(
   slice: BusinessPulseSlice | undefined,
   currency: string,
@@ -76,7 +69,85 @@ function metricValue(
 ): string {
   if (!slice) return noDataLabel;
   if (slice.valueCents == null) return noDataLabel;
-  return formatMoney(slice.valueCents, slice.rows[0]?.currency ?? currency, locale);
+  return formatDashboardMoney(slice.valueCents, slice.rows[0]?.currency ?? currency, locale);
+}
+
+interface FinanceKpiVisualState {
+  isCritical: boolean;
+  isWatch: boolean;
+  iconTone: string;
+  valueTone: string;
+}
+
+function financeKpiVisualState(
+  metricId: BusinessMetricId,
+  slice: BusinessPulseSlice | undefined,
+): FinanceKpiVisualState {
+  const count = slice?.count ?? 0;
+  const valueCents = slice?.valueCents ?? 0;
+  const neutralIcon = 'bg-muted text-muted-foreground';
+
+  if (metricId === 'revenue') {
+    const positive = valueCents > 0;
+    return {
+      isCritical: false,
+      isWatch: false,
+      iconTone: positive ? 'sq-tone-success' : neutralIcon,
+      valueTone: positive ? 'text-[color:var(--status-positive)]' : 'text-foreground',
+    };
+  }
+
+  if (metricId === 'profit') {
+    const negative = valueCents < 0;
+    const positive = valueCents > 0;
+    return {
+      isCritical: negative,
+      isWatch: false,
+      iconTone: negative ? 'sq-tone-critical' : positive ? 'sq-tone-success' : neutralIcon,
+      valueTone: negative
+        ? 'text-[color:var(--status-critical)]'
+        : positive
+          ? 'text-[color:var(--status-positive)]'
+          : 'text-foreground',
+    };
+  }
+
+  if (metricId === 'open-receivables') {
+    return {
+      isCritical: false,
+      isWatch: count > 0,
+      iconTone: count > 0 ? 'sq-tone-watch' : neutralIcon,
+      valueTone: count > 0 ? 'text-[color:var(--status-watch)]' : 'text-foreground',
+    };
+  }
+
+  if (metricId === 'overdue-receivables') {
+    return {
+      isCritical: count > 0,
+      isWatch: false,
+      iconTone: count > 0 ? 'sq-tone-critical' : neutralIcon,
+      valueTone: count > 0 ? 'text-[color:var(--status-critical)]' : 'text-foreground',
+    };
+  }
+
+  return {
+    isCritical: false,
+    isWatch: false,
+    iconTone: neutralIcon,
+    valueTone: 'text-foreground',
+  };
+}
+
+function financeKpiCardClass(metricId: BusinessMetricId, slice: BusinessPulseSlice | undefined): string {
+  const { isCritical, isWatch } = financeKpiVisualState(metricId, slice);
+
+  return cn(
+    'sq-press group relative min-h-[88px] overflow-hidden rounded-2xl border bg-background/40 px-3 py-3 text-left transition-colors duration-200',
+    'hover:border-border/60 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+    isCritical && 'border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.035]',
+    isWatch && 'border-[color:var(--status-watch)]/30 bg-card/55',
+    !isCritical && !isWatch && 'border-border/45',
+  );
 }
 
 function countHint(
@@ -109,86 +180,6 @@ function countHint(
     default:
       return slice.hint;
   }
-}
-
-function financeKpiVisualState(metricId: BusinessMetricId, slice: BusinessPulseSlice | undefined) {
-  const count = slice?.count ?? 0;
-  const valueCents = slice?.valueCents ?? 0;
-
-  if (metricId === 'revenue') {
-    return {
-      isSuccess: valueCents > 0,
-      isCritical: false,
-      isWatch: false,
-      isCalmZero: false,
-      iconTone: valueCents > 0 ? 'sq-tone-success' : 'bg-muted text-muted-foreground',
-      valueTone: valueCents > 0 ? 'text-[color:var(--status-positive)]' : 'text-foreground',
-    };
-  }
-
-  if (metricId === 'profit') {
-    const negative = valueCents < 0;
-    const positive = valueCents > 0;
-    return {
-      isSuccess: positive,
-      isCritical: negative,
-      isWatch: false,
-      isCalmZero: false,
-      iconTone: negative ? 'sq-tone-critical' : positive ? 'sq-tone-success' : 'bg-muted text-muted-foreground',
-      valueTone: negative
-        ? 'text-[color:var(--status-critical)]'
-        : positive
-          ? 'text-[color:var(--status-positive)]'
-          : 'text-foreground',
-    };
-  }
-
-  if (metricId === 'open-receivables') {
-    return {
-      isSuccess: false,
-      isCritical: false,
-      isWatch: count > 0,
-      isCalmZero: false,
-      iconTone: count > 0 ? 'sq-tone-watch' : 'bg-muted text-muted-foreground',
-      valueTone: count > 0 ? 'text-[color:var(--status-watch)]' : 'text-foreground',
-    };
-  }
-
-  if (metricId === 'overdue-receivables') {
-    return {
-      isSuccess: count === 0,
-      isCritical: count > 0,
-      isWatch: false,
-      isCalmZero: count === 0,
-      iconTone: count > 0 ? 'sq-tone-critical' : 'sq-tone-success',
-      valueTone: count > 0 ? 'text-[color:var(--status-critical)]' : 'text-[color:var(--status-positive)]',
-    };
-  }
-
-  return {
-    isSuccess: false,
-    isCritical: false,
-    isWatch: false,
-    isCalmZero: true,
-    iconTone: 'bg-muted text-muted-foreground',
-    valueTone: 'text-foreground',
-  };
-}
-
-function financeKpiCardClass(
-  metricId: BusinessMetricId,
-  slice: BusinessPulseSlice | undefined,
-): string {
-  const { isSuccess, isCritical, isWatch, isCalmZero } = financeKpiVisualState(metricId, slice);
-
-  return cn(
-    'sq-press group relative min-h-[92px] overflow-hidden rounded-2xl border bg-background/40 px-3 py-3 text-left transition-colors duration-200',
-    'hover:border-border/60 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
-    isCritical && 'border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.035]',
-    isWatch && 'border-[color:var(--status-watch)]/30 bg-card/55',
-    (isSuccess || isCalmZero) && 'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
-    !isCritical && !isWatch && !isSuccess && !isCalmZero && 'border-border/45',
-  );
 }
 
 function FinanceKpiCard({
@@ -224,12 +215,12 @@ function FinanceKpiCard({
       className={cn(financeKpiCardClass(metricId, slice), !clickable && 'cursor-default')}
       aria-label={`${title}: ${value}${hint ? `, ${hint}` : ''}`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
+      <div className="flex h-full items-start justify-between gap-2">
+        <div className="min-w-0">
           <p className={DASHBOARD_KPI_TITLE_CLASS}>{title}</p>
           <p
             className={cn(
-              'mt-1 truncate',
+              'mt-1',
               DASHBOARD_KPI_NUMBER_CLASS,
               disabled ? 'text-muted-foreground' : visual.valueTone,
             )}
@@ -346,7 +337,7 @@ export function BusinessPulse({
             <SkeletonMetricGrid
               count={4}
               className="grid w-full grid-cols-2 gap-3"
-              cardClassName="min-h-[92px] rounded-2xl bg-background/40"
+              cardClassName="min-h-[88px] rounded-2xl bg-background/40"
             />
           </div>
         ) : error ? (
