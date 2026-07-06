@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'actionqueue-ui-v49211-2026-07-06',
+    version: '4.9.211',
+    title: 'V4.9.211 — Dashboard Notifications / ActionQueue UI',
+    summary: [
+      'Notifications-Header bereinigt: kein Subtext, kein separates Alert-Count; `Show less`/`Show all` rechts oben als kompakter Textbutton.',
+      'Filter-Tabs auf `sq-tab-bar`-Segmented-Control (Fleet/Administration-Stil) mit farbigen Count-Badges pro Kategorie.',
+      'Tab-Counts aus bestehender `filterActionQueueEntries` + `countAtomicActions` (`computeActionQueueTabCounts`).',
+      'Listen-Einträge mit `gap-1`, abgerundeten Rows und subtilen Severity-Gradients in `AttentionItemRow`.',
+    ],
+    reason:
+      'Die Notifications-Box wirkte visuell nicht in der neuen SynqDrive-Linie: falsch platzierte Controls, veraltete Tabs und monotone Warning-Rows.',
+    previousBehavior:
+      'Subtext „Prioritized notifications“, separates „x alerts“, alte rounded-md Tabs ohne Counts, divide-y Listen ohne Abstand, flache rowTint-Hintergründe.',
+    details:
+      'frontend: ActionQueue.tsx, AttentionItemRow.tsx, actionQueueGrouping.ts (computeActionQueueTabCounts), actionQueueGrouping.test.ts. Keine Businesslogik/API/Backend-Änderung.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-06T22:58:00.000Z',
+  },
+  {
     id: 'dashboard-kpi-visual-v49210-2026-07-06',
     version: '4.9.210',
     title: 'V4.9.210 — Dashboard KPI-Farbzustände & Finance-Format',
