@@ -3,10 +3,10 @@ import { Icon } from '../ui/Icon';
 import { SkeletonRows } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import {
+  computeActionQueueTabCounts,
   prepareActionQueueRenderModel,
   toChildSeverity,
 } from './actionQueueGrouping';
-import { attentionCountLabel } from './dashboardAttentionBuilder';
 import {
   attentionExpandLabel,
   composeAttentionChildCopy,
@@ -49,6 +49,8 @@ interface ActionQueueProps {
 
 const STANDARD_VISIBLE_ITEMS = 8;
 const COLLAPSED_PREVIEW_COUNT = 3;
+const ENTRY_LIST_CLASS = 'flex flex-col gap-1 px-1 pb-1.5 sm:px-2';
+const ENTRY_LIST_ITEM_CLASS = 'list-none';
 
 function ctaLabel(cta: ActionQueueCta, de: boolean, override?: string): string {
   if (override) return override;
@@ -148,7 +150,7 @@ const ActionQueueLeafRow = memo(function ActionQueueLeafRow({
     obdPlugByVehicleId,
   );
   return (
-    <li className="list-none">
+    <li className={ENTRY_LIST_ITEM_CLASS}>
       <AttentionItemRow
         severity={toChildSeverity(item)}
         category={item.category}
@@ -189,7 +191,7 @@ function ActionQueueChildRow({
     obdPlugByVehicleId,
   );
   return (
-    <li className="list-none">
+    <li className={ENTRY_LIST_ITEM_CLASS}>
       <AttentionItemRow
         severity={child.severity}
         category={child.category}
@@ -224,11 +226,11 @@ function ActionQueueGroupRow({
   const groupContentId = `aq-group-${group.id}`;
 
   return (
-    <li className="list-none">
+    <li className={ENTRY_LIST_ITEM_CLASS}>
       <div
         className={cn(
-          'overflow-hidden rounded-lg transition-colors',
-          expanded && 'border border-border/35 bg-muted/[0.03]',
+          'overflow-hidden rounded-lg border border-border/30 transition-colors',
+          expanded && 'border-border/40 bg-muted/[0.03]',
         )}
       >
         <AttentionItemRow
@@ -318,7 +320,7 @@ function ActionQueueCollapsedPreview({
   return (
     <div className="px-1 pb-1.5 sm:px-2">
       {pinnedItems.length > 0 ? (
-        <ul className="mb-1.5 divide-y divide-border/30 overflow-hidden rounded-lg border border-border/35">
+        <ul className={cn(ENTRY_LIST_CLASS, 'mb-1')}>
           {pinnedItems.map((item) => (
             <ActionQueueLeafRow
               key={item.id}
@@ -332,7 +334,7 @@ function ActionQueueCollapsedPreview({
           ))}
         </ul>
       ) : null}
-      <ul className="divide-y divide-border/30 overflow-hidden rounded-lg">
+      <ul className={ENTRY_LIST_CLASS}>
         {entries.map((entry) =>
           entry.kind === 'group' ? (
             <ActionQueueGroupRow
@@ -399,6 +401,78 @@ function ActionQueueEmpty({ vm }: { vm: DashboardViewModel }) {
   );
 }
 
+function tabBadgeTone(
+  tab: ActionQueueFilterTab,
+  count: number,
+): string {
+  if (count <= 0) return 'bg-muted/50 text-muted-foreground';
+  switch (tab) {
+    case 'critical':
+      return 'bg-[color:color-mix(in_srgb,var(--status-critical)_14%,transparent)] text-[color:var(--status-critical)]';
+    case 'operations':
+      return 'bg-[color:color-mix(in_srgb,var(--status-watch)_14%,transparent)] text-[color:var(--status-watch)]';
+    case 'vehicle':
+      return 'bg-[color:color-mix(in_srgb,var(--status-info)_12%,transparent)] text-[color:var(--status-info)]';
+    case 'notifications':
+      return 'bg-muted/60 text-muted-foreground';
+    default:
+      return 'bg-[color:color-mix(in_srgb,var(--brand)_10%,transparent)] text-[color:var(--brand)]';
+  }
+}
+
+function ActionQueueFilterTabBar({
+  effectiveTab,
+  tabCounts,
+  de,
+  onSelectTab,
+}: {
+  effectiveTab: ActionQueueFilterTab;
+  tabCounts: Record<ActionQueueFilterTab, number>;
+  de: boolean;
+  onSelectTab: (tab: ActionQueueFilterTab) => void;
+}) {
+  return (
+    <div
+      className="sq-tab-bar flex w-full items-center p-1"
+      role="tablist"
+      aria-label={de ? 'Filter' : 'Filter'}
+    >
+      <div className="flex min-w-0 flex-1 flex-nowrap gap-0.5 overflow-x-auto scrollbar-thin [scrollbar-width:thin]">
+        {ACTION_QUEUE_FILTER_TABS.map((tab) => {
+          const isActive = effectiveTab === tab;
+          const count = tabCounts[tab] ?? 0;
+          return (
+            <button
+              key={tab}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => onSelectTab(tab)}
+              className={cn(
+                'inline-flex min-w-0 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[calc(var(--radius-md)-2px)] px-3 py-1.5 text-[11px] font-semibold leading-[16.2px] tracking-[-0.003em] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                isActive
+                  ? 'bg-card text-foreground shadow-[var(--shadow-1)]'
+                  : 'text-muted-foreground hover:bg-background/60 hover:text-foreground',
+              )}
+            >
+              <span className="truncate">{tabLabel(tab, de)}</span>
+              <span
+                className={cn(
+                  'inline-flex min-w-[1.125rem] shrink-0 items-center justify-center rounded-full px-1 py-px text-[9.5px] font-semibold tabular-nums leading-none',
+                  tabBadgeTone(tab, count),
+                )}
+                aria-hidden
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function ActionQueueHeader({
   vm,
   hasItems,
@@ -421,12 +495,9 @@ function ActionQueueHeader({
   const title = operatorFocusMode
     ? de ? 'Kritische Aktionen' : 'Critical actions'
     : 'Notifications';
-  const subtitle = operatorFocusMode
-    ? de ? 'Dringende Schritte' : 'Urgent steps'
-    : de ? 'Priorisierte Meldungen' : 'Prioritized notifications';
 
   return (
-    <div className="flex flex-col gap-2 border-b border-border/35 px-3.5 py-2.5 sm:flex-row sm:items-center sm:justify-between">
+    <div className="flex items-center justify-between gap-2 border-b border-border/35 px-3.5 py-2.5">
       <div className="flex min-w-0 items-center gap-2.5">
         <span
           className={cn(
@@ -435,20 +506,12 @@ function ActionQueueHeader({
           )}
           aria-hidden
         />
-        <div className="min-w-0">
-          <h2 className="text-[13px] font-semibold leading-tight tracking-[-0.01em] text-foreground text-balance">
-            {title}
-          </h2>
-          <p className="mt-0.5 truncate text-[11px] leading-snug text-muted-foreground">{subtitle}</p>
-        </div>
+        <h2 className="text-[13px] font-semibold leading-tight tracking-[-0.01em] text-foreground text-balance">
+          {title}
+        </h2>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2 sm:justify-end">
-        {hasItems ? (
-          <span className="text-[11px] font-medium tabular-nums text-muted-foreground">
-            {attentionCountLabel(totalCount, de)}
-          </span>
-        ) : null}
+      <div className="flex shrink-0 items-center gap-2">
         <DataTrustHint
           hint={sectionTrustHint('operations', vm.dataTrust)}
           locale={locale}
@@ -460,13 +523,9 @@ function ActionQueueHeader({
             onClick={onToggle}
             aria-expanded={isExpanded}
             aria-controls={controlsId}
-            className="sq-btn sq-btn-secondary min-h-9 px-2.5 text-[11px]"
+            className="sq-press inline-flex min-h-8 shrink-0 items-center rounded-md px-2 text-[10.5px] font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
           >
             {attentionExpandLabel(totalCount, de, isExpanded)}
-            <Icon
-              name="chevron-down"
-              className={cn('h-3.5 w-3.5 opacity-70 transition-transform duration-200', !isExpanded && '-rotate-90')}
-            />
           </button>
         ) : null}
       </div>
@@ -519,6 +578,11 @@ export function ActionQueue({
       visibleEntryCap: collapsedPreviewCap,
     }),
     [actionQueue, locale, effectiveTab, collapsedPreviewCap],
+  );
+
+  const tabCounts = useMemo(
+    () => computeActionQueueTabCounts(actionQueue, locale),
+    [actionQueue, locale],
   );
 
   const {
@@ -579,28 +643,13 @@ export function ActionQueue({
           )}
 
           {hasItems && !criticalOnly && !operatorFocusMode && (
-            <div
-              className="flex gap-1 overflow-x-auto border-b border-border/35 px-3 py-1.5"
-              role="tablist"
-              aria-label={de ? 'Filter' : 'Filter'}
-            >
-              {ACTION_QUEUE_FILTER_TABS.map((tab) => (
-                <button
-                  key={tab}
-                  type="button"
-                  role="tab"
-                  aria-selected={effectiveTab === tab}
-                  onClick={() => setFilterTab(tab)}
-                  className={[
-                    'shrink-0 rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                    effectiveTab === tab
-                      ? 'bg-muted text-foreground'
-                      : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
-                  ].join(' ')}
-                >
-                  {tabLabel(tab, de)}
-                </button>
-              ))}
+            <div className="border-b border-border/35 px-2 py-1.5 sm:px-2.5">
+              <ActionQueueFilterTabBar
+                effectiveTab={effectiveTab}
+                tabCounts={tabCounts}
+                de={de}
+                onSelectTab={setFilterTab}
+              />
             </div>
           )}
 
@@ -609,7 +658,7 @@ export function ActionQueue({
               <p className="px-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                 {de ? 'Sofort handeln' : 'Act now'}
               </p>
-              <ul className="divide-y divide-border/30 overflow-hidden rounded-lg border border-border/35">
+              <ul className={ENTRY_LIST_CLASS}>
                 {pinnedItems.map((item) => (
                   <ActionQueueLeafRow
                     key={item.id}
@@ -631,7 +680,7 @@ export function ActionQueue({
             <ActionQueueEmpty vm={vm} />
           ) : filteredEntries.length > 0 ? (
             <>
-              <ul className="divide-y divide-border/30 px-1 pb-1.5 sm:px-2">
+              <ul className={ENTRY_LIST_CLASS}>
                 {visibleEntries.map((entry) =>
                   entry.kind === 'group' ? (
                     <ActionQueueGroupRow
