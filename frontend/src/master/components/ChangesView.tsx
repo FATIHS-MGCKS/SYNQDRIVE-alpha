@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-kpi-visual-v49210-2026-07-06',
+    version: '4.9.210',
+    title: 'V4.9.210 — Dashboard KPI-Farbzustände & Finance-Format',
+    summary: [
+      'Operative KPI-Karten: Overdue returns/pickups neutral bei 0, critical/rot erst ab Count > 0 (kein dauerhaftes Grün).',
+      'Ready-for-Renting: Card neutral; Hauptzahl dezent positiv; `Not ready` rot bei > 0; grüner Card-Rahmen/Divider entfernt.',
+      'Zentrale Visual-State-Helfer `dashboardKpiVisual.ts` (`getOperationalKpiVisualState`, `isOverdueSlice`, `isReadySlice`).',
+      'Finance-KPIs (`BusinessPulse`): Card-Layout an operative KPIs angeglichen; keine grüne Fläche bei Risiko-0 (z. B. overdue receivables).',
+      'EUR-Format: robuste Locale-Erkennung (`de`/`de-DE`/`de_DE`) → `0 €` statt `€0` via `formatDashboardMoney`.',
+    ],
+    reason:
+      'Overdue- und Ready-KPIs wirkten fachlich falsch grün; Finance-Karten wichen minimal in Anordnung ab und zeigten EUR in englischer Symbolposition.',
+    previousBehavior:
+      'ZERO_IS_POSITIVE färbte Overdue bei 0 grün; Ready-Card komplett success-getönt; overdue receivables bei 0 grün; `formatMoney` nur `locale === de`.',
+    details:
+      'frontend: ControlKpiStrip.tsx, BusinessPulse.tsx, dashboardKpiVisual.ts, dashboardKpiFormat.ts, dashboardKpiVisual.test.ts. Keine KPI-Berechnung, API, Backend oder Drawer-Logik.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-06T22:30:00.000Z',
+  },
+  {
     id: 'brake-registration-init-v49209-2026-07-06',
     version: '4.9.209',
     title: 'V4.9.209 — Brake Health Initialisierung bei Fahrzeug-Registrierung',
