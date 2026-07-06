@@ -714,7 +714,7 @@ Wenn Sie Ihr Passwort vergessen haben, wenden Sie sich an Ihren Org-Admin – di
       {
         id: 'faq-connect-vehicle',
         title: 'Wie verbinde ich ein Fahrzeug mit Live-Daten?',
-        content: `Gehen Sie zu Einstellungen → Fleet Connectivity. Dort sehen Sie alle Fahrzeuge und deren Verbindungsstatus. Folgen Sie den Anweisungen, um ein Fahrzeug über DIMO zu verbinden. Nach erfolgreicher Verbindung werden Live-Daten automatisch in der Plattform angezeigt.`,
+        content: `Gehen Sie zu Fleet → Tab Connectivity. Dort sehen Sie alle Fahrzeuge und deren Verbindungsstatus. Freigaben und Einrichtung erfolgen unter Administration → Data Authorization. Nach erfolgreicher Verbindung werden Live-Daten automatisch in der Plattform angezeigt.`,
       },
       {
         id: 'faq-create-user',
