@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-connectivity-fleet-tab-v49205-2026-07-06',
+    version: '4.9.205',
+    title: 'V4.9.205 — Fleet Connectivity als Top-Level-Tab in der Fleet Page',
+    summary: [
+      '`FleetTab` um `connectivity` erweitert; `FleetHubView` rendert dritten Tab mit bestehender `FleetConnectivityTab` (`embedded`).',
+      'Tab-Bar: Status | Zustand & Service | Connectivity — scrollbare `sq-tab-bar` auf Mobile, i18n `fleetTab.connectivity`.',
+      '`normalizeFleetTab()` fallbackt ungültige Werte auf `status`; Legacy `health`/`service` unverändert.',
+      'Administration-Tab `fleet-connection` bleibt vorerst parallel (keine Admin-Bereinigung in diesem Release).',
+    ],
+    reason:
+      'Fleet Connectivity ist operatives Fleet-Monitoring, kein Admin-Setup — gehört fachlich in die Fleet Page neben Status und Zustand & Service.',
+    previousBehavior:
+      'Fleet Connectivity nur unter Administration → Settings Tab `fleet-connection`. Fleet Hub hatte zwei Tabs (`status`, `condition-service`).',
+    details:
+      'frontend/src/rental/components/fleet-health-service/fleet-health-service.types.ts, FleetHubView.tsx, settings/FleetConnectivityTab.tsx (optional `embedded`), i18n en/de. Gleiche API `GET /organizations/:orgId/fleet-connectivity`, gleiche Permission `fleet-connectivity.read`. Keine Backend-/Businesslogik-Änderung.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-06T21:45:00.000Z',
+  },
+  {
     id: 'dashboard-control-center-unified-card-v49204-2026-07-06',
     version: '4.9.204',
     title: 'V4.9.204 — Dashboard Control Center: Header + KPI in einer Card',

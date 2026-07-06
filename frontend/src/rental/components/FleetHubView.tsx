@@ -1,5 +1,6 @@
-import { Activity, Car, RefreshCw } from 'lucide-react';
+import { Activity, Car, RefreshCw, Wifi } from 'lucide-react';
 import { FleetView } from './FleetView';
+import { FleetConnectivityTab } from './settings/FleetConnectivityTab';
 import { type ConditionCategory } from './FleetConditionView';
 import { FleetHealthServiceView } from './fleet-health-service/FleetHealthServiceView';
 import {
@@ -38,6 +39,7 @@ interface FleetHubViewProps {
 const TAB_ICONS = {
   status: Car,
   'condition-service': Activity,
+  connectivity: Wifi,
 } as const;
 
 export function FleetHubView({
@@ -65,13 +67,21 @@ export function FleetHubView({
     [healthMap],
   );
 
-  const tabs: { key: FleetTab; labelKey: 'fleetTab.status' | 'fleetTab.conditionService' }[] = [
+  const tabs: {
+    key: FleetTab;
+    labelKey: 'fleetTab.status' | 'fleetTab.conditionService' | 'fleetTab.connectivity';
+  }[] = [
     { key: 'status', labelKey: 'fleetTab.status' },
     { key: 'condition-service', labelKey: 'fleetTab.conditionService' },
+    { key: 'connectivity', labelKey: 'fleetTab.connectivity' },
   ];
 
   const tabBar = (
-    <div className="sq-tab-bar flex w-full max-w-md items-stretch p-1 lg:max-w-lg">
+    <div
+      className="sq-tab-bar flex w-full max-w-full items-stretch gap-0.5 overflow-x-auto p-1 scrollbar-thin [scrollbar-width:thin] lg:max-w-2xl"
+      role="tablist"
+      aria-label={t('view.fleet')}
+    >
       {tabs.map((tab) => {
         const isActive = activeTab === tab.key;
         const Icon = TAB_ICONS[tab.key];
@@ -79,9 +89,11 @@ export function FleetHubView({
           <button
             key={tab.key}
             type="button"
+            role="tab"
+            aria-selected={isActive}
             onClick={() => onTabChange(tab.key)}
             data-active={isActive ? 'true' : undefined}
-            className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-[11px] font-semibold transition-all duration-200 sm:px-3 ${
+            className={`flex min-w-[7.5rem] shrink-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-[11px] font-semibold transition-all duration-200 sm:min-w-0 sm:px-3 ${
               isActive
                 ? 'bg-card text-foreground shadow-[var(--shadow-1)] ring-1 ring-border/60'
                 : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'
@@ -162,6 +174,7 @@ export function FleetHubView({
           onOpenServiceCenter={onOpenServiceCenter}
         />
       )}
+      {activeTab === 'connectivity' && <FleetConnectivityTab embedded />}
     </div>
   );
 }

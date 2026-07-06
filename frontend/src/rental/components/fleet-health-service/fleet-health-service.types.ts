@@ -2,7 +2,9 @@ import type { ServiceCenterNavState } from '../../lib/service-center-navigation'
 import type { ServiceCenterTab } from '../service-center/service-center.types';
 
 /** Top-level Fleet hub tab (after V4.9.182 navigation merge). */
-export type FleetTab = 'status' | 'condition-service';
+export type FleetTab = 'status' | 'condition-service' | 'connectivity';
+
+const FLEET_TABS: readonly FleetTab[] = ['status', 'condition-service', 'connectivity'];
 
 /** @deprecated Legacy top-level tabs — normalized at routing boundaries. */
 export type FleetTabLegacy = 'health' | 'service';
@@ -28,11 +30,12 @@ export const FLEET_HEALTH_SERVICE_TAB_ORDER: FleetHealthServiceTab[] = [
 ];
 
 export function normalizeFleetTab(
-  tab: FleetTabInput,
+  tab: FleetTabInput | string,
 ): { tab: FleetTab; subTab?: FleetHealthServiceTab } {
   if (tab === 'health') return { tab: 'condition-service', subTab: 'vehicles' };
   if (tab === 'service') return { tab: 'condition-service', subTab: 'overview' };
-  return { tab };
+  if (FLEET_TABS.includes(tab as FleetTab)) return { tab: tab as FleetTab };
+  return { tab: 'status' };
 }
 
 export function serviceCenterTabToFleetSubTab(

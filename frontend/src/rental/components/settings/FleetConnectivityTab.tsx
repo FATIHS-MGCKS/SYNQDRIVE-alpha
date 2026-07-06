@@ -43,7 +43,12 @@ import {
   hasActiveFleetFilters,
 } from './fleet-connectivity/fleet-connectivity.utils';
 
-export function FleetConnectivityTab() {
+interface FleetConnectivityTabProps {
+  /** When true, omits the page header (Fleet hub already provides top-level chrome). */
+  embedded?: boolean;
+}
+
+export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabProps) {
   const { orgId } = useRentalOrg();
   const [data, setData] = useState<FleetConnectivityResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -324,14 +329,22 @@ export function FleetConnectivityTab() {
 
   return (
     <div className="max-w-[1600px] mx-auto space-y-5">
-      <PageHeader
-        title="Fleet Connectivity"
-        status={
+      {!embedded ? (
+        <PageHeader
+          title="Fleet Connectivity"
+          status={
+            <StatusChip tone="info" className="text-[11px]">
+              Read-only technical overview
+            </StatusChip>
+          }
+        />
+      ) : (
+        <div className="flex flex-wrap items-center gap-2">
           <StatusChip tone="info" className="text-[11px]">
             Read-only technical overview
           </StatusChip>
-        }
-      />
+        </div>
+      )}
 
       <div className="rounded-xl border border-border/60 bg-muted/25 px-4 py-3 text-[12px] text-muted-foreground flex gap-2.5">
         <Wifi className="w-4 h-4 shrink-0 mt-0.5 text-muted-foreground" />

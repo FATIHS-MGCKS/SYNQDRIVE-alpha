@@ -50,6 +50,7 @@ export const de: Record<TranslationKey, string> = {
 
   'fleetTab.status': 'Status',
   'fleetTab.conditionService': 'Zustand & Service',
+  'fleetTab.connectivity': 'Connectivity',
   'fleetTab.health': 'Health',
   'fleetTab.service': 'Instandhaltung',
   'fleetHealthService.tab.overview': 'Übersicht',
