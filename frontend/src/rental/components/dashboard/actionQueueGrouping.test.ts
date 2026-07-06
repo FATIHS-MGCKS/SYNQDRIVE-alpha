@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { buildUnifiedActionQueue, type BuildActionQueueInput } from './actionQueueBuilder';
 import {
   ACTION_QUEUE_ATOMIC_COUNT_RULE,
+  computeActionQueueTabCounts,
   countAtomicActions,
   dedupeActionQueueItems,
   filterActionQueueEntries,
@@ -314,6 +315,16 @@ describe('groupActionQueueEntries', () => {
     const entries = groupActionQueueEntries(items, 'en');
     expect(entries).toHaveLength(1);
     expect(entries[0].kind).toBe('leaf');
+  });
+});
+
+describe('computeActionQueueTabCounts', () => {
+  it('derives per-tab atomic counts from existing filter logic', () => {
+    const items = buildHealthOnly();
+    const counts = computeActionQueueTabCounts(items, 'en');
+    expect(counts.all).toBeGreaterThan(0);
+    expect(counts.critical).toBeLessThanOrEqual(counts.all);
+    expect(counts.notifications).toBeGreaterThanOrEqual(0);
   });
 });
 

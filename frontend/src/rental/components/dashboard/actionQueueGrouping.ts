@@ -7,6 +7,7 @@ import type {
   ActionQueueItem,
   ActionQueueLeafItem,
 } from './dashboardTypes';
+import { ACTION_QUEUE_FILTER_TABS } from './dashboardTypes';
 import { HM_OEM_SERVICE_TRACKING_MISSING_ORG_KEY } from '../../lib/operational-issues';
 import { isGroupedHmOemServiceTrackingDataNote } from './hmOemServiceTrackingDataNote';
 
@@ -420,4 +421,30 @@ export function filterActionQueueEntries(
 /** Count atomic actions across entries (a group counts as its child count). */
 export function countAtomicActions(entries: ActionQueueEntry[]): number {
   return entries.reduce((sum, entry) => sum + (entry.kind === 'group' ? entry.children.length : 1), 0);
+}
+
+/** Per-tab badge counts — reuses dedupe, grouping, and filterActionQueueEntries (UI only). */
+export function computeActionQueueTabCounts(
+  items: ActionQueueItem[],
+  locale: string,
+): Record<ActionQueueFilterTab, number> {
+  const de = locale === 'de';
+  const dedupedItems = dedupeActionQueueItems(items);
+  const pinnedItems = dedupedItems
+    .filter((item) => item.pinned && item.groupType !== 'vehicle-health')
+    .slice(0, PINNED_CAP);
+  const pinnedIds = new Set(pinnedItems.map((item) => item.id));
+  const groupableItems = dedupedItems.filter((item) => !pinnedIds.has(item.id));
+  const entries = groupActionQueueEntries(groupableItems, locale);
+
+  const counts = {} as Record<ActionQueueFilterTab, number>;
+  for (const tab of ACTION_QUEUE_FILTER_TABS) {
+    const filtered = filterActionQueueEntries(entries, tab, de);
+    let count = countAtomicActions(filtered);
+    if (tab === 'all' || tab === 'critical') {
+      count += pinnedItems.length;
+    }
+    counts[tab] = count;
+  }
+  return counts;
 }

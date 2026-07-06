@@ -40,12 +40,26 @@ function rowTint(severity: AttentionSeverity, pinned: boolean, nested: boolean):
   if (nested) return '';
   const criticalLike = severity === 'critical' || severity === 'overdue' || pinned;
   if (criticalLike) {
-    return 'bg-[color:color-mix(in_srgb,var(--status-critical)_5%,transparent)]';
+    return 'bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-critical)_7%,transparent),color-mix(in_srgb,var(--status-critical)_2%,transparent))]';
   }
   if (severity === 'warning') {
-    return 'bg-[color:color-mix(in_srgb,var(--status-watch)_4%,transparent)]';
+    return 'bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-watch)_7%,transparent),color-mix(in_srgb,var(--status-watch)_2%,transparent))]';
+  }
+  if (severity === 'attention') {
+    return 'bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-info)_5%,transparent),color-mix(in_srgb,var(--status-info)_1.5%,transparent))]';
+  }
+  if (severity === 'info') {
+    return 'bg-[linear-gradient(135deg,color-mix(in_srgb,var(--muted-foreground)_4%,transparent),color-mix(in_srgb,var(--muted-foreground)_1%,transparent))]';
   }
   return '';
+}
+
+function rowIconTone(severity: AttentionSeverity, pinned: boolean): string {
+  const criticalLike = severity === 'critical' || severity === 'overdue' || pinned;
+  if (criticalLike) return 'sq-tone-critical';
+  if (severity === 'warning') return 'sq-tone-watch';
+  if (severity === 'attention') return 'sq-tone-info';
+  return 'bg-muted/45 text-muted-foreground';
 }
 
 export interface AttentionRowActionProps {
@@ -119,7 +133,6 @@ export const AttentionItemRow = memo(function AttentionItemRow({
   onCtaClick,
 }: AttentionItemRowProps) {
   const eyebrow = attentionCategoryEyebrow({ category, module, groupType }, de);
-  const criticalLike = severity === 'critical' || severity === 'overdue' || pinned;
   const interactive = Boolean(onRowClick);
   const tint = rowTint(severity, pinned, nested);
 
@@ -130,7 +143,7 @@ export const AttentionItemRow = memo(function AttentionItemRow({
         nested
           ? 'border-b border-border/20 py-1.5 pl-7 pr-2.5 last:border-b-0 sm:pl-8 sm:pr-3'
           : cn(
-              'px-2.5 py-2 hover:bg-muted/25',
+              'rounded-lg border border-border/30 px-2.5 py-2 hover:bg-muted/20',
               tint,
               interactive && 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--brand)]',
             ),
@@ -153,7 +166,7 @@ export const AttentionItemRow = memo(function AttentionItemRow({
         <span
           className={cn(
             'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md',
-            criticalLike ? 'sq-tone-critical' : 'bg-muted/45 text-muted-foreground',
+            rowIconTone(severity, pinned),
           )}
           aria-hidden
         >
