@@ -1,8 +1,9 @@
-import { LayoutDashboard, DollarSign, Calendar, Car, Users, CheckSquare, FileText, Tag, Settings, Building2, Wifi, MapPin, UserCog, CreditCard, Plus, Upload, Menu, X, Shield, ShieldCheck, Package, Lock, HelpCircle, Zap, Phone, Truck, Headphones, ChevronRight, User, PanelLeftClose, PanelLeftOpen, ListTodo, MessageSquare, Activity } from 'lucide-react';
+import { LayoutDashboard, DollarSign, Calendar, Car, Users, CheckSquare, FileText, Tag, Settings, Building2, MapPin, UserCog, CreditCard, Plus, Upload, Menu, X, Shield, ShieldCheck, Package, Lock, HelpCircle, Zap, Phone, Truck, Headphones, ChevronRight, User, PanelLeftClose, PanelLeftOpen, ListTodo, MessageSquare, Activity } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 import type { FleetTab, FleetTabInput } from './fleet-health-service/fleet-health-service.types';
+import type { SettingsTab, SettingsTabInput } from './settings/settingsTypes';
 import {
   navItemClass,
   subNavItemClass,
@@ -17,8 +18,6 @@ function SynqLogo({ className }: { className?: string }) {
   return <img src={synqdriveLogo} alt="SYNQDRIVE" className={className ?? ''} />;
 }
 
-type SettingsTab = 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization' | 'legal-documents' | 'rental-rules';
-
 interface SidebarProps {
   onNewTaskClick?: () => void;
   onNewBookingClick?: () => void;
@@ -26,7 +25,7 @@ interface SidebarProps {
   onViewChange?: (view: any) => void;
   onFleetTabChange?: (tab: FleetTabInput) => void;
   settingsTab?: SettingsTab;
-  onSettingsTabChange?: (tab: SettingsTab) => void;
+  onSettingsTabChange?: (tab: SettingsTabInput) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   supportUnreadCount?: number;
@@ -223,9 +222,6 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
           </button>
           <button onClick={() => { onSettingsTabChange?.('users'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'users')}>
             <UserCog className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.usersRoles')}</span>
-          </button>
-          <button onClick={() => { onSettingsTabChange?.('fleet-connection'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'fleet-connection')}>
-            <Wifi className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.fleetConnectivity')}</span>
           </button>
           <button onClick={() => { onSettingsTabChange?.('data-authorization'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'data-authorization')}>
             <Lock className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.dataAuthorization')}</span>

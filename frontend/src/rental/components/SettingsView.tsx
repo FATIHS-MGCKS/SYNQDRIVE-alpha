@@ -11,7 +11,6 @@ import { LegalDocumentsTab } from './LegalDocumentsTab';
 import { RentalRulesTab } from './settings/rental-rules/RentalRulesTab';
 import { AccountInformationTab } from './settings/AccountInformationTab';
 import { CompanyInformationTab } from './settings/CompanyInformationTab';
-import { FleetConnectivityTab } from './settings/FleetConnectivityTab';
 import { BillingTab } from './billing/BillingTab';
 import {
   PageHeader,
@@ -1848,7 +1847,6 @@ export function SettingsView({
           onNavigateToStations={onNavigateToStations}
         />
       )}
-      {activeTab === 'fleet-connection' && <FleetConnectivityTab />}
       {activeTab === 'users' && <UsersRolesTab orgId={orgId} />}
       {activeTab === 'billing' && <BillingTab />}
       {activeTab === 'data-authorization' && (

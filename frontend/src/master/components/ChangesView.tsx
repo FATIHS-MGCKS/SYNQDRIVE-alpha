@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-connectivity-admin-removal-v49206-2026-07-06',
+    version: '4.9.206',
+    title: 'V4.9.206 — Fleet Connectivity aus Administration entfernt',
+    summary: [
+      'Administration-Tabbar und Sidebar: `fleet-connection` entfernt — Fokus auf echte Admin-/Konfigurationsbereiche.',
+      'Legacy `fleet-connection` sessionStorage / Tab-State → automatischer Redirect zu Fleet → Connectivity.',
+      '`applySettingsTab()` leitet alte Deep-Links per `LEGACY_SETTINGS_TAB_FLEET_CONNECTION` um.',
+      'Einzige vollwertige Connectivity-UI: Fleet Hub Tab `connectivity` (`FleetConnectivityTab` embedded).',
+    ],
+    reason:
+      'Fleet Connectivity ist operatives Monitoring, kein Admin-Setup — gehört in die Fleet Page, nicht in Administration.',
+    previousBehavior:
+      'Fleet Connectivity parallel unter Administration (`fleet-connection`) und Fleet (`connectivity`).',
+    details:
+      'settingsTypes.ts, AdministrationTabBar, SettingsView, Sidebar, App.tsx (Legacy-Migration), TopBar, HelpCenter. Keine Backend-/API-Änderung.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-06T21:50:00.000Z',
+  },
+  {
     id: 'fleet-connectivity-fleet-tab-v49205-2026-07-06',
     version: '4.9.205',
     title: 'V4.9.205 — Fleet Connectivity als Top-Level-Tab in der Fleet Page',

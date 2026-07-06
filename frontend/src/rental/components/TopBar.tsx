@@ -10,6 +10,7 @@ import { useRentalOrg } from '../RentalContext';
 import { useLanguage, type Locale } from '../i18n/LanguageContext';
 import { api } from '../../lib/api';
 import { OperatorEntryButton } from '../../operator/components/OperatorEntryButton';
+import type { SettingsTabInput } from './settings/settingsTypes';
 
 // V4.6.86 — flags replaced with ISO-2 code pills (anti-emoji, per design direction).
 const languages = [
@@ -28,7 +29,7 @@ interface TopBarProps {
   setIsDarkMode: (value: boolean) => void;
   onViewChange?: (view: string) => void;
   onVehicleSelect?: (vehicle: VehicleData) => void;
-  onSettingsTabChange?: (tab: 'account' | 'company' | 'fleet-connection' | 'users' | 'billing' | 'data-authorization' | 'legal-documents' | 'rental-rules') => void;
+  onSettingsTabChange?: (tab: SettingsTabInput) => void;
   onFinanceTabChange?: (tab: 'invoices' | 'price-tariffs') => void;
 }
 

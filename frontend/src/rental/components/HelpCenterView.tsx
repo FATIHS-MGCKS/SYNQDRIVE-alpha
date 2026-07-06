@@ -376,6 +376,8 @@ Der Assistent lernt aus Ihren Fahrzeug- und Betriebsdaten und kann Ihnen im Tage
         title: 'Fleet Connectivity (read-only)',
         content: `Fleet Connectivity zeigt den technischen Verbindungs- und Telemetrie-Status Ihrer Fahrzeuge.
 
+**Ort:** Fleet → Tab **Connectivity** (nicht mehr unter Administration).
+
 Sichtbar sind u. a.:
 • Verbindungsstatus (online / standby / offline / nicht verbunden)
 • Signalverfügbarkeit (GPS, Odometer, DTC, OBD, …)

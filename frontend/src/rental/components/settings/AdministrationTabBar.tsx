@@ -6,7 +6,6 @@ const TAB_LABEL_KEYS: Record<SettingsTab, TranslationKey> = {
   company: 'adminTab.company',
   account: 'adminTab.account',
   users: 'adminTab.users',
-  'fleet-connection': 'adminTab.fleetConnection',
   billing: 'adminTab.billing',
   'data-authorization': 'adminTab.dataAuthorization',
   'legal-documents': 'adminTab.legalDocuments',

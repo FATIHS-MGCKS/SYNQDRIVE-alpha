@@ -17,6 +17,12 @@ import { DamagesView } from './components/DamagesView';
 import { DocumentsView } from './components/DocumentsView';
 import { CustomersView } from './components/CustomersView';
 import { SettingsView } from './components/SettingsView';
+import {
+  isLegacyFleetConnectionSettingsTab,
+  LEGACY_SETTINGS_TAB_FLEET_CONNECTION,
+  type SettingsTab,
+  type SettingsTabInput,
+} from './components/settings/settingsTypes';
 import { StationsView } from './components/stations/StationsView';
 import { StationDetailView } from './components/stations/StationDetailView';
 import { NewBookingView } from './components/NewBookingView';
@@ -82,26 +88,23 @@ function VehicleLiveTelemetryBinder({
   return null;
 }
 
-type RentalSettingsTab =
-  | 'account'
-  | 'company'
-  | 'fleet-connection'
-  | 'users'
-  | 'billing'
-  | 'data-authorization'
-  | 'legal-documents'
-  | 'rental-rules';
+type RentalSettingsTab = SettingsTab;
 
 const RENTAL_SETTINGS_TAB_KEY = 'synqdrive_rental_settings_tab';
 const RENTAL_SETTINGS_VIEW_KEY = 'synqdrive_rental_on_settings';
+const RENTAL_FLEET_CONNECTIVITY_REDIRECT_KEY = 'synqdrive_rental_redirect_fleet_connectivity';
 
 function readPersistedSettingsTab(): RentalSettingsTab {
   try {
     const raw = sessionStorage.getItem(RENTAL_SETTINGS_TAB_KEY);
+    if (isLegacyFleetConnectionSettingsTab(raw)) {
+      sessionStorage.setItem(RENTAL_SETTINGS_TAB_KEY, 'company');
+      sessionStorage.setItem(RENTAL_FLEET_CONNECTIVITY_REDIRECT_KEY, '1');
+      return 'company';
+    }
     const valid: RentalSettingsTab[] = [
       'account',
       'company',
-      'fleet-connection',
       'users',
       'billing',
       'data-authorization',
@@ -113,6 +116,18 @@ function readPersistedSettingsTab(): RentalSettingsTab {
     /* ignore */
   }
   return 'company';
+}
+
+function consumeFleetConnectivityRedirectFlag(): boolean {
+  try {
+    if (sessionStorage.getItem(RENTAL_FLEET_CONNECTIVITY_REDIRECT_KEY) === '1') {
+      sessionStorage.removeItem(RENTAL_FLEET_CONNECTIVITY_REDIRECT_KEY);
+      return true;
+    }
+  } catch {
+    /* ignore */
+  }
+  return false;
 }
 
 function readPersistedSettingsView(): boolean {
@@ -175,6 +190,32 @@ function RentalAppContent() {
   }, [currentView, helpCenterAttempted]);
   const [settingsTab, setSettingsTab] = useState<RentalSettingsTab>(readPersistedSettingsTab);
   const [fleetTab, setFleetTab] = useState<FleetTab>('status');
+  const openFleetConnectivity = useCallback(() => {
+    setCurrentView('fleet');
+    setFleetTab('connectivity');
+    try {
+      sessionStorage.removeItem(RENTAL_SETTINGS_VIEW_KEY);
+      sessionStorage.setItem(RENTAL_SETTINGS_TAB_KEY, 'company');
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const applySettingsTab = useCallback(
+    (tab: SettingsTabInput) => {
+      if (tab === LEGACY_SETTINGS_TAB_FLEET_CONNECTION) {
+        openFleetConnectivity();
+        return;
+      }
+      setSettingsTab(tab);
+    },
+    [openFleetConnectivity],
+  );
+
+  useEffect(() => {
+    if (!consumeFleetConnectivityRedirectFlag()) return;
+    openFleetConnectivity();
+  }, [openFleetConnectivity]);
   const [fleetHealthServiceSubTab, setFleetHealthServiceSubTab] =
     useState<FleetHealthServiceTab>('overview');
   const [serviceCenterNav, setServiceCenterNav] = useState<ServiceCenterNavState | null>(null);
@@ -500,7 +541,7 @@ function RentalAppContent() {
         onViewChange={handleViewChange}
         onFleetTabChange={setFleetTabNormalized}
         settingsTab={settingsTab}
-        onSettingsTabChange={setSettingsTab}
+        onSettingsTabChange={applySettingsTab}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
         supportUnreadCount={supportUnreadCount}
@@ -514,7 +555,7 @@ function RentalAppContent() {
               setIsDarkMode={setIsDarkMode}
               onViewChange={handleViewChange}
               onVehicleSelect={setSelectedVehicle}
-              onSettingsTabChange={setSettingsTab}
+              onSettingsTabChange={applySettingsTab}
               onFinanceTabChange={setFinanceTab}
             />
         {/* Header Section - Only show for vehicle detail views */}
@@ -929,7 +970,7 @@ function RentalAppContent() {
         ) : currentView === 'settings' ? (
           <SettingsView
             activeTab={settingsTab}
-            onTabChange={setSettingsTab}
+            onTabChange={applySettingsTab}
             onNavigateToStations={() => handleViewChange('stations')}
           />
         ) : currentView === 'new-booking' ? (
