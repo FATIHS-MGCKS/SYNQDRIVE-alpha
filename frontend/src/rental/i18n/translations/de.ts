@@ -33,7 +33,6 @@ export const de: Record<TranslationKey, string> = {
   'nav.accountInfo': 'Kontoinformationen',
   'nav.companyInfo': 'Firmeninformationen',
   'nav.usersRoles': 'Benutzer & Rollen',
-  'nav.fleetConnectivity': 'Flottenkonnektivitaet',
   'nav.dataAuthorization': 'Data Authorization & Consent',
   'nav.legalDocuments': 'Rechtliche Dokumente',
   'nav.billingSubscription': 'Abrechnung & Abonnement',
@@ -231,7 +230,6 @@ export const de: Record<TranslationKey, string> = {
   // TopBar settings tab labels
   'settingsTab.account': 'Kontoinformationen',
   'settingsTab.company': 'Firmeninformationen',
-  'settingsTab.fleetConnection': 'Flottenkonnektivitaet',
   'settingsTab.users': 'Benutzer & Rollen',
   'settingsTab.billing': 'Abrechnung & Abonnement',
   'settingsTab.dataAuthorization': 'Data Authorization & Consent Center',
@@ -242,7 +240,6 @@ export const de: Record<TranslationKey, string> = {
   'adminTab.company': 'Unternehmen',
   'adminTab.account': 'Konto',
   'adminTab.users': 'Benutzer & Rollen',
-  'adminTab.fleetConnection': 'Fleet Connectivity',
   'adminTab.billing': 'Abrechnung',
   'adminTab.dataAuthorization': 'Data Authorization',
   'adminTab.legalDocuments': 'Legal Documents',
@@ -632,7 +629,6 @@ export const de: Record<TranslationKey, string> = {
   // ─── Settings ───
   'settings.accountInfo': 'Kontoinformationen',
   'settings.companyProfile': 'Firmenprofil',
-  'settings.fleetConnection': 'Flottenverbindung',
   'settings.stationsBranches': 'Standorte & Filialen',
   'settings.usersRoles': 'Benutzer & Rollen',
   'settings.billingSubscription': 'Abrechnung & Abonnement',

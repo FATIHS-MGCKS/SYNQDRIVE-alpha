@@ -37,21 +37,21 @@ import {
   ROW_TITLE_CLASS,
 } from '../dashboard/dashboardShell';
 import { fhs } from '../fleet-health-service/fleet-health-service-shell';
-import { FleetConnectivityDetailDrawer } from './fleet-connectivity/FleetConnectivityDetailDrawer';
+import { FleetConnectivityDetailDrawer } from './FleetConnectivityDetailDrawer';
 import {
   ConnectionStatusChip,
   DeviceConnectionWebhookChip,
   JammingSnapshotChip,
   ObdRowChip,
   ReadinessChip,
-} from './fleet-connectivity/fleet-connectivity.badges';
+} from './fleet-connectivity.badges';
 import {
   type FleetConnectionScopeFilter,
   type FleetReadinessFilter,
   type FleetSignalFilter,
   filterFleetConnectivityVehicles,
   hasActiveFleetFilters,
-} from './fleet-connectivity/fleet-connectivity.utils';
+} from './fleet-connectivity.utils';
 
 interface FleetConnectivityTabProps {
   /** When true, omits the standalone page header (Fleet hub provides top-level chrome). */

@@ -4,8 +4,8 @@ import type {
   FleetConnectivityStatus,
   FleetConnectivityVehicle,
   FleetDeviceConnectionDto,
-} from '../../../../lib/api';
-import type { StatusTone } from '../../../../components/patterns/status-utils';
+} from '../../../lib/api';
+import type { StatusTone } from '../../../components/patterns/status-utils';
 
 export type FleetConnectionScopeFilter = 'all' | FleetConnectivityStatus | 'connected';
 export type FleetReadinessFilter = 'all' | FleetConnectivityReadinessLevel;

@@ -35,6 +35,44 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-connectivity-cleanup-v49208-2026-07-06',
+    version: '4.9.208',
+    title: 'V4.9.208 — Fleet Connectivity Cleanup (Pfad, i18n, Tab-Persistenz)',
+    summary: [
+      'Modul verschoben: `settings/FleetConnectivityTab` → `fleet-connectivity/` (Badges, Utils, Drawer).',
+      'Tote Admin-i18n-Keys entfernt (`nav.fleetConnectivity`, `adminTab.fleetConnection`, …).',
+      '`fleetTab` wird in sessionStorage persistiert (`synqdrive_rental_fleet_tab`).',
+    ],
+    reason: 'Audit-Follow-up nach Fleet-Connectivity-Migration — keine doppelten Pfade/Labels, bessere UX nach Reload.',
+    previousBehavior:
+      'Connectivity-Modul unter `settings/`; tote Admin-Labels in i18n; Fleet-Tab fiel nach Reload auf `status` zurück.',
+    details:
+      'frontend/src/rental/components/fleet-connectivity/*, FleetHubView, App.tsx, i18n en/de. Keine API-/Backend-Änderung.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-06T22:05:00.000Z',
+  },
+  {
+    id: 'fleet-connectivity-fleet-ui-polish-v49207-2026-07-06',
+    version: '4.9.207',
+    title: 'V4.9.207 — Fleet Connectivity: Fleet-Monitoring-UI im Connectivity-Tab',
+    summary: [
+      '`FleetConnectivityTab` embedded: operativer Header (Connectivity + Subtext), Monitoring-Badge statt Admin-Erklärbox.',
+      'KPI-Strip an Fleet Health / Control Center (`fhs.kpiCard`, `DashboardSectionLabel`) — kompakter, filterbar.',
+      'Fahrzeugliste: Kennzeichen prominent, Make/Model sekundär; Filter/Suche im Fleet-Stil; Refresh-Button.',
+      'i18n EN/DE für Connectivity-Monitoring-Texte; keine Daten-/API-Logik geändert.',
+    ],
+    reason:
+      'Connectivity soll im Fleet-Hub wie operatives Monitoring wirken, nicht wie eine Administration-Seite.',
+    previousBehavior:
+      'Admin-artiger PageHeader, lange Read-only-Erklärbox, MetricCard-KPIs, VIN/Make-Model-Hierarchie wie Setup-Übersicht.',
+    details:
+      'frontend/src/rental/components/settings/FleetConnectivityTab.tsx, i18n en/de. Reiner Frontend-UI-Pass.',
+    affectsArchitecture: false,
+    module: 'Fleet',
+    createdAt: '2026-07-06T22:00:00.000Z',
+  },
+  {
     id: 'fleet-connectivity-admin-removal-v49206-2026-07-06',
     version: '4.9.206',
     title: 'V4.9.206 — Fleet Connectivity aus Administration entfernt',

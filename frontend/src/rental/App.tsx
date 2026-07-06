@@ -93,6 +93,17 @@ type RentalSettingsTab = SettingsTab;
 const RENTAL_SETTINGS_TAB_KEY = 'synqdrive_rental_settings_tab';
 const RENTAL_SETTINGS_VIEW_KEY = 'synqdrive_rental_on_settings';
 const RENTAL_FLEET_CONNECTIVITY_REDIRECT_KEY = 'synqdrive_rental_redirect_fleet_connectivity';
+const RENTAL_FLEET_TAB_KEY = 'synqdrive_rental_fleet_tab';
+
+function readPersistedFleetTab(): FleetTab {
+  try {
+    const raw = sessionStorage.getItem(RENTAL_FLEET_TAB_KEY);
+    if (raw) return normalizeFleetTab(raw).tab;
+  } catch {
+    /* ignore */
+  }
+  return 'status';
+}
 
 function readPersistedSettingsTab(): RentalSettingsTab {
   try {
@@ -189,7 +200,7 @@ function RentalAppContent() {
     }
   }, [currentView, helpCenterAttempted]);
   const [settingsTab, setSettingsTab] = useState<RentalSettingsTab>(readPersistedSettingsTab);
-  const [fleetTab, setFleetTab] = useState<FleetTab>('status');
+  const [fleetTab, setFleetTab] = useState<FleetTab>(readPersistedFleetTab);
   const openFleetConnectivity = useCallback(() => {
     setCurrentView('fleet');
     setFleetTab('connectivity');
@@ -502,6 +513,14 @@ function RentalAppContent() {
       /* ignore */
     }
   }, [settingsTab]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(RENTAL_FLEET_TAB_KEY, fleetTab);
+    } catch {
+      /* ignore */
+    }
+  }, [fleetTab]);
 
   // Handle station change
   const handleStationChange = (newStation: string) => {

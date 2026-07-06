@@ -1,5 +1,5 @@
-import type { FleetConnectivityStatus, FleetDeviceConnectionDto } from '../../../../lib/api';
-import { StatusChip } from '../../../../components/patterns';
+import type { FleetConnectivityStatus, FleetDeviceConnectionDto } from '../../../lib/api';
+import { StatusChip } from '../../../components/patterns';
 import {
   connectionStatusLabel,
   connectionStatusTone,
@@ -12,7 +12,7 @@ import {
 import type {
   FleetConnectivityReadinessLevel,
   FleetConnectivitySignalState,
-} from '../../../../lib/api';
+} from '../../../lib/api';
 
 export function ConnectionStatusChip({
   status,

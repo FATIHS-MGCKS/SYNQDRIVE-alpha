@@ -1,8 +1,8 @@
 import { Info, MapPin, Radio, Shield } from 'lucide-react';
-import { DetailDrawer, StatusChip } from '../../../../components/patterns';
-import { SupportContextButton } from '../../../../components/support/SupportContextButton';
-import type { FleetConnectivityVehicle } from '../../../../lib/api';
-import { formatOdometerKmFloor } from '../../../../lib/formatVehicleDisplay';
+import { DetailDrawer, StatusChip } from '../../../components/patterns';
+import { SupportContextButton } from '../../../components/support/SupportContextButton';
+import type { FleetConnectivityVehicle } from '../../../lib/api';
+import { formatOdometerKmFloor } from '../../../lib/formatVehicleDisplay';
 import {
   ConnectionStatusChip,
   ReadinessChip,
@@ -20,7 +20,7 @@ import {
   DEVICE_CONNECTION_LABELS,
   formatDeviceConnectionTimestamp,
   formatDurationMs,
-} from '../../../lib/device-connection-ui';
+} from '../../lib/device-connection-ui';
 import { DeviceConnectionWebhookChip } from './fleet-connectivity.badges';
 
 function DetailSection({

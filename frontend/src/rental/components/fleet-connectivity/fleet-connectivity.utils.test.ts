@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { FleetConnectivityVehicle } from '../../../../lib/api';
+import type { FleetConnectivityVehicle } from '../../../lib/api';
 import {
   FORBIDDEN_FLEET_CONNECTIVITY_ACTIONS,
   filterFleetConnectivityVehicles,

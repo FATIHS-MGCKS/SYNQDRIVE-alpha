@@ -31,7 +31,6 @@ export const en = {
   'nav.accountInfo': 'Account Information',
   'nav.companyInfo': 'Company Information',
   'nav.usersRoles': 'Users & Roles',
-  'nav.fleetConnectivity': 'Fleet Connectivity',
   'nav.dataAuthorization': 'Data Authorization & Consent',
   'nav.legalDocuments': 'Legal Documents',
   'nav.billingSubscription': 'Billing & Subscription',
@@ -159,7 +158,6 @@ export const en = {
   // TopBar settings tab labels
   'settingsTab.account': 'Account Information',
   'settingsTab.company': 'Company Information',
-  'settingsTab.fleetConnection': 'Fleet Connectivity',
   'settingsTab.users': 'Users & Roles',
   'settingsTab.billing': 'Billing & Subscription',
   'settingsTab.dataAuthorization': 'Data Authorization & Consent Center',
@@ -170,7 +168,6 @@ export const en = {
   'adminTab.company': 'Company',
   'adminTab.account': 'Account',
   'adminTab.users': 'Users & Roles',
-  'adminTab.fleetConnection': 'Fleet Connectivity',
   'adminTab.billing': 'Billing',
   'adminTab.dataAuthorization': 'Data Authorization',
   'adminTab.legalDocuments': 'Legal Documents',
@@ -560,7 +557,6 @@ export const en = {
   // ─── Settings ───
   'settings.accountInfo': 'Account Information',
   'settings.companyProfile': 'Company Profile',
-  'settings.fleetConnection': 'Fleet Connection',
   'settings.stationsBranches': 'Stations & Branches',
   'settings.usersRoles': 'Users & Roles',
   'settings.billingSubscription': 'Billing & Subscriptions',

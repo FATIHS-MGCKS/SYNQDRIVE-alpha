@@ -1,6 +1,6 @@
 import { Activity, Car, RefreshCw, Wifi } from 'lucide-react';
 import { FleetView } from './FleetView';
-import { FleetConnectivityTab } from './settings/FleetConnectivityTab';
+import { FleetConnectivityTab } from './fleet-connectivity/FleetConnectivityTab';
 import { type ConditionCategory } from './FleetConditionView';
 import { FleetHealthServiceView } from './fleet-health-service/FleetHealthServiceView';
 import {
