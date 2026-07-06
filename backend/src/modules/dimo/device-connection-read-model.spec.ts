@@ -4,6 +4,8 @@ import {
   buildFleetDeviceConnectionFields,
   buildTripDeviceConnectionFlags,
   filterCanonicalDeviceConnectionEvents,
+  reconcileDeviceConnectionEvents,
+  shouldIgnorePlugImpulseAfterUnplug,
   severityForUnplugEvent,
 } from './device-connection-read-model';
 
@@ -185,5 +187,88 @@ describe('device-connection-read-model', () => {
       },
     ]);
     expect(canonical.map((e) => e.id)).toEqual(['e1', 'e2']);
+  });
+
+  it('reconciles phantom plug when DIMO is still disconnected (WOB X 6511 case)', () => {
+    const events = [
+      {
+        id: 'unplug',
+        vehicleId: 'v-1',
+        eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
+        observedAt: new Date('2026-07-06T13:13:34.000Z'),
+      },
+      {
+        id: 'phantom-plug',
+        vehicleId: 'v-1',
+        eventType: DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN,
+        observedAt: new Date('2026-07-06T13:13:48.000Z'),
+      },
+    ];
+
+    const reconciled = reconcileDeviceConnectionEvents(events, {
+      dimoConnectionStatus: 'DISCONNECTED',
+      obdIsPluggedIn: null,
+    });
+
+    expect(reconciled.map((e) => e.id)).toEqual(['unplug']);
+
+    const summary = buildDeviceConnectionSummary({
+      vehicleId: 'v-1',
+      hardwareType: 'LTE_R1',
+      dimoLinked: true,
+      nowMs: new Date('2026-07-06T17:00:00.000Z').getTime(),
+      events,
+      bookings: [],
+      trips: [],
+      connectivityAnchor: {
+        dimoConnectionStatus: 'DISCONNECTED',
+        obdIsPluggedIn: null,
+      },
+    });
+
+    expect(summary.currentDeviceConnectionStatus).toBe('unplugged');
+    expect(summary.openUnpluggedEpisode).toBe(true);
+    expect(summary.recentEvents).toHaveLength(1);
+    expect(summary.recentEvents[0]?.eventType).toBe(
+      DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
+    );
+  });
+
+  it('keeps short plug when DIMO confirms connected', () => {
+    const events = [
+      {
+        id: 'unplug',
+        vehicleId: 'v-1',
+        eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
+        observedAt: new Date('2026-07-06T13:13:34.000Z'),
+      },
+      {
+        id: 'real-plug',
+        vehicleId: 'v-1',
+        eventType: DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN,
+        observedAt: new Date('2026-07-06T13:14:00.000Z'),
+      },
+    ];
+
+    const reconciled = reconcileDeviceConnectionEvents(events, {
+      dimoConnectionStatus: 'CONNECTED',
+      obdIsPluggedIn: true,
+    });
+
+    expect(reconciled.map((e) => e.id)).toEqual(['unplug', 'real-plug']);
+  });
+
+  it('shouldIgnorePlugImpulseAfterUnplug blocks short plug without DIMO confirmation', () => {
+    const lastUnplug = {
+      eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
+      observedAt: new Date('2026-07-06T13:13:34.000Z'),
+    };
+    const result = shouldIgnorePlugImpulseAfterUnplug(
+      true,
+      lastUnplug,
+      new Date('2026-07-06T13:13:48.000Z'),
+      { dimoConnectionStatus: 'DISCONNECTED', obdIsPluggedIn: null },
+    );
+    expect(result).toEqual({ ignore: true, reason: 'plug_impulse_after_unplug' });
   });
 });

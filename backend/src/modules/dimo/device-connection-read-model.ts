@@ -2,7 +2,10 @@
  * Pure read-model helpers for DIMO OBD device connection / tamper events.
  * UI-facing only — no detection, no misuse case creation.
  */
-import { DimoDeviceConnectionEventType } from '@prisma/client';
+import { DimoConnectionStatus, DimoDeviceConnectionEventType } from '@prisma/client';
+
+/** Short plug webhooks after unplug are often contact flutter — ignore unless DIMO confirms reconnect. */
+export const DEVICE_CONNECTION_PLUG_IMPULSE_WINDOW_MS = 120_000;
 
 export type DeviceConnectionStatus = 'plugged' | 'unplugged' | 'unknown';
 export type DeviceConnectionSeverity = 'info' | 'warning' | 'critical';
@@ -27,6 +30,110 @@ export interface DeviceConnectionEventRow {
   vehicleId: string;
   eventType: DimoDeviceConnectionEventType;
   observedAt: Date;
+}
+
+/** Live DIMO connectivity used to reconcile webhook-only state (Master Admin connection truth). */
+export interface DeviceConnectionConnectivityAnchor {
+  dimoConnectionStatus: DimoConnectionStatus | null;
+  obdIsPluggedIn: boolean | null;
+}
+
+export function connectivityIndicatesUnplugged(
+  anchor: DeviceConnectionConnectivityAnchor | null | undefined,
+): boolean {
+  if (!anchor) return false;
+  if (anchor.obdIsPluggedIn === false) return true;
+  return (
+    anchor.dimoConnectionStatus === DimoConnectionStatus.DISCONNECTED ||
+    anchor.dimoConnectionStatus === DimoConnectionStatus.ERROR ||
+    anchor.dimoConnectionStatus === DimoConnectionStatus.PENDING
+  );
+}
+
+export function connectivityIndicatesPlugged(
+  anchor: DeviceConnectionConnectivityAnchor | null | undefined,
+): boolean {
+  if (!anchor) return false;
+  if (anchor.obdIsPluggedIn === true) return true;
+  return anchor.dimoConnectionStatus === DimoConnectionStatus.CONNECTED;
+}
+
+/**
+ * Drop phantom plug-in webhooks when DIMO connectivity still reports unplugged/disconnected.
+ * Primary read-time truth layer — fixes false "Wieder verbunden" after contact flutter.
+ */
+export function reconcileDeviceConnectionEvents<T extends DeviceConnectionEventRow>(
+  events: T[],
+  anchor?: DeviceConnectionConnectivityAnchor | null,
+): T[] {
+  const canonical = filterCanonicalDeviceConnectionEvents(events);
+  if (!anchor || canonical.length === 0) return canonical;
+
+  const sorted = [...canonical].sort(
+    (a, b) => a.observedAt.getTime() - b.observedAt.getTime(),
+  );
+  const filtered: T[] = [];
+
+  for (let i = 0; i < sorted.length; i++) {
+    const event = sorted[i];
+    const prev = i > 0 ? sorted[i - 1] : null;
+    if (
+      event.eventType === DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN &&
+      prev?.eventType === DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED
+    ) {
+      const deltaMs = event.observedAt.getTime() - prev.observedAt.getTime();
+      const isImpulse =
+        deltaMs >= 0 && deltaMs <= DEVICE_CONNECTION_PLUG_IMPULSE_WINDOW_MS;
+      if (isImpulse && connectivityIndicatesUnplugged(anchor)) {
+        continue;
+      }
+    }
+    filtered.push(event);
+  }
+
+  if (connectivityIndicatesUnplugged(anchor)) {
+    while (
+      filtered.length > 0 &&
+      filtered[filtered.length - 1].eventType ===
+        DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN
+    ) {
+      filtered.pop();
+    }
+  }
+
+  return filtered;
+}
+
+/**
+ * Intake gate: within impulse window after unplug, only persist plug when DIMO confirms reconnect.
+ */
+export function shouldIgnorePlugImpulseAfterUnplug(
+  incomingPluggedIn: boolean,
+  lastEvent:
+    | { eventType: DimoDeviceConnectionEventType; observedAt: Date }
+    | null
+    | undefined,
+  incomingObservedAt: Date,
+  anchor: DeviceConnectionConnectivityAnchor | null | undefined,
+): { ignore: boolean; reason?: string } {
+  if (!incomingPluggedIn) return { ignore: false };
+  if (
+    !lastEvent ||
+    lastEvent.eventType !== DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED
+  ) {
+    return { ignore: false };
+  }
+
+  const deltaMs = incomingObservedAt.getTime() - lastEvent.observedAt.getTime();
+  if (deltaMs < 0 || deltaMs > DEVICE_CONNECTION_PLUG_IMPULSE_WINDOW_MS) {
+    return { ignore: false };
+  }
+
+  if (connectivityIndicatesPlugged(anchor)) {
+    return { ignore: false };
+  }
+
+  return { ignore: true, reason: 'plug_impulse_after_unplug' };
 }
 
 /**
@@ -107,6 +214,7 @@ export interface BuildDeviceConnectionSummaryInput {
   bookings: DeviceConnectionBookingWindow[];
   trips: DeviceConnectionTripWindow[];
   recentLimit?: number;
+  connectivityAnchor?: DeviceConnectionConnectivityAnchor | null;
 }
 
 /** Per-trip flags for list/timeline surfaces (OBD plug/unplug during trip window). */
@@ -211,9 +319,10 @@ export function buildDeviceConnectionSummary(
     bookings,
     trips,
     recentLimit = 10,
+    connectivityAnchor = null,
   } = input;
 
-  const sorted = [...filterCanonicalDeviceConnectionEvents(events)].sort(
+  const sorted = [...reconcileDeviceConnectionEvents(events, connectivityAnchor)].sort(
     (a, b) => b.observedAt.getTime() - a.observedAt.getTime(),
   );
   const since24h = nowMs - 24 * 60 * 60 * 1000;
@@ -310,15 +419,17 @@ export function buildTripDeviceConnectionFlags(
   events: DeviceConnectionEventRow[],
   bookings: DeviceConnectionBookingWindow[],
   nowMs: number,
+  connectivityAnchor?: DeviceConnectionConnectivityAnchor | null,
 ): TripDeviceConnectionFlags {
   const startMs = trip.startTime.getTime();
   const endMs = trip.endTime?.getTime() ?? nowMs;
 
-  const inWindow = filterCanonicalDeviceConnectionEvents(
+  const inWindow = reconcileDeviceConnectionEvents(
     events.filter((e) => {
       const t = e.observedAt.getTime();
       return t >= startMs && t <= endMs;
     }),
+    connectivityAnchor,
   );
 
   if (inWindow.length === 0) {

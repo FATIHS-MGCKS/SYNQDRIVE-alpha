@@ -1,11 +1,14 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { DimoConnectionStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { extractConnectivitySnapshot } from '@shared/utils/connectivity-signals';
 import {
   buildDeviceConnectionSummary,
   buildTripDeviceConnectionFlags,
-  filterCanonicalDeviceConnectionEvents,
+  reconcileDeviceConnectionEvents,
   mapDeviceConnectionEventView,
   type DeviceConnectionBookingWindow,
+  type DeviceConnectionConnectivityAnchor,
   type DeviceConnectionEventRow,
   type DeviceConnectionSummary,
   type DeviceConnectionTripWindow,
@@ -29,6 +32,8 @@ export class DeviceConnectionQueryService {
         id: true,
         hardwareType: true,
         dimoVehicleId: true,
+        dimoVehicle: { select: { connectionStatus: true } },
+        latestState: { select: { rawPayloadJson: true } },
       },
     });
     if (!vehicle) {
@@ -53,6 +58,7 @@ export class DeviceConnectionQueryService {
       bookings,
       trips,
       recentLimit: opts?.eventLimit ?? 20,
+      connectivityAnchor: this.buildConnectivityAnchor(vehicle),
     });
 
     if (opts?.includeRawPayload) {
@@ -72,7 +78,7 @@ export class DeviceConnectionQueryService {
     const nowMs = Date.now();
     const since7d = new Date(nowMs - 7 * 24 * 60 * 60 * 1000);
 
-    const [events, bookings, trips] = await Promise.all([
+    const [events, bookings, trips, vehicles] = await Promise.all([
       this.prisma.dimoDeviceConnectionEvent.findMany({
         where: {
           organizationId,
@@ -115,7 +121,20 @@ export class DeviceConnectionQueryService {
           assignedBookingId: true,
         },
       }),
+      this.prisma.vehicle.findMany({
+        where: { id: { in: vehicleIds }, organizationId },
+        select: {
+          id: true,
+          dimoVehicle: { select: { connectionStatus: true } },
+          latestState: { select: { rawPayloadJson: true } },
+        },
+      }),
     ]);
+
+    const anchorByVehicle = new Map<string, DeviceConnectionConnectivityAnchor | null>();
+    for (const v of vehicles) {
+      anchorByVehicle.set(v.id, this.buildConnectivityAnchor(v));
+    }
 
     const eventsByVehicle = new Map<string, DeviceConnectionEventRow[]>();
     for (const e of events) {
@@ -151,6 +170,7 @@ export class DeviceConnectionQueryService {
           bookings: bookingsByVehicle.get(vehicleId) ?? [],
           trips: tripsByVehicle.get(vehicleId) ?? [],
           recentLimit: 5,
+          connectivityAnchor: anchorByVehicle.get(vehicleId) ?? null,
         }),
       );
     }
@@ -175,7 +195,7 @@ export class DeviceConnectionQueryService {
       return Math.max(max, end);
     }, 0);
 
-    const [events, bookings] = await Promise.all([
+    const [events, bookings, anchor] = await Promise.all([
       this.prisma.dimoDeviceConnectionEvent.findMany({
         where: {
           organizationId,
@@ -194,12 +214,13 @@ export class DeviceConnectionQueryService {
         orderBy: { observedAt: 'asc' },
       }),
       this.loadBookings(vehicleId, new Date(minStart)),
+      this.loadConnectivityAnchor(vehicleId),
     ]);
 
     for (const trip of trips) {
       out.set(
         trip.id,
-        buildTripDeviceConnectionFlags(trip, events, bookings, nowMs),
+        buildTripDeviceConnectionFlags(trip, events, bookings, nowMs, anchor),
       );
     }
     return out;
@@ -226,22 +247,25 @@ export class DeviceConnectionQueryService {
     }
 
     const end = trip.endTime ?? new Date();
-    const events = await this.prisma.dimoDeviceConnectionEvent.findMany({
-      where: {
-        organizationId,
-        vehicleId,
-        observedAt: { gte: trip.startTime, lte: end },
-      },
-      orderBy: { observedAt: 'asc' },
-      select: { id: true, vehicleId: true, eventType: true, observedAt: true },
-    });
+    const [events, bookings, anchor] = await Promise.all([
+      this.prisma.dimoDeviceConnectionEvent.findMany({
+        where: {
+          organizationId,
+          vehicleId,
+          observedAt: { gte: trip.startTime, lte: end },
+        },
+        orderBy: { observedAt: 'asc' },
+        select: { id: true, vehicleId: true, eventType: true, observedAt: true },
+      }),
+      this.loadBookings(vehicleId, trip.startTime),
+      this.loadConnectivityAnchor(vehicleId),
+    ]);
 
     if (events.length === 0) {
       return { events: [] };
     }
 
-    const collapsed = filterCanonicalDeviceConnectionEvents(events);
-    const bookings = await this.loadBookings(vehicleId, trip.startTime);
+    const collapsed = reconcileDeviceConnectionEvents(events, anchor);
     const trips = [trip];
 
     const mapped = collapsed.map((event, index) => {
@@ -273,6 +297,33 @@ export class DeviceConnectionQueryService {
     });
 
     return { events: mapped };
+  }
+
+  private buildConnectivityAnchor(vehicle: {
+    dimoVehicle?: { connectionStatus: DimoConnectionStatus } | null;
+    latestState?: { rawPayloadJson: unknown } | null;
+  }): DeviceConnectionConnectivityAnchor | null {
+    if (!vehicle.dimoVehicle && !vehicle.latestState) return null;
+    const raw = vehicle.latestState?.rawPayloadJson as Record<string, unknown> | null;
+    const conn = extractConnectivitySnapshot(raw ?? undefined);
+    return {
+      dimoConnectionStatus: vehicle.dimoVehicle?.connectionStatus ?? null,
+      obdIsPluggedIn: conn.obdIsPluggedIn,
+    };
+  }
+
+  private async loadConnectivityAnchor(
+    vehicleId: string,
+  ): Promise<DeviceConnectionConnectivityAnchor | null> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: {
+        dimoVehicle: { select: { connectionStatus: true } },
+        latestState: { select: { rawPayloadJson: true } },
+      },
+    });
+    if (!vehicle) return null;
+    return this.buildConnectivityAnchor(vehicle);
   }
 
   private async loadEvents(

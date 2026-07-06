@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'device-connection-connectivity-reconcile-v49203-2026-07-06',
+    version: '4.9.203',
+    title: 'V4.9.203 — OBD Webhook-Abgleich mit DIMO Connection Status + Impuls-Filter',
+    summary: [
+      'Read-Model: `reconcileDeviceConnectionEvents` gleicht Webhook-Sequenz mit `DimoVehicle.connectionStatus` + Snapshot `obdIsPluggedIn` ab.',
+      'Phantom-Plug-In innerhalb 120s nach Unplug wird verworfen, wenn DIMO weiterhin Disconnected meldet (WOB X 6511 Fall).',
+      'Intake: `shouldIgnorePlugImpulseAfterUnplug` persistiert kurzes Plug-In nur bei bestätigter DIMO-Wiederverbindung.',
+      'Vehicle Detail, Fleet deviceConnection, Trip-Flags und Trip-Evidenz nutzen reconciled Events — kein falsches „Wieder verbunden“ mehr.',
+    ],
+    reason:
+      'Nach einmaligem Abziehen meldete DIMO 14s später fälschlich PLUGGED_IN (Kontakt-Flattern). Master Admin zeigte korrekt Disconnected, Konnektivitäts-Karte fälschlich „Wieder verbunden“.',
+    previousBehavior:
+      'Letzter Webhook-Zustandswechsel allein bestimmte `currentDeviceConnectionStatus` — kurze Plug-Impulse nach Unplug wurden als echte Wiederverbindung gewertet.',
+    details:
+      '**Backend**: `device-connection-read-model.ts` (reconcile + impulse helpers), `device-connection-webhook.service.ts` (intake gate), `device-connection-query.service.ts` (connectivity anchor). Architektur: `architecture/DIMO_DEVICE_CONNECTION_RECONCILE_2026-07-06.md`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-06T17:35:00.000Z',
+  },
+  {
     id: 'lte-r1-calm-trip-assessability-v49202-2026-07-05',
     version: '4.9.202',
     title: 'V4.9.202 — LTE_R1 ruhige Fahrten: „Unauffällig“ statt falscher „Nicht belastbar“-Warnung',

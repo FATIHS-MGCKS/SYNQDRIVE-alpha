@@ -7,11 +7,17 @@
  *
  * Idempotent layers:
  *   1. State-change gating — ignore repeated webhooks with unchanged plug state
- *   2. Time-bucket dedup — collapse burst duplicates within 30s
+ *   2. Plug impulse filter — ignore short plug-in after unplug unless DIMO confirms reconnect
+ *   3. Time-bucket dedup — collapse burst duplicates within 30s
  */
 import { Injectable, Logger } from '@nestjs/common';
 import { DimoDeviceConnectionEventType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { extractConnectivitySnapshot } from '@shared/utils/connectivity-signals';
+import {
+  shouldIgnorePlugImpulseAfterUnplug,
+  type DeviceConnectionConnectivityAnchor,
+} from './device-connection-read-model';
 
 export const DEVICE_CONNECTION_DEDUP_WINDOW_MS = 30_000;
 
@@ -123,7 +129,11 @@ export class DeviceConnectionWebhookService {
     input: IngestDeviceConnectionInput,
   ): Promise<{ outcome: DeviceConnectionIntakeOutcome; eventId?: string; eventType?: DimoDeviceConnectionEventType }> {
     const eventType = DeviceConnectionWebhookService.eventTypeForPlugState(input.pluggedIn);
-    const gate = await this.evaluateStateChangeGate(input.vehicle.id, input.pluggedIn);
+    const gate = await this.evaluateStateChangeGate(
+      input.vehicle.id,
+      input.pluggedIn,
+      input.observedAt,
+    );
     if (!gate.persist) {
       this.logger.debug(
         `Device connection ignored for vehicle ${input.vehicle.id}: ${gate.reason} pluggedIn=${input.pluggedIn}`,
@@ -144,7 +154,11 @@ export class DeviceConnectionWebhookService {
     },
   ): Promise<{ outcome: DeviceConnectionIntakeOutcome; eventId?: string; eventType?: DimoDeviceConnectionEventType }> {
     const pluggedIn = DeviceConnectionWebhookService.pluggedInFromEventType(input.eventType);
-    const gate = await this.evaluateStateChangeGate(input.vehicle.id, pluggedIn);
+    const gate = await this.evaluateStateChangeGate(
+      input.vehicle.id,
+      pluggedIn,
+      input.observedAt,
+    );
     if (!gate.persist) {
       this.logger.debug(
         `Device connection ignored for vehicle ${input.vehicle.id}: ${gate.reason} eventType=${input.eventType}`,
@@ -158,13 +172,50 @@ export class DeviceConnectionWebhookService {
   private async evaluateStateChangeGate(
     vehicleId: string,
     incomingPluggedIn: boolean,
+    incomingObservedAt: Date,
   ): Promise<{ persist: boolean; reason?: string }> {
     const lastEvent = await this.prisma.dimoDeviceConnectionEvent.findFirst({
       where: { vehicleId, provider: 'DIMO' },
       orderBy: { observedAt: 'desc' },
-      select: { eventType: true },
+      select: { eventType: true, observedAt: true },
     });
-    return shouldPersistObdPlugStateChange(incomingPluggedIn, lastEvent?.eventType);
+    const base = shouldPersistObdPlugStateChange(incomingPluggedIn, lastEvent?.eventType);
+    if (!base.persist) return base;
+
+    if (incomingPluggedIn) {
+      const anchor = await this.loadConnectivityAnchor(vehicleId);
+      const impulse = shouldIgnorePlugImpulseAfterUnplug(
+        incomingPluggedIn,
+        lastEvent,
+        incomingObservedAt,
+        anchor,
+      );
+      if (impulse.ignore) {
+        return { persist: false, reason: impulse.reason };
+      }
+    }
+
+    return base;
+  }
+
+  private async loadConnectivityAnchor(
+    vehicleId: string,
+  ): Promise<DeviceConnectionConnectivityAnchor | null> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: {
+        dimoVehicle: { select: { connectionStatus: true } },
+        latestState: { select: { rawPayloadJson: true } },
+      },
+    });
+    if (!vehicle) return null;
+
+    const raw = vehicle.latestState?.rawPayloadJson as Record<string, unknown> | null;
+    const conn = extractConnectivitySnapshot(raw ?? undefined);
+    return {
+      dimoConnectionStatus: vehicle.dimoVehicle?.connectionStatus ?? null,
+      obdIsPluggedIn: conn.obdIsPluggedIn,
+    };
   }
 
   private async persistDeviceConnectionEvent(
