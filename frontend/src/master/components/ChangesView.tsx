@@ -45,6 +45,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Odometer-Priorität: brakes.odometerKm → vehicle.mileageKm → latestState → 0 nur bei NEW.',
       'RentalHealth `modules.brakes.state` liefert nach Registrierung mit NEW-Baseline `good` (über BrakeHealthService, read-only unverändert).',
       'Data-Basis-Mapping: spec_fallback_anchor → DOCUMENTED; RentalHealth evidence_type mappt MEASURED/DOCUMENTED/SENSOR/ESTIMATED/UNKNOWN korrekt (inkl. `sensor`).',
+      'Ops-Backfill: `backfill-brake-health-from-registration-specs.ts` initialisiert historische Fahrzeuge mit MANUAL/manual_registration Spec + fehlender BrakeHealthCurrent über BrakeLifecycleService (dry-run Stats).',
     ],
     reason:
       'Neu registrierte Fahrzeuge mit manuellen/neuen Bremsen blieben auf UNKNOWN, weil nur ReferenceSpec gespeichert wurde — ohne BrakeHealthCurrent-Initialisierung.',
