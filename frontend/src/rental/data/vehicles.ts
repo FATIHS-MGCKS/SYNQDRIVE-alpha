@@ -137,4 +137,4 @@ export function isVehicleOffline(
   return f.isOffline || f.isNoSignal;
 }
 
-export const VEHICLE_OFFLINE_LABEL = 'Vehicle Offline - Check Device';
+export const VEHICLE_OFFLINE_LABEL = 'Fahrzeug offline · Gerät prüfen';

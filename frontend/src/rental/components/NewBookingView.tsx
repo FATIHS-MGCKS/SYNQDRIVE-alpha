@@ -131,6 +131,11 @@ const mapApiCustomerToBookingCustomer = (c: any): Customer => {
 // The vehicle picker uses the shared BrandLogo component (Cardog Icons).
 
 import { buildMMY } from '../lib/vehicleMmy';
+import { BookingVehiclePreflightBanner } from '../lib/booking-vehicle-preflight-banner';
+import {
+  isBookingVehicleHardBlocked,
+  vehicleStationId,
+} from '../lib/booking-vehicle-preflight';
 import { VehiclePickerStep } from './new-booking/VehiclePickerStep';
 
 // V4.6.67 — Reordered steps so that the booking flow is logically gated:
@@ -261,7 +266,6 @@ export function NewBookingView({
   const [vehicleFuelFilter, setVehicleFuelFilter] = useState('all');
   const [vehicleStatusFilter, setVehicleStatusFilter] = useState('all');
   const [vehicleBrandFilter, setVehicleBrandFilter] = useState('all');
-  const [vehicleCategoryFilter, setVehicleCategoryFilter] = useState('all');
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleData | null>(null);
   const [pickupDate, setPickupDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
@@ -480,33 +484,42 @@ export function NewBookingView({
   // Derived
   const filteredCustomers = customers;
 
-  const stations = [...new Set(fleetVehicles.map(v => v.station))];
   const fuelTypes = [...new Set(fleetVehicles.map(v => v.fuelType))];
 
   const getBrand = (model: string) => model.split(' ')[0];
-  const categoryMap: Record<string, string> = {
-    'Volkswagen Touareg': 'SUV',
-    'Hyundai Tucson': 'SUV',
-    'Tesla Model S': 'Sedan',
-    'Mercedes AMG GT': 'Sports Car',
-    'Audi RS5': 'Sports Car',
-    'BMW M3': 'Sedan',
-  };
-  const getCategory = (model: string) => {
-    const key = Object.keys(categoryMap).find(k => model.startsWith(k));
-    return key ? categoryMap[key] : 'Other';
-  };
   const brands = [...new Set(fleetVehicles.map(v => getBrand(v.model)))].sort();
-  const categories = [...new Set(fleetVehicles.map(v => getCategory(v.model)))].sort();
+
+  const stationOptions = useMemo(() => {
+    if (orgStations.length > 0) {
+      return orgStations.map((s) => ({
+        id: s.id,
+        label: stationLabel(s),
+      }));
+    }
+    const byId = new Map<string, string>();
+    for (const v of fleetVehicles) {
+      const id = vehicleStationId(v);
+      if (!id) continue;
+      const named = (v as { stationName?: string | null }).stationName;
+      byId.set(id, named ?? v.station ?? id);
+    }
+    return [...byId.entries()]
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'de'));
+  }, [orgStations, fleetVehicles]);
 
   const availableVehicles = fleetVehicles.filter(v => {
     const q = vehicleSearch.toLowerCase();
-    const matchesSearch = v.model.toLowerCase().includes(q) || v.license.toLowerCase().includes(q);
-    const matchesStation = vehicleStationFilter === 'all' || v.station === vehicleStationFilter;
+    const matchesSearch =
+      v.model.toLowerCase().includes(q) ||
+      v.license.toLowerCase().includes(q) ||
+      (v.make ?? '').toLowerCase().includes(q);
+    const vehicleStation = vehicleStationId(v);
+    const matchesStation =
+      vehicleStationFilter === 'all' || vehicleStation === vehicleStationFilter;
     const matchesFuel = vehicleFuelFilter === 'all' || v.fuelType === vehicleFuelFilter;
     const matchesBrand = vehicleBrandFilter === 'all' || getBrand(v.model) === vehicleBrandFilter;
-    const matchesCategory = vehicleCategoryFilter === 'all' || getCategory(v.model) === vehicleCategoryFilter;
-    return matchesSearch && matchesStation && matchesFuel && matchesBrand && matchesCategory;
+    return matchesSearch && matchesStation && matchesFuel && matchesBrand;
   });
 
   // V4.6.76 Rental Health V1 — preload the canonical health map for the
@@ -518,6 +531,13 @@ export function NewBookingView({
     [fleetVehicles],
   );
   const { map: pickerHealthMap } = useFleetHealthMap(orgId, fleetPickerIds);
+
+  const selectedVehicleHealth = selectedVehicle
+    ? pickerHealthMap.get(selectedVehicle.id) ?? null
+    : null;
+  const selectedVehicleHasTariff = selectedVehicle
+    ? Boolean(getVehicleTariffFromCatalog(catalog, selectedVehicle.id))
+    : false;
 
   const rentalDays = useMemo(() => {
     if (!pickupDate || !returnDate) return 0;
@@ -714,6 +734,16 @@ export function NewBookingView({
         description:
           customerEligibility.blockingReasons.join(' · ') ||
           'Der Kunde erfüllt die Anforderungen für eine bestätigte Buchung nicht.',
+      });
+      return;
+    }
+
+    if (isBookingVehicleHardBlocked(selectedVehicle, selectedVehicleHealth)) {
+      toast.error('Fahrzeug nicht vermietbar', {
+        description:
+          selectedVehicleHealth?.blocking_reasons?.join(' · ') ||
+          'Dieses Fahrzeug kann aktuell nicht gebucht werden.',
+        duration: 8000,
       });
       return;
     }
@@ -1023,8 +1053,10 @@ export function NewBookingView({
   //   5: Checkout → both consents must be ticked
   const canProceed = () => {
     switch (currentStep) {
-      case 1:
-        return selectedVehicle !== null;
+      case 1: {
+        if (!selectedVehicle) return false;
+        return !isBookingVehicleHardBlocked(selectedVehicle, selectedVehicleHealth);
+      }
       case 2: {
         if (!pickupDate || !returnDate || rentalDays <= 0) return false;
         if (returnDate <= pickupDate) return false;
@@ -1065,6 +1097,8 @@ export function NewBookingView({
     value != null && Number.isFinite(value) ? value.toFixed(2) : '—';
 
   const handleSelectVehicle = (v: VehicleData) => {
+    const health = pickerHealthMap.get(v.id) ?? null;
+    if (isBookingVehicleHardBlocked(v, health)) return;
     setSelectedVehicle(v);
     const defaultPickup = resolveDefaultPickupStationId(
       orgStations,
@@ -1078,7 +1112,6 @@ export function NewBookingView({
 
   const handleResetVehicleFilters = () => {
     setVehicleBrandFilter('all');
-    setVehicleCategoryFilter('all');
     setVehicleStationFilter('all');
     setVehicleFuelFilter('all');
   };
@@ -1118,6 +1151,16 @@ export function NewBookingView({
         currentStep={currentStep}
         onStepSelect={(stepId) => setCurrentStep(stepId)}
       />
+
+      {selectedVehicle && currentStep >= 1 && currentStep <= 5 && (
+        <BookingVehiclePreflightBanner
+          vehicle={selectedVehicle}
+          health={selectedVehicleHealth}
+          hasTariff={selectedVehicleHasTariff}
+          catalogLoading={catalogLoading}
+          rangeHasConflict={currentStep >= 2 && rangeHasConflict}
+        />
+      )}
 
       {/* Step Content */}
       {bookingConfirmed ? (
@@ -1690,8 +1733,6 @@ export function NewBookingView({
                     onSearchChange={setVehicleSearch}
                     brandFilter={vehicleBrandFilter}
                     onBrandFilterChange={setVehicleBrandFilter}
-                    categoryFilter={vehicleCategoryFilter}
-                    onCategoryFilterChange={setVehicleCategoryFilter}
                     stationFilter={vehicleStationFilter}
                     onStationFilterChange={setVehicleStationFilter}
                     fuelFilter={vehicleFuelFilter}
@@ -1700,8 +1741,7 @@ export function NewBookingView({
                     onStatusFilterChange={setVehicleStatusFilter}
                     onResetFilters={handleResetVehicleFilters}
                     brands={brands}
-                    categories={categories}
-                    stations={stations}
+                    stationOptions={stationOptions}
                     fuelTypes={fuelTypes}
                     pickerHealthMap={pickerHealthMap}
                     catalogLoading={catalogLoading}

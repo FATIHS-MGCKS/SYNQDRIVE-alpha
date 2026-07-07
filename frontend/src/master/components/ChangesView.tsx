@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'new-booking-preflight-consistency-v49224-2026-07-07',
+    version: '4.9.224',
+    title: 'V4.9.224 — New Booking: Availability/Health/Pricing/Station Preflight',
+    summary: [
+      'Zentrale Preflight-Logik `booking-vehicle-preflight.ts`: offline + rental_blocked hard-disabled im Picker; Health-Warning nur Hinweis.',
+      'Station-Filter nutzt Station-IDs (`orgStations` / `homeStationId`), Anzeige `stationName` — kein Name-vs-ID-Drift.',
+      'Modellnamen-Kategorie-Heuristik entfernt (keine falsche SUV/Sedan-Ratelung).',
+      '`BookingVehiclePreflightBanner` vor Checkout: Block, Tarif, Zeitraum-Konflikt; Backend-Gates unverändert.',
+      'Offline-Label deutsch; `canProceed` Step 1 blockiert hard-gesperrte Fahrzeuge.',
+    ],
+    reason:
+      'Mobile UI soll fachlich konsistent mit Backend-Wahrheiten sein — Picker durfte rental_blocked noch auswählbar wirken, Station-Filter nutzte Namen statt IDs.',
+    previousBehavior:
+      'Nur offline disabled; rental_blocked auswählbar; Kategorie aus Modell-Map; Station-Filter per `v.station` String.',
+    details:
+      'Frontend-only: `booking-vehicle-preflight.ts`, `VehiclePickerStep`, `NewBookingView`, `vehicles.ts` Label. Keine Backend-/Pricing-Engine-Änderung.',
+    affectsArchitecture: false,
+    module: null,
+    createdAt: '2026-07-07T04:00:00.000Z',
+  },
+  {
     id: 'new-booking-vehicle-picker-mobile-v49223-2026-07-07',
     version: '4.9.223',
     title: 'V4.9.223 — New Booking: Vehicle Picker mobile-first',

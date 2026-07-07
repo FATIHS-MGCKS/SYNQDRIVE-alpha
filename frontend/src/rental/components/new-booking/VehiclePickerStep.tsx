@@ -3,15 +3,21 @@ import { ChevronDown } from 'lucide-react';
 import type { VehicleHealthResponse } from '../../../lib/api';
 import { SectionHeader } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
+import type { VehicleData } from '../../data/vehicles';
 import {
-  isVehicleOffline,
-  VEHICLE_OFFLINE_LABEL,
-  type VehicleData,
-} from '../../data/vehicles';
+  fleetStatusLabelDe,
+  resolveBookingVehiclePreflight,
+  vehicleStationDisplay,
+} from '../../lib/booking-vehicle-preflight';
 import { buildMMY } from '../../lib/vehicleMmy';
 import { BrandLogoMark, getBrandFromModel } from '../BrandLogo';
 import { RentalHealthBadge } from '../rental-health/RentalHealthBadge';
 import { Icon } from '../ui/Icon';
+
+export interface VehiclePickerStationOption {
+  id: string;
+  label: string;
+}
 
 export interface VehiclePickerStepProps {
   vehicles: VehicleData[];
@@ -21,8 +27,6 @@ export interface VehiclePickerStepProps {
   onSearchChange: (value: string) => void;
   brandFilter: string;
   onBrandFilterChange: (value: string) => void;
-  categoryFilter: string;
-  onCategoryFilterChange: (value: string) => void;
   stationFilter: string;
   onStationFilterChange: (value: string) => void;
   fuelFilter: string;
@@ -31,8 +35,7 @@ export interface VehiclePickerStepProps {
   onStatusFilterChange: (value: string) => void;
   onResetFilters: () => void;
   brands: string[];
-  categories: string[];
-  stations: string[];
+  stationOptions: VehiclePickerStationOption[];
   fuelTypes: string[];
   pickerHealthMap: Map<string, VehicleHealthResponse | null>;
   catalogLoading: boolean;
@@ -54,59 +57,6 @@ function fuelChipClass(fuelType: string): string {
   if (fuelType === 'Diesel') return 'sq-chip-watch';
   if (fuelType === 'Petrol') return 'sq-chip-warning';
   return 'sq-chip-neutral';
-}
-
-interface PickerRowState {
-  offline: boolean;
-  isMaintenance: boolean;
-  isRented: boolean;
-  isReserved: boolean;
-  isRentalBlocked: boolean;
-  noTariff: boolean;
-  isSelectable: boolean;
-  muted: boolean;
-  reasonLine: string | null;
-}
-
-function resolvePickerRowState(
-  vehicle: VehicleData,
-  health: VehicleHealthResponse | null,
-  dailyLabel: string | null,
-  catalogLoading: boolean,
-): PickerRowState {
-  const offline = isVehicleOffline(vehicle);
-  const isMaintenance = vehicle.status === 'Maintenance';
-  const isRented = vehicle.status === 'Active Rented';
-  const isReserved = vehicle.status === 'Reserved';
-  const isRentalBlocked = health?.rental_blocked === true;
-  const noTariff = !dailyLabel && !catalogLoading;
-
-  let reasonLine: string | null = null;
-  if (offline) {
-    reasonLine = VEHICLE_OFFLINE_LABEL;
-  } else if (isMaintenance) {
-    reasonLine = 'In Wartung — Auswahl mit Vorsicht';
-  } else if (isRented) {
-    reasonLine = 'Aktuell vermietet';
-  } else if (isReserved) {
-    reasonLine = 'Reserviert';
-  } else if (isRentalBlocked) {
-    reasonLine = health?.blocking_reasons?.[0] ?? 'Nicht vermietbar';
-  } else if (noTariff) {
-    reasonLine = 'Kein aktiver Tarif';
-  }
-
-  return {
-    offline,
-    isMaintenance,
-    isRented,
-    isReserved,
-    isRentalBlocked,
-    noTariff,
-    isSelectable: !offline,
-    muted: offline || isMaintenance || isRented,
-    reasonLine,
-  };
 }
 
 function SelectionIndicator({
@@ -164,41 +114,49 @@ function VehiclePickerCard({
   isDarkMode: boolean;
   onSelect: () => void;
 }) {
-  const state = resolvePickerRowState(vehicle, health, dailyLabel, catalogLoading);
+  const preflight = resolveBookingVehiclePreflight(
+    vehicle,
+    health,
+    Boolean(dailyLabel),
+    catalogLoading,
+  );
   const brandKey = getBrandFromModel({ make: vehicle.make, model: vehicle.model });
   const mmy = buildMMY(vehicle);
   const priceLabel = dailyLabel ?? 'Kein Tarif';
+  const stationLabel = vehicleStationDisplay(vehicle);
+  const fleetLabel = fleetStatusLabelDe(vehicle.status);
 
   return (
     <button
       type="button"
-      disabled={!state.isSelectable}
+      disabled={!preflight.isSelectable}
       onClick={() => {
-        if (!state.isSelectable) return;
+        if (!preflight.isSelectable) return;
         onSelect();
       }}
       className={cn(
         'w-full min-w-0 max-w-full rounded-xl border px-3 py-2.5 text-left transition-all duration-200',
-        !state.isSelectable && 'cursor-not-allowed border-border bg-muted/25 opacity-70 grayscale',
-        state.isSelectable && state.muted && !selected && 'border-border bg-muted/35 hover:border-border hover:bg-muted/50',
-        state.isSelectable && !state.muted && !selected && 'border-border bg-muted/40 hover:border-border hover:bg-card',
-        selected && state.isSelectable && 'border-[color:var(--brand)] bg-[color:var(--brand-soft)] ring-1 ring-[color:var(--brand-glow)]',
+        !preflight.isSelectable && 'cursor-not-allowed border-border bg-muted/25 opacity-70 grayscale',
+        preflight.isSelectable && preflight.muted && !selected && 'border-border bg-muted/35 hover:border-border hover:bg-muted/50',
+        preflight.isSelectable && !preflight.muted && !selected && 'border-border bg-muted/40 hover:border-border hover:bg-card',
+        selected && preflight.isSelectable && 'border-[color:var(--brand)] bg-[color:var(--brand-soft)] ring-1 ring-[color:var(--brand-glow)]',
+        preflight.rentalBlocked && 'border-[color:var(--status-critical)]/30',
       )}
     >
       <div className="flex items-start gap-2.5">
         <BrandLogoMark
           brand={brandKey}
           isDarkMode={isDarkMode}
-          boxClassName={state.muted ? 'grayscale opacity-75' : undefined}
+          boxClassName={preflight.muted ? 'grayscale opacity-75' : undefined}
         />
 
         <div className="min-w-0 flex-1 space-y-1">
-          {/* Row 1 — title + price (mobile/desktop) */}
           <div className="flex items-start justify-between gap-2">
             <p
               className={cn(
                 'min-w-0 truncate text-[13px] font-semibold leading-snug',
-                state.muted ? 'text-muted-foreground line-through' : 'text-foreground',
+                preflight.muted && !selected ? 'text-muted-foreground' : 'text-foreground',
+                preflight.offline && 'line-through',
               )}
             >
               {mmy}
@@ -207,7 +165,8 @@ function VehiclePickerCard({
               <p
                 className={cn(
                   'text-xs font-medium tabular-nums',
-                  state.muted ? 'text-muted-foreground line-through' : state.noTariff ? 'text-[color:var(--status-watch)]' : 'text-foreground',
+                  preflight.noTariff ? 'text-[color:var(--status-watch)]' : 'text-foreground',
+                  preflight.offline && 'line-through text-muted-foreground',
                 )}
               >
                 {priceLabel}
@@ -216,7 +175,6 @@ function VehiclePickerCard({
             </div>
           </div>
 
-          {/* Row 2 — plate, fuel, station */}
           <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 text-[11px] text-muted-foreground">
             <span className="shrink-0 font-semibold tabular-nums tracking-tight text-foreground/90">
               {vehicle.license}
@@ -225,65 +183,66 @@ function VehiclePickerCard({
             <span className={cn('shrink-0 rounded px-1.5 py-0.5 text-[10px]', fuelChipClass(vehicle.fuelType))}>
               {vehicle.fuelType}
             </span>
-            {vehicle.station ? (
+            {stationLabel !== '—' ? (
               <>
                 <span aria-hidden className="text-muted-foreground/50">·</span>
                 <span className="inline-flex min-w-0 max-w-full items-center gap-1">
                   <Icon name="map-pin" className="h-3 w-3 shrink-0" />
-                  <span className="truncate">{vehicle.station}</span>
+                  <span className="truncate">{stationLabel}</span>
                 </span>
               </>
             ) : null}
           </div>
 
-          {/* Row 3 — status / health hints */}
-          {(state.reasonLine || state.isRentalBlocked) && (
-            <div className="flex min-w-0 flex-wrap items-center gap-1.5 pt-0.5">
-              {state.offline ? (
-                <span className="inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                  <Icon name="wifi-off" className="h-3 w-3 shrink-0" />
-                  <span className="truncate">{state.reasonLine}</span>
-                </span>
-              ) : state.isMaintenance ? (
-                <span className="inline-flex items-center gap-1 rounded-md sq-tone-critical px-1.5 py-0.5 text-[10px]">
-                  <Icon name="wrench" className="h-3 w-3 shrink-0" />
-                  Wartung
-                </span>
-              ) : state.isRented ? (
-                <span className="inline-flex items-center gap-1 rounded-md bg-orange-500/15 px-1.5 py-0.5 text-[10px] text-orange-600 dark:text-orange-400">
-                  <Icon name="clock" className="h-3 w-3 shrink-0" />
-                  Aktuell vermietet
-                </span>
-              ) : state.isReserved ? (
-                <span className="inline-flex items-center gap-1 rounded-md sq-tone-watch px-1.5 py-0.5 text-[10px]">
-                  <Icon name="calendar" className="h-3 w-3 shrink-0" />
-                  Reserviert
-                </span>
-              ) : null}
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5 pt-0.5">
+            {vehicle.status !== 'Available' ? (
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px]',
+                  vehicle.status === 'Maintenance' && 'sq-tone-critical',
+                  vehicle.status === 'Active Rented' && 'bg-orange-500/15 text-orange-600 dark:text-orange-400',
+                  vehicle.status === 'Reserved' && 'sq-tone-watch',
+                )}
+              >
+                {fleetLabel}
+              </span>
+            ) : null}
 
-              {state.isRentalBlocked ? (
-                <RentalHealthBadge health={health} size="sm" showBlockingLabel />
-              ) : null}
+            {preflight.offline ? (
+              <span className="inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                <Icon name="wifi-off" className="h-3 w-3 shrink-0" />
+                <span className="truncate">{preflight.blockingReason}</span>
+              </span>
+            ) : null}
 
-              {state.noTariff && !state.offline && !state.isMaintenance ? (
-                <span className="text-[10px] text-[color:var(--status-watch)]">Kein Tarif</span>
-              ) : null}
+            {preflight.rentalBlocked ? (
+              <RentalHealthBadge health={health} size="sm" showBlockingLabel />
+            ) : preflight.healthWarningOnly ? (
+              <RentalHealthBadge health={health} size="sm" />
+            ) : null}
 
-              {state.reasonLine && !state.offline && !state.isMaintenance && !state.isRented && !state.isReserved && !state.isRentalBlocked && !state.noTariff ? (
-                <span className="truncate text-[10px] text-muted-foreground">{state.reasonLine}</span>
-              ) : null}
-            </div>
-          )}
+            {preflight.noTariff && preflight.isSelectable ? (
+              <span className="text-[10px] text-[color:var(--status-watch)]">Kein Tarif</span>
+            ) : null}
+
+            {preflight.cautionReason &&
+            !preflight.offline &&
+            !preflight.rentalBlocked &&
+            !preflight.noTariff &&
+            vehicle.status === 'Available' ? (
+              <span className="truncate text-[10px] text-muted-foreground">{preflight.cautionReason}</span>
+            ) : null}
+          </div>
         </div>
       </div>
 
-      {/* Footer — mobile price + selection (larger tap target) */}
       <div className="mt-2 flex items-center justify-between gap-2 border-t border-border/60 pt-2">
         <div className="min-w-0 sm:hidden">
           <p
             className={cn(
               'text-xs font-medium tabular-nums',
-              state.muted ? 'text-muted-foreground line-through' : state.noTariff ? 'text-[color:var(--status-watch)]' : 'text-foreground',
+              preflight.noTariff ? 'text-[color:var(--status-watch)]' : 'text-foreground',
+              preflight.offline && 'line-through text-muted-foreground',
             )}
           >
             {priceLabel}
@@ -293,8 +252,8 @@ function VehiclePickerCard({
         <div className="ml-auto shrink-0">
           <SelectionIndicator
             selected={selected}
-            disabled={!state.isSelectable}
-            caution={state.isMaintenance}
+            disabled={!preflight.isSelectable}
+            caution={vehicle.status === 'Maintenance'}
           />
         </div>
       </div>
@@ -313,8 +272,6 @@ export function VehiclePickerStep({
   onSearchChange,
   brandFilter,
   onBrandFilterChange,
-  categoryFilter,
-  onCategoryFilterChange,
   stationFilter,
   onStationFilterChange,
   fuelFilter,
@@ -323,8 +280,7 @@ export function VehiclePickerStep({
   onStatusFilterChange,
   onResetFilters,
   brands,
-  categories,
-  stations,
+  stationOptions,
   fuelTypes,
   pickerHealthMap,
   catalogLoading,
@@ -334,10 +290,7 @@ export function VehiclePickerStep({
   const [moreFiltersOpen, setMoreFiltersOpen] = useState(false);
 
   const hasActiveFilters =
-    brandFilter !== 'all' ||
-    categoryFilter !== 'all' ||
-    stationFilter !== 'all' ||
-    fuelFilter !== 'all';
+    brandFilter !== 'all' || stationFilter !== 'all' || fuelFilter !== 'all';
 
   const statusCounts = useMemo(() => {
     const counts: Record<string, number> = { all: vehicles.length };
@@ -357,7 +310,6 @@ export function VehiclePickerStep({
     <div className="p-4">
       <SectionHeader title="Fahrzeug auswählen" className="mb-3" />
 
-      {/* Search */}
       <div className="relative mb-3">
         <Icon name="search" className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
         <input
@@ -369,7 +321,6 @@ export function VehiclePickerStep({
         />
       </div>
 
-      {/* Mobile — primary filters + collapsible secondary */}
       <div className="mb-3 space-y-2 md:hidden">
         <div className="grid min-w-0 grid-cols-2 gap-2">
           <select value={brandFilter} onChange={(e) => onBrandFilterChange(e.target.value)} className={selectClass}>
@@ -380,8 +331,8 @@ export function VehiclePickerStep({
           </select>
           <select value={stationFilter} onChange={(e) => onStationFilterChange(e.target.value)} className={selectClass}>
             <option value="all">Alle Stationen</option>
-            {stations.map((s) => (
-              <option key={s} value={s}>{s}</option>
+            {stationOptions.map((s) => (
+              <option key={s.id} value={s.id}>{s.label}</option>
             ))}
           </select>
         </div>
@@ -402,12 +353,6 @@ export function VehiclePickerStep({
 
         {moreFiltersOpen ? (
           <div className="grid min-w-0 grid-cols-1 gap-2 rounded-lg border border-border/70 bg-muted/20 p-2.5">
-            <select value={categoryFilter} onChange={(e) => onCategoryFilterChange(e.target.value)} className={selectClass}>
-              <option value="all">Alle Kategorien</option>
-              {categories.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
             <select value={fuelFilter} onChange={(e) => onFuelFilterChange(e.target.value)} className={selectClass}>
               <option value="all">Alle Kraftstoffe</option>
               {fuelTypes.map((f) => (
@@ -428,25 +373,18 @@ export function VehiclePickerStep({
         ) : null}
       </div>
 
-      {/* Desktop — full filter grid */}
       <div className="mb-3 hidden md:block">
-        <div className="grid min-w-0 grid-cols-2 gap-2 lg:grid-cols-4">
+        <div className="grid min-w-0 grid-cols-2 gap-2 lg:grid-cols-3">
           <select value={brandFilter} onChange={(e) => onBrandFilterChange(e.target.value)} className={selectClass}>
             <option value="all">Alle Marken</option>
             {brands.map((b) => (
               <option key={b} value={b}>{b}</option>
             ))}
           </select>
-          <select value={categoryFilter} onChange={(e) => onCategoryFilterChange(e.target.value)} className={selectClass}>
-            <option value="all">Alle Kategorien</option>
-            {categories.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
           <select value={stationFilter} onChange={(e) => onStationFilterChange(e.target.value)} className={selectClass}>
             <option value="all">Alle Stationen</option>
-            {stations.map((s) => (
-              <option key={s} value={s}>{s}</option>
+            {stationOptions.map((s) => (
+              <option key={s.id} value={s.id}>{s.label}</option>
             ))}
           </select>
           <select value={fuelFilter} onChange={(e) => onFuelFilterChange(e.target.value)} className={selectClass}>
@@ -468,7 +406,6 @@ export function VehiclePickerStep({
         ) : null}
       </div>
 
-      {/* Status tabs */}
       <div className="-mx-0.5 mb-3 flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-thin [scrollbar-width:thin]">
         {STATUS_TABS.map((tab) => (
           <button
@@ -495,7 +432,6 @@ export function VehiclePickerStep({
         ))}
       </div>
 
-      {/* Vehicle list */}
       <div className="flex max-h-[min(480px,60vh)] flex-col gap-2 overflow-y-auto pr-0.5">
         {visibleVehicles.map((vehicle) => (
           <VehiclePickerCard
