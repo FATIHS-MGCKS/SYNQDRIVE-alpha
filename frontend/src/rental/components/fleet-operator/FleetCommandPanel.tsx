@@ -198,7 +198,7 @@ export function FleetCommandPanel({
             {fleetCommandTabEmptyMessage(activeTab, hasSearch)}
           </p>
         ) : (
-          <div className="divide-y divide-border/30">
+          <div className="flex flex-col gap-1">
             {visibleContexts.map((ctx) => {
               const commandSeverity = resolveFleetCommandRowSeverity(ctx, severityOptions);
               return (
