@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-drawer-header-toolbar-v49220-2026-07-07',
+    version: '4.9.220',
+    title: 'V4.9.220 — Dashboard Drawer Header/Toolbar vereinheitlicht',
+    summary: [
+      'Critical alerts und Blocked & maintenance Drawers nutzen dieselbe Header-/Toolbar-/Section-Struktur wie Ready for Renting.',
+      'Gemeinsame Komponenten: `DashboardDrilldownToolbar`, `DashboardDrilldownSectionHeader`, `drawerStationScopeLabel`.',
+      'Clientseitige Suche + Stations-Scope für alle drei operative Vehicle-Drawers; Reason-Text in Haystack.',
+      'Eyebrow Blocked: `Service & blockers`; Auto-Fokus-Verhinderung für alle drei Drawers (kein Mobile-Keyboard).',
+    ],
+    reason:
+      'Nach Vehicle-Entry-Vereinheitlichung wirkten Critical/Blocked-Drawer oben noch minimal — ohne Suche, Scope und Section-Optik.',
+    previousBehavior:
+      'Nur Ready-for-Renting hatte Toolbar (Search + Station); Critical/Blocked nur Header-Hint ohne Toolbar.',
+    details:
+      'Frontend-only: `DashboardDrilldownDrawer.tsx`, `dashboardDrilldownUi.tsx`, `dashboardDrilldownRowDisplay.ts`. Keine Business-/API-Änderung.',
+    affectsArchitecture: false,
+    module: null,
+    createdAt: '2026-07-07T02:35:00.000Z',
+  },
+  {
     id: 'dashboard-drawer-vehicle-unify-v49219-2026-07-07',
     version: '4.9.219',
     title: 'V4.9.219 — Dashboard Drawer: einheitliche Vehicle-Entries',

@@ -15,10 +15,16 @@ import {
 import { buildDashboardGroups } from './dashboardDrilldownGroups';
 import {
   composeBookingDrawerRowDisplay,
-  filterReadyToRentDrawerGroups,
+  filterDashboardDrawerGroups,
   readyToRentDrawerHint,
   sortReadyToRentDrawerGroupsByLastSignal,
 } from './dashboardDrilldownRowDisplay';
+import {
+  dashboardDrilldownSectionClassName,
+  DashboardDrilldownSectionHeader,
+  DashboardDrilldownToolbar,
+  drawerStationScopeLabel,
+} from './dashboardDrilldownUi';
 import { drawerHeaderHint } from './dashboardDrawerNormalize';
 import type { DashboardViewModel, DashboardViewProps } from './dashboardTypes';
 import type {
@@ -44,6 +50,16 @@ interface DashboardDrilldownDrawerProps {
   onOpenBooking?: DashboardViewProps['onOpenBookingById'];
   onOpenInvoice?: (invoiceId: string) => void;
   onOpenBilling?: () => void;
+}
+
+const VEHICLE_DRAWER_SLICE_IDS = new Set<DashboardSliceId>([
+  'ready-to-rent',
+  'critical-alerts',
+  'blocked-maintenance',
+]);
+
+function isVehicleDrawerSlice(sliceId: DashboardSliceId): boolean {
+  return VEHICLE_DRAWER_SLICE_IDS.has(sliceId);
 }
 
 const DASHBOARD_SLICE_IDS = new Set<DashboardSliceId>([
@@ -132,10 +148,45 @@ function defaultInvoiceCta(de: boolean): string {
 function operativeEyebrow(sliceId: DashboardSliceId, de: boolean): string {
   if (sliceId === 'ready-to-rent') return de ? 'Mietbereitschaft' : 'Rental readiness';
   if (sliceId === 'critical-alerts') return de ? 'Alerts & Probleme' : 'Alerts & issues';
+  if (sliceId === 'blocked-maintenance') return de ? 'Service & Blocker' : 'Service & blockers';
   if (sliceId === 'due-soon') return de ? 'Timeline' : 'Timeline';
   if (sliceId === 'overdue-returns') return de ? 'Rückgaben' : 'Returns';
   if (sliceId === 'overdue-pickups') return de ? 'Übergaben' : 'Pickups';
   return de ? 'Operativ' : 'Operations';
+}
+
+function vehicleDrawerEmptyTitle(slice: DashboardSlice, de: boolean): string {
+  if (slice.id === 'critical-alerts') {
+    return de ? 'Keine kritischen Alerts' : 'No critical alerts';
+  }
+  if (slice.id === 'blocked-maintenance') {
+    return de ? 'Keine blockierten Fahrzeuge' : 'No blocked vehicles';
+  }
+  return emptyTitle(slice, de);
+}
+
+function vehicleDrawerEmptyDescription(slice: DashboardSlice, de: boolean): string {
+  if (slice.id === 'critical-alerts') {
+    return de
+      ? 'In diesem Bereich liegen aktuell keine kritischen Hinweise vor.'
+      : 'No critical alerts in this scope right now.';
+  }
+  if (slice.id === 'blocked-maintenance') {
+    return de
+      ? 'Aktuell keine Fahrzeuge blockiert oder in Wartung in diesem Bereich.'
+      : 'No blocked or maintenance vehicles in this scope right now.';
+  }
+  return emptyDescription(slice, de);
+}
+
+function drawerSearchEmptyTitle(de: boolean): string {
+  return de ? 'Keine Treffer' : 'No matches';
+}
+
+function drawerSearchEmptyDescription(de: boolean): string {
+  return de
+    ? 'Passe die Suche an oder wähle eine andere Station.'
+    : 'Adjust your search or try a different station.';
 }
 
 function emptyTitle(slice: DashboardSlice, de: boolean): string {
@@ -386,51 +437,6 @@ function EmptyState({ title, description }: { title: string; description: string
   );
 }
 
-function readyToRentStationScopeLabel(
-  selectedStationName: string | null | undefined,
-  de: boolean,
-): string {
-  if (selectedStationName?.trim()) {
-    return de ? `Station: ${selectedStationName.trim()}` : `Station: ${selectedStationName.trim()}`;
-  }
-  return de ? 'Alle Standorte' : 'All Stations';
-}
-
-function ReadyToRentDrawerToolbar({
-  searchQuery,
-  onSearchChange,
-  stationScopeLabel,
-  searchPlaceholder,
-}: {
-  searchQuery: string;
-  onSearchChange: (value: string) => void;
-  stationScopeLabel: string;
-  searchPlaceholder: string;
-}) {
-  return (
-    <div className="mb-1 space-y-2 rounded-xl border border-border/50 bg-muted/20 px-3 py-2.5 dark:bg-muted/10">
-      <div className="flex min-w-0 items-center gap-1.5">
-        <Icon name="map-pin" className="h-3 w-3 shrink-0 text-muted-foreground/80" />
-        <span className="sq-section-label truncate normal-case tracking-wide">{stationScopeLabel}</span>
-      </div>
-      <div className="relative">
-        <Icon
-          name="search"
-          className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground"
-        />
-        <input
-          type="search"
-          value={searchQuery}
-          onChange={(event) => onSearchChange(event.target.value)}
-          placeholder={searchPlaceholder}
-          autoComplete="off"
-          className="w-full min-w-0 rounded-xl border border-border/55 bg-background/60 py-2 pl-8 pr-3 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[color:var(--brand)] dark:bg-card/50"
-        />
-      </div>
-    </div>
-  );
-}
-
 function DashboardGroupList({
   slice,
   vehicleStates,
@@ -454,7 +460,7 @@ function DashboardGroupList({
   onOpenBooking?: DashboardViewProps['onOpenBookingById'];
   onClose: () => void;
 }) {
-  const isReadyToRent = slice.id === 'ready-to-rent';
+  const isVehicleDrawer = isVehicleDrawerSlice(slice.id);
   const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
@@ -463,33 +469,35 @@ function DashboardGroupList({
 
   const groups = useMemo(() => {
     const built = buildDashboardGroups(slice, locale);
-    if (!isReadyToRent) return built;
+    if (slice.id !== 'ready-to-rent') return built;
     return sortReadyToRentDrawerGroupsByLastSignal(built, {
       vehicleStates,
       fleetVehicleById,
     });
-  }, [slice, locale, isReadyToRent, vehicleStates, fleetVehicleById]);
+  }, [slice, locale, vehicleStates, fleetVehicleById]);
   const filteredGroups = useMemo(() => {
-    if (!isReadyToRent || !searchQuery.trim()) return groups;
-    return filterReadyToRentDrawerGroups(groups, vehicleStates, searchQuery);
-  }, [groups, isReadyToRent, searchQuery, vehicleStates]);
+    if (!isVehicleDrawer || !searchQuery.trim()) return groups;
+    return filterDashboardDrawerGroups(groups, vehicleStates, searchQuery, locale);
+  }, [groups, isVehicleDrawer, searchQuery, vehicleStates, locale]);
 
   const searchPlaceholder = de ? 'Kennzeichen, Marke, Modell…' : 'Plate, make, model…';
-  const stationScopeLabel = readyToRentStationScopeLabel(selectedStationName, de);
+  const stationScopeLabel = drawerStationScopeLabel(selectedStationName, de);
 
   if (groups.length === 0) {
     return (
       <EmptyState
-        title={emptyTitle(slice, de)}
-        description={emptyDescription(slice, de)}
+        title={isVehicleDrawer ? vehicleDrawerEmptyTitle(slice, de) : emptyTitle(slice, de)}
+        description={
+          isVehicleDrawer ? vehicleDrawerEmptyDescription(slice, de) : emptyDescription(slice, de)
+        }
       />
     );
   }
 
   return (
     <div className="space-y-3">
-      {isReadyToRent ? (
-        <ReadyToRentDrawerToolbar
+      {isVehicleDrawer ? (
+        <DashboardDrilldownToolbar
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
           stationScopeLabel={stationScopeLabel}
@@ -499,25 +507,16 @@ function DashboardGroupList({
 
       {filteredGroups.length === 0 ? (
         <EmptyState
-          title={de ? 'Keine Treffer' : 'No matches'}
-          description={
-            de
-              ? 'Passe die Suche an oder wähle eine andere Station.'
-              : 'Adjust your search or try a different station.'
-          }
+          title={drawerSearchEmptyTitle(de)}
+          description={drawerSearchEmptyDescription(de)}
         />
       ) : (
         filteredGroups.map((group, index) => (
           <section
             key={group.id}
-            className={cn('space-y-2', isReadyToRent && index > 0 && 'border-t border-border/40 pt-3')}
+            className={dashboardDrilldownSectionClassName(index, isVehicleDrawer)}
           >
-            <div className="flex items-center justify-between gap-3 px-0.5">
-              <p className="sq-section-label normal-case tracking-wide">{group.title}</p>
-              <span className="rounded-md bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
-                {group.count}
-              </span>
-            </div>
+            <DashboardDrilldownSectionHeader title={group.title} count={group.count} />
             <div className="space-y-1.5">
               {group.rows.map((row) => (
                 <DashboardRowCard
@@ -655,7 +654,8 @@ export function DashboardDrilldownDrawer({
 
   const handleContentOpenAutoFocus = useCallback(
     (event: Event) => {
-      if (activeTargetId !== 'ready-to-rent') return;
+      if (!activeTargetId || !isDashboardSliceId(activeTargetId)) return;
+      if (!isVehicleDrawerSlice(activeTargetId)) return;
       event.preventDefault();
       const content = event.currentTarget as HTMLElement;
       const title = content.querySelector('[data-slot="sheet-title"]');
