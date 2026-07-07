@@ -36,10 +36,10 @@ export function ExtrasStep({
             <div className="flex h-7 w-7 items-center justify-center rounded-lg sq-tone-success">
               <Icon name="fuel" className="h-5 w-5 text-[color:var(--status-positive)]" />
             </div>
-            <SectionHeader title="Mileage Packages" />
+            <SectionHeader title="Kilometerpakete" />
           </div>
           <p className="mb-3 text-xs text-muted-foreground">
-            Add extra kilometers to your booking. Only one package can be selected.
+            Zusätzliche Kilometer für die Buchung. Es kann nur ein Paket gewählt werden.
           </p>
           {!vehicleTariffCtx ? (
             <div className="py-6 text-center">
@@ -76,7 +76,7 @@ export function ExtrasStep({
                     >
                       +{pkg.includedKm.toLocaleString('de-DE')}
                     </p>
-                    <p className="mb-2 text-xs text-muted-foreground">kilometers</p>
+                    <p className="mb-2 text-xs text-muted-foreground">Kilometer</p>
                     <div
                       className={`text-xs ${
                         isSelected ? 'text-[color:var(--status-positive)]' : 'text-foreground'
@@ -90,7 +90,7 @@ export function ExtrasStep({
                           grossFromNetCents(pkg.priceCents, taxRatePercent) / Math.max(1, pkg.includedKm),
                         ),
                       )}
-                      /km effective
+                      /km effektiv
                     </p>
                   </button>
                 );
@@ -98,7 +98,7 @@ export function ExtrasStep({
             </div>
           ) : (
             <p className="py-3 text-center text-xs text-muted-foreground">
-              No mileage packages available for this vehicle.
+              Keine Kilometerpakete für dieses Fahrzeug verfügbar.
             </p>
           )}
         </div>
@@ -110,10 +110,10 @@ export function ExtrasStep({
             <div className="flex h-7 w-7 items-center justify-center rounded-lg sq-tone-ai">
               <Icon name="shield" className="h-5 w-5 text-[color:var(--status-ai)]" />
             </div>
-            <SectionHeader title="Insurance Packages" />
+            <SectionHeader title="Versicherungspakete" />
           </div>
           <p className="mb-3 text-xs text-muted-foreground">
-            Choose additional insurance coverage for your rental period.
+            Zusätzliche Versicherungsdeckung für den Mietzeitraum wählen.
           </p>
           {insuranceOptions.length > 0 ? (
             <div className="space-y-3">
@@ -152,7 +152,7 @@ export function ExtrasStep({
                         {formatOptionGrossLabel(ins.priceCents, ins.pricingType, taxRatePercent, displayRentalDays)}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {ins.pricingType === 'PER_DAY' ? 'per day' : 'per booking'}
+                        {ins.pricingType === 'PER_DAY' ? 'pro Tag' : 'pro Buchung'}
                       </p>
                     </div>
                   </button>
@@ -161,7 +161,7 @@ export function ExtrasStep({
             </div>
           ) : (
             <p className="py-3 text-center text-xs text-muted-foreground">
-              No insurance options available for this vehicle.
+              Keine Versicherungsoptionen für dieses Fahrzeug verfügbar.
             </p>
           )}
         </div>
@@ -176,7 +176,7 @@ export function ExtrasStep({
             <SectionHeader title="Extras" />
           </div>
           <p className="mb-3 text-xs text-muted-foreground">
-            Add optional equipment and services to your booking.
+            Optionales Zubehör und Services zur Buchung hinzufügen.
           </p>
           {extraOptions.length > 0 ? (
             <div className="grid grid-cols-2 gap-3">
@@ -220,7 +220,7 @@ export function ExtrasStep({
             </div>
           ) : (
             <p className="py-3 text-center text-xs text-muted-foreground">
-              No extras available for this vehicle.
+              Keine Extras für dieses Fahrzeug verfügbar.
             </p>
           )}
         </div>
@@ -233,13 +233,13 @@ export function ExtrasStep({
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 {selectedMileagePackage && (
                   <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs sq-chip-success">
-                    <Icon name="fuel" className="h-3 w-3" /> 1 Mileage Pkg
+                    <Icon name="fuel" className="h-3 w-3" /> 1 Kilometerpaket
                   </span>
                 )}
                 {selectedInsurances.length > 0 && (
                   <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs sq-tone-ai">
-                    <Icon name="shield" className="h-3 w-3" /> {selectedInsurances.length} Insurance
-                    {selectedInsurances.length !== 1 ? 's' : ''}
+                    <Icon name="shield" className="h-3 w-3" /> {selectedInsurances.length} Versicherung
+                    {selectedInsurances.length !== 1 ? 'en' : ''}
                   </span>
                 )}
                 {extras.length > 0 && (

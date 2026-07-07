@@ -10,6 +10,7 @@ export interface BookingSuccessStateProps {
   selectedVehicle: VehicleData | null;
   rentalDays: number;
   grandTotal: number | null;
+  bookingRef?: string | null;
   redirectCountdown: number | null;
   onBack: () => void;
   onNewBooking: () => void;
@@ -20,10 +21,13 @@ export function BookingSuccessState({
   selectedVehicle,
   rentalDays,
   grandTotal,
+  bookingRef,
   redirectCountdown,
   onBack,
   onNewBooking,
 }: BookingSuccessStateProps) {
+  const refLabel = bookingRef ? `Buchung #${bookingRef}` : 'Buchung wurde erfolgreich angelegt';
+
   return (
     <div className="flex items-center justify-center py-16">
       <BookingStepCard>
@@ -32,9 +36,7 @@ export function BookingSuccessState({
             <Icon name="check-circle" className="h-5 w-5 text-[color:var(--status-positive)]" />
           </div>
           <h2 className="mb-2 text-lg text-foreground">Buchung erstellt!</h2>
-          <p className="mb-2 text-xs text-muted-foreground">
-            Buchung #{`BK-${Date.now().toString().slice(-6)}`} wurde erfolgreich angelegt.
-          </p>
+          <p className="mb-2 text-xs text-muted-foreground">{refLabel}</p>
           {redirectCountdown !== null && redirectCountdown > 0 && (
             <p className="mb-3 text-xs text-muted-foreground">
               Weiterleitung zur Übersicht in {redirectCountdown}s…
@@ -42,19 +44,19 @@ export function BookingSuccessState({
           )}
           <div className="mb-3 space-y-2 rounded-lg bg-muted/50 p-4 text-left">
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Customer</span>
+              <span className="text-muted-foreground">Kunde</span>
               <span className="text-foreground">{selectedCustomer?.name}</span>
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Vehicle</span>
+              <span className="text-muted-foreground">Fahrzeug</span>
               <span className="text-foreground">{selectedVehicle ? buildMMY(selectedVehicle) : '—'}</span>
             </div>
             <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Period</span>
-              <span className="text-foreground">{rentalDays} Days</span>
+              <span className="text-muted-foreground">Zeitraum</span>
+              <span className="text-foreground">{rentalDays} Tage</span>
             </div>
             <div className="flex justify-between border-t border-border pt-2 text-xs">
-              <span className="text-muted-foreground">Total Amount</span>
+              <span className="text-muted-foreground">Gesamtbetrag</span>
               <span className="text-[color:var(--status-positive)]">{formatEuroAmount(grandTotal)}</span>
             </div>
           </div>

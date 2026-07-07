@@ -13,11 +13,7 @@ import { documentEligibilityLabelDe } from '../../lib/customer-verification';
 import { formatStressScore, stressToneToStatusTone } from '../../lib/scoreFormat';
 import { Icon } from '../ui/Icon';
 import { BookingStepCard } from './BookingStepCard';
-import type {
-  BookingCustomer,
-  BookingCustomerEligibility,
-  CustomerStepProps,
-} from './types';
+import type { CustomerStepProps } from './types';
 
 export function CustomerStep({
   orgId,

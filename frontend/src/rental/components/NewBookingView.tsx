@@ -262,6 +262,7 @@ export function NewBookingView({
   const [agbAccepted, setAgbAccepted] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [bookingConfirmed, setBookingConfirmed] = useState(false);
+  const [createdBookingRef, setCreatedBookingRef] = useState<string | null>(null);
   const [invoiceGenerated, setInvoiceGenerated] = useState(false);
   const [contractGenerated, setContractGenerated] = useState(false);
   const [generatingInvoice, setGeneratingInvoice] = useState(false);
@@ -636,7 +637,6 @@ export function NewBookingView({
     ? mileagePackages.find((p) => p.id === selectedMileagePackage)?.includedKm ?? 0
     : 0;
   const discountAmount = manualDiscountCents != null ? manualDiscountCents / 100 : 0;
-  const totalBeforeTax = subtotalNet;
   const hasPrice = Boolean(priceSim && grandTotal != null);
   const noTariffForVehicle = Boolean(selectedVehicle && !vehicleTariffCtx && !catalogLoading);
   const canCalculatePrice = Boolean(
@@ -770,6 +770,7 @@ export function NewBookingView({
       const created = await api.bookings.create(orgId, payload as any);
       const uiBooking = mapApiBooking(created);
 
+      setCreatedBookingRef(uiBooking.bookingRef ?? uiBooking.id ?? null);
       setBookingConfirmed(true);
       toast.success('Buchung erfolgreich erstellt!', {
         description: `${buildMMY(selectedVehicle)} • ${selectedCustomer.name} • ${rentalDays} Tage`,
@@ -858,38 +859,9 @@ export function NewBookingView({
 
   };
 
-  // V4.6.67 — Calendar generation now respects calendarYear (no longer hardcoded to 2026).
-  const getCalendarDays = (month: number, year: number) => {
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const adjustedFirst = firstDay === 0 ? 6 : firstDay - 1; // Monday start
-    const days: (number | null)[] = [];
-    for (let i = 0; i < adjustedFirst; i++) days.push(null);
-    for (let i = 1; i <= daysInMonth; i++) days.push(i);
-    return days;
-  };
-
-  const monthNames = ['Januar', 'Februar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'];
-
   // Build a stable YYYY-MM-DD key from (year, month, day) using calendarYear.
   const calendarDateStr = (day: number) =>
     `${calendarYear}-${String(calendarMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-  const isInRange = (day: number) => {
-    if (!pickupDate || !returnDate || !day) return false;
-    const dateStr = calendarDateStr(day);
-    return dateStr >= pickupDate && dateStr <= returnDate;
-  };
-
-  const isStartDay = (day: number) => {
-    if (!pickupDate || !day) return false;
-    return calendarDateStr(day) === pickupDate;
-  };
-
-  const isEndDay = (day: number) => {
-    if (!returnDate || !day) return false;
-    return calendarDateStr(day) === returnDate;
-  };
 
   // V4.6.67 — Real bookings of the selected vehicle that fall in the
   // currently displayed calendar month. Replaces the legacy v1..v6 mock map.
@@ -1060,6 +1032,7 @@ export function NewBookingView({
   const handleResetBooking = () => {
     setRedirectCountdown(null);
     setBookingConfirmed(false);
+    setCreatedBookingRef(null);
     setCurrentStep(1);
     setSelectedCustomer(null);
     setSelectedVehicle(null);
@@ -1166,6 +1139,7 @@ export function NewBookingView({
           selectedVehicle={selectedVehicle}
           rentalDays={rentalDays}
           grandTotal={grandTotal}
+          bookingRef={createdBookingRef}
           redirectCountdown={redirectCountdown}
           onBack={onBack}
           onNewBooking={handleResetBooking}
