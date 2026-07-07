@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-kpi-gradient-v49216-2026-07-07',
+    version: '4.9.216',
+    title: 'V4.9.216 — Dashboard KPI Cards: subtile Gradient-States',
+    summary: [
+      'Control KPI Cards nutzen zentrale Visual-State-Helfer (`getKpiCardTone`, `getKpiValueTone`, `getKpiCardSurfaceClass`, `getKpiValueGradientClass`).',
+      'Ready-for-Renting Card bleibt neutral; nur die Ready-Zahl erhält positiven Text-Gradient; `Not ready > 0` erhält critical Text-Gradient.',
+      'Overdue Returns/Pickups und Critical Alerts: bei Count > 0 dezenter critical Card-Gradient, Border, Icon-Tile und Zahl-Gradient; bei 0 vollständig neutral.',
+      'Blocked & Maintenance: bei Count > 0 warning/amber Gradient; Zero-State neutral.',
+      "Today's Operations bleibt neutral — keine neue fachliche Tonalität.",
+    ],
+    reason:
+      'Dashboard KPI Cards sollen den subtilen Gradient-Stil aus Notifications/Fleet Command übernehmen — premium, soft-glass, ohne grelle Flächen.',
+    previousBehavior:
+      'KPI Cards nutzten flache Border-Tints (success/critical/watch); Ready-for-Renting färbte die ganze Card grün bei success tone.',
+    details:
+      'Frontend-only: `dashboardKpiVisual.ts`, `ControlKpiStrip.tsx`, Tests. Keine KPI-Berechnung, Drawer-Logik, Runtime Builder oder Backend-Änderungen.',
+    affectsArchitecture: false,
+    module: null,
+    createdAt: '2026-07-07T00:45:00.000Z',
+  },
+  {
     id: 'ready-to-rent-drawer-ux-v49215-2026-07-07',
     version: '4.9.215',
     title: 'V4.9.215 — Ready-to-Rent Drawer UX & Signal-Sort',
