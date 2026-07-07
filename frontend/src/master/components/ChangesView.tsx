@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-row-map-focus-v49226-2026-07-07',
+    version: '4.9.226',
+    title: 'V4.9.226 — Fleet Page: Row-Fokus vs. Open, flüssigeres Map-Pinch-Zoom',
+    summary: [
+      'Fleet Page: Row-Klick fokussiert Map + Selection (`focusFleetVehicle`) — öffnet nicht mehr Vehicle Detail.',
+      '`Open →` ist einziger Detail-Trigger (`openFleetVehicle` → `onVehicleSelect`); Keyboard Enter/Space auf Open mit `stopPropagation`.',
+      'Dashboard `FleetCommandView` unverändert: Row- und Open-Klick öffnen weiterhin Vehicle Detail.',
+      'MapboxMap: Auto-Pitch nur noch auf `zoomend` via `setPitch` — kein `easeTo` während Pinch-Zoom.',
+    ],
+    reason:
+      'Fleet-Row-Klick öffnete versehentlich Vehicle Detail; Pinch-Zoom wirkte hakelig durch pitch-`easeTo` auf jedem `zoom`-Event.',
+    previousBehavior:
+      '`selectFleetVehicle` rief `onVehicleSelect` bei jedem Row-Klick auf; Map pitch animierte während Zoom-Gesten.',
+    details:
+      'Frontend-only: `FleetView.tsx`, `FleetOperatorRow.tsx`, `FleetCommandPanel.tsx`, `MapboxMap.tsx`.',
+    affectsArchitecture: false,
+    module: null,
+    createdAt: '2026-07-07T05:30:00.000Z',
+  },
+  {
     id: 'new-booking-component-extraction-v49225-2026-07-07',
     version: '4.9.225',
     title: 'V4.9.225 — New Booking: Wizard-UI in Step-Komponenten aufgeteilt',

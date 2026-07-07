@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, type ReactNode, type SyntheticEvent } from 'react';
 import { Search } from 'lucide-react';
 import { SkeletonCard } from '../../../components/patterns';
 import {
@@ -42,7 +42,7 @@ export interface FleetCommandPanelProps {
   refreshing: boolean;
   headerAction?: ReactNode;
   onRowClick: (ctx: FleetVehicleContext) => void;
-  onDetailClick: (ctx: FleetVehicleContext, e: React.MouseEvent) => void;
+  onDetailClick: (ctx: FleetVehicleContext, e: SyntheticEvent) => void;
   registerRowRef: (vehicleId: string, el: HTMLDivElement | null) => void;
   onRowHover: (vehicleId: string | null) => void;
   isDarkMode?: boolean;

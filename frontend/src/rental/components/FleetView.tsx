@@ -1,5 +1,5 @@
 
-import { useState, useRef, useMemo, useEffect, useSyncExternalStore, useCallback, Component, type ReactNode, type ErrorInfo } from 'react';
+import { useState, useRef, useMemo, useEffect, useSyncExternalStore, useCallback, Component, type ReactNode, type ErrorInfo, type SyntheticEvent } from 'react';
 import { MapboxMap, type MapboxMapHandle } from '../../components/MapboxMap';
 import { VehicleData } from '../data/vehicles';
 import { useRentalOrg } from '../RentalContext';
@@ -169,7 +169,7 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
     el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, []);
 
-  const selectFleetVehicle = useCallback(
+  const focusFleetVehicle = useCallback(
     (
       ctx: FleetVehicleContext,
       options?: { focusMap?: boolean; switchTab?: boolean },
@@ -183,9 +183,16 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
         setFocusNonce((n) => n + 1);
       }
       requestAnimationFrame(() => scrollRowIntoView(ctx.vehicle.id));
+    },
+    [scrollRowIntoView, setSelectedVehicleId],
+  );
+
+  const openFleetVehicle = useCallback(
+    (ctx: FleetVehicleContext) => {
+      setSelectedVehicleId(ctx.vehicle.id);
       onVehicleSelect?.(ctx.vehicle);
     },
-    [onVehicleSelect, scrollRowIntoView, setSelectedVehicleId],
+    [onVehicleSelect, setSelectedVehicleId],
   );
 
   const registerRowRef = useCallback((vehicleId: string, el: HTMLDivElement | null) => {
@@ -245,26 +252,26 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
 
   const handleRowClick = useCallback(
     (ctx: FleetVehicleContext) => {
-      selectFleetVehicle(ctx);
+      focusFleetVehicle(ctx, { focusMap: true });
       mapRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     },
-    [selectFleetVehicle],
+    [focusFleetVehicle],
   );
 
   const handleDetailClick = useCallback(
-    (ctx: FleetVehicleContext, e: React.MouseEvent) => {
+    (ctx: FleetVehicleContext, e: SyntheticEvent) => {
       e.stopPropagation();
-      selectFleetVehicle(ctx, { focusMap: false });
+      openFleetVehicle(ctx);
     },
-    [selectFleetVehicle],
+    [openFleetVehicle],
   );
 
   const handleMapVehicleClick = useCallback(
     (vehicleId: string) => {
       const ctx = baseContexts.find((entry) => entry.vehicle.id === vehicleId);
-      if (ctx) selectFleetVehicle(ctx);
+      if (ctx) focusFleetVehicle(ctx);
     },
-    [baseContexts, selectFleetVehicle],
+    [baseContexts, focusFleetVehicle],
   );
 
   const selectedStation = stationId || ALL_STATIONS_FILTER;

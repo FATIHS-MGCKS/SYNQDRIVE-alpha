@@ -583,12 +583,22 @@ export const MapboxMap = forwardRef<MapboxMapHandle, MapboxMapProps>(
           onVehicleHoverRef.current?.(null);
         });
 
-        map.on('zoom', () => {
+        const applyPitchForZoom = () => {
           const targetPitch = pitchForZoom(map.getZoom());
-          if (Math.abs(map.getPitch() - targetPitch) > 1) {
-            map.easeTo({ pitch: targetPitch, duration: 300 });
+          if (Math.abs(map.getPitch() - targetPitch) > 0.5) {
+            map.setPitch(targetPitch);
           }
-        });
+        };
+
+        // Apply pitch after zoom completes — never easeTo during pinch/wheel zoom
+        // (easeTo on every `zoom` event fights touch pinch and feels janky).
+        map.on('zoomend', applyPitchForZoom);
+
+        if (interactive) {
+          map.touchZoomRotate.enable();
+          map.dragPan.enable();
+          map.scrollZoom.enable();
+        }
 
         const setPointerCursor = () => {
           map.getCanvas().style.cursor = 'pointer';

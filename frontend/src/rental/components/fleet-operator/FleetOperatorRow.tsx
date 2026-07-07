@@ -1,4 +1,4 @@
-import type { MouseEvent } from 'react';
+import type { KeyboardEvent, MouseEvent } from 'react';
 import { BrandLogoMark, getBrandFromModel } from '../BrandLogo';
 import { Icon } from '../ui/Icon';
 import { StatusChip, type StatusTone } from '../../../components/patterns';
@@ -67,7 +67,7 @@ export interface FleetOperatorRowProps {
   commandSeverity: FleetCommandRowSeverity;
   selected: boolean;
   onClick: () => void;
-  onDetailClick: (e: MouseEvent) => void;
+  onDetailClick: (e: MouseEvent | KeyboardEvent) => void;
   rowRef: (el: HTMLDivElement | null) => void;
   onMouseEnter?: () => void;
   onMouseLeave?: () => void;
@@ -243,6 +243,13 @@ export function FleetOperatorRow({
         <button
           type="button"
           onClick={onDetailClick}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              e.stopPropagation();
+              onDetailClick(e);
+            }
+          }}
           aria-label="Open vehicle details"
           className="sq-press inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10.5px] font-medium text-muted-foreground opacity-90 transition-colors hover:bg-muted/40 hover:text-foreground group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
         >
