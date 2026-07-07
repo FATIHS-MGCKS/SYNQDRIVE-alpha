@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-command-reason-line-v49217-2026-07-07',
+    version: '4.9.217',
+    title: 'V4.9.217 — Fleet Command Row: Reason-Zeile & Listenabstand',
+    summary: [
+      'Reason-Chip (`Monitor tires`, `1 active fault code` usw.) steht in optionaler 4. Zeile — nicht mehr in der Meta-Zeile.',
+      'Meta-Zeile (Zeile 3) bleibt stabil: Fuel/SoC · Telemetry/Freshness · Odometer/km.',
+      'Fahrzeuge ohne Reason bleiben kompakt 3-zeilig; mit Reason kontrolliert 4-zeilig.',
+      'Minimaler Abstand zwischen Fleet-Command-Rows (`gap-1`) analog Notifications — keine `divide-y` Trennlinien.',
+    ],
+    reason:
+      'Reason-Chips waren zu eng in der Meta-Zeile; die Liste wirkte gedrängt ohne Luft zwischen den Einträgen.',
+    previousBehavior:
+      'Reason-Chip teilte sich Zeile 3 mit Fuel/Telemetry/Odometer; Rows waren per `divide-y` ohne Zwischenraum verbunden.',
+    details:
+      'Frontend-only: `FleetOperatorRow.tsx`, `FleetCommandPanel.tsx`. Gradient/Severity/Sortierung unverändert; Dashboard und Fleet Page nutzen dieselbe shared UI.',
+    affectsArchitecture: false,
+    module: null,
+    createdAt: '2026-07-07T01:20:00.000Z',
+  },
+  {
     id: 'dashboard-kpi-gradient-v49216-2026-07-07',
     version: '4.9.216',
     title: 'V4.9.216 — Dashboard KPI Cards: subtile Gradient-States',

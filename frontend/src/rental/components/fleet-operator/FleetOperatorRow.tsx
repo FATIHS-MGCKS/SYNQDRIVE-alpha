@@ -140,7 +140,7 @@ export function FleetOperatorRow({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       className={cn(
-        'group flex cursor-pointer items-start gap-2 px-2.5 py-2 transition-colors',
+        'group flex cursor-pointer items-start gap-2 rounded-lg px-2.5 py-2 transition-colors',
         'hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--brand)]',
         fleetCommandRowSurfaceClass(commandSeverity),
         selected &&
@@ -202,10 +202,10 @@ export function FleetOperatorRow({
           </button>
         </div>
 
-        {/* Line 3 — fuel, telemetry, odometer, optional reason (single row, no wrap) */}
+        {/* Line 3 — fuel, telemetry, odometer (stable single row) */}
         <div className="mt-0.5 flex min-w-0 items-center gap-x-1 overflow-hidden text-[10px] tabular-nums text-muted-foreground">
           {hasEnergy && (
-            <span className="inline-flex shrink-0 items-center">
+            <span className="inline-flex shrink-0 items-center whitespace-nowrap">
               <FleetEnergyIndicator
                 percent={display.energy.percent}
                 isElectric={display.energy.kind === 'battery'}
@@ -216,7 +216,7 @@ export function FleetOperatorRow({
           {hasEnergy && <MetaDot />}
           <span
             className={cn(
-              'min-w-0 shrink truncate',
+              'min-w-0 flex-1 truncate',
               display.showTelemetryWarning && 'text-[color:var(--status-watch)]',
             )}
             title={display.telemetryLabel}
@@ -229,21 +229,22 @@ export function FleetOperatorRow({
               <span className="shrink-0 whitespace-nowrap">{display.odometerLabel}</span>
             </>
           )}
-          {reasonBadge && (
-            <>
-              <MetaDot />
-              <span
-                className={cn(
-                  'min-w-0 max-w-[38%] shrink truncate rounded-full px-1.5 py-px text-[9.5px] font-medium leading-tight',
-                  fleetCommandReasonChipClass(reasonTone),
-                )}
-                title={reasonBadge.text}
-              >
-                {reasonBadge.text}
-              </span>
-            </>
-          )}
         </div>
+
+        {/* Line 4 — optional reason chip alone (only when present) */}
+        {reasonBadge && (
+          <div className="mt-0.5 flex min-w-0 items-start">
+            <span
+              className={cn(
+                'inline-block max-w-full truncate rounded-full px-1.5 py-px text-[9.5px] font-medium leading-tight',
+                fleetCommandReasonChipClass(reasonTone),
+              )}
+              title={reasonBadge.text}
+            >
+              {reasonBadge.text}
+            </span>
+          </div>
+        )}
       </div>
     </div>
   );
