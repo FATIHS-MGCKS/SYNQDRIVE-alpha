@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customers-direct-detail-view-v49234-2026-07-07',
+    version: '4.9.234',
+    title: 'V4.9.234 — Kundenliste öffnet direkt die Vollansicht',
+    summary: [
+      'Klick auf mobile Kundenkarte oder Desktop-Tabellenzeile öffnet sofort `CustomerDetailView`.',
+      'CustomerDetailModal / Quick View aus der Kundenliste entfernt (kein Zwischen-Popup mehr).',
+      'Zurück aus der Vollansicht führt weiterhin zur Kundenliste (`App.tsx` unverändert).',
+    ],
+    reason:
+      'Die Quick View war redundant, weil die Listenkarte bereits die Kerndaten zeigt und die Vollansicht alle Funktionen bündelt.',
+    previousBehavior:
+      'Klick öffnete CustomerDetailModal mit Blur-Animation; „Vollansicht“ war ein zweiter Schritt.',
+    details:
+      'frontend: CustomersView.tsx — openCustomerFullDetail via onOpenCustomerDetail; Modal-State und Animation entfernt.',
+    affectsArchitecture: false,
+    module: 'Customers',
+    createdAt: '2026-07-07T23:55:00.000Z',
+  },
+  {
     id: 'customers-mobile-card-polish-v49233-2026-07-07',
     version: '4.9.233',
     title: 'V4.9.233 — Kunden Mobile Card: Kontakt-Feinschliff + Tooltips',

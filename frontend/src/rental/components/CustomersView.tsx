@@ -3,7 +3,6 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Car, CheckCircle, IdCard, Upload, User } from 'lucide-react';
 import { Icon } from './ui/Icon';
 import { toast } from 'sonner';
-import { CustomerDetailModal } from './CustomerDetailModal';
 import { AddCustomerDocumentsStep } from './add-customer/AddCustomerDocumentsStep';
 import { useCustomerVerification } from './customer-verification/useCustomerVerification';
 import {
@@ -189,9 +188,6 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [isRiskOpen, setIsRiskOpen] = useState(false);
   const [isTypeOpen, setIsTypeOpen] = useState(false);
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
-  const [isCustomerDetailAnimating, setIsCustomerDetailAnimating] = useState(false);
-  const [isCustomerDetailClosing, setIsCustomerDetailClosing] = useState(false);
   const [cardFilter, setCardFilter] = useState<'all' | 'active' | 'suspended' | 'attention'>('all');
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
   const [addStep, setAddStep] = useState(0);
@@ -213,23 +209,12 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
     setAddStep(0);
   };
 
-  const openCustomerDetail = (customer: Customer) => {
-    setSelectedCustomer(customer);
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        setIsCustomerDetailAnimating(true);
-      });
-    });
-  };
-
-  const closeCustomerDetail = () => {
-    setIsCustomerDetailAnimating(false);
-    setIsCustomerDetailClosing(true);
-    setTimeout(() => {
-      setSelectedCustomer(null);
-      setIsCustomerDetailClosing(false);
-    }, 400);
-  };
+  const openCustomerFullDetail = useCallback(
+    (customer: CustomerListRow) => {
+      onOpenCustomerDetail?.(customer);
+    },
+    [onOpenCustomerDetail],
+  );
 
   const openAddCustomer = () => {
     resetAddCustomerForm();
@@ -481,15 +466,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
 
   return (
     <div className="relative">
-      <div
-        className="space-y-5 transition-all duration-500 ease-out origin-center"
-        style={{
-          transform: isCustomerDetailAnimating ? 'scale(0.92)' : 'scale(1)',
-          filter: isCustomerDetailAnimating ? 'blur(12px)' : 'blur(0px)',
-          opacity: isCustomerDetailAnimating ? 0.4 : 1,
-          pointerEvents: (selectedCustomer || isCustomerDetailClosing) ? 'none' : 'auto',
-        }}
-      >
+      <div className="space-y-5">
       {/* Header */}
       <PageHeader
         title="Kunden & Fahrer"
@@ -582,7 +559,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
         >
       <CustomerListMobileCards
         customers={filtered}
-        onSelect={(row) => openCustomerDetail(row as Customer)}
+        onSelect={openCustomerFullDetail}
       />
 
       <div className="hidden lg:block">
@@ -590,7 +567,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
         columns={customerColumns}
         rows={filtered}
         getRowKey={(customer) => customer.id}
-        onRowClick={openCustomerDetail}
+        onRowClick={openCustomerFullDetail}
         dense
         empty={(
           <EmptyState
@@ -608,22 +585,6 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       )}
 
       </div>{/* End of main content wrapper */}
-
-      {/* Customer Detail Modal */}
-      {selectedCustomer && (
-        <CustomerDetailModal
-          customer={selectedCustomer}
-          onClose={closeCustomerDetail}
-          isAnimating={isCustomerDetailAnimating}
-          onUpdateCustomer={(updated) => {
-            setCustomers(prev => prev.map(c => c.id === updated.id ? updated : c));
-            setSelectedCustomer(updated);
-          }}
-          onOpenDetail={() => {
-            onOpenCustomerDetail?.(selectedCustomer);
-          }}
-        />
-      )}
 
       <FormDialog
         open={isAddCustomerOpen}
