@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'ready-to-rent-drawer-ux-v49215-2026-07-07',
+    version: '4.9.215',
+    title: 'V4.9.215 — Ready-to-Rent Drawer UX & Signal-Sort',
+    summary: [
+      'Ready-to-Rent Drawer: kein Auto-Fokus mehr auf Suchfeld beim Öffnen (Mobile-Tastatur bleibt zu).',
+      'Initialer Fokus auf Drawer-Titel via Radix `onOpenAutoFocus` + `preventDefault`.',
+      'Innerhalb Ready / Not Ready: Fahrzeuge nach letztem Signal sortiert (frisch → älter).',
+      'Helper `sortRowsByLastSignalFreshFirst` nutzt `fleetSignalAgeMs` + Telemetry-Fallback.',
+    ],
+    reason:
+      'Beim KPI-Klick sprang der Fokus ins Suchfeld und öffnete auf Mobile die Tastatur; Fahrzeugreihenfolge in den Gruppen war nicht nach Signalfrische sortiert.',
+    previousBehavior:
+      'Radix Sheet fokussierte das erste fokussierbare Element (Search Input); Gruppen behielten Runtime-Reihenfolge ohne Last-Signal-Sort.',
+    details:
+      'Dateien: `DashboardDrilldownDrawer.tsx`, `detail-drawer.tsx`, `dashboardDrilldownRowDisplay.ts`. Keine Ready/Not-Ready-Businesslogik oder KPI-Counts geändert.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-07T00:25:00.000Z',
+  },
+  {
     id: 'fleet-command-row-compact-v49214-2026-07-07',
     version: '4.9.214',
     title: 'V4.9.214 — Fleet Command Rows kompakt (3 Zeilen)',
