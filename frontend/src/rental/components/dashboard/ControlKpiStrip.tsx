@@ -3,10 +3,13 @@ import { SkeletonMetricGrid } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import { resolveReadyForRentingKpiCounts, resolveTodaysOperationsKpiCounts } from './dashboardSliceAccess';
 import {
+  getKpiCardSurfaceClass,
+  getKpiCardTone,
+  getKpiIconTileClass,
+  getKpiValueGradientClass,
+  getKpiValueTone,
   getOperationalKpiVisualState,
   isReadySlice,
-  operationalKpiIconToneClass,
-  operationalKpiValueToneClass,
 } from './dashboardKpiVisual';
 import type { DashboardRuntimeModel, DashboardSlice, DashboardSliceId } from './runtime';
 import type { DataFreshnessSummary } from './dashboardTypes';
@@ -60,7 +63,7 @@ function kpiCardClass(
   isActive: boolean,
   size: 'twin' | 'compact' | 'standard' = 'standard',
 ): string {
-  const { isCritical, isWatch, isCardSuccess } = getOperationalKpiVisualState(slice);
+  const cardTone = getKpiCardTone(slice);
   const sizeClass =
     size === 'twin'
       ? embedded
@@ -77,12 +80,9 @@ function kpiCardClass(
   return cn(
     'sq-press group relative overflow-hidden border text-left transition-colors duration-200',
     'hover:border-border/60 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
-    embedded ? 'rounded-2xl bg-background/40 px-3 py-3' : 'rounded-lg bg-card/55 px-2.5 py-2',
+    embedded ? 'rounded-2xl px-3 py-3' : 'rounded-lg px-2.5 py-2',
     sizeClass,
-    isCritical && 'border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.035]',
-    isWatch && 'border-[color:var(--status-watch)]/30 bg-card/55',
-    isCardSuccess && 'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
-    !isCritical && !isWatch && !isCardSuccess && 'border-border/45',
+    getKpiCardSurfaceClass(cardTone, embedded),
     isActive && 'ring-2 ring-[color:var(--brand)]/55',
   );
 }
@@ -149,7 +149,8 @@ interface ReadyForRentingKpiContentProps {
 function ReadyForRentingKpiContent({ slice, disabled, locale }: ReadyForRentingKpiContentProps) {
   const labels = readyKpiLabels(locale);
   const { readyCount, availableCount, notReadyCount } = resolveReadyForRentingKpiCounts(slice);
-  const notReadyIsCritical = !disabled && notReadyCount != null && notReadyCount > 0;
+  const mainTone = getKpiValueTone(slice, 'main');
+  const notReadyTone = getKpiValueTone(slice, 'footer-right', { notReadyCount });
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -158,7 +159,7 @@ function ReadyForRentingKpiContent({ slice, disabled, locale }: ReadyForRentingK
         <div
           className={cn(
             'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors',
-            operationalKpiIconToneClass(slice),
+            getKpiIconTileClass(slice),
           )}
         >
           <Icon name="check-circle" className="h-3 w-3" />
@@ -166,14 +167,7 @@ function ReadyForRentingKpiContent({ slice, disabled, locale }: ReadyForRentingK
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-1 py-1 text-center">
-        <p
-          className={cn(
-            KPI_NUMBER_CLASS,
-            disabled && 'text-muted-foreground',
-            !disabled &&
-              operationalKpiValueToneClass(slice, { emphasizePositiveMainValue: true }),
-          )}
-        >
+        <p className={cn(KPI_NUMBER_CLASS, getKpiValueGradientClass(mainTone, disabled))}>
           {formatKpiCount(readyCount, disabled)}
         </p>
         <p className={KPI_MAIN_LABEL_CLASS}>{labels.vehiclesReady}</p>
@@ -185,18 +179,12 @@ function ReadyForRentingKpiContent({ slice, disabled, locale }: ReadyForRentingK
         <KpiTwinFooterColumn
           label={labels.available}
           value={formatKpiCount(availableCount, disabled)}
-          valueClassName={disabled ? 'text-muted-foreground' : 'text-foreground'}
+          valueClassName={getKpiValueGradientClass('neutral', disabled)}
         />
         <KpiTwinFooterColumn
           label={labels.notReady}
           value={formatKpiCount(notReadyCount, disabled)}
-          valueClassName={
-            disabled
-              ? 'text-muted-foreground'
-              : notReadyIsCritical
-                ? 'text-[color:var(--status-critical)]'
-                : 'text-foreground'
-          }
+          valueClassName={getKpiValueGradientClass(notReadyTone, disabled)}
         />
         <div className={KPI_FOOTER_DIVIDER_CLASS} aria-hidden />
       </div>
@@ -215,7 +203,7 @@ function TodaysOperationsKpiContent({ slice, disabled, locale }: ReadyForRenting
         <div
           className={cn(
             'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors',
-            operationalKpiIconToneClass(slice),
+            getKpiIconTileClass(slice),
           )}
         >
           <Icon name="car" className="h-3 w-3" />
@@ -223,7 +211,7 @@ function TodaysOperationsKpiContent({ slice, disabled, locale }: ReadyForRenting
       </div>
 
       <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-1 py-1 text-center">
-        <p className={cn(KPI_NUMBER_CLASS, disabled ? 'text-muted-foreground' : 'text-foreground')}>
+        <p className={cn(KPI_NUMBER_CLASS, getKpiValueGradientClass('neutral', disabled))}>
           {formatKpiCount(activeRentalsCount, disabled)}
         </p>
         <p className={KPI_MAIN_LABEL_CLASS}>{labels.activeRentals}</p>
@@ -232,8 +220,16 @@ function TodaysOperationsKpiContent({ slice, disabled, locale }: ReadyForRenting
       <div className={KPI_SEPARATOR_CLASS} role="separator" aria-hidden />
 
       <div className={KPI_FOOTER_GRID_CLASS}>
-        <KpiTwinFooterColumn label={labels.pickupsToday} value={formatKpiCount(pickupsToday, disabled)} />
-        <KpiTwinFooterColumn label={labels.returnsToday} value={formatKpiCount(returnsToday, disabled)} />
+        <KpiTwinFooterColumn
+          label={labels.pickupsToday}
+          value={formatKpiCount(pickupsToday, disabled)}
+          valueClassName={getKpiValueGradientClass('neutral', disabled)}
+        />
+        <KpiTwinFooterColumn
+          label={labels.returnsToday}
+          value={formatKpiCount(returnsToday, disabled)}
+          valueClassName={getKpiValueGradientClass('neutral', disabled)}
+        />
         <div className={KPI_FOOTER_DIVIDER_CLASS} aria-hidden />
       </div>
     </div>
@@ -248,18 +244,13 @@ interface CompactKpiContentProps {
 }
 
 function CompactKpiContent({ slice, sliceId, disabled, displayValue }: CompactKpiContentProps) {
+  const valueTone = getKpiValueTone(slice, 'compact');
+
   return (
     <div className="flex h-full items-start justify-between gap-2">
       <div className="min-w-0">
         <p className={KPI_TITLE_CLASS}>{slice.title}</p>
-        <p
-          className={cn(
-            'mt-1',
-            KPI_NUMBER_CLASS,
-            disabled && 'text-muted-foreground',
-            !disabled && operationalKpiValueToneClass(slice),
-          )}
-        >
+        <p className={cn('mt-1', KPI_NUMBER_CLASS, getKpiValueGradientClass(valueTone, disabled))}>
           {displayValue}
         </p>
         {slice.hint && (
@@ -269,7 +260,7 @@ function CompactKpiContent({ slice, sliceId, disabled, displayValue }: CompactKp
       <div
         className={cn(
           'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors',
-          operationalKpiIconToneClass(slice),
+          getKpiIconTileClass(slice),
         )}
       >
         <Icon name={KPI_ICONS[sliceId] as 'car'} className="h-3 w-3" />

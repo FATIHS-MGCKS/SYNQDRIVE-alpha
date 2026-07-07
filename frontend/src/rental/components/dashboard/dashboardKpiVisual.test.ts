@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { formatDashboardMoney, resolveDashboardNumberFormatLocale } from './dashboardKpiFormat';
 import {
+  getKpiCardSurfaceClass,
+  getKpiCardTone,
+  getKpiIconTileClass,
+  getKpiValueGradientClass,
+  getKpiValueTone,
   getOperationalKpiVisualState,
   isOverdueSlice,
   isReadySlice,
@@ -75,5 +80,89 @@ describe('dashboardKpiVisual', () => {
       isCardSuccess: false,
     });
     expect(getOperationalKpiVisualState(slice('blocked-maintenance', 3, 'watch')).isWatch).toBe(true);
+  });
+
+  describe('getKpiCardTone', () => {
+    it('keeps ready-to-rent and active-rented cards neutral', () => {
+      expect(getKpiCardTone(slice('ready-to-rent', 5, 'success'))).toBe('neutral');
+      expect(getKpiCardTone(slice('active-rented', 12, 'info'))).toBe('neutral');
+    });
+
+    it('overdue and critical alerts are critical only when count > 0', () => {
+      expect(getKpiCardTone(slice('overdue-returns', 0, 'success'))).toBe('neutral');
+      expect(getKpiCardTone(slice('overdue-pickups', 0, 'success'))).toBe('neutral');
+      expect(getKpiCardTone(slice('overdue-returns', 2, 'success'))).toBe('critical');
+      expect(getKpiCardTone(slice('critical-alerts', 0, 'critical'))).toBe('neutral');
+      expect(getKpiCardTone(slice('critical-alerts', 1, 'critical'))).toBe('critical');
+    });
+
+    it('blocked maintenance is warning when count > 0 and slice tone is watch', () => {
+      expect(getKpiCardTone(slice('blocked-maintenance', 0, 'watch'))).toBe('neutral');
+      expect(getKpiCardTone(slice('blocked-maintenance', 1, 'watch'))).toBe('warning');
+      expect(getKpiCardTone(slice('blocked-maintenance', 2, 'critical'))).toBe('critical');
+    });
+  });
+
+  describe('getKpiValueTone', () => {
+    it('ready main value is positive; not-ready footer is critical only when count > 0', () => {
+      const readySlice = slice('ready-to-rent', 5, 'success');
+      expect(getKpiValueTone(readySlice, 'main')).toBe('positive');
+      expect(getKpiValueTone(readySlice, 'footer-right', { notReadyCount: 0 })).toBe('neutral');
+      expect(getKpiValueTone(readySlice, 'footer-right', { notReadyCount: 1 })).toBe('critical');
+      expect(getKpiValueTone(readySlice, 'footer-left')).toBe('neutral');
+    });
+
+    it('active-rented values stay neutral', () => {
+      const opsSlice = slice('active-rented', 8, 'info');
+      expect(getKpiValueTone(opsSlice, 'main')).toBe('neutral');
+      expect(getKpiValueTone(opsSlice, 'footer-left')).toBe('neutral');
+      expect(getKpiValueTone(opsSlice, 'footer-right')).toBe('neutral');
+    });
+
+    it('compact values follow card tone', () => {
+      expect(getKpiValueTone(slice('overdue-returns', 0, 'success'), 'compact')).toBe('neutral');
+      expect(getKpiValueTone(slice('overdue-returns', 3, 'success'), 'compact')).toBe('critical');
+      expect(getKpiValueTone(slice('blocked-maintenance', 1, 'watch'), 'compact')).toBe('warning');
+    });
+  });
+
+  describe('getKpiValueGradientClass', () => {
+    it('returns solid foreground for neutral and disabled', () => {
+      expect(getKpiValueGradientClass('neutral')).toBe('text-foreground');
+      expect(getKpiValueGradientClass('positive', true)).toBe('text-muted-foreground');
+    });
+
+    it('returns gradient classes for positive, warning, and critical', () => {
+      expect(getKpiValueGradientClass('positive')).toContain('bg-clip-text');
+      expect(getKpiValueGradientClass('positive')).toContain('var(--status-positive)');
+      expect(getKpiValueGradientClass('warning')).toContain('var(--status-warning)');
+      expect(getKpiValueGradientClass('critical')).toContain('var(--status-critical)');
+    });
+  });
+
+  describe('getKpiCardSurfaceClass', () => {
+    it('neutral cards use calm border and background', () => {
+      expect(getKpiCardSurfaceClass('neutral', false)).toContain('border-border/45');
+      expect(getKpiCardSurfaceClass('neutral', true)).toContain('bg-background/40');
+    });
+
+    it('critical and warning cards use subtle gradient surfaces', () => {
+      expect(getKpiCardSurfaceClass('critical', false)).toContain('var(--status-critical)');
+      expect(getKpiCardSurfaceClass('warning', false)).toContain('var(--status-warning)');
+    });
+  });
+
+  describe('getKpiIconTileClass', () => {
+    it('ready icon tile is subtly positive without tinting the card', () => {
+      expect(getKpiIconTileClass(slice('ready-to-rent', 5, 'success'))).toContain('var(--status-positive)');
+    });
+
+    it('overdue at zero uses muted icon tile', () => {
+      expect(getKpiIconTileClass(slice('overdue-returns', 0, 'success'))).toContain('bg-muted');
+    });
+
+    it('overdue above zero uses critical icon tile', () => {
+      expect(getKpiIconTileClass(slice('overdue-returns', 1, 'success'))).toContain('var(--status-critical)');
+    });
   });
 });
