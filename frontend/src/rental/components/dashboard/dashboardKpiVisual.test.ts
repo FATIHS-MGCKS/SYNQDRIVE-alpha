@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { formatDashboardMoney, resolveDashboardNumberFormatLocale } from './dashboardKpiFormat';
+import {
+  formatBusinessMoney,
+  formatDashboardMoney,
+  resolveDashboardNumberFormatLocale,
+} from './dashboardKpiFormat';
 import {
   getKpiCardSurfaceClass,
   getKpiCardTone,
@@ -24,21 +28,48 @@ function slice(id: DashboardSlice['id'], count: number | null, tone: DashboardSl
 }
 
 describe('dashboardKpiFormat', () => {
+  const normalizeMoney = (value: string) => value.replace(/\u00a0/g, ' ').trim();
+
   it('resolves German locale variants to de-DE', () => {
     expect(resolveDashboardNumberFormatLocale('de', 'EUR')).toBe('de-DE');
     expect(resolveDashboardNumberFormatLocale('de-DE', 'EUR')).toBe('de-DE');
     expect(resolveDashboardNumberFormatLocale('de_DE', 'EUR')).toBe('de-DE');
+    expect(resolveDashboardNumberFormatLocale('de-DE-x-private', 'EUR')).toBe('de-DE');
+    expect(resolveDashboardNumberFormatLocale('de_AT', 'EUR')).toBe('de-DE');
+    expect(resolveDashboardNumberFormatLocale('de-AT', 'EUR')).toBe('de-DE');
+    expect(resolveDashboardNumberFormatLocale('de_CH', 'EUR')).toBe('de-DE');
+    expect(resolveDashboardNumberFormatLocale('de-CH', 'EUR')).toBe('de-DE');
+  });
+
+  it('falls back to de-DE for EUR when locale is empty or invalid', () => {
+    expect(resolveDashboardNumberFormatLocale('', 'EUR')).toBe('de-DE');
+    expect(resolveDashboardNumberFormatLocale(null, 'EUR')).toBe('de-DE');
+    expect(resolveDashboardNumberFormatLocale('not-a-real-locale-tag', 'EUR')).toBe('de-DE');
   });
 
   it('formats EUR for German locale with symbol after amount', () => {
-    expect(formatDashboardMoney(0, 'EUR', 'de')).toMatch(/^0\s?€$/);
-    expect(formatDashboardMoney(125_000, 'EUR', 'de-DE')).toMatch(/1\.250\s?€/);
-    expect(formatDashboardMoney(-25_000, 'EUR', 'de')).toMatch(/-250\s?€/);
+    expect(normalizeMoney(formatBusinessMoney(0, 'EUR', 'de'))).toBe('0 €');
+    expect(normalizeMoney(formatBusinessMoney(0, 'EUR', 'de-DE'))).toBe('0 €');
+    expect(normalizeMoney(formatBusinessMoney(125_000, 'EUR', 'de-DE'))).toBe('1.250 €');
+    expect(normalizeMoney(formatBusinessMoney(-25_000, 'EUR', 'de'))).toBe('-250 €');
+    expect(normalizeMoney(formatBusinessMoney(0, 'EUR', 'de_AT'))).toBe('0 €');
+    expect(normalizeMoney(formatBusinessMoney(0, 'EUR', 'de-CH'))).toBe('0 €');
   });
 
   it('keeps en-US currency layout for English locale', () => {
-    const formatted = formatDashboardMoney(0, 'EUR', 'en');
-    expect(formatted).toMatch(/€0|0\s?€/);
+    const formatted = normalizeMoney(formatBusinessMoney(0, 'EUR', 'en'));
+    expect(formatted).toMatch(/^€0$/);
+    expect(normalizeMoney(formatBusinessMoney(0, 'EUR', 'en-US'))).toMatch(/^€0$/);
+  });
+
+  it('does not throw for invalid locale', () => {
+    expect(() => formatDashboardMoney(0, 'EUR', '!!!')).not.toThrow();
+    expect(normalizeMoney(formatDashboardMoney(0, 'EUR', '!!!'))).toBe('0 €');
+  });
+
+  it('formats whole euros without fraction digits', () => {
+    expect(normalizeMoney(formatBusinessMoney(100, 'EUR', 'de'))).toBe('1 €');
+    expect(normalizeMoney(formatBusinessMoney(100, 'EUR', 'de'))).not.toContain(',00');
   });
 });
 

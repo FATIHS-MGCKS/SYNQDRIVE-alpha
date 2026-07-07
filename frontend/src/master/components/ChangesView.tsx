@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'business-pulse-eur-format-v49227-2026-07-07',
+    version: '4.9.227',
+    title: 'V4.9.227 — Business Pulse EUR-Format & Finance-KPI-Typografie',
+    summary: [
+      'Finances Box (`BusinessPulse`): robuste Locale-Normalisierung (`de`, `de-DE`, `de_AT`, `de-CH`, …) → EUR als `0 €` / `1.250 €` statt `€0`.',
+      '`formatBusinessMoney` / `resolveDashboardNumberFormatLocale`: Intl-Validierung, EUR-Fallback `de-DE`, ganze Euro (`minimumFractionDigits: 0`).',
+      'Finance-KPI-Werte (Revenue, Result, Open receivables, Overdue): einheitliche `DASHBOARD_KPI_NUMBER_CLASS` für Zahl + Währungssymbol in einer Textnode.',
+      'Positive/Warning/Critical-Töne ändern nur Farbe, nicht Fontgröße oder Line-height.',
+    ],
+    reason:
+      'EUR wurde bei deutschen Locale-Varianten weiterhin als `€0` formatiert; Finance-KPI-Werte sollten dieselbe Typografie wie operative KPIs nutzen.',
+    previousBehavior:
+      'Enger Locale-Check (`locale === de`) bzw. unvollständige Normalisierung; Wertzeile ohne dedizierte gemeinsame Finance-KPI-Klassenhilfe.',
+    details:
+      'frontend: dashboardKpiFormat.ts, BusinessPulse.tsx, dashboardKpiVisual.test.ts. Keine Finance-Berechnung, Invoice-Logik, API, Backend oder Theme-Tokens.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-07T05:16:00.000Z',
+  },
+  {
     id: 'fleet-row-map-focus-v49226-2026-07-07',
     version: '4.9.226',
     title: 'V4.9.226 — Fleet Page: Row-Fokus vs. Open, flüssigeres Map-Pinch-Zoom',

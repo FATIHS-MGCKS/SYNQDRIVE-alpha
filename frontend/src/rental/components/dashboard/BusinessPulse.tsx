@@ -10,7 +10,7 @@ import {
   dashboardPanelHeaderClass,
   panelShellClass,
 } from './dashboardShell';
-import { formatDashboardMoney } from './dashboardKpiFormat';
+import { formatBusinessMoney } from './dashboardKpiFormat';
 import type {
   BusinessMetricId,
   BusinessPulseSlice,
@@ -69,7 +69,16 @@ function metricValue(
 ): string {
   if (!slice) return noDataLabel;
   if (slice.valueCents == null) return noDataLabel;
-  return formatDashboardMoney(slice.valueCents, slice.rows[0]?.currency ?? currency, locale);
+  return formatBusinessMoney(slice.valueCents, slice.rows[0]?.currency ?? currency, locale);
+}
+
+/** Finance KPI value line — number + currency symbol share one typography stack. */
+function financeKpiValueClassName(disabled: boolean, valueTone: string): string {
+  return cn(
+    'mt-1',
+    DASHBOARD_KPI_NUMBER_CLASS,
+    disabled ? 'text-muted-foreground' : valueTone,
+  );
 }
 
 interface FinanceKpiVisualState {
@@ -218,15 +227,7 @@ function FinanceKpiCard({
       <div className="flex h-full items-start justify-between gap-2">
         <div className="min-w-0">
           <p className={DASHBOARD_KPI_TITLE_CLASS}>{title}</p>
-          <p
-            className={cn(
-              'mt-1',
-              DASHBOARD_KPI_NUMBER_CLASS,
-              disabled ? 'text-muted-foreground' : visual.valueTone,
-            )}
-          >
-            {value}
-          </p>
+          <p className={financeKpiValueClassName(disabled, visual.valueTone)}>{value}</p>
           {hint ? (
             <p
               className={cn(
