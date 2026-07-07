@@ -307,3 +307,60 @@ describe('DeviceConnectionWebhookService.ingestObdPlugStateChange', () => {
     expect(result.eventType).toBe(DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN);
   });
 });
+
+describe('DeviceConnectionWebhookService.maybeMaterializePlugInFromSnapshot', () => {
+  it('creates plug-in event after unplug when snapshot confirms reconnect', async () => {
+    const upsert = jest.fn().mockResolvedValue({
+      id: 'snap-plug-1',
+      createdAt: new Date('2026-06-28T12:10:00Z'),
+      updatedAt: new Date('2026-06-28T12:10:00Z'),
+    });
+    const findFirst = jest
+      .fn()
+      .mockResolvedValueOnce({
+        eventType: DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED,
+        observedAt: new Date('2026-06-28T12:00:00Z'),
+      });
+    const vehicleFindUnique = jest.fn().mockResolvedValue({
+      id: 'v1',
+      organizationId: 'o1',
+    });
+
+    const service = new DeviceConnectionWebhookService({
+      dimoDeviceConnectionEvent: { upsert, findFirst },
+      vehicle: { findUnique: vehicleFindUnique },
+    } as never);
+
+    const result = await service.maybeMaterializePlugInFromSnapshot({
+      vehicleId: 'v1',
+      tokenId: 42,
+      obdIsPluggedIn: true,
+      dimoConnectionStatus: 'CONNECTED' as never,
+      observedAt: new Date('2026-06-28T12:10:00Z'),
+    });
+
+    expect(result.outcome).toBe('created');
+    expect(upsert).toHaveBeenCalled();
+  });
+
+  it('ignores when last event is not an open unplug', async () => {
+    const findFirst = jest.fn().mockResolvedValue({
+      eventType: DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN,
+      observedAt: new Date('2026-06-28T12:00:00Z'),
+    });
+    const service = new DeviceConnectionWebhookService({
+      dimoDeviceConnectionEvent: { upsert: jest.fn(), findFirst },
+      vehicle: { findUnique: jest.fn() },
+    } as never);
+
+    const result = await service.maybeMaterializePlugInFromSnapshot({
+      vehicleId: 'v1',
+      tokenId: 42,
+      obdIsPluggedIn: true,
+      dimoConnectionStatus: 'CONNECTED' as never,
+      observedAt: new Date('2026-06-28T12:10:00Z'),
+    });
+
+    expect(result.outcome).toBe('ignored');
+  });
+});

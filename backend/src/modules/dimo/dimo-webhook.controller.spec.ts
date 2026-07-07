@@ -7,6 +7,7 @@ function makeController(overrides?: {
   deviceConnection?: Partial<DeviceConnectionMock>;
   rpmWebhookCandidate?: Partial<RpmWebhookMock>;
   verificationToken?: string;
+  obdPlugInWebhookEnabled?: boolean;
 }) {
   const prisma: PrismaServiceMock = {
     vehicle: { findFirst: jest.fn().mockResolvedValue(null) },
@@ -28,6 +29,7 @@ function makeController(overrides?: {
   const dtcService = { upsertDtc: jest.fn() };
   const dimoConf = {
     webhookVerificationToken: overrides?.verificationToken ?? process.env.DIMO_WEBHOOK_VERIFICATION_TOKEN ?? '',
+    obdPlugInWebhookEnabled: overrides?.obdPlugInWebhookEnabled ?? false,
   };
   const controller = new DimoWebhookController(
     dimoConf as never,
@@ -225,6 +227,82 @@ describe('DimoWebhookController — device connection CloudEvent', () => {
       }),
     );
     expect(result).toMatchObject({ status: 'processed', type: 'rpm_candidate', outcome: 'created' });
+  });
+
+  it('processes RPM webhook with valueNumber only', async () => {
+    process.env.NODE_ENV = 'development';
+    delete process.env.DIMO_WEBHOOK_SECRET;
+
+    const vehicle = {
+      id: 'veh-1',
+      organizationId: 'org-1',
+      hardwareType: 'LTE_R1',
+      fuelType: 'PETROL',
+    };
+    const { controller, rpmWebhookCandidate } = makeController({
+      prisma: {
+        vehicle: { findFirst: jest.fn().mockResolvedValue(vehicle) },
+      },
+    });
+
+    const body = {
+      type: 'dimo.trigger',
+      subject: 'did:erc721:137:0xabc:777',
+      data: {
+        metricName: 'vss.powertrainCombustionEngineSpeed',
+        displayName: 'High RPM Trigger',
+        valueNumber: 5120,
+      },
+    };
+
+    const result = await controller.handleWebhook(
+      { rawBody: Buffer.from(JSON.stringify(body)) } as never,
+      body,
+      undefined,
+      mockRes,
+    );
+
+    expect(rpmWebhookCandidate.ingestRpmThresholdEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ observedValue: 5120 }),
+    );
+    expect(result).toMatchObject({ status: 'processed', type: 'rpm_candidate' });
+  });
+
+  it('ignores OBD plug-in webhooks when plug-in trigger is disabled', async () => {
+    process.env.NODE_ENV = 'development';
+    delete process.env.DIMO_WEBHOOK_SECRET;
+
+    const vehicle = { id: 'veh-1', organizationId: 'org-1', hardwareType: 'LTE_R1', fuelType: 'PETROL' };
+    const { controller, deviceConnection } = makeController({
+      obdPlugInWebhookEnabled: false,
+      prisma: {
+        vehicle: { findFirst: jest.fn().mockResolvedValue(vehicle) },
+      },
+    });
+
+    const body = {
+      type: 'dimo.trigger',
+      subject: 'did:erc721:137:0xabc:777',
+      data: {
+        metricName: 'vss.obdIsPluggedIn',
+        displayName: 'OBD Device Plugged in',
+        valueNumber: 1,
+      },
+    };
+
+    const result = await controller.handleWebhook(
+      { rawBody: Buffer.from(JSON.stringify(body)) } as never,
+      body,
+      undefined,
+      mockRes,
+    );
+
+    expect(result).toMatchObject({
+      status: 'ignored',
+      type: 'device_connection',
+      reason: 'plug_in_webhook_disabled',
+    });
+    expect(deviceConnection.ingestObdPlugStateChange).not.toHaveBeenCalled();
   });
 
   it('processes unsigned dimo.trigger in production when verification token is configured', async () => {

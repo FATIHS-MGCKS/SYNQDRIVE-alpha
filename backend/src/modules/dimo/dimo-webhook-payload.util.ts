@@ -116,7 +116,7 @@ export function normalizeDimoWebhookPayload(body: unknown): NormalizedDimoWebhoo
     return {
       tokenId,
       signalName,
-      value: signal?.value ?? data.value ?? null,
+      value: signal?.value ?? data.value ?? data.valueNumber ?? null,
       timestamp,
       cloudEventType,
       webhookName:
@@ -138,7 +138,7 @@ export function normalizeDimoWebhookPayload(body: unknown): NormalizedDimoWebhoo
       normalizeSignalName(root.signal) ??
       normalizeSignalName(legacyData?.signal) ??
       normalizeSignalName(root.metricName),
-    value: root.value ?? legacyData?.value ?? null,
+    value: root.value ?? legacyData?.value ?? legacyData?.valueNumber ?? null,
     timestamp:
       (typeof root.timestamp === 'string' ? root.timestamp : null) ??
       (typeof legacyData?.timestamp === 'string' ? legacyData.timestamp : null),

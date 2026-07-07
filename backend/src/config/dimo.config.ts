@@ -38,5 +38,8 @@ export default registerAs('dimo', () => {
     dimoEnv,
     triggerBootstrapEnabled:
       (process.env.DIMO_TRIGGER_BOOTSTRAP_ENABLED ?? '').trim().toLowerCase() === 'true',
+    /** When false (default), plug-in events come from snapshot polling — not DIMO plug-in webhooks. */
+    obdPlugInWebhookEnabled:
+      (process.env.DIMO_OBD_PLUG_IN_WEBHOOK_ENABLED ?? '').trim().toLowerCase() === 'true',
   };
 });
