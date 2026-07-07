@@ -11,11 +11,12 @@
  *   3. Time-bucket dedup — collapse burst duplicates within 30s
  */
 import { Injectable, Logger } from '@nestjs/common';
-import { DimoDeviceConnectionEventType } from '@prisma/client';
+import { DimoConnectionStatus, DimoDeviceConnectionEventType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { extractConnectivitySnapshot } from '@shared/utils/connectivity-signals';
 import {
   shouldIgnorePlugImpulseAfterUnplug,
+  connectivityIndicatesPlugged,
   type DeviceConnectionConnectivityAnchor,
 } from './device-connection-read-model';
 
@@ -267,5 +268,58 @@ export class DeviceConnectionWebhookService {
       );
       return { outcome: 'ignored' };
     }
+  }
+
+  /**
+   * When the DIMO "plugged in" webhook is disabled, recover reconnect evidence from
+   * snapshot polling after a persisted unplug event (open unplug episode).
+   */
+  async maybeMaterializePlugInFromSnapshot(input: {
+    vehicleId: string;
+    tokenId: number;
+    obdIsPluggedIn: boolean | null;
+    dimoConnectionStatus: DimoConnectionStatus | null;
+    observedAt: Date;
+  }): Promise<{ outcome: DeviceConnectionIntakeOutcome; eventId?: string }> {
+    if (input.obdIsPluggedIn !== true) {
+      return { outcome: 'ignored' };
+    }
+
+    const anchor: DeviceConnectionConnectivityAnchor = {
+      dimoConnectionStatus: input.dimoConnectionStatus,
+      obdIsPluggedIn: input.obdIsPluggedIn,
+    };
+    if (!connectivityIndicatesPlugged(anchor)) {
+      return { outcome: 'ignored' };
+    }
+
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: input.vehicleId },
+      select: { id: true, organizationId: true },
+    });
+    if (!vehicle) return { outcome: 'ignored' };
+
+    const lastEvent = await this.prisma.dimoDeviceConnectionEvent.findFirst({
+      where: { vehicleId: input.vehicleId, provider: 'DIMO' },
+      orderBy: { observedAt: 'desc' },
+      select: { eventType: true, observedAt: true },
+    });
+
+    if (lastEvent?.eventType !== DimoDeviceConnectionEventType.OBD_DEVICE_UNPLUGGED) {
+      return { outcome: 'ignored' };
+    }
+
+    return this.persistDeviceConnectionEvent({
+      vehicle,
+      tokenId: input.tokenId,
+      observedAt: input.observedAt,
+      eventType: DimoDeviceConnectionEventType.OBD_DEVICE_PLUGGED_IN,
+      rawPayload: {
+        source: 'dimo_snapshot',
+        obdIsPluggedIn: true,
+        dimoConnectionStatus: input.dimoConnectionStatus,
+        observedAt: input.observedAt.toISOString(),
+      },
+    });
   }
 }

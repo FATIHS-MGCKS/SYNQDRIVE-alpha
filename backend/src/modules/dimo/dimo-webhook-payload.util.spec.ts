@@ -64,6 +64,32 @@ describe('normalizeDimoWebhookPayload', () => {
     expect(normalized.webhookName).toBe('OBD device unplugged');
   });
 
+  it('normalizes valueNumber when signal.value is absent (DIMO Vehicle Triggers)', () => {
+    const rpm = normalizeDimoWebhookPayload({
+      type: 'dimo.trigger',
+      subject: 'did:erc721:137:0xabc:42',
+      data: {
+        metricName: 'vss.powertrainCombustionEngineSpeed',
+        displayName: 'High RPM Trigger',
+        valueNumber: 5234,
+      },
+    });
+    expect(rpm.value).toBe(5234);
+    expect(rpm.signalName).toBe('powertrainCombustionEngineSpeed');
+
+    const obd = normalizeDimoWebhookPayload({
+      type: 'dimo.trigger',
+      subject: 'did:erc721:137:0xabc:99',
+      data: {
+        metricName: 'vss.obdIsPluggedIn',
+        displayName: 'OBD Device unplugged',
+        valueNumber: 0,
+      },
+    });
+    expect(obd.value).toBe(0);
+    expect(obd.signalName).toBe('obdIsPluggedIn');
+  });
+
   it('normalizes legacy flat payload', () => {
     const normalized = normalizeDimoWebhookPayload({
       tokenId: 99,

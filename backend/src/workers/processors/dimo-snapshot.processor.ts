@@ -13,6 +13,8 @@ import { HvBatteryHealthService } from '../../modules/vehicle-intelligence/batte
 import { ClickHouseTelemetryService } from '../../modules/clickhouse/clickhouse-telemetry.service';
 import { TripMetricsService } from '../../modules/observability/trip-metrics.service';
 import { capRawPayload } from '@shared/utils/json-payload.util';
+import { extractConnectivitySnapshot } from '@shared/utils/connectivity-signals';
+import { DeviceConnectionWebhookService } from '@modules/dimo/device-connection-webhook.service';
 
 export interface DimoSnapshotJobData {
   vehicleId: string;
@@ -45,6 +47,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
     private readonly hvBattery: HvBatteryHealthService,
     @Optional() private readonly chTelemetry: ClickHouseTelemetryService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
+    @Optional() private readonly deviceConnection?: DeviceConnectionWebhookService,
   ) {
     super();
   }
@@ -103,6 +106,29 @@ export class DimoSnapshotProcessor extends WorkerHost {
           ...normalized,
         },
       });
+
+      if (this.deviceConnection && signals) {
+        const conn = extractConnectivitySnapshot(signals);
+        const dimoVehicle = await this.prisma.dimoVehicle.findFirst({
+          where: { vehicleId },
+          select: { connectionStatus: true },
+        });
+        this.deviceConnection
+          .maybeMaterializePlugInFromSnapshot({
+            vehicleId,
+            tokenId: dimoTokenId,
+            obdIsPluggedIn: conn.obdIsPluggedIn,
+            dimoConnectionStatus: dimoVehicle?.connectionStatus ?? null,
+            observedAt: normalized.lastSeenAt ?? fetchedAt,
+          })
+          .catch((err) =>
+            this.logger.warn(
+              `Snapshot plug-in materialize failed for ${vehicleId}: ${
+                err instanceof Error ? err.message : err
+              }`,
+            ),
+          );
+      }
 
       // ── ClickHouse dual-write (fire-and-forget, never blocks live pipeline) ──
       if (this.chTelemetry) {

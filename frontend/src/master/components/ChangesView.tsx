@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-webhook-logging-unplug-only-v49229-2026-07-07',
+    version: '4.9.229',
+    title: 'V4.9.229 — DIMO Webhook-Logging, valueNumber-Parser, OBD unplug-only',
+    summary: [
+      'Strukturiertes Webhook-Logging: `DIMO webhook routed:` mit route/metric/signal/display/value/outcome/reason.',
+      '`normalizeDimoWebhookPayload` liest `data.valueNumber` (RPM + OBD) — DIMO Vehicle Triggers Payload-kompatibel.',
+      'OBD plug-in Webhooks standardmäßig deaktiviert (`DIMO_OBD_PLUG_IN_WEBHOOK_ENABLED=false`); Reconnect via Snapshot-Materialisierung.',
+      'Ops-Doku: `docs/dimo-vehicle-triggers-setup.md` (DIMO Console: nur Unplug + RPM behalten).',
+    ],
+    reason:
+      'Hunderte OBD-„plugged in“-Webhooks/Tag ohne DB-Nutzen; RPM-Kandidaten gingen verloren wenn DIMO nur valueNumber sendet; Ops konnte Trigger-Typ in Logs nicht unterscheiden.',
+    previousBehavior:
+      'Log nur `Received DIMO webhook tokenId=…`; Parser ignorierte valueNumber; plug-in Webhooks wurden verarbeitet (meist intake-ignored); kein Snapshot-Reconnect-Event.',
+    details:
+      'backend: dimo-webhook-log.util.ts, dimo-webhook.controller.ts, dimo-webhook-payload.util.ts, device-connection-webhook.service.ts (maybeMaterializePlugInFromSnapshot), dimo-snapshot.processor.ts, dimo.config.ts, specs, .env.example, docs/dimo-vehicle-triggers-setup.md.',
+    affectsArchitecture: true,
+    module: 'DIMO / Vehicle Intelligence',
+    createdAt: '2026-07-07T20:55:00.000Z',
+  },
+  {
     id: 'eur-locale-default-de-v49228-2026-07-07',
     version: '4.9.228',
     title: 'V4.9.228 — EUR immer als `0 €` (Dashboard + Locale-Persistenz)',

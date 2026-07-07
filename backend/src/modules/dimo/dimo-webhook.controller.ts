@@ -30,6 +30,11 @@ import {
 import { createHmac, timingSafeEqual } from 'crypto';
 import dimoConfig from '@config/dimo.config';
 import { RpmWebhookCandidateService } from './rpm-webhook-candidate.service';
+import {
+  classifyDimoWebhookRoute,
+  formatDimoWebhookLogLine,
+  type DimoWebhookLogContext,
+} from './dimo-webhook-log.util';
 
 @Controller('webhooks/dimo')
 export class DimoWebhookController {
@@ -124,21 +129,36 @@ export class DimoWebhookController {
     }
 
     const payload = normalizeDimoWebhookPayload(body);
-    this.logger.log(
-      `Received DIMO webhook: type=${payload.cloudEventType ?? body?.type ?? 'legacy'}, tokenId=${payload.tokenId}`,
-    );
+    const route = classifyDimoWebhookRoute(payload);
+
+    const logAndReturn = <T extends Record<string, unknown>>(result: T): T => {
+      const status = (result.status as DimoWebhookLogContext['status']) ?? 'processed';
+      if (route !== 'acknowledged' || status !== 'processed') {
+        this.logger.log(
+          formatDimoWebhookLogLine({
+            tokenId: payload.tokenId,
+            vehicleId: typeof result.vehicleId === 'string' ? result.vehicleId : undefined,
+            metricName: payload.metricName,
+            signalName: payload.signalName,
+            webhookName: payload.webhookName,
+            value: payload.value,
+            route,
+            status,
+            outcome: typeof result.outcome === 'string' ? result.outcome : undefined,
+            reason: typeof result.reason === 'string' ? result.reason : undefined,
+          }),
+        );
+      }
+      return result;
+    };
 
     if (isBlockedEngineWebhookSignal(payload.signalName)) {
-      this.logger.debug(
-        `Ignored blocked engine webhook signal for tokenId=${payload.tokenId}: ${payload.signalName}`,
-      );
-      return { status: 'ignored', reason: 'blocked_engine_signal' };
+      return logAndReturn({ status: 'ignored', reason: 'blocked_engine_signal' });
     }
 
     const tokenId = payload.tokenId;
     if (tokenId == null) {
-      this.logger.warn('Webhook missing resolvable tokenId (tokenId/subject/assetDID)');
-      return { status: 'ignored', reason: 'missing_token_id' };
+      return logAndReturn({ status: 'ignored', reason: 'missing_token_id' });
     }
 
     const vehicle = await this.prisma.vehicle.findFirst({
@@ -152,24 +172,28 @@ export class DimoWebhookController {
     });
 
     if (!vehicle) {
-      this.logger.warn(`No vehicle found for tokenId=${tokenId}`);
-      return { status: 'ignored', reason: 'unknown_vehicle' };
+      return logAndReturn({ status: 'ignored', reason: 'unknown_vehicle' });
     }
 
+    const vehicleId = vehicle.id;
     const signalName = payload.signalName;
     const value = payload.value;
     const timestamp = payload.timestamp;
 
     if (signalName === 'obdDTCList' && value) {
-      await this.handleDtcEvent(vehicle.id, value);
-      return { status: 'processed', type: 'dtc' };
+      await this.handleDtcEvent(vehicleId, value);
+      return logAndReturn({ status: 'processed', type: 'dtc', vehicleId });
     }
 
     if (isRpmWebhookSignal(signalName, payload.metricName)) {
       const rpm = parseRpmWebhookValue(value);
       if (rpm == null) {
-        this.logger.warn(`RPM webhook for vehicle ${vehicle.id} had no parseable rpm value`);
-        return { status: 'ignored', reason: 'non_numeric_rpm' };
+        return logAndReturn({
+          status: 'ignored',
+          type: 'rpm_candidate',
+          vehicleId,
+          reason: 'non_numeric_rpm',
+        });
       }
 
       const observedAt = timestamp ? new Date(timestamp) : new Date();
@@ -181,9 +205,10 @@ export class DimoWebhookController {
         rawPayload: body,
       });
 
-      return {
+      return logAndReturn({
         status: outcome === 'ignored' || outcome === 'skipped_powertrain' ? 'ignored' : 'processed',
         type: 'rpm_candidate',
+        vehicleId,
         outcome,
         candidateId,
         candidateStatus: status,
@@ -193,7 +218,7 @@ export class DimoWebhookController {
             : outcome === 'ignored'
               ? 'below_threshold_or_intake_error'
               : undefined,
-      };
+      });
     }
 
     // ── OBD device plug/unplug (connectivity / tamper evidence) ───────────────
@@ -206,32 +231,51 @@ export class DimoWebhookController {
         inferObdPlugStateFromWebhookContext(payload);
 
       if (pluggedIn == null) {
-        this.logger.warn(`OBD plug webhook for vehicle ${vehicle.id} had no parseable plug state`);
-        return { status: 'ignored', reason: 'non_boolean_plug_state' };
+        return logAndReturn({
+          status: 'ignored',
+          type: 'device_connection',
+          vehicleId,
+          reason: 'non_boolean_plug_state',
+        });
+      }
+
+      if (pluggedIn && !this.dimoConf.obdPlugInWebhookEnabled) {
+        return logAndReturn({
+          status: 'ignored',
+          type: 'device_connection',
+          vehicleId,
+          outcome: 'ignored',
+          reason: 'plug_in_webhook_disabled',
+        });
       }
 
       const observedAt = timestamp ? new Date(timestamp) : new Date();
       const { outcome, eventId, eventType } = await this.deviceConnection.ingestObdPlugStateChange({
-        vehicle: { id: vehicle.id, organizationId: vehicle.organizationId },
+        vehicle: { id: vehicleId, organizationId: vehicle.organizationId },
         tokenId,
         pluggedIn,
         observedAt: Number.isNaN(observedAt.getTime()) ? new Date() : observedAt,
         rawPayload: body,
       });
-      return { status: 'processed', type: 'device_connection', outcome, eventId, eventType };
+      return logAndReturn({
+        status: outcome === 'ignored' || outcome === 'duplicate' ? 'ignored' : 'processed',
+        type: 'device_connection',
+        vehicleId,
+        outcome,
+        eventId,
+        eventType,
+      });
     }
 
     if (signalName === 'speed' && value != null) {
-      this.logger.debug(`Speed event for vehicle ${vehicle.id}: ${value} km/h`);
-      return { status: 'processed', type: 'speed' };
+      return logAndReturn({ status: 'processed', type: 'speed', vehicleId });
     }
 
     if (signalName === 'isIgnitionOn') {
-      this.logger.debug(`Ignition event for vehicle ${vehicle.id}: ${value}`);
-      return { status: 'processed', type: 'ignition' };
+      return logAndReturn({ status: 'processed', type: 'ignition', vehicleId });
     }
 
-    return { status: 'acknowledged' };
+    return logAndReturn({ status: 'acknowledged', vehicleId });
   }
 
   @Get('health')
