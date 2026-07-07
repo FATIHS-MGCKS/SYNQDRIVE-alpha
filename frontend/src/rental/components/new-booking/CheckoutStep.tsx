@@ -98,7 +98,7 @@ export function CheckoutStep({
                 type="number"
                 min={0}
                 max={100}
-                placeholder="Custom"
+                placeholder="Eigener"
                 value={![0, 5, 10, 15, 20].includes(discountPercent) ? discountPercent : ''}
                 onChange={(e) => {
                   const val = Math.min(100, Math.max(0, parseInt(e.target.value, 10) || 0));
@@ -272,7 +272,7 @@ export function CheckoutStep({
                                       <p>Zeitraum: ${pickupDate ? new Date(pickupDate).toLocaleDateString('de-DE') : '–'} – ${returnDate ? new Date(returnDate).toLocaleDateString('de-DE') : '–'}</p>
                                       <table><tr><th>Position</th><th>Betrag</th></tr>
                                       <tr><td>${displayRentalDays}x Tagestarif</td><td>&euro; ${amountLabel(subtotal)}</td></tr>
-                                      <tr><td>Packages & Extras</td><td>&euro; ${amountLabel(extrasTotal)}</td></tr>
+                                      <tr><td>Pakete & Extras</td><td>&euro; ${amountLabel(extrasTotal)}</td></tr>
                                       ${discountPercent > 0 ? `<tr><td>Rabatt (${discountPercent}%)</td><td>-&euro; ${amountLabel(discountAmount)}</td></tr>` : ''}
                                       <tr><td>MwSt. (${taxRatePercent}%)</td><td>&euro; ${amountLabel(tax)}</td></tr>
                                       <tr><td class="total">Gesamt</td><td class="total">&euro; ${amountLabel(grandTotal)}</td></tr>
@@ -486,7 +486,7 @@ export function CheckoutStep({
                       <span className="text-foreground">{formatEuroAmount(subtotal)}</span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Packages & Extras</span>
+                      <span className="text-muted-foreground">Pakete & Extras</span>
                       <span className="text-foreground">{formatEuroAmount(extrasTotal)}</span>
                     </div>
                     {discountPercent > 0 && (
