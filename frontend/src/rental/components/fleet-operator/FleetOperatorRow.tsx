@@ -14,6 +14,7 @@ import type {
   FleetCommandRowSeverity,
   FleetVehicleContext,
 } from '../../lib/fleet-operator-panel';
+import { fleetCommandReasonChipClass, fleetCommandRowSurfaceClass } from './fleetOperatorUi';
 
 function commandSeverityHealthChip(
   severity: FleetCommandRowSeverity,
@@ -35,16 +36,6 @@ function commandSeverityRentalTone(severity: FleetCommandRowSeverity): StatusTon
   return 'success';
 }
 
-function reasonChipClass(tone: StatusTone): string {
-  if (tone === 'critical') {
-    return 'bg-[color:color-mix(in_srgb,var(--status-critical)_10%,transparent)] text-[color:var(--status-critical)]';
-  }
-  if (tone === 'watch' || tone === 'warning') {
-    return 'bg-[color:color-mix(in_srgb,var(--status-watch)_12%,transparent)] text-[color:var(--status-watch)]';
-  }
-  return 'bg-muted text-muted-foreground';
-}
-
 function fleetVehicleTitle(v: VehicleData): string {
   const model = typeof v.model === 'string' ? v.model : '';
   const shortModel = model ? getShortModel(model) : '';
@@ -56,10 +47,6 @@ function vehicleStationLabel(v: VehicleData): string {
   return named ?? v.station ?? '';
 }
 
-/**
- * A single compact appointment fragment (Return/Pickup) — never the station,
- * so the station + last-known-location line stays clean and unambiguous.
- */
 function appointmentFragment(v: VehicleData): string | null {
   if (v.status === 'Active Rented' && v.activeReturnAt) {
     return `Return ${formatFleetDateTime(v.activeReturnAt)}`;
@@ -68,6 +55,10 @@ function appointmentFragment(v: VehicleData): string | null {
     return `Pickup ${formatFleetDateTime(v.reservedPickupAt)}`;
   }
   return null;
+}
+
+function MetaDot() {
+  return <span className="shrink-0 text-muted-foreground/70" aria-hidden>·</span>;
 }
 
 export interface FleetOperatorRowProps {
@@ -115,21 +106,8 @@ export function FleetOperatorRow({
           tone: commandSeverityRentalTone(commandSeverity),
         };
 
-  // Only genuine connectivity problems (offline / no_signal) dim an Available
-  // row. Standby + signal_delayed stay at full opacity (normal/secondary).
   const dimmed = display.showTelemetryWarning && v.status === 'Available';
 
-  const tint =
-    commandSeverity === 'critical'
-      ? 'bg-[color:color-mix(in_srgb,var(--status-critical)_5%,transparent)]'
-      : commandSeverity === 'warning'
-        ? 'bg-[color:color-mix(in_srgb,var(--status-watch)_4%,transparent)]'
-        : '';
-
-  // Station = organisational home. Last known location = current/last GPS
-  // position resolved via the shared (cached) reverse-geocode helper used on
-  // the Fleet Map / Vehicle Detail. No address is fabricated: when no
-  // coordinates resolve, the line falls back to the station alone.
   const station = vehicleStationLabel(v);
   const { address } = useAddress(v.lat, v.lng);
   const lastKnownLocation =
@@ -137,6 +115,15 @@ export function FleetOperatorRow({
   const appointment = appointmentFragment(v);
   const locationParts = [station, lastKnownLocation, appointment].filter(Boolean) as string[];
   const locationLine = locationParts.length > 0 ? locationParts.join(' · ') : '—';
+
+  const hasEnergy = display.energy.percent != null;
+  const hasOdometer = Boolean(display.odometerLabel);
+  const reasonTone: 'critical' | 'watch' | 'warning' | 'neutral' =
+    reasonBadge?.tone === 'critical'
+      ? 'critical'
+      : reasonBadge?.tone === 'watch' || reasonBadge?.tone === 'warning'
+        ? 'watch'
+        : 'neutral';
 
   return (
     <div
@@ -153,99 +140,110 @@ export function FleetOperatorRow({
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
       className={cn(
-        'group flex cursor-pointer items-start gap-2 px-2.5 py-2 transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--brand)]',
-        tint,
-        selected && 'bg-[color:color-mix(in_srgb,var(--brand)_8%,transparent)]',
+        'group flex cursor-pointer items-start gap-2 px-2.5 py-2 transition-colors',
+        'hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--brand)]',
+        fleetCommandRowSurfaceClass(commandSeverity),
+        selected &&
+          'ring-1 ring-inset ring-[color:color-mix(in_srgb,var(--brand)_35%,transparent)] bg-[color:color-mix(in_srgb,var(--brand)_6%,transparent)]',
       )}
     >
       <BrandLogoMark
         brand={getBrandFromModel({ make: v.make, model: v.model })}
         isDarkMode={isDarkMode}
-        boxClassName={dimmed ? 'opacity-75' : undefined}
+        boxClassName={cn('shrink-0 self-start', dimmed && 'opacity-75')}
       />
 
-      <div className={cn('min-w-0 flex-1 space-y-1', dimmed && 'opacity-75')}>
-        <div className="flex min-w-0 items-baseline gap-1.5">
+      <div className={cn('min-w-0 flex-1', dimmed && 'opacity-75')}>
+        {/* Line 1 — plate, model, severity + readiness badges */}
+        <div className="flex min-w-0 items-center gap-1.5">
           <span className="shrink-0 text-[12px] font-bold tabular-nums tracking-[-0.01em] text-foreground">
             {v.license}
           </span>
-          <span className="truncate text-[10.5px] leading-snug text-muted-foreground">
+          <span
+            className="min-w-0 flex-1 truncate text-[10.5px] leading-snug text-muted-foreground"
+            title={fleetVehicleTitle(v)}
+          >
             {fleetVehicleTitle(v)}
           </span>
-        </div>
-
-        <div
-          className="flex min-w-0 items-center gap-1 text-[10px] text-muted-foreground"
-          title={locationLine}
-        >
-          <Icon name="map-pin" className="h-3 w-3 shrink-0 text-muted-foreground/80" />
-          <span className="truncate">{locationLine}</span>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] tabular-nums text-muted-foreground">
-          {display.energy.percent != null && (
-            <FleetEnergyIndicator
-              percent={display.energy.percent}
-              isElectric={display.energy.kind === 'battery'}
-              tone={display.energy.tone}
-            />
-          )}
-          <>
-            {display.energy.percent != null && <span aria-hidden>·</span>}
-            <span
-              className={cn(
-                display.showTelemetryWarning && 'text-[color:var(--status-watch)]',
-              )}
+          <div className="flex shrink-0 items-center gap-1">
+            <StatusChip
+              tone={rowHealth.tone}
+              icon={<Icon name="heart" className="h-3 w-3" />}
+              className="px-1.5 py-0.5 text-[9.5px] font-semibold"
             >
-              {display.telemetryLabel}
+              {rowHealth.label}
+            </StatusChip>
+            <StatusChip
+              tone={rowRental.tone}
+              className="px-1.5 py-0.5 text-[9.5px] font-semibold"
+            >
+              {rentalDisplay.label}
+            </StatusChip>
+          </div>
+        </div>
+
+        {/* Line 2 — location + Open CTA */}
+        <div className="mt-0.5 flex min-w-0 items-center gap-1">
+          <Icon name="map-pin" className="h-3 w-3 shrink-0 text-muted-foreground/80" />
+          <span
+            className="min-w-0 flex-1 truncate text-[10px] text-muted-foreground"
+            title={locationLine}
+          >
+            {locationLine}
+          </span>
+          <button
+            type="button"
+            onClick={onDetailClick}
+            aria-label="Open vehicle details"
+            className="sq-press inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10.5px] font-medium text-muted-foreground opacity-90 transition-colors hover:bg-muted/40 hover:text-foreground group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+          >
+            Open
+            <Icon name="arrow-right" className="h-3 w-3" />
+          </button>
+        </div>
+
+        {/* Line 3 — fuel, telemetry, odometer, optional reason (single row, no wrap) */}
+        <div className="mt-0.5 flex min-w-0 items-center gap-x-1 overflow-hidden text-[10px] tabular-nums text-muted-foreground">
+          {hasEnergy && (
+            <span className="inline-flex shrink-0 items-center">
+              <FleetEnergyIndicator
+                percent={display.energy.percent}
+                isElectric={display.energy.kind === 'battery'}
+                tone={display.energy.tone}
+              />
             </span>
-          </>
-          {display.odometerLabel && (
+          )}
+          {hasEnergy && <MetaDot />}
+          <span
+            className={cn(
+              'min-w-0 shrink truncate',
+              display.showTelemetryWarning && 'text-[color:var(--status-watch)]',
+            )}
+            title={display.telemetryLabel}
+          >
+            {display.telemetryLabel}
+          </span>
+          {hasOdometer && (
             <>
-              <span aria-hidden>·</span>
-              <span>{display.odometerLabel}</span>
+              <MetaDot />
+              <span className="shrink-0 whitespace-nowrap">{display.odometerLabel}</span>
+            </>
+          )}
+          {reasonBadge && (
+            <>
+              <MetaDot />
+              <span
+                className={cn(
+                  'min-w-0 max-w-[38%] shrink truncate rounded-full px-1.5 py-px text-[9.5px] font-medium leading-tight',
+                  fleetCommandReasonChipClass(reasonTone),
+                )}
+                title={reasonBadge.text}
+              >
+                {reasonBadge.text}
+              </span>
             </>
           )}
         </div>
-
-        {reasonBadge && (
-          <span
-            className={cn(
-              'inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[10px] font-medium',
-              reasonChipClass(reasonBadge.tone),
-            )}
-          >
-            <span className="truncate">{reasonBadge.text}</span>
-          </span>
-        )}
-      </div>
-
-      <div className="flex shrink-0 flex-col items-end gap-1">
-        <div className="flex flex-wrap items-center justify-end gap-1">
-          <StatusChip
-            tone={rowHealth.tone}
-            icon={<Icon name="heart" className="h-3 w-3" />}
-            className="px-1.5 py-0.5 text-[9.5px] font-semibold"
-          >
-            {rowHealth.label}
-          </StatusChip>
-          <StatusChip
-            tone={rowRental.tone}
-            className="px-1.5 py-0.5 text-[9.5px] font-semibold"
-          >
-            {rentalDisplay.label}
-          </StatusChip>
-        </div>
-
-        <button
-          type="button"
-          onClick={onDetailClick}
-          aria-label="Open vehicle details"
-          className="sq-press inline-flex min-h-8 items-center gap-1 rounded-md px-2 text-[10.5px] font-medium text-muted-foreground opacity-90 transition-colors hover:bg-muted/40 hover:text-foreground group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
-        >
-          Open
-          <Icon name="arrow-right" className="h-3 w-3" />
-        </button>
       </div>
     </div>
   );

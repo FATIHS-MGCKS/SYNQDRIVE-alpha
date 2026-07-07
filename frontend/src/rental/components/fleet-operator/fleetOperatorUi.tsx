@@ -80,3 +80,26 @@ export function PanelStatusChip({
     </StatusChip>
   );
 }
+
+/** Subtle row background aligned with Notifications / ActionQueue gradients. */
+export function fleetCommandRowSurfaceClass(
+  severity: 'critical' | 'warning' | 'good',
+): string {
+  if (severity === 'critical') {
+    return 'bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-critical)_7%,transparent),color-mix(in_srgb,var(--status-critical)_2%,transparent))]';
+  }
+  if (severity === 'warning') {
+    return 'bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-watch)_7%,transparent),color-mix(in_srgb,var(--status-watch)_2%,transparent))]';
+  }
+  return '';
+}
+
+export function fleetCommandReasonChipClass(tone: 'critical' | 'watch' | 'warning' | 'neutral'): string {
+  if (tone === 'critical') {
+    return 'bg-[color:color-mix(in_srgb,var(--status-critical)_10%,transparent)] text-[color:var(--status-critical)]';
+  }
+  if (tone === 'watch' || tone === 'warning') {
+    return 'bg-[color:color-mix(in_srgb,var(--status-watch)_12%,transparent)] text-[color:var(--status-watch)]';
+  }
+  return 'bg-muted/60 text-muted-foreground';
+}
