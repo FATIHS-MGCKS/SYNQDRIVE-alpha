@@ -81,17 +81,30 @@ export function PanelStatusChip({
   );
 }
 
-/** Subtle row background aligned with Notifications / ActionQueue gradients. */
+/** Subtle row background + inset border aligned with Notifications / ActionQueue. */
 export function fleetCommandRowSurfaceClass(
   severity: 'critical' | 'warning' | 'good',
 ): string {
+  const border =
+    severity === 'critical'
+      ? 'ring-1 ring-inset ring-[color:color-mix(in_srgb,var(--status-critical)_22%,transparent)]'
+      : severity === 'warning'
+        ? 'ring-1 ring-inset ring-[color:color-mix(in_srgb,var(--status-watch)_20%,transparent)]'
+        : 'ring-1 ring-inset ring-border/40';
+
   if (severity === 'critical') {
-    return 'bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-critical)_7%,transparent),color-mix(in_srgb,var(--status-critical)_2%,transparent))]';
+    return cn(
+      border,
+      'bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-critical)_7%,transparent),color-mix(in_srgb,var(--status-critical)_2%,transparent))]',
+    );
   }
   if (severity === 'warning') {
-    return 'bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-watch)_7%,transparent),color-mix(in_srgb,var(--status-watch)_2%,transparent))]';
+    return cn(
+      border,
+      'bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-watch)_7%,transparent),color-mix(in_srgb,var(--status-watch)_2%,transparent))]',
+    );
   }
-  return '';
+  return border;
 }
 
 export function fleetCommandReasonChipClass(tone: 'critical' | 'watch' | 'warning' | 'neutral'): string {

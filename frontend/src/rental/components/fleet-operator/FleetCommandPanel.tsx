@@ -135,7 +135,8 @@ export function FleetCommandPanel({
           />
         </div>
 
-        <div className="sq-tab-bar p-1 flex items-stretch gap-0.5 overflow-x-auto scrollbar-thin mb-2">
+        <div className="sq-tab-bar mb-2 w-full p-1">
+          <div className="flex w-full items-stretch gap-0.5">
           {COMMAND_TABS.map((tab) => {
             const isActive = activeTab === tab.key;
             const count = tabCounts[tab.key];
@@ -144,17 +145,18 @@ export function FleetCommandPanel({
                 key={tab.key}
                 type="button"
                 onClick={() => onTabChange(tab.key)}
-                className={`shrink-0 px-2 py-1.5 rounded-[calc(var(--radius-md)-2px)] text-[11px] font-semibold whitespace-nowrap transition-all duration-200 flex items-center gap-1 ${
+                className={`flex min-w-0 flex-1 items-center justify-center gap-1 rounded-[calc(var(--radius-md)-2px)] px-2 py-1.5 text-[11px] font-semibold whitespace-nowrap transition-all duration-200 ${
                   isActive
                     ? 'bg-card text-foreground shadow-[var(--shadow-1)] ring-1 ring-[color:color-mix(in_srgb,var(--brand)_12%,transparent)]'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <span>{tab.label}</span>
+                <span className="truncate">{tab.label}</span>
                 <CommandCountBadge count={count} tone={tab.tone} active={isActive} />
               </button>
             );
           })}
+          </div>
         </div>
       </div>
 
