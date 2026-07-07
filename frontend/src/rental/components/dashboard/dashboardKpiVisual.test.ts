@@ -47,6 +47,12 @@ describe('dashboardKpiFormat', () => {
     expect(resolveDashboardNumberFormatLocale('not-a-real-locale-tag', 'EUR')).toBe('de-DE');
   });
 
+  it('formats EUR with European symbol position regardless of UI locale', () => {
+    expect(normalizeMoney(formatBusinessMoney(0, 'EUR', 'en'))).toBe('0 €');
+    expect(normalizeMoney(formatBusinessMoney(0, 'EUR', 'en-US'))).toBe('0 €');
+    expect(normalizeMoney(formatBusinessMoney(125_000, 'EUR', 'en'))).toBe('1.250 €');
+  });
+
   it('formats EUR for German locale with symbol after amount', () => {
     expect(normalizeMoney(formatBusinessMoney(0, 'EUR', 'de'))).toBe('0 €');
     expect(normalizeMoney(formatBusinessMoney(0, 'EUR', 'de-DE'))).toBe('0 €');
@@ -54,12 +60,6 @@ describe('dashboardKpiFormat', () => {
     expect(normalizeMoney(formatBusinessMoney(-25_000, 'EUR', 'de'))).toBe('-250 €');
     expect(normalizeMoney(formatBusinessMoney(0, 'EUR', 'de_AT'))).toBe('0 €');
     expect(normalizeMoney(formatBusinessMoney(0, 'EUR', 'de-CH'))).toBe('0 €');
-  });
-
-  it('keeps en-US currency layout for English locale', () => {
-    const formatted = normalizeMoney(formatBusinessMoney(0, 'EUR', 'en'));
-    expect(formatted).toMatch(/^€0$/);
-    expect(normalizeMoney(formatBusinessMoney(0, 'EUR', 'en-US'))).toMatch(/^€0$/);
   });
 
   it('does not throw for invalid locale', () => {

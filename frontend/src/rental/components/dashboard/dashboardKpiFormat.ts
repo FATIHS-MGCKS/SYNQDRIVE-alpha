@@ -11,11 +11,18 @@ export function resolveDashboardNumberFormatLocale(
   locale: string | null | undefined,
   currency: string,
 ): string {
+  const normalizedCurrency = (currency || 'EUR').toUpperCase();
+
+  // SynqDrive finance KPIs use EUR; European convention is symbol after amount (0 €).
+  if (normalizedCurrency === 'EUR') {
+    return 'de-DE';
+  }
+
   const trimmed = (locale ?? '').trim();
   const normalized = trimmed.toLowerCase().replace(/_/g, '-');
 
   if (!normalized) {
-    return currency.toUpperCase() === 'EUR' ? 'de-DE' : 'en-US';
+    return 'en-US';
   }
 
   if (normalized.startsWith('de')) return 'de-DE';
@@ -29,7 +36,7 @@ export function resolveDashboardNumberFormatLocale(
     return normalized;
   }
 
-  return currency.toUpperCase() === 'EUR' ? 'de-DE' : 'en-US';
+  return 'en-US';
 }
 
 export function formatDashboardMoney(cents: number, currency: string, locale: string): string {

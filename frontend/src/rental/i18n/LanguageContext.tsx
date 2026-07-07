@@ -12,6 +12,28 @@ export type Locale = 'en' | 'de' | 'fr' | 'nl' | 'es' | 'it' | 'pl' | 'cs';
 
 const translations: Record<Locale, Record<string, string>> = { en, de, fr, nl, es, it, pl, cs };
 
+const LOCALE_STORAGE_KEY = 'synqdrive.locale';
+
+function isLocale(value: string | null | undefined): value is Locale {
+  return Boolean(value && value in translations);
+}
+
+function readInitialLocale(): Locale {
+  if (typeof window === 'undefined') return 'en';
+
+  try {
+    const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
+    if (isLocale(stored)) return stored;
+  } catch {
+    // ignore storage failures
+  }
+
+  const browserLocale = navigator.language?.toLowerCase() ?? '';
+  if (browserLocale.startsWith('de')) return 'de';
+
+  return 'en';
+}
+
 interface LanguageContextValue {
   locale: Locale;
   setLocale: (locale: Locale) => void;
@@ -37,7 +59,16 @@ const defaultValue: LanguageContextValue = {
 const LanguageContext = createContext<LanguageContextValue>(defaultValue);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocale] = useState<Locale>('en');
+  const [locale, setLocaleState] = useState<Locale>(readInitialLocale);
+
+  const setLocale = useCallback((next: Locale) => {
+    setLocaleState(next);
+    try {
+      localStorage.setItem(LOCALE_STORAGE_KEY, next);
+    } catch {
+      // ignore storage failures
+    }
+  }, []);
 
   const t = useCallback(
     (key: TranslationKey, vars?: Record<string, string | number>): string => {

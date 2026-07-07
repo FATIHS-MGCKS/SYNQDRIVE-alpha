@@ -37,6 +37,7 @@ import type {
   DashboardSliceRow,
   VehicleRuntimeState,
 } from './runtime';
+import { formatDashboardMoney } from './dashboardKpiFormat';
 
 interface DashboardDrilldownDrawerProps {
   activeTargetId: DashboardSliceId | BusinessMetricId | null;
@@ -97,14 +98,6 @@ function severityTone(severity: DashboardSliceRow['severity'] | BusinessPulseRow
   if (severity === 'success') return 'success';
   if (severity === 'info') return 'info';
   return 'neutral';
-}
-
-function formatMoney(cents: number, currency: string | undefined, locale: string): string {
-  return new Intl.NumberFormat(locale === 'de' ? 'de-DE' : 'en-US', {
-    style: 'currency',
-    currency: currency || 'EUR',
-    maximumFractionDigits: 0,
-  }).format(cents / 100);
 }
 
 function formatDate(value: string | null | undefined, locale: string): string | null {
@@ -384,7 +377,7 @@ function BusinessRowCard({
 }) {
   const dueDate = formatDate(row.dueDate, locale);
   const invoiceDate = formatDate(row.invoiceDate, locale);
-  const amount = row.amountCents == null ? null : formatMoney(row.amountCents, row.currency, locale);
+  const amount = row.amountCents == null ? null : formatDashboardMoney(row.amountCents, row.currency ?? 'EUR', locale);
   const canOpen = Boolean(row.invoiceId && onOpenInvoice) || Boolean(onOpenBilling);
 
   return (
@@ -634,7 +627,7 @@ export function DashboardDrilldownDrawer({
   const count = dashboardSlice?.count ?? businessSlice?.count ?? null;
   const value =
     businessSlice?.valueCents != null
-      ? formatMoney(businessSlice.valueCents, businessSlice.rows[0]?.currency, locale)
+      ? formatDashboardMoney(businessSlice.valueCents, businessSlice.rows[0]?.currency ?? 'EUR', locale)
       : count == null
         ? '—'
         : String(count);

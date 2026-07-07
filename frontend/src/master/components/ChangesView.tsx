@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'eur-locale-default-de-v49228-2026-07-07',
+    version: '4.9.228',
+    title: 'V4.9.228 — EUR immer als `0 €` (Dashboard + Locale-Persistenz)',
+    summary: [
+      'Dashboard-Finance-Formatter: EUR nutzt immer `de-DE` → `0 €` / `1.250 €`, unabhängig von UI-Sprache `en`.',
+      '`LanguageContext`: Locale aus `localStorage` + Browser-Default (`de*` → Deutsch); Sprachwahl bleibt nach Reload erhalten.',
+      'Finance-Drawer (`DashboardDrilldownDrawer`) nutzt denselben `formatDashboardMoney`-Formatter.',
+    ],
+    reason:
+      'FS Mobility und andere EUR-Mandanten sahen `€0`, weil die App standardmäßig `locale=en` hatte und der Formatter für Englisch `en-US` nutzte.',
+    previousBehavior:
+      'EUR-Format folgte UI-Locale (`en` → `€0`); Sprache nicht persistiert; Drawer mit eigenem `locale === de`-Check.',
+    details:
+      'frontend: dashboardKpiFormat.ts, LanguageContext.tsx, DashboardDrilldownDrawer.tsx, dashboardKpiVisual.test.ts. Keine Finance-Berechnung, Invoice-Logik oder Backend-Änderung.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-07T14:14:00.000Z',
+  },
+  {
     id: 'business-pulse-eur-format-v49227-2026-07-07',
     version: '4.9.227',
     title: 'V4.9.227 — Business Pulse EUR-Format & Finance-KPI-Typografie',
