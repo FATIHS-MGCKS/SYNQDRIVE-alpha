@@ -3,7 +3,7 @@ import { Calendar, Car, CheckCircle, CreditCard, Euro, Eye, FileText, IdCard, Sh
 import { Icon } from './ui/Icon';
 import { toast } from 'sonner';
 
-import { VehicleData, isVehicleOffline, VEHICLE_OFFLINE_LABEL } from '../data/vehicles';
+import { VehicleData } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { CustomerDetailModal } from './CustomerDetailModal';
@@ -48,7 +48,6 @@ import { documentEligibilityLabelDe } from '../lib/customer-verification';
 // vehicle picker so dispatchers see "Nicht vermietbar" BEFORE they click,
 // instead of first getting a 409 from the booking create endpoint.
 import { useFleetHealthMap } from '../hooks/useVehicleHealth';
-import { RentalHealthBadge } from './rental-health/RentalHealthBadge';
 import { BookingRentalEligibilityCard } from './bookings/BookingRentalEligibilityCard';
 import { BookingWizardStepper } from './bookings/BookingWizardStepper';
 import type { BookingRentalEligibilityResult } from '../lib/booking-rental-eligibility.types';
@@ -131,22 +130,8 @@ const mapApiCustomerToBookingCustomer = (c: any): Customer => {
 // V4.6.67 — Removed mock `vehicleImages` map and `getVehicleImage` helper.
 // The vehicle picker uses the shared BrandLogo component (Cardog Icons).
 
-// V4.6.67 — Build the canonical Make Model Year ("MMY") label.
-// Falls back to the legacy `model` string (which already includes the year for
-// many seed vehicles) so we never render an empty title.
-const buildMMY = (v: { make?: string | null; model?: string | null; year?: number | null }) => {
-  const make = (v.make ?? '').toString().trim();
-  const rawModel = (v.model ?? '').toString().trim();
-  const year = typeof v.year === 'number' && Number.isFinite(v.year) ? v.year : null;
-  // Strip a trailing 4-digit year that already lives inside `model`.
-  const modelClean = rawModel.replace(/\s+\d{4}$/, '').trim();
-  // Avoid duplicating make if it is already the first word of the model.
-  const makeAlreadyInModel = make && modelClean.toLowerCase().startsWith(make.toLowerCase());
-  const head = makeAlreadyInModel || !make ? modelClean : `${make} ${modelClean}`.trim();
-  return year ? `${head} ${year}`.trim() : head || rawModel || 'Fahrzeug';
-};
-
-// Fallback pricing removed — backend Pricing Service is the source of truth.
+import { buildMMY } from '../lib/vehicleMmy';
+import { VehiclePickerStep } from './new-booking/VehiclePickerStep';
 
 // V4.6.67 — Reordered steps so that the booking flow is logically gated:
 //   Fahrzeug → Zeitraum → Extras → Kunde → Abschluss
@@ -1079,6 +1064,25 @@ export function NewBookingView({
   const amountLabel = (value: number | null | undefined) =>
     value != null && Number.isFinite(value) ? value.toFixed(2) : '—';
 
+  const handleSelectVehicle = (v: VehicleData) => {
+    setSelectedVehicle(v);
+    const defaultPickup = resolveDefaultPickupStationId(
+      orgStations,
+      v.homeStationId ?? v.stationId,
+    );
+    if (defaultPickup) {
+      setPickupStationId(defaultPickup);
+      if (sameReturnStation) setReturnStationId(defaultPickup);
+    }
+  };
+
+  const handleResetVehicleFilters = () => {
+    setVehicleBrandFilter('all');
+    setVehicleCategoryFilter('all');
+    setVehicleStationFilter('all');
+    setVehicleFuelFilter('all');
+  };
+
   return (
     <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:space-y-5">
       <PageHeader
@@ -1678,219 +1682,32 @@ export function NewBookingView({
             {currentStep === 1 && (
               <>
                 {card(
-                  <div className="p-4">
-                    <SectionHeader title="Fahrzeug auswählen" className="mb-3" />
-
-                    {/* Filters Row */}
-                    <div className="space-y-3 mb-3">
-                      <div className="relative">
-                        <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                        <input
-                          type="text"
-                          placeholder="Fahrzeug suchen..."
-                          value={vehicleSearch}
-                          onChange={(e) => setVehicleSearch(e.target.value)}
-                          className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-xs outline-none transition-all ${ 'bg-card border border-border text-foreground placeholder:text-muted-foreground focus:border-[color:var(--brand)]' }`}
-                        />
-                      </div>
-                      <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
-                        <select
-                          value={vehicleBrandFilter}
-                          onChange={(e) => setVehicleBrandFilter(e.target.value)}
-                          className={`min-w-0 w-full rounded-lg border px-3 py-2.5 text-xs outline-none ${ 'bg-card border border-border text-foreground' }`}
-                        >
-                          <option value="all">Alle Marken</option>
-                          {brands.map(b => <option key={b} value={b}>{b}</option>)}
-                        </select>
-                        <select
-                          value={vehicleCategoryFilter}
-                          onChange={(e) => setVehicleCategoryFilter(e.target.value)}
-                          className={`min-w-0 w-full rounded-lg border px-3 py-2.5 text-xs outline-none ${ 'bg-card border border-border text-foreground' }`}
-                        >
-                          <option value="all">Alle Kategorien</option>
-                          {categories.map(c => <option key={c} value={c}>{c}</option>)}
-                        </select>
-                        <select
-                          value={vehicleStationFilter}
-                          onChange={(e) => setVehicleStationFilter(e.target.value)}
-                          className={`min-w-0 w-full rounded-lg border px-3 py-2.5 text-xs outline-none ${ 'bg-card border border-border text-foreground' }`}
-                        >
-                          <option value="all">Alle Stationen</option>
-                          {stations.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
-                        <select
-                          value={vehicleFuelFilter}
-                          onChange={(e) => setVehicleFuelFilter(e.target.value)}
-                          className={`min-w-0 w-full rounded-lg border px-3 py-2.5 text-xs outline-none ${ 'bg-card border border-border text-foreground' }`}
-                        >
-                          <option value="all">Alle Kraftstoffe</option>
-                          {fuelTypes.map(f => <option key={f} value={f}>{f}</option>)}
-                        </select>
-                        {(vehicleBrandFilter !== 'all' || vehicleCategoryFilter !== 'all' || vehicleStationFilter !== 'all' || vehicleFuelFilter !== 'all') && (
-                          <button
-                            onClick={() => {
-                              setVehicleBrandFilter('all');
-                              setVehicleCategoryFilter('all');
-                              setVehicleStationFilter('all');
-                              setVehicleFuelFilter('all');
-                            }}
-                            className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2.5 text-xs transition-all sm:w-auto ${ 'bg-card border border-border text-muted-foreground hover:text-[color:var(--status-critical)] hover:border-[color:var(--status-critical)]' }`}
-                          >
-                            <Icon name="x" className="h-3.5 w-3.5 shrink-0" />
-                            Filter zurücksetzen
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Status Filter Tabs */}
-                    <div className="-mx-0.5 mb-3 flex gap-2 overflow-x-auto pb-0.5 scrollbar-thin [scrollbar-width:thin]">
-                      {[
-                        { label: 'Alle', value: 'all', count: availableVehicles.length },
-                        { label: 'Verfügbar', value: 'Available', count: availableVehicles.filter(v => v.status === 'Available').length },
-                        { label: 'Reserviert', value: 'Reserved', count: availableVehicles.filter(v => v.status === 'Reserved').length },
-                        { label: 'Vermietet', value: 'Active Rented', count: availableVehicles.filter(v => v.status === 'Active Rented').length },
-                        { label: 'Wartung', value: 'Maintenance', count: availableVehicles.filter(v => v.status === 'Maintenance').length },
-                      ].map(tab => (
-                        <button
-                          key={tab.value}
-                          type="button"
-                          onClick={() => setVehicleStatusFilter(tab.value)}
-                          className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs transition-all ${ vehicleStatusFilter === tab.value ? 'sq-tone-brand border border-border' : 'bg-muted/40 text-muted-foreground border border-border hover:border-border' }`}
-                        >
-                          {tab.label}
-                          <span className={`rounded-full px-1.5 py-0.5 text-xs ${ vehicleStatusFilter === tab.value ? 'sq-tone-brand' : 'sq-chip-neutral' }`}>{tab.count}</span>
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Vehicle List */}
-                    <div className="flex flex-col gap-2 max-h-[480px] overflow-y-auto pr-1">
-                      {availableVehicles
-                        .filter(v => vehicleStatusFilter === 'all' || v.status === vehicleStatusFilter)
-                        .map((v) => {
-                        const isMaintenance = v.status === 'Maintenance';
-                        const isRented = v.status === 'Active Rented';
-                        // V4.6.76 Rental Health V1 — show the rental_blocked pill
-                        // in the picker so dispatchers know the booking would be
-                        // rejected BEFORE clicking. The backend still hard-gates
-                        // in BookingsService.create, so this is purely UX signal.
-                        const vehicleHealth = pickerHealthMap.get(v.id) ?? null;
-                        const isRentalBlocked = vehicleHealth?.rental_blocked === true;
-                        // V4.7.62 — Offline (Last Signal ≥ 1 day): the vehicle's
-                        // telemetry/condition can no longer be trusted, so it is
-                        // not selectable for a booking. The row is greyed out and
-                        // the click handler is hard-disabled.
-                        const offline = isVehicleOffline(v);
-                        const dailyLabel = getVehicleDailyRateLabel(v.id);
-                        const noTariff = !dailyLabel && !catalogLoading;
-                        // V4.6.67 — derive brand from `make` first (true source from
-                        // backend), fall back to the model string. Use the shared
-                        // BrandLogo (Cardog Icons) for the icon and `buildMMY` for the title.
-                        const brandKey = getBrandFromModel({ make: v.make, model: v.model });
-                        const mmy = buildMMY(v);
-                        return (
-                        <button
-                          key={v.id}
-                          disabled={offline}
-                          onClick={() => {
-                            if (offline) return;
-                            setSelectedVehicle(v);
-                            const defaultPickup = resolveDefaultPickupStationId(
-                              orgStations,
-                              v.homeStationId ?? v.stationId,
-                            );
-                            if (defaultPickup) {
-                              setPickupStationId(defaultPickup);
-                              if (sameReturnStation) setReturnStationId(defaultPickup);
-                            }
-                          }}
-                          className={`flex min-w-0 max-w-full items-center gap-3 w-full text-left rounded-lg border px-3 py-2 transition-all duration-200 ${ offline ? 'border-border bg-muted/30 opacity-60 grayscale cursor-not-allowed' : isMaintenance ? selectedVehicle?.id === v.id ? 'border-[color:var(--brand)] ring-1 ring-[color:var(--brand-glow)] bg-[color:var(--brand-soft)] opacity-70 cursor-pointer' : 'border-[color:var(--status-critical)]/30 bg-muted/40 opacity-70 hover:border-[color:var(--status-critical)]/50 cursor-pointer' : selectedVehicle?.id === v.id ? 'border-[color:var(--brand)] ring-1 ring-[color:var(--brand-glow)] bg-[color:var(--brand-soft)] cursor-pointer' : 'border-border bg-muted/40 hover:border-border hover:bg-card cursor-pointer' }`}
-                        >
-                          {/* Brand Logo (shared Cardog component) */}
-                          <BrandLogoMark
-                            brand={brandKey}
-                            isDarkMode={isDarkMode}
-                            boxClassName={(isMaintenance || offline) ? 'grayscale opacity-70' : undefined}
-                          />
-
-                          {/* Vehicle Info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className={`text-xs truncate ${(isMaintenance || offline) ? ('text-muted-foreground line-through') : 'text-foreground'}`}>{mmy}</p>
-                              {/* V4.7.62 — Offline pill takes priority: a vehicle
-                                  that has not signalled for ≥ 1 day cannot be
-                                  booked, so the dispatcher sees the reason inline. */}
-                              {offline ? (
-                                <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] bg-muted-foreground/80 text-primary-foreground shrink-0" title={VEHICLE_OFFLINE_LABEL}>
-                                  <Icon name="wifi-off" className="w-3 h-3" />
-                                  {VEHICLE_OFFLINE_LABEL}
-                                </span>
-                              ) : isMaintenance ? (
-                                <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] bg-red-600/80 text-white shrink-0">
-                                  <Icon name="wrench" className="w-3 h-3" />
-                                  Wartung
-                                </span>
-                              ) : isRented ? (
-                                <span className="flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] bg-orange-500/80 text-white shrink-0">
-                                  <Icon name="clock" className="w-3 h-3" />
-                                  Aktuell vermietet
-                                </span>
-                              ) : null}
-                            </div>
-                            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                              <span className="text-xs text-muted-foreground">{v.license}</span>
-                              {isRentalBlocked ? (
-                                <RentalHealthBadge
-                                  health={vehicleHealth}
-                                  size="sm"
-                                  showBlockingLabel
-                                />
-                              ) : null}
-                              <span className="text-xs text-muted-foreground">·</span>
-                              <span className={`text-xs px-1.5 py-0.5 rounded ${ v.fuelType === 'Electric' ? 'sq-chip-success' : v.fuelType === 'Hybrid' ? 'sq-chip-info' : v.fuelType === 'Diesel' ? 'sq-chip-watch' : v.fuelType === 'Petrol' ? 'sq-chip-warning' : 'sq-chip-neutral' }`}>{v.fuelType}</span>
-                              {v.station && (
-                                <>
-                                  <span className="text-xs text-muted-foreground">·</span>
-                                  <div className="flex items-center gap-1">
-                                    <Icon name="map-pin" className="w-3 h-3 text-muted-foreground" />
-                                    <span className="text-xs text-muted-foreground">{v.station}</span>
-                                  </div>
-                                </>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Price & Selection */}
-                          <div className="flex items-center gap-3 shrink-0">
-                            <div className="text-right">
-                              <p className={`text-xs ${(isMaintenance || offline) ? ('text-muted-foreground line-through') : noTariff ? 'text-[color:var(--status-watch)]' : 'text-foreground'}`}>
-                                {dailyLabel ?? 'Kein Tarif'}
-                              </p>
-                              <p className="text-xs text-muted-foreground">pro Tag</p>
-                            </div>
-                            {selectedVehicle?.id === v.id && !offline ? (
-                              <div className={`w-5 h-5 rounded-full flex items-center justify-center ${isMaintenance ? 'bg-brand/50' : 'bg-brand'}`}>
-                                <Icon name="check" className="w-3.5 h-3.5 text-white" />
-                              </div>
-                            ) : (
-                              <div className={`w-5 h-5 rounded-full border-2 relative ${ offline ? 'border-border' : isMaintenance ? 'border-[color:var(--status-critical)]/50' : 'border-border' }`}>
-                                {(isMaintenance || offline) && (
-                                  <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-3.5 h-0.5 rounded-full ${ offline ? ('bg-muted') : ('bg-[color:var(--status-critical)]/60') }`} />
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </button>
-                      );})}
-                      {availableVehicles.filter(v => vehicleStatusFilter === 'all' || v.status === vehicleStatusFilter).length === 0 && (
-                        <div className="py-12 text-center">
-                          <Icon name="car" className="w-5 h-5 mx-auto mb-3 text-muted-foreground" />
-                          <p className="text-xs text-muted-foreground">Keine Fahrzeuge in dieser Kategorie gefunden</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                  <VehiclePickerStep
+                    vehicles={availableVehicles}
+                    selectedVehicleId={selectedVehicle?.id ?? null}
+                    onSelectVehicle={handleSelectVehicle}
+                    search={vehicleSearch}
+                    onSearchChange={setVehicleSearch}
+                    brandFilter={vehicleBrandFilter}
+                    onBrandFilterChange={setVehicleBrandFilter}
+                    categoryFilter={vehicleCategoryFilter}
+                    onCategoryFilterChange={setVehicleCategoryFilter}
+                    stationFilter={vehicleStationFilter}
+                    onStationFilterChange={setVehicleStationFilter}
+                    fuelFilter={vehicleFuelFilter}
+                    onFuelFilterChange={setVehicleFuelFilter}
+                    statusFilter={vehicleStatusFilter}
+                    onStatusFilterChange={setVehicleStatusFilter}
+                    onResetFilters={handleResetVehicleFilters}
+                    brands={brands}
+                    categories={categories}
+                    stations={stations}
+                    fuelTypes={fuelTypes}
+                    pickerHealthMap={pickerHealthMap}
+                    catalogLoading={catalogLoading}
+                    getDailyRateLabel={getVehicleDailyRateLabel}
+                    isDarkMode={isDarkMode}
+                  />,
                 )}
               </>
             )}

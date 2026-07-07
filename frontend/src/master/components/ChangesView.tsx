@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'new-booking-vehicle-picker-mobile-v49223-2026-07-07',
+    version: '4.9.223',
+    title: 'V4.9.223 — New Booking: Vehicle Picker mobile-first',
+    summary: [
+      'Fahrzeugauswahl in `VehiclePickerStep` extrahiert — mobile-first Kartenlayout mit 3 Zeilen + Footer (Preis/Auswahl).',
+      'Mobile Filter: Suche full-width, Marke+Station kompakt, weitere Filter collapsible; Desktop 4-Spalten-Grid.',
+      'Status-Tabs horizontal scrollbar; Disabled-Zustände klar (offline disabled, Wartung/Vermietet muted + Grundzeile).',
+      '`buildMMY` nach `rental/lib/vehicleMmy.ts` verschoben (shared, keine Logik-Duplikation).',
+    ],
+    reason:
+      'Fahrzeugauswahl wirkte auf Mobile desktop-lastig — gequetschte Zeilen, überlagerte Badges, Filter zu breit.',
+    previousBehavior:
+      'Inline-Step in NewBookingView: horizontale Row mit Logo, MMY+Pills, Preis und 20px-Auswahlkreis in einer Zeile.',
+    details:
+      'Frontend-only UX: `VehiclePickerStep.tsx`, `vehicleMmy.ts`, `NewBookingView.tsx`. Filter-/Select-Logik im Parent; Backend-Gates unverändert.',
+    affectsArchitecture: false,
+    module: null,
+    createdAt: '2026-07-07T03:45:00.000Z',
+  },
+  {
     id: 'new-booking-wizard-stepper-v49222-2026-07-07',
     version: '4.9.222',
     title: 'V4.9.222 — New Booking: Mobile Wizard-Stepper & DE-Labels',
