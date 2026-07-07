@@ -26,6 +26,8 @@ export interface PageHeaderProps {
   /** `page` (default) = title + actions only; `full` = legacy with eyebrow/description/meta. */
   variant?: PageHeaderVariant;
   className?: string;
+  /** Optional override for the `<h1>` title element. */
+  titleClassName?: string;
 }
 
 export function PageHeader({
@@ -38,6 +40,7 @@ export function PageHeader({
   meta,
   variant = 'page',
   className,
+  titleClassName,
 }: PageHeaderProps) {
   const showEyebrow = variant === 'full' && eyebrow;
   const showDescription = variant === 'full' && description;
@@ -60,7 +63,12 @@ export function PageHeader({
               {icon}
             </span>
           )}
-          <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">
+          <h1
+            className={cn(
+              'min-w-0 font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground',
+              titleClassName ?? 'truncate',
+            )}
+          >
             {title}
           </h1>
           {status}

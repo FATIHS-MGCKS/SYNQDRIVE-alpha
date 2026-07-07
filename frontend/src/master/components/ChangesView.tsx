@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'new-booking-mobile-shell-v49221-2026-07-07',
+    version: '4.9.221',
+    title: 'V4.9.221 — New Booking Page: Mobile Shell & Overflow-Fix',
+    summary: [
+      'New Booking Page bleibt auf Mobile im Viewport: `overflow-x-hidden`, `min-w-0`, `max-w-full` auf Root, Grid und Cards.',
+      'Stepper horizontal scrollbar auf Mobile; Status-Filter-Tabs scrollbar; Filter-Grid responsiv (`grid-cols-1 sm:grid-cols-2`).',
+      'PageHeader-Titel ohne Abschneidung (`titleClassName`); Kunden-/Fahrzeugzeilen mit truncate/stack; Period-Step responsiv.',
+      'Sticky Bottom-Nav mit `safe-area-inset-bottom` für Safari/iPhone.',
+    ],
+    reason:
+      'Auf Mobile lief die New Booking Page horizontal aus dem Viewport — Titel links abgeschnitten, Step-Leiste zu breit, Filter/Cards desktop-lastig.',
+    previousBehavior:
+      'Root ohne Overflow-Guards; 5-Step-Stepper zentriert und zu breit; Filter-Row flex-wrap; Status-Tabs ohne Scroll.',
+    details:
+      'Frontend-only Shell/Layout: `NewBookingView.tsx`, `page-header.tsx` (`titleClassName`). Keine Buchungs-, Backend- oder API-Logik geändert.',
+    affectsArchitecture: false,
+    module: null,
+    createdAt: '2026-07-07T03:15:00.000Z',
+  },
+  {
     id: 'dashboard-drawer-header-toolbar-v49220-2026-07-07',
     version: '4.9.220',
     title: 'V4.9.220 — Dashboard Drawer Header/Toolbar vereinheitlicht',

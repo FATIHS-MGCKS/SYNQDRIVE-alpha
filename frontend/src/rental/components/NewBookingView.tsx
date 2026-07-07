@@ -59,6 +59,7 @@ import {
   EmptyState,
   SkeletonCard,
 } from '../../components/patterns';
+import { cn } from '../../components/ui/utils';
 import { StationSelectFields } from './stations/StationSelectFields';
 import {
   resolveDefaultPickupStationId,
@@ -1070,7 +1071,7 @@ export function NewBookingView({
   };
 
   const card = (children: React.ReactNode, className?: string) => (
-    <DataCard className={className} bodyClassName="p-0" flush>
+    <DataCard className={cn('w-full max-w-full min-w-0', className)} bodyClassName="p-0" flush>
       {children}
     </DataCard>
   );
@@ -1084,58 +1085,78 @@ export function NewBookingView({
     value != null && Number.isFinite(value) ? value.toFixed(2) : '—';
 
   return (
-    <div className="space-y-5">
+    <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:space-y-5">
       <PageHeader
         title="New Booking"
         icon={<Icon name="calendar" className="w-4 h-4" />}
+        className="min-w-0 w-full max-w-full"
+        titleClassName="break-words"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex w-full min-w-0 items-center justify-end gap-2 sm:w-auto">
             {selectedCustomer && currentStep > 1 && (
-              <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg border bg-card border-border">
-                <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs sq-tone-brand">
+              <div className="hidden min-w-0 max-w-[min(100%,12rem)] items-center gap-2 rounded-lg border bg-card border-border px-2.5 py-2 sm:flex sm:max-w-[14rem]">
+                <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs sq-tone-brand">
                   {selectedCustomer.name.split(' ').map(n => n[0]).join('')}
                 </div>
-                <div>
-                  <p className="text-xs text-foreground">{selectedCustomer.name}</p>
-                  <p className="text-xs text-muted-foreground">{selectedCustomer.city}</p>
+                <div className="min-w-0">
+                  <p className="truncate text-xs text-foreground">{selectedCustomer.name}</p>
+                  <p className="truncate text-xs text-muted-foreground">{selectedCustomer.city}</p>
                 </div>
               </div>
             )}
             <button
               onClick={onBack}
-              className="p-2.5 rounded-lg border transition-all duration-200 hover:shadow-md bg-card border-border text-muted-foreground hover:bg-muted"
+              aria-label="Back"
+              className="shrink-0 rounded-lg border p-2.5 transition-all duration-200 hover:shadow-md bg-card border-border text-muted-foreground hover:bg-muted"
             >
-              <Icon name="arrow-left" className="w-5 h-5" />
+              <Icon name="arrow-left" className="h-5 w-5" />
             </button>
           </div>
         }
       />
 
-      {/* Step Indicator */}
-      <div className="flex items-center justify-center gap-2">
-        {steps.map((step, i) => {
-          const Icon = step.icon;
-          const isActive = currentStep === step.id;
-          const isCompleted = currentStep > step.id;
-          return (
-            <div key={step.id} className="flex items-center gap-2">
-              <button
-                onClick={() => { if (isCompleted) setCurrentStep(step.id); }}
-                className={`flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-all duration-300 ${ isActive ? 'sq-tone-brand border border-border ring-1 ring-[color:var(--brand-glow)]' : isCompleted ? 'sq-tone-success border border-border cursor-pointer hover:opacity-90' : 'bg-muted/40 border border-border text-muted-foreground' }`}
-              >
-                {isCompleted ? (
-                  <Icon name="check" className="w-5 h-5" />
-                ) : (
-                  <Icon className="w-5 h-5" />
-                )}
-                <span className="text-[10px]">{step.label}</span>
-              </button>
-              {i < steps.length - 1 && (
-                <div className={`w-8 h-px ${isCompleted ? 'bg-[color:var(--status-positive)]/40' : 'bg-border'}`} />
-              )}
-            </div>
-          );
-        })}
+      {/* Step Indicator — scrollable on mobile, centered on md+ */}
+      <div className="w-full min-w-0 max-w-full">
+        <div className="-mx-0.5 overflow-x-auto pb-1 scrollbar-thin [scrollbar-width:thin] md:overflow-visible md:pb-0">
+          <div className="flex w-max min-w-full items-center justify-start gap-1.5 px-0.5 md:w-full md:justify-center md:gap-2">
+            {steps.map((step, i) => {
+              const StepIcon = step.icon;
+              const isActive = currentStep === step.id;
+              const isCompleted = currentStep > step.id;
+              return (
+                <div key={step.id} className="flex shrink-0 items-center gap-1.5 md:gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { if (isCompleted) setCurrentStep(step.id); }}
+                    className={cn(
+                      'flex shrink-0 items-center gap-1.5 rounded-lg border px-2 py-1.5 transition-all duration-300 sm:gap-2 sm:px-3 sm:py-2',
+                      isActive
+                        ? 'sq-tone-brand border border-border ring-1 ring-[color:var(--brand-glow)]'
+                        : isCompleted
+                          ? 'sq-tone-success cursor-pointer border border-border hover:opacity-90'
+                          : 'border border-border bg-muted/40 text-muted-foreground',
+                    )}
+                  >
+                    {isCompleted ? (
+                      <Icon name="check" className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
+                    ) : (
+                      <StepIcon className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
+                    )}
+                    <span className="whitespace-nowrap text-[10px] sm:text-[11px]">{step.label}</span>
+                  </button>
+                  {i < steps.length - 1 && (
+                    <div
+                      className={cn(
+                        'h-px w-4 shrink-0 sm:w-8',
+                        isCompleted ? 'bg-[color:var(--status-positive)]/40' : 'bg-border',
+                      )}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Step Content */}
@@ -1209,9 +1230,9 @@ export function NewBookingView({
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <div className="grid w-full min-w-0 max-w-full grid-cols-1 gap-3 lg:grid-cols-3">
           {/* Main Content - 2 cols on desktop */}
-          <div className="space-y-5 lg:col-span-2">
+          <div className="min-w-0 space-y-5 lg:col-span-2">
             {/* STEP 4: Customer Selection */}
             {currentStep === 4 && (
               <>
@@ -1252,25 +1273,25 @@ export function NewBookingView({
                         <button
                           key={c.id}
                           onClick={() => setSelectedCustomer(c)}
-                          className={`w-full text-left p-4 rounded-lg border transition-all duration-200 flex items-center gap-3 group/card ${ selectedCustomer?.id === c.id ? 'sq-tone-brand border border-border ring-1 ring-[color:var(--brand-glow)]' : 'bg-muted/40 border border-border hover:bg-card hover:border-border' }`}
+                          className={`w-full min-w-0 max-w-full text-left p-4 rounded-lg border transition-all duration-200 flex items-start gap-3 group/card sm:items-center ${ selectedCustomer?.id === c.id ? 'sq-tone-brand border border-border ring-1 ring-[color:var(--brand-glow)]' : 'bg-muted/40 border border-border hover:bg-card hover:border-border' }`}
                         >
                           <div className={`w-11 h-11 rounded-full flex items-center justify-center text-xs shrink-0 ${ selectedCustomer?.id === c.id ? 'sq-tone-brand' : 'sq-chip-neutral' }`}>
                             {c.name.split(' ').map(n => n[0]).join('')}
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-foreground">{c.name}</span>
+                            <div className="flex min-w-0 items-center gap-2">
+                              <span className="truncate text-xs text-foreground">{c.name}</span>
                               {c.company && (
-                                <StatusChip tone="ai" className="text-[10px]">{c.company}</StatusChip>
+                                <StatusChip tone="ai" className="hidden shrink-0 text-[10px] sm:inline-flex">{c.company}</StatusChip>
                               )}
-                              {c.licenseVerified && <Icon name="shield" className="w-3.5 h-3.5 text-green-500" />}
+                              {c.licenseVerified && <Icon name="shield" className="w-3.5 h-3.5 shrink-0 text-green-500" />}
                             </div>
-                            <div className="flex items-center gap-3 mt-1">
-                              <span className="text-xs flex items-center gap-1 text-muted-foreground"><Icon name="mail" className="w-3 h-3" />{c.email}</span>
-                              <span className="text-xs flex items-center gap-1 text-muted-foreground"><Icon name="map-pin" className="w-3 h-3" />{c.city}</span>
+                            <div className="mt-1 flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
+                              <span className="flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground"><Icon name="mail" className="w-3 h-3 shrink-0" />{c.email}</span>
+                              <span className="flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground"><Icon name="map-pin" className="w-3 h-3 shrink-0" />{c.city}</span>
                             </div>
                           </div>
-                          <div className="text-right shrink-0">
+                          <div className="hidden shrink-0 text-right sm:block">
                             <div className="text-xs text-muted-foreground">{c.totalBookings} Buchungen</div>
                             <div className="flex items-center gap-1 mt-1 justify-end">
                               {(() => {
@@ -1716,11 +1737,11 @@ export function NewBookingView({
                           className={`w-full pl-10 pr-4 py-2.5 rounded-lg border text-xs outline-none transition-all ${ 'bg-card border border-border text-foreground placeholder:text-muted-foreground focus:border-[color:var(--brand)]' }`}
                         />
                       </div>
-                      <div className="flex gap-3 flex-wrap">
+                      <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2">
                         <select
                           value={vehicleBrandFilter}
                           onChange={(e) => setVehicleBrandFilter(e.target.value)}
-                          className={`px-3 py-2.5 rounded-lg border text-xs outline-none ${ 'bg-card border border-border text-foreground' }`}
+                          className={`min-w-0 w-full rounded-lg border px-3 py-2.5 text-xs outline-none ${ 'bg-card border border-border text-foreground' }`}
                         >
                           <option value="all">Alle Marken</option>
                           {brands.map(b => <option key={b} value={b}>{b}</option>)}
@@ -1728,7 +1749,7 @@ export function NewBookingView({
                         <select
                           value={vehicleCategoryFilter}
                           onChange={(e) => setVehicleCategoryFilter(e.target.value)}
-                          className={`px-3 py-2.5 rounded-lg border text-xs outline-none ${ 'bg-card border border-border text-foreground' }`}
+                          className={`min-w-0 w-full rounded-lg border px-3 py-2.5 text-xs outline-none ${ 'bg-card border border-border text-foreground' }`}
                         >
                           <option value="all">Alle Kategorien</option>
                           {categories.map(c => <option key={c} value={c}>{c}</option>)}
@@ -1736,7 +1757,7 @@ export function NewBookingView({
                         <select
                           value={vehicleStationFilter}
                           onChange={(e) => setVehicleStationFilter(e.target.value)}
-                          className={`px-3 py-2.5 rounded-lg border text-xs outline-none ${ 'bg-card border border-border text-foreground' }`}
+                          className={`min-w-0 w-full rounded-lg border px-3 py-2.5 text-xs outline-none ${ 'bg-card border border-border text-foreground' }`}
                         >
                           <option value="all">Alle Stationen</option>
                           {stations.map(s => <option key={s} value={s}>{s}</option>)}
@@ -1744,7 +1765,7 @@ export function NewBookingView({
                         <select
                           value={vehicleFuelFilter}
                           onChange={(e) => setVehicleFuelFilter(e.target.value)}
-                          className={`px-3 py-2.5 rounded-lg border text-xs outline-none ${ 'bg-card border border-border text-foreground' }`}
+                          className={`min-w-0 w-full rounded-lg border px-3 py-2.5 text-xs outline-none ${ 'bg-card border border-border text-foreground' }`}
                         >
                           <option value="all">Alle Kraftstoffe</option>
                           {fuelTypes.map(f => <option key={f} value={f}>{f}</option>)}
@@ -1757,9 +1778,9 @@ export function NewBookingView({
                               setVehicleStationFilter('all');
                               setVehicleFuelFilter('all');
                             }}
-                            className={`px-3 py-2.5 rounded-lg border text-xs flex items-center gap-1.5 transition-all ${ 'bg-card border border-border text-muted-foreground hover:text-[color:var(--status-critical)] hover:border-[color:var(--status-critical)]' }`}
+                            className={`flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2.5 text-xs transition-all sm:w-auto ${ 'bg-card border border-border text-muted-foreground hover:text-[color:var(--status-critical)] hover:border-[color:var(--status-critical)]' }`}
                           >
-                            <Icon name="x" className="w-3.5 h-3.5" />
+                            <Icon name="x" className="h-3.5 w-3.5 shrink-0" />
                             Filter zurücksetzen
                           </button>
                         )}
@@ -1767,7 +1788,7 @@ export function NewBookingView({
                     </div>
 
                     {/* Status Filter Tabs */}
-                    <div className="flex gap-2 mb-3">
+                    <div className="-mx-0.5 mb-3 flex gap-2 overflow-x-auto pb-0.5 scrollbar-thin [scrollbar-width:thin]">
                       {[
                         { label: 'Alle', value: 'all', count: availableVehicles.length },
                         { label: 'Verfügbar', value: 'Available', count: availableVehicles.filter(v => v.status === 'Available').length },
@@ -1777,11 +1798,12 @@ export function NewBookingView({
                       ].map(tab => (
                         <button
                           key={tab.value}
+                          type="button"
                           onClick={() => setVehicleStatusFilter(tab.value)}
-                          className={`px-3 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 ${ vehicleStatusFilter === tab.value ? 'sq-tone-brand border border-border' : 'bg-muted/40 text-muted-foreground border border-border hover:border-border' }`}
+                          className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-xs transition-all ${ vehicleStatusFilter === tab.value ? 'sq-tone-brand border border-border' : 'bg-muted/40 text-muted-foreground border border-border hover:border-border' }`}
                         >
                           {tab.label}
-                          <span className={`px-1.5 py-0.5 rounded-full text-xs ${ vehicleStatusFilter === tab.value ? 'sq-tone-brand' : 'sq-chip-neutral' }`}>{tab.count}</span>
+                          <span className={`rounded-full px-1.5 py-0.5 text-xs ${ vehicleStatusFilter === tab.value ? 'sq-tone-brand' : 'sq-chip-neutral' }`}>{tab.count}</span>
                         </button>
                       ))}
                     </div>
@@ -1827,7 +1849,7 @@ export function NewBookingView({
                               if (sameReturnStation) setReturnStationId(defaultPickup);
                             }
                           }}
-                          className={`flex items-center gap-3 w-full text-left rounded-lg border px-3 py-2 transition-all duration-200 ${ offline ? 'border-border bg-muted/30 opacity-60 grayscale cursor-not-allowed' : isMaintenance ? selectedVehicle?.id === v.id ? 'border-[color:var(--brand)] ring-1 ring-[color:var(--brand-glow)] bg-[color:var(--brand-soft)] opacity-70 cursor-pointer' : 'border-[color:var(--status-critical)]/30 bg-muted/40 opacity-70 hover:border-[color:var(--status-critical)]/50 cursor-pointer' : selectedVehicle?.id === v.id ? 'border-[color:var(--brand)] ring-1 ring-[color:var(--brand-glow)] bg-[color:var(--brand-soft)] cursor-pointer' : 'border-border bg-muted/40 hover:border-border hover:bg-card cursor-pointer' }`}
+                          className={`flex min-w-0 max-w-full items-center gap-3 w-full text-left rounded-lg border px-3 py-2 transition-all duration-200 ${ offline ? 'border-border bg-muted/30 opacity-60 grayscale cursor-not-allowed' : isMaintenance ? selectedVehicle?.id === v.id ? 'border-[color:var(--brand)] ring-1 ring-[color:var(--brand-glow)] bg-[color:var(--brand-soft)] opacity-70 cursor-pointer' : 'border-[color:var(--status-critical)]/30 bg-muted/40 opacity-70 hover:border-[color:var(--status-critical)]/50 cursor-pointer' : selectedVehicle?.id === v.id ? 'border-[color:var(--brand)] ring-1 ring-[color:var(--brand-glow)] bg-[color:var(--brand-soft)] cursor-pointer' : 'border-border bg-muted/40 hover:border-border hover:bg-card cursor-pointer' }`}
                         >
                           {/* Brand Logo (shared Cardog component) */}
                           <BrandLogoMark
@@ -2080,8 +2102,8 @@ export function NewBookingView({
                 {(selectedMileagePackage || selectedInsurances.length > 0 || extras.length > 0) && (
                   card(
                     <div className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
+                      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                        <div className="flex min-w-0 flex-wrap items-center gap-2">
                           {selectedMileagePackage && (
                             <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full sq-chip-success">
                               <Icon name="fuel" className="w-3 h-3" /> 1 Mileage Pkg
@@ -2115,11 +2137,11 @@ export function NewBookingView({
                   <div className="p-4">
                     <SectionHeader title="Zeitraum & Abholung" className="mb-3" />
 
-                    <div className="grid grid-cols-2 gap-3 mb-3">
+                    <div className="grid min-w-0 grid-cols-1 gap-3 mb-3 sm:grid-cols-2">
                       {/* Pickup */}
-                      <div>
+                      <div className="min-w-0">
                         <label className="text-xs mb-1.5 block text-muted-foreground">Abholung</label>
-                        <div className="flex gap-2">
+                        <div className="flex min-w-0 gap-2">
                           <input
                             type="date"
                             value={pickupDate}
@@ -2136,13 +2158,13 @@ export function NewBookingView({
                                 }
                               }
                             }}
-                            className={`flex-1 px-3 py-2.5 rounded-lg border text-xs outline-none ${ 'bg-card border border-border text-foreground' }`}
+                            className={`min-w-0 flex-1 px-3 py-2.5 rounded-lg border text-xs outline-none ${ 'bg-card border border-border text-foreground' }`}
                           />
-                          <div className="relative">
+                          <div className="relative shrink-0">
                             <button
                               type="button"
                               onClick={() => { setShowPickupTimePicker(!showPickupTimePicker); setShowReturnTimePicker(false); }}
-                              className={`w-28 px-3 py-2.5 rounded-lg border text-xs outline-none flex items-center gap-2 transition-all ${ showPickupTimePicker ? 'sq-tone-brand border border-border' : 'bg-card border border-border text-foreground hover:border-border' }`}
+                              className={`min-w-[5.25rem] px-2.5 py-2.5 rounded-lg border text-xs outline-none flex items-center gap-1.5 transition-all sm:min-w-[7rem] sm:gap-2 sm:px-3 ${ showPickupTimePicker ? 'sq-tone-brand border border-border' : 'bg-card border border-border text-foreground hover:border-border' }`}
                             >
                               <Icon name="clock" className="w-3.5 h-3.5" />
                               {pickupTime}
@@ -2207,9 +2229,9 @@ export function NewBookingView({
                         </div>
                       </div>
                       {/* Return */}
-                      <div>
+                      <div className="min-w-0">
                         <label className="text-xs mb-1.5 block text-muted-foreground">Rückgabe</label>
-                        <div className="flex gap-2">
+                        <div className="flex min-w-0 gap-2">
                           <input
                             type="date"
                             value={returnDate}
@@ -2225,13 +2247,13 @@ export function NewBookingView({
                                 setCalendarYear(d.getFullYear());
                               }
                             }}
-                            className={`flex-1 px-3 py-2.5 rounded-lg border text-xs outline-none ${ 'bg-card border border-border text-foreground' }`}
+                            className={`min-w-0 flex-1 px-3 py-2.5 rounded-lg border text-xs outline-none ${ 'bg-card border border-border text-foreground' }`}
                           />
-                          <div className="relative">
+                          <div className="relative shrink-0">
                             <button
                               type="button"
                               onClick={() => { setShowReturnTimePicker(!showReturnTimePicker); setShowPickupTimePicker(false); }}
-                              className={`w-28 px-3 py-2.5 rounded-lg border text-xs outline-none flex items-center gap-2 transition-all ${ showReturnTimePicker ? 'sq-tone-success border border-border' : 'bg-card border border-border text-foreground hover:border-border' }`}
+                              className={`min-w-[5.25rem] px-2.5 py-2.5 rounded-lg border text-xs outline-none flex items-center gap-1.5 transition-all sm:min-w-[7rem] sm:gap-2 sm:px-3 ${ showReturnTimePicker ? 'sq-tone-success border border-border' : 'bg-card border border-border text-foreground hover:border-border' }`}
                             >
                               <Icon name="clock" className="w-3.5 h-3.5" />
                               {returnTime}
@@ -2980,7 +3002,7 @@ export function NewBookingView({
           </div>
 
           {/* Sidebar Summary - 1 col */}
-          <div className="space-y-5">
+          <div className="min-w-0 space-y-5">
 
             {selectedVehicle && selectedCustomer && pickupDate && (
               <BookingRentalEligibilityCard
@@ -3168,7 +3190,7 @@ export function NewBookingView({
             )}
 
             {/* Navigation Buttons */}
-            <div className="flex gap-3">
+            <div className="sticky bottom-0 z-10 flex w-full min-w-0 max-w-full gap-3 border-t border-border/40 bg-background/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm supports-[backdrop-filter]:bg-background/80 lg:static lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
               {currentStep > 1 && (
                 <button
                   onClick={() => setCurrentStep(s => s - 1)}
