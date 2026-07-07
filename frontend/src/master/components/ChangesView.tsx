@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-command-ui-polish-v49218-2026-07-07',
+    version: '4.9.218',
+    title: 'V4.9.218 — Fleet Command UI-Feinschliff',
+    summary: [
+      'Tab-Leiste `Available / Active / Reserved` ist jetzt full-width und bündig mit dem Suchfeld.',
+      'Kilometerstand steht wieder direkt hinter Signal/Freshness in der Meta-Zeile (links, nicht in der CTA-Spalte).',
+      'Rechte Spalte enthält nur Health-Badge, Readiness-Badge und `Open` — ruhiger und symmetrischer.',
+      'Jede Row erhält feine inset Border (`ring-border/40` good; warning/critical tonal) — Good-Rows verschwimmen nicht mehr.',
+    ],
+    reason:
+      'Tabbar war schmaler als die Suche, km wirkte rechts bei Open, und neutrale Rows hatten keine visuelle Trennung.',
+    previousBehavior:
+      'Tabs shrink-0 Auto-Width; Badges/Open in Content-Zeilen; km durch flex-1 an rechten Rand gedrückt; Good-Rows ohne Border.',
+    details:
+      'Frontend-only: `FleetCommandPanel.tsx`, `FleetOperatorRow.tsx`, `fleetOperatorUi.tsx`. Gradient/Severity/Sort unverändert; shared UI für Dashboard + Fleet Page.',
+    affectsArchitecture: false,
+    module: null,
+    createdAt: '2026-07-07T01:40:00.000Z',
+  },
+  {
     id: 'fleet-command-reason-line-v49217-2026-07-07',
     version: '4.9.217',
     title: 'V4.9.217 — Fleet Command Row: Reason-Zeile & Listenabstand',

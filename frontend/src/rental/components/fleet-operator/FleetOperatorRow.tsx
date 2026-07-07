@@ -154,55 +154,31 @@ export function FleetOperatorRow({
       />
 
       <div className={cn('min-w-0 flex-1', dimmed && 'opacity-75')}>
-        {/* Line 1 — plate, model, severity + readiness badges */}
+        {/* Line 1 — plate + model */}
         <div className="flex min-w-0 items-center gap-1.5">
           <span className="shrink-0 text-[12px] font-bold tabular-nums tracking-[-0.01em] text-foreground">
             {v.license}
           </span>
           <span
-            className="min-w-0 flex-1 truncate text-[10.5px] leading-snug text-muted-foreground"
+            className="min-w-0 truncate text-[10.5px] leading-snug text-muted-foreground"
             title={fleetVehicleTitle(v)}
           >
             {fleetVehicleTitle(v)}
           </span>
-          <div className="flex shrink-0 items-center gap-1">
-            <StatusChip
-              tone={rowHealth.tone}
-              icon={<Icon name="heart" className="h-3 w-3" />}
-              className="px-1.5 py-0.5 text-[9.5px] font-semibold"
-            >
-              {rowHealth.label}
-            </StatusChip>
-            <StatusChip
-              tone={rowRental.tone}
-              className="px-1.5 py-0.5 text-[9.5px] font-semibold"
-            >
-              {rentalDisplay.label}
-            </StatusChip>
-          </div>
         </div>
 
-        {/* Line 2 — location + Open CTA */}
+        {/* Line 2 — location */}
         <div className="mt-0.5 flex min-w-0 items-center gap-1">
           <Icon name="map-pin" className="h-3 w-3 shrink-0 text-muted-foreground/80" />
           <span
-            className="min-w-0 flex-1 truncate text-[10px] text-muted-foreground"
+            className="min-w-0 truncate text-[10px] text-muted-foreground"
             title={locationLine}
           >
             {locationLine}
           </span>
-          <button
-            type="button"
-            onClick={onDetailClick}
-            aria-label="Open vehicle details"
-            className="sq-press inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10.5px] font-medium text-muted-foreground opacity-90 transition-colors hover:bg-muted/40 hover:text-foreground group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
-          >
-            Open
-            <Icon name="arrow-right" className="h-3 w-3" />
-          </button>
         </div>
 
-        {/* Line 3 — fuel, telemetry, odometer (stable single row) */}
+        {/* Line 3 — fuel · telemetry · odometer (left-aligned, km directly after signal) */}
         <div className="mt-0.5 flex min-w-0 items-center gap-x-1 overflow-hidden text-[10px] tabular-nums text-muted-foreground">
           {hasEnergy && (
             <span className="inline-flex shrink-0 items-center whitespace-nowrap">
@@ -216,7 +192,7 @@ export function FleetOperatorRow({
           {hasEnergy && <MetaDot />}
           <span
             className={cn(
-              'min-w-0 flex-1 truncate',
+              'min-w-0 shrink truncate',
               display.showTelemetryWarning && 'text-[color:var(--status-watch)]',
             )}
             title={display.telemetryLabel}
@@ -245,6 +221,34 @@ export function FleetOperatorRow({
             </span>
           </div>
         )}
+      </div>
+
+      {/* Right CTA column — badges + Open only */}
+      <div className="flex shrink-0 flex-col items-end gap-1 self-start pt-0.5">
+        <div className="flex items-center gap-1">
+          <StatusChip
+            tone={rowHealth.tone}
+            icon={<Icon name="heart" className="h-3 w-3" />}
+            className="px-1.5 py-0.5 text-[9.5px] font-semibold"
+          >
+            {rowHealth.label}
+          </StatusChip>
+          <StatusChip
+            tone={rowRental.tone}
+            className="px-1.5 py-0.5 text-[9.5px] font-semibold"
+          >
+            {rentalDisplay.label}
+          </StatusChip>
+        </div>
+        <button
+          type="button"
+          onClick={onDetailClick}
+          aria-label="Open vehicle details"
+          className="sq-press inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[10.5px] font-medium text-muted-foreground opacity-90 transition-colors hover:bg-muted/40 hover:text-foreground group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+        >
+          Open
+          <Icon name="arrow-right" className="h-3 w-3" />
+        </button>
       </div>
     </div>
   );
