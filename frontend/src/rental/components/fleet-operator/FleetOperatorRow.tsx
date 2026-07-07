@@ -10,7 +10,30 @@ import { useLanguage } from '../../i18n/LanguageContext';
 import { useAddress } from '../../../lib/useAddress';
 import { FleetEnergyIndicator } from '../fleet/FleetEnergyIndicator';
 import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
-import type { FleetVehicleContext } from '../../lib/fleet-operator-panel';
+import type {
+  FleetCommandRowSeverity,
+  FleetVehicleContext,
+} from '../../lib/fleet-operator-panel';
+
+function commandSeverityHealthChip(
+  severity: FleetCommandRowSeverity,
+  locale: string,
+): { label: string; tone: StatusTone } {
+  const de = locale === 'de';
+  if (severity === 'critical') {
+    return { label: de ? 'Kritisch' : 'Critical', tone: 'critical' };
+  }
+  if (severity === 'warning') {
+    return { label: de ? 'Warnung' : 'Warning', tone: 'watch' };
+  }
+  return { label: de ? 'Gut' : 'Good', tone: 'success' };
+}
+
+function commandSeverityRentalTone(severity: FleetCommandRowSeverity): StatusTone {
+  if (severity === 'critical') return 'critical';
+  if (severity === 'warning') return 'watch';
+  return 'success';
+}
 
 function reasonChipClass(tone: StatusTone): string {
   if (tone === 'critical') {
@@ -49,6 +72,8 @@ function appointmentFragment(v: VehicleData): string | null {
 
 export interface FleetOperatorRowProps {
   ctx: FleetVehicleContext;
+  /** Canonical Fleet Command severity — drives row tint and status chips. */
+  commandSeverity: FleetCommandRowSeverity;
   selected: boolean;
   onClick: () => void;
   onDetailClick: (e: MouseEvent) => void;
@@ -60,6 +85,7 @@ export interface FleetOperatorRowProps {
 
 export function FleetOperatorRow({
   ctx,
+  commandSeverity,
   selected,
   onClick,
   onDetailClick,
@@ -76,16 +102,27 @@ export function FleetOperatorRow({
     locale,
   });
   const { healthDisplay, rentalDisplay, reasonBadge } = display;
+  const severityHealth = commandSeverityHealthChip(commandSeverity, locale);
+  const rowHealth =
+    commandSeverity === 'good'
+      ? healthDisplay
+      : { label: severityHealth.label, tone: severityHealth.tone };
+  const rowRental =
+    commandSeverity === 'good'
+      ? rentalDisplay
+      : {
+          ...rentalDisplay,
+          tone: commandSeverityRentalTone(commandSeverity),
+        };
 
   // Only genuine connectivity problems (offline / no_signal) dim an Available
   // row. Standby + signal_delayed stay at full opacity (normal/secondary).
   const dimmed = display.showTelemetryWarning && v.status === 'Available';
 
-  // Subtle full-row tint by operational status — no left accent bar.
   const tint =
-    display.primaryStatus === 'critical' || display.primaryStatus === 'blocked'
+    commandSeverity === 'critical'
       ? 'bg-[color:color-mix(in_srgb,var(--status-critical)_5%,transparent)]'
-      : display.primaryStatus === 'warning'
+      : commandSeverity === 'warning'
         ? 'bg-[color:color-mix(in_srgb,var(--status-watch)_4%,transparent)]'
         : '';
 
@@ -186,14 +223,14 @@ export function FleetOperatorRow({
       <div className="flex shrink-0 flex-col items-end gap-1">
         <div className="flex flex-wrap items-center justify-end gap-1">
           <StatusChip
-            tone={healthDisplay.tone}
+            tone={rowHealth.tone}
             icon={<Icon name="heart" className="h-3 w-3" />}
             className="px-1.5 py-0.5 text-[9.5px] font-semibold"
           >
-            {healthDisplay.label}
+            {rowHealth.label}
           </StatusChip>
           <StatusChip
-            tone={rentalDisplay.tone}
+            tone={rowRental.tone}
             className="px-1.5 py-0.5 text-[9.5px] font-semibold"
           >
             {rentalDisplay.label}

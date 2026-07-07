@@ -35,6 +35,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-command-severity-v49212-2026-07-07',
+    version: '4.9.212',
+    title: 'V4.9.212 — Fleet Command Severity & Sort (zentral)',
+    summary: [
+      'Neue zentrale Ableitung `resolveFleetCommandRowSeverity` in `fleet-operator-panel.ts` — Critical schlägt Warning immer.',
+      'Sortierung: Critical → Warning → Good/Ready; innerhalb Good/Ready nach letztem Signal (frisch zuerst).',
+      'Dashboard und Fleet Page teilen dieselbe Logik über `FleetCommandPanel` / `sortFleetContexts`.',
+      'Dashboard übergibt `canonicalCriticalVehicleIds` aus dem Critical-Alerts-Slice, damit Header-Count und Row-Severity übereinstimmen.',
+      '`FleetOperatorRow` nutzt `commandSeverity` für Row-Tint und Health-Chip (nicht mehr nur `primaryStatus`).',
+      'Service-only-overdue, Offline (≥48h) und kanonische Critical-Alerts erscheinen als Critical in der Row.',
+      'Standby bleibt Good — wird nicht zu Warning hochgestuft.',
+    ],
+    reason:
+      'Fleet Command zeigte z. B. „1 Critical“ im Header, während die betroffene Row nur Warning/Ready wirkte — widersprüchliche Severity-Wahrheiten zwischen Runtime-Counts und Row-Display.',
+    previousBehavior:
+      'Header-Counts kamen aus Dashboard-Runtime bzw. `isFleetAttentionVehicle`; Rows nutzten `resolveFleetVehicleDisplayState.primaryStatus`, das Service-only-critical und andere Fälle als Ready/Warning darstellte. Sortierung mischte Operational-Score ohne klare Severity-Gruppen.',
+    details:
+      'Dateien: `fleet-operator-panel.ts`, `FleetCommandPanel.tsx`, `FleetCommandView.tsx`, `FleetOperatorRow.tsx`, Tests in `fleet-operator-panel.test.ts`. Keine Backend-/API-/DB-Änderungen.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-07T00:20:00.000Z',
+  },
+  {
     id: 'actionqueue-ui-v49211-2026-07-06',
     version: '4.9.211',
     title: 'V4.9.211 — Dashboard Notifications / ActionQueue UI',

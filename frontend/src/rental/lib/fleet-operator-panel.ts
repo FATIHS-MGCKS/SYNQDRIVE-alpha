@@ -12,8 +12,10 @@ import {
   vehicleHasFleetLocation,
   type FleetVisualState,
 } from './fleetVisualState';
+import { isLegalComplianceBlockingText } from '../components/dashboard/runtime/dashboardRuntimeReasons';
 import {
   fleetOperationalSortScore,
+  fleetSignalAgeMs,
   resolveFleetVehicleDisplayState,
 } from './fleetVehicleDisplay';
 
@@ -27,6 +29,118 @@ export function resolveCanonicalFleetAlertCounts(
   const warning = runtime.vehicleStates.filter(
     (state) => state.isWarning && !state.isCritical && !state.isBlocked,
   ).length;
+  return { critical, warning };
+}
+
+/** Vehicle IDs from the canonical Critical Alerts drawer slice. */
+export function resolveCanonicalCriticalVehicleIds(
+  runtime: DashboardRuntimeModel,
+): Set<string> {
+  const ids = new Set<string>();
+  for (const row of runtime.slices['critical-alerts'].rows) {
+    if (row.vehicleId) ids.add(row.vehicleId);
+  }
+  return ids;
+}
+
+export type FleetCommandRowSeverity = 'critical' | 'warning' | 'good';
+
+export interface ResolveFleetCommandRowSeverityOptions {
+  /** Forces critical when the vehicle is in the canonical Critical Alerts slice. */
+  canonicalCriticalVehicleIds?: ReadonlySet<string>;
+}
+
+function hasCriticalHealthModule(
+  health: VehicleHealthResponse | null | undefined,
+): boolean {
+  if (!health?.modules) return false;
+  return Object.values(health.modules).some((mod) => mod?.state === 'critical');
+}
+
+function hasWarningHealthModule(
+  health: VehicleHealthResponse | null | undefined,
+): boolean {
+  if (!health?.modules) return false;
+  return Object.values(health.modules).some((mod) => mod?.state === 'warning');
+}
+
+function hasHardBlockingReasons(
+  health: VehicleHealthResponse | null | undefined,
+): boolean {
+  const reasons = health?.blocking_reasons ?? [];
+  if (reasons.length === 0) return health?.rental_blocked === true;
+  return reasons.some((reason) => {
+    const normalized = reason.toLowerCase();
+    if (isLegalComplianceBlockingText(reason)) return true;
+    return !normalized.includes('service') && !normalized.includes('wartung');
+  });
+}
+
+/**
+ * Canonical Fleet Command row severity — shared by Dashboard and Fleet Page.
+ * Critical always wins over warning; standby is never elevated to warning.
+ */
+export function resolveFleetCommandRowSeverity(
+  ctx: FleetVehicleContext,
+  options: ResolveFleetCommandRowSeverityOptions = {},
+): FleetCommandRowSeverity {
+  const { vehicle: v, visual, health } = ctx;
+
+  if (options.canonicalCriticalVehicleIds?.has(v.id)) return 'critical';
+
+  if (health?.rental_blocked === true) return 'critical';
+  if (health?.overall_state === 'critical') return 'critical';
+  if (visual.attentionLevel === 'critical') return 'critical';
+  if (visual.isBlocked || hasHardBlockingReasons(health)) return 'critical';
+  if (v.healthStatus === 'Critical') return 'critical';
+  if (v.activeIsOverdue) return 'critical';
+  if (hasCriticalHealthModule(health)) return 'critical';
+  if (health?.modules?.error_codes?.state === 'critical') return 'critical';
+  // Offline (≥48h) is critical in the dashboard runtime telemetry path.
+  if (visual.isOffline) return 'critical';
+
+  if (health?.overall_state === 'warning') return 'warning';
+  if (visual.attentionLevel === 'warning') return 'warning';
+  if (v.healthStatus === 'Warning') return 'warning';
+  if (v.reservedIsOverdue) return 'warning';
+  if (hasWarningHealthModule(health)) return 'warning';
+  if (hasCriticalOrWarningDtc(health) && health?.modules?.error_codes?.state === 'warning') {
+    return 'warning';
+  }
+  if (visual.isStale) return 'warning';
+  if (
+    v.maintenanceUrgency === 'planned' ||
+    (v.maintenanceUrgency === 'urgent' && v.status !== 'Maintenance')
+  ) {
+    return 'warning';
+  }
+  if (!visual.hasLocation && v.status !== 'Maintenance') return 'warning';
+
+  return 'good';
+}
+
+export function fleetCommandSeveritySortRank(severity: FleetCommandRowSeverity): number {
+  switch (severity) {
+    case 'critical':
+      return 0;
+    case 'warning':
+      return 1;
+    default:
+      return 2;
+  }
+}
+
+export function computeFleetCommandAttentionCounts(
+  contexts: FleetVehicleContext[],
+  options: ResolveFleetCommandRowSeverityOptions = {},
+): { critical: number; warning: number } {
+  let critical = 0;
+  let warning = 0;
+  for (const ctx of contexts) {
+    const severity = resolveFleetCommandRowSeverity(ctx, options);
+    if (severity === 'critical') critical += 1;
+    else if (severity === 'warning') warning += 1;
+  }
   return { critical, warning };
 }
 
@@ -196,38 +310,56 @@ function appointmentTime(vehicle: VehicleData): number {
   );
 }
 
+function compareGoodReadyByLastSignal(a: FleetVehicleContext, b: FleetVehicleContext): number {
+  const ageA = fleetSignalAgeMs(a.vehicle);
+  const ageB = fleetSignalAgeMs(b.vehicle);
+  if (ageA == null && ageB == null) return 0;
+  if (ageA == null) return 1;
+  if (ageB == null) return -1;
+  if (ageA !== ageB) return ageA - ageB;
+  return a.vehicle.license.localeCompare(b.vehicle.license);
+}
+
 /**
- * Operational sort. Critical/blocked/warning stay on top (even when stale or
- * offline), normal ready vehicles in the middle, non-urgent offline vehicles
- * at the very bottom, and outdated-signal vehicles nudged down — mirroring the
- * Dashboard Fleet State Board ordering. The Attention tab keeps its dedicated
- * priority ranking.
+ * Fleet Command sort order (shared Dashboard + Fleet Page):
+ * 1. Critical  2. Warning  3. Good/Ready
+ * Within critical/warning: operational urgency (blocked, overdue, offline…)
+ * Within good/ready: fresher last signal first; missing signal last.
  */
 export function sortFleetContexts(
   contexts: FleetVehicleContext[],
+  options: ResolveFleetCommandRowSeverityOptions = {},
 ): FleetVehicleContext[] {
   const scored = contexts.map((ctx) => ({
     ctx,
-    score: fleetOperationalSortScore(
-      resolveFleetVehicleDisplayState(ctx.vehicle, {
-        rentalHealth: ctx.health,
-        visual: ctx.visual,
-      }),
-    ),
+    severity: resolveFleetCommandRowSeverity(ctx, options),
+    display: resolveFleetVehicleDisplayState(ctx.vehicle, {
+      rentalHealth: ctx.health,
+      visual: ctx.visual,
+    }),
   }));
 
   scored.sort((a, b) => {
-    if (b.score !== a.score) {
-      return b.score - a.score;
+    const sevRankA = fleetCommandSeveritySortRank(a.severity);
+    const sevRankB = fleetCommandSeveritySortRank(b.severity);
+    if (sevRankA !== sevRankB) return sevRankA - sevRankB;
+
+    if (a.severity !== 'good') {
+      const scoreA = fleetOperationalSortScore(a.display);
+      const scoreB = fleetOperationalSortScore(b.display);
+      if (scoreB !== scoreA) return scoreB - scoreA;
+
+      const aCrit = a.ctx.visual.attentionLevel === 'critical' ? 0 : 1;
+      const bCrit = b.ctx.visual.attentionLevel === 'critical' ? 0 : 1;
+      if (aCrit !== bCrit) return aCrit - bCrit;
+
+      const aTime = appointmentTime(a.ctx.vehicle);
+      const bTime = appointmentTime(b.ctx.vehicle);
+      if (aTime !== bTime) return aTime - bTime;
+    } else {
+      const signalCmp = compareGoodReadyByLastSignal(a.ctx, b.ctx);
+      if (signalCmp !== 0) return signalCmp;
     }
-
-    const aCrit = a.ctx.visual.attentionLevel === 'critical' ? 0 : 1;
-    const bCrit = b.ctx.visual.attentionLevel === 'critical' ? 0 : 1;
-    if (aCrit !== bCrit) return aCrit - bCrit;
-
-    const aTime = appointmentTime(a.ctx.vehicle);
-    const bTime = appointmentTime(b.ctx.vehicle);
-    if (aTime !== bTime) return aTime - bTime;
 
     const stationCmp = vehicleStationLabel(a.ctx.vehicle).localeCompare(
       vehicleStationLabel(b.ctx.vehicle),
@@ -236,6 +368,7 @@ export function sortFleetContexts(
 
     return a.ctx.vehicle.license.localeCompare(b.ctx.vehicle.license);
   });
+
   return scored.map((s) => s.ctx);
 }
 

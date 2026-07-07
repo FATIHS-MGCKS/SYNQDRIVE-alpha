@@ -4,13 +4,14 @@ import type { VehicleHealthResponse } from '../../../lib/api';
 import type { DashboardRuntimeModel } from '../dashboard/runtime/dashboardRuntimeTypes';
 import { FleetCommandPanel } from './FleetCommandPanel';
 import {
+  type FleetCommandTab,
+  type FleetVehicleContext,
   buildFleetVehicleContexts,
   filterFleetBySearch,
   filterFleetByTab,
+  resolveCanonicalCriticalVehicleIds,
   resolveCanonicalFleetAlertCounts,
   resolveOperatorTabForVehicle,
-  type FleetCommandTab,
-  type FleetVehicleContext,
 } from '../../lib/fleet-operator-panel';
 
 /**
@@ -111,6 +112,11 @@ export function FleetCommandView({
     [dashboardRuntime],
   );
 
+  const canonicalCriticalVehicleIds = useMemo(
+    () => (dashboardRuntime ? resolveCanonicalCriticalVehicleIds(dashboardRuntime) : undefined),
+    [dashboardRuntime],
+  );
+
   return (
     <FleetCommandPanel
       contexts={searchContexts}
@@ -129,6 +135,7 @@ export function FleetCommandView({
       refreshing={refreshing}
       headerAction={headerAction}
       canonicalAlertCounts={canonicalAlertCounts}
+      canonicalCriticalVehicleIds={canonicalCriticalVehicleIds}
       onRowClick={openVehicle}
       onDetailClick={(ctx, e) => {
         e.stopPropagation();

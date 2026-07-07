@@ -4,11 +4,13 @@ import { SkeletonCard } from '../../../components/patterns';
 import {
   type FleetCommandTab,
   type FleetVehicleContext,
+  computeFleetCommandAttentionCounts,
   fleetCommandTabEmptyMessage,
   computeCommandTabCounts,
-  isFleetAttentionVehicle,
   filterFleetByTab,
+  resolveFleetCommandRowSeverity,
   sortFleetContexts,
+  type ResolveFleetCommandRowSeverityOptions,
 } from '../../lib/fleet-operator-panel';
 import { formatFleetMapRefreshAgo } from '../../lib/fleet-map-sync';
 import { FleetOperatorRow } from './FleetOperatorRow';
@@ -48,6 +50,8 @@ export interface FleetCommandPanelProps {
   listPanelRef?: React.RefObject<HTMLDivElement | null>;
   /** When set, critical count matches the canonical Critical Alerts drawer. */
   canonicalAlertCounts?: { critical: number; warning: number };
+  /** Vehicle IDs from the canonical Critical Alerts slice (Dashboard). */
+  canonicalCriticalVehicleIds?: ReadonlySet<string>;
 }
 
 export function FleetCommandPanel({
@@ -73,32 +77,23 @@ export function FleetCommandPanel({
   isDarkMode,
   listPanelRef,
   canonicalAlertCounts,
+  canonicalCriticalVehicleIds,
 }: FleetCommandPanelProps) {
+  const severityOptions = useMemo<ResolveFleetCommandRowSeverityOptions>(
+    () => ({ canonicalCriticalVehicleIds }),
+    [canonicalCriticalVehicleIds],
+  );
+
   const tabCounts = useMemo(() => computeCommandTabCounts(contexts), [contexts]);
 
   const attentionStats = useMemo(() => {
     if (canonicalAlertCounts) return canonicalAlertCounts;
-    let critical = 0;
-    let warning = 0;
-    for (const ctx of contexts) {
-      if (!isFleetAttentionVehicle(ctx.visual, ctx.vehicle, ctx.health)) continue;
-      if (
-        ctx.visual.attentionLevel === 'critical' ||
-        ctx.visual.isBlocked ||
-        ctx.vehicle.activeIsOverdue ||
-        ctx.vehicle.reservedIsOverdue
-      ) {
-        critical += 1;
-      } else {
-        warning += 1;
-      }
-    }
-    return { critical, warning };
-  }, [contexts, canonicalAlertCounts]);
+    return computeFleetCommandAttentionCounts(contexts, severityOptions);
+  }, [contexts, canonicalAlertCounts, severityOptions]);
 
   const visibleContexts = useMemo(
-    () => sortFleetContexts(filterFleetByTab(contexts, activeTab)),
-    [contexts, activeTab],
+    () => sortFleetContexts(filterFleetByTab(contexts, activeTab), severityOptions),
+    [contexts, activeTab, severityOptions],
   );
 
   const hasSearch = searchQuery.trim().length > 0;
@@ -215,10 +210,13 @@ export function FleetCommandPanel({
           </p>
         ) : (
           <div className="divide-y divide-border/30">
-            {visibleContexts.map((ctx) => (
+            {visibleContexts.map((ctx) => {
+              const commandSeverity = resolveFleetCommandRowSeverity(ctx, severityOptions);
+              return (
               <FleetOperatorRow
                 key={ctx.vehicle.id}
                 ctx={ctx}
+                commandSeverity={commandSeverity}
                 selected={selectedVehicleId === ctx.vehicle.id}
                 onClick={() => onRowClick(ctx)}
                 onDetailClick={(e) => onDetailClick(ctx, e)}
@@ -227,7 +225,8 @@ export function FleetCommandPanel({
                 onMouseLeave={() => onRowHover(null)}
                 isDarkMode={isDarkMode}
               />
-            ))}
+            );
+            })}
           </div>
         )}
       </div>

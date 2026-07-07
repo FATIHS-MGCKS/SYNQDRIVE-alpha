@@ -5,9 +5,11 @@ import {
   buildFleetVehicleContexts,
   buildStationFilterOptions,
   computeCommandTabCounts,
+  computeFleetCommandAttentionCounts,
   filterFleetBySearch,
   filterFleetByStation,
   isFleetAttentionVehicle,
+  resolveFleetCommandRowSeverity,
   resolveOperatorTabForVehicle,
   sortFleetContexts,
   vehicleMatchesCommandTab,
@@ -276,7 +278,160 @@ describe('fleet-operator-panel', () => {
     );
     const order = sortFleetContexts(contexts).map((c) => c.vehicle.id);
     expect(order[0]).toBe('crit');
-    expect(order[order.length - 1]).toBe('offline');
+    expect(order[1]).toBe('offline');
+    expect(order[order.length - 1]).toBe('ready');
+  });
+
+  it('sortFleetContexts orders critical before warning before good', () => {
+    const contexts = buildFleetVehicleContexts(
+      [
+        vehicle({ id: 'good', license: 'G-1' }),
+        vehicle({ id: 'warn', license: 'W-1' }),
+        vehicle({ id: 'crit', license: 'C-1' }),
+      ],
+      (id) => {
+        if (id === 'crit') {
+          return {
+            rental_blocked: true,
+            overall_state: 'critical',
+            blocking_reasons: ['Battery critical'],
+            modules: {},
+          };
+        }
+        if (id === 'warn') {
+          return {
+            overall_state: 'warning',
+            rental_blocked: false,
+            blocking_reasons: [],
+            modules: { tires: { state: 'warning', reason: 'Low tread', last_updated_at: null, data_stale: false } },
+          };
+        }
+        return null;
+      },
+    );
+    expect(sortFleetContexts(contexts).map((c) => c.vehicle.id)).toEqual([
+      'crit',
+      'warn',
+      'good',
+    ]);
+  });
+
+  it('sortFleetContexts sorts good/ready vehicles by fresher last signal first', () => {
+    const hoursAgoIso = (h: number) =>
+      new Date(Date.now() - h * 60 * 60_000).toISOString();
+    const contexts = buildFleetVehicleContexts(
+      [
+        vehicle({ id: 'old', license: 'OLD', lastSignal: hoursAgoIso(2) }),
+        vehicle({ id: 'fresh', license: 'NEW', lastSignal: hoursAgoIso(0.1) }),
+        vehicle({ id: 'mid', license: 'MID', lastSignal: hoursAgoIso(1) }),
+      ],
+      () => null,
+    );
+    expect(sortFleetContexts(contexts).map((c) => c.vehicle.id)).toEqual([
+      'fresh',
+      'mid',
+      'old',
+    ]);
+  });
+
+  it('sortFleetContexts places missing-signal good vehicles after signaled good vehicles', () => {
+    const hoursAgoIso = (h: number) =>
+      new Date(Date.now() - h * 60 * 60_000).toISOString();
+    const contexts = buildFleetVehicleContexts(
+      [
+        vehicle({
+          id: 'no-age',
+          license: 'NA',
+          lastSignal: hoursAgoIso(3),
+          signalAgeMs: undefined,
+        }),
+        vehicle({
+          id: 'fresh',
+          license: 'NEW',
+          lastSignal: hoursAgoIso(0.2),
+          signalAgeMs: 12 * 60_000,
+        }),
+      ],
+      () => null,
+    );
+    expect(sortFleetContexts(contexts).map((c) => c.vehicle.id)).toEqual(['fresh', 'no-age']);
+  });
+
+  it('resolveFleetCommandRowSeverity treats service-only overdue as critical', () => {
+    const [ctx] = buildFleetVehicleContexts([vehicle({ id: 'svc' })], () => ({
+      overall_state: 'critical',
+      rental_blocked: false,
+      blocking_reasons: [],
+      modules: {
+        service_compliance: {
+          state: 'critical',
+          reason: 'Service overdue',
+          last_updated_at: null,
+          data_stale: false,
+        },
+      },
+    }));
+    expect(resolveFleetCommandRowSeverity(ctx)).toBe('critical');
+  });
+
+  it('resolveFleetCommandRowSeverity does not elevate standby to warning', () => {
+    const hoursAgoIso = (h: number) =>
+      new Date(Date.now() - h * 60 * 60_000).toISOString();
+    const [ctx] = buildFleetVehicleContexts(
+      [vehicle({ onlineStatus: 'STANDBY', isFresh: false, lastSignal: hoursAgoIso(8) })],
+      () => null,
+    );
+    expect(resolveFleetCommandRowSeverity(ctx)).toBe('good');
+  });
+
+  it('resolveFleetCommandRowSeverity honors canonical critical vehicle ids', () => {
+    const [ctx] = buildFleetVehicleContexts([vehicle({ id: 'x' })], () => null);
+    expect(resolveFleetCommandRowSeverity(ctx)).toBe('good');
+    expect(
+      resolveFleetCommandRowSeverity(ctx, {
+        canonicalCriticalVehicleIds: new Set(['x']),
+      }),
+    ).toBe('critical');
+  });
+
+  it('computeFleetCommandAttentionCounts aligns row severities with header chips', () => {
+    const contexts = buildFleetVehicleContexts(
+      [
+        vehicle({ id: 'crit' }),
+        vehicle({ id: 'warn' }),
+        vehicle({ id: 'good' }),
+      ],
+      (id) => {
+        if (id === 'crit') {
+          return {
+            rental_blocked: false,
+            overall_state: 'critical',
+            blocking_reasons: [],
+            modules: {
+              battery: {
+                state: 'critical',
+                reason: 'Low',
+                last_updated_at: null,
+                data_stale: false,
+              },
+            },
+          };
+        }
+        if (id === 'warn') {
+          return {
+            overall_state: 'warning',
+            rental_blocked: false,
+            blocking_reasons: [],
+            modules: {},
+          };
+        }
+        return null;
+      },
+    );
+    expect(computeFleetCommandAttentionCounts(contexts)).toEqual({
+      critical: 1,
+      warning: 1,
+    });
   });
 });
 
