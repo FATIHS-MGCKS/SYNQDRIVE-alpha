@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 
 import { Car, CheckCircle, IdCard, Upload, User } from 'lucide-react';
 import { Icon } from './ui/Icon';
@@ -17,9 +17,6 @@ import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
 import {
   buildCustomerCreatePayload,
-  customerStatusApiToUi,
-  customerRiskApiToUi,
-  customerTypeApiToUi,
   customerStatusUiToApi,
   customerRiskUiToApi,
   customerTypeUiToApi,
@@ -33,7 +30,15 @@ import {
   customerRiskTone,
   customerStatusTone,
 } from './customer-detail/customer-detail-ui';
+import { CustomerKpiCard } from './customer-list/CustomerKpiCard';
+import { CustomerListFilters } from './customer-list/CustomerListFilters';
 import { CustomerListMobileCards } from './customer-list/CustomerListMobileCards';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
+import {
+  mapApiCustomerToListRow,
+  type CustomerListRow,
+} from '../lib/customer-list-ui';
+import type { CustomerApiRecord } from '../../lib/api';
 import { Button } from '../../components/ui/button';
 import { cn } from '../../components/ui/utils';
 import {
@@ -45,39 +50,22 @@ import {
 } from '../../components/patterns';
 import type { DataTableColumn } from '../../components/patterns';
 import type { StatusTone } from '../../components/patterns';
-import { formatStressScore, resolveDrivingStressScore } from '../lib/scoreFormat';
+import { formatStressScore } from '../lib/scoreFormat';
 
 interface CustomersViewProps {
   onOpenCustomerDetail?: (customer: any) => void;
   additionalCustomers?: any[];
 }
 
-interface Customer {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  company?: string;
-  type: 'Individual' | 'Corporate';
-  status: 'Active' | 'Under Review' | 'Suspended' | 'Blocked' | 'Archived' | 'Inactive';
-  // V4.6.95 — Customer.riskLevel is operational. Default is 'Not Assessed'.
-  riskLevel: 'Not Assessed' | 'Low Risk' | 'Medium Risk' | 'High Risk';
-  drivingStressScore?: number | null;
-  stressLevel?: 'low' | 'moderate' | 'high' | 'critical' | null;
-  hasEnoughData?: boolean;
+interface Customer extends CustomerListRow {
+  city: string;
   dataConfidence?: 'none' | 'low' | 'medium' | 'high';
   scoredTripCount?: number;
   totalDistanceKm?: number;
-  lastTrip: string;
-  totalBookings: number;
-  totalRevenue: string;
   joinDate: string;
   licenseExpiry: string;
-  licenseVerified: boolean;
-  idVerified: boolean;
   accidents: number;
   violations: number;
-  city: string;
   currentVehicle?: string;
   notes?: string;
 }
@@ -86,155 +74,26 @@ const EM_DASH = '\u2014';
 
 type CustomerSegmentFilter = 'all' | 'active' | 'suspended' | 'attention';
 
-interface CustomerKpiCardProps {
-  label: string;
-  value: number;
-  filterKey: CustomerSegmentFilter;
-  isActive: boolean;
-  onToggle: (key: CustomerSegmentFilter) => void;
-  icon: string;
-  tone?: 'critical' | 'watch' | 'success';
-  subdued?: boolean;
-}
-
-function CustomerKpiCard({
-  label,
-  value,
-  filterKey,
-  isActive,
-  onToggle,
-  icon,
-  tone,
-  subdued = false,
-}: CustomerKpiCardProps) {
-  const isCritical = tone === 'critical' && value > 0;
-  const isWatch = tone === 'watch' && value > 0;
-  const isSuccess = tone === 'success' && value > 0;
-
-  return (
-    <button
-      type="button"
-      onClick={() => onToggle(filterKey)}
-      aria-pressed={isActive}
-      aria-label={`${label}: ${value}`}
-      className={cn(
-        'sq-press group relative overflow-hidden border text-left transition-colors duration-200',
-        'hover:border-border/60 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
-        'min-h-[96px] rounded-lg bg-card/55 px-2.5 py-2',
-        isCritical && 'border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.035]',
-        isWatch && 'border-[color:var(--status-watch)]/30 bg-card/55',
-        isSuccess && 'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
-        !isCritical && !isWatch && !isSuccess && 'border-border/45',
-        isActive && 'ring-2 ring-[color:var(--brand)]/55',
-      )}
-    >
-      <div className="flex h-full items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-[10.5px] font-medium tracking-[-0.01em] text-muted-foreground">
-            {label}
-          </p>
-          <p
-            className={cn(
-              'mt-1 text-[21px] font-semibold tabular-nums leading-none tracking-[-0.03em]',
-              subdued && 'text-muted-foreground',
-              isCritical && 'text-[color:var(--status-critical)]',
-              isSuccess && 'text-[color:var(--status-positive)]',
-              isWatch && 'text-[color:var(--status-watch)]',
-            )}
-          >
-            {value}
-          </p>
-        </div>
-        <div
-          className={cn(
-            'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors',
-            isCritical && 'sq-tone-critical',
-            isWatch && 'sq-tone-watch',
-            isSuccess && 'sq-tone-success',
-            !isCritical && !isWatch && !isSuccess && 'bg-muted text-muted-foreground',
-          )}
-        >
-          <Icon name={icon} className="h-3 w-3" />
-        </div>
-      </div>
-      {isCritical ? (
-        <span
-          className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[color:var(--status-critical)]"
-          aria-hidden
-        />
-      ) : null}
-    </button>
-  );
-}
-
-function formatDateShort(raw?: string | Date | null): string {
-  if (!raw) return EM_DASH;
-  const d = typeof raw === 'string' ? new Date(raw) : raw;
-  if (!d || Number.isNaN(d.getTime())) return EM_DASH;
-  return d.toLocaleDateString('de-DE');
-}
-
-function formatCentsEUR(cents?: number | null): string {
-  if (cents == null) return EM_DASH;
-  try {
-    return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(
-      cents / 100,
-    );
-  } catch {
-    return `${(cents / 100).toFixed(2)} EUR`;
-  }
-}
-
-// V4.6.66 — uses booking-derived aggregates now returned by /customers:
-//   - totalRevenueCents → formatted EUR revenue
-//   - lastBookingDate   → "Last Trip"
-// Previously the UI used `c.totalRevenue` / `c.lastTrip` which were never
-// computed on the backend → always fell through to the placeholder.
-function mapApiCustomer(c: any): Customer {
-  // V4.8.25 — vehicle stress score; higher = more load.
-  const stressScore = resolveDrivingStressScore(c);
-  const stressLevel = c.stressLevel ?? null;
-  const totalBookings =
-    typeof c.totalBookings === 'number'
-      ? c.totalBookings
-      : typeof c.bookingCount === 'number'
-      ? c.bookingCount
-      : Array.isArray(c.bookings)
-      ? c.bookings.length
-      : 0;
+function mapApiCustomer(c: CustomerApiRecord): Customer {
+  const row = mapApiCustomerToListRow(c);
   return {
-    id: c.id,
-    name: c.name ?? `${c.firstName ?? ''} ${c.lastName ?? ''}`.trim(),
-    email: c.email ?? '',
-    phone: c.phone ?? '',
-    company: c.company ?? c.companyName ?? undefined,
-    type: customerTypeApiToUi(c.customerType ?? c.type),
-    status: customerStatusApiToUi(c.status, c.archivedAt),
-    riskLevel: customerRiskApiToUi(c.riskLevel),
-    drivingStressScore: stressScore,
-    stressLevel,
-    hasEnoughData: typeof c.hasEnoughData === 'boolean' ? c.hasEnoughData : undefined,
+    ...row,
+    city: row.city ?? '',
     dataConfidence: c.dataConfidence ?? undefined,
     scoredTripCount: typeof c.scoredTripCount === 'number' ? c.scoredTripCount : undefined,
     totalDistanceKm: typeof c.totalDistanceKm === 'number' ? c.totalDistanceKm : undefined,
-    lastTrip: formatDateShort(c.lastBookingDate ?? c.lastTrip ?? null),
-    totalBookings,
-    totalRevenue: formatCentsEUR(
-      typeof c.totalRevenueCents === 'number' ? c.totalRevenueCents : null,
-    ),
-    joinDate: c.joinDate ?? (c.createdAt ? new Date(c.createdAt).toLocaleDateString('de-DE') : EM_DASH),
+    joinDate:
+      (typeof c.joinDate === 'string' ? c.joinDate : null) ??
+      (c.createdAt ? new Date(c.createdAt).toLocaleDateString('de-DE') : EM_DASH),
     licenseExpiry: c.licenseExpiry
-      ? (typeof c.licenseExpiry === 'string' && !c.licenseExpiry.includes('T')
-          ? c.licenseExpiry
-          : new Date(c.licenseExpiry).toLocaleDateString('de-DE'))
+      ? typeof c.licenseExpiry === 'string' && !c.licenseExpiry.includes('T')
+        ? c.licenseExpiry
+        : new Date(c.licenseExpiry).toLocaleDateString('de-DE')
       : EM_DASH,
-    licenseVerified: c.licenseVerified ?? false,
-    idVerified: c.idVerified ?? false,
-    accidents: c.accidents ?? 0,
-    violations: c.violations ?? 0,
-    city: c.city ?? '',
-    currentVehicle: c.currentVehicle ?? undefined,
-    notes: c.notes ?? undefined,
+    accidents: typeof c.accidents === 'number' ? c.accidents : 0,
+    violations: typeof c.violations === 'number' ? c.violations : 0,
+    currentVehicle: typeof c.currentVehicle === 'string' ? c.currentVehicle : undefined,
+    notes: typeof c.notes === 'string' ? c.notes : undefined,
   };
 }
 
@@ -260,13 +119,17 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [customerStats, setCustomerStats] = useState<Record<string, number> | null>(null);
   const [isSavingCustomer, setIsSavingCustomer] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchDraft, setSearchDraft] = useState('');
+  const debouncedSearch = useDebouncedValue(searchDraft, 350);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [riskFilter, setRiskFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [isListLoading, setIsListLoading] = useState(false);
+  const listFetchGeneration = useRef(0);
 
   const loadCustomers = useCallback(() => {
     if (!orgId) return;
+    const generation = ++listFetchGeneration.current;
     const params: {
       page?: number;
       limit?: number;
@@ -275,7 +138,8 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       riskLevel?: string;
       customerType?: string;
     } = { page: 1, limit: 50 };
-    if (searchQuery.trim()) params.search = searchQuery.trim();
+    const trimmedSearch = debouncedSearch.trim();
+    if (trimmedSearch) params.search = trimmedSearch;
     if (statusFilter !== 'all') {
       params.status = customerStatusUiToApi(statusFilter as Customer['status']);
     }
@@ -286,13 +150,24 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
     if (typeFilter !== 'all') {
       params.customerType = customerTypeUiToApi(typeFilter as Customer['type']);
     }
-    api.customers.list(orgId, params)
+    setIsListLoading(true);
+    api.customers
+      .list(orgId, params)
       .then((res) => {
+        if (generation !== listFetchGeneration.current) return;
         const list = Array.isArray(res) ? res : res?.data ?? [];
         setCustomers(list.map(mapApiCustomer));
       })
-      .catch(() => setCustomers([]));
-  }, [orgId, searchQuery, statusFilter, riskFilter, typeFilter]);
+      .catch(() => {
+        if (generation !== listFetchGeneration.current) return;
+        setCustomers([]);
+      })
+      .finally(() => {
+        if (generation === listFetchGeneration.current) {
+          setIsListLoading(false);
+        }
+      });
+  }, [orgId, debouncedSearch, statusFilter, riskFilter, typeFilter]);
 
   const loadStats = useCallback(() => {
     if (!orgId) return;
@@ -454,26 +329,17 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
     }
   };
 
-  const filtered = allCustomers.filter(c => {
-    const matchesSearch = searchQuery === '' ||
-      c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.phone.includes(searchQuery) ||
-      (c.company && c.company.toLowerCase().includes(searchQuery.toLowerCase()));
-    const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
-    const matchesRisk = riskFilter === 'all' || c.riskLevel === riskFilter;
-    const matchesType = typeFilter === 'all' || c.type === typeFilter;
-    const matchesCard = cardFilter === 'all'
-      ? true
-      : cardFilter === 'active'
-      ? c.status === 'Active'
-      : cardFilter === 'suspended'
-      ? c.status === 'Suspended' || c.status === 'Blocked'
-      : cardFilter === 'attention'
-      ? c.riskLevel === 'High Risk' || c.status === 'Under Review'
-      : true;
-    return matchesSearch && matchesStatus && matchesRisk && matchesType && matchesCard;
-  });
+  const filtered = useMemo(() => {
+    if (cardFilter === 'all') return allCustomers;
+    return allCustomers.filter((c) => {
+      if (cardFilter === 'active') return c.status === 'Active';
+      if (cardFilter === 'suspended') return c.status === 'Suspended' || c.status === 'Blocked';
+      if (cardFilter === 'attention') {
+        return c.riskLevel === 'High Risk' || c.status === 'Under Review';
+      }
+      return true;
+    });
+  }, [allCustomers, cardFilter]);
 
   const totalDrivers = customerStats?.total ?? allCustomers.length;
   const activeDrivers = customerStats?.active ?? allCustomers.filter(c => c.status === 'Active').length;
@@ -486,7 +352,17 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
     'w-full px-3 py-2.5 rounded-lg border border-border bg-[color:var(--input-background)] text-foreground placeholder:text-muted-foreground outline-none transition-all text-xs focus:border-[color:var(--brand)] focus:ring-1 focus:ring-[color:var(--brand-soft)]';
   const labelClass =
     'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';
-  const textTertiary = 'text-muted-foreground';
+
+  const handleKpiToggle = useCallback((key: CustomerSegmentFilter) => {
+    setCardFilter((prev) => (prev === key ? 'all' : key));
+  }, []);
+
+  const handleResetFilters = useCallback(() => {
+    setStatusFilter('all');
+    setRiskFilter('all');
+    setTypeFilter('all');
+    setSearchDraft('');
+  }, []);
 
   const customerColumns = useMemo<DataTableColumn<Customer>[]>(
     () => [
@@ -603,44 +479,6 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
     [],
   );
 
-  const DropdownFilter = ({ label, value, options, isOpen, onToggle, onSelect }: {
-    label: string; value: string; options: { value: string; label: string }[];
-    isOpen: boolean; onToggle: () => void; onSelect: (v: string) => void;
-  }) => (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={onToggle}
-        className={`flex items-center gap-2 px-3.5 py-2.5 rounded-lg border text-xs font-medium transition-all ${
-          value !== 'all'
-            ? 'bg-[color:var(--brand-soft)] border-[color:var(--brand)]/30 text-[color:var(--brand-ink)]'
-            : 'border-border bg-card text-foreground hover:bg-muted'
-        }`}
-      >
-        <span>{value === 'all' ? label : options.find(o => o.value === value)?.label}</span>
-        <Icon name="chevron-down" className={`w-3.5 h-3.5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
-      {isOpen && (
-        <div className="sq-overlay absolute top-full mt-2 left-0 z-50 min-w-[180px] overflow-hidden">
-          {options.map(o => (
-            <button
-              key={o.value}
-              type="button"
-              onClick={() => { onSelect(o.value); onToggle(); }}
-              className={`w-full px-3 py-2.5 text-left text-xs font-medium transition-colors ${
-                o.value === value
-                  ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
-                  : 'text-foreground hover:bg-muted'
-              }`}
-            >
-              {o.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <div className="relative">
       <div
@@ -671,7 +509,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
           value={totalDrivers}
           filterKey="all"
           isActive={cardFilter === 'all'}
-          onToggle={(key) => setCardFilter(cardFilter === key ? 'all' : key)}
+          onToggle={handleKpiToggle}
           icon="users"
         />
         <CustomerKpiCard
@@ -679,7 +517,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
           value={activeDrivers}
           filterKey="active"
           isActive={cardFilter === 'active'}
-          onToggle={(key) => setCardFilter(cardFilter === key ? 'all' : key)}
+          onToggle={handleKpiToggle}
           icon="check-circle"
           tone="success"
           subdued={activeDrivers === 0}
@@ -689,7 +527,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
           value={suspendedDrivers}
           filterKey="suspended"
           isActive={cardFilter === 'suspended'}
-          onToggle={(key) => setCardFilter(cardFilter === key ? 'all' : key)}
+          onToggle={handleKpiToggle}
           icon="ban"
           tone="critical"
           subdued={suspendedDrivers === 0}
@@ -699,102 +537,49 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
           value={attentionNeeded}
           filterKey="attention"
           isActive={cardFilter === 'attention'}
-          onToggle={(key) => setCardFilter(cardFilter === key ? 'all' : key)}
+          onToggle={handleKpiToggle}
           icon="alert-triangle"
           tone="watch"
           subdued={attentionNeeded === 0}
         />
       </div>
 
-      <div className="sq-card rounded-2xl p-3 sm:p-4 shadow-[var(--shadow-1)]">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <div className="min-w-0">
-            <h2 className="text-[12px] font-semibold text-foreground">Filter</h2>
-            <p className="text-[11px] text-muted-foreground">
-              {filtered.length} von {allCustomers.length} Kunden
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-1.5">
-            {cardFilter !== 'all' && (
-              <Button type="button" size="sm" variant="outline" onClick={() => setCardFilter('all')}>
-                Segment ×
-              </Button>
-            )}
-            {(statusFilter !== 'all' || riskFilter !== 'all' || typeFilter !== 'all' || searchQuery) && (
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  setStatusFilter('all');
-                  setRiskFilter('all');
-                  setTypeFilter('all');
-                  setSearchQuery('');
-                }}
-              >
-                <Icon name="x" className="size-3.5" />
-                Zurücksetzen
-              </Button>
-            )}
-          </div>
-        </div>
+      <CustomerListFilters
+        searchDraft={searchDraft}
+        onSearchDraftChange={setSearchDraft}
+        statusFilter={statusFilter}
+        riskFilter={riskFilter}
+        typeFilter={typeFilter}
+        cardFilter={cardFilter}
+        filteredCount={filtered.length}
+        totalCount={allCustomers.length}
+        isStatusOpen={isStatusOpen}
+        isRiskOpen={isRiskOpen}
+        isTypeOpen={isTypeOpen}
+        onStatusOpenChange={setIsStatusOpen}
+        onRiskOpenChange={setIsRiskOpen}
+        onTypeOpenChange={setIsTypeOpen}
+        onStatusFilterChange={setStatusFilter}
+        onRiskFilterChange={setRiskFilter}
+        onTypeFilterChange={setTypeFilter}
+        onClearCardFilter={() => setCardFilter('all')}
+        onResetFilters={handleResetFilters}
+      />
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative min-w-[200px] flex-1">
-            <Icon name="search" className={`absolute left-3 top-1/2 size-4 -translate-y-1/2 ${textTertiary}`} />
-            <input
-              type="text"
-              placeholder="Name, E-Mail, Telefon oder Firma…"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-border bg-card py-2 pl-9 pr-3 text-xs text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-[color:var(--brand)]"
-            />
-          </div>
-          <DropdownFilter
-            label="Status" value={statusFilter} isOpen={isStatusOpen}
-            onToggle={() => { setIsStatusOpen(!isStatusOpen); setIsRiskOpen(false); setIsTypeOpen(false); }}
-            onSelect={setStatusFilter}
-            options={[
-              { value: 'all', label: 'Alle Status' },
-              { value: 'Active', label: 'Aktiv' },
-              { value: 'Under Review', label: 'In Prüfung' },
-              { value: 'Suspended', label: 'Suspendiert' },
-              { value: 'Blocked', label: 'Gesperrt' },
-            ]}
-          />
-          <DropdownFilter
-            label="Risiko" value={riskFilter} isOpen={isRiskOpen}
-            onToggle={() => { setIsRiskOpen(!isRiskOpen); setIsStatusOpen(false); setIsTypeOpen(false); }}
-            onSelect={setRiskFilter}
-            options={[
-              { value: 'all', label: 'Alle Risikostufen' },
-              { value: 'Not Assessed', label: 'Nicht bewertet' },
-              { value: 'Low Risk', label: 'Niedrig' },
-              { value: 'Medium Risk', label: 'Mittel' },
-              { value: 'High Risk', label: 'Hoch' },
-            ]}
-          />
-          <DropdownFilter
-            label="Typ" value={typeFilter} isOpen={isTypeOpen}
-            onToggle={() => { setIsTypeOpen(!isTypeOpen); setIsStatusOpen(false); setIsRiskOpen(false); }}
-            onSelect={setTypeFilter}
-            options={[
-              { value: 'all', label: 'Alle Typen' },
-              { value: 'Individual', label: 'Privat' },
-              { value: 'Corporate', label: 'Firma' },
-            ]}
-          />
-        </div>
-      </div>
-
-      {filtered.length === 0 ? (
+      {filtered.length === 0 && !isListLoading ? (
         <EmptyState
           icon={<Icon name="users" className="w-5 h-5" />}
           title="Keine Kunden für diese Filter"
           compact
         />
       ) : (
-        <>
+        <div
+          className={cn(
+            'space-y-2 transition-opacity duration-200',
+            isListLoading && 'pointer-events-none opacity-60',
+          )}
+          aria-busy={isListLoading}
+        >
       <CustomerListMobileCards
         customers={filtered}
         onSelect={(row) => openCustomerDetail(row as Customer)}
@@ -819,7 +604,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
         )}
       />
       </div>
-        </>
+        </div>
       )}
 
       </div>{/* End of main content wrapper */}

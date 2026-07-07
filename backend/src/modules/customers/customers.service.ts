@@ -163,15 +163,17 @@ export class CustomersService {
     ]);
 
     const customerIds = data.map((c) => c.id);
-    const [scoreMap, bookingAggMap] = await Promise.all([
+    const [scoreMap, bookingAggMap, rentalClearanceMap] = await Promise.all([
       this.buildCustomerScoreMap(orgId, customerIds),
       this.buildBookingAggregateMap(orgId, customerIds),
+      this.eligibility.evaluateBatchForList(orgId, customerIds),
     ]);
 
     const mapped = data.map((c) => {
       const score = scoreMap.get(c.id);
       return {
         ...c,
+        postalCode: c.zip,
         bookingCount: c._count.bookings,
         drivingStressScore: score?.drivingStressScore ?? null,
         stressLevel: score?.stressLevel ?? null,
@@ -184,6 +186,7 @@ export class CustomersService {
         dataConfidence: score?.dataConfidence ?? 'none',
         totalRevenueCents: bookingAggMap.get(c.id)?.totalRevenueCents ?? 0,
         lastBookingDate: bookingAggMap.get(c.id)?.lastBookingDate ?? null,
+        rentalClearance: rentalClearanceMap.get(c.id) ?? null,
         _count: undefined,
       };
     });

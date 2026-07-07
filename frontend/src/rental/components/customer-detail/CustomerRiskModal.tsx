@@ -72,7 +72,7 @@ export function CustomerRiskModal({
             rows={3}
             disabled={!needReason}
             className="mt-1 w-full text-xs px-3 py-2 rounded-lg border border-border bg-card resize-none disabled:opacity-50"
-            placeholder={needReason ? 'Begründung für die Risikoeinstufung…' : 'Bei „Nicht bewertet“ kein Grund nötig'}
+            placeholder={needReason ? 'Begründung für die Risikoeinstufung…' : 'Bei „Keine Risikobewertung“ kein Grund nötig'}
           />
         </div>
         <div className="flex justify-end gap-2">

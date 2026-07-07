@@ -17,12 +17,13 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { CustomerVerificationService } from '@modules/customer-verification/customer-verification.service';
 
 import {
-
   CustomerEligibilityEvaluateOptions,
-
   CustomerEligibilityResult,
-
 } from './types/customer-eligibility.types';
+import {
+  mapEligibilityToRentalClearance,
+  type RentalClearanceSummary,
+} from './rental-clearance.util';
 
 
 
@@ -196,6 +197,30 @@ export class CustomerEligibilityService {
 
     return result;
 
+  }
+
+
+
+  /** Batch list summary — one policy load, parallel per-customer evaluation (no frontend N+1). */
+  async evaluateBatchForList(
+    orgId: string,
+    customerIds: string[],
+  ): Promise<Map<string, RentalClearanceSummary>> {
+    const uniqueIds = [...new Set(customerIds.filter(Boolean))];
+    const map = new Map<string, RentalClearanceSummary>();
+    if (uniqueIds.length === 0) return map;
+
+    const evaluations = await Promise.all(
+      uniqueIds.map(async (customerId) => {
+        const result = await this.evaluateForBooking(orgId, customerId, {});
+        return [customerId, mapEligibilityToRentalClearance(result)] as const;
+      }),
+    );
+
+    for (const [id, summary] of evaluations) {
+      map.set(id, summary);
+    }
+    return map;
   }
 
 

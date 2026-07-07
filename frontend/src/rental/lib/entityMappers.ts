@@ -183,11 +183,11 @@ export function customerStatusUiLabelDe(ui: CustomerUiStatus | string | undefine
 
 export function customerRiskUiLabelDe(ui: CustomerUiRisk | string | undefined): string {
   switch (ui) {
-    case 'Not Assessed': return 'Nicht bewertet';
+    case 'Not Assessed': return 'Keine Risikobewertung';
     case 'Low Risk': return 'Niedrig';
     case 'Medium Risk': return 'Mittel';
     case 'High Risk': return 'Hoch';
-    default: return 'Nicht bewertet';
+    default: return 'Keine Risikobewertung';
   }
 }
 

@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customers-list-rental-clearance-v49230-2026-07-07',
+    version: '4.9.230',
+    title: 'V4.9.230 — Kunden & Fahrer: KPI-Glass, stabile Filter, Mietfreigabe-Badge',
+    summary: [
+      'KPI-Karten nutzen denselben Gradient-/Glass-Look wie operative Dashboard-KPIs (`dashboardKpiVisual`).',
+      'Suchleiste + Filter: lokaler Draft-State, 350ms Debounce, Request-Generation-Guard — kein Flackern bei Refetch.',
+      'Mobile-Karten: Avatar links, Kontaktstack (Name/E-Mail/Telefon/Adresse), Status/Risiko oben rechts, ID/DL- und Mietfreigabe-Badges in zweiter Zeile.',
+      'Backend `GET /customers`: `rentalClearance` pro Zeile via `CustomerEligibilityService.evaluateBatchForList` (keine N+1-Eligibility-Calls im Frontend).',
+      'UI-Label „Nicht bewertet“ → „Keine Risikobewertung“ (Enum `NOT_ASSESSED` unverändert).',
+    ],
+    reason:
+      'Die Kundenliste wirkte visuell veraltet, Filter flackerten bei jeder API-Antwort, und Mietfreigabe fehlte in der Listenansicht trotz vorhandener Eligibility-Logik.',
+    previousBehavior:
+      'KPI-Flächen ohne Gradient-Glass; Suche triggerte sofort Refetch + clientseitige Doppelfilterung; Mobile-Karten zeigten E-Mail oder Telefon; keine Verifikations-/Mietfreigabe-Badges in der Liste.',
+    details:
+      'backend: rental-clearance.util.ts, customer-eligibility.service evaluateBatchForList, customers.service findAll postalCode+rentalClearance. frontend: CustomerKpiCard, CustomerListFilters, customer-list-ui mapApiCustomerToListRow, CustomersView debounce/race guard, CustomerListMobileCards redesign, CustomerApiRecord types.',
+    affectsArchitecture: true,
+    module: 'Customers',
+    createdAt: '2026-07-07T21:50:00.000Z',
+  },
+  {
     id: 'eur-locale-default-de-v49228-2026-07-07',
     version: '4.9.228',
     title: 'V4.9.228 — EUR immer als `0 €` (Dashboard + Locale-Persistenz)',

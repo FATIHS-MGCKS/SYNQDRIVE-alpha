@@ -1399,6 +1399,18 @@ export interface DriverScoreSummary {
   assignmentCoveragePct: number;
 }
 
+export type RentalClearanceStatus =
+  | 'CLEARED'
+  | 'PENDING'
+  | 'REVIEW_REQUIRED'
+  | 'BLOCKED';
+
+export interface RentalClearanceSummary {
+  status: RentalClearanceStatus;
+  label: string;
+  reasons: string[];
+}
+
 export interface CustomerApiRecord {
   id: string;
   firstName?: string | null;
@@ -1406,16 +1418,44 @@ export interface CustomerApiRecord {
   name?: string | null;
   email?: string | null;
   phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  zip?: string | null;
+  postalCode?: string | null;
+  country?: string | null;
+  company?: string | null;
+  companyName?: string | null;
+  customerType?: string | null;
+  type?: string | null;
   bookingCount?: number;
+  totalBookings?: number;
+  bookings?: unknown[];
   drivingStressScore?: number | null;
   stressLevel?: 'low' | 'moderate' | 'high' | 'critical' | null;
   scoreEligibleTripCount?: number;
+  hasEnoughData?: boolean;
   // V4.6.66 — booking-derived aggregates returned by /customers and /customers/:id.
   totalRevenueCents?: number;
   lastBookingDate?: string | null;
+  lastTrip?: string | null;
   status?: string | null;
   archivedAt?: string | null;
   riskLevel?: string | null;
+  idVerified?: boolean | null;
+  licenseVerified?: boolean | null;
+  idVerificationStatus?: string | null;
+  licenseVerificationStatus?: string | null;
+  rentalClearance?: RentalClearanceSummary | null;
+  createdAt?: string | null;
+  joinDate?: string | null;
+  licenseExpiry?: string | null;
+  accidents?: number | null;
+  violations?: number | null;
+  currentVehicle?: string | null;
+  notes?: string | null;
+  dataConfidence?: 'none' | 'low' | 'medium' | 'high';
+  scoredTripCount?: number;
+  totalDistanceKm?: number;
   [key: string]: unknown;
 }
 
