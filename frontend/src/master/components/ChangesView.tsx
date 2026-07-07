@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'new-booking-wizard-stepper-v49222-2026-07-07',
+    version: '4.9.222',
+    title: 'V4.9.222 — New Booking: Mobile Wizard-Stepper & DE-Labels',
+    summary: [
+      'Neue Komponente `BookingWizardStepper`: Mobile mit „Schritt X von 5 · Label“, Progress-Bar und Dot-Rail.',
+      'Desktop behält volle Step-Pills (Icon + Label), symmetrisch mit `flex-1` und kurzen Connectors.',
+      'Schritt-Labels deutsch: Fahrzeug, Zeitraum, Extras, Kunde, Abschluss; Page-Titel „Neue Buchung“.',
+      'Step-Navigation unverändert: nur abgeschlossene Steps per Klick; Validierung via `canProceed()` bleibt.',
+    ],
+    reason:
+      'Die bisherige horizontale Pill-Leiste wirkte auf Mobile zu breit und mischte Englisch/Deutsch.',
+    previousBehavior:
+      'Inline-Stepper mit englischen Labels (Vehicle, Period, …); Mobile horizontal scrollbar mit großen Pills.',
+    details:
+      'Frontend-only: `BookingWizardStepper.tsx`, `NewBookingView.tsx`. Keine Buchungs-, Validierungs- oder API-Logik geändert.',
+    affectsArchitecture: false,
+    module: null,
+    createdAt: '2026-07-07T03:30:00.000Z',
+  },
+  {
     id: 'new-booking-mobile-shell-v49221-2026-07-07',
     version: '4.9.221',
     title: 'V4.9.221 — New Booking Page: Mobile Shell & Overflow-Fix',

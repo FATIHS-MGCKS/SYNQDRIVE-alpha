@@ -50,6 +50,7 @@ import { documentEligibilityLabelDe } from '../lib/customer-verification';
 import { useFleetHealthMap } from '../hooks/useVehicleHealth';
 import { RentalHealthBadge } from './rental-health/RentalHealthBadge';
 import { BookingRentalEligibilityCard } from './bookings/BookingRentalEligibilityCard';
+import { BookingWizardStepper } from './bookings/BookingWizardStepper';
 import type { BookingRentalEligibilityResult } from '../lib/booking-rental-eligibility.types';
 import {
   PageHeader,
@@ -148,18 +149,12 @@ const buildMMY = (v: { make?: string | null; model?: string | null; year?: numbe
 // Fallback pricing removed — backend Pricing Service is the source of truth.
 
 // V4.6.67 — Reordered steps so that the booking flow is logically gated:
-//   Vehicle → Period → Extras → Customer → Checkout
+//   Fahrzeug → Zeitraum → Extras → Kunde → Abschluss
 // Extras (mileage / insurance / accessories) need rentalDays + the vehicle
 // tariff to compute prices; choosing them before the period was confusing and
 // the user could not advance from Period because the bottom Next button kept
 // asking for fields the calendar step does not actually own.
-const steps = [
-  { id: 1, label: 'Vehicle', icon: Car },
-  { id: 2, label: 'Period', icon: Calendar },
-  { id: 3, label: 'Extras', icon: Star },
-  { id: 4, label: 'Customer', icon: User },
-  { id: 5, label: 'Checkout', icon: CreditCard },
-];
+// Step labels + navigation UI: `BookingWizardStepper`.
 
 export function NewBookingView({
   onBack,
@@ -1087,7 +1082,7 @@ export function NewBookingView({
   return (
     <div className="w-full max-w-full min-w-0 overflow-x-hidden space-y-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:space-y-5">
       <PageHeader
-        title="New Booking"
+        title="Neue Buchung"
         icon={<Icon name="calendar" className="w-4 h-4" />}
         className="min-w-0 w-full max-w-full"
         titleClassName="break-words"
@@ -1115,49 +1110,10 @@ export function NewBookingView({
         }
       />
 
-      {/* Step Indicator — scrollable on mobile, centered on md+ */}
-      <div className="w-full min-w-0 max-w-full">
-        <div className="-mx-0.5 overflow-x-auto pb-1 scrollbar-thin [scrollbar-width:thin] md:overflow-visible md:pb-0">
-          <div className="flex w-max min-w-full items-center justify-start gap-1.5 px-0.5 md:w-full md:justify-center md:gap-2">
-            {steps.map((step, i) => {
-              const StepIcon = step.icon;
-              const isActive = currentStep === step.id;
-              const isCompleted = currentStep > step.id;
-              return (
-                <div key={step.id} className="flex shrink-0 items-center gap-1.5 md:gap-2">
-                  <button
-                    type="button"
-                    onClick={() => { if (isCompleted) setCurrentStep(step.id); }}
-                    className={cn(
-                      'flex shrink-0 items-center gap-1.5 rounded-lg border px-2 py-1.5 transition-all duration-300 sm:gap-2 sm:px-3 sm:py-2',
-                      isActive
-                        ? 'sq-tone-brand border border-border ring-1 ring-[color:var(--brand-glow)]'
-                        : isCompleted
-                          ? 'sq-tone-success cursor-pointer border border-border hover:opacity-90'
-                          : 'border border-border bg-muted/40 text-muted-foreground',
-                    )}
-                  >
-                    {isCompleted ? (
-                      <Icon name="check" className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
-                    ) : (
-                      <StepIcon className="h-4 w-4 shrink-0 sm:h-5 sm:w-5" />
-                    )}
-                    <span className="whitespace-nowrap text-[10px] sm:text-[11px]">{step.label}</span>
-                  </button>
-                  {i < steps.length - 1 && (
-                    <div
-                      className={cn(
-                        'h-px w-4 shrink-0 sm:w-8',
-                        isCompleted ? 'bg-[color:var(--status-positive)]/40' : 'bg-border',
-                      )}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      <BookingWizardStepper
+        currentStep={currentStep}
+        onStepSelect={(stepId) => setCurrentStep(stepId)}
+      />
 
       {/* Step Content */}
       {bookingConfirmed ? (
