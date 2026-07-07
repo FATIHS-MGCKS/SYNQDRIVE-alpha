@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customers-mobile-chip-unify-v49232-2026-07-07',
+    version: '4.9.232',
+    title: 'V4.9.232 — Kunden Mobile Card: StatusChip + Kontakt-Icons',
+    summary: [
+      'Mobile Kundenkarte: Mail/Tel/Adresse mit Lucide-Icons statt Textlabels; Adresse zweizeilig unter dem Wert eingerückt.',
+      'Alle Badges (Aktiv, ID, DL, Risiko, Mietfreigabe) nutzen einheitlich `StatusChip` mit gemeinsamer Mobile-Größenklasse.',
+      'Keine Custom-Outline-Pills mehr; ID/DL nur kompakt „ID“/„DL“ + Icon im Chip.',
+    ],
+    reason:
+      'Die Mobile Card wich visuell von der SynqDrive Chip-Sprache ab (eigene Border-Pills, inkonsistente Höhen).',
+    previousBehavior:
+      'Textlabels Mail:/Tel:/Adresse:, lokale MobilePill-Komponenten mit manuellen Border-/Background-Klassen.',
+    details:
+      'frontend: CustomerListMobileCards.tsx — ContactIconLine, VerificationChip, getVerificationChipMeta, MOBILE_CHIP_CLASS.',
+    affectsArchitecture: false,
+    module: 'Customers',
+    createdAt: '2026-07-07T23:30:00.000Z',
+  },
+  {
     id: 'customers-mobile-card-layout-v49231-2026-07-07',
     version: '4.9.231',
     title: 'V4.9.231 — Kunden Mobile Card: strukturiertes Kontakt-Layout',
