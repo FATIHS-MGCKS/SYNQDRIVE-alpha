@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
-import { RefreshCw, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { SkeletonCard } from '../../../components/patterns';
 import {
   type FleetCommandTab,
@@ -12,7 +12,6 @@ import {
   sortFleetContexts,
   type ResolveFleetCommandRowSeverityOptions,
 } from '../../lib/fleet-operator-panel';
-import { formatFleetMapRefreshAgo } from '../../lib/fleet-map-sync';
 import { FleetOperatorRow } from './FleetOperatorRow';
 import { CommandCountBadge, PanelStatusChip } from './fleetOperatorUi';
 
@@ -65,10 +64,10 @@ export function FleetCommandPanel({
   onClearSelection,
   onRevealHiddenSelection,
   loading,
-  totalVehicleCount,
-  lastFetchedAt,
-  onRefresh,
-  refreshing,
+  totalVehicleCount: _totalVehicleCount,
+  lastFetchedAt: _lastFetchedAt,
+  onRefresh: _onRefresh,
+  refreshing: _refreshing,
   headerAction,
   onRowClick,
   onDetailClick,
@@ -101,37 +100,27 @@ export function FleetCommandPanel({
   return (
     <div className="sq-card overflow-hidden flex flex-col lg:h-[640px] animate-fade-up">
       <div className="p-3 pb-0 border-b border-border/40">
-        <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2 mb-2">
-          <div className="min-w-0 flex-1">
-            <h3 className="text-[12px] font-semibold tracking-[-0.005em] text-foreground">
-              Fleet Command
-            </h3>
-            <p className="text-[10px] text-muted-foreground mt-0.5">
-              {totalVehicleCount} vehicles · Updated {formatFleetMapRefreshAgo(lastFetchedAt)}
-            </p>
-            <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-              {attentionStats.critical > 0 && (
-                <PanelStatusChip label={`${attentionStats.critical} critical`} tone="critical" />
-              )}
-              {attentionStats.warning > 0 && (
-                <PanelStatusChip label={`${attentionStats.warning} warning`} tone="warning" />
-              )}
-              {attentionStats.critical === 0 && attentionStats.warning === 0 && (
-                <PanelStatusChip label="No attention" tone="neutral" />
-              )}
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 ml-auto">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 mb-1.5">
+          <h3 className="text-[12px] font-semibold tracking-[-0.005em] text-foreground shrink-0">
+            Fleet Command
+          </h3>
+          <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0 ml-auto">
             {headerAction}
-            <button
-              type="button"
-              onClick={onRefresh}
-              disabled={refreshing}
-              className="sq-press shrink-0 p-2 rounded-lg border border-border/60 bg-card hover:bg-muted transition-colors disabled:opacity-50"
-              title="Refresh fleet data"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-            </button>
+            {attentionStats.critical > 0 && (
+              <PanelStatusChip
+                label={`${attentionStats.critical} Critical`}
+                tone="critical"
+              />
+            )}
+            {attentionStats.warning > 0 && (
+              <PanelStatusChip
+                label={`${attentionStats.warning} Warning`}
+                tone="warning"
+              />
+            )}
+            {attentionStats.critical === 0 && attentionStats.warning === 0 && (
+              <PanelStatusChip label="No attention" tone="neutral" />
+            )}
           </div>
         </div>
 

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-command-header-v49213-2026-07-07',
+    version: '4.9.213',
+    title: 'V4.9.213 — Fleet Command Header kompakter',
+    summary: [
+      'Fleet Command Header: nur noch Titel links, Critical/Warning-Badges rechts.',
+      'Subline `{n} vehicles · Updated …` entfernt.',
+      'Sichtbarer Refresh-Button aus der Box entfernt (`onRefresh`-Prop bleibt für Parent-Wiring).',
+      '`PanelStatusChip` an Soft-Glass-Statussprache angepasst (dezente Critical/Warning-Töne).',
+      'Gilt für Dashboard (`FleetCommandView`) und Fleet Page (`FleetView`) über gemeinsames `FleetCommandPanel`.',
+    ],
+    reason: 'Header wirkte unaufgeräumt: Subtext, Refresh-Button und links sitzende Badges konkurrierten visuell.',
+    previousBehavior:
+      'Unter „Fleet Command“ stand Fahrzeuganzahl + Update-Zeit; Badges links unter dem Titel; Refresh rechts.',
+    details:
+      'Dateien: `FleetCommandPanel.tsx`, `fleetOperatorUi.tsx`. Keine Fetch-, Sortier- oder Health-Logik geändert.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-07T00:20:00.000Z',
+  },
+  {
     id: 'fleet-command-severity-v49212-2026-07-07',
     version: '4.9.212',
     title: 'V4.9.212 — Fleet Command Severity & Sort (zentral)',

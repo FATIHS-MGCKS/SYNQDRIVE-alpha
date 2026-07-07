@@ -1,4 +1,5 @@
 import { StatusChip } from '../../../components/patterns';
+import { cn } from '../../../components/ui/utils';
 import {
   getFleetMapToneHex,
   type FleetChipTone,
@@ -62,8 +63,19 @@ export function PanelStatusChip({
   label: string;
   tone: 'critical' | 'warning' | 'neutral';
 }) {
+  const statusTone = tone === 'warning' ? 'watch' : tone;
+  const softClass =
+    tone === 'critical'
+      ? 'bg-[color:color-mix(in_srgb,var(--status-critical)_9%,transparent)] text-[color:var(--status-critical)] ring-1 ring-[color:color-mix(in_srgb,var(--status-critical)_14%,transparent)]'
+      : tone === 'warning'
+        ? 'bg-[color:color-mix(in_srgb,var(--status-watch)_9%,transparent)] text-[color:var(--status-watch)] ring-1 ring-[color:color-mix(in_srgb,var(--status-watch)_14%,transparent)]'
+        : 'bg-muted/40 text-muted-foreground ring-1 ring-border/40';
+
   return (
-    <StatusChip tone={tone} className="text-[9px] font-semibold uppercase tracking-wide">
+    <StatusChip
+      tone={statusTone}
+      className={cn('px-2 py-0.5 text-[9.5px] font-semibold tabular-nums', softClass)}
+    >
       {label}
     </StatusChip>
   );
