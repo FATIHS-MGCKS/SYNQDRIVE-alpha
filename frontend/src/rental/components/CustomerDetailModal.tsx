@@ -15,15 +15,15 @@ import {
 import { changeCustomerStatus } from '../lib/customer-mutations.utils';
 import { formatStressScore, resolveDrivingStressScore, stressToneToStatusTone } from '../lib/scoreFormat';
 import { useRentalOrg } from '../RentalContext';
-import { CustomerQuickViewDetailRow } from './customer-detail/CustomerQuickViewDetailRow';
-import { CustomerQuickViewSummaryGrid } from './customer-detail/CustomerQuickViewSummaryGrid';
+import { CustomerDetailInfoRow } from './customer-detail/CustomerDetailInfoRow';
+import { CustomerDetailSummaryGrid } from './customer-detail/CustomerDetailSummaryGrid';
 import {
-  cqv,
+  cdm,
   customerRiskTone,
   customerStatusTone,
   customerVerificationTone,
-  resolveQuickViewStatusAction,
-} from './customer-detail/customer-quick-view-ui';
+  resolveCustomerStatusAction,
+} from './customer-detail/customer-detail-ui';
 import {
   EM_DASH,
   formatCurrencyCents,
@@ -189,7 +189,7 @@ export function CustomerDetailModal({
 
   const shortId = customer.id.slice(0, 8).toUpperCase();
   const displayName = customer.company || customer.name;
-  const statusAction = resolveQuickViewStatusAction(customer.status);
+  const statusAction = resolveCustomerStatusAction(customer.status);
 
   const openInvoices = invoices.filter((i) => (i.status ?? '').toUpperCase() !== 'PAID');
   const overdueInvoices = invoices.filter((i) => (i.status ?? '').toUpperCase() === 'OVERDUE');
@@ -213,13 +213,13 @@ export function CustomerDetailModal({
 
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`relative ${cqv.modal} transition-all duration-300 ease-out`}
+        className={`relative ${cdm.modal} transition-all duration-300 ease-out`}
         style={{
           transform: isAnimating ? 'translateY(0) scale(1)' : 'translateY(12px) scale(0.98)',
           opacity: isAnimating ? 1 : 0,
         }}
       >
-        <div className={cqv.header}>
+        <div className={cdm.header}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 pr-10">
               <h2 className="text-[15px] font-bold tracking-[-0.02em] text-foreground">
@@ -268,11 +268,11 @@ export function CustomerDetailModal({
           </div>
         </div>
 
-        <div className={cqv.body}>
+        <div className={cdm.body}>
           <div className="space-y-3">
-            <div className={cqv.identityCard}>
+            <div className={cdm.identityCard}>
               <div
-                className={`${cqv.avatar} ${
+                className={`${cdm.avatar} ${
                   customer.status === 'Active'
                     ? 'sq-tone-brand'
                     : customer.status === 'Under Review'
@@ -292,7 +292,7 @@ export function CustomerDetailModal({
                 <p className="mt-0.5 font-mono text-[10px] tabular-nums text-muted-foreground">
                   CID-{shortId}
                 </p>
-                <div className={`mt-2 ${cqv.badgeRow}`}>
+                <div className={`mt-2 ${cdm.badgeRow}`}>
                   <StatusChip tone={customerStatusTone(customer.status)} dot>
                     {customerStatusUiLabelDe(customer.status)}
                   </StatusChip>
@@ -314,7 +314,7 @@ export function CustomerDetailModal({
               </div>
             </div>
 
-            <CustomerQuickViewSummaryGrid
+            <CustomerDetailSummaryGrid
               totalBookings={customer.totalBookings}
               totalKmDriven={totalKmDriven}
               revenueLabel={revenueLabel}
@@ -374,17 +374,17 @@ export function CustomerDetailModal({
             ) : null}
 
             <DataCard title="Kontakt" bodyClassName="py-2">
-              <CustomerQuickViewDetailRow
+              <CustomerDetailInfoRow
                 label="Telefon"
                 value={customer.phone}
                 icon={<Phone />}
               />
-              <CustomerQuickViewDetailRow
+              <CustomerDetailInfoRow
                 label="E-Mail"
                 value={customer.email}
                 icon={<Mail />}
               />
-              <CustomerQuickViewDetailRow
+              <CustomerDetailInfoRow
                 label="Ort"
                 value={detail?.city || customer.city || EM_DASH}
                 icon={<MapPin />}

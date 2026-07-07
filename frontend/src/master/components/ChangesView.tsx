@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customers-quickview-cleanup-v49235-2026-07-08',
+    version: '4.9.235',
+    title: 'V4.9.235 — Customer Quick View Cleanup nach Direktnavigation',
+    summary: [
+      '`customer-quick-view-ui.ts` entfernt; Tone-/Status-Helper in `customer-detail-ui.ts` konsolidiert.',
+      '`CustomerQuickViewDetailRow` → `CustomerDetailInfoRow` (Overview + Booking-Modal).',
+      '`CustomerQuickViewSummaryGrid` → `CustomerDetailSummaryGrid` (nur New-Booking-Modal).',
+      'Kundenliste nutzt weiterhin nur `CustomerDetailView`; Modal bleibt isoliert im Buchungs-Wizard.',
+    ],
+    reason:
+      'Nach der Umstellung auf direkte Vollansicht waren Quick-View-Namen und ein separater UI-Helper-Modul irreführend; Shared-Code gehört in die Detail-UI-Schicht.',
+    previousBehavior:
+      'Quick-View-spezifische Dateinamen und `customer-quick-view-ui.ts` wurden auch von der echten Vollansicht re-exportiert.',
+    details:
+      'frontend: customer-detail-ui.ts (cdv + cdm + resolveCustomerStatusAction), CustomerDetailInfoRow, CustomerDetailSummaryGrid; CustomerDetailModal/OverviewTab/Header aktualisiert; customer-quick-view-ui.ts gelöscht.',
+    affectsArchitecture: false,
+    module: 'Customers',
+    createdAt: '2026-07-08T00:10:00.000Z',
+  },
+  {
     id: 'customers-direct-detail-view-v49234-2026-07-07',
     version: '4.9.234',
     title: 'V4.9.234 — Kundenliste öffnet direkt die Vollansicht',

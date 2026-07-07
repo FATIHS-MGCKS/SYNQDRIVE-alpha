@@ -2,7 +2,7 @@ import { DataCard, Timeline } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
 import type { CustomerDetail, CustomerListRow } from './customerDetailTypes';
 import { formatDate, formatDateTime } from './customerDetailUtils';
-import { CustomerQuickViewDetailRow } from './CustomerQuickViewDetailRow';
+import { CustomerDetailInfoRow } from './CustomerDetailInfoRow';
 import { cdv } from './customer-detail-ui';
 
 interface CustomerOverviewTabProps {
@@ -49,7 +49,7 @@ export function CustomerOverviewTab({
             ...(customer.company ? [{ label: 'Firma', value: customer.company }] : []),
             ...(detail?.taxId ? [{ label: 'USt-IdNr.', value: detail.taxId }] : []),
           ].map((row) => (
-            <CustomerQuickViewDetailRow key={row.label} label={row.label} value={row.value} />
+            <CustomerDetailInfoRow key={row.label} label={row.label} value={row.value} />
           ))}
           {detail?.notes ? (
             <div className="mt-2 border-t border-border/40 pt-2">
@@ -62,11 +62,11 @@ export function CustomerOverviewTab({
         </DataCard>
 
         <DataCard title="Operative Kennzahlen" bodyClassName="py-2">
-          <CustomerQuickViewDetailRow label="Buchungen gesamt" value={String(totalBookings)} />
-          <CustomerQuickViewDetailRow label="Letzte Buchung" value={formatDate(lastBookingDate)} />
-          <CustomerQuickViewDetailRow label="Kunde seit" value={formatDate(detail?.createdAt)} />
+          <CustomerDetailInfoRow label="Buchungen gesamt" value={String(totalBookings)} />
+          <CustomerDetailInfoRow label="Letzte Buchung" value={formatDate(lastBookingDate)} />
+          <CustomerDetailInfoRow label="Kunde seit" value={formatDate(detail?.createdAt)} />
           {customer.currentVehicle ? (
-            <CustomerQuickViewDetailRow label="Aktuelles Fahrzeug" value={customer.currentVehicle} />
+            <CustomerDetailInfoRow label="Aktuelles Fahrzeug" value={customer.currentVehicle} />
           ) : null}
         </DataCard>
       </div>

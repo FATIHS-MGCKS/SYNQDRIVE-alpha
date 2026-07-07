@@ -1,10 +1,10 @@
 import { Calendar, Car, Gauge, Receipt } from 'lucide-react';
 import { VehicleBookingSummaryCard } from '../vehicle-bookings/VehicleBookingSummaryCard';
 import type { StatusTone } from '../../../components/patterns';
-import { cqv } from './customer-quick-view-ui';
+import { cdm } from './customer-detail-ui';
 import { EM_DASH } from './customerDetailUtils';
 
-interface CustomerQuickViewSummaryGridProps {
+interface CustomerDetailSummaryGridProps {
   totalBookings: number;
   totalKmDriven: number;
   revenueLabel: string;
@@ -14,7 +14,7 @@ interface CustomerQuickViewSummaryGridProps {
   stressTone?: StatusTone;
 }
 
-export function CustomerQuickViewSummaryGrid({
+export function CustomerDetailSummaryGrid({
   totalBookings,
   totalKmDriven,
   revenueLabel,
@@ -22,13 +22,13 @@ export function CustomerQuickViewSummaryGrid({
   stressLabel,
   stressSubdued,
   stressTone,
-}: CustomerQuickViewSummaryGridProps) {
+}: CustomerDetailSummaryGridProps) {
   const kmLabel =
     totalKmDriven > 0 ? totalKmDriven.toLocaleString('de-DE') : EM_DASH;
   const kmUnit = totalKmDriven > 0 ? 'km' : undefined;
 
   return (
-    <div className={cqv.summaryGrid}>
+    <div className={cdm.summaryGrid}>
       <VehicleBookingSummaryCard
         label="Buchungen"
         value={String(totalBookings)}

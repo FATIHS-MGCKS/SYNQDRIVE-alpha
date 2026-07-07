@@ -1,5 +1,5 @@
 // V4.6.64 — shared UI↔API mappers for Customer + Booking.
-// Keeps CustomersView / CustomerDetailModal / NewBookingView / BookingsView
+// Keeps CustomersView / CustomerDetailView / CustomerDetailModal / NewBookingView / BookingsView
 // in lock-step with the backend enums + response shapes.
 
 import { api } from '../../lib/api';

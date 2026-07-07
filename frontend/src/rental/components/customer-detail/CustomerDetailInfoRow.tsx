@@ -2,19 +2,19 @@ import type { ReactNode } from 'react';
 import { cn } from '../../../components/ui/utils';
 import { EM_DASH } from './customerDetailUtils';
 
-interface CustomerQuickViewDetailRowProps {
+interface CustomerDetailInfoRowProps {
   label: string;
   value?: ReactNode | null;
   icon?: ReactNode;
   mutedWhenEmpty?: boolean;
 }
 
-export function CustomerQuickViewDetailRow({
+export function CustomerDetailInfoRow({
   label,
   value,
   icon,
   mutedWhenEmpty = true,
-}: CustomerQuickViewDetailRowProps) {
+}: CustomerDetailInfoRowProps) {
   const empty =
     value == null ||
     value === '' ||

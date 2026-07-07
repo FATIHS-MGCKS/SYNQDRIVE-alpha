@@ -23,7 +23,7 @@ import {
   customerRiskTone,
   customerStatusTone,
   customerVerificationTone,
-  resolveQuickViewStatusAction,
+  resolveCustomerStatusAction,
 } from './customer-detail-ui';
 import { formatDate } from './customerDetailUtils';
 
@@ -68,7 +68,7 @@ export function CustomerDetailHeader({
   onOpenRiskModal,
   onStatusShortcut,
 }: CustomerDetailHeaderProps) {
-  const statusShortcut = resolveQuickViewStatusAction(displayStatus);
+  const statusShortcut = resolveCustomerStatusAction(displayStatus);
 
   return (
     <div className={cdv.headerCard}>
