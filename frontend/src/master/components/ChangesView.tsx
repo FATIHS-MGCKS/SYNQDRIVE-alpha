@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customers-mobile-card-layout-v49231-2026-07-07',
+    version: '4.9.231',
+    title: 'V4.9.231 — Kunden Mobile Card: strukturiertes Kontakt-Layout',
+    summary: [
+      'Mobile Kundenkarte: Name + Mail/Tel/Adresse (zweizeilig) links; Status, ID/DL-Icons, Risiko- und Mietfreigabe-Pills rechts.',
+      'ID/DL zeigen nur kompaktes Präfix + Icon (Langtext in title/aria-label).',
+      'Buchungen/Umsatz/Letzte Buchung/Fahrbelastung aus der Mobile Card entfernt.',
+      'BLOCKED-Mietfreigabe in der Mobile Card als „Keine Mietfreigabe“.',
+    ],
+    reason:
+      'Die Mobile Card wirkte überladen und ungeordnet; Kontakt und Badges lagen kreuz und quer, KPI-Zeilen unten waren fehl am Platz.',
+    previousBehavior:
+      'Eine Adresszeile, lange ID/DL-Text-Badges, Risiko neben Status, Footer mit Buch./Umsatz/Datum.',
+    details:
+      'frontend: CustomerListMobileCards.tsx Layout-Refactor; customer-list-ui.ts Helpers formatCustomerAddressLines, getVerificationBadgeMeta, rentalClearanceMobileLabel.',
+    affectsArchitecture: false,
+    module: 'Customers',
+    createdAt: '2026-07-07T23:15:00.000Z',
+  },
+  {
     id: 'customers-list-rental-clearance-v49230-2026-07-07',
     version: '4.9.230',
     title: 'V4.9.230 — Kunden & Fahrer: KPI-Glass, stabile Filter, Mietfreigabe-Badge',

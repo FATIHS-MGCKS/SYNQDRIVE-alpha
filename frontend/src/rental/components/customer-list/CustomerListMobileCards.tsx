@@ -1,4 +1,12 @@
-import { ChevronRight } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  ChevronRight,
+  Clock3,
+  FileMinus2,
+  XCircle,
+  type LucideIcon,
+} from 'lucide-react';
 
 import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
@@ -8,22 +16,29 @@ import {
 } from '../../lib/entityMappers';
 import type { CustomerListRow } from '../../lib/customer-list-ui';
 import {
-  customerVerificationBadgeTone,
-  customerVerificationCardBadgeLabelDe,
-  rentalClearanceBadgeTone,
+  customerRiskMobilePillClass,
+  formatCustomerAddressLines,
+  getVerificationBadgeMeta,
+  rentalClearanceMobileLabel,
+  rentalClearanceMobilePillClass,
   rentalClearanceTooltip,
+  type VerificationIconKind,
 } from '../../lib/customer-list-ui';
-import { formatStressScore, stressToneToStatusTone } from '../../lib/scoreFormat';
-import {
-  customerRiskTone,
-  customerStatusTone,
-} from '../customer-detail/customer-detail-ui';
+import { customerStatusTone } from '../customer-detail/customer-detail-ui';
 
 interface CustomerListMobileCardsProps {
   customers: CustomerListRow[];
   onSelect: (customer: CustomerListRow) => void;
   className?: string;
 }
+
+const VERIFICATION_ICONS: Record<VerificationIconKind, LucideIcon> = {
+  verified: CheckCircle2,
+  rejected: XCircle,
+  'not-submitted': FileMinus2,
+  pending: Clock3,
+  expired: AlertCircle,
+};
 
 function avatarTone(status: CustomerListRow['status']): string {
   if (status === 'Active') return 'sq-tone-brand';
@@ -41,7 +56,48 @@ function initials(name: string): string {
     .join('');
 }
 
-function ContactLine({
+function MobilePill({
+  label,
+  className,
+  title,
+}: {
+  label: string;
+  className: string;
+  title?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        'inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-[10px] font-medium leading-tight',
+        className,
+      )}
+      title={title}
+    >
+      <span className="truncate">{label}</span>
+    </span>
+  );
+}
+
+function VerificationIconBadge({ prefix, status }: { prefix: 'ID' | 'DL'; status?: string }) {
+  const meta = getVerificationBadgeMeta(prefix, status);
+  const Icon = VERIFICATION_ICONS[meta.kind];
+
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold leading-none',
+        meta.pillClass,
+      )}
+      title={meta.title}
+      aria-label={meta.ariaLabel}
+    >
+      <span className="text-muted-foreground">{prefix}:</span>
+      <Icon className={cn('size-3 shrink-0', meta.iconClass)} aria-hidden />
+    </span>
+  );
+}
+
+function ContactRow({
   label,
   value,
   href,
@@ -51,26 +107,50 @@ function ContactLine({
   href?: string;
 }) {
   if (!value?.trim()) return null;
-  const text = (
-    <span className="block truncate text-[11px] text-muted-foreground" title={value}>
+
+  const valueNode = href ? (
+    <a
+      href={href}
+      className="min-w-0 truncate text-[12px] leading-snug text-muted-foreground hover:text-foreground"
+      onClick={(e) => e.stopPropagation()}
+      title={value}
+    >
+      {value}
+    </a>
+  ) : (
+    <span className="min-w-0 truncate text-[12px] leading-snug text-muted-foreground" title={value}>
       {value}
     </span>
   );
+
   return (
-    <div className="min-w-0">
-      <span className="sr-only">{label}: </span>
-      {href ? (
-        <a
-          href={href}
-          className="block truncate text-[11px] text-muted-foreground hover:text-foreground"
-          onClick={(e) => e.stopPropagation()}
-          title={value}
-        >
-          {value}
-        </a>
-      ) : (
-        text
-      )}
+    <div className="grid grid-cols-[58px_minmax(0,1fr)] items-start gap-x-2">
+      <span className="pt-px text-[12px] font-semibold leading-snug text-foreground/85">{label}</span>
+      <div className="min-w-0">{valueNode}</div>
+    </div>
+  );
+}
+
+function AddressRows({
+  addressLines,
+  fallbackTitle,
+}: {
+  addressLines: ReturnType<typeof formatCustomerAddressLines>;
+  fallbackTitle?: string;
+}) {
+  if (!addressLines.hasAny) return null;
+
+  return (
+    <div className="grid grid-cols-[58px_minmax(0,1fr)] items-start gap-x-2">
+      <span className="pt-px text-[12px] font-semibold leading-snug text-foreground/85">Adresse:</span>
+      <div className="min-w-0 space-y-0.5" title={fallbackTitle}>
+        {addressLines.street ? (
+          <p className="truncate text-[12px] leading-snug text-muted-foreground">{addressLines.street}</p>
+        ) : null}
+        {addressLines.locality ? (
+          <p className="truncate pl-3 text-[12px] leading-snug text-muted-foreground">{addressLines.locality}</p>
+        ) : null}
+      </div>
     </div>
   );
 }
@@ -81,21 +161,18 @@ export function CustomerListMobileCards({
   className,
 }: CustomerListMobileCardsProps) {
   return (
-    <div className={cn('space-y-2 lg:hidden', className)}>
+    <div className={cn('space-y-2.5 lg:hidden', className)}>
       {customers.map((customer) => {
-        const stress = formatStressScore(customer.drivingStressScore, {
-          hasEnoughData: customer.hasEnoughData ?? true,
-          level: customer.stressLevel ?? undefined,
-        });
-        const clearance = customer.rentalClearance;
-        const clearanceTitle = rentalClearanceTooltip(clearance?.reasons);
+        const addressLines = formatCustomerAddressLines(customer);
+        const clearanceLabel = rentalClearanceMobileLabel(customer.rentalClearance);
+        const clearanceTitle = rentalClearanceTooltip(customer.rentalClearance?.reasons);
 
         return (
           <button
             key={customer.id}
             type="button"
             onClick={() => onSelect(customer)}
-            className="sq-card w-full p-3 text-left transition-colors hover:bg-muted/25"
+            className="sq-card w-full rounded-2xl p-3.5 text-left transition-colors hover:bg-muted/25"
           >
             <div className="flex items-start gap-3">
               <div
@@ -108,93 +185,61 @@ export function CustomerListMobileCards({
                 {initials(customer.name)}
               </div>
 
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start gap-2">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-start justify-between gap-2">
-                      <p
-                        className="min-w-0 flex-1 truncate text-[13px] font-semibold text-foreground"
-                        title={customer.name}
-                      >
-                        {customer.name}
-                      </p>
-                      <div className="flex max-w-[52%] shrink-0 flex-wrap justify-end gap-1">
-                        <StatusChip
-                          tone={customerStatusTone(customer.status)}
-                          className="text-[10px]"
-                        >
-                          {customerStatusUiLabelDe(customer.status)}
-                        </StatusChip>
-                        <StatusChip
-                          tone={customerRiskTone(customer.riskLevel)}
-                          className="text-[10px]"
-                        >
-                          {customerRiskUiLabelDe(customer.riskLevel)}
-                        </StatusChip>
-                      </div>
-                    </div>
+              <div className="flex min-w-0 flex-1 items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="truncate text-[13px] font-semibold leading-tight text-foreground"
+                    title={customer.name}
+                  >
+                    {customer.name}
+                  </p>
 
-                    <div className="mt-1 space-y-0.5">
-                      <ContactLine label="E-Mail" value={customer.email} href={`mailto:${customer.email}`} />
-                      <ContactLine
-                        label="Telefon"
-                        value={customer.phone}
-                        href={customer.phone ? `tel:${customer.phone.replace(/\s/g, '')}` : undefined}
-                      />
-                      {customer.displayAddress ? (
-                        <p
-                          className="line-clamp-2 text-[11px] leading-snug text-muted-foreground"
-                          title={customer.displayAddress}
-                        >
-                          {customer.displayAddress}
-                        </p>
-                      ) : null}
-                    </div>
+                  <div className="mt-3 space-y-1.5">
+                    <ContactRow
+                      label="Mail:"
+                      value={customer.email}
+                      href={customer.email ? `mailto:${customer.email}` : undefined}
+                    />
+                    <ContactRow
+                      label="Tel:"
+                      value={customer.phone}
+                      href={customer.phone ? `tel:${customer.phone.replace(/\s/g, '')}` : undefined}
+                    />
+                    <AddressRows
+                      addressLines={addressLines}
+                      fallbackTitle={customer.displayAddress}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  <div className="flex max-w-[148px] flex-wrap items-center justify-end gap-1">
+                    <StatusChip tone={customerStatusTone(customer.status)} className="text-[10px]">
+                      {customerStatusUiLabelDe(customer.status)}
+                    </StatusChip>
+                    <VerificationIconBadge prefix="ID" status={customer.idVerificationStatus} />
+                    <VerificationIconBadge prefix="DL" status={customer.licenseVerificationStatus} />
                   </div>
 
-                  <ChevronRight
-                    className="mt-0.5 size-4 shrink-0 text-muted-foreground/60"
-                    aria-hidden
+                  <MobilePill
+                    label={customerRiskUiLabelDe(customer.riskLevel)}
+                    className={customerRiskMobilePillClass(customer.riskLevel)}
                   />
-                </div>
 
-                <div className="mt-2 flex flex-wrap gap-1">
-                  <StatusChip
-                    tone={customerVerificationBadgeTone(customer.idVerificationStatus)}
-                    className="text-[10px]"
-                    title={customerVerificationCardBadgeLabelDe('ID', customer.idVerificationStatus)}
-                  >
-                    {customerVerificationCardBadgeLabelDe('ID', customer.idVerificationStatus)}
-                  </StatusChip>
-                  <StatusChip
-                    tone={customerVerificationBadgeTone(customer.licenseVerificationStatus)}
-                    className="text-[10px]"
-                    title={customerVerificationCardBadgeLabelDe('DL', customer.licenseVerificationStatus)}
-                  >
-                    {customerVerificationCardBadgeLabelDe('DL', customer.licenseVerificationStatus)}
-                  </StatusChip>
-                  {clearance ? (
-                    <StatusChip
-                      tone={rentalClearanceBadgeTone(clearance.status)}
-                      className="text-[10px]"
+                  {clearanceLabel ? (
+                    <MobilePill
+                      label={clearanceLabel}
+                      className={rentalClearanceMobilePillClass(customer.rentalClearance?.status)}
                       title={clearanceTitle}
-                    >
-                      {clearance.label}
-                    </StatusChip>
+                    />
                   ) : null}
-                  {!stress.isMissing ? (
-                    <StatusChip tone={stressToneToStatusTone(stress.tone)} className="text-[10px]">
-                      {stress.label}
-                    </StatusChip>
-                  ) : null}
-                </div>
-
-                <div className="mt-2 grid grid-cols-3 gap-1 text-[10px] tabular-nums text-muted-foreground">
-                  <span>{customer.totalBookings} Buch.</span>
-                  <span className="truncate">{customer.totalRevenue}</span>
-                  <span className="truncate text-right">{customer.lastTrip}</span>
                 </div>
               </div>
+
+              <ChevronRight
+                className="mt-0.5 size-4 shrink-0 text-muted-foreground/60"
+                aria-hidden
+              />
             </div>
           </button>
         );

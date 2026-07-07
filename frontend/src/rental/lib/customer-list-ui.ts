@@ -151,6 +151,155 @@ export function rentalClearanceTooltip(reasons: string[] | undefined): string | 
   return reasons.slice(0, 4).join(' · ');
 }
 
+export interface CustomerAddressLines {
+  street?: string;
+  locality?: string;
+  hasAny: boolean;
+}
+
+/** Two-line address for mobile cards — street + indented locality (PLZ Stadt, Land). */
+export function formatCustomerAddressLines(input: {
+  address?: string | null;
+  postalCode?: string | null;
+  zip?: string | null;
+  city?: string | null;
+  country?: string | null;
+}): CustomerAddressLines {
+  const street = input.address?.trim() || undefined;
+  const postal = (input.postalCode ?? input.zip)?.trim();
+  const city = input.city?.trim();
+  const country = input.country?.trim();
+  const cityLine = [postal, city].filter(Boolean).join(' ').trim();
+  const locality = [cityLine, country].filter(Boolean).join(', ') || undefined;
+  return {
+    street,
+    locality,
+    hasAny: Boolean(street || locality),
+  };
+}
+
+export type VerificationIconKind =
+  | 'verified'
+  | 'rejected'
+  | 'not-submitted'
+  | 'pending'
+  | 'expired';
+
+export interface VerificationBadgeMeta {
+  kind: VerificationIconKind;
+  ariaLabel: string;
+  title: string;
+  pillClass: string;
+  iconClass: string;
+}
+
+/** Compact ID/DL badge metadata — visible label is prefix + icon only. */
+export function getVerificationBadgeMeta(
+  prefix: 'ID' | 'DL',
+  ui: CustomerUiVerification | string | undefined,
+): VerificationBadgeMeta {
+  const title = customerVerificationCardBadgeLabelDe(prefix, ui);
+  const ariaLabel = title;
+
+  switch (ui) {
+    case 'Verified':
+      return {
+        kind: 'verified',
+        ariaLabel,
+        title,
+        pillClass:
+          'border-[color:color-mix(in_srgb,var(--status-positive)_28%,transparent)] bg-[color:color-mix(in_srgb,var(--status-positive)_10%,transparent)]',
+        iconClass: 'text-[color:var(--status-positive)]',
+      };
+    case 'Rejected':
+      return {
+        kind: 'rejected',
+        ariaLabel,
+        title,
+        pillClass:
+          'border-[color:color-mix(in_srgb,var(--status-critical)_28%,transparent)] bg-[color:color-mix(in_srgb,var(--status-critical)_10%,transparent)]',
+        iconClass: 'text-[color:var(--status-critical)]',
+      };
+    case 'Expired':
+      return {
+        kind: 'expired',
+        ariaLabel,
+        title,
+        pillClass:
+          'border-[color:color-mix(in_srgb,var(--status-critical)_28%,transparent)] bg-[color:color-mix(in_srgb,var(--status-critical)_10%,transparent)]',
+        iconClass: 'text-[color:var(--status-critical)]',
+      };
+    case 'Pending Review':
+      return {
+        kind: 'pending',
+        ariaLabel,
+        title,
+        pillClass:
+          'border-[color:color-mix(in_srgb,var(--status-warning)_30%,transparent)] bg-[color:color-mix(in_srgb,var(--status-warning)_10%,transparent)]',
+        iconClass: 'text-[color:var(--status-warning)]',
+      };
+    default:
+      return {
+        kind: 'not-submitted',
+        ariaLabel,
+        title,
+        pillClass: 'border-border/50 bg-muted/40',
+        iconClass: 'text-muted-foreground',
+      };
+  }
+}
+
+/** Mobile list label — BLOCKED reads as „Keine Mietfreigabe“. */
+export function rentalClearanceMobileLabel(
+  clearance: RentalClearanceUi | null | undefined,
+): string | null {
+  if (!clearance) return null;
+  switch (clearance.status) {
+    case 'CLEARED':
+      return 'Mietfreigabe';
+    case 'REVIEW_REQUIRED':
+      return 'Prüfung nötig';
+    case 'PENDING':
+      return 'Eingeschränkt';
+    case 'BLOCKED':
+      return 'Keine Mietfreigabe';
+    default:
+      return clearance.label || null;
+  }
+}
+
+export function rentalClearanceMobilePillClass(
+  status: RentalClearanceStatus | undefined,
+): string {
+  switch (status) {
+    case 'CLEARED':
+      return 'border-[color:color-mix(in_srgb,var(--status-positive)_28%,transparent)] bg-[color:color-mix(in_srgb,var(--status-positive)_10%,transparent)] text-[color:var(--status-positive)]';
+    case 'REVIEW_REQUIRED':
+      return 'border-[color:color-mix(in_srgb,var(--status-info)_28%,transparent)] bg-[color:color-mix(in_srgb,var(--status-info)_10%,transparent)] text-[color:var(--status-info)]';
+    case 'PENDING':
+      return 'border-[color:color-mix(in_srgb,var(--status-warning)_30%,transparent)] bg-[color:color-mix(in_srgb,var(--status-warning)_10%,transparent)] text-[color:var(--status-warning)]';
+    case 'BLOCKED':
+      return 'border-[color:color-mix(in_srgb,var(--status-critical)_28%,transparent)] bg-[color:color-mix(in_srgb,var(--status-critical)_10%,transparent)] text-[color:var(--status-critical)]';
+    default:
+      return 'border-border/50 bg-muted/40 text-muted-foreground';
+  }
+}
+
+export function customerRiskMobilePillClass(
+  risk: CustomerListRow['riskLevel'],
+): string {
+  switch (risk) {
+    case 'Low Risk':
+      return 'border-[color:color-mix(in_srgb,var(--status-positive)_25%,transparent)] bg-[color:color-mix(in_srgb,var(--status-positive)_8%,transparent)] text-[color:var(--status-positive)]';
+    case 'Medium Risk':
+      return 'border-[color:color-mix(in_srgb,var(--status-warning)_30%,transparent)] bg-[color:color-mix(in_srgb,var(--status-warning)_10%,transparent)] text-[color:var(--status-warning)]';
+    case 'High Risk':
+      return 'border-[color:color-mix(in_srgb,var(--status-critical)_28%,transparent)] bg-[color:color-mix(in_srgb,var(--status-critical)_10%,transparent)] text-[color:var(--status-critical)]';
+    default:
+      return 'border-border/55 bg-muted/45 text-muted-foreground';
+  }
+}
+
 function mapRentalClearance(
   raw: CustomerApiRecord['rentalClearance'],
 ): RentalClearanceUi | null | undefined {
