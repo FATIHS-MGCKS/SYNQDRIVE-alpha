@@ -1,32 +1,20 @@
 ﻿import { useState, useMemo, useEffect, useRef } from 'react';
-import { Calendar, Car, CheckCircle, CreditCard, Euro, Eye, FileText, IdCard, ShieldCheck, Star, Upload, User } from 'lucide-react';
-import { Icon } from './ui/Icon';
 import { toast } from 'sonner';
 
 import { VehicleData } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
-import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
-import { CustomerDetailModal } from './CustomerDetailModal';
-import { AddCustomerDocumentsStep } from './add-customer/AddCustomerDocumentsStep';
-import { CustomerVerificationPanel } from './customer-verification/CustomerVerificationPanel';
-import { useCustomerVerification } from './customer-verification/useCustomerVerification';
 import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
-import { formatStressScore, resolveDrivingStressScore, stressToneToStatusTone } from '../lib/scoreFormat';
+import { resolveDrivingStressScore } from '../lib/scoreFormat';
 import { usePriceTariffs } from '../hooks/usePriceTariffs';
 import { usePricingSimulation } from '../hooks/usePricingSimulation';
 import {
   discountableNetCents,
   eurosFromCents,
   formatNetAsGross,
-  formatOptionGrossLabel,
-  formatPriceCents,
   getVehicleTariffFromCatalog,
   grossFromNetCents,
 } from '../pricing/pricingUtils';
-// V4.6.67 — share the same BrandLogo component used across Fleet / Booking surfaces.
-import { BrandLogoMark, getBrandFromModel } from './BrandLogo';
-import { useDocumentDark } from '../hooks/useDocumentDark';
 import {
   buildCustomerCreatePayload,
   buildBookingCreatePayload,
@@ -43,29 +31,34 @@ import {
   validateAddCustomerDocumentsStep,
   addCustomerFormToPayload,
 } from '../lib/add-customer-wizard';
-import { documentEligibilityLabelDe } from '../lib/customer-verification';
-// V4.6.76 Rental Health V1 — pre-flight the rental_blocked gate in the
-// vehicle picker so dispatchers see "Nicht vermietbar" BEFORE they click,
-// instead of first getting a 409 from the booking create endpoint.
 import { useFleetHealthMap } from '../hooks/useVehicleHealth';
-import { BookingRentalEligibilityCard } from './bookings/BookingRentalEligibilityCard';
-import { BookingWizardStepper } from './bookings/BookingWizardStepper';
 import type { BookingRentalEligibilityResult } from '../lib/booking-rental-eligibility.types';
-import {
-  PageHeader,
-  DataCard,
-  SectionHeader,
-  StatusChip,
-  EmptyState,
-  SkeletonCard,
-} from '../../components/patterns';
-import { cn } from '../../components/ui/utils';
-import { StationSelectFields } from './stations/StationSelectFields';
+import { PageHeader } from '../../components/patterns';
 import {
   resolveDefaultPickupStationId,
   stationLabel,
 } from '../lib/stationBookingUtils';
 import type { Station } from '../../lib/api';
+import { buildMMY } from '../lib/vehicleMmy';
+import { BookingVehiclePreflightBanner } from '../lib/booking-vehicle-preflight-banner';
+import {
+  isBookingVehicleHardBlocked,
+  vehicleStationId,
+} from '../lib/booking-vehicle-preflight';
+import { VehiclePickerStep } from './new-booking/VehiclePickerStep';
+import { BookingStepper } from './new-booking/BookingStepper';
+import { BookingStepCard } from './new-booking/BookingStepCard';
+import { BookingSuccessState } from './new-booking/BookingSuccessState';
+import { BookingSidebar } from './new-booking/BookingSidebar';
+import { MobileBookingFooter } from './new-booking/MobileBookingFooter';
+import { PeriodStep } from './new-booking/PeriodStep';
+import { ExtrasStep } from './new-booking/ExtrasStep';
+import { CustomerStep } from './new-booking/CustomerStep';
+import { CheckoutStep } from './new-booking/CheckoutStep';
+import type { BookingCustomer, BookingCustomerEligibility, BookingWizardStepId } from './new-booking/types';
+import { Icon } from './ui/Icon';
+import { useCustomerVerification } from './customer-verification/useCustomerVerification';
+import { useDocumentDark } from '../hooks/useDocumentDark';
 
 const EM_DASH = '\u2014';
 
@@ -77,26 +70,6 @@ interface NewBookingViewProps {
   initialCustomerId?: string | null;
 }
 
-// Customer data reused from CustomersView
-interface Customer {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  company?: string;
-  type: 'Individual' | 'Corporate';
-  status: 'Active' | 'Under Review' | 'Suspended' | 'Blocked' | 'Archived' | 'Inactive';
-  // V4.6.95 — neutral 'Not Assessed' default replaces fake "Low Risk".
-  riskLevel: 'Not Assessed' | 'Low Risk' | 'Medium Risk' | 'High Risk';
-  drivingStressScore: number | null;
-  stressLevel?: 'low' | 'moderate' | 'high' | 'critical' | null;
-  totalBookings: number;
-  totalRevenue: string;
-  city: string;
-  licenseVerified: boolean;
-  idVerified: boolean;
-}
-
 const formatEuro = (value?: number | null): string => {
   const n = typeof value === 'number' && Number.isFinite(value) ? value : 0;
   try {
@@ -106,7 +79,7 @@ const formatEuro = (value?: number | null): string => {
   }
 };
 
-const mapApiCustomerToBookingCustomer = (c: any): Customer => {
+const mapApiCustomerToBookingCustomer = (c: any): BookingCustomer => {
   const name = [c?.firstName, c?.lastName].filter(Boolean).join(' ').trim() || c?.email || 'Kunde';
   return {
     id: String(c?.id ?? ''),
@@ -127,17 +100,6 @@ const mapApiCustomerToBookingCustomer = (c: any): Customer => {
   };
 };
 
-// V4.6.67 — Removed mock `vehicleImages` map and `getVehicleImage` helper.
-// The vehicle picker uses the shared BrandLogo component (Cardog Icons).
-
-import { buildMMY } from '../lib/vehicleMmy';
-import { BookingVehiclePreflightBanner } from '../lib/booking-vehicle-preflight-banner';
-import {
-  isBookingVehicleHardBlocked,
-  vehicleStationId,
-} from '../lib/booking-vehicle-preflight';
-import { VehiclePickerStep } from './new-booking/VehiclePickerStep';
-
 // V4.6.67 — Reordered steps so that the booking flow is logically gated:
 //   Fahrzeug → Zeitraum → Extras → Kunde → Abschluss
 // Extras (mileage / insurance / accessories) need rentalDays + the vehicle
@@ -157,7 +119,7 @@ export function NewBookingView({
   const { orgId } = useRentalOrg();
   const { catalog, loading: catalogLoading } = usePriceTariffs(orgId);
   const taxRatePercent = catalog?.priceBook?.taxRatePercent ?? 19;
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<BookingCustomer[]>([]);
   const [customersLoading, setCustomersLoading] = useState(false);
   const [customersError, setCustomersError] = useState<string | null>(null);
   const [isSavingBooking, setIsSavingBooking] = useState(false);
@@ -168,16 +130,9 @@ export function NewBookingView({
   // dictionary that only worked for the legacy v1..v6 demo IDs.
   const [orgBookings, setOrgBookings] = useState<any[]>([]);
   const [customerSearch, setCustomerSearch] = useState('');
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<BookingCustomer | null>(null);
 
-  const [customerEligibility, setCustomerEligibility] = useState<{
-    canCreatePendingBooking: boolean;
-    canConfirmBooking: boolean;
-    canStartRental: boolean;
-    blockingReasons: string[];
-    warnings: string[];
-    requiredActions: string[];
-  } | null>(null);
+  const [customerEligibility, setCustomerEligibility] = useState<BookingCustomerEligibility | null>(null);
 
   const [rentalEligibility, setRentalEligibility] = useState<BookingRentalEligibilityResult | null>(null);
   const [rentalEligibilityLoading, setRentalEligibilityLoading] = useState(false);
@@ -241,7 +196,7 @@ export function NewBookingView({
     return formatNetAsGross(ctx.version.rate.dailyRateCents, taxRatePercent);
   };
 
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState<BookingWizardStepId>(1);
 
   useEffect(() => {
     if (!orgId || !initialCustomerId || selectedCustomer?.id === initialCustomerId) return;
@@ -320,7 +275,7 @@ export function NewBookingView({
 
   // Customer Detail Modal state
   const [customerDetailOpen, setCustomerDetailOpen] = useState(false);
-  const [customerDetailTarget, setCustomerDetailTarget] = useState<Customer | null>(null);
+  const [customerDetailTarget, setCustomerDetailTarget] = useState<BookingCustomer | null>(null);
 
   // Add Customer Modal state
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
@@ -449,11 +404,11 @@ export function NewBookingView({
   // detail record (`api.customers.get`) and renders em-dashes for missing
   // values, so we never fabricate trip/license dates or derive fake
   // accident/violation counts from a score.
-  const mapToDetailCustomer = (c: Customer) => ({
+  const mapToDetailCustomer = (c: BookingCustomer) => ({
     ...c,
-    lastTrip: (c as Customer & { lastTrip?: string }).lastTrip ?? EM_DASH,
-    joinDate: (c as Customer & { joinDate?: string }).joinDate ?? EM_DASH,
-    licenseExpiry: (c as Customer & { licenseExpiry?: string }).licenseExpiry ?? EM_DASH,
+    lastTrip: (c as BookingCustomer & { lastTrip?: string }).lastTrip ?? EM_DASH,
+    joinDate: (c as BookingCustomer & { joinDate?: string }).joinDate ?? EM_DASH,
+    licenseExpiry: (c as BookingCustomer & { licenseExpiry?: string }).licenseExpiry ?? EM_DASH,
     accidents: 0,
     violations: 0,
     notes: '',
@@ -1082,20 +1037,6 @@ export function NewBookingView({
     }
   };
 
-  const card = (children: React.ReactNode, className?: string) => (
-    <DataCard className={cn('w-full max-w-full min-w-0', className)} bodyClassName="p-0" flush>
-      {children}
-    </DataCard>
-  );
-
-  // Get extras, insurances, mileage packages from active tariff version (see vehicleTariffCtx above)
-
-  const formatEuroAmount = (value: number | null | undefined) =>
-    value != null && Number.isFinite(value) ? `€ ${value.toFixed(2)}` : '—';
-
-  const amountLabel = (value: number | null | undefined) =>
-    value != null && Number.isFinite(value) ? value.toFixed(2) : '—';
-
   const handleSelectVehicle = (v: VehicleData) => {
     const health = pickerHealthMap.get(v.id) ?? null;
     if (isBookingVehicleHardBlocked(v, health)) return;
@@ -1114,6 +1055,62 @@ export function NewBookingView({
     setVehicleBrandFilter('all');
     setVehicleStationFilter('all');
     setVehicleFuelFilter('all');
+  };
+
+  const handleResetBooking = () => {
+    setRedirectCountdown(null);
+    setBookingConfirmed(false);
+    setCurrentStep(1);
+    setSelectedCustomer(null);
+    setSelectedVehicle(null);
+    setAgbAccepted(false);
+    setPrivacyAccepted(false);
+    setExtras([]);
+    setSelectedMileagePackage(null);
+    setSelectedInsurances([]);
+    setDiscountPercent(0);
+    setInvoiceGenerated(false);
+    setContractGenerated(false);
+    setGeneratingInvoice(false);
+    setGeneratingContract(false);
+    setQuickViewDoc(null);
+  };
+
+  const summaryPanelProps = {
+    selectedVehicle,
+    selectedCustomer,
+    pickupDate,
+    returnDate,
+    pickupTime,
+    returnTime,
+    rentalDays,
+    displayRentalDays,
+    pickupStationId,
+    returnStationId,
+    sameReturnStation,
+    orgStations,
+    selectedMileagePackage,
+    selectedInsurances,
+    extras,
+    mileagePackages,
+    insuranceOptions,
+    extraOptions,
+    noTariffForVehicle,
+    canCalculatePrice,
+    priceLoading,
+    priceError,
+    priceSim,
+    totalFreeKm,
+    extraKmPrice,
+    mileagePkgKm,
+    freeKmPerDay,
+    baseFreeKm,
+    subtotalNet,
+    tax,
+    taxRatePercent,
+    grandTotal,
+    depositAmount,
+    isDarkMode,
   };
 
   return (
@@ -1147,7 +1144,7 @@ export function NewBookingView({
         }
       />
 
-      <BookingWizardStepper
+      <BookingStepper
         currentStep={currentStep}
         onStepSelect={(stepId) => setCurrentStep(stepId)}
       />
@@ -1164,1876 +1161,238 @@ export function NewBookingView({
 
       {/* Step Content */}
       {bookingConfirmed ? (
-        // Success State
-        <div className="flex items-center justify-center py-16">
-          {card(
-            <div className="p-12 text-center max-w-lg">
-              <div className="w-20 h-20 rounded-full mx-auto mb-3 flex items-center justify-center sq-tone-success">
-                <Icon name="check-circle" className="w-5 h-5 text-[color:var(--status-positive)]" />
-              </div>
-              <h2 className="text-lg mb-2 text-foreground">Buchung erstellt!</h2>
-              <p className="text-xs mb-2 text-muted-foreground">
-                Buchung #{`BK-${Date.now().toString().slice(-6)}`} wurde erfolgreich angelegt.
-              </p>
-              {redirectCountdown !== null && redirectCountdown > 0 && (
-                <p className="text-xs mb-3 text-muted-foreground">
-                  Weiterleitung zur Übersicht in {redirectCountdown}s…
-                </p>
-              )}
-              <div className="rounded-lg p-4 mb-3 text-left space-y-2 bg-muted/50">
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Customer</span>
-                  <span className="text-foreground">{selectedCustomer?.name}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Vehicle</span>
-                  <span className="text-foreground">{selectedVehicle ? buildMMY(selectedVehicle) : '—'}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-muted-foreground">Period</span>
-                  <span className="text-foreground">{rentalDays} Days</span>
-                </div>
-                <div className="flex justify-between text-xs pt-2 border-t border-border">
-                  <span className="text-muted-foreground">Total Amount</span>
-                  <span className="text-[color:var(--status-positive)]">{formatEuroAmount(grandTotal)}</span>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <button
-                  onClick={onBack}
-                  className="flex-1 px-3 py-2 rounded-lg border text-xs transition-all bg-card border border-border text-foreground hover:bg-muted"
-                >
-                  Zur Übersicht
-                </button>
-                <button
-                  onClick={() => {
-                    setRedirectCountdown(null);
-                    setBookingConfirmed(false);
-                    setCurrentStep(1);
-                    setSelectedCustomer(null);
-                    setSelectedVehicle(null);
-                    setAgbAccepted(false);
-                    setPrivacyAccepted(false);
-                    setExtras([]);
-                    setSelectedMileagePackage(null);
-                    setSelectedInsurances([]);
-                    setDiscountPercent(0);
-                    setInvoiceGenerated(false);
-                    setContractGenerated(false);
-                    setGeneratingInvoice(false);
-                    setGeneratingContract(false);
-                    setQuickViewDoc(null);
-                  }}
-                  className="sq-3d-btn sq-3d-btn--primary flex-1 px-3 py-2 text-xs"
-                >
-                  Neue Buchung
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
+        <BookingSuccessState
+          selectedCustomer={selectedCustomer}
+          selectedVehicle={selectedVehicle}
+          rentalDays={rentalDays}
+          grandTotal={grandTotal}
+          redirectCountdown={redirectCountdown}
+          onBack={onBack}
+          onNewBooking={handleResetBooking}
+        />
       ) : (
         <div className="grid w-full min-w-0 max-w-full grid-cols-1 gap-3 lg:grid-cols-3">
           {/* Main Content - 2 cols on desktop */}
           <div className="min-w-0 space-y-5 lg:col-span-2">
-            {/* STEP 4: Customer Selection */}
             {currentStep === 4 && (
-              <>
-                {card(
-                  <div className="p-4 flex flex-col min-h-[calc(100vh-340px)]">
-                    <SectionHeader title="Kunde auswählen" className="mb-3" />
-                    {/* Search */}
-                    <div className="relative mb-3">
-                      <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                      <input
-                        type="text"
-                        placeholder="Name, E-Mail oder Telefonnummer suchen..."
-                        value={customerSearch}
-                        onChange={(e) => setCustomerSearch(e.target.value)}
-                        className={`w-full pl-10 pr-4 py-3 rounded-lg border text-xs outline-none transition-all ${ 'bg-card border border-border text-foreground placeholder:text-muted-foreground focus:border-[color:var(--brand)]' }`}
-                      />
-                    </div>
-
-                    {/* Suggested / Search Results */}
-                    <div className="space-y-2 flex-1 overflow-y-auto pr-1">
-                      {customersLoading && (
-                        <SkeletonCard className="border-0 shadow-none" />
-                      )}
-                      {!customersLoading && customersError && (
-                        <div className="text-xs p-3 rounded-lg sq-tone-critical border border-border">
-                          {customersError}
-                        </div>
-                      )}
-                      {!customersLoading && !customersError && filteredCustomers.length === 0 && (
-                        <EmptyState
-                          compact
-                          icon={<Icon name="users" className="w-5 h-5" />}
-                          title="Keine Kunden gefunden"
-                          description="Lege einen neuen Kunden an."
-                        />
-                      )}
-                      {filteredCustomers.map((c) => (
-                        <button
-                          key={c.id}
-                          onClick={() => setSelectedCustomer(c)}
-                          className={`w-full min-w-0 max-w-full text-left p-4 rounded-lg border transition-all duration-200 flex items-start gap-3 group/card sm:items-center ${ selectedCustomer?.id === c.id ? 'sq-tone-brand border border-border ring-1 ring-[color:var(--brand-glow)]' : 'bg-muted/40 border border-border hover:bg-card hover:border-border' }`}
-                        >
-                          <div className={`w-11 h-11 rounded-full flex items-center justify-center text-xs shrink-0 ${ selectedCustomer?.id === c.id ? 'sq-tone-brand' : 'sq-chip-neutral' }`}>
-                            {c.name.split(' ').map(n => n[0]).join('')}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex min-w-0 items-center gap-2">
-                              <span className="truncate text-xs text-foreground">{c.name}</span>
-                              {c.company && (
-                                <StatusChip tone="ai" className="hidden shrink-0 text-[10px] sm:inline-flex">{c.company}</StatusChip>
-                              )}
-                              {c.licenseVerified && <Icon name="shield" className="w-3.5 h-3.5 shrink-0 text-green-500" />}
-                            </div>
-                            <div className="mt-1 flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
-                              <span className="flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground"><Icon name="mail" className="w-3 h-3 shrink-0" />{c.email}</span>
-                              <span className="flex min-w-0 items-center gap-1 truncate text-xs text-muted-foreground"><Icon name="map-pin" className="w-3 h-3 shrink-0" />{c.city}</span>
-                            </div>
-                          </div>
-                          <div className="hidden shrink-0 text-right sm:block">
-                            <div className="text-xs text-muted-foreground">{c.totalBookings} Buchungen</div>
-                            <div className="flex items-center gap-1 mt-1 justify-end">
-                              {(() => {
-                                const display = formatStressScore(c.drivingStressScore, {
-                                  level: c.stressLevel ?? undefined,
-                                });
-                                if (display.isMissing) {
-                                  return (
-                                    <span className="text-xs text-muted-foreground">{display.compact}</span>
-                                  );
-                                }
-                                return (
-                                  <StatusChip tone={stressToneToStatusTone(display.tone)} className="text-[9px]">
-                                    {display.label}
-                                  </StatusChip>
-                                );
-                              })()}
-                            </div>
-                          </div>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); setCustomerDetailTarget(c); setCustomerDetailOpen(true); }}
-                            className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 transition-all opacity-0 group-hover/card:opacity-100 ${ 'hover:bg-muted text-muted-foreground hover:text-foreground' }`}
-                            title="Kundendetails anzeigen"
-                          >
-                            <Icon name="eye" className="w-5 h-5" />
-                          </button>
-                          {selectedCustomer?.id === c.id && (
-                            <Icon name="check" className="w-5 h-5 text-status-info shrink-0" />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-
-                    {selectedCustomer && customerEligibility && (
-                      <div className={`mt-3 p-3 rounded-lg border text-xs space-y-2 ${
-                        customerEligibility.blockingReasons.length > 0
-                          ? 'sq-tone-critical border-border'
-                          : customerEligibility.warnings.length > 0
-                            ? 'sq-tone-warning border-border'
-                            : 'sq-tone-success border-border'
-                      }`}>
-                        <div className="font-semibold text-foreground">
-                          Mietfreigabe:{' '}
-                          {customerEligibility.blockingReasons.length > 0
-                            ? 'Blockiert'
-                            : customerEligibility.warnings.length > 0
-                              ? 'Warnung'
-                              : 'Freigegeben'}
-                        </div>
-                        {customerEligibility.blockingReasons.map((r) => (
-                          <div key={r} className="text-muted-foreground">• {r}</div>
-                        ))}
-                        {customerEligibility.warnings.map((w) => (
-                          <div key={w} className="text-muted-foreground">⚠ {w}</div>
-                        ))}
-                        {customerEligibility.requiredActions.map((a) => (
-                          <div key={a} className="text-muted-foreground">→ {a}</div>
-                        ))}
-                      </div>
-                    )}
-
-                    {selectedCustomer && (
-                      <CustomerVerificationPanel
-                        customerId={selectedCustomer.id}
-                        orgId={orgId}
-                        compact
-                      />
-                    )}
-
-                    {/* Add New Customer */}
-                    <button
-                      onClick={() => { setIsAddCustomerOpen(true); resetAddCustomerForm(); }}
-                      className={`w-full mt-4 p-3 rounded-lg border-2 border-dashed text-xs flex items-center justify-center gap-2 transition-all ${ 'border-border text-muted-foreground hover:border-[color:var(--brand)] hover:text-[color:var(--brand)]' }`}>
-                      <Icon name="plus" className="w-5 h-5" />
-                      Neuen Kunden anlegen
-                    </button>
-
-                    {/* Customer Detail Modal */}
-                    {customerDetailOpen && customerDetailTarget && (
-                      <CustomerDetailModal
-                        customer={mapToDetailCustomer(customerDetailTarget)}
-                        onClose={() => { setCustomerDetailOpen(false); setCustomerDetailTarget(null); }}
-                      />
-                    )}
-
-                    {/* Add Customer Modal */}
-                    {isAddCustomerOpen && (() => {
-                      const addSteps = [
-                        { label: 'Persönliche Daten', icon: User },
-                        { label: 'ID & Führerschein', icon: IdCard },
-                        { label: 'Dokumente', icon: Upload },
-                        { label: 'Zusammenfassung', icon: CheckCircle },
-                      ];
-                      const inputClass = `w-full px-3 py-2.5 rounded-lg border text-xs outline-none transition-all ${
-                        'bg-card border border-border text-foreground placeholder:text-muted-foreground focus:border-[color:var(--brand)] focus:ring-1 focus:ring-[color:var(--brand-glow)]'
-                      }`;
-                      const labelClass = 'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';
-                      const sectionTitle = (icon: any, title: string) => {
-                        const Icon = icon;
-                        return (
-                          <div className="flex items-center gap-2.5 mb-3">
-                            <div className="w-5 h-5 rounded-lg flex items-center justify-center sq-tone-info">
-                              <Icon className="w-5 h-5 text-status-info" />
-                            </div>
-                            <h3 className="text-base text-foreground">{title}</h3>
-                          </div>
-                        );
-                      };
-
-                      const SummaryRow = ({ label, value }: { label: string; value: string }) => (
-                        <div className="flex items-center justify-between py-2">
-                          <span className="text-xs text-muted-foreground">{label}</span>
-                          <span className="text-xs font-medium text-foreground">{value || '—'}</span>
-                        </div>
-                      );
-
-                      return (
-                        <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={() => { setIsAddCustomerOpen(false); resetAddCustomerForm(); }}>
-                          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-                          <div onClick={(e) => e.stopPropagation()}
-                            className={`relative w-full max-w-[680px] max-h-[85vh] flex flex-col rounded-lg border shadow-2xl ${ 'bg-card/90 border border-border' }`}>
-                            {/* Header */}
-                            <div className="flex items-center justify-between px-7 py-3 border-b shrink-0 border-border">
-                              <div>
-                                <h2 className="text-lg text-foreground">Neuen Kunden anlegen</h2>
-                                <p className="text-xs mt-0.5 text-muted-foreground">Alle Pflichtfelder ausfüllen & Dokumente hochladen</p>
-                              </div>
-                              <button onClick={() => { setIsAddCustomerOpen(false); resetAddCustomerForm(); }}
-                                className={`w-5 h-5 rounded-lg flex items-center justify-center transition-colors ${ 'hover:bg-muted text-muted-foreground' }`}>
-                                <Icon name="x" className="w-5 h-5" />
-                              </button>
-                            </div>
-
-                            {/* Step Indicator */}
-                            <div className="flex items-center gap-1 px-7 py-3 border-b shrink-0 border-border">
-                              {addSteps.map((s, i) => {
-                                const StepIcon = s.icon;
-                                const isActive = i === addStep;
-                                const isDone = i < addStep;
-                                return (
-                                  <div key={i} className="flex items-center flex-1">
-                                    <button onClick={() => { if (isDone) setAddStep(i); }}
-                                      className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${ isActive ? 'sq-chip-info' : isDone ? 'text-[color:var(--status-positive)] cursor-pointer hover:bg-[color:var(--status-positive-soft)]' : 'text-muted-foreground' }`}>
-                                      {isDone ? <Icon name="check-circle" className="w-3.5 h-3.5" /> : <StepIcon className="w-3.5 h-3.5" />}
-                                      <span className="hidden sm:inline">{s.label}</span>
-                                    </button>
-                                    {i < addSteps.length - 1 && (
-                                      <div className={`flex-1 h-px mx-2 ${isDone ? 'bg-emerald-400/40' : 'bg-muted'}`} />
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-
-                            {/* Content */}
-                            <div className="flex-1 overflow-y-auto px-7 py-3">
-                              {addStep === 0 && (
-                                <div className="space-y-4">
-                                  {sectionTitle(User, 'Persönliche Daten')}
-                                  <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                      <label className={labelClass}>Vorname *</label>
-                                      <input type="text" placeholder="Max" value={newCustomer.firstName}
-                                        onChange={(e) => setNewCustomer({ ...newCustomer, firstName: e.target.value })} className={inputClass} />
-                                      {formErrors.firstName && <p className="text-[11px] text-red-500 mt-1">{formErrors.firstName}</p>}
-                                    </div>
-                                    <div>
-                                      <label className={labelClass}>Nachname *</label>
-                                      <input type="text" placeholder="Mustermann" value={newCustomer.lastName}
-                                        onChange={(e) => setNewCustomer({ ...newCustomer, lastName: e.target.value })} className={inputClass} />
-                                      {formErrors.lastName && <p className="text-[11px] text-red-500 mt-1">{formErrors.lastName}</p>}
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                      <label className={labelClass}>E-Mail *</label>
-                                      <div className="relative">
-                                        <Icon name="mail" className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                                        <input type="email" placeholder="max@beispiel.de" value={newCustomer.email}
-                                          onChange={(e) => setNewCustomer({ ...newCustomer, email: e.target.value })} className={`${inputClass} pl-9`} />
-                                      </div>
-                                      {formErrors.email && <p className="text-[11px] text-red-500 mt-1">{formErrors.email}</p>}
-                                    </div>
-                                    <div>
-                                      <label className={labelClass}>Telefon *</label>
-                                      <div className="relative">
-                                        <Icon name="phone" className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                                        <input type="text" placeholder="+49 176 1234 5678" value={newCustomer.phone}
-                                          onChange={(e) => setNewCustomer({ ...newCustomer, phone: e.target.value })} className={`${inputClass} pl-9`} />
-                                      </div>
-                                      {formErrors.phone && <p className="text-[11px] text-red-500 mt-1">{formErrors.phone}</p>}
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-3 gap-3">
-                                    <div>
-                                      <label className={labelClass}>Straße</label>
-                                      <input type="text" placeholder="Musterstraße 1" value={newCustomer.street}
-                                        onChange={(e) => setNewCustomer({ ...newCustomer, street: e.target.value })} className={inputClass} />
-                                    </div>
-                                    <div>
-                                      <label className={labelClass}>PLZ</label>
-                                      <input type="text" placeholder="34117" value={newCustomer.zip}
-                                        onChange={(e) => setNewCustomer({ ...newCustomer, zip: e.target.value })} className={inputClass} />
-                                    </div>
-                                    <div>
-                                      <label className={labelClass}>Stadt *</label>
-                                      <input type="text" placeholder="Kassel" value={newCustomer.city}
-                                        onChange={(e) => setNewCustomer({ ...newCustomer, city: e.target.value })} className={inputClass} />
-                                      {formErrors.city && <p className="text-[11px] text-red-500 mt-1">{formErrors.city}</p>}
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                      <label className={labelClass}>Kundentyp</label>
-                                      <div className="flex gap-2">
-                                        {(['Individual', 'Corporate'] as const).map(t => (
-                                          <button key={t} onClick={() => setNewCustomer({ ...newCustomer, type: t })}
-                                            className={`flex-1 py-2.5 rounded-lg border text-xs font-semibold transition-all ${ newCustomer.type === t ? 'bg-brand text-brand-foreground border-brand shadow-md' : 'bg-card border border-border text-muted-foreground hover:border-border' }`}>
-                                            {t === 'Individual' ? 'Privat' : 'Firma'}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    </div>
-                                    {newCustomer.type === 'Corporate' && (
-                                      <div>
-                                        <label className={labelClass}>Firmenname *</label>
-                                        <input type="text" placeholder="Firma GmbH" value={newCustomer.company}
-                                          onChange={(e) => setNewCustomer({ ...newCustomer, company: e.target.value })} className={inputClass} />
-                                        {formErrors.company && <p className="text-[11px] text-red-500 mt-1">{formErrors.company}</p>}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              )}
-
-                              {addStep === 1 && (
-                                <div className="space-y-5">
-                                  {sectionTitle(Car, 'Führerschein')}
-                                  <div className="grid grid-cols-3 gap-3">
-                                    <div>
-                                      <label className={labelClass}>Führerscheinnr. *</label>
-                                      <input type="text" placeholder="B072RRE2I55" value={newCustomer.licenseNumber}
-                                        onChange={(e) => setNewCustomer({ ...newCustomer, licenseNumber: e.target.value })} className={inputClass} />
-                                      {formErrors.licenseNumber && <p className="text-[11px] text-red-500 mt-1">{formErrors.licenseNumber}</p>}
-                                    </div>
-                                    <div>
-                                      <label className={labelClass}>Gültig bis *</label>
-                                      <input type="date" value={newCustomer.licenseExpiry}
-                                        onChange={(e) => setNewCustomer({ ...newCustomer, licenseExpiry: e.target.value })} className={inputClass} />
-                                      {formErrors.licenseExpiry && <p className="text-[11px] text-red-500 mt-1">{formErrors.licenseExpiry}</p>}
-                                    </div>
-                                    <div>
-                                      <label className={labelClass}>Klasse</label>
-                                      <select value={newCustomer.licenseClass}
-                                        onChange={(e) => setNewCustomer({ ...newCustomer, licenseClass: e.target.value })} className={inputClass}>
-                                        {['AM', 'A1', 'A2', 'A', 'B', 'BE', 'C', 'CE', 'C1', 'C1E', 'D', 'DE'].map(cls => (
-                                          <option key={cls} value={cls}>{cls}</option>
-                                        ))}
-                                      </select>
-                                    </div>
-                                  </div>
-
-                                  <div className="h-px my-2 bg-muted" />
-
-                                  {sectionTitle(IdCard, 'Ausweisdokument (ID-Verifikation)')}
-                                  <div className="rounded-lg p-3.5 mb-3 sq-tone-watch border border-border">
-                                    <div className="flex items-start gap-2.5">
-                                      <Icon name="shield" className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
-                                      <p className="text-xs text-[color:var(--status-watch)]">
-                                        Zur Identitätsprüfung wird ein gültiger Personalausweis oder Reisepass benötigt. Die Daten werden gemäß DSGVO verarbeitet.
-                                      </p>
-                                    </div>
-                                  </div>
-                                  <div className="grid grid-cols-3 gap-3">
-                                    <div>
-                                      <label className={labelClass}>Dokumenttyp</label>
-                                      <select value={newCustomer.idType}
-                                        onChange={(e) => setNewCustomer({ ...newCustomer, idType: e.target.value as any })} className={inputClass}>
-                                        <option value="Personalausweis">Personalausweis</option>
-                                        <option value="Reisepass">Reisepass</option>
-                                      </select>
-                                    </div>
-                                    <div>
-                                      <label className={labelClass}>Ausweisnummer *</label>
-                                      <input type="text" placeholder="L01X00T47" value={newCustomer.idNumber}
-                                        onChange={(e) => setNewCustomer({ ...newCustomer, idNumber: e.target.value })} className={inputClass} />
-                                      {formErrors.idNumber && <p className="text-[11px] text-red-500 mt-1">{formErrors.idNumber}</p>}
-                                    </div>
-                                    <div>
-                                      <label className={labelClass}>Gültig bis *</label>
-                                      <input type="date" value={newCustomer.idExpiry}
-                                        onChange={(e) => setNewCustomer({ ...newCustomer, idExpiry: e.target.value })} className={inputClass} />
-                                      {formErrors.idExpiry && <p className="text-[11px] text-red-500 mt-1">{formErrors.idExpiry}</p>}
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-
-                              {addStep === 2 && (
-                                <AddCustomerDocumentsStep
-                                  draftCustomerId={draftCustomerId}
-                                  isPreparingDraft={isEnsuringDraft}
-                                  orgId={orgId}
-                                  idType={newCustomer.idType}
-                                  pendingDocFiles={pendingDocFiles}
-                                  formErrors={formErrors}
-                                  onPendingFileChange={(type, file) =>
-                                    setPendingDocFiles((prev) => ({
-                                      ...prev,
-                                      [type]: file ?? undefined,
-                                    }))
-                                  }
-                                  onVerificationUpdated={() => void refreshWizardEligibility()}
-                                  sectionTitle={sectionTitle}
-                                />
-                              )}
-
-                              {addStep === 3 && (
-                                <div className="space-y-5">
-                                  {sectionTitle(CheckCircle, 'Zusammenfassung & Prüfung')}
-                                  <div className={`rounded-lg border p-4 space-y-0 divide-y ${ 'bg-muted/40 border border-border divide-border' }`}>
-                                    <SummaryRow label="Name" value={`${newCustomer.firstName} ${newCustomer.lastName}`} />
-                                    <SummaryRow label="E-Mail" value={newCustomer.email} />
-                                    <SummaryRow label="Telefon" value={newCustomer.phone} />
-                                    <SummaryRow label="Adresse" value={[newCustomer.street, `${newCustomer.zip} ${newCustomer.city}`].filter(Boolean).join(', ')} />
-                                    <SummaryRow label="Typ" value={newCustomer.type === 'Corporate' ? `Firma — ${newCustomer.company}` : 'Privatkunde'} />
-                                  </div>
-                                  <div className={`rounded-lg border p-4 space-y-0 divide-y ${ 'bg-muted/40 border border-border divide-border' }`}>
-                                    <SummaryRow label="Führerscheinnr." value={newCustomer.licenseNumber} />
-                                    <SummaryRow label="Klasse" value={newCustomer.licenseClass} />
-                                    <SummaryRow label="FS gültig bis" value={newCustomer.licenseExpiry} />
-                                    <SummaryRow label="Ausweistyp" value={newCustomer.idType} />
-                                    <SummaryRow label="Ausweisnr." value={newCustomer.idNumber} />
-                                    <SummaryRow label="Ausweis gültig bis" value={newCustomer.idExpiry} />
-                                    <div className="flex items-center justify-between py-2">
-                                      <span className="text-xs text-muted-foreground">Ausweis (Didit)</span>
-                                      <span className="text-xs font-medium text-foreground">
-                                        {wizardEligibility
-                                          ? documentEligibilityLabelDe(wizardEligibility.idDocument)
-                                          : '—'}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center justify-between py-2">
-                                      <span className="text-xs text-muted-foreground">Führerschein (Didit)</span>
-                                      <span className="text-xs font-medium text-foreground">
-                                        {wizardEligibility
-                                          ? documentEligibilityLabelDe(wizardEligibility.drivingLicense)
-                                          : '—'}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className={`rounded-lg border p-4 ${ 'bg-muted/40 border border-border' }`}>
-                                    <div className="flex items-center justify-between">
-                                      <span className="text-xs text-muted-foreground">Dokumente</span>
-                                      <div className="flex items-center gap-3">
-                                        {[
-                                          { label: 'Ausweis VS', ok: Boolean(pendingDocFiles.ID_FRONT) },
-                                          { label: 'Ausweis RS', ok: Boolean(pendingDocFiles.ID_BACK) },
-                                          { label: 'FS VS', ok: Boolean(pendingDocFiles.LICENSE_FRONT) },
-                                          { label: 'FS RS', ok: Boolean(pendingDocFiles.LICENSE_BACK) },
-                                        ].map(d => (
-                                          <span key={d.label} className={`inline-flex items-center gap-1 text-[11px] font-medium ${ d.ok ? 'text-[color:var(--status-positive)]' : 'text-muted-foreground' }`}>
-                                            {d.ok ? <Icon name="check-circle" className="w-3 h-3" /> : <Icon name="x" className="w-3 h-3" />}
-                                            {d.label}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <label className={labelClass}>Notizen (optional)</label>
-                                    <textarea rows={2} placeholder="Zusätzliche Informationen zum Kunden..."
-                                      value={newCustomer.notes}
-                                      onChange={(e) => setNewCustomer({ ...newCustomer, notes: e.target.value })}
-                                      className={`${inputClass} resize-none`} />
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Footer */}
-                            <div className="flex items-center justify-between px-7 py-3 border-t shrink-0 border-border">
-                              <button onClick={() => { setIsAddCustomerOpen(false); resetAddCustomerForm(); }}
-                                className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${ 'text-muted-foreground hover:text-foreground hover:bg-muted' }`}>
-                                Abbrechen
-                              </button>
-                              <div className="flex items-center gap-2.5">
-                                {addStep > 0 && (
-                                  <button onClick={() => setAddStep(addStep - 1)}
-                                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${ 'bg-card border border-border text-foreground hover:bg-muted' }`}>
-                                    <Icon name="chevron-left" className="w-3.5 h-3.5" />
-                                    Zurück
-                                  </button>
-                                )}
-                                {addStep < 3 ? (
-                                  <button
-                                    onClick={() => void handleAddNextStep()}
-                                    disabled={isEnsuringDraft}
-                                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[color:var(--brand)] hover:bg-[color:var(--brand-hover)] text-primary-foreground text-xs font-semibold shadow-md hover:shadow-lg transition-all disabled:opacity-50"
-                                  >
-                                    {isEnsuringDraft ? (
-                                      <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />
-                                    ) : (
-                                      <Icon name="chevron-right" className="w-3.5 h-3.5" />
-                                    )}
-                                    {isEnsuringDraft ? 'Vorbereitet…' : 'Weiter'}
-                                  </button>
-                                ) : (
-                                  <button onClick={handleSubmitNewCustomer}
-                                    disabled={isSavingCustomer}
-                                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-primary-foreground text-xs font-semibold shadow-md transition-all ${isSavingCustomer ? 'bg-[color:var(--status-positive)]/50 cursor-not-allowed' : 'bg-[color:var(--status-positive)] hover:opacity-90 hover:shadow-lg'}`}>
-                                    <Icon name="check-circle" className="w-3.5 h-3.5" />
-                                    {isSavingCustomer ? 'Speichert…' : 'Kunden anlegen'}
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                )}
-              </>
-            )}
-
-            {/* STEP 1: Vehicle Selection */}
-            {currentStep === 1 && (
-              <>
-                {card(
-                  <VehiclePickerStep
-                    vehicles={availableVehicles}
-                    selectedVehicleId={selectedVehicle?.id ?? null}
-                    onSelectVehicle={handleSelectVehicle}
-                    search={vehicleSearch}
-                    onSearchChange={setVehicleSearch}
-                    brandFilter={vehicleBrandFilter}
-                    onBrandFilterChange={setVehicleBrandFilter}
-                    stationFilter={vehicleStationFilter}
-                    onStationFilterChange={setVehicleStationFilter}
-                    fuelFilter={vehicleFuelFilter}
-                    onFuelFilterChange={setVehicleFuelFilter}
-                    statusFilter={vehicleStatusFilter}
-                    onStatusFilterChange={setVehicleStatusFilter}
-                    onResetFilters={handleResetVehicleFilters}
-                    brands={brands}
-                    stationOptions={stationOptions}
-                    fuelTypes={fuelTypes}
-                    pickerHealthMap={pickerHealthMap}
-                    catalogLoading={catalogLoading}
-                    getDailyRateLabel={getVehicleDailyRateLabel}
-                    isDarkMode={isDarkMode}
-                  />,
-                )}
-              </>
-            )}
-
-            {/* STEP 3: Extras & Packages — V4.6.67 reordered after Period */}
-            {currentStep === 3 && (
-              <>
-                {/* Mileage Packages */}
-                {card(
-                  <div className="p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center sq-tone-success">
-                        <Icon name="fuel" className="w-5 h-5 text-[color:var(--status-positive)]" />
-                      </div>
-                      <SectionHeader title="Mileage Packages" />
-                    </div>
-                    <p className="text-xs mb-3 text-muted-foreground">
-                      Add extra kilometers to your booking. Only one package can be selected.
-                    </p>
-                    {!vehicleTariffCtx ? (
-                      <div className="py-6 text-center">
-                        <p className="text-xs text-[color:var(--status-watch)]">
-                          Kein aktiver Tarif für dieses Fahrzeug. Bitte in Price Tariffs zuweisen.
-                        </p>
-                      </div>
-                    ) : mileagePackages.length > 0 ? (
-                      <div className="grid grid-cols-3 gap-3">
-                        {mileagePackages.map((pkg) => {
-                          const isSelected = selectedMileagePackage === pkg.id;
-                          return (
-                            <button
-                              key={pkg.id}
-                              onClick={() => setSelectedMileagePackage(isSelected ? null : pkg.id)}
-                              className={`p-4 rounded-lg border text-center transition-all relative overflow-hidden ${ isSelected ? 'sq-tone-success border border-border ring-1 ring-[color:var(--status-positive-soft)]' : 'bg-muted/40 border border-border hover:border-border' }`}
-                            >
-                              {isSelected && (
-                                <div className="absolute top-2 right-2">
-                                  <div className="w-5 h-5 rounded-full bg-emerald-600 flex items-center justify-center">
-                                    <Icon name="check" className="w-3 h-3 text-white" />
-                                  </div>
-                                </div>
-                              )}
-                              <p className={`text-xs mb-1 ${isSelected ? ('text-[color:var(--status-positive)]') : ('text-foreground')}`}>
-                                +{pkg.includedKm.toLocaleString('de-DE')}
-                              </p>
-                              <p className="text-xs mb-2 text-muted-foreground">kilometers</p>
-                              <div className={`text-xs ${isSelected ? ('text-[color:var(--status-positive)]') : ('text-foreground')}`}>
-                                {formatPriceCents(grossFromNetCents(pkg.priceCents, taxRatePercent))}
-                              </div>
-                              <p className="text-xs mt-1 text-muted-foreground">
-                                {formatPriceCents(
-                                  Math.round(
-                                    grossFromNetCents(pkg.priceCents, taxRatePercent) / Math.max(1, pkg.includedKm),
-                                  ),
-                                )}
-                                /km effective
-                              </p>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-center py-3 text-muted-foreground">No mileage packages available for this vehicle.</p>
-                    )}
-                  </div>
-                )}
-
-                {/* Insurance Packages */}
-                {card(
-                  <div className="p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center sq-tone-ai">
-                        <Icon name="shield" className="w-5 h-5 text-[color:var(--status-ai)]" />
-                      </div>
-                      <SectionHeader title="Insurance Packages" />
-                    </div>
-                    <p className="text-xs mb-3 text-muted-foreground">
-                      Choose additional insurance coverage for your rental period.
-                    </p>
-                    {insuranceOptions.length > 0 ? (
-                      <div className="space-y-3">
-                        {insuranceOptions.map((ins) => {
-                          const isSelected = selectedInsurances.includes(ins.id);
-                          return (
-                            <button
-                              key={ins.id}
-                              onClick={() => setSelectedInsurances(prev =>
-                                prev.includes(ins.id) ? prev.filter(i => i !== ins.id) : [...prev, ins.id]
-                              )}
-                              className={`w-full p-4 rounded-lg border text-left transition-all flex items-center justify-between ${ isSelected ? 'sq-tone-ai border border-border ring-1 ring-border' : 'bg-muted/40 border border-border hover:border-border' }`}
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${ isSelected ? 'bg-purple-600 border-purple-600' : 'border-border' }`}>
-                                  {isSelected && <Icon name="check" className="w-3 h-3 text-white" />}
-                                </div>
-                                <div>
-                                  <p className="text-xs text-foreground">{ins.label}</p>
-                                  <p className="text-xs mt-0.5 text-muted-foreground">{ins.description}</p>
-                                </div>
-                              </div>
-                              <div className="text-right shrink-0 ml-4">
-                                <p className={`text-xs ${isSelected ? ('text-[color:var(--status-ai)]') : ('text-foreground')}`}>
-                                  {formatOptionGrossLabel(ins.priceCents, ins.pricingType, taxRatePercent, displayRentalDays)}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {ins.pricingType === 'PER_DAY' ? 'per day' : 'per booking'}
-                                </p>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-center py-3 text-muted-foreground">No insurance options available for this vehicle.</p>
-                    )}
-                  </div>
-                )}
-
-                {/* General Extras */}
-                {card(
-                  <div className="p-4">
-                    <div className="flex items-center gap-2 mb-1">
-                      <div className="w-7 h-7 rounded-lg flex items-center justify-center sq-tone-info">
-                        <Icon name="star" className="w-5 h-5 text-[color:var(--status-info)]" />
-                      </div>
-                      <SectionHeader title="Extras" />
-                    </div>
-                    <p className="text-xs mb-3 text-muted-foreground">
-                      Add optional equipment and services to your booking.
-                    </p>
-                    {extraOptions.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-3">
-                        {extraOptions.map((opt) => {
-                          const isSelected = extras.includes(opt.id);
-                          return (
-                            <button
-                              key={opt.id}
-                              onClick={() => setExtras(prev => prev.includes(opt.id) ? prev.filter(e => e !== opt.id) : [...prev, opt.id])}
-                              className={`p-4 rounded-lg border text-left transition-all flex items-center gap-3 ${ isSelected ? 'sq-tone-brand border border-border ring-1 ring-[color:var(--brand-glow)]' : 'bg-muted/40 border border-border hover:border-border' }`}
-                            >
-                              <span className="text-base shrink-0">✦</span>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-xs text-foreground">{opt.label}</p>
-                                <p className="text-[11px] mt-0.5 text-muted-foreground">{opt.description}</p>
-                              </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <span className={`text-xs ${isSelected ? ('text-[color:var(--status-info)]') : ('text-foreground')}`}>
-                                  {formatOptionGrossLabel(opt.priceCents, opt.pricingType, taxRatePercent, displayRentalDays)}
-                                </span>
-                                <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${ isSelected ? 'bg-brand border-brand' : 'border-border' }`}>
-                                  {isSelected && <Icon name="check" className="w-3 h-3 text-white" />}
-                                </div>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <p className="text-xs text-center py-3 text-muted-foreground">No extras available for this vehicle.</p>
-                    )}
-                  </div>
-                )}
-
-                {/* Selection Summary */}
-                {(selectedMileagePackage || selectedInsurances.length > 0 || extras.length > 0) && (
-                  card(
-                    <div className="p-4">
-                      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
-                        <div className="flex min-w-0 flex-wrap items-center gap-2">
-                          {selectedMileagePackage && (
-                            <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full sq-chip-success">
-                              <Icon name="fuel" className="w-3 h-3" /> 1 Mileage Pkg
-                            </span>
-                          )}
-                          {selectedInsurances.length > 0 && (
-                            <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full sq-tone-ai">
-                              <Icon name="shield" className="w-3 h-3" /> {selectedInsurances.length} Insurance{selectedInsurances.length !== 1 ? 's' : ''}
-                            </span>
-                          )}
-                          {extras.length > 0 && (
-                            <span className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full sq-chip-info">
-                              <Icon name="star" className="w-3 h-3" /> {extras.length} Extra{extras.length !== 1 ? 's' : ''}
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-xs text-foreground">
-                          {hasPrice ? `+ ${formatEuroAmount(extrasTotal)}` : '—'}
-                        </span>
-                      </div>
-                    </div>
-                  )
-                )}
-              </>
-            )}
-
-            {/* STEP 2: Date & Time — V4.6.67 moved before Extras */}
-            {currentStep === 2 && (
-              <>
-                {card(
-                  <div className="p-4">
-                    <SectionHeader title="Zeitraum & Abholung" className="mb-3" />
-
-                    <div className="grid min-w-0 grid-cols-1 gap-3 mb-3 sm:grid-cols-2">
-                      {/* Pickup */}
-                      <div className="min-w-0">
-                        <label className="text-xs mb-1.5 block text-muted-foreground">Abholung</label>
-                        <div className="flex min-w-0 gap-2">
-                          <input
-                            type="date"
-                            value={pickupDate}
-                            min={new Date().toISOString().slice(0, 10)}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              setPickupDate(val);
-                              if (val) {
-                                const d = new Date(val);
-                                setCalendarMonth(d.getMonth());
-                                setCalendarYear(d.getFullYear());
-                                if (returnDate && val >= returnDate) {
-                                  setReturnDate('');
-                                }
-                              }
-                            }}
-                            className={`min-w-0 flex-1 px-3 py-2.5 rounded-lg border text-xs outline-none ${ 'bg-card border border-border text-foreground' }`}
-                          />
-                          <div className="relative shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => { setShowPickupTimePicker(!showPickupTimePicker); setShowReturnTimePicker(false); }}
-                              className={`min-w-[5.25rem] px-2.5 py-2.5 rounded-lg border text-xs outline-none flex items-center gap-1.5 transition-all sm:min-w-[7rem] sm:gap-2 sm:px-3 ${ showPickupTimePicker ? 'sq-tone-brand border border-border' : 'bg-card border border-border text-foreground hover:border-border' }`}
-                            >
-                              <Icon name="clock" className="w-3.5 h-3.5" />
-                              {pickupTime}
-                            </button>
-                            {showPickupTimePicker && (
-                              <>
-                                <div className="fixed inset-0 z-40" onClick={() => setShowPickupTimePicker(false)} />
-                                <div className={`absolute z-50 top-full mt-2 left-1/2 -translate-x-1/2 w-52 p-4 rounded-lg border shadow-2xl ${ 'bg-card/95 border border-border' }`}>
-                                  {/* Analog Clock */}
-                                  <div className="flex justify-center mb-3">
-                                    <svg width="120" height="120" viewBox="0 0 120 120">
-                                      <circle cx="60" cy="60" r="56" fill={'var(--card)'} stroke={'var(--border)'} strokeWidth="2" />
-                                      {/* Hour markers */}
-                                      {Array.from({ length: 12 }, (_, i) => {
-                                        const angle = (i * 30 - 90) * (Math.PI / 180);
-                                        const x1 = 60 + 44 * Math.cos(angle);
-                                        const y1 = 60 + 44 * Math.sin(angle);
-                                        const x2 = 60 + 50 * Math.cos(angle);
-                                        const y2 = 60 + 50 * Math.sin(angle);
-                                        return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={'var(--muted-foreground)'} strokeWidth={i % 3 === 0 ? 2.5 : 1.5} strokeLinecap="round" />;
-                                      })}
-                                      {/* Hour numbers */}
-                                      {Array.from({ length: 12 }, (_, i) => {
-                                        const num = i === 0 ? 12 : i;
-                                        const angle = (i * 30 - 90) * (Math.PI / 180);
-                                        const x = 60 + 36 * Math.cos(angle);
-                                        const y = 60 + 36 * Math.sin(angle);
-                                        return <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="central" fill={'var(--muted-foreground)'} fontSize="9" fontWeight="500">{num}</text>;
-                                      })}
-                                      {/* Hour hand */}
-                                      {(() => {
-                                        const [h, m] = pickupTime.split(':').map(Number);
-                                        const hourAngle = ((h % 12) * 30 + m * 0.5 - 90) * (Math.PI / 180);
-                                        return <line x1="60" y1="60" x2={60 + 26 * Math.cos(hourAngle)} y2={60 + 26 * Math.sin(hourAngle)} stroke={'var(--status-info)'} strokeWidth="3" strokeLinecap="round" />;
-                                      })()}
-                                      {/* Minute hand */}
-                                      {(() => {
-                                        const [, m] = pickupTime.split(':').map(Number);
-                                        const minAngle = (m * 6 - 90) * (Math.PI / 180);
-                                        return <line x1="60" y1="60" x2={60 + 38 * Math.cos(minAngle)} y2={60 + 38 * Math.sin(minAngle)} stroke={'var(--status-info)'} strokeWidth="2" strokeLinecap="round" />;
-                                      })()}
-                                      {/* Center dot */}
-                                      <circle cx="60" cy="60" r="3" fill={'var(--status-info)'} />
-                                    </svg>
-                                  </div>
-                                  {/* Time Input */}
-                                  <div className="flex items-center justify-center gap-2">
-                                    <Icon name="clock" className="w-3.5 h-3.5 text-muted-foreground" />
-                                    <input
-                                      type="time"
-                                      value={pickupTime}
-                                      onChange={(e) => setPickupTime(e.target.value)}
-                                      className={`w-full px-3 py-2 rounded-lg border text-xs text-center outline-none transition-colors ${ 'bg-card border border-border text-foreground focus:border-[color:var(--brand)]' }`}
-                                    />
-                                  </div>
-                                  {/* Arrow pointing up */}
-                                  <div className={`absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 border-l border-t ${ 'bg-card/95 border border-border' }`}></div>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      {/* Return */}
-                      <div className="min-w-0">
-                        <label className="text-xs mb-1.5 block text-muted-foreground">Rückgabe</label>
-                        <div className="flex min-w-0 gap-2">
-                          <input
-                            type="date"
-                            value={returnDate}
-                            min={pickupDate || new Date().toISOString().slice(0, 10)}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              // Don't allow same-day or earlier-than-pickup return values.
-                              if (val && pickupDate && val <= pickupDate) return;
-                              setReturnDate(val);
-                              if (val) {
-                                const d = new Date(val);
-                                setCalendarMonth(d.getMonth());
-                                setCalendarYear(d.getFullYear());
-                              }
-                            }}
-                            className={`min-w-0 flex-1 px-3 py-2.5 rounded-lg border text-xs outline-none ${ 'bg-card border border-border text-foreground' }`}
-                          />
-                          <div className="relative shrink-0">
-                            <button
-                              type="button"
-                              onClick={() => { setShowReturnTimePicker(!showReturnTimePicker); setShowPickupTimePicker(false); }}
-                              className={`min-w-[5.25rem] px-2.5 py-2.5 rounded-lg border text-xs outline-none flex items-center gap-1.5 transition-all sm:min-w-[7rem] sm:gap-2 sm:px-3 ${ showReturnTimePicker ? 'sq-tone-success border border-border' : 'bg-card border border-border text-foreground hover:border-border' }`}
-                            >
-                              <Icon name="clock" className="w-3.5 h-3.5" />
-                              {returnTime}
-                            </button>
-                            {showReturnTimePicker && (
-                              <>
-                                <div className="fixed inset-0 z-40" onClick={() => setShowReturnTimePicker(false)} />
-                                <div className={`absolute z-50 top-full mt-2 left-1/2 -translate-x-1/2 w-52 p-4 rounded-lg border shadow-2xl ${ 'bg-card/95 border border-border' }`}>
-                                  {/* Analog Clock */}
-                                  <div className="flex justify-center mb-3">
-                                    <svg width="120" height="120" viewBox="0 0 120 120">
-                                      <circle cx="60" cy="60" r="56" fill={'var(--card)'} stroke={'var(--border)'} strokeWidth="2" />
-                                      {/* Hour markers */}
-                                      {Array.from({ length: 12 }, (_, i) => {
-                                        const angle = (i * 30 - 90) * (Math.PI / 180);
-                                        const x1 = 60 + 44 * Math.cos(angle);
-                                        const y1 = 60 + 44 * Math.sin(angle);
-                                        const x2 = 60 + 50 * Math.cos(angle);
-                                        const y2 = 60 + 50 * Math.sin(angle);
-                                        return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={'var(--muted-foreground)'} strokeWidth={i % 3 === 0 ? 2.5 : 1.5} strokeLinecap="round" />;
-                                      })}
-                                      {/* Hour numbers */}
-                                      {Array.from({ length: 12 }, (_, i) => {
-                                        const num = i === 0 ? 12 : i;
-                                        const angle = (i * 30 - 90) * (Math.PI / 180);
-                                        const x = 60 + 36 * Math.cos(angle);
-                                        const y = 60 + 36 * Math.sin(angle);
-                                        return <text key={i} x={x} y={y} textAnchor="middle" dominantBaseline="central" fill={'var(--muted-foreground)'} fontSize="9" fontWeight="500">{num}</text>;
-                                      })}
-                                      {/* Hour hand */}
-                                      {(() => {
-                                        const [h, m] = returnTime.split(':').map(Number);
-                                        const hourAngle = ((h % 12) * 30 + m * 0.5 - 90) * (Math.PI / 180);
-                                        return <line x1="60" y1="60" x2={60 + 26 * Math.cos(hourAngle)} y2={60 + 26 * Math.sin(hourAngle)} stroke={'var(--status-positive)'} strokeWidth="3" strokeLinecap="round" />;
-                                      })()}
-                                      {/* Minute hand */}
-                                      {(() => {
-                                        const [, m] = returnTime.split(':').map(Number);
-                                        const minAngle = (m * 6 - 90) * (Math.PI / 180);
-                                        return <line x1="60" y1="60" x2={60 + 38 * Math.cos(minAngle)} y2={60 + 38 * Math.sin(minAngle)} stroke={'var(--status-positive)'} strokeWidth="2" strokeLinecap="round" />;
-                                      })()}
-                                      {/* Center dot */}
-                                      <circle cx="60" cy="60" r="3" fill={'var(--status-positive)'} />
-                                    </svg>
-                                  </div>
-                                  {/* Time Input */}
-                                  <div className="flex items-center justify-center gap-2">
-                                    <Icon name="clock" className="w-3.5 h-3.5 text-muted-foreground" />
-                                    <input
-                                      type="time"
-                                      value={returnTime}
-                                      onChange={(e) => setReturnTime(e.target.value)}
-                                      className={`w-full px-3 py-2 rounded-lg border text-xs text-center outline-none transition-colors ${ 'bg-card border border-border text-foreground focus:border-[color:var(--status-positive)]' }`}
-                                    />
-                                  </div>
-                                  {/* Arrow pointing up */}
-                                  <div className={`absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 border-l border-t ${ 'bg-card/95 border border-border' }`}></div>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Stations */}
-                    <div className="mb-3">
-                      <StationSelectFields
-                        stations={orgStations}
-                        pickupStationId={pickupStationId}
-                        returnStationId={returnStationId}
-                        sameReturnStation={sameReturnStation}
-                        onPickupChange={(id) => {
-                          setPickupStationId(id);
-                          if (sameReturnStation) setReturnStationId(id);
-                        }}
-                        onReturnChange={setReturnStationId}
-                        onSameReturnChange={setSameReturnStation}
-                      />
-                    </div>
-
-                    {/* Calendar Selection */}
-                    <div className="rounded-lg border p-4 bg-muted/40 border border-border">
-                      {/* Selection mode indicator */}
-                      <div className="flex items-center gap-2 mb-3">
-                        <button
-                          onClick={() => setCalendarSelectMode('pickup')}
-                          className={`flex-1 px-3 py-2 rounded-lg text-xs text-center transition-all ${ calendarSelectMode === 'pickup' ? 'sq-tone-brand border border-border' : 'bg-card text-muted-foreground border border-border' }`}
-                        >
-                          <Icon name="calendar" className="w-3.5 h-3.5 mx-auto mb-1" />
-                          Abholdatum wählen
-                        </button>
-                        <button
-                          onClick={() => setCalendarSelectMode('return')}
-                          className={`flex-1 px-3 py-2 rounded-lg text-xs text-center transition-all ${ calendarSelectMode === 'return' ? 'sq-tone-success border border-border' : 'bg-card text-muted-foreground border border-border' }`}
-                        >
-                          <Icon name="calendar" className="w-3.5 h-3.5 mx-auto mb-1" />
-                          Rückgabedatum wählen
-                        </button>
-                      </div>
-
-                      <div className="flex items-center justify-between mb-3">
-                        <button
-                          onClick={() => {
-                            // Roll over to previous year when stepping back from January.
-                            if (calendarMonth === 0) {
-                              setCalendarMonth(11);
-                              setCalendarYear(y => y - 1);
-                            } else {
-                              setCalendarMonth(m => m - 1);
-                            }
-                          }}
-                          className="p-1 rounded-lg transition-colors hover:bg-muted"
-                        >
-                          <Icon name="chevron-left" className="w-5 h-5" />
-                        </button>
-                        <span className="text-xs text-foreground">{monthNames[calendarMonth]} {calendarYear}</span>
-                        <button
-                          onClick={() => {
-                            // Roll forward to next year when stepping past December.
-                            if (calendarMonth === 11) {
-                              setCalendarMonth(0);
-                              setCalendarYear(y => y + 1);
-                            } else {
-                              setCalendarMonth(m => m + 1);
-                            }
-                          }}
-                          className="p-1 rounded-lg transition-colors hover:bg-muted"
-                        >
-                          <Icon name="chevron-right" className="w-5 h-5" />
-                        </button>
-                      </div>
-                      <div className="grid grid-cols-7 gap-1 text-center">
-                        {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map(d => (
-                          <div key={d} className="text-xs py-1 text-muted-foreground">{d}</div>
-                        ))}
-                        {getCalendarDays(calendarMonth, calendarYear).map((day, i) => {
-                          const isBlocked = day ? blockedDays.includes(day) : false;
-                          const blockInfo = day ? vehicleBlockedInfo[day] : null;
-                          return (
-                            <div key={i} className="relative">
-                              <button
-                                type="button"
-                                disabled={!day || isBlocked}
-                                onClick={() => day && handleCalendarDayClick(day)}
-                                onMouseEnter={() => { if (day && isBlocked) setHoveredDay(day); }}
-                                onMouseLeave={() => setHoveredDay(null)}
-                                className={`w-full text-xs py-2 rounded-lg transition-all ${
-                                  !day
-                                    ? 'cursor-default'
-                                    : isBlocked
-                                    ? `cursor-not-allowed ${
-                                        blockInfo?.reason === 'maintenance'
-                                          ? 'sq-tone-watch'
-                                          : 'sq-tone-critical'
-                                      }`
-                                    : isStartDay(day)
-                                    ? 'bg-brand text-brand-foreground cursor-pointer hover:bg-brand-hover shadow-sm'
-                                    : isEndDay(day)
-                                    ? 'bg-green-600 text-white cursor-pointer hover:bg-green-700 shadow-sm'
-                                    : isInRange(day)
-                                    ? 'cursor-pointer sq-tone-brand hover:opacity-90'
-                                    : 'cursor-pointer text-foreground hover:bg-muted'
-                                }`}
-                              >
-                                {day || ''}
-                              </button>
-                              {/* Hover tooltip for blocked days */}
-                              {hoveredDay === day && day && blockInfo && (
-                                <div className={`absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 p-2.5 rounded-lg border shadow-lg ${ 'bg-card/95 border border-border text-foreground' }`}>
-                                  <div className="flex items-center gap-1.5 mb-1.5">
-                                    {blockInfo.reason === 'maintenance' ? (
-                                      <Icon name="wrench" className="w-3 h-3 text-[color:var(--status-watch)]" />
-                                    ) : (
-                                      <Icon name="car" className="w-3 h-3 text-[color:var(--status-critical)]" />
-                                    )}
-                                    <span className={`text-xs ${ blockInfo.reason === 'maintenance' ? 'text-[color:var(--status-watch)]' : 'text-[color:var(--status-critical)]' }`}>
-                                      {blockInfo.reason === 'maintenance' ? 'Wartung' : 'Vermietet'}
-                                    </span>
-                                  </div>
-                                  <div className="text-xs mb-1 text-foreground">
-                                    <span className="flex items-center gap-1">
-                                      <Icon name="calendar" className="w-3 h-3" />
-                                      {blockInfo.startDay}. – {blockInfo.endDay}. {monthNames[calendarMonth]}
-                                    </span>
-                                  </div>
-                                  {blockInfo.reason !== 'maintenance' && (
-                                    <div className="text-xs text-muted-foreground">
-                                      <span className="flex items-center gap-1">
-                                        <Icon name="user" className="w-3 h-3" />
-                                        {blockInfo.customer}
-                                      </span>
-                                    </div>
-                                  )}
-                                  <div className={`absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 -mt-1 border-r border-b ${ 'bg-card/95 border border-border' }`}></div>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <div className="flex items-center gap-3 mt-3 pt-3 border-t border-border/30">
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded bg-brand"></div>
-                          <span className="text-xs text-muted-foreground">Abholung</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded bg-green-600"></div>
-                          <span className="text-xs text-muted-foreground">Rückgabe</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded sq-tone-brand"></div>
-                          <span className="text-xs text-muted-foreground">Zeitraum</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded sq-tone-critical"></div>
-                          <span className="text-xs text-muted-foreground">Gebucht</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <div className="w-3 h-3 rounded sq-tone-watch"></div>
-                          <span className="text-xs text-muted-foreground">Wartung</span>
-                        </div>
-                      </div>
-                      {!selectedVehicle && (
-                        <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg sq-tone-info border border-border">
-                          <Icon name="alert-circle" className="w-3.5 h-3.5 shrink-0 text-[color:var(--status-info)]" />
-                          <span className="text-xs text-[color:var(--status-info)]">
-                            Bitte wählen Sie zuerst ein Fahrzeug, um die Verfügbarkeit zu sehen.
-                          </span>
-                        </div>
-                      )}
-                      {rangeHasConflict && (
-                        <div className="mt-3 flex items-center gap-2 px-3 py-2 rounded-lg sq-tone-critical border border-border">
-                          <Icon name="alert-circle" className="w-3.5 h-3.5 shrink-0 text-[color:var(--status-critical)]" />
-                          <span className="text-xs text-[color:var(--status-critical)]">
-                            Der gewählte Zeitraum überschneidet sich mit einer bestehenden Reservierung oder Wartung. Bitte wählen Sie einen anderen Zeitraum.
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-              </>
-            )}
-
-            {/* STEP 5: Payment & Confirm */}
-            {currentStep === 5 && (
-              <div className="space-y-4">
-                {/* Box 1: Zahlungsmethode */}
-                {card(
-                  <div className="p-4">
-                    <h2 className="text-lg mb-3 text-muted-foreground">Zahlungsmethode</h2>
-                    <div className="grid grid-cols-3 gap-3">
-                      {[
-                        { id: 'card' as const, label: 'Kartenzahlung', icon: CreditCard, desc: 'Kredit-/Debitkarte' },
-                        { id: 'cash' as const, label: 'Barzahlung', icon: Euro, desc: 'Bei Abholung' },
-                        { id: 'invoice' as const, label: 'Rechnung', icon: FileText, desc: 'Firmenrechnung' },
-                      ].map((m) => {
-                        const isInvoiceDisabled = m.id === 'invoice' && selectedCustomer?.type !== 'Corporate';
-                        return (
-                        <button
-                          key={m.id}
-                          onClick={() => { if (!isInvoiceDisabled) setPaymentMethod(m.id); }}
-                          disabled={isInvoiceDisabled}
-                          className={`p-3.5 rounded-lg border text-center transition-all ${ isInvoiceDisabled ? 'bg-muted/20 border border-border opacity-40 cursor-not-allowed' : paymentMethod === m.id ? 'sq-tone-brand border border-border ring-1 ring-[color:var(--brand-glow)]' : 'bg-muted/40 border border-border hover:border-border' }`}
-                        >
-                          <m.icon className={`w-5 h-5 mx-auto mb-1.5 ${ isInvoiceDisabled ? 'text-muted-foreground' : paymentMethod === m.id ? 'text-status-info' : 'text-muted-foreground' }`} />
-                          <p className="text-xs text-foreground">{m.label}</p>
-                          <p className="text-[11px] text-muted-foreground">{m.desc}</p>
-                          {isInvoiceDisabled && (
-                            <p className="text-xs mt-1 text-[color:var(--status-watch)]">Nur Firmenkunden</p>
-                          )}
-                        </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {/* Box 2: Rabatt */}
-                {card(
-                  <div className="p-4">
-                    <h2 className="text-lg mb-3 text-muted-foreground">Rabatt</h2>
-                    <div className="flex gap-2 items-center flex-wrap">
-                      {[0, 5, 10, 15, 20].map(d => (
-                        <button
-                          key={d}
-                          onClick={() => setDiscountPercent(d)}
-                          className={`px-3.5 py-1.5 rounded-lg border text-xs transition-all ${ discountPercent === d && ![0, 5, 10, 15, 20].includes(discountPercent) ? '' : discountPercent === d ? 'sq-tone-success border border-border' : 'bg-muted/40 border border-border text-muted-foreground hover:border-border' }`}
-                        >
-                          {d}%
-                        </button>
-                      ))}
-                      <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg border text-xs ${ ![0, 5, 10, 15, 20].includes(discountPercent) && discountPercent > 0 ? 'sq-tone-success border border-border' : 'bg-muted/40 border border-border' }`}>
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          placeholder="Custom"
-                          value={![0, 5, 10, 15, 20].includes(discountPercent) ? discountPercent : ''}
-                          onChange={(e) => {
-                            const val = Math.min(100, Math.max(0, parseInt(e.target.value, 10) || 0));
-                            setDiscountPercent(val);
-                          }}
-                          className={`w-16 bg-transparent outline-none text-xs text-center ${ 'text-foreground placeholder:text-muted-foreground' }`}
-                        />
-                        <span className="text-xs text-muted-foreground">%</span>
-                      </div>
-                    </div>
-                    {discountPercent > 0 && (
-                      <p className="text-xs mt-2 text-[color:var(--status-positive)]">
-                        Ersparnis: € {discountAmount.toFixed(2)}
-                      </p>
-                    )}
-                  </div>
-                )}
-
-                {/* Box 3: Dokumente */}
-                {card(
-                  <div className="p-4">
-                    <h2 className="text-lg mb-3 text-muted-foreground">Dokumente</h2>
-                    <div className="space-y-3">
-                      {/* AGB */}
-                      <div className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-muted/40">
-                        <div className="flex items-center gap-2.5">
-                          <Icon name="file-text" className="w-5 h-5 text-[color:var(--status-info)]" />
-                          <span className="text-xs text-foreground">Allgemeine Geschäftsbedingungen (AGB)</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() => {
-                              const printWindow = window.open('', '_blank');
-                              if (printWindow) {
-                                printWindow.document.write(`
-                                  <html><head><title>AGB</title>
-                                  <style>body{font-family:system-ui,sans-serif;padding:40px;max-width:800px;margin:0 auto;color:#333}h1{font-size:22px;margin-bottom:20px}h2{font-size:17px;margin-top:30px}p{line-height:1.6;font-size:14px}</style>
-                                  </head><body>
-                                  <h1>Allgemeine Gesch&auml;ftsbedingungen (AGB)</h1>
-                                  <p>Stand: M&auml;rz 2026</p>
-                                  <h2>1. Geltungsbereich</h2><p>Diese AGB gelten f&uuml;r alle Mietvertr&auml;ge &uuml;ber Fahrzeuge unserer Flotte.</p>
-                                  <h2>2. Mietbedingungen</h2><p>Der Mieter verpflichtet sich, das Fahrzeug pfleglich zu behandeln und zum vereinbarten Zeitpunkt zur&uuml;ckzugeben.</p>
-                                  <h2>3. Zahlungsbedingungen</h2><p>Die Miete ist bei Abholung f&auml;llig. Bei Firmenkunden kann auf Rechnung gezahlt werden.</p>
-                                  </body></html>
-                                `);
-                                printWindow.document.close();
-                                printWindow.print();
-                              }
-                            }}
-                            title="Drucken"
-                            className="p-1.5 rounded-md transition-all hover:bg-muted text-muted-foreground hover:text-foreground"
-                          >
-                            <Icon name="printer" className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              const subject = encodeURIComponent('Allgemeine Geschäftsbedingungen – Flottenvermietung');
-                              const body = encodeURIComponent(
-                                'Sehr geehrte/r Kunde/in,\n\nanbei erhalten Sie unsere Allgemeinen Geschäftsbedingungen (AGB).\n\n' +
-                                '1. Geltungsbereich: Diese AGB gelten für alle Mietverträge über Fahrzeuge unserer Flotte.\n' +
-                                '2. Mietbedingungen: Der Mieter verpflichtet sich, das Fahrzeug pfleglich zu behandeln.\n' +
-                                '3. Zahlungsbedingungen: Die Miete ist bei Abholung fällig.\n\n' +
-                                'Mit freundlichen Grüßen\nIhr Flottenmanagement-Team'
-                              );
-                              const email = selectedCustomer?.email || '';
-                              window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_self');
-                            }}
-                            title="Per E-Mail senden"
-                            className="p-1.5 rounded-md transition-all hover:bg-muted text-muted-foreground hover:text-foreground"
-                          >
-                            <Icon name="send" className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Datenschutzerklärung */}
-                      <div className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-muted/40">
-                        <div className="flex items-center gap-2.5">
-                          <Icon name="shield" className="w-5 h-5 text-[color:var(--status-ai)]" />
-                          <span className="text-xs text-foreground">Datenschutzerklärung</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <button
-                            onClick={() => {
-                              const printWindow = window.open('', '_blank');
-                              if (printWindow) {
-                                printWindow.document.write(`
-                                  <html><head><title>Datenschutzerkl&auml;rung</title>
-                                  <style>body{font-family:system-ui,sans-serif;padding:40px;max-width:800px;margin:0 auto;color:#333}h1{font-size:22px;margin-bottom:20px}p{line-height:1.6;font-size:14px}</style>
-                                  </head><body>
-                                  <h1>Datenschutzerkl&auml;rung</h1>
-                                  <p>Wir verarbeiten Ihre personenbezogenen Daten gem&auml;&szlig; DSGVO ausschlie&szlig;lich zur Durchf&uuml;hrung des Mietvertrags.</p>
-                                  </body></html>
-                                `);
-                                printWindow.document.close();
-                                printWindow.print();
-                              }
-                            }}
-                            title="Drucken"
-                            className="p-1.5 rounded-md transition-all hover:bg-muted text-muted-foreground hover:text-foreground"
-                          >
-                            <Icon name="printer" className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() => {
-                              const subject = encodeURIComponent('Datenschutzerklärung – Flottenvermietung');
-                              const body = encodeURIComponent(
-                                'Sehr geehrte/r Kunde/in,\n\nanbei erhalten Sie unsere Datenschutzerklärung.\n\n' +
-                                'Wir verarbeiten Ihre personenbezogenen Daten gemäß DSGVO ausschließlich zur Durchführung des Mietvertrags.\n\n' +
-                                'Mit freundlichen Grüßen\nIhr Flottenmanagement-Team'
-                              );
-                              const email = selectedCustomer?.email || '';
-                              window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_self');
-                            }}
-                            title="Per E-Mail senden"
-                            className="p-1.5 rounded-md transition-all hover:bg-muted text-muted-foreground hover:text-foreground"
-                          >
-                            <Icon name="send" className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Divider */}
-                      <div className="border-t border-border" />
-
-                      {/* Rechnung */}
-                      <div className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-muted/40">
-                        <div className="flex items-center gap-2.5">
-                          <Icon name="receipt" className="w-5 h-5 text-[color:var(--status-watch)]" />
-                          <div>
-                            <span className="text-xs text-foreground">Rechnung</span>
-                            {invoiceGenerated && (
-                              <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full sq-chip-success">Generiert</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          {!invoiceGenerated ? (
-                            <button
-                              onClick={() => {
-                                setGeneratingInvoice(true);
-                                setTimeout(() => {
-                                  setGeneratingInvoice(false);
-                                  setInvoiceGenerated(true);
-                                }, 1500);
-                              }}
-                              disabled={generatingInvoice}
-                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all ${ 'sq-tone-watch border border-border hover:opacity-90' }`}
-                            >
-                              {generatingInvoice ? <Icon name="loader-2" className="w-3 h-3 animate-spin" /> : <Icon name="receipt" className="w-3 h-3" />}
-                              {generatingInvoice ? 'Wird generiert...' : 'Generieren'}
-                            </button>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => setQuickViewDoc('invoice')}
-                                title="Vorschau"
-                                className="p-1.5 rounded-md transition-all hover:bg-muted text-[color:var(--status-info)] hover:opacity-80"
-                              >
-                                <Icon name="eye" className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const printWindow = window.open('', '_blank');
-                                  if (printWindow) {
-                                    printWindow.document.write(`
-                                      <html><head><title>Rechnung</title>
-                                      <style>body{font-family:system-ui,sans-serif;padding:40px;max-width:800px;margin:0 auto;color:#333}h1{font-size:22px}table{width:100%;border-collapse:collapse;margin:20px 0}th,td{text-align:left;padding:8px 12px;border-bottom:1px solid #eee}th{background:#f9f9f9}.total{font-size:18px;font-weight:600}</style>
-                                      </head><body>
-                                      <h1>Rechnung</h1>
-                                      <p>Kunde: ${selectedCustomer?.name || '–'}</p>
-                                      <p>Fahrzeug: ${selectedVehicle ? buildMMY(selectedVehicle) : '–'} (${selectedVehicle?.license || '–'})</p>
-                                      <p>Zeitraum: ${pickupDate ? new Date(pickupDate).toLocaleDateString('de-DE') : '–'} – ${returnDate ? new Date(returnDate).toLocaleDateString('de-DE') : '–'}</p>
-                                      <table><tr><th>Position</th><th>Betrag</th></tr>
-                                      <tr><td>${displayRentalDays}x Tagestarif</td><td>&euro; ${amountLabel(subtotal)}</td></tr>
-                                      <tr><td>Packages & Extras</td><td>&euro; ${amountLabel(extrasTotal)}</td></tr>
-                                      ${discountPercent > 0 ? `<tr><td>Rabatt (${discountPercent}%)</td><td>-&euro; ${amountLabel(discountAmount)}</td></tr>` : ''}
-                                      <tr><td>MwSt. (${taxRatePercent}%)</td><td>&euro; ${amountLabel(tax)}</td></tr>
-                                      <tr><td class="total">Gesamt</td><td class="total">&euro; ${amountLabel(grandTotal)}</td></tr>
-                                      </table></body></html>
-                                    `);
-                                    printWindow.document.close();
-                                    printWindow.print();
-                                  }
-                                }}
-                                title="Drucken"
-                                className="p-1.5 rounded-md transition-all hover:bg-muted text-muted-foreground hover:text-foreground"
-                              >
-                                <Icon name="printer" className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const subject = encodeURIComponent(`Rechnung – ${selectedVehicle ? buildMMY(selectedVehicle) : 'Fahrzeug'}`);
-                                  const body = encodeURIComponent(
-                                    `Sehr geehrte/r ${selectedCustomer?.name || 'Kunde/in'},\n\nanbei Ihre Rechnung.\n\n` +
-                                    `Fahrzeug: ${selectedVehicle ? buildMMY(selectedVehicle) : '–'} (${selectedVehicle?.license || '–'})\n` +
-                                    `Zeitraum: ${rentalDays} Tage\n` +
-                                    `Gesamt: € ${amountLabel(grandTotal)}\n\n` +
-                                    'Mit freundlichen Grüßen\nIhr Flottenmanagement-Team'
-                                  );
-                                  const email = selectedCustomer?.email || '';
-                                  window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_self');
-                                }}
-                                title="Per E-Mail senden"
-                                className="p-1.5 rounded-md transition-all hover:bg-muted text-muted-foreground hover:text-foreground"
-                              >
-                                <Icon name="send" className="w-3.5 h-3.5" />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Mietvertrag */}
-                      <div className="flex items-center justify-between py-2.5 px-3 rounded-lg bg-muted/40">
-                        <div className="flex items-center gap-2.5">
-                          <Icon name="file-signature" className="w-5 h-5 text-[color:var(--status-positive)]" />
-                          <div>
-                            <span className="text-xs text-foreground">Mietvertrag</span>
-                            {contractGenerated && (
-                              <span className="ml-2 text-xs px-1.5 py-0.5 rounded-full sq-chip-success">Generiert</span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          {!contractGenerated ? (
-                            <button
-                              onClick={() => {
-                                setGeneratingContract(true);
-                                setTimeout(() => {
-                                  setGeneratingContract(false);
-                                  setContractGenerated(true);
-                                }, 2000);
-                              }}
-                              disabled={generatingContract}
-                              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs transition-all ${ 'sq-tone-success border border-border hover:opacity-90' }`}
-                            >
-                              {generatingContract ? <Icon name="loader-2" className="w-3 h-3 animate-spin" /> : <Icon name="file-signature" className="w-3 h-3" />}
-                              {generatingContract ? 'Wird generiert...' : 'Generieren'}
-                            </button>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => setQuickViewDoc('contract')}
-                                title="Vorschau"
-                                className="p-1.5 rounded-md transition-all hover:bg-muted text-[color:var(--status-info)] hover:opacity-80"
-                              >
-                                <Icon name="eye" className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const printWindow = window.open('', '_blank');
-                                  if (printWindow) {
-                                    printWindow.document.write(`
-                                      <html><head><title>Mietvertrag</title>
-                                      <style>body{font-family:system-ui,sans-serif;padding:40px;max-width:800px;margin:0 auto;color:#333}h1{font-size:22px}h2{font-size:16px;margin-top:24px}p{line-height:1.6;font-size:14px}.sig{margin-top:60px;display:flex;gap:80px}.sig div{border-top:1px solid #333;padding-top:8px;width:200px;font-size:13px}</style>
-                                      </head><body>
-                                      <h1>Mietvertrag</h1>
-                                      <p><strong>Vermieter:</strong> Flottenmanagement GmbH</p>
-                                      <p><strong>Mieter:</strong> ${selectedCustomer?.name || '–'}</p>
-                                      <h2>Fahrzeug</h2>
-                                      <p>${selectedVehicle ? buildMMY(selectedVehicle) : '–'} · ${selectedVehicle?.license || '–'}</p>
-                                      <h2>Mietzeitraum</h2>
-                                      <p>${pickupDate ? new Date(pickupDate).toLocaleDateString('de-DE') : '–'} (${pickupTime}) – ${returnDate ? new Date(returnDate).toLocaleDateString('de-DE') : '–'} (${returnTime})</p>
-                                      <h2>Kosten</h2>
-                                      <p>Gesamt: &euro; ${amountLabel(grandTotal)} (inkl. MwSt.)</p>
-                                      <p>Kaution: &euro; ${amountLabel(depositAmount)}</p>
-                                      <p>Frei-Kilometer: ${totalFreeKm.toLocaleString('de-DE')} km</p>
-                                      <div class="sig"><div>Vermieter</div><div>Mieter</div></div>
-                                      </body></html>
-                                    `);
-                                    printWindow.document.close();
-                                    printWindow.print();
-                                  }
-                                }}
-                                title="Drucken"
-                                className="p-1.5 rounded-md transition-all hover:bg-muted text-muted-foreground hover:text-foreground"
-                              >
-                                <Icon name="printer" className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const subject = encodeURIComponent(`Mietvertrag – ${selectedVehicle ? buildMMY(selectedVehicle) : 'Fahrzeug'}`);
-                                  const body = encodeURIComponent(
-                                    `Sehr geehrte/r ${selectedCustomer?.name || 'Kunde/in'},\n\nanbei Ihr Mietvertrag.\n\n` +
-                                    `Fahrzeug: ${selectedVehicle ? buildMMY(selectedVehicle) : '–'} (${selectedVehicle?.license || '–'})\n` +
-                                    `Zeitraum: ${pickupDate ? new Date(pickupDate).toLocaleDateString('de-DE') : '–'} – ${returnDate ? new Date(returnDate).toLocaleDateString('de-DE') : '–'}\n` +
-                                    `Gesamt: € ${amountLabel(grandTotal)}\n\n` +
-                                    'Mit freundlichen Grüßen\nIhr Flottenmanagement-Team'
-                                  );
-                                  const email = selectedCustomer?.email || '';
-                                  window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_self');
-                                }}
-                                title="Per E-Mail senden"
-                                className="p-1.5 rounded-md transition-all hover:bg-muted text-muted-foreground hover:text-foreground"
-                              >
-                                <Icon name="send" className="w-3.5 h-3.5" />
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Box 4: Bestätigungen */}
-                {card(
-                  <div className="p-4">
-                    <h2 className="text-lg mb-3 text-muted-foreground">Bestätigungen</h2>
-                    <div className="space-y-3">
-                      <label className="flex items-start gap-3 cursor-pointer">
-                        <input type="checkbox" checked={agbAccepted} onChange={(e) => setAgbAccepted(e.target.checked)} className="mt-0.5 rounded" />
-                        <span className="text-xs text-foreground">
-                          Kunde hat die <span className="text-status-info underline">Allgemeinen Geschäftsbedingungen (AGB)</span> und die Mietbedingungen erhalten.
-                        </span>
-                      </label>
-                      <label className="flex items-start gap-3 cursor-pointer">
-                        <input type="checkbox" checked={privacyAccepted} onChange={(e) => setPrivacyAccepted(e.target.checked)} className="mt-0.5 rounded" />
-                        <span className="text-xs text-foreground">
-                          Kunde hat der <span className="text-status-info underline">Datenschutzerklärung</span> zugestimmt und wurde über die Verarbeitung seiner Daten informiert.
-                        </span>
-                      </label>
-                    </div>
-                  </div>
-                )}
-
-                {/* Quick View Modal */}
-                {quickViewDoc && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={() => setQuickViewDoc(null)}>
-                    <div
-                      onClick={(e) => e.stopPropagation()}
-                      className={`relative w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-lg shadow-2xl ${ 'bg-card border border-border' }`}
-                    >
-                      <div className="sticky top-0 flex items-center justify-between p-4 border-b border-border bg-card">
-                        <h3 className="text-base text-foreground">
-                          {quickViewDoc === 'invoice' ? 'Rechnung – Vorschau' : 'Mietvertrag – Vorschau'}
-                        </h3>
-                        <button onClick={() => setQuickViewDoc(null)} className="p-1.5 rounded-lg transition-all hover:bg-muted text-muted-foreground">
-                          <Icon name="x" className="w-5 h-5" />
-                        </button>
-                      </div>
-                      <div className="p-4">
-                        {quickViewDoc === 'invoice' ? (
-                          <div className="space-y-4">
-                            <div>
-                              <h2 className="text-lg mb-1 text-foreground">Rechnung</h2>
-                              <p className="text-xs text-muted-foreground">Erstellt am {new Date().toLocaleDateString('de-DE')}</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3 text-xs text-foreground">
-                              <div>
-                                <p className="text-xs mb-0.5 text-muted-foreground">Kunde</p>
-                                <p>{selectedCustomer?.name || '–'}</p>
-                                <p className="text-xs text-muted-foreground">{selectedCustomer?.email}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs mb-0.5 text-muted-foreground">Fahrzeug</p>
-                                <p>{selectedVehicle ? buildMMY(selectedVehicle) : '–'}</p>
-                                <p className="text-xs text-muted-foreground">{selectedVehicle?.license}</p>
-                              </div>
-                            </div>
-                            <div className="border-t pt-3 space-y-2 border-border">
-                              <div className="flex justify-between text-xs">
-                                <span className="text-muted-foreground">{displayRentalDays}x Tagestarif ({formatEuroAmount(dailyRateGross)})</span>
-                                <span className="text-foreground">{formatEuroAmount(subtotal)}</span>
-                              </div>
-                              <div className="flex justify-between text-xs">
-                                <span className="text-muted-foreground">Packages & Extras</span>
-                                <span className="text-foreground">{formatEuroAmount(extrasTotal)}</span>
-                              </div>
-                              {discountPercent > 0 && (
-                                <div className="flex justify-between text-xs">
-                                  <span className="text-green-500">Rabatt ({discountPercent}%)</span>
-                                  <span className="text-green-500">-€ {amountLabel(discountAmount)}</span>
-                                </div>
-                              )}
-                              <div className="flex justify-between text-xs">
-                                <span className="text-muted-foreground">MwSt. ({taxRatePercent}%)</span>
-                                <span className="text-foreground">{formatEuroAmount(tax)}</span>
-                              </div>
-                              <div className="flex justify-between pt-2 border-t border-border">
-                                <span className="text-foreground">Gesamt</span>
-                                <span className="text-xs text-foreground">{formatEuroAmount(grandTotal)}</span>
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="space-y-4">
-                            <div>
-                              <h2 className="text-lg mb-1 text-foreground">Mietvertrag</h2>
-                              <p className="text-xs text-muted-foreground">Erstellt am {new Date().toLocaleDateString('de-DE')}</p>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3 text-xs text-foreground">
-                              <div>
-                                <p className="text-xs mb-0.5 text-muted-foreground">Vermieter</p>
-                                <p>Flottenmanagement GmbH</p>
-                              </div>
-                              <div>
-                                <p className="text-xs mb-0.5 text-muted-foreground">Mieter</p>
-                                <p>{selectedCustomer?.name || '–'}</p>
-                                <p className="text-xs text-muted-foreground">{selectedCustomer?.email}</p>
-                              </div>
-                            </div>
-                            <div className="border-t pt-3 space-y-2 text-xs border-border text-foreground">
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Fahrzeug</span>
-                                <span>{selectedVehicle ? buildMMY(selectedVehicle) : '–'} · {selectedVehicle?.license || '–'}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Zeitraum</span>
-                                <span>{pickupDate ? new Date(pickupDate).toLocaleDateString('de-DE') : '–'} – {returnDate ? new Date(returnDate).toLocaleDateString('de-DE') : '–'}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Abhol-/Rückgabezeit</span>
-                                <span>{pickupTime} – {returnTime}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Frei-Kilometer</span>
-                                <span>{totalFreeKm.toLocaleString('de-DE')} km</span>
-                              </div>
-                              <div className="flex justify-between pt-2 border-t border-border">
-                                <span>Gesamtkosten</span>
-                                <span className="text-xs text-foreground">{formatEuroAmount(grandTotal)}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Kaution</span>
-                                <span className="text-[color:var(--status-watch)]">{formatEuroAmount(depositAmount)}</span>
-                              </div>
-                            </div>
-                            <div className="border-t pt-6 mt-6 flex gap-16 border-border">
-                              <div className="flex-1">
-                                <div className="border-t pt-2 text-xs border-border text-muted-foreground">Unterschrift Vermieter</div>
-                              </div>
-                              <div className="flex-1">
-                                <div className="border-t pt-2 text-xs border-border text-muted-foreground">Unterschrift Mieter</div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Sidebar Summary - 1 col */}
-          <div className="min-w-0 space-y-5">
-
-            {selectedVehicle && selectedCustomer && pickupDate && (
-              <BookingRentalEligibilityCard
-                result={rentalEligibility}
-                loading={rentalEligibilityLoading}
-                error={rentalEligibilityError}
-                onCompleteCustomerData={() => {
-                  if (!selectedCustomer) return;
-                  setCustomerDetailTarget(selectedCustomer);
+              <CustomerStep
+                orgId={orgId}
+                customerSearch={customerSearch}
+                onCustomerSearchChange={setCustomerSearch}
+                customersLoading={customersLoading}
+                customersError={customersError}
+                filteredCustomers={filteredCustomers}
+                selectedCustomer={selectedCustomer}
+                onSelectCustomer={setSelectedCustomer}
+                customerEligibility={customerEligibility}
+                customerDetailOpen={customerDetailOpen}
+                customerDetailTarget={customerDetailTarget}
+                onOpenCustomerDetail={(c) => {
+                  setCustomerDetailTarget(c);
                   setCustomerDetailOpen(true);
                 }}
-                onChooseAnotherVehicle={() => setCurrentStep(1)}
+                onCloseCustomerDetail={() => {
+                  setCustomerDetailOpen(false);
+                  setCustomerDetailTarget(null);
+                }}
+                mapToDetailCustomer={mapToDetailCustomer}
+                isAddCustomerOpen={isAddCustomerOpen}
+                onOpenAddCustomer={() => {
+                  setIsAddCustomerOpen(true);
+                  resetAddCustomerForm();
+                }}
+                onCloseAddCustomer={() => {
+                  setIsAddCustomerOpen(false);
+                  resetAddCustomerForm();
+                }}
+                addStep={addStep}
+                onAddStepChange={setAddStep}
+                newCustomer={newCustomer}
+                onNewCustomerChange={setNewCustomer}
+                pendingDocFiles={pendingDocFiles}
+                onPendingDocFileChange={(type, file) =>
+                  setPendingDocFiles((prev) => ({
+                    ...prev,
+                    [type]: file ?? undefined,
+                  }))
+                }
+                formErrors={formErrors}
+                draftCustomerId={draftCustomerId}
+                isEnsuringDraft={isEnsuringDraft}
+                wizardEligibility={wizardEligibility}
+                onRefreshWizardEligibility={() => void refreshWizardEligibility()}
+                onAddNextStep={() => void handleAddNextStep()}
+                onSubmitNewCustomer={handleSubmitNewCustomer}
+                isSavingCustomer={isSavingCustomer}
               />
             )}
 
-            {/* Combined Buchungsübersicht & Preisübersicht – all steps */}
-            {card(
-              <div className="p-4">
-                <h3 className="text-base mb-3 text-muted-foreground">Buchungs- & Preisübersicht</h3>
-
-                {/* Compact booking details in 2-col grid */}
-                <div className="space-y-4 mb-3">
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <div className="text-[11px] mb-1 text-muted-foreground">Fahrzeug</div>
-                      {selectedVehicle ? (
-                        <div className="flex items-center gap-2">
-                          <BrandLogoMark
-                            brand={getBrandFromModel({
-                              make: selectedVehicle.make,
-                              model: selectedVehicle.model,
-                            })}
-                            isDarkMode={isDarkMode}
-                          />
-                          <div className="min-w-0">
-                            <p className="text-xs truncate text-foreground">{buildMMY(selectedVehicle)}</p>
-                            <p className="text-[11px] text-muted-foreground">{selectedVehicle.license}</p>
-                          </div>
-                        </div>
-                      ) : (
-                        <p className="text-xs italic text-muted-foreground">–</p>
-                      )}
-                    </div>
-                    <div>
-                      <div className="text-[11px] mb-1 text-muted-foreground">Kunde</div>
-                      {selectedCustomer ? (
-                        <>
-                          <p className="text-xs text-foreground">{selectedCustomer.name}</p>
-                          <p className="text-[11px] text-muted-foreground">{selectedCustomer.type === 'Corporate' ? 'Firmenkunde' : 'Privatkunde'}</p>
-                        </>
-                      ) : (
-                        <p className="text-xs italic text-muted-foreground">–</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <div className="text-[11px] mb-1 text-muted-foreground">Zeitraum</div>
-                      {pickupDate && returnDate ? (
-                        <>
-                          <p className="text-xs text-foreground">
-                            {new Date(pickupDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })} – {new Date(returnDate).toLocaleDateString('de-DE', { day: '2-digit', month: 'short' })}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground">{rentalDays} Tage · {pickupTime} – {returnTime}</p>
-                        </>
-                      ) : (
-                        <p className="text-xs italic text-muted-foreground">–</p>
-                      )}
-                    </div>
-                    <div>
-                      <div className="text-[11px] mb-1 text-muted-foreground">Station</div>
-                      {pickupStationId ? (
-                        <>
-                          <p className="text-xs flex items-center gap-1 text-foreground">
-                            <Icon name="map-pin" className="w-3 h-3" />
-                            {orgStations.find((s) => s.id === pickupStationId)
-                              ? stationLabel(orgStations.find((s) => s.id === pickupStationId)!)
-                              : '—'}
-                          </p>
-                          {!sameReturnStation && returnStationId && returnStationId !== pickupStationId && (
-                            <p className="text-[11px] text-muted-foreground">
-                              Rückgabe:{' '}
-                              {orgStations.find((s) => s.id === returnStationId)
-                                ? stationLabel(orgStations.find((s) => s.id === returnStationId)!)
-                                : '—'}
-                            </p>
-                          )}
-                        </>
-                      ) : (
-                        <p className="text-xs italic text-muted-foreground">–</p>
-                      )}
-                    </div>
-                  </div>
-                  {(selectedMileagePackage || selectedInsurances.length > 0 || extras.length > 0) && (
-                    <div>
-                      <div className="text-[11px] mb-1.5 text-muted-foreground">Extras & Packages</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {selectedMileagePackage && (() => {
-                          const pkg = mileagePackages.find(p => p.id === selectedMileagePackage);
-                          return pkg ? <span className="text-[11px] px-1.5 py-0.5 rounded-full sq-chip-success">+{pkg.includedKm}km</span> : null;
-                        })()}
-                        {selectedInsurances.map(insId => {
-                          const ins = insuranceOptions.find(i => i.id === insId);
-                          return <span key={insId} className="text-[11px] px-1.5 py-0.5 rounded-full sq-tone-ai">{ins?.label}</span>;
-                        })}
-                        {extras.map(e => {
-                          const opt = extraOptions.find(o => o.id === e);
-                          return <span key={e} className="text-[11px] px-1.5 py-0.5 rounded-full sq-chip-info">{opt?.label}</span>;
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Divider between booking info and price */}
-                <div className="border-t mb-3 border-border" />
-
-                {/* Price breakdown */}
-                <div className="space-y-2.5">
-                  {noTariffForVehicle && (
-                    <p className="text-xs text-[color:var(--status-watch)]">
-                      Kein aktiver Tarif für dieses Fahrzeug. Zuweisung in Price Tariffs erforderlich.
-                    </p>
-                  )}
-                  {canCalculatePrice && priceLoading && (
-                    <p className="text-xs text-muted-foreground">Preis wird berechnet…</p>
-                  )}
-                  {priceError && (
-                    <p className="text-xs text-[color:var(--status-critical)]">{priceError}</p>
-                  )}
-                  {!canCalculatePrice && selectedVehicle && (!pickupDate || !returnDate) && (
-                    <p className="text-xs text-muted-foreground">Zeitraum wählen für Preisberechnung.</p>
-                  )}
-                  {priceSim?.lineItems.map((line) => (
-                    <div key={`${line.type}-${line.label}-${line.sortOrder ?? 0}`} className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">{line.label}</span>
-                      <span className="text-foreground">{formatPriceCents(line.totalGrossCents)}</span>
-                    </div>
-                  ))}
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Frei-Kilometer</span>
-                    <span className="text-[color:var(--status-positive)]">{totalFreeKm.toLocaleString('de-DE')} km</span>
-                  </div>
-                  {extraKmPrice != null && (
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Extra-km</span>
-                      <span className="text-muted-foreground">{formatEuroAmount(extraKmPrice)}/km</span>
-                    </div>
-                  )}
-                  {mileagePkgKm > 0 && (
-                    <div className="pl-3 space-y-1.5 border-l border-border">
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Basis ({freeKmPerDay} km/Tag × {displayRentalDays})</span>
-                        <span className="text-muted-foreground">{baseFreeKm.toLocaleString('de-DE')} km</span>
-                      </div>
-                      <div className="flex justify-between text-xs">
-                        <span className="text-[color:var(--status-positive)]">+ Kilometerpaket</span>
-                        <span className="text-[color:var(--status-positive)]">+{mileagePkgKm.toLocaleString('de-DE')} km</span>
-                      </div>
-                    </div>
-                  )}
-                  {priceSim?.warnings?.map((w) => (
-                    <p key={w} className="text-[11px] text-[color:var(--status-watch)]">{w}</p>
-                  ))}
-                  <div className="pt-3 mt-2 border-t space-y-2 border-border">
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Zwischensumme (netto)</span>
-                      <span className="text-foreground">{formatEuroAmount(subtotalNet)}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">MwSt. ({taxRatePercent}%)</span>
-                      <span className="text-foreground">{formatEuroAmount(tax)}</span>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-baseline pt-3 border-t border-border">
-                    <span className="text-foreground">Gesamt</span>
-                    <span className="text-base text-foreground">{formatEuroAmount(grandTotal)}</span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Kaution</span>
-                    <span className="text-[color:var(--status-watch)]">{formatEuroAmount(depositAmount)}</span>
-                  </div>
-                </div>
-              </div>
+            {currentStep === 1 && (
+              <BookingStepCard>
+                <VehiclePickerStep
+                  vehicles={availableVehicles}
+                  selectedVehicleId={selectedVehicle?.id ?? null}
+                  onSelectVehicle={handleSelectVehicle}
+                  search={vehicleSearch}
+                  onSearchChange={setVehicleSearch}
+                  brandFilter={vehicleBrandFilter}
+                  onBrandFilterChange={setVehicleBrandFilter}
+                  stationFilter={vehicleStationFilter}
+                  onStationFilterChange={setVehicleStationFilter}
+                  fuelFilter={vehicleFuelFilter}
+                  onFuelFilterChange={setVehicleFuelFilter}
+                  statusFilter={vehicleStatusFilter}
+                  onStatusFilterChange={setVehicleStatusFilter}
+                  onResetFilters={handleResetVehicleFilters}
+                  brands={brands}
+                  stationOptions={stationOptions}
+                  fuelTypes={fuelTypes}
+                  pickerHealthMap={pickerHealthMap}
+                  catalogLoading={catalogLoading}
+                  getDailyRateLabel={getVehicleDailyRateLabel}
+                  isDarkMode={isDarkMode}
+                />
+              </BookingStepCard>
             )}
 
-            {/* Navigation Buttons */}
-            <div className="sticky bottom-0 z-10 flex w-full min-w-0 max-w-full gap-3 border-t border-border/40 bg-background/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm supports-[backdrop-filter]:bg-background/80 lg:static lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
-              {currentStep > 1 && (
-                <button
-                  onClick={() => setCurrentStep(s => s - 1)}
-                  className="sq-3d-btn sq-3d-btn--neutral flex flex-1 items-center justify-center gap-2 px-3 py-2 text-xs"
-                >
-                  <Icon name="arrow-left" className="w-5 h-5" />
-                  Zurück
-                </button>
-              )}
-              {currentStep < 5 ? (
-                <button
-                  onClick={() => setCurrentStep(s => s + 1)}
-                  disabled={!canProceed()}
-                  className="sq-3d-btn sq-3d-btn--primary flex flex-1 items-center justify-center gap-2 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Weiter
-                  <Icon name="arrow-right" className="w-5 h-5" />
-                </button>
-              ) : (
-                <button
-                  onClick={handleConfirm}
-                  disabled={!canProceed() || isSavingBooking}
-                  className="sq-3d-btn sq-3d-btn--success flex flex-1 items-center justify-center gap-2 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  <Icon name="check" className="w-5 h-5" />
-                  {isSavingBooking ? 'Speichert…' : 'Buchung bestätigen'}
-                </button>
-              )}
-            </div>
+            {currentStep === 3 && (
+              <ExtrasStep
+                vehicleTariffCtx={vehicleTariffCtx}
+                mileagePackages={mileagePackages}
+                insuranceOptions={insuranceOptions}
+                extraOptions={extraOptions}
+                selectedMileagePackage={selectedMileagePackage}
+                selectedInsurances={selectedInsurances}
+                extras={extras}
+                taxRatePercent={taxRatePercent}
+                displayRentalDays={displayRentalDays}
+                hasPrice={hasPrice}
+                extrasTotal={extrasTotal}
+                onSelectMileagePackage={setSelectedMileagePackage}
+                onToggleInsurance={(id) =>
+                  setSelectedInsurances((prev) =>
+                    prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id],
+                  )
+                }
+                onToggleExtra={(id) =>
+                  setExtras((prev) =>
+                    prev.includes(id) ? prev.filter((e) => e !== id) : [...prev, id],
+                  )
+                }
+              />
+            )}
+
+            {currentStep === 2 && (
+              <PeriodStep
+                pickupDate={pickupDate}
+                returnDate={returnDate}
+                pickupTime={pickupTime}
+                returnTime={returnTime}
+                showPickupTimePicker={showPickupTimePicker}
+                showReturnTimePicker={showReturnTimePicker}
+                pickupStationId={pickupStationId}
+                returnStationId={returnStationId}
+                sameReturnStation={sameReturnStation}
+                orgStations={orgStations}
+                calendarMonth={calendarMonth}
+                calendarYear={calendarYear}
+                calendarSelectMode={calendarSelectMode}
+                selectedVehicle={selectedVehicle}
+                blockedDays={blockedDays}
+                vehicleBlockedInfo={vehicleBlockedInfo}
+                hoveredDay={hoveredDay}
+                rangeHasConflict={rangeHasConflict}
+                onPickupDateChange={setPickupDate}
+                onReturnDateChange={setReturnDate}
+                onPickupTimeChange={setPickupTime}
+                onReturnTimeChange={setReturnTime}
+                onShowPickupTimePickerChange={setShowPickupTimePicker}
+                onShowReturnTimePickerChange={setShowReturnTimePicker}
+                onPickupStationChange={setPickupStationId}
+                onReturnStationChange={setReturnStationId}
+                onSameReturnStationChange={setSameReturnStation}
+                onCalendarMonthChange={setCalendarMonth}
+                onCalendarYearChange={setCalendarYear}
+                onCalendarSelectModeChange={setCalendarSelectMode}
+                onHoveredDayChange={setHoveredDay}
+                onCalendarDayClick={handleCalendarDayClick}
+              />
+            )}
+
+            {currentStep === 5 && (
+              <CheckoutStep
+                selectedCustomer={selectedCustomer}
+                selectedVehicle={selectedVehicle}
+                paymentMethod={paymentMethod}
+                onPaymentMethodChange={setPaymentMethod}
+                discountPercent={discountPercent}
+                onDiscountPercentChange={setDiscountPercent}
+                discountAmount={discountAmount}
+                agbAccepted={agbAccepted}
+                privacyAccepted={privacyAccepted}
+                onAgbAcceptedChange={setAgbAccepted}
+                onPrivacyAcceptedChange={setPrivacyAccepted}
+                invoiceGenerated={invoiceGenerated}
+                contractGenerated={contractGenerated}
+                generatingInvoice={generatingInvoice}
+                generatingContract={generatingContract}
+                onGenerateInvoice={() => {
+                  setGeneratingInvoice(true);
+                  setTimeout(() => {
+                    setGeneratingInvoice(false);
+                    setInvoiceGenerated(true);
+                  }, 1500);
+                }}
+                onGenerateContract={() => {
+                  setGeneratingContract(true);
+                  setTimeout(() => {
+                    setGeneratingContract(false);
+                    setContractGenerated(true);
+                  }, 2000);
+                }}
+                quickViewDoc={quickViewDoc}
+                onQuickViewDocChange={setQuickViewDoc}
+                pickupDate={pickupDate}
+                returnDate={returnDate}
+                pickupTime={pickupTime}
+                returnTime={returnTime}
+                rentalDays={rentalDays}
+                displayRentalDays={displayRentalDays}
+                taxRatePercent={taxRatePercent}
+                subtotal={subtotal}
+                extrasTotal={extrasTotal}
+                tax={tax}
+                grandTotal={grandTotal}
+                depositAmount={depositAmount}
+                totalFreeKm={totalFreeKm}
+                dailyRateGross={dailyRateGross}
+              />
+            )}
           </div>
+
+          <div className="min-w-0 space-y-5">
+            <BookingSidebar
+              {...summaryPanelProps}
+              rentalEligibility={rentalEligibility}
+              rentalEligibilityLoading={rentalEligibilityLoading}
+              rentalEligibilityError={rentalEligibilityError}
+              onCompleteCustomerData={() => {
+                if (!selectedCustomer) return;
+                setCustomerDetailTarget(selectedCustomer);
+                setCustomerDetailOpen(true);
+              }}
+              onChooseAnotherVehicle={() => setCurrentStep(1)}
+            />
+            <MobileBookingFooter
+              currentStep={currentStep}
+              canProceed={canProceed()}
+              isSavingBooking={isSavingBooking}
+              onBackStep={() => setCurrentStep((s) => (s - 1) as BookingWizardStepId)}
+              onNextStep={() => setCurrentStep((s) => (s + 1) as BookingWizardStepId)}
+              onConfirm={handleConfirm}
+            />
+          </div>
+
         </div>
       )}
     </div>

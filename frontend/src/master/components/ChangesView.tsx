@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'new-booking-component-extraction-v49225-2026-07-07',
+    version: '4.9.225',
+    title: 'V4.9.225 — New Booking: Wizard-UI in Step-Komponenten aufgeteilt',
+    summary: [
+      'Monolith `NewBookingView.tsx` in klare UI-Blöcke extrahiert: `BookingStepper`, `VehiclePickerStep`, `PeriodStep`, `ExtrasStep`, `CustomerStep`, `CheckoutStep`, `BookingSummaryPanel`, `BookingSidebar`, `MobileBookingFooter`, `BookingSuccessState`.',
+      'State, Pricing-Simulation, Eligibility, Validierung und Create-Flow bleiben im Parent — Child-Komponenten nur Props/Callbacks.',
+      'Gemeinsame Types in `new-booking/types.ts`, Format-Helper in `new-booking/format.ts`, Card-Wrapper `BookingStepCard`.',
+      'Keine Businesslogik-, API- oder UI-Neugestaltungsänderung — reine Strukturierung für Mobile-Optimierung und geringeres Regression-Risiko.',
+    ],
+    reason:
+      'NewBookingView war zu monolithisch (~3000 Zeilen) — UI, Wizard-State und Steps in einer Datei erschwerten Mobile-Feinschliff und Review.',
+    previousBehavior:
+      'Alle Steps, Sidebar, Footer und Success-State inline in `NewBookingView.tsx`.',
+    details:
+      'Frontend-only Refactor unter `frontend/src/rental/components/new-booking/`. Keine Backend-Änderungen.',
+    affectsArchitecture: false,
+    module: null,
+    createdAt: '2026-07-07T05:00:00.000Z',
+  },
+  {
     id: 'new-booking-preflight-consistency-v49224-2026-07-07',
     version: '4.9.224',
     title: 'V4.9.224 — New Booking: Availability/Health/Pricing/Station Preflight',
