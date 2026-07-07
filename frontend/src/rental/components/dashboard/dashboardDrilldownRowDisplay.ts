@@ -3,7 +3,14 @@ import {
   formatRuntimeReasonLabel,
 } from './reasonDisplay';
 import { sanitizeUserFacingIssueText } from '../../lib/operational-issues';
-import type { DashboardSlice, DashboardSliceRow, VehicleRuntimeState } from './runtime';
+import { fleetSignalAgeMs } from '../../lib/fleetVehicleDisplay';
+import type { VehicleData } from '../../data/vehicles';
+import type {
+  DashboardSlice,
+  DashboardSliceRow,
+  TelemetryConnectionState,
+  VehicleRuntimeState,
+} from './runtime';
 import { readyToRentNotReadyRows } from './dashboardSliceAccess';
 import type { DashboardDrawerGroup } from './dashboardDrilldownGroups';
 
@@ -98,6 +105,74 @@ export function buildReadyToRentDrawerGroups(slice: DashboardSlice, locale: stri
   }
 
   return result;
+}
+
+const TELEMETRY_SORT_RANK: Record<TelemetryConnectionState, number> = {
+  live: 0,
+  standby: 1,
+  soft_offline: 2,
+  offline: 3,
+  unknown: 4,
+};
+
+const NO_TIMESTAMP_BASE_MS = 10 * 365 * 24 * 60 * 60_000;
+
+function rowSignalSortKey(
+  row: DashboardSliceRow,
+  fleetVehicleById: Map<string, VehicleData>,
+  vehicleStates: Map<string, VehicleRuntimeState>,
+  now: number,
+): number {
+  const vehicleId = row.vehicleId;
+  const vehicle = vehicleId ? fleetVehicleById.get(vehicleId) : undefined;
+  const state = vehicleId ? vehicleStates.get(vehicleId) : undefined;
+
+  if (vehicle) {
+    const ageMs = fleetSignalAgeMs(vehicle, now);
+    if (ageMs != null) return ageMs;
+  }
+
+  if (state) {
+    const rank = TELEMETRY_SORT_RANK[state.telemetryState] ?? TELEMETRY_SORT_RANK.unknown;
+    return NO_TIMESTAMP_BASE_MS + rank * 60 * 60_000;
+  }
+
+  return Number.POSITIVE_INFINITY;
+}
+
+/**
+ * Sort drawer rows fresh → older within a single Ready / Not Ready group.
+ * Uses fleet `lastSignal` / `signalAgeMs`; missing signal sorts last.
+ */
+export function sortRowsByLastSignalFreshFirst(
+  rows: DashboardSliceRow[],
+  options: {
+    vehicleStates: Map<string, VehicleRuntimeState>;
+    fleetVehicleById: Map<string, VehicleData>;
+    now?: number;
+  },
+): DashboardSliceRow[] {
+  const now = options.now ?? Date.now();
+  return [...rows].sort((a, b) => {
+    const keyA = rowSignalSortKey(a, options.fleetVehicleById, options.vehicleStates, now);
+    const keyB = rowSignalSortKey(b, options.fleetVehicleById, options.vehicleStates, now);
+    if (keyA !== keyB) return keyA - keyB;
+    return a.title.localeCompare(b.title);
+  });
+}
+
+export function sortReadyToRentDrawerGroupsByLastSignal(
+  groups: DashboardDrawerGroup[],
+  options: {
+    vehicleStates: Map<string, VehicleRuntimeState>;
+    fleetVehicleById: Map<string, VehicleData>;
+    now?: number;
+  },
+): DashboardDrawerGroup[] {
+  return groups.map((group) => {
+    const rows = sortRowsByLastSignalFreshFirst(group.rows, options);
+    return { ...group, rows, count: rows.length };
+  });
 }
 
 export interface VehicleDrawerRowDisplay {

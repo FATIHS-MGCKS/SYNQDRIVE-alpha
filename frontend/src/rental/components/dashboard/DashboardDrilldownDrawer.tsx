@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Icon } from '../ui/Icon';
 import { DetailDrawer } from '../../../components/patterns/detail-drawer';
 import { SkeletonRows, StatusChip } from '../../../components/patterns';
@@ -18,6 +18,7 @@ import {
   composeVehicleDrawerRowDisplay,
   filterReadyToRentDrawerGroups,
   readyToRentDrawerHint,
+  sortReadyToRentDrawerGroupsByLastSignal,
 } from './dashboardDrilldownRowDisplay';
 import { drawerHeaderHint } from './dashboardDrawerNormalize';
 import type { DashboardViewModel, DashboardViewProps } from './dashboardTypes';
@@ -552,6 +553,7 @@ function ReadyToRentDrawerToolbar({
           value={searchQuery}
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder={searchPlaceholder}
+          autoComplete="off"
           className="w-full min-w-0 rounded-xl border border-border/55 bg-background/60 py-2 pl-8 pr-3 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[color:var(--brand)] dark:bg-card/50"
         />
       </div>
@@ -589,7 +591,14 @@ function DashboardGroupList({
     setSearchQuery('');
   }, [slice.id]);
 
-  const groups = useMemo(() => buildDashboardGroups(slice, locale), [slice, locale]);
+  const groups = useMemo(() => {
+    const built = buildDashboardGroups(slice, locale);
+    if (!isReadyToRent) return built;
+    return sortReadyToRentDrawerGroupsByLastSignal(built, {
+      vehicleStates,
+      fleetVehicleById,
+    });
+  }, [slice, locale, isReadyToRent, vehicleStates, fleetVehicleById]);
   const filteredGroups = useMemo(() => {
     if (!isReadyToRent || !searchQuery.trim()) return groups;
     return filterReadyToRentDrawerGroups(groups, vehicleStates, searchQuery);
@@ -774,12 +783,27 @@ export function DashboardDrilldownDrawer({
       ? businessSlice.hint ? <p className="text-[12px] text-muted-foreground">{businessSlice.hint}</p> : undefined
       : undefined;
 
+  const handleContentOpenAutoFocus = useCallback(
+    (event: Event) => {
+      if (activeTargetId !== 'ready-to-rent') return;
+      event.preventDefault();
+      const content = event.currentTarget as HTMLElement;
+      const title = content.querySelector('[data-slot="sheet-title"]');
+      if (title instanceof HTMLElement) {
+        title.tabIndex = -1;
+        title.focus({ preventScroll: true });
+      }
+    },
+    [activeTargetId],
+  );
+
   return (
     <DetailDrawer
       open={open}
       onOpenChange={(next) => {
         if (!next) onClose();
       }}
+      onContentOpenAutoFocus={handleContentOpenAutoFocus}
       eyebrow={dashboardSlice ? operativeEyebrow(dashboardSlice.id, de) : businessSlice ? (de ? 'Finanzen' : 'Financial') : undefined}
       title={title}
       description={description}

@@ -7,6 +7,8 @@ import {
   composeVehicleDrawerRowDisplay,
   filterReadyToRentDrawerGroups,
   readyToRentDrawerHint,
+  sortReadyToRentDrawerGroupsByLastSignal,
+  sortRowsByLastSignalFreshFirst,
 } from './dashboardDrilldownRowDisplay';
 import { buildDashboardRuntimeModel } from './runtime/dashboardSliceBuilder';
 
@@ -169,6 +171,110 @@ describe('ready-to-rent drawer row display', () => {
     expect(display.healthLabel).toBe('Critical');
     expect(runtime.slices['ready-to-rent'].count).toBe(1);
     expect(buildReadyToRentDrawerGroups(runtime.slices['ready-to-rent'], 'en')[0]?.count).toBe(1);
+  });
+});
+
+describe('ready-to-rent drawer last-signal sort', () => {
+  const hoursAgoIso = (h: number) =>
+    new Date(NOW.getTime() - h * 60 * 60_000).toISOString();
+
+  it('sorts rows within a group fresh → older without mixing groups', () => {
+    const fleetVehicles = [
+        vehicle({
+          id: 'old',
+          license: 'OLD 1',
+          lastSignal: hoursAgoIso(8),
+          signalAgeMs: 8 * 60 * 60_000,
+          onlineStatus: 'STANDBY',
+          isFresh: false,
+        }),
+        vehicle({
+          id: 'fresh',
+          license: 'NEW 1',
+          lastSignal: hoursAgoIso(0.2),
+          signalAgeMs: 12 * 60_000,
+          onlineStatus: 'ONLINE',
+          isFresh: true,
+        }),
+        vehicle({
+          id: 'dirty',
+          license: 'DIRTY 1',
+          cleaningStatus: 'Needs Cleaning',
+          lastSignal: hoursAgoIso(1),
+          signalAgeMs: 60 * 60_000,
+          onlineStatus: 'STANDBY',
+          isFresh: false,
+        }),
+      ];
+    const runtime = buildDashboardRuntimeModel({
+      locale: 'en',
+      fleetVehicles,
+      now: NOW,
+    });
+
+    const fleetById = new Map(fleetVehicles.map((v) => [v.id, v]));
+    const states = new Map(runtime.vehicleStates.map((s) => [s.vehicleId, s]));
+    const groups = sortReadyToRentDrawerGroupsByLastSignal(
+      buildReadyToRentDrawerGroups(runtime.slices['ready-to-rent'], 'en'),
+      { vehicleStates: states, fleetVehicleById: fleetById, now: NOW.getTime() },
+    );
+
+    expect(groups).toHaveLength(2);
+    expect(groups[0]?.rows.map((row) => row.vehicleId)).toEqual(['fresh', 'old']);
+    expect(groups[1]?.rows.map((row) => row.vehicleId)).toEqual(['dirty']);
+  });
+
+  it('keeps sort order after search filter', () => {
+    const rows = [
+      {
+        id: 'r-old',
+        vehicleId: 'old',
+        title: 'OLD 1',
+        subtitle: 'VW Golf',
+        stationLabel: 'Zentrale',
+        severity: 'success' as const,
+      },
+      {
+        id: 'r-fresh',
+        vehicleId: 'fresh',
+        title: 'NEW 1',
+        subtitle: 'Audi A4',
+        stationLabel: 'Zentrale',
+        severity: 'success' as const,
+      },
+    ];
+    const fleetById = new Map([
+      [
+        'old',
+        vehicle({
+          id: 'old',
+          license: 'OLD 1',
+          lastSignal: new Date(NOW.getTime() - 8 * 60 * 60_000).toISOString(),
+          signalAgeMs: 8 * 60 * 60_000,
+        }),
+      ],
+      [
+        'fresh',
+        vehicle({
+          id: 'fresh',
+          license: 'NEW 1',
+          lastSignal: new Date(NOW.getTime() - 10 * 60_000).toISOString(),
+          signalAgeMs: 10 * 60_000,
+        }),
+      ],
+    ]);
+    const states = new Map([
+      ['old', { vehicleId: 'old', license: 'OLD 1', displayName: 'OLD 1 · VW Golf', stationLabel: 'Zentrale', telemetryState: 'standby' } as any],
+      ['fresh', { vehicleId: 'fresh', license: 'NEW 1', displayName: 'NEW 1 · Audi A4', stationLabel: 'Zentrale', telemetryState: 'live' } as any],
+    ]);
+    const sorted = sortRowsByLastSignalFreshFirst(rows, {
+      vehicleStates: states,
+      fleetVehicleById: fleetById,
+      now: NOW.getTime(),
+    });
+    const groups = [{ id: 'ready-now', title: 'Ready', count: 2, rows: sorted }];
+    const filtered = filterReadyToRentDrawerGroups(groups, states, 'zentrale')[0]?.rows.map((r) => r.vehicleId);
+    expect(filtered).toEqual(['fresh', 'old']);
   });
 });
 

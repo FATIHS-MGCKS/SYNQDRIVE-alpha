@@ -27,6 +27,8 @@ export interface DetailDrawerProps {
   side?: 'right' | 'left';
   /** Width on >= sm screens. Defaults to a comfortable detail width. */
   widthClassName?: string;
+  /** Radix Sheet open focus — use to keep mobile keyboard closed on drawer open. */
+  onContentOpenAutoFocus?: (event: Event) => void;
   children: ReactNode;
   className?: string;
 }
@@ -41,6 +43,7 @@ export function DetailDrawer({
   footer,
   side = 'right',
   widthClassName = 'sm:max-w-lg',
+  onContentOpenAutoFocus,
   children,
   className,
 }: DetailDrawerProps) {
@@ -48,6 +51,7 @@ export function DetailDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side={side}
+        onOpenAutoFocus={onContentOpenAutoFocus}
         className={cn('w-full gap-0 bg-card p-0', widthClassName, className)}
       >
         <SheetHeader className="border-b border-border px-5 py-4">
