@@ -3,6 +3,7 @@ import {
   formatRuntimeReasonLabel,
 } from './reasonDisplay';
 import { sanitizeUserFacingIssueText } from '../../lib/operational-issues';
+import type { FleetReasonBadge } from '../../lib/fleetVehicleDisplay';
 import { fleetSignalAgeMs } from '../../lib/fleetVehicleDisplay';
 import type { VehicleData } from '../../data/vehicles';
 import type {
@@ -281,6 +282,59 @@ export function composeVehicleDrawerRowDisplay(
     healthLabel: health.label,
     healthTone: health.tone,
   };
+}
+
+export type DrawerVehicleReasonBadge = {
+  text: string;
+  tone: 'success' | 'watch' | 'warning' | 'critical' | 'neutral';
+};
+
+function drawerReasonTone(
+  tone: FleetReasonBadge['tone'],
+): DrawerVehicleReasonBadge['tone'] {
+  if (tone === 'critical') return 'critical';
+  if (tone === 'watch' || tone === 'warning') return 'watch';
+  if (tone === 'success') return 'success';
+  return 'neutral';
+}
+
+/** Primary reason chip for shared drawer vehicle rows — fleet display first, then runtime reasons. */
+export function resolveDrawerVehicleReasonBadge(
+  row: DashboardSliceRow,
+  locale: string,
+  fleetReason: FleetReasonBadge | null,
+): DrawerVehicleReasonBadge | null {
+  if (fleetReason) {
+    return { text: fleetReason.text, tone: drawerReasonTone(fleetReason.tone) };
+  }
+
+  const reasons = dedupeDisplayReasons(row.reasons ?? []);
+  if (reasons.length > 0) {
+    const primary = reasons[0];
+    const tone =
+      primary.severity === 'critical'
+        ? 'critical'
+        : primary.severity === 'warning'
+          ? 'watch'
+          : 'neutral';
+    return {
+      text: sanitizeUserFacingIssueText(formatRuntimeReasonLabel(primary, locale))!,
+      tone,
+    };
+  }
+
+  const meta = sanitizeUserFacingIssueText(row.meta);
+  if (meta) {
+    const tone =
+      row.severity === 'critical'
+        ? 'critical'
+        : row.severity === 'warning'
+          ? 'watch'
+          : 'neutral';
+    return { text: meta, tone };
+  }
+
+  return null;
 }
 
 export function composeBookingDrawerRowDisplay(row: DashboardSliceRow): {

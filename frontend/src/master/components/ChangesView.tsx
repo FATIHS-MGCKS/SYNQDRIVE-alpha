@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-drawer-vehicle-unify-v49219-2026-07-07',
+    version: '4.9.219',
+    title: 'V4.9.219 — Dashboard Drawer: einheitliche Vehicle-Entries',
+    summary: [
+      'Critical alerts und Blocked & maintenance Sidebars nutzen jetzt dieselbe Entry-Struktur wie Ready for Renting (`CompactFleetDrawerVehicleRow`).',
+      'Gemeinsame Darstellung: Kennzeichen, Modell, Station, Fuel/Telemetry/km, optionale Reason-Zeile, Badges + Open rechts.',
+      '`resolveDrawerVehicleReasonBadge` vereinheitlicht Reason-Chips (Fleet-Display oder Runtime-Reasons).',
+      'Alte `VehicleDrawerRowCard`-Sonderlayout im Drawer entfernt — keine zweite UI-Wahrheit.',
+    ],
+    reason:
+      'Critical- und Blocked-Drawer wirkten wie eine andere UI-Familie gegenüber Ready for Renting; Einträge sollten strukturell identisch sein.',
+    previousBehavior:
+      'Ready → `CompactFleetDrawerVehicleRow`; Critical/Blocked → separate `VehicleDrawerRowCard` mit anderem Layout und weniger Meta.',
+    details:
+      'Frontend-only: `CompactFleetDrawerVehicleRow.tsx`, `DashboardDrilldownDrawer.tsx`, `dashboardDrilldownRowDisplay.ts`. Keine Sortier-/Severity-/Backend-Änderung.',
+    affectsArchitecture: false,
+    module: null,
+    createdAt: '2026-07-07T02:20:00.000Z',
+  },
+  {
     id: 'fleet-command-ui-polish-v49218-2026-07-07',
     version: '4.9.218',
     title: 'V4.9.218 — Fleet Command UI-Feinschliff',

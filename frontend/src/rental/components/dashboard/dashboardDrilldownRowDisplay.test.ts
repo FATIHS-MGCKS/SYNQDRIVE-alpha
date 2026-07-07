@@ -7,6 +7,7 @@ import {
   composeVehicleDrawerRowDisplay,
   filterReadyToRentDrawerGroups,
   readyToRentDrawerHint,
+  resolveDrawerVehicleReasonBadge,
   sortReadyToRentDrawerGroupsByLastSignal,
   sortRowsByLastSignalFreshFirst,
 } from './dashboardDrilldownRowDisplay';
@@ -314,5 +315,37 @@ describe('ready-to-rent drawer search filter', () => {
     expect(filterReadyToRentDrawerGroups(groups, states, 'zentrale')[0]?.rows[0]?.vehicleId).toBe('v1');
     expect(filterReadyToRentDrawerGroups(groups, states, 'nomatch')).toHaveLength(0);
     expect(filterReadyToRentDrawerGroups(groups, states, '')).toEqual(groups);
+  });
+});
+
+describe('resolveDrawerVehicleReasonBadge', () => {
+  it('prefers fleet reason badge over runtime reasons', () => {
+    const badge = resolveDrawerVehicleReasonBadge(
+      {
+        id: 'r1',
+        title: 'KS-AB 100',
+        severity: 'critical',
+        reasons: [{ id: 'svc', title: 'Service overdue', severity: 'critical', category: 'service' }],
+      } as any,
+      'en',
+      { text: 'Monitor tires', tone: 'watch' },
+    );
+    expect(badge?.text).toBe('Monitor tires');
+    expect(badge?.tone).toBe('watch');
+  });
+
+  it('falls back to primary runtime reason when fleet badge is absent', () => {
+    const badge = resolveDrawerVehicleReasonBadge(
+      {
+        id: 'r1',
+        title: 'KS-AB 100',
+        severity: 'critical',
+        reasons: [{ id: 'svc', title: 'Service overdue', severity: 'critical', category: 'service' }],
+      } as any,
+      'en',
+      null,
+    );
+    expect(badge?.text).toBe('Service overdue');
+    expect(badge?.tone).toBe('critical');
   });
 });
