@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customers-mobile-card-polish-v49233-2026-07-07',
+    version: '4.9.233',
+    title: 'V4.9.233 — Kunden Mobile Card: Kontakt-Feinschliff + Tooltips',
+    summary: [
+      'Kontaktblock kompakter (11px, kleinere Icons); Adresse zweizeilig ohne horizontalen Versatz.',
+      'ID/DL-Chips: Label vor Icon innerhalb des StatusChip.',
+      'Hover-Tooltips für ID, DL, Risiko und Mietfreigabe über `components/ui/tooltip`.',
+    ],
+    reason:
+      'Letzte UX-Feinheiten: Kontakt zu groß, Adresszeile versetzt, Icon-Reihenfolge, fehlende Erklärungen per Hover.',
+    previousBehavior:
+      '12px Kontakt, pl-3 auf PLZ-Zeile, StatusChip icon-Prop links, nur title-Attribute.',
+    details:
+      'frontend: CustomerListMobileCards.tsx — ChipTooltip, renderVerificationTooltip, renderRiskTooltip, renderClearanceTooltip.',
+    affectsArchitecture: false,
+    module: 'Customers',
+    createdAt: '2026-07-07T23:40:00.000Z',
+  },
+  {
     id: 'customers-mobile-chip-unify-v49232-2026-07-07',
     version: '4.9.232',
     title: 'V4.9.232 — Kunden Mobile Card: StatusChip + Kontakt-Icons',

@@ -13,15 +13,20 @@ import {
 } from 'lucide-react';
 
 import { StatusChip, type StatusTone } from '../../../components/patterns';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '../../../components/ui/tooltip';
 import { cn } from '../../../components/ui/utils';
 import {
   customerRiskUiLabelDe,
   customerStatusUiLabelDe,
+  customerVerificationUiLabelDe,
   type CustomerUiVerification,
 } from '../../lib/entityMappers';
 import type { CustomerListRow } from '../../lib/customer-list-ui';
 import {
-  customerVerificationCardBadgeLabelDe,
   formatCustomerAddressLines,
   rentalClearanceBadgeTone,
   rentalClearanceMobileLabel,
@@ -41,6 +46,17 @@ interface CustomerListMobileCardsProps {
 
 const MOBILE_CHIP_CLASS =
   'h-7 rounded-full px-2.5 text-[11px] font-semibold leading-none whitespace-nowrap';
+
+const CONTACT_VALUE_CLASS = 'text-[11px] leading-[1.25] text-muted-foreground';
+
+const TOOLTIP_CONTENT_CLASS =
+  'max-w-[220px] border border-border/60 bg-popover px-2.5 py-2 text-popover-foreground shadow-md';
+
+interface TooltipCopy {
+  title: string;
+  status?: string;
+  description: string;
+}
 
 function avatarTone(status: CustomerListRow['status']): string {
   if (status === 'Active') return 'sq-tone-brand';
@@ -68,37 +84,166 @@ function verificationChipTone(status: CustomerUiVerification | string | undefine
   return customerVerificationTone(status);
 }
 
-function getVerificationChipMeta(prefix: 'ID' | 'DL', status?: string) {
-  const ui = status as CustomerUiVerification | undefined;
-  const tone = verificationChipTone(ui);
-  const title = customerVerificationCardBadgeLabelDe(prefix, ui);
-  const ariaLabel = title;
+function verificationStatusLabelDe(ui: CustomerUiVerification | string | undefined): string {
+  const base = customerVerificationUiLabelDe(ui);
+  return base === 'In Prüfung' ? 'Prüfung offen' : base;
+}
 
-  let IconComponent: LucideIcon;
+function getVerificationIcon(ui: CustomerUiVerification | string | undefined): LucideIcon {
   switch (ui) {
     case 'Verified':
-      IconComponent = CheckCircle2;
-      break;
+      return CheckCircle2;
     case 'Rejected':
-      IconComponent = XCircle;
-      break;
+      return XCircle;
     case 'Expired':
-      IconComponent = AlertCircle;
-      break;
+      return AlertCircle;
     case 'Pending Review':
-      IconComponent = Clock3;
-      break;
+      return Clock3;
     default:
-      IconComponent = FileMinus2;
+      return FileMinus2;
+  }
+}
+
+function renderVerificationTooltip(prefix: 'ID' | 'DL', status?: string): TooltipCopy {
+  const ui = status as CustomerUiVerification | undefined;
+  const statusLabel = verificationStatusLabelDe(ui);
+  const doc = prefix === 'ID' ? 'Ausweisdokument' : 'Führerschein';
+
+  switch (ui) {
+    case 'Verified':
+      return {
+        title: `${prefix}-Status`,
+        status: 'Verifiziert',
+        description: `${doc} erfolgreich geprüft.`,
+      };
+    case 'Pending Review':
+      return {
+        title: `${prefix}-Status`,
+        status: statusLabel,
+        description: 'Das Dokument wurde eingereicht und wird geprüft.',
+      };
+    case 'Rejected':
+      return {
+        title: `${prefix}-Status`,
+        status: 'Abgelehnt',
+        description: `Das eingereichte ${prefix === 'ID' ? 'Ausweisdokument' : 'Führerscheindokument'} wurde nicht akzeptiert.`,
+      };
+    case 'Expired':
+      return {
+        title: `${prefix}-Status`,
+        status: 'Abgelaufen',
+        description: `Das ${prefix === 'ID' ? 'Dokument ist' : 'Dokument ist'} nicht mehr gültig.`,
+      };
+    default:
+      return {
+        title: `${prefix}-Status`,
+        status: statusLabel,
+        description:
+          prefix === 'ID'
+            ? 'Es wurde noch kein Ausweisdokument eingereicht.'
+            : 'Es wurde noch kein Führerscheindokument eingereicht.',
+      };
+  }
+}
+
+function renderRiskTooltip(risk: CustomerListRow['riskLevel']): TooltipCopy {
+  if (risk === 'Not Assessed') {
+    return {
+      title: 'Risikobewertung',
+      status: 'Keine Risikobewertung',
+      description:
+        'Es liegt derzeit noch keine Risikobewertung für diesen Kunden vor. Sobald eine Bewertung durchgeführt wurde, wird der Risikostatus hier angezeigt.',
+    };
   }
 
   return {
-    tone,
-    icon: <IconComponent className="size-3 shrink-0" aria-hidden />,
-    visibleLabel: prefix,
-    title,
-    ariaLabel,
+    title: 'Risikobewertung',
+    status: customerRiskUiLabelDe(risk),
+    description: 'Operative Risikoeinstufung für diesen Kunden.',
   };
+}
+
+function renderClearanceTooltip(customer: CustomerListRow): TooltipCopy {
+  const clearance = customer.rentalClearance;
+  const label = rentalClearanceMobileLabel(clearance);
+  const reasons = rentalClearanceTooltip(clearance?.reasons);
+
+  if (!clearance || !label) {
+    return {
+      title: 'Mietfreigabe',
+      status: 'Keine Mietfreigabe',
+      description:
+        'Der Kunde ist aktuell nicht für eine Mietfreigabe freigegeben. Prüfe Verifikation, Dokumente oder Freigabestatus.',
+    };
+  }
+
+  if (reasons) {
+    return {
+      title: 'Mietfreigabe',
+      status: label,
+      description: reasons,
+    };
+  }
+
+  if (clearance.status === 'CLEARED') {
+    return {
+      title: 'Mietfreigabe',
+      status: label,
+      description: 'Der Kunde ist für eine Mietfreigabe freigegeben.',
+    };
+  }
+
+  if (clearance.status === 'REVIEW_REQUIRED') {
+    return {
+      title: 'Mietfreigabe',
+      status: label,
+      description: 'Es fehlen noch Prüfungen oder Hinweise vor der vollständigen Freigabe.',
+    };
+  }
+
+  if (clearance.status === 'PENDING') {
+    return {
+      title: 'Mietfreigabe',
+      status: label,
+      description: 'Der Kunde ist nur eingeschränkt freigegeben.',
+    };
+  }
+
+  return {
+    title: 'Mietfreigabe',
+    status: label,
+    description:
+      'Der Kunde ist aktuell nicht für eine Mietfreigabe freigegeben. Prüfe Verifikation, Dokumente oder Freigabestatus.',
+  };
+}
+
+function ChipTooltip({
+  copy,
+  children,
+}: {
+  copy: TooltipCopy;
+  children: ReactNode;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className="inline-flex"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          {children}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top" sideOffset={6} className={TOOLTIP_CONTENT_CLASS}>
+        <p className="text-[11px] font-semibold leading-tight">{copy.title}</p>
+        {copy.status ? (
+          <p className="mt-0.5 text-[11px] font-medium leading-tight">{copy.status}</p>
+        ) : null}
+        <p className="mt-1 text-[10px] leading-snug text-muted-foreground">{copy.description}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
 }
 
 function ContactIconLine({
@@ -106,38 +251,45 @@ function ContactIconLine({
   label,
   value,
   href,
+  truncate = false,
   children,
 }: {
   icon: LucideIcon;
   label: string;
   value?: string;
   href?: string;
+  truncate?: boolean;
   children?: ReactNode;
 }) {
   if (!children && !value?.trim()) return null;
-
-  const valueClass = 'text-[12px] leading-snug text-muted-foreground';
 
   const content =
     children ??
     (href ? (
       <a
         href={href}
-        className={cn(valueClass, 'block min-w-0 truncate hover:text-foreground')}
+        className={cn(
+          CONTACT_VALUE_CLASS,
+          'block min-w-0 hover:text-foreground',
+          truncate && 'truncate',
+        )}
         onClick={(e) => e.stopPropagation()}
         title={value}
       >
         {value}
       </a>
     ) : (
-      <span className={cn(valueClass, 'block min-w-0')} title={value}>
+      <span
+        className={cn(CONTACT_VALUE_CLASS, 'block min-w-0', truncate && 'truncate')}
+        title={value}
+      >
         {value}
       </span>
     ));
 
   return (
-    <div className="grid grid-cols-[16px_minmax(0,1fr)] items-start gap-2">
-      <Icon className="mt-0.5 size-3.5 shrink-0 text-muted-foreground/70" aria-hidden />
+    <div className="grid grid-cols-[14px_minmax(0,1fr)] items-start gap-1.5">
+      <Icon className="mt-px size-3 shrink-0 text-muted-foreground/70" aria-hidden />
       <div className="min-w-0">
         <span className="sr-only">{label}</span>
         {content}
@@ -147,17 +299,20 @@ function ContactIconLine({
 }
 
 function VerificationChip({ prefix, status }: { prefix: 'ID' | 'DL'; status?: string }) {
-  const meta = getVerificationChipMeta(prefix, status);
+  const ui = status as CustomerUiVerification | undefined;
+  const tone = verificationChipTone(ui);
+  const IconComponent = getVerificationIcon(ui);
+  const ariaLabel = `${prefix}: ${verificationStatusLabelDe(ui)}`;
 
   return (
-    <StatusChip
-      tone={meta.tone}
-      icon={meta.icon}
-      className={MOBILE_CHIP_CLASS}
-      title={meta.title}
-    >
-      <span aria-label={meta.ariaLabel}>{meta.visibleLabel}</span>
-    </StatusChip>
+    <ChipTooltip copy={renderVerificationTooltip(prefix, status)}>
+      <StatusChip tone={tone} className={MOBILE_CHIP_CLASS}>
+        <span className="inline-flex items-center gap-1" aria-label={ariaLabel}>
+          <span>{prefix}</span>
+          <IconComponent className="size-3 shrink-0" aria-hidden />
+        </span>
+      </StatusChip>
+    </ChipTooltip>
   );
 }
 
@@ -171,7 +326,6 @@ export function CustomerListMobileCards({
       {customers.map((customer) => {
         const addressLines = formatCustomerAddressLines(customer);
         const clearanceLabel = rentalClearanceMobileLabel(customer.rentalClearance);
-        const clearanceTitle = rentalClearanceTooltip(customer.rentalClearance?.reasons);
 
         return (
           <button
@@ -217,12 +371,13 @@ export function CustomerListMobileCards({
                 </div>
 
                 <div className="mt-2.5 flex items-start gap-2.5">
-                  <div className="min-w-0 flex-1 space-y-1.5">
+                  <div className="min-w-0 flex-1 space-y-1">
                     <ContactIconLine
                       icon={Mail}
                       label="Mail"
                       value={customer.email}
                       href={customer.email ? `mailto:${customer.email}` : undefined}
+                      truncate
                     />
                     <ContactIconLine
                       icon={Phone}
@@ -231,36 +386,43 @@ export function CustomerListMobileCards({
                       href={customer.phone ? `tel:${customer.phone.replace(/\s/g, '')}` : undefined}
                     />
                     {addressLines.hasAny ? (
-                      <ContactIconLine icon={MapPin} label="Adresse">
-                        <div title={customer.displayAddress}>
+                      <div className="grid grid-cols-[14px_minmax(0,1fr)] items-start gap-1.5">
+                        <MapPin
+                          className="mt-px size-3 shrink-0 text-muted-foreground/70"
+                          aria-hidden
+                        />
+                        <div className="min-w-0" title={customer.displayAddress}>
+                          <span className="sr-only">Adresse</span>
                           {addressLines.street ? (
-                            <p className="text-[12px] leading-snug text-muted-foreground">
-                              {addressLines.street}
-                            </p>
+                            <p className={CONTACT_VALUE_CLASS}>{addressLines.street}</p>
                           ) : null}
                           {addressLines.locality ? (
-                            <p className="pl-3 text-[12px] leading-snug text-muted-foreground">
-                              {addressLines.locality}
-                            </p>
+                            <p className={CONTACT_VALUE_CLASS}>{addressLines.locality}</p>
                           ) : null}
                         </div>
-                      </ContactIconLine>
+                      </div>
                     ) : null}
                   </div>
 
                   <div className="flex shrink-0 flex-col items-end gap-1.5">
-                    <StatusChip tone={riskChipTone(customer.riskLevel)} className={MOBILE_CHIP_CLASS}>
-                      {customerRiskUiLabelDe(customer.riskLevel)}
-                    </StatusChip>
+                    <ChipTooltip copy={renderRiskTooltip(customer.riskLevel)}>
+                      <StatusChip
+                        tone={riskChipTone(customer.riskLevel)}
+                        className={MOBILE_CHIP_CLASS}
+                      >
+                        {customerRiskUiLabelDe(customer.riskLevel)}
+                      </StatusChip>
+                    </ChipTooltip>
 
                     {clearanceLabel ? (
-                      <StatusChip
-                        tone={rentalClearanceBadgeTone(customer.rentalClearance?.status)}
-                        className={MOBILE_CHIP_CLASS}
-                        title={clearanceTitle}
-                      >
-                        {clearanceLabel}
-                      </StatusChip>
+                      <ChipTooltip copy={renderClearanceTooltip(customer)}>
+                        <StatusChip
+                          tone={rentalClearanceBadgeTone(customer.rentalClearance?.status)}
+                          className={MOBILE_CHIP_CLASS}
+                        >
+                          {clearanceLabel}
+                        </StatusChip>
+                      </ChipTooltip>
                     ) : null}
                   </div>
                 </div>
