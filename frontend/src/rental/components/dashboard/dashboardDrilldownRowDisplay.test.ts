@@ -7,6 +7,8 @@ import {
   composeVehicleDrawerRowDisplay,
   filterReadyToRentDrawerGroups,
   readyToRentDrawerHint,
+  resolveDrawerVehicleReasonBadge,
+  dashboardDrawerRowHaystack,
   sortReadyToRentDrawerGroupsByLastSignal,
   sortRowsByLastSignalFreshFirst,
 } from './dashboardDrilldownRowDisplay';
@@ -314,5 +316,56 @@ describe('ready-to-rent drawer search filter', () => {
     expect(filterReadyToRentDrawerGroups(groups, states, 'zentrale')[0]?.rows[0]?.vehicleId).toBe('v1');
     expect(filterReadyToRentDrawerGroups(groups, states, 'nomatch')).toHaveLength(0);
     expect(filterReadyToRentDrawerGroups(groups, states, '')).toEqual(groups);
+  });
+});
+
+describe('dashboardDrawerRowHaystack', () => {
+  it('includes runtime reason text for critical/blocked drawer search', () => {
+    const haystack = dashboardDrawerRowHaystack(
+      {
+        id: 'r1',
+        title: 'KS-AB 100',
+        subtitle: 'VW Golf',
+        stationLabel: 'Zentrale',
+        severity: 'critical',
+        reasons: [{ id: 'svc', title: 'Service overdue', severity: 'critical', category: 'service' }],
+      } as any,
+      { vehicleId: 'v1', license: 'KS-AB 100', displayName: 'KS-AB 100 · VW Golf', stationLabel: 'Zentrale' } as any,
+      'en',
+    );
+    expect(haystack).toContain('service overdue');
+    expect(haystack).toContain('zentrale');
+  });
+});
+
+describe('resolveDrawerVehicleReasonBadge', () => {
+  it('prefers fleet reason badge over runtime reasons', () => {
+    const badge = resolveDrawerVehicleReasonBadge(
+      {
+        id: 'r1',
+        title: 'KS-AB 100',
+        severity: 'critical',
+        reasons: [{ id: 'svc', title: 'Service overdue', severity: 'critical', category: 'service' }],
+      } as any,
+      'en',
+      { text: 'Monitor tires', tone: 'watch' },
+    );
+    expect(badge?.text).toBe('Monitor tires');
+    expect(badge?.tone).toBe('watch');
+  });
+
+  it('falls back to primary runtime reason when fleet badge is absent', () => {
+    const badge = resolveDrawerVehicleReasonBadge(
+      {
+        id: 'r1',
+        title: 'KS-AB 100',
+        severity: 'critical',
+        reasons: [{ id: 'svc', title: 'Service overdue', severity: 'critical', category: 'service' }],
+      } as any,
+      'en',
+      null,
+    );
+    expect(badge?.text).toBe('Service overdue');
+    expect(badge?.tone).toBe('critical');
   });
 });

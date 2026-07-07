@@ -5,6 +5,7 @@ import type { VehicleHealthResponse } from '../../../lib/api';
 import { getShortModel, type VehicleData } from '../../data/vehicles';
 import { FleetEnergyIndicator } from '../fleet/FleetEnergyIndicator';
 import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
+import { resolveDrawerVehicleReasonBadge } from './dashboardDrilldownRowDisplay';
 import type { DashboardSliceRow, VehicleRuntimeState } from './runtime';
 
 function reasonChipClass(tone: StatusTone): string {
@@ -95,7 +96,11 @@ export function CompactFleetDrawerVehicleRow({
     : runtimeState
       ? runtimeReadinessLabel(runtimeState, de)
       : null;
-  const reasonBadge = fleetDisplay?.reasonBadge ?? null;
+  const reasonBadge = resolveDrawerVehicleReasonBadge(
+    row,
+    locale,
+    fleetDisplay?.reasonBadge ?? null,
+  );
   const energy = fleetDisplay?.energy;
   const odometerLabel = fleetDisplay?.odometerLabel ?? null;
   const dimmed = fleetDisplay?.showTelemetryWarning && vehicle?.status === 'Available';
@@ -142,25 +147,37 @@ export function CompactFleetDrawerVehicleRow({
           ) : null}
 
           {showOpsMeta ? (
-            <div className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] tabular-nums text-muted-foreground">
+            <div className="flex min-w-0 items-center gap-x-1 overflow-hidden text-[10px] tabular-nums text-muted-foreground">
               {energy?.percent != null ? (
-                <FleetEnergyIndicator
-                  percent={energy.percent}
-                  isElectric={energy.kind === 'battery'}
-                  tone={energy.tone}
-                />
+                <span className="inline-flex shrink-0 items-center whitespace-nowrap">
+                  <FleetEnergyIndicator
+                    percent={energy.percent}
+                    isElectric={energy.kind === 'battery'}
+                    tone={energy.tone}
+                  />
+                </span>
               ) : null}
-              {energy?.percent != null && (odometerLabel || telemetryLabel) ? (
-                <span aria-hidden className="text-muted-foreground/50">·</span>
-              ) : null}
-              {odometerLabel ? <span>{odometerLabel}</span> : null}
-              {odometerLabel && telemetryLabel ? (
-                <span aria-hidden className="text-muted-foreground/50">·</span>
+              {energy?.percent != null && telemetryLabel ? (
+                <span aria-hidden className="shrink-0 text-muted-foreground/50">·</span>
               ) : null}
               {telemetryLabel ? (
-                <span className={cn(telemetryWarns && 'text-[color:var(--status-watch)]')}>
+                <span
+                  className={cn(
+                    'min-w-0 shrink truncate',
+                    telemetryWarns && 'text-[color:var(--status-watch)]',
+                  )}
+                  title={telemetryLabel}
+                >
                   {telemetryLabel}
                 </span>
+              ) : null}
+              {odometerLabel ? (
+                <>
+                  {telemetryLabel ? (
+                    <span aria-hidden className="shrink-0 text-muted-foreground/50">·</span>
+                  ) : null}
+                  <span className="shrink-0 whitespace-nowrap">{odometerLabel}</span>
+                </>
               ) : null}
             </div>
           ) : null}

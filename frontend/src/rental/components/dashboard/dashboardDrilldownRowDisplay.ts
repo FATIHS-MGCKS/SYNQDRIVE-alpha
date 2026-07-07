@@ -3,6 +3,7 @@ import {
   formatRuntimeReasonLabel,
 } from './reasonDisplay';
 import { sanitizeUserFacingIssueText } from '../../lib/operational-issues';
+import type { FleetReasonBadge } from '../../lib/fleetVehicleDisplay';
 import { fleetSignalAgeMs } from '../../lib/fleetVehicleDisplay';
 import type { VehicleData } from '../../data/vehicles';
 import type {
@@ -283,6 +284,59 @@ export function composeVehicleDrawerRowDisplay(
   };
 }
 
+export type DrawerVehicleReasonBadge = {
+  text: string;
+  tone: 'success' | 'watch' | 'warning' | 'critical' | 'neutral';
+};
+
+function drawerReasonTone(
+  tone: FleetReasonBadge['tone'],
+): DrawerVehicleReasonBadge['tone'] {
+  if (tone === 'critical') return 'critical';
+  if (tone === 'watch' || tone === 'warning') return 'watch';
+  if (tone === 'success') return 'success';
+  return 'neutral';
+}
+
+/** Primary reason chip for shared drawer vehicle rows — fleet display first, then runtime reasons. */
+export function resolveDrawerVehicleReasonBadge(
+  row: DashboardSliceRow,
+  locale: string,
+  fleetReason: FleetReasonBadge | null,
+): DrawerVehicleReasonBadge | null {
+  if (fleetReason) {
+    return { text: fleetReason.text, tone: drawerReasonTone(fleetReason.tone) };
+  }
+
+  const reasons = dedupeDisplayReasons(row.reasons ?? []);
+  if (reasons.length > 0) {
+    const primary = reasons[0];
+    const tone =
+      primary.severity === 'critical'
+        ? 'critical'
+        : primary.severity === 'warning'
+          ? 'watch'
+          : 'neutral';
+    return {
+      text: sanitizeUserFacingIssueText(formatRuntimeReasonLabel(primary, locale))!,
+      tone,
+    };
+  }
+
+  const meta = sanitizeUserFacingIssueText(row.meta);
+  if (meta) {
+    const tone =
+      row.severity === 'critical'
+        ? 'critical'
+        : row.severity === 'warning'
+          ? 'watch'
+          : 'neutral';
+    return { text: meta, tone };
+  }
+
+  return null;
+}
+
 export function composeBookingDrawerRowDisplay(row: DashboardSliceRow): {
   title: string;
   subtitle?: string;
@@ -295,11 +349,13 @@ export function composeBookingDrawerRowDisplay(row: DashboardSliceRow): {
   };
 }
 
-/** Client-side haystack for ready-to-rent drawer search (plate, make, model, station). */
-export function readyToRentDrawerRowHaystack(
+/** Client-side haystack for operative vehicle drawer search. */
+export function dashboardDrawerRowHaystack(
   row: DashboardSliceRow,
   state: VehicleRuntimeState | undefined,
+  locale: string,
 ): string {
+  const reasonParts = (row.reasons ?? []).map((reason) => formatRuntimeReasonLabel(reason, locale));
   const parts = [
     state?.license,
     row.title,
@@ -308,6 +364,7 @@ export function readyToRentDrawerRowHaystack(
     row.stationLabel,
     state?.stationLabel,
     state?.displayName,
+    ...reasonParts,
   ];
   return parts
     .filter((value): value is string => Boolean(value?.trim()))
@@ -315,10 +372,19 @@ export function readyToRentDrawerRowHaystack(
     .toLowerCase();
 }
 
-export function filterReadyToRentDrawerGroups(
+/** @deprecated Use dashboardDrawerRowHaystack */
+export function readyToRentDrawerRowHaystack(
+  row: DashboardSliceRow,
+  state: VehicleRuntimeState | undefined,
+): string {
+  return dashboardDrawerRowHaystack(row, state, 'en');
+}
+
+export function filterDashboardDrawerGroups(
   groups: DashboardDrawerGroup[],
   vehicleStates: Map<string, VehicleRuntimeState>,
   query: string,
+  locale: string,
 ): DashboardDrawerGroup[] {
   const q = query.trim().toLowerCase();
   if (!q) return groups;
@@ -327,9 +393,18 @@ export function filterReadyToRentDrawerGroups(
     .map((group) => {
       const rows = group.rows.filter((row) => {
         const state = row.vehicleId ? vehicleStates.get(row.vehicleId) : undefined;
-        return readyToRentDrawerRowHaystack(row, state).includes(q);
+        return dashboardDrawerRowHaystack(row, state, locale).includes(q);
       });
       return { ...group, rows, count: rows.length };
     })
     .filter((group) => group.rows.length > 0);
+}
+
+/** @deprecated Use filterDashboardDrawerGroups */
+export function filterReadyToRentDrawerGroups(
+  groups: DashboardDrawerGroup[],
+  vehicleStates: Map<string, VehicleRuntimeState>,
+  query: string,
+): DashboardDrawerGroup[] {
+  return filterDashboardDrawerGroups(groups, vehicleStates, query, 'en');
 }
