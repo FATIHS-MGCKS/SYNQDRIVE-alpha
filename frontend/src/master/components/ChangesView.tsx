@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-command-row-compact-v49214-2026-07-07',
+    version: '4.9.214',
+    title: 'V4.9.214 — Fleet Command Rows kompakt (3 Zeilen)',
+    summary: [
+      'Fleet-Command-Rows auf stabile 3-Zeilen-Struktur umgebaut: Titel+Badges · Standort+Open · Meta+Reason.',
+      'Odometer/km mit `whitespace-nowrap shrink-0` — kein Umbruch in eine vierte Zeile.',
+      'Max. ein Reason-Chip inline in Zeile 3, `truncate` + `max-w-[38%]`.',
+      'Critical/Warning-Rows: subtile Notification-Gradients (`fleetCommandRowSurfaceClass`).',
+      'Good/Ready-Rows bleiben neutral ohne Dauer-Gradient.',
+    ],
+    reason:
+      'Einige Rows wurden 4-zeilig (Odometer/Reason-Chip als eigene Zeile) und wirkten unruhig; Warning/Critical fehlte der moderne Gradient wie bei Notifications.',
+    previousBehavior:
+      'Flex-wrap Meta-Zeile, Reason-Chip als eigener Block unter Meta, flache Tint-Hintergründe, Badges/Open in rechter Spalte.',
+    details:
+      'Dateien: `FleetOperatorRow.tsx`, `fleetOperatorUi.tsx`. Keine Health-/API-/Sortierlogik geändert.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-07T00:22:00.000Z',
+  },
+  {
     id: 'fleet-command-header-v49213-2026-07-07',
     version: '4.9.213',
     title: 'V4.9.213 — Fleet Command Header kompakter',
