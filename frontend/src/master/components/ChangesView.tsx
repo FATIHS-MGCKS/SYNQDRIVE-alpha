@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'clickhouse-table-registry-v49259-2026-07-08',
+    version: '4.9.259',
+    title: 'V4.9.259 — ClickHouse Tabellen-Registry + Diagnostics (planned vs active)',
+    summary: [
+      'clickhouse-table-registry: Producer-Status, MVP-Status, expectedEmptyAllowed pro Tabelle.',
+      'ClickHouseDiagnosticsService + Data Analyse CH Diagnostics Tab — planned Tabellen nicht als Fehler.',
+      'telemetry_waypoints read-only/planned; trip_activity_windows/trip_segment_candidates/telemetry_hf_windows planned_no_producer.',
+    ],
+    reason:
+      'Audit: Tabellen existieren ohne aktiven Producer — leere Schemas dürfen nicht wie kaputter Datenfluss wirken.',
+    previousBehavior:
+      'Data Analyse konnte leere waypoints/planned Tabellen wie fehlende HF-Persistenz interpretieren.',
+    details:
+      'Registry, diagnostics service, pipeline notes, architecture/CLICKHOUSE_TABLE_PRODUCER_REGISTRY_2026-07-08.md. Tests: clickhouse-diagnostics.service.spec + integration.',
+    affectsArchitecture: true,
+    module: 'ClickHouse',
+    createdAt: '2026-07-08T14:30:00.000Z',
+  },
+  {
     id: 'dimo-obd-webhook-unplug-only-v49254-2026-07-08',
     version: '4.9.254',
     title: 'V4.9.254 — DIMO OBD: nur Unplug-Webhook, Plug-in über Snapshots (Ops)',

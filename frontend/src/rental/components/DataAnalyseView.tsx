@@ -26,6 +26,8 @@ import {
   type DataAnalyseVehicle,
   type DeviceConnectionSummary,
   type VehicleRpmWebhookSummary,
+  type ClickHouseDiagnostics,
+  type ClickHouseTableDisplayStatus,
 } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
 import {
@@ -95,9 +97,12 @@ type TabKey =
   | 'launch'
   | 'health'
   | 'pipeline'
-  | 'groups';
+  | 'pipeline'
+  | 'groups'
+  | 'chDebug';
 
 const TABS: { key: TabKey; label: string }[] = [
+  { key: 'chDebug', label: 'CH Diagnostics' },
   { key: 'overview', label: 'Overview' },
   { key: 'signals', label: 'Signal Logs' },
   { key: 'hf', label: 'High Frequency' },
@@ -147,6 +152,16 @@ function inputBasisTone(basis: string): 'success' | 'warning' | 'info' | 'neutra
   if (basis === 'signal-based') return 'success';
   if (basis === 'mixed') return 'info';
   if (basis === 'modeled') return 'warning';
+  return 'neutral';
+}
+
+function chDisplayTone(
+  status: ClickHouseTableDisplayStatus,
+): 'success' | 'warning' | 'critical' | 'neutral' | 'info' {
+  if (status === 'has_data') return 'success';
+  if (status === 'empty_active_warning') return 'warning';
+  if (status === 'unavailable') return 'critical';
+  if (status === 'planned' || status === 'read_only' || status === 'internal') return 'info';
   return 'neutral';
 }
 
@@ -431,6 +446,8 @@ export function DataAnalyseView() {
   const [deviceConnection, setDeviceConnection] = useState<DeviceConnectionSummary | null>(null);
   const [deviceConnectionDebugRaw, setDeviceConnectionDebugRaw] = useState(false);
   const [rpmWebhooks, setRpmWebhooks] = useState<VehicleRpmWebhookSummary | null>(null);
+  const [chDiagnostics, setChDiagnostics] = useState<ClickHouseDiagnostics | null>(null);
+  const [loadingChDiagnostics, setLoadingChDiagnostics] = useState(false);
 
   const [signalSearch, setSignalSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('all');
@@ -462,6 +479,19 @@ export function DataAnalyseView() {
       setLoadingVehicles(false);
     }
   }, [orgId, canAccess, selectedId]);
+
+  const loadChDiagnostics = useCallback(async () => {
+    if (!orgId || !canAccess) return;
+    setLoadingChDiagnostics(true);
+    try {
+      const dto = await api.dataAnalyse.clickhouseDiagnostics(orgId);
+      setChDiagnostics(dto);
+    } catch {
+      setChDiagnostics(null);
+    } finally {
+      setLoadingChDiagnostics(false);
+    }
+  }, [orgId, canAccess]);
 
   const loadVehicleData = useCallback(async () => {
     if (!orgId || !selectedId || !canAccess) return;
@@ -499,11 +529,13 @@ export function DataAnalyseView() {
 
   useEffect(() => {
     void loadVehicles();
-  }, [loadVehicles]);
+    void loadChDiagnostics();
+  }, [loadVehicles, loadChDiagnostics]);
 
   useEffect(() => {
+    if (tab === 'chDebug') return;
     void loadVehicleData();
-  }, [loadVehicleData]);
+  }, [loadVehicleData, tab]);
 
   const signalGroups = useMemo(() => {
     const set = new Set(signals.map((s) => s.signalGroup));
@@ -578,8 +610,75 @@ export function DataAnalyseView() {
         }
       />
 
-      {error && <ErrorState error={error} onRetry={() => { void loadVehicles(); void loadVehicleData(); }} />}
+      {tab === 'chDebug' && (
+        <section className="rounded-xl border border-border/60 bg-card p-4 space-y-4">
+          <div className="flex items-center gap-2">
+            <Database className="w-4 h-4 text-muted-foreground" />
+            <h2 className="text-sm font-semibold">ClickHouse diagnostics (org-level)</h2>
+          </div>
+          {loadingChDiagnostics ? (
+            <SkeletonRows rows={4} />
+          ) : !chDiagnostics ? (
+            <p className="text-xs text-muted-foreground">Could not load ClickHouse diagnostics.</p>
+          ) : (
+            <>
+              <div className="flex flex-wrap gap-2">
+                <StatusChip tone={chDiagnostics.degraded ? 'warning' : chDiagnostics.clickhouseAvailable ? 'success' : 'neutral'}>
+                  CH: {chDiagnostics.clickhouseStatus}
+                </StatusChip>
+                <StatusChip tone={chDiagnostics.hfMirrorEnabled ? 'success' : 'neutral'}>
+                  HF mirror: {chDiagnostics.hfMirrorStatus}
+                </StatusChip>
+                {chDiagnostics.degraded && (
+                  <StatusChip tone="warning">degraded</StatusChip>
+                )}
+              </div>
+              {chDiagnostics.notes.length > 0 && (
+                <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-1">
+                  {chDiagnostics.notes.map((n) => (
+                    <li key={n}>{n}</li>
+                  ))}
+                </ul>
+              )}
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-muted-foreground border-b border-border/60">
+                      <th className="py-2 pr-3">Table</th>
+                      <th className="py-2 pr-3">MVP</th>
+                      <th className="py-2 pr-3">Display</th>
+                      <th className="py-2 pr-3">Rows</th>
+                      <th className="py-2 pr-3">Last event</th>
+                      <th className="py-2">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {chDiagnostics.tables.map((row) => (
+                      <tr key={row.table} className="border-b border-border/40 align-top">
+                        <td className="py-2 pr-3 font-mono">{row.table}</td>
+                        <td className="py-2 pr-3">{row.mvpStatus}</td>
+                        <td className="py-2 pr-3">
+                          <StatusChip tone={chDisplayTone(row.displayStatus)}>{row.displayStatus}</StatusChip>
+                        </td>
+                        <td className="py-2 pr-3 tabular-nums">{row.rowCount ?? '—'}</td>
+                        <td className="py-2 pr-3 whitespace-nowrap">{formatTs(row.lastEventAt)}</td>
+                        <td className="py-2 text-muted-foreground">{row.notes}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </section>
+      )}
 
+      {tab !== 'chDebug' && error && (
+        <ErrorState error={error} onRetry={() => { void loadVehicles(); void loadVehicleData(); }} />
+      )}
+
+      {tab !== 'chDebug' && (
+      <>
       <section className="rounded-xl border border-border/60 bg-card p-4">
         <div className="flex items-center gap-2 mb-3">
           <Database className="w-4 h-4 text-muted-foreground" />
@@ -982,6 +1081,8 @@ export function DataAnalyseView() {
             </div>
           )}
         </>
+      )}
+      </>
       )}
     </div>
   );
