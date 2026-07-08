@@ -40,11 +40,20 @@ CLICKHOUSE_URL=...       # → synqdrive_clickhouse_configured / _available
 
 ### Deploy Prometheus
 
-1. Copy `prometheus.yml.example` → `prometheus.yml`.
+1. Copy `prometheus.yml.example` → `prometheus.yml` (local docker-compose), or use
+   `prometheus.vps.yml` on the production VPS (PM2 on port 3001).
 2. Create bearer token file readable by Prometheus:
    `echo -n "$METRICS_BEARER_TOKEN" > /etc/prometheus/secrets/metrics_bearer_token`
 3. Point `static_configs.targets` at your internal backend host.
 4. Mount `alerts.yml` as documented in the example config.
+
+**VPS one-liner** (after `main` is deployed):
+
+```bash
+bash /opt/synqdrive/current/backend/scripts/ops/vps-setup-prometheus.sh
+```
+
+Uses Docker with `--network host`, UI on `http://127.0.0.1:9090` (localhost only).
 
 ## Local optional stack
 

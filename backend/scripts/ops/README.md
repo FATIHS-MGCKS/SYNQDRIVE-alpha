@@ -39,6 +39,8 @@ storage growth. These are deliberately **not** wired into the app (no automatic
 | `cleanup-dimo-device-connection-duplicates.ts` | Remove historical OBD plug/unplug duplicate rows (canonical state transitions only) | mutating — run `--dry-run` first |
 | `backfill-brake-health-from-registration-specs.ts` | Initialize `BrakeHealthCurrent` for vehicles with registration/manual brake specs but no baseline | mutating — run `--dry-run` first |
 | `prod-cleanup-dimo-device-connection-duplicates.sh` | VPS wrapper for the cleanup script above | mutating — backup first |
+| `vps-setup-prometheus.sh` | Install/refresh Prometheus Docker on VPS (localhost:9090, scrapes :3001) | safe — requires `METRICS_BEARER_TOKEN` |
+| `vps-enable-clickhouse-mirrors.sh` | Enable HF/Waypoint/Activity mirror flags in `backend.env` + PM2 restart | safe — post-trip CH mirrors only |
 
 ### Partitioning (P2)
 

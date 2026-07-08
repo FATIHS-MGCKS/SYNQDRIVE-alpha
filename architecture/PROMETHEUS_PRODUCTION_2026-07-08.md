@@ -25,9 +25,24 @@
 ## Repo artifacts
 
 - `backend/monitoring/prometheus/prometheus.yml.example`
+- `backend/monitoring/prometheus/prometheus.vps.yml` — PM2 host scrape (`127.0.0.1:3001`)
 - `backend/monitoring/prometheus/alerts.yml`
 - `backend/docs/prometheus-production.md`
+- `backend/scripts/ops/vps-setup-prometheus.sh`
 - Docker Compose profile `monitoring` (optional, localhost Prometheus UI)
+
+## Production VPS (V4.9.266)
+
+| Item | Value |
+|------|--------|
+| Container | `synqdrive-prometheus` (Docker, `--network host`) |
+| UI | `http://127.0.0.1:9090` (localhost only) |
+| Scrape target | `127.0.0.1:3001/api/v1/metrics` + bearer token file |
+| Config dir | `/opt/synqdrive/shared/prometheus/` |
+| Refresh | `bash /opt/synqdrive/current/backend/scripts/ops/vps-setup-prometheus.sh` |
+
+Mirror flags on prod (`backend.env`): `HF_MIRROR_ENABLED`, `WAYPOINT_MIRROR_ENABLED`,
+`ACTIVITY_WINDOW_MIRROR_ENABLED` — enabled via `vps-enable-clickhouse-mirrors.sh`.
 
 ## Explicit non-goals
 

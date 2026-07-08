@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'prometheus-mirrors-prod-v49266-2026-07-08',
+    version: '4.9.266',
+    title: 'V4.9.266 — Prod: Prometheus installiert + ClickHouse Mirror-Flags aktiv',
+    summary: [
+      'VPS: Prometheus Docker (localhost:9090) scrapt Backend :3001 mit METRICS_BEARER_TOKEN — Target UP.',
+      'VPS backend.env: HF_MIRROR_ENABLED, WAYPOINT_MIRROR_ENABLED, ACTIVITY_WINDOW_MIRROR_ENABLED, CLICKHOUSE_TRIP_ASSIST_ENABLED=true.',
+      'Ops-Skripte: vps-setup-prometheus.sh, vps-enable-clickhouse-mirrors.sh, prometheus.vps.yml.',
+    ],
+    reason:
+      'Audit-Follow-up: operatives Monitoring auf Prod aktivieren und CH-Analytics-Spiegel für Data Analyse / Trip-Evidence einschalten.',
+    previousBehavior:
+      'Kein Prometheus auf VPS; Mirror-Flags nicht gesetzt (CH-Tabellen blieben leer trotz Schema).',
+    details:
+      'backend/scripts/ops/vps-setup-prometheus.sh, vps-enable-clickhouse-mirrors.sh, monitoring/prometheus/prometheus.vps.yml. Prometheus --network host, UI nur 127.0.0.1:9090.',
+    affectsArchitecture: false,
+    module: 'Platform',
+    createdAt: '2026-07-08T17:05:00.000Z',
+  },
+  {
     id: 'ch-audit-fixes-v49265-2026-07-08',
     version: '4.9.265',
     title: 'V4.9.265 — ClickHouse Audit Fixes (Registry, Producers, CH Reconnect, Metrics Hardening)',
