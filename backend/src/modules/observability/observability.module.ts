@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { TripMetricsService } from './trip-metrics.service';
 import { MetricsController } from './metrics.controller';
+import { MetricsAccessGuard } from './metrics-access.guard';
 
 /**
  * ObservabilityModule
@@ -11,7 +12,7 @@ import { MetricsController } from './metrics.controller';
 @Global()
 @Module({
   controllers: [MetricsController],
-  providers: [TripMetricsService],
+  providers: [TripMetricsService, MetricsAccessGuard],
   exports: [TripMetricsService],
 })
 export class ObservabilityModule {}

@@ -18,6 +18,7 @@ const PUBLIC_EXACT_PATHS = new Set<string>([
   '/api/v1/webhooks/dimo/health',
   '/api/v1/webhooks/didit',
   '/api/v1/webhooks/stripe',
+  // /metrics: no JWT — scrape auth is MetricsAccessGuard (METRICS_TOKEN / IP allowlist)
   '/api/v1/metrics',
 ]);
 
