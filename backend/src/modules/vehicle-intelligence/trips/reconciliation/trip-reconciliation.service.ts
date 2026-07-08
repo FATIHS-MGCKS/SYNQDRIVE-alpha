@@ -424,7 +424,7 @@ export class TripReconciliationService {
       } as any);
 
       if (overlapFinding.verdict === 'TRIGGERED') {
-        this.tripMetrics?.duplicateTripCandidates.inc();
+        this.tripMetrics?.duplicateCandidates.inc();
         continue;
       }
 
