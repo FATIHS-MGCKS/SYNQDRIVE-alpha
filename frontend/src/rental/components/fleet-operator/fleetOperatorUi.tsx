@@ -81,11 +81,25 @@ export function PanelStatusChip({
   );
 }
 
-/** Neutral row inset border — severity is conveyed via status/reason chips, not the card frame. */
+/** Neutral inset border for all severities; subtle background tint for critical/warning only. */
 export function fleetCommandRowSurfaceClass(
-  _severity: 'critical' | 'warning' | 'good',
+  severity: 'critical' | 'warning' | 'good',
 ): string {
-  return 'ring-1 ring-inset ring-border/40';
+  const border = 'ring-1 ring-inset ring-border/40';
+
+  if (severity === 'critical') {
+    return cn(
+      border,
+      'bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-critical)_7%,transparent),color-mix(in_srgb,var(--status-critical)_2%,transparent))]',
+    );
+  }
+  if (severity === 'warning') {
+    return cn(
+      border,
+      'bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-watch)_7%,transparent),color-mix(in_srgb,var(--status-watch)_2%,transparent))]',
+    );
+  }
+  return border;
 }
 
 export function fleetCommandReasonChipClass(tone: 'critical' | 'watch' | 'warning' | 'neutral'): string {

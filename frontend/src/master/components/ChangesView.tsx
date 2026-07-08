@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-command-row-gradient-restore-v49247-2026-07-08',
+    version: '4.9.247',
+    title: 'V4.9.247 — Fleet Command: Critical/Warning-Gradienten wiederhergestellt',
+    summary: [
+      'Fahrzeugzeilen: äußerer Rahmen bleibt neutral (`ring-border/40`) für alle Severity-Stufen.',
+      'Critical/Warning behalten wieder die subtilen Rot-/Orange-Gradient-Hintergründe.',
+      'Nur die farbigen Inset-Rings wurden entfernt — nicht die Row-Tints.',
+    ],
+    reason:
+      'V4.9.246 neutralisierte fälschlich auch die Hintergrund-Gradienten; gewünscht war nur der neutrale Boxrahmen.',
+    previousBehavior:
+      'Alle Zeilen komplett neutral ohne Critical/Warning-Hintergrundtint.',
+    details: 'fleetOperatorUi.tsx#fleetCommandRowSurfaceClass — Border neutral, Gradient pro Severity.',
+    affectsArchitecture: false,
+    module: 'Fleet',
+    createdAt: '2026-07-08T03:40:00.000Z',
+  },
+  {
     id: 'fleet-command-ui-neutral-rows-v49246-2026-07-08',
     version: '4.9.246',
     title: 'V4.9.246 — Fleet Command: Header-Layout & neutrale Fahrzeugkarten-Rahmen',
