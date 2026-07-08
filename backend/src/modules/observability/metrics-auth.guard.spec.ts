@@ -36,10 +36,18 @@ describe('MetricsAuthGuard', () => {
     expect(() => guard.canActivate(makeContext())).toThrow(ServiceUnavailableException);
   });
 
-  it('allows open access in non-production when token is unset', () => {
+    it('allows open access in non-production when token is unset', () => {
     delete process.env.METRICS_BEARER_TOKEN;
     process.env.NODE_ENV = 'development';
     const guard = new MetricsAuthGuard();
     expect(guard.canActivate(makeContext())).toBe(true);
+  });
+
+  it('rejects wrong bearer token when METRICS_BEARER_TOKEN is set', () => {
+    process.env.METRICS_BEARER_TOKEN = 'secret-metrics-token';
+    const guard = new MetricsAuthGuard();
+    expect(() => guard.canActivate(makeContext('Bearer wrong'))).toThrow(
+      UnauthorizedException,
+    );
   });
 });

@@ -10,15 +10,14 @@ entities (no vehicle/trip/org/customer labels).
 |------|--------|
 | Path | `GET /api/v1/metrics` |
 | Format | Prometheus text exposition 0.0.4 |
-| Auth | `Authorization: Bearer <METRICS_BEARER_TOKEN>` |
+| Auth | `Authorization: Bearer <METRICS_BEARER_TOKEN>` (dedicated metrics token — **not** a user JWT) |
 
 ### Security
 
 1. Set `METRICS_BEARER_TOKEN` in production (long random secret).
 2. When unset in **production** (`NODE_ENV=production`), `/metrics` returns **503**.
-3. In non-production, unset token logs a warning and allows access for local debugging.
-4. `/api/v1/metrics` is **not** in the JWT public allowlist — it uses a dedicated bearer guard.
-5. Scrape from an **internal network** only (VPC, Tailscale, docker bridge). Do not expose port 3000 metrics publicly.
+3. `/api/v1/metrics` bypasses the user JWT guard but is **not** anonymous: `MetricsAuthGuard` requires the metrics bearer token.
+4. Scrape from an **internal network** only (VPC, Tailscale, docker bridge). Do not expose port 3000 metrics publicly.
 
 ## Environment variables
 
