@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'waypoints-activity-producers-v49263-2026-07-08',
+    version: '4.9.263',
+    title: 'V4.9.263 — ClickHouse Waypoints + Activity Windows Producer (post-trip evidence)',
+    summary: [
+      'WaypointMirrorService spiegelt PG vehicle_trip_waypoints → telemetry_waypoints (30s Downsample, trip-scoped).',
+      'ActivityWindowProducerService schreibt trip_activity_windows aus state_changes + snapshots (Evidence, keine Trip-Wahrheit).',
+      'Feature-Flags WAYPOINT_MIRROR_ENABLED / ACTIVITY_WINDOW_MIRROR_ENABLED (default off); Data Analyse Producer-Status intern.',
+    ],
+    reason:
+      'telemetry_waypoints und trip_activity_windows existierten als Schema ohne Producer. Post-trip Evidence für Route Replay und Reconciliation — ohne Live-Map-Flut und ohne zweite Trip-Wahrheit.',
+    previousBehavior:
+      'telemetry_waypoints read-only/geplant; trip_activity_windows ohne Writer; ActivityWindowDetector las nur snapshots zur Laufzeit.',
+    details:
+      'Backend: migration 006, ClickHouseWaypointsService, ClickHouseActivityWindowsService, WaypointMirrorService, ActivityWindowProducerService, TripChEvidenceMirrorCoordinator; Hooks in processFinalize + TripBehaviorEnrichmentService. Tests: waypoint-downsample, activity-window-derive, waypoint-mirror, activity-window-producer, data-analyse-producer-status.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-08T15:05:00.000Z',
+  },
+  {
     id: 'trip-detail-ch-evidence-v49262-2026-07-08',
     version: '4.9.262',
     title: 'V4.9.262 — Trip Detail: read-only ClickHouse Evidence',

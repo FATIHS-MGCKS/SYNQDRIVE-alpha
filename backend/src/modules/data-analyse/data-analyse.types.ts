@@ -24,6 +24,9 @@ export type HfReliabilityStatus = 'GOOD' | 'WATCH' | 'POOR' | 'MISSING';
 /** HF mirror (ClickHouse telemetry_hf_*) feature-flag status, read-only. */
 export type HfMirrorStatus = 'enabled' | 'disabled' | 'unknown';
 
+/** ClickHouse evidence producer status for internal Data Analyse diagnostics. */
+export type ClickHouseProducerStatus = 'active' | 'disabled' | 'planned_no_producer';
+
 /**
  * Aggregated HF-availability label for the Data Analyse page (single source of
  * truth so the UI legend never contradicts itself):
@@ -203,6 +206,12 @@ export interface HighFrequencyAnalysisDto {
    * currently enabled, disabled, or indeterminable.
    */
   hfMirrorStatus?: HfMirrorStatus;
+  /** Post-trip waypoint mirror (`WAYPOINT_MIRROR_ENABLED`). */
+  waypointProducerStatus?: ClickHouseProducerStatus;
+  /** Post-trip activity window producer (`ACTIVITY_WINDOW_MIRROR_ENABLED`). */
+  activityWindowProducerStatus?: ClickHouseProducerStatus;
+  /** trip_activity_windows rows in trailing 24h. */
+  activityWindowCount24h?: number | null;
 }
 
 export interface LaunchFeasibilityDto {

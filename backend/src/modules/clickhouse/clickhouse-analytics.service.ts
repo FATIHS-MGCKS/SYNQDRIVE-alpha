@@ -247,6 +247,86 @@ export class ClickHouseAnalyticsService {
   }
 
   /**
+   * Fetches snapshot samples in a time window for activity-window derivation.
+   * Best-effort — returns [] when ClickHouse is unavailable or the query fails.
+   */
+  async fetchSnapshotsInWindow(
+    vehicleId: string,
+    from: Date,
+    to: Date,
+  ): Promise<
+    Array<{
+      recordedAt: Date;
+      speedKmh: number | null;
+      isIgnitionOn: boolean | null;
+      odometerKm: number | null;
+    }>
+  > {
+    if (!this.ch.isAvailable) {
+      this.metrics?.clickHouseAnalyticsQueries.inc({
+        query: 'fetch_snapshots_in_window',
+        result: 'skipped_unavailable',
+      });
+      return [];
+    }
+
+    const client = this.ch.getClient();
+    const sql = `
+      SELECT
+        recorded_at,
+        speed_kmh,
+        is_ignition_on,
+        odometer_km
+      FROM telemetry_snapshots
+      WHERE vehicle_id = {vehicleId: String}
+        AND recorded_at >= parseDateTime64BestEffort({from: String})
+        AND recorded_at <= parseDateTime64BestEffort({to: String})
+      ORDER BY recorded_at
+    `;
+
+    try {
+      const result = await client.query({
+        query: sql,
+        query_params: {
+          vehicleId,
+          from: toClickHouseDateTime64Param(from),
+          to: toClickHouseDateTime64Param(to),
+        },
+        format: 'JSONEachRow',
+        clickhouse_settings: { max_execution_time: 15 },
+      });
+
+      const rows = await result.json<{
+        recorded_at: string;
+        speed_kmh: number | null;
+        is_ignition_on: number | null;
+        odometer_km: number | null;
+      }>();
+      this.metrics?.clickHouseAnalyticsQueries.inc({
+        query: 'fetch_snapshots_in_window',
+        result: 'success',
+      });
+
+      return rows.map((r) => ({
+        recordedAt: parseClickHouseUtcDateTime(r.recorded_at)!,
+        speedKmh: r.speed_kmh,
+        isIgnitionOn:
+          r.is_ignition_on == null ? null : r.is_ignition_on === 1,
+        odometerKm: r.odometer_km,
+      }));
+    } catch (err: unknown) {
+      this.metrics?.clickHouseAnalyticsQueries.inc({
+        query: 'fetch_snapshots_in_window',
+        result: 'error',
+      });
+      this.logger.warn(
+        `fetchSnapshotsInWindow failed: ${(err as Error).message}`,
+      );
+      return [];
+    }
+  }
+
+  /**
    * Summarizes activity (speed/odometer) in a time window.
    * Used by ActivityWindowDetector.
    */
