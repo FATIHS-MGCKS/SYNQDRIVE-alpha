@@ -9,10 +9,13 @@ import type {
   HfSignalFrequencyRow,
   HfSignalFrequencySummary,
   HfSignalPoint,
+  HfTripWindowsResult,
+  HfWindowSummary,
 } from './clickhouse-hf.types';
 
 const HF_POINTS_TABLE = 'telemetry_hf_points';
 const HF_EVENTS_TABLE = 'telemetry_hf_events';
+const HF_WINDOWS_TABLE = 'telemetry_hf_windows';
 
 /**
  * Serializes a JS Date into the string ClickHouse's `parseDateTime64BestEffort`
@@ -202,6 +205,206 @@ export class ClickHouseHfService {
         result: 'error',
       });
       this.logger.warn(`insertHfEvents failed: ${(err as Error).message}`);
+    }
+  }
+
+  /** Best-effort bulk insert of HF window aggregates (ReplacingMergeTree). */
+  async insertHfWindows(windows: HfWindowSummary[]): Promise<void> {
+    if (!windows || windows.length === 0) return;
+
+    if (!this.ch.isAvailable) {
+      this.metrics?.clickHouseMirrorWrites.inc({
+        table: HF_WINDOWS_TABLE,
+        result: 'skipped_unavailable',
+      });
+      this.logger.debug(
+        `HF windows insert skipped (ClickHouse unavailable) — ${windows.length} window(s).`,
+      );
+      return;
+    }
+
+    const rows = windows.map((w) => ({
+      org_id: w.orgId,
+      vehicle_id: w.vehicleId,
+      trip_id: w.tripId ?? null,
+      booking_id: w.bookingId ?? null,
+      window_start: w.windowStart.getTime(),
+      window_end: w.windowEnd.getTime(),
+      signal_group: w.signalGroup,
+      point_count: w.pointCount,
+      sample_interval_min_ms: w.sampleIntervalMinMs ?? null,
+      sample_interval_max_ms: w.sampleIntervalMaxMs ?? null,
+      sample_interval_avg_ms: w.sampleIntervalAvgMs ?? null,
+      max_speed_kmh: w.maxSpeedKmh ?? null,
+      max_accel_mps2: w.maxAccelMps2 ?? null,
+      min_accel_mps2: w.minAccelMps2 ?? null,
+      max_traction_kw: w.maxTractionKw ?? null,
+      min_traction_kw: w.minTractionKw ?? null,
+      soc_delta_pct: w.socDeltaPct ?? null,
+      gps_point_count: w.gpsPointCount,
+      missing_gap_count: w.missingGapCount,
+      largest_gap_ms: w.largestGapMs ?? null,
+      coverage: w.coverage ?? 'unknown',
+      stats_json: safeStatsJson(w.statsJson),
+    }));
+
+    try {
+      await this.ch.getClient().insert({
+        table: HF_WINDOWS_TABLE,
+        values: rows,
+        format: 'JSONEachRow',
+      });
+      this.metrics?.clickHouseMirrorWrites.inc({
+        table: HF_WINDOWS_TABLE,
+        result: 'success',
+      });
+    } catch (err: unknown) {
+      this.metrics?.clickHouseMirrorWrites.inc({
+        table: HF_WINDOWS_TABLE,
+        result: 'error',
+      });
+      this.logger.warn(`insertHfWindows failed: ${(err as Error).message}`);
+    }
+  }
+
+  /** HF point count for a trip (idempotency / diagnostics). Degrades to 0. */
+  async countTripHfPoints(vehicleId: string, tripId: string): Promise<number> {
+    if (!this.ch.isAvailable) return 0;
+    try {
+      const result = await this.ch.getClient().query({
+        query: `
+          SELECT count() AS cnt
+          FROM ${HF_POINTS_TABLE}
+          WHERE vehicle_id = {vehicleId: String}
+            AND trip_id = {tripId: String}
+        `,
+        query_params: { vehicleId, tripId },
+        format: 'JSONEachRow',
+        clickhouse_settings: { max_execution_time: 10 },
+      });
+      const [row] = await result.json<{ cnt: string | number }>();
+      return Number(row?.cnt ?? 0);
+    } catch (err: unknown) {
+      this.logger.warn(`countTripHfPoints failed: ${(err as Error).message}`);
+      return 0;
+    }
+  }
+
+  /** Read deduplicated HF windows for a trip. Degrades gracefully. */
+  async getTripHfWindows(
+    vehicleId: string,
+    tripId: string,
+  ): Promise<HfTripWindowsResult> {
+    const base: HfTripWindowsResult = {
+      available: false,
+      tripId,
+      vehicleId,
+      windows: [],
+    };
+
+    if (!this.ch.isAvailable) {
+      return { ...base, degradedReason: 'clickhouse_unavailable' };
+    }
+
+    try {
+      const result = await this.ch.getClient().query({
+        query: `
+          SELECT
+            org_id,
+            vehicle_id,
+            trip_id,
+            booking_id,
+            window_start,
+            window_end,
+            signal_group,
+            point_count,
+            sample_interval_min_ms,
+            sample_interval_max_ms,
+            sample_interval_avg_ms,
+            max_speed_kmh,
+            max_accel_mps2,
+            min_accel_mps2,
+            max_traction_kw,
+            min_traction_kw,
+            soc_delta_pct,
+            gps_point_count,
+            missing_gap_count,
+            largest_gap_ms,
+            coverage,
+            stats_json
+          FROM ${HF_WINDOWS_TABLE} FINAL
+          WHERE vehicle_id = {vehicleId: String}
+            AND trip_id = {tripId: String}
+          ORDER BY window_start, signal_group
+        `,
+        query_params: { vehicleId, tripId },
+        format: 'JSONEachRow',
+        clickhouse_settings: { max_execution_time: 10 },
+      });
+
+      const rows = await result.json<{
+        org_id: string;
+        vehicle_id: string;
+        trip_id: string | null;
+        booking_id: string | null;
+        window_start: string;
+        window_end: string;
+        signal_group: string;
+        point_count: number;
+        sample_interval_min_ms: number | null;
+        sample_interval_max_ms: number | null;
+        sample_interval_avg_ms: number | null;
+        max_speed_kmh: number | null;
+        max_accel_mps2: number | null;
+        min_accel_mps2: number | null;
+        max_traction_kw: number | null;
+        min_traction_kw: number | null;
+        soc_delta_pct: number | null;
+        gps_point_count: number;
+        missing_gap_count: number;
+        largest_gap_ms: number | null;
+        coverage: string | null;
+        stats_json: string | null;
+      }>();
+
+      this.metrics?.clickHouseAnalyticsQueries.inc({
+        query: 'hf_trip_windows',
+        result: 'success',
+      });
+
+      const windows: HfWindowSummary[] = rows.map((r) => ({
+        orgId: r.org_id,
+        vehicleId: r.vehicle_id,
+        tripId: r.trip_id,
+        bookingId: r.booking_id,
+        windowStart: parseChDate(r.window_start),
+        windowEnd: parseChDate(r.window_end),
+        signalGroup: r.signal_group as HfWindowSummary['signalGroup'],
+        pointCount: Number(r.point_count ?? 0),
+        sampleIntervalMinMs: r.sample_interval_min_ms,
+        sampleIntervalMaxMs: r.sample_interval_max_ms,
+        sampleIntervalAvgMs: r.sample_interval_avg_ms,
+        maxSpeedKmh: r.max_speed_kmh,
+        maxAccelMps2: r.max_accel_mps2,
+        minAccelMps2: r.min_accel_mps2,
+        maxTractionKw: r.max_traction_kw,
+        minTractionKw: r.min_traction_kw,
+        socDeltaPct: r.soc_delta_pct,
+        gpsPointCount: Number(r.gps_point_count ?? 0),
+        missingGapCount: Number(r.missing_gap_count ?? 0),
+        largestGapMs: r.largest_gap_ms,
+        coverage: (r.coverage as HfWindowSummary['coverage']) ?? 'unknown',
+        statsJson: parseStatsJson(r.stats_json),
+      }));
+
+      return { ...base, available: true, windows };
+    } catch (err: unknown) {
+      this.metrics?.clickHouseAnalyticsQueries.inc({
+        query: 'hf_trip_windows',
+        result: 'error',
+      });
+      this.logger.warn(`getTripHfWindows failed: ${(err as Error).message}`);
+      return { ...base, degradedReason: (err as Error).message };
     }
   }
 
@@ -450,5 +653,27 @@ export class ClickHouseHfService {
       this.logger.warn(`getRecentHfEvents failed: ${(err as Error).message}`);
       return { ...base, degradedReason: (err as Error).message };
     }
+  }
+}
+
+function parseChDate(value: string): Date {
+  const d = new Date(value.replace(' ', 'T') + 'Z');
+  return Number.isNaN(d.getTime()) ? new Date(value) : d;
+}
+
+function safeStatsJson(value: HfWindowSummary['statsJson']): string {
+  try {
+    return JSON.stringify(value ?? {});
+  } catch {
+    return '{}';
+  }
+}
+
+function parseStatsJson(raw: string | null | undefined): HfWindowSummary['statsJson'] {
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(raw) as HfWindowSummary['statsJson'];
+  } catch {
+    return undefined;
   }
 }

@@ -4,6 +4,7 @@ import { ClickHouseTelemetryService } from './clickhouse-telemetry.service';
 import { ClickHouseAnalyticsService } from './clickhouse-analytics.service';
 import { ClickHouseSchemaService } from './clickhouse-schema.service';
 import { ClickHouseHfService } from './clickhouse-hf.service';
+import { SignalQualityReadService } from './signal-quality-read.service';
 
 /**
  * ClickHouseModule
@@ -22,12 +23,14 @@ import { ClickHouseHfService } from './clickhouse-hf.service';
     ClickHouseAnalyticsService,
     ClickHouseSchemaService,
     ClickHouseHfService,
+    SignalQualityReadService,
   ],
   exports: [
     ClickHouseService,
     ClickHouseTelemetryService,
     ClickHouseAnalyticsService,
     ClickHouseHfService,
+    SignalQualityReadService,
     // ClickHouseSchemaService is not exported — it only needs to run on init
   ],
 })

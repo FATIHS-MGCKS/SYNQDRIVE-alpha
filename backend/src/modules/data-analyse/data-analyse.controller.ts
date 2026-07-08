@@ -41,6 +41,25 @@ export class DataAnalyseController {
     return this.service.getHighFrequency(orgId, vehicleId);
   }
 
+  @Get('vehicles/:vehicleId/signal-quality/latest')
+  @RequirePermission(DATA_ANALYSE_MODULE, 'read')
+  latestTripSignalQuality(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+  ) {
+    return this.service.getLatestTripSignalQuality(orgId, vehicleId);
+  }
+
+  @Get('vehicles/:vehicleId/trips/:tripId/signal-quality')
+  @RequirePermission(DATA_ANALYSE_MODULE, 'read')
+  tripSignalQuality(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+    @Param('tripId') tripId: string,
+  ) {
+    return this.service.getTripSignalQuality(orgId, vehicleId, tripId);
+  }
+
   @Get('vehicles/:vehicleId/launch-feasibility')
   @RequirePermission(DATA_ANALYSE_MODULE, 'read')
   launchFeasibility(

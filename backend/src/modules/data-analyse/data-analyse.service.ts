@@ -4,6 +4,7 @@ import { DimoDeviceConnectionEventType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { ClickHouseService } from '@modules/clickhouse/clickhouse.service';
 import { ClickHouseHfService } from '@modules/clickhouse/clickhouse-hf.service';
+import { SignalQualityReadService } from '@modules/clickhouse/signal-quality-read.service';
 import { VehiclesService } from '@modules/vehicles/vehicles.service';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { RpmWebhookQueryService } from '@modules/dimo/rpm-webhook-query.service';
@@ -44,6 +45,7 @@ import type {
   SignalArrivalRowDto,
   SignalGroupDefinitionDto,
   TelemetryOverviewDto,
+  TripSignalQualityDto,
 } from './data-analyse.types';
 import {
   isLteR1NativeEventCapable,
@@ -91,6 +93,7 @@ export class DataAnalyseService {
     private readonly clickHouse: ClickHouseService,
     private readonly vehiclesService: VehiclesService,
     private readonly clickHouseHf: ClickHouseHfService,
+    private readonly signalQualityRead: SignalQualityReadService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
     private readonly rpmWebhookQuery: RpmWebhookQueryService,
   ) {}
@@ -171,6 +174,59 @@ export class DataAnalyseService {
   async getSignals(orgId: string, vehicleId: string): Promise<SignalArrivalRowDto[]> {
     const ctx = await this.loadVehicleContext(orgId, vehicleId);
     return this.buildSignalRows(ctx.latestState, ctx.chStats, ctx.nowMs);
+  }
+
+  /**
+   * Read-only trip signal quality diagnostics (internal debug — not a trip score).
+   * Degrades gracefully when ClickHouse is unavailable.
+   */
+  async getTripSignalQuality(
+    orgId: string,
+    vehicleId: string,
+    tripId: string,
+  ): Promise<TripSignalQualityDto> {
+    await this.assertVehicle(orgId, vehicleId);
+    const result = await this.signalQualityRead.getTripSignalQuality(
+      orgId,
+      vehicleId,
+      tripId,
+    );
+    return { ...result, tripId };
+  }
+
+  /** Latest completed trip signal quality for Data Analyse HF tab (internal debug). */
+  async getLatestTripSignalQuality(
+    orgId: string,
+    vehicleId: string,
+  ): Promise<TripSignalQualityDto> {
+    await this.assertVehicle(orgId, vehicleId);
+    const latest = await this.prisma.vehicleTrip.findFirst({
+      where: {
+        vehicleId,
+        tripStatus: 'COMPLETED',
+        vehicle: { organizationId: orgId },
+      },
+      orderBy: { endTime: 'desc' },
+      select: { id: true },
+    });
+    if (!latest) {
+      return {
+        available: false,
+        degraded: false,
+        overallQuality: 'unavailable',
+        hfAvailability: 'missing',
+        signalCoverage: [],
+        missingKeySignals: [],
+        detectorFeasibilityHints: [],
+        windowCount: 0,
+        hfPointCount: 0,
+        reasons: ['No completed trip found for this vehicle.'],
+        internalDebug: true,
+        readOnly: true,
+        tripId: null,
+      };
+    }
+    return this.getTripSignalQuality(orgId, vehicleId, latest.id);
   }
 
   async getHighFrequency(

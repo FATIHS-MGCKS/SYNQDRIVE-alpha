@@ -333,3 +333,30 @@ export interface EventArchitectureDto {
   detectorFeasibility: DetectorFeasibilityDto;
   metrics: EventArchitectureMetricsDto;
 }
+
+/** Read-only internal debug — trip HF signal quality (not a canonical trip score). */
+export interface TripSignalQualityDto {
+  available: boolean;
+  degraded: boolean;
+  degradedReason?: string | null;
+  overallQuality: 'good' | 'medium' | 'weak' | 'unavailable';
+  hfAvailability: 'hf_available' | 'sparse' | 'missing' | 'unknown';
+  signalCoverage: Array<{
+    signalGroup: string;
+    pointCount: number;
+    windowCount: number;
+  }>;
+  missingKeySignals: string[];
+  detectorFeasibilityHints: Array<{
+    detector: string;
+    status: string;
+    requiredSignals: string[];
+    speedOnly: boolean;
+  }>;
+  windowCount: number;
+  hfPointCount: number;
+  reasons: string[];
+  internalDebug: true;
+  readOnly: true;
+  tripId?: string | null;
+}

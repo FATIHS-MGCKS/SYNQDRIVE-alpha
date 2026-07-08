@@ -50,6 +50,7 @@ describe('HfMirrorService', () => {
       hasTripHfPoints: jest.fn().mockResolvedValue(false),
       insertHfPoints: jest.fn().mockResolvedValue(undefined),
       insertHfEvents: jest.fn().mockResolvedValue(undefined),
+      insertHfWindows: jest.fn().mockResolvedValue(undefined),
       ...over,
     } as unknown as ClickHouseHfService;
   }
@@ -88,6 +89,7 @@ describe('HfMirrorService', () => {
 
     expect(res.mirrored).toBe(true);
     expect(hf.insertHfPoints).toHaveBeenCalledTimes(1);
+    expect(hf.insertHfWindows).toHaveBeenCalledTimes(1);
     expect(hf.insertHfEvents).toHaveBeenCalledTimes(1);
 
     const points = (hf.insertHfPoints as jest.Mock).mock.calls[0][0];
@@ -108,6 +110,8 @@ describe('HfMirrorService', () => {
     const res = await svc.mirrorTripHf(baseParams);
 
     expect(hf.insertHfPoints).not.toHaveBeenCalled();
+    // Windows still recomputed (ReplacingMergeTree replaces by key).
+    expect(hf.insertHfWindows).toHaveBeenCalledTimes(1);
     // Events still mirrored (ReplacingMergeTree is idempotent by key).
     expect(hf.insertHfEvents).toHaveBeenCalledTimes(1);
     expect(res.reason).toBe('points_already_mirrored');
