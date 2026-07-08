@@ -99,6 +99,33 @@ export const cdv = {
   documentsUploadSection: 'sq-card p-4 space-y-3',
   documentsUploadGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2',
   documentsEmptySuccess: 'text-[12px] text-muted-foreground',
+  timelineToolbar: 'space-y-2',
+  timelineToolbarRow:
+    'flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between',
+  timelineFilterBar: 'sq-tab-bar flex min-w-0 flex-1 items-center p-1',
+  timelineFilterScroll:
+    'flex min-w-0 flex-1 flex-nowrap gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+  timelineFilterButton:
+    'min-h-8 min-w-0 shrink-0 rounded-[calc(var(--radius-md)-2px)] px-3 py-1.5 text-[11px] font-semibold leading-[16px] tracking-[-0.003em] whitespace-nowrap transition-all duration-200',
+  timelineFilterButtonActive: 'bg-card text-foreground shadow-[var(--shadow-1)]',
+  timelineFilterButtonIdle:
+    'text-muted-foreground hover:bg-background/60 hover:text-foreground',
+  timelineAddNoteButton: 'w-full shrink-0 sm:w-auto',
+  timelineList: 'sq-card overflow-hidden px-1 py-2 sm:px-2',
+  timelineEntryList: 'relative space-y-0 px-2 sm:px-3',
+  timelineEntryRow: 'relative flex gap-3 pb-4 last:pb-0',
+  timelineEntryRail: 'relative flex flex-col items-center',
+  timelineEntryDotWrap: 'mt-1.5 flex h-3.5 w-3.5 items-center justify-center',
+  timelineEntryLine: 'mt-1 w-px flex-1 bg-border',
+  timelineEntryBody: 'min-w-0 flex-1 pb-1',
+  timelineEntryHeader: 'flex items-start justify-between gap-3',
+  timelineEntryTitle: 'mt-1 text-[13px] font-semibold leading-snug text-foreground',
+  timelineEntryDescription: 'mt-0.5 text-[12px] leading-relaxed text-muted-foreground',
+  timelineEntrySubline: 'mt-1 text-[11px] text-muted-foreground/80',
+  timelineEntryTime: 'shrink-0 pt-0.5 text-[11px] tabular-nums text-muted-foreground',
+  timelineLoading: 'flex items-center justify-center gap-2 py-10 text-[12px] text-muted-foreground',
+  timelineError:
+    'rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5 text-[12px] text-muted-foreground',
   /** @deprecated use heroBadgeGrid */
   badgeRow: 'mt-2.5 flex flex-wrap items-center gap-1.5',
   /** @deprecated use heroActionGrid */

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customer-detail-timeline-polish-v49240-2026-07-08',
+    version: '4.9.240',
+    title: 'V4.9.240 — Customer Detail: Timeline & Notizen UX-Feinschliff',
+    summary: [
+      'Timeline-Tab: lesbare Activity Cards statt roher Eventtypen (DOCUMENT_VERIFIED, CREATED, …).',
+      'mapTimelineEventToUserEntry: Kategorie, Titel, Beschreibung, Ersteller-Herkunft, Zeitstempel.',
+      'Filterleiste als ruhige sq-tab-bar-Pills mit horizontalem Scroll auf Mobile.',
+      '„Notiz hinzufügen“ in Toolbar integriert; Loading/Error/Empty-States sprachlich beruhigt.',
+    ],
+    reason:
+      'Der Timeline-Tab wirkte wie ein technisches Audit-Log mit unlesbaren Event-Strings und unruhiger Filterdarstellung.',
+    previousBehavior:
+      'Rohe ev.type als StatusChip, englische Backend-Titel, flex-wrap-Filter, technische Webhook-Descriptions dominant.',
+    details:
+      'frontend: CustomerTimelineTab, customerDetailUtils (mapTimelineEventToUserEntry, timelineEventMatchesFilter), customer-detail-ui (timeline tokens). Keine Backend-Änderung.',
+    affectsArchitecture: false,
+    module: 'Customers',
+    createdAt: '2026-07-08T02:00:00.000Z',
+  },
+  {
     id: 'customer-detail-tabs-polish-v49239-2026-07-08',
     version: '4.9.239',
     title: 'V4.9.239 — Customer Detail: Übersicht & Dokumente UX-Feinschliff',

@@ -1,12 +1,18 @@
 import { useMemo, useState } from 'react';
-import { Clock } from 'lucide-react';
+import { Clock, Loader2, Plus } from 'lucide-react';
 
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
 import { EmptyState, StatusChip } from '../../../components/patterns';
-import { EM_DASH, formatDateTime } from './customerDetailUtils';
+import { dotClassForTone } from '../../../components/patterns/status-utils';
+import {
+  mapTimelineEventToUserEntry,
+  timelineEventMatchesFilter,
+  type TimelineFilterCategory,
+} from './customerDetailUtils';
+import { cdv } from './customer-detail-ui';
 
-type TimelineFilter = 'all' | 'document' | 'booking' | 'status' | 'risk' | 'payment' | 'fine' | 'note';
+type TimelineFilter = 'all' | TimelineFilterCategory;
 
 const FILTER_OPTIONS: { value: TimelineFilter; label: string }[] = [
   { value: 'all', label: 'Alle' },
@@ -34,91 +40,103 @@ export function CustomerTimelineTab({
 }: CustomerTimelineTabProps) {
   const [filter, setFilter] = useState<TimelineFilter>('all');
 
-  const filtered = useMemo(() => {
-    if (filter === 'all') return events;
-    return events.filter((ev) => {
-      const type = String(ev.type ?? ev.eventType ?? '').toUpperCase();
-      if (filter === 'note') return type.includes('NOTE');
-      if (filter === 'document') return type.includes('DOCUMENT');
-      if (filter === 'booking') return type.includes('BOOKING');
-      if (filter === 'status') return type.includes('STATUS');
-      if (filter === 'risk') return type.includes('RISK');
-      if (filter === 'payment') return type.includes('PAYMENT') || type.includes('INVOICE');
-      if (filter === 'fine') return type.includes('FINE');
-      return true;
-    });
-  }, [events, filter]);
+  const filtered = useMemo(
+    () => events.filter((ev) => timelineEventMatchesFilter(ev, filter)),
+    [events, filter],
+  );
+
+  const entries = useMemo(
+    () => filtered.map((ev, idx) => ({ id: String(ev.id ?? `timeline-${idx}`), entry: mapTimelineEventToUserEntry(ev) })),
+    [filtered],
+  );
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap gap-1">
-          {FILTER_OPTIONS.map((o) => {
-            const active = filter === o.value;
-            return (
-              <Button
-                key={o.value}
-                type="button"
-                size="sm"
-                variant={active ? 'outline' : 'ghost'}
-                className={cn('h-7 px-2.5 text-[11px]', active && 'bg-card shadow-sm')}
-                onClick={() => setFilter(o.value)}
-              >
-                {o.label}
-              </Button>
-            );
-          })}
+    <div className={cdv.timelineToolbar}>
+      <div className={cdv.timelineToolbarRow}>
+        <div className={cdv.timelineFilterBar}>
+          <div className={cdv.timelineFilterScroll} role="tablist" aria-label="Timeline-Filter">
+            {FILTER_OPTIONS.map((option) => {
+              const active = filter === option.value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  className={cn(
+                    cdv.timelineFilterButton,
+                    active ? cdv.timelineFilterButtonActive : cdv.timelineFilterButtonIdle,
+                  )}
+                  onClick={() => setFilter(option.value)}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <Button type="button" size="sm" variant="neutral" onClick={onAddNote}>
+        <Button
+          type="button"
+          size="sm"
+          variant="neutral"
+          className={cn('gap-1.5', cdv.timelineAddNoteButton)}
+          onClick={onAddNote}
+        >
+          <Plus className="size-3.5" aria-hidden />
           Notiz hinzufügen
         </Button>
       </div>
 
-      {error ? (
-        <p className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2 text-[12px] text-muted-foreground">
-          Timeline konnte nicht geladen werden.
-        </p>
-      ) : null}
+      {error ? <p className={cdv.timelineError}>Timeline konnte nicht geladen werden.</p> : null}
 
       {loading ? (
-        <p className="py-8 text-center text-[12px] text-muted-foreground">Timeline wird geladen…</p>
+        <div className={cdv.timelineLoading}>
+          <Loader2 className="size-4 animate-spin" aria-hidden />
+          Timeline wird geladen…
+        </div>
       ) : filtered.length === 0 ? (
         <EmptyState
           icon={<Clock className="size-5" />}
           title="Keine Einträge"
-          description="Für diesen Filter sind noch keine Timeline-Ereignisse vorhanden."
+          description="Für diesen Filter sind noch keine Einträge vorhanden."
         />
       ) : (
-        <div className="sq-card divide-y divide-border overflow-hidden">
-          {filtered.map((ev) => (
-            <div key={String(ev.id)} className="px-4 py-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <StatusChip tone="neutral" className="text-[9px]">
-                      {String(ev.type ?? ev.eventType ?? 'EVENT')}
-                    </StatusChip>
-                    <span className="text-[12px] font-semibold text-foreground">
-                      {String(ev.title ?? 'Ereignis')}
+        <div className={cdv.timelineList}>
+          <ol className={cdv.timelineEntryList}>
+            {entries.map(({ id, entry }, index) => {
+              const last = index === entries.length - 1;
+              return (
+                <li key={id} className={cdv.timelineEntryRow}>
+                  <div className={cdv.timelineEntryRail}>
+                    <span className={cdv.timelineEntryDotWrap}>
+                      <span
+                        className={cn('sq-dot h-2.5 w-2.5', dotClassForTone(entry.tone))}
+                        aria-hidden
+                      />
                     </span>
+                    {!last ? <span className={cdv.timelineEntryLine} aria-hidden /> : null}
                   </div>
-                  {ev.description ? (
-                    <p className="mt-1 whitespace-pre-wrap text-[12px] text-muted-foreground">
-                      {String(ev.description)}
-                    </p>
-                  ) : null}
-                  {ev.createdByName ? (
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      von {String(ev.createdByName)}
-                    </p>
-                  ) : null}
-                </div>
-                <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground">
-                  {ev.createdAt ? formatDateTime(String(ev.createdAt)) : EM_DASH}
-                </span>
-              </div>
-            </div>
-          ))}
+                  <div className={cdv.timelineEntryBody}>
+                    <div className={cdv.timelineEntryHeader}>
+                      <StatusChip tone={entry.tone} className="text-[10px]">
+                        {entry.userTypeLabel}
+                      </StatusChip>
+                      <time className={cdv.timelineEntryTime} dateTime={String(filtered[index]?.createdAt ?? '')}>
+                        {entry.formattedTimestamp}
+                      </time>
+                    </div>
+                    <p className={cdv.timelineEntryTitle}>{entry.userTitle}</p>
+                    {entry.userDescription ? (
+                      <p className={cdv.timelineEntryDescription}>{entry.userDescription}</p>
+                    ) : null}
+                    {entry.createdByLabel ? (
+                      <p className={cdv.timelineEntrySubline}>{entry.createdByLabel}</p>
+                    ) : null}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
         </div>
       )}
     </div>
