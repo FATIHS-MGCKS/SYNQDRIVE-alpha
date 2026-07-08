@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'ch-trip-end-assist-audit-fixes-v49271-2026-07-08',
+    version: '4.9.271',
+    title: 'V4.9.271 — CH Trip End Assist Audit-Fixes',
+    summary: [
+      'Tracking-Runs: resultState=POSSIBLE_END nach CH Apply (nicht fälschlich RESTING).',
+      'cusumValidatedAt erst bei HIGH-Finalize bzw. MEDIUM END_VALIDATION-Bypass.',
+      'DIMO_PLUS_CLICKHOUSE: ContinuityAssessment an End-Decision angebunden; Corroboration-Logik korrigiert.',
+      'HIGH-Pfad: zweiter EndContinuityDetector-Check vor scheduleFinalize.',
+      'EV: explizites Skip-Log wenn MotionSegmentDetector fehlt.',
+    ],
+    reason:
+      'Post-Deploy-Audit V4.9.270: Observability-Bugs, toter Metrik-Pfad und Docs-Drift bereinigt.',
+    previousBehavior:
+      'resultState=RESTING trotz POSSIBLE_END; cusumValidatedAt bei Apply; DIMO_PLUS_CLICKHOUSE nie erreicht.',
+    details:
+      'trip-detection-orchestration.service.ts (checkDimoActivityResumed, continuityFinding), trip-evidence.helpers.ts (dimoCorroborated), architecture docs, trip-detection.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-08T22:55:00.000Z',
+  },
+  {
     id: 'ch-trip-end-assist-v49270-2026-07-08',
     version: '4.9.270',
     title: 'V4.9.270 — ClickHouse Trip End Assist (CH-first, FSM fallback)',

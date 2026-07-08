@@ -22,6 +22,7 @@ import {
   resolveAnalyticsAssistedStartDecision,
   resolveAnalyticsAssistedEndDecision,
   resolveClickHouseContinuityGuard,
+  isCurrentTelemetryInactive,
   extractLatestSegmentEnd,
 } from './trip-evidence.helpers';
 import {
@@ -721,6 +722,84 @@ describe('resolveAnalyticsAssistedEndDecision', () => {
 
     expect(result.confirmed).toBe(true);
     expect(result.evidencePath).toBe('CLICKHOUSE_END_ASSISTED');
+  });
+
+  it('uses DIMO_PLUS_CLICKHOUSE when continuity assessment agrees on POSSIBLE_END', () => {
+    const result = resolveAnalyticsAssistedEndDecision({
+      ...baseInput,
+      profile: 'ICE',
+      continuityFinding: finding('ContinuityAssessmentDetector', 'NOT_TRIGGERED', 'MEDIUM', {
+        continuityVerdict: 'POSSIBLE_END',
+      }),
+      ignitionSegment: finding('IgnitionSegmentDetector', 'TRIGGERED', 'HIGH', {
+        segments: [
+          {
+            start: '2026-04-16T08:00:00Z',
+            end: '2026-04-16T09:28:00Z',
+            durationMs: 5_280_000,
+            confidence: 'HIGH',
+          },
+        ],
+      }),
+      activityWindow: finding('ActivityWindowDetector', 'NOT_TRIGGERED', 'MEDIUM', {
+        pointCount: 1,
+        maxSpeedKmh: 0,
+      }),
+    });
+
+    expect(result.confirmed).toBe(true);
+    expect(result.evidencePath).toBe('DIMO_PLUS_CLICKHOUSE');
+  });
+
+  it('returns MEDIUM confidence when stationary below HIGH threshold', () => {
+    const mediumNow = new Date('2026-04-16T09:29:00Z');
+    const result = resolveAnalyticsAssistedEndDecision({
+      ...baseInput,
+      now: mediumNow,
+      profile: 'ICE',
+      ignitionSegment: finding('IgnitionSegmentDetector', 'TRIGGERED', 'HIGH', {
+        segments: [
+          {
+            start: '2026-04-16T08:00:00Z',
+            end: '2026-04-16T09:28:00Z',
+            confidence: 'HIGH',
+          },
+        ],
+      }),
+      activityWindow: finding('ActivityWindowDetector', 'NOT_TRIGGERED', 'LOW', {
+        maxSpeedKmh: 0,
+      }),
+    });
+
+    expect(result.confirmed).toBe(true);
+    expect(result.confidence).toBe('MEDIUM');
+    expect(result.evidencePath).toBe('CLICKHOUSE_END_ASSISTED');
+  });
+});
+
+describe('isCurrentTelemetryInactive', () => {
+  it('returns false when telemetry is missing', () => {
+    expect(isCurrentTelemetryInactive(null)).toBe(false);
+  });
+
+  it('returns false when speed indicates movement', () => {
+    expect(
+      isCurrentTelemetryInactive({
+        isIgnitionOn: false,
+        speedKmh: 12,
+        engineLoad: 0,
+      }),
+    ).toBe(false);
+  });
+
+  it('returns true when ignition off and speed near zero', () => {
+    expect(
+      isCurrentTelemetryInactive({
+        isIgnitionOn: false,
+        speedKmh: 0,
+        engineLoad: 5,
+      }),
+    ).toBe(true);
   });
 });
 

@@ -49,7 +49,10 @@ import {
 // detectTripEndChangePoint → ChangePointEndDetector (Phase 2 seam, done)
 import { TripDecisionEngine } from './decision/trip-decision.engine';
 import { TripDetectionPolicyResolver } from './policy/trip-detection-policy.resolver';
-import { DETECTION_PHASES } from './detectors/detector.interfaces';
+import {
+  DETECTION_PHASES,
+  type DetectorFinding,
+} from './detectors/detector.interfaces';
 import { DetectorRegistry } from './detectors/detector.registry';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
 import { ClickHouseService } from '@modules/clickhouse/clickhouse.service';
@@ -1070,7 +1073,7 @@ export class TripDetectionOrchestrationService {
           corePoints: [],
         });
         if (chEndAppliedNoCore) {
-          resultState = TripDetectionState.RESTING;
+          resultState = TripDetectionState.POSSIBLE_END;
           await this.logTrackingRun({
             vehicleId,
             organizationId,
@@ -1385,7 +1388,7 @@ export class TripDetectionOrchestrationService {
         corePoints,
       });
       if (chEndApplied) {
-        resultState = TripDetectionState.RESTING;
+        resultState = TripDetectionState.POSSIBLE_END;
         await this.logTrackingRun({
           vehicleId,
           organizationId,
@@ -1819,19 +1822,13 @@ export class TripDetectionOrchestrationService {
           now,
         );
 
-        const resumeFindings = await this.detectorRegistry.runAll(
-          ['EndContinuityDetector'],
-          {
-            vehicleId,
-            dimoTokenId,
-            profile: det.detectionProfile ?? VehicleDetectionProfile.UNKNOWN,
-            phase: DETECTION_PHASES.POSSIBLE_END,
-            coreDataPoints: recentPoints,
-          },
-        );
-        const activityResumed = resumeFindings.some(
-          (f) => f.detectorName === 'EndContinuityDetector' && f.verdict === 'TRIGGERED',
-        );
+        const activityResumed = await this.checkDimoActivityResumed({
+          vehicleId,
+          dimoTokenId,
+          profile: det.detectionProfile ?? VehicleDetectionProfile.UNKNOWN,
+          now,
+          corePoints: recentPoints,
+        });
 
         if (activityResumed) {
           resultState = TripDetectionState.ACTIVE_TRIP;
@@ -2461,6 +2458,104 @@ export class TripDetectionOrchestrationService {
   }
 
   /**
+   * DIMO recent-core resume check shared by CH end assist and POSSIBLE_END_CHECK.
+   */
+  private async checkDimoActivityResumed(params: {
+    vehicleId: string;
+    dimoTokenId: number;
+    profile: VehicleDetectionProfile;
+    now: Date;
+    corePoints?: Awaited<ReturnType<DimoSegmentsService['fetchRawTripCoreData']>>;
+  }): Promise<boolean> {
+    const recentFrom = new Date(params.now.getTime() - 90_000);
+    const recentPoints =
+      params.corePoints != null
+        ? params.corePoints.filter(
+            (p) => new Date(p.timestamp).getTime() >= recentFrom.getTime(),
+          )
+        : await this.segments.fetchRawTripCoreData(
+            params.dimoTokenId,
+            recentFrom,
+            params.now,
+          );
+
+    const resumeFindings = await this.detectorRegistry.runAll(
+      ['EndContinuityDetector'],
+      {
+        vehicleId: params.vehicleId,
+        dimoTokenId: params.dimoTokenId,
+        profile: params.profile,
+        phase: DETECTION_PHASES.POSSIBLE_END,
+        coreDataPoints: recentPoints,
+      },
+    );
+    return resumeFindings.some(
+      (f) =>
+        f.detectorName === 'EndContinuityDetector' && f.verdict === 'TRIGGERED',
+    );
+  }
+
+  private async cancelPossibleEndForResumedActivity(params: {
+    vehicleId: string;
+    organizationId: string | null;
+    dimoTokenId: number;
+    now: Date;
+  }): Promise<void> {
+    await this.transitionState(params.vehicleId, TripDetectionState.ACTIVE_TRIP, {
+      possibleEndAt: null,
+      endDetectionMode: null,
+      endConfidence: null,
+      endValidationAttempts: 0,
+      cusumValidatedAt: null,
+      cusumSegmentStart: null,
+      cusumSegmentEnd: null,
+      lastActivityAt: params.now,
+      lastMeaningfulMovementAt: params.now,
+      lastCoreProcessedAt: params.now,
+    });
+    await this.scheduleActiveTick(
+      params.vehicleId,
+      params.organizationId,
+      params.dimoTokenId,
+    );
+  }
+
+  private async resolveContinuityFindingForEndAssist(params: {
+    vehicleId: string;
+    dimoTokenId: number;
+    profile: VehicleDetectionProfile;
+    tripStartAt: Date;
+    now: Date;
+    corePoints: Awaited<ReturnType<DimoSegmentsService['fetchRawTripCoreData']>>;
+  }): Promise<DetectorFinding | undefined> {
+    const nowMs = params.now.getTime();
+    const recentCore =
+      params.corePoints.length > 0
+        ? params.corePoints.filter(
+            (p) => nowMs - new Date(p.timestamp).getTime() <= this.TRIP_CONTINUITY_CORE_WINDOW_MS,
+          )
+        : [];
+    const evalCore =
+      recentCore.length > 0 ? recentCore : params.corePoints.slice(-3);
+
+    const continuityFindings = await this.detectorRegistry.runAll(
+      ['ContinuityAssessmentDetector'],
+      {
+        vehicleId: params.vehicleId,
+        dimoTokenId: params.dimoTokenId,
+        profile: params.profile,
+        phase: DETECTION_PHASES.ACTIVE_TRIP,
+        timeWindow: { from: params.tripStartAt, to: params.now },
+        coreDataPoints: evalCore,
+        performanceReadings: [],
+      },
+    );
+    return continuityFindings.find(
+      (f) => f.detectorName === 'ContinuityAssessmentDetector',
+    );
+  }
+
+  /**
    * ClickHouse-first trip end assist. Returns true when an end path was
    * scheduled (caller should stop the active tick). FSM/CUSUM remains fallback.
    */
@@ -2490,6 +2585,17 @@ export class TripDetectionOrchestrationService {
 
     const profileEnum =
       params.det.detectionProfile ?? VehicleDetectionProfile.UNKNOWN;
+
+    const isEvProfile =
+      params.profile === 'EV' ||
+      params.profile === 'HYBRID' ||
+      params.profile === 'UNKNOWN';
+    if (isEvProfile && !this.detectorRegistry.get('MotionSegmentDetector')) {
+      this.logger.debug(
+        `CH end assist skipped for ${params.vehicleId}: MotionSegmentDetector unavailable for EV profile`,
+      );
+      return false;
+    }
 
     const endAssistPolicy = this.policyResolver.resolve({
       phase: DETECTION_PHASES.ACTIVE_TRIP,
@@ -2533,11 +2639,6 @@ export class TripDetectionOrchestrationService {
       (f) => f.detectorName === 'MotionSegmentDetector',
     );
 
-    const isEvProfile =
-      params.profile === 'EV' ||
-      params.profile === 'HYBRID' ||
-      params.profile === 'UNKNOWN';
-
     const preliminaryEnd = extractLatestSegmentEnd(
       { ignitionSegment, motionSegment },
       params.tripStartAt,
@@ -2570,7 +2671,17 @@ export class TripDetectionOrchestrationService {
       );
     }
 
+    const continuityFinding = await this.resolveContinuityFindingForEndAssist({
+      vehicleId: params.vehicleId,
+      dimoTokenId: params.dimoTokenId,
+      profile: profileEnum,
+      tripStartAt: params.tripStartAt,
+      now: params.now,
+      corePoints: params.corePoints,
+    });
+
     const endDecision = resolveAnalyticsAssistedEndDecision({
+      continuityFinding,
       activityWindow,
       ignitionSegment,
       motionSegment,
@@ -2591,27 +2702,19 @@ export class TripDetectionOrchestrationService {
         ? params.corePoints.filter(
             (p) => new Date(p.timestamp).getTime() >= recentFrom.getTime(),
           )
-        : await this.segments.fetchRawTripCoreData(
-            params.dimoTokenId,
-            recentFrom,
-            params.now,
-          );
+        : undefined;
 
-    const resumeFindings = await this.detectorRegistry.runAll(
-      ['EndContinuityDetector'],
-      {
+    if (
+      await this.checkDimoActivityResumed({
         vehicleId: params.vehicleId,
         dimoTokenId: params.dimoTokenId,
         profile: profileEnum,
-        phase: DETECTION_PHASES.POSSIBLE_END,
-        coreDataPoints: recentPoints,
-      },
-    );
-    const activityResumed = resumeFindings.some(
-      (f) =>
-        f.detectorName === 'EndContinuityDetector' && f.verdict === 'TRIGGERED',
-    );
-    if (activityResumed) return false;
+        now: params.now,
+        corePoints: recentPoints,
+      })
+    ) {
+      return false;
+    }
 
     const endConfEnum =
       endDecision.confidence === 'HIGH'
@@ -2645,7 +2748,7 @@ export class TripDetectionOrchestrationService {
     await this.transitionState(params.vehicleId, TripDetectionState.POSSIBLE_END, {
       possibleEndAt: detectedEndAt,
       endValidationAttempts: 0,
-      cusumValidatedAt: params.now,
+      cusumValidatedAt: null,
       cusumSegmentStart: params.tripStartAt,
       cusumSegmentEnd: detectedEndAt,
       endDetectionMode: END_DETECTION_MODES.CLICKHOUSE_END_ASSIST,
@@ -2654,10 +2757,36 @@ export class TripDetectionOrchestrationService {
       lastEvidenceSummary: {
         clickhouseEndAssist: endDecision.summary,
         clickhouseEndEvidencePath: endDecision.evidencePath,
+        dimoContinuityCorroborated:
+          endDecision.evidencePath === 'DIMO_PLUS_CLICKHOUSE',
       },
     });
 
     if (endDecision.confidence === 'HIGH') {
+      if (
+        await this.checkDimoActivityResumed({
+          vehicleId: params.vehicleId,
+          dimoTokenId: params.dimoTokenId,
+          profile: profileEnum,
+          now: params.now,
+          corePoints: recentPoints,
+        })
+      ) {
+        this.logger.log(
+          `CH end assist HIGH cancelled for ${params.vehicleId}: DIMO activity resumed before finalize`,
+        );
+        await this.cancelPossibleEndForResumedActivity({
+          vehicleId: params.vehicleId,
+          organizationId: params.organizationId,
+          dimoTokenId: params.dimoTokenId,
+          now: params.now,
+        });
+        return false;
+      }
+
+      await this.transitionState(params.vehicleId, TripDetectionState.POSSIBLE_END, {
+        cusumValidatedAt: params.now,
+      });
       await this.scheduleFinalize(
         params.vehicleId,
         params.organizationId,

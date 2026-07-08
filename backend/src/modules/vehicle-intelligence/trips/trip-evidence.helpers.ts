@@ -762,13 +762,18 @@ export function resolveAnalyticsAssistedEndDecision(input: {
     });
   }
 
-  const continuityVerdict = input.continuityFinding?.evidence
-    ?.continuityVerdict as string | undefined;
+  const continuityVerdict =
+    (input.continuityFinding?.evidence?.continuityVerdict as
+      | string
+      | undefined) ??
+    (input.continuityFinding?.evidence?.verdict as string | undefined);
   const dimoCorroborated =
-    input.continuityFinding?.verdict === 'TRIGGERED' &&
-    (continuityVerdict === 'POSSIBLE_END' ||
-      continuityVerdict === 'IDLE' ||
-      continuityVerdict === 'INACTIVE');
+    input.continuityFinding != null &&
+    ((input.continuityFinding.verdict === 'NOT_TRIGGERED' &&
+      continuityVerdict === 'POSSIBLE_END') ||
+      (input.continuityFinding.verdict === 'TRIGGERED' &&
+        (continuityVerdict === 'IDLE' ||
+          continuityVerdict === 'INACTIVE')));
 
   return {
     confirmed: true,

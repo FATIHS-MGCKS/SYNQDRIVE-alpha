@@ -28,7 +28,7 @@ SynqDrive spiegelt DIMO-Snapshots in die **eigene** ClickHouse-Instanz (`telemet
 | **Trip-Start-Bestätigung** | `ActivityWindowDetector`, `IgnitionSegmentDetector`, `MotionSegmentDetector` korrelieren mit live DIMO-Telemetrie | DIMO/PG-only Start-Pfad |
 | **Aktive Kontinuität** | `ActivityWindowDetector` als **Guard** — kann Trip **offen halten** bei Mehrdeutigkeit | Nur `ContinuityAssessmentDetector` (DIMO core) |
 | **Repair fehlender Trips** | Ignition/Motion-Segmente aus `telemetry_state_changes` | DIMO-Segment-Fallback / StartConfirmation |
-| **Trip-Ende (live FSM)** | **Kein CH-Beschleuniger** — siehe Abschnitt 2 | — |
+| **Trip-Ende (live FSM)** | **CH-first End Assist** (`tryApplyClickHouseAssistedEnd`), FSM/CUSUM-Fallback; CH-Guard kann bei Mehrdeutigkeit weiterhin verzögern | Nur FSM/CUSUM |
 | **Scores / Gesamtbewertung** | **Kein Einfluss** | — |
 
 ### Code-Referenzen
@@ -54,7 +54,9 @@ Metrik `synqdrive_trip_evidence_paths_total` beobachten:
 
 ---
 
-## 2. Trip-Ende — Ist-Zustand (Audit 2026-07-08)
+## 2. Trip-Ende — Historischer Ist-Zustand (pre-V4.9.270)
+
+> **Hinweis:** Abschnitt 2 beschreibt den Zustand **vor** V4.9.270. Aktuelles Verhalten siehe **Abschnitt 3** (End Assist) und **Abschnitt 4** (V4.9.271 Audit-Fixes).
 
 ### Kurzantwort
 
@@ -95,7 +97,7 @@ POSSIBLE_END
 | `ACTIVE_TRIP` (ambiguous continuity) | `ActivityWindowDetector` | **CH** (nur Guard) |
 | `ACTIVE_TRIP` (default continuity) | `ContinuityAssessmentDetector` | **DIMO** |
 | `POSSIBLE_END` | `EndContinuityDetector`, `ChangePointEndDetector` | **DIMO** |
-| `REPAIR_MISSING_END` | Policy definiert CH + CUSUM | **Nicht verdrahtet** (siehe unten) |
+| `REPAIR_MISSING_END` | CH-Segmente via `resolveChAssistedMissingEndTime` (seit V4.9.270) | **CH + Waypoint-Fallback** |
 
 ### Warum Trip-Ende „spät“ wirkt
 
@@ -111,11 +113,11 @@ Typische Verzögerungsketten (Defaults):
 
 Zusätzlich: Wenn CH-Guard bei Mehrdeutigkeit `keepTripOpen=true` liefert, bleibt die FSM länger in `ACTIVE_TRIP`.
 
-### REPAIR_MISSING_END — Policy existiert, Wiring fehlt
+### REPAIR_MISSING_END — seit V4.9.270 verdrahtet
 
-`DETECTION_PHASES.REPAIR_MISSING_END` ist in `trip-detection-policy.resolver.ts` definiert (`ChangePointEndDetector` + `IgnitionSegmentDetector` + optional `MotionSegmentDetector`), wird aber in `trip-reconciliation.service.ts` **nicht aufgerufen**.
+`trip-reconciliation.service.ts` → `resolveChAssistedMissingEndTime()` nutzt denselben Decision-Helper wie der Live-Pfad. Fallback bleibt `lastWaypoint ?? windowEnd`.
 
-Aktueller Missing-End-Repair: Kalt-Fallback `lastWaypoint ?? windowEnd` — **ohne CH-Segmente**.
+*(Historisch pre-V4.9.270: Policy existierte, Reconciliation nutzte nur Waypoint-Fallback.)*
 
 ---
 
@@ -135,6 +137,16 @@ Live `ACTIVE_TICK` path (`tryApplyClickHouseAssistedEnd`):
 Reconciliation `REPAIR_MISSING_END`: `resolveChAssistedMissingEndTime()` uses same decision helper.
 
 Env tuning: `TRIP_END_CH_ASSIST_*` in `backend/src/config/worker.config.ts`.
+
+### V4.9.271 — Audit-Fixes (Post-Deploy)
+
+| Fix | Beschreibung |
+|-----|--------------|
+| Tracking-Runs | `resultState=POSSIBLE_END` nach CH Apply (nicht fälschlich `RESTING`) |
+| `cusumValidatedAt` | Erst bei HIGH-Finalize bzw. MEDIUM `END_VALIDATION`-Bypass gesetzt |
+| `DIMO_PLUS_CLICKHOUSE` | `ContinuityAssessmentDetector`-Finding an Decision-Helper übergeben; Corroboration-Logik korrigiert |
+| HIGH Resume-Guard | Zweiter `EndContinuityDetector`-Check unmittelbar vor `scheduleFinalize` |
+| EV Motion | Explizites Skip-Log wenn `MotionSegmentDetector` für EV/Hybrid fehlt |
 
 ### Architektur-No-Gos (unverändert)
 
@@ -160,7 +172,7 @@ TRIP_END_VALIDATION_RETRY_MS=45000
 # TRIP_END_STABILITY_WINDOW_MS=90000
 ```
 
-**Hinweis:** `CLICKHOUSE_TRIP_ASSIST_ENABLED=true` kann Ends bei Mehrdeutigkeit **verzögern** (CH-Guard). Für schnellere Ends ist Tuning der FSM-Timer oft effektiver als mehr CH.
+**Hinweis:** Mit V4.9.270+ beschleunigt CH End Assist frühe Finalizes (HIGH/MEDIUM). Der CH-Guard kann bei Mehrdeutigkeit weiterhin verzögern, wenn End Assist inconclusive ist. FSM-Timer-Tuning bleibt relevant für den CUSUM-Fallback-Pfad.
 
 ---
 

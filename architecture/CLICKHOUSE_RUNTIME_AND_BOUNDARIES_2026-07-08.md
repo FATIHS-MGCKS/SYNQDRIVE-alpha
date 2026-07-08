@@ -83,7 +83,7 @@ Details: `backend/docs/clickhouse-local-selfhosted.md`
 | Datenpfad | DIMO → DimoSnapshotProcessor → CH-Mirror → Detektoren (nicht DIMOs internes CH) |
 | Opt-out | `CLICKHOUSE_TRIP_ASSIST_ENABLED=false` |
 | Scores / Bookings | **Kein** CH-Einfluss |
-| Trip-Ende (live FSM) | **CH-first End Assist** (`CLICKHOUSE_END_ASSIST`), FSM/CUSUM-Fallback | Nur FSM/CUSUM |
+| Trip-Ende (live FSM) | **CH-first End Assist** (`CLICKHOUSE_END_ASSIST`) mit FSM/CUSUM-Fallback; opt-out → nur FSM/CUSUM |
 | Monitoring | `synqdrive_trip_evidence_paths_total` |
 
 Details + Trip-Ende-Audit: `architecture/CLICKHOUSE_TRIP_ASSIST_AND_TRIP_END_2026-07-08.md`
