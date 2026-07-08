@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customer-document-verification-sot-v49245-2026-07-08',
+    version: '4.9.245',
+    title: 'V4.9.245 — Dokumentenverifikation: kanonische Source of Truth',
+    summary: [
+      'CustomerVerificationCheck = einzige Verifikationsentscheidung; CustomerDocument = Evidence/Upload.',
+      'Manuelle Dokumentprüfung erzeugt/aktualisiert MANUAL CustomerVerificationCheck mit decisionJson.',
+      'GET /customers/:id/documents/status liefert Domain-Status + backendseitige missingUploadSlots.',
+      'Didit-Timeline nutzerlesbar; keine Uploadpflicht bei VERIFIED-Gruppe ohne physische Dateien.',
+      'Frontend CustomerDocumentsTab nutzt Backend-Status statt eigener Slot-Heuristik.',
+    ],
+    reason:
+      'CustomerDocument und Read Model wirkten als zweite Wahrheit; UI leitete fehlende Uploads aus Slots ab obwohl Didit bereits verifiziert war.',
+    previousBehavior:
+      'reviewDocument aktualisierte nur CustomerDocument; missingUploadSlots clientseitig in customerDetailUtils berechnet.',
+    details:
+      'backend: customer-document-status.util/types, recordManualDocumentReview, getDocumentVerificationStatus, customer-documents.service/controller, review-customer-document.dto. frontend: api.customerDocuments.status, useCustomerDocumentStatus, CustomerDocumentsTab, mapMissingUploadSlotsFromBackend.',
+    affectsArchitecture: true,
+    module: 'Customers',
+    createdAt: '2026-07-08T03:30:00.000Z',
+  },
+  {
     id: 'customer-verification-plan-v49244-2026-07-08',
     version: '4.9.244',
     title: 'V4.9.244 — Kundenanlage: Verifikationsweg pro Dokumentart',
