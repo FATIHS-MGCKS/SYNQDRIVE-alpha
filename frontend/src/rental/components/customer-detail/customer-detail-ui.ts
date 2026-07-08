@@ -7,15 +7,50 @@ import type {
 
 /** Layout tokens for the full CustomerDetailView page. */
 export const cdv = {
-  page: 'mx-auto max-w-[1400px] space-y-3 pb-[max(1rem,env(safe-area-inset-bottom))]',
+  page: 'mx-auto max-w-[1400px] space-y-3 pb-[max(5.5rem,env(safe-area-inset-bottom))] sm:pb-[max(1rem,env(safe-area-inset-bottom))]',
   headerCard: 'sq-card overflow-hidden',
-  headerInner: 'px-4 py-3 sm:px-5 sm:py-4',
-  metaRow: 'mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground',
-  badgeRow: 'mt-2.5 flex flex-wrap items-center gap-1.5',
-  actionsRow: 'mt-3 flex flex-wrap items-center gap-1.5 border-t border-border/50 pt-3',
-  sectionGrid: 'grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4',
+  headerInner: 'px-4 py-3.5 sm:px-5 sm:py-4',
+  backLink:
+    'inline-flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground',
+  heroTitleRow: 'mt-2.5 flex items-start justify-between gap-3',
+  heroTitleBlock: 'min-w-0 flex-1',
+  heroStatusChip: 'shrink-0 pt-0.5',
+  metaRow:
+    'mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] leading-snug text-muted-foreground',
+  metaSeparator: 'text-muted-foreground/40 select-none',
+  heroBadgeGrid: 'mt-3 grid grid-cols-2 gap-2',
+  heroActionGrid: 'mt-4 grid grid-cols-2 gap-2 border-t border-border/50 pt-4',
+  heroActionFull: 'col-span-2',
+  heroActionButton: 'w-full justify-center gap-1.5',
+  sectionGrid: 'grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4',
   twoColGrid: 'grid grid-cols-1 gap-3 lg:grid-cols-2',
   summaryGrid: 'grid grid-cols-2 items-start gap-1 sm:gap-1.5 lg:grid-cols-3 xl:grid-cols-6',
+  decisionCard: 'h-full',
+  decisionCardBody: 'space-y-2.5 py-3',
+  decisionCardTitleRow: 'inline-flex min-w-0 items-center gap-2',
+  decisionCardTitleIcon: 'size-3.5 shrink-0 text-muted-foreground',
+  decisionCardDetailsLink: 'h-auto px-0 text-[11px] font-medium',
+  decisionCardChipStack: 'flex flex-col items-start gap-2',
+  decisionCardReason:
+    'text-[11px] leading-snug text-[color:var(--status-critical)] line-clamp-2',
+  decisionCardReasonWarning:
+    'text-[11px] leading-snug text-[color:var(--status-attention)] line-clamp-2',
+  stageRow: 'flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px] text-muted-foreground',
+  stageItem: 'inline-flex items-center gap-1',
+  stageSeparator: 'text-muted-foreground/35 select-none',
+  bottomTabBar:
+    'sq-tab-bar sticky bottom-0 z-20 -mx-1 flex w-[calc(100%+0.5rem)] items-center p-1 sm:static sm:z-auto sm:mx-0 sm:w-full',
+  bottomTabScroll:
+    'flex min-w-0 flex-1 flex-nowrap gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+  bottomTabButton:
+    'min-h-8 min-w-0 shrink-0 rounded-[calc(var(--radius-md)-2px)] px-3 py-1.5 text-[11px] font-semibold leading-[16px] tracking-[-0.003em] whitespace-nowrap transition-all duration-200',
+  bottomTabButtonActive: 'bg-card text-foreground shadow-[var(--shadow-1)]',
+  bottomTabButtonIdle:
+    'text-muted-foreground hover:bg-background/60 hover:text-foreground',
+  /** @deprecated use heroBadgeGrid */
+  badgeRow: 'mt-2.5 flex flex-wrap items-center gap-1.5',
+  /** @deprecated use heroActionGrid */
+  actionsRow: 'mt-3 flex flex-wrap items-center gap-1.5 border-t border-border/50 pt-3',
 } as const;
 
 /** Layout tokens for CustomerDetailModal (New Booking wizard preview only). */

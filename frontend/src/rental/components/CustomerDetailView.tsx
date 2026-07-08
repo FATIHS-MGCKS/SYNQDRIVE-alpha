@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 
 import { AlertCircle } from 'lucide-react';
 
@@ -84,11 +84,15 @@ import {
 
   computeBookingRevenueCents,
 
+  overallRentalClearanceLabel,
+
+  overallRentalClearanceTone,
+
   sortBookingsNewestFirst,
 
 } from './customer-detail/customerDetailUtils';
 
-import { cdv } from './customer-detail/customer-detail-ui';
+import { cdv, ELIGIBILITY_LOAD_ERROR_USER } from './customer-detail/customer-detail-ui';
 
 import {
 
@@ -315,6 +319,42 @@ export function CustomerDetailView({
     detail?.licenseVerificationStatus ?? undefined,
 
   );
+
+
+
+  const rentalClearanceLabel = useMemo(() => {
+
+    if (eligibilityLoading) return 'Lädt…';
+
+    if (eligibilityError) return 'Nicht geladen';
+
+    if (eligibility) return overallRentalClearanceLabel(eligibility);
+
+    return 'Offen';
+
+  }, [eligibility, eligibilityLoading, eligibilityError]);
+
+
+
+  const rentalClearanceTone = useMemo(() => {
+
+    if (eligibilityLoading) return 'neutral' as const;
+
+    if (eligibilityError) return 'noData' as const;
+
+    if (eligibility) return overallRentalClearanceTone(eligibility);
+
+    return 'neutral' as const;
+
+  }, [eligibility, eligibilityLoading, eligibilityError]);
+
+
+
+  const rentalClearanceTitle = eligibilityError
+
+    ? `${ELIGIBILITY_LOAD_ERROR_USER} ${eligibilityError}`
+
+    : null;
 
 
 
@@ -583,6 +623,12 @@ export function CustomerDetailView({
         idVerificationUi={idVerificationUi}
 
         licenseVerificationUi={licenseVerificationUi}
+
+        rentalClearanceLabel={rentalClearanceLabel}
+
+        rentalClearanceTone={rentalClearanceTone}
+
+        rentalClearanceTitle={rentalClearanceTitle}
 
         phone={customer.phone}
 

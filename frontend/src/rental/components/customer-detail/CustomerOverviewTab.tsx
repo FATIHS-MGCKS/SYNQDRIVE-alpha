@@ -30,7 +30,7 @@ export function CustomerOverviewTab({
   }));
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 pt-1">
       <div className={cdv.twoColGrid}>
         <DataCard title="Identität & Kontakt" bodyClassName="py-2">
           {[

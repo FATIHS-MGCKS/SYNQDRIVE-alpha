@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customer-detail-ui-polish-v49236-2026-07-08',
+    version: '4.9.236',
+    title: 'V4.9.236 — Customer Detail Page UI-Polish',
+    summary: [
+      'CustomerDetailHeader: Status-Chip oben rechts symmetrisch zum Namen; Mietfreigabe in Badge-Grid statt Aktiv.',
+      'Aktionsbuttons als 2-Spalten-Grid (SynqDrive sq-3d-btn); Kontakt full-width.',
+      'CustomerDecisionCards: ruhigere Summary Cards mit Icon-Titel, Stage-Zeile und vertikalen Chip-Stacks.',
+      'CustomerDetailTabBar: sticky auf Mobile, safe-area, horizontales Scroll.',
+      'Zentrale Layout-Tokens in customer-detail-ui.ts (cdv.hero*, decisionCard*, bottomTabBar).',
+    ],
+    reason:
+      'Die Detailseite wirkte überladen und asymmetrisch; ruhigere Card-Komposition und klare Header-Hierarchie ohne Funktionsverlust.',
+    previousBehavior:
+      'Status-Badge in der Badge-Wolke unten; Aktionsbuttons als chaotische flex-wrap-Zeile; Decision Cards kompakt aber unruhig.',
+    details:
+      'frontend: CustomerDetailHeader, CustomerDecisionCards, CustomerDetailTabBar, customer-detail-ui.ts, CustomerDetailView (nur rentalClearance Props), CustomerOverviewTab (Spacing). Keine Backend-/Hook-Änderung.',
+    affectsArchitecture: false,
+    module: 'Customers',
+    createdAt: '2026-07-08T00:45:00.000Z',
+  },
+  {
     id: 'customers-quickview-cleanup-v49235-2026-07-08',
     version: '4.9.235',
     title: 'V4.9.235 — Customer Quick View Cleanup nach Direktnavigation',

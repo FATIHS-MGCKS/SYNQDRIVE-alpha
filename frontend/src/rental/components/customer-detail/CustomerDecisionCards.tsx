@@ -1,12 +1,15 @@
+import { Fragment, type ReactNode } from 'react';
+import { ChevronRight, Gauge, Receipt, Shield, ShieldCheck } from 'lucide-react';
+
 import { DataCard, StatusChip } from '../../../components/patterns';
 import type { StatusTone } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
+import { cn } from '../../../components/ui/utils';
 import type { CustomerEligibility } from './customerDetailTypes';
 import {
   eligibilityStageForConfirm,
   eligibilityStageForCreate,
   eligibilityStageForPickup,
-  EM_DASH,
   overallRentalClearanceLabel,
   overallRentalClearanceTone,
 } from './customerDetailUtils';
@@ -21,6 +24,36 @@ function stageDotClass(stage: 'allowed' | 'warning' | 'blocked'): string {
   if (stage === 'allowed') return 'bg-[color:var(--status-positive)]';
   if (stage === 'warning') return 'bg-[color:var(--status-attention)]';
   return 'bg-[color:var(--status-critical)]';
+}
+
+function DecisionCardTitle({
+  icon,
+  label,
+}: {
+  icon: ReactNode;
+  label: string;
+}) {
+  return (
+    <span className={cdv.decisionCardTitleRow}>
+      <span className={cdv.decisionCardTitleIcon}>{icon}</span>
+      <span>{label}</span>
+    </span>
+  );
+}
+
+function DecisionDetailsAction({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <Button
+      type="button"
+      variant="link"
+      size="sm"
+      className={cdv.decisionCardDetailsLink}
+      onClick={onClick}
+    >
+      {label}
+      <ChevronRight className="size-3" />
+    </Button>
+  );
 }
 
 interface CustomerDecisionCardsProps {
@@ -89,128 +122,112 @@ export function CustomerDecisionCards({
 
   const drivingHasSignals = drivingEvents > 0 || abuseEvents > 0;
 
+  const stageItems = [
+    { label: 'Erstellen', stage: createStage },
+    { label: 'Bestätigen', stage: confirmStage },
+    { label: 'Übergabe', stage: pickupStage },
+  ];
+
   return (
     <div className={cdv.sectionGrid}>
-      <DataCard title="Mietfreigabe" bodyClassName="py-2.5">
+      <DataCard
+        className={cdv.decisionCard}
+        title={<DecisionCardTitle icon={<Shield className="size-3.5" />} label="Mietfreigabe" />}
+        bodyClassName={cdv.decisionCardBody}
+      >
         {eligibilityLoading ? (
           <p className="text-[12px] text-muted-foreground">Wird geladen…</p>
         ) : eligibilityError ? (
           <div className="space-y-2" title={eligibilityError}>
             <p className="text-[12px] font-medium text-foreground">{ELIGIBILITY_LOAD_ERROR_USER}</p>
             {onRetryEligibility ? (
-              <Button type="button" size="sm" variant="neutral" className="h-7" onClick={onRetryEligibility}>
+              <Button type="button" size="sm" variant="neutral" className="h-8" onClick={onRetryEligibility}>
                 Erneut laden
               </Button>
             ) : null}
           </div>
         ) : eligibility ? (
-          <div className="space-y-2">
+          <>
             <StatusChip tone={overallRentalClearanceTone(eligibility)} dot>
               {overallRentalClearanceLabel(eligibility)}
             </StatusChip>
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground">
-              {[
-                { label: 'Erstellen', stage: createStage },
-                { label: 'Bestätigen', stage: confirmStage },
-                { label: 'Übergabe', stage: pickupStage },
-              ].map((row) => (
-                <span key={row.label} className="inline-flex items-center gap-1">
-                  <span className={`size-1.5 shrink-0 rounded-full ${stageDotClass(row.stage)}`} />
-                  {row.label}
-                </span>
+            {eligibility.blockingReasons[0] ? (
+              <p className={cdv.decisionCardReason}>{eligibility.blockingReasons[0]}</p>
+            ) : eligibility.warnings[0] ? (
+              <p className={cdv.decisionCardReasonWarning}>{eligibility.warnings[0]}</p>
+            ) : null}
+            <div className={cdv.stageRow}>
+              {stageItems.map((row, index) => (
+                <Fragment key={row.label}>
+                  {index > 0 ? <span className={cdv.stageSeparator}>·</span> : null}
+                  <span className={cdv.stageItem}>
+                    <span className={cn('size-1.5 shrink-0 rounded-full', stageDotClass(row.stage))} />
+                    {row.label}
+                  </span>
+                </Fragment>
               ))}
             </div>
-            {eligibility.blockingReasons[0] ? (
-              <p className="text-[11px] leading-snug text-[color:var(--status-critical)]">
-                {eligibility.blockingReasons[0]}
-              </p>
-            ) : eligibility.warnings[0] ? (
-              <p className="text-[11px] leading-snug text-[color:var(--status-attention)]">
-                {eligibility.warnings[0]}
-              </p>
-            ) : null}
-          </div>
+          </>
         ) : (
           <p className="text-[12px] text-muted-foreground">Keine Freigabedaten</p>
         )}
       </DataCard>
 
       <DataCard
-        title="Verifikation"
+        className={cdv.decisionCard}
+        title={<DecisionCardTitle icon={<ShieldCheck className="size-3.5" />} label="Verifikation" />}
         actions={
           onOpenDocuments ? (
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              className="h-auto px-0 text-xs"
-              onClick={onOpenDocuments}
-            >
-              Details
-            </Button>
+            <DecisionDetailsAction label="Details" onClick={onOpenDocuments} />
           ) : undefined
         }
-        bodyClassName="py-2.5"
+        bodyClassName={cdv.decisionCardBody}
       >
-        <div className="flex flex-wrap items-center gap-1.5">
-          <StatusChip tone={customerVerificationTone(idUi)} className="text-[10px]">
+        <div className={cdv.decisionCardChipStack}>
+          <StatusChip tone={customerVerificationTone(idUi)} dot>
             Ausweis: {customerVerificationUiLabelDe(idUi)}
           </StatusChip>
-          <StatusChip tone={customerVerificationTone(licenseUi)} className="text-[10px]">
+          <StatusChip tone={customerVerificationTone(licenseUi)} dot>
             FS: {customerVerificationUiLabelDe(licenseUi)}
           </StatusChip>
         </div>
       </DataCard>
 
       <DataCard
-        title="Finanzen"
+        className={cdv.decisionCard}
+        title={<DecisionCardTitle icon={<Receipt className="size-3.5" />} label="Finanzen" />}
         actions={
           onOpenFinances ? (
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              className="h-auto px-0 text-xs"
-              onClick={onOpenFinances}
-            >
-              Details
-            </Button>
+            <DecisionDetailsAction label="Details" onClick={onOpenFinances} />
           ) : undefined
         }
-        bodyClassName="py-2.5"
+        bodyClassName={cdv.decisionCardBody}
       >
-        <StatusChip tone={financeTone} dot className="text-[10px]">
+        <StatusChip tone={financeTone} dot>
           {financeSummary}
         </StatusChip>
       </DataCard>
 
       <DataCard
-        title="Fahrbelastung"
+        className={cdv.decisionCard}
+        title={<DecisionCardTitle icon={<Gauge className="size-3.5" />} label="Fahrbelastung" />}
         actions={
           onOpenDriving ? (
-            <Button
-              type="button"
-              variant="link"
-              size="sm"
-              className="h-auto px-0 text-xs"
-              onClick={onOpenDriving}
-            >
-              Details
-            </Button>
+            <DecisionDetailsAction label="Details" onClick={onOpenDriving} />
           ) : undefined
         }
-        bodyClassName="py-2.5"
+        bodyClassName={cdv.decisionCardBody}
       >
-        <div className="space-y-1.5">
+        <div className={cdv.decisionCardChipStack}>
           {stressDisplay.isMissing ? (
-            <span className="text-[12px] text-muted-foreground">{EM_DASH}</span>
+            <StatusChip tone="noData">Keine Fahrdaten vorhanden</StatusChip>
           ) : (
-            <StatusChip tone={stressToneToStatusTone(stressDisplay.tone)} className="text-[10px]">
+            <StatusChip tone={stressToneToStatusTone(stressDisplay.tone)} dot>
               {stressDisplay.label}
             </StatusChip>
           )}
           {drivingHasSignals ? (
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[11px] leading-snug text-muted-foreground">
               {drivingEvents} Ereignisse · {abuseEvents} Missbrauch
             </p>
           ) : null}
