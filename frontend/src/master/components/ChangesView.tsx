@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customer-decision-cards-polish-v49238-2026-07-08',
+    version: '4.9.238',
+    title: 'V4.9.238 — Customer Detail Summary-Cards Feinschliff',
+    summary: [
+      'CustomerDecisionCards: einheitliches Modulset mit Icon-Bubble-Titel, DecisionChip und Details-Links.',
+      'Mietfreigabe: Status + Grund + dezente Stage-Rail (Erstellen/Bestätigen/Übergabe), prominent auf Desktop.',
+      'Verifikation/Finanzen/Fahrbelastung: ruhige StatusChips, optionale muted Hinweise aus vorhandenen Daten.',
+      'Zentrale cdv-Tokens: decisionSectionGrid, stageRail, decisionChip, decisionMutedText.',
+    ],
+    reason:
+      'Die Summary-Cards wirkten wie lose Boxen; einheitliche Card-Struktur und ruhigere Stage-Anzeige für SynqDrive-Dashboard-Feeling.',
+    previousBehavior:
+      'Uneinheitliche Card-Bodies, Stage-Zeile als Punkt-Liste, keine Icon-Bubbles, xl-4er-Grid ohne Mietfreigabe-Prominenz.',
+    details:
+      'frontend: CustomerDecisionCards.tsx, customer-detail-ui.ts. Keine Backend-/Eligibility-Logik geändert.',
+    affectsArchitecture: false,
+    module: 'Customers',
+    createdAt: '2026-07-08T01:20:00.000Z',
+  },
+  {
     id: 'customer-detail-header-refine-v49237-2026-07-08',
     version: '4.9.237',
     title: 'V4.9.237 — Customer Detail Header: symmetrisches 2x2-Badge-Raster + reduzierte Aktionen',

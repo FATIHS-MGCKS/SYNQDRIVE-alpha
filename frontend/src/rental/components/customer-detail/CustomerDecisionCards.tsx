@@ -1,10 +1,23 @@
-import { Fragment, type ReactNode } from 'react';
-import { ChevronRight, Gauge, Receipt, Shield, ShieldCheck } from 'lucide-react';
+import type { ReactNode } from 'react';
+import {
+  BadgeCheck,
+  ChevronRight,
+  Gauge,
+  Shield,
+  ShieldAlert,
+  Wallet,
+} from 'lucide-react';
 
 import { DataCard, StatusChip } from '../../../components/patterns';
 import type { StatusTone } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
+import {
+  customerVerificationApiToUi,
+  customerVerificationUiLabelDe,
+  type CustomerUiVerification,
+} from '../../lib/entityMappers';
+import { formatStressScore, stressToneToStatusTone } from '../../lib/scoreFormat';
 import type { CustomerEligibility } from './customerDetailTypes';
 import {
   eligibilityStageForConfirm,
@@ -13,46 +26,101 @@ import {
   overallRentalClearanceLabel,
   overallRentalClearanceTone,
 } from './customerDetailUtils';
-import { formatStressScore, stressToneToStatusTone } from '../../lib/scoreFormat';
-import {
-  customerVerificationApiToUi,
-  customerVerificationUiLabelDe,
-} from '../../lib/entityMappers';
 import { cdv, customerVerificationTone, ELIGIBILITY_LOAD_ERROR_USER } from './customer-detail-ui';
 
-function stageDotClass(stage: 'allowed' | 'warning' | 'blocked'): string {
+type EligibilityStage = 'allowed' | 'warning' | 'blocked';
+
+function stageDotClass(stage: EligibilityStage): string {
   if (stage === 'allowed') return 'bg-[color:var(--status-positive)]';
   if (stage === 'warning') return 'bg-[color:var(--status-attention)]';
   return 'bg-[color:var(--status-critical)]';
 }
 
-function DecisionCardTitle({
-  icon,
-  label,
-}: {
-  icon: ReactNode;
-  label: string;
-}) {
+function resolveVerificationHint(
+  eligibility: CustomerEligibility | null,
+  licenseUi: CustomerUiVerification,
+): string | null {
+  if (licenseUi === 'Verified') return null;
+  const pool = [...(eligibility?.blockingReasons ?? []), ...(eligibility?.warnings ?? [])];
+  return (
+    pool.find((text) => /führerschein|fuehrerschein|pickup/i.test(text.toLowerCase())) ?? null
+  );
+}
+
+function DecisionCardTitle({ icon, label }: { icon: ReactNode; label: string }) {
   return (
     <span className={cdv.decisionCardTitleRow}>
-      <span className={cdv.decisionCardTitleIcon}>{icon}</span>
+      <span className={cdv.decisionCardIconBubble}>{icon}</span>
       <span>{label}</span>
     </span>
   );
 }
 
-function DecisionDetailsAction({ label, onClick }: { label: string; onClick: () => void }) {
+function DecisionDetailsAction({ onClick }: { onClick: () => void }) {
   return (
-    <Button
-      type="button"
-      variant="link"
-      size="sm"
-      className={cdv.decisionCardDetailsLink}
-      onClick={onClick}
-    >
-      {label}
+    <Button type="button" variant="link" size="sm" className={cdv.decisionCardAction} onClick={onClick}>
+      Details
       <ChevronRight className="size-3" />
     </Button>
+  );
+}
+
+function DecisionChip({
+  tone,
+  dot,
+  children,
+}: {
+  tone?: StatusTone;
+  dot?: boolean;
+  children: ReactNode;
+}) {
+  return (
+    <StatusChip tone={tone} dot={dot} className={cdv.decisionChip}>
+      {children}
+    </StatusChip>
+  );
+}
+
+function DecisionStageRail({ stages }: { stages: { label: string; stage: EligibilityStage }[] }) {
+  return (
+    <div className={cdv.stageRail}>
+      {stages.map((row, index) => (
+        <div key={row.label} className={cdv.stageRailItem}>
+          <div className={cdv.stageRailTrack}>
+            {index > 0 ? <span className={cdv.stageRailLine} aria-hidden /> : null}
+            <span className={cn(cdv.stageRailDot, stageDotClass(row.stage))} aria-hidden />
+            {index < stages.length - 1 ? <span className={cdv.stageRailLine} aria-hidden /> : null}
+          </div>
+          <span className={cdv.stageRailLabel}>{row.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DecisionSummaryCard({
+  icon,
+  title,
+  className,
+  onDetails,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  className?: string;
+  onDetails?: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <DataCard
+      flush
+      className={cn(cdv.decisionCard, className)}
+      title={<DecisionCardTitle icon={icon} label={title} />}
+      actions={onDetails ? <DecisionDetailsAction onClick={onDetails} /> : undefined}
+      bodyClassName={cdv.decisionCardBody}
+    >
+      {children}
+    </DataCard>
   );
 }
 
@@ -121,22 +189,35 @@ export function CustomerDecisionCards({
     : 'Keine offenen Posten';
 
   const drivingHasSignals = drivingEvents > 0 || abuseEvents > 0;
+  const verificationHint = resolveVerificationHint(eligibility, licenseUi);
 
-  const stageItems = [
+  const clearanceTone = eligibility ? overallRentalClearanceTone(eligibility) : 'neutral';
+  const clearanceIcon =
+    clearanceTone === 'critical' ? (
+      <ShieldAlert className="size-3.5" />
+    ) : (
+      <Shield className="size-3.5" />
+    );
+
+  const primaryReason = eligibility?.blockingReasons[0] ?? eligibility?.warnings[0] ?? null;
+  const primaryReasonIsWarning =
+    !eligibility?.blockingReasons[0] && Boolean(eligibility?.warnings[0]);
+
+  const stageItems: { label: string; stage: EligibilityStage }[] = [
     { label: 'Erstellen', stage: createStage },
     { label: 'Bestätigen', stage: confirmStage },
     { label: 'Übergabe', stage: pickupStage },
   ];
 
   return (
-    <div className={cdv.sectionGrid}>
-      <DataCard
-        className={cdv.decisionCard}
-        title={<DecisionCardTitle icon={<Shield className="size-3.5" />} label="Mietfreigabe" />}
-        bodyClassName={cdv.decisionCardBody}
+    <div className={cdv.decisionSectionGrid}>
+      <DecisionSummaryCard
+        icon={clearanceIcon}
+        title="Mietfreigabe"
+        className={cdv.decisionCardPrimary}
       >
         {eligibilityLoading ? (
-          <p className="text-[12px] text-muted-foreground">Wird geladen…</p>
+          <p className={cdv.decisionMutedText}>Wird geladen…</p>
         ) : eligibilityError ? (
           <div className="space-y-2" title={eligibilityError}>
             <p className="text-[12px] font-medium text-foreground">{ELIGIBILITY_LOAD_ERROR_USER}</p>
@@ -148,91 +229,77 @@ export function CustomerDecisionCards({
           </div>
         ) : eligibility ? (
           <>
-            <StatusChip tone={overallRentalClearanceTone(eligibility)} dot>
+            <DecisionChip tone={overallRentalClearanceTone(eligibility)} dot>
               {overallRentalClearanceLabel(eligibility)}
-            </StatusChip>
-            {eligibility.blockingReasons[0] ? (
-              <p className={cdv.decisionCardReason}>{eligibility.blockingReasons[0]}</p>
-            ) : eligibility.warnings[0] ? (
-              <p className={cdv.decisionCardReasonWarning}>{eligibility.warnings[0]}</p>
+            </DecisionChip>
+            {primaryReason ? (
+              <p
+                className={
+                  primaryReasonIsWarning ? cdv.decisionDescriptionWarning : cdv.decisionDescription
+                }
+              >
+                {primaryReason}
+              </p>
             ) : null}
-            <div className={cdv.stageRow}>
-              {stageItems.map((row, index) => (
-                <Fragment key={row.label}>
-                  {index > 0 ? <span className={cdv.stageSeparator}>·</span> : null}
-                  <span className={cdv.stageItem}>
-                    <span className={cn('size-1.5 shrink-0 rounded-full', stageDotClass(row.stage))} />
-                    {row.label}
-                  </span>
-                </Fragment>
-              ))}
-            </div>
+            <DecisionStageRail stages={stageItems} />
           </>
         ) : (
-          <p className="text-[12px] text-muted-foreground">Keine Freigabedaten</p>
+          <p className={cdv.decisionMutedText}>Keine Freigabedaten</p>
         )}
-      </DataCard>
+      </DecisionSummaryCard>
 
-      <DataCard
-        className={cdv.decisionCard}
-        title={<DecisionCardTitle icon={<ShieldCheck className="size-3.5" />} label="Verifikation" />}
-        actions={
-          onOpenDocuments ? (
-            <DecisionDetailsAction label="Details" onClick={onOpenDocuments} />
-          ) : undefined
-        }
-        bodyClassName={cdv.decisionCardBody}
+      <DecisionSummaryCard
+        icon={<BadgeCheck className="size-3.5" />}
+        title="Verifikation"
+        className={cdv.decisionCardSecondary}
+        onDetails={onOpenDocuments}
       >
-        <div className={cdv.decisionCardChipStack}>
-          <StatusChip tone={customerVerificationTone(idUi)} dot>
+        <div className={cdv.decisionChipStack}>
+          <DecisionChip tone={customerVerificationTone(idUi)} dot>
             Ausweis: {customerVerificationUiLabelDe(idUi)}
-          </StatusChip>
-          <StatusChip tone={customerVerificationTone(licenseUi)} dot>
+          </DecisionChip>
+          <DecisionChip tone={customerVerificationTone(licenseUi)} dot>
             FS: {customerVerificationUiLabelDe(licenseUi)}
-          </StatusChip>
+          </DecisionChip>
         </div>
-      </DataCard>
+        {verificationHint ? <p className={cdv.decisionMutedText}>{verificationHint}</p> : null}
+      </DecisionSummaryCard>
 
-      <DataCard
-        className={cdv.decisionCard}
-        title={<DecisionCardTitle icon={<Receipt className="size-3.5" />} label="Finanzen" />}
-        actions={
-          onOpenFinances ? (
-            <DecisionDetailsAction label="Details" onClick={onOpenFinances} />
-          ) : undefined
-        }
-        bodyClassName={cdv.decisionCardBody}
+      <DecisionSummaryCard
+        icon={<Wallet className="size-3.5" />}
+        title="Finanzen"
+        className={cdv.decisionCardSecondary}
+        onDetails={onOpenFinances}
       >
-        <StatusChip tone={financeTone} dot>
+        <DecisionChip tone={financeTone} dot>
           {financeSummary}
-        </StatusChip>
-      </DataCard>
+        </DecisionChip>
+        {!financeHasIssues ? (
+          <p className={cdv.decisionMutedText}>Rechnungen und Gebühren im Überblick</p>
+        ) : null}
+      </DecisionSummaryCard>
 
-      <DataCard
-        className={cdv.decisionCard}
-        title={<DecisionCardTitle icon={<Gauge className="size-3.5" />} label="Fahrbelastung" />}
-        actions={
-          onOpenDriving ? (
-            <DecisionDetailsAction label="Details" onClick={onOpenDriving} />
-          ) : undefined
-        }
-        bodyClassName={cdv.decisionCardBody}
+      <DecisionSummaryCard
+        icon={<Gauge className="size-3.5" />}
+        title="Fahrbelastung"
+        className={cdv.decisionCardSecondaryWide}
+        onDetails={onOpenDriving}
       >
-        <div className={cdv.decisionCardChipStack}>
+        <div className={cdv.decisionChipStack}>
           {stressDisplay.isMissing ? (
-            <StatusChip tone="noData">Keine Fahrdaten vorhanden</StatusChip>
+            <DecisionChip tone="noData">Keine Fahrdaten vorhanden</DecisionChip>
           ) : (
-            <StatusChip tone={stressToneToStatusTone(stressDisplay.tone)} dot>
+            <DecisionChip tone={stressToneToStatusTone(stressDisplay.tone)} dot>
               {stressDisplay.label}
-            </StatusChip>
+            </DecisionChip>
           )}
           {drivingHasSignals ? (
-            <p className="text-[11px] leading-snug text-muted-foreground">
-              {drivingEvents} Ereignisse · {abuseEvents} Missbrauch
+            <p className={cdv.decisionMutedText}>
+              {drivingEvents} Ereignisse · {abuseEvents} Auffälligkeiten
             </p>
           ) : null}
         </div>
-      </DataCard>
+      </DecisionSummaryCard>
     </div>
   );
 }

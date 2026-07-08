@@ -32,21 +32,52 @@ export const cdv = {
   /** @deprecated use heroActionFullRow */
   heroActionFull: 'col-span-2',
   heroActionButton: 'w-full justify-center gap-1.5 min-h-9',
-  sectionGrid: 'grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4',
+  decisionSectionGrid: 'grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6',
+  decisionCardPrimary: 'h-full sm:col-span-2 xl:col-span-3',
+  decisionCardSecondary: 'h-full sm:col-span-1 xl:col-span-1',
+  decisionCardSecondaryWide: 'h-full sm:col-span-2 xl:col-span-1',
+  /** @deprecated use decisionSectionGrid */
+  sectionGrid: 'grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-6',
   twoColGrid: 'grid grid-cols-1 gap-3 lg:grid-cols-2',
   summaryGrid: 'grid grid-cols-2 items-start gap-1 sm:gap-1.5 lg:grid-cols-3 xl:grid-cols-6',
   decisionCard: 'h-full',
-  decisionCardBody: 'space-y-2.5 py-3',
-  decisionCardTitleRow: 'inline-flex min-w-0 items-center gap-2',
+  decisionCardBody: 'space-y-2.5 px-4 py-3.5',
+  decisionCardTitleRow: 'inline-flex min-w-0 items-center gap-2 text-[13px] font-semibold text-foreground',
+  decisionCardIconBubble:
+    'flex size-7 shrink-0 items-center justify-center rounded-lg bg-muted/50 text-muted-foreground',
+  /** @deprecated use decisionCardIconBubble */
   decisionCardTitleIcon: 'size-3.5 shrink-0 text-muted-foreground',
+  decisionCardAction:
+    'inline-flex h-auto items-center gap-0.5 px-0 text-[11px] font-medium text-[color:var(--brand)]',
+  /** @deprecated use decisionCardAction */
   decisionCardDetailsLink: 'h-auto px-0 text-[11px] font-medium',
+  decisionChip: 'min-h-7 px-2.5 text-[12px] font-semibold',
+  decisionChipRow: 'flex flex-wrap items-center gap-2',
+  decisionChipStack: 'flex flex-col items-start gap-2',
+  /** @deprecated use decisionChipStack */
   decisionCardChipStack: 'flex flex-col items-start gap-2',
+  decisionDescription:
+    'text-[11px] leading-snug text-[color:var(--status-critical)] line-clamp-2',
+  decisionDescriptionWarning:
+    'text-[11px] leading-snug text-[color:var(--status-attention)] line-clamp-2',
+  /** @deprecated use decisionDescription */
   decisionCardReason:
     'text-[11px] leading-snug text-[color:var(--status-critical)] line-clamp-2',
+  /** @deprecated use decisionDescriptionWarning */
   decisionCardReasonWarning:
     'text-[11px] leading-snug text-[color:var(--status-attention)] line-clamp-2',
+  decisionMutedText: 'text-[11px] leading-snug text-muted-foreground',
+  stageRail: 'mt-1 grid grid-cols-3 gap-1',
+  stageRailItem: 'flex min-w-0 flex-col items-center gap-1.5',
+  stageRailTrack: 'flex w-full items-center',
+  stageRailDot: 'size-2 shrink-0 rounded-full ring-2 ring-card',
+  stageRailLine: 'mx-1 h-px min-w-2 flex-1 bg-border/70',
+  stageRailLabel: 'text-center text-[10px] leading-tight text-muted-foreground',
+  /** @deprecated use stageRail */
   stageRow: 'flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[10px] text-muted-foreground',
+  /** @deprecated use stageRailItem */
   stageItem: 'inline-flex items-center gap-1',
+  /** @deprecated use stageRailLabel */
   stageSeparator: 'text-muted-foreground/35 select-none',
   bottomTabBar:
     'sq-tab-bar sticky bottom-0 z-20 -mx-1 flex w-[calc(100%+0.5rem)] items-center p-1 sm:static sm:z-auto sm:mx-0 sm:w-full',
