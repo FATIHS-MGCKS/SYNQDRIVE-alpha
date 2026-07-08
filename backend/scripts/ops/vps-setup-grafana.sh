@@ -4,21 +4,36 @@
 # Prerequisites:
 #   - Docker
 #   - Prometheus running (vps-setup-prometheus.sh)
+#   - GRAFANA_ADMIN_PASSWORD in /opt/synqdrive/shared/backend.env (recommended)
 #
 # Run on VPS:
 #   bash /opt/synqdrive/current/backend/scripts/ops/vps-setup-grafana.sh
 set -euo pipefail
 
 SYNQDRIVE_ROOT="${SYNQDRIVE_ROOT:-/opt/synqdrive/current}"
+BACKEND_ENV="${BACKEND_ENV:-/opt/synqdrive/shared/backend.env}"
 GRAFANA_DIR="${GRAFANA_DIR:-/opt/synqdrive/shared/grafana}"
 GRAFANA_IMAGE="${GRAFANA_IMAGE:-grafana/grafana:11.2.0}"
 CONTAINER="${CONTAINER:-synqdrive-grafana}"
 ADMIN_USER="${GRAFANA_ADMIN_USER:-admin}"
 ADMIN_PASSWORD="${GRAFANA_ADMIN_PASSWORD:-}"
 
+if [[ -z "$ADMIN_PASSWORD" && -f "$BACKEND_ENV" ]]; then
+  # shellcheck disable=SC1090
+  ADMIN_PASSWORD="$(grep '^GRAFANA_ADMIN_PASSWORD=' "$BACKEND_ENV" | cut -d= -f2- | tr -d '"' | tr -d "'" || true)"
+fi
+
 if [[ -z "$ADMIN_PASSWORD" ]]; then
   ADMIN_PASSWORD="$(openssl rand -base64 18 | tr -d '/+=' | head -c 20)"
-  echo "Generated Grafana admin password (save securely): $ADMIN_PASSWORD"
+  echo "Generated Grafana admin password — add to $BACKEND_ENV:"
+  echo "GRAFANA_ADMIN_PASSWORD=$ADMIN_PASSWORD"
+  if [[ -f "$BACKEND_ENV" ]] && ! grep -q '^GRAFANA_ADMIN_PASSWORD=' "$BACKEND_ENV"; then
+    cp "$BACKEND_ENV" "${BACKEND_ENV}.bak-grafana-$(date -u +%Y%m%d%H%M%S)"
+    printf '\n# Grafana localhost UI (Master Admin SSH tunnel)\nGRAFANA_ADMIN_PASSWORD=%s\n' \
+      "$ADMIN_PASSWORD" >> "$BACKEND_ENV"
+    chmod 600 "$BACKEND_ENV"
+    echo "Saved GRAFANA_ADMIN_PASSWORD to $BACKEND_ENV"
+  fi
 fi
 
 SRC="${SYNQDRIVE_ROOT}/backend/monitoring/grafana"
@@ -54,7 +69,7 @@ docker run -d \
 
 echo "Grafana started: $CONTAINER"
 echo "UI (VPS localhost): http://127.0.0.1:3000"
-echo "Login: $ADMIN_USER / (password above or GRAFANA_ADMIN_PASSWORD env)"
+echo "Login: $ADMIN_USER / (from GRAFANA_ADMIN_PASSWORD in $BACKEND_ENV)"
 echo "SSH tunnel: ssh -L 3000:127.0.0.1:3000 root@srv1374778.hstgr.cloud"
 
 sleep 5
