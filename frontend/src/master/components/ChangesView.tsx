@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'liquid-glass-surface-system-v49272-2026-07-08',
+    version: '4.9.272',
+    title: 'V4.9.272 — Surface / Glass / Liquid System (Dokumentation)',
+    summary: [
+      'Neues Architekturvertrag-Dokument LIQUID_GLASS_SYSTEM.md: fünf Surface-Level L0–L4.',
+      'Trennung: Normal Card (L0/L1) vs. Frosted Glass (L2) vs. Liquid Glass (L3) vs. Overlay-Scrim (L4).',
+      'Klassen-Mapping, Deprecation-Liste, L3-Platzierungsregeln (nur Map-HUD), Reduced-Transparency-Vertrag.',
+      'theme.css: L0–L4 Section-Kommentare + DEPRECATED-Marker — keine visuellen Token-Änderungen.',
+      'THEME_COLOR_CONTRACT.md: Surface-System-Querverweis und Level-Tabelle ergänzt.',
+    ],
+    reason:
+      'Repo-Audit zeigte vermischte Begriffe (sq-card vs. glass vs. liquid) und parallele Blur-Rezepte — einheitliche Systemdefinition vor Migration.',
+    previousBehavior:
+      'Glass/Liquid/Frosted nur implizit in theme.css und Changelog-Sprache; keine kanonische Level-Trennung.',
+    details:
+      'frontend/src/styles/LIQUID_GLASS_SYSTEM.md (neu), theme.css (Kommentare), THEME_COLOR_CONTRACT.md. Keine TSX-/Komponenten-Änderungen. Migration Phasen 2–5 dokumentiert, nicht ausgeführt.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-08T23:35:00.000Z',
+  },
+  {
     id: 'ch-trip-end-assist-audit-fixes-v49271-2026-07-08',
     version: '4.9.271',
     title: 'V4.9.271 — CH Trip End Assist Audit-Fixes',

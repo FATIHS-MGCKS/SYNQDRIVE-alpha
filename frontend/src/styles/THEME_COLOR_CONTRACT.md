@@ -1,6 +1,7 @@
 # SynqDrive Theme Color Contract
 
 > **Scope:** Central design tokens in `frontend/src/styles/theme.css`  
+> **Surface levels (L0–L4):** `frontend/src/styles/LIQUID_GLASS_SYSTEM.md`  
 > **Tailwind bridge:** `@theme inline` block in the same file (Tailwind v4 — no separate `tailwind.config.*`)  
 > **Entry point:** `frontend/src/styles/index.css` → `fonts.css` → `tailwind.css` → `theme.css`
 
@@ -84,7 +85,7 @@ Legacy aliases (keep): `--accent-indigo`, `--accent-indigo-soft`, `--accent-indi
 | `--status-ai` | `#7C3AED` |
 | `--status-ai-soft` | `rgba(124, 58, 237, 0.09)` |
 
-### Glass (light)
+### Glass (light) — L2 `surface-frosted` tokens
 
 | Token | Value |
 |-------|-------|
@@ -94,7 +95,7 @@ Legacy aliases (keep): `--accent-indigo`, `--accent-indigo-soft`, `--accent-indi
 | `--glass-edge-highlight` | `rgba(255, 255, 255, 0.75)` |
 | `--glass-edge-catch` | `rgba(17, 24, 39, 0.10)` |
 
-### Map glass (light)
+### Map glass (light) — L3 `surface-liquid` tokens
 
 | Token | Value |
 |-------|-------|
@@ -264,19 +265,41 @@ Defined in `@theme inline` inside `theme.css`:
 
 ---
 
+## Surface system (L0–L4)
+
+Full contract: **`LIQUID_GLASS_SYSTEM.md`**
+
+| Level | Name | Canonical classes | Blur |
+|-------|------|-------------------|------|
+| L0 | `surface-solid` | `.sq-card` | None |
+| L1 | `surface-elevated` | `.sq-card-elevated`, `.sq-overlay` | None |
+| L2 | `surface-frosted` | `.sq-glass` | `--glass-blur` (20–24px) |
+| L3 | `surface-liquid` | `.sq-map-liquid-*`, `.sq-map-glass-controls`, `.sq-map-marker-callout` | `--map-glass-blur` |
+| L4 | `overlay-scrim` | `.sq-backdrop` | 6px scrim only |
+
+**Deprecated (do not use in new code):** `.glass-card`, `.glass-panel`, `sq-card`+`sq-glass` stacks, inline `backdrop-blur-*` in TSX.
+
+---
+
 ## Surface utilities (same file)
 
-| Class | Purpose |
-|-------|---------|
-| `.sq-card`, `.sq-card-elevated` | Glass inset highlight (light), charcoal matte (dark), neutral shadows |
-| `.sq-glass`, `.glass-card`, `.glass-panel` | Frosted glass |
-| `.sq-map-liquid-*` | Map HUD overlays |
-| `.sq-overlay`, `.sq-backdrop` | Modals / drawers — popover surface + neutral graphite backdrop |
-| `.sq-chip-*`, `.sq-tone-*`, `.sq-dot-*` | Status semantics |
-| `.sq-tab-bar`, `.sq-nav-rail` | Segmented tabs: neutral active (brand reserved for primary nav) |
-| `.sq-3d-btn--*` | Tactile buttons — primary brand in light, neutral primary in dark; focus via `--ring` |
+| Class | Level | Purpose |
+|-------|-------|---------|
+| `.sq-card` | L0 | Solid card — inset highlight only, no blur |
+| `.sq-card-elevated` | L1 | Solid card + hover lift |
+| `.sq-glass` | L2 | Frosted glass (`--glass-*`) |
+| `.glass-card`, `.glass-panel` | L2 (deprecated) | Aliases — unused in TSX |
+| `.sq-map-liquid-*`, `.sq-map-glass-controls`, `.sq-map-marker-callout` | L3 | Map HUD liquid glass (`--map-glass-*`) |
+| `.sq-overlay` | L1 | Solid popover surface — **not** glass |
+| `.sq-backdrop` | L4 | Modal/sheet scrim |
+| `.sq-tab-bar` | L0 | Segmented control (solid track + active tab) |
+| `.sq-3d-btn--*` | — | Tactile buttons (orthogonal to surface levels) |
+| `.sq-chip-*`, `.sq-tone-*`, `.sq-dot-*` | — | Status semantics |
+| `.sq-nav-rail` | — | Navigation accent rail |
 
 Dark overrides live under `.dark .sq-*` (Dark Theme V2 section).
+
+Reduced transparency: L2/L3 classes listed in `theme.css` `@media (prefers-reduced-transparency: reduce)` — see gaps in `LIQUID_GLASS_SYSTEM.md` §6.
 
 ---
 
