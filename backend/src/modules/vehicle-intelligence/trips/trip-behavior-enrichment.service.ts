@@ -198,6 +198,7 @@ export class TripBehaviorEnrichmentService {
     vehicleId: string;
     tokenId: number;
     tripId: string;
+    bookingId?: string | null;
     readings: import('../../dimo/dimo-segments.service').HighFrequencyReading[];
     abuseEvents: AbuseEvent[];
   }): void {
@@ -208,6 +209,10 @@ export class TripBehaviorEnrichmentService {
         if (res.mirrored) {
           this.logger.debug(
             `HF mirror trip ${params.tripId}: ${res.pointsInserted} point(s), ${res.eventsInserted} event(s).`,
+          );
+        } else if (res.reason && res.reason !== 'disabled') {
+          this.logger.debug(
+            `HF mirror trip ${params.tripId} skipped: ${res.reason}.`,
           );
         }
       })
@@ -647,6 +652,7 @@ export class TripBehaviorEnrichmentService {
       vehicleId,
       tokenId,
       tripId,
+      bookingId: trip.assignedBookingId ?? null,
       readings: rawReadings,
       abuseEvents: allAbuse,
     });
@@ -691,6 +697,7 @@ export class TripBehaviorEnrichmentService {
       endTime: Date | null;
       vehicleId: string;
       distanceKm: number | null;
+      assignedBookingId: string | null;
       vehicle: {
         organizationId: string;
         idleRpm: number | null;
@@ -979,6 +986,7 @@ export class TripBehaviorEnrichmentService {
       vehicleId,
       tokenId,
       tripId,
+      bookingId: trip.assignedBookingId ?? null,
       readings: rawReadings,
       abuseEvents: allAbuse,
     });

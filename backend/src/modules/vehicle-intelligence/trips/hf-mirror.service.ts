@@ -1,6 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ClickHouseHfService } from '@modules/clickhouse/clickhouse-hf.service';
+import { isHfMirrorEnabled } from '@modules/clickhouse/clickhouse-env.util';
 import { resolveSignalGroup } from '@modules/clickhouse/hf-signal-map';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import type {
   HfDerivedEvent,
   HfEventConfidence,
@@ -9,6 +11,22 @@ import type {
 } from '@modules/clickhouse/clickhouse-hf.types';
 import type { HighFrequencyReading } from '../../dimo/dimo-segments.service';
 import type { AbuseEvent, AbuseSeverity } from './hf-abuse';
+
+export type HfMirrorSkipReason =
+  | 'disabled'
+  | 'unavailable'
+  | 'no_org'
+  | 'no_readings'
+  | 'no_points'
+  | 'error'
+  | 'points_already_mirrored';
+
+export interface HfMirrorResult {
+  mirrored: boolean;
+  pointsInserted: number;
+  eventsInserted: number;
+  reason?: HfMirrorSkipReason;
+}
 
 /**
  * HfMirrorService
@@ -34,11 +52,14 @@ import type { AbuseEvent, AbuseSeverity } from './hf-abuse';
 export class HfMirrorService {
   private readonly logger = new Logger(HfMirrorService.name);
 
-  constructor(private readonly clickHouseHf: ClickHouseHfService) {}
+  constructor(
+    private readonly clickHouseHf: ClickHouseHfService,
+    @Optional() private readonly metrics?: TripMetricsService,
+  ) {}
 
   /** Whether the HF mirror is enabled via environment flag (default: off). */
   get isEnabled(): boolean {
-    return process.env.HF_MIRROR_ENABLED === 'true';
+    return isHfMirrorEnabled();
   }
 
   /**
@@ -51,21 +72,29 @@ export class HfMirrorService {
     vehicleId: string;
     tokenId: number;
     tripId: string;
+    /** Canonical booking link from VehicleTrip.assignedBookingId — nullable only. */
+    bookingId?: string | null;
     readings: HighFrequencyReading[];
     abuseEvents: AbuseEvent[];
     source?: string;
-  }): Promise<{ mirrored: boolean; pointsInserted: number; eventsInserted: number; reason?: string }> {
-    const noop = (reason: string) => ({ mirrored: false, pointsInserted: 0, eventsInserted: 0, reason });
-
+  }): Promise<HfMirrorResult> {
     try {
-      if (!this.isEnabled) return noop('disabled');
-      if (!params.orgId) return noop('no_org'); // preserve tenant attribution
-      if (!params.readings || params.readings.length === 0) return noop('no_readings');
+      if (!this.isEnabled) return this.skip('disabled');
+      if (!this.clickHouseHf.isAvailable) {
+        this.logger.debug(
+          `HF mirror skipped (ClickHouse unavailable) for trip ${params.tripId}.`,
+        );
+        return this.skip('unavailable');
+      }
+      if (!params.orgId) return this.skip('no_org');
+      if (!params.readings || params.readings.length === 0) {
+        return this.skip('no_readings');
+      }
 
       const orgId = params.orgId;
       const source = params.source ?? 'dimo';
+      const bookingId = params.bookingId ?? null;
 
-      // Idempotency: skip points if this trip was already mirrored.
       const alreadyMirrored = await this.clickHouseHf.hasTripHfPoints(
         params.vehicleId,
         params.tripId,
@@ -78,6 +107,7 @@ export class HfMirrorService {
           vehicleId: params.vehicleId,
           tokenId: params.tokenId,
           tripId: params.tripId,
+          bookingId,
           source,
           readings: params.readings,
         });
@@ -87,11 +117,11 @@ export class HfMirrorService {
         }
       }
 
-      // Events use ReplacingMergeTree → safe to re-insert (idempotent by key).
       const events = this.toHfEvents({
         orgId,
         vehicleId: params.vehicleId,
         tripId: params.tripId,
+        bookingId,
         abuseEvents: params.abuseEvents ?? [],
       });
       let eventsInserted = 0;
@@ -100,19 +130,35 @@ export class HfMirrorService {
         eventsInserted = events.length;
       }
 
+      if (pointsInserted === 0 && eventsInserted === 0) {
+        if (alreadyMirrored) {
+          return {
+            mirrored: false,
+            pointsInserted: 0,
+            eventsInserted: 0,
+            reason: 'points_already_mirrored',
+          };
+        }
+        return this.skip('no_points');
+      }
+
       return {
-        mirrored: pointsInserted > 0 || eventsInserted > 0,
+        mirrored: true,
         pointsInserted,
         eventsInserted,
         reason: alreadyMirrored ? 'points_already_mirrored' : undefined,
       };
     } catch (err: unknown) {
-      // Never propagate — analytics mirror must not affect enrichment.
       this.logger.warn(
         `mirrorTripHf failed for trip ${params.tripId}: ${(err as Error).message}`,
       );
-      return noop('error');
+      return this.skip('error');
     }
+  }
+
+  private skip(reason: HfMirrorSkipReason): HfMirrorResult {
+    this.metrics?.hfMirrorSkipped.inc({ reason });
+    return { mirrored: false, pointsInserted: 0, eventsInserted: 0, reason };
   }
 
   /** Map HF readings (one row, many signals) into normalized HF signal points. */
@@ -121,6 +167,7 @@ export class HfMirrorService {
     vehicleId: string;
     tokenId: number;
     tripId: string;
+    bookingId: string | null;
     source: string;
     readings: HighFrequencyReading[];
   }): HfSignalPoint[] {
@@ -131,11 +178,10 @@ export class HfMirrorService {
       tokenId: input.tokenId,
       source: input.source,
       tripId: input.tripId,
+      bookingId: input.bookingId,
       quality: 'normalized' as const,
     };
 
-    // DIMO signal names so resolveSignalGroup classifies consistently with the
-    // rest of the HF layer.
     const SIGNALS: Array<{
       signalName: string;
       unit: string | null;
@@ -168,11 +214,11 @@ export class HfMirrorService {
     return out;
   }
 
-  /** Map derived abuse events into HF derived events (analytics mirror). */
   private toHfEvents(input: {
     orgId: string;
     vehicleId: string;
     tripId: string;
+    bookingId: string | null;
     abuseEvents: AbuseEvent[];
   }): HfDerivedEvent[] {
     return input.abuseEvents.map((e) => ({
@@ -188,6 +234,7 @@ export class HfMirrorService {
       primaryUnit: e.peakValueUnit ?? null,
       evidenceJson: safeJson(e.metadata),
       tripId: input.tripId,
+      bookingId: input.bookingId,
     }));
   }
 }
@@ -206,8 +253,6 @@ function mapAbuseSeverityToHf(s: AbuseSeverity): HfEventSeverity {
 }
 
 function mapAbuseConfidence(s: AbuseSeverity): HfEventConfidence {
-  // Derived/reconstructed events are never asserted as native — keep confidence
-  // conservative. CRITICAL severity implies a stronger signal.
   return s === 'CRITICAL' ? 'high' : 'medium';
 }
 

@@ -64,6 +64,11 @@ export class ClickHouseHfService {
     @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
+  /** Whether ClickHouse is configured and reachable (mirror read guard). */
+  get isAvailable(): boolean {
+    return this.ch.isAvailable;
+  }
+
   /**
    * Idempotency guard: returns true if any HF points are already mirrored for a
    * given trip. Used by the post-trip mirror so re-running enrichment does not
