@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Optional } from '@ne
 import { ConfigService } from '@nestjs/config';
 import { createClient, ClickHouseClient } from '@clickhouse/client';
 import { TripMetricsService } from '../observability/trip-metrics.service';
+import { clickHouseSchemaStatusCode } from '../observability/clickhouse-metrics.helper';
 
 /**
  * ClickHouseService
@@ -67,6 +68,9 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       this.lastError = 'CLICKHOUSE_URL not configured';
       this.metrics?.clickHouseConfigured.set(0);
       this.metrics?.clickHouseAvailable.set(0);
+      this.metrics?.clickHouseSchemaStatus.set(
+        clickHouseSchemaStatusCode('disabled'),
+      );
       this.logger.warn(
         'CLICKHOUSE_URL not configured — ClickHouse analytics layer is disabled.',
       );
@@ -91,17 +95,20 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
         this.lastError = null;
         this.lastPingAt = new Date();
         this.metrics?.clickHouseAvailable.set(1);
+        this.syncSchemaStatusGauge();
         this.logger.log('ClickHouse connected successfully.');
       } else {
         this.available = false;
         this.lastError = 'ClickHouse ping failed';
         this.metrics?.clickHouseAvailable.set(0);
+        this.syncSchemaStatusGauge();
         this.logger.warn(`ClickHouse ping failed — analytics layer disabled.`);
       }
     } catch (err: unknown) {
       this.available = false;
       this.lastError = (err as Error).message;
       this.metrics?.clickHouseAvailable.set(0);
+      this.syncSchemaStatusGauge();
       this.logger.warn(
         `ClickHouse init failed: ${(err as Error).message} — analytics layer disabled.`,
       );
@@ -115,6 +122,13 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
     }
     this.available = false;
     this.metrics?.clickHouseAvailable.set(0);
+    this.syncSchemaStatusGauge();
+  }
+
+  private syncSchemaStatusGauge(): void {
+    this.metrics?.clickHouseSchemaStatus.set(
+      clickHouseSchemaStatusCode(this.deriveStatus()),
+    );
   }
 
   get isAvailable(): boolean {
@@ -148,6 +162,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
     if (update.pendingMigrationCount !== undefined) {
       this.pendingMigrationCount = update.pendingMigrationCount;
     }
+    this.syncSchemaStatusGauge();
   }
 
   /**

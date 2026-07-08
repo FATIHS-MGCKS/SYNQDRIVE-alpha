@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'prometheus-production-v49264-2026-07-08',
+    version: '4.9.264',
+    title: 'V4.9.264 — Prometheus Production Monitoring (Metrics + Alerts + optional Compose)',
+    summary: [
+      'METRICS_BEARER_TOKEN schützt GET /api/v1/metrics (nicht mehr öffentlich im Auth-Guard).',
+      'Neue low-cardinality Metriken: CH query duration, schema status, migration failures, HF mirror gauge, table rows, queue failed jobs, DIMO snapshot outcomes.',
+      'monitoring/prometheus: Beispiel-Scrape-Config + Alert Rules; docker compose --profile monitoring optional.',
+    ],
+    reason:
+      'Prometheus/prom-client war vorbereitet, aber ohne Production-Scrape-Doku, Alerting und geschützten Metrics-Endpoint. Operative Signale ohne Business-Labels.',
+    previousBehavior:
+      '/api/v1/metrics war JWT-public; fehlende CH query histogram, schema/migration counters, HF mirror gauge, Prometheus/Alert-Beispieldateien.',
+    details:
+      'Backend: MetricsAuthGuard, MetricsRefreshService, clickhouse-metrics.helper, queue-lag.util, TripMetricsService erweitert, CH analytics query timing, dimo-snapshot poll counter. Docs: docs/prometheus-production.md. Tests: metrics-auth.guard.spec, prometheus-config.spec.',
+    affectsArchitecture: true,
+    module: 'Platform',
+    createdAt: '2026-07-08T15:15:00.000Z',
+  },
+  {
     id: 'dimo-obd-webhook-unplug-only-v49254-2026-07-08',
     version: '4.9.254',
     title: 'V4.9.254 — DIMO OBD: nur Unplug-Webhook, Plug-in über Snapshots (Ops)',

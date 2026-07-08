@@ -1,9 +1,11 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Job } from 'bullmq';
 
 import { QUEUE_NAMES } from '../queues/queue-names';
 import { TripEnrichmentOrchestratorService } from '../../modules/vehicle-intelligence/trips/trip-enrichment-orchestrator.service';
+import { TripMetricsService } from '../../modules/observability/trip-metrics.service';
+import { observeQueueLag } from '../../modules/observability/queue-lag.util';
 
 export interface TripBehaviorEnrichmentJobData {
   tripId: string;
@@ -27,11 +29,13 @@ export class TripBehaviorEnrichmentProcessor extends WorkerHost {
 
   constructor(
     private readonly orchestrator: TripEnrichmentOrchestratorService,
+    @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {
     super();
   }
 
   async process(job: Job<TripBehaviorEnrichmentJobData>): Promise<void> {
+    observeQueueLag(this.tripMetrics, QUEUE_NAMES.TRIP_BEHAVIOR_ENRICHMENT, job);
     const { tripId, vehicleId, organizationId } = job.data;
 
     this.logger.log(`HF enrichment job started: trip=${tripId} vehicle=${vehicleId} attempt=${job.attemptsMade + 1}`);

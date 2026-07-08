@@ -1,0 +1,108 @@
+# SynqDrive Prometheus alert rules
+#
+# Low-cardinality operational signals only — no vehicle/trip/org/customer labels.
+# Tune `for` durations and thresholds per tenant volume in production.
+
+groups:
+  - name: synqdrive_availability
+    rules:
+      - alert: SynqDriveMetricsScrapeDown
+        expr: up{job="synqdrive-backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: SynqDrive backend metrics scrape is down
+          description: Prometheus cannot scrape GET /api/v1/metrics for job synqdrive-backend.
+
+  - name: synqdrive_clickhouse
+    rules:
+      - alert: ClickHouseConfiguredUnavailable
+        expr: synqdrive_clickhouse_configured == 1 and synqdrive_clickhouse_available == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: ClickHouse configured but unreachable
+          description: CLICKHOUSE_URL is set but the backend reports ClickHouse unavailable.
+
+      - alert: ClickHouseSchemaError
+        expr: synqdrive_clickhouse_schema_status == 2
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: ClickHouse schema/migration error
+          description: ClickHouse schema status is schema_error (code 2). Check migration logs.
+
+      - alert: ClickHouseMirrorWritesFailing
+        expr: |
+          rate(synqdrive_clickhouse_mirror_writes_total{result="error"}[15m]) > 0
+          and rate(synqdrive_clickhouse_mirror_writes_total{result="success"}[15m]) == 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: ClickHouse mirror writes failing
+          description: Mirror write errors without successful writes in the last 15 minutes.
+
+      - alert: HfMirrorEnabledNoRecentWrites
+        expr: |
+          synqdrive_hf_mirror_enabled == 1
+          and increase(synqdrive_clickhouse_hf_points_inserted_total[2h]) == 0
+        for: 30m
+        labels:
+          severity: info
+        annotations:
+          summary: HF mirror enabled but no HF points inserted recently
+          description: HF_MIRROR_ENABLED is on but no telemetry_hf_points inserts in 2h (may be idle fleet).
+
+  - name: synqdrive_workers
+    rules:
+      - alert: QueueLagHigh
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, queue) (rate(synqdrive_queue_lag_seconds_bucket[10m]))
+          ) > 300
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: BullMQ queue lag is high
+          description: P95 queue lag exceeds 5 minutes for at least one monitored queue.
+
+      - alert: QueueFailedJobsHigh
+        expr: synqdrive_queue_failed_jobs > 10
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: BullMQ failed job count is elevated
+          description: One or more monitored queues have more than 10 failed jobs.
+
+      - alert: TripEnrichmentPendingHigh
+        expr: synqdrive_enrichment_pending > 50
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Many trips pending behavior enrichment
+          description: synqdrive_enrichment_pending gauge exceeds 50 for 15 minutes.
+
+      - alert: DimoSnapshotSuccessRateLow
+        expr: |
+          (
+            rate(synqdrive_dimo_snapshot_poll_total{result="success"}[30m])
+            /
+            (
+              rate(synqdrive_dimo_snapshot_poll_total{result="success"}[30m])
+              + rate(synqdrive_dimo_snapshot_poll_total{result="failure"}[30m])
+            )
+          ) < 0.8
+        for: 20m
+        labels:
+          severity: warning
+        annotations:
+          summary: DIMO snapshot poll success rate below 80%
+          description: Snapshot worker success ratio dropped — check DIMO connectivity and queue health.

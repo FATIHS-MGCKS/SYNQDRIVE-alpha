@@ -1,5 +1,5 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { DimoPollJobType, DimoPollStatus } from '@prisma/client';
 
@@ -10,6 +10,8 @@ import {
   TRIP_TRACKING_TRIGGERS,
   type TripTrackingJobData,
 } from '../../modules/vehicle-intelligence/trips/trip-detection.types';
+import { TripMetricsService } from '../../modules/observability/trip-metrics.service';
+import { observeQueueLag } from '../../modules/observability/queue-lag.util';
 
 @Processor(QUEUE_NAMES.TRIP_TRACKING)
 @Injectable()
@@ -19,6 +21,7 @@ export class TripTrackingProcessor extends WorkerHost {
   constructor(
     private readonly prisma: PrismaService,
     private readonly orchestration: TripDetectionOrchestrationService,
+    @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {
     super();
   }
@@ -26,6 +29,7 @@ export class TripTrackingProcessor extends WorkerHost {
   async process(job: Job<TripTrackingJobData>): Promise<void> {
     const { vehicleId, trigger } = job.data;
     const startedAt = new Date();
+    observeQueueLag(this.tripMetrics, QUEUE_NAMES.TRIP_TRACKING, job);
 
     try {
       switch (trigger) {

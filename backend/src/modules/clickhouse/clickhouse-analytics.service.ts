@@ -3,6 +3,7 @@ import { ClickHouseService } from './clickhouse.service';
 import type { IgnitionSegmentFinding } from '../vehicle-intelligence/trips/detectors/ignition-segment.detector';
 import type { MotionSegmentFinding } from '../vehicle-intelligence/trips/detectors/motion-segment.detector';
 import { TripMetricsService } from '../observability/trip-metrics.service';
+import { observeClickHouseQuery } from '../observability/clickhouse-metrics.helper';
 
 // Minimum segment duration per signal type.
 // Ignition segments: 60s — short ICE on/off cycles (e.g. starting for pickup) are real trips.
@@ -112,6 +113,10 @@ export class ClickHouseAnalyticsService {
     `;
 
     try {
+      return await observeClickHouseQuery(
+        this.metrics,
+        'find_ignition_segments',
+        async () => {
       const result = await client.query({
         query: sql,
         query_params: {
@@ -147,6 +152,8 @@ export class ClickHouseAnalyticsService {
                 : 'LOW',
         } satisfies IgnitionSegmentFinding;
       });
+        },
+      );
     } catch (err: unknown) {
       this.metrics?.clickHouseAnalyticsQueries.inc({
         query: 'find_ignition_segments',
@@ -202,6 +209,10 @@ export class ClickHouseAnalyticsService {
     `;
 
     try {
+      return await observeClickHouseQuery(
+        this.metrics,
+        'find_motion_segments',
+        async () => {
       const result = await client.query({
         query: sql,
         query_params: {
@@ -237,6 +248,8 @@ export class ClickHouseAnalyticsService {
                 : 'LOW',
         } satisfies MotionSegmentFinding;
       });
+        },
+      );
     } catch (err: unknown) {
       this.metrics?.clickHouseAnalyticsQueries.inc({
         query: 'find_motion_segments',
@@ -276,6 +289,10 @@ export class ClickHouseAnalyticsService {
     `;
 
     try {
+      return await observeClickHouseQuery(
+        this.metrics,
+        'summarize_activity_window',
+        async () => {
       const result = await client.query({
         query: sql,
         query_params: {
@@ -302,6 +319,8 @@ export class ClickHouseAnalyticsService {
         maxSpeedKmh: row?.max_speed_kmh ?? 0,
         odometerDeltaKm: row?.odometer_delta_km ?? 0,
       };
+        },
+      );
     } catch (err: unknown) {
       this.metrics?.clickHouseAnalyticsQueries.inc({
         query: 'summarize_activity_window',
@@ -330,6 +349,10 @@ export class ClickHouseAnalyticsService {
     const client = this.ch.getClient();
 
     try {
+      return await observeClickHouseQuery(
+        this.metrics,
+        'summarize_recent_ingestion',
+        async () => {
       const [snapshotResult, stateChangeResult] = await Promise.all([
         client.query({
           query: `
@@ -375,6 +398,8 @@ export class ClickHouseAnalyticsService {
         latestSnapshotAt: parseClickHouseUtcDateTime(snapshotRow?.latest_snapshot_at),
         latestStateChangeAt: parseClickHouseUtcDateTime(stateChangeRow?.latest_state_change_at),
       };
+        },
+      );
     } catch (err: unknown) {
       this.metrics?.clickHouseAnalyticsQueries.inc({
         query: 'summarize_recent_ingestion',
@@ -404,6 +429,10 @@ export class ClickHouseAnalyticsService {
     const client = this.ch.getClient();
 
     try {
+      return await observeClickHouseQuery(
+        this.metrics,
+        'storage_stats',
+        async () => {
       const result = await client.query({
         query: `
           SELECT
@@ -459,6 +488,8 @@ export class ClickHouseAnalyticsService {
         ),
         tables,
       };
+        },
+      );
     } catch (err: unknown) {
       this.metrics?.clickHouseAnalyticsQueries.inc({
         query: 'storage_stats',

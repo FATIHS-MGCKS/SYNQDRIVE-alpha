@@ -51,6 +51,9 @@ export class TripMetricsService implements OnModuleInit {
   readonly tripAssignmentResolutions: Counter<string>;
   readonly tripScoreDrift: Counter<string>;
   readonly tripCounterAnomalies: Counter<string>;
+  readonly clickHouseMigrationFailures: Counter<string>;
+  readonly dimoSnapshotPollTotal: Counter<string>;
+  readonly metricsEndpointRequests: Counter<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
@@ -60,8 +63,12 @@ export class TripMetricsService implements OnModuleInit {
   readonly possibleEndStuck: Gauge<string>;
   readonly clickHouseConfigured: Gauge<string>;
   readonly clickHouseAvailable: Gauge<string>;
+  readonly clickHouseSchemaStatus: Gauge<string>;
+  readonly hfMirrorEnabled: Gauge<string>;
   readonly workerRuntimeEnabled: Gauge<string>;
   readonly clickHouseLastMirrorUnixSeconds: Gauge<string>;
+  readonly clickHouseTableRows: Gauge<string>;
+  readonly queueFailedJobs: Gauge<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  HISTOGRAMS
@@ -72,6 +79,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly tripEndLatencyFromMovement: Histogram<string>;
   readonly detectorLatency: Histogram<string>;
   readonly queueLag: Histogram<string>;
+  readonly clickHouseQueryDuration: Histogram<string>;
 
   constructor() {
     this.registry = new Registry();
@@ -213,6 +221,26 @@ export class TripMetricsService implements OnModuleInit {
       registers: [this.registry],
     });
 
+    this.clickHouseMigrationFailures = new Counter({
+      name: 'synqdrive_clickhouse_migration_failures_total',
+      help: 'Total ClickHouse schema migration failures',
+      registers: [this.registry],
+    });
+
+    this.dimoSnapshotPollTotal = new Counter({
+      name: 'synqdrive_dimo_snapshot_poll_total',
+      help: 'Total DIMO snapshot poll worker outcomes',
+      labelNames: ['result'],
+      registers: [this.registry],
+    });
+
+    this.metricsEndpointRequests = new Counter({
+      name: 'synqdrive_metrics_endpoint_requests_total',
+      help: 'Total /metrics scrape attempts by result',
+      labelNames: ['result'],
+      registers: [this.registry],
+    });
+
     this.enrichmentPending = new Gauge({
       name: 'synqdrive_enrichment_pending',
       help: 'Current number of trips pending behavior enrichment',
@@ -238,6 +266,18 @@ export class TripMetricsService implements OnModuleInit {
       registers: [this.registry],
     });
 
+    this.clickHouseSchemaStatus = new Gauge({
+      name: 'synqdrive_clickhouse_schema_status',
+      help: 'ClickHouse schema health code: 0=disabled, 1=degraded, 2=schema_error, 3=available',
+      registers: [this.registry],
+    });
+
+    this.hfMirrorEnabled = new Gauge({
+      name: 'synqdrive_hf_mirror_enabled',
+      help: 'Whether post-trip HF mirror is enabled via HF_MIRROR_ENABLED',
+      registers: [this.registry],
+    });
+
     this.workerRuntimeEnabled = new Gauge({
       name: 'synqdrive_worker_runtime_enabled',
       help: 'Whether BullMQ workers were enabled at backend bootstrap time',
@@ -248,6 +288,20 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_clickhouse_last_mirror_unix_seconds',
       help: 'Unix timestamp of the last successful ClickHouse mirror write per table',
       labelNames: ['table'],
+      registers: [this.registry],
+    });
+
+    this.clickHouseTableRows = new Gauge({
+      name: 'synqdrive_clickhouse_table_rows',
+      help: 'Aggregated active row count per ClickHouse table (from system.parts)',
+      labelNames: ['table', 'status'],
+      registers: [this.registry],
+    });
+
+    this.queueFailedJobs = new Gauge({
+      name: 'synqdrive_queue_failed_jobs',
+      help: 'Current failed BullMQ job count per queue',
+      labelNames: ['queue'],
       registers: [this.registry],
     });
 
@@ -282,12 +336,22 @@ export class TripMetricsService implements OnModuleInit {
       labelNames: ['queue'],
       registers: [this.registry],
     });
+
+    this.clickHouseQueryDuration = new Histogram({
+      name: 'synqdrive_clickhouse_query_duration_seconds',
+      help: 'ClickHouse query execution duration in seconds',
+      buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 15],
+      labelNames: ['query_type'],
+      registers: [this.registry],
+    });
   }
 
   async onModuleInit(): Promise<void> {
     this.workerRuntimeEnabled.set(
       RuntimeStatusRegistry.getWorkersEnabled() ? 1 : 0,
     );
+    this.hfMirrorEnabled.set(process.env.HF_MIRROR_ENABLED === 'true' ? 1 : 0);
+    this.clickHouseSchemaStatus.set(0);
   }
 
   /** Returns the Prometheus metrics text for the /metrics endpoint. */

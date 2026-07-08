@@ -12,6 +12,7 @@ import { BatteryV2Service } from '../../modules/vehicle-intelligence/battery-hea
 import { HvBatteryHealthService } from '../../modules/vehicle-intelligence/battery-health/hv-battery-health.service';
 import { ClickHouseTelemetryService } from '../../modules/clickhouse/clickhouse-telemetry.service';
 import { TripMetricsService } from '../../modules/observability/trip-metrics.service';
+import { observeQueueLag } from '../../modules/observability/queue-lag.util';
 import { capRawPayload } from '@shared/utils/json-payload.util';
 
 export interface DimoSnapshotJobData {
@@ -52,6 +53,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
   async process(job: Job<DimoSnapshotJobData>): Promise<void> {
     const { vehicleId, dimoTokenId } = job.data;
     const startedAt = new Date();
+    observeQueueLag(this.tripMetrics, QUEUE_NAMES.DIMO_SNAPSHOT, job);
 
     try {
       const previousState =
@@ -207,6 +209,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
       this.logger.debug(
         `Snapshot completed for vehicle ${vehicleId} in ${durationMs}ms`,
       );
+      this.tripMetrics?.dimoSnapshotPollTotal.inc({ result: 'success' });
     } catch (err) {
       const finishedAt = new Date();
       const durationMs = finishedAt.getTime() - startedAt.getTime();
@@ -227,6 +230,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
       this.logger.warn(
         `Snapshot failed for vehicle ${vehicleId}: ${errorMessage}`,
       );
+      this.tripMetrics?.dimoSnapshotPollTotal.inc({ result: 'failure' });
       throw err;
     }
   }

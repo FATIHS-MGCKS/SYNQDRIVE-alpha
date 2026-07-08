@@ -18,7 +18,6 @@ const PUBLIC_EXACT_PATHS = new Set<string>([
   '/api/v1/webhooks/dimo/health',
   '/api/v1/webhooks/didit',
   '/api/v1/webhooks/stripe',
-  '/api/v1/metrics',
 ]);
 
 /**
