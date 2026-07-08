@@ -98,6 +98,26 @@ export interface AnalyticsAssistedStartDecision {
   summary: Record<string, unknown>;
 }
 
+export interface AnalyticsAssistedEndDecision {
+  confirmed: boolean;
+  confidence: 'LOW' | 'MEDIUM' | 'HIGH';
+  endMode: string;
+  evidencePath:
+    | 'DIMO_ONLY'
+    | 'DIMO_PLUS_CLICKHOUSE'
+    | 'CLICKHOUSE_END_ASSISTED'
+    | 'CLICKHOUSE_INCONCLUSIVE';
+  detectedEndAt?: Date;
+  summary: Record<string, unknown>;
+}
+
+export interface SegmentEndCandidate {
+  endAt: Date;
+  confidence: 'LOW' | 'MEDIUM' | 'HIGH';
+  source: 'ignition' | 'motion';
+  durationMs: number;
+}
+
 export interface ClickHouseContinuityGuard {
   keepTripOpen: boolean;
   evidencePath: 'DIMO_ONLY' | 'CLICKHOUSE_GUARD';
@@ -541,6 +561,234 @@ export function resolveAnalyticsAssistedStartDecision(input: {
       pointCount: activityPointCount,
       maxSpeedKmh: activitySpeed,
       odometerDeltaKm: activityOdometerDelta,
+    },
+  };
+}
+
+/** Whether live snapshot telemetry indicates the vehicle is stationary (inverse of start assist). */
+export function isCurrentTelemetryInactive(
+  telemetry: {
+    isIgnitionOn: boolean | null;
+    speedKmh: number | null;
+    engineLoad: number | null;
+  } | null,
+): boolean {
+  if (!telemetry) return false;
+  const speed = telemetry.speedKmh ?? 0;
+  const load = telemetry.engineLoad ?? 0;
+  if (speed > 0.5) return false;
+  if (load > 15) return false;
+  if (telemetry.isIgnitionOn === true && speed > 0) return false;
+  return true;
+}
+
+type SegmentEvidenceRow = {
+  end: string;
+  durationMs?: number;
+  confidence?: 'LOW' | 'MEDIUM' | 'HIGH';
+};
+
+/** Latest ignition/motion segment end within the trip window (CH state_changes mirror). */
+export function extractLatestSegmentEnd(
+  findings: {
+    ignitionSegment?: DetectorFinding;
+    motionSegment?: DetectorFinding;
+  },
+  tripStartAt: Date,
+  now: Date,
+  preferMotion: boolean,
+): SegmentEndCandidate | null {
+  const candidates: SegmentEndCandidate[] = [];
+
+  const collect = (
+    finding: DetectorFinding | undefined,
+    source: 'ignition' | 'motion',
+  ) => {
+    if (!finding || finding.verdict !== 'TRIGGERED') return;
+    const segments = finding.evidence?.segments as SegmentEvidenceRow[] | undefined;
+    if (!segments?.length) return;
+    for (const row of segments) {
+      const endAt = new Date(row.end);
+      if (Number.isNaN(endAt.getTime())) continue;
+      if (endAt.getTime() <= tripStartAt.getTime() || endAt.getTime() > now.getTime()) {
+        continue;
+      }
+      candidates.push({
+        endAt,
+        confidence: row.confidence ?? finding.confidence,
+        source,
+        durationMs: row.durationMs ?? 0,
+      });
+    }
+  };
+
+  collect(findings.ignitionSegment, 'ignition');
+  collect(findings.motionSegment, 'motion');
+  if (candidates.length === 0) return null;
+
+  const motionCandidates = candidates.filter((c) => c.source === 'motion');
+  const ignitionCandidates = candidates.filter((c) => c.source === 'ignition');
+  const pool =
+    preferMotion && motionCandidates.length > 0
+      ? motionCandidates
+      : !preferMotion && ignitionCandidates.length > 0
+        ? ignitionCandidates
+        : candidates;
+
+  return pool.sort((a, b) => b.endAt.getTime() - a.endAt.getTime())[0] ?? null;
+}
+
+/**
+ * ClickHouse-first trip end assist (mirror of resolveAnalyticsAssistedStartDecision).
+ * Requires live stationary telemetry + CH segment end + post-stop inactivity.
+ */
+export function resolveAnalyticsAssistedEndDecision(input: {
+  continuityFinding?: DetectorFinding;
+  activityWindow?: DetectorFinding;
+  ignitionSegment?: DetectorFinding;
+  motionSegment?: DetectorFinding;
+  profile?: string;
+  tripStartAt: Date;
+  now: Date;
+  currentTelemetry: {
+    isIgnitionOn: boolean | null;
+    speedKmh: number | null;
+    engineLoad: number | null;
+  } | null;
+  minStationaryAfterSegmentMs: number;
+  minTripDurationMs: number;
+  highConfidenceStationaryMs?: number;
+}): AnalyticsAssistedEndDecision {
+  const inconclusive = (
+    summary: Record<string, unknown>,
+  ): AnalyticsAssistedEndDecision => ({
+    confirmed: false,
+    confidence: 'LOW',
+    endMode: END_DETECTION_MODES.COMPOSITE_INACTIVITY,
+    evidencePath: 'CLICKHOUSE_INCONCLUSIVE',
+    summary,
+  });
+
+  if (!isCurrentTelemetryInactive(input.currentTelemetry)) {
+    return inconclusive({ reason: 'telemetry_still_active' });
+  }
+
+  const tripDurationMs = input.now.getTime() - input.tripStartAt.getTime();
+  if (tripDurationMs < input.minTripDurationMs) {
+    return inconclusive({ reason: 'trip_too_short', tripDurationMs });
+  }
+
+  const profile = (input.profile ?? 'UNKNOWN').toUpperCase();
+  const isEvProfile =
+    profile === 'EV' || profile === 'HYBRID' || profile === 'UNKNOWN';
+
+  const segmentEnd = extractLatestSegmentEnd(
+    {
+      ignitionSegment: input.ignitionSegment,
+      motionSegment: input.motionSegment,
+    },
+    input.tripStartAt,
+    input.now,
+    isEvProfile,
+  );
+
+  if (!segmentEnd) {
+    return inconclusive({ reason: 'no_ch_segment_end' });
+  }
+
+  if (!isEvProfile && segmentEnd.source !== 'ignition') {
+    return inconclusive({
+      reason: 'ice_requires_ignition_segment',
+      segmentSource: segmentEnd.source,
+    });
+  }
+
+  const stationaryMs = input.now.getTime() - segmentEnd.endAt.getTime();
+  if (stationaryMs < input.minStationaryAfterSegmentMs) {
+    return inconclusive({
+      reason: 'segment_end_too_recent',
+      stationaryMs,
+      minStationaryAfterSegmentMs: input.minStationaryAfterSegmentMs,
+    });
+  }
+
+  const activityTriggered = input.activityWindow?.verdict === 'TRIGGERED';
+  const maxSpeedKmh =
+    typeof input.activityWindow?.evidence?.maxSpeedKmh === 'number'
+      ? (input.activityWindow.evidence.maxSpeedKmh as number)
+      : 0;
+  const pointCount =
+    typeof input.activityWindow?.evidence?.pointCount === 'number'
+      ? (input.activityWindow.evidence.pointCount as number)
+      : 0;
+  const odometerDeltaKm =
+    typeof input.activityWindow?.evidence?.odometerDeltaKm === 'number'
+      ? (input.activityWindow.evidence.odometerDeltaKm as number)
+      : 0;
+
+  const resumedAfterStop =
+    activityTriggered &&
+    (pointCount >= 2 || maxSpeedKmh > 5 || odometerDeltaKm > 0.03);
+
+  if (resumedAfterStop) {
+    return inconclusive({
+      reason: 'activity_resumed_after_segment_end',
+      maxSpeedKmh,
+      pointCount,
+      odometerDeltaKm,
+    });
+  }
+
+  const highStationaryMs =
+    input.highConfidenceStationaryMs ?? 90_000;
+
+  let confidence: 'LOW' | 'MEDIUM' | 'HIGH' = 'LOW';
+  if (
+    segmentEnd.confidence === 'HIGH' &&
+    stationaryMs >= highStationaryMs &&
+    !resumedAfterStop
+  ) {
+    confidence = 'HIGH';
+  } else if (
+    (segmentEnd.confidence === 'HIGH' || segmentEnd.confidence === 'MEDIUM') &&
+    stationaryMs >= input.minStationaryAfterSegmentMs
+  ) {
+    confidence = 'MEDIUM';
+  } else {
+    return inconclusive({
+      reason: 'insufficient_segment_confidence',
+      segmentConfidence: segmentEnd.confidence,
+      stationaryMs,
+    });
+  }
+
+  const continuityVerdict = input.continuityFinding?.evidence
+    ?.continuityVerdict as string | undefined;
+  const dimoCorroborated =
+    input.continuityFinding?.verdict === 'TRIGGERED' &&
+    (continuityVerdict === 'POSSIBLE_END' ||
+      continuityVerdict === 'IDLE' ||
+      continuityVerdict === 'INACTIVE');
+
+  return {
+    confirmed: true,
+    confidence,
+    endMode: END_DETECTION_MODES.CLICKHOUSE_END_ASSIST,
+    evidencePath: dimoCorroborated
+      ? 'DIMO_PLUS_CLICKHOUSE'
+      : 'CLICKHOUSE_END_ASSISTED',
+    detectedEndAt: segmentEnd.endAt,
+    summary: {
+      segmentSource: segmentEnd.source,
+      segmentEndAt: segmentEnd.endAt.toISOString(),
+      segmentConfidence: segmentEnd.confidence,
+      segmentDurationMs: segmentEnd.durationMs,
+      stationaryMs,
+      clickhouseActivityTriggered: activityTriggered,
+      maxSpeedKmh,
+      pointCount,
+      profile,
+      isEvProfile,
     },
   };
 }

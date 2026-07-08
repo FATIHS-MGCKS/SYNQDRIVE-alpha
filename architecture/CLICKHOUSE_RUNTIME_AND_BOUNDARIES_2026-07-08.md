@@ -73,6 +73,21 @@ Details: `backend/docs/clickhouse-local-selfhosted.md`
 - Canonical Trip-Grenzen: **PostgreSQL `VehicleTrip`** + wo architektonisch vorgesehen **DIMO Segments**.
 - CH-gestützte Detektoren degradieren zu `INCONCLUSIVE`, wenn CH fehlt.
 
+### `CLICKHOUSE_TRIP_ASSIST_ENABLED` (bewusste Ausnahme, default `true`)
+
+**Entscheidung 2026-07-08:** Default **`true`** beibehalten — accepted risk, kein Must-Fix.
+
+| Aspekt | Regel |
+|--------|--------|
+| Zweck | CH-gestützte Detektoren für **Trip-Start**, **Kontinuitäts-Guard** und **Repair-Kandidaten** |
+| Datenpfad | DIMO → DimoSnapshotProcessor → CH-Mirror → Detektoren (nicht DIMOs internes CH) |
+| Opt-out | `CLICKHOUSE_TRIP_ASSIST_ENABLED=false` |
+| Scores / Bookings | **Kein** CH-Einfluss |
+| Trip-Ende (live FSM) | **CH-first End Assist** (`CLICKHOUSE_END_ASSIST`), FSM/CUSUM-Fallback | Nur FSM/CUSUM |
+| Monitoring | `synqdrive_trip_evidence_paths_total` |
+
+Details + Trip-Ende-Audit: `architecture/CLICKHOUSE_TRIP_ASSIST_AND_TRIP_END_2026-07-08.md`
+
 ### Schreib-/Lesevertrag
 
 - **Writes:** fire-and-forget, best-effort — CH-Ausfall blockiert keine Snapshot-Pipeline, kein Enrichment, keine Buchungen.
@@ -122,3 +137,4 @@ Siehe `backend/.env.example`:
 - `CLICKHOUSE_URL` — wenn leer: Analytics disabled
 - `CLICKHOUSE_USER` / `CLICKHOUSE_PASSWORD` / `CLICKHOUSE_DATABASE`
 - `HF_MIRROR_ENABLED=false` — optional; spiegelt ausgewählte HF-Signale post-trip; **kein** Einfluss auf canonical Trip-Scoring
+- `CLICKHOUSE_TRIP_ASSIST_ENABLED` — default an; CH-Detektoren für Start/Repair/Guard; **kein** Score-Einfluss; Trip-Ende live weiterhin FSM/CUSUM

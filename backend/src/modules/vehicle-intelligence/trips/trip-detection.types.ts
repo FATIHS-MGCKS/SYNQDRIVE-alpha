@@ -35,6 +35,8 @@ export type StartDetectionMode =
   (typeof START_DETECTION_MODES)[keyof typeof START_DETECTION_MODES];
 
 export const END_DETECTION_MODES = {
+  // ClickHouse segment end (ignition OFF / motion STOP) — first-instance assist; FSM/CUSUM fallback
+  CLICKHOUSE_END_ASSIST: 'CLICKHOUSE_END_ASSIST',
   // Primary end evidence (no ignition-off required)
   CUSUM_VALIDATED: 'CUSUM_VALIDATED',           // Highest priority: CUSUM change-point detected
   FREQUENCY_DROP_TIMEOUT: 'FREQUENCY_DROP_TIMEOUT', // Signal frequency dropped to resting level

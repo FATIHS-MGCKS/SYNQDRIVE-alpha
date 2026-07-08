@@ -5,6 +5,11 @@ import { TripMetricsService } from '../../../observability/trip-metrics.service'
 import { isClickHouseTripAssistEnabled } from '@modules/clickhouse/clickhouse-env.util';
 import { TripDecisionEngine } from '../decision/trip-decision.engine';
 import { TripDetectionPolicyResolver } from '../policy/trip-detection-policy.resolver';
+import { END_DETECTION_MODES } from '../trip-detection.types';
+import {
+  extractLatestSegmentEnd,
+  resolveAnalyticsAssistedEndDecision,
+} from '../trip-evidence.helpers';
 import { TripOverlapDetector } from '../detectors/trip-overlap.detector';
 import { IgnitionSegmentDetector } from '../detectors/ignition-segment.detector';
 import { MotionSegmentDetector } from '../detectors/motion-segment.detector';
@@ -116,6 +121,9 @@ export class TripReconciliationService {
   // Hard cap to prevent pathological recursion when a single trip contains
   // many gaps (e.g., long valet rides with multiple stops).
   private readonly TRIP_MID_GAP_MAX_SPLITS_PER_TRIP = 6;
+  private readonly TRIP_END_CH_ASSIST_MIN_STATIONARY_MS: number;
+  private readonly TRIP_END_CH_ASSIST_MIN_TRIP_DURATION_MS: number;
+  private readonly TRIP_END_CH_ASSIST_HIGH_STATIONARY_MS: number;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -143,6 +151,16 @@ export class TripReconciliationService {
       this.configService?.get<number>(
         'worker.tripMidGapMinPreDurationMs',
       ) ?? 60_000;
+    this.TRIP_END_CH_ASSIST_MIN_STATIONARY_MS =
+      this.configService?.get<number>('worker.tripEndChAssistMinStationaryMs') ??
+      45_000;
+    this.TRIP_END_CH_ASSIST_MIN_TRIP_DURATION_MS =
+      this.configService?.get<number>('worker.tripEndChAssistMinTripDurationMs') ??
+      60_000;
+    this.TRIP_END_CH_ASSIST_HIGH_STATIONARY_MS =
+      this.configService?.get<number>(
+        'worker.tripEndChAssistHighConfidenceStationaryMs',
+      ) ?? 90_000;
   }
 
   // ─── TIERED RECONCILIATION ─────────────────────────────────────────────────
@@ -1287,13 +1305,23 @@ export class TripReconciliationService {
       proposed++;
       this.tripMetrics?.missingEndCandidates.inc();
 
-      // Estimate end time as window end (cold fallback)
+      // Estimate end time: CH assist first, then last waypoint, then window end
       try {
-        const estimatedEnd = lastWaypoint?.recordedAt ?? to;
+        const chEndAt = await this.resolveChAssistedMissingEndTime({
+          vehicleId,
+          dimoTokenId,
+          profile,
+          tripStartAt: trip.startTime,
+          windowTo: to,
+        });
+        const estimatedEnd = chEndAt ?? lastWaypoint?.recordedAt ?? to;
+        const endDetectionMode = chEndAt
+          ? END_DETECTION_MODES.CLICKHOUSE_END_ASSIST
+          : 'MISSING_END_REPAIR';
 
         await this.decisionEngine.finalizeRepairedTrip(trip.id, {
           endTime: estimatedEnd,
-          endDetectionMode: 'MISSING_END_REPAIR',
+          endDetectionMode,
         });
         await this.prisma.tripRepair.update({
           where: { id: repair.id },
@@ -1313,5 +1341,93 @@ export class TripReconciliationService {
     }
 
     return { proposed, applied, rejected };
+  }
+
+  /**
+   * CH-assisted end time for open trips during reconciliation (REPAIR_MISSING_END).
+   */
+  private async resolveChAssistedMissingEndTime(params: {
+    vehicleId: string;
+    dimoTokenId: number;
+    profile: VehicleDetectionProfile;
+    tripStartAt: Date;
+    windowTo: Date;
+  }): Promise<Date | null> {
+    if (!isClickHouseTripAssistEnabled()) return null;
+    if (!this.ignitionDetector && !this.motionDetector) return null;
+
+    const now = params.windowTo;
+    const baseCtx = {
+      vehicleId: params.vehicleId,
+      dimoTokenId: params.dimoTokenId,
+      profile: params.profile,
+      phase: DETECTION_PHASES.REPAIR_MISSING_END,
+      timeWindow: { from: params.tripStartAt, to: now },
+    };
+
+    const isEvProfile =
+      params.profile === VehicleDetectionProfile.EV ||
+      params.profile === VehicleDetectionProfile.HYBRID ||
+      params.profile === VehicleDetectionProfile.UNKNOWN;
+
+    const [ignitionFinding, motionFinding] = await Promise.all([
+      this.ignitionDetector?.evaluate(baseCtx),
+      isEvProfile && this.motionDetector
+        ? this.motionDetector.evaluate(baseCtx)
+        : Promise.resolve(undefined),
+    ]);
+
+    const preliminaryEnd = extractLatestSegmentEnd(
+      { ignitionSegment: ignitionFinding, motionSegment: motionFinding },
+      params.tripStartAt,
+      now,
+      isEvProfile,
+    );
+    if (!preliminaryEnd) return null;
+
+    let activityFinding: DetectorFinding | undefined;
+    if (this.activityDetector) {
+      activityFinding = await this.activityDetector.evaluate({
+        ...baseCtx,
+        timeWindow: {
+          from: new Date(
+            Math.max(preliminaryEnd.endAt.getTime(), now.getTime() - 5 * 60_000),
+          ),
+          to: now,
+        },
+      });
+    }
+
+    const telemetry = await this.prisma.vehicleLatestState.findUnique({
+      where: { vehicleId: params.vehicleId },
+    });
+
+    const endDecision = resolveAnalyticsAssistedEndDecision({
+      activityWindow: activityFinding,
+      ignitionSegment: ignitionFinding,
+      motionSegment: motionFinding,
+      profile: String(params.profile),
+      tripStartAt: params.tripStartAt,
+      now,
+      currentTelemetry: telemetry
+        ? {
+            isIgnitionOn: telemetry.isIgnitionOn,
+            speedKmh: telemetry.speedKmh,
+            engineLoad: telemetry.engineLoad,
+          }
+        : null,
+      minStationaryAfterSegmentMs: this.TRIP_END_CH_ASSIST_MIN_STATIONARY_MS,
+      minTripDurationMs: this.TRIP_END_CH_ASSIST_MIN_TRIP_DURATION_MS,
+      highConfidenceStationaryMs: this.TRIP_END_CH_ASSIST_HIGH_STATIONARY_MS,
+    });
+
+    if (!endDecision.confirmed || !endDecision.detectedEndAt) return null;
+
+    this.tripMetrics?.tripEvidencePaths.inc({
+      phase: 'reconciliation_missing_end',
+      path: endDecision.evidencePath,
+    });
+
+    return endDecision.detectedEndAt;
   }
 }
