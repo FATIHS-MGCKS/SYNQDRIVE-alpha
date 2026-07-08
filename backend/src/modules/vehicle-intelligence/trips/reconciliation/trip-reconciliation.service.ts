@@ -1260,8 +1260,19 @@ export class TripReconciliationService {
         possibleEndAt: true,
         lastActivityAt: true,
         updatedAt: true,
+        detectionProfile: true,
       },
     });
+
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: {
+        dimoVehicle: { select: { tokenId: true } },
+      },
+    });
+    const profile =
+      detState?.detectionProfile ?? VehicleDetectionProfile.UNKNOWN;
+    const dimoTokenId = vehicle?.dimoVehicle?.tokenId ?? 0;
 
     for (const trip of openTrips) {
       const lastWaypoint = await this.prisma.vehicleTripWaypoint.findFirst({

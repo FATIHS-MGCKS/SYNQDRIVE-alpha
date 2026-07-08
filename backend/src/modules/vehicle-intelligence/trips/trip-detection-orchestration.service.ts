@@ -3007,6 +3007,8 @@ export class TripDetectionOrchestrationService {
     phase:
       | 'possible_end_entered'
       | 'end_validation_started'
+      | 'clickhouse_end_assist'
+      | 'clickhouse_end_assist_confirmed'
       | 'cusum_confirmed'
       | 'trip_finalized',
     input: {
@@ -3017,6 +3019,7 @@ export class TripDetectionOrchestrationService {
       endValidationStartedAt?: Date | null;
       finalizedAt?: Date | null;
       endSource?: string;
+      confidence?: string;
       latencyFromMovementMs?: number | null;
       attempt?: number;
       maxAttempts?: number;
@@ -3037,6 +3040,7 @@ export class TripDetectionOrchestrationService {
         ` finalizedAt=${fmt(input.finalizedAt)}` +
         (latencySec != null ? ` latencyFromMovementSec=${latencySec}` : '') +
         (input.endSource ? ` endSource=${input.endSource}` : '') +
+        (input.confidence ? ` confidence=${input.confidence}` : '') +
         (input.attempt != null
           ? ` cusumAttempt=${input.attempt}/${input.maxAttempts ?? '?'}`
           : ''),
