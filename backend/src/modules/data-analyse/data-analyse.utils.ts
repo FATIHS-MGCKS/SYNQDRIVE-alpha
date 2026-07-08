@@ -17,6 +17,7 @@ import type {
   LaunchFeasibility,
 } from './data-analyse.types';
 import { LAUNCH_REQUIRED_SIGNALS } from './data-analyse-signal-catalog';
+import { resolveHfMirrorFlagStatus as resolveHfMirrorStatusFromEnv } from '@modules/clickhouse/clickhouse-env.util';
 
 export function computeIntervalStats(
   intervalsMs: number[],
@@ -351,9 +352,7 @@ function deriveHfAvailabilityStatus(
 export function resolveHfMirrorStatus(
   raw: string | undefined = process.env.HF_MIRROR_ENABLED,
 ): HfMirrorStatus {
-  if (raw === 'true') return 'enabled';
-  if (raw === 'false' || raw === undefined || raw === '') return 'disabled';
-  return 'unknown';
+  return resolveHfMirrorStatusFromEnv(raw);
 }
 
 /**

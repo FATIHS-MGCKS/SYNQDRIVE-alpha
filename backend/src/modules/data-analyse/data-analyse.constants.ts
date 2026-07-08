@@ -1,3 +1,4 @@
+/** Internal debugging module — not a long-term customer product surface. */
 export const DATA_ANALYSE_MODULE = 'data-analyse' as const;
 
 /** Default DIMO snapshot worker interval (see worker.config snapshotIntervalMs). */

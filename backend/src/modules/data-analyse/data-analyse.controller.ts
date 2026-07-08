@@ -11,6 +11,12 @@ import { DATA_ANALYSE_MODULE } from './data-analyse.constants';
 export class DataAnalyseController {
   constructor(private readonly service: DataAnalyseService) {}
 
+  @Get('clickhouse-diagnostics')
+  @RequirePermission(DATA_ANALYSE_MODULE, 'read')
+  clickhouseDiagnostics(@Param('orgId') orgId: string) {
+    return this.service.getClickHouseDiagnostics(orgId);
+  }
+
   @Get('vehicles')
   @RequirePermission(DATA_ANALYSE_MODULE, 'read')
   listVehicles(@Param('orgId') orgId: string) {

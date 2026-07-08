@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'clickhouse-diagnostics-v49257-2026-07-08',
+    version: '4.9.257',
+    title: 'V4.9.257 — ClickHouse Diagnostics + Data Analyse als interne Debug-Seite',
+    summary: [
+      'ClickHouseDiagnosticsService: zentrale Diagnose (configured/available/status, schema migrations, HF_MIRROR_ENABLED, Tabellenmatrix).',
+      'clickhouse-table-registry: Tabellenstatus aus Code/Config/Producern — keine Fehlinterpretation leerer geplanter Tabellen.',
+      'Data Analyse: org-level Tab „CH Diagnostics“ + GET …/data-analyse/clickhouse-diagnostics (200 auch bei CH-Ausfall).',
+    ],
+    reason:
+      'Data Analyse ist temporäre interne Debugging-/Logging-Seite bis MVP; ClickHouse ist degraded-fähig und braucht ehrliche technische Zustände ohne 500 bei Ausfall.',
+    previousBehavior:
+      'Kein zentraler CH-Status; leere geplante Tabellen konnten wie kaputter Datenfluss wirken; HF-Mirror-Flag verteilt.',
+    details:
+      'backend/src/modules/clickhouse/clickhouse-diagnostics.*, clickhouse-table-registry.ts, clickhouse-env.util.ts; data-analyse controller/service; frontend DataAnalyseView CH tab. Tests: clickhouse-diagnostics.service.spec + integration.spec (9 tests).',
+    affectsArchitecture: true,
+    module: 'ClickHouse',
+    createdAt: '2026-07-08T14:00:00.000Z',
+  },
+  {
     id: 'dimo-obd-webhook-unplug-only-v49254-2026-07-08',
     version: '4.9.254',
     title: 'V4.9.254 — DIMO OBD: nur Unplug-Webhook, Plug-in über Snapshots (Ops)',
