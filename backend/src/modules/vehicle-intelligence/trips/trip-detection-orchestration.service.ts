@@ -49,6 +49,7 @@ import { TripDetectionPolicyResolver } from './policy/trip-detection-policy.reso
 import { DETECTION_PHASES } from './detectors/detector.interfaces';
 import { DetectorRegistry } from './detectors/detector.registry';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
+import { TripChEvidenceMirrorCoordinator } from './trip-ch-evidence-mirror.coordinator';
 
 type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
 
@@ -125,6 +126,8 @@ export class TripDetectionOrchestrationService {
     private readonly policyResolver: TripDetectionPolicyResolver,
     private readonly detectorRegistry: DetectorRegistry,
     @Optional() private readonly tripMetrics?: TripMetricsService,
+    @Optional()
+    private readonly chEvidenceMirror?: TripChEvidenceMirrorCoordinator,
   ) {
     this.TRACKING_INTERVAL_MS = this.configService.get<number>('worker.tripTrackingIntervalMs') ?? 30_000;
     this.TRIP_CONTINUITY_CORE_WINDOW_MS = this.configService.get<number>('worker.tripContinuityCoreWindowMs') ?? 120_000;
@@ -2260,6 +2263,17 @@ export class TripDetectionOrchestrationService {
             this.enrichmentOrchestrator
               .enqueueBehaviorEnrichment(tripId, vehicleId, organizationId)
               .catch((e) => this.logger.error(`V2 finalize: failed to enqueue enrichment for trip ${tripId}: ${e}`));
+
+            // Post-trip CH evidence (waypoints + activity windows) — best-effort,
+            // disabled by default; never blocks finalize or changes trip truth.
+            this.chEvidenceMirror?.schedulePostTripEvidence({
+              vehicleId,
+              tripId,
+              organizationId,
+              bookingId: trip.assignedBookingId,
+              windowStart: trip.startTime,
+              windowEnd: endTime,
+            });
           }
         }
       }

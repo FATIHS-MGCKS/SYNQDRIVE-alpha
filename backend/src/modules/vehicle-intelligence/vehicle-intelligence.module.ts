@@ -29,6 +29,9 @@ import { TripAnalysisCoordinatorService } from './trips/trip-analysis-coordinato
 import { LteR1BehaviorEnrichmentService } from './trips/lte-r1-behavior-enrichment.service';
 import { EventContextEnrichmentService } from './event-context/event-context-enrichment.service';
 import { HfMirrorService } from './trips/hf-mirror.service';
+import { WaypointMirrorService } from './trips/waypoint-mirror.service';
+import { ActivityWindowProducerService } from './trips/activity-window-producer.service';
+import { TripChEvidenceMirrorCoordinator } from './trips/trip-ch-evidence-mirror.coordinator';
 import { MapboxService } from './trips/mapbox.service';
 import { MapboxRouteMatcherService } from './trips/mapbox-route-matcher.service';
 import { FmmRouteMatcherService } from './trips/fmm-route-matcher.service';
@@ -121,6 +124,9 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     EventContextEnrichmentService,
     LteR1BehaviorEnrichmentService,
     HfMirrorService,
+    WaypointMirrorService,
+    ActivityWindowProducerService,
+    TripChEvidenceMirrorCoordinator,
     MapboxService,
     MapboxRouteMatcherService,
     FmmRouteMatcherService,

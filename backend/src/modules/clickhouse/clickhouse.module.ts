@@ -4,6 +4,10 @@ import { ClickHouseTelemetryService } from './clickhouse-telemetry.service';
 import { ClickHouseAnalyticsService } from './clickhouse-analytics.service';
 import { ClickHouseSchemaService } from './clickhouse-schema.service';
 import { ClickHouseHfService } from './clickhouse-hf.service';
+import { SignalQualityReadService } from './signal-quality-read.service';
+import { TripEvidenceReadService } from './trip-evidence-read.service';
+import { ClickHouseWaypointsService } from './clickhouse-waypoints.service';
+import { ClickHouseActivityWindowsService } from './clickhouse-activity-windows.service';
 
 /**
  * ClickHouseModule
@@ -22,12 +26,20 @@ import { ClickHouseHfService } from './clickhouse-hf.service';
     ClickHouseAnalyticsService,
     ClickHouseSchemaService,
     ClickHouseHfService,
+    SignalQualityReadService,
+    TripEvidenceReadService,
+    ClickHouseWaypointsService,
+    ClickHouseActivityWindowsService,
   ],
   exports: [
     ClickHouseService,
     ClickHouseTelemetryService,
     ClickHouseAnalyticsService,
     ClickHouseHfService,
+    SignalQualityReadService,
+    TripEvidenceReadService,
+    ClickHouseWaypointsService,
+    ClickHouseActivityWindowsService,
     // ClickHouseSchemaService is not exported — it only needs to run on init
   ],
 })

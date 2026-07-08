@@ -22,6 +22,7 @@ import type { TripBehaviorEvent, TripTimelineTrip } from './timeline.types';
 import type { TripRentalContextView } from './utils/tripRentalContext';
 import { useAddress } from '../../../lib/useAddress';
 import { Icon } from '../ui/Icon';
+import { TripClickHouseEvidenceBlock } from './TripClickHouseEvidenceBlock';
 import {
   deriveTripAssessability,
   hasNativeBehaviorEvents,
@@ -155,6 +156,7 @@ export function TripEvidencePanel({
             )}
         </EvidenceRow>
       </div>
+      <TripClickHouseEvidenceBlock evidence={trip.clickhouseEvidence} />
     </div>
   );
 }

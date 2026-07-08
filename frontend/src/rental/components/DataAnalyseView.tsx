@@ -21,6 +21,7 @@ import {
   type DataAnalyseLaunchFeasibilityResult,
   type DataAnalysePipeline,
   type DataAnalyseSignalGroup,
+  type DataAnalyseSignalQuality,
   type DataAnalyseSignalRow,
   type DataAnalyseTelemetryOverview,
   type DataAnalyseVehicle,
@@ -423,6 +424,7 @@ export function DataAnalyseView() {
   const [overview, setOverview] = useState<DataAnalyseTelemetryOverview | null>(null);
   const [signals, setSignals] = useState<DataAnalyseSignalRow[]>([]);
   const [hf, setHf] = useState<DataAnalyseHighFrequency | null>(null);
+  const [signalQuality, setSignalQuality] = useState<DataAnalyseSignalQuality | null>(null);
   const [launch, setLaunch] = useState<DataAnalyseLaunchFeasibilityResult | null>(null);
   const [health, setHealth] = useState<DataAnalyseHealthTrace | null>(null);
   const [pipeline, setPipeline] = useState<DataAnalysePipeline | null>(null);
@@ -468,10 +470,11 @@ export function DataAnalyseView() {
     setLoadingData(true);
     setError(null);
     try {
-      const [ov, sig, hfRes, launchRes, healthRes, pipe, grp, evArch, devConn, rpm] = await Promise.all([
+      const [ov, sig, hfRes, sqRes, launchRes, healthRes, pipe, grp, evArch, devConn, rpm] = await Promise.all([
         api.dataAnalyse.telemetryOverview(orgId, selectedId),
         api.dataAnalyse.signals(orgId, selectedId),
         api.dataAnalyse.highFrequency(orgId, selectedId),
+        api.dataAnalyse.latestTripSignalQuality(orgId, selectedId).catch(() => null),
         api.dataAnalyse.launchFeasibility(orgId, selectedId),
         api.dataAnalyse.healthTrace(orgId, selectedId),
         api.dataAnalyse.pipeline(orgId, selectedId),
@@ -483,6 +486,7 @@ export function DataAnalyseView() {
       setOverview(ov);
       setSignals(sig);
       setHf(hfRes);
+      setSignalQuality(sqRes);
       setLaunch(launchRes);
       setHealth(healthRes);
       setPipeline(pipe);
@@ -791,6 +795,48 @@ export function DataAnalyseView() {
                   HF signal groups seen: {hf.hfSignalGroupsSeen.join(', ')}
                   {hf.hfLatestPointAt ? ` · latest HF point: ${formatTs(hf.hfLatestPointAt)}` : ''}
                 </p>
+              )}
+              {signalQuality && (
+                <details className="rounded-md border border-dashed border-amber-500/40 bg-amber-500/5 px-3 py-2 text-xs">
+                  <summary className="cursor-pointer select-none font-medium text-amber-800 dark:text-amber-300">
+                    Internal debug — trip signal quality (read-only, not a trip score)
+                  </summary>
+                  <div className="mt-2 space-y-2 text-muted-foreground">
+                    <div className="flex flex-wrap gap-2">
+                      <StatusChip tone={signalQuality.degraded ? 'warning' : 'neutral'}>
+                        {signalQuality.degraded ? 'Degraded (CH)' : 'ClickHouse OK'}
+                      </StatusChip>
+                      <StatusChip
+                        tone={
+                          signalQuality.overallQuality === 'good'
+                            ? 'success'
+                            : signalQuality.overallQuality === 'unavailable'
+                              ? 'critical'
+                              : 'warning'
+                        }
+                      >
+                        Quality: {signalQuality.overallQuality}
+                      </StatusChip>
+                      <StatusChip tone="neutral">HF: {signalQuality.hfAvailability}</StatusChip>
+                      <StatusChip tone="neutral">
+                        Windows: {signalQuality.windowCount} · Points: {signalQuality.hfPointCount}
+                      </StatusChip>
+                    </div>
+                    {signalQuality.tripId && (
+                      <p>Trip: <span className="font-mono">{signalQuality.tripId}</span></p>
+                    )}
+                    {signalQuality.missingKeySignals.length > 0 && (
+                      <p>Missing key signals: {signalQuality.missingKeySignals.join(', ')}</p>
+                    )}
+                    {signalQuality.reasons.length > 0 && (
+                      <ul className="list-disc pl-4">
+                        {signalQuality.reasons.map((r) => (
+                          <li key={r}>{r}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </details>
               )}
               <div className="overflow-x-auto rounded-lg border border-border/60">
                 <table className="w-full text-xs">
