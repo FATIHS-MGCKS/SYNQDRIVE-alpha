@@ -1,8 +1,9 @@
 import type { StatusTone } from '../../../components/patterns';
-import type {
-  CustomerUiRisk,
-  CustomerUiStatus,
-  CustomerUiVerification,
+import {
+  customerRiskUiLabelDe,
+  type CustomerUiRisk,
+  type CustomerUiStatus,
+  type CustomerUiVerification,
 } from '../../lib/entityMappers';
 
 /** Layout tokens for the full CustomerDetailView page. */
@@ -12,16 +13,25 @@ export const cdv = {
   headerInner: 'px-4 py-3.5 sm:px-5 sm:py-4',
   backLink:
     'inline-flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground',
+  heroTopRow: 'mt-2.5 flex items-start justify-between gap-3',
+  /** @deprecated use heroTopRow */
   heroTitleRow: 'mt-2.5 flex items-start justify-between gap-3',
   heroTitleBlock: 'min-w-0 flex-1',
   heroStatusChip: 'shrink-0 pt-0.5',
+  heroMetaRow:
+    'mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] leading-snug text-muted-foreground',
+  /** @deprecated use heroMetaRow */
   metaRow:
     'mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] leading-snug text-muted-foreground',
   metaSeparator: 'text-muted-foreground/40 select-none',
   heroBadgeGrid: 'mt-3 grid grid-cols-2 gap-2',
+  heroBadgeCell: 'min-w-0',
+  heroBadgeChip: 'w-full min-h-8 justify-start px-2.5 text-[11px] leading-tight',
   heroActionGrid: 'mt-4 grid grid-cols-2 gap-2 border-t border-border/50 pt-4',
+  heroActionFullRow: 'col-span-2',
+  /** @deprecated use heroActionFullRow */
   heroActionFull: 'col-span-2',
-  heroActionButton: 'w-full justify-center gap-1.5',
+  heroActionButton: 'w-full justify-center gap-1.5 min-h-9',
   sectionGrid: 'grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4',
   twoColGrid: 'grid grid-cols-1 gap-3 lg:grid-cols-2',
   summaryGrid: 'grid grid-cols-2 items-start gap-1 sm:gap-1.5 lg:grid-cols-3 xl:grid-cols-6',
@@ -101,6 +111,18 @@ export function customerRiskTone(risk: CustomerUiRisk | string): StatusTone {
     default:
       return 'noData';
   }
+}
+
+/** Header-only risk label — shorter copy for the hero badge grid. */
+export function customerRiskHeaderLabelDe(risk: CustomerUiRisk | string): string {
+  if (risk === 'Not Assessed') return 'Keine Bewertung';
+  return customerRiskUiLabelDe(risk);
+}
+
+/** Header-only risk tone — neutral for unassessed customers. */
+export function customerRiskHeaderTone(risk: CustomerUiRisk | string): StatusTone {
+  if (risk === 'Not Assessed') return 'neutral';
+  return customerRiskTone(risk);
 }
 
 export function customerVerificationTone(ui: CustomerUiVerification | string): StatusTone {

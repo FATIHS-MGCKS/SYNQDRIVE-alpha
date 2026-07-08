@@ -638,15 +638,7 @@ export function CustomerDetailView({
 
         onBack={onBack}
 
-        onCreateBooking={onCreateBooking}
-
-        onOpenDocuments={() => setActiveTab('documents')}
-
         onAddNote={() => setNoteModalOpen(true)}
-
-        onOpenStatusModal={() => setStatusModalOpen(true)}
-
-        onOpenRiskModal={() => setRiskModalOpen(true)}
 
         onStatusShortcut={handleStatusShortcut}
 

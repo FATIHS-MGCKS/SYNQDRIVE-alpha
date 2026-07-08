@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customer-detail-header-refine-v49237-2026-07-08',
+    version: '4.9.237',
+    title: 'V4.9.237 — Customer Detail Header: symmetrisches 2x2-Badge-Raster + reduzierte Aktionen',
+    summary: [
+      'Badge-Grid korrigiert: links Mietfreigabe/Risiko, rechts Ausweis/FS in ruhigem 2x2-Raster.',
+      'Header-Risiko-Label: „Keine Bewertung“ statt „Keine Risikobewertung“ (nur Hero-Badge).',
+      'Aktionsbereich auf Notiz, Suspendieren/Reaktivieren und Kontakt reduziert.',
+      'Zentrale cdv-Tokens: heroTopRow, heroBadgeCell, heroBadgeChip, heroActionFullRow.',
+    ],
+    reason:
+      'Der Header wirkte asymmetrisch und überladen; Badge-Reihenfolge und Button-Anzahl entsprachen nicht dem Zielbild.',
+    previousBehavior:
+      'Badge-Reihenfolge zeilenweise Mietfreigabe/Risiko | Ausweis/FS; sieben Header-Buttons inkl. Buchung/Upload/Status/Risiko.',
+    details:
+      'frontend: CustomerDetailHeader.tsx, customer-detail-ui.ts (customerRiskHeaderLabelDe/Tone), CustomerDetailView.tsx (Props bereinigt). Keine Backend-Änderung.',
+    affectsArchitecture: false,
+    module: 'Customers',
+    createdAt: '2026-07-08T01:10:00.000Z',
+  },
+  {
     id: 'customer-detail-ui-polish-v49236-2026-07-08',
     version: '4.9.236',
     title: 'V4.9.236 — Customer Detail Page UI-Polish',

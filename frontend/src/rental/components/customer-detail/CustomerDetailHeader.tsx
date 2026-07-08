@@ -1,19 +1,10 @@
-import {
-  ArrowLeft,
-  FileUp,
-  Mail,
-  Phone,
-  Plus,
-  Shield,
-  StickyNote,
-} from 'lucide-react';
+import { ArrowLeft, Mail, Phone, StickyNote } from 'lucide-react';
 
 import type { StatusTone } from '../../../components/patterns';
 import { StatusChip } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
 import {
-  customerRiskUiLabelDe,
   customerStatusUiLabelDe,
   customerVerificationUiLabelDe,
   type CustomerUiVerification,
@@ -22,7 +13,8 @@ import type { CustomerListRow } from './customerDetailTypes';
 import {
   cdv,
   customerDetailTitleClass,
-  customerRiskTone,
+  customerRiskHeaderLabelDe,
+  customerRiskHeaderTone,
   customerStatusTone,
   customerVerificationTone,
   resolveCustomerStatusAction,
@@ -45,11 +37,7 @@ interface CustomerDetailHeaderProps {
   email?: string | null;
   statusShortcutSaving?: boolean;
   onBack: () => void;
-  onCreateBooking?: () => void;
-  onOpenDocuments: () => void;
   onAddNote: () => void;
-  onOpenStatusModal: () => void;
-  onOpenRiskModal: () => void;
   onStatusShortcut?: (next: CustomerListRow['status']) => void;
 }
 
@@ -69,16 +57,13 @@ export function CustomerDetailHeader({
   email,
   statusShortcutSaving,
   onBack,
-  onCreateBooking,
-  onOpenDocuments,
   onAddNote,
-  onOpenStatusModal,
-  onOpenRiskModal,
   onStatusShortcut,
 }: CustomerDetailHeaderProps) {
   const statusShortcut = resolveCustomerStatusAction(displayStatus);
   const customerTypeLabel = displayType === 'Corporate' ? 'Firma' : 'Privat';
   const customerSinceLabel = formatDate(customerSince);
+  const hasContact = Boolean(phone || email);
 
   return (
     <div className={cdv.headerCard}>
@@ -88,10 +73,10 @@ export function CustomerDetailHeader({
           Kunden
         </button>
 
-        <div className={cdv.heroTitleRow}>
+        <div className={cdv.heroTopRow}>
           <div className={cdv.heroTitleBlock}>
             <h1 className={customerDetailTitleClass()}>{displayName}</h1>
-            <div className={cdv.metaRow}>
+            <div className={cdv.heroMetaRow}>
               <span className="font-mono tabular-nums">CID-{shortId}</span>
               <span aria-hidden className={cdv.metaSeparator}>
                 •
@@ -111,56 +96,42 @@ export function CustomerDetailHeader({
         </div>
 
         <div className={cdv.heroBadgeGrid}>
-          <StatusChip
-            tone={rentalClearanceTone}
-            dot
-            title={rentalClearanceTitle ?? undefined}
-            className="w-full justify-center sm:justify-start"
-          >
-            Mietfreigabe: {rentalClearanceLabel}
-          </StatusChip>
-          <StatusChip tone={customerRiskTone(displayRisk)} dot className="w-full justify-center sm:justify-start">
-            Risiko: {customerRiskUiLabelDe(displayRisk)}
-          </StatusChip>
-          <StatusChip
-            tone={customerVerificationTone(idVerificationUi)}
-            dot
-            className="w-full justify-center sm:justify-start"
-          >
-            Ausweis: {customerVerificationUiLabelDe(idVerificationUi)}
-          </StatusChip>
-          <StatusChip
-            tone={customerVerificationTone(licenseVerificationUi)}
-            dot
-            className="w-full justify-center sm:justify-start"
-          >
-            FS: {customerVerificationUiLabelDe(licenseVerificationUi)}
-          </StatusChip>
+          <div className={cdv.heroBadgeCell}>
+            <StatusChip
+              tone={rentalClearanceTone}
+              dot
+              title={rentalClearanceTitle ?? undefined}
+              className={cdv.heroBadgeChip}
+            >
+              Mietfreigabe: {rentalClearanceLabel}
+            </StatusChip>
+          </div>
+          <div className={cdv.heroBadgeCell}>
+            <StatusChip
+              tone={customerVerificationTone(idVerificationUi)}
+              dot
+              className={cdv.heroBadgeChip}
+            >
+              Ausweis: {customerVerificationUiLabelDe(idVerificationUi)}
+            </StatusChip>
+          </div>
+          <div className={cdv.heroBadgeCell}>
+            <StatusChip tone={customerRiskHeaderTone(displayRisk)} dot className={cdv.heroBadgeChip}>
+              Risiko: {customerRiskHeaderLabelDe(displayRisk)}
+            </StatusChip>
+          </div>
+          <div className={cdv.heroBadgeCell}>
+            <StatusChip
+              tone={customerVerificationTone(licenseVerificationUi)}
+              dot
+              className={cdv.heroBadgeChip}
+            >
+              FS: {customerVerificationUiLabelDe(licenseVerificationUi)}
+            </StatusChip>
+          </div>
         </div>
 
         <div className={cdv.heroActionGrid}>
-          {onCreateBooking ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="primary"
-              className={cdv.heroActionButton}
-              onClick={onCreateBooking}
-            >
-              <Plus className="size-3.5" />
-              Neue Buchung
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            size="sm"
-            variant="neutral"
-            className={cdv.heroActionButton}
-            onClick={onOpenDocuments}
-          >
-            <FileUp className="size-3.5" />
-            Dokument hochladen
-          </Button>
           <Button
             type="button"
             size="sm"
@@ -170,25 +141,6 @@ export function CustomerDetailHeader({
           >
             <StickyNote className="size-3.5" />
             Notiz hinzufügen
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="warning"
-            className={cdv.heroActionButton}
-            onClick={onOpenStatusModal}
-          >
-            Status ändern
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="warning"
-            className={cdv.heroActionButton}
-            onClick={onOpenRiskModal}
-          >
-            <Shield className="size-3.5" />
-            Risiko setzen
           </Button>
           {statusShortcut && onStatusShortcut ? (
             <Button
@@ -202,32 +154,34 @@ export function CustomerDetailHeader({
               {statusShortcutSaving ? 'Speichert…' : statusShortcut.label}
             </Button>
           ) : null}
-          {phone ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="neutral"
-              className={cn(cdv.heroActionButton, cdv.heroActionFull)}
-              asChild
-            >
-              <a href={`tel:${phone.replace(/\s/g, '')}`}>
-                <Phone className="size-3.5" />
-                Kontakt
-              </a>
-            </Button>
-          ) : email ? (
-            <Button
-              type="button"
-              size="sm"
-              variant="neutral"
-              className={cn(cdv.heroActionButton, cdv.heroActionFull)}
-              asChild
-            >
-              <a href={`mailto:${email}`}>
-                <Mail className="size-3.5" />
-                Kontakt
-              </a>
-            </Button>
+          {hasContact ? (
+            phone ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="neutral"
+                className={cn(cdv.heroActionButton, cdv.heroActionFullRow)}
+                asChild
+              >
+                <a href={`tel:${phone.replace(/\s/g, '')}`}>
+                  <Phone className="size-3.5" />
+                  Kontakt
+                </a>
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                variant="neutral"
+                className={cn(cdv.heroActionButton, cdv.heroActionFullRow)}
+                asChild
+              >
+                <a href={`mailto:${email}`}>
+                  <Mail className="size-3.5" />
+                  Kontakt
+                </a>
+              </Button>
+            )
           ) : null}
         </div>
       </div>
