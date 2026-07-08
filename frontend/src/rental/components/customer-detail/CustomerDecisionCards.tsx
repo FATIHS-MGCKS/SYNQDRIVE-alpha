@@ -41,7 +41,13 @@ function resolveVerificationHint(
   licenseUi: CustomerUiVerification,
 ): string | null {
   if (licenseUi === 'Verified') return null;
-  const pool = [...(eligibility?.blockingReasons ?? []), ...(eligibility?.warnings ?? [])];
+  const pool = [
+    ...(eligibility?.globalBlockingReasons ?? []),
+    ...(eligibility?.blockingReasons ?? []),
+    ...(eligibility?.stages?.startPickup.blockingReasons ?? []),
+    ...(eligibility?.stages?.confirmBooking.blockingReasons ?? []),
+    ...(eligibility?.warnings ?? []),
+  ];
   return (
     pool.find((text) => /führerschein|fuehrerschein|pickup/i.test(text.toLowerCase())) ?? null
   );
@@ -199,9 +205,19 @@ export function CustomerDecisionCards({
       <Shield className="size-3.5" />
     );
 
-  const primaryReason = eligibility?.blockingReasons[0] ?? eligibility?.warnings[0] ?? null;
+  const primaryReason =
+    eligibility?.stages?.startPickup.blockingReasons[0] ??
+    eligibility?.stages?.confirmBooking.blockingReasons[0] ??
+    eligibility?.globalBlockingReasons?.[0] ??
+    eligibility?.blockingReasons[0] ??
+    eligibility?.warnings[0] ??
+    null;
   const primaryReasonIsWarning =
-    !eligibility?.blockingReasons[0] && Boolean(eligibility?.warnings[0]);
+    !eligibility?.globalBlockingReasons?.[0] &&
+    !eligibility?.blockingReasons[0] &&
+    !eligibility?.stages?.confirmBooking.blockingReasons[0] &&
+    !eligibility?.stages?.startPickup.blockingReasons[0] &&
+    Boolean(eligibility?.warnings[0]);
 
   const stageItems: { label: string; stage: EligibilityStage }[] = [
     { label: 'Erstellen', stage: createStage },

@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customer-eligibility-stages-v49243-2026-07-08',
+    version: '4.9.243',
+    title: 'V4.9.243 — Customer Eligibility: stufenbasierte Mietfreigabe',
+    summary: [
+      'Pickup-Blocker (z. B. fehlender Führerschein nur für Übergabe) sind keine globalen Customer-Blocker mehr.',
+      'CustomerEligibilityResult.stages: createBooking / confirmBooking / startPickup mit getrennten blockingReasons.',
+      'CustomerVerificationService: confirmBlockingReasons und pickupBlockingReasons getrennt; blockingReasons nur Confirm-Alias.',
+      'rentalClearance: „Pickup-Prüfung erforderlich“ statt „Nicht freigegeben“ bei reiner Pickup-Vorbedingung.',
+      'Frontend: overallRentalClearanceLabel/Tone und List-Badge nutzen stages/globalBlockingReasons.',
+    ],
+    reason:
+      'Confirm- und Pickup-Blocker wurden in blockingReasons gemischt — Kunden wirkten global blockiert obwohl nur Pickup fehlte.',
+    previousBehavior:
+      'blockingReasons enthielt Pickup- und Confirm-Gründe gemeinsam; canCreatePendingBooking fiel bei Pickup-Only-Blockern mit.',
+    details:
+      'backend: customer-eligibility.types, customer-eligibility.service, customer-verification.service, rental-clearance.util, bookings.service (stage reasons in conflicts). frontend: customerDetailUtils, CustomerDecisionCards, customer-list-ui, api.ts. Tests: eligibility + clearance + verification specs.',
+    affectsArchitecture: true,
+    module: 'Customers',
+    createdAt: '2026-07-08T02:30:00.000Z',
+  },
+  {
     id: 'customer-documents-upload-groups-v49242-2026-07-08',
     version: '4.9.242',
     title: 'V4.9.242 — Customer Detail Dokumente: gruppenbasierte Upload-Logik',

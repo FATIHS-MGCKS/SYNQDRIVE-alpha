@@ -229,7 +229,6 @@ export class CustomerVerificationService {
       hasPoaActivity,
     );
 
-    const blockingReasons: string[] = [];
     const warnings: string[] = [];
     const confirmBlockingReasons: string[] = [];
 
@@ -294,7 +293,6 @@ export class CustomerVerificationService {
     }
 
     const canStartPickup = pickupBlockingReasons.length === 0;
-    blockingReasons.push(...confirmBlockingReasons, ...pickupBlockingReasons);
 
     return {
       customerId,
@@ -304,7 +302,9 @@ export class CustomerVerificationService {
       proofOfAddress,
       canConfirmBooking,
       canStartPickup,
-      blockingReasons,
+      confirmBlockingReasons,
+      pickupBlockingReasons,
+      blockingReasons: [...confirmBlockingReasons],
       warnings,
     };
   }

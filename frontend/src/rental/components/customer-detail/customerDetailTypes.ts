@@ -230,11 +230,31 @@ export type CustomerEligibility = {
 
   canStartRental: boolean;
 
+  globalBlockingReasons?: string[];
+
   blockingReasons: string[];
 
   warnings: string[];
 
   requiredActions: string[];
+
+  stages?: {
+    createBooking: {
+      canProceed: boolean;
+      status: string;
+      blockingReasons: string[];
+    };
+    confirmBooking: {
+      canProceed: boolean;
+      status: string;
+      blockingReasons: string[];
+    };
+    startPickup: {
+      canProceed: boolean;
+      status: string;
+      blockingReasons: string[];
+    };
+  };
 
 };
 

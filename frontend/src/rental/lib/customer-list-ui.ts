@@ -249,11 +249,12 @@ export function getVerificationBadgeMeta(
   }
 }
 
-/** Mobile list label — BLOCKED reads as „Keine Mietfreigabe“. */
+/** Mobile list label — prefers backend-provided clearance label. */
 export function rentalClearanceMobileLabel(
   clearance: RentalClearanceUi | null | undefined,
 ): string | null {
   if (!clearance) return null;
+  if (clearance.label?.trim()) return clearance.label;
   switch (clearance.status) {
     case 'CLEARED':
       return 'Mietfreigabe';

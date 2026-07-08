@@ -2903,9 +2903,39 @@ export const api = {
         canCreatePendingBooking: boolean;
         canConfirmBooking: boolean;
         canStartRental: boolean;
+        globalBlockingReasons?: string[];
         blockingReasons: string[];
         warnings: string[];
         requiredActions: string[];
+        stages?: {
+          createBooking: {
+            key: string;
+            label: string;
+            canProceed: boolean;
+            status: string;
+            blockingReasons: string[];
+            warnings: string[];
+            requiredActions: string[];
+          };
+          confirmBooking: {
+            key: string;
+            label: string;
+            canProceed: boolean;
+            status: string;
+            blockingReasons: string[];
+            warnings: string[];
+            requiredActions: string[];
+          };
+          startPickup: {
+            key: string;
+            label: string;
+            canProceed: boolean;
+            status: string;
+            blockingReasons: string[];
+            warnings: string[];
+            requiredActions: string[];
+          };
+        };
       }>(`/organizations/${orgId}/customers/${id}/eligibility${q}`);
     },
     updateStatus: (orgId: string, id: string, data: { status: string; reason?: string }) =>
