@@ -11,6 +11,13 @@ import {
   classifyStressLevel,
   type StressLevel,
 } from '../driving-impact/stress-level.util';
+import {
+  buildUnifiedBehaviorEvents,
+  type UnifiedBehaviorEvent,
+} from './unified-behavior-read-model';
+import { buildTripAssessmentFromSignals } from './trip-assessment.builder';
+import type { TripAssessment } from './trip-assessment.types';
+import { deriveAnalysisAssessability } from './trip-analysis-status';
 
 export interface CanonicalTripEventSummary {
   totalAccelerationEvents: number;
@@ -93,9 +100,14 @@ type TripProjection = Pick<
   | 'assignmentSubjectId'
   | 'assignedBookingId'
   | 'isPrivateTrip'
+  | 'distanceKm'
+  | 'durationMinutes'
+  | 'behaviorSummaryJson'
+  | 'behaviorEnrichmentStatus'
+  | 'tripAnalysisStatus'
+  | 'qualityStatus'
 >;
 
-@Injectable()
 export class TripAnalyticsCanonicalService {
   constructor(
     private readonly prisma: PrismaService,
@@ -125,6 +137,50 @@ export class TripAnalyticsCanonicalService {
       ...trip,
       canonicalTripSummary: this.buildSummary(trip, impact, assignment),
     };
+  }
+
+  async buildTripAssessmentForTrip(
+    trip: TripProjection & {
+      distanceKm?: number | null;
+      durationMinutes?: number | null;
+      behaviorSummaryJson?: unknown;
+      behaviorEnrichmentStatus?: string | null;
+      tripAnalysisStatus?: string | null;
+      endTime?: Date | string | null;
+      qualityStatus?: string | null;
+    },
+    canonicalSummary: CanonicalTripSummary,
+  ): Promise<TripAssessment> {
+    const [behaviorEvents, drivingEvents, misuseCaseCount] = await Promise.all([
+      this.prisma.tripBehaviorEvent.findMany({
+        where: { tripId: trip.id, vehicleId: trip.vehicleId },
+        orderBy: { startedAt: 'asc' },
+      }),
+      this.prisma.drivingEvent.findMany({
+        where: { tripId: trip.id, vehicleId: trip.vehicleId },
+        orderBy: { recordedAt: 'asc' },
+      }),
+      this.prisma.misuseCase.count({
+        where: { tripId: trip.id, vehicleId: trip.vehicleId },
+      }),
+    ]);
+
+    const unifiedEvents: UnifiedBehaviorEvent[] = buildUnifiedBehaviorEvents({
+      behaviorEvents,
+      drivingEvents,
+      tripId: trip.id,
+    });
+
+    const assessability = deriveAnalysisAssessability(trip);
+
+    return buildTripAssessmentFromSignals({
+      unifiedEvents,
+      scores: canonicalSummary.scores,
+      misuseCaseCount,
+      distanceKm: trip.distanceKm ?? null,
+      durationMinutes: trip.durationMinutes ?? null,
+      assessability,
+    });
   }
 
   async getVehicleStats(vehicleId: string): Promise<CanonicalTripStats> {

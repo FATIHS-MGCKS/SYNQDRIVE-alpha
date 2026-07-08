@@ -997,8 +997,15 @@ export class VehicleIntelligenceController {
     // Verify the trip belongs to the requested vehicle (prevents cross-vehicle IDOR)
     if (!trip || trip.vehicleId !== vehicleId) return null;
     const hydratedTrip = await this.tripAnalyticsCanonicalService.hydrateTrip(trip as any);
+    const tripAssessment = await this.tripAnalyticsCanonicalService.buildTripAssessmentForTrip(
+      trip as any,
+      hydratedTrip.canonicalTripSummary,
+    );
 
-    const mapped = mapTripForVehicleApi(hydratedTrip as any);
+    const mapped = mapTripForVehicleApi({
+      ...(hydratedTrip as any),
+      tripAssessment,
+    });
     const [withFlags] = await this.attachTripDeviceConnectionFlags(vehicleId, [mapped as any]);
     return withFlags;
   }

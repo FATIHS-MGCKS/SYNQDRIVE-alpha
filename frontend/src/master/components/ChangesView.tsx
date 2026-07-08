@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-assessment-phase1-v49248-2026-07-08',
+    version: '4.9.248',
+    title: 'V4.9.248 — Trip Gesamtbewertung: kanonische Backend-Wahrheit (Phase 1)',
+    summary: [
+      'Neue pure Bewertungslogik `assessTrip()` mit Status UNAUFFAELLIG … NICHT_BEWERTBAR, versioniert (1.0.0).',
+      'GET /vehicles/:vehicleId/trips/:tripId liefert `tripAssessment` aus Events, Fahrbelastung, Misuse-Cases.',
+      'Priorität: nicht bewertbar → Prüfhinweis (Evidence) → kritisch → auffällig → beobachten → unauffällig.',
+      'Frontend zeigt „Gesamtbewertung“ aus tripAssessment; Fallback auf bestehende UI-Ableitung.',
+    ],
+    reason:
+      'Gesamtbewertung soll nicht mehr primär im Frontend aus Events/Fahrbelastung/Missbrauch abgeleitet werden.',
+    previousBehavior:
+      'Trip-Detail ohne tripAssessment; UI nutzte deriveBehaviorOverallStatus / deriveTripOverallRating.',
+    details:
+      'trip-assessment.service.ts, trip-analytics-canonical.service.ts#buildTripAssessmentForTrip, TripTimelineExpanded.',
+    affectsArchitecture: true,
+    module: 'Trips',
+    createdAt: '2026-07-08T04:30:00.000Z',
+  },
+  {
     id: 'fleet-command-row-gradient-restore-v49247-2026-07-08',
     version: '4.9.247',
     title: 'V4.9.247 — Fleet Command: Critical/Warning-Gradienten wiederhergestellt',

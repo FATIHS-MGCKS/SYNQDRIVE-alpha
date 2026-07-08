@@ -9,6 +9,7 @@ import {
   behaviorStatusShortLabel,
   deriveTripOverallRating,
   TRIP_OVERALL_RATING_LABEL,
+  tripAssessmentToOverallRating,
   tripOverallRatingTone,
 } from './utils/trip-overall-status';
 import { hasAbuseSuspicion } from './utils/tripStatus';
@@ -69,8 +70,13 @@ export function TripEvidencePanel({
   const flagged = hasAbuseSuspicion(trip);
   const hasStart = trip.startLatitude != null && trip.startLongitude != null;
   const hasEnd = trip.endLatitude != null && trip.endLongitude != null;
-  const overallRating = deriveTripOverallRating(trip, behaviorEvents);
-  const behaviorStatus = deriveBehaviorOverallStatus(trip, behaviorEvents);
+  const overallRating = trip.tripAssessment
+    ? tripAssessmentToOverallRating(trip.tripAssessment.status)
+    : deriveTripOverallRating(trip, behaviorEvents);
+  const overallRatingLabel = trip.tripAssessment?.label ?? TRIP_OVERALL_RATING_LABEL[overallRating];
+  const behaviorStatus = trip.tripAssessment
+    ? trip.tripAssessment.label
+    : behaviorStatusShortLabel(deriveBehaviorOverallStatus(trip, behaviorEvents));
   const stressScore = resolveDrivingStressScore(trip);
   const stressLabel =
     stressScore != null
@@ -107,7 +113,7 @@ export function TripEvidencePanel({
         )}
         <EvidenceRow label={RENTAL_COPY.evidenceOverallRating}>
           <TripStatusBadge
-            label={TRIP_OVERALL_RATING_LABEL[overallRating]}
+            label={overallRatingLabel}
             tone={tripOverallRatingTone(overallRating)}
           />
         </EvidenceRow>
@@ -115,7 +121,7 @@ export function TripEvidencePanel({
           {stressLabel}
         </EvidenceRow>
         <EvidenceRow label={RENTAL_COPY.evidenceDrivingStyle}>
-          {behaviorStatusShortLabel(behaviorStatus)}
+          {behaviorStatus}
         </EvidenceRow>
         {flagged && (
           <EvidenceRow label={RENTAL_COPY.evidenceMisuseHint}>

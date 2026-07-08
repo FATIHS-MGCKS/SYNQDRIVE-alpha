@@ -30,23 +30,27 @@ export function TripBehaviorSummary({ trip, events }: TripBehaviorSummaryProps) 
     shortTermMisuseAssessable: trip.shortTermMisuseAssessable,
   });
 
-  const overall = deriveBehaviorOverallStatus(trip, events, {
-    assessable: assessability.assessable,
-  });
+  const overall = trip.tripAssessment
+    ? null
+    : deriveBehaviorOverallStatus(trip, events, {
+        assessable: assessability.assessable,
+      });
   const eventCountLabel = formatBehaviorEventCountLabel(events, trip);
   const criticalCount = countCriticalEvents(events);
   const severest = findSeverestEvent(events);
 
-  const title = BEHAVIOR_STATUS_LABEL[overall];
+  const title = trip.tripAssessment?.label ?? (overall ? BEHAVIOR_STATUS_LABEL[overall] : '—');
+  const primaryReason = trip.tripAssessment?.primaryReason ?? null;
   const severestLabel = severest ? eventTypeLabel(severest) : null;
-  const showSeverest = severestLabel != null && severestLabel !== title;
+  const showSeverest = !trip.tripAssessment && severestLabel != null && severestLabel !== title;
 
   const metaParts = [
     eventCountLabel,
     criticalCount > 0 ? `${criticalCount} kritisch` : null,
   ].filter(Boolean);
 
-  const isNotAssessable = overall === 'not_assessable';
+  const isNotAssessable =
+    trip.tripAssessment?.status === 'NICHT_BEWERTBAR' || overall === 'not_assessable';
 
   return (
     <div
@@ -58,7 +62,11 @@ export function TripBehaviorSummary({ trip, events }: TripBehaviorSummaryProps) 
     >
       <div className="space-y-1">
         <p className="text-[13px] font-semibold tracking-[-0.02em] text-foreground">{title}</p>
-        <p className="text-[11px] tabular-nums text-muted-foreground">{metaParts.join(' · ')}</p>
+        {primaryReason ? (
+          <p className="text-[11px] text-muted-foreground">{primaryReason}</p>
+        ) : (
+          <p className="text-[11px] tabular-nums text-muted-foreground">{metaParts.join(' · ')}</p>
+        )}
 
         {isNotAssessable ? (
           <div className="space-y-0.5">

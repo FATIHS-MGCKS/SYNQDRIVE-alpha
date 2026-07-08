@@ -1,4 +1,4 @@
-import type { EnergyEvent, TripBehaviorEvent, TripEnrichment } from '../../../lib/api';
+import type { EnergyEvent, TripAssessment, TripBehaviorEvent, TripEnrichment } from '../../../lib/api';
 
 export type BehaviorEnrichmentStatus =
   | 'PENDING'
@@ -79,6 +79,7 @@ export interface TripTimelineTrip {
   countrySharePercent?: number;
   avgEngineLoad?: number;
   avgThrottlePosition?: number;
+  tripAssessment?: TripAssessment | null;
 }
 
 /** Full trip record including optional analytics fields from the API. */

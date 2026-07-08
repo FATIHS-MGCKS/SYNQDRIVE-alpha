@@ -4,9 +4,27 @@ import {
   type BehaviorOverallStatus,
 } from '../behavior-ui.utils';
 import { hasAbuseSuspicion } from '../utils/tripStatus';
+import type { TripAssessmentStatus } from '../../../../lib/api';
 import type { TripBehaviorEvent, TripTimelineTrip } from '../trips.types';
 
 export type TripOverallRating = 'auffaellig' | 'beobachten' | 'unauffaellig' | 'aktiv' | 'nicht_bewertbar';
+
+export function tripAssessmentToOverallRating(status: TripAssessmentStatus): TripOverallRating {
+  switch (status) {
+    case 'AUFFAELLIG':
+    case 'KRITISCH':
+    case 'PRUEFHINWEIS':
+      return 'auffaellig';
+    case 'BEOBACHTEN':
+      return 'beobachten';
+    case 'NICHT_BEWERTBAR':
+      return 'nicht_bewertbar';
+    case 'UNAUFFAELLIG':
+    default:
+      return 'unauffaellig';
+  }
+}
+
 
 export const TRIP_OVERALL_RATING_LABEL: Record<TripOverallRating, string> = {
   auffaellig: 'Auffällig',

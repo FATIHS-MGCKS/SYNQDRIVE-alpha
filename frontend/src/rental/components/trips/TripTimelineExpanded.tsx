@@ -131,6 +131,20 @@ export function TripTimelineExpanded({
           </p>
         )}
 
+        {trip.tripAssessment && (
+          <div className="rounded-xl border border-border/60 bg-muted/20 px-3.5 py-3">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Gesamtbewertung
+            </p>
+            <p className="mt-1 text-[13px] font-semibold tracking-[-0.02em] text-foreground">
+              {trip.tripAssessment.label}
+            </p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">
+              {trip.tripAssessment.primaryReason}
+            </p>
+          </div>
+        )}
+
         {(canReloadRoute || canCenterRoute || canAnalyzeBehavior) && (
           <div className="flex flex-wrap gap-2">
             {canReloadRoute && (

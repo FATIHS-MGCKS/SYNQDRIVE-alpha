@@ -1325,6 +1325,41 @@ export type TripTimelineItem =
   | ({ itemType: 'trip' } & VehicleTripAnalytics)
   | ({ itemType: 'energy-event' } & EnergyEvent);
 
+export type TripAssessmentStatus =
+  | 'UNAUFFAELLIG'
+  | 'BEOBACHTEN'
+  | 'AUFFAELLIG'
+  | 'KRITISCH'
+  | 'PRUEFHINWEIS'
+  | 'NICHT_BEWERTBAR';
+
+export type TripAssessmentConfidence = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export type TripAssessmentSource =
+  | 'NATIVE_EVENTS'
+  | 'HF_RECONSTRUCTED'
+  | 'STRESS_ONLY'
+  | 'MISUSE_EVIDENCE'
+  | 'MIXED'
+  | 'NO_DATA';
+
+export interface TripAssessment {
+  status: TripAssessmentStatus;
+  label: string;
+  primaryReason: string;
+  confidence: TripAssessmentConfidence;
+  source: TripAssessmentSource;
+  version: string;
+  signals: {
+    behaviorEvents: number;
+    abuseRelevantEvents: number;
+    misuseCases: number;
+    drivingStressScore: number | null;
+    drivingStressLevel: string | null;
+    hasEnoughData: boolean;
+  };
+}
+
 export interface VehicleTripAnalytics {
   id: string;
   vehicleId: string;
@@ -1368,6 +1403,7 @@ export interface VehicleTripAnalytics {
   assignedBookingId?: string | null;
   isPrivateTrip?: boolean;
   scoreEligible?: boolean;
+  tripAssessment?: TripAssessment | null;
   [key: string]: unknown;
 }
 

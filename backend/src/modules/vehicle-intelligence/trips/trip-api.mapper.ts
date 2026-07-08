@@ -4,6 +4,7 @@ import {
   isTripDetailsLimited,
   parseBehaviorSummaryJson,
 } from './trip-analysis-status';
+import type { TripAssessment } from './trip-assessment.types';
 
 /** Strip internal enrichment fields and attach canonical trip analysis API surface. */
 export function mapTripForVehicleApi(
@@ -22,6 +23,7 @@ export function mapTripForVehicleApi(
       events?: Record<string, number | undefined>;
       assignment?: Record<string, unknown>;
     };
+    tripAssessment?: TripAssessment | null;
     drivingScore?: number | null;
   },
 ) {
@@ -75,5 +77,6 @@ export function mapTripForVehicleApi(
       hfPointsCleaned: assessability.hfPointsCleaned ?? behaviorSummary.hfPointsCleaned ?? null,
     },
     ...analysisFields,
+    tripAssessment: trip.tripAssessment ?? null,
   };
 }
