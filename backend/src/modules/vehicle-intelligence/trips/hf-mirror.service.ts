@@ -9,6 +9,7 @@ import type {
 } from '@modules/clickhouse/clickhouse-hf.types';
 import type { HighFrequencyReading } from '../../dimo/dimo-segments.service';
 import type { AbuseEvent, AbuseSeverity } from './hf-abuse';
+import { buildHfWindowSummaries } from './hf-window-producer';
 
 /**
  * HfMirrorService
@@ -51,11 +52,24 @@ export class HfMirrorService {
     vehicleId: string;
     tokenId: number;
     tripId: string;
+    bookingId?: string | null;
     readings: HighFrequencyReading[];
     abuseEvents: AbuseEvent[];
     source?: string;
-  }): Promise<{ mirrored: boolean; pointsInserted: number; eventsInserted: number; reason?: string }> {
-    const noop = (reason: string) => ({ mirrored: false, pointsInserted: 0, eventsInserted: 0, reason });
+  }): Promise<{
+    mirrored: boolean;
+    pointsInserted: number;
+    eventsInserted: number;
+    windowsInserted: number;
+    reason?: string;
+  }> {
+    const noop = (reason: string) => ({
+      mirrored: false,
+      pointsInserted: 0,
+      eventsInserted: 0,
+      windowsInserted: 0,
+      reason,
+    });
 
     try {
       if (!this.isEnabled) return noop('disabled');
@@ -65,6 +79,16 @@ export class HfMirrorService {
       const orgId = params.orgId;
       const source = params.source ?? 'dimo';
 
+      const points = this.toHfPoints({
+        orgId,
+        vehicleId: params.vehicleId,
+        tokenId: params.tokenId,
+        tripId: params.tripId,
+        bookingId: params.bookingId ?? null,
+        source,
+        readings: params.readings,
+      });
+
       // Idempotency: skip points if this trip was already mirrored.
       const alreadyMirrored = await this.clickHouseHf.hasTripHfPoints(
         params.vehicleId,
@@ -72,18 +96,27 @@ export class HfMirrorService {
       );
 
       let pointsInserted = 0;
-      if (!alreadyMirrored) {
-        const points = this.toHfPoints({
-          orgId,
-          vehicleId: params.vehicleId,
-          tokenId: params.tokenId,
-          tripId: params.tripId,
-          source,
-          readings: params.readings,
-        });
-        if (points.length > 0) {
-          await this.clickHouseHf.insertHfPoints(points);
-          pointsInserted = points.length;
+      if (!alreadyMirrored && points.length > 0) {
+        await this.clickHouseHf.insertHfPoints(points);
+        pointsInserted = points.length;
+      }
+
+      // Windows use ReplacingMergeTree keyed by (org, vehicle, window_start, group)
+      // — safe to re-insert on re-enrichment; always built from in-memory points.
+      let windowsInserted = 0;
+      if (points.length > 0) {
+        const windows = buildHfWindowSummaries(
+          {
+            orgId,
+            vehicleId: params.vehicleId,
+            tripId: params.tripId,
+            bookingId: params.bookingId ?? null,
+          },
+          points,
+        );
+        if (windows.length > 0) {
+          await this.clickHouseHf.insertHfWindows(windows);
+          windowsInserted = windows.length;
         }
       }
 
@@ -92,6 +125,7 @@ export class HfMirrorService {
         orgId,
         vehicleId: params.vehicleId,
         tripId: params.tripId,
+        bookingId: params.bookingId ?? null,
         abuseEvents: params.abuseEvents ?? [],
       });
       let eventsInserted = 0;
@@ -101,9 +135,10 @@ export class HfMirrorService {
       }
 
       return {
-        mirrored: pointsInserted > 0 || eventsInserted > 0,
+        mirrored: pointsInserted > 0 || eventsInserted > 0 || windowsInserted > 0,
         pointsInserted,
         eventsInserted,
+        windowsInserted,
         reason: alreadyMirrored ? 'points_already_mirrored' : undefined,
       };
     } catch (err: unknown) {
@@ -121,6 +156,7 @@ export class HfMirrorService {
     vehicleId: string;
     tokenId: number;
     tripId: string;
+    bookingId?: string | null;
     source: string;
     readings: HighFrequencyReading[];
   }): HfSignalPoint[] {
@@ -131,6 +167,7 @@ export class HfMirrorService {
       tokenId: input.tokenId,
       source: input.source,
       tripId: input.tripId,
+      bookingId: input.bookingId ?? null,
       quality: 'normalized' as const,
     };
 
@@ -173,6 +210,7 @@ export class HfMirrorService {
     orgId: string;
     vehicleId: string;
     tripId: string;
+    bookingId?: string | null;
     abuseEvents: AbuseEvent[];
   }): HfDerivedEvent[] {
     return input.abuseEvents.map((e) => ({
@@ -188,6 +226,7 @@ export class HfMirrorService {
       primaryUnit: e.peakValueUnit ?? null,
       evidenceJson: safeJson(e.metadata),
       tripId: input.tripId,
+      bookingId: input.bookingId ?? null,
     }));
   }
 }

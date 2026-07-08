@@ -3302,6 +3302,14 @@ export const api = {
       get<DataAnalyseSignalRow[]>(`/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/signals`),
     highFrequency: (orgId: string, vehicleId: string) =>
       get<DataAnalyseHighFrequency>(`/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/high-frequency`),
+    latestTripSignalQuality: (orgId: string, vehicleId: string) =>
+      get<DataAnalyseSignalQuality>(
+        `/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/signal-quality/latest`,
+      ),
+    tripSignalQuality: (orgId: string, vehicleId: string, tripId: string) =>
+      get<DataAnalyseSignalQuality>(
+        `/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/trips/${tripId}/signal-quality`,
+      ),
     launchFeasibility: (orgId: string, vehicleId: string) =>
       get<DataAnalyseLaunchFeasibilityResult>(`/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/launch-feasibility`),
     healthTrace: (orgId: string, vehicleId: string) =>
@@ -6002,6 +6010,33 @@ export interface DataAnalyseHighFrequency {
   }>;
   /** HF mirror feature-flag status (read-only diagnostic). */
   hfMirrorStatus?: 'enabled' | 'disabled' | 'unknown';
+}
+
+/** Internal debug — read-only trip HF signal quality (not a canonical trip score). */
+export interface DataAnalyseSignalQuality {
+  available: boolean;
+  degraded: boolean;
+  degradedReason?: string | null;
+  overallQuality: 'good' | 'medium' | 'weak' | 'unavailable';
+  hfAvailability: 'hf_available' | 'sparse' | 'missing' | 'unknown';
+  signalCoverage: Array<{
+    signalGroup: string;
+    pointCount: number;
+    windowCount: number;
+  }>;
+  missingKeySignals: string[];
+  detectorFeasibilityHints: Array<{
+    detector: string;
+    status: string;
+    requiredSignals: string[];
+    speedOnly: boolean;
+  }>;
+  windowCount: number;
+  hfPointCount: number;
+  reasons: string[];
+  internalDebug: true;
+  readOnly: true;
+  tripId?: string | null;
 }
 
 export interface DataAnalyseLaunchFeasibilityResult {
