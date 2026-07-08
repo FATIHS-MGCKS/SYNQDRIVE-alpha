@@ -5,6 +5,7 @@ import { DataCard, StatusChip } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
 import { CustomerDocumentUploadBox } from '../CustomerDocumentUploadBox';
 import { CustomerVerificationPanel } from '../customer-verification/CustomerVerificationPanel';
+import { useCustomerVerification } from '../customer-verification/useCustomerVerification';
 import {
   customerVerificationApiToUi,
   customerVerificationUiLabelDe,
@@ -18,8 +19,8 @@ import {
   formatKycLicenseDocumentLabel,
   findPendingKycDocument,
   findPrimaryKycDocument,
+  getMissingUploadSlots,
   hasLegacyDocumentsOnly,
-  kycSlotNeedsUpload,
   licenseVerificationHint,
   resolveDocumentPreviewUrl,
 } from './customerDetailUtils';
@@ -68,6 +69,7 @@ export function CustomerDocumentsTab({
   onReject,
   onVerificationUpdated,
 }: CustomerDocumentsTabProps) {
+  const { eligibility: verificationEligibility } = useCustomerVerification(customerId);
   const idUi = customerVerificationApiToUi(detail?.idVerificationStatus ?? undefined);
   const licenseUi = customerVerificationApiToUi(detail?.licenseVerificationStatus ?? undefined);
   const showLegacy = hasLegacyDocumentsOnly(detail) && kycDocSlots.every((s) => !s.document);
@@ -85,9 +87,12 @@ export function CustomerDocumentsTab({
   const idPendingDoc = findPendingKycDocument(kycDocSlots, [...ID_DOC_TYPES]);
   const licensePendingDoc = findPendingKycDocument(kycDocSlots, [...LICENSE_DOC_TYPES]);
 
-  const missingUploadSlots = kycDocSlots.filter((slot) =>
-    kycSlotNeedsUpload(slot, { replaceLegacy: showLegacy }),
-  );
+  const missingUploadSlots = getMissingUploadSlots({
+    detail,
+    kycDocSlots,
+    replaceLegacy: showLegacy,
+    proofOfAddressEligibility: verificationEligibility?.proofOfAddress,
+  });
 
   const verificationHint = licenseVerificationHint(licenseUi, eligibilityBlockingReasons);
 

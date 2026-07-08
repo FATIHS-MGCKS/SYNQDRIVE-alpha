@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customer-documents-upload-groups-v49242-2026-07-08',
+    version: '4.9.242',
+    title: 'V4.9.242 — Customer Detail Dokumente: gruppenbasierte Upload-Logik',
+    summary: [
+      'Uploadboxen nur noch für wirklich fehlende Slots; verifizierte ID-/FS-Gruppen werden ausgeblendet.',
+      'getMissingUploadSlots: kanonischer Verifikationsstatus (Didit/KYC Read-Model) schließt ganze Dokumentgruppe aus.',
+      'Adressnachweis ausgeblendet bei not_required/verified (Verification-Eligibility) oder verifiziertem Slot.',
+    ],
+    reason:
+      'Bei bereits verifiziertem Ausweis wurden fälschlich noch Uploadboxen für Vorder-/Rückseite angezeigt.',
+    previousBehavior:
+      'kycSlotNeedsUpload pro Slot ohne Gruppenbewertung — ID Uploads trotz idVerificationStatus VERIFIED.',
+    details:
+      'frontend: customerDetailUtils (getMissingUploadSlots, is*DocumentGroupFulfilled), CustomerDocumentsTab. Keine Backend-Änderung.',
+    affectsArchitecture: false,
+    module: 'Customers',
+    createdAt: '2026-07-08T02:20:00.000Z',
+  },
+  {
     id: 'customer-detail-tabbar-polish-v49241-2026-07-08',
     version: '4.9.241',
     title: 'V4.9.241 — Customer Detail: Tab-Bar & Sticky Navigation Feinschliff',
