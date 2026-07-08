@@ -2,7 +2,6 @@ import { StatusChip } from '../../components/patterns';
 import {
   formatStressScore,
   getDataConfidenceLabel,
-  getStressDescription,
   getStressLabel,
   getStressLevel,
   getStressTone,
@@ -49,6 +48,22 @@ const COMPONENT_ROWS: Array<{
   { key: 'highSpeedStressScore', label: 'High-Speed-Belastung' },
   { key: 'thermalBrakeStressScore', label: 'Thermische Bremsbelastung' },
 ];
+
+/** Mechanical vehicle-load copy — not driver judgment. */
+function getMechanicalStressDescription(level: StressLevel | null): string {
+  switch (level) {
+    case 'low':
+      return 'Geringe mechanische Fahrzeugbelastung auf Reifen, Bremsen und Antrieb.';
+    case 'moderate':
+      return 'Moderate Fahrzeugbelastung — Verschleiß im normalen Rahmen.';
+    case 'high':
+      return 'Hohe Fahrzeugbelastung — technische Prüfung bei wiederholtem Auftreten sinnvoll.';
+    case 'critical':
+      return 'Kritische Fahrzeugbelastung — Fahrzeugzustand prüfen.';
+    default:
+      return 'Fahrbelastungs-Score für diese Fahrt nicht verfügbar.';
+  }
+}
 
 function ComponentRow({
   label,
@@ -119,7 +134,7 @@ export function VehicleStressPanel({
           <h4 className="text-[12px] font-semibold text-foreground">{title}</h4>
           {!compact && (
             <p className="max-w-prose text-[11px] leading-relaxed text-muted-foreground">
-              {getStressDescription(levelForDonut)}
+              {getMechanicalStressDescription(levelForDonut)}
             </p>
           )}
           <StatusChip tone={stressToneToStatusTone(display.tone)} dot>

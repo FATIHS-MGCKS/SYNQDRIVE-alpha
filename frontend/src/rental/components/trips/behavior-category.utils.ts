@@ -8,7 +8,7 @@ export const BEHAVIOR_CATEGORY_ORDER: Array<{ key: BehaviorCategoryKey; label: s
   { key: 'ACCELERATION', label: 'Beschleunigung' },
   { key: 'BRAKING', label: 'Bremsen' },
   { key: 'CORNERING', label: 'Kurvenfahrt' },
-  { key: 'ABUSE', label: 'Missbrauch' },
+  { key: 'ABUSE', label: 'Missbrauchsrelevant' },
 ];
 
 export function isCorneringEvent(event: TripBehaviorEvent): boolean {

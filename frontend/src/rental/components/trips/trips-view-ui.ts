@@ -151,19 +151,21 @@ export const RENTAL_COPY = {
   evidenceUnavailable: 'Nicht verfügbar',
   evidenceSummaryTitle: 'Trip Analyse',
   tripAnalysisTitle: 'Trip Analyse',
-  evidenceOverallRating: 'Bewertung',
+  evidenceOverallRating: 'Gesamtbewertung',
   evidenceVehicleStress: 'Fahrbelastung',
-  evidenceDrivingStyle: 'Fahrweise',
-  evidenceMisuseHint: 'Missbrauchsverdacht',
+  evidenceDrivingStyle: 'Fahrverhalten',
+  evidenceReviewHints: 'Prüfhinweise',
+  evidenceMisuseHint: 'Prüfhinweise',
   hfLimited: 'Daten eingeschränkt',
   hfAvailable: 'Telemetrie verfügbar',
   hfPending: 'Datenbasis fehlt',
   routeMatch: 'Routen-Match',
   damageNeutralHint:
     'Kann für Schaden- oder Beschwerdefall relevant sein — keine automatische Schadenszuordnung.',
-  misuseSectionTitle: 'Missbrauchs-/Schadensverdacht',
-  misuseEmptyTitle: 'Unauffällige Fahrt',
-  misuseEmptySubline: 'Keine Hinweise auf Missbrauch oder Schaden für diese Fahrt.',
+  misuseSectionTitle: 'Prüfhinweise',
+  misuseEmptyTitle: 'Keine Prüfhinweise',
+  misuseEmptySubline: 'Für diese Fahrt liegen keine Prüfhinweise vor.',
+  misuseReviewDisclaimer: 'Hinweis zur Prüfung — kein automatisierter Vorwurf.',
 } as const;
 
 export const BEHAVIOR_COPY = {

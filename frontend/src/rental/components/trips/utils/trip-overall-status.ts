@@ -73,7 +73,7 @@ export function tripOverallRatingTone(rating: TripOverallRating): TripOverallBad
 }
 
 export function behaviorStatusShortLabel(status: BehaviorOverallStatus): string {
-  if (status === 'notable') return 'Auffällige Fahrweise';
-  if (status === 'abuse_suspect') return 'Missbrauchsverdacht';
+  if (status === 'notable') return 'Auffälliges Fahrverhalten';
+  if (status === 'abuse_suspect') return 'Prüfhinweis';
   return BEHAVIOR_STATUS_LABEL[status];
 }

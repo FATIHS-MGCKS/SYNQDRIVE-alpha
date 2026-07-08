@@ -17,15 +17,20 @@ function makeTrip(overrides: Partial<TripTimelineTrip> = {}): TripTimelineTrip {
 }
 
 describe('Trips UI cleanup', () => {
-  it('renames the misuse section to "Missbrauchs-/Schadensverdacht"', () => {
-    expect(RENTAL_COPY.misuseSectionTitle).toBe('Missbrauchs-/Schadensverdacht');
+  it('uses neutral Prüfhinweise section title', () => {
+    expect(RENTAL_COPY.misuseSectionTitle).toBe('Prüfhinweise');
   });
 
-  it('provides a calm positive empty state for the misuse section', () => {
-    expect(RENTAL_COPY.misuseEmptyTitle).toBe('Unauffällige Fahrt');
+  it('provides a calm empty state for the review hints section', () => {
+    expect(RENTAL_COPY.misuseEmptyTitle).toBe('Keine Prüfhinweise');
     expect(RENTAL_COPY.misuseEmptySubline).toBe(
-      'Keine Hinweise auf Missbrauch oder Schaden für diese Fahrt.',
+      'Für diese Fahrt liegen keine Prüfhinweise vor.',
     );
+  });
+
+  it('uses Gesamtbewertung and Fahrverhalten labels in Trip Analyse', () => {
+    expect(RENTAL_COPY.evidenceOverallRating).toBe('Gesamtbewertung');
+    expect(RENTAL_COPY.evidenceDrivingStyle).toBe('Fahrverhalten');
   });
 
   it('no longer exposes the "Chronologische Ansicht" eyebrow', () => {

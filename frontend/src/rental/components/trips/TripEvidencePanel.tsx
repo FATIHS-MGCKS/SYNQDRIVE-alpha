@@ -4,19 +4,25 @@ import { RENTAL_COPY } from './trips-view-ui';
 import { assignmentLabel } from './utils/tripLabels';
 import { formatTripDistance, formatTripDuration, formatTripTime } from './utils/tripFormatters';
 import { getStressLabel, resolveDrivingStressScore, getStressLevel } from '../../lib/scoreFormat';
-import { deriveBehaviorOverallStatus } from './behavior-ui.utils';
 import {
-  behaviorStatusShortLabel,
+  deriveDrivingBehaviorLabel,
+  deriveReviewHintSummary,
+  hasReviewHints,
+  resolveGesamtbewertungDisplay,
+} from './behavior-ui.utils';
+import {
   deriveTripOverallRating,
-  TRIP_OVERALL_RATING_LABEL,
   tripAssessmentToOverallRating,
   tripOverallRatingTone,
 } from './utils/trip-overall-status';
-import { hasAbuseSuspicion } from './utils/tripStatus';
 import type { TripBehaviorEvent, TripTimelineTrip } from './timeline.types';
 import type { TripRentalContextView } from './utils/tripRentalContext';
 import { useAddress } from '../../../lib/useAddress';
 import { Icon } from '../ui/Icon';
+import {
+  deriveTripAssessability,
+  hasNativeBehaviorEvents,
+} from './event-context-ui';
 
 interface TripEvidencePanelProps {
   trip: TripTimelineTrip;
@@ -67,16 +73,28 @@ export function TripEvidencePanel({
   rentalContext,
   behaviorEvents,
 }: TripEvidencePanelProps) {
-  const flagged = hasAbuseSuspicion(trip);
   const hasStart = trip.startLatitude != null && trip.startLongitude != null;
   const hasEnd = trip.endLatitude != null && trip.endLongitude != null;
+
+  const assessability = deriveTripAssessability({
+    enrichmentStatus: trip.behaviorEnrichmentStatus,
+    detailsLimited: trip.detailsLimited,
+    behaviorReady: trip.behaviorReady,
+    hasNativeEvents: hasNativeBehaviorEvents(behaviorEvents),
+    analysisAssessability: trip.analysisAssessability ?? null,
+    shortTermMisuseAssessable: trip.shortTermMisuseAssessable,
+  });
+
+  const gesamtbewertung = resolveGesamtbewertungDisplay(trip, behaviorEvents, {
+    assessable: assessability.assessable,
+  });
   const overallRating = trip.tripAssessment
     ? tripAssessmentToOverallRating(trip.tripAssessment.status)
     : deriveTripOverallRating(trip, behaviorEvents);
-  const overallRatingLabel = trip.tripAssessment?.label ?? TRIP_OVERALL_RATING_LABEL[overallRating];
-  const behaviorStatus = trip.tripAssessment
-    ? trip.tripAssessment.label
-    : behaviorStatusShortLabel(deriveBehaviorOverallStatus(trip, behaviorEvents));
+  const drivingBehaviorLabel = deriveDrivingBehaviorLabel(behaviorEvents);
+  const reviewHint = deriveReviewHintSummary(trip, behaviorEvents);
+  const showReviewHints = hasReviewHints(trip, behaviorEvents);
+
   const stressScore = resolveDrivingStressScore(trip);
   const stressLabel =
     stressScore != null
@@ -84,11 +102,7 @@ export function TripEvidencePanel({
       : '—';
 
   return (
-    <div
-      className={`h-full rounded-xl border p-3.5 ${
-        flagged ? 'border-amber-500/20 bg-amber-500/[0.04]' : 'border-border bg-card'
-      }`}
-    >
+    <div className="h-full rounded-xl border border-border bg-card p-3.5">
       <p className="text-[12px] font-semibold text-foreground">{RENTAL_COPY.tripAnalysisTitle}</p>
 
       <div className="mt-3 rounded-lg border border-border/40 bg-card/70 px-3 py-2">
@@ -113,7 +127,7 @@ export function TripEvidencePanel({
         )}
         <EvidenceRow label={RENTAL_COPY.evidenceOverallRating}>
           <TripStatusBadge
-            label={overallRatingLabel}
+            label={gesamtbewertung.label}
             tone={tripOverallRatingTone(overallRating)}
           />
         </EvidenceRow>
@@ -121,11 +135,11 @@ export function TripEvidencePanel({
           {stressLabel}
         </EvidenceRow>
         <EvidenceRow label={RENTAL_COPY.evidenceDrivingStyle}>
-          {behaviorStatus}
+          {drivingBehaviorLabel}
         </EvidenceRow>
-        {flagged && (
-          <EvidenceRow label={RENTAL_COPY.evidenceMisuseHint}>
-            <span className="text-amber-700 dark:text-amber-400">Verdacht vorhanden</span>
+        {showReviewHints && (
+          <EvidenceRow label={RENTAL_COPY.evidenceReviewHints}>
+            <span className="text-amber-700 dark:text-amber-400">{reviewHint}</span>
           </EvidenceRow>
         )}
         <EvidenceRow label={RENTAL_COPY.evidenceAssignment}>{assignmentLabel(trip)}</EvidenceRow>

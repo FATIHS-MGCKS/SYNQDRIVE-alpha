@@ -14,6 +14,7 @@ import {
   evidenceGradeLabel,
   reasonCodeLabel,
 } from './trips/event-context-ui';
+import { RENTAL_COPY } from './trips/trips-view-ui';
 
 export type MisuseCaseRecord = {
   id: string;
@@ -317,7 +318,7 @@ function issueForCase(
       )}
       {embedded && (
         <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
-          Hinweis zur Prüfung — kein automatisierter Vorwurf.
+          {RENTAL_COPY.misuseReviewDisclaimer}
         </p>
       )}
     </div>
@@ -330,7 +331,7 @@ export function MisuseCasesPanel({
   tripId,
   bookingId,
   customerId,
-  title = 'Missbrauchs-/Schadensverdacht',
+  title = 'Prüfhinweise',
   emptyTitle,
   emptyDescription,
   compact = false,
@@ -446,7 +447,7 @@ export function MisuseCasesPanel({
           {title}
         </h3>
         <p className="text-[10px] text-muted-foreground">
-          {issues.length === 1 ? '1 Verdacht erkannt' : `${issues.length} Hinweise erkannt`}
+          {issues.length === 1 ? '1 Prüfhinweis' : `${issues.length} Prüfhinweise`}
           {criticalCount > 0 ? ` · ${criticalCount} mit Schadensbezug` : ''}
         </p>
       </div>

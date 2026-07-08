@@ -4,7 +4,11 @@ import { MisuseCasesPanel } from '../MisuseCasesPanel';
 import { VehicleStressPanel } from '../VehicleStressPanel';
 import { getStressLevel, resolveDrivingStressScore } from '../../lib/scoreFormat';
 import { TripBehaviorPanel } from './TripBehaviorPanel';
-import { hasNativeBehaviorEvents } from './event-context-ui';
+import {
+  deriveTripAssessability,
+  hasNativeBehaviorEvents,
+} from './event-context-ui';
+import { resolveGesamtbewertungDisplay } from './behavior-ui.utils';
 import { resolveBehaviorEventCount } from './trip-assessment-copy';
 import { TripEvidencePanel } from './TripEvidencePanel';
 import { TripDeviceConnectionEvidence } from './TripDeviceConnectionEvidence';
@@ -107,6 +111,18 @@ export function TripTimelineExpanded({
     ? 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all bg-brand-soft text-brand hover:bg-brand-soft/80'
     : 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-semibold transition-all bg-status-info-soft text-status-info hover:bg-status-info-soft/80';
 
+  const assessability = deriveTripAssessability({
+    enrichmentStatus: trip.behaviorEnrichmentStatus,
+    detailsLimited: trip.detailsLimited,
+    behaviorReady: trip.behaviorReady,
+    hasNativeEvents: hasNativeBehaviorEvents(behaviorEvents),
+    analysisAssessability: trip.analysisAssessability ?? null,
+    shortTermMisuseAssessable: trip.shortTermMisuseAssessable,
+  });
+  const gesamtbewertung = resolveGesamtbewertungDisplay(trip, behaviorEvents, {
+    assessable: assessability.assessable,
+  });
+
   return (
     <div className="px-4 pb-4 pt-0" onClick={(e) => e.stopPropagation()}>
       <div className="space-y-5 border-t border-border/40 pt-4">
@@ -131,19 +147,21 @@ export function TripTimelineExpanded({
           </p>
         )}
 
-        {trip.tripAssessment && (
-          <div className="rounded-xl border border-border/60 bg-muted/20 px-3.5 py-3">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Gesamtbewertung
+        <div className="rounded-xl border border-border/60 bg-muted/20 px-3.5 py-3">
+          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            Gesamtbewertung
+          </p>
+          <p className="mt-1 text-[13px] font-semibold tracking-[-0.02em] text-foreground">
+            {gesamtbewertung.label}
+          </p>
+          {gesamtbewertung.primaryReason ? (
+            <p className="mt-0.5 text-[11px] text-muted-foreground">{gesamtbewertung.primaryReason}</p>
+          ) : !gesamtbewertung.fromBackend ? (
+            <p className="mt-0.5 text-[10px] text-muted-foreground/80">
+              Vorläufige Anzeige — Gesamtbewertung wird nach Detail-Laden aktualisiert.
             </p>
-            <p className="mt-1 text-[13px] font-semibold tracking-[-0.02em] text-foreground">
-              {trip.tripAssessment.label}
-            </p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">
-              {trip.tripAssessment.primaryReason}
-            </p>
-          </div>
-        )}
+          ) : null}
+        </div>
 
         {(canReloadRoute || canCenterRoute || canAnalyzeBehavior) && (
           <div className="flex flex-wrap gap-2">

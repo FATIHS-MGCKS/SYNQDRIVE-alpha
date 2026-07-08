@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-assessment-ui-phase2-v49249-2026-07-08',
+    version: '4.9.249',
+    title: 'V4.9.249 — Trip Detail: Gesamtbewertung, Fahrbelastung, Fahrverhalten, Prüfhinweise',
+    summary: [
+      'Vier Ebenen im Trip Detail klar getrennt: Gesamtbewertung, Fahrbelastung, Fahrverhalten, Prüfhinweise.',
+      '„Bewertung“/„Fahrweise“/„Missbrauchsverdacht“ durch präzise Begriffe ersetzt; tripAssessment bevorzugt.',
+      'Fahrbelastung mechanisch erklärt; Prüfhinweise mit Disclaimer „kein automatisierter Vorwurf“.',
+      'Trip Analyse Card: Gesamtbewertung + Fahrverhalten ohne doppelte Aussagen.',
+    ],
+    reason: 'Phase 2 der Trip-Bewertungs-Finalisierung — UI-Semantik und Begriffsklarheit.',
+    previousBehavior:
+      'Vermischte Labels (Bewertung, Fahrweise, Missbrauchs-/Schadensverdacht); Gesamtbewertung teils aus Frontend abgeleitet.',
+    details:
+      'TripTimelineExpanded, TripBehaviorSummary, TripEvidencePanel, VehicleStressPanel, MisuseCasesPanel, behavior-ui.utils.',
+    affectsArchitecture: false,
+    module: 'Trips',
+    createdAt: '2026-07-08T04:35:00.000Z',
+  },
+  {
     id: 'trip-assessment-phase1-v49248-2026-07-08',
     version: '4.9.248',
     title: 'V4.9.248 — Trip Gesamtbewertung: kanonische Backend-Wahrheit (Phase 1)',

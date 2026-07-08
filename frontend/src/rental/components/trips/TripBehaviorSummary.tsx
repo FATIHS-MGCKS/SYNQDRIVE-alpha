@@ -1,11 +1,10 @@
 import type { TripBehaviorEvent } from './timeline.types';
 import type { TripTimelineTrip } from './timeline.types';
 import {
-  BEHAVIOR_STATUS_LABEL,
   countCriticalEvents,
-  deriveBehaviorOverallStatus,
-  findSeverestEvent,
+  deriveDrivingBehaviorLabel,
   eventTypeLabel,
+  findSeverestEvent,
 } from './behavior-ui.utils';
 import {
   deriveTripAssessability,
@@ -30,27 +29,15 @@ export function TripBehaviorSummary({ trip, events }: TripBehaviorSummaryProps) 
     shortTermMisuseAssessable: trip.shortTermMisuseAssessable,
   });
 
-  const overall = trip.tripAssessment
-    ? null
-    : deriveBehaviorOverallStatus(trip, events, {
-        assessable: assessability.assessable,
-      });
+  const behaviorLabel = deriveDrivingBehaviorLabel(events);
   const eventCountLabel = formatBehaviorEventCountLabel(events, trip);
   const criticalCount = countCriticalEvents(events);
   const severest = findSeverestEvent(events);
-
-  const title = trip.tripAssessment?.label ?? (overall ? BEHAVIOR_STATUS_LABEL[overall] : '—');
-  const primaryReason = trip.tripAssessment?.primaryReason ?? null;
   const severestLabel = severest ? eventTypeLabel(severest) : null;
-  const showSeverest = !trip.tripAssessment && severestLabel != null && severestLabel !== title;
-
-  const metaParts = [
-    eventCountLabel,
-    criticalCount > 0 ? `${criticalCount} kritisch` : null,
-  ].filter(Boolean);
 
   const isNotAssessable =
-    trip.tripAssessment?.status === 'NICHT_BEWERTBAR' || overall === 'not_assessable';
+    trip.tripAssessment?.status === 'NICHT_BEWERTBAR' ||
+    (events.length === 0 && assessability.assessable === false);
 
   return (
     <div
@@ -61,22 +48,19 @@ export function TripBehaviorSummary({ trip, events }: TripBehaviorSummaryProps) 
       }`}
     >
       <div className="space-y-1">
-        <p className="text-[13px] font-semibold tracking-[-0.02em] text-foreground">{title}</p>
-        {primaryReason ? (
-          <p className="text-[11px] text-muted-foreground">{primaryReason}</p>
-        ) : (
-          <p className="text-[11px] tabular-nums text-muted-foreground">{metaParts.join(' · ')}</p>
-        )}
+        <p className="text-[13px] font-semibold tracking-[-0.02em] text-foreground">{behaviorLabel}</p>
+        <p className="text-[11px] tabular-nums text-muted-foreground">{eventCountLabel}</p>
 
         {isNotAssessable ? (
           <div className="space-y-0.5">
             <p className="text-[10px] text-amber-700 dark:text-amber-400">{assessability.note}</p>
           </div>
         ) : (
-          showSeverest && (
+          severestLabel != null && (
             <p className="text-[10px] text-muted-foreground">
               Schwerstes Ereignis:{' '}
               <span className="font-medium text-foreground">{severestLabel}</span>
+              {criticalCount > 0 ? ` · ${criticalCount} kritisch` : ''}
             </p>
           )
         )}
