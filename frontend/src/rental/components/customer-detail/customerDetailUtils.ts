@@ -684,6 +684,16 @@ export function mapTimelineEventToUserSummary(event: TimelineEventLike): Timelin
   }
 
   if (type === 'UPDATED') {
+    const metadata = event.metadata as Record<string, unknown> | undefined;
+    if (metadata?.eventKind === 'VERIFICATION_PLAN_SELECTED') {
+      return {
+        chipLabel: 'Verifikation',
+        chipTone: 'neutral',
+        userTitle: rawTitle || 'Verifikationsweg festgelegt',
+        userDescription: rawDescription || 'Prüfweg für Dokumente wurde festgelegt.',
+        timestamp,
+      };
+    }
     const lowered = rawTitle.toLowerCase();
     if (lowered.includes('dokumentenprüfung') || lowered.includes('prüfung')) {
       return {

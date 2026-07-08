@@ -4,6 +4,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { DriverScoreService } from '../vehicle-intelligence/trips/driver-score.service';
 import { CustomerTimelineService } from './customer-timeline.service';
 import { CustomerEligibilityService } from './customer-eligibility.service';
+import { CustomerVerificationService } from '@modules/customer-verification/customer-verification.service';
 
 describe('CustomersService', () => {
   const prisma = {
@@ -30,11 +31,16 @@ describe('CustomersService', () => {
 
   const eligibility = {} as CustomerEligibilityService;
 
+  const customerVerification = {
+    applyVerificationPlanFromCreate: jest.fn().mockResolvedValue({ checks: [] }),
+  } as unknown as CustomerVerificationService;
+
   const service = new CustomersService(
     prisma,
     driverScoreService,
     timeline,
     eligibility,
+    customerVerification,
   );
 
   beforeEach(() => {
@@ -63,6 +69,7 @@ describe('CustomersService', () => {
       }),
     );
     expect(result.riskLevel).toBe('NOT_ASSESSED');
+    expect(customerVerification.applyVerificationPlanFromCreate).toHaveBeenCalled();
   });
 
   it('rejects hard duplicate email without override', async () => {

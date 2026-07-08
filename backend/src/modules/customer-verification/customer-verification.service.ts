@@ -14,11 +14,19 @@ import {
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { CustomerVerificationPlanDto } from '@modules/customers/dto/verification-plan.dto';
 import { CustomerVerificationReadModelService } from './customer-verification-read-model.service';
 import { ManualPickupCheckDto } from './dto/manual-pickup-check.dto';
 import { StartDiditSessionDto } from './dto/start-didit-session.dto';
 import { DiditService } from './providers/didit/didit.service';
 import { parseIsoDate } from './providers/didit/didit-decision.parser';
+import {
+  buildVerificationPlanDescription,
+  kindForPlanDomain,
+  mergeVerificationPlan,
+  ResolvedVerificationPlan,
+  VerificationPlanDecisionJson,
+} from './types/customer-verification-plan.types';
 import {
   CustomerVerificationEligibilityStatus,
   NormalizedDiditDecision,
@@ -274,12 +282,9 @@ export class CustomerVerificationService {
 
     const canConfirmBooking =
       confirmBlockingReasons.length === 0 &&
-      (!policy.requireVerifiedIdForConfirmedBooking ||
-        idDocument === 'verified' ||
-        idDocument === 'pickup_required') &&
+      (!policy.requireVerifiedIdForConfirmedBooking || idDocument === 'verified') &&
       (!policy.requireVerifiedLicenseForConfirmedBooking ||
-        drivingLicense === 'verified' ||
-        drivingLicense === 'pickup_required');
+        drivingLicense === 'verified');
 
     const pickupBlockingReasons: string[] = [];
     if (policy.requireVerifiedIdForPickup && idDocument !== 'verified') {
@@ -520,6 +525,132 @@ export class CustomerVerificationService {
     );
   }
 
+  /**
+   * Documents the operator-selected verification strategy at customer create.
+   * CustomerVerificationCheck is the canonical record — no read-model verification is set.
+   */
+  async applyVerificationPlanFromCreate(params: {
+    organizationId: string;
+    customerId: string;
+    plan?: CustomerVerificationPlanDto;
+    userId?: string | null;
+  }): Promise<{ checks: CustomerVerificationCheck[] }> {
+    const { organizationId, customerId, plan, userId } = params;
+    await this.assertCustomerInOrg(organizationId, customerId);
+
+    const policy = await this.getOrCreatePolicy(organizationId);
+    const resolved = mergeVerificationPlan(plan, policy);
+    const now = new Date();
+    const selectedAt = now.toISOString();
+
+    const existingChecks = await this.prisma.customerVerificationCheck.findMany({
+      where: { organizationId, customerId },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    const checks: CustomerVerificationCheck[] = [];
+    const authUser: AuthUser = { id: userId ?? 'system', organizationId };
+
+    const domains: Array<{
+      domain: keyof ResolvedVerificationPlan;
+      method: string;
+      note?: string;
+      skip?: boolean;
+    }> = [
+      {
+        domain: 'idDocument',
+        method: resolved.idDocument.method,
+        note: resolved.idDocument.note,
+      },
+      {
+        domain: 'drivingLicense',
+        method: resolved.drivingLicense.method,
+        note: resolved.drivingLicense.note,
+      },
+      {
+        domain: 'proofOfAddress',
+        method: resolved.proofOfAddress.method,
+        note: resolved.proofOfAddress.note,
+        skip: resolved.proofOfAddress.method === 'NOT_REQUIRED',
+      },
+    ];
+
+    for (const entry of domains) {
+      if (entry.skip || entry.domain === 'autoStartDidit') continue;
+
+      const kind = kindForPlanDomain(
+        entry.domain as 'idDocument' | 'drivingLicense' | 'proofOfAddress',
+      );
+
+      if (this.hasCreateCustomerPlanCheck(existingChecks, kind)) {
+        const existing = existingChecks.find(
+          (c) =>
+            c.kind === kind && this.isCreateCustomerPlanCheck(c),
+        );
+        if (existing) checks.push(existing);
+        continue;
+      }
+
+      const decisionBase: VerificationPlanDecisionJson = {
+        selectedAt,
+        selectedBy: userId ?? null,
+        source: 'CREATE_CUSTOMER',
+        method: entry.method,
+        note: entry.note?.trim() || null,
+      };
+
+      if (entry.method === 'DIDIT' && resolved.autoStartDidit) {
+        const session = await this.startDiditSession(authUser, {
+          customerId,
+          kind,
+        });
+        const started = await this.prisma.customerVerificationCheck.update({
+          where: { id: session.checkId },
+          data: {
+            decisionJson: {
+              ...decisionBase,
+              autoStarted: true,
+            } as Prisma.InputJsonValue,
+          },
+        });
+        checks.push(started);
+        continue;
+      }
+
+      const { provider, status, decisionJson } = this.mapPlanMethodToCheck(
+        entry.method,
+        decisionBase,
+      );
+
+      const created = await this.prisma.customerVerificationCheck.create({
+        data: {
+          organizationId,
+          customerId,
+          provider,
+          kind,
+          status,
+          decisionJson: decisionJson as Prisma.InputJsonValue,
+          checkedByUserId: entry.method === 'MANUAL' ? userId ?? null : null,
+          startedAt: now,
+        },
+      });
+      checks.push(created);
+    }
+
+    if (checks.length > 0) {
+      await this.syncCustomerReadModel(organizationId, customerId);
+      await this.logVerificationPlanTimeline(
+        organizationId,
+        customerId,
+        resolved,
+        checks.map((c) => c.id),
+        userId,
+      );
+    }
+
+    return { checks };
+  }
+
   normalizeVerificationStatus(
     customerStatus: import('@prisma/client').CustomerVerificationStatus,
     options: {
@@ -538,6 +669,86 @@ export class CustomerVerificationService {
     if (!seen) return 'REJECTED';
     if (fields.every(Boolean)) return 'VERIFIED';
     return 'REQUIRES_REVIEW';
+  }
+
+  private mapPlanMethodToCheck(
+    method: string,
+    decisionBase: VerificationPlanDecisionJson,
+  ): {
+    provider: CustomerVerificationProvider;
+    status: CustomerVerificationCheckStatus;
+    decisionJson: VerificationPlanDecisionJson;
+  } {
+    switch (method) {
+      case 'DIDIT':
+        return {
+          provider: CustomerVerificationProvider.DIDIT,
+          status: 'NOT_STARTED',
+          decisionJson: decisionBase,
+        };
+      case 'PICKUP':
+        return {
+          provider: CustomerVerificationProvider.MANUAL,
+          status: 'NOT_STARTED',
+          decisionJson: { ...decisionBase, plannedFor: 'PICKUP' },
+        };
+      case 'DEFERRED':
+        return {
+          provider: CustomerVerificationProvider.MANUAL,
+          status: 'NOT_STARTED',
+          decisionJson: decisionBase,
+        };
+      case 'MANUAL':
+      default:
+        return {
+          provider: CustomerVerificationProvider.MANUAL,
+          status: 'NOT_STARTED',
+          decisionJson: decisionBase,
+        };
+    }
+  }
+
+  private isCreateCustomerPlanCheck(check: CustomerVerificationCheck): boolean {
+    if (!check.decisionJson || typeof check.decisionJson !== 'object' || Array.isArray(check.decisionJson)) {
+      return false;
+    }
+    return (check.decisionJson as Record<string, unknown>).source === 'CREATE_CUSTOMER';
+  }
+
+  private hasCreateCustomerPlanCheck(
+    checks: CustomerVerificationCheck[],
+    kind: CustomerVerificationCheckKind,
+  ): boolean {
+    return checks.some((c) => c.kind === kind && this.isCreateCustomerPlanCheck(c));
+  }
+
+  private async logVerificationPlanTimeline(
+    organizationId: string,
+    customerId: string,
+    plan: ResolvedVerificationPlan,
+    checkIds: string[],
+    userId?: string | null,
+  ): Promise<void> {
+    await this.prisma.customerTimelineEvent.create({
+      data: {
+        organizationId,
+        customerId,
+        type: 'UPDATED',
+        title: 'Verifikationsweg festgelegt',
+        description: buildVerificationPlanDescription(plan),
+        metadata: {
+          eventKind: 'VERIFICATION_PLAN_SELECTED',
+          verificationCheckIds: checkIds,
+          verificationPlan: {
+            idDocument: plan.idDocument.method,
+            drivingLicense: plan.drivingLicense.method,
+            proofOfAddress: plan.proofOfAddress.method,
+            autoStartDidit: plan.autoStartDidit,
+          },
+        },
+        createdByUserId: userId ?? null,
+      },
+    });
   }
 
   private async findCheckByIdOrSession(

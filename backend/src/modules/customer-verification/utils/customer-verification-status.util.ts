@@ -160,6 +160,16 @@ export function normalizeInFlightCheckStatus(
   }
 }
 
+export function getPlannedVerificationMethod(
+  check: CustomerVerificationCheck | null,
+): string | null {
+  if (!check?.decisionJson || typeof check.decisionJson !== 'object' || Array.isArray(check.decisionJson)) {
+    return null;
+  }
+  const method = (check.decisionJson as Record<string, unknown>).method;
+  return typeof method === 'string' ? method : null;
+}
+
 export function resolveDocumentEligibilityStatus(
   kind: CustomerVerificationCheckKind,
   latestCheck: CustomerVerificationCheck | null,
@@ -170,9 +180,18 @@ export function resolveDocumentEligibilityStatus(
     hasAnySubmission: boolean;
   },
 ): DocumentEligibilityStatus {
+  const plannedMethod = getPlannedVerificationMethod(latestCheck);
   const fromCheck = normalizeInFlightCheckStatus(latestCheck);
   if (fromCheck === 'verified' || fromCheck === 'rejected' || fromCheck === 'expired') {
     return fromCheck;
+  }
+
+  if (plannedMethod === 'PICKUP') {
+    return 'pickup_required';
+  }
+
+  if (plannedMethod === 'DEFERRED') {
+    return options.requireForConfirm ? 'pending' : 'missing';
   }
 
   const merged = mergeKindCustomerStatus(latestCheck, documentStatus);

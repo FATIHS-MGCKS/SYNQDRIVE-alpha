@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customer-verification-plan-v49244-2026-07-08',
+    version: '4.9.244',
+    title: 'V4.9.244 — Kundenanlage: Verifikationsweg pro Dokumentart',
+    summary: [
+      'CreateCustomerDto.verificationPlan: Operator wählt Prüfweg für Ausweis, Führerschein und Adressnachweis.',
+      'CustomerVerificationService.applyVerificationPlanFromCreate erzeugt CustomerVerificationCheck je Domain (kanonisch, kein Fake-Verified).',
+      'PICKUP/DEFERRED/DIDIT/MANUAL in decisionJson (source CREATE_CUSTOMER); Timeline „Verifikationsweg festgelegt“.',
+      'Frontend: AddCustomerVerificationPlanSection in CustomersView + NewBookingView Wizard Schritt ID/FS.',
+      'Confirm-Gate: pickup_required zählt nur wenn Policy Confirm nicht verifizierten FS verlangt.',
+    ],
+    reason:
+      'Bei Kundenanlage fehlte die dokumentierte Entscheidung, wie Ausweis, Führerschein und Adressnachweis geprüft werden sollen.',
+    previousBehavior:
+      'POST /customers legte nur Kundendaten an; keine CustomerVerificationCheck-Planung; Operator-Auswahl nur implizit über spätere Uploads/Didit.',
+    details:
+      'backend: verification-plan.dto, customer-verification-plan.types, customer-verification.service (applyVerificationPlanFromCreate), customers.service, customer-verification-status.util (PICKUP/DEFERRED aus decisionJson). frontend: AddCustomerVerificationPlanSection, add-customer-wizard, entityMappers, CustomersView, NewBookingView/CustomerStep, customerDetailUtils timeline mapping.',
+    affectsArchitecture: true,
+    module: 'Customers',
+    createdAt: '2026-07-08T03:00:00.000Z',
+  },
+  {
     id: 'customer-eligibility-stages-v49243-2026-07-08',
     version: '4.9.243',
     title: 'V4.9.243 — Customer Eligibility: stufenbasierte Mietfreigabe',
