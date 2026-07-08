@@ -123,4 +123,25 @@ describe('HfMirrorService', () => {
     expect(res.mirrored).toBe(false);
     expect(res.reason).toBe('error');
   });
+
+  it('mirrors extended evidence fields when present on readings', async () => {
+    process.env.HF_MIRROR_ENABLED = 'true';
+    const hf = makeHf();
+    const svc = new HfMirrorService(hf);
+    await svc.mirrorTripHf({
+      ...baseParams,
+      readings: [
+        makeReading({
+          socPercent: 80,
+          odometerKm: 1000,
+          exteriorAirTempC: 12,
+        }),
+      ],
+    });
+    const points = (hf.insertHfPoints as jest.Mock).mock.calls[0][0];
+    const names = points.map((p: { signalName: string }) => p.signalName);
+    expect(names).toContain('powertrainTractionBatteryStateOfChargeCurrent');
+    expect(names).toContain('powertrainTransmissionTravelledDistance');
+    expect(names).toContain('exteriorAirTemperature');
+  });
 });

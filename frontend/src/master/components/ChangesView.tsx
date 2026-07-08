@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'hf-mirror-extended-signals-v49260-2026-07-08',
+    version: '4.9.260',
+    title: 'V4.9.260 — HF Mirror: erweiterte Signalgruppen (Evidence only)',
+    summary: [
+      'HF post-trip query + mirror: GPS, SOC/range/voltage, tires, environment, odometer, ignition, charging (wenn DIMO liefert).',
+      'GPS-Downsampling 30s; Tire-Dedupe bei identischen Werten — kein Datenflut.',
+      'hf-mirror-signals.ts pure builder; hf-signal-map erweitert. Keine Brake/Health-Wahrheit.',
+    ],
+    reason:
+      'Breitere HF-Evidence in ClickHouse für Analyse/Debug ohne PostgreSQL-Scores oder Health-Module zu duplizieren.',
+    previousBehavior:
+      'Nur speed, RPM, ECT, throttle, load, traction power gespiegelt.',
+    details:
+      'high-frequency.query.ts, HighFrequencyReading, fetchHighFrequency, hf-mirror-signals.ts, hf-signal-map.ts. Tests: hf-mirror-signals.spec, hf-signal-map.spec.',
+    affectsArchitecture: true,
+    module: 'ClickHouse',
+    createdAt: '2026-07-08T14:25:00.000Z',
+  },
+  {
     id: 'dimo-obd-webhook-unplug-only-v49254-2026-07-08',
     version: '4.9.254',
     title: 'V4.9.254 — DIMO OBD: nur Unplug-Webhook, Plug-in über Snapshots (Ops)',
