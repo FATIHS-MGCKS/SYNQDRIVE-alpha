@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-detail-ch-evidence-v49262-2026-07-08',
+    version: '4.9.262',
+    title: 'V4.9.262 — Trip Detail: read-only ClickHouse Evidence',
+    summary: [
+      'TripEvidenceReadService aggregiert CH-Snapshot/HF/Signalqualität read-only.',
+      'GET /vehicles/:id/trips/:tripId liefert optional `clickhouseEvidence` (backward-compatible).',
+      'Trip Detail: dezenter Evidence-Block — keine Score-Änderung, degraded bei CH-Ausfall.',
+    ],
+    reason:
+      'Produktive Evidence gehört ins Trip Detail; ClickHouse bleibt Analytics-Mirror, PostgreSQL bleibt Bewertungswahrheit.',
+    previousBehavior:
+      'ClickHouse-Signalqualität nur über Data Analyse erreichbar; Trip Detail ohne CH-Evidence-Kontext.',
+    details:
+      'Backend: trip-evidence-read.service.ts, trip-evidence-read-model.ts, ClickHouseHfService countTripHfEvents/getTripLastEvidenceAt, vehicle-intelligence.controller getTripById. Frontend: TripClickHouseEvidenceBlock, trip-evidence-ui.ts, TripEvidencePanel, api.ts TripClickHouseEvidence type.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-08T15:00:00.000Z',
+  },
+  {
     id: 'hf-windows-signal-quality-v49261-2026-07-08',
     version: '4.9.261',
     title: 'V4.9.261 — HF Windows Producer + read-only Signal Quality (ClickHouse evidence)',

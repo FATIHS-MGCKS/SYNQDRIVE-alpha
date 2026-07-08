@@ -5,6 +5,7 @@ import { ClickHouseAnalyticsService } from './clickhouse-analytics.service';
 import { ClickHouseSchemaService } from './clickhouse-schema.service';
 import { ClickHouseHfService } from './clickhouse-hf.service';
 import { SignalQualityReadService } from './signal-quality-read.service';
+import { TripEvidenceReadService } from './trip-evidence-read.service';
 
 /**
  * ClickHouseModule
@@ -24,6 +25,7 @@ import { SignalQualityReadService } from './signal-quality-read.service';
     ClickHouseSchemaService,
     ClickHouseHfService,
     SignalQualityReadService,
+    TripEvidenceReadService,
   ],
   exports: [
     ClickHouseService,
@@ -31,6 +33,7 @@ import { SignalQualityReadService } from './signal-quality-read.service';
     ClickHouseAnalyticsService,
     ClickHouseHfService,
     SignalQualityReadService,
+    TripEvidenceReadService,
     // ClickHouseSchemaService is not exported — it only needs to run on init
   ],
 })

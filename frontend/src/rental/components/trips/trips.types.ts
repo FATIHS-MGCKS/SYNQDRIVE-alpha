@@ -82,6 +82,8 @@ export interface TripTimelineTrip {
   bookingLinkSource?: 'EXPLICIT' | 'TIME_WINDOW' | null;
   tripAttribution?: import('../../../lib/api').TripAttribution | null;
   tripAssessment?: TripAssessment | null;
+  /** Read-only ClickHouse evidence mirror — not canonical scores. */
+  clickhouseEvidence?: TripClickHouseEvidence | null;
 }
 
 /** Full trip record including optional analytics fields from the API. */

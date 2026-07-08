@@ -290,6 +290,63 @@ export class ClickHouseHfService {
     }
   }
 
+  /** HF derived event count for a trip. Degrades to 0. */
+  async countTripHfEvents(vehicleId: string, tripId: string): Promise<number> {
+    if (!this.ch.isAvailable) return 0;
+    try {
+      const result = await this.ch.getClient().query({
+        query: `
+          SELECT count() AS cnt
+          FROM ${HF_EVENTS_TABLE} FINAL
+          WHERE vehicle_id = {vehicleId: String}
+            AND trip_id = {tripId: String}
+        `,
+        query_params: { vehicleId, tripId },
+        format: 'JSONEachRow',
+        clickhouse_settings: { max_execution_time: 10 },
+      });
+      const [row] = await result.json<{ cnt: string | number }>();
+      return Number(row?.cnt ?? 0);
+    } catch (err: unknown) {
+      this.logger.warn(`countTripHfEvents failed: ${(err as Error).message}`);
+      return 0;
+    }
+  }
+
+  /** Latest mirrored HF timestamp for a trip (points or events). */
+  async getTripLastEvidenceAt(
+    vehicleId: string,
+    tripId: string,
+  ): Promise<string | null> {
+    if (!this.ch.isAvailable) return null;
+    try {
+      const result = await this.ch.getClient().query({
+        query: `
+          SELECT max(ts) AS latest_at
+          FROM (
+            SELECT max(recorded_at) AS ts
+            FROM ${HF_POINTS_TABLE}
+            WHERE vehicle_id = {vehicleId: String}
+              AND trip_id = {tripId: String}
+            UNION ALL
+            SELECT max(event_start) AS ts
+            FROM ${HF_EVENTS_TABLE}
+            WHERE vehicle_id = {vehicleId: String}
+              AND trip_id = {tripId: String}
+          )
+        `,
+        query_params: { vehicleId, tripId },
+        format: 'JSONEachRow',
+        clickhouse_settings: { max_execution_time: 10 },
+      });
+      const [row] = await result.json<{ latest_at: string | null }>();
+      return parseChUtc(row?.latest_at);
+    } catch (err: unknown) {
+      this.logger.warn(`getTripLastEvidenceAt failed: ${(err as Error).message}`);
+      return null;
+    }
+  }
+
   /** Read deduplicated HF windows for a trip. Degrades gracefully. */
   async getTripHfWindows(
     vehicleId: string,

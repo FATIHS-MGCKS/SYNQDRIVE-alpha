@@ -1473,7 +1473,40 @@ export interface VehicleTripAnalytics {
   scoreEligible?: boolean;
   tripAttribution?: TripAttribution | null;
   tripAssessment?: TripAssessment | null;
+  clickhouseEvidence?: TripClickHouseEvidence | null;
   [key: string]: unknown;
+}
+
+/** Read-only ClickHouse trip evidence — analytics mirror, not canonical scores. */
+export interface TripClickHouseEvidence {
+  evidenceAvailable: boolean;
+  clickhouseStatus: 'available' | 'degraded' | 'unavailable' | 'mirror_disabled';
+  readOnly: true;
+  signalQuality: 'good' | 'medium' | 'weak' | 'unavailable';
+  hfAvailability: 'hf_available' | 'sparse' | 'missing' | 'unknown';
+  snapshotSampleCount: number | null;
+  hfPointCount: number;
+  hfEventCount: number;
+  hfWindowCount: number;
+  gpsCoverage: 'available' | 'sparse' | 'missing';
+  signalAvailability: {
+    rpm: boolean;
+    throttle: boolean;
+    engineLoad: boolean;
+    coolant: boolean;
+    tractionPower: boolean;
+  };
+  missingSignals: string[];
+  evidenceSummary: string[];
+  detectorFeasibility: Array<{
+    detector: string;
+    status: string;
+    requiredSignals: string[];
+    speedOnly: boolean;
+  }>;
+  lastEvidenceAt: string | null;
+  degraded: boolean;
+  debugReason?: string | null;
 }
 
 export interface VehicleTripStats {
