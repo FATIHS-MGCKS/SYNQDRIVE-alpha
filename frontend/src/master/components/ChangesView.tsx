@@ -35,6 +35,44 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-detail-ch-evidence-v49262-2026-07-08',
+    version: '4.9.262',
+    title: 'V4.9.262 — Trip Detail: read-only ClickHouse Evidence',
+    summary: [
+      'TripEvidenceReadService aggregiert CH-Snapshot/HF/Signalqualität read-only.',
+      'GET /vehicles/:id/trips/:tripId liefert optional `clickhouseEvidence` (backward-compatible).',
+      'Trip Detail: dezenter Evidence-Block — keine Score-Änderung, degraded bei CH-Ausfall.',
+    ],
+    reason:
+      'Produktive Evidence gehört ins Trip Detail; ClickHouse bleibt Analytics-Mirror, PostgreSQL bleibt Bewertungswahrheit.',
+    previousBehavior:
+      'ClickHouse-Signalqualität nur über Data Analyse erreichbar; Trip Detail ohne CH-Evidence-Kontext.',
+    details:
+      'Backend: trip-evidence-read.service.ts, trip-evidence-read-model.ts, ClickHouseHfService countTripHfEvents/getTripLastEvidenceAt, vehicle-intelligence.controller getTripById. Frontend: TripClickHouseEvidenceBlock, trip-evidence-ui.ts, TripEvidencePanel, api.ts TripClickHouseEvidence type.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-08T15:00:00.000Z',
+  },
+  {
+    id: 'hf-windows-signal-quality-v49261-2026-07-08',
+    version: '4.9.261',
+    title: 'V4.9.261 — HF Windows Producer + read-only Signal Quality (ClickHouse evidence)',
+    summary: [
+      'telemetry_hf_windows erhält aktiven Producer nach HF Mirror (60s Fenster, ReplacingMergeTree).',
+      'SignalQualityReadService liefert read-only Trip-Diagnostik (good/medium/weak/unavailable) — keine Score-Wahrheit in CH.',
+      'Data Analyse: interner Debug-Block für letzte Trip-Signalqualität (degraded bei CH-Ausfall).',
+    ],
+    reason:
+      'telemetry_hf_windows war Tot-Schema; Data Analyse soll nicht dauerhaft raw HF points scannen. Signalqualität je Trip soll berechenbar sein ohne canonical Bewertung nach ClickHouse zu verschieben.',
+    previousBehavior:
+      'HF Mirror schrieb nur telemetry_hf_points + telemetry_hf_events. telemetry_hf_windows hatte keinen Producer. Keine trip-scoped Signalqualität.',
+    details:
+      'Backend: migration 005_hf_windows_trip_context.sql, hf-window-producer.ts, signal-quality-assess.ts, signal-quality-read.service.ts, ClickHouseHfService.insertHfWindows/getTripHfWindows, HfMirrorService windows hook. Data Analyse: GET signal-quality/latest + trip endpoint, minimal HF tab debug. Tests: hf-window-producer, signal-quality-assess, hf-mirror extended.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-08T14:50:00.000Z',
+  },
+  {
     id: 'dimo-obd-webhook-unplug-only-v49254-2026-07-08',
     version: '4.9.254',
     title: 'V4.9.254 — DIMO OBD: nur Unplug-Webhook, Plug-in über Snapshots (Ops)',
