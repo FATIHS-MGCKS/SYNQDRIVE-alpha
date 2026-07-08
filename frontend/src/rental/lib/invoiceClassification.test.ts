@@ -15,7 +15,8 @@ describe('invoiceClassification', () => {
     expect(isRevenueInvoice({ type: 'OUTGOING_FINAL', status: 'ISSUED' })).toBe(true);
   });
 
-  it('excludes cancelled/void/credited outgoing invoices from revenue', () => {
+  it('excludes draft/cancelled/void/credited outgoing invoices from revenue', () => {
+    expect(isRevenueInvoice({ type: 'OUTGOING_FINAL', status: 'DRAFT' })).toBe(false);
     expect(isRevenueInvoice({ type: 'OUTGOING_FINAL', status: 'VOID' })).toBe(false);
     expect(isRevenueInvoice({ type: 'OUTGOING_BOOKING', status: 'CREDITED' })).toBe(false);
   });
@@ -46,6 +47,7 @@ describe('invoiceClassification', () => {
     expect(isExpenseInvoice({ type: 'INCOMING_VENDOR', status: 'ISSUED' })).toBe(true);
     expect(isExpenseInvoice({ type: 'INCOMING_UPLOADED', status: 'APPROVED' })).toBe(true);
     expect(isExpenseInvoice({ type: 'OUTGOING_BOOKING', status: 'ISSUED' })).toBe(false);
+    expect(isExpenseInvoice({ type: 'INCOMING_VENDOR', status: 'DRAFT' })).toBe(false);
     expect(isExpenseInvoice({ type: 'INCOMING_VENDOR', status: 'REJECTED' })).toBe(false);
   });
 });

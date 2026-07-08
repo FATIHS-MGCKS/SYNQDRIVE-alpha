@@ -18,6 +18,7 @@ const INCOMING_TYPE_SET = new Set<string>(INCOMING_INVOICE_TYPES);
 
 /** Mirrors backend `REVENUE_EXCLUDED_STATUSES`. */
 export const REVENUE_EXCLUDED_STATUSES = new Set([
+  'DRAFT',
   'CANCELLED',
   'CANCELED',
   'VOID',
@@ -25,7 +26,13 @@ export const REVENUE_EXCLUDED_STATUSES = new Set([
 ]);
 
 /** Mirrors backend `EXPENSE_EXCLUDED_STATUSES`. */
-export const EXPENSE_EXCLUDED_STATUSES = new Set(['CANCELLED', 'CANCELED', 'VOID', 'REJECTED']);
+export const EXPENSE_EXCLUDED_STATUSES = new Set([
+  'DRAFT',
+  'CANCELLED',
+  'CANCELED',
+  'VOID',
+  'REJECTED',
+]);
 
 /** Mirrors backend `NON_OPEN_OUTGOING_STATUSES`. */
 export const NON_OPEN_OUTGOING_STATUSES = new Set(['DRAFT', 'CANCELLED', 'CANCELED', 'VOID', 'CREDITED']);

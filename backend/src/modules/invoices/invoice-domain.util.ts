@@ -33,9 +33,9 @@ export const NON_OPEN_INCOMING_STATUSES: OrgInvoiceStatus[] = [
   'NEEDS_REVIEW',
 ];
 
-export const REVENUE_EXCLUDED_STATUSES: OrgInvoiceStatus[] = ['CANCELLED', 'VOID', 'CREDITED'];
+export const REVENUE_EXCLUDED_STATUSES: OrgInvoiceStatus[] = ['DRAFT', 'CANCELLED', 'VOID', 'CREDITED'];
 
-export const EXPENSE_EXCLUDED_STATUSES: OrgInvoiceStatus[] = ['CANCELLED', 'VOID', 'REJECTED'];
+export const EXPENSE_EXCLUDED_STATUSES: OrgInvoiceStatus[] = ['DRAFT', 'CANCELLED', 'VOID', 'REJECTED'];
 
 export function defaultStatusForCreate(
   type: OrgInvoiceType,

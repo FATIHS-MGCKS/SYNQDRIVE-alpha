@@ -41,7 +41,7 @@ describe('financial-insights.logic (Insights cockpit)', () => {
 
   it('open receivables include old unpaid invoices outside current month', () => {
     const rows = [
-      inv({ id: 'old', invoiceDate: '2025-12-01', dueDate: '2025-12-15', status: 'SENT' }),
+      inv({ id: 'old', invoiceDate: '2025-12-01', dueDate: '2026-07-01', status: 'SENT' }),
       inv({ id: 'mtd', invoiceDate: '2026-06-05', status: 'SENT' }),
       inv({ id: 'paid', status: 'PAID', paidAt: '2026-06-08' }),
     ];

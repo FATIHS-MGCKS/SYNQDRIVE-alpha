@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'financial-insights-draft-filter-v49267-2026-07-08',
+    version: '4.9.267',
+    title: 'V4.9.267 — Financial Insights: DRAFT-Rechnungen aus KPIs + Test-Stabilisierung',
+    summary: [
+      'DRAFT wird aus Umsatz- und Ausgaben-KPIs ausgeschlossen (Frontend + Backend invoice-domain).',
+      'Service-Compliance- und Brake-Health-Tests stabilisiert (HM fresh timestamp, stateClass mock).',
+      'segment_candidates Producer-Plan dokumentiert (architecture/).',
+    ],
+    reason:
+      'Insights-Cockpit zählte Entwürfe fälschlich in MTD-Umsatz/Ausgaben; CI-Tests waren veraltet (Zeitbombe / Mock-Lücken).',
+    previousBehavior:
+      'DRAFT in issuedRevenueInRange/expensesInRange; Service-Compliance buildServiceInfoStatus-Tests nutzten festes Juni-Datum.',
+    details:
+      'frontend invoiceClassification.ts, backend invoice-domain.util.ts, financial-insights.logic.spec.ts, service-compliance.service.spec.ts, brake-health.spec.ts, architecture/SEGMENT_CANDIDATES_PRODUCER_PLAN_2026-07-08.md.',
+    affectsArchitecture: false,
+    module: 'Platform',
+    createdAt: '2026-07-08T19:10:00.000Z',
+  },
+  {
     id: 'prometheus-mirrors-prod-v49266-2026-07-08',
     version: '4.9.266',
     title: 'V4.9.266 — Prod: Prometheus installiert + ClickHouse Mirror-Flags aktiv',

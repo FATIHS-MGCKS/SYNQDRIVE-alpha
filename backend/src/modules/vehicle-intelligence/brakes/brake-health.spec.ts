@@ -425,6 +425,7 @@ describe('getDetail', () => {
 describe('canonical read model', () => {
   const baseCurrent = {
     isInitialized: true,
+    stateClass: 'ESTIMATED',
     anchorOdometerKm: 40000,
     anchorServiceDate: new Date('2025-06-01T00:00:00Z'),
     frontPadAnchorMm: 12,

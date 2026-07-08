@@ -205,13 +205,17 @@ describe('ServiceComplianceService.isHmServiceFresh', () => {
 });
 
 describe('ServiceComplianceService.buildServiceInfoStatus — history vs HM next service', () => {
+  const hmFreshAt = () => new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+
   const hmMock = {
     isHmHealthActive: jest.fn().mockResolvedValue(true),
-    getServiceInfoSignals: jest.fn().mockResolvedValue({
-      distanceToNextServiceKm: 4000,
-      timeToNextServiceDays: 60,
-      lastUpdatedAt: FRESH_AT,
-    }),
+    getServiceInfoSignals: jest.fn().mockImplementation(() =>
+      Promise.resolve({
+        distanceToNextServiceKm: 4000,
+        timeToNextServiceDays: 60,
+        lastUpdatedAt: hmFreshAt(),
+      }),
+    ),
   };
 
   function makeBuildSvc(events: Array<{ eventType: string; eventDate: Date; odometerKm?: number }>) {
