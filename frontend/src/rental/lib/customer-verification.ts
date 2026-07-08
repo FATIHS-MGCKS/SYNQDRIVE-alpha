@@ -145,11 +145,11 @@ export function proofOfAddressEligibilityTone(
 export function diditAutoCheckButtonLabel(kind: CustomerVerificationCheckKind): string {
   switch (kind) {
     case 'ID_DOCUMENT':
-      return 'Ausweis automatisch prüfen';
+      return 'Ausweisprozess starten';
     case 'DRIVING_LICENSE':
-      return 'Führerschein automatisch prüfen';
+      return 'Führerscheinprozess starten';
     case 'PROOF_OF_ADDRESS':
-      return 'Adressnachweis prüfen';
+      return 'Adressnachweis starten';
   }
 }
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { StatusChip, type StatusTone } from '../../../components/patterns';
+import { Button } from '../../../components/ui/button';
 import { useRentalOrg } from '../../RentalContext';
 import { Icon } from '../ui/Icon';
 import { CustomerDocumentUploadBox } from '../CustomerDocumentUploadBox';
@@ -25,6 +26,7 @@ interface CustomerVerificationPanelProps {
   pendingReviewDocumentIds?: string[];
   onVerificationUpdated?: () => void;
   onDocumentUploaded?: () => void;
+  getDiditActionLabel?: (kind: CustomerVerificationCheckKind) => string;
 }
 
 export function CustomerVerificationPanel({
@@ -37,6 +39,7 @@ export function CustomerVerificationPanel({
   pendingReviewDocumentIds = [],
   onVerificationUpdated,
   onDocumentUploaded,
+  getDiditActionLabel,
 }: CustomerVerificationPanelProps) {
   const { hasPermission } = useRentalOrg();
   const canManageCustomers = hasPermission('customers', 'manage');
@@ -50,6 +53,7 @@ export function CustomerVerificationPanel({
   } = useCustomerVerification(customerId, bookingId);
 
   const [pendingKind, setPendingKind] = useState<CustomerVerificationCheckKind | null>(null);
+  const resolveDiditLabel = getDiditActionLabel ?? diditAutoCheckButtonLabel;
 
   const handleRefresh = async () => {
     await refresh();
@@ -143,7 +147,7 @@ export function CustomerVerificationPanel({
                 disabled={!canStart || loading}
                 busy={startingKind === kind}
                 onClick={() => setPendingKind(kind)}
-                label={diditAutoCheckButtonLabel(kind)}
+                label={resolveDiditLabel(kind)}
               />
             );
           })}
@@ -157,7 +161,7 @@ export function CustomerVerificationPanel({
                 }
                 busy={startingKind === 'PROOF_OF_ADDRESS'}
                 onClick={() => setPendingKind('PROOF_OF_ADDRESS')}
-                label={diditAutoCheckButtonLabel('PROOF_OF_ADDRESS')}
+                label={resolveDiditLabel('PROOF_OF_ADDRESS')}
               />
             )}
         </div>
@@ -238,11 +242,13 @@ function ActionButton({
   busy?: boolean;
 }) {
   return (
-    <button
+    <Button
       type="button"
+      size="sm"
+      variant="neutral"
       disabled={disabled}
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-[11px] font-semibold border border-border bg-card hover:bg-muted disabled:opacity-50"
+      className="h-9"
     >
       {busy ? (
         <Icon name="loader-2" className="w-3.5 h-3.5 animate-spin" />
@@ -250,6 +256,6 @@ function ActionButton({
         <Icon name="shield" className="w-3.5 h-3.5" />
       )}
       {label}
-    </button>
+    </Button>
   );
 }

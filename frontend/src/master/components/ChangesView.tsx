@@ -35,6 +35,66 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customer-detail-tabbar-polish-v49241-2026-07-08',
+    version: '4.9.241',
+    title: 'V4.9.241 — Customer Detail: Tab-Bar & Sticky Navigation Feinschliff',
+    summary: [
+      'Tab-Bar sticky top mit solidem Hintergrund (bg-background/95, backdrop-blur) statt bottom-Ghosting.',
+      'Horizontal scroll mit snap, Padding an den Rändern, scrollIntoView für aktiven Tab.',
+      'Mobile Kurzlabels (Dokumente, Fahrbelastung, Timeline); Desktop volle Labels.',
+      'SynqDrive sq-tab-bar Segmented Control, aria-selected/controls, Fokus-Ring.',
+    ],
+    reason:
+      'Die Customer-Detail-Tab-Bar wirkte auf Mobile dominant, abgeschnitten und teils transparent über Content gelegt.',
+    previousBehavior:
+      'sticky bottom-0 auf Mobile, truncate auf Labels, 5.5rem Bottom-Padding, 11px Tabs ohne Auto-Scroll.',
+    details:
+      'frontend: CustomerDetailTabBar, customer-detail-ui (tabBar* tokens), CustomerDetailView (mobileLabel, tabpanel). Keine Backend-Änderung.',
+    affectsArchitecture: false,
+    module: 'Customers',
+    createdAt: '2026-07-08T02:15:00.000Z',
+  },
+  {
+    id: 'customer-detail-timeline-polish-v49240-2026-07-08',
+    version: '4.9.240',
+    title: 'V4.9.240 — Customer Detail: Timeline & Notizen UX-Feinschliff',
+    summary: [
+      'Timeline-Tab: lesbare Activity Cards statt roher Eventtypen (DOCUMENT_VERIFIED, CREATED, …).',
+      'mapTimelineEventToUserEntry: Kategorie, Titel, Beschreibung, Ersteller-Herkunft, Zeitstempel.',
+      'Filterleiste als ruhige sq-tab-bar-Pills mit horizontalem Scroll auf Mobile.',
+      '„Notiz hinzufügen“ in Toolbar integriert; Loading/Error/Empty-States sprachlich beruhigt.',
+    ],
+    reason:
+      'Der Timeline-Tab wirkte wie ein technisches Audit-Log mit unlesbaren Event-Strings und unruhiger Filterdarstellung.',
+    previousBehavior:
+      'Rohe ev.type als StatusChip, englische Backend-Titel, flex-wrap-Filter, technische Webhook-Descriptions dominant.',
+    details:
+      'frontend: CustomerTimelineTab, customerDetailUtils (mapTimelineEventToUserEntry, timelineEventMatchesFilter), customer-detail-ui (timeline tokens). Keine Backend-Änderung.',
+    affectsArchitecture: false,
+    module: 'Customers',
+    createdAt: '2026-07-08T02:00:00.000Z',
+  },
+  {
+    id: 'customer-detail-tabs-polish-v49239-2026-07-08',
+    version: '4.9.239',
+    title: 'V4.9.239 — Customer Detail: Übersicht & Dokumente UX-Feinschliff',
+    summary: [
+      'Overview „Letzte Aktivitäten“: lesbare Timeline-Mappings statt roher Event-Strings.',
+      'Dokumente-Tab: „Dokumentenstatus“ ohne Read-Model, KYC-Button-Labels, Upload nur für fehlende Slots.',
+      'Dokumentstatus-Cards mit Nummer, Gültigkeit, Verifizierungsmeta; redundante Tabelle entfernt.',
+      'Deutscher Personalausweis/Führerschein wenn Land ableitbar; Review-Aktionen in Status-Cards.',
+    ],
+    reason:
+      'Overview und Dokumente wirkten technisch/debug-lastig und zeigten doppelte Dokumentdarstellung.',
+    previousBehavior:
+      'Rohe Timeline-Titel/Descriptions; Read-Model-Label; alle Upload-Slots; tabellarischer Dokumentblock unten.',
+    details:
+      'frontend: CustomerOverviewTab, CustomerDocumentsTab, customerDetailUtils (mapTimelineEventToUserSummary), customer-verification.ts, CustomerVerificationPanel, CustomerDetailView. Keine Backend-Änderung.',
+    affectsArchitecture: false,
+    module: 'Customers',
+    createdAt: '2026-07-08T01:40:00.000Z',
+  },
+  {
     id: 'customer-decision-cards-polish-v49238-2026-07-08',
     version: '4.9.238',
     title: 'V4.9.238 — Customer Detail Summary-Cards Feinschliff',

@@ -26,6 +26,7 @@ export interface CustomerDocumentRecord {
   fileKey: string;
   createdAt?: string;
   reviewedAt?: string | null;
+  reviewedByUserId?: string | null;
   expiresAt?: string | null;
 }
 

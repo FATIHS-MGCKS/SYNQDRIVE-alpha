@@ -8,7 +8,7 @@ import {
 
 /** Layout tokens for the full CustomerDetailView page. */
 export const cdv = {
-  page: 'mx-auto max-w-[1400px] space-y-3 pb-[max(5.5rem,env(safe-area-inset-bottom))] sm:pb-[max(1rem,env(safe-area-inset-bottom))]',
+  page: 'mx-auto max-w-[1400px] space-y-3 pb-[max(1rem,env(safe-area-inset-bottom))]',
   headerCard: 'sq-card overflow-hidden',
   headerInner: 'px-4 py-3.5 sm:px-5 sm:py-4',
   backLink:
@@ -80,14 +80,65 @@ export const cdv = {
   /** @deprecated use stageRailLabel */
   stageSeparator: 'text-muted-foreground/35 select-none',
   bottomTabBar:
-    'sq-tab-bar sticky bottom-0 z-20 -mx-1 flex w-[calc(100%+0.5rem)] items-center p-1 sm:static sm:z-auto sm:mx-0 sm:w-full',
+    'sticky top-0 z-20 -mx-1 border-b border-border/60 bg-background/95 px-1 py-1 shadow-[0_1px_0_0_color-mix(in_srgb,var(--border)_70%,transparent)] backdrop-blur-sm supports-[backdrop-filter]:bg-background/90 sm:mx-0 sm:px-0',
   bottomTabScroll:
-    'flex min-w-0 flex-1 flex-nowrap gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+    'flex min-w-0 flex-1 flex-nowrap gap-0.5 overflow-x-auto scroll-smooth px-1 snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
   bottomTabButton:
-    'min-h-8 min-w-0 shrink-0 rounded-[calc(var(--radius-md)-2px)] px-3 py-1.5 text-[11px] font-semibold leading-[16px] tracking-[-0.003em] whitespace-nowrap transition-all duration-200',
-  bottomTabButtonActive: 'bg-card text-foreground shadow-[var(--shadow-1)]',
+    'min-h-9 shrink-0 snap-start rounded-[calc(var(--radius-md)-2px)] border px-3.5 py-2 text-[13px] font-semibold leading-none tracking-[-0.003em] whitespace-nowrap transition-[color,background-color,box-shadow,border-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+  bottomTabButtonActive:
+    'border-border/70 bg-card text-foreground shadow-[var(--shadow-1)]',
   bottomTabButtonIdle:
+    'border-transparent text-muted-foreground hover:bg-background/60 hover:text-foreground',
+  tabBarShell:
+    'sticky top-0 z-20 -mx-1 border-b border-border/60 bg-background/95 px-1 py-1 shadow-[0_1px_0_0_color-mix(in_srgb,var(--border)_70%,transparent)] backdrop-blur-sm supports-[backdrop-filter]:bg-background/90 sm:mx-0 sm:px-0',
+  tabBarRail: 'sq-tab-bar flex w-full min-w-0 items-center rounded-2xl p-1',
+  tabBarScroller:
+    'flex min-w-0 flex-1 flex-nowrap gap-0.5 overflow-x-auto scroll-smooth px-1 snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+  tabButton:
+    'min-h-9 shrink-0 snap-start rounded-[calc(var(--radius-md)-2px)] border px-3.5 py-2 text-[13px] font-semibold leading-none tracking-[-0.003em] whitespace-nowrap transition-[color,background-color,box-shadow,border-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+  tabButtonActive:
+    'border-border/70 bg-card text-foreground shadow-[var(--shadow-1)]',
+  tabButtonInactive:
+    'border-transparent text-muted-foreground hover:bg-background/60 hover:text-foreground',
+  tabPanel: 'scroll-mt-3 pt-1 sm:pt-2',
+  overviewActivityBody: 'py-3',
+  documentsSection: 'space-y-4',
+  documentsStatusGrid: 'grid grid-cols-1 gap-3 sm:grid-cols-2',
+  documentsStatusCard: 'rounded-lg border border-border bg-muted/15 p-3.5 space-y-2',
+  documentsStatusHeader: 'flex items-start justify-between gap-2',
+  documentsStatusTitle: 'text-[13px] font-semibold text-foreground',
+  documentsStatusMeta: 'text-[11px] leading-snug text-muted-foreground',
+  documentsStatusActions: 'flex flex-wrap gap-1.5 pt-1',
+  documentsUploadSection: 'sq-card p-4 space-y-3',
+  documentsUploadGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2',
+  documentsEmptySuccess: 'text-[12px] text-muted-foreground',
+  timelineToolbar: 'space-y-2',
+  timelineToolbarRow:
+    'flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between',
+  timelineFilterBar: 'sq-tab-bar flex min-w-0 flex-1 items-center p-1',
+  timelineFilterScroll:
+    'flex min-w-0 flex-1 flex-nowrap gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+  timelineFilterButton:
+    'min-h-8 min-w-0 shrink-0 rounded-[calc(var(--radius-md)-2px)] px-3 py-1.5 text-[11px] font-semibold leading-[16px] tracking-[-0.003em] whitespace-nowrap transition-all duration-200',
+  timelineFilterButtonActive: 'bg-card text-foreground shadow-[var(--shadow-1)]',
+  timelineFilterButtonIdle:
     'text-muted-foreground hover:bg-background/60 hover:text-foreground',
+  timelineAddNoteButton: 'w-full shrink-0 sm:w-auto',
+  timelineList: 'sq-card overflow-hidden px-1 py-2 sm:px-2',
+  timelineEntryList: 'relative space-y-0 px-2 sm:px-3',
+  timelineEntryRow: 'relative flex gap-3 pb-4 last:pb-0',
+  timelineEntryRail: 'relative flex flex-col items-center',
+  timelineEntryDotWrap: 'mt-1.5 flex h-3.5 w-3.5 items-center justify-center',
+  timelineEntryLine: 'mt-1 w-px flex-1 bg-border',
+  timelineEntryBody: 'min-w-0 flex-1 pb-1',
+  timelineEntryHeader: 'flex items-start justify-between gap-3',
+  timelineEntryTitle: 'mt-1 text-[13px] font-semibold leading-snug text-foreground',
+  timelineEntryDescription: 'mt-0.5 text-[12px] leading-relaxed text-muted-foreground',
+  timelineEntrySubline: 'mt-1 text-[11px] text-muted-foreground/80',
+  timelineEntryTime: 'shrink-0 pt-0.5 text-[11px] tabular-nums text-muted-foreground',
+  timelineLoading: 'flex items-center justify-center gap-2 py-10 text-[12px] text-muted-foreground',
+  timelineError:
+    'rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5 text-[12px] text-muted-foreground',
   /** @deprecated use heroBadgeGrid */
   badgeRow: 'mt-2.5 flex flex-wrap items-center gap-1.5',
   /** @deprecated use heroActionGrid */
