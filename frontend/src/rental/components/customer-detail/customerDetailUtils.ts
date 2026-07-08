@@ -6,8 +6,10 @@ import {
   customerRiskUiLabelDe,
   customerStatusApiToUi,
   customerStatusUiLabelDe,
+  customerVerificationApiToUi,
   type CustomerUiVerification,
 } from '../../lib/entityMappers';
+import type { ProofOfAddressEligibilityStatus } from '../../lib/customer-verification';
 import type { CustomerDocumentRecord } from '../CustomerDocumentUploadBox';
 import type { BookingRow, CustomerDetail, EligibilityStage, KycDocSlot } from './customerDetailTypes';
 
@@ -248,6 +250,98 @@ export function formatKycIdentityDocumentLabel(detail: CustomerDetail | null): s
 export function formatKycLicenseDocumentLabel(detail: CustomerDetail | null): string {
   if (isGermanCountry(detail?.country)) return 'Deutscher Führerschein';
   return 'Führerschein';
+}
+
+const ID_DOCUMENT_TYPES = ['ID_FRONT', 'ID_BACK'] as const;
+const LICENSE_DOCUMENT_TYPES = ['LICENSE_FRONT', 'LICENSE_BACK'] as const;
+const PROOF_OF_ADDRESS_TYPES = ['PROOF_OF_ADDRESS'] as const;
+
+type KycDocumentType = KycDocSlot['documentType'];
+
+function isCanonicalVerificationVerified(
+  verificationStatus?: string | null,
+  verifiedFlag?: boolean | null,
+): boolean {
+  if (verifiedFlag === true) return true;
+  if (String(verificationStatus ?? '').toUpperCase() === 'VERIFIED') return true;
+  return customerVerificationApiToUi(verificationStatus ?? undefined) === 'Verified';
+}
+
+function isDocumentGroupVerifiedBySlots(
+  slots: KycDocSlot[],
+  documentTypes: readonly KycDocumentType[],
+): boolean {
+  return slots
+    .filter((slot) => documentTypes.includes(slot.documentType))
+    .some((slot) => slot.document?.status?.toUpperCase() === 'VERIFIED');
+}
+
+export function isIdDocumentGroupFulfilled(
+  detail: CustomerDetail | null,
+  kycDocSlots: KycDocSlot[],
+): boolean {
+  return (
+    isCanonicalVerificationVerified(detail?.idVerificationStatus, detail?.idVerified) ||
+    isDocumentGroupVerifiedBySlots(kycDocSlots, ID_DOCUMENT_TYPES)
+  );
+}
+
+export function isLicenseDocumentGroupFulfilled(
+  detail: CustomerDetail | null,
+  kycDocSlots: KycDocSlot[],
+): boolean {
+  return (
+    isCanonicalVerificationVerified(detail?.licenseVerificationStatus, detail?.licenseVerified) ||
+    isDocumentGroupVerifiedBySlots(kycDocSlots, LICENSE_DOCUMENT_TYPES)
+  );
+}
+
+export function isProofOfAddressGroupFulfilled(
+  kycDocSlots: KycDocSlot[],
+  proofOfAddressEligibility?: ProofOfAddressEligibilityStatus | null,
+): boolean {
+  if (
+    proofOfAddressEligibility === 'not_required' ||
+    proofOfAddressEligibility === 'verified'
+  ) {
+    return true;
+  }
+  return isDocumentGroupVerifiedBySlots(kycDocSlots, PROOF_OF_ADDRESS_TYPES);
+}
+
+export function getMissingUploadSlots({
+  detail,
+  kycDocSlots,
+  replaceLegacy,
+  proofOfAddressEligibility,
+}: {
+  detail: CustomerDetail | null;
+  kycDocSlots: KycDocSlot[];
+  replaceLegacy?: boolean;
+  proofOfAddressEligibility?: ProofOfAddressEligibilityStatus | null;
+}): KycDocSlot[] {
+  const idFulfilled = isIdDocumentGroupFulfilled(detail, kycDocSlots);
+  const licenseFulfilled = isLicenseDocumentGroupFulfilled(detail, kycDocSlots);
+  const poaFulfilled = isProofOfAddressGroupFulfilled(kycDocSlots, proofOfAddressEligibility);
+
+  return kycDocSlots.filter((slot) => {
+    if (
+      (slot.documentType === 'ID_FRONT' || slot.documentType === 'ID_BACK') &&
+      idFulfilled
+    ) {
+      return false;
+    }
+    if (
+      (slot.documentType === 'LICENSE_FRONT' || slot.documentType === 'LICENSE_BACK') &&
+      licenseFulfilled
+    ) {
+      return false;
+    }
+    if (slot.documentType === 'PROOF_OF_ADDRESS' && poaFulfilled) {
+      return false;
+    }
+    return kycSlotNeedsUpload(slot, { replaceLegacy });
+  });
 }
 
 export function kycSlotNeedsUpload(
