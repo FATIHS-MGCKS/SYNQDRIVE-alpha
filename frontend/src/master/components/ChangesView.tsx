@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trips-cache-304-empty-fix-v49253-2026-07-08',
+    version: '4.9.253',
+    title: 'V4.9.253 — Hotfix: Fahrtenliste leer trotz DB-Trips (HTTP 304 Cache)',
+    summary: [
+      'API-Fetch nutzt cache: no-store; 304 mit leerem Body wird nicht mehr als leere Liste interpretiert.',
+      'Trips-/Timeline-/Energy-Events-Endpoints senden Cache-Control: no-store.',
+      'useVehicleTrips fällt bei leerer Timeline-Response auf Fallback /trips zurück.',
+    ],
+    reason:
+      'Nach dem DI-Hotfix lieferte Safari/Express 304 Not Modified mit 0-Byte-Body; Frontend wertete undefined als [] und zeigte fälschlich „Keine Fahrten".',
+    previousBehavior:
+      'Gestern gewählter Tag zeigte leeren Zustand obwohl vehicle_trips 3–4 Fahrten enthielt; „Fehlende Fahrten prüfen" half nicht (Trips existieren bereits).',
+    details:
+      'frontend/src/lib/api.ts, useVehicleTrips.ts, vehicle-intelligence.controller.ts (Cache-Control).',
+    affectsArchitecture: false,
+    module: 'Trips',
+    createdAt: '2026-07-08T05:10:00.000Z',
+  },
+  {
     id: 'trip-analytics-injectable-hotfix-v49252-2026-07-08',
     version: '4.9.252',
     title: 'V4.9.252 — Hotfix: Fahrtenliste 500 (TripAnalyticsCanonicalService DI)',

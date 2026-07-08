@@ -73,7 +73,10 @@ export function useVehicleTrips({
       try {
         const timeline = await api.vehicleIntelligence.tripsTimeline(vehicleId, { from, to, driver });
         if (!loadGuard.isCurrent(seq)) return;
-        const normalized = normalizeTimelineItems(timeline ?? []);
+        if (timeline == null) {
+          throw new Error('Empty trips timeline response');
+        }
+        const normalized = normalizeTimelineItems(timeline);
         applyTimelineItems(normalized, 'canonical');
       } catch {
         // Fallback: parallel trips + energyEvents — trips must render even if events fail.

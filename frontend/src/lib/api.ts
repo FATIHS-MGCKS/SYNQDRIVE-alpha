@@ -465,7 +465,11 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
+  const res = await fetch(`${BASE_URL}${path}`, {
+    cache: 'no-store',
+    ...options,
+    headers,
+  });
 
   if (res.status === 401 && !path.includes('/auth/')) {
     clearAuth();
@@ -483,7 +487,13 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   }
 
   const text = await res.text();
+  // 304 Not Modified can surface with an empty body in Safari/fetch while
+  // res.ok stays true — treat as a failed read so callers retry/fallback
+  // instead of silently showing an empty trip list.
   if (!text) {
+    if (res.status === 304) {
+      throw new Error(`Stale cached response (${res.status}) for ${path}`);
+    }
     return undefined as T;
   }
 

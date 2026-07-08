@@ -11,6 +11,7 @@ import {
   Delete,
   NotImplementedException,
   Req,
+  Header,
 } from '@nestjs/common';
 import { BatteryService } from './battery/battery.service';
 import { TiresService } from './tires/tires.service';
@@ -875,6 +876,7 @@ export class VehicleIntelligenceController {
   }
 
   // --- Trips ---
+  @Header('Cache-Control', 'no-store')
   @Get('trips')
   async getTrips(
     @Param('vehicleId') vehicleId: string,
@@ -893,6 +895,7 @@ export class VehicleIntelligenceController {
     return this.attachTripDeviceConnectionFlags(vehicleId, mapped as any);
   }
 
+  @Header('Cache-Control', 'no-store')
   @Get('trips/stats')
   async getTripStats(@Param('vehicleId') vehicleId: string) {
     return this.tripAnalyticsCanonicalService.getVehicleStats(vehicleId);
@@ -903,6 +906,7 @@ export class VehicleIntelligenceController {
   // endpoints are deliberately adjacent to `trips` so the frontend Trips-Tab
   // can mount a merged timeline without a second round-trip when possible.
 
+  @Header('Cache-Control', 'no-store')
   @Get('energy-events')
   async getEnergyEvents(
     @Param('vehicleId') vehicleId: string,
@@ -928,6 +932,7 @@ export class VehicleIntelligenceController {
     });
   }
 
+  @Header('Cache-Control', 'no-store')
   @Get('trips-timeline')
   async getTripsTimeline(
     @Param('vehicleId') vehicleId: string,
