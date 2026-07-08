@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'clickhouse-runtime-hardening-v49255-2026-07-08',
+    version: '4.9.255',
+    title: 'V4.9.255 — ClickHouse Runtime Hardening (Docs, Scripts, Env)',
+    summary: [
+      'Runtime-Dokumentation: Local/Dev = optional Docker Compose; Prod/VPS = native/external/self-hosted über CLICKHOUSE_URL — Compose ist nicht die globale Wahrheit. Vor Prod-Infra Port-Check 8123/9000; kein blindes infra:up auf VPS.',
+      'Architektur-Notiz `architecture/CLICKHOUSE_RUNTIME_AND_BOUNDARIES_2026-07-08.md`: PostgreSQL = System of Record; ClickHouse = append-only Analytics/Evidence Mirror; Redis/BullMQ = Runtime; Prometheus = Ops. CH darf Repair-/Evidence-Vorschläge liefern, nie allein finale Trip-Wahrheit.',
+      'npm Scripts entschärft: `clickhouse:ping:url` (URL, kein Docker), `clickhouse:ping:docker`, `clickhouse:backup:docker`, `clickhouse:restore:docker`; Legacy-Aliase `clickhouse:ping`, `clickhouse:backup:local`, `clickhouse:restore:local` bleiben.',
+      '`.env.example`: HF_MIRROR_ENABLED=false mit Kommentar; CLICKHOUSE_*-Kommentare für Prod/native/external. Verbindliche No-Go-Liste in Docs.',
+    ],
+    reason:
+      'Audit-Follow-up: Runtime-Klarheit und sichere Ops ohne fachliche CH-Features oder Business-Logik-Änderungen.',
+    previousBehavior:
+      'ClickHouse-Scripts implizierten Docker; HF_MIRROR_ENABLED fehlte in .env.example; Runtime-Grenzen nur verteilt dokumentiert.',
+    details:
+      'Neu: `backend/scripts/clickhouse-ping-url.sh`, `architecture/CLICKHOUSE_RUNTIME_AND_BOUNDARIES_2026-07-08.md`. Geändert: `backend/docs/clickhouse-local-selfhosted.md`, `backend/package.json`, `backend/.env.example`, `backend/scripts/clickhouse-backup-local.sh`, `clickhouse-restore-local.sh`, `AGENTS.md`. Keine Migration, keine UI, kein Trip-Scoring.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-08T14:00:00.000Z',
+  },
+  {
     id: 'dimo-obd-webhook-unplug-only-v49254-2026-07-08',
     version: '4.9.254',
     title: 'V4.9.254 — DIMO OBD: nur Unplug-Webhook, Plug-in über Snapshots (Ops)',

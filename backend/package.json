@@ -25,9 +25,13 @@
     "prisma:prune": "ts-node prisma/prune-master-data.ts",
     "infra:up": "docker compose up -d postgres redis clickhouse",
     "infra:down": "docker compose down",
-    "clickhouse:ping": "docker compose exec clickhouse clickhouse-client --user synqdrive --password synqdrive_clickhouse_dev --query \"SELECT 1\"",
-    "clickhouse:backup:local": "bash scripts/clickhouse-backup-local.sh",
-    "clickhouse:restore:local": "bash scripts/clickhouse-restore-local.sh"
+    "clickhouse:ping:url": "bash scripts/clickhouse-ping-url.sh",
+    "clickhouse:ping:docker": "docker compose exec clickhouse clickhouse-client --user ${CLICKHOUSE_USER:-synqdrive} --password ${CLICKHOUSE_PASSWORD:-synqdrive_clickhouse_dev} --query \"SELECT 1\"",
+    "clickhouse:backup:docker": "bash scripts/clickhouse-backup-local.sh",
+    "clickhouse:restore:docker": "bash scripts/clickhouse-restore-local.sh",
+    "clickhouse:ping": "npm run clickhouse:ping:docker",
+    "clickhouse:backup:local": "npm run clickhouse:backup:docker",
+    "clickhouse:restore:local": "npm run clickhouse:restore:docker"
   },
   "dependencies": {
     "@clickhouse/client": "^1.18.2",

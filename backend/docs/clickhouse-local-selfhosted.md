@@ -1,15 +1,34 @@
 # ClickHouse — local / self-hosted
 
+> **Architektur & No-Gos:** `architecture/CLICKHOUSE_RUNTIME_AND_BOUNDARIES_2026-07-08.md`
+
 ## What ClickHouse is in SynqDrive
 
-- An **optional analytics / telemetry mirror**.
-- **PostgreSQL stays the canonical truth.** ClickHouse never becomes a second
-  source of truth and operational logic (DIMO, Trips, Health, Battery, Tire,
-  Brake, Data-Analyse, RentalHealth) does not depend on it being up.
-- If ClickHouse is down, only analytics / data-analyse / telemetry mirroring is
+- An **optional analytics / telemetry / evidence mirror** (append-only sidecar).
+- **PostgreSQL stays the canonical truth** for Vehicles, Trips, Bookings, Damages,
+  Customers, Billing, and Tasks.
+- Operational logic (DIMO snapshots, Trips FSM, Health, Rental, Enrichment) does
+  **not** depend on ClickHouse being up.
+- If ClickHouse is down, only analytics mirroring and Data Analyse depth are
   affected — the rest of SynqDrive keeps running.
 
-## Start
+## Runtime model (local vs production)
+
+| Environment | Typical setup | Backend binding |
+|-------------|---------------|-----------------|
+| **Local / Dev** | `docker compose` can provide ClickHouse via `npm run infra:up` | `CLICKHOUSE_URL=http://localhost:8123` (dev defaults) |
+| **Prod / VPS** | Native install, external managed CH, or self-hosted Docker **outside** `infra:up` | **Only** `CLICKHOUSE_URL` (+ user/password/database) |
+
+**Important:**
+
+- Docker Compose is a **local/dev default**, not the global runtime truth.
+- The NestJS backend uses `@clickhouse/client` against `CLICKHOUSE_URL` only.
+- **Before any prod infra change:** check what already listens on ports **8123** (HTTP)
+  and **9000** (native). Do **not** run `npm run infra:up` blindly on a VPS — it may
+  start a second ClickHouse or collide with an existing native/external instance.
+- Omit `CLICKHOUSE_URL` to disable ClickHouse entirely (backend starts normally).
+
+## Start (local dev only)
 
 From the `backend/` directory:
 
@@ -19,32 +38,52 @@ npm run infra:up
 
 This starts `postgres`, `redis` and `clickhouse` via `docker-compose.yml`.
 
-To stop everything:
+To stop containers (does **not** remove volumes):
 
 ```bash
 npm run infra:down
 ```
 
+**Never** use `docker compose down -v` without a backup — that deletes Docker volumes
+including `clickhouse_data`.
+
 ## Environment
 
-Local dev defaults (see `.env.example`, already matching `docker-compose.yml`):
+Local dev defaults (see `.env.example`, matching `docker-compose.yml`):
 
 ```bash
 CLICKHOUSE_URL=http://localhost:8123
 CLICKHOUSE_USER=synqdrive
 CLICKHOUSE_PASSWORD=synqdrive_clickhouse_dev
 CLICKHOUSE_DATABASE=synqdrive
+HF_MIRROR_ENABLED=false   # optional HF trip mirror; see .env.example
 ```
+
+If `CLICKHOUSE_URL` is unset, the analytics layer is **disabled** at startup.
 
 The schema (`synqdrive.telemetry_*`, `synqdrive.trip_*`) is created
 automatically by `ClickHouseSchemaService` on application bootstrap — all
-statements are idempotent (`CREATE ... IF NOT EXISTS`).
+statements are idempotent (`CREATE ... IF NOT EXISTS` / additive `ALTER` only).
 
 ## Verify
 
+**URL-based (works for local Docker, native, or external — recommended for prod):**
+
 ```bash
-npm run clickhouse:ping            # SELECT 1 via clickhouse-client
-curl http://localhost:8123/ping    # ClickHouse HTTP health -> "Ok."
+npm run clickhouse:ping:url
+```
+
+**Docker Compose container only (local dev):**
+
+```bash
+npm run clickhouse:ping:docker
+# legacy alias: npm run clickhouse:ping
+```
+
+**HTTP health (no auth):**
+
+```bash
+curl http://localhost:8123/ping    # -> "Ok."
 ```
 
 The backend exposes its own readiness check that includes ClickHouse:
@@ -57,12 +96,14 @@ ClickHouse appears under `checks.clickhouse`. A `degraded` overall status with
 ClickHouse `error` does **not** mean operational logic is broken — it only means
 the analytics mirror is unavailable.
 
-## Backup (local, Phase 1)
+## Backup (local Docker only)
 
 ```bash
-npm run clickhouse:backup:local
+npm run clickhouse:backup:docker
+# legacy alias: npm run clickhouse:backup:local
 ```
 
+- Requires the **docker compose** `clickhouse` service (not for native/external prod).
 - Location: `backend/storage/clickhouse/backups/`
 - Filename format: `synqdrive_YYYYMMDD_HHMMSS.zip`
 - Retention: **max 7 days** (older backups are deleted automatically after a
@@ -134,12 +175,14 @@ high-frequency response via `hfConfigured`, `hfPointCount24h`, `hfLatestPointAt`
 > `dimo-segments.service.ts` (`fetchHighFrequency`) — see the `TODO(hf-mirror)`
 > there. Polling frequencies are unchanged.
 
-## Restore
+## Restore (local Docker only)
 
 ```bash
-npm run clickhouse:restore:local -- synqdrive_YYYYMMDD_HHMMSS.zip
+npm run clickhouse:restore:docker -- synqdrive_YYYYMMDD_HHMMSS.zip
+# legacy alias: npm run clickhouse:restore:local
 ```
 
+- Requires the **docker compose** `clickhouse` service.
 - Restores the database from a local backup file.
 - It does **not** drop or overwrite existing data. If the database/tables
   already exist, the restore fails on purpose and the error stays visible so the
@@ -147,15 +190,46 @@ npm run clickhouse:restore:local -- synqdrive_YYYYMMDD_HHMMSS.zip
 
 ## Production / VPS notes
 
-- **Do not expose** ClickHouse ports publicly. They are bound to `127.0.0.1`
-  in `docker-compose.yml` — keep it that way (and behind the firewall).
+- **Do not expose** ClickHouse ports publicly. `docker-compose.yml` binds to
+  `127.0.0.1` — keep it that way (and behind the firewall) when using Compose.
 - Set a **strong** `CLICKHOUSE_PASSWORD` (do not ship the dev default).
-- Keep backups **local** for now; an optional S3 / object-storage tier can be
-  added later as a separate phase.
+- Point `CLICKHOUSE_URL` at your existing native/external instance — **do not**
+  assume `infra:up` is the correct prod bootstrap.
+- Verify with `npm run clickhouse:ping:url` and `GET /api/v1/health/readiness`.
+- Keep backups **local** for Docker-dev; prod backup strategy is operator-owned.
+  An optional S3 / object-storage tier can be added later as a separate phase.
 
-## Do NOT
+## Architecture boundaries (summary)
 
-- No cloud connection (no S3, no Hetzner Object Storage, no ClickHouse Cloud).
-- No second source of truth — PostgreSQL stays canonical.
-- Do not migrate PostgreSQL data into ClickHouse. ClickHouse only mirrors
-  analytics/telemetry, it does not replace Postgres models.
+| Store | Role |
+|-------|------|
+| PostgreSQL | System of record (Vehicles, Trips, Bookings, …) |
+| ClickHouse | Append-only analytics / telemetry / evidence mirror |
+| Redis / BullMQ | Runtime, queues, workers |
+| Prometheus | Ops / health (`/api/v1/metrics`) — not business data |
+
+ClickHouse may supply **repair/evidence suggestions** (e.g. ignition segments) but
+must **never** be the sole source of final trip truth. Canonical trips live in
+PostgreSQL; DIMO Segments apply where architected.
+
+Full detail: `architecture/CLICKHOUSE_RUNTIME_AND_BOUNDARIES_2026-07-08.md`
+
+## Do NOT (No-Go list)
+
+| Rule | Reason |
+|------|--------|
+| ClickHouse as truth for Vehicles / Trips / Bookings / Damages / Customers / Billing | PostgreSQL is canonical |
+| `docker compose down -v` without backup | Deletes `clickhouse_data` and other volumes |
+| Destructive CH migrations without a controlled migration plan | Risks existing native/external data |
+| Force Docker for production | Backend is `CLICKHOUSE_URL`-driven |
+| `vehicle_id`, `vin`, `customer_id`, `booking_id`, `trip_id`, `org_id` as Prometheus labels | High cardinality |
+| Operational booking/damage data only in ClickHouse | Business data belongs in PostgreSQL |
+| UI/API that returns 500 when ClickHouse is down (operational paths) | CH is optional |
+| Blind `infra:up` on prod VPS | Port conflict / second instance |
+| Overwrite existing native/external ClickHouse without runtime check | Check 8123/9000 first |
+
+Additional ops rules:
+
+- No mandatory cloud connection (S3 / ClickHouse Cloud) in this phase.
+- Do not migrate PostgreSQL business data into ClickHouse.
+- ClickHouse only mirrors analytics/telemetry; it does not replace Prisma models.

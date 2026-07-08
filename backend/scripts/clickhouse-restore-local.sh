@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 #
-# clickhouse-restore-local.sh
+# clickhouse-restore-local.sh  (Docker Compose — local dev)
 #
 # Restores a LOCAL ClickHouse backup created by clickhouse-backup-local.sh.
 #
+# REQUIRES: docker compose `clickhouse` service (synqdrive-clickhouse).
+# For native/external prod instances use your operator restore tooling.
+#
 # Usage (from backend/):
 #   ./scripts/clickhouse-restore-local.sh synqdrive_YYYYMMDD_HHMMSS.zip
-#   npm run clickhouse:restore:local -- synqdrive_YYYYMMDD_HHMMSS.zip
+#   npm run clickhouse:restore:docker -- synqdrive_YYYYMMDD_HHMMSS.zip
+#   npm run clickhouse:restore:local -- …   # legacy alias
 #
 # Safety:
 #   - Does NOT drop or delete any data.
