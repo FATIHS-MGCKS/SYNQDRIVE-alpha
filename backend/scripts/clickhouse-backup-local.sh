@@ -1,17 +1,22 @@
 #!/usr/bin/env bash
 #
-# clickhouse-backup-local.sh
+# clickhouse-backup-local.sh  (Docker Compose — local dev)
 #
 # Creates a LOCAL ClickHouse backup of the SynqDrive analytics database and
 # writes it to the local backup disk (Disk('backups', ...)), bind-mounted to
 # backend/storage/clickhouse/backups on the host.
+#
+# REQUIRES: docker compose `clickhouse` service (synqdrive-clickhouse).
+# For native/external prod instances use your operator backup tooling — this
+# script is NOT URL-based.
 #
 # Phase 1: local-only backups, retained for a maximum of 7 days.
 # No S3 / cloud logic on purpose.
 #
 # Run from the backend/ directory:
 #   ./scripts/clickhouse-backup-local.sh
-#   npm run clickhouse:backup:local
+#   npm run clickhouse:backup:docker
+#   npm run clickhouse:backup:local   # legacy alias
 
 set -euo pipefail
 
