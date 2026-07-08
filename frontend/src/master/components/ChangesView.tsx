@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-obd-webhook-unplug-only-v49254-2026-07-08',
+    version: '4.9.254',
+    title: 'V4.9.254 — DIMO OBD: nur Unplug-Webhook, Plug-in über Snapshots (Ops)',
+    summary: [
+      'DIMO Developer Console: OBD „plugged in“-Webhook deaktiviert; nur „plugged out“ / Unplug bleibt aktiv.',
+      'OBD eingesteckt (plugged in) wird über Snapshot-Polling `obdIsPluggedIn` in Fleet Connectivity / Vehicle Detail angezeigt.',
+      'Bestehende Intake-Logik unterstützt dedizierte Unplug-Webhooks (`inferObdPlugStateFromWebhookContext`).',
+    ],
+    reason:
+      'Plug-in-Webhooks lieferten nach Unplug häufig Phantom-Impulse (Kontakt-Flattern); Unplug per Webhook ist zeitkritisch, Wiedereinstecken ist über Snapshot + Reconcile-Anker belastbarer.',
+    previousBehavior:
+      'Beide Richtungen (plug in + unplug) als DIMO Vehicle Trigger Webhook konfiguriert; Reconcile filterte Phantom-PLUGGED_IN.',
+    details:
+      'Kein Code-Change — Ops-Konfiguration in DIMO Console. Architektur: unplug → DimoDeviceConnectionEvent; plug-in Status → VehicleLatestState.obdIsPluggedIn (Snapshot). Trip-Evidenz „wieder eingesteckt“ als Event-Zeile nur wenn historische PLUGGED_IN-Rows existieren oder später Snapshot-Intake ergänzt wird.',
+    affectsArchitecture: true,
+    module: 'DIMO',
+    createdAt: '2026-07-08T05:15:00.000Z',
+  },
+  {
     id: 'trips-cache-304-empty-fix-v49253-2026-07-08',
     version: '4.9.253',
     title: 'V4.9.253 — Hotfix: Fahrtenliste leer trotz DB-Trips (HTTP 304 Cache)',
