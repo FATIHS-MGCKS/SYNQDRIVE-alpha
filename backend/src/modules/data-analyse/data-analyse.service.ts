@@ -50,7 +50,8 @@ import {
   shouldRunIceEventContextEnrichment,
 } from '@modules/vehicle-intelligence/event-context/engine-context.guards';
 
-import type { SignalCatalogEntry } from './data-analyse-signal-catalog';
+import type { ClickHouseDiagnosticsDto } from '@modules/clickhouse/clickhouse-diagnostics.types';
+import { ClickHouseDiagnosticsService } from '@modules/clickhouse/clickhouse-diagnostics.service';
 
 interface ClickHouseSnapshotStats {
   count: number;
@@ -93,6 +94,7 @@ export class DataAnalyseService {
     private readonly clickHouseHf: ClickHouseHfService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
     private readonly rpmWebhookQuery: RpmWebhookQueryService,
+    private readonly clickHouseDiagnostics: ClickHouseDiagnosticsService,
   ) {}
 
   async listConnectedVehicles(orgId: string): Promise<DataAnalyseVehicleDto[]> {
@@ -111,6 +113,17 @@ export class DataAnalyseService {
       lastSeenAt: v.lastSeenAt,
       dimoTokenId: null,
     }));
+  }
+
+  /**
+   * Org-scoped ClickHouse infrastructure diagnostics for internal debug surfaces.
+   * Reuses ClickHouseDiagnosticsService — safe to call from Monitoring later.
+   * OrgScopingGuard on the controller enforces tenant access.
+   */
+  async getClickHouseDiagnostics(
+    _orgId: string,
+  ): Promise<ClickHouseDiagnosticsDto> {
+    return this.clickHouseDiagnostics.getDiagnostics();
   }
 
   async getTelemetryOverview(
@@ -1079,7 +1092,7 @@ export class DataAnalyseService {
         notes:
           (waypointCount ?? 0) > 0 || hfPointCount > 0
             ? `${hfPointCount} HF point(s) (telemetry_hf_points) and ${waypointCount ?? 0} waypoint(s) (telemetry_waypoints) in last 24h. HF mirror: ${hfMirrorStatus}.`
-            : `No HF points or waypoints persisted (24h). High-frequency abuse detection is NOT active from persisted HF for this vehicle. HF mirror: ${hfMirrorStatus}.`,
+            : `No HF points in 24h. telemetry_waypoints has no write producer (planned/read-only). HF mirror: ${hfMirrorStatus}.`,
       },
       {
         step: 'Trip processing',

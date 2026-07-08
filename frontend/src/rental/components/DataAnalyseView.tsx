@@ -13,6 +13,7 @@ import {
 } from '../../components/patterns';
 import {
   api,
+  type DataAnalyseClickHouseDiagnostics,
   type DataAnalyseEventArchitecture,
   type DataAnalyseEventLayer,
   type DataAnalyseHealthTrace,
@@ -86,6 +87,7 @@ const HF_AVAILABILITY_META: Record<
 };
 
 type TabKey =
+  | 'chDebug'
   | 'overview'
   | 'signals'
   | 'hf'
@@ -98,6 +100,7 @@ type TabKey =
   | 'groups';
 
 const TABS: { key: TabKey; label: string }[] = [
+  { key: 'chDebug', label: 'CH Diagnostics' },
   { key: 'overview', label: 'Overview' },
   { key: 'signals', label: 'Signal Logs' },
   { key: 'hf', label: 'High Frequency' },
@@ -157,6 +160,23 @@ function formatTs(iso: string | null | undefined): string {
   } catch {
     return iso;
   }
+}
+
+function chDisplayTone(
+  status: string,
+): 'success' | 'warning' | 'critical' | 'neutral' | 'info' {
+  if (status === 'has_data' || status === 'active') return 'success';
+  if (
+    status === 'planned_no_producer' ||
+    status === 'read_only_no_producer' ||
+    status === 'internal' ||
+    status === 'active_if_hf_disabled'
+  ) {
+    return 'neutral';
+  }
+  if (status === 'empty' || status === 'active_if_hf_enabled') return 'warning';
+  if (status === 'unavailable') return 'critical';
+  return 'info';
 }
 
 function EventLayerCard({ title, layer }: { title: string; layer: DataAnalyseEventLayer }) {
@@ -431,6 +451,8 @@ export function DataAnalyseView() {
   const [deviceConnection, setDeviceConnection] = useState<DeviceConnectionSummary | null>(null);
   const [deviceConnectionDebugRaw, setDeviceConnectionDebugRaw] = useState(false);
   const [rpmWebhooks, setRpmWebhooks] = useState<VehicleRpmWebhookSummary | null>(null);
+  const [chDiagnostics, setChDiagnostics] = useState<DataAnalyseClickHouseDiagnostics | null>(null);
+  const [loadingChDiag, setLoadingChDiag] = useState(false);
 
   const [signalSearch, setSignalSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('all');
@@ -497,6 +519,20 @@ export function DataAnalyseView() {
     }
   }, [orgId, selectedId, canAccess, deviceConnectionDebugRaw]);
 
+  const loadChDiagnostics = useCallback(async () => {
+    if (!orgId || !canAccess) return;
+    setLoadingChDiag(true);
+    try {
+      const dto = await api.dataAnalyse.clickhouseDiagnostics(orgId);
+      setChDiagnostics(dto);
+    } catch {
+      setChDiagnostics(null);
+      setError('ClickHouse diagnostics could not be loaded.');
+    } finally {
+      setLoadingChDiag(false);
+    }
+  }, [orgId, canAccess]);
+
   useEffect(() => {
     void loadVehicles();
   }, [loadVehicles]);
@@ -504,6 +540,12 @@ export function DataAnalyseView() {
   useEffect(() => {
     void loadVehicleData();
   }, [loadVehicleData]);
+
+  useEffect(() => {
+    if (tab === 'chDebug') {
+      void loadChDiagnostics();
+    }
+  }, [tab, loadChDiagnostics]);
 
   const signalGroups = useMemo(() => {
     const set = new Set(signals.map((s) => s.signalGroup));
@@ -572,14 +614,108 @@ export function DataAnalyseView() {
         title="Data Analyse"
         actions={
           <div className="flex flex-wrap gap-2">
-            <StatusChip tone="info">Temporary internal diagnostic page</StatusChip>
+            <StatusChip tone="info">Temporary internal debug — not MVP product UI</StatusChip>
             <StatusChip tone="neutral">Read-only</StatusChip>
           </div>
         }
       />
 
-      {error && <ErrorState error={error} onRetry={() => { void loadVehicles(); void loadVehicleData(); }} />}
+      <div className="flex flex-wrap gap-1 border-b border-border/60 pb-1">
+        <button
+          type="button"
+          onClick={() => setTab('chDebug')}
+          className={`px-3 py-1.5 text-xs font-medium rounded-md ${
+            tab === 'chDebug' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/50'
+          }`}
+        >
+          CH Diagnostics (org)
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('overview')}
+          className={`px-3 py-1.5 text-xs font-medium rounded-md ${
+            tab !== 'chDebug' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/50'
+          }`}
+        >
+          Per-vehicle analysis
+        </button>
+      </div>
 
+      {tab === 'chDebug' && (
+        <section className="rounded-xl border border-border/60 bg-card p-4 space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Infrastructure diagnostics for the ClickHouse analytics mirror. Stable product features will move to Trip Detail, Vehicle Detail, and Monitoring — this tab is operator/debug only.
+          </p>
+          {loadingChDiag && <SkeletonRows rows={4} />}
+          {!loadingChDiag && chDiagnostics && (
+            <>
+              <div className="flex flex-wrap gap-2">
+                <StatusChip tone={chDiagnostics.degraded ? 'warning' : chDiagnostics.clickhouseAvailable ? 'success' : 'critical'}>
+                  CH: {chDiagnostics.clickhouseStatus}
+                </StatusChip>
+                <StatusChip tone={chDiagnostics.clickhouseConfigured ? 'info' : 'neutral'}>
+                  configured: {String(chDiagnostics.clickhouseConfigured)}
+                </StatusChip>
+                <StatusChip tone={chDiagnostics.hfMirrorEnabled ? 'success' : 'neutral'}>
+                  HF mirror: {chDiagnostics.hfMirrorStatus}
+                </StatusChip>
+                {chDiagnostics.schemaMigrations.lastError && (
+                  <StatusChip tone="critical">schema error</StatusChip>
+                )}
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <MetricCard label="Migrations applied" value={String(chDiagnostics.schemaMigrations.appliedCount ?? '—')} />
+                <MetricCard label="Migrations pending" value={String(chDiagnostics.schemaMigrations.pendingCount ?? '—')} />
+                <MetricCard label="Last schema init" value={formatTs(chDiagnostics.schemaMigrations.lastInitAt)} />
+                <MetricCard
+                  label="Last snapshot mirror"
+                  value={formatTs(chDiagnostics.lastMirrorWriteAt.telemetry_snapshots)}
+                />
+              </div>
+              {chDiagnostics.notes.length > 0 && (
+                <ul className="text-xs text-muted-foreground list-disc pl-5 space-y-1">
+                  {chDiagnostics.notes.map((n) => (
+                    <li key={n}>{n}</li>
+                  ))}
+                </ul>
+              )}
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-muted-foreground border-b border-border/60">
+                      <th className="py-2 pr-3">Table</th>
+                      <th className="py-2 pr-3">Display</th>
+                      <th className="py-2 pr-3">Rows</th>
+                      <th className="py-2 pr-3">Last event</th>
+                      <th className="py-2">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {chDiagnostics.tables.map((row) => (
+                      <tr key={row.table} className="border-b border-border/40 align-top">
+                        <td className="py-2 pr-3 font-mono">{row.table}</td>
+                        <td className="py-2 pr-3">
+                          <StatusChip tone={chDisplayTone(row.displayStatus)}>{row.displayStatus}</StatusChip>
+                        </td>
+                        <td className="py-2 pr-3 tabular-nums">{row.rowCount ?? '—'}</td>
+                        <td className="py-2 pr-3 whitespace-nowrap">{formatTs(row.lastEventAt)}</td>
+                        <td className="py-2 text-muted-foreground">{row.notes}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
+      {tab !== 'chDebug' && error && (
+        <ErrorState error={error} onRetry={() => { void loadVehicles(); void loadVehicleData(); }} />
+      )}
+
+      {tab !== 'chDebug' && (
+      <>
       <section className="rounded-xl border border-border/60 bg-card p-4">
         <div className="flex items-center gap-2 mb-3">
           <Database className="w-4 h-4 text-muted-foreground" />
@@ -982,6 +1118,8 @@ export function DataAnalyseView() {
             </div>
           )}
         </>
+      )}
+      </>
       )}
     </div>
   );

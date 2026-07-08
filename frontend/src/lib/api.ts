@@ -3294,6 +3294,10 @@ export const api = {
       get<ApiServiceCase[]>(`/organizations/${orgId}/vendors/${vendorId}/service-history`),
   },
   dataAnalyse: {
+    clickhouseDiagnostics: (orgId: string) =>
+      get<DataAnalyseClickHouseDiagnostics>(
+        `/organizations/${orgId}/data-analyse/clickhouse-diagnostics`,
+      ),
     vehicles: (orgId: string) =>
       get<DataAnalyseVehicle[]>(`/organizations/${orgId}/data-analyse/vehicles`),
     telemetryOverview: (orgId: string, vehicleId: string) =>
@@ -6052,6 +6056,49 @@ export interface DataAnalysePipeline {
   steps: DataAnalysePipelineStep[];
   lastSuccessfulProcessing: string | null;
   lastError: string | null;
+}
+
+export type DataAnalyseClickHouseTableDisplayStatus =
+  | 'active'
+  | 'active_if_hf_enabled'
+  | 'active_if_hf_disabled'
+  | 'read_only_no_producer'
+  | 'planned_no_producer'
+  | 'internal'
+  | 'unavailable'
+  | 'empty'
+  | 'has_data';
+
+export interface DataAnalyseClickHouseTableDiagnostic {
+  table: string;
+  planStatus: string;
+  displayStatus: DataAnalyseClickHouseTableDisplayStatus;
+  dataStatus: 'has_data' | 'empty' | 'unavailable' | 'unknown';
+  rowCount: number | null;
+  lastEventAt: string | null;
+  writeProducer: string | null;
+  readConsumers: string[];
+  purpose: string;
+  notes: string;
+}
+
+export interface DataAnalyseClickHouseDiagnostics {
+  purpose: 'temporary_internal_debug';
+  clickhouseConfigured: boolean;
+  clickhouseAvailable: boolean;
+  clickhouseStatus: 'disabled' | 'available' | 'degraded' | 'schema_error';
+  degraded: boolean;
+  hfMirrorEnabled: boolean;
+  hfMirrorStatus: 'enabled' | 'disabled' | 'unknown';
+  schemaMigrations: {
+    appliedCount: number | null;
+    pendingCount: number | null;
+    lastInitAt: string | null;
+    lastError: string | null;
+  };
+  lastMirrorWriteAt: Record<string, string | null>;
+  tables: DataAnalyseClickHouseTableDiagnostic[];
+  notes: string[];
 }
 
 // ── LTE_R1 Event Context Architecture diagnostic ────────────────────────────
