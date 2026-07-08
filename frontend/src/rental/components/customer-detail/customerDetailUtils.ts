@@ -319,6 +319,7 @@ export function mapMissingUploadSlotsFromBackend(
 ): KycDocSlot[] {
   if (!missingSlots?.length) return [];
   return missingSlots.map((slot) => {
+    const slotKey = slot.slot as KycDocSlot['slot'];
     const existing = kycDocSlots.find((row) => row.documentType === slot.documentType);
     if (existing) {
       if (!replaceLegacy && !existing.document && existing.legacyPreviewUrl) {
@@ -327,11 +328,11 @@ export function mapMissingUploadSlotsFromBackend(
       return {
         ...existing,
         label: slot.label,
-        slot: slot.slot,
+        slot: slotKey,
       };
     }
     return {
-      slot: slot.slot,
+      slot: slotKey,
       label: slot.label,
       type: slot.label,
       documentType: slot.documentType as KycDocSlot['documentType'],

@@ -27,6 +27,7 @@ export interface CustomerDocumentRecord {
   createdAt?: string;
   reviewedAt?: string | null;
   reviewedByUserId?: string | null;
+  rejectedReason?: string | null;
   expiresAt?: string | null;
 }
 
