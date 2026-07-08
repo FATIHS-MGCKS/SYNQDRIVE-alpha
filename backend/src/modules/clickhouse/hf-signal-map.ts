@@ -28,6 +28,7 @@ const EXACT_GROUP_MAP: Record<string, HfSignalGroup> = {
   // powertrain
   odometer: 'powertrain',
   powertraintransmissiontraveleddistance: 'powertrain',
+  powertraintransmissiontravelleddistance: 'powertrain',
   tractionpower: 'powertrain',
   power: 'powertrain',
   powertraintractionbatterycurrentpower: 'powertrain',
@@ -41,14 +42,26 @@ const EXACT_GROUP_MAP: Record<string, HfSignalGroup> = {
   stateofcharge: 'battery',
   powertraintractionbatterystateofchargecurrent: 'battery',
   powertraintractionbatterystateofcharge: 'battery',
+  powertraintractionbatterystateofchargecurrentenergy: 'battery',
+  powertraintractionbatteryrange: 'battery',
+  powertraintractionbatterycurrentvoltage: 'battery',
+  lowvoltagebatterycurrentvoltage: 'battery',
   // charging
   chargingpower: 'charging',
   powertraintractionbatterychargingchargecurrent: 'charging',
   powertraintractionbatterycharginingisstopped: 'charging',
+  powertraintractionbatterychargingischarging: 'charging',
+  powertraintractionbatterychargingpower: 'charging',
   // tire
   tirepressure: 'tire',
+  chassiaxlerow1wheellefttirepressure: 'tire',
+  chassiaxlerow1wheelrighttirepressure: 'tire',
+  chassiaxlerow2wheellefttirepressure: 'tire',
+  chassiaxlerow2wheelrighttirepressure: 'tire',
   // environment
   exteriorairtemperature: 'environment',
+  // ignition / engine context
+  isignitionon: 'powertrain',
 };
 
 /**

@@ -192,6 +192,22 @@ export interface HighFrequencyReading {
   engineLoad: number | null;
   /** kW from powertrainTractionBatteryCurrentPower (W → kW) */
   tractionBatteryPowerKw: number | null;
+  /** Extended evidence fields — null/omitted when provider does not return them */
+  latitude?: number | null;
+  longitude?: number | null;
+  odometerKm?: number | null;
+  socPercent?: number | null;
+  socEnergyKwh?: number | null;
+  batteryRangeKm?: number | null;
+  batteryVoltageV?: number | null;
+  exteriorAirTempC?: number | null;
+  ignitionOn?: boolean | null;
+  tirePressureFrontLeftBar?: number | null;
+  tirePressureFrontRightBar?: number | null;
+  tirePressureRearLeftBar?: number | null;
+  tirePressureRearRightBar?: number | null;
+  chargingActive?: boolean | null;
+  chargingPowerKw?: number | null;
 }
 
 // ── Tire pressure reading from 3-minute buckets ──
@@ -759,14 +775,20 @@ export class DimoSegmentsService {
       return signals
         .filter((s: any) => s.timestamp)
         .map((s: any) => {
-          const w =
+          const tractionW =
             typeof s.powertrainTractionBatteryCurrentPower === 'number'
               ? s.powertrainTractionBatteryCurrentPower
               : null;
+          const chargingW =
+            typeof s.powertrainTractionBatteryChargingPower === 'number'
+              ? s.powertrainTractionBatteryChargingPower
+              : null;
+          const { latitude, longitude } = parseLocationCoordinates(
+            s.currentLocationCoordinates,
+          );
           return {
             timestamp: s.timestamp,
-            speedKmh:
-              typeof s.speed === 'number' ? s.speed : null,
+            speedKmh: typeof s.speed === 'number' ? s.speed : null,
             engineCoolantTempC:
               typeof s.powertrainCombustionEngineECT === 'number'
                 ? s.powertrainCombustionEngineECT
@@ -781,8 +803,52 @@ export class DimoSegmentsService {
                 : null,
             engineLoad:
               typeof s.obdEngineLoad === 'number' ? s.obdEngineLoad : null,
-            tractionBatteryPowerKw: w != null ? w / 1000 : null,
-          };
+            tractionBatteryPowerKw: tractionW != null ? tractionW / 1000 : null,
+            latitude,
+            longitude,
+            odometerKm:
+              typeof s.powertrainTransmissionTravelledDistance === 'number'
+                ? s.powertrainTransmissionTravelledDistance
+                : null,
+            socPercent:
+              typeof s.powertrainTractionBatteryStateOfChargeCurrent === 'number'
+                ? s.powertrainTractionBatteryStateOfChargeCurrent
+                : null,
+            socEnergyKwh:
+              typeof s.powertrainTractionBatteryStateOfChargeCurrentEnergy ===
+              'number'
+                ? s.powertrainTractionBatteryStateOfChargeCurrentEnergy
+                : null,
+            batteryRangeKm:
+              typeof s.powertrainTractionBatteryRange === 'number'
+                ? s.powertrainTractionBatteryRange
+                : null,
+            batteryVoltageV:
+              typeof s.powertrainTractionBatteryCurrentVoltage === 'number'
+                ? s.powertrainTractionBatteryCurrentVoltage
+                : null,
+            exteriorAirTempC:
+              typeof s.exteriorAirTemperature === 'number'
+                ? s.exteriorAirTemperature
+                : null,
+            ignitionOn: parseDimoBool(s.isIgnitionOn),
+            tirePressureFrontLeftBar: numOrNull(
+              s.chassisAxleRow1WheelLeftTirePressure,
+            ),
+            tirePressureFrontRightBar: numOrNull(
+              s.chassisAxleRow1WheelRightTirePressure,
+            ),
+            tirePressureRearLeftBar: numOrNull(
+              s.chassisAxleRow2WheelLeftTirePressure,
+            ),
+            tirePressureRearRightBar: numOrNull(
+              s.chassisAxleRow2WheelRightTirePressure,
+            ),
+            chargingActive: parseDimoBool(
+              s.powertrainTractionBatteryChargingIsCharging,
+            ),
+            chargingPowerKw: chargingW != null ? chargingW / 1000 : null,
+          } satisfies HighFrequencyReading;
         })
         .sort(
           (a, b) =>
@@ -1158,4 +1224,49 @@ export class DimoSegmentsService {
       return [];
     }
   }
+}
+
+function numOrNull(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function parseDimoBool(value: unknown): boolean | null {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    if (value === 0) return false;
+    if (value === 1) return true;
+  }
+  return null;
+}
+
+function parseLocationCoordinates(coords: unknown): {
+  latitude: number | null;
+  longitude: number | null;
+} {
+  if (!coords || typeof coords !== 'object') {
+    return { latitude: null, longitude: null };
+  }
+  const c = coords as Record<string, unknown>;
+  const latitude =
+    typeof c.latitude === 'number'
+      ? c.latitude
+      : typeof c.lat === 'number'
+        ? c.lat
+        : null;
+  const longitude =
+    typeof c.longitude === 'number'
+      ? c.longitude
+      : typeof c.lng === 'number'
+        ? c.lng
+        : typeof c.lon === 'number'
+          ? c.lon
+          : null;
+  if (
+    latitude == null ||
+    longitude == null ||
+    (latitude === 0 && longitude === 0)
+  ) {
+    return { latitude: null, longitude: null };
+  }
+  return { latitude, longitude };
 }
