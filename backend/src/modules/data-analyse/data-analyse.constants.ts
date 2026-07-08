@@ -1,5 +1,7 @@
 export const DATA_ANALYSE_MODULE = 'data-analyse' as const;
 
+/** Temporary internal debugging surface until MVP — not a long-term product hub. */
+
 /** Default DIMO snapshot worker interval (see worker.config snapshotIntervalMs). */
 export const DEFAULT_SNAPSHOT_EXPECTED_INTERVAL_MS = 30_000;
 

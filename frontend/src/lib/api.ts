@@ -3294,6 +3294,8 @@ export const api = {
       get<ApiServiceCase[]>(`/organizations/${orgId}/vendors/${vendorId}/service-history`),
   },
   dataAnalyse: {
+    clickhouseDiagnostics: (orgId: string) =>
+      get<ClickHouseDiagnostics>(`/organizations/${orgId}/data-analyse/clickhouse-diagnostics`),
     vehicles: (orgId: string) =>
       get<DataAnalyseVehicle[]>(`/organizations/${orgId}/data-analyse/vehicles`),
     telemetryOverview: (orgId: string, vehicleId: string) =>
@@ -6052,6 +6054,53 @@ export interface DataAnalysePipeline {
   steps: DataAnalysePipelineStep[];
   lastSuccessfulProcessing: string | null;
   lastError: string | null;
+}
+
+/** Org-level ClickHouse diagnostics (internal debug — not business truth). */
+export type ClickHouseTableDisplayStatus =
+  | 'has_data'
+  | 'empty'
+  | 'empty_active_warning'
+  | 'unavailable'
+  | 'planned'
+  | 'read_only'
+  | 'active_if_hf_disabled'
+  | 'active_if_hf_enabled'
+  | 'internal';
+
+export interface ClickHouseTableDiagnostic {
+  table: string;
+  purpose: string;
+  futureUseCase: string | null;
+  producerStatus: string;
+  mvpStatus: string;
+  expectedEmptyAllowed: boolean;
+  displayStatus: ClickHouseTableDisplayStatus;
+  dataStatus: string;
+  rowCount: number | null;
+  lastEventAt: string | null;
+  writeProducer: string | null;
+  readConsumers: string[];
+  notes: string;
+}
+
+export interface ClickHouseDiagnostics {
+  purpose: string;
+  clickhouseConfigured: boolean;
+  clickhouseAvailable: boolean;
+  clickhouseStatus: 'disabled' | 'available' | 'degraded' | 'schema_error';
+  degraded: boolean;
+  hfMirrorEnabled: boolean;
+  hfMirrorStatus: 'enabled' | 'disabled' | 'unknown';
+  schemaMigrations: {
+    appliedCount: number | null;
+    pendingCount: number | null;
+    lastInitAt: string | null;
+    lastError: string | null;
+  };
+  lastMirrorWriteAt: Record<string, string | null>;
+  tables: ClickHouseTableDiagnostic[];
+  notes: string[];
 }
 
 // ── LTE_R1 Event Context Architecture diagnostic ────────────────────────────

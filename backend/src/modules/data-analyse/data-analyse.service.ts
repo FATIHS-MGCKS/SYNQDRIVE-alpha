@@ -4,6 +4,8 @@ import { DimoDeviceConnectionEventType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { ClickHouseService } from '@modules/clickhouse/clickhouse.service';
 import { ClickHouseHfService } from '@modules/clickhouse/clickhouse-hf.service';
+import { ClickHouseDiagnosticsService } from '@modules/clickhouse/clickhouse-diagnostics.service';
+import type { ClickHouseDiagnosticsDto } from '@modules/clickhouse/clickhouse-diagnostics.types';
 import { VehiclesService } from '@modules/vehicles/vehicles.service';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { RpmWebhookQueryService } from '@modules/dimo/rpm-webhook-query.service';
@@ -91,9 +93,20 @@ export class DataAnalyseService {
     private readonly clickHouse: ClickHouseService,
     private readonly vehiclesService: VehiclesService,
     private readonly clickHouseHf: ClickHouseHfService,
+    private readonly clickHouseDiagnostics: ClickHouseDiagnosticsService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
     private readonly rpmWebhookQuery: RpmWebhookQueryService,
   ) {}
+
+  /**
+   * Org-scoped ClickHouse infrastructure diagnostics (internal debug).
+   * Reuses ClickHouseDiagnosticsService — not exclusive to Data Analyse.
+   */
+  async getClickHouseDiagnostics(
+    _orgId: string,
+  ): Promise<ClickHouseDiagnosticsDto> {
+    return this.clickHouseDiagnostics.getDiagnostics();
+  }
 
   async listConnectedVehicles(orgId: string): Promise<DataAnalyseVehicleDto[]> {
     const fleet = await this.vehiclesService.getFleetConnectivity(orgId, {});
@@ -1078,8 +1091,8 @@ export class DataAnalyseService {
         sourceName: 'ClickHouse telemetry_hf_points + telemetry_waypoints',
         notes:
           (waypointCount ?? 0) > 0 || hfPointCount > 0
-            ? `${hfPointCount} HF point(s) (telemetry_hf_points) and ${waypointCount ?? 0} waypoint(s) (telemetry_waypoints) in last 24h. HF mirror: ${hfMirrorStatus}.`
-            : `No HF points or waypoints persisted (24h). High-frequency abuse detection is NOT active from persisted HF for this vehicle. HF mirror: ${hfMirrorStatus}.`,
+            ? `${hfPointCount} HF point(s) (telemetry_hf_points)${(waypointCount ?? 0) > 0 ? ` and ${waypointCount} waypoint(s) (telemetry_waypoints)` : ''} in last 24h. HF mirror: ${hfMirrorStatus}.`
+            : `No HF points in 24h. telemetry_waypoints is planned/read-only (schema exists, no write producer yet) — empty is expected. HF mirror: ${hfMirrorStatus}.`,
       },
       {
         step: 'Trip processing',

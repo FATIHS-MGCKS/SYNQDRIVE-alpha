@@ -134,6 +134,24 @@ high-frequency response via `hfConfigured`, `hfPointCount24h`, `hfLatestPointAt`
 > `dimo-segments.service.ts` (`fetchHighFrequency`) — see the `TODO(hf-mirror)`
 > there. Polling frequencies are unchanged.
 
+## Table producer registry (planned vs active)
+
+Some ClickHouse tables exist in schema but have **no write producer** yet. Empty
+rows are expected — not a broken pipeline.
+
+Authoritative registry: `clickhouse-table-registry.ts` + architecture doc
+`architecture/CLICKHOUSE_TABLE_PRODUCER_REGISTRY_2026-07-08.md`.
+
+| Table | Producer today | Empty OK? |
+| --- | --- | --- |
+| `telemetry_snapshots` / `telemetry_state_changes` | Active (snapshot mirror) | No — monitor if empty |
+| `telemetry_hf_points` / `telemetry_hf_events` | Active when `HF_MIRROR_ENABLED=true` | Yes until mirror enabled |
+| `telemetry_waypoints` | Read-only counts in Data Analyse | Yes |
+| `trip_activity_windows` / `trip_segment_candidates` / `telemetry_hf_windows` | Planned — detectors query live tables | Yes |
+| `schema_migrations` | Internal schema service | Yes |
+
+Diagnostics: `GET …/data-analyse/clickhouse-diagnostics` (internal debug).
+
 ## Restore
 
 ```bash

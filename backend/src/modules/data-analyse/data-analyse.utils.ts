@@ -5,6 +5,7 @@ import {
   LAUNCH_DETECTION_MIN_INTERVAL_MS,
   MAX_PLAUSIBLE_CADENCE_INTERVAL_MS,
 } from './data-analyse.constants';
+import { resolveHfMirrorFlagStatus } from '@modules/clickhouse/clickhouse-env.util';
 import type {
   DataFreshnessStatus,
   HealthCalcFreshness,
@@ -351,9 +352,7 @@ function deriveHfAvailabilityStatus(
 export function resolveHfMirrorStatus(
   raw: string | undefined = process.env.HF_MIRROR_ENABLED,
 ): HfMirrorStatus {
-  if (raw === 'true') return 'enabled';
-  if (raw === 'false' || raw === undefined || raw === '') return 'disabled';
-  return 'unknown';
+  return resolveHfMirrorFlagStatus(raw);
 }
 
 /**
