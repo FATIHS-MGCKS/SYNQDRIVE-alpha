@@ -29,6 +29,24 @@ export default registerAs('worker', () => ({
     10,
   ),
 
+  // ── ClickHouse trip-end assist (first instance; FSM/CUSUM fallback) ──
+  tripEndChAssistMinStationaryMs: parseInt(
+    process.env.TRIP_END_CH_ASSIST_MIN_STATIONARY_MS || '45000',
+    10,
+  ),
+  tripEndChAssistMinTripDurationMs: parseInt(
+    process.env.TRIP_END_CH_ASSIST_MIN_TRIP_DURATION_MS || '60000',
+    10,
+  ),
+  tripEndChAssistStabilityMs: parseInt(
+    process.env.TRIP_END_CH_ASSIST_STABILITY_MS || '30000',
+    10,
+  ),
+  tripEndChAssistHighConfidenceStationaryMs: parseInt(
+    process.env.TRIP_END_CH_ASSIST_HIGH_STATIONARY_MS || '90000',
+    10,
+  ),
+
   // ── Trip End: Retry interval between CUSUM validation attempts ──
   tripEndValidationRetryMs: parseInt(process.env.TRIP_END_VALIDATION_RETRY_MS || '60000', 10),
 

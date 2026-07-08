@@ -35,6 +35,46 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'ch-trip-end-assist-v49270-2026-07-08',
+    version: '4.9.270',
+    title: 'V4.9.270 — ClickHouse Trip End Assist (CH-first, FSM fallback)',
+    summary: [
+      'Live Trip-Ende: CH segment end (ignition OFF / motion STOP) als erste Instanz — FSM/CUSUM bleibt Fallback.',
+      'resolveAnalyticsAssistedEndDecision + tryApplyClickHouseAssistedEnd in ACTIVE_TICK (auch ohne Core-Stream).',
+      'HIGH → sofort Finalize; MEDIUM → verkürzte Stability (30s default).',
+      'Reconciliation: REPAIR_MISSING_END nutzt CH-End-Zeit vor Waypoint-Fallback.',
+      'Env: TRIP_END_CH_ASSIST_* in worker.config.ts.',
+    ],
+    reason:
+      'Trip-Ende wurde zu spät erkannt (FSM 120s+ CUSUM). CH-Mirror liefert schnellere Segment-Enden analog zum Start-Assist.',
+    previousBehavior:
+      'CH verzögerte Enden nur als Guard (keepTripOpen). Live-Ende ausschließlich über DIMO Continuity + CUSUM.',
+    details:
+      'Backend: trip-evidence.helpers (resolveAnalyticsAssistedEndDecision, extractLatestSegmentEnd), trip-detection-orchestration (tryApplyClickHouseAssistedEnd), trip-detection-policy (confirmingEnd), trip-reconciliation (resolveChAssistedMissingEndTime), END_DETECTION_MODES.CLICKHOUSE_END_ASSIST, worker.config.ts. Tests: trip-detection.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-08T22:15:00.000Z',
+  },
+  {
+    id: 'ch-trip-assist-trip-end-docs-v49269-2026-07-08',
+    version: '4.9.269',
+    title: 'V4.9.269 — Docs: CLICKHOUSE_TRIP_ASSIST Entscheidung + Trip-Ende Audit',
+    summary: [
+      'Architektur: CLICKHOUSE_TRIP_ASSIST_ENABLED default true als bewusste accepted-risk Entscheidung dokumentiert.',
+      'Audit: Trip-Ende läuft live über FSM + DIMO CUSUM — CH beschleunigt End nicht, kann bei Mehrdeutigkeit verzögern (Guard).',
+      'Hinweis: REPAIR_MISSING_END Policy existiert, ist in Reconciliation noch nicht verdrahtet.',
+      'Ops: Trip-End-Tuning via TRIP_END_* Env-Variablen dokumentiert.',
+    ],
+    reason:
+      'Nach Monitoring-Audit Klärung: Trip Assist beibehalten (DIMO+CH-Detektor-Pfad). Trip-Ende-Verzögerung ist FSM-Timer/CUSUM, nicht fehlendes CH-End-Feature.',
+    previousBehavior: null,
+    details:
+      'Neu: architecture/CLICKHOUSE_TRIP_ASSIST_AND_TRIP_END_2026-07-08.md. Geändert: CLICKHOUSE_RUNTIME_AND_BOUNDARIES, backend/.env.example Kommentar. Kein Code-Change.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-08T21:00:00.000Z',
+  },
+  {
     id: 'platform-health-grafana-v49268-2026-07-08',
     version: '4.9.268',
     title: 'V4.9.268 — Platform Health (Master Admin) + Grafana VPS',

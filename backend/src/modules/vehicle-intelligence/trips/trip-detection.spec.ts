@@ -20,7 +20,9 @@ import {
   getProfileThresholds,
   refineTripStartBoundary,
   resolveAnalyticsAssistedStartDecision,
+  resolveAnalyticsAssistedEndDecision,
   resolveClickHouseContinuityGuard,
+  extractLatestSegmentEnd,
 } from './trip-evidence.helpers';
 import {
   detectTripEndChangePoint,
@@ -593,6 +595,167 @@ describe('resolveAnalyticsAssistedStartDecision', () => {
     });
 
     expect(result.confirmed).toBe(false);
+  });
+});
+
+describe('resolveAnalyticsAssistedEndDecision', () => {
+  const tripStart = new Date('2026-04-16T08:00:00Z');
+  const now = new Date('2026-04-16T09:30:00Z');
+
+  function finding(
+    detectorName: string,
+    verdict: DetectorFinding['verdict'],
+    confidence: DetectorFinding['confidence'],
+    evidence: Record<string, unknown> = {},
+  ): DetectorFinding {
+    return {
+      detectorName,
+      verdict,
+      confidence,
+      evidence,
+      timestamp: new Date(),
+    };
+  }
+
+  const baseInput = {
+    tripStartAt: tripStart,
+    now,
+    minStationaryAfterSegmentMs: 45_000,
+    minTripDurationMs: 60_000,
+    highConfidenceStationaryMs: 90_000,
+    currentTelemetry: {
+      isIgnitionOn: false,
+      speedKmh: 0,
+      engineLoad: 0,
+    } as const,
+  };
+
+  it('confirms ICE end via ignition segment OFF + stationary telemetry', () => {
+    const result = resolveAnalyticsAssistedEndDecision({
+      ...baseInput,
+      profile: 'ICE',
+      ignitionSegment: finding('IgnitionSegmentDetector', 'TRIGGERED', 'HIGH', {
+        segments: [
+          {
+            start: '2026-04-16T08:00:00Z',
+            end: '2026-04-16T09:28:00Z',
+            durationMs: 5_280_000,
+            confidence: 'HIGH',
+          },
+        ],
+      }),
+      activityWindow: finding('ActivityWindowDetector', 'NOT_TRIGGERED', 'MEDIUM', {
+        pointCount: 1,
+        maxSpeedKmh: 0,
+      }),
+    });
+
+    expect(result.confirmed).toBe(true);
+    expect(result.evidencePath).toBe('CLICKHOUSE_END_ASSISTED');
+    expect(result.endMode).toBe(END_DETECTION_MODES.CLICKHOUSE_END_ASSIST);
+    expect(result.detectedEndAt?.toISOString()).toBe('2026-04-16T09:28:00.000Z');
+    expect(result.confidence).toBe('HIGH');
+  });
+
+  it('rejects end when telemetry still shows movement', () => {
+    const result = resolveAnalyticsAssistedEndDecision({
+      ...baseInput,
+      profile: 'EV',
+      currentTelemetry: { isIgnitionOn: null, speedKmh: 25, engineLoad: null },
+      motionSegment: finding('MotionSegmentDetector', 'TRIGGERED', 'HIGH', {
+        segments: [
+          {
+            start: '2026-04-16T08:00:00Z',
+            end: '2026-04-16T09:28:00Z',
+            confidence: 'HIGH',
+          },
+        ],
+      }),
+    });
+
+    expect(result.confirmed).toBe(false);
+    expect(result.evidencePath).toBe('CLICKHOUSE_INCONCLUSIVE');
+  });
+
+  it('rejects end when activity resumed after segment stop', () => {
+    const result = resolveAnalyticsAssistedEndDecision({
+      ...baseInput,
+      profile: 'EV',
+      motionSegment: finding('MotionSegmentDetector', 'TRIGGERED', 'HIGH', {
+        segments: [
+          {
+            start: '2026-04-16T08:00:00Z',
+            end: '2026-04-16T09:28:00Z',
+            confidence: 'HIGH',
+          },
+        ],
+      }),
+      activityWindow: finding('ActivityWindowDetector', 'TRIGGERED', 'HIGH', {
+        pointCount: 4,
+        maxSpeedKmh: 22,
+        odometerDeltaKm: 0.1,
+      }),
+    });
+
+    expect(result.confirmed).toBe(false);
+    expect(result.summary.reason).toBe('activity_resumed_after_segment_end');
+  });
+
+  it('EV profile: confirms end via motion segment without ignition', () => {
+    const result = resolveAnalyticsAssistedEndDecision({
+      ...baseInput,
+      profile: 'EV',
+      motionSegment: finding('MotionSegmentDetector', 'TRIGGERED', 'HIGH', {
+        segments: [
+          {
+            start: '2026-04-16T08:00:00Z',
+            end: '2026-04-16T09:28:00Z',
+            confidence: 'HIGH',
+          },
+        ],
+      }),
+      activityWindow: finding('ActivityWindowDetector', 'NOT_TRIGGERED', 'LOW', {
+        maxSpeedKmh: 0,
+      }),
+    });
+
+    expect(result.confirmed).toBe(true);
+    expect(result.evidencePath).toBe('CLICKHOUSE_END_ASSISTED');
+  });
+});
+
+describe('extractLatestSegmentEnd', () => {
+  it('prefers latest motion segment end for EV profiles', () => {
+    const end = extractLatestSegmentEnd(
+      {
+        motionSegment: {
+          detectorName: 'MotionSegmentDetector',
+          verdict: 'TRIGGERED',
+          confidence: 'HIGH',
+          evidence: {
+            segments: [
+              {
+                start: '2026-04-16T08:00:00Z',
+                end: '2026-04-16T09:00:00Z',
+                confidence: 'MEDIUM',
+              },
+              {
+                start: '2026-04-16T09:05:00Z',
+                end: '2026-04-16T09:28:00Z',
+                confidence: 'HIGH',
+              },
+            ],
+          },
+          timestamp: new Date(),
+        },
+      },
+      new Date('2026-04-16T08:00:00Z'),
+      new Date('2026-04-16T10:00:00Z'),
+      true,
+    );
+
+    expect(end?.endAt.toISOString()).toBe('2026-04-16T09:28:00.000Z');
+    expect(end?.source).toBe('motion');
   });
 });
 

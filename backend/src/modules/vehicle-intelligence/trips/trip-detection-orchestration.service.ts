@@ -40,8 +40,11 @@ import {
   checkTripQuality,
   refineTripStartBoundary,
   resolveAnalyticsAssistedStartDecision,
+  resolveAnalyticsAssistedEndDecision,
   resolveClickHouseContinuityGuard,
   resolveDetectionProfile,
+  isCurrentTelemetryInactive,
+  extractLatestSegmentEnd,
 } from './trip-evidence.helpers';
 // detectTripEndChangePoint → ChangePointEndDetector (Phase 2 seam, done)
 import { TripDecisionEngine } from './decision/trip-decision.engine';
@@ -97,6 +100,12 @@ export class TripDetectionOrchestrationService {
   // CUSUM data window: how far forward from possibleEndAt to fetch
   private readonly TRIP_END_SEGMENT_LOOKAHEAD_MS: number;
 
+  // ── ClickHouse trip-end assist (first instance; FSM/CUSUM fallback) ──
+  private readonly TRIP_END_CH_ASSIST_MIN_STATIONARY_MS: number;
+  private readonly TRIP_END_CH_ASSIST_MIN_TRIP_DURATION_MS: number;
+  private readonly TRIP_END_CH_ASSIST_STABILITY_MS: number;
+  private readonly TRIP_END_CH_ASSIST_HIGH_STATIONARY_MS: number;
+
   // ── Mid-trip gap split: recognise short ignition-off parks inside a trip ──
   // Silence of at least this duration inside an otherwise ACTIVE trip,
   // sandwiched by stationary data, is treated as a mid-trip end + restart
@@ -139,6 +148,14 @@ export class TripDetectionOrchestrationService {
     this.TRIP_END_VALIDATION_MAX_ATTEMPTS = this.configService.get<number>('worker.tripEndValidationMaxAttempts') ?? 3;
     this.TRIP_END_SEGMENT_LOOKBACK_MS = this.configService.get<number>('worker.tripEndSegmentLookbackMs') ?? 900_000;
     this.TRIP_END_SEGMENT_LOOKAHEAD_MS = this.configService.get<number>('worker.tripEndSegmentLookaheadMs') ?? 300_000;
+    this.TRIP_END_CH_ASSIST_MIN_STATIONARY_MS =
+      this.configService.get<number>('worker.tripEndChAssistMinStationaryMs') ?? 45_000;
+    this.TRIP_END_CH_ASSIST_MIN_TRIP_DURATION_MS =
+      this.configService.get<number>('worker.tripEndChAssistMinTripDurationMs') ?? 60_000;
+    this.TRIP_END_CH_ASSIST_STABILITY_MS =
+      this.configService.get<number>('worker.tripEndChAssistStabilityMs') ?? 30_000;
+    this.TRIP_END_CH_ASSIST_HIGH_STATIONARY_MS =
+      this.configService.get<number>('worker.tripEndChAssistHighConfidenceStationaryMs') ?? 90_000;
     this.TRIP_MID_GAP_SPLIT_MS = this.configService.get<number>('worker.tripMidGapSplitMs') ?? 180_000;
     this.TRIP_MID_GAP_MAX_STATIONARY_DRIFT_M = this.configService.get<number>('worker.tripMidGapMaxStationaryDriftM') ?? 200;
     this.TRIP_MID_GAP_MIN_PRE_DURATION_MS = this.configService.get<number>('worker.tripMidGapMinPreDurationMs') ?? 60_000;
@@ -149,7 +166,8 @@ export class TripDetectionOrchestrationService {
         `stabilityWindowMs=${this.TRIP_END_STABILITY_WINDOW_MS} ` +
         `validationRetryMs=${this.TRIP_END_VALIDATION_RETRY_MS} ` +
         `validationMaxAttempts=${this.TRIP_END_VALIDATION_MAX_ATTEMPTS} ` +
-        `timeoutMs=${this.TRIP_END_TIMEOUT_MS}`,
+        `timeoutMs=${this.TRIP_END_TIMEOUT_MS} ` +
+        `chEndAssistMinStationaryMs=${this.TRIP_END_CH_ASSIST_MIN_STATIONARY_MS}`,
     );
   }
 
@@ -1036,6 +1054,41 @@ export class TripDetectionOrchestrationService {
       ]);
 
       if (corePoints.length === 0) {
+        const telemetryNoCore = await this.prisma.vehicleLatestState.findUnique({
+          where: { vehicleId },
+        });
+        const chEndAppliedNoCore = await this.tryApplyClickHouseAssistedEnd({
+          vehicleId,
+          organizationId,
+          dimoTokenId,
+          tripId,
+          det,
+          profile,
+          tripStartAt: startAt,
+          now,
+          telemetry: telemetryNoCore,
+          corePoints: [],
+        });
+        if (chEndAppliedNoCore) {
+          resultState = TripDetectionState.RESTING;
+          await this.logTrackingRun({
+            vehicleId,
+            organizationId,
+            tripId,
+            stateAtRun: det.state,
+            runType: TripTrackingRunType.ACTIVE_TRACKING,
+            requestedFrom: coreFrom,
+            requestedTo: now,
+            corePointsCount: 0,
+            routePointsCount: routePoints.length,
+            drivingPointsCount: perfReadings.length,
+            resultState,
+            resultSummary: { reason: 'clickhouse_end_assist_no_core_stream' },
+            durationMs: Date.now() - startedMs,
+          });
+          return;
+        }
+
         // ── Inactivity-based POSSIBLE_END transition ────────────────────────
         // DIMO stops streaming core data once the ignition is off and the
         // vehicle drops off the network. Without a core stream the continuity
@@ -1318,6 +1371,38 @@ export class TripDetectionOrchestrationService {
       const telemetry = await this.prisma.vehicleLatestState.findUnique({
         where: { vehicleId },
       });
+
+      const chEndApplied = await this.tryApplyClickHouseAssistedEnd({
+        vehicleId,
+        organizationId,
+        dimoTokenId,
+        tripId,
+        det,
+        profile,
+        tripStartAt: startAt,
+        now,
+        telemetry,
+        corePoints,
+      });
+      if (chEndApplied) {
+        resultState = TripDetectionState.RESTING;
+        await this.logTrackingRun({
+          vehicleId,
+          organizationId,
+          tripId,
+          stateAtRun: det.state,
+          runType: TripTrackingRunType.ACTIVE_TRACKING,
+          requestedFrom: coreFrom,
+          requestedTo: now,
+          corePointsCount: corePoints.length,
+          routePointsCount: routePoints.length,
+          drivingPointsCount: perfReadings.length,
+          resultState,
+          resultSummary: { reason: 'clickhouse_end_assist_applied' },
+          durationMs: Date.now() - startedMs,
+        });
+        return;
+      }
 
       const endCoord =
         routePoints.length > 0
@@ -1806,10 +1891,13 @@ export class TripDetectionOrchestrationService {
       // ── Step 3: Stability window — wait before triggering CUSUM ──
       // Also enforces TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS: CUSUM must not run
       // until both the stability window AND the min-inactivity guard have elapsed.
-      const cusumGateMs = Math.max(
-        this.TRIP_END_STABILITY_WINDOW_MS,
-        this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS,
-      );
+      const cusumGateMs =
+        det.endDetectionMode === END_DETECTION_MODES.CLICKHOUSE_END_ASSIST
+          ? this.TRIP_END_CH_ASSIST_STABILITY_MS
+          : Math.max(
+              this.TRIP_END_STABILITY_WINDOW_MS,
+              this.TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS,
+            );
       if (elapsedMs < cusumGateMs) {
         // Still within stability/inactivity window — keep watching, reschedule
         await this.schedulePossibleEndCheck(vehicleId, organizationId, dimoTokenId);
@@ -1920,6 +2008,48 @@ export class TripDetectionOrchestrationService {
 
       const now = new Date();
       const endCandidateAt = det.possibleEndAt ?? now;
+
+      // ── CH end assist (MEDIUM): segment end already validated — skip CUSUM ──
+      if (
+        det.endDetectionMode === END_DETECTION_MODES.CLICKHOUSE_END_ASSIST &&
+        det.cusumSegmentEnd
+      ) {
+        const validatedEndTime = det.cusumSegmentEnd;
+        const endConfEnum = det.endConfidence ?? DetectionConfidence.MEDIUM;
+
+        this.logTripEndTimeline('clickhouse_end_assist_confirmed', {
+          vehicleId,
+          tripId: det.activeTripId,
+          lastMeaningfulMovementAt: det.lastMeaningfulMovementAt,
+          possibleEndAt: det.possibleEndAt,
+          finalizedAt: validatedEndTime,
+          endSource: 'clickhouse_segment_end',
+        });
+
+        await this.transitionState(vehicleId, TripDetectionState.POSSIBLE_END, {
+          cusumValidatedAt: now,
+          endDetectionMode: END_DETECTION_MODES.CLICKHOUSE_END_ASSIST,
+          endConfidence: endConfEnum,
+        });
+
+        resultState = TripDetectionState.RESTING;
+        await this.scheduleFinalize(vehicleId, organizationId, dimoTokenId);
+
+        await this.logTrackingRun({
+          vehicleId,
+          organizationId,
+          tripId: det.activeTripId,
+          stateAtRun: TripDetectionState.POSSIBLE_END,
+          runType: TripTrackingRunType.END_VALIDATION,
+          resultState,
+          resultSummary: {
+            reason: 'clickhouse_end_assist_skip_cusum',
+            validatedEndTime: validatedEndTime.toISOString(),
+          },
+          durationMs: Date.now() - startedMs,
+        });
+        return;
+      }
 
       // Fetch a bounded window of data centred on the POSSIBLE_END candidate
       const corePoints = await this.segments.fetchEndValidationWindow(
@@ -2134,7 +2264,10 @@ export class TripDetectionOrchestrationService {
             new Date();
 
           const chosenEndSource =
+            det.endDetectionMode === END_DETECTION_MODES.CLICKHOUSE_END_ASSIST &&
             (det as any).cusumSegmentEnd
+              ? 'clickhouse_segment_end'
+              : (det as any).cusumSegmentEnd
               ? 'cusum_segment_end'
               : (det as any).lastMeaningfulMovementAt
                 ? 'last_meaningful_movement'
@@ -2325,6 +2458,221 @@ export class TripDetectionOrchestrationService {
       this.detectorRegistry.get('ActivityWindowDetector') != null &&
       this.detectorRegistry.get('IgnitionSegmentDetector') != null
     );
+  }
+
+  /**
+   * ClickHouse-first trip end assist. Returns true when an end path was
+   * scheduled (caller should stop the active tick). FSM/CUSUM remains fallback.
+   */
+  private async tryApplyClickHouseAssistedEnd(params: {
+    vehicleId: string;
+    organizationId: string | null;
+    dimoTokenId: number;
+    tripId: string;
+    det: DetState;
+    profile: string;
+    tripStartAt: Date;
+    now: Date;
+    telemetry: VehicleLatestState | null;
+    corePoints: Awaited<ReturnType<DimoSegmentsService['fetchRawTripCoreData']>>;
+  }): Promise<boolean> {
+    if (!this.hasClickHouseAnalyticsDetectors()) return false;
+
+    const currentTelemetry = params.telemetry
+      ? {
+          isIgnitionOn: params.telemetry.isIgnitionOn,
+          speedKmh: params.telemetry.speedKmh,
+          engineLoad: params.telemetry.engineLoad,
+        }
+      : null;
+
+    if (!isCurrentTelemetryInactive(currentTelemetry)) return false;
+
+    const profileEnum =
+      params.det.detectionProfile ?? VehicleDetectionProfile.UNKNOWN;
+
+    const endAssistPolicy = this.policyResolver.resolve({
+      phase: DETECTION_PHASES.ACTIVE_TRIP,
+      profile: profileEnum,
+      dataQuality: {
+        snapshotFreshness: params.telemetry?.updatedAt ? 'FRESH' : 'MISSING',
+        ignitionAvailable: params.telemetry?.isIgnitionOn != null,
+        speedAvailable: params.telemetry?.speedKmh != null,
+        odometerAvailable: params.telemetry?.odometerKm != null,
+        telemetryDensity: params.corePoints.length >= 4 ? 'HIGH' : 'LOW',
+        routeCoverage: 'NONE',
+        highFrequencyAvailable: true,
+      },
+      anomalyContext: {
+        confirmingEnd: true,
+        clickhouseAvailable: true,
+      },
+    });
+
+    const segmentDetectorNames = endAssistPolicy.detectors.filter(
+      (name) => name !== 'ActivityWindowDetector',
+    );
+
+    const segmentFindings = await this.detectorRegistry.runAll(
+      segmentDetectorNames,
+      {
+        vehicleId: params.vehicleId,
+        dimoTokenId: params.dimoTokenId,
+        profile: profileEnum,
+        phase: DETECTION_PHASES.ACTIVE_TRIP,
+        timeWindow: { from: params.tripStartAt, to: params.now },
+        anomalyContext: { confirmingEnd: true, clickhouseAvailable: true },
+      },
+      endAssistPolicy.timeoutMs,
+    );
+
+    const ignitionSegment = segmentFindings.find(
+      (f) => f.detectorName === 'IgnitionSegmentDetector',
+    );
+    const motionSegment = segmentFindings.find(
+      (f) => f.detectorName === 'MotionSegmentDetector',
+    );
+
+    const isEvProfile =
+      params.profile === 'EV' ||
+      params.profile === 'HYBRID' ||
+      params.profile === 'UNKNOWN';
+
+    const preliminaryEnd = extractLatestSegmentEnd(
+      { ignitionSegment, motionSegment },
+      params.tripStartAt,
+      params.now,
+      isEvProfile,
+    );
+
+    let activityWindow = undefined;
+    if (preliminaryEnd) {
+      const postStopFrom = new Date(
+        Math.max(
+          preliminaryEnd.endAt.getTime(),
+          params.now.getTime() - 5 * 60_000,
+        ),
+      );
+      const activityFindings = await this.detectorRegistry.runAll(
+        ['ActivityWindowDetector'],
+        {
+          vehicleId: params.vehicleId,
+          dimoTokenId: params.dimoTokenId,
+          profile: profileEnum,
+          phase: DETECTION_PHASES.ACTIVE_TRIP,
+          timeWindow: { from: postStopFrom, to: params.now },
+          anomalyContext: { confirmingEnd: true, clickhouseAvailable: true },
+        },
+        endAssistPolicy.timeoutMs,
+      );
+      activityWindow = activityFindings.find(
+        (f) => f.detectorName === 'ActivityWindowDetector',
+      );
+    }
+
+    const endDecision = resolveAnalyticsAssistedEndDecision({
+      activityWindow,
+      ignitionSegment,
+      motionSegment,
+      profile: params.profile,
+      tripStartAt: params.tripStartAt,
+      now: params.now,
+      currentTelemetry,
+      minStationaryAfterSegmentMs: this.TRIP_END_CH_ASSIST_MIN_STATIONARY_MS,
+      minTripDurationMs: this.TRIP_END_CH_ASSIST_MIN_TRIP_DURATION_MS,
+      highConfidenceStationaryMs: this.TRIP_END_CH_ASSIST_HIGH_STATIONARY_MS,
+    });
+
+    if (!endDecision.confirmed || !endDecision.detectedEndAt) return false;
+
+    const recentFrom = new Date(params.now.getTime() - 90_000);
+    const recentPoints =
+      params.corePoints.length > 0
+        ? params.corePoints.filter(
+            (p) => new Date(p.timestamp).getTime() >= recentFrom.getTime(),
+          )
+        : await this.segments.fetchRawTripCoreData(
+            params.dimoTokenId,
+            recentFrom,
+            params.now,
+          );
+
+    const resumeFindings = await this.detectorRegistry.runAll(
+      ['EndContinuityDetector'],
+      {
+        vehicleId: params.vehicleId,
+        dimoTokenId: params.dimoTokenId,
+        profile: profileEnum,
+        phase: DETECTION_PHASES.POSSIBLE_END,
+        coreDataPoints: recentPoints,
+      },
+    );
+    const activityResumed = resumeFindings.some(
+      (f) =>
+        f.detectorName === 'EndContinuityDetector' && f.verdict === 'TRIGGERED',
+    );
+    if (activityResumed) return false;
+
+    const endConfEnum =
+      endDecision.confidence === 'HIGH'
+        ? DetectionConfidence.HIGH
+        : endDecision.confidence === 'MEDIUM'
+          ? DetectionConfidence.MEDIUM
+          : DetectionConfidence.LOW;
+
+    const detectedEndAt = endDecision.detectedEndAt;
+
+    this.tripMetrics?.tripEvidencePaths.inc({
+      phase: 'end_assist',
+      path: endDecision.evidencePath,
+    });
+
+    this.logger.log(
+      `CH end assist for ${params.vehicleId}: end at ${detectedEndAt.toISOString()} ` +
+        `[${endDecision.confidence}] path=${endDecision.evidencePath}`,
+    );
+
+    this.logTripEndTimeline('clickhouse_end_assist', {
+      vehicleId: params.vehicleId,
+      tripId: params.tripId,
+      lastMeaningfulMovementAt: (params.det as any).lastMeaningfulMovementAt,
+      possibleEndAt: detectedEndAt,
+      finalizedAt: detectedEndAt,
+      endSource: 'clickhouse_segment_end',
+      confidence: endDecision.confidence,
+    });
+
+    await this.transitionState(params.vehicleId, TripDetectionState.POSSIBLE_END, {
+      possibleEndAt: detectedEndAt,
+      endValidationAttempts: 0,
+      cusumValidatedAt: params.now,
+      cusumSegmentStart: params.tripStartAt,
+      cusumSegmentEnd: detectedEndAt,
+      endDetectionMode: END_DETECTION_MODES.CLICKHOUSE_END_ASSIST,
+      endConfidence: endConfEnum,
+      lastMeaningfulMovementAt: detectedEndAt,
+      lastEvidenceSummary: {
+        clickhouseEndAssist: endDecision.summary,
+        clickhouseEndEvidencePath: endDecision.evidencePath,
+      },
+    });
+
+    if (endDecision.confidence === 'HIGH') {
+      await this.scheduleFinalize(
+        params.vehicleId,
+        params.organizationId,
+        params.dimoTokenId,
+      );
+    } else {
+      await this.schedulePossibleEndCheck(
+        params.vehicleId,
+        params.organizationId,
+        params.dimoTokenId,
+        0,
+      );
+    }
+
+    return true;
   }
 
   // ══════════════════════════════════════════════════════════

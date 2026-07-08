@@ -56,6 +56,28 @@ export class TripDetectionPolicyResolver {
           };
         }
 
+        if (anomalyContext?.confirmingEnd) {
+          const detectors: string[] = [];
+          if (anomalyContext.clickhouseAvailable) {
+            if (
+              profile === 'EV' ||
+              profile === 'HYBRID' ||
+              profile === 'UNKNOWN'
+            ) {
+              detectors.push('MotionSegmentDetector', 'IgnitionSegmentDetector');
+            } else {
+              detectors.push('IgnitionSegmentDetector', 'MotionSegmentDetector');
+            }
+            detectors.push('ActivityWindowDetector');
+          }
+          return {
+            detectors,
+            requiredConfidence: 'MEDIUM',
+            timeoutMs: 10_000,
+            fallbackBehavior: 'SKIP',
+          };
+        }
+
         if (anomalyContext?.ambiguousContinuity) {
           return {
             detectors: anomalyContext.clickhouseAvailable

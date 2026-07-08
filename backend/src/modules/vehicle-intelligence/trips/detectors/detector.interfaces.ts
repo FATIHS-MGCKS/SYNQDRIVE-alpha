@@ -45,6 +45,7 @@ export interface AnomalyContext {
   missingEndTime?: boolean;
   suspectedMissedTrip?: boolean;
   confirmingStart?: boolean;
+  confirmingEnd?: boolean;
   ambiguousContinuity?: boolean;
   clickhouseAvailable?: boolean;
 }
