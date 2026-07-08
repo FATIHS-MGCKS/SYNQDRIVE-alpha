@@ -1325,6 +1325,25 @@ export type TripTimelineItem =
   | ({ itemType: 'trip' } & VehicleTripAnalytics)
   | ({ itemType: 'energy-event' } & EnergyEvent);
 
+export type TripAttributionScope =
+  | 'PRIVATE'
+  | 'BOOKING_ASSIGNED'
+  | 'BOOKING_TIME_WINDOW_MATCH'
+  | 'UNASSIGNED';
+
+export type TripAttributionConfidence = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export interface TripAttribution {
+  scope: TripAttributionScope;
+  confidence: TripAttributionConfidence;
+  customerRelevant: boolean;
+  bookingRelevant: boolean;
+  customerChargeable: boolean;
+  bookingId?: string | null;
+  customerId?: string | null;
+  reason: string;
+}
+
 export type TripAssessmentStatus =
   | 'UNAUFFAELLIG'
   | 'BEOBACHTEN'
@@ -1439,8 +1458,10 @@ export interface VehicleTripAnalytics {
   assignmentSubjectType?: TripAssignmentSubjectType | null;
   assignmentSubjectId?: string | null;
   assignedBookingId?: string | null;
+  bookingLinkSource?: 'EXPLICIT' | 'TIME_WINDOW' | null;
   isPrivateTrip?: boolean;
   scoreEligible?: boolean;
+  tripAttribution?: TripAttribution | null;
   tripAssessment?: TripAssessment | null;
   [key: string]: unknown;
 }

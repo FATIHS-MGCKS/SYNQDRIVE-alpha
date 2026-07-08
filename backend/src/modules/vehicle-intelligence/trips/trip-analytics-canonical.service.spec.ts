@@ -21,15 +21,32 @@ function makeMockAssignmentService() {
   } as any;
 }
 
+function makeMockAttributionService() {
+  return {
+    resolveAttributionForTrip: jest.fn().mockResolvedValue({
+      scope: 'UNASSIGNED',
+      confidence: 'LOW',
+      customerRelevant: false,
+      bookingRelevant: false,
+      customerChargeable: false,
+      bookingId: null,
+      customerId: null,
+      reason: 'Keine Buchung verknüpft',
+    }),
+  } as any;
+}
+
 describe('TripAnalyticsCanonicalService', () => {
   let prisma: ReturnType<typeof makeMockPrisma>;
   let assignmentService: ReturnType<typeof makeMockAssignmentService>;
+  let attributionService: ReturnType<typeof makeMockAttributionService>;
   let service: TripAnalyticsCanonicalService;
 
   beforeEach(() => {
     prisma = makeMockPrisma();
     assignmentService = makeMockAssignmentService();
-    service = new TripAnalyticsCanonicalService(prisma, assignmentService);
+    attributionService = makeMockAttributionService();
+    service = new TripAnalyticsCanonicalService(prisma, assignmentService, attributionService);
   });
 
   it('hydrates trip list with canonical stress score + event summary', async () => {
@@ -41,6 +58,7 @@ describe('TripAnalyticsCanonicalService', () => {
       assignmentSubjectType: TripAssignmentSubjectType.BOOKING_CUSTOMER,
       assignmentSubjectId: 'cust-1',
       assignedBookingId: 'booking-1',
+      bookingLinkSource: 'EXPLICIT',
       isPrivateTrip: false,
       scoreEligible: true,
     });
@@ -93,6 +111,7 @@ describe('TripAnalyticsCanonicalService', () => {
       assignmentSubjectType: null,
       assignmentSubjectId: null,
       assignedBookingId: null,
+      bookingLinkSource: null,
       isPrivateTrip: true,
       scoreEligible: false,
     });
@@ -146,6 +165,7 @@ describe('TripAnalyticsCanonicalService', () => {
       assignmentSubjectType: TripAssignmentSubjectType.BOOKING_CUSTOMER,
       assignmentSubjectId: 'cust-1',
       assignedBookingId: 'booking-1',
+      bookingLinkSource: 'EXPLICIT',
       isPrivateTrip: false,
       scoreEligible: true,
     });

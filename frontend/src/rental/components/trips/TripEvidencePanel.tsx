@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
 import { TripStatusBadge } from './TripStatusBadge';
 import { RENTAL_COPY } from './trips-view-ui';
-import { assignmentLabel } from './utils/tripLabels';
+import {
+  formatTripAttributionDetail,
+  formatTripBookingAttributionLabel,
+} from './trip-attribution-ui.utils';
 import { formatTripDistance, formatTripDuration, formatTripTime } from './utils/tripFormatters';
 import { getStressLabel, resolveDrivingStressScore, getStressLevel } from '../../lib/scoreFormat';
 import {
@@ -59,13 +62,6 @@ function LocationValue({ lat, lng }: { lat?: number; lng?: number }) {
       {address?.formatted ?? `${lat.toFixed(4)}, ${lng.toFixed(4)}`}
     </span>
   );
-}
-
-function bookingRowLabel(rentalContext?: TripRentalContextView): string {
-  if (rentalContext?.booking) {
-    return `${rentalContext.booking.bookingNumber} · ${rentalContext.booking.customerName}`;
-  }
-  return RENTAL_COPY.noBookingLinked;
 }
 
 export function TripEvidencePanel({
@@ -142,8 +138,22 @@ export function TripEvidencePanel({
             <span className="text-amber-700 dark:text-amber-400">{reviewHint}</span>
           </EvidenceRow>
         )}
-        <EvidenceRow label={RENTAL_COPY.evidenceAssignment}>{assignmentLabel(trip)}</EvidenceRow>
-        <EvidenceRow label={RENTAL_COPY.evidenceBooking}>{bookingRowLabel(rentalContext)}</EvidenceRow>
+        <EvidenceRow label={RENTAL_COPY.evidenceAssignment}>
+          {formatTripAttributionDetail(trip.tripAttribution)}
+        </EvidenceRow>
+        <EvidenceRow label={RENTAL_COPY.evidenceBooking}>
+          {formatTripBookingAttributionLabel(
+            trip.tripAttribution,
+            rentalContext?.booking?.bookingNumber,
+          )}
+          {trip.tripAttribution &&
+            !trip.tripAttribution.customerRelevant &&
+            trip.tripAttribution.scope !== 'BOOKING_ASSIGNED' && (
+              <span className="mt-0.5 block text-[10px] font-normal text-muted-foreground">
+                Nicht kundenrelevant
+              </span>
+            )}
+        </EvidenceRow>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma, TripAssignmentSubjectType, TripStatus } from '@prisma/client';
+import { Prisma, TripAssignmentSubjectType, TripBookingLinkSource, TripStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { classifyStressLevel } from '../driving-impact/stress-level.util';
 import type { StressLevel } from '../driving-impact/stress-level.util';
@@ -186,6 +186,11 @@ export class DriverScoreService {
       assignmentSubjectId: { in: subjectIds },
       endTime: { not: null },
     };
+
+    if (subjectType === TripAssignmentSubjectType.BOOKING_CUSTOMER) {
+      where.bookingLinkSource = TripBookingLinkSource.EXPLICIT;
+      where.assignedBookingId = { not: null };
+    }
 
     if (options.vehicleId) where.vehicleId = options.vehicleId;
     if (options.from || options.to) {

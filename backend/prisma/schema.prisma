@@ -4723,6 +4723,11 @@ enum TripAssignmentSubjectType {
   BOOKING_CUSTOMER
 }
 
+enum TripBookingLinkSource {
+  EXPLICIT
+  TIME_WINDOW
+}
+
 model VehicleTrip {
   id                    String                     @id @default(uuid())
   vehicleId             String                     @map("vehicle_id")
@@ -4733,6 +4738,7 @@ model VehicleTrip {
   assignmentSubjectType TripAssignmentSubjectType? @map("assignment_subject_type")
   assignmentSubjectId   String?                    @map("assignment_subject_id")
   assignedBookingId     String?                    @map("assigned_booking_id")
+  bookingLinkSource     TripBookingLinkSource?     @map("booking_link_source")
   isPrivateTrip         Boolean                    @default(false) @map("is_private_trip")
   startTime             DateTime                   @map("start_time")
   endTime               DateTime?                  @map("end_time")

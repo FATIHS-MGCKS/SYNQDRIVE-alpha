@@ -7,6 +7,8 @@ import {
   VehicleTrip,
 } from '@prisma/client';
 import { TripAssignmentResolution, TripAssignmentService } from './trip-assignment.service';
+import { TripAttributionService } from './trip-attribution.service';
+import type { TripAttribution } from './trip-attribution.types';
 import {
   classifyStressLevel,
   type StressLevel,
@@ -49,6 +51,7 @@ export interface CanonicalTripSummary {
   events: CanonicalTripEventSummary;
   scores: CanonicalTripScoreSummary;
   assignment: CanonicalTripAssignmentSummary;
+  attribution?: TripAttribution;
 }
 
 export interface CanonicalTripStats {
@@ -101,6 +104,7 @@ type TripProjection = Pick<
   | 'assignmentSubjectType'
   | 'assignmentSubjectId'
   | 'assignedBookingId'
+  | 'bookingLinkSource'
   | 'isPrivateTrip'
   | 'distanceKm'
   | 'durationMinutes'
@@ -114,6 +118,7 @@ export class TripAnalyticsCanonicalService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tripAssignmentService: TripAssignmentService,
+    private readonly tripAttributionService: TripAttributionService,
   ) {}
 
   async hydrateTrips<T extends TripProjection>(trips: T[]): Promise<Array<T & { canonicalTripSummary: CanonicalTripSummary }>> {
@@ -121,9 +126,19 @@ export class TripAnalyticsCanonicalService {
     const resolved: Array<T & { canonicalTripSummary: CanonicalTripSummary }> = [];
     for (const trip of trips) {
       const assignment = await this.tripAssignmentService.resolveForTrip(trip);
+      const attribution = await this.tripAttributionService.resolveAttributionForTrip({
+        isPrivateTrip: assignment.isPrivateTrip,
+        assignmentStatus: assignment.assignmentStatus,
+        assignedBookingId: assignment.assignedBookingId,
+        assignmentSubjectId: assignment.assignmentSubjectId,
+        bookingLinkSource: assignment.bookingLinkSource,
+        vehicleId: trip.vehicleId,
+        startTime: trip.startTime,
+        endTime: trip.endTime,
+      });
       resolved.push({
         ...trip,
-        canonicalTripSummary: this.buildSummary(trip, impactMap.get(trip.id) ?? null, assignment),
+        canonicalTripSummary: this.buildSummary(trip, impactMap.get(trip.id) ?? null, assignment, attribution),
       });
     }
     return resolved;
@@ -135,9 +150,19 @@ export class TripAnalyticsCanonicalService {
       select: { drivingStressScore: true },
     });
     const assignment = await this.tripAssignmentService.resolveForTrip(trip);
+    const attribution = await this.tripAttributionService.resolveAttributionForTrip({
+      isPrivateTrip: assignment.isPrivateTrip,
+      assignmentStatus: assignment.assignmentStatus,
+      assignedBookingId: assignment.assignedBookingId,
+      assignmentSubjectId: assignment.assignmentSubjectId,
+      bookingLinkSource: assignment.bookingLinkSource,
+      vehicleId: trip.vehicleId,
+      startTime: trip.startTime,
+      endTime: trip.endTime,
+    });
     return {
       ...trip,
-      canonicalTripSummary: this.buildSummary(trip, impact, assignment),
+      canonicalTripSummary: this.buildSummary(trip, impact, assignment, attribution),
     };
   }
 
@@ -261,6 +286,7 @@ export class TripAnalyticsCanonicalService {
     trip: TripProjection,
     impact: Pick<TripDrivingImpact, 'drivingStressScore'> | null,
     assignment: TripAssignmentResolution,
+    attribution?: TripAttribution,
   ): CanonicalTripSummary {
     const events: CanonicalTripEventSummary = {
       totalAccelerationEvents: trip.totalAccelerationEvents ?? trip.accelerationEventCount ?? 0,
@@ -290,6 +316,7 @@ export class TripAnalyticsCanonicalService {
         drivingStyleScore: drivingStressScore,
       },
       assignment,
+      attribution,
     };
   }
 

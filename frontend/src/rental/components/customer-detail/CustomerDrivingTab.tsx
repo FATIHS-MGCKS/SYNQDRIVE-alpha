@@ -130,7 +130,7 @@ export function CustomerDrivingTab({
 
         dataConfidence={(dataConfidence as DataConfidence) ?? null}
 
-        footnote="Aggregiert aus zugewiesenen Mietfahrten. Hohe Werte = hohe Fahrzeugbelastung."
+        footnote="Aggregiert nur aus explizit verknüpften Mietfahrten (BOOKING_ASSIGNED). Private, nicht zugeordnete oder Zeitfenster-Hinweise fließen nicht ein."
 
       />
 

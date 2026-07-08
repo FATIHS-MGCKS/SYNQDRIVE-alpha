@@ -4,6 +4,7 @@ import {
   Prisma,
   TripAssignmentStatus,
   TripAssignmentSubjectType,
+  TripBookingLinkSource,
   VehicleTrip,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -14,6 +15,7 @@ export interface TripAssignmentResolution {
   assignmentSubjectType: TripAssignmentSubjectType | null;
   assignmentSubjectId: string | null;
   assignedBookingId: string | null;
+  bookingLinkSource: TripBookingLinkSource | null;
   isPrivateTrip: boolean;
   scoreEligible: boolean;
 }
@@ -29,6 +31,7 @@ type TripAssignmentInput = Pick<
   | 'assignmentSubjectType'
   | 'assignmentSubjectId'
   | 'assignedBookingId'
+  | 'bookingLinkSource'
   | 'isPrivateTrip'
 >;
 
@@ -52,6 +55,7 @@ export class TripAssignmentService {
         assignmentSubjectType: true,
         assignmentSubjectId: true,
         assignedBookingId: true,
+        bookingLinkSource: true,
         isPrivateTrip: true,
       },
     });
@@ -65,6 +69,7 @@ export class TripAssignmentService {
         assignmentSubjectType: resolution.assignmentSubjectType ?? undefined,
         assignmentSubjectId: resolution.assignmentSubjectId ?? undefined,
         assignedBookingId: resolution.assignedBookingId ?? undefined,
+        bookingLinkSource: resolution.bookingLinkSource ?? undefined,
         isPrivateTrip: resolution.isPrivateTrip,
       },
     });
@@ -87,18 +92,72 @@ export class TripAssignmentService {
     return resolution;
   }
 
+  async linkTripToBookingExplicitly(
+    tripId: string,
+    bookingId: string,
+    customerId: string,
+  ): Promise<TripAssignmentResolution | null> {
+    const trip = await this.prisma.vehicleTrip.findUnique({
+      where: { id: tripId },
+      select: {
+        id: true,
+        vehicleId: true,
+        startTime: true,
+        endTime: true,
+        driverName: true,
+        assignmentStatus: true,
+        assignmentSubjectType: true,
+        assignmentSubjectId: true,
+        assignedBookingId: true,
+        bookingLinkSource: true,
+        isPrivateTrip: true,
+      },
+    });
+    if (!trip) return null;
+
+    const resolution: TripAssignmentResolution = {
+      assignmentStatus: TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
+      assignmentSubjectType: TripAssignmentSubjectType.BOOKING_CUSTOMER,
+      assignmentSubjectId: customerId,
+      assignedBookingId: bookingId,
+      bookingLinkSource: TripBookingLinkSource.EXPLICIT,
+      isPrivateTrip: false,
+      scoreEligible: true,
+    };
+
+    await this.prisma.vehicleTrip.update({
+      where: { id: tripId },
+      data: {
+        assignmentStatus: resolution.assignmentStatus,
+        assignmentSubjectType: resolution.assignmentSubjectType,
+        assignmentSubjectId: resolution.assignmentSubjectId,
+        assignedBookingId: resolution.assignedBookingId,
+        bookingLinkSource: resolution.bookingLinkSource,
+        isPrivateTrip: false,
+      },
+    });
+
+    return resolution;
+  }
+
   private normalizeFallbackAssignment(trip: TripAssignmentInput): TripAssignmentResolution {
     if (trip.assignmentStatus && trip.assignmentStatus !== TripAssignmentStatus.UNKNOWN_ASSIGNMENT) {
+      const explicitBooking =
+        trip.bookingLinkSource === TripBookingLinkSource.EXPLICIT &&
+        trip.assignedBookingId != null;
       return {
         assignmentStatus: trip.assignmentStatus,
         assignmentSubjectType: trip.assignmentSubjectType ?? null,
         assignmentSubjectId: trip.assignmentSubjectId ?? null,
         assignedBookingId: trip.assignedBookingId ?? null,
+        bookingLinkSource: trip.bookingLinkSource ?? null,
         isPrivateTrip: trip.isPrivateTrip === true,
         scoreEligible:
-          trip.isPrivateTrip !== true &&
-          trip.assignmentSubjectType != null &&
-          !!trip.assignmentSubjectId,
+          explicitBooking ||
+          (trip.isPrivateTrip !== true &&
+            trip.assignmentSubjectType != null &&
+            !!trip.assignmentSubjectId &&
+            trip.bookingLinkSource !== TripBookingLinkSource.TIME_WINDOW),
       };
     }
 
@@ -109,6 +168,7 @@ export class TripAssignmentService {
         assignmentSubjectType: TripAssignmentSubjectType.DRIVER,
         assignmentSubjectId: normalizedDriver,
         assignedBookingId: null,
+        bookingLinkSource: null,
         isPrivateTrip: false,
         scoreEligible: true,
       };
@@ -120,6 +180,7 @@ export class TripAssignmentService {
         assignmentSubjectType: null,
         assignmentSubjectId: null,
         assignedBookingId: null,
+        bookingLinkSource: null,
         isPrivateTrip: false,
         scoreEligible: false,
       };
@@ -130,6 +191,7 @@ export class TripAssignmentService {
       assignmentSubjectType: null,
       assignmentSubjectId: null,
       assignedBookingId: null,
+      bookingLinkSource: null,
       isPrivateTrip: true,
       scoreEligible: false,
     };
@@ -159,8 +221,9 @@ export class TripAssignmentService {
       assignmentSubjectType: TripAssignmentSubjectType.BOOKING_CUSTOMER,
       assignmentSubjectId: booking.customerId,
       assignedBookingId: booking.id,
+      bookingLinkSource: TripBookingLinkSource.TIME_WINDOW,
       isPrivateTrip: false,
-      scoreEligible: true,
+      scoreEligible: false,
     };
   }
 

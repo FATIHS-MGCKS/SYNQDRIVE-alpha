@@ -103,6 +103,8 @@ describe('TripAssignmentService', () => {
     );
     expect(result.assignmentSubjectId).toBe('customer-99');
     expect(result.assignedBookingId).toBe('booking-9');
+    expect(result.bookingLinkSource).toBe('TIME_WINDOW');
+    expect(result.scoreEligible).toBe(false);
   });
 
   it('records assignment-resolution metric when applying assignment', async () => {
@@ -128,7 +130,7 @@ describe('TripAssignmentService', () => {
 
     expect(metrics.tripAssignmentResolutions.inc).toHaveBeenCalledWith({
       status: TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
-      score_eligible: 'yes',
+      score_eligible: 'no',
     });
     expect(prisma.vehicleTrip.update).toHaveBeenCalled();
   });

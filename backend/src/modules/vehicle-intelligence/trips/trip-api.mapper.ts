@@ -62,8 +62,10 @@ export function mapTripForVehicleApi(
     assignmentSubjectType: summary?.assignment?.assignmentSubjectType ?? null,
     assignmentSubjectId: summary?.assignment?.assignmentSubjectId ?? null,
     assignedBookingId: summary?.assignment?.assignedBookingId ?? null,
+    bookingLinkSource: summary?.assignment?.bookingLinkSource ?? null,
     isPrivateTrip: summary?.assignment?.isPrivateTrip ?? false,
     scoreEligible: summary?.assignment?.scoreEligible ?? false,
+    tripAttribution: summary?.attribution ?? null,
     behaviorReady: behaviorEnrichmentStatus === 'COMPLETED',
     detailsLimited: isTripDetailsLimited(trip),
     behaviorSummaryAssessability: {

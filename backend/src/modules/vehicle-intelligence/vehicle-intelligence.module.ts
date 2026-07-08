@@ -34,6 +34,7 @@ import { MapboxRouteMatcherService } from './trips/mapbox-route-matcher.service'
 import { FmmRouteMatcherService } from './trips/fmm-route-matcher.service';
 import { ROUTE_MAP_MATCHER } from './trips/route-map-matcher.port';
 import { TripAssignmentService } from './trips/trip-assignment.service';
+import { TripAttributionService } from './trips/trip-attribution.service';
 import { DriverScoreService } from './trips/driver-score.service';
 import { TripAnalyticsCanonicalService } from './trips/trip-analytics-canonical.service';
 import { DamagesService } from './damages/damages.service';
@@ -128,6 +129,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
       useExisting: MapboxRouteMatcherService,
     },
     TripAssignmentService,
+    TripAttributionService,
     DriverScoreService,
     TripAnalyticsCanonicalService,
     DamagesService,
@@ -189,6 +191,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     LteR1BehaviorEnrichmentService,
     EventContextEnrichmentService,
     TripAssignmentService,
+    TripAttributionService,
     DriverScoreService,
     TripAnalyticsCanonicalService,
     DamagesService,

@@ -79,6 +79,8 @@ export interface TripTimelineTrip {
   countrySharePercent?: number;
   avgEngineLoad?: number;
   avgThrottlePosition?: number;
+  bookingLinkSource?: 'EXPLICIT' | 'TIME_WINDOW' | null;
+  tripAttribution?: import('../../../lib/api').TripAttribution | null;
   tripAssessment?: TripAssessment | null;
 }
 

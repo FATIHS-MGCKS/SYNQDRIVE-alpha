@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BookingStatus, TripAssignmentSubjectType, TripStatus } from '@prisma/client';
+import { BookingStatus, TripAssignmentSubjectType, TripBookingLinkSource, TripStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripsService } from '../vehicle-intelligence/trips/trips.service';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
@@ -8,6 +8,7 @@ import {
   DataConfidence,
   DriverScoreService,
 } from '../vehicle-intelligence/trips/driver-score.service';
+import { TripAttributionService } from '../vehicle-intelligence/trips/trip-attribution.service';
 import type { StressLevel } from '../vehicle-intelligence/driving-impact/stress-level.util';
 import type { RentalDrivingAnalysisPayload } from './rental-driving-analysis.types';
 import {
@@ -52,6 +53,7 @@ export class RentalDrivingAnalysisService {
     private readonly tripsService: TripsService,
     private readonly dtcService: DtcService,
     private readonly driverScoreService: DriverScoreService,
+    private readonly tripAttributionService: TripAttributionService,
   ) {}
 
   async generateForBooking(orgId: string, bookingId: string) {
@@ -75,6 +77,7 @@ export class RentalDrivingAnalysisService {
       this.prisma.vehicleTrip.findMany({
         where: {
           assignedBookingId: bookingId,
+          bookingLinkSource: TripBookingLinkSource.EXPLICIT,
           isPrivateTrip: false,
           tripStatus: TripStatus.COMPLETED,
         },
@@ -93,6 +96,7 @@ export class RentalDrivingAnalysisService {
     ]);
 
     let tripsInRange: unknown[] = assignedTrips;
+    let hintTrips: Array<{ id: string; attributionReason: string }> = [];
     let analysisSource: AnalysisSource = 'booking_assignment';
 
     if (assignedTrips.length === 0) {
@@ -101,8 +105,50 @@ export class RentalDrivingAnalysisService {
         to: periodEnd,
         limit: 200,
       });
-      tripsInRange = fallbackTrips;
-      analysisSource = fallbackTrips.length === 0 ? 'none' : 'time_window_fallback';
+      const eligible: TripForAnalysis[] = [];
+      for (const rawTrip of fallbackTrips as Array<TripForAnalysis & {
+        isPrivateTrip?: boolean;
+        assignmentStatus?: string | null;
+        assignedBookingId?: string | null;
+        assignmentSubjectId?: string | null;
+        bookingLinkSource?: 'EXPLICIT' | 'TIME_WINDOW' | null;
+        vehicleId?: string;
+        startTime?: Date;
+        endTime?: Date | null;
+      }>) {
+        const attribution = await this.tripAttributionService.resolveAttributionForTrip({
+          isPrivateTrip: rawTrip.isPrivateTrip === true,
+          assignmentStatus: rawTrip.assignmentStatus ?? null,
+          assignedBookingId: rawTrip.assignedBookingId ?? null,
+          assignmentSubjectId: rawTrip.assignmentSubjectId ?? null,
+          bookingLinkSource: rawTrip.bookingLinkSource ?? null,
+          vehicleId,
+          startTime: rawTrip.startTime ?? periodStart,
+          endTime: rawTrip.endTime ?? null,
+        });
+        if (attribution.scope === 'PRIVATE' || attribution.scope === 'UNASSIGNED') {
+          continue;
+        }
+        if (attribution.scope === 'BOOKING_TIME_WINDOW_MATCH') {
+          if (attribution.bookingId === bookingId) {
+            hintTrips.push({
+              id: rawTrip.id,
+              attributionReason: attribution.reason,
+            });
+          }
+          continue;
+        }
+        if (attribution.scope === 'BOOKING_ASSIGNED' && attribution.bookingId === bookingId) {
+          eligible.push(rawTrip);
+        }
+      }
+      tripsInRange = eligible;
+      analysisSource =
+        eligible.length > 0
+          ? 'booking_assignment'
+          : hintTrips.length > 0
+            ? 'time_window_fallback'
+            : 'none';
     }
 
     const tripsWithMetrics = tripsInRange as Array<TripForAnalysis>;
@@ -211,6 +257,7 @@ export class RentalDrivingAnalysisService {
       scoredTripCount: aggregate.scoredTripCount,
       totalDistanceKm: aggregate.totalDistanceKm,
       aggregateConfidence: aggregate.dataConfidence,
+      attributionHints: hintTrips,
     });
 
     const record = await this.prisma.rentalDrivingAnalysis.create({
@@ -286,6 +333,7 @@ export class RentalDrivingAnalysisService {
     scoredTripCount: number;
     totalDistanceKm: number;
     aggregateConfidence: DataConfidence;
+    attributionHints?: Array<{ id: string; attributionReason: string }>;
   }): RentalDrivingAnalysisPayload {
     const stress = ctx.drivingStressScore;
     const level = this.stressToOverallLevel(ctx.stressLevel, ctx.harshBraking, ctx.harshAcceleration);
@@ -298,6 +346,17 @@ export class RentalDrivingAnalysisService {
 
     const watchpoints: string[] = [];
     const recommendations: string[] = [];
+
+    if (ctx.analysisSource === 'time_window_fallback') {
+      watchpoints.push(
+        'Einige Fahrten wurden nur über das Buchungszeitfenster gefunden — keine bestätigte Buchungszuordnung.',
+      );
+    }
+    if ((ctx.attributionHints?.length ?? 0) > 0) {
+      watchpoints.push(
+        `${ctx.attributionHints!.length} Fahrt(en) nur als Zeitfenster-Hinweis erkannt — nicht in die Bewertung einbezogen.`,
+      );
+    }
 
     if (stress != null && stress >= 51) {
       watchpoints.push(`Elevated vehicle stress (${stress}) during rental period.`);
@@ -372,6 +431,7 @@ export class RentalDrivingAnalysisService {
         abuseDetectionCount: ctx.abuseDetectionCount,
         errorCodeOccurred: ctx.errorCodeOccurred,
         eventHighlights: watchpoints.slice(0, 5),
+        attributionHints: ctx.attributionHints ?? [],
       },
       wearImpactAssessment: {
         overallWearImpact: wearImpact as 'low' | 'medium' | 'medium_to_high' | 'high',

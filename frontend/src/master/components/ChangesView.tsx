@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-attribution-phase4-v49251-2026-07-08',
+    version: '4.9.251',
+    title: 'V4.9.251 — Trip Attribution: private/unassigned/booking wasserdicht (Phase 4)',
+    summary: [
+      'Kanonische tripAttribution (PRIVATE, BOOKING_ASSIGNED, BOOKING_TIME_WINDOW_MATCH, UNASSIGNED) auf Trip-Detail.',
+      'bookingLinkSource (EXPLICIT/TIME_WINDOW) unterscheidet explizite Buchungslinks von Zeitfenster-Inferenz.',
+      'Rental Driving Analysis zählt nur BOOKING_ASSIGNED; Zeitfenster nur als Hinweis, nicht in Bewertung.',
+      'Driver-Score/Kundenaggregate filtern private, unassigned und Zeitfenster-Hinweise aus.',
+    ],
+    reason:
+      'Phase 4 der Trip-Bewertungs-Finalisierung — keine automatische Schuldzuweisung an Mietkunden ohne belastbare Zuordnung.',
+    previousBehavior:
+      'Zeitfenster-Overlap setzte assignedBookingId und floss in Kunden-/Buchungsanalyse ein; private Fahrten konnten indirekt Kundenrisiko beeinflussen.',
+    details:
+      'trip-attribution.service.ts, trip-assignment.service.ts, rental-driving-analysis.service.ts, TripEvidencePanel, trip-attribution-ui.utils.ts.',
+    affectsArchitecture: true,
+    module: 'Trips',
+    createdAt: '2026-07-08T04:50:00.000Z',
+  },
+  {
     id: 'trip-evidence-phase3-v49250-2026-07-08',
     version: '4.9.250',
     title: 'V4.9.250 — Trip Prüfhinweise: Evidence-Level & rechtssichere Verdachtsschicht (Phase 3)',

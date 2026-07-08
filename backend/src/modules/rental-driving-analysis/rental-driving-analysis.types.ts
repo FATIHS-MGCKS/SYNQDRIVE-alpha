@@ -38,6 +38,7 @@ export interface RentalDrivingAnalysisPayload {
     abuseDetectionCount: number | null;
     errorCodeOccurred: boolean;
     eventHighlights: string[];
+    attributionHints?: Array<{ id: string; attributionReason: string }>;
   };
   wearImpactAssessment: {
     overallWearImpact: 'low' | 'medium' | 'medium_to_high' | 'high';
