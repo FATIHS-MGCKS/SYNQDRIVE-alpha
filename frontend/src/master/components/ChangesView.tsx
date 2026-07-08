@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-command-ui-neutral-rows-v49246-2026-07-08',
+    version: '4.9.246',
+    title: 'V4.9.246 — Fleet Command: Header-Layout & neutrale Fahrzeugkarten-Rahmen',
+    summary: [
+      'FleetCommandPanel: Titelzeile mit Critical/Warning-Chips rechts; Station-Filter linksbündig in eigener Control-Zeile.',
+      'Fleet Page + Dashboard teilen dieselbe Header-Struktur; Dashboard ohne Station-Button unverändert sauber.',
+      'Fahrzeugzeilen: einheitlicher neutraler light-grey Rahmen (`ring-border/40`) für alle Severity-Stufen.',
+      'Status-Badges (Kritisch/Warnung/Gut/Bereit) und Reason-Chips bleiben semantisch farbig.',
+    ],
+    reason:
+      'Station-Button wirkte auf der Fleet Page mittig/gequetscht; farbige Critical/Warning-Boxrahmen machten die Liste visuell zu laut.',
+    previousBehavior:
+      'headerAction stand neben Alert-Chips in einer Zeile; Critical/Warning-Rows hatten farbige Inset-Rings und Gradient-Hintergründe.',
+    details:
+      'FleetCommandPanel.tsx (panelTitleRow / panelControlsRow / panelSearchRow), fleetOperatorUi.tsx#fleetCommandRowSurfaceClass neutralisiert.',
+    affectsArchitecture: false,
+    module: 'Fleet',
+    createdAt: '2026-07-08T03:30:00.000Z',
+  },
+  {
     id: 'customer-document-verification-sot-v49245-2026-07-08',
     version: '4.9.245',
     title: 'V4.9.245 — Dokumentenverifikation: kanonische Source of Truth',

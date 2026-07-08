@@ -97,34 +97,45 @@ export function FleetCommandPanel({
 
   const hasSearch = searchQuery.trim().length > 0;
 
+  const attentionChips = (
+    <>
+      {attentionStats.critical > 0 && (
+        <PanelStatusChip
+          label={`${attentionStats.critical} Critical`}
+          tone="critical"
+        />
+      )}
+      {attentionStats.warning > 0 && (
+        <PanelStatusChip
+          label={`${attentionStats.warning} Warning`}
+          tone="warning"
+        />
+      )}
+      {attentionStats.critical === 0 && attentionStats.warning === 0 && (
+        <PanelStatusChip label="No attention" tone="neutral" />
+      )}
+    </>
+  );
+
   return (
     <div className="sq-card overflow-hidden flex flex-col lg:h-[640px] animate-fade-up">
       <div className="p-3 pb-0 border-b border-border/40">
-        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5 mb-1.5">
+        <div className="flex items-center justify-between gap-2">
           <h3 className="text-[12px] font-semibold tracking-[-0.005em] text-foreground shrink-0">
             Fleet Command
           </h3>
-          <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0 ml-auto">
-            {headerAction}
-            {attentionStats.critical > 0 && (
-              <PanelStatusChip
-                label={`${attentionStats.critical} Critical`}
-                tone="critical"
-              />
-            )}
-            {attentionStats.warning > 0 && (
-              <PanelStatusChip
-                label={`${attentionStats.warning} Warning`}
-                tone="warning"
-              />
-            )}
-            {attentionStats.critical === 0 && attentionStats.warning === 0 && (
-              <PanelStatusChip label="No attention" tone="neutral" />
-            )}
+          <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0">
+            {attentionChips}
           </div>
         </div>
 
-        <div className="relative mb-2">
+        {headerAction ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <div className="flex min-w-0 items-center justify-start">{headerAction}</div>
+          </div>
+        ) : null}
+
+        <div className="relative mt-2 mb-2">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground pointer-events-none" />
           <input
             type="search"

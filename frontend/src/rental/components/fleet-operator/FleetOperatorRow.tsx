@@ -63,7 +63,7 @@ function MetaDot() {
 
 export interface FleetOperatorRowProps {
   ctx: FleetVehicleContext;
-  /** Canonical Fleet Command severity — drives row tint and status chips. */
+  /** Canonical Fleet Command severity — drives status chips (row frame stays neutral). */
   commandSeverity: FleetCommandRowSeverity;
   selected: boolean;
   onClick: () => void;
