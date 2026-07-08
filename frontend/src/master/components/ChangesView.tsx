@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-analytics-injectable-hotfix-v49252-2026-07-08',
+    version: '4.9.252',
+    title: 'V4.9.252 — Hotfix: Fahrtenliste 500 (TripAnalyticsCanonicalService DI)',
+    summary: [
+      'TripAnalyticsCanonicalService erhält wieder @Injectable() — Prisma-Injection war in Produktion undefined.',
+      'Behebt 500 auf GET /trips, /trips-timeline und /trips/stats (Fahrten konnten nicht geladen werden).',
+    ],
+    reason:
+      'Nach Phase-1-Refactor fehlte versehentlich @Injectable(); NestJS injizierte PrismaService nicht, this.prisma war undefined.',
+    previousBehavior:
+      'Historische Fahrtenliste und Trip-Stats warfen TypeError und zeigten „Fahrten konnten nicht geladen werden".',
+    details:
+      'trip-analytics-canonical.service.ts — @Injectable() wiederhergestellt.',
+    affectsArchitecture: false,
+    module: 'Trips',
+    createdAt: '2026-07-08T05:00:00.000Z',
+  },
+  {
     id: 'trip-attribution-phase4-v49251-2026-07-08',
     version: '4.9.251',
     title: 'V4.9.251 — Trip Attribution: private/unassigned/booking wasserdicht (Phase 4)',

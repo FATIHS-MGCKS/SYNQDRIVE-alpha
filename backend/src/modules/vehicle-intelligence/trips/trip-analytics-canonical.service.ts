@@ -114,6 +114,7 @@ type TripProjection = Pick<
   | 'qualityStatus'
 >;
 
+@Injectable()
 export class TripAnalyticsCanonicalService {
   constructor(
     private readonly prisma: PrismaService,
