@@ -25,6 +25,7 @@ import { PerformanceLogicView } from './components/PerformanceLogicView';
 import VehicleLogbookView from './components/VehicleLogbookView';
 import { HighMobilityDataView } from './components/HighMobilityDataView';
 import { HighMobilityCompatibilityView } from './components/HighMobilityCompatibilityView';
+import { PlatformHealthView } from './components/PlatformHealthView';
 import { Toaster, toast } from 'sonner';
 import type { Organization, PlatformUser, RegisteredVehicle, DimoVehicle } from './data/platform-data';
 import { api } from '../lib/api';
@@ -667,6 +668,18 @@ export default function App() {
             {/* ACTIVITY LOG */}
             {currentView === 'activity-log' && (
               <ActivityLogView isDarkMode={isDarkMode} />
+            )}
+
+            {/* PLATFORM HEALTH */}
+            {currentView === 'platform-health' && (
+              <PlatformHealthView
+                isDarkMode={isDarkMode}
+                onViewChange={(view, tab) => {
+                  setCurrentView(view as MasterView);
+                  if (tab) setSettingsTab(tab);
+                  setSelectedOrg(null);
+                }}
+              />
             )}
 
             {/* SUPPORT */}

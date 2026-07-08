@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: SynqDrive
+    orgId: 1
+    folder: SynqDrive
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      path: /etc/grafana/dashboards

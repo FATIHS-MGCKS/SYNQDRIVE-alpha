@@ -2334,7 +2334,9 @@ export const api = {
       alerts: (params?: { from?: string; to?: string }) =>
         get<any[]>('/admin/monitoring/alerts' + buildQuery(params)),
       tokenHealth: () => get<any>('/admin/monitoring/token-health'),
+      queues: () => get<any[]>('/admin/monitoring/queues'),
     },
+    platformHealth: () => get<any>('/admin/platform-health'),
     changelogs: (module?: string) =>
       get<any[]>('/admin/changelogs' + (module ? `?module=${module}` : '')),
     createChangelog: (data: any) => post<any>('/admin/changelogs', data),

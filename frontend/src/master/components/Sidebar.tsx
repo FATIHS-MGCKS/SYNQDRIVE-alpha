@@ -23,6 +23,7 @@ export type MasterView =
   | 'prospects'
   | 'billing'
   | 'activity-log'
+  | 'platform-health'
   | 'support'
   | 'settings'
   | 'fleet-connection'
@@ -122,6 +123,9 @@ export function Sidebar({ isDarkMode, currentView, onViewChange, settingsTab, on
         <nav className="space-y-0.5 mb-1">
           <button onClick={() => go('activity-log')} className={itemCls(active('activity-log'))}>
             <Activity className={icon} /><span>Activity Log</span>
+          </button>
+          <button onClick={() => go('platform-health')} className={itemCls(active('platform-health'))}>
+            <Gauge className={icon} /><span>Platform Health</span>
           </button>
           <button onClick={() => go('billing')} className={itemCls(active('billing'))}>
             <CreditCard className={icon} /><span>Billing</span>

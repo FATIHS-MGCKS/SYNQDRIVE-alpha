@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'platform-health-grafana-v49268-2026-07-08',
+    version: '4.9.268',
+    title: 'V4.9.268 — Platform Health (Master Admin) + Grafana VPS',
+    summary: [
+      'Master Admin: neue Seite Platform Health — Readiness, Worker/Queues (live BullMQ), Alerts, DIMO-Summary, Grafana/Prometheus-Hinweise.',
+      'Backend: GET /admin/platform-health, GET /admin/monitoring/queues, QueueMonitoringService.',
+      'VPS: vps-setup-grafana.sh + SynqDrive Ops Dashboard (localhost:3000).',
+    ],
+    reason:
+      'Ops-Übersicht fragmentiert (Settings → Monitoring). Master Admin braucht Ampel-Summary; Grafana für Trends neben Prometheus.',
+    previousBehavior:
+      'Kein aggregierter Platform-Health-Endpoint; keine live Queue-Tiefen; Grafana nicht installiert.',
+    details:
+      'PlatformHealthView, platform-admin.service getPlatformHealth, queue-monitoring.service, grafana provisioning. Merged V4.9.266 + V4.9.267 auf main.',
+    affectsArchitecture: true,
+    module: 'Platform',
+    createdAt: '2026-07-08T19:30:00.000Z',
+  },
+  {
     id: 'financial-insights-draft-filter-v49267-2026-07-08',
     version: '4.9.267',
     title: 'V4.9.267 — Financial Insights: DRAFT-Rechnungen aus KPIs + Test-Stabilisierung',

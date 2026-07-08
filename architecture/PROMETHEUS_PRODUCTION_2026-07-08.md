@@ -44,6 +44,19 @@
 Mirror flags on prod (`backend.env`): `HF_MIRROR_ENABLED`, `WAYPOINT_MIRROR_ENABLED`,
 `ACTIVITY_WINDOW_MIRROR_ENABLED` — enabled via `vps-enable-clickhouse-mirrors.sh`.
 
+## Grafana (V4.9.268)
+
+| Item | Value |
+|------|--------|
+| Container | `synqdrive-grafana` (Docker, `--network host`) |
+| UI | `http://127.0.0.1:3000` (localhost only) |
+| Datasource | Prometheus `http://127.0.0.1:9090` |
+| Dashboard | `SynqDrive Ops` (provisioned) |
+| Setup | `bash /opt/synqdrive/current/backend/scripts/ops/vps-setup-grafana.sh` |
+
+Master Admin **Platform Health** (`/master` → Operations) aggregates readiness, monitoring
+summary, live BullMQ queues, and links to Grafana via SSH tunnel hint.
+
 ## Explicit non-goals
 
 - No vehicle/trip/org/customer IDs as metric labels

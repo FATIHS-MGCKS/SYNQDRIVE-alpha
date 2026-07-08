@@ -6,7 +6,11 @@ import {
   DimoPollStatus,
   EnrichmentJobStatus,
 } from '@prisma/client';
+import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
+import { HealthService } from '@modules/health/health.service';
+import { QueueMonitoringService } from '@modules/observability/queue-monitoring.service';
+import { DimoAuthService } from '../dimo/dimo-auth.service';
 
 export interface ActivityLogEntry {
   id: string;
@@ -38,7 +42,13 @@ export interface DashboardStats {
 
 @Injectable()
 export class PlatformAdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly healthService: HealthService,
+    private readonly queueMonitoring: QueueMonitoringService,
+    private readonly dimoAuth: DimoAuthService,
+    private readonly config: ConfigService,
+  ) {}
 
   async getDashboardStats(): Promise<DashboardStats> {
     const [
@@ -508,6 +518,81 @@ export class PlatformAdminService {
       });
     });
     return alerts.slice(0, 20);
+  }
+
+  async getMonitoringQueues() {
+    return this.queueMonitoring.getAllQueueCounts();
+  }
+
+  async getPlatformHealth() {
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+    const [readiness, monitoring, alerts, queues, tokenHealth, dimoCounts] = await Promise.all([
+      this.healthService.checkReadiness(),
+      this.getMonitoringSummary({
+        from: oneHourAgo.toISOString(),
+        to: now.toISOString(),
+      }),
+      this.getMonitoringAlerts({
+        from: oneHourAgo.toISOString(),
+        to: now.toISOString(),
+      }),
+      this.queueMonitoring.getAllQueueCounts(),
+      this.dimoAuth.getHealthSnapshot().catch(() => null),
+      Promise.all([
+        this.prisma.dimoVehicle.count(),
+        this.prisma.dimoVehicle.count({ where: { connectionStatus: 'CONNECTED' } }),
+      ]),
+    ]);
+
+    const [dimoTotal, dimoConnected] = dimoCounts;
+    const queueCritical = queues.filter((q) => q.status === 'critical').length;
+    const queueWarning = queues.filter((q) => q.status === 'warning').length;
+
+    let overallStatus: 'healthy' | 'warning' | 'critical' = 'healthy';
+    if (
+      readiness.status === 'degraded' ||
+      monitoring.systemHealth === 'critical' ||
+      queueCritical > 0
+    ) {
+      overallStatus = 'critical';
+    } else if (
+      monitoring.systemHealth === 'warning' ||
+      queueWarning > 0 ||
+      alerts.some((a) => a.severity === 'warning' || a.severity === 'critical')
+    ) {
+      overallStatus = 'warning';
+    }
+
+    const grafanaUrl =
+      this.config.get<string>('GRAFANA_INTERNAL_URL') ?? 'http://127.0.0.1:3000';
+    const prometheusUrl =
+      this.config.get<string>('PROMETHEUS_INTERNAL_URL') ?? 'http://127.0.0.1:9090';
+
+    return {
+      generatedAt: now.toISOString(),
+      overallStatus,
+      readiness,
+      monitoring,
+      alerts: alerts.slice(0, 10),
+      queues,
+      integrations: {
+        dimo: {
+          total: dimoTotal,
+          connected: dimoConnected,
+          disconnected: Math.max(0, dimoTotal - dimoConnected),
+          tokenHealth,
+        },
+      },
+      observability: {
+        metricsConfigured: !!this.config.get<string>('METRICS_BEARER_TOKEN'),
+        prometheusUrl,
+        grafanaUrl,
+        grafanaAccessHint:
+          'Grafana/Prometheus lauschen nur auf dem VPS (localhost). SSH-Tunnel: ssh -L 3000:127.0.0.1:3000 -L 9090:127.0.0.1:9090 root@srv1374778.hstgr.cloud',
+      },
+    };
   }
 
   async getChangelogs(module?: string) {

@@ -8,5 +8,6 @@ import { RedisModule } from '@shared/redis/redis.module';
   imports: [PrismaModule, RedisModule],
   controllers: [HealthController],
   providers: [HealthService],
+  exports: [HealthService],
 })
 export class HealthModule {}

@@ -116,6 +116,16 @@ export class PlatformAdminController {
     return this.dimoAuthService.getHealthSnapshot();
   }
 
+  @Get('monitoring/queues')
+  async getMonitoringQueues() {
+    return this.platformAdminService.getMonitoringQueues();
+  }
+
+  @Get('platform-health')
+  async getPlatformHealth() {
+    return this.platformAdminService.getPlatformHealth();
+  }
+
   // ── V3: Hardware type bulk backfill ─────────────────────────────────────────
   // POST /admin/vehicles/hardware-backfill
   // Marks a list of existing vehicle IDs as LTE_R1 in bulk.

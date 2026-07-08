@@ -40,6 +40,7 @@ storage growth. These are deliberately **not** wired into the app (no automatic
 | `backfill-brake-health-from-registration-specs.ts` | Initialize `BrakeHealthCurrent` for vehicles with registration/manual brake specs but no baseline | mutating — run `--dry-run` first |
 | `prod-cleanup-dimo-device-connection-duplicates.sh` | VPS wrapper for the cleanup script above | mutating — backup first |
 | `vps-setup-prometheus.sh` | Install/refresh Prometheus Docker on VPS (localhost:9090, scrapes :3001) | safe — requires `METRICS_BEARER_TOKEN` |
+| `vps-setup-grafana.sh` | Install/refresh Grafana Docker on VPS (localhost:3000, SynqDrive Ops dashboard) | safe — requires Prometheus |
 | `vps-enable-clickhouse-mirrors.sh` | Enable HF/Waypoint/Activity mirror flags in `backend.env` + PM2 restart | safe — post-trip CH mirrors only |
 
 ### Partitioning (P2)
