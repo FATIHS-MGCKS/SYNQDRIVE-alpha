@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'prometheus-metrics-security-v49256-2026-07-08',
+    version: '4.9.256',
+    title: 'V4.9.256 — Prometheus /metrics Endpoint absichern',
+    summary: [
+      'MetricsAccessGuard schützt GET /api/v1/metrics: METRICS_ENABLED (404 wenn false), METRICS_REQUIRE_TOKEN + METRICS_TOKEN (Bearer oder X-Metrics-Token), optional METRICS_ALLOWED_IPS.',
+      'Dev-default: METRICS_REQUIRE_TOKEN=false. Prod-default: METRICS_REQUIRE_TOKEN=true (fail-closed ohne METRICS_TOKEN). Kein JWT — Scraper nutzen METRICS_TOKEN.',
+      'Doku: backend/docs/prometheus-metrics-security.md (Nginx/Cloudflare/Traefik, Prometheus scrape_config). Label-Audit: keine vehicle_id/vin/booking_id/customer_id/trip_id/org_id Labels.',
+    ],
+    reason:
+      'Audit-Follow-up: /metrics war öffentlich erreichbar ohne Schutz — internes Scraping soll weiter funktionieren, Prod nicht versehentlich offen lassen.',
+    previousBehavior:
+      '/api/v1/metrics in AuthGuard public list ohne Token/IP-Schutz; Kommentar „internal scraping only“.',
+    details:
+      'Neu: metrics.config.ts, metrics-access.util.ts, metrics-access.guard.ts, Specs. Geändert: metrics.controller.ts, observability.module.ts, app.module.ts, .env.example, main.ts (CORS x-metrics-token), auth.guard.ts Kommentar. Architektur: architecture/PROMETHEUS_METRICS_SECURITY_2026-07-08.md. Keine Trip-/UI-/Business-Logik.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-08T15:00:00.000Z',
+  },
+  {
     id: 'dimo-obd-webhook-unplug-only-v49254-2026-07-08',
     version: '4.9.254',
     title: 'V4.9.254 — DIMO OBD: nur Unplug-Webhook, Plug-in über Snapshots (Ops)',
