@@ -1,5 +1,8 @@
+import { ExternalLink } from 'lucide-react';
+
 import { Icon } from '../ui/Icon';
-import { StatusChip, type StatusTone } from '../../../components/patterns';
+import { DataCard, StatusChip } from '../../../components/patterns';
+import { Button } from '../../../components/ui/button';
 import { CustomerDocumentUploadBox } from '../CustomerDocumentUploadBox';
 import { CustomerVerificationPanel } from '../customer-verification/CustomerVerificationPanel';
 import {
@@ -7,15 +10,27 @@ import {
   customerVerificationUiLabelDe,
 } from '../../lib/entityMappers';
 import type { CustomerDetail, KycDocSlot } from './customerDetailTypes';
-import { EM_DASH, formatDate, formatDateTime, hasLegacyDocumentsOnly, resolveDocumentPreviewUrl } from './customerDetailUtils';
-
-const cardBg = 'rounded-lg border border-border bg-card';
+import {
+  EM_DASH,
+  formatDate,
+  formatDocumentVerificationMeta,
+  formatKycIdentityDocumentLabel,
+  formatKycLicenseDocumentLabel,
+  findPendingKycDocument,
+  findPrimaryKycDocument,
+  hasLegacyDocumentsOnly,
+  kycSlotNeedsUpload,
+  licenseVerificationHint,
+  resolveDocumentPreviewUrl,
+} from './customerDetailUtils';
+import { cdv } from './customer-detail-ui';
 
 interface CustomerDocumentsTabProps {
   orgId: string | undefined;
   customerId: string;
   detail: CustomerDetail | null;
   kycDocSlots: KycDocSlot[];
+  eligibilityBlockingReasons?: string[];
   documentsLoading?: boolean;
   documentsError?: string | null;
   reviewingDocId: string | null;
@@ -25,11 +40,26 @@ interface CustomerDocumentsTabProps {
   onVerificationUpdated?: () => void;
 }
 
+const ID_DOC_TYPES = ['ID_FRONT', 'ID_BACK'] as const;
+const LICENSE_DOC_TYPES = ['LICENSE_FRONT', 'LICENSE_BACK'] as const;
+
+function customerDetailDiditActionLabel(kind: 'ID_DOCUMENT' | 'DRIVING_LICENSE' | 'PROOF_OF_ADDRESS'): string {
+  switch (kind) {
+    case 'ID_DOCUMENT':
+      return 'KYC Ausweisprozess starten';
+    case 'DRIVING_LICENSE':
+      return 'KYC Führerscheinprozess starten';
+    case 'PROOF_OF_ADDRESS':
+      return 'KYC Adressnachweis starten';
+  }
+}
+
 export function CustomerDocumentsTab({
   orgId,
   customerId,
   detail,
   kycDocSlots,
+  eligibilityBlockingReasons,
   documentsLoading,
   documentsError,
   reviewingDocId,
@@ -41,6 +71,7 @@ export function CustomerDocumentsTab({
   const idUi = customerVerificationApiToUi(detail?.idVerificationStatus ?? undefined);
   const licenseUi = customerVerificationApiToUi(detail?.licenseVerificationStatus ?? undefined);
   const showLegacy = hasLegacyDocumentsOnly(detail) && kycDocSlots.every((s) => !s.document);
+
   const pendingReviewDocumentIds = kycDocSlots
     .map((s) => s.document)
     .filter(
@@ -49,8 +80,19 @@ export function CustomerDocumentsTab({
     )
     .map((doc) => doc.id);
 
+  const idPrimaryDoc = findPrimaryKycDocument(kycDocSlots, [...ID_DOC_TYPES]);
+  const licensePrimaryDoc = findPrimaryKycDocument(kycDocSlots, [...LICENSE_DOC_TYPES]);
+  const idPendingDoc = findPendingKycDocument(kycDocSlots, [...ID_DOC_TYPES]);
+  const licensePendingDoc = findPendingKycDocument(kycDocSlots, [...LICENSE_DOC_TYPES]);
+
+  const missingUploadSlots = kycDocSlots.filter((slot) =>
+    kycSlotNeedsUpload(slot, { replaceLegacy: showLegacy }),
+  );
+
+  const verificationHint = licenseVerificationHint(licenseUi, eligibilityBlockingReasons);
+
   return (
-    <div className="space-y-4">
+    <div className={cdv.documentsSection}>
       <CustomerVerificationPanel
         customerId={customerId}
         orgId={orgId}
@@ -59,54 +101,65 @@ export function CustomerDocumentsTab({
         onManualVerifyDocument={onVerify}
         onDocumentUploaded={onDocumentUploaded}
         onVerificationUpdated={onVerificationUpdated}
+        getDiditActionLabel={customerDetailDiditActionLabel}
       />
 
-      <div className={`${cardBg} p-4`}>
-        <h4 className="text-xs font-bold mb-3">Dokumentenstatus (Read-Model)</h4>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div className="p-3 rounded-lg border border-border">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">Personalausweis</span>
-              <StatusChip tone={verificationTone(idUi)}>{customerVerificationUiLabelDe(idUi)}</StatusChip>
-            </div>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              Nr. {detail?.idNumber || EM_DASH} · gültig bis {formatDate(detail?.idExpiry)}
-            </p>
-          </div>
-          <div className="p-3 rounded-lg border border-border">
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">Führerschein</span>
-              <StatusChip tone={verificationTone(licenseUi)}>
-                {customerVerificationUiLabelDe(licenseUi)}
-              </StatusChip>
-            </div>
-            <p className="text-[10px] text-muted-foreground mt-1">
-              Nr. {detail?.licenseNumber || EM_DASH} · gültig bis {formatDate(detail?.licenseExpiry)}
-            </p>
-          </div>
+      <DataCard title="Dokumentenstatus" bodyClassName="py-3.5">
+        <div className={cdv.documentsStatusGrid}>
+          <DocumentStatusCard
+            title={formatKycIdentityDocumentLabel(detail)}
+            verificationUi={idUi}
+            number={detail?.idNumber}
+            expiry={detail?.idExpiry}
+            meta={formatDocumentVerificationMeta(idPrimaryDoc, idUi)}
+            pendingDoc={idPendingDoc}
+            previewUrl={resolveDocumentPreviewUrl(idPrimaryDoc?.fileKey, null)}
+            reviewingDocId={reviewingDocId}
+            onVerify={onVerify}
+            onReject={onReject}
+            emptyHint={idUi === 'Not Submitted' ? 'Noch kein Ausweisdokument eingereicht' : undefined}
+          />
+          <DocumentStatusCard
+            title={formatKycLicenseDocumentLabel(detail)}
+            verificationUi={licenseUi}
+            number={detail?.licenseNumber}
+            expiry={detail?.licenseExpiry}
+            meta={formatDocumentVerificationMeta(licensePrimaryDoc, licenseUi)}
+            pendingDoc={licensePendingDoc}
+            previewUrl={resolveDocumentPreviewUrl(licensePrimaryDoc?.fileKey, null)}
+            reviewingDocId={reviewingDocId}
+            onVerify={onVerify}
+            onReject={onReject}
+            emptyHint={
+              licenseUi === 'Not Submitted'
+                ? verificationHint ?? 'Noch kein Führerscheindokument eingereicht'
+                : verificationHint ?? undefined
+            }
+          />
         </div>
-      </div>
+      </DataCard>
 
-      {documentsError && (
+      {documentsError ? (
         <div className="rounded-lg p-3 text-xs sq-tone-critical">{documentsError}</div>
-      )}
+      ) : null}
 
-      {showLegacy && (
+      {showLegacy ? (
         <div className="rounded-lg p-3 text-xs sq-tone-warning border border-current/30">
           <Icon name="alert-triangle" className="w-4 h-4 inline mr-1" />
           Legacy-Dokumente vorhanden (alte URL-Felder). Bitte im neuen Dokumentensystem erneut hochladen.
         </div>
-      )}
+      ) : null}
 
-      <div className={`${cardBg} p-4`}>
-        <h4 className="text-xs font-bold mb-3">Dokumente hochladen</h4>
-        {documentsLoading ? (
-          <p className="text-xs text-muted-foreground">Dokumente werden geladen…</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {kycDocSlots.map((doc) => (
-              <div key={doc.slot}>
+      {missingUploadSlots.length > 0 ? (
+        <div className={cdv.documentsUploadSection}>
+          <h4 className="text-xs font-bold">Fehlende Dokumente hochladen</h4>
+          {documentsLoading ? (
+            <p className="text-xs text-muted-foreground">Dokumente werden geladen…</p>
+          ) : (
+            <div className={cdv.documentsUploadGrid}>
+              {missingUploadSlots.map((doc) => (
                 <CustomerDocumentUploadBox
+                  key={doc.slot}
                   label={doc.label}
                   documentType={doc.documentType}
                   orgId={orgId}
@@ -115,90 +168,105 @@ export function CustomerDocumentsTab({
                   legacyPreviewUrl={doc.document ? null : doc.legacyPreviewUrl}
                   onDocumentUploaded={onDocumentUploaded}
                 />
-                <p className="text-[10px] text-muted-foreground mt-1">Status: {doc.statusLabel}</p>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
+      ) : !documentsLoading ? (
+        <p className={cdv.documentsEmptySuccess}>
+          Alle erforderlichen Dokumente sind bereits vorhanden.
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+function DocumentStatusCard({
+  title,
+  verificationUi,
+  number,
+  expiry,
+  meta,
+  pendingDoc,
+  previewUrl,
+  reviewingDocId,
+  onVerify,
+  onReject,
+  emptyHint,
+}: {
+  title: string;
+  verificationUi: ReturnType<typeof customerVerificationApiToUi>;
+  number?: string | null;
+  expiry?: string | null;
+  meta?: string | null;
+  pendingDoc: ReturnType<typeof findPendingKycDocument>;
+  previewUrl: string | null;
+  reviewingDocId: string | null;
+  onVerify: (documentId: string) => void;
+  onReject: (documentId: string) => void;
+  emptyHint?: string;
+}) {
+  const rejectedReason = (pendingDoc as { rejectedReason?: string } | null)?.rejectedReason;
+
+  return (
+    <div className={cdv.documentsStatusCard}>
+      <div className={cdv.documentsStatusHeader}>
+        <div className="min-w-0">
+          <p className={cdv.documentsStatusTitle}>{title}</p>
+          <p className={cdv.documentsStatusMeta}>
+            Nr. {number || EM_DASH} · gültig bis {formatDate(expiry)}
+          </p>
+        </div>
+        <StatusChip tone={verificationTone(verificationUi)} dot className={cdv.decisionChip}>
+          {customerVerificationUiLabelDe(verificationUi)}
+        </StatusChip>
       </div>
 
-      <div className={`${cardBg} overflow-hidden`}>
-        <table className="w-full min-w-[640px]">
-          <thead>
-            <tr className="border-b border-border bg-muted/30">
-              {['Dokument', 'Status', 'Hochgeladen', 'Geprüft', 'Ablauf', 'Aktionen'].map((h) => (
-                <th key={h} className="text-left text-[10px] uppercase tracking-wider font-semibold px-3 py-2 text-muted-foreground">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {kycDocSlots.map((doc) => {
-              const previewUrl = resolveDocumentPreviewUrl(
-                doc.document?.fileKey,
-                doc.legacyPreviewUrl,
-              );
-              const canReview =
-                doc.document &&
-                ['UPLOADED', 'PENDING_REVIEW'].includes(doc.document.status);
-              const rejectedReason = (doc.document as { rejectedReason?: string } | null)?.rejectedReason;
-              return (
-                <tr key={doc.slot} className="hover:bg-muted/30">
-                  <td className="px-3 py-2 text-xs font-medium">{doc.label}</td>
-                  <td className="px-3 py-2 text-xs">{doc.statusLabel}</td>
-                  <td className="px-3 py-2 text-[10px] text-muted-foreground">
-                    {doc.document?.createdAt ? formatDateTime(doc.document.createdAt) : EM_DASH}
-                  </td>
-                  <td className="px-3 py-2 text-[10px] text-muted-foreground">
-                    {doc.document?.reviewedAt ? formatDateTime(doc.document.reviewedAt) : EM_DASH}
-                  </td>
-                  <td className="px-3 py-2 text-[10px] text-muted-foreground">
-                    {doc.document?.expiresAt ? formatDate(doc.document.expiresAt) : EM_DASH}
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex flex-wrap gap-1.5">
-                      {previewUrl && (
-                        <a
-                          href={previewUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-2 py-1 rounded text-[10px] font-semibold sq-tone-info"
-                        >
-                          Ansehen
-                        </a>
-                      )}
-                      {canReview && doc.document && (
-                        <>
-                          <button
-                            type="button"
-                            disabled={reviewingDocId === doc.document.id}
-                            onClick={() => onVerify(doc.document!.id)}
-                            className="px-2 py-1 rounded text-[10px] font-semibold sq-tone-success"
-                          >
-                            Verifizieren
-                          </button>
-                          <button
-                            type="button"
-                            disabled={reviewingDocId === doc.document.id}
-                            onClick={() => onReject(doc.document!.id)}
-                            className="px-2 py-1 rounded text-[10px] font-semibold sq-tone-critical"
-                          >
-                            Ablehnen
-                          </button>
-                        </>
-                      )}
-                    </div>
-                    {rejectedReason && (
-                      <p className="text-[10px] text-[color:var(--status-critical)] mt-1">{rejectedReason}</p>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+      {meta ? <p className={cdv.documentsStatusMeta}>{meta}</p> : null}
+      {emptyHint && verificationUi === 'Not Submitted' ? (
+        <p className={cdv.documentsStatusMeta}>{emptyHint}</p>
+      ) : null}
+
+      {(pendingDoc || previewUrl) && (
+        <div className={cdv.documentsStatusActions}>
+          {previewUrl ? (
+            <Button type="button" size="sm" variant="neutral" className="h-8" asChild>
+              <a href={previewUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="size-3.5" />
+                Ansehen
+              </a>
+            </Button>
+          ) : null}
+          {pendingDoc ? (
+            <>
+              <Button
+                type="button"
+                size="sm"
+                variant="success"
+                className="h-8"
+                disabled={reviewingDocId === pendingDoc.id}
+                onClick={() => onVerify(pendingDoc.id)}
+              >
+                Verifizieren
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                className="h-8"
+                disabled={reviewingDocId === pendingDoc.id}
+                onClick={() => onReject(pendingDoc.id)}
+              >
+                Ablehnen
+              </Button>
+            </>
+          ) : null}
+        </div>
+      )}
+
+      {rejectedReason ? (
+        <p className="text-[11px] leading-snug text-[color:var(--status-critical)]">{rejectedReason}</p>
+      ) : null}
     </div>
   );
 }

@@ -752,6 +752,8 @@ export function CustomerDetailView({
 
             kycDocSlots={kycDocSlots}
 
+            eligibilityBlockingReasons={eligibility?.blockingReasons}
+
             documentsLoading={documentsLoading}
 
             documentsError={documentsError}

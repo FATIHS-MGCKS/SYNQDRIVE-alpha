@@ -1,7 +1,9 @@
+import type { StatusTone } from '../../../components/patterns';
 import {
   customerDocumentSlotToApiType,
   customerDocumentStatusApiToUi,
   customerDocumentStatusUiLabelDe,
+  type CustomerUiVerification,
 } from '../../lib/entityMappers';
 import type { CustomerDocumentRecord } from '../CustomerDocumentUploadBox';
 import type { BookingRow, CustomerDetail, EligibilityStage, KycDocSlot } from './customerDetailTypes';
@@ -199,4 +201,276 @@ export function customerDocumentSlotToApiTypeExport(
   slot: 'id-front' | 'id-back' | 'license-front' | 'license-back',
 ) {
   return customerDocumentSlotToApiType(slot);
+}
+
+export type TimelineUserSummary = {
+  chipLabel: string;
+  chipTone: StatusTone;
+  userTitle: string;
+  userDescription?: string;
+  timestamp?: string;
+};
+
+function isGermanCountry(country?: string | null): boolean {
+  if (!country?.trim()) return false;
+  const normalized = country.trim().toLowerCase();
+  return normalized === 'de' || normalized === 'deutschland' || normalized === 'germany';
+}
+
+export function formatKycIdentityDocumentLabel(detail: CustomerDetail | null): string {
+  const idType = detail?.idType?.trim() || 'Personalausweis';
+  if (!isGermanCountry(detail?.country)) return idType;
+  if (idType.toLowerCase().includes('reisepass')) return 'Deutscher Reisepass';
+  if (idType.toLowerCase().includes('personalausweis')) return 'Deutscher Personalausweis';
+  return `Deutscher ${idType}`;
+}
+
+export function formatKycLicenseDocumentLabel(detail: CustomerDetail | null): string {
+  if (isGermanCountry(detail?.country)) return 'Deutscher Führerschein';
+  return 'Führerschein';
+}
+
+export function kycSlotNeedsUpload(
+  slot: KycDocSlot,
+  options?: { replaceLegacy?: boolean },
+): boolean {
+  const status = slot.document?.status?.toUpperCase();
+  if (status === 'VERIFIED') return false;
+  if (slot.document && ['UPLOADED', 'PENDING_REVIEW'].includes(status ?? '')) return false;
+  if (!slot.document && slot.legacyPreviewUrl && !options?.replaceLegacy) return false;
+  return true;
+}
+
+export function findPrimaryKycDocument(
+  slots: KycDocSlot[],
+  documentTypes: KycDocSlot['documentType'][],
+): CustomerDocumentRecord | null {
+  const docs = slots
+    .filter((slot) => documentTypes.includes(slot.documentType))
+    .map((slot) => slot.document)
+    .filter((doc): doc is CustomerDocumentRecord => Boolean(doc));
+
+  const verified = docs
+    .filter((doc) => doc.status?.toUpperCase() === 'VERIFIED')
+    .sort((a, b) => String(b.reviewedAt ?? b.createdAt ?? '').localeCompare(String(a.reviewedAt ?? a.createdAt ?? '')));
+  if (verified[0]) return verified[0];
+
+  return docs.sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))[0] ?? null;
+}
+
+export function findPendingKycDocument(
+  slots: KycDocSlot[],
+  documentTypes: KycDocSlot['documentType'][],
+): CustomerDocumentRecord | null {
+  for (const slot of slots) {
+    if (!documentTypes.includes(slot.documentType)) continue;
+    const doc = slot.document;
+    if (doc && ['UPLOADED', 'PENDING_REVIEW'].includes(doc.status.toUpperCase())) {
+      return doc;
+    }
+  }
+  return null;
+}
+
+type TimelineEventLike = Record<string, unknown>;
+
+function timelineEventType(event: TimelineEventLike): string {
+  return String(event.type ?? event.eventType ?? '').toUpperCase();
+}
+
+function timelineMetadata(event: TimelineEventLike): Record<string, unknown> | null {
+  const metadata = event.metadata;
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
+  return metadata as Record<string, unknown>;
+}
+
+function verificationKindFromEvent(event: TimelineEventLike): 'id' | 'license' | 'generic' {
+  const title = String(event.title ?? '').toLowerCase();
+  const metadata = timelineMetadata(event);
+  const kind = String(metadata?.kind ?? '').toUpperCase();
+  if (kind === 'ID_DOCUMENT' || title.includes('ausweis')) return 'id';
+  if (kind === 'DRIVING_LICENSE' || title.includes('führerschein') || title.includes('fuehrerschein')) {
+    return 'license';
+  }
+  return 'generic';
+}
+
+function describeVerificationOutcome(event: TimelineEventLike, positive: boolean): {
+  userTitle: string;
+  userDescription: string;
+  chipLabel: string;
+  chipTone: StatusTone;
+} {
+  const kind = verificationKindFromEvent(event);
+  const title = String(event.title ?? '').toLowerCase();
+  const kindLabel =
+    kind === 'id' ? 'Ausweisprüfung' : kind === 'license' ? 'Führerscheinprüfung' : 'Dokumentprüfung';
+
+  let userDescription = positive
+    ? 'Prüfung erfolgreich abgeschlossen'
+    : 'Das Dokument wurde nicht bestätigt';
+
+  if (title.includes('automatische')) {
+    userDescription = positive
+      ? 'Automatisch über Verifikationsdienst bestätigt'
+      : 'Automatisiert nicht bestätigt';
+  } else if (title.includes('manuelle') || title.includes('manuell')) {
+    userDescription = positive ? 'Manuell bestätigt' : 'Manuell abgelehnt';
+  } else if (title.includes('pickup') || title.includes('übergabe')) {
+    userDescription = positive ? 'Bei Fahrzeugübergabe bestätigt' : 'Bei Fahrzeugübergabe abgelehnt';
+  }
+
+  return {
+    userTitle: positive ? `${kindLabel} erfolgreich` : `${kindLabel} abgelehnt`,
+    userDescription,
+    chipLabel: kind === 'generic' ? 'Dokument' : 'Verifikation',
+    chipTone: positive ? 'success' : 'critical',
+  };
+}
+
+export function mapTimelineEventToUserSummary(event: TimelineEventLike): TimelineUserSummary {
+  const type = timelineEventType(event);
+  const rawTitle = String(event.title ?? '').trim();
+  const rawDescription = String(event.description ?? '').trim();
+  const timestamp = event.createdAt ? formatDateTime(String(event.createdAt)) : undefined;
+
+  if (type === 'DOCUMENT_VERIFIED') {
+    const mapped = describeVerificationOutcome(event, true);
+    return { ...mapped, timestamp };
+  }
+
+  if (type === 'DOCUMENT_REJECTED') {
+    const mapped = describeVerificationOutcome(event, false);
+    return { ...mapped, timestamp };
+  }
+
+  if (type === 'DOCUMENT_UPLOADED') {
+    return {
+      chipLabel: 'Dokument',
+      chipTone: 'neutral',
+      userTitle: 'Dokument hochgeladen',
+      userDescription: rawTitle.replace(/^Dokument hochgeladen:\s*/i, '') || 'Neues Dokument eingereicht',
+      timestamp,
+    };
+  }
+
+  if (type === 'CREATED') {
+    return {
+      chipLabel: 'Kunde',
+      chipTone: 'neutral',
+      userTitle: 'Kunde angelegt',
+      userDescription: 'Kundendatensatz wurde erstellt',
+      timestamp,
+    };
+  }
+
+  if (type === 'NOTE_ADDED') {
+    return {
+      chipLabel: 'Notiz',
+      chipTone: 'neutral',
+      userTitle: rawTitle || 'Notiz hinzugefügt',
+      userDescription: rawDescription || undefined,
+      timestamp,
+    };
+  }
+
+  if (type === 'STATUS_CHANGED') {
+    return {
+      chipLabel: 'Status',
+      chipTone: 'watch',
+      userTitle: rawTitle || 'Status geändert',
+      userDescription: rawDescription || 'Kundenstatus wurde aktualisiert',
+      timestamp,
+    };
+  }
+
+  if (type === 'RISK_CHANGED') {
+    return {
+      chipLabel: 'Risiko',
+      chipTone: 'warning',
+      userTitle: rawTitle || 'Risiko aktualisiert',
+      userDescription: rawDescription || 'Risikoeinstufung wurde geändert',
+      timestamp,
+    };
+  }
+
+  if (type.startsWith('BOOKING_')) {
+    return {
+      chipLabel: 'Buchung',
+      chipTone: 'neutral',
+      userTitle: rawTitle || 'Buchungsereignis',
+      userDescription: rawDescription || undefined,
+      timestamp,
+    };
+  }
+
+  if (type === 'PAYMENT_RECEIVED' || type === 'INVOICE_CREATED') {
+    return {
+      chipLabel: 'Finanzen',
+      chipTone: 'neutral',
+      userTitle: rawTitle || 'Finanzereignis',
+      userDescription: rawDescription || undefined,
+      timestamp,
+    };
+  }
+
+  if (type === 'FINE_CREATED') {
+    return {
+      chipLabel: 'Bußgeld',
+      chipTone: 'warning',
+      userTitle: rawTitle || 'Bußgeld erfasst',
+      userDescription: rawDescription || undefined,
+      timestamp,
+    };
+  }
+
+  const cleanedDescription =
+    rawDescription &&
+    !/kanonische verifikationsprüfung|webhook\/source of truth/i.test(rawDescription)
+      ? rawDescription
+      : undefined;
+
+  return {
+    chipLabel: 'Aktivität',
+    chipTone: 'neutral',
+    userTitle: rawTitle || 'Aktualisierung',
+    userDescription: cleanedDescription,
+    timestamp,
+  };
+}
+
+export function formatDocumentVerificationMeta(
+  document: CustomerDocumentRecord | null,
+  verificationUi: CustomerUiVerification,
+): string | null {
+  if (!document) {
+    if (verificationUi === 'Not Submitted') return 'Noch kein Dokument eingereicht';
+    return null;
+  }
+
+  const lines: string[] = [];
+
+  if (document.status?.toUpperCase() === 'VERIFIED') {
+    if (document.reviewedByUserId) {
+      lines.push('Verifiziert durch Manuell');
+    } else {
+      lines.push('Verifiziert automatisch');
+    }
+    if (document.reviewedAt) {
+      lines.push(formatDateTime(document.reviewedAt));
+    }
+  } else if (document.createdAt) {
+    lines.push(`Eingereicht am ${formatDateTime(document.createdAt)}`);
+  }
+
+  return lines.length > 0 ? lines.join(' · ') : null;
+}
+
+export function licenseVerificationHint(
+  licenseUi: string,
+  eligibilityBlockingReasons?: string[],
+): string | null {
+  if (licenseUi === 'Verified') return null;
+  const pool = eligibilityBlockingReasons ?? [];
+  return pool.find((text) => /führerschein|fuehrerschein|pickup/i.test(text.toLowerCase())) ?? null;
 }

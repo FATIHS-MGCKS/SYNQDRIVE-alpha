@@ -1,7 +1,7 @@
-import { DataCard, Timeline } from '../../../components/patterns';
+import { DataCard, StatusChip, Timeline } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
 import type { CustomerDetail, CustomerListRow } from './customerDetailTypes';
-import { formatDate, formatDateTime } from './customerDetailUtils';
+import { formatDate, mapTimelineEventToUserSummary } from './customerDetailUtils';
 import { CustomerDetailInfoRow } from './CustomerDetailInfoRow';
 import { cdv } from './customer-detail-ui';
 
@@ -22,12 +22,21 @@ export function CustomerOverviewTab({
   timelinePreview,
   onOpenTimeline,
 }: CustomerOverviewTabProps) {
-  const timelineItems = timelinePreview.slice(0, 5).map((ev, idx) => ({
-    id: String(ev.id ?? `ev-${idx}`),
-    title: String(ev.title ?? ev.type ?? 'Ereignis'),
-    time: ev.createdAt ? formatDateTime(String(ev.createdAt)) : undefined,
-    description: ev.description ? String(ev.description) : undefined,
-  }));
+  const timelineItems = timelinePreview.slice(0, 5).map((ev, idx) => {
+    const summary = mapTimelineEventToUserSummary(ev);
+    return {
+      id: String(ev.id ?? `ev-${idx}`),
+      title: summary.userTitle,
+      time: summary.timestamp,
+      description: summary.userDescription,
+      tone: summary.chipTone,
+      meta: (
+        <StatusChip tone={summary.chipTone} className="text-[10px]">
+          {summary.chipLabel}
+        </StatusChip>
+      ),
+    };
+  });
 
   return (
     <div className="space-y-3 pt-1">
@@ -84,7 +93,7 @@ export function CustomerOverviewTab({
             Alle anzeigen
           </Button>
         }
-        bodyClassName="py-3"
+        bodyClassName={cdv.overviewActivityBody}
       >
         {timelineItems.length === 0 ? (
           <p className="text-[12px] text-muted-foreground">Noch keine Timeline-Einträge.</p>

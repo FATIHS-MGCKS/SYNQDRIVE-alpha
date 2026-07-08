@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customer-detail-tabs-polish-v49239-2026-07-08',
+    version: '4.9.239',
+    title: 'V4.9.239 — Customer Detail: Übersicht & Dokumente UX-Feinschliff',
+    summary: [
+      'Overview „Letzte Aktivitäten“: lesbare Timeline-Mappings statt roher Event-Strings.',
+      'Dokumente-Tab: „Dokumentenstatus“ ohne Read-Model, KYC-Button-Labels, Upload nur für fehlende Slots.',
+      'Dokumentstatus-Cards mit Nummer, Gültigkeit, Verifizierungsmeta; redundante Tabelle entfernt.',
+      'Deutscher Personalausweis/Führerschein wenn Land ableitbar; Review-Aktionen in Status-Cards.',
+    ],
+    reason:
+      'Overview und Dokumente wirkten technisch/debug-lastig und zeigten doppelte Dokumentdarstellung.',
+    previousBehavior:
+      'Rohe Timeline-Titel/Descriptions; Read-Model-Label; alle Upload-Slots; tabellarischer Dokumentblock unten.',
+    details:
+      'frontend: CustomerOverviewTab, CustomerDocumentsTab, customerDetailUtils (mapTimelineEventToUserSummary), customer-verification.ts, CustomerVerificationPanel, CustomerDetailView. Keine Backend-Änderung.',
+    affectsArchitecture: false,
+    module: 'Customers',
+    createdAt: '2026-07-08T01:40:00.000Z',
+  },
+  {
     id: 'customer-decision-cards-polish-v49238-2026-07-08',
     version: '4.9.238',
     title: 'V4.9.238 — Customer Detail Summary-Cards Feinschliff',

@@ -88,6 +88,17 @@ export const cdv = {
   bottomTabButtonActive: 'bg-card text-foreground shadow-[var(--shadow-1)]',
   bottomTabButtonIdle:
     'text-muted-foreground hover:bg-background/60 hover:text-foreground',
+  overviewActivityBody: 'py-3',
+  documentsSection: 'space-y-4',
+  documentsStatusGrid: 'grid grid-cols-1 gap-3 sm:grid-cols-2',
+  documentsStatusCard: 'rounded-lg border border-border bg-muted/15 p-3.5 space-y-2',
+  documentsStatusHeader: 'flex items-start justify-between gap-2',
+  documentsStatusTitle: 'text-[13px] font-semibold text-foreground',
+  documentsStatusMeta: 'text-[11px] leading-snug text-muted-foreground',
+  documentsStatusActions: 'flex flex-wrap gap-1.5 pt-1',
+  documentsUploadSection: 'sq-card p-4 space-y-3',
+  documentsUploadGrid: 'grid grid-cols-1 gap-4 sm:grid-cols-2',
+  documentsEmptySuccess: 'text-[12px] text-muted-foreground',
   /** @deprecated use heroBadgeGrid */
   badgeRow: 'mt-2.5 flex flex-wrap items-center gap-1.5',
   /** @deprecated use heroActionGrid */
