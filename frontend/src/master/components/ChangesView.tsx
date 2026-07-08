@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'hf-mirror-hardening-v49258-2026-07-08',
+    version: '4.9.258',
+    title: 'V4.9.258 — HF Mirror: Flag, Trip-Kontext, Idempotenz, Metriken',
+    summary: [
+      'HF_MIRROR_ENABLED zentral (default off); bei false/unavailable sauber skippen ohne Error.',
+      'HF Points/Events erhalten org/vehicle/token/trip/booking/source/signal-Kontext aus VehicleTrip.',
+      'booking_id nur aus assignedBookingId — nullable, kein Erraten.',
+      'Prometheus: hf_mirror_enabled Gauge + hf_mirror_skipped_total{reason}; Points/Events inserted counters.',
+    ],
+    reason:
+      'HF Mirror ist flag-gated Analytics-Evidence — braucht bewusste Aktivierung, Trip-Zuordnung und keine Blockade operativer Flows bei CH-Ausfall.',
+    previousBehavior:
+      'booking_id im Mirror oft null; kein früher CH-unavailable Guard; begrenzte Skip-Metriken.',
+    details:
+      'HfMirrorService, clickhouse-env.util, ClickHouseHfService.isAvailable, trip-behavior-enrichment scheduleHfMirror. Tests: hf-mirror.service.spec, clickhouse-env.util.spec.',
+    affectsArchitecture: true,
+    module: 'ClickHouse',
+    createdAt: '2026-07-08T14:15:00.000Z',
+  },
+  {
     id: 'dimo-obd-webhook-unplug-only-v49254-2026-07-08',
     version: '4.9.254',
     title: 'V4.9.254 — DIMO OBD: nur Unplug-Webhook, Plug-in über Snapshots (Ops)',

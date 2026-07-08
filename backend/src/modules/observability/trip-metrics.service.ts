@@ -62,6 +62,8 @@ export class TripMetricsService implements OnModuleInit {
   readonly clickHouseAvailable: Gauge<string>;
   readonly workerRuntimeEnabled: Gauge<string>;
   readonly clickHouseLastMirrorUnixSeconds: Gauge<string>;
+  readonly hfMirrorEnabled: Gauge<string>;
+  readonly hfMirrorSkipped: Counter<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  HISTOGRAMS
@@ -180,8 +182,8 @@ export class TripMetricsService implements OnModuleInit {
     });
 
     this.hfEventsDetectedTotal = new Counter({
-      name: 'synqdrive_clickhouse_hf_events_detected_total',
-      help: 'Total high-frequency derived events inserted into ClickHouse',
+      name: 'synqdrive_clickhouse_hf_events_inserted_total',
+      help: 'Total high-frequency derived events inserted into ClickHouse (analytics mirror)',
       registers: [this.registry],
     });
 
@@ -251,6 +253,19 @@ export class TripMetricsService implements OnModuleInit {
       registers: [this.registry],
     });
 
+    this.hfMirrorEnabled = new Gauge({
+      name: 'synqdrive_hf_mirror_enabled',
+      help: 'Whether post-trip HF mirror is enabled (HF_MIRROR_ENABLED=true)',
+      registers: [this.registry],
+    });
+
+    this.hfMirrorSkipped = new Counter({
+      name: 'synqdrive_hf_mirror_skipped_total',
+      help: 'HF mirror operations skipped by reason (low-cardinality; no entity IDs)',
+      labelNames: ['reason'],
+      registers: [this.registry],
+    });
+
     this.tripFinalizeLatency = new Histogram({
       name: 'synqdrive_trip_finalize_latency_seconds',
       help: 'Time from trip start to finalization in seconds',
@@ -287,6 +302,9 @@ export class TripMetricsService implements OnModuleInit {
   async onModuleInit(): Promise<void> {
     this.workerRuntimeEnabled.set(
       RuntimeStatusRegistry.getWorkersEnabled() ? 1 : 0,
+    );
+    this.hfMirrorEnabled.set(
+      process.env.HF_MIRROR_ENABLED === 'true' ? 1 : 0,
     );
   }
 

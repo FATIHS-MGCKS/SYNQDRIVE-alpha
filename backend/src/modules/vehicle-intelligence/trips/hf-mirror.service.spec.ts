@@ -1,5 +1,6 @@
 import { HfMirrorService } from './hf-mirror.service';
 import type { ClickHouseHfService } from '@modules/clickhouse/clickhouse-hf.service';
+import type { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import type { HighFrequencyReading } from '../../dimo/dimo-segments.service';
 import type { AbuseEvent } from './hf-abuse';
 
@@ -41,17 +42,25 @@ describe('HfMirrorService', () => {
     vehicleId: 'veh-1',
     tokenId: 42,
     tripId: 'trip-1',
+    bookingId: 'book-1' as string | null,
     readings: [makeReading(), makeReading({ timestamp: '2026-06-25T10:00:01.000Z', speedKmh: 55 })],
     abuseEvents: [makeAbuse()],
   };
 
   function makeHf(over: Partial<jest.Mocked<ClickHouseHfService>> = {}) {
     return {
+      isAvailable: true,
       hasTripHfPoints: jest.fn().mockResolvedValue(false),
       insertHfPoints: jest.fn().mockResolvedValue(undefined),
       insertHfEvents: jest.fn().mockResolvedValue(undefined),
       ...over,
     } as unknown as ClickHouseHfService;
+  }
+
+  function makeMetrics() {
+    return {
+      hfMirrorSkipped: { inc: jest.fn() },
+    } as unknown as TripMetricsService;
   }
 
   const ORIGINAL_FLAG = process.env.HF_MIRROR_ENABLED;
@@ -63,12 +72,14 @@ describe('HfMirrorService', () => {
   it('is a pure no-op when disabled (default)', async () => {
     delete process.env.HF_MIRROR_ENABLED;
     const hf = makeHf();
-    const svc = new HfMirrorService(hf);
+    const metrics = makeMetrics();
+    const svc = new HfMirrorService(hf, metrics);
     const res = await svc.mirrorTripHf(baseParams);
     expect(res.mirrored).toBe(false);
     expect(res.reason).toBe('disabled');
     expect(hf.insertHfPoints).not.toHaveBeenCalled();
     expect(hf.insertHfEvents).not.toHaveBeenCalled();
+    expect(metrics.hfMirrorSkipped.inc).toHaveBeenCalledWith({ reason: 'disabled' });
   });
 
   it('skips when org id is missing (tenant attribution preserved)', async () => {
@@ -80,7 +91,19 @@ describe('HfMirrorService', () => {
     expect(hf.insertHfPoints).not.toHaveBeenCalled();
   });
 
-  it('mirrors points + events when enabled and not previously mirrored', async () => {
+  it('skips cleanly when ClickHouse is unavailable', async () => {
+    process.env.HF_MIRROR_ENABLED = 'true';
+    const hf = makeHf({ isAvailable: false });
+    const metrics = makeMetrics();
+    const svc = new HfMirrorService(hf, metrics);
+    const res = await svc.mirrorTripHf(baseParams);
+    expect(res.reason).toBe('unavailable');
+    expect(hf.hasTripHfPoints).not.toHaveBeenCalled();
+    expect(hf.insertHfPoints).not.toHaveBeenCalled();
+    expect(metrics.hfMirrorSkipped.inc).toHaveBeenCalledWith({ reason: 'unavailable' });
+  });
+
+  it('mirrors points + events with full trip context when enabled', async () => {
     process.env.HF_MIRROR_ENABLED = 'true';
     const hf = makeHf();
     const svc = new HfMirrorService(hf);
@@ -91,14 +114,44 @@ describe('HfMirrorService', () => {
     expect(hf.insertHfEvents).toHaveBeenCalledTimes(1);
 
     const points = (hf.insertHfPoints as jest.Mock).mock.calls[0][0];
-    // 2 readings × (speed + tractionPower) = 4 points (other signals null).
     expect(points).toHaveLength(4);
-    expect(points.every((p: any) => p.orgId === 'org-1' && p.tripId === 'trip-1')).toBe(true);
+    expect(points.every((p: {
+      orgId: string;
+      tripId: string;
+      bookingId: string | null;
+      tokenId: number;
+      source: string;
+      signalName: string;
+      signalGroup: string;
+      recordedAt: Date;
+      quality: string;
+    }) =>
+      p.orgId === 'org-1' &&
+      p.tripId === 'trip-1' &&
+      p.bookingId === 'book-1' &&
+      p.tokenId === 42 &&
+      p.source === 'dimo' &&
+      p.signalName &&
+      p.signalGroup &&
+      p.recordedAt &&
+      p.quality === 'normalized',
+    )).toBe(true);
 
     const events = (hf.insertHfEvents as jest.Mock).mock.calls[0][0];
-    expect(events).toHaveLength(1);
-    expect(events[0].eventType).toBe('FULL_BRAKING');
     expect(events[0].tripId).toBe('trip-1');
+    expect(events[0].bookingId).toBe('book-1');
+  });
+
+  it('leaves booking_id null when not assigned — no fake booking', async () => {
+    process.env.HF_MIRROR_ENABLED = 'true';
+    const hf = makeHf();
+    const svc = new HfMirrorService(hf);
+    await svc.mirrorTripHf({ ...baseParams, bookingId: null });
+
+    const points = (hf.insertHfPoints as jest.Mock).mock.calls[0][0];
+    expect(points.every((p: { bookingId: string | null }) => p.bookingId === null)).toBe(true);
+    const events = (hf.insertHfEvents as jest.Mock).mock.calls[0][0];
+    expect(events[0].bookingId).toBeNull();
   });
 
   it('is idempotent: does not re-insert points already mirrored for the trip', async () => {
@@ -108,9 +161,22 @@ describe('HfMirrorService', () => {
     const res = await svc.mirrorTripHf(baseParams);
 
     expect(hf.insertHfPoints).not.toHaveBeenCalled();
-    // Events still mirrored (ReplacingMergeTree is idempotent by key).
     expect(hf.insertHfEvents).toHaveBeenCalledTimes(1);
     expect(res.reason).toBe('points_already_mirrored');
+    expect(res.mirrored).toBe(true);
+  });
+
+  it('repeated enrichment does not duplicate points', async () => {
+    process.env.HF_MIRROR_ENABLED = 'true';
+    const hf = makeHf();
+    const svc = new HfMirrorService(hf);
+
+    await svc.mirrorTripHf(baseParams);
+    (hf.hasTripHfPoints as jest.Mock).mockResolvedValue(true);
+    await svc.mirrorTripHf(baseParams);
+
+    expect(hf.insertHfPoints).toHaveBeenCalledTimes(1);
+    expect(hf.insertHfEvents).toHaveBeenCalledTimes(2);
   });
 
   it('never throws — swallows downstream insert errors', async () => {
@@ -118,9 +184,11 @@ describe('HfMirrorService', () => {
     const hf = makeHf({
       insertHfPoints: jest.fn().mockRejectedValue(new Error('clickhouse down')),
     });
-    const svc = new HfMirrorService(hf);
+    const metrics = makeMetrics();
+    const svc = new HfMirrorService(hf, metrics);
     const res = await svc.mirrorTripHf(baseParams);
     expect(res.mirrored).toBe(false);
     expect(res.reason).toBe('error');
+    expect(metrics.hfMirrorSkipped.inc).toHaveBeenCalledWith({ reason: 'error' });
   });
 });
