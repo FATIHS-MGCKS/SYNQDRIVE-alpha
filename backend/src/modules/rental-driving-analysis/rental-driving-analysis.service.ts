@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { BookingStatus, TripAssignmentSubjectType, TripBookingLinkSource, TripStatus } from '@prisma/client';
+import { BookingStatus, TripAssignmentStatus, TripAssignmentSubjectType, TripBookingLinkSource, TripStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripsService } from '../vehicle-intelligence/trips/trips.service';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
@@ -118,7 +118,7 @@ export class RentalDrivingAnalysisService {
       }>) {
         const attribution = await this.tripAttributionService.resolveAttributionForTrip({
           isPrivateTrip: rawTrip.isPrivateTrip === true,
-          assignmentStatus: rawTrip.assignmentStatus ?? null,
+          assignmentStatus: (rawTrip.assignmentStatus as TripAssignmentStatus | null) ?? null,
           assignedBookingId: rawTrip.assignedBookingId ?? null,
           assignmentSubjectId: rawTrip.assignmentSubjectId ?? null,
           bookingLinkSource: rawTrip.bookingLinkSource ?? null,

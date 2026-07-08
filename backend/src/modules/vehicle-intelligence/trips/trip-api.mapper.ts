@@ -5,6 +5,7 @@ import {
   parseBehaviorSummaryJson,
 } from './trip-analysis-status';
 import type { TripAssessment } from './trip-assessment.types';
+import type { TripAttribution } from './trip-attribution.types';
 
 /** Strip internal enrichment fields and attach canonical trip analysis API surface. */
 export function mapTripForVehicleApi(
@@ -22,6 +23,7 @@ export function mapTripForVehicleApi(
       scores?: { drivingStressScore?: number | null; stressLevel?: string | null; scoreSource?: string };
       events?: Record<string, number | undefined>;
       assignment?: Record<string, unknown>;
+      attribution?: TripAttribution;
     };
     tripAssessment?: TripAssessment | null;
     drivingScore?: number | null;
