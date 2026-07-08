@@ -156,6 +156,14 @@ export class CustomersController {
     return this.customersService.getEligibility(orgId, id, startDate);
   }
 
+  @Get(':id/documents/status')
+  async getDocumentVerificationStatus(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+  ) {
+    return this.customerDocumentsService.getDocumentVerificationStatus(orgId, id);
+  }
+
   @Get(':id/documents')
   async listDocuments(
     @Param('orgId') orgId: string,

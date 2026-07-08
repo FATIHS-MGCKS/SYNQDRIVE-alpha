@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -6,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import {
   CustomerEligibilityPolicy,
+  CustomerDocument,
   CustomerTimelineEventType,
   CustomerVerificationCheck,
   CustomerVerificationCheckKind,
@@ -32,6 +34,15 @@ import {
   NormalizedDiditDecision,
   VERIFICATION_KIND_LABELS,
 } from './types/customer-verification-eligibility.types';
+import {
+  buildDomainStatus,
+  buildIdDocumentDisplayName,
+  buildLicenseDisplayName,
+  buildProofOfAddressDisplayName,
+  computeMissingUploadSlots,
+  documentTypeToVerificationKind,
+} from './utils/customer-document-status.util';
+import type { CustomerDocumentVerificationStatusDto } from './types/customer-document-status.types';
 import {
   computeDocumentCategoryStatus,
   ID_DOCUMENT_TYPES,
@@ -127,6 +138,8 @@ export class CustomerVerificationService {
     });
 
     await this.syncCustomerReadModel(organizationId, dto.customerId);
+
+    await this.logDiditSessionStarted(check, user.id);
 
     return {
       url: check.providerUrl!,
@@ -414,6 +427,193 @@ export class CustomerVerificationService {
     await this.logVerificationTimeline(updated, params.normalizedDecision.status);
 
     return updated;
+  }
+
+  async recordManualDocumentReview(params: {
+    organizationId: string;
+    customerId: string;
+    document: CustomerDocument;
+    status: 'VERIFIED' | 'REJECTED';
+    userId?: string | null;
+    rejectedReason?: string | null;
+  }): Promise<CustomerVerificationCheck> {
+    const kind = documentTypeToVerificationKind(params.document.type);
+    if (!kind) {
+      throw new BadRequestException('Unsupported document type for verification check');
+    }
+
+    const reviewedAt = params.document.reviewedAt ?? new Date();
+    const checkStatus = params.status === 'VERIFIED' ? 'VERIFIED' : 'REJECTED';
+    const decisionJson = {
+      documentId: params.document.id,
+      documentType: params.document.type,
+      manualReview: true,
+      reviewedByUserId: params.userId ?? null,
+      reviewedAt: reviewedAt.toISOString(),
+      rejectedReason: params.rejectedReason ?? null,
+    };
+
+    const existingChecks = await this.prisma.customerVerificationCheck.findMany({
+      where: {
+        organizationId: params.organizationId,
+        customerId: params.customerId,
+        kind,
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    const manualCheck = existingChecks.find(
+      (check) =>
+        check.provider === CustomerVerificationProvider.MANUAL &&
+        check.decisionJson &&
+        typeof check.decisionJson === 'object' &&
+        !Array.isArray(check.decisionJson) &&
+        (check.decisionJson as Record<string, unknown>).manualReview === true,
+    );
+
+    let check: CustomerVerificationCheck;
+    if (manualCheck) {
+      check = await this.prisma.customerVerificationCheck.update({
+        where: { id: manualCheck.id },
+        data: {
+          status: checkStatus,
+          checkedByUserId: params.userId ?? null,
+          startedAt: manualCheck.startedAt ?? reviewedAt,
+          completedAt: reviewedAt,
+          decisionJson,
+        },
+      });
+    } else {
+      check = await this.prisma.customerVerificationCheck.create({
+        data: {
+          organizationId: params.organizationId,
+          customerId: params.customerId,
+          provider: CustomerVerificationProvider.MANUAL,
+          kind,
+          status: checkStatus,
+          checkedByUserId: params.userId ?? null,
+          startedAt: reviewedAt,
+          completedAt: reviewedAt,
+          decisionJson,
+        },
+      });
+    }
+
+    await this.syncCustomerReadModel(params.organizationId, params.customerId);
+    await this.logVerificationTimeline(
+      check,
+      checkStatus,
+      params.userId ?? undefined,
+      'manual',
+    );
+
+    return check;
+  }
+
+  async getDocumentVerificationStatus(
+    organizationId: string,
+    customerId: string,
+  ): Promise<CustomerDocumentVerificationStatusDto> {
+    const customer = await this.prisma.customer.findFirst({
+      where: { id: customerId, organizationId },
+    });
+    if (!customer) {
+      throw new NotFoundException('Customer not found in this organization');
+    }
+
+    const [documents, checks, policy] = await Promise.all([
+      this.prisma.customerDocument.findMany({
+        where: { organizationId, customerId },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.customerVerificationCheck.findMany({
+        where: { organizationId, customerId },
+        orderBy: { updatedAt: 'desc' },
+      }),
+      this.getOrCreatePolicy(organizationId),
+    ]);
+
+    const latestCheckByKind = this.indexLatestChecksByKind(checks);
+    const eligibility = await this.getEligibilityStatus(organizationId, customerId, {
+      policy,
+    });
+
+    const userIds = new Set<string>();
+    for (const check of checks) {
+      if (check.checkedByUserId) userIds.add(check.checkedByUserId);
+    }
+    for (const doc of documents) {
+      if (doc.reviewedByUserId) userIds.add(doc.reviewedByUserId);
+      if (doc.uploadedByUserId) userIds.add(doc.uploadedByUserId);
+    }
+
+    const users =
+      userIds.size > 0
+        ? await this.prisma.user.findMany({
+            where: { id: { in: Array.from(userIds) } },
+            select: { id: true, name: true, firstName: true, lastName: true },
+          })
+        : [];
+
+    const userNames = new Map(
+      users.map((user) => [
+        user.id,
+        user.name?.trim() ||
+          [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
+          'Mitarbeiter',
+      ]),
+    );
+
+    const idDocument = buildDomainStatus({
+      kind: 'ID_DOCUMENT',
+      customer,
+      documents,
+      latestCheck: latestCheckByKind.get('ID_DOCUMENT') ?? null,
+      documentTypes: ID_DOCUMENT_TYPES,
+      expiryDate: customer.idExpiry,
+      displayName: buildIdDocumentDisplayName(customer),
+      documentNumber: customer.idNumber,
+      userNames,
+    });
+
+    const drivingLicense = buildDomainStatus({
+      kind: 'DRIVING_LICENSE',
+      customer,
+      documents,
+      latestCheck: latestCheckByKind.get('DRIVING_LICENSE') ?? null,
+      documentTypes: LICENSE_DOCUMENT_TYPES,
+      expiryDate: customer.licenseExpiry,
+      displayName: buildLicenseDisplayName(customer),
+      documentNumber: customer.licenseNumber,
+      userNames,
+    });
+
+    const proofOfAddress = buildDomainStatus({
+      kind: 'PROOF_OF_ADDRESS',
+      customer,
+      documents,
+      latestCheck: latestCheckByKind.get('PROOF_OF_ADDRESS') ?? null,
+      documentTypes: POA_DOCUMENT_TYPES,
+      expiryDate: null,
+      displayName: buildProofOfAddressDisplayName(),
+      proofOfAddressEligibility: eligibility.proofOfAddress,
+      userNames,
+    });
+
+    const missingUploadSlots = computeMissingUploadSlots({
+      idDocument,
+      drivingLicense,
+      proofOfAddress,
+      documents,
+    });
+
+    return {
+      customerId,
+      idDocument,
+      drivingLicense,
+      proofOfAddress,
+      missingUploadSlots,
+    };
   }
 
   async createManualPickupCheck(
@@ -783,6 +983,29 @@ export class CustomerVerificationService {
     return map;
   }
 
+  private async logDiditSessionStarted(
+    check: CustomerVerificationCheck,
+    userId?: string,
+  ): Promise<void> {
+    const kindLabel = VERIFICATION_KIND_LABELS[check.kind];
+    await this.prisma.customerTimelineEvent.create({
+      data: {
+        organizationId: check.organizationId,
+        customerId: check.customerId,
+        type: 'UPDATED',
+        title: 'KYC-Prüfung über Didit gestartet',
+        description: `${kindLabel} über Didit gestartet.`,
+        metadata: {
+          verificationCheckId: check.id,
+          provider: check.provider,
+          kind: check.kind,
+          status: check.status,
+        },
+        createdByUserId: userId ?? null,
+      },
+    });
+  }
+
   private async logVerificationTimeline(
     check: CustomerVerificationCheck,
     status: CustomerVerificationCheckStatus,
@@ -800,25 +1023,32 @@ export class CustomerVerificationService {
         source === 'pickup'
           ? `Pickup-Prüfung bestätigt (${kindLabel})`
           : source === 'didit'
-            ? `Automatische Dokumentenprüfung bestätigt (${kindLabel})`
-            : `Manuelle Prüfung bestätigt (${kindLabel})`;
+            ? `${kindLabel} über Didit erfolgreich`
+            : `${kindLabel} manuell bestätigt`;
     } else if (status === 'REJECTED') {
       type = 'DOCUMENT_REJECTED';
       title =
         source === 'pickup'
           ? `Pickup-Prüfung abgelehnt (${kindLabel})`
           : source === 'didit'
-            ? `Automatische Dokumentenprüfung abgelehnt (${kindLabel})`
-            : `Manuelle Prüfung abgelehnt (${kindLabel})`;
+            ? `${kindLabel} über Didit abgelehnt`
+            : `${kindLabel} manuell abgelehnt`;
     } else if (status === 'REQUIRES_REVIEW') {
       type = 'UPDATED';
       title =
         source === 'didit'
-          ? `Automatische Dokumentenprüfung — manuelle Prüfung erforderlich (${kindLabel})`
-          : `Manuelle Prüfung erforderlich (${kindLabel})`;
+          ? `${kindLabel} — manuelle Prüfung erforderlich`
+          : `${kindLabel} — manuelle Prüfung erforderlich`;
     }
 
     if (!type || !title) return;
+
+    const description =
+      source === 'didit'
+        ? `${kindLabel} wurde über Didit geprüft.`
+        : source === 'pickup'
+          ? `${kindLabel} wurde bei der Übergabe geprüft.`
+          : `${kindLabel} wurde manuell durch einen Mitarbeiter geprüft.`;
 
     await this.prisma.customerTimelineEvent.create({
       data: {
@@ -826,8 +1056,7 @@ export class CustomerVerificationService {
         customerId: check.customerId,
         type,
         title,
-        description:
-          'Aktualisiert über kanonische Verifikationsprüfung (Webhook/Source of Truth).',
+        description,
         metadata: {
           verificationCheckId: check.id,
           provider: check.provider,

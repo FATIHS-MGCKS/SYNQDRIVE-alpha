@@ -312,6 +312,36 @@ export function isProofOfAddressGroupFulfilled(
   return isDocumentGroupVerifiedBySlots(kycDocSlots, PROOF_OF_ADDRESS_TYPES);
 }
 
+export function mapMissingUploadSlotsFromBackend(
+  missingSlots: Array<{ slot: string; label: string; documentType: string }> | undefined,
+  kycDocSlots: KycDocSlot[],
+  replaceLegacy?: boolean,
+): KycDocSlot[] {
+  if (!missingSlots?.length) return [];
+  return missingSlots.map((slot) => {
+    const existing = kycDocSlots.find((row) => row.documentType === slot.documentType);
+    if (existing) {
+      if (!replaceLegacy && !existing.document && existing.legacyPreviewUrl) {
+        return existing;
+      }
+      return {
+        ...existing,
+        label: slot.label,
+        slot: slot.slot,
+      };
+    }
+    return {
+      slot: slot.slot,
+      label: slot.label,
+      type: slot.label,
+      documentType: slot.documentType as KycDocSlot['documentType'],
+      document: null,
+      legacyPreviewUrl: null,
+      statusLabel: '',
+    };
+  });
+}
+
 export function getMissingUploadSlots({
   detail,
   kycDocSlots,

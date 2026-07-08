@@ -5,23 +5,17 @@ import { DataCard, StatusChip } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
 import { CustomerDocumentUploadBox } from '../CustomerDocumentUploadBox';
 import { CustomerVerificationPanel } from '../customer-verification/CustomerVerificationPanel';
-import { useCustomerVerification } from '../customer-verification/useCustomerVerification';
-import {
-  customerVerificationApiToUi,
-  customerVerificationUiLabelDe,
-} from '../../lib/entityMappers';
+import type { CustomerDocumentDomainStatus, CustomerDocumentVerificationStatusDto } from '../../../lib/api';
 import type { CustomerDetail, KycDocSlot } from './customerDetailTypes';
 import {
   EM_DASH,
   formatDate,
-  formatDocumentVerificationMeta,
-  formatKycIdentityDocumentLabel,
-  formatKycLicenseDocumentLabel,
+  formatDateTime,
   findPendingKycDocument,
   findPrimaryKycDocument,
-  getMissingUploadSlots,
   hasLegacyDocumentsOnly,
   licenseVerificationHint,
+  mapMissingUploadSlotsFromBackend,
   resolveDocumentPreviewUrl,
 } from './customerDetailUtils';
 import { cdv } from './customer-detail-ui';
@@ -31,6 +25,7 @@ interface CustomerDocumentsTabProps {
   customerId: string;
   detail: CustomerDetail | null;
   kycDocSlots: KycDocSlot[];
+  documentStatus: CustomerDocumentVerificationStatusDto | null;
   eligibilityBlockingReasons?: string[];
   documentsLoading?: boolean;
   documentsError?: string | null;
@@ -55,11 +50,48 @@ function customerDetailDiditActionLabel(kind: 'ID_DOCUMENT' | 'DRIVING_LICENSE' 
   }
 }
 
+function domainStatusLabel(status: CustomerDocumentDomainStatus['status']): string {
+  switch (status) {
+    case 'VERIFIED':
+      return 'Verifiziert';
+    case 'PENDING_REVIEW':
+      return 'In Prüfung';
+    case 'REJECTED':
+      return 'Abgelehnt';
+    case 'EXPIRED':
+      return 'Abgelaufen';
+    case 'NOT_REQUIRED':
+      return 'Nicht erforderlich';
+    default:
+      return 'Nicht eingereicht';
+  }
+}
+
+function domainStatusTone(
+  status: CustomerDocumentDomainStatus['status'],
+): 'success' | 'warning' | 'critical' | 'neutral' {
+  if (status === 'VERIFIED') return 'success';
+  if (status === 'PENDING_REVIEW') return 'warning';
+  if (status === 'REJECTED' || status === 'EXPIRED') return 'critical';
+  return 'neutral';
+}
+
+function formatDomainStatusMeta(domain: CustomerDocumentDomainStatus): string | null {
+  const parts: string[] = [];
+  if (domain.provider === 'DIDIT') parts.push('Geprüft über Didit');
+  else if (domain.provider === 'MANUAL') parts.push('Geprüft durch Mitarbeiter');
+  if (domain.checkedByName) parts.push(domain.checkedByName);
+  if (domain.submittedAt) parts.push(`Eingereicht am ${formatDateTime(domain.submittedAt)}`);
+  if (domain.verifiedAt) parts.push(`Verifiziert am ${formatDateTime(domain.verifiedAt)}`);
+  return parts.length > 0 ? parts.join(' · ') : null;
+}
+
 export function CustomerDocumentsTab({
   orgId,
   customerId,
   detail,
   kycDocSlots,
+  documentStatus,
   eligibilityBlockingReasons,
   documentsLoading,
   documentsError,
@@ -69,9 +101,6 @@ export function CustomerDocumentsTab({
   onReject,
   onVerificationUpdated,
 }: CustomerDocumentsTabProps) {
-  const { eligibility: verificationEligibility } = useCustomerVerification(customerId);
-  const idUi = customerVerificationApiToUi(detail?.idVerificationStatus ?? undefined);
-  const licenseUi = customerVerificationApiToUi(detail?.licenseVerificationStatus ?? undefined);
   const showLegacy = hasLegacyDocumentsOnly(detail) && kycDocSlots.every((s) => !s.document);
 
   const pendingReviewDocumentIds = kycDocSlots
@@ -87,14 +116,18 @@ export function CustomerDocumentsTab({
   const idPendingDoc = findPendingKycDocument(kycDocSlots, [...ID_DOC_TYPES]);
   const licensePendingDoc = findPendingKycDocument(kycDocSlots, [...LICENSE_DOC_TYPES]);
 
-  const missingUploadSlots = getMissingUploadSlots({
-    detail,
+  const missingUploadSlots = mapMissingUploadSlotsFromBackend(
+    documentStatus?.missingUploadSlots,
     kycDocSlots,
-    replaceLegacy: showLegacy,
-    proofOfAddressEligibility: verificationEligibility?.proofOfAddress,
-  });
+    showLegacy,
+  );
 
-  const verificationHint = licenseVerificationHint(licenseUi, eligibilityBlockingReasons);
+  const idDomain = documentStatus?.idDocument;
+  const licenseDomain = documentStatus?.drivingLicense;
+  const verificationHint = licenseVerificationHint(
+    domainStatusLabel(licenseDomain?.status ?? 'NOT_SUBMITTED'),
+    eligibilityBlockingReasons,
+  );
 
   return (
     <div className={cdv.documentsSection}>
@@ -112,31 +145,35 @@ export function CustomerDocumentsTab({
       <DataCard title="Dokumentenstatus" bodyClassName="py-3.5">
         <div className={cdv.documentsStatusGrid}>
           <DocumentStatusCard
-            title={formatKycIdentityDocumentLabel(detail)}
-            verificationUi={idUi}
-            number={detail?.idNumber}
+            title={idDomain?.displayName ?? 'Personalausweis'}
+            domainStatus={idDomain}
+            number={idDomain?.documentNumber ?? detail?.idNumber}
             expiry={detail?.idExpiry}
-            meta={formatDocumentVerificationMeta(idPrimaryDoc, idUi)}
+            meta={idDomain ? formatDomainStatusMeta(idDomain) : null}
             pendingDoc={idPendingDoc}
             previewUrl={resolveDocumentPreviewUrl(idPrimaryDoc?.fileKey, null)}
             reviewingDocId={reviewingDocId}
             onVerify={onVerify}
             onReject={onReject}
-            emptyHint={idUi === 'Not Submitted' ? 'Noch kein Ausweisdokument eingereicht' : undefined}
+            emptyHint={
+              idDomain?.status === 'NOT_SUBMITTED'
+                ? 'Noch kein Ausweisdokument eingereicht'
+                : undefined
+            }
           />
           <DocumentStatusCard
-            title={formatKycLicenseDocumentLabel(detail)}
-            verificationUi={licenseUi}
-            number={detail?.licenseNumber}
+            title={licenseDomain?.displayName ?? 'Führerschein'}
+            domainStatus={licenseDomain}
+            number={licenseDomain?.documentNumber ?? detail?.licenseNumber}
             expiry={detail?.licenseExpiry}
-            meta={formatDocumentVerificationMeta(licensePrimaryDoc, licenseUi)}
+            meta={licenseDomain ? formatDomainStatusMeta(licenseDomain) : null}
             pendingDoc={licensePendingDoc}
             previewUrl={resolveDocumentPreviewUrl(licensePrimaryDoc?.fileKey, null)}
             reviewingDocId={reviewingDocId}
             onVerify={onVerify}
             onReject={onReject}
             emptyHint={
-              licenseUi === 'Not Submitted'
+              licenseDomain?.status === 'NOT_SUBMITTED'
                 ? verificationHint ?? 'Noch kein Führerscheindokument eingereicht'
                 : verificationHint ?? undefined
             }
@@ -188,7 +225,7 @@ export function CustomerDocumentsTab({
 
 function DocumentStatusCard({
   title,
-  verificationUi,
+  domainStatus,
   number,
   expiry,
   meta,
@@ -200,7 +237,7 @@ function DocumentStatusCard({
   emptyHint,
 }: {
   title: string;
-  verificationUi: ReturnType<typeof customerVerificationApiToUi>;
+  domainStatus?: CustomerDocumentDomainStatus;
   number?: string | null;
   expiry?: string | null;
   meta?: string | null;
@@ -211,7 +248,8 @@ function DocumentStatusCard({
   onReject: (documentId: string) => void;
   emptyHint?: string;
 }) {
-  const rejectedReason = (pendingDoc as { rejectedReason?: string } | null)?.rejectedReason;
+  const status = domainStatus?.status ?? 'NOT_SUBMITTED';
+  const rejectedReason = domainStatus?.rejectedReason ?? pendingDoc?.rejectedReason;
 
   return (
     <div className={cdv.documentsStatusCard}>
@@ -222,13 +260,13 @@ function DocumentStatusCard({
             Nr. {number || EM_DASH} · gültig bis {formatDate(expiry)}
           </p>
         </div>
-        <StatusChip tone={verificationTone(verificationUi)} dot className={cdv.decisionChip}>
-          {customerVerificationUiLabelDe(verificationUi)}
+        <StatusChip tone={domainStatusTone(status)} dot className={cdv.decisionChip}>
+          {domainStatusLabel(status)}
         </StatusChip>
       </div>
 
       {meta ? <p className={cdv.documentsStatusMeta}>{meta}</p> : null}
-      {emptyHint && verificationUi === 'Not Submitted' ? (
+      {emptyHint && status === 'NOT_SUBMITTED' ? (
         <p className={cdv.documentsStatusMeta}>{emptyHint}</p>
       ) : null}
 
@@ -274,13 +312,4 @@ function DocumentStatusCard({
       ) : null}
     </div>
   );
-}
-
-function verificationTone(
-  ui: ReturnType<typeof customerVerificationApiToUi>,
-): 'success' | 'warning' | 'critical' | 'neutral' {
-  if (ui === 'Verified') return 'success';
-  if (ui === 'Pending Review') return 'warning';
-  if (ui === 'Rejected' || ui === 'Expired') return 'critical';
-  return 'neutral';
 }

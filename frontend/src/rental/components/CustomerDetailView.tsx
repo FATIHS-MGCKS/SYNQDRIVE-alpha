@@ -100,6 +100,8 @@ import {
 
   useCustomerDocuments,
 
+  useCustomerDocumentStatus,
+
   useCustomerDrivingAggregate,
 
   useCustomerLatestRentalAnalysis,
@@ -177,6 +179,13 @@ export function CustomerDetailView({
   const { documents, loading: documentsLoading, error: documentsError, refresh: refreshDocuments } =
 
     useCustomerDocuments(orgId, customer.id);
+
+  const {
+    status: documentStatus,
+    loading: documentStatusLoading,
+    error: documentStatusError,
+    refresh: refreshDocumentStatus,
+  } = useCustomerDocumentStatus(orgId, customer.id);
 
   const { eligibility, loading: eligibilityLoading, error: eligibilityError, refresh: refreshEligibility } =
 
@@ -369,15 +378,11 @@ export function CustomerDetailView({
 
 
   const reloadAll = () => {
-
     refresh();
-
     refreshDocuments();
-
+    refreshDocumentStatus();
     refreshEligibility();
-
     refreshTimeline();
-
   };
 
 
@@ -747,20 +752,14 @@ export function CustomerDetailView({
         {activeTab === 'documents' && (
 
           <CustomerDocumentsTab
-
             orgId={orgId ?? undefined}
-
             customerId={customer.id}
-
             detail={detail}
-
             kycDocSlots={kycDocSlots}
-
+            documentStatus={documentStatus}
             eligibilityBlockingReasons={eligibility?.blockingReasons}
-
-            documentsLoading={documentsLoading}
-
-            documentsError={documentsError}
+            documentsLoading={documentsLoading || documentStatusLoading}
+            documentsError={documentsError ?? documentStatusError}
 
             reviewingDocId={reviewingDocId}
 

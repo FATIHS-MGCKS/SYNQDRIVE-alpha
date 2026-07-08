@@ -34,6 +34,32 @@ export function useCustomerDetail(orgId: string | null | undefined, customerId: 
   return { detail, loading, error, refresh };
 }
 
+export function useCustomerDocumentStatus(orgId: string | null | undefined, customerId: string) {
+  const [status, setStatus] = useState<import('../../../lib/api').CustomerDocumentVerificationStatusDto | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = useCallback(() => {
+    if (!orgId || !customerId) return;
+    setLoading(true);
+    setError(null);
+    api.customers.customerDocuments
+      .status(orgId, customerId)
+      .then(setStatus)
+      .catch(() => {
+        setStatus(null);
+        setError('Dokumentenstatus konnte nicht geladen werden');
+      })
+      .finally(() => setLoading(false));
+  }, [orgId, customerId]);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  return { status, loading, error, refresh };
+}
+
 export function useCustomerDocuments(orgId: string | null | undefined, customerId: string) {
   const [documents, setDocuments] = useState<CustomerDocumentRecord[]>([]);
   const [loading, setLoading] = useState(false);
