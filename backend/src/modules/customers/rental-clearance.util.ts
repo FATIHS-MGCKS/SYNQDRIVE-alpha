@@ -20,38 +20,45 @@ export function mapEligibilityToRentalClearance(
     return { status: 'CLEARED', label: 'Mietfreigabe', reasons: [] };
   }
 
-  const hasHardBlock = result.blockingReasons.length > 0;
-  const hasSoftSignals =
-    result.warnings.length > 0 || result.requiredActions.length > 0;
+  const globalReasons = result.globalBlockingReasons ?? result.blockingReasons;
 
-  if (!hasHardBlock && hasSoftSignals) {
+  if (globalReasons.length > 0) {
     return {
-      status: 'REVIEW_REQUIRED',
-      label: 'Prüfung nötig',
-      reasons: [...result.warnings, ...result.requiredActions],
+      status: 'BLOCKED',
+      label: 'Nicht freigegeben',
+      reasons: globalReasons,
     };
   }
 
   if (
     result.canCreatePendingBooking &&
-    (!result.canConfirmBooking || !result.canStartRental)
+    result.canConfirmBooking &&
+    !result.canStartRental
   ) {
+    return {
+      status: 'REVIEW_REQUIRED',
+      label: 'Pickup-Prüfung erforderlich',
+      reasons: result.stages.startPickup.blockingReasons,
+    };
+  }
+
+  if (!result.canConfirmBooking) {
     return {
       status: 'PENDING',
       label: 'Eingeschränkt',
       reasons: [
-        ...result.blockingReasons,
+        ...result.stages.confirmBooking.blockingReasons,
         ...result.requiredActions,
         ...result.warnings,
       ],
     };
   }
 
-  if (hasHardBlock) {
+  if (result.warnings.length > 0 || result.requiredActions.length > 0) {
     return {
-      status: 'BLOCKED',
-      label: 'Nicht freigegeben',
-      reasons: result.blockingReasons,
+      status: 'REVIEW_REQUIRED',
+      label: 'Prüfung nötig',
+      reasons: [...result.warnings, ...result.requiredActions],
     };
   }
 

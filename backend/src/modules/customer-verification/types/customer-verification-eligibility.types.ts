@@ -26,6 +26,9 @@ export type CustomerVerificationEligibilityStatus = {
   proofOfAddress: ProofOfAddressEligibilityStatus;
   canConfirmBooking: boolean;
   canStartPickup: boolean;
+  confirmBlockingReasons: string[];
+  pickupBlockingReasons: string[];
+  /** Backward-compatible — confirm-stage blockers only (not pickup-only). */
   blockingReasons: string[];
   warnings: string[];
 };

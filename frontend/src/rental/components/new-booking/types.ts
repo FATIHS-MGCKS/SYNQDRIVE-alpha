@@ -10,6 +10,7 @@ import type {
   PricingSimulationResult,
 } from '../../pricing/pricingTypes';
 import type { AddCustomerFormState } from '../../lib/add-customer-wizard';
+import type { CustomerVerificationPlanState } from '../add-customer/AddCustomerVerificationPlanSection';
 import type { PendingCustomerDocumentFiles } from '../../lib/entityMappers';
 import type { CustomerVerificationEligibility } from '../../lib/customer-verification';
 
@@ -185,6 +186,8 @@ export interface CustomerStepProps {
   onAddStepChange: (step: number) => void;
   newCustomer: AddCustomerFormState;
   onNewCustomerChange: (customer: AddCustomerFormState) => void;
+  verificationPlan: CustomerVerificationPlanState;
+  onVerificationPlanChange: (plan: CustomerVerificationPlanState) => void;
   pendingDocFiles: PendingCustomerDocumentFiles;
   onPendingDocFileChange: (type: keyof PendingCustomerDocumentFiles, file: File | null) => void;
   formErrors: Record<string, string>;

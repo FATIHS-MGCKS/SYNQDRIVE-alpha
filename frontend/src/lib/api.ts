@@ -1997,6 +1997,41 @@ export type ProofOfAddressEligibilityStatusApi =
   | 'requires_review'
   | 'rejected';
 
+export type CustomerDocumentDomainStatusValueApi =
+  | 'VERIFIED'
+  | 'PENDING_REVIEW'
+  | 'NOT_SUBMITTED'
+  | 'REJECTED'
+  | 'EXPIRED'
+  | 'NOT_REQUIRED';
+
+export interface CustomerDocumentDomainStatus {
+  status: CustomerDocumentDomainStatusValueApi;
+  provider?: 'DIDIT' | 'MANUAL' | 'SYNQDRIVE_AI_UPLOAD';
+  checkedByName?: string;
+  checkedByUserId?: string;
+  submittedAt?: string;
+  verifiedAt?: string;
+  expiresAt?: string;
+  documentNumber?: string;
+  documentCountry?: string;
+  displayName: string;
+  source: 'verification_check' | 'customer_document' | 'legacy_read_model' | 'policy';
+  rejectedReason?: string;
+}
+
+export interface CustomerDocumentVerificationStatusDto {
+  customerId: string;
+  idDocument: CustomerDocumentDomainStatus;
+  drivingLicense: CustomerDocumentDomainStatus;
+  proofOfAddress: CustomerDocumentDomainStatus;
+  missingUploadSlots: Array<{
+    slot: string;
+    label: string;
+    documentType: string;
+  }>;
+}
+
 export interface CustomerVerificationEligibilityDto {
   customerId: string;
   bookingId?: string | null;
@@ -2903,9 +2938,39 @@ export const api = {
         canCreatePendingBooking: boolean;
         canConfirmBooking: boolean;
         canStartRental: boolean;
+        globalBlockingReasons?: string[];
         blockingReasons: string[];
         warnings: string[];
         requiredActions: string[];
+        stages?: {
+          createBooking: {
+            key: string;
+            label: string;
+            canProceed: boolean;
+            status: string;
+            blockingReasons: string[];
+            warnings: string[];
+            requiredActions: string[];
+          };
+          confirmBooking: {
+            key: string;
+            label: string;
+            canProceed: boolean;
+            status: string;
+            blockingReasons: string[];
+            warnings: string[];
+            requiredActions: string[];
+          };
+          startPickup: {
+            key: string;
+            label: string;
+            canProceed: boolean;
+            status: string;
+            blockingReasons: string[];
+            warnings: string[];
+            requiredActions: string[];
+          };
+        };
       }>(`/organizations/${orgId}/customers/${id}/eligibility${q}`);
     },
     updateStatus: (orgId: string, id: string, data: { status: string; reason?: string }) =>
@@ -2945,6 +3010,18 @@ export const api = {
     customerDocuments: {
       list: (orgId: string, customerId: string) =>
         get<Array<Record<string, unknown>>>(`/organizations/${orgId}/customers/${customerId}/documents`),
+      status: (orgId: string, customerId: string) =>
+        get<{
+          customerId: string;
+          idDocument: CustomerDocumentDomainStatus;
+          drivingLicense: CustomerDocumentDomainStatus;
+          proofOfAddress: CustomerDocumentDomainStatus;
+          missingUploadSlots: Array<{
+            slot: string;
+            label: string;
+            documentType: string;
+          }>;
+        }>(`/organizations/${orgId}/customers/${customerId}/documents/status`),
       upload: async (
         orgId: string,
         customerId: string,

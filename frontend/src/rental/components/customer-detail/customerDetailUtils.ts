@@ -120,19 +120,16 @@ export function hasLegacyDocumentsOnly(detail: CustomerDetail | null): boolean {
 }
 
 export function eligibilityStageForCreate(
-  eligibility: { canCreatePendingBooking: boolean; blockingReasons: string[] } | null,
+  eligibility: { canCreatePendingBooking: boolean } | null,
 ): EligibilityStage {
   if (!eligibility) return 'blocked';
-  if (!eligibility.canCreatePendingBooking || eligibility.blockingReasons.length > 0) {
-    return 'blocked';
-  }
+  if (!eligibility.canCreatePendingBooking) return 'blocked';
   return 'allowed';
 }
 
 export function eligibilityStageForConfirm(
   eligibility: {
     canConfirmBooking: boolean;
-    blockingReasons: string[];
     warnings: string[];
   } | null,
 ): EligibilityStage {
@@ -143,17 +140,16 @@ export function eligibilityStageForConfirm(
 }
 
 export function eligibilityStageForPickup(
-  eligibility: { canStartRental: boolean; blockingReasons: string[] } | null,
+  eligibility: { canStartRental: boolean } | null,
 ): EligibilityStage {
   if (!eligibility) return 'blocked';
-  if (!eligibility.canStartRental || eligibility.blockingReasons.length > 0) {
-    return 'blocked';
-  }
+  if (!eligibility.canStartRental) return 'blocked';
   return 'allowed';
 }
 
 export function overallRentalClearanceTone(
   eligibility: {
+    globalBlockingReasons?: string[];
     blockingReasons: string[];
     warnings: string[];
     canCreatePendingBooking: boolean;
@@ -162,20 +158,20 @@ export function overallRentalClearanceTone(
   } | null,
 ): 'success' | 'warning' | 'critical' | 'neutral' {
   if (!eligibility) return 'neutral';
-  if (
-    eligibility.blockingReasons.length > 0 ||
-    !eligibility.canCreatePendingBooking ||
-    !eligibility.canConfirmBooking ||
-    !eligibility.canStartRental
-  ) {
+  const globalReasons =
+    eligibility.globalBlockingReasons ?? eligibility.blockingReasons;
+  if (globalReasons.length > 0 || !eligibility.canCreatePendingBooking) {
     return 'critical';
   }
+  if (!eligibility.canConfirmBooking) return 'critical';
+  if (!eligibility.canStartRental) return 'warning';
   if (eligibility.warnings.length > 0) return 'warning';
   return 'success';
 }
 
 export function overallRentalClearanceLabel(
   eligibility: {
+    globalBlockingReasons?: string[];
     blockingReasons: string[];
     warnings: string[];
     canCreatePendingBooking: boolean;
@@ -184,7 +180,14 @@ export function overallRentalClearanceLabel(
   } | null,
 ): string {
   const tone = overallRentalClearanceTone(eligibility);
-  if (tone === 'critical') return 'Blockiert';
+  if (!eligibility) return 'Unbekannt';
+  const globalReasons =
+    eligibility.globalBlockingReasons ?? eligibility.blockingReasons;
+  if (globalReasons.length > 0 || !eligibility.canCreatePendingBooking) {
+    return 'Blockiert';
+  }
+  if (!eligibility.canConfirmBooking) return 'Eingeschränkt';
+  if (!eligibility.canStartRental) return 'Pickup-Prüfung erforderlich';
   if (tone === 'warning') return 'Warnung';
   if (tone === 'success') return 'Freigegeben';
   return 'Unbekannt';
@@ -307,6 +310,36 @@ export function isProofOfAddressGroupFulfilled(
     return true;
   }
   return isDocumentGroupVerifiedBySlots(kycDocSlots, PROOF_OF_ADDRESS_TYPES);
+}
+
+export function mapMissingUploadSlotsFromBackend(
+  missingSlots: Array<{ slot: string; label: string; documentType: string }> | undefined,
+  kycDocSlots: KycDocSlot[],
+  replaceLegacy?: boolean,
+): KycDocSlot[] {
+  if (!missingSlots?.length) return [];
+  return missingSlots.map((slot) => {
+    const existing = kycDocSlots.find((row) => row.documentType === slot.documentType);
+    if (existing) {
+      if (!replaceLegacy && !existing.document && existing.legacyPreviewUrl) {
+        return existing;
+      }
+      return {
+        ...existing,
+        label: slot.label,
+        slot: slot.slot,
+      };
+    }
+    return {
+      slot: slot.slot,
+      label: slot.label,
+      type: slot.label,
+      documentType: slot.documentType as KycDocSlot['documentType'],
+      document: null,
+      legacyPreviewUrl: null,
+      statusLabel: '',
+    };
+  });
 }
 
 export function getMissingUploadSlots({
@@ -681,6 +714,16 @@ export function mapTimelineEventToUserSummary(event: TimelineEventLike): Timelin
   }
 
   if (type === 'UPDATED') {
+    const metadata = event.metadata as Record<string, unknown> | undefined;
+    if (metadata?.eventKind === 'VERIFICATION_PLAN_SELECTED') {
+      return {
+        chipLabel: 'Verifikation',
+        chipTone: 'neutral',
+        userTitle: rawTitle || 'Verifikationsweg festgelegt',
+        userDescription: rawDescription || 'Prüfweg für Dokumente wurde festgelegt.',
+        timestamp,
+      };
+    }
     const lowered = rawTitle.toLowerCase();
     if (lowered.includes('dokumentenprüfung') || lowered.includes('prüfung')) {
       return {

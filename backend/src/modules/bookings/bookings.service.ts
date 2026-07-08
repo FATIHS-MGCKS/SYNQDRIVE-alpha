@@ -1788,10 +1788,17 @@ export class BookingsService {
     }
 
     if (!allowed) {
+      const stageBlockingReasons =
+        requestedStatus === 'PENDING'
+          ? eligibility.stages.createBooking.blockingReasons
+          : requestedStatus === 'CONFIRMED'
+            ? eligibility.stages.confirmBooking.blockingReasons
+            : eligibility.stages.startPickup.blockingReasons;
+
       throw new ConflictException({
         code,
         message,
-        blockingReasons: eligibility.blockingReasons,
+        blockingReasons: stageBlockingReasons,
         warnings: eligibility.warnings,
         requiredActions: eligibility.requiredActions,
         customerId,

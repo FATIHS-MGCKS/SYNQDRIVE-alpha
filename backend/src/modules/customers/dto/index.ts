@@ -1,4 +1,5 @@
 export * from './create-customer.dto';
+export * from './verification-plan.dto';
 export * from './update-customer.dto';
 export * from './list-customers-query.dto';
 export * from './update-customer-status.dto';

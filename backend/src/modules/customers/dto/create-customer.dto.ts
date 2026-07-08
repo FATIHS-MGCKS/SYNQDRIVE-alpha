@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDateString,
@@ -6,8 +7,10 @@ import {
   IsOptional,
   IsString,
   MaxLength,
+  ValidateNested,
 } from 'class-validator';
 import { CustomerType } from '@prisma/client';
+import { CustomerVerificationPlanDto } from './verification-plan.dto';
 
 export class CreateCustomerDto {
   @IsString()
@@ -95,4 +98,10 @@ export class CreateCustomerDto {
   @IsOptional()
   @IsBoolean()
   allowDuplicateOverride?: boolean;
+
+  /** Planned verification strategy per document domain (canonical via CustomerVerificationCheck). */
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => CustomerVerificationPlanDto)
+  verificationPlan?: CustomerVerificationPlanDto;
 }

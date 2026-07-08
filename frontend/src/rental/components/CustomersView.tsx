@@ -4,6 +4,11 @@ import { Car, CheckCircle, IdCard, Upload, User } from 'lucide-react';
 import { Icon } from './ui/Icon';
 import { toast } from 'sonner';
 import { AddCustomerDocumentsStep } from './add-customer/AddCustomerDocumentsStep';
+import {
+  AddCustomerVerificationPlanSection,
+  DEFAULT_VERIFICATION_PLAN,
+  type CustomerVerificationPlanState,
+} from './add-customer/AddCustomerVerificationPlanSection';
 import { useCustomerVerification } from './customer-verification/useCustomerVerification';
 import {
   DEFAULT_ADD_CUSTOMER_FORM,
@@ -192,6 +197,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
   const [addStep, setAddStep] = useState(0);
   const [newCustomer, setNewCustomer] = useState(DEFAULT_ADD_CUSTOMER_FORM);
+  const [verificationPlan, setVerificationPlan] = useState<CustomerVerificationPlanState>(DEFAULT_VERIFICATION_PLAN);
   const [pendingDocFiles, setPendingDocFiles] = useState<PendingCustomerDocumentFiles>({});
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [draftCustomerId, setDraftCustomerId] = useState<string | null>(null);
@@ -202,6 +208,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
 
   const resetAddCustomerForm = () => {
     setNewCustomer(DEFAULT_ADD_CUSTOMER_FORM);
+    setVerificationPlan(DEFAULT_VERIFICATION_PLAN);
     setPendingDocFiles({});
     setFormErrors({});
     setDraftCustomerId(null);
@@ -264,7 +271,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       }
       setIsEnsuringDraft(true);
       try {
-        const id = await ensureWizardDraftCustomer(orgId, draftCustomerId, newCustomer);
+        const id = await ensureWizardDraftCustomer(orgId, draftCustomerId, newCustomer, verificationPlan);
         setDraftCustomerId(id);
         setAddStep(2);
       } catch (err: unknown) {
@@ -289,7 +296,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
     }
     setIsSavingCustomer(true);
     try {
-      const payload = buildCustomerCreatePayload(addCustomerFormToPayload(newCustomer));
+      const payload = buildCustomerCreatePayload(addCustomerFormToPayload(newCustomer, verificationPlan));
       let customerId = draftCustomerId;
       if (customerId) {
         await api.customers.update(orgId, customerId, payload);
@@ -831,6 +838,13 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
                         {formErrors.idExpiry && <p className="text-[11px] text-red-500 mt-1">{formErrors.idExpiry}</p>}
                       </div>
                     </div>
+
+                    <AddCustomerVerificationPlanSection
+                      plan={verificationPlan}
+                      onChange={setVerificationPlan}
+                      sectionTitle={sectionTitle}
+                      licensePickupWarning="Hinweis: Wenn Ihre Mietfreigabe den Führerschein bereits für die Buchungsbestätigung verlangt, blockiert „Beim Pickup prüfen“ die Bestätigung bis zur Prüfung."
+                    />
                   </div>
                 )}
 

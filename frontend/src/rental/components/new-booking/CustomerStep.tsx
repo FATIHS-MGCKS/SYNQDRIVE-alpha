@@ -7,6 +7,7 @@ import {
   StatusChip,
 } from '../../../components/patterns';
 import { AddCustomerDocumentsStep } from '../add-customer/AddCustomerDocumentsStep';
+import { AddCustomerVerificationPlanSection } from '../add-customer/AddCustomerVerificationPlanSection';
 import { CustomerDetailModal } from '../CustomerDetailModal';
 import { CustomerVerificationPanel } from '../customer-verification/CustomerVerificationPanel';
 import { documentEligibilityLabelDe } from '../../lib/customer-verification';
@@ -37,6 +38,8 @@ export function CustomerStep({
   onAddStepChange,
   newCustomer,
   onNewCustomerChange,
+  verificationPlan,
+  onVerificationPlanChange,
   pendingDocFiles,
   onPendingDocFileChange,
   formErrors,
@@ -403,6 +406,13 @@ export function CustomerStep({
                         {formErrors.idExpiry && <p className="text-[11px] text-red-500 mt-1">{formErrors.idExpiry}</p>}
                       </div>
                     </div>
+
+                    <AddCustomerVerificationPlanSection
+                      plan={verificationPlan}
+                      onChange={onVerificationPlanChange}
+                      sectionTitle={sectionTitle}
+                      licensePickupWarning="Hinweis: Wenn Ihre Mietfreigabe den Führerschein bereits für die Buchungsbestätigung verlangt, blockiert „Beim Pickup prüfen“ die Bestätigung bis zur Prüfung."
+                    />
                   </div>
                 )}
 

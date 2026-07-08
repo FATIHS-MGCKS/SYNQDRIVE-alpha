@@ -29,6 +29,7 @@ import {
 import { buildCustomerNormalizedFields } from './utils/customer-normalizer.util';
 import { CustomerTimelineService } from './customer-timeline.service';
 import { CustomerEligibilityService } from './customer-eligibility.service';
+import { CustomerVerificationService } from '@modules/customer-verification/customer-verification.service';
 
 export type DuplicateMatch = {
   customerId: string;
@@ -46,6 +47,7 @@ export class CustomersService {
     private readonly driverScoreService: DriverScoreService,
     private readonly timeline: CustomerTimelineService,
     private readonly eligibility: CustomerEligibilityService,
+    private readonly customerVerification: CustomerVerificationService,
   ) {}
 
   async create(orgId: string, dto: CreateCustomerDto, userId?: string): Promise<Customer> {
@@ -103,6 +105,13 @@ export class CustomersService {
       { customerId: customer.id },
       userId,
     );
+
+    await this.customerVerification.applyVerificationPlanFromCreate({
+      organizationId: orgId,
+      customerId: customer.id,
+      plan: dto.verificationPlan,
+      userId,
+    });
 
     return customer;
   }

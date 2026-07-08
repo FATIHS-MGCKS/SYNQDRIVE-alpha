@@ -1,16 +1,17 @@
 import {
-  IsEnum,
+  IsIn,
   IsNotEmpty,
   IsOptional,
   IsString,
   MaxLength,
   ValidateIf,
 } from 'class-validator';
-import { CustomerDocumentStatus } from '@prisma/client';
+
+const REVIEWABLE_DOCUMENT_STATUSES = ['VERIFIED', 'REJECTED'] as const;
 
 export class ReviewCustomerDocumentDto {
-  @IsEnum(CustomerDocumentStatus)
-  status!: CustomerDocumentStatus;
+  @IsIn(REVIEWABLE_DOCUMENT_STATUSES)
+  status!: (typeof REVIEWABLE_DOCUMENT_STATUSES)[number];
 
   @ValidateIf((o: ReviewCustomerDocumentDto) => o.status === 'REJECTED')
   @IsString()

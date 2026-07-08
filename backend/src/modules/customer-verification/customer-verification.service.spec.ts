@@ -259,7 +259,8 @@ describe('CustomerVerificationService — eligibility', () => {
     expect(result.idDocument).toBe('missing');
     expect(result.canConfirmBooking).toBe(true);
     expect(result.canStartPickup).toBe(false);
-    expect(result.blockingReasons).toContain('Ausweisprüfung für Pickup erforderlich');
+    expect(result.pickupBlockingReasons).toContain('Ausweisprüfung für Pickup erforderlich');
+    expect(result.blockingReasons).not.toContain('Ausweisprüfung für Pickup erforderlich');
   });
 
   it('uploaded but unverified ID yields requires_review not local verified', async () => {

@@ -73,6 +73,11 @@ export class CustomerDocumentsService {
     });
   }
 
+  async getDocumentVerificationStatus(orgId: string, customerId: string) {
+    await this.assertCustomer(orgId, customerId);
+    return this.verificationService.getDocumentVerificationStatus(orgId, customerId);
+  }
+
   async getDocument(orgId: string, customerId: string, documentId: string) {
     const doc = await this.prisma.customerDocument.findFirst({
       where: { id: documentId, organizationId: orgId, customerId },
@@ -112,17 +117,14 @@ export class CustomerDocumentsService {
       },
     });
 
-    await this.syncVerificationReadModel(orgId, customerId);
-    await this.timeline.addEvent(
-      orgId,
+    await this.verificationService.recordManualDocumentReview({
+      organizationId: orgId,
       customerId,
-      dto.status === 'VERIFIED' ? 'DOCUMENT_VERIFIED' : 'DOCUMENT_REJECTED',
-      dto.status === 'VERIFIED'
-        ? `Manuelle Prüfung bestätigt: ${updated.type}`
-        : `Manuelle Prüfung abgelehnt: ${updated.type}`,
-      { documentId, type: updated.type, rejectedReason: dto.rejectedReason },
+      document: updated,
+      status: dto.status,
       userId,
-    );
+      rejectedReason: dto.rejectedReason ?? null,
+    });
 
     return updated;
   }

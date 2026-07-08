@@ -30,6 +30,8 @@ import {
   ensureWizardDraftCustomer,
   validateAddCustomerDocumentsStep,
   addCustomerFormToPayload,
+  DEFAULT_VERIFICATION_PLAN,
+  type CustomerVerificationPlanState,
 } from '../lib/add-customer-wizard';
 import { useFleetHealthMap } from '../hooks/useVehicleHealth';
 import type { BookingRentalEligibilityResult } from '../lib/booking-rental-eligibility.types';
@@ -282,6 +284,7 @@ export function NewBookingView({
   const [isAddCustomerOpen, setIsAddCustomerOpen] = useState(false);
   const [addStep, setAddStep] = useState(0);
   const [newCustomer, setNewCustomer] = useState(DEFAULT_ADD_CUSTOMER_FORM);
+  const [verificationPlan, setVerificationPlan] = useState<CustomerVerificationPlanState>(DEFAULT_VERIFICATION_PLAN);
   const [pendingDocFiles, setPendingDocFiles] = useState<PendingCustomerDocumentFiles>({});
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [draftCustomerId, setDraftCustomerId] = useState<string | null>(null);
@@ -292,6 +295,7 @@ export function NewBookingView({
 
   const resetAddCustomerForm = () => {
     setNewCustomer(DEFAULT_ADD_CUSTOMER_FORM);
+    setVerificationPlan(DEFAULT_VERIFICATION_PLAN);
     setPendingDocFiles({});
     setFormErrors({});
     setDraftCustomerId(null);
@@ -337,7 +341,7 @@ export function NewBookingView({
       }
       setIsEnsuringDraft(true);
       try {
-        const id = await ensureWizardDraftCustomer(orgId, draftCustomerId, newCustomer);
+        const id = await ensureWizardDraftCustomer(orgId, draftCustomerId, newCustomer, verificationPlan);
         setDraftCustomerId(id);
         setAddStep(2);
       } catch (err: unknown) {
@@ -359,7 +363,7 @@ export function NewBookingView({
     if (!orgId || isSavingCustomer) return;
     setIsSavingCustomer(true);
     try {
-      const payload = buildCustomerCreatePayload(addCustomerFormToPayload(newCustomer));
+      const payload = buildCustomerCreatePayload(addCustomerFormToPayload(newCustomer, verificationPlan));
       let customerId = draftCustomerId;
       if (customerId) {
         await api.customers.update(orgId, customerId, payload);
@@ -1183,6 +1187,8 @@ export function NewBookingView({
                 onAddStepChange={setAddStep}
                 newCustomer={newCustomer}
                 onNewCustomerChange={setNewCustomer}
+                verificationPlan={verificationPlan}
+                onVerificationPlanChange={setVerificationPlan}
                 pendingDocFiles={pendingDocFiles}
                 onPendingDocFileChange={(type, file) =>
                   setPendingDocFiles((prev) => ({

@@ -3,6 +3,10 @@
 // in lock-step with the backend enums + response shapes.
 
 import { api } from '../../lib/api';
+import {
+  verificationPlanToApiPayload,
+  type CustomerVerificationPlanState,
+} from '../components/add-customer/AddCustomerVerificationPlanSection';
 
 export type CustomerUiStatus = 'Active' | 'Under Review' | 'Suspended' | 'Blocked' | 'Archived' | 'Inactive';
 export type CustomerApiStatus = 'ACTIVE' | 'INACTIVE' | 'BLOCKED' | 'SUSPENDED' | 'UNDER_REVIEW';
@@ -637,6 +641,7 @@ export interface BuildCustomerCreatePayloadArgs {
   status?: CustomerUiStatus | string;
   notes?: string;
   allowDuplicateOverride?: boolean;
+  verificationPlan?: CustomerVerificationPlanState;
 }
 
 export function buildCustomerCreatePayload(args: BuildCustomerCreatePayloadArgs) {
@@ -658,5 +663,8 @@ export function buildCustomerCreatePayload(args: BuildCustomerCreatePayloadArgs)
     idExpiry: toIso(args.idExpiry) ?? undefined,
     notes: args.notes?.trim() || undefined,
     allowDuplicateOverride: args.allowDuplicateOverride,
+    ...(args.verificationPlan
+      ? { verificationPlan: verificationPlanToApiPayload(args.verificationPlan) }
+      : {}),
   };
 }

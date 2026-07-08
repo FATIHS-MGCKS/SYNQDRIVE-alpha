@@ -8,6 +8,10 @@ import {
   type BuildCustomerCreatePayloadArgs,
   type PendingCustomerDocumentFiles,
 } from './entityMappers';
+import {
+  DEFAULT_VERIFICATION_PLAN,
+  type CustomerVerificationPlanState,
+} from '../components/add-customer/AddCustomerVerificationPlanSection';
 
 export type AddCustomerFormState = {
   firstName: string;
@@ -57,7 +61,10 @@ function isDiditDocumentOk(status?: DocumentEligibilityStatus): boolean {
   return status != null && DIDIT_DOCUMENT_OK.includes(status);
 }
 
-export function addCustomerFormToPayload(form: AddCustomerFormState): BuildCustomerCreatePayloadArgs {
+export function addCustomerFormToPayload(
+  form: AddCustomerFormState,
+  verificationPlan?: CustomerVerificationPlanState,
+): BuildCustomerCreatePayloadArgs {
   return {
     firstName: form.firstName,
     lastName: form.lastName,
@@ -76,6 +83,7 @@ export function addCustomerFormToPayload(form: AddCustomerFormState): BuildCusto
     idNumber: form.idNumber,
     idExpiry: form.idExpiry,
     notes: form.notes,
+    verificationPlan,
   };
 }
 
@@ -111,8 +119,9 @@ export async function ensureWizardDraftCustomer(
   orgId: string,
   draftCustomerId: string | null,
   form: AddCustomerFormState,
+  verificationPlan: CustomerVerificationPlanState = DEFAULT_VERIFICATION_PLAN,
 ): Promise<string> {
-  const payload = buildCustomerCreatePayload(addCustomerFormToPayload(form));
+  const payload = buildCustomerCreatePayload(addCustomerFormToPayload(form, verificationPlan));
   if (draftCustomerId) {
     await api.customers.update(orgId, draftCustomerId, payload);
     return draftCustomerId;
@@ -120,3 +129,5 @@ export async function ensureWizardDraftCustomer(
   const created = await api.customers.create(orgId, payload);
   return created.id;
 }
+
+export { DEFAULT_VERIFICATION_PLAN, type CustomerVerificationPlanState };

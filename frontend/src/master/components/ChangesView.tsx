@@ -35,6 +35,69 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customer-document-verification-sot-v49245-2026-07-08',
+    version: '4.9.245',
+    title: 'V4.9.245 — Dokumentenverifikation: kanonische Source of Truth',
+    summary: [
+      'CustomerVerificationCheck = einzige Verifikationsentscheidung; CustomerDocument = Evidence/Upload.',
+      'Manuelle Dokumentprüfung erzeugt/aktualisiert MANUAL CustomerVerificationCheck mit decisionJson.',
+      'GET /customers/:id/documents/status liefert Domain-Status + backendseitige missingUploadSlots.',
+      'Didit-Timeline nutzerlesbar; keine Uploadpflicht bei VERIFIED-Gruppe ohne physische Dateien.',
+      'Frontend CustomerDocumentsTab nutzt Backend-Status statt eigener Slot-Heuristik.',
+    ],
+    reason:
+      'CustomerDocument und Read Model wirkten als zweite Wahrheit; UI leitete fehlende Uploads aus Slots ab obwohl Didit bereits verifiziert war.',
+    previousBehavior:
+      'reviewDocument aktualisierte nur CustomerDocument; missingUploadSlots clientseitig in customerDetailUtils berechnet.',
+    details:
+      'backend: customer-document-status.util/types, recordManualDocumentReview, getDocumentVerificationStatus, customer-documents.service/controller, review-customer-document.dto. frontend: api.customerDocuments.status, useCustomerDocumentStatus, CustomerDocumentsTab, mapMissingUploadSlotsFromBackend.',
+    affectsArchitecture: true,
+    module: 'Customers',
+    createdAt: '2026-07-08T03:30:00.000Z',
+  },
+  {
+    id: 'customer-verification-plan-v49244-2026-07-08',
+    version: '4.9.244',
+    title: 'V4.9.244 — Kundenanlage: Verifikationsweg pro Dokumentart',
+    summary: [
+      'CreateCustomerDto.verificationPlan: Operator wählt Prüfweg für Ausweis, Führerschein und Adressnachweis.',
+      'CustomerVerificationService.applyVerificationPlanFromCreate erzeugt CustomerVerificationCheck je Domain (kanonisch, kein Fake-Verified).',
+      'PICKUP/DEFERRED/DIDIT/MANUAL in decisionJson (source CREATE_CUSTOMER); Timeline „Verifikationsweg festgelegt“.',
+      'Frontend: AddCustomerVerificationPlanSection in CustomersView + NewBookingView Wizard Schritt ID/FS.',
+      'Confirm-Gate: pickup_required zählt nur wenn Policy Confirm nicht verifizierten FS verlangt.',
+    ],
+    reason:
+      'Bei Kundenanlage fehlte die dokumentierte Entscheidung, wie Ausweis, Führerschein und Adressnachweis geprüft werden sollen.',
+    previousBehavior:
+      'POST /customers legte nur Kundendaten an; keine CustomerVerificationCheck-Planung; Operator-Auswahl nur implizit über spätere Uploads/Didit.',
+    details:
+      'backend: verification-plan.dto, customer-verification-plan.types, customer-verification.service (applyVerificationPlanFromCreate), customers.service, customer-verification-status.util (PICKUP/DEFERRED aus decisionJson). frontend: AddCustomerVerificationPlanSection, add-customer-wizard, entityMappers, CustomersView, NewBookingView/CustomerStep, customerDetailUtils timeline mapping.',
+    affectsArchitecture: true,
+    module: 'Customers',
+    createdAt: '2026-07-08T03:00:00.000Z',
+  },
+  {
+    id: 'customer-eligibility-stages-v49243-2026-07-08',
+    version: '4.9.243',
+    title: 'V4.9.243 — Customer Eligibility: stufenbasierte Mietfreigabe',
+    summary: [
+      'Pickup-Blocker (z. B. fehlender Führerschein nur für Übergabe) sind keine globalen Customer-Blocker mehr.',
+      'CustomerEligibilityResult.stages: createBooking / confirmBooking / startPickup mit getrennten blockingReasons.',
+      'CustomerVerificationService: confirmBlockingReasons und pickupBlockingReasons getrennt; blockingReasons nur Confirm-Alias.',
+      'rentalClearance: „Pickup-Prüfung erforderlich“ statt „Nicht freigegeben“ bei reiner Pickup-Vorbedingung.',
+      'Frontend: overallRentalClearanceLabel/Tone und List-Badge nutzen stages/globalBlockingReasons.',
+    ],
+    reason:
+      'Confirm- und Pickup-Blocker wurden in blockingReasons gemischt — Kunden wirkten global blockiert obwohl nur Pickup fehlte.',
+    previousBehavior:
+      'blockingReasons enthielt Pickup- und Confirm-Gründe gemeinsam; canCreatePendingBooking fiel bei Pickup-Only-Blockern mit.',
+    details:
+      'backend: customer-eligibility.types, customer-eligibility.service, customer-verification.service, rental-clearance.util, bookings.service (stage reasons in conflicts). frontend: customerDetailUtils, CustomerDecisionCards, customer-list-ui, api.ts. Tests: eligibility + clearance + verification specs.',
+    affectsArchitecture: true,
+    module: 'Customers',
+    createdAt: '2026-07-08T02:30:00.000Z',
+  },
+  {
     id: 'customer-documents-upload-groups-v49242-2026-07-08',
     version: '4.9.242',
     title: 'V4.9.242 — Customer Detail Dokumente: gruppenbasierte Upload-Logik',
