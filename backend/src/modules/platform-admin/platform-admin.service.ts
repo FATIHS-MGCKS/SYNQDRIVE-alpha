@@ -9,7 +9,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { HealthService } from '@modules/health/health.service';
-import { QueueMonitoringService } from '@modules/observability/queue-monitoring.service';
+import { QueueMonitoringService, type QueueJobCounts } from '@modules/observability/queue-monitoring.service';
 import { DimoAuthService } from '../dimo/dimo-auth.service';
 
 export interface ActivityLogEntry {
@@ -528,7 +528,7 @@ export class PlatformAdminService {
     const now = new Date();
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
 
-    const [readiness, monitoring, alerts, queues, tokenHealth, dimoCounts] = await Promise.all([
+    const [readiness, monitoring, alerts, queues, dimoCounts] = await Promise.all([
       this.healthService.checkReadiness(),
       this.getMonitoringSummary({
         from: oneHourAgo.toISOString(),
@@ -539,16 +539,17 @@ export class PlatformAdminService {
         to: now.toISOString(),
       }),
       this.queueMonitoring.getAllQueueCounts(),
-      this.dimoAuth.getHealthSnapshot().catch(() => null),
       Promise.all([
         this.prisma.dimoVehicle.count(),
         this.prisma.dimoVehicle.count({ where: { connectionStatus: 'CONNECTED' } }),
       ]),
     ]);
 
+    const tokenHealth = this.dimoAuth.getHealthSnapshot();
+
     const [dimoTotal, dimoConnected] = dimoCounts;
-    const queueCritical = queues.filter((q) => q.status === 'critical').length;
-    const queueWarning = queues.filter((q) => q.status === 'warning').length;
+    const queueCritical = queues.filter((q: QueueJobCounts) => q.status === 'critical').length;
+    const queueWarning = queues.filter((q: QueueJobCounts) => q.status === 'warning').length;
 
     let overallStatus: 'healthy' | 'warning' | 'critical' = 'healthy';
     if (
@@ -560,7 +561,10 @@ export class PlatformAdminService {
     } else if (
       monitoring.systemHealth === 'warning' ||
       queueWarning > 0 ||
-      alerts.some((a) => a.severity === 'warning' || a.severity === 'critical')
+      alerts.some(
+        (a: { severity: string }) =>
+          a.severity === 'warning' || a.severity === 'critical',
+      )
     ) {
       overallStatus = 'warning';
     }
