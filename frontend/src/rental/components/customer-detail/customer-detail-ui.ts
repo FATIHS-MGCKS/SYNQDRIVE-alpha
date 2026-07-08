@@ -8,7 +8,7 @@ import {
 
 /** Layout tokens for the full CustomerDetailView page. */
 export const cdv = {
-  page: 'mx-auto max-w-[1400px] space-y-3 pb-[max(5.5rem,env(safe-area-inset-bottom))] sm:pb-[max(1rem,env(safe-area-inset-bottom))]',
+  page: 'mx-auto max-w-[1400px] space-y-3 pb-[max(1rem,env(safe-area-inset-bottom))]',
   headerCard: 'sq-card overflow-hidden',
   headerInner: 'px-4 py-3.5 sm:px-5 sm:py-4',
   backLink:
@@ -80,14 +80,27 @@ export const cdv = {
   /** @deprecated use stageRailLabel */
   stageSeparator: 'text-muted-foreground/35 select-none',
   bottomTabBar:
-    'sq-tab-bar sticky bottom-0 z-20 -mx-1 flex w-[calc(100%+0.5rem)] items-center p-1 sm:static sm:z-auto sm:mx-0 sm:w-full',
+    'sticky top-0 z-20 -mx-1 border-b border-border/60 bg-background/95 px-1 py-1 shadow-[0_1px_0_0_color-mix(in_srgb,var(--border)_70%,transparent)] backdrop-blur-sm supports-[backdrop-filter]:bg-background/90 sm:mx-0 sm:px-0',
   bottomTabScroll:
-    'flex min-w-0 flex-1 flex-nowrap gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+    'flex min-w-0 flex-1 flex-nowrap gap-0.5 overflow-x-auto scroll-smooth px-1 snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
   bottomTabButton:
-    'min-h-8 min-w-0 shrink-0 rounded-[calc(var(--radius-md)-2px)] px-3 py-1.5 text-[11px] font-semibold leading-[16px] tracking-[-0.003em] whitespace-nowrap transition-all duration-200',
-  bottomTabButtonActive: 'bg-card text-foreground shadow-[var(--shadow-1)]',
+    'min-h-9 shrink-0 snap-start rounded-[calc(var(--radius-md)-2px)] border px-3.5 py-2 text-[13px] font-semibold leading-none tracking-[-0.003em] whitespace-nowrap transition-[color,background-color,box-shadow,border-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+  bottomTabButtonActive:
+    'border-border/70 bg-card text-foreground shadow-[var(--shadow-1)]',
   bottomTabButtonIdle:
-    'text-muted-foreground hover:bg-background/60 hover:text-foreground',
+    'border-transparent text-muted-foreground hover:bg-background/60 hover:text-foreground',
+  tabBarShell:
+    'sticky top-0 z-20 -mx-1 border-b border-border/60 bg-background/95 px-1 py-1 shadow-[0_1px_0_0_color-mix(in_srgb,var(--border)_70%,transparent)] backdrop-blur-sm supports-[backdrop-filter]:bg-background/90 sm:mx-0 sm:px-0',
+  tabBarRail: 'sq-tab-bar flex w-full min-w-0 items-center rounded-2xl p-1',
+  tabBarScroller:
+    'flex min-w-0 flex-1 flex-nowrap gap-0.5 overflow-x-auto scroll-smooth px-1 snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+  tabButton:
+    'min-h-9 shrink-0 snap-start rounded-[calc(var(--radius-md)-2px)] border px-3.5 py-2 text-[13px] font-semibold leading-none tracking-[-0.003em] whitespace-nowrap transition-[color,background-color,box-shadow,border-color] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+  tabButtonActive:
+    'border-border/70 bg-card text-foreground shadow-[var(--shadow-1)]',
+  tabButtonInactive:
+    'border-transparent text-muted-foreground hover:bg-background/60 hover:text-foreground',
+  tabPanel: 'scroll-mt-3 pt-1 sm:pt-2',
   overviewActivityBody: 'py-3',
   documentsSection: 'space-y-4',
   documentsStatusGrid: 'grid grid-cols-1 gap-3 sm:grid-cols-2',

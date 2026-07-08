@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customer-detail-tabbar-polish-v49241-2026-07-08',
+    version: '4.9.241',
+    title: 'V4.9.241 — Customer Detail: Tab-Bar & Sticky Navigation Feinschliff',
+    summary: [
+      'Tab-Bar sticky top mit solidem Hintergrund (bg-background/95, backdrop-blur) statt bottom-Ghosting.',
+      'Horizontal scroll mit snap, Padding an den Rändern, scrollIntoView für aktiven Tab.',
+      'Mobile Kurzlabels (Dokumente, Fahrbelastung, Timeline); Desktop volle Labels.',
+      'SynqDrive sq-tab-bar Segmented Control, aria-selected/controls, Fokus-Ring.',
+    ],
+    reason:
+      'Die Customer-Detail-Tab-Bar wirkte auf Mobile dominant, abgeschnitten und teils transparent über Content gelegt.',
+    previousBehavior:
+      'sticky bottom-0 auf Mobile, truncate auf Labels, 5.5rem Bottom-Padding, 11px Tabs ohne Auto-Scroll.',
+    details:
+      'frontend: CustomerDetailTabBar, customer-detail-ui (tabBar* tokens), CustomerDetailView (mobileLabel, tabpanel). Keine Backend-Änderung.',
+    affectsArchitecture: false,
+    module: 'Customers',
+    createdAt: '2026-07-08T02:15:00.000Z',
+  },
+  {
     id: 'customer-detail-timeline-polish-v49240-2026-07-08',
     version: '4.9.240',
     title: 'V4.9.240 — Customer Detail: Timeline & Notizen UX-Feinschliff',

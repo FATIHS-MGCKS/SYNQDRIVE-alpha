@@ -48,7 +48,7 @@ import { CustomerTimelineTab } from './customer-detail/CustomerTimelineTab';
 
 import { CustomerDetailHeader } from './customer-detail/CustomerDetailHeader';
 
-import { CustomerDetailTabBar } from './customer-detail/CustomerDetailTabBar';
+import { CustomerDetailTabBar, CUSTOMER_DETAIL_TAB_PANEL_ID } from './customer-detail/CustomerDetailTabBar';
 
 import {
 
@@ -138,19 +138,19 @@ interface CustomerDetailViewProps {
 
 
 
-const TABS: { key: CustomerDetailTab; label: string }[] = [
+const TABS: { key: CustomerDetailTab; label: string; mobileLabel?: string }[] = [
 
   { key: 'overview', label: 'Übersicht' },
 
   { key: 'bookings', label: 'Buchungen' },
 
-  { key: 'documents', label: 'Dokumente & Verifikation' },
+  { key: 'documents', label: 'Dokumente & Verifikation', mobileLabel: 'Dokumente' },
 
   { key: 'finances', label: 'Finanzen' },
 
-  { key: 'driving', label: 'Fahrbelastung & Verdacht' },
+  { key: 'driving', label: 'Fahrbelastung & Verdacht', mobileLabel: 'Fahrbelastung' },
 
-  { key: 'timeline', label: 'Timeline & Notizen' },
+  { key: 'timeline', label: 'Timeline & Notizen', mobileLabel: 'Timeline' },
 
 ];
 
@@ -702,8 +702,12 @@ export function CustomerDetailView({
 
 
 
-      <div>
-
+      <div
+        id={CUSTOMER_DETAIL_TAB_PANEL_ID}
+        role="tabpanel"
+        aria-labelledby={`customer-detail-tab-${activeTab}`}
+        className={cdv.tabPanel}
+      >
         {activeTab === 'overview' && (
 
           <CustomerOverviewTab
