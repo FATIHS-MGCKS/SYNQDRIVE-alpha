@@ -1473,7 +1473,40 @@ export interface VehicleTripAnalytics {
   scoreEligible?: boolean;
   tripAttribution?: TripAttribution | null;
   tripAssessment?: TripAssessment | null;
+  clickhouseEvidence?: TripClickHouseEvidence | null;
   [key: string]: unknown;
+}
+
+/** Read-only ClickHouse trip evidence — analytics mirror, not canonical scores. */
+export interface TripClickHouseEvidence {
+  evidenceAvailable: boolean;
+  clickhouseStatus: 'available' | 'degraded' | 'unavailable' | 'mirror_disabled';
+  readOnly: true;
+  signalQuality: 'good' | 'medium' | 'weak' | 'unavailable';
+  hfAvailability: 'hf_available' | 'sparse' | 'missing' | 'unknown';
+  snapshotSampleCount: number | null;
+  hfPointCount: number;
+  hfEventCount: number;
+  hfWindowCount: number;
+  gpsCoverage: 'available' | 'sparse' | 'missing';
+  signalAvailability: {
+    rpm: boolean;
+    throttle: boolean;
+    engineLoad: boolean;
+    coolant: boolean;
+    tractionPower: boolean;
+  };
+  missingSignals: string[];
+  evidenceSummary: string[];
+  detectorFeasibility: Array<{
+    detector: string;
+    status: string;
+    requiredSignals: string[];
+    speedOnly: boolean;
+  }>;
+  lastEvidenceAt: string | null;
+  degraded: boolean;
+  debugReason?: string | null;
 }
 
 export interface VehicleTripStats {
@@ -3294,6 +3327,10 @@ export const api = {
       get<ApiServiceCase[]>(`/organizations/${orgId}/vendors/${vendorId}/service-history`),
   },
   dataAnalyse: {
+    clickhouseDiagnostics: (orgId: string) =>
+      get<DataAnalyseClickHouseDiagnostics>(
+        `/organizations/${orgId}/data-analyse/clickhouse-diagnostics`,
+      ),
     vehicles: (orgId: string) =>
       get<DataAnalyseVehicle[]>(`/organizations/${orgId}/data-analyse/vehicles`),
     telemetryOverview: (orgId: string, vehicleId: string) =>
@@ -3302,6 +3339,14 @@ export const api = {
       get<DataAnalyseSignalRow[]>(`/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/signals`),
     highFrequency: (orgId: string, vehicleId: string) =>
       get<DataAnalyseHighFrequency>(`/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/high-frequency`),
+    latestTripSignalQuality: (orgId: string, vehicleId: string) =>
+      get<DataAnalyseSignalQuality>(
+        `/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/signal-quality/latest`,
+      ),
+    tripSignalQuality: (orgId: string, vehicleId: string, tripId: string) =>
+      get<DataAnalyseSignalQuality>(
+        `/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/trips/${tripId}/signal-quality`,
+      ),
     launchFeasibility: (orgId: string, vehicleId: string) =>
       get<DataAnalyseLaunchFeasibilityResult>(`/organizations/${orgId}/data-analyse/vehicles/${vehicleId}/launch-feasibility`),
     healthTrace: (orgId: string, vehicleId: string) =>
@@ -6004,6 +6049,33 @@ export interface DataAnalyseHighFrequency {
   hfMirrorStatus?: 'enabled' | 'disabled' | 'unknown';
 }
 
+/** Internal debug — read-only trip HF signal quality (not a canonical trip score). */
+export interface DataAnalyseSignalQuality {
+  available: boolean;
+  degraded: boolean;
+  degradedReason?: string | null;
+  overallQuality: 'good' | 'medium' | 'weak' | 'unavailable';
+  hfAvailability: 'hf_available' | 'sparse' | 'missing' | 'unknown';
+  signalCoverage: Array<{
+    signalGroup: string;
+    pointCount: number;
+    windowCount: number;
+  }>;
+  missingKeySignals: string[];
+  detectorFeasibilityHints: Array<{
+    detector: string;
+    status: string;
+    requiredSignals: string[];
+    speedOnly: boolean;
+  }>;
+  windowCount: number;
+  hfPointCount: number;
+  reasons: string[];
+  internalDebug: true;
+  readOnly: true;
+  tripId?: string | null;
+}
+
 export interface DataAnalyseLaunchFeasibilityResult {
   feasibility: DataAnalyseLaunchFeasibility;
   availableSignals: string[];
@@ -6052,6 +6124,41 @@ export interface DataAnalysePipeline {
   steps: DataAnalysePipelineStep[];
   lastSuccessfulProcessing: string | null;
   lastError: string | null;
+}
+
+export interface DataAnalyseClickHouseTableDiagnostic {
+  table: string;
+  purpose: string;
+  futureUseCase: string | null;
+  producerStatus: string;
+  mvpStatus: string;
+  expectedEmptyAllowed: boolean;
+  displayStatus: string;
+  dataStatus: string;
+  rowCount: number | null;
+  lastEventAt: string | null;
+  writeProducer: string | null;
+  readConsumers: string[];
+  notes: string;
+}
+
+export interface DataAnalyseClickHouseDiagnostics {
+  purpose: 'temporary_internal_debug';
+  clickhouseConfigured: boolean;
+  clickhouseAvailable: boolean;
+  clickhouseStatus: 'disabled' | 'available' | 'degraded' | 'schema_error';
+  degraded: boolean;
+  hfMirrorEnabled: boolean;
+  hfMirrorStatus: 'enabled' | 'disabled' | 'unknown';
+  schemaMigrations: {
+    appliedCount: number | null;
+    pendingCount: number | null;
+    lastInitAt: string | null;
+    lastError: string | null;
+  };
+  lastMirrorWriteAt: Record<string, string | null>;
+  tables: DataAnalyseClickHouseTableDiagnostic[];
+  notes: string[];
 }
 
 // ── LTE_R1 Event Context Architecture diagnostic ────────────────────────────

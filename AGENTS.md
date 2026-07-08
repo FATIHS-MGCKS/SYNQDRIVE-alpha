@@ -15,12 +15,14 @@
 ```bash
 cd backend && npm ci && npx prisma generate
 cd ../frontend && npm ci
-cd backend && npm run infra:up          # postgres, redis, clickhouse via docker compose
+cd backend && npm run infra:up          # postgres, redis, clickhouse via docker compose (local dev only)
 cd backend && npm run start:dev
 cd frontend && npm run dev
 ```
 
 Env template: `backend/.env.example` — **never commit real secrets**.
+
+ClickHouse: backend connects via `CLICKHOUSE_URL` only (optional). Local dev may use `npm run infra:up` for Docker Compose; production may use native/external/self-hosted — see `architecture/CLICKHOUSE_RUNTIME_AND_BOUNDARIES_2026-07-08.md`. Verify: `npm run clickhouse:ping:url`. **Do not** run `infra:up` blindly on a prod VPS.
 
 ---
 

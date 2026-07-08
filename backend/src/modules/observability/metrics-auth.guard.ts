@@ -10,11 +10,10 @@ import {
 /**
  * Protects GET /api/v1/metrics with a static bearer token.
  *
- * Production: METRICS_BEARER_TOKEN must be set — otherwise the endpoint
- * returns 503 (never publicly scrapeable by accident).
+ * Production / staging: METRICS_BEARER_TOKEN must be set — otherwise 503.
  *
- * Development: when the token is unset, access is allowed for local debugging
- * only. Prometheus scrape configs should still send Authorization in prod.
+ * Local development only: when METRICS_ALLOW_OPEN_IN_DEV=true and NODE_ENV is
+ * not production, an unset token allows open access for debugging.
  */
 @Injectable()
 export class MetricsAuthGuard implements CanActivate {
@@ -23,9 +22,12 @@ export class MetricsAuthGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     const expected = process.env.METRICS_BEARER_TOKEN?.trim();
+    const isProduction = process.env.NODE_ENV === 'production';
+    const allowOpenInDev =
+      !isProduction && process.env.METRICS_ALLOW_OPEN_IN_DEV === 'true';
 
     if (!expected) {
-      if (process.env.NODE_ENV === 'production') {
+      if (isProduction || !allowOpenInDev) {
         throw new ServiceUnavailableException(
           'Metrics endpoint disabled: METRICS_BEARER_TOKEN is not configured',
         );
@@ -33,7 +35,7 @@ export class MetricsAuthGuard implements CanActivate {
       if (!this.warnedOpenDev) {
         this.warnedOpenDev = true;
         this.logger.warn(
-          'METRICS_BEARER_TOKEN is unset — /metrics is open in non-production. Set a token before exposing this host.',
+          'METRICS_ALLOW_OPEN_IN_DEV=true — /metrics is open without a bearer token. Do not use on shared/staging hosts.',
         );
       }
       return true;

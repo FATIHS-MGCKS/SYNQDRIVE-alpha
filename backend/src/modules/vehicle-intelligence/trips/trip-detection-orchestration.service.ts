@@ -49,6 +49,8 @@ import { TripDetectionPolicyResolver } from './policy/trip-detection-policy.reso
 import { DETECTION_PHASES } from './detectors/detector.interfaces';
 import { DetectorRegistry } from './detectors/detector.registry';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
+import { ClickHouseService } from '@modules/clickhouse/clickhouse.service';
+import { isClickHouseTripAssistEnabled } from '@modules/clickhouse/clickhouse-env.util';
 
 type TripTrackingSchedulePhase = 'ps' | 'at' | 'pec' | 'ev' | 'fin';
 
@@ -124,6 +126,7 @@ export class TripDetectionOrchestrationService {
     private readonly decisionEngine: TripDecisionEngine,
     private readonly policyResolver: TripDetectionPolicyResolver,
     private readonly detectorRegistry: DetectorRegistry,
+    @Optional() private readonly clickHouse?: ClickHouseService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {
     this.TRACKING_INTERVAL_MS = this.configService.get<number>('worker.tripTrackingIntervalMs') ?? 30_000;
@@ -1867,6 +1870,10 @@ export class TripDetectionOrchestrationService {
       }
 
       // ── Step 5: Max CUSUM attempts exhausted — finalize with best available data ──
+      this.tripMetrics?.possibleEndStuck.set(
+        { vehicle_profile: String(det.detectionProfile ?? 'UNKNOWN') },
+        1,
+      );
       this.logger.log(
         `CUSUM max attempts (${attempts}) for ${vehicleId}, finalizing`,
       );
@@ -2171,6 +2178,9 @@ export class TripDetectionOrchestrationService {
             restingReason = 'discard';
             this.logger.log(`Trip ${tripId} discarded for ${vehicleId}: ${qualityCheck.reason}`);
             this.tripMetrics?.tripDiscarded.inc({ reason: qualityCheck.reason ?? 'quality_check_failed' });
+            this.tripMetrics?.tripQualityAnomalies.inc({
+              anomaly_type: qualityCheck.reason ?? 'quality_check_failed',
+            });
           } else {
             await this.decisionEngine.finalizeTrip(tripId, {
               endTime,
@@ -2309,6 +2319,8 @@ export class TripDetectionOrchestrationService {
   // ══════════════════════════════════════════════════════════
 
   private hasClickHouseAnalyticsDetectors(): boolean {
+    if (!isClickHouseTripAssistEnabled()) return false;
+    if (!this.clickHouse?.isAvailable) return false;
     return (
       this.detectorRegistry.get('ActivityWindowDetector') != null &&
       this.detectorRegistry.get('IgnitionSegmentDetector') != null

@@ -3,7 +3,6 @@ import { ClickHouseService } from './clickhouse.service';
 import type { IgnitionSegmentFinding } from '../vehicle-intelligence/trips/detectors/ignition-segment.detector';
 import type { MotionSegmentFinding } from '../vehicle-intelligence/trips/detectors/motion-segment.detector';
 import { TripMetricsService } from '../observability/trip-metrics.service';
-import { observeClickHouseQuery } from '../observability/clickhouse-metrics.helper';
 
 // Minimum segment duration per signal type.
 // Ignition segments: 60s — short ICE on/off cycles (e.g. starting for pickup) are real trips.
@@ -113,10 +112,6 @@ export class ClickHouseAnalyticsService {
     `;
 
     try {
-      return await observeClickHouseQuery(
-        this.metrics,
-        'find_ignition_segments',
-        async () => {
       const result = await client.query({
         query: sql,
         query_params: {
@@ -152,8 +147,6 @@ export class ClickHouseAnalyticsService {
                 : 'LOW',
         } satisfies IgnitionSegmentFinding;
       });
-        },
-      );
     } catch (err: unknown) {
       this.metrics?.clickHouseAnalyticsQueries.inc({
         query: 'find_ignition_segments',
@@ -209,10 +202,6 @@ export class ClickHouseAnalyticsService {
     `;
 
     try {
-      return await observeClickHouseQuery(
-        this.metrics,
-        'find_motion_segments',
-        async () => {
       const result = await client.query({
         query: sql,
         query_params: {
@@ -248,14 +237,92 @@ export class ClickHouseAnalyticsService {
                 : 'LOW',
         } satisfies MotionSegmentFinding;
       });
-        },
-      );
     } catch (err: unknown) {
       this.metrics?.clickHouseAnalyticsQueries.inc({
         query: 'find_motion_segments',
         result: 'error',
       });
       throw err;
+    }
+  }
+
+  /**
+   * Fetches snapshot samples in a time window for activity-window derivation.
+   * Best-effort — returns [] when ClickHouse is unavailable or the query fails.
+   */
+  async fetchSnapshotsInWindow(
+    vehicleId: string,
+    from: Date,
+    to: Date,
+  ): Promise<
+    Array<{
+      recordedAt: Date;
+      speedKmh: number | null;
+      isIgnitionOn: boolean | null;
+      odometerKm: number | null;
+    }>
+  > {
+    if (!this.ch.isAvailable) {
+      this.metrics?.clickHouseAnalyticsQueries.inc({
+        query: 'fetch_snapshots_in_window',
+        result: 'skipped_unavailable',
+      });
+      return [];
+    }
+
+    const client = this.ch.getClient();
+    const sql = `
+      SELECT
+        recorded_at,
+        speed_kmh,
+        is_ignition_on,
+        odometer_km
+      FROM telemetry_snapshots
+      WHERE vehicle_id = {vehicleId: String}
+        AND recorded_at >= parseDateTime64BestEffort({from: String})
+        AND recorded_at <= parseDateTime64BestEffort({to: String})
+      ORDER BY recorded_at
+    `;
+
+    try {
+      const result = await client.query({
+        query: sql,
+        query_params: {
+          vehicleId,
+          from: toClickHouseDateTime64Param(from),
+          to: toClickHouseDateTime64Param(to),
+        },
+        format: 'JSONEachRow',
+        clickhouse_settings: { max_execution_time: 15 },
+      });
+
+      const rows = await result.json<{
+        recorded_at: string;
+        speed_kmh: number | null;
+        is_ignition_on: number | null;
+        odometer_km: number | null;
+      }>();
+      this.metrics?.clickHouseAnalyticsQueries.inc({
+        query: 'fetch_snapshots_in_window',
+        result: 'success',
+      });
+
+      return rows.map((r) => ({
+        recordedAt: parseClickHouseUtcDateTime(r.recorded_at)!,
+        speedKmh: r.speed_kmh,
+        isIgnitionOn:
+          r.is_ignition_on == null ? null : r.is_ignition_on === 1,
+        odometerKm: r.odometer_km,
+      }));
+    } catch (err: unknown) {
+      this.metrics?.clickHouseAnalyticsQueries.inc({
+        query: 'fetch_snapshots_in_window',
+        result: 'error',
+      });
+      this.logger.warn(
+        `fetchSnapshotsInWindow failed: ${(err as Error).message}`,
+      );
+      return [];
     }
   }
 
@@ -289,10 +356,6 @@ export class ClickHouseAnalyticsService {
     `;
 
     try {
-      return await observeClickHouseQuery(
-        this.metrics,
-        'summarize_activity_window',
-        async () => {
       const result = await client.query({
         query: sql,
         query_params: {
@@ -319,8 +382,6 @@ export class ClickHouseAnalyticsService {
         maxSpeedKmh: row?.max_speed_kmh ?? 0,
         odometerDeltaKm: row?.odometer_delta_km ?? 0,
       };
-        },
-      );
     } catch (err: unknown) {
       this.metrics?.clickHouseAnalyticsQueries.inc({
         query: 'summarize_activity_window',
@@ -349,10 +410,6 @@ export class ClickHouseAnalyticsService {
     const client = this.ch.getClient();
 
     try {
-      return await observeClickHouseQuery(
-        this.metrics,
-        'summarize_recent_ingestion',
-        async () => {
       const [snapshotResult, stateChangeResult] = await Promise.all([
         client.query({
           query: `
@@ -398,8 +455,6 @@ export class ClickHouseAnalyticsService {
         latestSnapshotAt: parseClickHouseUtcDateTime(snapshotRow?.latest_snapshot_at),
         latestStateChangeAt: parseClickHouseUtcDateTime(stateChangeRow?.latest_state_change_at),
       };
-        },
-      );
     } catch (err: unknown) {
       this.metrics?.clickHouseAnalyticsQueries.inc({
         query: 'summarize_recent_ingestion',
@@ -429,10 +484,6 @@ export class ClickHouseAnalyticsService {
     const client = this.ch.getClient();
 
     try {
-      return await observeClickHouseQuery(
-        this.metrics,
-        'storage_stats',
-        async () => {
       const result = await client.query({
         query: `
           SELECT
@@ -488,8 +539,6 @@ export class ClickHouseAnalyticsService {
         ),
         tables,
       };
-        },
-      );
     } catch (err: unknown) {
       this.metrics?.clickHouseAnalyticsQueries.inc({
         query: 'storage_stats',

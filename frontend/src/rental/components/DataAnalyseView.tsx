@@ -13,6 +13,7 @@ import {
 } from '../../components/patterns';
 import {
   api,
+  type DataAnalyseClickHouseDiagnostics,
   type DataAnalyseEventArchitecture,
   type DataAnalyseEventLayer,
   type DataAnalyseHealthTrace,
@@ -21,6 +22,7 @@ import {
   type DataAnalyseLaunchFeasibilityResult,
   type DataAnalysePipeline,
   type DataAnalyseSignalGroup,
+  type DataAnalyseSignalQuality,
   type DataAnalyseSignalRow,
   type DataAnalyseTelemetryOverview,
   type DataAnalyseVehicle,
@@ -86,6 +88,7 @@ const HF_AVAILABILITY_META: Record<
 };
 
 type TabKey =
+  | 'chDebug'
   | 'overview'
   | 'signals'
   | 'hf'
@@ -148,6 +151,24 @@ function inputBasisTone(basis: string): 'success' | 'warning' | 'info' | 'neutra
   if (basis === 'mixed') return 'info';
   if (basis === 'modeled') return 'warning';
   return 'neutral';
+}
+
+function chDisplayTone(
+  status: string,
+): 'success' | 'warning' | 'critical' | 'neutral' | 'info' {
+  if (status === 'has_data' || status === 'active') return 'success';
+  if (
+    status === 'planned' ||
+    status === 'read_only' ||
+    status === 'internal' ||
+    status === 'active_if_mirror_disabled' ||
+    status === 'active_if_hf_disabled'
+  ) {
+    return 'neutral';
+  }
+  if (status === 'empty' || status === 'active_if_hf_enabled') return 'warning';
+  if (status === 'unavailable' || status === 'empty_active_warning') return 'critical';
+  return 'info';
 }
 
 function formatTs(iso: string | null | undefined): string {
@@ -423,6 +444,7 @@ export function DataAnalyseView() {
   const [overview, setOverview] = useState<DataAnalyseTelemetryOverview | null>(null);
   const [signals, setSignals] = useState<DataAnalyseSignalRow[]>([]);
   const [hf, setHf] = useState<DataAnalyseHighFrequency | null>(null);
+  const [signalQuality, setSignalQuality] = useState<DataAnalyseSignalQuality | null>(null);
   const [launch, setLaunch] = useState<DataAnalyseLaunchFeasibilityResult | null>(null);
   const [health, setHealth] = useState<DataAnalyseHealthTrace | null>(null);
   const [pipeline, setPipeline] = useState<DataAnalysePipeline | null>(null);
@@ -431,6 +453,8 @@ export function DataAnalyseView() {
   const [deviceConnection, setDeviceConnection] = useState<DeviceConnectionSummary | null>(null);
   const [deviceConnectionDebugRaw, setDeviceConnectionDebugRaw] = useState(false);
   const [rpmWebhooks, setRpmWebhooks] = useState<VehicleRpmWebhookSummary | null>(null);
+  const [chDiagnostics, setChDiagnostics] = useState<DataAnalyseClickHouseDiagnostics | null>(null);
+  const [loadingChDiag, setLoadingChDiag] = useState(false);
 
   const [signalSearch, setSignalSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('all');
@@ -468,10 +492,11 @@ export function DataAnalyseView() {
     setLoadingData(true);
     setError(null);
     try {
-      const [ov, sig, hfRes, launchRes, healthRes, pipe, grp, evArch, devConn, rpm] = await Promise.all([
+      const [ov, sig, hfRes, sqRes, launchRes, healthRes, pipe, grp, evArch, devConn, rpm] = await Promise.all([
         api.dataAnalyse.telemetryOverview(orgId, selectedId),
         api.dataAnalyse.signals(orgId, selectedId),
         api.dataAnalyse.highFrequency(orgId, selectedId),
+        api.dataAnalyse.latestTripSignalQuality(orgId, selectedId).catch(() => null),
         api.dataAnalyse.launchFeasibility(orgId, selectedId),
         api.dataAnalyse.healthTrace(orgId, selectedId),
         api.dataAnalyse.pipeline(orgId, selectedId),
@@ -483,6 +508,7 @@ export function DataAnalyseView() {
       setOverview(ov);
       setSignals(sig);
       setHf(hfRes);
+      setSignalQuality(sqRes);
       setLaunch(launchRes);
       setHealth(healthRes);
       setPipeline(pipe);
@@ -497,9 +523,29 @@ export function DataAnalyseView() {
     }
   }, [orgId, selectedId, canAccess, deviceConnectionDebugRaw]);
 
+  const loadChDiagnostics = useCallback(async () => {
+    if (!orgId || !canAccess) return;
+    setLoadingChDiag(true);
+    try {
+      const dto = await api.dataAnalyse.clickhouseDiagnostics(orgId);
+      setChDiagnostics(dto);
+    } catch {
+      setChDiagnostics(null);
+      setError('ClickHouse diagnostics could not be loaded.');
+    } finally {
+      setLoadingChDiag(false);
+    }
+  }, [orgId, canAccess]);
+
   useEffect(() => {
     void loadVehicles();
   }, [loadVehicles]);
+
+  useEffect(() => {
+    if (tab === 'chDebug') {
+      void loadChDiagnostics();
+    }
+  }, [tab, loadChDiagnostics]);
 
   useEffect(() => {
     void loadVehicleData();
@@ -578,8 +624,78 @@ export function DataAnalyseView() {
         }
       />
 
-      {error && <ErrorState error={error} onRetry={() => { void loadVehicles(); void loadVehicleData(); }} />}
+      <div className="flex flex-wrap gap-1 border-b border-border/60 pb-1">
+        <button
+          type="button"
+          onClick={() => setTab('chDebug')}
+          className={`px-3 py-1.5 text-xs font-medium rounded-md ${
+            tab === 'chDebug' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/50'
+          }`}
+        >
+          CH Diagnostics (org)
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab('overview')}
+          className={`px-3 py-1.5 text-xs font-medium rounded-md ${
+            tab !== 'chDebug' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted/50'
+          }`}
+        >
+          Per-vehicle analysis
+        </button>
+      </div>
 
+      {tab === 'chDebug' && (
+        <section className="rounded-xl border border-border/60 bg-card p-4 space-y-4">
+          <p className="text-xs text-muted-foreground">
+            Infrastructure diagnostics for the ClickHouse analytics mirror. Operator/debug only — not canonical business truth.
+          </p>
+          {loadingChDiag && <SkeletonRows rows={4} />}
+          {!loadingChDiag && chDiagnostics && (
+            <>
+              <div className="flex flex-wrap gap-2">
+                <StatusChip tone={chDiagnostics.degraded ? 'warning' : chDiagnostics.clickhouseAvailable ? 'success' : 'critical'}>
+                  CH: {chDiagnostics.clickhouseStatus}
+                </StatusChip>
+                <StatusChip tone={chDiagnostics.hfMirrorEnabled ? 'success' : 'neutral'}>
+                  HF mirror: {chDiagnostics.hfMirrorStatus}
+                </StatusChip>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="text-left text-muted-foreground border-b border-border/60">
+                      <th className="py-2 pr-3">Table</th>
+                      <th className="py-2 pr-3">Display</th>
+                      <th className="py-2 pr-3">Rows</th>
+                      <th className="py-2">Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {chDiagnostics.tables.map((row) => (
+                      <tr key={row.table} className="border-b border-border/40 align-top">
+                        <td className="py-2 pr-3 font-mono">{row.table}</td>
+                        <td className="py-2 pr-3">
+                          <StatusChip tone={chDisplayTone(row.displayStatus)}>{row.displayStatus}</StatusChip>
+                        </td>
+                        <td className="py-2 pr-3 tabular-nums">{row.rowCount ?? '—'}</td>
+                        <td className="py-2 text-muted-foreground">{row.notes}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </section>
+      )}
+
+      {tab !== 'chDebug' && error && (
+        <ErrorState error={error} onRetry={() => { void loadVehicles(); void loadVehicleData(); }} />
+      )}
+
+      {tab !== 'chDebug' && (
+      <>
       <section className="rounded-xl border border-border/60 bg-card p-4">
         <div className="flex items-center gap-2 mb-3">
           <Database className="w-4 h-4 text-muted-foreground" />
@@ -792,6 +908,48 @@ export function DataAnalyseView() {
                   {hf.hfLatestPointAt ? ` · latest HF point: ${formatTs(hf.hfLatestPointAt)}` : ''}
                 </p>
               )}
+              {signalQuality && (
+                <details className="rounded-md border border-dashed border-amber-500/40 bg-amber-500/5 px-3 py-2 text-xs">
+                  <summary className="cursor-pointer select-none font-medium text-amber-800 dark:text-amber-300">
+                    Internal debug — trip signal quality (read-only, not a trip score)
+                  </summary>
+                  <div className="mt-2 space-y-2 text-muted-foreground">
+                    <div className="flex flex-wrap gap-2">
+                      <StatusChip tone={signalQuality.degraded ? 'warning' : 'neutral'}>
+                        {signalQuality.degraded ? 'Degraded (CH)' : 'ClickHouse OK'}
+                      </StatusChip>
+                      <StatusChip
+                        tone={
+                          signalQuality.overallQuality === 'good'
+                            ? 'success'
+                            : signalQuality.overallQuality === 'unavailable'
+                              ? 'critical'
+                              : 'warning'
+                        }
+                      >
+                        Quality: {signalQuality.overallQuality}
+                      </StatusChip>
+                      <StatusChip tone="neutral">HF: {signalQuality.hfAvailability}</StatusChip>
+                      <StatusChip tone="neutral">
+                        Windows: {signalQuality.windowCount} · Points: {signalQuality.hfPointCount}
+                      </StatusChip>
+                    </div>
+                    {signalQuality.tripId && (
+                      <p>Trip: <span className="font-mono">{signalQuality.tripId}</span></p>
+                    )}
+                    {signalQuality.missingKeySignals.length > 0 && (
+                      <p>Missing key signals: {signalQuality.missingKeySignals.join(', ')}</p>
+                    )}
+                    {signalQuality.reasons.length > 0 && (
+                      <ul className="list-disc pl-4">
+                        {signalQuality.reasons.map((r) => (
+                          <li key={r}>{r}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </details>
+              )}
               <div className="overflow-x-auto rounded-lg border border-border/60">
                 <table className="w-full text-xs">
                   <thead className="bg-muted/40 text-left">
@@ -982,6 +1140,8 @@ export function DataAnalyseView() {
             </div>
           )}
         </>
+      )}
+      </>
       )}
     </div>
   );

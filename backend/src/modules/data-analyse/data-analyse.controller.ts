@@ -11,6 +11,12 @@ import { DATA_ANALYSE_MODULE } from './data-analyse.constants';
 export class DataAnalyseController {
   constructor(private readonly service: DataAnalyseService) {}
 
+  @Get('clickhouse-diagnostics')
+  @RequirePermission(DATA_ANALYSE_MODULE, 'read')
+  clickhouseDiagnostics(@Param('orgId') orgId: string) {
+    return this.service.getClickHouseDiagnostics(orgId);
+  }
+
   @Get('vehicles')
   @RequirePermission(DATA_ANALYSE_MODULE, 'read')
   listVehicles(@Param('orgId') orgId: string) {
@@ -39,6 +45,25 @@ export class DataAnalyseController {
     @Param('vehicleId') vehicleId: string,
   ) {
     return this.service.getHighFrequency(orgId, vehicleId);
+  }
+
+  @Get('vehicles/:vehicleId/signal-quality/latest')
+  @RequirePermission(DATA_ANALYSE_MODULE, 'read')
+  latestTripSignalQuality(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+  ) {
+    return this.service.getLatestTripSignalQuality(orgId, vehicleId);
+  }
+
+  @Get('vehicles/:vehicleId/trips/:tripId/signal-quality')
+  @RequirePermission(DATA_ANALYSE_MODULE, 'read')
+  tripSignalQuality(
+    @Param('orgId') orgId: string,
+    @Param('vehicleId') vehicleId: string,
+    @Param('tripId') tripId: string,
+  ) {
+    return this.service.getTripSignalQuality(orgId, vehicleId, tripId);
   }
 
   @Get('vehicles/:vehicleId/launch-feasibility')

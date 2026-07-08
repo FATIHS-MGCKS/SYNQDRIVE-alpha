@@ -356,6 +356,22 @@ export function resolveHfMirrorStatus(
   return 'unknown';
 }
 
+/** Waypoint mirror producer flag — analytics evidence only. */
+export function resolveWaypointProducerStatus(
+  raw: string | undefined = process.env.WAYPOINT_MIRROR_ENABLED,
+): import('./data-analyse.types').ClickHouseProducerStatus {
+  if (raw === 'true') return 'active';
+  return 'disabled';
+}
+
+/** Activity window producer flag — reconciliation evidence only. */
+export function resolveActivityWindowProducerStatus(
+  raw: string | undefined = process.env.ACTIVITY_WINDOW_MIRROR_ENABLED,
+): import('./data-analyse.types').ClickHouseProducerStatus {
+  if (raw === 'true') return 'active';
+  return 'disabled';
+}
+
 /**
  * Human-readable explanation for a skipped trip enrichment, derived from the
  * granular reason persisted in `vehicle_trips.behavior_enrichment_error` by the

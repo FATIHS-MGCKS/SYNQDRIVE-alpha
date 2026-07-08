@@ -40,6 +40,7 @@ import {
 import { getVehicleCapabilities, deriveVehicleCapabilityProfile } from '../vehicle-capabilities';
 import { LteR1BehaviorEnrichmentService } from './lte-r1-behavior-enrichment.service';
 import { HfMirrorService } from './hf-mirror.service';
+import { TripChEvidenceMirrorCoordinator } from './trip-ch-evidence-mirror.coordinator';
 import { summarizeEvTractionPowerFromHf, type EvTractionPowerTripSummary } from './hf-recuperation';
 import { TripAssignmentService } from './trip-assignment.service';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
@@ -185,6 +186,7 @@ export class TripBehaviorEnrichmentService {
     private readonly lteR1: LteR1BehaviorEnrichmentService,
     private readonly tripAssignmentService: TripAssignmentService,
     private readonly hfMirror: HfMirrorService,
+    private readonly chEvidenceMirror: TripChEvidenceMirrorCoordinator,
     @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {}
 
@@ -218,6 +220,26 @@ export class TripBehaviorEnrichmentService {
           }`,
         );
       });
+  }
+
+  private scheduleChEvidenceMirror(params: {
+    organizationId: string | null | undefined;
+    vehicleId: string;
+    tokenId: number;
+    tripId: string;
+    bookingId?: string | null;
+    windowStart: Date;
+    windowEnd: Date;
+  }): void {
+    this.chEvidenceMirror.schedulePostTripEvidence({
+      vehicleId: params.vehicleId,
+      tripId: params.tripId,
+      organizationId: params.organizationId,
+      tokenId: params.tokenId,
+      bookingId: params.bookingId,
+      windowStart: params.windowStart,
+      windowEnd: params.windowEnd,
+    });
   }
 
   async enrichTrip(tripId: string): Promise<BehaviorEnrichmentOutcome> {
@@ -650,6 +672,15 @@ export class TripBehaviorEnrichmentService {
       readings: rawReadings,
       abuseEvents: allAbuse,
     });
+    this.scheduleChEvidenceMirror({
+      organizationId,
+      vehicleId,
+      tokenId,
+      tripId,
+      bookingId: trip.assignedBookingId,
+      windowStart: trip.startTime,
+      windowEnd: trip.endTime,
+    });
 
     this.logger.log(
       `HF enrichment complete for trip ${tripId}: ` +
@@ -691,6 +722,7 @@ export class TripBehaviorEnrichmentService {
       endTime: Date | null;
       vehicleId: string;
       distanceKm: number | null;
+      assignedBookingId: string | null;
       vehicle: {
         organizationId: string;
         idleRpm: number | null;
@@ -981,6 +1013,15 @@ export class TripBehaviorEnrichmentService {
       tripId,
       readings: rawReadings,
       abuseEvents: allAbuse,
+    });
+    this.scheduleChEvidenceMirror({
+      organizationId,
+      vehicleId,
+      tokenId,
+      tripId,
+      bookingId: trip.assignedBookingId,
+      windowStart: trip.startTime,
+      windowEnd: trip.endTime,
     });
 
     this.logger.log(

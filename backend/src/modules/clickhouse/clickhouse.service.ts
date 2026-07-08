@@ -4,6 +4,9 @@ import { createClient, ClickHouseClient } from '@clickhouse/client';
 import { TripMetricsService } from '../observability/trip-metrics.service';
 import { clickHouseSchemaStatusCode } from '../observability/clickhouse-metrics.helper';
 
+/** Periodic health ping interval (ms). Keeps `isAvailable` accurate after runtime outages. */
+const HEALTH_PING_INTERVAL_MS = 60_000;
+
 /**
  * ClickHouseService
  *
@@ -54,6 +57,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
   private lastSchemaError: string | null = null;
   private appliedMigrationCount: number | null = null;
   private pendingMigrationCount: number | null = null;
+  private healthPingTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly config: ConfigService,
@@ -91,38 +95,78 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       // Ping to verify connectivity
       const ping = await this.client.ping();
       if (ping.success) {
-        this.available = true;
-        this.lastError = null;
-        this.lastPingAt = new Date();
-        this.metrics?.clickHouseAvailable.set(1);
-        this.syncSchemaStatusGauge();
+        this.setAvailable(true);
         this.logger.log('ClickHouse connected successfully.');
       } else {
-        this.available = false;
-        this.lastError = 'ClickHouse ping failed';
-        this.metrics?.clickHouseAvailable.set(0);
-        this.syncSchemaStatusGauge();
+        this.setAvailable(false, 'ClickHouse ping failed');
         this.logger.warn(`ClickHouse ping failed — analytics layer disabled.`);
       }
     } catch (err: unknown) {
-      this.available = false;
-      this.lastError = (err as Error).message;
-      this.metrics?.clickHouseAvailable.set(0);
-      this.syncSchemaStatusGauge();
+      this.setAvailable(false, (err as Error).message);
       this.logger.warn(
         `ClickHouse init failed: ${(err as Error).message} — analytics layer disabled.`,
       );
     }
+
+    if (this.configured && this.client) {
+      this.healthPingTimer = setInterval(() => {
+        void this.refreshAvailability();
+      }, HEALTH_PING_INTERVAL_MS);
+      this.healthPingTimer.unref?.();
+    }
   }
 
   async onModuleDestroy(): Promise<void> {
+    if (this.healthPingTimer) {
+      clearInterval(this.healthPingTimer);
+      this.healthPingTimer = null;
+    }
     if (this.client) {
       await this.client.close();
       this.logger.log('ClickHouse client closed.');
     }
-    this.available = false;
-    this.metrics?.clickHouseAvailable.set(0);
+    this.setAvailable(false);
+  }
+
+  /**
+   * Marks ClickHouse unavailable after a runtime write/query failure.
+   * Next periodic ping may restore availability without process restart.
+   */
+  markUnavailable(reason: string): void {
+    if (!this.configured || !this.available) return;
+    this.setAvailable(false, reason);
+    this.logger.warn(`ClickHouse marked unavailable: ${reason}`);
+  }
+
+  private setAvailable(available: boolean, error: string | null = null): void {
+    this.available = available;
+    this.lastError = available ? null : error;
+    if (available) {
+      this.lastPingAt = new Date();
+    }
+    this.metrics?.clickHouseAvailable.set(available ? 1 : 0);
     this.syncSchemaStatusGauge();
+  }
+
+  private async refreshAvailability(): Promise<void> {
+    if (!this.client || !this.configured) return;
+    try {
+      const ping = await this.client.ping();
+      if (ping.success) {
+        if (!this.available) {
+          this.setAvailable(true);
+          this.logger.log('ClickHouse connectivity restored.');
+        } else {
+          this.lastPingAt = new Date();
+        }
+      } else if (this.available) {
+        this.setAvailable(false, 'ClickHouse ping failed');
+      }
+    } catch (err: unknown) {
+      if (this.available) {
+        this.setAvailable(false, (err as Error).message);
+      }
+    }
   }
 
   private syncSchemaStatusGauge(): void {

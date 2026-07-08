@@ -1,10 +1,9 @@
-import { Injectable, Logger, OnApplicationBootstrap, Optional } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ClickHouseClient } from '@clickhouse/client';
 import { ClickHouseService } from './clickhouse.service';
-import { TripMetricsService } from '../observability/trip-metrics.service';
 
 /**
  * ClickHouseSchemaService
@@ -72,10 +71,7 @@ export function splitSqlStatements(sql: string): string[] {
 export class ClickHouseSchemaService implements OnApplicationBootstrap {
   private readonly logger = new Logger(ClickHouseSchemaService.name);
 
-  constructor(
-    private readonly ch: ClickHouseService,
-    @Optional() private readonly metrics?: TripMetricsService,
-  ) {}
+  constructor(private readonly ch: ClickHouseService) {}
 
   async onApplicationBootstrap(): Promise<void> {
     if (!this.ch.isAvailable) {
@@ -88,7 +84,6 @@ export class ClickHouseSchemaService implements OnApplicationBootstrap {
       await this.runMigrations();
     } catch (err: unknown) {
       const message = (err as Error).message ?? String(err);
-      this.metrics?.clickHouseMigrationFailures.inc();
       this.ch.reportSchemaStatus({ lastSchemaError: message });
       this.logger.error(
         `ClickHouse migration runner failed: ${message}. Analytics layer may be degraded.`,
@@ -124,7 +119,6 @@ export class ClickHouseSchemaService implements OnApplicationBootstrap {
           const msg = `Checksum mismatch for migration ${file.name} (version ${file.version}): recorded=${existing.checksum.slice(0, 12)}… file=${file.checksum.slice(0, 12)}…. Migration will NOT be re-run.`;
           this.logger.error(msg);
           driftError = driftError ? `${driftError}; ${msg}` : msg;
-          this.metrics?.clickHouseMigrationFailures.inc();
         }
       }
 
@@ -221,7 +215,6 @@ export class ClickHouseSchemaService implements OnApplicationBootstrap {
       } catch (err: unknown) {
         const message = (err as Error).message ?? String(err);
         const excerpt = statement.replace(/\s+/g, ' ').slice(0, 200);
-        this.metrics?.clickHouseMigrationFailures.inc();
         throw new Error(
           `Migration ${migration.name} failed on statement: "${excerpt}" — ${message}`,
         );

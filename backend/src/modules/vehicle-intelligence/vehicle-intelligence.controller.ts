@@ -68,6 +68,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { Inject, forwardRef, Logger } from '@nestjs/common';
 import { InvoicesService } from '@modules/invoices/invoices.service';
 import { AiTireSpecJobService } from '@modules/ai/vehicle-specs/ai-tire-spec-job.service';
+import { TripEvidenceReadService } from '@modules/clickhouse/trip-evidence-read.service';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { RpmWebhookQueryService } from '@modules/dimo/rpm-webhook-query.service';
 import { normalizeAiTireSpecResult, buildPersistedAiTireSpec, validateAiTireSpec } from './tires/ai-tire-spec-normalizer';
@@ -143,6 +144,7 @@ export class VehicleIntelligenceController {
     private readonly aiTireSpecJobService: AiTireSpecJobService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
     private readonly rpmWebhookQuery: RpmWebhookQueryService,
+    private readonly tripEvidenceRead: TripEvidenceReadService,
   ) {}
 
   // --- Composite Intelligence Endpoint ---
@@ -1012,7 +1014,23 @@ export class VehicleIntelligenceController {
       tripAssessment,
     });
     const [withFlags] = await this.attachTripDeviceConnectionFlags(vehicleId, [mapped as any]);
-    return withFlags;
+
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+
+    const clickhouseEvidence = vehicle
+      ? await this.tripEvidenceRead.getTripClickHouseEvidence({
+          orgId: vehicle.organizationId,
+          vehicleId,
+          tripId,
+          startTime: trip.startTime,
+          endTime: trip.endTime,
+        })
+      : undefined;
+
+    return { ...withFlags, clickhouseEvidence };
   }
 
   @Get('trips/:tripId/route')

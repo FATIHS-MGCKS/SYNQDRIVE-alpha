@@ -83,6 +83,7 @@ export class ClickHouseTelemetryService {
         table: 'telemetry_snapshots',
         result: 'error',
       });
+      this.ch.markUnavailable((err as Error).message);
       this.logger.warn(`insertSnapshot failed: ${(err as Error).message}`);
     }
   }
@@ -162,6 +163,7 @@ export class ClickHouseTelemetryService {
         table: 'telemetry_state_changes',
         result: 'error',
       });
+      this.ch.markUnavailable((err as Error).message);
       this.logger.warn(`detectAndInsertStateChanges failed: ${(err as Error).message}`);
     }
   }

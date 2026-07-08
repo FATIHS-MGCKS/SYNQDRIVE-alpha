@@ -57,10 +57,33 @@ export interface HfSignalPoint {
   bookingId?: string | null;
 }
 
+/** Read-only window coverage label (analytics evidence — not a trip score). */
+export type HfWindowCoverage = 'good' | 'medium' | 'weak' | 'unavailable' | 'unknown';
+
+/** Per-signal min/max/avg inside a window (stored in stats_json). */
+export interface HfWindowScalarStats {
+  min: number;
+  max: number;
+  avg: number;
+  count: number;
+}
+
+/** Extended per-window stats payload (stats_json column). */
+export interface HfWindowStatsJson {
+  /** Point counts per canonical signal name within this group/window. */
+  signalCounts: Record<string, number>;
+  /** Min/max/avg for key scalars when present (rpm, throttle, load, speed, soc). */
+  scalars?: Record<string, HfWindowScalarStats>;
+  /** Battery SOC sample count in this window (when group is battery). */
+  socCount?: number;
+}
+
 /** An aggregated HF window summary (maps to telemetry_hf_windows). */
 export interface HfWindowSummary {
   orgId: string;
   vehicleId: string;
+  tripId?: string | null;
+  bookingId?: string | null;
   windowStart: Date;
   windowEnd: Date;
   signalGroup: HfSignalGroup;
@@ -77,6 +100,51 @@ export interface HfWindowSummary {
   gpsPointCount: number;
   missingGapCount: number;
   largestGapMs?: number | null;
+  coverage?: HfWindowCoverage;
+  statsJson?: HfWindowStatsJson;
+}
+
+// ── Signal quality read model (diagnostics only — never a trip score) ────────
+
+export type TripSignalQualityLevel = 'good' | 'medium' | 'weak' | 'unavailable';
+
+export interface TripSignalCoverageEntry {
+  signalGroup: HfSignalGroup | string;
+  pointCount: number;
+  windowCount: number;
+}
+
+export interface TripDetectorFeasibilityHint {
+  detector: string;
+  status: string;
+  requiredSignals: string[];
+  speedOnly: boolean;
+}
+
+export interface TripSignalQualityResult {
+  available: boolean;
+  degraded: boolean;
+  degradedReason?: string | null;
+  /** Read-only evidence label — not persisted as a canonical trip score. */
+  overallQuality: TripSignalQualityLevel;
+  hfAvailability: 'hf_available' | 'sparse' | 'missing' | 'unknown';
+  signalCoverage: TripSignalCoverageEntry[];
+  missingKeySignals: string[];
+  detectorFeasibilityHints: TripDetectorFeasibilityHint[];
+  windowCount: number;
+  hfPointCount: number;
+  reasons: string[];
+  /** Internal debug marker for Data Analyse. */
+  internalDebug: true;
+  readOnly: true;
+}
+
+export interface HfTripWindowsResult {
+  available: boolean;
+  tripId: string;
+  vehicleId: string;
+  windows: HfWindowSummary[];
+  degradedReason?: string | null;
 }
 
 /** A derived HF event (maps to telemetry_hf_events). */

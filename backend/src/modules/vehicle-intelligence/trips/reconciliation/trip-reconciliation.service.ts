@@ -2,6 +2,7 @@ import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripMetricsService } from '../../../observability/trip-metrics.service';
+import { isClickHouseTripAssistEnabled } from '@modules/clickhouse/clickhouse-env.util';
 import { TripDecisionEngine } from '../decision/trip-decision.engine';
 import { TripDetectionPolicyResolver } from '../policy/trip-detection-policy.resolver';
 import { TripOverlapDetector } from '../detectors/trip-overlap.detector';
@@ -422,7 +423,10 @@ export class TripReconciliationService {
         candidateEnd: segEnd,
       } as any);
 
-      if (overlapFinding.verdict === 'TRIGGERED') continue;
+      if (overlapFinding.verdict === 'TRIGGERED') {
+        this.tripMetrics?.duplicateTripCandidates.inc();
+        continue;
+      }
 
       const repair = await this.prisma.tripRepair.create({
         data: {
@@ -517,8 +521,9 @@ export class TripReconciliationService {
     options?: ReconciliationOptions,
   ): Promise<RepairCandidate[]> {
     const candidates: RepairCandidate[] = [];
+    const chAssistEnabled = isClickHouseTripAssistEnabled();
 
-    if (this.ignitionDetector) {
+    if (chAssistEnabled && this.ignitionDetector) {
       const ignFinding = await this.ignitionDetector.evaluate({
         vehicleId,
         dimoTokenId,
@@ -547,6 +552,7 @@ export class TripReconciliationService {
     const motionProfileEligible =
       profile === 'EV' || profile === 'HYBRID' || profile === 'UNKNOWN';
     const useMotionFallback =
+      chAssistEnabled &&
       this.motionDetector &&
       (motionProfileEligible || candidates.length === 0);
 
@@ -584,7 +590,15 @@ export class TripReconciliationService {
       }
     }
 
-    return this.dedupeRepairCandidates(candidates);
+    if (candidates.length > 0) {
+      this.tripMetrics?.missingTripCandidates.inc(
+        { tier: 'reconciliation' },
+        candidates.length,
+      );
+    }
+
+    const deduped = this.dedupeRepairCandidates(candidates);
+    return deduped;
   }
 
   private buildIgnitionCandidates(finding: DetectorFinding): RepairCandidate[] {
@@ -1271,6 +1285,7 @@ export class TripReconciliationService {
         },
       });
       proposed++;
+      this.tripMetrics?.missingEndCandidates.inc();
 
       // Estimate end time as window end (cold fallback)
       try {

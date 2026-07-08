@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'ch-audit-fixes-v49265-2026-07-08',
+    version: '4.9.265',
+    title: 'V4.9.265 — ClickHouse Audit Fixes (Registry, Producers, CH Reconnect, Metrics Hardening)',
+    summary: [
+      'ClickHouse Table Registry + ClickHouseDiagnosticsService — ehrliche Producer-Status (HF/Waypoints/Activity Windows/HF Windows).',
+      'Post-trip Producer: WaypointMirror, ActivityWindowProducer, HF Windows + TripEvidenceReadService (read-only).',
+      'ClickHouseService: 60s health ping + markUnavailable bei Mirror-Write-Fehlern.',
+      'CLICKHOUSE_TRIP_ASSIST_ENABLED (default on, opt-out) dokumentiert; Metrics: METRICS_ALLOW_OPEN_IN_DEV nur lokal.',
+      'Data Analyse: CH Diagnostics Tab (org-level). clickhouse:ping:url für native/external CH.',
+    ],
+    reason:
+      'Audit-Fixes aus CH/Prometheus/HF/Diagnostics-Review: Schema-vor-Code-Lücken, stale CH availability, offene Metrics in Non-Prod, fehlende Registry.',
+    previousBehavior:
+      'Vier CH-Tabellen ohne Producer; isAvailable nur beim Boot; /metrics in Non-Prod offen ohne Token; Waypoints/HF-Windows nur Schema.',
+    details:
+      'Backend: clickhouse-table-registry, clickhouse-diagnostics.service, waypoint/activity/hf-window producers, trip-evidence-read, signal-quality-read, clickhouse.service reconnect, metrics-auth hardening, trip-reconciliation metrics instrumentation. Frontend: DataAnalyse CH Diagnostics tab, TripClickHouseEvidenceBlock. Docs: CLICKHOUSE_RUNTIME_AND_BOUNDARIES, prometheus-production.md. Tests: diagnostics, env util, metrics-auth, producer specs.',
+    affectsArchitecture: true,
+    module: 'Platform',
+    createdAt: '2026-07-08T16:30:00.000Z',
+  },
+  {
     id: 'prometheus-production-v49264-2026-07-08',
     version: '4.9.264',
     title: 'V4.9.264 — Prometheus Production Monitoring (Metrics + Alerts + optional Compose)',

@@ -4,6 +4,9 @@ import { DimoDeviceConnectionEventType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { ClickHouseService } from '@modules/clickhouse/clickhouse.service';
 import { ClickHouseHfService } from '@modules/clickhouse/clickhouse-hf.service';
+import { SignalQualityReadService } from '@modules/clickhouse/signal-quality-read.service';
+import { ClickHouseDiagnosticsService } from '@modules/clickhouse/clickhouse-diagnostics.service';
+import type { ClickHouseDiagnosticsDto } from '@modules/clickhouse/clickhouse-diagnostics.types';
 import { VehiclesService } from '@modules/vehicles/vehicles.service';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { RpmWebhookQueryService } from '@modules/dimo/rpm-webhook-query.service';
@@ -29,7 +32,9 @@ import {
   describeEnrichmentSkip,
   filterConnectedVehicles,
   formatSignalValue,
+  resolveActivityWindowProducerStatus,
   resolveHfMirrorStatus,
+  resolveWaypointProducerStatus,
   tenantVehicleWhere,
 } from './data-analyse.utils';
 import type {
@@ -44,6 +49,7 @@ import type {
   SignalArrivalRowDto,
   SignalGroupDefinitionDto,
   TelemetryOverviewDto,
+  TripSignalQualityDto,
 } from './data-analyse.types';
 import {
   isLteR1NativeEventCapable,
@@ -91,9 +97,19 @@ export class DataAnalyseService {
     private readonly clickHouse: ClickHouseService,
     private readonly vehiclesService: VehiclesService,
     private readonly clickHouseHf: ClickHouseHfService,
+    private readonly signalQualityRead: SignalQualityReadService,
+    private readonly clickHouseDiagnostics: ClickHouseDiagnosticsService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
     private readonly rpmWebhookQuery: RpmWebhookQueryService,
   ) {}
+
+  /**
+   * Org-scoped wrapper around ClickHouseDiagnosticsService — internal debug only.
+   * Safe to reuse from Monitoring surfaces later.
+   */
+  async getClickHouseDiagnostics(_orgId: string): Promise<ClickHouseDiagnosticsDto> {
+    return this.clickHouseDiagnostics.getDiagnostics();
+  }
 
   async listConnectedVehicles(orgId: string): Promise<DataAnalyseVehicleDto[]> {
     const fleet = await this.vehiclesService.getFleetConnectivity(orgId, {});
@@ -171,6 +187,59 @@ export class DataAnalyseService {
   async getSignals(orgId: string, vehicleId: string): Promise<SignalArrivalRowDto[]> {
     const ctx = await this.loadVehicleContext(orgId, vehicleId);
     return this.buildSignalRows(ctx.latestState, ctx.chStats, ctx.nowMs);
+  }
+
+  /**
+   * Read-only trip signal quality diagnostics (internal debug — not a trip score).
+   * Degrades gracefully when ClickHouse is unavailable.
+   */
+  async getTripSignalQuality(
+    orgId: string,
+    vehicleId: string,
+    tripId: string,
+  ): Promise<TripSignalQualityDto> {
+    await this.assertVehicle(orgId, vehicleId);
+    const result = await this.signalQualityRead.getTripSignalQuality(
+      orgId,
+      vehicleId,
+      tripId,
+    );
+    return { ...result, tripId };
+  }
+
+  /** Latest completed trip signal quality for Data Analyse HF tab (internal debug). */
+  async getLatestTripSignalQuality(
+    orgId: string,
+    vehicleId: string,
+  ): Promise<TripSignalQualityDto> {
+    await this.assertVehicle(orgId, vehicleId);
+    const latest = await this.prisma.vehicleTrip.findFirst({
+      where: {
+        vehicleId,
+        tripStatus: 'COMPLETED',
+        vehicle: { organizationId: orgId },
+      },
+      orderBy: { endTime: 'desc' },
+      select: { id: true },
+    });
+    if (!latest) {
+      return {
+        available: false,
+        degraded: false,
+        overallQuality: 'unavailable',
+        hfAvailability: 'missing',
+        signalCoverage: [],
+        missingKeySignals: [],
+        detectorFeasibilityHints: [],
+        windowCount: 0,
+        hfPointCount: 0,
+        reasons: ['No completed trip found for this vehicle.'],
+        internalDebug: true,
+        readOnly: true,
+        tripId: null,
+      };
+    }
+    return this.getTripSignalQuality(orgId, vehicleId, latest.id);
   }
 
   async getHighFrequency(
@@ -411,9 +480,16 @@ export class DataAnalyseService {
   ): Promise<Partial<HighFrequencyAnalysisDto>> {
     // The mirror flag is derivable regardless of ClickHouse reachability.
     const hfMirrorStatus = resolveHfMirrorStatus();
+    const waypointProducerStatus = resolveWaypointProducerStatus();
+    const activityWindowProducerStatus = resolveActivityWindowProducerStatus();
 
     if (!this.clickHouse.isAvailable) {
-      return { hfConfigured: this.clickHouse.isConfigured, hfMirrorStatus };
+      return {
+        hfConfigured: this.clickHouse.isConfigured,
+        hfMirrorStatus,
+        waypointProducerStatus,
+        activityWindowProducerStatus,
+      };
     }
 
     const to = new Date(nowMs);
@@ -421,15 +497,20 @@ export class DataAnalyseService {
     const from7d = new Date(nowMs - 7 * 24 * 60 * 60 * 1000);
 
     try {
-      const [availability24h, availability7d, recent] = await Promise.all([
+      const [availability24h, availability7d, recent, activityWindowCount24h] =
+        await Promise.all([
         this.clickHouseHf.getHfAvailability(vehicleId, from24h, to),
         this.clickHouseHf.getHfAvailability(vehicleId, from7d, to),
         this.clickHouseHf.getRecentHfEvents(vehicleId, from24h, to, 50),
+        this.countActivityWindows(vehicleId, CLICKHOUSE_ANALYSIS_WINDOW_HOURS),
       ]);
 
       return {
         hfConfigured: this.clickHouse.isConfigured,
         hfMirrorStatus,
+        waypointProducerStatus,
+        activityWindowProducerStatus,
+        activityWindowCount24h,
         hfPointCount24h: availability24h.available ? availability24h.pointCount : null,
         hfPointCount7d: availability7d.available ? availability7d.pointCount : null,
         hfLatestPointAt: availability24h.latestPointAt ?? availability7d.latestPointAt,
@@ -448,7 +529,12 @@ export class DataAnalyseService {
           : [],
       };
     } catch {
-      return { hfConfigured: this.clickHouse.isConfigured, hfMirrorStatus };
+      return {
+        hfConfigured: this.clickHouse.isConfigured,
+        hfMirrorStatus,
+        waypointProducerStatus,
+        activityWindowProducerStatus,
+      };
     }
   }
 
@@ -1523,6 +1609,32 @@ export class DataAnalyseService {
     hours: number,
   ): Promise<number | null> {
     return this.countTableRows('telemetry_snapshots', vehicleId, hours);
+  }
+
+  /** Count trip_activity_windows rows in a trailing window. */
+  private async countActivityWindows(
+    vehicleId: string,
+    hours: number,
+  ): Promise<number | null> {
+    if (!this.clickHouse.isAvailable) return null;
+    try {
+      const client = this.clickHouse.getClient();
+      const result = await client.query({
+        query: `
+          SELECT count() AS cnt
+          FROM trip_activity_windows
+          WHERE vehicle_id = {vehicleId:String}
+            AND window_start >= now() - INTERVAL {hours:UInt16} HOUR
+        `,
+        query_params: { vehicleId, hours },
+        format: 'JSONEachRow',
+        clickhouse_settings: { max_execution_time: 10 },
+      });
+      const [row] = await result.json<{ cnt: string | number }>();
+      return Number(row?.cnt ?? 0);
+    } catch {
+      return null;
+    }
   }
 
   private async countTableRows(

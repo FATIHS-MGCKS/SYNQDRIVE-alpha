@@ -14,10 +14,11 @@ entities (no vehicle/trip/org/customer labels).
 
 ### Security
 
-1. Set `METRICS_BEARER_TOKEN` in production (long random secret).
-2. When unset in **production** (`NODE_ENV=production`), `/metrics` returns **503**.
-3. `/api/v1/metrics` bypasses the user JWT guard but is **not** anonymous: `MetricsAuthGuard` requires the metrics bearer token.
-4. Scrape from an **internal network** only (VPC, Tailscale, docker bridge). Do not expose port 3000 metrics publicly.
+1. Set `METRICS_BEARER_TOKEN` in production and staging (long random secret).
+2. When unset, `/metrics` returns **503** (never open on shared/staging hosts).
+3. Local dev only: set `METRICS_ALLOW_OPEN_IN_DEV=true` **and** `NODE_ENV=development` to allow scraping without a token on localhost.
+4. `/api/v1/metrics` bypasses the user JWT guard but is **not** anonymous: `MetricsAuthGuard` enforces the metrics bearer token (or dev opt-in above).
+5. Scrape from an **internal network** only (VPC, Tailscale, docker bridge). Do not expose port 3000 metrics publicly.
 
 ## Environment variables
 
