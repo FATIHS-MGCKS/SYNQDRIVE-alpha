@@ -1,4 +1,11 @@
-import type { TripAssessmentStatus, TripBehaviorEvent } from '../../../lib/api';
+import type {
+  TripAssessmentStatus,
+  TripBehaviorEvent,
+  TripEvidenceCase,
+  TripEvidenceCaseSource,
+  TripEvidenceConfidence,
+  TripEvidenceLevel,
+} from '../../../lib/api';
 import { getStressLevel, resolveDrivingStressScore } from '../../lib/scoreFormat';
 import type { TripTimelineTrip } from './timeline.types';
 import { formatTripTimeWithSeconds } from './utils/tripFormatters';
@@ -42,8 +49,85 @@ export const BEHAVIOR_STATUS_LABEL: Record<BehaviorOverallStatus, string> = {
   abuse_suspect: 'Prüfhinweis',
 };
 
+export const EVIDENCE_LEVEL_LABEL: Record<TripEvidenceLevel, string> = {
+  NONE: 'Keine',
+  INFO: 'Info',
+  CHECK_RECOMMENDED: 'Prüfung empfohlen',
+  MISUSE_SUSPECTED: 'Verdacht',
+  DAMAGE_RISK: 'Technisches Risiko',
+  CRITICAL_DAMAGE_RISK: 'Kritisch',
+};
+
+export const EVIDENCE_LEVEL_CARD_TITLE: Record<
+  Exclude<TripEvidenceLevel, 'NONE' | 'INFO'>,
+  string
+> = {
+  CHECK_RECOMMENDED: 'Auffälliges Fahrmuster',
+  MISUSE_SUSPECTED: 'Missbrauchsverdacht',
+  DAMAGE_RISK: 'Schadenverdacht',
+  CRITICAL_DAMAGE_RISK: 'Kritischer Schadenverdacht',
+};
+
+export const EVIDENCE_SOURCE_LABEL: Record<TripEvidenceCaseSource, string> = {
+  NATIVE_EVENT: 'Natives Ereignis',
+  HF_RECONSTRUCTION: 'HF-Rekonstruktion',
+  CONTEXT_ENRICHMENT: 'Ereigniskontext',
+  MIXED: 'Gemischte Quellen',
+};
+
 export const REVIEW_HINT_DEFAULT =
   'Hinweis zur Prüfung — kein automatisierter Vorwurf.';
+
+export function evidenceConfidenceLabel(confidence: TripEvidenceConfidence): string {
+  switch (confidence) {
+    case 'HIGH':
+      return 'Hohe Sicherheit';
+    case 'MEDIUM':
+      return 'Mittlere Sicherheit';
+    default:
+      return 'Geringe Sicherheit';
+  }
+}
+
+export function resolveEvidenceCardTitle(evidenceCase: TripEvidenceCase | null | undefined): string {
+  if (!evidenceCase) return 'Prüfhinweis';
+  if (
+    evidenceCase.evidenceLevel === 'CHECK_RECOMMENDED' ||
+    evidenceCase.evidenceLevel === 'MISUSE_SUSPECTED' ||
+    evidenceCase.evidenceLevel === 'DAMAGE_RISK' ||
+    evidenceCase.evidenceLevel === 'CRITICAL_DAMAGE_RISK'
+  ) {
+    return evidenceCase.title || EVIDENCE_LEVEL_CARD_TITLE[evidenceCase.evidenceLevel];
+  }
+  return evidenceCase.title || 'Prüfhinweis';
+}
+
+export function formatEvidenceMeasurements(
+  measurements: TripEvidenceCase['measurements'],
+): Array<{ label: string; value: string }> {
+  const rows: Array<{ label: string; value: string }> = [];
+  if (measurements.rpm != null) rows.push({ label: 'Max Drehzahl', value: `${measurements.rpm} rpm` });
+  if (measurements.throttle != null) {
+    rows.push({ label: 'Max Gaspedal', value: `${measurements.throttle} %` });
+  }
+  if (measurements.engineLoad != null) {
+    rows.push({ label: 'Max Motorlast', value: `${measurements.engineLoad} %` });
+  }
+  if (measurements.coolant != null) {
+    rows.push({ label: 'Kühlmittel', value: `${measurements.coolant} °C` });
+  }
+  if (measurements.speedBeforeAfter) {
+    rows.push({ label: 'Geschwindigkeit', value: measurements.speedBeforeAfter });
+  }
+  if (measurements.durationMs != null) {
+    rows.push({
+      label: 'Dauer',
+      value: `${Math.max(1, Math.round(measurements.durationMs / 1000))} s`,
+    });
+  }
+  return rows;
+}
+
 
 export const SEVERITY_LABEL: Record<BehaviorSeverityLevel, string> = {
   neutral: 'Neutral',

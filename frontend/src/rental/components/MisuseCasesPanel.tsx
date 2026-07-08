@@ -12,9 +12,17 @@ import {
   confidenceLabel as contextConfidenceLabel,
   contextClassificationLabel,
   evidenceGradeLabel,
-  reasonCodeLabel,
 } from './trips/event-context-ui';
 import { RENTAL_COPY } from './trips/trips-view-ui';
+import type { TripEvidenceCase, TripEvidenceLevel } from '../../lib/api';
+import {
+  EVIDENCE_LEVEL_LABEL,
+  EVIDENCE_SOURCE_LABEL,
+  REVIEW_HINT_DEFAULT,
+  evidenceConfidenceLabel,
+  formatEvidenceMeasurements,
+  resolveEvidenceCardTitle,
+} from './trips/behavior-ui.utils';
 
 export type MisuseCaseRecord = {
   id: string;
@@ -37,6 +45,7 @@ export type MisuseCaseRecord = {
   tripId?: string | null;
   customerId?: string | null;
   evidenceSummary?: Record<string, unknown> | null;
+  evidenceCase?: TripEvidenceCase | null;
 };
 
 type MisuseCasesPanelProps = {
@@ -54,6 +63,29 @@ type MisuseCasesPanelProps = {
   embedded?: boolean;
   limit?: number;
 };
+
+function evidenceLevelTone(level: TripEvidenceLevel): StatusTone {
+  switch (level) {
+    case 'CRITICAL_DAMAGE_RISK':
+      return 'critical';
+    case 'DAMAGE_RISK':
+    case 'MISUSE_SUSPECTED':
+      return 'warning';
+    case 'CHECK_RECOMMENDED':
+      return 'info';
+    default:
+      return 'neutral';
+  }
+}
+
+function readEvidenceCase(raw: MisuseCaseRecord | undefined): TripEvidenceCase | null {
+  if (raw?.evidenceCase) return raw.evidenceCase;
+  const summary = raw?.evidenceSummary;
+  if (!summary || typeof summary !== 'object') return null;
+  const candidate = (summary as Record<string, unknown>).evidenceCase;
+  if (!candidate || typeof candidate !== 'object') return null;
+  return candidate as TripEvidenceCase;
+}
 
 function severityTone(severity: string): StatusTone {
   switch (severity) {
@@ -178,27 +210,17 @@ function formatWindow(start?: string | null, end?: string | null): string | null
   }
 }
 
-/**
- * Renders the structured context evidence behind a misuse case so the operator
- * sees WHY it was raised — source anchors, evidence grade/confidence, the engine
- * signals used, reason codes and the context window. No "black box".
- */
-function MisuseContextEvidence({ evidence }: { evidence: ContextEvidence }) {
-  const anchors = evidence.sourceAnchors;
-  const driving = anchors?.drivingEventIds?.length ?? 0;
-  const window = formatWindow(evidence.windowStart, evidence.windowEnd);
-  const kv = evidence.keyValues ?? {};
-  const keyChips: Array<{ label: string; value: string }> = [];
-  if (typeof kv.maxRpm === 'number') keyChips.push({ label: 'Max Drehzahl', value: `${Math.round(kv.maxRpm)} rpm` });
-  if (typeof kv.maxThrottle === 'number') keyChips.push({ label: 'Max Gaspedal', value: `${Math.round(kv.maxThrottle)} %` });
-  if (typeof kv.maxEngineLoad === 'number') keyChips.push({ label: 'Max Motorlast', value: `${Math.round(kv.maxEngineLoad)} %` });
-  if (typeof kv.coolantAtEvent === 'number') keyChips.push({ label: 'Kühlmittel', value: `${Math.round(kv.coolantAtEvent)} °C` });
-  if (typeof kv.preSpeed === 'number' || typeof kv.postSpeed === 'number') {
-    keyChips.push({
-      label: 'Speed (vor→nach)',
-      value: `${typeof kv.preSpeed === 'number' ? Math.round(kv.preSpeed) : '—'} → ${typeof kv.postSpeed === 'number' ? Math.round(kv.postSpeed) : '—'} km/h`,
-    });
-  }
+function MisuseEvidenceDetails({
+  evidenceCase,
+  contextEvidence,
+}: {
+  evidenceCase: TripEvidenceCase | null;
+  contextEvidence: ContextEvidence | null;
+}) {
+  const measurementRows = evidenceCase ? formatEvidenceMeasurements(evidenceCase.measurements) : [];
+  const usedSignals = contextEvidence?.usedSignals ?? [];
+
+  if (!evidenceCase && !contextEvidence) return null;
 
   return (
     <div className="mt-2 rounded-md border border-border/50 bg-muted/30 px-2.5 py-2 space-y-1.5">
@@ -206,62 +228,92 @@ function MisuseContextEvidence({ evidence }: { evidence: ContextEvidence }) {
         <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
           Beweislage
         </span>
-        {evidence.evidenceGrade && (
+        {evidenceCase && (
           <span className="rounded-full border border-border/60 px-1.5 py-0.5 text-[8px] font-medium text-muted-foreground">
-            {evidenceGradeLabel(evidence.evidenceGrade)}
+            {EVIDENCE_LEVEL_LABEL[evidenceCase.evidenceLevel]}
           </span>
         )}
-        {evidence.confidence && (
+        {contextEvidence?.evidenceGrade && (
           <span className="rounded-full border border-border/60 px-1.5 py-0.5 text-[8px] font-medium text-muted-foreground">
-            {contextConfidenceLabel(evidence.confidence)}
+            {evidenceGradeLabel(contextEvidence.evidenceGrade)}
+          </span>
+        )}
+        {(evidenceCase?.confidence || contextEvidence?.confidence) && (
+          <span className="rounded-full border border-border/60 px-1.5 py-0.5 text-[8px] font-medium text-muted-foreground">
+            {evidenceCase
+              ? evidenceConfidenceLabel(evidenceCase.confidence)
+              : contextConfidenceLabel(contextEvidence?.confidence ?? '')}
           </span>
         )}
       </div>
 
-      {(evidence.contextClassifications?.length ?? 0) > 0 && (
-        <div className="flex flex-wrap gap-1">
-          {evidence.contextClassifications!.map((c) => (
-            <span
-              key={c}
-              className="rounded-full border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[8px] font-medium text-sky-600 dark:text-status-info"
-            >
-              {contextClassificationLabel(c)}
-            </span>
-          ))}
-        </div>
-      )}
-
-      <p className="text-[10px] text-muted-foreground">
-        Anker: {driving > 0 ? `${driving} natives Ereignis${driving === 1 ? '' : 'se'}` : 'keine'}
-        {window ? ` · Fenster ${window}` : ''}
-      </p>
-
-      {keyChips.length > 0 && (
-        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-          {keyChips.map((c) => (
-            <span key={c.label} className="text-[10px] text-muted-foreground tabular-nums">
-              {c.label}: <span className="font-medium text-foreground">{c.value}</span>
-            </span>
-          ))}
-        </div>
-      )}
-
-      {(evidence.usedSignals?.length ?? 0) > 0 && (
+      {(evidenceCase?.reasons.length ?? 0) > 0 && (
         <p className="text-[9px] text-muted-foreground">
-          Signale: {evidence.usedSignals!.join(', ')}
-          {(evidence.missingSignals?.length ?? 0) > 0
-            ? ` · fehlend: ${evidence.missingSignals!.join(', ')}`
+          Gründe: {evidenceCase!.reasons.slice(0, 4).join(' · ')}
+        </p>
+      )}
+
+      {measurementRows.length > 0 && (
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+          {measurementRows.map((row) => (
+            <span key={row.label} className="text-[10px] text-muted-foreground tabular-nums">
+              {row.label}: <span className="font-medium text-foreground">{row.value}</span>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {usedSignals.length > 0 && (
+        <p className="text-[9px] text-muted-foreground">
+          Signale: {usedSignals.join(', ')}
+          {(contextEvidence?.missingSignals?.length ?? 0) > 0
+            ? ` · fehlend: ${contextEvidence!.missingSignals!.join(', ')}`
             : ''}
         </p>
       )}
 
-      {(evidence.reasonCodes?.length ?? 0) > 0 && (
+      {contextEvidence && (
+        <>
+          {(contextEvidence.contextClassifications?.length ?? 0) > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {contextEvidence.contextClassifications!.map((c) => (
+                <span
+                  key={c}
+                  className="rounded-full border border-sky-500/30 bg-sky-500/10 px-1.5 py-0.5 text-[8px] font-medium text-sky-600 dark:text-status-info"
+                >
+                  {contextClassificationLabel(c)}
+                </span>
+              ))}
+            </div>
+          )}
+          <p className="text-[10px] text-muted-foreground">
+            Anker:{' '}
+            {(contextEvidence.sourceAnchors?.drivingEventIds?.length ?? 0) > 0
+              ? `${contextEvidence.sourceAnchors!.drivingEventIds!.length} natives Ereignis${
+                  contextEvidence.sourceAnchors!.drivingEventIds!.length === 1 ? '' : 'se'
+                }`
+              : 'keine'}
+            {formatWindow(contextEvidence.windowStart, contextEvidence.windowEnd)
+              ? ` · Fenster ${formatWindow(contextEvidence.windowStart, contextEvidence.windowEnd)}`
+              : ''}
+          </p>
+        </>
+      )}
+
+      {evidenceCase?.source && (
         <p className="text-[9px] text-muted-foreground">
-          Gründe: {evidence.reasonCodes!.map((r) => reasonCodeLabel(r)).join(' · ')}
+          Quelle: {EVIDENCE_SOURCE_LABEL[evidenceCase.source]}
         </p>
       )}
     </div>
   );
+}
+
+/**
+ * @deprecated Prefer MisuseEvidenceDetails — kept for backward compatibility during rollout.
+ */
+function MisuseContextEvidence({ evidence }: { evidence: ContextEvidence }) {
+  return <MisuseEvidenceDetails evidenceCase={null} contextEvidence={evidence} />;
 }
 
 function issueForCase(
@@ -270,9 +322,16 @@ function issueForCase(
   compact: boolean,
   embedded?: boolean,
 ) {
-  const contextEvidence = readContextEvidence(raw?.evidenceSummary);
-  const severity = raw?.severity ?? (issue.severity === 'critical' ? 'CRITICAL' : issue.severity === 'warning' ? 'WARNING' : 'INFO');
+  const severity =
+    raw?.severity ??
+    (issue.severity === 'critical' ? 'CRITICAL' : issue.severity === 'warning' ? 'WARNING' : 'INFO');
   const confidence = raw?.confidence ?? 'MEDIUM';
+  const contextEvidence = readContextEvidence(raw?.evidenceSummary);
+  const evidenceCase = readEvidenceCase(raw);
+  const cardTitle = evidenceCase ? resolveEvidenceCardTitle(evidenceCase) : issue.title;
+  const showReviewDisclaimer =
+    evidenceCase?.requiresHumanReview !== false || !evidenceCase;
+
   return (
     <div
       key={issue.id}
@@ -285,18 +344,28 @@ function issueForCase(
       }
     >
       <div className="mb-1 flex flex-wrap items-center gap-1.5">
-        <span className="text-[11px] font-semibold text-foreground">{issue.title}</span>
-        <StatusChip tone={severityTone(severity)} dot className="text-[9px]">
-          {severityLabel(severity)}
-        </StatusChip>
-        {(confidence === 'LOW' || confidence === 'INSUFFICIENT') && (
+        <span className="text-[11px] font-semibold text-foreground">{cardTitle}</span>
+        {evidenceCase ? (
+          <StatusChip tone={evidenceLevelTone(evidenceCase.evidenceLevel)} dot className="text-[9px]">
+            {EVIDENCE_LEVEL_LABEL[evidenceCase.evidenceLevel]}
+          </StatusChip>
+        ) : (
+          <StatusChip tone={severityTone(severity)} dot className="text-[9px]">
+            {severityLabel(severity)}
+          </StatusChip>
+        )}
+        {(evidenceCase?.confidence === 'LOW' || confidence === 'LOW' || confidence === 'INSUFFICIENT') && (
           <StatusChip tone={confidenceTone(confidence)} className="text-[9px]">
-            {confidenceLabel(confidence)}
+            {evidenceCase
+              ? evidenceConfidenceLabel(evidenceCase.confidence)
+              : confidenceLabel(confidence)}
           </StatusChip>
         )}
       </div>
-      {issue.subtitle && (
-        <p className="text-[10px] leading-snug text-muted-foreground">{issue.subtitle}</p>
+      {(evidenceCase?.explanation || issue.subtitle) && (
+        <p className="text-[10px] leading-snug text-muted-foreground">
+          {sanitizeUserFacingIssueText(evidenceCase?.explanation ?? issue.subtitle ?? '')}
+        </p>
       )}
       {issue.evidence?.length ? (
         <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1.5 sm:grid-cols-3">
@@ -310,15 +379,17 @@ function issueForCase(
           ))}
         </div>
       ) : null}
-      {contextEvidence && <MisuseContextEvidence evidence={contextEvidence} />}
+      {(evidenceCase || contextEvidence) && (
+        <MisuseEvidenceDetails evidenceCase={evidenceCase} contextEvidence={contextEvidence} />
+      )}
+      {showReviewDisclaimer && (
+        <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
+          {RENTAL_COPY.misuseReviewDisclaimer ?? REVIEW_HINT_DEFAULT}
+        </p>
+      )}
       {issue.recommendedAction && !compact && !embedded && (
         <p className="text-[10px] text-muted-foreground mt-1">
           Empfohlen: {sanitizeUserFacingIssueText(issue.recommendedAction)}
-        </p>
-      )}
-      {embedded && (
-        <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
-          {RENTAL_COPY.misuseReviewDisclaimer}
         </p>
       )}
     </div>

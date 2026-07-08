@@ -18,6 +18,8 @@ import {
 import { buildTripAssessmentFromSignals } from './trip-assessment.builder';
 import type { TripAssessment } from './trip-assessment.types';
 import { deriveAnalysisAssessability } from './trip-analysis-status';
+import { maxEvidenceLevelFromCases } from './trip-evidence-case.builder';
+import type { TripEvidenceLevel } from './trip-evidence-level.types';
 
 export interface CanonicalTripEventSummary {
   totalAccelerationEvents: number;
@@ -151,7 +153,7 @@ export class TripAnalyticsCanonicalService {
     },
     canonicalSummary: CanonicalTripSummary,
   ): Promise<TripAssessment> {
-    const [behaviorEvents, drivingEvents, misuseCaseCount] = await Promise.all([
+    const [behaviorEvents, drivingEvents, misuseCases] = await Promise.all([
       this.prisma.tripBehaviorEvent.findMany({
         where: { tripId: trip.id, vehicleId: trip.vehicleId },
         orderBy: { startedAt: 'asc' },
@@ -160,10 +162,22 @@ export class TripAnalyticsCanonicalService {
         where: { tripId: trip.id, vehicleId: trip.vehicleId },
         orderBy: { recordedAt: 'asc' },
       }),
-      this.prisma.misuseCase.count({
+      this.prisma.misuseCase.findMany({
         where: { tripId: trip.id, vehicleId: trip.vehicleId },
+        select: { evidenceSummary: true },
       }),
     ]);
+
+    const misuseCaseCount = misuseCases.length;
+    const evidenceLevels = misuseCases
+      .map((row) => {
+        const summary = row.evidenceSummary as Record<string, unknown> | null;
+        const evidenceCase = summary?.evidenceCase as { evidenceLevel?: TripEvidenceLevel } | undefined;
+        return evidenceCase?.evidenceLevel;
+      })
+      .filter((level): level is TripEvidenceLevel => Boolean(level));
+    const maxEvidenceLevel =
+      evidenceLevels.length > 0 ? maxEvidenceLevelFromCases(evidenceLevels) : null;
 
     const unifiedEvents: UnifiedBehaviorEvent[] = buildUnifiedBehaviorEvents({
       behaviorEvents,
@@ -177,6 +191,7 @@ export class TripAnalyticsCanonicalService {
       unifiedEvents,
       scores: canonicalSummary.scores,
       misuseCaseCount,
+      maxEvidenceLevel,
       distanceKm: trip.distanceKm ?? null,
       durationMinutes: trip.durationMinutes ?? null,
       assessability,

@@ -1,4 +1,6 @@
 import type { StressLevel } from '../driving-impact/stress-level.util';
+import { tripAssessmentStatusFromEvidenceLevel } from './trip-evidence-case.builder';
+import { EVIDENCE_LEVEL_RANK, type TripEvidenceLevel } from './trip-evidence-level.types';
 import {
   TRIP_ASSESSMENT_VERSION,
   type TripAssessment,
@@ -117,6 +119,17 @@ function buildPrimaryReason(
     case 'NICHT_BEWERTBAR':
       return 'Für diese Fahrt liegen nicht genug belastbare Signale vor.';
     case 'PRUEFHINWEIS':
+      if (input.maxEvidenceLevel && EVIDENCE_LEVEL_RANK[input.maxEvidenceLevel] >= EVIDENCE_LEVEL_RANK.CHECK_RECOMMENDED) {
+        if (input.maxEvidenceLevel === 'MISUSE_SUSPECTED') {
+          return 'Mehrere belastbare Hinweise auf Fehlgebrauch — Prüfung empfohlen, kein automatisierter Vorwurf.';
+        }
+        if (
+          input.maxEvidenceLevel === 'DAMAGE_RISK' ||
+          input.maxEvidenceLevel === 'CRITICAL_DAMAGE_RISK'
+        ) {
+          return 'Technisches Risiko erkannt — Prüfung empfohlen, kein automatisierter Schadensnachweis.';
+        }
+      }
       if (input.misuseCaseCount > 0) {
         return 'Auffälliges Fahrmuster erkannt. Prüfung empfohlen — kein automatisierter Vorwurf.';
       }
@@ -164,6 +177,13 @@ function buildPrimaryReason(
   }
 }
 
+function resolveStatusFromEvidence(
+  maxLevel: TripEvidenceLevel | undefined,
+): TripAssessmentStatus | null {
+  if (!maxLevel || maxLevel === 'NONE' || maxLevel === 'INFO') return null;
+  return tripAssessmentStatusFromEvidenceLevel(maxLevel);
+}
+
 function resolveStatus(input: TripAssessmentInput): TripAssessmentStatus {
   const events = input.unifiedEvents;
   const abuseRelevantCount = countAbuseRelevantEvents(events);
@@ -178,6 +198,14 @@ function resolveStatus(input: TripAssessmentInput): TripAssessmentStatus {
     input.drivingStressScore == null
   ) {
     return 'NICHT_BEWERTBAR';
+  }
+
+  const evidenceStatus = resolveStatusFromEvidence(input.maxEvidenceLevel);
+  if (evidenceStatus === 'KRITISCH') {
+    return 'KRITISCH';
+  }
+  if (evidenceStatus === 'PRUEFHINWEIS') {
+    return 'PRUEFHINWEIS';
   }
 
   if (input.misuseCaseCount > 0 || abuseRelevantCount > 0) {
@@ -248,6 +276,7 @@ export function assessTrip(input: TripAssessmentInput): TripAssessment {
       behaviorEvents: input.unifiedEvents.length,
       abuseRelevantEvents: abuseRelevantCount,
       misuseCases: input.misuseCaseCount,
+      maxEvidenceLevel: input.maxEvidenceLevel ?? null,
       drivingStressScore: input.drivingStressScore,
       drivingStressLevel: input.drivingStressLevel,
       hasEnoughData: input.hasEnoughData,

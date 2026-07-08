@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   deriveDrivingBehaviorLabel,
   deriveReviewHintSummary,
+  EVIDENCE_LEVEL_LABEL,
   GESAMTBEWERTUNG_FALLBACK_LABEL,
   resolveGesamtbewertungDisplay,
   TRIP_ASSESSMENT_STATUS_LABEL,
@@ -51,6 +52,7 @@ describe('trip assessment UI semantics (Phase 2)', () => {
             behaviorEvents: 2,
             abuseRelevantEvents: 0,
             misuseCases: 0,
+            maxEvidenceLevel: null,
             drivingStressScore: 30,
             drivingStressLevel: 'moderate',
             hasEnoughData: true,
@@ -83,5 +85,12 @@ describe('trip assessment UI semantics (Phase 2)', () => {
   it('surfaces Prüfhinweise without claiming misuse for abuse-relevant events', () => {
     const events = [event({ eventCategory: 'ABUSE', classification: 'SEVERE', abuseRelevant: true })];
     expect(deriveReviewHintSummary(trip(), events)).toBe('Prüfung empfohlen');
+  });
+
+  it('maps evidence levels to operator-facing badges (Phase 3)', () => {
+    expect(EVIDENCE_LEVEL_LABEL.CHECK_RECOMMENDED).toBe('Prüfung empfohlen');
+    expect(EVIDENCE_LEVEL_LABEL.MISUSE_SUSPECTED).toBe('Verdacht');
+    expect(EVIDENCE_LEVEL_LABEL.DAMAGE_RISK).toBe('Technisches Risiko');
+    expect(EVIDENCE_LEVEL_LABEL.CRITICAL_DAMAGE_RISK).toBe('Kritisch');
   });
 });

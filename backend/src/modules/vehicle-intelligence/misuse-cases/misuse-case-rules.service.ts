@@ -14,6 +14,7 @@ import type {
 } from './misuse-case.types';
 import { maxConfidence, maxSeverity } from './misuse-case.types';
 import { evaluateContextAnchors } from './context-misuse-rules';
+import { enrichCaseWithEvidence } from '../trips/trip-evidence-case.builder';
 
 const MS_15_MIN = 15 * 60 * 1000;
 const MS_30_MIN = 30 * 60 * 1000;
@@ -24,6 +25,9 @@ export class MisuseCaseRulesService {
   evaluate(context: TripEvaluationContext): CaseCandidate[] {
     const candidates: CaseCandidate[] = [];
     const abuse = context.behaviorEvents.filter((e) => e.eventCategory === 'ABUSE');
+
+    const notableAcceleration = this.ruleNotableAccelerationPattern(context);
+    if (notableAcceleration) candidates.push(notableAcceleration);
 
     const aggressive = this.ruleAggressiveDriving(context, abuse);
     if (aggressive) candidates.push(aggressive);
@@ -56,7 +60,46 @@ export class MisuseCaseRulesService {
     // Merged by type with behavior-event candidates above.
     candidates.push(...evaluateContextAnchors(context.contextAnchors ?? []));
 
-    return this.mergeCollisionConfidence(this.mergeSameType(candidates));
+    return this.mergeCollisionConfidence(
+      this.mergeSameType(candidates).map((candidate) => enrichCaseWithEvidence(candidate)),
+    );
+  }
+
+  /**
+   * Two or more native hard accelerations without further abuse signals —
+   * review hint only, never automatic misuse accusation.
+   */
+  private ruleNotableAccelerationPattern(
+    context: TripEvaluationContext,
+  ): CaseCandidate | null {
+    const harshAccel = context.drivingEvents.filter(
+      (e) => e.eventType === 'HARSH_ACCELERATION',
+    );
+    if (harshAccel.length < 2) return null;
+
+    const hasStrongerAbuse =
+      context.behaviorEvents.some((e) => e.eventCategory === 'ABUSE') ||
+      context.drivingEvents.some((e) => e.eventType === 'EXTREME_BRAKING');
+    if (hasStrongerAbuse) return null;
+
+    const evidence: EvidenceCandidate[] = harshAccel
+      .slice(0, 5)
+      .map((e) => this.drivingEvidence(e));
+    const times = evidence.map((e) => e.occurredAt.getTime());
+
+    return {
+      type: MisuseCaseType.AGGRESSIVE_DRIVING_PATTERN,
+      category: MisuseCaseCategory.USAGE_ANOMALY,
+      severity: MisuseCaseSeverity.WARNING,
+      confidence: MisuseCaseConfidence.MEDIUM,
+      title: 'Auffälliges Beschleunigungsmuster',
+      description: 'Prüfung empfohlen — kein automatisierter Vorwurf.',
+      recommendedAction: 'Fahrmuster im Trip-Kontext prüfen.',
+      evidence,
+      eventCount: harshAccel.length,
+      firstDetectedAt: new Date(Math.min(...times)),
+      lastDetectedAt: new Date(Math.max(...times)),
+    };
   }
 
   /**
@@ -176,10 +219,10 @@ export class MisuseCaseRulesService {
       category: MisuseCaseCategory.USAGE_ANOMALY,
       severity: aggressiveCount >= 8 ? MisuseCaseSeverity.SEVERE : MisuseCaseSeverity.WARNING,
       confidence: hasCombo ? MisuseCaseConfidence.HIGH : MisuseCaseConfidence.MEDIUM,
-      title: 'Aggressives Fahrmuster erkannt',
+      title: 'Auffälliges Fahrmuster',
       description:
         `${aggressiveCount} aggressive Fahrereignisse innerhalb von 30 Minuten wurden zusammengefasst. ` +
-        'Dies ist ein Hinweis zur Prüfung — kein automatisierter Vorwurf.',
+        'Prüfung empfohlen — kein automatisierter Vorwurf.',
       recommendedAction: 'Fahrmuster im Trip-Kontext prüfen und ggf. mit Kunde besprechen.',
       evidence,
       eventCount: aggressiveCount,
@@ -209,9 +252,9 @@ export class MisuseCaseRulesService {
       category: MisuseCaseCategory.MISUSE_SUSPICION,
       severity: hasSevere ? MisuseCaseSeverity.SEVERE : MisuseCaseSeverity.WARNING,
       confidence: hasSevere ? MisuseCaseConfidence.HIGH : MisuseCaseConfidence.MEDIUM,
-      title: 'Kaltmotor-Missbrauch erkannt',
+      title: 'Auffälliges Fahrmuster',
       description:
-        'Auffällige Last auf kalten Motor erkannt. Prüfung der Fahrsituation empfohlen.',
+        'Auffällige Last auf kalten Motor erkannt. Prüfung empfohlen — kein automatisierter Vorwurf.',
       recommendedAction: 'Motor-Schonphase und Fahrweise prüfen.',
       evidence,
       eventCount: coldEvents.length,
@@ -333,9 +376,9 @@ export class MisuseCaseRulesService {
       category: MisuseCaseCategory.DAMAGE_SUSPICION,
       severity: MisuseCaseSeverity.SEVERE,
       confidence: MisuseCaseConfidence.MEDIUM,
-      title: 'Schadensverdacht: möglicher Aufprall',
+      title: 'Schadenverdacht',
       description:
-        'Abrupte Verzögerung (POSSIBLE_IMPACT) erkannt. Kein automatisierter Unfallnachweis.',
+        'Abrupte Verzögerung (POSSIBLE_IMPACT) erkannt. Technisches Risiko — kein automatisierter Unfallnachweis.',
       recommendedAction: 'Fahrzeug auf sichtbare Schäden und Fehlercodes prüfen.',
       evidence,
       eventCount: impacts.length,
@@ -396,8 +439,9 @@ export class MisuseCaseRulesService {
       category: MisuseCaseCategory.TECHNICAL_RISK,
       severity: MisuseCaseSeverity.SEVERE,
       confidence: MisuseCaseConfidence.HIGH,
-      title: 'Überhitzungsrisiko erkannt',
-      description: 'Motorüberhitzung während der Fahrt erkannt.',
+      title: 'Schadenverdacht',
+      description:
+        'Motorüberhitzung während der Fahrt erkannt. Technisches Risiko — Prüfung empfohlen.',
       recommendedAction: 'Kühlung und Motorzustand prüfen.',
       evidence,
       eventCount: overheat.length,

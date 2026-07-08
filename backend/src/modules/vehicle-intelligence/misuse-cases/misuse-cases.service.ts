@@ -74,11 +74,14 @@ export class MisuseCasesService {
   private toReadModel(
     row: Prisma.MisuseCaseGetPayload<{ include: { evidence: true } }>,
   ) {
+    const evidenceSummary = row.evidenceSummary as Record<string, unknown> | null;
+    const evidenceCase = evidenceSummary?.evidenceCase ?? null;
     return {
       ...row,
       categoryLabel: CATEGORY_LABELS[row.category],
       typeLabel: CASE_TYPE_LABELS[row.type],
       attributionLabel: this.attributionLabel(row.attributionScope, row.isPrivateTripSnapshot),
+      evidenceCase,
     };
   }
 

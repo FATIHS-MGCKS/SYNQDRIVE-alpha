@@ -85,6 +85,12 @@ export class MisuseCasePersistenceHelper {
       ...(candidate.evidenceSummary ?? {}),
     };
 
+    const evidenceCase = (evidenceSummary as Record<string, unknown>).evidenceCase as
+      | { title?: string; explanation?: string }
+      | undefined;
+    const displayTitle = evidenceCase?.title ?? candidate.title;
+    const displayDescription = evidenceCase?.explanation ?? candidate.description;
+
     if (!existing) {
       const created = await this.prisma.misuseCase.create({
         data: {
@@ -97,8 +103,8 @@ export class MisuseCasePersistenceHelper {
           type: candidate.type,
           severity: candidate.severity,
           confidence: candidate.confidence,
-          title: candidate.title,
-          description: candidate.description,
+          title: displayTitle,
+          description: displayDescription,
           recommendedAction: candidate.recommendedAction ?? null,
           attributionScope: attribution.attributionScope,
           assignmentStatusSnapshot: attribution.assignmentStatusSnapshot,
@@ -138,7 +144,7 @@ export class MisuseCasePersistenceHelper {
         // Reprocessing replaces the current snapshot — do not accumulate counts.
         eventCount: candidate.eventCount,
         evidenceSummary: evidenceSummary as Prisma.InputJsonValue,
-        description: candidate.description,
+        description: displayDescription,
         recommendedAction: candidate.recommendedAction ?? existing.recommendedAction,
       },
     });

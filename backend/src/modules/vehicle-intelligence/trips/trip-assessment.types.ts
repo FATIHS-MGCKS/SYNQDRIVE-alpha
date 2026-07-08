@@ -1,6 +1,8 @@
 import type { StressLevel } from '../driving-impact/stress-level.util';
 
-export const TRIP_ASSESSMENT_VERSION = '1.0.0';
+import type { TripEvidenceLevel } from './trip-evidence-level.types';
+
+export const TRIP_ASSESSMENT_VERSION = '1.1.0';
 
 export type TripAssessmentStatus =
   | 'UNAUFFAELLIG'
@@ -33,6 +35,7 @@ export interface TripAssessmentInput {
   drivingStressScore: number | null;
   drivingStressLevel: StressLevel | null;
   misuseCaseCount: number;
+  maxEvidenceLevel?: TripEvidenceLevel;
   hasEnoughData: boolean;
   distanceKm: number | null;
   durationMinutes: number | null;
@@ -44,6 +47,7 @@ export interface TripAssessmentSignals {
   behaviorEvents: number;
   abuseRelevantEvents: number;
   misuseCases: number;
+  maxEvidenceLevel: TripEvidenceLevel | null;
   drivingStressScore: number | null;
   drivingStressLevel: string | null;
   hasEnoughData: boolean;

@@ -1333,6 +1333,43 @@ export type TripAssessmentStatus =
   | 'PRUEFHINWEIS'
   | 'NICHT_BEWERTBAR';
 
+export type TripEvidenceLevel =
+  | 'NONE'
+  | 'INFO'
+  | 'CHECK_RECOMMENDED'
+  | 'MISUSE_SUSPECTED'
+  | 'DAMAGE_RISK'
+  | 'CRITICAL_DAMAGE_RISK';
+
+export type TripEvidenceConfidence = 'LOW' | 'MEDIUM' | 'HIGH';
+
+export type TripEvidenceCaseSource =
+  | 'NATIVE_EVENT'
+  | 'HF_RECONSTRUCTION'
+  | 'CONTEXT_ENRICHMENT'
+  | 'MIXED';
+
+export interface TripEvidenceCase {
+  id: string;
+  type: string;
+  evidenceLevel: TripEvidenceLevel;
+  title: string;
+  explanation: string;
+  confidence: TripEvidenceConfidence;
+  chargeable: boolean;
+  requiresHumanReview: boolean;
+  reasons: string[];
+  measurements: {
+    rpm?: number;
+    throttle?: number;
+    engineLoad?: number;
+    coolant?: number;
+    speedBeforeAfter?: string;
+    durationMs?: number;
+  };
+  source: TripEvidenceCaseSource;
+}
+
 export type TripAssessmentConfidence = 'LOW' | 'MEDIUM' | 'HIGH';
 
 export type TripAssessmentSource =
@@ -1354,6 +1391,7 @@ export interface TripAssessment {
     behaviorEvents: number;
     abuseRelevantEvents: number;
     misuseCases: number;
+    maxEvidenceLevel: TripEvidenceLevel | null;
     drivingStressScore: number | null;
     drivingStressLevel: string | null;
     hasEnoughData: boolean;

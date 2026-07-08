@@ -164,6 +164,7 @@ describe('assessTrip', () => {
     const result = assessTrip(
       baseInput({
         misuseCaseCount: 1,
+        maxEvidenceLevel: 'CHECK_RECOMMENDED',
         drivingStressScore: 90,
         drivingStressLevel: 'critical',
       }),
@@ -172,8 +173,32 @@ describe('assessTrip', () => {
     expect(result.status).toBe('PRUEFHINWEIS');
   });
 
+  it('returns KRITISCH for CRITICAL_DAMAGE_RISK evidence level', () => {
+    const result = assessTrip(
+      baseInput({
+        misuseCaseCount: 1,
+        maxEvidenceLevel: 'CRITICAL_DAMAGE_RISK',
+      }),
+    );
+
+    expect(result.status).toBe('KRITISCH');
+    expect(result.signals.maxEvidenceLevel).toBe('CRITICAL_DAMAGE_RISK');
+  });
+
+  it('returns PRUEFHINWEIS for DAMAGE_RISK evidence without claiming damage proof', () => {
+    const result = assessTrip(
+      baseInput({
+        misuseCaseCount: 1,
+        maxEvidenceLevel: 'DAMAGE_RISK',
+      }),
+    );
+
+    expect(result.status).toBe('PRUEFHINWEIS');
+    expect(result.primaryReason).toMatch(/kein automatisierter Schadensnachweis/i);
+  });
+
   it('is versioned', () => {
-    expect(assessTrip(baseInput()).version).toBe('1.0.0');
+    expect(assessTrip(baseInput()).version).toBe('1.1.0');
   });
 });
 

@@ -114,6 +114,31 @@ function mkAnchor(
 describe('MisuseCaseRulesService', () => {
   const service = new MisuseCaseRulesService();
 
+  it('two harsh accelerations create CHECK_RECOMMENDED notable acceleration case', () => {
+    const result = service.evaluate(
+      ctx({
+        drivingEvents: [
+          {
+            id: 'a1',
+            eventType: 'HARSH_ACCELERATION',
+            recordedAt: new Date('2026-06-01T10:05:00Z'),
+          },
+          {
+            id: 'a2',
+            eventType: 'HARSH_ACCELERATION',
+            recordedAt: new Date('2026-06-01T10:08:00Z'),
+          },
+        ] as any,
+      }),
+    );
+    const notable = result.find((c) => c.type === MisuseCaseType.AGGRESSIVE_DRIVING_PATTERN);
+    expect(notable).toBeDefined();
+    const evidenceCase = (notable?.evidenceSummary as any)?.evidenceCase;
+    expect(evidenceCase?.evidenceLevel).toBe('CHECK_RECOMMENDED');
+    expect(evidenceCase?.chargeable).toBe(false);
+    expect(evidenceCase?.requiresHumanReview).toBe(true);
+  });
+
   it('single kickdown does not create aggressive driving case', () => {
     const result = service.evaluate(
       ctx({

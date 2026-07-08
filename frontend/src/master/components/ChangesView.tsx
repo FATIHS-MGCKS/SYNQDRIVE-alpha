@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'trip-evidence-phase3-v49250-2026-07-08',
+    version: '4.9.250',
+    title: 'V4.9.250 — Trip Prüfhinweise: Evidence-Level & rechtssichere Verdachtsschicht (Phase 3)',
+    summary: [
+      'Neue Evidence-Stufen (INFO … CRITICAL_DAMAGE_RISK) auf Misuse-Cases mit chargeable=false und requiresHumanReview.',
+      'MisuseCaseRules + Context-Rules liefern konservative Titel/Erklärungen; LTE_R1 sparse HF eskaliert nicht hart.',
+      'tripAssessment 1.1.0 koppelt maxEvidenceLevel: CHECK_RECOMMENDED→Prüfhinweis, CRITICAL_DAMAGE_RISK→Kritisch.',
+      'MisuseCasesPanel zeigt Beweisstufe, Confidence, Messwerte, Quelle; Disclaimer „kein automatisierter Vorwurf“.',
+    ],
+    reason:
+      'Phase 3 der Trip-Bewertungs-Finalisierung — gestufte, erklärbare Prüfhinweise statt automatisierter Missbrauchs-/Schadensvorwürfe.',
+    previousBehavior:
+      'Misuse-Cases ohne evidenceLevel; UI Severity-basiert; Gesamtbewertung nur über misuseCaseCount + abuseRelevant.',
+    details:
+      'trip-evidence-level.types.ts, trip-evidence-case.builder.ts, misuse-case-rules.service.ts, trip-assessment.service.ts, MisuseCasesPanel.tsx, behavior-ui.utils.ts.',
+    affectsArchitecture: true,
+    module: 'Trips',
+    createdAt: '2026-07-08T04:40:00.000Z',
+  },
+  {
     id: 'trip-assessment-ui-phase2-v49249-2026-07-08',
     version: '4.9.249',
     title: 'V4.9.249 — Trip Detail: Gesamtbewertung, Fahrbelastung, Fahrverhalten, Prüfhinweise',
