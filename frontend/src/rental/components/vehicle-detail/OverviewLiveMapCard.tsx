@@ -98,9 +98,16 @@ export function OverviewLiveMapCard({
       : (hudSnapshot?.fuel ?? selectedVehicle?.fuel ?? 0),
   );
 
-  const odometerValue = selectedVehicle
-    ? (hudSnapshot?.odometer ?? selectedVehicle.odometer).toLocaleString('de-DE')
-    : '—';
+  const odometerRaw = selectedVehicle
+    ? (hudSnapshot?.odometer ?? selectedVehicle.odometer)
+    : null;
+  const odometerValue =
+    odometerRaw != null
+      ? Math.round(odometerRaw).toLocaleString('de-DE', {
+          maximumFractionDigits: 0,
+          minimumFractionDigits: 0,
+        })
+      : '—';
   const odometerCompact = odometerValue.length > 6;
 
   return (

@@ -139,7 +139,7 @@ export function usesBrightnessInFilter(_variant: LiquidGlassLensVariant): boolea
 export function resolveLensRadius(variant: LiquidGlassLensVariant): number {
   switch (variant) {
     case 'vehicleHudTile':
-      return 18;
+      return 17;
     case 'vehicleHudBadge':
     case 'fleetMiniPill':
     case 'statusPill':

@@ -39,19 +39,12 @@ export interface LiveMapOverviewProps {
   operatorHintSub?: string | null;
 }
 
-function createCalloutEl(plate: string): HTMLDivElement {
-  const callout = document.createElement('div');
-  callout.className = 'sq-map-marker-callout sq-map-marker-callout--vehicle';
-
-  const label = document.createElement('span');
-  label.textContent = plate;
-  callout.appendChild(label);
-
-  const line = document.createElement('div');
-  line.className = 'sq-map-marker-callout-line';
-  callout.appendChild(line);
-
-  return callout;
+function createMarkerWrap(): HTMLDivElement {
+  const wrap = document.createElement('div');
+  wrap.style.position = 'relative';
+  wrap.style.width = '32px';
+  wrap.style.height = '32px';
+  return wrap;
 }
 
 /**
@@ -90,6 +83,7 @@ export function LiveMapOverview({
   const markerRef = useRef<mapboxgl.Marker | null>(null);
   const markerWrapRef = useRef<HTMLDivElement | null>(null);
   const [loaded, setLoaded] = useState(false);
+  const [markerScreen, setMarkerScreen] = useState<{ x: number; y: number } | null>(null);
 
   const posLat = targetPosition ? targetPosition[1] : null;
   const posLng = targetPosition ? targetPosition[0] : null;
@@ -104,6 +98,20 @@ export function LiveMapOverview({
   const lastGpsTargetRef = useRef<[number, number] | null>(null);
   const prevGpsTargetRef = useRef<[number, number] | null>(null);
 
+  const syncMarkerScreen = useCallback(
+    (lngLat?: [number, number]) => {
+      const map = mapRef.current;
+      const pos = lngLat ?? displayPositionRef.current ?? targetPosition;
+      if (!map || !loaded || !pos) {
+        setMarkerScreen(null);
+        return;
+      }
+      const projected = map.project(pos);
+      setMarkerScreen({ x: projected.x, y: projected.y });
+    },
+    [loaded, targetPosition],
+  );
+
   const updateMarker = useCallback(
     (lngLat: [number, number], rotationDeg: number) => {
       if (!mapRef.current || !loaded) return;
@@ -112,13 +120,8 @@ export function LiveMapOverview({
       currentRotationRef.current = smoothRotation;
 
       if (!markerRef.current) {
-        const wrap = document.createElement('div');
-        wrap.style.position = 'relative';
-        wrap.style.width = '32px';
-        wrap.style.height = '32px';
+        const wrap = createMarkerWrap();
         const sedanEl = createSedanMarkerEl(smoothRotation, LIVE_ACCENT, LIVE_GLOW, isDarkMode);
-        const callout = createCalloutEl(licensePlate);
-        wrap.appendChild(callout);
         wrap.appendChild(sedanEl);
         markerWrapRef.current = wrap;
 
@@ -126,6 +129,7 @@ export function LiveMapOverview({
           .setLngLat(lngLat)
           .addTo(map);
         markerRef.current = marker;
+        syncMarkerScreen(lngLat);
         return;
       }
 
@@ -134,11 +138,10 @@ export function LiveMapOverview({
       if (wrap) {
         const sedanWrap = wrap.querySelector('.synq-sedan-marker') as HTMLDivElement | null;
         if (sedanWrap) updateSedanRotation(sedanWrap, smoothRotation);
-        const callout = wrap.querySelector('.sq-map-marker-callout span') as HTMLElement | null;
-        if (callout) callout.textContent = licensePlate;
       }
+      syncMarkerScreen(lngLat);
     },
-    [loaded, licensePlate, isDarkMode],
+    [loaded, isDarkMode, syncMarkerScreen],
   );
 
   // ── Core animation loop: GPS interpolation + dead reckoning ────────
@@ -215,6 +218,22 @@ export function LiveMapOverview({
     const pos = displayPositionRef.current ?? targetPosition;
     if (pos) updateMarker(pos, heading ?? 0);
   }, [loaded, targetPosition, heading, updateMarker]);
+
+  // Sync marker screen position for liquid-glass plate HUD on map pan/zoom
+  useEffect(() => {
+    if (!mapRef.current || !loaded) return;
+    const map = mapRef.current;
+    const onMapChange = () => syncMarkerScreen();
+    syncMarkerScreen();
+    map.on('move', onMapChange);
+    map.on('zoom', onMapChange);
+    map.on('resize', onMapChange);
+    return () => {
+      map.off('move', onMapChange);
+      map.off('zoom', onMapChange);
+      map.off('resize', onMapChange);
+    };
+  }, [loaded, syncMarkerScreen]);
 
   // Initial map setup
   useEffect(() => {
@@ -295,6 +314,25 @@ export function LiveMapOverview({
                     : 'Connect vehicle telematics for live location')}
               </p>
             )}
+          </div>
+        </div>
+      )}
+      {licensePlate && markerScreen && !waitingForPosition && loaded && (
+        <div
+          className="pointer-events-none absolute left-0 top-0 z-10"
+          style={{
+            transform: `translate(${markerScreen.x}px, ${markerScreen.y - 20}px) translate(-50%, -100%)`,
+          }}
+        >
+          <div className="liquid-glass-lens__plate-anchor">
+            <LiquidGlassLens
+              variant="vehicleMapCallout"
+              renderMode="lens"
+              intensity="subtle"
+              className="pointer-events-none"
+            >
+              <span className="liquid-glass-lens__plate-badge">{licensePlate}</span>
+            </LiquidGlassLens>
           </div>
         </div>
       )}

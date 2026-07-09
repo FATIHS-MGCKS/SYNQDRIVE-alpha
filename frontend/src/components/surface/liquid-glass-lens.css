@@ -30,8 +30,9 @@
     );
   border-radius: var(--map-glass-lens-radius, 18px);
   box-shadow:
-    0 0.5px 0 color-mix(in srgb, var(--map-glass-highlight) 52%, transparent) inset,
-    0 5px 16px color-mix(in srgb, var(--map-glass-shadow) 22%, transparent);
+    0 0.5px 0 color-mix(in srgb, var(--map-glass-highlight) 58%, transparent) inset,
+    0 0 0 0.5px color-mix(in srgb, var(--map-glass-highlight) 18%, transparent) inset,
+    0 6px 18px color-mix(in srgb, var(--map-glass-shadow) 20%, transparent);
   backdrop-filter: blur(var(--map-glass-blur)) saturate(var(--map-glass-saturate)) contrast(var(--map-glass-contrast, 1.05));
   -webkit-backdrop-filter: blur(var(--map-glass-blur)) saturate(var(--map-glass-saturate)) contrast(var(--map-glass-contrast, 1.05));
 }
@@ -67,7 +68,10 @@
   overflow: hidden;
   border: none;
   border-radius: var(--map-glass-lens-radius, 16px);
-  box-shadow: var(--map-glass-lens-shell-shadow, var(--map-glass-fleet-shadow, var(--map-glass-shadow)));
+  box-shadow:
+    0 0.5px 0 color-mix(in srgb, var(--map-glass-highlight) 56%, transparent) inset,
+    0 0 0 0.5px color-mix(in srgb, var(--map-glass-lens-shell-border, var(--map-glass-border)) 38%, transparent),
+    var(--map-glass-lens-shell-shadow, var(--map-glass-fleet-shadow, var(--map-glass-shadow)));
 }
 
 .liquid-glass-lens__material {
@@ -93,8 +97,24 @@
 }
 
 .liquid-glass-lens--canonical[data-liquid-render='lens'] {
-  /* Library tint + optics deliver rim — no inset top/bottom lines */
+  /* Library tint + optics deliver rim — subtle top highlight via root inset */
   filter: none;
+}
+
+.liquid-glass-lens--canonical[data-liquid-render='lens']::after {
+  display: block;
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--map-glass-highlight) 16%, transparent) 0%,
+    transparent 46%
+  );
+  opacity: 0.72;
 }
 
 .liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='lens'] .liquid-glass-lens__content {
@@ -255,6 +275,34 @@
   filter: none;
   box-shadow: none;
   outline: none;
+  line-height: 0;
+}
+
+/* Fleet toolbar — icon-only, optical center (labels sr-only) */
+.liquid-glass-lens--fleetToolbarButton .liquid-glass-lens__control-btn {
+  display: grid;
+  place-items: center;
+  gap: 0;
+  padding: 0;
+}
+
+.liquid-glass-lens--fleetToolbarButton .liquid-glass-lens__control-btn__icon {
+  display: block;
+  margin: 0;
+  line-height: 0;
+  transform: translateY(0.5px);
+}
+
+.liquid-glass-lens--fleetToolbarButton .liquid-glass-lens__control-btn__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .liquid-glass-lens__control-btn:hover:not(:disabled),
@@ -528,6 +576,11 @@
   height: 2.625rem;
 }
 
+.liquid-glass-lens--fleetToolbarButton[data-liquid-render='lens'] .liquid-glass-lens__content {
+  display: grid;
+  place-items: center;
+}
+
 .liquid-glass-lens--fleetPanelAction[data-liquid-render='lens'] {
   --map-glass-lens-radius: 16px;
   display: inline-flex;
@@ -549,6 +602,8 @@
 }
 
 .liquid-glass-lens--legendTrigger[data-liquid-render='lens'] .liquid-glass-lens__content {
+  display: grid;
+  place-items: center;
   padding: 0;
 }
 
@@ -561,7 +616,7 @@
 }
 
 .liquid-glass-lens--vehicleHudTile[data-liquid-render='lens'] {
-  --map-glass-lens-radius: 16px;
+  --map-glass-lens-radius: 17px;
   display: inline-flex;
   flex: 1 1 0;
   min-width: 0;
@@ -649,8 +704,50 @@
 }
 
 .liquid-glass-lens--vehicleHudTileOdometer[data-liquid-render='lens'] {
-  max-width: 7.75rem;
+  max-width: 7.85rem;
   flex: 1.12 1 0;
+}
+
+.liquid-glass-lens--vehicleMapCallout[data-liquid-render='lens'] {
+  --map-glass-lens-radius: 12px;
+  display: inline-flex;
+  max-width: 10.5rem;
+}
+
+.liquid-glass-lens--vehicleMapCallout[data-liquid-render='lens'] .liquid-glass-lens__content {
+  padding: 0;
+}
+
+.liquid-glass-lens__plate-anchor {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.liquid-glass-lens__plate-anchor::after {
+  content: '';
+  display: block;
+  width: 1px;
+  height: 5px;
+  margin-top: 1px;
+  background: color-mix(in srgb, var(--map-glass-border) 72%, transparent);
+  flex-shrink: 0;
+}
+
+.liquid-glass-lens__plate-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.28rem 0.52rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.045em;
+  line-height: 1;
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--foreground);
 }
 
 .liquid-glass-lens--vehicleHudBadge[data-liquid-render='shell'] {
@@ -728,7 +825,7 @@
   }
 
   .liquid-glass-lens--vehicleHudTileOdometer[data-liquid-render='lens'] {
-    max-width: 6.85rem;
+    max-width: 6.95rem;
     flex: 1.15 1 0;
   }
 

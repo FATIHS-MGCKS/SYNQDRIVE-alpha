@@ -471,7 +471,21 @@ Before adding or changing a surface, answer:
 
 ---
 
-*Last updated: 2026-07-09 — V4.9.296 Material/content split (crisp overlay).*
+*Last updated: 2026-07-09 — V4.9.297 Map HUD final polish.*
+
+---
+
+## Phase 16 — Map HUD final polish (V4.9.297)
+
+**Scope:** Visual-only fine-tuning after material/content split. No architecture or business logic changes.
+
+| Area | Polish |
+|------|--------|
+| Fleet toolbar | `grid place-items: center` on icon-only buttons; labels sr-only; `translateY(0.5px)` optical icon nudge |
+| Optics | Canonical lens: subtle root inset rim + `::after` top highlight; shell softer shadow; specular/sheen +0.02 |
+| Vehicle plate | `vehicleMapCallout` lens HUD projected above marker via `map.project()` — replaces CSS `sq-map-marker-callout` |
+| Odometer | Integer-only `Math.round` + `de-DE` grouping in bottom HUD tile |
+| Vehicle tiles | Radius 17px; tile optics slightly richer; odometer tile max-width tuned |
 
 ---
 

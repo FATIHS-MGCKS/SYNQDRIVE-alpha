@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'liquid-glass-map-hud-final-polish-v49297-2026-07-09',
+    version: '4.9.297',
+    title: 'V4.9.297 — L3 Map HUD final polish (centering, plate lens, odometer)',
+    summary: [
+      'Fleet toolbar buttons: grid place-items center, icon-only sr-only labels, optical icon nudge; legend trigger grid-centered.',
+      'Minimal optics polish: canonical lens rim/inset highlight, softer shell shadow, slight specular/sheen bump (no blur increase).',
+      'Vehicle plate: `vehicleMapCallout` LiquidGlassLens HUD projected above marker (replaces CSS sq-map-marker-callout).',
+      'Odometer HUD: integer-only display (`Math.round` + de-DE grouping); vehicleHudTile radius 17px + subtle tile optics.',
+    ],
+    reason:
+      'Final Map HUD polish — fleet icons slightly off-center, plate still CSS callout, odometer decimals noisy, boxes needed subtle premium rim.',
+    previousBehavior:
+      'Toolbar flex-column with visible labels on desktop; DOM marker callout for plate; odometer toLocaleString with decimals; 16px tile radius.',
+    details:
+      'Visual-only L3 polish. LIQUID_GLASS_SYSTEM.md Phase 16. No business logic or material architecture changes.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-09T20:15:00.000Z',
+  },
+  {
     id: 'liquid-glass-material-content-split-v49296-2026-07-09',
     version: '4.9.296',
     title: 'V4.9.296 — L3 material/content split (crisp Map HUD overlay)',

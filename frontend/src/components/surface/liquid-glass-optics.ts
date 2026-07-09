@@ -16,19 +16,19 @@ const INTENSITY_SCALE: Record<LiquidGlassIntensity, number> = {
  */
 export const CANONICAL_SMALL_LENS_OPTICS: Partial<GlassOptics> = {
   curvature: 0,
-  frost: 0.04,
+  frost: 0.042,
   brightness: 0,
   glow: 0,
   glowSpread: 0,
-  saturate: 1.04,
-  strength: 0.022,
-  depth: 0.06,
+  saturate: 1.045,
+  strength: 0.023,
+  depth: 0.064,
   dispersion: 0.004,
   bend: 0.035,
   bendWidth: 0.05,
-  specular: 0.22,
-  sheen: 0.12,
-  sheenWidth: 0.85,
+  specular: 0.24,
+  sheen: 0.14,
+  sheenWidth: 0.86,
 };
 
 /** Safari/iOS — frost + rim only; minimal bend/dispersion (no Chrome-style live bending). */
@@ -58,7 +58,12 @@ const LENS_OPTICS: Partial<Record<LiquidGlassLensVariant, Partial<GlassOptics>>>
     strength: 0.02,
     depth: 0.055,
   },
-  vehicleHudTile: CANONICAL_SMALL_LENS_OPTICS,
+  vehicleHudTile: {
+    ...CANONICAL_SMALL_LENS_OPTICS,
+    depth: 0.066,
+    specular: 0.245,
+    sheen: 0.145,
+  },
   vehicleHudBadge: {
     ...CANONICAL_SMALL_LENS_OPTICS,
     strength: 0.018,
