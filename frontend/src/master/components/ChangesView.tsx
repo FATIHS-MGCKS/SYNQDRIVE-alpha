@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-detail-liquid-glass-fix-v49287-2026-07-09',
+    version: '4.9.287',
+    title: 'V4.9.287 — Vehicle Detail Map Liquid Glass Stabilization',
+    summary: [
+      'Neue Vehicle-Varianten: vehicleHudBadge, vehicleMapCallout — getrennt von Fleet-Optics/Tokens.',
+      '--map-glass-vehicle-* Tokens (Light: weniger weiß/blockig; Dark: transparentere Tiles, weicher Stack).',
+      'HUD kompakter: min-height 58–68px, 12px Radius, intensity subtle; horizontal unten mit safe-area-inset.',
+      'vehicleHudStack layout-only ohne sichtbare Stack-Kante; Liquid primär auf einzelnen Tiles.',
+      'LiveMapOverview: Adresse/Operator-Hints via vehicleHudBadge; Kennzeichen-Callout --vehicle Modifier.',
+      'Content-Layering unverändert scharf; Fleet Map unberührt.',
+    ],
+    reason:
+      'Vehicle Detail HUD nach Spike zu dominant/blockig; Tiles verdeckten Marker; Light Mode zu weißlich; Dark Stack-Kante zu hart.',
+    previousBehavior:
+      'Große Pill-Tiles (76px+, fleet-tile-bg), medium intensity, HUD zentral unten ohne Safe-Area; Badges nur CSS.',
+    details:
+      'Kein CSS-only Rollback; keine Fleet/L1/L2/Card/Business-Änderungen. vehicle-detail-map-hud Klasse für Mobile Safari.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-09T09:00:00.000Z',
+  },
+  {
     id: 'fleet-map-liquid-glass-fix-v49286-2026-07-09',
     version: '4.9.286',
     title: 'V4.9.286 — Fleet Map Liquid Glass Library Fix',
