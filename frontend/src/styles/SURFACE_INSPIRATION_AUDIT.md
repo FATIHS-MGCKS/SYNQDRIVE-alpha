@@ -539,6 +539,312 @@ Phased plan (extends `LIQUID_GLASS_SYSTEM.md` migration):
 
 ---
 
+## 14. Premium Solid / Elevated Cards (L0 / L1) — Inspiration
+
+> **Not glass. Not liquid.** Opaque SaaS surfaces with depth from gradient, border, inset highlight, and shadow — the default material for SynqDrive product UI.
+
+### 14.1 What “premium solid” means
+
+Premium solid cards achieve quality through **material cues**, not translucency:
+
+| Technique | Purpose | SynqDrive status |
+|-----------|---------|------------------|
+| Subtle surface gradient (2–4% shift) | Break flat `#card` monotony | Partial — `dashboardKpiVisual`, status tints |
+| Inset top highlight | Simulates light from above | ✅ `.sq-card` inset shadow |
+| Inset bottom catch | Grounds edge | ✅ `.sq-card` / L2 only on bottom — L1 uses top only |
+| Ambient shadow stack | Float on canvas | ✅ `--shadow-xs` → `--shadow-md` |
+| Fine hairline border | Crisp silhouette | ✅ `--border` |
+| Hover lift (`translateY(-1px)`) | Interactive affordance | ✅ `.sq-card-elevated` |
+| Icon bubble (`sq-tone-*`) | Semantic icon housing | ✅ KPI tiles, admin views |
+| Header / body / footer split | Scan hierarchy | ✅ `DataCard`, shadcn `Card*` |
+| Status tint gradient (opaque) | Operational urgency | ✅ `getKpiCardSurfaceClass()` |
+
+**Anti-patterns from external “premium SaaS” demos:**
+
+| Demo pattern | Why reject for SynqDrive |
+|--------------|------------------------|
+| `backdrop-blur-2xl` bento cards (GoSnippets, Vercel clones) | Glass, not solid — wrong level |
+| Dark navy + neon gradient cards | Conflicts with graphite/charcoal dark V2 |
+| Heavy `shadow-2xl` colored glow | Too marketing; fleet ops need calm |
+| Rainbow status card backgrounds | Use semantic `--status-*-soft` only |
+| 3D perspective / glossy folds (tokyn) | Marketing-only; not data UI |
+
+---
+
+## 15. External SaaS Card Inspiration Analysis
+
+### 15.1 Source evaluation
+
+| Source | Type | Premium solid? | SynqDrive takeaway |
+|--------|------|----------------|-------------------|
+| [shadcn/ui Card](https://ui.shadcn.com/docs/components/card) | Component pattern | ✅ Opaque `bg-card`, `ring-1`, `--card-spacing` | **Align** — Header/Content/Footer composition; tokenized spacing |
+| [tokyn elevation.md](https://github.com/jshmllr/tokyn/blob/main/patterns/elevation.md) | Design patterns | ✅ Inset highlight + layered shadows | **Adopt concepts** — elevation scale maps to `--shadow-*` |
+| [tokyn surface-detailing.md](https://github.com/jshmllr/tokyn/blob/main/docs/02-surface-detailing.md) | Dark UI detailing | ✅ Inner highlight on dark cards | **Adopt for dark L1** — `inset 0 0 0 1px rgba(255,255,255,0.05)` optional |
+| [rvanbaalen SaaS gist](https://gist.github.com/rvanbaalen/4ec7551c7793c44b2630625922c67190) | Data-dense dashboard | ✅ Minimal shadow, border-first | **Align** — density + typography hierarchy |
+| [Stratum / Aura framework](https://www.aura.build/design-systems/stratum-system-coordination-framework) | Hardware-inspired | ⚠️ Double-bezel + gradient border shell | **Cherry-pick** — inset highlight only; skip gradient border shell |
+| [Linear / Vercel / Framer clones](https://gosnippets.com/tailwind/glassmorphism-bento-grid-saas-dashboard-card) | Marketing glass bento | ❌ Glassmorphism | **Reject** — wrong surface level |
+| Stripe Dashboard, Notion, Attio (industry reference) | Production SaaS | ✅ Flat/near-flat cards, strong spacing | **Align** — calm surfaces, status via chips not card glow |
+
+### 15.2 shadcn / Radix / Tailwind patterns
+
+**shadcn Card (SynqDrive `components/ui/card.tsx`):**
+
+- `bg-card` + `border-border` + `shadow-[var(--shadow-xs)]` + `rounded-xl`
+- Composable: `CardHeader`, `CardTitle`, `CardDescription`, `CardAction`, `CardContent`, `CardFooter`
+- New `--card-spacing` variable for consistent inset
+
+**SynqDrive pattern barrel (`DataCard`, `MetricCard`):**
+
+- Uses `.sq-card` / `.sq-card-elevated` instead of raw shadcn Card
+- `DataCard`: header border-b, optional footer border-t, `flush` for tables
+- `MetricCard`: label + mono tabular value + optional `StatusDot` + icon
+
+**Recommendation:** Keep pattern barrel as primary API. shadcn Card for simple forms/wizards only. Converge spacing toward `--card-spacing` in a future pass.
+
+### 15.3 Subtle gradients (L1 only)
+
+| Use case | Gradient style | Example in codebase |
+|----------|----------------|---------------------|
+| Neutral premium | `linear-gradient(180deg, card+2% white, card)` | Proposed `.sq-card-premium` |
+| Status KPI (warning/critical) | `color-mix` 2–7% status into opaque base | `getKpiCardSurfaceClass()` |
+| Ready / positive KPI | Icon tile tint only; card stays neutral | `getKpiIconTileClass()` |
+| Value text emphasis | `bg-clip-text` gradient on numbers | `getKpiValueGradientClass()` |
+
+**Rules:**
+
+- Gradient opacity on card **body** ≤ 7% status mix — must stay readable.
+- Never gradient + `backdrop-filter` on same node.
+- Dark mode: prefer **lighter top edge** via inset highlight, not bright gradient fills.
+
+### 15.4 Border, inset highlight, shadow stacks
+
+**Current `.sq-card` (baseline → premium foundation):**
+
+```css
+background: var(--card);
+border: 1px solid var(--border);
+box-shadow:
+  inset 0 1px 0 color-mix(in srgb, var(--card) 88%, white 12%),
+  var(--shadow-xs);
+```
+
+**Premium solid enhancement (proposed `.sq-card-premium`):**
+
+```css
+background:
+  linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--card) 96%, white 4%) 0%,
+    var(--card) 100%
+  );
+border: 1px solid var(--border);
+box-shadow:
+  inset 0 1px 0 color-mix(in srgb, var(--card) 82%, white 18%),
+  inset 0 -1px 0 color-mix(in srgb, var(--card) 94%, black 6%),
+  var(--shadow-sm);
+```
+
+**Dark mode adjustment:**
+
+```css
+.dark .sq-card-premium {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--card) 92%, white 8%) 0%,
+      var(--card) 100%
+    );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+    var(--shadow-sm);
+}
+```
+
+### 15.5 Hover / pressed states
+
+| State | L1 premium static | L1 elevated (interactive) |
+|-------|-------------------|----------------------------|
+| Default | `--shadow-sm` | `--shadow-sm` |
+| Hover | — | `translateY(-1px)`, `--shadow-hover`, border toward foreground |
+| Active / pressed | — | `translateY(0)`, `--shadow-xs`, `border-color` hold |
+| Focus | `outline` via `--ring` on focusable child | Same |
+
+Use `.sq-press` / `.sq-3d-btn` for **buttons inside** cards — not on the card root unless the whole card is clickable (`sq-card-elevated`).
+
+### 15.6 Icon bubble patterns
+
+| Pattern | Class / helper | Use |
+|---------|----------------|-----|
+| Semantic soft tile | `sq-tone-success`, `sq-tone-critical`, … | Admin entity icons |
+| KPI icon tile | `getKpiIconTileClass(slice)` | Dashboard operational KPIs |
+| Muted icon in header | `text-muted-foreground/80` on `MetricCard` | Non-status metrics |
+
+**Rules:**
+
+- Icon bubble = **opaque** `color-mix(status 10%, transparent)` or `sq-tone-*` — not glass.
+- Size: 28–36px for KPI; 32px standard admin tiles.
+- Do not stack icon bubble + full-card status gradient unless card is in warning/critical state.
+
+### 15.7 Section header patterns
+
+| Pattern | Component | Surface |
+|---------|-----------|---------|
+| Page-level | `PageHeader` | No card — title on canvas |
+| Section within page | `SectionHeader` (patterns) | No card — divider or spacing |
+| Card-internal | `DataCard` title row | `border-b border-border/70` |
+| shadcn | `CardHeader` + `CardAction` | Inside card inset |
+
+**Rule:** Section headers sit **on canvas or inside L0/L1 card** — never on L2 frosted strip for data sections.
+
+### 15.8 Light / dark mode & data-heavy readability
+
+| Concern | Light | Dark |
+|---------|-------|------|
+| Card base | Near-solid white `#fff` at 86% in token — **prefer opaque for L1 premium** | Solid `#121214` |
+| Border visibility | `rgba(17,24,39,0.075)` | `rgba(255,255,255,0.075)` |
+| Muted text | `#7C8490` on card — verify 4.5:1 | `#8F98A6` |
+| Status tint on card | Max 7% status mix | Max 10% status mix |
+| Shadow strength | Soft graphite | Stronger black shadows |
+
+**Data-heavy surfaces (tables in cards):**
+
+- Use L0 `DataCard flush` — no gradient on card body.
+- Row hover: `bg-muted/50` or `sq-table-row` — not glass.
+- Keep numeric columns `tabular-nums`.
+
+---
+
+## 16. SynqDrive L1 Premium Solid Recipe
+
+**Contract name:** `surface-premium` (future `.sq-card-premium`)
+
+### Properties
+
+| Property | Value |
+|----------|-------|
+| `backdrop-filter` | **none** |
+| Transparency | **none** on surface (opaque `--card`) |
+| Liquid effects | **forbidden** |
+| Surface gradient | Subtle 180deg, ≤ 4% lightness shift |
+| Border | `1px solid var(--border)` |
+| Inset top highlight | `inset 0 1px 0` color-mix toward white (light) / `rgba(255,255,255,0.06)` (dark) |
+| Inset bottom catch | Optional subtle `inset 0 -1px 0` (premium only — not on bare L0) |
+| Ambient shadow | `var(--shadow-sm)` default; `var(--shadow-md)` for featured KPI grid |
+| Hover lift | Only with `.sq-card-elevated` / `interactive` |
+| Icon bubble | Optional — `sq-tone-*` or domain helper |
+| Structure | Header (`border-b`) · body (`p-4`) · footer (`border-t`) |
+
+### Proposed CSS (documentation — not yet in `theme.css`)
+
+```css
+.sq-card-premium {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--card) 96%, white 4%) 0%,
+      var(--card) 100%
+    );
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 2px);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--card) 82%, white 18%),
+    inset 0 -1px 0 color-mix(in srgb, var(--card) 96%, black 4%),
+    var(--shadow-sm);
+}
+
+.sq-card-premium.sq-card-elevated:hover,
+.sq-card-elevated.sq-card-premium:hover {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--card) 85%, white 15%),
+    inset 0 -1px 0 color-mix(in srgb, var(--card) 96%, black 4%),
+    var(--shadow-hover);
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--border) 72%, var(--foreground) 28%);
+}
+```
+
+### Status variant (opaque — from `dashboardKpiVisual`)
+
+```css
+/* Warning example — stays opaque */
+.sq-card-premium--warning {
+  border-color: color-mix(in srgb, var(--status-warning) 30%, var(--border));
+  background: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--status-warning) 7%, var(--card)),
+    color-mix(in srgb, var(--status-warning) 2%, var(--card))
+  );
+}
+```
+
+### Domain-specific compact tiles
+
+`booking-kpi-tile`, `fleet-health-kpi-tile` = **L1 premium compact** — dense padding, no shadow stack, border-only depth. Do not add blur.
+
+---
+
+## 17. Surface Level Decision Matrix (Complete)
+
+| Surface / context | Level | Class / pattern |
+|-------------------|-------|-----------------|
+| Table outer wrapper, flush data panel | **L0** | `.sq-card` + `DataCard flush` |
+| Settings form section, admin read-only box | **L0** | `.sq-card` or plain `bg-card` |
+| Dashboard KPI card | **L1 premium** | `MetricCard` / `dashboardKpiVisual` |
+| Customer / vehicle summary card | **L1 premium** | `DataCard` / domain card |
+| Health module summary box | **L1 premium** | `DataCard` + status chips |
+| Booking operative KPI strip | **L1 premium compact** | `.booking-kpi-tile` |
+| Clickable fleet command row (card mode) | **L1 elevated** | `.sq-card-elevated` |
+| Dialog / drawer content | **L1 elevated** | `.sq-overlay`, `bg-popover` |
+| Login hero panel | **L2 frosted** | `.sq-glass` |
+| Sticky tab bar over content | **L2 frosted** or **L0** | `.sq-glass` if blur justified |
+| Detail drawer footer chrome | **L2 frosted** | `.sq-glass` (migrate from inline blur) |
+| Mobile sidebar scrim | **L4** + optional L2 edge | `.sq-backdrop` |
+| Map control cluster | **L3 liquid** | `.sq-map-glass-controls` |
+| Map metric pill / callout | **L3 liquid** | `.sq-map-liquid-*` |
+
+### When L0 is enough
+
+- Container exists only to group content — no promotional emphasis.
+- Inner content is a **table, list, or form** where card chrome adds noise.
+- Nested inside another L1 card (avoid card-in-card stacking).
+- High-frequency refresh surfaces (live logs) — minimize paint cost.
+- Dense admin grids with 6+ cards visible.
+
+### When L1 premium is used
+
+- Card carries **semantic weight** — KPI, health score, booking status.
+- Card is a **primary navigation target** (vehicle/customer identity).
+- Card needs **icon bubble + header hierarchy**.
+- Operational status tint helps scanning (warning/critical) — opaque gradient only.
+- Featured dashboard or fleet command summary.
+
+### When L2 frosted is allowed
+
+- **Small** chrome with **no heavy text body** (login hero, footer bar).
+- Translucency serves **context** (see page behind sticky tab).
+- Never for KPI grids, table rows, or health module bodies.
+
+### When L3 liquid is allowed
+
+- **Map or imagery** underneath.
+- **Small absolute HUD** footprint.
+- Never for product content cards.
+
+---
+
+## 18. Premium Solid — Next Implementation Phase
+
+| Phase | Action | Notes |
+|-------|--------|-------|
+| **1 — Docs** | L1 premium defined in this audit + `LIQUID_GLASS_SYSTEM.md` | ✅ |
+| **2 — CSS alias** | Add `.sq-card-premium` to `theme.css` as opt-in | No migration forced |
+| **3 — Pattern adoption** | `MetricCard` / featured `DataCard` opt into premium class | Surgical |
+| **4 — KPI consolidation** | Align `booking-kpi-tile` inset with premium tokens | Optional |
+| **5 — Never** | Blur/transparency on L1; glass libraries for cards | — |
+
+---
+
 ## References
 
 ### Liquid Glass (L3)
@@ -565,6 +871,15 @@ Phased plan (extends `LIQUID_GLASS_SYSTEM.md` migration):
 - https://developer.mozilla.org/en-US/docs/Web/CSS/filter
 - https://caniuse.com/css-backdrop-filter
 
+### Premium Solid (L0 / L1)
+
+- `frontend/src/components/patterns/data-card.tsx` — `DataCard`, `MetricCard`
+- `frontend/src/rental/components/dashboard/dashboardKpiVisual.ts` — status gradients
+- `frontend/src/components/ui/card.tsx` — shadcn Card composition
+- https://ui.shadcn.com/docs/components/card
+- https://github.com/jshmllr/tokyn/blob/main/patterns/elevation.md
+- https://github.com/jshmllr/tokyn/blob/main/docs/02-surface-detailing.md
+
 ### Internal
 
 - `frontend/src/styles/LIQUID_GLASS_SYSTEM.md`
@@ -573,4 +888,4 @@ Phased plan (extends `LIQUID_GLASS_SYSTEM.md` migration):
 
 ---
 
-*V4.9.273 — inspiration & technique audit (research only, no implementation).*
+*V4.9.274 — premium solid / L1 inspiration audit added (research only, no implementation).*

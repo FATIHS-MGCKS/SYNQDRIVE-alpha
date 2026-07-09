@@ -47,7 +47,7 @@ L4 overlay-scrim     ▓▓▓▓  dimmed backdrop; content stays L0/L1
 
 | Name | Sounds like | Actually is |
 |------|-------------|-------------|
-| `sq-card` | “glass card” in changelog copy | **L0 solid** — uses `--card`, no blur |
+| `sq-card` | “glass card” in changelog copy | **L0 baseline / L1 premium** — uses `--card`, no blur |
 | `sq-overlay` | glass overlay | **L1 solid** popover (`--popover`) — not translucent |
 | `sq-glass` | liquid | **L2 frosted** only |
 | `sq-map-liquid-*` | marketing “liquid” | **L3 true liquid** — only valid use of the term |
@@ -58,29 +58,53 @@ L4 overlay-scrim     ▓▓▓▓  dimmed backdrop; content stays L0/L1
 
 ### L0 — `surface-solid`
 
-**Role:** Default product surface. Readable, scroll-safe, no performance cost from blur.
+**Role:** Baseline opaque surface. Maximum readability, zero decoration cost. For dense data and structural grouping.
 
 | Property | Rule |
 |----------|------|
-| Background | `var(--card)` |
+| Background | `var(--card)` — **opaque** in practice (dark `#121214`; light may use near-solid card token) |
 | Blur | **None** |
 | Border / shadow | `var(--border)`, `var(--shadow-xs)` |
-| Use for | Dashboard KPIs, admin tables, bookings, invoices, health modules, detail drawer **bodies**, settings forms, data tables |
+| Gradient | **None** (flat fill) |
+| Use for | Table containers, admin panels, detail section bodies, settings forms, nested list wrappers, flush `DataCard` with `flush` |
 
-**Canonical classes:** `.sq-card`, `DataCard` (non-interactive), shadcn `bg-card` surfaces.
+**Canonical classes:** `.sq-card` (baseline), shadcn `Card` with `bg-card`, table outer shells.
+
+**When L0 is enough:** See §2.1 decision matrix below.
 
 ---
 
-### L1 — `surface-elevated`
+### L1 — `surface-premium` (Premium Solid)
 
-**Role:** Same material as L0 with interaction affordance (lift, stronger shadow).
+**Role:** High-quality **normal** SaaS card — tactile depth without transparency or blur. **Not glass. Not liquid.**
 
 | Property | Rule |
 |----------|------|
-| Background | `var(--card)` |
+| Background | Opaque `var(--card)` + **subtle surface gradient** (2–4% lightness shift) |
 | Blur | **None** |
-| Interaction | Hover translateY, `--shadow-hover` |
-| Use for | Clickable cards, list rows, modal/dialog **content**, dropdown panels (`sq-overlay`), drawer panels |
+| Border | Fine `var(--border)` hairline |
+| Shadow | Inset top highlight + ambient `--shadow-sm` / `--shadow-md` |
+| Pseudo-layers | **Inset box-shadow only** — no `::before` shine stack (that is L3) |
+| Interaction | Optional hover lift → use `.sq-card-elevated` or `DataCard interactive` |
+| Use for | Dashboard KPIs, customer/vehicle/booking cards, health modules, admin summary cards, fleet command rows (when card-wrapped), featured `MetricCard` / `DataCard` |
+
+**Canonical classes (today):** `.sq-card` + domain tiles (`booking-kpi-tile`, `fleet-health-kpi-tile`) + `dashboardKpiVisual` status gradients + `MetricCard` / `DataCard`.
+
+**Future alias (migration phase 2):** `.surface-premium` / `.sq-card-premium` — consolidated recipe (see `SURFACE_INSPIRATION_AUDIT.md` §14).
+
+**Icon bubble:** `sq-tone-*` soft tiles or `getKpiIconTileClass()` — semantic tint, not glass.
+
+---
+
+### L1 — `surface-elevated` (Interactive Premium Solid)
+
+**Role:** Same material as L1 premium with **interaction affordance** (lift, stronger shadow, border emphasis).
+
+| Property | Rule |
+|----------|------|
+| Background | Same as L1 premium — opaque, no blur |
+| Interaction | Hover `translateY(-1px)`, `--shadow-hover`, border `color-mix` toward foreground |
+| Use for | Clickable KPI cards, fleet command rows (navigable), customer/vehicle cards with `onClick`, modal/dialog **content**, dropdown panels (`sq-overlay`) |
 
 **Canonical classes:** `.sq-card-elevated`, `DataCard` with `interactive`, `.sq-overlay`, Sheet/Dialog content (`bg-popover`).
 
@@ -154,12 +178,34 @@ L4 overlay-scrim     ▓▓▓▓  dimmed backdrop; content stays L0/L1
 
 ---
 
+### 2.1 When to use L0 / L1 premium / L2 / L3
+
+| Question | → Level |
+|----------|---------|
+| Dense table wrapper, settings section, plain grouping? | **L0** `surface-solid` |
+| Featured KPI, health module, vehicle/customer card, admin summary? | **L1** `surface-premium` |
+| Same card but clickable / navigable? | **L1** `surface-elevated` (interactive) |
+| Login hero, sticky tab chrome, drawer footer, mobile scrim edge? | **L2** `surface-frosted` |
+| Small HUD floating over map imagery? | **L3** `surface-liquid` |
+| Modal backdrop? | **L4** `overlay-scrim` |
+
+**Hard rules:**
+
+- If the surface **scrolls with lots of text/rows** → L0 (not L2, not L3).
+- If there is **no map/imagery underneath** → L3 forbidden.
+- If the goal is **readability on data** → L0 or L1 premium (opaque), never frosted full panel.
+- **Premium ≠ glass.** Gradients and inset highlights on opaque `--card` are L1, not L2.
+
+Full inspiration analysis: `SURFACE_INSPIRATION_AUDIT.md` §14–17.
+
+---
+
 ## 3. Class → level mapping (current codebase)
 
 | Class / pattern | Level | Notes |
 |-----------------|-------|-------|
-| `.sq-card` | **L0** | Solid card; comment “soft glass” in history refers to inset highlight only |
-| `.sq-card-elevated` | **L1** | Solid + hover lift |
+| `.sq-card` | **L0 / L1 premium** | Baseline or premium solid; inset highlight only |
+| `.sq-card-elevated` | **L1 interactive** | Premium solid + hover lift |
 | `.sq-glass` | **L2** | Frosted glass |
 | `.glass-card` | **L2** (deprecated) | Alias of `.sq-glass` — **no TSX usage**; do not use in new code |
 | `.glass-panel` | **L2** (deprecated) | `.sq-glass` + bottom catch — **no TSX usage** |
@@ -183,9 +229,9 @@ L4 overlay-scrim     ▓▓▓▓  dimmed backdrop; content stays L0/L1
 |------|-----------|
 | `.sq-chip-*`, `.sq-tone-*` | Status tints — not surfaces |
 | `.sq-nav-rail` | Navigation accent — not glass |
-| `.booking-kpi-tile` | **L0** compact tile (near-solid, no blur) |
+| `.booking-kpi-tile` | **L1 premium** compact tile (opaque, subtle border) |
 | `.trips-summary-bar__inner` | **L2-like** ad-hoc (blur 8px) — migrate to tokenized frosted or L0 |
-| `dashboardKpiVisual` gradients | **L0** tinted cards — not glass despite changelog “glass KPI” language |
+| `dashboardKpiVisual` gradients | **L1 premium** tinted cards — status gradient on opaque base, not glass |
 | `OperatorGlassCard` | **L2 ad-hoc** (`bg-card/80 backdrop-blur-md`) — deprecated pattern |
 
 ---
