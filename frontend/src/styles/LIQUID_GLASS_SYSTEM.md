@@ -471,7 +471,28 @@ Before adding or changing a surface, answer:
 
 ---
 
-*Last updated: 2026-07-09 — V4.9.293 L3 Map HUD final polish pass.*
+*Last updated: 2026-07-09 — V4.9.294 Active state root ring fix.*
+
+---
+
+## Phase 13 — Active state on lens root (V4.9.294)
+
+**Problem:** Active/selected state on child buttons (`__control-btn--active`) applied dark/highlight fills inside the Glass lens — looked black/heavy and broke liquid material.
+
+**Fix:**
+
+| Rule | Implementation |
+|------|----------------|
+| Active on root | `LiquidGlassLens active` → `data-active="true"` on Glass/shell root |
+| Child transparent | `__control-btn`, `__panel-action`, `__legend-trigger` — `background: transparent` always |
+| Selected ring | Root `box-shadow`: subtle `--ring` + highlight inset, not dark fill |
+| Hover | `:has(button:hover)` on lens root — ring only |
+| Icon emphasis | `__control-btn__icon--selected` — opacity/stroke, not background |
+| Content crisp | `__content`: `filter: none`, `opacity: 1`, `text-shadow: none`, antialiased |
+
+**Canonical family unchanged:** `fleetToolbarButton` optics/tint = reference for all small lenses including `vehicleHudTile` (larger geometry, same material).
+
+**Active state must never use:** dark foreground fill, `bg-black`, heavy inset shadow on child.
 
 ---
 

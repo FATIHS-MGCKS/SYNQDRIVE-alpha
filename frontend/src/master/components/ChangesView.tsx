@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'liquid-glass-active-root-v49294-2026-07-09',
+    version: '4.9.294',
+    title: 'V4.9.294 — L3 active state root ring (no dark child fill)',
+    summary: [
+      'Active/selected state moved from child (__control-btn--active) to lens root (data-active on LiquidGlassLens).',
+      'Child buttons/actions/triggers stay transparent — no dark/highlight fill inside Glass.',
+      'Selected ring via root box-shadow (--ring + highlight inset); hover via :has() on lens root.',
+      'fleetToolbarButton remains canonical optics/tint; vehicleHudTile uses same material (larger geometry).',
+      'Content clarity: __content filter/opacity/text-shadow rules; tile values font-weight 600; mobile tile/mapbox spacing.',
+    ],
+    reason:
+      'Active Fleet toolbar button looked black/heavy because selected state painted a fill inside the lens child.',
+    previousBehavior:
+      '__control-btn--active applied highlight/foreground background + inset ring on child inside Glass.',
+    details:
+      'Visual-only L3 pass. LIQUID_GLASS_SYSTEM.md Phase 13. No architecture/business/Mapbox logic changes.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-09T16:55:00.000Z',
+  },
+  {
     id: 'liquid-glass-final-polish-v49293-2026-07-09',
     version: '4.9.293',
     title: 'V4.9.293 — L3 Map HUD final polish (liquid glass)',

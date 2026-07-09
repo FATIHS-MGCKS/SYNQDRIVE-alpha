@@ -74,6 +74,7 @@ export function MapGlassControls({
         variant="fleetToolbarButton"
         renderMode="lens"
         intensity="subtle"
+        active={showStations}
         className="pointer-events-auto"
       >
         <button
@@ -82,12 +83,15 @@ export function MapGlassControls({
           aria-pressed={showStations}
           aria-label={showStations ? `${stationsLabel} ausblenden` : `${stationsLabel} einblenden`}
           title={stationsLabel}
-          className={cn(
-            'liquid-glass-lens__control-btn',
-            showStations && 'liquid-glass-lens__control-btn--active',
-          )}
+          className="liquid-glass-lens__control-btn"
         >
-          <Layers className="liquid-glass-lens__control-btn__icon" aria-hidden />
+          <Layers
+            className={cn(
+              'liquid-glass-lens__control-btn__icon',
+              showStations && 'liquid-glass-lens__control-btn__icon--selected',
+            )}
+            aria-hidden
+          />
           <span className="liquid-glass-lens__control-btn__label">{stationsLabel}</span>
         </button>
       </LiquidGlassLens>

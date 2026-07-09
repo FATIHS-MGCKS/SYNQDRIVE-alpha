@@ -40,15 +40,7 @@ const LENS_OPTICS: Partial<Record<LiquidGlassLensVariant, Partial<GlassOptics>>>
     strength: 0.02,
     depth: 0.055,
   },
-  vehicleHudTile: {
-    ...CANONICAL_SMALL_LENS_OPTICS,
-    strength: 0.026,
-    depth: 0.068,
-    frost: 0.055,
-    specular: 0.26,
-    sheen: 0.14,
-    sheenWidth: 0.9,
-  },
+  vehicleHudTile: CANONICAL_SMALL_LENS_OPTICS,
   vehicleHudBadge: {
     ...CANONICAL_SMALL_LENS_OPTICS,
     strength: 0.018,

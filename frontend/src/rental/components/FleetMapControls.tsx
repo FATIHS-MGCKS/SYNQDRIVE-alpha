@@ -5,6 +5,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { LiquidGlassLens } from '../../components/surface';
+import { cn } from '../../components/ui/utils';
 import { MapGlassControls } from '../../components/map/MapGlassControls';
 import {
   FLEET_MAP_LEGEND_ITEMS,
@@ -76,8 +77,11 @@ export function FleetMapControls({
               disabled={loading}
               className="liquid-glass-lens__panel-action"
             >
-              <RefreshCw className={`w-3 h-3 shrink-0 ${loading ? 'animate-spin' : ''}`} />
-              <span className="text-[9.5px] font-semibold">Refresh now</span>
+              <RefreshCw
+                className={cn('liquid-glass-lens__panel-action__icon shrink-0', loading && 'animate-spin')}
+                aria-hidden
+              />
+              <span className="liquid-glass-lens__panel-action__label">Refresh now</span>
             </button>
           </LiquidGlassLens>
         </LiquidGlassLens>
@@ -122,6 +126,7 @@ export function FleetMapControls({
             variant="fleetToolbarButton"
             renderMode="lens"
             intensity="subtle"
+            active={legendOpen}
             className="liquid-glass-lens--legendTrigger pointer-events-auto"
           >
             <button

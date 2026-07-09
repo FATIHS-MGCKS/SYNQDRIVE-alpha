@@ -37,6 +37,8 @@ export interface LiquidGlassLensProps extends HTMLAttributes<HTMLDivElement> {
   mapBackdrop?: ReactNode;
   /** Bleed fill for refract copy edges. */
   behind?: string;
+  /** Selected/pressed — subtle ring on lens root; child stays transparent. */
+  active?: boolean;
 }
 
 function CssLiquidFallback({
@@ -194,6 +196,7 @@ export function LiquidGlassLens({
   disabled = false,
   mapBackdrop,
   behind,
+  active = false,
   ...rest
 }: LiquidGlassLensProps) {
   const mode = useLiquidGlassLensMode(disabled);
@@ -207,7 +210,13 @@ export function LiquidGlassLens({
 
   if (!mode.useLibraryLens) {
     return (
-      <CssLiquidFallback className={className} fallbackClass={fallbackClass} variant={variant} {...rest}>
+      <CssLiquidFallback
+        className={className}
+        fallbackClass={fallbackClass}
+        variant={variant}
+        data-active={active ? 'true' : undefined}
+        {...rest}
+      >
         {children}
       </CssLiquidFallback>
     );
@@ -223,6 +232,7 @@ export function LiquidGlassLens({
       mapBackdrop={mapBackdrop}
       behind={behind}
       className={className}
+      data-active={active ? 'true' : undefined}
       {...rest}
     >
       {children}

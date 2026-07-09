@@ -312,9 +312,9 @@ export function LiveMapOverview({
                 operatorHintSub && 'liquid-glass-lens__hud-badge--wrap',
               )}
             >
-              <p className="text-[9px] font-semibold leading-snug text-foreground">{operatorHint}</p>
+              <p className="liquid-glass-lens__hud-badge__text">{operatorHint}</p>
               {operatorHintSub && (
-                <p className="text-[8px] leading-snug text-muted-foreground">{operatorHintSub}</p>
+                <p className="liquid-glass-lens__hud-badge__subtext">{operatorHintSub}</p>
               )}
             </div>
           </LiquidGlassLens>
@@ -329,13 +329,13 @@ export function LiveMapOverview({
             className="pointer-events-none"
           >
             <div className="liquid-glass-lens__hud-badge flex-col items-start gap-0 liquid-glass-lens__hud-badge--wrap">
-              <p className="truncate text-[8px] font-semibold leading-tight text-foreground w-full">
+              <p className="liquid-glass-lens__hud-badge__text truncate w-full">
                 {currentAddress.street
                   ? `${currentAddress.street}${currentAddress.houseNumber ? ` ${currentAddress.houseNumber}` : ''}`
                   : (currentAddress.city ?? '—')}
               </p>
               {currentAddress.street && currentAddress.city && (
-                <p className="truncate text-[9px] leading-tight text-muted-foreground w-full">
+                <p className="liquid-glass-lens__hud-badge__subtext truncate w-full">
                   {currentAddress.city}
                 </p>
               )}

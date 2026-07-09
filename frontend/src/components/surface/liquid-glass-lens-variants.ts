@@ -188,23 +188,15 @@ export function resolveLensTintStyle(options: {
   const { variant } = options;
 
   if (isCanonicalSmallLensVariant(variant)) {
-    if (variant === 'vehicleHudTile') {
-      return {
-        background:
-          'color-mix(in srgb, var(--map-glass-fleet-tile-bg) 88%, var(--map-glass-highlight) 12%)',
-      };
-    }
-    if (variant === 'vehicleHudBadge' || variant === 'fleetMiniPill' || variant === 'statusPill') {
-      return {
-        background:
-          'color-mix(in srgb, var(--map-glass-fleet-tile-bg) 88%, var(--map-glass-highlight) 12%)',
-      };
-    }
     if (variant === 'vehicleMapCallout' || variant === 'mapCallout') {
-      return { background: 'color-mix(in srgb, var(--map-glass-fleet-tile-bg) 88%, var(--map-glass-bg-panel) 12%)' };
+      return {
+        background:
+          'color-mix(in srgb, var(--map-glass-fleet-tile-bg) 88%, var(--map-glass-bg-panel) 12%)',
+      };
     }
     return {
-      background: 'color-mix(in srgb, var(--map-glass-fleet-tile-bg) 92%, var(--map-glass-highlight) 8%)',
+      background:
+        'color-mix(in srgb, var(--map-glass-fleet-tile-bg) 92%, var(--map-glass-highlight) 8%)',
     };
   }
 
