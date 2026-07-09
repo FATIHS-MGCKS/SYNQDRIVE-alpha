@@ -4,6 +4,7 @@ import {
   MapPin,
   RefreshCw,
 } from 'lucide-react';
+import { LiquidGlassLens } from '../../components/surface';
 import { MapGlassControls } from '../../components/map/MapGlassControls';
 import {
   FLEET_MAP_LEGEND_ITEMS,
@@ -46,7 +47,11 @@ export function FleetMapControls({
     <>
       {/* Top-right: status + refresh */}
       <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-2 pointer-events-none">
-        <div className="sq-map-liquid-glass sq-map-liquid-glass--panel pointer-events-auto px-3 py-2 min-w-[9.5rem]">
+        <LiquidGlassLens
+          variant="panel"
+          intensity="medium"
+          className="pointer-events-auto px-3 py-2 min-w-[9.5rem]"
+        >
           <p className="text-[10px] font-semibold tracking-wide text-foreground/90">
             Fleet Map
           </p>
@@ -67,7 +72,7 @@ export function FleetMapControls({
             <RefreshCw className={`w-3 h-3 shrink-0 ${loading ? 'animate-spin' : ''}`} />
             <span className="text-[9.5px] font-semibold">Refresh now</span>
           </button>
-        </div>
+        </LiquidGlassLens>
       </div>
 
       {/* Top-left: map actions */}

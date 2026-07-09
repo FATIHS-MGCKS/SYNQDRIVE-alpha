@@ -35,7 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'surface-rollout-complete-v49284-2026-07-09',
+    id: 'liquid-glass-lens-spike-v49285-2026-07-09',
+    version: '4.9.285',
+    title: 'V4.9.285 — Liquid Glass Lens Spike (Map HUD, isoliert)',
+    summary: [
+      'Neu: components/surface/LiquidGlassLens.tsx — interner Wrapper hinter Feature Flag (VITE_ENABLE_LIQUID_GLASS_LENS).',
+      'Library: @samasante/liquid-glass@0.1.1 (MIT, ~49kB lazy chunk) — SVG feDisplacementMap / live-DOM refraction.',
+      'Fallbacks: CSS sq-map-liquid-* (Flag off), surface-frosted/solid (reduced transparency), lokaler SVG-Filter (Import-Fehler).',
+      'Test-Hooks: FleetMapControls Refresh Panel, MapGlassControls Toolbar, OverviewLiveMapCard Stats HUD.',
+      'useLiquidGlassLensMode: prefers-reduced-transparency + prefers-reduced-motion; keine L1/L2/Card-Migration.',
+    ],
+    reason:
+      'CSS-only L3 Map-HUD wirkt okay, aber nicht wie echtes Liquid Glass — kontrollierter Spike mit echter Displacement/Refraction-Technik.',
+    previousBehavior:
+      'Nur theme.css sq-map-liquid-* / backdrop-blur Pseudo-Layer; keine SVG-Displacement-Library.',
+    details:
+      'Default: Flag off → identisches CSS-Verhalten. Marker Callouts / Trip Overlays unverändert. Keine Business-Logik.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-09T07:00:00.000Z',
+  },
+  {
     version: '4.9.284',
     title: 'V4.9.284 — Surface Rollout Complete (App-weit L0–L2)',
     summary: [

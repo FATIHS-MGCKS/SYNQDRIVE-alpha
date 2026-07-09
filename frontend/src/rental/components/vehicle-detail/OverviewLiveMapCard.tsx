@@ -1,4 +1,5 @@
 import { Icon } from '../ui/Icon';
+import { LiquidGlassLens } from '../../../components/surface';
 import { useShallow } from 'zustand/react/shallow';
 import { LiveMapOverview } from '../LiveMapOverview';
 import type { VehicleData } from '../../data/vehicles';
@@ -130,7 +131,7 @@ export function OverviewLiveMapCard({
         )}
 
         <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center p-2.5 sm:p-3">
-          <div className="sq-map-liquid-hud sq-map-liquid-hud--stats">
+          <LiquidGlassLens variant="pill" intensity="subtle" className="pointer-events-none">
             <div className="sq-map-liquid-pill">
               <Icon name="circle" className={`h-3 w-3 ${stateColor}`} />
               <span className="text-[8px] font-semibold uppercase tracking-[0.08em] text-foreground/75">
@@ -163,7 +164,7 @@ export function OverviewLiveMapCard({
                 <span className="text-[8px] font-normal text-muted-foreground"> km</span>
               </span>
             </div>
-          </div>
+          </LiquidGlassLens>
         </div>
       </div>
     </div>

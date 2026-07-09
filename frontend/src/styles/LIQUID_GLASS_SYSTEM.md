@@ -362,6 +362,18 @@ Light/dark values: see `THEME_COLOR_CONTRACT.md` § Glass / Map glass.
 4. `customer-detail/customer-detail-ui.ts` (sticky chrome)
 5. Remaining `backdrop-blur` grep hits (batch by feature)
 
+### Phase 7 — Liquid Glass Lens spike (V4.9.285, isolated)
+
+| Item | Detail |
+|------|--------|
+| **Wrapper** | `frontend/src/components/surface/LiquidGlassLens.tsx` |
+| **Library** | `@samasante/liquid-glass` (MIT, lazy-loaded) |
+| **Flag** | `VITE_ENABLE_LIQUID_GLASS_LENS=true` (default **off**) |
+| **Scope** | Fleet map refresh panel, `MapGlassControls`, vehicle overview stats HUD only |
+| **Fallback** | Flag off → `sq-map-liquid-*`; reduced transparency → `surface-frosted`/`surface-solid`; import error → local SVG `feDisplacementMap` |
+
+**Not in spike:** marker callouts, trip overlays, L1/L2 cards, app-wide migration.
+
 ---
 
 ## 9. Decision checklist (for PRs)

@@ -1,4 +1,5 @@
 import { Crosshair, Layers, Maximize2 } from 'lucide-react';
+import { LiquidGlassLens } from '../surface';
 import { cn } from '../ui/utils';
 
 export interface MapGlassControlsProps {
@@ -27,8 +28,10 @@ export function MapGlassControls({
   const locateDisabled = !selectedVehicleId;
 
   return (
-    <div
-      className={cn('sq-map-glass-controls pointer-events-auto', className)}
+    <LiquidGlassLens
+      variant="control"
+      intensity="medium"
+      className={cn('pointer-events-auto', className)}
       role="toolbar"
       aria-label="Kartensteuerung"
     >
@@ -66,6 +69,6 @@ export function MapGlassControls({
         <Layers className="sq-map-glass-control-btn__icon" aria-hidden />
         <span className="sq-map-glass-control-btn__label">{stationsLabel}</span>
       </button>
-    </div>
+    </LiquidGlassLens>
   );
 }
