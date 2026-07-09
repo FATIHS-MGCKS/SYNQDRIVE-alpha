@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'premium-solid-card-audit-v49274-2026-07-09',
+    version: '4.9.274',
+    title: 'V4.9.274 — Premium Solid Card Inspiration Audit (L0/L1)',
+    summary: [
+      'SURFACE_INSPIRATION_AUDIT.md §14–18: Premium Solid / Elevated Cards — getrennt von Glass/Liquid.',
+      'Externe SaaS-Inspiration: shadcn Card, tokyn elevation, data-dense dashboard patterns; Anti-Patterns (glass bento, neon).',
+      'L1 Premium Solid Rezept: opaker Gradient, inset highlight, shadow stack, Icon Bubble, Header/Body/Footer.',
+      'Entscheidungsmatrix: wann L0 / L1 premium / L2 / L3 — LIQUID_GLASS_SYSTEM.md §2.1 ergänzt.',
+      'Keine CSS- oder Komponenten-Änderungen — `.sq-card-premium` nur als dokumentiertes Ziel.',
+    ],
+    reason:
+      'Normale Produkt-Cards sollen hochwertiger wirken ohne Glassmorphism — klare Abgrenzung und Rezept vor Implementierung.',
+    previousBehavior:
+      'L0/L1 nur als sq-card/sq-card-elevated ohne Premium-Solid-Definition und ohne Inspirations-Audit.',
+    details:
+      'SURFACE_INSPIRATION_AUDIT.md, LIQUID_GLASS_SYSTEM.md (L1 surface-premium, §2.1). Research only.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-09T00:25:00.000Z',
+  },
+  {
     id: 'surface-inspiration-audit-v49273-2026-07-09',
     version: '4.9.273',
     title: 'V4.9.273 — Surface Inspiration & Technique Audit',
