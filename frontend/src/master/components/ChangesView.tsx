@@ -35,7 +35,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'liquid-glass-lens-spike-v49285-2026-07-09',
+    id: 'fleet-map-liquid-glass-fix-v49286-2026-07-09',
+    version: '4.9.286',
+    title: 'V4.9.286 — Fleet Map Liquid Glass Library Fix',
+    summary: [
+      'LiquidGlassLensVariant granular: fleetToolbar, fleetPanel, fleetLegend, vehicleHudTile/Stack, mapCallout, statusPill, …',
+      'liquid-glass-optics.ts: variant-first optics (low frost/strength on fleet toolbar; readable fleet panel).',
+      'Content layering: liquid-glass-lens__content z-index 3, antialiased text; vehicleHudStack layout-only (no blob).',
+      'theme.css: --map-glass-fleet-* tokens für Light (höhere Panel-Opacity, stärkere Kante) + Dark (Sheen/Rim).',
+      'FleetMapControls: fleetPanel Refresh, fleetLegend, fleetMiniPill GPS-Hinweis; Refresh-Button sq-map-liquid-action.',
+      'MapGlassControls: fleetToolbar subtle — Buttons mit solid sq-map-glass-control-btn innen.',
+      'OverviewLiveMapCard: vehicleHudStack + per-tile vehicleHudTile (Vehicle HUD stabil/gezielt).',
+    ],
+    reason:
+      'Library-Spike erzeugte milchige/leere Blobs auf Fleet Map — zu grobe Varianten + zu hoher Frost, Content nicht scharf genug.',
+    previousBehavior:
+      'panel/control/pill Varianten mit intensity-only Optics; Glass um ganze Toolbar mit medium frost; verschwommener Inhalt.',
+    details:
+      'Kein CSS-only Rollback für Fleet; Library bleibt aktiv. Keine L1/L2/Card/Business-Logik. data-liquid-variant für Dev-Inspect.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-09T08:00:00.000Z',
+  },
+  {
     version: '4.9.285',
     title: 'V4.9.285 — Liquid Glass Lens Spike (Map HUD, isoliert)',
     summary: [
