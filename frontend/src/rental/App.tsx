@@ -125,6 +125,7 @@ function readPersistedSettingsTab(): RentalSettingsTab {
       'billing',
       'data-authorization',
       'legal-documents',
+      'email-delivery',
       'rental-rules',
     ];
     if (raw && valid.includes(raw as RentalSettingsTab)) return raw as RentalSettingsTab;

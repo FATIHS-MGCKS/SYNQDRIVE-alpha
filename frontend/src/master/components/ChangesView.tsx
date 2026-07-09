@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'email-delivery-admin-ui-v49292-2026-07-09',
+    version: '4.9.292',
+    title: 'V4.9.292 — Administration E-Mail & Versand (Frontend)',
+    summary: [
+      'Neuer Administration-Tab „E-Mail & Versand“ unter SettingsView + Sidebar + Tab-Bar.',
+      'EmailDeliveryTab: Status-Karte, Versandmodus (Standard vs. eigene Domain), Absender/Reply-To/Signatur.',
+      'Domain-Setup mit DNS-Records (SPF/DKIM/DMARC/Return-Path), Kopieren-Buttons, mobile stacked cards.',
+      'Aktionen: Verifizierung prüfen, Test-E-Mail senden, verifizierte Domain aktivieren.',
+      'api.email.* angebunden (GET/PUT settings, GET/POST domains, check, test-email) — keine Mockdaten.',
+      'ORG_ADMIN/MASTER_ADMIN schreibend; andere Rollen read-only mit Hinweisbanner.',
+    ],
+    reason:
+      'Vermieter sollen E-Mail-Versand selbst konfigurieren können — verständlich, ohne technische DNS-Hürden allein zu lösen.',
+    previousBehavior:
+      'Outbound-Email-Backend (V4.9.290) ohne Administration-Oberfläche; keine UI für Domain/DNS/Testmail.',
+    details:
+      'Frontend: settings/email-delivery/*, api.email in lib/api.ts. Architektur-Doc Outbound Email um UI-Pfad ergänzt.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-09T20:00:00.000Z',
+  },
+  {
     id: 'booking-documents-email-send-v49291-2026-07-09',
     version: '4.9.291',
     title: 'V4.9.291 — Booking document email send (stored PDF attachments)',

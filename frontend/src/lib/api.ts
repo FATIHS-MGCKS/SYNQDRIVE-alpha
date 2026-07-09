@@ -1082,6 +1082,86 @@ export interface SendBookingDocumentsEmailResult {
   errorMessage?: string | null;
 }
 
+export type OrgEmailMode = 'SYNQDRIVE_DEFAULT' | 'VERIFIED_DOMAIN';
+
+export type OrgEmailDomainStatus =
+  | 'NOT_CONFIGURED'
+  | 'PENDING_DNS'
+  | 'VERIFYING'
+  | 'VERIFIED'
+  | 'FAILED';
+
+export interface EmailDnsRecordDto {
+  type: 'TXT' | 'CNAME' | 'MX';
+  host: string;
+  value: string;
+  purpose: 'SPF' | 'DKIM' | 'DMARC' | 'RETURN_PATH';
+  status: 'pending' | 'verified';
+}
+
+export interface OrgEmailSettingsDto {
+  id: string;
+  organizationId: string;
+  mode: OrgEmailMode;
+  defaultFromName: string | null;
+  defaultReplyToEmail: string | null;
+  signatureHtml: string | null;
+  signatureText: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrgEmailDomainDto {
+  id: string;
+  organizationId: string;
+  domain: string;
+  fromEmail: string;
+  fromName: string | null;
+  replyToEmail: string | null;
+  provider: string;
+  providerDomainId: string | null;
+  status: OrgEmailDomainStatus;
+  dnsRecords: EmailDnsRecordDto[];
+  lastCheckedAt: string | null;
+  verifiedAt: string | null;
+  failureReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateOrgEmailSettingsPayload {
+  mode?: OrgEmailMode;
+  defaultFromName?: string | null;
+  defaultReplyToEmail?: string | null;
+  signatureHtml?: string | null;
+  signatureText?: string | null;
+}
+
+export interface CreateOrgEmailDomainPayload {
+  domain: string;
+  fromEmail: string;
+  fromName?: string;
+  replyToEmail?: string;
+}
+
+export interface SendTestEmailPayload {
+  to: string;
+  subject?: string;
+  bodyText?: string;
+}
+
+export interface OutboundEmailSendResultDto {
+  id: string;
+  status: string;
+  to: string;
+  fromEmail: string;
+  fromName: string | null;
+  replyToEmail: string;
+  subject: string;
+  errorMessage?: string | null;
+  providerMessageId?: string | null;
+}
+
 export type BookingDetailDocumentSlot = {
   documentType: string;
   status: 'missing' | 'required' | 'generated' | 'signed' | 'void';
@@ -2902,6 +2982,26 @@ export const api = {
   },
   // Administration → Legal Documents (AGB / Widerrufsbelehrung): upload +
   // versioning. Mutations are ORG_ADMIN-gated server-side.
+  email: {
+    getSettings: (orgId: string) =>
+      get<OrgEmailSettingsDto>(`/organizations/${orgId}/email-settings`),
+    updateSettings: (orgId: string, payload: UpdateOrgEmailSettingsPayload) =>
+      put<OrgEmailSettingsDto>(`/organizations/${orgId}/email-settings`, payload),
+    listDomains: (orgId: string) =>
+      get<OrgEmailDomainDto[]>(`/organizations/${orgId}/email-domains`),
+    createDomain: (orgId: string, payload: CreateOrgEmailDomainPayload) =>
+      post<OrgEmailDomainDto>(`/organizations/${orgId}/email-domains`, payload),
+    checkDomain: (orgId: string, domainId: string) =>
+      post<OrgEmailDomainDto>(
+        `/organizations/${orgId}/email-domains/${domainId}/check`,
+        {},
+      ),
+    sendTestEmail: (orgId: string, payload: SendTestEmailPayload) =>
+      post<OutboundEmailSendResultDto>(
+        `/organizations/${orgId}/email-settings/test-email`,
+        payload,
+      ),
+  },
   legalDocuments: {
     list: (orgId: string) => get<LegalDocumentDto[]>(`/organizations/${orgId}/legal-documents`),
     activate: (orgId: string, id: string) =>
