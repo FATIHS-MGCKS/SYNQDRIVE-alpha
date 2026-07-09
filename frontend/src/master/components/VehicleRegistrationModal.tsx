@@ -601,7 +601,7 @@ export function VehicleRegistrationModal({ isDarkMode, isOpen, onClose, dimoVehi
   const toggleAllHmSignals = (on: boolean) => setHmSignals(Object.fromEntries(HIGH_MOBILITY_SIGNALS.map(s => [s.id, on])));
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-[2px] flex items-start justify-center z-[100] pt-6 pb-6 overflow-y-auto">
+    <div className="overlay-scrim fixed inset-0 flex items-start justify-center z-[100] pt-6 pb-6 overflow-y-auto">
       <div className={`w-full max-w-3xl mx-4 rounded-xl shadow-2xl border ${isDarkMode ? 'bg-neutral-900 border-neutral-700' : 'bg-white border-gray-200'}`}>
 
         {/* ── Header ── */}

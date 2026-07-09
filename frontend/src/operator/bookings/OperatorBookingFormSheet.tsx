@@ -479,7 +479,7 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
             </OperatorGlassCard>
           )}
 
-          <div className="fixed inset-x-0 bottom-0 z-[131] border-t border-border/50 bg-background/95 px-4 py-3 backdrop-blur-md"
+          <div className="fixed inset-x-0 bottom-0 z-[131] border-t border-border/50 surface-frosted px-4 py-3"
             style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
           >
             <button

@@ -157,7 +157,7 @@ export function CreateUserWizard({ orgId, stations, onClose, onDone, onError }: 
   };
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    <div className="fixed inset-0 z-[70] overlay-scrim flex items-center justify-center p-4">
       <div className="sq-card w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-[var(--shadow-2)] p-5">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>

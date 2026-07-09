@@ -109,7 +109,7 @@ export function VoiceCommandHeader({
   ];
 
   return (
-    <header className="sq-card animate-fade-up overflow-hidden rounded-2xl border border-border/40 bg-card/80 shadow-[var(--shadow-1)] ring-1 ring-white/[0.06] backdrop-blur-md">
+    <header className="surface-premium sq-card animate-fade-up overflow-hidden rounded-2xl border border-border/40 shadow-[var(--shadow-1)]">
       <div className="border-b border-border/40 px-4 py-4 sm:px-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0 space-y-3">

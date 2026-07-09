@@ -526,7 +526,7 @@ export function TechnicalObservationsHealthModule({
             onClick={closeModal}
           >
             <div
-              className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-out"
+              className="absolute inset-0 overlay-scrim transition-opacity duration-500 ease-out"
               style={{ opacity: animating && !closing ? 1 : 0 }}
             />
             <div

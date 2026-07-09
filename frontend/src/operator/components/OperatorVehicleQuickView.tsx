@@ -42,7 +42,7 @@ function SectionCard({
   action?: React.ReactNode;
 }) {
   return (
-    <OperatorGlassCard className="sq-glass space-y-3 p-4">
+    <OperatorGlassCard className="space-y-3 p-4">
       <div className="flex items-center justify-between gap-2">
         <h3 className="text-xs font-bold uppercase tracking-wide text-muted-foreground">{title}</h3>
         {action}
@@ -93,7 +93,7 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
   return (
     <div className="space-y-4 pb-4">
       {/* Hero */}
-      <OperatorGlassCard className="sq-glass overflow-hidden p-0">
+      <OperatorGlassCard className="overflow-hidden p-0">
         <div className="bg-gradient-to-br from-[color:var(--brand-soft)]/80 to-card p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">

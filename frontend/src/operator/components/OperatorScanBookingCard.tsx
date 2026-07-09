@@ -29,7 +29,7 @@ export function OperatorScanBookingCard({
 
   return (
     <OperatorGlassCard
-      className={`sq-glass overflow-hidden p-0 ${
+      className={`overflow-hidden p-0 ${
         highlighted ? 'ring-2 ring-[color:var(--brand)]/40' : ''
       }`}
     >

@@ -72,7 +72,7 @@ export function ChangePasswordDialog({ open, saving, onClose, onSubmit }: Change
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <button
         type="button"
-        className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+        className="absolute inset-0 overlay-scrim"
         aria-label="Dialog schließen"
         onClick={() => !saving && resetAndClose()}
       />

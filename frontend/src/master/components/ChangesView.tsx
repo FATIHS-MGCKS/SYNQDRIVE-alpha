@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'surface-system-l2-frosted-cleanup-v49277-2026-07-09',
+    version: '4.9.277',
+    title: 'V4.9.277 — Surface System L2 Frosted Glass Cleanup',
+    summary: [
+      'Echte L2-Chrome: sticky Tab Bars, Drawer-Footer, Operator Header/Nav/Footers, Service ControlBar → .surface-frosted.',
+      'L4 Modal-Backdrops: inline bg-black/* + backdrop-blur → .overlay-scrim (AppDialog, Settings, Health, Booking, Users, …).',
+      'Content-Panels: Support/Service/Trips Panels, Documents, DamageControlSummary → .surface-premium / .surface-solid (kein Glass).',
+      'OperatorGlassCard konsolidiert auf .surface-frosted; sq-glass Doppelstacks entfernt; Fullscreen-Sheets → solides bg-background.',
+      'Keine Map-HUD-, Liquid- oder Business-Logik-Änderungen.',
+    ],
+    reason:
+      'L2 Frosted Glass zentralisieren: kleine App-Chrome mit Blur, Content-Cards und Dialog-Bodies bleiben L0/L1 solid.',
+    previousBehavior:
+      'Verstreute lokale backdrop-blur/bg-card/95-Kombinationen; sq-card+sq-glass Doppelstacks; OperatorGlassCard mit eigenem Blur-Rezept.',
+    details:
+      'patterns/app-dialog, detail-drawer; customer-detail-ui; Sidebar scrims; LoginPage; operator/*; support/service-center utils; LIQUID_GLASS_SYSTEM.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-09T01:10:00.000Z',
+  },
+  {
     id: 'surface-system-phase3-patterns-v49276-2026-07-09',
     version: '4.9.276',
     title: 'V4.9.276 — Surface System Phase 3 (Pattern-Komponenten)',

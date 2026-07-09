@@ -42,7 +42,7 @@ export function WhatsAppMessageComposer({
     aiResult?.decision === 'HUMAN_REQUIRED' || (aiResult?.riskFlags?.length ?? 0) > 0;
 
   return (
-    <div className="border-t border-border/40 bg-card/80 p-3 backdrop-blur-sm">
+    <div className="border-t border-border/40 surface-frosted p-3">
       {hasPolicyBlock && (
         <p className="mb-2 rounded-lg border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/[0.06] px-2.5 py-2 text-[10px] text-[color:var(--status-watch)]">
           {hasPolicyBlock}

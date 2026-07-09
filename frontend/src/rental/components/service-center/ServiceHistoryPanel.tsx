@@ -160,7 +160,7 @@ export function ServiceHistoryPanel({
         <div className="space-y-6">
           {Array.from(groups.entries()).map(([day, dayTasks]) => (
             <section key={day}>
-              <h4 className="text-[11px] font-semibold text-muted-foreground mb-3 sticky top-0 bg-card/90 backdrop-blur-sm py-1 z-[1]">
+              <h4 className="text-[11px] font-semibold text-muted-foreground mb-3 sticky top-0 surface-frosted py-1 z-[1]">
                 {day}
               </h4>
               <div className="border-l border-border/50 ml-1.5">

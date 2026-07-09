@@ -246,7 +246,7 @@ function DocumentCard({
   onOpen?: () => void;
 }) {
   return (
-    <OperatorGlassCard className="sq-glass flex items-center gap-3 p-3">
+    <OperatorGlassCard className="flex items-center gap-3 p-3">
       <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-foreground">{label}</p>

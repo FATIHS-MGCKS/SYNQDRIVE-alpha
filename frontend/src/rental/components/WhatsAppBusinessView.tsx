@@ -531,7 +531,7 @@ function SimulateModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 overlay-scrim" onClick={onClose} />
       <div className="relative z-10 w-full max-w-md rounded-2xl border border-[color:var(--status-watch)]/30 bg-card p-5 shadow-[var(--shadow-2)]">
         <div className="mb-3 flex items-center gap-2">
           <span className="rounded-md bg-[color:var(--status-watch)]/15 px-2 py-0.5 text-[9px] font-bold text-[color:var(--status-watch)]">
@@ -592,7 +592,7 @@ function TemplateDraftModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 overlay-scrim" onClick={onClose} />
       <div className="relative z-10 w-full max-w-md rounded-2xl bg-card p-5 shadow-[var(--shadow-2)]">
         <h3 className="text-[13px] font-semibold text-foreground">New template draft</h3>
         <div className="mt-3 space-y-2">

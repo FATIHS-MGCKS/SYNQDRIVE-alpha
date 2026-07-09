@@ -309,7 +309,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
         )}
       </div>
 
-      <footer className="shrink-0 border-t border-border/50 bg-background/95 px-4 py-3 backdrop-blur-sm">
+      <footer className="shrink-0 border-t border-border/50 surface-frosted px-4 py-3">
         <div className="flex gap-2">
           {showCapture && (
             <>

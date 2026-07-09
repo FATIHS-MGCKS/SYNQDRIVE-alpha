@@ -21,7 +21,7 @@ export function OperatorBottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-30 border-t border-border/60 bg-background/90 backdrop-blur-xl"
+      className="fixed bottom-0 left-0 right-0 z-30 border-t border-border/60 surface-frosted"
       style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
       aria-label="Operator navigation"
     >

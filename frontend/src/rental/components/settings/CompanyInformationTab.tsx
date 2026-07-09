@@ -234,7 +234,7 @@ export function CompanyInformationTab({
         onNavigateToStations={onNavigateToStations}
       />
 
-      <div className="sticky top-0 z-10 -mx-1 bg-background/95 px-1 py-1 backdrop-blur-sm">
+      <div className="sticky top-0 z-10 -mx-1 surface-frosted px-1 py-1">
         <CompanySectionTabBar activeSection={activeSection} onSectionChange={scrollToSection} />
       </div>
 

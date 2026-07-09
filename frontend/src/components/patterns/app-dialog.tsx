@@ -33,7 +33,7 @@ export function AppDialog({
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay
           className={cn(
-            'sq-backdrop fixed inset-0 z-50',
+            'overlay-scrim sq-backdrop fixed inset-0 z-50',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
             'motion-reduce:animate-none motion-reduce:transition-none',
@@ -41,7 +41,7 @@ export function AppDialog({
         />
         <DialogPrimitive.Content
           className={cn(
-            'sq-overlay fixed top-[50%] left-[50%] z-50 flex max-h-[min(90vh,100dvh)] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden p-0 outline-none',
+            'sq-overlay surface-solid fixed top-[50%] left-[50%] z-50 flex max-h-[min(90vh,100dvh)] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] flex-col overflow-hidden p-0 outline-none',
             'data-[state=open]:animate-in data-[state=closed]:animate-out',
             'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
             'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
@@ -114,7 +114,7 @@ export function FormDialog({
       <div className={cn('flex-1 overflow-y-auto px-5 py-4', bodyClassName)}>{children}</div>
 
       {footer && (
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border bg-card px-5 py-3.5">
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border surface-solid px-5 py-3.5">
           {footer}
         </div>
       )}

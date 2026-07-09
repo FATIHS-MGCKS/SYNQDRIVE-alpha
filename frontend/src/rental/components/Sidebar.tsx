@@ -350,7 +350,7 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
       {/* Mobile backdrop overlay */}
       {mobileMenuOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+          className="lg:hidden fixed inset-0 z-40 overlay-scrim"
           onClick={() => setMobileMenuOpen(false)}
           style={{ top: '4rem' }}
         />

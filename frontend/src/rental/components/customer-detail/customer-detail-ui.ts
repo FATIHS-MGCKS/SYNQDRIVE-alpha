@@ -80,7 +80,7 @@ export const cdv = {
   /** @deprecated use stageRailLabel */
   stageSeparator: 'text-muted-foreground/35 select-none',
   bottomTabBar:
-    'sticky top-0 z-20 -mx-1 border-b border-border/60 bg-background/95 px-1 py-1 shadow-[0_1px_0_0_color-mix(in_srgb,var(--border)_70%,transparent)] backdrop-blur-sm supports-[backdrop-filter]:bg-background/90 sm:mx-0 sm:px-0',
+    'sticky top-0 z-20 -mx-1 border-b border-border/60 surface-frosted px-1 py-1 shadow-[0_1px_0_0_color-mix(in_srgb,var(--border)_70%,transparent)] sm:mx-0 sm:px-0',
   bottomTabScroll:
     'flex min-w-0 flex-1 flex-nowrap gap-0.5 overflow-x-auto scroll-smooth px-1 snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
   bottomTabButton:
@@ -90,7 +90,7 @@ export const cdv = {
   bottomTabButtonIdle:
     'border-transparent text-muted-foreground hover:bg-background/60 hover:text-foreground',
   tabBarShell:
-    'sticky top-0 z-20 -mx-1 border-b border-border/60 bg-background/95 px-1 py-1 shadow-[0_1px_0_0_color-mix(in_srgb,var(--border)_70%,transparent)] backdrop-blur-sm supports-[backdrop-filter]:bg-background/90 sm:mx-0 sm:px-0',
+    'sticky top-0 z-20 -mx-1 border-b border-border/60 surface-frosted px-1 py-1 shadow-[0_1px_0_0_color-mix(in_srgb,var(--border)_70%,transparent)] sm:mx-0 sm:px-0',
   tabBarRail: 'sq-tab-bar flex w-full min-w-0 items-center rounded-2xl p-1',
   tabBarScroller:
     'flex min-w-0 flex-1 flex-nowrap gap-0.5 overflow-x-auto scroll-smooth px-1 snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
@@ -148,7 +148,7 @@ export const cdv = {
 /** Layout tokens for CustomerDetailModal (New Booking wizard preview only). */
 export const cdm = {
   modal: 'sq-overlay flex max-h-[min(92vh,100dvh)] w-full max-w-[calc(100%-1rem)] flex-col overflow-hidden sm:max-w-3xl lg:max-w-4xl',
-  header: 'sticky top-0 z-10 shrink-0 border-b border-border/60 bg-card/95 backdrop-blur-sm px-4 py-3 sm:px-5',
+  header: 'sticky top-0 z-10 shrink-0 border-b border-border/60 surface-frosted px-4 py-3 sm:px-5',
   body: 'flex-1 overflow-y-auto overflow-x-hidden px-4 py-3 sm:px-5 sm:py-4 pb-[max(1rem,env(safe-area-inset-bottom))]',
   sectionGrid: 'grid grid-cols-1 gap-3 lg:grid-cols-2',
   summaryGrid: 'grid grid-cols-2 items-start gap-1 sm:gap-1.5 lg:grid-cols-4',

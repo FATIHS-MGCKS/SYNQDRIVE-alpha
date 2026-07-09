@@ -948,7 +948,7 @@ function BreakdownPopup({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="absolute inset-0 overlay-scrim" />
       <div
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-xl p-5 shadow-2xl bg-card border border-border"

@@ -761,7 +761,7 @@ export function StationsTab() {
       {/* Create / edit modal */}
       {modalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          className="overlay-scrim fixed inset-0 z-50 flex items-center justify-center p-4"
           onClick={closeModal}
         >
           <div
@@ -1243,7 +1243,7 @@ export function StationsTab() {
       {/* Delete confirmation */}
       {deletingId && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          className="overlay-scrim fixed inset-0 z-50 flex items-center justify-center p-4"
           onClick={() => !deleting && setDeletingId(null)}
         >
           <div
@@ -1303,7 +1303,7 @@ export function StationsTab() {
       {/* Vehicle assignment modal */}
       {assignStation && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+          className="overlay-scrim fixed inset-0 z-50 flex items-center justify-center p-4"
           onClick={closeAssign}
         >
           <div

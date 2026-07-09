@@ -75,7 +75,7 @@ export function OperatorScanVehicleCard({
         : null;
 
   return (
-    <OperatorGlassCard className="sq-glass overflow-hidden p-0">
+    <OperatorGlassCard className="overflow-hidden p-0">
       <button
         type="button"
         onClick={onOpenVehicle}

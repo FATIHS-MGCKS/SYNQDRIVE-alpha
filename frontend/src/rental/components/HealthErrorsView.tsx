@@ -1838,7 +1838,7 @@ export function HealthErrorsView({
       {/* ─── Error Codes Modal ─── */}
       {showErrorCodes && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => closeModal(setShowErrorCodes)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
+          <div className="absolute inset-0 overlay-scrim transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
           <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl rounded-xl p-5 shadow-lg transition-all duration-500 ease-out max-h-[85vh] overflow-y-auto pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.5rem))] bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
             <button onClick={() => closeModal(setShowErrorCodes)} className={`absolute top-6 right-6 p-1.5 rounded-full transition-colors ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
 
@@ -2052,7 +2052,7 @@ export function HealthErrorsView({
       {/* ─── Battery Modal ─── */}
       {showBattery && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => closeModal(setShowBattery)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
+          <div className="absolute inset-0 overlay-scrim transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
           <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.5rem))] bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
             <button onClick={() => closeModal(setShowBattery)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
 
@@ -2416,7 +2416,7 @@ export function HealthErrorsView({
       {/* ─── Service Modal ─── */}
       {showService && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => closeModal(setShowService)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
+          <div className="absolute inset-0 overlay-scrim transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
           <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
             <button onClick={() => closeModal(setShowService)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
             <h2 className={`text-sm font-semibold tracking-tight mb-5 text-foreground`}>Service & Compliance</h2>
@@ -2539,7 +2539,7 @@ export function HealthErrorsView({
       {/* ─── Brakes Modal V2 ─── */}
       {showBrakes && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { if (!showBrakeEntry) closeModal(setShowBrakes); }}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
+          <div className="absolute inset-0 overlay-scrim transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
           <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
             <button onClick={() => closeModal(setShowBrakes)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
 
@@ -2889,7 +2889,7 @@ export function HealthErrorsView({
       {/* ─── Tires Modal ─── */}
       {showTires && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => { if (!showMeasurement && !showRotation && !showTireChange && !showEditSetup) closeModal(setShowTires); }}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
+          <div className="absolute inset-0 overlay-scrim transition-opacity duration-500 ease-out" style={{ opacity: isModalAnimating ? 1 : 0 }} />
           <div onClick={(e) => e.stopPropagation()} className={`relative w-full max-w-5xl max-h-[90vh] overflow-y-auto rounded-xl p-5 shadow-lg transition-all duration-500 ease-out pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.5rem))] bg-card border border-border`} style={{ transform: isModalAnimating ? 'scale(1) translateY(0)' : 'scale(0.9) translateY(30px)', opacity: isModalAnimating ? 1 : 0 }}>
             <button onClick={() => closeModal(setShowTires)} className={`absolute top-5 right-5 p-1 rounded-full transition-colors z-10 ${'text-muted-foreground hover:text-foreground hover:bg-muted'}`}><Icon name="x" className="w-5 h-5" /></button>
 
@@ -3908,7 +3908,7 @@ export function HealthErrorsView({
       {/* ═══════════ HV Battery Detail Modal (EV) ═══════════ */}
       {showHvBattery && isEv && createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-6" onClick={() => closeModal(setShowHvBattery)}>
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
+          <div className="absolute inset-0 overlay-scrim" />
           <div onClick={e => e.stopPropagation()} className={`relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-xl shadow-lg border bg-card border-border`}>
             <div className={`sticky top-0 z-10 px-5 py-4 rounded-t-xl border-b bg-card border-border`}>
               <div className="flex items-center justify-between">

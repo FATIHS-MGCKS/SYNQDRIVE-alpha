@@ -659,7 +659,7 @@ function ConfirmDialog({
   children?: ReactNode;
 }) {
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={onCancel}>
+    <div className="fixed inset-0 z-[80] overlay-scrim flex items-center justify-center p-4" onClick={onCancel}>
       <div className="sq-card max-w-md w-full p-5 rounded-2xl shadow-[var(--shadow-2)]" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-[15px] font-semibold text-foreground">{title}</h3>
         <p className="text-[13px] text-muted-foreground mt-2">{description}</p>

@@ -57,7 +57,7 @@ export function TripRentalContextPanel({
         </div>
       )}
 
-      <div className="rounded-xl border border-border/50 bg-card/60 p-3 space-y-3 backdrop-blur-sm">
+      <div className="surface-solid rounded-xl border border-border/50 p-3 space-y-3">
         <div className="flex items-start justify-between gap-2 flex-wrap">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">

@@ -305,7 +305,7 @@ function ConfirmModal({
 }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div className="absolute inset-0 overlay-scrim" />
       <div
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-md mx-4 rounded-lg shadow-2xl border overflow-hidden bg-card/95 border-border"

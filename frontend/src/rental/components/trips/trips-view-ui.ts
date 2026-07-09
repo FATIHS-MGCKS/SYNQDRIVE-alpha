@@ -3,9 +3,9 @@ export const tv = {
   page: 'max-w-[1600px] mx-auto px-0.5 sm:px-0',
   grid: 'grid grid-cols-1 xl:grid-cols-[minmax(0,1.12fr)_minmax(0,1fr)] gap-3 sm:gap-4 xl:gap-5 items-start',
   panel:
-    'sq-card sq-glass rounded-2xl p-3.5 sm:p-4 shadow-[var(--shadow-1)] border border-border/45 bg-card/95 min-w-0 backdrop-blur-sm',
+    'surface-premium rounded-2xl p-3.5 sm:p-4 shadow-[var(--shadow-1)] border border-border/45 min-w-0',
   mapPanel:
-    'sq-card sq-glass rounded-2xl p-3.5 sm:p-4 shadow-[var(--shadow-1)] border border-border/45 bg-card/95 flex flex-col min-w-0 backdrop-blur-sm xl:sticky xl:top-2 xl:self-start xl:h-[calc(100vh-128px)] xl:min-h-[520px]',
+    'surface-premium rounded-2xl p-3.5 sm:p-4 shadow-[var(--shadow-1)] border border-border/45 flex flex-col min-w-0 xl:sticky xl:top-2 xl:self-start xl:h-[calc(100vh-128px)] xl:min-h-[520px]',
   mapFrame:
     'relative w-full h-[min(42vh,360px)] sm:h-[min(44vh,400px)] xl:h-auto xl:flex-1 xl:min-h-[340px] rounded-xl overflow-hidden border border-border/50',
   overlay:

@@ -229,7 +229,7 @@ export function CustomerStep({
 
         return (
           <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onCloseAddCustomer}>
-            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <div className="absolute inset-0 overlay-scrim" />
             <div onClick={(e) => e.stopPropagation()}
               className={`relative w-full max-w-[680px] max-h-[85vh] flex flex-col rounded-lg border shadow-2xl ${ 'bg-card/90 border border-border' }`}>
               {/* Header */}

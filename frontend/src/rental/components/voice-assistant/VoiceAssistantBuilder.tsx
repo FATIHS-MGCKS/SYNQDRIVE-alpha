@@ -120,7 +120,7 @@ export function VoiceAssistantBuilder({
     <div className="space-y-4">
       {/* Sticky unsaved bar */}
       {hasDraft && (
-        <div className="sticky top-0 z-20 -mx-1 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[color:var(--brand)]/25 bg-card/95 px-4 py-2.5 shadow-[var(--shadow-1)] backdrop-blur-md">
+        <div className="sticky top-0 z-20 -mx-1 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[color:var(--brand)]/25 surface-frosted px-4 py-2.5 shadow-[var(--shadow-1)]">
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-[color:var(--brand)] animate-pulse" />
             <span className="text-[11px] font-semibold text-foreground">Unsaved changes</span>

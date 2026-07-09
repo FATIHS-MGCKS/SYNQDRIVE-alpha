@@ -262,7 +262,7 @@ export function OperatorTaskDetail({ taskId, initialTask, onTaskUpdated, focusCo
 
       {active && (
         <div
-          className="fixed inset-x-0 z-[45] border-t border-border/50 bg-background/95 px-4 py-3 backdrop-blur-sm"
+          className="fixed inset-x-0 z-[45] border-t border-border/50 surface-frosted px-4 py-3"
           style={{
             bottom:
               layout === 'sheet'

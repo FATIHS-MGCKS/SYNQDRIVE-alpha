@@ -35,7 +35,7 @@ export function OperatorTaskCard({
   const canComplete = !terminal && task.status !== 'DONE';
 
   return (
-    <OperatorGlassCard className="sq-glass overflow-hidden p-0">
+    <OperatorGlassCard className="overflow-hidden p-0">
       <button
         type="button"
         onClick={onOpen}

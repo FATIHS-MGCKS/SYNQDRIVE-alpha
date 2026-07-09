@@ -52,7 +52,7 @@ export function DetailDrawer({
       <SheetContent
         side={side}
         onOpenAutoFocus={onContentOpenAutoFocus}
-        className={cn('w-full gap-0 bg-card p-0', widthClassName, className)}
+        className={cn('w-full gap-0 surface-solid bg-card p-0', widthClassName, className)}
       >
         <SheetHeader className="border-b border-border px-5 py-4">
           {eyebrow && <div className="sq-section-label">{eyebrow}</div>}
@@ -70,7 +70,7 @@ export function DetailDrawer({
         </div>
 
         {footer && (
-          <div className="sticky bottom-0 z-10 border-t border-border bg-card/95 backdrop-blur-sm px-5 py-3.5 flex items-center justify-end gap-2 supports-[backdrop-filter]:bg-card/80">
+          <div className="sticky bottom-0 z-10 flex items-center justify-end gap-2 border-t border-border surface-frosted px-5 py-3.5">
             {footer}
           </div>
         )}

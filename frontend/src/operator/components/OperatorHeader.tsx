@@ -27,7 +27,7 @@ export function OperatorHeader() {
 
   return (
     <header
-      className="sticky top-0 z-20 border-b border-border/50 bg-background/80 backdrop-blur-xl"
+      className="sticky top-0 z-20 border-b border-border/50 surface-frosted"
       style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))' }}
     >
       <div className="flex items-center gap-3 px-4 pb-3 pt-1">

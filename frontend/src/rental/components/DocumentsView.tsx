@@ -238,7 +238,7 @@ export function DocumentsView({ vehicle, onOpenLinkedTask }: DocumentsViewProps)
         </div>
       ) : summary ? (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-stretch">
-          <header className="sq-card-elevated flex flex-col rounded-xl border border-border/70 bg-card/60 p-3 sm:p-4 backdrop-blur-sm">
+          <header className="surface-premium sq-card-elevated flex flex-col rounded-xl border border-border/70 p-3 sm:p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 space-y-1.5">
                 <p className="sq-section-label">Fahrzeugakte</p>
@@ -307,7 +307,7 @@ export function DocumentsView({ vehicle, onOpenLinkedTask }: DocumentsViewProps)
             </p>
           </header>
 
-          <aside className="sq-card-elevated rounded-xl border border-border/70 bg-card/60 p-3 sm:p-4 backdrop-blur-sm">
+          <aside className="surface-premium sq-card-elevated rounded-xl border border-border/70 p-3 sm:p-4">
             <p className="mb-2 sq-section-label">Übersicht</p>
             <div className="grid grid-cols-2 gap-2">
               <CompactSummaryMetric

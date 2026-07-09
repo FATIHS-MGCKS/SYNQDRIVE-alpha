@@ -10,7 +10,7 @@ export function MobileBookingFooter({
   onConfirm,
 }: MobileBookingFooterProps) {
   return (
-    <div className="sticky bottom-0 z-10 flex w-full min-w-0 max-w-full gap-3 border-t border-border/40 bg-background/95 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-3 backdrop-blur-sm supports-[backdrop-filter]:bg-background/80 lg:static lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
+    <div className="sticky bottom-0 z-10 flex w-full min-w-0 max-w-full gap-3 border-t border-border/40 surface-frosted pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-3 lg:static lg:border-0 lg:bg-transparent lg:p-0 lg:backdrop-blur-none">
       {currentStep > 1 && (
         <button
           type="button"

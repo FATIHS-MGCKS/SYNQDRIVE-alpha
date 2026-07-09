@@ -52,7 +52,7 @@ export function BookingDetailHeader({
 
   return (
     <div
-      className={`${sticky ? 'sticky top-0 z-20' : ''} -mx-4 px-4 py-3 mb-4 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80`}
+      className={`${sticky ? 'sticky top-0 z-20 surface-frosted' : ''} -mx-4 px-4 py-3 mb-4 border-b border-border`}
     >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-3 min-w-0">

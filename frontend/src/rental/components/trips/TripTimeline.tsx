@@ -141,7 +141,7 @@ export function TripTimeline({
         <div className="space-y-4">
           {groups.map((group) => (
             <section key={group.dateKey} className="space-y-2">
-              <div className="sticky top-0 z-[1] -mx-0.5 px-0.5 py-2 bg-gradient-to-b from-card via-card/98 to-transparent backdrop-blur-[2px]">
+              <div className="sticky top-0 z-[1] -mx-0.5 px-0.5 py-2 surface-frosted">
                 <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:justify-between gap-x-3">
                   <p className="text-[12px] font-semibold text-foreground tracking-[-0.02em]">
                     {group.dateLabel}

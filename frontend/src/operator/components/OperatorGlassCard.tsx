@@ -17,7 +17,7 @@ export function OperatorGlassCard({
   disabled,
 }: OperatorGlassCardProps) {
   const base = cn(
-    'rounded-2xl border border-border/60 bg-card/80 backdrop-blur-md shadow-[var(--shadow-1)]',
+    'surface-frosted rounded-2xl border border-border/60 shadow-[var(--shadow-1)]',
     onClick && !disabled && 'sq-press cursor-pointer active:scale-[0.99]',
     disabled && 'opacity-60 pointer-events-none',
     className,

@@ -81,7 +81,7 @@ export function DataAuthorizationCreateDialog({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/45 backdrop-blur-sm p-4"
+      className="overlay-scrim fixed inset-0 z-[60] flex items-center justify-center p-4"
       onClick={onClose}
       role="presentation"
     >

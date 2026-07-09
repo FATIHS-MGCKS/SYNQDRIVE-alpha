@@ -94,7 +94,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => setShowLangMenu(!showLangMenu)}
-            className="flex items-center gap-2 px-3.5 py-2 rounded-xl border border-border bg-card/80 backdrop-blur-md shadow-[var(--shadow-1)] hover:bg-card hover:border-border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+            className="surface-frosted flex items-center gap-2 px-3.5 py-2 rounded-xl border border-border shadow-[var(--shadow-1)] hover:border-border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
           >
             <Globe className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="inline-flex h-4 min-w-[22px] items-center justify-center rounded-sm bg-muted px-1 font-mono text-[9px] font-semibold tracking-[0.08em] text-muted-foreground">
@@ -135,7 +135,7 @@ export default function LoginPage() {
           keep the original size so the card does not overflow the root's
           overflow-hidden container. */}
       <div
-        className="relative w-full max-w-[820px] min-h-[440px] rounded-[20px] overflow-hidden z-10 origin-center md:scale-[1.2] sq-glass border border-border shadow-[var(--shadow-2)]"
+        className="relative w-full max-w-[820px] min-h-[440px] rounded-[20px] overflow-hidden z-10 origin-center md:scale-[1.2] surface-frosted border border-border shadow-[var(--shadow-2)]"
       >
         <div className="flex min-h-[460px]">
           {/* Left Panel */}
@@ -195,7 +195,7 @@ export default function LoginPage() {
                   ))}
                 </div>
 
-                <div className="sq-glass inline-flex items-center gap-2 rounded-xl border border-white/15 p-2.5 shadow-[var(--shadow-md)]">
+                <div className="surface-frosted inline-flex items-center gap-2 rounded-xl border border-white/15 p-2.5 shadow-[var(--shadow-md)]">
                   <div className="flex -space-x-1.5">
                     {['var(--brand)', 'color-mix(in srgb, var(--brand) 75%, white)', 'color-mix(in srgb, var(--brand) 55%, white)', 'color-mix(in srgb, var(--brand) 40%, white)'].map((color, i) => (
                       <div

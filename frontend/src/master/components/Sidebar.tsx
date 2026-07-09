@@ -269,7 +269,7 @@ export function Sidebar({ isDarkMode, currentView, onViewChange, settingsTab, on
 
       {mobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40 bg-black/30 backdrop-blur-[2px]"
+          className="lg:hidden fixed inset-0 z-40 overlay-scrim"
           onClick={() => setMobileOpen(false)}
           style={{ top: '3.5rem' }}
         />

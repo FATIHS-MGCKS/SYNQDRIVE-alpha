@@ -854,7 +854,7 @@ export function PartsAccessoriesView({ isDarkMode: dk }: PartsAccessoriesViewPro
     return (
       <div className="fixed inset-0 z-50 flex justify-end">
         {/* Backdrop */}
-        <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowDetail(false)} />
+        <div className="absolute inset-0 overlay-scrim" onClick={() => setShowDetail(false)} />
 
         {/* Drawer */}
         <div className={cls(

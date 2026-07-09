@@ -398,7 +398,7 @@ function AddVehicleModal({ onClose,
     finally { setLoading(false); }
   };
 
-  const overlay = 'fixed inset-0 bg-black/50 backdrop-blur-[2px] z-50 flex items-center justify-center p-4';
+  const overlay = 'overlay-scrim fixed inset-0 z-50 flex items-center justify-center p-4';
   const CARD = `w-full max-w-md rounded-xl border shadow-2xl p-6 sq-card`;const LABEL = 'block text-xs font-medium mb-1.5 text-muted-foreground';
 
   return (
@@ -483,7 +483,7 @@ function HistoryModal({
       .finally(() => setLoading(false));
   }, [vehicle.id]);
 
-  const overlay = 'fixed inset-0 bg-black/50 backdrop-blur-[2px] z-50 flex items-center justify-center p-4';
+  const overlay = 'overlay-scrim fixed inset-0 z-50 flex items-center justify-center p-4';
   const CARD = `w-full max-w-lg rounded-xl border shadow-2xl sq-card`;
 
   return (
