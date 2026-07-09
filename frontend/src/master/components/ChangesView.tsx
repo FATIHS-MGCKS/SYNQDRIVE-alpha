@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'send-documents-email-modal-v49293-2026-07-09',
+    version: '4.9.293',
+    title: 'V4.9.293 — Booking document email send modal (SendDocumentsEmailModal)',
+    summary: [
+      'Wiederverwendbares SendDocumentsEmailModal: Empfänger/CC, Absender-Vorschau, Dokument-Checkbox-Cards, Betreff/Nachricht, Signatur.',
+      'BookingDocumentsSection: Header „Dokumentenpaket senden“, Gruppenaktionen Pickup/Return, Row-Menü „Per E-Mail senden“.',
+      'api.documents.sendBookingDocumentsEmail — kein paralleler Dokumentenflow; onSent reload + Toast.',
+      'Bundle-DTO erweitert: sentAt, lastSentAt, lastSentTo, lastOutboundEmailId, lastSendStatus pro Dokument.',
+      'Disable-Regeln: fehlende Kunden-E-Mail, fehlende/VOID-Dokumente, Tooltips.',
+    ],
+    reason:
+      'Operatoren sollen Buchungsunterlagen direkt aus dem Dokumentenbereich sicher per E-Mail versenden können.',
+    previousBehavior:
+      'Backend-Send-Endpoint (V4.9.291) ohne UI; BookingDocumentsSection nur Generate/Download/Regenerate.',
+    details:
+      'Frontend: send-documents-email/*, BookingFinanceDocumentsTab übergibt customer/booking. Utils-Tests. Architektur Booking Document Email Send aktualisiert.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-09T22:00:00.000Z',
+  },
+  {
     id: 'email-delivery-admin-ui-v49292-2026-07-09',
     version: '4.9.292',
     title: 'V4.9.292 — Administration E-Mail & Versand (Frontend)',
