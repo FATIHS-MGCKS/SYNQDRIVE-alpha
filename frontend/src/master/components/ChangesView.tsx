@@ -35,6 +35,114 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'repo-wide-document-send-v49294-2026-07-09',
+    version: '4.9.294',
+    title: 'V4.9.294 — Repo-weite Dokumentenversand-UX (SendDocumentsEmailLauncher)',
+    summary: [
+      'Zentraler SendDocumentsEmailLauncherProvider + useSendDocumentsEmailLauncher — ein Modal, ein API-Pfad.',
+      'Bookings-Tabelle: „Unterlagen senden“ im More-Menü (nur bei Kunden-E-Mail + sendbare Dokumente).',
+      'InvoicesView: „Rechnung senden“ über generatedDocumentId + Buchungskontext; Zahlungshinweis bei offenem Betrag.',
+      'Handover/Operator: Toast nach Übergabe + Protokoll-Send-CTAs im Operator-Dokumentenpanel.',
+      'Customer Timeline: Versand-Chip + „Erneut senden“ für DOCUMENT_EMAIL NOTE_ADDED Events.',
+      'Booking-List-API: customerEmail + sendableDocumentCount für Send-Affordances.',
+    ],
+    reason:
+      'Nach der Primärintegration in BookingDocumentsSection sollen kontextuelle Versand-Shortcuts an weiteren Prozesspunkten verfügbar sein — ohne Button-Spam und ohne parallele Mail-Logik.',
+    previousBehavior:
+      'Nur BookingDocumentsSection nutzte SendDocumentsEmailModal; InvoicesView/Bookings-Liste/Handover/Customer-Timeline ohne Versand.',
+    details:
+      'Frontend: send-documents-email/SendDocumentsEmailLauncherProvider, permissions, erweiterte Utils-Tests (LegalDocumentsTab ohne Send, Invoices generatedDocumentId). Backend: bookings.service list row enrichment. DocumentsView/LegalDocumentsTab unverändert ohne Kundensendung.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-09T05:30:00.000Z',
+  },
+  {
+    id: 'send-documents-email-modal-v49293-2026-07-09',
+    version: '4.9.293',
+    title: 'V4.9.293 — Booking document email send modal (SendDocumentsEmailModal)',
+    summary: [
+      'Wiederverwendbares SendDocumentsEmailModal: Empfänger/CC, Absender-Vorschau, Dokument-Checkbox-Cards, Betreff/Nachricht, Signatur.',
+      'BookingDocumentsSection: Header „Dokumentenpaket senden“, Gruppenaktionen Pickup/Return, Row-Menü „Per E-Mail senden“.',
+      'api.documents.sendBookingDocumentsEmail — kein paralleler Dokumentenflow; onSent reload + Toast.',
+      'Bundle-DTO erweitert: sentAt, lastSentAt, lastSentTo, lastOutboundEmailId, lastSendStatus pro Dokument.',
+      'Disable-Regeln: fehlende Kunden-E-Mail, fehlende/VOID-Dokumente, Tooltips.',
+    ],
+    reason:
+      'Operatoren sollen Buchungsunterlagen direkt aus dem Dokumentenbereich sicher per E-Mail versenden können.',
+    previousBehavior:
+      'Backend-Send-Endpoint (V4.9.291) ohne UI; BookingDocumentsSection nur Generate/Download/Regenerate.',
+    details:
+      'Frontend: send-documents-email/*, BookingFinanceDocumentsTab übergibt customer/booking. Utils-Tests. Architektur Booking Document Email Send aktualisiert.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-09T22:00:00.000Z',
+  },
+  {
+    id: 'email-delivery-admin-ui-v49292-2026-07-09',
+    version: '4.9.292',
+    title: 'V4.9.292 — Administration E-Mail & Versand (Frontend)',
+    summary: [
+      'Neuer Administration-Tab „E-Mail & Versand“ unter SettingsView + Sidebar + Tab-Bar.',
+      'EmailDeliveryTab: Status-Karte, Versandmodus (Standard vs. eigene Domain), Absender/Reply-To/Signatur.',
+      'Domain-Setup mit DNS-Records (SPF/DKIM/DMARC/Return-Path), Kopieren-Buttons, mobile stacked cards.',
+      'Aktionen: Verifizierung prüfen, Test-E-Mail senden, verifizierte Domain aktivieren.',
+      'api.email.* angebunden (GET/PUT settings, GET/POST domains, check, test-email) — keine Mockdaten.',
+      'ORG_ADMIN/MASTER_ADMIN schreibend; andere Rollen read-only mit Hinweisbanner.',
+    ],
+    reason:
+      'Vermieter sollen E-Mail-Versand selbst konfigurieren können — verständlich, ohne technische DNS-Hürden allein zu lösen.',
+    previousBehavior:
+      'Outbound-Email-Backend (V4.9.290) ohne Administration-Oberfläche; keine UI für Domain/DNS/Testmail.',
+    details:
+      'Frontend: settings/email-delivery/*, api.email in lib/api.ts. Architektur-Doc Outbound Email um UI-Pfad ergänzt.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-09T20:00:00.000Z',
+  },
+  {
+    id: 'booking-documents-email-send-v49291-2026-07-09',
+    version: '4.9.291',
+    title: 'V4.9.291 — Booking document email send (stored PDF attachments)',
+    summary: [
+      'POST /organizations/:orgId/bookings/:bookingId/documents/send-email — versendet vorhandene GeneratedDocuments.',
+      'BookingDocumentEmailService: Validierung (Org/Booking/VOID), Attachment-Load aus private Storage (keine Neugenerierung).',
+      'OutboundEmail integration: sourceType BOOKING_DOCUMENTS/INVOICE/HANDOVER, Events + ActivityLog meta DOCUMENT_EMAIL_SENT/FAILED.',
+      'Customer timeline NOTE_ADDED bei erfolgreichem Versand; Dokument-Status → SENT.',
+      'Rollen: ORG_ADMIN, MASTER_ADMIN, SUB_ADMIN, WORKER. Frontend: api.documents.sendBookingDocumentsEmail.',
+    ],
+    reason:
+      'Kunden sollen generierte Buchungsunterlagen per E-Mail erhalten — ohne zweite PDF-Pipeline oder öffentliche URLs.',
+    previousBehavior:
+      'Nur Download über authentifizierten Endpoint; kein gebündelter E-Mail-Versand aus Booking-Dokumenten.',
+    details:
+      'Nutzt OutboundEmailModule (V4.9.290). Keine UI-Buttons in dieser Phase — API + Client bereit.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-09T18:00:00.000Z',
+  },
+  {
+    id: 'outbound-email-foundation-v49290-2026-07-09',
+    version: '4.9.290',
+    title: 'V4.9.290 — Outbound Email foundation (tenant-safe default + domain verification)',
+    summary: [
+      'Neues Modul outbound-email: OrgEmailSettings, OrgEmailDomain, OutboundEmail + Attachments/Events (Prisma).',
+      'EmailProviderPort + DevEmailProvider (SENT_SIMULATED, sicheres Payload-Logging ohne Attachment-Binaries).',
+      'EmailAddressPolicyService: kein Spoofing — verified domain From nur bei VERIFIED; sonst SynqDrive Default + org Reply-To.',
+      'API: GET/PUT email-settings, POST/GET email-domains, POST check, POST test-email — ORG_ADMIN/MASTER_ADMIN only.',
+      'Domain-Verifizierung: Dev DNS Records (SPF/DKIM/DMARC/Return-Path) + simulierbarer check; Resend/Postmark gekapselt.',
+      'Env: EMAIL_PROVIDER, EMAIL_DEFAULT_FROM_*, EMAIL_DOMAIN_VERIFICATION_PROVIDER.',
+    ],
+    reason:
+      'SynqDrive braucht eine professionelle, mandantensichere E-Mail-Grundlage mit Standardversand und optionaler eigener Absenderdomain.',
+    previousBehavior:
+      'Nur TransactionalMailService-Stub für Invites; keine org-scoped Outbound-Architektur, keine Domain-Verifizierung.',
+    details:
+      'Kein Dokumentenversand in UI-Flächen in dieser Phase. Explizite User-Aktion für test-email. Worker/Manager senden später — keine Domain-Konfiguration für sie.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-09T16:00:00.000Z',
+  },
+  {
     id: 'liquid-glass-shell-only-v49289-2026-07-09',
     version: '4.9.289',
     title: 'V4.9.289 — Liquid Glass shell-only Map HUD (inner blob fix)',

@@ -663,6 +663,23 @@ export function mapTimelineEventToUserSummary(event: TimelineEventLike): Timelin
   }
 
   if (type === 'NOTE_ADDED' || type === 'NOTE_CREATED') {
+    const metadata = timelineMetadata(event);
+    const titleLower = rawTitle.toLowerCase();
+    if (
+      (titleLower.includes('dokument') && titleLower.includes('e-mail')) ||
+      (metadata?.bookingId && Array.isArray(metadata.documentIds))
+    ) {
+      const recipient = typeof metadata?.to === 'string' ? metadata.to : null;
+      return {
+        chipLabel: 'Versand',
+        chipTone: 'success',
+        userTitle: 'Dokumente per E-Mail gesendet',
+        userDescription: recipient
+          ? `Empfänger: ${recipient}`
+          : rawDescription || 'Buchungsunterlagen versendet',
+        timestamp,
+      };
+    }
     return {
       chipLabel: 'Notiz',
       chipTone: 'neutral',

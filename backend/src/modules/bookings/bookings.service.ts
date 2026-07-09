@@ -346,21 +346,33 @@ export class BookingsService {
       data.map((b) => b.id),
     );
 
+    const sendableMap = await this.loadSendableDocumentCounts(
+      orgId,
+      data.map((b) => b.id),
+    );
+
     const mapped = data.map((b) => {
       const protocols = protocolsMap.get(b.id) ?? [];
       const pickup = protocols.find((p) => p.kind === 'PICKUP') ?? null;
       const ret = protocols.find((p) => p.kind === 'RETURN') ?? null;
-      return this.mapBookingListRow(b, stationMap, pickup, ret);
+      return this.mapBookingListRow(
+        b,
+        stationMap,
+        pickup,
+        ret,
+        sendableMap.get(b.id) ?? 0,
+      );
     });
 
     return buildPaginatedResult(mapped, total, { page, limit });
   }
 
   private mapBookingListRow(
-    b: Booking & { customer: { firstName: string; lastName: string }; vehicle: { vehicleName?: string | null; make: string; model: string; licensePlate?: string | null } },
+    b: Booking & { customer: { firstName: string; lastName: string; email?: string | null }; vehicle: { vehicleName?: string | null; make: string; model: string; licensePlate?: string | null } },
     stationMap: Map<string, string>,
     pickup: HandoverProtocolDto | null,
     ret: HandoverProtocolDto | null,
+    sendableDocumentCount: number,
   ) {
     const pickupStationName = b.pickupStationId ? stationMap.get(b.pickupStationId) || '' : '';
     const returnStationName = b.returnStationId ? stationMap.get(b.returnStationId) || '' : '';
@@ -371,6 +383,8 @@ export class BookingsService {
       pickupStationId: b.pickupStationId,
       returnStationId: b.returnStationId,
       customerName: `${b.customer.firstName} ${b.customer.lastName}`.trim(),
+      customerEmail: b.customer.email?.trim() || null,
+      sendableDocumentCount,
       vehicleName: b.vehicle.vehicleName || `${b.vehicle.make} ${b.vehicle.model}`.trim(),
       vehicleLicense: b.vehicle.licensePlate || '',
       station: pickupStationName,
@@ -648,6 +662,28 @@ export class BookingsService {
       const list = map.get(dto.bookingId) ?? [];
       list.push(dto);
       map.set(dto.bookingId, list);
+    }
+    return map;
+  }
+
+  /** Count non-VOID/FAILED generated documents per booking for list send affordances. */
+  private async loadSendableDocumentCounts(
+    orgId: string,
+    bookingIds: string[],
+  ): Promise<Map<string, number>> {
+    if (bookingIds.length === 0) return new Map();
+    const rows = await this.prisma.generatedDocument.groupBy({
+      by: ['bookingId'],
+      where: {
+        organizationId: orgId,
+        bookingId: { in: bookingIds },
+        status: { notIn: ['VOID', 'FAILED'] },
+      },
+      _count: { _all: true },
+    });
+    const map = new Map<string, number>();
+    for (const row of rows) {
+      if (row.bookingId) map.set(row.bookingId, row._count._all);
     }
     return map;
   }

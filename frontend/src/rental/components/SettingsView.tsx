@@ -9,6 +9,7 @@ import { UsersRolesTab } from './UsersRolesTab';
 import { DataAuthorizationTab } from './DataAuthorizationTab';
 import { LegalDocumentsTab } from './LegalDocumentsTab';
 import { RentalRulesTab } from './settings/rental-rules/RentalRulesTab';
+import { EmailDeliveryTab } from './settings/email-delivery/EmailDeliveryTab';
 import { AccountInformationTab } from './settings/AccountInformationTab';
 import { CompanyInformationTab } from './settings/CompanyInformationTab';
 import { BillingTab } from './billing/BillingTab';
@@ -1853,6 +1854,7 @@ export function SettingsView({
         <DataAuthorizationTab canWrite={canWriteDataAuth} canManage={canManageDataAuth} />
       )}
       {activeTab === 'legal-documents' && <LegalDocumentsTab isDarkMode={bridgeDark} />}
+      {activeTab === 'email-delivery' && <EmailDeliveryTab />}
       {activeTab === 'rental-rules' && <RentalRulesTab canWrite={canWriteRentalRules} />}
     </div>
   );

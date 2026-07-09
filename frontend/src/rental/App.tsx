@@ -43,6 +43,7 @@ import { RentalProvider, useRentalOrg } from './RentalContext';
 import { FleetProvider, useFleetVehicles } from './FleetContext';
 import { DashboardInsightsProvider } from './DashboardInsightsContext';
 import { HandoverProvider } from './HandoverContext';
+import { SendDocumentsEmailLauncherProvider } from './components/send-documents-email/SendDocumentsEmailLauncherProvider';
 import { Toaster } from 'sonner';
 import { useLiveVehicleTelemetry } from './hooks/useLiveVehicleTelemetry';
 import { LanguageProvider } from './i18n/LanguageContext';
@@ -125,6 +126,7 @@ function readPersistedSettingsTab(): RentalSettingsTab {
       'billing',
       'data-authorization',
       'legal-documents',
+      'email-delivery',
       'rental-rules',
     ];
     if (raw && valid.includes(raw as RentalSettingsTab)) return raw as RentalSettingsTab;
@@ -555,6 +557,7 @@ function RentalAppContent() {
 
   return (
     <HandoverProvider isDarkMode={isDarkMode}>
+    <SendDocumentsEmailLauncherProvider>
     <AppShell
       variant="rental"
       sidebar={(
@@ -1151,6 +1154,7 @@ function RentalAppContent() {
       )}
 
     </AppShell>
+    </SendDocumentsEmailLauncherProvider>
     </HandoverProvider>
   );
 }

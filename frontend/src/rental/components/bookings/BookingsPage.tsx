@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { PageHeader, EmptyState } from '../../../components/patterns';
 import { Icon } from '../ui/Icon';
 import type { BookingUiRow } from '../../lib/entityMappers';
+import { useSendDocumentsEmailLauncher } from '../send-documents-email/SendDocumentsEmailLauncherProvider';
+import { BOOKING_PACKAGE_TYPES } from '../send-documents-email/send-documents-email.utils';
 import type { VehicleData } from '../../data/vehicles';
 import type { BookingFiltersState, BookingPlannerView } from './bookingTypes';
 import { BookingsToolbar } from './BookingsToolbar';
@@ -40,6 +42,27 @@ export function BookingsPage({
   onOpenDrawer,
   onCancelBooking,
 }: BookingsPageProps) {
+  const { openForBooking, opening, canSend } = useSendDocumentsEmailLauncher();
+  const [sendingBookingId, setSendingBookingId] = useState<string | null>(null);
+
+  const handleSendDocuments = async (row: BookingUiRow) => {
+    setSendingBookingId(row.id);
+    try {
+      await openForBooking({
+        bookingId: row.id,
+        customer: {
+          email: row.customerEmail,
+          fullName: row.customer,
+        },
+        booking: { id: row.id, bookingNumber: row.bookingRef },
+        documentTypes: [...BOOKING_PACKAGE_TYPES],
+        sourceContext: 'BOOKING_DOCUMENTS',
+      });
+    } finally {
+      setSendingBookingId(null);
+    }
+  };
+
   const [view, setView] = useState<BookingPlannerView>('timeline');
   const [timelineRange, setTimelineRange] = useState<'week' | 'month'>('week');
   const [calendarMonth, setCalendarMonth] = useState(() => new Date().getMonth());
@@ -158,6 +181,9 @@ export function BookingsPage({
               onRowClick={onOpenDrawer}
               onEdit={onOpenDetail}
               onCancel={onCancelBooking}
+              onSendDocuments={handleSendDocuments}
+              canSendDocuments={canSend}
+              sendingBookingId={opening ? sendingBookingId : null}
             />
           )}
           {view === 'calendar' && (

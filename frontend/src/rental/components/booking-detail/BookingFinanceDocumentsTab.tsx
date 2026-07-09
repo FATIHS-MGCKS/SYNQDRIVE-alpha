@@ -74,7 +74,19 @@ export function BookingFinanceDocumentsTab({ orgId, detail, isDarkMode }: Bookin
         )}
       </div>
 
-      <BookingDocumentsSection orgId={orgId} bookingId={detail.core.bookingId} isDarkMode={isDarkMode} />
+      <BookingDocumentsSection
+        orgId={orgId}
+        bookingId={detail.core.bookingId}
+        isDarkMode={isDarkMode}
+        customer={{
+          email: detail.customer.email,
+          fullName: detail.customer.fullName,
+        }}
+        booking={{
+          id: detail.core.bookingId,
+          bookingNumber: detail.core.bookingNumber,
+        }}
+      />
     </div>
   );
 }

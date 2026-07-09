@@ -32,6 +32,7 @@ export const en = {
   'nav.companyInfo': 'Company Information',
   'nav.usersRoles': 'Users & Roles',
   'nav.dataAuthorization': 'Data Authorization & Consent',
+  'nav.emailDelivery': 'Email & Delivery',
   'nav.legalDocuments': 'Legal Documents',
   'nav.billingSubscription': 'Billing & Subscription',
   'nav.rentalRules': 'Rental Rules',
@@ -162,6 +163,7 @@ export const en = {
   'settingsTab.billing': 'Billing & Subscription',
   'settingsTab.dataAuthorization': 'Data Authorization & Consent Center',
   'settingsTab.legalDocuments': 'Legal Documents',
+  'settingsTab.emailDelivery': 'Email & Delivery',
   'settingsTab.rentalRules': 'Rental Rules',
 
   // Administration in-page tab bar (short labels)
@@ -171,6 +173,7 @@ export const en = {
   'adminTab.billing': 'Billing',
   'adminTab.dataAuthorization': 'Data Authorization',
   'adminTab.legalDocuments': 'Legal Documents',
+  'adminTab.emailDelivery': 'Email & Delivery',
   'adminTab.rentalRules': 'Rental Rules',
 
   // ─── Finance Tabs ───

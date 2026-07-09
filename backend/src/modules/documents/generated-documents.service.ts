@@ -48,7 +48,13 @@ export interface GeneratedDocumentDto {
   invoiceId: string | null;
   legalVersionLabel: string | null;
   generatedAt: string | null;
+  sentAt: string | null;
   createdAt: string;
+  lastSentAt?: string | null;
+  lastSentTo?: string | null;
+  lastOutboundEmailId?: string | null;
+  lastSendStatus?: string | null;
+  regenerateRecommended?: boolean;
 }
 
 export interface DocumentDownload {
@@ -154,6 +160,40 @@ export class GeneratedDocumentsService {
     };
   }
 
+  /** Loads stored bytes for outbound email attachments — never regenerates PDFs. */
+  async getAttachmentBuffer(
+    orgId: string,
+    documentId: string,
+  ): Promise<{
+    buffer: Buffer;
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number | null;
+    document: GeneratedDocument;
+  }> {
+    const doc = await this.getById(orgId, documentId);
+    const stream = await this.storage.getObjectStream(doc.objectKey);
+    const buffer = await this.readStreamToBuffer(stream);
+    return {
+      buffer,
+      fileName: doc.fileName,
+      mimeType: doc.mimeType,
+      sizeBytes: doc.sizeBytes ?? buffer.length,
+      document: doc,
+    };
+  }
+
+  private async readStreamToBuffer(stream: Readable): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      stream.on('data', (chunk: Buffer | string) => {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      });
+      stream.on('error', reject);
+      stream.on('end', () => resolve(Buffer.concat(chunks)));
+    });
+  }
+
   toDto(doc: GeneratedDocument): GeneratedDocumentDto {
     return {
       id: doc.id,
@@ -169,7 +209,71 @@ export class GeneratedDocumentsService {
       invoiceId: doc.invoiceId,
       legalVersionLabel: doc.legalVersionLabel,
       generatedAt: doc.generatedAt ? doc.generatedAt.toISOString() : null,
+      sentAt: doc.sentAt ? doc.sentAt.toISOString() : null,
       createdAt: doc.createdAt.toISOString(),
     };
+  }
+
+  /**
+   * Enriches bundle document DTOs with the latest outbound-email send metadata
+   * per attachment (last recipient, status, outbound email id).
+   */
+  async enrichDtosWithSendMeta(
+    orgId: string,
+    dtos: GeneratedDocumentDto[],
+  ): Promise<GeneratedDocumentDto[]> {
+    const ids = dtos.map((d) => d.id).filter(Boolean);
+    if (!ids.length) return dtos;
+
+    const attachments = await this.prisma.outboundEmailAttachment.findMany({
+      where: {
+        generatedDocumentId: { in: ids },
+        outboundEmail: { organizationId: orgId },
+      },
+      include: {
+        outboundEmail: {
+          select: {
+            id: true,
+            to: true,
+            status: true,
+            sentAt: true,
+            createdAt: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const latestByDocId = new Map<
+      string,
+      {
+        id: string;
+        to: string;
+        status: string;
+        sentAt: Date | null;
+        createdAt: Date;
+      }
+    >();
+    for (const row of attachments) {
+      if (!row.generatedDocumentId || latestByDocId.has(row.generatedDocumentId)) continue;
+      latestByDocId.set(row.generatedDocumentId, row.outboundEmail);
+    }
+
+    return dtos.map((dto) => {
+      const latest = latestByDocId.get(dto.id);
+      const lastSentAt =
+        latest?.sentAt?.toISOString() ??
+        latest?.createdAt?.toISOString() ??
+        dto.sentAt ??
+        null;
+      return {
+        ...dto,
+        lastSentAt,
+        lastSentTo: latest?.to ?? null,
+        lastOutboundEmailId: latest?.id ?? null,
+        lastSendStatus: latest?.status ?? (dto.status === DOCUMENT_STATUS.SENT ? 'SENT' : null),
+        regenerateRecommended: dto.status === DOCUMENT_STATUS.FAILED,
+      };
+    });
   }
 }

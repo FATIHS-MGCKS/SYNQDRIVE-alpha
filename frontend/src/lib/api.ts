@@ -1038,7 +1038,13 @@ export interface GeneratedDocumentDto {
   invoiceId: string | null;
   legalVersionLabel: string | null;
   generatedAt: string | null;
+  sentAt: string | null;
   createdAt: string;
+  lastSentAt?: string | null;
+  lastSentTo?: string | null;
+  lastOutboundEmailId?: string | null;
+  lastSendStatus?: string | null;
+  regenerateRecommended?: boolean;
 }
 
 export interface BookingDocumentBundleView {
@@ -1053,6 +1059,113 @@ export interface BookingDocumentBundleView {
   legal: { termsAttached: boolean; withdrawalAttached: boolean; missing: string[] };
   missingLegalDocuments: string[];
   warnings: string[];
+}
+
+export interface SendBookingDocumentsEmailPayload {
+  documentIds: string[];
+  to?: string;
+  cc?: string[];
+  bcc?: string[];
+  subject?: string;
+  message?: string;
+  includeSignature?: boolean;
+}
+
+export interface SendBookingDocumentsEmailResult {
+  outboundEmailId: string;
+  status: string;
+  to: string;
+  fromEmail: string;
+  fromName: string | null;
+  replyToEmail: string;
+  documents: Array<{
+    id: string;
+    documentType: string;
+    fileName: string;
+    status: string;
+  }>;
+  providerMessageId?: string | null;
+  errorMessage?: string | null;
+}
+
+export type OrgEmailMode = 'SYNQDRIVE_DEFAULT' | 'VERIFIED_DOMAIN';
+
+export type OrgEmailDomainStatus =
+  | 'NOT_CONFIGURED'
+  | 'PENDING_DNS'
+  | 'VERIFYING'
+  | 'VERIFIED'
+  | 'FAILED';
+
+export interface EmailDnsRecordDto {
+  type: 'TXT' | 'CNAME' | 'MX';
+  host: string;
+  value: string;
+  purpose: 'SPF' | 'DKIM' | 'DMARC' | 'RETURN_PATH';
+  status: 'pending' | 'verified';
+}
+
+export interface OrgEmailSettingsDto {
+  id: string;
+  organizationId: string;
+  mode: OrgEmailMode;
+  defaultFromName: string | null;
+  defaultReplyToEmail: string | null;
+  signatureHtml: string | null;
+  signatureText: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrgEmailDomainDto {
+  id: string;
+  organizationId: string;
+  domain: string;
+  fromEmail: string;
+  fromName: string | null;
+  replyToEmail: string | null;
+  provider: string;
+  providerDomainId: string | null;
+  status: OrgEmailDomainStatus;
+  dnsRecords: EmailDnsRecordDto[];
+  lastCheckedAt: string | null;
+  verifiedAt: string | null;
+  failureReason: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateOrgEmailSettingsPayload {
+  mode?: OrgEmailMode;
+  defaultFromName?: string | null;
+  defaultReplyToEmail?: string | null;
+  signatureHtml?: string | null;
+  signatureText?: string | null;
+}
+
+export interface CreateOrgEmailDomainPayload {
+  domain: string;
+  fromEmail: string;
+  fromName?: string;
+  replyToEmail?: string;
+}
+
+export interface SendTestEmailPayload {
+  to: string;
+  subject?: string;
+  bodyText?: string;
+}
+
+export interface OutboundEmailSendResultDto {
+  id: string;
+  status: string;
+  to: string;
+  fromEmail: string;
+  fromName: string | null;
+  replyToEmail: string;
+  subject: string;
+  errorMessage?: string | null;
+  providerMessageId?: string | null;
 }
 
 export type BookingDetailDocumentSlot = {
@@ -2863,9 +2976,38 @@ export const api = {
     /** Opens the stored PDF (authenticated) in a new tab. */
     open: (orgId: string, documentId: string) =>
       openAuthedDocument(`/organizations/${orgId}/documents/${documentId}/download`),
+    sendBookingDocumentsEmail: (
+      orgId: string,
+      bookingId: string,
+      payload: SendBookingDocumentsEmailPayload,
+    ) =>
+      post<SendBookingDocumentsEmailResult>(
+        `/organizations/${orgId}/bookings/${bookingId}/documents/send-email`,
+        payload,
+      ),
   },
   // Administration → Legal Documents (AGB / Widerrufsbelehrung): upload +
   // versioning. Mutations are ORG_ADMIN-gated server-side.
+  email: {
+    getSettings: (orgId: string) =>
+      get<OrgEmailSettingsDto>(`/organizations/${orgId}/email-settings`),
+    updateSettings: (orgId: string, payload: UpdateOrgEmailSettingsPayload) =>
+      put<OrgEmailSettingsDto>(`/organizations/${orgId}/email-settings`, payload),
+    listDomains: (orgId: string) =>
+      get<OrgEmailDomainDto[]>(`/organizations/${orgId}/email-domains`),
+    createDomain: (orgId: string, payload: CreateOrgEmailDomainPayload) =>
+      post<OrgEmailDomainDto>(`/organizations/${orgId}/email-domains`, payload),
+    checkDomain: (orgId: string, domainId: string) =>
+      post<OrgEmailDomainDto>(
+        `/organizations/${orgId}/email-domains/${domainId}/check`,
+        {},
+      ),
+    sendTestEmail: (orgId: string, payload: SendTestEmailPayload) =>
+      post<OutboundEmailSendResultDto>(
+        `/organizations/${orgId}/email-settings/test-email`,
+        payload,
+      ),
+  },
   legalDocuments: {
     list: (orgId: string) => get<LegalDocumentDto[]>(`/organizations/${orgId}/legal-documents`),
     activate: (orgId: string, id: string) =>

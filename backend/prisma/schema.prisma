@@ -932,6 +932,9 @@ model Organization {
   bookingPriceLineItems     BookingPriceLineItem[]
   organizationRoles         OrganizationRole[]
   organizationUserInvites   OrganizationUserInvite[]
+  orgEmailSettings          OrgEmailSettings?
+  orgEmailDomains           OrgEmailDomain[]
+  outboundEmails            OutboundEmail[]
 
   @@index([status])
   @@map("organizations")
@@ -974,6 +977,7 @@ model User {
   invitesAccepted          OrganizationUserInvite[] @relation("InvitesAccepted")
   organizationRolesCreated OrganizationRole[]       @relation("RolesCreated")
   billingPriceVersionsCreated BillingPriceVersion[] @relation("BillingPriceVersionsCreated")
+  outboundEmailsSent       OutboundEmail[]          @relation("OutboundEmailSentBy")
 
   @@map("users")
 }
@@ -7309,4 +7313,158 @@ model HighMobilityCompatibilitySignal {
   @@index([app])
   @@index([coverage])
   @@map("hm_compatibility_signals")
+}
+
+// ------------------------------------------------
+// OUTBOUND EMAIL (tenant-scoped communications)
+// ------------------------------------------------
+
+enum OrgEmailMode {
+  SYNQDRIVE_DEFAULT
+  VERIFIED_DOMAIN
+}
+
+enum OrgEmailDomainStatus {
+  NOT_CONFIGURED
+  PENDING_DNS
+  VERIFYING
+  VERIFIED
+  FAILED
+}
+
+enum OutboundEmailSourceType {
+  BOOKING_DOCUMENTS
+  INVOICE
+  HANDOVER
+  CUSTOMER_DOCUMENT
+  MANUAL
+}
+
+enum OutboundEmailStatus {
+  DRAFT
+  QUEUED
+  SENDING
+  SENT
+  FAILED
+  BOUNCED
+  SENT_SIMULATED
+}
+
+enum OutboundEmailEventType {
+  CREATED
+  QUEUED
+  SENT
+  FAILED
+  BOUNCED
+  OPENED
+  CLICKED
+  DOMAIN_USED
+  FALLBACK_USED
+}
+
+model OrgEmailSettings {
+  id                   String       @id @default(uuid())
+  organizationId       String       @unique @map("organization_id")
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  mode                 OrgEmailMode @default(SYNQDRIVE_DEFAULT)
+  defaultFromName      String?      @map("default_from_name")
+  defaultReplyToEmail  String?      @map("default_reply_to_email")
+  signatureHtml        String?      @map("signature_html") @db.Text
+  signatureText        String?      @map("signature_text") @db.Text
+  createdAt            DateTime     @default(now()) @map("created_at")
+  updatedAt            DateTime     @updatedAt @map("updated_at")
+
+  @@map("org_email_settings")
+}
+
+model OrgEmailDomain {
+  id                String               @id @default(uuid())
+  organizationId    String               @map("organization_id")
+  organization      Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  domain            String
+  fromEmail         String               @map("from_email")
+  fromName          String?              @map("from_name")
+  replyToEmail      String?              @map("reply_to_email")
+  provider          String               @default("dev")
+  providerDomainId  String?              @map("provider_domain_id")
+  status            OrgEmailDomainStatus @default(PENDING_DNS)
+  dnsRecords        Json                 @default("[]") @map("dns_records")
+  lastCheckedAt     DateTime?            @map("last_checked_at")
+  verifiedAt        DateTime?            @map("verified_at")
+  failureReason     String?              @map("failure_reason")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+
+  @@unique([organizationId, domain])
+  @@index([organizationId])
+  @@index([status])
+  @@map("org_email_domains")
+}
+
+model OutboundEmail {
+  id                String                  @id @default(uuid())
+  organizationId    String                  @map("organization_id")
+  organization      Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookingId         String?                 @map("booking_id")
+  customerId        String?                 @map("customer_id")
+  invoiceId         String?                 @map("invoice_id")
+  sourceType        OutboundEmailSourceType @map("source_type")
+  to                String
+  cc                Json?
+  bcc               Json?
+  fromEmail         String                  @map("from_email")
+  fromName          String?                 @map("from_name")
+  replyToEmail      String                  @map("reply_to_email")
+  subject           String
+  bodyText          String                  @map("body_text") @db.Text
+  bodyHtml          String?                 @map("body_html") @db.Text
+  status            OutboundEmailStatus     @default(DRAFT)
+  provider          String                  @default("dev")
+  providerMessageId String?                 @map("provider_message_id")
+  errorMessage      String?                 @map("error_message")
+  sentByUserId      String                  @map("sent_by_user_id")
+  sentByUser        User                    @relation("OutboundEmailSentBy", fields: [sentByUserId], references: [id], onDelete: Restrict)
+  sentAt            DateTime?               @map("sent_at")
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+
+  attachments OutboundEmailAttachment[]
+  events      OutboundEmailEvent[]
+
+  @@index([organizationId])
+  @@index([bookingId])
+  @@index([customerId])
+  @@index([invoiceId])
+  @@index([status])
+  @@index([sentByUserId])
+  @@map("outbound_emails")
+}
+
+model OutboundEmailAttachment {
+  id                  String        @id @default(uuid())
+  outboundEmailId     String        @map("outbound_email_id")
+  outboundEmail       OutboundEmail @relation(fields: [outboundEmailId], references: [id], onDelete: Cascade)
+  generatedDocumentId String?       @map("generated_document_id")
+  fileName            String        @map("file_name")
+  mimeType            String        @map("mime_type")
+  sizeBytes           Int?          @map("size_bytes")
+  documentType        String?       @map("document_type")
+  createdAt           DateTime      @default(now()) @map("created_at")
+
+  @@index([outboundEmailId])
+  @@index([generatedDocumentId])
+  @@map("outbound_email_attachments")
+}
+
+model OutboundEmailEvent {
+  id              String                 @id @default(uuid())
+  outboundEmailId String                 @map("outbound_email_id")
+  outboundEmail   OutboundEmail          @relation(fields: [outboundEmailId], references: [id], onDelete: Cascade)
+  eventType       OutboundEmailEventType @map("event_type")
+  payload         Json?
+  createdAt       DateTime               @default(now()) @map("created_at")
+
+  @@index([outboundEmailId])
+  @@index([eventType])
+  @@map("outbound_email_events")
 }

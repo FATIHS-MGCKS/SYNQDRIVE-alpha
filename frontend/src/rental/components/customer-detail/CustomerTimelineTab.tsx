@@ -5,6 +5,11 @@ import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
 import { EmptyState, StatusChip } from '../../../components/patterns';
 import { dotClassForTone } from '../../../components/patterns/status-utils';
+import { useSendDocumentsEmailLauncher } from '../send-documents-email/SendDocumentsEmailLauncherProvider';
+import {
+  documentEmailTimelineMeta,
+  isDocumentEmailTimelineEvent,
+} from '../send-documents-email/send-documents-email.utils';
 import {
   mapTimelineEventToUserEntry,
   timelineEventMatchesFilter,
@@ -30,6 +35,8 @@ interface CustomerTimelineTabProps {
   loading?: boolean;
   error?: string | null;
   onAddNote: () => void;
+  customerEmail?: string | null;
+  onResent?: () => void;
 }
 
 export function CustomerTimelineTab({
@@ -37,8 +44,11 @@ export function CustomerTimelineTab({
   loading,
   error,
   onAddNote,
+  customerEmail,
+  onResent,
 }: CustomerTimelineTabProps) {
   const [filter, setFilter] = useState<TimelineFilter>('all');
+  const { openForBooking, canSend } = useSendDocumentsEmailLauncher();
 
   const filtered = useMemo(
     () => events.filter((ev) => timelineEventMatchesFilter(ev, filter)),
@@ -105,6 +115,11 @@ export function CustomerTimelineTab({
           <ol className={cdv.timelineEntryList}>
             {entries.map(({ id, entry }, index) => {
               const last = index === entries.length - 1;
+              const rawEvent = filtered[index];
+              const emailMeta =
+                rawEvent && isDocumentEmailTimelineEvent(rawEvent)
+                  ? documentEmailTimelineMeta(rawEvent)
+                  : null;
               return (
                 <li key={id} className={cdv.timelineEntryRow}>
                   <div className={cdv.timelineEntryRail}>
@@ -131,6 +146,25 @@ export function CustomerTimelineTab({
                     ) : null}
                     {entry.createdByLabel ? (
                       <p className={cdv.timelineEntrySubline}>{entry.createdByLabel}</p>
+                    ) : null}
+                    {canSend && emailMeta ? (
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        className="mt-2 h-7 text-[11px]"
+                        onClick={() => {
+                          void openForBooking({
+                            bookingId: emailMeta.bookingId!,
+                            customer: { email: customerEmail ?? emailMeta.to },
+                            initiallySelectedDocumentIds: emailMeta.documentIds,
+                            sourceContext: 'BOOKING_DOCUMENTS',
+                            onSent: onResent,
+                          });
+                        }}
+                      >
+                        Erneut senden
+                      </Button>
                     ) : null}
                   </div>
                 </li>
