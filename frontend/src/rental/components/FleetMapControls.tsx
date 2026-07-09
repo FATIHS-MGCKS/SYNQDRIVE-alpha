@@ -74,7 +74,7 @@ export function FleetMapControls({
               type="button"
               onClick={onRefresh}
               disabled={loading}
-              className="liquid-glass-lens__panel-action sq-map-liquid-action"
+              className="liquid-glass-lens__panel-action"
             >
               <RefreshCw className={`w-3 h-3 shrink-0 ${loading ? 'animate-spin' : ''}`} />
               <span className="text-[9.5px] font-semibold">Refresh now</span>
@@ -119,10 +119,10 @@ export function FleetMapControls({
       <div className="absolute bottom-11 left-11 z-10 pointer-events-none max-w-[calc(100%-3.5rem)] sm:bottom-12 sm:left-12">
         <div className="liquid-glass-lens__legend-stack pointer-events-auto">
           <LiquidGlassLens
-            variant="fleetMiniPill"
+            variant="fleetToolbarButton"
             renderMode="lens"
             intensity="subtle"
-            className="liquid-glass-lens--legendTrigger"
+            className="liquid-glass-lens--legendTrigger pointer-events-auto"
           >
             <button
               type="button"

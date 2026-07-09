@@ -138,16 +138,11 @@ export function OverviewLiveMapCard({
         )}
 
         <div className="vehicle-detail-map-hud">
-          <LiquidGlassLens
-            variant="vehicleHudStack"
-            renderMode="shell"
-            intensity="subtle"
-            className="w-full max-w-[20rem] pointer-events-none"
-          >
+          <div className="vehicle-hud-tile-row">
             <LiquidGlassLens
               variant="vehicleHudTile"
               renderMode="lens"
-              intensity="medium"
+              intensity="subtle"
               className="pointer-events-none"
             >
               <div className="liquid-glass-lens__tile-inner">
@@ -164,7 +159,7 @@ export function OverviewLiveMapCard({
             <LiquidGlassLens
               variant="vehicleHudTile"
               renderMode="lens"
-              intensity="medium"
+              intensity="subtle"
               className="pointer-events-none"
             >
               <div className="liquid-glass-lens__tile-inner">
@@ -185,7 +180,7 @@ export function OverviewLiveMapCard({
             <LiquidGlassLens
               variant="vehicleHudTile"
               renderMode="lens"
-              intensity="medium"
+              intensity="subtle"
               className="pointer-events-none"
             >
               <div className="liquid-glass-lens__tile-inner">
@@ -199,7 +194,7 @@ export function OverviewLiveMapCard({
                 </span>
               </div>
             </LiquidGlassLens>
-          </LiquidGlassLens>
+          </div>
         </div>
       </div>
     </div>

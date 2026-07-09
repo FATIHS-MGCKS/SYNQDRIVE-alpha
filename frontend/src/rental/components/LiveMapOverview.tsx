@@ -5,6 +5,7 @@ import { interpolateLngLat, easeInOutCubic, distanceM, bearingDeg } from '../../
 import { useAddress } from '../../lib/useAddress';
 import { createSedanMarkerEl, updateSedanRotation, shortestRotation } from '../../lib/vehicleMarker';
 import { LiquidGlassLens } from '../../components/surface';
+import { cn } from '../../components/ui/utils';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
 const MAPBOX_STYLE = import.meta.env.VITE_MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/light-v11';
@@ -298,14 +299,19 @@ export function LiveMapOverview({
         </div>
       )}
       {operatorHint && !waitingForPosition && loaded && (
-        <div className="pointer-events-none absolute top-2.5 right-2.5 z-10 max-w-[13.75rem] sm:top-3 sm:right-3">
+        <div className="pointer-events-none absolute top-2.5 right-2.5 z-10 max-w-[11rem] sm:top-3 sm:right-3">
           <LiquidGlassLens
             variant="vehicleHudBadge"
             renderMode={operatorHintSub ? 'shell' : 'lens'}
             intensity="subtle"
             className="pointer-events-none"
           >
-            <div className="liquid-glass-lens__hud-badge flex-col items-start gap-0.5">
+            <div
+              className={cn(
+                'liquid-glass-lens__hud-badge flex-col items-start gap-0.5',
+                operatorHintSub && 'liquid-glass-lens__hud-badge--wrap',
+              )}
+            >
               <p className="text-[9px] font-semibold leading-snug text-foreground">{operatorHint}</p>
               {operatorHintSub && (
                 <p className="text-[8px] leading-snug text-muted-foreground">{operatorHintSub}</p>
@@ -315,14 +321,14 @@ export function LiveMapOverview({
         </div>
       )}
       {currentAddress && currentAddress.formatted !== '—' && !waitingForPosition && (
-        <div className="pointer-events-none absolute top-2.5 left-2.5 z-10 max-w-[13.75rem] sm:top-3 sm:left-3">
+        <div className="pointer-events-none absolute top-2.5 left-2.5 z-10 max-w-[12.5rem] sm:top-3 sm:left-3">
           <LiquidGlassLens
             variant="vehicleHudBadge"
             renderMode="shell"
             intensity="subtle"
             className="pointer-events-none"
           >
-            <div className="liquid-glass-lens__hud-badge flex-col items-start gap-0">
+            <div className="liquid-glass-lens__hud-badge flex-col items-start gap-0 liquid-glass-lens__hud-badge--wrap">
               <p className="truncate text-[8px] font-semibold leading-tight text-foreground w-full">
                 {currentAddress.street
                   ? `${currentAddress.street}${currentAddress.houseNumber ? ` ${currentAddress.houseNumber}` : ''}`

@@ -1,6 +1,6 @@
 import type { GlassOptics } from '@samasante/liquid-glass';
 import type { LiquidGlassLensVariant } from './liquid-glass-lens-variants';
-import { isLensVariant } from './liquid-glass-lens-variants';
+import { isCanonicalSmallLensVariant, isLensVariant } from './liquid-glass-lens-variants';
 
 export type LiquidGlassIntensity = 'subtle' | 'medium' | 'strong';
 
@@ -11,122 +11,75 @@ const INTENSITY_SCALE: Record<LiquidGlassIntensity, number> = {
 };
 
 /**
- * Shell-only optics — rim refraction, no inner dome/blob.
- * curvature/glow/frost/brightness stay at 0; depth kept low for edge band only.
+ * SynqDrive canonical L3 small lens — reference: Fleet Map top-left toolbar buttons.
+ * Content-sized @samasante Glass, low distortion, no inner blob.
  */
-const SHELL: Partial<GlassOptics> = {
+export const CANONICAL_SMALL_LENS_OPTICS: Partial<GlassOptics> = {
   curvature: 0,
-  frost: 0,
+  frost: 0.04,
   brightness: 0,
   glow: 0,
   glowSpread: 0,
-  saturate: 1.02,
+  saturate: 1.04,
+  strength: 0.022,
+  depth: 0.06,
+  dispersion: 0.004,
+  bend: 0.035,
+  bendWidth: 0.05,
+  specular: 0.22,
+  sheen: 0.12,
+  sheenWidth: 0.85,
 };
 
-/** Content-sized lens optics — text-first, low distortion. */
+/** Per-variant tweaks — all derived from canonical small lens family. */
 const LENS_OPTICS: Partial<Record<LiquidGlassLensVariant, Partial<GlassOptics>>> = {
-  fleetToolbarButton: {
-    ...SHELL,
-    strength: 0.022,
-    depth: 0.06,
-    dispersion: 0.004,
-    bend: 0.035,
-    bendWidth: 0.05,
-    specular: 0.22,
-    sheen: 0.12,
-    sheenWidth: 0.85,
-  },
+  fleetToolbarButton: CANONICAL_SMALL_LENS_OPTICS,
   fleetPanelAction: {
-    ...SHELL,
-    strength: 0.018,
-    depth: 0.05,
-    dispersion: 0.003,
-    bend: 0.03,
-    bendWidth: 0.05,
-    specular: 0.18,
-    sheen: 0.1,
-    sheenWidth: 0.8,
-  },
-  fleetMiniPill: {
-    ...SHELL,
+    ...CANONICAL_SMALL_LENS_OPTICS,
     strength: 0.02,
     depth: 0.055,
-    dispersion: 0.004,
-    bend: 0.032,
-    bendWidth: 0.055,
     specular: 0.2,
     sheen: 0.11,
-    sheenWidth: 0.85,
+  },
+  fleetMiniPill: {
+    ...CANONICAL_SMALL_LENS_OPTICS,
+    strength: 0.02,
+    depth: 0.055,
   },
   vehicleHudTile: {
-    ...SHELL,
-    strength: 0.032,
-    depth: 0.08,
-    dispersion: 0.005,
-    bend: 0.042,
-    bendWidth: 0.062,
-    specular: 0.26,
-    sheen: 0.14,
-    sheenWidth: 0.92,
-    curvature: 0.03,
-    frost: 0.06,
+    ...CANONICAL_SMALL_LENS_OPTICS,
+    strength: 0.024,
+    depth: 0.065,
+    frost: 0.05,
+    specular: 0.24,
+    sheen: 0.13,
+    sheenWidth: 0.88,
   },
   vehicleHudBadge: {
-    ...SHELL,
-    strength: 0.016,
+    ...CANONICAL_SMALL_LENS_OPTICS,
+    strength: 0.018,
     depth: 0.05,
-    dispersion: 0.003,
-    bend: 0.028,
-    bendWidth: 0.05,
     specular: 0.18,
     sheen: 0.1,
     sheenWidth: 0.8,
   },
   vehicleMapCallout: {
-    ...SHELL,
+    ...CANONICAL_SMALL_LENS_OPTICS,
     strength: 0.016,
     depth: 0.05,
-    dispersion: 0.003,
     bend: 0.028,
-    bendWidth: 0.045,
     specular: 0.18,
-    sheen: 0.1,
-    sheenWidth: 0.78,
   },
   mapCallout: {
-    ...SHELL,
-    strength: 0.02,
-    depth: 0.055,
-    dispersion: 0.004,
-    bend: 0.032,
-    bendWidth: 0.05,
-    specular: 0.2,
-    sheen: 0.11,
-    sheenWidth: 0.82,
+    ...CANONICAL_SMALL_LENS_OPTICS,
+    strength: 0.018,
+    depth: 0.052,
   },
   statusPill: {
-    ...SHELL,
+    ...CANONICAL_SMALL_LENS_OPTICS,
     strength: 0.02,
     depth: 0.055,
-    dispersion: 0.004,
-    bend: 0.032,
-    bendWidth: 0.05,
-    specular: 0.2,
-    sheen: 0.11,
-    sheenWidth: 0.82,
   },
-};
-
-const DEFAULT_LENS_OPTICS: Partial<GlassOptics> = {
-  ...SHELL,
-  strength: 0.02,
-  depth: 0.055,
-  dispersion: 0.004,
-  bend: 0.032,
-  bendWidth: 0.05,
-  specular: 0.2,
-  sheen: 0.11,
-  sheenWidth: 0.85,
 };
 
 function scaleOptics(
@@ -136,10 +89,10 @@ function scaleOptics(
   const scale = INTENSITY_SCALE[intensity];
   const out: Partial<GlassOptics> = { ...base };
   if (out.strength != null) out.strength = Math.min(0.08, out.strength * scale);
-  if (out.frost != null) out.frost = Math.min(0.12, (out.frost ?? 0) * scale);
+  if (out.frost != null) out.frost = Math.min(0.1, (out.frost ?? 0) * scale);
   if (out.glow != null) out.glow = 0;
   if (out.dispersion != null) out.dispersion = Math.min(0.05, out.dispersion * scale);
-  if (out.curvature != null) out.curvature = Math.min(0.08, (out.curvature ?? 0) * scale);
+  if (out.curvature != null) out.curvature = Math.min(0.06, (out.curvature ?? 0) * scale);
   if (out.brightness != null) out.brightness = 0;
   return out;
 }
@@ -149,11 +102,15 @@ export function resolveLiquidGlassOptics(options: {
   variant: LiquidGlassLensVariant;
 }): Partial<GlassOptics> {
   const { intensity, variant } = options;
-  const base = LENS_OPTICS[variant] ?? DEFAULT_LENS_OPTICS;
+  const base = LENS_OPTICS[variant] ?? CANONICAL_SMALL_LENS_OPTICS;
   return scaleOptics(base, intensity);
 }
 
 /** @deprecated Use resolveEffectiveRenderMode — layout-only is now shell mode. */
 export function isLayoutOnlyLensVariant(variant: LiquidGlassLensVariant): boolean {
   return !isLensVariant(variant);
+}
+
+export function isCanonicalOpticsVariant(variant: LiquidGlassLensVariant): boolean {
+  return isCanonicalSmallLensVariant(variant);
 }

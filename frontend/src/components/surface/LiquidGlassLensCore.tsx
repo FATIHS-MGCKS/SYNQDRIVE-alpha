@@ -11,6 +11,7 @@ import {
   resolveLensRadius,
   resolveLensSize,
   resolveLensTintStyle,
+  isCanonicalSmallLensVariant,
   usesBrightnessInFilter,
   type LiquidGlassLensVariant,
   type LiquidGlassRenderMode,
@@ -84,6 +85,7 @@ export function LiquidGlassLensCore({
       className={cn(
         'liquid-glass-lens',
         'liquid-glass-lens--library-direct',
+        isCanonicalSmallLensVariant(variant) && 'liquid-glass-lens--canonical',
         `liquid-glass-lens--${variant}`,
         prefersReducedMotion && 'motion-reduce:transition-none',
         className,

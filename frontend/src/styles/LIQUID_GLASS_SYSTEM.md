@@ -390,7 +390,23 @@ Light/dark values: see `THEME_COLOR_CONTRACT.md` § Glass / Map glass.
 
 **Components:** `LiquidGlassLensCore.tsx`, `MapLensBackdrop.tsx`, `MapLiquidGlassLens.tsx`
 
-### Phase 10 — Hybrid shell + content-sized lens reset (V4.9.290)
+### Phase 11 — Canonical small lens family (V4.9.292)
+
+**Reference:** Fleet Map top-left toolbar buttons (`fleetToolbarButton`) define SynqDrive canonical L3 small lens.
+
+| Rule | Implementation |
+|------|----------------|
+| Canonical material | `CANONICAL_SMALL_LENS_OPTICS` + `--map-glass-fleet-tile-bg` tint on Glass root |
+| No black rim artefacts | No CSS `border` + `inset` shadow on lens root; no `sq-map-glass-control-btn` inside library lenses |
+| Active state | Subtle `inset` ring on `__control-btn--active`, not dark catch shadow |
+| Wide containers | Shell only (`fleetPanel`, `fleetLegend` expanded, `vehicleHudBadge` long text) |
+| Vehicle HUD stats | `vehicle-hud-tile-row` layout + 3× `vehicleHudTile` lenses — no stack shell |
+| Refresh / Legend | `fleetPanelAction` + legend trigger use canonical family |
+| No legacy doubles | `sq-map-liquid-*` / `sq-map-glass-control-btn` stripped inside `data-liquid-mode="library"` |
+
+Derived variants: `fleetPanelAction`, `fleetMiniPill`, `vehicleHudTile`, `vehicleHudBadge`, `mapCallout`, `statusPill`.
+
+---
 
 **Root cause:** Empty `Glass` visual layer with `refract={MapLensBackdrop}` stacked above content; wide panels (`fleetPanel`, `fleetLegend`, `vehicleHudStack`) ran as single stretched displacement lenses (oval/bloomy); parallel `sq-map-liquid-*` fills inside library path created white/gray capsules.
 
@@ -455,4 +471,4 @@ Before adding or changing a surface, answer:
 
 ---
 
-*Last updated: 2026-07-09 — V4.9.290 Liquid Glass hybrid shell + content-sized lens reset.*
+*Last updated: 2026-07-09 — V4.9.292 Canonical small lens family.*

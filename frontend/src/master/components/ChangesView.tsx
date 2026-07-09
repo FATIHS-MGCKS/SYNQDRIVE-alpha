@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'liquid-glass-canonical-lens-v49292-2026-07-09',
+    version: '4.9.292',
+    title: 'V4.9.292 — Canonical small lens family (Fleet toolbar reference)',
+    summary: [
+      'Fleet top-left toolbar buttons defined as canonical L3 small lens (CANONICAL_SMALL_LENS_OPTICS + fleet-tile-bg tint).',
+      'Black top/bottom lines fixed: removed sq-map-glass-control-btn inset catch shadows + duplicate CSS lens border/inset rim.',
+      'MapGlassControls: library-only liquid-glass-lens__control-btn — no sq-map-* child classes.',
+      'Vehicle HUD: vehicle-hud-tile-row layout (no stack shell) + 3× vehicleHudTile canonical lenses.',
+      'fleetPanelAction, legend trigger, badges/tiles derive same material family; shells for long text/panels only.',
+    ],
+    reason:
+      'Fleet buttons looked right but had black artefact lines from double material; other HUD elements did not share the same liquid language.',
+    previousBehavior:
+      'sq-map-glass-control-btn inset shadows inside Glass lenses; CSS border+inset on lens root; vehicleHudStack shell behind tiles.',
+    details:
+      'No CSS-only rollback. @samasante/liquid-glass stays active. LIQUID_GLASS_SYSTEM.md Phase 11.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-09T15:05:00.000Z',
+  },
+  {
     id: 'liquid-glass-recovery-v49291-2026-07-09',
     version: '4.9.291',
     title: 'V4.9.291 — Liquid Glass recovery (visible lens surfaces)',

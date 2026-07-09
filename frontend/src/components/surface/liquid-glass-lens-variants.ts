@@ -28,7 +28,7 @@ const SHELL_VARIANTS = new Set<LiquidGlassLensVariant>([
   'vehicleHudStack',
 ]);
 
-/** Small content-sized variants — intended for real Glass lenses. */
+/** Small content-sized variants — intended for real Glass lenses (canonical family). */
 const LENS_VARIANTS = new Set<LiquidGlassLensVariant>([
   'fleetToolbarButton',
   'fleetPanelAction',
@@ -39,6 +39,22 @@ const LENS_VARIANTS = new Set<LiquidGlassLensVariant>([
   'mapCallout',
   'statusPill',
 ]);
+
+/** Canonical small lens — Fleet toolbar button is the visual reference. */
+const CANONICAL_SMALL_LENS_VARIANTS = new Set<LiquidGlassLensVariant>([
+  'fleetToolbarButton',
+  'fleetPanelAction',
+  'fleetMiniPill',
+  'vehicleHudTile',
+  'vehicleHudBadge',
+  'vehicleMapCallout',
+  'mapCallout',
+  'statusPill',
+]);
+
+export function isCanonicalSmallLensVariant(variant: LiquidGlassLensVariant): boolean {
+  return CANONICAL_SMALL_LENS_VARIANTS.has(variant);
+}
 
 export function isShellVariant(variant: LiquidGlassLensVariant): boolean {
   return SHELL_VARIANTS.has(variant);
@@ -162,29 +178,27 @@ export function resolveLensSize(
 }
 
 /**
- * Translucent tint passed to `<Glass style>` — library uses this as visible material fill.
- * Content layer stays transparent; root keeps subtle glass body without inner blob.
+ * Translucent tint for `<Glass style>` — canonical family uses fleet tile material.
+ * Content stays transparent; Glass root carries visible liquid fill.
  */
 export function resolveLensTintStyle(options: {
   intensity: LiquidGlassIntensity;
   variant: LiquidGlassLensVariant;
 }): CSSProperties {
   const { variant } = options;
-  switch (variant) {
-    case 'vehicleHudTile':
-      return { background: 'var(--map-glass-vehicle-tile-bg)' };
-    case 'vehicleHudBadge':
-    case 'fleetMiniPill':
-    case 'statusPill':
-      return { background: 'var(--map-glass-vehicle-badge-bg)' };
-    case 'fleetToolbarButton':
+
+  if (isCanonicalSmallLensVariant(variant)) {
+    if (variant === 'vehicleHudBadge' || variant === 'fleetMiniPill' || variant === 'statusPill') {
       return { background: 'var(--map-glass-fleet-tile-bg)' };
-    case 'fleetPanelAction':
-      return { background: 'color-mix(in srgb, var(--map-glass-fleet-panel-bg) 72%, transparent)' };
-    case 'vehicleMapCallout':
-    case 'mapCallout':
-      return { background: 'var(--map-glass-vehicle-callout-bg)' };
+    }
+    if (variant === 'vehicleMapCallout' || variant === 'mapCallout') {
+      return { background: 'color-mix(in srgb, var(--map-glass-fleet-tile-bg) 88%, var(--map-glass-bg-panel) 12%)' };
+    }
+    return { background: 'var(--map-glass-fleet-tile-bg)' };
+  }
+
+  switch (variant) {
     default:
-      return { background: 'var(--map-glass-bg-strong)' };
+      return { background: 'var(--map-glass-fleet-tile-bg)' };
   }
 }
