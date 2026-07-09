@@ -9,7 +9,7 @@ export const tv = {
   mapFrame:
     'relative w-full h-[min(42vh,360px)] sm:h-[min(44vh,400px)] xl:h-auto xl:flex-1 xl:min-h-[340px] rounded-xl overflow-hidden border border-border/50',
   overlay:
-    'absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-[3px] z-10 motion-reduce:backdrop-blur-none',
+    'sq-map-liquid-overlay flex items-center justify-center z-10 motion-reduce:backdrop-blur-none',
   sectionTitle: 'text-[13px] font-semibold tracking-[-0.02em] text-foreground font-display',
   sectionEyebrow: 'text-[10px] font-semibold uppercase tracking-[0.07em] text-muted-foreground',
   meta: 'text-[11px] text-muted-foreground leading-relaxed',

@@ -100,13 +100,17 @@ Legacy aliases (keep): `--accent-indigo`, `--accent-indigo-soft`, `--accent-indi
 
 | Token | Value |
 |-------|-------|
-| `--map-glass-bg` | `rgba(255, 255, 255, 0.58)` |
-| `--map-glass-bg-strong` | `rgba(255, 255, 255, 0.76)` |
-| `--map-glass-border` | `rgba(17, 24, 39, 0.10)` |
-| `--map-glass-highlight` | `rgba(255, 255, 255, 0.82)` |
-| `--map-glass-shine` | `rgba(255, 255, 255, 0.42)` |
+| `--map-glass-bg` | `rgba(255, 255, 255, 0.72)` |
+| `--map-glass-bg-strong` | `rgba(255, 255, 255, 0.9)` |
+| `--map-glass-border` | `rgba(17, 24, 39, 0.12)` |
+| `--map-glass-highlight` | `rgba(255, 255, 255, 0.94)` |
+| `--map-glass-shine` | `rgba(255, 255, 255, 0.52)` |
+| `--map-glass-catch` | `rgba(17, 24, 39, 0.07)` |
+| `--map-glass-inner-shadow` | inset highlight + catch |
 | `--map-glass-shadow` | soft graphite multi-layer shadow |
-| `--map-glass-blur` | `20px` |
+| `--map-glass-blur` | `18px` |
+| `--map-glass-saturate` | `165%` |
+| `--map-glass-radius` | `calc(var(--radius) + 6px)` |
 
 ### Body ambient (light)
 
@@ -208,13 +212,17 @@ Shadows use soft graphite `rgba(17, 24, 39, …)` — cards float on cool off-wh
 
 | Token | Value |
 |-------|-------|
-| `--map-glass-bg` | `rgba(18, 18, 20, 0.62)` |
-| `--map-glass-bg-strong` | `rgba(18, 18, 20, 0.78)` |
-| `--map-glass-border` | `rgba(255, 255, 255, 0.12)` |
-| `--map-glass-highlight` | `rgba(255, 255, 255, 0.16)` |
-| `--map-glass-shine` | `rgba(255, 255, 255, 0.06)` |
+| `--map-glass-bg` | `rgba(18, 18, 20, 0.74)` |
+| `--map-glass-bg-strong` | `rgba(22, 23, 26, 0.9)` |
+| `--map-glass-border` | `rgba(255, 255, 255, 0.14)` |
+| `--map-glass-highlight` | `rgba(255, 255, 255, 0.14)` |
+| `--map-glass-shine` | `rgba(255, 255, 255, 0.07)` |
+| `--map-glass-catch` | `rgba(0, 0, 0, 0.38)` |
+| `--map-glass-inner-shadow` | inset highlight + catch |
 | `--map-glass-shadow` | neutral black shadows |
-| `--map-glass-blur` | `22px` |
+| `--map-glass-blur` | `20px` |
+| `--map-glass-saturate` | `150%` |
+| `--map-glass-radius` | `calc(var(--radius) + 6px)` |
 
 ### Body ambient (dark)
 

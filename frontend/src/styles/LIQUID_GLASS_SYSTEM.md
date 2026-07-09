@@ -301,11 +301,10 @@ Users who opt out of translucency must see **solid, legible** surfaces. All L2 a
 - **`@supports not (backdrop-filter)`** — solid fallbacks for all L2/L3/L4
 - **Pseudo-layers** (`::before` / `::after`) disabled under reduced transparency
 
-### Known gaps (component migration — post L2 cleanup)
-- `trips-view-ui.ts` map loading overlay — map-adjacent; deferred to Phase 4
+### Known gaps (post L3 Map HUD)
 - `DamageEvidenceCanvas` image viewer chrome — specialized overlays
-- `LiveMapOverview` map loading states — Phase 4
 - Inline `backdrop-blur` in legacy admin/image tools — batch as needed
+- Optional future: isolated SVG-displacement prototype branch (not in product CSS)
 
 ### Rules for new work
 
@@ -338,9 +337,9 @@ Light/dark values: see `THEME_COLOR_CONTRACT.md` § Glass / Map glass.
 | **1 — CSS system** | Canonical `.surface-*` classes, `.sq-card-premium`, fallbacks, tokens | **No** (opt-in premium only) |
 | **2 — Documentation** | This file + audits + contract cross-links | **No** |
 | **3 — Component opt-in** | `DataCard` / `MetricCard` / dashboard KPI strip adopt `.surface-premium` / `.surface-elevated` | ✅ V4.9.276 (pattern entry points) |
+| **4 — L3 Map HUD** | `.surface-liquid` + `sq-map-liquid-*` unified material; tokens refined; overlay utility | ✅ V4.9.278 |
 | **5 — L2 frosted cleanup** | Sticky chrome, drawer footers, control bars → `.surface-frosted`; modal backdrops → `.overlay-scrim`; content panels → L1 solid | ✅ V4.9.277 |
-| **6 — Map HUD consolidate** | Map classes extend `.surface-liquid` base | Minimal |
-| **7 — Deprecation cleanup** | Remove `.glass-card`, `.glass-panel`; remove `sq-card sq-glass` stacks | After zero references |
+| **6 — Deprecation cleanup** | Remove `.glass-card`, `.glass-panel`; remove `sq-card sq-glass` stacks | After zero references |
 
 **Explicitly out of scope for early phases:** Sidebar, TopBar, Dashboard layout, component API changes.
 
@@ -380,4 +379,4 @@ Before adding or changing a surface, answer:
 
 ---
 
-*Last updated: 2026-07-09 — V4.9.277 L2 frosted glass cleanup.*
+*Last updated: 2026-07-09 — V4.9.278 L3 Map Liquid HUD redesign.*

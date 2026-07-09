@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'surface-system-l3-map-liquid-hud-v49278-2026-07-09',
+    version: '4.9.278',
+    title: 'V4.9.278 — Surface System L3 Map Liquid HUD Redesign',
+    summary: [
+      'theme.css: --map-glass-* Tokens verfeinert (catch, inner-shadow, saturate, radius); höhere Opazität für Lesbarkeit.',
+      '.surface-liquid Grundmaterial: Shine/Catch-Pseudo-Layer, einheitliches L3-Rezept für alle sq-map-liquid-* Klassen.',
+      'sq-map-glass-controls: verbesserte hover/active/focus States; Mapbox-Controls global in theme.css.',
+      'sq-map-marker-callout: stärkere Opazität + Pseudo-Layer; Reduced-Transparency → --popover.',
+      'sq-map-liquid-overlay Utility; LiveMapOverview/Trips ohne lokales backdrop-blur auf Map.',
+      'Keine externe Library, kein WebGPU/SVG displacement im Produktcode.',
+    ],
+    reason:
+      'L3 Liquid Glass nur für Map-HUD: hochwertiger, lesbarer, konsistenter als verstreute blur+border-Kombinationen.',
+    previousBehavior:
+      'Map-HUD mit niedrigerer Opazität, duplizierte L3-CSS-Blöcke, lokale backdrop-blur auf Map-Overlays, inline Mapbox-Styles.',
+    details:
+      'frontend/src/styles/theme.css, MapGlassControls, FleetMapControls, LiveMapOverview, trips/*Map*, LIQUID_GLASS_SYSTEM.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-09T01:25:00.000Z',
+  },
+  {
     id: 'surface-system-l2-frosted-cleanup-v49277-2026-07-09',
     version: '4.9.277',
     title: 'V4.9.277 — Surface System L2 Frosted Glass Cleanup',

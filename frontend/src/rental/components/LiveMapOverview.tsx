@@ -269,7 +269,7 @@ export function LiveMapOverview({
     <div className={`relative w-full h-full ${className}`}>
       <div ref={mapContainerRef} className="w-full h-full" />
       {isInitialLoading && (
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black/10 backdrop-blur-[2px]">
+        <div className="sq-map-liquid-overlay rounded-lg">
           <div className="sq-map-liquid-loading flex flex-col items-center gap-2">
             <svg className="h-6 w-6 animate-spin text-[color:var(--brand)]" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -280,7 +280,7 @@ export function LiveMapOverview({
         </div>
       )}
       {waitingForPosition && loaded && (
-        <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-black/25 backdrop-blur-[2px]">
+        <div className="sq-map-liquid-overlay rounded-lg">
           <div className="sq-map-liquid-empty mx-3 max-w-[17.5rem]">
             <p className="text-xs font-semibold text-foreground">
               {operatorHint ?? 'No coordinates available'}
@@ -322,37 +322,6 @@ export function LiveMapOverview({
           </div>
         </div>
       )}
-      <style>{`
-        .mapboxgl-ctrl-group {
-          background: var(--map-glass-bg-strong) !important;
-          border: 1px solid var(--map-glass-border) !important;
-          box-shadow:
-            inset 0 1px 0 var(--map-glass-highlight),
-            var(--map-glass-shadow) !important;
-          backdrop-filter: blur(var(--map-glass-blur)) saturate(185%) !important;
-          -webkit-backdrop-filter: blur(var(--map-glass-blur)) saturate(185%) !important;
-          border-radius: 10px !important;
-        }
-        .dark .mapboxgl-ctrl-group {
-          background: var(--map-glass-bg-strong) !important;
-          border-color: var(--map-glass-border) !important;
-          box-shadow:
-            inset 0 1px 0 var(--map-glass-highlight),
-            var(--map-glass-shadow) !important;
-        }
-        .mapboxgl-ctrl-group button {
-          background: transparent !important;
-        }
-        .mapboxgl-ctrl-group button+button {
-          border-top: 1px solid rgba(15, 23, 42, 0.08) !important;
-        }
-        .dark .mapboxgl-ctrl-group button+button {
-          border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
-        }
-        .dark .mapboxgl-ctrl-icon {
-          filter: invert(1) opacity(0.8);
-        }
-      `}</style>
     </div>
   );
 }

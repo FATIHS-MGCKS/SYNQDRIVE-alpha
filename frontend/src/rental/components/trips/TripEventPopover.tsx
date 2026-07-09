@@ -15,12 +15,12 @@ interface TripEventPopoverProps {
 
 export function TripEventPopover({ event, x, y, onClose, onShowInDetails }: TripEventPopoverProps) {
   const severity = classificationToSeverity(event.classification, event.eventCategory);
-  const toneBorder =
+  const toneClass =
     severity === 'critical' || severity === 'abuse'
-      ? 'border-red-500/40'
+      ? 'sq-map-liquid-glass--tone-critical'
       : severity === 'notable'
-        ? 'border-amber-500/35'
-        : 'border-border/60';
+        ? 'sq-map-liquid-glass--tone-watch'
+        : '';
 
   const left = Math.min(Math.max(x, 120), window.innerWidth - 120);
   const top = Math.max(y - 8, 72);
@@ -34,7 +34,7 @@ export function TripEventPopover({ event, x, y, onClose, onShowInDetails }: Trip
         onClick={onClose}
       />
       <div
-        className={`absolute z-40 w-[min(16rem,calc(100%-1.5rem))] -translate-x-1/2 -translate-y-full sq-map-liquid-glass border ${toneBorder} px-3 py-2.5 shadow-lg`}
+        className={`absolute z-40 w-[min(16rem,calc(100%-1.5rem))] -translate-x-1/2 -translate-y-full sq-map-liquid-glass sq-map-liquid-glass--callout ${toneClass} px-3 py-2.5`}
         style={{ left, top }}
         role="dialog"
         aria-label={eventTypeLabel(event)}

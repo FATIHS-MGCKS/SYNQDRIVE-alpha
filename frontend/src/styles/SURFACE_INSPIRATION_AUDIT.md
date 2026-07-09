@@ -839,7 +839,7 @@ Use `.sq-press` / `.sq-3d-btn` for **buttons inside** cards — not on the card 
 |-------|--------|-------|
 | **1 — Docs** | L1 premium defined in this audit + `LIQUID_GLASS_SYSTEM.md` | ✅ |
 | **2 — CSS system** | Canonical `.surface-*`, `.sq-card-premium`, fallbacks in `theme.css` | ✅ V4.9.275 |
-| **4 — L2 frosted cleanup** | Sticky chrome, control bars, drawer footers → `.surface-frosted`; backdrops → `.overlay-scrim` | ✅ V4.9.277 |
+| **5 — L3 Map HUD** | `.surface-liquid` material system; `sq-map-liquid-*` unified; marker callout legibility | ✅ V4.9.278 |
 | **4 — KPI consolidation** | Align `booking-kpi-tile` inset with premium tokens | Optional |
 | **5 — Never** | Blur/transparency on L1; glass libraries for cards | — |
 
@@ -888,4 +888,4 @@ Use `.sq-press` / `.sq-3d-btn` for **buttons inside** cards — not on the card 
 
 ---
 
-*V4.9.277 — L2 frosted glass cleanup (chrome + backdrops).*
+*V4.9.278 — L3 Map Liquid HUD redesign.*
