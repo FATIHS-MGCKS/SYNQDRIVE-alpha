@@ -4,6 +4,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { DevEmailProvider } from '../providers/dev-email.provider';
 import { EmailProviderFactory } from '../providers/email-provider.factory';
 import { EmailAddressPolicyService } from './email-address-policy.service';
+import { EmailSendGuardService } from './email-send-guard.service';
 import { OrgEmailSettingsService } from './org-email-settings.service';
 import { OutboundEmailService } from './outbound-email.service';
 
@@ -69,11 +70,16 @@ describe('OutboundEmailService — dev provider', () => {
       getProvider: () => devProvider,
     } as unknown as EmailProviderFactory;
 
+    const sendGuard = {
+      assertCanSend: jest.fn().mockResolvedValue(undefined),
+    } as unknown as EmailSendGuardService;
+
     service = new OutboundEmailService(
       prisma as unknown as PrismaService,
       settingsService,
       policy,
       providerFactory,
+      sendGuard,
     );
   });
 

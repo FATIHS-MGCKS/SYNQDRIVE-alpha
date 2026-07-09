@@ -7,6 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { ActivityAction, ActivityEntity, OrgEmailDomainStatus } from '@prisma/client';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { PrismaService } from '@shared/database/prisma.service';
+import { ResendDomainAdapter } from '../providers/resend/resend-domain.adapter';
 import {
   buildDevDnsRecords,
   emailBelongsToDomain,
@@ -28,6 +29,7 @@ export class OrgEmailDomainService {
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly audit: AuditService,
+    private readonly resendDomain: ResendDomainAdapter,
   ) {}
 
   async list(organizationId: string) {
@@ -75,7 +77,8 @@ export class OrgEmailDomainService {
     }
 
     const provider = this.config.get<string>('email.domainVerificationProvider', 'dev');
-    const dnsRecords = this.generateDnsRecords(domain, provider);
+    const { dnsRecords, providerDomainId, initialStatus } =
+      await this.provisionProviderDomain(domain, provider);
 
     const created = await this.prisma.orgEmailDomain.create({
       data: {
@@ -85,7 +88,8 @@ export class OrgEmailDomainService {
         fromName: input.fromName?.trim() || null,
         replyToEmail: input.replyToEmail?.trim() || null,
         provider,
-        status: OrgEmailDomainStatus.PENDING_DNS,
+        providerDomainId,
+        status: initialStatus ?? OrgEmailDomainStatus.PENDING_DNS,
         dnsRecords: dnsRecords as unknown as object,
       },
     });
@@ -124,7 +128,12 @@ export class OrgEmailDomainService {
       return row;
     }
 
-    const verification = await this.runDomainVerification(row.domain, row.dnsRecords, provider);
+    const verification = await this.runDomainVerification(
+      row.domain,
+      row.dnsRecords,
+      provider,
+      row.providerDomainId,
+    );
 
     const updated = await this.prisma.orgEmailDomain.update({
       where: { id: row.id },
@@ -154,11 +163,39 @@ export class OrgEmailDomainService {
     return updated;
   }
 
+  private async provisionProviderDomain(
+    domain: string,
+    provider: string,
+  ): Promise<{
+    dnsRecords: DnsRecordHint[];
+    providerDomainId: string | null;
+    initialStatus?: OrgEmailDomainStatus;
+  }> {
+    if (provider === 'resend' && this.resendDomain.isAvailable()) {
+      try {
+        const provisioned = await this.resendDomain.provisionDomain(domain);
+        return {
+          dnsRecords: provisioned.dnsRecords,
+          providerDomainId: provisioned.providerDomainId,
+          initialStatus: provisioned.status,
+        };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Resend domain provisioning failed';
+        throw new BadRequestException(message);
+      }
+    }
+
+    return {
+      dnsRecords: this.generateDnsRecords(domain, provider),
+      providerDomainId: provider === 'dev' ? `dev-domain-${normalizeDomain(domain)}` : null,
+      initialStatus: OrgEmailDomainStatus.PENDING_DNS,
+    };
+  }
+
   private generateDnsRecords(domain: string, provider: string): DnsRecordHint[] {
     if (provider === 'dev') {
       return buildDevDnsRecords(domain);
     }
-    // Placeholder for Resend/Postmark — same shape, provider-specific values later.
     return buildDevDnsRecords(domain);
   }
 
@@ -166,6 +203,7 @@ export class OrgEmailDomainService {
     domain: string,
     currentRecords: unknown,
     provider: string,
+    providerDomainId?: string | null,
   ): Promise<{
     status: OrgEmailDomainStatus;
     dnsRecords: DnsRecordHint[];
@@ -185,7 +223,7 @@ export class OrgEmailDomainService {
         return {
           status: OrgEmailDomainStatus.VERIFIED,
           dnsRecords: verifiedRecords,
-          providerDomainId: `dev-domain-${normalizeDomain(domain)}`,
+          providerDomainId: providerDomainId ?? `dev-domain-${normalizeDomain(domain)}`,
         };
       }
 
@@ -195,8 +233,32 @@ export class OrgEmailDomainService {
       return {
         status: OrgEmailDomainStatus.VERIFYING,
         dnsRecords: verifyingRecords,
-        providerDomainId: `dev-domain-${normalizeDomain(domain)}`,
+        providerDomainId: providerDomainId ?? `dev-domain-${normalizeDomain(domain)}`,
       };
+    }
+
+    if (provider === 'resend' && providerDomainId && this.resendDomain.isAvailable()) {
+      try {
+        const verification = await this.resendDomain.verifyDomain(
+          domain,
+          providerDomainId,
+          records,
+        );
+        return {
+          status: verification.status,
+          dnsRecords: verification.dnsRecords,
+          failureReason: verification.failureReason,
+          providerDomainId: verification.providerDomainId ?? providerDomainId,
+        };
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Domain verification failed';
+        return {
+          status: OrgEmailDomainStatus.PENDING_DNS,
+          dnsRecords: records,
+          failureReason: message,
+          providerDomainId,
+        };
+      }
     }
 
     return {

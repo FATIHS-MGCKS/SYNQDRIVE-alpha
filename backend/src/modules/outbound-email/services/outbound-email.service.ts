@@ -11,6 +11,7 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { EmailProviderFactory } from '../providers/email-provider.factory';
 import { EmailAddressPolicyService } from './email-address-policy.service';
+import { EmailSendGuardService } from './email-send-guard.service';
 import { OrgEmailSettingsService } from './org-email-settings.service';
 
 export interface SendOutboundEmailInput {
@@ -44,11 +45,19 @@ export class OutboundEmailService {
     private readonly settingsService: OrgEmailSettingsService,
     private readonly policy: EmailAddressPolicyService,
     private readonly providerFactory: EmailProviderFactory,
+    private readonly sendGuard: EmailSendGuardService,
   ) {}
 
   async sendExplicit(input: SendOutboundEmailInput) {
     const to = input.to.trim();
     if (!to) throw new BadRequestException('Recipient is required');
+
+    await this.sendGuard.assertCanSend(input.organizationId, {
+      to,
+      cc: input.cc,
+      bcc: input.bcc,
+      attachments: input.attachments,
+    });
 
     const [organization, settings, verifiedDomain] = await Promise.all([
       this.settingsService.getOrganizationForPolicy(input.organizationId),

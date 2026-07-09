@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'resend-email-provider-v49295-2026-07-09',
+    version: '4.9.295',
+    title: 'V4.9.295 — Production Resend email provider + domain verification',
+    summary: [
+      'ResendEmailProvider hinter EmailProviderPort — HTML/Text, PDF-Anhänge, Provider Message ID.',
+      'ResendDomainAdapter: Domain beim Provider anlegen, echte SPF/DKIM/DMARC/Return-Path DNS-Records.',
+      'Webhook POST /api/v1/webhooks/resend — Svix-Signatur, Bounce/Complaint/Failed/Open/Click → OutboundEmailEvent.',
+      'EmailSendGuardService: Rate Limit pro Org, Max Attachment Size/Count, MIME/Extension-Blockliste, Empfänger-Validierung.',
+      'EmailProviderBootstrap: Production startet nicht mit resend ohne RESEND_API_KEY.',
+      'EmailDeliveryTab: Admin-Hinweise zu Standard-Absender vs. eigene Domain.',
+    ],
+    reason:
+      'DevProvider reicht für Produktion nicht — echter Provider mit Domain-Verifizierung, Webhooks und Deliverability-Safeguards.',
+    previousBehavior:
+      'EMAIL_PROVIDER=resend fiel auf DevProvider zurück; Domain-Check bei Resend war Placeholder.',
+    details:
+      'Backend: providers/resend/*, email-send-guard.service, outbound-email-webhook.controller, email.config erweitert. .env.example: RESEND_API_KEY, RESEND_WEBHOOK_SECRET, Safeguard-Limits. Tests: Provider success/failure, domain pending/verified, webhook bounce, attachment size, From-Policy (bestehend).',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-09T05:35:00.000Z',
+  },
+  {
     id: 'repo-wide-document-send-v49294-2026-07-09',
     version: '4.9.294',
     title: 'V4.9.294 — Repo-weite Dokumentenversand-UX (SendDocumentsEmailLauncher)',

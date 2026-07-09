@@ -402,6 +402,30 @@ export function EmailDeliveryTab() {
         </div>
       ) : null}
 
+      <DataCard className="p-4 sm:p-5 border border-border/60 bg-muted/10">
+        <div className="flex items-start gap-3">
+          <ShieldCheck className="w-5 h-5 shrink-0 text-[color:var(--brand)] mt-0.5" />
+          <div className="space-y-2 text-sm text-muted-foreground leading-relaxed">
+            <p className="font-semibold text-foreground">So funktioniert der Versand</p>
+            <ul className="list-disc pl-5 space-y-1">
+              <li>
+                <strong className="text-foreground">SynqDrive Standard-Absender</strong> funktioniert sofort —
+                ohne DNS-Einrichtung. Antworten gehen an Ihre hinterlegte Reply-To-Adresse.
+              </li>
+              <li>
+                <strong className="text-foreground">Eigene Domain</strong> erfordert DNS-Einträge (SPF, DKIM,
+                optional DMARC) bei Ihrem Hosting-Anbieter. Die Prüfung kann einige Minuten bis Stunden dauern.
+              </li>
+              <li>
+                Der <strong className="text-foreground">From-Absender</strong> wechselt erst nach erfolgreicher
+                Verifizierung auf Ihre Organisationsdomain — unverifizierte Domains werden nicht als Absender
+                verwendet.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </DataCard>
+
       <DataCard className="p-4 sm:p-5">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="space-y-3 min-w-0 flex-1">

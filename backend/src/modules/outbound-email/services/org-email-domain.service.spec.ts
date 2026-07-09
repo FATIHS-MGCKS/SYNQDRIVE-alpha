@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { OrgEmailDomainService } from './org-email-domain.service';
+import { ResendDomainAdapter } from '../providers/resend/resend-domain.adapter';
 
 describe('OrgEmailDomainService — domain policy', () => {
   let service: OrgEmailDomainService;
@@ -32,10 +33,16 @@ describe('OrgEmailDomainService — domain policy', () => {
       },
     } as unknown as ConfigService;
     const audit = { record: jest.fn().mockResolvedValue('log-1') } as unknown as AuditService;
+    const resendDomain = {
+      isAvailable: jest.fn().mockReturnValue(false),
+      provisionDomain: jest.fn(),
+      verifyDomain: jest.fn(),
+    } as unknown as ResendDomainAdapter;
     service = new OrgEmailDomainService(
       prisma as unknown as PrismaService,
       config,
       audit,
+      resendDomain,
     );
   });
 
