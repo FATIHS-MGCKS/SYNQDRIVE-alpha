@@ -1038,7 +1038,13 @@ export interface GeneratedDocumentDto {
   invoiceId: string | null;
   legalVersionLabel: string | null;
   generatedAt: string | null;
+  sentAt: string | null;
   createdAt: string;
+  lastSentAt?: string | null;
+  lastSentTo?: string | null;
+  lastOutboundEmailId?: string | null;
+  lastSendStatus?: string | null;
+  regenerateRecommended?: boolean;
 }
 
 export interface BookingDocumentBundleView {

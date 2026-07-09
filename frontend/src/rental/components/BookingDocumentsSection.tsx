@@ -5,7 +5,10 @@ import {
   Download,
   FileText,
   Loader2,
+  Mail,
+  MoreHorizontal,
   RefreshCw,
+  Send,
   Sparkles,
 } from 'lucide-react';
 
@@ -13,35 +16,65 @@ import {
   api,
   type BookingDocumentBundleView,
   type DocumentBundleStatus,
-  type GeneratedDocumentDto,
 } from '../../lib/api';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../../components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '../../components/ui/tooltip';
+import { Button } from '../../components/ui/button';
 import { useRentalOrg } from '../RentalContext';
+import { SendDocumentsEmailModal } from './send-documents-email/SendDocumentsEmailModal';
+import type {
+  SendDocumentsEmailBooking,
+  SendDocumentsEmailCustomer,
+  SendDocumentsSourceContext,
+} from './send-documents-email/send-documents-email.types';
+import {
+  BOOKING_PACKAGE_TYPES,
+  DOCUMENT_TYPE_LABEL,
+  PICKUP_SEND_TYPES,
+  RETURN_SEND_TYPES,
+  currentDocumentsByType,
+  formatSentHint,
+  hasCustomerEmail,
+  selectableIdsFromTypes,
+} from './send-documents-email/send-documents-email.utils';
 
 interface BookingDocumentsSectionProps {
   orgId: string;
   bookingId: string;
   isDarkMode: boolean;
+  customer?: SendDocumentsEmailCustomer | null;
+  booking?: SendDocumentsEmailBooking | null;
 }
 
-const GROUPS: { label: string; types: string[] }[] = [
+const GROUPS: { label: string; types: string[]; sendLabel?: string; sourceContext?: SendDocumentsSourceContext }[] = [
   {
     label: 'Bei Buchung',
-    types: ['BOOKING_INVOICE', 'DEPOSIT_RECEIPT', 'RENTAL_CONTRACT', 'TERMS_AND_CONDITIONS', 'WITHDRAWAL_INFORMATION'],
+    types: [...BOOKING_PACKAGE_TYPES],
+    sendLabel: 'Dokumentenpaket senden',
+    sourceContext: 'BOOKING_DOCUMENTS',
   },
-  { label: 'Bei Abholung', types: ['HANDOVER_PICKUP'] },
-  { label: 'Bei Rückgabe', types: ['HANDOVER_RETURN', 'FINAL_INVOICE'] },
+  {
+    label: 'Bei Abholung',
+    types: [...PICKUP_SEND_TYPES],
+    sendLabel: 'Pickup-Protokoll senden',
+    sourceContext: 'HANDOVER_PICKUP',
+  },
+  {
+    label: 'Bei Rückgabe',
+    types: [...RETURN_SEND_TYPES],
+    sendLabel: 'Return-Unterlagen senden',
+    sourceContext: 'HANDOVER_RETURN',
+  },
 ];
-
-const TYPE_LABEL: Record<string, string> = {
-  BOOKING_INVOICE: 'Rechnung',
-  DEPOSIT_RECEIPT: 'Kautionsbeleg',
-  RENTAL_CONTRACT: 'Mietvertrag',
-  TERMS_AND_CONDITIONS: 'AGB',
-  WITHDRAWAL_INFORMATION: 'Widerrufsbelehrung',
-  HANDOVER_PICKUP: 'Übergabeprotokoll (Abholung)',
-  HANDOVER_RETURN: 'Übergabeprotokoll (Rückgabe)',
-  FINAL_INVOICE: 'Schlussrechnung',
-};
 
 const REGENERABLE = new Set([
   'BOOKING_INVOICE',
@@ -67,8 +100,26 @@ function fmtDate(iso: string | null): string {
   return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: BookingDocumentsSectionProps) {
+type SendModalState = {
+  open: boolean;
+  documentTypes: string[];
+  initiallySelectedDocumentIds: string[];
+  sourceContext: SendDocumentsSourceContext;
+};
+
+export function BookingDocumentsSection({
+  orgId,
+  bookingId,
+  isDarkMode,
+  customer,
+  booking,
+}: BookingDocumentsSectionProps) {
   const { userRole } = useRentalOrg();
+  const canSend =
+    userRole === 'ORG_ADMIN' ||
+    userRole === 'MASTER_ADMIN' ||
+    userRole === 'SUB_ADMIN' ||
+    userRole === 'WORKER';
   const canManage = userRole === 'ORG_ADMIN' || userRole === 'MASTER_ADMIN';
 
   const [view, setView] = useState<BookingDocumentBundleView | null>(null);
@@ -76,6 +127,7 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
   const [busyType, setBusyType] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sendModal, setSendModal] = useState<SendModalState | null>(null);
 
   const load = useCallback(async () => {
     if (!orgId || !bookingId) return;
@@ -95,16 +147,19 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
     void load();
   }, [load]);
 
-  // Current (most recent, non-void) document per type.
-  const currentByType = useMemo(() => {
-    const map: Record<string, GeneratedDocumentDto> = {};
-    const docs = [...(view?.documents ?? [])].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    for (const d of docs) {
-      if (d.status === 'VOID') continue;
-      map[d.documentType] = d; // later (newer) overwrites earlier
-    }
-    return map;
-  }, [view]);
+  const currentByType = useMemo(
+    () => currentDocumentsByType(view?.documents ?? []),
+    [view?.documents],
+  );
+
+  const customerHasEmail = hasCustomerEmail(customer);
+
+  const openSendModal = useCallback(
+    (params: Omit<SendModalState, 'open'>) => {
+      setSendModal({ ...params, open: true });
+    },
+    [],
+  );
 
   const handleGenerate = useCallback(async () => {
     if (!orgId || !bookingId) return;
@@ -143,14 +198,66 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
   const badge = BUNDLE_BADGE[bundleStatus] ?? BUNDLE_BADGE.PENDING;
   const legalMissing = (view?.legal.missing?.length ?? 0) > 0;
 
+  const renderSendButton = (
+    label: string,
+    types: readonly string[],
+    sourceContext: SendDocumentsSourceContext,
+    variant: 'header' | 'group' = 'group',
+  ) => {
+    const ids = selectableIdsFromTypes(types, currentByType);
+    const disabled = !customerHasEmail || ids.length === 0;
+    const tooltip = !customerHasEmail
+      ? 'Kunde hat keine E-Mail-Adresse'
+      : ids.length === 0
+        ? 'Keine Dokumente vorhanden — bitte zuerst generieren'
+        : undefined;
+
+    const button = (
+      <Button
+        type="button"
+        size="sm"
+        variant={variant === 'header' ? 'default' : 'outline'}
+        className={variant === 'header' ? 'text-xs h-8' : 'text-[11px] h-7'}
+        disabled={!canSend || disabled}
+        onClick={() =>
+          openSendModal({
+            documentTypes: [...types],
+            initiallySelectedDocumentIds: ids,
+            sourceContext,
+          })
+        }
+      >
+        <Send className="w-3.5 h-3.5 mr-1.5" />
+        {label}
+      </Button>
+    );
+
+    if (!tooltip) return button;
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex">{button}</span>
+        </TooltipTrigger>
+        <TooltipContent>{tooltip}</TooltipContent>
+      </Tooltip>
+    );
+  };
+
   return (
     <div className={cardClass}>
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
         <div className={`text-xs font-semibold uppercase tracking-wider ${subtle}`}>Dokumente</div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 justify-end">
           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${badge.cls(isDarkMode)}`}>
             {badge.label}
           </span>
+          {canSend &&
+            renderSendButton(
+              'Dokumentenpaket senden',
+              BOOKING_PACKAGE_TYPES,
+              'BOOKING_DOCUMENTS',
+              'header',
+            )}
           {canManage && (
             <button
               type="button"
@@ -200,13 +307,19 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
         <div className="space-y-4">
           {GROUPS.map((group) => (
             <div key={group.label}>
-              <div className={`text-[11px] font-semibold uppercase tracking-wider mb-2.5 ${isDarkMode ? 'text-gray-600' : 'text-muted-foreground'}`}>
-                {group.label}
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
+                <div className={`text-[11px] font-semibold uppercase tracking-wider ${isDarkMode ? 'text-gray-600' : 'text-muted-foreground'}`}>
+                  {group.label}
+                </div>
+                {group.sendLabel && group.sourceContext && group.label !== 'Bei Buchung'
+                  ? renderSendButton(group.sendLabel, group.types, group.sourceContext)
+                  : null}
               </div>
               <div className="space-y-2.5">
                 {group.types.map((type) => {
                   const doc = currentByType[type];
                   const isLegalMissing = LEGAL.has(type) && !doc;
+                  const sentHint = doc ? formatSentHint(doc) : null;
                   return (
                     <div
                       key={type}
@@ -220,7 +333,7 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
                         </div>
                         <div className="min-w-0">
                           <div className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-800'}`}>
-                            {TYPE_LABEL[type] ?? type}
+                            {DOCUMENT_TYPE_LABEL[type] ?? type}
                           </div>
                           <div className={`text-[11px] truncate ${subtle}`}>
                             {doc
@@ -231,13 +344,19 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
                               ? 'Fehlt in Administration'
                               : 'Noch nicht erstellt'}
                           </div>
+                          {sentHint ? (
+                            <div className={`text-[10px] mt-0.5 flex items-center gap-1 ${subtle}`}>
+                              <Mail className="w-3 h-3 shrink-0" />
+                              <span className="truncate">{sentHint}</span>
+                            </div>
+                          ) : null}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
+                      <div className="flex items-center gap-1 shrink-0">
                         {doc ? (
                           <>
                             {doc.origin === 'STATIC_LEGAL' && (
-                              <span className={`hidden sm:inline-flex items-center gap-1 text-[10px] ${isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground'}`}>
+                              <span className={`hidden sm:inline-flex items-center gap-1 text-[10px] ${subtle}`}>
                                 <CheckCircle2 className="w-3 h-3" /> hochgeladen
                               </span>
                             )}
@@ -259,6 +378,41 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
                               >
                                 {busyType === type ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                               </button>
+                            )}
+                            {canSend && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <button
+                                    type="button"
+                                    title="Weitere Aktionen"
+                                    className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-muted/80 text-muted-foreground' : 'hover:bg-gray-100 text-gray-500'}`}
+                                  >
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuItem
+                                    disabled={!customerHasEmail || doc.status === 'VOID'}
+                                    onClick={() =>
+                                      openSendModal({
+                                        documentTypes: [type],
+                                        initiallySelectedDocumentIds: [doc.id],
+                                        sourceContext:
+                                          type === 'HANDOVER_PICKUP'
+                                            ? 'HANDOVER_PICKUP'
+                                            : type === 'HANDOVER_RETURN'
+                                              ? 'HANDOVER_RETURN'
+                                              : type.includes('INVOICE')
+                                                ? 'INVOICE'
+                                                : 'BOOKING_DOCUMENTS',
+                                      })
+                                    }
+                                  >
+                                    <Mail className="w-4 h-4 mr-2" />
+                                    Per E-Mail senden
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             )}
                           </>
                         ) : (
@@ -285,6 +439,24 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
           ))}
         </div>
       )}
+
+      {sendModal?.open ? (
+        <SendDocumentsEmailModal
+          open={sendModal.open}
+          onOpenChange={(open) => {
+            if (!open) setSendModal(null);
+          }}
+          orgId={orgId}
+          bookingId={bookingId}
+          customer={customer}
+          booking={booking}
+          documents={view?.documents ?? []}
+          documentTypes={sendModal.documentTypes}
+          initiallySelectedDocumentIds={sendModal.initiallySelectedDocumentIds}
+          sourceContext={sendModal.sourceContext}
+          onSent={load}
+        />
+      ) : null}
     </div>
   );
 }

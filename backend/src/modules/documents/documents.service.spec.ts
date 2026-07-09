@@ -245,7 +245,11 @@ describe('GeneratedDocumentsService — org scoping + storage', () => {
 
 describe('BookingDocumentBundleService', () => {
   function makeService(prisma: any, config = configStub()) {
-    const generatedDocs = { listForBooking: jest.fn().mockResolvedValue([]), toDto: jest.fn((d: any) => d) } as any;
+    const generatedDocs = {
+      listForBooking: jest.fn().mockResolvedValue([]),
+      toDto: jest.fn((d: any) => d),
+      enrichDtosWithSendMeta: jest.fn(async (_orgId: string, dtos: any[]) => dtos),
+    } as any;
     const legalDocs = {} as any;
     const numbering = {} as any;
     const invoices = {} as any;

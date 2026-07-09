@@ -48,7 +48,13 @@ export interface GeneratedDocumentDto {
   invoiceId: string | null;
   legalVersionLabel: string | null;
   generatedAt: string | null;
+  sentAt: string | null;
   createdAt: string;
+  lastSentAt?: string | null;
+  lastSentTo?: string | null;
+  lastOutboundEmailId?: string | null;
+  lastSendStatus?: string | null;
+  regenerateRecommended?: boolean;
 }
 
 export interface DocumentDownload {
@@ -203,7 +209,71 @@ export class GeneratedDocumentsService {
       invoiceId: doc.invoiceId,
       legalVersionLabel: doc.legalVersionLabel,
       generatedAt: doc.generatedAt ? doc.generatedAt.toISOString() : null,
+      sentAt: doc.sentAt ? doc.sentAt.toISOString() : null,
       createdAt: doc.createdAt.toISOString(),
     };
+  }
+
+  /**
+   * Enriches bundle document DTOs with the latest outbound-email send metadata
+   * per attachment (last recipient, status, outbound email id).
+   */
+  async enrichDtosWithSendMeta(
+    orgId: string,
+    dtos: GeneratedDocumentDto[],
+  ): Promise<GeneratedDocumentDto[]> {
+    const ids = dtos.map((d) => d.id).filter(Boolean);
+    if (!ids.length) return dtos;
+
+    const attachments = await this.prisma.outboundEmailAttachment.findMany({
+      where: {
+        generatedDocumentId: { in: ids },
+        outboundEmail: { organizationId: orgId },
+      },
+      include: {
+        outboundEmail: {
+          select: {
+            id: true,
+            to: true,
+            status: true,
+            sentAt: true,
+            createdAt: true,
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const latestByDocId = new Map<
+      string,
+      {
+        id: string;
+        to: string;
+        status: string;
+        sentAt: Date | null;
+        createdAt: Date;
+      }
+    >();
+    for (const row of attachments) {
+      if (!row.generatedDocumentId || latestByDocId.has(row.generatedDocumentId)) continue;
+      latestByDocId.set(row.generatedDocumentId, row.outboundEmail);
+    }
+
+    return dtos.map((dto) => {
+      const latest = latestByDocId.get(dto.id);
+      const lastSentAt =
+        latest?.sentAt?.toISOString() ??
+        latest?.createdAt?.toISOString() ??
+        dto.sentAt ??
+        null;
+      return {
+        ...dto,
+        lastSentAt,
+        lastSentTo: latest?.to ?? null,
+        lastOutboundEmailId: latest?.id ?? null,
+        lastSendStatus: latest?.status ?? (dto.status === DOCUMENT_STATUS.SENT ? 'SENT' : null),
+        regenerateRecommended: dto.status === DOCUMENT_STATUS.FAILED,
+      };
+    });
   }
 }

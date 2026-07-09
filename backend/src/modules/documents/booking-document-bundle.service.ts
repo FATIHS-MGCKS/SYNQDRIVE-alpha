@@ -135,6 +135,8 @@ export class BookingDocumentBundleService {
   async getBundleView(orgId: string, bookingId: string): Promise<BundleView> {
     const bundle = await this.getOrCreateBundle(orgId, bookingId);
     const documents = await this.generatedDocs.listForBooking(orgId, bookingId);
+    const dtos = documents.map((d) => this.generatedDocs.toDto(d));
+    const enrichedDocuments = await this.generatedDocs.enrichDtosWithSendMeta(orgId, dtos);
     const termsAttached = !!bundle.termsDocumentId;
     const withdrawalAttached = !!bundle.withdrawalDocumentId;
     const missing: string[] = [];
@@ -161,7 +163,7 @@ export class BookingDocumentBundleService {
         generatedAt: bundle.generatedAt ? bundle.generatedAt.toISOString() : null,
         lastError: bundle.lastError,
       },
-      documents: documents.map((d) => this.generatedDocs.toDto(d)),
+      documents: enrichedDocuments,
       legal: { termsAttached, withdrawalAttached, missing },
       missingLegalDocuments,
       warnings,
