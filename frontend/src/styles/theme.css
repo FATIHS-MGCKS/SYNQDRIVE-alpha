@@ -2457,6 +2457,7 @@
   .sq-map-liquid-badge::after,
   .sq-map-marker-callout::after,
   .sq-map-glass-controls::before,
+  .sq-map-glass-controls::after,
   .sq-map-marker-callout::before {
     opacity: 0 !important;
   }
