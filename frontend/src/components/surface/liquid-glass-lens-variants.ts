@@ -5,6 +5,8 @@ import type { LiquidGlassIntensity } from './liquid-glass-optics';
 export type LiquidGlassLensVariant =
   | 'vehicleHudTile'
   | 'vehicleHudStack'
+  | 'vehicleHudBadge'
+  | 'vehicleMapCallout'
   | 'fleetToolbar'
   | 'fleetToolbarButton'
   | 'fleetPanel'
@@ -19,6 +21,8 @@ export type LiquidGlassLensFallback = 'frosted' | 'solid';
 const VARIANT_FALLBACK_LIQUID: Record<LiquidGlassLensVariant, string> = {
   vehicleHudTile: 'sq-map-liquid-pill',
   vehicleHudStack: 'sq-map-liquid-hud sq-map-liquid-hud--stats',
+  vehicleHudBadge: 'sq-map-liquid-badge',
+  vehicleMapCallout: 'sq-map-marker-callout sq-map-marker-callout--vehicle',
   fleetToolbar: 'sq-map-glass-controls',
   fleetToolbarButton: 'sq-map-glass-control-btn',
   fleetPanel: 'sq-map-liquid-glass sq-map-liquid-glass--panel',
@@ -52,6 +56,9 @@ export function resolveLensFallbackClass(
 export function resolveLensRadius(variant: LiquidGlassLensVariant): number {
   switch (variant) {
     case 'vehicleHudTile':
+      return 12;
+    case 'vehicleHudBadge':
+    case 'vehicleMapCallout':
     case 'fleetMiniPill':
     case 'statusPill':
       return 999;

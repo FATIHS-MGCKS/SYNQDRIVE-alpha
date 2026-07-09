@@ -120,66 +120,58 @@ export function OverviewLiveMapCard({
         />
 
         {statusBadge && !positionView.showEmptyState && (
-          <div className="pointer-events-none absolute top-2.5 left-1/2 z-10 -translate-x-1/2">
-            <span
-              className={`sq-map-liquid-badge sq-map-liquid-badge--status sq-map-liquid-badge--${statusBadge.tone}`}
-            >
-              <span className="sq-map-liquid-badge-dot" aria-hidden="true" />
-              <span>{statusBadge.label}</span>
-            </span>
+          <div className="pointer-events-none absolute top-2.5 left-1/2 z-10 -translate-x-1/2 sm:top-3">
+            <LiquidGlassLens variant="vehicleHudBadge" intensity="subtle" className="pointer-events-none">
+              <span
+                className={`sq-map-liquid-badge sq-map-liquid-badge--status sq-map-liquid-badge--${statusBadge.tone}`}
+              >
+                <span className="sq-map-liquid-badge-dot" aria-hidden="true" />
+                <span>{statusBadge.label}</span>
+              </span>
+            </LiquidGlassLens>
           </div>
         )}
 
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center p-2.5 sm:p-3">
-          <LiquidGlassLens variant="vehicleHudStack" intensity="subtle" className="pointer-events-none">
-            <LiquidGlassLens
-              variant="vehicleHudTile"
-              intensity="medium"
-              className="pointer-events-none"
-            >
+        <div className="vehicle-detail-map-hud">
+          <LiquidGlassLens variant="vehicleHudStack" intensity="subtle" className="w-full max-w-[20rem]">
+            <LiquidGlassLens variant="vehicleHudTile" intensity="subtle" className="pointer-events-none">
               <div className="liquid-glass-lens__tile-inner">
-              <Icon name="circle" className={`h-3 w-3 ${stateColor}`} />
-              <span className="text-[8px] font-semibold uppercase tracking-[0.08em] text-foreground/80">
-                State
-              </span>
-              <span className={`text-[10px] font-bold tabular-nums ${stateColor}`}>{hudDisplayState}</span>
+                <Icon name="circle" className={`h-3.5 w-3.5 ${stateColor}`} />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground/80">
+                  State
+                </span>
+                <span className={`text-sm font-bold leading-tight tabular-nums ${stateColor}`}>
+                  {hudDisplayState}
+                </span>
               </div>
             </LiquidGlassLens>
 
-            <LiquidGlassLens
-              variant="vehicleHudTile"
-              intensity="medium"
-              className="pointer-events-none"
-            >
+            <LiquidGlassLens variant="vehicleHudTile" intensity="subtle" className="pointer-events-none">
               <div className="liquid-glass-lens__tile-inner">
-              <Icon
-                name="droplet"
-                className="h-3 w-3 text-[color:var(--status-positive)]"
-              />
-              <span className="text-[8px] font-semibold uppercase tracking-[0.08em] text-foreground/80">
-                {selectedVehicle?.isElectric ? 'Energy' : 'Fuel'}
-              </span>
-              <span className="text-[10px] font-bold tabular-nums text-foreground">
-                {fuelOrEnergy}
-                <span className="text-[8px] font-normal text-muted-foreground">%</span>
-              </span>
+                <Icon
+                  name="droplet"
+                  className="h-3.5 w-3.5 text-[color:var(--status-positive)]"
+                />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground/80">
+                  {selectedVehicle?.isElectric ? 'Energy' : 'Fuel'}
+                </span>
+                <span className="text-sm font-bold leading-tight tabular-nums text-foreground">
+                  {fuelOrEnergy}
+                  <span className="text-[10px] font-normal text-muted-foreground">%</span>
+                </span>
               </div>
             </LiquidGlassLens>
 
-            <LiquidGlassLens
-              variant="vehicleHudTile"
-              intensity="medium"
-              className="pointer-events-none"
-            >
+            <LiquidGlassLens variant="vehicleHudTile" intensity="subtle" className="pointer-events-none">
               <div className="liquid-glass-lens__tile-inner">
-              <Icon name="gauge" className="h-3 w-3 text-muted-foreground" />
-              <span className="text-[8px] font-semibold uppercase tracking-[0.08em] text-foreground/80">
-                Odometer
-              </span>
-              <span className="text-[10px] font-bold tabular-nums text-foreground">
-                {odometerValue}
-                <span className="text-[8px] font-normal text-muted-foreground"> km</span>
-              </span>
+                <Icon name="gauge" className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground/80">
+                  Odometer
+                </span>
+                <span className="text-sm font-bold leading-tight tabular-nums text-foreground">
+                  {odometerValue}
+                  <span className="text-[10px] font-normal text-muted-foreground"> km</span>
+                </span>
               </div>
             </LiquidGlassLens>
           </LiquidGlassLens>

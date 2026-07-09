@@ -4,6 +4,7 @@ import 'mapbox-gl/dist/mapbox-gl.css';
 import { interpolateLngLat, easeInOutCubic, distanceM, bearingDeg } from '../../lib/liveMapUtils';
 import { useAddress } from '../../lib/useAddress';
 import { createSedanMarkerEl, updateSedanRotation, shortestRotation } from '../../lib/vehicleMarker';
+import { LiquidGlassLens } from '../../components/surface';
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || '';
 const MAPBOX_STYLE = import.meta.env.VITE_MAPBOX_STYLE_URL || 'mapbox://styles/mapbox/light-v11';
@@ -39,7 +40,7 @@ export interface LiveMapOverviewProps {
 
 function createCalloutEl(plate: string): HTMLDivElement {
   const callout = document.createElement('div');
-  callout.className = 'sq-map-marker-callout';
+  callout.className = 'sq-map-marker-callout sq-map-marker-callout--vehicle';
 
   const label = document.createElement('span');
   label.textContent = plate;
@@ -298,28 +299,32 @@ export function LiveMapOverview({
       )}
       {operatorHint && !waitingForPosition && loaded && (
         <div className="pointer-events-none absolute top-2.5 right-2.5 z-10 max-w-[13.75rem] sm:top-3 sm:right-3">
-          <div className="sq-map-liquid-badge">
-            <p className="text-[9px] font-semibold leading-snug text-foreground">{operatorHint}</p>
-            {operatorHintSub && (
-              <p className="text-[8px] leading-snug text-muted-foreground">{operatorHintSub}</p>
-            )}
-          </div>
+          <LiquidGlassLens variant="vehicleHudBadge" intensity="subtle" className="pointer-events-none">
+            <div className="sq-map-liquid-badge px-2.5 py-1.5">
+              <p className="text-[9px] font-semibold leading-snug text-foreground">{operatorHint}</p>
+              {operatorHintSub && (
+                <p className="text-[8px] leading-snug text-muted-foreground">{operatorHintSub}</p>
+              )}
+            </div>
+          </LiquidGlassLens>
         </div>
       )}
       {currentAddress && currentAddress.formatted !== '—' && !waitingForPosition && (
         <div className="pointer-events-none absolute top-2.5 left-2.5 z-10 max-w-[13.75rem] sm:top-3 sm:left-3">
-          <div className="sq-map-liquid-badge">
-            <p className="truncate text-[8px] font-semibold leading-tight text-foreground">
-              {currentAddress.street
-                ? `${currentAddress.street}${currentAddress.houseNumber ? ` ${currentAddress.houseNumber}` : ''}`
-                : (currentAddress.city ?? '—')}
-            </p>
-            {currentAddress.street && currentAddress.city && (
-              <p className="truncate text-[9px] leading-tight text-muted-foreground">
-                {currentAddress.city}
+          <LiquidGlassLens variant="vehicleHudBadge" intensity="subtle" className="pointer-events-none">
+            <div className="sq-map-liquid-badge px-2.5 py-1.5">
+              <p className="truncate text-[8px] font-semibold leading-tight text-foreground">
+                {currentAddress.street
+                  ? `${currentAddress.street}${currentAddress.houseNumber ? ` ${currentAddress.houseNumber}` : ''}`
+                  : (currentAddress.city ?? '—')}
               </p>
-            )}
-          </div>
+              {currentAddress.street && currentAddress.city && (
+                <p className="truncate text-[9px] leading-tight text-muted-foreground">
+                  {currentAddress.city}
+                </p>
+              )}
+            </div>
+          </LiquidGlassLens>
         </div>
       )}
     </div>

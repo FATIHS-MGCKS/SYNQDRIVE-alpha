@@ -62,7 +62,12 @@ export function LiquidGlassLensCore({
       radius={resolveLensRadius(variant)}
       optics={resolveLiquidGlassOptics({ intensity, variant })}
       filterResolution={1}
-      brightnessInFilter={variant === 'fleetPanel' || variant === 'fleetLegend'}
+      brightnessInFilter={
+        variant === 'fleetPanel'
+        || variant === 'fleetLegend'
+        || variant === 'vehicleHudBadge'
+        || variant === 'vehicleMapCallout'
+      }
       {...rest}
     >
       {content}

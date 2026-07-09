@@ -76,28 +76,95 @@
 
 /* ── Vehicle HUD stack — layout only, no blob ── */
 .liquid-glass-lens--vehicleHudStack .liquid-glass-lens__content {
-  display: inline-flex;
-  flex-wrap: wrap;
-  align-items: center;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: stretch;
   justify-content: center;
   gap: 0.375rem;
+  width: 100%;
+  max-width: min(100%, 20rem);
 }
 
-/* ── Vehicle HUD tile — per-pill lens ── */
+/* ── Vehicle HUD tile — compact liquid lens per stat ── */
 .liquid-glass-lens--library.liquid-glass-lens--vehicleHudTile {
   display: inline-flex;
-  background: var(--map-glass-fleet-tile-bg) !important;
-  border: 1px solid var(--map-glass-fleet-border) !important;
-  box-shadow: var(--map-glass-inner-shadow), var(--map-glass-contact-shadow) !important;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 6.75rem;
+  border-radius: var(--map-glass-vehicle-tile-radius) !important;
+  background: var(--map-glass-vehicle-tile-bg) !important;
+  border: 1px solid var(--map-glass-vehicle-border) !important;
+  box-shadow: var(--map-glass-vehicle-inner-shadow), var(--map-glass-vehicle-shadow) !important;
 }
 
 .liquid-glass-lens__tile-inner {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.5rem 0.625rem;
-  min-height: 4.75rem;
-  min-width: 10.75rem;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0.125rem;
+  padding: 0.375rem 0.5rem;
+  min-height: 3.625rem;
+  max-height: 4.25rem;
+  min-width: 0;
+  width: 100%;
+}
+
+/* ── Vehicle map badges — high readability, low distortion ── */
+.liquid-glass-lens--library.liquid-glass-lens--vehicleHudBadge {
+  display: inline-flex;
+  max-width: 13.75rem;
+  background: var(--map-glass-vehicle-badge-bg) !important;
+  border: 1px solid var(--map-glass-vehicle-border) !important;
+  box-shadow: var(--map-glass-vehicle-inner-shadow), var(--map-glass-vehicle-shadow) !important;
+}
+
+.liquid-glass-lens--vehicleHudBadge .sq-map-liquid-badge,
+.liquid-glass-lens--vehicleHudBadge .sq-map-liquid-badge::before,
+.liquid-glass-lens--vehicleHudBadge .sq-map-liquid-badge::after {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* ── Vehicle map callout (Mapbox marker DOM — CSS mirror of vehicleMapCallout) ── */
+.sq-map-marker-callout--vehicle {
+  border-color: var(--map-glass-vehicle-border) !important;
+  background: var(--map-glass-vehicle-callout-bg) !important;
+  box-shadow: var(--map-glass-vehicle-inner-shadow), var(--map-glass-vehicle-shadow) !important;
+}
+
+.liquid-glass-lens--library.liquid-glass-lens--vehicleMapCallout {
+  display: inline-flex;
+  background: var(--map-glass-vehicle-callout-bg) !important;
+  border: 1px solid var(--map-glass-vehicle-border) !important;
+  box-shadow: var(--map-glass-vehicle-inner-shadow), var(--map-glass-vehicle-shadow) !important;
+}
+
+/* ── Vehicle detail HUD anchor — bottom safe area, clear of marker ── */
+.vehicle-detail-map-hud {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  padding-inline: max(0.625rem, env(safe-area-inset-left, 0px))
+    max(0.625rem, env(safe-area-inset-right, 0px));
+  padding-bottom: max(0.75rem, calc(env(safe-area-inset-bottom, 0px) + 0.5rem));
+  padding-left: max(2.75rem, env(safe-area-inset-left, 0px));
+  pointer-events: none;
+}
+
+@media (min-width: 640px) {
+  .vehicle-detail-map-hud {
+    padding-inline: 0.75rem;
+    padding-bottom: 0.75rem;
+    padding-left: 0.75rem;
+  }
 }
 
 .liquid-glass-lens--library.liquid-glass-lens--fleetMiniPill,
