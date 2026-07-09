@@ -471,7 +471,30 @@ Before adding or changing a surface, answer:
 
 ---
 
-*Last updated: 2026-07-09 — V4.9.295 Content crisp + tile centering + Safari soft optics.*
+*Last updated: 2026-07-09 — V4.9.296 Material/content split (crisp overlay).*
+
+---
+
+## Phase 15 — Material/content split (V4.9.296)
+
+**Problem:** Icons and labels looked thick, blurry, or doubled — especially in active state. Vehicle HUD tiles felt left-aligned and typography was too heavy.
+
+**Root cause:** `@samasante/liquid-glass` `<Glass>` **wrap mode** renders children inside a `willChange: filter` layer. When content lived inside `<Glass>`, displacement/frost optics refracted text and SVG strokes — producing doubled, smeared, or bold-looking glyphs.
+
+**Fix:**
+
+| Rule | Implementation |
+|------|----------------|
+| Material/content split | Lens wrapper → `<Glass class="liquid-glass-lens__material" aria-hidden />` (no children) + sibling `__content` overlay |
+| Material layer | `position: absolute; inset: 0; z-index: 1; pointer-events: none` — tint via `resolveLensTintStyle` on Glass only |
+| Content layer | `z-index: 2`, flex center, `filter/backdrop-filter/opacity/mix-blend/text-shadow: none` on overlay and descendants |
+| Active state | Root `data-active` rim only — no font-weight, stroke-width, or child background changes |
+| Fleet toolbar | `__control-btn` full-size flex center; icons without stroke-width bump |
+| Legend | `font-weight: 500`, `line-height: 1`, inline-flex center, `gap: 0.35rem` |
+| Vehicle tiles | `__tile-inner` center-aligned column; label/value/unit weights 500–600; odometer tile wider (`--vehicleHudTileOdometer`) |
+| Safari | Material gets `backface-visibility: hidden`; content never filtered |
+
+**Must not regress:** visible glass material (tint/rim), canonical small-lens optics, shell panels unchanged.
 
 ---
 

@@ -32,7 +32,7 @@ export interface LiquidGlassLensCoreProps extends HTMLAttributes<HTMLDivElement>
 
 /**
  * Internal bridge to @samasante/liquid-glass.
- * - `lens`: `<Glass>` is root — children inside `__content` (crisp, no empty visual layer).
+ * - `lens`: material `<Glass>` (no children) + crisp `__content` sibling overlay.
  * - `shell`: stable frosted panel — no Glass displacement on wide containers.
  */
 export function LiquidGlassLensCore({
@@ -78,36 +78,38 @@ export function LiquidGlassLensCore({
   const radius = resolveLensRadius(variant);
   const size = resolveLensSize(variant);
   const tintStyle = resolveLensTintStyle({ intensity, variant });
-  const mergedStyle: CSSProperties = { ...tintStyle, ...style };
-
   const useRefract = mapBackdrop != null;
 
   return (
-    <Glass
+    <div
       data-liquid-variant={variant}
       data-liquid-mode="library"
       data-liquid-render="lens"
       className={cn(
         'liquid-glass-lens',
-        'liquid-glass-lens--library-direct',
+        'liquid-glass-lens--library-split',
         isCanonicalSmallLensVariant(variant) && 'liquid-glass-lens--canonical',
         prefersSafariSoftLens() && 'liquid-glass-lens--safari-soft',
         `liquid-glass-lens--${variant}`,
         prefersReducedMotion && 'motion-reduce:transition-none',
         className,
       )}
-      style={mergedStyle}
-      optics={optics}
-      radius={radius}
-      width={size?.width}
-      height={size?.height}
-      filterResolution={1}
-      brightnessInFilter={usesBrightnessInFilter(variant)}
-      refract={useRefract ? mapBackdrop : undefined}
-      behind={useRefract ? (behind ?? resolveLensBehind(variant)) : undefined}
+      style={style}
       {...rest}
     >
+      <Glass
+        aria-hidden
+        className="liquid-glass-lens__material"
+        style={tintStyle as CSSProperties}
+        optics={optics}
+        radius={radius}
+        width={size?.width}
+        height={size?.height}
+        brightnessInFilter={usesBrightnessInFilter(variant)}
+        refract={useRefract ? mapBackdrop : undefined}
+        behind={useRefract ? (behind ?? resolveLensBehind(variant)) : undefined}
+      />
       <div className="liquid-glass-lens__content">{children}</div>
-    </Glass>
+    </div>
   );
 }

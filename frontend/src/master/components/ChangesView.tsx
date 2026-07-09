@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'liquid-glass-material-content-split-v49296-2026-07-09',
+    version: '4.9.296',
+    title: 'V4.9.296 — L3 material/content split (crisp Map HUD overlay)',
+    summary: [
+      'LiquidGlassLensCore lens mode: material `<Glass>` sibling (no children) + crisp `__content` overlay — content never inside filtered wrap layer.',
+      'CSS: `liquid-glass-lens__material` absolute inset; content z-index 2, flex center, no filter/blend/shadow on descendants.',
+      'Active state: root rim only — removed icon stroke-width bumps; no font-weight change on selected content.',
+      'Vehicle HUD: tile-inner center-aligned; typography 500–600; odometer tile wider (`--vehicleHudTileOdometer`) + compact value scale.',
+      'Legend trigger: font-weight 500, inline-flex center, gap 0.35rem, line-height 1.',
+    ],
+    reason:
+      '@samasante Glass wrap mode refracted children — icons/labels looked thick, blurry, or doubled; active state smeared content further.',
+    previousBehavior:
+      'Children rendered inside `<Glass>` root; content inherited optical filters; stroke-width 1.75 on icons; tiles left-aligned.',
+    details:
+      'Visual-only L3 content-layer pass. LIQUID_GLASS_SYSTEM.md Phase 15. No material optics rollback, business logic, or Mapbox changes.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-09T19:10:00.000Z',
+  },
+  {
     id: 'liquid-glass-content-crisp-v49295-2026-07-09',
     version: '4.9.295',
     title: 'V4.9.295 — L3 content crisp layer + tile centering + Safari soft optics',

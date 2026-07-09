@@ -1,7 +1,7 @@
 /**
- * Map HUD liquid glass — canonical small lens family (V4.9.292).
+ * Map HUD liquid glass — canonical small lens family.
  * Reference: Fleet Map top-left toolbar buttons (fleetToolbarButton).
- * - lens: @samasante Glass root + __content child, no duplicate borders/shadows.
+ * - lens: material `<Glass>` sibling + crisp `__content` overlay (content never filtered).
  * - shell: layout/panel only, no wide Glass displacement.
  */
 
@@ -57,8 +57,9 @@
   background: color-mix(in srgb, var(--map-glass-fleet-tile-bg) 78%, var(--map-glass-bg-panel) 22%);
 }
 
-/* ── Canonical small lens: library material only — no CSS double-rim ── */
+/* ── Canonical small lens: material layer + crisp content overlay ── */
 .liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='lens'] {
+  position: relative;
   display: inline-flex;
   align-items: stretch;
   justify-content: center;
@@ -67,6 +68,23 @@
   border: none;
   border-radius: var(--map-glass-lens-radius, 16px);
   box-shadow: var(--map-glass-lens-shell-shadow, var(--map-glass-fleet-shadow, var(--map-glass-shadow)));
+}
+
+.liquid-glass-lens__material {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  overflow: hidden;
+}
+
+.liquid-glass-lens__material[data-liquid-glass] {
+  display: block;
 }
 
 .liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='lens']::before,
@@ -81,14 +99,15 @@
 
 .liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='lens'] .liquid-glass-lens__content {
   position: relative;
-  z-index: 3;
+  z-index: 2;
   display: flex;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
   min-width: 0;
   width: 100%;
   height: 100%;
+  min-height: inherit;
   color: inherit;
   background: transparent;
   filter: none;
@@ -103,17 +122,18 @@
   -moz-osx-font-smoothing: grayscale;
   text-rendering: geometricPrecision;
   pointer-events: auto;
-  isolation: isolate;
 }
 
-/* Crisp content — never inherit lens optical filters */
+/* Crisp content — never inside filtered material layer */
 .liquid-glass-lens[data-liquid-mode='library'] .liquid-glass-lens__content *,
-.liquid-glass-lens[data-liquid-mode='library'] .liquid-glass-lens__content svg {
+.liquid-glass-lens[data-liquid-mode='library'] .liquid-glass-lens__content svg,
+.liquid-glass-lens[data-liquid-mode='library'] .liquid-glass-lens__content button {
   filter: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   mix-blend-mode: normal;
   text-shadow: none;
+  -webkit-text-stroke: 0;
 }
 
 .liquid-glass-lens[data-liquid-mode='library'] .liquid-glass-lens__content svg {
@@ -127,7 +147,6 @@
   .liquid-glass-lens__content * {
   filter: none;
   opacity: 1;
-  font-weight: inherit;
 }
 
 /* Selected lens — subtle rim on root only */
@@ -190,7 +209,7 @@
 
 .liquid-glass-lens__content {
   position: relative;
-  z-index: 3;
+  z-index: 2;
   min-width: 0;
   color: inherit;
   background: transparent;
@@ -203,7 +222,6 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: geometricPrecision;
-  isolation: isolate;
 }
 
 .liquid-glass-lens[data-liquid-mode='fallback'] .liquid-glass-lens__visual.liquid-glass-lens--svg-fallback {
@@ -262,7 +280,6 @@
   display: block;
   margin: 0 auto;
   opacity: 1;
-  stroke-width: 1.75;
 }
 
 .liquid-glass-lens__control-btn__label {
@@ -303,7 +320,6 @@
   height: 0.75rem;
   flex-shrink: 0;
   opacity: 1;
-  stroke-width: 1.75;
 }
 
 .liquid-glass-lens__panel-action__label {
@@ -390,7 +406,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.375rem;
+  gap: 0.35rem;
   width: 100%;
   min-width: 5.25rem;
   min-height: 1.875rem;
@@ -584,12 +600,12 @@
 }
 
 .liquid-glass-lens__tile-label {
-  font-size: 0.5rem;
-  font-weight: 500;
-  letter-spacing: 0.05em;
+  font-size: 0.56rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
-  line-height: 1.2;
-  color: color-mix(in srgb, var(--foreground) 78%, transparent);
+  line-height: 1;
+  color: color-mix(in srgb, var(--foreground) 80%, transparent);
 }
 
 .liquid-glass-lens__tile-value-row {
@@ -603,33 +619,38 @@
 }
 
 .liquid-glass-lens__tile-value {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  line-height: 1.15;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.05;
   letter-spacing: -0.01em;
   color: var(--foreground);
   font-variant-numeric: tabular-nums;
 }
 
 .liquid-glass-lens__tile-value--compact {
-  font-size: 0.6875rem;
+  font-size: 0.68rem;
   letter-spacing: -0.015em;
 }
 
 .liquid-glass-lens__tile-unit {
-  font-size: 0.5rem;
-  font-weight: 400;
-  line-height: 1.15;
+  font-size: 0.54rem;
+  font-weight: 500;
+  line-height: 1.05;
   color: var(--muted-foreground);
   flex-shrink: 0;
 }
 
 .liquid-glass-lens__tile-state {
-  font-size: 0.6875rem;
-  font-weight: 500;
-  line-height: 1.15;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.05;
   letter-spacing: -0.005em;
   font-variant-numeric: tabular-nums;
+}
+
+.liquid-glass-lens--vehicleHudTileOdometer[data-liquid-render='lens'] {
+  max-width: 7.75rem;
+  flex: 1.12 1 0;
 }
 
 .liquid-glass-lens--vehicleHudBadge[data-liquid-render='shell'] {
@@ -706,6 +727,11 @@
     gap: 0.1rem;
   }
 
+  .liquid-glass-lens--vehicleHudTileOdometer[data-liquid-render='lens'] {
+    max-width: 6.85rem;
+    flex: 1.15 1 0;
+  }
+
   .liquid-glass-lens__tile-value {
     font-size: 0.75rem;
   }
@@ -731,8 +757,13 @@
     var(--map-glass-lens-shell-shadow, var(--map-glass-fleet-shadow, var(--map-glass-shadow)));
 }
 
-/* Safari/iOS — frost-first lens; content stays on isolated crisp layer */
+/* Safari/iOS — frost-first material; content never filtered */
 .liquid-glass-lens--safari-soft[data-liquid-mode='library'][data-liquid-render='lens'] {
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.liquid-glass-lens--safari-soft .liquid-glass-lens__material {
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
 }

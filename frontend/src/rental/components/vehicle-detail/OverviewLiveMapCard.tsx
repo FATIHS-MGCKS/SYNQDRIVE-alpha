@@ -185,7 +185,7 @@ export function OverviewLiveMapCard({
               variant="vehicleHudTile"
               renderMode="lens"
               intensity="subtle"
-              className="pointer-events-none"
+              className="liquid-glass-lens--vehicleHudTileOdometer pointer-events-none"
             >
               <div className="liquid-glass-lens__tile-inner">
                 <span className="liquid-glass-lens__tile-icon">
