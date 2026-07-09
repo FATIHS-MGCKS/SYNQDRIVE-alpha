@@ -403,7 +403,7 @@ export function VendorManagementView({
               key={metric.label}
               type="button"
               onClick={metric.action}
-              className={`group sq-card sq-press rounded-2xl p-4 text-left shadow-[var(--shadow-1)] transition-all ${
+              className={`group surface-premium sq-press rounded-2xl p-4 text-left shadow-[var(--shadow-1)] transition-all ${
                 metric.active ? 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_22%,transparent)]' : 'hover:bg-muted/35'
               }`}
             >
@@ -426,7 +426,7 @@ export function VendorManagementView({
       )}
 
       {/* Search + Filter */}
-      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+      <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <Icon name="filter" className="h-4 w-4 text-muted-foreground" />
@@ -496,7 +496,7 @@ export function VendorManagementView({
               placeholder={embeddedInServiceCenter
                 ? 'Partner, Ort, Kontakt oder Leistung suchen…'
                 : 'Search vendors, city, contact or service area...'}
-              className="w-full rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground py-2.5 pl-10 pr-4 text-xs outline-none transition-all focus:border-[color:var(--brand)]"
+              className="w-full rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground py-2.5 pl-10 pr-4 text-xs outline-none transition-all focus:border-[color:var(--brand)]"
             />
           </div>
 
@@ -511,7 +511,7 @@ export function VendorManagementView({
               className={`flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-xs font-medium transition-all ${
                 scopeFilter !== 'ALL'
                   ? 'bg-[color:var(--brand-soft)] border-transparent text-[color:var(--brand-ink)]'
-                  : 'bg-card border-border text-foreground hover:bg-muted'
+                  : 'surface-premium border-border text-foreground hover:bg-muted'
               }`}
             >
               <span>{activeScopeLabel}</span>
@@ -567,7 +567,7 @@ export function VendorManagementView({
               className={`flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-xs font-medium transition-all ${
                 serviceAreaFilter !== 'ALL'
                   ? 'bg-[color:var(--brand-soft)] border-transparent text-[color:var(--brand-ink)]'
-                  : 'bg-card border-border text-foreground hover:bg-muted'
+                  : 'surface-premium border-border text-foreground hover:bg-muted'
               }`}
             >
               <span className="max-w-[140px] truncate">{activeServiceAreaLabel}</span>
@@ -630,7 +630,7 @@ export function VendorManagementView({
               className={`flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-xs font-medium transition-all ${
                 catFilter !== 'ALL'
                   ? 'bg-[color:var(--brand-soft)] border-transparent text-[color:var(--brand-ink)]'
-                  : 'bg-card border-border text-foreground hover:bg-muted'
+                  : 'surface-premium border-border text-foreground hover:bg-muted'
               }`}
             >
               <span>{activeCategoryLabel}</span>
@@ -679,7 +679,7 @@ export function VendorManagementView({
           <SkeletonCard className="rounded-2xl shadow-[var(--shadow-1)]" />
         </div>
       ) : filtered.length === 0 ? (
-        <div className="sq-card rounded-2xl shadow-[var(--shadow-1)]">
+        <div className="surface-premium rounded-2xl shadow-[var(--shadow-1)]">
           <EmptyState
             icon={<Icon name="store" className="h-5 w-5" />}
             title={vendors.length === 0 ? 'No service partners yet' : 'No matching vendors'}
@@ -866,7 +866,7 @@ export function VendorManagementView({
                         className={`px-2 py-1 rounded-md text-[10px] font-medium transition border ${
                           active
                             ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] border-transparent'
-                            : 'bg-card text-muted-foreground border-border hover:text-foreground'
+                            : 'surface-premium text-muted-foreground border-border hover:text-foreground'
                         }`}>
                         {sa}
                       </button>

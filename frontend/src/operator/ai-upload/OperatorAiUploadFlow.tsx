@@ -171,7 +171,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5">
         {showCapture && (
           <div className="space-y-4">
-            <div className="rounded-2xl border border-border bg-card p-4 space-y-1">
+            <div className="rounded-2xl border border-border surface-premium p-4 space-y-1">
               {contextLines.map((line) => (
                 <p key={line} className="text-xs text-muted-foreground">
                   {line}
@@ -197,7 +197,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
                       className={`sq-press min-h-[40px] rounded-full border px-3 py-2 text-xs font-semibold ${
                         active
                           ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
-                          : 'border-border bg-card text-foreground'
+                          : 'border-border surface-premium text-foreground'
                       }`}
                     >
                       {opt.label}
@@ -232,7 +232,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
               <button
                 type="button"
                 onClick={() => galleryRef.current?.click()}
-                className="sq-press flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border/70 bg-card/50"
+                className="sq-press flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border/70 surface-premium"
               >
                 <FileUp className="h-8 w-8 text-muted-foreground" />
                 <span className="text-sm font-semibold">Datei</span>

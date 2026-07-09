@@ -155,7 +155,7 @@ export function OperatorTasksView() {
               className={`sq-press shrink-0 rounded-full border px-3 py-2 text-xs font-semibold ${
                 active
                   ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
-                  : 'border-border bg-card text-foreground'
+                  : 'border-border surface-premium text-foreground'
               }`}
             >
               {labels[chip]}
@@ -172,7 +172,7 @@ export function OperatorTasksView() {
             className={`sq-press shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase ${
               filters.priority === p
                 ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
-                : 'border-border bg-card text-muted-foreground'
+                : 'border-border surface-premium text-muted-foreground'
             }`}
           >
             {p === 'all' ? 'Priorität' : p}
@@ -180,7 +180,7 @@ export function OperatorTasksView() {
         ))}
       </div>
       {vehiclePickerOpen && vehicleOptions.length > 0 && (
-        <div className="flex flex-wrap gap-2 rounded-xl border border-border bg-card p-2">
+        <div className="flex flex-wrap gap-2 rounded-xl border border-border surface-premium p-2">
           {vehicleOptions.map((v) => (
             <button
               key={v.id}

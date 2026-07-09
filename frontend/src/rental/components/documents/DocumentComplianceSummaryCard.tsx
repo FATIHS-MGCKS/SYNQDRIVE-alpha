@@ -99,7 +99,7 @@ export function DocumentComplianceSummaryCard({
   }
 
   return (
-    <div className="sq-card flex h-full flex-col p-3.5 sm:p-4">
+    <div className="surface-premium flex h-full flex-col p-3.5 sm:p-4">
       <div className="flex items-center gap-1.5">
         <StatusDot tone="neutral" />
         <span className="text-[12px] font-medium text-muted-foreground">Compliance</span>

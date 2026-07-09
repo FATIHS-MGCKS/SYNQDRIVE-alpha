@@ -86,11 +86,11 @@ export function DataAuthorizationCreateDialog({
       role="presentation"
     >
       <div
-        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border bg-card shadow-[var(--shadow-3)]"
+        className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border border-border surface-premium shadow-[var(--shadow-3)]"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-border bg-card">
+        <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 border-b border-border bg-popover">
           <div>
             <h3 className="text-base font-bold text-foreground">Neue Datenfreigabe</h3>
             <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -199,7 +199,7 @@ export function DataAuthorizationCreateDialog({
           </div>
         </div>
 
-        <div className="sticky bottom-0 flex justify-end gap-2 px-6 py-4 border-t border-border bg-card">
+        <div className="sticky bottom-0 flex justify-end gap-2 px-6 py-4 border-t border-border surface-premium">
           <button type="button" onClick={onClose} className="px-4 py-2.5 rounded-xl text-xs font-medium border border-border hover:bg-muted">
             Abbrechen
           </button>

@@ -188,7 +188,7 @@ export function TariffGroupDrawer({
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
       <div
         className={`h-full w-full max-w-lg overflow-y-auto shadow-xl ${
-          isDarkMode ? 'bg-card' : 'bg-white'
+          isDarkMode ? 'surface-premium' : 'bg-white'
         }`}
         onClick={(e) => e.stopPropagation()}
       >

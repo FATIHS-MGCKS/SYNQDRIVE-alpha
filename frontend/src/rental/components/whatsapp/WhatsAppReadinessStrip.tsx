@@ -16,7 +16,7 @@ const STATUS_ICON: Record<ReadinessCheck['status'], { icon: string; className: s
 
 export function WhatsAppReadinessStrip({ checks, onNavigate }: WhatsAppReadinessStripProps) {
   return (
-    <div className="sq-card overflow-hidden rounded-2xl border border-border/40 shadow-[var(--shadow-1)]">
+    <div className="surface-premium overflow-hidden rounded-2xl border border-border/40 shadow-[var(--shadow-1)]">
       <div className="flex gap-3 overflow-x-auto p-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {checks.map(check => {
           const meta = STATUS_ICON[check.status];

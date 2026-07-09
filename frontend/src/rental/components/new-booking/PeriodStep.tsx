@@ -190,7 +190,7 @@ export function PeriodStep({
                     }
                   }
                 }}
-                className="min-w-0 flex-1 rounded-lg border border-border bg-card px-3 py-2.5 text-xs text-foreground outline-none"
+                className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2.5 text-xs text-foreground outline-none"
               />
               <div className="relative shrink-0">
                 <button
@@ -202,7 +202,7 @@ export function PeriodStep({
                   className={`flex min-w-[5.25rem] items-center gap-1.5 rounded-lg border px-2.5 py-2.5 text-xs outline-none transition-all sm:min-w-[7rem] sm:gap-2 sm:px-3 ${
                     showPickupTimePicker
                       ? 'sq-tone-brand border border-border'
-                      : 'border-border bg-card text-foreground hover:border-border'
+                      : 'border-border surface-premium text-foreground hover:border-border'
                   }`}
                 >
                   <Icon name="clock" className="h-3.5 w-3.5" />
@@ -211,7 +211,7 @@ export function PeriodStep({
                 {showPickupTimePicker && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => onShowPickupTimePickerChange(false)} />
-                    <div className="absolute left-1/2 top-full z-50 mt-2 w-52 -translate-x-1/2 rounded-lg border border-border bg-card/95 p-4 shadow-2xl">
+                    <div className="absolute left-1/2 top-full z-50 mt-2 w-52 -translate-x-1/2 rounded-lg border border-border bg-popover p-4 shadow-2xl">
                       <div className="mb-3 flex justify-center">
                         <AnalogClock time={pickupTime} handColor="var(--status-info)" />
                       </div>
@@ -221,10 +221,10 @@ export function PeriodStep({
                           type="time"
                           value={pickupTime}
                           onChange={(e) => onPickupTimeChange(e.target.value)}
-                          className="w-full rounded-lg border border-border bg-card px-3 py-2 text-center text-xs text-foreground outline-none transition-colors focus:border-[color:var(--brand)]"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-center text-xs text-foreground outline-none transition-colors focus:border-[color:var(--brand)]"
                         />
                       </div>
-                      <div className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-l border-t border-border bg-card/95" />
+                      <div className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-l border-t border-border bg-popover" />
                     </div>
                   </>
                 )}
@@ -249,7 +249,7 @@ export function PeriodStep({
                     onCalendarYearChange(d.getFullYear());
                   }
                 }}
-                className="min-w-0 flex-1 rounded-lg border border-border bg-card px-3 py-2.5 text-xs text-foreground outline-none"
+                className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2.5 text-xs text-foreground outline-none"
               />
               <div className="relative shrink-0">
                 <button
@@ -261,7 +261,7 @@ export function PeriodStep({
                   className={`flex min-w-[5.25rem] items-center gap-1.5 rounded-lg border px-2.5 py-2.5 text-xs outline-none transition-all sm:min-w-[7rem] sm:gap-2 sm:px-3 ${
                     showReturnTimePicker
                       ? 'sq-tone-success border border-border'
-                      : 'border-border bg-card text-foreground hover:border-border'
+                      : 'border-border surface-premium text-foreground hover:border-border'
                   }`}
                 >
                   <Icon name="clock" className="h-3.5 w-3.5" />
@@ -270,7 +270,7 @@ export function PeriodStep({
                 {showReturnTimePicker && (
                   <>
                     <div className="fixed inset-0 z-40" onClick={() => onShowReturnTimePickerChange(false)} />
-                    <div className="absolute left-1/2 top-full z-50 mt-2 w-52 -translate-x-1/2 rounded-lg border border-border bg-card/95 p-4 shadow-2xl">
+                    <div className="absolute left-1/2 top-full z-50 mt-2 w-52 -translate-x-1/2 rounded-lg border border-border bg-popover p-4 shadow-2xl">
                       <div className="mb-3 flex justify-center">
                         <AnalogClock time={returnTime} handColor="var(--status-positive)" />
                       </div>
@@ -280,10 +280,10 @@ export function PeriodStep({
                           type="time"
                           value={returnTime}
                           onChange={(e) => onReturnTimeChange(e.target.value)}
-                          className="w-full rounded-lg border border-border bg-card px-3 py-2 text-center text-xs text-foreground outline-none transition-colors focus:border-[color:var(--status-positive)]"
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-center text-xs text-foreground outline-none transition-colors focus:border-[color:var(--status-positive)]"
                         />
                       </div>
-                      <div className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-l border-t border-border bg-card/95" />
+                      <div className="absolute -top-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 border-l border-t border-border bg-popover" />
                     </div>
                   </>
                 )}
@@ -315,7 +315,7 @@ export function PeriodStep({
               className={`flex-1 rounded-lg px-3 py-2 text-center text-xs transition-all ${
                 calendarSelectMode === 'pickup'
                   ? 'sq-tone-brand border border-border'
-                  : 'border border-border bg-card text-muted-foreground'
+                  : 'border border-border surface-premium text-muted-foreground'
               }`}
             >
               <Icon name="calendar" className="mx-auto mb-1 h-3.5 w-3.5" />
@@ -327,7 +327,7 @@ export function PeriodStep({
               className={`flex-1 rounded-lg px-3 py-2 text-center text-xs transition-all ${
                 calendarSelectMode === 'return'
                   ? 'sq-tone-success border border-border'
-                  : 'border border-border bg-card text-muted-foreground'
+                  : 'border border-border surface-premium text-muted-foreground'
               }`}
             >
               <Icon name="calendar" className="mx-auto mb-1 h-3.5 w-3.5" />
@@ -407,7 +407,7 @@ export function PeriodStep({
                     {day || ''}
                   </button>
                   {hoveredDay === day && day && blockInfo && (
-                    <div className="absolute bottom-full left-1/2 z-50 mb-2 w-52 -translate-x-1/2 rounded-lg border border-border bg-card/95 p-2.5 text-foreground shadow-lg">
+                    <div className="absolute bottom-full left-1/2 z-50 mb-2 w-52 -translate-x-1/2 rounded-lg border border-border bg-popover p-2.5 text-foreground shadow-lg">
                       <div className="mb-1.5 flex items-center gap-1.5">
                         {blockInfo.reason === 'maintenance' ? (
                           <Icon name="wrench" className="h-3 w-3 text-[color:var(--status-watch)]" />
@@ -438,7 +438,7 @@ export function PeriodStep({
                           </span>
                         </div>
                       )}
-                      <div className="absolute left-1/2 top-full -mt-1 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-border bg-card/95" />
+                      <div className="absolute left-1/2 top-full -mt-1 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-border bg-popover" />
                     </div>
                   )}
                 </div>

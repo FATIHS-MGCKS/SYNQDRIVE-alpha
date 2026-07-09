@@ -343,7 +343,7 @@ function DamageMapPin({
         )}
       </button>
       {showPreview && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-20 w-max max-w-[180px] rounded-lg border border-border/80 bg-card/95 backdrop-blur-md px-2.5 py-1.5 shadow-lg pointer-events-none">
+        <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-20 w-max max-w-[180px] rounded-lg border border-border/80 bg-popover backdrop-blur-md px-2.5 py-1.5 shadow-lg pointer-events-none">
           <p className="text-[10px] font-semibold text-foreground truncate">
             {formatDamageType(damage.damageType)}
           </p>

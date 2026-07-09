@@ -240,7 +240,7 @@ export function DamagesView({ vehicleId, onOpenVehicleTasks }: DamagesViewProps)
 
   if (!vehicleId) {
     return (
-      <div className="sq-card rounded-2xl p-6">
+      <div className="surface-premium rounded-2xl p-6">
         <p className="text-[12px] text-muted-foreground">Select a vehicle to open the damage control center.</p>
       </div>
     );
@@ -253,7 +253,7 @@ export function DamagesView({ vehicleId, onOpenVehicleTasks }: DamagesViewProps)
         description={error}
         onRetry={() => void reload()}
         retryLabel="Retry"
-        className="sq-card rounded-2xl shadow-[var(--shadow-1)]"
+        className="surface-premium rounded-2xl shadow-[var(--shadow-1)]"
       />
     );
   }
@@ -263,10 +263,10 @@ export function DamagesView({ vehicleId, onOpenVehicleTasks }: DamagesViewProps)
       <div className="space-y-4">
         <SkeletonMetricGrid count={7} />
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] gap-3">
-          <div className="sq-card rounded-2xl p-4">
+          <div className="surface-premium rounded-2xl p-4">
             <SkeletonRows rows={10} />
           </div>
-          <div className="sq-card rounded-2xl p-4">
+          <div className="surface-premium rounded-2xl p-4">
             <SkeletonRows rows={8} />
           </div>
         </div>

@@ -64,7 +64,7 @@ export function BookingSuccessState({
             <button
               type="button"
               onClick={onBack}
-              className="flex-1 rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground transition-all hover:bg-muted"
+              className="flex-1 rounded-lg border border-border surface-premium px-3 py-2 text-xs text-foreground transition-all hover:bg-muted"
             >
               Zur Übersicht
             </button>

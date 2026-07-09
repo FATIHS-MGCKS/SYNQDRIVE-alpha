@@ -43,7 +43,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
   const h2 = `text-base font-bold mb-1 ${d ? 'text-neutral-100' : 'text-gray-900'}`;
   const h3 = `text-sm font-semibold mb-2 ${d ? 'text-neutral-200' : 'text-gray-800'}`;
   const body = `text-xs leading-relaxed ${d ? 'text-neutral-400' : 'text-gray-600'}`;
-  const code = `px-1 py-0.5 rounded text-[11px] font-mono ${d ? 'bg-card text-violet-400' : 'bg-gray-100 text-violet-600'}`;
+  const code = `px-1 py-0.5 rounded text-[11px] font-mono ${d ? 'surface-premium text-violet-400' : 'bg-gray-100 text-violet-600'}`;
   const li = `text-xs ${d ? 'text-neutral-400' : 'text-gray-600'}`;
   const sub = `text-[11px] ${d ? 'text-neutral-500' : 'text-muted-foreground'}`;
 
@@ -111,7 +111,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                     active
                       ? d ? 'bg-orange-500/20 text-orange-300' : 'bg-orange-100 text-orange-700'
-                      : d ? 'text-neutral-400 hover:text-neutral-200 hover:bg-card' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                      : d ? 'text-neutral-400 hover:text-neutral-200 hover:surface-premium' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                   }`}
                 >
                   <Icon size={13} />
@@ -142,7 +142,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                   '→ Tire Health V2 / Brake Health V2',
                 ].map((s, i) => (
                   <div key={i} className="flex items-center gap-1">
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full ${d ? 'bg-card text-neutral-300' : 'bg-gray-100 text-gray-600'}`}>{s}</span>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full ${d ? 'surface-premium text-neutral-300' : 'bg-gray-100 text-gray-600'}`}>{s}</span>
                     {i < 9 && <ChevronRight size={11} className={d ? 'text-neutral-600' : 'text-muted-foreground'} />}
                   </div>
                 ))}
@@ -295,7 +295,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                       { label: 'HARD', range: '3.5 – 5.0 m/s²', desc: 'Hard acceleration' },
                       { label: 'EXTREME', range: '≥ 5.0 m/s²', desc: 'Abuse-level event' },
                     ].map(t => (
-                      <div key={t.label} className={`flex gap-2 items-center text-xs rounded-lg px-2 py-1 ${d ? 'bg-card' : 'bg-gray-50'}`}>
+                      <div key={t.label} className={`flex gap-2 items-center text-xs rounded-lg px-2 py-1 ${d ? 'surface-premium' : 'bg-gray-50'}`}>
                         <span className="font-semibold w-20 text-emerald-400">{t.label}</span>
                         <span className={`font-mono text-[11px] w-28 ${d ? 'text-neutral-300' : 'text-gray-700'}`}>{t.range}</span>
                         <span className={sub}>{t.desc}</span>
@@ -355,7 +355,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                       { label: 'HARD', range: '4.5 – 7.0 m/s²', desc: 'Hard braking event' },
                       { label: 'EXTREME', range: '≥ 7.0 m/s²', desc: 'Emergency / abuse level' },
                     ].map(t => (
-                      <div key={t.label} className={`flex gap-2 items-center text-xs rounded-lg px-2 py-1 ${d ? 'bg-card' : 'bg-gray-50'}`}>
+                      <div key={t.label} className={`flex gap-2 items-center text-xs rounded-lg px-2 py-1 ${d ? 'surface-premium' : 'bg-gray-50'}`}>
                         <span className="font-semibold w-20 text-red-400">{t.label}</span>
                         <span className={`font-mono text-[11px] w-28 ${d ? 'text-neutral-300' : 'text-gray-700'}`}>{t.range}</span>
                         <span className={sub}>{t.desc}</span>
@@ -579,7 +579,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                   </div>
                 ))}
               </div>
-              <div className={`mt-4 p-3 rounded-xl text-[11px] ${d ? 'bg-card text-neutral-300' : 'bg-gray-50 text-gray-600'}`}>
+              <div className={`mt-4 p-3 rounded-xl text-[11px] ${d ? 'surface-premium text-neutral-300' : 'bg-gray-50 text-gray-600'}`}>
                 <strong>Abuse Score (abuseScore, 0–100):</strong> Deterministic weighted sum of abuse events.
                 Each event type has a base weight (POSSIBLE_IMPACT=20, ENGINE_SHUTDOWN=15, OVERHEATING=10, FULL_BRAKING=8, LAUNCH_LIKE_START=6, COLD_ENGINE_*=5, HIGH_RPM_CONSTANT=4, ENGINE_REV_IN_IDLE=3, KICKDOWN=3, LONG_IDLE=2).
                 Severity multipliers: WARNING=1.0×, SEVERE=1.5×, CRITICAL=2.0×. Score is capped at 100.
@@ -720,7 +720,7 @@ export function PerformanceLogicView({ isDarkMode: d }: Props) {
                     fields: ['citySharePct → usage multiplier (city=1.35, highway=1.0)', 'stopGoStressScore → stop density factor', 'highSpeedStressScore → high-speed braking factor', 'p95DecelMs2 → hard braking factor', 'meanBrakeEnergyKjPerKm → full-braking factor', 'thermalBrakeStressScore → thermal wear factor'],
                   },
                 ].map(c => (
-                  <div key={c.title} className={`rounded-xl p-4 ${d ? 'bg-card' : 'bg-gray-50'}`}>
+                  <div key={c.title} className={`rounded-xl p-4 ${d ? 'surface-premium' : 'bg-gray-50'}`}>
                     <p className={`text-sm font-bold mb-2 ${c.color}`}>{c.title}</p>
                     <ul className="space-y-1">
                       {c.fields.map(f => <li key={f} className={`text-[11px] ${d ? 'text-neutral-400' : 'text-gray-600'}`}>• {f}</li>)}

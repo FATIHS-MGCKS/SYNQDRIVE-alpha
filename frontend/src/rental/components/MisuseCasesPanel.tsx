@@ -149,7 +149,7 @@ function EmptyMisuseState({
   if (embedded) return null;
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="rounded-lg border border-border surface-premium p-4">
       <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
         {title}
       </h3>
@@ -337,7 +337,7 @@ function issueForCase(
       key={issue.id}
       className={
         embedded
-          ? 'rounded-xl border border-border/60 bg-card/50 px-3 py-2.5'
+          ? 'rounded-xl border border-border/60 surface-premium px-3 py-2.5'
           : compact
             ? 'px-3 py-2'
             : 'px-4 py-3'
@@ -460,7 +460,7 @@ export function MisuseCasesPanel({
 
   if (loading) {
     return (
-      <div className="rounded-lg border border-border bg-card p-4 text-xs text-muted-foreground">
+      <div className="rounded-lg border border-border surface-premium p-4 text-xs text-muted-foreground">
         Hinweise werden geladen…
       </div>
     );
@@ -468,7 +468,7 @@ export function MisuseCasesPanel({
 
   if (error) {
     return (
-      <div className="rounded-lg border border-border bg-card p-4 text-xs text-muted-foreground">
+      <div className="rounded-lg border border-border surface-premium p-4 text-xs text-muted-foreground">
         {error}
       </div>
     );
@@ -504,7 +504,7 @@ export function MisuseCasesPanel({
       className={
         embedded
           ? 'space-y-2'
-          : 'rounded-lg border border-border bg-card'
+          : 'rounded-lg border border-border surface-premium'
       }
     >
       <div className={embedded ? 'space-y-0.5' : 'border-b border-border px-4 py-3'}>

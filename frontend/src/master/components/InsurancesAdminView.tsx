@@ -15,7 +15,7 @@ import type {
 } from '../../lib/api';
 
 /* ── Design-system token helpers ── */
-const CARD = 'sq-card overflow-hidden';
+const CARD = 'surface-premium overflow-hidden';
 const INPUT =
   'w-full px-4 py-2.5 rounded-xl border border-border bg-muted/50 text-sm text-foreground transition-colors outline-none focus:border-[color:var(--brand)] placeholder:text-muted-foreground';
 const LABEL = 'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';
@@ -106,7 +106,7 @@ export function InsurancesAdminView() {
             onClick={() => setActiveTab(t.id)}
             className={`flex items-center gap-2 px-5 py-2 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${
               activeTab === t.id
-                ? 'bg-card text-foreground shadow-sm ring-1 ring-border'
+                ? 'surface-premium text-foreground shadow-sm ring-1 ring-border'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >

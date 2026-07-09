@@ -64,7 +64,7 @@ export function CustomerStep({
               placeholder="Name, E-Mail oder Telefonnummer suchen..."
               value={customerSearch}
               onChange={(e) => onCustomerSearchChange(e.target.value)}
-              className={`w-full pl-10 pr-4 py-3 rounded-lg border text-xs outline-none transition-all ${ 'bg-card border border-border text-foreground placeholder:text-muted-foreground focus:border-[color:var(--brand)]' }`}
+              className={`w-full pl-10 pr-4 py-3 rounded-lg border text-xs outline-none transition-all ${ 'bg-background border border-border text-foreground placeholder:text-muted-foreground focus:border-[color:var(--brand)]' }`}
             />
           </div>
 
@@ -90,7 +90,7 @@ export function CustomerStep({
               <button
                 key={c.id}
                 onClick={() => onSelectCustomer(c)}
-                className={`w-full min-w-0 max-w-full text-left p-4 rounded-lg border transition-all duration-200 flex items-start gap-3 group/card sm:items-center ${ selectedCustomer?.id === c.id ? 'sq-tone-brand border border-border ring-1 ring-[color:var(--brand-glow)]' : 'bg-muted/40 border border-border hover:bg-card hover:border-border' }`}
+                className={`w-full min-w-0 max-w-full text-left p-4 rounded-lg border transition-all duration-200 flex items-start gap-3 group/card sm:items-center ${ selectedCustomer?.id === c.id ? 'sq-tone-brand border border-border ring-1 ring-[color:var(--brand-glow)]' : 'bg-muted/40 border border-border hover:surface-premium hover:border-border' }`}
               >
                 <div className={`w-11 h-11 rounded-full flex items-center justify-center text-xs shrink-0 ${ selectedCustomer?.id === c.id ? 'sq-tone-brand' : 'sq-chip-neutral' }`}>
                   {c.name.split(' ').map(n => n[0]).join('')}
@@ -205,7 +205,7 @@ export function CustomerStep({
           { label: 'Zusammenfassung', icon: CheckCircle },
         ];
         const inputClass = `w-full px-3 py-2.5 rounded-lg border text-xs outline-none transition-all ${
-          'bg-card border border-border text-foreground placeholder:text-muted-foreground focus:border-[color:var(--brand)] focus:ring-1 focus:ring-[color:var(--brand-glow)]'
+          'bg-background border border-border text-foreground placeholder:text-muted-foreground focus:border-[color:var(--brand)] focus:ring-1 focus:ring-[color:var(--brand-glow)]'
         }`;
         const labelClass = 'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';
         const sectionTitle = (icon: ComponentType<{ className?: string }>, title: string) => {
@@ -231,7 +231,7 @@ export function CustomerStep({
           <div className="fixed inset-0 z-[100] flex items-center justify-center" onClick={onCloseAddCustomer}>
             <div className="absolute inset-0 overlay-scrim" />
             <div onClick={(e) => e.stopPropagation()}
-              className={`relative w-full max-w-[680px] max-h-[85vh] flex flex-col rounded-lg border shadow-2xl ${ 'bg-card/90 border border-border' }`}>
+              className={`relative w-full max-w-[680px] max-h-[85vh] flex flex-col rounded-lg border shadow-2xl ${ 'surface-premium/90 border border-border' }`}>
               {/* Header */}
               <div className="flex items-center justify-between px-7 py-3 border-b shrink-0 border-border">
                 <div>
@@ -328,7 +328,7 @@ export function CustomerStep({
                         <div className="flex gap-2">
                           {(['Individual', 'Corporate'] as const).map(t => (
                             <button key={t} onClick={() => onNewCustomerChange({ ...newCustomer, type: t })}
-                              className={`flex-1 py-2.5 rounded-lg border text-xs font-semibold transition-all ${ newCustomer.type === t ? 'bg-brand text-brand-foreground border-brand shadow-md' : 'bg-card border border-border text-muted-foreground hover:border-border' }`}>
+                              className={`flex-1 py-2.5 rounded-lg border text-xs font-semibold transition-all ${ newCustomer.type === t ? 'bg-brand text-brand-foreground border-brand shadow-md' : 'surface-premium border border-border text-muted-foreground hover:border-border' }`}>
                               {t === 'Individual' ? 'Privat' : 'Firma'}
                             </button>
                           ))}
@@ -502,7 +502,7 @@ export function CustomerStep({
                 <div className="flex items-center gap-2.5">
                   {addStep > 0 && (
                     <button onClick={() => onAddStepChange(addStep - 1)}
-                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${ 'bg-card border border-border text-foreground hover:bg-muted' }`}>
+                      className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium transition-all ${ 'surface-premium border border-border text-foreground hover:bg-muted' }`}>
                       <Icon name="chevron-left" className="w-3.5 h-3.5" />
                       Zurück
                     </button>

@@ -73,7 +73,7 @@ export function WhatsAppInboxLayout({
 
   return (
     <div
-      className="sq-card grid h-[min(72vh,820px)] min-h-[480px] overflow-hidden rounded-2xl border border-border/40 shadow-[var(--shadow-1)] lg:grid-cols-[280px_1fr_300px]"
+      className="surface-premium grid h-[min(72vh,820px)] min-h-[480px] overflow-hidden rounded-2xl border border-border/40 shadow-[var(--shadow-1)] lg:grid-cols-[280px_1fr_300px]"
     >
       <div
         className={cn(

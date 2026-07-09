@@ -208,7 +208,7 @@ export function DataAuthorizationDetailDrawer({
     >
       <div className="space-y-6">
         <DetailSection title="Überblick">
-          <div className="sq-card rounded-xl border border-border/70 p-3 space-y-2">
+          <div className="surface-premium rounded-xl border border-border/70 p-3 space-y-2">
             <DetailRow label="Quelle" value={labelSourceType(auth.sourceType)} />
             <DetailRow label="Verarbeiter" value={labelProcessor(auth)} />
             <DetailRow label="Scope" value={labelScope(auth.scopeKey)} />
@@ -262,7 +262,7 @@ export function DataAuthorizationDetailDrawer({
               {visibleVehicles.map((v) => (
                 <li
                   key={v.id}
-                  className="sq-card rounded-lg border border-border/60 px-3 py-2 text-[12px]"
+                  className="surface-premium rounded-lg border border-border/60 px-3 py-2 text-[12px]"
                 >
                   <p className="font-semibold text-foreground">
                     {v.make && v.model ? `${v.make} ${v.model}` : `Fahrzeug ${v.id.slice(0, 8)}`}

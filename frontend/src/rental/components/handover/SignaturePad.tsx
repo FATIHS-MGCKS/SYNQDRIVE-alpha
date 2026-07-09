@@ -173,7 +173,7 @@ export function SignaturePad({
                   ? 'bg-brand/30 text-brand border border-brand/40'
                   : 'bg-brand-soft text-brand border border-border'
                 : isDarkMode
-                ? 'bg-card text-gray-400 border border-neutral-700 hover:bg-neutral-700'
+                ? 'surface-premium text-gray-400 border border-neutral-700 hover:bg-neutral-700'
                 : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200'
             }`}
           >
@@ -189,7 +189,7 @@ export function SignaturePad({
                   ? 'bg-brand/30 text-brand border border-brand/40'
                   : 'bg-brand-soft text-brand border border-border'
                 : isDarkMode
-                ? 'bg-card text-gray-400 border border-neutral-700 hover:bg-neutral-700'
+                ? 'surface-premium text-gray-400 border border-neutral-700 hover:bg-neutral-700'
                 : 'bg-gray-100 text-gray-500 border border-gray-200 hover:bg-gray-200'
             }`}
           >
@@ -220,7 +220,7 @@ export function SignaturePad({
             onClick={clearCanvas}
             className={`absolute top-2 right-2 p-1.5 rounded-md transition-colors ${
               isDarkMode
-                ? 'bg-card/90 text-gray-400 hover:text-red-400 hover:bg-neutral-700'
+                ? 'surface-premium/90 text-gray-400 hover:text-red-400 hover:bg-neutral-700'
                 : 'bg-white/90 text-gray-500 hover:text-red-500 hover:bg-gray-50 shadow-sm'
             }`}
             title="Unterschrift löschen"
@@ -244,7 +244,7 @@ export function SignaturePad({
           className={`w-full px-3 py-2 rounded-lg border text-sm ${
             isDarkMode
               ? 'bg-neutral-900 border-neutral-700 text-gray-100 placeholder-gray-500'
-              : 'bg-card border-border text-foreground placeholder:text-muted-foreground'
+              : 'bg-background border-border text-foreground placeholder:text-muted-foreground'
           } focus:outline-none focus:ring-2 focus:ring-blue-500/40`}
         />
       )}

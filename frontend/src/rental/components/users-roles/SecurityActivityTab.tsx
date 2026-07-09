@@ -100,7 +100,7 @@ export function SecurityActivityTab({ orgId }: SecurityActivityTabProps) {
 
   return (
     <div className="space-y-4">
-      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)] grid grid-cols-1 md:grid-cols-2 gap-3">
+      <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)] grid grid-cols-1 md:grid-cols-2 gap-3">
         <label className="block">
           <span className="text-[10px] font-semibold uppercase text-muted-foreground">Aktion</span>
           <select
@@ -126,7 +126,7 @@ export function SecurityActivityTab({ orgId }: SecurityActivityTabProps) {
         </label>
       </div>
 
-      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+      <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
         {error && !rows.length ? (
           <ErrorState title="Aktivität nicht verfügbar" error={error} onRetry={() => void load()} />
         ) : loading ? (

@@ -509,7 +509,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
 
       {/* ─── Daily chart ─── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        <div className="lg:col-span-2 sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+        <div className="lg:col-span-2 surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
           <div className="flex items-center justify-between mb-3">
             <div>
               <h3 className="text-[12px] font-semibold tracking-[-0.003em] text-foreground">Daily Revenue & Expenses</h3>
@@ -529,7 +529,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           <div className="relative">
             {!hasDailyData && (
               <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
-                <div className="px-4 py-2 rounded-xl bg-card/90 border border-border text-center shadow-[var(--shadow-1)]">
+                <div className="px-4 py-2 rounded-xl surface-premium/90 border border-border text-center shadow-[var(--shadow-1)]">
                   <p className="text-xs font-semibold text-foreground">No invoices recorded this month yet</p>
                   <p className="text-[11px] text-muted-foreground mt-0.5">Daily revenue & expenses will appear once invoices are issued.</p>
                 </div>
@@ -594,7 +594,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
         </div>
 
         {/* Margin / outstanding sidebar card */}
-        <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+        <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
           <div className="flex items-center gap-2 mb-3">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center sq-tone-brand">
               <Icon name="target" className="w-4 h-4" />
@@ -834,7 +834,7 @@ function KpiCard({
 
 function SummaryCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-xl p-3 border border-border/60 bg-card flex items-center justify-between">
+    <div className="rounded-xl p-3 border border-border/60 surface-premium flex items-center justify-between">
       <div>
         <div className="text-[9px] uppercase tracking-wider font-semibold text-muted-foreground">{label}</div>
         {hint && <div className="text-[10.5px] text-muted-foreground/80 mt-0.5">{hint}</div>}
@@ -874,7 +874,7 @@ function ListCard({
           : 'sq-tone-neutral';
 
   return (
-    <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+    <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
       <div className="flex items-center gap-2.5 mb-3">
         <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${toneCls}`}>
           <Icon className="w-4 h-4" />
@@ -951,7 +951,7 @@ function BreakdownPopup({
       <div className="absolute inset-0 overlay-scrim" />
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-xl p-5 shadow-2xl bg-card border border-border"
+        className="relative w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-xl p-5 shadow-2xl surface-premium border border-border"
       >
         <button
           type="button"
@@ -982,7 +982,7 @@ function BreakdownPopup({
             {days.map((day) => {
               const isExpanded = expandedDay === day.iso;
               return (
-                <div key={day.iso} className="rounded-lg border border-border bg-card">
+                <div key={day.iso} className="rounded-lg border border-border surface-premium">
                   <button
                     type="button"
                     onClick={() => onExpand(day.iso)}

@@ -17,7 +17,7 @@ export function TariffGroupsTab({ catalog, onSelectGroup }: TariffGroupsTabProps
   const taxRate = catalog.priceBook?.taxRatePercent ?? 19;
 
   return (
-    <div className="sq-card overflow-hidden rounded-2xl border border-border/50 shadow-[var(--shadow-1)]">
+    <div className="surface-premium overflow-hidden rounded-2xl border border-border/50 shadow-[var(--shadow-1)]">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[900px] text-left text-xs">
           <thead>

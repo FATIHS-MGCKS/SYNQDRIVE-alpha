@@ -249,7 +249,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
           <>
             {step === 'vehicle' && (
               <div className="space-y-4">
-                <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+                <div className="rounded-2xl border border-border surface-premium p-4 space-y-3">
                   <div>
                     <p className="text-[10px] font-semibold uppercase text-muted-foreground">Kennzeichen</p>
                     <p className="text-2xl font-bold tracking-wide text-foreground">{plate}</p>
@@ -312,7 +312,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                         className={`sq-press w-full rounded-2xl border px-4 py-3 text-left ${
                           active
                             ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)]'
-                            : 'border-border bg-card'
+                            : 'border-border surface-premium'
                         }`}
                       >
                         <p className="text-sm font-semibold text-foreground">{opt.label}</p>
@@ -338,7 +338,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                   <span className="text-[10px] font-semibold uppercase text-muted-foreground">Messdatum</span>
                   <input
                     type="datetime-local"
-                    className="mt-1 h-12 w-full rounded-xl border border-border bg-card px-3 text-sm"
+                    className="mt-1 h-12 w-full rounded-xl border border-border surface-premium px-3 text-sm"
                     value={context.measuredAt}
                     onChange={(e) => setContext((c) => ({ ...c, measuredAt: e.target.value }))}
                   />
@@ -348,7 +348,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                   <input
                     type="text"
                     inputMode="decimal"
-                    className="mt-1 h-12 w-full rounded-xl border border-border bg-card px-3 text-base tabular-nums"
+                    className="mt-1 h-12 w-full rounded-xl border border-border surface-premium px-3 text-base tabular-nums"
                     value={context.odometerKm}
                     onChange={(e) => setContext((c) => ({ ...c, odometerKm: e.target.value }))}
                     placeholder="Optional"
@@ -365,7 +365,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                         className={`sq-press min-h-[44px] rounded-xl border px-3 py-2 text-sm font-semibold ${
                           context.source === opt.value
                             ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
-                            : 'border-border bg-card'
+                            : 'border-border surface-premium'
                         }`}
                       >
                         {opt.label}
@@ -378,7 +378,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                     <span className="text-[10px] font-semibold uppercase text-muted-foreground">Werkstatt</span>
                     <input
                       type="text"
-                      className="mt-1 h-12 w-full rounded-xl border border-border bg-card px-3 text-base"
+                      className="mt-1 h-12 w-full rounded-xl border border-border surface-premium px-3 text-base"
                       value={context.workshopName}
                       onChange={(e) => setContext((c) => ({ ...c, workshopName: e.target.value }))}
                       placeholder="Name der Werkstatt"
@@ -388,7 +388,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
                 <label className="block">
                   <span className="text-[10px] font-semibold uppercase text-muted-foreground">Notiz</span>
                   <textarea
-                    className="mt-1 min-h-[80px] w-full rounded-xl border border-border bg-card px-3 py-2 text-sm"
+                    className="mt-1 min-h-[80px] w-full rounded-xl border border-border surface-premium px-3 py-2 text-sm"
                     value={context.note}
                     onChange={(e) => setContext((c) => ({ ...c, note: e.target.value }))}
                     placeholder="Optional — nur lokal im Review, nicht in Tire-Health-API"
@@ -412,7 +412,7 @@ export function OperatorTireMeasureFlow({ action }: Props) {
 
             {step === 'review' && (
               <div className="space-y-4">
-                <div className="rounded-2xl border border-border bg-card p-4 space-y-2 text-sm">
+                <div className="rounded-2xl border border-border surface-premium p-4 space-y-2 text-sm">
                   <p>
                     <span className="text-muted-foreground">Fahrzeug:</span>{' '}
                     <span className="font-semibold">{vehicleLabel}</span>

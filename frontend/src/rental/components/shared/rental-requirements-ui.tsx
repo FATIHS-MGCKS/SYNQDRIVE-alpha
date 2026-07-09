@@ -250,7 +250,7 @@ export function RuleValueTile({
 
   return (
     <div
-      className={`rounded-lg border border-border/60 bg-card/80 ${padding} transition-colors hover:bg-muted/10 ${
+      className={`rounded-lg border border-border/60 surface-premium ${padding} transition-colors hover:bg-muted/10 ${
         highlighted ? 'border-l-[3px] border-l-[color:var(--brand)]/45' : ''
       } ${className ?? ''}`}
     >
@@ -398,7 +398,7 @@ export function RuleSourcePanel({
   const de = locale === 'de';
 
   return (
-    <aside className="sq-card-elevated flex flex-col rounded-xl border border-border/70 bg-card/60 p-3 sm:p-3.5">
+    <aside className="surface-elevated flex flex-col rounded-xl border border-border/70 surface-premium p-3 sm:p-3.5">
       <p className="sq-section-label">{de ? 'Regelquelle' : 'Rule source'}</p>
       <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
         {de

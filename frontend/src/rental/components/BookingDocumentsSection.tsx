@@ -137,7 +137,7 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
     [orgId, bookingId],
   );
 
-  const cardClass = `rounded-lg p-8 border shadow-sm ${isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'}`;
+  const cardClass = `rounded-lg p-8 border shadow-sm ${isDarkMode ? 'surface-premium border-border' : 'bg-white border-gray-200'}`;
   const subtle = isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground';
   const bundleStatus = (view?.bundle.status ?? 'PENDING') as DocumentBundleStatus;
   const badge = BUNDLE_BADGE[bundleStatus] ?? BUNDLE_BADGE.PENDING;
@@ -158,7 +158,7 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
               disabled={generating}
               title="Buchungsdokumente generieren"
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${
-                isDarkMode ? 'bg-white text-neutral-900 hover:bg-gray-100' : 'bg-neutral-900 text-white hover:bg-card'
+                isDarkMode ? 'bg-white text-neutral-900 hover:bg-gray-100' : 'bg-neutral-900 text-white hover:surface-premium'
               } disabled:opacity-50`}
             >
               {generating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
@@ -269,7 +269,7 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
                                   ? 'bg-amber-500/15 text-amber-400'
                                   : 'bg-amber-50 text-amber-700'
                                 : isDarkMode
-                                ? 'bg-card text-gray-500'
+                                ? 'surface-premium text-gray-500'
                                 : 'bg-gray-100 text-gray-400'
                             }`}
                           >

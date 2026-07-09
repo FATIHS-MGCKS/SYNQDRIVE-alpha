@@ -337,7 +337,7 @@ export function TopBar({ isDarkMode, setIsDarkMode, onViewChange, onVehicleSelec
           height slightly so it aligns more calmly with the right actions. */}
       <div className="hidden md:flex flex-1 max-w-xs" ref={searchRef}>
         <div className="relative w-full">
-          <div className="flex items-center gap-2 w-full h-7 px-3 rounded-md border bg-muted/80 border-border transition-[border-color,background-color,box-shadow] duration-200 ease-out focus-within:border-[color:var(--brand-soft)] focus-within:bg-card focus-within:shadow-[0_0_0_3px_var(--brand-soft)]">
+          <div className="flex items-center gap-2 w-full h-7 px-3 rounded-md border bg-muted/80 border-border transition-[border-color,background-color,box-shadow] duration-200 ease-out focus-within:border-[color:var(--brand-soft)] focus-within:surface-premium focus-within:shadow-[0_0_0_3px_var(--brand-soft)]">
             <Icon name="search" className="w-3.5 h-3.5 shrink-0 text-muted-foreground" />
             <input
               ref={inputRef}

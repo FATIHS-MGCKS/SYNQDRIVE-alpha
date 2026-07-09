@@ -356,7 +356,7 @@ export function VehicleTaskDetailDrawer({
             <button
               type="button"
               onClick={() => void loadDetail()}
-              className="mt-2.5 inline-flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-1.5 text-[11px] font-semibold sq-press hover:bg-muted"
+              className="mt-2.5 inline-flex items-center gap-1 rounded-lg border border-border surface-premium px-3 py-1.5 text-[11px] font-semibold sq-press hover:bg-muted"
             >
               Erneut laden
             </button>
@@ -418,7 +418,7 @@ export function VehicleTaskDetailDrawer({
                       value={assignDraft}
                       onChange={(e) => setAssignDraft(e.target.value)}
                       disabled={mutating}
-                      className="mt-1 w-full rounded-lg border border-border bg-card px-2.5 py-2 text-xs"
+                      className="mt-1 w-full rounded-lg border border-border surface-premium px-2.5 py-2 text-xs"
                     >
                       <option value="">Nicht zugewiesen</option>
                       {orgMembers.map((m) => (
@@ -435,7 +435,7 @@ export function VehicleTaskDetailDrawer({
                       value={dueDraft}
                       onChange={(e) => setDueDraft(e.target.value)}
                       disabled={mutating}
-                      className="mt-1 w-full rounded-lg border border-border bg-card px-2.5 py-2 text-xs"
+                      className="mt-1 w-full rounded-lg border border-border surface-premium px-2.5 py-2 text-xs"
                     />
                   </label>
                   <button
@@ -534,7 +534,7 @@ export function VehicleTaskDetailDrawer({
                     onChange={(e) => setCommentDraft(e.target.value)}
                     disabled={mutating}
                     placeholder="Neuer Kommentar…"
-                    className="min-h-[64px] w-full resize-y rounded-lg border border-border bg-card px-3 py-2 text-xs"
+                    className="min-h-[64px] w-full resize-y rounded-lg border border-border surface-premium px-3 py-2 text-xs"
                   />
                   {commentError && (
                     <p className="text-[10px] font-medium text-red-600 dark:text-red-400">{commentError}</p>
@@ -604,7 +604,7 @@ export function VehicleTaskDetailDrawer({
               setResolutionError(null);
             }}
             disabled={mutating}
-            className="mt-1.5 min-h-[80px] w-full resize-y rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground"
+            className="mt-1.5 min-h-[80px] w-full resize-y rounded-lg border border-border surface-premium px-3 py-2 text-xs text-foreground"
             placeholder="Ergebnis / durchgeführte Maßnahmen dokumentieren"
           />
         </label>

@@ -282,7 +282,7 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
     <div className="relative shrink-0">
       <button
         onClick={() => setIsStationOpen(!isStationOpen)}
-        className="sq-press flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border/60 bg-card text-[10px] font-medium text-foreground transition-all hover:bg-muted hover:border-border max-w-[min(100vw-2rem,240px)]"
+        className="sq-press flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-border/60 surface-premium text-[10px] font-medium text-foreground transition-all hover:bg-muted hover:border-border max-w-[min(100vw-2rem,240px)]"
         aria-haspopup="listbox"
         aria-expanded={isStationOpen}
       >

@@ -38,12 +38,12 @@ export {
 
 export const sop = {
   shell: 'flex flex-col gap-3 min-h-[calc(100vh-8rem)]',
-  kpiStrip: 'sq-card sq-glass rounded-xl border border-border/45 px-3 py-2 shadow-[var(--shadow-1)]',
+  kpiStrip: 'surface-premium surface-frosted rounded-xl border border-border/45 px-3 py-2 shadow-[var(--shadow-1)]',
   queueCol:
-    'hidden lg:flex lg:flex-col lg:w-[188px] shrink-0 sq-card rounded-xl border border-border/45 bg-card/90 overflow-hidden',
-  inboxCol: 'flex min-w-0 flex-1 flex-col sq-card rounded-xl border border-border/45 bg-card/95 overflow-hidden',
+    'hidden lg:flex lg:flex-col lg:w-[188px] shrink-0 surface-premium rounded-xl border border-border/45 surface-premium/90 overflow-hidden',
+  inboxCol: 'flex min-w-0 flex-1 flex-col surface-premium rounded-xl border border-border/45 surface-frosted overflow-hidden',
   workspaceCol:
-    'hidden xl:flex xl:w-[min(440px,34vw)] shrink-0 flex-col sq-card rounded-xl border border-border/45 bg-card/95 overflow-hidden',
+    'hidden xl:flex xl:w-[min(440px,34vw)] shrink-0 flex-col surface-premium rounded-xl border border-border/45 surface-frosted overflow-hidden',
   queueBtn:
     'w-full text-left px-3 py-2 text-[11px] font-medium transition-colors border-l-2 border-transparent hover:bg-muted/40 hover:text-foreground',
   queueBtnActive:

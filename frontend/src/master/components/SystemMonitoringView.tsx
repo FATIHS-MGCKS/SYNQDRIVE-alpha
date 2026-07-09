@@ -35,7 +35,7 @@ import type { DataTableColumn } from '../../components/patterns';
 import { api } from '../../lib/api';
 
 /* ── Design-system token helpers ── */
-const CARD = 'sq-card overflow-hidden';
+const CARD = 'surface-premium overflow-hidden';
 const INPUT =
   'w-full px-4 py-2.5 rounded-xl border border-border bg-muted/50 text-sm text-foreground transition-colors outline-none focus:border-[color:var(--brand)] placeholder:text-muted-foreground';
 const LABEL = 'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';
@@ -272,7 +272,7 @@ function TokenAuthHealthPanel({ tokenHealth,
               />
             ))}
             {vehicleEntries.length === 0 && (
-              <div className={`rounded-xl border p-4 flex items-center justify-center sq-card`}>
+              <div className={`rounded-xl border p-4 flex items-center justify-center surface-premium`}>
                 <p className={`text-xs text-muted-foreground`}>No vehicle JWTs acquired yet</p>
               </div>
             )}

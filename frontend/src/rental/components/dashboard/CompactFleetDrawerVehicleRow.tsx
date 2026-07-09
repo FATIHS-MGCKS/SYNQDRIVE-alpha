@@ -121,7 +121,7 @@ export function CompactFleetDrawerVehicleRow({
   return (
     <article
       className={cn(
-        'rounded-xl border border-border/50 bg-card/50 px-2.5 py-2.5 transition-colors hover:border-border/70 hover:bg-muted/15 dark:bg-card/40',
+        'rounded-xl border border-border/50 surface-premium px-2.5 py-2.5 transition-colors hover:border-border/70 hover:bg-muted/15 dark:surface-premium',
         tint,
       )}
     >

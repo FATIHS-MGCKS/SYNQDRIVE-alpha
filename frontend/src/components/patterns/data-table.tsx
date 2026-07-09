@@ -152,5 +152,5 @@ export function DataTable<T>({
   );
 
   if (!card) return <div className={className}>{body}</div>;
-  return <div className={cn('sq-card overflow-hidden', className)}>{body}</div>;
+  return <div className={cn('surface-premium overflow-hidden', className)}>{body}</div>;
 }

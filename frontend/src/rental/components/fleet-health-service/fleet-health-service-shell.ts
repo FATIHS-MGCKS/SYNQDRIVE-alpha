@@ -21,7 +21,7 @@ export const fhs = {
   meta: META_TEXT_CLASS,
   interactiveRow: cn(
     INTERACTIVE_ROW_CLASS,
-    'flex items-start gap-2.5 rounded-xl border border-border/45 bg-card/60 px-3 py-2.5 hover:bg-muted/20',
+    'flex items-start gap-2.5 rounded-xl border border-border/45 surface-elevated px-3 py-2.5 hover:bg-muted/20',
   ),
   kpiGrid: 'grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7',
   kpiTitle: DASHBOARD_KPI_TITLE_CLASS,
@@ -35,6 +35,6 @@ export const fhs = {
   kpiCardWarning: 'border-[color:var(--status-watch)]/28 bg-[color:var(--status-watch)]/[0.025]',
   kpiCardSuccess:
     'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
-  filterBar: 'sq-card rounded-2xl p-3 shadow-[var(--shadow-xs)]',
+  filterBar: 'surface-premium rounded-2xl p-3 shadow-[var(--shadow-xs)]',
   sourceTag: 'text-[10px] text-muted-foreground/80',
 } as const;

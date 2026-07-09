@@ -111,7 +111,7 @@ function MethodGroup<T extends string>({
                 'w-full rounded-lg border px-3 py-2.5 text-left transition-all',
                 selected
                   ? 'border-[color:var(--brand)] bg-[color:var(--brand-soft)]/30'
-                  : 'border-border bg-card hover:border-[color:var(--brand)]/30',
+                  : 'border-border surface-premium hover:border-[color:var(--brand)]/30',
               )}
             >
               <p className="text-xs font-semibold text-foreground">{option.label}</p>

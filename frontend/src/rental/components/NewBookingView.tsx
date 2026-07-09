@@ -1100,7 +1100,7 @@ export function NewBookingView({
         actions={
           <div className="flex w-full min-w-0 items-center justify-end gap-2 sm:w-auto">
             {selectedCustomer && currentStep > 1 && (
-              <div className="hidden min-w-0 max-w-[min(100%,12rem)] items-center gap-2 rounded-lg border bg-card border-border px-2.5 py-2 sm:flex sm:max-w-[14rem]">
+              <div className="hidden min-w-0 max-w-[min(100%,12rem)] items-center gap-2 rounded-lg border surface-premium border-border px-2.5 py-2 sm:flex sm:max-w-[14rem]">
                 <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs sq-tone-brand">
                   {selectedCustomer.name.split(' ').map(n => n[0]).join('')}
                 </div>
@@ -1113,7 +1113,7 @@ export function NewBookingView({
             <button
               onClick={onBack}
               aria-label="Back"
-              className="shrink-0 rounded-lg border p-2.5 transition-all duration-200 hover:shadow-md bg-card border-border text-muted-foreground hover:bg-muted"
+              className="shrink-0 rounded-lg border p-2.5 transition-all duration-200 hover:shadow-md surface-premium border-border text-muted-foreground hover:bg-muted"
             >
               <Icon name="arrow-left" className="h-5 w-5" />
             </button>

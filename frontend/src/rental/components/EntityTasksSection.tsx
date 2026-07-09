@@ -98,7 +98,7 @@ export function EntityTasksSection({ isDark = false, title, emptyHint, fetchTask
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps);
 
-  const cardClass = `rounded-2xl border shadow-sm ${isDark ? 'bg-card border-border' : 'bg-white border-gray-200'}`;
+  const cardClass = `rounded-2xl border shadow-sm ${isDark ? 'surface-premium border-border' : 'bg-white border-gray-200'}`;
   const textPrimary = isDark ? 'text-foreground' : 'text-gray-900';
   const textSecondary = isDark ? 'text-muted-foreground' : 'text-gray-500';
 

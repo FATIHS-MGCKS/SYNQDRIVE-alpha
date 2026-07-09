@@ -73,7 +73,7 @@ export function ServiceHistoryPanel({
   }, [localTasks, lookups.vehicleMap]);
 
   const selectClass =
-    'rounded-lg border border-border bg-card px-2 py-1.5 text-[10px] text-foreground min-w-0';
+    'rounded-lg border border-border surface-premium px-2 py-1.5 text-[10px] text-foreground min-w-0';
 
   return (
     <div className={sc.panel}>

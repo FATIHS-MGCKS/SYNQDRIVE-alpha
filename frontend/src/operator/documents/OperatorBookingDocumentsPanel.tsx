@@ -259,7 +259,7 @@ function DocumentCard({
         <button
           type="button"
           onClick={onOpen}
-          className="sq-press flex min-h-[44px] min-w-[72px] flex-col items-center justify-center rounded-xl border border-border bg-card px-2 text-[10px] font-semibold"
+          className="sq-press flex min-h-[44px] min-w-[72px] flex-col items-center justify-center rounded-xl border border-border bg-popover px-2 text-[10px] font-semibold"
         >
           <ExternalLink className="mb-0.5 h-4 w-4" />
           Öffnen

@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 
 export const operatorFieldClass =
-  'h-12 w-full rounded-xl border border-border bg-card px-3 text-base outline-none focus:border-[color:var(--brand)]/40';
+  'h-12 w-full rounded-xl border border-border bg-background px-3 text-base outline-none focus:border-[color:var(--brand)]/40';
 
 export const operatorTextareaClass =
-  'min-h-[88px] w-full rounded-xl border border-border bg-card px-3 py-2.5 text-sm outline-none focus:border-[color:var(--brand)]/40';
+  'min-h-[88px] w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-[color:var(--brand)]/40';
 
 export function OperatorHandoverField({
   label,
@@ -49,7 +49,7 @@ export function OperatorToggleRow({
           ? danger
             ? 'border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.06]'
             : 'border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)]'
-          : 'border-border bg-card'
+          : 'border-border surface-premium'
       }`}
     >
       <span>{label}</span>

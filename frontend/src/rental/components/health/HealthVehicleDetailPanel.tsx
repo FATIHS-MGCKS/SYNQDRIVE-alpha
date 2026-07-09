@@ -151,7 +151,7 @@ export function HealthVehicleDetailPanel({
                           ? 'oem_alerts'
                           : (chip.key as HealthDetailTab),
                   )}
-                  className="sq-press sq-card rounded-xl px-3 py-2.5 text-left flex items-center justify-between gap-2"
+                  className="sq-press surface-premium rounded-xl px-3 py-2.5 text-left flex items-center justify-between gap-2"
                 >
                   <div className="min-w-0">
                     <div className="text-[12px] font-semibold text-foreground">{chip.label}</div>
@@ -216,19 +216,19 @@ export function HealthVehicleDetailPanel({
 
           <DetailSection title="Data trust">
             <div className="grid grid-cols-2 gap-2">
-              <div className="sq-card rounded-lg px-3 py-2">
+              <div className="surface-premium rounded-lg px-3 py-2">
                 <div className="text-[10px] text-muted-foreground">Fresh</div>
                 <div className="text-lg font-semibold tabular-nums">{trust.fresh}</div>
               </div>
-              <div className="sq-card rounded-lg px-3 py-2">
+              <div className="surface-premium rounded-lg px-3 py-2">
                 <div className="text-[10px] text-muted-foreground">Delayed data</div>
                 <div className="text-lg font-semibold tabular-nums">{trust.stale}</div>
               </div>
-              <div className="sq-card rounded-lg px-3 py-2">
+              <div className="surface-premium rounded-lg px-3 py-2">
                 <div className="text-[10px] text-muted-foreground">No tracking</div>
                 <div className="text-lg font-semibold tabular-nums">{trust.noTracking}</div>
               </div>
-              <div className="sq-card rounded-lg px-3 py-2">
+              <div className="surface-premium rounded-lg px-3 py-2">
                 <div className="text-[10px] text-muted-foreground">Estimated</div>
                 <div className="text-lg font-semibold tabular-nums">{trust.estimated}</div>
               </div>
@@ -545,7 +545,7 @@ export function HealthVehicleDetailPanel({
           {Object.entries(health.modules).map(([key, mod]) => {
             const fresh = formatRelativeTime(mod.last_updated_at);
             return (
-              <div key={key} className="sq-card rounded-xl px-3 py-2.5 text-[12px]">
+              <div key={key} className="surface-premium rounded-xl px-3 py-2.5 text-[12px]">
                 <div className="font-semibold text-foreground">
                   {RENTAL_HEALTH_MODULE_LABELS[key] ?? key}
                 </div>
@@ -583,7 +583,7 @@ export function HealthVehicleDetailPanel({
   ]);
 
   return (
-    <div className={`flex h-full min-h-0 flex-col bg-card ${className ?? ''}`}>
+    <div className={`flex h-full min-h-0 flex-col surface-premium ${className ?? ''}`}>
       <div className="shrink-0 border-b border-border px-4 py-3">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
@@ -681,7 +681,7 @@ export function HealthVehicleDetailPanel({
                 type="button"
                 disabled={aiLoading}
                 onClick={() => void triggerAiAnalysis()}
-                className="sq-press mt-2 rounded-lg border border-border/70 bg-card px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
+                className="sq-press mt-2 rounded-lg border border-border/70 surface-premium px-3 py-1.5 text-[11px] font-semibold disabled:opacity-50"
               >
                 {aiLoading ? 'Analyzing…' : data.aiResult ? 'Refresh explanation' : 'Generate explanation'}
               </button>

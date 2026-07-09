@@ -16,7 +16,7 @@ export function BillingPriceTierLadder({
 }: BillingPriceTierLadderProps) {
   if (!tiers.length) {
     return (
-      <div className="sq-card rounded-2xl p-5 shadow-[var(--shadow-1)]">
+      <div className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)]">
         <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground mb-3">
           Preisstaffel
         </h3>
@@ -33,7 +33,7 @@ export function BillingPriceTierLadder({
   const sorted = [...tiers].sort((a, b) => a.sortOrder - b.sortOrder || a.minVehicles - b.minVehicles);
 
   return (
-    <div className="sq-card rounded-2xl p-5 shadow-[var(--shadow-1)]">
+    <div className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)]">
       <div className="mb-4">
         <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">Preisstaffel</h3>
         <p className="text-[11px] mt-0.5 text-muted-foreground">
@@ -50,7 +50,7 @@ export function BillingPriceTierLadder({
               className={`rounded-xl border p-4 transition-all duration-200 ${
                 isCurrent
                   ? 'border-[var(--brand)]/40 bg-[var(--brand-soft)]/30 shadow-[var(--shadow-1)]'
-                  : 'border-border/70 bg-card/60'
+                  : 'border-border/70 surface-premium'
               }`}
             >
               <div className="flex items-start justify-between gap-2">

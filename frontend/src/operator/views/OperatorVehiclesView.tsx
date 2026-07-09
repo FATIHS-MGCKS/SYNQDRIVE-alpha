@@ -39,7 +39,7 @@ export function OperatorVehiclesView() {
         placeholder="Kennzeichen oder Fahrzeugname…"
         value={localSearch}
         onChange={(e) => setLocalSearch(e.target.value)}
-        className="h-11 w-full shrink-0 rounded-xl border border-border bg-card px-3 text-sm"
+        className="h-11 w-full shrink-0 rounded-xl border border-border surface-premium px-3 text-sm"
       />
       <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-none">
         {OPERATOR_VEHICLE_FILTERS.map((f) => (

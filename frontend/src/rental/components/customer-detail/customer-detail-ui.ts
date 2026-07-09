@@ -152,7 +152,7 @@ export const cdm = {
   body: 'flex-1 overflow-y-auto overflow-x-hidden px-4 py-3 sm:px-5 sm:py-4 pb-[max(1rem,env(safe-area-inset-bottom))]',
   sectionGrid: 'grid grid-cols-1 gap-3 lg:grid-cols-2',
   summaryGrid: 'grid grid-cols-2 items-start gap-1 sm:gap-1.5 lg:grid-cols-4',
-  identityCard: 'sq-card flex gap-3 p-3 sm:p-3.5',
+  identityCard: 'surface-premium flex gap-3 p-3 sm:p-3.5 rounded-xl overflow-hidden',
   avatar:
     'flex size-11 shrink-0 items-center justify-center rounded-xl text-[12px] font-bold uppercase tracking-tight',
   badgeRow: 'flex flex-wrap items-center gap-1.5',

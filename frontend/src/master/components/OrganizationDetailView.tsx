@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/button';
 import type { Organization, OrgProduct, OrgIntegration, PlatformUser, RegisteredVehicle, ProductId, SubscriptionPlan } from '../data/platform-data';
 
 /* ── Design-system token helpers ── */
-const CARD = 'sq-card overflow-hidden';
+const CARD = 'surface-premium overflow-hidden';
 const INPUT =
   'w-full px-4 py-2.5 rounded-xl border border-border bg-muted/50 text-sm text-foreground transition-colors outline-none focus:border-[color:var(--brand)] placeholder:text-muted-foreground';
 const LABEL = 'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';
@@ -61,7 +61,7 @@ export function OrganizationDetailView({ org, orgUsers, orgVehicles, onBack, onU
           </>
         }
         actions={
-          <button onClick={onBack} className="p-3 rounded-2xl border transition-all duration-200 hover:shadow-md bg-card border-border text-muted-foreground hover:bg-muted/50">
+          <button onClick={onBack} className="p-3 rounded-2xl border transition-all duration-200 hover:shadow-md surface-premium border-border text-muted-foreground hover:bg-muted/50">
             <ArrowLeft className="w-5 h-5" />
           </button>
         }
@@ -70,7 +70,7 @@ export function OrganizationDetailView({ org, orgUsers, orgVehicles, onBack, onU
       {/* Tabs */}
       <div className={`flex gap-1 p-1.5 rounded-2xl overflow-x-auto w-fit bg-muted`}>
         {([['overview', 'Overview'], ['users', 'Users'], ['vehicles', 'Vehicles'], ['integrations', 'Integrations'], ['billing', 'Billing'], ['products', 'Products']] as const).map(([id, label]) => (
-          <button key={id} onClick={() => setActiveTab(id)} className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === id ? ('bg-card text-foreground shadow-sm ring-1 ring-border') : ('text-muted-foreground hover:text-foreground')}`}>{label}</button>
+          <button key={id} onClick={() => setActiveTab(id)} className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === id ? ('surface-premium text-foreground shadow-sm ring-1 ring-border') : ('text-muted-foreground hover:text-foreground')}`}>{label}</button>
         ))}
       </div>
 

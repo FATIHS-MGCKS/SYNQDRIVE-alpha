@@ -161,11 +161,11 @@ export function StationsTab() {
   const [backfillError, setBackfillError] = useState<string | null>(null);
 
   // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ styling â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  const cardClass = 'sq-card rounded-xl p-4 shadow-[var(--shadow-1)]';
+  const cardClass = 'surface-premium rounded-xl p-4 shadow-[var(--shadow-1)]';
   const textPrimary = 'text-foreground';
   const textSecondary = 'text-muted-foreground';
   const inputClass =
-    'w-full px-3 py-2.5 rounded-lg border border-border/70 bg-card text-xs text-foreground placeholder:text-muted-foreground transition-all duration-200 outline-none focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]';
+    'w-full px-3 py-2.5 rounded-lg border border-border/70 bg-background text-xs text-foreground placeholder:text-muted-foreground transition-all duration-200 outline-none focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]';
   const labelClass =
     'block text-[11px] font-semibold mb-1.5 uppercase tracking-wider text-muted-foreground';
 
@@ -582,7 +582,7 @@ export function StationsTab() {
           )}
           <button
             onClick={openCreate}
-            className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
+            className="sq-press flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 surface-premium text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
           >
             <Icon name="plus" className="w-4 h-4 text-[color:var(--brand)]" /> Standort hinzufÃ¼gen
           </button>
@@ -732,7 +732,7 @@ export function StationsTab() {
           </p>
           <button
             onClick={openCreate}
-            className="sq-press mt-4 flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 bg-card text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
+            className="sq-press mt-4 flex items-center gap-2 px-3 py-2 rounded-xl border border-border/60 surface-premium text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
           >
             <Icon name="plus" className="w-4 h-4 text-[color:var(--brand)]" /> Standort hinzufÃ¼gen
           </button>
@@ -766,13 +766,13 @@ export function StationsTab() {
         >
           <div
             className={`w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl ${
-              'bg-card border border-border'
+              'surface-premium border border-border'
             }`}
             onClick={(e) => e.stopPropagation()}
           >
             <div
               className={`sticky top-0 z-10 flex items-center justify-between px-5 py-4 border-b ${
-                'bg-card border-border'
+                'surface-premium border-border'
               }`}
             >
               <div>
@@ -813,7 +813,7 @@ export function StationsTab() {
                 {suggestOpen && (suggestLoading || suggestions.length > 0) && (
                   <div
                     className={`absolute z-20 mt-1 w-full rounded-lg border shadow-2xl max-h-64 overflow-y-auto ${
-                      'bg-card border-border'
+                      'surface-premium border-border'
                     }`}
                   >
                     {suggestLoading ? (
@@ -1030,7 +1030,7 @@ export function StationsTab() {
                       }}
                       placeholder={String(STATION_RADIUS_DEFAULT_M)}
                       className={`w-20 px-2 py-1.5 rounded-md border text-[11px] tabular-nums text-right transition-all duration-200 ${
-                        'border-border/70 bg-card text-foreground placeholder:text-muted-foreground focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]'
+                        'border-border/70 bg-background text-foreground placeholder:text-muted-foreground focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]'
                       } outline-none`}
                     />
                     <span className={`text-[11px] font-semibold ${textSecondary}`}>m</span>
@@ -1176,7 +1176,7 @@ export function StationsTab() {
                             ? st === 'ACTIVE'
                               ? 'bg-emerald-600 text-white border-emerald-600'
                               : 'bg-neutral-500 text-white border-neutral-500'
-                            : 'border border-border/60 bg-card text-foreground hover:bg-muted'
+                            : 'border border-border/60 surface-premium text-foreground hover:bg-muted'
                         }`}
                       >
                         {st === 'ACTIVE' ? 'Aktiv' : 'Inaktiv'}
@@ -1207,14 +1207,14 @@ export function StationsTab() {
 
             <div
               className={`sticky bottom-0 flex items-center justify-end gap-2 px-5 py-4 border-t ${
-                'bg-card border-border'
+                'surface-premium border-border'
               }`}
             >
               <button
                 onClick={closeModal}
                 disabled={saving}
                 className={`px-4 py-2.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-50 ${
-                  'border border-border/60 bg-card text-foreground hover:bg-muted'
+                  'border border-border/60 surface-premium text-foreground hover:bg-muted'
                 }`}
               >
                 Abbrechen
@@ -1248,7 +1248,7 @@ export function StationsTab() {
         >
           <div
             className={`w-full max-w-md rounded-2xl shadow-2xl p-5 ${
-              'bg-card border border-border'
+              'surface-premium border border-border'
             }`}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1275,7 +1275,7 @@ export function StationsTab() {
                 onClick={() => setDeletingId(null)}
                 disabled={deleting}
                 className={`px-4 py-2.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-50 ${
-                  'border border-border/60 bg-card text-foreground hover:bg-muted'
+                  'border border-border/60 surface-premium text-foreground hover:bg-muted'
                 }`}
               >
                 Abbrechen
@@ -1308,7 +1308,7 @@ export function StationsTab() {
         >
           <div
             className={`w-full max-w-3xl max-h-[88vh] flex flex-col rounded-2xl shadow-2xl ${
-              'bg-card border border-border'
+              'surface-premium border border-border'
             }`}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1360,7 +1360,7 @@ export function StationsTab() {
                   value={assignSearch}
                   onChange={(e) => setAssignSearch(e.target.value)}
                   className={`w-full pl-9 pr-3 py-2 rounded-lg border text-xs transition-all duration-200 ${
-                    'border-border/70 bg-card text-foreground placeholder:text-muted-foreground focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]'
+                    'border-border/70 bg-background text-foreground placeholder:text-muted-foreground focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]'
                   } outline-none`}
                 />
               </div>
@@ -1379,7 +1379,7 @@ export function StationsTab() {
                       className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border transition-colors ${
                         active
                           ? 'bg-brand text-brand-foreground border-brand'
-                          : 'border border-border/60 bg-card text-foreground hover:bg-muted'
+                          : 'border border-border/60 surface-premium text-foreground hover:bg-muted'
                       }`}
                     >
                       {opt.label}
@@ -1430,7 +1430,7 @@ export function StationsTab() {
                         className={`flex items-center gap-3 px-3 py-2.5 rounded-lg border cursor-pointer transition-colors ${
                           checked
                             ? 'bg-[color:var(--brand-soft)] border-[color:var(--brand)]/40'
-                            : 'bg-card border-border hover:bg-muted/50'
+                            : 'surface-premium border-border hover:bg-muted/50'
                         }`}
                       >
                         <input
@@ -1529,7 +1529,7 @@ export function StationsTab() {
                   onClick={closeAssign}
                   disabled={assignSaving}
                   className={`px-4 py-2 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-50 ${
-                    'border border-border/60 bg-card text-foreground hover:bg-muted'
+                    'border border-border/60 surface-premium text-foreground hover:bg-muted'
                   }`}
                 >
                   Abbrechen
@@ -1635,7 +1635,7 @@ function StationCard({
     .join(', ');
 
   return (
-    <div className="rounded-xl p-4 border border-border/60 bg-card hover:bg-muted/40 hover:border-border transition-all duration-200">
+    <div className="rounded-xl p-4 border border-border/60 surface-premium hover:bg-muted/40 hover:border-border transition-all duration-200">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         {/* Left: identity */}
         <div className="flex items-start gap-3 min-w-0 flex-1">

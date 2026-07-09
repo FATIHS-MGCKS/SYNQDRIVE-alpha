@@ -74,7 +74,7 @@ export function OperatorTaskCreateForm({
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="mt-1 h-12 w-full rounded-xl border border-border bg-card px-3 text-base"
+          className="mt-1 h-12 w-full rounded-xl border border-border surface-premium px-3 text-base"
           placeholder="Kurz beschreiben"
         />
       </label>
@@ -84,7 +84,7 @@ export function OperatorTaskCreateForm({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-sm resize-y"
+          className="mt-1 w-full rounded-xl border border-border surface-premium px-3 py-2 text-sm resize-y"
         />
       </label>
       <div>
@@ -98,7 +98,7 @@ export function OperatorTaskCreateForm({
               className={`sq-press min-h-[44px] rounded-xl border px-3 py-2 text-xs font-semibold ${
                 priority === p
                   ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
-                  : 'border-border bg-card'
+                  : 'border-border surface-premium'
               }`}
             >
               {p}
@@ -112,7 +112,7 @@ export function OperatorTaskCreateForm({
           type="datetime-local"
           value={dueDate}
           onChange={(e) => setDueDate(e.target.value)}
-          className="mt-1 h-12 w-full rounded-xl border border-border bg-card px-3 text-sm"
+          className="mt-1 h-12 w-full rounded-xl border border-border surface-premium px-3 text-sm"
         />
       </label>
       {error && <p className="text-sm text-[color:var(--status-critical)]">{error}</p>}

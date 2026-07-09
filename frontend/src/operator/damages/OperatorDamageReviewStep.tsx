@@ -55,7 +55,7 @@ export function OperatorDamageReviewStep({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-border bg-card p-4">
+      <div className="rounded-2xl border border-border surface-premium p-4">
         <ReviewRow label="Fahrzeug" value={vehicleLabel} />
         <ReviewRow label="Kennzeichen" value={plate || '—'} />
         {bookingLabel && <ReviewRow label="Buchung" value={bookingLabel} />}
@@ -88,7 +88,7 @@ export function OperatorDamageReviewStep({
         <button
           type="button"
           onClick={onOpenAiUpload}
-          className="sq-press flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-border/60 bg-card px-4 text-left"
+          className="sq-press flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-border/60 surface-premium px-4 text-left"
         >
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]">
             <Sparkles className="h-4 w-4" />

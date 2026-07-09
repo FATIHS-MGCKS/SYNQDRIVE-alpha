@@ -116,7 +116,7 @@ export function StationAssignVehicleModal({ station, onClose, onSaved }: Station
   return (
     <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4">
       <button type="button" className="absolute inset-0 bg-black/40" onClick={() => !saving && onClose()} aria-label={t('common.close')} />
-      <div className="relative w-full sm:max-w-xl max-h-[90vh] sq-card rounded-t-2xl sm:rounded-2xl border border-border shadow-xl flex flex-col animate-fade-up">
+      <div className="relative w-full sm:max-w-xl max-h-[90vh] surface-premium rounded-t-2xl sm:rounded-2xl border border-border shadow-xl flex flex-col animate-fade-up">
         <div className="flex items-start justify-between gap-3 p-4 border-b border-border/60">
           <div className="min-w-0">
             <h2 className="text-sm font-semibold">{t('stations.assign.title')}</h2>
@@ -133,7 +133,7 @@ export function StationAssignVehicleModal({ station, onClose, onSaved }: Station
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={t('stations.assign.search')}
-            className="w-full px-3 py-2 rounded-lg border border-border bg-card text-sm"
+            className="w-full px-3 py-2 rounded-lg border border-border surface-premium text-sm"
           />
           <div className="flex flex-wrap gap-1.5">
             {(['all', 'here', 'elsewhere', 'unassigned'] as const).map((key) => (

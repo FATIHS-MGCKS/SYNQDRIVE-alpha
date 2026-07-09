@@ -76,7 +76,7 @@ export function OperatorDamagePhotoStep({ photos, onPhotosChange, error }: Props
           type="button"
           disabled={busy || photos.length >= MAX_PHOTOS}
           onClick={() => galleryRef.current?.click()}
-          className="sq-press flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border/70 bg-card/50 disabled:opacity-50"
+          className="sq-press flex min-h-[120px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-border/70 surface-premium disabled:opacity-50"
         >
           <ImagePlus className="h-8 w-8 text-muted-foreground" />
           <span className="text-sm font-semibold text-foreground">Galerie</span>

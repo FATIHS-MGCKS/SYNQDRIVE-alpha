@@ -68,7 +68,7 @@ export function VehicleConnectionBadge({
         className="inline-flex max-w-[52vw] flex-wrap items-center justify-end gap-1 sm:max-w-none"
         title={`${freshness.label} · Last signal ${timeAgo}${showObdUnplugged ? ' · OBD unplugged' : ''}`}
       >
-        <div className="inline-flex max-w-full items-center gap-1 rounded-md border border-border bg-card px-1.5 py-0.5 shadow-sm">
+        <div className="inline-flex max-w-full items-center gap-1 rounded-md border border-border surface-premium px-1.5 py-0.5 shadow-sm">
           <Icon name="circle" className={`h-1.5 w-1.5 shrink-0 ${dotColor}`} />
           <span className={`truncate text-[9.5px] font-semibold leading-none ${labelColor}`}>
             {freshness.shortLabel}
@@ -85,7 +85,7 @@ export function VehicleConnectionBadge({
 
   return (
     <div className="flex flex-wrap items-center justify-end gap-1.5">
-      <div className="flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-1 shadow-sm">
+      <div className="flex items-center gap-2 rounded-md border border-border surface-premium px-2.5 py-1 shadow-sm">
         <div className="flex items-center gap-1.5">
           <Icon name="circle" className={`h-2 w-2 ${dotColor}`} />
           <span className={`text-[10px] font-semibold tracking-[-0.003em] ${labelColor}`}>

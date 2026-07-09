@@ -87,10 +87,10 @@ export function canOperatorMarkNoShow(detail: BookingDetailDto): { allowed: bool
 }
 
 const INPUT_CLASS =
-  'mt-1 h-12 w-full rounded-xl border border-border bg-card px-3 text-base text-foreground focus:border-[color:var(--brand)] outline-none';
+  'mt-1 h-12 w-full rounded-xl border border-border bg-background px-3 text-base text-foreground focus:border-[color:var(--brand)] outline-none';
 
 const TEXTAREA_CLASS =
-  'mt-1 min-h-[96px] w-full rounded-xl border border-border bg-card px-3 py-3 text-base text-foreground resize-none focus:border-[color:var(--brand)] outline-none';
+  'mt-1 min-h-[96px] w-full rounded-xl border border-border bg-background px-3 py-3 text-base text-foreground resize-none focus:border-[color:var(--brand)] outline-none';
 
 export const operatorBookingFieldClass = INPUT_CLASS;
 export const operatorBookingTextareaClass = TEXTAREA_CLASS;

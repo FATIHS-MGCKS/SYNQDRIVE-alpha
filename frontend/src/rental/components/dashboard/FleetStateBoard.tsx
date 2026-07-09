@@ -227,7 +227,7 @@ function SectionHeader({
         'sq-press flex w-full items-start justify-between gap-3 rounded-xl border px-3 py-2.5 text-left transition-colors',
         active
           ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)]'
-          : 'border-border/45 bg-card/35 hover:border-border/70 hover:bg-muted/20',
+          : 'border-border/45 surface-premium/35 hover:border-border/70 hover:bg-muted/20',
       )}
     >
       <div className="min-w-0">

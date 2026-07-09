@@ -623,7 +623,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
         </div>
         {isOpen && (
           <div className={`absolute z-50 mt-1 w-full rounded-lg border shadow-xl overflow-hidden ${
-            'bg-card border-border'
+            'surface-premium border-border'
           }`}>
             <div className="max-h-48 overflow-y-auto py-1">
               {options.map(opt => (
@@ -1471,7 +1471,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
                                   <div className="space-y-2">
                                     {popupBooking.pickupProtocol && (
                                       <div className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-all duration-200 ${
-                                        'bg-card border-border/60 hover:border-[color:var(--brand)] hover:bg-muted/50'
+                                        'surface-premium border-border/60 hover:border-[color:var(--brand)] hover:bg-muted/50'
                                       }`}>
                                         <div className="flex items-center gap-3">
                                           <div className={`w-5 h-5 rounded-lg flex items-center justify-center sq-tone-brand`}>
@@ -1518,7 +1518,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
                                     )}
                                     {popupBooking.returnProtocol && (
                                       <div className={`flex items-center justify-between px-3 py-2 rounded-lg border transition-all duration-200 ${
-                                        'bg-card border-border/60 hover:border-[color:var(--status-success)] hover:bg-muted/50'
+                                        'surface-premium border-border/60 hover:border-[color:var(--status-success)] hover:bg-muted/50'
                                       }`}>
                                         <div className="flex items-center gap-3">
                                           <div className={`w-5 h-5 rounded-lg flex items-center justify-center ${

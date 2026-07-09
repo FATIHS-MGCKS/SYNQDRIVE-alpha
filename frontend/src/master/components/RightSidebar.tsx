@@ -73,7 +73,7 @@ export function RightSidebar({ onViewChange }: RightSidebarProps) {
     .filter(a => activityFilter === 'all' || a.entity === activityFilter)
     .slice(0, 8);
 
-  const card = 'bg-card border-border';
+  const card = 'surface-premium border-border';
   const heading = 'text-foreground';
   const muted = 'text-muted-foreground';
   const body = 'text-foreground/80';

@@ -68,7 +68,7 @@ export default function LoginPage() {
   };
 
   const inputClass =
-    'w-full px-3 py-2 text-xs text-foreground bg-[color:var(--input-background)] border border-border rounded-lg focus:bg-card focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--ring)] outline-none transition-all duration-200 placeholder:text-muted-foreground';
+    'w-full px-3 py-2 text-xs text-foreground bg-[color:var(--input-background)] border border-border rounded-lg focus:bg-background focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--ring)] outline-none transition-all duration-200 placeholder:text-muted-foreground';
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 lg:p-8 relative overflow-hidden bg-background">
@@ -327,7 +327,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     disabled
-                    className="flex-1 py-1.5 rounded-lg border border-border bg-card text-xs font-medium text-muted-foreground flex items-center justify-center gap-2 shadow-[var(--shadow-1)] cursor-not-allowed"
+                    className="flex-1 py-1.5 rounded-lg border border-border surface-premium text-xs font-medium text-muted-foreground flex items-center justify-center gap-2 shadow-[var(--shadow-1)] cursor-not-allowed"
                   >
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
                       <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -340,7 +340,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     disabled
-                    className="flex-1 py-1.5 rounded-lg border border-border bg-card text-xs font-medium text-muted-foreground flex items-center justify-center gap-2 shadow-[var(--shadow-1)] cursor-not-allowed"
+                    className="flex-1 py-1.5 rounded-lg border border-border surface-premium text-xs font-medium text-muted-foreground flex items-center justify-center gap-2 shadow-[var(--shadow-1)] cursor-not-allowed"
                   >
                     <svg className="w-3.5 h-3.5" viewBox="0 0 24 24">
                       <rect x="1" y="1" width="10" height="10" fill="#F25022"/>

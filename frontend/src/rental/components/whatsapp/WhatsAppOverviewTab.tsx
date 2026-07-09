@@ -51,7 +51,7 @@ export function WhatsAppOverviewTab({
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="sq-card rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
+        <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
           <h3 className="text-[12px] font-semibold text-foreground">Setup checklist</h3>
           <ul className="mt-3 space-y-2">
             {checks.map((c: ReadinessCheck) => (
@@ -82,7 +82,7 @@ export function WhatsAppOverviewTab({
           )}
         </section>
 
-        <section className="sq-card rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
+        <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
           <div className="flex items-center justify-between">
             <h3 className="text-[12px] font-semibold text-foreground">Recent activity</h3>
             <button
@@ -118,7 +118,7 @@ export function WhatsAppOverviewTab({
       </div>
 
       {config && (
-        <section className="sq-card rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
+        <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
           <h3 className="text-[12px] font-semibold text-foreground">AI assistance summary</h3>
           <p className="mt-1 text-[10px] text-muted-foreground">
             {AI_MODE_META[config.aiMode].description}. Sensitive cases remain human review.

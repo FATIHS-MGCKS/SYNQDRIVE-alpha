@@ -332,7 +332,7 @@ export function CustomerListMobileCards({
             key={customer.id}
             type="button"
             onClick={() => onSelect(customer)}
-            className="sq-card w-full rounded-2xl p-3.5 text-left transition-colors hover:bg-muted/25 sm:p-4"
+            className="surface-premium w-full rounded-2xl p-3.5 text-left transition-colors hover:bg-muted/25 sm:p-4"
           >
             <div className="flex items-start gap-3">
               <div

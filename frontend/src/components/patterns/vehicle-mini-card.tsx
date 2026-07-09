@@ -50,7 +50,7 @@ export function VehicleMiniCard({
         'group flex w-full items-center gap-3 rounded-xl border p-2.5 text-left transition-all duration-200',
         selected
           ? 'border-[color:var(--brand-soft)] bg-[color:var(--brand-soft)] ring-1 ring-[color:var(--brand-soft)]'
-          : 'border-border bg-card hover:border-border hover:bg-muted/60',
+          : 'border-border surface-premium hover:border-border hover:bg-muted/60',
         onClick && 'sq-press cursor-pointer',
         className,
       )}

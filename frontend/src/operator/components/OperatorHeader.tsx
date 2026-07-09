@@ -43,7 +43,7 @@ export function OperatorHeader() {
         <button
           type="button"
           onClick={triggerRefresh}
-          className="sq-press flex h-11 min-w-[44px] items-center gap-1.5 rounded-xl border border-border/70 bg-card/60 px-2.5 text-[10px] font-semibold text-muted-foreground"
+          className="sq-press flex h-11 min-w-[44px] items-center gap-1.5 rounded-xl border border-border/70 bg-popover px-2.5 text-[10px] font-semibold text-muted-foreground"
           title="Daten aktualisieren"
         >
           <StatusDot
@@ -56,7 +56,7 @@ export function OperatorHeader() {
 
         <Link
           to="/rental"
-          className="sq-press flex h-11 min-w-[44px] items-center justify-center rounded-xl border border-border/70 bg-card/60 px-3 text-[11px] font-semibold text-muted-foreground hover:text-foreground"
+          className="sq-press flex h-11 min-w-[44px] items-center justify-center rounded-xl border border-border/70 bg-popover px-3 text-[11px] font-semibold text-muted-foreground hover:text-foreground"
         >
           App
         </Link>

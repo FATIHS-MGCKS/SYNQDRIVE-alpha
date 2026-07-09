@@ -57,7 +57,7 @@ export function TripDeviceConnectionEvidence({
   if (events.length === 0) return null;
 
   return (
-    <section className="rounded-xl border border-border/60 bg-card p-3 space-y-3">
+    <section className="rounded-xl border border-border/60 surface-premium p-3 space-y-3">
       <div className="flex items-center gap-2">
         <Icon
           name="alert-triangle"

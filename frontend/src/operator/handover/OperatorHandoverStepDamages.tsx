@@ -80,7 +80,7 @@ export function OperatorHandoverStepDamages({ form }: Props) {
                 className={`sq-press w-full rounded-xl border px-4 py-3 text-left ${
                   selected
                     ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)]'
-                    : 'border-border bg-card'
+                    : 'border-border surface-premium'
                 }`}
               >
                 <p className="text-sm font-semibold">

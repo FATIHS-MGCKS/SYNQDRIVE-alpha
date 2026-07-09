@@ -51,7 +51,7 @@ export function PricingSimulatorTab({ catalog }: PricingSimulatorTabProps) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <div className="sq-card space-y-3 rounded-2xl border border-border/50 p-5">
+      <div className="surface-premium space-y-3 rounded-2xl border border-border/50 p-5">
         <h3 className="text-sm font-bold">Inputs</h3>
         <label className="block text-xs">
           Vehicle
@@ -63,7 +63,7 @@ export function PricingSimulatorTab({ catalog }: PricingSimulatorTabProps) {
               setInsurances([]);
               setExtras([]);
             }}
-            className="mt-1 w-full rounded-xl border border-border bg-card px-3 py-2 text-xs"
+            className="mt-1 w-full rounded-xl border border-border surface-premium px-3 py-2 text-xs"
           >
             <option value="">Select…</option>
             {fleetVehicles.map((v) => (
@@ -127,7 +127,7 @@ export function PricingSimulatorTab({ catalog }: PricingSimulatorTabProps) {
         </label>
       </div>
 
-      <div className="sq-card rounded-2xl border border-border/50 p-5">
+      <div className="surface-premium rounded-2xl border border-border/50 p-5">
         <h3 className="text-sm font-bold">Result</h3>
         {loading && <p className="mt-4 text-xs text-muted-foreground">Calculating price…</p>}
         {error && <p className="mt-4 text-xs text-[color:var(--status-critical)]">{error}</p>}

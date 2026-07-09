@@ -53,8 +53,8 @@ function tileBorderClass(tone: TelltaleTone, disabled: boolean): string {
   if (disabled) return 'border-border/50 bg-muted/10 opacity-60';
   if (tone === 'critical') return 'border-red-500/25 bg-red-500/[0.04]';
   if (tone === 'alert') return 'border-amber-500/25 bg-amber-500/[0.04]';
-  if (tone === 'ok') return 'border-border/60 bg-card/50';
-  return 'border-border/60 bg-card/40';
+  if (tone === 'ok') return 'border-border/60 surface-premium';
+  return 'border-border/60 surface-premium';
 }
 
 function statusTextClass(tone: TelltaleTone, disabled: boolean): string {
@@ -105,7 +105,7 @@ export function DashboardWarningLightsPanel({
       <button
         type="button"
         onClick={() => setDetailOpen(true)}
-        className={`group w-full text-left rounded-xl border border-border/60 bg-card shadow-sm p-2.5 transition-all duration-300 ease-out hover:shadow-lg hover:-translate-y-0.5 hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer ${className}`}
+        className={`group w-full text-left rounded-xl border border-border/60 bg-background shadow-sm p-2.5 transition-all duration-300 ease-out hover:shadow-lg hover:-translate-y-0.5 hover:border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-pointer ${className}`}
         aria-labelledby="tacho-warnleuchten-title"
         aria-describedby="tacho-warnleuchten-summary"
       >

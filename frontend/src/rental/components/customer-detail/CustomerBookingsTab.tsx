@@ -35,7 +35,7 @@ export function CustomerBookingsTab({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-4 p-4 rounded-lg border border-border bg-card text-xs">
+      <div className="flex flex-wrap items-center gap-4 p-4 rounded-lg border border-border surface-premium text-xs">
         <span>
           Buchungen: <strong>{bookings.length}</strong>
         </span>

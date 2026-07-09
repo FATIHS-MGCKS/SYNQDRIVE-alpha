@@ -531,7 +531,7 @@ export function TechnicalObservationsHealthModule({
             />
             <div
               onClick={(e) => e.stopPropagation()}
-              className="relative w-full sm:max-w-3xl max-h-[92vh] sm:max-h-[88vh] overflow-y-auto rounded-t-2xl sm:rounded-xl p-4 sm:p-5 shadow-lg bg-card border border-border pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.75rem))] transition-all duration-500 ease-out"
+              className="relative w-full sm:max-w-3xl max-h-[92vh] sm:max-h-[88vh] overflow-y-auto rounded-t-2xl sm:rounded-xl p-4 sm:p-5 shadow-lg surface-premium border border-border pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.75rem))] transition-all duration-500 ease-out"
               style={{
                 transform: animating && !closing ? 'scale(1) translateY(0)' : 'scale(0.98) translateY(12px)',
                 opacity: animating && !closing ? 1 : 0,

@@ -256,11 +256,11 @@ export function StationDetailView({
         )}
         actions={(
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => setAssignOpen(true)} className="sq-press px-3 py-2 rounded-xl text-[10px] font-semibold border border-border bg-card">
+            <button type="button" onClick={() => setAssignOpen(true)} className="sq-press px-3 py-2 rounded-xl text-[10px] font-semibold border border-border surface-premium">
               {t('stations.action.assignVehicle')}
             </button>
             {!station.isPrimary && (
-              <button type="button" onClick={() => void handleSetPrimary()} className="sq-press px-3 py-2 rounded-xl text-[10px] font-semibold border border-border bg-card">
+              <button type="button" onClick={() => void handleSetPrimary()} className="sq-press px-3 py-2 rounded-xl text-[10px] font-semibold border border-border surface-premium">
                 {t('stations.action.setPrimary')}
               </button>
             )}
@@ -272,7 +272,7 @@ export function StationDetailView({
       />
 
       {warnings.length > 0 && (
-        <div className="sq-card p-3 flex flex-wrap gap-2 items-start">
+        <div className="surface-premium p-3 flex flex-wrap gap-2 items-start">
           <AlertTriangle className="w-4 h-4 text-[color:var(--status-watch)] shrink-0 mt-0.5" />
           {warnings.map((w) => (
             <StatusChip key={w} tone="warning">{t(`stations.warning.${w}`)}</StatusChip>
@@ -307,7 +307,7 @@ export function StationDetailView({
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <div className="sq-card p-4 space-y-3">
+            <div className="surface-premium p-4 space-y-3">
               <h3 className="text-sm font-semibold">{t('stations.detail.contact')}</h3>
               <dl className="space-y-2 text-sm">
                 {station.phone && (
@@ -330,7 +330,7 @@ export function StationDetailView({
               </p>
             </div>
 
-            <div className="sq-card overflow-hidden min-h-[220px]">
+            <div className="surface-premium overflow-hidden min-h-[220px]">
               {mapCenter ? (
                 <MapboxMap
                   center={mapCenter}
@@ -409,7 +409,7 @@ function BookingMiniList({
   onOpen?: (id: string) => void;
 }) {
   return (
-    <div className="sq-card p-4">
+    <div className="surface-premium p-4">
       <h3 className="text-sm font-semibold mb-2">{title}</h3>
       {rows.length === 0 ? (
         <p className="text-xs text-muted-foreground">—</p>
@@ -447,7 +447,7 @@ function FleetTab({ fleet, loading, t }: { fleet: StationFleetVehicle[]; loading
     );
   }
   return (
-    <div className="sq-card overflow-hidden">
+    <div className="surface-premium overflow-hidden">
       <div className="hidden md:block overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
@@ -525,7 +525,7 @@ function BookingsTab({
     <div className="space-y-4">
       {sections.map((section) =>
         section.rows.length === 0 ? null : (
-          <div key={section.key} className="sq-card p-4">
+          <div key={section.key} className="surface-premium p-4">
             <h3 className="text-sm font-semibold mb-3">{section.label}</h3>
             <ul className="space-y-2">
               {section.rows.map((b) => (
@@ -571,7 +571,7 @@ function RulesTab({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-      <div className="sq-card p-4 space-y-3">
+      <div className="surface-premium p-4 space-y-3">
         <h3 className="text-sm font-semibold">{t('stations.detail.rules')}</h3>
         <ul className="text-sm space-y-2">
           <RuleRow label={t('stations.form.pickupEnabled')} value={station.pickupEnabled} />
@@ -592,7 +592,7 @@ function RulesTab({
           )}
         </ul>
       </div>
-      <div className="sq-card p-4">
+      <div className="surface-premium p-4">
         <h3 className="text-sm font-semibold mb-3">{t('stations.form.sectionHours')}</h3>
         {!hours || ('legacyText' in hours && hours.legacyText) ? (
           <p className="text-sm text-muted-foreground">
@@ -655,7 +655,7 @@ function HandoverTab({ station, t }: { station: Station; t: (k: TranslationKey) 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
       {blocks.map((b) => (
-        <div key={b.title} className="sq-card p-4">
+        <div key={b.title} className="surface-premium p-4">
           <h3 className="text-sm font-semibold mb-2">{b.title}</h3>
           <p className="text-sm text-muted-foreground whitespace-pre-wrap">{b.text?.trim() || '—'}</p>
         </div>

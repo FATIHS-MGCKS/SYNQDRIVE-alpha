@@ -29,7 +29,7 @@ export function RentalStressAnalysisCard({
 }: RentalStressAnalysisCardProps) {
   if (loading) {
     return (
-      <div className="rounded-xl border border-border bg-card p-4 animate-pulse h-32" />
+      <div className="rounded-xl border border-border surface-premium p-4 animate-pulse h-32" />
     );
   }
 
@@ -78,7 +78,7 @@ export function RentalStressAnalysisCard({
       )}
 
       {wear && (
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="rounded-lg border border-border surface-premium p-4">
           <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">
             Verschleißrelevanz
           </p>
@@ -106,7 +106,7 @@ export function RentalStressAnalysisCard({
       )}
 
       {payload.watchpoints && payload.watchpoints.length > 0 && (
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="rounded-lg border border-border surface-premium p-4">
           <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-2">
             Hinweise
           </p>

@@ -175,7 +175,7 @@ export function ServiceOverviewPanel({
                 <button
                   type="button"
                   onClick={onCreateTask}
-                  className="text-[11px] font-semibold px-3 py-2 rounded-xl border border-border bg-card hover:bg-muted/40"
+                  className="text-[11px] font-semibold px-3 py-2 rounded-xl border border-border surface-premium hover:bg-muted/40"
                 >
                   Aufgabe anlegen
                 </button>

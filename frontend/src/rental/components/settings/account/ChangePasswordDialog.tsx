@@ -77,7 +77,7 @@ export function ChangePasswordDialog({ open, saving, onClose, onSubmit }: Change
         onClick={() => !saving && resetAndClose()}
       />
       <div
-        className="relative w-full max-w-md animate-fade-up rounded-2xl sq-card p-5 shadow-[var(--shadow-3)]"
+        className="relative w-full max-w-md animate-fade-up rounded-2xl surface-premium p-5 shadow-[var(--shadow-3)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="change-password-title"

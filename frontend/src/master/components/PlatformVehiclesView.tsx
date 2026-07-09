@@ -179,7 +179,7 @@ export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehic
     return (v.vin || '').toLowerCase().includes(q) || (v.make || '').toLowerCase().includes(q) || (v.model || '').toLowerCase().includes(q);
   });
 
-  const cardClass = 'sq-card';
+  const cardClass = 'surface-premium';
 
   const registeredColumns: DataTableColumn<RegisteredVehicle>[] = [
     {
@@ -253,10 +253,10 @@ export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehic
       />
 
       <div className="sq-tab-bar flex w-fit gap-1 rounded-lg p-1.5 bg-muted">
-        <button onClick={() => setActiveTab('registered')} className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'registered' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+        <button onClick={() => setActiveTab('registered')} className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'registered' ? 'surface-premium text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
           Registered Vehicles
         </button>
-        <button onClick={() => setActiveTab('unregistered')} className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'unregistered' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+        <button onClick={() => setActiveTab('unregistered')} className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'unregistered' ? 'surface-premium text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
           DIMO
           {effectiveDimoVehicles.length > 0 && (
             <StatusChip tone="info" className="!text-[10px] !py-0.5">
@@ -264,7 +264,7 @@ export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehic
             </StatusChip>
           )}
         </button>
-        <button onClick={() => setActiveTab('hm-telemetry')} className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'hm-telemetry' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
+        <button onClick={() => setActiveTab('hm-telemetry')} className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold transition-all ${activeTab === 'hm-telemetry' ? 'surface-premium text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}>
           <Radio className="h-3.5 w-3.5" />
           HM Telemetry
           {hmTelemetryCandidates.length > 0 && (

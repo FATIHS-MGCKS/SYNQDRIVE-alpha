@@ -79,9 +79,9 @@ function StationKpiCard({
     <div
       className={cn(
         'relative overflow-hidden border text-left',
-        'min-h-[96px] rounded-lg bg-card/55 px-2.5 py-2',
+        'min-h-[96px] rounded-lg surface-premium/55 px-2.5 py-2',
         isCritical && 'border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.035]',
-        isWatch && 'border-[color:var(--status-watch)]/30 bg-card/55',
+        isWatch && 'border-[color:var(--status-watch)]/30 surface-premium/55',
         isSuccess && 'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
         !isCritical && !isWatch && !isSuccess && 'border-border/45',
       )}
@@ -367,7 +367,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
           <SkeletonMetricGrid
             count={6}
             className="gap-3 sm:gap-3.5 lg:grid-cols-3 xl:grid-cols-6"
-            cardClassName="min-h-[96px] rounded-lg border border-border/45 bg-card/55 p-2.5"
+            cardClassName="min-h-[96px] rounded-lg border border-border/45 surface-premium/55 p-2.5"
           />
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -419,13 +419,13 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
             />
           </div>
 
-          <div className="sq-card rounded-xl p-4 space-y-3">
+          <div className="surface-premium rounded-xl p-4 space-y-3">
             <div className="flex flex-col sm:flex-row gap-2">
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={t('stations.searchPlaceholder')}
-                className="flex-1 px-3 py-2 rounded-lg border border-border/70 bg-card text-sm outline-none focus:border-[color:var(--brand)]"
+                className="flex-1 px-3 py-2 rounded-lg border border-border/70 bg-background text-sm outline-none focus:border-[color:var(--brand)]"
               />
               <Button
                 type="button"
@@ -445,7 +445,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
             {filtersOpen && (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pt-1 border-t border-border/50">
                 <select
-                  className="px-3 py-2 rounded-lg border border-border/70 bg-card text-sm"
+                  className="px-3 py-2 rounded-lg border border-border/70 surface-premium text-sm"
                   value={filters.status}
                   onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value as Filters['status'] }))}
                 >
@@ -455,7 +455,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
                   <option value="ARCHIVED">{t('stations.status.ARCHIVED')}</option>
                 </select>
                 <select
-                  className="px-3 py-2 rounded-lg border border-border/70 bg-card text-sm"
+                  className="px-3 py-2 rounded-lg border border-border/70 surface-premium text-sm"
                   value={filters.type}
                   onChange={(e) => setFilters((f) => ({ ...f, type: e.target.value as Filters['type'] }))}
                 >
@@ -465,7 +465,7 @@ export function StationsView({ onOpenStation }: StationsViewProps) {
                   ))}
                 </select>
                 <select
-                  className="px-3 py-2 rounded-lg border border-border/70 bg-card text-sm"
+                  className="px-3 py-2 rounded-lg border border-border/70 surface-premium text-sm"
                   value={filters.city}
                   onChange={(e) => setFilters((f) => ({ ...f, city: e.target.value }))}
                 >
@@ -606,7 +606,7 @@ function StationCard({
         <MoreHorizontal className="w-4 h-4" />
       </button>
       {menuOpen && (
-        <div className="absolute right-0 top-full mt-1 z-20 min-w-[180px] sq-card rounded-lg border border-border shadow-lg py-1 text-sm">
+        <div className="absolute right-0 top-full mt-1 z-20 min-w-[180px] surface-premium rounded-lg border border-border shadow-lg py-1 text-sm">
           <button type="button" className="w-full text-left px-3 py-2 hover:bg-muted/50" onClick={onOpen}>{t('stations.action.open')}</button>
           <button type="button" className="w-full text-left px-3 py-2 hover:bg-muted/50" onClick={onEdit}>{t('stations.action.edit')}</button>
           <button type="button" className="w-full text-left px-3 py-2 hover:bg-muted/50" onClick={onAssign}>{t('stations.action.assignVehicle')}</button>
@@ -625,7 +625,7 @@ function StationCard({
 
   if (viewMode === 'list') {
     return (
-      <div className="sq-card rounded-xl p-3 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="surface-premium rounded-xl p-3 flex flex-col sm:flex-row sm:items-center gap-3">
         <button type="button" onClick={onOpen} className="flex-1 text-left min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold text-sm truncate">{station.name}</span>
@@ -645,7 +645,7 @@ function StationCard({
   }
 
   return (
-    <div className="sq-card rounded-xl p-4 flex flex-col h-full">
+    <div className="surface-premium rounded-xl p-4 flex flex-col h-full">
       <div className="flex items-start justify-between gap-2">
         <button type="button" onClick={onOpen} className="text-left min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-1.5">

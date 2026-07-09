@@ -134,7 +134,7 @@ export function BillingControlCenter({
             onClick={() => setActiveTab(tab.id)}
             className={`px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors ${
               activeTab === tab.id
-                ? 'bg-card text-foreground shadow-sm ring-1 ring-border'
+                ? 'surface-premium text-foreground shadow-sm ring-1 ring-border'
                 : 'text-muted-foreground hover:text-foreground'
             }`}
           >

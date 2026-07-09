@@ -138,7 +138,7 @@ function VehiclePickerCard({
         'w-full min-w-0 max-w-full rounded-xl border px-3 py-2.5 text-left transition-all duration-200',
         !preflight.isSelectable && 'cursor-not-allowed border-border bg-muted/25 opacity-70 grayscale',
         preflight.isSelectable && preflight.muted && !selected && 'border-border bg-muted/35 hover:border-border hover:bg-muted/50',
-        preflight.isSelectable && !preflight.muted && !selected && 'border-border bg-muted/40 hover:border-border hover:bg-card',
+        preflight.isSelectable && !preflight.muted && !selected && 'border-border bg-muted/40 hover:border-border hover:surface-premium',
         selected && preflight.isSelectable && 'border-[color:var(--brand)] bg-[color:var(--brand-soft)] ring-1 ring-[color:var(--brand-glow)]',
         preflight.rentalBlocked && 'border-[color:var(--status-critical)]/30',
       )}
@@ -262,7 +262,7 @@ function VehiclePickerCard({
 }
 
 const selectClass =
-  'min-w-0 w-full rounded-lg border border-border bg-card px-3 py-2 text-xs text-foreground outline-none';
+  'min-w-0 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground outline-none';
 
 export function VehiclePickerStep({
   vehicles,
@@ -317,7 +317,7 @@ export function VehiclePickerStep({
           placeholder="Fahrzeug suchen…"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full rounded-lg border border-border bg-card py-2.5 pl-10 pr-4 text-xs text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-[color:var(--brand)]"
+          className="w-full rounded-lg border border-border bg-background py-2.5 pl-10 pr-4 text-xs text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-[color:var(--brand)]"
         />
       </div>
 
@@ -363,7 +363,7 @@ export function VehiclePickerStep({
               <button
                 type="button"
                 onClick={onResetFilters}
-                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground hover:border-[color:var(--status-critical)] hover:text-[color:var(--status-critical)]"
+                className="flex w-full items-center justify-center gap-1.5 rounded-lg border border-border surface-premium px-3 py-2 text-xs text-muted-foreground hover:border-[color:var(--status-critical)] hover:text-[color:var(--status-critical)]"
               >
                 <Icon name="x" className="h-3.5 w-3.5 shrink-0" />
                 Filter zurücksetzen
@@ -398,7 +398,7 @@ export function VehiclePickerStep({
           <button
             type="button"
             onClick={onResetFilters}
-            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground hover:border-[color:var(--status-critical)] hover:text-[color:var(--status-critical)]"
+            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-border surface-premium px-3 py-2 text-xs text-muted-foreground hover:border-[color:var(--status-critical)] hover:text-[color:var(--status-critical)]"
           >
             <Icon name="x" className="h-3.5 w-3.5 shrink-0" />
             Filter zurücksetzen

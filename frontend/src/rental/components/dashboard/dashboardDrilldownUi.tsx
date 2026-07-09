@@ -42,7 +42,7 @@ export function DashboardDrilldownToolbar({
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder={searchPlaceholder}
           autoComplete="off"
-          className="w-full min-w-0 rounded-xl border border-border/55 bg-background/60 py-2 pl-8 pr-3 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[color:var(--brand)] dark:bg-card/50"
+          className="w-full min-w-0 rounded-xl border border-border/55 bg-background/60 py-2 pl-8 pr-3 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-[color:var(--brand)] dark:bg-background"
         />
       </div>
     </div>

@@ -39,7 +39,7 @@ function MetaItem({ icon, children }: { icon: ReactNode; children: ReactNode }) 
 }
 
 const backButtonClassName =
-  'sq-press shrink-0 rounded-xl border border-border/60 bg-card p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]';
+  'sq-press shrink-0 rounded-xl border border-border/60 bg-background p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]';
 
 function readinessChipFromDisplay(
   vehicleStatus: VehicleOperationalUiStatus,

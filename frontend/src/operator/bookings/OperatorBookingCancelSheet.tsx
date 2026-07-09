@@ -135,7 +135,7 @@ export function OperatorBookingCancelSheet({ action }: OperatorBookingCancelShee
                 onChange={(e) => setReasonNote(e.target.value)}
                 rows={3}
                 placeholder="z. B. Kunde hat telefonisch abgesagt…"
-                className="mt-1 min-h-[80px] w-full rounded-xl border border-border bg-card px-3 py-3 text-sm resize-none"
+                className="mt-1 min-h-[80px] w-full rounded-xl border border-border surface-premium px-3 py-3 text-sm resize-none"
               />
             </label>
           )}

@@ -96,7 +96,7 @@ export function BookingEditDialog({ orgId, detail, onClose, onSaved }: BookingEd
       <div className="absolute inset-0 overlay-scrim" />
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-lg mx-4 rounded-lg shadow-2xl border bg-card border-border overflow-hidden"
+        className="relative w-full max-w-lg mx-4 rounded-lg shadow-2xl border surface-premium border-border overflow-hidden"
       >
         <div className="flex items-center justify-between px-4 py-3 border-b border-border">
           <h3 className="text-sm font-bold">Buchung bearbeiten</h3>

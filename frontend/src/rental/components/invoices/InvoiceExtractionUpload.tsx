@@ -117,7 +117,7 @@ export function InvoiceExtractionUpload({
 
   const inputCls = `w-full px-4 py-3 rounded-xl border text-xs ${
     isDarkMode
-      ? 'bg-card border-neutral-700 text-white'
+      ? 'surface-premium border-neutral-700 text-white'
       : 'bg-white border-gray-200 text-gray-900'
   } outline-none`;
 

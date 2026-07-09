@@ -50,7 +50,7 @@ export function BookingsCalendarView({
   const monthLabel = new Date(year, month, 1).toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
 
   return (
-    <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+    <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
       <h3 className="text-[12px] font-semibold mb-3">{monthLabel}</h3>
       <div className="grid grid-cols-7 gap-1 mb-1">
         {['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'].map((d) => (

@@ -60,7 +60,7 @@ export function OperatorScanBookingCard({
           <button
             type="button"
             onClick={onDetails}
-            className="sq-press min-h-[48px] bg-card text-[11px] font-semibold"
+            className="sq-press min-h-[48px] surface-premium text-[11px] font-semibold"
           >
             Details
           </button>
@@ -69,7 +69,7 @@ export function OperatorScanBookingCard({
           <button
             type="button"
             onClick={onOpenVehicle}
-            className="sq-press min-h-[48px] bg-card text-[11px] font-semibold"
+            className="sq-press min-h-[48px] surface-premium text-[11px] font-semibold"
           >
             Fahrzeug
           </button>
@@ -78,7 +78,7 @@ export function OperatorScanBookingCard({
           <button
             type="button"
             onClick={onPickup}
-            className="sq-press flex min-h-[48px] items-center justify-center gap-1 bg-card text-[11px] font-semibold"
+            className="sq-press flex min-h-[48px] items-center justify-center gap-1 surface-premium text-[11px] font-semibold"
           >
             <ArrowUpRight className="h-3.5 w-3.5" />
             Pickup
@@ -88,7 +88,7 @@ export function OperatorScanBookingCard({
           <button
             type="button"
             onClick={onReturn}
-            className="sq-press flex min-h-[48px] items-center justify-center gap-1 bg-card text-[11px] font-semibold"
+            className="sq-press flex min-h-[48px] items-center justify-center gap-1 surface-premium text-[11px] font-semibold"
           >
             <ArrowDownLeft className="h-3.5 w-3.5" />
             Return

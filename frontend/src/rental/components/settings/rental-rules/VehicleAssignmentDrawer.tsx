@@ -438,7 +438,7 @@ export function VehicleAssignmentDrawer({
 
                         ? 'border-brand/35 bg-brand/5'
 
-                        : 'border-border/70 bg-card hover:border-border hover:bg-muted/10'
+                        : 'border-border/70 surface-premium hover:border-border hover:bg-muted/10'
 
                     }`}
 

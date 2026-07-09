@@ -120,12 +120,12 @@ export function BookingDetailHeader({
           <div className="relative group">
             <button
               type="button"
-              className="sq-press px-3 py-2 rounded-lg text-xs font-semibold border border-border bg-card hover:bg-muted"
+              className="sq-press px-3 py-2 rounded-lg text-xs font-semibold border border-border surface-premium hover:bg-muted"
             >
               Aktionen
               <Icon name="chevron-down" className="w-3.5 h-3.5 inline ml-1" />
             </button>
-            <div className="absolute right-0 mt-1 w-52 rounded-lg border border-border bg-card shadow-lg py-1 hidden group-hover:block group-focus-within:block z-30">
+            <div className="absolute right-0 mt-1 w-52 rounded-lg border border-border bg-popover shadow-lg py-1 hidden group-hover:block group-focus-within:block z-30">
               <MenuItem
                 label="Bearbeiten"
                 disabled={!matrix.edit.allowed}

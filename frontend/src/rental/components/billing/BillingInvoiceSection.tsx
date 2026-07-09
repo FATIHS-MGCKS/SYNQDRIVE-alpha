@@ -50,11 +50,11 @@ export function BillingInvoiceSection({ invoices }: BillingInvoiceSectionProps) 
   }, [invoices, search, status, sortDesc]);
 
   const inputClass =
-    'w-full px-3 py-2.5 rounded-xl border border-border/70 bg-card text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]';
+    'w-full px-3 py-2.5 rounded-xl border border-border/70 bg-background text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]';
 
   return (
     <>
-      <div className="sq-card rounded-2xl p-4 sm:p-5 shadow-[var(--shadow-1)]">
+      <div className="surface-premium rounded-2xl p-4 sm:p-5 shadow-[var(--shadow-1)]">
         <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
           <div>
             <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">

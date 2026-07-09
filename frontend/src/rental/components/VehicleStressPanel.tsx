@@ -110,7 +110,7 @@ export function VehicleStressPanel({
 
   if (display.isMissing) {
     return (
-      <div className="h-full rounded-xl border border-border bg-card p-4">
+      <div className="h-full rounded-xl border border-border surface-premium p-4">
         <h4 className="mb-2 text-[12px] font-semibold text-foreground">{title}</h4>
         <p className="text-xs text-muted-foreground">
           {getStressScoreMissingMessage(stressMissingContext)}
@@ -128,7 +128,7 @@ export function VehicleStressPanel({
   const levelForDonut = resolvedLevel ?? getStressLevel(scoreValue) ?? 'moderate';
 
   return (
-    <div className="flex h-full flex-col rounded-xl border border-border bg-card p-4">
+    <div className="flex h-full flex-col rounded-xl border border-border surface-premium p-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0 flex-1 space-y-2">
           <h4 className="text-[12px] font-semibold text-foreground">{title}</h4>

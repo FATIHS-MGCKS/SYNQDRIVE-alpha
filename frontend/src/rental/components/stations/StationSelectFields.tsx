@@ -42,7 +42,7 @@ export function StationSelectFields({
   const returnWarnings = getStationWarnings(returnStation, 'return');
   const labelClass = compact ? 'text-[10px] mb-1 block text-muted-foreground' : 'text-xs mb-1 block text-muted-foreground';
   const inputClass = touchFriendly
-    ? 'w-full h-12 px-3 rounded-xl text-base border border-border bg-card text-foreground focus:border-[color:var(--brand)] outline-none'
+    ? 'w-full h-12 px-3 rounded-xl text-base border border-border bg-background text-foreground focus:border-[color:var(--brand)] outline-none'
     : 'w-full px-3 py-2 rounded-lg text-xs border border-border bg-[color:var(--input-background)] text-foreground focus:border-[color:var(--brand)] outline-none';
 
   return (

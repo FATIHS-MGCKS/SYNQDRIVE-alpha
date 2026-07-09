@@ -54,7 +54,7 @@ function MaintenanceTaskRow({
     <button
       type="button"
       onClick={onOpen}
-      className="group w-full text-left rounded-lg border border-border/70 bg-card/40 px-3 py-2.5 transition-colors hover:bg-muted/30 sq-press"
+      className="group w-full text-left rounded-lg border border-border/70 surface-premium px-3 py-2.5 transition-colors hover:bg-muted/30 sq-press"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
@@ -148,7 +148,7 @@ export function VehicleServiceContextPanel({
   }
 
   return (
-    <section className="rounded-xl border border-border bg-card p-3 shadow-sm space-y-3 text-foreground">
+    <section className="rounded-xl border border-border surface-premium p-3 shadow-sm space-y-3 text-foreground">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">

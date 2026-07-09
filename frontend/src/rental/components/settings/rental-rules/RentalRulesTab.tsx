@@ -273,7 +273,7 @@ export function RentalRulesTab({ canWrite = false }: RentalRulesTabProps) {
         />
       </div>
 
-      <section className="sq-card rounded-2xl border border-border/70 bg-card/60 p-3 sm:p-4">
+      <section className="surface-premium rounded-2xl border border-border/70 surface-premium p-3 sm:p-4">
         <RentalRulesSectionIntro
           title="Organization default rules"
           description="Baseline requirements when categories and vehicle overrides do not specify a value."
@@ -381,7 +381,7 @@ export function RentalRulesTab({ canWrite = false }: RentalRulesTabProps) {
         />
 
         {activeCategories.length === 0 ? (
-          <div className="sq-card rounded-xl border border-border/60 bg-card/50 p-4">
+          <div className="surface-premium rounded-xl border border-border/60 surface-premium p-4">
             <EmptyState
               compact
               icon={<Layers className="h-5 w-5" />}
@@ -401,7 +401,7 @@ export function RentalRulesTab({ canWrite = false }: RentalRulesTabProps) {
             {activeCategories.map((cat) => (
               <article
                 key={cat.id}
-                className="sq-card overflow-hidden rounded-xl border border-border/60 bg-card/80"
+                className="surface-premium overflow-hidden rounded-xl border border-border/60 surface-premium"
               >
                 <div className="h-0.5 w-full" style={{ backgroundColor: cat.color ?? 'var(--brand)' }} />
                 <div className="p-3">
@@ -494,7 +494,7 @@ export function RentalRulesTab({ canWrite = false }: RentalRulesTabProps) {
           title="Vehicle overrides"
           description="Individual requirement exceptions on top of category defaults."
         />
-        <div className="sq-card rounded-xl border border-border/60 bg-card/50 p-3 sm:p-4">
+        <div className="surface-premium rounded-xl border border-border/60 surface-premium p-3 sm:p-4">
           {overrideCount === 0 ? (
             <EmptyState
               compact

@@ -23,7 +23,7 @@ export function ExtrasInsuranceTab({ catalog }: ExtrasInsuranceTabProps) {
       <select
         value={groupId}
         onChange={(e) => setGroupId(e.target.value)}
-        className="rounded-xl border border-border bg-card px-3 py-2 text-xs"
+        className="rounded-xl border border-border surface-premium px-3 py-2 text-xs"
       >
         {catalog.groups.map((g) => (
           <option key={g.id} value={g.id}>
@@ -76,7 +76,7 @@ function OptionBlock({
   rows: Array<{ label: string; price: string; meta: string; active: boolean }>;
 }) {
   return (
-    <div className="sq-card rounded-2xl border border-border/50 p-4">
+    <div className="surface-premium rounded-2xl border border-border/50 p-4">
       <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{title}</h3>
       {rows.length === 0 ? (
         <p className="mt-3 text-xs text-muted-foreground">None configured</p>

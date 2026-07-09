@@ -629,7 +629,7 @@ function RentalAppContent() {
         {/* Filters Bar - Show on Trips and Driving Insights views, above content */}
         {currentView === 'trips' && (
           <div className="mb-2">
-            <div className="rounded-lg px-2.5 py-1 border border-border bg-card shadow-sm flex items-center justify-end gap-2">
+            <div className="rounded-lg px-2.5 py-1 border border-border surface-premium shadow-sm flex items-center justify-end gap-2">
               {/* Trip Counter - Only show on Trips view */}
               {currentView === 'trips' && (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-transparent sq-tone-info mr-auto">
@@ -646,7 +646,7 @@ function RentalAppContent() {
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-200 ${
                     selectedDate
                       ? 'bg-[color:var(--brand-soft)] border-transparent text-[color:var(--brand-ink)] ring-1 ring-[color:var(--brand-soft)]'
-                      : 'bg-card border-border text-foreground hover:bg-muted'
+                      : 'surface-premium border-border text-foreground hover:bg-muted'
                   }`}
                 >
                   <Icon name="calendar" className={`w-4 h-4 ${selectedDate ? 'text-[color:var(--brand)]' : 'text-muted-foreground'}`} />
@@ -686,7 +686,7 @@ function RentalAppContent() {
                   className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all duration-200 ${
                     selectedDriver !== 'all'
                       ? 'bg-[color:var(--brand-soft)] border-transparent text-[color:var(--brand-ink)] ring-1 ring-[color:var(--brand-soft)]'
-                      : 'bg-card border-border text-foreground hover:bg-muted'
+                      : 'surface-premium border-border text-foreground hover:bg-muted'
                   }`}
                 >
                   <Icon name="user" className={`w-4 h-4 ${selectedDriver !== 'all' ? 'text-[color:var(--brand)]' : 'text-muted-foreground'}`} />
@@ -1033,7 +1033,7 @@ function RentalAppContent() {
       {/* Cleaning Status Warning Modal */}
       {showCleaningWarning && (
         <div className="fixed inset-0 sq-backdrop flex items-center justify-center z-[100]">
-          <div className="max-w-md w-full mx-4 rounded-xl p-6 shadow-xl border border-border bg-card">
+          <div className="max-w-md w-full mx-4 rounded-xl p-6 shadow-xl border border-border surface-premium">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-full sq-tone-watch flex items-center justify-center shrink-0">
                 <Icon name="alert-triangle" className="w-5 h-5" />
@@ -1069,7 +1069,7 @@ function RentalAppContent() {
       {/* Vehicle Status Warning Modal */}
       {showStatusWarning && (
         <div className="fixed inset-0 sq-backdrop flex items-center justify-center z-[100]">
-          <div className="max-w-md w-full mx-4 rounded-xl p-6 shadow-xl border border-border bg-card">
+          <div className="max-w-md w-full mx-4 rounded-xl p-6 shadow-xl border border-border surface-premium">
             <div className="flex items-center gap-3 mb-3">
               <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
                 pendingStatus === 'Manual Block' ? 'sq-tone-critical' : 'sq-tone-warning'
@@ -1117,7 +1117,7 @@ function RentalAppContent() {
       {/* Station Change Warning Modal */}
       {showStationWarning && (
         <div className="fixed inset-0 sq-backdrop flex items-center justify-center z-[100]">
-          <div className="max-w-md w-full mx-4 rounded-xl p-6 shadow-xl border border-border bg-card">
+          <div className="max-w-md w-full mx-4 rounded-xl p-6 shadow-xl border border-border surface-premium">
             <div className="flex items-center gap-3 mb-3">
               <div className="w-10 h-10 rounded-full sq-tone-brand flex items-center justify-center shrink-0">
                 <Icon name="map-pin" className="w-5 h-5" />

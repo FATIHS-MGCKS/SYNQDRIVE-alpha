@@ -349,7 +349,8 @@ Light/dark values: see `THEME_COLOR_CONTRACT.md` § Glass / Map glass.
 | **3 — Component opt-in** | `DataCard` / `MetricCard` / dashboard KPI strip adopt `.surface-premium` / `.surface-elevated` | ✅ V4.9.276 (pattern entry points) |
 | **4 — L3 Map HUD** | `.surface-liquid` + `sq-map-liquid-*` unified material; tokens refined; overlay utility | ✅ V4.9.278 |
 | **5 — L2 frosted cleanup** | Sticky chrome, drawer footers, control bars → `.surface-frosted`; modal backdrops → `.overlay-scrim`; content panels → L1 solid | ✅ V4.9.277 |
-| **6 — Deprecation cleanup** | Remove `.glass-card`, `.glass-panel`; remove `sq-card sq-glass` stacks | After zero references |
+| **6 — App-wide rollout** | Codemod + `rental-surface-ui.ts` + domain hubs; Rental/Operator/Master/Shared | ✅ V4.9.284 |
+| **7 — Deprecation cleanup** | Remove `.glass-card`, `.glass-panel`; legacy `.sq-card` alias unused in TSX | After CI zero (only shadcn primitives remain) |
 
 **Explicitly out of scope for early phases:** Sidebar, TopBar, Dashboard layout, component API changes.
 

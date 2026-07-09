@@ -368,7 +368,7 @@ export function SupportOpsWorkspace({
               onClick={() => setComposerTab('reply')}
               className={cn(
                 'flex-1 rounded-md px-2 py-1.5 text-[10px] font-semibold transition-colors',
-                composerTab === 'reply' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground',
+                composerTab === 'reply' ? 'surface-premium text-foreground shadow-sm' : 'text-muted-foreground',
               )}
             >
               Antwort an Kunden
@@ -378,7 +378,7 @@ export function SupportOpsWorkspace({
               onClick={() => setComposerTab('internal')}
               className={cn(
                 'flex-1 rounded-md px-2 py-1.5 text-[10px] font-semibold transition-colors',
-                composerTab === 'internal' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground',
+                composerTab === 'internal' ? 'surface-premium text-foreground shadow-sm' : 'text-muted-foreground',
               )}
             >
               Interne Notiz

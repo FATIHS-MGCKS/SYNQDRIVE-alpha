@@ -148,7 +148,7 @@ export function RolesTab({
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)] gap-4">
-      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)] space-y-4">
+      <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)] space-y-4">
         <SectionHeader
           title="Rollen"
           actions={
@@ -181,7 +181,7 @@ export function RolesTab({
         )}
       </div>
 
-      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+      <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
         {!editorOpen && !selected ? (
           <EmptyState
             icon={<Shield className="w-5 h-5" />}

@@ -98,7 +98,7 @@ export function AccessScopesTab({
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+        <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
           <SectionHeader title="Stationen & Benutzer" />
           {stations.length === 0 ? (
             <EmptyState compact title="Keine Stationen" description="Legen Sie Stationen an, um Scopes zuzuordnen." />
@@ -140,7 +140,7 @@ export function AccessScopesTab({
           )}
         </div>
 
-        <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+        <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
           <SectionHeader title="Übersicht nach Zugriffstyp" />
           <div className="mt-3 space-y-4">
             <ScopeList

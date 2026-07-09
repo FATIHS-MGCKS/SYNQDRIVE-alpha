@@ -352,7 +352,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
       onClose();
     };
 
-  const cardClass = isDarkMode ? 'bg-card/60 border-border/50 hover:border-border' : 'bg-gray-50/80 border-gray-200/60 hover:border-gray-300';
+  const cardClass = isDarkMode ? 'surface-premium border-border/50 hover:border-border' : 'bg-gray-50/80 border-gray-200/60 hover:border-gray-300';
 
   const fleetTitle = (v: VehicleData) => {
     const y = v.year ? String(v.year) : '';
@@ -423,7 +423,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
   };
 
   return (
-    <div className={`mt-0.5 rounded-2xl border p-5 ${borderColor} ${isDarkMode ? 'bg-card/60' : 'bg-white'}`}>
+    <div className={`mt-0.5 rounded-2xl border p-5 ${borderColor} ${isDarkMode ? 'surface-premium' : 'bg-white'}`}>
       {/* Available */}
       {activePopup === 'Available' && (() => {
         const vehicles = fleetVehicles.filter(v => v.status === 'Available');

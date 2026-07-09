@@ -280,7 +280,7 @@ export function UserDetailDrawer({
                     setFieldAgentAccess(role.fieldAgentAccessDefault);
                   }
                 }}
-                className="w-full px-3 py-2 rounded-xl border border-border bg-card text-[13px]"
+                className="w-full px-3 py-2 rounded-xl border border-border surface-premium text-[13px]"
               >
                 <option value="">— Keine Vorlage —</option>
                 {roles.map((r) => (

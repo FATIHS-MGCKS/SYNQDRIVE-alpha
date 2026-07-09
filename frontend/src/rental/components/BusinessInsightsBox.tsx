@@ -184,7 +184,7 @@ export function BusinessInsightsBox({ isDarkMode, onOpenVehicle, onOpenView, not
   );
 
   const dm = isDarkMode;
-  const cardBase = `rounded-lg p-4 border shadow-sm ${dm ? 'bg-card border-border' : 'bg-white border-gray-200'}`;
+  const cardBase = `rounded-lg p-4 border shadow-sm ${dm ? 'surface-premium border-border' : 'bg-white border-gray-200'}`;
 
   const businessCritical = businessInsights.filter((i) => i.severity === 'CRITICAL').length;
   const financialCritical = financialInsights.filter((i) => i.severity === 'CRITICAL').length;
@@ -281,7 +281,7 @@ export function BusinessInsightsBox({ isDarkMode, onOpenVehicle, onOpenView, not
               onClick={() => setActiveTab(tab.key)}
               className={`flex-1 min-w-0 px-2 py-1.5 rounded-[calc(var(--radius-md)-2px)] text-[12px] font-semibold tracking-[-0.003em] whitespace-nowrap transition-all duration-200 flex items-center justify-center gap-1.5 ${
                 isActive
-                  ? 'bg-card text-foreground shadow-[var(--shadow-1)] ring-1 ring-[color:color-mix(in_srgb,var(--brand)_12%,transparent)]'
+                  ? 'surface-premium text-foreground shadow-[var(--shadow-1)] ring-1 ring-[color:color-mix(in_srgb,var(--brand)_12%,transparent)]'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >

@@ -18,7 +18,7 @@ export function DamageInsightsSection({
 
   if (statsUnavailable && !cards.length) {
     return (
-      <div className="sq-card rounded-xl border border-amber-500/25 bg-amber-500/5 px-3 py-2.5">
+      <div className="surface-premium rounded-xl border border-amber-500/25 bg-amber-500/5 px-3 py-2.5">
         <p className="text-[11px] text-amber-800 dark:text-amber-200">
           Damage insights are temporarily unavailable. Queue metrics above still reflect loaded damages.
         </p>
@@ -28,7 +28,7 @@ export function DamageInsightsSection({
 
   if (!cards.length) {
     return (
-      <div className="sq-card rounded-xl border border-border/60 px-3 py-2.5">
+      <div className="surface-premium rounded-xl border border-border/60 px-3 py-2.5">
         <p className="text-[11px] text-muted-foreground">Not enough data yet for damage insights.</p>
       </div>
     );
@@ -36,7 +36,7 @@ export function DamageInsightsSection({
 
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
-      <div className="sq-card rounded-xl border border-border/60 overflow-hidden">
+      <div className="surface-premium rounded-xl border border-border/60 overflow-hidden">
         <CollapsibleTrigger className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left sq-press hover:bg-muted/30 transition-colors">
           <div className="flex items-center gap-2 min-w-0">
             <Icon name="bar-chart-3" className="w-4 h-4 text-muted-foreground shrink-0" />

@@ -86,7 +86,7 @@ export function VoiceAnalyticsView({
               type="button"
               onClick={() => void handleSync()}
               disabled={syncing}
-              className="sq-press rounded-lg border border-border/60 bg-card px-4 py-2 text-xs font-semibold disabled:opacity-60"
+              className="sq-press rounded-lg border border-border/60 surface-premium px-4 py-2 text-xs font-semibold disabled:opacity-60"
             >
               {syncing ? 'Syncing…' : 'Sync conversations'}
             </button>

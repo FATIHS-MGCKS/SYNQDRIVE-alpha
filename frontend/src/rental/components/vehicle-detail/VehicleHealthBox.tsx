@@ -70,7 +70,7 @@ function HealthModuleRows({
             className={`min-w-0 rounded-[13px] border border-border bg-muted/40 px-2 py-2 transition-colors ${item.isUntracked ? 'opacity-70' : ''}`}
           >
             <div className="flex min-w-0 flex-col items-center gap-1.5 text-center">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] border border-border bg-card">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] border border-border surface-premium">
                 {moduleIcon(item.key, isDarkMode)}
               </div>
               <span className="max-w-full truncate text-[10px] font-bold tracking-[-0.01em] text-foreground">

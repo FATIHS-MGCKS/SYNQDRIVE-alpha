@@ -22,7 +22,7 @@ export function WhatsAppMessageBubble({ msg }: WhatsAppMessageBubbleProps) {
           isSystem && 'bg-muted/50 text-muted-foreground',
           !isSystem && isOutgoing && isAi && 'bg-[color:var(--status-ai)]/12 text-foreground',
           !isSystem && isOutgoing && !isAi && 'bg-[color:var(--status-positive)]/12 text-foreground',
-          !isSystem && !isOutgoing && 'border border-border/40 bg-card text-foreground',
+          !isSystem && !isOutgoing && 'border border-border/40 surface-premium text-foreground',
           failed && 'ring-1 ring-[color:var(--status-critical)]/30',
         )}
       >

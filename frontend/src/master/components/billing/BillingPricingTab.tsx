@@ -245,7 +245,7 @@ export function BillingPricingTab({ refreshToken = 0 }: BillingPricingTabProps) 
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-[minmax(220px,260px)_minmax(0,1fr)] gap-4">
-      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)] space-y-2">
+      <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)] space-y-2">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-sm font-semibold">Pricebooks</h3>
           <button
@@ -279,7 +279,7 @@ export function BillingPricingTab({ refreshToken = 0 }: BillingPricingTabProps) 
         )}
       </div>
 
-      <div className="sq-card rounded-2xl p-5 shadow-[var(--shadow-1)] space-y-4">
+      <div className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)] space-y-4">
         {detailLoading || !detail ? (
           <SkeletonCard className="h-80" />
         ) : (
@@ -491,7 +491,7 @@ export function BillingPricingTab({ refreshToken = 0 }: BillingPricingTabProps) 
 
       {createOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="sq-card rounded-2xl p-5 w-full max-w-md shadow-[var(--shadow-2)] space-y-4">
+          <div className="surface-premium rounded-2xl p-5 w-full max-w-md shadow-[var(--shadow-2)] space-y-4">
             <h3 className="text-[15px] font-semibold">Preisstaffel erstellen</h3>
             <input
               value={newBookName}

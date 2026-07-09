@@ -99,10 +99,10 @@ export function TripEvidencePanel({
       : '—';
 
   return (
-    <div className="h-full rounded-xl border border-border bg-card p-3.5">
+    <div className="h-full rounded-xl border border-border surface-premium p-3.5">
       <p className="text-[12px] font-semibold text-foreground">{RENTAL_COPY.tripAnalysisTitle}</p>
 
-      <div className="mt-3 rounded-lg border border-border/40 bg-card/70 px-3 py-2">
+      <div className="mt-3 rounded-lg border border-border/40 surface-premium/70 px-3 py-2">
         <EvidenceRow label={RENTAL_COPY.evidenceTime}>
           <span className="tabular-nums">
             {formatTripTime(trip.startTime)}

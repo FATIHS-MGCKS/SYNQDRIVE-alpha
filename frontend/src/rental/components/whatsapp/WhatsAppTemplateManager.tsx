@@ -89,7 +89,7 @@ export function WhatsAppTemplateManager({
           {templates.map(t => (
             <article
               key={t.id}
-              className="sq-card rounded-xl border border-border/40 p-4 shadow-[var(--shadow-1)]"
+              className="surface-premium rounded-xl border border-border/40 p-4 shadow-[var(--shadow-1)]"
             >
               <div className="flex items-start justify-between gap-2">
                 <div>

@@ -29,7 +29,7 @@ export function VehicleTaskActionCenter({
   canCreate,
 }: VehicleTaskActionCenterProps) {
   return (
-    <div className="sq-card rounded-xl p-3 sm:p-4 shadow-[var(--shadow-1)]">
+    <div className="surface-premium rounded-xl p-3 sm:p-4 shadow-[var(--shadow-1)]">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-stretch lg:gap-4">
         {/* Next best action — primary focus */}
         <div className="min-w-0 flex-1 rounded-lg border border-border/80 bg-muted/20 px-3 py-2.5">
@@ -95,7 +95,7 @@ export function VehicleTaskActionCenter({
 
         {/* Next booking — when available */}
         {nextBooking && (
-          <div className="lg:w-[220px] shrink-0 rounded-lg border border-border/60 bg-card px-3 py-2.5">
+          <div className="lg:w-[220px] shrink-0 rounded-lg border border-border/60 surface-premium px-3 py-2.5">
             <div className="flex items-center gap-1.5 mb-1">
               <Icon name="calendar" className="w-3.5 h-3.5 text-[color:var(--brand)]" />
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -119,7 +119,7 @@ export function VehicleTaskActionCenter({
             onClick={onCreateTask}
             disabled={!canCreate}
             title={canCreate ? 'Neue Aufgabe für dieses Fahrzeug anlegen' : 'Fahrzeugkontext fehlt'}
-            className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed sq-press"
+            className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-border surface-premium px-3 py-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed sq-press"
           >
             <Icon name="plus" className="w-3.5 h-3.5" />
             Neue Aufgabe
@@ -151,7 +151,7 @@ function StatPill({
           : 'text-muted-foreground';
 
   return (
-    <div className="flex flex-1 min-w-[88px] items-center justify-between gap-2 rounded-lg border border-border/60 bg-card/50 px-2.5 py-1.5">
+    <div className="flex flex-1 min-w-[88px] items-center justify-between gap-2 rounded-lg border border-border/60 bg-popover px-2.5 py-1.5">
       <div className="flex items-center gap-1.5 min-w-0">
         <Icon name={icon} className={`w-3 h-3 shrink-0 ${toneClass}`} />
         <span className="text-[10px] text-muted-foreground truncate">{label}</span>

@@ -35,7 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'l3-liquid-glass-ultra-fix-v49283-2026-07-09',
+    id: 'surface-rollout-complete-v49284-2026-07-09',
+    version: '4.9.284',
+    title: 'V4.9.284 — Surface Rollout Complete (App-weit L0–L2)',
+    summary: [
+      'Neu: rental/lib/rental-surface-ui.ts — zentrale rs.* Tokens (card, panel, input, popover, chip).',
+      'Codemod + Hub-Migration: ~242 Dateien Rental/Operator/Master/Shared von bg-card/sq-card/sq-glass → surface-* / bg-background / bg-popover.',
+      'Token-Hubs erweitert: settings-ui, bookings-ui, stations-ui, tasks-ui, health-ui; account/company Inputs → rs.input.',
+      'fleet-health-service-shell, customer-detail identityCard, fleetOperatorUi → surface-elevated/premium.',
+      'CI: scripts/check-surface-legacy.sh + npm run check:surface — blockiert neue Legacy-Klassen außerhalb shadcn Primitives.',
+      'Regel-Matrix: Content-Cards → surface-premium; Interactive → surface-elevated; Inputs → bg-background; Popovers → bg-popover; Chrome blur → surface-frosted.',
+    ],
+    reason:
+      'Nach V4.9.280–283 blieben ~170 Rental-Views mit lokalen bg-card/sq-card-Strings — L1/L2 griff nur in Token-Hubs, nicht app-weit.',
+    previousBehavior:
+      '~560 bg-card/sq-card Vorkommen in Rental; DataCard/Card surface-API ungenutzt; parallele lokale Card-Rezepte pro View.',
+    details:
+      'L3 Map-HUD unverändert. shadcn alert/switch behalten bg-card als Primitive. In-card sq-tab-bar (L0 inset) bewusst unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-09T06:00:00.000Z',
+  },
+  {
     version: '4.9.283',
     title: 'V4.9.283 — L3 Liquid Glass Ultra-Fix (Map HUD)',
     summary: [
@@ -64,15 +85,15 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Tabs/TabsList: zentrale CHROME_RADIX_TAB_TRIGGER_CLASS; TabsList default surface-frosted; active → surface-premium.',
       'FleetHealthServiceTabBar, AdministrationTabBar, Account/Company SectionTabBar → surface-frosted chrome.',
       'FleetHubView Top-Tabs + App.tsx Vehicle-Detail-Tabs → L2 chrome + L1 active triggers.',
-      'VoiceSectionNav + WhatsAppSectionNav: sq-card → surface-frosted chrome; active items surface-premium.',
+      'VoiceSectionNav + WhatsAppSectionNav: surface-premium → surface-frosted chrome; active items surface-premium.',
       'DetailDrawer: sticky Header + Footer surface-frosted; Body bleibt solid (L0).',
-      'vehicle-bookings-ui: sq-glass Content-Section → surface-premium (falsch platziertes L2 entfernt).',
+      'vehicle-bookings-ui: surface-frosted Content-Section → surface-premium (falsch platziertes L2 entfernt).',
       'theme.css: sq-tab-bar dokumentiert als L0 inset; aria-selected active → premium tokens.',
     ],
     reason:
       'L2 Frosted gehört auf App-Chrome (sticky Tab Bars, Section Navs, Drawer-Footer) — nicht auf Content Cards.',
     previousBehavior:
-      'Chrome Tab Bars nutzten sq-tab-bar (solid) + bg-card active; Voice/WhatsApp Nav als sq-card; vehicle-bookings sq-glass auf Content.',
+      'Chrome Tab Bars nutzten sq-tab-bar (solid) + surface-premium active; Voice/WhatsApp Nav als surface-premium; vehicle-bookings surface-frosted auf Content.',
     details:
       'In-card sq-tab-bar (Dashboard KPIs, ActionQueue, FleetCommandPanel) bewusst L0 inset — keine Card-Frosted-Migration.',
     affectsArchitecture: true,
@@ -84,18 +105,18 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.281',
     title: 'V4.9.281 — L1 Premium Solid Rollout (Kernbereiche)',
     summary: [
-      'Dashboard: panelShellClass/controlCenterCard → surface-premium; bg-card/55 Overrides in BusinessPulse, ActionQueue, FleetStateBoard, OperationsSchedulePanel, NowNextTimeline, TodayOperations entfernt.',
-      'Vehicle Overview: Quick/Readiness Cards sq-card+sq-glass → surface-premium/surface-elevated (kein L2 auf Content).',
+      'Dashboard: panelShellClass/controlCenterCard → surface-premium; surface-premium/55 Overrides in BusinessPulse, ActionQueue, FleetStateBoard, OperationsSchedulePanel, NowNextTimeline, TodayOperations entfernt.',
+      'Vehicle Overview: Quick/Readiness Cards surface-premium+surface-frosted → surface-premium/surface-elevated (kein L2 auf Content).',
       'HealthErrorsView: cardClass/quickCardClass → surface-premium; doppelte hover shadow/border Stacks reduziert.',
       'Booking Detail: booking-detail-ui.ts bd.card — alle 8 Tab-Dateien zentralisiert (keine lokalen const card).',
-      'Customer Detail: Header/Tabs/Timeline/Documents → surface-premium; aktive Tabs nicht mehr bg-card-only.',
+      'Customer Detail: Header/Tabs/Timeline/Documents → surface-premium; aktive Tabs nicht mehr surface-premium-only.',
       'Fleet: Map-Shell + FleetCommandPanel → surface-premium; aktive Command-Tabs surface-premium (Rows unverändert).',
       'Support/Service Center UI-Tokens: surface-premium ohne doppelte border/shadow; Quick/KPI Tiles → surface-elevated.',
     ],
     reason:
-      'Surface Foundation (V4.9.280) allein reichte nicht — Kernbereiche nutzten weiter parallele bg-card/sq-card Rezepte und falsches L2 auf Content Cards.',
+      'Surface Foundation (V4.9.280) allein reichte nicht — Kernbereiche nutzten weiter parallele surface-premium/surface-premium Rezepte und falsches L2 auf Content Cards.',
     previousBehavior:
-      'Dashboard panelShell mit bg-card/55; Vehicle Quick Cards sq-glass; Booking Detail 8× lokale card-Konstante; Health monolithisches bg-card cardClass.',
+      'Dashboard panelShell mit surface-premium/55; Vehicle Quick Cards surface-frosted; Booking Detail 8× lokale card-Konstante; Health monolithisches surface-premium cardClass.',
     details:
       'Keine Liquid/L3-, Business-Logik-, Tabellen- oder Map-HUD-Änderungen. L2 nur entfernt, wo fälschlich auf Content Cards (Vehicle Overview).',
     affectsArchitecture: true,
@@ -108,10 +129,10 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'V4.9.280 — Surface Foundation Rollout (Pattern-Multiplikatoren)',
     summary: [
       'Neu: frontend/src/components/patterns/surface.ts — zentrale surfaceClassName/resolveCardSurface/resolveDataCardSurface.',
-      'shadcn Card: surface?: solid|premium|elevated|frosted + interactive; Default surface-solid (ersetzt hartes bg-card).',
+      'shadcn Card: surface?: solid|premium|elevated|frosted + interactive; Default surface-solid (ersetzt hartes surface-premium).',
       'DataCard/MetricCard: Surface-Resolver konsolidiert; keine Doppel-Logik.',
       'AppDialog: surface?: solid|elevated (default elevated); overlay-scrim Backdrop; sq-overlay+surface-solid Konflikt entfernt.',
-      'DetailDrawer: surface + footerSurface Props; bg-card/bg-popover Overrides neutralisiert.',
+      'DetailDrawer: surface + footerSurface Props; bg-popover/bg-popover Overrides neutralisiert.',
       'Tabs: TabsList surface?: solid|frosted; active Trigger → surface-premium.',
       'EmptyState/ErrorState/SkeletonCard: optionales surface Prop; SkeletonCard default premium.',
       'theme.css: sq-overlay als Legacy-Alias dokumentiert.',
@@ -119,7 +140,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     reason:
       'Surface-System war Opt-in-Layer — Basis-Komponenten müssen L1/L2 zentral unterstützen, damit App-weiter Rollout greift.',
     previousBehavior:
-      'Card hardcoded bg-card; Dialog sq-overlay+surface-solid; Drawer surface-solid+bg-card; Tabs active bg-card.',
+      'Card hardcoded surface-premium; Dialog sq-overlay+surface-solid; Drawer surface-solid+surface-premium; Tabs active surface-premium.',
     details: 'Keine Map/Liquid/Business-Logik-Änderungen. Foundation für Phase-5 UI-Token-Rollout.',
     affectsArchitecture: true,
     module: 'Vehicle Intelligence',
@@ -177,13 +198,13 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Echte L2-Chrome: sticky Tab Bars, Drawer-Footer, Operator Header/Nav/Footers, Service ControlBar → .surface-frosted.',
       'L4 Modal-Backdrops: inline bg-black/* + backdrop-blur → .overlay-scrim (AppDialog, Settings, Health, Booking, Users, …).',
       'Content-Panels: Support/Service/Trips Panels, Documents, DamageControlSummary → .surface-premium / .surface-solid (kein Glass).',
-      'OperatorGlassCard konsolidiert auf .surface-frosted; sq-glass Doppelstacks entfernt; Fullscreen-Sheets → solides bg-background.',
+      'OperatorGlassCard konsolidiert auf .surface-frosted; surface-frosted Doppelstacks entfernt; Fullscreen-Sheets → solides bg-background.',
       'Keine Map-HUD-, Liquid- oder Business-Logik-Änderungen.',
     ],
     reason:
       'L2 Frosted Glass zentralisieren: kleine App-Chrome mit Blur, Content-Cards und Dialog-Bodies bleiben L0/L1 solid.',
     previousBehavior:
-      'Verstreute lokale backdrop-blur/bg-card/95-Kombinationen; sq-card+sq-glass Doppelstacks; OperatorGlassCard mit eigenem Blur-Rezept.',
+      'Verstreute lokale backdrop-blur/surface-frosted-Kombinationen; surface-premium+surface-frosted Doppelstacks; OperatorGlassCard mit eigenem Blur-Rezept.',
     details:
       'patterns/app-dialog, detail-drawer; customer-detail-ui; Sidebar scrims; LoginPage; operator/*; support/service-center utils; LIQUID_GLASS_SYSTEM.md.',
     affectsArchitecture: true,
@@ -197,14 +218,14 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'DataCard: flush → .surface-solid (L0); default → .surface-premium (L1); interactive/onClick → .surface-elevated.',
       'MetricCard + SkeletonMetricGrid: .surface-premium; klickbar → .surface-elevated.',
-      'ControlKpiStrip: KPI-Buttons auf .surface-elevated; neutrale Töne ohne bg-card/55-Overlay.',
+      'ControlKpiStrip: KPI-Buttons auf .surface-elevated; neutrale Töne ohne surface-premium/55-Overlay.',
       'dashboardKpiVisual: getKpiCardSurfaceClass neutral nur border-border/45 — Hintergrund von surface-elevated.',
       'Kein VehicleBookingSummaryCard / booking-kpi-tile — außerhalb Pattern-Barrel.',
     ],
     reason:
       'Phase 3: zentrale Pattern-Komponenten auf kanonische L0/L1-Surfaces umstellen, ohne unrelated Screens anzufassen.',
     previousBehavior:
-      'DataCard/MetricCard nutzten Legacy .sq-card / .sq-card-elevated; Dashboard-KPIs hatten eigene bg-card/55-Hintergründe.',
+      'DataCard/MetricCard nutzten Legacy .surface-premium / .surface-elevated; Dashboard-KPIs hatten eigene surface-premium/55-Hintergründe.',
     details:
       'frontend/src/components/patterns/data-card.tsx, states.tsx; rental/dashboard/ControlKpiStrip.tsx, dashboardKpiVisual.ts; LIQUID_GLASS_SYSTEM.md.',
     affectsArchitecture: true,
@@ -217,15 +238,15 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'V4.9.275 — Surface System Phase 1 (CSS-Klassen + Fallbacks)',
     summary: [
       'theme.css: kanonische Klassen .surface-solid, .surface-premium, .surface-elevated, .surface-frosted, .surface-liquid, .overlay-scrim.',
-      'Neu: .sq-card-premium (opt-in L1 Premium Solid); Legacy-Aliase .sq-card/.sq-glass/.sq-backdrop unverändert im Baseline-Verhalten.',
-      'L1-Tokens: --surface-premium-*; .sq-card-elevated bleibt solid legacy (kein Breaking Change).',
+      'Neu: .surface-premium (opt-in L1 Premium Solid); Legacy-Aliase .surface-premium/.surface-frosted/.sq-backdrop unverändert im Baseline-Verhalten.',
+      'L1-Tokens: --surface-premium-*; .surface-elevated bleibt solid legacy (kein Breaking Change).',
       'Reduced Transparency + @supports backdrop-filter Fallback für alle L2/L3/L4 inkl. sq-map-glass-controls.',
       'Keine React-/Screen-Migration — nur CSS + Doku.',
     ],
     reason:
       'Phase 1 des Surface-Systems: zentrale Materialklassen und vollständige A11y-Fallbacks vor komponentenweiser Adoption.',
     previousBehavior:
-      'Nur Legacy-Klassen (.sq-card, .sq-glass, .sq-map-liquid-*); Lücken bei reduced-transparency für map-glass-controls.',
+      'Nur Legacy-Klassen (.surface-premium, .surface-frosted, .sq-map-liquid-*); Lücken bei reduced-transparency für map-glass-controls.',
     details:
       'frontend/src/styles/theme.css, LIQUID_GLASS_SYSTEM.md, THEME_COLOR_CONTRACT.md, SURFACE_INSPIRATION_AUDIT.md.',
     affectsArchitecture: true,
@@ -241,12 +262,12 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Externe SaaS-Inspiration: shadcn Card, tokyn elevation, data-dense dashboard patterns; Anti-Patterns (glass bento, neon).',
       'L1 Premium Solid Rezept: opaker Gradient, inset highlight, shadow stack, Icon Bubble, Header/Body/Footer.',
       'Entscheidungsmatrix: wann L0 / L1 premium / L2 / L3 — LIQUID_GLASS_SYSTEM.md §2.1 ergänzt.',
-      'Keine CSS- oder Komponenten-Änderungen — `.sq-card-premium` nur als dokumentiertes Ziel.',
+      'Keine CSS- oder Komponenten-Änderungen — `.surface-premium` nur als dokumentiertes Ziel.',
     ],
     reason:
       'Normale Produkt-Cards sollen hochwertiger wirken ohne Glassmorphism — klare Abgrenzung und Rezept vor Implementierung.',
     previousBehavior:
-      'L0/L1 nur als sq-card/sq-card-elevated ohne Premium-Solid-Definition und ohne Inspirations-Audit.',
+      'L0/L1 nur als surface-premium/surface-elevated ohne Premium-Solid-Definition und ohne Inspirations-Audit.',
     details:
       'SURFACE_INSPIRATION_AUDIT.md, LIQUID_GLASS_SYSTEM.md (L1 surface-premium, §2.1). Research only.',
     affectsArchitecture: true,
@@ -286,7 +307,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'THEME_COLOR_CONTRACT.md: Surface-System-Querverweis und Level-Tabelle ergänzt.',
     ],
     reason:
-      'Repo-Audit zeigte vermischte Begriffe (sq-card vs. glass vs. liquid) und parallele Blur-Rezepte — einheitliche Systemdefinition vor Migration.',
+      'Repo-Audit zeigte vermischte Begriffe (surface-premium vs. glass vs. liquid) und parallele Blur-Rezepte — einheitliche Systemdefinition vor Migration.',
     previousBehavior:
       'Glass/Liquid/Frosted nur implizit in theme.css und Changelog-Sprache; keine kanonische Level-Trennung.',
     details:
@@ -1624,7 +1645,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'V4.9.195 — UI-Pattern Farbwelt V2 Finalisierung',
     summary: [
       'Zentrale Pattern-Oberflächen auf Theme V2 Tokens ausgerichtet: Cards, Buttons, Badges, Tabs, Inputs, Dialog/Sheet/Popover.',
-      '`.sq-card`/`.sq-tab-bar`/`.sq-backdrop`/`.sq-overlay`/`.sq-3d-btn` — keine navy/blauen Active-Flächen in Tabs; neutraler Backdrop; Focus via `--ring`.',
+      '`.surface-premium`/`.sq-tab-bar`/`.sq-backdrop`/`.sq-overlay`/`.sq-3d-btn` — keine navy/blauen Active-Flächen in Tabs; neutraler Backdrop; Focus via `--ring`.',
       'shadcn: Card shadow/border; Badge default→secondary/neutral + soft destructive; Tabs glass container; Input/Textarea `border-border`+`bg-input-background`; Dialog `sq-backdrop`+`sq-overlay`.',
       'Patterns (`DataCard`, `AppDialog`, `DetailDrawer`) profitieren indirekt über `.sq-*` — keine Struktur-/Layout-Änderung.',
     ],
@@ -1640,7 +1661,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.194',
     title: 'V4.9.194 — Hardcoded Farben → Theme-Tokens (V2 Migration)',
     summary: [
-      'Repo-weite Migration: `bg-blue-*`/`bg-slate-*`/`text-indigo-*` in Rental-, Master- und Lib-UI durch semantische Tokens ersetzt (`bg-card`, `bg-muted`, `bg-brand`, `bg-status-*-soft`, `text-foreground`, `border-border`).',
+      'Repo-weite Migration: `bg-blue-*`/`bg-slate-*`/`text-indigo-*` in Rental-, Master- und Lib-UI durch semantische Tokens ersetzt (`surface-premium`, `bg-muted`, `bg-brand`, `bg-status-*-soft`, `text-foreground`, `border-border`).',
       'Dark/Light-Dual-Ternaries vereinfacht — Tokens tragen beide Modi zentral aus `theme.css`.',
       'Status-Badges (Invoices, Fines, Trips) auf `status-*`-Tokens; Fleet-Map-Marker Available → Brand `#4F86E8`.',
       'Rental + `components/` + `lib/` ohne verbleibende slate/blue/indigo-Klassen; Master-Admin-Docs-Views bereinigt.',
@@ -1710,7 +1731,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Fahrzeugzeilen: Fleet-Command-Layout (Badges + CTA rechts), Station/Telemetrie getrennt, Reason-Pill eigene Zeile, kompakter „Öffnen“-CTA.',
       'Toolbar: Scope + Suche in dezenter Panel-Box; Gruppenüberschriften `sq-section-label`; engere Listenabstände.',
-      'Dark-Mode: `bg-card/40`, Suchfeld `bg-background/60` — keine Logikänderung.',
+      'Dark-Mode: `surface-premium`, Suchfeld `bg-background/60` — keine Logikänderung.',
     ],
     reason: 'Header, Toolbar, Gruppen und Karten optisch enger an Fleet Command angleichen, ohne Drawer zu überladen.',
     previousBehavior: 'Badges inline neben Kennzeichen; Station und Telemetrie in einer Zeile; voller CTA-Text.',
@@ -2116,7 +2137,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.168',
     title: 'V4.9.168 — Dark Theme: Pattern-Polish (Cards, Buttons, Badges, Tabs, Modals)',
     summary: [
-      'theme.css: Dark-only Overrides für sq-card, sq-tab-bar, sq-3d-btn (Primary neutral-hell, Destructive soft-critical), sq-overlay, sq-table-row.',
+      'theme.css: Dark-only Overrides für surface-premium, sq-tab-bar, sq-3d-btn (Primary neutral-hell, Destructive soft-critical), sq-overlay, sq-table-row.',
       'Primary CTA nutzt --brand-foreground statt hardcoded white (Light + Dark korrekt).',
       'Badge: Status-Varianten (success/watch/warning/critical/info/noData/ai) + Dark-default auf accent.',
       'TabsTrigger, Sheet/Dialog: popover charcoal + sq-backdrop; Button ghost/link Focus ring neutral.',
@@ -2137,7 +2158,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.167',
     title: 'V4.9.167 — Dark Theme: hartkodierte slate/blue/neutral Flächen auf Tokens',
     summary: [
-      'Dashboard-Drilldowns (StatInlineDetail), BusinessInsightsBox, Invoices, VehicleInsights, Price-Tariff-Drawer: isDarkMode-neutral/gray → bg-card/bg-muted/border-border/text-muted-foreground.',
+      'Dashboard-Drilldowns (StatInlineDetail), BusinessInsightsBox, Invoices, VehicleInsights, Price-Tariff-Drawer: isDarkMode-neutral/gray → surface-premium/bg-muted/border-border/text-muted-foreground.',
       'Workflow/Trip-Badges: dark:bg-blue/slate/gray → status-*-soft Tokens; Info/Running neutral-grau statt Blue-400.',
       'FleetConditionDetailView, InsightsCockpit, Fines, LegalDocuments, HM-Admin-Badges: Oberflächen und Info-Badges tokenisiert.',
       'Light-Theme-Zweige unverändert; nur Dark-Farbquellen, keine Layout-/Logik-Änderungen.',
@@ -2327,7 +2348,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     reason:
       'Kontoinformationen wirkten visuell schwerer als die neue SynqDrive Clean SaaS UI-Linie.',
     previousBehavior:
-      'Große sq-card KPIs mit viel Footer-Text, brand-farbene Pill-Tabs, dominanter Full-Width CTA, Custom-Button-Styles.',
+      'Große surface-premium KPIs mit viel Footer-Text, brand-farbene Pill-Tabs, dominanter Full-Width CTA, Custom-Button-Styles.',
     details:
       'AccountInformationTab.tsx, account/AccountHeaderCard.tsx, AccountSummaryKpiCard.tsx, AccountSectionTabBar.tsx, account-ui.ts, AccountHealthCard.tsx, AccountAccessCard.tsx, AccountSecurityCard.tsx, AccountProfileSection.tsx, AccountPreferencesSection.tsx, AccountNotificationsSection.tsx, AccountSessionsSection.tsx, ChangePasswordDialog.tsx.',
     affectsArchitecture: false,
@@ -2824,7 +2845,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     reason:
       'KPI-Karten wirkten zu dominant und inkonsistent; doppelte Refresh-Actions machten die Insights Page unruhig.',
     previousBehavior:
-      'Farbige `sq-card`-KPI-Flächen mit großen Werten; Refresh unter Titel + „Insights aktualisieren“ unter KPIs.',
+      'Farbige `surface-premium`-KPI-Flächen mit großen Werten; Refresh unter Titel + „Insights aktualisieren“ unter KPIs.',
     details:
       'Geändert: `InsightsCockpit.tsx`, `FinancialInsightsView.tsx`. Keine Insights-Berechnung/API-Logik geändert.',
     affectsArchitecture: false,
@@ -2899,7 +2920,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Invoice-KPIs im Control-Center-Stil (`InvoiceKpiCard`); Header mit KI-Upload und Rechnung erstellen als `Button`.',
     ],
     reason: 'KPI-Karten und Header-Buttons inkonsistent zu anderen Rental-Seiten.',
-    previousBehavior: 'Native `sq-press`-Buttons und große `sq-card`-KPI-Flächen.',
+    previousBehavior: 'Native `sq-press`-Buttons und große `surface-premium`-KPI-Flächen.',
     details: 'Geändert: `InvoicesView.tsx`.',
     affectsArchitecture: false,
     module: 'Rental Invoices',
@@ -2986,7 +3007,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     reason:
       'Tasks KPI-Boxen wirkten inkonsistent zu Dashboard/Customers/Stations; Primary-Button brach auf Mobile unter den Titel.',
     previousBehavior:
-      'Große `sq-card`-KPI-Buttons mit 22px bold und 7×7 Icon-Tiles; `PageHeader` stackte Actions auf Mobile.',
+      'Große `surface-premium`-KPI-Buttons mit 22px bold und 7×7 Icon-Tiles; `PageHeader` stackte Actions auf Mobile.',
     details:
       'Geändert: `TasksView.tsx` (+ lokale `TaskKpiCard`). Keine Task-/Filter-/API-Logik geändert.',
     affectsArchitecture: false,
@@ -4178,7 +4199,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'V4.9.77 — Bookings Tab: kompakter Header + ruhige Summary-KPIs',
     summary: [
       'Vehicle Detail → Bookings: Eyebrow „Fahrzeugbetrieb“ entfernt; Header „Buchungen & Verfügbarkeit“ kompakter mit Fahrzeugname als Meta und Status-Chip.',
-      'Summary-KPIs: `.booking-kpi-tile` statt großer sq-card/MetricCard-Optik; getrennte Typografie für numeric/text/status; Null-/Leerwerte subdued.',
+      'Summary-KPIs: `.booking-kpi-tile` statt großer surface-premium/MetricCard-Optik; getrennte Typografie für numeric/text/status; Null-/Leerwerte subdued.',
       'Labels leicht geklärt (z. B. „Auslastung“ statt „Auslastung · 14 Tage“ im Titel); Horizon im Hint. Timeline/Agenda/Drawer unverändert.',
     ],
     reason:
@@ -4734,7 +4755,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     reason:
       'Die Tacho-Warnleuchten-Box war nach dem Health-Center-Umbau funktional, aber noch listenbasiert, redundant im Header und mit zu technischen Status-Texten — mobil unruhig.',
     previousBehavior:
-      'Doppelter Titel (DataCard + Panel), Listenzeilen mit reason/action/observedAt, Badge „Datenbasis veraltet"/„Kritische Warnung", grüner „Keine aktiven Warnleuchten bestätigt"-Banner, sq-glass-Nesting.',
+      'Doppelter Titel (DataCard + Panel), Listenzeilen mit reason/action/observedAt, Badge „Datenbasis veraltet"/„Kritische Warnung", grüner „Keine aktiven Warnleuchten bestätigt"-Banner, surface-frosted-Nesting.',
     details:
       'UI-only: `dashboard-warning-lights-display.ts` (neue Helper `telltaleShortLabel`, `telltaleTileStatusLabel`, `countActiveTelltales`, `resolveSourceFooter`, `isTelltaleProviderConnected`; Presentation auf 4 Status reduziert), `DashboardWarningLightsPanel.tsx` (Kachel-Grid, Header/Subline/Footer), `HealthErrorsView.tsx` (eine Box ohne DataCard-Doppelheader), `DashboardWarningLightsQuickView.tsx` (shared `telltaleShortLabel`). Keine Backend-Änderung. vitest 286 grün.',
     affectsArchitecture: false,
@@ -4932,7 +4953,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.39',
     title: 'V4.9.39 — Service-&-Wartung-Box im Overview bereinigt (ruhiger, redundanzfrei, fokussiert)',
     summary: [
-      'Die Service-&-Wartung-Box wurde typografisch/strukturell an die Vehicle Health Box angelehnt: ruhige Card-Hierarchie (`rounded-xl border bg-card p-3 shadow-sm`), Header „Service & Wartung" + optionales kompaktes Status-Badge (Überfällig / Kritisch / Vermietung blockiert), Subline (Fahrzeug), darunter Actions, darunter Task-Rows.',
+      'Die Service-&-Wartung-Box wurde typografisch/strukturell an die Vehicle Health Box angelehnt: ruhige Card-Hierarchie (`rounded-xl border surface-premium p-3 shadow-sm`), Header „Service & Wartung" + optionales kompaktes Status-Badge (Überfällig / Kritisch / Vermietung blockiert), Subline (Fahrzeug), darunter Actions, darunter Task-Rows.',
       'Redundanzen entfernt: der separate Alert-Banner und der Text-Link „Im Service Center anzeigen" entfallen (eine klare CTA „Service Center" bleibt); die Summary-Zeile „x offen · y überfällig" entfällt, da die Tasks direkt darunter sichtbar sind.',
       'Doppelte „Überfällig"-Anzeige behoben: in `MaintenanceTaskRow` lieferte `vehicleTaskStatusLabel` bereits „Überfällig" und zusätzlich wurde ein separates Überfällig-Badge gerendert. Das zweite Badge ist entfernt; „Kritisch" (Priority) bleibt nur bei high/critical sichtbar.',
       'Due-Date fachlich korrigiert: neuer Helper `formatVehicleMaintenanceDueLabel(task)` → „Fällig bis DD.MM.YY" für nicht überfällige, „Fällig seit DD.MM.YY" für überfällige Tasks.',
@@ -7034,7 +7055,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.32',
     title: 'V4.9.32 — Vehicle Detail Trips Tab: UI/UX & Verdrahtung',
     summary: [
-      'TripsView: sq-glass Panels, deutsche Labels, bereinigte Loading/Error/Empty States (Mapbox-Token, Route, keine Trips im Zeitraum).',
+      'TripsView: surface-frosted Panels, deutsche Labels, bereinigte Loading/Error/Empty States (Mapbox-Token, Route, keine Trips im Zeitraum).',
       'Map: fitBounds nur bei Trip-/Routenwechsel; Layer-Toggles bewegen Kamera nicht; Button „Route zentrieren“.',
       'Daten: primär tripsTimeline-Endpoint mit Fallback auf paralleles trips+energyEvents; Race-Guards bei schnellem Filter/Tripwechsel.',
     ],
@@ -7087,7 +7108,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Overview Tab erhält unterhalb des Vehicle Detail Headers eine kompakte Operator-Quick-View: Readiness Strip + 5 navigierbare Snapshot Cards (Trips, Bookings, Tasks, Damages, Documents).',
       'ViewModel-Schicht (`useVehicleOverviewSummary`, `vehicle-overview-cards.utils`, `vehicle-overview-readiness.utils`) liefert Headlines, Status, Subline und Tab-Targets — keine neue Backend-Wahrheit.',
-      'UI: `VehicleOverviewQuickView`, `VehicleOverviewReadinessStrip`, `VehicleOverviewSnapshotRow`, `VehicleOverviewQuickCard` mit sq-glass/sq-tone Tokens, Keyboard-Fokus, aria-labels, dezenter Hover-Lift und motion-reduce.',
+      'UI: `VehicleOverviewQuickView`, `VehicleOverviewReadinessStrip`, `VehicleOverviewSnapshotRow`, `VehicleOverviewQuickCard` mit surface-frosted/sq-tone Tokens, Keyboard-Fokus, aria-labels, dezenter Hover-Lift und motion-reduce.',
       'Map (`OverviewLiveMapCard`) und `VehicleHealthBox` bleiben unverändert unterhalb der Quick-View-Schicht.',
     ],
     reason:
@@ -7105,7 +7126,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.9.28',
     title: 'V4.9.28 — Vehicle Bookings: UI/UX Polish',
     summary: [
-      'Gemeinsame Cockpit-Tokens (`vehicle-bookings-ui.ts`): sq-glass Surfaces, konsistente Spacing-Scale, Focus-Rings, Action-Buttons.',
+      'Gemeinsame Cockpit-Tokens (`vehicle-bookings-ui.ts`): surface-frosted Surfaces, konsistente Spacing-Scale, Focus-Rings, Action-Buttons.',
       'Informationshierarchie geschärft: Fahrzeugstatus → Nächste Übergabe → Timeline (inkl. Insights-Footer) → Agenda.',
       'Accessibility & Microinteractions: aria-Labels, Keyboard-Focus, dezente Timeline-Hover, Mobile-Scroll-Hinweis, Agenda/Drawer-Polish.',
     ],
@@ -7250,7 +7271,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'V4.9.19 — Vehicle Task Tab UI/UX Polish',
     summary: [
       '**VehicleTasksView**: Vertikales Operator-Layout — Header, Summary-Strip, Action-Center, Task-Queue; schlanke Rows mit `StatusChip`/`PriorityBadge`; Selected-State bei offenem Drawer; row-shaped Skeletons.',
-      '**VehicleTaskActionCenter**: Horizontales Action-Strip (Next Best Action + Stats + Buchung); keine `sq-glass`-Overlays.',
+      '**VehicleTaskActionCenter**: Horizontales Action-Strip (Next Best Action + Stats + Buchung); keine `surface-frosted`-Overlays.',
       '**DetailDrawer**: Sticky Footer mit Backdrop-Blur; tokenisierte Error/Action-States.',
     ],
     reason: 'Task Tab funktional stark, visuell noch nicht auf SaaS-Operator-Niveau.',
@@ -7823,7 +7844,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       '**ArchitekturView**: vollständige Pattern-Migration — `PageHeader`, `navItemClass`, `StatusChip`/`StatusDot`/`WorkerBadge`/`StorageBadge`; alle `isDarkMode`-Ternaries und lokale `BADGE`/`CARD`-Helfer entfernt; Connectivity-States tokenisiert; responsive Nav (horizontal scroll mobile, vertikal desktop).',
       '**VendorManagementView**: Card/List-Pattern beibehalten (kein DataTable — UX passt); `aria-label` auf Vendor-Zeilen/Edit; Filter-Dropdowns `shadow-[var(--shadow-2)]` statt `shadow-xl`.',
-      '**FleetView / FleetOperatorRow**: bereits auf `StatusChip`/`HealthStatusChip`/`fleetRowClassName`; Map-HUD darf `sq-glass` — keine Listen-Regression.',
+      '**FleetView / FleetOperatorRow**: bereits auf `StatusChip`/`HealthStatusChip`/`fleetRowClassName`; Map-HUD darf `surface-frosted` — keine Listen-Regression.',
       '**Global QA**: ArchitekturView als letzte große Master-Doku-Insel migriert; verbleibende `text-gray`/`bg-indigo` in Neben-Views (InvoicesView, InsurancesView, ChangesView selbst) dokumentiert — nicht Teil dieser Pass-Hauptflächen.',
     ],
     reason:
@@ -7860,14 +7881,14 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.8.78',
     title: 'V4.8.78 — UI-Konsistenz: sq-CARD Typo-Fix + Master-Surfaces tokenisiert',
     summary: [
-      '**sq-CARD Typo-Fix**: Die case-sensitive Klasse `sq-CARD` (matcht NICHT die `.sq-card`-Utility → fehlende Card-Surface) in 3 aktiven Master-Views korrigiert: `FleetConnectionView.tsx` (1×), `SystemMonitoringView.tsx` (1×), `HighMobilityDataView.tsx` (7×) → `sq-card`. Repo-weit jetzt 0 Treffer.',
+      '**sq-CARD Typo-Fix**: Die case-sensitive Klasse `sq-CARD` (matcht NICHT die `.surface-premium`-Utility → fehlende Card-Surface) in 3 aktiven Master-Views korrigiert: `FleetConnectionView.tsx` (1×), `SystemMonitoringView.tsx` (1×), `HighMobilityDataView.tsx` (7×) → `surface-premium`. Repo-weit jetzt 0 Treffer.',
       '**FleetConnectionView tokenisiert**: alte Template-Farben ersetzt — `bg-blue-600 text-white` (aktiver Filter-Tab) → `bg-[color:var(--brand)]/--brand-foreground`; `hover:bg-neutral-700` → `hover:bg-muted`; OBD-/Signal-Status `text-emerald-500`/`text-red-500`/`bg-amber-500`/`bg-gray-400` → `--status-positive`/`--status-critical`/`--status-watch`/`--status-nodata`.',
       '**Audit bestätigt (keine Änderung nötig)**: globale `frontend/src/components/Sidebar.tsx` existiert nicht mehr (bereits in früherem Cleanup entfernt; aktive Sidebars sind rental/master-scoped). `LoginPage.tsx` ist bereits vollständig tokenbasiert — keine harten Brand-Hex (`#2563EB`/`#3b82f6`/…), keine Fake-Trust-Zahl („2.400+"), credible Copy „Fleet operations in one workspace".',
     ],
     reason:
       'Finaler UI-Konsistenz-Pass für globale Restmängel: ein case-sensitiver Klassen-Tippfehler ließ Card-Surfaces in drei Master-Views unstyled, und FleetConnectionView trug noch alte Indigo/Emerald/Grey-Template-Farben.',
     previousBehavior:
-      '`sq-CARD` (Großschreibung) griff nicht auf die `.sq-card`-Utility → betroffene Karten ohne Surface-Styling; FleetConnectionView nutzte bg-blue-600/neutral-700/emerald/red/amber/gray hardcoded.',
+      '`sq-CARD` (Großschreibung) griff nicht auf die `.surface-premium`-Utility → betroffene Karten ohne Surface-Styling; FleetConnectionView nutzte bg-blue-600/neutral-700/emerald/red/amber/gray hardcoded.',
     details:
       'frontend/src/master/components/FleetConnectionView.tsx, SystemMonitoringView.tsx, HighMobilityDataView.tsx. Reiner Frontend/UI-Fix — keine Backend-/API-/Routing-/Datenfluss-Änderung. Build (tsc -b && vite build) grün.',
     affectsArchitecture: false,
@@ -8018,7 +8039,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     reason:
       'Map-internal overlays should feel like premium floating glass on imagery, consistent with the new SynqDrive UI — not flat semi-transparent cards.',
     previousBehavior:
-      'Full-width bottom glass bar and mixed `bg-card` overlays; marker callout used hardcoded inline styles.',
+      'Full-width bottom glass bar and mixed `surface-premium` overlays; marker callout used hardcoded inline styles.',
     details: null,
     affectsArchitecture: false,
     module: 'Vehicle Intelligence',
@@ -8391,7 +8412,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       '**Zentrale Tone-Mapper** (`components/patterns/status-utils.ts`): `platformRoleTone`, `userAccountStatusTone`, `fleetVehicleStatusTone`, `onlineSignalTone`, `hmVehicleStateTone`, `tokenAuthStatusTone`, `workerMonitoringTone`, `monitoringSystemHealthTone`, `pollLogStatusTone`, `prospectStatusTone`, `prospectPriorityTone` — exportiert über Pattern Barrel.',
       '**PlatformVehiclesView**: `PageHeader`, `MetricCard`, `DataCard`, `DataTable` (registered), `StatusChip`/`HealthStatusChip`/`StatusDot`, `DetailDrawer` für Fahrzeugdetails, `EmptyState`; lokale `statusConfig`-Farben und Custom-Drawer entfernt.',
       '**PlatformUsersView**: vollständig auf Pattern Library — `roleColors` und Gradient-CTAs entfernt; Rollen/Status über zentrale Tone-Mapper.',
-      '**ProspectsView**: `statusColors`/`priorityColors` entfernt; `DetailDrawer`, `StatusChip`, `PriorityBadge`; Import-Modals auf `sq-card`/`sq-cta`.',
+      '**ProspectsView**: `statusColors`/`priorityColors` entfernt; `DetailDrawer`, `StatusChip`, `PriorityBadge`; Import-Modals auf `surface-premium`/`sq-cta`.',
       '**SystemMonitoringView**: `HEALTH_COLORS`/`STATUS_COLORS`/`TOKEN_STATUS_STYLE` entfernt; KPIs `MetricCard`, Panels `DataCard`, Status über `StatusChip` + Tone-Mapper.',
       '**OrganizationDetailView** (Phase-6-Cleanup): tote `statusColors`/`planColors` entfernt; Users/Vehicles/Integrations/Billing/Products auf `StatusChip` + Token-CTAs.',
     ],
@@ -9067,7 +9088,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Shared AppShell for Rental + Master (sidebar, main column, optional right panel)',
       'Shared nav primitives (navItemClass, section headers, collapsed tooltips)',
-      'LoginPage migrated to theme tokens + sq-glass brand moment',
+      'LoginPage migrated to theme tokens + surface-frosted brand moment',
       'Organizations + Tasks tables on DataTable; Master Dashboard KPI tones on sq-tone-*',
     ],
     reason: 'Rental, Master and Login still looked like separate products due to parallel layout/shell code and hardcoded neutral/indigo/emerald styles.',
@@ -9273,8 +9294,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.8.6',
     title: 'FleetConditionView + FleetView + DashboardView — design-system pattern rollout',
     summary: [
-      '**FleetConditionView**: `isDarkMode` removed; `PageHeader`, `MetricCard` (+ `SkeletonMetricGrid` while health loads), `HealthStatusChip` / `StatusChip`, `EmptyState`, `SkeletonCard` for on-demand condition tiles; filter/search/dropdowns token-themed; interactive condition tiles use `sq-card-elevated`.',
-      '**FleetView**: `isDarkMode` removed; `PageHeader` with station selector; vehicle rows `sq-card-elevated`; `HealthStatusChip` + `StatusChip` replace hand-rolled `sq-chip` pills; `SkeletonCard` list while fleet map loads; map/child badges read theme via `useSyncExternalStore`.',
+      '**FleetConditionView**: `isDarkMode` removed; `PageHeader`, `MetricCard` (+ `SkeletonMetricGrid` while health loads), `HealthStatusChip` / `StatusChip`, `EmptyState`, `SkeletonCard` for on-demand condition tiles; filter/search/dropdowns token-themed; interactive condition tiles use `surface-elevated`.',
+      '**FleetView**: `isDarkMode` removed; `PageHeader` with station selector; vehicle rows `surface-elevated`; `HealthStatusChip` + `StatusChip` replace hand-rolled `sq-chip` pills; `SkeletonCard` list while fleet map loads; map/child badges read theme via `useSyncExternalStore`.',
       '**DashboardView**: `isDarkMode` removed; `PageHeader` (welcome + date `StatusChip` + station filter); monthly KPI strip → `MetricCard` + `SkeletonMetricGrid`; child widgets (`BusinessInsightsBox`, `StatInlineDetail`, `ScheduleBox`) receive theme via `useSyncExternalStore`.',
       '**App.tsx**: `DashboardView`, `FleetView`, and `FleetConditionView` call sites drop `isDarkMode`.',
     ],
@@ -9292,7 +9313,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.8.6',
     title: 'CustomersView + CustomerDetail — design-system pattern rollout',
     summary: [
-      '**CustomersView**: `isDarkMode` prop removed; `PageHeader`, `DataTable`, `StatusChip`, `EmptyState`, tokenized filter card + segment metrics (`sq-card`); driving-style column uses `formatDrivingStyleScore` + `StatusChip`; add-customer wizard fully token-themed.',
+      '**CustomersView**: `isDarkMode` prop removed; `PageHeader`, `DataTable`, `StatusChip`, `EmptyState`, tokenized filter card + segment metrics (`surface-premium`); driving-style column uses `formatDrivingStyleScore` + `StatusChip`; add-customer wizard fully token-themed.',
       '**CustomerDetailView**: `isDarkMode` removed; `PageHeader` + `StatusChip` for status/risk/booking states; header actions + avatar use `sq-tone-*`; tables/tabs use `border-border` / `bg-muted` tokens.',
       '**CustomerDetailModal**: dropped unused `isDarkMode` prop (already token-themed). **CustomerDocumentUploadBox**: token-only dropzone (supports Customers + NewBooking wizards).',
       '**App.tsx** + **NewBookingView**: customer call sites no longer pass `isDarkMode` to customer surfaces.',
@@ -9329,7 +9350,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.8.6',
     title: 'HealthErrorsView — design-system pattern rollout',
     summary: [
-      '**HealthErrorsView**: `isDarkMode` prop and all 114 usages removed; token classes (`sq-card`, `sq-tone-*`, `sq-chip-*`, `text-foreground`, `border-border`) replace gray/neutral/indigo/purple gradients.',
+      '**HealthErrorsView**: `isDarkMode` prop and all 114 usages removed; token classes (`surface-premium`, `sq-tone-*`, `sq-chip-*`, `text-foreground`, `border-border`) replace gray/neutral/indigo/purple gradients.',
       '**Patterns**: `PageHeader`, `DataCard` (VHC column), `HealthStatusChip`, `StatusChip`, `EmptyState`, `SkeletonCard` wired for header, overall status, DTC empty/loading, complaints/tire loading.',
       '**Helpers**: `tireStatusStyle`/`brakeConditionStyle` use `sq-chip-*`/`sq-dot-*`; `rental-health-ui.ts` accent/pill/DTC tone helpers no longer take `isDarkMode`; `BatteryConditionBars`/`RestingVoltageBadge` tokenized.',
       '**App.tsx**: `HealthErrorsView` call site drops `isDarkMode` prop.',
@@ -9897,7 +9918,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       '`DataAuthorizationTab` nutzt jetzt denselben Seitenrhythmus wie Fleet, Dashboard, Customers, Financial Insights und Fleet Condition: max-width Container, klarer Header links und `Autorisierung erstellen` als kompakte Primary-Action rechts.',
       'Die alte Status-/Filter-Auswahl (`Alle Status`, Module, Bereiche) wurde aus dem oberen Bereich herausgenommen und in eine dedizierte Filter-Card verschoben.',
-      'Die wichtigsten Autorisierungskennzahlen (`Gesamt`, `Aktiv`, `Ausstehend`, `Widerrufen`) stehen jetzt als klickbare KPI-Cards mit `sq-card`, Ton-Icons, tabularen Zahlen, Hover-State und Active-Ring bereit.',
+      'Die wichtigsten Autorisierungskennzahlen (`Gesamt`, `Aktiv`, `Ausstehend`, `Widerrufen`) stehen jetzt als klickbare KPI-Cards mit `surface-premium`, Ton-Icons, tabularen Zahlen, Hover-State und Active-Ring bereit.',
       'Die Filter-Card zeigt jetzt Showing-Text, Status-Dropdown mit Counts, Modul-/Scope-Dropdowns, Active-Filter-Chips und eine zentrale `Clear filters`-Action.',
       'Autorisierungs-Liste, Loading-State und Empty-State wurden optisch an die aktuellen Core-Flächen und `sq-tone-*`-Tokens angeglichen; bestehende Grant-/Revoke-/Create-Flows bleiben erhalten.',
     ],
@@ -9906,7 +9927,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     previousBehavior:
       '`DataAuthorizationTab` startete mit einem kleinen Header, fünf alten StatCards und direkt darunter einer kompakten Filterzeile mit Status-/Modul-/Scope-Auswahl. Dadurch wirkte die Auswahl wie eine headernahe Tabbar statt wie eine klare Workspace-/Filterfläche.',
     details:
-      '**Datei**: `frontend/src/rental/components/DataAuthorizationTab.tsx`. Neu: `hasActiveFilters`, `clearFilters`, `statusOptions`, `scopeOptions`, `activeStatusOption`, `activeModuleLabel`, `activeScopeLabel`, `summaryCards`. Header, KPI-Zeile, Filter-Card, AuthorizationRows, Loading- und Empty-State wurden auf `sq-card`, `sq-tone-*`, Brand-Tokens, Core-Radii und konsistente Typografie umgestellt. Keine Backend/API-/Datenflussänderung; `api.dataAuthorizations.list/stats/get/create/grant/revoke` bleibt unverändert. `ArchitekturView` daher nicht geändert.',
+      '**Datei**: `frontend/src/rental/components/DataAuthorizationTab.tsx`. Neu: `hasActiveFilters`, `clearFilters`, `statusOptions`, `scopeOptions`, `activeStatusOption`, `activeModuleLabel`, `activeScopeLabel`, `summaryCards`. Header, KPI-Zeile, Filter-Card, AuthorizationRows, Loading- und Empty-State wurden auf `surface-premium`, `sq-tone-*`, Brand-Tokens, Core-Radii und konsistente Typografie umgestellt. Keine Backend/API-/Datenflussänderung; `api.dataAuthorizations.list/stats/get/create/grant/revoke` bleibt unverändert. `ArchitekturView` daher nicht geändert.',
     affectsArchitecture: false,
     module: 'Frontend UI',
     createdAt: '2026-05-03T11:43:00.000Z',
@@ -9919,7 +9940,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       '`BillingTab` nutzt jetzt denselben Seitenrhythmus wie Fleet, Dashboard, Customers, Financial Insights und Fleet Condition: max-width Container, ruhiger Header links und Billing-Sync-Status rechts.',
       'Die doppelte, widersprüchliche Plan-Definition wurde bereinigt; es gibt nur noch einen lokalen Plan-Katalog für die Anzeige, während der aktuelle Plan aus `GET /billing/subscriptions` kommt.',
       'Hardcoded Demo-Rechnungen und die fake Mastercard (`Mastercard ···· 4829`) wurden entfernt. Rechnungsverlauf und MRR lesen jetzt aus den bestehenden Billing-Endpoints `api.billing.orgSubscriptions()` und `api.billing.orgInvoices()`.',
-      'Der obere Bereich zeigt KPI-Cards (`Current Plan`, `Monthly`, `Renewal`, `Invoices`) mit `sq-card`, Ton-Icons, tabularen Werten und echten Billing-Daten oder ehrlichen Empty-States.',
+      'Der obere Bereich zeigt KPI-Cards (`Current Plan`, `Monthly`, `Renewal`, `Invoices`) mit `surface-premium`, Ton-Icons, tabularen Werten und echten Billing-Daten oder ehrlichen Empty-States.',
       'Plan-Auswahl, Subscription Summary, Payment-Method-Hinweis und Invoice-History wurden auf Core-Flächen umgebaut; Invoice-Suche/Statusfilter sitzen in einer dedizierten Filter-Card mit Counts und `Clear filters`.',
     ],
     reason:
@@ -9939,7 +9960,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       '`UsersRolesTab` nutzt jetzt denselben Seitenrhythmus wie Fleet, Dashboard, Customers, Financial Insights und Fleet Condition: max-width Container, klarer Header links und `Benutzer erstellen` als kompakte Primary-Action rechts.',
       'Die alte horizontale Rollen-Chip-Auswahl (`Alle`, `Org Admin`, `Sub Admin`, `Worker`) wurde aus dem oberen Bereich entfernt.',
-      'Die wichtigsten User-/Access-Kennzahlen (`Users`, `Active`, `Admins`, `Station Scope`) stehen jetzt als KPI-Cards mit `sq-card`, Ton-Icons, tabularen Zahlen, Hover-State und Active-Ring bereit.',
+      'Die wichtigsten User-/Access-Kennzahlen (`Users`, `Active`, `Admins`, `Station Scope`) stehen jetzt als KPI-Cards mit `surface-premium`, Ton-Icons, tabularen Zahlen, Hover-State und Active-Ring bereit.',
       'Suche und Rollen-Scope sitzen nun in einer dedizierten Filter-Card mit Showing-Text, Rollen-Dropdown mit Counts, Active-Filter-Chips, Standort-Hinweis und `Clear filters`.',
       'User-Tabelle, Empty-State, Rollen-Badges und Dialog-Aktionen wurden optisch an die aktuellen Core-Flächen und `sq-tone-*`-Tokens angeglichen; bestehende User-/Station-API-Flows bleiben unverändert.',
     ],
@@ -9960,7 +9981,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       '`FleetConnectionTab` nutzt jetzt denselben Seitenrhythmus wie Fleet, Dashboard, Customers, Financial Insights und Fleet Condition: max-width Container, klarer Header links und operativer Status rechts.',
       'Die alte horizontale Status-Chip-Auswahl (`All`, `Online`, `Standby`, `Offline`, `No Connection`) wurde aus dem oberen Bereich entfernt.',
-      'Die Connectivity-Kennzahlen stehen jetzt als klickbare KPI-Cards mit `sq-card`, Ton-Icons, tabularen Zahlen, Hover-State und Active-Ring bereit und setzen den bestehenden Statusfilter direkt.',
+      'Die Connectivity-Kennzahlen stehen jetzt als klickbare KPI-Cards mit `surface-premium`, Ton-Icons, tabularen Zahlen, Hover-State und Active-Ring bereit und setzen den bestehenden Statusfilter direkt.',
       'Suche und Statusauswahl sitzen nun in einer dedizierten Filter-Card mit Showing-Text, Status-Dropdown mit Counts, Active-Filter-Chips und `Clear filters`.',
       'Vehicle-Liste und Empty-State wurden optisch an die aktuellen Core-Flächen angeglichen; der bestehende `api.vehicles.fleetConnectivity(orgId)` Datenfluss bleibt unverändert.',
     ],
@@ -9980,8 +10001,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'V4.7.52 Company Profile — Organisationsprofil an Core-Page-Pattern angepasst',
     summary: [
       '`CompanyProfileTab` nutzt jetzt denselben Seitenrhythmus wie Account/Fleet/Dashboard/Customers/Financial Insights/Fleet Condition: max-width Container, ruhiger Header links, Edit/Save-Action rechts.',
-      'Der obere Bereich zeigt vier abgeleitete KPI-/Statuskarten (`Profile`, `Branding`, `Contact`, `Locale`) mit `sq-card`, Ton-Icons und echten Backend-Profilwerten statt reiner Formularfläche.',
-      'Unternehmensdaten und Ansprechpartner sind visuell klarer getrennt, mit `sq-card`, konsistenten Form-Feldern, Read-only/Bearbeitungs-Badge und Address-Summary im Card-Header.',
+      'Der obere Bereich zeigt vier abgeleitete KPI-/Statuskarten (`Profile`, `Branding`, `Contact`, `Locale`) mit `surface-premium`, Ton-Icons und echten Backend-Profilwerten statt reiner Formularfläche.',
+      'Unternehmensdaten und Ansprechpartner sind visuell klarer getrennt, mit `surface-premium`, konsistenten Form-Feldern, Read-only/Bearbeitungs-Badge und Address-Summary im Card-Header.',
       'Logo-Upload wurde optisch an das Core-Pattern angepasst: ruhigere Branding-Card, größere Logo-Preview, brand-token-basierte Upload-Action und erhaltene Remove-/Upload-Logik.',
       'Der Dokumentbereich zeigt jetzt einen sauberen Empty-State und der Plus-Button ist bewusst deaktiviert, solange kein echter Dokumenten-Upload-Endpoint angebunden ist.',
     ],
@@ -9990,7 +10011,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     previousBehavior:
       '`CompanyProfileTab` startete mit einem einfachen Header, altem Border/Shadow-Card-Stil, einer reinen Formularfläche ohne zusammenfassende Statuskarten, einem groben dashed Logo-Upload und einem aktiven Plus-Button im Dokumentbereich, obwohl kein Upload-Flow sichtbar angebunden war.',
     details:
-      '**Datei**: `frontend/src/rental/components/SettingsView.tsx`. Backend- und API-Logik blieb unverändert (`api.organizations.getProfile/updateProfile/uploadLogo`, `setOrgBranding`). Neu: derived `profileCompleteness`, `addressLine`, `contactReady`, `localizationReady`, `summaryCards`. Header/KPI-Zeile, Unternehmensdaten, Ansprechpartner, Logo-Upload und Dokument-Empty-State wurden auf `sq-card`, `sq-tone-*`, Brand-Tokens, Core-Radii und konsistente Typografie umgestellt. Keine Backend/API-/Datenflussänderung; `ArchitekturView` daher nicht geändert.',
+      '**Datei**: `frontend/src/rental/components/SettingsView.tsx`. Backend- und API-Logik blieb unverändert (`api.organizations.getProfile/updateProfile/uploadLogo`, `setOrgBranding`). Neu: derived `profileCompleteness`, `addressLine`, `contactReady`, `localizationReady`, `summaryCards`. Header/KPI-Zeile, Unternehmensdaten, Ansprechpartner, Logo-Upload und Dokument-Empty-State wurden auf `surface-premium`, `sq-tone-*`, Brand-Tokens, Core-Radii und konsistente Typografie umgestellt. Keine Backend/API-/Datenflussänderung; `ArchitekturView` daher nicht geändert.',
     affectsArchitecture: false,
     module: 'Frontend UI',
     createdAt: '2026-05-03T11:06:00.000Z',
@@ -10002,8 +10023,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       '`AccountInformationTab` nutzt jetzt denselben Seitenrhythmus wie Fleet, Dashboard, Customers, Financial Insights und Fleet Condition: max-width Container, ruhiger Header links, Edit/Save-Action rechts.',
       'Die alten, teilweise hartkodierten Profilwerte wurden reduziert: Name, E-Mail, Rolle und Organisation leiten sich aus `getStoredUser()` und `useRentalOrg()` ab; Telefon/Mobil/Standort zeigen leere Zustände statt Demo-Werte.',
-      'Der obere Bereich hat jetzt vier KPI-/Statuskarten (`Profile`, `Role`, `Access`, `Alerts`) mit `sq-card`, Ton-Icons, tabularen Werten und echten Derived Counts.',
-      'Profilkarte, Sicherheit, persönliche Informationen, Einstellungen, Benachrichtigungen und aktive Sitzungen wurden auf `sq-card`, `sq-tone-*`, ruhigere Radii und konsistente Header/Subcopy umgestellt.',
+      'Der obere Bereich hat jetzt vier KPI-/Statuskarten (`Profile`, `Role`, `Access`, `Alerts`) mit `surface-premium`, Ton-Icons, tabularen Werten und echten Derived Counts.',
+      'Profilkarte, Sicherheit, persönliche Informationen, Einstellungen, Benachrichtigungen und aktive Sitzungen wurden auf `surface-premium`, `sq-tone-*`, ruhigere Radii und konsistente Header/Subcopy umgestellt.',
       'Die redundante horizontale Settings-Tabbar im Content wurde aus `SettingsView` entfernt. Die Navigation bleibt über die linke Sidebar erhalten, damit keine zweite Tab-Auswahl im Headerbereich konkurriert.',
     ],
     reason:
@@ -10011,7 +10032,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     previousBehavior:
       '`SettingsView` zeigte zusätzlich zur Sidebar eine horizontale Settings-Tabbar direkt über dem Content. `AccountInformationTab` hatte einen einfachen Header, alte Border/Shadow-Karten, einen lauten Avatar-Gradient, mehrere Demo-Werte (`+49 30…`, Geschäftsführer, Berlin Central) und statische Session-Beispiele.',
     details:
-      '**Datei**: `frontend/src/rental/components/SettingsView.tsx`. `AccountInformationTab` nutzt jetzt `useRentalOrg()` + `getStoredUser()` für Role/Org/Permission-Kontext, derived `profileCompleteness`, `permissionCount`, `enabledNotifications` und eine neue `summaryCards`-Zeile. Header, Profilkarte, Security-, Preferences-, Notifications- und Sessions-Karten wurden auf `sq-card`/`sq-tone-*` und Core-Page-Abstände refactored. `SettingsView` rendert keine eigene horizontale Tabbar mehr; die bestehende Sidebar-Steuerung (`settingsTab`, `onSettingsTabChange`) bleibt unverändert. Keine Backend/API-/Datenflussänderung.',
+      '**Datei**: `frontend/src/rental/components/SettingsView.tsx`. `AccountInformationTab` nutzt jetzt `useRentalOrg()` + `getStoredUser()` für Role/Org/Permission-Kontext, derived `profileCompleteness`, `permissionCount`, `enabledNotifications` und eine neue `summaryCards`-Zeile. Header, Profilkarte, Security-, Preferences-, Notifications- und Sessions-Karten wurden auf `surface-premium`/`sq-tone-*` und Core-Page-Abstände refactored. `SettingsView` rendert keine eigene horizontale Tabbar mehr; die bestehende Sidebar-Steuerung (`settingsTab`, `onSettingsTabChange`) bleibt unverändert. Keine Backend/API-/Datenflussänderung.',
     affectsArchitecture: false,
     module: 'Frontend UI',
     createdAt: '2026-05-03T10:55:00.000Z',
@@ -10045,7 +10066,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       '`WhatsAppBusinessView` nutzt jetzt den gleichen Seitenrhythmus wie Fleet, Dashboard, Customers, Financial Insights und Fleet Condition: kompakter Header links, Status/Actions rechts.',
       'Die alte Tab-Auswahl (`Overview`, `Conversations`, `Configuration`) direkt unter dem Header wurde entfernt.',
-      'Die wichtigsten WhatsApp-Kennzahlen (`Connection`, `Conversations`, `Unread`, `AI Mode`) stehen jetzt als anklickbare KPI-Cards mit `sq-card`, Ton-Icons, tabularen Zahlen und Active-Ring im oberen Bereich.',
+      'Die wichtigsten WhatsApp-Kennzahlen (`Connection`, `Conversations`, `Unread`, `AI Mode`) stehen jetzt als anklickbare KPI-Cards mit `surface-premium`, Ton-Icons, tabularen Zahlen und Active-Ring im oberen Bereich.',
       'Die Bereichsauswahl sitzt nun in einer dedizierten `Workspace`-Card mit aktivem Abschnitt, Beschreibung, Select-Dropdown und kompakten Quick-Actions inklusive Unread-Badge.',
       'AI-Mode-/Overview-Karten wurden von dynamischen Tailwind-Farbstrings auf stabile `sq-tone-*` Klassen umgestellt, damit Styles zuverlässig greifen.',
     ],
@@ -10054,7 +10075,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     previousBehavior:
       '`WhatsAppBusinessView` hatte einen kleinen Header und direkt darunter eine breite dreigeteilte Tabbar. Dadurch wirkte der obere Bereich anders als die neuen Core-Pages und vermischte Header, Navigation und Statusauswahl.',
     details:
-      '**Datei**: `frontend/src/rental/components/WhatsAppBusinessView.tsx`. Neu: `SECTION_OPTIONS`, stabile `AI_MODE_LABELS` mit `sq-tone-*`, `statusLabel`, `activeSection`, `readyCount`; Header refactored, Tabbar entfernt, KPI-Cards + Workspace-Selector eingeführt, Card-Surfaces auf `sq-card` harmonisiert und dynamische Farbklassen in Overview-KPIs stabilisiert. Keine Backend/API/Datenflussänderung.',
+      '**Datei**: `frontend/src/rental/components/WhatsAppBusinessView.tsx`. Neu: `SECTION_OPTIONS`, stabile `AI_MODE_LABELS` mit `sq-tone-*`, `statusLabel`, `activeSection`, `readyCount`; Header refactored, Tabbar entfernt, KPI-Cards + Workspace-Selector eingeführt, Card-Surfaces auf `surface-premium` harmonisiert und dynamische Farbklassen in Overview-KPIs stabilisiert. Keine Backend/API/Datenflussänderung.',
     affectsArchitecture: false,
     module: 'Frontend UI',
     createdAt: '2026-05-03T10:22:00.000Z',
@@ -10066,7 +10087,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       '`VoiceAssistantView` nutzt jetzt den gleichen Seitenrhythmus wie Fleet, Dashboard, Customers, Financial Insights und Fleet Condition: ruhiger Header links, Status/Activate rechts.',
       'Die breite Header-Tabbar (`Overview`, `Configuration`, `Permissions`, `Escalation`, `Telephony`, `Test`, `Analytics`, `Conversations`) wurde entfernt.',
-      'Die wichtigsten Voice-Kennzahlen (`Status`, `Total Calls`, `Readiness`, `Avg Duration`) stehen jetzt als anklickbare KPI-Cards mit `sq-card`, Ton-Icons, tabularen Zahlen und Active-Ring im oberen Bereich.',
+      'Die wichtigsten Voice-Kennzahlen (`Status`, `Total Calls`, `Readiness`, `Avg Duration`) stehen jetzt als anklickbare KPI-Cards mit `surface-premium`, Ton-Icons, tabularen Zahlen und Active-Ring im oberen Bereich.',
       'Die Bereichsauswahl sitzt nun in einer dedizierten `Workspace`-Card mit aktivem Abschnitt, Beschreibung, Select-Dropdown und kompakten Quick-Actions statt als konkurrierende Tab-Auswahl im Header.',
       'Analytics-Cards wurden von dynamischen Tailwind-Farbstrings auf stabile `sq-tone-*` Klassen umgestellt, damit Styles zuverlässig greifen.',
     ],
@@ -10075,7 +10096,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     previousBehavior:
       '`VoiceAssistantView` hatte einen großen Card-Header mit Status/Activate und direkt darunter eine breite horizontale Tabbar für alle Voice-Bereiche. Dadurch wirkte der obere Bereich wie eine alte Einstellungsnavigation statt wie die neuen Core-Pages.',
     details:
-      '**Datei**: `frontend/src/rental/components/VoiceAssistantView.tsx`. Neu: `SECTION_OPTIONS`, `statusLabel`, `activeSection`, `readyChecks`, `totalChecks`, `avgDurationSeconds`; Header refactored, Tabbar entfernt, KPI-Cards + Workspace-Selector eingeführt, Card-Surfaces auf `sq-card` harmonisiert und Analytics-Farbklassen stabilisiert. Keine Backend/API/Datenflussänderung.',
+      '**Datei**: `frontend/src/rental/components/VoiceAssistantView.tsx`. Neu: `SECTION_OPTIONS`, `statusLabel`, `activeSection`, `readyChecks`, `totalChecks`, `avgDurationSeconds`; Header refactored, Tabbar entfernt, KPI-Cards + Workspace-Selector eingeführt, Card-Surfaces auf `surface-premium` harmonisiert und Analytics-Farbklassen stabilisiert. Keine Backend/API/Datenflussänderung.',
     affectsArchitecture: false,
     module: 'Frontend UI',
     createdAt: '2026-05-03T10:15:00.000Z',
@@ -10087,7 +10108,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       '`VendorManagementView` nutzt jetzt denselben Core-Page-Rhythmus wie Tasks/Invoices/Fines/Fleet Condition: Titel links, `Add Vendor` rechts als kompakte Primary-Action.',
       'Die alte horizontale Kategorie-Chip-Leiste (`All`, `Workshop`, `Service Partner`, usw.) wurde aus dem oberen Bereich entfernt und durch ein Kategorie-Dropdown in einer dedizierten Filter-Card ersetzt.',
-      'Die vier Kennzahlen (`Total Partners`, `Active`, `Categories`, `Vehicle-Linked`) wurden auf das aktuelle KPI-Card-Pattern mit `sq-card`, tabularen Zahlen, Ton-Icons, Hover/Active-Ring und echten Filter-Actions umgestellt.',
+      'Die vier Kennzahlen (`Total Partners`, `Active`, `Categories`, `Vehicle-Linked`) wurden auf das aktuelle KPI-Card-Pattern mit `surface-premium`, tabularen Zahlen, Ton-Icons, Hover/Active-Ring und echten Filter-Actions umgestellt.',
       'Der Filterbereich zeigt jetzt Showing-Text, Active-Filter-Chips, Search-active-Chip, Count-Badges im Kategorie-/Scope-Menü und eine zentrale `Clear filters`-Action.',
       'Die KPI-Karten `Active` und `Vehicle-Linked` setzen jetzt echte clientseitige Scope-Filter statt nur statische Werte zu zeigen.',
       'Vendor-Liste, Loading- und Empty-State wurden optisch an die neuen Core-Flächen angepasst; die bestehende Vendor-/Place-/Vehicle-Linking-Logik bleibt erhalten.',
@@ -10097,7 +10118,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     previousBehavior:
       '`VendorManagementView` startete direkt mit vier alten Mini-Stats und einer horizontalen Kategorie-Auswahl neben Suche und Add-Button. Dadurch wirkte die Auswahl wie eine zusätzliche Tabbar im Header und wich vom neuen Page-Pattern ab.',
     details:
-      '**Datei**: `frontend/src/rental/components/VendorManagementView.tsx`. Neu: `scopeFilter`, `showCategoryFilter`, `showScopeFilter`, `categoryCount`, `scopeCount`, `activeCategoryLabel`, `activeScopeLabel`, `hasActiveFilters`, `clearFilters`; Header/KPI/Filter-Card refactored, Kategorie-Chips entfernt, Scope-/Kategorie-Dropdowns mit Counts eingeführt, List-/Empty-State auf `sq-card` angeglichen. Keine Backend/API/Datenflussänderung.',
+      '**Datei**: `frontend/src/rental/components/VendorManagementView.tsx`. Neu: `scopeFilter`, `showCategoryFilter`, `showScopeFilter`, `categoryCount`, `scopeCount`, `activeCategoryLabel`, `activeScopeLabel`, `hasActiveFilters`, `clearFilters`; Header/KPI/Filter-Card refactored, Kategorie-Chips entfernt, Scope-/Kategorie-Dropdowns mit Counts eingeführt, List-/Empty-State auf `surface-premium` angeglichen. Keine Backend/API/Datenflussänderung.',
     affectsArchitecture: false,
     module: 'Frontend UI',
     createdAt: '2026-05-03T10:08:00.000Z',
@@ -10108,7 +10129,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'V4.7.46 Tasks — Header-Auswahl/Filterbereich an Core-Page-Pattern angepasst',
     summary: [
       '`TasksView` nutzt jetzt denselben ruhigen Header-Rhythmus wie Fleet/Customers/Invoices/Fines: Titel links, `New Task` rechts als kompakte Primary-Action.',
-      'Die bisherigen Status-Summary-Karten wurden auf das aktuelle KPI-Card-Pattern umgebaut (`Open`, `In Progress`, `Completed`, `Overdue`) mit `sq-card`, tabularen Zahlen, Ton-Icons, Hover/Active-Ring und echten Status-Filtern.',
+      'Die bisherigen Status-Summary-Karten wurden auf das aktuelle KPI-Card-Pattern umgebaut (`Open`, `In Progress`, `Completed`, `Overdue`) mit `surface-premium`, tabularen Zahlen, Ton-Icons, Hover/Active-Ring und echten Status-Filtern.',
       'Der Filterbereich wurde zu einer dedizierten Filter-Card mit Titel, Showing-Text, Active-Filter-Chips, Search-active-Chip und zentraler `Clear filters`-Action. Dadurch wirkt die Auswahl nicht mehr wie eine Tabbar im Header.',
       'Alle Dropdowns (`Status`, `Priority`, `Category`, `Vehicle`, `Assignee`, `Sort`) bleiben erhalten, zeigen jetzt aber Count-Badges im Menü und passen visuell zum Pattern aus Customers/Fleet Condition/Invoices/Fines.',
       'Hook-/Datenlogik blieb unverändert: `useFleetVehicles` wurde nur früher im Component-Body platziert, damit Vehicle-Counts und Active-Labels vor dem Render genutzt werden können.',
@@ -10228,7 +10249,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       '`InvoicesView` nutzt jetzt denselben Page-Rhythmus wie Fleet Condition / Financial Insights / Customers: `max-w-[1600px] mx-auto space-y-5`, ruhiger Header mit Seitentitel links und Actions rechts.',
       'Die bisherige Direction-Tab-Leiste (`Alle / Ausgehend / Eingehend`) unter dem Header wurde entfernt. Richtung und Status sitzen jetzt zusammen in einer dedizierten Filter-Card mit Suchfeld, Dropdown-Control, Count-Badges, Active-Filter-Chips und Clear-Action.',
       'Die Statistik-Zeile wurde von fünf kleinen gleichförmigen Mini-Cards auf vier klickbare KPI-Karten umgebaut: Gesamt, Umsatz, Ausgaben, Unbezahlt. Die Karten verwenden echte `stats`/`invoices`-Werte und setzen Filter direkt (Umsatz → ausgehend, Ausgaben → eingehend, Unbezahlt → überfällig).',
-      'Die Rechnungstabelle sitzt jetzt in einer `sq-card`-Surface mit einheitlichem Radius/Shadow, passend zum aktuellen Designsystem. Tabellenlogik, Detail-Flow, Create-Flow, Upload-Flow und API-Calls bleiben unverändert.',
+      'Die Rechnungstabelle sitzt jetzt in einer `surface-premium`-Surface mit einheitlichem Radius/Shadow, passend zum aktuellen Designsystem. Tabellenlogik, Detail-Flow, Create-Flow, Upload-Flow und API-Calls bleiben unverändert.',
     ],
     reason:
       'User-Feedback (2026-05-03): Die Auswahl in `InvoicesView` sollte mit `redesign-existing-projects` an Fleet, Dashboard, Customers, Financial Insights und Fleet Condition angeglichen werden; die Tab-Auswahl im Header passte nicht mehr zum aktuellen Design.',
@@ -10343,12 +10364,12 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     summary: [
       'Die vier Fleet-Condition-KPI-Boxen nutzen jetzt dieselbe Card-Komposition wie die KPI-Reihe in `FinancialInsightsView`: `rounded-xl p-3`, tonale Fläche, Icon links oben in `bg-current/10`, Wert in `text-[16px] font-bold`, Label darunter als uppercase Microcopy.',
       'Die Meta-Information (`vehicles monitored`, `50% · 3 with limited data`, `2 need review`, `1 act now`) sitzt nun wie bei Financial Insights als dezente Bottom-Zeile mit `border-t border-current/15` und kleinem Arrow-Indikator.',
-      'Die bisherige `sq-card rounded-2xl shadow`-Optik der KPI-Karten wurde entfernt, damit Titel + KPI-Bereich denselben optischen Rhythmus wie Financial Insights bekommen.',
+      'Die bisherige `surface-premium rounded-2xl shadow`-Optik der KPI-Karten wurde entfernt, damit Titel + KPI-Bereich denselben optischen Rhythmus wie Financial Insights bekommen.',
     ],
     reason:
       'User-Feedback (2026-05-02): „header bereich aus titel und die vier boxen bitte optisch und abstandstechnisch an die seite financial insights anpassen.\"',
     previousBehavior:
-      'Fleet Condition hatte zwar den Header-Font bereits angeglichen, aber die KPI-Karten waren noch im eigenen `sq-card rounded-2xl shadow`-Stil mit großem 20px-Wert und Label oben links.',
+      'Fleet Condition hatte zwar den Header-Font bereits angeglichen, aber die KPI-Karten waren noch im eigenen `surface-premium rounded-2xl shadow`-Stil mit großem 20px-Wert und Label oben links.',
     details:
       '**Datei**: `frontend/src/rental/components/FleetConditionView.tsx`. Reine UI-/Spacing-Anpassung der Summary-Cards. Keine Datenfluss-/Architekturänderung. Lints clean.',
     affectsArchitecture: false,
@@ -10785,7 +10806,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.7.14',
     title: 'V4.7.14 Operations → Vehicle-Detail → Vehicle Insights Card — visueller Rebuild auf das gleiche Card-Pattern wie Vehicle Health (Header-Pille + 3-Tile-Statusstrip + ruhige Forecast-Liste + Next-Action-CTA)',
     summary: [
-      '`VehicleInsightsCard` (`frontend/src/rental/components/VehicleInsightsCard.tsx`) wurde von einer flachen 5-Block-Liste zu einer hierarchisch klaren Box umgebaut, die das gleiche Vokabular wie `VehicleHealthBoxWired` und `OverviewLiveMapCard` spricht. Outer-Wrapper bleibt das Standard-Card-Pattern (`rounded-xl border bg-card shadow-sm transition-shadow hover:shadow-md`), Hover-Translate gibt es weiterhin nicht.',
+      '`VehicleInsightsCard` (`frontend/src/rental/components/VehicleInsightsCard.tsx`) wurde von einer flachen 5-Block-Liste zu einer hierarchisch klaren Box umgebaut, die das gleiche Vokabular wie `VehicleHealthBoxWired` und `OverviewLiveMapCard` spricht. Outer-Wrapper bleibt das Standard-Card-Pattern (`rounded-xl border surface-premium shadow-sm transition-shadow hover:shadow-md`), Hover-Translate gibt es weiterhin nicht.',
       'Header: Sparkles-Icon-Chip + Titel + Readiness-Pille (Ready / Monitor / Limited / Action Needed) als ringed Tone-Pille rechts vom Titel — analog zur Coverage-Pille der Vehicle-Health-Box. Refresh-Timestamp bleibt als tabular-nums rechts, das `Loading…`-Wort ist durch einen dezenten `Loader2`-Spinner ersetzt.',
       '3-Tile-Statusstrip ersetzt die alte Spalten-Zeile: Readiness / Cost Outlook / Downtime werden über eine gemeinsame `Tone`-Skala (`good / watch / limited / critical / neutral`) auf eine konsistente Tile-Surface gemappt (Border + Tinted-Background + Tone-Dot + Bold-Wert). Die Logik in `vehicle-insights-logic.ts` (deriveInsights, ReadinessLevel, CostOutlookLevel, DowntimeRiskLevel) ist unverändert, nur die Color-Helper werden nicht mehr direkt im JSX gemischt.',
       'Planning Horizon: Liste sitzt jetzt in einer eingerahmten, leicht getönten Surface (`rounded-[10px] border bg-slate-50/60` bzw. dark `bg-white/[0.025]`). Jedes Item zeigt einen kleinen Urgency-Dot in der Borderfarbe (overdue/due/soon/normal), das Eventlabel und rechts in monospaced tabular-nums die Distanz und/oder Restzeit. Kein gestapelter `border-l-2`-Akzent mehr, der den Text einrückt.',
@@ -10795,7 +10816,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     reason:
       'Produkt-Feedback (User, 2026-04-28, ~20:14 Europe/Berlin): „genau das gleiche mit dieser Box, die ist nicht gut und schlecht UI UX Technisch. bitte mach diese mit einen von unseren skills visuell super". Die alte Box hatte fünf Sektionen ohne klare Top-Aussage, ein Status-Strip ohne Tile-Surface und keine konsistente Farbsprache zur Vehicle-Health-Box direkt darüber.',
     previousBehavior:
-      'V4.7.13-Stand: Outer-Wrapper war bereits korrekt (`rounded-xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md`), aber die Innenstruktur bestand aus Header (Titel + Timestamp), Verdict (3 Renderpfade je nach Readiness), `StatusCol`-Reihe ohne Tile-Surface, `Divider`, Planning-Horizon-Liste mit `border-l-2`-Urgency-Akzent, weiterer `Divider`, `Next`-Label-Zeile und `Confidence`-Note — alles innerhalb eines `transition-opacity duration-300 ${loading ? "opacity-50" : "opacity-100"}` Wrappers, der bei jedem Vehicle-Wechsel die ganze Card kurz transparent gemacht hat.',
+      'V4.7.13-Stand: Outer-Wrapper war bereits korrekt (`rounded-xl border border-border surface-premium shadow-sm transition-shadow hover:shadow-md`), aber die Innenstruktur bestand aus Header (Titel + Timestamp), Verdict (3 Renderpfade je nach Readiness), `StatusCol`-Reihe ohne Tile-Surface, `Divider`, Planning-Horizon-Liste mit `border-l-2`-Urgency-Akzent, weiterer `Divider`, `Next`-Label-Zeile und `Confidence`-Note — alles innerhalb eines `transition-opacity duration-300 ${loading ? "opacity-50" : "opacity-100"}` Wrappers, der bei jedem Vehicle-Wechsel die ganze Card kurz transparent gemacht hat.',
     details: [
       '**Datei**: `frontend/src/rental/components/VehicleInsightsCard.tsx`, ein eigenständiger Komponenten-File. Reine Präsentations-Refactor — keine Änderung an `vehicle-insights-logic.ts` (`deriveInsights`, Readiness/Cost/Downtime-Levels, Forecast-Engine), kein neuer API-Call, keine neue Prop. `useEffect` mit den sechs `vehicleIntelligence`-Endpoints (tireHealthSummary, brakeHealthSummary, batteryHealthSummary, serviceInfoStatus, dtcActive, oilChangeStatus) bleibt unverändert.',
       '**Tone-System**: Neue private Helper `readinessTone`, `costOutlookTone`, `downtimeRiskTone` mappen die Logik-Levels auf eine 5er-Tone-Skala. Surface-Helper `toneTile` (Mini-Tile-Surface), `toneRing` (Header-Pille) und `toneDot` (Dot-Color) liefern alle Tailwind-Classes pro Tone & Darkmode. Damit ist die Box visuell ein direkter Geschwister-Block der Vehicle-Health-Box (gleiche Darkmode-Opazitäten, gleiche Pill-Treatments).',
@@ -10812,7 +10833,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.7.13',
     title: 'V4.7.13 Operations → Vehicle-Detail → Vehicle Health Box — Header auf 3-Stufen-Status reduziert (Good Health / Warning / Critical), Hover wieder konsistent zum Standard-Card-Pattern',
     summary: [
-      '`VehicleHealthBoxWired` (`frontend/src/rental/App.tsx`) hat den prozentualen Aggregat-Score und die mehrschichtige Gradient-Bezel-Surface verloren. Die Box nutzt jetzt das gleiche Standard-Pattern wie alle anderen Dashboard-Karten (`rounded-xl p-3 border border-border bg-card shadow-sm transition-shadow hover:shadow-md`) — kein Translate-Y mehr beim Hover, nur eine sanfte Shadow-Verstärkung',
+      '`VehicleHealthBoxWired` (`frontend/src/rental/App.tsx`) hat den prozentualen Aggregat-Score und die mehrschichtige Gradient-Bezel-Surface verloren. Die Box nutzt jetzt das gleiche Standard-Pattern wie alle anderen Dashboard-Karten (`rounded-xl p-3 border border-border surface-premium shadow-sm transition-shadow hover:shadow-md`) — kein Translate-Y mehr beim Hover, nur eine sanfte Shadow-Verstärkung',
       'Der Header zeigt jetzt nur noch drei Operativ-Stufen + einen Disabled-Zustand: `Good Health` / `Warning` / `Critical` / `Insufficient Data`. Die neue `overallState`-Aggregation kommt direkt aus den bereits existierenden Sub-Health-Detektionen (criticalCount, dueSoonCount, dtcCount, trackedCount) — Brakes/Tires/Battery-Status, Daten-API und Health-Detail-Navigation sind unverändert',
       'Aufgeräumt: Score-Hero, Gradient-Progressbar, Corner-Glow und der Caption-Strip „Diagnostics · Wear trends · Service status" sind raus. Coverage steht jetzt als ruhige `x/3 tracked`-Pille rechts neben dem Titel statt in einem eigenen Block',
     ],
@@ -10823,7 +10844,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     details: [
       '**Datei**: `frontend/src/rental/App.tsx`, Komponente `VehicleHealthBoxWired`. JSX-/Klassen-Refactor und Status-Logik-Konsolidierung; keine API-, Store-, Routing-, Selector- oder Berechnungs-Änderung. Der existierende `getStatus`/`getBatteryStatus`-Flow für die einzelnen Dimensionen bleibt komplett unangetastet, ebenso `useEffect` mit den sechs `vehicleIntelligence`-Calls und der Telemetry-Bridge `VehicleHealthBoxTelemetryBridge`.',
       '**Logik**: Neuer `overallState: \'insufficient\' | \'good\' | \'warning\' | \'critical\'`-Computed: `insufficient` wenn `trackedCount === 0`, `critical` wenn `criticalCount > 0` ODER `dtcCount > 0`, `warning` wenn `dueSoonCount > 0`, sonst `good`. Damit ist die Top-Pille semantisch zu den Sub-Pillen konsistent (z.B. `attention`-Battery → Box auf `Critical`).',
-      '**Surface**: Outer Wrapper jetzt `rounded-xl p-3 border bg-card shadow-sm transition-shadow hover:shadow-md` — exakt das Pattern der `OverviewLiveMapCard`, der `BusinessInsightsBox` und der Dashboard-Tile-Cards. Hover ist nicht mehr layout-shifting.',
+      '**Surface**: Outer Wrapper jetzt `rounded-xl p-3 border surface-premium shadow-sm transition-shadow hover:shadow-md` — exakt das Pattern der `OverviewLiveMapCard`, der `BusinessInsightsBox` und der Dashboard-Tile-Cards. Hover ist nicht mehr layout-shifting.',
       '**Risiko-Profil**: Niedrig — scoped auf eine React-Komponente, keine externe API berührt. `ReadLints` clean.',
     ],
     affectsArchitecture: false,
@@ -10835,14 +10856,14 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.7.12',
     title: 'V4.7.12 Operations → Vehicle-Detail → OverviewLiveMapCard — Map-Footer-HUD auf echtes Liquid Glass umgestellt',
     summary: [
-      '`OverviewLiveMapCard` (`frontend/src/rental/App.tsx`) nutzt für das Map-Footer-Overlay jetzt die neuen Design-System-Utilities `sq-map-liquid-glass` und `sq-map-liquid-tile` statt `bg-card/95 border shadow-md backdrop-blur-md`',
+      '`OverviewLiveMapCard` (`frontend/src/rental/App.tsx`) nutzt für das Map-Footer-Overlay jetzt die neuen Design-System-Utilities `sq-map-liquid-glass` und `sq-map-liquid-tile` statt `surface-frosted border shadow-md backdrop-blur-md`',
       '`frontend/src/styles/theme.css` ergänzt eine dedizierte Map-HUD-Liquid-Glass-Surface mit mehrschichtiger transparenter Background-Komposition, Refraction-Highlights, innerer Oberkante, Bottom-Catch, saturiertem Blur und getrennten Dark-Mode-Werten',
       'Die drei Telemetry-Tiles State / Fuel-Energy / Odometer sitzen nun als eigene translucent Glass-Tiles innerhalb der HUD-Fläche. Daten, Store-Selector, Grid-Struktur und Live-Telemetry-Logik bleiben unverändert.',
     ],
     reason:
       'Produkt-Feedback (User, 2026-04-28, ~00:03 Europe/Berlin): Das Map-Footer-Element soll „in echtem liquid glass" erscheinen. Die vorherige Variante war technisch nur eine leicht transparente Card mit Blur und wirkte auf der Map eher matt als glasartig.',
     previousBehavior:
-      'V4.7.11-Stand: Footer-HUD im `OverviewLiveMapCard` war `rounded-lg p-2.5 border shadow-md backdrop-blur-md bg-card/95 border-border`; die drei Werte waren flache flex-cols ohne eigene Oberfläche.',
+      'V4.7.11-Stand: Footer-HUD im `OverviewLiveMapCard` war `rounded-lg p-2.5 border shadow-md surface-frosted border-border`; die drei Werte waren flache flex-cols ohne eigene Oberfläche.',
     details: [
       '**Dateien**: `frontend/src/rental/App.tsx`, `frontend/src/styles/theme.css`. Rein visuelle CSS-/ClassName-Änderung, keine Functional- oder Datenflussänderung.',
       '**Design-System**: Neue Utilities sind bewusst auf Map-HUDs begrenzt, weil starke Backdrop-Filter auf scrollenden Großflächen vermieden werden sollen. Dieser Einsatz liegt auf einem kleinen absoluten Overlay über der Map.',
@@ -10865,7 +10886,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     reason:
       'Produkt-Feedback (User, 2026-04-27, ~23:56 Europe/Berlin): Die Vehicle-Health-Box soll den Inhalt klarer und hochwertiger darstellen, mit Fortschrittsbalken und einem cleanen Premium-Look. Die alte Box zeigte zwar alle Daten, wirkte auf der schmalen Spalte aber visuell gedrängt: Herzgrafik, Statusleiste, Hinweistext und Einzel-Progressbars hatten keine klare Blickführung. V4.7.11 legt den Fokus auf drei Ebenen: Gesamtzustand, operative Warnzahlen, einzelne Health-Dimensionen.',
     previousBehavior:
-      'V4.7.10-Stand: einfache `rounded-xl p-3 border bg-card shadow-sm`-Card, Header mit kleinem Titel + animierter Herz/ECG-Grafik, darunter eine horizontale Statusleiste mit drei Icon/Text-Segmenten. Die einzelnen Health-Dimensionen lagen als flache Rows mit 1.5px-Progressbars direkt auf der Card-Fläche. Funktional korrekt, aber optisch weniger hochwertig und auf der schmalen rechten Overview-Spalte nicht optimal priorisiert.',
+      'V4.7.10-Stand: einfache `rounded-xl p-3 border surface-premium shadow-sm`-Card, Header mit kleinem Titel + animierter Herz/ECG-Grafik, darunter eine horizontale Statusleiste mit drei Icon/Text-Segmenten. Die einzelnen Health-Dimensionen lagen als flache Rows mit 1.5px-Progressbars direkt auf der Card-Fläche. Funktional korrekt, aber optisch weniger hochwertig und auf der schmalen rechten Overview-Spalte nicht optimal priorisiert.',
     details: [
       '**Datei**: `frontend/src/rental/App.tsx`, Komponente `VehicleHealthBoxWired`. Rein visuelle JSX-/ClassName-Verfeinerung; keine API-, Store-, Routing-, State- oder Berechnungslogik geändert.',
       '**Neu berechnete UI-Hilfswerte**: `trackedCount`, `healthProgress`, `overallStatusLabel`, `overallAccent`, `overallProgress`, `overallBadge`. Diese Werte leiten sich ausschließlich aus den bereits vorhandenen Health-Werten ab und verändern keine fachliche Semantik.',
@@ -11295,7 +11316,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     reason:
       'Produkt-Feedback (User, 2026-04-24): die drei Dashboard-Boxen „Business Insights", „Vehicle Alerts" und „Notifications" basieren auf derselben DashboardInsights-Feed-Quelle und kämpfen um dieselbe Operator-Aufmerksamkeit. Die Vehicle-Alerts-Kachel zeigte lediglich eine Zahl + 1-Zeilen-Summary und öffnete ein Expanded-Panel, das die Insights-Box oben bereits teilweise spiegelte. Die Notifications-Kachel hatte dasselbe Muster. Ergebnis: drei redundante Surfaces, die die Dashboard-Dichte sprengen statt strukturieren. Konsolidierung in eine einzige „Was braucht meine Aufmerksamkeit?"-Box mit drei Tabs löst das, ohne Informationsverlust.',
     previousBehavior:
-      'Die Insights-Box oben links trug Titel „Business Insights" + einen kleinen Vehicle-Alerts-Pointer-Button (der in einen anderen Popup sprang), darunter die Liste der Business-Insights. Getrennt davon zeigten drei separate `sq-card`-Kacheln in Row 2 (Vehicle Alerts / Driver Feedback / Notifications) jeweils nur eine Zahl + eine Summary-Zeile und öffneten per Klick ein col-span-2 Expanded-Panel direkt unter ihnen. Vehicle-Alerts + Notifications lebten damit zweimal (kleine Kachel + Pointer in Insights-Box), was der User als Redundanz markiert hat.',
+      'Die Insights-Box oben links trug Titel „Business Insights" + einen kleinen Vehicle-Alerts-Pointer-Button (der in einen anderen Popup sprang), darunter die Liste der Business-Insights. Getrennt davon zeigten drei separate `surface-premium`-Kacheln in Row 2 (Vehicle Alerts / Driver Feedback / Notifications) jeweils nur eine Zahl + eine Summary-Zeile und öffneten per Klick ein col-span-2 Expanded-Panel direkt unter ihnen. Vehicle-Alerts + Notifications lebten damit zweimal (kleine Kachel + Pointer in Insights-Box), was der User als Redundanz markiert hat.',
     details: null,
     affectsArchitecture: true,
     module: 'Dashboard — Unified Insights',
@@ -11395,16 +11416,16 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'V4.6.86 UI/UX — Premium-Refinement-Pass (Taste-Skill + Redesign-Skill + Soft-Skill): Typografie, Surfaces, Motion, Fleet-/Dashboard-/Vehicle-Detail-Polish',
     summary: [
       'Workflow: Taste-Skill wurde global installiert (`npx skills add Leonxlnx/taste-skill`). Danach wurde der Redesign-Skill als Primär-Workflow (Audit → Plan → Refactor, nie From-Scratch) und der Soft-Skill als Visual-Direction (ruhig, premium, mit gemessenem Weißraum, subtilem Glas- und Neumorphismus) über die gesamte SynqDrive-Produkt-Oberfläche angewendet. Keine Logik-, Routing- oder Daten-Binding-Änderung — alle Refactors waren chirurgisch visueller Natur.',
-      'Foundations (Typo + Tokens + Motion): `frontend/src/styles/fonts.css` wechselt von Inter + Manrope auf **Geist + Geist Mono** (Google Fonts, 400/500/600/700). `frontend/src/styles/theme.css` definiert einen kohärenten Design-Token-Satz — Typographie-Scale, Radius-System (`--radius-sm/-md/-lg/-xl`), Shadow-Scale (`--shadow-xs/-sm/-md/-lg/-hover/-overlay` + numerische Aliases `--shadow-1..4`), Automotive-Slate-Blue-Brand (`--brand`, `--brand-soft`, `--brand-glow`), Status-Farben (`--status-positive/-attention/-critical/-info` inkl. `-soft`-Varianten), und neue Motion-Tokens (`--ease-out-soft`, `--dur-fast/base/slow`). Grundklassen: `.sq-card`, `.sq-overlay`, `.sq-tab-bar`, `.sq-section-label`, `.sq-press`, `.sq-neo-press`, `.sq-cta`, `.sq-chip[-info/-success/-warning/-critical/-neutral]`, `.sq-tone-*`, `.animate-fade-up`.',
+      'Foundations (Typo + Tokens + Motion): `frontend/src/styles/fonts.css` wechselt von Inter + Manrope auf **Geist + Geist Mono** (Google Fonts, 400/500/600/700). `frontend/src/styles/theme.css` definiert einen kohärenten Design-Token-Satz — Typographie-Scale, Radius-System (`--radius-sm/-md/-lg/-xl`), Shadow-Scale (`--shadow-xs/-sm/-md/-lg/-hover/-overlay` + numerische Aliases `--shadow-1..4`), Automotive-Slate-Blue-Brand (`--brand`, `--brand-soft`, `--brand-glow`), Status-Farben (`--status-positive/-attention/-critical/-info` inkl. `-soft`-Varianten), und neue Motion-Tokens (`--ease-out-soft`, `--dur-fast/base/slow`). Grundklassen: `.surface-premium`, `.sq-overlay`, `.sq-tab-bar`, `.sq-section-label`, `.sq-press`, `.sq-neo-press`, `.sq-cta`, `.sq-chip[-info/-success/-warning/-critical/-neutral]`, `.sq-tone-*`, `.animate-fade-up`.',
       'App Shell: `frontend/src/rental/App.tsx` nutzt großzügigere Gutter (`px-5 sm:px-7 lg:px-10`) mit `max-w-[1440px]`, sowie rhythmischere vertikale Spacings (`pt-4 lg:pt-6 pb-8`). Das lässt Dashboards, Tabellen und Side-Panels „atmen", reduziert das bulky Gefühl, und balanciert die fixe Right-Sidebar.',
       'TopBar (`frontend/src/rental/components/TopBar.tsx`): entfernt Emoji-Flaggen zugunsten ISO-Sprachkürzel, ersetzt Gradient-Avatar durch ruhige `sq-tone-brand`-Variante, verdrahtet die Notification-Bell an die echten DashboardInsights-Counts (`unreadInsightCount` + `hasCriticalInsight`-Badge-Tönung), konsolidiert Such-Ergebnis-Typkürzel über `sq-tone-*`, und nutzt `sq-overlay` für Dropdown-Panels (Sprachauswahl, Search-Results).',
       'Left Sidebar (`Sidebar.tsx`): Active-State via Brand-Rail (`.sq-nav-rail`) + `brand-soft`-Hintergrund, konsistente Typografie (kein gemischtes `font-semibold`/`font-bold` mehr), `sq-section-label` für „OPERATIONS"/„INSIGHTS"/„INTEGRATIONS"-Header, Coming-Soon-Badges als `sq-chip sq-chip-neutral`, Collapsed-Tooltips auf `sq-overlay`. Quick-Actions-Block: „New Booking" nutzt `sq-cta` (Primär-Brand-CTA), „New Task"/„Upload Document"/„AI Fleet Assistant" nutzen `sq-press`/`sq-neo-press` mit semantischen `sq-tone-*`-Icon-Tiles — keine rohen Gradient-Kacheln mehr.',
       'Right Sidebar (`RightSidebar.tsx`): Kalender + Aufgaben + Benachrichtigungen auf dem gleichen elevation-system (`sq-overlay` für Detail-Popups, `sq-press` für Navigationsbuttons, `font-mono tabular`-Ziffern für Jahreszahl und Zähler), Filter-Pills mit brand-getönten Active-States und semantischen Dots (`--brand`, `--status-attention`, `--status-critical`), Notification-Cards auf `sq-chip`-basierten Tones (keine ad-hoc `bg-red-500/15`/`text-violet-400`-Kombinationen mehr).',
-      'Dashboard (`DashboardView.tsx`): neuer Page-Header (Section-Label + Heading-Hierarchy), Business/Finances-Tabs als polished `sq-tab-bar`-Segmented-Control, Station-Button als `sq-press`-Pill mit `sq-overlay`-Dropdown, Fleet-Status- und Today-Activity-Cards auf `sq-card` mit `sq-tone-*`-Icon-Tiles und harmonisierten Tab-Count-Badges, die drei kleineren Tiles (Vehicle Alerts / Driver Feedback / Notifications) mit einheitlichen Ring-Highlights im aktiven Zustand und `hover:-translate-y-[1px]`-Liftup statt rosa/blauen Custom-Borders.',
-      'Fleet Page (`FleetView.tsx`): Header mit Section-Label + stärkerer Hierarchie, Station-Dropdown als `sq-press` + `sq-overlay`, Map verkleinert von 320 → 280 px (weniger dominant, gibt Tabellen mehr Raum), Map-Overlays (Countdown, Legend, Empty-State) auf `sq-overlay` mit brand-getönter Refresh-Ikone, Fehler-Banner über `sq-tone-critical`, Cards via `sq-card` mit tonalen Section-Dots, `CountBadge` als sanfter `sq-tone-*`-Pill (statt solider weißer Zahl auf Vollfarbe), `FuelCell` mit CSS-Variablen-Farbverlauf für weichere Status-Bar-Übergänge, und alle „Überfällig"/„Pickup fällig"-Inline-Chips auf die kanonischen `sq-chip-*`-Klassen.',
+      'Dashboard (`DashboardView.tsx`): neuer Page-Header (Section-Label + Heading-Hierarchy), Business/Finances-Tabs als polished `sq-tab-bar`-Segmented-Control, Station-Button als `sq-press`-Pill mit `sq-overlay`-Dropdown, Fleet-Status- und Today-Activity-Cards auf `surface-premium` mit `sq-tone-*`-Icon-Tiles und harmonisierten Tab-Count-Badges, die drei kleineren Tiles (Vehicle Alerts / Driver Feedback / Notifications) mit einheitlichen Ring-Highlights im aktiven Zustand und `hover:-translate-y-[1px]`-Liftup statt rosa/blauen Custom-Borders.',
+      'Fleet Page (`FleetView.tsx`): Header mit Section-Label + stärkerer Hierarchie, Station-Dropdown als `sq-press` + `sq-overlay`, Map verkleinert von 320 → 280 px (weniger dominant, gibt Tabellen mehr Raum), Map-Overlays (Countdown, Legend, Empty-State) auf `sq-overlay` mit brand-getönter Refresh-Ikone, Fehler-Banner über `sq-tone-critical`, Cards via `surface-premium` mit tonalen Section-Dots, `CountBadge` als sanfter `sq-tone-*`-Pill (statt solider weißer Zahl auf Vollfarbe), `FuelCell` mit CSS-Variablen-Farbverlauf für weichere Status-Bar-Übergänge, und alle „Überfällig"/„Pickup fällig"-Inline-Chips auf die kanonischen `sq-chip-*`-Klassen.',
       'Vehicle Detail (`App.tsx`): Header-Block auf größere Typografie (`text-[18px]` Title, `sq-section-label` Meta) mit `sq-press`-Back-Button und 28 px Brand-Logo; Status-/Cleaning-/Health-Dropdowns als `sq-chip`-basierte Pills mit `sq-overlay`-Menüs (statt harter `bg-green-100`/`bg-red-100`/`bg-amber-100`-Farbklassen); Info-Chips (License / Station / Fuel) auf einheitlichen Border-Card-Look mit `tabular-nums` für Zahlen; Tab-Bar (Overview / Trips / Health / Damages / Documents / Bookings / Tasks) konsolidiert auf einen einheitlichen `sq-tab-bar`-Container mit auf-für-alle-Tabs identischer Typografie (Damages-Tab hatte vorher abweichende größere Padding + Shadow-Klasse).',
       'Motion & Polish: durchgängige `animate-fade-up`-Einblendung auf allen Section-Cards (Fleet-Tabellen, Dashboard-Stat-Tiles, Vehicle-Detail-Header), sanftere Fuel-Bar-Transitions (`transition-[width] duration-500 ease-out`), Chevron-Rotation in Dropdowns (`transition-transform duration-200`), Hover-Liftup auf kritischen Tiles (`hover:-translate-y-[1px]` + verstärkter Shadow). Alles ruhig, kein Flashing, keine Motion-Gimmicks.',
-      'Akzeptanz-Kriterien (Redesign-Skill-Checkliste): (a) keine Logik-, Routing- oder Daten-Binding-Änderung, (b) alle vorhandenen Funktionalitäten (Tabellen, Maps, Filter, Actions, Forms, Handover-Flows, Dropdowns) laufen wie vor dem Pass, (c) Geist ersetzt Inter/Manrope global und konsistent, (d) alle `sq-chip-*`-, `sq-tone-*`-, `sq-press`-, `sq-card`-, `sq-overlay`-Klassen sind in `theme.css` definiert und werden in den Komponenten verwendet, (e) Fleet-Map nimmt weniger vertikalen Raum als zuvor, (f) Vehicle-Detail-Tab-Bar rendert alle sieben Tabs in einheitlicher Typografie, (g) Dashboard-Header hat neue Premium-Hierarchie (Section-Label + Heading + Sub), (h) keine neuen TypeScript-Errors (frontend `npx tsc --noEmit` exit 0).',
+      'Akzeptanz-Kriterien (Redesign-Skill-Checkliste): (a) keine Logik-, Routing- oder Daten-Binding-Änderung, (b) alle vorhandenen Funktionalitäten (Tabellen, Maps, Filter, Actions, Forms, Handover-Flows, Dropdowns) laufen wie vor dem Pass, (c) Geist ersetzt Inter/Manrope global und konsistent, (d) alle `sq-chip-*`-, `sq-tone-*`-, `sq-press`-, `surface-premium`-, `sq-overlay`-Klassen sind in `theme.css` definiert und werden in den Komponenten verwendet, (e) Fleet-Map nimmt weniger vertikalen Raum als zuvor, (f) Vehicle-Detail-Tab-Bar rendert alle sieben Tabs in einheitlicher Typografie, (g) Dashboard-Header hat neue Premium-Hierarchie (Section-Label + Heading + Sub), (h) keine neuen TypeScript-Errors (frontend `npx tsc --noEmit` exit 0).',
       'Nicht-Ziele (explizit): keine Rewrite-Komplett-Refactors, kein neuer Router-Pfad, kein Endpoint-Delta, kein Schema-Delta, kein Prisma-Migration, keine neuen KPIs, keine neuen Charts. Dieser Pass ist reine Visual-/Interactions-Härtung.',
     ],
     reason:
@@ -13932,7 +13953,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     version: '4.3.0',
     title: 'V4.3.0 Frontend — Premium operational UI system (density, surfaces, tokens)',
     summary: [
-      'NEW: Central design tokens in theme.css — Inter + Manrope, compact base 14px, semantic elevation (--shadow-*), glass variables, sq-* utilities (sq-card, sq-glass, sq-backdrop, sq-tab-bar, sq-press, live accents)',
+      'NEW: Central design tokens in theme.css — Inter + Manrope, compact base 14px, semantic elevation (--shadow-*), glass variables, sq-* utilities (surface-premium, surface-frosted, sq-backdrop, sq-tab-bar, sq-press, live accents)',
       'UPD: Rental & Master app shells — unified padding (px-4–8), bg-background, removed heavy radial-only backgrounds',
       'UPD: Sidebars & TopBars — tighter widths/padding, semantic bg-sidebar / border-sidebar-border / text-muted-foreground',
       'UPD: Right sidebars — normalized width (~300px), solid card surfaces',

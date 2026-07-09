@@ -250,7 +250,7 @@ export function VehicleTasksView({
         error={IS_DEV ? error : undefined}
         onRetry={() => void loadTasks()}
         retryLabel="Erneut laden"
-        className="sq-card rounded-xl shadow-[var(--shadow-1)]"
+        className="surface-premium rounded-xl shadow-[var(--shadow-1)]"
       />
     );
   }
@@ -278,7 +278,7 @@ export function VehicleTasksView({
             <button
               type="button"
               onClick={onOpenServiceCenter}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border/70 bg-card px-3 py-2 text-[11px] font-semibold hover:bg-muted/40 sq-press"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border/70 surface-premium px-3 py-2 text-[11px] font-semibold hover:bg-muted/40 sq-press"
             >
               <Icon name="wrench" className="w-3.5 h-3.5" />
               Service Center ({maintenanceOpenCount})
@@ -288,7 +288,7 @@ export function VehicleTasksView({
             type="button"
             onClick={openCreate}
             disabled={!canCreate}
-            className="sm:hidden w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50 sq-press"
+            className="sm:hidden w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-border surface-premium px-3 py-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-muted disabled:opacity-50 sq-press"
           >
             <Icon name="plus" className="w-3.5 h-3.5" />
             Neue Aufgabe erstellen
@@ -349,7 +349,7 @@ export function VehicleTasksView({
       />
 
       {/* ── Task queue ── */}
-      <section className="sq-card rounded-xl shadow-[var(--shadow-1)] overflow-hidden">
+      <section className="surface-premium rounded-xl shadow-[var(--shadow-1)] overflow-hidden">
         <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border/70">
           <div className="min-w-0">
             <h4 className="text-[13px] font-semibold text-foreground tracking-[-0.003em]">
@@ -542,7 +542,7 @@ function FilterMetric({
         'border',
         active
           ? 'border-[color:var(--brand)]/40 bg-[color:var(--brand-soft)] shadow-[var(--shadow-xs)]'
-          : 'border-border/70 bg-card hover:bg-muted/40 hover:border-border',
+          : 'border-border/70 surface-premium hover:bg-muted/40 hover:border-border',
       ].join(' ')}
     >
       <p

@@ -56,7 +56,7 @@ export function WhatsAppOperationsHeader({
         <button
           type="button"
           onClick={onOpenTemplates}
-          className="sq-press inline-flex items-center gap-1.5 rounded-xl border border-border/60 bg-card px-3 py-2 text-[11px] font-semibold text-foreground transition-all hover:bg-muted"
+          className="sq-press inline-flex items-center gap-1.5 rounded-xl border border-border/60 surface-premium px-3 py-2 text-[11px] font-semibold text-foreground transition-all hover:bg-muted"
         >
           <Icon name="file-text" className="h-3.5 w-3.5" />
           Templates
@@ -75,7 +75,7 @@ export function WhatsAppOperationsHeader({
           disabled={isBusy}
           aria-label="Refresh"
           className={cn(
-            'sq-press flex h-9 w-9 items-center justify-center rounded-xl border border-border/60 bg-card text-muted-foreground transition-all hover:bg-muted hover:text-foreground',
+            'sq-press flex h-9 w-9 items-center justify-center rounded-xl border border-border/60 surface-premium text-muted-foreground transition-all hover:bg-muted hover:text-foreground',
             isBusy && 'opacity-60',
           )}
         >

@@ -274,7 +274,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                   <div className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-300 ${
                     isDone ? 'bg-green-500/20' : isActive
                       ? isDarkMode ? 'bg-brand-soft' : 'bg-brand-soft'
-                      : isDarkMode ? 'bg-card' : 'bg-gray-100'
+                      : isDarkMode ? 'surface-premium' : 'bg-gray-100'
                   }`}>
                     {isDone ? (
                       <Icon name="check" className="w-4.5 h-4.5 text-green-500" />
@@ -310,14 +310,14 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={`text-[10px] uppercase tracking-wider font-semibold mb-1 block ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>Vehicle</label>
-                    <select value={selectedVehicleId} onChange={e => setSelectedVehicleId(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs font-medium ${isDarkMode ? 'bg-card text-white border-neutral-700' : 'bg-white text-gray-900 border-gray-300'} border`}>
+                    <select value={selectedVehicleId} onChange={e => setSelectedVehicleId(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs font-medium ${isDarkMode ? 'surface-premium text-white border-neutral-700' : 'bg-white text-gray-900 border-gray-300'} border`}>
                       {vehicles.length === 0 && <option value="">No vehicles available</option>}
                       {vehicles.map(v => <option key={v.id} value={v.id}>{v.name}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className={`text-[10px] uppercase tracking-wider font-semibold mb-1 block ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>Document Type</label>
-                    <select value={selectedDocType} onChange={e => setSelectedDocType(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs font-medium ${isDarkMode ? 'bg-card text-white border-neutral-700' : 'bg-white text-gray-900 border-gray-300'} border`}>
+                    <select value={selectedDocType} onChange={e => setSelectedDocType(e.target.value)} className={`w-full px-3 py-2 rounded-lg text-xs font-medium ${isDarkMode ? 'surface-premium text-white border-neutral-700' : 'bg-white text-gray-900 border-gray-300'} border`}>
                       {Object.keys(EXTRACTION_TEMPLATES).map((k) => <option key={k} value={k}>{DOC_TYPE_LABELS[k] || k.replace(/_/g, ' ')}</option>)}
                     </select>
                   </div>
@@ -375,7 +375,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
               </p>
               <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{uploadedFileName}</p>
               <div className="mt-4">
-                <span className={`inline-block text-[10px] font-semibold px-2 py-1 rounded-full ${isDarkMode ? 'bg-card text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{statusLabel[flow]}</span>
+                <span className={`inline-block text-[10px] font-semibold px-2 py-1 rounded-full ${isDarkMode ? 'surface-premium text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{statusLabel[flow]}</span>
               </div>
             </div>
           )}
@@ -392,7 +392,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                   <Icon name="rotate-ccw" className="w-3.5 h-3.5" />
                   Retry extraction
                 </button>
-                <button onClick={handleReset} className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${isDarkMode ? 'bg-card hover:bg-neutral-700 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>
+                <button onClick={handleReset} className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${isDarkMode ? 'surface-premium hover:bg-neutral-700 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'}`}>
                   Cancel
                 </button>
               </div>
@@ -432,7 +432,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
               <div className={`px-3 py-2 border-b flex items-center gap-3 ${isDarkMode ? 'border-neutral-800 bg-neutral-900/40' : 'border-gray-200/60 bg-gray-50/40'}`}>
                 {getFileIcon(uploadedFileName)}
                 <span className={`text-xs font-semibold ${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>{uploadedFileName}</span>
-                <span className={`ml-auto text-[10px] font-semibold px-2 py-1 rounded-full ${isDarkMode ? 'bg-card text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{statusLabel[flow]}</span>
+                <span className={`ml-auto text-[10px] font-semibold px-2 py-1 rounded-full ${isDarkMode ? 'surface-premium text-gray-300' : 'bg-gray-100 text-gray-600'}`}>{statusLabel[flow]}</span>
               </div>
 
               {/* Apply error banner */}
@@ -451,7 +451,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                   </div>
                   <div>
                     <label className={`text-xs font-semibold uppercase tracking-wider mb-1.5 block ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`}>{t('docUpload.assignedTo')}</label>
-                    <div className={`px-3 py-2 rounded-lg text-xs font-semibold ${isDarkMode ? 'bg-card text-gray-200' : 'bg-gray-100 text-gray-700'}`}>{vehicles.find(v => v.id === selectedVehicleId)?.name || ''}</div>
+                    <div className={`px-3 py-2 rounded-lg text-xs font-semibold ${isDarkMode ? 'surface-premium text-gray-200' : 'bg-gray-100 text-gray-700'}`}>{vehicles.find(v => v.id === selectedVehicleId)?.name || ''}</div>
                   </div>
                 </div>
 
@@ -500,7 +500,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                               updated[i] = { ...updated[i], value: e.target.value };
                               setEditedFields(updated);
                             }}
-                            className={`flex-1 text-xs font-semibold px-2 py-1 rounded-md border ${isDarkMode ? 'bg-card border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
+                            className={`flex-1 text-xs font-semibold px-2 py-1 rounded-md border ${isDarkMode ? 'surface-premium border-neutral-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}
                           />
                         ) : (
                           <span className={`text-xs font-semibold ${field.value ? (isDarkMode ? 'text-white' : 'text-gray-900') : (isDarkMode ? 'text-gray-600' : 'text-muted-foreground')}`}>{field.value || '—'}</span>
@@ -525,7 +525,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                     onClick={handleRetry}
                     disabled={flow === 'applying'}
                     className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                      isDarkMode ? 'bg-card hover:bg-neutral-700 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                      isDarkMode ? 'surface-premium hover:bg-neutral-700 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
                     } ${flow === 'applying' ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     <Icon name="rotate-ccw" className="w-3.5 h-3.5" />
@@ -535,7 +535,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
                     onClick={handleReset}
                     disabled={flow === 'applying'}
                     className={`flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-semibold transition-all ${
-                      isDarkMode ? 'bg-card hover:bg-neutral-700 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
+                      isDarkMode ? 'surface-premium hover:bg-neutral-700 text-gray-300' : 'bg-gray-100 hover:bg-gray-200 text-gray-600'
                     } ${flow === 'applying' ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
                     Cancel
@@ -579,7 +579,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
             </div>
             <div className="space-y-2">
               {['Service Record', 'Oil Change', 'Tire Service', 'Brake Service', 'Battery Service', 'TÜV / BOKraft', 'Invoice', 'Damage / Accident'].map((type) => (
-                <div key={type} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${isDarkMode ? 'bg-card' : 'bg-gray-50'}`}>
+                <div key={type} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg ${isDarkMode ? 'surface-premium' : 'bg-gray-50'}`}>
                   <Icon name="file-text" className={`w-3 h-3 ${isDarkMode ? 'text-gray-500' : 'text-muted-foreground'}`} />
                   <span className={`text-[11px] ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{type}</span>
                 </div>
@@ -601,7 +601,7 @@ export function DocumentUploadView({ isDarkMode }: DocumentUploadViewProps) {
               ) : (
                 <div className="space-y-1.5">
                   {filedDocuments.map(doc => (
-                    <div key={doc.id} className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors ${isDarkMode ? 'hover:bg-card/60' : 'hover:bg-gray-50'}`}>
+                    <div key={doc.id} className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors ${isDarkMode ? 'hover:surface-premium' : 'hover:bg-gray-50'}`}>
                       <div className={`w-5 h-5 rounded-lg flex items-center justify-center shrink-0 ${isDarkMode ? 'bg-green-500/10' : 'bg-green-50'}`}>
                         <Icon name="check-circle" className="w-5 h-5 text-green-500" />
                       </div>

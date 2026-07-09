@@ -184,7 +184,7 @@ export function CustomerDrivingTab({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
 
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="rounded-lg border border-border surface-premium p-4">
 
           <p className="text-[10px] uppercase text-muted-foreground">Fahrereignisse gesamt</p>
 
@@ -192,7 +192,7 @@ export function CustomerDrivingTab({
 
         </div>
 
-        <div className="rounded-lg border border-border bg-card p-4">
+        <div className="rounded-lg border border-border surface-premium p-4">
 
           <p className="text-[10px] uppercase text-muted-foreground">Missbrauchsereignisse</p>
 

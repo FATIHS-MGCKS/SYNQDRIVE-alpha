@@ -82,14 +82,14 @@ export function TaskWorkItemCard({ task, isFlashing, onClick, rowRef }: TaskWork
     ? 'ring-1 ring-[color:var(--brand-soft)] bg-[color:var(--brand-soft)]'
     : task.status === 'Overdue'
       ? 'border-[color:var(--status-critical-soft)] bg-[color:var(--status-critical-soft)]/30'
-      : 'border-border bg-card';
+      : 'border-border surface-premium';
 
   return (
     <button
       type="button"
       onClick={onClick}
       ref={rowRef}
-      className={`sq-card sq-press w-full rounded-2xl border p-3 text-left shadow-[var(--shadow-1)] transition-all md:p-3.5 ${cardTone}`}
+      className={`surface-premium sq-press w-full rounded-2xl border p-3 text-left shadow-[var(--shadow-1)] transition-all md:p-3.5 ${cardTone}`}
     >
       <div className="flex items-stretch gap-3">
         <div

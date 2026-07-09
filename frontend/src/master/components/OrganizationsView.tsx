@@ -277,7 +277,7 @@ export function OrganizationsView({
       />
 
       {/* Filters */}
-      <div className="sq-card p-4">
+      <div className="surface-premium p-4">
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex items-center gap-2 flex-1 px-3 py-2 rounded-xl border border-border bg-[color:var(--input-background)]">
             <Search className={`w-4 h-4 shrink-0 text-muted-foreground`} />
@@ -344,7 +344,7 @@ export function OrganizationsView({
         hideClose
         className="max-h-[min(92vh,100dvh)]"
       >
-          <div className={`w-full bg-card`}>
+          <div className={`w-full surface-premium`}>
 
             {/* Modal header */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-border">

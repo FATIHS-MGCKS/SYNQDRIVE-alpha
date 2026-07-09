@@ -50,7 +50,7 @@ export function OperatorDamageDetailsStep({ form, onChange }: Props) {
                 className={`sq-press min-h-[44px] rounded-xl border px-3 py-2 text-sm font-semibold ${
                   active
                     ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
-                    : 'border-border bg-card text-foreground'
+                    : 'border-border surface-premium text-foreground'
                 }`}
               >
                 {formatDamageType(type)}
@@ -75,7 +75,7 @@ export function OperatorDamageDetailsStep({ form, onChange }: Props) {
                 className={`sq-press min-h-[48px] rounded-xl border px-3 text-sm font-semibold ${
                   active
                     ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
-                    : 'border-border bg-card text-foreground'
+                    : 'border-border surface-premium text-foreground'
                 }`}
               >
                 {formatSeverity(severity)}
@@ -100,7 +100,7 @@ export function OperatorDamageDetailsStep({ form, onChange }: Props) {
                 className={`sq-press min-h-[40px] rounded-full border px-3 py-2 text-xs font-semibold ${
                   active
                     ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
-                    : 'border-border bg-card text-foreground'
+                    : 'border-border surface-premium text-foreground'
                 }`}
               >
                 {chip.label}
@@ -149,7 +149,7 @@ export function OperatorDamageDetailsStep({ form, onChange }: Props) {
                 className={`sq-press min-h-[40px] rounded-xl border px-3 py-2 text-xs font-semibold ${
                   active
                     ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
-                    : 'border-border bg-card text-foreground'
+                    : 'border-border surface-premium text-foreground'
                 }`}
               >
                 {RENTAL_IMPACT_LABELS[impact]}

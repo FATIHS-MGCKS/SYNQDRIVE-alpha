@@ -76,7 +76,7 @@ export function BillingStatusHero({ summary, stripeState }: BillingStatusHeroPro
     summary.warnings.includes('NO_ACTIVE_PRICE_VERSION');
 
   return (
-    <div className="sq-card rounded-2xl p-4 sm:p-5 shadow-[var(--shadow-1)] space-y-4">
+    <div className="surface-premium rounded-2xl p-4 sm:p-5 shadow-[var(--shadow-1)] space-y-4">
       <p className="text-[12px] leading-relaxed text-muted-foreground max-w-[70ch]">
         Verwalte Subscription, Zahlungsmethode und Rechnungen für diese Organisation.
       </p>

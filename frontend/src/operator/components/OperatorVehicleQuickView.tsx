@@ -187,7 +187,7 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
             type="button"
             disabled={!data.returnAction?.gate.allowed}
             onClick={openReturn}
-            className="sq-press flex min-h-[52px] items-center gap-3 rounded-2xl border border-border/60 bg-card px-4 text-left disabled:opacity-50"
+            className="sq-press flex min-h-[52px] items-center gap-3 rounded-2xl border border-border/60 surface-premium px-4 text-left disabled:opacity-50"
           >
             <ArrowDownLeft className="h-5 w-5 shrink-0 text-muted-foreground" />
             <span className="min-w-0 flex-1">
@@ -209,7 +209,7 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
               prefillVehicleId: vehicle.id,
             })
           }
-          className="sq-press flex min-h-[52px] items-center gap-3 rounded-2xl border border-border/60 bg-card px-4 text-left"
+          className="sq-press flex min-h-[52px] items-center gap-3 rounded-2xl border border-border/60 surface-premium px-4 text-left"
         >
           <CalendarPlus className="h-5 w-5 shrink-0 text-[color:var(--brand-ink)]" />
           <span className="min-w-0 flex-1">
@@ -551,7 +551,7 @@ function ActionButton({
       className={`sq-press flex min-h-[48px] items-center gap-3 rounded-xl border px-4 text-left ${
         highlight
           ? 'border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)]/50'
-          : 'border-border/60 bg-card'
+          : 'border-border/60 surface-premium'
       }`}
     >
       <span

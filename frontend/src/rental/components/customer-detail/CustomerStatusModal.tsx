@@ -58,7 +58,7 @@ export function CustomerStatusModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-      <div className="w-full max-w-md rounded-xl border border-border bg-card shadow-xl p-5 space-y-4">
+      <div className="w-full max-w-md rounded-xl border border-border surface-premium shadow-xl p-5 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-foreground">Kundenstatus ändern</h3>
           <button type="button" onClick={onClose} className="p-1 rounded-lg hover:bg-muted">
@@ -75,7 +75,7 @@ export function CustomerStatusModal({
           <select
             value={nextStatus}
             onChange={(e) => setNextStatus(e.target.value as CustomerStatusChoice)}
-            className="mt-1 w-full text-xs px-3 py-2 rounded-lg border border-border bg-card"
+            className="mt-1 w-full text-xs px-3 py-2 rounded-lg border border-border surface-premium"
           >
             {STATUS_OPTIONS.map((o) => (
               <option key={o.value} value={o.value}>
@@ -92,7 +92,7 @@ export function CustomerStatusModal({
             value={reason}
             onChange={(e) => setReason(e.target.value)}
             rows={3}
-            className="mt-1 w-full text-xs px-3 py-2 rounded-lg border border-border bg-card resize-none"
+            className="mt-1 w-full text-xs px-3 py-2 rounded-lg border border-border surface-premium resize-none"
             placeholder="Begründung für die Statusänderung…"
           />
         </div>

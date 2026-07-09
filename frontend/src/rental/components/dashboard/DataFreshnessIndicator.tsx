@@ -50,7 +50,7 @@ export function DataFreshnessIndicator({ vm }: DataFreshnessIndicatorProps) {
         </ul>
 
         {tlm.totalInScope > 0 && tlm.hasReliableTimestamps ? (
-          <div className="rounded-xl border border-border/45 bg-card/30 px-3 py-3">
+          <div className="rounded-xl border border-border/45 surface-premium/30 px-3 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               {de ? 'Telemetrie im Scope' : 'Telemetry in scope'}
             </p>

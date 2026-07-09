@@ -146,7 +146,7 @@ export function HealthTrustMetric({
   tone?: 'success' | 'warning' | 'watch' | 'critical' | 'noData' | 'neutral' | 'info';
 }) {
   return (
-    <div className="sq-card rounded-lg px-3 py-2 transition-colors">
+    <div className="surface-premium rounded-lg px-3 py-2 transition-colors">
       <div className="text-[10px] text-muted-foreground">{label}</div>
       <div className={`text-lg font-semibold tabular-nums ${tone === 'neutral' ? 'text-foreground' : ''}`}>
         {tone !== 'neutral' ? (

@@ -47,7 +47,7 @@ export function BookingsToolbar({
   onTimelineRangeChange,
 }: BookingsToolbarProps) {
   return (
-    <div className="sq-card rounded-2xl p-3 shadow-[var(--shadow-1)] space-y-3">
+    <div className="surface-premium rounded-2xl p-3 shadow-[var(--shadow-1)] space-y-3">
       <div className="flex flex-wrap items-center gap-2 justify-between">
         <div className="relative flex-1 min-w-[200px] max-w-md">
           <Icon name="search" className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -56,7 +56,7 @@ export function BookingsToolbar({
             placeholder="Kunde, Fahrzeug, Kennzeichen, Buchungs-Nr.…"
             value={filters.search}
             onChange={(e) => onFiltersChange({ search: e.target.value })}
-            className="w-full pl-9 pr-3 py-2 rounded-lg border border-border/70 bg-card text-xs outline-none focus:border-[color:var(--brand)]"
+            className="w-full pl-9 pr-3 py-2 rounded-lg border border-border/70 bg-background text-xs outline-none focus:border-[color:var(--brand)]"
           />
         </div>
         <div className="flex items-center gap-1 rounded-xl border border-border/60 bg-muted/40 p-1">
@@ -66,7 +66,7 @@ export function BookingsToolbar({
               type="button"
               onClick={() => onViewChange(v)}
               className={`px-2.5 py-1.5 rounded-lg text-[10px] font-semibold capitalize ${
-                view === v ? 'sq-tone-brand' : 'text-muted-foreground hover:bg-card'
+                view === v ? 'sq-tone-brand' : 'text-muted-foreground hover:surface-premium'
               }`}
             >
               {v === 'timeline' ? 'Timeline' : v === 'table' ? 'Tabelle' : 'Kalender'}
@@ -85,7 +85,7 @@ export function BookingsToolbar({
         <select
           value={filters.status}
           onChange={(e) => onFiltersChange({ status: e.target.value as BookingStatusFilter })}
-          className="text-[10px] font-medium px-2 py-1.5 rounded-lg border border-border bg-card"
+          className="text-[10px] font-medium px-2 py-1.5 rounded-lg border border-border surface-premium"
         >
           {STATUS_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
@@ -96,7 +96,7 @@ export function BookingsToolbar({
         <select
           value={filters.vehicleId ?? ''}
           onChange={(e) => onFiltersChange({ vehicleId: e.target.value || null })}
-          className="text-[10px] font-medium px-2 py-1.5 rounded-lg border border-border bg-card max-w-[160px]"
+          className="text-[10px] font-medium px-2 py-1.5 rounded-lg border border-border surface-premium max-w-[160px]"
         >
           <option value="">Alle Fahrzeuge</option>
           {vehicles.map((v) => (
@@ -108,7 +108,7 @@ export function BookingsToolbar({
         <select
           value={filters.stationId ?? ''}
           onChange={(e) => onFiltersChange({ stationId: e.target.value || null })}
-          className="text-[10px] font-medium px-2 py-1.5 rounded-lg border border-border bg-card max-w-[160px]"
+          className="text-[10px] font-medium px-2 py-1.5 rounded-lg border border-border surface-premium max-w-[160px]"
         >
           <option value="">Alle Stationen</option>
           {stations.map((s) => (
@@ -121,21 +121,21 @@ export function BookingsToolbar({
           type="date"
           value={filters.dateFrom ?? ''}
           onChange={(e) => onFiltersChange({ dateFrom: e.target.value || null })}
-          className="text-[10px] px-2 py-1.5 rounded-lg border border-border bg-card"
+          className="text-[10px] px-2 py-1.5 rounded-lg border border-border surface-premium"
           title="Von"
         />
         <input
           type="date"
           value={filters.dateTo ?? ''}
           onChange={(e) => onFiltersChange({ dateTo: e.target.value || null })}
-          className="text-[10px] px-2 py-1.5 rounded-lg border border-border bg-card"
+          className="text-[10px] px-2 py-1.5 rounded-lg border border-border surface-premium"
           title="Bis"
         />
         {view === 'timeline' && (
           <select
             value={timelineRange}
             onChange={(e) => onTimelineRangeChange(e.target.value as 'week' | 'month')}
-            className="text-[10px] font-medium px-2 py-1.5 rounded-lg border border-border bg-card"
+            className="text-[10px] font-medium px-2 py-1.5 rounded-lg border border-border surface-premium"
           >
             <option value="week">Woche</option>
             <option value="month">Monat</option>

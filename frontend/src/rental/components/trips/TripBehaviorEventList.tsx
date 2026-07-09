@@ -137,7 +137,7 @@ export function TripBehaviorEventList({
                 className={`rounded-xl border px-3 py-2.5 transition-colors ${
                   isSelected
                     ? 'border-[color:var(--brand)]/35 bg-[color:color-mix(in_srgb,var(--brand)_6%,var(--card))] ring-1 ring-[color:var(--brand)]/10'
-                    : 'border-border/60 bg-card/50 hover:bg-card'
+                    : 'border-border/60 surface-premium hover:surface-premium'
                 }`}
               >
                 <button

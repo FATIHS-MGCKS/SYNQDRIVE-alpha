@@ -46,7 +46,7 @@ export function BillingOrganizationsTab({ organizations, onSelectOrg }: BillingO
   }, [organizations, search, status, filter]);
 
   const inputClass =
-    'w-full px-3 py-2 rounded-xl border border-border/70 bg-card text-xs outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]';
+    'w-full px-3 py-2 rounded-xl border border-border/70 bg-background text-xs outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]';
 
   return (
     <div className="space-y-4">

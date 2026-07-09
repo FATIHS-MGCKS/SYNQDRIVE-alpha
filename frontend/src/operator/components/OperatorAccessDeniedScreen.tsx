@@ -37,7 +37,7 @@ export function OperatorAccessDeniedScreen({ reason }: Props) {
               ) : (
                 <Link
                   to="/rental"
-                  className="sq-press inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-border bg-card px-5 text-sm font-semibold"
+                  className="sq-press inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-border surface-premium px-5 text-sm font-semibold"
                 >
                   <ArrowLeft className="h-4 w-4" />
                   Zur SynqDrive App

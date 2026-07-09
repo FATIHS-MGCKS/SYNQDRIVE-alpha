@@ -28,7 +28,7 @@ export function VendorDirectoryCard({
 
   return (
     <article
-      className={`sq-card rounded-2xl border p-4 shadow-[var(--shadow-1)] transition-colors ${
+      className={`surface-premium rounded-2xl border p-4 shadow-[var(--shadow-1)] transition-colors ${
         !vendor.isActive ? 'opacity-75 border-dashed' : 'border-border/45'
       } ${isPreferred ? 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_18%,transparent)]' : ''}`}
     >

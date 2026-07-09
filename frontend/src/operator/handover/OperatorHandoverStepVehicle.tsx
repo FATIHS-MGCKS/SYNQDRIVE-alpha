@@ -21,7 +21,7 @@ export function OperatorHandoverStepVehicle({ kind, booking, form }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-border/60 bg-card/80 p-4 space-y-3">
+      <div className="rounded-2xl border border-border/60 surface-premium p-4 space-y-3">
         <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
           {kind === 'PICKUP' ? 'Fahrzeugübergabe' : 'Fahrzeugrückgabe'}
         </p>

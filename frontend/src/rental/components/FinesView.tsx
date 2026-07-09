@@ -77,8 +77,8 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
 
   const tp = isDarkMode ? 'text-white' : 'text-gray-900';
   const ts = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
-  const card = `rounded-xl shadow-sm border ${isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'}`;
-  const inputCls = `w-full px-4 py-3 rounded-xl border text-xs ${isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground' : 'bg-card border-border text-foreground placeholder:text-muted-foreground'} outline-none`;
+  const card = `rounded-xl shadow-sm border ${isDarkMode ? 'surface-premium border-border' : 'bg-white border-gray-200'}`;
+  const inputCls = `w-full px-4 py-3 rounded-xl border text-xs ${isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground' : 'bg-background border-border text-foreground placeholder:text-muted-foreground'} outline-none`;
 
   const load = useCallback(async () => {
     if (!orgId) return;
@@ -160,7 +160,7 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
           <button
             type="button"
             onClick={() => setView('upload')}
-            className="sq-press flex items-center gap-2 rounded-xl border border-border/60 bg-card px-3 py-2 text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
+            className="sq-press flex items-center gap-2 rounded-xl border border-border/60 surface-premium px-3 py-2 text-[10px] font-semibold text-foreground transition-all hover:bg-muted hover:border-border"
           >
             <Icon name="sparkles" className="h-4 w-4 text-purple-500" />
             KI-Upload
@@ -222,7 +222,7 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
               key={metric.label}
               type="button"
               onClick={metric.action}
-              className={`group sq-card sq-press rounded-2xl p-4 text-left shadow-[var(--shadow-1)] transition-all ${
+              className={`group surface-premium sq-press rounded-2xl p-4 text-left shadow-[var(--shadow-1)] transition-all ${
                 metric.active ? 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_22%,transparent)]' : 'hover:bg-muted/35'
               }`}
             >
@@ -244,7 +244,7 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
       </div>
 
       {/* Search & Filters */}
-      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+      <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <Icon name="filter" className="h-4 w-4 text-muted-foreground" />
@@ -297,8 +297,8 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
               onChange={e => setSearchTerm(e.target.value)}
               className={`w-full rounded-lg border py-2.5 pl-10 pr-4 text-xs outline-none transition-all ${
                 isDarkMode
-                  ? 'bg-card border-border text-foreground placeholder:text-muted-foreground focus:border-brand/50'
-                  : 'bg-card border-border text-foreground placeholder:text-muted-foreground focus:border-brand'
+                  ? 'bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-brand/50'
+                  : 'bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-brand'
               }`}
             />
           </div>
@@ -313,7 +313,7 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
                     ? 'bg-status-info-soft border-status-info/30 text-status-info'
                     : 'bg-status-info-soft border-status-info/25 text-status-info'
                   : isDarkMode
-                    ? 'bg-card border-neutral-700 text-gray-300 hover:bg-card'
+                    ? 'surface-premium border-neutral-700 text-gray-300 hover:surface-premium'
                     : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
               }`}
             >
@@ -322,7 +322,7 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
             </button>
             {isStatusOpen && (
               <div className={`absolute right-0 top-full z-50 mt-2 min-w-[230px] overflow-hidden rounded-lg border shadow-xl sm:left-0 sm:right-auto ${
-                isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'
+                isDarkMode ? 'surface-premium border-border' : 'bg-white border-gray-200'
               }`}>
                 {statusOptions.map(status => (
                   <button
@@ -351,7 +351,7 @@ export function FinesView({ isDarkMode }: { isDarkMode: boolean }) {
       </div>
 
       {/* Table */}
-      <div className="sq-card rounded-2xl overflow-hidden shadow-[var(--shadow-1)]">
+      <div className="surface-premium rounded-2xl overflow-hidden shadow-[var(--shadow-1)]">
         {loading ? (
           <div className="flex items-center justify-center py-16"><Icon name="loader-2" className={`w-5 h-5 animate-spin ${ts}`} /></div>
         ) : filtered.length === 0 ? (
@@ -826,7 +826,7 @@ function FineDetail({ isDarkMode, fine, orgId, onBack, onUpdate, card, tp, ts, i
               {changingStatus ? <Icon name="loader-2" className="w-3 h-3 animate-spin" /> : <Icon name="edit-3" className="w-3 h-3" />} Status
             </button>
             {showStatusMenu && (
-              <div className={`absolute right-0 top-full mt-1 z-20 w-48 rounded-xl border shadow-xl overflow-hidden ${isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'}`}>
+              <div className={`absolute right-0 top-full mt-1 z-20 w-48 rounded-xl border shadow-xl overflow-hidden ${isDarkMode ? 'bg-popover border-border' : 'bg-white border-gray-200'}`}>
                 {Object.entries(STATUS_MAP).map(([key, val]) => (
                   <button key={key} onClick={() => changeStatus(key)} className={`w-full text-left px-4 py-2.5 text-xs font-medium transition-colors ${isDarkMode ? 'hover:bg-muted text-foreground/85' : 'hover:bg-gray-50 text-gray-700'} ${fine.status === key ? 'font-bold' : ''}`}>
                     {val.label}

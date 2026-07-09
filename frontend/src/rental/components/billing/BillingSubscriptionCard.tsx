@@ -58,7 +58,7 @@ export function BillingSubscriptionCard({ summary, onShowVehicles }: BillingSubs
   }
 
   return (
-    <div className="sq-card rounded-2xl p-4 sm:p-5 shadow-[var(--shadow-1)]">
+    <div className="surface-premium rounded-2xl p-4 sm:p-5 shadow-[var(--shadow-1)]">
       <div className="mb-4">
         <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">
           Subscription

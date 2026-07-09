@@ -359,7 +359,7 @@ export function VoiceAssistantBuilder({
                 <button
                   type="button"
                   onClick={() => onNavigateTab('escalation')}
-                  className="sq-press rounded-lg border border-border/60 bg-card px-3 py-1.5 text-[10px] font-semibold"
+                  className="sq-press rounded-lg border border-border/60 surface-premium px-3 py-1.5 text-[10px] font-semibold"
                 >
                   Edit escalation
                 </button>

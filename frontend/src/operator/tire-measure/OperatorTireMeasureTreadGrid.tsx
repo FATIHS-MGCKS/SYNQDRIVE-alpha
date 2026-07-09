@@ -40,7 +40,7 @@ export function OperatorTireMeasureTreadGrid({ tread, onChange, warnings }: Prop
               <input
                 type="text"
                 inputMode="decimal"
-                className="h-14 w-full rounded-2xl border border-border bg-card px-4 text-center text-xl font-semibold tabular-nums shadow-sm"
+                className="h-14 w-full rounded-2xl border border-border surface-premium px-4 text-center text-xl font-semibold tabular-nums shadow-sm"
                 value={tread[key]}
                 onChange={(e) => set(key, e.target.value)}
                 placeholder="—"

@@ -55,7 +55,7 @@ export function HealthModuleCard({
       : null;
 
   return (
-    <div className="sq-card rounded-xl p-3.5 space-y-3">
+    <div className="surface-premium rounded-xl p-3.5 space-y-3">
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg sq-tone-neutral">

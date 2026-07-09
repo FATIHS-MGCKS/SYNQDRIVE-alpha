@@ -234,7 +234,7 @@ export function ServiceTasksPanel({
                     type="button"
                     onClick={() => setViewMode(mode.id)}
                     className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md text-[10px] font-semibold transition-colors ${
-                      active ? 'bg-card shadow-sm text-foreground' : 'text-muted-foreground'
+                      active ? 'surface-premium shadow-sm text-foreground' : 'text-muted-foreground'
                     }`}
                   >
                     <IconCmp className="w-3.5 h-3.5" />

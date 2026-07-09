@@ -29,7 +29,7 @@ const BTN_PRIMARY =
 const BTN_SECONDARY =
   'sq-3d-btn sq-3d-btn--neutral inline-flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold';
 const INPUT_CLASS =
-  'w-full rounded-lg border border-border/70 bg-card text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]';
+  'w-full rounded-lg border border-border/70 bg-background text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]';
 
 type MainView = 'overview' | 'inquiry';
 type StatusFilter = 'all' | 'ACTIVE' | 'EXPIRING_SOON' | 'EXPIRED' | 'MISSING' | 'PENDING_INQUIRY';
@@ -417,7 +417,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
               <Icon name="chevron-down" className="w-3.5 h-3.5" />
             </button>
             {filterOpen && (
-              <div className={`absolute right-0 top-full mt-1 z-30 min-w-[180px] bg-card border border-border rounded-xl shadow-xl py-1`}>
+              <div className={`absolute right-0 top-full mt-1 z-30 min-w-[180px] bg-popover border border-border rounded-xl shadow-xl py-1`}>
                 {(['all', 'ACTIVE', 'EXPIRING_SOON', 'EXPIRED', 'MISSING', 'PENDING_INQUIRY'] as StatusFilter[]).map(f => (
                   <button key={f} onClick={() => { setStatusFilter(f); setFilterOpen(false); }}
                     className={`w-full text-left px-4 py-2 text-sm hover:bg-muted/50 ${statusFilter === f ? 'text-[color:var(--brand)]' : 'text-foreground'} flex items-center gap-2`}>
@@ -437,7 +437,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
               <Icon name="chevron-down" className="w-3.5 h-3.5" />
             </button>
             {sortOpen && (
-              <div className={`absolute right-0 top-full mt-1 z-30 min-w-[170px] bg-card border border-border rounded-xl shadow-xl py-1`}>
+              <div className={`absolute right-0 top-full mt-1 z-30 min-w-[170px] bg-popover border border-border rounded-xl shadow-xl py-1`}>
                 {([['status', 'By Status'], ['expiry', 'By Expiry Date'], ['vehicle', 'By Vehicle']] as [SortKey, string][]).map(([k, l]) => (
                   <button key={k} onClick={() => { setSortKey(k); setSortOpen(false); }}
                     className={`w-full text-left px-4 py-2 text-sm hover:bg-muted/50 ${sortKey === k ? 'text-[color:var(--brand)]' : 'text-foreground'} flex items-center gap-2`}>
@@ -540,7 +540,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
   // ═══════════════════════════════════════════════════════════
 
   const renderStepper = () => (
-    <div className={`bg-card border border-border rounded-xl p-5 mb-6 overflow-x-auto`}>
+    <div className={`surface-premium border border-border rounded-xl p-5 mb-6 overflow-x-auto`}>
       <div className="flex items-center justify-between min-w-[640px]">
         {STEP_LABELS.map((label, i) => {
           const done = i < step;
@@ -585,7 +585,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
         <div className="relative mb-4">
           <Icon name="search" className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground`} />
           <input value={vehicleSearch} onChange={e => setVehicleSearch(e.target.value)} placeholder="Search vehicles…"
-            className={`w-full pl-10 pr-4 py-2.5 rounded-lg text-sm bg-card border border-border/70 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/40`}
+            className={`w-full pl-10 pr-4 py-2.5 rounded-lg text-sm bg-background border border-border/70 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/40`}
           />
         </div>
         <div className="grid gap-2 max-h-[420px] overflow-y-auto pr-1">
@@ -596,7 +596,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
                 className={`w-full text-left px-4 py-3 rounded-xl border transition-all flex items-center gap-4
                   ${sel
                     ? `border-brand ${'bg-[color:var(--brand-soft)]'} ring-2 ring-brand/30`
-                    : `border-border border ${'bg-card hover:bg-muted/40'}`}`}>
+                    : `border-border border ${'bg-background hover:bg-muted/40'}`}`}>
                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${sel ? ('bg-[color:var(--brand-soft)]') : ('bg-muted')}`}>
                   <Icon name="car" className={`w-5 h-5 ${sel ? 'text-status-info' : 'text-muted-foreground'}`} />
                 </div>
@@ -643,7 +643,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
                 className={`text-left p-4 rounded-xl border transition-all
                   ${sel
                     ? `border-brand ${'bg-[color:var(--brand-soft)]'} ring-2 ring-brand/30`
-                    : `border-border border ${'bg-card hover:bg-muted/40'}`}`}>
+                    : `border-border border ${'bg-background hover:bg-muted/40'}`}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <div className={`font-semibold text-sm text-foreground flex items-center gap-2`}>
@@ -691,7 +691,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
               className={`text-left p-4 rounded-xl border transition-all flex items-center gap-4
                 ${sel
                   ? `border-brand ${'bg-[color:var(--brand-soft)]'} ring-2 ring-brand/30`
-                  : `border-border border ${'bg-card hover:bg-muted/40'}`}`}>
+                  : `border-border border ${'bg-background hover:bg-muted/40'}`}`}>
               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all
                 ${sel ? 'border-brand bg-brand' : ('border-border')}`}>
                 {sel && <div className="w-2 h-2 rounded-full bg-white" />}
@@ -726,7 +726,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
                     className={`text-left p-3 rounded-xl border transition-all flex items-start gap-3
                       ${sel
                         ? `border-brand ${'bg-[color:var(--brand-soft)]'} ring-1 ring-brand/30`
-                        : `border-border border ${'bg-card hover:bg-muted/40'}`}`}>
+                        : `border-border border ${'bg-background hover:bg-muted/40'}`}`}>
                     <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all
                       ${sel ? 'bg-brand border-brand' : ('border-border')}`}>
                       {sel && <Icon name="check" className="w-3 h-3 text-white" />}
@@ -762,7 +762,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
               className={`text-left p-4 rounded-xl border transition-all flex items-center gap-4
                 ${sel
                   ? `border-brand ${'bg-[color:var(--brand-soft)]'} ring-2 ring-brand/30`
-                  : `border-border border ${'bg-card hover:bg-muted/40'}`}`}>
+                  : `border-border border ${'bg-background hover:bg-muted/40'}`}`}>
               <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all
                 ${sel ? 'border-brand bg-brand' : ('border-border')}`}>
                 {sel && <div className="w-2 h-2 rounded-full bg-white" />}
@@ -780,13 +780,13 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
           <div className="flex-1">
             <label className={`text-xs font-medium text-muted-foreground mb-1 block`}>From</label>
             <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
-              className={`w-full px-3 py-2 rounded-lg text-sm bg-card border border-border/70 text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/40`} />
+              className={`w-full px-3 py-2 rounded-lg text-sm bg-background border border-border/70 text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/40`} />
           </div>
           <div className={`mt-5 text-muted-foreground`}>—</div>
           <div className="flex-1">
             <label className={`text-xs font-medium text-muted-foreground mb-1 block`}>To</label>
             <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
-              className={`w-full px-3 py-2 rounded-lg text-sm bg-card border border-border/70 text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/40`} />
+              className={`w-full px-3 py-2 rounded-lg text-sm bg-background border border-border/70 text-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/40`} />
           </div>
         </div>
       )}
@@ -811,7 +811,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
               className={`text-left p-3 rounded-xl border transition-all flex items-start gap-3
                 ${sel
                   ? `border-brand ${'bg-[color:var(--brand-soft)]'} ring-1 ring-brand/30`
-                  : `border-border border ${'bg-card hover:bg-muted/40'}`}`}>
+                  : `border-border border ${'bg-background hover:bg-muted/40'}`}`}>
               <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all
                 ${sel ? 'bg-brand border-brand' : ('border-border')}`}>
                 {sel && <Icon name="check" className="w-3 h-3 text-white" />}
@@ -873,7 +873,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
     );
 
     const SectionCard = ({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) => (
-      <div className={`bg-card border border-border rounded-xl p-4`}>
+      <div className={`surface-premium border border-border rounded-xl p-4`}>
         <div className={`flex items-center gap-2 mb-3 text-sm font-semibold text-foreground`}>{icon}{title}</div>
         {children}
       </div>
@@ -1050,7 +1050,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
   const renderInquiry = () => (
     <>
       {renderStepper()}
-      <div className={`bg-card border border-border rounded-xl p-6`}>
+      <div className={`surface-premium border border-border rounded-xl p-6`}>
         {renderCurrentStep()}
       </div>
       {step < 7 && (
@@ -1153,7 +1153,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
           ) : (
             <div className="space-y-2">
               {detailInquiries.slice(0, 5).map((inq: { id: string; inquiryType?: string; createdAt?: string; status?: string }) => (
-                <div key={inq.id} className="flex items-center justify-between rounded-lg border border-border bg-card p-2.5">
+                <div key={inq.id} className="flex items-center justify-between rounded-lg border border-border surface-premium p-2.5">
                   <div>
                     <div className="text-sm font-medium text-foreground">{inq.inquiryType?.replace(/_/g, ' ')}</div>
                     <div className="text-xs text-muted-foreground">{fmtDate(inq.createdAt ?? null)}</div>
@@ -1171,7 +1171,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
           ) : (
             <div className="space-y-2">
               {detailLiveSharing.map((ls: { id: string; insurer?: { displayName?: string }; status?: string; validFrom?: string; reportingFrequency?: string }) => (
-                <div key={ls.id} className="rounded-lg border border-border bg-card p-2.5">
+                <div key={ls.id} className="rounded-lg border border-border surface-premium p-2.5">
                   <div className="flex items-center justify-between">
                     <div className="text-sm font-medium text-foreground">{ls.insurer?.displayName ?? '—'}</div>
                     <StatusChip tone={ls.status === 'active' ? 'success' : 'neutral'}>{ls.status}</StatusChip>
@@ -1211,7 +1211,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
         <button onClick={() => setMainView('overview')}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             mainView === 'overview'
-              ? `${'bg-card text-foreground shadow-[var(--shadow-1)]'}`
+              ? `${'surface-premium text-foreground shadow-[var(--shadow-1)]'}`
               : 'text-muted-foreground hover:text-foreground'
           }`}>
           <span className="flex items-center gap-2"><Icon name="shield" className="w-4 h-4" /> Overview</span>
@@ -1219,7 +1219,7 @@ export function InsurancesView({ onNavigateToVehicleDocuments }: InsurancesViewP
         <button onClick={() => startInquiry()}
           className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
             mainView === 'inquiry'
-              ? `${'bg-card text-foreground shadow-[var(--shadow-1)]'}`
+              ? `${'surface-premium text-foreground shadow-[var(--shadow-1)]'}`
               : 'text-muted-foreground hover:text-foreground'
           }`}>
           <span className="flex items-center gap-2"><Icon name="send" className="w-4 h-4" /> New Inquiry</span>

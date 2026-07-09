@@ -23,7 +23,7 @@ export function BillingPublishModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="sq-card rounded-2xl p-5 w-full max-w-md shadow-[var(--shadow-2)] space-y-4">
+      <div className="surface-premium rounded-2xl p-5 w-full max-w-md shadow-[var(--shadow-2)] space-y-4">
         <h3 className="text-[15px] font-semibold">Preisversion veröffentlichen</h3>
         <p className="text-xs text-muted-foreground">
           Diese Preisversion gilt ab {dateLabel}. Historische Rechnungen bleiben unverändert.

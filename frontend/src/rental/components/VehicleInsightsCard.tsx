@@ -209,7 +209,7 @@ export function VehicleInsightsCard({ vehicleId, isDarkMode }: VehicleInsightsCa
       : null;
 
   return (
-    <div className={`group flex h-full flex-col rounded-xl border bg-card p-3 shadow-sm transition-shadow duration-300 ease-[var(--ease-out-soft)] hover:shadow-md ${
+    <div className={`group flex h-full flex-col rounded-xl border surface-premium p-3 shadow-sm transition-shadow duration-300 ease-[var(--ease-out-soft)] hover:shadow-md ${
       dm ? 'border-border/60' : 'border-border'
     }`}>
       {/* ── Header ─────────────────────────────────────────────────────────── */}

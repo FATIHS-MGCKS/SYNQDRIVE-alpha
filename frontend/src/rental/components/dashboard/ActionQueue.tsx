@@ -451,7 +451,7 @@ function ActionQueueFilterTabBar({
               className={cn(
                 'inline-flex min-w-0 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-[calc(var(--radius-md)-2px)] px-3 py-1.5 text-[11px] font-semibold leading-[16.2px] tracking-[-0.003em] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
                 isActive
-                  ? 'bg-card text-foreground shadow-[var(--shadow-1)]'
+                  ? 'surface-premium text-foreground shadow-[var(--shadow-1)]'
                   : 'text-muted-foreground hover:bg-background/60 hover:text-foreground',
               )}
             >

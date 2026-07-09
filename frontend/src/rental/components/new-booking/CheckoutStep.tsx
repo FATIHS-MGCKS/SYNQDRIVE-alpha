@@ -446,9 +446,9 @@ export function CheckoutStep({
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className={`relative w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-lg shadow-2xl ${'bg-card border border-border'}`}
+            className={`relative w-full max-w-2xl max-h-[80vh] overflow-y-auto rounded-lg shadow-2xl ${'surface-premium border border-border'}`}
           >
-            <div className="sticky top-0 flex items-center justify-between p-4 border-b border-border bg-card">
+            <div className="sticky top-0 flex items-center justify-between p-4 border-b border-border surface-premium">
               <h3 className="text-base text-foreground">
                 {quickViewDoc === 'invoice' ? 'Rechnung – Vorschau' : 'Mietvertrag – Vorschau'}
               </h3>

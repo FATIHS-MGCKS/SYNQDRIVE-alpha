@@ -182,7 +182,7 @@ function formatTs(iso: string | null | undefined): string {
 
 function EventLayerCard({ title, layer }: { title: string; layer: DataAnalyseEventLayer }) {
   return (
-    <div className="rounded-lg border border-border/60 bg-card p-3 space-y-2">
+    <div className="rounded-lg border border-border/60 surface-premium p-3 space-y-2">
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-semibold">{title}</span>
         <StatusChip tone={EVENT_LAYER_TONE[layer.status] ?? 'neutral'}>{layer.label}</StatusChip>
@@ -646,7 +646,7 @@ export function DataAnalyseView() {
       </div>
 
       {tab === 'chDebug' && (
-        <section className="rounded-xl border border-border/60 bg-card p-4 space-y-4">
+        <section className="rounded-xl border border-border/60 surface-premium p-4 space-y-4">
           <p className="text-xs text-muted-foreground">
             Infrastructure diagnostics for the ClickHouse analytics mirror. Operator/debug only — not canonical business truth.
           </p>
@@ -696,7 +696,7 @@ export function DataAnalyseView() {
 
       {tab !== 'chDebug' && (
       <>
-      <section className="rounded-xl border border-border/60 bg-card p-4">
+      <section className="rounded-xl border border-border/60 surface-premium p-4">
         <div className="flex items-center gap-2 mb-3">
           <Database className="w-4 h-4 text-muted-foreground" />
           <h2 className="text-sm font-semibold">Vehicle selector</h2>

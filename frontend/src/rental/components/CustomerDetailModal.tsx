@@ -392,7 +392,7 @@ export function CustomerDetailModal({
             </DataCard>
 
             {customer.riskLevel === 'High Risk' && (
-              <div className="sq-card flex items-start gap-2.5 border-[color:var(--status-critical)]/25 bg-[color:var(--status-critical)]/8 p-3">
+              <div className="surface-premium flex items-start gap-2.5 border-[color:var(--status-critical)]/25 bg-[color:var(--status-critical)]/8 p-3">
                 <span className="mt-0.5 size-2 shrink-0 rounded-full bg-[color:var(--status-critical)]" />
                 <p className="text-[12px] leading-snug text-foreground">
                   Kunde ist als <span className="font-semibold">hohes Risiko</span> eingestuft — manuelle

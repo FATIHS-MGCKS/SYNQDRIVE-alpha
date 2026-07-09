@@ -25,7 +25,7 @@ export function fleetChipToneToStatusChip(
 
 export function fleetRowClassName(selected: boolean, extra?: string): string {
   return [
-    'sq-card-elevated p-2 cursor-pointer transition-all duration-150',
+    'surface-elevated p-2 cursor-pointer transition-all duration-150',
     selected
       ? 'ring-2 ring-[color:var(--brand)] ring-offset-1 ring-offset-background shadow-[var(--shadow-2)]'
       : 'hover:shadow-[var(--shadow-1)]',

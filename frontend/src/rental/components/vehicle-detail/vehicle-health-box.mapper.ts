@@ -716,7 +716,7 @@ export function complianceSurfaceClasses(tone: 'critical' | 'imminent' | 'normal
     };
   }
   return {
-    ring: 'border-border bg-card',
+    ring: 'border-border surface-premium',
     icon: 'text-[color:var(--brand)]',
     title: 'text-foreground',
     value: 'text-foreground/90',

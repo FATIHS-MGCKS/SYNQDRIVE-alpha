@@ -80,12 +80,12 @@ export function VehicleAssignmentsTab({ catalog, onReload }: VehicleAssignmentsT
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search vehicle or plate…"
-          className="rounded-xl border border-border bg-card px-3 py-2 text-xs min-w-[200px]"
+          className="rounded-xl border border-border bg-popover px-3 py-2 text-xs min-w-[200px]"
         />
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value as typeof filter)}
-          className="rounded-xl border border-border bg-card px-3 py-2 text-xs"
+          className="rounded-xl border border-border surface-premium px-3 py-2 text-xs"
         >
           <option value="all">All</option>
           <option value="assigned">Assigned</option>
@@ -94,7 +94,7 @@ export function VehicleAssignmentsTab({ catalog, onReload }: VehicleAssignmentsT
         <select
           value={groupFilter}
           onChange={(e) => setGroupFilter(e.target.value)}
-          className="rounded-xl border border-border bg-card px-3 py-2 text-xs"
+          className="rounded-xl border border-border surface-premium px-3 py-2 text-xs"
         >
           <option value="all">All tariff groups</option>
           {catalog.groups.map((g) => (
@@ -111,7 +111,7 @@ export function VehicleAssignmentsTab({ catalog, onReload }: VehicleAssignmentsT
           <select
             value={bulkGroupId}
             onChange={(e) => setBulkGroupId(e.target.value)}
-            className="rounded-lg border border-border bg-card px-2 py-1.5 text-xs"
+            className="rounded-lg border border-border surface-premium px-2 py-1.5 text-xs"
           >
             <option value="">Tariff group…</option>
             {catalog.groups.map((g) => (
@@ -131,7 +131,7 @@ export function VehicleAssignmentsTab({ catalog, onReload }: VehicleAssignmentsT
         </div>
       )}
 
-      <div className="sq-card overflow-hidden rounded-2xl border border-border/50">
+      <div className="surface-premium overflow-hidden rounded-2xl border border-border/50">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] text-xs">
             <thead>

@@ -30,7 +30,7 @@ export function WhatsAppSettingsPanel({
   return (
     <div className="space-y-4">
       {/* Connection */}
-      <section className="sq-card rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
+      <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
         <h3 className="text-[12px] font-semibold text-foreground">Connection</h3>
         <p className="mt-1 text-[10px] text-muted-foreground">
           Manual Meta Cloud API configuration — embedded signup pending.
@@ -82,7 +82,7 @@ export function WhatsAppSettingsPanel({
       </section>
 
       {/* AI */}
-      <section className="sq-card rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
+      <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
         <h3 className="text-[12px] font-semibold text-foreground">AI assistance</h3>
         <p className="mt-1 text-[10px] text-muted-foreground">
           SynqDrive AI uses Vehicle Intelligence / DIMO Agent as an internal tool for context — humans control what is sent.
@@ -112,7 +112,7 @@ export function WhatsAppSettingsPanel({
       </section>
 
       {/* Human handover */}
-      <section className="sq-card rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
+      <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
         <h3 className="text-[12px] font-semibold text-foreground">Human handover</h3>
         <label className="mt-3 flex cursor-pointer items-center justify-between gap-3 rounded-lg bg-muted/20 px-3 py-2.5">
           <span className="text-[11px] text-foreground">Escalation enabled for sensitive topics</span>
@@ -135,7 +135,7 @@ export function WhatsAppSettingsPanel({
       </section>
 
       {/* Compliance */}
-      <section className="sq-card rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
+      <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
         <h3 className="text-[12px] font-semibold text-foreground">Compliance</h3>
         <ul className="mt-2 space-y-1.5 text-[10px] text-muted-foreground">
           <li className="flex gap-2">
@@ -155,7 +155,7 @@ export function WhatsAppSettingsPanel({
 
       {/* Sandbox */}
       {sandboxVisible && (
-        <section className="sq-card rounded-2xl border border-dashed border-[color:var(--status-watch)]/40 bg-[color:var(--status-watch)]/[0.03] p-4">
+        <section className="surface-premium rounded-2xl border border-dashed border-[color:var(--status-watch)]/40 bg-[color:var(--status-watch)]/[0.03] p-4">
           <div className="flex items-center gap-2">
             <StatusChip tone="watch">
               Sandbox

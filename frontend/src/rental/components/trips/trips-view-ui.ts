@@ -15,7 +15,7 @@ export const tv = {
   toggleBtn:
     'flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-semibold transition-all border',
   actionBtn:
-    'inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-[11px] font-semibold border border-border/60 bg-card/80 hover:bg-muted/50 active:scale-[0.98] transition-all disabled:opacity-50',
+    'inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-[11px] font-semibold border border-border/60 surface-premium hover:bg-muted/50 active:scale-[0.98] transition-all disabled:opacity-50',
   actionBtnPrimary:
     'inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 rounded-xl text-[11px] font-semibold border border-[color:var(--brand)]/25 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] hover:bg-[color:color-mix(in_srgb,var(--brand)_12%,transparent)] active:scale-[0.98] transition-all disabled:opacity-50',
   focusRing:

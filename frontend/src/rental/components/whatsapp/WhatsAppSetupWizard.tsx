@@ -58,7 +58,7 @@ export function WhatsAppSetupWizard({ open, saving, onClose, onComplete }: Whats
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 overlay-scrim" onClick={onClose} aria-hidden />
-      <div className="relative z-10 w-full max-w-lg rounded-2xl border border-border/40 bg-card p-6 shadow-[var(--shadow-2)]">
+      <div className="relative z-10 w-full max-w-lg rounded-2xl border border-border/40 bg-popover p-6 shadow-[var(--shadow-2)]">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
             <StatusChip tone="watch">

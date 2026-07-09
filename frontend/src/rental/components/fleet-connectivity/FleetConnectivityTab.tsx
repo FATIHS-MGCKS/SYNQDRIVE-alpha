@@ -360,7 +360,7 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
       <div className="mx-auto max-w-[1600px] space-y-4">
         {contextHeader}
         <SkeletonMetricGrid count={8} />
-        <SkeletonRows rows={8} className="sq-card rounded-2xl p-4" />
+        <SkeletonRows rows={8} className="surface-premium rounded-2xl p-4" />
       </div>
     );
   }
@@ -557,7 +557,7 @@ export function FleetConnectivityTab({ embedded = false }: FleetConnectivityTabP
                 key={v.vehicleId}
                 type="button"
                 onClick={() => setSelectedVehicle(v)}
-                className="sq-card w-full rounded-2xl p-3 text-left shadow-[var(--shadow-xs)] transition-shadow hover:shadow-[var(--shadow-1)]"
+                className="surface-premium w-full rounded-2xl p-3 text-left shadow-[var(--shadow-xs)] transition-shadow hover:shadow-[var(--shadow-1)]"
               >
                 <div className="flex items-start justify-between gap-2">
                   <ConnectivityVehicleIdentity vehicle={v} />

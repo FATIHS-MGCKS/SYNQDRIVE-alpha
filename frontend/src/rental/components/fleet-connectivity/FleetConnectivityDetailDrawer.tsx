@@ -101,7 +101,7 @@ export function FleetConnectivityDetailDrawer({
         </div>
 
         <DetailSection title="Connection summary">
-          <div className="sq-card rounded-xl p-3 space-y-2.5">
+          <div className="surface-premium rounded-xl p-3 space-y-2.5">
             <DetailRow label="Status" value={<ConnectionStatusChip status={vehicle.connectionStatus} />} />
             <DetailRow label="Note" value={vehicle.statusNote} />
             <DetailRow label="Provider" value={vehicle.provider} />
@@ -136,7 +136,7 @@ export function FleetConnectivityDetailDrawer({
         </DetailSection>
 
         <DetailSection title="Device identity (masked)">
-          <div className="sq-card rounded-xl p-3 space-y-2.5 font-mono text-[11px]">
+          <div className="surface-premium rounded-xl p-3 space-y-2.5 font-mono text-[11px]">
             <DetailRow label="Device serial" value={maskedIdentity(vehicle.maskedDeviceSerial)} />
             <DetailRow label="DIMO token ID" value={maskedIdentity(vehicle.maskedDimoTokenId)} />
             <DetailRow
@@ -147,7 +147,7 @@ export function FleetConnectivityDetailDrawer({
         </DetailSection>
 
         <DetailSection title="Telemetry readiness">
-          <div className="sq-card rounded-xl p-3 space-y-2">
+          <div className="surface-premium rounded-xl p-3 space-y-2">
             <div className="flex items-center justify-between gap-2">
               <ReadinessChip level={vehicle.readinessLevel} score={vehicle.readinessScore} />
               <span className="text-[11px] text-muted-foreground tabular-nums">
@@ -180,7 +180,7 @@ export function FleetConnectivityDetailDrawer({
         </DetailSection>
 
         <DetailSection title="OBD & cellular">
-          <div className="sq-card rounded-xl p-3 space-y-3">
+          <div className="surface-premium rounded-xl p-3 space-y-3">
             <div className="flex items-start gap-2">
               <Radio className="w-4 h-4 shrink-0 mt-0.5 text-muted-foreground" />
               <div>
@@ -269,7 +269,7 @@ export function FleetConnectivityDetailDrawer({
         </DetailSection>
 
         <DetailSection title="Location & odometer">
-          <div className="sq-card rounded-xl p-3 space-y-2.5">
+          <div className="surface-premium rounded-xl p-3 space-y-2.5">
             <DetailRow label="Odometer" value={formatOdometerKmFloor(vehicle.odometerKm)} />
             <DetailRow
               label="Location"

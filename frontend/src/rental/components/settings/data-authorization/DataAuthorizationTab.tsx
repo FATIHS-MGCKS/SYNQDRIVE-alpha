@@ -99,11 +99,11 @@ function DataAuthKpiCard({
       className={cn(
         'sq-press group relative w-full overflow-hidden border text-left transition-colors duration-200',
         'hover:border-border/60 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
-        'min-h-[96px] rounded-lg bg-card/55 px-2.5 py-2',
+        'min-h-[96px] rounded-lg surface-premium/55 px-2.5 py-2',
         isCritical && 'border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.035]',
-        isWatch && 'border-[color:var(--status-watch)]/30 bg-card/55',
+        isWatch && 'border-[color:var(--status-watch)]/30 surface-premium/55',
         isSuccess && 'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
-        isInfo && 'border-border/45 bg-card/55',
+        isInfo && 'border-border/45 surface-premium/55',
         !isCritical && !isWatch && !isSuccess && !isInfo && 'border-border/45',
         isActive && 'ring-2 ring-[color:var(--brand)]/55',
       )}
@@ -337,7 +337,7 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
   );
 
   const selectClass =
-    'w-full px-3 py-2.5 rounded-xl border border-border bg-card text-xs font-medium text-foreground outline-none focus:ring-2 focus:ring-[var(--brand-soft)]';
+    'w-full px-3 py-2.5 rounded-xl border border-border bg-background text-xs font-medium text-foreground outline-none focus:ring-2 focus:ring-[var(--brand-soft)]';
 
   return (
     <div className="space-y-5 max-w-[1600px] mx-auto">
@@ -396,7 +396,7 @@ export function DataAuthorizationTab({ canWrite = false, canManage = false }: Pr
         </div>
       )}
 
-      <div className="sq-card rounded-2xl border border-border/70 p-4 space-y-3">
+      <div className="surface-premium rounded-2xl border border-border/70 p-4 space-y-3">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
             <p className="text-[13px] font-semibold text-foreground">Filter & Suche</p>
@@ -589,7 +589,7 @@ function AuthorizationCard({
     <button
       type="button"
       onClick={onClick}
-      className="sq-card w-full text-left rounded-2xl border border-border/70 p-4 hover:shadow-[var(--shadow-2)] transition-shadow"
+      className="surface-premium w-full text-left rounded-2xl border border-border/70 p-4 hover:shadow-[var(--shadow-2)] transition-shadow"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">

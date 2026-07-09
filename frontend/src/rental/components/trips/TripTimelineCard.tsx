@@ -43,8 +43,8 @@ export function TripTimelineCard({
         isSelected
           ? 'trips-timeline-card--selected border-[color:var(--brand)]/35 bg-[color:color-mix(in_srgb,var(--brand)_7%,var(--card))] shadow-[var(--shadow-1)] ring-1 ring-[color:var(--brand)]/10'
           : flagged
-            ? 'border-red-500/12 bg-card/90 hover:border-red-500/22'
-            : 'border-border/50 bg-card/75 hover:border-border/80 hover:bg-card',
+            ? 'border-red-500/12 surface-premium/90 hover:border-red-500/22'
+            : 'border-border/50 surface-premium/75 hover:border-border/80 hover:surface-premium',
       )}
     >
       <div className="px-3 py-3 sm:px-4 sm:py-3.5">

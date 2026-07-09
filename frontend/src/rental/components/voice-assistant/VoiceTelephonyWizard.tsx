@@ -32,7 +32,7 @@ function WizardStep({ step, title, description, status, children }: WizardStepPr
   return (
     <section
       className={cn(
-        'sq-card rounded-2xl border p-4 shadow-[var(--shadow-1)] transition-colors',
+        'surface-premium rounded-2xl border p-4 shadow-[var(--shadow-1)] transition-colors',
         status === 'current' && 'border-[color:var(--brand)]/30 ring-1 ring-[color:var(--brand)]/10',
       )}
     >
@@ -207,7 +207,7 @@ export function VoiceTelephonyWizard({
 
   return (
     <div className="space-y-4">
-      <div className="sq-card flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
+      <div className="surface-premium flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
         <div>
           <h3 className="text-sm font-bold text-foreground">Telephony setup</h3>
           <p className="mt-1 text-[11px] text-muted-foreground">
@@ -219,7 +219,7 @@ export function VoiceTelephonyWizard({
           type="button"
           onClick={() => void handleRefresh()}
           disabled={refreshing || isBusy}
-          className="sq-press inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-card px-3 py-1.5 text-[10px] font-semibold disabled:opacity-60"
+          className="sq-press inline-flex items-center gap-1.5 rounded-lg border border-border/60 surface-premium px-3 py-1.5 text-[10px] font-semibold disabled:opacity-60"
         >
           <Icon name={refreshing ? 'loader-2' : 'refresh-cw'} className={cn('h-3.5 w-3.5', refreshing && 'animate-spin')} />
           Refresh status
@@ -441,7 +441,7 @@ export function VoiceTelephonyWizard({
           type="button"
           onClick={onNavigateTest}
           disabled={!agentOk}
-          className="sq-press inline-flex items-center gap-2 rounded-lg border border-border/60 bg-card px-4 py-2 text-[11px] font-semibold disabled:opacity-60"
+          className="sq-press inline-flex items-center gap-2 rounded-lg border border-border/60 surface-premium px-4 py-2 text-[11px] font-semibold disabled:opacity-60"
         >
           <Icon name="mic" className="h-3.5 w-3.5" />
           Open Test Center

@@ -55,7 +55,7 @@ export function OperatorHandoverStepCondition({
         )}
       </OperatorHandoverField>
 
-      <div className="rounded-2xl border border-border/60 bg-card/80 p-4 space-y-3">
+      <div className="rounded-2xl border border-border/60 surface-premium p-4 space-y-3">
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-2 text-sm font-semibold">
             <Fuel className="h-4 w-4" />
@@ -129,7 +129,7 @@ export function OperatorHandoverStepCondition({
         <button
           type="button"
           onClick={onTireMeasure}
-          className="sq-press flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-border bg-card px-4 text-left"
+          className="sq-press flex min-h-[48px] w-full items-center gap-3 rounded-xl border border-border surface-premium px-4 text-left"
         >
           <Disc3 className="h-5 w-5 text-muted-foreground" />
           <span>

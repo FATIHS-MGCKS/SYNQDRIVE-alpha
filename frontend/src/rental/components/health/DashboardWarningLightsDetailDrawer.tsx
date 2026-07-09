@@ -103,7 +103,7 @@ function LightDetailCard({
         : 'border-border/60';
 
   return (
-    <div className={`rounded-xl border ${toneBorder} bg-card/50 p-3 space-y-2`}>
+    <div className={`rounded-xl border ${toneBorder} surface-premium p-3 space-y-2`}>
       <div className="flex items-start gap-2.5">
         <div className="w-9 h-9 rounded-xl bg-muted/50 flex items-center justify-center shrink-0">
           <img src={iconForKey(light.key)} alt="" aria-hidden className="w-4 h-4 object-contain" />

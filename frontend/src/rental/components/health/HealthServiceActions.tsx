@@ -127,7 +127,7 @@ export function HealthServiceActions({
             <button
               type="button"
               onClick={() => onOpenExistingTask(duplicate.id)}
-              className={`${btnClass} border-[color:var(--brand)]/25 bg-card hover:bg-muted/40`}
+              className={`${btnClass} border-[color:var(--brand)]/25 surface-premium hover:bg-muted/40`}
             >
               <ExternalLink className="w-3 h-3" />
               Bestehende Aufgabe öffnen

@@ -90,7 +90,7 @@ export function OperationEventRow({
         'group relative flex flex-col gap-1.5 rounded-lg border border-border/35 px-2.5 py-1.5 transition-colors',
         isCompleted
           ? 'bg-muted/10 opacity-70'
-          : 'bg-card/35 hover:border-border/60 hover:bg-muted/20',
+          : 'surface-premium/35 hover:border-border/60 hover:bg-muted/20',
         compact ? 'py-1.5' : '',
       ].join(' ')}
     >

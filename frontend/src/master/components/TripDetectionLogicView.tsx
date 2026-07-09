@@ -47,7 +47,7 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
   const h2 = `text-base font-bold mb-1 ${d ? 'text-neutral-100' : 'text-gray-900'}`;
   const h3 = `text-sm font-semibold mb-2 ${d ? 'text-neutral-200' : 'text-gray-800'}`;
   const body = `text-xs leading-relaxed ${d ? 'text-neutral-400' : 'text-gray-600'}`;
-  const code = `px-1 py-0.5 rounded text-[11px] font-mono ${d ? 'bg-card text-violet-400' : 'bg-gray-100 text-violet-600'}`;
+  const code = `px-1 py-0.5 rounded text-[11px] font-mono ${d ? 'surface-premium text-violet-400' : 'bg-gray-100 text-violet-600'}`;
   const li = `text-xs ${d ? 'text-neutral-400' : 'text-gray-600'}`;
   const sub = `text-[11px] ${d ? 'text-neutral-500' : 'text-muted-foreground'}`;
 
@@ -104,7 +104,7 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                     active
                       ? d ? 'bg-violet-500/20 text-violet-300' : 'bg-violet-100 text-violet-700'
-                      : d ? 'text-neutral-400 hover:text-neutral-200 hover:bg-card' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+                      : d ? 'text-neutral-400 hover:text-neutral-200 hover:surface-premium' : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
                   }`}
                 >
                   <Icon size={13} />
@@ -180,7 +180,7 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                 <p className={`${body} mb-3`}>{g.purpose}</p>
                 <div className="space-y-2">
                   {g.signals.map(s => (
-                    <div key={s.name} className={`rounded-lg p-2.5 ${d ? 'bg-card' : 'bg-gray-50'}`}>
+                    <div key={s.name} className={`rounded-lg p-2.5 ${d ? 'surface-premium' : 'bg-gray-50'}`}>
                       <div className="flex items-center gap-2 mb-0.5">
                         <code className={code}>{s.name}</code>
                         <span className={BADGE('bg-violet-500/10 text-violet-400')}>{s.agg}</span>
@@ -558,7 +558,7 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
                   { key: 'TRIP_END_SEGMENT_LOOKAHEAD_MS', default: '300 000 (5 min)', desc: 'How far forward from possibleEndAt to query' },
                   { key: 'TRIP_END_MIN_INACTIVITY_BEFORE_CUSUM_MS', default: '180 000 (3 min)', desc: 'Min stable inactivity before CUSUM runs' },
                 ].map(c => (
-                  <div key={c.key} className={`rounded-lg p-2.5 ${d ? 'bg-card' : 'bg-gray-50'}`}>
+                  <div key={c.key} className={`rounded-lg p-2.5 ${d ? 'surface-premium' : 'bg-gray-50'}`}>
                     <code className={`${code} text-[10px]`}>{c.key}</code>
                     <p className={`text-[11px] mt-0.5 ${d ? 'text-neutral-300' : 'text-gray-700'}`}>Default: {c.default}</p>
                     <p className={sub}>{c.desc}</p>
@@ -623,7 +623,7 @@ export function TripDetectionLogicView({ isDarkMode: d }: Props) {
               <div className="flex flex-wrap gap-2">
                 {['Trip status = COMPLETED', '→ BullMQ: hf-enrich job (5s delay)', '→ TripBehaviorEnrichmentService.enrichTrip()', '→ 1-second HF data fetched via DIMO', '→ Acceleration / Braking / Abuse events stored', '→ TripBehaviorEvent records created', '→ Driving Impact Engine V1 triggered'].map((s, i) => (
                   <div key={i} className="flex items-center gap-1.5">
-                    <span className={`text-[11px] px-2 py-0.5 rounded-full ${d ? 'bg-card text-neutral-300' : 'bg-gray-100 text-gray-600'}`}>{s}</span>
+                    <span className={`text-[11px] px-2 py-0.5 rounded-full ${d ? 'surface-premium text-neutral-300' : 'bg-gray-100 text-gray-600'}`}>{s}</span>
                     {i < 6 && <ChevronRight size={12} className={d ? 'text-neutral-600' : 'text-muted-foreground'} />}
                   </div>
                 ))}

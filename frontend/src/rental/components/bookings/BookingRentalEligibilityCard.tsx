@@ -30,7 +30,7 @@ function statusTitle(status: BookingRentalEligibilityResult['status']): string {
 function EligibilitySkeleton() {
   return (
     <div
-      className="rounded-xl border border-border/60 bg-card p-4 space-y-3"
+      className="rounded-xl border border-border/60 surface-premium p-4 space-y-3"
       aria-busy="true"
       aria-label="Fahrzeugvoraussetzungen werden geprüft"
     >
@@ -82,7 +82,7 @@ export function BookingRentalEligibilityCard({
   );
 
   return (
-    <div className="rounded-xl border border-border/60 bg-card p-4 text-xs space-y-3">
+    <div className="rounded-xl border border-border/60 surface-premium p-4 text-xs space-y-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-2 min-w-0">
           <Icon name="shield-check" className="w-4 h-4 shrink-0 mt-0.5 text-muted-foreground" aria-hidden />

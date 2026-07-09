@@ -320,7 +320,7 @@ export function GlobalTaskDetailPanel({
                       onChange={(e) => setCommentDraft(e.target.value)}
                       disabled={mutating}
                       placeholder="Notiz hinzufügen …"
-                      className="min-h-[72px] w-full resize-y rounded-lg border border-border bg-card px-3 py-2 text-[12px]"
+                      className="min-h-[72px] w-full resize-y rounded-lg border border-border surface-premium px-3 py-2 text-[12px]"
                     />
                     {commentError ? (
                       <p className="text-[10px] font-medium text-[color:var(--status-critical)]">{commentError}</p>
@@ -482,7 +482,7 @@ export function GlobalTaskDetailPanel({
               setResolutionError(null);
             }}
             disabled={mutating}
-            className="mt-1.5 min-h-[80px] w-full resize-y rounded-lg border border-border bg-card px-3 py-2 text-xs"
+            className="mt-1.5 min-h-[80px] w-full resize-y rounded-lg border border-border surface-premium px-3 py-2 text-xs"
             placeholder="Ergebnis / durchgeführte Maßnahmen dokumentieren"
           />
         </label>
@@ -522,7 +522,7 @@ export function GlobalTaskDetailPanel({
             value={assignDraft}
             onChange={(e) => setAssignDraft(e.target.value)}
             disabled={mutating}
-            className="mt-1.5 w-full rounded-lg border border-border bg-card px-3 py-2 text-[12px]"
+            className="mt-1.5 w-full rounded-lg border border-border surface-premium px-3 py-2 text-[12px]"
           >
             <option value="">Nicht zugewiesen</option>
             {orgMembers.map((m) => (
@@ -539,7 +539,7 @@ export function GlobalTaskDetailPanel({
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-xl border border-border/60 bg-card/50 p-3">
+    <section className="rounded-xl border border-border/60 surface-premium p-3">
       <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</h4>
       {children}
     </section>

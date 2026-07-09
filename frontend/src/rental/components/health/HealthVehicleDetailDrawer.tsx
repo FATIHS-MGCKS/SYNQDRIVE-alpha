@@ -34,7 +34,7 @@ export function HealthVehicleDetailDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="right"
-        className="w-full gap-0 bg-card p-0 sm:max-w-xl md:max-w-2xl max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:h-[92vh] max-sm:rounded-t-2xl max-sm:border-t"
+        className="w-full gap-0 surface-premium p-0 sm:max-w-xl md:max-w-2xl max-sm:inset-x-0 max-sm:bottom-0 max-sm:top-auto max-sm:h-[92vh] max-sm:rounded-t-2xl max-sm:border-t"
       >
         <HealthVehicleDetailPanel
           vehicle={vehicle}

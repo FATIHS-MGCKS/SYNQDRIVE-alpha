@@ -218,7 +218,7 @@ export function CategoryDetailDrawer({
                 {assignedVehicles.map((v) => (
                   <li
                     key={v.id}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-card px-2.5 py-2"
+                    className="flex items-center justify-between gap-2 rounded-lg border border-border/60 surface-premium px-2.5 py-2"
                   >
                     <div className="flex min-w-0 items-center gap-2">
                       <Car className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />

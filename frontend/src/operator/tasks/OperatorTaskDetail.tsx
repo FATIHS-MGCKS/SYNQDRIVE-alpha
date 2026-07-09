@@ -156,7 +156,7 @@ export function OperatorTaskDetail({ taskId, initialTask, onTaskUpdated, focusCo
                 <label
                   key={item.id}
                   className={`flex min-h-[52px] cursor-pointer items-start gap-3 rounded-2xl border px-3 py-3 ${
-                    item.isDone ? 'border-[color:var(--status-success)]/30 bg-[color:var(--status-success)]/[0.05]' : 'border-border bg-card'
+                    item.isDone ? 'border-[color:var(--status-success)]/30 bg-[color:var(--status-success)]/[0.05]' : 'border-border surface-premium'
                   } ${!active || mutating ? 'pointer-events-none opacity-60' : ''}`}
                 >
                   <span
@@ -199,7 +199,7 @@ export function OperatorTaskDetail({ taskId, initialTask, onTaskUpdated, focusCo
                   href={a.fileUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-[color:var(--brand-ink)]"
+                  className="flex items-center gap-2 rounded-xl border border-border surface-premium px-3 py-2 text-sm font-medium text-[color:var(--brand-ink)]"
                 >
                   <Paperclip className="h-4 w-4 shrink-0" />
                   <span className="truncate">{a.fileName ?? 'Datei'}</span>
@@ -231,7 +231,7 @@ export function OperatorTaskDetail({ taskId, initialTask, onTaskUpdated, focusCo
                 rows={3}
                 autoFocus={focusComment}
                 placeholder="Kommentar hinzufügen…"
-                className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm resize-y"
+                className="w-full rounded-xl border border-border surface-premium px-3 py-2 text-sm resize-y"
               />
               {commentError && <p className="text-xs text-[color:var(--status-critical)]">{commentError}</p>}
               <button
@@ -253,7 +253,7 @@ export function OperatorTaskDetail({ taskId, initialTask, onTaskUpdated, focusCo
               value={completeNote}
               onChange={(e) => setCompleteNote(e.target.value)}
               rows={3}
-              className="w-full rounded-xl border border-border bg-card px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-border surface-premium px-3 py-2 text-sm"
               placeholder="Was wurde erledigt?"
             />
           </div>

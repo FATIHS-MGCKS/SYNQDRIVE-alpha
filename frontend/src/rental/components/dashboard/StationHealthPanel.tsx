@@ -61,7 +61,7 @@ function MetricPill({
       type={onClick ? 'button' : undefined}
       onClick={onClick}
       className={cn(
-        'min-w-0 rounded-lg border border-border/45 bg-card/35 px-2 py-1.5 text-left transition-colors',
+        'min-w-0 rounded-lg border border-border/45 surface-premium/35 px-2 py-1.5 text-left transition-colors',
         onClick &&
           'sq-press hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
       )}
@@ -265,7 +265,7 @@ function HandoverMiniList({
               type="button"
               disabled={!item.bookingId}
               onClick={() => item.bookingId && onOpenBooking?.(item.bookingId)}
-              className="flex w-full min-h-10 items-center gap-2.5 rounded-lg border border-border/45 bg-card/30 px-2.5 py-2 text-left text-[12.5px] transition-colors hover:bg-muted/25 disabled:cursor-default disabled:opacity-80"
+              className="flex w-full min-h-10 items-center gap-2.5 rounded-lg border border-border/45 surface-premium/30 px-2.5 py-2 text-left text-[12.5px] transition-colors hover:bg-muted/25 disabled:cursor-default disabled:opacity-80"
             >
               <span className="shrink-0 tabular-nums text-muted-foreground">{item.time}</span>
               <span className="min-w-0 flex-1 truncate font-medium text-foreground">{item.plate}</span>
@@ -402,7 +402,7 @@ function StationDetailView({
             {detail.timelineItems.map((item) => (
               <li
                 key={item.id}
-                className="flex items-center gap-2.5 rounded-lg border border-border/45 bg-card/25 px-2.5 py-2 text-[12.5px]"
+                className="flex items-center gap-2.5 rounded-lg border border-border/45 surface-premium/25 px-2.5 py-2 text-[12.5px]"
               >
                 <span className="shrink-0 tabular-nums text-muted-foreground">{item.timeLabel}</span>
                 <span className="min-w-0 flex-1 truncate font-medium">{item.vehicleLabel}</span>
@@ -428,7 +428,7 @@ function StationDetailView({
             {detail.actionItems.map((item) => (
               <li
                 key={item.id}
-                className="rounded-lg border border-border/45 bg-card/25 px-2.5 py-2.5 text-[12.5px]"
+                className="rounded-lg border border-border/45 surface-premium/25 px-2.5 py-2.5 text-[12.5px]"
               >
                 <p className="font-semibold text-foreground">{item.title}</p>
                 <p className="mt-0.5 line-clamp-2 text-muted-foreground text-pretty">{item.reason}</p>

@@ -67,7 +67,7 @@ export function ServiceTaskCard({
       ? 'border-red-500/25 bg-red-500/[0.03]'
       : overdue
         ? 'border-amber-500/25 bg-amber-500/[0.03]'
-        : 'border-border/45 bg-card/60';
+        : 'border-border/45 surface-premium';
 
   const dueClass = overdue
     ? 'text-red-600 dark:text-red-400 font-semibold'

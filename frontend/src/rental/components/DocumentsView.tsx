@@ -233,12 +233,12 @@ export function DocumentsView({ vehicle, onOpenLinkedTask }: DocumentsViewProps)
 
       {loading && !summary ? (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-          <div className="sq-card h-32 animate-pulse rounded-xl border border-border/60 bg-muted/20" />
-          <div className="sq-card h-32 animate-pulse rounded-xl border border-border/60 bg-muted/20" />
+          <div className="surface-premium h-32 animate-pulse rounded-xl border border-border/60 bg-muted/20" />
+          <div className="surface-premium h-32 animate-pulse rounded-xl border border-border/60 bg-muted/20" />
         </div>
       ) : summary ? (
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] lg:items-stretch">
-          <header className="surface-premium sq-card-elevated flex flex-col rounded-xl border border-border/70 p-3 sm:p-4">
+          <header className="surface-premium surface-elevated flex flex-col rounded-xl border border-border/70 p-3 sm:p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 space-y-1.5">
                 <p className="sq-section-label">Fahrzeugakte</p>
@@ -307,7 +307,7 @@ export function DocumentsView({ vehicle, onOpenLinkedTask }: DocumentsViewProps)
             </p>
           </header>
 
-          <aside className="surface-premium sq-card-elevated rounded-xl border border-border/70 p-3 sm:p-4">
+          <aside className="surface-premium surface-elevated rounded-xl border border-border/70 p-3 sm:p-4">
             <p className="mb-2 sq-section-label">Übersicht</p>
             <div className="grid grid-cols-2 gap-2">
               <CompactSummaryMetric
@@ -590,7 +590,7 @@ function DocumentCategoryCard({
 
   return (
     <article
-      className={`group sq-card-elevated flex flex-col rounded-xl border bg-card/50 p-3 transition-all duration-200 hover:border-border hover:bg-muted/20 ${
+      className={`group surface-elevated flex flex-col rounded-xl border surface-premium p-3 transition-all duration-200 hover:border-border hover:bg-muted/20 ${
         isPriority ? 'border-[color:var(--status-watch)]/35' : 'border-border/70'
       } ${isCompact ? 'opacity-95' : ''}`}
     >
@@ -662,7 +662,7 @@ function DocumentCategoryCard({
           <button
             type="button"
             onClick={onView}
-            className="sq-press inline-flex items-center gap-1 rounded-lg border border-border bg-card/80 px-2.5 py-1.5 text-[10px] font-semibold text-foreground"
+            className="sq-press inline-flex items-center gap-1 rounded-lg border border-border surface-premium px-2.5 py-1.5 text-[10px] font-semibold text-foreground"
           >
             <Icon name="eye" className="w-3 h-3" />
             Ansehen

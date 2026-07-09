@@ -158,7 +158,7 @@ export function CreateUserWizard({ orgId, stations, onClose, onDone, onError }: 
 
   return (
     <div className="fixed inset-0 z-[70] overlay-scrim flex items-center justify-center p-4">
-      <div className="sq-card w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-[var(--shadow-2)] p-5">
+      <div className="surface-premium w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-[var(--shadow-2)] p-5">
         <div className="flex items-start justify-between gap-3 mb-4">
           <div>
             <h3 className="text-[16px] font-semibold text-foreground">Benutzer einladen</h3>
@@ -436,7 +436,7 @@ function Field({
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2.5 rounded-xl border border-border/70 bg-card text-[13px] outline-none focus:ring-2 focus:ring-[var(--brand-soft)]"
+        className="w-full px-3 py-2.5 rounded-xl border border-border/70 bg-background text-[13px] outline-none focus:ring-2 focus:ring-[var(--brand-soft)]"
       />
     </label>
   );

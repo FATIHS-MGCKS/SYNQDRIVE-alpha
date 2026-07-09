@@ -47,7 +47,7 @@ export function VehicleDeviceConnectionCard({
 
   if (loading) {
     return (
-      <div className="sq-card rounded-2xl p-4 animate-pulse h-28 bg-muted/30" aria-hidden />
+      <div className="surface-premium rounded-2xl p-4 animate-pulse h-28 bg-muted/30" aria-hidden />
     );
   }
 
@@ -59,7 +59,7 @@ export function VehicleDeviceConnectionCard({
 
   return (
     <section
-      className="sq-card rounded-2xl border border-border/70 p-4 space-y-3"
+      className="surface-premium rounded-2xl border border-border/70 p-4 space-y-3"
       aria-label="DIMO Geräteverbindung"
     >
       <div className="flex items-start justify-between gap-3 flex-wrap">

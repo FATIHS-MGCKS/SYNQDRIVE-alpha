@@ -423,7 +423,7 @@ export function ExteriorImagesEditor({
   };
 
   const cardClass = `rounded-xl border ${
-    isDarkMode ? 'bg-card/40 border-neutral-700' : 'bg-gray-50/60 border-gray-200'
+    isDarkMode ? 'surface-premium border-neutral-700' : 'bg-gray-50/60 border-gray-200'
   }`;
 
   return (

@@ -125,7 +125,7 @@ export function OperatorBookingNoShowSheet({ action }: OperatorBookingNoShowShee
                 onChange={(e) => setReason(e.target.value)}
                 rows={3}
                 placeholder="z. B. Keine Antwort, nicht am Schalter…"
-                className="mt-1 min-h-[80px] w-full rounded-xl border border-border bg-card px-3 py-3 text-sm resize-none"
+                className="mt-1 min-h-[80px] w-full rounded-xl border border-border surface-premium px-3 py-3 text-sm resize-none"
               />
             </label>
           )}

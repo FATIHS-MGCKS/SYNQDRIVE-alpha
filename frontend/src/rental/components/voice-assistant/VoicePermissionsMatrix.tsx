@@ -65,7 +65,7 @@ export function VoicePermissionsMatrix({
 
   return (
     <div className="space-y-4">
-      <div className="sq-card rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)] sm:p-5">
+      <div className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)] sm:p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <h3 className="text-sm font-bold tracking-[-0.02em] text-foreground">Tool & rights matrix</h3>
@@ -97,7 +97,7 @@ export function VoicePermissionsMatrix({
       </div>
 
       {pendingConfirm && (
-        <div className="sq-card rounded-xl border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.04] p-4">
+        <div className="surface-premium rounded-xl border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical)]/[0.04] p-4">
           <div className="flex items-start gap-2">
             <Icon name="alert-triangle" className="mt-0.5 h-4 w-4 shrink-0 text-[color:var(--status-critical)]" />
             <div className="min-w-0 flex-1">
@@ -120,7 +120,7 @@ export function VoicePermissionsMatrix({
                 <button
                   type="button"
                   onClick={() => setPendingConfirm(null)}
-                  className="sq-press rounded-lg border border-border/60 bg-card px-3 py-1.5 text-[10px] font-semibold"
+                  className="sq-press rounded-lg border border-border/60 surface-premium px-3 py-1.5 text-[10px] font-semibold"
                 >
                   Cancel
                 </button>
@@ -130,7 +130,7 @@ export function VoicePermissionsMatrix({
         </div>
       )}
 
-      <div className="sq-card overflow-hidden rounded-2xl border border-border/40 shadow-[var(--shadow-1)]">
+      <div className="surface-premium overflow-hidden rounded-2xl border border-border/40 shadow-[var(--shadow-1)]">
         <div className="overflow-x-auto">
           <table className="w-full min-w-[720px] border-collapse text-left">
             <thead>

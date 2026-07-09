@@ -50,7 +50,7 @@ export function ServiceScheduleRow({
     <button
       type="button"
       onClick={() => onOpen(task.id)}
-      className="w-full text-left rounded-xl border border-border/45 px-3 py-2.5 bg-card/50 hover:bg-muted/25 transition-colors group"
+      className="w-full text-left rounded-xl border border-border/45 px-3 py-2.5 surface-premium hover:bg-muted/25 transition-colors group"
     >
       <div className="flex items-start gap-3">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted/50 text-muted-foreground">

@@ -31,7 +31,7 @@ export function DataAuthorizationRevokeDialog({
       role="presentation"
     >
       <div
-        className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-[var(--shadow-3)]"
+        className="w-full max-w-md rounded-2xl border border-border surface-premium p-6 shadow-[var(--shadow-3)]"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-labelledby="revoke-dialog-title"

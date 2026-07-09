@@ -56,7 +56,7 @@ export class AppErrorBoundary extends Component<
 
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-background px-6">
-        <div className="max-w-lg w-full rounded-xl border border-border bg-card p-6 shadow-sm">
+        <div className="max-w-lg w-full rounded-xl border border-border surface-premium p-6 shadow-sm">
           <h1 className="text-lg font-semibold text-foreground">
             {this.props.title ?? 'Something went wrong'}
           </h1>

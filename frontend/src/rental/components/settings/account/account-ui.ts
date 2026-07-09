@@ -1,10 +1,10 @@
 import { cn } from '../../../../components/ui/utils';
+import { rs } from '../../../lib/rental-surface-ui';
 
 export const accountFieldLabelClass =
   'block text-[11px] font-medium mb-1 text-muted-foreground';
 
-export const accountInputClass =
-  'w-full px-3 py-2 rounded-xl border border-border/60 bg-card text-xs text-foreground placeholder:text-muted-foreground outline-none transition-colors focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]';
+export const accountInputClass = rs.input;
 
 export const accountSelectClass = accountInputClass;
 

@@ -59,7 +59,7 @@ export function TripTimelineEnergyCard({ event, isDark }: { event: EnergyEvent; 
         : 'bg-muted text-muted-foreground';
 
   return (
-    <div className="rounded-xl border border-border bg-card/40 shadow-sm">
+    <div className="rounded-xl border border-border surface-premium shadow-sm">
       <div className="p-3 sm:p-4 flex items-center gap-3">
         <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${accentBg}`}>
           {isRefuel ? (

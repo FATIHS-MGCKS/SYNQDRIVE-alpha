@@ -38,12 +38,12 @@ export default function VehicleLogbookView({ isDarkMode: d }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('overview');
 
   const bg = d ? 'bg-neutral-900' : 'bg-white';
-  const card = d ? 'bg-card/60 border-neutral-700/50' : 'bg-gray-50 border-gray-200';
+  const card = d ? 'surface-premium border-neutral-700/50' : 'bg-gray-50 border-gray-200';
   const text1 = d ? 'text-white' : 'text-gray-900';
   const text2 = d ? 'text-muted-foreground' : 'text-gray-500';
   const text3 = d ? 'text-gray-500' : 'text-muted-foreground';
   const border = d ? 'border-neutral-700/50' : 'border-gray-200';
-  const inputBg = d ? 'bg-card border-neutral-700 text-white placeholder-gray-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400';
+  const inputBg = d ? 'surface-premium border-neutral-700 text-white placeholder-gray-500' : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400';
 
   const fetchVehicles = useCallback(async () => {
     setLoading(true);
@@ -105,7 +105,7 @@ export default function VehicleLogbookView({ isDarkMode: d }: Props) {
               <p className={`text-xs ${text3}`}>Per-vehicle telemetry debug &amp; signal trace console</p>
             </div>
           </div>
-          <button onClick={fetchVehicles} className={`p-2 rounded-lg ${d ? 'hover:bg-card' : 'hover:bg-gray-100'}`}><RefreshCw className={`w-4 h-4 ${text2}`} /></button>
+          <button onClick={fetchVehicles} className={`p-2 rounded-lg ${d ? 'hover:surface-premium' : 'hover:bg-gray-100'}`}><RefreshCw className={`w-4 h-4 ${text2}`} /></button>
         </div>
 
         <div className="relative">
@@ -170,7 +170,7 @@ export default function VehicleLogbookView({ isDarkMode: d }: Props) {
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <button onClick={() => setSelectedId(null)} className={`p-1.5 rounded-lg ${d ? 'hover:bg-card' : 'hover:bg-gray-100'}`}>
+        <button onClick={() => setSelectedId(null)} className={`p-1.5 rounded-lg ${d ? 'hover:surface-premium' : 'hover:bg-gray-100'}`}>
           <ChevronRight className={`w-4 h-4 rotate-180 ${text2}`} />
         </button>
         <BookOpen className={`w-5 h-5 ${d ? 'text-status-info' : 'text-status-info'}`} />
@@ -178,16 +178,16 @@ export default function VehicleLogbookView({ isDarkMode: d }: Props) {
           <h1 className="min-w-0 truncate font-display text-[length:var(--text-display-lg)] font-bold leading-[1.15] tracking-[var(--tracking-display)] text-foreground">{ov?.licensePlate || 'Loading…'}</h1>
           <p className={`text-xs ${text3}`}>{[ov?.make, ov?.model, ov?.year].filter(Boolean).join(' ')}{ov?.vin ? ` · ${ov.vin}` : ''}</p>
         </div>
-        <button onClick={() => fetchDetail(selectedId)} className={`p-2 rounded-lg ${d ? 'hover:bg-card' : 'hover:bg-gray-100'}`}><RefreshCw className={`w-4 h-4 ${text2} ${detailLoading ? 'animate-spin' : ''}`} /></button>
+        <button onClick={() => fetchDetail(selectedId)} className={`p-2 rounded-lg ${d ? 'hover:surface-premium' : 'hover:bg-gray-100'}`}><RefreshCw className={`w-4 h-4 ${text2} ${detailLoading ? 'animate-spin' : ''}`} /></button>
       </div>
 
       {/* Tabs */}
-      <div className={`flex gap-1 p-1 rounded-xl ${d ? 'bg-card/60' : 'bg-gray-100'} overflow-x-auto`}>
+      <div className={`flex gap-1 p-1 rounded-xl ${d ? 'surface-premium' : 'bg-gray-100'} overflow-x-auto`}>
         {TABS.map((t) => {
           const Icon = t.icon;
           const active = activeTab === t.key;
           return (
-            <button key={t.key} onClick={() => setActiveTab(t.key)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${active ? (d ? 'bg-status-info-soft text-status-info' : 'bg-card text-brand shadow-sm') : (d ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700')}`}>
+            <button key={t.key} onClick={() => setActiveTab(t.key)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-colors ${active ? (d ? 'bg-status-info-soft text-status-info' : 'surface-premium text-brand shadow-sm') : (d ? 'text-gray-500 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700')}`}>
               <Icon className="w-3.5 h-3.5" />{t.label}
             </button>
           );
@@ -220,7 +220,7 @@ interface TabProps { d: boolean; detail: any; card: string; text1: string; text2
 
 function StatBox({ d, label, value, sub, color }: { d: boolean; label: string; value: string; sub?: string; color?: string }) {
   return (
-    <div className={`rounded-lg px-3 py-2 ${d ? 'bg-card/60' : 'bg-gray-50'}`}>
+    <div className={`rounded-lg px-3 py-2 ${d ? 'surface-premium' : 'bg-gray-50'}`}>
       <p className={`text-[9px] uppercase tracking-wider ${d ? 'text-gray-500' : 'text-muted-foreground'}`}>{label}</p>
       <p className={`text-sm font-bold ${color || (d ? 'text-white' : 'text-gray-900')}`}>{value}</p>
       {sub && <p className={`text-[9px] ${d ? 'text-gray-600' : 'text-muted-foreground'}`}>{sub}</p>}
@@ -440,7 +440,7 @@ function TripsTab({ d, detail, card, text1, text2, text3, fmtTime, ago }: TabPro
           <h3 className={`text-xs font-semibold mb-3 ${text1}`}>Recent Trips</h3>
           <div className="space-y-1.5">
             {trips.map((t: any) => (
-              <div key={t.id} className={`rounded-lg px-3 py-2 ${d ? 'bg-card/40' : 'bg-white'} border ${d ? 'border-neutral-700/30' : 'border-gray-100'}`}>
+              <div key={t.id} className={`rounded-lg px-3 py-2 ${d ? 'surface-premium' : 'bg-white'} border ${d ? 'border-neutral-700/30' : 'border-gray-100'}`}>
                 <div className="flex items-center gap-3 text-xs">
                   <span className={`font-medium ${text1}`}>{t.id.slice(0, 8)}</span>
                   <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${t.tripStatus === 'COMPLETED' ? (d ? 'bg-emerald-500/15 text-emerald-400' : 'bg-emerald-50 text-emerald-700') : (d ? 'bg-amber-500/15 text-amber-400' : 'bg-amber-50 text-amber-700')}`}>{t.tripStatus}</span>

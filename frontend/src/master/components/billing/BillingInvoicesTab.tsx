@@ -44,7 +44,7 @@ export function BillingInvoicesTab() {
   }, [load]);
 
   const inputClass =
-    'w-full px-3 py-2 rounded-xl border border-border/70 bg-card text-xs outline-none focus:border-[var(--brand)]';
+    'w-full px-3 py-2 rounded-xl border border-border/70 bg-background text-xs outline-none focus:border-[var(--brand)]';
 
   if (loading && !invoices.length) {
     return <SkeletonCard className="h-64" />;

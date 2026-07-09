@@ -78,13 +78,13 @@ function TaskKpiCard({
       aria-label={`${label}: ${value}`}
       className={cn(
         'relative overflow-hidden border text-left transition-colors duration-200',
-        'min-h-[96px] rounded-lg bg-card/55 px-2.5 py-2',
+        'min-h-[96px] rounded-lg surface-premium/55 px-2.5 py-2',
         interactive && 'sq-press hover:border-border/60 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
         !interactive && 'cursor-default',
         isCritical && 'border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.035]',
-        isWatch && 'border-[color:var(--status-watch)]/30 bg-card/55',
+        isWatch && 'border-[color:var(--status-watch)]/30 surface-premium/55',
         isSuccess && 'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
-        isInfo && 'border-border/45 bg-card/55',
+        isInfo && 'border-border/45 surface-premium/55',
         !isCritical && !isWatch && !isSuccess && !isInfo && 'border-border/45',
         isActive && 'ring-2 ring-[color:var(--brand)]/55',
       )}
@@ -637,7 +637,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
       </div>
 
       {/* Search & Filters */}
-      <div className="sq-card rounded-2xl p-3 shadow-[var(--shadow-1)] md:p-4">
+      <div className="surface-premium rounded-2xl p-3 shadow-[var(--shadow-1)] md:p-4">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <Icon name="filter" className="h-4 w-4 text-muted-foreground" />
@@ -702,7 +702,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
               placeholder="Aufgaben, Fahrzeuge, Zuständige suchen…"
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-border bg-card py-2 pl-9 pr-3 text-xs text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-[color:var(--brand)]"
+              className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-xs text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-[color:var(--brand)]"
             />
           </div>
           <DropdownFilter
@@ -787,7 +787,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
 
       {/* Unified task list — same component on mobile and desktop */}
       {tasksError ? (
-        <div className="sq-card overflow-hidden">
+        <div className="surface-premium overflow-hidden">
           <ErrorState
             compact
             title="Aufgaben konnten nicht geladen werden"
@@ -799,7 +799,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
       ) : tasksLoading ? (
         <div className="space-y-2">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="sq-card h-24 animate-pulse rounded-2xl md:h-20" />
+            <div key={i} className="surface-premium h-24 animate-pulse rounded-2xl md:h-20" />
           ))}
         </div>
       ) : sorted.length === 0 ? (
@@ -878,7 +878,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                 <button
                   type="button"
                   onClick={() => setTaskStep(taskStep - 1)}
-                  className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-medium text-foreground transition-all hover:bg-muted"
+                  className="flex items-center gap-1.5 rounded-lg border border-border surface-premium px-3 py-2 text-xs font-medium text-foreground transition-all hover:bg-muted"
                 >
                   <Icon name="chevron-left" className="w-3.5 h-3.5" />
                   Zurück
@@ -914,7 +914,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
           { label: 'Zeitplan', icon: Calendar },
           { label: 'Zusammenfassung', icon: CheckCircle },
         ];
-        const inputClass = 'w-full px-3 py-2.5 rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground outline-none transition-all text-xs focus:border-[color:var(--brand)] focus:ring-1 focus:ring-[color:var(--brand-soft)]';
+        const inputClass = 'w-full px-3 py-2.5 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground outline-none transition-all text-xs focus:border-[color:var(--brand)] focus:ring-1 focus:ring-[color:var(--brand-soft)]';
         const labelClass = 'block text-xs font-semibold uppercase tracking-wider mb-1.5 text-muted-foreground';
         const sectionTitle = (icon: any, title: string) => {
           const Icon = icon;
@@ -996,7 +996,7 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
                         <label className={labelClass}>Priorität</label>
                         <div className="flex gap-1.5">
                           {allPriorities.map(p => {
-                            const unselected = 'bg-card border-border text-muted-foreground';
+                            const unselected = 'surface-premium border-border text-muted-foreground';
                             const colors: Record<TaskPriority, string> = {
                               'Low': newTask.priority === p ? 'bg-[color:var(--status-nodata)] text-white border-transparent' : unselected,
                               'Medium': newTask.priority === p ? 'bg-[color:var(--status-watch)] text-white border-transparent' : unselected,

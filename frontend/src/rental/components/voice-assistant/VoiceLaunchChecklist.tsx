@@ -13,7 +13,7 @@ export function VoiceLaunchChecklist({ items, onNavigate }: VoiceLaunchChecklist
   const complete = required.filter(i => i.ok).length;
 
   return (
-    <section className="sq-card rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)] sm:p-5">
+    <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)] sm:p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 className="text-sm font-bold tracking-[-0.02em] text-foreground">Launch checklist</h2>
@@ -56,7 +56,7 @@ export function VoiceLaunchChecklist({ items, onNavigate }: VoiceLaunchChecklist
               <button
                 type="button"
                 onClick={() => onNavigate(item.tab)}
-                className="sq-press shrink-0 self-start rounded-lg border border-border/60 bg-card px-3 py-1.5 text-[10px] font-semibold text-foreground transition-all hover:bg-muted sm:self-center"
+                className="sq-press shrink-0 self-start rounded-lg border border-border/60 surface-premium px-3 py-1.5 text-[10px] font-semibold text-foreground transition-all hover:bg-muted sm:self-center"
               >
                 Fix in {TAB_DISPLAY_NAMES[item.tab]}
               </button>

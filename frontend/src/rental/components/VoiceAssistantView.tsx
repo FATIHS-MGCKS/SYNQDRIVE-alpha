@@ -258,10 +258,10 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
 
   const hasDraft = Object.keys(draft).length > 0;
 
-  const card = 'sq-card rounded-2xl shadow-[var(--shadow-1)]';
+  const card = 'surface-premium rounded-2xl shadow-[var(--shadow-1)]';
   const inputCls = `w-full px-3 py-2 rounded-lg text-xs outline-none transition-colors ${
     isDarkMode
-      ? 'bg-card border border-neutral-700 text-gray-200 focus:border-purple-500/50'
+      ? 'surface-premium border border-neutral-700 text-gray-200 focus:border-purple-500/50'
       : 'bg-gray-50 border border-gray-200 text-gray-800 focus:border-purple-400'
   }`;
   const labelCls = `block text-[11px] font-semibold mb-1 ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`;
@@ -288,7 +288,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
   if (loading) {
     return (
       <div className="mx-auto flex h-[60vh] max-w-[1600px] items-center justify-center">
-        <div className="sq-card flex items-center gap-3 rounded-2xl px-5 py-4 shadow-[var(--shadow-1)]">
+        <div className="surface-premium flex items-center gap-3 rounded-2xl px-5 py-4 shadow-[var(--shadow-1)]">
           <Icon name="loader-2" className="h-5 w-5 animate-spin text-muted-foreground" />
           <span className="text-xs font-semibold text-muted-foreground">Loading voice assistant...</span>
         </div>
@@ -299,7 +299,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
   if (loadError && !assistant) {
     return (
       <div className="mx-auto flex h-[60vh] max-w-[1600px] items-center justify-center">
-        <div className="sq-card max-w-md rounded-2xl p-6 text-center shadow-[var(--shadow-1)]">
+        <div className="surface-premium max-w-md rounded-2xl p-6 text-center shadow-[var(--shadow-1)]">
           <p className="text-sm font-semibold text-foreground">Could not load voice assistant</p>
           <p className="mt-2 text-xs text-muted-foreground">{loadError}</p>
           <button
@@ -347,7 +347,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
           compact
           title="Action failed"
           error={actionError}
-          className="sq-card rounded-2xl border border-[color:var(--status-critical)]/20"
+          className="surface-premium rounded-2xl border border-[color:var(--status-critical)]/20"
         />
       )}
 
@@ -471,7 +471,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
               { key: 'escalateOnLowConf', label: 'Low confidence answer', desc: 'Transfer when assistant is unsure about the answer' },
               { key: 'escalateOnSensitive', label: 'Sensitive topic detected', desc: 'Transfer for legal, complaint, or accident topics' },
             ] as const).map(t => (
-              <label key={t.key} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${isDarkMode ? 'hover:bg-card' : 'hover:bg-gray-50'}`}>
+              <label key={t.key} className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${isDarkMode ? 'hover:surface-premium' : 'hover:bg-gray-50'}`}>
                 <input type="checkbox" checked={boolField(t.key)} onChange={e => setBoolField(t.key, e.target.checked)}
                   className="w-4 h-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500" />
                 <div>
@@ -547,7 +547,7 @@ export function VoiceAssistantView({ isDarkMode }: Props) {
           title="Knowledge health"
           description="Knowledge snippet coverage and FAQ freshness scoring will appear here once the backend health endpoint is available."
           action={
-            <button type="button" onClick={() => setTab('config')} className="sq-press rounded-lg border border-border/60 bg-card px-4 py-2 text-xs font-semibold">
+            <button type="button" onClick={() => setTab('config')} className="sq-press rounded-lg border border-border/60 surface-premium px-4 py-2 text-xs font-semibold">
               Edit knowledge snippets
             </button>
           }

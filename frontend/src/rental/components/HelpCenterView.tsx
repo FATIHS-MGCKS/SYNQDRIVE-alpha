@@ -764,7 +764,7 @@ export function HelpCenterView({
   const textPrimary = isDarkMode ? 'text-white' : 'text-gray-900';
   const textSecondary = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
   const textMuted = isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground';
-  const cardClass = `rounded-xl shadow-sm border ${isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'}`;
+  const cardClass = `rounded-xl shadow-sm border ${isDarkMode ? 'surface-premium border-border' : 'bg-white border-gray-200'}`;
   const dividerColor = isDarkMode ? 'border-border/40' : 'border-gray-200/60';
 
   const filteredSections = useMemo(() => {
@@ -820,7 +820,7 @@ export function HelpCenterView({
             onClick={onOpenSupport}
             className={`mt-4 inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-xs font-semibold transition-colors ${
               isDarkMode
-                ? 'border-neutral-700 text-gray-200 hover:bg-card'
+                ? 'border-neutral-700 text-gray-200 hover:surface-premium'
                 : 'border-gray-200 text-gray-800 hover:bg-gray-50'
             }`}
           >
@@ -838,7 +838,7 @@ export function HelpCenterView({
           placeholder="Nach Themen, Funktionen oder Fragen suchen..."
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          className={`w-full pl-11 pr-4 py-3.5 rounded-xl border text-sm ${isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground focus:border-ring' : 'bg-card border-border text-foreground placeholder:text-muted-foreground focus:border-brand'} outline-none transition-all`}
+          className={`w-full pl-11 pr-4 py-3.5 rounded-xl border text-sm ${isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground focus:border-ring' : 'bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-brand'} outline-none transition-all`}
         />
         {searchTerm && (
           <p className={`text-xs mt-2 ${textMuted}`}>

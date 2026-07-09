@@ -111,7 +111,7 @@ export function OperatorPickupCheckSheet({
           manuelle Prüfung gespeichert.
         </p>
 
-        <div className="rounded-2xl border border-border/60 bg-card/80 divide-y divide-border/40">
+        <div className="rounded-2xl border border-border/60 surface-premium divide-y divide-border/40">
           {CHECKLIST_ITEMS.map((item) => (
             <label
               key={item.key}
@@ -141,7 +141,7 @@ export function OperatorPickupCheckSheet({
             rows={3}
             value={form.notes ?? ''}
             onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
-            className="w-full rounded-xl border border-border/60 bg-card px-3 py-2 text-sm"
+            className="w-full rounded-xl border border-border/60 surface-premium px-3 py-2 text-sm"
             placeholder="Optionale Anmerkungen zur Pickup-Prüfung…"
           />
         </div>

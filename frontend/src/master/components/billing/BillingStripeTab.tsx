@@ -60,7 +60,7 @@ export function BillingStripeTab() {
           { label: 'Webhook Events', value: String(status?.webhookEventCount ?? 0) },
           { label: 'Fehlgeschlagen', value: String(status?.failedWebhookCount ?? 0) },
         ].map((kpi) => (
-          <div key={kpi.label} className="sq-card rounded-xl p-4 shadow-[var(--shadow-1)]">
+          <div key={kpi.label} className="surface-premium rounded-xl p-4 shadow-[var(--shadow-1)]">
             <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
               {kpi.label}
             </p>
@@ -89,7 +89,7 @@ export function BillingStripeTab() {
         </Button>
       </div>
 
-      <div className="sq-card rounded-2xl p-5 shadow-[var(--shadow-1)]">
+      <div className="surface-premium rounded-2xl p-5 shadow-[var(--shadow-1)]">
         <h3 className="text-[15px] font-semibold mb-3">Webhook Events</h3>
         {events.length === 0 ? (
           <EmptyState

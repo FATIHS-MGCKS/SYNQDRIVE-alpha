@@ -95,7 +95,7 @@ export function OperatorBookingCard({
             <button
               type="button"
               onClick={onDetails}
-              className="sq-press min-h-[48px] rounded-xl border border-border/70 bg-card px-4 text-sm font-semibold text-foreground sm:max-w-[120px]"
+              className="sq-press min-h-[48px] rounded-xl border border-border/70 surface-premium px-4 text-sm font-semibold text-foreground sm:max-w-[120px]"
             >
               Details
             </button>

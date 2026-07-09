@@ -44,10 +44,10 @@ function InsightKpiCard({
     <div
       className={cn(
         'relative overflow-hidden border text-left',
-        'min-h-[96px] rounded-lg bg-card/55 px-2.5 py-2',
+        'min-h-[96px] rounded-lg surface-premium/55 px-2.5 py-2',
         isCritical && 'border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.035]',
-        isWatch && 'border-[color:var(--status-watch)]/30 bg-card/55',
-        isInfo && 'border-border/45 bg-card/55',
+        isWatch && 'border-[color:var(--status-watch)]/30 surface-premium/55',
+        isInfo && 'border-border/45 surface-premium/55',
         !isCritical && !isWatch && !isInfo && 'border-border/45',
       )}
       aria-label={`${label}: ${value}`}
@@ -116,7 +116,7 @@ function InsightCard({ insight, isDarkMode }: { insight: DashboardInsight; isDar
 
   return (
     <article
-      className={`rounded-xl border p-3 ${isDarkMode ? 'bg-card/60 border-border' : 'bg-white border-gray-200'}`}
+      className={`rounded-xl border p-3 ${isDarkMode ? 'surface-premium border-border' : 'bg-white border-gray-200'}`}
     >
       <div className="flex items-start justify-between gap-2 mb-1.5">
         <h4 className="text-xs font-semibold text-foreground leading-snug">{insight.title}</h4>
@@ -208,7 +208,7 @@ function MisuseAbuseSection({ orgId, isDarkMode }: { orgId: string; isDarkMode: 
   }, [orgId]);
 
   return (
-    <section className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+    <section className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
       <div className="flex items-center gap-2 mb-3">
         <ShieldAlert className="w-4 h-4 text-[color:var(--status-watch)]" />
         <h3 className="text-[12px] font-semibold text-foreground">Nutzungsauffälligkeiten</h3>
@@ -332,7 +332,7 @@ export function InsightsCockpit({
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <section className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+        <section className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
           <h3 className="text-[12px] font-semibold mb-3 text-foreground">Geschäftsrisiken</h3>
           {loading ? (
             <p className="text-xs text-muted-foreground">Lade…</p>
@@ -347,7 +347,7 @@ export function InsightsCockpit({
           )}
         </section>
 
-        <section className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+        <section className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
           <h3 className="text-[12px] font-semibold mb-3 text-foreground">Umsatzverlust / Umsatzrisiken</h3>
           {loading ? (
             <p className="text-xs text-muted-foreground">Lade…</p>
@@ -365,7 +365,7 @@ export function InsightsCockpit({
 
       {orgId && <MisuseAbuseSection key={orgId} orgId={orgId} isDarkMode={isDarkMode} />}
 
-      <section className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+      <section className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
         <h3 className="text-[12px] font-semibold mb-3 text-foreground">Empfohlene Maßnahmen</h3>
         {recommended.length === 0 ? (
           <p className="text-xs text-muted-foreground">Keine dringenden Empfehlungen — weiter beobachten.</p>

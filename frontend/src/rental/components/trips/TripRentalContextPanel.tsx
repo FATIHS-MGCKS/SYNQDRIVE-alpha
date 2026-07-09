@@ -131,7 +131,7 @@ export function TripRentalContextPanel({
       </div>
 
       {alignment.length > 0 && (
-        <div className="rounded-xl border border-border/50 bg-card/50 p-3 space-y-2">
+        <div className="rounded-xl border border-border/50 surface-premium p-3 space-y-2">
           <p className="text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
             {RENTAL_COPY.rentalAlignment}
           </p>

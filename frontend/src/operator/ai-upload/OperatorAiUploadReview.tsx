@@ -50,7 +50,7 @@ export function OperatorAiUploadReview({
         </p>
       </div>
 
-      <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2.5">
+      <div className="flex items-center gap-2 rounded-xl border border-border surface-premium px-3 py-2.5">
         <span className="min-w-0 flex-1 truncate text-sm font-medium">{uploadedFileName || 'Dokument'}</span>
         <StatusChip tone="info">{docTypeLabel(confirmedDocType)}</StatusChip>
       </div>
@@ -87,7 +87,7 @@ export function OperatorAiUploadReview({
               <div
                 key={field.key}
                 className={`rounded-xl border px-3 py-3 ${
-                  critical ? 'border-[color:var(--status-watch)]/40 bg-[color:var(--status-watch)]/[0.04]' : 'border-border bg-card'
+                  critical ? 'border-[color:var(--status-watch)]/40 bg-[color:var(--status-watch)]/[0.04]' : 'border-border surface-premium'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">

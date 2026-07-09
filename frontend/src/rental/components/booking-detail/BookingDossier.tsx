@@ -147,7 +147,7 @@ export function BookingDossier({
           <Icon name="arrow-left" className="w-4 h-4" />
           Zurück
         </button>
-        <div className="rounded-lg border border-border bg-card p-6 text-center space-y-3">
+        <div className="rounded-lg border border-border surface-premium p-6 text-center space-y-3">
           <p className="text-sm text-foreground">{error ?? 'Buchung nicht gefunden'}</p>
           <button type="button" onClick={refresh} className="text-xs font-semibold sq-tone-brand px-4 py-2 rounded-lg">
             Erneut laden
@@ -308,7 +308,7 @@ function ConfirmModal({
       <div className="absolute inset-0 overlay-scrim" />
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-md mx-4 rounded-lg shadow-2xl border overflow-hidden bg-card/95 border-border"
+        className="relative w-full max-w-md mx-4 rounded-lg shadow-2xl border overflow-hidden surface-frosted border-border"
       >
         <div className="p-8 text-center">
           <div className={`w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center sq-tone-${tone}`}>
@@ -322,7 +322,7 @@ function ConfirmModal({
               type="button"
               disabled={submitting}
               onClick={onClose}
-              className="flex-1 px-3 py-2.5 rounded-lg text-xs border bg-card border-border hover:bg-muted"
+              className="flex-1 px-3 py-2.5 rounded-lg text-xs border surface-premium border-border hover:bg-muted"
             >
               Zurück
             </button>

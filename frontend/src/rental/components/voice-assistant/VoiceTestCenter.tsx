@@ -125,7 +125,7 @@ export function VoiceTestCenter({
   return (
     <div className="space-y-4">
       {/* Readiness + status header */}
-      <div className="sq-card rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)] sm:p-5">
+      <div className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)] sm:p-5">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <h3 className="text-sm font-bold tracking-[-0.02em] text-foreground">Test Center</h3>
@@ -230,7 +230,7 @@ export function VoiceTestCenter({
             <button
               type="button"
               onClick={resetSession}
-              className="sq-press inline-flex min-h-9 items-center gap-2 rounded-xl border border-border/60 bg-card px-4 py-2 text-[11px] font-semibold"
+              className="sq-press inline-flex min-h-9 items-center gap-2 rounded-xl border border-border/60 surface-premium px-4 py-2 text-[11px] font-semibold"
             >
               <Icon name="rotate-ccw" className="h-3.5 w-3.5" />
               Stop / reset
@@ -267,7 +267,7 @@ export function VoiceTestCenter({
               <button
                 type="button"
                 onClick={() => onNavigateTab('overview')}
-                className="sq-press rounded-lg border border-border/60 bg-card px-4 py-2 text-xs font-semibold"
+                className="sq-press rounded-lg border border-border/60 surface-premium px-4 py-2 text-xs font-semibold"
               >
                 Open launch checklist
               </button>
@@ -277,7 +277,7 @@ export function VoiceTestCenter({
       </div>
 
       {/* Scenarios */}
-      <section className="sq-card rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
+      <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
         <h4 className="text-[12px] font-bold text-foreground">Test scenarios</h4>
         <p className="mt-1 text-[10px] text-muted-foreground">
           Select a scenario to define expected behavior. No automated simulation — use it as an operator script.
@@ -345,7 +345,7 @@ export function VoiceTestCenter({
       </section>
 
       {/* Live transcript placeholder */}
-      <section className="sq-card rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
+      <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
         <h4 className="text-[12px] font-bold text-foreground">Live session</h4>
         <p className="mt-1 text-[10px] text-muted-foreground">
           Real-time transcript and tool-policy decisions will appear here when live integration is enabled.
@@ -383,7 +383,7 @@ export function VoiceTestCenter({
       </section>
 
       {/* Test result (local UI only) */}
-      <section className="sq-card rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
+      <section className="surface-premium rounded-2xl border border-border/40 p-4 shadow-[var(--shadow-1)]">
         <h4 className="text-[12px] font-bold text-foreground">Test result</h4>
         <p className="mt-1 text-[10px] text-muted-foreground">
           Record your operator verdict locally. Results are not saved to the server yet.
@@ -404,7 +404,7 @@ export function VoiceTestCenter({
                 'sq-press rounded-lg border px-3 py-1.5 text-[10px] font-semibold',
                 verdict === opt.id
                   ? 'border-[color:var(--brand)]/40 bg-[color:var(--brand-soft)]'
-                  : 'border-border/60 bg-card',
+                  : 'border-border/60 surface-premium',
               )}
             >
               {opt.label}
@@ -448,7 +448,7 @@ export function VoiceTestCenter({
       {/* Developer details */}
       {session?.developerDetails?.signedUrl && (
         <details
-          className="sq-card rounded-2xl border border-border/40 shadow-[var(--shadow-1)]"
+          className="surface-premium rounded-2xl border border-border/40 shadow-[var(--shadow-1)]"
           open={showDevDetails}
           onToggle={e => setShowDevDetails((e.target as HTMLDetailsElement).open)}
         >

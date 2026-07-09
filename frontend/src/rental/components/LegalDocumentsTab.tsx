@@ -157,7 +157,7 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
   );
 
   const cardClass = `rounded-2xl border p-4 ${
-    isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'
+    isDarkMode ? 'surface-premium border-border' : 'bg-white border-gray-200'
   }`;
   const subtle = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
 
@@ -303,7 +303,7 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
                       disabled={up?.busy}
                       onClick={() => fileRefs.current[type.key]?.click()}
                       className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium ${
-                        isDarkMode ? 'bg-white text-neutral-900 hover:bg-gray-100' : 'bg-neutral-900 text-white hover:bg-card'
+                        isDarkMode ? 'bg-white text-neutral-900 hover:bg-gray-100' : 'bg-neutral-900 text-white hover:surface-premium'
                       } disabled:opacity-50`}
                     >
                       {up?.busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}

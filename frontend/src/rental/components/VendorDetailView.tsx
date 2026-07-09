@@ -146,7 +146,7 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
 
   const taskStats = useVendorTaskStats(orgId, vendorId);
 
-  const cardClass = 'sq-card rounded-xl';
+  const cardClass = 'surface-premium rounded-xl';
 
   const inputClass = 'w-full rounded-lg px-3 py-2 text-xs outline-none transition border border-border bg-[color:var(--input-background)] text-foreground placeholder:text-muted-foreground focus:border-[color:var(--brand)]';
 
@@ -441,7 +441,7 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
                     className={`px-2 py-1 rounded-md text-[10px] font-medium transition ${
                       active
                         ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)] border border-transparent'
-                        : 'bg-card text-muted-foreground border border-border hover:text-foreground'
+                        : 'surface-premium text-muted-foreground border border-border hover:text-foreground'
                     }`}>
                     {sa}
                   </button>
@@ -554,19 +554,19 @@ export function VendorDetailView({ vendorId, onBack }: VendorDetailViewProps) {
       {activeTab === 'overview' && (
         <div className="space-y-5">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div className="sq-card rounded-xl p-3 text-center">
+            <div className="surface-premium rounded-xl p-3 text-center">
               <p className="text-lg font-bold tabular-nums text-foreground">{taskStats.open}</p>
               <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Offen</p>
             </div>
-            <div className="sq-card rounded-xl p-3 text-center">
+            <div className="surface-premium rounded-xl p-3 text-center">
               <p className="text-lg font-bold tabular-nums text-foreground">{taskStats.completed}</p>
               <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Erledigt</p>
             </div>
-            <div className="sq-card rounded-xl p-3 text-center">
+            <div className="surface-premium rounded-xl p-3 text-center">
               <p className="text-lg font-bold tabular-nums text-foreground">{vendor.linkedVehicleCount}</p>
               <p className="text-[9px] text-muted-foreground uppercase tracking-wide">Fahrzeuge</p>
             </div>
-            <div className="sq-card rounded-xl p-3 text-center">
+            <div className="surface-premium rounded-xl p-3 text-center">
               <p className="text-[11px] font-semibold text-foreground">
                 {taskStats.lastActivity
                   ? taskStats.lastActivity.toLocaleDateString('de-DE', { day: 'numeric', month: 'short' })

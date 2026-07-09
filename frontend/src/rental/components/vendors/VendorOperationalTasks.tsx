@@ -27,7 +27,7 @@ function TaskList({
       {tasks.map((task) => (
         <div
           key={task.id}
-          className="rounded-xl border border-border/45 px-3 py-2.5 bg-card/50"
+          className="rounded-xl border border-border/45 px-3 py-2.5 surface-premium"
         >
           <div className="flex flex-wrap items-center gap-1.5 mb-1">
             <StatusChip tone={task.status === 'DONE' ? 'success' : task.isOverdue ? 'critical' : 'info'}>
@@ -116,7 +116,7 @@ export function VendorOperationalTasks({ orgId, vendorId, onCreateTask }: Vendor
         </p>
       )}
 
-      <section className="sq-card rounded-xl p-4 space-y-3">
+      <section className="surface-premium rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-[12px] font-semibold text-foreground">Offene Partner-Aufgaben</h3>
           {onCreateTask && (
@@ -136,7 +136,7 @@ export function VendorOperationalTasks({ orgId, vendorId, onCreateTask }: Vendor
         />
       </section>
 
-      <section className="sq-card rounded-xl p-4 space-y-3">
+      <section className="surface-premium rounded-xl p-4 space-y-3">
         <h3 className="text-[12px] font-semibold text-foreground">Zuletzt erledigt</h3>
         <TaskList
           tasks={completedTasks}

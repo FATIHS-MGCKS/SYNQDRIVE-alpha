@@ -246,7 +246,7 @@ export function VoiceAssistantAdminView() {
             type="button"
             onClick={() => void load()}
             disabled={loading}
-            className="sq-press inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold"
+            className="sq-press inline-flex items-center gap-2 rounded-xl border border-border surface-premium px-3 py-2 text-xs font-semibold"
           >
             <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
             Refresh
@@ -297,7 +297,7 @@ export function VoiceAssistantAdminView() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search organizations…"
-                className="w-full rounded-xl border border-border bg-card py-2 pl-9 pr-3 text-xs outline-none focus:border-[color:var(--brand)]"
+                className="w-full rounded-xl border border-border bg-background py-2 pl-9 pr-3 text-xs outline-none focus:border-[color:var(--brand)]"
               />
             </div>
             {(['all', 'configured', 'issues'] as FilterMode[]).map((mode) => (

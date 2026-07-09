@@ -152,7 +152,7 @@ export function VehicleDocumentUploadDrawer({
                 const f = e.dataTransfer.files?.[0];
                 if (f) void flow.handleFile(f);
               }}
-              className="sq-card-elevated cursor-pointer rounded-xl border-2 border-dashed border-border/80 bg-muted/20 p-8 text-center transition-colors hover:border-primary/40 hover:bg-muted/30"
+              className="surface-elevated cursor-pointer rounded-xl border-2 border-dashed border-border/80 bg-muted/20 p-8 text-center transition-colors hover:border-primary/40 hover:bg-muted/30"
             >
               <input
                 ref={fileInputRef}
@@ -174,7 +174,7 @@ export function VehicleDocumentUploadDrawer({
         )}
 
         {flow.isBusy && (
-          <div className="sq-card rounded-xl border border-border bg-muted/20 p-8 text-center">
+          <div className="surface-premium rounded-xl border border-border bg-muted/20 p-8 text-center">
             <Icon name="loader-2" className="mx-auto mb-3 h-8 w-8 animate-spin text-primary" />
             <p className="text-[13px] font-semibold text-foreground">{FLOW_STATUS_LABEL_DE[flow.flow]}</p>
             {flow.uploadedFileName ? (
@@ -268,7 +268,7 @@ export function VehicleDocumentUploadDrawer({
                           next[i] = { ...next[i], value: e.target.value };
                           flow.setEditedFields(next);
                         }}
-                        className="flex-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] text-foreground"
+                        className="flex-1 rounded-md border border-border surface-premium px-2 py-1 text-[11px] text-foreground"
                       />
                     ) : (
                       <span className="text-[11px] font-medium text-foreground">{field.value || '—'}</span>

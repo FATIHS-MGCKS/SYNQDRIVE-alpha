@@ -75,7 +75,7 @@ export function CustomerVerificationPanel({
   if (!customerId) return null;
 
   return (
-    <div className={`rounded-lg border border-border bg-card ${compact ? 'p-3' : 'p-4'} space-y-3`}>
+    <div className={`rounded-lg border border-border surface-premium ${compact ? 'p-3' : 'p-4'} space-y-3`}>
       <div className="flex items-center justify-between gap-2">
         <h4 className="text-xs font-bold">Dokumentenprüfung</h4>
         <button

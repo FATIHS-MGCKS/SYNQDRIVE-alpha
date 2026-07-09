@@ -57,7 +57,7 @@ export function TripRpmCandidatesList({ vehicleId, tripId }: TripRpmCandidatesLi
   if (candidates.length === 0) return null;
 
   return (
-    <section className="rounded-xl border border-border/60 bg-card p-3 space-y-3">
+    <section className="rounded-xl border border-border/60 surface-premium p-3 space-y-3">
       <div className="flex items-center gap-2">
         <Icon name="gauge" className="w-4 h-4 text-[color:var(--status-warning)]" />
         <h4 className="text-[12px] font-semibold text-foreground">

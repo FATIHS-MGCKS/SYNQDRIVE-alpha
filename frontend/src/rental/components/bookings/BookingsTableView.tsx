@@ -89,7 +89,7 @@ export function BookingsTableView({
   );
 
   return (
-    <div className="sq-card rounded-2xl p-3 shadow-[var(--shadow-1)]">
+    <div className="surface-premium rounded-2xl p-3 shadow-[var(--shadow-1)]">
       <DataTable
         columns={columns}
         rows={rows}

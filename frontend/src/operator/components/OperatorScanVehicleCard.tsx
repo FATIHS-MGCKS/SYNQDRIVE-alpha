@@ -203,7 +203,7 @@ function ScanAction({
         e.stopPropagation();
         onClick();
       }}
-      className="sq-press flex min-h-[48px] flex-col items-center justify-center gap-1 bg-card px-2 py-2 text-[11px] font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-45"
+      className="sq-press flex min-h-[48px] flex-col items-center justify-center gap-1 surface-premium px-2 py-2 text-[11px] font-semibold text-foreground disabled:cursor-not-allowed disabled:opacity-45"
     >
       {icon}
       {label}

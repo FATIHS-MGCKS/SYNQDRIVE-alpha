@@ -61,7 +61,7 @@ export function CompanySetupChecklist({
     );
 
   return (
-    <div className="sq-card overflow-hidden">
+    <div className="surface-premium overflow-hidden">
       <div className="border-b border-border/70 px-4 py-3">
         <h3 className="text-sm font-semibold text-foreground">Einrichtungsstatus</h3>
         <p className="mt-0.5 text-[12px] text-muted-foreground">

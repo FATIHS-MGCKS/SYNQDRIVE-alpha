@@ -28,7 +28,7 @@ export function PlatformSettingsView({ isDarkMode, activeTab = 'general', onTabC
   ];
 
   const cardClass = `rounded-3xl shadow-sm border ${isDarkMode ? 'bg-neutral-900 border-neutral-800' : 'bg-white border-gray-200'}`;
-  const inputClass = `w-full px-4 py-3 rounded-xl border text-sm transition-colors outline-none ${isDarkMode ? 'bg-card border-neutral-700 text-gray-200 focus:border-brand/50 placeholder:text-gray-600' : 'bg-gray-50 border-gray-200 text-gray-700 focus:border-brand placeholder:text-gray-400'}`;
+  const inputClass = `w-full px-4 py-3 rounded-xl border text-sm transition-colors outline-none ${isDarkMode ? 'bg-background border-neutral-700 text-gray-200 focus:border-brand/50 placeholder:text-gray-600' : 'bg-gray-50 border-gray-200 text-gray-700 focus:border-brand placeholder:text-gray-400'}`;
   const labelClass = `block text-sm font-semibold mb-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`;
 
   const testDimo = () => {
@@ -55,7 +55,7 @@ export function PlatformSettingsView({ isDarkMode, activeTab = 'general', onTabC
         <p className={`text-base mt-2 font-medium ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>Configure your SynqDrive platform</p>
       </div>
 
-      <div className={`flex gap-1 p-1.5 rounded-2xl overflow-x-auto w-fit ${isDarkMode ? 'bg-card/80' : 'bg-gray-100'}`}>
+      <div className={`flex gap-1 p-1.5 rounded-2xl overflow-x-auto w-fit ${isDarkMode ? 'surface-premium' : 'bg-gray-100'}`}>
         {tabs.map(tab => (
           <button key={tab.id} onClick={() => onTabChange?.(tab.id)} className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-bold transition-all whitespace-nowrap ${activeTab === tab.id ? (isDarkMode ? 'bg-neutral-700 text-white shadow-sm' : 'bg-white text-gray-900 shadow-sm') : (isDarkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700')}`}>
             <tab.icon className="w-4 h-4" />{tab.label}
@@ -87,7 +87,7 @@ export function PlatformSettingsView({ isDarkMode, activeTab = 'general', onTabC
         <div className={`${cardClass} p-8`}>
           <div className="flex items-start justify-between mb-6">
             <div className="flex items-center gap-4">
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${stripeConnected ? 'bg-purple-50' : isDarkMode ? 'bg-card' : 'bg-gray-100'}`}>
+              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${stripeConnected ? 'bg-purple-50' : isDarkMode ? 'surface-premium' : 'bg-gray-100'}`}>
                 <CreditCard className={`w-7 h-7 ${stripeConnected ? 'text-purple-600' : 'text-muted-foreground'}`} />
               </div>
               <div>
@@ -111,7 +111,7 @@ export function PlatformSettingsView({ isDarkMode, activeTab = 'general', onTabC
               {stripeConnected ? <><WifiOff className="w-4 h-4" /> Disconnect Stripe</> : <><Wifi className="w-4 h-4" /> Connect Stripe</>}
             </button>
             {stripeConnected && (
-              <button onClick={testStripe} disabled={stripeTesting} className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border transition-all ${isDarkMode ? 'border-neutral-700 text-gray-300 hover:bg-card' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
+              <button onClick={testStripe} disabled={stripeTesting} className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border transition-all ${isDarkMode ? 'border-neutral-700 text-gray-300 hover:surface-premium' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
                 <RefreshCw className={`w-4 h-4 ${stripeTesting ? 'animate-spin' : ''}`} /> Test Payment
               </button>
             )}

@@ -103,7 +103,7 @@ export function OperatorScanView() {
               setScanQuery(e.target.value);
               setFocusedBookingId(null);
             }}
-            className="h-14 w-full rounded-2xl border border-border/70 bg-card pl-12 pr-4 text-lg shadow-[var(--shadow-1)] outline-none focus:border-[color:var(--brand)]/40"
+            className="h-14 w-full rounded-2xl border border-border/70 surface-premium pl-12 pr-4 text-lg shadow-[var(--shadow-1)] outline-none focus:border-[color:var(--brand)]/40"
           />
         </div>
 

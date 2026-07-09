@@ -77,14 +77,14 @@ export function WhatsAppContextDrawer({
 
   if (!conversation) {
     return (
-      <aside className="hidden h-full min-h-0 flex-col border-l border-border/40 bg-card/50 p-4 xl:flex">
+      <aside className="hidden h-full min-h-0 flex-col border-l border-border/40 surface-premium p-4 xl:flex">
         <p className="text-[11px] text-muted-foreground">Select a conversation to see linked SynqDrive context.</p>
       </aside>
     );
   }
 
   return (
-    <aside className="flex h-full min-h-0 flex-col border-l border-border/40 bg-card/50">
+    <aside className="flex h-full min-h-0 flex-col border-l border-border/40 surface-premium">
       <div className="flex items-center justify-between border-b border-border/40 px-3 py-2">
         <h3 className="text-[11px] font-semibold text-foreground">SynqDrive context</h3>
         {onClose && (

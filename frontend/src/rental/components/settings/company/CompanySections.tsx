@@ -403,11 +403,11 @@ export function CompanyBrandingSection({
         </div>
       </DataCard>
 
-      <div className="sq-card border border-border/60 p-3.5">
+      <div className="surface-premium border border-border/60 p-3.5">
         <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           Vorschau auf Dokumenten
         </p>
-        <div className="space-y-2 rounded-lg border border-border/60 bg-card p-3">
+        <div className="space-y-2 rounded-lg border border-border/60 surface-premium p-3">
           <div className="flex items-center gap-3">
             {logoUrl && !logoBroken ? (
               <img src={logoUrl} alt="" className="h-8 max-w-[120px] object-contain" />

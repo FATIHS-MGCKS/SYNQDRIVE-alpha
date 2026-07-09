@@ -11,7 +11,7 @@ export default function VerificationDonePage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background px-6">
-      <div className="max-w-md w-full rounded-lg border border-border bg-card p-6 text-center space-y-3">
+      <div className="max-w-md w-full rounded-lg border border-border surface-premium p-6 text-center space-y-3">
         <h1 className="text-lg font-semibold text-foreground">Dokumentenprüfung abgeschlossen</h1>
         <p className="text-sm text-muted-foreground">
           Sie können dieses Fenster schließen und in SynqDrive den Status aktualisieren.

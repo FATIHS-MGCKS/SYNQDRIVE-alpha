@@ -66,7 +66,7 @@ export function PermissionEditor({
                     disabled={disabled}
                     value={level}
                     onChange={(e) => setLevel(mod.key, e.target.value as PermissionLevel)}
-                    className="text-[11px] rounded-lg border border-border/70 bg-card px-2 py-1.5 min-w-[120px]"
+                    className="text-[11px] rounded-lg border border-border/70 bg-popover px-2 py-1.5 min-w-[120px]"
                   >
                     {LEVELS.map((l) => (
                       <option key={l} value={l}>

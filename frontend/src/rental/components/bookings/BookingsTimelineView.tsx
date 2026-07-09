@@ -68,7 +68,7 @@ export function BookingsTimelineView({
   }
 
   return (
-    <div className="sq-card rounded-2xl shadow-[var(--shadow-1)] overflow-hidden">
+    <div className="surface-premium rounded-2xl shadow-[var(--shadow-1)] overflow-hidden">
       <div className="overflow-x-auto">
         <div className="min-w-[900px]">
           <div className="grid grid-cols-[200px_1fr] border-b border-border/60 bg-muted/30">
@@ -90,7 +90,7 @@ export function BookingsTimelineView({
             const rows = byVehicle.get(vehicle.id) ?? [];
             return (
               <div key={vehicle.id} className="grid grid-cols-[200px_1fr] border-b border-border/40 min-h-[52px]">
-                <div className="px-3 py-2 sticky left-0 bg-card z-10 border-r border-border/40">
+                <div className="px-3 py-2 sticky left-0 surface-premium z-10 border-r border-border/40">
                   <p className="text-[11px] font-semibold text-foreground truncate">{vehicleLabel(vehicle)}</p>
                   <p className="text-[10px] text-muted-foreground font-mono">{vehicle.license}</p>
                 </div>

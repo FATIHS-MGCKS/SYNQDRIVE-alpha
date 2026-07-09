@@ -308,9 +308,9 @@ export function StationFormModal({ open, station, saving, orgId, onClose, onSubm
   };
 
   const inputClass =
-    'w-full px-3 py-2 rounded-lg border border-border/70 bg-card text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]';
+    'w-full px-3 py-2 rounded-lg border border-border/70 bg-background text-sm text-foreground placeholder:text-muted-foreground outline-none focus:border-[color:var(--brand)] focus:ring-2 focus:ring-[color:var(--brand-soft)]';
   const labelClass = 'block text-[11px] font-semibold mb-1 uppercase tracking-wider text-muted-foreground';
-  const sectionClass = 'sq-card rounded-xl p-4 space-y-3';
+  const sectionClass = 'surface-premium rounded-xl p-4 space-y-3';
 
   return (
     <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -351,7 +351,7 @@ export function StationFormModal({ open, station, saving, orgId, onClose, onSubm
                 <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-muted-foreground" />
               )}
               {showSuggestions && (
-                <div className="sq-overlay absolute z-20 top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-lg border border-border bg-card shadow-lg">
+                <div className="sq-overlay absolute z-20 top-full left-0 right-0 mt-1 max-h-60 overflow-y-auto rounded-lg border border-border bg-popover shadow-lg">
                   {searchLoading && suggestions.length === 0 ? (
                     <p className="px-3 py-2.5 text-xs text-muted-foreground">{t('stations.form.searching')}</p>
                   ) : searchError ? (

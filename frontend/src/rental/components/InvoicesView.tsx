@@ -89,11 +89,11 @@ function InvoiceKpiCard({
       className={cn(
         'sq-press group relative overflow-hidden border text-left transition-colors duration-200',
         'hover:border-border/60 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
-        'min-h-[96px] rounded-lg bg-card/55 px-2.5 py-2',
+        'min-h-[96px] rounded-lg surface-premium/55 px-2.5 py-2',
         isCritical && 'border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.035]',
-        isWatch && 'border-[color:var(--status-watch)]/30 bg-card/55',
+        isWatch && 'border-[color:var(--status-watch)]/30 surface-premium/55',
         isSuccess && 'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
-        isInfo && 'border-border/45 bg-card/55',
+        isInfo && 'border-border/45 surface-premium/55',
         !isCritical && !isWatch && !isSuccess && !isInfo && 'border-border/45',
         isActive && 'ring-2 ring-[color:var(--brand)]/55',
       )}
@@ -159,8 +159,8 @@ export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
 
   const tp = isDarkMode ? 'text-white' : 'text-gray-900';
   const ts = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
-  const card = `rounded-xl shadow-sm border ${isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'}`;
-  const inputCls = `w-full px-4 py-3 rounded-xl border text-xs ${isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground' : 'bg-card border-border text-foreground placeholder:text-muted-foreground'} outline-none`;
+  const card = `rounded-xl shadow-sm border ${isDarkMode ? 'surface-premium border-border' : 'bg-white border-gray-200'}`;
+  const inputCls = `w-full px-4 py-3 rounded-xl border text-xs ${isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground' : 'bg-background border-border text-foreground placeholder:text-muted-foreground'} outline-none`;
 
   const load = useCallback(async () => {
     if (!orgId) return;
@@ -326,7 +326,7 @@ export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
       </div>
 
       {/* Search & Filters */}
-      <div className="sq-card rounded-2xl p-4 shadow-[var(--shadow-1)]">
+      <div className="surface-premium rounded-2xl p-4 shadow-[var(--shadow-1)]">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <Icon name="filter" className="h-4 w-4 text-muted-foreground" />
@@ -389,7 +389,7 @@ export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
               className={`w-full rounded-lg border py-2.5 pl-10 pr-4 text-xs outline-none transition-all ${
                 isDarkMode
                   ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground focus:border-ring'
-                  : 'bg-card border-border text-foreground placeholder:text-muted-foreground focus:border-brand'
+                  : 'bg-background border-border text-foreground placeholder:text-muted-foreground focus:border-brand'
               }`}
             />
           </div>
@@ -413,7 +413,7 @@ export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
             </button>
             {isDirectionOpen && (
               <div className={`absolute left-0 top-full z-50 mt-2 min-w-[210px] overflow-hidden rounded-lg border shadow-xl ${
-                isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'
+                isDarkMode ? 'surface-premium border-border' : 'bg-white border-gray-200'
               }`}>
                 {([
                   { value: 'all' as const, label: 'Alle Richtungen' },
@@ -462,7 +462,7 @@ export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
             </button>
             {isStatusOpen && (
               <div className={`absolute right-0 top-full z-50 mt-2 min-w-[210px] overflow-hidden rounded-lg border shadow-xl sm:left-0 sm:right-auto ${
-                isDarkMode ? 'bg-card border-border' : 'bg-white border-gray-200'
+                isDarkMode ? 'surface-premium border-border' : 'bg-white border-gray-200'
               }`}>
                 {['all', 'DRAFT', 'ISSUED', 'SENT', 'NEEDS_REVIEW', 'PARTIALLY_PAID', 'PAID', 'OVERDUE', 'CANCELLED'].map(status => (
                   <button
@@ -491,7 +491,7 @@ export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
       </div>
 
       {/* Table */}
-      <div className="sq-card rounded-2xl overflow-hidden shadow-[var(--shadow-1)]">
+      <div className="surface-premium rounded-2xl overflow-hidden shadow-[var(--shadow-1)]">
         {loading ? (
           <div className="flex items-center justify-center py-16"><Icon name="loader-2" className={`w-5 h-5 animate-spin ${ts}`} /></div>
         ) : filtered.length === 0 ? (

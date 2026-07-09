@@ -215,7 +215,7 @@ export function OperatorDamageCaptureFlow({ isOpen, onClose, context, onSaved }:
         {step === 'vehicle' && (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">Fahrzeug für die Schadenerfassung bestätigen.</p>
-            <div className="rounded-2xl border border-border bg-card p-4 space-y-3">
+            <div className="rounded-2xl border border-border surface-premium p-4 space-y-3">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
                   Fahrzeug

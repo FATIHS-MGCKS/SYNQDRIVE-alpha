@@ -67,7 +67,7 @@ function HandoverRow({
       type={onClick ? 'button' : undefined}
       onClick={onClick}
       className={cn(
-        'flex w-full min-h-11 items-center gap-3 rounded-xl border border-border/50 bg-card/40 px-3 py-2.5 text-left',
+        'flex w-full min-h-11 items-center gap-3 rounded-xl border border-border/50 surface-premium px-3 py-2.5 text-left',
         onClick &&
           'sq-press transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
       )}
@@ -228,7 +228,7 @@ function NotReadyRow({
       <button
         type="button"
         onClick={onOpen}
-        className="sq-press flex w-full min-h-11 items-center justify-between gap-3 rounded-xl border border-border/50 bg-card/35 px-3 py-2.5 text-left transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+        className="sq-press flex w-full min-h-11 items-center justify-between gap-3 rounded-xl border border-border/50 bg-background px-3 py-2.5 text-left transition-colors hover:bg-muted/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
       >
         <div className="min-w-0">
           <p className="truncate text-[14px] font-semibold text-foreground">{vehicle.label}</p>

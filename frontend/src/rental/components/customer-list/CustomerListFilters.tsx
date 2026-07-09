@@ -36,7 +36,7 @@ const DropdownFilter = memo(function DropdownFilter({
         className={`flex items-center gap-2 rounded-lg border px-3.5 py-2.5 text-xs font-medium transition-all ${
           value !== 'all'
             ? 'border-[color:var(--brand)]/30 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
-            : 'border-border bg-card text-foreground hover:bg-muted'
+            : 'border-border surface-premium text-foreground hover:bg-muted'
         }`}
       >
         <span>{activeLabel}</span>
@@ -142,7 +142,7 @@ export const CustomerListFilters = memo(function CustomerListFilters({
     searchDraft.trim().length > 0;
 
   return (
-    <div className="sq-card rounded-2xl p-3 shadow-[var(--shadow-1)] sm:p-4">
+    <div className="surface-premium rounded-2xl p-3 shadow-[var(--shadow-1)] sm:p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <h2 className="text-[12px] font-semibold text-foreground">Filter</h2>
@@ -177,7 +177,7 @@ export const CustomerListFilters = memo(function CustomerListFilters({
             value={searchDraft}
             onChange={(e) => onSearchDraftChange(e.target.value)}
             aria-label="Kunden suchen"
-            className="w-full rounded-lg border border-border bg-card py-2 pl-9 pr-3 text-xs text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-[color:var(--brand)]"
+            className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-xs text-foreground outline-none transition-all placeholder:text-muted-foreground focus:border-[color:var(--brand)]"
           />
         </div>
         <DropdownFilter

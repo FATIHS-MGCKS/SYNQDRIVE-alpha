@@ -87,7 +87,7 @@ export function DamageControlSummary({
   return (
     <div className="space-y-2.5">
       <div
-        className={`surface-premium sq-card flex flex-col gap-2.5 rounded-2xl border px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-3.5 ${SURFACE_CLASS[surfaceTone]}`}
+        className={`surface-premium surface-premium flex flex-col gap-2.5 rounded-2xl border px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-3.5 ${SURFACE_CLASS[surfaceTone]}`}
       >
         <div className="flex min-w-0 items-start gap-2.5">
           <div

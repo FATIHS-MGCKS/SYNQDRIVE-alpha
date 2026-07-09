@@ -759,7 +759,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
                               className={`flex-1 py-2.5 rounded-lg border text-xs font-semibold transition-all ${
                                 newCustomer.type === t
                                   ? 'bg-[color:var(--brand)] text-white border-[color:var(--brand)] shadow-md'
-                                  : 'border-border bg-card text-muted-foreground hover:border-[color:var(--brand)]/40 hover:bg-muted'
+                                  : 'border-border surface-premium text-muted-foreground hover:border-[color:var(--brand)]/40 hover:bg-muted'
                               }`}>
                               {t === 'Individual' ? 'Privat' : 'Firma'}
                             </button>

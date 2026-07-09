@@ -235,7 +235,7 @@ function BookingDrawerRowCard({
   const canOpen = canOpenVehicle || canOpenBooking;
 
   return (
-    <article className="rounded-lg border border-border/45 bg-card/45 px-2.5 py-2 shadow-sm shadow-black/[0.02] transition-colors hover:border-border/65 hover:bg-muted/10">
+    <article className="rounded-lg border border-border/45 surface-premium/45 px-2.5 py-2 shadow-sm shadow-black/[0.02] transition-colors hover:border-border/65 hover:bg-muted/10">
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1 space-y-1">
           <div className="flex flex-wrap items-center gap-1.5">
@@ -381,7 +381,7 @@ function BusinessRowCard({
   const canOpen = Boolean(row.invoiceId && onOpenInvoice) || Boolean(onOpenBilling);
 
   return (
-    <article className="rounded-xl border border-border/50 bg-card/55 p-3 shadow-sm shadow-black/[0.025] transition-colors hover:border-border/70">
+    <article className="rounded-xl border border-border/50 surface-premium/55 p-3 shadow-sm shadow-black/[0.025] transition-colors hover:border-border/70">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-1.5">

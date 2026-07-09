@@ -34,7 +34,7 @@ export function VoiceKpiCard({ label, value, hint, icon, tone = 'neutral', onCli
       type={onClick ? 'button' : undefined}
       onClick={onClick}
       className={cn(
-        'sq-card sq-press relative overflow-hidden rounded-xl border p-3 text-left transition-all duration-200',
+        'surface-premium sq-press relative overflow-hidden rounded-xl border p-3 text-left transition-all duration-200',
         onClick && 'hover:-translate-y-px hover:shadow-[var(--shadow-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
         TONE_CLASS[tone],
       )}

@@ -70,11 +70,11 @@ function TariffKpiCard({
     <div
       className={cn(
         'relative overflow-hidden border text-left',
-        'min-h-[96px] rounded-lg bg-card/55 px-2.5 py-2',
+        'min-h-[96px] rounded-lg surface-premium/55 px-2.5 py-2',
         isCritical && 'border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.035]',
-        isWatch && 'border-[color:var(--status-watch)]/30 bg-card/55',
+        isWatch && 'border-[color:var(--status-watch)]/30 surface-premium/55',
         isSuccess && 'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.025]',
-        isInfo && 'border-border/45 bg-card/55',
+        isInfo && 'border-border/45 surface-premium/55',
         !isCritical && !isWatch && !isSuccess && !isInfo && 'border-border/45',
       )}
       aria-label={`${label}: ${value}`}
