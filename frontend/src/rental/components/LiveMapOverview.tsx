@@ -268,7 +268,7 @@ export function LiveMapOverview({
   const isInitialLoading = !loaded || (!targetPosition && !waitingForPosition);
 
   return (
-    <div className={`relative w-full h-full ${className}`}>
+    <div className={`synq-map-hud-surface relative w-full h-full ${className}`}>
       <div ref={mapContainerRef} className="w-full h-full" />
       {isInitialLoading && (
         <div className="sq-map-liquid-overlay rounded-lg">

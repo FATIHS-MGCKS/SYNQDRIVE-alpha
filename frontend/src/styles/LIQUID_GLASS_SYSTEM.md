@@ -471,4 +471,21 @@ Before adding or changing a surface, answer:
 
 ---
 
-*Last updated: 2026-07-09 — V4.9.292 Canonical small lens family.*
+*Last updated: 2026-07-09 — V4.9.293 L3 Map HUD final polish pass.*
+
+---
+
+## Phase 12 — L3 Map HUD final polish (V4.9.293)
+
+Visual-only pass on the canonical small-lens family. No architecture, business logic, or Mapbox behavior changes.
+
+| Area | Polish |
+|------|--------|
+| Fleet toolbar active | Highlight-tint ring instead of dark foreground block; icon stays crisp |
+| Fleet refresh panel | Lighter frosted shell; `__panel-copy` typography stack; refresh action matches toolbar lens |
+| Fleet legend pill | Centered label + chevron; compact height aligned to small-lens family |
+| Vehicle top badges | Shared pill tint; reduced padding on live/status lens |
+| Vehicle stat tiles | `__tile-label` / `__tile-value-row` typography; odometer nowrap + compact scale |
+| Mapbox zoom | `.synq-map-hud-surface .mapboxgl-ctrl-group` scoped to fleet-tile material |
+
+**Scope:** `liquid-glass-lens.css`, optics/variant tint tweaks, HUD markup classes only.

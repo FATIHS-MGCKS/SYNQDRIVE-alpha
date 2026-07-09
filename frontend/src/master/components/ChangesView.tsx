@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'liquid-glass-final-polish-v49293-2026-07-09',
+    version: '4.9.293',
+    title: 'V4.9.293 — L3 Map HUD final polish (liquid glass)',
+    summary: [
+      'Fleet toolbar active state: highlight-tint ring instead of dark foreground block — stays liquid-glass, reads as selected.',
+      'Fleet refresh panel: lighter frosted shell, harmonized shadow/border; __panel-copy typography; refresh action aligned to toolbar lens.',
+      'Fleet legend pill: centered label + chevron, compact small-lens height/padding.',
+      'Vehicle stat tiles: __tile-label/value/unit typography stack; odometer nowrap + compact scale for long values.',
+      'Vehicle top badges: reduced live-pill padding; shared highlight tint on small lenses.',
+      'Mapbox zoom: .synq-map-hud-surface scoped controls match fleet-tile material (light + dark).',
+    ],
+    reason:
+      'Canonical lens family was functionally correct but active states, panels, tiles, and zoom controls still felt heavy, flat, or misaligned.',
+    previousBehavior:
+      'Active toolbar button used dark foreground fill; refresh shell felt dumpf; legend text/chevron misaligned; odometer wrapped; tiles looked flat/white.',
+    details:
+      'Visual-only pass. No architecture/business/Mapbox logic changes. LIQUID_GLASS_SYSTEM.md Phase 12.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-09T16:10:00.000Z',
+  },
+  {
     id: 'liquid-glass-canonical-lens-v49292-2026-07-09',
     version: '4.9.292',
     title: 'V4.9.292 — Canonical small lens family (Fleet toolbar reference)',

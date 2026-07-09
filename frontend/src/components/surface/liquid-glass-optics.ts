@@ -34,13 +34,7 @@ export const CANONICAL_SMALL_LENS_OPTICS: Partial<GlassOptics> = {
 /** Per-variant tweaks — all derived from canonical small lens family. */
 const LENS_OPTICS: Partial<Record<LiquidGlassLensVariant, Partial<GlassOptics>>> = {
   fleetToolbarButton: CANONICAL_SMALL_LENS_OPTICS,
-  fleetPanelAction: {
-    ...CANONICAL_SMALL_LENS_OPTICS,
-    strength: 0.02,
-    depth: 0.055,
-    specular: 0.2,
-    sheen: 0.11,
-  },
+  fleetPanelAction: CANONICAL_SMALL_LENS_OPTICS,
   fleetMiniPill: {
     ...CANONICAL_SMALL_LENS_OPTICS,
     strength: 0.02,
@@ -48,12 +42,12 @@ const LENS_OPTICS: Partial<Record<LiquidGlassLensVariant, Partial<GlassOptics>>>
   },
   vehicleHudTile: {
     ...CANONICAL_SMALL_LENS_OPTICS,
-    strength: 0.024,
-    depth: 0.065,
-    frost: 0.05,
-    specular: 0.24,
-    sheen: 0.13,
-    sheenWidth: 0.88,
+    strength: 0.026,
+    depth: 0.068,
+    frost: 0.055,
+    specular: 0.26,
+    sheen: 0.14,
+    sheenWidth: 0.9,
   },
   vehicleHudBadge: {
     ...CANONICAL_SMALL_LENS_OPTICS,

@@ -339,7 +339,7 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:items-stretch">
         <div
           ref={mapRef}
-          className="surface-premium rounded-2xl overflow-hidden relative h-[280px] lg:h-[640px] animate-fade-up"
+          className="surface-premium rounded-2xl overflow-hidden relative h-[280px] lg:h-[640px] animate-fade-up synq-map-hud-surface"
         >
           <MapSafetyBoundary isDarkMode={systemDark}>
             <MapboxMap

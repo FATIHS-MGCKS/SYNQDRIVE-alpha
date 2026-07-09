@@ -53,17 +53,17 @@ export function FleetMapControls({
           intensity="medium"
           className="pointer-events-auto"
         >
-          <p className="text-[10px] font-semibold tracking-wide text-foreground">
-            Fleet Map
-          </p>
-          <p className="text-[9.5px] text-muted-foreground mt-0.5 tabular-nums">
-            Updated {formatFleetMapRefreshAgo(lastFetchedAt)}
-          </p>
-          <p className="text-[9px] text-muted-foreground/85 mt-0.5">
-            {loading
-              ? 'Refreshing…'
-              : `Auto-refresh in ${countdownSec}s`}
-          </p>
+          <div className="liquid-glass-lens__panel-copy">
+            <p className="liquid-glass-lens__panel-title">Fleet Map</p>
+            <p className="liquid-glass-lens__panel-meta tabular-nums">
+              Updated {formatFleetMapRefreshAgo(lastFetchedAt)}
+            </p>
+            <p className="liquid-glass-lens__panel-meta liquid-glass-lens__panel-meta--subtle">
+              {loading
+                ? 'Refreshing…'
+                : `Auto-refresh in ${countdownSec}s`}
+            </p>
+          </div>
           <LiquidGlassLens
             variant="fleetPanelAction"
             renderMode="lens"
@@ -130,9 +130,9 @@ export function FleetMapControls({
               className="liquid-glass-lens__legend-trigger"
               aria-expanded={legendOpen}
             >
-              <span className="text-[10px] font-semibold text-foreground">Legend</span>
+              <span className="liquid-glass-lens__legend-trigger__label">Legend</span>
               <ChevronDown
-                className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${
+                className={`liquid-glass-lens__legend-trigger__chevron transition-transform ${
                   legendOpen ? 'rotate-180' : ''
                 }`}
               />

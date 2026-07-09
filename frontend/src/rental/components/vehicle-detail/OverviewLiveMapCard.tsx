@@ -1,5 +1,6 @@
 import { Icon } from '../ui/Icon';
 import { LiquidGlassLens } from '../../../components/surface';
+import { cn } from '../../../components/ui/utils';
 import { useShallow } from 'zustand/react/shallow';
 import { LiveMapOverview } from '../LiveMapOverview';
 import type { VehicleData } from '../../data/vehicles';
@@ -100,10 +101,11 @@ export function OverviewLiveMapCard({
   const odometerValue = selectedVehicle
     ? (hudSnapshot?.odometer ?? selectedVehicle.odometer).toLocaleString('de-DE')
     : '—';
+  const odometerCompact = odometerValue.length > 6;
 
   return (
     <div className="surface-premium rounded-xl p-3">
-      <div className="group relative h-[340px] rounded-lg overflow-hidden transition-all duration-300">
+      <div className="group relative h-[340px] rounded-lg overflow-hidden transition-all duration-300 synq-map-hud-surface">
         <LiveMapOverview
           key={vehicleId ?? 'no-vehicle'}
           className="w-full h-full"
@@ -131,7 +133,7 @@ export function OverviewLiveMapCard({
                 className={`liquid-glass-lens__hud-badge liquid-glass-lens__hud-badge--${statusBadge.tone}`}
               >
                 <span className="liquid-glass-lens__hud-badge-dot" aria-hidden="true" />
-                <span className="text-[9px] font-semibold whitespace-nowrap">{statusBadge.label}</span>
+                <span className="liquid-glass-lens__hud-badge__label">{statusBadge.label}</span>
               </span>
             </LiquidGlassLens>
           </div>
@@ -147,10 +149,8 @@ export function OverviewLiveMapCard({
             >
               <div className="liquid-glass-lens__tile-inner">
                 <Icon name="circle" className={`h-3.5 w-3.5 ${stateColor}`} />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground/80">
-                  State
-                </span>
-                <span className={`text-sm font-bold leading-tight tabular-nums ${stateColor}`}>
+                <span className="liquid-glass-lens__tile-label">State</span>
+                <span className={`liquid-glass-lens__tile-state ${stateColor}`}>
                   {hudDisplayState}
                 </span>
               </div>
@@ -167,12 +167,12 @@ export function OverviewLiveMapCard({
                   name="droplet"
                   className="h-3.5 w-3.5 text-[color:var(--status-positive)]"
                 />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground/80">
+                <span className="liquid-glass-lens__tile-label">
                   {selectedVehicle?.isElectric ? 'Energy' : 'Fuel'}
                 </span>
-                <span className="text-sm font-bold leading-tight tabular-nums text-foreground">
-                  {fuelOrEnergy}
-                  <span className="text-[10px] font-normal text-muted-foreground">%</span>
+                <span className="liquid-glass-lens__tile-value-row">
+                  <span className="liquid-glass-lens__tile-value">{fuelOrEnergy}</span>
+                  <span className="liquid-glass-lens__tile-unit">%</span>
                 </span>
               </div>
             </LiquidGlassLens>
@@ -185,12 +185,17 @@ export function OverviewLiveMapCard({
             >
               <div className="liquid-glass-lens__tile-inner">
                 <Icon name="gauge" className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground/80">
-                  Odometer
-                </span>
-                <span className="text-sm font-bold leading-tight tabular-nums text-foreground">
-                  {odometerValue}
-                  <span className="text-[10px] font-normal text-muted-foreground"> km</span>
+                <span className="liquid-glass-lens__tile-label">Odometer</span>
+                <span className="liquid-glass-lens__tile-value-row">
+                  <span
+                    className={cn(
+                      'liquid-glass-lens__tile-value',
+                      odometerCompact && 'liquid-glass-lens__tile-value--compact',
+                    )}
+                  >
+                    {odometerValue}
+                  </span>
+                  <span className="liquid-glass-lens__tile-unit">km</span>
                 </span>
               </div>
             </LiquidGlassLens>
