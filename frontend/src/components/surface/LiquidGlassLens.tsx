@@ -28,6 +28,10 @@ export interface LiquidGlassLensProps extends HTMLAttributes<HTMLDivElement> {
   variant?: LiquidGlassLensVariant;
   fallback?: LiquidGlassLensFallback;
   disabled?: boolean;
+  /** Refract source for map HUD lens (decorative or future map snapshot). */
+  mapBackdrop?: ReactNode;
+  /** Bleed fill for refract copy edges. */
+  behind?: string;
 }
 
 function CssLiquidFallback({
@@ -68,19 +72,23 @@ function SvgLocalFallback({
       <LiquidGlassSvgFilterDefs />
       <div
         className={cn(
-          'liquid-glass-lens liquid-glass-lens--svg-fallback',
+          'liquid-glass-lens',
           `liquid-glass-lens--${variant}`,
           className,
         )}
         data-liquid-variant={variant}
-        style={{
-          backdropFilter: 'blur(var(--map-glass-blur)) saturate(var(--map-glass-saturate))',
-          WebkitBackdropFilter: 'blur(var(--map-glass-blur)) saturate(var(--map-glass-saturate))',
-          filter: `url(#${LIQUID_GLASS_SVG_FILTER_ID})`,
-        }}
         {...rest}
       >
-        {children}
+        <div
+          aria-hidden
+          className="liquid-glass-lens__visual liquid-glass-lens--svg-fallback"
+          style={{
+            backdropFilter: 'blur(var(--map-glass-blur)) saturate(var(--map-glass-saturate))',
+            WebkitBackdropFilter: 'blur(var(--map-glass-blur)) saturate(var(--map-glass-saturate))',
+            filter: `url(#${LIQUID_GLASS_SVG_FILTER_ID})`,
+          }}
+        />
+        <div className="liquid-glass-lens__content">{children}</div>
       </div>
     </>
   );
@@ -107,6 +115,8 @@ function LibraryLens({
   intensity,
   variant,
   prefersReducedMotion,
+  mapBackdrop,
+  behind,
   className,
   ...rest
 }: {
@@ -114,6 +124,8 @@ function LibraryLens({
   intensity: LiquidGlassIntensity;
   variant: LiquidGlassLensVariant;
   prefersReducedMotion: boolean;
+  mapBackdrop?: ReactNode;
+  behind?: string;
   className?: string;
 } & HTMLAttributes<HTMLDivElement>) {
   const cssFallback = (
@@ -140,6 +152,8 @@ function LibraryLens({
           intensity={intensity}
           variant={variant}
           prefersReducedMotion={prefersReducedMotion}
+          mapBackdrop={mapBackdrop}
+          behind={behind}
           className={className}
           {...rest}
         >
@@ -161,6 +175,8 @@ export function LiquidGlassLens({
   variant = 'fleetPanel',
   fallback = 'frosted',
   disabled = false,
+  mapBackdrop,
+  behind,
   ...rest
 }: LiquidGlassLensProps) {
   const mode = useLiquidGlassLensMode(disabled);
@@ -185,6 +201,8 @@ export function LiquidGlassLens({
       intensity={intensity}
       variant={variant}
       prefersReducedMotion={mode.prefersReducedMotion}
+      mapBackdrop={mapBackdrop}
+      behind={behind}
       className={className}
       {...rest}
     >

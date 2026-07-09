@@ -50,7 +50,7 @@ export function FleetMapControls({
         <LiquidGlassLens
           variant="fleetPanel"
           intensity="medium"
-          className="pointer-events-auto px-3 py-2"
+          className="pointer-events-auto"
         >
           <p className="text-[10px] font-semibold tracking-wide text-foreground">
             Fleet Map

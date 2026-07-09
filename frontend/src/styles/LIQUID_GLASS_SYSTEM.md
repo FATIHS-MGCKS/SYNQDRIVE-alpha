@@ -374,6 +374,22 @@ Light/dark values: see `THEME_COLOR_CONTRACT.md` § Glass / Map glass.
 
 **Not in spike:** marker callouts, trip overlays, L1/L2 cards, app-wide migration.
 
+### Phase 8 — Liquid Glass refract architecture (V4.9.288)
+
+**Root cause:** `<Glass>{children}</Glass>` without `refract` uses **wrap mode** — children become the SVG displacement source and text/icons blur.
+
+**Rules for Map HUDs:**
+
+| Rule | Implementation |
+|------|----------------|
+| Never wrap text/buttons as lens source | Always `refract={<MapLensBackdrop />}` or future `mapBackdrop` snapshot |
+| Crisp content layer | `.liquid-glass-lens__content` above `.liquid-glass-lens__visual` (Glass) |
+| Wide panels | No single stretched lens over toolbar stacks — per-button / per-tile lenses |
+| Stack wrappers | `vehicleHudStack` / `sq-map-glass-controls-shell` = layout only, zero Glass |
+| Map snapshot (future) | `MapLiquidGlassLens` accepts `mapBackdrop` prop for canvas clone / draw mode |
+
+**Components:** `LiquidGlassLensCore.tsx`, `MapLensBackdrop.tsx`, `MapLiquidGlassLens.tsx`
+
 ---
 
 ## 9. Decision checklist (for PRs)

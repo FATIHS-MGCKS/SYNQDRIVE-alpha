@@ -1,20 +1,18 @@
 /**
- * Scoped styles for liquid-glass lens — variant tuning for Fleet Map HUD readability.
- * Library tint/border/shadow live here so light/dark follow theme tokens.
+ * Scoped styles for liquid-glass lens — separated visual layer + crisp content.
+ * Library path uses refract={MapLensBackdrop} so text/icons never pass through SVG filter.
  */
 
 .liquid-glass-lens {
   position: relative;
   isolation: isolate;
-  color: var(--foreground);
-}
-
-.liquid-glass-lens--library {
   overflow: hidden;
+  color: var(--foreground);
 }
 
 .liquid-glass-lens--layout-only,
 .liquid-glass-lens--vehicleHudStack {
+  overflow: visible;
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
@@ -23,14 +21,40 @@
   filter: none !important;
 }
 
-/* ── Content must stay sharp above lens layers ── */
+/* ── Visual lens layer (Glass / SVG fallback) — under content ── */
+.liquid-glass-lens__visual {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  filter: none;
+}
+
+.liquid-glass-lens__visual.liquid-glass-lens--library {
+  position: relative;
+  inset: auto;
+  width: 100%;
+  height: 100%;
+  min-height: 100%;
+  pointer-events: none;
+}
+
+.liquid-glass-lens__visual.liquid-glass-lens--library > [data-liquid-glass] {
+  width: 100%;
+  height: 100%;
+}
+
+/* ── Crisp HUD content — never filtered ── */
 .liquid-glass-lens__content {
   position: relative;
-  z-index: 3;
+  z-index: 2;
   min-width: 0;
   color: inherit;
+  filter: none !important;
+  opacity: 1;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  pointer-events: auto;
 }
 
 .liquid-glass-lens__content > * {
@@ -38,43 +62,92 @@
   z-index: 1;
 }
 
-/* ── Fleet toolbar — subtle frame; buttons carry solid fills ── */
-.liquid-glass-lens--library.liquid-glass-lens--fleetToolbar {
+.liquid-glass-lens--layout-only .liquid-glass-lens__content,
+.liquid-glass-lens--vehicleHudStack .liquid-glass-lens__content {
+  pointer-events: none;
+}
+
+/* ── Decorative refract source (no text) ── */
+.map-lens-backdrop {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 100%;
+  min-height: 100%;
+}
+
+.map-lens-backdrop--fleetToolbar,
+.map-lens-backdrop--fleetToolbarButton {
+  background: var(--map-glass-fleet-toolbar-bg);
+}
+
+.map-lens-backdrop--fleetPanel,
+.map-lens-backdrop--fleetPanelAction {
+  background: var(--map-glass-fleet-panel-bg);
+}
+
+.map-lens-backdrop--fleetLegend {
+  background: var(--map-glass-fleet-legend-bg);
+}
+
+.map-lens-backdrop--fleetMiniPill,
+.map-lens-backdrop--statusPill,
+.map-lens-backdrop--mapCallout {
+  background: var(--map-glass-fleet-tile-bg);
+}
+
+.map-lens-backdrop--vehicleHudTile {
+  background: var(--map-glass-vehicle-tile-bg);
+}
+
+.map-lens-backdrop--vehicleHudBadge {
+  background: var(--map-glass-vehicle-badge-bg);
+}
+
+.map-lens-backdrop--vehicleMapCallout {
+  background: var(--map-glass-vehicle-callout-bg);
+}
+
+/* ── Fleet toolbar shell (layout only; per-button lenses) ── */
+.sq-map-glass-controls-shell {
   display: inline-flex;
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.2rem;
   padding: 0.25rem;
-  background: var(--map-glass-fleet-toolbar-bg) !important;
-  border: 1px solid var(--map-glass-fleet-border) !important;
-  box-shadow: var(--map-glass-fleet-inner-shadow), var(--map-glass-fleet-shadow) !important;
+  pointer-events: auto;
 }
 
-/* ── Fleet refresh panel — higher opacity for text readability ── */
-.liquid-glass-lens--library.liquid-glass-lens--fleetPanel {
+/* ── Fleet panel ── */
+.liquid-glass-lens--fleetPanel {
   min-width: 9.5rem;
   max-width: 12.5rem;
-  background: var(--map-glass-fleet-panel-bg) !important;
-  border: 1px solid var(--map-glass-fleet-border) !important;
-  box-shadow: var(--map-glass-fleet-inner-shadow), var(--map-glass-fleet-shadow) !important;
+  border: 1px solid var(--map-glass-fleet-border);
+  box-shadow: var(--map-glass-fleet-inner-shadow), var(--map-glass-fleet-shadow);
 }
 
-.liquid-glass-lens--library.liquid-glass-lens--fleetPanel .liquid-glass-lens__content {
+.liquid-glass-lens--fleetPanel .liquid-glass-lens__content {
   display: flex;
   flex-direction: column;
   gap: 0.125rem;
+  padding: 0.5rem 0.75rem;
 }
 
-/* ── Legend — compact, readable ── */
-.liquid-glass-lens--library.liquid-glass-lens--fleetLegend {
+/* ── Fleet toolbar button (individual lens) ── */
+.liquid-glass-lens--fleetToolbarButton {
+  display: inline-flex;
+  border-radius: 10px;
   overflow: hidden;
-  background: var(--map-glass-fleet-legend-bg) !important;
-  border: 1px solid var(--map-glass-fleet-border) !important;
-  box-shadow: var(--map-glass-fleet-inner-shadow), var(--map-glass-fleet-shadow) !important;
 }
 
-/* ── Vehicle HUD stack — layout only, no blob ── */
+/* ── Legend ── */
+.liquid-glass-lens--fleetLegend {
+  border: 1px solid var(--map-glass-fleet-border);
+  box-shadow: var(--map-glass-fleet-inner-shadow), var(--map-glass-fleet-shadow);
+}
+
+/* ── Vehicle HUD stack — layout only ── */
 .liquid-glass-lens--vehicleHudStack .liquid-glass-lens__content {
   display: flex;
   flex-direction: row;
@@ -86,16 +159,16 @@
   max-width: min(100%, 20rem);
 }
 
-/* ── Vehicle HUD tile — compact liquid lens per stat ── */
-.liquid-glass-lens--library.liquid-glass-lens--vehicleHudTile {
+/* ── Vehicle HUD tile ── */
+.liquid-glass-lens--vehicleHudTile {
   display: inline-flex;
   flex: 1 1 0;
   min-width: 0;
   max-width: 6.75rem;
-  border-radius: var(--map-glass-vehicle-tile-radius) !important;
-  background: var(--map-glass-vehicle-tile-bg) !important;
-  border: 1px solid var(--map-glass-vehicle-border) !important;
-  box-shadow: var(--map-glass-vehicle-inner-shadow), var(--map-glass-vehicle-shadow) !important;
+  border-radius: var(--map-glass-vehicle-tile-radius);
+  border: 1px solid var(--map-glass-vehicle-border);
+  box-shadow: var(--map-glass-vehicle-inner-shadow), var(--map-glass-vehicle-shadow);
+  overflow: hidden;
 }
 
 .liquid-glass-lens__tile-inner {
@@ -111,13 +184,13 @@
   width: 100%;
 }
 
-/* ── Vehicle map badges — high readability, low distortion ── */
-.liquid-glass-lens--library.liquid-glass-lens--vehicleHudBadge {
+/* ── Vehicle badges ── */
+.liquid-glass-lens--vehicleHudBadge {
   display: inline-flex;
   max-width: 13.75rem;
-  background: var(--map-glass-vehicle-badge-bg) !important;
-  border: 1px solid var(--map-glass-vehicle-border) !important;
-  box-shadow: var(--map-glass-vehicle-inner-shadow), var(--map-glass-vehicle-shadow) !important;
+  border: 1px solid var(--map-glass-vehicle-border);
+  box-shadow: var(--map-glass-vehicle-inner-shadow), var(--map-glass-vehicle-shadow);
+  overflow: hidden;
 }
 
 .liquid-glass-lens--vehicleHudBadge .sq-map-liquid-badge,
@@ -130,21 +203,17 @@
   -webkit-backdrop-filter: none !important;
 }
 
-/* ── Vehicle map callout (Mapbox marker DOM — CSS mirror of vehicleMapCallout) ── */
 .sq-map-marker-callout--vehicle {
   border-color: var(--map-glass-vehicle-border) !important;
   background: var(--map-glass-vehicle-callout-bg) !important;
   box-shadow: var(--map-glass-vehicle-inner-shadow), var(--map-glass-vehicle-shadow) !important;
 }
 
-.liquid-glass-lens--library.liquid-glass-lens--vehicleMapCallout {
-  display: inline-flex;
-  background: var(--map-glass-vehicle-callout-bg) !important;
-  border: 1px solid var(--map-glass-vehicle-border) !important;
-  box-shadow: var(--map-glass-vehicle-inner-shadow), var(--map-glass-vehicle-shadow) !important;
+.liquid-glass-lens--vehicleMapCallout {
+  border: 1px solid var(--map-glass-vehicle-border);
+  box-shadow: var(--map-glass-vehicle-inner-shadow), var(--map-glass-vehicle-shadow);
 }
 
-/* ── Vehicle detail HUD anchor — bottom safe area, clear of marker ── */
 .vehicle-detail-map-hud {
   position: absolute;
   inset-inline: 0;
@@ -167,34 +236,35 @@
   }
 }
 
-.liquid-glass-lens--library.liquid-glass-lens--fleetMiniPill,
-.liquid-glass-lens--library.liquid-glass-lens--statusPill {
+.liquid-glass-lens--fleetMiniPill,
+.liquid-glass-lens--statusPill {
   display: inline-flex;
-  background: var(--map-glass-fleet-tile-bg) !important;
-  border: 1px solid var(--map-glass-fleet-border) !important;
-}
-
-.liquid-glass-lens--library.liquid-glass-lens--mapCallout {
-  background: var(--map-glass-fleet-panel-bg) !important;
-  border: 1px solid var(--map-glass-fleet-border) !important;
-}
-
-/* ── SVG fallback path ── */
-.liquid-glass-lens--svg-fallback {
-  position: relative;
-  isolation: isolate;
+  max-width: 11rem;
+  border: 1px solid var(--map-glass-fleet-border);
   overflow: hidden;
+}
+
+.liquid-glass-lens--fleetMiniPill .liquid-glass-lens__content,
+.liquid-glass-lens--statusPill .liquid-glass-lens__content {
+  padding: 0.375rem 0.625rem;
+}
+
+.liquid-glass-lens--mapCallout {
+  border: 1px solid var(--map-glass-fleet-border);
+}
+
+/* ── SVG fallback: visual layer only, content separate ── */
+.liquid-glass-lens--svg-fallback {
   border-radius: var(--map-glass-radius);
   border: 1px solid var(--map-glass-fleet-border, var(--map-glass-border));
   background: var(--map-glass-fleet-panel-bg, var(--map-glass-bg-panel));
   box-shadow: var(--map-glass-fleet-inner-shadow, var(--map-glass-inner-shadow)),
     var(--map-glass-fleet-shadow, var(--map-glass-shadow));
-  color: var(--foreground);
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .liquid-glass-lens--library,
-  .liquid-glass-lens--svg-fallback {
+  .liquid-glass-lens__visual.liquid-glass-lens--library,
+  .liquid-glass-lens__visual.liquid-glass-lens--svg-fallback {
     background: var(--popover) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
@@ -202,11 +272,19 @@
     box-shadow: var(--shadow-sm) !important;
     border: 1px solid var(--border) !important;
   }
+
+  .liquid-glass-lens--fleetPanel,
+  .liquid-glass-lens--fleetLegend,
+  .liquid-glass-lens--vehicleHudTile,
+  .liquid-glass-lens--vehicleHudBadge {
+    border-color: var(--border) !important;
+    box-shadow: var(--shadow-sm) !important;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .liquid-glass-lens--library,
-  .liquid-glass-lens--svg-fallback {
+  .liquid-glass-lens__visual.liquid-glass-lens--library,
+  .liquid-glass-lens__visual.liquid-glass-lens--svg-fallback {
     transition: none !important;
   }
 }

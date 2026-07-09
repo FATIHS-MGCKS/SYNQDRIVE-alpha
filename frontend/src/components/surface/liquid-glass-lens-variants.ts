@@ -79,6 +79,19 @@ export function resolveLensRadius(variant: LiquidGlassLensVariant): number {
   }
 }
 
+/** Bleed fill for refract copy edges — transparent lets map show at rim. */
+export function resolveLensBehind(_variant: LiquidGlassLensVariant): string {
+  return 'transparent';
+}
+
+/** Variants that use brightnessInFilter for large readable panels/badges. */
+export function usesBrightnessInFilter(variant: LiquidGlassLensVariant): boolean {
+  return variant === 'fleetPanel'
+    || variant === 'fleetLegend'
+    || variant === 'vehicleHudBadge'
+    || variant === 'vehicleMapCallout';
+}
+
 /** Legacy helper — library path uses CSS variant classes; kept for SVG fallback inline styles. */
 export function resolveLensTintStyle(_options: {
   intensity: LiquidGlassIntensity;

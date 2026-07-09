@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'liquid-glass-refract-architecture-v49288-2026-07-09',
+    version: '4.9.288',
+    title: 'V4.9.288 — Liquid Glass refract architecture (crisp Map HUD content)',
+    summary: [
+      'Root fix: Glass wrap mode treated HUD children as displacement source → blurry text.',
+      'LiquidGlassLensCore: always refract={MapLensBackdrop} + crisp .liquid-glass-lens__content.',
+      'MapLiquidGlassLens + mapBackdrop prop prepared for future map canvas snapshot.',
+      'MapGlassControls: per-button fleetToolbarButton lenses (no single stretched toolbar).',
+      'CSS: separated __visual / __content layers; SVG fallback no longer filters text.',
+      'Fleet optics reduced post-structure-fix; LIQUID_GLASS_SYSTEM.md rules documented.',
+    ],
+    reason:
+      '@samasante/liquid-glass wrap mode refracts children — Fleet/Vehicle HUD text/icons verschwammen als graue Blobs.',
+    previousBehavior:
+      '<Glass>{children}</Glass> ohne refract; filter auf sourceRef mit Text; breite Toolbar als eine Lens.',
+    details:
+      'Kein CSS-only Rollback. Mapbox canvas snapshot deferred — decorative backdrop + crisp overlay fixes readability now.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-09T10:00:00.000Z',
+  },
+  {
     id: 'vehicle-detail-liquid-glass-fix-v49287-2026-07-09',
     version: '4.9.287',
     title: 'V4.9.287 — Vehicle Detail Map Liquid Glass Stabilization',
