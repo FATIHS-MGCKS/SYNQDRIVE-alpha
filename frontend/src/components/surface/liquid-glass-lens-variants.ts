@@ -2,14 +2,31 @@ import type { CSSProperties } from 'react';
 import { cn } from '../ui/utils';
 import type { LiquidGlassIntensity } from './liquid-glass-optics';
 
-export type LiquidGlassLensVariant = 'panel' | 'pill' | 'control' | 'callout';
+export type LiquidGlassLensVariant =
+  | 'vehicleHudTile'
+  | 'vehicleHudStack'
+  | 'fleetToolbar'
+  | 'fleetToolbarButton'
+  | 'fleetPanel'
+  | 'fleetPanelAction'
+  | 'fleetLegend'
+  | 'fleetMiniPill'
+  | 'mapCallout'
+  | 'statusPill';
+
 export type LiquidGlassLensFallback = 'frosted' | 'solid';
 
 const VARIANT_FALLBACK_LIQUID: Record<LiquidGlassLensVariant, string> = {
-  panel: 'sq-map-liquid-glass sq-map-liquid-glass--panel',
-  pill: 'sq-map-liquid-hud sq-map-liquid-hud--stats',
-  control: 'sq-map-glass-controls',
-  callout: 'sq-map-liquid-badge',
+  vehicleHudTile: 'sq-map-liquid-pill',
+  vehicleHudStack: 'sq-map-liquid-hud sq-map-liquid-hud--stats',
+  fleetToolbar: 'sq-map-glass-controls',
+  fleetToolbarButton: 'sq-map-glass-control-btn',
+  fleetPanel: 'sq-map-liquid-glass sq-map-liquid-glass--panel',
+  fleetPanelAction: 'sq-map-liquid-action',
+  fleetLegend: 'sq-map-liquid-glass sq-map-liquid-glass--panel sq-map-liquid-glass--legend',
+  fleetMiniPill: 'sq-map-liquid-badge',
+  mapCallout: 'sq-map-marker-callout',
+  statusPill: 'sq-map-liquid-badge sq-map-liquid-badge--status',
 };
 
 const FALLBACK_SURFACE: Record<LiquidGlassLensFallback, string> = {
@@ -34,24 +51,31 @@ export function resolveLensFallbackClass(
 
 export function resolveLensRadius(variant: LiquidGlassLensVariant): number {
   switch (variant) {
-    case 'pill':
+    case 'vehicleHudTile':
+    case 'fleetMiniPill':
+    case 'statusPill':
       return 999;
-    case 'control':
+    case 'fleetToolbarButton':
+    case 'fleetPanelAction':
+      return 10;
+    case 'fleetToolbar':
       return 14;
-    case 'callout':
+    case 'mapCallout':
       return 12;
-    case 'panel':
+    case 'fleetLegend':
+      return 14;
+    case 'vehicleHudStack':
+      return 0;
+    case 'fleetPanel':
     default:
       return 16;
   }
 }
 
-export function resolveLensTintStyle(intensity: LiquidGlassIntensity): CSSProperties {
-  const alpha = intensity === 'strong' ? 0.52 : intensity === 'medium' ? 0.44 : 0.36;
-  return {
-    background: `color-mix(in srgb, var(--map-glass-bg-panel) ${Math.round(alpha * 100)}%, transparent)`,
-    border: '1px solid var(--map-glass-border)',
-    boxShadow: 'var(--map-glass-inner-shadow), var(--map-glass-shadow)',
-    color: 'var(--foreground)',
-  };
+/** Legacy helper — library path uses CSS variant classes; kept for SVG fallback inline styles. */
+export function resolveLensTintStyle(_options: {
+  intensity: LiquidGlassIntensity;
+  variant: LiquidGlassLensVariant;
+}): CSSProperties {
+  return {};
 }

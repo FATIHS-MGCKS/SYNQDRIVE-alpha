@@ -1,11 +1,13 @@
 import type { HTMLAttributes, ReactNode } from 'react';
 import { Glass } from '@samasante/liquid-glass';
 import { cn } from '../ui/utils';
-import { resolveLiquidGlassOptics } from './liquid-glass-optics';
-import type { LiquidGlassIntensity } from './liquid-glass-optics';
+import {
+  isLayoutOnlyLensVariant,
+  resolveLiquidGlassOptics,
+  type LiquidGlassIntensity,
+} from './liquid-glass-optics';
 import {
   resolveLensRadius,
-  resolveLensTintStyle,
   type LiquidGlassLensVariant,
 } from './liquid-glass-lens-variants';
 
@@ -26,21 +28,44 @@ export function LiquidGlassLensCore({
   style,
   ...rest
 }: LiquidGlassLensCoreProps) {
+  const content = (
+    <div className="liquid-glass-lens__content">{children}</div>
+  );
+
+  if (isLayoutOnlyLensVariant(variant)) {
+    return (
+      <div
+        data-liquid-variant={variant}
+        className={cn(
+          'liquid-glass-lens liquid-glass-lens--layout-only',
+          `liquid-glass-lens--${variant}`,
+          className,
+        )}
+        style={style}
+        {...rest}
+      >
+        {content}
+      </div>
+    );
+  }
+
   return (
     <Glass
+      data-liquid-variant={variant}
       className={cn(
         'liquid-glass-lens liquid-glass-lens--library',
         `liquid-glass-lens--${variant}`,
         prefersReducedMotion && 'motion-reduce:transition-none',
         className,
       )}
-      style={{ ...resolveLensTintStyle(intensity), ...style }}
+      style={style}
       radius={resolveLensRadius(variant)}
-      optics={resolveLiquidGlassOptics(intensity)}
+      optics={resolveLiquidGlassOptics({ intensity, variant })}
       filterResolution={1}
+      brightnessInFilter={variant === 'fleetPanel' || variant === 'fleetLegend'}
       {...rest}
     >
-      <div className="liquid-glass-lens__content relative z-[1]">{children}</div>
+      {content}
     </Glass>
   );
 }

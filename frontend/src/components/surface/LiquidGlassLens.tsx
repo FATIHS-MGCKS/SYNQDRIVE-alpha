@@ -34,14 +34,20 @@ function CssLiquidFallback({
   children,
   className,
   fallbackClass,
+  variant,
   ...rest
 }: {
   children: ReactNode;
   className?: string;
   fallbackClass: string;
+  variant: LiquidGlassLensVariant;
 } & HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn(fallbackClass, className)} {...rest}>
+    <div
+      className={cn(fallbackClass, className)}
+      data-liquid-variant={variant}
+      {...rest}
+    >
       {children}
     </div>
   );
@@ -66,6 +72,7 @@ function SvgLocalFallback({
           `liquid-glass-lens--${variant}`,
           className,
         )}
+        data-liquid-variant={variant}
         style={{
           backdropFilter: 'blur(var(--map-glass-blur)) saturate(var(--map-glass-saturate))',
           WebkitBackdropFilter: 'blur(var(--map-glass-blur)) saturate(var(--map-glass-saturate))',
@@ -113,6 +120,7 @@ function LibraryLens({
     <CssLiquidFallback
       className={className}
       fallbackClass={resolveLensFallbackClass(variant, 'frosted', false, false)}
+      variant={variant}
       {...rest}
     >
       {children}
@@ -150,7 +158,7 @@ export function LiquidGlassLens({
   children,
   className,
   intensity = 'medium',
-  variant = 'panel',
+  variant = 'fleetPanel',
   fallback = 'frosted',
   disabled = false,
   ...rest
@@ -166,7 +174,7 @@ export function LiquidGlassLens({
 
   if (!mode.useLibraryLens) {
     return (
-      <CssLiquidFallback className={className} fallbackClass={fallbackClass} {...rest}>
+      <CssLiquidFallback className={className} fallbackClass={fallbackClass} variant={variant} {...rest}>
         {children}
       </CssLiquidFallback>
     );

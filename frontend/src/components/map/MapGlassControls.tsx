@@ -29,8 +29,8 @@ export function MapGlassControls({
 
   return (
     <LiquidGlassLens
-      variant="control"
-      intensity="medium"
+      variant="fleetToolbar"
+      intensity="subtle"
       className={cn('pointer-events-auto', className)}
       role="toolbar"
       aria-label="Kartensteuerung"

@@ -48,17 +48,17 @@ export function FleetMapControls({
       {/* Top-right: status + refresh */}
       <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-2 pointer-events-none">
         <LiquidGlassLens
-          variant="panel"
+          variant="fleetPanel"
           intensity="medium"
-          className="pointer-events-auto px-3 py-2 min-w-[9.5rem]"
+          className="pointer-events-auto px-3 py-2"
         >
-          <p className="text-[10px] font-semibold tracking-wide text-foreground/90">
+          <p className="text-[10px] font-semibold tracking-wide text-foreground">
             Fleet Map
           </p>
           <p className="text-[9.5px] text-muted-foreground mt-0.5 tabular-nums">
             Updated {formatFleetMapRefreshAgo(lastFetchedAt)}
           </p>
-          <p className="text-[9px] text-muted-foreground/80 mt-0.5">
+          <p className="text-[9px] text-muted-foreground/85 mt-0.5">
             {loading
               ? 'Refreshing…'
               : `Auto-refresh in ${countdownSec}s`}
@@ -86,8 +86,12 @@ export function FleetMapControls({
         />
 
         {(vehicleCount === 0 || noLocationCount > 0) && (
-          <div className="sq-map-liquid-badge pointer-events-auto px-2.5 py-1.5 max-w-[11rem]">
-            <p className="text-[9.5px] font-medium text-foreground/90 leading-snug">
+          <LiquidGlassLens
+            variant="fleetMiniPill"
+            intensity="subtle"
+            className="pointer-events-auto px-2.5 py-1.5 max-w-[11rem]"
+          >
+            <p className="text-[9.5px] font-medium text-foreground leading-snug">
               {vehicleCount === 0
                 ? 'No vehicles in current filter'
                 : `${noLocationCount} without GPS`}
@@ -98,19 +102,23 @@ export function FleetMapControls({
                 Listed in panel, not on map
               </p>
             )}
-          </div>
+          </LiquidGlassLens>
         )}
       </div>
 
       {/* Bottom-left: collapsible legend */}
       <div className="absolute bottom-3 left-3 z-10 pointer-events-none max-w-[calc(100%-1.5rem)]">
-        <div className="sq-map-liquid-glass sq-map-liquid-glass--panel sq-map-liquid-glass--legend pointer-events-auto overflow-hidden">
+        <LiquidGlassLens
+          variant="fleetLegend"
+          intensity="subtle"
+          className="pointer-events-auto overflow-hidden"
+        >
           <button
             type="button"
             onClick={() => setLegendOpen((open) => !open)}
             className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left"
           >
-            <span className="text-[10px] font-semibold text-foreground/90">
+            <span className="text-[10px] font-semibold text-foreground">
               Legend
             </span>
             <ChevronDown
@@ -120,21 +128,21 @@ export function FleetMapControls({
             />
           </button>
           {legendOpen && (
-            <div className="px-3 pb-2.5 pt-0 flex flex-wrap gap-x-3 gap-y-1.5 border-t border-[color:var(--map-glass-border)]">
+            <div className="px-3 pb-2.5 pt-0 flex flex-wrap gap-x-3 gap-y-1.5 border-t border-[color:var(--map-glass-fleet-border,var(--map-glass-border))]">
               {FLEET_MAP_LEGEND_ITEMS.map((item) => (
                 <div key={item.mapTone} className="flex items-center gap-1.5">
                   <span
                     className="w-2 h-2 rounded-full shadow-[0_0_0_1.5px_rgba(255,255,255,0.5)]"
                     style={{ backgroundColor: getFleetMapToneHex(item.mapTone) }}
                   />
-                  <span className="text-[9.5px] font-medium text-foreground/75">
+                  <span className="text-[9.5px] font-medium text-foreground/85">
                     {item.label}
                   </span>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </LiquidGlassLens>
       </div>
     </>
   );
