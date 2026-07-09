@@ -1,13 +1,28 @@
 import * as React from "react";
 
 import { cn } from "./utils";
+import {
+  type CardSurface,
+  resolveCardSurface,
+} from "../patterns/surface";
 
-function Card({ className, ...props }: React.ComponentProps<"div">) {
+export type { CardSurface };
+
+interface CardProps extends React.ComponentProps<"div"> {
+  /** L0–L2 surface layer — default solid (L0 baseline, replaces legacy bg-card). */
+  surface?: CardSurface;
+  /** When true and surface is unset, uses L1 elevated interactive material. */
+  interactive?: boolean;
+}
+
+function Card({ className, surface, interactive, ...props }: CardProps) {
   return (
     <div
       data-slot="card"
       className={cn(
-        "bg-card text-card-foreground flex flex-col gap-6 rounded-xl border border-border shadow-[var(--shadow-xs)]",
+        resolveCardSurface({ surface, interactive }),
+        "text-card-foreground flex flex-col gap-6",
+        interactive && "cursor-pointer",
         className,
       )}
       {...props}

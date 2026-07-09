@@ -7,6 +7,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from '../ui/sheet';
+import { type DialogSurface, type FooterSurface, surfaceClassName } from './surface';
 
 /* ════════════════════════════════════════════════════════════════════
    DetailDrawer — one slide-over for every entity detail (vehicle,
@@ -31,6 +32,10 @@ export interface DetailDrawerProps {
   onContentOpenAutoFocus?: (event: Event) => void;
   children: ReactNode;
   className?: string;
+  /** Drawer body surface — solid (L0) or elevated (L1). No glass/liquid. */
+  surface?: DialogSurface;
+  /** Sticky footer chrome — frosted (L2) or solid (L0). */
+  footerSurface?: FooterSurface;
 }
 
 export function DetailDrawer({
@@ -46,15 +51,22 @@ export function DetailDrawer({
   onContentOpenAutoFocus,
   children,
   className,
+  surface = 'solid',
+  footerSurface = 'frosted',
 }: DetailDrawerProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side={side}
         onOpenAutoFocus={onContentOpenAutoFocus}
-        className={cn('w-full gap-0 surface-solid bg-card p-0', widthClassName, className)}
+        className={cn(
+          'w-full gap-0 p-0 border-0 bg-transparent shadow-none text-foreground',
+          surfaceClassName(surface),
+          widthClassName,
+          className,
+        )}
       >
-        <SheetHeader className="border-b border-border px-5 py-4">
+        <SheetHeader className="border-b border-border/70 px-5 py-4">
           {eyebrow && <div className="sq-section-label">{eyebrow}</div>}
           <div className="flex items-center gap-2.5 pr-8">
             <SheetTitle className="min-w-0 truncate text-[16px]">{title}</SheetTitle>
@@ -70,7 +82,12 @@ export function DetailDrawer({
         </div>
 
         {footer && (
-          <div className="sticky bottom-0 z-10 flex items-center justify-end gap-2 border-t border-border surface-frosted px-5 py-3.5">
+          <div
+            className={cn(
+              'sticky bottom-0 z-10 flex items-center justify-end gap-2 border-t border-border/70 px-5 py-3.5',
+              surfaceClassName(footerSurface),
+            )}
+          >
             {footer}
           </div>
         )}

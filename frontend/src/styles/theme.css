@@ -1547,7 +1547,8 @@
   }
 }
 
-/* ── L1 surface-elevated (solid) — `.sq-overlay` popover; NOT frosted/liquid ── */
+/* ── L1 legacy elevated popover panel — alias for solid elevated overlays (dialogs/dropdowns).
+   Prefer `.surface-elevated` in new code; do not combine with `.surface-solid` on the same node. ── */
 .sq-overlay {
   background: var(--popover);
   border: 1px solid var(--border);

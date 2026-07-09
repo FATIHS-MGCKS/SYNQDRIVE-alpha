@@ -50,7 +50,27 @@ export { DataCard, MetricCard } from './data-card';
 export type { DataCardProps, DataCardSurface, MetricCardProps, MetricTrend } from './data-card';
 
 export { EmptyState, ErrorState, SkeletonRows, SkeletonMetricGrid, SkeletonCard } from './states';
-export type { EmptyStateProps, ErrorStateProps, SkeletonRowsProps, SkeletonGridProps } from './states';
+export type {
+  EmptyStateProps,
+  ErrorStateProps,
+  SkeletonRowsProps,
+  SkeletonGridProps,
+  SkeletonCardProps,
+} from './states';
+
+export {
+  surfaceClassName,
+  resolveCardSurface,
+  resolveDataCardSurface,
+} from './surface';
+export type {
+  SolidSurface,
+  CardSurface,
+  DialogSurface,
+  TabsListSurface,
+  FooterSurface,
+  EmptySurface,
+} from './surface';
 
 export { DataTable } from './data-table';
 export type { DataTableProps, DataTableColumn } from './data-table';

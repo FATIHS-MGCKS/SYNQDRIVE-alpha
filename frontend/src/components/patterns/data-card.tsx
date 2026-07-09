@@ -3,6 +3,7 @@ import { cn } from '../ui/utils';
 import { Skeleton } from '../ui/skeleton';
 import type { StatusTone } from './status-utils';
 import { StatusDot } from './status';
+import { type SolidSurface, resolveDataCardSurface } from './surface';
 
 /* ════════════════════════════════════════════════════════════════════
    DataCard — the standard surface for a bounded block of content.
@@ -10,7 +11,7 @@ import { StatusDot } from './status';
    dividers + spacing for plain data (see the brief's anti-card rule).
    ════════════════════════════════════════════════════════════════════ */
 
-export type DataCardSurface = 'solid' | 'premium' | 'elevated';
+export type DataCardSurface = SolidSurface;
 
 export interface DataCardProps {
   children: ReactNode;
@@ -30,23 +31,6 @@ export interface DataCardProps {
   onClick?: () => void;
 }
 
-function resolveDataCardSurfaceClass(
-  surface: DataCardSurface | undefined,
-  isInteractive: boolean,
-  flush: boolean | undefined,
-): string {
-  if (surface) {
-    return surface === 'solid'
-      ? 'surface-solid'
-      : surface === 'premium'
-        ? 'surface-premium'
-        : 'surface-elevated';
-  }
-  if (isInteractive) return 'surface-elevated';
-  if (flush) return 'surface-solid';
-  return 'surface-premium';
-}
-
 export function DataCard({
   children,
   title,
@@ -62,7 +46,11 @@ export function DataCard({
 }: DataCardProps) {
   const hasHeader = title != null || actions != null || description != null;
   const isInteractive = interactive || onClick != null;
-  const surfaceClass = resolveDataCardSurfaceClass(surface, isInteractive, flush);
+  const surfaceClass = resolveDataCardSurface({
+    surface,
+    interactive: isInteractive,
+    flush,
+  });
 
   return (
     <div
@@ -151,15 +139,11 @@ export function MetricCard({
   variant = 'numeric',
   valueSize = 'default',
 }: MetricCardProps) {
-  const surfaceClass = surface
-    ? surface === 'solid'
-      ? 'surface-solid'
-      : surface === 'premium'
-        ? 'surface-premium'
-        : 'surface-elevated'
-    : onClick
-      ? 'surface-elevated'
-      : 'surface-premium';
+  const isInteractive = onClick != null;
+  const surfaceClass = resolveDataCardSurface({
+    surface,
+    interactive: isInteractive,
+  });
 
   if (loading) {
     return (
@@ -178,7 +162,7 @@ export function MetricCard({
     <div
       className={cn(
         surfaceClass,
-        onClick && 'cursor-pointer',
+        isInteractive && 'cursor-pointer',
         'flex h-full flex-col p-3.5 sm:p-4',
         className,
       )}

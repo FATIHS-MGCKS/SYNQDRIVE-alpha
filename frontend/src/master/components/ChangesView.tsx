@@ -35,6 +35,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'surface-foundation-rollout-v49280-2026-07-09',
+    version: '4.9.280',
+    title: 'V4.9.280 — Surface Foundation Rollout (Pattern-Multiplikatoren)',
+    summary: [
+      'Neu: frontend/src/components/patterns/surface.ts — zentrale surfaceClassName/resolveCardSurface/resolveDataCardSurface.',
+      'shadcn Card: surface?: solid|premium|elevated|frosted + interactive; Default surface-solid (ersetzt hartes bg-card).',
+      'DataCard/MetricCard: Surface-Resolver konsolidiert; keine Doppel-Logik.',
+      'AppDialog: surface?: solid|elevated (default elevated); overlay-scrim Backdrop; sq-overlay+surface-solid Konflikt entfernt.',
+      'DetailDrawer: surface + footerSurface Props; bg-card/bg-popover Overrides neutralisiert.',
+      'Tabs: TabsList surface?: solid|frosted; active Trigger → surface-premium.',
+      'EmptyState/ErrorState/SkeletonCard: optionales surface Prop; SkeletonCard default premium.',
+      'theme.css: sq-overlay als Legacy-Alias dokumentiert.',
+    ],
+    reason:
+      'Surface-System war Opt-in-Layer — Basis-Komponenten müssen L1/L2 zentral unterstützen, damit App-weiter Rollout greift.',
+    previousBehavior:
+      'Card hardcoded bg-card; Dialog sq-overlay+surface-solid; Drawer surface-solid+bg-card; Tabs active bg-card.',
+    details: 'Keine Map/Liquid/Business-Logik-Änderungen. Foundation für Phase-5 UI-Token-Rollout.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-09T02:00:00.000Z',
+  },
+  {
     id: 'surface-system-visual-rescue-v49279-2026-07-09',
     version: '4.9.279',
     title: 'V4.9.279 — Surface System Visual Rescue (L1 + L3 sichtbar)',

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { cn } from '../ui/utils';
 import { Skeleton } from '../ui/skeleton';
 import { Button } from '../ui/button';
+import { type EmptySurface, surfaceClassName } from './surface';
 
 /* ════════════════════════════════════════════════════════════════════
    EmptyState — calm, composed "nothing here yet" surface.
@@ -15,6 +16,8 @@ export interface EmptyStateProps {
   action?: ReactNode;
   /** Tighter padding for inline/in-card empties. */
   compact?: boolean;
+  /** Optional L0/L1 card shell when empty state fills a bounded panel. */
+  surface?: EmptySurface;
   className?: string;
 }
 
@@ -24,12 +27,14 @@ export function EmptyState({
   description,
   action,
   compact,
+  surface,
   className,
 }: EmptyStateProps) {
   return (
     <div
       className={cn(
         'flex flex-col items-center justify-center text-center animate-fade-up',
+        surface && cn(surfaceClassName(surface), 'rounded-xl'),
         compact ? 'py-8 px-4' : 'py-16 px-6',
         className,
       )}
@@ -64,6 +69,7 @@ export interface ErrorStateProps {
   onRetry?: () => void;
   retryLabel?: string;
   compact?: boolean;
+  surface?: EmptySurface;
   className?: string;
 }
 
@@ -75,6 +81,7 @@ export function ErrorState({
   onRetry,
   retryLabel = 'Try again',
   compact,
+  surface,
   className,
 }: ErrorStateProps) {
   const detail = description ?? (error ? String(error) : undefined);
@@ -83,6 +90,7 @@ export function ErrorState({
     <div
       className={cn(
         'flex flex-col items-center justify-center text-center animate-fade-up',
+        surface && cn(surfaceClassName(surface), 'rounded-xl'),
         compact ? 'py-8 px-4' : 'py-16 px-6',
         className,
       )}
@@ -163,10 +171,16 @@ export function SkeletonMetricGrid({ count = 4, className, cardClassName }: Skel
   );
 }
 
+export interface SkeletonCardProps {
+  className?: string;
+  /** L0 solid (default) or L1 premium card shell. */
+  surface?: EmptySurface;
+}
+
 /** A single card-shaped skeleton block. */
-export function SkeletonCard({ className }: { className?: string }) {
+export function SkeletonCard({ className, surface = 'premium' }: SkeletonCardProps) {
   return (
-    <div className={cn('sq-card p-4', className)} aria-hidden>
+    <div className={cn(surfaceClassName(surface), 'p-4', className)} aria-hidden>
       <Skeleton className="h-4 w-32" />
       <div className="mt-4 space-y-2.5">
         <Skeleton className="h-3 w-full" />

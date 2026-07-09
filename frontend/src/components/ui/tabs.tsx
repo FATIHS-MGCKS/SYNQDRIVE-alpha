@@ -4,6 +4,7 @@ import * as React from "react";
 import * as TabsPrimitive from "@radix-ui/react-tabs";
 
 import { cn } from "./utils";
+import { type TabsListSurface, surfaceClassName } from "../patterns/surface";
 
 function Tabs({
   className,
@@ -18,15 +19,22 @@ function Tabs({
   );
 }
 
+interface TabsListProps extends React.ComponentProps<typeof TabsPrimitive.List> {
+  /** L2 frosted chrome (default) or L0 solid segmented bar. */
+  surface?: TabsListSurface;
+}
+
 function TabsList({
   className,
+  surface = "frosted",
   ...props
-}: React.ComponentProps<typeof TabsPrimitive.List>) {
+}: TabsListProps) {
   return (
     <TabsPrimitive.List
       data-slot="tabs-list"
       className={cn(
-        "surface-frosted text-muted-foreground border border-border/60 inline-flex h-9 w-fit items-center justify-center rounded-xl p-[3px] flex",
+        surfaceClassName(surface),
+        "text-muted-foreground inline-flex h-9 w-fit items-center justify-center rounded-xl p-[3px]",
         className,
       )}
       {...props}
@@ -42,7 +50,9 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:border-border/80 data-[state=active]:shadow-[var(--shadow-xs)] focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:outline-ring text-muted-foreground dark:text-muted-foreground data-[state=active]:dark:text-foreground inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-[calc(var(--radius)-1px)] border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap transition-[color,box-shadow,background-color] focus-visible:ring-[3px] focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "inline-flex h-[calc(100%-1px)] flex-1 items-center justify-center gap-1.5 rounded-[calc(var(--radius)-1px)] border border-transparent px-2 py-1 text-sm font-medium whitespace-nowrap text-muted-foreground transition-[color,box-shadow,background-color,border-color] focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:outline-ring focus-visible:ring-[3px] focus-visible:outline-1 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "data-[state=active]:surface-premium data-[state=active]:text-foreground",
+        "hover:text-foreground/90",
         className,
       )}
       {...props}
@@ -64,3 +74,4 @@ function TabsContent({
 }
 
 export { Tabs, TabsList, TabsTrigger, TabsContent };
+export type { TabsListProps, TabsListSurface };
