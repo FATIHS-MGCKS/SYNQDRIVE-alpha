@@ -1,11 +1,14 @@
 import { Module } from '@nestjs/common';
 import { InvoicesModule } from '@modules/invoices/invoices.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
+import { OutboundEmailModule } from '@modules/outbound-email/outbound-email.module';
+import { CustomersModule } from '@modules/customers/customers.module';
 import { DocumentsController } from './documents.controller';
 import { LegalDocumentsController } from './legal-documents.controller';
 import { GeneratedDocumentsService } from './generated-documents.service';
 import { LegalDocumentsService } from './legal-documents.service';
 import { BookingDocumentBundleService } from './booking-document-bundle.service';
+import { BookingDocumentEmailService } from './booking-document-email.service';
 import { DocumentNumberingService } from './document-numbering.service';
 import { DocumentRendererService } from './document-renderer.service';
 import { DOCUMENT_RENDERER } from './renderers/render-model';
@@ -22,7 +25,7 @@ import { LocalDocumentStorageService } from './storage/local-document-storage.se
  * tokens so a future S3 / Chromium implementation can be swapped in.
  */
 @Module({
-  imports: [InvoicesModule, TasksModule],
+  imports: [InvoicesModule, TasksModule, OutboundEmailModule, CustomersModule],
   controllers: [DocumentsController, LegalDocumentsController],
   providers: [
     LocalDocumentStorageService,
@@ -33,7 +36,8 @@ import { LocalDocumentStorageService } from './storage/local-document-storage.se
     LegalDocumentsService,
     DocumentNumberingService,
     BookingDocumentBundleService,
+    BookingDocumentEmailService,
   ],
-  exports: [BookingDocumentBundleService, GeneratedDocumentsService, LegalDocumentsService],
+  exports: [BookingDocumentBundleService, GeneratedDocumentsService, LegalDocumentsService, BookingDocumentEmailService],
 })
 export class DocumentsModule {}

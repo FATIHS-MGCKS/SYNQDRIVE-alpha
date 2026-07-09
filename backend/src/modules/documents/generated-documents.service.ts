@@ -154,6 +154,40 @@ export class GeneratedDocumentsService {
     };
   }
 
+  /** Loads stored bytes for outbound email attachments — never regenerates PDFs. */
+  async getAttachmentBuffer(
+    orgId: string,
+    documentId: string,
+  ): Promise<{
+    buffer: Buffer;
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number | null;
+    document: GeneratedDocument;
+  }> {
+    const doc = await this.getById(orgId, documentId);
+    const stream = await this.storage.getObjectStream(doc.objectKey);
+    const buffer = await this.readStreamToBuffer(stream);
+    return {
+      buffer,
+      fileName: doc.fileName,
+      mimeType: doc.mimeType,
+      sizeBytes: doc.sizeBytes ?? buffer.length,
+      document: doc,
+    };
+  }
+
+  private async readStreamToBuffer(stream: Readable): Promise<Buffer> {
+    return new Promise((resolve, reject) => {
+      const chunks: Buffer[] = [];
+      stream.on('data', (chunk: Buffer | string) => {
+        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+      });
+      stream.on('error', reject);
+      stream.on('end', () => resolve(Buffer.concat(chunks)));
+    });
+  }
+
   toDto(doc: GeneratedDocument): GeneratedDocumentDto {
     return {
       id: doc.id,

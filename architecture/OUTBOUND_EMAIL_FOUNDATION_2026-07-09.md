@@ -57,5 +57,15 @@ Resend/Postmark adapters are stubbed; unconfigured providers fall back to `DevEm
 ## Future
 
 - Administration → E-Mail & Versand UI
-- Document send flows (booking documents, invoices) via `OutboundEmailService.sendExplicit`
+- BookingDocumentsSection send button (uses `api.documents.sendBookingDocumentsEmail`)
 - Real Resend/Postmark provider + webhook bounce handling
+
+## Booking document send (V4.9.291)
+
+`POST /organizations/:orgId/bookings/:bookingId/documents/send-email`
+
+- Loads attachment bytes from `GeneratedDocumentsService.getAttachmentBuffer` (private storage)
+- Never regenerates PDFs on send
+- Creates `OutboundEmail` with `sourceType` BOOKING_DOCUMENTS | INVOICE | HANDOVER
+- Marks documents `SENT` on success
+- Audit: `metaJson.eventType` = `DOCUMENT_EMAIL_SENT` | `DOCUMENT_EMAIL_FAILED`

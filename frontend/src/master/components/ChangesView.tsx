@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-documents-email-send-v49291-2026-07-09',
+    version: '4.9.291',
+    title: 'V4.9.291 — Booking document email send (stored PDF attachments)',
+    summary: [
+      'POST /organizations/:orgId/bookings/:bookingId/documents/send-email — versendet vorhandene GeneratedDocuments.',
+      'BookingDocumentEmailService: Validierung (Org/Booking/VOID), Attachment-Load aus private Storage (keine Neugenerierung).',
+      'OutboundEmail integration: sourceType BOOKING_DOCUMENTS/INVOICE/HANDOVER, Events + ActivityLog meta DOCUMENT_EMAIL_SENT/FAILED.',
+      'Customer timeline NOTE_ADDED bei erfolgreichem Versand; Dokument-Status → SENT.',
+      'Rollen: ORG_ADMIN, MASTER_ADMIN, SUB_ADMIN, WORKER. Frontend: api.documents.sendBookingDocumentsEmail.',
+    ],
+    reason:
+      'Kunden sollen generierte Buchungsunterlagen per E-Mail erhalten — ohne zweite PDF-Pipeline oder öffentliche URLs.',
+    previousBehavior:
+      'Nur Download über authentifizierten Endpoint; kein gebündelter E-Mail-Versand aus Booking-Dokumenten.',
+    details:
+      'Nutzt OutboundEmailModule (V4.9.290). Keine UI-Buttons in dieser Phase — API + Client bereit.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-09T18:00:00.000Z',
+  },
+  {
     id: 'outbound-email-foundation-v49290-2026-07-09',
     version: '4.9.290',
     title: 'V4.9.290 — Outbound Email foundation (tenant-safe default + domain verification)',

@@ -1055,6 +1055,33 @@ export interface BookingDocumentBundleView {
   warnings: string[];
 }
 
+export interface SendBookingDocumentsEmailPayload {
+  documentIds: string[];
+  to?: string;
+  cc?: string[];
+  bcc?: string[];
+  subject?: string;
+  message?: string;
+  includeSignature?: boolean;
+}
+
+export interface SendBookingDocumentsEmailResult {
+  outboundEmailId: string;
+  status: string;
+  to: string;
+  fromEmail: string;
+  fromName: string | null;
+  replyToEmail: string;
+  documents: Array<{
+    id: string;
+    documentType: string;
+    fileName: string;
+    status: string;
+  }>;
+  providerMessageId?: string | null;
+  errorMessage?: string | null;
+}
+
 export type BookingDetailDocumentSlot = {
   documentType: string;
   status: 'missing' | 'required' | 'generated' | 'signed' | 'void';
@@ -2863,6 +2890,15 @@ export const api = {
     /** Opens the stored PDF (authenticated) in a new tab. */
     open: (orgId: string, documentId: string) =>
       openAuthedDocument(`/organizations/${orgId}/documents/${documentId}/download`),
+    sendBookingDocumentsEmail: (
+      orgId: string,
+      bookingId: string,
+      payload: SendBookingDocumentsEmailPayload,
+    ) =>
+      post<SendBookingDocumentsEmailResult>(
+        `/organizations/${orgId}/bookings/${bookingId}/documents/send-email`,
+        payload,
+      ),
   },
   // Administration → Legal Documents (AGB / Widerrufsbelehrung): upload +
   // versioning. Mutations are ORG_ADMIN-gated server-side.
