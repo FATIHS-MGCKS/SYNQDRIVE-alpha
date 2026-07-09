@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'outbound-email-foundation-v49290-2026-07-09',
+    version: '4.9.290',
+    title: 'V4.9.290 — Outbound Email foundation (tenant-safe default + domain verification)',
+    summary: [
+      'Neues Modul outbound-email: OrgEmailSettings, OrgEmailDomain, OutboundEmail + Attachments/Events (Prisma).',
+      'EmailProviderPort + DevEmailProvider (SENT_SIMULATED, sicheres Payload-Logging ohne Attachment-Binaries).',
+      'EmailAddressPolicyService: kein Spoofing — verified domain From nur bei VERIFIED; sonst SynqDrive Default + org Reply-To.',
+      'API: GET/PUT email-settings, POST/GET email-domains, POST check, POST test-email — ORG_ADMIN/MASTER_ADMIN only.',
+      'Domain-Verifizierung: Dev DNS Records (SPF/DKIM/DMARC/Return-Path) + simulierbarer check; Resend/Postmark gekapselt.',
+      'Env: EMAIL_PROVIDER, EMAIL_DEFAULT_FROM_*, EMAIL_DOMAIN_VERIFICATION_PROVIDER.',
+    ],
+    reason:
+      'SynqDrive braucht eine professionelle, mandantensichere E-Mail-Grundlage mit Standardversand und optionaler eigener Absenderdomain.',
+    previousBehavior:
+      'Nur TransactionalMailService-Stub für Invites; keine org-scoped Outbound-Architektur, keine Domain-Verifizierung.',
+    details:
+      'Kein Dokumentenversand in UI-Flächen in dieser Phase. Explizite User-Aktion für test-email. Worker/Manager senden später — keine Domain-Konfiguration für sie.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-09T16:00:00.000Z',
+  },
+  {
     id: 'liquid-glass-shell-only-v49289-2026-07-09',
     version: '4.9.289',
     title: 'V4.9.289 — Liquid Glass shell-only Map HUD (inner blob fix)',
