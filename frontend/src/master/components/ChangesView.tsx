@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'surface-system-css-phase1-v49275-2026-07-09',
+    version: '4.9.275',
+    title: 'V4.9.275 — Surface System Phase 1 (CSS-Klassen + Fallbacks)',
+    summary: [
+      'theme.css: kanonische Klassen .surface-solid, .surface-premium, .surface-elevated, .surface-frosted, .surface-liquid, .overlay-scrim.',
+      'Neu: .sq-card-premium (opt-in L1 Premium Solid); Legacy-Aliase .sq-card/.sq-glass/.sq-backdrop unverändert im Baseline-Verhalten.',
+      'L1-Tokens: --surface-premium-*; .sq-card-elevated bleibt solid legacy (kein Breaking Change).',
+      'Reduced Transparency + @supports backdrop-filter Fallback für alle L2/L3/L4 inkl. sq-map-glass-controls.',
+      'Keine React-/Screen-Migration — nur CSS + Doku.',
+    ],
+    reason:
+      'Phase 1 des Surface-Systems: zentrale Materialklassen und vollständige A11y-Fallbacks vor komponentenweiser Adoption.',
+    previousBehavior:
+      'Nur Legacy-Klassen (.sq-card, .sq-glass, .sq-map-liquid-*); Lücken bei reduced-transparency für map-glass-controls.',
+    details:
+      'frontend/src/styles/theme.css, LIQUID_GLASS_SYSTEM.md, THEME_COLOR_CONTRACT.md, SURFACE_INSPIRATION_AUDIT.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-09T00:40:00.000Z',
+  },
+  {
     id: 'premium-solid-card-audit-v49274-2026-07-09',
     version: '4.9.274',
     title: 'V4.9.274 — Premium Solid Card Inspiration Audit (L0/L1)',

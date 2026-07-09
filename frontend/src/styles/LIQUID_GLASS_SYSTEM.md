@@ -68,7 +68,7 @@ L4 overlay-scrim     ▓▓▓▓  dimmed backdrop; content stays L0/L1
 | Gradient | **None** (flat fill) |
 | Use for | Table containers, admin panels, detail section bodies, settings forms, nested list wrappers, flush `DataCard` with `flush` |
 
-**Canonical classes:** `.sq-card` (baseline), shadcn `Card` with `bg-card`, table outer shells.
+**Canonical classes:** `.surface-solid`, `.sq-card` (legacy alias), shadcn `Card` with `bg-card`, table outer shells.
 
 **When L0 is enough:** See §2.1 decision matrix below.
 
@@ -88,9 +88,9 @@ L4 overlay-scrim     ▓▓▓▓  dimmed backdrop; content stays L0/L1
 | Interaction | Optional hover lift → use `.sq-card-elevated` or `DataCard interactive` |
 | Use for | Dashboard KPIs, customer/vehicle/booking cards, health modules, admin summary cards, fleet command rows (when card-wrapped), featured `MetricCard` / `DataCard` |
 
-**Canonical classes (today):** `.sq-card` + domain tiles (`booking-kpi-tile`, `fleet-health-kpi-tile`) + `dashboardKpiVisual` status gradients + `MetricCard` / `DataCard`.
+**Canonical classes (today):** `.surface-premium`, `.sq-card-premium` + domain tiles (`booking-kpi-tile`, `fleet-health-kpi-tile`) + `dashboardKpiVisual` status gradients + `MetricCard` / `DataCard`.
 
-**Future alias (migration phase 2):** `.surface-premium` / `.sq-card-premium` — consolidated recipe (see `SURFACE_INSPIRATION_AUDIT.md` §14).
+**Tokens:** `--surface-premium-bg-start`, `--surface-premium-bg-end`, `--surface-premium-border`, `--surface-premium-highlight`, `--surface-premium-catch`, `--surface-premium-shadow`.
 
 **Icon bubble:** `sq-tone-*` soft tiles or `getKpiIconTileClass()` — semantic tint, not glass.
 
@@ -106,7 +106,7 @@ L4 overlay-scrim     ▓▓▓▓  dimmed backdrop; content stays L0/L1
 | Interaction | Hover `translateY(-1px)`, `--shadow-hover`, border `color-mix` toward foreground |
 | Use for | Clickable KPI cards, fleet command rows (navigable), customer/vehicle cards with `onClick`, modal/dialog **content**, dropdown panels (`sq-overlay`) |
 
-**Canonical classes:** `.sq-card-elevated`, `DataCard` with `interactive`, `.sq-overlay`, Sheet/Dialog content (`bg-popover`).
+**Canonical classes:** `.surface-elevated` (premium interactive), `.sq-card-elevated` (legacy solid interactive), `DataCard` with `interactive`, `.sq-overlay`, Sheet/Dialog content (`bg-popover`).
 
 **Not glass:** `sq-overlay` is a **solid elevated panel** — do not add backdrop-filter to it.
 
@@ -124,9 +124,9 @@ L4 overlay-scrim     ▓▓▓▓  dimmed backdrop; content stays L0/L1
 | Use for | Login hero, sticky tab bars, drawer footers, light mobile scrims |
 | Avoid | Large scroll regions, KPI grids, table rows, full-page panels |
 
-**Canonical classes:** `.sq-glass`
+**Canonical classes:** `.surface-frosted`, `.sq-glass` (legacy alias)
 
-**Future alias (migration phase 2):** `.surface-frosted` → same rules as `.sq-glass`
+**Future alias:** ~~`.surface-frosted`~~ — **implemented V4.9.275**
 
 ---
 
@@ -157,7 +157,7 @@ L4 overlay-scrim     ▓▓▓▓  dimmed backdrop; content stays L0/L1
 | `.sq-map-glass-controls` | Horizontal control cluster (Fit / Locate / Stations) |
 | `.sq-map-marker-callout` | DOM marker label callout |
 
-**Future alias (migration phase 2):** `.surface-liquid` → semantic wrapper; map classes remain granular.
+**Future alias:** ~~`.surface-liquid`~~ — **implemented V4.9.275** (base class); map-specific classes remain granular.
 
 ---
 
@@ -172,9 +172,7 @@ L4 overlay-scrim     ▓▓▓▓  dimmed backdrop; content stays L0/L1
 | Content on top | **L1 solid** (`sq-overlay`, `bg-popover`, `bg-card`) — not liquid |
 | Use for | Dialog overlay, sheet overlay, full-screen modal scrims |
 
-**Canonical class:** `.sq-backdrop`
-
-**Future alias:** `.overlay-scrim` → same as `.sq-backdrop`
+**Canonical class:** `.overlay-scrim`, `.sq-backdrop` (legacy alias)
 
 ---
 
@@ -204,11 +202,17 @@ Full inspiration analysis: `SURFACE_INSPIRATION_AUDIT.md` §14–17.
 
 | Class / pattern | Level | Notes |
 |-----------------|-------|-------|
-| `.sq-card` | **L0 / L1 premium** | Baseline or premium solid; inset highlight only |
-| `.sq-card-elevated` | **L1 interactive** | Premium solid + hover lift |
-| `.sq-glass` | **L2** | Frosted glass |
+| `.surface-solid` | **L0** | Canonical opaque baseline |
+| `.sq-card` | **L0** | Legacy alias of `.surface-solid` |
+| `.surface-premium` | **L1 premium** | Canonical premium solid (opt-in) |
+| `.sq-card-premium` | **L1 premium** | Legacy alias of `.surface-premium` |
+| `.surface-elevated` | **L1 interactive** | Premium solid + hover/active |
+| `.sq-card-elevated` | **L1 interactive** | Legacy solid interactive (no premium gradient) |
+| `.surface-frosted` | **L2** | Canonical frosted glass |
+| `.sq-glass` | **L2** | Legacy alias of `.surface-frosted` |
 | `.glass-card` | **L2** (deprecated) | Alias of `.sq-glass` — **no TSX usage**; do not use in new code |
 | `.glass-panel` | **L2** (deprecated) | `.sq-glass` + bottom catch — **no TSX usage** |
+| `.surface-liquid` | **L3** | Canonical liquid HUD base |
 | `.sq-map-liquid-glass` | **L3** | Liquid container |
 | `.sq-map-liquid-pill` | **L3** | Liquid pill |
 | `.sq-map-liquid-badge` | **L3** | Liquid badge |
@@ -218,7 +222,8 @@ Full inspiration analysis: `SURFACE_INSPIRATION_AUDIT.md` §14–17.
 | `.sq-map-liquid-tile` | **L3** | Inner metric cell (no extra glass stack) |
 | `.sq-map-glass-controls` | **L3** | Map toolbar cluster |
 | `.sq-map-marker-callout` | **L3** | Marker callout |
-| `.sq-backdrop` | **L4** | Modal/sheet scrim |
+| `.overlay-scrim` | **L4** | Canonical modal/sheet scrim |
+| `.sq-backdrop` | **L4** | Legacy alias of `.overlay-scrim` |
 | `.sq-overlay` | **L1** | Solid popover — **not** frosted or liquid |
 | `.sq-tab-bar` | **L0** | Segmented control track; solid muted + solid active tab |
 | `.sq-3d-btn` | — | **Not a surface level** — tactile button chrome (orthogonal to L0–L4) |
@@ -288,16 +293,15 @@ Full inspiration analysis: `SURFACE_INSPIRATION_AUDIT.md` §14–17.
 
 Users who opt out of translucency must see **solid, legible** surfaces. All L2 and L3 utilities must degrade to `background: var(--card)` and `backdrop-filter: none`.
 
-### Currently covered in `theme.css`
+### Currently covered in `theme.css` (V4.9.275)
 
-- `.sq-glass`, `.glass-card`, `.glass-panel`
-- `.sq-map-liquid-glass`, `.sq-map-liquid-pill`, `.sq-map-liquid-badge`, `.sq-map-liquid-empty`, `.sq-map-liquid-loading`
-- `.sq-map-marker-callout`
-- `.sq-backdrop` (scrim becomes solid tint, blur off)
+- **L2:** `.surface-frosted`, `.sq-glass`, `.glass-card`, `.glass-panel`
+- **L3:** `.surface-liquid`, `.sq-map-liquid-glass`, `.sq-map-liquid-pill`, `.sq-map-liquid-badge`, `.sq-map-liquid-empty`, `.sq-map-liquid-loading`, `.sq-map-liquid-hud`, `.sq-map-liquid-tile`, `.sq-map-glass-controls`, `.sq-map-marker-callout`
+- **L4:** `.overlay-scrim`, `.sq-backdrop`
+- **`@supports not (backdrop-filter)`** — solid fallbacks for all L2/L3/L4
+- **Pseudo-layers** (`::before` / `::after`) disabled under reduced transparency
 
-### Known gaps (fix in migration phase 3)
-
-- `.sq-map-glass-controls` — **not yet** in fallback block
+### Known gaps (component migration — phase 3+)
 - Inline `backdrop-blur-*` in TSX — **not** centrally governed
 - `.trips-summary-bar__inner` — ad-hoc blur without fallback
 - `DetailDrawer` footer inline blur — migrate to L2 utility with fallback
@@ -315,7 +319,9 @@ Users who opt out of translucency must see **solid, legible** surfaces. All L2 a
 
 | Level | CSS variables |
 |-------|---------------|
-| L0/L1 | `--card`, `--border`, `--shadow-xs`, `--shadow-sm`, `--shadow-hover`, `--shadow-overlay` |
+| L0 | `--card`, `--border`, `--shadow-xs` |
+| L1 premium | `--surface-premium-bg-start`, `--surface-premium-bg-end`, `--surface-premium-border`, `--surface-premium-highlight`, `--surface-premium-catch`, `--surface-premium-shadow` |
+| L1 interactive | `--shadow-sm`, `--shadow-hover` (+ premium tokens when using `.surface-elevated`) |
 | L2 | `--glass-bg`, `--glass-border`, `--glass-blur`, `--glass-edge-highlight`, `--glass-edge-catch` |
 | L3 | `--map-glass-bg`, `--map-glass-bg-strong`, `--map-glass-border`, `--map-glass-highlight`, `--map-glass-shine`, `--map-glass-shadow`, `--map-glass-blur` |
 | L4 | Scrim uses foreground mix / dark rgba — blur 6px on `.sq-backdrop` only |
@@ -328,11 +334,12 @@ Light/dark values: see `THEME_COLOR_CONTRACT.md` § Glass / Map glass.
 
 | Phase | Scope | Visual change? |
 |-------|--------|----------------|
-| **1 — Documentation** | This file + theme.css comments + contract cross-links | **No** |
-| **2 — CSS aliases** | Add `.surface-solid`, `.surface-elevated`, `.surface-frosted`, `.surface-liquid`, `.overlay-scrim` as aliases mapping to existing classes | **No** (aliases only) |
-| **3 — Map HUD consolidate** | Single source for mapbox ctrl styles; add `.sq-map-glass-controls` to reduced-transparency block | Minimal / a11y only |
-| **4 — Local blur replacement** | Replace `bg-card/95 backdrop-blur-sm` and `OperatorGlassCard` recipe with L2 utility | Yes — per call site |
-| **5 — Deprecation cleanup** | Remove `.glass-card`, `.glass-panel`; remove `sq-card sq-glass` stacks | Yes — after zero references |
+| **1 — CSS system** | Canonical `.surface-*` classes, `.sq-card-premium`, fallbacks, tokens | **No** (opt-in premium only) |
+| **2 — Documentation** | This file + audits + contract cross-links | **No** |
+| **3 — Component opt-in** | `MetricCard` / featured surfaces adopt `.surface-premium` | Per call site |
+| **4 — Map HUD consolidate** | Map classes extend `.surface-liquid` base | Minimal |
+| **5 — Local blur replacement** | Replace inline `backdrop-blur` → `.surface-frosted` | Per call site |
+| **6 — Deprecation cleanup** | Remove `.glass-card`, `.glass-panel`; remove `sq-card sq-glass` stacks | After zero references |
 
 **Explicitly out of scope for early phases:** Sidebar, TopBar, Dashboard layout, component API changes.
 
@@ -372,4 +379,4 @@ Before adding or changing a surface, answer:
 
 ---
 
-*Last updated: 2026-07-08 — V4.9.272 documentation pass (architecture only).*
+*Last updated: 2026-07-09 — V4.9.275 Phase 1 CSS system.*

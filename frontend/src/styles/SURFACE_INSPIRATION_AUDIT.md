@@ -838,7 +838,7 @@ Use `.sq-press` / `.sq-3d-btn` for **buttons inside** cards — not on the card 
 | Phase | Action | Notes |
 |-------|--------|-------|
 | **1 — Docs** | L1 premium defined in this audit + `LIQUID_GLASS_SYSTEM.md` | ✅ |
-| **2 — CSS alias** | Add `.sq-card-premium` to `theme.css` as opt-in | No migration forced |
+| **2 — CSS system** | Canonical `.surface-*`, `.sq-card-premium`, fallbacks in `theme.css` | ✅ V4.9.275 |
 | **3 — Pattern adoption** | `MetricCard` / featured `DataCard` opt into premium class | Surgical |
 | **4 — KPI consolidation** | Align `booking-kpi-tile` inset with premium tokens | Optional |
 | **5 — Never** | Blur/transparency on L1; glass libraries for cards | — |
@@ -888,4 +888,4 @@ Use `.sq-press` / `.sq-3d-btn` for **buttons inside** cards — not on the card 
 
 ---
 
-*V4.9.274 — premium solid / L1 inspiration audit added (research only, no implementation).*
+*V4.9.275 — Phase 1 CSS system implemented in `theme.css`.*

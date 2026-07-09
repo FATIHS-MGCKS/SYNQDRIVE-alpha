@@ -151,6 +151,14 @@
   --map-glass-shadow: 0 14px 36px rgba(17, 24, 39, 0.12), 0 2px 8px rgba(17, 24, 39, 0.06);
   --map-glass-blur: 20px;
 
+  /* ── L1 surface-premium tokens — see LIQUID_GLASS_SYSTEM.md ── */
+  --surface-premium-bg-start: color-mix(in srgb, var(--card) 96%, white 4%);
+  --surface-premium-bg-end: var(--card);
+  --surface-premium-border: var(--border);
+  --surface-premium-highlight: color-mix(in srgb, var(--card) 82%, white 18%);
+  --surface-premium-catch: color-mix(in srgb, var(--card) 96%, black 4%);
+  --surface-premium-shadow: var(--shadow-sm);
+
   /* ── Radius system ── */
   --radius: 0.5rem;  /* 8px base */
 
@@ -261,6 +269,14 @@
   --map-glass-shine: rgba(255, 255, 255, 0.06);
   --map-glass-shadow: 0 14px 36px rgba(0, 0, 0, 0.38), 0 2px 8px rgba(0, 0, 0, 0.24);
   --map-glass-blur: 22px;
+
+  /* ── L1 surface-premium tokens (dark) ── */
+  --surface-premium-bg-start: color-mix(in srgb, var(--card) 92%, white 8%);
+  --surface-premium-bg-end: var(--card);
+  --surface-premium-border: var(--border);
+  --surface-premium-highlight: rgba(255, 255, 255, 0.06);
+  --surface-premium-catch: rgba(0, 0, 0, 0.35);
+  --surface-premium-shadow: var(--shadow-sm);
 
   /* ── Sidebar — dark (charcoal chrome, neutral hairlines) ── */
   --sidebar: #09090B;
@@ -502,11 +518,12 @@
 /* ═══════════════════════════════════════════════════════
    SynqDrive Surface System (L0–L4)
    Contract: frontend/src/styles/LIQUID_GLASS_SYSTEM.md
-   L0 surface-solid · L1 surface-elevated · L2 surface-frosted
-   L3 surface-liquid (map HUD) · L4 overlay-scrim
+   Canonical: .surface-* · Legacy: .sq-card, .sq-glass, .sq-map-liquid-*, …
+   Phase 1 CSS (V4.9.275) — opt-in premium; .sq-card baseline unchanged
    ═══════════════════════════════════════════════════════ */
 
-/* ── L0 surface-solid — `.sq-card` (no blur) ── */
+/* ── L0 surface-solid — opaque baseline (no blur) ── */
+.surface-solid,
 .sq-card {
   background: var(--card);
   border: 1px solid var(--border);
@@ -516,7 +533,57 @@
     var(--shadow-xs);
 }
 
-/* ── L1 surface-elevated — `.sq-card-elevated` (no blur, hover lift) ── */
+/* ── L1 surface-premium — high-quality opaque SaaS card (opt-in) ── */
+.surface-premium,
+.sq-card-premium {
+  background: linear-gradient(
+    180deg,
+    var(--surface-premium-bg-start) 0%,
+    var(--surface-premium-bg-end) 100%
+  );
+  border: 1px solid var(--surface-premium-border);
+  border-radius: calc(var(--radius) + 2px);
+  box-shadow:
+    inset 0 1px 0 var(--surface-premium-highlight),
+    inset 0 -1px 0 var(--surface-premium-catch),
+    var(--surface-premium-shadow);
+}
+
+/* ── L1 surface-elevated — premium solid + interaction (canonical) ── */
+.surface-elevated {
+  background: linear-gradient(
+    180deg,
+    var(--surface-premium-bg-start) 0%,
+    var(--surface-premium-bg-end) 100%
+  );
+  border: 1px solid var(--surface-premium-border);
+  border-radius: calc(var(--radius) + 2px);
+  box-shadow:
+    inset 0 1px 0 var(--surface-premium-highlight),
+    inset 0 -1px 0 var(--surface-premium-catch),
+    var(--shadow-sm);
+  transition:
+    box-shadow var(--dur-base) var(--ease-out-soft),
+    transform var(--dur-base) var(--ease-out-soft),
+    border-color var(--dur-base) var(--ease-out-soft);
+}
+.surface-elevated:hover {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--surface-premium-highlight) 92%, white 8%),
+    inset 0 -1px 0 var(--surface-premium-catch),
+    var(--shadow-hover);
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--border) 72%, var(--foreground) 28%);
+}
+.surface-elevated:active {
+  transform: translateY(0);
+  box-shadow:
+    inset 0 1px 0 var(--surface-premium-highlight),
+    inset 0 -1px 0 var(--surface-premium-catch),
+    var(--shadow-xs);
+}
+
+/* ── L1 legacy elevated — solid base (backward compatible; not premium gradient) ── */
 .sq-card-elevated {
   background: var(--card);
   border: 1px solid var(--border);
@@ -536,18 +603,81 @@
   transform: translateY(-1px);
   border-color: color-mix(in srgb, var(--border) 72%, var(--foreground) 28%);
 }
+.sq-card-elevated:active {
+  transform: translateY(0);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--card) 88%, white 12%),
+    var(--shadow-sm);
+}
 
-/* ── L2 surface-frosted — `.sq-glass` (blur via `--glass-*`; not liquid) ── */
+/* ── L2 surface-frosted — frosted glass (no liquid shine stack) ── */
+.surface-frosted,
 .sq-glass {
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(145%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(145%);
   border: 1px solid var(--glass-border);
   border-radius: calc(var(--radius) + 4px);
   box-shadow:
     inset 0 1px 0 var(--glass-edge-highlight),
     inset 0 -1px 0 var(--glass-edge-catch),
     var(--shadow-md);
+}
+
+/* ── L3 surface-liquid — base map-HUD material (imagery overlays only) ── */
+.surface-liquid {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  color: var(--foreground);
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--map-glass-highlight) 88%, transparent), transparent 36%),
+    linear-gradient(145deg, var(--map-glass-bg-strong), var(--map-glass-bg));
+  border: 1px solid var(--map-glass-border);
+  border-radius: calc(var(--radius) + 4px);
+  box-shadow:
+    inset 0 1px 0 var(--map-glass-highlight),
+    inset 0 -1px 0 var(--glass-edge-catch),
+    var(--map-glass-shadow);
+  backdrop-filter: blur(var(--map-glass-blur)) saturate(185%) contrast(1.03);
+  -webkit-backdrop-filter: blur(var(--map-glass-blur)) saturate(185%) contrast(1.03);
+}
+.surface-liquid::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  z-index: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(180deg, var(--map-glass-shine), transparent 48%),
+    radial-gradient(circle at 50% -24%, var(--map-glass-highlight), transparent 38%);
+  pointer-events: none;
+}
+.surface-liquid::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background-image: linear-gradient(118deg, transparent 0%, color-mix(in srgb, white 22%, transparent) 44%, transparent 58%);
+  opacity: 0.55;
+  pointer-events: none;
+}
+.surface-liquid > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ── L4 overlay-scrim — dialog/sheet backdrop material ── */
+.overlay-scrim,
+.sq-backdrop {
+  background: color-mix(in srgb, var(--foreground) 28%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.dark .overlay-scrim,
+.dark .sq-backdrop {
+  background: rgba(0, 0, 0, 0.58);
 }
 
 /* ── L3 surface-liquid — map HUD family (imagery overlays only) ── */
@@ -1288,15 +1418,7 @@
     var(--shadow-overlay);
 }
 
-/* ── L4 overlay-scrim — `.sq-backdrop` (dialog/sheet dimmer) ── */
-.sq-backdrop {
-  background: color-mix(in srgb, var(--foreground) 28%, transparent);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-}
-.dark .sq-backdrop {
-  background: rgba(0, 0, 0, 0.58);
-}
+/* L4 `.sq-backdrop` / `.overlay-scrim` — defined in Surface System block above */
 
 /* ── Inset surface ── */
 .sq-inset {
@@ -1786,23 +1908,25 @@
   background: color-mix(in srgb, var(--brand-soft) 55%, transparent);
 }
 
-/* ── DEPRECATED L2 aliases — use `.sq-glass`; see LIQUID_GLASS_SYSTEM.md §4 ── */
-.glass-card {
+/* ── DEPRECATED L2 — alias of `.surface-frosted` / `.sq-glass`; do not use in new code ── */
+.glass-card,
+.glass-panel {
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(145%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(145%);
   border: 1px solid var(--glass-border);
+  box-shadow:
+    inset 0 1px 0 var(--glass-edge-highlight),
+    inset 0 -1px 0 var(--glass-edge-catch),
+    var(--shadow-md);
+}
+.glass-card {
   border-radius: calc(var(--radius) + 2px);
   box-shadow:
     inset 0 1px 0 var(--glass-edge-highlight),
     var(--shadow-sm);
 }
-
 .glass-panel {
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-  border: 1px solid var(--glass-border);
   border-radius: calc(var(--radius) + 4px);
   box-shadow:
     inset 0 1px 0 var(--glass-edge-highlight),
@@ -1818,19 +1942,38 @@
    ═══════════════════════════════════════════════════════ */
 
 .dark .sq-card,
-.dark .sq-card-elevated {
+.dark .sq-card-elevated,
+.dark .surface-solid,
+.dark .surface-premium,
+.dark .sq-card-premium,
+.dark .surface-elevated {
   box-shadow: var(--shadow-xs);
-  /* Neutral charcoal inset — no blue glow */
   background: var(--card);
 }
 
-.dark .sq-card {
+.dark .sq-card,
+.dark .surface-solid {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     var(--shadow-xs);
 }
 
-.dark .sq-card-elevated:hover {
+.dark .surface-premium,
+.dark .sq-card-premium,
+.dark .surface-elevated {
+  background: linear-gradient(
+    180deg,
+    var(--surface-premium-bg-start) 0%,
+    var(--surface-premium-bg-end) 100%
+  );
+  box-shadow:
+    inset 0 1px 0 var(--surface-premium-highlight),
+    inset 0 -1px 0 var(--surface-premium-catch),
+    var(--surface-premium-shadow);
+}
+
+.dark .sq-card-elevated:hover,
+.dark .surface-elevated:hover {
   border-color: color-mix(in srgb, var(--border) 72%, white 28%);
   box-shadow: var(--shadow-md);
 }
@@ -1958,7 +2101,6 @@
 /* ═══════════════════════════════════════════════════════
    Accessibility — Reduced Motion + Reduced Transparency
    L2/L3/L4 fallbacks — see LIQUID_GLASS_SYSTEM.md §6
-   TODO(migration): add `.sq-map-glass-controls` to block below
    ═══════════════════════════════════════════════════════ */
 
 @media (prefers-reduced-motion: reduce) {
@@ -1970,6 +2112,12 @@
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
+  .surface-elevated:hover,
+  .surface-elevated:active,
+  .sq-card-elevated:hover,
+  .sq-card-elevated:active {
+    transform: none !important;
+  }
   /* Keep state changes visible but remove the looping/“alive” effects. */
   .animate-online-pulse,
   .animate-live-glow,
@@ -1980,25 +2128,86 @@
   }
 }
 
-@media (prefers-reduced-transparency: reduce) {
+/* Browsers without backdrop-filter support */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .surface-frosted,
   .sq-glass,
   .glass-card,
   .glass-panel,
+  .surface-liquid,
   .sq-map-liquid-glass,
   .sq-map-liquid-pill,
   .sq-map-liquid-badge,
   .sq-map-liquid-empty,
   .sq-map-liquid-loading,
+  .sq-map-glass-controls,
   .sq-map-marker-callout {
     background: var(--card) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
+  .overlay-scrim,
+  .sq-backdrop {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(16, 24, 40, 0.72) !important;
+  }
+  .dark .overlay-scrim,
+  .dark .sq-backdrop {
+    background: rgba(0, 0, 0, 0.82) !important;
+  }
+  .surface-liquid::before,
+  .surface-liquid::after,
+  .sq-map-liquid-glass::before,
+  .sq-map-liquid-pill::before,
+  .sq-map-liquid-badge::before,
+  .sq-map-liquid-empty::before,
+  .sq-map-liquid-loading::before,
+  .sq-map-glass-controls::before {
+    opacity: 0 !important;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .surface-frosted,
+  .sq-glass,
+  .glass-card,
+  .glass-panel,
+  .surface-liquid,
+  .sq-map-liquid-glass,
+  .sq-map-liquid-pill,
+  .sq-map-liquid-badge,
+  .sq-map-liquid-empty,
+  .sq-map-liquid-loading,
+  .sq-map-liquid-hud,
+  .sq-map-liquid-tile,
+  .sq-map-glass-controls,
+  .sq-map-marker-callout {
+    background: var(--card) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: var(--shadow-sm) !important;
+  }
+  .surface-liquid::before,
+  .surface-liquid::after,
+  .sq-map-liquid-glass::before,
+  .sq-map-liquid-pill::before,
+  .sq-map-liquid-badge::before,
+  .sq-map-liquid-empty::before,
+  .sq-map-liquid-loading::before,
+  .sq-map-liquid-glass::after,
+  .sq-map-liquid-pill::after,
+  .sq-map-liquid-badge::after,
+  .sq-map-glass-controls::before {
+    opacity: 0 !important;
+  }
+  .overlay-scrim,
   .sq-backdrop {
     background: rgba(16, 24, 40, 0.72) !important;
     backdrop-filter: none !important;
     -webkit-backdrop-filter: none !important;
   }
+  .dark .overlay-scrim,
   .dark .sq-backdrop {
     background: rgba(0, 0, 0, 0.82) !important;
   }

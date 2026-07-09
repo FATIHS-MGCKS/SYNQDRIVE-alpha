@@ -272,13 +272,27 @@ Full contract: **`LIQUID_GLASS_SYSTEM.md`**
 
 | Level | Name | Canonical classes | Blur |
 |-------|------|-------------------|------|
-| L0 | `surface-solid` | `.sq-card` | None |
-| L1 | `surface-elevated` | `.sq-card-elevated`, `.sq-overlay` | None |
-| L2 | `surface-frosted` | `.sq-glass` | `--glass-blur` (20–24px) |
-| L3 | `surface-liquid` | `.sq-map-liquid-*`, `.sq-map-glass-controls`, `.sq-map-marker-callout` | `--map-glass-blur` |
-| L4 | `overlay-scrim` | `.sq-backdrop` | 6px scrim only |
+| L0 | `surface-solid` | `.surface-solid`, `.sq-card` | None |
+| L1 | `surface-premium` | `.surface-premium`, `.sq-card-premium` | None |
+| L1 | `surface-elevated` | `.surface-elevated`, `.sq-card-elevated`, `.sq-overlay` | None |
+| L2 | `surface-frosted` | `.surface-frosted`, `.sq-glass` | `--glass-blur` (20–28px) |
+| L3 | `surface-liquid` | `.surface-liquid`, `.sq-map-liquid-*`, `.sq-map-glass-controls` | `--map-glass-blur` |
+| L4 | `overlay-scrim` | `.overlay-scrim`, `.sq-backdrop` | 6px scrim only |
 
 **Deprecated (do not use in new code):** `.glass-card`, `.glass-panel`, `sq-card`+`sq-glass` stacks, inline `backdrop-blur-*` in TSX.
+
+---
+
+### Premium solid (L1) — V4.9.275
+
+| Token | Light | Dark |
+|-------|-------|------|
+| `--surface-premium-bg-start` | `color-mix(card 96%, white 4%)` | `color-mix(card 92%, white 8%)` |
+| `--surface-premium-bg-end` | `var(--card)` | `var(--card)` |
+| `--surface-premium-border` | `var(--border)` | `var(--border)` |
+| `--surface-premium-highlight` | `color-mix(card 82%, white 18%)` | `rgba(255,255,255,0.06)` |
+| `--surface-premium-catch` | `color-mix(card 96%, black 4%)` | `rgba(0,0,0,0.35)` |
+| `--surface-premium-shadow` | `var(--shadow-sm)` | `var(--shadow-sm)` |
 
 ---
 
@@ -286,13 +300,16 @@ Full contract: **`LIQUID_GLASS_SYSTEM.md`**
 
 | Class | Level | Purpose |
 |-------|-------|---------|
-| `.sq-card` | L0 | Solid card — inset highlight only, no blur |
-| `.sq-card-elevated` | L1 | Solid card + hover lift |
-| `.sq-glass` | L2 | Frosted glass (`--glass-*`) |
-| `.glass-card`, `.glass-panel` | L2 (deprecated) | Aliases — unused in TSX |
-| `.sq-map-liquid-*`, `.sq-map-glass-controls`, `.sq-map-marker-callout` | L3 | Map HUD liquid glass (`--map-glass-*`) |
-| `.sq-overlay` | L1 | Solid popover surface — **not** glass |
-| `.sq-backdrop` | L4 | Modal/sheet scrim |
+| `.surface-solid`, `.sq-card` | L0 | Opaque baseline card |
+| `.surface-premium`, `.sq-card-premium` | L1 | Premium solid (opt-in) |
+| `.surface-elevated` | L1 | Premium interactive (hover/active) |
+| `.sq-card-elevated` | L1 | Legacy solid interactive |
+| `.surface-frosted`, `.sq-glass` | L2 | Frosted glass (`--glass-*`) |
+| `.surface-liquid` | L3 | Liquid HUD base (`--map-glass-*`) |
+| `.sq-map-liquid-*`, `.sq-map-glass-controls`, `.sq-map-marker-callout` | L3 | Map HUD variants |
+| `.sq-overlay` | L1 | Solid popover — **not** glass |
+| `.overlay-scrim`, `.sq-backdrop` | L4 | Modal/sheet scrim |
+| `.glass-card`, `.glass-panel` | L2 (deprecated) | Alias of frosted — do not use |
 | `.sq-tab-bar` | L0 | Segmented control (solid track + active tab) |
 | `.sq-3d-btn--*` | — | Tactile buttons (orthogonal to surface levels) |
 | `.sq-chip-*`, `.sq-tone-*`, `.sq-dot-*` | — | Status semantics |
@@ -300,7 +317,7 @@ Full contract: **`LIQUID_GLASS_SYSTEM.md`**
 
 Dark overrides live under `.dark .sq-*` (Dark Theme V2 section).
 
-Reduced transparency: L2/L3 classes listed in `theme.css` `@media (prefers-reduced-transparency: reduce)` — see gaps in `LIQUID_GLASS_SYSTEM.md` §6.
+Reduced transparency + `@supports` fallbacks: all L2/L3/L4 classes in `theme.css` (V4.9.275).
 
 ---
 
