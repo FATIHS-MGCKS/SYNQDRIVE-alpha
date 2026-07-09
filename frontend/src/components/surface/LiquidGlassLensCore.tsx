@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode } from 'react';
+import type { CSSProperties, HTMLAttributes, ReactNode } from 'react';
 import { Glass } from '@samasante/liquid-glass';
 import { cn } from '../ui/utils';
 import {
@@ -10,6 +10,7 @@ import {
   resolveLensBehind,
   resolveLensRadius,
   resolveLensSize,
+  resolveLensTintStyle,
   usesBrightnessInFilter,
   type LiquidGlassLensVariant,
   type LiquidGlassRenderMode,
@@ -29,7 +30,7 @@ export interface LiquidGlassLensCoreProps extends HTMLAttributes<HTMLDivElement>
 
 /**
  * Internal bridge to @samasante/liquid-glass.
- * - `lens`: direct `<Glass>{children}</Glass>` — content stays crisp inside the lens.
+ * - `lens`: `<Glass>` is root — children inside `__content` (crisp, no empty visual layer).
  * - `shell`: stable frosted panel — no Glass displacement on wide containers.
  */
 export function LiquidGlassLensCore({
@@ -70,6 +71,8 @@ export function LiquidGlassLensCore({
   const optics = resolveLiquidGlassOptics({ intensity, variant });
   const radius = resolveLensRadius(variant);
   const size = resolveLensSize(variant);
+  const tintStyle = resolveLensTintStyle({ intensity, variant });
+  const mergedStyle: CSSProperties = { ...tintStyle, ...style };
 
   const useRefract = mapBackdrop != null;
 
@@ -85,7 +88,7 @@ export function LiquidGlassLensCore({
         prefersReducedMotion && 'motion-reduce:transition-none',
         className,
       )}
-      style={style}
+      style={mergedStyle}
       optics={optics}
       radius={radius}
       width={size?.width}
@@ -96,7 +99,7 @@ export function LiquidGlassLensCore({
       behind={useRefract ? (behind ?? resolveLensBehind(variant)) : undefined}
       {...rest}
     >
-      {children}
+      <div className="liquid-glass-lens__content">{children}</div>
     </Glass>
   );
 }

@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'liquid-glass-recovery-v49291-2026-07-09',
+    version: '4.9.291',
+    title: 'V4.9.291 — Liquid Glass recovery (visible lens surfaces)',
+    summary: [
+      'Recovery fix after V4.9.290: Glass root keeps visible tint/rim; content in __content wrapper inside Glass (no empty visual layer).',
+      'resolveLensTintStyle: per-variant --map-glass-* tint on Glass style for visible tile/button/badge surfaces.',
+      'CSS: removed blanket transparent !important on library lens roots; border/rim/shadow restored; legacy sq-map-* only stripped on children.',
+      'Vehicle HUD: 3 vehicleHudTile lenses (medium) with min-height 58px; status badge lens; stack layout-only.',
+      'Fleet: toolbar buttons keep 42px lens tint; refresh panel fleet-panel-bg shell; legend offset from Mapbox (bottom-11/left-11).',
+    ],
+    reason:
+      'V4.9.290 removed inner blobs but over-neutralized library material — HUD text floated on map without visible glass tiles/buttons.',
+    previousBehavior:
+      'Library lens roots forced transparent; no Glass tint; children without __content wrapper; legend overlapped Mapbox logo.',
+    details:
+      'No CSS-only rollback. Hybrid shell+lens architecture preserved. L1/L2/cards/business/Mapbox untouched.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-09T13:05:00.000Z',
+  },
+  {
     id: 'liquid-glass-hybrid-reset-v49290-2026-07-09',
     version: '4.9.290',
     title: 'V4.9.290 — Liquid Glass hybrid reset (shell + content-sized lenses)',

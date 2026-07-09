@@ -123,7 +123,7 @@ export function OverviewLiveMapCard({
           <div className="pointer-events-none absolute top-2.5 left-1/2 z-10 -translate-x-1/2 sm:top-3">
             <LiquidGlassLens
               variant="vehicleHudBadge"
-              renderMode="shell"
+              renderMode="lens"
               intensity="subtle"
               className="pointer-events-none"
             >
@@ -142,12 +142,12 @@ export function OverviewLiveMapCard({
             variant="vehicleHudStack"
             renderMode="shell"
             intensity="subtle"
-            className="w-full max-w-[20rem]"
+            className="w-full max-w-[20rem] pointer-events-none"
           >
             <LiquidGlassLens
               variant="vehicleHudTile"
               renderMode="lens"
-              intensity="subtle"
+              intensity="medium"
               className="pointer-events-none"
             >
               <div className="liquid-glass-lens__tile-inner">
@@ -164,7 +164,7 @@ export function OverviewLiveMapCard({
             <LiquidGlassLens
               variant="vehicleHudTile"
               renderMode="lens"
-              intensity="subtle"
+              intensity="medium"
               className="pointer-events-none"
             >
               <div className="liquid-glass-lens__tile-inner">
@@ -185,7 +185,7 @@ export function OverviewLiveMapCard({
             <LiquidGlassLens
               variant="vehicleHudTile"
               renderMode="lens"
-              intensity="subtle"
+              intensity="medium"
               className="pointer-events-none"
             >
               <div className="liquid-glass-lens__tile-inner">

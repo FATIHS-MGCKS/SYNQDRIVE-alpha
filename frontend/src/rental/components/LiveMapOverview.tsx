@@ -301,7 +301,7 @@ export function LiveMapOverview({
         <div className="pointer-events-none absolute top-2.5 right-2.5 z-10 max-w-[13.75rem] sm:top-3 sm:right-3">
           <LiquidGlassLens
             variant="vehicleHudBadge"
-            renderMode="shell"
+            renderMode={operatorHintSub ? 'shell' : 'lens'}
             intensity="subtle"
             className="pointer-events-none"
           >

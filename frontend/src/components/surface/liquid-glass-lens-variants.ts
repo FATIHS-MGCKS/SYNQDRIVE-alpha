@@ -154,15 +154,37 @@ export function resolveLensSize(
   switch (variant) {
     case 'fleetToolbarButton':
       return { width: 42, height: 42 };
+    case 'vehicleHudTile':
+      return { height: 58 };
     default:
       return null;
   }
 }
 
-/** Legacy helper — library path uses CSS variant classes; kept for SVG fallback inline styles. */
-export function resolveLensTintStyle(_options: {
+/**
+ * Translucent tint passed to `<Glass style>` — library uses this as visible material fill.
+ * Content layer stays transparent; root keeps subtle glass body without inner blob.
+ */
+export function resolveLensTintStyle(options: {
   intensity: LiquidGlassIntensity;
   variant: LiquidGlassLensVariant;
 }): CSSProperties {
-  return {};
+  const { variant } = options;
+  switch (variant) {
+    case 'vehicleHudTile':
+      return { background: 'var(--map-glass-vehicle-tile-bg)' };
+    case 'vehicleHudBadge':
+    case 'fleetMiniPill':
+    case 'statusPill':
+      return { background: 'var(--map-glass-vehicle-badge-bg)' };
+    case 'fleetToolbarButton':
+      return { background: 'var(--map-glass-fleet-tile-bg)' };
+    case 'fleetPanelAction':
+      return { background: 'color-mix(in srgb, var(--map-glass-fleet-panel-bg) 72%, transparent)' };
+    case 'vehicleMapCallout':
+    case 'mapCallout':
+      return { background: 'var(--map-glass-vehicle-callout-bg)' };
+    default:
+      return { background: 'var(--map-glass-bg-strong)' };
+  }
 }

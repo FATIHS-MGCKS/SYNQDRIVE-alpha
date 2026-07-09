@@ -115,10 +115,15 @@ export function FleetMapControls({
         )}
       </div>
 
-      {/* Bottom-left: collapsible legend — lens trigger + shell body */}
-      <div className="absolute bottom-3 left-3 z-10 pointer-events-none max-w-[calc(100%-1.5rem)]">
+      {/* Bottom-left: collapsible legend — lens trigger + shell body, clear of Mapbox logo */}
+      <div className="absolute bottom-11 left-11 z-10 pointer-events-none max-w-[calc(100%-3.5rem)] sm:bottom-12 sm:left-12">
         <div className="liquid-glass-lens__legend-stack pointer-events-auto">
-          <LiquidGlassLens variant="fleetToolbarButton" renderMode="lens" intensity="subtle">
+          <LiquidGlassLens
+            variant="fleetMiniPill"
+            renderMode="lens"
+            intensity="subtle"
+            className="liquid-glass-lens--legendTrigger"
+          >
             <button
               type="button"
               onClick={() => setLegendOpen((open) => !open)}

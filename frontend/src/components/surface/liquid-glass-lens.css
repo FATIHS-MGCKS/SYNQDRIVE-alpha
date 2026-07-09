@@ -1,8 +1,8 @@
 /**
- * Map HUD liquid glass — hybrid library path (V4.9.290).
- * - data-liquid-render="lens": @samasante Glass wraps children directly (no empty visual layer).
- * - data-liquid-render="shell": stable frosted panel, no displacement.
- * - data-liquid-mode="fallback": full sq-map-liquid-* material.
+ * Map HUD liquid glass — hybrid library path (V4.9.291 recovery).
+ * - lens: @samasante Glass root with visible tint + crisp __content child.
+ * - shell: stable frosted/liquid rim panel, no displacement.
+ * - fallback: full sq-map-liquid-* material.
  */
 
 .liquid-glass-lens {
@@ -11,7 +11,7 @@
   color: var(--foreground);
 }
 
-/* ── Shell mode: stable panel over map — no Glass displacement ── */
+/* ── Shell mode: visible panel over map — no Glass displacement ── */
 .liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='shell'] {
   display: flex;
   flex-direction: column;
@@ -29,51 +29,71 @@
 
 .liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='shell']::before,
 .liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='shell']::after {
-  display: none !important;
+  display: none;
 }
 
-/* ── Direct Glass lens: library provides material — no parallel fills ── */
+.liquid-glass-lens--fleetPanel[data-liquid-render='shell'] {
+  background: var(--map-glass-fleet-panel-bg, var(--map-glass-bg-panel));
+}
+
+.liquid-glass-lens--fleetLegend[data-liquid-render='shell'] {
+  background: var(--map-glass-fleet-legend-bg, var(--map-glass-bg-panel));
+}
+
+/* ── Direct Glass lens: library tint + SynqDrive rim (do not zero-out material) ── */
 .liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='lens'] {
   display: inline-flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   min-width: 0;
   overflow: hidden;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  filter: none !important;
+  border: 1px solid var(--map-glass-lens-shell-border, var(--map-glass-fleet-border, var(--map-glass-border)));
+  border-radius: var(--map-glass-lens-radius, 16px);
+  box-shadow:
+    inset 0 1px 0 var(--map-glass-lens-rim-top, rgba(255, 255, 255, 0.42)),
+    var(--map-glass-lens-shell-shadow, var(--map-glass-fleet-shadow, var(--map-glass-shadow)));
 }
 
 .liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='lens']::before,
 .liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='lens']::after {
-  display: none !important;
+  display: none;
 }
 
-/* Children inside direct Glass stay crisp — no extra material wrappers */
-.liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='lens'] > * {
+/* Crisp content inside Glass — transparent, no second material stack */
+.liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='lens'] .liquid-glass-lens__content {
   position: relative;
-  z-index: 1;
-  background: transparent !important;
-  filter: none !important;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  min-width: 0;
+  width: 100%;
+  height: 100%;
+  color: inherit;
+  background: transparent;
+  filter: none;
   opacity: 1;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  pointer-events: auto;
 }
 
-/* Suppress legacy sq-map-liquid layers inside library lens/shell */
+/* Only strip duplicate legacy material from children — not the Glass root */
 .liquid-glass-lens[data-liquid-mode='library'] .sq-map-liquid-glass,
 .liquid-glass-lens[data-liquid-mode='library'] .sq-map-liquid-pill,
 .liquid-glass-lens[data-liquid-mode='library'] .sq-map-liquid-badge,
 .liquid-glass-lens[data-liquid-mode='library'] .sq-map-liquid-hud,
 .liquid-glass-lens[data-liquid-mode='library'] .sq-map-liquid-action,
 .liquid-glass-lens[data-liquid-mode='library'] .surface-liquid {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
-  filter: none !important;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  filter: none;
 }
 
 .liquid-glass-lens[data-liquid-mode='library'] .sq-map-liquid-badge::before,
@@ -82,26 +102,26 @@
 .liquid-glass-lens[data-liquid-mode='library'] .sq-map-liquid-glass::after,
 .liquid-glass-lens[data-liquid-mode='library'] .sq-map-liquid-pill::before,
 .liquid-glass-lens[data-liquid-mode='library'] .sq-map-liquid-pill::after {
-  display: none !important;
+  display: none;
 }
 
 /* ── Fallback path: visual + content split (SVG / legacy) ── */
 .liquid-glass-lens__visual {
   pointer-events: none;
   filter: none;
-  background: transparent !important;
+  background: transparent;
 }
 
 .liquid-glass-lens__content {
   position: relative;
-  z-index: 3;
+  z-index: 2;
   min-width: 0;
   color: inherit;
-  background: transparent !important;
-  filter: none !important;
+  background: transparent;
+  filter: none;
   opacity: 1;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   pointer-events: auto;
@@ -132,22 +152,22 @@
   padding: 0.35rem;
   border: none;
   border-radius: inherit;
-  background: transparent !important;
+  background: transparent;
   color: inherit;
   cursor: pointer;
-  filter: none !important;
+  filter: none;
 }
 
 .liquid-glass-lens__control-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--foreground) 6%, transparent) !important;
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
 }
 
 .liquid-glass-lens__control-btn:active:not(:disabled) {
-  background: color-mix(in srgb, var(--foreground) 10%, transparent) !important;
+  background: color-mix(in srgb, var(--foreground) 10%, transparent);
 }
 
 .liquid-glass-lens__control-btn--active {
-  background: color-mix(in srgb, var(--foreground) 12%, transparent) !important;
+  background: color-mix(in srgb, var(--foreground) 12%, transparent);
 }
 
 .liquid-glass-lens__control-btn:disabled {
@@ -183,14 +203,14 @@
   padding: 0.375rem 0.5rem;
   border: none;
   border-radius: inherit;
-  background: transparent !important;
+  background: transparent;
   color: inherit;
   cursor: pointer;
-  filter: none !important;
+  filter: none;
 }
 
 .liquid-glass-lens__panel-action:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--foreground) 6%, transparent) !important;
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
 }
 
 .liquid-glass-lens__panel-action:disabled {
@@ -204,18 +224,20 @@
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.375rem;
   padding: 0.2rem;
   pointer-events: auto;
 }
 
-/* ── Legend stack ── */
+/* ── Legend stack — offset from Mapbox logo ── */
 .liquid-glass-lens__legend-stack {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 0.375rem;
   max-width: 100%;
+  margin-bottom: 0.25rem;
+  margin-left: 0.25rem;
 }
 
 .liquid-glass-lens__legend-trigger {
@@ -228,11 +250,11 @@
   padding: 0.375rem 0.625rem;
   border: none;
   border-radius: inherit;
-  background: transparent !important;
+  background: transparent;
   color: inherit;
   cursor: pointer;
   text-align: left;
-  filter: none !important;
+  filter: none;
 }
 
 .liquid-glass-lens__legend-body {
@@ -243,15 +265,23 @@
   border-top: 1px solid var(--map-glass-lens-shell-border, var(--map-glass-border));
 }
 
-/* ── HUD badge content (no sq-map-liquid-badge) ── */
+.liquid-glass-lens--legendTrigger[data-liquid-render='lens'] {
+  --map-glass-lens-radius: 14px;
+  width: auto;
+  min-width: 5.75rem;
+  height: auto;
+  min-height: 2rem;
+}
+
+/* ── HUD badge content ── */
 .liquid-glass-lens__hud-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
   padding: 0.35rem 0.55rem;
   max-width: 13.75rem;
-  background: transparent !important;
-  filter: none !important;
+  background: transparent;
+  filter: none;
 }
 
 .liquid-glass-lens__hud-badge-dot {
@@ -291,6 +321,8 @@
 .liquid-glass-lens--fleetToolbarButton[data-liquid-render='lens'] {
   --map-glass-lens-radius: 16px;
   flex-shrink: 0;
+  width: 2.625rem;
+  height: 2.625rem;
 }
 
 .liquid-glass-lens--fleetPanelAction[data-liquid-render='lens'] {
@@ -305,6 +337,10 @@
   --map-glass-lens-radius: 999px;
   display: inline-flex;
   max-width: 11rem;
+}
+
+.liquid-glass-lens--fleetMiniPill[data-liquid-render='lens'] .liquid-glass-lens__content,
+.liquid-glass-lens--statusPill[data-liquid-render='lens'] .liquid-glass-lens__content {
   padding: 0.375rem 0.625rem;
 }
 
@@ -314,15 +350,15 @@
   flex-wrap: nowrap;
   align-items: stretch;
   justify-content: center;
-  gap: 0.375rem;
+  gap: 0.5rem;
   width: 100%;
   max-width: min(100%, 20rem);
   padding: 0;
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .liquid-glass-lens--vehicleHudTile[data-liquid-render='lens'] {
@@ -331,6 +367,8 @@
   flex: 1 1 0;
   min-width: 0;
   max-width: 6.75rem;
+  width: 100%;
+  min-height: 3.625rem;
 }
 
 .liquid-glass-lens__tile-inner {
@@ -344,21 +382,21 @@
   max-height: 4.25rem;
   min-width: 0;
   width: 100%;
-  background: transparent !important;
-  filter: none !important;
+  background: transparent;
+  filter: none;
 }
 
 .liquid-glass-lens--vehicleHudBadge[data-liquid-render='shell'] {
   --map-glass-lens-radius: 14px;
   display: inline-flex;
   max-width: 13.75rem;
-  padding: 0;
+  background: var(--map-glass-vehicle-badge-bg, var(--map-glass-bg-panel));
 }
 
 .liquid-glass-lens--vehicleHudBadge[data-liquid-render='lens'] {
   --map-glass-lens-radius: 999px;
   display: inline-flex;
-  max-width: 9rem;
+  max-width: 10rem;
 }
 
 .vehicle-detail-map-hud {
@@ -398,24 +436,18 @@
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='shell'] {
-    background: var(--popover) !important;
-    border: 1px solid var(--border) !important;
-    box-shadow: var(--shadow-sm) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-
+  .liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='shell'],
   .liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='lens'] {
-    background: var(--popover) !important;
-    border: 1px solid var(--border) !important;
-    border-radius: var(--map-glass-lens-radius, 14px) !important;
-    box-shadow: var(--shadow-sm) !important;
+    background: var(--popover);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='lens'] {
-    transition: none !important;
+    transition: none;
   }
 }
