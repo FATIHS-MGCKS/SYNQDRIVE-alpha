@@ -53,43 +53,41 @@ export function resolveLensFallbackClass(
   return cn('liquid-glass-lens', `liquid-glass-lens--${variant}`);
 }
 
-export function resolveLensRadius(variant: LiquidGlassLensVariant): number {
-  switch (variant) {
-    case 'vehicleHudTile':
-      return 12;
-    case 'vehicleHudBadge':
-    case 'vehicleMapCallout':
-    case 'fleetMiniPill':
-    case 'statusPill':
-      return 999;
-    case 'fleetToolbarButton':
-    case 'fleetPanelAction':
-      return 10;
-    case 'fleetToolbar':
-      return 14;
-    case 'mapCallout':
-      return 12;
-    case 'fleetLegend':
-      return 14;
-    case 'vehicleHudStack':
-      return 0;
-    case 'fleetPanel':
-    default:
-      return 16;
-  }
-}
-
 /** Bleed fill for refract copy edges — transparent lets map show at rim. */
 export function resolveLensBehind(_variant: LiquidGlassLensVariant): string {
   return 'transparent';
 }
 
-/** Variants that use brightnessInFilter for large readable panels/badges. */
-export function usesBrightnessInFilter(variant: LiquidGlassLensVariant): boolean {
-  return variant === 'fleetPanel'
-    || variant === 'fleetLegend'
-    || variant === 'vehicleHudBadge'
-    || variant === 'vehicleMapCallout';
+/** Map HUD shells use CSS rim only — brightness veil creates inner blob. */
+export function usesBrightnessInFilter(_variant: LiquidGlassLensVariant): boolean {
+  return false;
+}
+
+export function resolveLensRadius(variant: LiquidGlassLensVariant): number {
+  switch (variant) {
+    case 'vehicleHudTile':
+      return 20;
+    case 'vehicleHudBadge':
+    case 'fleetMiniPill':
+    case 'statusPill':
+      return 999;
+    case 'vehicleMapCallout':
+    case 'mapCallout':
+      return 14;
+    case 'fleetToolbarButton':
+      return 18;
+    case 'fleetPanelAction':
+      return 14;
+    case 'fleetToolbar':
+      return 16;
+    case 'fleetLegend':
+      return 18;
+    case 'vehicleHudStack':
+      return 0;
+    case 'fleetPanel':
+    default:
+      return 22;
+  }
 }
 
 /** Legacy helper — library path uses CSS variant classes; kept for SVG fallback inline styles. */

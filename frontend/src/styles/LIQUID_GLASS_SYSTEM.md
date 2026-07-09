@@ -390,6 +390,22 @@ Light/dark values: see `THEME_COLOR_CONTRACT.md` § Glass / Map glass.
 
 **Components:** `LiquidGlassLensCore.tsx`, `MapLensBackdrop.tsx`, `MapLiquidGlassLens.tsx`
 
+### Phase 9 — Shell-only library path (V4.9.289)
+
+**Root cause:** Inner gray/black oval blob from stacked material layers — opaque `MapLensBackdrop`, high `curvature`/`depth`/`frost`/`brightness` optics, duplicate `sq-map-liquid-*` fills inside library lenses, and `sq-map-glass-control-btn` gradient bodies.
+
+**Rules:**
+
+| Rule | Implementation |
+|------|----------------|
+| Outer shell yes, inner core no | Library path: CSS rim (`::before` border + top highlight) + outer shadow (`::after`) only |
+| No inner blob | `MapLensBackdrop` transparent; optics `curvature`/`frost`/`brightness`/`glow` = 0; low `depth` for rim band |
+| Crisp content | `__content` sibling of `__visual` (not inside `<Glass>`); `background: transparent`, `z-index: 3` |
+| No double material | `data-liquid-mode="library"` suppresses `sq-map-glass-control-btn` / badge fills; fallback keeps full `sq-map-liquid-*` |
+| Library vs fallback | `data-liquid-mode="library"` \| `"fallback"` on wrapper — CSS branches material vs sizing only |
+
+**Tokens:** `--map-glass-lens-shell-border`, `--map-glass-lens-rim-top`, `--map-glass-lens-shell-shadow` (light/dark)
+
 ---
 
 ## 9. Decision checklist (for PRs)

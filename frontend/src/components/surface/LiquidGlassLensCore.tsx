@@ -66,6 +66,7 @@ export function LiquidGlassLensCore({
   return (
     <div
       data-liquid-variant={variant}
+      data-liquid-mode="library"
       className={cn(
         'liquid-glass-lens',
         `liquid-glass-lens--${variant}`,
@@ -85,9 +86,8 @@ export function LiquidGlassLensCore({
         optics={optics}
         filterResolution={1}
         brightnessInFilter={usesBrightnessInFilter(variant)}
-      >
-        {content}
-      </Glass>
+      />
+      {content}
     </div>
   );
 }

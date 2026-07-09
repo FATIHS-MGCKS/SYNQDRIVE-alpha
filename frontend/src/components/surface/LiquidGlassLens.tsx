@@ -50,6 +50,7 @@ function CssLiquidFallback({
     <div
       className={cn(fallbackClass, className)}
       data-liquid-variant={variant}
+      data-liquid-mode="fallback"
       {...rest}
     >
       {children}
@@ -77,6 +78,7 @@ function SvgLocalFallback({
           className,
         )}
         data-liquid-variant={variant}
+        data-liquid-mode="fallback"
         {...rest}
       >
         <div

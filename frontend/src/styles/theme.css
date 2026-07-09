@@ -175,12 +175,17 @@
     inset 0 -1px 0 rgba(15, 23, 42, 0.1);
   --map-glass-fleet-shadow: 0 3px 12px rgba(15, 23, 42, 0.18), 0 1px 3px rgba(15, 23, 42, 0.1);
 
+  /* Library lens shell — rim/border only (no inner body fill) */
+  --map-glass-lens-shell-border: rgba(15, 23, 42, 0.26);
+  --map-glass-lens-rim-top: rgba(255, 255, 255, 0.58);
+  --map-glass-lens-shell-shadow: 0 3px 12px rgba(15, 23, 42, 0.16), 0 1px 3px rgba(15, 23, 42, 0.09);
+
   /* Vehicle detail map HUD — separate from fleet tokens */
   --map-glass-vehicle-border: rgba(15, 23, 42, 0.32);
   --map-glass-vehicle-tile-bg: color-mix(in srgb, var(--map-glass-bg-strong) 68%, rgba(210, 220, 235, 0.42) 32%);
   --map-glass-vehicle-badge-bg: color-mix(in srgb, var(--map-glass-bg-panel) 88%, rgba(220, 228, 240, 0.55) 12%);
   --map-glass-vehicle-callout-bg: color-mix(in srgb, var(--map-glass-bg-panel) 92%, white 8%);
-  --map-glass-vehicle-tile-radius: 12px;
+  --map-glass-vehicle-tile-radius: 20px;
   --map-glass-vehicle-inner-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.82),
     inset 0 -1px 0 rgba(15, 23, 42, 0.06);
@@ -329,12 +334,17 @@
     inset 0 -1px 0 rgba(0, 0, 0, 0.42);
   --map-glass-fleet-shadow: 0 3px 14px rgba(0, 0, 0, 0.42), 0 1px 4px rgba(0, 0, 0, 0.28);
 
+  /* Library lens shell — rim/border only (no inner body fill) */
+  --map-glass-lens-shell-border: rgba(255, 255, 255, 0.14);
+  --map-glass-lens-rim-top: rgba(255, 255, 255, 0.18);
+  --map-glass-lens-shell-shadow: 0 3px 14px rgba(0, 0, 0, 0.38), 0 1px 4px rgba(0, 0, 0, 0.26);
+
   /* Vehicle detail map HUD — separate from fleet tokens */
   --map-glass-vehicle-border: rgba(255, 255, 255, 0.16);
   --map-glass-vehicle-tile-bg: color-mix(in srgb, var(--map-glass-bg-strong) 48%, transparent);
   --map-glass-vehicle-badge-bg: color-mix(in srgb, var(--map-glass-bg-panel) 72%, transparent);
   --map-glass-vehicle-callout-bg: color-mix(in srgb, var(--map-glass-bg-panel) 78%, transparent);
-  --map-glass-vehicle-tile-radius: 12px;
+  --map-glass-vehicle-tile-radius: 20px;
   --map-glass-vehicle-inner-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.14),
     inset 0 -1px 0 rgba(0, 0, 0, 0.28);

@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'liquid-glass-shell-only-v49289-2026-07-09',
+    version: '4.9.289',
+    title: 'V4.9.289 — Liquid Glass shell-only Map HUD (inner blob fix)',
+    summary: [
+      'Root cause: inner gray/black oval blob from opaque MapLensBackdrop + high curvature/depth/frost optics + duplicate sq-map-liquid-* / control-btn fills inside library lenses.',
+      'Shell-only library path: outer rim/border/shadow via CSS; transparent refract source; content as sibling of Glass (not inside).',
+      'liquid-glass-optics.ts: SHELL profile — curvature/frost/brightness/glow=0; low depth for rim-only refraction.',
+      'data-liquid-mode library vs fallback — library suppresses inner fills on control buttons and badges.',
+      '--map-glass-lens-shell-* tokens; vehicle tile radius 20px; fleet panel 22px / toolbar 18px.',
+      'Fleet refresh panel, toolbar buttons, legend + Vehicle HUD badges/tiles readable again.',
+    ],
+    reason:
+      'Outer liquid shell looked correct but inner gray/black oval blob hid text/icons — Fleet controls and Refresh panel appeared as empty dark tiles.',
+    previousBehavior:
+      'Stacked material: library Glass + sq-map-glass-control-btn gradients + opaque backdrop + high curvature optics; content inside Glass wrapper.',
+    details:
+      'No CSS-only rollback. @samasante/liquid-glass stays active. L1/L2/cards/business/Mapbox untouched. Reduced-transparency fallback unchanged.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-09T12:00:00.000Z',
+  },
+  {
     id: 'liquid-glass-refract-architecture-v49288-2026-07-09',
     version: '4.9.288',
     title: 'V4.9.288 — Liquid Glass refract architecture (crisp Map HUD content)',

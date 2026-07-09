@@ -1,13 +1,43 @@
 /**
- * Scoped styles for liquid-glass lens — separated visual layer + crisp content.
- * Library path uses refract={MapLensBackdrop} so text/icons never pass through SVG filter.
+ * Map HUD liquid glass — shell-only library path.
+ * Library: outer rim + border (CSS), transparent refract source, crisp content.
+ * Fallback: full sq-map-liquid-* material via data-liquid-mode="fallback".
  */
 
 .liquid-glass-lens {
   position: relative;
   isolation: isolate;
-  overflow: hidden;
   color: var(--foreground);
+}
+
+/* ── Library mode: outer shell only, no inner fill/blob ── */
+.liquid-glass-lens[data-liquid-mode='library'] {
+  position: relative;
+  display: inline-flex;
+  overflow: hidden;
+  background: transparent !important;
+  border-radius: var(--map-glass-lens-radius, 18px);
+}
+
+.liquid-glass-lens[data-liquid-mode='library']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  border: 1px solid var(--map-glass-lens-shell-border, var(--map-glass-fleet-border));
+  box-shadow: inset 0 1px 0 var(--map-glass-lens-rim-top, rgba(255, 255, 255, 0.55));
+}
+
+.liquid-glass-lens[data-liquid-mode='library']::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: var(--map-glass-lens-shell-shadow, var(--map-glass-fleet-shadow));
 }
 
 .liquid-glass-lens--layout-only,
@@ -21,37 +51,46 @@
   filter: none !important;
 }
 
-/* ── Visual lens layer (Glass / SVG fallback) — under content ── */
+.liquid-glass-lens--layout-only::before,
+.liquid-glass-lens--layout-only::after,
+.liquid-glass-lens--vehicleHudStack::before,
+.liquid-glass-lens--vehicleHudStack::after {
+  display: none !important;
+}
+
+/* ── Visual layer (Glass) — rim refraction only, no opaque fill ── */
 .liquid-glass-lens__visual {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
   pointer-events: none;
   filter: none;
+  background: transparent !important;
 }
 
 .liquid-glass-lens__visual.liquid-glass-lens--library {
-  position: relative;
-  inset: auto;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   width: 100%;
   height: 100%;
   min-height: 100%;
-  pointer-events: none;
 }
 
 .liquid-glass-lens__visual.liquid-glass-lens--library > [data-liquid-glass] {
   width: 100%;
   height: 100%;
+  background: transparent !important;
 }
 
-/* ── Crisp HUD content — never filtered ── */
+/* ── Crisp content — never carries material ── */
 .liquid-glass-lens__content {
   position: relative;
-  z-index: 2;
+  z-index: 3;
   min-width: 0;
   color: inherit;
+  background: transparent !important;
   filter: none !important;
   opacity: 1;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
   pointer-events: auto;
@@ -67,64 +106,59 @@
   pointer-events: none;
 }
 
-/* ── Decorative refract source (no text) ── */
+/* ── Refract source: fully transparent (no inner oval body) ── */
 .map-lens-backdrop {
   display: block;
   width: 100%;
   height: 100%;
   min-width: 100%;
   min-height: 100%;
+  background: transparent !important;
 }
 
-.map-lens-backdrop--fleetToolbar,
-.map-lens-backdrop--fleetToolbarButton {
-  background: var(--map-glass-fleet-toolbar-bg);
+/* ── Buttons inside library lenses: no second opaque fill ── */
+.liquid-glass-lens[data-liquid-mode='library'] .sq-map-glass-control-btn {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
-.map-lens-backdrop--fleetPanel,
-.map-lens-backdrop--fleetPanelAction {
-  background: var(--map-glass-fleet-panel-bg);
+.liquid-glass-lens[data-liquid-mode='library'] .sq-map-glass-control-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--foreground) 6%, transparent) !important;
 }
 
-.map-lens-backdrop--fleetLegend {
-  background: var(--map-glass-fleet-legend-bg);
+.liquid-glass-lens[data-liquid-mode='library'] .sq-map-glass-control-btn--active {
+  background: color-mix(in srgb, var(--foreground) 10%, transparent) !important;
+  border-color: color-mix(in srgb, var(--map-glass-lens-shell-border, var(--map-glass-fleet-border)) 55%, transparent) !important;
+  box-shadow: none !important;
 }
 
-.map-lens-backdrop--fleetMiniPill,
-.map-lens-backdrop--statusPill,
-.map-lens-backdrop--mapCallout {
-  background: var(--map-glass-fleet-tile-bg);
+.liquid-glass-lens[data-liquid-mode='library'] .sq-map-liquid-badge,
+.liquid-glass-lens[data-liquid-mode='library'] .sq-map-liquid-badge::before,
+.liquid-glass-lens[data-liquid-mode='library'] .sq-map-liquid-badge::after {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
 }
 
-.map-lens-backdrop--vehicleHudTile {
-  background: var(--map-glass-vehicle-tile-bg);
-}
-
-.map-lens-backdrop--vehicleHudBadge {
-  background: var(--map-glass-vehicle-badge-bg);
-}
-
-.map-lens-backdrop--vehicleMapCallout {
-  background: var(--map-glass-vehicle-callout-bg);
-}
-
-/* ── Fleet toolbar shell (layout only; per-button lenses) ── */
+/* ── Fleet toolbar shell (layout only) ── */
 .sq-map-glass-controls-shell {
   display: inline-flex;
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
-  gap: 0.2rem;
-  padding: 0.25rem;
+  gap: 0.3rem;
+  padding: 0.2rem;
   pointer-events: auto;
 }
 
-/* ── Fleet panel ── */
+/* ── Variant sizing / radius ── */
 .liquid-glass-lens--fleetPanel {
+  --map-glass-lens-radius: 22px;
   min-width: 9.5rem;
   max-width: 12.5rem;
-  border: 1px solid var(--map-glass-fleet-border);
-  box-shadow: var(--map-glass-fleet-inner-shadow), var(--map-glass-fleet-shadow);
 }
 
 .liquid-glass-lens--fleetPanel .liquid-glass-lens__content {
@@ -134,20 +168,27 @@
   padding: 0.5rem 0.75rem;
 }
 
-/* ── Fleet toolbar button (individual lens) ── */
 .liquid-glass-lens--fleetToolbarButton {
+  --map-glass-lens-radius: 18px;
   display: inline-flex;
-  border-radius: 10px;
-  overflow: hidden;
 }
 
-/* ── Legend ── */
 .liquid-glass-lens--fleetLegend {
-  border: 1px solid var(--map-glass-fleet-border);
-  box-shadow: var(--map-glass-fleet-inner-shadow), var(--map-glass-fleet-shadow);
+  --map-glass-lens-radius: 18px;
 }
 
-/* ── Vehicle HUD stack — layout only ── */
+.liquid-glass-lens--fleetMiniPill,
+.liquid-glass-lens--statusPill {
+  --map-glass-lens-radius: 999px;
+  display: inline-flex;
+  max-width: 11rem;
+}
+
+.liquid-glass-lens--fleetMiniPill .liquid-glass-lens__content,
+.liquid-glass-lens--statusPill .liquid-glass-lens__content {
+  padding: 0.375rem 0.625rem;
+}
+
 .liquid-glass-lens--vehicleHudStack .liquid-glass-lens__content {
   display: flex;
   flex-direction: row;
@@ -159,16 +200,12 @@
   max-width: min(100%, 20rem);
 }
 
-/* ── Vehicle HUD tile ── */
 .liquid-glass-lens--vehicleHudTile {
+  --map-glass-lens-radius: 20px;
   display: inline-flex;
   flex: 1 1 0;
   min-width: 0;
   max-width: 6.75rem;
-  border-radius: var(--map-glass-vehicle-tile-radius);
-  border: 1px solid var(--map-glass-vehicle-border);
-  box-shadow: var(--map-glass-vehicle-inner-shadow), var(--map-glass-vehicle-shadow);
-  overflow: hidden;
 }
 
 .liquid-glass-lens__tile-inner {
@@ -182,36 +219,23 @@
   max-height: 4.25rem;
   min-width: 0;
   width: 100%;
+  background: transparent !important;
 }
 
-/* ── Vehicle badges ── */
 .liquid-glass-lens--vehicleHudBadge {
+  --map-glass-lens-radius: 14px;
   display: inline-flex;
   max-width: 13.75rem;
-  border: 1px solid var(--map-glass-vehicle-border);
-  box-shadow: var(--map-glass-vehicle-inner-shadow), var(--map-glass-vehicle-shadow);
-  overflow: hidden;
 }
 
-.liquid-glass-lens--vehicleHudBadge .sq-map-liquid-badge,
-.liquid-glass-lens--vehicleHudBadge .sq-map-liquid-badge::before,
-.liquid-glass-lens--vehicleHudBadge .sq-map-liquid-badge::after {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  backdrop-filter: none !important;
-  -webkit-backdrop-filter: none !important;
+.liquid-glass-lens--vehicleHudBadge .liquid-glass-lens__content {
+  padding: 0.35rem 0.55rem;
 }
 
 .sq-map-marker-callout--vehicle {
   border-color: var(--map-glass-vehicle-border) !important;
   background: var(--map-glass-vehicle-callout-bg) !important;
-  box-shadow: var(--map-glass-vehicle-inner-shadow), var(--map-glass-vehicle-shadow) !important;
-}
-
-.liquid-glass-lens--vehicleMapCallout {
-  border: 1px solid var(--map-glass-vehicle-border);
-  box-shadow: var(--map-glass-vehicle-inner-shadow), var(--map-glass-vehicle-shadow);
+  box-shadow: var(--map-glass-vehicle-shadow) !important;
 }
 
 .vehicle-detail-map-hud {
@@ -236,25 +260,11 @@
   }
 }
 
-.liquid-glass-lens--fleetMiniPill,
-.liquid-glass-lens--statusPill {
-  display: inline-flex;
-  max-width: 11rem;
-  border: 1px solid var(--map-glass-fleet-border);
-  overflow: hidden;
-}
-
-.liquid-glass-lens--fleetMiniPill .liquid-glass-lens__content,
-.liquid-glass-lens--statusPill .liquid-glass-lens__content {
-  padding: 0.375rem 0.625rem;
-}
-
-.liquid-glass-lens--mapCallout {
-  border: 1px solid var(--map-glass-fleet-border);
-}
-
-/* ── SVG fallback: visual layer only, content separate ── */
-.liquid-glass-lens--svg-fallback {
+/* ── SVG fallback ── */
+.liquid-glass-lens[data-liquid-mode='fallback'] .liquid-glass-lens__visual.liquid-glass-lens--svg-fallback {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
   border-radius: var(--map-glass-radius);
   border: 1px solid var(--map-glass-fleet-border, var(--map-glass-border));
   background: var(--map-glass-fleet-panel-bg, var(--map-glass-bg-panel));
@@ -263,28 +273,24 @@
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  .liquid-glass-lens__visual.liquid-glass-lens--library,
-  .liquid-glass-lens__visual.liquid-glass-lens--svg-fallback {
-    background: var(--popover) !important;
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-    filter: none !important;
-    box-shadow: var(--shadow-sm) !important;
-    border: 1px solid var(--border) !important;
+  .liquid-glass-lens[data-liquid-mode='library']::before,
+  .liquid-glass-lens[data-liquid-mode='library']::after {
+    display: none;
   }
 
-  .liquid-glass-lens--fleetPanel,
-  .liquid-glass-lens--fleetLegend,
-  .liquid-glass-lens--vehicleHudTile,
-  .liquid-glass-lens--vehicleHudBadge {
-    border-color: var(--border) !important;
+  .liquid-glass-lens[data-liquid-mode='library'] {
+    background: var(--popover) !important;
+    border: 1px solid var(--border) !important;
     box-shadow: var(--shadow-sm) !important;
+  }
+
+  .liquid-glass-lens__visual.liquid-glass-lens--library {
+    display: none !important;
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .liquid-glass-lens__visual.liquid-glass-lens--library,
-  .liquid-glass-lens__visual.liquid-glass-lens--svg-fallback {
+  .liquid-glass-lens__visual.liquid-glass-lens--library {
     transition: none !important;
   }
 }
