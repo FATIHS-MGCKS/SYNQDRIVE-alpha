@@ -217,7 +217,7 @@ export function AccountInformationTab({ onNavigateToUsers }: AccountInformationT
         />
       </div>
 
-      <div className="sticky top-0 z-10 -mx-1 surface-frosted px-1 py-1">
+      <div className="sticky top-0 z-10 -mx-1 px-1 py-1">
         <AccountSectionTabBar activeSection={activeSection} onSectionChange={scrollToSection} />
       </div>
 

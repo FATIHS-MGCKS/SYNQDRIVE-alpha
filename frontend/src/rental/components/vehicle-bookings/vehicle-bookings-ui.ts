@@ -1,7 +1,7 @@
 /** Shared layout + surface tokens — Vehicle Bookings operator cockpit. */
 export const vb = {
   page: 'flex flex-col gap-4 sm:gap-5',
-  section: 'sq-card sq-glass rounded-2xl overflow-hidden shadow-[var(--shadow-1)]',
+  section: 'surface-premium rounded-2xl overflow-hidden',
   sectionHeader: 'border-b border-border/50 bg-muted/10 px-3 py-2 sm:px-3.5',
   sectionBody: 'p-2.5 sm:p-3',
   sectionBodyTight: 'px-3 py-2 sm:px-3.5',

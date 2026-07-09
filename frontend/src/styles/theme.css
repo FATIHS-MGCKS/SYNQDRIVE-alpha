@@ -1567,8 +1567,10 @@
   border-radius: var(--radius);
 }
 
-/* ── L0 surface-solid — `.sq-tab-bar` segmented control (no blur) ── */
-.sq-tab-bar {
+/* ── L0 in-card segmented — `.sq-tab-bar--inset` for tab controls inside content cards ──
+   Sticky/floating chrome tab bars: use `.surface-frosted` via `chromeTabBarClass()` instead. */
+.sq-tab-bar,
+.sq-tab-bar--inset {
   background: color-mix(in srgb, var(--muted) 94%, var(--card) 6%);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -1590,13 +1592,17 @@
   background: color-mix(in srgb, var(--accent) 65%, transparent 35%);
 }
 .sq-tab-bar button[data-active="true"],
-.sq-tab-bar button.active {
-  background: var(--card);
+.sq-tab-bar button.active,
+.sq-tab-bar button[aria-selected="true"] {
+  background: var(--surface-premium-bg, var(--card));
   color: var(--foreground);
   box-shadow:
-    inset 0 1px 0 color-mix(in srgb, var(--card) 88%, white 12%),
+    inset 0 1px 0 var(--surface-premium-highlight, color-mix(in srgb, var(--card) 88%, white 12%)),
     var(--shadow-xs);
   border: 1px solid color-mix(in srgb, var(--border) 88%, var(--foreground) 12%);
+}
+.sq-tab-bar button.surface-premium {
+  color: var(--foreground);
 }
 
 /* ── Section label (replaces extrabold+uppercase+widest pattern) ── */

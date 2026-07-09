@@ -72,6 +72,19 @@ export type {
   EmptySurface,
 } from './surface';
 
+export {
+  chromeTabBarClass,
+  chromeTabTriggerClass,
+  chromeSectionNavClass,
+  chromeSectionNavItemClass,
+  CHROME_TAB_BAR_SCROLL_CLASS,
+  CHROME_TAB_TRIGGER_BASE,
+  CHROME_TAB_TRIGGER_ACTIVE,
+  CHROME_TAB_TRIGGER_INACTIVE,
+  CHROME_RADIX_TAB_TRIGGER_CLASS,
+  INSET_SEGMENTED_BAR_CLASS,
+} from './chrome-tab-bar';
+
 export { DataTable } from './data-table';
 export type { DataTableProps, DataTableColumn } from './data-table';
 

@@ -66,7 +66,12 @@ export function DetailDrawer({
           className,
         )}
       >
-        <SheetHeader className="border-b border-border/70 px-5 py-4">
+        <SheetHeader
+          className={cn(
+            'sticky top-0 z-10 border-b border-border/70 px-5 py-4',
+            surfaceClassName('frosted'),
+          )}
+        >
           {eyebrow && <div className="sq-section-label">{eyebrow}</div>}
           <div className="flex items-center gap-2.5 pr-8">
             <SheetTitle className="min-w-0 truncate text-[16px]">{title}</SheetTitle>

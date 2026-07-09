@@ -1,5 +1,10 @@
 
 import { Icon } from './components/ui/Icon';
+import {
+  chromeTabBarClass,
+  chromeTabTriggerClass,
+  CHROME_TAB_BAR_SCROLL_CLASS,
+} from '../components/patterns/chrome-tab-bar';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
@@ -596,8 +601,8 @@ function RentalAppContent() {
         {/* Tab Navigation - Only show for vehicle detail views */}
         {showVehicleDetailChrome && (
         <div className="mb-4">
-          <div className="sq-tab-bar p-1 flex items-center w-full">
-            <div className="flex flex-nowrap gap-0.5 flex-1 min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className={chromeTabBarClass('p-1')}>
+            <div className={`${CHROME_TAB_BAR_SCROLL_CLASS} [scrollbar-width:none] [&::-webkit-scrollbar]:hidden`}>
               {([
                 { key: 'overview', label: 'Overview' },
                 { key: 'trips', label: 'Trips' },
@@ -611,11 +616,7 @@ function RentalAppContent() {
                 <button
                   key={tab.key}
                   onClick={() => setCurrentView(tab.key as typeof currentView)}
-                  className={`px-3.5 py-1.5 rounded-[calc(var(--radius-md)-2px)] text-[11px] leading-[16.2px] font-semibold tracking-[-0.003em] whitespace-nowrap transition-all duration-200 ${
-                    currentView === tab.key
-                      ? 'bg-card text-foreground shadow-[var(--shadow-1)]'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
-                  }`}
+                  className={chromeTabTriggerClass(currentView === tab.key)}
                 >
                   {tab.label}
                 </button>

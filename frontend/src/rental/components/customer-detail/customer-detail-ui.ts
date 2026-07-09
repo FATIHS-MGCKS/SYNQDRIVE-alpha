@@ -91,7 +91,7 @@ export const cdv = {
     'border-transparent text-muted-foreground hover:bg-background/60 hover:text-foreground',
   tabBarShell:
     'sticky top-0 z-20 -mx-1 border-b border-border/60 surface-frosted px-1 py-1 shadow-[0_1px_0_0_color-mix(in_srgb,var(--border)_70%,transparent)] sm:mx-0 sm:px-0',
-  tabBarRail: 'sq-tab-bar flex w-full min-w-0 items-center rounded-2xl p-1',
+  tabBarRail: 'flex w-full min-w-0 items-center rounded-2xl p-1',
   tabBarScroller:
     'flex min-w-0 flex-1 flex-nowrap gap-0.5 overflow-x-auto scroll-smooth px-1 snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
   tabButton:
@@ -115,7 +115,7 @@ export const cdv = {
   timelineToolbar: 'space-y-2',
   timelineToolbarRow:
     'flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between',
-  timelineFilterBar: 'sq-tab-bar flex min-w-0 flex-1 items-center p-1',
+  timelineFilterBar: 'sq-tab-bar sq-tab-bar--inset flex min-w-0 flex-1 items-center p-1',
   timelineFilterScroll:
     'flex min-w-0 flex-1 flex-nowrap gap-0.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
   timelineFilterButton:

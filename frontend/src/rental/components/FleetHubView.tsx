@@ -12,6 +12,10 @@ import {
 import { Button } from '../../components/ui/button';
 import { useFleetVehicles } from '../FleetContext';
 import { useLanguage } from '../i18n/LanguageContext';
+import {
+  chromeTabBarClass,
+  chromeTabTriggerClass,
+} from '../../components/patterns/chrome-tab-bar';
 import { formatRelativeTime, latestHealthGeneratedAt } from '../lib/fleet-health-control-center';
 import type { VehicleData } from '../data/vehicles';
 import type { Vendor } from '../../lib/api';
@@ -78,7 +82,9 @@ export function FleetHubView({
 
   const tabBar = (
     <div
-      className="sq-tab-bar flex w-full max-w-full items-stretch gap-0.5 overflow-x-auto p-1 scrollbar-thin [scrollbar-width:thin] lg:max-w-2xl"
+      className={chromeTabBarClass(
+        'flex max-w-full items-stretch gap-0.5 overflow-x-auto p-1 scrollbar-thin [scrollbar-width:thin] lg:max-w-2xl',
+      )}
       role="tablist"
       aria-label={t('view.fleet')}
     >
@@ -92,12 +98,10 @@ export function FleetHubView({
             role="tab"
             aria-selected={isActive}
             onClick={() => onTabChange(tab.key)}
-            data-active={isActive ? 'true' : undefined}
-            className={`flex min-w-[7.5rem] shrink-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2.5 py-2 text-[11px] font-semibold transition-all duration-200 sm:min-w-0 sm:px-3 ${
-              isActive
-                ? 'bg-card text-foreground shadow-[var(--shadow-1)] ring-1 ring-border/60'
-                : 'text-muted-foreground hover:bg-accent/40 hover:text-foreground'
-            }`}
+            className={chromeTabTriggerClass(
+              isActive,
+              'flex min-w-[7.5rem] shrink-0 flex-1 items-center justify-center gap-1.5 sm:min-w-0',
+            )}
           >
             <Icon className="h-3.5 w-3.5 shrink-0 opacity-80" />
             <span className="truncate">{t(tab.labelKey)}</span>

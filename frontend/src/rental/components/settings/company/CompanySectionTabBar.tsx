@@ -1,3 +1,8 @@
+import {
+  chromeTabBarClass,
+  chromeTabTriggerClass,
+  CHROME_TAB_BAR_SCROLL_CLASS,
+} from '../../../../components/patterns/chrome-tab-bar';
 import { COMPANY_SECTIONS, type CompanySection } from './company-utils';
 
 interface CompanySectionTabBarProps {
@@ -11,11 +16,11 @@ export function CompanySectionTabBar({
 }: CompanySectionTabBarProps) {
   return (
     <div
-      className="sq-tab-bar p-1 flex items-center w-full"
+      className={chromeTabBarClass('p-1')}
       role="tablist"
       aria-label="Unternehmensbereiche"
     >
-      <div className="flex flex-nowrap gap-0.5 flex-1 min-w-0 overflow-x-auto scrollbar-thin [scrollbar-width:thin]">
+      <div className={CHROME_TAB_BAR_SCROLL_CLASS}>
         {COMPANY_SECTIONS.map((section) => {
           const isActive = activeSection === section.id;
           return (
@@ -25,11 +30,7 @@ export function CompanySectionTabBar({
               role="tab"
               aria-selected={isActive}
               onClick={() => onSectionChange(section.id)}
-              className={`min-w-0 shrink-0 px-3.5 py-1.5 rounded-[calc(var(--radius-md)-2px)] text-[11px] leading-[16.2px] font-semibold tracking-[-0.003em] whitespace-nowrap transition-all duration-200 ${
-                isActive
-                  ? 'bg-card text-foreground shadow-[var(--shadow-1)]'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-background/60'
-              }`}
+              className={chromeTabTriggerClass(isActive)}
             >
               <span className="truncate">{section.label}</span>
             </button>
