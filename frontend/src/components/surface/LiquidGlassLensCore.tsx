@@ -16,6 +16,7 @@ import {
   type LiquidGlassLensVariant,
   type LiquidGlassRenderMode,
 } from './liquid-glass-lens-variants';
+import { prefersSafariSoftLens } from './liquid-glass-platform';
 
 export interface LiquidGlassLensCoreProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
@@ -69,7 +70,11 @@ export function LiquidGlassLensCore({
     );
   }
 
-  const optics = resolveLiquidGlassOptics({ intensity, variant });
+  const optics = resolveLiquidGlassOptics({
+    intensity,
+    variant,
+    safariSoft: prefersSafariSoftLens(),
+  });
   const radius = resolveLensRadius(variant);
   const size = resolveLensSize(variant);
   const tintStyle = resolveLensTintStyle({ intensity, variant });
@@ -86,6 +91,7 @@ export function LiquidGlassLensCore({
         'liquid-glass-lens',
         'liquid-glass-lens--library-direct',
         isCanonicalSmallLensVariant(variant) && 'liquid-glass-lens--canonical',
+        prefersSafariSoftLens() && 'liquid-glass-lens--safari-soft',
         `liquid-glass-lens--${variant}`,
         prefersReducedMotion && 'motion-reduce:transition-none',
         className,

@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'liquid-glass-content-crisp-v49295-2026-07-09',
+    version: '4.9.295',
+    title: 'V4.9.295 — L3 content crisp layer + tile centering + Safari soft optics',
+    summary: [
+      '__content isolation layer (z-index 3): no filter/blend/shadow on text/icons; geometricPrecision rendering.',
+      'Typography lightened (font-weight 500); icons stroke-width 1.75, opacity 1; removed __icon--selected stroke bump.',
+      'Active state: softer root rim only; content never thickened in selected state.',
+      'Vehicle HUD tiles: center-aligned column, fixed height, __tile-icon wrapper; odometer compact scale on mobile.',
+      'Safari/iOS: SAFARI_SOFT_LENS_OPTICS (frost/tint over bend); liquid-glass-lens--safari-soft class.',
+    ],
+    reason:
+      'Content looked thick/blurry in active state; vehicle tiles left-aligned; Safari over-stretched optics without live bending.',
+    previousBehavior:
+      'Icon stroke-width 2.25 on active; font-weight 600; tile align-items flex-start; full canonical optics on Safari.',
+    details:
+      'Visual-only L3 pass. LIQUID_GLASS_SYSTEM.md Phase 14. No architecture/business/Mapbox logic changes.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-09T18:25:00.000Z',
+  },
+  {
     id: 'liquid-glass-active-root-v49294-2026-07-09',
     version: '4.9.294',
     title: 'V4.9.294 — L3 active state root ring (no dark child fill)',

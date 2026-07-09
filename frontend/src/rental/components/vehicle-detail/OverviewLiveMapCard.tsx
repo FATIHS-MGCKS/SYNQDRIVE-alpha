@@ -148,7 +148,9 @@ export function OverviewLiveMapCard({
               className="pointer-events-none"
             >
               <div className="liquid-glass-lens__tile-inner">
-                <Icon name="circle" className={`h-3.5 w-3.5 ${stateColor}`} />
+                <span className="liquid-glass-lens__tile-icon">
+                  <Icon name="circle" className={`h-3 w-3 ${stateColor}`} />
+                </span>
                 <span className="liquid-glass-lens__tile-label">State</span>
                 <span className={`liquid-glass-lens__tile-state ${stateColor}`}>
                   {hudDisplayState}
@@ -163,10 +165,12 @@ export function OverviewLiveMapCard({
               className="pointer-events-none"
             >
               <div className="liquid-glass-lens__tile-inner">
-                <Icon
-                  name="droplet"
-                  className="h-3.5 w-3.5 text-[color:var(--status-positive)]"
-                />
+                <span className="liquid-glass-lens__tile-icon">
+                  <Icon
+                    name="droplet"
+                    className="h-3 w-3 text-[color:var(--status-positive)]"
+                  />
+                </span>
                 <span className="liquid-glass-lens__tile-label">
                   {selectedVehicle?.isElectric ? 'Energy' : 'Fuel'}
                 </span>
@@ -184,7 +188,9 @@ export function OverviewLiveMapCard({
               className="pointer-events-none"
             >
               <div className="liquid-glass-lens__tile-inner">
-                <Icon name="gauge" className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="liquid-glass-lens__tile-icon">
+                  <Icon name="gauge" className="h-3 w-3 text-muted-foreground" />
+                </span>
                 <span className="liquid-glass-lens__tile-label">Odometer</span>
                 <span className="liquid-glass-lens__tile-value-row">
                   <span

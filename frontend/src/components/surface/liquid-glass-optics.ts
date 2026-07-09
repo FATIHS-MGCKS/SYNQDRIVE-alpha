@@ -31,6 +31,24 @@ export const CANONICAL_SMALL_LENS_OPTICS: Partial<GlassOptics> = {
   sheenWidth: 0.85,
 };
 
+/** Safari/iOS — frost + rim only; minimal bend/dispersion (no Chrome-style live bending). */
+export const SAFARI_SOFT_LENS_OPTICS: Partial<GlassOptics> = {
+  curvature: 0,
+  frost: 0.055,
+  brightness: 0,
+  glow: 0,
+  glowSpread: 0,
+  saturate: 1.02,
+  strength: 0.01,
+  depth: 0.038,
+  dispersion: 0.001,
+  bend: 0.012,
+  bendWidth: 0.028,
+  specular: 0.15,
+  sheen: 0.07,
+  sheenWidth: 0.75,
+};
+
 /** Per-variant tweaks — all derived from canonical small lens family. */
 const LENS_OPTICS: Partial<Record<LiquidGlassLensVariant, Partial<GlassOptics>>> = {
   fleetToolbarButton: CANONICAL_SMALL_LENS_OPTICS,
@@ -86,8 +104,12 @@ function scaleOptics(
 export function resolveLiquidGlassOptics(options: {
   intensity: LiquidGlassIntensity;
   variant: LiquidGlassLensVariant;
+  safariSoft?: boolean;
 }): Partial<GlassOptics> {
-  const { intensity, variant } = options;
+  const { intensity, variant, safariSoft = false } = options;
+  if (safariSoft) {
+    return scaleOptics(SAFARI_SOFT_LENS_OPTICS, intensity);
+  }
   const base = LENS_OPTICS[variant] ?? CANONICAL_SMALL_LENS_OPTICS;
   return scaleOptics(base, intensity);
 }

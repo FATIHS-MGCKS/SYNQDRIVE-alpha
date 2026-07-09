@@ -85,13 +85,7 @@ export function MapGlassControls({
           title={stationsLabel}
           className="liquid-glass-lens__control-btn"
         >
-          <Layers
-            className={cn(
-              'liquid-glass-lens__control-btn__icon',
-              showStations && 'liquid-glass-lens__control-btn__icon--selected',
-            )}
-            aria-hidden
-          />
+          <Layers className="liquid-glass-lens__control-btn__icon" aria-hidden />
           <span className="liquid-glass-lens__control-btn__label">{stationsLabel}</span>
         </button>
       </LiquidGlassLens>

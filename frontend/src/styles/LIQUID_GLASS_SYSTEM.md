@@ -471,11 +471,26 @@ Before adding or changing a surface, answer:
 
 ---
 
-*Last updated: 2026-07-09 — V4.9.294 Active state root ring fix.*
+*Last updated: 2026-07-09 — V4.9.295 Content crisp + tile centering + Safari soft optics.*
 
 ---
 
-## Phase 13 — Active state on lens root (V4.9.294)
+## Phase 14 — Content crisp layer + Safari soft optics (V4.9.295)
+
+**Problem:** Text/icons looked thick/blurry especially in active state — content inherited optical weight (stroke-width bumps, font-weight 600, opacity &lt; 1 on icons). Vehicle HUD tiles were left-aligned inside lenses. Safari/iOS over-applied bend/dispersion optics.
+
+**Fix:**
+
+| Rule | Implementation |
+|------|----------------|
+| Content layer | `__content` z-index 3, `isolation: isolate`, `text-rendering: geometricPrecision` |
+| No content filters | `filter/backdrop-filter/mix-blend/text-shadow: none` on `__content` and descendants |
+| Typography | HUD labels/values `font-weight: 500` (meta `400`); icons `stroke-width: 1.75`, `opacity: 1` |
+| Active | Root rim only — no `__icon--selected` stroke bump |
+| Vehicle tiles | `align-items: center`, fixed height, `__tile-icon` wrapper |
+| Safari | `SAFARI_SOFT_LENS_OPTICS` — frost/tint/rim, minimal bend/dispersion; `liquid-glass-lens--safari-soft` class |
+
+---
 
 **Problem:** Active/selected state on child buttons (`__control-btn--active`) applied dark/highlight fills inside the Glass lens — looked black/heavy and broke liquid material.
 
