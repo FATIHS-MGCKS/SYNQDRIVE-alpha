@@ -3,8 +3,7 @@ import type { BookingDetailDto } from '../../../lib/api';
 import { RentalHealthBadge } from '../rental-health/RentalHealthBadge';
 import { useVehicleHealth } from '../../hooks/useVehicleHealth';
 import { EM_DASH } from './bookingDetailUtils';
-
-const card = 'rounded-lg border border-border bg-card p-4';
+import { bd } from './booking-detail-ui';
 
 interface BookingVehicleHealthTabProps {
   orgId: string;
@@ -18,7 +17,7 @@ export function BookingVehicleHealthTab({ orgId, detail, onOpenVehicle }: Bookin
 
   return (
     <div className="space-y-4">
-      <div className={card}>
+      <div className={bd.card}>
         <div className="flex items-center justify-between gap-2 mb-3">
           <h3 className="text-xs font-bold">Fahrzeug</h3>
           {onOpenVehicle && (
@@ -43,7 +42,7 @@ export function BookingVehicleHealthTab({ orgId, detail, onOpenVehicle }: Bookin
         </dl>
       </div>
 
-      <div className={card}>
+      <div className={bd.card}>
         <h3 className="text-xs font-bold mb-3">Rental Health</h3>
         {loading && !health ? (
           <p className="text-xs text-muted-foreground">Lade Health-Daten…</p>

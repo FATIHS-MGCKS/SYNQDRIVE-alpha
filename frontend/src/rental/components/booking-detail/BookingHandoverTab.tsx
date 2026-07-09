@@ -3,7 +3,7 @@ import type { BookingDetailDto } from '../../../lib/api';
 import type { BookingActionMatrix } from './bookingDetailTypes';
 import { EM_DASH, formatDateTime } from './bookingDetailUtils';
 import { BookingStationPanel } from './BookingStationPanel';
-const card = 'rounded-lg border border-border bg-card p-4';
+import { bd } from './booking-detail-ui';
 
 interface BookingHandoverTabProps {
   detail: BookingDetailDto;
@@ -28,7 +28,7 @@ function HandoverSide({
   onAction: () => void;
 }) {
   return (
-    <div className={card}>
+    <div className={bd.card}>
       <div className="flex items-center justify-between gap-2 mb-3">
         <h3 className="text-xs font-bold">{title}</h3>
         <button

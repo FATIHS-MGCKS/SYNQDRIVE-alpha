@@ -118,7 +118,7 @@ export function FleetCommandPanel({
   );
 
   return (
-    <div className="sq-card overflow-hidden flex flex-col lg:h-[640px] animate-fade-up">
+    <div className="surface-premium rounded-2xl overflow-hidden flex flex-col lg:h-[640px] animate-fade-up">
       <div className="p-3 pb-0 border-b border-border/40">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-[12px] font-semibold tracking-[-0.005em] text-foreground shrink-0">
@@ -158,7 +158,7 @@ export function FleetCommandPanel({
                 onClick={() => onTabChange(tab.key)}
                 className={`flex min-w-0 flex-1 items-center justify-center gap-1 rounded-[calc(var(--radius-md)-2px)] px-2 py-1.5 text-[11px] font-semibold whitespace-nowrap transition-all duration-200 ${
                   isActive
-                    ? 'bg-card text-foreground shadow-[var(--shadow-1)] ring-1 ring-[color:color-mix(in_srgb,var(--brand)_12%,transparent)]'
+                    ? 'surface-premium text-foreground ring-1 ring-[color:color-mix(in_srgb,var(--brand)_12%,transparent)]'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >

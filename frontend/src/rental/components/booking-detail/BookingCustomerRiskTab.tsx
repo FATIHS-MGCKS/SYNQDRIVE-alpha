@@ -6,8 +6,7 @@ import {
   customerVerificationUiLabelDe,
 } from '../../lib/entityMappers';
 import { EM_DASH } from './bookingDetailUtils';
-
-const card = 'rounded-lg border border-border bg-card p-4';
+import { bd } from './booking-detail-ui';
 
 interface BookingCustomerRiskTabProps {
   detail: BookingDetailDto;
@@ -22,7 +21,7 @@ export function BookingCustomerRiskTab({ detail, orgId, onOpenCustomer }: Bookin
 
   return (
     <div className="space-y-4">
-      <div className={card}>
+      <div className={bd.card}>
         <div className="flex items-center justify-between gap-2 mb-3">
           <h3 className="text-xs font-bold">Kundendaten</h3>
           {onOpenCustomer && (
@@ -60,7 +59,7 @@ export function BookingCustomerRiskTab({ detail, orgId, onOpenCustomer }: Bookin
       </div>
 
       {detail.eligibility && (
-        <div className={card}>
+        <div className={bd.card}>
           <h3 className="text-xs font-bold mb-3">Mietfreigabe (Eligibility)</h3>
           <div className="flex flex-wrap gap-2 mb-3">
             <StatusChip tone={detail.eligibility.canStartRental ? 'success' : 'critical'}>
@@ -109,7 +108,7 @@ function Metric({
   tone: 'neutral' | 'warning' | 'critical';
 }) {
   return (
-    <div className={`${card} text-center`}>
+    <div className={`${bd.card} text-center`}>
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">{label}</div>
       <StatusChip tone={tone === 'critical' ? 'critical' : tone === 'warning' ? 'warning' : 'neutral'}>
         {value}

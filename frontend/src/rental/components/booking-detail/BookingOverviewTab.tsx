@@ -9,7 +9,7 @@ import {
 } from './bookingDetailUtils';
 import { getPrimaryBookingAction } from './bookingActionRules';
 import { BookingStationPanel } from './BookingStationPanel';
-const card = 'rounded-lg border border-border bg-card p-4';
+import { bd } from './booking-detail-ui';
 
 interface BookingOverviewTabProps {
   detail: BookingDetailDto;
@@ -38,7 +38,7 @@ export function BookingOverviewTab({ detail, matrix }: BookingOverviewTabProps) 
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className={card}>
+        <div className={bd.card}>
           <h3 className="text-xs font-bold mb-3">Buchung</h3>
           <dl className="space-y-2 text-xs">
             <Row label="Status" value={detail.core.status} />
@@ -52,7 +52,7 @@ export function BookingOverviewTab({ detail, matrix }: BookingOverviewTabProps) 
           </dl>
         </div>
 
-        <div className={card}>
+        <div className={bd.card}>
           <h3 className="text-xs font-bold mb-3">Nächste Aktion</h3>
           <p className="text-sm font-semibold text-foreground">{primary.label}</p>
           <p className="text-xs text-muted-foreground mt-1">
@@ -64,7 +64,7 @@ export function BookingOverviewTab({ detail, matrix }: BookingOverviewTabProps) 
           </p>
         </div>
 
-        <div className={card}>
+        <div className={bd.card}>
           <h3 className="text-xs font-bold mb-3">Kunde</h3>
           <p className="text-sm font-semibold">{detail.customer.fullName}</p>
           <p className="text-xs text-muted-foreground mt-1">{detail.customer.phone ?? EM_DASH}</p>
@@ -79,7 +79,7 @@ export function BookingOverviewTab({ detail, matrix }: BookingOverviewTabProps) 
           </div>
         </div>
 
-        <div className={card}>
+        <div className={bd.card}>
           <h3 className="text-xs font-bold mb-3">Fahrzeug</h3>
           <p className="text-sm font-semibold">
             {detail.vehicle.displayName}
@@ -101,7 +101,7 @@ export function BookingOverviewTab({ detail, matrix }: BookingOverviewTabProps) 
         </div>
       )}
 
-      {detail.core.notes && (        <div className={card}>
+      {detail.core.notes && (        <div className={bd.card}>
           <h3 className="text-xs font-bold mb-2">Notizen</h3>
           <p className="text-xs whitespace-pre-wrap text-foreground">{detail.core.notes}</p>
         </div>

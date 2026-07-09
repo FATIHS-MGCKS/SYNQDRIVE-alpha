@@ -170,7 +170,7 @@ export function NowNextTimeline({
         operatorFocusMode ? 'secondary' : 'tertiary',
         operatorFocusMode
           ? 'h-full shadow-none ring-1 ring-border/30'
-          : 'h-full border-solid border-border/55 bg-card/55 shadow-none',
+          : 'h-full',
       )}
       aria-label={de ? 'Jetzt & Als Nächstes' : 'Now & Next'}
     >

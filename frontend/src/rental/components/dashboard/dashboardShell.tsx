@@ -19,8 +19,7 @@ export const DASHBOARD_LAYOUT = {
   controlKpiSlot: 'min-w-0 w-full',
   financeSlot: 'min-w-0 w-full',
   /** Shared outer surface for Control Center header + embedded KPI strip. */
-  controlCenterCard:
-    'rounded-2xl border border-border/55 bg-card/60 shadow-none',
+  controlCenterCard: 'surface-premium rounded-2xl overflow-hidden',
   controlCenterCardPadding: 'px-4 py-4 sm:p-5 lg:p-6',
   controlCenterKpiSection: 'mt-4 border-t border-border/35 pt-4 sm:mt-5 sm:pt-5',
   /**
@@ -39,9 +38,9 @@ export type DashboardPanelTier = 'primary' | 'secondary' | 'tertiary';
 export function panelShellClass(tier: DashboardPanelTier, className?: string): string {
   return cn(
     'flex flex-col overflow-hidden rounded-2xl',
-    tier === 'primary' && 'sq-card shadow-[var(--shadow-sm)] ring-1 ring-border/40',
-    tier === 'secondary' && 'sq-card shadow-[var(--shadow-xs)]',
-    tier === 'tertiary' && 'border border-border/55 bg-muted/[0.28] dark:bg-muted/[0.08]',
+    tier === 'primary' && 'surface-premium',
+    tier === 'secondary' && 'surface-premium',
+    tier === 'tertiary' && 'surface-premium',
     className,
   );
 }

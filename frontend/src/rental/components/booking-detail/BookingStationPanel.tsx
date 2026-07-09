@@ -3,8 +3,7 @@ import type { BookingStationContext } from '../../../lib/api';
 import { StatusChip } from '../../../components/patterns';
 import { formatOpeningHoursSummary, parseOpeningHours } from '../../lib/stationUtils';
 import type { Station } from '../../../lib/api';
-
-const card = 'rounded-lg border border-border bg-card p-4';
+import { bd } from './booking-detail-ui';
 
 function StationCard({
   title,
@@ -28,7 +27,7 @@ function StationCard({
 
   if (!planned && !actual) {
     return (
-      <div className={card}>
+      <div className={bd.card}>
         <h3 className="text-xs font-bold mb-2">{title}</h3>
         <p className="text-xs text-muted-foreground">Keine Station hinterlegt (Legacy-Freitext möglich).</p>
       </div>
@@ -38,7 +37,7 @@ function StationCard({
   const display = actual ?? planned;
 
   return (
-    <div className={card}>
+    <div className={bd.card}>
       <div className="flex items-start justify-between gap-2 mb-3">
         <h3 className="text-xs font-bold">{title}</h3>
         {hasDeviation && (

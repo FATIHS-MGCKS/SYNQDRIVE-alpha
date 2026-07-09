@@ -2,8 +2,7 @@ import { api } from '../../../lib/api';
 import { EntityTasksSection } from '../EntityTasksSection';
 import type { BookingDetailDto } from '../../../lib/api';
 import { formatDateTime, EM_DASH } from './bookingDetailUtils';
-
-const card = 'rounded-lg border border-border bg-card p-4';
+import { bd } from './booking-detail-ui';
 
 interface BookingTasksTimelineTabProps {
   orgId: string;
@@ -30,7 +29,7 @@ export function BookingTasksTimelineTab({ orgId, detail, isDarkMode }: BookingTa
         deps={[orgId, bookingId]}
       />
 
-      <div className={card}>
+      <div className={bd.card}>
         <h3 className="text-xs font-bold mb-3">Verlauf</h3>
         {detail.activity.length === 0 ? (
           <p className="text-xs text-muted-foreground">Keine Audit-Einträge für diese Buchung.</p>
@@ -63,7 +62,7 @@ function MiniStat({
 }) {
   return (
     <div
-      className={`${card} text-center ${highlight ? 'sq-tone-warning border-current/30' : ''}`}
+      className={`${bd.card} text-center ${highlight ? 'sq-tone-warning border-current/30' : ''}`}
     >
       <div className="text-[10px] uppercase tracking-wider text-muted-foreground">{label}</div>
       <div className="text-xl font-bold text-foreground">{value}</div>

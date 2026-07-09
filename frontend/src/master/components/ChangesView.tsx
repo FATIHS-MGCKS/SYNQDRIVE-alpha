@@ -35,6 +35,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'l1-premium-solid-rollout-v49281-2026-07-09',
+    version: '4.9.281',
+    title: 'V4.9.281 — L1 Premium Solid Rollout (Kernbereiche)',
+    summary: [
+      'Dashboard: panelShellClass/controlCenterCard → surface-premium; bg-card/55 Overrides in BusinessPulse, ActionQueue, FleetStateBoard, OperationsSchedulePanel, NowNextTimeline, TodayOperations entfernt.',
+      'Vehicle Overview: Quick/Readiness Cards sq-card+sq-glass → surface-premium/surface-elevated (kein L2 auf Content).',
+      'HealthErrorsView: cardClass/quickCardClass → surface-premium; doppelte hover shadow/border Stacks reduziert.',
+      'Booking Detail: booking-detail-ui.ts bd.card — alle 8 Tab-Dateien zentralisiert (keine lokalen const card).',
+      'Customer Detail: Header/Tabs/Timeline/Documents → surface-premium; aktive Tabs nicht mehr bg-card-only.',
+      'Fleet: Map-Shell + FleetCommandPanel → surface-premium; aktive Command-Tabs surface-premium (Rows unverändert).',
+      'Support/Service Center UI-Tokens: surface-premium ohne doppelte border/shadow; Quick/KPI Tiles → surface-elevated.',
+    ],
+    reason:
+      'Surface Foundation (V4.9.280) allein reichte nicht — Kernbereiche nutzten weiter parallele bg-card/sq-card Rezepte und falsches L2 auf Content Cards.',
+    previousBehavior:
+      'Dashboard panelShell mit bg-card/55; Vehicle Quick Cards sq-glass; Booking Detail 8× lokale card-Konstante; Health monolithisches bg-card cardClass.',
+    details:
+      'Keine Liquid/L3-, Business-Logik-, Tabellen- oder Map-HUD-Änderungen. L2 nur entfernt, wo fälschlich auf Content Cards (Vehicle Overview).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-09T03:00:00.000Z',
+  },
+  {
     id: 'surface-foundation-rollout-v49280-2026-07-09',
     version: '4.9.280',
     title: 'V4.9.280 — Surface Foundation Rollout (Pattern-Multiplikatoren)',

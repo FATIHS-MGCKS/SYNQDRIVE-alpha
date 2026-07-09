@@ -339,7 +339,7 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 lg:items-stretch">
         <div
           ref={mapRef}
-          className="bg-card border border-border/70 rounded-2xl overflow-hidden relative shadow-[var(--shadow-1)] h-[280px] lg:h-[640px] animate-fade-up"
+          className="surface-premium rounded-2xl overflow-hidden relative h-[280px] lg:h-[640px] animate-fade-up"
         >
           <MapSafetyBoundary isDarkMode={systemDark}>
             <MapboxMap
@@ -386,7 +386,7 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
         </div>
 
         {loading && vehicles.length === 0 ? (
-          <div className="sq-card p-4 lg:h-[640px] space-y-2">
+          <div className="surface-premium rounded-2xl overflow-hidden p-4 lg:h-[640px] space-y-2">
             <SkeletonCard />
             <SkeletonCard />
             <SkeletonCard />

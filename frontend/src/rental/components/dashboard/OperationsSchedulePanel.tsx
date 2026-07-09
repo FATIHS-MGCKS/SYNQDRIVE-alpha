@@ -265,7 +265,7 @@ export function OperationsSchedulePanel({
 
   return (
     <section
-      className={panelShellClass('tertiary', 'h-full border-solid border-border/55 bg-card/55 shadow-none')}
+      className={panelShellClass('tertiary', 'h-full')}
       aria-label={de ? 'Tagesplan' : 'Day plan'}
     >
       <OperationsScheduleHeader vm={vm} totalCount={totalCount} criticalCount={criticalCount} />

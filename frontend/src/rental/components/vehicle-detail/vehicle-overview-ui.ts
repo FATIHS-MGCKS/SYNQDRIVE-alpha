@@ -20,11 +20,11 @@ export const vo = {
   freshnessHint:
     'text-center text-[10px] leading-relaxed text-muted-foreground/70 pt-1 px-2 tabular-nums border-t border-border/30',
   readiness:
-    'sq-card sq-glass rounded-2xl border shadow-[var(--shadow-1)] px-4 py-3.5 sm:px-5 sm:py-4 min-h-[44px]',
+    'surface-premium rounded-2xl px-4 py-3.5 sm:px-5 sm:py-4 min-h-[44px] overflow-hidden',
   cardScroll:
     'flex gap-2 sm:gap-2.5 overflow-x-auto overscroll-x-contain pb-0.5 pt-0.5 snap-x snap-mandatory scrollbar-thin md:grid md:grid-cols-3 md:overflow-visible xl:grid-cols-6 min-w-0 max-w-full',
   card:
-    'group relative sq-card sq-glass rounded-xl border border-border/50 bg-background/25 text-left w-[10.75rem] sm:w-full min-h-[4.75rem] snap-start shrink-0 sm:shrink border-l-[3px]',
+    'group relative surface-elevated rounded-xl text-left w-[10.75rem] sm:w-full min-h-[4.75rem] snap-start shrink-0 sm:shrink border-l-[3px] overflow-hidden',
   cardInner: 'flex flex-col gap-1.5 p-3 sm:p-3.5 h-full min-h-[4.75rem]',
   cardTopRow: 'flex items-center justify-between gap-2',
   cardLabel: 'text-[10px] font-semibold uppercase tracking-[0.07em] text-muted-foreground/90',
@@ -46,7 +46,7 @@ export const vo = {
   focusRing:
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-background',
   hover:
-    'transition-[transform,box-shadow,border-color,background-color] duration-[var(--dur-fast)] motion-reduce:transition-none hover:border-border/80 hover:bg-background/40 hover:shadow-[var(--shadow-1)] hover:-translate-y-px motion-reduce:hover:translate-y-0',
+    'transition-[transform,box-shadow,border-color] duration-[var(--dur-fast)] motion-reduce:transition-none motion-reduce:hover:translate-y-0',
   active:
     'active:translate-y-0 active:scale-[0.992] active:shadow-[var(--shadow-xs)] motion-reduce:active:scale-100',
 } as const;

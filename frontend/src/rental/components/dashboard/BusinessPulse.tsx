@@ -310,7 +310,7 @@ export function BusinessPulse({
       className={cn(
         panelShellClass(
           'tertiary',
-          'flex w-full min-w-0 flex-col border-solid border-border/55 bg-card/55 shadow-none',
+          'flex w-full min-w-0 flex-col',
         ),
       )}
       aria-label={t('dashboard.financesTitle')}

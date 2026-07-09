@@ -1199,8 +1199,8 @@ export function HealthErrorsView({
   // and warning lights now live in the dedicated "Tacho Warnleuchten" box.
   const serviceComplianceModule = healthTabSummary?.moduleStates?.service_compliance;
 
-  const cardClass = 'bg-card border border-border/60 rounded-xl shadow-sm p-2.5';
-  const quickCardClass = `${cardClass} flex flex-col cursor-pointer transition-all duration-300 ease-out hover:shadow-lg hover:-translate-y-0.5 hover:border-border relative overflow-hidden group`;
+  const cardClass = 'surface-premium rounded-xl p-2.5 overflow-hidden';
+  const quickCardClass = `${cardClass} flex flex-col cursor-pointer transition-all duration-300 ease-out hover:-translate-y-0.5 relative overflow-hidden group`;
   const quickCardHeaderClass = 'flex items-center justify-between mb-1 relative z-10';
   const quickCardTitleClass = 'text-[10px] font-bold tracking-tight text-foreground';
   const quickCardBodyClass = 'flex-1 flex flex-col justify-center relative z-10';
@@ -1762,7 +1762,7 @@ export function HealthErrorsView({
             hvStatus === 'WARNING' ? 'bg-orange-500' :
             hvStatus === 'CRITICAL' ? 'bg-red-500' : 'bg-gray-400';
           return (
-            <div onClick={() => openModal(setShowHvBattery)} className={`${cardClass} order-2 cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02]`}>
+            <div onClick={() => openModal(setShowHvBattery)} className={`${cardClass} order-2 cursor-pointer transition-all duration-200 hover:-translate-y-0.5`}>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-base font-semibold text-foreground">HV Battery</h3>
                 <div className="flex items-center gap-1">

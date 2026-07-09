@@ -287,7 +287,7 @@ export function FleetStateBoard({
 
   return (
     <section
-      className={panelShellClass('tertiary', 'border-solid border-border/55 bg-card/55 shadow-none')}
+      className={panelShellClass('tertiary')}
       aria-label={de ? 'Flottenstatus' : 'Fleet status'}
     >
       <MinimalFleetHeader

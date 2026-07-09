@@ -2,7 +2,7 @@ import type { BookingDetailDto } from '../../../lib/api';
 import { BookingDocumentsSection } from '../BookingDocumentsSection';
 import { EM_DASH, formatCurrencyCents, parseBookingExtras, paymentStatusLabel, depositStatusLabel } from './bookingDetailUtils';
 
-const card = 'rounded-lg border border-border bg-card p-4';
+import { bd } from './booking-detail-ui';
 
 interface BookingFinanceDocumentsTabProps {
   orgId: string;
@@ -17,7 +17,7 @@ export function BookingFinanceDocumentsTab({ orgId, detail, isDarkMode }: Bookin
 
   return (
     <div className="space-y-6">
-      <div className={card}>
+      <div className={bd.card}>
         <h3 className="text-xs font-bold mb-4">Zahlung</h3>
         {!f.computed ? (
           <p className="text-sm text-muted-foreground">Noch nicht berechnet — keine verlässlichen Beträge vorhanden.</p>
@@ -42,7 +42,7 @@ export function BookingFinanceDocumentsTab({ orgId, detail, isDarkMode }: Bookin
         )}
       </div>
 
-      <div className={card}>
+      <div className={bd.card}>
         <h3 className="text-xs font-bold mb-3">Extras</h3>
         {extras.length === 0 ? (
           <p className="text-xs text-muted-foreground">Keine strukturierten Extras hinterlegt.</p>

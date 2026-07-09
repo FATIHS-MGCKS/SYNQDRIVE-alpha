@@ -6,8 +6,7 @@ import { RentalStressAnalysisCard } from '../RentalStressAnalysisCard';
 import { VehicleStressPanel } from '../VehicleStressPanel';
 import { EM_DASH } from './bookingDetailUtils';
 import { formatStressScore } from '../../lib/scoreFormat';
-
-const card = 'rounded-lg border border-border bg-card p-4';
+import { bd } from './booking-detail-ui';
 
 interface BookingUsageMisuseTabProps {
   orgId: string;
@@ -74,7 +73,7 @@ export function BookingUsageMisuseTab({
         compact
       />
 
-      <div className={`${card} grid grid-cols-2 sm:grid-cols-4 gap-4`}>
+      <div className={`${bd.card} grid grid-cols-2 sm:grid-cols-4 gap-4`}>
         <Stat label="Fahrbelastung" value={stressDisplay.isMissing ? EM_DASH : stressDisplay.label} />
         <Stat label="Fahrereignisse" value={u.drivingEventsCount ?? EM_DASH} />
         <Stat label="Missbrauchsereignisse" value={u.abuseDetectionCount ?? EM_DASH} />
