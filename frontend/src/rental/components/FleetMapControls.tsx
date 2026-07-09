@@ -45,10 +45,11 @@ export function FleetMapControls({
 
   return (
     <>
-      {/* Top-right: status + refresh */}
+      {/* Top-right: status + refresh — shell panel, lens action */}
       <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-2 pointer-events-none">
         <LiquidGlassLens
           variant="fleetPanel"
+          renderMode="shell"
           intensity="medium"
           className="pointer-events-auto"
         >
@@ -63,15 +64,22 @@ export function FleetMapControls({
               ? 'Refreshing…'
               : `Auto-refresh in ${countdownSec}s`}
           </p>
-          <button
-            type="button"
-            onClick={onRefresh}
-            disabled={loading}
-            className="sq-map-liquid-action mt-2 w-full py-1.5 px-2 pointer-events-auto disabled:opacity-60"
+          <LiquidGlassLens
+            variant="fleetPanelAction"
+            renderMode="lens"
+            intensity="subtle"
+            className="pointer-events-auto"
           >
-            <RefreshCw className={`w-3 h-3 shrink-0 ${loading ? 'animate-spin' : ''}`} />
-            <span className="text-[9.5px] font-semibold">Refresh now</span>
-          </button>
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={loading}
+              className="liquid-glass-lens__panel-action sq-map-liquid-action"
+            >
+              <RefreshCw className={`w-3 h-3 shrink-0 ${loading ? 'animate-spin' : ''}`} />
+              <span className="text-[9.5px] font-semibold">Refresh now</span>
+            </button>
+          </LiquidGlassLens>
         </LiquidGlassLens>
       </div>
 
@@ -88,8 +96,9 @@ export function FleetMapControls({
         {(vehicleCount === 0 || noLocationCount > 0) && (
           <LiquidGlassLens
             variant="fleetMiniPill"
+            renderMode="lens"
             intensity="subtle"
-            className="pointer-events-auto px-2.5 py-1.5 max-w-[11rem]"
+            className="pointer-events-auto"
           >
             <p className="text-[9.5px] font-medium text-foreground leading-snug">
               {vehicleCount === 0
@@ -106,43 +115,48 @@ export function FleetMapControls({
         )}
       </div>
 
-      {/* Bottom-left: collapsible legend */}
+      {/* Bottom-left: collapsible legend — lens trigger + shell body */}
       <div className="absolute bottom-3 left-3 z-10 pointer-events-none max-w-[calc(100%-1.5rem)]">
-        <LiquidGlassLens
-          variant="fleetLegend"
-          intensity="subtle"
-          className="pointer-events-auto overflow-hidden"
-        >
-          <button
-            type="button"
-            onClick={() => setLegendOpen((open) => !open)}
-            className="w-full flex items-center justify-between gap-2 px-3 py-2 text-left"
-          >
-            <span className="text-[10px] font-semibold text-foreground">
-              Legend
-            </span>
-            <ChevronDown
-              className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${
-                legendOpen ? 'rotate-180' : ''
-              }`}
-            />
-          </button>
+        <div className="liquid-glass-lens__legend-stack pointer-events-auto">
+          <LiquidGlassLens variant="fleetToolbarButton" renderMode="lens" intensity="subtle">
+            <button
+              type="button"
+              onClick={() => setLegendOpen((open) => !open)}
+              className="liquid-glass-lens__legend-trigger"
+              aria-expanded={legendOpen}
+            >
+              <span className="text-[10px] font-semibold text-foreground">Legend</span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-muted-foreground transition-transform ${
+                  legendOpen ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+          </LiquidGlassLens>
+
           {legendOpen && (
-            <div className="px-3 pb-2.5 pt-0 flex flex-wrap gap-x-3 gap-y-1.5 border-t border-[color:var(--map-glass-fleet-border,var(--map-glass-border))]">
-              {FLEET_MAP_LEGEND_ITEMS.map((item) => (
-                <div key={item.mapTone} className="flex items-center gap-1.5">
-                  <span
-                    className="w-2 h-2 rounded-full shadow-[0_0_0_1.5px_rgba(255,255,255,0.5)]"
-                    style={{ backgroundColor: getFleetMapToneHex(item.mapTone) }}
-                  />
-                  <span className="text-[9.5px] font-medium text-foreground/85">
-                    {item.label}
-                  </span>
-                </div>
-              ))}
-            </div>
+            <LiquidGlassLens
+              variant="fleetLegend"
+              renderMode="shell"
+              intensity="subtle"
+              className="w-full min-w-[10rem]"
+            >
+              <div className="liquid-glass-lens__legend-body">
+                {FLEET_MAP_LEGEND_ITEMS.map((item) => (
+                  <div key={item.mapTone} className="flex items-center gap-1.5">
+                    <span
+                      className="w-2 h-2 rounded-full shadow-[0_0_0_1.5px_rgba(255,255,255,0.5)]"
+                      style={{ backgroundColor: getFleetMapToneHex(item.mapTone) }}
+                    />
+                    <span className="text-[9.5px] font-medium text-foreground/85">
+                      {item.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </LiquidGlassLens>
           )}
-        </LiquidGlassLens>
+        </div>
       </div>
     </>
   );

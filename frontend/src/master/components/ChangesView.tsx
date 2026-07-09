@@ -35,6 +35,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'liquid-glass-hybrid-reset-v49290-2026-07-09',
+    version: '4.9.290',
+    title: 'V4.9.290 — Liquid Glass hybrid reset (shell + content-sized lenses)',
+    summary: [
+      'Structural reset: empty Glass visual layer + refract overlay removed — small lenses use direct `<Glass>{children}</Glass>` per library README.',
+      'New API: `renderMode` lens | shell | auto; `allowWideLens` guard; wide variants (fleetPanel, fleetLegend, vehicleHudStack) auto-shell.',
+      'Fleet map: toolbar shell + per-button lenses; refresh panel shell + refresh action lens; legend lens trigger + shell expanded body.',
+      'Vehicle detail: HUD stack shell; State/Fuel/Odometer per-tile lenses; long top badges shell without sq-map-liquid-badge double layers.',
+      'CSS: data-liquid-render lens/shell; library path suppresses parallel sq-map-liquid-* / surface-liquid fills.',
+      'Optics retuned content-first (low strength/curvature/frost); explicit 42px toolbar button geometry.',
+      'Mapbox live refraction deferred — MapLiquidGlassLens.mapBackdrop hook documented for future src/draw spike.',
+    ],
+    reason:
+      'Wide stretched lenses produced oval/bloomy panels; empty visual layers created white/gray capsules hiding text/icons on Fleet and Vehicle Detail map HUDs.',
+    previousBehavior:
+      'Single large Glass lens per panel/stack with refract={MapLensBackdrop} visual layer above content; sq-map-liquid-* classes stacked inside library path.',
+    details:
+      'No CSS-only rollback. No L1/L2/card/business/Mapbox logic changes. Fallback path (flag off) unchanged. LIQUID_GLASS_SYSTEM.md Phase 10.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-09T18:00:00.000Z',
+  },
+  {
     id: 'liquid-glass-shell-only-v49289-2026-07-09',
     version: '4.9.289',
     title: 'V4.9.289 — Liquid Glass shell-only Map HUD (inner blob fix)',

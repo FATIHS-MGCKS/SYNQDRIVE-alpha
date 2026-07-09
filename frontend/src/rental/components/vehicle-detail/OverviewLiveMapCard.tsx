@@ -121,20 +121,35 @@ export function OverviewLiveMapCard({
 
         {statusBadge && !positionView.showEmptyState && (
           <div className="pointer-events-none absolute top-2.5 left-1/2 z-10 -translate-x-1/2 sm:top-3">
-            <LiquidGlassLens variant="vehicleHudBadge" intensity="subtle" className="pointer-events-none">
+            <LiquidGlassLens
+              variant="vehicleHudBadge"
+              renderMode="shell"
+              intensity="subtle"
+              className="pointer-events-none"
+            >
               <span
-                className={`sq-map-liquid-badge sq-map-liquid-badge--status sq-map-liquid-badge--${statusBadge.tone}`}
+                className={`liquid-glass-lens__hud-badge liquid-glass-lens__hud-badge--${statusBadge.tone}`}
               >
-                <span className="sq-map-liquid-badge-dot" aria-hidden="true" />
-                <span>{statusBadge.label}</span>
+                <span className="liquid-glass-lens__hud-badge-dot" aria-hidden="true" />
+                <span className="text-[9px] font-semibold whitespace-nowrap">{statusBadge.label}</span>
               </span>
             </LiquidGlassLens>
           </div>
         )}
 
         <div className="vehicle-detail-map-hud">
-          <LiquidGlassLens variant="vehicleHudStack" intensity="subtle" className="w-full max-w-[20rem]">
-            <LiquidGlassLens variant="vehicleHudTile" intensity="subtle" className="pointer-events-none">
+          <LiquidGlassLens
+            variant="vehicleHudStack"
+            renderMode="shell"
+            intensity="subtle"
+            className="w-full max-w-[20rem]"
+          >
+            <LiquidGlassLens
+              variant="vehicleHudTile"
+              renderMode="lens"
+              intensity="subtle"
+              className="pointer-events-none"
+            >
               <div className="liquid-glass-lens__tile-inner">
                 <Icon name="circle" className={`h-3.5 w-3.5 ${stateColor}`} />
                 <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground/80">
@@ -146,7 +161,12 @@ export function OverviewLiveMapCard({
               </div>
             </LiquidGlassLens>
 
-            <LiquidGlassLens variant="vehicleHudTile" intensity="subtle" className="pointer-events-none">
+            <LiquidGlassLens
+              variant="vehicleHudTile"
+              renderMode="lens"
+              intensity="subtle"
+              className="pointer-events-none"
+            >
               <div className="liquid-glass-lens__tile-inner">
                 <Icon
                   name="droplet"
@@ -162,7 +182,12 @@ export function OverviewLiveMapCard({
               </div>
             </LiquidGlassLens>
 
-            <LiquidGlassLens variant="vehicleHudTile" intensity="subtle" className="pointer-events-none">
+            <LiquidGlassLens
+              variant="vehicleHudTile"
+              renderMode="lens"
+              intensity="subtle"
+              className="pointer-events-none"
+            >
               <div className="liquid-glass-lens__tile-inner">
                 <Icon name="gauge" className="h-3.5 w-3.5 text-muted-foreground" />
                 <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-foreground/80">

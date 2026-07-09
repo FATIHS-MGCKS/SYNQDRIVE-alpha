@@ -390,7 +390,28 @@ Light/dark values: see `THEME_COLOR_CONTRACT.md` § Glass / Map glass.
 
 **Components:** `LiquidGlassLensCore.tsx`, `MapLensBackdrop.tsx`, `MapLiquidGlassLens.tsx`
 
-### Phase 9 — Shell-only library path (V4.9.289)
+### Phase 10 — Hybrid shell + content-sized lens reset (V4.9.290)
+
+**Root cause:** Empty `Glass` visual layer with `refract={MapLensBackdrop}` stacked above content; wide panels (`fleetPanel`, `fleetLegend`, `vehicleHudStack`) ran as single stretched displacement lenses (oval/bloomy); parallel `sq-map-liquid-*` fills inside library path created white/gray capsules.
+
+**SynqDrive rule — @samasante Glass only for content-sized lenses:**
+
+| Rule | Implementation |
+|------|----------------|
+| Small controls = real Glass lens | `renderMode="lens"` — `<Glass>{children}</Glass>` directly, no empty visual layer |
+| Wide panels = shell | `renderMode="shell"` — frosted `data-liquid-render="shell"`, no `<Glass>` |
+| Auto policy | `fleetPanel`, `fleetLegend`, `vehicleHudStack`, `fleetToolbar` → shell; buttons/tiles/pills → lens |
+| No parallel legacy material | `data-liquid-mode="library"` suppresses `sq-map-liquid-*` / `surface-liquid` on same node |
+| Mapbox refraction (future) | `MapLiquidGlassLens.mapBackdrop` + `src`/`draw`/`lenses` spike — not default today |
+| Dev guard | Forcing wide variant as `lens` without `allowWideLens` → auto shell + `console.warn` in DEV |
+
+**API:** `LiquidGlassLens` props `renderMode?: 'lens' \| 'shell' \| 'auto'`, `allowWideLens?: boolean` (default false).
+
+**Fleet map:** toolbar shell + per-button lenses; refresh panel shell + refresh action lens; legend lens trigger + shell expanded body.
+
+**Vehicle detail:** HUD stack shell; State/Fuel/Odometer per-tile lenses; long top badges shell (readable text).
+
+---
 
 **Root cause:** Inner gray/black oval blob from stacked material layers — opaque `MapLensBackdrop`, high `curvature`/`depth`/`frost`/`brightness` optics, duplicate `sq-map-liquid-*` fills inside library lenses, and `sq-map-glass-control-btn` gradient bodies.
 
@@ -434,4 +455,4 @@ Before adding or changing a surface, answer:
 
 ---
 
-*Last updated: 2026-07-09 — V4.9.278 L3 Map Liquid HUD redesign.*
+*Last updated: 2026-07-09 — V4.9.290 Liquid Glass hybrid shell + content-sized lens reset.*

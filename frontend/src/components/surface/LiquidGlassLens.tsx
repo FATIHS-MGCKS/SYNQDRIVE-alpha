@@ -15,6 +15,7 @@ import {
   resolveLensFallbackClass,
   type LiquidGlassLensFallback,
   type LiquidGlassLensVariant,
+  type LiquidGlassRenderMode,
 } from './liquid-glass-lens-variants';
 import './liquid-glass-lens.css';
 
@@ -26,9 +27,13 @@ export interface LiquidGlassLensProps extends HTMLAttributes<HTMLDivElement> {
   children: ReactNode;
   intensity?: LiquidGlassIntensity;
   variant?: LiquidGlassLensVariant;
+  /** `lens` = small @samasante Glass; `shell` = stable panel; `auto` = variant policy. */
+  renderMode?: LiquidGlassRenderMode;
+  /** Allow wide variants to run as lens (discouraged — oval/bloomy). */
+  allowWideLens?: boolean;
   fallback?: LiquidGlassLensFallback;
   disabled?: boolean;
-  /** Refract source for map HUD lens (decorative or future map snapshot). */
+  /** Refract source for future map HUD lens (optional spike — not default). */
   mapBackdrop?: ReactNode;
   /** Bleed fill for refract copy edges. */
   behind?: string;
@@ -116,6 +121,8 @@ function LibraryLens({
   children,
   intensity,
   variant,
+  renderMode,
+  allowWideLens,
   prefersReducedMotion,
   mapBackdrop,
   behind,
@@ -125,6 +132,8 @@ function LibraryLens({
   children: ReactNode;
   intensity: LiquidGlassIntensity;
   variant: LiquidGlassLensVariant;
+  renderMode?: LiquidGlassRenderMode;
+  allowWideLens?: boolean;
   prefersReducedMotion: boolean;
   mapBackdrop?: ReactNode;
   behind?: string;
@@ -153,6 +162,8 @@ function LibraryLens({
         <LazyLiquidGlassLensCore
           intensity={intensity}
           variant={variant}
+          renderMode={renderMode}
+          allowWideLens={allowWideLens}
           prefersReducedMotion={prefersReducedMotion}
           mapBackdrop={mapBackdrop}
           behind={behind}
@@ -167,7 +178,9 @@ function LibraryLens({
 }
 
 /**
- * Isolated Map-HUD liquid glass spike wrapper.
+ * Map-HUD liquid glass — hybrid architecture:
+ * small content-sized elements use @samasante Glass (`renderMode="lens"`),
+ * wide panels/stacks use stable shells (`renderMode="shell"`).
  * Feature-flagged — default path remains CSS-only sq-map-liquid-*.
  */
 export function LiquidGlassLens({
@@ -175,6 +188,8 @@ export function LiquidGlassLens({
   className,
   intensity = 'medium',
   variant = 'fleetPanel',
+  renderMode = 'auto',
+  allowWideLens = false,
   fallback = 'frosted',
   disabled = false,
   mapBackdrop,
@@ -202,6 +217,8 @@ export function LiquidGlassLens({
     <LibraryLens
       intensity={intensity}
       variant={variant}
+      renderMode={renderMode}
+      allowWideLens={allowWideLens}
       prefersReducedMotion={mode.prefersReducedMotion}
       mapBackdrop={mapBackdrop}
       behind={behind}

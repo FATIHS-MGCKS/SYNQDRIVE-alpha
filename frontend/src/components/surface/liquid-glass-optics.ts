@@ -1,5 +1,6 @@
 import type { GlassOptics } from '@samasante/liquid-glass';
 import type { LiquidGlassLensVariant } from './liquid-glass-lens-variants';
+import { isLensVariant } from './liquid-glass-lens-variants';
 
 export type LiquidGlassIntensity = 'subtle' | 'medium' | 'strong';
 
@@ -19,145 +20,113 @@ const SHELL: Partial<GlassOptics> = {
   brightness: 0,
   glow: 0,
   glowSpread: 0,
-  saturate: 1.04,
+  saturate: 1.02,
 };
 
-/** Variant-first optics — outer liquid rim, transparent center. */
-const VARIANT_OPTICS: Record<LiquidGlassLensVariant, Partial<GlassOptics>> = {
-  fleetToolbar: {
-    ...SHELL,
-    strength: 0.035,
-    depth: 0.1,
-    dispersion: 0.01,
-    bend: 0.06,
-    bendWidth: 0.07,
-    specular: 0.32,
-    sheen: 0.18,
-    sheenWidth: 1.1,
-  },
+/** Content-sized lens optics — text-first, low distortion. */
+const LENS_OPTICS: Partial<Record<LiquidGlassLensVariant, Partial<GlassOptics>>> = {
   fleetToolbarButton: {
     ...SHELL,
-    strength: 0.03,
-    depth: 0.08,
-    dispersion: 0.008,
-    bend: 0.05,
-    bendWidth: 0.06,
-    specular: 0.28,
-    sheen: 0.16,
-    sheenWidth: 1,
-  },
-  fleetPanel: {
-    ...SHELL,
-    strength: 0.045,
-    depth: 0.12,
-    dispersion: 0.015,
-    bend: 0.07,
-    bendWidth: 0.08,
-    specular: 0.36,
-    sheen: 0.2,
-    sheenWidth: 1.2,
+    strength: 0.022,
+    depth: 0.06,
+    dispersion: 0.004,
+    bend: 0.035,
+    bendWidth: 0.05,
+    specular: 0.22,
+    sheen: 0.12,
+    sheenWidth: 0.85,
   },
   fleetPanelAction: {
     ...SHELL,
-    strength: 0.025,
-    depth: 0.07,
-    dispersion: 0.005,
-    bend: 0.04,
-    bendWidth: 0.06,
-    specular: 0.24,
-    sheen: 0.14,
-    sheenWidth: 0.9,
-  },
-  fleetLegend: {
-    ...SHELL,
-    strength: 0.035,
-    depth: 0.1,
-    dispersion: 0.01,
-    bend: 0.06,
-    bendWidth: 0.07,
-    specular: 0.3,
-    sheen: 0.17,
-    sheenWidth: 1.1,
+    strength: 0.018,
+    depth: 0.05,
+    dispersion: 0.003,
+    bend: 0.03,
+    bendWidth: 0.05,
+    specular: 0.18,
+    sheen: 0.1,
+    sheenWidth: 0.8,
   },
   fleetMiniPill: {
     ...SHELL,
-    strength: 0.032,
-    depth: 0.09,
-    dispersion: 0.01,
-    bend: 0.05,
-    bendWidth: 0.07,
-    specular: 0.28,
-    sheen: 0.16,
-    sheenWidth: 1,
+    strength: 0.02,
+    depth: 0.055,
+    dispersion: 0.004,
+    bend: 0.032,
+    bendWidth: 0.055,
+    specular: 0.2,
+    sheen: 0.11,
+    sheenWidth: 0.85,
   },
   vehicleHudTile: {
     ...SHELL,
-    strength: 0.04,
-    depth: 0.11,
-    dispersion: 0.012,
-    bend: 0.06,
-    bendWidth: 0.07,
-    specular: 0.34,
-    sheen: 0.19,
-    sheenWidth: 1.15,
-  },
-  vehicleHudStack: {
-    strength: 0,
-    depth: 0,
-    curvature: 0,
-    dispersion: 0,
-    bend: 0,
-    frost: 0,
-    brightness: 0,
-    specular: 0,
-    sheen: 0,
-    glow: 0,
-    saturate: 1,
+    strength: 0.028,
+    depth: 0.075,
+    dispersion: 0.006,
+    bend: 0.04,
+    bendWidth: 0.06,
+    specular: 0.24,
+    sheen: 0.13,
+    sheenWidth: 0.9,
+    curvature: 0.04,
+    frost: 0.08,
   },
   vehicleHudBadge: {
     ...SHELL,
-    strength: 0.028,
-    depth: 0.08,
-    dispersion: 0.008,
-    bend: 0.04,
-    bendWidth: 0.06,
-    specular: 0.26,
-    sheen: 0.15,
-    sheenWidth: 0.95,
+    strength: 0.016,
+    depth: 0.05,
+    dispersion: 0.003,
+    bend: 0.028,
+    bendWidth: 0.05,
+    specular: 0.18,
+    sheen: 0.1,
+    sheenWidth: 0.8,
   },
   vehicleMapCallout: {
     ...SHELL,
-    strength: 0.025,
-    depth: 0.07,
-    dispersion: 0.005,
-    bend: 0.04,
-    bendWidth: 0.05,
-    specular: 0.24,
-    sheen: 0.14,
-    sheenWidth: 0.9,
+    strength: 0.016,
+    depth: 0.05,
+    dispersion: 0.003,
+    bend: 0.028,
+    bendWidth: 0.045,
+    specular: 0.18,
+    sheen: 0.1,
+    sheenWidth: 0.78,
   },
   mapCallout: {
     ...SHELL,
-    strength: 0.03,
-    depth: 0.08,
-    dispersion: 0.008,
-    bend: 0.05,
-    bendWidth: 0.06,
-    specular: 0.26,
-    sheen: 0.15,
-    sheenWidth: 1,
+    strength: 0.02,
+    depth: 0.055,
+    dispersion: 0.004,
+    bend: 0.032,
+    bendWidth: 0.05,
+    specular: 0.2,
+    sheen: 0.11,
+    sheenWidth: 0.82,
   },
   statusPill: {
     ...SHELL,
-    strength: 0.03,
-    depth: 0.08,
-    dispersion: 0.008,
-    bend: 0.05,
-    bendWidth: 0.06,
-    specular: 0.27,
-    sheen: 0.15,
-    sheenWidth: 1,
+    strength: 0.02,
+    depth: 0.055,
+    dispersion: 0.004,
+    bend: 0.032,
+    bendWidth: 0.05,
+    specular: 0.2,
+    sheen: 0.11,
+    sheenWidth: 0.82,
   },
+};
+
+const DEFAULT_LENS_OPTICS: Partial<GlassOptics> = {
+  ...SHELL,
+  strength: 0.02,
+  depth: 0.055,
+  dispersion: 0.004,
+  bend: 0.032,
+  bendWidth: 0.05,
+  specular: 0.2,
+  sheen: 0.11,
+  sheenWidth: 0.85,
 };
 
 function scaleOptics(
@@ -166,11 +135,11 @@ function scaleOptics(
 ): Partial<GlassOptics> {
   const scale = INTENSITY_SCALE[intensity];
   const out: Partial<GlassOptics> = { ...base };
-  if (out.strength != null) out.strength = Math.min(0.12, out.strength * scale);
-  if (out.frost != null) out.frost = 0;
+  if (out.strength != null) out.strength = Math.min(0.08, out.strength * scale);
+  if (out.frost != null) out.frost = Math.min(0.12, (out.frost ?? 0) * scale);
   if (out.glow != null) out.glow = 0;
-  if (out.dispersion != null) out.dispersion = Math.min(0.08, out.dispersion * scale);
-  if (out.curvature != null) out.curvature = 0;
+  if (out.dispersion != null) out.dispersion = Math.min(0.05, out.dispersion * scale);
+  if (out.curvature != null) out.curvature = Math.min(0.08, (out.curvature ?? 0) * scale);
   if (out.brightness != null) out.brightness = 0;
   return out;
 }
@@ -180,10 +149,11 @@ export function resolveLiquidGlassOptics(options: {
   variant: LiquidGlassLensVariant;
 }): Partial<GlassOptics> {
   const { intensity, variant } = options;
-  return scaleOptics(VARIANT_OPTICS[variant], intensity);
+  const base = LENS_OPTICS[variant] ?? DEFAULT_LENS_OPTICS;
+  return scaleOptics(base, intensity);
 }
 
-/** Stack wrapper uses no Glass displacement — layout only. */
+/** @deprecated Use resolveEffectiveRenderMode — layout-only is now shell mode. */
 export function isLayoutOnlyLensVariant(variant: LiquidGlassLensVariant): boolean {
-  return variant === 'vehicleHudStack';
+  return !isLensVariant(variant);
 }

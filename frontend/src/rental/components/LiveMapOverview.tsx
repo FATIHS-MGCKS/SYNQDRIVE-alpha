@@ -299,8 +299,13 @@ export function LiveMapOverview({
       )}
       {operatorHint && !waitingForPosition && loaded && (
         <div className="pointer-events-none absolute top-2.5 right-2.5 z-10 max-w-[13.75rem] sm:top-3 sm:right-3">
-          <LiquidGlassLens variant="vehicleHudBadge" intensity="subtle" className="pointer-events-none">
-            <div className="sq-map-liquid-badge px-2.5 py-1.5">
+          <LiquidGlassLens
+            variant="vehicleHudBadge"
+            renderMode="shell"
+            intensity="subtle"
+            className="pointer-events-none"
+          >
+            <div className="liquid-glass-lens__hud-badge flex-col items-start gap-0.5">
               <p className="text-[9px] font-semibold leading-snug text-foreground">{operatorHint}</p>
               {operatorHintSub && (
                 <p className="text-[8px] leading-snug text-muted-foreground">{operatorHintSub}</p>
@@ -311,15 +316,20 @@ export function LiveMapOverview({
       )}
       {currentAddress && currentAddress.formatted !== '—' && !waitingForPosition && (
         <div className="pointer-events-none absolute top-2.5 left-2.5 z-10 max-w-[13.75rem] sm:top-3 sm:left-3">
-          <LiquidGlassLens variant="vehicleHudBadge" intensity="subtle" className="pointer-events-none">
-            <div className="sq-map-liquid-badge px-2.5 py-1.5">
-              <p className="truncate text-[8px] font-semibold leading-tight text-foreground">
+          <LiquidGlassLens
+            variant="vehicleHudBadge"
+            renderMode="shell"
+            intensity="subtle"
+            className="pointer-events-none"
+          >
+            <div className="liquid-glass-lens__hud-badge flex-col items-start gap-0">
+              <p className="truncate text-[8px] font-semibold leading-tight text-foreground w-full">
                 {currentAddress.street
                   ? `${currentAddress.street}${currentAddress.houseNumber ? ` ${currentAddress.houseNumber}` : ''}`
                   : (currentAddress.city ?? '—')}
               </p>
               {currentAddress.street && currentAddress.city && (
-                <p className="truncate text-[9px] leading-tight text-muted-foreground">
+                <p className="truncate text-[9px] leading-tight text-muted-foreground w-full">
                   {currentAddress.city}
                 </p>
               )}

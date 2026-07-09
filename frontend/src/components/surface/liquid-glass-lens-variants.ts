@@ -18,6 +18,63 @@ export type LiquidGlassLensVariant =
 
 export type LiquidGlassLensFallback = 'frosted' | 'solid';
 
+export type LiquidGlassRenderMode = 'lens' | 'shell' | 'auto';
+
+/** Wide/layout variants — never run as a single stretched @samasante Glass lens. */
+const SHELL_VARIANTS = new Set<LiquidGlassLensVariant>([
+  'fleetToolbar',
+  'fleetPanel',
+  'fleetLegend',
+  'vehicleHudStack',
+]);
+
+/** Small content-sized variants — intended for real Glass lenses. */
+const LENS_VARIANTS = new Set<LiquidGlassLensVariant>([
+  'fleetToolbarButton',
+  'fleetPanelAction',
+  'vehicleHudTile',
+  'vehicleHudBadge',
+  'vehicleMapCallout',
+  'fleetMiniPill',
+  'mapCallout',
+  'statusPill',
+]);
+
+export function isShellVariant(variant: LiquidGlassLensVariant): boolean {
+  return SHELL_VARIANTS.has(variant);
+}
+
+export function isLensVariant(variant: LiquidGlassLensVariant): boolean {
+  return LENS_VARIANTS.has(variant);
+}
+
+/**
+ * Resolves effective render path for library mode.
+ * Wide panels auto-downgrade to shell unless allowWideLens is explicitly set.
+ */
+export function resolveEffectiveRenderMode(
+  variant: LiquidGlassLensVariant,
+  renderMode: LiquidGlassRenderMode = 'auto',
+  allowWideLens = false,
+): 'lens' | 'shell' {
+  if (renderMode === 'shell') return 'shell';
+
+  if (renderMode === 'lens') {
+    if (isShellVariant(variant) && !allowWideLens) {
+      if (import.meta.env.DEV) {
+        console.warn(
+          `[LiquidGlassLens] variant "${variant}" is shell-only — wide stretched lenses are disabled. Use renderMode="shell" or allowWideLens.`,
+        );
+      }
+      return 'shell';
+    }
+    return 'lens';
+  }
+
+  if (isShellVariant(variant)) return 'shell';
+  return 'lens';
+}
+
 const VARIANT_FALLBACK_LIQUID: Record<LiquidGlassLensVariant, string> = {
   vehicleHudTile: 'sq-map-liquid-pill',
   vehicleHudStack: 'sq-map-liquid-hud sq-map-liquid-hud--stats',
@@ -66,7 +123,7 @@ export function usesBrightnessInFilter(_variant: LiquidGlassLensVariant): boolea
 export function resolveLensRadius(variant: LiquidGlassLensVariant): number {
   switch (variant) {
     case 'vehicleHudTile':
-      return 20;
+      return 18;
     case 'vehicleHudBadge':
     case 'fleetMiniPill':
     case 'statusPill':
@@ -75,7 +132,7 @@ export function resolveLensRadius(variant: LiquidGlassLensVariant): number {
     case 'mapCallout':
       return 14;
     case 'fleetToolbarButton':
-      return 18;
+      return 16;
     case 'fleetPanelAction':
       return 14;
     case 'fleetToolbar':
@@ -86,7 +143,19 @@ export function resolveLensRadius(variant: LiquidGlassLensVariant): number {
       return 0;
     case 'fleetPanel':
     default:
-      return 22;
+      return 20;
+  }
+}
+
+/** Explicit lens geometry for small controls — avoids 100%-width stretched displacement. */
+export function resolveLensSize(
+  variant: LiquidGlassLensVariant,
+): { width?: number; height?: number } | null {
+  switch (variant) {
+    case 'fleetToolbarButton':
+      return { width: 42, height: 42 };
+    default:
+      return null;
   }
 }
 
