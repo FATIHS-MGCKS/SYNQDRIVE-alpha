@@ -833,6 +833,10 @@ export function CustomerDetailView({
 
             onAddNote={() => setNoteModalOpen(true)}
 
+            customerEmail={detail?.email ?? customer.email}
+
+            onResent={() => void refreshTimeline()}
+
           />
 
         )}

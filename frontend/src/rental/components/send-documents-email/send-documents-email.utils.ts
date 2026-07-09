@@ -109,6 +109,68 @@ export function selectableIdsFromTypes(
     .map((doc) => doc.id);
 }
 
+export function countSelectableDocuments(documents: GeneratedDocumentDto[]): number {
+  return documents.filter((doc) => isDocumentSelectable(doc)).length;
+}
+
+export function bookingRowCanSendDocuments(
+  customerEmailValue: string | null | undefined,
+  sendableDocumentCount: number | null | undefined,
+): boolean {
+  return hasCustomerEmail({ email: customerEmailValue }) && (sendableDocumentCount ?? 0) > 0;
+}
+
+export function buildInvoicePaymentMessageSuffix(
+  outstandingCents: number,
+  currency: string,
+): string {
+  if (outstandingCents <= 0) return '';
+  const amount = (outstandingCents / 100).toLocaleString('de-DE', {
+    style: 'currency',
+    currency: currency || 'EUR',
+  });
+  return `\n\nOffener Betrag: ${amount}. Bitte überweisen Sie den ausstehenden Betrag unter Angabe der Rechnungsnummer.`;
+}
+
+export function isDocumentEmailTimelineEvent(event: {
+  type?: unknown;
+  title?: unknown;
+  metadata?: unknown;
+}): boolean {
+  const type = String(event.type ?? '').toUpperCase();
+  if (type !== 'NOTE_ADDED' && type !== 'NOTE_CREATED') return false;
+  const title = String(event.title ?? '').toLowerCase();
+  if (title.includes('dokument') && title.includes('e-mail')) return true;
+  const metadata = event.metadata;
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return false;
+  const meta = metadata as Record<string, unknown>;
+  return Boolean(meta.bookingId && Array.isArray(meta.documentIds) && meta.documentIds.length > 0);
+}
+
+export function documentEmailTimelineMeta(event: {
+  metadata?: unknown;
+}): {
+  bookingId?: string;
+  documentIds: string[];
+  to?: string;
+  outboundEmailId?: string;
+} | null {
+  const metadata = event.metadata;
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return null;
+  const meta = metadata as Record<string, unknown>;
+  const bookingId = typeof meta.bookingId === 'string' ? meta.bookingId : undefined;
+  const documentIds = Array.isArray(meta.documentIds)
+    ? meta.documentIds.filter((id): id is string => typeof id === 'string')
+    : [];
+  if (!bookingId || documentIds.length === 0) return null;
+  return {
+    bookingId,
+    documentIds,
+    to: typeof meta.to === 'string' ? meta.to : undefined,
+    outboundEmailId: typeof meta.outboundEmailId === 'string' ? meta.outboundEmailId : undefined,
+  };
+}
+
 export function parseCcInput(value: string): string[] {
   return value
     .split(/[,;]/)

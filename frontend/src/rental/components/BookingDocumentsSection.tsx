@@ -30,7 +30,7 @@ import {
 } from '../../components/ui/tooltip';
 import { Button } from '../../components/ui/button';
 import { useRentalOrg } from '../RentalContext';
-import { SendDocumentsEmailModal } from './send-documents-email/SendDocumentsEmailModal';
+import { useSendDocumentsEmailLauncher } from './send-documents-email/SendDocumentsEmailLauncherProvider';
 import type {
   SendDocumentsEmailBooking,
   SendDocumentsEmailCustomer,
@@ -100,8 +100,7 @@ function fmtDate(iso: string | null): string {
   return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-type SendModalState = {
-  open: boolean;
+type SendModalParams = {
   documentTypes: string[];
   initiallySelectedDocumentIds: string[];
   sourceContext: SendDocumentsSourceContext;
@@ -115,11 +114,7 @@ export function BookingDocumentsSection({
   booking,
 }: BookingDocumentsSectionProps) {
   const { userRole } = useRentalOrg();
-  const canSend =
-    userRole === 'ORG_ADMIN' ||
-    userRole === 'MASTER_ADMIN' ||
-    userRole === 'SUB_ADMIN' ||
-    userRole === 'WORKER';
+  const { openForBooking, canSend } = useSendDocumentsEmailLauncher();
   const canManage = userRole === 'ORG_ADMIN' || userRole === 'MASTER_ADMIN';
 
   const [view, setView] = useState<BookingDocumentBundleView | null>(null);
@@ -127,7 +122,6 @@ export function BookingDocumentsSection({
   const [busyType, setBusyType] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sendModal, setSendModal] = useState<SendModalState | null>(null);
 
   const load = useCallback(async () => {
     if (!orgId || !bookingId) return;
@@ -155,10 +149,19 @@ export function BookingDocumentsSection({
   const customerHasEmail = hasCustomerEmail(customer);
 
   const openSendModal = useCallback(
-    (params: Omit<SendModalState, 'open'>) => {
-      setSendModal({ ...params, open: true });
+    (params: SendModalParams) => {
+      void openForBooking({
+        bookingId,
+        customer,
+        booking,
+        documents: view?.documents ?? [],
+        documentTypes: params.documentTypes,
+        initiallySelectedDocumentIds: params.initiallySelectedDocumentIds,
+        sourceContext: params.sourceContext,
+        onSent: () => void load(),
+      });
     },
-    [],
+    [booking, bookingId, customer, load, openForBooking, view?.documents],
   );
 
   const handleGenerate = useCallback(async () => {
@@ -439,24 +442,6 @@ export function BookingDocumentsSection({
           ))}
         </div>
       )}
-
-      {sendModal?.open ? (
-        <SendDocumentsEmailModal
-          open={sendModal.open}
-          onOpenChange={(open) => {
-            if (!open) setSendModal(null);
-          }}
-          orgId={orgId}
-          bookingId={bookingId}
-          customer={customer}
-          booking={booking}
-          documents={view?.documents ?? []}
-          documentTypes={sendModal.documentTypes}
-          initiallySelectedDocumentIds={sendModal.initiallySelectedDocumentIds}
-          sourceContext={sendModal.sourceContext}
-          onSent={load}
-        />
-      ) : null}
     </div>
   );
 }

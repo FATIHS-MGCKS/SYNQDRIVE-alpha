@@ -156,6 +156,8 @@ export function OperatorBookingDetailSheet({
             orgId={orgId}
             bookingId={item.bookingId}
             customerId={detail?.customer.customerId}
+            customerEmail={detail?.customer.email}
+            customerName={detail?.customer.fullName ?? item.customerName}
             onAiUpload={() => {
               if (!detail) return;
               openSheet({

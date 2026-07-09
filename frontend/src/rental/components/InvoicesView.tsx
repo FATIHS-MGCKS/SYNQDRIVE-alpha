@@ -22,6 +22,13 @@ import { Button } from '../../components/ui/button';
 import { cn } from '../../components/ui/utils';
 import { SupportContextButton } from '../../components/support/SupportContextButton';
 import { useRentalOrg } from '../RentalContext';
+import { useSendDocumentsEmailLauncher } from './send-documents-email/SendDocumentsEmailLauncherProvider';
+import {
+  buildDefaultMessage,
+  buildInvoicePaymentMessageSuffix,
+  customerDisplayName,
+  hasCustomerEmail,
+} from './send-documents-email/send-documents-email.utils';
 import type { Invoice, InvoiceStats } from './invoices/invoiceTypes';
 import {
   STATUS_MAP,
@@ -826,6 +833,11 @@ function CreateInvoiceForm({ isDarkMode, orgId, customers, vehicles, vendors, on
 // INVOICE DETAIL
 // ════════════════════════════════════════════════
 
+function invoiceSendDocumentType(type: string): string {
+  if (type === 'OUTGOING_FINAL') return 'FINAL_INVOICE';
+  return 'BOOKING_INVOICE';
+}
+
 function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp, ts, inputCls }: {
   isDarkMode: boolean; invoice: Invoice; orgId: string;
   onBack: () => void; onUpdate: (inv: Invoice) => void;
@@ -842,12 +854,68 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
   const [paymentMethod, setPaymentMethod] = useState('BANK_TRANSFER');
   const [paymentReference, setPaymentReference] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [customerEmail, setCustomerEmail] = useState<string | null>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const { openForBooking, canSend } = useSendDocumentsEmailLauncher();
 
   const st = STATUS_MAP[invoice.status] || STATUS_MAP.DRAFT;
   const ty = TYPE_MAP[invoice.type] || TYPE_MAP.OUTGOING_MANUAL;
   const TypeIcon = ty.icon;
   const outstanding = invoice.outstandingCents ?? Math.max(0, invoice.totalCents - (invoice.paidCents ?? 0));
   const paidCents = invoice.paidCents ?? 0;
+
+  useEffect(() => {
+    if (!orgId || !invoice.customerId) {
+      setCustomerEmail(null);
+      return;
+    }
+    let cancelled = false;
+    api.customers
+      .get(orgId, invoice.customerId)
+      .then((customer) => {
+        if (!cancelled) setCustomerEmail(customer?.email?.trim() || null);
+      })
+      .catch(() => {
+        if (!cancelled) setCustomerEmail(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [invoice.customerId, orgId]);
+
+  const canSendInvoiceEmail =
+    canSend &&
+    isOutgoing(invoice.type) &&
+    Boolean(invoice.bookingId) &&
+    Boolean(invoice.generatedDocumentId) &&
+    hasCustomerEmail({ email: customerEmail }) &&
+    invoice.status !== 'DRAFT' &&
+    invoice.status !== 'VOID' &&
+    invoice.status !== 'CANCELLED';
+
+  const handleSendInvoiceEmail = async () => {
+    if (!invoice.bookingId || !invoice.generatedDocumentId) return;
+    const docType = invoiceSendDocumentType(String(invoice.type));
+    const bookingLabel = `BK-${invoice.bookingId.slice(-6).toUpperCase()}`;
+    const customerName = customerDisplayName({ email: customerEmail });
+    const baseMessage = buildDefaultMessage(customerName, bookingLabel, [docType]);
+    const paymentSuffix = buildInvoicePaymentMessageSuffix(outstanding, invoice.currency);
+    setSendingEmail(true);
+    try {
+      await openForBooking({
+        bookingId: invoice.bookingId,
+        customer: { email: customerEmail },
+        booking: { id: invoice.bookingId },
+        documentTypes: [docType],
+        initiallySelectedDocumentIds: [invoice.generatedDocumentId],
+        sourceContext: 'INVOICE',
+        initialMessage: baseMessage + paymentSuffix,
+        onSent: refreshInvoice,
+      });
+    } finally {
+      setSendingEmail(false);
+    }
+  };
 
   const refreshInvoice = async () => {
     setRefreshing(true);
@@ -1114,9 +1182,38 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
                   <Icon name="file-text" className="w-3 h-3" /> PDF generieren
                 </button>
               )}
-              <button type="button" disabled className={disabledBtn} title="E-Mail-Versand noch nicht verbunden">
-                <Icon name="mail" className="w-3 h-3" /> Per E-Mail senden
-              </button>
+              {canSendInvoiceEmail ? (
+                <button
+                  type="button"
+                  onClick={() => void handleSendInvoiceEmail()}
+                  disabled={sendingEmail}
+                  className={actionBtn}
+                >
+                  {sendingEmail ? (
+                    <Icon name="loader-2" className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <Icon name="mail" className="w-3 h-3" />
+                  )}
+                  Rechnung senden
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  disabled
+                  className={disabledBtn}
+                  title={
+                    !invoice.bookingId
+                      ? 'Keine Buchung verknüpft'
+                      : !invoice.generatedDocumentId
+                        ? 'Kein generiertes PDF verknüpft'
+                        : !hasCustomerEmail({ email: customerEmail })
+                          ? 'Kunde ohne E-Mail'
+                          : 'Versand nicht verfügbar'
+                  }
+                >
+                  <Icon name="mail" className="w-3 h-3" /> Rechnung senden
+                </button>
+              )}
               {invoice.documentExtractionId && (
                 <p className={`text-[10px] ${ts}`}>Extraktion: {invoice.documentExtractionId.slice(0, 12)}…</p>
               )}

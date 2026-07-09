@@ -1,14 +1,20 @@
 import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import type { GeneratedDocumentDto } from '../../lib/api';
 import {
   BOOKING_PACKAGE_TYPES,
+  bookingRowCanSendDocuments,
   buildDefaultSubject,
+  buildInvoicePaymentMessageSuffix,
   currentDocumentsByType,
   hasCustomerEmail,
+  isDocumentEmailTimelineEvent,
   isDocumentSelectable,
   parseCcInput,
   selectableIdsFromTypes,
 } from './send-documents-email.utils';
+import { canSendDocumentsEmail } from './send-documents-email.permissions';
 
 function doc(partial: Partial<GeneratedDocumentDto> & Pick<GeneratedDocumentDto, 'id' | 'documentType'>): GeneratedDocumentDto {
   return {
@@ -67,5 +73,53 @@ describe('send-documents-email.utils', () => {
 
   it('parses cc input into distinct addresses', () => {
     expect(parseCcInput('a@b.de, c@d.de; e@f.de')).toEqual(['a@b.de', 'c@d.de', 'e@f.de']);
+  });
+
+  it('gates booking list send affordance on email and sendable docs', () => {
+    expect(bookingRowCanSendDocuments('kunde@firma.de', 2)).toBe(true);
+    expect(bookingRowCanSendDocuments('kunde@firma.de', 0)).toBe(false);
+    expect(bookingRowCanSendDocuments(null, 3)).toBe(false);
+  });
+
+  it('detects document email timeline events', () => {
+    expect(
+      isDocumentEmailTimelineEvent({
+        type: 'NOTE_ADDED',
+        title: 'Dokumente per E-Mail gesendet (BK-123456)',
+        metadata: { bookingId: 'bk-1', documentIds: ['d1'] },
+      }),
+    ).toBe(true);
+    expect(
+      isDocumentEmailTimelineEvent({
+        type: 'NOTE_ADDED',
+        title: 'Allgemeine Notiz',
+      }),
+    ).toBe(false);
+  });
+
+  it('adds payment hint suffix for open invoices', () => {
+    expect(buildInvoicePaymentMessageSuffix(12500, 'EUR')).toContain('125');
+  });
+
+  it('exposes consistent send permissions', () => {
+    expect(canSendDocumentsEmail('ORG_ADMIN')).toBe(true);
+    expect(canSendDocumentsEmail('VIEWER')).toBe(false);
+  });
+
+  it('LegalDocumentsTab has no customer send integration', () => {
+    const source = readFileSync(
+      resolve(__dirname, '../LegalDocumentsTab.tsx'),
+      'utf8',
+    );
+    expect(source).not.toMatch(/SendDocumentsEmailModal/);
+    expect(source).not.toMatch(/sendBookingDocumentsEmail/);
+    expect(source).not.toMatch(/Unterlagen senden|Rechnung senden|Protokoll senden/);
+  });
+
+  it('InvoicesView send action uses generated document id', () => {
+    const source = readFileSync(resolve(__dirname, '../InvoicesView.tsx'), 'utf8');
+    expect(source).toContain('generatedDocumentId');
+    expect(source).toContain('SendDocumentsEmailLauncherProvider');
+    expect(source).toContain('Rechnung senden');
   });
 });

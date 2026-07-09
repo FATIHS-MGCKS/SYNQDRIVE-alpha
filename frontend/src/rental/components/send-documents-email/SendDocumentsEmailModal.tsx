@@ -56,6 +56,7 @@ export function SendDocumentsEmailModal({
   documentTypes,
   initiallySelectedDocumentIds = [],
   sourceContext,
+  initialMessage,
   onSent,
 }: SendDocumentsEmailModalProps) {
   const { orgName } = useRentalOrg();
@@ -113,12 +114,15 @@ export function SendDocumentsEmailModal({
       .map((id) => documents.find((d) => d.id === id)?.documentType)
       .filter((t): t is string => Boolean(t));
     setSubject(buildDefaultSubject(bookingLabel, types, sourceContext));
-    setMessage(buildDefaultMessage(customerName, bookingLabel, types));
+    setMessage(
+      initialMessage ?? buildDefaultMessage(customerName, bookingLabel, types),
+    );
   }, [
     bookingLabel,
     customer,
     customerName,
     documents,
+    initialMessage,
     initiallySelectedDocumentIds,
     sourceContext,
   ]);

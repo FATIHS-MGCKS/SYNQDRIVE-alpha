@@ -169,8 +169,17 @@ export function HandoverProvider({
   );
 
   const handleSuccess = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('handover:completed'));
-  }, []);
+    window.dispatchEvent(
+      new CustomEvent('handover:completed', {
+        detail: {
+          bookingId: booking?.id,
+          kind,
+          customerId: booking?.customerId ?? null,
+          customerName: booking?.customerName,
+        },
+      }),
+    );
+  }, [booking?.id, booking?.customerId, booking?.customerName, kind]);
 
   const value = useMemo(() => ({ openHandover }), [openHandover]);
 

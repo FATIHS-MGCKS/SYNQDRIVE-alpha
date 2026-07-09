@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'repo-wide-document-send-v49294-2026-07-09',
+    version: '4.9.294',
+    title: 'V4.9.294 — Repo-weite Dokumentenversand-UX (SendDocumentsEmailLauncher)',
+    summary: [
+      'Zentraler SendDocumentsEmailLauncherProvider + useSendDocumentsEmailLauncher — ein Modal, ein API-Pfad.',
+      'Bookings-Tabelle: „Unterlagen senden“ im More-Menü (nur bei Kunden-E-Mail + sendbare Dokumente).',
+      'InvoicesView: „Rechnung senden“ über generatedDocumentId + Buchungskontext; Zahlungshinweis bei offenem Betrag.',
+      'Handover/Operator: Toast nach Übergabe + Protokoll-Send-CTAs im Operator-Dokumentenpanel.',
+      'Customer Timeline: Versand-Chip + „Erneut senden“ für DOCUMENT_EMAIL NOTE_ADDED Events.',
+      'Booking-List-API: customerEmail + sendableDocumentCount für Send-Affordances.',
+    ],
+    reason:
+      'Nach der Primärintegration in BookingDocumentsSection sollen kontextuelle Versand-Shortcuts an weiteren Prozesspunkten verfügbar sein — ohne Button-Spam und ohne parallele Mail-Logik.',
+    previousBehavior:
+      'Nur BookingDocumentsSection nutzte SendDocumentsEmailModal; InvoicesView/Bookings-Liste/Handover/Customer-Timeline ohne Versand.',
+    details:
+      'Frontend: send-documents-email/SendDocumentsEmailLauncherProvider, permissions, erweiterte Utils-Tests (LegalDocumentsTab ohne Send, Invoices generatedDocumentId). Backend: bookings.service list row enrichment. DocumentsView/LegalDocumentsTab unverändert ohne Kundensendung.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-09T05:30:00.000Z',
+  },
+  {
     id: 'send-documents-email-modal-v49293-2026-07-09',
     version: '4.9.293',
     title: 'V4.9.293 — Booking document email send modal (SendDocumentsEmailModal)',

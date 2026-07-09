@@ -1,9 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ExternalLink, FileText, Loader2, RefreshCw } from 'lucide-react';
+import { ExternalLink, FileText, Loader2, Mail, RefreshCw } from 'lucide-react';
 import { StatusChip } from '../../components/patterns';
 import { api } from '../../lib/api';
 import { resolveDocumentPreviewUrl } from '../../rental/components/customer-detail/customerDetailUtils';
 import type { CustomerDocumentRecord } from '../../rental/components/CustomerDocumentUploadBox';
+import { useSendDocumentsEmailLauncher } from '../../rental/components/send-documents-email/SendDocumentsEmailLauncherProvider';
+import {
+  PICKUP_SEND_TYPES,
+  RETURN_SEND_TYPES,
+  isDocumentSelectable,
+} from '../../rental/components/send-documents-email/send-documents-email.utils';
 import { OperatorGlassCard } from '../components/OperatorGlassCard';
 import {
   buildOperatorDocumentSlots,
@@ -27,6 +33,8 @@ interface Props {
   orgId: string | undefined;
   bookingId: string | undefined;
   customerId?: string;
+  customerEmail?: string | null;
+  customerName?: string | null;
   /** Optional AI Upload CTA below document list */
   onAiUpload?: () => void;
   compact?: boolean;
@@ -66,11 +74,14 @@ export function OperatorBookingDocumentsPanel({
   orgId,
   bookingId,
   customerId,
+  customerEmail,
+  customerName,
   onAiUpload,
   compact,
 }: Props) {
   const { view, loading, error, reload } = useOperatorBookingDocuments(orgId, bookingId);
   const customerDocs = useOperatorCustomerDocuments(orgId, customerId);
+  const { openForBooking, canSend } = useSendDocumentsEmailLauncher();
 
   const handleReload = () => {
     void reload();
@@ -86,6 +97,52 @@ export function OperatorBookingDocumentsPanel({
   const extraSlots = slots.filter(
     (s) => !OPERATOR_BOOKING_DOCUMENT_GROUPS.some((g) => g.types.includes(s.documentType)),
   );
+
+  const pickupDoc = slotsByType.get('HANDOVER_PICKUP')?.doc;
+  const returnDoc = slotsByType.get('HANDOVER_RETURN')?.doc;
+  const finalInvoiceDoc = slotsByType.get('FINAL_INVOICE')?.doc;
+
+  const sendPickup =
+    canSend &&
+    bookingId &&
+    pickupDoc &&
+    isDocumentSelectable(pickupDoc);
+  const sendReturn =
+    canSend &&
+    bookingId &&
+    returnDoc &&
+    isDocumentSelectable(returnDoc);
+
+  const handleSendPickup = () => {
+    if (!bookingId || !pickupDoc) return;
+    void openForBooking({
+      bookingId,
+      customer: { email: customerEmail, fullName: customerName },
+      documents: view?.documents ?? [],
+      documentTypes: [...PICKUP_SEND_TYPES],
+      initiallySelectedDocumentIds: [pickupDoc.id],
+      sourceContext: 'HANDOVER_PICKUP',
+      onSent: () => void reload(),
+    });
+  };
+
+  const handleSendReturn = () => {
+    if (!bookingId || !returnDoc) return;
+    const types = [...RETURN_SEND_TYPES];
+    const ids = [returnDoc.id];
+    if (finalInvoiceDoc && isDocumentSelectable(finalInvoiceDoc)) {
+      ids.push(finalInvoiceDoc.id);
+    }
+    void openForBooking({
+      bookingId,
+      customer: { email: customerEmail, fullName: customerName },
+      documents: view?.documents ?? [],
+      documentTypes: types,
+      initiallySelectedDocumentIds: ids,
+      sourceContext: 'HANDOVER_RETURN',
+      onSent: () => void reload(),
+    });
+  };
 
   return (
     <div className="space-y-3">
@@ -212,6 +269,33 @@ export function OperatorBookingDocumentsPanel({
               />
             );
           })}
+        </div>
+      )}
+
+      {(sendPickup || sendReturn) && (
+        <div className="flex flex-wrap gap-2 border-t border-border/50 pt-3">
+          {sendPickup && (
+            <button
+              type="button"
+              onClick={handleSendPickup}
+              className="sq-press inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-border px-3 text-[11px] font-semibold"
+            >
+              <Mail className="h-3.5 w-3.5" />
+              Pickup-Protokoll senden
+            </button>
+          )}
+          {sendReturn && (
+            <button
+              type="button"
+              onClick={handleSendReturn}
+              className="sq-press inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-border px-3 text-[11px] font-semibold"
+            >
+              <Mail className="h-3.5 w-3.5" />
+              {finalInvoiceDoc && isDocumentSelectable(finalInvoiceDoc)
+                ? 'Rückgabe & Schlussrechnung senden'
+                : 'Rückgabeprotokoll senden'}
+            </button>
+          )}
         </div>
       )}
 

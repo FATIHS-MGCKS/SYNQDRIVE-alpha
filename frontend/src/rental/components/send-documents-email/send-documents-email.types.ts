@@ -46,5 +46,7 @@ export interface SendDocumentsEmailModalProps {
   documentTypes?: string[];
   initiallySelectedDocumentIds?: string[];
   sourceContext: SendDocumentsSourceContext;
+  /** Optional override for the default message body (e.g. invoice payment hint). */
+  initialMessage?: string;
   onSent?: () => void | Promise<void>;
 }

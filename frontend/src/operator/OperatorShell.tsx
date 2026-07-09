@@ -16,6 +16,7 @@ import { OperatorTodayView } from './views/OperatorTodayView';
 import { OperatorVehiclesView } from './views/OperatorVehiclesView';
 import { FleetProvider } from '../rental/FleetContext';
 import { OperatorHandoverProvider } from './handover/OperatorHandoverProvider';
+import { SendDocumentsEmailLauncherProvider } from '../rental/components/send-documents-email/SendDocumentsEmailLauncherProvider';
 import { OperatorDamageCaptureProvider } from './damages/OperatorDamageCaptureProvider';
 
 function useSystemDarkMode(): boolean {
@@ -84,11 +85,13 @@ export function OperatorShell() {
     <OperatorShellProvider>
       <OperatorDamageCaptureProvider>
         <OperatorHandoverProvider isDarkMode={isDarkMode}>
+          <SendDocumentsEmailLauncherProvider>
           <FleetProvider>
             <OperatorDataProvider>
               <OperatorShellInner />
             </OperatorDataProvider>
           </FleetProvider>
+          </SendDocumentsEmailLauncherProvider>
         </OperatorHandoverProvider>
       </OperatorDamageCaptureProvider>
     </OperatorShellProvider>

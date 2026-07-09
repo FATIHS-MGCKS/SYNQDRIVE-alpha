@@ -1,7 +1,16 @@
 import { useMemo } from 'react';
+import { Loader2, Mail, MoreHorizontal } from 'lucide-react';
 import { DataTable, EmptyState } from '../../../components/patterns';
+import { Button } from '../../../components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '../../../components/ui/dropdown-menu';
 import { Icon } from '../ui/Icon';
 import type { BookingUiRow } from '../../lib/entityMappers';
+import { bookingRowCanSendDocuments } from '../send-documents-email/send-documents-email.utils';
 import { BookingStatusBadge } from './bookingStatus';
 import { bookingRef, formatCents, rowStatus } from './bookingUtils';
 
@@ -11,6 +20,9 @@ interface BookingsTableViewProps {
   onRowClick: (id: string) => void;
   onEdit?: (id: string) => void;
   onCancel?: (id: string) => void;
+  onSendDocuments?: (row: BookingUiRow) => void;
+  canSendDocuments?: boolean;
+  sendingBookingId?: string | null;
 }
 
 export function BookingsTableView({
@@ -19,6 +31,9 @@ export function BookingsTableView({
   onRowClick,
   onEdit,
   onCancel,
+  onSendDocuments,
+  canSendDocuments = false,
+  sendingBookingId = null,
 }: BookingsTableViewProps) {
   const columns = useMemo(
     () => [
@@ -100,10 +115,18 @@ export function BookingsTableView({
         onRowClick={(b) => onRowClick(b.id)}
         rowActions={(b) => {
           const status = rowStatus(b);
-          if (status !== 'pending' && status !== 'confirmed') return null;
+          const showEditCancel = status === 'pending' || status === 'confirmed';
+          const showSend =
+            canSendDocuments &&
+            onSendDocuments &&
+            bookingRowCanSendDocuments(b.customerEmail, b.sendableDocumentCount);
+          const sending = sendingBookingId === b.id;
+
+          if (!showEditCancel && !showSend) return null;
+
           return (
-            <div className="flex gap-1">
-              {onEdit && (
+            <div className="flex items-center gap-1">
+              {showEditCancel && onEdit && (
                 <button
                   type="button"
                   onClick={(e) => {
@@ -116,7 +139,7 @@ export function BookingsTableView({
                   <Icon name="pencil" className="w-3 h-3" />
                 </button>
               )}
-              {onCancel && (
+              {showEditCancel && onCancel && (
                 <button
                   type="button"
                   onClick={(e) => {
@@ -128,6 +151,36 @@ export function BookingsTableView({
                 >
                   <Icon name="trash-2" className="w-3 h-3" />
                 </button>
+              )}
+              {showSend && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      disabled={sending}
+                      onClick={(e) => e.stopPropagation()}
+                      title="Weitere Aktionen"
+                    >
+                      {sending ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <MoreHorizontal className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenuItem
+                      disabled={sending}
+                      onClick={() => onSendDocuments(b)}
+                    >
+                      <Mail className="mr-2 h-3.5 w-3.5" />
+                      Unterlagen senden
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </div>
           );

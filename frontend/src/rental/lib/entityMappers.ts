@@ -391,6 +391,8 @@ export interface BookingUiRow {
   vehicleId: string | null;
   customerId: string | null;
   customer: string;
+  customerEmail?: string | null;
+  sendableDocumentCount?: number;
   customerPhone: string;
   vehicle: string;
   plate: string;
@@ -512,6 +514,9 @@ export function mapApiBooking(api: any): BookingUiRow {
     vehicleId: api.vehicleId ?? api.vehicle?.id ?? null,
     customerId: api.customerId ?? api.customer?.id ?? null,
     customer: api.customerName ?? api.customer ?? '',
+    customerEmail: api.customerEmail ?? api.customer?.email ?? null,
+    sendableDocumentCount:
+      typeof api.sendableDocumentCount === 'number' ? api.sendableDocumentCount : undefined,
     customerPhone: api.customerPhone ?? '',
     vehicle: api.vehicleName ?? api.vehicle ?? '',
     plate: api.vehicleLicense ?? api.plate ?? '',
