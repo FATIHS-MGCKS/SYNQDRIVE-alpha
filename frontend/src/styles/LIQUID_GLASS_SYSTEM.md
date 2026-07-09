@@ -317,6 +317,7 @@ Before adding or changing a surface, answer:
 
 | Document | Role |
 |----------|------|
+| `SURFACE_INSPIRATION_AUDIT.md` | External liquid vs frosted research, recipes, license guidance |
 | `THEME_COLOR_CONTRACT.md` | Color + token values, shadcn bridge |
 | `theme.css` | Implementation + a11y media queries |
 | `components/patterns/data-card.tsx` | L0/L1 pattern reference |

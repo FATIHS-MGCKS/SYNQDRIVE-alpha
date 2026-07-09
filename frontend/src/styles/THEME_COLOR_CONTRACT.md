@@ -2,6 +2,7 @@
 
 > **Scope:** Central design tokens in `frontend/src/styles/theme.css`  
 > **Surface levels (L0–L4):** `frontend/src/styles/LIQUID_GLASS_SYSTEM.md`  
+> **Inspiration & technique audit:** `frontend/src/styles/SURFACE_INSPIRATION_AUDIT.md`  
 > **Tailwind bridge:** `@theme inline` block in the same file (Tailwind v4 — no separate `tailwind.config.*`)  
 > **Entry point:** `frontend/src/styles/index.css` → `fonts.css` → `tailwind.css` → `theme.css`
 

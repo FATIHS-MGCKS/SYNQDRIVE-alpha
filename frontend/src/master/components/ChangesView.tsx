@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'surface-inspiration-audit-v49273-2026-07-09',
+    version: '4.9.273',
+    title: 'V4.9.273 — Surface Inspiration & Technique Audit',
+    summary: [
+      'Neues Recherche-Dokument SURFACE_INSPIRATION_AUDIT.md: getrennte Bewertung Liquid Glass (L3) vs. Frosted Glass (L2).',
+      'Externe Quellen (liquid-dom, Aave, Josh Comeau, shadcn-glass-ui, glinui, …) kritisch bewertet.',
+      'Vergleichstabelle, Browser-/Performance-Risiken, Lizenzempfehlung, L2/L3/L0-Rezepte.',
+      'Empfehlung: keine externe Library; CSS-only L2; L3 CSS-HUD beibehalten; optional SVG-Prototype später.',
+      'Keine Code-, Dependency- oder Komponenten-Änderungen.',
+    ],
+    reason:
+      'Vor Implementierungsphase klären, welche externen Liquid-/Glassmorphism-Ansätze für SynqDrive geeignet sind — und welche ausdrücklich tabu bleiben.',
+    previousBehavior:
+      'LIQUID_GLASS_SYSTEM.md definiert Level, aber ohne externe Technik- und Inspirationsbewertung.',
+    details:
+      'frontend/src/styles/SURFACE_INSPIRATION_AUDIT.md (neu), LIQUID_GLASS_SYSTEM.md (Querverweis). Research only.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-09T00:05:00.000Z',
+  },
+  {
     id: 'liquid-glass-surface-system-v49272-2026-07-08',
     version: '4.9.272',
     title: 'V4.9.272 — Surface / Glass / Liquid System (Dokumentation)',
