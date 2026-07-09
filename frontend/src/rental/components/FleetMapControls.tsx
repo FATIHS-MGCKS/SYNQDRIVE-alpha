@@ -62,7 +62,7 @@ export function FleetMapControls({
             type="button"
             onClick={onRefresh}
             disabled={loading}
-            className="sq-map-liquid-pill mt-2 w-full flex-row gap-1.5 py-1.5 px-2 pointer-events-auto disabled:opacity-60"
+            className="sq-map-liquid-action mt-2 w-full py-1.5 px-2 pointer-events-auto disabled:opacity-60"
           >
             <RefreshCw className={`w-3 h-3 shrink-0 ${loading ? 'animate-spin' : ''}`} />
             <span className="text-[9.5px] font-semibold">Refresh now</span>

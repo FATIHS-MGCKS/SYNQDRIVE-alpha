@@ -101,7 +101,7 @@ export function OverviewLiveMapCard({
     : '—';
 
   return (
-    <div className="rounded-xl p-3 border border-border bg-card shadow-sm transition-shadow hover:shadow-md">
+    <div className="surface-premium rounded-xl p-3">
       <div className="group relative h-[340px] rounded-lg overflow-hidden transition-all duration-300">
         <LiveMapOverview
           key={vehicleId ?? 'no-vehicle'}

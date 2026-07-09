@@ -10,6 +10,8 @@ import { StatusDot } from './status';
    dividers + spacing for plain data (see the brief's anti-card rule).
    ════════════════════════════════════════════════════════════════════ */
 
+export type DataCardSurface = 'solid' | 'premium' | 'elevated';
+
 export interface DataCardProps {
   children: ReactNode;
   title?: ReactNode;
@@ -21,9 +23,28 @@ export interface DataCardProps {
   interactive?: boolean;
   /** Remove inner padding (e.g. when embedding a table flush to edges). */
   flush?: boolean;
+  /** Explicit surface layer — overrides flush/interactive defaults when set. */
+  surface?: DataCardSurface;
   className?: string;
   bodyClassName?: string;
   onClick?: () => void;
+}
+
+function resolveDataCardSurfaceClass(
+  surface: DataCardSurface | undefined,
+  isInteractive: boolean,
+  flush: boolean | undefined,
+): string {
+  if (surface) {
+    return surface === 'solid'
+      ? 'surface-solid'
+      : surface === 'premium'
+        ? 'surface-premium'
+        : 'surface-elevated';
+  }
+  if (isInteractive) return 'surface-elevated';
+  if (flush) return 'surface-solid';
+  return 'surface-premium';
 }
 
 export function DataCard({
@@ -34,17 +55,14 @@ export function DataCard({
   footer,
   interactive,
   flush,
+  surface,
   className,
   bodyClassName,
   onClick,
 }: DataCardProps) {
   const hasHeader = title != null || actions != null || description != null;
   const isInteractive = interactive || onClick != null;
-  const surfaceClass = isInteractive
-    ? 'surface-elevated'
-    : flush
-      ? 'surface-solid'
-      : 'surface-premium';
+  const surfaceClass = resolveDataCardSurfaceClass(surface, isInteractive, flush);
 
   return (
     <div
@@ -102,6 +120,8 @@ export interface MetricCardProps {
   loading?: boolean;
   onClick?: () => void;
   className?: string;
+  /** Explicit surface layer — default premium; elevated when onClick is set. */
+  surface?: DataCardSurface;
   /** `numeric` = KPI numbers (default). `summary` = compact text lines, not hero-sized. */
   variant?: 'numeric' | 'summary';
   /** Numeric value scale — `compact` caps display size for dense summary grids. */
@@ -127,12 +147,23 @@ export function MetricCard({
   loading,
   onClick,
   className,
+  surface,
   variant = 'numeric',
   valueSize = 'default',
 }: MetricCardProps) {
+  const surfaceClass = surface
+    ? surface === 'solid'
+      ? 'surface-solid'
+      : surface === 'premium'
+        ? 'surface-premium'
+        : 'surface-elevated'
+    : onClick
+      ? 'surface-elevated'
+      : 'surface-premium';
+
   if (loading) {
     return (
-      <div className={cn('surface-premium p-4', className)}>
+      <div className={cn(surfaceClass, 'p-4', className)}>
         <div className="flex items-center justify-between">
           <Skeleton className="h-3 w-20" />
           <Skeleton className="h-5 w-5 rounded-md" />
@@ -146,7 +177,8 @@ export function MetricCard({
   return (
     <div
       className={cn(
-        onClick ? 'surface-elevated cursor-pointer' : 'surface-premium',
+        surfaceClass,
+        onClick && 'cursor-pointer',
         'flex h-full flex-col p-3.5 sm:p-4',
         className,
       )}

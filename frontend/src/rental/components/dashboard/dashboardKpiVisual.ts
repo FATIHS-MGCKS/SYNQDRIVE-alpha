@@ -88,7 +88,7 @@ export function getKpiCardSurfaceClass(tone: KpiCardTone, _embedded: boolean): s
         'bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-warning)_7%,transparent),color-mix(in_srgb,var(--status-warning)_2%,transparent))]',
       );
     default:
-      return 'border-border/45';
+      return '';
   }
 }
 

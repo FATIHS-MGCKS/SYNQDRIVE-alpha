@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'surface-system-visual-rescue-v49279-2026-07-09',
+    version: '4.9.279',
+    title: 'V4.9.279 — Surface System Visual Rescue (L1 + L3 sichtbar)',
+    summary: [
+      'theme.css: L1 --surface-premium-* Tokens mit sichtbarem Gradient/Border/Shadow (nicht mehr ≈ --card); L3 --map-glass-* verstärkt für helle Karten.',
+      'L3 Pseudo-Layer (::before shine, ::after catch/rim) stärker; sq-map-glass-control-btn mit sichtbarer Kante; sq-map-marker-callout opaker für Lesbarkeit.',
+      'sq-map-liquid-action: solider CTA-Button innerhalb L3-Panels (Fleet Refresh).',
+      'DataCard/MetricCard: surface-Prop (solid|premium|elevated); BusinessPulse Finance-KPIs → surface-elevated.',
+      'ControlKpiStrip: keine bg-background/40-Overrides; VehicleHealthBox + OverviewLiveMapCard → surface-premium; Trip-Panels ohne doppelte border/shadow.',
+      'Vehicle Overview Map HUD: L3 Liquid (Option 1) mit verstärktem Material — keine Premium-Mini-HUD-Umstellung nötig.',
+    ],
+    reason:
+      'Surface-Phasen waren technisch vorhanden, aber auf Mobile Safari kaum sichtbar — Tokens zu nah an --card, lokale Tailwind-Klassen überschrieben Material.',
+    previousBehavior:
+      'L1 Premium ≈ flache --card-Fläche; L3 Map-HUD wirkte wie weiße Floating Cards; BusinessPulse nutzte bg-background/40.',
+    details:
+      'Audit: alle Zielklassen existieren als echte CSS-Selektoren. Fix: sichtbare Token-Werte + gezielte Komponenten-Anwendung ohne Business-Logik-Änderung.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-09T01:45:00.000Z',
+  },
+  {
     id: 'surface-system-l3-map-liquid-hud-v49278-2026-07-09',
     version: '4.9.278',
     title: 'V4.9.278 — Surface System L3 Map Liquid HUD Redesign',

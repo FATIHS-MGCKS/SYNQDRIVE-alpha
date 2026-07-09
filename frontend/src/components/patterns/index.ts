@@ -47,7 +47,7 @@ export { PageHeader, SectionHeader } from './page-header';
 export type { PageHeaderProps, PageHeaderVariant, SectionHeaderProps } from './page-header';
 
 export { DataCard, MetricCard } from './data-card';
-export type { DataCardProps, MetricCardProps, MetricTrend } from './data-card';
+export type { DataCardProps, DataCardSurface, MetricCardProps, MetricTrend } from './data-card';
 
 export { EmptyState, ErrorState, SkeletonRows, SkeletonMetricGrid, SkeletonCard } from './states';
 export type { EmptyStateProps, ErrorStateProps, SkeletonRowsProps, SkeletonGridProps } from './states';

@@ -151,11 +151,11 @@ function financeKpiCardClass(metricId: BusinessMetricId, slice: BusinessPulseSli
   const { isCritical, isWatch } = financeKpiVisualState(metricId, slice);
 
   return cn(
-    'sq-press group relative min-h-[88px] overflow-hidden rounded-2xl border bg-background/40 px-3 py-3 text-left transition-colors duration-200',
-    'hover:border-border/60 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
-    isCritical && 'border-[color:var(--status-critical)]/35 bg-[color:var(--status-critical)]/[0.035]',
-    isWatch && 'border-[color:var(--status-watch)]/30 bg-card/55',
-    !isCritical && !isWatch && 'border-border/45',
+    'surface-elevated sq-press group relative min-h-[88px] overflow-hidden rounded-2xl px-3 py-3 text-left transition-colors duration-200',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+    isCritical && 'border-[color:var(--status-critical)]/35 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-critical)_7%,var(--surface-premium-bg-end)),color-mix(in_srgb,var(--status-critical)_2%,var(--surface-premium-bg-end)))]',
+    isWatch && 'border-[color:var(--status-watch)]/30 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-warning)_6%,var(--surface-premium-bg-end)),color-mix(in_srgb,var(--status-warning)_2%,var(--surface-premium-bg-end)))]',
+    !isCritical && !isWatch && 'border-[color:var(--surface-premium-border)]',
   );
 }
 
@@ -338,7 +338,7 @@ export function BusinessPulse({
             <SkeletonMetricGrid
               count={4}
               className="grid w-full grid-cols-2 gap-3"
-              cardClassName="min-h-[88px] rounded-2xl bg-background/40"
+              cardClassName="min-h-[88px] rounded-2xl surface-premium"
             />
           </div>
         ) : error ? (

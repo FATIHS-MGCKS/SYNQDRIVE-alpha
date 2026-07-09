@@ -888,4 +888,6 @@ Use `.sq-press` / `.sq-3d-btn` for **buttons inside** cards — not on the card 
 
 ---
 
+*V4.9.279 — Visual Rescue: L1 premium tokens decoupled from `--card`; L3 map-glass strengthened for light imagery; component-level surface adoption (BusinessPulse, VehicleHealthBox, OverviewLiveMapCard, FleetMapControls refresh CTA).*
+
 *V4.9.278 — L3 Map Liquid HUD redesign.*

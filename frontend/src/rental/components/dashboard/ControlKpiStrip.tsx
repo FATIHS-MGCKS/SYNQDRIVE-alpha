@@ -78,8 +78,8 @@ function kpiCardClass(
           : 'min-h-[96px]';
 
   return cn(
-    'surface-elevated sq-press group relative overflow-hidden border text-left transition-colors duration-200',
-    'hover:border-border/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+    'surface-elevated sq-press group relative overflow-hidden text-left transition-colors duration-200',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
     embedded ? 'rounded-2xl px-3 py-3' : 'rounded-lg px-2.5 py-2',
     sizeClass,
     getKpiCardSurfaceClass(cardTone, embedded),

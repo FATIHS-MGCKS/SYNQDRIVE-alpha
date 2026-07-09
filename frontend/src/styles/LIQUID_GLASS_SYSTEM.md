@@ -1,6 +1,6 @@
 # SynqDrive Surface / Glass / Liquid System
 
-> **Status:** Architecture contract (documentation only — no visual migration applied yet)  
+> **Status:** Implemented (V4.9.275–279) — canonical CSS in `theme.css`  
 > **Canonical CSS:** `frontend/src/styles/theme.css`  
 > **Color tokens:** `frontend/src/styles/THEME_COLOR_CONTRACT.md`  
 > **Entry:** `frontend/src/styles/index.css`
@@ -80,10 +80,10 @@ L4 overlay-scrim     ▓▓▓▓  dimmed backdrop; content stays L0/L1
 
 | Property | Rule |
 |----------|------|
-| Background | Opaque `var(--card)` + **subtle surface gradient** (2–4% lightness shift) |
+| Background | Opaque cool-white gradient (light: `rgba(255,255,255,.98)` → `rgba(247,249,252,.96)`; dark: graphite) |
 | Blur | **None** |
-| Border | Fine `var(--border)` hairline |
-| Shadow | Inset top highlight + ambient `--shadow-sm` / `--shadow-md` |
+| Border | `rgba(17,24,39,.085)` light / fine white hairline dark — stronger than L0 `--border` |
+| Shadow | Inset top highlight + bottom catch + `0 8px 24px` ambient (V4.9.279 rescue tuning) |
 | Pseudo-layers | **Inset box-shadow only** — no `::before` shine stack (that is L3) |
 | Interaction | Optional hover lift → use `.sq-card-elevated` or `DataCard interactive` |
 | Use for | Dashboard KPIs, customer/vehicle/booking cards, health modules, admin summary cards, fleet command rows (when card-wrapped), featured `MetricCard` / `DataCard` |

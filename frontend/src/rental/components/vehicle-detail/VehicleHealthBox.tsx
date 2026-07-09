@@ -301,7 +301,7 @@ export function VehicleHealthBox({
   const compactOverview = !showDataBasis;
 
   return (
-    <div className="group relative flex h-full flex-col rounded-xl p-3 border transition-shadow duration-300 ease-[var(--ease-out-soft)] hover:shadow-md border-border bg-card text-foreground shadow-sm">
+    <div className="surface-premium group relative flex h-full flex-col rounded-xl p-3 text-foreground">
       <div className="mb-2.5 flex items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           <h3 className="text-[11px] font-bold tracking-[-0.01em] text-foreground">Vehicle Health</h3>
