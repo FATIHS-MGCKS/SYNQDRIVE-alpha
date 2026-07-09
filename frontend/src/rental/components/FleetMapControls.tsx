@@ -46,7 +46,7 @@ export function FleetMapControls({
     <>
       {/* Top-right: status + refresh */}
       <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-2 pointer-events-none">
-        <div className="sq-map-liquid-glass pointer-events-auto px-3 py-2 min-w-[9.5rem]">
+        <div className="sq-map-liquid-glass sq-map-liquid-glass--panel pointer-events-auto px-3 py-2 min-w-[9.5rem]">
           <p className="text-[10px] font-semibold tracking-wide text-foreground/90">
             Fleet Map
           </p>
@@ -99,7 +99,7 @@ export function FleetMapControls({
 
       {/* Bottom-left: collapsible legend */}
       <div className="absolute bottom-3 left-3 z-10 pointer-events-none max-w-[calc(100%-1.5rem)]">
-        <div className="sq-map-liquid-glass pointer-events-auto overflow-hidden">
+        <div className="sq-map-liquid-glass sq-map-liquid-glass--panel sq-map-liquid-glass--legend pointer-events-auto overflow-hidden">
           <button
             type="button"
             onClick={() => setLegendOpen((open) => !open)}

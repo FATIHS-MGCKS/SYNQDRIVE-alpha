@@ -73,7 +73,7 @@ export function TripMapDataQualityOverlay({ quality, routeLoading }: TripMapData
 
   return (
     <div className="pointer-events-none absolute top-2.5 right-2.5 z-20 max-w-[min(14rem,calc(100%-5.5rem))]">
-      <div className="sq-map-liquid-glass pointer-events-auto px-2 py-2 flex flex-col items-end gap-1">
+      <div className="sq-map-liquid-glass sq-map-liquid-glass--panel pointer-events-auto px-2 py-2 flex flex-col items-end gap-1">
         {chips.slice(0, 4).map((chip) => (
           <QualityChip key={chip.key} tone={chip.tone} label={chip.label} icon={chip.icon} />
         ))}

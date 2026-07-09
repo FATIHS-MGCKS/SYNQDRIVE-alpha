@@ -45,7 +45,7 @@ export function TripMapLayerControls({
 
   return (
     <div className="pointer-events-none absolute bottom-14 left-2.5 right-2.5 z-20 flex justify-center sm:justify-start">
-      <div className="sq-map-liquid-glass pointer-events-auto px-2 py-1.5 flex flex-wrap items-center gap-1 max-w-full">
+      <div className="sq-map-liquid-glass sq-map-liquid-glass--legend pointer-events-auto px-2 py-1.5 flex flex-wrap items-center gap-1 max-w-full">
         {allChips.map((chip) => {
           const active = layers[chip.key];
           return (

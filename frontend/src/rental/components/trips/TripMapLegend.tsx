@@ -3,7 +3,7 @@ import { TRIPS_COPY } from './trips-view-ui';
 export function TripMapLegend() {
   return (
     <div className="pointer-events-none absolute bottom-2.5 left-2.5 z-10">
-      <div className="sq-map-liquid-glass pointer-events-auto px-2.5 py-1.5 flex items-center gap-2.5 flex-wrap">
+      <div className="sq-map-liquid-glass sq-map-liquid-glass--legend pointer-events-auto px-2.5 py-1.5 flex items-center gap-2.5 flex-wrap">
         <LegendItem color="bg-status-info" label={TRIPS_COPY.slow} line />
         <LegendItem color="bg-green-500" label={TRIPS_COPY.normal} line />
         <LegendItem color="bg-yellow-500" label={TRIPS_COPY.fast} line />

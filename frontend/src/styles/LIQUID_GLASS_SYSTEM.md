@@ -130,15 +130,19 @@ L4 overlay-scrim     ▓▓▓▓  dimmed backdrop; content stays L0/L1
 
 ---
 
-### L3 — `surface-liquid`
+### L3 — `surface-liquid` (V4.9.283 Ultra tuning)
 
-**Role:** SynqDrive **Liquid Glass** — premium floating HUD over imagery.
+**Role:** SynqDrive **Liquid Glass** — premium floating HUD over imagery. Simulated refraction via layered gradients + pseudo shine/rim (no SVG/WebGL).
 
 | Property | Rule |
 |----------|------|
-| Tokens | `--map-glass-bg`, `--map-glass-bg-strong`, `--map-glass-border`, `--map-glass-highlight`, `--map-glass-shine`, `--map-glass-shadow`, `--map-glass-blur` |
-| Blur | **20–22px** + `saturate(185%+)` + optional `contrast(1.03)` |
-| Pseudo-layers | `::before` (shine gradient), `::after` (edge catch) on pill/badge/glass variants |
+| Tokens | `--map-glass-bg`, `--map-glass-bg-strong`, `--map-glass-bg-panel`, `--map-glass-border`, `--map-glass-highlight`, `--map-glass-shine`, `--map-glass-catch`, `--map-glass-tint`, `--map-glass-refract`, `--map-glass-contact-shadow`, `--map-glass-ambient-shadow`, `--map-glass-blur`, `--map-glass-saturate`, `--map-glass-contrast` |
+| Blur | **22px** light / **24px** dark + `saturate(168–180%)` + `contrast(1.05–1.06)` |
+| Pseudo-layers | `::before` diagonal shine + refract tint (subtle translate); `::after` inner rim + edge catch |
+| Light mode | Cool translucent fill (not milky white); stronger border + ambient shadow |
+| Dark mode | Graphite translucent + inner sheen; brighter top edge |
+| Modifiers | `--panel` (more opaque panels/callouts), `--legend` (compact legend chip), `--callout` (marker/event popover), `--stats` (vehicle overview HUD pills) |
+| CTAs inside L3 | `.sq-map-liquid-action` — solid L1 premium button inside liquid panel |
 | Placement | `position: absolute` / fixed HUD over **map or imagery** |
 | Use for | Map HUD, map controls, map badges, marker callouts, trip map overlays |
 | **Never** | Tables, sidebars, top bars, dashboard cards, operator list cards |
@@ -148,14 +152,20 @@ L4 overlay-scrim     ▓▓▓▓  dimmed backdrop; content stays L0/L1
 | Class | HUD element |
 |-------|-------------|
 | `.sq-map-liquid-glass` | Container chip (legend, layer bar, summary strip) |
+| `.sq-map-liquid-glass--panel` | Refresh card, legend shell, trip summary — higher opacity |
+| `.sq-map-liquid-glass--legend` | Compact legend / layer bar radius |
 | `.sq-map-liquid-pill` | Metric pill / action pill |
 | `.sq-map-liquid-badge` | Status / address / hint badge |
 | `.sq-map-liquid-empty` | Empty state over map |
 | `.sq-map-liquid-loading` | Loading state over map |
 | `.sq-map-liquid-hud` | Footer metric group wrapper |
-| `.sq-map-liquid-tile` | Inner tile (transparent — no extra stack) |
+| `.sq-map-liquid-hud--stats` | Vehicle overview bottom stats — tuned pills |
+| `.sq-map-liquid-action` | Solid CTA inside liquid panel (Refresh) |
 | `.sq-map-glass-controls` | Horizontal control cluster (Fit / Locate / Stations) |
 | `.sq-map-marker-callout` | DOM marker label callout |
+| `.sq-map-liquid-tile` | Inner tile (transparent — no extra stack) |
+
+**Reduced transparency / no backdrop-filter:** pseudo-layers off; solid `--popover` fill; border + `--shadow-sm`; controls/actions use same solid fallback.
 
 **Future alias:** ~~`.surface-liquid`~~ — **implemented V4.9.275** (base class); map-specific classes remain granular.
 

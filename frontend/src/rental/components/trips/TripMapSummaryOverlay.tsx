@@ -25,7 +25,7 @@ export function TripMapSummaryOverlay({ trip, isDark }: TripMapSummaryOverlayPro
 
   return (
     <div className="pointer-events-none absolute top-2.5 left-2.5 z-20 max-w-[min(18rem,calc(100%-5.5rem))]">
-      <div className="sq-map-liquid-glass pointer-events-auto px-3 py-2.5">
+      <div className="sq-map-liquid-glass sq-map-liquid-glass--panel pointer-events-auto px-3 py-2.5">
         <p className="text-[12px] font-semibold tabular-nums tracking-[-0.02em] text-foreground">
           {timeRange}
         </p>

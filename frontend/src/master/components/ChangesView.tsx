@@ -35,6 +35,51 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'l3-liquid-glass-ultra-fix-v49283-2026-07-09',
+    version: '4.9.283',
+    title: 'V4.9.283 — L3 Liquid Glass Ultra-Fix (Map HUD)',
+    summary: [
+      'theme.css: L3 Tokens erweitert (--map-glass-tint/refract/bg-panel/contact/ambient/contrast); Light cool translucent, Dark graphite sheen.',
+      'Materialmodell: multi-layer base fill, ::before specular+refract, ::after rim/catch, stärkere Schatten — CSS-only fake refraction.',
+      'Neu: sq-map-liquid-glass--panel/--legend, sq-map-liquid-hud--stats; Marker-Callouts opaker für Lesbarkeit.',
+      'sq-map-glass-control-btn + sq-map-liquid-action: klarere active/hover/pressed States innerhalb L3.',
+      'FleetMapControls, OverviewLiveMapCard, TripMap* Overlays: Panel/Legend/Stats Modifier.',
+      'Reduced-transparency + @supports fallback: Controls/Actions solid; pseudo-layers off.',
+    ],
+    reason:
+      'L3 war technisch konsistent, wirkte aber wie weiße/dunkle Floating Cards statt echtem Liquid HUD auf Map-Imagery.',
+    previousBehavior:
+      'Flaches rgba white/black, schwache Kanten, milchige Light-Mode-Panels, dunkle Card-Optik im Dark Mode.',
+    details: 'Nur Map-HUD (L3). Keine L1/L2/Content-Änderungen. Kein SVG/WebGL. Vehicle Overview Stats bleiben L3 liquid pills (--stats tuning).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-09T05:00:00.000Z',
+  },
+  {
+    id: 'l2-frosted-chrome-rollout-v49282-2026-07-09',
+    version: '4.9.282',
+    title: 'V4.9.282 — L2 Frosted Chrome Rollout (Tab Bars & Section Nav)',
+    summary: [
+      'Neu: patterns/chrome-tab-bar.ts — chromeTabBarClass, chromeTabTriggerClass, chromeSectionNavClass (L2 shell + L1 active).',
+      'Tabs/TabsList: zentrale CHROME_RADIX_TAB_TRIGGER_CLASS; TabsList default surface-frosted; active → surface-premium.',
+      'FleetHealthServiceTabBar, AdministrationTabBar, Account/Company SectionTabBar → surface-frosted chrome.',
+      'FleetHubView Top-Tabs + App.tsx Vehicle-Detail-Tabs → L2 chrome + L1 active triggers.',
+      'VoiceSectionNav + WhatsAppSectionNav: sq-card → surface-frosted chrome; active items surface-premium.',
+      'DetailDrawer: sticky Header + Footer surface-frosted; Body bleibt solid (L0).',
+      'vehicle-bookings-ui: sq-glass Content-Section → surface-premium (falsch platziertes L2 entfernt).',
+      'theme.css: sq-tab-bar dokumentiert als L0 inset; aria-selected active → premium tokens.',
+    ],
+    reason:
+      'L2 Frosted gehört auf App-Chrome (sticky Tab Bars, Section Navs, Drawer-Footer) — nicht auf Content Cards.',
+    previousBehavior:
+      'Chrome Tab Bars nutzten sq-tab-bar (solid) + bg-card active; Voice/WhatsApp Nav als sq-card; vehicle-bookings sq-glass auf Content.',
+    details:
+      'In-card sq-tab-bar (Dashboard KPIs, ActionQueue, FleetCommandPanel) bewusst L0 inset — keine Card-Frosted-Migration.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-09T04:00:00.000Z',
+  },
+  {
     id: 'l1-premium-solid-rollout-v49281-2026-07-09',
     version: '4.9.281',
     title: 'V4.9.281 — L1 Premium Solid Rollout (Kernbereiche)',
