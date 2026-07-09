@@ -74,10 +74,8 @@ export function getKpiValueTone(
   return 'neutral';
 }
 
-/** Subtle card background + border for warning/critical; neutral cards stay calm. */
-export function getKpiCardSurfaceClass(tone: KpiCardTone, embedded: boolean): string {
-  const neutralBg = embedded ? 'bg-background/40' : 'bg-card/55';
-
+/** Subtle card background + border for warning/critical; neutral relies on `.surface-elevated`. */
+export function getKpiCardSurfaceClass(tone: KpiCardTone, _embedded: boolean): string {
   switch (tone) {
     case 'critical':
       return cnJoin(
@@ -90,7 +88,7 @@ export function getKpiCardSurfaceClass(tone: KpiCardTone, embedded: boolean): st
         'bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-warning)_7%,transparent),color-mix(in_srgb,var(--status-warning)_2%,transparent))]',
       );
     default:
-      return cnJoin('border-border/45', neutralBg);
+      return 'border-border/45';
   }
 }
 

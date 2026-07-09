@@ -172,9 +172,10 @@ describe('dashboardKpiVisual', () => {
   });
 
   describe('getKpiCardSurfaceClass', () => {
-    it('neutral cards use calm border and background', () => {
-      expect(getKpiCardSurfaceClass('neutral', false)).toContain('border-border/45');
-      expect(getKpiCardSurfaceClass('neutral', true)).toContain('bg-background/40');
+    it('neutral cards use calm border only — background from surface-elevated', () => {
+      expect(getKpiCardSurfaceClass('neutral', false)).toBe('border-border/45');
+      expect(getKpiCardSurfaceClass('neutral', true)).toBe('border-border/45');
+      expect(getKpiCardSurfaceClass('neutral', false)).not.toContain('bg-');
     });
 
     it('critical and warning cards use subtle gradient surfaces', () => {

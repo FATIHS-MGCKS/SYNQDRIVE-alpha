@@ -39,12 +39,19 @@ export function DataCard({
   onClick,
 }: DataCardProps) {
   const hasHeader = title != null || actions != null || description != null;
+  const isInteractive = interactive || onClick != null;
+  const surfaceClass = isInteractive
+    ? 'surface-elevated'
+    : flush
+      ? 'surface-solid'
+      : 'surface-premium';
+
   return (
     <div
       className={cn(
-        interactive ? 'sq-card-elevated' : 'sq-card',
+        surfaceClass,
         'overflow-hidden',
-        interactive && 'cursor-pointer',
+        isInteractive && 'cursor-pointer',
         className,
       )}
       onClick={onClick}
@@ -125,7 +132,7 @@ export function MetricCard({
 }: MetricCardProps) {
   if (loading) {
     return (
-      <div className={cn('sq-card p-4', className)}>
+      <div className={cn('surface-premium p-4', className)}>
         <div className="flex items-center justify-between">
           <Skeleton className="h-3 w-20" />
           <Skeleton className="h-5 w-5 rounded-md" />
@@ -139,7 +146,7 @@ export function MetricCard({
   return (
     <div
       className={cn(
-        onClick ? 'sq-card-elevated cursor-pointer' : 'sq-card',
+        onClick ? 'surface-elevated cursor-pointer' : 'surface-premium',
         'flex h-full flex-col p-3.5 sm:p-4',
         className,
       )}

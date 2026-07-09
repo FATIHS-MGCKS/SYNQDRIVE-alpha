@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'surface-system-phase3-patterns-v49276-2026-07-09',
+    version: '4.9.276',
+    title: 'V4.9.276 — Surface System Phase 3 (Pattern-Komponenten)',
+    summary: [
+      'DataCard: flush → .surface-solid (L0); default → .surface-premium (L1); interactive/onClick → .surface-elevated.',
+      'MetricCard + SkeletonMetricGrid: .surface-premium; klickbar → .surface-elevated.',
+      'ControlKpiStrip: KPI-Buttons auf .surface-elevated; neutrale Töne ohne bg-card/55-Overlay.',
+      'dashboardKpiVisual: getKpiCardSurfaceClass neutral nur border-border/45 — Hintergrund von surface-elevated.',
+      'Kein VehicleBookingSummaryCard / booking-kpi-tile — außerhalb Pattern-Barrel.',
+    ],
+    reason:
+      'Phase 3: zentrale Pattern-Komponenten auf kanonische L0/L1-Surfaces umstellen, ohne unrelated Screens anzufassen.',
+    previousBehavior:
+      'DataCard/MetricCard nutzten Legacy .sq-card / .sq-card-elevated; Dashboard-KPIs hatten eigene bg-card/55-Hintergründe.',
+    details:
+      'frontend/src/components/patterns/data-card.tsx, states.tsx; rental/dashboard/ControlKpiStrip.tsx, dashboardKpiVisual.ts; LIQUID_GLASS_SYSTEM.md.',
+    affectsArchitecture: true,
+    module: 'Master Admin',
+    createdAt: '2026-07-09T01:00:00.000Z',
+  },
+  {
     id: 'surface-system-css-phase1-v49275-2026-07-09',
     version: '4.9.275',
     title: 'V4.9.275 — Surface System Phase 1 (CSS-Klassen + Fallbacks)',

@@ -78,8 +78,8 @@ function kpiCardClass(
           : 'min-h-[96px]';
 
   return cn(
-    'sq-press group relative overflow-hidden border text-left transition-colors duration-200',
-    'hover:border-border/60 hover:bg-muted/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+    'surface-elevated sq-press group relative overflow-hidden border text-left transition-colors duration-200',
+    'hover:border-border/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
     embedded ? 'rounded-2xl px-3 py-3' : 'rounded-lg px-2.5 py-2',
     sizeClass,
     getKpiCardSurfaceClass(cardTone, embedded),
@@ -346,7 +346,7 @@ export function ControlKpiStrip({
 
   if (loading) {
     const gridClass = kpiGridClass(embedded);
-    const skeletonCardClass = embedded ? 'min-h-[112px] rounded-2xl bg-background/40 p-3' : undefined;
+    const skeletonCardClass = embedded ? 'min-h-[112px] rounded-2xl p-3' : undefined;
 
     return (
       <SkeletonMetricGrid count={6} className={cn(gridClass, '!grid-cols-2')} cardClassName={skeletonCardClass} />

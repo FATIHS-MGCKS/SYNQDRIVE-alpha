@@ -336,7 +336,7 @@ Light/dark values: see `THEME_COLOR_CONTRACT.md` § Glass / Map glass.
 |-------|--------|----------------|
 | **1 — CSS system** | Canonical `.surface-*` classes, `.sq-card-premium`, fallbacks, tokens | **No** (opt-in premium only) |
 | **2 — Documentation** | This file + audits + contract cross-links | **No** |
-| **3 — Component opt-in** | `MetricCard` / featured surfaces adopt `.surface-premium` | Per call site |
+| **3 — Component opt-in** | `DataCard` / `MetricCard` / dashboard KPI strip adopt `.surface-premium` / `.surface-elevated` | ✅ V4.9.276 (pattern entry points) |
 | **4 — Map HUD consolidate** | Map classes extend `.surface-liquid` base | Minimal |
 | **5 — Local blur replacement** | Replace inline `backdrop-blur` → `.surface-frosted` | Per call site |
 | **6 — Deprecation cleanup** | Remove `.glass-card`, `.glass-panel`; remove `sq-card sq-glass` stacks | After zero references |
@@ -379,4 +379,4 @@ Before adding or changing a surface, answer:
 
 ---
 
-*Last updated: 2026-07-09 — V4.9.275 Phase 1 CSS system.*
+*Last updated: 2026-07-09 — V4.9.276 Phase 3 pattern adoption (DataCard, MetricCard, ControlKpiStrip).*

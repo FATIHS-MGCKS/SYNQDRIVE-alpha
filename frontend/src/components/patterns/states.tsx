@@ -153,7 +153,7 @@ export function SkeletonMetricGrid({ count = 4, className, cardClassName }: Skel
       aria-hidden
     >
       {Array.from({ length: count }).map((_, i) => (
-        <div key={i} className={cn('sq-card p-4', cardClassName)}>
+        <div key={i} className={cn('surface-premium p-4', cardClassName)}>
           <Skeleton className="h-3 w-20" />
           <Skeleton className="mt-3 h-7 w-24" />
           <Skeleton className="mt-2 h-3 w-16" />
