@@ -58,9 +58,10 @@ SynqDrive versendet **transaktionale E-Mails mit PDF-Anhängen über [Resend](ht
 
 1. Kostenlosen Account erstellen: [https://resend.com/signup](https://resend.com/signup)
 2. Dashboard → **API Keys** → **Create API Key**
-3. Key kopieren (beginnt mit `re_…`) — **nur einmal sichtbar**
-4. **Sicher übergeben** (nicht im Chat): siehe `docs/resend-setup.md`
-5. Sync auf VPS:
+3. Permission: **Full access** (nicht „Sending access only“ — sonst schlägt Domain-Registrierung in SynqDrive fehl)
+4. Key kopieren (beginnt mit `re_…`) — **nur einmal sichtbar**
+5. **Sicher übergeben** (nicht im Chat): siehe `docs/resend-setup.md`
+6. Sync auf VPS:
 
 ```bash
 bash backend/scripts/ops/sync-resend-env-to-vps.sh
@@ -74,7 +75,7 @@ RESEND_API_KEY=re_xxxxxxxx
 EMAIL_PROVIDER=resend
 EMAIL_SIMULATE_ENABLED=false
 EMAIL_DEFAULT_FROM=noreply@synqdrive.eu
-EMAIL_DEFAULT_REPLY_TO=support@synqdrive.eu
+EMAIL_DEFAULT_REPLY_TO=info@synqdrive.eu
 ```
 
 Bis Ihre eigene Domain verifiziert ist, können Sie mit der Resend-Testdomain senden (nur an verifizierte Empfänger im Resend-Dashboard).
@@ -88,11 +89,13 @@ Bis Ihre eigene Domain verifiziert ist, können Sie mit der Resend-Testdomain se
 5. In SynqDrive **DNS prüfen** → nach Verifizierung **Aktivieren**
 6. Versandmodus auf **Eigene Domain** stellen, Reply-To auf `rechnung@ihre-firma.de`
 
-### Schritt 4 — Webhook (optional, Zustellstatus)
+### Schritt 4 — Webhook (Zustellstatus)
 
-1. Resend Dashboard → **Webhooks** → Endpoint:  
-   `https://app.synqdrive.eu/api/v1/webhooks/resend/outbound-email`
-2. Events: `email.delivered`, `email.bounced`, `email.complained`, `email.opened`
+1. Resend Dashboard → **Webhooks** → Endpoint:
+   ```
+   https://app.synqdrive.eu/api/v1/webhooks/resend/outbound-email
+   ```
+2. Events aktivieren: `email.delivered`, `email.bounced`, `email.complained`, `email.opened`
 3. Signing Secret kopieren → `backend.env`:
 
 ```env
