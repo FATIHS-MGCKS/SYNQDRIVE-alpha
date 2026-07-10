@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'synqdrive-platform-email-v49310-2026-07-10',
+    version: '4.9.310',
+    title: 'V4.9.310 — Plattform-Mail synqdrive.eu (noreply + info Reply-To)',
+    summary: [
+      'Resend: `synqdrive.eu` registriert; `fs-mobility.de` aus Resend entfernt (1-Domain-Plan).',
+      'Plattform: From `noreply@synqdrive.eu`, Reply-To `info@synqdrive.eu` (Hostinger-Postfach).',
+      'Script `sync-resend-dns-to-hostinger.sh` — Resend-DNS in Hostinger-Zone mergen.',
+      'VPS-Env + `platform_email_settings` DB auf Produktion gesetzt.',
+    ],
+    reason:
+      'Standard-Absender über verifizierte Plattform-Domain; Antworten an bestehendes Hostinger-Postfach info@.',
+    previousBehavior:
+      'support@synqdrive.eu Reply-To; synqdrive.eu nicht in Resend; fs-mobility.de belegte Domain-Slot.',
+    details:
+      'noreply braucht kein Hostinger-Postfach. DNS: resend._domainkey + send MX/TXT. HOSTINGER_API_TOKEN für DNS-Sync.',
+    affectsArchitecture: true,
+    module: 'Outbound Email',
+    createdAt: '2026-07-10T12:55:00.000Z',
+  },
+  {
     id: 'resend-full-access-webhook-docs-v49309-2026-07-10',
     version: '4.9.309',
     title: 'V4.9.309 — Resend Full-Access-Key + Webhook-Doku',

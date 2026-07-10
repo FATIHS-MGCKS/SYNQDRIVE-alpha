@@ -75,7 +75,7 @@ RESEND_API_KEY=re_xxxxxxxx
 EMAIL_PROVIDER=resend
 EMAIL_SIMULATE_ENABLED=false
 EMAIL_DEFAULT_FROM=noreply@synqdrive.eu
-EMAIL_DEFAULT_REPLY_TO=support@synqdrive.eu
+EMAIL_DEFAULT_REPLY_TO=info@synqdrive.eu
 ```
 
 Bis Ihre eigene Domain verifiziert ist, können Sie mit der Resend-Testdomain senden (nur an verifizierte Empfänger im Resend-Dashboard).
