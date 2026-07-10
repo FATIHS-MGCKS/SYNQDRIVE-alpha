@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'platform-email-settings-v49302-2026-07-10',
+    version: '4.9.302',
+    title: 'V4.9.302 — Plattform-Absender im Master Admin konfigurierbar',
+    summary: [
+      'Prisma `PlatformEmailSettings` (Singleton) für globalen noreply-Absender + Standard Reply-To.',
+      'API: `GET|PUT /admin/email/settings` (MASTER_ADMIN); `OutboundEmailPolicyService` nutzt DB → Env-Fallback.',
+      'Org `GET …/email/settings` liefert `platformSender` (read-only) für Mandanten-UI.',
+      'Master Admin: Settings → E-Mail Tab (`PlatformEmailSettingsPanel`); Rental zeigt Plattform-Absender im Standard-Modus.',
+    ],
+    reason:
+      'Globale Absenderadresse soll im Master Admin verwaltbar sein; Mandanten binden eigene Domain unter Administration → E-Mail & Versand an.',
+    previousBehavior:
+      'Plattform-Absender nur über `EMAIL_DEFAULT_FROM` in backend.env; keine Master-Admin-UI.',
+    details:
+      'Priorität: DB `platform_email_settings` → Env `EMAIL_DEFAULT_FROM*` → Hardcoded Fallback. Resend-API-Key bleibt serverseitig in env.',
+    affectsArchitecture: true,
+    module: 'Documents / Outbound Email',
+    createdAt: '2026-07-10T07:05:00.000Z',
+  },
+  {
     id: 'outbound-email-hardening-v49301-2026-07-10',
     version: '4.9.301',
     title: 'V4.9.301 — Outbound E-Mail: Hardening + Hostinger/Resend-Setup',

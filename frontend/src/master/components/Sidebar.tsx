@@ -3,7 +3,7 @@ import {
   Activity, CreditCard, Headphones,
   Radio, Package, Shield,
   Settings, BarChart3, Globe,
-  Code2, FileText, Phone,
+  Code2, FileText, Phone, Mail,
   ChevronRight, Menu, X, Plus, UserPlus,
   MapPin, Gauge, BookOpen, ShieldCheck
 } from 'lucide-react';
@@ -167,6 +167,9 @@ export function Sidebar({ isDarkMode, currentView, onViewChange, settingsTab, on
         <nav className="space-y-0.5 mb-1">
           <button onClick={() => goSettings('general')} className={itemCls(activeSettings('general'))}>
             <Settings className={icon} /><span>General</span>
+          </button>
+          <button onClick={() => goSettings('email')} className={itemCls(activeSettings('email'))}>
+            <Mail className={icon} /><span>E-Mail</span>
           </button>
           <button onClick={() => goSettings('integrations')} className={itemCls(activeSettings('integrations'))}>
             <Globe className={icon} /><span>Integrations</span>

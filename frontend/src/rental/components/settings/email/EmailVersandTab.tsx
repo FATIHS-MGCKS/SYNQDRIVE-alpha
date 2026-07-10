@@ -192,6 +192,7 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
         <h2 className="text-lg font-semibold text-foreground">E-Mail & Versand</h2>
         <p className={`text-sm mt-1 ${subtle}`}>
           Absender, Reply-To, Signatur und eigene Domains für den Dokumentenversand.
+          Ohne eigene Domain wird der SynqDrive-Plattform-Absender verwendet.
         </p>
       </div>
 
@@ -238,6 +239,15 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
                   Eigene Domain {verifiedDomains.length === 0 ? '(keine verifiziert)' : ''}
                 </option>
               </select>
+              {settings.mode === 'SYNQDRIVE_DEFAULT' && settings.platformSender && (
+                <p className={`mt-2 text-xs ${subtle}`}>
+                  Aktueller Plattform-Absender:{' '}
+                  <span className="font-medium text-foreground">
+                    {settings.defaultFromName?.trim() || settings.platformSender.fromName} &lt;
+                    {settings.platformSender.fromEmail}&gt;
+                  </span>
+                </p>
+              )}
             </div>
             <div>
               <label className={`text-xs font-medium ${subtle}`}>Absendername</label>

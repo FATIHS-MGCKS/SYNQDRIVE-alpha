@@ -1048,6 +1048,22 @@ export interface OrgEmailSettingsDto {
   defaultFromName: string | null;
   replyToEmail: string | null;
   signatureHtml: string | null;
+  platformSender: {
+    fromEmail: string;
+    fromName: string;
+    replyToEmail: string | null;
+  };
+}
+
+export interface PlatformEmailSettingsAdminDto {
+  defaultFromEmail: string;
+  defaultFromName: string;
+  defaultReplyToEmail: string | null;
+  configuredInDatabase: boolean;
+  effectiveFromEmail: string;
+  effectiveFromName: string;
+  effectiveReplyToEmail: string | null;
+  updatedAt: string | null;
 }
 
 export type OrgEmailDomainStatus =
@@ -2413,6 +2429,14 @@ export const api = {
       queues: () => get<any[]>('/admin/monitoring/queues'),
     },
     platformHealth: () => get<any>('/admin/platform-health'),
+    email: {
+      getSettings: () => get<PlatformEmailSettingsAdminDto>('/admin/email/settings'),
+      updateSettings: (payload: {
+        defaultFromEmail: string;
+        defaultFromName: string;
+        defaultReplyToEmail?: string | null;
+      }) => put<PlatformEmailSettingsAdminDto>('/admin/email/settings', payload),
+    },
     changelogs: (module?: string) =>
       get<any[]>('/admin/changelogs' + (module ? `?module=${module}` : '')),
     createChangelog: (data: any) => post<any>('/admin/changelogs', data),

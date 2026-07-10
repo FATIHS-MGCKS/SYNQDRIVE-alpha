@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
 import { OrgEmailMode } from '@prisma/client';
 import { OutboundEmailPolicyService } from './outbound-email-policy.service';
 import { PrismaService } from '@shared/database/prisma.service';
+import { PlatformEmailSettingsService } from './platform-email-settings.service';
 
 describe('OutboundEmailPolicyService', () => {
   let service: OutboundEmailPolicyService;
@@ -13,24 +13,26 @@ describe('OutboundEmailPolicyService', () => {
     },
   };
 
-  const config = {
-    get: jest.fn((key: string, fallback?: string) => {
-      const map: Record<string, string> = {
-        'email.defaultFrom': 'noreply@synqdrive.eu',
-        'email.defaultFromName': 'SynqDrive',
-        'email.defaultReplyTo': 'support@synqdrive.eu',
-      };
-      return map[key] ?? fallback;
+  const platformEmail = {
+    getResolvedDefaults: jest.fn().mockResolvedValue({
+      defaultFromEmail: 'noreply@synqdrive.eu',
+      defaultFromName: 'SynqDrive',
+      defaultReplyToEmail: 'support@synqdrive.eu',
     }),
   };
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    platformEmail.getResolvedDefaults.mockResolvedValue({
+      defaultFromEmail: 'noreply@synqdrive.eu',
+      defaultFromName: 'SynqDrive',
+      defaultReplyToEmail: 'support@synqdrive.eu',
+    });
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OutboundEmailPolicyService,
         { provide: PrismaService, useValue: prisma },
-        { provide: ConfigService, useValue: config },
+        { provide: PlatformEmailSettingsService, useValue: platformEmail },
       ],
     }).compile();
 

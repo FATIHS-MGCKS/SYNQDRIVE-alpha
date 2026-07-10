@@ -2,9 +2,11 @@ import { Module } from '@nestjs/common';
 import { DocumentsModule } from '@modules/documents/documents.module';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { OrgEmailController } from './org-email.controller';
+import { PlatformEmailController } from './platform-email.controller';
 import { BookingDocumentsEmailController } from './booking-documents-email.controller';
 import { ResendWebhookController } from './resend-webhook.controller';
 import { ResendWebhookService } from './resend-webhook.service';
+import { PlatformEmailSettingsService } from './platform-email-settings.service';
 import { OutboundEmailPolicyService } from './outbound-email-policy.service';
 import { OutboundEmailDomainService } from './outbound-email-domain.service';
 import { OutboundEmailService } from './outbound-email.service';
@@ -15,8 +17,9 @@ import { EmailProviderRegistry } from './providers/email-provider.registry';
 
 @Module({
   imports: [DocumentsModule, ActivityLogModule],
-  controllers: [OrgEmailController, BookingDocumentsEmailController, ResendWebhookController],
+  controllers: [OrgEmailController, PlatformEmailController, BookingDocumentsEmailController, ResendWebhookController],
   providers: [
+    PlatformEmailSettingsService,
     OutboundEmailPolicyService,
     OutboundEmailDomainService,
     OutboundEmailService,
@@ -27,6 +30,7 @@ import { EmailProviderRegistry } from './providers/email-provider.registry';
     ResendWebhookService,
   ],
   exports: [
+    PlatformEmailSettingsService,
     OutboundEmailPolicyService,
     OutboundEmailDomainService,
     OutboundEmailService,

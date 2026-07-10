@@ -92,13 +92,14 @@ RESEND_WEBHOOK_SECRET=whsec_xxxxxxxx
 
 ### Was woher kommt — Kurzüberblick
 
-| Was | Wo holen | Wofür |
-|-----|----------|--------|
-| Domain `ihre-firma.de` | **Hostinger** | Absender-Domain, Reply-To-Postfach |
-| `RESEND_API_KEY` | **Resend Dashboard** | API-Versand aus SynqDrive |
-| DNS-Einträge | In SynqDrive angezeigt → bei **Hostinger DNS** eintragen | Domain-Verifizierung |
+| Was | Wo holen / konfigurieren | Wofür |
+|-----|--------------------------|--------|
+| **Plattform-noreply** (`noreply@synqdrive.eu`) | **Master Admin → Settings → E-Mail** (oder Env-Fallback) | Standard-Absender für Mandanten ohne eigene Domain |
+| Domain `ihre-firma.de` | **Hostinger** + **Administration → E-Mail & Versand** (Mandant) | Eigener Absender pro Unternehmen |
+| Postfach Reply-To | **Hostinger** (Mandant setzt in E-Mail & Versand) | Kunden-Antworten |
+| `RESEND_API_KEY` | **Resend Dashboard** | API-Versand (serverseitig in `backend.env`) |
+| DNS-Einträge | SynqDrive Mandanten-UI → **Hostinger DNS** | Domain-Verifizierung |
 | `RESEND_WEBHOOK_SECRET` | **Resend Webhooks** | Zustell-/Bounce-Events |
-| `EMAIL_DEFAULT_FROM` | SynqDrive-Plattform (`noreply@synqdrive.eu`) bis Domain aktiv | Fallback-Absender |
 
 ### Signatur
 

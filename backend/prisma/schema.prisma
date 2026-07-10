@@ -5849,6 +5849,18 @@ enum OutboundEmailEventType {
   OPENED
 }
 
+model PlatformEmailSettings {
+  id                  String   @id @default("platform")
+  defaultFromEmail    String   @map("default_from_email")
+  defaultFromName     String   @map("default_from_name")
+  defaultReplyToEmail String?  @map("default_reply_to_email")
+  updatedByUserId     String?  @map("updated_by_user_id")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  @@map("platform_email_settings")
+}
+
 model OrgEmailSettings {
   id             String       @id @default(uuid())
   organizationId String       @unique @map("organization_id")

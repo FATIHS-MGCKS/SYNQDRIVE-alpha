@@ -6,12 +6,18 @@ import {
 import { OrgEmailDomainStatus, OrgEmailMode } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { EmailProviderRegistry } from './providers/email-provider.registry';
+import { PlatformEmailSettingsService } from './platform-email-settings.service';
 
 export interface OrgEmailSettingsDto {
   mode: OrgEmailMode;
   defaultFromName: string | null;
   replyToEmail: string | null;
   signatureHtml: string | null;
+  platformSender: {
+    fromEmail: string;
+    fromName: string;
+    replyToEmail: string | null;
+  };
 }
 
 export interface OrgEmailDomainDto {
@@ -32,11 +38,15 @@ export class OutboundEmailDomainService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly providers: EmailProviderRegistry,
+    private readonly platformEmail: PlatformEmailSettingsService,
   ) {}
 
   async getSettings(orgId: string): Promise<OrgEmailSettingsDto> {
-    const settings = await this.ensureSettings(orgId);
-    return this.toSettingsDto(settings);
+    const [settings, platformDefaults] = await Promise.all([
+      this.ensureSettings(orgId),
+      this.platformEmail.getResolvedDefaults(),
+    ]);
+    return this.toSettingsDto(settings, platformDefaults);
   }
 
   async updateSettings(
@@ -73,7 +83,8 @@ export class OutboundEmailDomainService {
       },
     });
 
-    return this.toSettingsDto(settings);
+    const platformDefaults = await this.platformEmail.getResolvedDefaults();
+    return this.toSettingsDto(settings, platformDefaults);
   }
 
   async listDomains(orgId: string): Promise<OrgEmailDomainDto[]> {
@@ -202,17 +213,29 @@ export class OutboundEmailDomainService {
     return OrgEmailDomainStatus.PENDING_DNS;
   }
 
-  private toSettingsDto(row: {
-    mode: OrgEmailMode;
-    defaultFromName: string | null;
-    replyToEmail: string | null;
-    signatureHtml: string | null;
-  }): OrgEmailSettingsDto {
+  private toSettingsDto(
+    row: {
+      mode: OrgEmailMode;
+      defaultFromName: string | null;
+      replyToEmail: string | null;
+      signatureHtml: string | null;
+    },
+    platformDefaults: {
+      defaultFromEmail: string;
+      defaultFromName: string;
+      defaultReplyToEmail: string | null;
+    },
+  ): OrgEmailSettingsDto {
     return {
       mode: row.mode,
       defaultFromName: row.defaultFromName,
       replyToEmail: row.replyToEmail,
       signatureHtml: row.signatureHtml,
+      platformSender: {
+        fromEmail: platformDefaults.defaultFromEmail,
+        fromName: platformDefaults.defaultFromName,
+        replyToEmail: platformDefaults.defaultReplyToEmail,
+      },
     };
   }
 

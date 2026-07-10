@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { OrgEmailDomainStatus, OrgEmailMode } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { PlatformEmailSettingsService } from './platform-email-settings.service';
 
 export interface ResolvedEmailIdentity {
   fromEmail: string;
@@ -17,7 +17,7 @@ export class OutboundEmailPolicyService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly config: ConfigService,
+    private readonly platformEmail: PlatformEmailSettingsService,
   ) {}
 
   async resolveIdentity(orgId: string): Promise<ResolvedEmailIdentity> {
@@ -35,12 +35,13 @@ export class OutboundEmailPolicyService {
 
     const settings = org.orgEmailSettings;
     const mode = settings?.mode ?? OrgEmailMode.SYNQDRIVE_DEFAULT;
+    const platformDefaults = await this.platformEmail.getResolvedDefaults();
     const fromName =
       settings?.defaultFromName?.trim() ||
-      this.config.get<string>('email.defaultFromName', 'SynqDrive') ||
+      platformDefaults.defaultFromName ||
       org.companyName;
 
-    const defaultFrom = this.config.get<string>('email.defaultFrom', 'noreply@synqdrive.eu');
+    const defaultFrom = platformDefaults.defaultFromEmail;
     const activeDomain = org.orgEmailDomains[0] ?? null;
 
     let fromEmail = defaultFrom;
@@ -63,7 +64,7 @@ export class OutboundEmailPolicyService {
       invoiceEmail: org.invoiceEmail,
       orgEmail: org.email,
       managerEmail: org.managerEmail,
-      defaultReplyTo: this.config.get<string>('email.defaultReplyTo', '') || null,
+      defaultReplyTo: platformDefaults.defaultReplyToEmail,
     });
 
     return { fromEmail, fromName, replyToEmail, mode, domainId };

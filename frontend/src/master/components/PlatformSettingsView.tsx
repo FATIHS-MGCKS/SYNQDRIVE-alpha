@@ -1,7 +1,8 @@
-import { Settings, Globe, Zap, CheckCircle, Copy, Eye, EyeOff, Save, Wifi, WifiOff, RefreshCw, CreditCard, AlertTriangle, Trash2, Activity } from 'lucide-react';
+import { Settings, Globe, Zap, CheckCircle, Copy, Eye, EyeOff, Save, Wifi, WifiOff, RefreshCw, CreditCard, AlertTriangle, Trash2, Activity, Mail } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { SystemMonitoringView } from './SystemMonitoringView';
+import { PlatformEmailSettingsPanel } from './PlatformEmailSettingsPanel';
 
 interface PlatformSettingsViewProps {
   isDarkMode: boolean;
@@ -23,6 +24,7 @@ export function PlatformSettingsView({ isDarkMode, activeTab = 'general', onTabC
 
   const tabs = [
     { id: 'general', label: 'General', icon: Settings },
+    { id: 'email', label: 'E-Mail', icon: Mail },
     { id: 'integrations', label: 'Integrations', icon: Globe },
     { id: 'monitoring', label: 'API & Worker Monitoring', icon: Activity },
   ];
@@ -81,6 +83,8 @@ export function PlatformSettingsView({ isDarkMode, activeTab = 'general', onTabC
 
         </div>
       )}
+
+      {activeTab === 'email' && <PlatformEmailSettingsPanel isDarkMode={isDarkMode} />}
 
       {/* INTEGRATIONS (Stripe) */}
       {activeTab === 'integrations' && (
