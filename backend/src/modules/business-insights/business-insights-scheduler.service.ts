@@ -1,24 +1,43 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Interval } from '@nestjs/schedule';
+import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BusinessInsightsService } from './business-insights.service';
 
-const REFRESH_INTERVAL_MS = 30 * 60_000;
+/** Wall-clock cadence — survives PM2 restarts better than @Interval (which resets every deploy). */
+const INSIGHTS_CRON = '2,32 * * * *';
 
 @Injectable()
-export class BusinessInsightsScheduler {
+export class BusinessInsightsScheduler implements OnApplicationBootstrap {
   private readonly logger = new Logger(BusinessInsightsScheduler.name);
   private cycleCount = 0;
+  private running = false;
 
   constructor(
     private readonly insightsService: BusinessInsightsService,
     private readonly prisma: PrismaService,
   ) {}
 
-  @Interval(REFRESH_INTERVAL_MS)
-  async scheduledRun() {
+  onApplicationBootstrap() {
+    // After deploy/restart, @Interval would wait 30 min — dashboard shows „Verzögert“ until then.
+    setTimeout(() => {
+      void this.scheduledRun('scheduled_boot');
+    }, 15_000);
+  }
+
+  @Cron(INSIGHTS_CRON)
+  async scheduledRunCron() {
+    await this.scheduledRun('scheduled_active');
+  }
+
+  async scheduledRun(trigger: 'scheduled_active' | 'scheduled_boot' = 'scheduled_active') {
+    if (this.running) {
+      this.logger.debug(`Skipping insights refresh (${trigger}) — previous run still in flight`);
+      return;
+    }
+
+    this.running = true;
     this.cycleCount++;
-    this.logger.debug('Starting scheduled insights refresh');
+    this.logger.debug(`Starting scheduled insights refresh (${trigger})`);
     const start = Date.now();
 
     try {
@@ -33,7 +52,7 @@ export class BusinessInsightsScheduler {
 
       for (const orgId of activeOrgIds) {
         try {
-          const r = await this.insightsService.runForOrganization(orgId, 'scheduled_active');
+          const r = await this.insightsService.runForOrganization(orgId, trigger);
           totalPublished += r.published;
         } catch (err) {
           this.logger.warn(`Scheduled run failed for org ${orgId}: ${err}`);
@@ -42,7 +61,7 @@ export class BusinessInsightsScheduler {
 
       const elapsed = Date.now() - start;
       this.logger.log(
-        `Scheduled refresh done: ${activeOrgIds.length} orgs, ${totalPublished} insights, ${elapsed}ms`,
+        `Scheduled refresh done (${trigger}): ${activeOrgIds.length} orgs, ${totalPublished} insights, ${elapsed}ms`,
       );
 
       if (this.cycleCount >= 48) {
@@ -51,6 +70,8 @@ export class BusinessInsightsScheduler {
       }
     } catch (err) {
       this.logger.error(`Scheduled insights refresh failed: ${err}`);
+    } finally {
+      this.running = false;
     }
   }
 

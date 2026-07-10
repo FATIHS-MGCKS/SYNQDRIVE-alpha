@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'insights-scheduler-boot-cron-v49321-2026-07-10',
+    version: '4.9.321',
+    title: 'V4.9.321 — Business Insights: Boot-Run + Cron statt Interval (Dashboard „Verzögert“)',
+    summary: [
+      'Scheduler: `@Cron` (:02/:32) statt `@Interval` — überlebt PM2-Restarts besser.',
+      'Nach App-Start: Insights-Lauf nach 15s (`scheduled_boot`) — Dashboard-Badge nicht mehr stundenlang „Verzögert“ nach Deploy.',
+    ],
+    reason:
+      'Häufige Deploys setzten das 30-Min-Interval zurück; letzter Lauf blieb >60 Min alt → FS Mobility Dashboard zeigte „Verzögert“.',
+    previousBehavior: 'Nur @Interval(30min) — erster Tick erst 30 Min nach jedem Restart.',
+    details: 'business-insights-scheduler.service.ts.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-10T16:15:00.000Z',
+  },
+  {
     id: 'revert-dark-wordmark-logo-v49320-2026-07-10',
     version: '4.9.320',
     title: 'V4.9.320 — Revert: Dark-Theme White Wordmark (erneut)',
