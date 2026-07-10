@@ -6,7 +6,7 @@ import {
 } from '../../pricing/pricingUtils';
 import { Icon } from '../ui/Icon';
 import { BookingStepCard } from './BookingStepCard';
-import { formatEuroAmount } from './format';
+import { formatBookingAmount } from './format';
 import type { ExtrasStepProps } from './types';
 
 export function ExtrasStep({
@@ -21,10 +21,13 @@ export function ExtrasStep({
   displayRentalDays,
   hasPrice,
   extrasTotal,
+  pricingCurrency,
   onSelectMileagePackage,
   onToggleInsurance,
   onToggleExtra,
 }: ExtrasStepProps) {
+  const ccy = pricingCurrency;
+  const fmtCents = (cents: number) => (ccy ? formatPriceCents(cents, ccy) : '—');
   const hasSelection =
     Boolean(selectedMileagePackage) || selectedInsurances.length > 0 || extras.length > 0;
 
@@ -82,10 +85,10 @@ export function ExtrasStep({
                         isSelected ? 'text-[color:var(--status-positive)]' : 'text-foreground'
                       }`}
                     >
-                      {formatPriceCents(grossFromNetCents(pkg.priceCents, taxRatePercent))}
+                      {fmtCents(grossFromNetCents(pkg.priceCents, taxRatePercent))}
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {formatPriceCents(
+                      {fmtCents(
                         Math.round(
                           grossFromNetCents(pkg.priceCents, taxRatePercent) / Math.max(1, pkg.includedKm),
                         ),
@@ -149,7 +152,15 @@ export function ExtrasStep({
                           isSelected ? 'text-[color:var(--status-ai)]' : 'text-foreground'
                         }`}
                       >
-                        {formatOptionGrossLabel(ins.priceCents, ins.pricingType, taxRatePercent, displayRentalDays)}
+                        {ccy
+                          ? formatOptionGrossLabel(
+                              ins.priceCents,
+                              ins.pricingType,
+                              taxRatePercent,
+                              ccy,
+                              displayRentalDays,
+                            )
+                          : '—'}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {ins.pricingType === 'PER_DAY' ? 'pro Tag' : 'pro Buchung'}
@@ -204,7 +215,15 @@ export function ExtrasStep({
                           isSelected ? 'text-[color:var(--status-info)]' : 'text-foreground'
                         }`}
                       >
-                        {formatOptionGrossLabel(opt.priceCents, opt.pricingType, taxRatePercent, displayRentalDays)}
+                        {ccy
+                          ? formatOptionGrossLabel(
+                              opt.priceCents,
+                              opt.pricingType,
+                              taxRatePercent,
+                              ccy,
+                              displayRentalDays,
+                            )
+                          : '—'}
                       </span>
                       <div
                         className={`flex h-5 w-5 items-center justify-center rounded border-2 ${
@@ -250,7 +269,7 @@ export function ExtrasStep({
                 )}
               </div>
               <span className="text-xs text-foreground">
-                {hasPrice ? `+ ${formatEuroAmount(extrasTotal)}` : '—'}
+                {hasPrice && ccy ? `+ ${formatBookingAmount(extrasTotal, ccy)}` : '—'}
               </span>
             </div>
           </div>

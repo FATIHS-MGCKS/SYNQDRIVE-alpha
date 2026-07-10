@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pricing-currency-source-v49339-2026-07-10',
+    version: '4.9.339',
+    title: 'V4.9.339 — Pricing: kanonische Währungsquelle (Preisbuch → Simulation → Buchung)',
+    summary: [
+      'Kanonische Currency: `resolvePriceBookCurrency` → `simulation.currency` → Snapshot/Booking (kein FX).',
+      'Backend: `money.util.ts` — ISO-4217-Normalisierung, `CURRENCY_MISMATCH` bei Client-Abweichung, fehlende Currency → Fehler.',
+      'Frontend: `lib/money.ts` + `resolvePricingCurrency`; Tarif-UI, Simulator, New Booking ohne hardcoded EUR.',
+      'Booking Create: Client-`currency` optional; Server überschreibt aus Pricing-Simulation.',
+    ],
+    reason: 'Prompt 6: 500 USD darf nicht still als EUR behandelt werden; eine Währungsquelle für Preisbuch bis Buchung.',
+    previousBehavior: 'EUR/eur hardcoded in NewBooking payload, formatEuroAmount, TariffGroupsTab-Fallback; keine Client-Currency-Validierung.',
+    details: 'Neu: backend/src/shared/money/money.util.ts, frontend/src/lib/money.ts, pricing-currency.spec.ts. Geändert: pricing.service, bookings.service, pricingUtils, NewBookingView, price-tariffs/*, new-booking/*.',
+    affectsArchitecture: true,
+    module: 'Rental Pricing',
+    createdAt: '2026-07-10T21:30:00.000Z',
+  },
+  {
     id: 'pricing-deposit-audit-v49338-2026-07-10',
     version: '4.9.338',
     title: 'V4.9.338 — Pricing: Kaution fachlich korrekt (Deposit-Pfade)',

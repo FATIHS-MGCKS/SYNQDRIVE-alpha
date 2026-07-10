@@ -5,6 +5,11 @@ import {
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import {
+  assertClientCurrencyMatches,
+  resolvePriceBookCurrency,
+  toBookingCurrencyStorage,
+} from '@shared/money/money.util';
 import { BookingPricingInputDto, SimulateBookingPriceDto } from './dto';
 import {
   simulateBookingPrice,
@@ -124,10 +129,12 @@ export class PricingService {
       });
     }
 
+    const currency = resolvePriceBookCurrency(version.priceBook);
+
     return {
       priceBook: {
         id: version.priceBook.id,
-        currency: version.priceBook.currency,
+        currency,
         taxRatePercent: version.priceBook.taxRatePercent,
       },
       tariffGroup: {
@@ -203,12 +210,15 @@ export class PricingService {
       manualAdjustmentCents: dto.manualAdjustmentCents,
     });
 
+    const currency = ctx.priceBook.currency;
+    assertClientCurrencyMatches(dto.currency, currency);
+
     return {
       ...result,
       tariffVersionId: tv.id,
       priceBookId: ctx.priceBook.id,
       tariffGroupId: ctx.tariffGroup.id,
-      currency: ctx.priceBook.currency,
+      currency,
       effectiveDailyRateCents: tv.rate.dailyRateCents,
     };
   }
@@ -287,7 +297,7 @@ export class PricingService {
       dailyRateCents: simulation.effectiveDailyRateCents,
       totalPriceCents: simulation.totalGrossCents,
       kmIncluded: simulation.includedKm,
-      currency: simulation.currency.toLowerCase(),
+      currency: toBookingCurrencyStorage(simulation.currency),
       insuranceOptions:
         insuranceLabels.length > 0
           ? (insuranceLabels as unknown as Prisma.InputJsonValue)

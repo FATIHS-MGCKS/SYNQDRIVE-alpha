@@ -21,6 +21,7 @@ import { RentalHealthService } from '@modules/rental-health/rental-health.servic
 import { TaskAutomationService } from '@modules/tasks/task-automation.service';
 import { CustomerEligibilityService } from '@modules/customers/customer-eligibility.service';
 import { PricingService } from '@modules/pricing/pricing.service';
+import { assertClientCurrencyMatches } from '@shared/money/money.util';
 import { StationValidationService } from '@modules/stations/station-validation.service';
 import {
   assertValidBookingWindow,
@@ -192,6 +193,10 @@ export class BookingsService {
       manualDiscountCents: pricingInput?.manualDiscountCents,
       manualAdjustmentCents: pricingInput?.manualAdjustmentCents,
     });
+    assertClientCurrencyMatches(
+      typeof anyData.currency === 'string' ? anyData.currency : undefined,
+      simulation.currency,
+    );
     const pricedFields = this.pricingService.legacyBookingFieldsFromSimulation(simulation);
     const stationFields = await this.resolveBookingStationFields(
       orgId,

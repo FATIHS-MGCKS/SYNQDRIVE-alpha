@@ -9,11 +9,13 @@ import { resolveDrivingStressScore } from '../lib/scoreFormat';
 import { usePriceTariffs } from '../hooks/usePriceTariffs';
 import { usePricingSimulation } from '../hooks/usePricingSimulation';
 import {
+  catalogCurrency,
   discountableNetCents,
-  eurosFromCents,
   formatNetAsGross,
   getVehicleTariffFromCatalog,
   grossFromNetCents,
+  majorUnitsFromCents,
+  resolvePricingCurrency,
 } from '../pricing/pricingUtils';
 import { sumExtrasGrossCents } from '../pricing/pricingLineItems';
 import {
@@ -195,8 +197,9 @@ export function NewBookingView({
 
   const getVehicleDailyRateLabel = (vehicleId: string): string | null => {
     const ctx = getVehicleTariffFromCatalog(catalog, vehicleId);
-    if (!ctx?.version.rate) return null;
-    return formatNetAsGross(ctx.version.rate.dailyRateCents, taxRatePercent);
+    const ccy = catalogCurrency(catalog);
+    if (!ctx?.version.rate || !ccy) return null;
+    return formatNetAsGross(ctx.version.rate.dailyRateCents, taxRatePercent, ccy);
   };
 
   const [currentStep, setCurrentStep] = useState<BookingWizardStepId>(1);
@@ -623,16 +626,17 @@ export function NewBookingView({
   } = usePricingSimulation(orgId, simParams, manualDiscountCents != null ? 300 : 400);
 
   const displayRentalDays = priceSim?.rentalDays ?? rentalDays;
-  const grandTotal = eurosFromCents(priceSim?.totalGrossCents);
-  const tax = eurosFromCents(priceSim?.taxAmountCents);
-  const subtotalNet = eurosFromCents(priceSim?.subtotalNetCents);
-  const depositAmount = eurosFromCents(priceSim?.depositAmountCents);
+  const pricingCurrency = resolvePricingCurrency(priceSim, catalog?.priceBook ?? null);
+  const grandTotal = majorUnitsFromCents(priceSim?.totalGrossCents);
+  const tax = majorUnitsFromCents(priceSim?.taxAmountCents);
+  const subtotalNet = majorUnitsFromCents(priceSim?.subtotalNetCents);
+  const depositAmount = majorUnitsFromCents(priceSim?.depositAmountCents);
   const totalFreeKm = priceSim?.includedKm ?? 0;
-  const extraKmPrice = eurosFromCents(priceSim?.extraKmPriceCents);
+  const extraKmPrice = majorUnitsFromCents(priceSim?.extraKmPriceCents);
   const dailyRateGross = priceSim?.effectiveDailyRateCents != null
-    ? eurosFromCents(grossFromNetCents(priceSim.effectiveDailyRateCents, taxRatePercent))
+    ? majorUnitsFromCents(grossFromNetCents(priceSim.effectiveDailyRateCents, taxRatePercent))
     : vehicleTariffCtx?.version.rate
-      ? eurosFromCents(
+      ? majorUnitsFromCents(
           grossFromNetCents(vehicleTariffCtx.version.rate.dailyRateCents, taxRatePercent),
         )
       : null;
@@ -758,7 +762,6 @@ export function NewBookingView({
           manualDiscountCents,
         },
         notes: `Abholung: ${pickupName || selectedVehicle.station} • Rückgabe: ${returnName || pickupName || selectedVehicle.station} • Zahlung: ${paymentLabel}`,
-        currency: 'eur',
         status: customerEligibility?.canConfirmBooking ? 'CONFIRMED' : 'PENDING',
       });
 
@@ -1078,6 +1081,7 @@ export function NewBookingView({
     taxRatePercent,
     grandTotal,
     depositAmount,
+    pricingCurrency,
     isDarkMode,
   };
 
@@ -1134,6 +1138,7 @@ export function NewBookingView({
           selectedVehicle={selectedVehicle}
           rentalDays={rentalDays}
           grandTotal={grandTotal}
+          pricingCurrency={pricingCurrency}
           bookingRef={createdBookingRef}
           redirectCountdown={redirectCountdown}
           onBack={onBack}
@@ -1239,6 +1244,7 @@ export function NewBookingView({
                 displayRentalDays={displayRentalDays}
                 hasPrice={hasPrice}
                 extrasTotal={extrasTotal}
+                pricingCurrency={pricingCurrency}
                 onSelectMileagePackage={setSelectedMileagePackage}
                 onToggleInsurance={(id) =>
                   setSelectedInsurances((prev) =>
@@ -1337,6 +1343,7 @@ export function NewBookingView({
                 depositAmount={depositAmount}
                 totalFreeKm={totalFreeKm}
                 dailyRateGross={dailyRateGross}
+                pricingCurrency={pricingCurrency}
               />
             )}
           </div>

@@ -608,7 +608,7 @@ export function buildBookingCreatePayload(args: BuildBookingCreatePayloadArgs) {
     ...(args.insuranceLabels ? { insuranceOptions: args.insuranceLabels } : {}),
     ...(args.extras ? { extrasJson: args.extras } : {}),
     ...(args.pricingInput ? { pricingInput: args.pricingInput } : {}),
-    currency: (args.currency || 'eur').toLowerCase(),
+    ...(args.currency ? { currency: args.currency.toLowerCase() } : {}),
     status: args.status || 'PENDING',
     notes: args.notes || '',
   };

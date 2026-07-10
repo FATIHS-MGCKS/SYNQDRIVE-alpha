@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { PriceTariffCatalog } from '../../pricing/pricingTypes';
-import { formatNetAsGross, getActiveVersion } from '../../pricing/pricingUtils';
+import { formatNetAsGross, getActiveVersion, catalogCurrency } from '../../pricing/pricingUtils';
 
 interface ExtrasInsuranceTabProps {
   catalog: PriceTariffCatalog;
@@ -11,6 +11,7 @@ export function ExtrasInsuranceTab({ catalog }: ExtrasInsuranceTabProps) {
   const group = catalog.groups.find((g) => g.id === groupId);
   const version = group ? getActiveVersion(group) : null;
   const taxRate = catalog.priceBook?.taxRatePercent ?? 19;
+  const currency = catalogCurrency(catalog);
 
   if (!group || !version) {
     return (
@@ -37,7 +38,7 @@ export function ExtrasInsuranceTab({ catalog }: ExtrasInsuranceTabProps) {
           title="Insurance"
           rows={version.insuranceOptions.map((o) => ({
             label: o.label,
-            price: formatNetAsGross(o.priceCents, taxRate),
+            price: currency ? formatNetAsGross(o.priceCents, taxRate, currency) : '—',
             meta: `${o.pricingType === 'PER_DAY' ? 'Per day' : 'Per booking'}${o.isDefault ? ' · Default' : ''}`,
             active: o.isActive,
           }))}
@@ -46,7 +47,7 @@ export function ExtrasInsuranceTab({ catalog }: ExtrasInsuranceTabProps) {
           title="Extras"
           rows={version.extraOptions.map((o) => ({
             label: o.label,
-            price: formatNetAsGross(o.priceCents, taxRate),
+            price: currency ? formatNetAsGross(o.priceCents, taxRate, currency) : '—',
             meta: o.pricingType === 'PER_DAY' ? 'Per day' : 'Per booking',
             active: o.isActive,
           }))}
@@ -55,7 +56,7 @@ export function ExtrasInsuranceTab({ catalog }: ExtrasInsuranceTabProps) {
           title="Mileage packages"
           rows={version.mileagePackages.map((p) => ({
             label: p.label,
-            price: formatNetAsGross(p.priceCents, taxRate),
+            price: currency ? formatNetAsGross(p.priceCents, taxRate, currency) : '—',
             meta: `${p.includedKm} km included`,
             active: p.isActive,
           }))}

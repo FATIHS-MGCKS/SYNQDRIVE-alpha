@@ -7,16 +7,24 @@ import type {
   TariffGroupRowStatus,
   VehicleTariffAssignment,
 } from './pricingTypes';
+import {
+  formatMoneyCents,
+  majorUnitsFromCents,
+  normalizeCurrencyCode,
+  resolvePricingCurrency,
+} from '../../lib/money';
 
-export function formatPriceCents(cents: number, currency = 'EUR'): string {
-  if (cents == null || Number.isNaN(cents)) return '—';
-  return new Intl.NumberFormat('de-DE', { style: 'currency', currency }).format(cents / 100);
-}
+export { formatMoneyCents, majorUnitsFromCents, normalizeCurrencyCode, resolvePricingCurrency };
 
-/** Refundable deposit — stored as integer cents, displayed without VAT markup. */
-export function formatDepositCents(cents: number | null | undefined, currency = 'EUR'): string {
-  if (cents == null || Number.isNaN(cents)) return '—';
-  return formatPriceCents(cents, currency);
+/** @deprecated Use formatMoneyCents(cents, currency) — kept as alias for pricing modules. */
+export const formatPriceCents = formatMoneyCents;
+
+/** Refundable deposit — integer cents, no VAT markup. */
+export function formatDepositCents(
+  cents: number | null | undefined,
+  currency: string,
+): string {
+  return formatMoneyCents(cents, currency);
 }
 
 /** Display gross from net tariff rate (rates stored net in DB). */
@@ -27,9 +35,9 @@ export function grossFromNetCents(netCents: number, taxRatePercent: number): num
 export function formatNetAsGross(
   netCents: number,
   taxRatePercent: number,
-  currency = 'EUR',
+  currency: string,
 ): string {
-  return formatPriceCents(grossFromNetCents(netCents, taxRatePercent), currency);
+  return formatMoneyCents(grossFromNetCents(netCents, taxRatePercent), currency);
 }
 
 export function getActiveVersion(group: PriceTariffGroup): PriceTariffVersion | null {
@@ -49,6 +57,10 @@ export function countVehiclesInGroup(
   groupId: string,
 ): number {
   return catalog?.assignments.filter((a) => a.isActive && a.tariffGroupId === groupId).length ?? 0;
+}
+
+export function catalogCurrency(catalog: PriceTariffCatalog | null): string | null {
+  return resolvePricingCurrency(null, catalog?.priceBook ?? null);
 }
 
 export function resolveGroupStatus(
@@ -98,16 +110,17 @@ export function formatOptionGrossLabel(
   priceCents: number,
   pricingType: PriceOptionPricingType,
   taxRatePercent: number,
+  currency: string,
   rentalDays = 1,
 ): string {
   const grossCents = grossFromNetCents(priceCents, taxRatePercent);
   if (pricingType === 'PER_DAY') {
-    return `${formatPriceCents(grossCents)}/Tag`;
+    return `${formatMoneyCents(grossCents, currency)}/Tag`;
   }
   if (pricingType === 'PER_BOOKING' && rentalDays > 1) {
-    return formatPriceCents(grossCents);
+    return formatMoneyCents(grossCents, currency);
   }
-  return formatPriceCents(grossCents);
+  return formatMoneyCents(grossCents, currency);
 }
 
 export function discountableNetCents(result: PricingSimulationResult | null): number {
@@ -119,10 +132,8 @@ export function discountableNetCents(result: PricingSimulationResult | null): nu
   return result.subtotalNetCents;
 }
 
-export function eurosFromCents(cents: number | null | undefined): number | null {
-  if (cents == null || Number.isNaN(cents)) return null;
-  return cents / 100;
-}
+/** @deprecated Use majorUnitsFromCents — name implied EUR only. */
+export const eurosFromCents = majorUnitsFromCents;
 
 export function parseApiError(err: unknown): string {
   if (err instanceof Error) return err.message;

@@ -92,6 +92,7 @@ export interface BookingSummaryPanelProps {
   taxRatePercent: number;
   grandTotal: number | null;
   depositAmount: number | null;
+  pricingCurrency: string | null;
   isDarkMode: boolean;
 }
 
@@ -159,6 +160,7 @@ export interface ExtrasStepProps {
   displayRentalDays: number;
   hasPrice: boolean;
   extrasTotal: number;
+  pricingCurrency: string | null;
   onSelectMileagePackage: (id: string | null) => void;
   onToggleInsurance: (id: string) => void;
   onToggleExtra: (id: string) => void;
@@ -234,4 +236,5 @@ export interface CheckoutStepProps {
   depositAmount: number | null;
   totalFreeKm: number;
   dailyRateGross: number | null;
+  pricingCurrency: string | null;
 }

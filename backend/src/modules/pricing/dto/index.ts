@@ -272,6 +272,11 @@ export class SimulateBookingPriceDto {
   @IsOptional()
   @IsUUID()
   stationId?: string;
+
+  /** Optional — when sent, must match server-resolved price book currency (no FX). */
+  @IsOptional()
+  @IsString()
+  currency?: string;
 }
 
 export class BookingPricingInputDto {

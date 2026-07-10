@@ -28,6 +28,7 @@ import { TariffGroupDrawer } from './TariffGroupDrawer';
 import { RulesPlaceholderTab } from './RulesPlaceholderTab';
 import type { PriceTariffGroup } from '../../pricing/pricingTypes';
 import {
+  catalogCurrency,
   countVehiclesInGroup,
   formatPriceCents,
   getActiveVersion,
@@ -130,6 +131,7 @@ export function PriceTariffsPage({ isDarkMode }: PriceTariffsPageProps) {
   const [creatingGroup, setCreatingGroup] = useState(false);
 
   const taxRate = catalog?.priceBook?.taxRatePercent ?? 19;
+  const catalogCcy = catalogCurrency(catalog);
 
   const kpis = useMemo(() => {
     const groups = catalog?.groups ?? [];
@@ -239,7 +241,7 @@ export function PriceTariffsPage({ isDarkMode }: PriceTariffsPageProps) {
         />
         <TariffKpiCard
           label="Avg. daily rate"
-          value={kpis.avgDailyGross > 0 ? formatPriceCents(kpis.avgDailyGross) : '—'}
+          value={kpis.avgDailyGross > 0 && catalogCcy ? formatPriceCents(kpis.avgDailyGross, catalogCcy) : '—'}
           icon={TrendingUp}
           tone="info"
           accent={kpis.avgDailyGross > 0}

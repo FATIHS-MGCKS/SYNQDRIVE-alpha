@@ -2,7 +2,7 @@ import type { VehicleData } from '../../data/vehicles';
 import { buildMMY } from '../../lib/vehicleMmy';
 import { Icon } from '../ui/Icon';
 import { BookingStepCard } from './BookingStepCard';
-import { formatEuroAmount } from './format';
+import { formatBookingAmount } from './format';
 import type { BookingCustomer } from './types';
 
 export interface BookingSuccessStateProps {
@@ -10,6 +10,7 @@ export interface BookingSuccessStateProps {
   selectedVehicle: VehicleData | null;
   rentalDays: number;
   grandTotal: number | null;
+  pricingCurrency: string | null;
   bookingRef?: string | null;
   redirectCountdown: number | null;
   onBack: () => void;
@@ -21,6 +22,7 @@ export function BookingSuccessState({
   selectedVehicle,
   rentalDays,
   grandTotal,
+  pricingCurrency,
   bookingRef,
   redirectCountdown,
   onBack,
@@ -57,7 +59,9 @@ export function BookingSuccessState({
             </div>
             <div className="flex justify-between border-t border-border pt-2 text-xs">
               <span className="text-muted-foreground">Gesamtbetrag</span>
-              <span className="text-[color:var(--status-positive)]">{formatEuroAmount(grandTotal)}</span>
+              <span className="text-[color:var(--status-positive)]">
+                {pricingCurrency ? formatBookingAmount(grandTotal, pricingCurrency) : '—'}
+              </span>
             </div>
           </div>
           <div className="flex gap-3">

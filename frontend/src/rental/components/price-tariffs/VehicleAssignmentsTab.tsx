@@ -4,7 +4,7 @@ import { api } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
 import { useFleetVehicles } from '../../FleetContext';
 import type { PriceTariffCatalog } from '../../pricing/pricingTypes';
-import { formatNetAsGross, getActiveVersion, getVehicleTariffFromCatalog } from '../../pricing/pricingUtils';
+import { formatNetAsGross, getActiveVersion, getVehicleTariffFromCatalog, catalogCurrency } from '../../pricing/pricingUtils';
 
 interface VehicleAssignmentsTabProps {
   catalog: PriceTariffCatalog;
@@ -22,6 +22,7 @@ export function VehicleAssignmentsTab({ catalog, onReload }: VehicleAssignmentsT
   const [assigning, setAssigning] = useState(false);
 
   const taxRate = catalog.priceBook?.taxRatePercent ?? 19;
+  const currency = catalogCurrency(catalog);
 
   const rows = useMemo(() => {
     return fleetVehicles.map((v) => {
@@ -34,13 +35,13 @@ export function VehicleAssignmentsTab({ catalog, onReload }: VehicleAssignmentsT
         fuel: v.fuelType,
         groupName: ctx?.group.name ?? '—',
         groupId: assignment?.tariffGroupId,
-        dailyGross: ctx?.version.rate
-          ? formatNetAsGross(ctx.version.rate.dailyRateCents, taxRate)
+        dailyGross: ctx?.version.rate && currency
+          ? formatNetAsGross(ctx.version.rate.dailyRateCents, taxRate, currency)
           : '—',
         assigned: Boolean(assignment),
       };
     });
-  }, [fleetVehicles, catalog, taxRate]);
+  }, [fleetVehicles, catalog, taxRate, currency]);
 
   const filtered = rows.filter((r) => {
     const q = search.toLowerCase();

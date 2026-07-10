@@ -1,5 +1,6 @@
 import type { PriceTariffCatalog, PriceTariffGroup } from '../../pricing/pricingTypes';
 import {
+  catalogCurrency,
   countVehiclesInGroup,
   formatDepositCents,
   formatNetAsGross,
@@ -16,7 +17,7 @@ interface TariffGroupsTabProps {
 
 export function TariffGroupsTab({ catalog, onSelectGroup }: TariffGroupsTabProps) {
   const taxRate = catalog.priceBook?.taxRatePercent ?? 19;
-  const currency = catalog.priceBook?.currency ?? 'EUR';
+  const currency = catalogCurrency(catalog);
 
   return (
     <div className="surface-premium overflow-hidden rounded-2xl border border-border/50 shadow-[var(--shadow-1)]">
@@ -64,24 +65,24 @@ export function TariffGroupsTab({ catalog, onSelectGroup }: TariffGroupsTabProps
                   </td>
                   <td className="px-4 py-3 tabular-nums">{countVehiclesInGroup(catalog, group.id)}</td>
                   <td className="px-4 py-3 tabular-nums">
-                    {rate ? formatNetAsGross(rate.dailyRateCents, taxRate) : '—'}
+                    {rate && currency ? formatNetAsGross(rate.dailyRateCents, taxRate, currency) : '—'}
                   </td>
                   <td className="px-4 py-3 tabular-nums">
-                    {rate?.weeklyRateCents
-                      ? formatNetAsGross(rate.weeklyRateCents, taxRate)
+                    {rate?.weeklyRateCents && currency
+                      ? formatNetAsGross(rate.weeklyRateCents, taxRate, currency)
                       : '—'}
                   </td>
                   <td className="px-4 py-3 tabular-nums">
-                    {rate?.monthlyRateCents
-                      ? formatNetAsGross(rate.monthlyRateCents, taxRate)
+                    {rate?.monthlyRateCents && currency
+                      ? formatNetAsGross(rate.monthlyRateCents, taxRate, currency)
                       : '—'}
                   </td>
                   <td className="px-4 py-3 tabular-nums">{rate?.includedKmPerDay ?? '—'}</td>
                   <td className="px-4 py-3 tabular-nums">
-                    {rate ? formatNetAsGross(rate.extraKmPriceCents, taxRate) : '—'}
+                    {rate && currency ? formatNetAsGross(rate.extraKmPriceCents, taxRate, currency) : '—'}
                   </td>
                   <td className="px-4 py-3 tabular-nums">
-                    {rate ? formatDepositCents(rate.depositAmountCents, currency) : '—'}
+                    {rate && currency ? formatDepositCents(rate.depositAmountCents, currency) : '—'}
                   </td>
                   <td className="px-4 py-3">
                     <span

@@ -4,7 +4,7 @@ import { stationLabel } from '../../lib/stationBookingUtils';
 import { buildMMY } from '../../lib/vehicleMmy';
 import { formatPriceCents } from '../../pricing/pricingUtils';
 import { BookingStepCard } from './BookingStepCard';
-import { formatEuroAmount } from './format';
+import { formatBookingAmount } from './format';
 import type { BookingSummaryPanelProps } from './types';
 
 export function BookingSummaryPanel(props: BookingSummaryPanelProps) {
@@ -42,8 +42,15 @@ export function BookingSummaryPanel(props: BookingSummaryPanelProps) {
     taxRatePercent,
     grandTotal,
     depositAmount,
+    pricingCurrency,
     isDarkMode,
   } = props;
+
+  const displayCurrency = pricingCurrency ?? priceSim?.currency ?? null;
+  const fmt = (value: number | null | undefined) =>
+    displayCurrency ? formatBookingAmount(value, displayCurrency) : '—';
+  const fmtCents = (cents: number) =>
+    displayCurrency ? formatPriceCents(cents, displayCurrency) : '—';
 
   return (
     <BookingStepCard>
@@ -176,7 +183,7 @@ export function BookingSummaryPanel(props: BookingSummaryPanelProps) {
           {priceSim?.lineItems.map((line) => (
             <div key={`${line.type}-${line.label}-${line.sortOrder ?? 0}`} className="flex justify-between text-xs">
               <span className="text-muted-foreground">{line.label}</span>
-              <span className="text-foreground">{formatPriceCents(line.totalGrossCents)}</span>
+              <span className="text-foreground">{fmtCents(line.totalGrossCents)}</span>
             </div>
           ))}
           <div className="flex justify-between text-xs">
@@ -186,7 +193,7 @@ export function BookingSummaryPanel(props: BookingSummaryPanelProps) {
           {extraKmPrice != null && (
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">Extra-km</span>
-              <span className="text-muted-foreground">{formatEuroAmount(extraKmPrice)}/km</span>
+              <span className="text-muted-foreground">{fmt(extraKmPrice)}/km</span>
             </div>
           )}
           {mileagePkgKm > 0 && (
@@ -213,20 +220,20 @@ export function BookingSummaryPanel(props: BookingSummaryPanelProps) {
           <div className="mt-2 space-y-2 border-t border-border pt-3">
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">Zwischensumme (netto)</span>
-              <span className="text-foreground">{formatEuroAmount(subtotalNet)}</span>
+              <span className="text-foreground">{fmt(subtotalNet)}</span>
             </div>
             <div className="flex justify-between text-xs">
               <span className="text-muted-foreground">MwSt. ({taxRatePercent}%)</span>
-              <span className="text-foreground">{formatEuroAmount(tax)}</span>
+              <span className="text-foreground">{fmt(tax)}</span>
             </div>
           </div>
           <div className="flex items-baseline justify-between border-t border-border pt-3">
-            <span className="text-foreground">Gesamt</span>
-            <span className="text-base text-foreground">{formatEuroAmount(grandTotal)}</span>
+            <span className="text-foreground">Gesamt{displayCurrency ? ` (${displayCurrency})` : ''}</span>
+            <span className="text-base text-foreground">{fmt(grandTotal)}</span>
           </div>
           <div className="flex justify-between text-xs">
             <span className="text-muted-foreground">Kaution</span>
-            <span className="text-[color:var(--status-watch)]">{formatEuroAmount(depositAmount)}</span>
+            <span className="text-[color:var(--status-watch)]">{fmt(depositAmount)}</span>
           </div>
         </div>
       </div>

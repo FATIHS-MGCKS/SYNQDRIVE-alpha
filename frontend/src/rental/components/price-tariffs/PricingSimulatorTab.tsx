@@ -3,7 +3,7 @@ import { useFleetVehicles } from '../../FleetContext';
 import { useRentalOrg } from '../../RentalContext';
 import { usePricingSimulation } from '../../hooks/usePricingSimulation';
 import type { PriceTariffCatalog } from '../../pricing/pricingTypes';
-import { formatPriceCents, getVehicleTariffFromCatalog } from '../../pricing/pricingUtils';
+import { formatPriceCents, getVehicleTariffFromCatalog, catalogCurrency } from '../../pricing/pricingUtils';
 import { isRentalChargeLineType } from '../../pricing/pricingLineItems';
 
 interface PricingSimulatorTabProps {
@@ -24,6 +24,7 @@ export function PricingSimulatorTab({ catalog }: PricingSimulatorTabProps) {
   const [discountEuro, setDiscountEuro] = useState('');
 
   const vehicleCtx = vehicleId ? getVehicleTariffFromCatalog(catalog, vehicleId) : null;
+  const catalogCcy = catalogCurrency(catalog);
 
   const simParams = useMemo(() => {
     if (!vehicleId || !pickupDate || !returnDate) return null;
@@ -45,6 +46,7 @@ export function PricingSimulatorTab({ catalog }: PricingSimulatorTabProps) {
   }, [vehicleId, pickupDate, returnDate, pickupTime, returnTime, mileagePkg, insurances, extras, discountEuro]);
 
   const { result, loading, error } = usePricingSimulation(orgId, simParams);
+  const displayCurrency = result?.currency ?? catalogCcy;
 
   const toggle = (list: string[], id: string, setter: (v: string[]) => void) => {
     setter(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
@@ -143,6 +145,10 @@ export function PricingSimulatorTab({ catalog }: PricingSimulatorTabProps) {
             <p>
               <span className="text-muted-foreground">Included km:</span> {result.includedKm}
             </p>
+            <p>
+              <span className="text-muted-foreground">Currency:</span>{' '}
+              {displayCurrency ?? '—'}
+            </p>
             <table className="w-full">
               <tbody>
                 {result.lineItems
@@ -151,7 +157,11 @@ export function PricingSimulatorTab({ catalog }: PricingSimulatorTabProps) {
                   .map((li, i) => (
                     <tr key={i} className="border-b border-border/30">
                       <td className="py-2">{li.label}</td>
-                      <td className="py-2 text-right tabular-nums">{formatPriceCents(li.totalGrossCents)}</td>
+                      <td className="py-2 text-right tabular-nums">
+                        {displayCurrency
+                          ? formatPriceCents(li.totalGrossCents, displayCurrency)
+                          : '—'}
+                      </td>
                     </tr>
                   ))}
               </tbody>
@@ -159,19 +169,27 @@ export function PricingSimulatorTab({ catalog }: PricingSimulatorTabProps) {
             <div className="border-t border-border/50 pt-2 space-y-1">
               <div className="flex justify-between">
                 <span>Subtotal net</span>
-                <span className="tabular-nums">{formatPriceCents(result.subtotalNetCents)}</span>
+                <span className="tabular-nums">
+                  {displayCurrency ? formatPriceCents(result.subtotalNetCents, displayCurrency) : '—'}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span>Tax</span>
-                <span className="tabular-nums">{formatPriceCents(result.taxAmountCents)}</span>
+                <span className="tabular-nums">
+                  {displayCurrency ? formatPriceCents(result.taxAmountCents, displayCurrency) : '—'}
+                </span>
               </div>
               <div className="flex justify-between font-bold text-sm">
                 <span>Total gross</span>
-                <span className="tabular-nums">{formatPriceCents(result.totalGrossCents)}</span>
+                <span className="tabular-nums">
+                  {displayCurrency ? formatPriceCents(result.totalGrossCents, displayCurrency) : '—'}
+                </span>
               </div>
               <div className="flex justify-between text-muted-foreground">
                 <span>Deposit</span>
-                <span className="tabular-nums">{formatPriceCents(result.depositAmountCents)}</span>
+                <span className="tabular-nums">
+                  {displayCurrency ? formatPriceCents(result.depositAmountCents, displayCurrency) : '—'}
+                </span>
               </div>
             </div>
             {result.warnings?.length > 0 && (

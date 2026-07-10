@@ -89,16 +89,20 @@ type SnapshotRow = {
   [key: string]: unknown;
 };
 
-export function createPricingTestStore(ids: PricingTestIds) {
+export function createPricingTestStore(
+  ids: PricingTestIds,
+  options?: { currency?: string },
+) {
   const now = new Date('2026-07-15T10:00:00.000Z');
   const pickupAt = new Date('2026-08-01T10:00:00.000Z');
+  const bookCurrency = options?.currency ?? 'EUR';
 
   const priceBooks = [
     {
       id: ids.priceBookId,
       organizationId: ids.orgId,
       name: 'Standard Preisbuch',
-      currency: 'EUR',
+      currency: bookCurrency,
       taxRatePercent: TAX_PERCENT,
       isActive: true,
       createdAt: now,

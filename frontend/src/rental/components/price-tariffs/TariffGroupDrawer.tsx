@@ -17,11 +17,12 @@ import {
   type SaveDraftResult,
 } from '../../pricing/tariff-publish-flow';
 import {
+  catalogCurrency,
+  countVehiclesInGroup,
   getEditableVersion,
   rateWarnings,
   validateRateFields,
 } from '../../pricing/pricingUtils';
-import { countVehiclesInGroup } from '../../pricing/pricingUtils';
 
 export type TariffDrawerSavedEvent = {
   mode: 'draft' | 'published';
@@ -56,6 +57,7 @@ export function TariffGroupDrawer({
   onSaved,
 }: TariffGroupDrawerProps) {
   const taxRate = catalog?.priceBook?.taxRatePercent ?? 19;
+  const catalogCcy = catalogCurrency(catalog);
   const version = getEditableVersion(group);
   const [name, setName] = useState(group.name);
   const [description, setDescription] = useState(group.description ?? '');
@@ -94,7 +96,10 @@ export function TariffGroupDrawer({
     onChange: (cents: number) => void,
   ) => (
     <label className="block text-xs">
-      <span className="font-semibold text-muted-foreground">{label}</span>
+      <span className="font-semibold text-muted-foreground">
+        {label}
+        {catalogCcy ? ` (${catalogCcy})` : ''}
+      </span>
       <input
         type="number"
         step="0.01"

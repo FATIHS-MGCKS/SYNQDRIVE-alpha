@@ -2,7 +2,7 @@ import { CreditCard, Euro, FileText } from 'lucide-react';
 import { buildMMY } from '../../lib/vehicleMmy';
 import { Icon } from '../ui/Icon';
 import { BookingStepCard } from './BookingStepCard';
-import { amountLabel, formatEuroAmount } from './format';
+import { formatBookingAmount } from './format';
 import type { CheckoutStepProps } from './types';
 
 export function CheckoutStep({
@@ -39,7 +39,11 @@ export function CheckoutStep({
   depositAmount,
   totalFreeKm,
   dailyRateGross,
+  pricingCurrency,
 }: CheckoutStepProps) {
+  const ccy = pricingCurrency;
+  const fmt = (value: number | null | undefined) =>
+    ccy ? formatBookingAmount(value, ccy) : '—';
   return (
     <div className="space-y-4">
       {/* Box 1: Zahlungsmethode */}
@@ -111,7 +115,7 @@ export function CheckoutStep({
           </div>
           {discountPercent > 0 && (
             <p className="text-xs mt-2 text-[color:var(--status-positive)]">
-              Ersparnis: € {discountAmount.toFixed(2)}
+              Ersparnis: {fmt(discountAmount)}
             </p>
           )}
         </div>
@@ -253,11 +257,11 @@ export function CheckoutStep({
                                       <p>Fahrzeug: ${selectedVehicle ? buildMMY(selectedVehicle) : '–'} (${selectedVehicle?.license || '–'})</p>
                                       <p>Zeitraum: ${pickupDate ? new Date(pickupDate).toLocaleDateString('de-DE') : '–'} – ${returnDate ? new Date(returnDate).toLocaleDateString('de-DE') : '–'}</p>
                                       <table><tr><th>Position</th><th>Betrag</th></tr>
-                                      <tr><td>${displayRentalDays}x Tagestarif</td><td>&euro; ${amountLabel(subtotal)}</td></tr>
-                                      <tr><td>Pakete & Extras</td><td>&euro; ${amountLabel(extrasTotal)}</td></tr>
-                                      ${discountPercent > 0 ? `<tr><td>Rabatt (${discountPercent}%)</td><td>-&euro; ${amountLabel(discountAmount)}</td></tr>` : ''}
-                                      <tr><td>MwSt. (${taxRatePercent}%)</td><td>&euro; ${amountLabel(tax)}</td></tr>
-                                      <tr><td class="total">Gesamt</td><td class="total">&euro; ${amountLabel(grandTotal)}</td></tr>
+                                      <tr><td>${displayRentalDays}x Tagestarif</td><td>${fmt(subtotal)}</td></tr>
+                                      <tr><td>Pakete & Extras</td><td>${fmt(extrasTotal)}</td></tr>
+                                      ${discountPercent > 0 ? `<tr><td>Rabatt (${discountPercent}%)</td><td>-${fmt(discountAmount)}</td></tr>` : ''}
+                                      <tr><td>MwSt. (${taxRatePercent}%)</td><td>${fmt(tax)}</td></tr>
+                                      <tr><td class="total">Gesamt</td><td class="total">${fmt(grandTotal)}</td></tr>
                                       </table></body></html>
                                     `);
                           printWindow.document.close();
@@ -332,8 +336,8 @@ export function CheckoutStep({
                                       <h2>Mietzeitraum</h2>
                                       <p>${pickupDate ? new Date(pickupDate).toLocaleDateString('de-DE') : '–'} (${pickupTime}) – ${returnDate ? new Date(returnDate).toLocaleDateString('de-DE') : '–'} (${returnTime})</p>
                                       <h2>Kosten</h2>
-                                      <p>Gesamt: &euro; ${amountLabel(grandTotal)} (inkl. MwSt.)</p>
-                                      <p>Kaution: &euro; ${amountLabel(depositAmount)}</p>
+                                      <p>Gesamt: ${fmt(grandTotal)} (inkl. MwSt.)</p>
+                                      <p>Kaution: ${fmt(depositAmount)}</p>
                                       <p>Frei-Kilometer: ${totalFreeKm.toLocaleString('de-DE')} km</p>
                                       <div class="sig"><div>Vermieter</div><div>Mieter</div></div>
                                       </body></html>
@@ -439,27 +443,27 @@ export function CheckoutStep({
                   <div className="border-t pt-3 space-y-2 border-border">
                     <div className="flex justify-between text-xs">
                       <span className="text-muted-foreground">
-                        {displayRentalDays}x Tagestarif ({formatEuroAmount(dailyRateGross)})
+                        {displayRentalDays}x Tagestarif ({fmt(dailyRateGross)})
                       </span>
-                      <span className="text-foreground">{formatEuroAmount(subtotal)}</span>
+                      <span className="text-foreground">{fmt(subtotal)}</span>
                     </div>
                     <div className="flex justify-between text-xs">
                       <span className="text-muted-foreground">Pakete & Extras</span>
-                      <span className="text-foreground">{formatEuroAmount(extrasTotal)}</span>
+                      <span className="text-foreground">{fmt(extrasTotal)}</span>
                     </div>
                     {discountPercent > 0 && (
                       <div className="flex justify-between text-xs">
                         <span className="text-green-500">Rabatt ({discountPercent}%)</span>
-                        <span className="text-green-500">-€ {amountLabel(discountAmount)}</span>
+                        <span className="text-green-500">-{fmt(discountAmount)}</span>
                       </div>
                     )}
                     <div className="flex justify-between text-xs">
                       <span className="text-muted-foreground">MwSt. ({taxRatePercent}%)</span>
-                      <span className="text-foreground">{formatEuroAmount(tax)}</span>
+                      <span className="text-foreground">{fmt(tax)}</span>
                     </div>
                     <div className="flex justify-between pt-2 border-t border-border">
-                      <span className="text-foreground">Gesamt</span>
-                      <span className="text-xs text-foreground">{formatEuroAmount(grandTotal)}</span>
+                      <span className="text-foreground">Gesamt{ccy ? ` (${ccy})` : ''}</span>
+                      <span className="text-xs text-foreground">{fmt(grandTotal)}</span>
                     </div>
                   </div>
                 </div>
@@ -506,11 +510,11 @@ export function CheckoutStep({
                     </div>
                     <div className="flex justify-between pt-2 border-t border-border">
                       <span>Gesamtkosten</span>
-                      <span className="text-xs text-foreground">{formatEuroAmount(grandTotal)}</span>
+                      <span className="text-xs text-foreground">{fmt(grandTotal)}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Kaution</span>
-                      <span className="text-[color:var(--status-watch)]">{formatEuroAmount(depositAmount)}</span>
+                      <span className="text-[color:var(--status-watch)]">{fmt(depositAmount)}</span>
                     </div>
                   </div>
                   <div className="border-t pt-6 mt-6 flex gap-16 border-border">
