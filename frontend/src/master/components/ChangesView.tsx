@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'outbound-email-medium-fixes-v49304-2026-07-10',
+    version: '4.9.304',
+    title: 'V4.9.304 — Outbound E-Mail: Webhook-Status, DRAFT-Block, i18n',
+    summary: [
+      'Webhook: BOUNCE/COMPLAINT → OutboundEmail.status FAILED; DELIVERED promoted SENDING→SENT; Event-Dedupe.',
+      'Send: nur GENERATED/SENT PDFs (DRAFT/FAILED/VOID blockiert) — Backend + Frontend.',
+      'i18n: email.* Keys (de/en) für EmailVersandTab, SendDocumentsEmailModal, BookingDocumentsSection.',
+      'Historie: lesbare Status-Labels + errorMessage tooltip.',
+    ],
+    reason: 'Mittlere Audit-Punkte — Zustellstatus-Sync, Dokumentstatus-Validierung, mehrsprachige E-Mail-UI.',
+    previousBehavior:
+      'Webhook nur Events ohne Parent-Status; DRAFT sendbar; E-Mail-UI hardcoded DE; rohe Status-Enums in Historie.',
+    details:
+      'isEmailSendableDocumentStatus in documents.constants; outbound-email.service.applyWebhookEvent transactional update.',
+    affectsArchitecture: true,
+    module: 'Documents / Outbound Email',
+    createdAt: '2026-07-10T09:05:00.000Z',
+  },
+  {
     id: 'outbound-email-audit-fixes-v49303-2026-07-10',
     version: '4.9.303',
     title: 'V4.9.303 — Outbound E-Mail: Audit-Fixes (Webhook, Resend, Rollen)',

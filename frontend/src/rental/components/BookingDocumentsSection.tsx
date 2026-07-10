@@ -17,7 +17,10 @@ import {
   type GeneratedDocumentDto,
   type OutboundEmailDto,
 } from '../../lib/api';
+import { isEmailSendableDocument } from '../../lib/email-sendable';
+import { emailDocTypeLabel, outboundEmailStatusLabel } from '../../lib/email-i18n';
 import { SendDocumentsEmailModal } from '../../components/email/SendDocumentsEmailModal';
+import { useLanguage } from '../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
 
 interface BookingDocumentsSectionProps {
@@ -79,6 +82,7 @@ export function BookingDocumentsSection({
   customerEmail,
   bookingNumber,
 }: BookingDocumentsSectionProps) {
+  const { t } = useLanguage();
   const { userRole } = useRentalOrg();
   const canManage = userRole === 'ORG_ADMIN' || userRole === 'MASTER_ADMIN';
 
@@ -170,7 +174,7 @@ export function BookingDocumentsSection({
   );
 
   const sendableDocuments = useMemo(
-    () => Object.values(currentByType).filter((d) => d.status !== 'VOID'),
+    () => Object.values(currentByType).filter((d) => isEmailSendableDocument(d.status)),
     [currentByType],
   );
 
@@ -197,7 +201,7 @@ export function BookingDocumentsSection({
             <button
               type="button"
               onClick={() => openSendModal()}
-              title="Dokumente per E-Mail senden"
+              title={t('email.send.modal.title')}
               className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${
                 isDarkMode
                   ? 'border-border text-foreground hover:bg-muted/80'
@@ -205,7 +209,7 @@ export function BookingDocumentsSection({
               }`}
             >
               <Mail className="w-3.5 h-3.5" />
-              Per E-Mail
+              {t('email.send.sendAll')}
             </button>
           )}
           {canManage && (
@@ -309,7 +313,7 @@ export function BookingDocumentsSection({
                             {canManage && (
                               <button
                                 type="button"
-                                title="Per E-Mail senden"
+                                title={t('email.send.sendOne')}
                                 onClick={() => openSendModal([doc.id])}
                                 className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-muted/80 text-muted-foreground hover:text-status-info' : 'hover:bg-muted text-muted-foreground hover:text-brand'}`}
                               >
@@ -369,14 +373,14 @@ export function BookingDocumentsSection({
 
       <div className={`mt-6 pt-4 border-t ${isDarkMode ? 'border-border/50' : 'border-gray-200'}`}>
         <div className={`text-[11px] font-semibold uppercase tracking-wider mb-2 ${subtle}`}>
-          E-Mail-Versandhistorie
+          {t('email.booking.history')}
         </div>
         {historyLoading ? (
           <div className={`flex items-center gap-2 text-xs ${subtle}`}>
-            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Lädt…
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> {t('common.loading')}
           </div>
         ) : emailHistory.length === 0 ? (
-          <p className={`text-xs ${subtle}`}>Noch keine E-Mails für diese Buchung versendet.</p>
+          <p className={`text-xs ${subtle}`}>{t('email.booking.historyEmpty')}</p>
         ) : (
           <div className="space-y-2">
             {emailHistory.map((row) => (
@@ -389,10 +393,12 @@ export function BookingDocumentsSection({
                 <div className="min-w-0">
                   <div className="font-medium truncate">{row.subject}</div>
                   <div className={`truncate ${subtle}`}>
-                    {row.toEmail} · {new Date(row.sentAt || row.createdAt).toLocaleString('de-DE')}
+                    {row.toEmail} · {new Date(row.sentAt || row.createdAt).toLocaleString()}
                   </div>
                 </div>
-                <span className="shrink-0 text-[10px] font-medium uppercase">{row.status}</span>
+                <span className="shrink-0 text-[10px] font-medium" title={row.errorMessage ?? undefined}>
+                  {outboundEmailStatusLabel(t, row.status)}
+                </span>
               </div>
             ))}
           </div>

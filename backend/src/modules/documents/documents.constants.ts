@@ -49,6 +49,16 @@ export const DOCUMENT_STATUS = {
   FAILED: 'FAILED',
 } as const;
 
+/** Statuses allowed as outbound-email PDF attachments (GENERATED + re-send of SENT). */
+export const EMAIL_SENDABLE_DOCUMENT_STATUSES = new Set<string>([
+  DOCUMENT_STATUS.GENERATED,
+  DOCUMENT_STATUS.SENT,
+]);
+
+export function isEmailSendableDocumentStatus(status: string): boolean {
+  return EMAIL_SENDABLE_DOCUMENT_STATUSES.has(status);
+}
+
 export const BUNDLE_STATUS = {
   PENDING: 'PENDING',
   PARTIAL: 'PARTIAL',

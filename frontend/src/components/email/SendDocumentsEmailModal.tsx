@@ -1,20 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Loader2, Mail, Paperclip } from 'lucide-react';
+import { toast } from 'sonner';
 
 import { Button } from '../ui/button';
 import { FormDialog } from '../patterns';
 import { api, type GeneratedDocumentDto } from '../../lib/api';
-
-const TYPE_LABEL: Record<string, string> = {
-  BOOKING_INVOICE: 'Rechnung',
-  DEPOSIT_RECEIPT: 'Kautionsbeleg',
-  RENTAL_CONTRACT: 'Mietvertrag',
-  TERMS_AND_CONDITIONS: 'AGB',
-  WITHDRAWAL_INFORMATION: 'Widerrufsbelehrung',
-  HANDOVER_PICKUP: 'Übergabeprotokoll (Abholung)',
-  HANDOVER_RETURN: 'Übergabeprotokoll (Rückgabe)',
-  FINAL_INVOICE: 'Schlussrechnung',
-};
+import { isEmailSendableDocument } from '../../lib/email-sendable';
+import { emailDocTypeLabel } from '../../lib/email-i18n';
+import { useLanguage } from '../../rental/i18n/LanguageContext';
 
 export interface SendDocumentsEmailModalProps {
   open: boolean;
@@ -39,16 +32,16 @@ export function SendDocumentsEmailModal({
   preselectedDocumentIds,
   onSent,
 }: SendDocumentsEmailModalProps) {
+  const { t } = useLanguage();
+
   const sendable = useMemo(
-    () => documents.filter((d) => d.status !== 'VOID'),
+    () => documents.filter((d) => isEmailSendableDocument(d.status)),
     [documents],
   );
 
   const [toEmail, setToEmail] = useState(defaultToEmail ?? '');
   const [subject, setSubject] = useState('');
-  const [bodyHtml, setBodyHtml] = useState(
-    '<p>Sehr geehrte Damen und Herren,</p><p>im Anhang finden Sie die angeforderten Dokumente zu Ihrer Buchung.</p><p>Mit freundlichen Grüßen</p>',
-  );
+  const [bodyHtml, setBodyHtml] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [ccEmails, setCcEmails] = useState('');
   const [bccEmails, setBccEmails] = useState('');
@@ -60,9 +53,10 @@ export function SendDocumentsEmailModal({
     setToEmail(defaultToEmail ?? '');
     setSubject(
       bookingNumber
-        ? `Ihre Buchungsdokumente — ${bookingNumber}`
-        : 'Ihre Buchungsdokumente',
+        ? t('email.send.defaultSubjectWithNumber', { number: bookingNumber })
+        : t('email.send.defaultSubject'),
     );
+    setBodyHtml(t('email.send.defaultBody'));
     const defaults =
       preselectedDocumentIds && preselectedDocumentIds.length > 0
         ? preselectedDocumentIds
@@ -71,7 +65,7 @@ export function SendDocumentsEmailModal({
     setCcEmails('');
     setBccEmails('');
     setError(null);
-  }, [open, defaultToEmail, bookingNumber, preselectedDocumentIds, sendable]);
+  }, [open, defaultToEmail, bookingNumber, preselectedDocumentIds, sendable, t]);
 
   const toggleDoc = (id: string) => {
     setSelectedIds((prev) =>
@@ -89,7 +83,7 @@ export function SendDocumentsEmailModal({
 
   const handleSend = async () => {
     if (!toEmail.trim() || selectedIds.length === 0) {
-      setError('Empfänger und mindestens ein Dokument erforderlich');
+      setError(t('email.send.modal.errorRequired'));
       return;
     }
     setSending(true);
@@ -103,10 +97,11 @@ export function SendDocumentsEmailModal({
         bccEmails: parseEmailList(bccEmails),
         documentIds: selectedIds,
       });
+      toast.success(t('email.send.success'));
       onSent?.();
       onOpenChange(false);
     } catch (err) {
-      setError((err as Error).message || 'Versand fehlgeschlagen');
+      setError((err as Error).message || t('email.send.modal.errorSend'));
     } finally {
       setSending(false);
     }
@@ -119,18 +114,18 @@ export function SendDocumentsEmailModal({
       maxWidthClassName="sm:max-w-xl"
       title={
         <span className="inline-flex items-center gap-2">
-          <Mail className="w-4 h-4" /> Dokumente per E-Mail senden
+          <Mail className="w-4 h-4" /> {t('email.send.modal.title')}
         </span>
       }
-      description="PDF-Anhänge werden aus den gespeicherten Buchungsdokumenten versendet."
+      description={t('email.send.modal.description')}
       footer={
         <>
           <Button type="button" variant="ghost" onClick={() => onOpenChange(false)} disabled={sending}>
-            Abbrechen
+            {t('common.cancel')}
           </Button>
           <Button type="button" onClick={() => void handleSend()} disabled={sending || sendable.length === 0}>
             {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
-            Senden
+            {t('email.send.modal.send')}
           </Button>
         </>
       }
@@ -143,7 +138,7 @@ export function SendDocumentsEmailModal({
         )}
 
         <div>
-          <label className="text-xs font-medium text-muted-foreground">Empfänger</label>
+          <label className="text-xs font-medium text-muted-foreground">{t('email.send.modal.recipient')}</label>
           <input
             type="email"
             value={toEmail}
@@ -153,7 +148,7 @@ export function SendDocumentsEmailModal({
         </div>
 
         <div>
-          <label className="text-xs font-medium text-muted-foreground">Betreff</label>
+          <label className="text-xs font-medium text-muted-foreground">{t('email.send.modal.subject')}</label>
           <input
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
@@ -163,7 +158,7 @@ export function SendDocumentsEmailModal({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
-            <label className="text-xs font-medium text-muted-foreground">CC (optional)</label>
+            <label className="text-xs font-medium text-muted-foreground">{t('email.send.modal.cc')}</label>
             <input
               type="text"
               value={ccEmails}
@@ -173,7 +168,7 @@ export function SendDocumentsEmailModal({
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-muted-foreground">BCC (optional)</label>
+            <label className="text-xs font-medium text-muted-foreground">{t('email.send.modal.bcc')}</label>
             <input
               type="text"
               value={bccEmails}
@@ -185,7 +180,7 @@ export function SendDocumentsEmailModal({
         </div>
 
         <div>
-          <label className="text-xs font-medium text-muted-foreground">Nachricht</label>
+          <label className="text-xs font-medium text-muted-foreground">{t('email.send.modal.body')}</label>
           <textarea
             value={bodyHtml}
             onChange={(e) => setBodyHtml(e.target.value)}
@@ -196,11 +191,11 @@ export function SendDocumentsEmailModal({
 
         <div>
           <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-2">
-            <Paperclip className="w-3.5 h-3.5" /> Anhänge ({selectedIds.length})
+            <Paperclip className="w-3.5 h-3.5" /> {t('email.send.modal.attachments', { count: selectedIds.length })}
           </div>
           <div className="space-y-2 max-h-48 overflow-y-auto">
             {sendable.length === 0 ? (
-              <p className="text-xs text-muted-foreground">Keine versendbaren Dokumente vorhanden.</p>
+              <p className="text-xs text-muted-foreground">{t('email.send.modal.noDocuments')}</p>
             ) : (
               sendable.map((doc) => (
                 <label
@@ -214,7 +209,9 @@ export function SendDocumentsEmailModal({
                     className="mt-0.5"
                   />
                   <span>
-                    <span className="font-medium">{TYPE_LABEL[doc.documentType] ?? doc.title}</span>
+                    <span className="font-medium">
+                      {emailDocTypeLabel(t, doc.documentType, doc.title)}
+                    </span>
                     {doc.documentNumber ? (
                       <span className="text-muted-foreground"> · {doc.documentNumber}</span>
                     ) : null}

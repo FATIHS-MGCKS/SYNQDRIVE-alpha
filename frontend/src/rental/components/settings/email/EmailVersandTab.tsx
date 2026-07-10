@@ -15,21 +15,16 @@ import {
   type OrgEmailSettingsDto,
   type OutboundEmailDto,
 } from '../../../../lib/api';
+import { emailDomainStatusLabel, outboundEmailStatusLabel } from '../../../../lib/email-i18n';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../../RentalContext';
 
 interface EmailVersandTabProps {
   isDarkMode: boolean;
 }
 
-const DOMAIN_STATUS_LABEL: Record<string, string> = {
-  NOT_CONFIGURED: 'Nicht konfiguriert',
-  PENDING_DNS: 'DNS ausstehend',
-  VERIFYING: 'Wird geprüft',
-  VERIFIED: 'Verifiziert',
-  FAILED: 'Fehlgeschlagen',
-};
-
 export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
+  const { t } = useLanguage();
   const { orgId, userRole } = useRentalOrg();
   const canManage = userRole === 'ORG_ADMIN' || userRole === 'MASTER_ADMIN';
 
@@ -61,15 +56,19 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
       setHistory(h.data);
       setBanner(null);
     } catch (err) {
-      setBanner({ kind: 'error', text: (err as Error).message || 'Laden fehlgeschlagen' });
+      setBanner({ kind: 'error', text: (err as Error).message || t('email.settings.loadError') });
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [orgId, t]);
 
   useEffect(() => {
+    if (!orgId) {
+      setLoading(false);
+      return;
+    }
     void load();
-  }, [load]);
+  }, [load, orgId]);
 
   const verifiedDomains = useMemo(
     () => domains.filter((d) => d.status === 'VERIFIED'),
@@ -87,9 +86,9 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
     try {
       const updated = await api.orgEmail.updateSettings(orgId, settings);
       setSettings(updated);
-      setBanner({ kind: 'success', text: 'E-Mail-Einstellungen gespeichert' });
+      setBanner({ kind: 'success', text: t('email.settings.saved') });
     } catch (err) {
-      setBanner({ kind: 'error', text: (err as Error).message || 'Speichern fehlgeschlagen' });
+      setBanner({ kind: 'error', text: (err as Error).message || t('email.settings.saveError') });
     } finally {
       setSaving(false);
     }
@@ -105,9 +104,9 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
       });
       setDomains((prev) => [created, ...prev]);
       setNewDomain('');
-      setBanner({ kind: 'success', text: `Domain ${created.domain} hinzugefügt — DNS-Einträge konfigurieren` });
+      setBanner({ kind: 'success', text: t('email.domain.added', { domain: created.domain }) });
     } catch (err) {
-      setBanner({ kind: 'error', text: (err as Error).message || 'Domain konnte nicht hinzugefügt werden' });
+      setBanner({ kind: 'error', text: (err as Error).message || t('email.settings.saveError') });
     } finally {
       setSaving(false);
     }
@@ -123,11 +122,11 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
         kind: updated.status === 'VERIFIED' ? 'success' : 'error',
         text:
           updated.status === 'VERIFIED'
-            ? 'Domain verifiziert'
-            : updated.failureReason || 'Verifizierung noch nicht abgeschlossen',
+            ? t('email.domain.verified')
+            : updated.failureReason || t('email.domain.verifyPending'),
       });
     } catch (err) {
-      setBanner({ kind: 'error', text: (err as Error).message || 'Verifizierung fehlgeschlagen' });
+      setBanner({ kind: 'error', text: (err as Error).message || t('email.settings.saveError') });
     } finally {
       setBusyDomainId(null);
     }
@@ -145,9 +144,9 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
         })),
       );
       setSettings((s: OrgEmailSettingsDto | null) => (s ? { ...s, mode: 'CUSTOM_DOMAIN' } : s));
-      setBanner({ kind: 'success', text: 'Domain als Absender aktiviert' });
+      setBanner({ kind: 'success', text: t('email.domain.activated') });
     } catch (err) {
-      setBanner({ kind: 'error', text: (err as Error).message || 'Aktivierung fehlgeschlagen' });
+      setBanner({ kind: 'error', text: (err as Error).message || t('email.settings.saveError') });
     } finally {
       setBusyDomainId(null);
     }
@@ -158,11 +157,11 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
     setSaving(true);
     try {
       await api.orgEmail.sendTest(orgId, { toEmail: testEmail.trim() });
-      setBanner({ kind: 'success', text: `Test-E-Mail an ${testEmail} gesendet` });
+      setBanner({ kind: 'success', text: t('email.test.sent', { email: testEmail }) });
       const h = await api.orgEmail.listHistory(orgId, { limit: 20 });
       setHistory(h.data);
     } catch (err) {
-      setBanner({ kind: 'error', text: (err as Error).message || 'Test-Versand fehlgeschlagen' });
+      setBanner({ kind: 'error', text: (err as Error).message || t('email.test.failed') });
     } finally {
       setSaving(false);
     }
@@ -175,9 +174,9 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
     try {
       await api.orgEmail.deleteDomain(orgId, domainId);
       setDomains((prev) => prev.filter((d) => d.id !== domainId));
-      setBanner({ kind: 'success', text: `Domain ${domainName} entfernt` });
+      setBanner({ kind: 'success', text: t('email.domain.removed', { domain: domainName }) });
     } catch (err) {
-      setBanner({ kind: 'error', text: (err as Error).message || 'Domain konnte nicht entfernt werden' });
+      setBanner({ kind: 'error', text: (err as Error).message || t('email.settings.saveError') });
     } finally {
       setBusyDomainId(null);
     }
@@ -186,7 +185,7 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
   if (loading) {
     return (
       <div className={`flex items-center gap-2 text-sm ${subtle}`}>
-        <Loader2 className="w-4 h-4 animate-spin" /> Lädt E-Mail & Versand…
+        <Loader2 className="w-4 h-4 animate-spin" /> {t('email.settings.loading')}
       </div>
     );
   }
@@ -194,11 +193,8 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-lg font-semibold text-foreground">E-Mail & Versand</h2>
-        <p className={`text-sm mt-1 ${subtle}`}>
-          Absender, Reply-To, Signatur und eigene Domains für den Dokumentenversand.
-          Ohne eigene Domain wird der SynqDrive-Plattform-Absender verwendet.
-        </p>
+        <h2 className="text-lg font-semibold text-foreground">{t('email.settings.title')}</h2>
+        <p className={`text-sm mt-1 ${subtle}`}>{t('email.settings.subtitle')}</p>
       </div>
 
       {banner && (
@@ -225,12 +221,15 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
       <div className={card}>
         <div className="flex items-center gap-2 mb-4">
           <Mail className="w-4 h-4 text-brand" />
-          <h3 className="text-sm font-semibold">Absender & Signatur</h3>
+          <h3 className="text-sm font-semibold">{t('email.settings.senderSection')}</h3>
         </div>
+        {!canManage && (
+          <p className={`text-xs mb-4 ${subtle}`}>{t('email.settings.adminOnly')}</p>
+        )}
         {settings && (
           <div className="space-y-4">
             <div>
-              <label className={`text-xs font-medium ${subtle}`}>Versandmodus</label>
+              <label className={`text-xs font-medium ${subtle}`}>{t('email.settings.modeLabel')}</label>
               <select
                 disabled={!canManage}
                 value={settings.mode}
@@ -239,50 +238,49 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
                 }
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               >
-                <option value="SYNQDRIVE_DEFAULT">SynqDrive Standard-Absender</option>
+                <option value="SYNQDRIVE_DEFAULT">{t('email.settings.modeStandard')}</option>
                 <option value="CUSTOM_DOMAIN" disabled={activeVerifiedDomains.length === 0}>
-                  Eigene Domain {activeVerifiedDomains.length === 0 ? '(keine aktiv)' : ''}
+                  {t('email.settings.modeCustom')}{' '}
+                  {activeVerifiedDomains.length === 0 ? t('email.settings.modeCustomInactive') : ''}
                 </option>
               </select>
               {settings.mode === 'CUSTOM_DOMAIN' && activeVerifiedDomains.length === 0 && (
                 <p className={`mt-2 text-xs ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>
-                  Modus „Eigene Domain“ ist gesetzt, aber keine Domain aktiv. Versand nutzt vorübergehend
-                  den Plattform-Absender — bitte eine verifizierte Domain aktivieren.
+                  {t('email.settings.customDomainWarning')}
                 </p>
               )}
               {settings.mode === 'SYNQDRIVE_DEFAULT' && settings.platformSender && (
                 <p className={`mt-2 text-xs ${subtle}`}>
-                  Aktueller Plattform-Absender:{' '}
-                  <span className="font-medium text-foreground">
-                    {settings.defaultFromName?.trim() || settings.platformSender.fromName} &lt;
-                    {settings.platformSender.fromEmail}&gt;
-                  </span>
+                  {t('email.settings.platformSender', {
+                    name: settings.defaultFromName?.trim() || settings.platformSender.fromName,
+                    email: settings.platformSender.fromEmail,
+                  })}
                 </p>
               )}
             </div>
             <div>
-              <label className={`text-xs font-medium ${subtle}`}>Absendername</label>
+              <label className={`text-xs font-medium ${subtle}`}>{t('email.settings.fromName')}</label>
               <input
                 disabled={!canManage}
                 value={settings.defaultFromName ?? ''}
                 onChange={(e) => setSettings({ ...settings, defaultFromName: e.target.value })}
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                placeholder="z. B. Ihre Autovermietung"
+                placeholder={t('email.settings.fromNamePlaceholder')}
               />
             </div>
             <div>
-              <label className={`text-xs font-medium ${subtle}`}>Reply-To</label>
+              <label className={`text-xs font-medium ${subtle}`}>{t('email.settings.replyTo')}</label>
               <input
                 disabled={!canManage}
                 type="email"
                 value={settings.replyToEmail ?? ''}
                 onChange={(e) => setSettings({ ...settings, replyToEmail: e.target.value })}
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-                placeholder="rechnung@ihre-domain.de"
+                placeholder={t('email.settings.replyToPlaceholder')}
               />
             </div>
             <div>
-              <label className={`text-xs font-medium ${subtle}`}>Signatur (HTML)</label>
+              <label className={`text-xs font-medium ${subtle}`}>{t('email.settings.signature')}</label>
               <textarea
                 disabled={!canManage}
                 value={settings.signatureHtml ?? ''}
@@ -300,7 +298,7 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
                 className="inline-flex items-center gap-2 rounded-lg bg-neutral-900 text-white px-4 py-2 text-sm font-medium disabled:opacity-50 dark:bg-white dark:text-neutral-900"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
-                Speichern
+                {t('email.settings.save')}
               </button>
             )}
           </div>
@@ -309,7 +307,7 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
 
       <div className={card}>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold">Eigene Domains</h3>
+          <h3 className="text-sm font-semibold">{t('email.domain.section')}</h3>
           <button type="button" onClick={() => void load()} className={`p-2 rounded-lg ${subtle} hover:text-foreground`}>
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -320,13 +318,13 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
             <input
               value={newDomain}
               onChange={(e) => setNewDomain(e.target.value)}
-              placeholder="ihre-domain.de"
+              placeholder={t('email.domain.placeholder')}
               className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm"
             />
             <input
               value={fromLocalPart}
               onChange={(e) => setFromLocalPart(e.target.value)}
-              placeholder="noreply"
+              placeholder={t('email.domain.fromLocalPart')}
               className="w-full sm:w-32 rounded-lg border border-border bg-background px-3 py-2 text-sm"
             />
             <button
@@ -335,14 +333,14 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
               disabled={saving || !newDomain.trim()}
               className="rounded-lg bg-brand text-brand-foreground px-4 py-2 text-sm font-medium disabled:opacity-50"
             >
-              Domain hinzufügen
+              {t('email.domain.add')}
             </button>
           </div>
         )}
 
         <div className="space-y-3">
           {domains.length === 0 ? (
-            <p className={`text-sm ${subtle}`}>Noch keine Domain konfiguriert.</p>
+            <p className={`text-sm ${subtle}`}>{t('email.domain.empty')}</p>
           ) : (
             domains.map((domain) => (
               <div
@@ -353,8 +351,8 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
                   <div>
                     <div className="text-sm font-semibold">{domain.domain}</div>
                     <div className={`text-xs ${subtle}`}>
-                      {domain.fromLocalPart}@{domain.domain} · {DOMAIN_STATUS_LABEL[domain.status] ?? domain.status}
-                      {domain.isActive ? ' · aktiv' : ''}
+                      {domain.fromLocalPart}@{domain.domain} · {emailDomainStatusLabel(t, domain.status)}
+                      {domain.isActive ? ` · ${t('email.domain.active')}` : ''}
                     </div>
                   </div>
                   {canManage && (
@@ -365,7 +363,7 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
                         onClick={() => void verifyDomain(domain.id)}
                         className="text-xs px-3 py-1.5 rounded-lg border border-border hover:bg-muted"
                       >
-                        {busyDomainId === domain.id ? <Loader2 className="w-3 h-3 animate-spin" /> : 'DNS prüfen'}
+                        {busyDomainId === domain.id ? <Loader2 className="w-3 h-3 animate-spin" /> : t('email.domain.verify')}
                       </button>
                       {domain.status === 'VERIFIED' && !domain.isActive && (
                         <button
@@ -374,7 +372,7 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
                           onClick={() => void activateDomain(domain.id)}
                           className="text-xs px-3 py-1.5 rounded-lg bg-emerald-600 text-white"
                         >
-                          Aktivieren
+                          {t('email.domain.activate')}
                         </button>
                       )}
                       <button
@@ -383,7 +381,7 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
                         onClick={() => void deleteDomain(domain.id, domain.domain)}
                         className="text-xs px-3 py-1.5 rounded-lg border border-red-500/40 text-red-600 hover:bg-red-500/10"
                       >
-                        Entfernen
+                        {t('email.domain.remove')}
                       </button>
                     </div>
                   )}
@@ -393,9 +391,9 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
                     <table className="w-full text-xs">
                       <thead>
                         <tr className={subtle}>
-                          <th className="text-left py-1 pr-2">Typ</th>
-                          <th className="text-left py-1 pr-2">Name</th>
-                          <th className="text-left py-1">Wert</th>
+                          <th className="text-left py-1 pr-2">{t('email.domain.dnsType')}</th>
+                          <th className="text-left py-1 pr-2">{t('email.domain.dnsName')}</th>
+                          <th className="text-left py-1">{t('email.domain.dnsValue')}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -420,7 +418,7 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
 
       {canManage && (
         <div className={card}>
-          <h3 className="text-sm font-semibold mb-3">Test-E-Mail</h3>
+          <h3 className="text-sm font-semibold mb-3">{t('email.test.section')}</h3>
           <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="email"
@@ -435,36 +433,40 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
               disabled={saving || !testEmail.trim()}
               className="inline-flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium disabled:opacity-50"
             >
-              <Send className="w-4 h-4" /> Test senden
+              <Send className="w-4 h-4" /> {t('email.test.send')}
             </button>
           </div>
         </div>
       )}
 
       <div className={card}>
-        <h3 className="text-sm font-semibold mb-3">Versandhistorie</h3>
+        <h3 className="text-sm font-semibold mb-3">{t('email.history.section')}</h3>
         {history.length === 0 ? (
-          <p className={`text-sm ${subtle}`}>Noch keine E-Mails versendet.</p>
+          <p className={`text-sm ${subtle}`}>{t('email.history.empty')}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
                 <tr className={subtle}>
-                  <th className="text-left py-2 pr-3">Datum</th>
-                  <th className="text-left py-2 pr-3">An</th>
-                  <th className="text-left py-2 pr-3">Betreff</th>
-                  <th className="text-left py-2">Status</th>
+                  <th className="text-left py-2 pr-3">{t('email.history.date')}</th>
+                  <th className="text-left py-2 pr-3">{t('email.history.to')}</th>
+                  <th className="text-left py-2 pr-3">{t('email.history.subject')}</th>
+                  <th className="text-left py-2">{t('email.history.status')}</th>
                 </tr>
               </thead>
               <tbody>
                 {history.map((row) => (
                   <tr key={row.id} className="border-t border-border/30">
                     <td className="py-2 pr-3 whitespace-nowrap">
-                      {new Date(row.sentAt || row.createdAt).toLocaleString('de-DE')}
+                      {new Date(row.sentAt || row.createdAt).toLocaleString()}
                     </td>
                     <td className="py-2 pr-3">{row.toEmail}</td>
                     <td className="py-2 pr-3 max-w-[200px] truncate">{row.subject}</td>
-                    <td className="py-2">{row.status}</td>
+                    <td className="py-2">
+                      <span title={row.errorMessage ?? undefined}>
+                        {outboundEmailStatusLabel(t, row.status)}
+                      </span>
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -136,6 +136,29 @@ describe('BookingDocumentEmailService', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
+  it('rejects draft documents', async () => {
+    prisma.generatedDocument.findMany.mockResolvedValueOnce([
+      {
+        id: 'doc-draft',
+        organizationId: 'org-1',
+        bookingId: 'b1',
+        status: DOCUMENT_STATUS.DRAFT,
+        fileName: 'draft.pdf',
+        mimeType: 'application/pdf',
+        objectKey: 'key-draft',
+        documentType: 'BOOKING_INVOICE',
+      },
+    ]);
+
+    await expect(
+      service.sendBookingDocuments('org-1', 'b1', 'user-1', {
+        toEmail: 'customer@test.com',
+        subject: 'Docs',
+        documentIds: ['doc-draft'],
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it('sends booking documents and marks them SENT', async () => {
     await service.sendBookingDocuments('org-1', 'b1', 'user-1', {
       toEmail: 'customer@test.com',

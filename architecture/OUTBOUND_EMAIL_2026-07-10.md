@@ -103,7 +103,15 @@ RESEND_WEBHOOK_SECRET=whsec_xxxxxxxx
 | DNS-Einträge | SynqDrive Mandanten-UI → **Hostinger DNS** | Domain-Verifizierung |
 | `RESEND_WEBHOOK_SECRET` | **Resend Webhooks** | Zustell-/Bounce-Events |
 
-### Signatur
+### Webhook → Parent-Status
+
+`applyWebhookEvent` aktualisiert `OutboundEmail.status`: `BOUNCED`/`COMPLAINED` → `FAILED`, `DELIVERED` hebt `SENDING` auf `SENT`. Doppelte Events desselben Typs werden ignoriert.
+
+### Dokument-Status für Versand
+
+Nur `GENERATED` und `SENT` (Re-Send) sind als PDF-Anhang erlaubt. `DRAFT`, `FAILED` und `VOID` werden abgelehnt.
+
+---
 
 - Primär: **Administration → E-Mail & Versand → Signatur (HTML)**
 - Fallback: **Administration → Unternehmen → E-Mail-Signatur** (`Organization.emailSignature`)

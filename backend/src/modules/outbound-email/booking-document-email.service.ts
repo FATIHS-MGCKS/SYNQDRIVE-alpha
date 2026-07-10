@@ -18,7 +18,7 @@ import {
 import { ActivityLogService } from '@modules/activity-log/activity-log.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
-import { DOCUMENT_STATUS } from '@modules/documents/documents.constants';
+import { DOCUMENT_STATUS, isEmailSendableDocumentStatus } from '@modules/documents/documents.constants';
 import {
   DOCUMENTS_STORAGE,
   DocumentStoragePort,
@@ -87,9 +87,12 @@ export class BookingDocumentEmailService {
       throw new ForbiddenException('One or more documents are not part of this booking');
     }
 
-    const voided = documents.filter((d) => d.status === DOCUMENT_STATUS.VOID);
-    if (voided.length > 0) {
-      throw new BadRequestException('Voided documents cannot be sent');
+    const blocked = documents.filter((d) => !isEmailSendableDocumentStatus(d.status));
+    if (blocked.length > 0) {
+      const types = [...new Set(blocked.map((d) => d.status))].join(', ');
+      throw new BadRequestException(
+        `Documents cannot be sent in status: ${types}. Only generated or previously sent PDFs are allowed.`,
+      );
     }
 
     const identity = await this.policy.resolveIdentity(orgId);

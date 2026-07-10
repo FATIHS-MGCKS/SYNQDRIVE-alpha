@@ -121,8 +121,72 @@ export class OutboundEmailService {
     });
     if (!email) return null;
 
-    await this.recordEvent(email.id, eventType, payload);
+    const duplicate = await this.prisma.outboundEmailEvent.findFirst({
+      where: { outboundEmailId: email.id, eventType },
+    });
+    if (duplicate) return email.id;
+
+    const statusPatch = this.resolveStatusPatch(eventType, email.status, payload);
+
+    await this.prisma.$transaction([
+      this.prisma.outboundEmailEvent.create({
+        data: {
+          outboundEmailId: email.id,
+          eventType,
+          payload: payload as object,
+        },
+      }),
+      ...(statusPatch
+        ? [
+            this.prisma.outboundEmail.update({
+              where: { id: email.id },
+              data: statusPatch,
+            }),
+          ]
+        : []),
+    ]);
+
     return email.id;
+  }
+
+  private resolveStatusPatch(
+    eventType: OutboundEmailEventType,
+    currentStatus: OutboundEmailStatus,
+    payload?: Record<string, unknown>,
+  ): {
+    status?: OutboundEmailStatus;
+    errorCode?: string | null;
+    errorMessage?: string | null;
+  } | null {
+    switch (eventType) {
+      case OutboundEmailEventType.BOUNCED:
+        return {
+          status: OutboundEmailStatus.FAILED,
+          errorCode: 'BOUNCED',
+          errorMessage: this.extractWebhookErrorMessage(payload) ?? 'Email bounced',
+        };
+      case OutboundEmailEventType.COMPLAINED:
+        return {
+          status: OutboundEmailStatus.FAILED,
+          errorCode: 'COMPLAINED',
+          errorMessage: 'Recipient marked email as spam',
+        };
+      case OutboundEmailEventType.DELIVERED:
+        if (currentStatus === OutboundEmailStatus.SENDING) {
+          return { status: OutboundEmailStatus.SENT };
+        }
+        return null;
+      default:
+        return null;
+    }
+  }
+
+  private extractWebhookErrorMessage(payload?: Record<string, unknown>): string | null {
+    if (!payload) return null;
+    const bounce = payload.bounce as { message?: string } | undefined;
+    if (bounce?.message?.trim()) return bounce.message.trim();
+    const message = payload.message;
+    return typeof message === 'string' && message.trim() ? message.trim() : null;
   }
 
   toDto(row: {
