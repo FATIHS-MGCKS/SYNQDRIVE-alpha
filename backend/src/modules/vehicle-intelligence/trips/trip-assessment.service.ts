@@ -102,6 +102,7 @@ function resolveConfidence(
   source: TripAssessmentSource,
 ): TripAssessmentConfidence {
   if (status === 'NICHT_BEWERTBAR') return 'LOW';
+  if (input.deviceQualityDegraded) return 'LOW';
   if (source === 'MISUSE_EVIDENCE' || input.nativeEventCount > 0) return 'HIGH';
   if (source === 'HF_RECONSTRUCTED' && input.hasEnoughData) return 'MEDIUM';
   if (source === 'STRESS_ONLY') return input.hasEnoughData ? 'MEDIUM' : 'LOW';
@@ -119,6 +120,9 @@ function buildPrimaryReason(
     case 'NICHT_BEWERTBAR':
       return 'Für diese Fahrt liegen nicht genug belastbare Signale vor.';
     case 'PRUEFHINWEIS':
+      if (input.deviceQualityDegraded) {
+        return 'Die Fahrbewertung ist eingeschränkt — das Telematik-Gerät sendet derzeit unzuverlässige native Fahrereignisse (DIMO: Steckung/Kalibrierung prüfen). Kein automatisierter Fahrervorwurf.';
+      }
       if (input.maxEvidenceLevel && EVIDENCE_LEVEL_RANK[input.maxEvidenceLevel] >= EVIDENCE_LEVEL_RANK.CHECK_RECOMMENDED) {
         if (input.maxEvidenceLevel === 'MISUSE_SUSPECTED') {
           return 'Mehrere belastbare Hinweise auf Fehlgebrauch — Prüfung empfohlen, kein automatisierter Vorwurf.';
@@ -201,39 +205,43 @@ function resolveStatus(input: TripAssessmentInput): TripAssessmentStatus {
   }
 
   const evidenceStatus = resolveStatusFromEvidence(input.maxEvidenceLevel);
+  let status: TripAssessmentStatus;
+
   if (evidenceStatus === 'KRITISCH') {
-    return 'KRITISCH';
-  }
-  if (evidenceStatus === 'PRUEFHINWEIS') {
-    return 'PRUEFHINWEIS';
-  }
-
-  if (input.misuseCaseCount > 0 || abuseRelevantCount > 0) {
-    return 'PRUEFHINWEIS';
-  }
-
-  if (input.drivingStressLevel === 'critical' || verySevereCount > 0) {
-    return 'KRITISCH';
-  }
-
-  if (hardDrivingCount >= 2 || hardDrivingCount >= 1 && input.drivingStressLevel === 'high') {
-    return 'AUFFAELLIG';
-  }
-
-  if (
+    status = 'KRITISCH';
+  } else if (evidenceStatus === 'PRUEFHINWEIS') {
+    status = 'PRUEFHINWEIS';
+  } else if (input.misuseCaseCount > 0 || abuseRelevantCount > 0) {
+    status = 'PRUEFHINWEIS';
+  } else if (input.drivingStressLevel === 'critical' || verySevereCount > 0) {
+    status = 'KRITISCH';
+  } else if (hardDrivingCount >= 2 || (hardDrivingCount >= 1 && input.drivingStressLevel === 'high')) {
+    status = 'AUFFAELLIG';
+  } else if (
     hardDrivingCount === 1 ||
     input.drivingStressLevel === 'moderate' ||
     input.drivingStressLevel === 'high' ||
     events.some((event) => event.classification === 'MODERATE' || event.classification === 'WARNING')
   ) {
-    return 'BEOBACHTEN';
+    status = 'BEOBACHTEN';
+  } else if (hasBehaviorEvents || input.drivingStressScore != null || input.hasEnoughData) {
+    status = 'UNAUFFAELLIG';
+  } else {
+    status = 'NICHT_BEWERTBAR';
   }
 
-  if (hasBehaviorEvents || input.drivingStressScore != null || input.hasEnoughData) {
-    return 'UNAUFFAELLIG';
+  if (input.deviceQualityDegraded) {
+    if (
+      status === 'KRITISCH' ||
+      status === 'AUFFAELLIG' ||
+      status === 'BEOBACHTEN' ||
+      (status === 'UNAUFFAELLIG' && input.nativeEventCount > 0)
+    ) {
+      return 'PRUEFHINWEIS';
+    }
   }
 
-  return 'NICHT_BEWERTBAR';
+  return status;
 }
 
 /** Derive whether the trip has enough data for a meaningful assessment. */

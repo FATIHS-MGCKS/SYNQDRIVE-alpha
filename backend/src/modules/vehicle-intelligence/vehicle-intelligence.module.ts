@@ -1,4 +1,4 @@
-import { Module, forwardRef } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { BullModule } from '@nestjs/bullmq';
 import { VehicleIntelligenceController } from './vehicle-intelligence.controller';
 import { DamagesOrgController } from './damages/damages-org.controller';
@@ -78,6 +78,8 @@ import { TripOverlapDetector } from './trips/detectors/trip-overlap.detector';
 import { IgnitionSegmentDetector } from './trips/detectors/ignition-segment.detector';
 import { MotionSegmentDetector } from './trips/detectors/motion-segment.detector';
 import { ActivityWindowDetector } from './trips/detectors/activity-window.detector';
+import { DrivingAssessmentDeviceQualityService } from './trips/driving-assessment-device-quality.service';
+import { TechnicalObservationsModule } from '../technical-observations/technical-observations.module';
 
 @Module({
   imports: [
@@ -87,6 +89,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     forwardRef(() => InvoicesModule),
     forwardRef(() => HighMobilityModule),
     forwardRef(() => RentalHealthModule),
+    forwardRef(() => TechnicalObservationsModule),
     TasksModule,
     BullModule.registerQueue(
       { name: QUEUE_NAMES.TRIP_TRACKING },
@@ -123,6 +126,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     TripAnalysisCoordinatorService,
     EventContextEnrichmentService,
     LteR1BehaviorEnrichmentService,
+    DrivingAssessmentDeviceQualityService,
     HfMirrorService,
     WaypointMirrorService,
     ActivityWindowProducerService,
@@ -195,6 +199,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
     TripEnrichmentOrchestratorService,
     TripAnalysisCoordinatorService,
     LteR1BehaviorEnrichmentService,
+    DrivingAssessmentDeviceQualityService,
     EventContextEnrichmentService,
     TripAssignmentService,
     TripAttributionService,

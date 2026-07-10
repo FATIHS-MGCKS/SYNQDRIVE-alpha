@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Icon } from '../ui/Icon';
 import { TripMetricRow } from './TripMetricRow';
 import type { TripBehaviorEvent, TripTimelineTrip } from './timeline.types';
-import { hasAbuseSuspicion, hasTripDeviceConnectionAlert } from './timeline.utils';
+import { isTripTimelineFlagged } from './timeline.utils';
 import { cn } from '../../../components/ui/utils';
 
 interface TripTimelineCardProps {
@@ -23,7 +23,7 @@ export function TripTimelineCard({
   onSelect,
   children,
 }: TripTimelineCardProps) {
-  const flagged = hasAbuseSuspicion(trip) || hasTripDeviceConnectionAlert(trip);
+  const flagged = isTripTimelineFlagged(trip);
 
   return (
     <article

@@ -81,6 +81,11 @@ export function mapTripForVehicleApi(
       hfPointsCleaned: assessability.hfPointsCleaned ?? behaviorSummary.hfPointsCleaned ?? null,
     },
     ...analysisFields,
+    deviceQualityWarning: behaviorSummary.deviceQualityWarning === true,
+    deviceQualityVehicleStatus:
+      typeof behaviorSummary.deviceQualityVehicleStatus === 'string'
+        ? behaviorSummary.deviceQualityVehicleStatus
+        : null,
     tripAssessment: trip.tripAssessment ?? null,
   };
 }

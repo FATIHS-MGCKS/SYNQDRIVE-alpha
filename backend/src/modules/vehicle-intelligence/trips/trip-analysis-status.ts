@@ -24,7 +24,8 @@ export type AnalysisLimitReason =
   | 'NO_NATIVE_EVENTS'
   | 'LOW_DATA'
   | 'CAPABILITY'
-  | 'NO_END_TIME';
+  | 'NO_END_TIME'
+  | 'DEVICE_NATIVE_EVENT_QUALITY';
 
 export interface AnalysisAssessabilityContext {
   analysisAssessability: AnalysisAssessability;
@@ -169,7 +170,8 @@ function isValidLimitReason(v: string | undefined): v is AnalysisLimitReason {
     v === 'NO_NATIVE_EVENTS' ||
     v === 'LOW_DATA' ||
     v === 'CAPABILITY' ||
-    v === 'NO_END_TIME'
+    v === 'NO_END_TIME' ||
+    v === 'DEVICE_NATIVE_EVENT_QUALITY'
   );
 }
 
@@ -199,6 +201,7 @@ export function deriveAnalysisAssessability(trip: {
 
   if (isValidAssessability(persistedAssess)) {
     const nativeQuerySucceeded = readBoolean(summary, 'nativeQuerySucceeded') === true;
+    const deviceQualityWarning = readBoolean(summary, 'deviceQualityWarning') === true;
     const reconciledCalmLteR1 =
       persistedAssess === 'NOT_ASSESSABLE' &&
       persistedReason === 'NO_NATIVE_EVENTS' &&
@@ -215,6 +218,20 @@ export function deriveAnalysisAssessability(trip: {
         hfPointsCleaned: hfPointsCleaned ?? 0,
         hardwareType: trip.hardwareType ?? readString(summary, 'hardwareType') ?? undefined,
       });
+    }
+
+    if (deviceQualityWarning) {
+      return {
+        analysisAssessability: 'LIMITED',
+        analysisLimitReason: 'DEVICE_NATIVE_EVENT_QUALITY',
+        shortTermMisuseAssessable: readBoolean(summary, 'shortTermMisuseAssessable') ?? !hfInsufficient,
+        nativeBehaviorEventsAvailable: nativeAvailable,
+        hfInsufficientForAbuse: hfInsufficient,
+        nativeEventCount,
+        hfPointsTotal,
+        hfPointsCleaned,
+        hardwareType: trip.hardwareType ?? readString(summary, 'hardwareType'),
+      };
     }
 
     return {

@@ -69,6 +69,9 @@ export interface TripTimelineTrip {
   hasOpenDeviceUnplug?: boolean;
   deviceConnectionRentalRelevant?: boolean;
   deviceConnectionSeverity?: 'info' | 'warning' | 'critical' | null;
+  deviceQualityWarning?: boolean;
+  deviceQualityVehicleStatus?: 'NORMAL' | 'DEGRADED' | 'RECOVERING' | null;
+  analysisLimitReason?: string | null;
   harshBrakeCount?: number;
   harshAccelCount?: number;
   harshCornerCount?: number;

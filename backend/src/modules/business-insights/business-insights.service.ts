@@ -30,6 +30,7 @@ import { TireCriticalDetector } from './detectors/tire-critical.detector';
 import { BrakeCriticalDetector } from './detectors/brake-critical.detector';
 import { ComplianceOperationalDetector } from './detectors/compliance-operational.detector';
 import { PickupOverdueDetector } from './detectors/pickup-overdue.detector';
+import { DrivingAssessmentDeviceQualityDetector } from './detectors/driving-assessment-device-quality.detector';
 
 @Injectable()
 export class BusinessInsightsService {
@@ -55,6 +56,7 @@ export class BusinessInsightsService {
     brakeCritical: BrakeCriticalDetector,
     complianceOperational: ComplianceOperationalDetector,
     pickupOverdue: PickupOverdueDetector,
+    drivingAssessmentDeviceQuality: DrivingAssessmentDeviceQualityDetector,
   ) {
     this.detectors = [
       tightHandover,
@@ -68,6 +70,7 @@ export class BusinessInsightsService {
       brakeCritical,
       complianceOperational,
       pickupOverdue,
+      drivingAssessmentDeviceQuality,
     ];
   }
 

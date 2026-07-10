@@ -516,6 +516,13 @@ enum InsightType {
   TUV_OVERDUE
   BOKRAFT_OVERDUE
   HM_SERVICE_NO_TRACKING
+  DRIVING_ASSESSMENT_DEVICE_QUALITY
+}
+
+enum DrivingAssessmentQualityStatus {
+  NORMAL
+  DEGRADED
+  RECOVERING
 }
 
 enum InsightSeverity {
@@ -878,6 +885,7 @@ model Organization {
   stations                  Station[]
   vehicles                  Vehicle[]
   vehicleComplaints         VehicleComplaint[]
+  vehicleDrivingAssessmentQualities VehicleDrivingAssessmentQuality[]
   orgIntegrations           OrganizationIntegration[]
   subscriptions             BillingSubscription[]
   billingUsageSnapshots     BillingUsageSnapshot[]
@@ -1366,6 +1374,7 @@ model Vehicle {
   documentExtractions    VehicleDocumentExtraction[]
   vendorVehicles         VendorVehicle[]
   complaints             VehicleComplaint[]
+  drivingAssessmentQuality VehicleDrivingAssessmentQuality?
   dataSourceLinks        VehicleDataSourceLink[]
   hmSignalGroupStates    HmSignalGroupState[]
   providerConsents       VehicleProviderConsent[]
@@ -1507,6 +1516,29 @@ model VehicleComplaint {
   @@index([organizationId, vehicleId, status])
   @@index([bookingId])
   @@map("vehicle_complaints")
+}
+
+// LTE_R1 native-event quality monitor — Fahrbewertung reliability only.
+model VehicleDrivingAssessmentQuality {
+  id                     String                           @id @default(uuid())
+  organizationId         String                           @map("organization_id")
+  vehicleId              String                           @unique @map("vehicle_id")
+  status                 DrivingAssessmentQualityStatus   @default(NORMAL)
+  degradedSince          DateTime?                        @map("degraded_since")
+  recoveredAt            DateTime?                        @map("recovered_at")
+  lastEvaluatedAt        DateTime                         @map("last_evaluated_at")
+  consecutiveNormalTrips Int                              @default(0) @map("consecutive_normal_trips")
+  evidenceJson           Json?                            @map("evidence_json")
+  activeObservationId    String?                          @map("active_observation_id")
+  createdAt              DateTime                         @default(now()) @map("created_at")
+  updatedAt              DateTime                         @updatedAt @map("updated_at")
+
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([organizationId, status])
+  @@map("vehicle_driving_assessment_quality")
 }
 
 // ------------------------------------------------

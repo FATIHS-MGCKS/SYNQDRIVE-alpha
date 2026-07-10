@@ -35,6 +35,49 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'lte-r1-device-quality-phase1-v49306-2026-07-10',
+    version: '4.9.306',
+    title: 'V4.9.306 — LTE R1 Fahrbewertung: Geräte-Qualitätsdetector + UX',
+    summary: [
+      'Vehicle-Level-State `VehicleDrivingAssessmentQuality` (NORMAL/DEGRADED/RECOVERING) mit Auto-Recovery.',
+      'Detector nach LTE_R1-Enrichment: events/km, Event-Volumen, Inter-Event-Cadence (Phase-0-Schwellen).',
+      'Trips: Badge „Fahrbewertung eingeschränkt“, LIMITED + `DEVICE_NATIVE_EVENT_QUALITY`, Assessment-Cap auf PRUEFHINWEIS.',
+      'Mängelliste: auto TechnicalObservation (`system_import` / `driving_behavior`, blocksRental=false).',
+      'Dashboard: Insight `DRIVING_ASSESSMENT_DEVICE_QUALITY` + Vehicle-Alerts-Tab.',
+      'Backfill: `scripts/backfill-driving-assessment-device-quality.ts`.',
+    ],
+    reason:
+      'WOB L 7503 / DIMO Fehlkalibrierung: Native-Event-Spam verfälscht Fahrbewertung — kommunizieren ohne Blockade, Recovery wenn Qualität normalisiert.',
+    previousBehavior:
+      'Kein Geräte-Qualitätshinweis; `analysisAssessability=FULL` trotz unzuverlässiger Native-Events; keine Mängelliste/Notification.',
+    details:
+      'Detector: `driving-assessment-device-quality.detector.ts`, Service-Hook in `trip-behavior-enrichment.service.ts`. Migration `20260710100000_vehicle_driving_assessment_quality`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence / Trips',
+    createdAt: '2026-07-10T10:05:00.000Z',
+  },
+  {
+    id: 'lte-r1-driving-quality-phase0-v49305-2026-07-10',
+    version: '4.9.305',
+    title: 'V4.9.305 — LTE R1 Fahrbewertung: Phase-0-Evidenz WOB L 7503',
+    summary: [
+      'Prod-Analyse WOB L 7503 (VW Tiguan LTE_R1): sustained behavior.harshAcceleration-Spam ab ~2026-07-08.',
+      'Fleet-Baseline: median 2 Events/Trip vs Target 10.5; median 0.2 vs 3.0 Events/km (bis 60/km).',
+      'Burst-Dedup ±2s löst Problem nicht (max 17% Duplikate) — maschinenartiger ~14s-Takt.',
+      'System zeigt analysisAssessability=FULL trotz unzuverlässiger Native-Quelle; drivingScore ~34–38.',
+      'Neues Diagnose-Script: backend/scripts/analyze-lte-r1-driving-event-quality.ts.',
+    ],
+    reason:
+      'DIMO-Diagnose (lose OBD-Steckung / Fehlkalibrierung) — Phase 0 quantifiziert das Muster vor Detector-Implementierung (Badge, Mängelliste, Notification).',
+    previousBehavior:
+      'Kein Vehicle-Level-Quality-Detector; Fahrbewertung vertraut Native-Events blind; keine User-Kommunikation bei Geräte-Miskalibrierung.',
+    details:
+      'architecture/DRIVING_ASSESSMENT_DEVICE_QUALITY_PHASE0_2026-07-10.md. Empfohlener Primär-Signal: eventsPerKm vs Org-LTE_R1-Baseline + Inter-Event-Cadence.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence / Trips',
+    createdAt: '2026-07-10T09:40:00.000Z',
+  },
+  {
     id: 'outbound-email-medium-fixes-v49304-2026-07-10',
     version: '4.9.304',
     title: 'V4.9.304 — Outbound E-Mail: Webhook-Status, DRAFT-Block, i18n',

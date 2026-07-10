@@ -43,6 +43,8 @@ export function buildTripAssessmentFromSignals(params: BuildTripAssessmentParams
     durationMinutes: params.durationMinutes,
     nativeEventCount,
     reconstructedEventCount,
+    deviceQualityDegraded:
+      params.assessability.analysisLimitReason === 'DEVICE_NATIVE_EVENT_QUALITY',
   });
 }
 
