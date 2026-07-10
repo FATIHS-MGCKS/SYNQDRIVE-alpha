@@ -16,6 +16,7 @@ import {
   SimulatedLineItem,
 } from './pricing-calculation.util';
 import { PricingMigrationService } from './pricing-migration.service';
+import { PriceTariffsService } from './price-tariffs.service';
 
 export interface ResolvedTariffContext {
   priceBook: { id: string; currency: string; taxRatePercent: number };
@@ -66,6 +67,7 @@ export class PricingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly migration: PricingMigrationService,
+    private readonly priceTariffs: PriceTariffsService,
   ) {}
 
   async resolveTariffForVehicle(
@@ -75,6 +77,7 @@ export class PricingService {
     returnAt: Date,
   ): Promise<ResolvedTariffContext> {
     await this.migration.ensureOrgPricing(orgId);
+    await this.priceTariffs.promoteDueScheduledVersions(orgId);
 
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: vehicleId, organizationId: orgId },

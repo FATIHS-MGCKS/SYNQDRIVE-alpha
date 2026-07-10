@@ -27,8 +27,8 @@ describe('Pricing currency resolution', () => {
     const ids = createSedanPricingFixtures();
     const { prisma } = createPricingTestStore(ids, { currency });
     const migration = { ensureOrgPricing: jest.fn() } as unknown as PricingMigrationService;
-    const pricing = new PricingService(prisma as never, migration);
     const tariffs = new PriceTariffsService(prisma as never, migration);
+    const pricing = new PricingService(prisma as never, migration, tariffs);
     return { ids, prisma, pricing, tariffs };
   }
 

@@ -19,7 +19,10 @@ import {
 import {
   catalogCurrency,
   countVehiclesInGroup,
+  getActiveVersion,
+  getDraftVersion,
   getEditableVersion,
+  getTariffFormBaseline,
   rateWarnings,
   validateRateFields,
 } from '../../pricing/pricingUtils';
@@ -58,27 +61,29 @@ export function TariffGroupDrawer({
 }: TariffGroupDrawerProps) {
   const taxRate = catalog?.priceBook?.taxRatePercent ?? 19;
   const catalogCcy = catalogCurrency(catalog);
-  const version = getEditableVersion(group);
+  const draftVersion = getDraftVersion(group);
+  const liveVersion = getActiveVersion(group);
+  const formBaseline = getTariffFormBaseline(group);
   const [name, setName] = useState(group.name);
   const [description, setDescription] = useState(group.description ?? '');
   const [isActive, setIsActive] = useState(group.isActive);
-  const [rate, setRate] = useState<TariffRate>(version?.rate ?? emptyRate());
-  const [packages, setPackages] = useState<MileagePackageOption[]>(version?.mileagePackages ?? []);
-  const [insurances, setInsurances] = useState<InsuranceOptionRow[]>(version?.insuranceOptions ?? []);
-  const [extras, setExtras] = useState<ExtraOptionRow[]>(version?.extraOptions ?? []);
+  const [rate, setRate] = useState<TariffRate>(formBaseline?.rate ?? emptyRate());
+  const [packages, setPackages] = useState<MileagePackageOption[]>(formBaseline?.mileagePackages ?? []);
+  const [insurances, setInsurances] = useState<InsuranceOptionRow[]>(formBaseline?.insuranceOptions ?? []);
+  const [extras, setExtras] = useState<ExtraOptionRow[]>(formBaseline?.extraOptions ?? []);
   const [saving, setSaving] = useState(false);
   const [activating, setActivating] = useState(false);
   const publishInFlightRef = useRef(false);
 
   useEffect(() => {
-    const v = getEditableVersion(group);
+    const baseline = getTariffFormBaseline(group);
     setName(group.name);
     setDescription(group.description ?? '');
     setIsActive(group.isActive);
-    setRate(v?.rate ?? emptyRate());
-    setPackages(v?.mileagePackages ?? []);
-    setInsurances(v?.insuranceOptions ?? []);
-    setExtras(v?.extraOptions ?? []);
+    setRate(baseline?.rate ?? emptyRate());
+    setPackages(baseline?.mileagePackages ?? []);
+    setInsurances(baseline?.insuranceOptions ?? []);
+    setExtras(baseline?.extraOptions ?? []);
   }, [group]);
 
   const dirty = useMemo(() => true, [name, description, isActive, rate, packages, insurances, extras]);
@@ -253,9 +258,6 @@ export function TariffGroupDrawer({
     }
   };
 
-  const headerVersion = getEditableVersion(group);
-
-  return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
       <div
         className={`h-full w-full max-w-lg overflow-y-auto shadow-xl ${
@@ -267,7 +269,11 @@ export function TariffGroupDrawer({
           <div>
             <h2 className="text-sm font-bold">{group.name}</h2>
             <p className="text-[10px] text-muted-foreground">
-              Version {headerVersion?.versionNumber ?? '—'} · {headerVersion?.status ?? '—'}
+              {draftVersion
+                ? `Draft v${draftVersion.versionNumber}`
+                : liveVersion
+                  ? `Live v${liveVersion.versionNumber} — edits create draft`
+                  : 'No version'}
             </p>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-muted">

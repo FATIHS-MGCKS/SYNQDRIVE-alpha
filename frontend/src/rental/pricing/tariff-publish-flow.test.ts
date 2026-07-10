@@ -25,11 +25,12 @@ describe('Sedan tariff publish flow (deposit 17700 → 50000)', () => {
     expect(SEDAN_DEPOSIT_DRAFT_CENTS).toBe(50000);
   });
 
-  it('editor loads deposit change from 177 to 500 in draft state', () => {
+  it('editor shows no draft deposit until draft exists; draft carries 50000', () => {
     const staleGroup = createStaleSedanGroupWithActiveOnly();
     const draft = createSedanDraftVersionSavedFromActive();
 
-    expect(resolveTariffEditorDepositCents(staleGroup)).toBe(SEDAN_DEPOSIT_ACTIVE_CENTS);
+    expect(resolveTariffEditorDepositCents(staleGroup)).toBeNull();
+    expect(resolveTariffOverviewDepositCents(staleGroup)).toBe(SEDAN_DEPOSIT_ACTIVE_CENTS);
     expect(draft.rate?.depositAmountCents).toBe(SEDAN_DEPOSIT_DRAFT_CENTS);
   });
 
@@ -41,11 +42,11 @@ describe('Sedan tariff publish flow (deposit 17700 → 50000)', () => {
     expect(isDraftMisrepresentedAsLive(catalogGroup)).toBe(true);
   });
 
-  it('after successful publish overview and editor both show 50000', () => {
+  it('after successful publish overview shows 50000 and no stray draft', () => {
     const published = createSedanGroupAfterSuccessfulPublish();
 
     expect(resolveTariffOverviewDepositCents(published)).toBe(SEDAN_DEPOSIT_DRAFT_CENTS);
-    expect(resolveTariffEditorDepositCents(published)).toBe(SEDAN_DEPOSIT_DRAFT_CENTS);
+    expect(resolveTariffEditorDepositCents(published)).toBeNull();
     expect(isDraftMisrepresentedAsLive(published)).toBe(false);
   });
 

@@ -2991,6 +2991,7 @@ model Booking {
 
 enum PriceTariffVersionStatus {
   DRAFT
+  SCHEDULED
   ACTIVE
   ARCHIVED
 }
@@ -3065,6 +3066,9 @@ model PriceTariffVersion {
   validFrom      DateTime                 @map("valid_from")
   validTo        DateTime?                @map("valid_to")
   createdBy      String?                  @map("created_by")
+  updatedBy      String?                  @map("updated_by")
+  publishedBy    String?                  @map("published_by")
+  publishedAt    DateTime?                @map("published_at")
   createdAt      DateTime                 @default(now()) @map("created_at")
   updatedAt      DateTime                 @updatedAt @map("updated_at")
 

@@ -1,5 +1,5 @@
 import type { PriceTariffGroup, PriceTariffVersion } from './pricingTypes';
-import { getActiveVersion, getDraftVersion, getEditableVersion } from './pricingUtils';
+import { getActiveVersion, getDraftVersion } from './pricingUtils';
 import {
   SEDAN_DEPOSIT_ACTIVE_CENTS,
   SEDAN_DEPOSIT_DRAFT_CENTS,
@@ -50,9 +50,9 @@ export function resolveTariffOverviewDepositCents(group: PriceTariffGroup): numb
   return getActiveVersion(group)?.rate?.depositAmountCents ?? null;
 }
 
-/** TariffGroupDrawer deposit field — DRAFT preferred over ACTIVE. */
+/** TariffGroupDrawer deposit field — DRAFT only (live tariff is read-only). */
 export function resolveTariffEditorDepositCents(group: PriceTariffGroup): number | null {
-  return getEditableVersion(group)?.rate?.depositAmountCents ?? null;
+  return getDraftVersion(group)?.rate?.depositAmountCents ?? null;
 }
 
 export function isDraftMisrepresentedAsLive(group: PriceTariffGroup): boolean {

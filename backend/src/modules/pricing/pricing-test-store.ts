@@ -36,7 +36,7 @@ type VersionRow = {
   priceBookId: string;
   tariffGroupId: string;
   versionNumber: number;
-  status: 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+  status: 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'ARCHIVED';
   validFrom: Date;
   validTo: Date | null;
   createdAt: Date;
@@ -63,6 +63,8 @@ type GroupRow = {
   name: string;
   category: string;
   isActive: boolean;
+  sortOrder?: number;
+  updatedAt?: Date;
 };
 
 type AssignmentRow = {
@@ -117,6 +119,8 @@ export function createPricingTestStore(
       name: 'Sedan',
       category: 'Sedan',
       isActive: true,
+      sortOrder: 0,
+      updatedAt: now,
     },
   ];
 
@@ -243,6 +247,37 @@ export function createPricingTestStore(
         groups.find(
           (g) => g.id === where.id && g.organizationId === where.organizationId,
         ) ?? null,
+      ),
+      findMany: jest.fn(
+        async ({
+          where,
+          orderBy,
+          include,
+        }: {
+          where: Record<string, unknown>;
+          orderBy?: { sortOrder?: 'asc' };
+          include?: { versions?: { orderBy?: { versionNumber: 'desc' }; include?: unknown } };
+        }) => {
+          let matched = groups.filter(
+            (g) =>
+              g.organizationId === where.organizationId &&
+              (where.priceBookId === undefined || g.priceBookId === where.priceBookId),
+          );
+          if (orderBy?.sortOrder === 'asc') {
+            matched = [...matched].sort((a, b) => (a as { sortOrder?: number }).sortOrder! - (b as { sortOrder?: number }).sortOrder!);
+          }
+          return matched.map((g) => {
+            if (!include?.versions) return g;
+            let groupVersions = versions.filter((v) => v.tariffGroupId === g.id);
+            if (include.versions.orderBy?.versionNumber === 'desc') {
+              groupVersions = [...groupVersions].sort((a, b) => b.versionNumber - a.versionNumber);
+            }
+            return {
+              ...g,
+              versions: groupVersions.map((v) => includeVersion(v)),
+            };
+          });
+        },
       ),
       update: jest.fn(async ({ where, data }: { where: { id: string }; data: Partial<GroupRow> }) => {
         const g = groups.find((row) => row.id === where.id);
@@ -399,6 +434,14 @@ export function createPricingTestStore(
           (v) => v.id === where.id && v.organizationId === where.organizationId,
         ) ?? null,
       ),
+      findMany: jest.fn(async ({ where }: { where: Record<string, unknown> }) => {
+        const notIn = (where.id as { notIn?: string[] } | undefined)?.notIn ?? [];
+        return vehicles.filter(
+          (v) =>
+            v.organizationId === where.organizationId &&
+            (notIn.length === 0 || !notIn.includes(v.id)),
+        );
+      }),
     },
     vehicleTariffAssignment: {
       findFirst: jest.fn(
@@ -438,6 +481,13 @@ export function createPricingTestStore(
           }
           return matched[0] ?? null;
         },
+      ),
+      findMany: jest.fn(async ({ where }: { where: Record<string, unknown> }) =>
+        assignments.filter((a) => {
+          if (where.organizationId && a.organizationId !== where.organizationId) return false;
+          if (where.isActive !== undefined && a.isActive !== where.isActive) return false;
+          return true;
+        }),
       ),
     },
     bookingPriceSnapshot: {

@@ -41,14 +41,30 @@ export function formatNetAsGross(
 }
 
 export function getActiveVersion(group: PriceTariffGroup): PriceTariffVersion | null {
+  if (group.activeVersion != null) return group.activeVersion;
   return group.versions.find((v) => v.status === 'ACTIVE') ?? null;
 }
 
 export function getDraftVersion(group: PriceTariffGroup): PriceTariffVersion | null {
+  if (group.draftVersion != null) return group.draftVersion;
   return group.versions.find((v) => v.status === 'DRAFT') ?? null;
 }
 
+export function getScheduledVersions(group: PriceTariffGroup): PriceTariffVersion[] {
+  if (group.scheduledVersions?.length) return group.scheduledVersions;
+  return group.versions.filter((v) => v.status === 'SCHEDULED');
+}
+
+/** Only DRAFT versions are directly editable — never ACTIVE or ARCHIVED. */
 export function getEditableVersion(group: PriceTariffGroup): PriceTariffVersion | null {
+  return getDraftVersion(group);
+}
+
+/**
+ * Baseline for initializing a new draft UI (copy-on-write from live).
+ * Does not imply the returned version is editable.
+ */
+export function getTariffFormBaseline(group: PriceTariffGroup): PriceTariffVersion | null {
   return getDraftVersion(group) ?? getActiveVersion(group);
 }
 

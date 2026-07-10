@@ -45,7 +45,7 @@ export function TariffGroupsTab({ catalog, onSelectGroup }: TariffGroupsTabProps
           </thead>
           <tbody>
             {catalog.groups.map((group) => {
-              const version = getActiveVersion(group) ?? group.versions[0];
+              const version = getActiveVersion(group);
               const rate = version?.rate;
               const status = resolveGroupStatus(group, catalog);
               const badge = STATUS_BADGE[status];

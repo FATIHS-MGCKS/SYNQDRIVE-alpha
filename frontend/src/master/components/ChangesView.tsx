@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pricing-tariff-version-lifecycle-v49340-2026-07-10',
+    version: '4.9.340',
+    title: 'V4.9.340 — Pricing: revisionssicherer Tarifversions-Lifecycle',
+    summary: [
+      'Statusmodell: DRAFT | SCHEDULED | ACTIVE | ARCHIVED — zentrale Transitionen in `tariff-version-lifecycle.util.ts`.',
+      'Nur DRAFT bearbeitbar; ACTIVE/ARCHIVED/SCHEDULED blockiert via `updateVersion`; Publish nur aus DRAFT.',
+      'Katalog-API: `activeVersion`, `draftVersion`, `scheduledVersions`, `archivedVersions` (+ Legacy-`versions`).',
+      'Publish: sofort → ACTIVE (archiviert vorherige ACTIVE); zukünftiges `effectiveFrom` → SCHEDULED ohne ACTIVE zu archivieren.',
+      '`promoteDueScheduledVersions` aktiviert fällige SCHEDULED bei Simulation/Katalog; Partial-Unique-Index: ein DRAFT pro Gruppe.',
+      'Audit: `publishedAt`, `publishedBy`, `updatedBy` auf `PriceTariffVersion`. Frontend: Draft-only Edit, kein `versions[0]`-Fallback.',
+    ],
+    reason: 'Prompt 7: Eindeutiger, revisionssicherer Lifecycle — aktive Tarife nicht direkt editierbar, keine stillen Statusänderungen.',
+    previousBehavior: 'getEditableVersion = Draft ?? Active; TariffGroupsTab `versions[0]`-Fallback; Publish immer sofort ACTIVE; flache `versions`-Liste.',
+    details: 'Neu: migration `20260710190000_tariff_version_lifecycle`, tariff-version-lifecycle.util.ts, pricing-tariff-lifecycle.spec.ts. Geändert: price-tariffs.service, pricing.service, pricingTypes, pricingUtils, TariffGroupDrawer, TariffGroupsTab, pricing-test-store.',
+    affectsArchitecture: true,
+    module: 'Rental Pricing',
+    createdAt: '2026-07-10T22:00:00.000Z',
+  },
+  {
     id: 'pricing-currency-source-v49339-2026-07-10',
     version: '4.9.339',
     title: 'V4.9.339 — Pricing: kanonische Währungsquelle (Preisbuch → Simulation → Buchung)',

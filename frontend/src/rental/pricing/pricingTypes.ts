@@ -1,4 +1,4 @@
-export type TariffVersionStatus = 'DRAFT' | 'ACTIVE' | 'ARCHIVED';
+export type TariffVersionStatus = 'DRAFT' | 'SCHEDULED' | 'ACTIVE' | 'ARCHIVED';
 export type PriceOptionPricingType = 'PER_DAY' | 'PER_BOOKING';
 
 export interface TariffRate {
@@ -49,6 +49,8 @@ export interface PriceTariffVersion {
   status: TariffVersionStatus;
   validFrom: string;
   validTo?: string | null;
+  publishedAt?: string | null;
+  publishedBy?: string | null;
   rate?: TariffRate | null;
   mileagePackages: MileagePackageOption[];
   insuranceOptions: InsuranceOptionRow[];
@@ -63,6 +65,11 @@ export interface PriceTariffGroup {
   isActive: boolean;
   sortOrder: number;
   updatedAt: string;
+  activeVersion: PriceTariffVersion | null;
+  draftVersion: PriceTariffVersion | null;
+  scheduledVersions: PriceTariffVersion[];
+  archivedVersions: PriceTariffVersion[];
+  /** Legacy aggregate — prefer explicit buckets above. */
   versions: PriceTariffVersion[];
 }
 

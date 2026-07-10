@@ -18,6 +18,12 @@ import {
   UpsertTariffVersionDto,
 } from './dto';
 import { PricingMigrationService } from './pricing-migration.service';
+import {
+  assertTariffVersionEditable,
+  assertTariffVersionPublishable,
+  resolvePublishTargetStatus,
+} from './tariff-version-lifecycle.util';
+import { PriceTariffVersionStatus } from '@prisma/client';
 
 const versionInclude = {
   rate: true,
@@ -25,6 +31,34 @@ const versionInclude = {
   insuranceOptions: { orderBy: { sortOrder: 'asc' as const } },
   extraOptions: { orderBy: { sortOrder: 'asc' as const } },
 };
+
+type VersionWithIncludes = Prisma.PriceTariffVersionGetPayload<{ include: typeof versionInclude }>;
+
+function partitionGroupVersions(versions: VersionWithIncludes[]) {
+  const byStatus = (status: PriceTariffVersionStatus) =>
+    versions
+      .filter((v) => v.status === status)
+      .sort((a, b) => b.versionNumber - a.versionNumber);
+
+  const activeVersion = versions.find((v) => v.status === 'ACTIVE') ?? null;
+  const draftVersion = versions.find((v) => v.status === 'DRAFT') ?? null;
+  const scheduledVersions = byStatus('SCHEDULED');
+  const archivedVersions = byStatus('ARCHIVED');
+
+  return {
+    activeVersion,
+    draftVersion,
+    scheduledVersions,
+    archivedVersions,
+    /** Legacy flat list — draft + live + scheduled + recent archived (max 5). */
+    versions: [
+      ...(draftVersion ? [draftVersion] : []),
+      ...(activeVersion ? [activeVersion] : []),
+      ...scheduledVersions,
+      ...archivedVersions.slice(0, 5),
+    ],
+  };
+}
 
 @Injectable()
 export class PriceTariffsService {
@@ -35,6 +69,7 @@ export class PriceTariffsService {
 
   async getFullCatalog(orgId: string) {
     await this.migration.ensureOrgPricing(orgId);
+    await this.promoteDueScheduledVersions(orgId);
 
     const priceBook = await this.prisma.priceBook.findFirst({
       where: { organizationId: orgId, isActive: true },
@@ -49,16 +84,24 @@ export class PriceTariffsService {
       };
     }
 
-    const groups = await this.prisma.priceTariffGroup.findMany({
+    const groupsRaw = await this.prisma.priceTariffGroup.findMany({
       where: { organizationId: orgId, priceBookId: priceBook.id },
       orderBy: { sortOrder: 'asc' },
       include: {
         versions: {
-          where: { status: { in: ['ACTIVE', 'DRAFT'] } },
           orderBy: { versionNumber: 'desc' },
           include: versionInclude,
         },
       },
+    });
+
+    const groups = groupsRaw.map((g) => {
+      const partitioned = partitionGroupVersions(g.versions);
+      const { versions: _flat, ...rest } = g;
+      return {
+        ...rest,
+        ...partitioned,
+      };
     });
 
     const assignments = await this.prisma.vehicleTariffAssignment.findMany({
@@ -168,16 +211,22 @@ export class PriceTariffsService {
     });
   }
 
-  async updateVersion(orgId: string, versionId: string, dto: UpsertTariffVersionDto) {
+  async updateVersion(
+    orgId: string,
+    versionId: string,
+    dto: UpsertTariffVersionDto,
+    actorId?: string,
+  ) {
     const version = await this.requireVersion(orgId, versionId);
-    if (version.status === 'ARCHIVED') {
-      throw new BadRequestException('Archivierte Versionen können nicht bearbeitet werden');
-    }
+    assertTariffVersionEditable(version.status);
 
     if (dto.validFrom) {
       await this.prisma.priceTariffVersion.update({
         where: { id: versionId },
-        data: { validFrom: new Date(dto.validFrom) },
+        data: {
+          validFrom: new Date(dto.validFrom),
+          ...(actorId ? { updatedBy: actorId } : {}),
+        },
       });
     }
 
@@ -227,10 +276,13 @@ export class PriceTariffsService {
     orgId: string,
     groupId: string,
     dto: PublishTariffDraftDto,
+    actorId?: string,
   ) {
     await this.requireGroup(orgId, groupId);
+    await this.promoteDueScheduledVersions(orgId);
 
     const effectiveFrom = dto.effectiveFrom ? new Date(dto.effectiveFrom) : new Date();
+    const targetStatus = resolvePublishTargetStatus(effectiveFrom);
 
     await this.prisma.$transaction(
       async (tx) => {
@@ -266,26 +318,7 @@ export class PriceTariffsService {
           });
         }
 
-        if (draft.status === 'ACTIVE') {
-          throw new BadRequestException({
-            message: 'Tarifversion ist bereits aktiv',
-            code: 'TARIFF_VERSION_ALREADY_ACTIVE',
-          });
-        }
-
-        if (draft.status === 'ARCHIVED') {
-          throw new BadRequestException({
-            message: 'Archivierte Versionen können nicht veröffentlicht werden',
-            code: 'TARIFF_VERSION_ARCHIVED',
-          });
-        }
-
-        if (draft.status !== 'DRAFT') {
-          throw new BadRequestException({
-            message: 'Nur Entwürfe können veröffentlicht werden',
-            code: 'TARIFF_INVALID_STATUS',
-          });
-        }
+        assertTariffVersionPublishable(draft.status);
 
         if (
           dto.expectedVersionNumber != null &&
@@ -305,20 +338,22 @@ export class PriceTariffsService {
         }
         this.validateRate(draft.rate);
 
-        const activeOthers = await tx.priceTariffVersion.findMany({
-          where: {
-            organizationId: orgId,
-            tariffGroupId: groupId,
-            status: 'ACTIVE',
-            id: { not: dto.draftVersionId },
-          },
-        });
-
-        for (const active of activeOthers) {
-          await tx.priceTariffVersion.update({
-            where: { id: active.id },
-            data: { status: 'ARCHIVED', validTo: effectiveFrom },
+        if (targetStatus === 'ACTIVE') {
+          const activeOthers = await tx.priceTariffVersion.findMany({
+            where: {
+              organizationId: orgId,
+              tariffGroupId: groupId,
+              status: 'ACTIVE',
+              id: { not: dto.draftVersionId },
+            },
           });
+
+          for (const active of activeOthers) {
+            await tx.priceTariffVersion.update({
+              where: { id: active.id },
+              data: { status: 'ARCHIVED', validTo: effectiveFrom },
+            });
+          }
         }
 
         const promoted = await tx.priceTariffVersion.updateMany({
@@ -329,9 +364,11 @@ export class PriceTariffsService {
             status: 'DRAFT',
           },
           data: {
-            status: 'ACTIVE',
+            status: targetStatus,
             validFrom: effectiveFrom,
             validTo: null,
+            publishedAt: new Date(),
+            ...(actorId ? { publishedBy: actorId, updatedBy: actorId } : {}),
           },
         });
 
@@ -350,6 +387,48 @@ export class PriceTariffsService {
       where: { id: dto.draftVersionId },
       include: versionInclude,
     });
+  }
+
+  /**
+   * Promotes SCHEDULED versions whose validFrom has passed to ACTIVE and archives prior ACTIVE.
+   */
+  async promoteDueScheduledVersions(orgId: string, now: Date = new Date()) {
+    const due = await this.prisma.priceTariffVersion.findMany({
+      where: {
+        organizationId: orgId,
+        status: 'SCHEDULED',
+        validFrom: { lte: now },
+      },
+    });
+
+    for (const scheduled of due) {
+      await this.prisma.$transaction(async (tx) => {
+        const row = await tx.priceTariffVersion.findFirst({
+          where: { id: scheduled.id, organizationId: orgId, status: 'SCHEDULED' },
+        });
+        if (!row) return;
+
+        const activeOthers = await tx.priceTariffVersion.findMany({
+          where: {
+            organizationId: orgId,
+            tariffGroupId: row.tariffGroupId,
+            status: 'ACTIVE',
+          },
+        });
+
+        for (const active of activeOthers) {
+          await tx.priceTariffVersion.update({
+            where: { id: active.id },
+            data: { status: 'ARCHIVED', validTo: row.validFrom },
+          });
+        }
+
+        await tx.priceTariffVersion.update({
+          where: { id: row.id },
+          data: { status: 'ACTIVE', validTo: null },
+        });
+      });
+    }
   }
 
   async assignVehicle(orgId: string, dto: CreateVehicleAssignmentDto) {
