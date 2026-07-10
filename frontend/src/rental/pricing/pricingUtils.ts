@@ -152,6 +152,8 @@ export function discountableNetCents(result: PricingSimulationResult | null): nu
 export const eurosFromCents = majorUnitsFromCents;
 
 export function parseApiError(err: unknown): string {
+  const structured = extractPricingApiError(err);
+  if (structured) return structured.message;
   if (err instanceof Error) return err.message;
   if (typeof err === 'object' && err && 'message' in err) {
     const m = (err as { message: unknown }).message;
@@ -159,6 +161,61 @@ export function parseApiError(err: unknown): string {
     if (Array.isArray(m)) return m.join(', ');
   }
   return 'Unbekannter Fehler';
+}
+
+const PRICING_ERROR_LABELS: Record<string, string> = {
+  NO_ACTIVE_TARIFF: 'Kein aktiver Tarif für dieses Fahrzeug zugewiesen',
+  ASSIGNMENT_CONFLICT: 'Mehrere konkurrierende Tarifzuweisungen',
+  TARIFF_GROUP_INACTIVE: 'Tarifgruppe ist inaktiv',
+  NO_TARIFF_VERSION_FOR_PICKUP: 'Keine gültige Tarifversion für den Abholzeitpunkt',
+  TARIFF_RESOLUTION_AMBIGUOUS: 'Mehrdeutige Tarifauflösung',
+  NO_TARIFF_RATE_FOR_PICKUP: 'Tarifversion ohne gültige Rate',
+  PRICE_BOOK_INACTIVE: 'Preisbuch ist nicht aktiv',
+  PRICE_BOOK_CURRENCY_MISSING: 'Währung im Preisbuch fehlt',
+  CURRENCY_MISMATCH: 'Währung stimmt nicht mit dem Server überein',
+  TARIFF_VERSION_INCOMPLETE: 'Tarifversion ist unvollständig',
+};
+
+export function extractPricingApiError(
+  err: unknown,
+): { code?: string; message: string } | null {
+  const messageFromUnknown = (value: unknown): string | null => {
+    if (typeof value === 'string' && value.trim()) return value;
+    if (Array.isArray(value)) return value.map(String).join(', ');
+    return null;
+  };
+
+  if (err instanceof Error) {
+    const match = err.message.match(/^\[([A-Z_]+)\]\s*(.+)$/);
+    if (match) {
+      return { code: match[1], message: match[2] };
+    }
+  }
+
+  if (typeof err === 'object' && err) {
+    const body = err as Record<string, unknown>;
+    const nested = body.response as Record<string, unknown> | undefined;
+    const payload = (nested?.data ?? nested ?? body) as Record<string, unknown>;
+    const code = typeof payload.code === 'string' ? payload.code : undefined;
+    const rawMessage = messageFromUnknown(payload.message) ?? messageFromUnknown(err);
+    if (code || rawMessage) {
+      const message =
+        (code && PRICING_ERROR_LABELS[code]) ||
+        rawMessage ||
+        'Preisauflösung fehlgeschlagen';
+      return { code, message: code ? `[${code}] ${message}` : message };
+    }
+  }
+
+  return null;
+}
+
+export function formatPricingContextLabel(ctx: {
+  tariffGroupName: string;
+  versionNumber: number;
+  currency: string;
+}): string {
+  return `${ctx.tariffGroupName} · v${ctx.versionNumber} · ${ctx.currency}`;
 }
 
 export function validateRateFields(rate: {

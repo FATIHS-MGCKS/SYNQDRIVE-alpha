@@ -132,6 +132,46 @@ export interface PricingLineItemSourceMetadata {
   packageId?: string;
 }
 
+export interface PricingContext {
+  priceBookId: string;
+  priceBookName?: string;
+  currency: string;
+  assignmentId: string;
+  tariffGroupId: string;
+  tariffGroupName: string;
+  tariffVersionId: string;
+  versionNumber: number;
+  effectiveFrom: string;
+  effectiveTo?: string | null;
+  vehicleId: string;
+  pickupAt: string;
+  depositAmountCents: number;
+  taxRatePercent: number;
+  mileagePackages: MileagePackageOption[];
+  insuranceOptions: InsuranceOptionRow[];
+  extraOptions: ExtraOptionRow[];
+  rate: {
+    dailyRateCents: number;
+    weeklyRateCents: number;
+    monthlyRateCents: number;
+    includedKmPerDay: number;
+    extraKmPriceCents: number;
+    minimumRentalDays: number | null;
+  };
+}
+
+export type PricingContextErrorCode =
+  | 'NO_ACTIVE_TARIFF'
+  | 'ASSIGNMENT_CONFLICT'
+  | 'TARIFF_GROUP_INACTIVE'
+  | 'NO_TARIFF_VERSION_FOR_PICKUP'
+  | 'TARIFF_RESOLUTION_AMBIGUOUS'
+  | 'NO_TARIFF_RATE_FOR_PICKUP'
+  | 'PRICE_BOOK_INACTIVE'
+  | 'PRICE_BOOK_CURRENCY_MISSING'
+  | 'CURRENCY_MISMATCH'
+  | 'TARIFF_VERSION_INCOMPLETE';
+
 export interface PricingSimulationResult {
   rentalDays: number;
   lineItems: PricingLineItem[];
@@ -148,6 +188,7 @@ export interface PricingSimulationResult {
   tariffGroupId: string;
   currency: string;
   effectiveDailyRateCents: number;
+  pricingContext: PricingContext;
 }
 
 export interface PricingInputPayload {

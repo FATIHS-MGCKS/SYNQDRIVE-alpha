@@ -432,6 +432,7 @@ export function formatHttpErrorMessage(
   if (raw && typeof raw === 'object') {
     const nested = raw as {
       message?: unknown;
+      code?: unknown;
       missing?: unknown;
       error?: unknown;
     };
@@ -441,10 +442,12 @@ export function formatHttpErrorMessage(
         : typeof nested.error === 'string'
           ? nested.error
           : 'Request failed';
+    const code = typeof nested.code === 'string' ? nested.code : undefined;
+    const withCode = code ? `[${code}] ${base}` : base;
     if (Array.isArray(nested.missing) && nested.missing.length > 0) {
-      return `${base}: ${nested.missing.map(String).join(', ')}`;
+      return `${withCode}: ${nested.missing.map(String).join(', ')}`;
     }
-    return base;
+    return withCode;
   }
   return `API error ${status} (${path})`;
 }
@@ -3910,7 +3913,10 @@ export const api = {
   pricing: {
     catalog: (orgId: string) => get<any>(`/organizations/${orgId}/price-tariffs`),
     simulate: (orgId: string, data: Record<string, unknown>) =>
-      post<any>(`/organizations/${orgId}/pricing/simulate`, data),
+      post<import('../rental/pricing/pricingTypes').PricingSimulationResult>(
+        `/organizations/${orgId}/pricing/simulate`,
+        data,
+      ),
     createGroup: (orgId: string, data: Record<string, unknown>) =>
       post<any>(`/organizations/${orgId}/price-tariffs/groups`, data),
     updateGroup: (orgId: string, groupId: string, data: Record<string, unknown>) =>

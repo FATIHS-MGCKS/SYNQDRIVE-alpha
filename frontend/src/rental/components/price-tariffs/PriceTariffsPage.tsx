@@ -310,7 +310,7 @@ export function PriceTariffsPage({ isDarkMode }: PriceTariffsPageProps) {
             <VehicleAssignmentsTab catalog={catalog} onReload={() => void reload()} />
           )}
           {tab === 'extras' && <ExtrasInsuranceTab catalog={catalog} />}
-          {tab === 'simulator' && <PricingSimulatorTab catalog={catalog} />}
+          {tab === 'simulator' && <PricingSimulatorTab />}
           {tab === 'rules' && <RulesPlaceholderTab />}
         </>
       )}

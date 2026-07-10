@@ -2,7 +2,7 @@ import { BrandLogoMark, getBrandFromModel } from '../BrandLogo';
 import { Icon } from '../ui/Icon';
 import { stationLabel } from '../../lib/stationBookingUtils';
 import { buildMMY } from '../../lib/vehicleMmy';
-import { formatPriceCents } from '../../pricing/pricingUtils';
+import { formatPriceCents, formatPricingContextLabel } from '../../pricing/pricingUtils';
 import { BookingStepCard } from './BookingStepCard';
 import { formatBookingAmount } from './format';
 import type { BookingSummaryPanelProps } from './types';
@@ -32,6 +32,7 @@ export function BookingSummaryPanel(props: BookingSummaryPanelProps) {
     priceLoading,
     priceError,
     priceSim,
+    pricingContext,
     totalFreeKm,
     extraKmPrice,
     mileagePkgKm,
@@ -179,6 +180,16 @@ export function BookingSummaryPanel(props: BookingSummaryPanelProps) {
           {priceError && <p className="text-xs text-[color:var(--status-critical)]">{priceError}</p>}
           {!canCalculatePrice && selectedVehicle && (!pickupDate || !returnDate) && (
             <p className="text-xs text-muted-foreground">Zeitraum wählen für Preisberechnung.</p>
+          )}
+          {pricingContext && (
+            <div className="rounded-lg border border-border/40 bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+              <p className="font-medium text-foreground">Pricing Context</p>
+              <p>{formatPricingContextLabel(pricingContext)}</p>
+              <p className="mt-1 break-all">
+                Version {pricingContext.tariffVersionId.slice(0, 8)}… · Assignment{' '}
+                {pricingContext.assignmentId.slice(0, 8)}…
+              </p>
+            </div>
           )}
           {priceSim?.lineItems.map((line) => (
             <div key={`${line.type}-${line.label}-${line.sortOrder ?? 0}`} className="flex justify-between text-xs">

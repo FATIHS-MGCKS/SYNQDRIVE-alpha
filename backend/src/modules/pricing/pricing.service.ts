@@ -11,6 +11,8 @@ import {
   toBookingCurrencyStorage,
 } from '@shared/money/money.util';
 import { BookingPricingInputDto, SimulateBookingPriceDto } from './dto';
+import type { PricingContextDto, ResolvedTariffContext } from './pricing-context.types';
+import { assertTariffVersionComplete, toPricingContextDto } from './pricing-context.util';
 import {
   simulateBookingPrice,
   SimulatedLineItem,
@@ -24,42 +26,7 @@ import {
   tariffVersionEffectiveAtFilter,
 } from './tariff-validity.util';
 
-export interface ResolvedTariffContext {
-  priceBook: { id: string; currency: string; taxRatePercent: number };
-  tariffGroup: { id: string; name: string; category: string | null };
-  tariffVersion: {
-    id: string;
-    versionNumber: number;
-    rate: {
-      id: string;
-      dailyRateCents: number;
-      weeklyRateCents: number;
-      monthlyRateCents: number;
-      includedKmPerDay: number;
-      extraKmPriceCents: number;
-      depositAmountCents: number;
-      minimumRentalDays: number | null;
-    };
-    mileagePackages: Array<{
-      id: string;
-      label: string;
-      includedKm: number;
-      priceCents: number;
-    }>;
-    insuranceOptions: Array<{
-      id: string;
-      label: string;
-      priceCents: number;
-      pricingType: 'PER_DAY' | 'PER_BOOKING';
-    }>;
-    extraOptions: Array<{
-      id: string;
-      label: string;
-      priceCents: number;
-      pricingType: 'PER_DAY' | 'PER_BOOKING';
-    }>;
-  };
-}
+export type { ResolvedTariffContext } from './pricing-context.types';
 
 export interface BookingPriceSimulation extends ReturnType<typeof simulateBookingPrice> {
   tariffVersionId: string;
@@ -67,6 +34,7 @@ export interface BookingPriceSimulation extends ReturnType<typeof simulateBookin
   tariffGroupId: string;
   currency: string;
   effectiveDailyRateCents: number;
+  pricingContext: PricingContextDto;
 }
 
 @Injectable()
@@ -93,7 +61,7 @@ export class PricingService {
       throw new NotFoundException('Fahrzeug nicht gefunden');
     }
 
-    const assignment = await this.prisma.vehicleTariffAssignment.findFirst({
+    const assignments = await this.prisma.vehicleTariffAssignment.findMany({
       where: {
         organizationId: orgId,
         vehicleId,
@@ -103,12 +71,47 @@ export class PricingService {
       orderBy: { validFrom: 'desc' },
     });
 
-    if (!assignment) {
+    if (assignments.length === 0) {
       throw new BadRequestException({
         message: 'Kein aktiver Tarif für dieses Fahrzeug zugewiesen',
         code: 'NO_ACTIVE_TARIFF',
         vehicleId,
         pickupAt: pickupInstant.toISOString(),
+      });
+    }
+
+    if (assignments.length > 1) {
+      const groupIds = new Set(assignments.map((a) => a.tariffGroupId));
+      const bookIds = new Set(assignments.map((a) => a.priceBookId));
+      if (groupIds.size > 1 || bookIds.size > 1) {
+        throw new BadRequestException({
+          message: 'Mehrere konkurrierende Tarifzuweisungen für den Abholzeitpunkt',
+          code: 'ASSIGNMENT_CONFLICT',
+          vehicleId,
+          pickupAt: pickupInstant.toISOString(),
+          assignmentIds: assignments.map((a) => a.id),
+        });
+      }
+    }
+
+    const assignment = assignments[0];
+
+    const group = await this.prisma.priceTariffGroup.findFirst({
+      where: { id: assignment.tariffGroupId, organizationId: orgId },
+    });
+    if (!group) {
+      throw new BadRequestException({
+        message: 'Tarifgruppe der Zuweisung nicht gefunden',
+        code: 'TARIFF_GROUP_INACTIVE',
+        tariffGroupId: assignment.tariffGroupId,
+      });
+    }
+    if (!group.isActive) {
+      throw new BadRequestException({
+        message: 'Tarifgruppe ist inaktiv',
+        code: 'TARIFF_GROUP_INACTIVE',
+        tariffGroupId: group.id,
+        tariffGroupName: group.name,
       });
     }
 
@@ -118,7 +121,6 @@ export class PricingService {
         tariffGroupId: assignment.tariffGroupId,
         status: { in: [...RESOLVABLE_TARIFF_VERSION_STATUSES] },
         ...tariffVersionEffectiveAtFilter(pickupInstant),
-        priceBook: { isActive: true },
       },
       include: {
         rate: true,
@@ -167,11 +169,25 @@ export class PricingService {
       });
     }
 
+    if (!version.priceBook.isActive) {
+      throw new BadRequestException({
+        message: 'Preisbuch ist nicht aktiv',
+        code: 'PRICE_BOOK_INACTIVE',
+        priceBookId: version.priceBook.id,
+      });
+    }
+
+    assertTariffVersionComplete(version.rate, version.id);
+
     const currency = resolvePriceBookCurrency(version.priceBook);
 
     return {
+      assignmentId: assignment.id,
+      vehicleId,
+      pickupAt: pickupInstant,
       priceBook: {
         id: version.priceBook.id,
+        name: version.priceBook.name,
         currency,
         taxRatePercent: version.priceBook.taxRatePercent,
       },
@@ -179,16 +195,63 @@ export class PricingService {
         id: version.tariffGroup.id,
         name: version.tariffGroup.name,
         category: version.tariffGroup.category,
+        isActive: version.tariffGroup.isActive,
       },
       tariffVersion: {
         id: version.id,
         versionNumber: version.versionNumber,
+        validFrom: version.validFrom,
+        validTo: version.validTo,
         rate: version.rate,
-        mileagePackages: version.mileagePackages,
-        insuranceOptions: version.insuranceOptions,
-        extraOptions: version.extraOptions,
+        mileagePackages: version.mileagePackages.map((p) => ({
+          id: p.id,
+          label: p.label,
+          includedKm: p.includedKm,
+          priceCents: p.priceCents,
+          isActive: p.isActive,
+          sortOrder: p.sortOrder,
+        })),
+        insuranceOptions: version.insuranceOptions.map((o) => ({
+          id: o.id,
+          label: o.label,
+          description: o.description,
+          priceCents: o.priceCents,
+          pricingType: o.pricingType,
+          deductibleCents: o.deductibleCents,
+          isDefault: o.isDefault,
+          isActive: o.isActive,
+          sortOrder: o.sortOrder,
+        })),
+        extraOptions: version.extraOptions.map((o) => ({
+          id: o.id,
+          label: o.label,
+          description: o.description,
+          priceCents: o.priceCents,
+          pricingType: o.pricingType,
+          isActive: o.isActive,
+          sortOrder: o.sortOrder,
+        })),
       },
     };
+  }
+
+  /** Maps resolver output to the API-facing pricing context DTO. */
+  buildPricingContext(
+    ctx: ResolvedTariffContext,
+    vehicleId: string,
+    pickupAt: Date,
+  ): PricingContextDto {
+    return toPricingContextDto(ctx, vehicleId, pickupAt);
+  }
+
+  async resolvePricingContext(
+    orgId: string,
+    vehicleId: string,
+    pickupAt: Date,
+    returnAt: Date,
+  ): Promise<PricingContextDto> {
+    const ctx = await this.resolveTariffForVehicle(orgId, vehicleId, pickupAt, returnAt);
+    return this.buildPricingContext(ctx, vehicleId, pickupAt);
   }
 
   async simulateBookingPrice(
@@ -254,6 +317,8 @@ export class PricingService {
 
     assertClientCurrencyMatches(dto.currency, currency);
 
+    const pricingContext = this.buildPricingContext(ctx, dto.vehicleId, pickupAt);
+
     return {
       ...result,
       tariffVersionId: tv.id,
@@ -261,6 +326,7 @@ export class PricingService {
       tariffGroupId: ctx.tariffGroup.id,
       currency,
       effectiveDailyRateCents: tv.rate.dailyRateCents,
+      pricingContext,
     };
   }
 

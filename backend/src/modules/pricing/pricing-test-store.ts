@@ -567,12 +567,43 @@ export function createPricingTestStore(
           return matched[0] ?? null;
         },
       ),
-      findMany: jest.fn(async ({ where }: { where: Record<string, unknown> }) =>
-        assignments.filter((a) => {
-          if (where.organizationId && a.organizationId !== where.organizationId) return false;
-          if (where.isActive !== undefined && a.isActive !== where.isActive) return false;
-          return true;
-        }),
+      findMany: jest.fn(
+        async ({
+          where,
+          orderBy,
+        }: {
+          where: Record<string, unknown>;
+          orderBy?: { validFrom: 'desc' };
+        }) => {
+          const matched = assignments.filter((a) => {
+            if (where.organizationId && a.organizationId !== where.organizationId) return false;
+            if (where.vehicleId && a.vehicleId !== where.vehicleId) return false;
+            if (where.isActive !== undefined && a.isActive !== where.isActive) return false;
+            if (where.validFrom && typeof where.validFrom === 'object' && 'lte' in where.validFrom) {
+              if (a.validFrom > (where.validFrom as { lte: Date }).lte) return false;
+            }
+            if (where.OR && Array.isArray(where.OR)) {
+              const ok = (where.OR as Array<Record<string, unknown>>).some((clause) => {
+                if ('validTo' in clause && clause.validTo === null) return a.validTo === null;
+                if (clause.validTo && typeof clause.validTo === 'object' && clause.validTo !== null) {
+                  if ('gte' in clause.validTo && a.validTo) {
+                    return a.validTo >= (clause.validTo as { gte: Date }).gte;
+                  }
+                  if ('gt' in clause.validTo) {
+                    return a.validTo == null || a.validTo > (clause.validTo as { gt: Date }).gt;
+                  }
+                }
+                return false;
+              });
+              if (!ok) return false;
+            }
+            return true;
+          });
+          if (orderBy?.validFrom === 'desc') {
+            matched.sort((x, y) => y.validFrom.getTime() - x.validFrom.getTime());
+          }
+          return matched;
+        },
       ),
     },
     bookingPriceSnapshot: {
@@ -781,6 +812,7 @@ export function createPricingTestStore(
     versions,
     rates,
     groups,
+    assignments,
     snapshots,
     mileagePackages,
     insuranceOptions,

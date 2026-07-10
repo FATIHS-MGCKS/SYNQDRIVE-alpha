@@ -10,7 +10,7 @@ import { formatBookingAmount } from './format';
 import type { ExtrasStepProps } from './types';
 
 export function ExtrasStep({
-  vehicleTariffCtx,
+  hasResolvedPricing,
   mileagePackages,
   insuranceOptions,
   extraOptions,
@@ -44,10 +44,11 @@ export function ExtrasStep({
           <p className="mb-3 text-xs text-muted-foreground">
             Zusätzliche Kilometer für die Buchung. Es kann nur ein Paket gewählt werden.
           </p>
-          {!vehicleTariffCtx ? (
+          {!hasResolvedPricing ? (
             <div className="py-6 text-center">
               <p className="text-xs text-[color:var(--status-watch)]">
-                Kein aktiver Tarif für dieses Fahrzeug. Bitte in Price Tariffs zuweisen.
+                Tarif wird serverseitig für den gewählten Zeitraum aufgelöst. Bitte Zeitraum prüfen
+                oder Price Tariffs-Zuweisung kontrollieren.
               </p>
             </div>
           ) : mileagePackages.length > 0 ? (

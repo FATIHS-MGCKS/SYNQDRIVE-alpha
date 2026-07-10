@@ -29,7 +29,7 @@ export function usePricingSimulation(
     setLoading(true);
     setError(null);
     try {
-      const data = (await api.pricing.simulate(orgId, {
+      const data = await api.pricing.simulate(orgId, {
         vehicleId: params.vehicleId,
         pickupAt: params.pickupAt,
         returnAt: params.returnAt,
@@ -38,7 +38,7 @@ export function usePricingSimulation(
         selectedExtraOptionIds: params.pricing?.selectedExtraOptionIds,
         manualDiscountCents: params.pricing?.manualDiscountCents,
         manualAdjustmentCents: params.pricing?.manualAdjustmentCents,
-      })) as PricingSimulationResult;
+      });
       setResult(data);
     } catch (e: unknown) {
       setResult(null);

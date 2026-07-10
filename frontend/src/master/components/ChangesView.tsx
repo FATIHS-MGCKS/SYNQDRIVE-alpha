@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pricing-context-server-resolved-v49343-2026-07-10',
+    version: '4.9.343',
+    title: 'V4.9.343 — Pricing: serverseitiger Pricing Context (keine Client-Rekonstruktion)',
+    summary: [
+      'Simulation liefert `pricingContext` mit priceBookId, assignmentId, tariffGroup/Version, currency, pickupAt, depositAmountCents.',
+      'Zentrale Auflösung: `PricingService.resolveTariffForVehicle` → `buildPricingContext` / `toPricingContextDto` — identisch für Simulation und Booking-Snapshot.',
+      'Frontend New Booking + Simulator: keine `getVehicleTariffFromCatalog`/`catalogCurrency`-Ableitung mehr; Optionen/Currency aus `pricingContext`.',
+      'Fehlercodes: `ASSIGNMENT_CONFLICT`, `TARIFF_GROUP_INACTIVE`, `PRICE_BOOK_INACTIVE`, `TARIFF_VERSION_INCOMPLETE` (+ bestehende Resolution-Codes).',
+      'Pricing Debug in Simulator + Booking Summary zeigt aufgelösten Context (read-only, nicht als Client-Input ans Backend).',
+      '12 Backend-Tests `pricing-context.spec.ts` + Frontend-Guard gegen Catalog-Fallback in Buchungsflow.',
+    ],
+    reason: 'Prompt 10: Buchungsoberfläche darf Tarifgruppe, Version, Currency und Zuweisung nicht clientseitig rekonstruieren — eine serverseitige Wahrheit für Simulation und Buchung.',
+    previousBehavior: 'NewBookingView/PricingSimulatorTab nutzten `getVehicleTariffFromCatalog` + `getActiveVersion` (aktueller Katalog, nicht pickup-basiert); Currency aus Preisbuch-Fallback.',
+    details: 'Neu: pricing-context.types.ts, pricing-context.util.ts, pricing-context.spec.ts. Geändert: pricing.service (assignments findMany, group/price-book guards), pricingTypes, NewBookingView, PricingSimulatorTab, BookingSummaryPanel, ExtrasStep, parseApiError/formatHttpErrorMessage.',
+    affectsArchitecture: true,
+    module: 'Rental Pricing',
+    createdAt: '2026-07-10T23:30:00.000Z',
+  },
+  {
     id: 'pricing-tariff-resolution-pickup-v49341-2026-07-10',
     version: '4.9.341',
     title: 'V4.9.341 — Pricing: deterministische Tarifauflösung nach Abholzeitpunkt',

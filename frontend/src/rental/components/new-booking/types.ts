@@ -7,6 +7,7 @@ import type {
   ExtraOptionRow,
   InsuranceOptionRow,
   MileagePackageOption,
+  PricingContext,
   PricingSimulationResult,
 } from '../../pricing/pricingTypes';
 import type { AddCustomerFormState } from '../../lib/add-customer-wizard';
@@ -82,6 +83,7 @@ export interface BookingSummaryPanelProps {
   priceLoading: boolean;
   priceError: string | null;
   priceSim: PricingSimulationResult | null;
+  pricingContext: PricingContext | null;
   totalFreeKm: number;
   extraKmPrice: number | null;
   mileagePkgKm: number;
@@ -149,7 +151,7 @@ export interface PeriodStepProps {
 }
 
 export interface ExtrasStepProps {
-  vehicleTariffCtx: { version: { id: string } } | null;
+  hasResolvedPricing: boolean;
   mileagePackages: MileagePackageOption[];
   insuranceOptions: InsuranceOptionRow[];
   extraOptions: ExtraOptionRow[];

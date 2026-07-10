@@ -2,15 +2,10 @@ import { useMemo, useState } from 'react';
 import { useFleetVehicles } from '../../FleetContext';
 import { useRentalOrg } from '../../RentalContext';
 import { usePricingSimulation } from '../../hooks/usePricingSimulation';
-import type { PriceTariffCatalog } from '../../pricing/pricingTypes';
-import { formatPriceCents, getVehicleTariffFromCatalog, catalogCurrency } from '../../pricing/pricingUtils';
+import { formatPriceCents, formatPricingContextLabel } from '../../pricing/pricingUtils';
 import { isRentalChargeLineType } from '../../pricing/pricingLineItems';
 
-interface PricingSimulatorTabProps {
-  catalog: PriceTariffCatalog;
-}
-
-export function PricingSimulatorTab({ catalog }: PricingSimulatorTabProps) {
+export function PricingSimulatorTab() {
   const { orgId } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
   const [vehicleId, setVehicleId] = useState('');
@@ -22,9 +17,6 @@ export function PricingSimulatorTab({ catalog }: PricingSimulatorTabProps) {
   const [insurances, setInsurances] = useState<string[]>([]);
   const [extras, setExtras] = useState<string[]>([]);
   const [discountEuro, setDiscountEuro] = useState('');
-
-  const vehicleCtx = vehicleId ? getVehicleTariffFromCatalog(catalog, vehicleId) : null;
-  const catalogCcy = catalogCurrency(catalog);
 
   const simParams = useMemo(() => {
     if (!vehicleId || !pickupDate || !returnDate) return null;
@@ -46,7 +38,9 @@ export function PricingSimulatorTab({ catalog }: PricingSimulatorTabProps) {
   }, [vehicleId, pickupDate, returnDate, pickupTime, returnTime, mileagePkg, insurances, extras, discountEuro]);
 
   const { result, loading, error } = usePricingSimulation(orgId, simParams);
-  const displayCurrency = result?.currency ?? catalogCcy;
+  const pricingContext = result?.pricingContext ?? null;
+  const displayCurrency = result?.currency ?? pricingContext?.currency ?? null;
+  const taxRatePercent = pricingContext?.taxRatePercent ?? 19;
 
   const toggle = (list: string[], id: string, setter: (v: string[]) => void) => {
     setter(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
@@ -76,11 +70,6 @@ export function PricingSimulatorTab({ catalog }: PricingSimulatorTabProps) {
             ))}
           </select>
         </label>
-        {!vehicleCtx && vehicleId && (
-          <p className="text-xs text-[color:var(--status-warning)]">
-            No active tariff configured for this vehicle.
-          </p>
-        )}
         <div className="grid grid-cols-2 gap-2">
           <label className="text-xs">
             Pickup
@@ -93,20 +82,26 @@ export function PricingSimulatorTab({ catalog }: PricingSimulatorTabProps) {
             <input type="time" value={returnTime} onChange={(e) => setReturnTime(e.target.value)} className="mt-1 w-full rounded-lg border border-border px-2 py-1.5 text-xs" />
           </label>
         </div>
-        {vehicleCtx && (
+        {error && (
+          <p className="text-xs text-[color:var(--status-critical)]">{error}</p>
+        )}
+        {pricingContext && (
           <>
+            <p className="text-xs text-muted-foreground">
+              Resolved: {formatPricingContextLabel(pricingContext)}
+            </p>
             <label className="block text-xs">
               Mileage package
               <select value={mileagePkg} onChange={(e) => setMileagePkg(e.target.value)} className="mt-1 w-full rounded-lg border border-border px-2 py-1.5 text-xs">
                 <option value="">None</option>
-                {vehicleCtx.version.mileagePackages.filter((p) => p.isActive).map((p) => (
+                {pricingContext.mileagePackages.filter((p) => p.isActive).map((p) => (
                   <option key={p.id} value={p.id}>{p.label}</option>
                 ))}
               </select>
             </label>
             <div className="text-xs">
               <p className="font-semibold mb-1">Insurance</p>
-              {vehicleCtx.version.insuranceOptions.filter((o) => o.isActive).map((o) => (
+              {pricingContext.insuranceOptions.filter((o) => o.isActive).map((o) => (
                 <label key={o.id} className="flex items-center gap-2 py-0.5">
                   <input type="checkbox" checked={insurances.includes(o.id)} onChange={() => toggle(insurances, o.id, setInsurances)} />
                   {o.label}
@@ -115,7 +110,7 @@ export function PricingSimulatorTab({ catalog }: PricingSimulatorTabProps) {
             </div>
             <div className="text-xs">
               <p className="font-semibold mb-1">Extras</p>
-              {vehicleCtx.version.extraOptions.filter((o) => o.isActive).map((o) => (
+              {pricingContext.extraOptions.filter((o) => o.isActive).map((o) => (
                 <label key={o.id} className="flex items-center gap-2 py-0.5">
                   <input type="checkbox" checked={extras.includes(o.id)} onChange={() => toggle(extras, o.id, setExtras)} />
                   {o.label}
@@ -124,8 +119,11 @@ export function PricingSimulatorTab({ catalog }: PricingSimulatorTabProps) {
             </div>
           </>
         )}
+        {!pricingContext && vehicleId && pickupDate && returnDate && loading && (
+          <p className="text-xs text-muted-foreground">Resolving tariff for pickup…</p>
+        )}
         <label className="block text-xs">
-          Manual discount (EUR)
+          Manual discount ({displayCurrency ?? 'currency'})
           <input type="number" step="0.01" min="0" value={discountEuro} onChange={(e) => setDiscountEuro(e.target.value)} className="mt-1 w-full rounded-lg border border-border px-2 py-1.5 text-xs" />
         </label>
       </div>
@@ -136,6 +134,17 @@ export function PricingSimulatorTab({ catalog }: PricingSimulatorTabProps) {
         {error && <p className="mt-4 text-xs text-[color:var(--status-critical)]">{error}</p>}
         {!loading && !error && !result && (
           <p className="mt-4 text-xs text-muted-foreground">Select vehicle and dates to simulate.</p>
+        )}
+        {pricingContext && (
+          <div className="mt-3 rounded-lg border border-border/40 bg-muted/20 p-3 text-[11px] text-muted-foreground">
+            <p className="font-semibold text-foreground">Pricing Debug</p>
+            <p>Book: {pricingContext.priceBookName ?? pricingContext.priceBookId}</p>
+            <p>Group: {pricingContext.tariffGroupName}</p>
+            <p>Version: v{pricingContext.versionNumber} · {pricingContext.tariffVersionId}</p>
+            <p>Pickup: {new Date(pricingContext.pickupAt).toLocaleString('de-DE')}</p>
+            <p>Deposit: {displayCurrency ? formatPriceCents(pricingContext.depositAmountCents, displayCurrency) : pricingContext.depositAmountCents}</p>
+            <p>VAT: {taxRatePercent}%</p>
+          </div>
         )}
         {result && (
           <div className="mt-4 space-y-3 text-xs">

@@ -9,10 +9,7 @@ import { resolveDrivingStressScore } from '../lib/scoreFormat';
 import { usePriceTariffs } from '../hooks/usePriceTariffs';
 import { usePricingSimulation } from '../hooks/usePricingSimulation';
 import {
-  catalogCurrency,
   discountableNetCents,
-  formatNetAsGross,
-  getVehicleTariffFromCatalog,
   grossFromNetCents,
   majorUnitsFromCents,
   resolvePricingCurrency,
@@ -195,12 +192,7 @@ export function NewBookingView({
     };
   }, [orgId]);
 
-  const getVehicleDailyRateLabel = (vehicleId: string): string | null => {
-    const ctx = getVehicleTariffFromCatalog(catalog, vehicleId);
-    const ccy = catalogCurrency(catalog);
-    if (!ctx?.version.rate || !ccy) return null;
-    return formatNetAsGross(ctx.version.rate.dailyRateCents, taxRatePercent, ccy);
-  };
+  const getVehicleDailyRateLabel = (_vehicleId: string): string | null => null;
 
   const [currentStep, setCurrentStep] = useState<BookingWizardStepId>(1);
 
@@ -499,9 +491,6 @@ export function NewBookingView({
   const selectedVehicleHealth = selectedVehicle
     ? pickerHealthMap.get(selectedVehicle.id) ?? null
     : null;
-  const selectedVehicleHasTariff = selectedVehicle
-    ? Boolean(getVehicleTariffFromCatalog(catalog, selectedVehicle.id))
-    : false;
 
   const rentalDays = useMemo(() => {
     if (!pickupDate || !returnDate) return 0;
@@ -509,32 +498,6 @@ export function NewBookingView({
     const d2 = new Date(returnDate);
     return Math.max(1, Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24)));
   }, [pickupDate, returnDate]);
-
-  const vehicleTariffCtx = selectedVehicle
-    ? getVehicleTariffFromCatalog(catalog, selectedVehicle.id)
-    : null;
-
-  const mileagePackages = useMemo(
-    () => vehicleTariffCtx?.version.mileagePackages.filter((p) => p.isActive) ?? [],
-    [vehicleTariffCtx],
-  );
-  const insuranceOptions = useMemo(
-    () => vehicleTariffCtx?.version.insuranceOptions.filter((i) => i.isActive) ?? [],
-    [vehicleTariffCtx],
-  );
-  const extraOptions = useMemo(
-    () => vehicleTariffCtx?.version.extraOptions.filter((e) => e.isActive) ?? [],
-    [vehicleTariffCtx],
-  );
-
-  useEffect(() => {
-    setExtras([]);
-    setSelectedMileagePackage(null);
-    const defaults = vehicleTariffCtx?.version.insuranceOptions
-      .filter((i) => i.isActive && i.isDefault)
-      .map((i) => i.id) ?? [];
-    setSelectedInsurances(defaults);
-  }, [selectedVehicle?.id, vehicleTariffCtx?.version.id]);
 
   const pickupAtIso = pickupDate
     ? new Date(`${pickupDate}T${pickupTime || '10:00'}:00`).toISOString()
@@ -625,32 +588,63 @@ export function NewBookingView({
     error: priceError,
   } = usePricingSimulation(orgId, simParams, manualDiscountCents != null ? 300 : 400);
 
+  const pricingContext = priceSim?.pricingContext ?? priceSimBase?.pricingContext ?? null;
+  const resolvedTaxRatePercent = pricingContext?.taxRatePercent ?? taxRatePercent;
+
+  const mileagePackages = useMemo(
+    () => pricingContext?.mileagePackages.filter((p) => p.isActive) ?? [],
+    [pricingContext],
+  );
+  const insuranceOptions = useMemo(
+    () => pricingContext?.insuranceOptions.filter((i) => i.isActive) ?? [],
+    [pricingContext],
+  );
+  const extraOptions = useMemo(
+    () => pricingContext?.extraOptions.filter((e) => e.isActive) ?? [],
+    [pricingContext],
+  );
+
+  useEffect(() => {
+    setExtras([]);
+    setSelectedMileagePackage(null);
+    const defaults = pricingContext?.insuranceOptions
+      .filter((i) => i.isActive && i.isDefault)
+      .map((i) => i.id) ?? [];
+    setSelectedInsurances(defaults);
+  }, [selectedVehicle?.id, pricingContext?.tariffVersionId]);
+
   const displayRentalDays = priceSim?.rentalDays ?? rentalDays;
-  const pricingCurrency = resolvePricingCurrency(priceSim, catalog?.priceBook ?? null);
+  const pricingCurrency = resolvePricingCurrency(priceSim ?? priceSimBase, pricingContext);
   const grandTotal = majorUnitsFromCents(priceSim?.totalGrossCents);
   const tax = majorUnitsFromCents(priceSim?.taxAmountCents);
   const subtotalNet = majorUnitsFromCents(priceSim?.subtotalNetCents);
   const depositAmount = majorUnitsFromCents(priceSim?.depositAmountCents);
   const totalFreeKm = priceSim?.includedKm ?? 0;
   const extraKmPrice = majorUnitsFromCents(priceSim?.extraKmPriceCents);
-  const dailyRateGross = priceSim?.effectiveDailyRateCents != null
-    ? majorUnitsFromCents(grossFromNetCents(priceSim.effectiveDailyRateCents, taxRatePercent))
-    : vehicleTariffCtx?.version.rate
+  const dailyRateGross =
+    priceSim?.effectiveDailyRateCents != null
       ? majorUnitsFromCents(
-          grossFromNetCents(vehicleTariffCtx.version.rate.dailyRateCents, taxRatePercent),
+          grossFromNetCents(priceSim.effectiveDailyRateCents, resolvedTaxRatePercent),
         )
-      : null;
-  const freeKmPerDay = vehicleTariffCtx?.version.rate?.includedKmPerDay ?? 0;
+      : pricingContext?.rate
+        ? majorUnitsFromCents(
+            grossFromNetCents(pricingContext.rate.dailyRateCents, resolvedTaxRatePercent),
+          )
+        : null;
+  const freeKmPerDay = pricingContext?.rate.includedKmPerDay ?? 0;
   const baseFreeKm = freeKmPerDay * displayRentalDays;
   const mileagePkgKm = selectedMileagePackage
     ? mileagePackages.find((p) => p.id === selectedMileagePackage)?.includedKm ?? 0
     : 0;
   const discountAmount = manualDiscountCents != null ? manualDiscountCents / 100 : 0;
   const hasPrice = Boolean(priceSim && grandTotal != null);
-  const noTariffForVehicle = Boolean(selectedVehicle && !vehicleTariffCtx && !catalogLoading);
-  const canCalculatePrice = Boolean(
-    selectedVehicle && pickupDate && returnDate && vehicleTariffCtx,
+  const periodSelected = Boolean(selectedVehicle && pickupDate && returnDate);
+  const noTariffForVehicle = Boolean(
+    periodSelected && !priceLoading && !pricingContext && Boolean(priceError || priceSimBase === null),
   );
+  const canCalculatePrice = Boolean(periodSelected && (priceLoading || pricingContext));
+  const selectedVehicleHasTariff =
+    !periodSelected || priceLoading || Boolean(pricingContext) || !priceError;
 
   const baseRentalLine = priceSim?.lineItems.find((li) => li.type === 'BASE_RENTAL');
   const subtotal = baseRentalLine ? baseRentalLine.totalGrossCents / 100 : 0;
@@ -702,11 +696,11 @@ export function NewBookingView({
       return;
     }
 
-    if (!vehicleTariffCtx || !priceSim || grandTotal == null) {
+    if (!pricingContext || !priceSim || grandTotal == null) {
       toast.error('Preis nicht verfügbar', {
         description:
           priceError ||
-          'Für dieses Fahrzeug ist kein aktiver Tarif konfiguriert oder die Preisberechnung ist fehlgeschlagen.',
+          'Die serverseitige Preisauflösung ist fehlgeschlagen oder unvollständig.',
       });
       return;
     }
@@ -738,7 +732,7 @@ export function NewBookingView({
             name: line?.label ?? opt.label,
             price: line
               ? line.totalGrossCents / 100
-              : grossFromNetCents(opt.priceCents, taxRatePercent) / 100,
+              : grossFromNetCents(opt.priceCents, resolvedTaxRatePercent) / 100,
           };
         })
         .filter(Boolean) as Array<{ id: string; name: string; price: number }>;
@@ -1073,6 +1067,7 @@ export function NewBookingView({
     priceLoading,
     priceError,
     priceSim,
+    pricingContext,
     totalFreeKm,
     extraKmPrice,
     mileagePkgKm,
@@ -1080,7 +1075,7 @@ export function NewBookingView({
     baseFreeKm,
     subtotalNet,
     tax,
-    taxRatePercent,
+    taxRatePercent: resolvedTaxRatePercent,
     grandTotal,
     depositAmount,
     pricingCurrency,
@@ -1235,14 +1230,14 @@ export function NewBookingView({
 
             {currentStep === 3 && (
               <ExtrasStep
-                vehicleTariffCtx={vehicleTariffCtx}
+                hasResolvedPricing={Boolean(pricingContext)}
                 mileagePackages={mileagePackages}
                 insuranceOptions={insuranceOptions}
                 extraOptions={extraOptions}
                 selectedMileagePackage={selectedMileagePackage}
                 selectedInsurances={selectedInsurances}
                 extras={extras}
-                taxRatePercent={taxRatePercent}
+                taxRatePercent={resolvedTaxRatePercent}
                 displayRentalDays={displayRentalDays}
                 hasPrice={hasPrice}
                 extrasTotal={extrasTotal}
@@ -1337,7 +1332,7 @@ export function NewBookingView({
                 returnTime={returnTime}
                 rentalDays={rentalDays}
                 displayRentalDays={displayRentalDays}
-                taxRatePercent={taxRatePercent}
+                taxRatePercent={resolvedTaxRatePercent}
                 subtotal={subtotal}
                 extrasTotal={extrasTotal}
                 tax={tax}
