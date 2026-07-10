@@ -202,7 +202,23 @@ export function createPricingTestStore(
   const matchVersionWhere = (row: VersionRow, where: Record<string, unknown>): boolean => {
     if (where.organizationId && row.organizationId !== where.organizationId) return false;
     if (where.tariffGroupId && row.tariffGroupId !== where.tariffGroupId) return false;
-    if (where.status && row.status !== where.status) return false;
+    if (where.status) {
+      if (typeof where.status === 'string') {
+        if (row.status !== where.status) return false;
+      } else if (
+        typeof where.status === 'object' &&
+        where.status !== null &&
+        'in' in where.status &&
+        Array.isArray((where.status as { in: string[] }).in)
+      ) {
+        if (!(where.status as { in: string[] }).in.includes(row.status)) return false;
+      }
+    }
+    if (where.priceBook && typeof where.priceBook === 'object' && where.priceBook !== null) {
+      const book = priceBooks.find((b) => b.id === row.priceBookId);
+      const isActive = (where.priceBook as { isActive?: boolean }).isActive;
+      if (isActive !== undefined && book?.isActive !== isActive) return false;
+    }
     if (where.id) {
       if (typeof where.id === 'string') {
         if (row.id !== where.id) return false;
@@ -217,13 +233,13 @@ export function createPricingTestStore(
     if (where.OR && Array.isArray(where.OR)) {
       const ok = (where.OR as Array<Record<string, unknown>>).some((clause) => {
         if ('validTo' in clause && clause.validTo === null) return row.validTo === null;
-        if (
-          clause.validTo &&
-          typeof clause.validTo === 'object' &&
-          'gte' in clause.validTo &&
-          row.validTo
-        ) {
-          return row.validTo >= (clause.validTo as { gte: Date }).gte;
+        if (clause.validTo && typeof clause.validTo === 'object' && clause.validTo !== null) {
+          if ('gte' in clause.validTo && row.validTo) {
+            return row.validTo >= (clause.validTo as { gte: Date }).gte;
+          }
+          if ('gt' in clause.validTo) {
+            return row.validTo == null || row.validTo > (clause.validTo as { gt: Date }).gt;
+          }
         }
         return false;
       });
@@ -311,8 +327,20 @@ export function createPricingTestStore(
           return { ...row, rate: rate ?? null };
         },
       ),
-      findMany: jest.fn(async ({ where }: { where: Record<string, unknown> }) =>
-        versions.filter((v) => matchVersionWhere(v, where)),
+      findMany: jest.fn(
+        async ({
+          where,
+          include,
+        }: {
+          where: Record<string, unknown>;
+          include?: unknown;
+        }) => {
+          const matched = versions.filter((v) => matchVersionWhere(v, where));
+          if (include) {
+            return matched.map((v) => includeVersion(v));
+          }
+          return matched;
+        },
       ),
       aggregate: jest.fn(async ({ where }: { where: Record<string, unknown> }) => {
         const matched = versions.filter((v) => matchVersionWhere(v, where));
@@ -462,13 +490,13 @@ export function createPricingTestStore(
             if (where.OR && Array.isArray(where.OR)) {
               const ok = (where.OR as Array<Record<string, unknown>>).some((clause) => {
                 if ('validTo' in clause && clause.validTo === null) return a.validTo === null;
-                if (
-                  clause.validTo &&
-                  typeof clause.validTo === 'object' &&
-                  'gte' in clause.validTo &&
-                  a.validTo
-                ) {
-                  return a.validTo >= (clause.validTo as { gte: Date }).gte;
+                if (clause.validTo && typeof clause.validTo === 'object' && clause.validTo !== null) {
+                  if ('gte' in clause.validTo && a.validTo) {
+                    return a.validTo >= (clause.validTo as { gte: Date }).gte;
+                  }
+                  if ('gt' in clause.validTo) {
+                    return a.validTo == null || a.validTo > (clause.validTo as { gt: Date }).gt;
+                  }
                 }
                 return false;
               });
@@ -521,6 +549,9 @@ export function createPricingTestStore(
     mileagePackage: { deleteMany: jest.fn(), createMany: jest.fn() },
     tariffInsuranceOption: { deleteMany: jest.fn(), createMany: jest.fn() },
     tariffExtraOption: { deleteMany: jest.fn(), createMany: jest.fn() },
+    organization: {
+      findFirst: jest.fn(async () => ({ timezone: 'Europe/Berlin' })),
+    },
     $transaction: jest.fn(
       async (
         fn: (tx: Record<string, unknown>) => Promise<unknown>,

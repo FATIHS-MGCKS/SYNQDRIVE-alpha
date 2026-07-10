@@ -21,7 +21,6 @@ describe('Pricing tariff publish flow (Sedan deposit 17700 → 50000)', () => {
     const pricing = new PricingService(
       store.prisma as unknown as PrismaService,
       migration as unknown as PricingMigrationService,
-      tariffs,
     );
     return { store, tariffs, pricing };
   }

@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pricing-tariff-resolution-pickup-v49341-2026-07-10',
+    version: '4.9.341',
+    title: 'V4.9.341 — Pricing: deterministische Tarifauflösung nach Abholzeitpunkt',
+    summary: [
+      'Gültigkeit halb-offen: `[validFrom, validTo)` — validFrom inklusive, validTo exklusiv.',
+      'Resolver: ACTIVE + SCHEDULED + ARCHIVED am `pickupAt`; kein DRAFT; kein `versions[0]`/Status-only-Fallback.',
+      'Zukünftige SCHEDULED-Versionen werden zeitbasiert aufgelöst (ohne Cron); `promoteDueScheduled` nur Katalog/UI.',
+      'Publish: `effectiveFrom` date-only in Org-Timezone (`parseTariffEffectiveInstant`); SCHEDULED setzt `validTo` auf vorheriger ACTIVE.',
+      'Fehlercodes: `NO_TARIFF_VERSION_FOR_PICKUP`, `TARIFF_RESOLUTION_AMBIGUOUS`, `INVALID_BOOKING_INSTANT`.',
+      '12 Resolution-Tests: Wechselzeitpunkt, DST Berlin→UTC, Snapshot-Unveränderlichkeit, Draft-Ausschluss.',
+    ],
+    reason: 'Prompt 8: Buchung am 5. August muss neuen Tarif nutzen, Buchung am 20. Juli den alten — unabhängig vom Veröffentlichungszeitpunkt.',
+    previousBehavior: 'Resolver nur `status: ACTIVE` + `validTo gte` (inklusiv); SCHEDULED erst nach Promotion; `promoteDueScheduled` vor jeder Auflösung.',
+    details: 'Neu: tariff-validity.util.ts, tariff-instant.util.ts, pricing-tariff-resolution.spec.ts. Geändert: pricing.service resolveTariffForVehicle, price-tariffs publish SCHEDULED validTo, pricing-test-store.',
+    affectsArchitecture: true,
+    module: 'Rental Pricing',
+    createdAt: '2026-07-10T22:30:00.000Z',
+  },
+  {
     id: 'pricing-tariff-version-lifecycle-v49340-2026-07-10',
     version: '4.9.340',
     title: 'V4.9.340 — Pricing: revisionssicherer Tarifversions-Lifecycle',

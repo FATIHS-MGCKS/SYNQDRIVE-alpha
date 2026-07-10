@@ -68,16 +68,18 @@ describe('Tariff version lifecycle', () => {
     ).rejects.toThrow(BadRequestException);
   });
 
-  it('publish with future effectiveFrom creates SCHEDULED without archiving ACTIVE', async () => {
+  it('publish with future effectiveFrom creates SCHEDULED and ends ACTIVE validTo', async () => {
     const { store, tariffs } = build();
     const draft = await tariffs.upsertGroupVersion(ids.orgId, ids.groupId, draftPayload());
-    const future = new Date('2030-01-01T00:00:00.000Z').toISOString();
+    const future = '2030-01-01';
     const scheduled = await tariffs.publishTariffDraft(ids.orgId, ids.groupId, {
       draftVersionId: draft.id,
       effectiveFrom: future,
     });
     expect(scheduled.status).toBe('SCHEDULED');
-    expect(store.versions.find((v) => v.id === ids.activeVersionId)?.status).toBe('ACTIVE');
+    const active = store.versions.find((v) => v.id === ids.activeVersionId);
+    expect(active?.status).toBe('ACTIVE');
+    expect(active?.validTo).toBeInstanceOf(Date);
   });
 
   it('DRAFT publish archives previous ACTIVE and promotes draft', async () => {

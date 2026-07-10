@@ -23,6 +23,8 @@ import {
   assertTariffVersionPublishable,
   resolvePublishTargetStatus,
 } from './tariff-version-lifecycle.util';
+import { DEFAULT_TARIFF_TIMEZONE, parseTariffEffectiveInstant } from './tariff-instant.util';
+import { assertStatusMatchesValidity } from './tariff-validity.util';
 import { PriceTariffVersionStatus } from '@prisma/client';
 
 const versionInclude = {
@@ -281,7 +283,14 @@ export class PriceTariffsService {
     await this.requireGroup(orgId, groupId);
     await this.promoteDueScheduledVersions(orgId);
 
-    const effectiveFrom = dto.effectiveFrom ? new Date(dto.effectiveFrom) : new Date();
+    const org = await this.prisma.organization.findFirst({
+      where: { id: orgId },
+      select: { timezone: true },
+    });
+    const orgTimezone = org?.timezone?.trim() || DEFAULT_TARIFF_TIMEZONE;
+    const effectiveFrom = dto.effectiveFrom
+      ? parseTariffEffectiveInstant(dto.effectiveFrom, orgTimezone)
+      : new Date();
     const targetStatus = resolvePublishTargetStatus(effectiveFrom);
 
     await this.prisma.$transaction(
@@ -356,6 +365,24 @@ export class PriceTariffsService {
           }
         }
 
+        if (targetStatus === 'SCHEDULED') {
+          const activeOthers = await tx.priceTariffVersion.findMany({
+            where: {
+              organizationId: orgId,
+              tariffGroupId: groupId,
+              status: 'ACTIVE',
+              id: { not: dto.draftVersionId },
+            },
+          });
+
+          for (const active of activeOthers) {
+            await tx.priceTariffVersion.update({
+              where: { id: active.id },
+              data: { validTo: effectiveFrom },
+            });
+          }
+        }
+
         const promoted = await tx.priceTariffVersion.updateMany({
           where: {
             id: dto.draftVersionId,
@@ -383,10 +410,14 @@ export class PriceTariffsService {
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     );
 
-    return this.prisma.priceTariffVersion.findUniqueOrThrow({
+    const published = await this.prisma.priceTariffVersion.findUniqueOrThrow({
       where: { id: dto.draftVersionId },
       include: versionInclude,
     });
+
+    assertStatusMatchesValidity(published.status, published.validFrom, published.validTo);
+
+    return published;
   }
 
   /**

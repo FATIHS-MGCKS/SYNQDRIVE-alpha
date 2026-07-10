@@ -16,7 +16,13 @@ import {
   SimulatedLineItem,
 } from './pricing-calculation.util';
 import { PricingMigrationService } from './pricing-migration.service';
-import { PriceTariffsService } from './price-tariffs.service';
+import { parseBookingInstant } from './tariff-instant.util';
+import {
+  assignmentEffectiveAtFilter,
+  compareResolvableVersions,
+  RESOLVABLE_TARIFF_VERSION_STATUSES,
+  tariffVersionEffectiveAtFilter,
+} from './tariff-validity.util';
 
 export interface ResolvedTariffContext {
   priceBook: { id: string; currency: string; taxRatePercent: number };
@@ -67,17 +73,17 @@ export class PricingService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly migration: PricingMigrationService,
-    private readonly priceTariffs: PriceTariffsService,
   ) {}
 
   async resolveTariffForVehicle(
     orgId: string,
     vehicleId: string,
     pickupAt: Date,
-    returnAt: Date,
+    _returnAt: Date,
   ): Promise<ResolvedTariffContext> {
     await this.migration.ensureOrgPricing(orgId);
-    await this.priceTariffs.promoteDueScheduledVersions(orgId);
+
+    const pickupInstant = parseBookingInstant(pickupAt);
 
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: vehicleId, organizationId: orgId },
@@ -91,8 +97,7 @@ export class PricingService {
         organizationId: orgId,
         vehicleId,
         isActive: true,
-        validFrom: { lte: pickupAt },
-        OR: [{ validTo: null }, { validTo: { gte: pickupAt } }],
+        ...assignmentEffectiveAtFilter(pickupInstant),
       },
       orderBy: { validFrom: 'desc' },
     });
@@ -102,16 +107,17 @@ export class PricingService {
         message: 'Kein aktiver Tarif für dieses Fahrzeug zugewiesen',
         code: 'NO_ACTIVE_TARIFF',
         vehicleId,
+        pickupAt: pickupInstant.toISOString(),
       });
     }
 
-    const version = await this.prisma.priceTariffVersion.findFirst({
+    const candidates = await this.prisma.priceTariffVersion.findMany({
       where: {
         organizationId: orgId,
         tariffGroupId: assignment.tariffGroupId,
-        status: 'ACTIVE',
-        validFrom: { lte: pickupAt },
-        OR: [{ validTo: null }, { validTo: { gte: pickupAt } }],
+        status: { in: [...RESOLVABLE_TARIFF_VERSION_STATUSES] },
+        ...tariffVersionEffectiveAtFilter(pickupInstant),
+        priceBook: { isActive: true },
       },
       include: {
         rate: true,
@@ -121,14 +127,42 @@ export class PricingService {
         priceBook: true,
         tariffGroup: true,
       },
-      orderBy: { versionNumber: 'desc' },
     });
 
-    if (!version?.rate) {
+    if (candidates.length === 0) {
       throw new BadRequestException({
-        message: 'Keine aktive Tarifversion mit Rate gefunden',
-        code: 'NO_ACTIVE_TARIFF_VERSION',
+        message: 'Keine gültige Tarifversion für den Abholzeitpunkt gefunden',
+        code: 'NO_TARIFF_VERSION_FOR_PICKUP',
         vehicleId,
+        pickupAt: pickupInstant.toISOString(),
+        tariffGroupId: assignment.tariffGroupId,
+      });
+    }
+
+    const sorted = [...candidates].sort(compareResolvableVersions);
+    const version = sorted[0];
+
+    if (sorted.length > 1) {
+      const tie = sorted[1];
+      if (
+        tie.validFrom.getTime() === version.validFrom.getTime() &&
+        tie.versionNumber === version.versionNumber
+      ) {
+        throw new BadRequestException({
+          message: 'Mehrdeutige Tarifauflösung für den Abholzeitpunkt',
+          code: 'TARIFF_RESOLUTION_AMBIGUOUS',
+          pickupAt: pickupInstant.toISOString(),
+          tariffGroupId: assignment.tariffGroupId,
+        });
+      }
+    }
+
+    if (!version.rate) {
+      throw new BadRequestException({
+        message: 'Tarifversion ohne Rate für den Abholzeitpunkt',
+        code: 'NO_TARIFF_RATE_FOR_PICKUP',
+        vehicleId,
+        tariffVersionId: version.id,
       });
     }
 
@@ -160,8 +194,8 @@ export class PricingService {
     orgId: string,
     dto: SimulateBookingPriceDto,
   ): Promise<BookingPriceSimulation> {
-    const pickupAt = new Date(dto.pickupAt);
-    const returnAt = new Date(dto.returnAt);
+    const pickupAt = parseBookingInstant(dto.pickupAt);
+    const returnAt = parseBookingInstant(dto.returnAt);
     if (returnAt <= pickupAt) {
       throw new BadRequestException('returnAt muss nach pickupAt liegen');
     }
