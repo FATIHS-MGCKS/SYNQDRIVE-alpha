@@ -255,7 +255,8 @@ describe('tariff editor & simulator UI guards', () => {
     expect(source).not.toContain('Activate version');
     expect(source).toContain('publishChanges');
     expect(source).toContain('scheduleChange');
-    expect(source).toContain('unsavedClose');
+    expect(source).toContain('unsavedTitle');
+    expect(source).toContain('AlertDialog');
   });
 
   it('PricingSimulatorTab shows pricing context and quote fields', () => {

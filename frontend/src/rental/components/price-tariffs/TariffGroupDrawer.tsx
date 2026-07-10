@@ -1,8 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '../../../lib/api';
 import { Button } from '../../../components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '../../../components/ui/alert-dialog';
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '../../../components/ui/sheet';
 import { cn } from '../../../components/ui/utils';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type {
@@ -128,6 +139,7 @@ export function TariffGroupDrawer({
   const [publishEffectiveFrom, setPublishEffectiveFrom] = useState('');
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [closeConfirmOpen, setCloseConfirmOpen] = useState(false);
   const publishInFlightRef = useRef(false);
   const baselineRef = useRef<TariffEditorFormSnapshot | null>(null);
 
@@ -204,10 +216,19 @@ export function TariffGroupDrawer({
 
   const requestClose = () => {
     if (dirty) {
-      const ok = window.confirm(t('priceTariffs.editor.unsavedClose'));
-      if (!ok) return;
+      setCloseConfirmOpen(true);
+      return;
     }
     onClose();
+  };
+
+  const confirmClose = () => {
+    setCloseConfirmOpen(false);
+    onClose();
+  };
+
+  const handleSheetOpenChange = (open: boolean) => {
+    if (!open) requestClose();
   };
 
   const persistDraft = async (options?: { notifySuccess?: boolean }): Promise<SaveDraftResult> => {
@@ -308,16 +329,25 @@ export function TariffGroupDrawer({
   };
 
   const sectionTitle = (id: SectionId) => t(`priceTariffs.editor.sections.${id}` as never);
+  const sectionNavId = useId();
 
   const renderSectionNav = () => (
-    <div className="flex gap-1 overflow-x-auto pb-1 lg:hidden">
+    <div
+      className="flex gap-1 overflow-x-auto pb-1 lg:hidden"
+      role="tablist"
+      aria-label={t('priceTariffs.editor.drawerTitle')}
+    >
       {SECTIONS.map((id) => (
         <button
           key={id}
           type="button"
+          role="tab"
+          id={`${sectionNavId}-tab-${id}`}
+          aria-selected={activeSection === id}
+          aria-controls={`${sectionNavId}-panel-${id}`}
           onClick={() => setActiveSection(id)}
           className={cn(
-            'shrink-0 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold',
+            'shrink-0 rounded-lg px-2.5 py-2 text-[10px] font-semibold min-h-11',
             activeSection === id ? 'bg-muted text-foreground' : 'text-muted-foreground',
           )}
         >
@@ -331,36 +361,67 @@ export function TariffGroupDrawer({
   const editableDraftVersion = draftVersion ?? getEditableVersion(group);
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={requestClose}>
-      <div
-        className={cn(
-          'flex h-full w-full max-w-5xl flex-col shadow-xl',
-          isDarkMode ? 'surface-premium' : 'bg-white',
-        )}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex shrink-0 items-center justify-between border-b border-border/50 px-4 py-3 sm:px-5">
-          <div className="min-w-0">
-            <h2 className="truncate text-sm font-bold">{name || group.name}</h2>
-            <p className="text-[10px] text-muted-foreground">
-              {editableDraftVersion
-                ? t('priceTariffs.editor.headerDraft', { version: editableDraftVersion.versionNumber })
-                : liveVersion
-                  ? t('priceTariffs.editor.headerLiveEdit', { version: liveVersion.versionNumber })
-                  : t('priceTariffs.editor.headerNoVersion')}
-            </p>
+    <>
+      <Sheet open onOpenChange={handleSheetOpenChange}>
+        <SheetContent
+          side="right"
+          className={cn(
+            'flex h-full w-full max-w-5xl flex-col gap-0 p-0 sm:max-w-5xl [&>button]:hidden',
+            isDarkMode ? 'surface-premium' : 'bg-white',
+          )}
+          onInteractOutside={(e) => {
+            if (dirty) e.preventDefault();
+          }}
+          onEscapeKeyDown={(e) => {
+            if (dirty) {
+              e.preventDefault();
+              setCloseConfirmOpen(true);
+            }
+          }}
+        >
+          <SheetTitle className="sr-only">{t('priceTariffs.editor.drawerTitle')}</SheetTitle>
+          <SheetDescription className="sr-only">
+            {editableDraftVersion
+              ? t('priceTariffs.editor.headerDraft', { version: editableDraftVersion.versionNumber })
+              : liveVersion
+                ? t('priceTariffs.editor.headerLiveEdit', { version: liveVersion.versionNumber })
+                : t('priceTariffs.editor.headerNoVersion')}
+          </SheetDescription>
+
+          <div className="flex shrink-0 items-center justify-between border-b border-border/50 px-4 py-3 sm:px-5">
+            <div className="min-w-0 pr-8">
+              <h2 className="truncate text-sm font-bold" id="tariff-editor-heading">
+                {name || group.name}
+              </h2>
+              <p className="text-[10px] text-muted-foreground">
+                {editableDraftVersion
+                  ? t('priceTariffs.editor.headerDraft', { version: editableDraftVersion.versionNumber })
+                  : liveVersion
+                    ? t('priceTariffs.editor.headerLiveEdit', { version: liveVersion.versionNumber })
+                    : t('priceTariffs.editor.headerNoVersion')}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={requestClose}
+              className="absolute right-4 top-3 rounded-lg p-2 hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+              aria-label={t('common.cancel')}
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-          <button type="button" onClick={requestClose} className="rounded-lg p-2 hover:bg-muted" aria-label={t('common.cancel')}>
-            <X className="h-4 w-4" />
-          </button>
-        </div>
 
-        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
-            {renderSectionNav()}
+          <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+            <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 pb-28 sm:px-5 lg:pb-4">
+              {renderSectionNav()}
 
-            <div className="space-y-6 text-xs">
-              <section id="general" className={cn(activeSection === 'general' ? 'block' : 'hidden', 'lg:block')}>
+              <div className="space-y-6 text-xs">
+                <section
+                  id={`${sectionNavId}-panel-general`}
+                  role="tabpanel"
+                  aria-labelledby={`${sectionNavId}-tab-general`}
+                  className={cn(activeSection === 'general' ? 'block' : 'hidden', 'lg:block')}
+                >
                   <h3 className="mb-3 font-bold uppercase tracking-wider text-muted-foreground">
                     {sectionTitle('general')}
                   </h3>
@@ -484,11 +545,17 @@ export function TariffGroupDrawer({
                       title={t('priceTariffs.extras.insurance')}
                       count={insurances.filter((o) => o.isActive).length}
                       empty={t('priceTariffs.extras.noneConfigured')}
+                      activeLabel={t('priceTariffs.editor.optionsActiveCount', {
+                        count: insurances.filter((o) => o.isActive).length,
+                      })}
                     />
                     <OptionListPanel
                       title={t('priceTariffs.extras.extras')}
                       count={extras.filter((o) => o.isActive).length}
                       empty={t('priceTariffs.extras.noneConfigured')}
+                      activeLabel={t('priceTariffs.editor.optionsActiveCount', {
+                        count: extras.filter((o) => o.isActive).length,
+                      })}
                     />
                   </div>
                   <p className="mt-2 text-[10px] text-muted-foreground">
@@ -545,38 +612,81 @@ export function TariffGroupDrawer({
                 fields={compareFields}
               />
             </div>
-            <div className="sticky bottom-0 border-t border-border/50 bg-inherit p-4">
+            <div
+              className="sticky bottom-0 border-t border-border/50 bg-inherit p-4 lg:static"
+              style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+            >
               <div className="flex flex-col gap-2">
-                <Button type="button" variant="primary" size="sm" disabled={!dirty || publishDisabled} onClick={() => void saveDraft()}>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="sm"
+                  className="min-h-11"
+                  disabled={!dirty || publishDisabled}
+                  aria-busy={saving}
+                  onClick={() => void saveDraft()}
+                >
                   {saving ? t('priceTariffs.editor.saving') : t('priceTariffs.editor.saveDraft')}
                 </Button>
-                <Button type="button" variant="secondary" size="sm" disabled={publishDisabled} onClick={() => void publish()}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  className="min-h-11"
+                  disabled={publishDisabled}
+                  aria-busy={publishing}
+                  onClick={() => void publish()}
+                >
                   {publishing
                     ? t('priceTariffs.editor.publishing')
                     : isFuturePublish
                       ? t('priceTariffs.editor.scheduleChange')
                       : t('priceTariffs.editor.publishChanges')}
                 </Button>
-                <Button type="button" variant="ghost" size="sm" onClick={requestClose}>
+                <Button type="button" variant="ghost" size="sm" className="min-h-11" onClick={requestClose}>
                   {t('common.cancel')}
                 </Button>
               </div>
             </div>
           </aside>
         </div>
-      </div>
-    </div>
+        </SheetContent>
+      </Sheet>
+
+      <AlertDialog open={closeConfirmOpen} onOpenChange={setCloseConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('priceTariffs.editor.unsavedTitle')}</AlertDialogTitle>
+            <AlertDialogDescription>{t('priceTariffs.editor.unsavedDescription')}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t('priceTariffs.editor.unsavedStay')}</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmClose}>{t('priceTariffs.editor.unsavedLeave')}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 
-function OptionListPanel({ title, count, empty }: { title: string; count: number; empty: string }) {
+function OptionListPanel({
+  title,
+  count,
+  empty,
+  activeLabel,
+}: {
+  title: string;
+  count: number;
+  empty: string;
+  activeLabel: string;
+}) {
   return (
     <div className="rounded-lg border border-border/40 p-3">
       <div className="flex items-center justify-between">
         <p className="font-semibold">{title}</p>
         <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] tabular-nums">{count}</span>
       </div>
-      <p className="mt-2 text-[10px] text-muted-foreground">{count > 0 ? `${count} active` : empty}</p>
+      <p className="mt-2 text-[10px] text-muted-foreground">{count > 0 ? activeLabel : empty}</p>
     </div>
   );
 }

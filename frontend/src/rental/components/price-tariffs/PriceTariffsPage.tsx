@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useId } from 'react';
 import {
   AlertTriangle,
   Calculator,
@@ -120,6 +120,7 @@ export function PriceTariffsPage({ isDarkMode }: PriceTariffsPageProps) {
   const [tab, setTab] = useState<TabId>('groups');
   const [drawerGroup, setDrawerGroup] = useState<PriceTariffGroup | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const tabListId = useId();
 
   const catalogCcy = catalogCurrency(catalog);
   const kpis = useMemo(() => computeTariffCatalogKpis(catalog), [catalog]);
@@ -243,7 +244,11 @@ export function PriceTariffsPage({ isDarkMode }: PriceTariffsPageProps) {
         />
       </div>
 
-      <div className="flex flex-wrap gap-1 border-b border-border/50 pb-1">
+      <div
+        role="tablist"
+        aria-label={t('priceTariffs.title')}
+        className="flex gap-1 overflow-x-auto border-b border-border/50 pb-1"
+      >
         {tabs.map((tabDef) => {
           const Icon = tabDef.icon;
           const isActive = tab === tabDef.id;
@@ -251,12 +256,16 @@ export function PriceTariffsPage({ isDarkMode }: PriceTariffsPageProps) {
             <button
               key={tabDef.id}
               type="button"
+              role="tab"
+              id={`${tabListId}-tab-${tabDef.id}`}
+              aria-selected={isActive}
+              aria-controls={`${tabListId}-panel-${tabDef.id}`}
               disabled={tabDef.disabled}
               onClick={() => {
                 if (!tabDef.disabled) setTab(tabDef.id);
               }}
               className={cn(
-                'flex items-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-semibold transition-colors',
+                'flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-semibold transition-colors focus-visible:ring-2 focus-visible:ring-ring',
                 tabDef.disabled && 'cursor-not-allowed opacity-60',
                 isActive
                   ? 'bg-muted text-foreground'
@@ -293,19 +302,45 @@ export function PriceTariffsPage({ isDarkMode }: PriceTariffsPageProps) {
       ) : (
         <>
           {tab === 'groups' && (
+            <div
+              role="tabpanel"
+              id={`${tabListId}-panel-groups`}
+              aria-labelledby={`${tabListId}-tab-groups`}
+            >
             <TariffGroupsTab
               isDarkMode={isDarkMode}
               catalog={catalog}
               onSelectGroup={openGroupEditor}
             />
+            </div>
           )}
           {tab === 'assignments' && (
+            <div
+              role="tabpanel"
+              id={`${tabListId}-panel-assignments`}
+              aria-labelledby={`${tabListId}-tab-assignments`}
+            >
             <VehicleAssignmentsTab catalog={catalog} onReload={() => void reload()} />
+            </div>
           )}
           {tab === 'extras' && (
+            <div
+              role="tabpanel"
+              id={`${tabListId}-panel-extras`}
+              aria-labelledby={`${tabListId}-tab-extras`}
+            >
             <ExtrasInsuranceTab catalog={catalog} onEditGroup={openGroupEditor} />
+            </div>
           )}
-          {tab === 'simulator' && <PricingSimulatorTab />}
+          {tab === 'simulator' && (
+            <div
+              role="tabpanel"
+              id={`${tabListId}-panel-simulator`}
+              aria-labelledby={`${tabListId}-tab-simulator`}
+            >
+            <PricingSimulatorTab />
+            </div>
+          )}
         </>
       )}
 

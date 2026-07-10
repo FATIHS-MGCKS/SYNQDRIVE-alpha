@@ -110,7 +110,7 @@ export function PricingSimulatorTab() {
             <input type="time" value={returnTime} onChange={(e) => setReturnTime(e.target.value)} className={fieldClass} />
           </label>
         </div>
-        {error ? <p className="text-xs text-[color:var(--status-critical)]">{error}</p> : null}
+        {error ? <p role="alert" className="text-xs text-[color:var(--status-critical)]">{error}</p> : null}
         {pricingContext ? (
           <>
             <label className="block text-xs">
@@ -196,7 +196,7 @@ export function PricingSimulatorTab() {
         <div className="surface-premium rounded-2xl border border-border/50 p-4 sm:p-5">
           <h3 className="text-sm font-bold">{t('priceTariffs.simulator.result')}</h3>
           {loading ? <p className="mt-4 text-xs text-muted-foreground">{t('priceTariffs.simulator.calculating')}</p> : null}
-          {error ? <p className="mt-4 text-xs text-[color:var(--status-critical)]">{error}</p> : null}
+          {error ? <p role="alert" className="mt-4 text-xs text-[color:var(--status-critical)]">{error}</p> : null}
           {!loading && !error && !result ? (
             <p className="mt-4 text-xs text-muted-foreground">{t('priceTariffs.simulator.empty')}</p>
           ) : null}

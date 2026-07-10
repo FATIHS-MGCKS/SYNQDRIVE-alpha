@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pricing-quality-audit-v49347-2026-07-10',
+    version: '4.9.347',
+    title: 'V4.9.347 — Preise & Tarife: Qualitäts-/Daten-Audit (Prompt 14)',
+    summary: [
+      'Read-only Audit-Service + `audit-pricing-integrity.ts`: 18 Prüfungen (ACTIVE/Draft, Überlappungen, Assignments, Currency, Geldbeträge, Migrations-Kaution daily×3 als Info, Snapshots, Quotes, Deposit-in-Revenue).',
+      'Repair-Modus `repair-pricing-integrity.ts`: Dry-Run standard, `--execute --confirm` + Org-Filter; repariert nur stale Quotes + Assignments auf inaktiven Gruppen; keine Snapshot-/177€-Massenfixes.',
+      'Frontend Mobile/A11y: Fahrzeugzuweisungen als Karten auf Mobile; Tarifeditor auf Radix Sheet + AlertDialog; Tablist-Semantik; aria-describedby für Geldfelder; safe-area Sticky Actions.',
+      'Tests: `pricing-integrity-audit.spec.ts`, `pricing-quality-audit.test.ts`; bestehende Publish/Quote/Deposit-Suite unverändert grün.',
+    ],
+    reason: 'Prompt 14: Abschließende Qualitäts-, Daten- und Integrationsprüfung ohne neue Produktfunktionen — nur nachweisbare Fixes, Absicherungen und Audit-Tools.',
+    previousBehavior: 'Kein DB-Integritäts-Audit; VehicleAssignments nur horizontale Tabelle; Tarifeditor ohne Dialog-Semantik/Focus-Trap; window.confirm beim Schließen.',
+    details: 'Neu: pricing-integrity-audit.service/types, audit-pricing-integrity.ts, repair-pricing-integrity.ts, pricing-integrity-audit.spec.ts, pricing-quality-audit.test.ts. Geändert: TariffGroupDrawer, PriceTariffsPage, VehicleAssignmentsTab, TariffGroupsTab, TariffEditorMoneyField, TariffEditorLiveDraftCompare, PricingSimulatorTab, i18n, scripts/ops/README.md.',
+    affectsArchitecture: true,
+    module: 'Rental Pricing',
+    createdAt: '2026-07-10T22:30:00.000Z',
+  },
+  {
     id: 'pricing-tariff-editor-simulator-v49346-2026-07-10',
     version: '4.9.346',
     title: 'V4.9.346 — Preise & Tarife: Editor + Simulator (Live/Draft, Dirty-State, Kaution)',

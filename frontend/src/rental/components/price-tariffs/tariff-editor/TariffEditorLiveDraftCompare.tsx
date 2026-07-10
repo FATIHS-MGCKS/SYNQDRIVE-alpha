@@ -26,7 +26,10 @@ export function TariffEditorLiveDraftCompare({
           {t('priceTariffs.editor.compare.title')}
         </h4>
         {changedCount > 0 ? (
-          <span className="rounded-md bg-[color:var(--status-watch)]/15 px-1.5 py-0.5 text-[9px] font-semibold text-[color:var(--status-watch)]">
+          <span
+            className="rounded-md bg-[color:var(--status-watch)]/15 px-1.5 py-0.5 text-[9px] font-semibold text-[color:var(--status-watch)]"
+            aria-live="polite"
+          >
             {t('priceTariffs.editor.compare.changedCount', { count: changedCount })}
           </span>
         ) : null}
@@ -67,13 +70,13 @@ export function TariffEditorLiveDraftCompare({
           <li
             key={field.key}
             className={cn(
-              'grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-md px-2 py-1.5 text-[11px]',
+              'rounded-md px-2 py-1.5 text-[11px] sm:grid sm:grid-cols-[1fr_auto_1fr] sm:items-center sm:gap-2',
               field.changed && 'bg-[color:var(--status-watch)]/[0.08]',
             )}
           >
             <span className="truncate text-muted-foreground">{t(field.labelKey as never)}</span>
-            <span className="text-[10px] text-muted-foreground">→</span>
-            <div className="text-right">
+            <span className="hidden text-[10px] text-muted-foreground sm:inline">→</span>
+            <div className="mt-1 sm:mt-0 sm:text-right">
               <span className={cn('tabular-nums', field.changed && 'font-semibold text-foreground')}>
                 {field.draftLabel}
               </span>

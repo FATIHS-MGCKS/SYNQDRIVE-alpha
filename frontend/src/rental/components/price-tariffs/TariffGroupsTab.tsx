@@ -75,7 +75,8 @@ export function TariffGroupsTab({ catalog, onSelectGroup }: TariffGroupsTabProps
             key={row.group.id}
             type="button"
             onClick={() => onSelectGroup(row.group)}
-            className="group w-full rounded-2xl border border-border/50 surface-premium p-4 text-left shadow-[var(--shadow-1)] transition-colors hover:border-border hover:bg-muted/20"
+            aria-label={`${t('priceTariffs.configureTariff')}: ${row.group.name}`}
+            className="group w-full rounded-2xl border border-border/50 surface-premium p-4 text-left shadow-[var(--shadow-1)] transition-colors hover:border-border hover:bg-muted/20 focus-visible:ring-2 focus-visible:ring-ring"
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
@@ -112,7 +113,7 @@ export function TariffGroupsTab({ catalog, onSelectGroup }: TariffGroupsTabProps
                   ) : null}
                 </div>
               </div>
-              <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+              <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" aria-hidden />
             </div>
 
             <div className="mt-3 grid gap-2 lg:grid-cols-2">
