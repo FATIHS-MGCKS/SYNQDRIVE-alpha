@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'resend-production-live-v49309-2026-07-10',
+    version: '4.9.309',
+    title: 'V4.9.309 — Resend Production live (VPS + Webhook)',
+    summary: [
+      'Production VPS: `EMAIL_PROVIDER=resend`, `EMAIL_SIMULATE_ENABLED=false`, `RESEND_API_KEY` + `RESEND_WEBHOOK_SECRET` aktiv; PM2 neu gestartet.',
+      'Provider-Registry nutzt `ResendEmailProvider` statt `DevEmailProvider` — Testmails zeigen `Gesendet` statt `Gesendet (simuliert)`.',
+      'F.S Mobility Service: Domain `fs-mobility.de` neu anlegen (alte Dev-DNS entfernt), echte Resend-DNS bei Hostinger, dann Test an f.s93@outlook.de.',
+    ],
+    reason: 'Outbound E-Mail war bis 2026-07-10 nur simuliert; Mandanten-Versand (FS Mobility) braucht echten Resend-Versand.',
+    previousBehavior: 'Letzte Testmails F.S Mobility: `SENT_SIMULATED`, Provider `dev`, fake TXT `synqdrive-dev-verify`.',
+    details:
+      'Ops: `/opt/synqdrive/shared/backend.env` — vollständiger Resend-Block. Webhook: `POST /api/v1/webhooks/resend/outbound-email`. Nächster Schritt Mandant: Administration → E-Mail & Versand → Domain hinzufügen → DNS → aktivieren → Test.',
+    affectsArchitecture: true,
+    module: 'Outbound Email',
+    createdAt: '2026-07-10T12:20:00.000Z',
+  },
+  {
     id: 'resend-production-setup-v49308-2026-07-10',
     version: '4.9.308',
     title: 'V4.9.308 — Resend Production: VPS-Sync, MCP, Setup-Doku',

@@ -125,3 +125,31 @@ Nur `GENERATED` und `SENT` (Re-Send) sind als PDF-Anhang erlaubt. `DRAFT`, `FAIL
 - Primär: **Administration → E-Mail & Versand → Signatur (HTML)**
 - Fallback: **Administration → Unternehmen → E-Mail-Signatur** (`Organization.emailSignature`)
 
+---
+
+## Production go-live (2026-07-10, V4.9.309)
+
+VPS `/opt/synqdrive/shared/backend.env`:
+
+| Variable | Production value |
+|----------|------------------|
+| `EMAIL_PROVIDER` | `resend` |
+| `EMAIL_SIMULATE_ENABLED` | `false` |
+| `RESEND_API_KEY` | set (Resend Dashboard) |
+| `RESEND_WEBHOOK_SECRET` | set (Resend Webhook signing secret) |
+| `EMAIL_DEFAULT_FROM` | `noreply@synqdrive.eu` |
+
+After env change: `pm2 restart synqdrive --update-env`.
+
+**Verification:** test send status `SENT` (not `SENT_SIMULATED`); `OutboundEmail.provider` = `resend`.
+
+### Mandant F.S Mobility Service — offene Schritte
+
+Org `CUSTOM_DOMAIN` mode, but **no** `OrgEmailDomain` row (dev domain was removed). Re-register:
+
+1. Administration → E-Mail & Versand → Domain `fs-mobility.de` hinzufügen (Absender z. B. `info`)
+2. Resend DNS (SPF/DKIM/CNAME) bei Hostinger — **not** `synqdrive-dev-verify`
+3. DNS prüfen → Aktivieren
+4. Reply-To `info@fs-mobility.de`, Speichern
+5. Test an `f.s93@outlook.de` — Historie: `Gesendet`, Provider `resend`
+
