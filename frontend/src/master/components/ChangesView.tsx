@@ -35,6 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-station-label-full-v49315-2026-07-10',
+    version: '4.9.315',
+    title: 'V4.9.315 — Dashboard: Stationswahl voll ausgeschrieben',
+    summary: [
+      'Stations-Dropdown-Label ohne `truncate` — „Alle Stationen“ / voller Stationsname statt „Alle Stando…“.',
+      'DE-Label `dashboard.allStations`: Alle Stationen (statt Alle Standorte); Drawer-Scope-Label angeglichen.',
+    ],
+    reason: 'Abgekürzte Stationsanzeige im Control-Center-Header war schwer lesbar.',
+    previousBehavior: 'truncate + min-w-0 → Ellipsis bei „Alle Standorte“ und langen Stationsnamen.',
+    details: 'DashboardControlHeader.tsx, de.ts, dashboardDrilldownUi.ts.',
+    affectsArchitecture: false,
+    module: 'Dashboard',
+    createdAt: '2026-07-10T14:20:00.000Z',
+  },
+  {
     id: 'dashboard-remove-fleet-command-v49314-2026-07-10',
     version: '4.9.314',
     title: 'V4.9.314 — Dashboard: Fleet Command entfernt (KPI-Drilldown reicht)',

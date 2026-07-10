@@ -487,7 +487,7 @@ export const de: Record<TranslationKey, string> = {
   'dashboard.financesTitle': 'Finanzen',
   'dashboard.business': 'Geschaeft',
   'dashboard.finances': 'Finanzen',
-  'dashboard.allStations': 'Alle Standorte',
+  'dashboard.allStations': 'Alle Stationen',
   'dashboard.aiBusinessInsights': 'KI-Geschaeftseinblicke',
   'dashboard.realTimeAnalytics': 'Echtzeit-Analysen',
   'dashboard.fleetUtilization': 'Flottenauslastung',

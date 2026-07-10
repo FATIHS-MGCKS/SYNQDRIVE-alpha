@@ -8,7 +8,7 @@ export function drawerStationScopeLabel(
   if (selectedStationName?.trim()) {
     return de ? `Station: ${selectedStationName.trim()}` : `Station: ${selectedStationName.trim()}`;
   }
-  return de ? 'Alle Standorte' : 'All Stations';
+  return de ? 'Alle Stationen' : 'All Stations';
 }
 
 export interface DashboardDrilldownToolbarProps {
