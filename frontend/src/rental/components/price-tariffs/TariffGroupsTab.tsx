@@ -1,13 +1,9 @@
+import { CalendarClock, ChevronRight } from 'lucide-react';
 import type { PriceTariffCatalog, PriceTariffGroup } from '../../pricing/pricingTypes';
-import {
-  catalogCurrency,
-  countVehiclesInGroup,
-  formatDepositCents,
-  formatNetAsGross,
-  getActiveVersion,
-  resolveGroupStatus,
-  STATUS_BADGE,
-} from '../../pricing/pricingUtils';
+import { buildTariffGroupRowView } from '../../pricing/tariff-catalog-metrics';
+import { STATUS_BADGE } from '../../pricing/pricingUtils';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { cn } from '../../../components/ui/utils';
 
 interface TariffGroupsTabProps {
   isDarkMode: boolean;
@@ -15,91 +11,167 @@ interface TariffGroupsTabProps {
   onSelectGroup: (group: PriceTariffGroup) => void;
 }
 
+function RateLine({
+  prefix,
+  summary,
+  perDaySuffix,
+  variant,
+}: {
+  prefix: string;
+  summary: { dailyGrossLabel: string; depositLabel: string; includedKmPerDay: number | null };
+  perDaySuffix: string;
+  variant: 'live' | 'draft' | 'scheduled';
+}) {
+  const km =
+    summary.includedKmPerDay != null ? `${summary.includedKmPerDay} km` : null;
+  return (
+    <div
+      className={cn(
+        'rounded-lg border px-3 py-2 text-[11px]',
+        variant === 'live' && 'border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.04]',
+        variant === 'draft' && 'border-dashed border-border/60 bg-muted/15',
+        variant === 'scheduled' && 'border-[color:var(--status-info)]/25 bg-[color:var(--status-info)]/[0.04]',
+      )}
+    >
+      <p
+        className={cn(
+          'text-[10px] font-bold uppercase tracking-wider',
+          variant === 'live' && 'text-[color:var(--status-positive)]',
+          variant === 'draft' && 'text-muted-foreground',
+          variant === 'scheduled' && 'text-[color:var(--status-info)]',
+        )}
+      >
+        {prefix}
+      </p>
+      <p className="mt-1 font-medium text-foreground">
+        {summary.dailyGrossLabel}
+        {perDaySuffix}
+        <span className="text-muted-foreground"> · </span>
+        {summary.depositLabel}
+        {km ? (
+          <>
+            <span className="text-muted-foreground"> · </span>
+            {km}
+          </>
+        ) : null}
+      </p>
+    </div>
+  );
+}
+
 export function TariffGroupsTab({ catalog, onSelectGroup }: TariffGroupsTabProps) {
-  const taxRate = catalog.priceBook?.taxRatePercent ?? 19;
-  const currency = catalogCurrency(catalog);
+  const { t, locale } = useLanguage();
+  const perDaySuffix = t('priceTariffs.perDay');
+  const dateLocale = locale === 'de' ? 'de-DE' : 'en-GB';
+
+  const rows = catalog.groups.map((group) => buildTariffGroupRowView(group, catalog));
 
   return (
-    <div className="surface-premium overflow-hidden rounded-2xl border border-border/50 shadow-[var(--shadow-1)]">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] text-left text-xs">
-          <thead>
-            <tr className="border-b border-border/50 bg-muted/30">
-              {[
-                'Tariff Group',
-                'Vehicles',
-                'Daily',
-                'Weekly',
-                'Monthly',
-                'km/day',
-                'Extra km',
-                'Deposit',
-                'Status',
-                'Updated',
-              ].map((h) => (
-                <th key={h} className="px-4 py-3 font-semibold text-muted-foreground">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {catalog.groups.map((group) => {
-              const version = getActiveVersion(group);
-              const rate = version?.rate;
-              const status = resolveGroupStatus(group, catalog);
-              const badge = STATUS_BADGE[status];
-              return (
-                <tr
-                  key={group.id}
-                  onClick={() => onSelectGroup(group)}
-                  className="cursor-pointer border-b border-border/30 transition-colors hover:bg-muted/40"
-                >
-                  <td className="px-4 py-3 font-semibold text-foreground">
-                    {group.name}
-                    {group.category && group.category !== group.name && (
-                      <span className="ml-2 text-[10px] font-medium text-muted-foreground">
-                        {group.category}
-                      </span>
+    <div className="space-y-3">
+      {rows.map((row) => {
+        const badge = STATUS_BADGE[row.status];
+        return (
+          <button
+            key={row.group.id}
+            type="button"
+            onClick={() => onSelectGroup(row.group)}
+            className="group w-full rounded-2xl border border-border/50 surface-premium p-4 text-left shadow-[var(--shadow-1)] transition-colors hover:border-border hover:bg-muted/20"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="truncate text-sm font-semibold text-foreground">{row.group.name}</h3>
+                  <span
+                    className={cn(
+                      'inline-flex rounded-lg px-2 py-0.5 text-[10px] font-semibold',
+                      badge.className,
                     )}
-                  </td>
-                  <td className="px-4 py-3 tabular-nums">{countVehiclesInGroup(catalog, group.id)}</td>
-                  <td className="px-4 py-3 tabular-nums">
-                    {rate && currency ? formatNetAsGross(rate.dailyRateCents, taxRate, currency) : '—'}
-                  </td>
-                  <td className="px-4 py-3 tabular-nums">
-                    {rate?.weeklyRateCents && currency
-                      ? formatNetAsGross(rate.weeklyRateCents, taxRate, currency)
-                      : '—'}
-                  </td>
-                  <td className="px-4 py-3 tabular-nums">
-                    {rate?.monthlyRateCents && currency
-                      ? formatNetAsGross(rate.monthlyRateCents, taxRate, currency)
-                      : '—'}
-                  </td>
-                  <td className="px-4 py-3 tabular-nums">{rate?.includedKmPerDay ?? '—'}</td>
-                  <td className="px-4 py-3 tabular-nums">
-                    {rate && currency ? formatNetAsGross(rate.extraKmPriceCents, taxRate, currency) : '—'}
-                  </td>
-                  <td className="px-4 py-3 tabular-nums">
-                    {rate && currency ? formatDepositCents(rate.depositAmountCents, currency) : '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex rounded-lg px-2 py-0.5 text-[10px] font-semibold ${badge.className}`}
-                    >
-                      {badge.label}
+                  >
+                    {t(badge.labelKey as never)}
+                  </span>
+                  {row.currency ? (
+                    <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-muted-foreground">
+                      {row.currency}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {new Date(group.updatedAt).toLocaleDateString('de-DE')}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                  ) : null}
+                </div>
+                {row.group.description ? (
+                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{row.group.description}</p>
+                ) : null}
+                <div className="mt-2 flex flex-wrap gap-3 text-[11px] text-muted-foreground">
+                  <span>
+                    {t('priceTariffs.row.vehicles')}:{' '}
+                    <span className="font-semibold tabular-nums text-foreground">{row.vehicleCount}</span>
+                  </span>
+                  {row.live?.validFrom ? (
+                    <span className="inline-flex items-center gap-1">
+                      <CalendarClock className="h-3 w-3" />
+                      {t('priceTariffs.row.validFrom')}:{' '}
+                      {new Date(row.live.validFrom).toLocaleDateString(dateLocale)}
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+              <ChevronRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+            </div>
+
+            <div className="mt-3 grid gap-2 lg:grid-cols-2">
+              {row.hasPublishedLive && row.live ? (
+                <RateLine
+                  prefix={t('priceTariffs.row.live')}
+                  summary={row.live}
+                  perDaySuffix={perDaySuffix}
+                  variant="live"
+                />
+              ) : (
+                <div className="rounded-lg border border-dashed border-border/50 px-3 py-2 text-[11px] text-muted-foreground">
+                  <p className="text-[10px] font-bold uppercase tracking-wider">
+                    {t('priceTariffs.row.live')}
+                  </p>
+                  <p className="mt-1 font-medium">{t('priceTariffs.row.notPublished')}</p>
+                </div>
+              )}
+
+              {row.draft ? (
+                <RateLine
+                  prefix={t('priceTariffs.row.draft')}
+                  summary={row.draft}
+                  perDaySuffix={perDaySuffix}
+                  variant="draft"
+                />
+              ) : (
+                <div className="rounded-lg border border-border/30 bg-muted/10 px-3 py-2 text-[11px] text-muted-foreground">
+                  <p className="text-[10px] font-bold uppercase tracking-wider">
+                    {t('priceTariffs.row.draft')}
+                  </p>
+                  <p className="mt-1">{t('priceTariffs.row.noDraft')}</p>
+                </div>
+              )}
+            </div>
+
+            {row.scheduled.length > 0 ? (
+              <div className="mt-2 space-y-2">
+                {row.scheduled.map((scheduled) => (
+                  <div key={`${row.group.id}-v${scheduled.versionNumber}`}>
+                    <RateLine
+                      prefix={t('priceTariffs.row.scheduled', { version: scheduled.versionNumber })}
+                      summary={scheduled}
+                      perDaySuffix={perDaySuffix}
+                      variant="scheduled"
+                    />
+                    {scheduled.validFrom ? (
+                      <p className="mt-1 pl-1 text-[10px] text-muted-foreground">
+                        {t('priceTariffs.row.validFrom')}:{' '}
+                        {new Date(scheduled.validFrom).toLocaleDateString(dateLocale)}
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+          </button>
+        );
+      })}
     </div>
   );
 }

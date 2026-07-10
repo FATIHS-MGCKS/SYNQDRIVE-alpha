@@ -84,22 +84,29 @@ export function resolveGroupStatus(
   catalog: PriceTariffCatalog | null,
 ): TariffGroupRowStatus {
   const active = getActiveVersion(group);
+  const draft = getDraftVersion(group);
   const vehicleCount = countVehiclesInGroup(catalog, group.id);
-  if (!active?.rate || active.rate.dailyRateCents <= 0) return 'incomplete';
-  if (!active) return 'draft';
+
+  if (!group.isActive) return 'inactive';
+  if (!active?.rate || active.rate.dailyRateCents <= 0) {
+    return draft ? 'draft' : 'incomplete';
+  }
   if (vehicleCount === 0) return 'unassigned';
-  if (active.status === 'DRAFT') return 'draft';
+  if (draft) return 'draft';
+  if (getScheduledVersions(group).length > 0) return 'scheduled';
   return 'active';
 }
 
 export const STATUS_BADGE: Record<
   TariffGroupRowStatus,
-  { label: string; className: string }
+  { labelKey: string; className: string }
 > = {
-  active: { label: 'Active', className: 'sq-tone-success' },
-  draft: { label: 'Draft', className: 'sq-tone-neutral' },
-  incomplete: { label: 'Incomplete', className: 'sq-tone-warning' },
-  unassigned: { label: 'No vehicles', className: 'sq-tone-warning' },
+  active: { labelKey: 'priceTariffs.status.active', className: 'sq-tone-success' },
+  draft: { labelKey: 'priceTariffs.status.draft', className: 'sq-tone-neutral' },
+  incomplete: { labelKey: 'priceTariffs.status.incomplete', className: 'sq-tone-warning' },
+  unassigned: { labelKey: 'priceTariffs.status.unassigned', className: 'sq-tone-warning' },
+  inactive: { labelKey: 'priceTariffs.status.inactive', className: 'sq-tone-neutral' },
+  scheduled: { labelKey: 'priceTariffs.status.scheduled', className: 'sq-tone-info' },
 };
 
 export function getVehicleTariffFromCatalog(

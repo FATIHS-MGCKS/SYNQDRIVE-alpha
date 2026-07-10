@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pricing-tariffs-overview-v49345-2026-07-10',
+    version: '4.9.345',
+    title: 'V4.9.345 — Preise & Tarife: Übersicht UX (Live/Draft, KPIs, Dialog)',
+    summary: [
+      'KPI-Zeile aus echten Katalogdaten: aktive Gruppen, offene Entwürfe, Fahrzeuge ohne Tarif, geplante Änderungen; `lastUpdated` = max(`group.updatedAt`).',
+      'Tarifgruppen-Karten: Live vs. Entwurf vs. geplant getrennt; Kaution netto (kein Brutto); Currency sichtbar; „Nicht veröffentlicht“ ohne ACTIVE-Version.',
+      '`CreateTariffGroupDialog` ersetzt `window.prompt` (Name, Beschreibung, Kategorie, Preisbuch, optionale Vorlage, geplanter Gültigkeitsbeginn).',
+      'Extras-Tab: Übersicht + direkter Sprung in Tarif-Editor (kein reiner Dead-End). Rules-Tab deaktiviert mit „Geplant“-Badge.',
+      'Vollständige DE/EN-i18n für Overview; Tests `tariff-overview.test.ts` (KPIs, Live/Draft, i18n, keine versions[0]).',
+    ],
+    reason: 'Prompt 12: Nutzer soll auf einen Blick Live-Tarife, Entwürfe, geplante Änderungen und fehlende Zuweisungen erkennen — ohne Draft als Live oder falsche Kennzahlen.',
+    previousBehavior: 'Englische Tab-Labels, `window.prompt` beim Anlegen, KPI „Last updated“ aus `groups[0]`, flache Tabelle ohne Live/Draft-Trennung, Rules Coming-soon als anklickbarer Tab.',
+    details: 'Neu: tariff-catalog-metrics.ts, CreateTariffGroupDialog.tsx, tariff-overview.test.ts. Geändert: PriceTariffsPage, TariffGroupsTab, ExtrasInsuranceTab, pricingUtils (Status), i18n de/en. Entfernt: RulesPlaceholderTab.',
+    affectsArchitecture: false,
+    module: 'Rental Pricing',
+    createdAt: '2026-07-10T23:58:00.000Z',
+  },
+  {
     id: 'pricing-quote-lock-v49344-2026-07-10',
     version: '4.9.344',
     title: 'V4.9.344 — Pricing: Quote-Lock (bestätigter Preis = Buchungspreis)',

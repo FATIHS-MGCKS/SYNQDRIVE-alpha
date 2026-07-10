@@ -216,4 +216,10 @@ export interface PricingInputPayload {
   manualAdjustmentCents?: number;
 }
 
-export type TariffGroupRowStatus = 'active' | 'draft' | 'incomplete' | 'unassigned';
+export type TariffGroupRowStatus =
+  | 'active'
+  | 'draft'
+  | 'incomplete'
+  | 'unassigned'
+  | 'inactive'
+  | 'scheduled';

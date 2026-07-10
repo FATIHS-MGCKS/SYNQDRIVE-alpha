@@ -4,15 +4,13 @@ import {
   Calculator,
   Car,
   Clock,
+  FilePen,
   Layers,
   Package,
   Plus,
   Sparkles,
-  TrendingUp,
   type LucideIcon,
 } from 'lucide-react';
-import { toast } from 'sonner';
-import { api } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
 import { usePriceTariffs } from '../../hooks/usePriceTariffs';
 import { PageHeader } from '../../../components/patterns';
@@ -20,22 +18,15 @@ import { EmptyState, ErrorState, SkeletonMetricGrid } from '../../../components/
 import { Button } from '../../../components/ui/button';
 import { cn } from '../../../components/ui/utils';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { computeTariffCatalogKpis } from '../../pricing/tariff-catalog-metrics';
+import { catalogCurrency } from '../../pricing/pricingUtils';
 import { TariffGroupsTab } from './TariffGroupsTab';
 import { VehicleAssignmentsTab } from './VehicleAssignmentsTab';
 import { ExtrasInsuranceTab } from './ExtrasInsuranceTab';
 import { PricingSimulatorTab } from './PricingSimulatorTab';
 import { TariffGroupDrawer } from './TariffGroupDrawer';
-import { RulesPlaceholderTab } from './RulesPlaceholderTab';
+import { CreateTariffGroupDialog } from './CreateTariffGroupDialog';
 import type { PriceTariffGroup } from '../../pricing/pricingTypes';
-import {
-  catalogCurrency,
-  countVehiclesInGroup,
-  formatPriceCents,
-  getActiveVersion,
-  grossFromNetCents,
-  resolveGroupStatus,
-  STATUS_BADGE,
-} from '../../pricing/pricingUtils';
 
 type TabId = 'groups' | 'assignments' | 'extras' | 'simulator' | 'rules';
 
@@ -92,7 +83,7 @@ function TariffKpiCard({
               isCritical && 'text-[color:var(--status-critical)]',
               isSuccess && 'text-[color:var(--status-positive)]',
               isWatch && 'text-[color:var(--status-watch)]',
-              isInfo && 'text-[color:var(--status-info)]',
+              isInfo && 'text-foreground',
               !subdued && !isEmpty && !isCritical && !isSuccess && !isWatch && !isInfo && 'text-foreground',
             )}
           >
@@ -105,7 +96,7 @@ function TariffKpiCard({
             isCritical && 'sq-tone-critical',
             isWatch && 'sq-tone-watch',
             isSuccess && 'sq-tone-success',
-            isInfo && 'sq-tone-info',
+            isInfo && 'bg-muted text-muted-foreground',
             !isCritical && !isWatch && !isSuccess && !isInfo && 'bg-muted text-muted-foreground',
           )}
         >
@@ -123,72 +114,53 @@ function TariffKpiCard({
 }
 
 export function PriceTariffsPage({ isDarkMode }: PriceTariffsPageProps) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
   const { catalog, loading, error, reload } = usePriceTariffs(orgId);
   const [tab, setTab] = useState<TabId>('groups');
   const [drawerGroup, setDrawerGroup] = useState<PriceTariffGroup | null>(null);
-  const [creatingGroup, setCreatingGroup] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
-  const taxRate = catalog?.priceBook?.taxRatePercent ?? 19;
   const catalogCcy = catalogCurrency(catalog);
+  const kpis = useMemo(() => computeTariffCatalogKpis(catalog), [catalog]);
+  const dateLocale = locale === 'de' ? 'de-DE' : 'en-GB';
 
-  const kpis = useMemo(() => {
-    const groups = catalog?.groups ?? [];
-    const activeGroups = groups.filter((g) => getActiveVersion(g)?.rate);
-    const rates = activeGroups
-      .map((g) => getActiveVersion(g)?.rate?.dailyRateCents ?? 0)
-      .filter((r) => r > 0);
-    const avgDailyGross =
-      rates.length > 0
-        ? Math.round(
-            rates.reduce((s, r) => s + grossFromNetCents(r, taxRate), 0) / rates.length,
-          )
-        : 0;
-    const incomplete = groups.filter((g) => {
-      const v = getActiveVersion(g);
-      return !v?.rate || v.rate.dailyRateCents <= 0;
-    }).length;
-    const assigned = catalog?.assignments.filter((a) => a.isActive).length ?? 0;
-    return {
-      activeGroups: activeGroups.length,
-      assigned,
-      unassigned: catalog?.unassignedVehicleCount ?? 0,
-      avgDailyGross,
-      incomplete,
-      lastUpdated: groups[0]?.updatedAt,
-    };
-  }, [catalog, taxRate]);
+  const tabs: Array<{
+    id: TabId;
+    labelKey: string;
+    icon: typeof Layers;
+    disabled?: boolean;
+    badge?: string;
+  }> = [
+    { id: 'groups', labelKey: 'priceTariffs.tabs.groups', icon: Layers },
+    { id: 'assignments', labelKey: 'priceTariffs.tabs.assignments', icon: Car },
+    { id: 'extras', labelKey: 'priceTariffs.tabs.extras', icon: Package },
+    { id: 'simulator', labelKey: 'priceTariffs.tabs.simulator', icon: Calculator },
+    {
+      id: 'rules',
+      labelKey: 'priceTariffs.tabs.rules',
+      icon: Sparkles,
+      disabled: true,
+      badge: t('priceTariffs.tabs.planned'),
+    },
+  ];
 
-  const handleCreateGroup = async () => {
-    if (!orgId) return;
-    const name = window.prompt('Name der Tarifgruppe:', 'Neue Gruppe');
-    if (!name?.trim()) return;
-    setCreatingGroup(true);
-    try {
-      await api.pricing.createGroup(orgId, { name: name.trim(), category: name.trim() });
-      toast.success('Tarifgruppe erstellt');
-      await reload();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Erstellen fehlgeschlagen');
-    } finally {
-      setCreatingGroup(false);
-    }
+  const openGroupEditor = (group: PriceTariffGroup) => {
+    setDrawerGroup(group);
+    setTab('groups');
   };
 
-  const tabs: { id: TabId; label: string; icon: typeof Layers }[] = [
-    { id: 'groups', label: 'Tariff Groups', icon: Layers },
-    { id: 'assignments', label: 'Vehicle Assignments', icon: Car },
-    { id: 'extras', label: 'Extras & Insurance', icon: Package },
-    { id: 'simulator', label: 'Pricing Simulator', icon: Calculator },
-    { id: 'rules', label: 'Rules / Seasons', icon: Sparkles },
-  ];
+  const handleGroupCreated = async (group: PriceTariffGroup) => {
+    const fresh = await reload();
+    const refreshed = fresh?.groups.find((g) => g.id === group.id) ?? group;
+    setDrawerGroup(refreshed);
+  };
 
   if (loading && !catalog) {
     return (
       <div className="space-y-4">
-        <p className="text-xs text-muted-foreground">Tarife werden geladen…</p>
-        <SkeletonMetricGrid count={6} />
+        <p className="text-xs text-muted-foreground">{t('priceTariffs.loading')}</p>
+        <SkeletonMetricGrid count={4} />
       </div>
     );
   }
@@ -196,7 +168,7 @@ export function PriceTariffsPage({ isDarkMode }: PriceTariffsPageProps) {
   if (error && !catalog) {
     return (
       <ErrorState
-        title="Tarife konnten nicht geladen werden"
+        title={t('priceTariffs.error.title')}
         description={error}
         onRetry={() => void reload()}
       />
@@ -212,72 +184,93 @@ export function PriceTariffsPage({ isDarkMode }: PriceTariffsPageProps) {
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
             <Button type="button" variant="secondary" size="sm" onClick={() => setTab('simulator')}>
               <Calculator className="h-3.5 w-3.5" />
-              Simulate
+              {t('priceTariffs.actions.simulate')}
             </Button>
-            <Button
-              type="button"
-              variant="primary"
-              size="sm"
-              disabled={creatingGroup}
-              onClick={() => void handleCreateGroup()}
-            >
+            <Button type="button" variant="primary" size="sm" onClick={() => setCreateOpen(true)}>
               <Plus className="h-3.5 w-3.5" />
-              <span className="hidden min-[440px]:inline">Create tariff group</span>
-              <span className="min-[440px]:hidden">Create</span>
+              <span className="hidden min-[440px]:inline">{t('priceTariffs.actions.createGroup')}</span>
+              <span className="min-[440px]:hidden">{t('priceTariffs.actions.createShort')}</span>
             </Button>
           </div>
         )}
       />
 
-      <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-6">
-        <TariffKpiCard label="Active groups" value={kpis.activeGroups} icon={Layers} tone="info" accent={kpis.activeGroups > 0} />
-        <TariffKpiCard label="Vehicles assigned" value={kpis.assigned} icon={Car} tone="success" accent={kpis.assigned > 0} />
+      {catalog?.priceBook ? (
+        <p className="text-xs text-muted-foreground">
+          {t('priceTariffs.priceBookSummary', {
+            name: catalog.priceBook.name,
+            currency: catalogCcy ?? catalog.priceBook.currency,
+          })}
+          {kpis.lastUpdatedAt ? (
+            <>
+              {' · '}
+              {t('priceTariffs.lastUpdated')}:{' '}
+              {new Date(kpis.lastUpdatedAt).toLocaleString(dateLocale)}
+            </>
+          ) : null}
+        </p>
+      ) : null}
+
+      <div className="grid grid-cols-2 items-stretch gap-3 sm:gap-3.5 lg:grid-cols-4">
         <TariffKpiCard
-          label="Without tariff"
-          value={kpis.unassigned}
+          label={t('priceTariffs.kpi.activeGroups')}
+          value={kpis.activeGroups}
+          icon={Layers}
+          tone="success"
+          accent={kpis.activeGroups > 0}
+        />
+        <TariffKpiCard
+          label={t('priceTariffs.kpi.openDrafts')}
+          value={kpis.openDrafts}
+          icon={FilePen}
+          tone="info"
+          accent={kpis.openDrafts > 0}
+        />
+        <TariffKpiCard
+          label={t('priceTariffs.kpi.unassignedVehicles')}
+          value={kpis.unassignedVehicles}
           icon={AlertTriangle}
           tone="watch"
-          accent={kpis.unassigned > 0}
+          accent={kpis.unassignedVehicles > 0}
         />
         <TariffKpiCard
-          label="Avg. daily rate"
-          value={kpis.avgDailyGross > 0 && catalogCcy ? formatPriceCents(kpis.avgDailyGross, catalogCcy) : '—'}
-          icon={TrendingUp}
-          tone="info"
-          accent={kpis.avgDailyGross > 0}
-          subdued={kpis.avgDailyGross <= 0}
-        />
-        <TariffKpiCard
-          label="Incomplete"
-          value={kpis.incomplete}
-          icon={Sparkles}
-          tone="watch"
-          accent={kpis.incomplete > 0}
-        />
-        <TariffKpiCard
-          label="Last updated"
-          value={kpis.lastUpdated ? new Date(kpis.lastUpdated).toLocaleDateString('de-DE') : '—'}
+          label={t('priceTariffs.kpi.scheduledChanges')}
+          value={kpis.scheduledChanges}
           icon={Clock}
-          subdued={!kpis.lastUpdated}
+          tone="info"
+          accent={kpis.scheduledChanges > 0}
+          subdued={kpis.scheduledChanges === 0}
         />
       </div>
 
       <div className="flex flex-wrap gap-1 border-b border-border/50 pb-1">
-        {tabs.map((t) => {
-          const Icon = t.icon;
+        {tabs.map((tabDef) => {
+          const Icon = tabDef.icon;
+          const isActive = tab === tabDef.id;
           return (
             <button
-              key={t.id}
+              key={tabDef.id}
               type="button"
-              onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-semibold transition-colors ${
-                tab === t.id
+              disabled={tabDef.disabled}
+              onClick={() => {
+                if (!tabDef.disabled) setTab(tabDef.id);
+              }}
+              className={cn(
+                'flex items-center gap-1.5 rounded-lg px-3 py-2 text-[11px] font-semibold transition-colors',
+                tabDef.disabled && 'cursor-not-allowed opacity-60',
+                isActive
                   ? 'bg-muted text-foreground'
-                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-              }`}
+                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+                tabDef.disabled && 'hover:bg-transparent hover:text-muted-foreground',
+              )}
             >
               <Icon className="h-3.5 w-3.5" />
-              {t.label}
+              {t(tabDef.labelKey as never)}
+              {tabDef.badge ? (
+                <span className="rounded-md bg-muted px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-muted-foreground">
+                  {tabDef.badge}
+                </span>
+              ) : null}
             </button>
           );
         })}
@@ -285,17 +278,17 @@ export function PriceTariffsPage({ isDarkMode }: PriceTariffsPageProps) {
 
       {!catalog?.groups?.length ? (
         <EmptyState
-          title="Noch keine Tarifgruppen"
-          description="Erstellen Sie eine Tarifgruppe oder warten Sie auf die automatische Migration aus Fahrzeugdaten."
-          action={
+          title={t('priceTariffs.empty.title')}
+          description={t('priceTariffs.empty.description')}
+          action={(
             <button
               type="button"
-              onClick={() => void handleCreateGroup()}
+              onClick={() => setCreateOpen(true)}
               className="rounded-xl bg-[color:var(--brand)] px-4 py-2 text-xs font-semibold text-white"
             >
-              Create tariff group
+              {t('priceTariffs.actions.createGroup')}
             </button>
-          }
+          )}
         />
       ) : (
         <>
@@ -303,17 +296,28 @@ export function PriceTariffsPage({ isDarkMode }: PriceTariffsPageProps) {
             <TariffGroupsTab
               isDarkMode={isDarkMode}
               catalog={catalog}
-              onSelectGroup={setDrawerGroup}
+              onSelectGroup={openGroupEditor}
             />
           )}
           {tab === 'assignments' && (
             <VehicleAssignmentsTab catalog={catalog} onReload={() => void reload()} />
           )}
-          {tab === 'extras' && <ExtrasInsuranceTab catalog={catalog} />}
+          {tab === 'extras' && (
+            <ExtrasInsuranceTab catalog={catalog} onEditGroup={openGroupEditor} />
+          )}
           {tab === 'simulator' && <PricingSimulatorTab />}
-          {tab === 'rules' && <RulesPlaceholderTab />}
         </>
       )}
+
+      {orgId ? (
+        <CreateTariffGroupDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          orgId={orgId}
+          catalog={catalog}
+          onCreated={handleGroupCreated}
+        />
+      ) : null}
 
       {drawerGroup && orgId && (
         <TariffGroupDrawer
