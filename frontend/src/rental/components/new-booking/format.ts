@@ -1,4 +1,4 @@
-import { formatMoneyMajorUnits } from '../../lib/money';
+import { formatMoneyMajorUnits } from '../../../lib/money';
 
 /** Currency-aware booking amount display (major units from cents-derived values). */
 export function formatBookingAmount(

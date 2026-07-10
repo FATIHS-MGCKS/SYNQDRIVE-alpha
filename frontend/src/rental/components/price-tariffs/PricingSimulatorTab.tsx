@@ -1,13 +1,21 @@
 import { useMemo, useState } from 'react';
 import { useFleetVehicles } from '../../FleetContext';
 import { useRentalOrg } from '../../RentalContext';
+import { usePriceTariffs } from '../../hooks/usePriceTariffs';
 import { usePricingSimulation } from '../../hooks/usePricingSimulation';
-import { formatPriceCents, formatPricingContextLabel } from '../../pricing/pricingUtils';
-import { isRentalChargeLineType } from '../../pricing/pricingLineItems';
+import { useLanguage } from '../../i18n/LanguageContext';
+import {
+  buildSimulatorPriceBreakdown,
+  resolveSimulatorDraftDepositHint,
+} from '../../pricing/simulator-price-breakdown';
+import { formatPriceCents, getDraftVersion, getActiveVersion } from '../../pricing/pricingUtils';
+import { cn } from '../../../components/ui/utils';
 
 export function PricingSimulatorTab() {
+  const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
   const { fleetVehicles } = useFleetVehicles();
+  const { catalog } = usePriceTariffs(orgId);
   const [vehicleId, setVehicleId] = useState('');
   const [pickupDate, setPickupDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
@@ -40,18 +48,38 @@ export function PricingSimulatorTab() {
   const { result, loading, error } = usePricingSimulation(orgId, simParams);
   const pricingContext = result?.pricingContext ?? null;
   const displayCurrency = result?.currency ?? pricingContext?.currency ?? null;
-  const taxRatePercent = pricingContext?.taxRatePercent ?? 19;
+  const dateLocale = locale === 'de' ? 'de-DE' : 'en-GB';
+
+  const breakdown = result ? buildSimulatorPriceBreakdown(result) : null;
+
+  const draftDepositHint = useMemo(() => {
+    if (!pricingContext || !catalog) return false;
+    const group = catalog.groups.find((g) => g.id === pricingContext.tariffGroupId);
+    if (!group) return false;
+    const live = getActiveVersion(group);
+    const draft = getDraftVersion(group);
+    if (!live?.rate || !draft?.rate) return false;
+    return resolveSimulatorDraftDepositHint({
+      tariffGroupId: group.id,
+      liveDepositCents: live.rate.depositAmountCents,
+      draftDepositCents: draft.rate.depositAmountCents,
+    });
+  }, [pricingContext, catalog]);
 
   const toggle = (list: string[], id: string, setter: (v: string[]) => void) => {
     setter(list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
   };
 
+  const fmt = (cents: number) => (displayCurrency ? formatPriceCents(cents, displayCurrency) : '—');
+
+  const fieldClass = 'mt-1 w-full rounded-lg border border-border bg-background px-2 py-1.5 text-xs';
+
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
-      <div className="surface-premium space-y-3 rounded-2xl border border-border/50 p-5">
-        <h3 className="text-sm font-bold">Inputs</h3>
+    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
+      <div className="surface-premium space-y-3 rounded-2xl border border-border/50 p-4 sm:p-5">
+        <h3 className="text-sm font-bold">{t('priceTariffs.simulator.inputs')}</h3>
         <label className="block text-xs">
-          Vehicle
+          {t('priceTariffs.simulator.vehicle')}
           <select
             value={vehicleId}
             onChange={(e) => {
@@ -60,9 +88,9 @@ export function PricingSimulatorTab() {
               setInsurances([]);
               setExtras([]);
             }}
-            className="mt-1 w-full rounded-xl border border-border surface-premium px-3 py-2 text-xs"
+            className={fieldClass}
           >
-            <option value="">Select…</option>
+            <option value="">{t('priceTariffs.simulator.selectVehicle')}</option>
             {fleetVehicles.map((v) => (
               <option key={v.id} value={v.id}>
                 {v.model} · {v.license}
@@ -70,37 +98,32 @@ export function PricingSimulatorTab() {
             ))}
           </select>
         </label>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <label className="text-xs">
-            Pickup
-            <input type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} className="mt-1 w-full rounded-lg border border-border px-2 py-1.5 text-xs" />
-            <input type="time" value={pickupTime} onChange={(e) => setPickupTime(e.target.value)} className="mt-1 w-full rounded-lg border border-border px-2 py-1.5 text-xs" />
+            {t('priceTariffs.simulator.pickup')}
+            <input type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} className={fieldClass} />
+            <input type="time" value={pickupTime} onChange={(e) => setPickupTime(e.target.value)} className={fieldClass} />
           </label>
           <label className="text-xs">
-            Return
-            <input type="date" value={returnDate} onChange={(e) => setReturnDate(e.target.value)} className="mt-1 w-full rounded-lg border border-border px-2 py-1.5 text-xs" />
-            <input type="time" value={returnTime} onChange={(e) => setReturnTime(e.target.value)} className="mt-1 w-full rounded-lg border border-border px-2 py-1.5 text-xs" />
+            {t('priceTariffs.simulator.return')}
+            <input type="date" value={returnDate} onChange={(e) => setReturnDate(e.target.value)} className={fieldClass} />
+            <input type="time" value={returnTime} onChange={(e) => setReturnTime(e.target.value)} className={fieldClass} />
           </label>
         </div>
-        {error && (
-          <p className="text-xs text-[color:var(--status-critical)]">{error}</p>
-        )}
-        {pricingContext && (
+        {error ? <p className="text-xs text-[color:var(--status-critical)]">{error}</p> : null}
+        {pricingContext ? (
           <>
-            <p className="text-xs text-muted-foreground">
-              Resolved: {formatPricingContextLabel(pricingContext)}
-            </p>
             <label className="block text-xs">
-              Mileage package
-              <select value={mileagePkg} onChange={(e) => setMileagePkg(e.target.value)} className="mt-1 w-full rounded-lg border border-border px-2 py-1.5 text-xs">
-                <option value="">None</option>
+              {t('priceTariffs.simulator.mileagePackage')}
+              <select value={mileagePkg} onChange={(e) => setMileagePkg(e.target.value)} className={fieldClass}>
+                <option value="">{t('priceTariffs.simulator.none')}</option>
                 {pricingContext.mileagePackages.filter((p) => p.isActive).map((p) => (
                   <option key={p.id} value={p.id}>{p.label}</option>
                 ))}
               </select>
             </label>
             <div className="text-xs">
-              <p className="font-semibold mb-1">Insurance</p>
+              <p className="mb-1 font-semibold">{t('priceTariffs.extras.insurance')}</p>
               {pricingContext.insuranceOptions.filter((o) => o.isActive).map((o) => (
                 <label key={o.id} className="flex items-center gap-2 py-0.5">
                   <input type="checkbox" checked={insurances.includes(o.id)} onChange={() => toggle(insurances, o.id, setInsurances)} />
@@ -109,7 +132,7 @@ export function PricingSimulatorTab() {
               ))}
             </div>
             <div className="text-xs">
-              <p className="font-semibold mb-1">Extras</p>
+              <p className="mb-1 font-semibold">{t('priceTariffs.extras.extras')}</p>
               {pricingContext.extraOptions.filter((o) => o.isActive).map((o) => (
                 <label key={o.id} className="flex items-center gap-2 py-0.5">
                   <input type="checkbox" checked={extras.includes(o.id)} onChange={() => toggle(extras, o.id, setExtras)} />
@@ -118,99 +141,124 @@ export function PricingSimulatorTab() {
               ))}
             </div>
           </>
-        )}
-        {!pricingContext && vehicleId && pickupDate && returnDate && loading && (
-          <p className="text-xs text-muted-foreground">Resolving tariff for pickup…</p>
-        )}
+        ) : null}
+        {!pricingContext && vehicleId && pickupDate && returnDate && loading ? (
+          <p className="text-xs text-muted-foreground">{t('priceTariffs.simulator.resolving')}</p>
+        ) : null}
         <label className="block text-xs">
-          Manual discount ({displayCurrency ?? 'currency'})
-          <input type="number" step="0.01" min="0" value={discountEuro} onChange={(e) => setDiscountEuro(e.target.value)} className="mt-1 w-full rounded-lg border border-border px-2 py-1.5 text-xs" />
+          {t('priceTariffs.simulator.manualDiscount', { currency: displayCurrency ?? '—' })}
+          <input type="number" step="0.01" min="0" value={discountEuro} onChange={(e) => setDiscountEuro(e.target.value)} className={cn(fieldClass, 'tabular-nums')} />
         </label>
       </div>
 
-      <div className="surface-premium rounded-2xl border border-border/50 p-5">
-        <h3 className="text-sm font-bold">Result</h3>
-        {loading && <p className="mt-4 text-xs text-muted-foreground">Calculating price…</p>}
-        {error && <p className="mt-4 text-xs text-[color:var(--status-critical)]">{error}</p>}
-        {!loading && !error && !result && (
-          <p className="mt-4 text-xs text-muted-foreground">Select vehicle and dates to simulate.</p>
-        )}
-        {pricingContext && (
-          <div className="mt-3 rounded-lg border border-border/40 bg-muted/20 p-3 text-[11px] text-muted-foreground">
-            <p className="font-semibold text-foreground">Pricing Debug</p>
-            <p>Book: {pricingContext.priceBookName ?? pricingContext.priceBookId}</p>
-            <p>Group: {pricingContext.tariffGroupName}</p>
-            <p>Version: v{pricingContext.versionNumber} · {pricingContext.tariffVersionId}</p>
-            <p>Pickup: {new Date(pricingContext.pickupAt).toLocaleString('de-DE')}</p>
-            <p>Deposit: {displayCurrency ? formatPriceCents(pricingContext.depositAmountCents, displayCurrency) : pricingContext.depositAmountCents}</p>
-            <p>VAT: {taxRatePercent}%</p>
-          </div>
-        )}
-        {result && (
-          <div className="mt-4 space-y-3 text-xs">
-            <p>
-              <span className="text-muted-foreground">Rental days:</span> {result.rentalDays}
+      <div className="space-y-4">
+        <div className="surface-premium rounded-2xl border border-border/50 p-4 sm:p-5 xl:sticky xl:top-4">
+          <h3 className="text-sm font-bold">{t('priceTariffs.simulator.usedTariff')}</h3>
+          {!pricingContext ? (
+            <p className="mt-3 text-xs text-muted-foreground">{t('priceTariffs.simulator.noContext')}</p>
+          ) : (
+            <dl className="mt-3 grid gap-1.5 text-[11px]">
+              <Row label={t('priceTariffs.simulator.vehicle')} value={vehicleId} mono />
+              <Row label={t('priceTariffs.simulator.assignment')} value={pricingContext.assignmentId} mono />
+              <Row label={t('priceTariffs.simulator.tariffGroup')} value={pricingContext.tariffGroupName} />
+              <Row label={t('priceTariffs.simulator.tariffVersion')} value={`v${pricingContext.versionNumber}`} />
+              <Row label={t('priceTariffs.simulator.priceBook')} value={pricingContext.priceBookName ?? pricingContext.priceBookId} />
+              <Row label={t('priceTariffs.simulator.currency')} value={pricingContext.currency} />
+              <Row
+                label={t('priceTariffs.simulator.validFrom')}
+                value={new Date(pricingContext.effectiveFrom).toLocaleString(dateLocale)}
+              />
+              <Row
+                label={t('priceTariffs.simulator.validTo')}
+                value={
+                  pricingContext.effectiveTo
+                    ? new Date(pricingContext.effectiveTo).toLocaleString(dateLocale)
+                    : '—'
+                }
+              />
+              <Row label={t('priceTariffs.simulator.deposit')} value={fmt(pricingContext.depositAmountCents)} />
+              {result?.quoteId ? <Row label={t('priceTariffs.simulator.quoteId')} value={result.quoteId} mono /> : null}
+              {result?.expiresAt ? (
+                <Row
+                  label={t('priceTariffs.simulator.quoteExpires')}
+                  value={new Date(result.expiresAt).toLocaleString(dateLocale)}
+                />
+              ) : null}
+            </dl>
+          )}
+          {draftDepositHint ? (
+            <p className="mt-3 rounded-lg border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/[0.06] px-3 py-2 text-[11px] text-[color:var(--status-watch)]">
+              {t('priceTariffs.simulator.draftDepositHint')}
             </p>
-            <p>
-              <span className="text-muted-foreground">Included km:</span> {result.includedKm}
-            </p>
-            <p>
-              <span className="text-muted-foreground">Currency:</span>{' '}
-              {displayCurrency ?? '—'}
-            </p>
-            <table className="w-full">
-              <tbody>
-                {result.lineItems
-                  .filter((li) => isRentalChargeLineType(li.type))
-                  .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
-                  .map((li, i) => (
-                    <tr key={i} className="border-b border-border/30">
-                      <td className="py-2">{li.label}</td>
-                      <td className="py-2 text-right tabular-nums">
-                        {displayCurrency
-                          ? formatPriceCents(li.totalGrossCents, displayCurrency)
-                          : '—'}
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-            <div className="border-t border-border/50 pt-2 space-y-1">
-              <div className="flex justify-between">
-                <span>Subtotal net</span>
-                <span className="tabular-nums">
-                  {displayCurrency ? formatPriceCents(result.subtotalNetCents, displayCurrency) : '—'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>Tax</span>
-                <span className="tabular-nums">
-                  {displayCurrency ? formatPriceCents(result.taxAmountCents, displayCurrency) : '—'}
-                </span>
-              </div>
-              <div className="flex justify-between font-bold text-sm">
-                <span>Total gross</span>
-                <span className="tabular-nums">
-                  {displayCurrency ? formatPriceCents(result.totalGrossCents, displayCurrency) : '—'}
-                </span>
-              </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Deposit</span>
-                <span className="tabular-nums">
-                  {displayCurrency ? formatPriceCents(result.depositAmountCents, displayCurrency) : '—'}
-                </span>
+          ) : null}
+        </div>
+
+        <div className="surface-premium rounded-2xl border border-border/50 p-4 sm:p-5">
+          <h3 className="text-sm font-bold">{t('priceTariffs.simulator.result')}</h3>
+          {loading ? <p className="mt-4 text-xs text-muted-foreground">{t('priceTariffs.simulator.calculating')}</p> : null}
+          {error ? <p className="mt-4 text-xs text-[color:var(--status-critical)]">{error}</p> : null}
+          {!loading && !error && !result ? (
+            <p className="mt-4 text-xs text-muted-foreground">{t('priceTariffs.simulator.empty')}</p>
+          ) : null}
+          {result && breakdown ? (
+            <div className="mt-4 space-y-3 text-xs">
+              <p>
+                <span className="text-muted-foreground">{t('priceTariffs.simulator.rentalDays')}:</span>{' '}
+                <span className="tabular-nums">{result.rentalDays}</span>
+              </p>
+              <div className="space-y-1 border-t border-border/40 pt-2">
+                <BreakdownRow label={t('priceTariffs.simulator.breakdown.rental')} value={fmt(breakdown.baseRentalGrossCents)} />
+                <BreakdownRow label={t('priceTariffs.simulator.breakdown.mileage')} value={fmt(breakdown.mileageGrossCents)} />
+                <BreakdownRow label={t('priceTariffs.simulator.breakdown.extras')} value={fmt(breakdown.extrasGrossCents)} />
+                <BreakdownRow label={t('priceTariffs.simulator.breakdown.insurance')} value={fmt(breakdown.insuranceGrossCents)} />
+                <BreakdownRow label={t('priceTariffs.simulator.breakdown.discounts')} value={fmt(breakdown.discountsGrossCents)} />
+                <BreakdownRow label={t('priceTariffs.simulator.breakdown.tax')} value={fmt(breakdown.taxAmountCents)} />
+                <BreakdownRow label={t('priceTariffs.simulator.breakdown.rentalRevenue')} value={fmt(breakdown.rentalRevenueGrossCents)} strong />
+                <BreakdownRow
+                  label={t('priceTariffs.simulator.breakdown.deposit')}
+                  value={fmt(breakdown.depositAmountCents)}
+                  muted
+                  note={t('priceTariffs.simulator.breakdown.depositNote')}
+                />
+                <BreakdownRow label={t('priceTariffs.simulator.breakdown.dueNow')} value={fmt(breakdown.totalDueNowCents)} strong />
               </div>
             </div>
-            {result.warnings?.length > 0 && (
-              <ul className="text-[color:var(--status-warning)]">
-                {result.warnings.map((w) => (
-                  <li key={w}>· {w}</li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
+          ) : null}
+        </div>
       </div>
+    </div>
+  );
+}
+
+function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="grid grid-cols-[minmax(0,42%)_1fr] gap-2">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className={cn('truncate text-right font-medium text-foreground', mono && 'font-mono text-[10px]')}>{value}</dd>
+    </div>
+  );
+}
+
+function BreakdownRow({
+  label,
+  value,
+  strong,
+  muted,
+  note,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+  muted?: boolean;
+  note?: string;
+}) {
+  return (
+    <div className={cn('flex items-start justify-between gap-3', muted && 'text-muted-foreground')}>
+      <div>
+        <span className={cn(strong && 'font-semibold text-foreground')}>{label}</span>
+        {note ? <p className="text-[10px] text-muted-foreground">{note}</p> : null}
+      </div>
+      <span className={cn('shrink-0 tabular-nums', strong && 'font-bold')}>{value}</span>
     </div>
   );
 }

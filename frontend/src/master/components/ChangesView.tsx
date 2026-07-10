@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pricing-tariff-editor-simulator-v49346-2026-07-10',
+    version: '4.9.346',
+    title: 'V4.9.346 — Preise & Tarife: Editor + Simulator (Live/Draft, Dirty-State, Kaution)',
+    summary: [
+      'Tarifeditor in fachliche Abschnitte gegliedert: Allgemein, Mietpreise (netto + Brutto-Vorschau), Kilometer, Kaution (eigener steuerfreier Block), Versicherungen/Extras (ID-Hinweis), Gültigkeit & Veröffentlichung.',
+      'Live-/Entwurf-Vergleich in Sidebar (Desktop sticky) und Publish-Abschnitt (Mobile): geänderte Felder (z. B. Kaution) hervorgehoben.',
+      'Aktionen: „Entwurf speichern“ (disabled ohne Änderungen), „Änderungen veröffentlichen“ / „Änderung planen“ bei zukünftigem Gültigkeitsbeginn; Warnung beim Schließen mit ungespeicherten Änderungen.',
+      'Echter Dirty-State via Snapshot-Vergleich (`tariff-editor-form-state`); Baseline-Reset nach Save/Publish über Parent-Reload.',
+      'Feldvalidierung (negative Preise, Currency, Kaution, Pflicht-Tagespreis) + API-Fehler-Mapping; Simulator: Panel „Verwendeter Tarif“ (pricingContext, Quote-ID, Ablauf), Draft-Kaution-Hinweis, Aufschlüsselung Miete/Km/Extras/Versicherung/Steuern/Kaution/Mietumsatz/jetzt fällig.',
+      'Responsive: horizontale Abschnittsnavigation auf Mobile, sticky Actions-Sidebar auf Desktop; DE/EN-i18n; Tests `tariff-editor-simulator.test.ts` (11 Tests).',
+    ],
+    reason: 'Prompt 13: Preislogik, Kaution, Entwurf, Live-Version und Veröffentlichung müssen im Editor und Simulator eindeutig verständlich sein — ohne technische Labels oder dauerhaften Dirty-State.',
+    previousBehavior: 'Flacher Editor ohne klare Abschnitte; Kaution zwischen Mietpreisen; `dirty` immer true; „Activate version“; Simulator ohne Tarifkontext/Quote-Aufschlüsselung; Kaution in Umsatzzeilen.',
+    details: 'Neu: tariff-editor-form-state.ts, tariff-live-draft-compare.ts, tariff-editor-validation.ts, simulator-price-breakdown.ts, TariffEditorLiveDraftCompare.tsx, TariffEditorMoneyField.tsx, tariff-editor-simulator.test.ts. Geändert: TariffGroupDrawer.tsx, PricingSimulatorTab.tsx, tariff-publish-flow.ts, i18n de/en, format.ts (money import).',
+    affectsArchitecture: true,
+    module: 'Rental Pricing',
+    createdAt: '2026-07-10T22:10:00.000Z',
+  },
+  {
     id: 'pricing-tariffs-overview-v49345-2026-07-10',
     version: '4.9.345',
     title: 'V4.9.345 — Preise & Tarife: Übersicht UX (Live/Draft, KPIs, Dialog)',

@@ -1,7 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '../../../lib/api';
+import { Button } from '../../../components/ui/button';
+import { cn } from '../../../components/ui/utils';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type {
   ExtraOptionRow,
   InsuranceOptionRow,
@@ -17,15 +20,32 @@ import {
   type SaveDraftResult,
 } from '../../pricing/tariff-publish-flow';
 import {
+  buildVersionPayloadFromSnapshot,
+  createEditorSnapshot,
+  isEditorDirty,
+  type TariffEditorFormSnapshot,
+} from '../../pricing/tariff-editor-form-state';
+import { buildLiveDraftComparison } from '../../pricing/tariff-live-draft-compare';
+import {
+  firstValidationError,
+  validateTariffEditorForm,
+} from '../../pricing/tariff-editor-validation';
+import {
   catalogCurrency,
   countVehiclesInGroup,
+  extractPricingApiError,
   getActiveVersion,
   getDraftVersion,
   getEditableVersion,
+  getScheduledVersions,
   getTariffFormBaseline,
   rateWarnings,
-  validateRateFields,
 } from '../../pricing/pricingUtils';
+import { TariffEditorLiveDraftCompare } from './tariff-editor/TariffEditorLiveDraftCompare';
+import {
+  TariffEditorDepositField,
+  TariffEditorMoneyField,
+} from './tariff-editor/TariffEditorMoneyField';
 
 export type TariffDrawerSavedEvent = {
   mode: 'draft' | 'published';
@@ -40,6 +60,17 @@ interface TariffGroupDrawerProps {
   onSaved: (event: TariffDrawerSavedEvent) => void | Promise<void>;
 }
 
+const SECTIONS = [
+  'general',
+  'rental',
+  'mileage',
+  'deposit',
+  'options',
+  'publish',
+] as const;
+
+type SectionId = (typeof SECTIONS)[number];
+
 const emptyRate = (): TariffRate => ({
   id: '',
   dailyRateCents: 5000,
@@ -51,6 +82,25 @@ const emptyRate = (): TariffRate => ({
   minimumRentalDays: null,
 });
 
+function snapshotFromGroup(
+  group: PriceTariffGroup,
+  baselineRate: TariffRate,
+  baselinePackages: MileagePackageOption[],
+  baselineInsurances: InsuranceOptionRow[],
+  baselineExtras: ExtraOptionRow[],
+): TariffEditorFormSnapshot {
+  return createEditorSnapshot({
+    name: group.name,
+    description: group.description ?? '',
+    isActive: group.isActive,
+    rate: baselineRate,
+    packages: baselinePackages,
+    insurances: baselineInsurances,
+    extras: baselineExtras,
+    publishEffectiveFrom: '',
+  });
+}
+
 export function TariffGroupDrawer({
   isDarkMode,
   orgId,
@@ -59,11 +109,15 @@ export function TariffGroupDrawer({
   onClose,
   onSaved,
 }: TariffGroupDrawerProps) {
+  const { t, locale } = useLanguage();
   const taxRate = catalog?.priceBook?.taxRatePercent ?? 19;
   const catalogCcy = catalogCurrency(catalog);
-  const draftVersion = getDraftVersion(group);
   const liveVersion = getActiveVersion(group);
+  const draftVersion = getDraftVersion(group);
+  const scheduledVersions = getScheduledVersions(group);
   const formBaseline = getTariffFormBaseline(group);
+
+  const [activeSection, setActiveSection] = useState<SectionId>('general');
   const [name, setName] = useState(group.name);
   const [description, setDescription] = useState(group.description ?? '');
   const [isActive, setIsActive] = useState(group.isActive);
@@ -71,109 +125,103 @@ export function TariffGroupDrawer({
   const [packages, setPackages] = useState<MileagePackageOption[]>(formBaseline?.mileagePackages ?? []);
   const [insurances, setInsurances] = useState<InsuranceOptionRow[]>(formBaseline?.insuranceOptions ?? []);
   const [extras, setExtras] = useState<ExtraOptionRow[]>(formBaseline?.extraOptions ?? []);
+  const [publishEffectiveFrom, setPublishEffectiveFrom] = useState('');
   const [saving, setSaving] = useState(false);
-  const [activating, setActivating] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const publishInFlightRef = useRef(false);
+  const baselineRef = useRef<TariffEditorFormSnapshot | null>(null);
+
+  const resetFromGroup = useCallback((g: PriceTariffGroup) => {
+    const baseline = getTariffFormBaseline(g);
+    const nextRate = baseline?.rate ?? emptyRate();
+    const nextPackages = baseline?.mileagePackages ?? [];
+    const nextInsurances = baseline?.insuranceOptions ?? [];
+    const nextExtras = baseline?.extraOptions ?? [];
+    setName(g.name);
+    setDescription(g.description ?? '');
+    setIsActive(g.isActive);
+    setRate(nextRate);
+    setPackages(nextPackages);
+    setInsurances(nextInsurances);
+    setExtras(nextExtras);
+    setPublishEffectiveFrom('');
+    baselineRef.current = snapshotFromGroup(g, nextRate, nextPackages, nextInsurances, nextExtras);
+  }, []);
 
   useEffect(() => {
-    const baseline = getTariffFormBaseline(group);
-    setName(group.name);
-    setDescription(group.description ?? '');
-    setIsActive(group.isActive);
-    setRate(baseline?.rate ?? emptyRate());
-    setPackages(baseline?.mileagePackages ?? []);
-    setInsurances(baseline?.insuranceOptions ?? []);
-    setExtras(baseline?.extraOptions ?? []);
-  }, [group]);
+    resetFromGroup(group);
+  }, [group, resetFromGroup]);
 
-  const dirty = useMemo(() => true, [name, description, isActive, rate, packages, insurances, extras]);
-  const publishDisabled = isPublishActionDisabled({ saving, activating });
-
-  const inputCls = `w-full rounded-lg border px-3 py-2 text-xs outline-none ${
-    isDarkMode
-      ? 'border-border bg-muted text-foreground'
-      : 'border-gray-200 bg-white text-gray-900'
-  }`;
-
-  const centsField = (
-    label: string,
-    value: number,
-    onChange: (cents: number) => void,
-  ) => (
-    <label className="block text-xs">
-      <span className="font-semibold text-muted-foreground">
-        {label}
-        {catalogCcy ? ` (${catalogCcy})` : ''}
-      </span>
-      <input
-        type="number"
-        step="0.01"
-        min="0"
-        value={(value / 100).toFixed(2)}
-        onChange={(e) => onChange(Math.round(parseFloat(e.target.value || '0') * 100))}
-        className={`${inputCls} mt-1`}
-      />
-    </label>
+  const currentSnapshot = useMemo(
+    () =>
+      createEditorSnapshot({
+        name,
+        description,
+        isActive,
+        rate,
+        packages,
+        insurances,
+        extras,
+        publishEffectiveFrom,
+      }),
+    [name, description, isActive, rate, packages, insurances, extras, publishEffectiveFrom],
   );
 
-  const buildVersionPayload = () => ({
-    rate: {
-      dailyRateCents: rate.dailyRateCents,
-      weeklyRateCents: rate.weeklyRateCents,
-      monthlyRateCents: rate.monthlyRateCents,
-      includedKmPerDay: rate.includedKmPerDay,
-      extraKmPriceCents: rate.extraKmPriceCents,
-      depositAmountCents: rate.depositAmountCents,
-      minimumRentalDays: rate.minimumRentalDays ?? undefined,
-    },
-    mileagePackages: packages.map((p) => ({
-      id: p.id,
-      label: p.label,
-      includedKm: p.includedKm,
-      priceCents: p.priceCents,
-      isActive: p.isActive,
-      sortOrder: p.sortOrder,
-    })),
-    insuranceOptions: insurances.map((o) => ({
-      id: o.id,
-      label: o.label,
-      description: o.description ?? undefined,
-      priceCents: o.priceCents,
-      pricingType: o.pricingType,
-      deductibleCents: o.deductibleCents ?? undefined,
-      isDefault: o.isDefault,
-      isActive: o.isActive,
-      sortOrder: o.sortOrder,
-    })),
-    extraOptions: extras.map((o) => ({
-      id: o.id,
-      label: o.label,
-      description: o.description ?? undefined,
-      priceCents: o.priceCents,
-      pricingType: o.pricingType,
-      isActive: o.isActive,
-      sortOrder: o.sortOrder,
-    })),
-  });
+  const dirty = useMemo(() => {
+    if (!baselineRef.current) return false;
+    return isEditorDirty(currentSnapshot, baselineRef.current);
+  }, [currentSnapshot]);
 
-  const persistDraft = async (options?: {
-    notifySuccess?: boolean;
-  }): Promise<SaveDraftResult> => {
-    const errors = validateRateFields(rate);
-    if (errors.length) {
-      return { ok: false, reason: 'validation', message: errors[0] };
+  const fieldErrors = useMemo(
+    () => validateTariffEditorForm(currentSnapshot, catalogCcy),
+    [currentSnapshot, catalogCcy],
+  );
+
+  const compareFields = useMemo(
+    () =>
+      buildLiveDraftComparison({
+        liveVersion,
+        draftRate: rate,
+        draftPackagesCount: packages.filter((p) => p.isActive).length,
+        draftInsurancesCount: insurances.filter((o) => o.isActive).length,
+        draftExtrasCount: extras.filter((o) => o.isActive).length,
+        taxRate,
+        currency: catalogCcy,
+      }),
+    [liveVersion, rate, packages, insurances, extras, taxRate, catalogCcy],
+  );
+
+  const publishDisabled = isPublishActionDisabled({ saving, activating: publishing });
+  const isFuturePublish = publishEffectiveFrom
+    ? new Date(publishEffectiveFrom).getTime() > Date.now()
+    : false;
+  const dateLocale = locale === 'de' ? 'de-DE' : 'en-GB';
+
+  const inputCls = cn(
+    'w-full rounded-lg border px-3 py-2 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
+    isDarkMode ? 'border-border bg-muted text-foreground' : 'border-gray-200 bg-white text-gray-900',
+  );
+
+  const requestClose = () => {
+    if (dirty) {
+      const ok = window.confirm(t('priceTariffs.editor.unsavedClose'));
+      if (!ok) return;
+    }
+    onClose();
+  };
+
+  const persistDraft = async (options?: { notifySuccess?: boolean }): Promise<SaveDraftResult> => {
+    const validationKey = firstValidationError(fieldErrors);
+    if (validationKey) {
+      return { ok: false, reason: 'validation', message: t(validationKey as never) };
     }
 
     setSaving(true);
     try {
-      await api.pricing.updateGroup(orgId, group.id, {
-        name,
-        description,
-        isActive,
-      });
+      await api.pricing.updateGroup(orgId, group.id, { name, description, isActive });
 
       const editableVersion = getEditableVersion(group);
-      const versionPayload = buildVersionPayload();
+      const versionPayload = buildVersionPayloadFromSnapshot(currentSnapshot);
       let rawSaved: unknown;
       if (editableVersion?.status === 'DRAFT') {
         rawSaved = await api.pricing.updateVersion(orgId, editableVersion.id, versionPayload);
@@ -185,18 +233,21 @@ export function TariffGroupDrawer({
       if (options?.notifySuccess) {
         const warnings = rateWarnings(rate, taxRate);
         if (countVehiclesInGroup(catalog, group.id) === 0) {
-          warnings.push('Keine Fahrzeuge zugewiesen');
+          warnings.push(t('priceTariffs.editor.warnings.noVehicles'));
         }
         if (warnings.length) {
-          toast.message('Gespeichert mit Hinweisen', { description: warnings.join(' · ') });
+          toast.message(t('priceTariffs.editor.savedWithWarnings'), {
+            description: warnings.join(' · '),
+          });
         } else {
-          toast.success('Tarif gespeichert');
+          toast.success(t('priceTariffs.editor.draftSaved'));
         }
       }
 
       return { ok: true, savedVersion };
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Speichern fehlgeschlagen';
+      const structured = extractPricingApiError(e);
+      const message = structured?.message ?? (e instanceof Error ? e.message : t('priceTariffs.editor.saveFailed'));
       return { ok: false, reason: 'api_error', message };
     } finally {
       setSaving(false);
@@ -204,16 +255,12 @@ export function TariffGroupDrawer({
   };
 
   const saveDraft = async () => {
-    if (publishInFlightRef.current || publishDisabled) return;
+    if (publishInFlightRef.current || publishDisabled || !dirty) return;
     publishInFlightRef.current = true;
     try {
       const result = await persistDraft({ notifySuccess: true });
       if (!result.ok) {
-        toast.error(
-          result.reason === 'validation'
-            ? `Entwurf ungültig: ${result.message}`
-            : `Speichern fehlgeschlagen: ${result.message}`,
-        );
+        toast.error(result.message);
         return;
       }
       await onSaved({ mode: 'draft' });
@@ -222,151 +269,314 @@ export function TariffGroupDrawer({
     }
   };
 
-  const activate = async () => {
+  const publish = async () => {
     if (publishInFlightRef.current || publishDisabled) return;
     publishInFlightRef.current = true;
-    setActivating(true);
+    setPublishing(true);
     try {
       const saveResult = await persistDraft({ notifySuccess: false });
       if (!saveResult.ok) {
-        toast.error(
-          saveResult.reason === 'validation'
-            ? `Veröffentlichen abgebrochen — Entwurf ungültig: ${saveResult.message}`
-            : `Veröffentlichen abgebrochen — Speichern fehlgeschlagen: ${saveResult.message}`,
-        );
+        toast.error(saveResult.message);
         return;
       }
 
       const versionId = resolveActivateVersionId(saveResult.savedVersion);
       if (!versionId) {
-        toast.error('Veröffentlichen fehlgeschlagen: Keine gespeicherte Versions-ID');
+        toast.error(t('priceTariffs.editor.publishNoVersion'));
         return;
       }
 
       await api.pricing.publishDraft(orgId, group.id, {
         draftVersionId: versionId,
         expectedVersionNumber: saveResult.savedVersion.versionNumber,
+        ...(publishEffectiveFrom ? { effectiveFrom: publishEffectiveFrom } : {}),
       });
-      toast.success('Version aktiviert — bestehende Buchungen behalten ihren Snapshot');
+
+      toast.success(
+        isFuturePublish
+          ? t('priceTariffs.editor.scheduledSuccess')
+          : t('priceTariffs.editor.publishSuccess'),
+      );
       await onSaved({ mode: 'published' });
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Veröffentlichen fehlgeschlagen';
-      toast.error(`Veröffentlichen fehlgeschlagen: ${message}`);
+      const structured = extractPricingApiError(e);
+      toast.error(structured?.message ?? t('priceTariffs.editor.publishFailed'));
     } finally {
-      setActivating(false);
+      setPublishing(false);
       publishInFlightRef.current = false;
     }
   };
 
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
+  const sectionTitle = (id: SectionId) => t(`priceTariffs.editor.sections.${id}` as never);
+
+  const renderSectionNav = () => (
+    <div className="flex gap-1 overflow-x-auto pb-1 lg:hidden">
+      {SECTIONS.map((id) => (
+        <button
+          key={id}
+          type="button"
+          onClick={() => setActiveSection(id)}
+          className={cn(
+            'shrink-0 rounded-lg px-2.5 py-1.5 text-[10px] font-semibold',
+            activeSection === id ? 'bg-muted text-foreground' : 'text-muted-foreground',
+          )}
+        >
+          {sectionTitle(id)}
+        </button>
+      ))}
+    </div>
+  );
+
+
+  const editableDraftVersion = draftVersion ?? getEditableVersion(group);
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={requestClose}>
       <div
-        className={`h-full w-full max-w-lg overflow-y-auto shadow-xl ${
-          isDarkMode ? 'surface-premium' : 'bg-white'
-        }`}
+        className={cn(
+          'flex h-full w-full max-w-5xl flex-col shadow-xl',
+          isDarkMode ? 'surface-premium' : 'bg-white',
+        )}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border/50 bg-inherit px-5 py-4">
-          <div>
-            <h2 className="text-sm font-bold">{group.name}</h2>
+        <div className="flex shrink-0 items-center justify-between border-b border-border/50 px-4 py-3 sm:px-5">
+          <div className="min-w-0">
+            <h2 className="truncate text-sm font-bold">{name || group.name}</h2>
             <p className="text-[10px] text-muted-foreground">
-              {draftVersion
-                ? `Draft v${draftVersion.versionNumber}`
+              {editableDraftVersion
+                ? t('priceTariffs.editor.headerDraft', { version: editableDraftVersion.versionNumber })
                 : liveVersion
-                  ? `Live v${liveVersion.versionNumber} — edits create draft`
-                  : 'No version'}
+                  ? t('priceTariffs.editor.headerLiveEdit', { version: liveVersion.versionNumber })
+                  : t('priceTariffs.editor.headerNoVersion')}
             </p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-muted">
+          <button type="button" onClick={requestClose} className="rounded-lg p-2 hover:bg-muted" aria-label={t('common.cancel')}>
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="space-y-6 p-5 text-xs">
-          <section>
-            <h3 className="mb-3 font-bold uppercase tracking-wider text-muted-foreground">Basic</h3>
-            <div className="space-y-2">
-              <label className="block">
-                Name
-                <input value={name} onChange={(e) => setName(e.target.value)} className={`${inputCls} mt-1`} />
-              </label>
-              <label className="block">
-                Description
-                <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={`${inputCls} mt-1 resize-none`} />
-              </label>
-              <label className="flex items-center gap-2">
-                <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
-                Group active
-              </label>
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4 sm:px-5">
+            {renderSectionNav()}
+
+            <div className="space-y-6 text-xs">
+              <section id="general" className={cn(activeSection === 'general' ? 'block' : 'hidden', 'lg:block')}>
+                  <h3 className="mb-3 font-bold uppercase tracking-wider text-muted-foreground">
+                    {sectionTitle('general')}
+                  </h3>
+                  <div className="space-y-2">
+                    <label className="block">
+                      <span className="font-semibold text-muted-foreground">{t('priceTariffs.editor.fields.name')}</span>
+                      <input value={name} onChange={(e) => setName(e.target.value)} className={cn(inputCls, 'mt-1', fieldErrors.name && 'border-[color:var(--status-critical)]')} />
+                      {fieldErrors.name ? <p className="mt-1 text-[10px] text-[color:var(--status-critical)]">{t(fieldErrors.name as never)}</p> : null}
+                    </label>
+                    <label className="block">
+                      <span className="font-semibold text-muted-foreground">{t('priceTariffs.editor.fields.description')}</span>
+                      <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className={cn(inputCls, 'mt-1 resize-none')} />
+                    </label>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <div className="rounded-lg border border-border/40 bg-muted/15 px-3 py-2">
+                        <p className="text-[10px] font-semibold text-muted-foreground">{t('priceTariffs.editor.fields.currency')}</p>
+                        <p className="mt-1 font-semibold tabular-nums">{catalogCcy ?? '—'}</p>
+                        {fieldErrors.currency ? <p className="mt-1 text-[10px] text-[color:var(--status-critical)]">{t(fieldErrors.currency as never)}</p> : null}
+                      </div>
+                      <div className="rounded-lg border border-border/40 bg-muted/15 px-3 py-2">
+                        <p className="text-[10px] font-semibold text-muted-foreground">{t('priceTariffs.editor.fields.vehicles')}</p>
+                        <p className="mt-1 font-semibold tabular-nums">{countVehiclesInGroup(catalog, group.id)}</p>
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2">
+                      <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
+                      {t('priceTariffs.editor.fields.groupActive')}
+                    </label>
+                    <p className="text-[10px] text-muted-foreground">
+                      {liveVersion
+                        ? t('priceTariffs.editor.fields.currentVersion', { version: liveVersion.versionNumber })
+                        : t('priceTariffs.row.notPublished')}
+                    </p>
+                  </div>
+                </section>
+
+              <section id="rental" className={cn(activeSection === 'rental' ? 'block' : 'hidden', 'lg:block')}>
+                  <h3 className="mb-1 font-bold uppercase tracking-wider text-muted-foreground">{sectionTitle('rental')}</h3>
+                  <p className="mb-3 text-[10px] text-muted-foreground">{t('priceTariffs.editor.rentalNetHint', { tax: taxRate })}</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <TariffEditorMoneyField
+                      label={t('priceTariffs.editor.fields.daily')}
+                      netCents={rate.dailyRateCents}
+                      taxRate={taxRate}
+                      currency={catalogCcy}
+                      onNetCentsChange={(v) => setRate({ ...rate, dailyRateCents: v })}
+                      error={fieldErrors.dailyRateCents ? t(fieldErrors.dailyRateCents as never) : undefined}
+                      required
+                      inputClassName={inputCls}
+                      grossPreviewLabel={t('priceTariffs.editor.fields.netStored')}
+                    />
+                    <TariffEditorMoneyField
+                      label={t('priceTariffs.editor.fields.weekly')}
+                      netCents={rate.weeklyRateCents}
+                      taxRate={taxRate}
+                      currency={catalogCcy}
+                      onNetCentsChange={(v) => setRate({ ...rate, weeklyRateCents: v })}
+                      error={fieldErrors.weeklyRateCents ? t(fieldErrors.weeklyRateCents as never) : undefined}
+                      inputClassName={inputCls}
+                      grossPreviewLabel={t('priceTariffs.editor.fields.netStored')}
+                    />
+                    <TariffEditorMoneyField
+                      label={t('priceTariffs.editor.fields.monthly')}
+                      netCents={rate.monthlyRateCents}
+                      taxRate={taxRate}
+                      currency={catalogCcy}
+                      onNetCentsChange={(v) => setRate({ ...rate, monthlyRateCents: v })}
+                      error={fieldErrors.monthlyRateCents ? t(fieldErrors.monthlyRateCents as never) : undefined}
+                      inputClassName={inputCls}
+                      grossPreviewLabel={t('priceTariffs.editor.fields.netStored')}
+                    />
+                  </div>
+                </section>
+
+              <section id="mileage" className={cn(activeSection === 'mileage' ? 'block' : 'hidden', 'lg:block')}>
+                  <h3 className="mb-3 font-bold uppercase tracking-wider text-muted-foreground">{sectionTitle('mileage')}</h3>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="font-semibold text-muted-foreground">{t('priceTariffs.editor.fields.includedKmPerDay')}</span>
+                      <input type="number" min="0" value={rate.includedKmPerDay} onChange={(e) => setRate({ ...rate, includedKmPerDay: parseInt(e.target.value || '0', 10) })} className={cn(inputCls, 'mt-1 tabular-nums')} />
+                    </label>
+                    <TariffEditorMoneyField
+                      label={t('priceTariffs.editor.fields.extraKm')}
+                      netCents={rate.extraKmPriceCents}
+                      taxRate={taxRate}
+                      currency={catalogCcy}
+                      onNetCentsChange={(v) => setRate({ ...rate, extraKmPriceCents: v })}
+                      inputClassName={inputCls}
+                      grossPreviewLabel={t('priceTariffs.editor.fields.netStored')}
+                    />
+                  </div>
+                  <p className="mt-2 text-[10px] text-muted-foreground">{t('priceTariffs.editor.mileagePackagesHint', { count: packages.length })}</p>
+                </section>
+
+              <section
+                id="deposit"
+                className={cn(
+                  'rounded-xl border border-[color:var(--status-info)]/20 bg-muted/10 p-3',
+                  activeSection === 'deposit' ? 'block' : 'hidden',
+                  'lg:block',
+                )}
+              >
+                  <h3 className="mb-1 font-bold uppercase tracking-wider text-muted-foreground">{sectionTitle('deposit')}</h3>
+                  <p className="mb-3 text-[10px] text-muted-foreground">{t('priceTariffs.editor.depositHint')}</p>
+                  <TariffEditorDepositField
+                    label={t('priceTariffs.editor.fields.deposit')}
+                    cents={rate.depositAmountCents}
+                    currency={catalogCcy}
+                    onCentsChange={(v) => setRate({ ...rate, depositAmountCents: v })}
+                    error={fieldErrors.depositAmountCents ? t(fieldErrors.depositAmountCents as never) : undefined}
+                    hint={t('priceTariffs.editor.depositTaxFree')}
+                    inputClassName={inputCls}
+                  />
+                </section>
+
+              <section id="options" className={cn(activeSection === 'options' ? 'block' : 'hidden', 'lg:block')}>
+                  <h3 className="mb-3 font-bold uppercase tracking-wider text-muted-foreground">{sectionTitle('options')}</h3>
+                  <p className="mb-2 text-[10px] text-muted-foreground">{t('priceTariffs.editor.optionsIdHint')}</p>
+                  <div className="grid gap-3 lg:grid-cols-2">
+                    <OptionListPanel
+                      title={t('priceTariffs.extras.insurance')}
+                      count={insurances.filter((o) => o.isActive).length}
+                      empty={t('priceTariffs.extras.noneConfigured')}
+                    />
+                    <OptionListPanel
+                      title={t('priceTariffs.extras.extras')}
+                      count={extras.filter((o) => o.isActive).length}
+                      empty={t('priceTariffs.extras.noneConfigured')}
+                    />
+                  </div>
+                  <p className="mt-2 text-[10px] text-muted-foreground">
+                    {t('priceTariffs.editor.optionsEditHint', {
+                      insurance: insurances.length,
+                      extras: extras.length,
+                      packages: packages.length,
+                    })}
+                  </p>
+                </section>
+
+              <section id="publish" className={cn(activeSection === 'publish' ? 'block' : 'hidden', 'lg:block')}>
+                <div className="mb-4 lg:hidden">
+                  <TariffEditorLiveDraftCompare
+                    liveVersionNumber={liveVersion?.versionNumber ?? null}
+                    draftVersionNumber={editableDraftVersion?.versionNumber ?? (liveVersion ? liveVersion.versionNumber + 1 : 1)}
+                    liveValidFrom={liveVersion?.validFrom ?? null}
+                    fields={compareFields}
+                  />
+                </div>
+                  <h3 className="mb-3 font-bold uppercase tracking-wider text-muted-foreground">{sectionTitle('publish')}</h3>
+                  <label className="block">
+                    <span className="font-semibold text-muted-foreground">{t('priceTariffs.editor.fields.validFrom')}</span>
+                    <input
+                      type="date"
+                      value={publishEffectiveFrom}
+                      onChange={(e) => setPublishEffectiveFrom(e.target.value)}
+                      className={cn(inputCls, 'mt-1')}
+                    />
+                    <p className="mt-1 text-[10px] text-muted-foreground">{t('priceTariffs.editor.validFromHint')}</p>
+                  </label>
+                  {scheduledVersions.length > 0 ? (
+                    <ul className="mt-3 space-y-1 text-[10px] text-muted-foreground">
+                      {scheduledVersions.map((v) => (
+                        <li key={v.id}>
+                          {t('priceTariffs.editor.scheduledVersion', {
+                            version: v.versionNumber,
+                            date: new Date(v.validFrom).toLocaleDateString(dateLocale),
+                          })}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </section>
             </div>
-          </section>
-
-          <section>
-            <h3 className="mb-3 font-bold uppercase tracking-wider text-muted-foreground">Rates (net, stored in cents)</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {centsField('Daily', rate.dailyRateCents, (v) => setRate({ ...rate, dailyRateCents: v }))}
-              {centsField('Weekly', rate.weeklyRateCents, (v) => setRate({ ...rate, weeklyRateCents: v }))}
-              {centsField('Monthly', rate.monthlyRateCents, (v) => setRate({ ...rate, monthlyRateCents: v }))}
-              {centsField('Extra km', rate.extraKmPriceCents, (v) => setRate({ ...rate, extraKmPriceCents: v }))}
-              <label className="block">
-                <span className="font-semibold text-muted-foreground">Included km/day</span>
-                <input
-                  type="number"
-                  min="0"
-                  value={rate.includedKmPerDay}
-                  onChange={(e) => setRate({ ...rate, includedKmPerDay: parseInt(e.target.value || '0', 10) })}
-                  className={`${inputCls} mt-1`}
-                />
-              </label>
-            </div>
-          </section>
-
-          <section>
-            <h3 className="mb-3 font-bold uppercase tracking-wider text-muted-foreground">
-              Deposit (refundable, gross)
-            </h3>
-            <p className="mb-2 text-[11px] text-muted-foreground">
-              Stored as integer cents. Not subject to VAT and not part of rental revenue.
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {centsField('Deposit', rate.depositAmountCents, (v) => setRate({ ...rate, depositAmountCents: v }))}
-            </div>
-          </section>
-
-          <section>
-            <h3 className="mb-2 font-bold uppercase tracking-wider text-muted-foreground">
-              Assigned vehicles ({countVehiclesInGroup(catalog, group.id)})
-            </h3>
-            <p className="text-muted-foreground">Zuweisungen im Tab Vehicle Assignments verwalten.</p>
-          </section>
-
-          <p className="rounded-lg border border-border/50 bg-muted/20 px-3 py-2 text-[10px] text-muted-foreground">
-            Änderungen an aktiven Tarifen erzeugen eine neue Draft-Version oder aktualisieren den Entwurf.
-            Bereits erstellte Buchungen behalten ihren gespeicherten Preis-Snapshot.
-          </p>
-
-          <div className="flex flex-wrap gap-2 border-t border-border/50 pt-4">
-            <button
-              type="button"
-              disabled={!dirty || publishDisabled}
-              onClick={() => void saveDraft()}
-              className="rounded-xl bg-[color:var(--brand)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
-            >
-              {saving ? 'Saving…' : 'Save draft'}
-            </button>
-            <button
-              type="button"
-              disabled={publishDisabled}
-              onClick={() => void activate()}
-              className="rounded-xl border border-border px-4 py-2 text-xs font-semibold disabled:opacity-50"
-            >
-              {activating ? 'Publishing…' : 'Activate version'}
-            </button>
-            <button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-xs text-muted-foreground">
-              Cancel
-            </button>
           </div>
+
+          <aside className="flex w-full shrink-0 flex-col border-t border-border/50 lg:w-80 lg:border-l lg:border-t-0">
+            <div className="hidden max-h-[50vh] overflow-y-auto p-4 lg:block lg:max-h-none lg:flex-1">
+              <TariffEditorLiveDraftCompare
+                liveVersionNumber={liveVersion?.versionNumber ?? null}
+                draftVersionNumber={editableDraftVersion?.versionNumber ?? (liveVersion ? liveVersion.versionNumber + 1 : 1)}
+                liveValidFrom={liveVersion?.validFrom ?? null}
+                fields={compareFields}
+              />
+            </div>
+            <div className="sticky bottom-0 border-t border-border/50 bg-inherit p-4">
+              <div className="flex flex-col gap-2">
+                <Button type="button" variant="primary" size="sm" disabled={!dirty || publishDisabled} onClick={() => void saveDraft()}>
+                  {saving ? t('priceTariffs.editor.saving') : t('priceTariffs.editor.saveDraft')}
+                </Button>
+                <Button type="button" variant="secondary" size="sm" disabled={publishDisabled} onClick={() => void publish()}>
+                  {publishing
+                    ? t('priceTariffs.editor.publishing')
+                    : isFuturePublish
+                      ? t('priceTariffs.editor.scheduleChange')
+                      : t('priceTariffs.editor.publishChanges')}
+                </Button>
+                <Button type="button" variant="ghost" size="sm" onClick={requestClose}>
+                  {t('common.cancel')}
+                </Button>
+              </div>
+            </div>
+          </aside>
         </div>
       </div>
+    </div>
+  );
+}
+
+function OptionListPanel({ title, count, empty }: { title: string; count: number; empty: string }) {
+  return (
+    <div className="rounded-lg border border-border/40 p-3">
+      <div className="flex items-center justify-between">
+        <p className="font-semibold">{title}</p>
+        <span className="rounded-md bg-muted px-1.5 py-0.5 text-[10px] tabular-nums">{count}</span>
+      </div>
+      <p className="mt-2 text-[10px] text-muted-foreground">{count > 0 ? `${count} active` : empty}</p>
     </div>
   );
 }

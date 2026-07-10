@@ -81,7 +81,7 @@ export async function runPublishFlow(params: {
   ) => Promise<void>;
 }): Promise<SimulatedPublishFlowResult> {
   const saveResult = await params.saveDraft();
-  if (!shouldProceedToActivateAfterSave(saveResult)) {
+  if (!saveResult.ok) {
     return { saveCalled: true, publishCalled: false, toast: 'save_error' };
   }
 
