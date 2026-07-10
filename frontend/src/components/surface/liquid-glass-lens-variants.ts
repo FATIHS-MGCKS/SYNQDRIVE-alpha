@@ -148,7 +148,7 @@ export function resolveLensRadius(variant: LiquidGlassLensVariant): number {
     case 'mapCallout':
       return 14;
     case 'fleetToolbarButton':
-      return 16;
+      return 14;
     case 'fleetPanelAction':
       return 14;
     case 'fleetToolbar':
@@ -169,7 +169,7 @@ export function resolveLensSize(
 ): { width?: number; height?: number } | null {
   switch (variant) {
     case 'fleetToolbarButton':
-      return { width: 42, height: 42 };
+      return { width: 40, height: 40 };
     case 'vehicleHudTile':
       return { height: 58 };
     default:

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Icon } from '../ui/Icon';
+import { LiquidGlassLens } from '../../../components/surface';
 import { useAddress } from '../../../lib/useAddress';
 import { TRIPS_COPY, tv } from './trips-view-ui';
 import type { TripBehaviorEvent, TripEnrichment } from './trips-map.types';
@@ -175,19 +176,23 @@ export function TripsMapCard({
             </span>
           )}
           {hasRoute && mapLoaded && !mapError && (
-            <button
-              type="button"
-              onClick={handleCenterRoute}
-              className={`sq-map-liquid-pill flex-row gap-1.5 py-1.5 px-2.5 text-[10px] font-semibold pointer-events-auto ${tv.focusRing}`}
-            >
-              <Icon name="crosshair" className="w-3 h-3" />
-              <span className="hidden sm:inline">{TRIPS_COPY.centerRoute}</span>
-            </button>
+            <LiquidGlassLens variant="fleetPanelAction" renderMode="lens" intensity="subtle">
+              <button
+                type="button"
+                onClick={handleCenterRoute}
+                className={`liquid-glass-lens__panel-action ${tv.focusRing}`}
+              >
+                <Icon name="crosshair" className="liquid-glass-lens__panel-action__icon" />
+                <span className="liquid-glass-lens__panel-action__label hidden sm:inline">
+                  {TRIPS_COPY.centerRoute}
+                </span>
+              </button>
+            </LiquidGlassLens>
           )}
         </div>
       </div>
 
-      <div className={`relative ${frameHeight} ${tv.mapFrame} shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] bg-muted/15`}>
+      <div className={`relative synq-map-hud-surface ${frameHeight} ${tv.mapFrame} shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] bg-muted/15`}>
         <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
 
         {mapError && (

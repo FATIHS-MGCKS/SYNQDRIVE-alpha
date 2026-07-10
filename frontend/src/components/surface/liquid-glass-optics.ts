@@ -11,24 +11,24 @@ const INTENSITY_SCALE: Record<LiquidGlassIntensity, number> = {
 };
 
 /**
- * SynqDrive canonical L3 small lens — reference: Fleet Map top-left toolbar buttons.
- * Content-sized @samasante Glass, low distortion, no inner blob.
+ * SynqDrive canonical L3 small control — reads as a frosted map button, not a refractive lens.
+ * Low bend/dispersion; rim + frost carry the affordance.
  */
 export const CANONICAL_SMALL_LENS_OPTICS: Partial<GlassOptics> = {
   curvature: 0,
-  frost: 0.042,
+  frost: 0.052,
   brightness: 0,
   glow: 0,
   glowSpread: 0,
-  saturate: 1.045,
-  strength: 0.023,
-  depth: 0.064,
-  dispersion: 0.004,
-  bend: 0.035,
-  bendWidth: 0.05,
-  specular: 0.24,
-  sheen: 0.14,
-  sheenWidth: 0.86,
+  saturate: 1.03,
+  strength: 0.01,
+  depth: 0.028,
+  dispersion: 0,
+  bend: 0.01,
+  bendWidth: 0.024,
+  specular: 0.1,
+  sheen: 0.05,
+  sheenWidth: 0.68,
 };
 
 /** Safari/iOS — frost + rim only; minimal bend/dispersion (no Chrome-style live bending). */

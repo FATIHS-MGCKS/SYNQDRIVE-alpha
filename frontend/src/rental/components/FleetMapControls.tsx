@@ -47,7 +47,7 @@ export function FleetMapControls({
   return (
     <>
       {/* Top-right: status + refresh — shell panel, lens action */}
-      <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-2 pointer-events-none">
+      <div className="absolute top-3 right-3 z-10 flex flex-col items-end gap-2 pointer-events-none max-w-[calc(100%-5.5rem)]">
         <LiquidGlassLens
           variant="fleetPanel"
           renderMode="shell"
@@ -88,7 +88,7 @@ export function FleetMapControls({
       </div>
 
       {/* Top-left: map actions */}
-      <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 pointer-events-none">
+      <div className="absolute top-3 left-3 z-10 flex flex-col items-start gap-1.5 pointer-events-none max-w-[calc(100%-5.5rem)]">
         <MapGlassControls
           onFitAll={onFitAll}
           onLocateSelected={onLocateSelected}
@@ -120,7 +120,7 @@ export function FleetMapControls({
       </div>
 
       {/* Bottom-left: collapsible legend — lens trigger + shell body, clear of Mapbox logo */}
-      <div className="absolute bottom-11 left-11 z-10 pointer-events-none max-w-[calc(100%-3.5rem)] sm:bottom-12 sm:left-12">
+      <div className="absolute bottom-11 left-11 z-10 pointer-events-none max-w-[calc(100%-5.5rem)] sm:bottom-12 sm:left-12">
         <div className="liquid-glass-lens__legend-stack pointer-events-auto">
           <LiquidGlassLens
             variant="fleetToolbarButton"

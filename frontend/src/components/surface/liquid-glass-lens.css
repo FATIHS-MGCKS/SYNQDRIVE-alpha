@@ -62,16 +62,25 @@
 .liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='lens'] {
   position: relative;
   display: inline-flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
   min-width: 0;
   overflow: hidden;
-  border: none;
+  border: 1px solid
+    color-mix(
+      in srgb,
+      var(--map-glass-lens-shell-border, var(--map-glass-fleet-border, var(--map-glass-border))) 62%,
+      transparent
+    );
   border-radius: var(--map-glass-lens-radius, 16px);
   box-shadow:
-    0 0.5px 0 color-mix(in srgb, var(--map-glass-highlight) 56%, transparent) inset,
-    0 0 0 0.5px color-mix(in srgb, var(--map-glass-lens-shell-border, var(--map-glass-border)) 38%, transparent),
+    0 0.5px 0 color-mix(in srgb, var(--map-glass-highlight) 48%, transparent) inset,
+    0 1px 0 color-mix(in srgb, var(--map-glass-highlight) 22%, transparent) inset,
+    0 0 0 0.5px color-mix(in srgb, var(--map-glass-highlight) 12%, transparent) inset,
     var(--map-glass-lens-shell-shadow, var(--map-glass-fleet-shadow, var(--map-glass-shadow)));
+  transition:
+    transform 120ms var(--ease-out-soft, ease-out),
+    box-shadow 160ms var(--ease-out-soft, ease-out);
 }
 
 .liquid-glass-lens__material {
@@ -111,10 +120,10 @@
   border-radius: inherit;
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--map-glass-highlight) 16%, transparent) 0%,
-    transparent 46%
+    color-mix(in srgb, var(--map-glass-highlight) 10%, transparent) 0%,
+    transparent 42%
   );
-  opacity: 0.72;
+  opacity: 0.42;
 }
 
 .liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='lens'] .liquid-glass-lens__content {
@@ -178,6 +187,25 @@
 }
 
 /* Hover feedback on lens root — never dark child fill */
+.liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='lens']:has(
+    .liquid-glass-lens__control-btn:active:not(:disabled)
+  ),
+.liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='lens']:has(
+    .liquid-glass-lens__legend-trigger:active
+  ),
+.liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='lens']:has(
+    .liquid-glass-lens__panel-action:active:not(:disabled)
+  ),
+.liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='lens']:has(
+    .liquid-glass-lens__layer-chip:active:not(:disabled)
+  ) {
+  transform: scale(0.97);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--map-glass-highlight) 28%, transparent),
+    0 1px 2px color-mix(in srgb, var(--map-glass-shadow) 24%, transparent) inset,
+    var(--map-glass-lens-shell-shadow, var(--map-glass-fleet-shadow, var(--map-glass-shadow)));
+}
+
 .liquid-glass-lens[data-liquid-mode='library'][data-liquid-render='lens']:has(
     .liquid-glass-lens__control-btn:hover:not(:disabled)
   ),
@@ -290,7 +318,7 @@
   display: block;
   margin: 0;
   line-height: 0;
-  transform: translateY(0.5px);
+  transform: none;
 }
 
 .liquid-glass-lens--fleetToolbarButton .liquid-glass-lens__control-btn__label {
@@ -355,6 +383,7 @@
   filter: none;
   box-shadow: none;
   line-height: 1;
+  text-align: center;
 }
 
 .liquid-glass-lens__panel-action:hover:not(:disabled),
@@ -420,6 +449,7 @@
   flex-direction: row;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-start;
   gap: 0.375rem;
   padding: 0;
   background: transparent;
@@ -497,6 +527,128 @@
   padding: 0.5rem 0.75rem 0.625rem;
 }
 
+/* ── Trip map layer / quality chips (inside shell or mini lens) ── */
+.liquid-glass-lens__layer-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  padding: 0.375rem 0.5rem;
+  max-width: 100%;
+}
+
+.liquid-glass-lens__layer-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  margin: 0;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: none;
+  filter: none;
+}
+
+.liquid-glass-lens__layer-chip:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--map-glass-highlight) 10%, transparent);
+}
+
+.liquid-glass-lens__layer-chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.liquid-glass-lens__layer-chip:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+.liquid-glass-lens__layer-hint {
+  display: none;
+  font-size: 0.5rem;
+  color: var(--muted-foreground);
+  padding-left: 0.375rem;
+  margin-left: 0.125rem;
+  border-left: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+@media (min-width: 768px) {
+  .liquid-glass-lens__layer-hint {
+    display: inline;
+  }
+}
+
+.liquid-glass-lens__trip-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.625rem 0.75rem;
+  min-width: 0;
+}
+
+.liquid-glass-lens__trip-quality-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  padding: 0.375rem 0.5rem;
+  min-width: 0;
+}
+
+.liquid-glass-lens__quality-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.45rem;
+  margin: 0;
+  border: none;
+  border-radius: inherit;
+  background: transparent;
+  font-size: 0.5625rem;
+  font-weight: 600;
+  line-height: 1.15;
+  white-space: nowrap;
+  box-shadow: none;
+  filter: none;
+}
+
+.liquid-glass-lens__trip-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5rem 0.625rem;
+  padding: 0.4375rem 0.625rem;
+}
+
+.liquid-glass-lens__trip-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.liquid-glass-lens__trip-legend-label {
+  font-size: 0.5rem;
+  color: var(--muted-foreground);
+  line-height: 1;
+}
+
+.liquid-glass-lens--fleetPanel[data-liquid-render='shell'] .liquid-glass-lens__trip-panel,
+.liquid-glass-lens--fleetLegend[data-liquid-render='shell'] .liquid-glass-lens__layer-bar,
+.liquid-glass-lens--fleetLegend[data-liquid-render='shell'] .liquid-glass-lens__trip-legend {
+  width: 100%;
+}
+
 /* ── HUD badge content ── */
 .liquid-glass-lens__hud-badge {
   display: inline-flex;
@@ -570,15 +722,24 @@
 }
 
 .liquid-glass-lens--fleetToolbarButton[data-liquid-render='lens'] {
-  --map-glass-lens-radius: 16px;
+  --map-glass-lens-radius: 14px;
   flex-shrink: 0;
-  width: 2.625rem;
-  height: 2.625rem;
+  width: 2.5rem;
+  height: 2.5rem;
 }
 
 .liquid-glass-lens--fleetToolbarButton[data-liquid-render='lens'] .liquid-glass-lens__content {
   display: grid;
   place-items: center;
+  padding: 0;
+}
+
+.liquid-glass-lens--fleetToolbarButton[data-liquid-render='lens'] .liquid-glass-lens__control-btn {
+  display: grid;
+  place-items: center;
+  min-width: 2.5rem;
+  min-height: 2.5rem;
+  padding: 0;
 }
 
 .liquid-glass-lens--fleetPanelAction[data-liquid-render='lens'] {

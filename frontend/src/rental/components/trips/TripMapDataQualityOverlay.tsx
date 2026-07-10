@@ -1,4 +1,5 @@
 import { Icon } from '../ui/Icon';
+import { LiquidGlassLens } from '../../../components/surface';
 import type { TripMapQualityFlags } from './trips-map.types';
 
 interface TripMapDataQualityOverlayProps {
@@ -25,10 +26,12 @@ function QualityChip({
           : 'text-muted-foreground';
 
   return (
-    <span className={`sq-map-liquid-pill flex-row gap-1.5 py-1 px-2 text-[9px] font-semibold ${toneClass}`}>
-      <Icon name={icon} className="w-3 h-3 shrink-0 opacity-80" />
-      <span>{label}</span>
-    </span>
+    <LiquidGlassLens variant="fleetMiniPill" renderMode="lens" intensity="subtle" className="max-w-full">
+      <span className={`liquid-glass-lens__quality-chip ${toneClass}`}>
+        <Icon name={icon} className="w-3 h-3 shrink-0 opacity-80" />
+        <span>{label}</span>
+      </span>
+    </LiquidGlassLens>
   );
 }
 
@@ -73,22 +76,29 @@ export function TripMapDataQualityOverlay({ quality, routeLoading }: TripMapData
 
   return (
     <div className="pointer-events-none absolute top-2.5 right-2.5 z-20 max-w-[min(14rem,calc(100%-5.5rem))]">
-      <div className="sq-map-liquid-glass sq-map-liquid-glass--panel pointer-events-auto px-2 py-2 flex flex-col items-end gap-1">
-        {chips.slice(0, 4).map((chip) => (
-          <QualityChip key={chip.key} tone={chip.tone} label={chip.label} icon={chip.icon} />
-        ))}
-        {quality.routeUpdatedAt && (
-          <p className="text-[8px] text-muted-foreground tabular-nums pt-0.5 pr-1">
-            Aktualisiert{' '}
-            {new Date(quality.routeUpdatedAt).toLocaleString('de-DE', {
-              day: '2-digit',
-              month: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-            })}
-          </p>
-        )}
-      </div>
+      <LiquidGlassLens
+        variant="fleetPanel"
+        renderMode="shell"
+        intensity="subtle"
+        className="pointer-events-auto w-full"
+      >
+        <div className="liquid-glass-lens__trip-quality-stack">
+          {chips.slice(0, 4).map((chip) => (
+            <QualityChip key={chip.key} tone={chip.tone} label={chip.label} icon={chip.icon} />
+          ))}
+          {quality.routeUpdatedAt && (
+            <p className="text-[8px] text-muted-foreground tabular-nums pt-0.5 pr-1 text-right w-full">
+              Aktualisiert{' '}
+              {new Date(quality.routeUpdatedAt).toLocaleString('de-DE', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </p>
+          )}
+        </div>
+      </LiquidGlassLens>
     </div>
   );
 }

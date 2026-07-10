@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'liquid-glass-map-hud-button-polish-v49317-2026-07-10',
+    version: '4.9.317',
+    title: 'V4.9.317 — Liquid Glass Map HUD: Button-Look, Fleet-Zentrierung, Trip Map Migration',
+    summary: [
+      'Canonical small-lens Optik reduziert (weniger Bend/Sheen) — HUD-Controls wirken wie frosted Buttons statt Linsen; sichtbarer Rand + Press-Feedback.',
+      'Fleet Map: Toolbar-Icons grid-zentriert, kompaktere 40px Buttons, HUD-Overlays mit max-width für saubere Positionierung.',
+      'Trip Detail Map: Summary, Quality, Legend, Layer-Bar, Event-Popover und „Route zentrieren“ auf LiquidGlassLens (shell/lens) migriert; synq-map-hud-surface.',
+    ],
+    reason:
+      'Fleet-HUD-Elemente wirkten optisch nicht zentriert/linsenartig; Trip-Detail-Map nutzte noch Legacy sq-map-liquid-* statt der kanonischen LiquidGlassLens-Familie.',
+    previousBehavior:
+      'Starke Refraktions-Optik; Trip-Overlays mit sq-map-liquid-glass/pill; Legend/Layer unten ohne Fleet-Mapbox-Offset.',
+    details:
+      'liquid-glass-optics.ts, liquid-glass-lens.css, FleetMapControls, TripMap*.tsx, TripEventPopover, TripsMapCard.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-10T15:30:00.000Z',
+  },
+  {
     id: 'dashboard-kpi-twin-boxes-v49316-2026-07-10',
     version: '4.9.316',
     title: 'V4.9.316 — Dashboard: Twin-KPI-Boxen höher + kürzere Operations-Labels',
