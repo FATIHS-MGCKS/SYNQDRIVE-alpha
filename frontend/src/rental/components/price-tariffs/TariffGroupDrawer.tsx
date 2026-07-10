@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '../../../lib/api';
@@ -11,11 +11,21 @@ import type {
   TariffRate,
 } from '../../pricing/pricingTypes';
 import {
+  assertApiTariffVersion,
+  isPublishActionDisabled,
+  resolveActivateVersionId,
+  type SaveDraftResult,
+} from '../../pricing/tariff-publish-flow';
+import {
   getEditableVersion,
   rateWarnings,
   validateRateFields,
 } from '../../pricing/pricingUtils';
 import { countVehiclesInGroup } from '../../pricing/pricingUtils';
+
+export type TariffDrawerSavedEvent = {
+  mode: 'draft' | 'published';
+};
 
 interface TariffGroupDrawerProps {
   isDarkMode: boolean;
@@ -23,7 +33,7 @@ interface TariffGroupDrawerProps {
   group: PriceTariffGroup;
   catalog: PriceTariffCatalog | null;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (event: TariffDrawerSavedEvent) => void | Promise<void>;
 }
 
 const emptyRate = (): TariffRate => ({
@@ -56,6 +66,7 @@ export function TariffGroupDrawer({
   const [extras, setExtras] = useState<ExtraOptionRow[]>(version?.extraOptions ?? []);
   const [saving, setSaving] = useState(false);
   const [activating, setActivating] = useState(false);
+  const publishInFlightRef = useRef(false);
 
   useEffect(() => {
     const v = getEditableVersion(group);
@@ -69,6 +80,7 @@ export function TariffGroupDrawer({
   }, [group]);
 
   const dirty = useMemo(() => true, [name, description, isActive, rate, packages, insurances, extras]);
+  const publishDisabled = isPublishActionDisabled({ saving, activating });
 
   const inputCls = `w-full rounded-lg border px-3 py-2 text-xs outline-none ${
     isDarkMode
@@ -94,12 +106,54 @@ export function TariffGroupDrawer({
     </label>
   );
 
-  const saveDraft = async () => {
+  const buildVersionPayload = () => ({
+    rate: {
+      dailyRateCents: rate.dailyRateCents,
+      weeklyRateCents: rate.weeklyRateCents,
+      monthlyRateCents: rate.monthlyRateCents,
+      includedKmPerDay: rate.includedKmPerDay,
+      extraKmPriceCents: rate.extraKmPriceCents,
+      depositAmountCents: rate.depositAmountCents,
+      minimumRentalDays: rate.minimumRentalDays ?? undefined,
+    },
+    mileagePackages: packages.map((p) => ({
+      id: p.id,
+      label: p.label,
+      includedKm: p.includedKm,
+      priceCents: p.priceCents,
+      isActive: p.isActive,
+      sortOrder: p.sortOrder,
+    })),
+    insuranceOptions: insurances.map((o) => ({
+      id: o.id,
+      label: o.label,
+      description: o.description ?? undefined,
+      priceCents: o.priceCents,
+      pricingType: o.pricingType,
+      deductibleCents: o.deductibleCents ?? undefined,
+      isDefault: o.isDefault,
+      isActive: o.isActive,
+      sortOrder: o.sortOrder,
+    })),
+    extraOptions: extras.map((o) => ({
+      id: o.id,
+      label: o.label,
+      description: o.description ?? undefined,
+      priceCents: o.priceCents,
+      pricingType: o.pricingType,
+      isActive: o.isActive,
+      sortOrder: o.sortOrder,
+    })),
+  });
+
+  const persistDraft = async (options?: {
+    notifySuccess?: boolean;
+  }): Promise<SaveDraftResult> => {
     const errors = validateRateFields(rate);
     if (errors.length) {
-      toast.error(errors[0]);
-      return;
+      return { ok: false, reason: 'validation', message: errors[0] };
     }
+
     setSaving(true);
     try {
       await api.pricing.updateGroup(orgId, group.id, {
@@ -107,82 +161,91 @@ export function TariffGroupDrawer({
         description,
         isActive,
       });
-      const versionPayload = {
-        rate: {
-          dailyRateCents: rate.dailyRateCents,
-          weeklyRateCents: rate.weeklyRateCents,
-          monthlyRateCents: rate.monthlyRateCents,
-          includedKmPerDay: rate.includedKmPerDay,
-          extraKmPriceCents: rate.extraKmPriceCents,
-          depositAmountCents: rate.depositAmountCents,
-          minimumRentalDays: rate.minimumRentalDays ?? undefined,
-        },
-        mileagePackages: packages.map((p) => ({
-          id: p.id,
-          label: p.label,
-          includedKm: p.includedKm,
-          priceCents: p.priceCents,
-          isActive: p.isActive,
-          sortOrder: p.sortOrder,
-        })),
-        insuranceOptions: insurances.map((o) => ({
-          id: o.id,
-          label: o.label,
-          description: o.description ?? undefined,
-          priceCents: o.priceCents,
-          pricingType: o.pricingType,
-          deductibleCents: o.deductibleCents ?? undefined,
-          isDefault: o.isDefault,
-          isActive: o.isActive,
-          sortOrder: o.sortOrder,
-        })),
-        extraOptions: extras.map((o) => ({
-          id: o.id,
-          label: o.label,
-          description: o.description ?? undefined,
-          priceCents: o.priceCents,
-          pricingType: o.pricingType,
-          isActive: o.isActive,
-          sortOrder: o.sortOrder,
-        })),
-      };
-      let savedVersion = version;
-      if (version?.status === 'DRAFT') {
-        savedVersion = await api.pricing.updateVersion(orgId, version.id, versionPayload);
+
+      const editableVersion = getEditableVersion(group);
+      const versionPayload = buildVersionPayload();
+      let rawSaved: unknown;
+      if (editableVersion?.status === 'DRAFT') {
+        rawSaved = await api.pricing.updateVersion(orgId, editableVersion.id, versionPayload);
       } else {
-        savedVersion = await api.pricing.upsertVersion(orgId, group.id, versionPayload);
+        rawSaved = await api.pricing.upsertVersion(orgId, group.id, versionPayload);
       }
-      const warnings = rateWarnings(rate, taxRate);
-      if (countVehiclesInGroup(catalog, group.id) === 0) {
-        warnings.push('Keine Fahrzeuge zugewiesen');
+      const savedVersion = assertApiTariffVersion(rawSaved);
+
+      if (options?.notifySuccess) {
+        const warnings = rateWarnings(rate, taxRate);
+        if (countVehiclesInGroup(catalog, group.id) === 0) {
+          warnings.push('Keine Fahrzeuge zugewiesen');
+        }
+        if (warnings.length) {
+          toast.message('Gespeichert mit Hinweisen', { description: warnings.join(' · ') });
+        } else {
+          toast.success('Tarif gespeichert');
+        }
       }
-      if (warnings.length) toast.message('Gespeichert mit Hinweisen', { description: warnings.join(' · ') });
-      else toast.success('Tarif gespeichert');
-      void savedVersion;
-      onSaved();
+
+      return { ok: true, savedVersion };
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Speichern fehlgeschlagen');
+      const message = e instanceof Error ? e.message : 'Speichern fehlgeschlagen';
+      return { ok: false, reason: 'api_error', message };
     } finally {
       setSaving(false);
     }
   };
 
-  const activate = async () => {
-    setActivating(true);
+  const saveDraft = async () => {
+    if (publishInFlightRef.current || publishDisabled) return;
+    publishInFlightRef.current = true;
     try {
-      await saveDraft();
-      const v = getEditableVersion(group);
-      const versionId = v?.id;
-      if (!versionId) throw new Error('Keine Version');
-      await api.pricing.activateVersion(orgId, versionId);
-      toast.success('Version aktiviert — bestehende Buchungen behalten ihren Snapshot');
-      onSaved();
-    } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : 'Aktivierung fehlgeschlagen');
+      const result = await persistDraft({ notifySuccess: true });
+      if (!result.ok) {
+        toast.error(
+          result.reason === 'validation'
+            ? `Entwurf ungültig: ${result.message}`
+            : `Speichern fehlgeschlagen: ${result.message}`,
+        );
+        return;
+      }
+      await onSaved({ mode: 'draft' });
     } finally {
-      setActivating(false);
+      publishInFlightRef.current = false;
     }
   };
+
+  const activate = async () => {
+    if (publishInFlightRef.current || publishDisabled) return;
+    publishInFlightRef.current = true;
+    setActivating(true);
+    try {
+      const saveResult = await persistDraft({ notifySuccess: false });
+      if (!saveResult.ok) {
+        toast.error(
+          saveResult.reason === 'validation'
+            ? `Veröffentlichen abgebrochen — Entwurf ungültig: ${saveResult.message}`
+            : `Veröffentlichen abgebrochen — Speichern fehlgeschlagen: ${saveResult.message}`,
+        );
+        return;
+      }
+
+      const versionId = resolveActivateVersionId(saveResult.savedVersion);
+      if (!versionId) {
+        toast.error('Veröffentlichen fehlgeschlagen: Keine gespeicherte Versions-ID');
+        return;
+      }
+
+      await api.pricing.activateVersion(orgId, versionId);
+      toast.success('Version aktiviert — bestehende Buchungen behalten ihren Snapshot');
+      await onSaved({ mode: 'published' });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Aktivierung fehlgeschlagen';
+      toast.error(`Veröffentlichen fehlgeschlagen — Aktivierung: ${message}`);
+    } finally {
+      setActivating(false);
+      publishInFlightRef.current = false;
+    }
+  };
+
+  const headerVersion = getEditableVersion(group);
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end bg-black/40" onClick={onClose}>
@@ -196,7 +259,7 @@ export function TariffGroupDrawer({
           <div>
             <h2 className="text-sm font-bold">{group.name}</h2>
             <p className="text-[10px] text-muted-foreground">
-              Version {version?.versionNumber ?? '—'} · {version?.status ?? '—'}
+              Version {headerVersion?.versionNumber ?? '—'} · {headerVersion?.status ?? '—'}
             </p>
           </div>
           <button type="button" onClick={onClose} className="rounded-lg p-2 hover:bg-muted">
@@ -259,7 +322,7 @@ export function TariffGroupDrawer({
           <div className="flex flex-wrap gap-2 border-t border-border/50 pt-4">
             <button
               type="button"
-              disabled={!dirty || saving}
+              disabled={!dirty || publishDisabled}
               onClick={() => void saveDraft()}
               className="rounded-xl bg-[color:var(--brand)] px-4 py-2 text-xs font-semibold text-white disabled:opacity-50"
             >
@@ -267,11 +330,11 @@ export function TariffGroupDrawer({
             </button>
             <button
               type="button"
-              disabled={activating}
+              disabled={publishDisabled}
               onClick={() => void activate()}
               className="rounded-xl border border-border px-4 py-2 text-xs font-semibold disabled:opacity-50"
             >
-              Activate version
+              {activating ? 'Publishing…' : 'Activate version'}
             </button>
             <button type="button" onClick={onClose} className="rounded-xl px-4 py-2 text-xs text-muted-foreground">
               Cancel

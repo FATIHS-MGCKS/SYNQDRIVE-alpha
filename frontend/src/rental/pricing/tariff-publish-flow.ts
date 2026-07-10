@@ -1,7 +1,3 @@
-/**
- * Flow helpers mirroring TariffGroupDrawer publish orchestration.
- * Intentionally reproduces current production behavior for regression tests.
- */
 import type { PriceTariffGroup, PriceTariffVersion } from './pricingTypes';
 import { getActiveVersion, getDraftVersion, getEditableVersion } from './pricingUtils';
 import {
@@ -11,18 +7,14 @@ import {
 
 export type SaveDraftResult =
   | { ok: true; savedVersion: PriceTariffVersion }
-  | { ok: false; reason: 'validation' | 'api_error' };
+  | { ok: false; reason: 'validation' | 'api_error'; message: string };
 
-/**
- * Mirrors `TariffGroupDrawer.activate()` after `saveDraft()`:
- * discards `savedVersion` and reads version id from stale `group` prop.
- */
-export function resolveActivateVersionIdLikeDrawer(
+/** Use the version returned by persist — never a stale catalog group snapshot. */
+export function resolveActivateVersionId(
   savedVersion: PriceTariffVersion | null | undefined,
-  staleGroup: PriceTariffGroup,
 ): string | undefined {
-  void savedVersion;
-  return getEditableVersion(staleGroup)?.id;
+  const id = savedVersion?.id?.trim();
+  return id || undefined;
 }
 
 export function shouldProceedToActivateAfterSave(saveResult: SaveDraftResult): boolean {
@@ -40,6 +32,17 @@ export function resolvePublishToastOutcome(params: {
   if (!params.saveResult.ok) return 'save_error';
   if (!params.activateSucceeded) return 'activate_error';
   return 'success';
+}
+
+export function assertApiTariffVersion(raw: unknown): PriceTariffVersion {
+  if (!raw || typeof raw !== 'object') {
+    throw new Error('Server antwortete ohne Tarifversion');
+  }
+  const record = raw as Record<string, unknown>;
+  if (typeof record.id !== 'string' || !record.id.trim()) {
+    throw new Error('Server antwortete ohne Versions-ID');
+  }
+  return raw as PriceTariffVersion;
 }
 
 /** TariffGroupsTab deposit column — always ACTIVE version. */
@@ -69,11 +72,7 @@ export interface SimulatedPublishFlowResult {
   toast: 'success' | 'save_error' | 'activate_error';
 }
 
-/**
- * End-to-end orchestration matching current drawer activate sequence.
- */
-export async function runPublishFlowLikeDrawer(params: {
-  staleGroup: PriceTariffGroup;
+export async function runPublishFlow(params: {
   saveDraft: () => Promise<SaveDraftResult>;
   activateVersion: (versionId: string) => Promise<void>;
 }): Promise<SimulatedPublishFlowResult> {
@@ -82,10 +81,7 @@ export async function runPublishFlowLikeDrawer(params: {
     return { saveCalled: true, activateCalled: false, toast: 'save_error' };
   }
 
-  const versionId = resolveActivateVersionIdLikeDrawer(
-    saveResult.ok ? saveResult.savedVersion : null,
-    params.staleGroup,
-  );
+  const versionId = resolveActivateVersionId(saveResult.savedVersion);
   if (!versionId) {
     return { saveCalled: true, activateCalled: false, toast: 'activate_error' };
   }

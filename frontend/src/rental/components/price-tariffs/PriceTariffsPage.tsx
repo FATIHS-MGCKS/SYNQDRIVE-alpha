@@ -321,8 +321,12 @@ export function PriceTariffsPage({ isDarkMode }: PriceTariffsPageProps) {
           catalog={catalog}
           onClose={() => setDrawerGroup(null)}
           onSaved={async () => {
-            await reload();
-            setDrawerGroup(null);
+            const freshCatalog = await reload();
+            const groupId = drawerGroup.id;
+            const refreshedGroup = freshCatalog?.groups.find((g) => g.id === groupId);
+            if (refreshedGroup) {
+              setDrawerGroup(refreshedGroup);
+            }
           }}
         />
       )}

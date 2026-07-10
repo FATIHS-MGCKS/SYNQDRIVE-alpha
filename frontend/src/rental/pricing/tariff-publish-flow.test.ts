@@ -8,13 +8,14 @@ import {
   SEDAN_DEPOSIT_DRAFT_CENTS,
 } from './tariff-publish-fixtures';
 import {
+  assertApiTariffVersion,
   isDraftMisrepresentedAsLive,
   isPublishActionDisabled,
-  resolveActivateVersionIdLikeDrawer,
+  resolveActivateVersionId,
   resolvePublishToastOutcome,
   resolveTariffEditorDepositCents,
   resolveTariffOverviewDepositCents,
-  runPublishFlowLikeDrawer,
+  runPublishFlow,
   shouldProceedToActivateAfterSave,
 } from './tariff-publish-flow';
 
@@ -48,34 +49,60 @@ describe('Sedan tariff publish flow (deposit 17700 → 50000)', () => {
     expect(isDraftMisrepresentedAsLive(published)).toBe(false);
   });
 
-  it('REGRESSION Prompt 3: publish must activate saved draft id, not stale ACTIVE id', () => {
-    const staleGroup = createStaleSedanGroupWithActiveOnly();
+  it('publish activates saved draft id, not stale ACTIVE id', () => {
     const savedDraft = createSedanDraftVersionSavedFromActive();
 
-    const versionId = resolveActivateVersionIdLikeDrawer(savedDraft, staleGroup);
+    const versionId = resolveActivateVersionId(savedDraft);
 
     expect(versionId).toBe(savedDraft.id);
     expect(versionId).not.toBe('version-active-v1');
   });
 
+  it('resolveActivateVersionId ignores stale group prop entirely', () => {
+    const savedDraft = createSedanDraftVersionSavedFromActive();
+    expect(resolveActivateVersionId(savedDraft)).toBe('version-draft-v2');
+    expect(resolveActivateVersionId(undefined)).toBeUndefined();
+    expect(resolveActivateVersionId({ ...savedDraft, id: '  ' })).toBeUndefined();
+  });
+
+  it('assertApiTariffVersion rejects responses without id', () => {
+    expect(() => assertApiTariffVersion(null)).toThrow(/Versions-ID|Tarifversion/);
+    expect(() => assertApiTariffVersion({ versionNumber: 2 })).toThrow(/Versions-ID/);
+    expect(assertApiTariffVersion(createSedanDraftVersionSavedFromActive()).id).toBe('version-draft-v2');
+  });
+
   it('does not proceed to activate when save draft validation fails', () => {
-    expect(shouldProceedToActivateAfterSave({ ok: false, reason: 'validation' })).toBe(false);
+    expect(shouldProceedToActivateAfterSave({ ok: false, reason: 'validation', message: 'x' })).toBe(false);
   });
 
   it('does not call activate after failed save in publish orchestration', async () => {
     const activateVersion = vi.fn();
-    const result = await runPublishFlowLikeDrawer({
-      staleGroup: createStaleSedanGroupWithActiveOnly(),
-      saveDraft: async () => ({ ok: false, reason: 'validation' }),
+    const result = await runPublishFlow({
+      saveDraft: async () => ({ ok: false, reason: 'validation', message: 'Kaution ungültig' }),
       activateVersion,
     });
 
     expect(result.activateCalled).toBe(false);
     expect(activateVersion).not.toHaveBeenCalled();
     expect(result.toast).toBe('save_error');
-    expect(resolvePublishToastOutcome({ saveResult: { ok: false, reason: 'validation' }, activateSucceeded: false })).toBe(
-      'save_error',
-    );
+    expect(
+      resolvePublishToastOutcome({
+        saveResult: { ok: false, reason: 'validation', message: 'Kaution ungültig' },
+        activateSucceeded: false,
+      }),
+    ).toBe('save_error');
+  });
+
+  it('does not call activate after API save failure', async () => {
+    const activateVersion = vi.fn();
+    const result = await runPublishFlow({
+      saveDraft: async () => ({ ok: false, reason: 'api_error', message: 'Network' }),
+      activateVersion,
+    });
+
+    expect(result.activateCalled).toBe(false);
+    expect(activateVersion).not.toHaveBeenCalled();
+    expect(result.toast).toBe('save_error');
   });
 
   it('prevents double-submit while saving or activating', () => {
@@ -84,7 +111,7 @@ describe('Sedan tariff publish flow (deposit 17700 → 50000)', () => {
     expect(isPublishActionDisabled({ saving: false, activating: false })).toBe(false);
   });
 
-  it('shows activate_error toast when activation fails after successful save', () => {
+  it('shows activate_error toast when activation fails after successful save (no success toast)', () => {
     expect(
       resolvePublishToastOutcome({
         saveResult: { ok: true, savedVersion: createSedanDraftVersionSavedFromActive() },
@@ -93,21 +120,28 @@ describe('Sedan tariff publish flow (deposit 17700 → 50000)', () => {
     ).toBe('activate_error');
   });
 
-  it('REGRESSION Prompt 3: publish flow activates stale ACTIVE — booking would keep 17700 deposit', async () => {
-    const staleGroup = createStaleSedanGroupWithActiveOnly();
+  it('publish flow uses saved draft id so booking would get 50000 deposit', async () => {
     const savedDraft = createSedanDraftVersionSavedFromActive();
     const activateVersion = vi.fn().mockResolvedValue(undefined);
 
-    const result = await runPublishFlowLikeDrawer({
-      staleGroup,
+    const result = await runPublishFlow({
       saveDraft: async () => ({ ok: true, savedVersion: savedDraft }),
       activateVersion,
     });
 
     expect(result.toast).toBe('success');
     expect(activateVersion).toHaveBeenCalledOnce();
-    expect(activateVersion).toHaveBeenCalledWith('version-active-v1');
-    expect(activateVersion).not.toHaveBeenCalledWith(savedDraft.id);
-    expect(result.activateVersionId).toBe('version-active-v1');
+    expect(activateVersion).toHaveBeenCalledWith(savedDraft.id);
+    expect(activateVersion).not.toHaveBeenCalledWith('version-active-v1');
+    expect(result.activateVersionId).toBe(savedDraft.id);
+  });
+
+  it('catalog refresh after publish replaces stale group with ACTIVE-only 50000 view', () => {
+    const before = createSedanGroupWithActiveAndDraft();
+    const after = createSedanGroupAfterSuccessfulPublish();
+
+    expect(isDraftMisrepresentedAsLive(before)).toBe(true);
+    expect(isDraftMisrepresentedAsLive(after)).toBe(false);
+    expect(resolveTariffOverviewDepositCents(after)).toBe(SEDAN_DEPOSIT_DRAFT_CENTS);
   });
 });

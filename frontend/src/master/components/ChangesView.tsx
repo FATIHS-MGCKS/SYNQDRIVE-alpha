@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pricing-tariff-drawer-publish-fix-v49336-2026-07-10',
+    version: '4.9.336',
+    title: 'V4.9.336 — Pricing: TariffGroupDrawer Save-and-Activate Fix',
+    summary: [
+      'persistDraft gibt gespeicherte Version mit Backend-ID zurück; activate nutzt savedVersion.id.',
+      'Kein Activate nach Save-Fehler; getrennte Fehlertoasts für Speichern vs. Aktivierung.',
+      'Double-Submit-Guard; Katalog-Reload aktualisiert Drawer-Gruppe ohne Schließen.',
+    ],
+    reason: 'Audit P0: Kaution 500€ im Draft, Veröffentlichen aktivierte stale ACTIVE (177€).',
+    previousBehavior: 'void savedVersion; getEditableVersion(stale group); onSaved schloss Drawer vor Activate.',
+    details: 'Geändert: TariffGroupDrawer.tsx, PriceTariffsPage.tsx, usePriceTariffs.ts, tariff-publish-flow.ts. Tests angepasst.',
+    affectsArchitecture: false,
+    module: 'Rental Pricing',
+    createdAt: '2026-07-10T20:35:00.000Z',
+  },
+  {
     id: 'pricing-tariff-publish-regression-tests-v49335-2026-07-10',
     version: '4.9.335',
     title: 'V4.9.335 — Pricing: Regressionstests Sedan-Kaution 177€ → 500€',
