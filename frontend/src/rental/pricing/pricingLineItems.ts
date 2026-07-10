@@ -41,3 +41,21 @@ export function sumRentalChargeGrossCents(lineItems: PricingLineItem[]): number 
 export function countDepositLineItems(lineItems: PricingLineItem[]): number {
   return lineItems.filter((li) => li.type === 'DEPOSIT').length;
 }
+
+export function resolveLineItemSourceId(
+  metadata: PricingLineItem['metadataJson'],
+): string | null {
+  if (!metadata || typeof metadata !== 'object') return null;
+  const m = metadata as Record<string, unknown>;
+  if (typeof m.sourceId === 'string' && m.sourceId.trim()) return m.sourceId;
+  if (typeof m.optionId === 'string' && m.optionId.trim()) return m.optionId;
+  if (typeof m.packageId === 'string' && m.packageId.trim()) return m.packageId;
+  return null;
+}
+
+export function findLineItemBySourceId(
+  lineItems: PricingLineItem[],
+  sourceId: string,
+): PricingLineItem | undefined {
+  return lineItems.find((li) => resolveLineItemSourceId(li.metadataJson) === sourceId);
+}

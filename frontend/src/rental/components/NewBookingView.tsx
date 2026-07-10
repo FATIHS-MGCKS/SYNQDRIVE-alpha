@@ -17,7 +17,7 @@ import {
   majorUnitsFromCents,
   resolvePricingCurrency,
 } from '../pricing/pricingUtils';
-import { sumExtrasGrossCents } from '../pricing/pricingLineItems';
+import { findLineItemBySourceId, sumExtrasGrossCents } from '../pricing/pricingLineItems';
 import {
   buildCustomerCreatePayload,
   buildBookingCreatePayload,
@@ -732,11 +732,13 @@ export function NewBookingView({
         .map((id) => {
           const opt = extraOptions.find((o) => o.id === id);
           if (!opt) return null;
-          const line = priceSim.lineItems.find((li) => li.label === opt.label);
+          const line = findLineItemBySourceId(priceSim.lineItems, opt.id);
           return {
             id: opt.id,
-            name: opt.label,
-            price: line ? line.totalGrossCents / 100 : grossFromNetCents(opt.priceCents, taxRatePercent) / 100,
+            name: line?.label ?? opt.label,
+            price: line
+              ? line.totalGrossCents / 100
+              : grossFromNetCents(opt.priceCents, taxRatePercent) / 100,
           };
         })
         .filter(Boolean) as Array<{ id: string; name: string; price: number }>;

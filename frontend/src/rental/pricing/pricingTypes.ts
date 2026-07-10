@@ -115,6 +115,21 @@ export interface PricingLineItem {
   taxRatePercent: number;
   totalGrossCents: number;
   sortOrder?: number;
+  metadataJson?: PricingLineItemSourceMetadata | Record<string, unknown> | null;
+}
+
+export interface PricingLineItemSourceMetadata {
+  sourceType?: string;
+  sourceId?: string | null;
+  lineItemType?: string;
+  label?: string;
+  quantity?: number;
+  unitAmountCents?: number;
+  totalAmountCents?: number;
+  currency?: string;
+  pricingType?: string;
+  optionId?: string;
+  packageId?: string;
 }
 
 export interface PricingSimulationResult {

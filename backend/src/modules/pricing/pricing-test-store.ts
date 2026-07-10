@@ -91,6 +91,50 @@ type SnapshotRow = {
   [key: string]: unknown;
 };
 
+type MileagePackageRow = {
+  id: string;
+  organizationId: string;
+  tariffVersionId: string;
+  label: string;
+  includedKm: number;
+  priceCents: number;
+  isActive: boolean;
+  sortOrder: number;
+};
+
+type InsuranceOptionRow = {
+  id: string;
+  organizationId: string;
+  tariffVersionId: string;
+  label: string;
+  description: string | null;
+  priceCents: number;
+  pricingType: 'PER_DAY' | 'PER_BOOKING';
+  deductibleCents: number | null;
+  isDefault: boolean;
+  isActive: boolean;
+  sortOrder: number;
+};
+
+type ExtraOptionRow = {
+  id: string;
+  organizationId: string;
+  tariffVersionId: string;
+  label: string;
+  description: string | null;
+  priceCents: number;
+  pricingType: 'PER_DAY' | 'PER_BOOKING';
+  isActive: boolean;
+  sortOrder: number;
+};
+
+type BookingLineItemRow = {
+  id: string;
+  organizationId: string;
+  bookingPriceSnapshotId: string;
+  metadataJson: Record<string, unknown> | null;
+};
+
 export function createPricingTestStore(
   ids: PricingTestIds,
   options?: { currency?: string },
@@ -177,6 +221,10 @@ export function createPricingTestStore(
   ];
 
   const snapshots: SnapshotRow[] = [];
+  const mileagePackages: MileagePackageRow[] = [];
+  const insuranceOptions: InsuranceOptionRow[] = [];
+  const extraOptions: ExtraOptionRow[] = [];
+  const bookingLineItems: BookingLineItemRow[] = [];
   let idCounter = 0;
   const nextId = (prefix: string) => `${prefix}-${++idCounter}`;
   const hooks = {
@@ -188,12 +236,21 @@ export function createPricingTestStore(
     const rate = rates.find((r) => r.tariffVersionId === version.id) ?? null;
     const priceBook = priceBooks.find((b) => b.id === version.priceBookId)!;
     const tariffGroup = groups.find((g) => g.id === version.tariffGroupId)!;
+    const versionMileage = mileagePackages
+      .filter((p) => p.tariffVersionId === version.id && p.isActive)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    const versionInsurance = insuranceOptions
+      .filter((p) => p.tariffVersionId === version.id && p.isActive)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+    const versionExtras = extraOptions
+      .filter((p) => p.tariffVersionId === version.id && p.isActive)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
     return {
       ...version,
       rate,
-      mileagePackages: [],
-      insuranceOptions: [],
-      extraOptions: [],
+      mileagePackages: versionMileage,
+      insuranceOptions: versionInsurance,
+      extraOptions: versionExtras,
       priceBook,
       tariffGroup,
     };
@@ -541,14 +598,148 @@ export function createPricingTestStore(
         };
         if (data.lineItems && typeof data.lineItems === 'object' && 'create' in data.lineItems) {
           row.lineItems = (data.lineItems as { create: Array<Record<string, unknown>> }).create;
+          for (const li of row.lineItems) {
+            bookingLineItems.push({
+              id: nextId('line-item'),
+              organizationId: row.organizationId,
+              bookingPriceSnapshotId: row.id,
+              metadataJson: (li.metadataJson as Record<string, unknown>) ?? null,
+            });
+          }
         }
         snapshots.push(row);
         return include ? { ...row, lineItems: row.lineItems } : row;
       }),
     },
-    mileagePackage: { deleteMany: jest.fn(), createMany: jest.fn() },
-    tariffInsuranceOption: { deleteMany: jest.fn(), createMany: jest.fn() },
-    tariffExtraOption: { deleteMany: jest.fn(), createMany: jest.fn() },
+    mileagePackage: {
+      findMany: jest.fn(
+        async ({ where }: { where: Record<string, unknown> }) =>
+          mileagePackages.filter(
+            (row) =>
+              row.organizationId === where.organizationId &&
+              row.tariffVersionId === where.tariffVersionId,
+          ),
+      ),
+      create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        const row: MileagePackageRow = {
+          id: nextId('mileage'),
+          organizationId: data.organizationId as string,
+          tariffVersionId: data.tariffVersionId as string,
+          label: data.label as string,
+          includedKm: data.includedKm as number,
+          priceCents: data.priceCents as number,
+          isActive: (data.isActive as boolean) ?? true,
+          sortOrder: (data.sortOrder as number) ?? 0,
+        };
+        mileagePackages.push(row);
+        return row;
+      }),
+      update: jest.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where: { id: string };
+          data: Partial<MileagePackageRow>;
+        }) => {
+          const row = mileagePackages.find((r) => r.id === where.id);
+          if (!row) throw new Error('mileage package not found');
+          Object.assign(row, data);
+          return row;
+        },
+      ),
+      deleteMany: jest.fn(),
+      createMany: jest.fn(),
+    },
+    tariffInsuranceOption: {
+      findMany: jest.fn(
+        async ({ where }: { where: Record<string, unknown> }) =>
+          insuranceOptions.filter(
+            (row) =>
+              row.organizationId === where.organizationId &&
+              row.tariffVersionId === where.tariffVersionId,
+          ),
+      ),
+      create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        const row: InsuranceOptionRow = {
+          id: nextId('insurance'),
+          organizationId: data.organizationId as string,
+          tariffVersionId: data.tariffVersionId as string,
+          label: data.label as string,
+          description: (data.description as string | null) ?? null,
+          priceCents: data.priceCents as number,
+          pricingType: (data.pricingType as InsuranceOptionRow['pricingType']) ?? 'PER_DAY',
+          deductibleCents: (data.deductibleCents as number | null) ?? null,
+          isDefault: (data.isDefault as boolean) ?? false,
+          isActive: (data.isActive as boolean) ?? true,
+          sortOrder: (data.sortOrder as number) ?? 0,
+        };
+        insuranceOptions.push(row);
+        return row;
+      }),
+      update: jest.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where: { id: string };
+          data: Partial<InsuranceOptionRow>;
+        }) => {
+          const row = insuranceOptions.find((r) => r.id === where.id);
+          if (!row) throw new Error('insurance option not found');
+          Object.assign(row, data);
+          return row;
+        },
+      ),
+      deleteMany: jest.fn(),
+      createMany: jest.fn(),
+    },
+    tariffExtraOption: {
+      findMany: jest.fn(
+        async ({ where }: { where: Record<string, unknown> }) =>
+          extraOptions.filter(
+            (row) =>
+              row.organizationId === where.organizationId &&
+              row.tariffVersionId === where.tariffVersionId,
+          ),
+      ),
+      create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        const row: ExtraOptionRow = {
+          id: nextId('extra'),
+          organizationId: data.organizationId as string,
+          tariffVersionId: data.tariffVersionId as string,
+          label: data.label as string,
+          description: (data.description as string | null) ?? null,
+          priceCents: data.priceCents as number,
+          pricingType: (data.pricingType as ExtraOptionRow['pricingType']) ?? 'PER_DAY',
+          isActive: (data.isActive as boolean) ?? true,
+          sortOrder: (data.sortOrder as number) ?? 0,
+        };
+        extraOptions.push(row);
+        return row;
+      }),
+      update: jest.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where: { id: string };
+          data: Partial<ExtraOptionRow>;
+        }) => {
+          const row = extraOptions.find((r) => r.id === where.id);
+          if (!row) throw new Error('extra option not found');
+          Object.assign(row, data);
+          return row;
+        },
+      ),
+      deleteMany: jest.fn(),
+      createMany: jest.fn(),
+    },
+    bookingPriceLineItem: {
+      findMany: jest.fn(async ({ where }: { where: Record<string, unknown> }) =>
+        bookingLineItems.filter((row) => row.organizationId === where.organizationId),
+      ),
+    },
     organization: {
       findFirst: jest.fn(async () => ({ timezone: 'Europe/Berlin' })),
     },
@@ -591,6 +782,10 @@ export function createPricingTestStore(
     rates,
     groups,
     snapshots,
+    mileagePackages,
+    insuranceOptions,
+    extraOptions,
+    bookingLineItems,
     baseRatePayload,
     setGroupInactive: () => {
       const g = groups.find((row) => row.id === ids.groupId);

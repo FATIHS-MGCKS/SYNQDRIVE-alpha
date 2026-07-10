@@ -31,6 +31,7 @@ export interface ResolvedTariffContext {
     id: string;
     versionNumber: number;
     rate: {
+      id: string;
       dailyRateCents: number;
       weeklyRateCents: number;
       monthlyRateCents: number;
@@ -235,10 +236,14 @@ export class PricingService {
       throw new BadRequestException('Ein oder mehrere Extras ungültig');
     }
 
+    const currency = ctx.priceBook.currency;
+
     const result = simulateBookingPrice({
       pickupAt,
       returnAt,
       taxRatePercent: ctx.priceBook.taxRatePercent,
+      currency,
+      tariffRateId: tv.rate.id ?? null,
       rate: tv.rate,
       mileagePackage: mileagePackage ?? undefined,
       insurances,
@@ -247,7 +252,6 @@ export class PricingService {
       manualAdjustmentCents: dto.manualAdjustmentCents,
     });
 
-    const currency = ctx.priceBook.currency;
     assertClientCurrencyMatches(dto.currency, currency);
 
     return {
@@ -365,7 +369,7 @@ export class PricingService {
       taxRatePercent: li.taxRatePercent,
       totalGrossCents: li.totalGrossCents,
       metadataJson: li.metadataJson
-        ? (li.metadataJson as Prisma.InputJsonValue)
+        ? (li.metadataJson as unknown as Prisma.InputJsonValue)
         : Prisma.JsonNull,
       sortOrder: li.sortOrder,
     };

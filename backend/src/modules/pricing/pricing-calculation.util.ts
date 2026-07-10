@@ -2,7 +2,14 @@ import {
   BookingPriceLineItemType,
   PriceOptionPricingType,
 } from '@prisma/client';
-import { isTaxablePricingLineType } from './pricing-line-item-types';
+import {
+  isTaxablePricingLineType,
+} from './pricing-line-item-types';
+import {
+  buildPricingLineMetadata,
+  PRICING_LINE_SOURCE_TYPES,
+  type PricingLineItemSourceMetadata,
+} from './pricing-line-item-source.util';
 import { computeRentalDays } from './pricing-rental-days.util';
 
 export {
@@ -39,7 +46,7 @@ export interface SimulatedLineItem {
   totalNetCents: number;
   taxRatePercent: number;
   totalGrossCents: number;
-  metadataJson?: Record<string, unknown>;
+  metadataJson?: PricingLineItemSourceMetadata;
   sortOrder: number;
 }
 
@@ -47,6 +54,8 @@ export interface SimulatePriceInput {
   pickupAt: Date;
   returnAt: Date;
   taxRatePercent: number;
+  currency?: string;
+  tariffRateId?: string | null;
   rate: RateInput;
   mileagePackage?: { id: string; label: string; includedKm: number; priceCents: number } | null;
   insurances?: PricedOptionInput[];
@@ -122,13 +131,16 @@ function optionQuantity(
 
 function buildOptionLine(
   type: BookingPriceLineItemType,
+  sourceType: (typeof PRICING_LINE_SOURCE_TYPES)[keyof typeof PRICING_LINE_SOURCE_TYPES],
   opt: PricedOptionInput,
   rentalDays: number,
   taxRatePercent: number,
   sortOrder: number,
+  currency?: string,
 ): SimulatedLineItem {
   const quantity = optionQuantity(opt.pricingType, rentalDays);
   const totalNetCents = opt.priceCents * quantity;
+  const totalGrossCents = netToGrossCents(totalNetCents, taxRatePercent);
   return {
     type,
     label: opt.label,
@@ -136,8 +148,18 @@ function buildOptionLine(
     unitPriceCents: opt.priceCents,
     totalNetCents,
     taxRatePercent,
-    totalGrossCents: netToGrossCents(totalNetCents, taxRatePercent),
-    metadataJson: { optionId: opt.id, pricingType: opt.pricingType },
+    totalGrossCents,
+    metadataJson: buildPricingLineMetadata({
+      sourceType,
+      sourceId: opt.id,
+      lineItemType: type,
+      label: opt.label,
+      quantity,
+      unitAmountCents: opt.priceCents,
+      totalAmountCents: totalGrossCents,
+      currency,
+      pricingType: opt.pricingType,
+    }),
     sortOrder,
   };
 }
@@ -153,6 +175,7 @@ export function simulateBookingPrice(input: SimulatePriceInput): SimulatePriceRe
   if (base.netCents <= 0) {
     warnings.push('Grundmiete ist 0 — Tarif prüfen');
   }
+  const baseGross = netToGrossCents(base.netCents, taxRatePercent);
   lineItems.push({
     type: 'BASE_RENTAL',
     label: base.label,
@@ -160,7 +183,17 @@ export function simulateBookingPrice(input: SimulatePriceInput): SimulatePriceRe
     unitPriceCents: input.rate.dailyRateCents,
     totalNetCents: base.netCents,
     taxRatePercent,
-    totalGrossCents: netToGrossCents(base.netCents, taxRatePercent),
+    totalGrossCents: baseGross,
+    metadataJson: buildPricingLineMetadata({
+      sourceType: PRICING_LINE_SOURCE_TYPES.TARIFF_RATE,
+      sourceId: input.tariffRateId ?? null,
+      lineItemType: 'BASE_RENTAL',
+      label: base.label,
+      quantity: rentalDays,
+      unitAmountCents: input.rate.dailyRateCents,
+      totalAmountCents: baseGross,
+      currency: input.currency,
+    }),
     sortOrder: sort++,
   });
 
@@ -169,6 +202,7 @@ export function simulateBookingPrice(input: SimulatePriceInput): SimulatePriceRe
   if (input.mileagePackage) {
     includedKm += input.mileagePackage.includedKm;
     const pkgNet = input.mileagePackage.priceCents;
+    const pkgGross = netToGrossCents(pkgNet, taxRatePercent);
     lineItems.push({
       type: 'MILEAGE_PACKAGE',
       label: input.mileagePackage.label,
@@ -176,26 +210,52 @@ export function simulateBookingPrice(input: SimulatePriceInput): SimulatePriceRe
       unitPriceCents: pkgNet,
       totalNetCents: pkgNet,
       taxRatePercent,
-      totalGrossCents: netToGrossCents(pkgNet, taxRatePercent),
-      metadataJson: { packageId: input.mileagePackage.id },
+      totalGrossCents: pkgGross,
+      metadataJson: buildPricingLineMetadata({
+        sourceType: PRICING_LINE_SOURCE_TYPES.MILEAGE_PACKAGE,
+        sourceId: input.mileagePackage.id,
+        lineItemType: 'MILEAGE_PACKAGE',
+        label: input.mileagePackage.label,
+        quantity: 1,
+        unitAmountCents: pkgNet,
+        totalAmountCents: pkgGross,
+        currency: input.currency,
+      }),
       sortOrder: sort++,
     });
   }
 
   for (const ins of input.insurances ?? []) {
     lineItems.push(
-      buildOptionLine('INSURANCE', ins, rentalDays, taxRatePercent, sort++),
+      buildOptionLine(
+        'INSURANCE',
+        PRICING_LINE_SOURCE_TYPES.TARIFF_INSURANCE,
+        ins,
+        rentalDays,
+        taxRatePercent,
+        sort++,
+        input.currency,
+      ),
     );
   }
 
   for (const extra of input.extras ?? []) {
     lineItems.push(
-      buildOptionLine('EXTRA', extra, rentalDays, taxRatePercent, sort++),
+      buildOptionLine(
+        'EXTRA',
+        PRICING_LINE_SOURCE_TYPES.TARIFF_EXTRA,
+        extra,
+        rentalDays,
+        taxRatePercent,
+        sort++,
+        input.currency,
+      ),
     );
   }
 
   if (input.manualDiscountCents && input.manualDiscountCents > 0) {
     const discountNet = -Math.abs(input.manualDiscountCents);
+    const discountGross = netToGrossCents(discountNet, taxRatePercent);
     lineItems.push({
       type: 'DISCOUNT',
       label: 'Rabatt',
@@ -203,13 +263,24 @@ export function simulateBookingPrice(input: SimulatePriceInput): SimulatePriceRe
       unitPriceCents: discountNet,
       totalNetCents: discountNet,
       taxRatePercent,
-      totalGrossCents: netToGrossCents(discountNet, taxRatePercent),
+      totalGrossCents: discountGross,
+      metadataJson: buildPricingLineMetadata({
+        sourceType: PRICING_LINE_SOURCE_TYPES.MANUAL,
+        sourceId: null,
+        lineItemType: 'DISCOUNT',
+        label: 'Rabatt',
+        quantity: 1,
+        unitAmountCents: discountNet,
+        totalAmountCents: discountGross,
+        currency: input.currency,
+      }),
       sortOrder: sort++,
     });
   }
 
   if (input.manualAdjustmentCents && input.manualAdjustmentCents !== 0) {
     const adjNet = input.manualAdjustmentCents;
+    const adjGross = netToGrossCents(adjNet, taxRatePercent);
     lineItems.push({
       type: 'MANUAL_ADJUSTMENT',
       label: 'Manuelle Anpassung',
@@ -217,7 +288,17 @@ export function simulateBookingPrice(input: SimulatePriceInput): SimulatePriceRe
       unitPriceCents: adjNet,
       totalNetCents: adjNet,
       taxRatePercent,
-      totalGrossCents: netToGrossCents(adjNet, taxRatePercent),
+      totalGrossCents: adjGross,
+      metadataJson: buildPricingLineMetadata({
+        sourceType: PRICING_LINE_SOURCE_TYPES.MANUAL,
+        sourceId: null,
+        lineItemType: 'MANUAL_ADJUSTMENT',
+        label: 'Manuelle Anpassung',
+        quantity: 1,
+        unitAmountCents: adjNet,
+        totalAmountCents: adjGross,
+        currency: input.currency,
+      }),
       sortOrder: sort++,
     });
   }
@@ -246,6 +327,16 @@ export function simulateBookingPrice(input: SimulatePriceInput): SimulatePriceRe
       totalNetCents: depositAmountCents,
       taxRatePercent: 0,
       totalGrossCents: depositAmountCents,
+      metadataJson: buildPricingLineMetadata({
+        sourceType: PRICING_LINE_SOURCE_TYPES.TARIFF_RATE,
+        sourceId: input.tariffRateId ?? null,
+        lineItemType: 'DEPOSIT',
+        label: 'Kaution',
+        quantity: 1,
+        unitAmountCents: depositAmountCents,
+        totalAmountCents: depositAmountCents,
+        currency: input.currency,
+      }),
       sortOrder: sort++,
     });
   }

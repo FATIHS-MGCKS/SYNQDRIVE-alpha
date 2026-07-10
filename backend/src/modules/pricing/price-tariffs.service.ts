@@ -24,6 +24,11 @@ import {
   resolvePublishTargetStatus,
 } from './tariff-version-lifecycle.util';
 import { DEFAULT_TARIFF_TIMEZONE, parseTariffEffectiveInstant } from './tariff-instant.util';
+import {
+  syncExtraOptionsForVersion,
+  syncInsuranceOptionsForVersion,
+  syncMileagePackagesForVersion,
+} from './tariff-option-sync.util';
 import { assertStatusMatchesValidity } from './tariff-validity.util';
 import { PriceTariffVersionStatus } from '@prisma/client';
 
@@ -198,13 +203,13 @@ export class PriceTariffsService {
     }
 
     if (dto.mileagePackages) {
-      await this.replaceMileagePackages(orgId, version.id, dto.mileagePackages);
+      await syncMileagePackagesForVersion(this.prisma, orgId, version.id, dto.mileagePackages);
     }
     if (dto.insuranceOptions) {
-      await this.replaceInsuranceOptions(orgId, version.id, dto.insuranceOptions);
+      await syncInsuranceOptionsForVersion(this.prisma, orgId, version.id, dto.insuranceOptions);
     }
     if (dto.extraOptions) {
-      await this.replaceExtraOptions(orgId, version.id, dto.extraOptions);
+      await syncExtraOptionsForVersion(this.prisma, orgId, version.id, dto.extraOptions);
     }
 
     return this.prisma.priceTariffVersion.findUniqueOrThrow({
@@ -246,13 +251,13 @@ export class PriceTariffsService {
     }
 
     if (dto.mileagePackages) {
-      await this.replaceMileagePackages(orgId, versionId, dto.mileagePackages);
+      await syncMileagePackagesForVersion(this.prisma, orgId, versionId, dto.mileagePackages);
     }
     if (dto.insuranceOptions) {
-      await this.replaceInsuranceOptions(orgId, versionId, dto.insuranceOptions);
+      await syncInsuranceOptionsForVersion(this.prisma, orgId, versionId, dto.insuranceOptions);
     }
     if (dto.extraOptions) {
-      await this.replaceExtraOptions(orgId, versionId, dto.extraOptions);
+      await syncExtraOptionsForVersion(this.prisma, orgId, versionId, dto.extraOptions);
     }
 
     return this.prisma.priceTariffVersion.findUniqueOrThrow({
@@ -578,88 +583,5 @@ export class PriceTariffsService {
       depositAmountCents: rate.depositAmountCents ?? 0,
       minimumRentalDays: rate.minimumRentalDays ?? null,
     };
-  }
-
-  private async replaceMileagePackages(
-    orgId: string,
-    versionId: string,
-    packages: MileagePackageDto[],
-  ) {
-    for (const p of packages) {
-      if (p.includedKm <= 0) throw new BadRequestException('includedKm muss > 0 sein');
-      if (p.priceCents < 0) throw new BadRequestException('priceCents ungültig');
-    }
-    await this.prisma.mileagePackage.deleteMany({
-      where: { tariffVersionId: versionId, organizationId: orgId },
-    });
-    if (packages.length) {
-      await this.prisma.mileagePackage.createMany({
-        data: packages.map((p, i) => ({
-          organizationId: orgId,
-          tariffVersionId: versionId,
-          label: p.label,
-          includedKm: p.includedKm,
-          priceCents: p.priceCents,
-          isActive: p.isActive ?? true,
-          sortOrder: p.sortOrder ?? i,
-        })),
-      });
-    }
-  }
-
-  private async replaceInsuranceOptions(
-    orgId: string,
-    versionId: string,
-    options: InsuranceOptionDto[],
-  ) {
-    for (const o of options) {
-      if (o.priceCents < 0) throw new BadRequestException('Versicherungspreis ungültig');
-    }
-    await this.prisma.tariffInsuranceOption.deleteMany({
-      where: { tariffVersionId: versionId, organizationId: orgId },
-    });
-    if (options.length) {
-      await this.prisma.tariffInsuranceOption.createMany({
-        data: options.map((o, i) => ({
-          organizationId: orgId,
-          tariffVersionId: versionId,
-          label: o.label,
-          description: o.description,
-          priceCents: o.priceCents,
-          pricingType: o.pricingType ?? 'PER_DAY',
-          deductibleCents: o.deductibleCents,
-          isDefault: o.isDefault ?? false,
-          isActive: o.isActive ?? true,
-          sortOrder: o.sortOrder ?? i,
-        })),
-      });
-    }
-  }
-
-  private async replaceExtraOptions(
-    orgId: string,
-    versionId: string,
-    options: ExtraOptionDto[],
-  ) {
-    for (const o of options) {
-      if (o.priceCents < 0) throw new BadRequestException('Extra-Preis ungültig');
-    }
-    await this.prisma.tariffExtraOption.deleteMany({
-      where: { tariffVersionId: versionId, organizationId: orgId },
-    });
-    if (options.length) {
-      await this.prisma.tariffExtraOption.createMany({
-        data: options.map((o, i) => ({
-          organizationId: orgId,
-          tariffVersionId: versionId,
-          label: o.label,
-          description: o.description,
-          priceCents: o.priceCents,
-          pricingType: o.pricingType ?? 'PER_DAY',
-          isActive: o.isActive ?? true,
-          sortOrder: o.sortOrder ?? i,
-        })),
-      });
-    }
   }
 }
