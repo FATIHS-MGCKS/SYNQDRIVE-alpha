@@ -58,7 +58,8 @@ SynqDrive versendet **transaktionale E-Mails mit PDF-Anhängen über [Resend](ht
 
 1. Kostenlosen Account erstellen: [https://resend.com/signup](https://resend.com/signup)
 2. Dashboard → **API Keys** → **Create API Key**
-3. Key kopieren (beginnt mit `re_…`) — **nur einmal sichtbar**
+3. **Permission: Full access** (nicht „Sending access only“ — sonst schlägt Domain-Hinzufügen fehl)
+4. Key kopieren (beginnt mit `re_…`) — **nur einmal sichtbar**
 4. **Sicher übergeben** (nicht im Chat): siehe `docs/resend-setup.md`
 5. Sync auf VPS:
 

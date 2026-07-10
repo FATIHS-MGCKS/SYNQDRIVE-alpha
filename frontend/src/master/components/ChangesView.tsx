@@ -35,6 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'resend-full-access-key-v49311-2026-07-10',
+    version: '4.9.311',
+    title: 'V4.9.311 — Resend: klare Fehlermeldung bei Send-only API-Key',
+    summary: [
+      'Domain hinzufügen: Resend send-only Key → `400` mit deutscher Operator-Meldung statt HTTP 500.',
+      '`mapResendOperatorError` + Tests; Doku: Full access für `POST /domains`.',
+    ],
+    reason: '„Eigene Domain hinzufügen“ → Internal server error wenn Key nur Sending access hat.',
+    previousBehavior: 'Unbehandelter Resend-Fehler → HTTP 500, UI „Internal server error“.',
+    details: 'mapResendOperatorError in addDomain/verify; Full-access-Key weiterhin Pflicht für Domain-Registrierung.',
+    affectsArchitecture: false,
+    module: 'Outbound Email',
+    createdAt: '2026-07-10T13:25:00.000Z',
+  },
+  {
     id: 'synqdrive-platform-email-v49310-2026-07-10',
     version: '4.9.310',
     title: 'V4.9.310 — Plattform-Mail synqdrive.eu (noreply + info Reply-To)',
