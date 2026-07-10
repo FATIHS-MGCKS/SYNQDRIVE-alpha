@@ -80,6 +80,7 @@ Build-time-only credentials (private npm registries) → **Build Secret** (not u
 | `DATABASE_URL` | **Runtime Secret** | omit (unless needed) | Optional (prod DB via tailnet) |
 | `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY` | Runtime Secret | As needed for task | As needed |
 | `DIMO_API_KEY`, `DIMO_PRIVATE_KEY`, `DIMO_CLIENT_ID` | Runtime Secret | As needed | As needed |
+| `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` | Runtime Secret | As needed (outbound email + MCP) | As needed |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Runtime Secret | As needed | As needed |
 | Other keys from `backend/.env.example` | Runtime Secret | As needed | As needed |
 
