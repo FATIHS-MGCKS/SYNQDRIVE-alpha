@@ -1545,6 +1545,9 @@ export interface VehicleTripAnalytics {
   behaviorEnrichmentStatus?: string | null;
   detailsLimited?: boolean;
   analysisAssessability?: 'FULL' | 'LIMITED' | 'NOT_ASSESSABLE' | null;
+  analysisLimitReason?: string | null;
+  deviceQualityWarning?: boolean;
+  deviceQualityVehicleStatus?: 'NORMAL' | 'DEGRADED' | 'RECOVERING' | null;
   shortTermMisuseAssessable?: boolean;
   tripAnalysisStatus?: 'PENDING' | 'IN_PROGRESS' | 'PARTIAL' | 'COMPLETED' | 'FAILED' | 'SKIPPED' | null;
   tripAnalysisLabel?: string | null;

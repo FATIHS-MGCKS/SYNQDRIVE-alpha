@@ -41,6 +41,7 @@ export interface TripAssessmentInput {
   durationMinutes: number | null;
   nativeEventCount: number;
   reconstructedEventCount: number;
+  deviceQualityDegraded?: boolean;
 }
 
 export interface TripAssessmentSignals {

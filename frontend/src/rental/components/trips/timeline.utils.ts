@@ -38,6 +38,18 @@ export function hasTripDeviceConnectionAlert(trip: TripTimelineTrip): boolean {
   );
 }
 
+export function hasTripDeviceQualityWarning(trip: TripTimelineTrip): boolean {
+  return trip.deviceQualityWarning === true;
+}
+
+export function isTripTimelineFlagged(trip: TripTimelineTrip): boolean {
+  return (
+    hasAbuseSuspicion(trip) ||
+    hasTripDeviceConnectionAlert(trip) ||
+    hasTripDeviceQualityWarning(trip)
+  );
+}
+
 /**
  * Compact, operator-facing chips for a collapsed trip card.
  * Strictly limited to at most three meaningful signals:
@@ -64,7 +76,16 @@ export function deriveOperationalChips(
     chips.push({ key: 'unremarkable', label: 'Unauffällig', tone: 'neutral' });
   }
 
-  // 2) OBD plug/unplug during trip — high-priority operational signal
+  // 2) Device native-event quality — Fahrbewertung reliability
+  if (hasTripDeviceQualityWarning(trip)) {
+    chips.push({
+      key: 'device-quality',
+      label: 'Fahrbewertung eingeschränkt',
+      tone: 'watch',
+    });
+  }
+
+  // 3) OBD plug/unplug during trip — high-priority operational signal
   if (hasTripDeviceConnectionAlert(trip)) {
     const rental = trip.deviceConnectionRentalRelevant === true;
     chips.push({

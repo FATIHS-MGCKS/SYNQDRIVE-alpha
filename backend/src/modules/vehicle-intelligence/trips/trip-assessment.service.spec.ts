@@ -197,6 +197,23 @@ describe('assessTrip', () => {
     expect(result.primaryReason).toMatch(/kein automatisierter Schadensnachweis/i);
   });
 
+  it('caps inflated native-event assessment to PRUEFHINWEIS when device quality is degraded', () => {
+    const result = assessTrip(
+      baseInput({
+        deviceQualityDegraded: true,
+        unifiedEvents: [
+          event({ eventCategory: 'ACCELERATION', classification: 'HARD', eventType: 'HARSH_ACCELERATION' }),
+          event({ eventCategory: 'ACCELERATION', classification: 'HARD', eventType: 'HARSH_ACCELERATION' }),
+        ],
+        nativeEventCount: 2,
+      }),
+    );
+
+    expect(result.status).toBe('PRUEFHINWEIS');
+    expect(result.confidence).toBe('LOW');
+    expect(result.primaryReason).toMatch(/Telematik-Gerät/i);
+  });
+
   it('is versioned', () => {
     expect(assessTrip(baseInput()).version).toBe('1.1.0');
   });

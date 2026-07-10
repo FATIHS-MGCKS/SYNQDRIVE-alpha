@@ -51,6 +51,7 @@ const TYPE_OPERATIONAL_WEIGHT: Record<InsightType, number> = {
   [InsightType.TUV_OVERDUE]: 13,
   [InsightType.BOKRAFT_OVERDUE]: 13,
   [InsightType.HM_SERVICE_NO_TRACKING]: 1,
+  [InsightType.DRIVING_ASSESSMENT_DEVICE_QUALITY]: 11,
 };
 
 @Injectable()

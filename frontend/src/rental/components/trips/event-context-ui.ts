@@ -518,7 +518,11 @@ export interface TripAssessabilityInput {
 
   analysisAssessability?: 'FULL' | 'LIMITED' | 'NOT_ASSESSABLE' | null;
 
+  analysisLimitReason?: string | null;
+
   shortTermMisuseAssessable?: boolean;
+
+  deviceQualityWarning?: boolean;
 
 }
 
@@ -563,6 +567,22 @@ export function deriveTripAssessability(
   input: TripAssessabilityInput,
 
 ): TripAssessability {
+
+  if (input.deviceQualityWarning || input.analysisLimitReason === 'DEVICE_NATIVE_EVENT_QUALITY') {
+
+    return {
+
+      assessable: false,
+
+      source: 'NOT_RUN',
+
+      note:
+
+        'Fahrbewertung eingeschränkt — das LTE-Gerät sendet derzeit unzuverlässige native Fahrereignisse (DIMO: Steckung/Kalibrierung prüfen).',
+
+    };
+
+  }
 
   if (input.hasNativeEvents) {
 

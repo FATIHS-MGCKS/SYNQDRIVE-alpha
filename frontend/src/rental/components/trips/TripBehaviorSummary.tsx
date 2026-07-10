@@ -26,8 +26,12 @@ export function TripBehaviorSummary({ trip, events }: TripBehaviorSummaryProps) 
     behaviorReady: trip.behaviorReady,
     hasNativeEvents: hasNative,
     analysisAssessability: trip.analysisAssessability ?? null,
+    analysisLimitReason: trip.analysisLimitReason ?? null,
     shortTermMisuseAssessable: trip.shortTermMisuseAssessable,
+    deviceQualityWarning: trip.deviceQualityWarning,
   });
+
+  const deviceQualityWarning = trip.deviceQualityWarning === true;
 
   const behaviorLabel = deriveDrivingBehaviorLabel(events);
   const eventCountLabel = formatBehaviorEventCountLabel(events, trip);
@@ -42,11 +46,16 @@ export function TripBehaviorSummary({ trip, events }: TripBehaviorSummaryProps) 
   return (
     <div
       className={`rounded-xl border px-3.5 py-3 space-y-3 ${
-        isNotAssessable
+        isNotAssessable || deviceQualityWarning
           ? 'border-amber-500/30 bg-amber-500/5'
           : 'border-border/60 bg-muted/20'
       }`}
     >
+      {deviceQualityWarning ? (
+        <p className="text-[11px] font-medium text-amber-800 dark:text-amber-300">
+          Fahrbewertung eingeschränkt — Telematik-Gerät sendet unzuverlässige native Events
+        </p>
+      ) : null}
       <div className="space-y-1">
         <p className="text-[13px] font-semibold tracking-[-0.02em] text-foreground">{behaviorLabel}</p>
         <p className="text-[11px] tabular-nums text-muted-foreground">{eventCountLabel}</p>

@@ -38,7 +38,8 @@ export type InsightType =
   | 'TUV_OVERDUE'
   | 'BOKRAFT_OVERDUE'
   | 'PICKUP_OVERDUE'
-  | 'RETURN_OVERDUE';
+  | 'RETURN_OVERDUE'
+  | 'DRIVING_ASSESSMENT_DEVICE_QUALITY';
 
 export interface InsightEntityBreakdown {
   id: string;
@@ -210,6 +211,7 @@ export function useDashboardInsights() {
 const VEHICLE_HEALTH_TYPES: ReadonlySet<InsightType> = new Set<InsightType>([
   'BATTERY_CRITICAL',
   'SERVICE_OVERDUE',
+  'DRIVING_ASSESSMENT_DEVICE_QUALITY',
 ]);
 
 const SEVERITY_RANK: Record<VehicleAlertSeverity, number> = {

@@ -20,6 +20,7 @@ import { TireCriticalDetector } from './detectors/tire-critical.detector';
 import { BrakeCriticalDetector } from './detectors/brake-critical.detector';
 import { ComplianceOperationalDetector } from './detectors/compliance-operational.detector';
 import { PickupOverdueDetector } from './detectors/pickup-overdue.detector';
+import { DrivingAssessmentDeviceQualityDetector } from './detectors/driving-assessment-device-quality.detector';
 
 import { DashboardInsightsController } from './dashboard-insights.controller';
 import { InternalBusinessInsightsController } from './internal-business-insights.controller';
@@ -50,6 +51,7 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
     BrakeCriticalDetector,
     ComplianceOperationalDetector,
     PickupOverdueDetector,
+    DrivingAssessmentDeviceQualityDetector,
   ],
   exports: [BusinessInsightsService, BusinessInsightsTriggerService],
 })

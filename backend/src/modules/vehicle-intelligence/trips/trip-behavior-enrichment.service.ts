@@ -50,7 +50,9 @@ import {
   buildAssessabilityForSmart5Completed,
   buildAssessabilityForSmart5Skip,
   mergeAssessabilityIntoSummary,
+  parseBehaviorSummaryJson,
 } from './trip-analysis-status';
+import { DrivingAssessmentDeviceQualityService } from './driving-assessment-device-quality.service';
 
 export interface BehaviorEnrichmentResult {
   accelerationEvents: number;
@@ -188,6 +190,7 @@ export class TripBehaviorEnrichmentService {
     private readonly hfMirror: HfMirrorService,
     private readonly chEvidenceMirror: TripChEvidenceMirrorCoordinator,
     @Optional() private readonly tripMetrics?: TripMetricsService,
+    @Optional() private readonly deviceQuality?: DrivingAssessmentDeviceQualityService,
   ) {}
 
   /**
@@ -1002,6 +1005,31 @@ export class TripBehaviorEnrichmentService {
       hfPointsCleaned,
       hardwareType,
     });
+
+    if (this.deviceQuality) {
+      const durationMin =
+        trip.endTime && trip.startTime
+          ? (trip.endTime.getTime() - trip.startTime.getTime()) / 60_000
+          : null;
+      const existingSummary = parseBehaviorSummaryJson(
+        (
+          await this.prisma.vehicleTrip.findUnique({
+            where: { id: tripId },
+            select: { behaviorSummaryJson: true },
+          })
+        )?.behaviorSummaryJson,
+      );
+      await this.deviceQuality.evaluateAfterLteR1Trip({
+        tripId,
+        vehicleId,
+        organizationId,
+        hardwareType: trip.vehicle.hardwareType,
+        distanceKm: trip.distanceKm,
+        durationMin,
+        assessability: lteAssessability,
+        existingSummary,
+      });
+    }
 
     // Phase 2: best-effort HF analytics mirror (disabled by default). LTE_R1
     // native driving events stay canonical in PostgreSQL; this mirrors only the

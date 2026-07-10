@@ -157,7 +157,11 @@ export function BusinessInsightsBox({ isDarkMode, onOpenVehicle, onOpenView, not
   // tab. Routing them into their own tabs keeps the "Business" tab focused on
   // operational signals (handovers, station shortages, service windows…) and
   // avoids the same row showing up in two places at once.
-  const VEHICLE_HEALTH_TYPES: InsightType[] = ['BATTERY_CRITICAL', 'SERVICE_OVERDUE'];
+  const VEHICLE_HEALTH_TYPES: InsightType[] = [
+    'BATTERY_CRITICAL',
+    'SERVICE_OVERDUE',
+    'DRIVING_ASSESSMENT_DEVICE_QUALITY',
+  ];
   const FINANCIAL_TYPES: InsightType[] = ['LOW_UTILIZATION'];
 
   // V4.6.95 — Station-scoped insight filter. When a station is selected,
