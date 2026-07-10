@@ -163,6 +163,21 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
     }
   };
 
+  const deleteDomain = async (domainId: string, domainName: string) => {
+    if (!orgId || !canManage) return;
+    if (!window.confirm(`Domain „${domainName}" wirklich entfernen?`)) return;
+    setBusyDomainId(domainId);
+    try {
+      await api.orgEmail.deleteDomain(orgId, domainId);
+      setDomains((prev) => prev.filter((d) => d.id !== domainId));
+      setBanner({ kind: 'success', text: `Domain ${domainName} entfernt` });
+    } catch (err) {
+      setBanner({ kind: 'error', text: (err as Error).message || 'Domain konnte nicht entfernt werden' });
+    } finally {
+      setBusyDomainId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className={`flex items-center gap-2 text-sm ${subtle}`}>
@@ -341,6 +356,14 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
                           Aktivieren
                         </button>
                       )}
+                      <button
+                        type="button"
+                        disabled={busyDomainId === domain.id}
+                        onClick={() => void deleteDomain(domain.id, domain.domain)}
+                        className="text-xs px-3 py-1.5 rounded-lg border border-red-500/40 text-red-600 hover:bg-red-500/10"
+                      >
+                        Entfernen
+                      </button>
                     </div>
                   )}
                 </div>

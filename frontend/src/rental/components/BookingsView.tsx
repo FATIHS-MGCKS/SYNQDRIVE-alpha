@@ -9,7 +9,6 @@ import { useHandover } from '../HandoverContext';
 import { api } from '../../lib/api';
 import { mapApiBooking, type BookingUiRow } from '../lib/entityMappers';
 import { BrandLogoMark, getBrandFromModel } from './BrandLogo';
-import { BookingDocumentsSection } from './BookingDocumentsSection';
 import { EntityTasksSection } from './EntityTasksSection';
 import { MisuseCasesPanel } from './MisuseCasesPanel';
 import { BookingsPage } from './bookings/BookingsPage';

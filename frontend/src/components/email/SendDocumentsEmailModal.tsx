@@ -50,6 +50,8 @@ export function SendDocumentsEmailModal({
     '<p>Sehr geehrte Damen und Herren,</p><p>im Anhang finden Sie die angeforderten Dokumente zu Ihrer Buchung.</p><p>Mit freundlichen Grüßen</p>',
   );
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [ccEmails, setCcEmails] = useState('');
+  const [bccEmails, setBccEmails] = useState('');
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,6 +68,8 @@ export function SendDocumentsEmailModal({
         ? preselectedDocumentIds
         : sendable.map((d) => d.id);
     setSelectedIds(defaults.filter((id) => sendable.some((d) => d.id === id)));
+    setCcEmails('');
+    setBccEmails('');
     setError(null);
   }, [open, defaultToEmail, bookingNumber, preselectedDocumentIds, sendable]);
 
@@ -73,6 +77,14 @@ export function SendDocumentsEmailModal({
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
     );
+  };
+
+  const parseEmailList = (value: string): string[] | undefined => {
+    const list = value
+      .split(/[,;]/)
+      .map((e) => e.trim())
+      .filter(Boolean);
+    return list.length > 0 ? list : undefined;
   };
 
   const handleSend = async () => {
@@ -87,6 +99,8 @@ export function SendDocumentsEmailModal({
         toEmail: toEmail.trim(),
         subject: subject.trim(),
         bodyHtml,
+        ccEmails: parseEmailList(ccEmails),
+        bccEmails: parseEmailList(bccEmails),
         documentIds: selectedIds,
       });
       onSent?.();
@@ -145,6 +159,29 @@ export function SendDocumentsEmailModal({
             onChange={(e) => setSubject(e.target.value)}
             className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
           />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">CC (optional)</label>
+            <input
+              type="text"
+              value={ccEmails}
+              onChange={(e) => setCcEmails(e.target.value)}
+              placeholder="cc1@example.com, cc2@…"
+              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">BCC (optional)</label>
+            <input
+              type="text"
+              value={bccEmails}
+              onChange={(e) => setBccEmails(e.target.value)}
+              placeholder="bcc@example.com"
+              className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            />
+          </div>
         </div>
 
         <div>

@@ -847,6 +847,7 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
   const [sendOpen, setSendOpen] = useState(false);
   const [sendDoc, setSendDoc] = useState<GeneratedDocumentDto | null>(null);
   const [loadingSendDoc, setLoadingSendDoc] = useState(false);
+  const [invoiceCustomerEmail, setInvoiceCustomerEmail] = useState<string | null>(null);
 
   const canEmailDocument =
     Boolean(invoice.bookingId && invoice.generatedDocumentId) &&
@@ -857,8 +858,14 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
     if (!invoice.bookingId || !invoice.generatedDocumentId) return;
     setLoadingSendDoc(true);
     try {
-      const meta = await api.documents.metadata(orgId, invoice.generatedDocumentId);
+      const [meta, customer] = await Promise.all([
+        api.documents.metadata(orgId, invoice.generatedDocumentId),
+        invoice.customerId
+          ? api.customers.get(orgId, invoice.customerId).catch(() => null)
+          : Promise.resolve(null),
+      ]);
       setSendDoc(meta);
+      setInvoiceCustomerEmail(customer?.email ?? null);
       setSendOpen(true);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Dokument konnte nicht geladen werden');
@@ -1286,6 +1293,7 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
           orgId={orgId}
           bookingId={invoice.bookingId}
           bookingNumber={displayNumber(invoice)}
+          defaultToEmail={invoiceCustomerEmail}
           documents={[sendDoc]}
           preselectedDocumentIds={sendDoc ? [sendDoc.id] : undefined}
           onSent={() => void refreshInvoice()}

@@ -35,6 +35,7 @@ export const de: Record<TranslationKey, string> = {
   'nav.usersRoles': 'Benutzer & Rollen',
   'nav.dataAuthorization': 'Data Authorization & Consent',
   'nav.legalDocuments': 'Rechtliche Dokumente',
+  'nav.emailVersand': 'E-Mail & Versand',
   'nav.billingSubscription': 'Abrechnung & Abonnement',
   'nav.rentalRules': 'Mietregeln',
   'nav.support': 'Support',

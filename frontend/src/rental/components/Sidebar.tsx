@@ -1,4 +1,4 @@
-import { LayoutDashboard, DollarSign, Calendar, Car, Users, CheckSquare, FileText, Tag, Settings, Building2, MapPin, UserCog, CreditCard, Plus, Upload, Menu, X, Shield, ShieldCheck, Package, Lock, HelpCircle, Zap, Phone, Truck, Headphones, ChevronRight, User, PanelLeftClose, PanelLeftOpen, ListTodo, MessageSquare, Activity } from 'lucide-react';
+import { LayoutDashboard, DollarSign, Calendar, Car, Users, CheckSquare, FileText, Tag, Settings, Building2, MapPin, UserCog, CreditCard, Plus, Upload, Menu, X, Shield, ShieldCheck, Package, Lock, HelpCircle, Zap, Phone, Truck, Headphones, ChevronRight, User, PanelLeftClose, PanelLeftOpen, ListTodo, MessageSquare, Activity, Mail } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
@@ -225,6 +225,9 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
           </button>
           <button onClick={() => { onSettingsTabChange?.('data-authorization'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'data-authorization')}>
             <Lock className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.dataAuthorization')}</span>
+          </button>
+          <button onClick={() => { onSettingsTabChange?.('email-versand'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'email-versand')}>
+            <Mail className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.emailVersand')}</span>
           </button>
           <button onClick={() => { onSettingsTabChange?.('rental-rules'); handleViewChange('settings'); }} className={subNavBtnClass(currentView === 'settings' && settingsTab === 'rental-rules')}>
             <ShieldCheck className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.rentalRules')}</span>

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'outbound-email-hardening-v49301-2026-07-10',
+    version: '4.9.301',
+    title: 'V4.9.301 — Outbound E-Mail: Hardening + Hostinger/Resend-Setup',
+    summary: [
+      'Resend-Webhook: Svix-HMAC mit rawBody + Timestamp-Toleranz; Delivery/Bounce/Open-Events verifiziert.',
+      'Send-Flow: CC/BCC-Validierung, Signatur-Fallback Organization.emailSignature, CUSTOM_DOMAIN-Fallback auf Plattform-Absender, Test-Mail schreibt ActivityLog.',
+      'Frontend: CC/BCC im SendDocumentsEmailModal, Domain löschen, Buchungs-E-Mail-Historie, Kunden-E-Mail in InvoicesView, Sidebar-Link E-Mail & Versand.',
+      'Doku: Hostinger-Domain + Resend-API-Key Setup in architecture/OUTBOUND_EMAIL_2026-07-10.md.',
+    ],
+    reason:
+      'Re-Audit-Lücken nach Outbound-E-Mail-Vollversion — Webhook-Sicherheit, UX-Lücken und Betriebsdoku für Hostinger + Resend.',
+    previousBehavior:
+      'Webhook ohne Signaturprüfung; keine CC/BCC; Signatur nur aus OrgEmailSettings; fehlende Historie/Navigation.',
+    details:
+      'Tests: resend-webhook.service.spec, booking-document-email.service.spec (VOID, Cross-Booking, Send). API-Keys kommen von Resend (nicht Hostinger); Domain/DNS/Reply-To von Hostinger.',
+    affectsArchitecture: true,
+    module: 'Documents / Outbound Email',
+    createdAt: '2026-07-10T06:50:00.000Z',
+  },
+  {
     id: 'outbound-email-full-v49300-2026-07-10',
     version: '4.9.300',
     title: 'V4.9.300 — Outbound E-Mail: Dokumentenversand + Administration E-Mail & Versand',

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OrgEmailDomainStatus, OrgEmailMode } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -13,6 +13,8 @@ export interface ResolvedEmailIdentity {
 
 @Injectable()
 export class OutboundEmailPolicyService {
+  private readonly logger = new Logger(OutboundEmailPolicyService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
@@ -44,10 +46,16 @@ export class OutboundEmailPolicyService {
     let fromEmail = defaultFrom;
     let domainId: string | null = null;
 
-    if (mode === OrgEmailMode.CUSTOM_DOMAIN && activeDomain) {
-      const local = activeDomain.fromLocalPart?.trim() || 'noreply';
-      fromEmail = `${local}@${activeDomain.domain}`;
-      domainId = activeDomain.id;
+    if (mode === OrgEmailMode.CUSTOM_DOMAIN) {
+      if (!activeDomain) {
+        this.logger.warn(
+          `Org ${orgId} is in CUSTOM_DOMAIN mode but has no active verified domain — falling back to platform sender`,
+        );
+      } else {
+        const local = activeDomain.fromLocalPart?.trim() || 'noreply';
+        fromEmail = `${local}@${activeDomain.domain}`;
+        domainId = activeDomain.id;
+      }
     }
 
     const replyToEmail = this.resolveReplyTo({
@@ -89,5 +97,15 @@ export class OutboundEmailPolicyService {
   emailMatchesDomain(email: string, domain: string): boolean {
     const parts = email.toLowerCase().split('@');
     return parts.length === 2 && parts[1] === domain.toLowerCase();
+  }
+
+  validateRecipientEmails(emails: string[] | undefined, label: string) {
+    for (const email of emails ?? []) {
+      const trimmed = email?.trim();
+      if (!trimmed) continue;
+      if (!this.isValidEmail(trimmed)) {
+        throw new BadRequestException(`Invalid ${label} email: ${trimmed}`);
+      }
+    }
   }
 }

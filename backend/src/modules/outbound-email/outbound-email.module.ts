@@ -4,6 +4,7 @@ import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { OrgEmailController } from './org-email.controller';
 import { BookingDocumentsEmailController } from './booking-documents-email.controller';
 import { ResendWebhookController } from './resend-webhook.controller';
+import { ResendWebhookService } from './resend-webhook.service';
 import { OutboundEmailPolicyService } from './outbound-email-policy.service';
 import { OutboundEmailDomainService } from './outbound-email-domain.service';
 import { OutboundEmailService } from './outbound-email.service';
@@ -23,6 +24,7 @@ import { EmailProviderRegistry } from './providers/email-provider.registry';
     DevEmailProvider,
     ResendEmailProvider,
     EmailProviderRegistry,
+    ResendWebhookService,
   ],
   exports: [
     OutboundEmailPolicyService,

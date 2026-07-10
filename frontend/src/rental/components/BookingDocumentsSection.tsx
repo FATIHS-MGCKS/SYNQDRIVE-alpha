@@ -15,6 +15,7 @@ import {
   type BookingDocumentBundleView,
   type DocumentBundleStatus,
   type GeneratedDocumentDto,
+  type OutboundEmailDto,
 } from '../../lib/api';
 import { SendDocumentsEmailModal } from '../../components/email/SendDocumentsEmailModal';
 import { useRentalOrg } from '../RentalContext';
@@ -88,6 +89,8 @@ export function BookingDocumentsSection({
   const [error, setError] = useState<string | null>(null);
   const [sendOpen, setSendOpen] = useState(false);
   const [sendDocIds, setSendDocIds] = useState<string[] | undefined>(undefined);
+  const [emailHistory, setEmailHistory] = useState<OutboundEmailDto[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!orgId || !bookingId) return;
@@ -106,6 +109,23 @@ export function BookingDocumentsSection({
   useEffect(() => {
     void load();
   }, [load]);
+
+  const loadEmailHistory = useCallback(async () => {
+    if (!orgId || !bookingId) return;
+    setHistoryLoading(true);
+    try {
+      const res = await api.orgEmail.listHistory(orgId, { bookingId, limit: 10 });
+      setEmailHistory(res.data);
+    } catch {
+      setEmailHistory([]);
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [orgId, bookingId]);
+
+  useEffect(() => {
+    void loadEmailHistory();
+  }, [loadEmailHistory]);
 
   // Current (most recent, non-void) document per type.
   const currentByType = useMemo(() => {
@@ -341,8 +361,43 @@ export function BookingDocumentsSection({
         defaultToEmail={customerEmail}
         documents={sendableDocuments}
         preselectedDocumentIds={sendDocIds}
-        onSent={() => void load()}
+        onSent={() => {
+          void load();
+          void loadEmailHistory();
+        }}
       />
+
+      <div className={`mt-6 pt-4 border-t ${isDarkMode ? 'border-border/50' : 'border-gray-200'}`}>
+        <div className={`text-[11px] font-semibold uppercase tracking-wider mb-2 ${subtle}`}>
+          E-Mail-Versandhistorie
+        </div>
+        {historyLoading ? (
+          <div className={`flex items-center gap-2 text-xs ${subtle}`}>
+            <Loader2 className="w-3.5 h-3.5 animate-spin" /> Lädt…
+          </div>
+        ) : emailHistory.length === 0 ? (
+          <p className={`text-xs ${subtle}`}>Noch keine E-Mails für diese Buchung versendet.</p>
+        ) : (
+          <div className="space-y-2">
+            {emailHistory.map((row) => (
+              <div
+                key={row.id}
+                className={`flex items-center justify-between gap-2 rounded-lg border px-3 py-2 text-xs ${
+                  isDarkMode ? 'border-border/40 bg-muted/20' : 'border-gray-200 bg-gray-50/60'
+                }`}
+              >
+                <div className="min-w-0">
+                  <div className="font-medium truncate">{row.subject}</div>
+                  <div className={`truncate ${subtle}`}>
+                    {row.toEmail} · {new Date(row.sentAt || row.createdAt).toLocaleString('de-DE')}
+                  </div>
+                </div>
+                <span className="shrink-0 text-[10px] font-medium uppercase">{row.status}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

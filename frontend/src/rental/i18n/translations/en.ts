@@ -33,6 +33,7 @@ export const en = {
   'nav.usersRoles': 'Users & Roles',
   'nav.dataAuthorization': 'Data Authorization & Consent',
   'nav.legalDocuments': 'Legal Documents',
+  'nav.emailVersand': 'E-Mail & Versand',
   'nav.billingSubscription': 'Billing & Subscription',
   'nav.rentalRules': 'Rental Rules',
   'nav.support': 'Support',

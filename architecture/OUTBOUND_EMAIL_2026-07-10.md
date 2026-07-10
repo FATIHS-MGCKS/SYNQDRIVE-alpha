@@ -41,3 +41,67 @@ Activity audit: `ActivityAction.SEND` + `ActivityEntity.OUTBOUND_EMAIL`.
 - `SendDocumentsEmailModal` — booking document send with attachment picker
 - Administration tab **E-Mail & Versand** (`EmailVersandTab`)
 - Entry points: `BookingDocumentsSection`, `InvoicesView` (when booking + generated PDF linked)
+
+---
+
+## Setup: Hostinger-Domain + Resend (Produktion)
+
+SynqDrive versendet **transaktionale E-Mails mit PDF-Anhängen über [Resend](https://resend.com)** — nicht über Hostinger-SMTP direkt. Ihre Domain/E-Mail-Adresse kommt von **Hostinger**, die **API-Keys** von **Resend**.
+
+### Schritt 1 — Domain bei Hostinger
+
+1. Domain bei Hostinger kaufen/verwalten (z. B. `ihre-firma.de`).
+2. Optional: Postfach `rechnung@ihre-firma.de` bei Hostinger anlegen — das nutzen Sie als **Reply-To** (Antworten der Kunden landen dort).
+3. **Wichtig:** Für den Versand aus SynqDrive werden zusätzlich **DNS-Einträge** bei Hostinger gesetzt (SPF/DKIM von Resend), nicht Hostinger-SMTP in der App.
+
+### Schritt 2 — Resend Account + API Key
+
+1. Kostenlosen Account erstellen: [https://resend.com/signup](https://resend.com/signup)
+2. Dashboard → **API Keys** → **Create API Key**
+3. Key kopieren (beginnt mit `re_…`) — **nur einmal sichtbar**
+4. In VPS `backend.env` eintragen:
+
+```env
+RESEND_API_KEY=re_xxxxxxxx
+EMAIL_PROVIDER=resend
+EMAIL_DEFAULT_FROM=noreply@synqdrive.eu
+EMAIL_DEFAULT_REPLY_TO=support@synqdrive.eu
+```
+
+Bis Ihre eigene Domain verifiziert ist, können Sie mit der Resend-Testdomain senden (nur an verifizierte Empfänger im Resend-Dashboard).
+
+### Schritt 3 — Eigene Domain in SynqDrive verbinden
+
+1. SynqDrive → **Administration → E-Mail & Versand**
+2. Domain hinzufügen: `ihre-firma.de`, Absender-Präfix z. B. `dokumente` → `dokumente@ihre-firma.de`
+3. SynqDrive zeigt **DNS-Einträge** (TXT/CNAME/MX)
+4. Bei **Hostinger** → Domain → **DNS / DNS-Zone** → Einträge exakt wie angezeigt anlegen
+5. In SynqDrive **DNS prüfen** → nach Verifizierung **Aktivieren**
+6. Versandmodus auf **Eigene Domain** stellen, Reply-To auf `rechnung@ihre-firma.de`
+
+### Schritt 4 — Webhook (optional, Zustellstatus)
+
+1. Resend Dashboard → **Webhooks** → Endpoint:  
+   `https://app.synqdrive.eu/api/v1/webhooks/resend/outbound-email`
+2. Events: `email.delivered`, `email.bounced`, `email.complained`, `email.opened`
+3. Signing Secret kopieren → `backend.env`:
+
+```env
+RESEND_WEBHOOK_SECRET=whsec_xxxxxxxx
+```
+
+### Was woher kommt — Kurzüberblick
+
+| Was | Wo holen | Wofür |
+|-----|----------|--------|
+| Domain `ihre-firma.de` | **Hostinger** | Absender-Domain, Reply-To-Postfach |
+| `RESEND_API_KEY` | **Resend Dashboard** | API-Versand aus SynqDrive |
+| DNS-Einträge | In SynqDrive angezeigt → bei **Hostinger DNS** eintragen | Domain-Verifizierung |
+| `RESEND_WEBHOOK_SECRET` | **Resend Webhooks** | Zustell-/Bounce-Events |
+| `EMAIL_DEFAULT_FROM` | SynqDrive-Plattform (`noreply@synqdrive.eu`) bis Domain aktiv | Fallback-Absender |
+
+### Signatur
+
+- Primär: **Administration → E-Mail & Versand → Signatur (HTML)**
+- Fallback: **Administration → Unternehmen → E-Mail-Signatur** (`Organization.emailSignature`)
+

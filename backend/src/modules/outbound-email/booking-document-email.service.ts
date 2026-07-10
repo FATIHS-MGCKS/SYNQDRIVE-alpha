@@ -59,6 +59,8 @@ export class BookingDocumentEmailService {
     if (!this.policy.isValidEmail(input.toEmail)) {
       throw new BadRequestException('Invalid recipient email');
     }
+    this.policy.validateRecipientEmails(input.ccEmails, 'CC');
+    this.policy.validateRecipientEmails(input.bccEmails, 'BCC');
 
     await this.assertRateLimit(orgId);
 
@@ -91,11 +93,16 @@ export class BookingDocumentEmailService {
     }
 
     const identity = await this.policy.resolveIdentity(orgId);
-    const settings = await this.prisma.orgEmailSettings.findUnique({
-      where: { organizationId: orgId },
+    const org = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { emailSignature: true, orgEmailSettings: true },
     });
 
-    const bodyHtml = this.composeBodyHtml(input.bodyHtml, settings?.signatureHtml);
+    const bodyHtml = this.composeBodyHtml(
+      input.bodyHtml,
+      org?.orgEmailSettings?.signatureHtml,
+      org?.emailSignature,
+    );
     const bodyText = input.bodyText?.trim() || this.stripHtml(bodyHtml);
 
     const attachments = [];
@@ -304,6 +311,29 @@ export class BookingDocumentEmailService {
       include: { attachments: true, events: { orderBy: { occurredAt: 'asc' } } },
     });
 
+    await this.outboundEmail.recordEvent(
+      outbound.id,
+      finalStatus === OutboundEmailStatus.FAILED
+        ? OutboundEmailEventType.FAILED
+        : OutboundEmailEventType.SENT,
+      {
+        provider: result.provider,
+        providerMessageId: result.providerMessageId,
+        errorCode: result.errorCode,
+        errorMessage: result.errorMessage,
+      },
+    );
+
+    await this.activityLog.log({
+      organizationId: orgId,
+      userId: userId ?? undefined,
+      action: ActivityAction.SEND,
+      entity: ActivityEntity.OUTBOUND_EMAIL,
+      entityId: outbound.id,
+      description: `Sent test email to ${toEmail}`,
+      metaJson: { sourceType: 'TEST', status: finalStatus, provider: result.provider },
+    });
+
     return this.outboundEmail.toDto(updated);
   }
 
@@ -318,10 +348,16 @@ export class BookingDocumentEmailService {
     }
   }
 
-  private composeBodyHtml(bodyHtml: string | undefined, signatureHtml: string | null | undefined) {
+  private composeBodyHtml(
+    bodyHtml: string | undefined,
+    signatureHtml: string | null | undefined,
+    legacyOrgSignature: string | null | undefined,
+  ) {
     const main = bodyHtml?.trim() || '<p>Im Anhang finden Sie die angeforderten Dokumente.</p>';
-    if (!signatureHtml?.trim()) return main;
-    return `${main}<br/><br/>${signatureHtml.trim()}`;
+    const signature = signatureHtml?.trim() || legacyOrgSignature?.trim();
+    if (!signature) return main;
+    const sigBlock = signature.includes('<') ? signature : `<p>${signature.replace(/\n/g, '<br/>')}</p>`;
+    return `${main}<br/><br/>${sigBlock}`;
   }
 
   private stripHtml(html: string): string {
