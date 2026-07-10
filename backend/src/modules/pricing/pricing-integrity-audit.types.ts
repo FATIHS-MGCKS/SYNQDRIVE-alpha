@@ -60,6 +60,14 @@ export interface PricingIntegrityRepairAction {
   after: Record<string, unknown>;
 }
 
+export interface PricingIntegrityAuditLogEntry {
+  at: string;
+  level: 'info' | 'action' | 'skip';
+  message: string;
+  actionId?: string;
+  entityId?: string;
+}
+
 export interface PricingIntegrityRepairReport {
   mode: 'repair';
   dryRun: boolean;
@@ -67,6 +75,7 @@ export interface PricingIntegrityRepairReport {
   generatedAt: string;
   organizationId: string;
   actions: PricingIntegrityRepairAction[];
+  auditLog: PricingIntegrityAuditLogEntry[];
   skipped: Array<{ reason: string; checkId?: string; entityId?: string }>;
   audit: PricingIntegrityAuditReport;
 }

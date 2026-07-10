@@ -43,7 +43,11 @@ describe('PricingIntegrityAuditService', () => {
           },
         ]),
       },
-      vehicleTariffAssignment: { findMany: jest.fn().mockResolvedValue([]) },
+      vehicleTariffAssignment: {
+        findMany: jest.fn().mockResolvedValue([]),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+      },
       priceBook: {
         findMany: jest.fn().mockResolvedValue([
           { id: 'book-1', currency: 'EUR', isActive: true, name: 'Default' },
@@ -54,6 +58,15 @@ describe('PricingIntegrityAuditService', () => {
         findMany: jest.fn().mockResolvedValue([]),
         count: jest.fn().mockResolvedValue(0),
       },
+      $transaction: jest.fn(async (fn: (tx: unknown) => Promise<void>) => {
+        const tx = {
+          vehicleTariffAssignment: {
+            findUnique: jest.fn().mockResolvedValue({ isActive: true }),
+            update: jest.fn().mockResolvedValue({}),
+          },
+        };
+        await fn(tx);
+      }),
       booking: { findMany: jest.fn().mockResolvedValue([]) },
       ...overrides,
     };
@@ -150,5 +163,6 @@ describe('PricingIntegrityAuditService', () => {
     });
 
     expect(report.actions.some((a) => a.actionId === 'expire_stale_quotes')).toBe(true);
+    expect(report.auditLog.length).toBeGreaterThan(0);
   });
 });

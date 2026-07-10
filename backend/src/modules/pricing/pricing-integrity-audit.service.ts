@@ -79,10 +79,23 @@ export class PricingIntegrityAuditService {
   }): Promise<PricingIntegrityRepairReport> {
     const audit = await this.runAudit(options.organizationId);
     const actions: PricingIntegrityRepairReport['actions'] = [];
+    const auditLog: PricingIntegrityRepairReport['auditLog'] = [];
     const skipped: PricingIntegrityRepairReport['skipped'] = [];
+
+    const log = (level: PricingIntegrityRepairReport['auditLog'][0]['level'], message: string, meta?: { actionId?: string; entityId?: string }) => {
+      auditLog.push({
+        at: new Date().toISOString(),
+        level,
+        message,
+        ...meta,
+      });
+    };
+
+    log('info', `Repair started (dryRun=${options.dryRun}, confirmed=${options.confirmed})`);
 
     if (!options.confirmed) {
       skipped.push({ reason: 'Repair requires --confirm flag' });
+      log('skip', 'Repair requires --confirm flag');
       return {
         mode: 'repair',
         dryRun: options.dryRun,
@@ -90,6 +103,7 @@ export class PricingIntegrityAuditService {
         generatedAt: new Date().toISOString(),
         organizationId: options.organizationId,
         actions,
+        auditLog,
         skipped,
         audit,
       };
@@ -113,6 +127,7 @@ export class PricingIntegrityAuditService {
           before: { status: 'ACTIVE' },
           after: { status: 'EXPIRED', count: staleCandidates },
         });
+        log('action', `Dry-run: would expire ${staleCandidates} stale quote(s)`, { actionId: 'expire_stale_quotes' });
       }
     } else {
       const expired = await this.quoteService.expireStaleQuotes(options.organizationId);
@@ -126,14 +141,17 @@ export class PricingIntegrityAuditService {
           before: { status: 'ACTIVE' },
           after: { status: 'EXPIRED', count: expired },
         });
+        log('action', `Expired ${expired} stale quote(s)`, { actionId: 'expire_stale_quotes' });
       }
     }
 
     const inactiveAssignments =
       audit.checks.find((c) => c.checkId === 'inactive_group_active_assignment')?.violations ?? [];
 
-    for (const v of inactiveAssignments.slice(0, MAX_SAMPLES_PER_CHECK)) {
-      if (options.dryRun) {
+    const assignmentIds = inactiveAssignments.slice(0, MAX_SAMPLES_PER_CHECK).map((v) => v.entityId);
+
+    if (options.dryRun) {
+      for (const v of inactiveAssignments.slice(0, MAX_SAMPLES_PER_CHECK)) {
         actions.push({
           actionId: 'deactivate_assignment_on_inactive_group',
           organizationId: options.organizationId,
@@ -143,27 +161,40 @@ export class PricingIntegrityAuditService {
           before: { isActive: true },
           after: { isActive: false },
         });
-      } else {
-        const before = await this.prisma.vehicleTariffAssignment.findUnique({
-          where: { id: v.entityId },
-          select: { isActive: true },
+        log('action', `Dry-run: would deactivate assignment ${v.entityId}`, {
+          actionId: 'deactivate_assignment_on_inactive_group',
+          entityId: v.entityId,
         });
-        if (before?.isActive) {
-          await this.prisma.vehicleTariffAssignment.update({
-            where: { id: v.entityId },
+      }
+    } else if (assignmentIds.length > 0) {
+      await this.prisma.$transaction(async (tx) => {
+        for (const assignmentId of assignmentIds) {
+          const before = await tx.vehicleTariffAssignment.findUnique({
+            where: { id: assignmentId },
+            select: { isActive: true },
+          });
+          if (!before?.isActive) continue;
+
+          await tx.vehicleTariffAssignment.update({
+            where: { id: assignmentId },
             data: { isActive: false },
           });
+
           actions.push({
             actionId: 'deactivate_assignment_on_inactive_group',
             organizationId: options.organizationId,
-            entityType: v.entityType,
-            entityId: v.entityId,
+            entityType: 'vehicle_tariff_assignment',
+            entityId: assignmentId,
             description: 'Deactivated assignment on inactive tariff group',
             before: { isActive: true },
             after: { isActive: false },
           });
+          log('action', `Deactivated assignment ${assignmentId}`, {
+            actionId: 'deactivate_assignment_on_inactive_group',
+            entityId: assignmentId,
+          });
         }
-      }
+      });
     }
 
     const repairedIds = new Set(actions.map((a) => a.actionId));
@@ -193,6 +224,7 @@ export class PricingIntegrityAuditService {
       generatedAt: new Date().toISOString(),
       organizationId: options.organizationId,
       actions,
+      auditLog,
       skipped,
       audit,
     };
@@ -619,6 +651,28 @@ export class PricingIntegrityAuditService {
             entityId: li.id,
           });
         }
+      }
+    }
+
+    const consumedByBooking = new Map<string, string[]>();
+    for (const q of quotes) {
+      if (q.status === 'CONSUMED' && q.consumedByBookingId) {
+        const list = consumedByBooking.get(q.consumedByBookingId) ?? [];
+        list.push(q.id);
+        consumedByBooking.set(q.consumedByBookingId, list);
+      }
+    }
+    for (const [bookingId, quoteIds] of consumedByBooking) {
+      if (quoteIds.length > 1) {
+        violations.push({
+          checkId: 'quote_reuse_anomaly',
+          severity: 'error',
+          organizationId: orgId,
+          message: `Booking linked to ${quoteIds.length} CONSUMED quotes`,
+          entityType: 'booking',
+          entityId: bookingId,
+          details: { quoteIds: quoteIds.join(',') },
+        });
       }
     }
 
