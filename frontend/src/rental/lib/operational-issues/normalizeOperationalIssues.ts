@@ -387,6 +387,38 @@ function dashboardInsightToIssueDraft(
         vehicle,
         source,
       });
+    case 'DRIVING_ASSESSMENT_DEVICE_QUALITY': {
+      const recovering =
+        typeof insight.metrics?.vehicleStatus === 'string' &&
+        insight.metrics.vehicleStatus === 'RECOVERING';
+      return vehicleIssueDraft({
+        semanticKey: createVehicleIssueKey(
+          entityId,
+          'vehicle_health',
+          'driving_assessment_device_quality',
+        ),
+        domain: 'vehicle_health',
+        issueType: 'driving_assessment_device_quality',
+        severity: recovering ? 'attention' : 'warning',
+        title,
+        subtitle,
+        vehicleId: entityId,
+        vehicle,
+        source,
+        visibility: {
+          dashboardAttention: true,
+          dashboardDrawer: true,
+          fleetCommand: true,
+          vehicleOverview: true,
+          vehicleHealth: false,
+          vehicleTrips: true,
+          vehicleDamages: false,
+          bookingDetail: false,
+          finance: false,
+          debug: false,
+        },
+      });
+    }
     case 'PICKUP_OVERDUE':
       return {
         semanticKey: createBookingIssueKey(entityId, 'booking', 'pickup_overdue'),

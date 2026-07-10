@@ -8,6 +8,7 @@ import { useFleetObdPlugIndex } from '../../hooks/useFleetObdPlugIndex';
 import { shouldShowObdUnpluggedBadge } from '../../lib/obd-plug-status';
 import { formatUserFacingReasonLabel } from '../../lib/operational-issues';
 import { ObdUnpluggedBadge } from '../ObdUnpluggedBadge';
+import { VehicleDrivingAssessmentQualityChip } from './VehicleDrivingAssessmentQualityCard';
 import {
   mapDataCoverageDisplay,
   mapHealthSeverityDisplay,
@@ -79,6 +80,7 @@ export function VehicleConnectionBadge({
           </span>
         </div>
         {showObdUnplugged ? <ObdUnpluggedBadge /> : null}
+        <VehicleDrivingAssessmentQualityChip vehicleId={resolvedVehicleId} compact />
       </div>
     );
   }
@@ -99,6 +101,7 @@ export function VehicleConnectionBadge({
         </div>
       </div>
       {showObdUnplugged ? <ObdUnpluggedBadge className="text-[9.5px]" /> : null}
+      <VehicleDrivingAssessmentQualityChip vehicleId={resolvedVehicleId} />
     </div>
   );
 }

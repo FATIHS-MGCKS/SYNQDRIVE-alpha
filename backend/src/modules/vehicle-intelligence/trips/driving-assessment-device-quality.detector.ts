@@ -1,7 +1,16 @@
 /**
  * Pure detector for LTE_R1 native driving-event quality (Fahrbewertung only).
- * Calibrated from Phase-0 evidence on WOB L 7503 (2026-07-10).
+ * Phase 0: WOB L 7503 evidence. Phase 2: org-relative LTE_R1 baseline.
  */
+import type { OrgLteR1Baseline } from './driving-assessment-org-baseline';
+import { evaluateAgainstOrgBaseline } from './driving-assessment-org-baseline';
+
+export type { OrgLteR1Baseline } from './driving-assessment-org-baseline';
+export {
+  ORG_BASELINE_LOOKBACK_DAYS,
+  ORG_BASELINE_MIN_SAMPLE_TRIPS,
+  buildOrgLteR1Baseline,
+} from './driving-assessment-org-baseline';
 
 export const DEVICE_QUALITY_TIMESTAMP_BUCKET_MS = 2_000;
 export const DEVICE_QUALITY_EVALUATION_WINDOW = 3;
@@ -25,6 +34,7 @@ export interface TripDeviceQualityMetrics {
   eventsPerMin: number | null;
   burstDuplicateRatio: number | null;
   medianInterEventGapMs: number | null;
+  orgBaselineApplied?: boolean;
 }
 
 export interface TripDeviceQualityVerdict {
@@ -129,6 +139,7 @@ export function evaluateTripDeviceQuality(input: {
   events: NativeEventSample[];
   distanceKm: number | null;
   durationMin: number | null;
+  orgBaseline?: OrgLteR1Baseline | null;
 }): TripDeviceQualityVerdict {
   const metrics = computeTripDeviceQualityMetrics(input);
   const reasons: string[] = [];
@@ -156,9 +167,28 @@ export function evaluateTripDeviceQuality(input: {
     reasons.push(`raw_visible_ratio=${(metrics.rawNativeCount / metrics.visibleDedupedCount).toFixed(2)}`);
   }
 
+  const orgReasons = input.orgBaseline
+    ? evaluateAgainstOrgBaseline({
+        eventsPerKm: metrics.eventsPerKm,
+        rawNativeCount: metrics.rawNativeCount,
+        medianInterEventGapMs: metrics.medianInterEventGapMs,
+        durationMin: input.durationMin,
+        baseline: input.orgBaseline,
+      })
+    : [];
+
+  const mergedReasons = [...reasons];
+  for (const reason of orgReasons) {
+    if (!mergedReasons.includes(reason)) mergedReasons.push(reason);
+  }
+
+  if (orgReasons.length > 0) {
+    metrics.orgBaselineApplied = true;
+  }
+
   return {
-    flagged: reasons.length > 0,
-    reasons,
+    flagged: mergedReasons.length > 0,
+    reasons: mergedReasons,
     metrics,
   };
 }

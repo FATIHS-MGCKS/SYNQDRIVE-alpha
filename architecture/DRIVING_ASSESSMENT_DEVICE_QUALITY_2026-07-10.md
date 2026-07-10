@@ -31,6 +31,20 @@ See Phase-0 evidence: `DRIVING_ASSESSMENT_DEVICE_QUALITY_PHASE0_2026-07-10.md`.
 # Diagnose
 npx ts-node -r tsconfig-paths/register scripts/analyze-lte-r1-driving-event-quality.ts --plate 7503
 
-# Backfill existing trips → vehicle state + Mängelliste
+# Backfill single vehicle
 npx ts-node -r tsconfig-paths/register scripts/backfill-driving-assessment-device-quality.ts --plate 7503
+
+# Fleet backfill (all LTE_R1)
+npx ts-node -r tsconfig-paths/register scripts/backfill-driving-assessment-device-quality-fleet.ts --execute
 ```
+
+## Phases
+
+| Phase | Scope |
+|-------|--------|
+| 0 | Prod evidence (WOB L 7503) |
+| 1 | Detector, trip badges, Mängelliste, dashboard insight, auto-recovery |
+| 2 | Org-relative LTE_R1 baseline in trip detector |
+| 3 | Vehicle overview/header chip, API, ActionQueue mapping, debounced insight rerun |
+| 4 | Dashboard notification feed from device-quality insights |
+| 5 | Fleet backfill script, baseline cache, regression tests |

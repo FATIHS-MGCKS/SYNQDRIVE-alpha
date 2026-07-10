@@ -89,6 +89,8 @@ export function categoryFromInsightType(type: string | undefined): RuntimeReason
     case 'RETURN_NEEDS_INSPECTION':
     case 'TIGHT_HANDOVER':
       return 'handover';
+    case 'DRIVING_ASSESSMENT_DEVICE_QUALITY':
+      return 'health';
     case 'STATION_SHORTAGE':
       return 'operational';
     default:

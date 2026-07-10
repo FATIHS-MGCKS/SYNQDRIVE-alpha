@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common';
 import { DrivingEventType, HardwareType, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TechnicalObservationsService } from '@modules/technical-observations/technical-observations.service';
@@ -9,6 +9,9 @@ import {
   evaluateTripDeviceQuality,
   shouldWarnOnTrip,
   transitionVehicleDeviceQualityState,
+  type OrgLteR1Baseline,
+  buildOrgLteR1Baseline,
+  ORG_BASELINE_LOOKBACK_DAYS,
 } from './driving-assessment-device-quality.detector';
 import {
   type AnalysisAssessabilityContext,
@@ -16,16 +19,34 @@ import {
   mergeAssessabilityIntoSummary,
   parseBehaviorSummaryJson,
 } from './trip-analysis-status';
+import { BusinessInsightsTriggerService } from '@modules/business-insights/business-insights-trigger.service';
 
 const OBSERVATION_TITLE = 'Fahrbewertung eingeschränkt — Telematik-Gerät';
+const BASELINE_CACHE_TTL_MS = 60 * 60_000;
+
+export interface DrivingAssessmentQualityStatusDto {
+  status: DrivingAssessmentQualityStatus;
+  degradedSince: string | null;
+  recoveredAt: string | null;
+  lastEvaluatedAt: string | null;
+  activeObservationId: string | null;
+  orgBaseline: OrgLteR1Baseline | null;
+}
 
 @Injectable()
 export class DrivingAssessmentDeviceQualityService {
   private readonly logger = new Logger(DrivingAssessmentDeviceQualityService.name);
+  private readonly orgBaselineCache = new Map<
+    string,
+    { baseline: OrgLteR1Baseline; expiresAt: number }
+  >();
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly observations: TechnicalObservationsService,
+    @Optional()
+    @Inject(forwardRef(() => BusinessInsightsTriggerService))
+    private readonly insightsTrigger?: BusinessInsightsTriggerService,
   ) {}
 
   /**
@@ -55,6 +76,8 @@ export class DrivingAssessmentDeviceQualityService {
       orderBy: { recordedAt: 'asc' },
     });
 
+    const orgBaseline = await this.getOrgLteR1Baseline(input.organizationId, input.vehicleId);
+
     const tripVerdict = evaluateTripDeviceQuality({
       events: events.map((e) => ({
         eventType: e.eventType as string,
@@ -62,6 +85,7 @@ export class DrivingAssessmentDeviceQualityService {
       })),
       distanceKm: input.distanceKm,
       durationMin: input.durationMin,
+      orgBaseline,
     });
 
     const recentTrips = await this.prisma.vehicleTrip.findMany({
@@ -99,6 +123,7 @@ export class DrivingAssessmentDeviceQualityService {
       lastTripId: input.tripId,
       lastTripVerdict: tripVerdict,
       recentFlagged,
+      orgBaseline,
       evaluatedAt: new Date().toISOString(),
     } as unknown as Prisma.InputJsonValue;
 
@@ -176,11 +201,13 @@ export class DrivingAssessmentDeviceQualityService {
       this.logger.warn(
         `Vehicle ${input.vehicleId} driving assessment quality DEGRADED (trip ${input.tripId})`,
       );
+      void this.requestInsightsRerun(input.organizationId, 'driving_assessment_degraded');
     }
     if (transition.nextStatus === 'NORMAL' && existing?.status && existing.status !== 'NORMAL') {
       this.logger.log(
         `Vehicle ${input.vehicleId} driving assessment quality recovered to NORMAL`,
       );
+      void this.requestInsightsRerun(input.organizationId, 'driving_assessment_recovered');
     }
 
     return merged;
@@ -249,15 +276,103 @@ export class DrivingAssessmentDeviceQualityService {
   async getVehicleStatus(
     vehicleId: string,
   ): Promise<{ status: DrivingAssessmentQualityStatus; degradedSince: string | null } | null> {
+    const dto = await this.getVehicleQualityStatus(vehicleId);
+    if (!dto) return null;
+    return { status: dto.status, degradedSince: dto.degradedSince };
+  }
+
+  async getVehicleQualityStatus(vehicleId: string): Promise<DrivingAssessmentQualityStatusDto | null> {
     const row = await this.prisma.vehicleDrivingAssessmentQuality.findUnique({
       where: { vehicleId },
-      select: { status: true, degradedSince: true },
+      select: {
+        organizationId: true,
+        status: true,
+        degradedSince: true,
+        recoveredAt: true,
+        lastEvaluatedAt: true,
+        activeObservationId: true,
+      },
     });
     if (!row) return null;
+
+    const orgBaseline = await this.getOrgLteR1Baseline(row.organizationId, vehicleId);
+
     return {
       status: row.status as DrivingAssessmentQualityStatus,
       degradedSince: row.degradedSince?.toISOString() ?? null,
+      recoveredAt: row.recoveredAt?.toISOString() ?? null,
+      lastEvaluatedAt: row.lastEvaluatedAt?.toISOString() ?? null,
+      activeObservationId: row.activeObservationId,
+      orgBaseline,
     };
+  }
+
+  async getOrgLteR1Baseline(
+    organizationId: string,
+    excludeVehicleId?: string,
+  ): Promise<OrgLteR1Baseline> {
+    const cacheKey = `${organizationId}:${excludeVehicleId ?? 'all'}`;
+    const cached = this.orgBaselineCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.baseline;
+    }
+
+    const since = new Date(Date.now() - ORG_BASELINE_LOOKBACK_DAYS * 24 * 60 * 60_000);
+    const trips = await this.prisma.vehicleTrip.findMany({
+      where: {
+        tripStatus: 'COMPLETED',
+        endTime: { gte: since },
+        distanceKm: { gte: 0.5 },
+        vehicle: {
+          organizationId,
+          hardwareType: 'LTE_R1',
+          ...(excludeVehicleId ? { id: { not: excludeVehicleId } } : {}),
+        },
+      },
+      select: {
+        id: true,
+        distanceKm: true,
+        _count: {
+          select: {
+            events: {
+              where: { source: 'TELEMETRY_EVENTS' },
+            },
+          },
+        },
+      },
+      take: 500,
+      orderBy: { endTime: 'desc' },
+    });
+
+    const samples = trips.map((trip) => {
+      const rawNativeCount = trip._count.events;
+      const distanceKm = trip.distanceKm ?? 0;
+      return {
+        rawNativeCount,
+        eventsPerKm: distanceKm >= 1 ? rawNativeCount / distanceKm : null,
+      };
+    });
+
+    const baseline = buildOrgLteR1Baseline(samples);
+    this.orgBaselineCache.set(cacheKey, {
+      baseline,
+      expiresAt: Date.now() + BASELINE_CACHE_TTL_MS,
+    });
+    return baseline;
+  }
+
+  private async requestInsightsRerun(organizationId: string, detail: string): Promise<void> {
+    if (!this.insightsTrigger) return;
+    try {
+      await this.insightsTrigger.requestDebouncedRerun(
+        organizationId,
+        `driving_assessment_quality:${detail}`,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `Insights rerun request failed for org ${organizationId}: ${(err as Error).message}`,
+      );
+    }
   }
 
   private async resolveLicensePlate(vehicleId: string): Promise<string | null> {

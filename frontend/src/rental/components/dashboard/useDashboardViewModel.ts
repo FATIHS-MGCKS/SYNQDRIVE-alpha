@@ -564,7 +564,27 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     });
   }, [intlLocale]);
 
-  const dashboardNotifications = useMemo<DashboardNotificationItem[]>(() => [], []);
+  const dashboardNotifications = useMemo<DashboardNotificationItem[]>(() => {
+    const deviceQualityInsights = insights.filter(
+      (insight) => insight.type === 'DRIVING_ASSESSMENT_DEVICE_QUALITY',
+    );
+    return deviceQualityInsights.map((insight) => {
+      const recovering =
+        typeof insight.metrics?.vehicleStatus === 'string' &&
+        insight.metrics.vehicleStatus === 'RECOVERING';
+      const generatedAt = insightsResponse?.generatedAt;
+      const time = generatedAt
+        ? new Date(generatedAt).toLocaleTimeString(intlLocale, { hour: '2-digit', minute: '2-digit' })
+        : '—';
+      return {
+        type: 'alert' as const,
+        title: insight.title || (recovering ? 'Fahrbewertung normalisiert sich' : 'Fahrbewertung eingeschränkt'),
+        desc: insight.message || '',
+        time,
+        unread: !recovering,
+      };
+    });
+  }, [insights, insightsResponse?.generatedAt, intlLocale]);
 
   const dataFreshness = useMemo(
     () => ({

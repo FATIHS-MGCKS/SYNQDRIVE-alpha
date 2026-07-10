@@ -4028,6 +4028,8 @@ export const api = {
   },
   vehicleIntelligence: {
     all: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/intelligence`),
+    drivingAssessmentQuality: (vehicleId: string) =>
+      get<DrivingAssessmentQualityResponse>(`/vehicles/${vehicleId}/driving-assessment-quality`),
     battery: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/battery`),
     tires: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/tires`),
     tireWearAnalysis: (vehicleId: string) => get<TireWearAnalysis | null>(`/vehicles/${vehicleId}/tires/wear-analysis`),
@@ -5815,6 +5817,28 @@ export interface DeviceConnectionEventView {
   rentalRelevant: boolean;
   bookingId: string | null;
   tripId: string | null;
+}
+
+export type DrivingAssessmentQualityStatus = 'NORMAL' | 'DEGRADED' | 'RECOVERING';
+
+export interface OrgLteR1BaselineView {
+  sampleTrips: number;
+  medianEventsPerKm: number | null;
+  p95EventsPerKm: number | null;
+  medianRawEventsPerTrip: number | null;
+  p95RawEventsPerTrip: number | null;
+  sufficient: boolean;
+  computedAt: string;
+}
+
+export interface DrivingAssessmentQualityResponse {
+  applicable: boolean;
+  status?: DrivingAssessmentQualityStatus;
+  degradedSince?: string | null;
+  recoveredAt?: string | null;
+  lastEvaluatedAt?: string | null;
+  activeObservationId?: string | null;
+  orgBaseline?: OrgLteR1BaselineView | null;
 }
 
 export interface DeviceConnectionSummary {

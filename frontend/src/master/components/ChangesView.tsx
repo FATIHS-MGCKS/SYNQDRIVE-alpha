@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'lte-r1-device-quality-phases-2-5-v49307-2026-07-10',
+    version: '4.9.307',
+    title: 'V4.9.307 — LTE R1 Fahrbewertung: Phasen 2–5 (Baseline, Fahrzeug-UX, Notifications, Fleet)',
+    summary: [
+      'Phase 2: Org-relative LTE_R1-Flottenbaseline (median/p95 events/km) ergänzt feste Schwellen im Trip-Detector.',
+      'Phase 3: API `GET /vehicles/:id/driving-assessment-quality`, Fahrzeug-Header/Overview-Chip, ActionQueue-Mapping, debounced Insight-Rerun bei Statuswechsel.',
+      'Phase 4: Dashboard-Notifications-Feed aus `DRIVING_ASSESSMENT_DEVICE_QUALITY`-Insights.',
+      'Phase 5: Fleet-Backfill-Script `backfill-driving-assessment-device-quality-fleet.ts`, Baseline-Cache, Regression-Tests.',
+    ],
+    reason: 'Phase-0-Empfehlung (Baseline vs. Fleet) und Phase-1-Lücken (Fahrzeug-Surface, ActionQueue, sofortige Insights) nachziehen.',
+    previousBehavior: 'Phase 1: feste Schwellen, Trip-Badges, Mängelliste, Dashboard-Insight — aber ohne Org-Baseline, ohne Fahrzeug-Chip, leerer Notifications-Feed.',
+    details:
+      'driving-assessment-org-baseline.ts, VehicleDrivingAssessmentQualityCard/Chip, normalizeOperationalIssues, useDashboardViewModel notifications.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-10T10:30:00.000Z',
+  },
+  {
     id: 'lte-r1-device-quality-phase1-v49306-2026-07-10',
     version: '4.9.306',
     title: 'V4.9.306 — LTE R1 Fahrbewertung: Geräte-Qualitätsdetector + UX',

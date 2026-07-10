@@ -6,6 +6,7 @@ import { formatVehicleIssueEntityLabel } from '../../lib/operational-issues';
 import { OverviewLiveMapCard } from './OverviewLiveMapCard';
 import { VehicleHealthBoxTelemetryBridge } from './VehicleHealthBoxWired';
 import { VehicleDeviceConnectionCard } from './VehicleDeviceConnectionCard';
+import { VehicleDrivingAssessmentQualityOverviewCard } from './VehicleDrivingAssessmentQualityCard';
 import { VehicleOverviewFreshnessHint } from './VehicleOverviewFreshnessHint';
 import { VehicleServiceContextPanel } from './VehicleServiceContextPanel';
 import { vo } from './vehicle-overview-ui';
@@ -81,6 +82,9 @@ export function VehicleOverviewTab({
             />
             {selectedVehicle?.id && (
               <VehicleDeviceConnectionCard orgId={orgId} vehicleId={selectedVehicle.id} />
+            )}
+            {selectedVehicle?.id && (
+              <VehicleDrivingAssessmentQualityOverviewCard vehicleId={selectedVehicle.id} />
             )}
           </div>
         </div>

@@ -71,6 +71,7 @@ import { AiTireSpecJobService } from '@modules/ai/vehicle-specs/ai-tire-spec-job
 import { TripEvidenceReadService } from '@modules/clickhouse/trip-evidence-read.service';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { RpmWebhookQueryService } from '@modules/dimo/rpm-webhook-query.service';
+import { DrivingAssessmentDeviceQualityService } from './trips/driving-assessment-device-quality.service';
 import { normalizeAiTireSpecResult, buildPersistedAiTireSpec, validateAiTireSpec } from './tires/ai-tire-spec-normalizer';
 import {
   CreateTireSetupDto,
@@ -145,7 +146,34 @@ export class VehicleIntelligenceController {
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
     private readonly rpmWebhookQuery: RpmWebhookQueryService,
     private readonly tripEvidenceRead: TripEvidenceReadService,
+    private readonly drivingAssessmentQuality: DrivingAssessmentDeviceQualityService,
   ) {}
+
+  @Get('driving-assessment-quality')
+  async getDrivingAssessmentQuality(@Param('vehicleId') vehicleId: string) {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId },
+      select: { hardwareType: true },
+    });
+    if (!vehicle) {
+      throw new BadRequestException('Vehicle not found');
+    }
+    if (vehicle.hardwareType !== 'LTE_R1') {
+      return { applicable: false, status: 'NORMAL' as const };
+    }
+    const status = await this.drivingAssessmentQuality.getVehicleQualityStatus(vehicleId);
+    return {
+      applicable: true,
+      ...(status ?? {
+        status: 'NORMAL' as const,
+        degradedSince: null,
+        recoveredAt: null,
+        lastEvaluatedAt: null,
+        activeObservationId: null,
+        orgBaseline: null,
+      }),
+    };
+  }
 
   // --- Composite Intelligence Endpoint ---
   @Get('intelligence')
