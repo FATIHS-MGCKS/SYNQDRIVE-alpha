@@ -35,6 +35,266 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-extraction-audit-remaining-v49334-2026-07-10',
+    version: '4.9.334',
+    title: 'V4.9.334 — Dokumenten-Upload: verbleibende Audit-Einschränkungen geschlossen',
+    summary: [
+      'Klassifizierung: seitenweises Sampling (erste + letzte Seiten) statt blindem 24k-head-slice.',
+      'Live-Integrationstest (Redis/DB/BullMQ) via npm run test:document-extraction:live nach infra:up.',
+      'ESLint: Backend typescript-eslint + scoped lint für Document-Module; Frontend lint für Upload-Pfade.',
+      'DE/EN/FR supportedFormats auf tatsächliche Upload-Formate (10 MB) harmonisiert.',
+    ],
+    reason: 'Abschlussaudit-Einschränkungen: Klassifizierung, Live-Wiring, ESLint, i18n.',
+    previousBehavior: 'classificationMaxChars slice(0); kein Live-Queue-Test; ESLint nicht lauffähig; veraltete Format-Strings.',
+    details: 'Neu: document-classification-text.util.ts, document-extraction.live.integration.spec.ts, backend/eslint.config.js. Erweitert: classification service, processor, package.json lint scripts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-10T19:58:00.000Z',
+  },
+  {
+    id: 'document-extraction-audit-fixes-v49333-2026-07-10',
+    version: '4.9.333',
+    title: 'V4.9.333 — Dokumenten-Upload: Audit-Befunde P1/P2 geschlossen',
+    summary: [
+      'useDocumentExtractionFlow: Metadata vom Backend, Client-Validierung, createExtractionPoller (kein setInterval), acceptAttr aus Extensions.',
+      'OperatorAiUploadFlow + VehicleDocumentUploadDrawer nutzen metadata-gesteuertes accept + validationError.',
+      'Playwright E2E: queued/processing-Regex (DE), Reload-Mock-Persistenz, robuste Tablet-Navigation, Mock-State-Reset.',
+      'FR docUpload.supportedFormats korrigiert (PDF/JPG/PNG/WebP/TXT, 10 MB).',
+    ],
+    reason: 'Read-only-Abschlussaudit: parallele UI-Pipelines harmonisiert, 2 fehlgeschlagene E2E-Szenarien, FR-Fehlinformation.',
+    previousBehavior: 'Drawer/Operator mit statischem ACCEPT_ATTR und 2s-Interval-Polling; E2E queued-Desktop + Tablet-Reload flaky; FR nannte DOCX/XLSX/25MB.',
+    details: 'Geändert: useDocumentExtractionFlow.ts, OperatorAiUploadFlow.tsx, VehicleDocumentUploadDrawer.tsx, document-upload-fixtures.ts, responsive/lifecycle E2E specs, fr.ts.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-10T19:05:00.000Z',
+  },
+  {
+    id: 'document-extraction-ops-v49332-2026-07-10',
+    version: '4.9.332',
+    title: 'V4.9.332 — Dokumenten-Extraktion: Tests, Observability & Deployment-Ops',
+    summary: [
+      'Prometheus-Metriken synqdrive_document_extraction_* (Jobs, Failures, Duration, Queue-Age, Apply) über TripMetricsService.',
+      'Strukturierte JSON-Logs ohne Dokumentinhalt (extractionId, stage, status, errorCode, MIME-Kategorie, size bucket).',
+      'document.extraction in MONITORED_QUEUES; Grafana-Panels + Prometheus-Alerts für Queue/OCR/Apply.',
+      'Backend-Integrationstests (18 Szenarien, gemocktes Mistral), Health-Service-Spec, optionaler MISTRAL_OCR_SMOKE=1 Probe.',
+      'Frontend-Tests (Polling, Validation, Session, UI-Guards) + Playwright-Lifecycle-E2E; Ops-Doku backend/docs/document-extraction-ops.md.',
+    ],
+    reason:
+      'Kritische Upload-/OCR-/Apply-Pfade müssen automatisiert testbar und in Produktion beobachtbar sein — ohne Mistral-Kosten in Standardtests und ohne PII in Metriken/Logs.',
+    previousBehavior:
+      'Pipeline funktional, aber ohne dokument-spezifische Metriken/Alerts, unvollständige Testabdeckung für Integration/E2E und keine zentrale Betriebsdokumentation.',
+    details:
+      'Neu: DocumentExtractionObservabilityService, document-extraction-log.util, document-extraction.pipeline.integration.spec.ts, probe-mistral-ocr.ts. Erweitert: processor, mistral-ocr.service, metrics-refresh, alerts.yml, synqdrive-ops.json Grafana.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-10T18:30:00.000Z',
+  },
+  {
+    id: 'document-extraction-risk-fixes-v49332b-2026-07-10',
+    version: '4.9.332',
+    title: 'V4.9.332b — Dokumenten-Ops: offene Risiken geschlossen',
+    summary: [
+      'Backend HTTP-E2E (test/jest-e2e.json + supertest) für Metadata/Upload/Detail/Confirm.',
+      'Integrationstests ergänzt: langes Dokument, Queue unreachable, reload-fähiger Detailstatus.',
+      'RBAC-Security-Specs für Vehicle-/Org-/Metadata-Controller.',
+      'npm run prisma:validate mit Default-DATABASE_URL; FR-i18n für docUpload/documentExtraction.',
+      'Frontend-Test-Regressionen (Dashboard-KPI, Task-Display, Drawer-Normalize) behoben.',
+    ],
+    reason: 'Abschlussbericht-Risiken: fehlende E2E-Konfiguration, Test-Lücken, FR-i18n, Prisma-Validate, RBAC-Specs.',
+    previousBehavior: 'test:e2e nicht ausführbar; 3 Frontend-Unit-Failures; FR-Fallback auf EN für neue Keys.',
+    details: 'Neu: test/document-extraction.e2e-spec.ts, document-extraction.controller.security.spec.ts, document-extraction-i18n-fr.test.ts.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-10T18:36:00.000Z',
+  },
+  {
+    id: 'document-upload-lifecycle-ui-v49331-2026-07-10',
+    version: '4.9.331',
+    title: 'V4.9.331 — Dokumenten-Upload: Backend-Lifecycle-Anbindung',
+    summary: [
+      'DocumentUploadView nutzt Metadata-Endpoint, Org-Historie, Public DTOs und allowedActions.',
+      'AUTO als Standard, AWAITING_DOCUMENT_TYPE-Zustand, Typkorrektur/Re-extract über document-type API.',
+      'Kontrolliertes Polling (2s/5s/10s Backoff), Session-Recovery, keine lokalen filedDocuments mehr.',
+      'Client-Validierung aus Metadata, i18n DE/EN für Status/Stages/Fehlerphasen, responsive UI erhalten.',
+    ],
+    reason:
+      'Upload-Status und Historie lebten im lokalen React-State und gingen bei Reload verloren.',
+    previousBehavior:
+      'Festes 2s-Polling, hardcodierte Typ-/Formatlisten, filedDocuments in useState, kein AWAITING_DOCUMENT_TYPE.',
+    details:
+      'useDocumentUploadPage, document-extraction-* libs, api.documentExtraction, DocumentUploadView refactor.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-10T18:30:00.000Z',
+  },
+  {
+    id: 'document-upload-responsive-v49330-2026-07-10',
+    version: '4.9.330',
+    title: 'V4.9.330 — Dokumenten-Upload: Mobile Responsive Fix',
+    summary: [
+      'Horizontaler Overflow auf 320–430 px behoben: Stepper als 4-Spalten-Grid, Connector-Linien nur ab sm.',
+      'Fahrzeug-/Dokumenttyp-Selects, Review-Felder und Aktionsbuttons stapeln auf Mobile; Desktop-Layout unverändert.',
+      'Defensive min-w-0 / overflow-x-clip an Page-Root und AppShell-Main-Container.',
+      'Vitest-Layout-Guards + Playwright scrollWidth-Prüfung für idle/review/failed/applied Zustände.',
+    ],
+    reason:
+      'Auf iPhone-Breite war die Seite seitlich verschiebbar; Step 4 „Abgelegt“ und Review-Zeilen liefen über den Viewport.',
+    previousBehavior:
+      'Horizontale Stepper-Flex-Zeile mit Connector-Gaps, erzwungenes grid-cols-2 und feste w-44 Review-Labels verursachten Überbreite.',
+    details:
+      'DocumentUploadView.tsx, app-shell.tsx, document-upload-responsive.test.ts, e2e/document-upload-responsive.spec.ts.',
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-10T18:10:00.000Z',
+  },
+  {
+    id: 'document-lifecycle-api-v49329-2026-07-10',
+    version: '4.9.329',
+    title: 'V4.9.329 — Document Extraction Lifecycle: Historie, Download, Audit',
+    summary: [
+      'Org-Inbox: GET /organizations/:orgId/document-extractions mit Pagination, Filtern (status, type, vehicle, dates, createdBy).',
+      'Reload-fähiges Detail: vehicle display, allowedActions, audit (created/confirmed/applied/cancelled/file-deleted), volle Extraction-Daten.',
+      'Privater Download per authentifiziertem Stream (kein objectKey in Public DTOs).',
+      'Permissions: document-upload read/write via PermissionsGuard auf allen Routen.',
+      'Cancel-Aktion, Audit-Spalten + actionAudit JSON, DB-Indizes für org/vehicle/status.',
+    ],
+    reason:
+      '„Letzte Uploads“ hingen nur am lokalen React-State — nach Reload fehlte die serverseitige Historie.',
+    previousBehavior:
+      'Nur vehicle-scoped Liste (take 50, kein meta), kein Org-Endpunkt, kein Download, keine Permission-Enforcement.',
+    details:
+      'architecture/DOCUMENT_EXTRACTION_LIFECYCLE_2026-07-10.md. 1934 Tests grün.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-10T17:35:00.000Z',
+  },
+  {
+    id: 'document-classification-v49328-2026-07-10',
+    version: '4.9.328',
+    title: 'V4.9.328 — Echte Dokumenttyp-Klassifizierung + sicherer manueller Fallback',
+    summary: [
+      'Neuer DocumentClassificationService: Mistral Structured Output (detectedDocumentType | UNKNOWN, confidence, rationale, sourcePages).',
+      'AUTO-Uploads: OCR → Klassifikation → bei hoher Konfidenz automatische Extraktion; sonst AWAITING_DOCUMENT_TYPE (kein FAILED).',
+      'Konfigurierbare Schwellen: AUTO_CONTINUE_MIN (0.85), SUGGESTION_MIN (0.55) + Evidenzprüfung der Begründung.',
+      'POST .../document-type: mandantensichere Typauswahl/Korrektur; OCR-Cache in plausibility._pipeline für Re-Extraktion ohne erneutes OCR.',
+      'Kanonical types only (SERVICE, TUV_REPORT, BOKRAFT_REPORT, INVOICE, …); AUTO nie in Apply-Services.',
+    ],
+    reason:
+      'AUTO setzte bisher sofort AWAITING_DOCUMENT_TYPE ohne KI-Klassifikation; Klassifikation und Extraktion mussten getrennt werden.',
+    previousBehavior:
+      'Processor brach bei fehlendem effectiveDocumentType vor OCR ab und markierte AWAITING ohne LLM-Klassifikation.',
+    details:
+      'architecture/DOCUMENT_CLASSIFICATION_2026-07-10.md. 1923 Tests grün.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-10T17:20:00.000Z',
+  },
+  {
+    id: 'document-chunked-extraction-v49327-2026-07-10',
+    version: '4.9.327',
+    title: 'V4.9.327 — Seitenbewusstes Chunking + deterministischer Merge (kein Text-Slice)',
+    summary: [
+      'Entfernt `slice(0, 12000)` — Dokumenttext wird über `DocumentChunkingService` in seitenbewusste Chunks aufgeteilt.',
+      'OCR liefert `pages[]` aus Mistral; PDF-Textlayer nutzt pdf-parse `pages`; TXT nutzt logische Abschnitte ohne erfundene Seitenzahlen.',
+      'Pro Chunk: Mistral JSON-Extraktion (Temperature 0) mit CHUNK/SOURCE_PAGES-Header; deterministischer `DocumentExtractionMergeService`.',
+      'Konflikte (z. B. Kilometerstand/Datum) → `extractionConflicts` in Plausibilität (WARNING/BLOCKER), `fieldEvidence` in plausibility JSON.',
+      'Limits: `DOCUMENT_EXTRACTION_CHUNK_*` — max Chunks/Pages/Chars; Limitüberschreitungen explizit, keine stille Abschneidung.',
+    ],
+    reason:
+      'Späte Seiten gingen durch die feste 12k-Zeichen-Grenze verloren; lange Dokumente brauchen kontrolliertes Chunking statt eines einzelnen riesigen Prompts.',
+    previousBehavior:
+      '`buildDocumentExtractionPrompt` schnitt `rawText` still auf 12.000 Zeichen ab; nur ein LLM-Aufruf pro Dokument.',
+    details:
+      'Neue Services: DocumentChunkingService, DocumentExtractionMergeService, document-page.types. 142 Tests grün.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-10T17:12:00.000Z',
+  },
+  {
+    id: 'document-queue-reliability-v49326-2026-07-10',
+    version: '4.9.326',
+    title: 'V4.9.326 — Document Extraction Queue: ausfallsicher, retryfähig, idempotent',
+    summary: [
+      'Enqueue-Lifecycle: Datei speichern → PENDING/STORAGE → queue.add → erst danach QUEUED; Enqueue-Fehler → FAILED/QUEUE + 503 mit extractionId.',
+      'BullMQ-Retry: 4 Versuche, exponentielles Backoff (5s), jobId=extract-{id}, retrybare OCR/AI/Storage-Fehler werden rethrown; FAILED erst nach letztem Versuch.',
+      'Idempotenz: atomisches Claim (QUEUED→PROCESSING), Skip READY_FOR_REVIEW/APPLIED, Confirm/Apply via updateMany, Retry ohne doppelten aktiven Job.',
+      'DocumentExtractionRecoveryScheduler: stale QUEUED/PROCESSING re-enqueue, CONFIRMED-Apply-Retry, Recovery-Limit via plausibility._queueRecoveryCount.',
+      'Health: GET /document-extractions/health + Readiness-Check documentExtraction; Produktion lehnt Upload ab wenn Queue/Worker deaktiviert.',
+    ],
+    reason:
+      'Dokumente konnten still in PENDING/QUEUED hängen, Enqueue-Fehler wurden verschluckt und BullMQ-Retries liefen nicht, weil der Processor alle Fehler in FAILED schrieb.',
+    previousBehavior:
+      'createFromUpload setzte sofort QUEUED; enqueue() schluckte canEnqueueQueue=false und queue.add-Fehler; Processor markierte jeden Fehler sofort FAILED ohne BullMQ-Retry.',
+    details:
+      'Neue Dateien: document-extraction-queue.util.ts, document-extraction-recovery.scheduler.ts, document-extraction-health.service.ts, document-extraction-enqueue.exception.ts. Config: DOCUMENT_EXTRACTION_JOB_ATTEMPTS, JOB_BACKOFF_MS, STALE_*_MS, MAX_RECOVERY_ATTEMPTS. Tests: 120 grün.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-10T17:05:00.000Z',
+  },
+  {
+    id: 'document-ocr-routing-v49325-2026-07-10',
+    version: '4.9.325',
+    title: 'V4.9.325 — Document OCR Routing: Magic-Byte-Prüfung + PDF-Textschicht/OCR-Fallback',
+    summary: [
+      '`DocumentContentExtractorService` routet TXT → TXT_DIRECT, digitale PDFs → TEXT_LAYER, Scans/Bilder → Mistral OCR.',
+      '`DocumentFileIdentificationService` mit `file-type` Magic Bytes — MIME-Spoofing, leere/zu große Dateien, Pfad-Sanitisierung.',
+      'PDF-Qualitätsgate (`evaluatePdfTextQuality`) vor OCR-Fallback — digitale PDFs vermeiden kostenpflichtiges OCR.',
+      'Processor speichert `sourceMethod`, OCR-Provider/Modell/Seitenzahl; neue Pipeline-Fehlercodes (FILE_EMPTY, MIME_MISMATCH, OCR_FAILED, …).',
+      'Zentrale Upload-Limits in `document-upload.constants.ts`; Frontend `document-upload.constants.ts` aligned.',
+    ],
+    reason:
+      'Unterstützte UI-Formate hatten keinen echten Backendpfad für Bilder/Scans; Client-MIME allein war unsicher.',
+    previousBehavior:
+      'Bilder/scanned PDFs → `OcrNotConfiguredError`; Routing nur nach Client-MIME ohne Inhaltsprüfung.',
+    details:
+      'backend: document-content-extractor.service.ts, document-file-identification.service.ts, pdf-text-quality.util.ts, processor wiring, file-type@16.5.4. frontend: document-upload.constants.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-10T17:00:00.000Z',
+  },
+  {
+    id: 'mistral-ocr-adapter-v49324-2026-07-10',
+    version: '4.9.324',
+    title: 'V4.9.324 — Mistral OCR Adapter (isolierter Provider-Service)',
+    summary: [
+      'Neuer `MistralOcrService` unter `ai/providers/mistral/` — ausschließlich OCR-Integration + Normalisierung via `client.ocr.process`.',
+      'Shared `MistralSdkClientProvider` für Chat/JSON und OCR (ein SDK-Client-Lifecycle, kein Client pro Request).',
+      'Private Base64-Data-URLs für PDF/Bilder — keine öffentlichen Storage-URLs; typisierte `MistralOcrError` mit retryable-Mapping.',
+      'Config: `MISTRAL_OCR_MODEL`, `MISTRAL_OCR_TIMEOUT_MS`, `MISTRAL_OCR_MAX_FILE_BYTES` (nutzt bestehendes `MISTRAL_API_KEY`).',
+      'Unit-Tests mit gemocktem SDK-Client — kein echter Netzaufruf; Queue-Worker noch nicht angebunden.',
+    ],
+    reason:
+      'SynqDrive braucht einen produktionsfähigen, isoliert testbaren OCR-Adapter als Grundlage für den Document-Lifecycle, ohne Chat/Structured-Output zu vermischen.',
+    previousBehavior:
+      'Bilder/scanned PDFs endeten in `OcrNotConfiguredError`; kein dedizierter Mistral-OCR-Service.',
+    details:
+      'backend: mistral-ocr.{service,types,errors,mapper,error.mapper}.ts, mistral-sdk-client.provider.ts, ai.config.ts, ai.module.ts, mistral-llm.service refactor. Tests: 18 neue OCR-Specs.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-10T16:50:00.000Z',
+  },
+  {
+    id: 'document-extraction-lifecycle-foundation-v49323-2026-07-10',
+    version: '4.9.323',
+    title: 'V4.9.323 — Document Extraction: kanonischer Lifecycle-Grundstock (Schema, Metadata, Public DTOs)',
+    summary: [
+      'Prisma `VehicleDocumentExtraction` um requested/effective/detected type, classificationMode, processingStage, errorPhase/errorCode, Provider/Modell, Lifecycle-Timestamps und processingAttempts erweitert.',
+      'Neue Status `AWAITING_DOCUMENT_TYPE`, `CANCELLED`; Request-Typ `AUTO` (nie an Apply-Services). Migration `20260710160000_document_extraction_lifecycle` mit Backfill.',
+      '`GET /document-extractions/metadata` — kanonische Dokumenttypen, MIME/Extensions, maxUpload, Status/Stage/ErrorPhase (i18n labelKeys).',
+      'Public API-Projection strippt objectKey/storageProvider/sourceFileUrl; Controller upload/retry/confirm/delete liefern Public DTO.',
+      'AUTO-Upload: effectiveDocumentType bleibt null bis Klassifikation; Worker setzt AWAITING_DOCUMENT_TYPE (keine OCR-Implementierung in diesem Schritt).',
+    ],
+    reason:
+      'Frontend und Backend pflegten parallele Listen; Lifecycle-Metadaten für OCR, Klassifikation, Retry und Audit fehlten persistent im Datenmodell.',
+    previousBehavior:
+      'Nur `documentType` (required), grober `status`, `errorMessage`; kein Stage/ErrorPhase-Trennung; kein AUTO-Request; keine Metadata-API.',
+    details:
+      'backend: prisma schema + migration, document-extraction-{lifecycle.util,public.mapper,metadata.*}, service/processor/controller/module, vehicle-file mapper nullable-type compat. Tests: +8 specs (lifecycle, metadata, public mapper, AUTO upload).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-10T16:45:00.000Z',
+  },
+  {
     id: 'finance-kpi-number-size-v49322-2026-07-10',
     version: '4.9.322',
     title: 'V4.9.322 — Dashboard Finanzen: KPI-Zahlen gleiche Größe wie operative KPIs',

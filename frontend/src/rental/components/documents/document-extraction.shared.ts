@@ -1,5 +1,7 @@
 /** Shared AI document extraction types & helpers (Documents tab + AI Upload view). */
 
+import { DOCUMENT_UPLOAD_ACCEPT_ATTR } from '../../lib/document-upload.constants';
+
 export const EXTRACTION_TEMPLATES: Record<string, Array<{ key: string; label: string }>> = {
   SERVICE: [
     { key: 'eventDate', label: 'Service-Datum' },
@@ -145,17 +147,26 @@ export const DOC_TYPE_LABELS: Record<string, string> = {
   OTHER: 'Sonstiges Dokument',
 };
 
-export const ACCEPT_ATTR = '.pdf,.jpg,.jpeg,.png,.webp,.txt';
+export const ACCEPT_ATTR = DOCUMENT_UPLOAD_ACCEPT_ATTR;
 
 export type FlowStatus =
   | 'idle'
+  | 'validating'
   | 'uploading'
+  | 'stored'
   | 'queued'
+  | 'retrying'
   | 'processing'
+  | 'ocr'
+  | 'classifying'
+  | 'extracting'
+  | 'validating_plausibility'
+  | 'awaiting_type'
   | 'ready'
   | 'applying'
   | 'done'
-  | 'failed';
+  | 'failed'
+  | 'cancelled';
 
 export type PlausibilityStatus = 'OK' | 'WARNING' | 'BLOCKER';
 
@@ -179,12 +190,20 @@ export interface ReviewField {
   value: string;
 }
 
-export function mapFlowStatus(serverStatus: string | undefined): FlowStatus {
+export function mapFlowStatus(serverStatus: string | undefined, stage?: string): FlowStatus {
+  // Lazy import avoided — inline minimal mapping for legacy callers without stage.
   switch (serverStatus) {
     case 'QUEUED':
     case 'PENDING':
       return 'queued';
+    case 'AWAITING_DOCUMENT_TYPE':
+      return 'awaiting_type';
     case 'PROCESSING':
+      if (stage === 'OCR') return 'ocr';
+      if (stage === 'CLASSIFICATION') return 'classifying';
+      if (stage === 'EXTRACTION') return 'extracting';
+      if (stage === 'VALIDATION') return 'validating_plausibility';
+      if (stage === 'UPLOAD' || stage === 'STORAGE') return 'stored';
       return 'processing';
     case 'READY_FOR_REVIEW':
       return 'ready';
@@ -193,7 +212,10 @@ export function mapFlowStatus(serverStatus: string | undefined): FlowStatus {
     case 'APPLIED':
       return 'done';
     case 'FAILED':
+    case 'REJECTED':
       return 'failed';
+    case 'CANCELLED':
+      return 'cancelled';
     default:
       return 'processing';
   }
@@ -225,11 +247,20 @@ export function buildReviewFields(
 
 export const FLOW_STATUS_LABEL_DE: Record<FlowStatus, string> = {
   idle: 'Bereit',
+  validating: 'Wird geprüft…',
   uploading: 'Wird hochgeladen…',
+  stored: 'Gespeichert',
   queued: 'In Warteschlange',
+  retrying: 'Erneuter Versuch…',
   processing: 'KI verarbeitet…',
+  ocr: 'OCR läuft…',
+  classifying: 'Dokumenttyp wird erkannt…',
+  extracting: 'Daten werden extrahiert…',
+  validating_plausibility: 'Plausibilität wird geprüft…',
+  awaiting_type: 'Typauswahl erforderlich',
   ready: 'Zur Prüfung',
   applying: 'Wird angewendet…',
   done: 'Angewendet',
   failed: 'Fehler',
+  cancelled: 'Abgebrochen',
 };

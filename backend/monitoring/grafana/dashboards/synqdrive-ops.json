@@ -67,6 +67,74 @@
       ],
       "title": "DIMO snapshot success ratio (5m)",
       "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 12 },
+      "id": 7,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(rate(synqdrive_document_extraction_jobs_total{status=~\"READY_FOR_REVIEW|APPLIED\"}[30m])) / clamp_min(sum(rate(synqdrive_document_extraction_jobs_total[30m])), 0.001)", "refId": "A" }],
+      "title": "Doc extraction success ratio (30m)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 12 },
+      "id": 8,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "synqdrive_document_extraction_queue_age_seconds", "refId": "A" }],
+      "title": "Doc queue age (s)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 12 },
+      "id": 9,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "synqdrive_document_extraction_active_jobs", "refId": "A" }],
+      "title": "Active doc jobs",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 12 },
+      "id": 10,
+      "options": { "colorMode": "background", "graphMode": "none", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(increase(synqdrive_document_extraction_jobs_total{status=\"AWAITING_DOCUMENT_TYPE\"}[1h]))", "refId": "A" }],
+      "title": "Awaiting type (1h)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "id": 11,
+      "targets": [{ "expr": "sum by (stage) (rate(synqdrive_document_extraction_failures_total[5m]))", "legendFormat": "{{stage}}", "refId": "A" }],
+      "title": "Doc failures by stage (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "id": 12,
+      "targets": [{ "expr": "histogram_quantile(0.95, sum by (le, stage) (rate(synqdrive_document_extraction_duration_seconds_bucket[10m])))", "legendFormat": "{{stage}} p95", "refId": "A" }],
+      "title": "Doc stage latency p95 (10m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "id": 13,
+      "targets": [{ "expr": "sum(rate(synqdrive_document_extraction_retries_total[5m]))", "legendFormat": "retries/s", "refId": "A" }],
+      "title": "Doc retry rate (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "id": 14,
+      "targets": [{ "expr": "sum(rate(synqdrive_document_extraction_apply_total{result=\"error\"}[15m])) / clamp_min(sum(rate(synqdrive_document_extraction_apply_total[15m])), 0.001)", "legendFormat": "apply error ratio", "refId": "A" }],
+      "title": "Doc apply error ratio (15m)",
+      "type": "timeseries"
     }
   ],
   "refresh": "30s",

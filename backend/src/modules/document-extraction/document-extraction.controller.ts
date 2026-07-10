@@ -5,44 +5,70 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   UploadedFile,
   UseGuards,
   UseInterceptors,
   BadRequestException,
+  Header,
+  Res,
+  StreamableFile,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { VehicleOwnershipGuard } from '@shared/auth/vehicle-ownership.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
+import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { DocumentExtractionService } from './document-extraction.service';
 import { UploadDocumentDto } from './dto/upload-document.dto';
 import { ConfirmExtractionDto } from './dto/confirm-extraction.dto';
-import { isAllowedMimeType } from './document-extraction.schemas';
+import { SetDocumentTypeDto } from './dto/set-document-type.dto';
+import { ListDocumentExtractionsQueryDto } from './dto/list-document-extractions-query.dto';
+import { isAllowedMimeType, resolveMaxUploadBytes } from './document-extraction.schemas';
+import { DOCUMENT_UPLOAD_MODULE } from './document-extraction.constants';
+import { buildContentDisposition } from './document-extraction-download.util';
 
-const MAX_UPLOAD_BYTES =
-  Math.max(1, parseInt(process.env.DOCUMENT_UPLOAD_MAX_MB || '10', 10)) * 1024 * 1024;
+const MAX_UPLOAD_BYTES = resolveMaxUploadBytes();
 
 /**
  * AI Document Upload endpoints (vehicle-scoped, tenant-isolated).
- *
- * All routes are guarded by RolesGuard + VehicleOwnershipGuard (same as the rest
- * of vehicle-intelligence): the vehicle must belong to the caller's org, and
- * each extraction is additionally re-checked against the path vehicleId to
- * prevent cross-vehicle / cross-org access. Uploaded files are stored in PRIVATE
- * object storage and are never exposed via public URLs.
  */
 @Controller('vehicles/:vehicleId/document-extractions')
-@UseGuards(RolesGuard, VehicleOwnershipGuard)
+@UseGuards(RolesGuard, VehicleOwnershipGuard, PermissionsGuard)
 export class DocumentExtractionController {
   constructor(private readonly service: DocumentExtractionService) {}
 
   @Get()
-  list(@Param('vehicleId') vehicleId: string) {
-    return this.service.listForVehicle(vehicleId);
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
+  list(
+    @Param('vehicleId') vehicleId: string,
+    @Query() query: ListDocumentExtractionsQueryDto,
+  ) {
+    return this.service.listForVehicle(vehicleId, query);
+  }
+
+  @Get(':extractionId/download')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
+  @Header('Cache-Control', 'no-store')
+  async download(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const dl = await this.service.getDownloadForVehicle(vehicleId, extractionId);
+    res.set({
+      'Content-Type': dl.mimeType,
+      'Content-Disposition': buildContentDisposition(dl.fileName, true),
+      ...(dl.sizeBytes != null ? { 'Content-Length': String(dl.sizeBytes) } : {}),
+    });
+    return new StreamableFile(dl.stream);
   }
 
   @Get(':extractionId')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
   getOne(
     @Param('vehicleId') vehicleId: string,
     @Param('extractionId') extractionId: string,
@@ -50,8 +76,8 @@ export class DocumentExtractionController {
     return this.service.getPublicForVehicle(vehicleId, extractionId);
   }
 
-  /** Real multipart upload → store + create record + enqueue extraction job. */
   @Post('upload')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
@@ -82,10 +108,9 @@ export class DocumentExtractionController {
       buffer: file.buffer,
       userId: userId ?? null,
     });
-    return { id: record.id, status: record.status, documentType: record.documentType };
+    return this.service.toPublicExtraction(record);
   }
 
-  /** Legacy client-supplied create (no file). Kept for backward compatibility. */
   @Post()
   createLegacy(
     @Param('vehicleId') vehicleId: string,
@@ -95,28 +120,70 @@ export class DocumentExtractionController {
     return this.service.createLegacy(vehicleId, body);
   }
 
-  @Post(':extractionId/retry')
-  retry(
+  @Post(':extractionId/document-type')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  async setDocumentType(
     @Param('vehicleId') vehicleId: string,
     @Param('extractionId') extractionId: string,
+    @Body() body: SetDocumentTypeDto,
+    @CurrentUser('id') userId: string | undefined,
   ) {
-    return this.service.retry(vehicleId, extractionId);
+    const record = await this.service.setDocumentType(
+      vehicleId,
+      extractionId,
+      body.documentType,
+      { reextract: body.reextract, userId: userId ?? null },
+    );
+    return this.service.toPublicExtraction(record);
+  }
+
+  @Post(':extractionId/retry')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  async retry(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    const record = await this.service.retry(vehicleId, extractionId, userId ?? null);
+    return this.service.toPublicExtraction(record);
   }
 
   @Post(':extractionId/confirm')
-  confirm(
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  async confirm(
     @Param('vehicleId') vehicleId: string,
     @Param('extractionId') extractionId: string,
     @Body() body: ConfirmExtractionDto,
+    @CurrentUser('id') userId: string | undefined,
   ) {
-    return this.service.confirm(vehicleId, extractionId, body.confirmedData);
+    const record = await this.service.confirm(
+      vehicleId,
+      extractionId,
+      body.confirmedData,
+      userId ?? null,
+    );
+    return this.service.toPublicExtraction(record);
+  }
+
+  @Post(':extractionId/cancel')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  async cancel(
+    @Param('vehicleId') vehicleId: string,
+    @Param('extractionId') extractionId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    const record = await this.service.cancel(vehicleId, extractionId, userId ?? null);
+    return this.service.toPublicExtraction(record);
   }
 
   @Delete(':extractionId/file')
-  deleteFile(
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  async deleteFile(
     @Param('vehicleId') vehicleId: string,
     @Param('extractionId') extractionId: string,
+    @CurrentUser('id') userId: string | undefined,
   ) {
-    return this.service.deleteFile(vehicleId, extractionId);
+    const record = await this.service.deleteFile(vehicleId, extractionId, userId ?? null);
+    return this.service.toPublicExtraction(record);
   }
 }

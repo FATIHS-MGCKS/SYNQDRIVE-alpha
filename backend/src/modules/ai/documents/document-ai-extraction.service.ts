@@ -13,10 +13,17 @@ import {
   buildEmptyFieldShape,
   mapExtractedFields,
 } from './document-ai-extraction.schema.util';
+import { DocumentChunkingService } from './document-chunking.service';
+import {
+  ChunkExtractionPayload,
+  DocumentExtractionMergeService,
+} from './document-extraction-merge.service';
+import { DocumentTextChunk } from './document-chunking.types';
+import { mapAiExtractionFailure } from '@modules/document-extraction/document-extraction.errors';
 
 /**
- * Mistral-backed structured document extraction.
- * Produces review suggestions only — canonical data is applied after human confirmation.
+ * Mistral-backed structured document extraction with page-aware chunking
+ * and deterministic merge across chunks.
  */
 @Injectable()
 export class DocumentAiExtractionService {
@@ -24,6 +31,8 @@ export class DocumentAiExtractionService {
 
   constructor(
     private readonly llm: LlmGatewayService,
+    private readonly chunking: DocumentChunkingService,
+    private readonly mergeService: DocumentExtractionMergeService,
     @Optional()
     @Inject(documentExtractionConfig.KEY)
     private readonly conf?: ConfigType<typeof documentExtractionConfig>,
@@ -35,6 +44,7 @@ export class DocumentAiExtractionService {
   }
 
   async extract(input: DocumentAiExtractInput): Promise<DocumentAiExtractResult> {
+    const startedAt = Date.now();
     const dimoContextAvailable = typeof input.dimoTokenId === 'number';
 
     if (!this.isEnabled()) {
@@ -48,16 +58,88 @@ export class DocumentAiExtractionService {
       };
     }
 
+    const structured = this.resolveStructuredContent(input);
+    const chunking = this.chunking.chunk({
+      pages: structured.pages,
+      limits: {
+        targetChars: this.conf?.chunkTargetChars ?? 6000,
+        maxChars: this.conf?.chunkMaxChars ?? 8000,
+        maxPages: this.conf?.chunkMaxPages ?? 200,
+        maxChunks: this.conf?.chunkMaxChunks ?? 12,
+        overlapChars: this.conf?.chunkOverlapChars ?? 0,
+      },
+    });
+
+    if (chunking.chunks.length === 0) {
+      return {
+        success: false,
+        fields: {},
+        recommendedHumanReviewNotes: chunking.warnings,
+        dimoContextAvailable,
+        error: chunking.limitMessage ?? 'Document could not be chunked for extraction',
+        chunking: this.toChunkMetadata(chunking, Date.now() - startedAt),
+      };
+    }
+
+    this.logger.log(
+      `[DocAI] extract documentType=${input.documentType} chunks=${chunking.chunks.length} pages=${chunking.totalPages} dimoContext=${dimoContextAvailable}`,
+    );
+
+    const chunkPayloads: ChunkExtractionPayload[] = [];
+    let modelId: string | undefined;
+    const providerId = this.llm.activeProviderId;
+
+    for (const chunk of chunking.chunks) {
+      const chunkResult = await this.extractChunk(input, chunk, chunking.chunks.length);
+      if (!chunkResult.success) {
+        return {
+          ...chunkResult,
+          chunking: this.toChunkMetadata(chunking, Date.now() - startedAt),
+        };
+      }
+      modelId = chunkResult.modelId ?? modelId;
+      chunkPayloads.push({
+        chunkIndex: chunk.chunkIndex,
+        pageNumbers: chunk.pageNumbers,
+        fields: chunkResult.fields,
+        recommendedHumanReviewNotes: chunkResult.recommendedHumanReviewNotes,
+      });
+    }
+
+    const merged = this.mergeService.merge(input.fields, chunkPayloads);
+    const notes = [
+      ...chunking.warnings,
+      ...merged.recommendedHumanReviewNotes,
+    ].slice(0, 30);
+
+    return {
+      success: true,
+      fields: merged.fields,
+      fieldEvidence: merged.fieldEvidence,
+      extractionConflicts: merged.conflicts,
+      recommendedHumanReviewNotes: notes,
+      dimoContextAvailable,
+      providerId,
+      modelId,
+      chunking: this.toChunkMetadata(chunking, Date.now() - startedAt),
+    };
+  }
+
+  private async extractChunk(
+    input: DocumentAiExtractInput,
+    chunk: DocumentTextChunk,
+    chunkCount: number,
+  ): Promise<DocumentAiExtractResult> {
     const { system, user } = buildDocumentExtractionPrompt({
       documentType: input.documentType,
       fields: input.fields,
-      rawText: input.rawText,
+      rawText: chunk.text,
+      chunkIndex: chunk.chunkIndex,
+      chunkCount,
+      pageNumbers: chunk.pageNumbers,
+      pageBoundaryReliable: chunk.pageBoundaryReliable,
       vehicleContext: input.vehicleContext,
     });
-
-    this.logger.log(
-      `[DocAI] extract documentType=${input.documentType} dimoContext=${dimoContextAvailable}`,
-    );
 
     try {
       const result = await this.llm.completeJson<DocumentAiExtractionResponse>({
@@ -84,8 +166,9 @@ export class DocumentAiExtractionService {
           success: true,
           fields: buildEmptyFieldShape(input.fields),
           recommendedHumanReviewNotes: notes,
-          dimoContextAvailable,
+          dimoContextAvailable: typeof input.dimoTokenId === 'number',
           providerId: this.llm.activeProviderId,
+          modelId: result.model,
         };
       }
 
@@ -93,18 +176,54 @@ export class DocumentAiExtractionService {
         success: true,
         fields,
         recommendedHumanReviewNotes: notes,
-        dimoContextAvailable,
+        dimoContextAvailable: typeof input.dimoTokenId === 'number',
         providerId: this.llm.activeProviderId,
+        modelId: result.model,
       };
     } catch (err: unknown) {
+      const mapped = mapAiExtractionFailure(this.sanitizeError(err));
       return {
         success: false,
         fields: {},
         recommendedHumanReviewNotes: [],
-        dimoContextAvailable,
-        error: this.sanitizeError(err),
+        dimoContextAvailable: typeof input.dimoTokenId === 'number',
+        error: mapped.safeMessage,
       };
     }
+  }
+
+  private resolveStructuredContent(input: DocumentAiExtractInput) {
+    if (input.documentContent?.pages?.length) {
+      return input.documentContent;
+    }
+    const text = input.documentContent?.text ?? input.rawText ?? '';
+    return {
+      text,
+      pageBoundaryReliable: input.documentContent?.pageBoundaryReliable ?? false,
+      pages: [
+        {
+          pageNumber: null,
+          text,
+          sourceMethod: 'TXT_DIRECT' as const,
+          hasReliablePageBoundaries: false,
+        },
+      ],
+    };
+  }
+
+  private toChunkMetadata(
+    chunking: ReturnType<DocumentChunkingService['chunk']>,
+    durationMs: number,
+  ) {
+    return {
+      chunkCount: chunking.chunks.length,
+      totalPages: chunking.totalPages,
+      totalChars: chunking.totalChars,
+      limitExceeded: chunking.limitExceeded,
+      limitCode: chunking.limitCode,
+      uncoveredPageNumbers: chunking.uncoveredPageNumbers,
+      durationMs,
+    };
   }
 
   private sanitizeError(err: unknown): string {

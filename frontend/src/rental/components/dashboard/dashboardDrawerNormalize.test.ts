@@ -160,7 +160,7 @@ describe('mergeDrawerGroupRows', () => {
 });
 
 describe('critical alerts drawer normalization', () => {
-  it('shows one compliance-critical card for KS MX 2024 with merged service overdue reasons', () => {
+  it('shows one service-critical card for KS MX 2024 with merged service overdue reasons', () => {
     const healthMap = new Map<string, VehicleHealthResponse>([
       [
         'svc-1',
@@ -193,13 +193,13 @@ describe('critical alerts drawer normalization', () => {
 
     const slice = runtime.slices['critical-alerts'];
     const groups = buildDashboardGroups(slice, 'de');
-    const compliance = groups.find((group) => group.id === 'compliance-critical');
+    const serviceCritical = groups.find((group) => group.id === 'service-critical');
 
     expect(slice.count).toBe(1);
-    expect(compliance?.rows.filter((row) => row.vehicleId === 'svc-1')).toHaveLength(1);
+    expect(serviceCritical?.rows.filter((row) => row.vehicleId === 'svc-1')).toHaveLength(1);
 
     const state = runtime.vehicleStates.find((entry) => entry.vehicleId === 'svc-1');
-    const display = composeVehicleDrawerRowDisplay(compliance?.rows[0]!, state, 'de');
+    const display = composeVehicleDrawerRowDisplay(serviceCritical?.rows[0]!, state, 'de');
     expect(display.title).toBe('KS MX 2024');
     expect(display.title.match(/KS MX 2024/g)?.length).toBe(1);
     expect(display.subtitle?.toLowerCase()).not.toContain('available');

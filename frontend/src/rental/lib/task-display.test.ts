@@ -70,7 +70,10 @@ describe('task display parity', () => {
   });
 
   it('includes assigned to and created by in list display fields', () => {
-    const row = mapApiTaskToTaskListRow(makeTask(), ctx);
+    const row = mapApiTaskToTaskListRow(
+      makeTask({ dueDate: '2027-01-01T00:00:00.000Z', isOverdue: false }),
+      ctx,
+    );
     const fields = getTaskListDisplayFields(row);
 
     expect(fields).toContain('Max Mechaniker');

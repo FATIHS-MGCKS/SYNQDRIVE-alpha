@@ -17,6 +17,12 @@ import { DocumentExtractionType } from '@prisma/client';
 
 export type FieldType = 'string' | 'number' | 'date' | 'enum';
 
+/** Business document types that can be extracted and applied — excludes AUTO. */
+export type ApplyDocumentExtractionType = Exclude<DocumentExtractionType, 'AUTO'>;
+
+/** Request-only classification sentinel — never passed to apply services. */
+export const AUTO_CLASSIFICATION_REQUEST = 'AUTO' as const;
+
 export interface FieldDef {
   key: string;
   label: string;
@@ -33,7 +39,7 @@ const COMMON_EVENT: FieldDef[] = [
   { key: 'workshopName', label: 'Workshop / Vendor', type: 'string' },
 ];
 
-export const DOCUMENT_FIELD_SCHEMAS: Record<DocumentExtractionType, FieldDef[]> = {
+export const DOCUMENT_FIELD_SCHEMAS: Record<ApplyDocumentExtractionType, FieldDef[]> = {
   SERVICE: [
     ...COMMON_EVENT,
     { key: 'description', label: 'Description', type: 'string' },
@@ -180,19 +186,38 @@ export const DOCUMENT_FIELD_SCHEMAS: Record<DocumentExtractionType, FieldDef[]> 
 
 export const SUPPORTED_DOCUMENT_TYPES = Object.keys(
   DOCUMENT_FIELD_SCHEMAS,
-) as DocumentExtractionType[];
+) as ApplyDocumentExtractionType[];
 
-export function isSupportedDocumentType(value: unknown): value is DocumentExtractionType {
+export const REQUEST_DOCUMENT_TYPES = [
+  AUTO_CLASSIFICATION_REQUEST,
+  ...SUPPORTED_DOCUMENT_TYPES,
+] as const;
+
+export function isSupportedDocumentType(value: unknown): value is ApplyDocumentExtractionType {
   return typeof value === 'string' && (SUPPORTED_DOCUMENT_TYPES as string[]).includes(value);
 }
 
-export function getFieldSchema(documentType: DocumentExtractionType): FieldDef[] {
+export function isAutoClassificationRequest(value: unknown): value is typeof AUTO_CLASSIFICATION_REQUEST {
+  return value === AUTO_CLASSIFICATION_REQUEST;
+}
+
+export function isRequestDocumentType(
+  value: unknown,
+): value is DocumentExtractionType {
+  return typeof value === 'string' && (REQUEST_DOCUMENT_TYPES as readonly string[]).includes(value);
+}
+
+export function isApplyDocumentType(value: unknown): value is ApplyDocumentExtractionType {
+  return isSupportedDocumentType(value);
+}
+
+export function getFieldSchema(documentType: ApplyDocumentExtractionType): FieldDef[] {
   return DOCUMENT_FIELD_SCHEMAS[documentType] ?? DOCUMENT_FIELD_SCHEMAS.OTHER;
 }
 
 /** Builds an empty extractedData object (flat keys, nested for `treadDepthMm`). */
 export function buildEmptyExtractedData(
-  documentType: DocumentExtractionType,
+  documentType: ApplyDocumentExtractionType,
 ): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const f of getFieldSchema(documentType)) {
@@ -208,26 +233,14 @@ export function buildEmptyExtractedData(
   return out;
 }
 
-// ── Upload constraints ─────────────────────────────────────────────────────
+// ── Upload constraints (re-exported from canonical constants) ─────────────
 
-export const ALLOWED_MIME_TYPES = [
-  'application/pdf',
-  'image/jpeg',
-  'image/jpg',
-  'image/png',
-  'image/webp',
-  'text/plain',
-] as const;
-
-export const ALLOWED_EXTENSIONS = [
-  '.pdf',
-  '.jpg',
-  '.jpeg',
-  '.png',
-  '.webp',
-  '.txt',
-] as const;
-
-export function isAllowedMimeType(mime: string | undefined): boolean {
-  return !!mime && (ALLOWED_MIME_TYPES as readonly string[]).includes(mime.toLowerCase());
-}
+export {
+  ALLOWED_MIME_TYPES,
+  ALLOWED_EXTENSIONS,
+  DOCUMENT_UPLOAD_ACCEPT_ATTR,
+  isAllowedMimeType,
+  normalizeClientMimeType,
+  resolveDocumentUploadMaxMb,
+  resolveMaxUploadBytes,
+} from './document-upload.constants';

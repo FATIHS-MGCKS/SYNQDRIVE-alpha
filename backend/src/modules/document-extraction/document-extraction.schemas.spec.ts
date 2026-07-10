@@ -1,7 +1,11 @@
 import {
   DOCUMENT_FIELD_SCHEMAS,
   SUPPORTED_DOCUMENT_TYPES,
+  REQUEST_DOCUMENT_TYPES,
+  AUTO_CLASSIFICATION_REQUEST,
   isSupportedDocumentType,
+  isRequestDocumentType,
+  isAutoClassificationRequest,
   isAllowedMimeType,
   getFieldSchema,
   buildEmptyExtractedData,
@@ -34,10 +38,24 @@ describe('document-extraction.schemas', () => {
 
     it('rejects unknown / non-string values', () => {
       expect(isSupportedDocumentType('NONSENSE')).toBe(false);
+      expect(isSupportedDocumentType('AUTO')).toBe(false);
       expect(isSupportedDocumentType('service')).toBe(false); // case-sensitive
       expect(isSupportedDocumentType(undefined)).toBe(false);
       expect(isSupportedDocumentType(42)).toBe(false);
       expect(isSupportedDocumentType(null)).toBe(false);
+    });
+  });
+
+  describe('isRequestDocumentType / AUTO', () => {
+    it('accepts AUTO plus every apply-safe document type', () => {
+      expect(isAutoClassificationRequest(AUTO_CLASSIFICATION_REQUEST)).toBe(true);
+      for (const t of REQUEST_DOCUMENT_TYPES) {
+        expect(isRequestDocumentType(t)).toBe(true);
+      }
+    });
+
+    it('rejects unknown request values', () => {
+      expect(isRequestDocumentType('NONSENSE')).toBe(false);
     });
   });
 

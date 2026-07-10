@@ -3,7 +3,6 @@ import { Camera, CheckCircle, FileUp, Loader2, X } from 'lucide-react';
 import { StatusChip } from '../../components/patterns';
 import { useDocumentExtractionFlow } from '../../rental/hooks/useDocumentExtractionFlow';
 import {
-  ACCEPT_ATTR,
   FLOW_STATUS_LABEL_DE,
 } from '../../rental/components/documents/document-extraction.shared';
 import type { OperatorSheetAction } from '../lib/operatorTypes';
@@ -253,7 +252,7 @@ export function OperatorAiUploadFlow({ action }: Props) {
             <input
               ref={galleryRef}
               type="file"
-              accept={ACCEPT_ATTR}
+              accept={flow.acceptAttr}
               className="hidden"
               onChange={(e) => {
                 handlePick(e.target.files);
@@ -268,6 +267,9 @@ export function OperatorAiUploadFlow({ action }: Props) {
             )}
             {pickError && flow.flow === 'idle' && (
               <p className="text-xs text-[color:var(--status-critical)]">{pickError}</p>
+            )}
+            {flow.validationError && flow.flow === 'idle' && (
+              <p className="text-xs text-[color:var(--status-critical)]">{flow.validationError}</p>
             )}
           </div>
         )}

@@ -4,7 +4,6 @@ import { DetailDrawer } from '../../../components/patterns';
 import { StatusChip } from '../../../components/patterns';
 import { useDocumentExtractionFlow } from '../../hooks/useDocumentExtractionFlow';
 import {
-  ACCEPT_ATTR,
   DOC_TYPE_LABELS,
   EXTRACTION_TEMPLATES,
   FLOW_STATUS_LABEL_DE,
@@ -158,7 +157,7 @@ export function VehicleDocumentUploadDrawer({
                 ref={fileInputRef}
                 type="file"
                 className="hidden"
-                accept={ACCEPT_ATTR}
+                accept={flow.acceptAttr}
                 onChange={(e) => {
                   const f = e.target.files?.[0];
                   if (f) void flow.handleFile(f);
@@ -171,6 +170,10 @@ export function VehicleDocumentUploadDrawer({
               <p className="mt-1 text-[11px] text-muted-foreground">PDF, JPG, PNG, WebP, TXT · max. 10 MB</p>
             </div>
           </>
+        )}
+
+        {flow.validationError && flow.flow === 'idle' && (
+          <p className="text-[11px] text-[color:var(--status-critical)]">{flow.validationError}</p>
         )}
 
         {flow.isBusy && (

@@ -1,4 +1,6 @@
 import { DocumentAiExtractionService } from './document-ai-extraction.service';
+import { DocumentChunkingService } from './document-chunking.service';
+import { DocumentExtractionMergeService } from './document-extraction-merge.service';
 
 describe('DocumentAiExtractionService', () => {
   const fields = [
@@ -7,9 +9,32 @@ describe('DocumentAiExtractionService', () => {
     { key: 'workshopName', label: 'Workshop', type: 'string' },
   ];
 
+  const conf = {
+    aiExtractionEnabled: true,
+    chunkTargetChars: 6000,
+    chunkMaxChars: 8000,
+    chunkMaxPages: 200,
+    chunkMaxChunks: 12,
+    chunkOverlapChars: 0,
+  };
+
+  function makeService(llm: any) {
+    return new DocumentAiExtractionService(
+      llm,
+      new DocumentChunkingService(),
+      new DocumentExtractionMergeService(),
+      conf as any,
+    );
+  }
+
   it('returns failure when AI extraction is disabled', async () => {
     const llm = { isConfigured: jest.fn().mockReturnValue(true), activeProviderId: 'mistral' };
-    const svc = new DocumentAiExtractionService(llm as any, { aiExtractionEnabled: false } as any);
+    const svc = new DocumentAiExtractionService(
+      llm as any,
+      new DocumentChunkingService(),
+      new DocumentExtractionMergeService(),
+      { ...conf, aiExtractionEnabled: false } as any,
+    );
 
     const res = await svc.extract({
       documentType: 'SERVICE',
@@ -25,7 +50,7 @@ describe('DocumentAiExtractionService', () => {
 
   it('returns failure when LLM gateway is not configured', async () => {
     const llm = { isConfigured: jest.fn().mockReturnValue(false) };
-    const svc = new DocumentAiExtractionService(llm as any, { aiExtractionEnabled: true } as any);
+    const svc = makeService(llm as any);
 
     const res = await svc.extract({ documentType: 'SERVICE', fields, rawText: 'invoice' });
     expect(res.success).toBe(false);
@@ -49,7 +74,7 @@ describe('DocumentAiExtractionService', () => {
         model: 'json-model',
       }),
     };
-    const svc = new DocumentAiExtractionService(llm as any, { aiExtractionEnabled: true } as any);
+    const svc = makeService(llm as any);
 
     const res = await svc.extract({
       documentType: 'SERVICE',

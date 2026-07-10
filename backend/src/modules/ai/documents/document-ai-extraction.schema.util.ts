@@ -1,7 +1,5 @@
 import type { DocumentAiField } from './document-ai-extraction.types';
 
-const MAX_DOC_TEXT_CHARS = 12000;
-
 function nullableSchema(inner: Record<string, unknown>): Record<string, unknown> {
   return { anyOf: [inner, { type: 'null' }] };
 }
@@ -85,6 +83,10 @@ export function buildDocumentExtractionPrompt(input: {
   documentType: string;
   fields: DocumentAiField[];
   rawText: string;
+  chunkIndex?: number;
+  chunkCount?: number;
+  pageNumbers?: number[];
+  pageBoundaryReliable?: boolean;
   vehicleContext?: {
     vin?: string;
     make?: string;
@@ -119,22 +121,31 @@ export function buildDocumentExtractionPrompt(input: {
     })
     .join('\n');
 
-  const text = (input.rawText || '').slice(0, MAX_DOC_TEXT_CHARS);
+  const text = input.rawText || '';
+
+  const chunkHeader =
+    input.chunkCount != null && input.chunkCount > 1
+      ? `CHUNK: ${(input.chunkIndex ?? 0) + 1} of ${input.chunkCount}${
+          input.pageNumbers?.length
+            ? ` | SOURCE_PAGES: ${input.pageNumbers.join(', ')}`
+            : ' | SOURCE_PAGES: unknown'
+        }${input.pageBoundaryReliable === false ? ' | PAGE_BOUNDARIES: inferred' : ''}\n\n`
+      : '';
 
   const system = `You extract structured vehicle service/rental document data for SynqDrive.
 Return only valid JSON matching the provided schema.
-If a field is not present in the document text, return null. Do not invent values.
+If a field is not present in this document section, return null. Do not invent values.
 Use vehicle context only for plausibility reasoning — never copy context values into fields unless they appear in the document text.
-Human confirmation happens later; you only produce suggestions.
+Human confirmation happens later; you only produce suggestions for the provided section.
 Numbers must be plain numbers without units or thousands separators.
 Dates as ISO YYYY-MM-DD when possible.`;
 
   const user = `DOCUMENT_TYPE: ${input.documentType}
 
-${ctxLines ? `VEHICLE_CONTEXT (plausibility only, do not copy into fields):\n${ctxLines}\n\n` : ''}EXPECTED_FIELDS:
+${ctxLines ? `VEHICLE_CONTEXT (plausibility only, do not copy into fields):\n${ctxLines}\n\n` : ''}${chunkHeader}EXPECTED_FIELDS:
 ${fieldsSpec}
 
-DOCUMENT_TEXT (verbatim OCR/extracted text):
+DOCUMENT_TEXT_SECTION (verbatim OCR/extracted text for this chunk only):
 """
 ${text}
 """`;

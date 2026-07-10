@@ -257,9 +257,12 @@ enum DocumentExtractionStatus {
   APPLIED
   FAILED
   REJECTED
+  AWAITING_DOCUMENT_TYPE
+  CANCELLED
 }
 
 enum DocumentExtractionType {
+  AUTO
   SERVICE
   OIL_CHANGE
   TIRE
@@ -273,6 +276,35 @@ enum DocumentExtractionType {
   DAMAGE
   FINE
   OTHER
+}
+
+enum DocumentExtractionClassificationMode {
+  MANUAL
+  AUTO
+}
+
+enum DocumentExtractionStage {
+  UPLOAD
+  STORAGE
+  QUEUE
+  OCR
+  CLASSIFICATION
+  EXTRACTION
+  VALIDATION
+  REVIEW
+  APPLY
+}
+
+enum DocumentExtractionErrorPhase {
+  UPLOAD
+  STORAGE
+  QUEUE
+  OCR
+  CLASSIFICATION
+  EXTRACTION
+  VALIDATION
+  APPLY
+  UNKNOWN
 }
 
 enum EnrichmentJobType {
@@ -2025,8 +2057,23 @@ model VehicleDocumentExtraction {
   id             String                   @id @default(uuid())
   vehicleId      String                   @map("vehicle_id")
   organizationId String?                  @map("organization_id")
-  documentType   DocumentExtractionType   @map("document_type")
+  // Legacy field — mirrors effectiveDocumentType for backward compatibility.
+  documentType   DocumentExtractionType?  @map("document_type")
+  requestedDocumentType DocumentExtractionType? @map("requested_document_type")
+  effectiveDocumentType DocumentExtractionType? @map("effective_document_type")
+  classificationMode DocumentExtractionClassificationMode @default(MANUAL) @map("classification_mode")
+  detectedDocumentType DocumentExtractionType? @map("detected_document_type")
+  classificationConfidence Decimal? @map("classification_confidence") @db.Decimal(5, 4)
   status         DocumentExtractionStatus @default(PENDING) @map("status")
+  processingStage DocumentExtractionStage @default(UPLOAD) @map("processing_stage")
+  errorPhase     DocumentExtractionErrorPhase? @map("error_phase")
+  errorCode      String?                  @map("error_code")
+  processingAttempts Int                  @default(0) @map("processing_attempts")
+  ocrProvider    String?                  @map("ocr_provider")
+  ocrModel       String?                  @map("ocr_model")
+  extractionProvider String?              @map("extraction_provider")
+  extractionModel String?                 @map("extraction_model")
+  ocrPageCount   Int?                     @map("ocr_page_count")
   sourceFileName String?                  @map("source_file_name")
   sourceFileUrl  String?                  @map("source_file_url")
   // Private object-storage key for the stored upload (NOT publicly served).
@@ -2043,6 +2090,18 @@ model VehicleDocumentExtraction {
   queuedAt        DateTime? @map("queued_at")
   processedAt     DateTime? @map("processed_at")
   appliedAt       DateTime? @map("applied_at")
+  processingStartedAt DateTime? @map("processing_started_at")
+  ocrCompletedAt DateTime? @map("ocr_completed_at")
+  classificationCompletedAt DateTime? @map("classification_completed_at")
+  extractionCompletedAt DateTime? @map("extraction_completed_at")
+  processingCompletedAt DateTime? @map("processing_completed_at")
+  nextRetryAt    DateTime? @map("next_retry_at")
+  cancelledAt    DateTime? @map("cancelled_at")
+  cancelledById  String?  @map("cancelled_by_id")
+  confirmedById  String?  @map("confirmed_by_id")
+  appliedById    String?  @map("applied_by_id")
+  fileDeletedById String? @map("file_deleted_by_id")
+  fileDeletedAt  DateTime? @map("file_deleted_at")
   createdById     String?  @map("created_by_id")
   serviceEventId  String?  @map("service_event_id")
   createdAt       DateTime @default(now()) @map("created_at")
@@ -2054,6 +2113,9 @@ model VehicleDocumentExtraction {
 
   @@index([vehicleId])
   @@index([status])
+  @@index([organizationId, createdAt])
+  @@index([vehicleId, createdAt])
+  @@index([status, updatedAt])
   @@map("vehicle_document_extractions")
 }
 

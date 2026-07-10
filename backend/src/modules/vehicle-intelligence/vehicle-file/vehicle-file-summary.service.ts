@@ -17,6 +17,7 @@ import {
 import {
   buildDocumentCategories,
   MANDATORY_DOCUMENT_CATEGORY_IDS,
+  resolveRowDocumentType,
   toExtractionSummary,
 } from './vehicle-file-category.mapper';
 import type { VehicleDocumentExtraction } from '@prisma/client';
@@ -206,7 +207,9 @@ export class VehicleFileSummaryService {
     extractions: VehicleDocumentExtraction[],
   ) {
     const appliedInvoice = extractions.find(
-      (e) => e.documentType === 'INVOICE' && (e.status === 'APPLIED' || e.status === 'CONFIRMED'),
+      (e) =>
+        (e.effectiveDocumentType ?? e.documentType) === 'INVOICE' &&
+        (e.status === 'APPLIED' || e.status === 'CONFIRMED'),
     );
 
     const item = (
@@ -379,7 +382,7 @@ export class VehicleFileSummaryService {
       items.push({
         id: `doc-${ext.id}`,
         kind: 'document',
-        title: ext.documentType.replace(/_/g, ' '),
+        title: resolveRowDocumentType(ext).replace(/_/g, ' '),
         subtitle: ext.sourceFileName,
         occurredAt: ext.createdAt.toISOString(),
         uiStatus: toExtractionSummary(ext).uiStatus,

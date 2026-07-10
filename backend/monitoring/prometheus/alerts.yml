@@ -106,3 +106,80 @@ groups:
         annotations:
           summary: DIMO snapshot poll success rate below 80%
           description: Snapshot worker success ratio dropped — check DIMO connectivity and queue health.
+
+  - name: synqdrive_document_extraction
+    rules:
+      - alert: DocumentExtractionQueueAgeHigh
+        expr: synqdrive_document_extraction_queue_age_seconds > 600
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Document extraction queue age is high
+          description: Oldest waiting document.extraction job exceeds 10 minutes.
+
+      - alert: DocumentExtractionOcrFailureRateHigh
+        expr: |
+          (
+            rate(synqdrive_document_extraction_failures_total{stage="OCR",retryable="false"}[15m])
+            /
+            clamp_min(rate(synqdrive_document_extraction_jobs_total[15m]), 0.001)
+          ) > 0.25
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Elevated permanent OCR failure rate
+          description: More than 25% of document jobs are failing permanently at OCR.
+
+      - alert: DocumentExtractionOcrRateLimited
+        expr: rate(synqdrive_document_extraction_failures_total{stage="OCR",error_code="OCR_RATE_LIMITED"}[10m]) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: Sustained Mistral OCR 429 rate
+          description: OCR rate-limit errors are occurring frequently — check provider quota/backoff.
+
+      - alert: DocumentExtractionWorkersIdleWithQueue
+        expr: |
+          synqdrive_document_extraction_queue_age_seconds > 120
+          and synqdrive_document_extraction_active_jobs == 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: Document extraction queue stalled
+          description: Jobs are waiting but no active workers are processing document.extraction.
+
+      - alert: DocumentExtractionApplyFailureRateHigh
+        expr: |
+          (
+            rate(synqdrive_document_extraction_apply_total{result="error"}[30m])
+            /
+            clamp_min(rate(synqdrive_document_extraction_apply_total[30m]), 0.001)
+          ) > 0.15
+        for: 20m
+        labels:
+          severity: warning
+        annotations:
+          summary: Document apply failure rate elevated
+          description: More than 15% of confirm→apply operations are failing.
+
+      - alert: DocumentExtractionAwaitingTypeBacklog
+        expr: increase(synqdrive_document_extraction_jobs_total{status="AWAITING_DOCUMENT_TYPE"}[1h]) > 20
+        for: 30m
+        labels:
+          severity: info
+        annotations:
+          summary: Many documents awaiting manual type selection
+          description: AUTO classification could not proceed — operators may need to review type backlog.
+
+      - alert: DocumentExtractionStorageFailures
+        expr: rate(synqdrive_document_extraction_failures_total{stage="STORAGE"}[15m]) > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Document storage read/write failures detected
+          description: Storage failures in the document extraction pipeline — check object storage health.

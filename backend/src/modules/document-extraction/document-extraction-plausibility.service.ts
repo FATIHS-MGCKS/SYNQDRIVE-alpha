@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DocumentExtractionType } from '@prisma/client';
+import type { FieldExtractionEvidence } from '@modules/ai/documents/document-extraction-merge.service';
 
 export type PlausibilityStatus = 'OK' | 'WARNING' | 'BLOCKER';
 export type PlausibilitySource = 'DOCUMENT' | 'SYNQDRIVE_DB' | 'DIMO' | 'SYSTEM';
@@ -37,12 +38,18 @@ const NEGATIVE = -0.0001;
  * where available). The AI agent's own plausibility output is not trusted here;
  * its advisory notes are merged separately by the worker.
  */
+export interface PlausibilityRunOptions {
+  extractionConflicts?: FieldExtractionEvidence[];
+  chunkingWarnings?: string[];
+}
+
 @Injectable()
 export class DocumentExtractionPlausibilityService {
   runChecks(
     documentType: DocumentExtractionType,
     fields: Record<string, unknown>,
     context: PlausibilityVehicleContext,
+    options?: PlausibilityRunOptions,
   ): PlausibilityResult {
     const checks: PlausibilityCheck[] = [];
     const notes: string[] = [];
@@ -186,6 +193,34 @@ export class DocumentExtractionPlausibilityService {
           ? 'DIMO telemetry is available for this vehicle but collision/harsh-braking corroboration is not automatically evaluated. Verify the incident manually.'
           : 'No DIMO telemetry context available to corroborate this incident. Verify the incident manually.',
       );
+    }
+
+    if (options?.chunkingWarnings?.length) {
+      for (const warning of options.chunkingWarnings) {
+        notes.push(warning);
+        checks.push({
+          code: 'DOCUMENT_CHUNK_LIMIT',
+          status: 'WARNING',
+          message: warning,
+          source: 'SYSTEM',
+        });
+      }
+    }
+
+    for (const conflict of options?.extractionConflicts ?? []) {
+      const leafKey = conflict.key.split('.').pop() ?? conflict.key;
+      const pages =
+        conflict.sourcePages.length > 0
+          ? ` (pages ${conflict.sourcePages.join(', ')})`
+          : '';
+      const isBlocker =
+        leafKey === 'odometerKm' || leafKey === 'vin' || leafKey === 'licensePlate';
+      checks.push({
+        code: `FIELD_CONFLICT_${leafKey.toUpperCase()}`,
+        status: isBlocker ? 'BLOCKER' : 'WARNING',
+        message: `Conflicting extracted values for ${leafKey}${pages} — manual review required`,
+        source: 'DOCUMENT',
+      });
     }
 
     const overallStatus = this.worst(checks);

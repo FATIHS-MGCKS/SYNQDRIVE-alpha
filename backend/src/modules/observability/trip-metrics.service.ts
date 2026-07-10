@@ -55,11 +55,21 @@ export class TripMetricsService implements OnModuleInit {
   readonly dimoSnapshotPollTotal: Counter<string>;
   readonly metricsEndpointRequests: Counter<string>;
 
+  /** Document extraction pipeline — low-cardinality labels only. */
+  readonly documentExtractionJobs: Counter<string>;
+  readonly documentExtractionFailures: Counter<string>;
+  readonly documentExtractionRetries: Counter<string>;
+  readonly documentExtractionPages: Counter<string>;
+  readonly documentExtractionClassification: Counter<string>;
+  readonly documentExtractionApply: Counter<string>;
+
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
   // ═══════════════════════════════════════════════════════════════
 
   readonly enrichmentPending: Gauge<string>;
+  readonly documentExtractionQueueAge: Gauge<string>;
+  readonly documentExtractionActiveJobs: Gauge<string>;
   readonly possibleEndStuck: Gauge<string>;
   readonly clickHouseConfigured: Gauge<string>;
   readonly clickHouseAvailable: Gauge<string>;
@@ -80,6 +90,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly detectorLatency: Histogram<string>;
   readonly queueLag: Histogram<string>;
   readonly clickHouseQueryDuration: Histogram<string>;
+  readonly documentExtractionDuration: Histogram<string>;
 
   constructor() {
     this.registry = new Registry();
@@ -241,6 +252,48 @@ export class TripMetricsService implements OnModuleInit {
       registers: [this.registry],
     });
 
+    this.documentExtractionJobs = new Counter({
+      name: 'synqdrive_document_extraction_jobs_total',
+      help: 'Document extraction pipeline job outcomes by status and stage',
+      labelNames: ['status', 'stage'],
+      registers: [this.registry],
+    });
+
+    this.documentExtractionFailures = new Counter({
+      name: 'synqdrive_document_extraction_failures_total',
+      help: 'Document extraction failures by stage, error code, and retryability',
+      labelNames: ['stage', 'error_code', 'retryable'],
+      registers: [this.registry],
+    });
+
+    this.documentExtractionRetries = new Counter({
+      name: 'synqdrive_document_extraction_retries_total',
+      help: 'Document extraction retry attempts by stage',
+      labelNames: ['stage'],
+      registers: [this.registry],
+    });
+
+    this.documentExtractionPages = new Counter({
+      name: 'synqdrive_document_extraction_pages_total',
+      help: 'Document pages processed by extraction method',
+      labelNames: ['method'],
+      registers: [this.registry],
+    });
+
+    this.documentExtractionClassification = new Counter({
+      name: 'synqdrive_document_extraction_classification_total',
+      help: 'Document classification outcomes',
+      labelNames: ['result'],
+      registers: [this.registry],
+    });
+
+    this.documentExtractionApply = new Counter({
+      name: 'synqdrive_document_extraction_apply_total',
+      help: 'Document apply outcomes after human confirmation',
+      labelNames: ['result'],
+      registers: [this.registry],
+    });
+
     this.enrichmentPending = new Gauge({
       name: 'synqdrive_enrichment_pending',
       help: 'Current number of trips pending behavior enrichment',
@@ -305,6 +358,18 @@ export class TripMetricsService implements OnModuleInit {
       registers: [this.registry],
     });
 
+    this.documentExtractionQueueAge = new Gauge({
+      name: 'synqdrive_document_extraction_queue_age_seconds',
+      help: 'Age in seconds of the oldest waiting document extraction job',
+      registers: [this.registry],
+    });
+
+    this.documentExtractionActiveJobs = new Gauge({
+      name: 'synqdrive_document_extraction_active_jobs',
+      help: 'Currently active document extraction worker jobs',
+      registers: [this.registry],
+    });
+
     this.tripFinalizeLatency = new Histogram({
       name: 'synqdrive_trip_finalize_latency_seconds',
       help: 'Time from trip start to finalization in seconds',
@@ -342,6 +407,14 @@ export class TripMetricsService implements OnModuleInit {
       help: 'ClickHouse query execution duration in seconds',
       buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 15],
       labelNames: ['query_type'],
+      registers: [this.registry],
+    });
+
+    this.documentExtractionDuration = new Histogram({
+      name: 'synqdrive_document_extraction_duration_seconds',
+      help: 'Document extraction stage duration in seconds',
+      buckets: [0.25, 0.5, 1, 2, 5, 15, 30, 60, 120, 300],
+      labelNames: ['stage'],
       registers: [this.registry],
     });
   }

@@ -11,6 +11,7 @@ const MONITORED_QUEUES = [
   QUEUE_NAMES.DIMO_SNAPSHOT,
   QUEUE_NAMES.TRIP_TRACKING,
   QUEUE_NAMES.TRIP_BEHAVIOR_ENRICHMENT,
+  QUEUE_NAMES.DOCUMENT_EXTRACTION,
 ] as const;
 
 /**
@@ -60,11 +61,23 @@ export class MetricsRefreshService implements OnModuleInit, OnModuleDestroy {
     await Promise.all(
       this.queues.map(async (queue) => {
         try {
-          const counts = await queue.getJobCounts('failed');
+          const counts = await queue.getJobCounts('failed', 'active', 'waiting');
           this.metrics.queueFailedJobs.set(
             { queue: queue.name },
             counts.failed ?? 0,
           );
+
+          if (queue.name === QUEUE_NAMES.DOCUMENT_EXTRACTION) {
+            this.metrics.documentExtractionActiveJobs.set(counts.active ?? 0);
+            const waitingJobs = await queue.getJobs(['waiting'], 0, 0, true);
+            const oldest = waitingJobs[0];
+            if (oldest?.timestamp) {
+              const ageSeconds = Math.max(0, (Date.now() - oldest.timestamp) / 1000);
+              this.metrics.documentExtractionQueueAge.set(ageSeconds);
+            } else {
+              this.metrics.documentExtractionQueueAge.set(0);
+            }
+          }
         } catch (err: unknown) {
           this.logger.debug(
             `Queue failed gauge refresh skipped for ${queue.name}: ${

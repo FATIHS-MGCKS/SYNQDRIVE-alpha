@@ -185,9 +185,9 @@ describe('dashboardKpiVisual', () => {
   });
 
   describe('getKpiCardSurfaceClass', () => {
-    it('neutral cards use calm border only — background from surface-elevated', () => {
-      expect(getKpiCardSurfaceClass('neutral', false)).toBe('border-border/45');
-      expect(getKpiCardSurfaceClass('neutral', true)).toBe('border-border/45');
+    it('neutral cards rely on surface-elevated — no extra surface classes', () => {
+      expect(getKpiCardSurfaceClass('neutral', false)).toBe('');
+      expect(getKpiCardSurfaceClass('neutral', true)).toBe('');
       expect(getKpiCardSurfaceClass('neutral', false)).not.toContain('bg-');
     });
 

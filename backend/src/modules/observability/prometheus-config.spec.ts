@@ -36,6 +36,11 @@ describe('TripMetricsService label cardinality', () => {
     expect(text).toContain('synqdrive_metrics_endpoint_requests_total');
     expect(text).toContain('synqdrive_queue_failed_jobs');
     expect(text).toContain('synqdrive_dimo_snapshot_poll_total');
+    expect(text).toContain('synqdrive_document_extraction_jobs_total');
+    expect(text).toContain('synqdrive_document_extraction_failures_total');
+    expect(text).toContain('synqdrive_document_extraction_duration_seconds');
+    expect(text).toContain('synqdrive_document_extraction_queue_age_seconds');
+    expect(text).toContain('synqdrive_document_extraction_active_jobs');
   });
 });
 
@@ -55,6 +60,7 @@ describe('Prometheus config files', () => {
     expect(yaml).toContain('synqdrive_clickhouse_configured');
     expect(yaml).toContain('synqdrive_enrichment_pending');
     expect(yaml).toContain('synqdrive_dimo_snapshot_poll_total');
+    expect(yaml).toContain('DocumentExtractionQueueAgeHigh');
     expect(yaml).not.toContain('vehicle_id');
     expect(yaml).not.toContain('trip_id');
   });

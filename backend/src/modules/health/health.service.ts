@@ -1,9 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RedisService } from '@shared/redis/redis.service';
 import { ClickHouseService } from '@modules/clickhouse/clickhouse.service';
 import { ClickHouseAnalyticsService } from '@modules/clickhouse/clickhouse-analytics.service';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
+import { DocumentExtractionHealthService } from '@modules/document-extraction/document-extraction-health.service';
 
 export interface DependencyStatus {
   status: 'ok' | 'error';
@@ -21,25 +22,24 @@ export class HealthService {
     private readonly redis: RedisService,
     private readonly clickHouse: ClickHouseService,
     private readonly clickHouseAnalytics: ClickHouseAnalyticsService,
+    @Optional() private readonly documentExtractionHealth?: DocumentExtractionHealthService,
   ) {}
 
   async checkReadiness(): Promise<{
     status: 'ok' | 'degraded';
     checks: Record<string, DependencyStatus>;
   }> {
-    const [postgres, redis, clickhouse, workers] = await Promise.all([
+    const [postgres, redis, clickhouse, workers, documentExtraction] = await Promise.all([
       this.checkPostgres(),
       this.checkRedis(),
       this.checkClickHouse(),
       this.checkWorkerRuntime(),
+      this.checkDocumentExtraction(),
     ]);
 
-    const checks = { postgres, redis, clickhouse, workers };
+    const checks = { postgres, redis, clickhouse, workers, documentExtraction };
 
-    // ClickHouse is an OPTIONAL analytics/telemetry mirror. It must never drag
-    // the overall operational readiness into 'degraded'. Only the hard
-    // dependencies (PostgreSQL, Redis, workers runtime) determine the status.
-    const hardChecks = [postgres, redis, workers];
+    const hardChecks = [postgres, redis, workers, documentExtraction];
     const allHealthy = hardChecks.every((c) => c.status === 'ok');
     const status = allHealthy ? 'ok' : 'degraded';
 
@@ -177,6 +177,45 @@ export class HealthService {
         details: {
           workersEnabled,
         },
+      };
+    }
+  }
+
+  private async checkDocumentExtraction(): Promise<DependencyStatus> {
+    const start = Date.now();
+    if (!this.documentExtractionHealth) {
+      return {
+        status: 'ok',
+        responseMs: Date.now() - start,
+        details: { skipped: true },
+      };
+    }
+    try {
+      const health = await this.documentExtractionHealth.getHealth();
+      const depStatus: 'ok' | 'error' = health.status === 'error' ? 'error' : 'ok';
+      return {
+        status: depStatus,
+        responseMs: Date.now() - start,
+        ...(depStatus === 'error'
+          ? { error: 'document_extraction_unavailable' }
+          : {}),
+        details: {
+          queueEnabled: health.queueEnabled,
+          workersEnabled: health.workersEnabled,
+          queueReachable: health.queueReachable,
+          mistralOcrConfigured: health.mistralOcrConfigured,
+          aiExtractionConfigured: health.aiExtractionConfigured,
+          storageAvailable: health.storageAvailable,
+          waitingJobs: health.waitingJobs,
+          activeJobs: health.activeJobs,
+        },
+      };
+    } catch (err: any) {
+      this.logger.warn(`Readiness check — document extraction failed: ${err?.message}`);
+      return {
+        status: 'error',
+        responseMs: Date.now() - start,
+        error: err?.message,
       };
     }
   }

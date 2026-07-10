@@ -4303,6 +4303,79 @@ export const api = {
       }
       return (await res.json()) as { id: string; status: string; documentType: string };
     },
+    setDocumentType: (
+      vehicleId: string,
+      extractionId: string,
+      data: { documentType: string; reextract?: boolean },
+    ) => post<any>(`/vehicles/${vehicleId}/document-extractions/${extractionId}/document-type`, data),
+    cancelDocumentExtraction: (vehicleId: string, extractionId: string) =>
+      post<any>(`/vehicles/${vehicleId}/document-extractions/${extractionId}/cancel`, {}),
+    downloadDocumentExtraction: async (vehicleId: string, extractionId: string) => {
+      const token = getToken();
+      const res = await fetch(
+        `${BASE_URL}/vehicles/${vehicleId}/document-extractions/${extractionId}/download`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+      );
+      if (!res.ok) {
+        let message = `Download failed (${res.status})`;
+        try {
+          const body = (await res.json()) as { message?: string };
+          if (body?.message) message = body.message;
+        } catch {
+          /* keep default */
+        }
+        throw new Error(message);
+      }
+      return res.blob();
+    },
+  },
+  documentExtraction: {
+    metadata: () => get<import('../rental/lib/document-extraction.types').DocumentExtractionMetadata>(
+      '/document-extractions/metadata',
+    ),
+    listByOrg: (
+      orgId: string,
+      params?: {
+        page?: number;
+        limit?: number;
+        vehicleId?: string;
+        status?: string;
+        documentType?: string;
+      },
+    ) => {
+      const q = buildQuery({
+        page: params?.page,
+        limit: params?.limit,
+        vehicleId: params?.vehicleId,
+        status: params?.status,
+        documentType: params?.documentType,
+      });
+      return get<import('../rental/lib/document-extraction.types').DocumentExtractionListResponse>(
+        `/organizations/${orgId}/document-extractions${q}`,
+      );
+    },
+    getByOrg: (orgId: string, extractionId: string) =>
+      get<import('../rental/lib/document-extraction.types').PublicDocumentExtraction>(
+        `/organizations/${orgId}/document-extractions/${extractionId}`,
+      ),
+    downloadByOrg: async (orgId: string, extractionId: string) => {
+      const token = getToken();
+      const res = await fetch(
+        `${BASE_URL}/organizations/${orgId}/document-extractions/${extractionId}/download`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} },
+      );
+      if (!res.ok) {
+        let message = `Download failed (${res.status})`;
+        try {
+          const body = (await res.json()) as { message?: string };
+          if (body?.message) message = body.message;
+        } catch {
+          /* keep default */
+        }
+        throw new Error(message);
+      }
+      return res.blob();
+    },
   },
   partsAccessories: {
     providers: () => get<PartsProviderSummary[]>('/parts-accessories/providers'),

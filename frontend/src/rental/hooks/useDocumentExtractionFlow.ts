@@ -1,12 +1,19 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../lib/api';
 import {
   buildReviewFields,
-  mapFlowStatus,
   type FlowStatus,
   type Plausibility,
   type ReviewField,
 } from '../components/documents/document-extraction.shared';
+import { mapServerToFlowStatus } from '../lib/document-extraction-lifecycle';
+import { createExtractionPoller } from '../lib/document-extraction-polling';
+import type { DocumentExtractionMetadata, PublicDocumentExtraction } from '../lib/document-extraction.types';
+import {
+  buildAcceptAttribute,
+  validateUploadFile,
+  type UploadValidationCode,
+} from '../lib/document-extraction-validation';
 
 export interface UseDocumentExtractionFlowOptions {
   vehicleId: string;
@@ -22,22 +29,28 @@ export function useDocumentExtractionFlow({
   uploadSource = 'documents_tab',
   onComplete,
 }: UseDocumentExtractionFlowOptions) {
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const pollerStopRef = useRef<(() => void) | null>(null);
+
+  const [metadata, setMetadata] = useState<DocumentExtractionMetadata | null>(null);
   const [flow, setFlow] = useState<FlowStatus>('idle');
   const [documentType, setDocumentType] = useState(initialDocType);
   const [uploadedFileName, setUploadedFileName] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [editingFields, setEditingFields] = useState(false);
   const [editedFields, setEditedFields] = useState<ReviewField[]>([]);
   const [plausibility, setPlausibility] = useState<Plausibility | null>(null);
   const [extractionId, setExtractionId] = useState<string | null>(null);
   const [confirmedDocType, setConfirmedDocType] = useState(initialDocType);
 
+  const acceptAttr = useMemo(() => buildAcceptAttribute(metadata?.extensions), [metadata]);
+
   const stopPolling = useCallback(() => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
+    pollerStopRef.current?.();
+    pollerStopRef.current = null;
+    abortRef.current?.abort();
+    abortRef.current = null;
   }, []);
 
   useEffect(() => () => stopPolling(), [stopPolling]);
@@ -47,50 +60,78 @@ export function useDocumentExtractionFlow({
     setConfirmedDocType(initialDocType);
   }, [initialDocType]);
 
+  useEffect(() => {
+    let cancelled = false;
+    api.documentExtraction
+      .metadata()
+      .then((m) => {
+        if (!cancelled) setMetadata(m);
+      })
+      .catch(() => {
+        /* validation helper falls back to canonical constants */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const validationMessage = useCallback((code: UploadValidationCode): string => {
+    const messages: Record<UploadValidationCode, string> = {
+      NO_VEHICLE: 'Bitte zuerst ein Fahrzeug auswählen.',
+      NO_FILE: 'Bitte eine Datei auswählen.',
+      MULTIPLE_FILES: 'Bitte nur eine Datei hochladen.',
+      EMPTY_FILE: 'Die Datei ist leer.',
+      FILE_TOO_LARGE: `Die Datei überschreitet ${metadata?.maxUploadMb ?? 10} MB.`,
+      INVALID_EXTENSION: 'Dateityp wird nicht unterstützt.',
+      INVALID_MIME: 'Dateiformat wird vom Browser nicht unterstützt.',
+    };
+    return messages[code];
+  }, [metadata?.maxUploadMb]);
+
   const applyRecord = useCallback(
-    (record: {
-      status?: string;
-      documentType?: string;
-      extractedData?: Record<string, unknown>;
-      plausibility?: Plausibility;
-      errorMessage?: string | null;
-      sourceFileName?: string | null;
-    }) => {
-      const mapped = mapFlowStatus(record?.status);
-      const docType = record?.documentType || documentType;
+    (record: PublicDocumentExtraction) => {
+      const mapped = mapServerToFlowStatus(record.status, record.processingStage);
+      const docType = record.effectiveDocumentType || record.documentType || documentType;
       setConfirmedDocType(docType);
       if (record.sourceFileName) setUploadedFileName(record.sourceFileName);
 
       if (mapped === 'ready') {
-        setEditedFields(buildReviewFields(docType, record?.extractedData));
-        setPlausibility(record?.plausibility ?? null);
+        setEditedFields(buildReviewFields(docType, (record.extractedData ?? undefined) as Record<string, unknown> | undefined));
+        setPlausibility((record.plausibility as Plausibility | null) ?? null);
         setFlow('ready');
         stopPolling();
       } else if (mapped === 'failed') {
-        setErrorMessage(record?.errorMessage || 'Extraktion fehlgeschlagen.');
+        setErrorMessage(record.errorMessage || 'Extraktion fehlgeschlagen.');
         setFlow('failed');
         stopPolling();
       } else if (mapped === 'done') {
         setFlow('done');
         stopPolling();
+      } else if (mapped === 'awaiting_type') {
+        setEditedFields([]);
+        setPlausibility(null);
+        setFlow('awaiting_type');
+        stopPolling();
       } else {
         setFlow(mapped);
       }
     },
-    [documentType, onComplete, stopPolling],
+    [documentType, stopPolling],
   );
 
   const startPolling = useCallback(
     (id: string) => {
       stopPolling();
-      pollRef.current = setInterval(async () => {
-        try {
-          const record = await api.vehicleIntelligence.getDocumentExtraction(vehicleId, id);
-          applyRecord(record);
-        } catch {
-          /* transient */
-        }
-      }, 2000);
+      const controller = new AbortController();
+      abortRef.current = controller;
+
+      const poller = createExtractionPoller({
+        signal: controller.signal,
+        fetchRecord: () =>
+          api.vehicleIntelligence.getDocumentExtraction(vehicleId, id) as Promise<PublicDocumentExtraction>,
+        onRecord: applyRecord,
+      });
+      pollerStopRef.current = poller.stop;
     },
     [applyRecord, stopPolling, vehicleId],
   );
@@ -104,6 +145,7 @@ export function useDocumentExtractionFlow({
     setPlausibility(null);
     setExtractionId(null);
     setErrorMessage(null);
+    setValidationError(null);
     setDocumentType(initialDocType);
     setConfirmedDocType(initialDocType);
   }, [initialDocType, stopPolling]);
@@ -111,12 +153,22 @@ export function useDocumentExtractionFlow({
   const handleFile = useCallback(
     async (file: File) => {
       if (!vehicleId) return;
-      setUploadedFileName(file.name);
+      setValidationError(null);
       setErrorMessage(null);
       setEditingFields(false);
       setPlausibility(null);
       setEditedFields([]);
       setExtractionId(null);
+      setFlow('validating');
+
+      const validation = validateUploadFile(file, metadata, { vehicleSelected: Boolean(vehicleId) });
+      if (!validation.ok && validation.code) {
+        setValidationError(validationMessage(validation.code));
+        setFlow('idle');
+        return;
+      }
+
+      setUploadedFileName(file.name);
       setFlow('uploading');
 
       try {
@@ -128,14 +180,14 @@ export function useDocumentExtractionFlow({
         );
         setExtractionId(res.id);
         setConfirmedDocType(res.documentType || documentType);
-        setFlow(mapFlowStatus(res.status));
+        setFlow(mapServerToFlowStatus(res.status as PublicDocumentExtraction['status']));
         startPolling(res.id);
       } catch (err: unknown) {
         setErrorMessage(err instanceof Error ? err.message : 'Upload fehlgeschlagen.');
         setFlow('failed');
       }
     },
-    [documentType, startPolling, uploadSource, vehicleId],
+    [documentType, metadata, startPolling, uploadSource, validationMessage, vehicleId],
   );
 
   const handleRetry = useCallback(async () => {
@@ -144,6 +196,7 @@ export function useDocumentExtractionFlow({
       return;
     }
     setErrorMessage(null);
+    setValidationError(null);
     setFlow('queued');
     try {
       await api.vehicleIntelligence.retryDocumentExtraction(vehicleId, extractionId);
@@ -187,13 +240,18 @@ export function useDocumentExtractionFlow({
     async (id: string, fileName?: string | null) => {
       setExtractionId(id);
       setErrorMessage(null);
+      setValidationError(null);
       setEditingFields(false);
       if (fileName) setUploadedFileName(fileName);
       setFlow('processing');
       try {
-        const record = await api.vehicleIntelligence.getDocumentExtraction(vehicleId, id);
+        const record = (await api.vehicleIntelligence.getDocumentExtraction(
+          vehicleId,
+          id,
+        )) as PublicDocumentExtraction;
         applyRecord(record);
-        if (mapFlowStatus(record.status) === 'processing' || mapFlowStatus(record.status) === 'queued') {
+        const mapped = mapServerToFlowStatus(record.status, record.processingStage);
+        if (mapped !== 'ready' && mapped !== 'failed' && mapped !== 'done' && mapped !== 'awaiting_type') {
           startPolling(id);
         }
       } catch {
@@ -206,7 +264,18 @@ export function useDocumentExtractionFlow({
 
   const openView = openReview;
 
-  const isBusy = flow === 'uploading' || flow === 'queued' || flow === 'processing';
+  const isBusy =
+    flow === 'validating' ||
+    flow === 'uploading' ||
+    flow === 'queued' ||
+    flow === 'processing' ||
+    flow === 'retrying' ||
+    flow === 'ocr' ||
+    flow === 'classifying' ||
+    flow === 'extracting' ||
+    flow === 'validating_plausibility' ||
+    flow === 'stored' ||
+    flow === 'awaiting_type';
   const blockerPresent = plausibility?.overallStatus === 'BLOCKER';
 
   return {
@@ -216,12 +285,15 @@ export function useDocumentExtractionFlow({
     confirmedDocType,
     uploadedFileName,
     errorMessage,
+    validationError,
     editingFields,
     setEditingFields,
     editedFields,
     setEditedFields,
     plausibility,
     extractionId,
+    acceptAttr,
+    metadata,
     isBusy,
     blockerPresent,
     handleFile,

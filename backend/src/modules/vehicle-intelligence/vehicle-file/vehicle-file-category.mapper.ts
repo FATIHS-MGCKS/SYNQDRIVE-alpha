@@ -42,6 +42,14 @@ const TYPE_TO_CATEGORY: Partial<Record<DocumentExtractionType, VehicleDocumentCa
   OTHER: 'other',
 };
 
+export function resolveRowDocumentType(row: VehicleDocumentExtraction): DocumentExtractionType {
+  const resolved = row.effectiveDocumentType ?? row.documentType;
+  if (!resolved || resolved === 'AUTO') {
+    return 'OTHER';
+  }
+  return resolved;
+}
+
 export function extractionToUiStatus(status: DocumentExtractionStatus): VehicleDocumentUiStatus {
   switch (status) {
     case 'PENDING':
@@ -49,6 +57,8 @@ export function extractionToUiStatus(status: DocumentExtractionStatus): VehicleD
       return 'uploaded';
     case 'PROCESSING':
       return 'processing';
+    case 'AWAITING_DOCUMENT_TYPE':
+      return 'needs_review';
     case 'READY_FOR_REVIEW':
       return 'needs_review';
     case 'CONFIRMED':
@@ -58,6 +68,7 @@ export function extractionToUiStatus(status: DocumentExtractionStatus): VehicleD
     case 'FAILED':
       return 'error';
     case 'REJECTED':
+    case 'CANCELLED':
       return 'archived';
     default:
       return 'uploaded';
@@ -67,7 +78,7 @@ export function extractionToUiStatus(status: DocumentExtractionStatus): VehicleD
 export function toExtractionSummary(row: VehicleDocumentExtraction): VehicleDocumentExtractionSummary {
   return {
     id: row.id,
-    documentType: row.documentType,
+    documentType: resolveRowDocumentType(row),
     status: row.status,
     sourceFileName: row.sourceFileName,
     createdAt: row.createdAt.toISOString(),
@@ -106,7 +117,7 @@ export function buildDocumentCategories(input: {
 }): VehicleDocumentCategorySummary[] {
   const byCategory = new Map<VehicleDocumentCategoryId, VehicleDocumentExtraction[]>();
   for (const ext of input.extractions) {
-    const cat = TYPE_TO_CATEGORY[ext.documentType] ?? 'other';
+    const cat = TYPE_TO_CATEGORY[resolveRowDocumentType(ext)] ?? 'other';
     const list = byCategory.get(cat) ?? [];
     list.push(ext);
     byCategory.set(cat, list);

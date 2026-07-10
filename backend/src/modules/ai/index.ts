@@ -16,6 +16,17 @@ export type {
   LlmUsage,
 } from './llm/llm.types';
 export { MistralLlmService } from './providers/mistral/mistral-llm.service';
+export { MistralOcrService } from './providers/mistral/mistral-ocr.service';
+export { MistralSdkClientProvider } from './providers/mistral/mistral-sdk-client.provider';
+export type {
+  MistralOcrInput,
+  MistralOcrOutput,
+  MistralOcrPage,
+} from './providers/mistral/mistral-ocr.types';
+export {
+  MISTRAL_OCR_ERROR_CODES,
+  MistralOcrError,
+} from './providers/mistral/mistral-ocr.errors';
 export { DocumentAiExtractionService } from './documents/document-ai-extraction.service';
 export { VehicleSpecAiService } from './vehicle-specs/vehicle-spec-ai.service';
 export { TireSpecAiService } from './vehicle-specs/tire-spec-ai.service';

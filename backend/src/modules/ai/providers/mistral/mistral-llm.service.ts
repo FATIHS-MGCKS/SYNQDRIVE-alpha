@@ -8,6 +8,7 @@ import { Inject } from '@nestjs/common';
 import { Mistral } from '@mistralai/mistralai';
 import type { ChatCompletionRequest, ChatCompletionStreamRequest } from '@mistralai/mistralai/models/components';
 import aiConfig from '@config/ai.config';
+import { MistralSdkClientProvider } from './mistral-sdk-client.provider';
 import type {
   LlmCompleteInput,
   LlmCompleteResult,
@@ -21,18 +22,16 @@ import type {
   LlmUsage,
 } from '../../llm/llm.types';
 
-const REQUEST_TIMEOUT_MS = 120_000;
-
 @Injectable()
 export class MistralLlmService implements LlmProvider {
   readonly providerId = 'mistral';
 
   private readonly logger = new Logger(MistralLlmService.name);
-  private client: Mistral | null = null;
 
   constructor(
     @Inject(aiConfig.KEY)
     private readonly config: ConfigType<typeof aiConfig>,
+    private readonly clientProvider: MistralSdkClientProvider,
   ) {}
 
   isConfigured(): boolean {
@@ -135,21 +134,7 @@ export class MistralLlmService implements LlmProvider {
   }
 
   private getClient(): Mistral {
-    if (!this.isConfigured()) {
-      throw new ServiceUnavailableException(
-        'Mistral is not configured. Set MISTRAL_API_KEY on the server.',
-      );
-    }
-    if (!this.client) {
-      this.client = new Mistral({
-        apiKey: this.config.mistralApiKey,
-        ...(this.config.mistralBaseUrl
-          ? { serverURL: this.config.mistralBaseUrl }
-          : {}),
-        timeoutMs: REQUEST_TIMEOUT_MS,
-      });
-    }
-    return this.client;
+    return this.clientProvider.getClient();
   }
 
   private buildChatRequest(

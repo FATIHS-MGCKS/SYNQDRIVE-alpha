@@ -44,12 +44,12 @@ export function AppShell({
       {sidebar}
       <div className="flex-1 flex flex-col overflow-hidden pt-16 lg:pt-0 min-w-0">
         <div
-          className={cn('flex-1 overflow-auto text-foreground', shellContentPadding[variant])}
+          className={cn('flex-1 overflow-auto overflow-x-clip text-foreground', shellContentPadding[variant])}
         >
           <div
             className={cn(
               shellMaxWidth[variant],
-              'mx-auto',
+              'mx-auto w-full min-w-0',
               variant === 'rental' && 'text-[13px]',
             )}
           >
