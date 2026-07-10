@@ -15,6 +15,7 @@ import {
   getVehicleTariffFromCatalog,
   grossFromNetCents,
 } from '../pricing/pricingUtils';
+import { sumExtrasGrossCents } from '../pricing/pricingLineItems';
 import {
   buildCustomerCreatePayload,
   buildBookingCreatePayload,
@@ -649,17 +650,7 @@ export function NewBookingView({
 
   const baseRentalLine = priceSim?.lineItems.find((li) => li.type === 'BASE_RENTAL');
   const subtotal = baseRentalLine ? baseRentalLine.totalGrossCents / 100 : 0;
-  const extrasTotal = priceSim
-    ? priceSim.lineItems
-        .filter(
-          (li) =>
-            li.type !== 'BASE_RENTAL' &&
-            li.type !== 'TAX' &&
-            li.type !== 'DISCOUNT' &&
-            li.type !== 'MANUAL_DISCOUNT',
-        )
-        .reduce((sum, li) => sum + li.totalGrossCents, 0) / 100
-    : 0;
+  const extrasTotal = priceSim ? sumExtrasGrossCents(priceSim.lineItems) / 100 : 0;
 
   // Auto-redirect countdown
   const [redirectCountdown, setRedirectCountdown] = useState<number | null>(null);

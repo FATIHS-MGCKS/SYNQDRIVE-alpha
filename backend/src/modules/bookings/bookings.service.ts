@@ -775,10 +775,14 @@ export class BookingsService {
       performedByName: p.performedByName,
     });
 
-    const [deposit, invoices, tasks, misuseCount, analysis, activityRows, noShowCount, openInvoices, openFines] =
+    const [deposit, priceSnapshot, invoices, tasks, misuseCount, analysis, activityRows, noShowCount, openInvoices, openFines] =
       await Promise.all([
         this.prisma.bookingDeposit.findFirst({
           where: { organizationId: orgId, bookingId: id },
+        }),
+        this.prisma.bookingPriceSnapshot.findUnique({
+          where: { bookingId: id },
+          select: { depositAmountCents: true },
         }),
         this.prisma.orgInvoice.findMany({
           where: { organizationId: orgId, bookingId: id },
@@ -1064,7 +1068,7 @@ export class BookingsService {
           : b.totalPriceCents,
         extrasPriceCents: extrasPriceCents || null,
         discountAmountCents: null,
-        depositAmountCents: deposit?.amountCents ?? null,
+        depositAmountCents: deposit?.amountCents ?? priceSnapshot?.depositAmountCents ?? null,
         depositStatus: deposit?.status ?? null,
         taxRate: null,
         taxAmountCents: null,

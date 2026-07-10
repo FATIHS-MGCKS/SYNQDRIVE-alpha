@@ -295,7 +295,6 @@ export function TariffGroupDrawer({
               {centsField('Daily', rate.dailyRateCents, (v) => setRate({ ...rate, dailyRateCents: v }))}
               {centsField('Weekly', rate.weeklyRateCents, (v) => setRate({ ...rate, weeklyRateCents: v }))}
               {centsField('Monthly', rate.monthlyRateCents, (v) => setRate({ ...rate, monthlyRateCents: v }))}
-              {centsField('Deposit', rate.depositAmountCents, (v) => setRate({ ...rate, depositAmountCents: v }))}
               {centsField('Extra km', rate.extraKmPriceCents, (v) => setRate({ ...rate, extraKmPriceCents: v }))}
               <label className="block">
                 <span className="font-semibold text-muted-foreground">Included km/day</span>
@@ -307,6 +306,18 @@ export function TariffGroupDrawer({
                   className={`${inputCls} mt-1`}
                 />
               </label>
+            </div>
+          </section>
+
+          <section>
+            <h3 className="mb-3 font-bold uppercase tracking-wider text-muted-foreground">
+              Deposit (refundable, gross)
+            </h3>
+            <p className="mb-2 text-[11px] text-muted-foreground">
+              Stored as integer cents. Not subject to VAT and not part of rental revenue.
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {centsField('Deposit', rate.depositAmountCents, (v) => setRate({ ...rate, depositAmountCents: v }))}
             </div>
           </section>
 

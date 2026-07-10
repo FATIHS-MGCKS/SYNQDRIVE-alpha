@@ -13,6 +13,12 @@ export function formatPriceCents(cents: number, currency = 'EUR'): string {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency }).format(cents / 100);
 }
 
+/** Refundable deposit — stored as integer cents, displayed without VAT markup. */
+export function formatDepositCents(cents: number | null | undefined, currency = 'EUR'): string {
+  if (cents == null || Number.isNaN(cents)) return '—';
+  return formatPriceCents(cents, currency);
+}
+
 /** Display gross from net tariff rate (rates stored net in DB). */
 export function grossFromNetCents(netCents: number, taxRatePercent: number): number {
   return Math.round(netCents * (1 + taxRatePercent / 100));

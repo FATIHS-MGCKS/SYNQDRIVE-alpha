@@ -1,6 +1,7 @@
 import type { PriceTariffCatalog, PriceTariffGroup } from '../../pricing/pricingTypes';
 import {
   countVehiclesInGroup,
+  formatDepositCents,
   formatNetAsGross,
   getActiveVersion,
   resolveGroupStatus,
@@ -15,6 +16,7 @@ interface TariffGroupsTabProps {
 
 export function TariffGroupsTab({ catalog, onSelectGroup }: TariffGroupsTabProps) {
   const taxRate = catalog.priceBook?.taxRatePercent ?? 19;
+  const currency = catalog.priceBook?.currency ?? 'EUR';
 
   return (
     <div className="surface-premium overflow-hidden rounded-2xl border border-border/50 shadow-[var(--shadow-1)]">
@@ -79,7 +81,7 @@ export function TariffGroupsTab({ catalog, onSelectGroup }: TariffGroupsTabProps
                     {rate ? formatNetAsGross(rate.extraKmPriceCents, taxRate) : '—'}
                   </td>
                   <td className="px-4 py-3 tabular-nums">
-                    {rate ? formatNetAsGross(rate.depositAmountCents, taxRate) : '—'}
+                    {rate ? formatDepositCents(rate.depositAmountCents, currency) : '—'}
                   </td>
                   <td className="px-4 py-3">
                     <span

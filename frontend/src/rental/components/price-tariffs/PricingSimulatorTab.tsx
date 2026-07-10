@@ -4,6 +4,7 @@ import { useRentalOrg } from '../../RentalContext';
 import { usePricingSimulation } from '../../hooks/usePricingSimulation';
 import type { PriceTariffCatalog } from '../../pricing/pricingTypes';
 import { formatPriceCents, getVehicleTariffFromCatalog } from '../../pricing/pricingUtils';
+import { isRentalChargeLineType } from '../../pricing/pricingLineItems';
 
 interface PricingSimulatorTabProps {
   catalog: PriceTariffCatalog;
@@ -145,7 +146,7 @@ export function PricingSimulatorTab({ catalog }: PricingSimulatorTabProps) {
             <table className="w-full">
               <tbody>
                 {result.lineItems
-                  .filter((li) => li.type !== 'DEPOSIT')
+                  .filter((li) => isRentalChargeLineType(li.type))
                   .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
                   .map((li, i) => (
                     <tr key={i} className="border-b border-border/30">

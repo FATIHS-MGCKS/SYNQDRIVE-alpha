@@ -2,7 +2,17 @@ import {
   BookingPriceLineItemType,
   PriceOptionPricingType,
 } from '@prisma/client';
+import { isTaxablePricingLineType } from './pricing-line-item-types';
 import { computeRentalDays } from './pricing-rental-days.util';
+
+export {
+  EXTRAS_SUM_LINE_TYPES,
+  RENTAL_CHARGE_LINE_TYPES,
+  TAXABLE_PRICING_LINE_TYPES,
+  isExtrasSumLineType,
+  isRentalChargeLineType,
+  isTaxablePricingLineType,
+} from './pricing-line-item-types';
 
 export interface RateInput {
   dailyRateCents: number;
@@ -212,9 +222,7 @@ export function simulateBookingPrice(input: SimulatePriceInput): SimulatePriceRe
     });
   }
 
-  const chargeableItems = lineItems.filter(
-    (li) => li.type !== 'DEPOSIT' && li.type !== 'TAX',
-  );
+  const chargeableItems = lineItems.filter((li) => isTaxablePricingLineType(li.type));
   const subtotalNetCents = Math.max(
     0,
     chargeableItems.reduce((s, li) => s + li.totalNetCents, 0),

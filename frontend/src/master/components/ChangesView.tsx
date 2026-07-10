@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pricing-deposit-audit-v49338-2026-07-10',
+    version: '4.9.338',
+    title: 'V4.9.338 — Pricing: Kaution fachlich korrekt (Deposit-Pfade)',
+    summary: [
+      'Kaution: Integer-Cent `depositAmountCents`, kein USt, nicht in Mietumsatz/Extras/Rabattbasis; DEPOSIT-Line-Item separat.',
+      'Backend: `pricing-line-item-types.ts` mit Positivlisten; `simulateBookingPrice` nutzt `TAXABLE_PRICING_LINE_TYPES`.',
+      'Frontend: `formatDepositCents` (ohne Netto→Brutto), TariffGroupsTab/Drawer, NewBooking `extrasTotal` via `sumExtrasGrossCents`.',
+      'Booking-Detail: `depositAmountCents` Fallback aus `BookingPriceSnapshot` wenn kein `BookingDeposit`.',
+      'Tests: pricing-calculation.util.spec (10 Deposit-Regeln), pricing-deposit.utils.test.ts; 177→500 Regression unverändert grün.',
+    ],
+    reason: 'Prompt 5: Kaution wurde teils mit MwSt hochgerechnet, in Extras-Summen gezählt oder falsch im Tarifeditor platziert.',
+    previousBehavior: 'TariffGroupsTab `formatNetAsGross(deposit)`; NewBooking extrasTotal Negativfilter ohne DEPOSIT; Rates-Sektion mischte Kaution mit Netto-Tarifen.',
+    details: 'Neu: pricing-line-item-types.ts, pricingLineItems.ts, pricing-deposit.utils.test.ts. Geändert: pricing-calculation.util.ts, pricingUtils.ts, TariffGroupsTab, TariffGroupDrawer, NewBookingView, PricingSimulatorTab, bookings.service.ts findDetail.',
+    affectsArchitecture: true,
+    module: 'Rental Pricing',
+    createdAt: '2026-07-10T21:00:00.000Z',
+  },
+  {
     id: 'pricing-tariff-atomic-publish-v49337-2026-07-10',
     version: '4.9.337',
     title: 'V4.9.337 — Pricing: atomarer Tarif-Publish-Endpunkt',
