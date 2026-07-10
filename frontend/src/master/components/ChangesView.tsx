@@ -35,6 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'revert-dark-wordmark-logo-v49318-2026-07-10',
+    version: '4.9.318',
+    title: 'V4.9.318 — Revert: Dark-Theme White Wordmark',
+    summary: [
+      'SynqDriveBrandLogo nutzt wieder nur `synqdrive-logo-new.png` in Light und Dark — kein separates weißes Wordmark.',
+      'Asset `synqdrive-logo-dark-wordmark.png` entfernt; Rental/Master Sidebar + Login unverändert über die Komponente.',
+    ],
+    reason: 'Dark-Theme-White-Wordmark (V4.9.313) soll zurückgenommen werden.',
+    previousBehavior: 'Dark Mode: weißes Wordmark via `dark:block`; Light: synqdrive-logo-new.',
+    details: 'SynqDriveBrandLogo.tsx; Löschung synqdrive-logo-dark-wordmark.png.',
+    affectsArchitecture: false,
+    module: 'Master Admin',
+    createdAt: '2026-07-10T15:55:00.000Z',
+  },
+  {
     id: 'liquid-glass-map-hud-button-polish-v49317-2026-07-10',
     version: '4.9.317',
     title: 'V4.9.317 — Liquid Glass Map HUD: Button-Look, Fleet-Zentrierung, Trip Map Migration',
