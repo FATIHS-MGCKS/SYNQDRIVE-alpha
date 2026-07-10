@@ -33,7 +33,7 @@ EMAIL_SIMULATE_ENABLED=false
 RESEND_API_KEY=re_xxxxxxxx
 EMAIL_DEFAULT_FROM=noreply@synqdrive.eu
 EMAIL_DEFAULT_FROM_NAME=SynqDrive
-EMAIL_DEFAULT_REPLY_TO=support@synqdrive.eu
+EMAIL_DEFAULT_REPLY_TO=info@synqdrive.eu
 ```
 
 ```bash
@@ -63,7 +63,39 @@ Remote-Alternative (OAuth im Browser): `https://mcp.resend.com/mcp`
 
 ---
 
-## FS Mobility — Domain neu einrichten (wichtig)
+## SynqDrive Plattform-Domain (`synqdrive.eu`)
+
+Standard-Versand für Mandanten im Modus **SynqDrive Standard-Absender**:
+
+| Rolle | Adresse | Wo |
+|-------|---------|-----|
+| **Absender (From)** | `noreply@synqdrive.eu` | Resend (kein Hostinger-Postfach nötig) |
+| **Antworten (Reply-To)** | `info@synqdrive.eu` | Hostinger-Postfach (empfängt Kundenantworten) |
+
+### Einrichtung
+
+1. Resend: Domain `synqdrive.eu` registrieren (1 Domain im Plan — `fs-mobility.de` ggf. entfernen)
+2. DNS bei Hostinger mergen:
+
+```bash
+# Cloud Agent: Runtime Secret HOSTINGER_API_TOKEN + RESEND_API_KEY
+bash backend/scripts/ops/sync-resend-dns-to-hostinger.sh
+```
+
+3. Plattform-Env + DB:
+
+```bash
+EMAIL_DEFAULT_FROM=noreply@synqdrive.eu \
+EMAIL_DEFAULT_REPLY_TO=info@synqdrive.eu \
+bash backend/scripts/ops/sync-resend-env-to-vps.sh
+ssh root@srv1374778.hstgr.cloud 'pm2 restart synqdrive --update-env'
+```
+
+Master Admin → E-Mail: `noreply@synqdrive.eu` / Reply-To `info@synqdrive.eu`
+
+**Wichtig:** Root-MX (`mx1.hostinger.com`) für `info@synqdrive.eu` bleibt unverändert. Resend nutzt nur Subdomain `send.*` + DKIM `resend._domainkey`.
+
+---
 
 Die Domain `fs-mobility.de` wurde im **Simulationsmodus** registriert (`synqdrive-dev-verify`). Nach Resend-Aktivierung:
 
