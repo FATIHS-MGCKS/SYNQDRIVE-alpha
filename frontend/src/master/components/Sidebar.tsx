@@ -8,12 +8,12 @@ import {
   MapPin, Gauge, BookOpen, ShieldCheck
 } from 'lucide-react';
 import { useState } from 'react';
-import synqdriveLogo from '../../assets/synqdrive-logo-new.png';
 import {
   navItemClass,
   navSectionLabelClass,
   navSectionHeaderClass,
 } from '../../components/shell';
+import { SynqDriveBrandLogo } from '../../components/brand/SynqDriveBrandLogo';
 
 export type MasterView =
   | 'dashboard'
@@ -50,8 +50,6 @@ interface SidebarProps {
 export function Sidebar({ isDarkMode, currentView, onViewChange, settingsTab, onSettingsTabChange }: SidebarProps) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [mobileOpen, setMobileOpen] = useState(false);
-
-  const logo = synqdriveLogo;
 
   const toggle = (key: string) => setExpanded(prev => ({ ...prev, [key]: !prev[key] }));
 
@@ -254,7 +252,7 @@ export function Sidebar({ isDarkMode, currentView, onViewChange, settingsTab, on
           >
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
-          <img src={logo} alt="SynqDrive" className="h-4 w-auto object-contain" />
+          <SynqDriveBrandLogo className="h-4 w-auto object-contain" />
           <div className="w-9" />
         </div>
 
@@ -282,7 +280,7 @@ export function Sidebar({ isDarkMode, currentView, onViewChange, settingsTab, on
       <div className="hidden lg:flex w-[260px] h-screen flex-col shrink-0 border-r bg-sidebar border-sidebar-border">
         {/* Logo */}
         <div className="px-4 py-3 flex flex-col items-center gap-1.5 border-b border-sidebar-border">
-          <img src={logo} alt="SynqDrive" className="h-7 w-auto object-contain" />
+          <SynqDriveBrandLogo className="h-7 w-auto object-contain" />
           <span className="sq-chip sq-chip-critical !text-[10px] !font-bold uppercase tracking-[0.16em]">
             Master Admin
           </span>

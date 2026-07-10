@@ -12,10 +12,10 @@ import {
   CollapsedNavTooltip,
   NavComingSoonBadge,
 } from '../../components/shell';
-import synqdriveLogo from '../../assets/synqdrive-logo-new.png';
+import { SynqDriveBrandLogo } from '../../components/brand/SynqDriveBrandLogo';
 
 function SynqLogo({ className }: { className?: string }) {
-  return <img src={synqdriveLogo} alt="SYNQDRIVE" className={className ?? ''} />;
+  return <SynqDriveBrandLogo className={className} />;
 }
 
 interface SidebarProps {

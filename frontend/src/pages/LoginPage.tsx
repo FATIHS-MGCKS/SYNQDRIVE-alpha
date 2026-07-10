@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../lib/api';
 import { setAuth } from '../lib/auth';
 import { Eye, EyeOff, ArrowRight, Car, Zap, Shield, Globe } from 'lucide-react';
-import synqdriveLogo from '../assets/synqdrive-logo-new.png';
+import { SynqDriveBrandLogo } from '../components/brand/SynqDriveBrandLogo';
 import loginHeroVideo from '../assets/synqdrive-login.mp4';
 
 const loginCopy: Record<string, { en: string; de: string }> = {
@@ -221,11 +221,7 @@ export default function LoginPage() {
             <div className="w-full max-w-[280px]">
               {/* Logo */}
               <div className="flex items-center justify-center mb-5">
-                <img
-                  src={synqdriveLogo}
-                  alt="SYNQDRIVE"
-                  className="h-5 w-auto object-contain"
-                />
+                <SynqDriveBrandLogo className="h-5 w-auto object-contain" />
               </div>
 
               <div className="mb-4 text-center">

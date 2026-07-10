@@ -35,6 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'synqdrive-dark-wordmark-logo-v49313-2026-07-10',
+    version: '4.9.313',
+    title: 'V4.9.313 — SynqDrive White Wordmark für Dark Theme',
+    summary: [
+      'Neues Asset `synqdrive-logo-dark-wordmark.png` (weißes Wordmark) + `SynqDriveBrandLogo` mit `dark:`-Toggle.',
+      'Rental-Sidebar, Master-Sidebar und Login zeigen im Dark Mode das weiße Logo statt dunklem Wordmark.',
+    ],
+    reason: 'Einheitliches `synqdrive-logo-new.png` war im Dark Theme kaum sichtbar.',
+    previousBehavior: 'Überall nur dunkles Logo — kein Light/Dark-Wechsel.',
+    details: 'SynqDriveBrandLogo.tsx; Assets synqdrive-logo-new (light) + synqdrive-logo-dark-wordmark (dark).',
+    affectsArchitecture: false,
+    module: 'Frontend Shell',
+    createdAt: '2026-07-10T14:05:00.000Z',
+  },
+  {
     id: 'email-settings-platform-sender-payload-v49312-2026-07-10',
     version: '4.9.312',
     title: 'V4.9.312 — E-Mail & Versand: Speichern ohne read-only platformSender',
