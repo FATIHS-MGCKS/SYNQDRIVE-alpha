@@ -63,6 +63,20 @@ Remote-Alternative (OAuth im Browser): `https://mcp.resend.com/mcp`
 
 ---
 
+## Production-Checkliste (nach VPS-Konfiguration)
+
+| Check | Erwartung |
+|-------|-----------|
+| `EMAIL_PROVIDER` | `resend` |
+| `EMAIL_SIMULATE_ENABLED` | `false` |
+| `RESEND_API_KEY` | gesetzt |
+| PM2 | `pm2 restart synqdrive --update-env` |
+| Health | `https://app.synqdrive.eu/api/v1/health` → `ok` |
+| Testmail UI | Status **`Gesendet`** (nicht „simuliert“) |
+| DB `OutboundEmail.provider` | `resend` |
+
+---
+
 ## FS Mobility — Domain neu einrichten (wichtig)
 
 Die Domain `fs-mobility.de` wurde im **Simulationsmodus** registriert (`synqdrive-dev-verify`). Nach Resend-Aktivierung:
