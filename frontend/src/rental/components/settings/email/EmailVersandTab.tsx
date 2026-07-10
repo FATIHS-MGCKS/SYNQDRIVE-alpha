@@ -70,11 +70,6 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
     void load();
   }, [load, orgId]);
 
-  const verifiedDomains = useMemo(
-    () => domains.filter((d) => d.status === 'VERIFIED'),
-    [domains],
-  );
-
   const activeVerifiedDomains = useMemo(
     () => domains.filter((d) => d.status === 'VERIFIED' && d.isActive),
     [domains],
