@@ -583,6 +583,7 @@ export interface BuildBookingCreatePayloadArgs {
     manualDiscountCents?: number;
     manualAdjustmentCents?: number;
   };
+  quoteId?: string;
   notes?: string;
   currency?: string;
   status?: 'PENDING' | 'CONFIRMED' | 'ACTIVE';
@@ -608,6 +609,7 @@ export function buildBookingCreatePayload(args: BuildBookingCreatePayloadArgs) {
     ...(args.insuranceLabels ? { insuranceOptions: args.insuranceLabels } : {}),
     ...(args.extras ? { extrasJson: args.extras } : {}),
     ...(args.pricingInput ? { pricingInput: args.pricingInput } : {}),
+    ...(args.quoteId ? { quoteId: args.quoteId } : {}),
     ...(args.currency ? { currency: args.currency.toLowerCase() } : {}),
     status: args.status || 'PENDING',
     notes: args.notes || '',

@@ -172,6 +172,19 @@ export type PricingContextErrorCode =
   | 'CURRENCY_MISMATCH'
   | 'TARIFF_VERSION_INCOMPLETE';
 
+export interface PricingQuoteTotals {
+  rentalDays: number;
+  subtotalNetCents: number;
+  taxAmountCents: number;
+  totalGrossCents: number;
+  depositAmountCents: number;
+  includedKm: number;
+  extraKmPriceCents: number;
+  totalDueNowCents: number;
+  currency: string;
+  effectiveDailyRateCents: number;
+}
+
 export interface PricingSimulationResult {
   rentalDays: number;
   lineItems: PricingLineItem[];
@@ -189,6 +202,10 @@ export interface PricingSimulationResult {
   currency: string;
   effectiveDailyRateCents: number;
   pricingContext: PricingContext;
+  quoteId: string;
+  calculatedAt: string;
+  expiresAt: string;
+  totals: PricingQuoteTotals;
 }
 
 export interface PricingInputPayload {

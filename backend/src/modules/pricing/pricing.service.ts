@@ -351,11 +351,28 @@ export class PricingService {
       manualAdjustmentCents: input.pricing?.manualAdjustmentCents,
     });
 
-    await this.prisma.bookingPriceSnapshot.deleteMany({
+    return this.createBookingPriceSnapshotFromSimulation(
+      orgId,
+      bookingId,
+      simulation,
+      input.pricing,
+    );
+  }
+
+  async createBookingPriceSnapshotFromSimulation(
+    orgId: string,
+    bookingId: string,
+    simulation: BookingPriceSimulation,
+    pricing?: BookingPricingInputDto,
+    tx?: Prisma.TransactionClient,
+  ) {
+    const db = tx ?? this.prisma;
+
+    await db.bookingPriceSnapshot.deleteMany({
       where: { bookingId, organizationId: orgId },
     });
 
-    const snapshot = await this.prisma.bookingPriceSnapshot.create({
+    const snapshot = await db.bookingPriceSnapshot.create({
       data: {
         organizationId: orgId,
         bookingId,
@@ -373,7 +390,7 @@ export class PricingService {
         taxAmountCents: simulation.taxAmountCents,
         totalGrossCents: simulation.totalGrossCents,
         totalDueNowCents: simulation.totalDueNowCents,
-        pricingInputJson: (input.pricing ?? {}) as Prisma.InputJsonValue,
+        pricingInputJson: (pricing ?? {}) as Prisma.InputJsonValue,
         pricingWarningsJson: simulation.warnings.length
           ? (simulation.warnings as unknown as Prisma.InputJsonValue)
           : Prisma.JsonNull,

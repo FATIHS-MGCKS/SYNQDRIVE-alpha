@@ -21,7 +21,10 @@ import { RentalHealthService } from '@modules/rental-health/rental-health.servic
 import { TaskAutomationService } from '@modules/tasks/task-automation.service';
 import { CustomerEligibilityService } from '@modules/customers/customer-eligibility.service';
 import { PricingService } from '@modules/pricing/pricing.service';
-import { assertClientCurrencyMatches } from '@shared/money/money.util';
+import {
+  PricingQuoteService,
+  requireQuoteId,
+} from '@modules/pricing/pricing-quote.service';
 import { StationValidationService } from '@modules/stations/station-validation.service';
 import {
   assertValidBookingWindow,
@@ -68,6 +71,7 @@ export class BookingsService {
     private readonly taskAutomationService: TaskAutomationService,
     private readonly customerEligibilityService: CustomerEligibilityService,
     private readonly pricingService: PricingService,
+    private readonly pricingQuoteService: PricingQuoteService,
     private readonly stationValidation: StationValidationService,
   ) {}
 
@@ -110,7 +114,11 @@ export class BookingsService {
     }
   }
 
-  async create(orgId: string, data: Omit<Prisma.BookingCreateInput, 'organization'>): Promise<Booking> {
+  async create(
+    orgId: string,
+    data: Omit<Prisma.BookingCreateInput, 'organization'>,
+    options?: { userId?: string | null },
+  ): Promise<Booking> {
     // V4.6.74 — server-side gate: prevent double-booking the SAME vehicle
     // within overlapping time windows. The frontend already tries to block
     // this, but the UI gate was broken (it filtered on a field that wasn't
@@ -183,20 +191,32 @@ export class BookingsService {
     );
 
     const pricingInput = this.pricingService.extractPricingInputFromBookingData(anyData);
-    const simulation = await this.pricingService.simulateBookingPrice(orgId, {
-      vehicleId,
-      pickupAt: startDate.toISOString(),
-      returnAt: endDate.toISOString(),
-      selectedMileagePackageId: pricingInput?.selectedMileagePackageId,
-      selectedInsuranceOptionIds: pricingInput?.selectedInsuranceOptionIds,
-      selectedExtraOptionIds: pricingInput?.selectedExtraOptionIds,
-      manualDiscountCents: pricingInput?.manualDiscountCents,
-      manualAdjustmentCents: pricingInput?.manualAdjustmentCents,
-    });
-    assertClientCurrencyMatches(
-      typeof anyData.currency === 'string' ? anyData.currency : undefined,
-      simulation.currency,
+    const quoteId = requireQuoteId(anyData.quoteId);
+
+    const existingBookingId = await this.pricingQuoteService.findConsumedBookingId(
+      orgId,
+      quoteId,
     );
+    if (existingBookingId) {
+      const existing = await this.prisma.booking.findFirst({
+        where: { id: existingBookingId, organizationId: orgId },
+      });
+      if (existing) {
+        return existing;
+      }
+    }
+
+    const { simulation, pricingInput: quotedPricingInput } =
+      await this.pricingQuoteService.consumeForBooking({
+        organizationId: orgId,
+        userId: options?.userId ?? null,
+        quoteId,
+        vehicleId,
+        pickupAt: startDate,
+        returnAt: endDate,
+        pricingInput,
+      });
+
     const pricedFields = this.pricingService.legacyBookingFieldsFromSimulation(simulation);
     const stationFields = await this.resolveBookingStationFields(
       orgId,
@@ -204,20 +224,26 @@ export class BookingsService {
     );
     const bookingData = this.stripBookingStationScalars(data as Record<string, unknown>);
 
-    const booking = await this.prisma.booking.create({
-      data: {
-        ...bookingData,
-        ...pricedFields,
-        ...this.stationFieldsToPrismaInput(stationFields),
-        organization: { connect: { id: orgId } },
-      } as Prisma.BookingCreateInput,
-    });
+    const booking = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.booking.create({
+        data: {
+          ...bookingData,
+          ...pricedFields,
+          ...this.stationFieldsToPrismaInput(stationFields),
+          organization: { connect: { id: orgId } },
+        } as Prisma.BookingCreateInput,
+      });
 
-    await this.pricingService.createBookingPriceSnapshot(orgId, booking.id, {
-      vehicleId,
-      pickupAt: startDate,
-      returnAt: endDate,
-      pricing: pricingInput,
+      await this.pricingQuoteService.markConsumed(tx, quoteId, orgId, created.id);
+      await this.pricingService.createBookingPriceSnapshotFromSimulation(
+        orgId,
+        created.id,
+        simulation,
+        quotedPricingInput,
+        tx,
+      );
+
+      return created;
     });
 
     const invoicePromise = this.invoicesService

@@ -3,6 +3,8 @@ import { Loader2 } from 'lucide-react';
 import { api, type BookingDetailDto, type CustomerApiRecord, type OperatorBookingUpdatePayload, type Station } from '../../lib/api';
 import { buildBookingCreatePayload } from '../../rental/lib/entityMappers';
 import { StationSelectFields } from '../../rental/components/stations/StationSelectFields';
+import { usePricingSimulation } from '../../rental/hooks/usePricingSimulation';
+import { formatMoneyCents } from '../../rental/pricing/pricingUtils';
 import { useRentalOrg } from '../../rental/RentalContext';
 import { OperatorGlassCard } from '../components/OperatorGlassCard';
 import { useOperatorShell } from '../context/OperatorShellContext';
@@ -193,6 +195,22 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
     }
   }, [isEdit, selectedVehicle, stations, pickupStationId, sameReturnStation]);
 
+  const priceSimParams = useMemo(() => {
+    if (isEdit || !vehicleId || !startLocal || !endLocal) return null;
+    const pickupAt = localDateTimeToIso(startLocal);
+    const returnAt = localDateTimeToIso(endLocal);
+    if (!pickupAt || !returnAt) return null;
+    if (new Date(returnAt).getTime() <= new Date(pickupAt).getTime()) return null;
+    return { vehicleId, pickupAt, returnAt };
+  }, [isEdit, vehicleId, startLocal, endLocal]);
+
+  const {
+    result: priceSim,
+    loading: priceLoading,
+    error: priceError,
+    refresh: refreshPrice,
+  } = usePricingSimulation(orgId, priceSimParams);
+
   const handleSuccess = useCallback(() => {
     action.onSuccess?.();
     closeSheet();
@@ -233,6 +251,17 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
         setFormError('Bitte ein Fahrzeug wählen.');
         return;
       }
+      if (priceLoading) {
+        setFormError('Preisberechnung läuft — bitte kurz warten.');
+        return;
+      }
+      if (!priceSim?.quoteId) {
+        setFormError(
+          priceError ||
+            'Keine gültige Preisquote. Bitte Zeitraum prüfen und Preisberechnung aktualisieren.',
+        );
+        return;
+      }
 
       const { date: pickupDate, time: pickupTime } = splitLocalDateTime(startLocal);
       const { date: returnDate, time: returnTime } = splitLocalDateTime(endLocal);
@@ -250,7 +279,7 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
         notes: notes.trim(),
         status,
         includedKm: km != null && Number.isFinite(km) ? km : undefined,
-        currency: 'eur',
+        quoteId: priceSim.quoteId,
       });
 
       await createBooking(payload, handleSuccess);
@@ -426,6 +455,33 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
                 </p>
               </label>
             )}
+            {!isEdit && priceSimParams && (
+              <div className="rounded-lg border border-border/40 bg-muted/20 px-3 py-2">
+                {priceLoading ? (
+                  <p className="text-xs text-muted-foreground">Preis wird berechnet…</p>
+                ) : priceError ? (
+                  <div className="space-y-2">
+                    <p className="text-xs text-[color:var(--status-critical)]">{priceError}</p>
+                    <button
+                      type="button"
+                      onClick={() => void refreshPrice()}
+                      className="text-xs font-medium text-primary underline-offset-2 hover:underline"
+                    >
+                      Preis neu berechnen
+                    </button>
+                  </div>
+                ) : priceSim?.quoteId ? (
+                  <p className="text-xs text-muted-foreground">
+                    Gesamtpreis (Quote):{' '}
+                    <span className="font-semibold text-foreground">
+                      {formatMoneyCents(priceSim.totalGrossCents, priceSim.currency)}
+                    </span>
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Preisquote ausstehend</p>
+                )}
+              </div>
+            )}
             <label className="block">
               <span className="text-xs font-medium text-muted-foreground">Km inklusive (optional)</span>
               <input
@@ -484,7 +540,7 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
           >
             <button
               type="button"
-              disabled={mutating || detailLoading}
+              disabled={mutating || detailLoading || (!isEdit && (priceLoading || !priceSim?.quoteId))}
               onClick={() => void handleSubmit()}
               className="sq-3d-btn sq-3d-btn--primary min-h-[48px] w-full font-semibold disabled:opacity-50"
             >

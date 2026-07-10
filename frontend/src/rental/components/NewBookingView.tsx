@@ -11,7 +11,9 @@ import { usePricingSimulation } from '../hooks/usePricingSimulation';
 import {
   discountableNetCents,
   grossFromNetCents,
+  isPricingQuoteStaleError,
   majorUnitsFromCents,
+  parseApiError,
   resolvePricingCurrency,
 } from '../pricing/pricingUtils';
 import { findLineItemBySourceId, sumExtrasGrossCents } from '../pricing/pricingLineItems';
@@ -696,11 +698,11 @@ export function NewBookingView({
       return;
     }
 
-    if (!pricingContext || !priceSim || grandTotal == null) {
+    if (!priceSim?.quoteId || !pricingContext || !priceSim || grandTotal == null) {
       toast.error('Preis nicht verfügbar', {
         description:
           priceError ||
-          'Die serverseitige Preisauflösung ist fehlgeschlagen oder unvollständig.',
+          'Die serverseitige Preisquote fehlt oder ist ungültig. Bitte Preisberechnung aktualisieren.',
       });
       return;
     }
@@ -746,8 +748,6 @@ export function NewBookingView({
         returnTime,
         pickupStationId,
         returnStationId: effectiveReturnStationId,
-        dailyRateEuro: dailyRateGross ?? undefined,
-        totalPriceEuro: grandTotal,
         includedKm: totalFreeKm,
         insuranceLabels: insuranceLabel ? [insuranceLabel] : [],
         extras: extrasForPayload,
@@ -757,6 +757,7 @@ export function NewBookingView({
           selectedExtraOptionIds: extras,
           manualDiscountCents,
         },
+        quoteId: priceSim.quoteId,
         notes: `Abholung: ${pickupName || selectedVehicle.station} • Rückgabe: ${returnName || pickupName || selectedVehicle.station} • Zahlung: ${paymentLabel}`,
         status: customerEligibility?.canConfirmBooking ? 'CONFIRMED' : 'PENDING',
       });
@@ -842,9 +843,15 @@ export function NewBookingView({
           duration: 8000,
         });
       } else {
-        const msg =
-          body?.message || err?.message || 'Buchung konnte nicht gespeichert werden';
-        toast.error('Fehler beim Speichern', { description: String(msg) });
+        const msg = parseApiError(err);
+        if (isPricingQuoteStaleError(err)) {
+          toast.error('Preis veraltet', {
+            description: msg,
+            duration: 9000,
+          });
+        } else {
+          toast.error('Fehler beim Speichern', { description: msg });
+        }
       }
       setIsSavingBooking(false);
       return;
@@ -997,7 +1004,7 @@ export function NewBookingView({
         }
         return true;
       case 5:
-        return agbAccepted && privacyAccepted && hasPrice && !priceLoading;
+        return agbAccepted && privacyAccepted && hasPrice && !priceLoading && Boolean(priceSim?.quoteId);
       default:
         return false;
     }

@@ -20,6 +20,7 @@ import type {
 } from './dto/booking-rental-eligibility-check.dto';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import { Prisma } from '@prisma/client';
 import { CreateHandoverProtocolPayload } from './handover.types';
@@ -121,9 +122,10 @@ export class BookingsController {
   @Post()
   async create(
     @Param('orgId') orgId: string,
+    @CurrentUser('id') userId: string | undefined,
     @Body() body: Omit<Prisma.BookingCreateInput, 'organization'>,
   ) {
-    return this.bookingsService.create(orgId, body);
+    return this.bookingsService.create(orgId, body, { userId });
   }
 
   @Patch(':id')

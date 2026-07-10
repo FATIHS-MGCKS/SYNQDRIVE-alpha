@@ -174,6 +174,15 @@ const PRICING_ERROR_LABELS: Record<string, string> = {
   PRICE_BOOK_CURRENCY_MISSING: 'Währung im Preisbuch fehlt',
   CURRENCY_MISMATCH: 'Währung stimmt nicht mit dem Server überein',
   TARIFF_VERSION_INCOMPLETE: 'Tarifversion ist unvollständig',
+  PRICING_QUOTE_REQUIRED: 'Preisquote fehlt — bitte Preisberechnung aktualisieren',
+  PRICING_QUOTE_NOT_FOUND: 'Preisquote nicht gefunden',
+  PRICING_QUOTE_EXPIRED: 'Der Preis wurde inzwischen geändert. Bitte aktualisieren Sie die Preisberechnung.',
+  PRICING_QUOTE_ALREADY_CONSUMED: 'Diese Preisquote wurde bereits verwendet',
+  PRICING_QUOTE_STALE: 'Der Preis wurde inzwischen geändert. Bitte aktualisieren Sie die Preisberechnung.',
+  PRICING_QUOTE_VEHICLE_MISMATCH: 'Der Preis wurde inzwischen geändert. Bitte aktualisieren Sie die Preisberechnung.',
+  PRICING_QUOTE_PERIOD_MISMATCH: 'Der Preis wurde inzwischen geändert. Bitte aktualisieren Sie die Preisberechnung.',
+  PRICING_QUOTE_OPTIONS_MISMATCH: 'Der Preis wurde inzwischen geändert. Bitte aktualisieren Sie die Preisberechnung.',
+  PRICING_QUOTE_USER_MISMATCH: 'Diese Preisquote gehört einem anderen Benutzer',
 };
 
 export function extractPricingApiError(
@@ -208,6 +217,18 @@ export function extractPricingApiError(
   }
 
   return null;
+}
+
+export function isPricingQuoteStaleError(err: unknown): boolean {
+  const structured = extractPricingApiError(err);
+  if (!structured?.code) return false;
+  return [
+    'PRICING_QUOTE_EXPIRED',
+    'PRICING_QUOTE_STALE',
+    'PRICING_QUOTE_VEHICLE_MISMATCH',
+    'PRICING_QUOTE_PERIOD_MISMATCH',
+    'PRICING_QUOTE_OPTIONS_MISMATCH',
+  ].includes(structured.code);
 }
 
 export function formatPricingContextLabel(ctx: {

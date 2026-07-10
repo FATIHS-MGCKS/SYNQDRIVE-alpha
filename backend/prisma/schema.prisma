@@ -972,6 +972,7 @@ model Organization {
   vehicleTariffAssignments  VehicleTariffAssignment[]
   bookingPriceSnapshots     BookingPriceSnapshot[]
   bookingPriceLineItems     BookingPriceLineItem[]
+  pricingQuotes             PricingQuote[]
   organizationRoles         OrganizationRole[]
   organizationUserInvites   OrganizationUserInvite[]
   orgEmailSettings          OrgEmailSettings?
@@ -1020,6 +1021,7 @@ model User {
   organizationRolesCreated OrganizationRole[]       @relation("RolesCreated")
   billingPriceVersionsCreated BillingPriceVersion[] @relation("BillingPriceVersionsCreated")
   outboundEmailsSent       OutboundEmail[]            @relation("OutboundEmailSentBy")
+  pricingQuotesCreated     PricingQuote[]             @relation("PricingQuotesCreated")
 
   @@map("users")
 }
@@ -1411,6 +1413,7 @@ model Vehicle {
   hmSignalGroupStates    HmSignalGroupState[]
   providerConsents       VehicleProviderConsent[]
   tariffAssignments      VehicleTariffAssignment[]
+  pricingQuotes          PricingQuote[]
   rentalCategoryId       String?                      @map("rental_category_id")
   rentalCategory         RentalVehicleCategory?       @relation(fields: [rentalCategoryId], references: [id], onDelete: SetNull)
   rentalRequirementOverride VehicleRentalRequirementOverride?
@@ -2967,6 +2970,7 @@ model Booking {
   verificationChecks    CustomerVerificationCheck[]
   misuseCases           MisuseCase[]
   priceSnapshots        BookingPriceSnapshot[]
+  pricingQuote          PricingQuote?          @relation("PricingQuoteConsumedBooking")
   vehicleDamages        VehicleDamage[]
   whatsappConversations WhatsAppConversation[]
   outboundEmails        OutboundEmail[]
@@ -3080,6 +3084,7 @@ model PriceTariffVersion {
   insuranceOptions     TariffInsuranceOption[]
   extraOptions         TariffExtraOption[]
   bookingPriceSnapshots BookingPriceSnapshot[]
+  pricingQuotes         PricingQuote[]
 
   @@unique([tariffGroupId, versionNumber])
   @@index([organizationId])
@@ -3248,6 +3253,46 @@ model BookingPriceLineItem {
   @@index([organizationId])
   @@index([bookingPriceSnapshotId])
   @@map("booking_price_line_items")
+}
+
+enum PricingQuoteStatus {
+  ACTIVE
+  CONSUMED
+  EXPIRED
+}
+
+model PricingQuote {
+  id                  String             @id @default(uuid())
+  organizationId      String             @map("organization_id")
+  createdByUserId     String?            @map("created_by_user_id")
+  vehicleId           String             @map("vehicle_id")
+  pickupAt            DateTime           @map("pickup_at")
+  returnAt            DateTime           @map("return_at")
+  tariffVersionId     String             @map("tariff_version_id")
+  currency            String
+  status              PricingQuoteStatus @default(ACTIVE)
+  calculatedAt        DateTime           @map("calculated_at")
+  expiresAt           DateTime           @map("expires_at")
+  consumedAt          DateTime?          @map("consumed_at")
+  consumedByBookingId String?            @unique @map("consumed_by_booking_id")
+  pricingContextJson  Json               @map("pricing_context_json")
+  pricingInputJson    Json               @map("pricing_input_json")
+  lineItemsJson       Json               @map("line_items_json")
+  totalsJson          Json               @map("totals_json")
+  integrityHash       String             @map("integrity_hash")
+  createdAt           DateTime           @default(now()) @map("created_at")
+  updatedAt           DateTime           @updatedAt @map("updated_at")
+
+  organization      Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdByUser     User?               @relation("PricingQuotesCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  vehicle           Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  consumedByBooking Booking?            @relation("PricingQuoteConsumedBooking", fields: [consumedByBookingId], references: [id], onDelete: SetNull)
+  tariffVersion     PriceTariffVersion? @relation(fields: [tariffVersionId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, status, expiresAt])
+  @@index([vehicleId])
+  @@index([createdByUserId])
+  @@map("pricing_quotes")
 }
 
 // ------------------------------------------------

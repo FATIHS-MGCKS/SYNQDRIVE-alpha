@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pricing-quote-lock-v49344-2026-07-10',
+    version: '4.9.344',
+    title: 'V4.9.344 — Pricing: Quote-Lock (bestätigter Preis = Buchungspreis)',
+    summary: [
+      'Simulation erstellt serverseitige `PricingQuote` (PostgreSQL) mit quoteId, calculatedAt, expiresAt, pricingContext, totals, integrityHash.',
+      'Buchungserstellung verlangt `quoteId` — keine clientseitigen Totals; Backend validiert Quote (Org, User, Fahrzeug, Zeitraum, Optionen, Currency, Tarifversion, Ablauf, Einmalverbrauch).',
+      'Pricing Snapshot entsteht exakt aus gespeicherter Quote — keine stille Neuberechnung bei `BookingsService.create`.',
+      'Bei Preisänderung/Ablauf: `PRICING_QUOTE_*` Konflikt + Meldung „Der Preis wurde inzwischen geändert…“; Frontend fordert neue Simulation.',
+      'Idempotenz: verbrauchte Quote liefert bestehende Buchung; `markConsumed` atomar per `updateMany WHERE status=ACTIVE` in Transaktion.',
+      'TTL default 15 Min (`PRICING_QUOTE_TTL_SECONDS`); Cleanup via `expireStaleQuotes`.',
+      '12 Backend-Tests `pricing-quote.spec.ts` + Frontend-Guards `pricing-quote.test.ts`; Operator-Buchungsformular nutzt Quote-Flow.',
+    ],
+    reason: 'Prompt 11: Zwischen Simulation und Buchungsabschluss dürfen sich Tarif, Fahrzeug, Zeitraum, Optionen oder Currency nicht still ändern — Mitarbeiter-bestätigter Preis muss dem gespeicherten Buchungspreis entsprechen.',
+    previousBehavior: '`BookingsService.create` rief `simulateBookingPrice` erneut auf — Preisdrift möglich; Frontend konnte Totals mitsenden.',
+    details: 'Neu: Prisma `PricingQuote`, migration `20260710210000_pricing_quotes`, `PricingQuoteService`, integrity util/types, `pricing-quote.spec.ts`. Geändert: `POST .../pricing/simulate` (Quote-Persistenz), `BookingsService.create`, `pricing.controller`, NewBookingView, OperatorBookingFormSheet, entityMappers, pricingTypes/Utils.',
+    affectsArchitecture: true,
+    module: 'Rental Pricing',
+    createdAt: '2026-07-10T23:55:00.000Z',
+  },
+  {
     id: 'pricing-context-server-resolved-v49343-2026-07-10',
     version: '4.9.343',
     title: 'V4.9.343 — Pricing: serverseitiger Pricing Context (keine Client-Rekonstruktion)',

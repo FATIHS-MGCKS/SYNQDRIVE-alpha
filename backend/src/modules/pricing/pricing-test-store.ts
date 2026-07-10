@@ -135,6 +135,27 @@ type BookingLineItemRow = {
   metadataJson: Record<string, unknown> | null;
 };
 
+type QuoteRow = {
+  id: string;
+  organizationId: string;
+  createdByUserId: string | null;
+  vehicleId: string;
+  pickupAt: Date;
+  returnAt: Date;
+  tariffVersionId: string;
+  currency: string;
+  status: 'ACTIVE' | 'CONSUMED' | 'EXPIRED';
+  calculatedAt: Date;
+  expiresAt: Date;
+  consumedAt: Date | null;
+  consumedByBookingId: string | null;
+  pricingContextJson: unknown;
+  pricingInputJson: unknown;
+  lineItemsJson: unknown;
+  totalsJson: unknown;
+  integrityHash: string;
+};
+
 export function createPricingTestStore(
   ids: PricingTestIds,
   options?: { currency?: string },
@@ -221,6 +242,7 @@ export function createPricingTestStore(
   ];
 
   const snapshots: SnapshotRow[] = [];
+  const quotes: QuoteRow[] = [];
   const mileagePackages: MileagePackageRow[] = [];
   const insuranceOptions: InsuranceOptionRow[] = [];
   const extraOptions: ExtraOptionRow[] = [];
@@ -771,6 +793,82 @@ export function createPricingTestStore(
         bookingLineItems.filter((row) => row.organizationId === where.organizationId),
       ),
     },
+    pricingQuote: {
+      create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        const row: QuoteRow = {
+          id: nextId('quote'),
+          organizationId: data.organizationId as string,
+          createdByUserId: (data.createdByUserId as string | null) ?? null,
+          vehicleId: data.vehicleId as string,
+          pickupAt: data.pickupAt as Date,
+          returnAt: data.returnAt as Date,
+          tariffVersionId: data.tariffVersionId as string,
+          currency: data.currency as string,
+          status: (data.status as QuoteRow['status']) ?? 'ACTIVE',
+          calculatedAt: data.calculatedAt as Date,
+          expiresAt: data.expiresAt as Date,
+          consumedAt: (data.consumedAt as Date | null) ?? null,
+          consumedByBookingId: (data.consumedByBookingId as string | null) ?? null,
+          pricingContextJson: data.pricingContextJson,
+          pricingInputJson: data.pricingInputJson,
+          lineItemsJson: data.lineItemsJson,
+          totalsJson: data.totalsJson,
+          integrityHash: data.integrityHash as string,
+        };
+        quotes.push(row);
+        return row;
+      }),
+      findFirst: jest.fn(async ({ where }: { where: Record<string, unknown> }) => {
+        const match = (row: QuoteRow): boolean => {
+          if (where.id && row.id !== where.id) return false;
+          if (where.organizationId && row.organizationId !== where.organizationId) return false;
+          if (where.status && row.status !== where.status) return false;
+          return true;
+        };
+        return quotes.find((row) => match(row)) ?? null;
+      }),
+      update: jest.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where: { id: string };
+          data: Partial<QuoteRow>;
+        }) => {
+          const row = quotes.find((q) => q.id === where.id);
+          if (!row) throw new Error('quote not found');
+          Object.assign(row, data);
+          return row;
+        },
+      ),
+      updateMany: jest.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where: Record<string, unknown>;
+          data: Partial<QuoteRow>;
+        }) => {
+          let count = 0;
+          for (const row of quotes) {
+            if (where.id && row.id !== where.id) continue;
+            if (where.organizationId && row.organizationId !== where.organizationId) continue;
+            if (where.status && row.status !== where.status) continue;
+            if (
+              where.expiresAt &&
+              typeof where.expiresAt === 'object' &&
+              where.expiresAt !== null &&
+              'lt' in where.expiresAt
+            ) {
+              if (row.expiresAt >= (where.expiresAt as { lt: Date }).lt) continue;
+            }
+            Object.assign(row, data);
+            count += 1;
+          }
+          return { count };
+        },
+      ),
+    },
     organization: {
       findFirst: jest.fn(async () => ({ timezone: 'Europe/Berlin' })),
     },
@@ -782,6 +880,7 @@ export function createPricingTestStore(
         const snapshot = {
           versions: versions.map((v) => ({ ...v })),
           rates: rates.map((r) => ({ ...r })),
+          quotes: quotes.map((q) => ({ ...q })),
         };
         try {
           return await fn(prisma);
@@ -790,6 +889,8 @@ export function createPricingTestStore(
           versions.push(...snapshot.versions);
           rates.length = 0;
           rates.push(...snapshot.rates);
+          quotes.length = 0;
+          quotes.push(...snapshot.quotes);
           throw error;
         }
       },
@@ -814,6 +915,7 @@ export function createPricingTestStore(
     groups,
     assignments,
     snapshots,
+    quotes,
     mileagePackages,
     insuranceOptions,
     extraOptions,
