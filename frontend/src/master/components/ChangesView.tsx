@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pricing-tariff-atomic-publish-v49337-2026-07-10',
+    version: '4.9.337',
+    title: 'V4.9.337 — Pricing: atomarer Tarif-Publish-Endpunkt',
+    summary: [
+      'POST .../price-tariffs/groups/:groupId/publish — Serializable-Transaktion (Draft→ACTIVE, ACTIVE→ARCHIVED).',
+      'DTO: draftVersionId, optional effectiveFrom, expectedVersionNumber (Konflikt).',
+      'activateVersion deprecated, delegiert auf publish; ACTIVE-Reaktivierung wird abgelehnt.',
+      'Frontend TariffGroupDrawer nutzt publishDraft statt activateVersion.',
+    ],
+    reason: 'Prompt 4: kein Zwischenzustand mit falscher ACTIVE-Version beim Veröffentlichen.',
+    previousBehavior: 'Zwei-Schritt save + activateVersion; ACTIVE konnte erneut aktiviert werden.',
+    details: 'Backend: price-tariffs.service.ts, pricing.controller.ts, dto. Frontend: api.ts, TariffGroupDrawer. Tests erweitert.',
+    affectsArchitecture: true,
+    module: 'Rental Pricing',
+    createdAt: '2026-07-10T20:45:00.000Z',
+  },
+  {
     id: 'pricing-tariff-drawer-publish-fix-v49336-2026-07-10',
     version: '4.9.336',
     title: 'V4.9.336 — Pricing: TariffGroupDrawer Save-and-Activate Fix',

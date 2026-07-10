@@ -3919,6 +3919,16 @@ export const api = {
       post<any>(`/organizations/${orgId}/price-tariffs/groups/${groupId}/version`, data),
     updateVersion: (orgId: string, versionId: string, data: Record<string, unknown>) =>
       patch<any>(`/organizations/${orgId}/price-tariffs/versions/${versionId}`, data),
+    publishDraft: (
+      orgId: string,
+      groupId: string,
+      data: {
+        draftVersionId: string;
+        effectiveFrom?: string;
+        expectedVersionNumber?: number;
+      },
+    ) => post<any>(`/organizations/${orgId}/price-tariffs/groups/${groupId}/publish`, data),
+    /** @deprecated Prefer publishDraft — only publishes DRAFT versions. */
     activateVersion: (orgId: string, versionId: string) =>
       post<any>(`/organizations/${orgId}/price-tariffs/versions/${versionId}/activate`, {}),
     assignVehicle: (orgId: string, data: Record<string, unknown>) =>

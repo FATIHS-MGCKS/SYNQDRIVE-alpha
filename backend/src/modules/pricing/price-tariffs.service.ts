@@ -1,8 +1,10 @@
 import {
   BadRequestException,
+  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   CreateTariffGroupDto,
@@ -10,6 +12,7 @@ import {
   ExtraOptionDto,
   InsuranceOptionDto,
   MileagePackageDto,
+  PublishTariffDraftDto,
   TariffRateDto,
   UpdateTariffGroupDto,
   UpsertTariffVersionDto,
@@ -207,37 +210,144 @@ export class PriceTariffsService {
     });
   }
 
+  /**
+   * Atomically publishes a DRAFT tariff version: archives other ACTIVE versions in the
+   * group and promotes the draft. Preferred API: POST .../groups/:groupId/publish.
+   *
+   * @deprecated Prefer `publishTariffDraft` with explicit groupId + draftVersionId.
+   */
   async activateVersion(orgId: string, versionId: string) {
     const version = await this.requireVersion(orgId, versionId);
-    if (!version.rate) {
-      throw new BadRequestException('Tarifversion benötigt eine Rate vor Aktivierung');
-    }
-    this.validateRate(version.rate);
-
-    await this.prisma.$transaction(async (tx) => {
-      const active = await tx.priceTariffVersion.findMany({
-        where: {
-          organizationId: orgId,
-          tariffGroupId: version.tariffGroupId,
-          status: 'ACTIVE',
-          id: { not: versionId },
-        },
-      });
-      const now = new Date();
-      for (const v of active) {
-        await tx.priceTariffVersion.update({
-          where: { id: v.id },
-          data: { status: 'ARCHIVED', validTo: now },
-        });
-      }
-      await tx.priceTariffVersion.update({
-        where: { id: versionId },
-        data: { status: 'ACTIVE', validFrom: now, validTo: null },
-      });
+    return this.publishTariffDraft(orgId, version.tariffGroupId, {
+      draftVersionId: versionId,
     });
+  }
+
+  async publishTariffDraft(
+    orgId: string,
+    groupId: string,
+    dto: PublishTariffDraftDto,
+  ) {
+    await this.requireGroup(orgId, groupId);
+
+    const effectiveFrom = dto.effectiveFrom ? new Date(dto.effectiveFrom) : new Date();
+
+    await this.prisma.$transaction(
+      async (tx) => {
+        const draft = await tx.priceTariffVersion.findFirst({
+          where: {
+            id: dto.draftVersionId,
+            organizationId: orgId,
+            tariffGroupId: groupId,
+          },
+          include: { rate: true },
+        });
+
+        if (!draft) {
+          const foreignDraft = await tx.priceTariffVersion.findFirst({
+            where: { id: dto.draftVersionId },
+            select: { organizationId: true, tariffGroupId: true },
+          });
+          if (foreignDraft?.organizationId !== orgId) {
+            throw new NotFoundException({
+              message: 'Tarif-Entwurf nicht gefunden',
+              code: 'TARIFF_DRAFT_NOT_FOUND',
+            });
+          }
+          if (foreignDraft.tariffGroupId !== groupId) {
+            throw new BadRequestException({
+              message: 'Entwurf gehört nicht zu dieser Tarifgruppe',
+              code: 'TARIFF_DRAFT_GROUP_MISMATCH',
+            });
+          }
+          throw new NotFoundException({
+            message: 'Tarif-Entwurf nicht gefunden',
+            code: 'TARIFF_DRAFT_NOT_FOUND',
+          });
+        }
+
+        if (draft.status === 'ACTIVE') {
+          throw new BadRequestException({
+            message: 'Tarifversion ist bereits aktiv',
+            code: 'TARIFF_VERSION_ALREADY_ACTIVE',
+          });
+        }
+
+        if (draft.status === 'ARCHIVED') {
+          throw new BadRequestException({
+            message: 'Archivierte Versionen können nicht veröffentlicht werden',
+            code: 'TARIFF_VERSION_ARCHIVED',
+          });
+        }
+
+        if (draft.status !== 'DRAFT') {
+          throw new BadRequestException({
+            message: 'Nur Entwürfe können veröffentlicht werden',
+            code: 'TARIFF_INVALID_STATUS',
+          });
+        }
+
+        if (
+          dto.expectedVersionNumber != null &&
+          draft.versionNumber !== dto.expectedVersionNumber
+        ) {
+          throw new ConflictException({
+            message: 'Entwurf wurde zwischenzeitlich geändert',
+            code: 'TARIFF_DRAFT_VERSION_CONFLICT',
+          });
+        }
+
+        if (!draft.rate) {
+          throw new BadRequestException({
+            message: 'Tarifversion benötigt eine Rate vor Veröffentlichung',
+            code: 'TARIFF_RATE_REQUIRED',
+          });
+        }
+        this.validateRate(draft.rate);
+
+        const activeOthers = await tx.priceTariffVersion.findMany({
+          where: {
+            organizationId: orgId,
+            tariffGroupId: groupId,
+            status: 'ACTIVE',
+            id: { not: dto.draftVersionId },
+          },
+        });
+
+        for (const active of activeOthers) {
+          await tx.priceTariffVersion.update({
+            where: { id: active.id },
+            data: { status: 'ARCHIVED', validTo: effectiveFrom },
+          });
+        }
+
+        const promoted = await tx.priceTariffVersion.updateMany({
+          where: {
+            id: dto.draftVersionId,
+            organizationId: orgId,
+            tariffGroupId: groupId,
+            status: 'DRAFT',
+          },
+          data: {
+            status: 'ACTIVE',
+            validFrom: effectiveFrom,
+            validTo: null,
+          },
+        });
+
+        if (promoted.count !== 1) {
+          throw new ConflictException({
+            message:
+              'Veröffentlichung konnte nicht abgeschlossen werden — konkurrierender Vorgang oder Entwurf nicht mehr gültig',
+            code: 'TARIFF_PUBLISH_CONFLICT',
+          });
+        }
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    );
 
     return this.prisma.priceTariffVersion.findUniqueOrThrow({
-      where: { id: versionId },
+      where: { id: dto.draftVersionId },
       include: versionInclude,
     });
   }

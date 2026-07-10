@@ -171,6 +171,10 @@ export function createPricingTestStore(ids: PricingTestIds) {
   const snapshots: SnapshotRow[] = [];
   let idCounter = 0;
   const nextId = (prefix: string) => `${prefix}-${++idCounter}`;
+  const hooks = {
+    simulatePublishConflict: false,
+    simulateArchiveFailure: false,
+  };
 
   const includeVersion = (version: VersionRow) => {
     const rate = rates.find((r) => r.tariffVersionId === version.id) ?? null;
@@ -317,10 +321,33 @@ export function createPricingTestStore(ids: PricingTestIds) {
           where: { id: string };
           data: Partial<VersionRow>;
         }) => {
+          if (hooks.simulateArchiveFailure && data.status === 'ARCHIVED') {
+            throw new Error('simulated archive failure');
+          }
           const row = versions.find((v) => v.id === where.id);
           if (!row) throw new Error('version not found');
           Object.assign(row, data, { updatedAt: now });
           return row;
+        },
+      ),
+      updateMany: jest.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where: Record<string, unknown>;
+          data: Partial<VersionRow>;
+        }) => {
+          if (hooks.simulatePublishConflict) {
+            return { count: 0 };
+          }
+          let count = 0;
+          for (const row of versions) {
+            if (!matchVersionWhere(row, where)) continue;
+            Object.assign(row, data, { updatedAt: now });
+            count += 1;
+          }
+          return { count };
         },
       ),
       findUniqueOrThrow: jest.fn(async ({ where, include }: { where: { id: string }; include?: unknown }) => {
@@ -440,8 +467,25 @@ export function createPricingTestStore(ids: PricingTestIds) {
     mileagePackage: { deleteMany: jest.fn(), createMany: jest.fn() },
     tariffInsuranceOption: { deleteMany: jest.fn(), createMany: jest.fn() },
     tariffExtraOption: { deleteMany: jest.fn(), createMany: jest.fn() },
-    $transaction: jest.fn(async (fn: (tx: Record<string, unknown>) => Promise<unknown>) =>
-      fn(prisma),
+    $transaction: jest.fn(
+      async (
+        fn: (tx: Record<string, unknown>) => Promise<unknown>,
+        _options?: { isolationLevel?: unknown },
+      ) => {
+        const snapshot = {
+          versions: versions.map((v) => ({ ...v })),
+          rates: rates.map((r) => ({ ...r })),
+        };
+        try {
+          return await fn(prisma);
+        } catch (error) {
+          versions.length = 0;
+          versions.push(...snapshot.versions);
+          rates.length = 0;
+          rates.push(...snapshot.rates);
+          throw error;
+        }
+      },
     ),
   };
 
@@ -467,6 +511,7 @@ export function createPricingTestStore(ids: PricingTestIds) {
       const g = groups.find((row) => row.id === ids.groupId);
       if (g) g.isActive = false;
     },
+    hooks,
     countActiveVersions: (groupId: string) =>
       versions.filter((v) => v.tariffGroupId === groupId && v.status === 'ACTIVE').length,
   };

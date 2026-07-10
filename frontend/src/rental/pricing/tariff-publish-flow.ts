@@ -27,10 +27,10 @@ export function isPublishActionDisabled(state: { saving: boolean; activating: bo
 
 export function resolvePublishToastOutcome(params: {
   saveResult: SaveDraftResult;
-  activateSucceeded: boolean;
-}): 'success' | 'save_error' | 'activate_error' {
+  publishSucceeded: boolean;
+}): 'success' | 'save_error' | 'publish_error' {
   if (!params.saveResult.ok) return 'save_error';
-  if (!params.activateSucceeded) return 'activate_error';
+  if (!params.publishSucceeded) return 'publish_error';
   return 'success';
 }
 
@@ -67,39 +67,43 @@ export function isDraftMisrepresentedAsLive(group: PriceTariffGroup): boolean {
 
 export interface SimulatedPublishFlowResult {
   saveCalled: boolean;
-  activateCalled: boolean;
-  activateVersionId?: string;
-  toast: 'success' | 'save_error' | 'activate_error';
+  publishCalled: boolean;
+  publishVersionId?: string;
+  toast: 'success' | 'save_error' | 'publish_error';
 }
 
 export async function runPublishFlow(params: {
+  groupId: string;
   saveDraft: () => Promise<SaveDraftResult>;
-  activateVersion: (versionId: string) => Promise<void>;
+  publishDraft: (
+    draftVersionId: string,
+    expectedVersionNumber?: number,
+  ) => Promise<void>;
 }): Promise<SimulatedPublishFlowResult> {
   const saveResult = await params.saveDraft();
   if (!shouldProceedToActivateAfterSave(saveResult)) {
-    return { saveCalled: true, activateCalled: false, toast: 'save_error' };
+    return { saveCalled: true, publishCalled: false, toast: 'save_error' };
   }
 
   const versionId = resolveActivateVersionId(saveResult.savedVersion);
   if (!versionId) {
-    return { saveCalled: true, activateCalled: false, toast: 'activate_error' };
+    return { saveCalled: true, publishCalled: false, toast: 'publish_error' };
   }
 
   try {
-    await params.activateVersion(versionId);
+    await params.publishDraft(versionId, saveResult.savedVersion.versionNumber);
     return {
       saveCalled: true,
-      activateCalled: true,
-      activateVersionId: versionId,
+      publishCalled: true,
+      publishVersionId: versionId,
       toast: 'success',
     };
   } catch {
     return {
       saveCalled: true,
-      activateCalled: true,
-      activateVersionId: versionId,
-      toast: 'activate_error',
+      publishCalled: true,
+      publishVersionId: versionId,
+      toast: 'publish_error',
     };
   }
 }

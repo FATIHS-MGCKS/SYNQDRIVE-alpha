@@ -180,6 +180,21 @@ export class ExtraOptionDto {
   sortOrder?: number;
 }
 
+export class PublishTariffDraftDto {
+  @IsUUID()
+  draftVersionId!: string;
+
+  @IsOptional()
+  @IsISO8601()
+  effectiveFrom?: string;
+
+  /** Optimistic conflict check — rejects publish if draft versionNumber changed. */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  expectedVersionNumber?: number;
+}
+
 export class UpsertTariffVersionDto {
   @IsOptional()
   @IsISO8601()

@@ -233,12 +233,15 @@ export function TariffGroupDrawer({
         return;
       }
 
-      await api.pricing.activateVersion(orgId, versionId);
+      await api.pricing.publishDraft(orgId, group.id, {
+        draftVersionId: versionId,
+        expectedVersionNumber: saveResult.savedVersion.versionNumber,
+      });
       toast.success('Version aktiviert — bestehende Buchungen behalten ihren Snapshot');
       await onSaved({ mode: 'published' });
     } catch (e: unknown) {
-      const message = e instanceof Error ? e.message : 'Aktivierung fehlgeschlagen';
-      toast.error(`Veröffentlichen fehlgeschlagen — Aktivierung: ${message}`);
+      const message = e instanceof Error ? e.message : 'Veröffentlichen fehlgeschlagen';
+      toast.error(`Veröffentlichen fehlgeschlagen: ${message}`);
     } finally {
       setActivating(false);
       publishInFlightRef.current = false;

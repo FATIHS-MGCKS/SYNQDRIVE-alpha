@@ -14,6 +14,7 @@ import { PricingService } from './pricing.service';
 import {
   CreateTariffGroupDto,
   CreateVehicleAssignmentDto,
+  PublishTariffDraftDto,
   SimulateBookingPriceDto,
   UpdateTariffGroupDto,
   UpsertTariffVersionDto,
@@ -64,6 +65,16 @@ export class PricingController {
     return this.priceTariffs.updateVersion(orgId, versionId, body);
   }
 
+  @Post('price-tariffs/groups/:groupId/publish')
+  publishTariffDraft(
+    @Param('orgId') orgId: string,
+    @Param('groupId') groupId: string,
+    @Body() body: PublishTariffDraftDto,
+  ) {
+    return this.priceTariffs.publishTariffDraft(orgId, groupId, body);
+  }
+
+  /** @deprecated Prefer POST .../groups/:groupId/publish — only publishes DRAFT versions. */
   @Post('price-tariffs/versions/:versionId/activate')
   activateVersion(
     @Param('orgId') orgId: string,
