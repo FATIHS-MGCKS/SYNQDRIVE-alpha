@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pricing-tariff-publish-regression-tests-v49335-2026-07-10',
+    version: '4.9.335',
+    title: 'V4.9.335 — Pricing: Regressionstests Sedan-Kaution 177€ → 500€',
+    summary: [
+      'Backend: pricing-tariff-publish.spec.ts — Draft/Upsert, korrekte Activate-Archivierung, Simulation & BookingPriceSnapshot (Cent/EUR).',
+      'Frontend: tariff-publish-flow.test.ts — reproduziert TariffGroupDrawer-Bug (stale ACTIVE-ID nach Save); ein Test schlägt bis Prompt 3 absichtlich fehl.',
+      'Test-Fixtures: pricing-test-store.ts, tariff-publish-fixtures.ts, tariff-publish-flow.ts (Flow-Helfer, kein Fix).',
+    ],
+    reason: 'Audit Prompt 1: Kaution 500€ im Draft, Buchung zeigt weiter 177€ — fehlende automatisierte Abdeckung des Publish-Flows.',
+    previousBehavior: 'Nur pricing-calculation.util.spec.ts; kein Test für activate/upsert oder Drawer-Publish-Orchestrierung.',
+    details: 'Neu: backend/src/modules/pricing/{pricing-test-store,pricing-tariff-publish.spec}.ts; frontend/src/rental/pricing/{tariff-publish-fixtures,tariff-publish-flow,tariff-publish-flow.test}.ts. Keine Produktions-Fixes.',
+    affectsArchitecture: false,
+    module: 'Rental Pricing',
+    createdAt: '2026-07-10T20:25:00.000Z',
+  },
+  {
     id: 'document-extraction-audit-remaining-v49334-2026-07-10',
     version: '4.9.334',
     title: 'V4.9.334 — Dokumenten-Upload: verbleibende Audit-Einschränkungen geschlossen',
