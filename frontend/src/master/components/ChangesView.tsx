@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'outbound-email-audit-fixes-v49303-2026-07-10',
+    version: '4.9.303',
+    title: 'V4.9.303 — Outbound E-Mail: Audit-Fixes (Webhook, Resend, Rollen)',
+    summary: [
+      'Resend-Webhook öffentlich in AuthGuard; Production fail-closed ohne RESEND_WEBHOOK_SECRET.',
+      'Resend Idempotency-Key als HTTP-Header (nicht E-Mail-header).',
+      'CUSTOM_DOMAIN erfordert aktive verifizierte Domain; UI-Warnung bei fehlender Aktivierung.',
+      'InvoicesView: E-Mail-Senden nur für ORG_ADMIN/MASTER_ADMIN.',
+    ],
+    reason: 'Re-Audit vor Production — kritische Lücken bei Webhook-Auth, Resend-API und Frontend-Rollen.',
+    previousBehavior:
+      'Webhook 401 durch AuthGuard; Idempotency im Payload; Invoices ohne Rollen-Gate; CUSTOM_DOMAIN ohne aktive Domain.',
+    details:
+      'PUBLIC_EXACT_PATHS: /api/v1/webhooks/resend/outbound-email. Tests: production webhook ohne Secret abgelehnt.',
+    affectsArchitecture: true,
+    module: 'Documents / Outbound Email',
+    createdAt: '2026-07-10T08:55:00.000Z',
+  },
+  {
     id: 'platform-email-settings-v49302-2026-07-10',
     version: '4.9.302',
     title: 'V4.9.302 — Plattform-Absender im Master Admin konfigurierbar',

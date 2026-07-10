@@ -55,4 +55,24 @@ describe('ResendWebhookService', () => {
       }),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
+
+  it('rejects webhooks in production when RESEND_WEBHOOK_SECRET is unset', async () => {
+    const prev = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    try {
+      const moduleRef = await Test.createTestingModule({
+        providers: [
+          ResendWebhookService,
+          { provide: OutboundEmailService, useValue: outboundEmail },
+          { provide: ConfigService, useValue: { get: jest.fn(() => '') } },
+        ],
+      }).compile();
+      const prodService = moduleRef.get(ResendWebhookService);
+      await expect(prodService.handle(Buffer.from('{}'), {}, {})).rejects.toBeInstanceOf(
+        UnauthorizedException,
+      );
+    } finally {
+      process.env.NODE_ENV = prev;
+    }
+  });
 });

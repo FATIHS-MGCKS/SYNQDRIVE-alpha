@@ -44,12 +44,14 @@ export class ResendEmailProvider implements EmailProviderPort {
     method: string,
     path: string,
     body?: unknown,
+    extraHeaders?: Record<string, string>,
   ): Promise<{ ok: boolean; status: number; data: T | null; errorMessage?: string }> {
     const res = await fetch(`https://api.resend.com${path}`, {
       method,
       headers: {
         Authorization: `Bearer ${this.apiKey}`,
         'Content-Type': 'application/json',
+        ...extraHeaders,
       },
       body: body ? JSON.stringify(body) : undefined,
     });
@@ -103,11 +105,18 @@ export class ResendEmailProvider implements EmailProviderPort {
         content: a.content.toString('base64'),
       }));
     }
+
+    const requestHeaders: Record<string, string> = {};
     if (input.idempotencyKey) {
-      payload.headers = { 'Idempotency-Key': input.idempotencyKey };
+      requestHeaders['Idempotency-Key'] = input.idempotencyKey;
     }
 
-    const result = await this.request<{ id?: string }>('POST', '/emails', payload);
+    const result = await this.request<{ id?: string }>(
+      'POST',
+      '/emails',
+      payload,
+      requestHeaders,
+    );
     if (!result.ok) {
       return {
         provider: this.providerName,

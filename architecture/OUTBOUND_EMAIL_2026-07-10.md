@@ -90,6 +90,8 @@ Bis Ihre eigene Domain verifiziert ist, können Sie mit der Resend-Testdomain se
 RESEND_WEBHOOK_SECRET=whsec_xxxxxxxx
 ```
 
+**Production:** `RESEND_WEBHOOK_SECRET` ist Pflicht — ohne Secret werden Webhooks abgelehnt.
+
 ### Was woher kommt — Kurzüberblick
 
 | Was | Wo holen / konfigurieren | Wofür |

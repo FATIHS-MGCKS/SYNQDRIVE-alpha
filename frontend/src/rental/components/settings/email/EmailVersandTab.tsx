@@ -76,6 +76,11 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
     [domains],
   );
 
+  const activeVerifiedDomains = useMemo(
+    () => domains.filter((d) => d.status === 'VERIFIED' && d.isActive),
+    [domains],
+  );
+
   const saveSettings = async () => {
     if (!orgId || !settings || !canManage) return;
     setSaving(true);
@@ -235,10 +240,16 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
                 className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
               >
                 <option value="SYNQDRIVE_DEFAULT">SynqDrive Standard-Absender</option>
-                <option value="CUSTOM_DOMAIN" disabled={verifiedDomains.length === 0}>
-                  Eigene Domain {verifiedDomains.length === 0 ? '(keine verifiziert)' : ''}
+                <option value="CUSTOM_DOMAIN" disabled={activeVerifiedDomains.length === 0}>
+                  Eigene Domain {activeVerifiedDomains.length === 0 ? '(keine aktiv)' : ''}
                 </option>
               </select>
+              {settings.mode === 'CUSTOM_DOMAIN' && activeVerifiedDomains.length === 0 && (
+                <p className={`mt-2 text-xs ${isDarkMode ? 'text-amber-300' : 'text-amber-700'}`}>
+                  Modus „Eigene Domain“ ist gesetzt, aber keine Domain aktiv. Versand nutzt vorübergehend
+                  den Plattform-Absender — bitte eine verifizierte Domain aktivieren.
+                </p>
+              )}
               {settings.mode === 'SYNQDRIVE_DEFAULT' && settings.platformSender && (
                 <p className={`mt-2 text-xs ${subtle}`}>
                   Aktueller Plattform-Absender:{' '}

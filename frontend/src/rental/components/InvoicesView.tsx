@@ -833,6 +833,8 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
   onBack: () => void; onUpdate: (inv: Invoice) => void;
   card: string; tp: string; ts: string; inputCls: string;
 }) {
+  const { userRole } = useRentalOrg();
+  const canManageEmail = userRole === 'ORG_ADMIN' || userRole === 'MASTER_ADMIN';
   const [editingNotes, setEditingNotes] = useState(false);
   const [notes, setNotes] = useState(invoice.notes || '');
   const [issuing, setIssuing] = useState(false);
@@ -850,6 +852,7 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
   const [invoiceCustomerEmail, setInvoiceCustomerEmail] = useState<string | null>(null);
 
   const canEmailDocument =
+    canManageEmail &&
     Boolean(invoice.bookingId && invoice.generatedDocumentId) &&
     isOutgoing(invoice.type) &&
     invoice.status !== 'DRAFT';
@@ -1151,9 +1154,11 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
                 onClick={() => void openInvoiceEmail()}
                 className={canEmailDocument ? actionBtn : disabledBtn}
                 title={
-                  canEmailDocument
-                    ? 'Rechnung per E-Mail senden'
-                    : 'E-Mail-Versand erfordert Buchung und generiertes PDF'
+                  !canManageEmail
+                    ? 'Nur Administratoren können Dokumente per E-Mail senden'
+                    : canEmailDocument
+                      ? 'Rechnung per E-Mail senden'
+                      : 'E-Mail-Versand erfordert Buchung und generiertes PDF'
                 }
               >
                 {loadingSendDoc ? (

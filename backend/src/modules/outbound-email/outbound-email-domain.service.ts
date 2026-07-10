@@ -54,12 +54,16 @@ export class OutboundEmailDomainService {
     input: Partial<OrgEmailSettingsDto>,
   ): Promise<OrgEmailSettingsDto> {
     if (input.mode === OrgEmailMode.CUSTOM_DOMAIN) {
-      const verified = await this.prisma.orgEmailDomain.count({
-        where: { organizationId: orgId, status: OrgEmailDomainStatus.VERIFIED },
+      const activeVerified = await this.prisma.orgEmailDomain.count({
+        where: {
+          organizationId: orgId,
+          status: OrgEmailDomainStatus.VERIFIED,
+          isActive: true,
+        },
       });
-      if (verified === 0) {
+      if (activeVerified === 0) {
         throw new BadRequestException(
-          'Custom domain mode requires at least one verified domain',
+          'Custom domain mode requires an active verified domain',
         );
       }
     }

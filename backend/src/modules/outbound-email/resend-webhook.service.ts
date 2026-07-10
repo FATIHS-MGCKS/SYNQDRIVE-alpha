@@ -21,7 +21,14 @@ export class ResendWebhookService {
     headers: Record<string, string | undefined>,
   ) {
     const secret = this.config.get<string>('email.webhookSecret', '');
-    if (secret) {
+    if (!secret) {
+      if (process.env.NODE_ENV === 'production') {
+        throw new UnauthorizedException('RESEND_WEBHOOK_SECRET is not configured');
+      }
+      this.logger.warn(
+        'RESEND_WEBHOOK_SECRET not set — skipping Svix verification (non-production only)',
+      );
+    } else {
       this.verifySvixSignature(rawBody, headers, secret);
     }
 
