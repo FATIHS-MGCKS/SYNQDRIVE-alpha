@@ -29,6 +29,8 @@ const TITLE_TEMPLATES: Record<InsightType, string> = {
   [InsightType.TUV_OVERDUE]: '',
   [InsightType.BOKRAFT_OVERDUE]: '',
   [InsightType.HM_SERVICE_NO_TRACKING]: '',
+  // DRIVING_ASSESSMENT_DEVICE_QUALITY — detector emits vehicle-specific titles.
+  [InsightType.DRIVING_ASSESSMENT_DEVICE_QUALITY]: '',
 };
 
 const ACTION_LABELS: Record<InsightType, string> = {
@@ -46,6 +48,7 @@ const ACTION_LABELS: Record<InsightType, string> = {
   [InsightType.TUV_OVERDUE]: 'Fahrzeug prüfen',
   [InsightType.BOKRAFT_OVERDUE]: 'Fahrzeug prüfen',
   [InsightType.HM_SERVICE_NO_TRACKING]: 'Fahrzeug ansehen',
+  [InsightType.DRIVING_ASSESSMENT_DEVICE_QUALITY]: 'Fahrzeug öffnen',
 };
 
 const MAX_TITLE = 40;

@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { DrivingEventType, HardwareType } from '@prisma/client';
+import { DrivingEventType, HardwareType, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TechnicalObservationsService } from '@modules/technical-observations/technical-observations.service';
 import {
@@ -100,7 +100,7 @@ export class DrivingAssessmentDeviceQualityService {
       lastTripVerdict: tripVerdict,
       recentFlagged,
       evaluatedAt: new Date().toISOString(),
-    };
+    } as unknown as Prisma.InputJsonValue;
 
     const row = await this.prisma.vehicleDrivingAssessmentQuality.upsert({
       where: { vehicleId: input.vehicleId },
