@@ -17,6 +17,13 @@
         "DEBUG": "false",
         "API_TOKEN": "<your-hostinger-api-token>"
       }
+    },
+    "resend": {
+      "command": "npx",
+      "args": ["-y", "resend-mcp@2.10.1"],
+      "env": {
+        "RESEND_API_KEY": "<your-resend-api-key>"
+      }
     }
   }
 }

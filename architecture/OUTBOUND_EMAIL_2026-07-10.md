@@ -59,11 +59,20 @@ SynqDrive versendet **transaktionale E-Mails mit PDF-Anhängen über [Resend](ht
 1. Kostenlosen Account erstellen: [https://resend.com/signup](https://resend.com/signup)
 2. Dashboard → **API Keys** → **Create API Key**
 3. Key kopieren (beginnt mit `re_…`) — **nur einmal sichtbar**
-4. In VPS `backend.env` eintragen:
+4. **Sicher übergeben** (nicht im Chat): siehe `docs/resend-setup.md`
+5. Sync auf VPS:
+
+```bash
+bash backend/scripts/ops/sync-resend-env-to-vps.sh
+ssh root@srv1374778.hstgr.cloud 'pm2 restart synqdrive --update-env'
+```
+
+Oder manuell in `/opt/synqdrive/shared/backend.env`:
 
 ```env
 RESEND_API_KEY=re_xxxxxxxx
 EMAIL_PROVIDER=resend
+EMAIL_SIMULATE_ENABLED=false
 EMAIL_DEFAULT_FROM=noreply@synqdrive.eu
 EMAIL_DEFAULT_REPLY_TO=support@synqdrive.eu
 ```

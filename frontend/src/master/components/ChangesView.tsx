@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'resend-production-setup-v49308-2026-07-10',
+    version: '4.9.308',
+    title: 'V4.9.308 — Resend Production: VPS-Sync, MCP, Setup-Doku',
+    summary: [
+      'Script `sync-resend-env-to-vps.sh` — RESEND/EMAIL-Block aus Secret oder backend/.env auf VPS.',
+      '`.cursor/mcp.json` — Resend MCP (`resend-mcp@2.10.1`), Key via Runtime Secret / geerbte Env.',
+      'Doku `docs/resend-setup.md` — sichere Key-Übergabe, FS-Mobility Domain neu anlegen nach Resend.',
+    ],
+    reason: 'E-Mail-Versand lief im Dev-Simulationsmodus (Gesendet simuliert); Produktion braucht Resend API Key auf VPS.',
+    previousBehavior: 'Kein RESEND_API_KEY auf VPS → DevEmailProvider, fake DNS synqdrive-dev-verify.',
+    details: 'Nach Key-Sync: PM2 restart, Domain fs-mobility.de entfernen/neu hinzufügen, echte Resend-DNS bei Hostinger.',
+    affectsArchitecture: true,
+    module: 'Outbound Email',
+    createdAt: '2026-07-10T10:40:00.000Z',
+  },
+  {
     id: 'lte-r1-device-quality-phases-2-5-v49307-2026-07-10',
     version: '4.9.307',
     title: 'V4.9.307 — LTE R1 Fahrbewertung: Phasen 2–5 (Baseline, Fahrzeug-UX, Notifications, Fleet)',
