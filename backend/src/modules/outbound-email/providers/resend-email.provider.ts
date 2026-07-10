@@ -9,6 +9,7 @@ import type {
   SendEmailResult,
   VerifyDomainResult,
 } from './email-provider.port';
+import { mapResendOperatorError } from '../resend-error.util';
 
 interface ResendDomainRecord {
   record?: string;
@@ -161,7 +162,7 @@ export class ResendEmailProvider implements EmailProviderPort {
     if (!result.ok) {
       return {
         status: 'FAILED',
-        failureReason: result.errorMessage || 'Verification request failed',
+        failureReason: mapResendOperatorError(result.errorMessage),
       };
     }
 
@@ -180,7 +181,7 @@ export class ResendEmailProvider implements EmailProviderPort {
     if (!result.ok) {
       return {
         status: 'FAILED',
-        failureReason: result.errorMessage || 'Failed to load domain',
+        failureReason: mapResendOperatorError(result.errorMessage),
       };
     }
 

@@ -7,7 +7,7 @@
 ### Option A — Cursor Cloud Agent (empfohlen für uns)
 
 1. [Cursor Dashboard → Cloud Agents → Secrets](https://cursor.com/dashboard/cloud-agents)
-2. **Runtime Secret** anlegen: `RESEND_API_KEY` = `re_…`
+2. **Runtime Secret** anlegen: `RESEND_API_KEY` = `re_…` (**Full access**, nicht nur Sending)
 3. Optional: `RESEND_WEBHOOK_SECRET` = `whsec_…` (nach Webhook-Anlage in Resend)
 4. Cloud Agent **neu starten**
 5. Agent ausführen lassen:
@@ -24,7 +24,7 @@ ssh root@srv1374778.hstgr.cloud
 nano /opt/synqdrive/shared/backend.env
 ```
 
-Block anhängen (Key eintragen):
+Block anhängen (Key eintragen — **Full access**, nicht nur Sending):
 
 ```env
 # Outbound email (Resend)
@@ -73,6 +73,11 @@ Die Domain `fs-mobility.de` wurde im **Simulationsmodus** registriert (`synqdriv
 4. **DNS prüfen** → **Aktivieren**
 5. Versandmodus **Eigene Domain**, Reply-To `info@fs-mobility.de`, **Speichern**
 6. Test senden — Status muss **`Gesendet`** sein (nicht „simuliert“)
+
+### Fehler „Internal server error“ beim Domain hinzufügen
+
+Ursache in den Server-Logs oft: `This API key is restricted to only send emails`.  
+→ Resend Dashboard → **API Keys** → neuen Key mit **Full access** erstellen → `RESEND_API_KEY` auf dem VPS ersetzen → `pm2 restart synqdrive --update-env`.
 
 ---
 

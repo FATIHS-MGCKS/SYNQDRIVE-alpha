@@ -7,6 +7,7 @@ import { OrgEmailDomainStatus, OrgEmailMode } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { EmailProviderRegistry } from './providers/email-provider.registry';
 import { PlatformEmailSettingsService } from './platform-email-settings.service';
+import { mapResendOperatorError } from './resend-error.util';
 
 export interface OrgEmailSettingsDto {
   mode: OrgEmailMode;
@@ -110,7 +111,14 @@ export class OutboundEmailDomainService {
     }
 
     const provider = this.providers.resolveForDomains();
-    const registered = await provider.registerDomain?.({ domain: normalized });
+    let registered;
+    try {
+      registered = await provider.registerDomain?.({ domain: normalized });
+    } catch (err) {
+      throw new BadRequestException(
+        mapResendOperatorError(err instanceof Error ? err.message : undefined),
+      );
+    }
     if (!registered) {
       throw new BadRequestException('Domain registration is not available for the current provider');
     }

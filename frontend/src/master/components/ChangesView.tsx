@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'resend-full-access-key-v49310-2026-07-10',
+    version: '4.9.310',
+    title: 'V4.9.310 — Resend: Full-Access-Key für Domain-Registrierung + klare Fehlermeldung',
+    summary: [
+      'Domain hinzufügen schlug mit 500 fehl, wenn RESEND_API_KEY nur „Sending access“ hat — Resend verweigert POST /domains.',
+      'Operator-Fehlermeldung (DE) statt Internal Server Error; Doku: API-Key braucht Full access für Custom Domains.',
+    ],
+    reason: 'FS Mobility: „Eigene Domain hinzufügen“ → Internal server error; Log: This API key is restricted to only send emails.',
+    previousBehavior: 'Unbehandelter Resend-Fehler → HTTP 500, UI „Internal server error“.',
+    details:
+      'Ops: Resend Dashboard → neuer API-Key mit Full access → RESEND_API_KEY in backend.env ersetzen → pm2 restart. Code: mapResendOperatorError + BadRequestException in addDomain.',
+    affectsArchitecture: false,
+    module: 'Outbound Email',
+    createdAt: '2026-07-10T12:30:00.000Z',
+  },
+  {
     id: 'resend-production-setup-v49308-2026-07-10',
     version: '4.9.308',
     title: 'V4.9.308 — Resend Production: VPS-Sync, MCP, Setup-Doku',
