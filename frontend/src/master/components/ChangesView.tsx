@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'resend-full-access-webhook-docs-v49309-2026-07-10',
+    version: '4.9.309',
+    title: 'V4.9.309 — Resend Full-Access-Key + Webhook-Doku',
+    summary: [
+      'Produktions-`RESEND_API_KEY` auf **Full access** im Resend Dashboard (Domain-Registrierung in SynqDrive).',
+      'Doku `docs/resend-setup.md`: API-Key-Berechtigung, Webhook-URL, Events (`email.delivered|bounced|complained|opened`).',
+      'Architektur `OUTBOUND_EMAIL_2026-07-10.md`: Full-access-Pflicht + Webhook-Events ergänzt.',
+    ],
+    reason: 'Send-only-Key blockierte `POST …/email/domains`; Webhook-Setup braucht klare Endpoint- und Event-Liste.',
+    previousBehavior: 'Key war send-only → Resend-Fehler bei Domain-Anlage; Webhook-Doku nur Kurzverweis.',
+    details:
+      'Webhook: `POST https://app.synqdrive.eu/api/v1/webhooks/resend/outbound-email`. Secret: `RESEND_WEBHOOK_SECRET` (Svix). Sync: `sync-resend-env-to-vps.sh`.',
+    affectsArchitecture: true,
+    module: 'Outbound Email',
+    createdAt: '2026-07-10T12:40:00.000Z',
+  },
+  {
     id: 'resend-production-setup-v49308-2026-07-10',
     version: '4.9.308',
     title: 'V4.9.308 — Resend Production: VPS-Sync, MCP, Setup-Doku',
