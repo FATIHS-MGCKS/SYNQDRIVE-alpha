@@ -35,6 +35,8 @@ storage growth. These are deliberately **not** wired into the app (no automatic
 | `pg-fix-app-table-ownership.sql` | Re-assign postgres-owned app tables to `synqdrive` after migrate | safe (run as postgres) |
 | `nginx-csp-didit-frame-src.snippet` | CSP `frame-src` for Didit SDK iframe on app.synqdrive.eu | manual nginx apply |
 | `sync-mistral-env-to-vps.sh` | Copy `AI_*` / `MISTRAL_*` / `DOCUMENT_AI_*` from local `backend/.env` → VPS `backend.env` | secrets — backup remote env first |
+| `sync-resend-dns-to-hostinger.sh` | Merge Resend DKIM/SPF/MX (`send.*`) into Hostinger DNS zone (preserves root `@` MX) | secrets — `RESEND_API_KEY` + `HOSTINGER_API_TOKEN` |
+| `sync-resend-env-to-vps.sh` | Copy Resend/EMAIL block from Secret or `backend/.env` → VPS `backend.env` | secrets — backup remote env first |
 | `partition-time-series.sql` | Reviewed template to RANGE-partition time-series tables | NEEDS APPROVAL — backup + maintenance window |
 | `cleanup-dimo-device-connection-duplicates.ts` | Remove historical OBD plug/unplug duplicate rows (canonical state transitions only) | mutating — run `--dry-run` first |
 | `backfill-brake-health-from-registration-specs.ts` | Initialize `BrakeHealthCurrent` for vehicles with registration/manual brake specs but no baseline | mutating — run `--dry-run` first |
