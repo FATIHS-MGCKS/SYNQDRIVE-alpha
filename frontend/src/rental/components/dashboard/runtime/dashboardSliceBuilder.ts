@@ -406,8 +406,8 @@ function buildActiveRentedSlice(
       group('return-due-soon', label(locale, 'Rückgabe bald fällig', 'Return due soon'), dueSoonRows),
       group('return-overdue', label(locale, 'Rückgabe überfällig', 'Return overdue'), overdueRows),
       group('critical-during-rental', label(locale, 'Kritisch während Vermietung', 'Critical during rental'), criticalRows),
-      kpiCountGroup('pickups-today', label(locale, 'Übergaben heute', 'Pickups today'), pickupItems.length),
-      kpiCountGroup('returns-today', label(locale, 'Rückgaben heute', 'Returns today'), returnItems.length),
+      kpiCountGroup('pickups-today', label(locale, 'Übergaben', 'Pickups'), pickupItems.length),
+      kpiCountGroup('returns-today', label(locale, 'Rückgaben', 'Returns'), returnItems.length),
     ],
   };
 }

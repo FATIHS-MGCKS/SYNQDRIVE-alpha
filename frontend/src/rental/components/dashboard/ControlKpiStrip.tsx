@@ -67,8 +67,8 @@ function kpiCardClass(
   const sizeClass =
     size === 'twin'
       ? embedded
-        ? 'min-h-[120px]'
-        : 'min-h-[108px]'
+        ? 'min-h-[140px]'
+        : 'min-h-[128px]'
       : size === 'compact'
         ? embedded
           ? 'min-h-[88px]'
@@ -77,10 +77,19 @@ function kpiCardClass(
           ? 'min-h-[112px]'
           : 'min-h-[96px]';
 
+  const paddingClass =
+    size === 'twin'
+      ? embedded
+        ? 'rounded-2xl px-3 py-3.5'
+        : 'rounded-lg px-2.5 py-2.5'
+      : embedded
+        ? 'rounded-2xl px-3 py-3'
+        : 'rounded-lg px-2.5 py-2';
+
   return cn(
     'surface-elevated sq-press group relative overflow-hidden text-left transition-colors duration-200',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
-    embedded ? 'rounded-2xl px-3 py-3' : 'rounded-lg px-2.5 py-2',
+    paddingClass,
     sizeClass,
     getKpiCardSurfaceClass(cardTone, embedded),
     isActive && 'ring-2 ring-[color:var(--brand)]/55',
@@ -100,8 +109,8 @@ function operationsKpiLabels(locale?: string) {
   const de = locale === 'de';
   return {
     activeRentals: de ? 'aktive Vermietungen' : 'active rentals',
-    pickupsToday: de ? 'Übergaben heute' : 'Pickups today',
-    returnsToday: de ? 'Rückgaben heute' : 'Returns today',
+    pickupsToday: de ? 'Übergaben' : 'Pickups',
+    returnsToday: de ? 'Rückgaben' : 'Returns',
   };
 }
 
@@ -114,16 +123,16 @@ function formatKpiCount(value: number | null, disabled: boolean): string {
 const KPI_TITLE_CLASS = 'min-w-0 truncate text-[10.5px] font-medium tracking-[-0.01em] text-muted-foreground';
 const KPI_NUMBER_CLASS = 'text-[21px] font-semibold tabular-nums leading-none tracking-[-0.03em]';
 const KPI_SECONDARY_TEXT_CLASS = 'text-[10px] leading-snug text-muted-foreground';
-const KPI_MAIN_LABEL_CLASS = cn('mt-1 text-center', KPI_SECONDARY_TEXT_CLASS);
-const KPI_SEPARATOR_CLASS = 'mx-1.5 my-1.5 shrink-0 border-t border-border/30';
-const KPI_FOOTER_GRID_CLASS = 'relative grid shrink-0 grid-cols-2 items-center';
+const KPI_MAIN_LABEL_CLASS = cn('mt-1.5 text-center', KPI_SECONDARY_TEXT_CLASS);
+const KPI_SEPARATOR_CLASS = 'mx-1.5 my-2 shrink-0 border-t border-border/30';
+const KPI_FOOTER_GRID_CLASS = 'relative grid shrink-0 grid-cols-2 items-center gap-y-0.5';
 const KPI_FOOTER_LABEL_CLASS = cn(
   'text-center whitespace-nowrap',
   KPI_SECONDARY_TEXT_CLASS,
 );
-const KPI_FOOTER_VALUE_CLASS = cn('mt-1 text-foreground', KPI_NUMBER_CLASS);
+const KPI_FOOTER_VALUE_CLASS = cn('mt-1.5 text-foreground', KPI_NUMBER_CLASS);
 const KPI_FOOTER_DIVIDER_CLASS =
-  'pointer-events-none absolute left-1/2 top-1/2 h-6 w-px -translate-x-1/2 -translate-y-1/2 bg-border/35';
+  'pointer-events-none absolute left-1/2 top-1/2 h-7 w-px -translate-x-1/2 -translate-y-1/2 bg-border/35';
 
 interface KpiTwinFooterColumnProps {
   label: string;
@@ -166,7 +175,7 @@ function ReadyForRentingKpiContent({ slice, disabled, locale }: ReadyForRentingK
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-1 py-1 text-center">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-1 py-1.5 text-center">
         <p className={cn(KPI_NUMBER_CLASS, getKpiValueGradientClass(mainTone, disabled))}>
           {formatKpiCount(readyCount, disabled)}
         </p>
@@ -210,7 +219,7 @@ function TodaysOperationsKpiContent({ slice, disabled, locale }: ReadyForRenting
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-1 py-1 text-center">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-1 py-1.5 text-center">
         <p className={cn(KPI_NUMBER_CLASS, getKpiValueGradientClass('neutral', disabled))}>
           {formatKpiCount(activeRentalsCount, disabled)}
         </p>
@@ -305,7 +314,7 @@ function KpiStripButton({ id, slice, embedded, locale, activeSliceId, onSelectSl
         isReadyCard && readyCounts
           ? `${slice.title}: ${formatKpiCount(readyCounts.readyCount, disabled)} ready, ${formatKpiCount(readyCounts.availableCount, disabled)} available, ${formatKpiCount(readyCounts.notReadyCount, disabled)} not ready`
           : isOperationsCard && operationsCounts
-            ? `${slice.title}: ${formatKpiCount(operationsCounts.activeRentalsCount, disabled)} active rentals, ${formatKpiCount(operationsCounts.pickupsToday, disabled)} pickups today, ${formatKpiCount(operationsCounts.returnsToday, disabled)} returns today`
+            ? `${slice.title}: ${formatKpiCount(operationsCounts.activeRentalsCount, disabled)} active rentals, ${formatKpiCount(operationsCounts.pickupsToday, disabled)} pickups, ${formatKpiCount(operationsCounts.returnsToday, disabled)} returns`
             : `${slice.title}: ${displayValue}`
       }
       aria-pressed={isActive}
@@ -346,7 +355,7 @@ export function ControlKpiStrip({
 
   if (loading) {
     const gridClass = kpiGridClass(embedded);
-    const skeletonCardClass = embedded ? 'min-h-[112px] rounded-2xl p-3' : undefined;
+    const skeletonCardClass = embedded ? 'min-h-[140px] rounded-2xl p-3.5' : undefined;
 
     return (
       <SkeletonMetricGrid count={6} className={cn(gridClass, '!grid-cols-2')} cardClassName={skeletonCardClass} />

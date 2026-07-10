@@ -35,6 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-kpi-twin-boxes-v49316-2026-07-10',
+    version: '4.9.316',
+    title: 'V4.9.316 — Dashboard: Twin-KPI-Boxen höher + kürzere Operations-Labels',
+    summary: [
+      'Bereit zur Vermietung / Heutige Operationen: min-h 140px (embedded), mehr Innenabstand für Haupt- und Footer-Kennzahlen.',
+      'Footer-Labels: „Übergaben“ / „Rückgaben“ statt „… heute“; Drilldown-Gruppen angeglichen.',
+    ],
+    reason: 'Drei Kennzahlen pro Twin-Karte wirkten gedrängt; „heute“ in Footer-Labels war redundant zum Kartenkontext.',
+    previousBehavior: 'Twin-Karten min-h 120px; Footer „Übergaben heute“ / „Rückgaben heute“.',
+    details: 'ControlKpiStrip.tsx, dashboardSliceBuilder.ts.',
+    affectsArchitecture: false,
+    module: 'Dashboard',
+    createdAt: '2026-07-10T15:00:00.000Z',
+  },
+  {
     id: 'dashboard-station-label-full-v49315-2026-07-10',
     version: '4.9.315',
     title: 'V4.9.315 — Dashboard: Stationswahl voll ausgeschrieben',
