@@ -1055,6 +1055,12 @@ export interface OrgEmailSettingsDto {
   };
 }
 
+/** Writable fields for PUT /organizations/:orgId/email/settings (excludes read-only platformSender). */
+export type UpdateOrgEmailSettingsPayload = Pick<
+  OrgEmailSettingsDto,
+  'mode' | 'defaultFromName' | 'replyToEmail' | 'signatureHtml'
+>;
+
 export interface PlatformEmailSettingsAdminDto {
   defaultFromEmail: string;
   defaultFromName: string;
@@ -2987,7 +2993,7 @@ export const api = {
   orgEmail: {
     getSettings: (orgId: string) =>
       get<OrgEmailSettingsDto>(`/organizations/${orgId}/email/settings`),
-    updateSettings: (orgId: string, payload: Partial<OrgEmailSettingsDto>) =>
+    updateSettings: (orgId: string, payload: UpdateOrgEmailSettingsPayload) =>
       put<OrgEmailSettingsDto>(`/organizations/${orgId}/email/settings`, payload),
     listDomains: (orgId: string) =>
       get<OrgEmailDomainDto[]>(`/organizations/${orgId}/email/domains`),

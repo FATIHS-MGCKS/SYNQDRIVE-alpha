@@ -14,6 +14,7 @@ import {
   type OrgEmailDomainDto,
   type OrgEmailSettingsDto,
   type OutboundEmailDto,
+  type UpdateOrgEmailSettingsPayload,
 } from '../../../../lib/api';
 import { emailDomainStatusLabel, outboundEmailStatusLabel } from '../../../../lib/email-i18n';
 import { useLanguage } from '../../../i18n/LanguageContext';
@@ -79,7 +80,13 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
     if (!orgId || !settings || !canManage) return;
     setSaving(true);
     try {
-      const updated = await api.orgEmail.updateSettings(orgId, settings);
+      const payload: UpdateOrgEmailSettingsPayload = {
+        mode: settings.mode,
+        defaultFromName: settings.defaultFromName,
+        replyToEmail: settings.replyToEmail,
+        signatureHtml: settings.signatureHtml,
+      };
+      const updated = await api.orgEmail.updateSettings(orgId, payload);
       setSettings(updated);
       setBanner({ kind: 'success', text: t('email.settings.saved') });
     } catch (err) {

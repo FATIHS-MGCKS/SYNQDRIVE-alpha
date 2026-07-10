@@ -35,6 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'email-settings-platform-sender-payload-v49312-2026-07-10',
+    version: '4.9.312',
+    title: 'V4.9.312 — E-Mail & Versand: Speichern ohne read-only platformSender',
+    summary: [
+      'PUT …/email/settings sendet nur `mode`, `defaultFromName`, `replyToEmail`, `signatureHtml` — nicht `platformSender`.',
+      'Behebt Fehler „property platformSender should not exist“ beim Wechsel auf SynqDrive Standard.',
+    ],
+    reason: 'GET liefert read-only `platformSender`; Frontend re-postete das ganze Settings-Objekt → Validation `forbidNonWhitelisted`.',
+    previousBehavior: 'Speichern / Modus SynqDrive Standard → 400 mit platformSender-Fehler.',
+    details: 'EmailVersandTab + `UpdateOrgEmailSettingsPayload` in api.ts.',
+    affectsArchitecture: false,
+    module: 'Outbound Email',
+    createdAt: '2026-07-10T13:40:00.000Z',
+  },
+  {
     id: 'resend-full-access-key-v49311-2026-07-10',
     version: '4.9.311',
     title: 'V4.9.311 — Resend: klare Fehlermeldung bei Send-only API-Key',
