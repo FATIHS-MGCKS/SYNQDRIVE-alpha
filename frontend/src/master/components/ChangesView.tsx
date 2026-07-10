@@ -35,6 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'revert-dark-wordmark-logo-v49320-2026-07-10',
+    version: '4.9.320',
+    title: 'V4.9.320 — Revert: Dark-Theme White Wordmark (erneut)',
+    summary: [
+      'SynqDriveBrandLogo nutzt wieder nur `synqdrive-logo-new.png` in Light und Dark.',
+      'Weißes Wordmark-Asset entfernt — V4.9.319 zurückgenommen.',
+    ],
+    reason: 'Weißes Dark-Theme-Wordmark wirkte visuell nicht passend.',
+    previousBehavior: 'Dark Mode: synqdrive-logo-dark-wordmark (weiß); Light: synqdrive-logo-new.',
+    details: 'SynqDriveBrandLogo.tsx; Löschung synqdrive-logo-dark-wordmark.png.',
+    affectsArchitecture: false,
+    module: 'Master Admin',
+    createdAt: '2026-07-10T16:10:00.000Z',
+  },
+  {
     id: 'synqdrive-dark-wordmark-restore-v49319-2026-07-10',
     version: '4.9.319',
     title: 'V4.9.319 — SynqDrive White Wordmark für Dark Theme (erneut)',
