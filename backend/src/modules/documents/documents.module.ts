@@ -34,6 +34,11 @@ import { LocalDocumentStorageService } from './storage/local-document-storage.se
     DocumentNumberingService,
     BookingDocumentBundleService,
   ],
-  exports: [BookingDocumentBundleService, GeneratedDocumentsService, LegalDocumentsService],
+  exports: [
+    BookingDocumentBundleService,
+    GeneratedDocumentsService,
+    LegalDocumentsService,
+    DOCUMENTS_STORAGE,
+  ],
 })
 export class DocumentsModule {}

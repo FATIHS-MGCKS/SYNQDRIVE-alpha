@@ -14,6 +14,7 @@ const TAB_LABEL_KEYS: Record<SettingsTab, TranslationKey> = {
   billing: 'adminTab.billing',
   'data-authorization': 'adminTab.dataAuthorization',
   'legal-documents': 'adminTab.legalDocuments',
+  'email-versand': 'adminTab.emailVersand',
   'rental-rules': 'adminTab.rentalRules',
 };
 

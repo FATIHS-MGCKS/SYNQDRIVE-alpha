@@ -6,6 +6,7 @@ export type SettingsTab =
   | 'billing'
   | 'data-authorization'
   | 'legal-documents'
+  | 'email-versand'
   | 'rental-rules';
 
 /** @deprecated Removed from Administration (V4.9.206) — migrated to Fleet → Connectivity. */
@@ -29,5 +30,6 @@ export const ADMINISTRATION_TAB_ORDER: SettingsTab[] = [
   'billing',
   'data-authorization',
   'legal-documents',
+  'email-versand',
   'rental-rules',
 ];

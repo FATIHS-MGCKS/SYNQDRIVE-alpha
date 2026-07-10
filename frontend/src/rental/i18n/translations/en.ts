@@ -171,6 +171,7 @@ export const en = {
   'adminTab.billing': 'Billing',
   'adminTab.dataAuthorization': 'Data Authorization',
   'adminTab.legalDocuments': 'Legal Documents',
+  'adminTab.emailVersand': 'E-Mail & Versand',
   'adminTab.rentalRules': 'Rental Rules',
 
   // ─── Finance Tabs ───

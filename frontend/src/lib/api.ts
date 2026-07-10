@@ -1041,6 +1041,82 @@ export interface GeneratedDocumentDto {
   createdAt: string;
 }
 
+export type OrgEmailMode = 'SYNQDRIVE_DEFAULT' | 'CUSTOM_DOMAIN';
+
+export interface OrgEmailSettingsDto {
+  mode: OrgEmailMode;
+  defaultFromName: string | null;
+  replyToEmail: string | null;
+  signatureHtml: string | null;
+}
+
+export type OrgEmailDomainStatus =
+  | 'NOT_CONFIGURED'
+  | 'PENDING_DNS'
+  | 'VERIFYING'
+  | 'VERIFIED'
+  | 'FAILED';
+
+export interface OrgEmailDomainDto {
+  id: string;
+  domain: string;
+  status: OrgEmailDomainStatus;
+  fromLocalPart: string;
+  dnsRecords: unknown;
+  failureReason: string | null;
+  isActive: boolean;
+  lastCheckedAt: string | null;
+  verifiedAt: string | null;
+  createdAt: string;
+}
+
+export type OutboundEmailStatus =
+  | 'QUEUED'
+  | 'SENDING'
+  | 'SENT'
+  | 'FAILED'
+  | 'SENT_SIMULATED';
+
+export interface OutboundEmailDto {
+  id: string;
+  organizationId: string;
+  bookingId: string | null;
+  customerId: string | null;
+  invoiceId: string | null;
+  sourceType: string;
+  status: OutboundEmailStatus;
+  fromEmail: string;
+  fromName: string | null;
+  replyToEmail: string | null;
+  toEmail: string;
+  ccEmails: string[];
+  bccEmails: string[];
+  subject: string;
+  bodyText: string | null;
+  bodyHtml: string | null;
+  provider: string | null;
+  providerMessageId: string | null;
+  errorCode: string | null;
+  errorMessage: string | null;
+  sentByUserId: string | null;
+  sentAt: string | null;
+  createdAt: string;
+  attachments: Array<{
+    id: string;
+    generatedDocumentId: string | null;
+    fileName: string;
+    mimeType: string;
+    sizeBytes: number | null;
+    documentType: string | null;
+  }>;
+  events: Array<{
+    id: string;
+    eventType: string;
+    occurredAt: string;
+    payload: unknown;
+  }>;
+}
+
 export interface BookingDocumentBundleView {
   bundle: {
     id: string;
@@ -2863,6 +2939,53 @@ export const api = {
     /** Opens the stored PDF (authenticated) in a new tab. */
     open: (orgId: string, documentId: string) =>
       openAuthedDocument(`/organizations/${orgId}/documents/${documentId}/download`),
+    sendBookingEmail: (
+      orgId: string,
+      bookingId: string,
+      payload: {
+        toEmail: string;
+        subject: string;
+        bodyHtml?: string;
+        bodyText?: string;
+        ccEmails?: string[];
+        bccEmails?: string[];
+        documentIds: string[];
+      },
+    ) =>
+      post<OutboundEmailDto>(
+        `/organizations/${orgId}/bookings/${bookingId}/documents/send-email`,
+        payload,
+      ),
+  },
+  orgEmail: {
+    getSettings: (orgId: string) =>
+      get<OrgEmailSettingsDto>(`/organizations/${orgId}/email/settings`),
+    updateSettings: (orgId: string, payload: Partial<OrgEmailSettingsDto>) =>
+      put<OrgEmailSettingsDto>(`/organizations/${orgId}/email/settings`, payload),
+    listDomains: (orgId: string) =>
+      get<OrgEmailDomainDto[]>(`/organizations/${orgId}/email/domains`),
+    addDomain: (orgId: string, payload: { domain: string; fromLocalPart?: string }) =>
+      post<OrgEmailDomainDto>(`/organizations/${orgId}/email/domains`, payload),
+    verifyDomain: (orgId: string, domainId: string) =>
+      post<OrgEmailDomainDto>(`/organizations/${orgId}/email/domains/${domainId}/verify`, {}),
+    activateDomain: (orgId: string, domainId: string) =>
+      post<OrgEmailDomainDto>(`/organizations/${orgId}/email/domains/${domainId}/activate`, {}),
+    deleteDomain: (orgId: string, domainId: string) =>
+      del<{ ok: boolean }>(`/organizations/${orgId}/email/domains/${domainId}`),
+    sendTest: (orgId: string, payload: { toEmail: string }) =>
+      post<OutboundEmailDto>(`/organizations/${orgId}/email/test`, payload),
+    listHistory: (orgId: string, params?: { page?: number; limit?: number; bookingId?: string }) => {
+      const q = new URLSearchParams();
+      if (params?.page) q.set('page', String(params.page));
+      if (params?.limit) q.set('limit', String(params.limit));
+      if (params?.bookingId) q.set('bookingId', params.bookingId);
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return get<{ data: OutboundEmailDto[]; meta: { total: number; page: number; limit: number; totalPages: number } }>(
+        `/organizations/${orgId}/email/history${suffix}`,
+      );
+    },
+    getHistoryItem: (orgId: string, emailId: string) =>
+      get<OutboundEmailDto>(`/organizations/${orgId}/email/history/${emailId}`),
   },
   // Administration → Legal Documents (AGB / Widerrufsbelehrung): upload +
   // versioning. Mutations are ORG_ADMIN-gated server-side.

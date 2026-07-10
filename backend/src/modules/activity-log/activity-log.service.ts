@@ -20,6 +20,7 @@ const ACTION_DISPLAY: Record<string, string> = {
   CONVERT: 'Converted',
   SYNC: 'Synced',
   CANCEL: 'Cancelled',
+  SEND: 'Sent',
 };
 
 const ENTITY_DISPLAY: Record<string, string> = {
@@ -35,6 +36,7 @@ const ENTITY_DISPLAY: Record<string, string> = {
   PRODUCT: 'Product',
   DIMO_VEHICLE: 'DIMO Vehicle',
   SUPPORT_TICKET: 'Support Ticket',
+  OUTBOUND_EMAIL: 'Outbound Email',
 };
 
 @Injectable()

@@ -154,20 +154,10 @@ export function CheckoutStep({
                   <Icon name="printer" className="w-3.5 h-3.5" />
                 </button>
                 <button
-                  onClick={() => {
-                    const subject = encodeURIComponent('Allgemeine Geschäftsbedingungen – Flottenvermietung');
-                    const body = encodeURIComponent(
-                      'Sehr geehrte/r Kunde/in,\n\nanbei erhalten Sie unsere Allgemeinen Geschäftsbedingungen (AGB).\n\n' +
-                        '1. Geltungsbereich: Diese AGB gelten für alle Mietverträge über Fahrzeuge unserer Flotte.\n' +
-                        '2. Mietbedingungen: Der Mieter verpflichtet sich, das Fahrzeug pfleglich zu behandeln.\n' +
-                        '3. Zahlungsbedingungen: Die Miete ist bei Abholung fällig.\n\n' +
-                        'Mit freundlichen Grüßen\nIhr Flottenmanagement-Team',
-                    );
-                    const email = selectedCustomer?.email || '';
-                    window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_self');
-                  }}
-                  title="Per E-Mail senden"
-                  className="p-1.5 rounded-md transition-all hover:bg-muted text-muted-foreground hover:text-foreground"
+                  type="button"
+                  disabled
+                  title="Nach Buchungserstellung in der Buchungsdetailansicht verfügbar"
+                  className="p-1.5 rounded-md transition-all opacity-40 cursor-not-allowed text-muted-foreground"
                 >
                   <Icon name="send" className="w-3.5 h-3.5" />
                 </button>
@@ -203,18 +193,10 @@ export function CheckoutStep({
                   <Icon name="printer" className="w-3.5 h-3.5" />
                 </button>
                 <button
-                  onClick={() => {
-                    const subject = encodeURIComponent('Datenschutzerklärung – Flottenvermietung');
-                    const body = encodeURIComponent(
-                      'Sehr geehrte/r Kunde/in,\n\nanbei erhalten Sie unsere Datenschutzerklärung.\n\n' +
-                        'Wir verarbeiten Ihre personenbezogenen Daten gemäß DSGVO ausschließlich zur Durchführung des Mietvertrags.\n\n' +
-                        'Mit freundlichen Grüßen\nIhr Flottenmanagement-Team',
-                    );
-                    const email = selectedCustomer?.email || '';
-                    window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_self');
-                  }}
-                  title="Per E-Mail senden"
-                  className="p-1.5 rounded-md transition-all hover:bg-muted text-muted-foreground hover:text-foreground"
+                  type="button"
+                  disabled
+                  title="Nach Buchungserstellung in der Buchungsdetailansicht verfügbar"
+                  className="p-1.5 rounded-md transition-all opacity-40 cursor-not-allowed text-muted-foreground"
                 >
                   <Icon name="send" className="w-3.5 h-3.5" />
                 </button>
@@ -288,22 +270,10 @@ export function CheckoutStep({
                       <Icon name="printer" className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={() => {
-                        const subject = encodeURIComponent(
-                          `Rechnung – ${selectedVehicle ? buildMMY(selectedVehicle) : 'Fahrzeug'}`,
-                        );
-                        const body = encodeURIComponent(
-                          `Sehr geehrte/r ${selectedCustomer?.name || 'Kunde/in'},\n\nanbei Ihre Rechnung.\n\n` +
-                            `Fahrzeug: ${selectedVehicle ? buildMMY(selectedVehicle) : '–'} (${selectedVehicle?.license || '–'})\n` +
-                            `Zeitraum: ${rentalDays} Tage\n` +
-                            `Gesamt: € ${amountLabel(grandTotal)}\n\n` +
-                            'Mit freundlichen Grüßen\nIhr Flottenmanagement-Team',
-                        );
-                        const email = selectedCustomer?.email || '';
-                        window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_self');
-                      }}
-                      title="Per E-Mail senden"
-                      className="p-1.5 rounded-md transition-all hover:bg-muted text-muted-foreground hover:text-foreground"
+                      type="button"
+                      disabled
+                      title="Nach Buchungserstellung in der Buchungsdetailansicht verfügbar"
+                      className="p-1.5 rounded-md transition-all opacity-40 cursor-not-allowed text-muted-foreground"
                     >
                       <Icon name="send" className="w-3.5 h-3.5" />
                     </button>
@@ -378,22 +348,10 @@ export function CheckoutStep({
                       <Icon name="printer" className="w-3.5 h-3.5" />
                     </button>
                     <button
-                      onClick={() => {
-                        const subject = encodeURIComponent(
-                          `Mietvertrag – ${selectedVehicle ? buildMMY(selectedVehicle) : 'Fahrzeug'}`,
-                        );
-                        const body = encodeURIComponent(
-                          `Sehr geehrte/r ${selectedCustomer?.name || 'Kunde/in'},\n\nanbei Ihr Mietvertrag.\n\n` +
-                            `Fahrzeug: ${selectedVehicle ? buildMMY(selectedVehicle) : '–'} (${selectedVehicle?.license || '–'})\n` +
-                            `Zeitraum: ${pickupDate ? new Date(pickupDate).toLocaleDateString('de-DE') : '–'} – ${returnDate ? new Date(returnDate).toLocaleDateString('de-DE') : '–'}\n` +
-                            `Gesamt: € ${amountLabel(grandTotal)}\n\n` +
-                            'Mit freundlichen Grüßen\nIhr Flottenmanagement-Team',
-                        );
-                        const email = selectedCustomer?.email || '';
-                        window.open(`mailto:${email}?subject=${subject}&body=${body}`, '_self');
-                      }}
-                      title="Per E-Mail senden"
-                      className="p-1.5 rounded-md transition-all hover:bg-muted text-muted-foreground hover:text-foreground"
+                      type="button"
+                      disabled
+                      title="Nach Buchungserstellung in der Buchungsdetailansicht verfügbar"
+                      className="p-1.5 rounded-md transition-all opacity-40 cursor-not-allowed text-muted-foreground"
                     >
                       <Icon name="send" className="w-3.5 h-3.5" />
                     </button>

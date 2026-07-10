@@ -243,6 +243,7 @@ export const de: Record<TranslationKey, string> = {
   'adminTab.billing': 'Abrechnung',
   'adminTab.dataAuthorization': 'Data Authorization',
   'adminTab.legalDocuments': 'Legal Documents',
+  'adminTab.emailVersand': 'E-Mail & Versand',
   'adminTab.rentalRules': 'Rental Rules',
 
   // ─── Finance Tabs ───

@@ -8,6 +8,7 @@ import { isVehicleAtHomeStation } from '../../lib/geospatial';
 import { UsersRolesTab } from './UsersRolesTab';
 import { DataAuthorizationTab } from './DataAuthorizationTab';
 import { LegalDocumentsTab } from './LegalDocumentsTab';
+import { EmailVersandTab } from './settings/email/EmailVersandTab';
 import { RentalRulesTab } from './settings/rental-rules/RentalRulesTab';
 import { AccountInformationTab } from './settings/AccountInformationTab';
 import { CompanyInformationTab } from './settings/CompanyInformationTab';
@@ -1853,6 +1854,7 @@ export function SettingsView({
         <DataAuthorizationTab canWrite={canWriteDataAuth} canManage={canManageDataAuth} />
       )}
       {activeTab === 'legal-documents' && <LegalDocumentsTab isDarkMode={bridgeDark} />}
+      {activeTab === 'email-versand' && <EmailVersandTab isDarkMode={bridgeDark} />}
       {activeTab === 'rental-rules' && <RentalRulesTab canWrite={canWriteRentalRules} />}
     </div>
   );

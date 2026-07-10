@@ -9,7 +9,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { join } from 'path';
 import Redis from 'ioredis';
 
-import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, aiConfig } from '@config/index';
+import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, aiConfig, emailConfig } from '@config/index';
 
 import { PrismaModule } from '@shared/database/prisma.module';
 import { RedisModule } from '@shared/redis/redis.module';
@@ -56,6 +56,7 @@ import { RentalHealthModule } from '@modules/rental-health/rental-health.module'
 import { TechnicalObservationsModule } from '@modules/technical-observations/technical-observations.module';
 import { DocumentExtractionModule } from '@modules/document-extraction/document-extraction.module';
 import { DocumentsModule } from '@modules/documents/documents.module';
+import { OutboundEmailModule } from '@modules/outbound-email/outbound-email.module';
 import { PricingModule } from '@modules/pricing/pricing.module';
 import { RentalRulesModule } from '@modules/rental-rules/rental-rules.module';
 import { WorkersModule } from '@workers/workers.module';
@@ -127,7 +128,7 @@ export class AppModule {
       imports: [
         ConfigModule.forRoot({
           isGlobal: true,
-          load: [appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, aiConfig],
+          load: [appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, aiConfig, emailConfig],
         }),
 
         // Global throttler: 200 requests per minute per IP (normal API usage)
@@ -218,6 +219,7 @@ export class AppModule {
         TechnicalObservationsModule,
         DocumentExtractionModule,
         DocumentsModule,
+        OutboundEmailModule,
         PricingModule,
         RentalRulesModule,
 

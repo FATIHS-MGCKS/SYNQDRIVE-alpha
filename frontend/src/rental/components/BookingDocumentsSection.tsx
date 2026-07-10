@@ -5,6 +5,7 @@ import {
   Download,
   FileText,
   Loader2,
+  Mail,
   RefreshCw,
   Sparkles,
 } from 'lucide-react';
@@ -15,12 +16,15 @@ import {
   type DocumentBundleStatus,
   type GeneratedDocumentDto,
 } from '../../lib/api';
+import { SendDocumentsEmailModal } from '../../components/email/SendDocumentsEmailModal';
 import { useRentalOrg } from '../RentalContext';
 
 interface BookingDocumentsSectionProps {
   orgId: string;
   bookingId: string;
   isDarkMode: boolean;
+  customerEmail?: string | null;
+  bookingNumber?: string | null;
 }
 
 const GROUPS: { label: string; types: string[] }[] = [
@@ -67,7 +71,13 @@ function fmtDate(iso: string | null): string {
   return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
-export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: BookingDocumentsSectionProps) {
+export function BookingDocumentsSection({
+  orgId,
+  bookingId,
+  isDarkMode,
+  customerEmail,
+  bookingNumber,
+}: BookingDocumentsSectionProps) {
   const { userRole } = useRentalOrg();
   const canManage = userRole === 'ORG_ADMIN' || userRole === 'MASTER_ADMIN';
 
@@ -76,6 +86,8 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
   const [busyType, setBusyType] = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sendOpen, setSendOpen] = useState(false);
+  const [sendDocIds, setSendDocIds] = useState<string[] | undefined>(undefined);
 
   const load = useCallback(async () => {
     if (!orgId || !bookingId) return;
@@ -137,6 +149,16 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
     [orgId, bookingId],
   );
 
+  const sendableDocuments = useMemo(
+    () => Object.values(currentByType).filter((d) => d.status !== 'VOID'),
+    [currentByType],
+  );
+
+  const openSendModal = (documentIds?: string[]) => {
+    setSendDocIds(documentIds);
+    setSendOpen(true);
+  };
+
   const cardClass = `rounded-lg p-8 border shadow-sm ${isDarkMode ? 'surface-premium border-border' : 'bg-white border-gray-200'}`;
   const subtle = isDarkMode ? 'text-muted-foreground' : 'text-muted-foreground';
   const bundleStatus = (view?.bundle.status ?? 'PENDING') as DocumentBundleStatus;
@@ -151,6 +173,21 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${badge.cls(isDarkMode)}`}>
             {badge.label}
           </span>
+          {canManage && sendableDocuments.length > 0 && (
+            <button
+              type="button"
+              onClick={() => openSendModal()}
+              title="Dokumente per E-Mail senden"
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium border ${
+                isDarkMode
+                  ? 'border-border text-foreground hover:bg-muted/80'
+                  : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+              }`}
+            >
+              <Mail className="w-3.5 h-3.5" />
+              Per E-Mail
+            </button>
+          )}
           {canManage && (
             <button
               type="button"
@@ -249,6 +286,16 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
                             >
                               <Download className="w-4 h-4" />
                             </button>
+                            {canManage && (
+                              <button
+                                type="button"
+                                title="Per E-Mail senden"
+                                onClick={() => openSendModal([doc.id])}
+                                className={`p-2 rounded-lg ${isDarkMode ? 'hover:bg-muted/80 text-muted-foreground hover:text-status-info' : 'hover:bg-muted text-muted-foreground hover:text-brand'}`}
+                              >
+                                <Mail className="w-4 h-4" />
+                              </button>
+                            )}
                             {canManage && REGENERABLE.has(type) && (
                               <button
                                 type="button"
@@ -285,6 +332,17 @@ export function BookingDocumentsSection({ orgId, bookingId, isDarkMode }: Bookin
           ))}
         </div>
       )}
+      <SendDocumentsEmailModal
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        orgId={orgId}
+        bookingId={bookingId}
+        bookingNumber={bookingNumber}
+        defaultToEmail={customerEmail}
+        documents={sendableDocuments}
+        preselectedDocumentIds={sendDocIds}
+        onSent={() => void load()}
+      />
     </div>
   );
 }

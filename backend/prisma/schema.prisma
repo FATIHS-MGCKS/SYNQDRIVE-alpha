@@ -606,6 +606,7 @@ enum ActivityAction {
   RESET // admin reset action
   REFRESH // token refreshed
   REVOKE_ALL // all sessions/tokens revoked
+  SEND // outbound email / messaging dispatch
 }
 
 enum ActivityEntity {
@@ -637,6 +638,7 @@ enum ActivityEntity {
   ORGANIZATION_INVITE // tenant user invite
   ORGANIZATION_ROLE // custom role template
   DATA_AUTHORIZATION // org-level data consent / authorization record
+  OUTBOUND_EMAIL // transactional outbound email record
 }
 
 enum DrivingEventType {
@@ -932,6 +934,9 @@ model Organization {
   bookingPriceLineItems     BookingPriceLineItem[]
   organizationRoles         OrganizationRole[]
   organizationUserInvites   OrganizationUserInvite[]
+  orgEmailSettings          OrgEmailSettings?
+  orgEmailDomains           OrgEmailDomain[]
+  outboundEmails            OutboundEmail[]
 
   @@index([status])
   @@map("organizations")
@@ -974,6 +979,7 @@ model User {
   invitesAccepted          OrganizationUserInvite[] @relation("InvitesAccepted")
   organizationRolesCreated OrganizationRole[]       @relation("RolesCreated")
   billingPriceVersionsCreated BillingPriceVersion[] @relation("BillingPriceVersionsCreated")
+  outboundEmailsSent       OutboundEmail[]            @relation("OutboundEmailSentBy")
 
   @@map("users")
 }
@@ -2563,6 +2569,7 @@ model Customer {
   verificationChecks    CustomerVerificationCheck[]
   timelineEvents        CustomerTimelineEvent[]
   misuseCases           MisuseCase[]
+  outboundEmails        OutboundEmail[]
 
   vehicleDamages        VehicleDamage[]
   whatsappConversations WhatsAppConversation[]
@@ -2868,6 +2875,7 @@ model Booking {
   priceSnapshots        BookingPriceSnapshot[]
   vehicleDamages        VehicleDamage[]
   whatsappConversations WhatsAppConversation[]
+  outboundEmails        OutboundEmail[]
 
   @@index([organizationId])
   @@index([customerId])
@@ -3869,6 +3877,8 @@ model GeneratedDocument {
   snapshot           Json?
   createdAt          DateTime     @default(now()) @map("created_at")
   updatedAt          DateTime     @updatedAt @map("updated_at")
+
+  outboundEmailAttachments OutboundEmailAttachment[]
 
   @@index([organizationId])
   @@index([bookingId])
@@ -5795,6 +5805,159 @@ model WhatsAppAiSuggestion {
   @@index([organizationId, conversationId, createdAt])
   @@index([conversationId])
   @@map("whatsapp_ai_suggestions")
+}
+
+// ------------------------------------------------
+// OUTBOUND EMAIL (document delivery + org sender domains)
+// ------------------------------------------------
+
+enum OrgEmailMode {
+  SYNQDRIVE_DEFAULT
+  CUSTOM_DOMAIN
+}
+
+enum OrgEmailDomainStatus {
+  NOT_CONFIGURED
+  PENDING_DNS
+  VERIFYING
+  VERIFIED
+  FAILED
+}
+
+enum OutboundEmailSourceType {
+  BOOKING_DOCUMENTS
+  INVOICE_SINGLE
+  TEST
+}
+
+enum OutboundEmailStatus {
+  QUEUED
+  SENDING
+  SENT
+  FAILED
+  SENT_SIMULATED
+}
+
+enum OutboundEmailEventType {
+  QUEUED
+  SENDING
+  SENT
+  FAILED
+  DELIVERED
+  BOUNCED
+  COMPLAINED
+  OPENED
+}
+
+model OrgEmailSettings {
+  id             String       @id @default(uuid())
+  organizationId String       @unique @map("organization_id")
+  mode           OrgEmailMode @default(SYNQDRIVE_DEFAULT)
+  defaultFromName String?     @map("default_from_name")
+  replyToEmail   String?      @map("reply_to_email")
+  signatureHtml  String?      @map("signature_html")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("org_email_settings")
+}
+
+model OrgEmailDomain {
+  id                String               @id @default(uuid())
+  organizationId    String               @map("organization_id")
+  domain            String
+  status            OrgEmailDomainStatus @default(PENDING_DNS)
+  providerDomainId  String?              @map("provider_domain_id")
+  fromLocalPart     String               @default("noreply") @map("from_local_part")
+  dnsRecords        Json?                @map("dns_records")
+  failureReason     String?              @map("failure_reason")
+  isActive          Boolean              @default(false) @map("is_active")
+  lastCheckedAt     DateTime?            @map("last_checked_at")
+  verifiedAt        DateTime?            @map("verified_at")
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, domain])
+  @@index([organizationId])
+  @@index([status])
+  @@map("org_email_domains")
+}
+
+model OutboundEmail {
+  id                String                  @id @default(uuid())
+  organizationId    String                  @map("organization_id")
+  bookingId         String?                 @map("booking_id")
+  customerId        String?                 @map("customer_id")
+  invoiceId         String?                 @map("invoice_id")
+  sourceType        OutboundEmailSourceType @map("source_type")
+  status            OutboundEmailStatus     @default(QUEUED)
+  fromEmail         String                  @map("from_email")
+  fromName          String?                 @map("from_name")
+  replyToEmail      String?                 @map("reply_to_email")
+  toEmail           String                  @map("to_email")
+  ccEmails          String[]                @default([]) @map("cc_emails")
+  bccEmails         String[]                @default([]) @map("bcc_emails")
+  subject           String
+  bodyText          String?                 @map("body_text")
+  bodyHtml          String?                 @map("body_html")
+  provider          String?
+  providerMessageId String?                 @map("provider_message_id")
+  errorCode         String?                 @map("error_code")
+  errorMessage      String?                 @map("error_message")
+  sentByUserId      String?                 @map("sent_by_user_id")
+  sentAt            DateTime?               @map("sent_at")
+  createdAt         DateTime                @default(now()) @map("created_at")
+  updatedAt         DateTime                @updatedAt @map("updated_at")
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  booking      Booking?                  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  customer     Customer?                 @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  sentByUser   User?                     @relation("OutboundEmailSentBy", fields: [sentByUserId], references: [id], onDelete: SetNull)
+  attachments  OutboundEmailAttachment[]
+  events       OutboundEmailEvent[]
+
+  @@index([organizationId])
+  @@index([organizationId, bookingId])
+  @@index([organizationId, customerId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("outbound_emails")
+}
+
+model OutboundEmailAttachment {
+  id                  String   @id @default(uuid())
+  outboundEmailId     String   @map("outbound_email_id")
+  generatedDocumentId String?  @map("generated_document_id")
+  fileName            String   @map("file_name")
+  mimeType            String   @map("mime_type")
+  sizeBytes           Int?     @map("size_bytes")
+  documentType        String?  @map("document_type")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  outboundEmail     OutboundEmail      @relation(fields: [outboundEmailId], references: [id], onDelete: Cascade)
+  generatedDocument GeneratedDocument? @relation(fields: [generatedDocumentId], references: [id], onDelete: SetNull)
+
+  @@index([outboundEmailId])
+  @@index([generatedDocumentId])
+  @@map("outbound_email_attachments")
+}
+
+model OutboundEmailEvent {
+  id              String                 @id @default(uuid())
+  outboundEmailId String                 @map("outbound_email_id")
+  eventType       OutboundEmailEventType @map("event_type")
+  payload         Json?
+  occurredAt      DateTime               @default(now()) @map("occurred_at")
+
+  outboundEmail OutboundEmail @relation(fields: [outboundEmailId], references: [id], onDelete: Cascade)
+
+  @@index([outboundEmailId])
+  @@index([eventType])
+  @@map("outbound_email_events")
 }
 
 // ------------------------------------------------

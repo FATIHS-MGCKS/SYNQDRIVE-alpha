@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'outbound-email-full-v49300-2026-07-10',
+    version: '4.9.300',
+    title: 'V4.9.300 — Outbound E-Mail: Dokumentenversand + Administration E-Mail & Versand',
+    summary: [
+      'Prisma: OrgEmailSettings, OrgEmailDomain, OutboundEmail + Attachments/Events; ActivityAction SEND + ActivityEntity OUTBOUND_EMAIL.',
+      'Backend `outbound-email` module: Resend/dev provider, From/Reply-To policy, domain verify, booking document send with PDF attachments, audit trail + rate limits.',
+      'API: POST …/bookings/:id/documents/send-email, GET/PUT …/email/settings|domains|history|test; Resend webhook for delivery events.',
+      'Frontend: `SendDocumentsEmailModal`, `EmailVersandTab` (Administration), send buttons in `BookingDocumentsSection` + `InvoicesView`; mailto stubs in Checkout disabled.',
+    ],
+    reason:
+      'Vollversion des Dokumenten-E-Mail-Versands — bisher nur mailto-Stubs und deaktivierte UI ohne Backend-Anbindung.',
+    previousBehavior:
+      'Kein OutboundEmail-Modul; Checkout nutzte mailto: ohne PDFs; Rechnungs-„Per E-Mail senden“ dauerhaft disabled.',
+    details:
+      'Provider auto: Resend wenn RESEND_API_KEY gesetzt, sonst dev simulate. Custom domain via Resend Domains API. Dokumente werden als gespeicherte PDFs angehängt; VOID blockiert. Erfolgreicher Versand setzt GeneratedDocument status SENT.',
+    affectsArchitecture: true,
+    module: 'Documents / Outbound Email',
+    createdAt: '2026-07-10T00:45:00.000Z',
+  },
+  {
     id: 'liquid-glass-map-hud-final-polish-v49297-2026-07-09',
     version: '4.9.297',
     title: 'V4.9.297 — L3 Map HUD final polish (centering, plate lens, odometer)',

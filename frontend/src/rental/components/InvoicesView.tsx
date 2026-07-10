@@ -34,6 +34,8 @@ import {
   canRecordPayment,
 } from './invoices/invoiceUtils';
 import { InvoiceExtractionUpload } from './invoices/InvoiceExtractionUpload';
+import { SendDocumentsEmailModal } from '../../components/email/SendDocumentsEmailModal';
+import type { GeneratedDocumentDto } from '../../lib/api';
 
 const TYPE_MAP: Record<string, { label: string; icon: typeof ArrowUpRight; color: string }> = {
   OUTGOING_BOOKING: { label: 'Buchungsrechnung', icon: ArrowUpRight, color: 'text-status-info' },
@@ -842,6 +844,28 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
   const [paymentMethod, setPaymentMethod] = useState('BANK_TRANSFER');
   const [paymentReference, setPaymentReference] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
+  const [sendDoc, setSendDoc] = useState<GeneratedDocumentDto | null>(null);
+  const [loadingSendDoc, setLoadingSendDoc] = useState(false);
+
+  const canEmailDocument =
+    Boolean(invoice.bookingId && invoice.generatedDocumentId) &&
+    isOutgoing(invoice.type) &&
+    invoice.status !== 'DRAFT';
+
+  const openInvoiceEmail = async () => {
+    if (!invoice.bookingId || !invoice.generatedDocumentId) return;
+    setLoadingSendDoc(true);
+    try {
+      const meta = await api.documents.metadata(orgId, invoice.generatedDocumentId);
+      setSendDoc(meta);
+      setSendOpen(true);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Dokument konnte nicht geladen werden');
+    } finally {
+      setLoadingSendDoc(false);
+    }
+  };
 
   const st = STATUS_MAP[invoice.status] || STATUS_MAP.DRAFT;
   const ty = TYPE_MAP[invoice.type] || TYPE_MAP.OUTGOING_MANUAL;
@@ -1114,8 +1138,23 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
                   <Icon name="file-text" className="w-3 h-3" /> PDF generieren
                 </button>
               )}
-              <button type="button" disabled className={disabledBtn} title="E-Mail-Versand noch nicht verbunden">
-                <Icon name="mail" className="w-3 h-3" /> Per E-Mail senden
+              <button
+                type="button"
+                disabled={!canEmailDocument || loadingSendDoc}
+                onClick={() => void openInvoiceEmail()}
+                className={canEmailDocument ? actionBtn : disabledBtn}
+                title={
+                  canEmailDocument
+                    ? 'Rechnung per E-Mail senden'
+                    : 'E-Mail-Versand erfordert Buchung und generiertes PDF'
+                }
+              >
+                {loadingSendDoc ? (
+                  <Icon name="loader-2" className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Icon name="mail" className="w-3 h-3" />
+                )}{' '}
+                Per E-Mail senden
               </button>
               {invoice.documentExtractionId && (
                 <p className={`text-[10px] ${ts}`}>Extraktion: {invoice.documentExtractionId.slice(0, 12)}…</p>
@@ -1238,6 +1277,19 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
           <h3 className={`text-xs font-bold ${tp} mb-2 uppercase tracking-wider`}>Beschreibung</h3>
           <p className={`text-xs leading-relaxed ${isDarkMode ? 'text-foreground/85' : 'text-gray-700'}`}>{invoice.description}</p>
         </div>
+      )}
+
+      {invoice.bookingId && sendDoc && (
+        <SendDocumentsEmailModal
+          open={sendOpen}
+          onOpenChange={setSendOpen}
+          orgId={orgId}
+          bookingId={invoice.bookingId}
+          bookingNumber={displayNumber(invoice)}
+          documents={[sendDoc]}
+          preselectedDocumentIds={sendDoc ? [sendDoc.id] : undefined}
+          onSent={() => void refreshInvoice()}
+        />
       )}
     </div>
   );
