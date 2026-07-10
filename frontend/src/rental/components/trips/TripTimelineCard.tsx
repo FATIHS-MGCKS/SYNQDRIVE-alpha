@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Icon } from '../ui/Icon';
 import { TripMetricRow } from './TripMetricRow';
 import type { TripBehaviorEvent, TripTimelineTrip } from './timeline.types';
-import { hasAbuseSuspicion, isTripTimelineFlagged } from './timeline.utils';
+import { isTripTimelineFlagged } from './timeline.utils';
 import { cn } from '../../../components/ui/utils';
 
 interface TripTimelineCardProps {
