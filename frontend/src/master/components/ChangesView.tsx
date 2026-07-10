@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'lte-r1-driving-quality-phase0-v49305-2026-07-10',
+    version: '4.9.305',
+    title: 'V4.9.305 — LTE R1 Fahrbewertung: Phase-0-Evidenz WOB L 7503',
+    summary: [
+      'Prod-Analyse WOB L 7503 (VW Tiguan LTE_R1): sustained behavior.harshAcceleration-Spam ab ~2026-07-08.',
+      'Fleet-Baseline: median 2 Events/Trip vs Target 10.5; median 0.2 vs 3.0 Events/km (bis 60/km).',
+      'Burst-Dedup ±2s löst Problem nicht (max 17% Duplikate) — maschinenartiger ~14s-Takt.',
+      'System zeigt analysisAssessability=FULL trotz unzuverlässiger Native-Quelle; drivingScore ~34–38.',
+      'Neues Diagnose-Script: backend/scripts/analyze-lte-r1-driving-event-quality.ts.',
+    ],
+    reason:
+      'DIMO-Diagnose (lose OBD-Steckung / Fehlkalibrierung) — Phase 0 quantifiziert das Muster vor Detector-Implementierung (Badge, Mängelliste, Notification).',
+    previousBehavior:
+      'Kein Vehicle-Level-Quality-Detector; Fahrbewertung vertraut Native-Events blind; keine User-Kommunikation bei Geräte-Miskalibrierung.',
+    details:
+      'architecture/DRIVING_ASSESSMENT_DEVICE_QUALITY_PHASE0_2026-07-10.md. Empfohlener Primär-Signal: eventsPerKm vs Org-LTE_R1-Baseline + Inter-Event-Cadence.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence / Trips',
+    createdAt: '2026-07-10T09:40:00.000Z',
+  },
+  {
     id: 'outbound-email-medium-fixes-v49304-2026-07-10',
     version: '4.9.304',
     title: 'V4.9.304 — Outbound E-Mail: Webhook-Status, DRAFT-Block, i18n',
