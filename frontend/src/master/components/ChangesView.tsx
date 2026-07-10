@@ -35,6 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-remove-fleet-command-v49314-2026-07-10',
+    version: '4.9.314',
+    title: 'V4.9.314 — Dashboard: Fleet Command entfernt (KPI-Drilldown reicht)',
+    summary: [
+      'Fleet Command Panel nur noch auf Fleet Page — nicht mehr im Dashboard unter „Operative Steuerung“.',
+      'Fahrzeuglisten im Dashboard über KPI-Drilldown: Ready-to-Rent (bereit/nicht bereit), Active Rented, Blocked, Critical, …',
+    ],
+    reason: 'Redundanz: Ready-for-Renting-KPI + Drawer liefern dieselbe operative Fahrzeugliste cleverer als zweite Fleet-Command-Sektion.',
+    previousBehavior: 'Dashboard Zeile 3: FleetCommandView (Available/Active/Reserved) unter KPIs und Action Queue.',
+    details: 'DashboardView.tsx — opsStack/FleetCommandView entfernt; FleetView unverändert.',
+    affectsArchitecture: true,
+    module: 'Dashboard',
+    createdAt: '2026-07-10T14:15:00.000Z',
+  },
+  {
     id: 'synqdrive-dark-wordmark-logo-v49313-2026-07-10',
     version: '4.9.313',
     title: 'V4.9.313 — SynqDrive White Wordmark für Dark Theme',

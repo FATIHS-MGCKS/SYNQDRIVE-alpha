@@ -257,11 +257,9 @@ function SectionEmpty({ de }: { de: boolean }) {
 }
 
 /**
- * @deprecated Dashboard now uses FleetCommandPanel / FleetCommandView instead of
- * FleetStateBoard. The operative Fahrzeugliste im Dashboard ist jetzt die
- * gleiche Fleet Command View wie auf der Fleet Page (Status Tab). KPI/Drawer
- * bleiben Runtime-Slice-basiert. Diese Komponente ist nicht mehr aktiv
- * verdrahtet und wird nur für Referenz/Backward-Compat behalten.
+ * @deprecated Dashboard Fleet Command list removed (V4.9.314). Vehicle lists live
+ * in KPI drilldown drawers (ready-to-rent, active-rented, …) and on Fleet page
+ * via FleetCommandPanel. FleetStateBoard is reference-only.
  */
 export function FleetStateBoard({
   dashboardRuntime,

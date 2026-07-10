@@ -1,4 +1,3 @@
-import { useCallback } from 'react';
 import {
   ActionQueue,
   BusinessPulse,
@@ -6,7 +5,6 @@ import {
   DashboardControlHeader,
   DashboardDrilldownDrawer,
   DASHBOARD_LAYOUT,
-  DashboardSectionLabel,
   FocusDataFreshnessBanner,
   FocusHandoverPanels,
   FocusNotReadyVehicles,
@@ -15,7 +13,6 @@ import {
   useDashboardViewModel,
   type DashboardViewProps,
 } from './dashboard';
-import { FleetCommandView } from './fleet-operator/FleetCommandView';
 
 export type { DashboardViewProps } from './dashboard';
 
@@ -41,10 +38,6 @@ export function DashboardView({
     onOpenBookingById,
     onOpenRentalView,
   };
-  const getFleetHealth = useCallback(
-    (id: string) => vm.healthMap.get(id) ?? null,
-    [vm.healthMap],
-  );
   const activeDrawerTargetId = vm.activeDashboardSliceId ?? vm.activeBusinessMetricId;
   const drawerLoading = vm.activeBusinessMetricId
     ? !vm.dataFreshness.invoicesLoaded
@@ -132,23 +125,6 @@ export function DashboardView({
           <div className={DASHBOARD_LAYOUT.dayPlanSlot}>
             <OperationsSchedulePanel vm={vm} {...handlers} />
           </div>
-        </div>
-
-        <div className={`${DASHBOARD_LAYOUT.opsStack} animate-fade-up`} style={{ animationDelay: '120ms' }}>
-          <DashboardSectionLabel>
-            {vm.locale === 'de' ? 'Operative Steuerung' : 'Operational control'}
-          </DashboardSectionLabel>
-
-          <FleetCommandView
-            vehicles={vm.filteredFleetVehicles}
-            getHealth={getFleetHealth}
-            dashboardRuntime={vm.dashboardRuntime}
-            loading={vm.dataFreshness.fleetLoading}
-            refreshing={vm.isRefreshing}
-            onRefresh={vm.refreshAll}
-            onOpenVehicle={onOpenVehicleById}
-            locale={vm.locale}
-          />
         </div>
       </div>
       <DashboardDrilldownDrawer
