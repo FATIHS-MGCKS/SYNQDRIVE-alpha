@@ -1,6 +1,11 @@
 import { Icon } from '../ui/Icon';
 import { SkeletonMetricGrid } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
+import {
+  DASHBOARD_KPI_HINT_CLASS,
+  DASHBOARD_KPI_NUMBER_CLASS,
+  DASHBOARD_KPI_TITLE_CLASS,
+} from './dashboardShell';
 import { resolveReadyForRentingKpiCounts, resolveTodaysOperationsKpiCounts } from './dashboardSliceAccess';
 import {
   getKpiCardSurfaceClass,
@@ -119,10 +124,10 @@ function formatKpiCount(value: number | null, disabled: boolean): string {
   return String(value);
 }
 
-/** Shared typography across all six operational KPI cards (matches Due soon / Overdue returns). */
-const KPI_TITLE_CLASS = 'min-w-0 truncate text-[10.5px] font-medium tracking-[-0.01em] text-muted-foreground';
-const KPI_NUMBER_CLASS = 'text-[21px] font-semibold tabular-nums leading-none tracking-[-0.03em]';
-const KPI_SECONDARY_TEXT_CLASS = 'text-[10px] leading-snug text-muted-foreground';
+/** Shared typography across all six operational KPI cards (matches dashboardShell tokens). */
+const KPI_TITLE_CLASS = DASHBOARD_KPI_TITLE_CLASS;
+const KPI_NUMBER_CLASS = DASHBOARD_KPI_NUMBER_CLASS;
+const KPI_SECONDARY_TEXT_CLASS = DASHBOARD_KPI_HINT_CLASS;
 const KPI_MAIN_LABEL_CLASS = cn('mt-1.5 text-center', KPI_SECONDARY_TEXT_CLASS);
 const KPI_SEPARATOR_CLASS = 'mx-1.5 my-2 shrink-0 border-t border-border/30';
 const KPI_FOOTER_GRID_CLASS = 'relative grid shrink-0 grid-cols-2 items-center gap-y-0.5';

@@ -4,13 +4,14 @@ import { cn } from '../../../components/ui/utils';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations/en';
 import {
+  DASHBOARD_KPI_CURRENCY_CLASS,
   DASHBOARD_KPI_HINT_CLASS,
   DASHBOARD_KPI_NUMBER_CLASS,
   DASHBOARD_KPI_TITLE_CLASS,
   dashboardPanelHeaderClass,
   panelShellClass,
 } from './dashboardShell';
-import { formatBusinessMoney } from './dashboardKpiFormat';
+import { formatBusinessMoney, formatDashboardMoneyParts } from './dashboardKpiFormat';
 import type {
   BusinessMetricId,
   BusinessPulseSlice,
@@ -61,23 +62,56 @@ const METRIC_ICONS: Record<BusinessMetricId, IconName> = {
   'failed-payments': 'alert-circle',
 };
 
+function metricValueParts(
+  slice: BusinessPulseSlice | undefined,
+  currency: string,
+  locale: string,
+): { amount: string; currency: string } | null {
+  if (!slice || slice.valueCents == null) return null;
+  return formatDashboardMoneyParts(
+    slice.valueCents,
+    slice.rows[0]?.currency ?? currency,
+    locale,
+  );
+}
+
 function metricValue(
   slice: BusinessPulseSlice | undefined,
   currency: string,
   locale: string,
   noDataLabel: string,
 ): string {
-  if (!slice) return noDataLabel;
-  if (slice.valueCents == null) return noDataLabel;
+  if (!slice || slice.valueCents == null) return noDataLabel;
   return formatBusinessMoney(slice.valueCents, slice.rows[0]?.currency ?? currency, locale);
 }
 
-/** Finance KPI value line — number + currency symbol share one typography stack. */
-function financeKpiValueClassName(disabled: boolean, valueTone: string): string {
-  return cn(
-    'mt-1',
-    DASHBOARD_KPI_NUMBER_CLASS,
-    disabled ? 'text-muted-foreground' : valueTone,
+/** Finance KPI value — amount matches operational KPI number size; currency suffix smaller. */
+function FinanceKpiValue({
+  amount,
+  currency,
+  disabled,
+  valueTone,
+}: {
+  amount: string;
+  currency?: string;
+  disabled: boolean;
+  valueTone: string;
+}) {
+  const toneClass = disabled ? 'text-muted-foreground' : valueTone;
+
+  if (!currency) {
+    return (
+      <p className={cn('mt-1', DASHBOARD_KPI_NUMBER_CLASS, toneClass)}>
+        {amount}
+      </p>
+    );
+  }
+
+  return (
+    <p className={cn('mt-1 flex items-baseline gap-0.5', toneClass)}>
+      <span className={DASHBOARD_KPI_NUMBER_CLASS}>{amount}</span>
+      <span className={DASHBOARD_KPI_CURRENCY_CLASS}>{currency}</span>
+    </p>
   );
 }
 
@@ -211,7 +245,8 @@ function FinanceKpiCard({
   onSelect?: (metricId: BusinessMetricId) => void;
 }) {
   const clickable = Boolean(slice && onSelect);
-  const value = metricValue(slice, currency, locale, noDataLabel);
+  const valueParts = metricValueParts(slice, currency, locale);
+  const displayValue = metricValue(slice, currency, locale, noDataLabel);
   const hint = countHint(slice, t);
   const visual = financeKpiVisualState(metricId, slice);
   const disabled = !slice || slice.valueCents == null;
@@ -222,12 +257,17 @@ function FinanceKpiCard({
       disabled={!clickable}
       onClick={clickable ? () => onSelect?.(metricId) : undefined}
       className={cn(financeKpiCardClass(metricId, slice), !clickable && 'cursor-default')}
-      aria-label={`${title}: ${value}${hint ? `, ${hint}` : ''}`}
+      aria-label={`${title}: ${displayValue}${hint ? `, ${hint}` : ''}`}
     >
-      <div className="flex h-full items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <p className={DASHBOARD_KPI_TITLE_CLASS}>{title}</p>
-          <p className={financeKpiValueClassName(disabled, visual.valueTone)}>{value}</p>
+          <FinanceKpiValue
+            amount={valueParts?.amount ?? noDataLabel}
+            currency={valueParts?.currency}
+            disabled={disabled}
+            valueTone={visual.valueTone}
+          />
           {hint ? (
             <p
               className={cn(

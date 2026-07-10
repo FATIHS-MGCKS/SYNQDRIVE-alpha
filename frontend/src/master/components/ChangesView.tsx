@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'finance-kpi-number-size-v49322-2026-07-10',
+    version: '4.9.322',
+    title: 'V4.9.322 — Dashboard Finanzen: KPI-Zahlen gleiche Größe wie operative KPIs',
+    summary: [
+      'Finance-KPI-Werte: Betrag nutzt `DASHBOARD_KPI_NUMBER_CLASS` (21px), Währungssymbol separat kleiner (`DASHBOARD_KPI_CURRENCY_CLASS`).',
+      '`formatDashboardMoneyParts` für split rendering; `ControlKpiStrip` importiert gemeinsame KPI-Typo aus `dashboardShell`.',
+    ],
+    reason:
+      '„0 €“ wirkte einen Tick größer als „6“ in Bereit zur Vermietung, weil Zahl + € in einer 21px-Zeile standen.',
+    previousBehavior: 'Zahl und € teilten sich eine Textnode mit voller KPI-Number-Klasse.',
+    details: 'BusinessPulse.tsx, dashboardKpiFormat.ts, dashboardShell.tsx, ControlKpiStrip.tsx.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-10T16:35:00.000Z',
+  },
+  {
     id: 'insights-scheduler-boot-cron-v49321-2026-07-10',
     version: '4.9.321',
     title: 'V4.9.321 — Business Insights: Boot-Run + Cron statt Interval (Dashboard „Verzögert“)',

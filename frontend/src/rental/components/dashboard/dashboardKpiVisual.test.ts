@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   formatBusinessMoney,
   formatDashboardMoney,
+  formatDashboardMoneyParts,
   resolveDashboardNumberFormatLocale,
 } from './dashboardKpiFormat';
 import {
@@ -60,6 +61,18 @@ describe('dashboardKpiFormat', () => {
     expect(normalizeMoney(formatBusinessMoney(-25_000, 'EUR', 'de'))).toBe('-250 €');
     expect(normalizeMoney(formatBusinessMoney(0, 'EUR', 'de_AT'))).toBe('0 €');
     expect(normalizeMoney(formatBusinessMoney(0, 'EUR', 'de-CH'))).toBe('0 €');
+  });
+
+  it('splits money into amount and currency parts for KPI display', () => {
+    expect(formatDashboardMoneyParts(0, 'EUR', 'de')).toEqual({ amount: '0', currency: '€' });
+    expect(formatDashboardMoneyParts(125_000, 'EUR', 'de-DE')).toEqual({
+      amount: '1.250',
+      currency: '€',
+    });
+    expect(formatDashboardMoneyParts(-25_000, 'EUR', 'de')).toEqual({
+      amount: '-250',
+      currency: '€',
+    });
   });
 
   it('does not throw for invalid locale', () => {

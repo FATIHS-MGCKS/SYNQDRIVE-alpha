@@ -40,15 +40,39 @@ export function resolveDashboardNumberFormatLocale(
 }
 
 export function formatDashboardMoney(cents: number, currency: string, locale: string): string {
+  const { amount, currency: currencySymbol } = formatDashboardMoneyParts(cents, currency, locale);
+  return `${amount}\u00a0${currencySymbol}`;
+}
+
+export interface DashboardMoneyParts {
+  amount: string;
+  currency: string;
+}
+
+/** Split money for KPI display — amount uses number class, currency uses suffix class. */
+export function formatDashboardMoneyParts(
+  cents: number,
+  currency: string,
+  locale: string,
+): DashboardMoneyParts {
   const resolvedLocale = resolveDashboardNumberFormatLocale(locale, currency);
   const normalizedCurrency = (currency || 'EUR').toUpperCase();
 
-  return new Intl.NumberFormat(resolvedLocale, {
+  const parts = new Intl.NumberFormat(resolvedLocale, {
     style: 'currency',
     currency: normalizedCurrency,
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(cents / 100);
+  }).formatToParts(cents / 100);
+
+  const currencySymbol = parts.find((part) => part.type === 'currency')?.value ?? normalizedCurrency;
+  const amount = parts
+    .filter((part) => part.type !== 'currency')
+    .map((part) => part.value)
+    .join('')
+    .trim();
+
+  return { amount, currency: currencySymbol };
 }
 
 /** Business Pulse / Finances KPI money formatter (alias for tests and explicit imports). */
