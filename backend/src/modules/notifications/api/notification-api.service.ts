@@ -29,6 +29,11 @@ import { NotificationReceiptService } from '../access/notification-receipt.servi
 import { NotificationStationScopeService } from '../access/notification-station-scope.service';
 import { deriveAvailableActions } from './notification-available-actions';
 import { mapNotificationToDto } from './notification-api.mapper';
+import {
+  enrichTemplateParamsFromLegacyInsights,
+  mergeEnrichedTemplateParams,
+  resolveEntityLabelContexts,
+} from './notification-entity-label.enricher';
 import type { NotificationCountsResponseDto, NotificationResponseDto } from './notification-api.mapper';
 import {
   buildNotificationOrderBy,
@@ -529,6 +534,12 @@ export class NotificationApiService {
     );
     const receiptByNotification = new Map(receipts.map((r) => [r.notificationId, r]));
 
+    const labelContexts = await resolveEntityLabelContexts(this.prisma, ctx.organizationId, rows);
+    const enrichedParamsById = new Map(
+      rows.map((row) => [row.id, mergeEnrichedTemplateParams(row, labelContexts)]),
+    );
+    await enrichTemplateParamsFromLegacyInsights(this.prisma, rows, enrichedParamsById);
+
     return rows.map((row) => {
       const receipt = receiptByNotification.get(row.id) ?? null;
       const isRead = receipt?.readAt != null;
@@ -543,7 +554,8 @@ export class NotificationApiService {
         hasActionTarget: Object.keys((row.actionTarget as object) ?? {}).length > 0,
         referenceNow,
       });
-      return mapNotificationToDto(row as any, receipt, actions, ctx.membershipRole);
+      const enrichedParams = enrichedParamsById.get(row.id) ?? mergeEnrichedTemplateParams(row, labelContexts);
+      return mapNotificationToDto(row as any, receipt, actions, ctx.membershipRole, enrichedParams);
     });
   }
 

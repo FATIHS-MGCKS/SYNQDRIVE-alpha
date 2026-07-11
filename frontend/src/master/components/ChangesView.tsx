@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-readable-labels-v49363-2026-07-11',
+    version: '4.9.363',
+    title: 'V4.9.363 — Notification Panel: Lesbare Fahrzeug-Labels & Insight-Titel',
+    summary: [
+      'API reichert Kennzeichen/Make/Model aus Fahrzeug-/Insight-Daten an (keine UUID-Titel mehr).',
+      'i18n-Titel/Body für LOW_UTILIZATION und HM_SERVICE_NO_TRACKING.',
+      'Frontend mappt Legacy-Fallback-Keys auf lesbare Meldungstexte.',
+    ],
+    reason: 'Migrierte Meldungen zeigten UUIDs statt Kennzeichen; Fahrzeug-Hinweise wirkten unleserlich.',
+    previousBehavior: 'templateParams.label = entityId; notification.fallback renderte UUID als Titel.',
+    details: 'notification-entity-label.enricher.ts, insight-candidate.mapper.ts, map-notification-api-to-view-model.ts, i18n.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-11T09:15:00.000Z',
+  },
+  {
     id: 'notification-migration-cli-v49361-2026-07-11',
     version: '4.9.361',
     title: 'V4.9.361 — Notification Migration: Prod Cutover Execution',

@@ -188,9 +188,21 @@ describe('NotificationApiService', () => {
       findFirst: jest.fn(async ({ where }: any) =>
         where.id === VEH && where.organizationId === ORG ? { id: VEH } : null,
       ),
+      findMany: jest.fn(async () => [
+        { id: VEH, licensePlate: 'WOB L 7503', make: 'VW', model: 'Tiguan', year: 2020 },
+      ]),
     },
-    station: { findFirst: jest.fn(async () => null) },
-    booking: { findFirst: jest.fn(async () => null) },
+    station: {
+      findFirst: jest.fn(async () => null),
+      findMany: jest.fn(async () => []),
+    },
+    booking: {
+      findFirst: jest.fn(async () => null),
+      findMany: jest.fn(async () => []),
+    },
+    dashboardInsight: {
+      findMany: jest.fn(async () => []),
+    },
     customer: { findFirst: jest.fn(async () => null) },
     orgInvoice: { findFirst: jest.fn(async () => null) },
     vehicleTrip: { findFirst: jest.fn(async () => null) },

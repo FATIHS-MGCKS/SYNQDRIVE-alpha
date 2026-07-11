@@ -39,12 +39,18 @@ function buildEntityLine(item: ActionQueueItem): string | null {
   const model = params?.model;
   const year = params?.year;
 
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const isUuid = (value: string) => UUID_RE.test(value.trim());
+
+  if (plate && isUuid(plate)) return make && model ? `${make} ${model}` : null;
+  if (item.entityLabel && isUuid(item.entityLabel)) return null;
+
   if (plate && make && model) {
     const yearSuffix = year ? ` ${year}` : '';
     return `${plate} · ${make} ${model}${yearSuffix}`;
   }
-  if (plate) return plate;
-  if (item.entityLabel) return item.entityLabel;
+  if (plate && !isUuid(plate)) return plate;
+  if (item.entityLabel && !isUuid(item.entityLabel)) return item.entityLabel;
   return null;
 }
 

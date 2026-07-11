@@ -13,6 +13,7 @@ import type { NotificationActionTarget } from '../notification.types';
 import type { NotificationAvailableAction } from './notification-available-actions';
 import type { MembershipRole } from '@prisma/client';
 import { redactActionTargetForRole, redactTemplateParamsForRole } from '../access/notification-privacy.policy';
+import { isUuidLike } from './notification-entity-label.enricher';
 
 export interface NotificationEntityDto {
   type: NotificationEntityType;
@@ -81,9 +82,14 @@ function iso(d: Date | null | undefined): string | null {
 function displayLabelFromParams(
   params: Record<string, string | number | boolean | null>,
 ): string | undefined {
-  const label = params.label ?? params.plate ?? params.stationName ?? params.bookingRef;
-  if (label == null || label === '') return undefined;
-  return String(label);
+  const candidates = [params.label, params.plate, params.stationName, params.bookingRef];
+  for (const candidate of candidates) {
+    if (candidate == null || candidate === '') continue;
+    const value = String(candidate);
+    if (isUuidLike(value)) continue;
+    return value;
+  }
+  return undefined;
 }
 
 export function mapNotificationToDto(
@@ -91,8 +97,10 @@ export function mapNotificationToDto(
   receipt: NotificationReceipt | null,
   availableActions: NotificationAvailableAction[],
   membershipRole?: MembershipRole,
+  templateParamsOverride?: Record<string, string | number | boolean | null>,
 ): NotificationResponseDto {
-  const templateParamsRaw = (row.templateParams ?? {}) as Record<string, string | number | boolean | null>;
+  const templateParamsRaw = templateParamsOverride
+    ?? ((row.templateParams ?? {}) as Record<string, string | number | boolean | null>);
   const templateParams = membershipRole
     ? redactTemplateParamsForRole(templateParamsRaw, membershipRole, row.domain)
     : templateParamsRaw;

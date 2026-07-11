@@ -100,19 +100,78 @@ function safeTitleKey(key: string): TranslationKey {
   return key as TranslationKey;
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function isUuidLike(value: string): boolean {
+  return UUID_RE.test(value.trim());
+}
+
+const LEGACY_FALLBACK_TITLE_KEYS: Record<string, TranslationKey> = {
+  LOW_UTILIZATION: 'notification.title.lowUtilization',
+  HM_SERVICE_NO_TRACKING: 'notification.title.hmServiceNoTracking',
+  STATION_SHORTAGE: 'notification.title.stationShortage',
+  BATTERY_CRITICAL: 'notification.title.batteryCritical',
+  TIRE_CRITICAL: 'notification.title.tireCritical',
+  SERVICE_OVERDUE: 'notification.title.serviceOverdue',
+};
+
+const LEGACY_FALLBACK_BODY_KEYS: Record<string, TranslationKey> = {
+  LOW_UTILIZATION: 'notification.body.lowUtilization',
+  HM_SERVICE_NO_TRACKING: 'notification.body.hmServiceNoTracking',
+  STATION_SHORTAGE: 'notification.body.stationShortage',
+};
+
+function resolveTemplateKeys(row: ApiNotificationResponse): { titleKey: string; bodyKey: string } {
+  const titleKey =
+    row.titleKey === 'notification.fallback'
+      ? (LEGACY_FALLBACK_TITLE_KEYS[row.eventType] ?? row.titleKey)
+      : row.titleKey;
+  const bodyKey =
+    row.bodyKey === 'notification.body.insightDefault'
+      ? (LEGACY_FALLBACK_BODY_KEYS[row.eventType] ?? row.bodyKey)
+      : row.bodyKey;
+  return { titleKey, bodyKey };
+}
+
+function resolveDisplayLabel(
+  row: ApiNotificationResponse,
+  params: Record<string, string | number | boolean | null>,
+): string | undefined {
+  const candidates = [
+    row.entity.displayLabel,
+    params.label,
+    params.plate,
+    params.stationName,
+    params.bookingRef,
+  ];
+  for (const candidate of candidates) {
+    if (candidate == null || candidate === '') continue;
+    const value = String(candidate);
+    if (isUuidLike(value)) continue;
+    return value;
+  }
+  return undefined;
+}
+
 function interpolateTemplate(
   locale: string,
   titleKey: string,
   bodyKey: string,
   params: Record<string, string | number | boolean | null>,
+  displayLabel?: string,
 ): { title: string; reason: string } {
   const t = createNotificationTranslator(locale);
   const title = t(safeTitleKey(titleKey), params as Record<string, string | number>);
   const body = t(safeTitleKey(bodyKey), params as Record<string, string | number>);
   if (title === titleKey) {
-    const label = params.label ?? params.plate ?? params.stationName ?? params.bookingRef;
+    const label =
+      displayLabel
+      ?? (params.label != null && !isUuidLike(String(params.label)) ? String(params.label) : undefined)
+      ?? (params.plate != null && !isUuidLike(String(params.plate)) ? String(params.plate) : undefined)
+      ?? (params.stationName != null ? String(params.stationName) : undefined)
+      ?? (params.bookingRef != null ? String(params.bookingRef) : undefined);
     return {
-      title: label ? String(label) : titleKey,
+      title: label ?? titleKey,
       reason: body === bodyKey ? '' : body,
     };
   }
@@ -137,11 +196,17 @@ export function mapNotificationApiToActionQueueItem(
   const sortMs = Date.parse(row.lastSeenAt) || Date.parse(row.firstSeenAt) || 0;
   const templateParams = row.templateParams ?? {};
   const entityContextParams = extractEntityContext(templateParams);
+  const { titleKey, bodyKey } = resolveTemplateKeys(row);
+  const displayLabel = resolveDisplayLabel(row, templateParams);
+  const interpolationParams = displayLabel && (isUuidLike(String(templateParams.label ?? '')) || !templateParams.label)
+    ? { ...templateParams, label: displayLabel, plate: templateParams.plate && !isUuidLike(String(templateParams.plate)) ? templateParams.plate : displayLabel }
+    : templateParams;
   const { title, reason } = interpolateTemplate(
     locale,
-    row.titleKey,
-    row.bodyKey,
-    templateParams,
+    titleKey,
+    bodyKey,
+    interpolationParams,
+    displayLabel,
   );
 
   const queue: NotificationQueueModel = {
@@ -178,7 +243,7 @@ export function mapNotificationApiToActionQueueItem(
     category: mapCategory(domain),
     title,
     reason,
-    entityLabel: row.entity.displayLabel,
+    entityLabel: displayLabel ?? (row.entity.displayLabel && !isUuidLike(row.entity.displayLabel) ? row.entity.displayLabel : undefined),
     timeSortMs: sortMs,
     priority: severity === 'critical' ? 100 : severity === 'warning' ? 50 : 10,
     tone: severity === 'critical' ? 'critical' : severity === 'warning' ? 'warning' : 'info',

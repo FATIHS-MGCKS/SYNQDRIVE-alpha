@@ -110,10 +110,72 @@ function titleKeyForInsight(type: InsightType, recovering: boolean): string {
   if (type === InsightType.BATTERY_CRITICAL) return 'notification.title.batteryCritical';
   if (type === InsightType.TIRE_CRITICAL) return 'notification.title.tireCritical';
   if (type === InsightType.BRAKE_CRITICAL) return 'notification.title.brakeCritical';
+  if (type === InsightType.LOW_UTILIZATION) return 'notification.title.lowUtilization';
+  if (type === InsightType.HM_SERVICE_NO_TRACKING) return 'notification.title.hmServiceNoTracking';
+  if (type === InsightType.RETURN_NEEDS_INSPECTION) return 'notification.title.returnInspection';
   if (type === InsightType.TUV_OVERDUE || type === InsightType.BOKRAFT_OVERDUE) {
     return 'notification.title.complianceExpired';
   }
   return 'notification.fallback';
+}
+
+function bodyKeyForInsight(type: InsightType): string {
+  if (type === InsightType.LOW_UTILIZATION) return 'notification.body.lowUtilization';
+  if (type === InsightType.HM_SERVICE_NO_TRACKING) return 'notification.body.hmServiceNoTracking';
+  if (type === InsightType.STATION_SHORTAGE) return 'notification.body.stationShortage';
+  return 'notification.body.insightDefault';
+}
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function resolveInsightLabel(insight: InsightCandidate, entityId: string): string {
+  if (typeof insight.metrics?.entityLabel === 'string' && insight.metrics.entityLabel.trim()) {
+    return insight.metrics.entityLabel.trim();
+  }
+  if (typeof insight.metrics?.vehicleLicense === 'string' && insight.metrics.vehicleLicense.trim()) {
+    return insight.metrics.vehicleLicense.trim();
+  }
+  if (typeof insight.metrics?.stationName === 'string' && insight.metrics.stationName.trim()) {
+    return insight.metrics.stationName.trim();
+  }
+
+  const message = insight.message?.trim();
+  if (message) {
+    if (message.includes(':')) {
+      const head = message.split(':')[0]?.trim();
+      if (head && !UUID_RE.test(head)) return head;
+    }
+    const idleMatch = message.match(/^(.+?)\s+idle\b/i);
+    if (idleMatch?.[1]?.trim()) return idleMatch[1].trim();
+  }
+
+  if (insight.title?.trim() && !UUID_RE.test(insight.title.trim())) {
+    return insight.title.trim();
+  }
+
+  return entityId;
+}
+
+function buildInsightTemplateParams(
+  insight: InsightCandidate,
+  label: string,
+  entityType: NotificationEntityType,
+  entityId: string,
+): Record<string, string | number | boolean | null> {
+  const params: Record<string, string | number | boolean | null> = {
+    label,
+    plate: label,
+  };
+
+  const metrics = insight.metrics ?? {};
+  if (typeof metrics.stationName === 'string') params.stationName = metrics.stationName;
+  if (entityType === NotificationEntityType.STATION) params.stationId = entityId;
+  if (typeof metrics.available === 'number') params.available = metrics.available;
+  if (typeof metrics.totalVehicles === 'number') params.totalVehicles = metrics.totalVehicles;
+  if (typeof metrics.idleDays === 'number') params.idleDays = metrics.idleDays;
+  if (typeof metrics.lostRevenueEur === 'number') params.lostRevenueEur = metrics.lostRevenueEur;
+
+  return params;
 }
 
 export interface InsightToNotificationCandidateOptions {
@@ -140,12 +202,7 @@ export function notificationCandidateFromInsight(
 
   const severity = recovering ? NotificationSeverity.SUCCESS : mapInsightSeverity(insight.severity);
   const entityType = mapEntityScope(insight.entityScope);
-  const label =
-    typeof insight.metrics?.entityLabel === 'string'
-      ? insight.metrics.entityLabel
-      : typeof insight.metrics?.vehicleLicense === 'string'
-        ? insight.metrics.vehicleLicense
-        : entityId;
+  const label = resolveInsightLabel(insight, entityId);
 
   const metricsBookingId =
     typeof insight.metrics?.bookingId === 'string' ? insight.metrics.bookingId : undefined;
@@ -166,8 +223,8 @@ export function notificationCandidateFromInsight(
     sourceRef: options.sourceRef,
     occurredAt: options.occurredAt,
     titleKey: titleKeyForInsight(insight.type, recovering),
-    bodyKey: 'notification.body.insightDefault',
-    templateParams: { label, plate: label },
+    bodyKey: bodyKeyForInsight(insight.type),
+    templateParams: buildInsightTemplateParams(insight, label, entityType, entityId),
     actionType: mapActionType(insight.actionType),
     actionTarget: {
       type: mapActionType(insight.actionType),
