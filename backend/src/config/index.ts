@@ -15,3 +15,4 @@ export { default as stripeConfig } from './stripe.config';
 export { default as aiConfig } from './ai.config';
 export type { AiProviderId } from './ai.config';
 export { default as emailConfig } from './email.config';
+export { default as notificationEvaluationConfig } from './notification-evaluation.config';

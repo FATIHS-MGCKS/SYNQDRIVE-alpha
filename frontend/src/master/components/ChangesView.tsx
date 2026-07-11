@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-engine-runtime-v49355-2026-07-11',
+    version: '4.9.355',
+    title: 'V4.9.355 — Notification Engine: production runtime (BullMQ + Redis lock)',
+    summary: [
+      'Ersetzt lokale setTimeout-Debounce und Scheduler-running-Flag durch persistente BullMQ-Jobs `notification.evaluation`.',
+      'Deterministische jobIds `notification-evaluation:{orgId}:{triggerClass}`; Redis SET NX PX Org-Lock mit Token-Release.',
+      'Scheduler + Trigger teilen NotificationEvaluationService; Follow-up-Coalescing bei Lock-Contention.',
+      'Run-Context-Metriken, strukturierte Logs, Retry/DLQ via BullMQ. Doku: docs/notification-engine-runtime.md.',
+    ],
+    reason:
+      'Multi-Instance-PM2/Docker: lokale Timer und running-Flags schützen nicht vor parallelen Org-Runs und verlorenen Debounce-Events.',
+    previousBehavior:
+      'BusinessInsightsTriggerService: Redis-Debounce + in-memory setTimeout; BusinessInsightsScheduler: lokales running-Flag.',
+    details:
+      'NotificationEvaluationService/Processor, RedisDistributedLockService, queue notification.evaluation. Tests: notification-evaluation-runtime.spec.ts, redis-distributed-lock.service.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-11T00:00:00.000Z',
+  },
+  {
     id: 'notification-engine-producers-phase1-v49354-2026-07-11',
     version: '4.9.354',
     title: 'V4.9.354 — Notification Engine: Phase-1 Producer-Migration (Shadow)',

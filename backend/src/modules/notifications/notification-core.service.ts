@@ -39,6 +39,7 @@ import type {
 } from './notification-core.types';
 import { NotificationSeverity as DomainSeverity, NotificationStatus as DomainStatus } from './notification.enums';
 import { NotificationSourceType as DomainSourceType } from './notification.enums';
+import { recordNotificationIngestOperation, recordNotificationFailure } from './runtime/notification-run-context';
 
 @Injectable()
 export class NotificationCoreService {
@@ -59,11 +60,17 @@ export class NotificationCoreService {
   ): Promise<IngestCandidateResult> {
     if (!this.isEnabled()) {
       this.logOperation('skipped_flag_off', candidate, { runId: options.runId });
+      recordNotificationIngestOperation('skipped_flag_off');
       return { enabled: false, operation: 'skipped_flag_off' };
     }
 
-    const result = await this.createOrUpdateNotification(candidate, options);
-    return { enabled: true, ...result };
+    try {
+      const result = await this.createOrUpdateNotification(candidate, options);
+      return { enabled: true, ...result };
+    } catch (err) {
+      recordNotificationFailure();
+      throw err;
+    }
   }
 
   async createOrUpdateNotification(
@@ -605,6 +612,11 @@ export class NotificationCoreService {
     candidate: NotificationCandidate,
     extra: Record<string, unknown> = {},
   ) {
+    if (operation === 'created') recordNotificationIngestOperation('created');
+    else if (operation === 'updated' || operation === 'reopened') recordNotificationIngestOperation('updated');
+    else if (operation === 'resolved') recordNotificationIngestOperation('resolved');
+    else if (operation === 'ignored') recordNotificationIngestOperation('ignored');
+
     this.logger.log({
       msg: `notification.${operation}`,
       organizationId: candidate.organizationId,

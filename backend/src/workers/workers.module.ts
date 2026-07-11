@@ -5,6 +5,7 @@ import { QUEUE_NAMES } from './queues/queue-names';
 import { DimoModule } from '@modules/dimo/dimo.module';
 import { VehicleIntelligenceModule } from '@modules/vehicle-intelligence/vehicle-intelligence.module';
 import { HighMobilityModule } from '@modules/high-mobility/high-mobility.module';
+import { NotificationsModule } from '@modules/notifications/notifications.module';
 
 import { DimoSnapshotProcessor } from './processors/dimo-snapshot.processor';
 import { DimoVehicleSyncProcessor } from './processors/dimo-vehicle-sync.processor';
@@ -14,6 +15,7 @@ import { TripTrackingProcessor } from './processors/trip-tracking.processor';
 import { TripBehaviorEnrichmentProcessor } from './processors/trip-behavior-enrichment.processor';
 import { DrivingImpactProcessor } from './processors/driving-impact.processor';
 import { DtcKnowledgeProcessor } from './processors/dtc-knowledge.processor';
+import { NotificationEvaluationProcessor } from './processors/notification-evaluation.processor';
 
 import { DimoSnapshotScheduler } from './schedulers/dimo-snapshot.scheduler';
 import { DimoDtcScheduler } from './schedulers/dimo-dtc.scheduler';
@@ -38,10 +40,12 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
       { name: QUEUE_NAMES.TRIP_BEHAVIOR_ENRICHMENT },
       { name: QUEUE_NAMES.DRIVING_IMPACT_COMPUTE },
       { name: QUEUE_NAMES.DTC_KNOWLEDGE_ENRICHMENT },
+      { name: QUEUE_NAMES.NOTIFICATION_EVALUATION },
     ),
     DimoModule,
     VehicleIntelligenceModule,
     HighMobilityModule,
+    NotificationsModule,
   ],
   providers: [
     // Processors
@@ -53,6 +57,7 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
     TripBehaviorEnrichmentProcessor,
     DrivingImpactProcessor,
     DtcKnowledgeProcessor,
+    NotificationEvaluationProcessor,
 
     // Schedulers
     DimoSnapshotScheduler,

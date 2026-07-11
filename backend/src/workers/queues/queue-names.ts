@@ -11,4 +11,6 @@ export const QUEUE_NAMES = {
   DOCUMENT_EXTRACTION: 'document.extraction',
   /** DTC Knowledge Base — async AI enrichment of error codes (generic + vehicle). */
   DTC_KNOWLEDGE_ENRICHMENT: 'dtc.knowledge.enrichment',
+  /** Notification evaluation — org-scoped BI + V2 producer sync (debounced/scheduled). */
+  NOTIFICATION_EVALUATION: 'notification.evaluation',
 } as const;

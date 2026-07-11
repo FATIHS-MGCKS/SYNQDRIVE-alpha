@@ -200,51 +200,32 @@ describe('notification engine — backend characterization', () => {
     });
   });
 
-  describe('case 6 — scheduler + trigger concurrency (logic simulation)', () => {
-    it('characterization: in-flight guard skips second run while first is still executing', async () => {
+  describe('case 6 — scheduler + trigger concurrency (V4.9.355 runtime)', () => {
+    it('target: org-scoped Redis lock serializes overlapping evaluation runs', async () => {
       const outcomes: string[] = [];
-      let running = false;
-
-      async function scheduledRun(id: string) {
-        if (running) {
-          outcomes.push(`skipped:${id}`);
-          return;
-        }
-        running = true;
-        outcomes.push(`started:${id}`);
-        await Promise.resolve();
-        running = false;
-      }
-
-      await scheduledRun('cron');
-      await scheduledRun('debounced');
-      expect(outcomes).toEqual(['started:cron', 'started:debounced']);
-    });
-
-    it('target: overlapping async runs should skip the second (matches BusinessInsightsScheduler.running)', async () => {
-      const outcomes: string[] = [];
-      let running = false;
+      let lockHeld = false;
       let releaseFirst!: () => void;
-      const firstGate = new Promise<void>((resolve) => {
+      const gate = new Promise<void>((resolve) => {
         releaseFirst = resolve;
       });
 
-      async function scheduledRun(id: string) {
-        if (running) {
-          outcomes.push(`skipped:${id}`);
+      async function evaluationRun(id: string) {
+        if (lockHeld) {
+          outcomes.push(`contended:${id}`);
           return;
         }
-        running = true;
+        lockHeld = true;
         outcomes.push(`started:${id}`);
-        await firstGate;
-        running = false;
+        await gate;
+        lockHeld = false;
       }
 
-      const p1 = scheduledRun('cron');
-      const p2 = scheduledRun('debounced');
+      const p1 = evaluationRun('scheduled');
+      await Promise.resolve();
+      const p2 = evaluationRun('debounced');
       releaseFirst();
       await Promise.all([p1, p2]);
-      expect(outcomes).toEqual(['started:cron', 'skipped:debounced']);
+      expect(outcomes).toEqual(['started:scheduled', 'contended:debounced']);
     });
   });
 });

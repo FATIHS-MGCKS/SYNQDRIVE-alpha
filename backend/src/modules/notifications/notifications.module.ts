@@ -1,6 +1,9 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
+import { BullModule } from '@nestjs/bullmq';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@shared/database/prisma.module';
+import { BusinessInsightsModule } from '@modules/business-insights/business-insights.module';
+import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { DrivingAssessmentNotificationAdapter } from './adapters/driving-assessment-notification.adapter';
 import { NotificationProducerIngestService } from './adapters/notification-producer.ingest.service';
 import { NotificationProducerRouter } from './adapters/notification-producer.router';
@@ -9,12 +12,19 @@ import { TechnicalObservationNotificationAdapter } from './adapters/technical-ob
 import { NotificationCoreService } from './notification-core.service';
 import { NotificationEngineConfig } from './notification-engine.config';
 import { NotificationRepository } from './notification.repository';
+import { NotificationEvaluationObservabilityService } from './runtime/notification-evaluation-observability.service';
+import { NotificationEvaluationService } from './runtime/notification-evaluation.service';
 
 /**
- * Notification domain — contract, Prisma, core engine, event registry, shadow adapters.
+ * Notification domain — contract, Prisma, core engine, event registry, shadow adapters, evaluation runtime.
  */
 @Module({
-  imports: [PrismaModule, ConfigModule],
+  imports: [
+    PrismaModule,
+    ConfigModule,
+    BullModule.registerQueue({ name: QUEUE_NAMES.NOTIFICATION_EVALUATION }),
+    forwardRef(() => BusinessInsightsModule),
+  ],
   providers: [
     NotificationRepository,
     NotificationEngineConfig,
@@ -24,6 +34,8 @@ import { NotificationRepository } from './notification.repository';
     StationShortageNotificationAdapter,
     NotificationProducerRouter,
     NotificationProducerIngestService,
+    NotificationEvaluationObservabilityService,
+    NotificationEvaluationService,
   ],
   exports: [
     NotificationRepository,
@@ -31,6 +43,8 @@ import { NotificationRepository } from './notification.repository';
     NotificationCoreService,
     NotificationProducerRouter,
     NotificationProducerIngestService,
+    NotificationEvaluationObservabilityService,
+    NotificationEvaluationService,
     DrivingAssessmentNotificationAdapter,
     TechnicalObservationNotificationAdapter,
     StationShortageNotificationAdapter,
