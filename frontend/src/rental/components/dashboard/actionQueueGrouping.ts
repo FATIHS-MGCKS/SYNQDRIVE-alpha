@@ -11,6 +11,7 @@ import { ACTION_QUEUE_FILTER_TABS } from './dashboardTypes';
 import { HM_OEM_SERVICE_TRACKING_MISSING_ORG_KEY } from '../../lib/operational-issues';
 import { isGroupedHmOemServiceTrackingDataNote } from './hmOemServiceTrackingDataNote';
 import { dedupeActionQueueBySemanticKey } from './notificationEngineDedupe';
+import { buildNotificationHeadlineTitle } from './notifications/notification-summary-view-model';
 
 /**
  * Count contract for Dashboard Notifications / ActionQueue:
@@ -292,7 +293,8 @@ function buildGroup(
   }, 'info');
 
   const priority = bucket.reduce((max, i) => Math.max(max, i.priority), 0);
-  const title = head.entityLabel || groupFallbackTitle(groupType, de);
+  const title =
+    buildNotificationHeadlineTitle(head) || head.entityLabel || groupFallbackTitle(groupType, de);
 
   return {
     kind: 'group',

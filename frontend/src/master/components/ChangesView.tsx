@@ -35,7 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'notification-resolved-tab-fix-v49369-2026-07-11',
+    id: 'notification-ui-standardize-v49370-2026-07-11',
+    version: '4.9.370',
+    title: 'V4.9.370 — Meldungen-Panel: einheitliche Summary-Zeilen + Aufgabe erstellen',
+    summary: [
+      'Alle Top-Level-Einträge nutzen `NotificationSummaryRow` (Badge, zuletzt-Zeit, Eyebrow, Kennzeichen-Titel).',
+      'Gruppen expandieren inline zu kompakten `NotificationChildRow`; Einzel-Leaves zu `NotificationDetailPanel`.',
+      '„Aufgabe erstellen“ öffnet `ServiceTaskCreateModal` via `buildNotificationTaskPrefill` (Health-Bridge).',
+      'Occurrence-Count („12× erkannt“) entfernt — nur noch Aktiv-/Lifecycle-Status sichtbar.',
+    ],
+    reason:
+      'Uneinheitliche Karten-Hierarchie, fehlende Task-CTA und irreführende Wiederholungszähler im Meldungen-Panel.',
+    previousBehavior:
+      'NotificationCard mit Domain+Zeit+Occurrence in einer Meta-Zeile; Gruppen-Kinder als volle Cards; kein Task-Modal.',
+    details:
+      'notification-summary-view-model.ts, NotificationSummaryRow/ChildRow/DetailPanel/EntryCard, notification-task-bridge.ts, NotificationPanel ServiceTaskCreateModal, notificationTimeSemantics formatNotificationLastSeenShort.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-11T16:30:00.000Z',
+  },
+  {
     version: '4.9.369',
     title: 'V4.9.369 — Meldungen „Behoben“-Tab zeigt wieder Einträge',
     summary: [

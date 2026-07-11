@@ -100,6 +100,39 @@ export function formatNotificationTimeLabel(
   return '';
 }
 
+/** Compact top-right label for notification panel summary rows. */
+export function formatNotificationLastSeenShort(
+  model: Pick<
+    NotificationQueueModel,
+    'lifecycleStatus' | 'lastSeenAt' | 'resolvedAt' | 'occurredAt' | 'createdAt'
+  >,
+  context: NotificationTimeContext,
+): string {
+  const de = context.locale === 'de';
+
+  if (model.lifecycleStatus === 'resolved' || model.lifecycleStatus === 'archived') {
+    const resolvedMs = parseIsoMs(model.resolvedAt) ?? parseIsoMs(model.lastSeenAt);
+    if (resolvedMs != null) {
+      const rel = formatRelativePast(resolvedMs, context.referenceNowMs, de);
+      return de ? `behoben ${rel}` : `resolved ${rel}`;
+    }
+  }
+
+  const lastSeenMs = parseIsoMs(model.lastSeenAt) ?? parseIsoMs(model.occurredAt);
+  if (lastSeenMs != null) {
+    const rel = formatRelativePast(lastSeenMs, context.referenceNowMs, de);
+    return de ? `zuletzt ${rel}` : `last ${rel}`;
+  }
+
+  const occurredMs = parseIsoMs(model.occurredAt) ?? parseIsoMs(model.createdAt);
+  if (occurredMs != null) {
+    const rel = formatRelativePast(occurredMs, context.referenceNowMs, de);
+    return de ? `zuletzt ${rel}` : `last ${rel}`;
+  }
+
+  return '';
+}
+
 export function isResolvedLifecycle(status: NotificationLifecycleStatus): boolean {
   return status === 'resolved' || status === 'archived';
 }

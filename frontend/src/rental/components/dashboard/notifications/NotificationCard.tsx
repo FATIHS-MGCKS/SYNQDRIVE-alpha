@@ -101,9 +101,6 @@ export const NotificationCard = memo(function NotificationCard({
             {card.timeLabel ? (
               <span className={cn(NOTIFICATION_PANEL_TYPO.meta, 'tabular-nums')}>{card.timeLabel}</span>
             ) : null}
-            {card.occurrenceLabel ? (
-              <span className={cn(NOTIFICATION_PANEL_TYPO.meta, 'tabular-nums')}>{card.occurrenceLabel}</span>
-            ) : null}
             {card.acknowledged ? (
               <span className={cn(NOTIFICATION_PANEL_TYPO.meta, 'text-muted-foreground/80')}>
                 · {t('notification.status.acknowledged')}

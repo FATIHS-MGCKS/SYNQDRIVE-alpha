@@ -18,7 +18,6 @@ export interface NotificationCardViewModel {
   domain: NotificationDomain;
   domainLabel: string;
   timeLabel: string;
-  occurrenceLabel: string | null;
   title: string;
   entityLine: string | null;
   description: string;
@@ -97,15 +96,6 @@ function severityLabelKey(
   return 'notification.severity.info';
 }
 
-function occurrenceLabel(
-  count: number | undefined,
-  locale: string,
-  t: ReturnType<typeof createNotificationTranslator>,
-): string | null {
-  if (!count || count <= 1) return null;
-  return t('notification.meta.occurrences', { count });
-}
-
 export function buildNotificationCardViewModel(
   item: ActionQueueItem,
   locale: string,
@@ -132,7 +122,6 @@ export function buildNotificationCardViewModel(
     domain: queue.domain,
     domainLabel: notificationDomainLabel(queue.domain, t),
     timeLabel,
-    occurrenceLabel: occurrenceLabel(item.occurrenceCount, locale, t),
     title: item.title,
     entityLine: buildEntityLine(item),
     description: item.reason,

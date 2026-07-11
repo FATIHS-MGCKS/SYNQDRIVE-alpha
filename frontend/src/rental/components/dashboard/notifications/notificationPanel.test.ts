@@ -111,7 +111,7 @@ describe('notification card view model — WOB L 7503', () => {
     expect(card!.description).toContain('Telemetriequalität');
     expect(card!.ctaLabel).toBe('Fahrzeug prüfen');
     expect(card!.domainLabel).toBe('Fahranalyse');
-    expect(card!.occurrenceLabel).toContain('2');
+    expect(card!.timeLabel).toMatch(/zuletzt|seit/);
   });
 
   it('resolved state uses success styling semantics', () => {

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { cn } from '../../../../components/ui/utils';
+import { api, type Vendor } from '../../../../lib/api';
 import { panelShellClass } from '../dashboardShell';
 import type { ActionQueueItem, DashboardViewModel } from '../dashboardTypes';
 import {
@@ -9,10 +10,13 @@ import {
 import { navigateNotificationV2Action } from '../../../lib/notifications/notification-v2-action-router';
 import { enrichNotificationGroupingList } from '../../../lib/notifications/enrich-notification-grouping';
 import { useLanguage } from '../../../i18n/LanguageContext';
-import { buildNotificationCardViewModel } from './notificationCardViewModel';
-import { NotificationCard } from './NotificationCard';
+import { useRentalOrg } from '../../../RentalContext';
+import { ServiceTaskCreateModal } from '../../service-center/ServiceTaskCreateModal';
+import type { HealthTaskPrefill } from '../../../lib/health-task-bridge.utils';
+import { NotificationEntryCard } from './NotificationEntryCard';
 import { NotificationGroupCard } from './NotificationGroupCard';
 import { NotificationCardSkeleton } from './NotificationCardSkeleton';
+import { buildNotificationTaskPrefill } from './notification-task-bridge';
 import { NotificationDomainFilter as NotificationDomainFilterControl } from './NotificationDomainFilter';
 import { NotificationEmptyState } from './NotificationEmptyState';
 import {
@@ -74,11 +78,31 @@ export function NotificationPanel({
   handlers: NotificationPanelHandlers;
 }) {
   const { t, locale } = useLanguage();
+  const { orgId } = useRentalOrg();
   const de = locale === 'de';
   const [primaryTab, setPrimaryTab] = useState<NotificationPrimaryTab>('all');
   const [domainFilter, setDomainFilter] = useState<NotificationDomainFilter | null>(null);
   const [isExpanded, setIsExpanded] = useState(true);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [taskPrefill, setTaskPrefill] = useState<HealthTaskPrefill | null>(null);
+  const [taskVehicleId, setTaskVehicleId] = useState<string | null>(null);
+  const [taskModalOpen, setTaskModalOpen] = useState(false);
   const contentId = 'dashboard-notification-panel-content';
+
+  useEffect(() => {
+    if (!orgId) return;
+    let cancelled = false;
+    api.vendors.list(orgId)
+      .then((rows) => {
+        if (!cancelled) setVendors(Array.isArray(rows) ? rows : []);
+      })
+      .catch(() => {
+        if (!cancelled) setVendors([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [orgId]);
 
   const referenceNowMs = useMemo(() => Date.now(), [vm.actionQueue, vm.isRefreshing]);
 
@@ -109,15 +133,6 @@ export function NotificationPanel({
     for (const item of enrichedItems) map.set(item.id, item);
     return map;
   }, [enrichedItems]);
-
-  const cardsById = useMemo(() => {
-    const map = new Map<string, NonNullable<ReturnType<typeof buildNotificationCardViewModel>>>();
-    for (const item of enrichedItems) {
-      const card = buildNotificationCardViewModel(item, locale, referenceNowMs);
-      if (card) map.set(item.id, card);
-    }
-    return map;
-  }, [enrichedItems, locale, referenceNowMs]);
 
   const atomicCount = useMemo(() => countAtomicActions(entries), [entries]);
   const visibleEntries = isExpanded ? entries.slice(0, VISIBLE_ENTRY_CAP) : entries.slice(0, 3);
@@ -180,6 +195,32 @@ export function NotificationPanel({
     [vm, handlers],
   );
 
+  const openCreateTask = useCallback(
+    (item: ActionQueueItem) => {
+      const prefill = buildNotificationTaskPrefill(item, vendors);
+      if (!prefill || !item.vehicleId) return;
+      setTaskPrefill(prefill);
+      setTaskVehicleId(item.vehicleId);
+      setTaskModalOpen(true);
+    },
+    [vendors],
+  );
+
+  const mutationHandlers = useCallback(
+    (itemId: string) => ({
+      onMarkRead: vm.notificationMutations?.markRead
+        ? () => void vm.notificationMutations?.markRead(itemId)
+        : undefined,
+      onAcknowledge: vm.notificationMutations?.acknowledge
+        ? () => void vm.notificationMutations?.acknowledge(itemId)
+        : undefined,
+      onSnooze: vm.notificationMutations?.snooze
+        ? () => void vm.notificationMutations?.snooze(itemId, snoozeDefaultUntil())
+        : undefined,
+    }),
+    [vm.notificationMutations],
+  );
+
   return (
     <section
       className={cn(panelShellClass('tertiary'), 'w-full min-w-0')}
@@ -231,43 +272,30 @@ export function NotificationPanel({
                     <NotificationGroupCard
                       group={entry}
                       itemsById={itemsById}
-                      cardsById={cardsById}
+                      locale={locale}
+                      referenceNowMs={referenceNowMs}
                       t={t}
-                      vm={vm}
                       onItemCta={runCta}
-                      snoozeDefaultUntil={snoozeDefaultUntil}
+                      onCreateTask={openCreateTask}
                     />
                   </li>
                 );
               }
 
-              const card = cardsById.get(entry.id);
               const item = itemsById.get(entry.id);
-              if (!card || !item) return null;
+              if (!item) return null;
+              const mutations = mutationHandlers(entry.id);
 
               return (
                 <li key={entry.id} className="list-none">
-                  <NotificationCard
-                    card={card}
+                  <NotificationEntryCard
+                    item={item}
+                    locale={locale}
+                    referenceNowMs={referenceNowMs}
                     t={t}
-                    unread={card.readStatus === 'unread'}
-                    onOpen={() => vm.openDrilldown({ type: 'action-item', itemId: entry.id })}
-                    onCta={() => runCta(item)}
-                    onMarkRead={
-                      vm.notificationMutations?.markRead
-                        ? () => void vm.notificationMutations?.markRead(entry.id)
-                        : undefined
-                    }
-                    onAcknowledge={
-                      vm.notificationMutations?.acknowledge
-                        ? () => void vm.notificationMutations?.acknowledge(entry.id)
-                        : undefined
-                    }
-                    onSnooze={
-                      vm.notificationMutations?.snooze
-                        ? () => void vm.notificationMutations?.snooze(entry.id, snoozeDefaultUntil())
-                        : undefined
-                    }
+                    onPrimaryCta={() => runCta(item)}
+                    onCreateTask={() => openCreateTask(item)}
+                    {...mutations}
                   />
                 </li>
               );
@@ -281,6 +309,19 @@ export function NotificationPanel({
           </p>
         ) : null}
       </div>
+
+      <ServiceTaskCreateModal
+        open={taskModalOpen}
+        onOpenChange={setTaskModalOpen}
+        vendors={vendors}
+        defaultVehicleId={taskVehicleId}
+        defaultVendorId={taskPrefill?.vendorId ?? null}
+        healthPrefill={taskPrefill}
+        onCreated={() => {
+          setTaskModalOpen(false);
+          setTaskPrefill(null);
+        }}
+      />
     </section>
   );
 }

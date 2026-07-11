@@ -589,6 +589,7 @@ export const de: Record<TranslationKey, string> = {
   'notification.cta.startReturn': 'Rückgabe starten',
   'notification.cta.openStation': 'Station öffnen',
   'notification.cta.openRental': 'Vermietung öffnen',
+  'notification.cta.createTask': 'Aufgabe erstellen',
   'notification.count.one': '1 Meldung',
   'notification.count.many': '{count} Meldungen',
   'notification.expand.all': 'Alle {count} anzeigen',
