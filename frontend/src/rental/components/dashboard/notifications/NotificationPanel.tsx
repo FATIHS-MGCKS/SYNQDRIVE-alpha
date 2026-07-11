@@ -111,7 +111,7 @@ export function NotificationPanel({
   }, [enrichedItems]);
 
   const cardsById = useMemo(() => {
-    const map = new Map<string, ReturnType<typeof buildNotificationCardViewModel>>();
+    const map = new Map<string, NonNullable<ReturnType<typeof buildNotificationCardViewModel>>>();
     for (const item of enrichedItems) {
       const card = buildNotificationCardViewModel(item, locale, referenceNowMs);
       if (card) map.set(item.id, card);

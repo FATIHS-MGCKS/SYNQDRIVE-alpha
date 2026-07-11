@@ -30,6 +30,7 @@ function eventTypeToModule(
   actionModule?: string,
 ): ActionQueueModuleTarget | undefined {
   if (actionModule) {
+    if (actionModule === 'health') return 'error_codes';
     const normalized = actionModule as ActionQueueModuleTarget;
     if (
       [
@@ -40,11 +41,10 @@ function eventTypeToModule(
         'service_compliance',
         'complaints',
         'vehicle_alerts',
-        'health',
         'overview',
       ].includes(normalized)
     ) {
-      return normalized === 'health' ? 'error_codes' : normalized;
+      return normalized;
     }
   }
   switch (eventType) {
