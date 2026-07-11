@@ -50,6 +50,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     module: 'Notifications',
     createdAt: '2026-07-11T08:45:00.000Z',
   },
+  {
+    id: 'notification-dashboard-visibility-v49362-2026-07-11',
+    version: '4.9.362',
+    title: 'V4.9.362 — Notification Inbox: Dashboard STATE Visibility Fix',
+    summary: [
+      'STATE-Dashboard-Insights bleiben im Inbox sichtbar, auch wenn inApp-Kategorien deaktiviert sind (V1-Parität).',
+      'Registry um fehlende Insight-EventTypes ergänzt (LOW_UTILIZATION, HM_SERVICE_NO_TRACKING, …).',
+      'Behebt leeres Meldungen-Panel bei F.S Mobility nach V2-Cutover.',
+    ],
+    reason:
+      'Nach Migration lieferte die V2-API 0 Meldungen: Preferences filterten STATE-Events; nicht-registrierte Insight-Types wurden per Role-Filter ausgeschlossen.',
+    previousBehavior:
+      'inApp=false auf allen Kategorien versteckte migrierte Insights; LOW_UTILIZATION/HM_SERVICE_NO_TRACKING fehlten in der Event-Registry.',
+    details:
+      'notification-preference.query.ts, notification-event-registry.definitions.ts.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-11T09:30:00.000Z',
+  },
+  {
+    id: 'notification-engine-risk-fixes-v49360-2026-07-11',
     version: '4.9.360',
     title: 'V4.9.360 — Notification Engine: Risk Fixes & Full Insight Migration',
     summary: [

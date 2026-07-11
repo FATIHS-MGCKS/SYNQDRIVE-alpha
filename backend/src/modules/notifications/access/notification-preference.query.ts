@@ -1,5 +1,6 @@
 import {
   NotificationCategory,
+  NotificationEventKind,
   NotificationSeverity,
   Prisma,
   type UserNotificationPreference,
@@ -15,6 +16,7 @@ function eventTypesForCategory(category: NotificationCategory): string[] {
 /**
  * Build Prisma where clauses reflecting user notification preferences.
  * Mandatory SECURITY + CRITICAL overrides remain visible.
+ * Dashboard STATE insights stay visible in the inbox (V1 parity); prefs gate ALERT delivery only.
  */
 export function buildPreferenceWhereClause(
   preferences: UserNotificationPreference[],
@@ -33,6 +35,7 @@ export function buildPreferenceWhereClause(
       NOT: {
         AND: [
           { eventType: { in: eventTypes } },
+          { eventKind: { not: NotificationEventKind.STATE } },
           { severity: { not: NotificationSeverity.CRITICAL } },
         ],
       },
@@ -48,6 +51,7 @@ export function buildPreferenceWhereClause(
       NOT: {
         AND: [
           { eventType: { in: eventTypes } },
+          { eventKind: { not: NotificationEventKind.STATE } },
           { severity: { not: NotificationSeverity.CRITICAL } },
         ],
       },
