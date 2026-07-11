@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-engine-domain-contract-v49350-2026-07-11',
+    version: '4.9.350',
+    title: 'V4.9.350 — Notification Engine: kanonische Backend-Domain (Vertrag)',
+    summary: [
+      'Neues Modul `backend/src/modules/notifications/` mit Enums, Candidate/Fingerprint-Vertrag, Lifecycle-Übergängen und Reopen-Policy.',
+      'Fingerprint-Factory + Registry; Bridges von `InsightCandidate.dedupeKey` und Frontend-`semanticKey` ohne DashboardInsight-Umbenennung.',
+      'Dokumentation `docs/notification-engine-domain-contract.md` mit Event-vs-State, Mermaid-Lifecycle, WOB-L-7503-Beispielen.',
+      '29 Unit-Tests (Fingerprint, Status, Reopen, Candidate) — keine Prisma-Migration, kein Dashboard-Cutover.',
+    ],
+    reason: 'Prompt 5: fachliche Verträge und Identitätsregeln vor persistenter Notification Engine und Cutover definieren.',
+    previousBehavior: 'Keine kanonische Notification-Domain; Insights/Tasks/Preferences fragmentiert; dedupeKey ohne lifecycle-fähiges Backend-Modell.',
+    details: 'Neu: notifications/*.ts, docs/notification-engine-domain-contract.md, Tests. Geändert: app.module.ts (NotificationsModule registriert).',
+    affectsArchitecture: true,
+    module: 'Dashboard / Notifications',
+    createdAt: '2026-07-11T01:00:00.000Z',
+  },
+  {
     id: 'notification-engine-p0-consistency-v49349-2026-07-11',
     version: '4.9.349',
     title: 'V4.9.349 — Dashboard Notification Box: P0-Konsistenz (Queue-Zwischenmodell)',
