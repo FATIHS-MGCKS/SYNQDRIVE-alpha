@@ -3103,6 +3103,74 @@ export const api = {
       }>;
     }>(`/organizations/${orgId}/dashboard-insights`),
   },
+  notifications: {
+    list: (
+      orgId: string,
+      params?: {
+        page?: number;
+        limit?: number;
+        activeOnly?: boolean;
+        unreadOnly?: boolean;
+        sortBy?: 'lastSeenAt' | 'createdAt' | 'severity';
+        sortOrder?: 'asc' | 'desc';
+      },
+    ) => {
+      const q = new URLSearchParams();
+      if (params?.page != null) q.set('page', String(params.page));
+      if (params?.limit != null) q.set('limit', String(params.limit));
+      if (params?.activeOnly != null) q.set('activeOnly', String(params.activeOnly));
+      if (params?.unreadOnly != null) q.set('unreadOnly', String(params.unreadOnly));
+      if (params?.sortBy) q.set('sortBy', params.sortBy);
+      if (params?.sortOrder) q.set('sortOrder', params.sortOrder);
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return get<import('../rental/lib/notifications/notification-api.types').ApiNotificationListResponse>(
+        `/organizations/${orgId}/notifications${suffix}`,
+      );
+    },
+    counts: (orgId: string) =>
+      get<import('../rental/lib/notifications/notification-api.types').ApiNotificationCountsResponse>(
+        `/organizations/${orgId}/notifications/counts`,
+      ),
+    get: (orgId: string, id: string) =>
+      get<import('../rental/lib/notifications/notification-api.types').ApiNotificationResponse>(
+        `/organizations/${orgId}/notifications/${id}`,
+      ),
+    markRead: (orgId: string, id: string) =>
+      post<import('../rental/lib/notifications/notification-api.types').ApiNotificationResponse>(
+        `/organizations/${orgId}/notifications/${id}/read`,
+        {},
+      ),
+    markUnread: (orgId: string, id: string) =>
+      post<import('../rental/lib/notifications/notification-api.types').ApiNotificationResponse>(
+        `/organizations/${orgId}/notifications/${id}/unread`,
+        {},
+      ),
+    acknowledge: (orgId: string, id: string) =>
+      post<import('../rental/lib/notifications/notification-api.types').ApiNotificationResponse>(
+        `/organizations/${orgId}/notifications/${id}/acknowledge`,
+        {},
+      ),
+    snooze: (orgId: string, id: string, until: string) =>
+      post<import('../rental/lib/notifications/notification-api.types').ApiNotificationResponse>(
+        `/organizations/${orgId}/notifications/${id}/snooze`,
+        { until },
+      ),
+    unsnooze: (orgId: string, id: string) =>
+      post<import('../rental/lib/notifications/notification-api.types').ApiNotificationResponse>(
+        `/organizations/${orgId}/notifications/${id}/unsnooze`,
+        {},
+      ),
+    resolve: (orgId: string, id: string) =>
+      post<import('../rental/lib/notifications/notification-api.types').ApiNotificationResponse>(
+        `/organizations/${orgId}/notifications/${id}/resolve`,
+        {},
+      ),
+    archive: (orgId: string, id: string) =>
+      post<import('../rental/lib/notifications/notification-api.types').ApiNotificationResponse>(
+        `/organizations/${orgId}/notifications/${id}/archive`,
+        {},
+      ),
+  },
   rentalDrivingAnalyses: {
     // V4.6.95 — `bookingId` filter added so the booking detail card in
     // BookingsView can fetch the single canonical analysis row for a booking.

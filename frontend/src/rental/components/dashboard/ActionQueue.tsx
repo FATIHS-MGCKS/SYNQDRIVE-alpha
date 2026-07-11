@@ -39,6 +39,7 @@ import {
   ACTION_QUEUE_LIST_CAP,
   panelShellClass,
 } from './dashboardShell';
+import { navigateNotificationV2Action } from '../../lib/notifications/notification-v2-action-router';
 
 interface ActionQueueHandlers {
   onOpenVehicleById?: (vehicleId: string) => void;
@@ -101,6 +102,25 @@ function runCta(
   handlers: ActionQueueHandlers,
 ) {
   const { onOpenVehicleById, onOpenBookingById, onOpenRentalView } = handlers;
+
+  if (
+    navigateNotificationV2Action(item, {
+      onOpenVehicleById,
+      onOpenBookingById,
+      onOpenRentalView,
+      onStartHandoverPickup: (bookingId) => {
+        const pickup = vm.pickupItems.find((p) => p.bookingId === bookingId);
+        if (pickup) vm.handleConfirmPickup(pickup);
+      },
+      onStartHandoverReturn: (bookingId) => {
+        const ret = vm.returnItems.find((r) => r.bookingId === bookingId);
+        if (ret) vm.handleConfirmReturn(ret);
+      },
+    })
+  ) {
+    return;
+  }
+
   switch (item.cta) {
     case 'start-handover-pickup':
       if (item.pickupItem) vm.handleConfirmPickup(item.pickupItem);
@@ -616,10 +636,38 @@ export function ActionQueue({
     [actionQueue, locale, effectiveTab, collapsedPreviewCap],
   );
 
-  const tabCounts = useMemo(
-    () => computeActionQueueTabCounts(actionQueue, locale),
-    [actionQueue, locale],
-  );
+  const tabCounts = useMemo(() => {
+    if (vm.actionQueueTabCounts) return vm.actionQueueTabCounts;
+    return computeActionQueueTabCounts(actionQueue, locale);
+  }, [vm.actionQueueTabCounts, actionQueue, locale]);
+
+  const notificationErrorBanner = useMemo(() => {
+    if (!actionQueueError) return null;
+    const code = vm.notificationsV2ErrorCode;
+    if (code === 'api_disabled') {
+      return de
+        ? 'Benachrichtigungs-API ist deaktiviert. V2-Flag aktiv, Backend-Endpunkt nicht verfügbar.'
+        : 'Notification API is disabled. V2 flag is on but the endpoint is unavailable.';
+    }
+    if (code === 'permission_denied') {
+      return de
+        ? 'Keine Berechtigung für Benachrichtigungen.'
+        : 'Permission denied for notifications.';
+    }
+    if (code === 'network') {
+      return de
+        ? 'Benachrichtigungen konnten nicht geladen werden. Bitte Verbindung prüfen.'
+        : 'Could not load notifications. Please check your connection.';
+    }
+    if (vm.notificationsV2Mode === 'on') {
+      return de
+        ? 'Benachrichtigungen konnten nicht geladen werden.'
+        : 'Notifications could not be loaded.';
+    }
+    return de
+      ? 'Einige Insights konnten nicht geladen werden. Angezeigte Daten können unvollständig sein.'
+      : 'Some insights could not be loaded. Displayed data may be incomplete.';
+  }, [actionQueueError, vm.notificationsV2ErrorCode, vm.notificationsV2Mode, de]);
 
   const {
     pinnedItems,
@@ -672,11 +720,9 @@ export function ActionQueue({
         />
       )}
       <div id={contentId} hidden={!isExpanded} className={isExpanded ? 'animate-fade-up' : undefined}>
-          {actionQueueError && (
+          {actionQueueError && notificationErrorBanner && (
             <div className="border-b border-border/40 bg-muted/30 px-4 py-2.5 text-[12px] text-muted-foreground">
-              {de
-                ? 'Einige Insights konnten nicht geladen werden. Angezeigte Daten können unvollständig sein.'
-                : 'Some insights could not be loaded. Displayed data may be incomplete.'}
+              {notificationErrorBanner}
             </div>
           )}
 

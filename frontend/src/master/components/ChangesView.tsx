@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-engine-risk-fixes-v49360-2026-07-11',
+    version: '4.9.360',
+    title: 'V4.9.360 — Notification Engine: Risk Fixes & Full Insight Migration',
+    summary: [
+      'Alle 15 Prisma InsightTypes in insight-candidate.mapper + Backfill-Migration abgedeckt.',
+      'Frontend V2 Cutover + Notification Panel UI in Integrationsbranch zusammengeführt.',
+      'Acceptance-Checks und Tests auf vollständige migratable Types erweitert.',
+    ],
+    reason:
+      'Offene Production-Readiness-Risiken: unvollständige Insight-Migration und fehlender Frontend-V2-Merge vor Cutover.',
+    previousBehavior:
+      'Nur 7 InsightTypes migrierbar; Frontend V2 nur auf Feature-Branches.',
+    details:
+      'insight-candidate.mapper.ts, notification-migration-*.ts, Frontend notification panel + useNotifications.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-11T16:00:00.000Z',
+  },
+  {
     id: 'notification-engine-production-readiness-v49359-2026-07-11',
     version: '4.9.359',
     title: 'V4.9.359 — Notification Engine: Production Readiness Audit & Migration',
@@ -54,6 +73,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     affectsArchitecture: true,
     module: 'Notifications',
     createdAt: '2026-07-11T14:00:00.000Z',
+  },
+  {
+    id: 'notification-engine-frontend-cutover-v49358-2026-07-11',
+    version: '4.9.358',
+    title: 'V4.9.358 — Notification Engine: Frontend Dashboard Cutover (V2)',
+    summary: [
+      'Feature Flag `VITE_NOTIFICATIONS_V2`: off → V1, shadow → V1 UI + Hintergrund-V2-Vergleich, on → kanonische Notification API als einzige ActionQueue-Quelle.',
+      'Zentraler `notificationClient`, `useNotifications` Hook, DTO→ViewModel Mapper, API-Counts für Tab-Badges, Shadow-Diagnose ohne Doppelanzeige.',
+      'V2-Pfad ohne fachliche Frontend-Dedupe, ohne Insight/Health/Booking-Merge; CTA aus `action.type`/`action.target`; optimistische Read/Snooze-Mutationen mit Rollback.',
+      'Doku: docs/notification-engine-frontend-cutover.md.',
+    ],
+    reason:
+      'Kontrollierter Frontend-Cutover der Dashboard Notification Box auf die versionierte REST API — ohne KPI/Runtime/Business-Pulse zu verändern.',
+    previousBehavior:
+      'ActionQueue aus buildUnifiedActionQueue (Insights, Health, Bookings, derived/predictive); Tab-Counts aus geladener erster Seite.',
+    details:
+      'Neu: rental/lib/notifications/*, hooks/useNotifications.ts, ActionQueue/useDashboardViewModel Integration. V1-Builder bleibt hinter Flag.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-11T00:00:00.000Z',
   },
   {
     id: 'notification-engine-delivery-v49358-2026-07-11',

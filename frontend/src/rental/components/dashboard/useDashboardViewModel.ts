@@ -78,6 +78,17 @@ import {
   type DashboardRuntimeModel,
   type DashboardSliceId,
 } from './runtime';
+import { useNotifications } from '../../hooks/useNotifications';
+import {
+  getNotificationsV2Mode,
+  isNotificationsV2Shadow,
+  shouldFetchV2NotificationsInBackground,
+  shouldUseV2NotificationSource,
+} from '../../lib/notifications/notifications-v2-flag';
+import {
+  compareNotificationQueuesShadow,
+  logShadowCompareDiagnostics,
+} from '../../lib/notifications/notification-shadow-compare';
 
 const BUSINESS_METRIC_IDS: ReadonlySet<string> = new Set<BusinessMetricId>([
   'revenue',
@@ -250,6 +261,13 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     void loadTodayBookings();
   }, [loadTodayBookings]);
 
+  const notificationsV2Mode = getNotificationsV2Mode();
+  const notificationsV2 = useNotifications({
+    orgId,
+    locale,
+    enabled: shouldFetchV2NotificationsInBackground(),
+  });
+
   const refreshAll = useCallback(async () => {
     setIsRefreshing(true);
     try {
@@ -258,6 +276,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         refreshInsights(),
         loadTodayBookings(),
         loadInvoices(),
+        shouldFetchV2NotificationsInBackground() ? notificationsV2.refresh() : Promise.resolve(),
       ]);
       const syncedAt = new Date();
       setDashboardNow(syncedAt);
@@ -265,7 +284,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     } finally {
       setIsRefreshing(false);
     }
-  }, [refreshFleet, refreshInsights, loadTodayBookings, loadInvoices]);
+  }, [refreshFleet, refreshInsights, loadTodayBookings, loadInvoices, notificationsV2.refresh]);
 
   useEffect(() => {
     const onHandover = () => {
@@ -602,9 +621,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   );
 
 
-  const actionQueueLoading = insightsLoading || vehicleHealthLoading || !todayBookingsLoaded;
-  const actionQueueError = insightsError;
-
   const actionQueueEmptySummary = useMemo(
     () =>
       buildActionQueueEmptySummary({
@@ -801,7 +817,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     ],
   );
 
-  const actionQueue = useMemo(
+  const v1ActionQueue = useMemo(
     () =>
       buildUnifiedActionQueue({
         locale,
@@ -833,6 +849,33 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
       orgId,
     ],
   );
+
+  useEffect(() => {
+    if (!isNotificationsV2Shadow()) return;
+    if (notificationsV2.loading) return;
+    const result = compareNotificationQueuesShadow(v1ActionQueue, notificationsV2.items);
+    logShadowCompareDiagnostics(result);
+  }, [v1ActionQueue, notificationsV2.items, notificationsV2.loading]);
+
+  const actionQueue = useMemo(
+    () => (shouldUseV2NotificationSource() ? notificationsV2.items : v1ActionQueue),
+    [notificationsV2.items, v1ActionQueue],
+  );
+
+  const actionQueueTabCounts = useMemo(
+    () => (shouldUseV2NotificationSource() ? notificationsV2.tabCounts : null),
+    [notificationsV2.tabCounts],
+  );
+
+  const resolvedActionQueueLoading = shouldUseV2NotificationSource()
+    ? notificationsV2.loading
+    : insightsLoading || vehicleHealthLoading || !todayBookingsLoaded;
+
+  const resolvedActionQueueError = shouldUseV2NotificationSource()
+    ? !!notificationsV2.error
+    : insightsError;
+
+  const notificationsV2ErrorCode = notificationsV2.error?.code ?? null;
 
   const stationCommandDetail = useMemo(() => {
     if (!selectedStationId) return null;
@@ -982,8 +1025,24 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     handleConfirmReturn,
     dashboardNotifications,
     actionQueue,
-    actionQueueLoading,
-    actionQueueError,
+    actionQueueLoading: resolvedActionQueueLoading,
+    actionQueueError: resolvedActionQueueError,
+    actionQueueTabCounts,
+    notificationsV2Mode,
+    notificationsV2ErrorCode,
+    notificationMutations: shouldUseV2NotificationSource()
+      ? {
+          markRead: notificationsV2.markRead,
+          markUnread: notificationsV2.markUnread,
+          acknowledge: notificationsV2.acknowledge,
+          snooze: notificationsV2.snooze,
+          unsnooze: notificationsV2.unsnooze,
+          resolveNotification: notificationsV2.resolveNotification,
+          archiveNotification: notificationsV2.archiveNotification,
+          loadMore: notificationsV2.loadMore,
+          hasMore: notificationsV2.hasMore,
+        }
+      : undefined,
     actionQueueEmptySummary,
     todayBookingsLoaded,
     todayBookingsError,
