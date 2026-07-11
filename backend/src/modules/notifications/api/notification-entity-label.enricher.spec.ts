@@ -1,4 +1,5 @@
-import { isUuidLike, mergeEnrichedTemplateParams } from './notification-entity-label.enricher';
+import { isUuidLike, mergeEnrichedTemplateParams, enrichActiveDtcTemplateParams } from './notification-entity-label.enricher';
+import type { PrismaService } from '@shared/database/prisma.service';
 
 describe('notification-entity-label.enricher', () => {
   it('detects uuid-like labels', () => {
@@ -34,5 +35,49 @@ describe('notification-entity-label.enricher', () => {
       make: 'Tesla',
       model: 'Model 3',
     });
+  });
+
+  it('enriches ACTIVE_DTC reason from DTC knowledge when placeholder', async () => {
+    const prisma = {
+      vehicle: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'veh-1', make: 'Audi', model: 'A4', year: 2016 },
+        ]),
+      },
+      vehicleDtcEvent: {
+        findMany: jest.fn().mockResolvedValue([
+          { vehicleId: 'veh-1', dtcCode: 'P0675', description: 'DTC P0675' },
+        ]),
+      },
+      dtcKnowledge: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            normalizedCode: 'P0675',
+            title: 'P0675 - Zündkerzenheizung Zylinder 5 - Fehlfunktion',
+            shortDescription: 'Glühkerze Zylinder 5',
+          },
+        ]),
+      },
+      dtcVehicleKnowledge: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    } as unknown as PrismaService;
+
+    const rows = [{
+      id: 'n1',
+      entityType: 'VEHICLE',
+      entityId: 'veh-1',
+      eventType: 'ACTIVE_DTC',
+      templateParams: { code: 'P0675', reason: '{reason}' },
+    }];
+    const paramsById = new Map<string, Record<string, string | number | boolean | null>>([
+      ['n1', { code: 'P0675', reason: '{reason}' }],
+    ]);
+
+    await enrichActiveDtcTemplateParams(prisma, rows, paramsById);
+
+    expect(paramsById.get('n1')?.reason).toBe(
+      'P0675 - Zündkerzenheizung Zylinder 5 - Fehlfunktion',
+    );
   });
 });

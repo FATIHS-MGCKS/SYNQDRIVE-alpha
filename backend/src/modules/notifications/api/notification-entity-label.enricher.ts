@@ -1,5 +1,6 @@
 import type { NotificationEntityType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { normalizeDtcCode } from '@modules/vehicle-intelligence/dtc-knowledge/dtc-knowledge.util';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -139,6 +140,147 @@ export function mergeEnrichedTemplateParams(
   if (ctx.stationName && !base.stationName) base.stationName = ctx.stationName;
 
   return base;
+}
+
+function isGenericDtcDescription(description: string | null | undefined, code: string): boolean {
+  if (!description?.trim()) return true;
+  const normalized = description.trim();
+  if (normalized === `DTC ${code}`) return true;
+  if (normalized === code) return true;
+  return false;
+}
+
+function pickDtcReasonText(opts: {
+  code: string;
+  eventDescription?: string | null;
+  knowledgeTitle?: string | null;
+  knowledgeShort?: string | null;
+  vehicleTitle?: string | null;
+}): string | null {
+  const { code } = opts;
+  if (opts.vehicleTitle?.trim()) return opts.vehicleTitle.trim();
+  if (opts.knowledgeTitle?.trim()) return opts.knowledgeTitle.trim();
+  if (opts.eventDescription && !isGenericDtcDescription(opts.eventDescription, code)) {
+    return opts.eventDescription.trim();
+  }
+  if (opts.knowledgeShort?.trim()) return opts.knowledgeShort.trim();
+  return null;
+}
+
+/** Fills `templateParams.reason` for ACTIVE_DTC from DTC events + knowledge base. */
+export async function enrichActiveDtcTemplateParams(
+  prisma: PrismaService,
+  rows: Array<EnrichableNotificationRow & { eventType?: string }>,
+  paramsById: Map<string, Record<string, string | number | boolean | null>>,
+): Promise<void> {
+  const dtcRows = rows.filter(
+    (row) => row.entityType === 'VEHICLE' && row.eventType === 'ACTIVE_DTC',
+  );
+  if (!dtcRows.length) return;
+
+  const vehicleIds = [...new Set(dtcRows.map((row) => row.entityId))];
+  const codes = new Set<string>();
+  const normalizedCodes = new Set<string>();
+
+  for (const row of dtcRows) {
+    const params = paramsById.get(row.id) ?? {};
+    const rawCode = String(params.code ?? '').trim();
+    if (!rawCode) continue;
+    codes.add(rawCode);
+    const normalized = normalizeDtcCode(rawCode);
+    if (normalized) normalizedCodes.add(normalized);
+  }
+
+  if (!codes.size) return;
+
+  const [vehicles, events, genericKnowledge, vehicleKnowledge] = await Promise.all([
+    prisma.vehicle.findMany({
+      where: { id: { in: vehicleIds } },
+      select: { id: true, make: true, model: true, year: true },
+    }),
+    prisma.vehicleDtcEvent.findMany({
+      where: {
+        vehicleId: { in: vehicleIds },
+        dtcCode: { in: [...codes] },
+        isActive: true,
+      },
+      select: { vehicleId: true, dtcCode: true, description: true },
+    }),
+    normalizedCodes.size
+      ? prisma.dtcKnowledge.findMany({
+          where: {
+            normalizedCode: { in: [...normalizedCodes] },
+            language: 'de',
+            enrichmentStatus: 'READY',
+          },
+          select: { normalizedCode: true, title: true, shortDescription: true },
+        })
+      : Promise.resolve(
+          [] as Array<{ normalizedCode: string; title: string; shortDescription: string | null }>,
+        ),
+    normalizedCodes.size
+      ? prisma.dtcVehicleKnowledge.findMany({
+          where: {
+            normalizedCode: { in: [...normalizedCodes] },
+            enrichmentStatus: 'READY',
+          },
+          select: {
+            normalizedCode: true,
+            make: true,
+            model: true,
+            year: true,
+            vehicleSpecificTitle: true,
+          },
+        })
+      : Promise.resolve(
+          [] as Array<{
+            normalizedCode: string;
+            make: string | null;
+            model: string | null;
+            year: number | null;
+            vehicleSpecificTitle: string | null;
+          }>,
+        ),
+  ]);
+
+  const vehicleById = new Map(vehicles.map((vehicle) => [vehicle.id, vehicle]));
+  const eventByKey = new Map(
+    events.map((event) => [`${event.vehicleId}:${event.dtcCode.toUpperCase()}`, event]),
+  );
+  const genericByCode = new Map(genericKnowledge.map((row) => [row.normalizedCode, row]));
+
+  for (const row of dtcRows) {
+    const params = paramsById.get(row.id);
+    if (!params) continue;
+
+    const rawCode = String(params.code ?? '').trim();
+    const normalized = normalizeDtcCode(rawCode);
+    if (!normalized) continue;
+
+    const existingReason = String(params.reason ?? '').trim();
+    if (existingReason && !/^\{[a-zA-Z]+\}$/.test(existingReason)) continue;
+
+    const vehicle = vehicleById.get(row.entityId);
+    const event = eventByKey.get(`${row.entityId}:${rawCode.toUpperCase()}`);
+    const generic = genericByCode.get(normalized);
+    const vehicleSpecific = vehicleKnowledge.find(
+      (vk) =>
+        vk.normalizedCode === normalized
+        && vk.make === (vehicle?.make ?? null)
+        && vk.model === (vehicle?.model ?? null)
+        && vk.year === (vehicle?.year ?? null),
+    );
+
+    const reason = pickDtcReasonText({
+      code: normalized,
+      eventDescription: event?.description,
+      knowledgeTitle: generic?.title,
+      knowledgeShort: generic?.shortDescription,
+      vehicleTitle: vehicleSpecific?.vehicleSpecificTitle,
+    });
+
+    if (reason) params.reason = reason;
+  }
 }
 
 export async function enrichTemplateParamsFromLegacyInsights(

@@ -9,6 +9,7 @@ import type {
   NotificationSeverity,
 } from '../../components/dashboard/notificationQueueModel';
 import type { ApiNotificationResponse } from './notification-api.types';
+import { sanitizeTemplateValue } from './template-placeholder';
 import {
   isKnownApiActionType,
   mapApiActionTarget,
@@ -187,8 +188,11 @@ function interpolateTemplate(
   const t = createNotificationTranslator(locale);
   const title = t(safeTitleKey(titleKey), params as Record<string, string | number>);
   const body = t(safeTitleKey(bodyKey), params as Record<string, string | number>);
-  const reasonFromParams =
-    params.reason != null && String(params.reason).trim() ? String(params.reason).trim() : '';
+  const reasonFromParams = sanitizeTemplateValue(
+    params.reason != null ? String(params.reason) : undefined,
+  );
+  const resolvedBody = sanitizeTemplateValue(body === bodyKey ? '' : body);
+  const reason = resolvedBody || reasonFromParams;
   if (title === titleKey) {
     const label =
       displayLabel
@@ -198,12 +202,12 @@ function interpolateTemplate(
       ?? (params.bookingRef != null ? String(params.bookingRef) : undefined);
     return {
       title: label ?? titleKey,
-      reason: body === bodyKey ? reasonFromParams : body,
+      reason,
     };
   }
   return {
     title,
-    reason: body === bodyKey ? reasonFromParams : body,
+    reason,
   };
 }
 

@@ -1,4 +1,5 @@
 import type { TranslationKey } from '../../../i18n/translations/en';
+import { sanitizeTemplateValue } from '../../../lib/notifications/template-placeholder';
 import type { ActionQueueItem } from '../dashboardTypes';
 import { createNotificationTranslator } from '../notificationQueueEnricher';
 
@@ -78,7 +79,10 @@ function issueHeadline(item: ActionQueueItem, locale: string): string {
 
 function issueDetail(item: ActionQueueItem, locale: string): string {
   const params = item.entityContextParams;
-  const reason = item.reason?.trim() || params?.reason?.trim() || '';
+  const reason =
+    sanitizeTemplateValue(item.reason)
+    || sanitizeTemplateValue(params?.reason)
+    || '';
   if (reason) return reason;
 
   const eventType = (item.issueType ?? '').toUpperCase();

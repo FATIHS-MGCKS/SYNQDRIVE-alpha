@@ -30,6 +30,7 @@ import { NotificationStationScopeService } from '../access/notification-station-
 import { deriveAvailableActions } from './notification-available-actions';
 import { mapNotificationToDto } from './notification-api.mapper';
 import {
+  enrichActiveDtcTemplateParams,
   enrichTemplateParamsFromLegacyInsights,
   mergeEnrichedTemplateParams,
   resolveEntityLabelContexts,
@@ -545,6 +546,7 @@ export class NotificationApiService {
       rows.map((row) => [row.id, mergeEnrichedTemplateParams(row, labelContexts)]),
     );
     await enrichTemplateParamsFromLegacyInsights(this.prisma, rows, enrichedParamsById);
+    await enrichActiveDtcTemplateParams(this.prisma, rows, enrichedParamsById);
 
     return rows.map((row) => {
       const receipt = receiptByNotification.get(row.id) ?? null;

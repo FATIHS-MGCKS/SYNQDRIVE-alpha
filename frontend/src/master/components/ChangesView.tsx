@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-active-dtc-reason-v49372-2026-07-11',
+    version: '4.9.372',
+    title: 'V4.9.372 — Meldungen: DTC-Beschreibung statt {reason}-Platzhalter',
+    summary: [
+      'ACTIVE_DTC: API enrichiert `templateParams.reason` aus DTC-Event + DTC Knowledge (fahrzeugspezifisch bevorzugt).',
+      'Frontend filtert unersetzte i18n-Platzhalter (`{reason}`) in Issue-Detail und Body-Interpolation.',
+      'Kind-Zeile unter „Fehlercode P0675“ zeigt z. B. „P0675 - Zündkerzenheizung Zylinder 5 - Fehlfunktion“.',
+    ],
+    reason:
+      'Unersetzter `{reason}`-Platzhalter in Meldungen wirkte wie ein Bug; Nutzer erwarten dieselbe DTC-Beschreibung wie im Health-Tab.',
+    previousBehavior:
+      'Detailzeile zeigte wörtlich `{reason}`, wenn `templateParams.reason` leer war und i18n-Body nicht aufgelöst wurde.',
+    details:
+      'notification-entity-label.enricher.ts (`enrichActiveDtcTemplateParams`), notification-api.service.ts, template-placeholder.ts, notification-issue-copy.ts, map-notification-api-to-view-model.ts.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-11T19:00:00.000Z',
+  },
+  {
     id: 'notification-copy-trust-v49371-2026-07-11',
     version: '4.9.371',
     title: 'V4.9.371 — Meldungen: vertrauenswürdige Issue-Copy + Producer-Fixes',

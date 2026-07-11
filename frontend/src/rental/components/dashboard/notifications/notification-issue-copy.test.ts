@@ -82,6 +82,29 @@ describe('resolveNotificationIssueCopy', () => {
     expect(copy.detail).toBe('Starter circuit open');
   });
 
+  it('ignores unreplaced template placeholder as detail', () => {
+    const copy = resolveNotificationIssueCopy(
+      item({
+        title: 'Fehlercode P0675',
+        reason: '{reason}',
+        issueType: 'ACTIVE_DTC',
+        entityContextParams: {
+          plate: 'KS MS 661',
+          code: 'P0675',
+          reason: '{reason}',
+        },
+        queue: {
+          ...item().queue!,
+          conditionCode: 'ACTIVE_DTC',
+          issueType: 'active_dtc',
+        },
+      }),
+      'de',
+    );
+    expect(copy.headline).toBe('Fehlercode P0675');
+    expect(copy.detail).toBe('Aktive Fehlermeldung (P0675)');
+  });
+
   it('uses body text for low utilization detail', () => {
     const copy = resolveNotificationIssueCopy(
       item({
