@@ -56,6 +56,7 @@ export interface TechnicalObservationAdapterSource {
   vehicleId: string;
   label: string;
   complaintId: string;
+  resolved?: boolean;
 }
 
 export interface DrivingAssessmentAdapterSource {
@@ -63,4 +64,15 @@ export interface DrivingAssessmentAdapterSource {
   label: string;
   degraded: boolean;
   sourceRef: string;
+}
+
+export interface StationShortageAdapterSource {
+  stationId: string;
+  stationName: string;
+  available: number;
+  totalVehicles: number;
+  bookedOut: number;
+  threshold: number;
+  cleared?: boolean;
+  expiresAt?: Date;
 }

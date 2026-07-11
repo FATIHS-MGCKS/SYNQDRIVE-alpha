@@ -1,4 +1,5 @@
 import { Module, forwardRef } from '@nestjs/common';
+import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { BusinessInsightsService } from './business-insights.service';
 import { TenantInsightPolicyService } from './tenant-insight-policy.service';
 import { InsightRankingService } from './insight-ranking.service';
@@ -28,7 +29,7 @@ import { TasksModule } from '../tasks/tasks.module';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 
 @Module({
-  imports: [TasksModule, forwardRef(() => VehicleIntelligenceModule)],
+  imports: [TasksModule, NotificationsModule, forwardRef(() => VehicleIntelligenceModule)],
   controllers: [DashboardInsightsController, InternalBusinessInsightsController],
   providers: [
     BusinessInsightsService,

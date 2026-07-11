@@ -2,6 +2,7 @@ import { Injectable, Logger, Optional, Inject, forwardRef } from '@nestjs/common
 import { DrivingEventType, HardwareType, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TechnicalObservationsService } from '@modules/technical-observations/technical-observations.service';
+import { NotificationProducerIngestService } from '@modules/notifications/adapters/notification-producer.ingest.service';
 import {
   DEVICE_QUALITY_OBSERVATION_MARKER,
   DEVICE_QUALITY_WORKER_ID,
@@ -47,6 +48,8 @@ export class DrivingAssessmentDeviceQualityService {
     @Optional()
     @Inject(forwardRef(() => BusinessInsightsTriggerService))
     private readonly insightsTrigger?: BusinessInsightsTriggerService,
+    @Optional()
+    private readonly notificationIngest?: NotificationProducerIngestService,
   ) {}
 
   /**
@@ -210,6 +213,13 @@ export class DrivingAssessmentDeviceQualityService {
       void this.requestInsightsRerun(input.organizationId, 'driving_assessment_recovered');
     }
 
+    void this.syncV2DrivingAssessment({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      status: transition.nextStatus,
+      sourceRef: input.tripId,
+    });
+
     return merged;
   }
 
@@ -359,6 +369,20 @@ export class DrivingAssessmentDeviceQualityService {
       expiresAt: Date.now() + BASELINE_CACHE_TTL_MS,
     });
     return baseline;
+  }
+
+  private async syncV2DrivingAssessment(input: {
+    organizationId: string;
+    vehicleId: string;
+    status: DrivingAssessmentQualityStatus;
+    sourceRef: string;
+  }): Promise<void> {
+    if (!this.notificationIngest) return;
+    const label = (await this.resolveLicensePlate(input.vehicleId))?.trim() || 'Fahrzeug';
+    await this.notificationIngest.syncDrivingAssessmentQuality({
+      ...input,
+      label,
+    });
   }
 
   private async requestInsightsRerun(organizationId: string, detail: string): Promise<void> {

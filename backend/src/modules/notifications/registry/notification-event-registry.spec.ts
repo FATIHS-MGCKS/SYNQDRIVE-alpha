@@ -130,10 +130,11 @@ describe('NotificationEventRegistry', () => {
     expect(() => resolveEventSlug('not-real')).toThrow(NotificationEventRegistryError);
   });
 
-  it('only two event types enabled for shadow mode', () => {
+  it('three event types enabled for shadow mode (phase 1 producers)', () => {
     const shadow = NOTIFICATION_EVENT_REGISTRY.filter((d) => d.shadowModeEnabled);
     expect(shadow.map((d) => d.eventType).sort()).toEqual([
       'DRIVING_ASSESSMENT_DEVICE_QUALITY',
+      'STATION_SHORTAGE',
       'TECHNICAL_OBSERVATION_ACTIVE',
     ]);
   });

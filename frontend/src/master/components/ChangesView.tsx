@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-engine-producers-phase1-v49354-2026-07-11',
+    version: '4.9.354',
+    title: 'V4.9.354 — Notification Engine: Phase-1 Producer-Migration (Shadow)',
+    summary: [
+      'V2-Ingest für Fahrbewertungsqualität (Runtime), Technische Beobachtungen (pro observationId), Station Shortage (BI).',
+      'NotificationProducerIngestService + Hooks in DrivingAssessmentDeviceQualityService, TechnicalObservationsService, BusinessInsightsService.',
+      'Per-Observation-Fingerprint technical_observation_active:{id}; Device-Quality-Auto-Observationen ausgeschlossen.',
+      'Keine persistente Aggregate-Health-Notification; V1 ActionQueue unverändert. Doku: docs/notification-engine-migrated-producers-phase1.md.',
+    ],
+    reason:
+      'Konkrete problematische Quellen (WOB L 7503: Fahrbewertung + echte Beobachtung) sollen in V2 dedupliziert materialisiert werden, ohne Doppelzustellung.',
+    previousBehavior:
+      'Registry + Core Engine vorhanden, aber keine Producer-Hooks; Fingerprints für Beobachtungen nur pro Fahrzeug.',
+    details:
+      'backend: notification-producer.ingest.service.ts, station-shortage adapter, conditionCodeVariant, shadow STATION_SHORTAGE. Tests: notification-producers-phase1.spec.ts (WOB L 7503).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-11T00:00:00.000Z',
+  },
+  {
     id: 'notification-engine-event-registry-v49353-2026-07-11',
     version: '4.9.353',
     title: 'V4.9.353 — Notification Engine: zentrale Event-Type Registry',

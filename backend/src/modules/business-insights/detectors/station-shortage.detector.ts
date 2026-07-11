@@ -52,7 +52,7 @@ export class StationShortageDetector implements InsightDetector {
           entityScope: InsightEntityScope.STATION,
           entityIds: [station.id],
           timeContext: { horizonUntil: horizon.toISOString() },
-          metrics: { totalVehicles, bookedOut, available },
+          metrics: { totalVehicles, bookedOut, available, stationName: station.name },
           reasons: [`${available} of ${totalVehicles} vehicles available at ${station.name} within 24h`],
           confidence: 1.0,
           dedupeKey: `station_shortage:${station.id}`,

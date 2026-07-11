@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { NotificationProducerIngestService } from '@modules/notifications/adapters/notification-producer.ingest.service';
 import { TenantInsightPolicyService } from './tenant-insight-policy.service';
 import { InsightRankingService } from './insight-ranking.service';
 import { InsightGroupingService } from './insight-grouping.service';
@@ -57,6 +58,7 @@ export class BusinessInsightsService {
     complianceOperational: ComplianceOperationalDetector,
     pickupOverdue: PickupOverdueDetector,
     drivingAssessmentDeviceQuality: DrivingAssessmentDeviceQualityDetector,
+    @Optional() private readonly notificationIngest?: NotificationProducerIngestService,
   ) {
     this.detectors = [
       tightHandover,
@@ -140,6 +142,19 @@ export class BusinessInsightsService {
       } catch (bridgeErr: any) {
         this.logger.warn(
           `Insight→Task bridge failed for org ${organizationId}: ${bridgeErr?.message ?? bridgeErr}`,
+        );
+      }
+
+      try {
+        await this.notificationIngest?.syncStationShortagesFromInsights(
+          organizationId,
+          run.id,
+          gatedCandidates,
+          policy.stationShortageThreshold,
+        );
+      } catch (ingestErr: any) {
+        this.logger.warn(
+          `Notification V2 station shortage sync failed for org ${organizationId}: ${ingestErr?.message ?? ingestErr}`,
         );
       }
 

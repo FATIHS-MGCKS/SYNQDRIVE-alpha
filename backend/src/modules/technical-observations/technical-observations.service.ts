@@ -2,14 +2,17 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import {
   ComplaintLifecycleStatus,
   DamageType,
   Prisma,
   ServiceCaseCategory,
+  VehicleComplaint,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { NotificationProducerIngestService } from '@modules/notifications/adapters/notification-producer.ingest.service';
 import { TasksService } from '../tasks/tasks.service';
 import { ServiceCasesService } from '../service-cases/service-cases.service';
 import { DamagesService } from '../vehicle-intelligence/damages/damages.service';
@@ -46,6 +49,7 @@ export class TechnicalObservationsService {
     private readonly tasks: TasksService,
     private readonly serviceCases: ServiceCasesService,
     private readonly damages: DamagesService,
+    @Optional() private readonly notificationIngest?: NotificationProducerIngestService,
   ) {}
 
   async list(
@@ -150,7 +154,9 @@ export class TechnicalObservationsService {
       },
     });
 
-    return mapObservationRow(row);
+    const dto = mapObservationRow(row);
+    void this.syncV2ObservationActive(orgId, vehicleId, row, dto);
+    return dto;
   }
 
   async update(
@@ -203,7 +209,9 @@ export class TechnicalObservationsService {
         blocksRental: false,
       },
     });
-    return mapObservationRow(row);
+    const dto = mapObservationRow(row);
+    void this.syncV2ObservationResolved(orgId, vehicleId, row, dto);
+    return dto;
   }
 
   async dismiss(
@@ -222,7 +230,9 @@ export class TechnicalObservationsService {
         blocksRental: false,
       },
     });
-    return mapObservationRow(row);
+    const dto = mapObservationRow(row);
+    void this.syncV2ObservationResolved(orgId, vehicleId, row, dto);
+    return dto;
   }
 
   async convertToTask(
@@ -280,7 +290,9 @@ export class TechnicalObservationsService {
       },
     });
 
-    return { observation: mapObservationRow(row), taskId: task.id };
+    const dto = mapObservationRow(row);
+    void this.syncV2ObservationResolved(orgId, vehicleId, row, dto);
+    return { observation: dto, taskId: task.id };
   }
 
   async linkDamage(
@@ -480,5 +492,55 @@ export class TechnicalObservationsService {
         throw new BadRequestException('driverId not found in organization');
       }
     }
+  }
+
+  private async observationLabel(vehicleId: string, row: VehicleComplaint): Promise<string> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { licensePlate: true, make: true, model: true },
+    });
+    const plate = vehicle?.licensePlate?.trim();
+    if (plate) return plate;
+    const title = row.title?.trim();
+    if (title) return title;
+    return [vehicle?.make, vehicle?.model].filter(Boolean).join(' ') || 'Fahrzeug';
+  }
+
+  private async syncV2ObservationActive(
+    orgId: string,
+    vehicleId: string,
+    row: VehicleComplaint,
+    dto: TechnicalObservationDto,
+  ): Promise<void> {
+    if (!this.notificationIngest) return;
+    const label = await this.observationLabel(vehicleId, row);
+    await this.notificationIngest.syncTechnicalObservationActive({
+      organizationId: orgId,
+      vehicleId,
+      observationId: dto.id,
+      label,
+      createdByWorkerId: row.createdByWorkerId,
+      notes: row.notes,
+      sourceRef: dto.id,
+    });
+  }
+
+  private async syncV2ObservationResolved(
+    orgId: string,
+    vehicleId: string,
+    row: VehicleComplaint,
+    dto: TechnicalObservationDto,
+  ): Promise<void> {
+    if (!this.notificationIngest) return;
+    const label = await this.observationLabel(vehicleId, row);
+    await this.notificationIngest.syncTechnicalObservationResolved({
+      organizationId: orgId,
+      vehicleId,
+      observationId: dto.id,
+      label,
+      createdByWorkerId: row.createdByWorkerId,
+      notes: row.notes,
+      sourceRef: dto.id,
+    });
   }
 }

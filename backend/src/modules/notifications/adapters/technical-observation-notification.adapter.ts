@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { NotificationSeverity } from '../notification.enums';
 import { buildCandidateFromRegistry } from '../registry/notification-event-registry';
 import { validateRegistryCandidate } from '../registry/notification-event-registry.validator';
 import type {
@@ -28,11 +29,18 @@ export class TechnicalObservationNotificationAdapter
       organizationId: context.organizationId,
       eventType: 'TECHNICAL_OBSERVATION_ACTIVE',
       entityId: source.vehicleId,
+      conditionCodeVariant: source.complaintId,
       sourceRef: source.complaintId ?? context.sourceRef,
       occurredAt: context.occurredAt,
+      severity: source.resolved ? NotificationSeverity.SUCCESS : undefined,
       templateParams: { label: source.label },
       actionTargetContext: { vehicleId: source.vehicleId, module: 'complaints' },
-      metadata: { runId: context.runId, adapterId: this.adapterId, complaintId: source.complaintId },
+      metadata: {
+        runId: context.runId,
+        adapterId: this.adapterId,
+        complaintId: source.complaintId,
+        resolved: source.resolved ?? false,
+      },
     });
     return validateRegistryCandidate(candidate);
   }

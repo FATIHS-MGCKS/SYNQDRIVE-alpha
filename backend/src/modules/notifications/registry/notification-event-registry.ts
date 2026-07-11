@@ -110,6 +110,10 @@ export function buildCandidateFromRegistry(
   };
   const actionTarget = def.actionTargetBuilder(actionCtx);
 
+  const conditionCode = input.conditionCodeVariant?.trim()
+    ? `${def.conditionCode}:${input.conditionCodeVariant.trim()}`
+    : def.conditionCode;
+
   return {
     organizationId: input.organizationId,
     eventType: def.eventType,
@@ -118,7 +122,7 @@ export function buildCandidateFromRegistry(
     severity: input.severity ?? def.defaultSeverity,
     entityType,
     entityId: input.entityId,
-    conditionCode: def.conditionCode,
+    conditionCode,
     scopeVersion: def.fingerprintVersion,
     sourceType: input.sourceType ?? def.sourceType,
     sourceRef: input.sourceRef,

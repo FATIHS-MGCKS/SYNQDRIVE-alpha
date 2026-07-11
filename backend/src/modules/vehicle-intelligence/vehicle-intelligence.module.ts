@@ -81,6 +81,7 @@ import { ActivityWindowDetector } from './trips/detectors/activity-window.detect
 import { DrivingAssessmentDeviceQualityService } from './trips/driving-assessment-device-quality.service';
 import { TechnicalObservationsModule } from '../technical-observations/technical-observations.module';
 import { BusinessInsightsModule } from '../business-insights/business-insights.module';
+import { NotificationsModule } from '@modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -92,6 +93,7 @@ import { BusinessInsightsModule } from '../business-insights/business-insights.m
     forwardRef(() => RentalHealthModule),
     forwardRef(() => TechnicalObservationsModule),
     forwardRef(() => BusinessInsightsModule),
+    NotificationsModule,
     TasksModule,
     BullModule.registerQueue(
       { name: QUEUE_NAMES.TRIP_TRACKING },

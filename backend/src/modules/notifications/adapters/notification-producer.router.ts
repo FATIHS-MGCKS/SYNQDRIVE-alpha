@@ -7,6 +7,7 @@ import type {
   NotificationProducerAdapter,
 } from './notification-adapter.types';
 import { DrivingAssessmentNotificationAdapter } from './driving-assessment-notification.adapter';
+import { StationShortageNotificationAdapter } from './station-shortage-notification.adapter';
 import { TechnicalObservationNotificationAdapter } from './technical-observation-notification.adapter';
 
 /**
@@ -21,8 +22,9 @@ export class NotificationProducerRouter {
     private readonly engineConfig: NotificationEngineConfig,
     drivingAssessment: DrivingAssessmentNotificationAdapter,
     technicalObservation: TechnicalObservationNotificationAdapter,
+    stationShortage: StationShortageNotificationAdapter,
   ) {
-    this.adapters = [drivingAssessment, technicalObservation];
+    this.adapters = [drivingAssessment, technicalObservation, stationShortage];
   }
 
   get registeredAdapters(): readonly NotificationProducerAdapter[] {

@@ -94,7 +94,11 @@ export function validateRegistryCandidate(candidate: NotificationCandidate): Not
     );
   }
 
-  if (candidate.conditionCode !== def.conditionCode) {
+  const conditionMatches =
+    candidate.conditionCode === def.conditionCode
+    || (def.eventType === 'TECHNICAL_OBSERVATION_ACTIVE'
+      && candidate.conditionCode.startsWith(`${def.conditionCode}:`));
+  if (!conditionMatches) {
     throw new NotificationRegistryValidationError(
       'conditionCode',
       `conditionCode mismatch for ${def.eventType}: expected ${def.conditionCode}`,

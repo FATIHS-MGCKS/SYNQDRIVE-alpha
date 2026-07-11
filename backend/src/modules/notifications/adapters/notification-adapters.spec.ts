@@ -27,6 +27,7 @@ describe('Notification shadow adapters', () => {
       ctx,
     );
     expect(candidate?.eventType).toBe('TECHNICAL_OBSERVATION_ACTIVE');
+    expect(candidate?.conditionCode).toBe('technical_observation_active:cmp-1');
     expect(candidate?.actionTarget.module).toBe('complaints');
   });
 

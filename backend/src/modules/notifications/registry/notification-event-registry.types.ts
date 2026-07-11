@@ -84,6 +84,8 @@ export interface RegistryCandidateBuildInput {
   eventType: string;
   entityId: string;
   entityType?: NotificationEntityType;
+  /** Appended to registry conditionCode as `{base}:{variant}` for per-entity sub-states. */
+  conditionCodeVariant?: string;
   sourceRef: string;
   occurredAt: Date;
   severity?: NotificationSeverity;

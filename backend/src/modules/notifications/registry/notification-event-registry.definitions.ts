@@ -53,7 +53,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
     allowedSeverityEscalations: [NotificationSeverity.WARNING, NotificationSeverity.CRITICAL],
     titleKey: 'notification.title.stationShortage',
     bodyKey: 'notification.body.stationShortage',
-    requiredTemplateParams: ['stationName'],
+    requiredTemplateParams: ['stationName', 'available', 'totalVehicles'],
     actionType: NotificationActionType.OPEN_STATION,
     actionTargetBuilder: stationTarget,
     sourceType: NotificationSourceType.DASHBOARD_INSIGHT,
@@ -63,7 +63,7 @@ export const NOTIFICATION_EVENT_TYPE_DEFINITIONS = [
     supportedRoles: OPS_ROLES,
     groupingRule: { groupKeyParam: 'stationId' },
     requiresNavigation: true,
-    shadowModeEnabled: false,
+    shadowModeEnabled: true,
     producerModule: 'business-insights',
   },
   {
