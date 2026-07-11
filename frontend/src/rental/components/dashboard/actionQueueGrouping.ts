@@ -10,6 +10,7 @@ import type {
 import { ACTION_QUEUE_FILTER_TABS } from './dashboardTypes';
 import { HM_OEM_SERVICE_TRACKING_MISSING_ORG_KEY } from '../../lib/operational-issues';
 import { isGroupedHmOemServiceTrackingDataNote } from './hmOemServiceTrackingDataNote';
+import { dedupeActionQueueBySemanticKey } from './notificationEngineDedupe';
 
 /**
  * Count contract for Dashboard Notifications / ActionQueue:
@@ -60,23 +61,7 @@ function rebuildGroup(
  * produce multiple render paths (parent, child, and leaf).
  */
 export function dedupeActionQueueItems(items: ActionQueueItem[]): ActionQueueItem[] {
-  const byKey = new Map<string, ActionQueueItem>();
-  const order: string[] = [];
-
-  for (const item of items) {
-    const key = item.semanticKey ?? item.id;
-    const existing = byKey.get(key);
-    if (!existing) {
-      byKey.set(key, item);
-      order.push(key);
-      continue;
-    }
-    if (item.priority > existing.priority) {
-      byKey.set(key, item);
-    }
-  }
-
-  return order.map((key) => byKey.get(key)!);
+  return dedupeActionQueueBySemanticKey(items);
 }
 
 /** Item ids that are rendered only as grouped children (never standalone leaves). */

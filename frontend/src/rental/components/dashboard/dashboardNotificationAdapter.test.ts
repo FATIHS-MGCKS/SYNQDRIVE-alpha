@@ -32,6 +32,15 @@ describe('dashboardNotificationAdapter', () => {
     expect(row.title).toContain('normalisiert');
   });
 
+  it('attaches stable semanticKey and vehicleId for ActionQueue dedupe', () => {
+    const [row] = buildDashboardNotificationsFromInsights(
+      [drivingAssessmentInsight('DEGRADED')],
+      { generatedAt: NOTIFICATION_TEST_INSIGHTS_GENERATED_AT, intlLocale: 'de-DE' },
+    );
+    expect(row.semanticKey).toContain('driving_assessment_device_quality');
+    expect(row.vehicleId).toBeDefined();
+  });
+
   it('uses generatedAt for time label, not insight.createdAt', () => {
     const [row] = buildDashboardNotificationsFromInsights(
       [drivingAssessmentInsight('DEGRADED', { createdAt: '2026-01-01T00:00:00.000Z' })],

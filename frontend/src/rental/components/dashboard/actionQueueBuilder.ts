@@ -43,6 +43,17 @@ import {
   isIndividualHmOemServiceTrackingQueueItem,
   partitionHmOemServiceTrackingIssues,
 } from './hmOemServiceTrackingDataNote';
+import {
+  dedupeActionQueueBySemanticKey,
+  filterSuppressedQueueSources,
+} from './notificationEngineDedupe';
+import {
+  semanticKeyForDashboardInsight,
+  semanticKeyForDerivedInsight,
+  semanticKeyForPickupItem,
+  semanticKeyForPredictiveInsight,
+  semanticKeyForReturnItem,
+} from './notificationEngineSemanticKeys';
 
 const VEHICLE_HEALTH_INSIGHT_TYPES = new Set<InsightType>([
   'BATTERY_CRITICAL',
@@ -71,6 +82,7 @@ const NORMALIZED_INSIGHT_TYPES = new Set<string>([
   'PICKUP_OVERDUE',
   'RETURN_OVERDUE',
   'RETURN_NEEDS_INSPECTION',
+  'DRIVING_ASSESSMENT_DEVICE_QUALITY',
 ]);
 
 const NORMALIZED_PREDICTIVE_TYPES = new Set<string>([
@@ -323,12 +335,21 @@ function issueReason(issue: OperationalIssue): string {
   return sanitizeUserFacingIssueText([evidence.label, evidence.value].filter(Boolean).join(': '));
 }
 
+function issueTimeSortMs(issue: OperationalIssue): number {
+  const degradedEvidence = issue.evidence?.find((item) => item.label === 'degradedSince');
+  if (degradedEvidence?.value) {
+    const parsed = parseTimeMs(degradedEvidence.value);
+    if (parsed != null) return parsed;
+  }
+  return Date.now();
+}
+
 export function mapOperationalIssueToActionQueueItem(
   issue: OperationalIssue,
   input: Pick<BuildActionQueueInput, 'locale'>,
 ): ActionQueueItem {
   const severity = issueSeverityToActionSeverity(issue.severity);
-  const now = Date.now();
+  const timeSortMs = issueTimeSortMs(issue);
   const isOverdue =
     issue.issueType.includes('overdue') ||
     issue.severity === 'critical';
@@ -341,8 +362,8 @@ export function mapOperationalIssueToActionQueueItem(
     title: sanitizeUserFacingIssueText(issue.title),
     reason: issueReason(issue),
     entityLabel: issue.entityLabel,
-    timeSortMs: now,
-    priority: computePriority(severity, isOverdue, now) + 80,
+    timeSortMs,
+    priority: computePriority(severity, isOverdue, timeSortMs) + 80,
     tone: severityToTone(severity),
     cta: issueCta(issue),
     ctaLabel: issue.cta?.label,
@@ -427,8 +448,10 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
       insightGroupType = 'finance';
     }
 
+    const insightSemanticKey = semanticKeyForDashboardInsight(insight, vehicleId);
     items.push({
       id: `insight-${insight.id}`,
+      semanticKey: insightSemanticKey,
       source,
       severity,
       category: insightCat,
@@ -465,6 +488,7 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
     seenBooking.add(p.bookingId);
     items.push({
       id: `pickup-${p.bookingId}`,
+      semanticKey: semanticKeyForPickupItem(p),
       source: 'booking',
       severity,
       category: 'handover',
@@ -516,6 +540,7 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
     seenBooking.add(`return-${r.bookingId}`);
     items.push({
       id: `return-${r.bookingId}`,
+      semanticKey: semanticKeyForReturnItem(r),
       source: 'booking',
       severity,
       category: 'handover',
@@ -549,10 +574,14 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
   }
 
   for (const n of input.notifications) {
+    if (n.semanticKey?.includes('driving_assessment_device_quality')) continue;
     if (!n.unread && n.type !== 'alert') continue;
     const severity: ActionQueueSeverity = n.type === 'alert' ? 'warning' : 'info';
+    const vehicleId = n.vehicleId;
+    const semanticKey = n.semanticKey;
     items.push({
-      id: `notif-${n.title}-${n.time}`,
+      id: semanticKey ? `notif-${semanticKey}` : `notif-${n.title}-${n.time}`,
+      semanticKey,
       source: 'booking',
       severity,
       category: 'notification',
@@ -562,9 +591,10 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
       timeSortMs: Date.now(),
       priority: computePriority(severity, false, Date.now()) - 100,
       tone: severityToTone(severity),
-      cta: 'open-rental',
+      cta: vehicleId ? 'open-vehicle' : 'open-rental',
+      vehicleId,
       isOverdue: false,
-      groupKey: `notification-thread:${n.title}`,
+      groupKey: semanticKey ? `notification-thread:${semanticKey}` : `notification-thread:${n.title}`,
       groupType: 'notification-thread',
     });
   }
@@ -575,6 +605,7 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
     seenDerived.add(d.id);
     items.push({
       id: d.id,
+      semanticKey: semanticKeyForDerivedInsight(d),
       source: d.source,
       severity: d.severity,
       category: d.category,
@@ -610,6 +641,7 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
     const reasonParts = [p.explanation, p.recommendedAction].filter(Boolean);
     items.push({
       id: p.id,
+      semanticKey: semanticKeyForPredictiveInsight(p),
       source: 'predictive-operations',
       severity: p.severity,
       category,
@@ -631,8 +663,12 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
     });
   }
 
+  const dedupedItems = dedupeActionQueueBySemanticKey(
+    filterSuppressedQueueSources(items, { suppressSyntheticDrivingAssessment: true }),
+  );
+
   const sorted = normalizeAttentionItems(
-    items.filter((item) => !isIndividualHmOemServiceTrackingQueueItem(item)),
+    dedupedItems.filter((item) => !isIndividualHmOemServiceTrackingQueueItem(item)),
   ).sort((a, b) => {
     if (b.priority !== a.priority) return b.priority - a.priority;
     return a.timeSortMs - b.timeSortMs;

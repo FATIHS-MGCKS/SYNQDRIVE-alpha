@@ -34,14 +34,17 @@ export interface ActionQueueAnalysis {
 
 export function buildQueueWithNotifications(
   input: BuildActionQueueInput,
-  options?: { generatedAt?: string | null; intlLocale?: string },
+  options?: { generatedAt?: string | null; intlLocale?: string; includeSyntheticNotifications?: boolean },
 ): ActionQueueItem[] {
   const generatedAt = options?.generatedAt ?? NOTIFICATION_TEST_INSIGHTS_GENERATED_AT;
   const intlLocale = options?.intlLocale ?? (input.locale === 'de' ? 'de-DE' : 'en-US');
-  const synth = buildDashboardNotificationsFromInsights(input.insights, {
-    generatedAt,
-    intlLocale,
-  });
+  const includeSynthetic = options?.includeSyntheticNotifications ?? false;
+  const synth = includeSynthetic
+    ? buildDashboardNotificationsFromInsights(input.insights, {
+        generatedAt,
+        intlLocale,
+      })
+    : [];
   return buildUnifiedActionQueue({
     ...input,
     notifications: input.notifications?.length ? input.notifications : synth,
@@ -52,7 +55,7 @@ export function classifyDrivingAssessmentPath(item: ActionQueueItem): DrivingAss
   if (item.semanticKey === DRIVING_ASSESSMENT_SEMANTIC_KEY) return 'normalized-issue';
   if (item.id.startsWith('insight-') && item.title.includes('Fahrbewertung')) return 'legacy-insight';
   if (item.id.startsWith('notif-') && item.title.includes('Fahrbewertung')) return 'synthetic-notification';
-  if (item.semanticKey?.includes('review_required') && item.title.includes('technische Beobachtung')) {
+  if (item.semanticKey?.includes('technical_observation_active') && item.title.includes('technische Beobachtung')) {
     return 'health-alert-complaints';
   }
   if (item.semanticKey?.includes('damage:suspicion') && item.title.includes('technische Beobachtung')) {

@@ -22,7 +22,6 @@ import { NOTIFICATION_TEST_NOW_MS } from './notificationEngine.test-utils';
 
 /**
  * WOB L 7503 regression — Volkswagen Tiguan 2026, LTE_R1 driving-assessment device quality.
- * Documents current duplicate behavior and defines target invariants for future fixes.
  */
 describe('WOB L 7503 — notification regression', () => {
   beforeEach(() => {
@@ -34,8 +33,8 @@ describe('WOB L 7503 — notification regression', () => {
     vi.useRealTimers();
   });
 
-  describe('characterization — current duplicate landscape', () => {
-    it('state A (degraded): documents multiple driving-assessment paths; observation only via runtime', () => {
+  describe('P0 stabilized behavior', () => {
+    it('degraded: single driving-assessment row; observation from health alert', () => {
       const analysis = analyzeActionQueue(
         baseQueueInput({
           insights: [drivingAssessmentInsight('DEGRADED')],
@@ -43,14 +42,13 @@ describe('WOB L 7503 — notification regression', () => {
         }),
       );
 
-      expect(analysis.drivingAssessmentDuplicateCount).toBeGreaterThanOrEqual(2);
-      expect(analysis.drivingAssessmentPaths).toEqual(
-        expect.arrayContaining(['normalized-issue', 'legacy-insight', 'synthetic-notification']),
-      );
-      // Health-alert complaints module is health_review_required → hidden from ActionQueue
+      expect(analysis.drivingAssessmentDuplicateCount).toBe(1);
+      expect(analysis.drivingAssessmentPaths).toContain('normalized-issue');
+      expect(analysis.drivingAssessmentPaths).not.toContain('legacy-insight');
+      expect(analysis.drivingAssessmentPaths).not.toContain('synthetic-notification');
       expect(
         countItemsMatching(analysis.items, (i) => i.title.includes('technische Beobachtung')),
-      ).toBe(0);
+      ).toBe(1);
 
       const withRuntime = analyzeActionQueue(
         baseQueueInput({
@@ -66,7 +64,7 @@ describe('WOB L 7503 — notification regression', () => {
       ).toBe(1);
     });
 
-    it('state B (recovering): documents recovery duplicates; observation needs runtime path', () => {
+    it('recovering: no active driving-assessment warning in ActionQueue', () => {
       const analysis = analyzeActionQueue(
         baseQueueInput({
           insights: [drivingAssessmentInsight('RECOVERING')],
@@ -74,21 +72,20 @@ describe('WOB L 7503 — notification regression', () => {
         }),
       );
 
-      const driving = findItemsByTitleFragment(analysis.items, 'Fahrbewertung');
-      expect(driving.length).toBeGreaterThanOrEqual(2);
-      expect(findItemsByTitleFragment(analysis.items, 'technische Beobachtung')).toHaveLength(0);
-      const synth = analysis.items.find((i) => i.id.startsWith('notif-'));
-      expect(synth?.severity).toBe('warning');
+      expect(findItemsByTitleFragment(analysis.items, 'Fahrbewertung')).toHaveLength(0);
+      expect(
+        countItemsMatching(analysis.items, (i) => i.title.includes('technische Beobachtung')),
+      ).toBe(1);
     });
 
-    it('state C (technical observation): health alert alone hidden; runtime damage path visible', () => {
+    it('technical observation: health alert and runtime dedupe to one row', () => {
       const healthOnly = analyzeActionQueue(
         baseQueueInput({
           insights: [],
           vehicleHealthAlerts: [wobComplaintsHealthAlert()],
         }),
       );
-      expect(findItemsByTitleFragment(healthOnly.items, 'technische Beobachtung')).toHaveLength(0);
+      expect(findItemsByTitleFragment(healthOnly.items, 'technische Beobachtung')).toHaveLength(1);
       expect(findItemsByTitleFragment(healthOnly.items, 'Fahrbewertung')).toHaveLength(0);
 
       const runtimeOnly = analyzeActionQueue(
@@ -117,7 +114,7 @@ describe('WOB L 7503 — notification regression', () => {
       expect(findItemsByTitleFragment(analysis.items, 'Health prüfen')).toHaveLength(0);
     });
 
-    it('full WOB stack (A+B+C): documents atomic count with runtime-backed observation', () => {
+    it('full WOB stack: driving assessment once + observation once', () => {
       const analysis = analyzeActionQueue(
         baseQueueInput({
           insights: [drivingAssessmentInsight('RECOVERING')],
@@ -133,15 +130,15 @@ describe('WOB L 7503 — notification regression', () => {
         }),
       );
 
-      // Driving assessment: normalized + legacy + synthetic (3); runtime may add more
-      expect(analysis.drivingAssessmentDuplicateCount).toBeGreaterThanOrEqual(2);
-      expect(analysis.atomicCount).toBeGreaterThanOrEqual(2);
-      const uniqueTitles = new Set(analysis.items.map((i) => i.title));
-      expect(uniqueTitles.size).toBeGreaterThanOrEqual(2);
+      expect(analysis.drivingAssessmentDuplicateCount).toBe(0);
+      expect(
+        countItemsMatching(analysis.items, (i) => i.title.includes('technische Beobachtung')),
+      ).toBe(1);
+      expect(analysis.atomicCount).toBe(1);
     });
   });
 
-  describe('target invariants (fail until architecture fix)', () => {
+  describe('target invariants', () => {
     function assertSingleDrivingAssessmentPerVehicle(items: ReturnType<typeof analyzeActionQueue>['items']) {
       const driving = items.filter(
         (i) =>

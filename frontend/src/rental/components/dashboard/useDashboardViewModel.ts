@@ -811,7 +811,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         vehicleHealthAlerts,
         pickupItems,
         returnItems,
-        notifications: dashboardNotifications,
+        notifications: [],
         derivedInsights: derivedOperationalInsights,
         predictiveInsights: predictiveOperationsInsights,
         dashboardRuntime,
@@ -831,7 +831,6 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
       dashboardRuntime,
       dataFreshness,
       orgId,
-      dashboardNotifications,
     ],
   );
 

@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-engine-p0-stabilization-v49348-2026-07-11',
+    version: '4.9.348',
+    title: 'V4.9.348 — Dashboard Notification Box: P0-Deduplizierung (Übergang)',
+    summary: [
+      'Zentrale semanticKey-Generierung (`notificationEngineSemanticKeys.ts`) und Dedupe (`notificationEngineDedupe.ts`) für ActionQueue.',
+      'DRIVING_ASSESSMENT_DEVICE_QUALITY nur noch über normalizeOperationalIssues; Legacy-Insight- und Synthetic-Notification-Pfade unterdrückt.',
+      'Synthetischer Adapter-Feed (`buildDashboardNotificationsFromInsights`) nur noch BusinessInsightsBox — nicht mehr ActionQueue.',
+      'Complaints → `technical_observation_active`; RECOVERING Fahrbewertung aus ActionQueue ausgeblendet; generic health fallback unterdrückt.',
+      'WOB-L-7503-Regressionstests + aktualisierte Characterization-Tests; Doku `docs/notification-engine-source-ownership.md`.',
+    ],
+    reason: 'P0-Stabilisierung vor Einführung der persistenten Notification Engine V2: sichtbare Duplikate reduzieren ohne Backend-Neuarchitektur vorwegzunehmen.',
+    previousBehavior: 'Gleicher Fachzustand erschien als normalized issue + legacy insight + synthetic notification + optional Runtime-Reason; Complaints via health_review_required versteckt; RECOVERING als Warning.',
+    details: 'Neu: notificationEngineSemanticKeys.ts, notificationEngineDedupe.ts, docs/notification-engine-source-ownership.md, Tests. Geändert: actionQueueBuilder.ts, actionQueueGrouping.ts, normalizeOperationalIssues.ts, dashboardAttentionBuilder.ts, useDashboardViewModel.ts, dashboardNotificationAdapter.ts, notificationEngine.*.test.ts.',
+    affectsArchitecture: true,
+    module: 'Dashboard',
+    createdAt: '2026-07-11T00:40:00.000Z',
+  },
+  {
     id: 'pricing-quality-audit-v49347-2026-07-10',
     version: '4.9.347',
     title: 'V4.9.347 — Preise & Tarife: Qualitäts-/Daten-Audit (Prompt 14)',

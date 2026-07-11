@@ -5,4 +5,7 @@ export interface DashboardNotificationItem {
   desc: string;
   time: string;
   unread: boolean;
+  /** Stable dedupe key — never derived from title, locale, or render time. */
+  semanticKey?: string;
+  vehicleId?: string;
 }

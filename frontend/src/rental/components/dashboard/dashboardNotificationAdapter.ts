@@ -1,9 +1,10 @@
 import type { DashboardInsight } from '../../DashboardInsightsContext';
 import type { DashboardNotificationItem } from './dashboardNotificationTypes';
+import { semanticKeyForDrivingAssessmentNotification } from './notificationEngineSemanticKeys';
 
 /**
  * Pure adapter: maps driving-assessment device-quality insights into the
- * synthetic dashboard notification feed consumed by ActionQueue legacy path.
+ * synthetic dashboard notification feed for BusinessInsightsBox (not ActionQueue).
  * Extracted for deterministic unit tests (notification-engine characterization).
  */
 export function buildDashboardNotificationsFromInsights(
@@ -17,6 +18,7 @@ export function buildDashboardNotificationsFromInsights(
     const recovering =
       typeof insight.metrics?.vehicleStatus === 'string' &&
       insight.metrics.vehicleStatus === 'RECOVERING';
+    const vehicleId = insight.entityIds?.[0];
     const time = options.generatedAt
       ? new Date(options.generatedAt).toLocaleTimeString(options.intlLocale, {
           hour: '2-digit',
@@ -31,6 +33,8 @@ export function buildDashboardNotificationsFromInsights(
       desc: insight.message || '',
       time,
       unread: !recovering,
+      semanticKey: vehicleId ? semanticKeyForDrivingAssessmentNotification(vehicleId) : undefined,
+      vehicleId,
     };
   });
 }

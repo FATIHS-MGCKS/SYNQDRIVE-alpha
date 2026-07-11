@@ -132,6 +132,8 @@ function runtimeReasonToIssueDraft(
   if (!mapped) return null;
   const title = mapped.title ?? reason.title;
   const subtitle = reason.description;
+  const recoveringDrivingAssessment =
+    mapped.issueType === 'driving_assessment_device_quality' && mapped.severity === 'info';
   return {
     semanticKey: mapped.semanticKey,
     domain: mapped.domain,
@@ -145,6 +147,20 @@ function runtimeReasonToIssueDraft(
     evidence: evidenceFromReason(reason),
     recommendedAction: reason.actionLabel,
     cta: reason.actionTarget && reason.actionLabel ? { label: reason.actionLabel, target: reason.actionTarget } : undefined,
+    visibility: recoveringDrivingAssessment
+      ? {
+          dashboardAttention: false,
+          dashboardDrawer: true,
+          fleetCommand: true,
+          vehicleOverview: true,
+          vehicleHealth: false,
+          vehicleTrips: true,
+          vehicleDamages: false,
+          bookingDetail: false,
+          finance: false,
+          debug: false,
+        }
+      : undefined,
   };
 }
 
@@ -246,6 +262,16 @@ function mapRuntimeReason(
     };
   }
   if (reason.category === 'health') {
+    if (source.includes('DRIVING_ASSESSMENT_DEVICE_QUALITY')) {
+      const recovering = text.includes('normalis') || text.includes('recover');
+      return {
+        domain: 'vehicle_health',
+        issueType: 'driving_assessment_device_quality',
+        semanticKey: createVehicleIssueKey(vehicleId, 'vehicle_health', 'driving_assessment_device_quality'),
+        severity: recovering ? 'info' : reason.severity === 'critical' ? 'critical' : 'warning',
+        title,
+      };
+    }
     return {
       domain: 'vehicle_health',
       issueType: 'health_review_required',
@@ -285,6 +311,15 @@ function mapRuntimeReason(
     };
   }
   if (reason.category === 'damage') {
+    if (source.includes('complaints') || text.includes('technische beobachtung')) {
+      return {
+        domain: 'vehicle_health',
+        issueType: 'technical_observation_active',
+        semanticKey: createVehicleIssueKey(vehicleId, 'vehicle_health', 'technical_observation_active'),
+        severity: critical ? 'critical' : 'warning',
+        title,
+      };
+    }
     return {
       domain: 'damage',
       issueType: 'damage_suspicion',
@@ -391,6 +426,8 @@ function dashboardInsightToIssueDraft(
       const recovering =
         typeof insight.metrics?.vehicleStatus === 'string' &&
         insight.metrics.vehicleStatus === 'RECOVERING';
+      const degradedSince =
+        typeof insight.metrics?.degradedSince === 'string' ? insight.metrics.degradedSince : undefined;
       return vehicleIssueDraft({
         semanticKey: createVehicleIssueKey(
           entityId,
@@ -399,24 +436,40 @@ function dashboardInsightToIssueDraft(
         ),
         domain: 'vehicle_health',
         issueType: 'driving_assessment_device_quality',
-        severity: recovering ? 'attention' : 'warning',
+        severity: recovering ? 'info' : 'warning',
         title,
         subtitle,
         vehicleId: entityId,
         vehicle,
         source,
-        visibility: {
-          dashboardAttention: true,
-          dashboardDrawer: true,
-          fleetCommand: true,
-          vehicleOverview: true,
-          vehicleHealth: false,
-          vehicleTrips: true,
-          vehicleDamages: false,
-          bookingDetail: false,
-          finance: false,
-          debug: false,
-        },
+        evidence: degradedSince
+          ? [{ label: 'degradedSince', value: degradedSince }]
+          : undefined,
+        visibility: recovering
+          ? {
+              dashboardAttention: false,
+              dashboardDrawer: true,
+              fleetCommand: true,
+              vehicleOverview: true,
+              vehicleHealth: false,
+              vehicleTrips: true,
+              vehicleDamages: false,
+              bookingDetail: false,
+              finance: false,
+              debug: false,
+            }
+          : {
+              dashboardAttention: true,
+              dashboardDrawer: true,
+              fleetCommand: true,
+              vehicleOverview: true,
+              vehicleHealth: false,
+              vehicleTrips: true,
+              vehicleDamages: false,
+              bookingDetail: false,
+              finance: false,
+              debug: false,
+            },
       });
     }
     case 'PICKUP_OVERDUE':
@@ -584,6 +637,13 @@ function healthModuleIssue(
         keyType: 'warning_light_active',
         severity: critical ? 'critical' : 'warning',
         title: 'Warnleuchte aktiv',
+      };
+    case 'complaints':
+      return {
+        issueType: 'technical_observation_active',
+        keyType: 'technical_observation_active',
+        severity: critical ? 'critical' : 'warning',
+        title: module.reason || 'Technische Beobachtung aktiv',
       };
     default:
       return {
@@ -853,15 +913,29 @@ function suppressGenericHealthFallbacks(drafts: OperationalIssueDraft[]): Operat
       )
       .map((draft) => draft.vehicleId as string),
   );
-  return drafts.filter(
-    (draft) =>
-      !(
-        draft.vehicleId &&
-        draft.domain === 'vehicle_health' &&
-        draft.issueType === 'health_review_required' &&
-        vehiclesWithConcreteHealth.has(draft.vehicleId)
-      ),
+  const vehiclesWithDrivingAssessment = new Set(
+    drafts
+      .filter((draft) => draft.issueType === 'driving_assessment_device_quality' && draft.vehicleId)
+      .map((draft) => draft.vehicleId as string),
   );
+  return drafts.filter((draft) => {
+    if (
+      draft.vehicleId &&
+      draft.domain === 'vehicle_health' &&
+      draft.issueType === 'health_review_required' &&
+      vehiclesWithConcreteHealth.has(draft.vehicleId)
+    ) {
+      return false;
+    }
+    if (
+      draft.vehicleId &&
+      draft.issueType === 'health_review_required' &&
+      vehiclesWithDrivingAssessment.has(draft.vehicleId)
+    ) {
+      return false;
+    }
+    return true;
+  });
 }
 
 function suppressHealthWhenServiceOverdue(drafts: OperationalIssueDraft[]): OperationalIssueDraft[] {
