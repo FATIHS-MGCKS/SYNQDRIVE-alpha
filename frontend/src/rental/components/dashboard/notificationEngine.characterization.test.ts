@@ -72,19 +72,24 @@ describe('notification engine — P0 stabilization (post-fix behavior)', () => {
   });
 
   describe('recovery handling', () => {
-    it('hides recovering driving assessment from ActionQueue', () => {
+    it('shows recovering driving assessment as success resolved, not warning', () => {
       const items = buildQueueWithNotifications(
         baseQueueInput({ insights: [drivingAssessmentInsight('RECOVERING')] }),
       );
-      expect(findItemsByTitleFragment(items, 'Fahrbewertung')).toHaveLength(0);
+      const recovering = items.find((i) => i.title.includes('normalisiert'));
+      expect(recovering).toBeDefined();
+      expect(recovering?.queue?.severity).toBe('success');
+      expect(recovering?.queue?.lifecycleStatus).toBe('resolved');
+      expect(recovering?.severity).not.toBe('warning');
     });
 
-    it('adapter still exposes recovering state for BusinessInsightsBox only', () => {
+    it('adapter exposes recovering as system type for BusinessInsightsBox', () => {
       const synth = buildDashboardNotificationsFromInsights([drivingAssessmentInsight('RECOVERING')], {
         generatedAt: NOTIFICATION_TEST_INSIGHTS_GENERATED_AT,
         intlLocale: 'de-DE',
       });
       expect(synth).toHaveLength(1);
+      expect(synth[0]?.type).toBe('system');
       expect(synth[0]?.unread).toBe(false);
       expect(synth[0]?.semanticKey).toBe(DRIVING_ASSESSMENT_SEMANTIC_KEY);
     });
@@ -100,7 +105,7 @@ describe('notification engine — P0 stabilization (post-fix behavior)', () => {
       expect(normalized?.vehicleId).toBe(WOB_VEHICLE_ID);
     });
 
-    it('uses degradedSince for normalized issue timeSortMs', () => {
+    it('uses degradedSince as occurredAt and lastSeenAt for sort', () => {
       const degradedSince = '2026-07-08T08:00:00.000Z';
       const items = buildQueueWithNotifications(
         baseQueueInput({
@@ -112,6 +117,7 @@ describe('notification engine — P0 stabilization (post-fix behavior)', () => {
         }),
       );
       const normalized = items.find((i) => i.semanticKey === DRIVING_ASSESSMENT_SEMANTIC_KEY);
+      expect(normalized?.queue?.occurredAt).toBe(degradedSince);
       expect(normalized?.timeSortMs).toBe(Date.parse(degradedSince));
     });
 
@@ -129,7 +135,7 @@ describe('notification engine — P0 stabilization (post-fix behavior)', () => {
         baseQueueInput({ vehicleHealthAlerts: [wobComplaintsHealthAlert()] }),
       );
       expect(
-        countItemsMatching(analysis.items, (i) => i.title.includes('technische Beobachtung')),
+        countItemsMatching(analysis.items, (i) => i.title.includes('Technische Beobachtung')),
       ).toBe(1);
       expect(
         analysis.items.some((i) => i.semanticKey?.includes('technical_observation_active')),
@@ -146,7 +152,7 @@ describe('notification engine — P0 stabilization (post-fix behavior)', () => {
         }),
       );
       expect(
-        countItemsMatching(analysis.items, (i) => i.title.includes('technische Beobachtung')),
+        countItemsMatching(analysis.items, (i) => i.title.includes('Technische Beobachtung')),
       ).toBe(1);
     });
 
@@ -242,25 +248,29 @@ describe('notification engine — target invariants (P0)', () => {
     );
     expect(drivingAssessmentRepresentationCount(analysis.items)).toBe(1);
     expect(
-      countItemsMatching(analysis.items, (i) => i.title.includes('technische Beobachtung')),
+      countItemsMatching(analysis.items, (i) => i.title.includes('Technische Beobachtung')),
     ).toBe(1);
   });
 
-  it('case 4: recovering state must not surface as independent warning notification', () => {
+  it('case 4: recovering state must not surface as warning/critical severity', () => {
     const items = buildQueueWithNotifications(
       baseQueueInput({ insights: [drivingAssessmentInsight('RECOVERING')] }),
     );
     const warnings = items.filter(
-      (i) => i.title.includes('Fahrbewertung') && (i.severity === 'warning' || i.severity === 'critical'),
+      (i) =>
+        i.title.includes('normalisiert') &&
+        (i.queue?.severity === 'warning' || i.queue?.severity === 'critical'),
     );
     expect(warnings).toHaveLength(0);
   });
 
-  it('case 9: recovery must not appear as warning/critical in ActionQueue', () => {
+  it('case 9: recovery appears as resolved success in ActionQueue', () => {
     const items = buildQueueWithNotifications(
       baseQueueInput({ insights: [drivingAssessmentInsight('RECOVERING')] }),
     );
-    expect(findItemsByTitleFragment(items, 'Fahrbewertung')).toHaveLength(0);
+    const recovering = items.find((i) => i.queue?.lifecycleStatus === 'resolved');
+    expect(recovering).toBeDefined();
+    expect(recovering?.queue?.severity).toBe('success');
   });
 
   it('case 10: adapter synthetic notification carries vehicle CTA metadata (BusinessInsightsBox only)', () => {
@@ -269,7 +279,7 @@ describe('notification engine — target invariants (P0)', () => {
     expect(synth.semanticKey).toBe(DRIVING_ASSESSMENT_SEMANTIC_KEY);
   });
 
-  it('case 11: normalized issue timeSortMs uses degradedSince not render now', () => {
+  it('case 11: normalized issue occurredAt uses degradedSince; sort uses lastSeenAt', () => {
     const degradedSince = '2026-07-08T08:00:00.000Z';
     const items = buildQueueWithNotifications(
       baseQueueInput({
@@ -281,6 +291,7 @@ describe('notification engine — target invariants (P0)', () => {
       }),
     );
     const normalized = items.find((i) => i.semanticKey === DRIVING_ASSESSMENT_SEMANTIC_KEY);
+    expect(normalized?.queue?.occurredAt).toBe(degradedSince);
     expect(normalized?.timeSortMs).toBe(Date.parse(degradedSince));
     expect(normalized?.timeSortMs).not.toBe(NOTIFICATION_TEST_NOW_MS);
   });

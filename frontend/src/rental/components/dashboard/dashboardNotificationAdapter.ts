@@ -26,7 +26,7 @@ export function buildDashboardNotificationsFromInsights(
         })
       : '—';
     return {
-      type: 'alert' as const,
+      type: recovering ? ('system' as const) : ('alert' as const),
       title:
         insight.title ||
         (recovering ? 'Fahrbewertung normalisiert sich' : 'Fahrbewertung eingeschränkt'),

@@ -452,6 +452,7 @@ describe('prepareActionQueueRenderModel', () => {
 describe('actionQueueBuilder — OperationalIssue normalization', () => {
   it('dedupes service overdue with SERVICE_OVERDUE insight and SERVICE_WINDOW context', () => {
     const items = buildQueue({
+      locale: 'de',
       dashboardRuntime: runtimeModel([
         runtimeState({
           criticalReasons: [
@@ -528,9 +529,9 @@ describe('actionQueueBuilder — OperationalIssue normalization', () => {
       ]),
     });
 
-    expect(items.some((item) => item.title === 'Reifen beobachten')).toBe(true);
-    const tireItem = items.find((item) => item.title === 'Reifen beobachten');
-    expect(tireItem?.severity).toBe('warning');
+    expect(items.some((item) => item.semanticKey?.includes('tires_monitor'))).toBe(true);
+    const tireItem = items.find((item) => item.semanticKey?.includes('tires_monitor'));
+    expect(tireItem?.queue?.severity ?? tireItem?.severity).toBe('warning');
     expect(items.some((item) => /Health review required|Health pruefen/.test(item.title))).toBe(false);
   });
 

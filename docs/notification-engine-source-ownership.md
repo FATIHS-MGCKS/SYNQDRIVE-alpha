@@ -46,7 +46,7 @@ Implementierung: `frontend/src/rental/components/dashboard/notificationEngineSem
 | Meldungstyp | Kanonischer Owner (ActionQueue) | Unterdrückte redundante Pfade |
 |-------------|--------------------------------|------------------------------|
 | Fahrtbewertungsqualität (DEGRADED) | `normalizeOperationalIssues` → `dashboard_insight` → `mapOperationalIssueToActionQueueItem` | Legacy `insight-{uuid}`; synthetische `dashboardNotifications`; Runtime `dashboard-insight:DRIVING_ASSESSMENT_DEVICE_QUALITY` (gleicher semanticKey) |
-| Fahrtbewertung normalisiert (RECOVERING) | **keine ActionQueue-Zeile** (`dashboardAttention: false`) | Adapter-Feed nur noch `BusinessInsightsBox`; kein `notif-*` in ActionQueue |
+| Fahrtbewertung normalisiert (RECOVERING) | `normalizeOperationalIssues` → `enrichNotificationQueueItem` mit `lifecycleStatus: resolved`, `severity: success` | Kein Warning/Alert-Ton; nicht in Critical-Tab/Pinned; Adapter-Feed `type: system` nur BusinessInsightsBox |
 | Technische Beobachtung | `normalizeOperationalIssues` (`technical_observation_active`) aus Health-Alert **oder** Runtime `rental-health:complaints` | Generischer `health:review_required`; früher verstecktes `health_review_required` für Complaints-Modul |
 | Vehicle Health (Module) | `normalizeOperationalIssues` aus `vehicleHealthAlerts` / Runtime-Reasons | Legacy Insight-Pfad wenn Typ in `NORMALIZED_INSIGHT_TYPES` |
 | DTC / Fehlercodes | Normalized `error_codes_active` | Generischer Health-Fallback |
@@ -98,8 +98,35 @@ useDashboardViewModel
     ├── pickup/return tiles
     ├── derived + predictive
     ├── dedupeActionQueueBySemanticKey
+    ├── enrichNotificationQueueItems (structured queue model)
     └── ActionQueue.tsx → prepareActionQueueRenderModel
 ```
+
+---
+
+## Queue-Zwischenmodell (P0 Prompt 4)
+
+`NotificationQueueModel` (`notificationQueueModel.ts`) wird in `enrichNotificationQueueItem` befüllt:
+
+| Feld | Typ / Werte |
+|------|-------------|
+| severity | `critical` \| `warning` \| `info` \| `success` |
+| lifecycleStatus | `open` \| `acknowledged` \| `snoozed` \| `resolved` \| `archived` |
+| readStatus | `unread` \| `read` (beeinflusst **nicht** severity) |
+| domain | `operations`, `vehicle-health`, `driving-analysis`, `bookings`, `handovers`, … |
+| source | `operational-issue`, `dashboard-insight`, `adapter`, … |
+| occurredAt / firstSeenAt / lastSeenAt / resolvedAt | ISO — kein `Date.now()` als Ereigniszeit |
+| actionType / actionTarget | zentral via `notificationCtaResolver.ts` |
+| semanticKey | stabil, aus `notificationEngineSemanticKeys` |
+| sortMs | `computeNotificationSortMs`: lastSeenAt (open) → resolvedAt → occurredAt → createdAt |
+
+**Zeitlabels:** `formatNotificationTimeLabel` — z. B. „vor 22 Min.“, „behoben um 20:02“, „seit 10.07.“
+
+**Recovery:** RECOVERING → `lifecycleStatus: resolved`, `severity: success`, `resolvedAt` aus Insight-Zeitstempel.
+
+**i18n:** `notification.*` Keys in `de.ts` / `en.ts`; Panel-Titel „Meldungen“ (nicht „Notifications“).
+
+**Typografie:** `notificationCardTypography.ts` — 10/11/12px Tokens, kein 9.5/10.5px.
 
 ---
 
@@ -108,7 +135,7 @@ useDashboardViewModel
 | Zustand | Erwartung nach P0 |
 |---------|-------------------|
 | DEGRADED + Complaints Health Alert | 1× Fahrbewertung + 1× technische Beobachtung |
-| RECOVERING | 0× Fahrbewertung-Warning in ActionQueue; Beobachtung bleibt |
+| RECOVERING | 1× Erfolgszeile (`success`/`resolved`), keine Warning; Beobachtung bleibt |
 | Runtime + Insight parallel | 1× pro semanticKey |
 | Generischer „Health prüfen“ | Unterdrückt wenn konkrete Beobachtung existiert |
 
@@ -119,7 +146,7 @@ Tests: `notificationEngine.wob-l7503.test.ts`
 ## Bewusst nicht in P0
 
 - Persistente Backend-Notification-Identität / DB-Tabelle
-- Englische UI-Übersetzung der Insight-Titel (deferred V2)
+- Englische UI-Übersetzung aller Legacy-Insight-Roh-Titel (teilweise noch fallback)
 - KPI- / Runtime-Slice-Änderungen
 - UI-Redesign der Notification Box
 - Entfernen von `normalizeAttentionItems` title-domination (legacy cleanup)

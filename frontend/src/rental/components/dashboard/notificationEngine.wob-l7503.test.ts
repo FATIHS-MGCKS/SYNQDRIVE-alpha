@@ -47,7 +47,7 @@ describe('WOB L 7503 — notification regression', () => {
       expect(analysis.drivingAssessmentPaths).not.toContain('legacy-insight');
       expect(analysis.drivingAssessmentPaths).not.toContain('synthetic-notification');
       expect(
-        countItemsMatching(analysis.items, (i) => i.title.includes('technische Beobachtung')),
+        countItemsMatching(analysis.items, (i) => i.title.includes('Technische Beobachtung')),
       ).toBe(1);
 
       const withRuntime = analyzeActionQueue(
@@ -60,11 +60,11 @@ describe('WOB L 7503 — notification regression', () => {
         }),
       );
       expect(
-        countItemsMatching(withRuntime.items, (i) => i.title.includes('technische Beobachtung')),
+        countItemsMatching(withRuntime.items, (i) => i.title.includes('Technische Beobachtung')),
       ).toBe(1);
     });
 
-    it('recovering: no active driving-assessment warning in ActionQueue', () => {
+    it('recovering: success/resolved row, not active warning', () => {
       const analysis = analyzeActionQueue(
         baseQueueInput({
           insights: [drivingAssessmentInsight('RECOVERING')],
@@ -72,9 +72,12 @@ describe('WOB L 7503 — notification regression', () => {
         }),
       );
 
-      expect(findItemsByTitleFragment(analysis.items, 'Fahrbewertung')).toHaveLength(0);
+      const recovering = findItemsByTitleFragment(analysis.items, 'normalisiert');
+      expect(recovering).toHaveLength(1);
+      expect(recovering[0]?.queue?.severity).toBe('success');
+      expect(recovering[0]?.queue?.lifecycleStatus).toBe('resolved');
       expect(
-        countItemsMatching(analysis.items, (i) => i.title.includes('technische Beobachtung')),
+        countItemsMatching(analysis.items, (i) => i.title.includes('Technische Beobachtung')),
       ).toBe(1);
     });
 
@@ -85,7 +88,7 @@ describe('WOB L 7503 — notification regression', () => {
           vehicleHealthAlerts: [wobComplaintsHealthAlert()],
         }),
       );
-      expect(findItemsByTitleFragment(healthOnly.items, 'technische Beobachtung')).toHaveLength(1);
+      expect(findItemsByTitleFragment(healthOnly.items, 'Technische Beobachtung')).toHaveLength(1);
       expect(findItemsByTitleFragment(healthOnly.items, 'Fahrbewertung')).toHaveLength(0);
 
       const runtimeOnly = analyzeActionQueue(
@@ -96,7 +99,7 @@ describe('WOB L 7503 — notification regression', () => {
           ]),
         }),
       );
-      expect(findItemsByTitleFragment(runtimeOnly.items, 'technische Beobachtung')).toHaveLength(1);
+      expect(findItemsByTitleFragment(runtimeOnly.items, 'Technische Beobachtung')).toHaveLength(1);
     });
 
     it('generic health hint suppressed when concrete complaints module exists', () => {
@@ -114,7 +117,7 @@ describe('WOB L 7503 — notification regression', () => {
       expect(findItemsByTitleFragment(analysis.items, 'Health prüfen')).toHaveLength(0);
     });
 
-    it('full WOB stack: driving assessment once + observation once', () => {
+    it('full WOB stack: recovering success + observation once', () => {
       const analysis = analyzeActionQueue(
         baseQueueInput({
           insights: [drivingAssessmentInsight('RECOVERING')],
@@ -130,11 +133,17 @@ describe('WOB L 7503 — notification regression', () => {
         }),
       );
 
-      expect(analysis.drivingAssessmentDuplicateCount).toBe(0);
+      expect(analysis.drivingAssessmentDuplicateCount).toBe(1);
       expect(
-        countItemsMatching(analysis.items, (i) => i.title.includes('technische Beobachtung')),
+        countItemsMatching(analysis.items, (i) => i.title.includes('Technische Beobachtung')),
       ).toBe(1);
-      expect(analysis.atomicCount).toBe(1);
+      expect(
+        countItemsMatching(
+          analysis.items,
+          (i) => i.queue?.lifecycleStatus === 'resolved' && i.title.includes('normalisiert'),
+        ),
+      ).toBe(1);
+      expect(analysis.atomicCount).toBe(2);
     });
   });
 
@@ -143,7 +152,9 @@ describe('WOB L 7503 — notification regression', () => {
       const driving = items.filter(
         (i) =>
           i.vehicleId === WOB_VEHICLE_ID &&
-          (i.semanticKey === DRIVING_ASSESSMENT_SEMANTIC_KEY || i.title.includes('Fahrbewertung')),
+          (i.semanticKey === DRIVING_ASSESSMENT_SEMANTIC_KEY ||
+            i.title.includes('Fahrbewertung') ||
+            i.title.includes('normalisiert')),
       );
       expect(driving).toHaveLength(1);
     }
@@ -167,10 +178,11 @@ describe('WOB L 7503 — notification regression', () => {
       );
       const activeWarnings = items.filter(
         (i) =>
-          i.title.includes('Fahrbewertung') &&
-          (i.severity === 'warning' || i.severity === 'critical'),
+          (i.title.includes('normalisiert') || i.title.includes('Fahrbewertung')) &&
+          (i.queue?.severity === 'warning' || i.queue?.severity === 'critical'),
       );
       expect(activeWarnings).toHaveLength(0);
+      expect(items.some((i) => i.queue?.lifecycleStatus === 'resolved')).toBe(true);
     });
 
     it('distinct concerns: observation and driving assessment are different — max 2 atomic items', () => {

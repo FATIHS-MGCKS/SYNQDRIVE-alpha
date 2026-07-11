@@ -17,12 +17,13 @@ import {
 import { AttentionItemRow, AttentionRowAction } from './AttentionItemRow';
 import { DataTrustHint } from './DataTrustHint';
 import { useRentalOrg } from '../../RentalContext';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useFleetObdPlugIndex } from '../../hooks/useFleetObdPlugIndex';
 import { sectionTrustHint } from './dataTrustBuilder';
 import {
-  ACTION_QUEUE_LIST_CAP,
-  panelShellClass,
-} from './dashboardShell';
+  notificationCtaLabelKey,
+  notificationDomainLabel,
+} from './notificationQueueEnricher';
 import {
   ACTION_QUEUE_FILTER_TABS,
   type ActionQueueChildAction,
@@ -33,6 +34,11 @@ import {
   type ActionQueueItem,
   type DashboardViewModel,
 } from './dashboardTypes';
+import type { NotificationSeverity } from './notificationQueueModel';
+import {
+  ACTION_QUEUE_LIST_CAP,
+  panelShellClass,
+} from './dashboardShell';
 
 interface ActionQueueHandlers {
   onOpenVehicleById?: (vehicleId: string) => void;
@@ -52,8 +58,7 @@ const COLLAPSED_PREVIEW_COUNT = 3;
 const ENTRY_LIST_CLASS = 'flex flex-col gap-1 px-1 pb-1.5 sm:px-2';
 const ENTRY_LIST_ITEM_CLASS = 'list-none';
 
-function ctaLabel(cta: ActionQueueCta, de: boolean, override?: string): string {
-  if (override) return override;
+function ctaLabelLegacy(cta: ActionQueueCta, de: boolean): string {
   if (cta === 'open-vehicle') return de ? 'Fahrzeug öffnen' : 'Open vehicle';
   if (cta === 'open-booking') return de ? 'Buchung öffnen' : 'Open booking';
   if (cta === 'start-handover-pickup') return de ? 'Übergabe starten' : 'Start handover';
@@ -62,15 +67,32 @@ function ctaLabel(cta: ActionQueueCta, de: boolean, override?: string): string {
   return de ? 'Vermietung öffnen' : 'Open rental';
 }
 
-function tabLabel(tab: ActionQueueFilterTab, de: boolean): string {
-  const labels: Record<ActionQueueFilterTab, [string, string]> = {
-    all: ['All', 'Alle'],
-    critical: ['Critical', 'Kritisch'],
-    operations: ['Operations', 'Betrieb'],
-    vehicle: ['Vehicle', 'Fahrzeug'],
-    notifications: ['Notifications', 'Hinweise'],
-  };
-  return de ? labels[tab][1] : labels[tab][0];
+function displaySeverity(item: ActionQueueItem): NotificationSeverity | ReturnType<typeof toChildSeverity> {
+  return item.queue?.severity ?? toChildSeverity(item);
+}
+
+function resolveCtaLabel(
+  item: ActionQueueItem,
+  t: ReturnType<typeof useLanguage>['t'],
+  de: boolean,
+  override?: string,
+): string {
+  if (override) return override;
+  if (item.queue?.actionType) {
+    return t(notificationCtaLabelKey(item.queue.actionType));
+  }
+  return ctaLabelLegacy(item.cta, de);
+}
+
+function tabLabelI18n(tab: ActionQueueFilterTab, t: ReturnType<typeof useLanguage>['t']): string {
+  const keys = {
+    all: 'notification.tab.all',
+    critical: 'notification.tab.critical',
+    operations: 'notification.tab.operations',
+    vehicle: 'notification.tab.vehicle',
+    notifications: 'notification.tab.hints',
+  } as const;
+  return t(keys[tab]);
 }
 
 function runCta(
@@ -135,6 +157,7 @@ const ActionQueueLeafRow = memo(function ActionQueueLeafRow({
   handlers,
   pinned,
   obdPlugByVehicleId,
+  t,
 }: {
   item: ActionQueueItem;
   de: boolean;
@@ -143,6 +166,7 @@ const ActionQueueLeafRow = memo(function ActionQueueLeafRow({
   pinned?: boolean;
   focusMode?: boolean;
   obdPlugByVehicleId: Map<string, boolean | null>;
+  t: ReturnType<typeof useLanguage>['t'];
 }) {
   const copy = enrichAttentionCopyWithObdUnplugged(
     composeAttentionItemCopy(item),
@@ -152,13 +176,14 @@ const ActionQueueLeafRow = memo(function ActionQueueLeafRow({
   return (
     <li className={ENTRY_LIST_ITEM_CLASS}>
       <AttentionItemRow
-        severity={toChildSeverity(item)}
+        severity={displaySeverity(item)}
         category={item.category}
         module={item.module}
         groupType={item.groupType}
+        domainEyebrow={item.queue ? notificationDomainLabel(item.queue.domain, t) : undefined}
         copy={copy}
         timeLabel={item.timeLabel}
-        ctaLabel={ctaLabel(item.cta, de, item.ctaLabel)}
+        ctaLabel={resolveCtaLabel(item, t, de, item.ctaLabel)}
         de={de}
         pinned={pinned}
         onRowClick={() => vm.openDrilldown({ type: 'action-item', itemId: item.id })}
@@ -174,12 +199,14 @@ function ActionQueueChildRow({
   vm,
   handlers,
   obdPlugByVehicleId,
+  t,
 }: {
   child: ActionQueueChildAction;
   de: boolean;
   vm: DashboardViewModel;
   handlers: ActionQueueHandlers;
   obdPlugByVehicleId: Map<string, boolean | null>;
+  t: ReturnType<typeof useLanguage>['t'];
 }) {
   const copy = enrichAttentionCopyWithObdUnplugged(
     composeAttentionChildCopy(child),
@@ -198,7 +225,7 @@ function ActionQueueChildRow({
         module={child.module}
         copy={copy}
         timeLabel={child.timeLabel}
-        ctaLabel={ctaLabel(child.cta, de, child.ctaLabel)}
+        ctaLabel={child.ctaLabel ?? ctaLabelLegacy(child.cta, de)}
         de={de}
         nested
         onRowClick={() => vm.openDrilldown({ type: 'action-item', itemId: child.itemId })}
@@ -214,12 +241,14 @@ function ActionQueueGroupRow({
   vm,
   handlers,
   obdPlugByVehicleId,
+  t,
 }: {
   group: ActionQueueGroupItem;
   de: boolean;
   vm: DashboardViewModel;
   handlers: ActionQueueHandlers;
   obdPlugByVehicleId: Map<string, boolean | null>;
+  t: ReturnType<typeof useLanguage>['t'];
 }) {
   const criticalLike = group.severity === 'critical' || group.severity === 'overdue';
   const [expanded, setExpanded] = useState(false);
@@ -269,6 +298,7 @@ function ActionQueueGroupRow({
                 vm={vm}
                 handlers={handlers}
                 obdPlugByVehicleId={obdPlugByVehicleId}
+                t={t}
               />
             ))}
           </ul>
@@ -288,6 +318,7 @@ function ActionQueueCollapsedPreview({
   vm,
   handlers,
   obdPlugByVehicleId,
+  t,
 }: {
   pinnedItems: ActionQueueItem[];
   entries: ActionQueueEntry[];
@@ -298,6 +329,7 @@ function ActionQueueCollapsedPreview({
   vm: DashboardViewModel;
   handlers: ActionQueueHandlers;
   obdPlugByVehicleId: Map<string, boolean | null>;
+  t: ReturnType<typeof useLanguage>['t'];
 }) {
   if (loading) {
     return (
@@ -310,7 +342,7 @@ function ActionQueueCollapsedPreview({
   if (pinnedItems.length === 0 && entries.length === 0) {
     return (
       <div className="px-3.5 py-3 text-[12px] text-muted-foreground">
-        {de ? 'Keine offenen Meldungen.' : 'No open alerts.'}
+        {t('notification.empty.open')}
       </div>
     );
   }
@@ -330,6 +362,7 @@ function ActionQueueCollapsedPreview({
               handlers={handlers}
               pinned
               obdPlugByVehicleId={obdPlugByVehicleId}
+              t={t}
             />
           ))}
         </ul>
@@ -344,6 +377,7 @@ function ActionQueueCollapsedPreview({
               vm={vm}
               handlers={handlers}
               obdPlugByVehicleId={obdPlugByVehicleId}
+              t={t}
             />
           ) : (
             <ActionQueueLeafRow
@@ -354,15 +388,14 @@ function ActionQueueCollapsedPreview({
               handlers={handlers}
               pinned={entry.pinned}
               obdPlugByVehicleId={obdPlugByVehicleId}
+              t={t}
             />
           ),
         )}
       </ul>
       {hiddenAtomicCount > 0 ? (
         <p className="px-1 text-center text-[11px] text-muted-foreground">
-          {de
-            ? `+ ${hiddenAtomicCount} weitere Meldungen`
-            : `+ ${hiddenAtomicCount} more alerts`}
+          {t('notification.more.collapsed', { count: hiddenAtomicCount })}
         </p>
       ) : null}
     </div>
@@ -423,19 +456,19 @@ function tabBadgeTone(
 function ActionQueueFilterTabBar({
   effectiveTab,
   tabCounts,
-  de,
+  t,
   onSelectTab,
 }: {
   effectiveTab: ActionQueueFilterTab;
   tabCounts: Record<ActionQueueFilterTab, number>;
-  de: boolean;
+  t: ReturnType<typeof useLanguage>['t'];
   onSelectTab: (tab: ActionQueueFilterTab) => void;
 }) {
   return (
     <div
       className="sq-tab-bar flex w-full items-center p-1"
       role="tablist"
-      aria-label={de ? 'Filter' : 'Filter'}
+      aria-label={t('notification.tab.all')}
     >
       <div className="flex min-w-0 flex-1 flex-nowrap gap-0.5 overflow-x-auto scrollbar-thin [scrollbar-width:thin]">
         {ACTION_QUEUE_FILTER_TABS.map((tab) => {
@@ -455,7 +488,7 @@ function ActionQueueFilterTabBar({
                   : 'text-muted-foreground hover:bg-background/60 hover:text-foreground',
               )}
             >
-              <span className="truncate">{tabLabel(tab, de)}</span>
+              <span className="truncate">{tabLabelI18n(tab, t)}</span>
               <span
                 className={cn(
                   'inline-flex min-w-[1.125rem] shrink-0 items-center justify-center rounded-full px-1 py-px text-[9.5px] font-semibold tabular-nums leading-none',
@@ -481,6 +514,7 @@ function ActionQueueHeader({
   isExpanded,
   onToggle,
   controlsId,
+  t,
 }: {
   vm: DashboardViewModel;
   hasItems: boolean;
@@ -489,12 +523,13 @@ function ActionQueueHeader({
   isExpanded: boolean;
   onToggle: () => void;
   controlsId: string;
+  t: ReturnType<typeof useLanguage>['t'];
 }) {
   const { locale, operatorFocusMode } = vm;
   const de = locale === 'de';
   const title = operatorFocusMode
     ? de ? 'Kritische Aktionen' : 'Critical actions'
-    : 'Notifications';
+    : t('notification.panelTitle');
 
   return (
     <div className="flex items-center justify-between gap-2 border-b border-border/35 px-3.5 py-2.5">
@@ -548,6 +583,7 @@ export function ActionQueue({
     locale,
   } = vm;
   const { orgId } = useRentalOrg();
+  const { t } = useLanguage();
   const obdPlugByVehicleId = useFleetObdPlugIndex(orgId);
   const de = locale === 'de';
   const [filterTab, setFilterTab] = useState<ActionQueueFilterTab>('all');
@@ -609,7 +645,7 @@ export function ActionQueue({
         ),
         'w-full min-w-0',
       )}
-      aria-label="Notifications"
+      aria-label={t('notification.panelTitle')}
     >
       <ActionQueueHeader
         vm={vm}
@@ -619,6 +655,7 @@ export function ActionQueue({
         isExpanded={isExpanded}
         onToggle={() => setIsExpanded((current) => !current)}
         controlsId={contentId}
+        t={t}
       />
       {!isExpanded && (
         <ActionQueueCollapsedPreview
@@ -631,6 +668,7 @@ export function ActionQueue({
           vm={vm}
           handlers={handlers}
           obdPlugByVehicleId={obdPlugByVehicleId}
+          t={t}
         />
       )}
       <div id={contentId} hidden={!isExpanded} className={isExpanded ? 'animate-fade-up' : undefined}>
@@ -647,7 +685,7 @@ export function ActionQueue({
               <ActionQueueFilterTabBar
                 effectiveTab={effectiveTab}
                 tabCounts={tabCounts}
-                de={de}
+                t={t}
                 onSelectTab={setFilterTab}
               />
             </div>
@@ -656,7 +694,7 @@ export function ActionQueue({
           {pinnedItems.length > 0 && (
             <div className="border-b border-border/35 px-1 pb-1.5 pt-1.5 sm:px-2">
               <p className="px-1.5 pb-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                {de ? 'Sofort handeln' : 'Act now'}
+                {t('notification.actNow')}
               </p>
               <ul className={ENTRY_LIST_CLASS}>
                 {pinnedItems.map((item) => (
@@ -668,6 +706,7 @@ export function ActionQueue({
                     handlers={handlers}
                     pinned
                     obdPlugByVehicleId={obdPlugByVehicleId}
+                    t={t}
                   />
                 ))}
               </ul>
@@ -690,6 +729,7 @@ export function ActionQueue({
                       vm={vm}
                       handlers={handlers}
                       obdPlugByVehicleId={obdPlugByVehicleId}
+                      t={t}
                     />
                   ) : (
                     <ActionQueueLeafRow
@@ -699,15 +739,14 @@ export function ActionQueue({
                       vm={vm}
                       handlers={handlers}
                       obdPlugByVehicleId={obdPlugByVehicleId}
+                      t={t}
                     />
                   ),
                 )}
               </ul>
               {hiddenAtomicCount > 0 && (
                 <p className="border-t border-border/35 px-4 py-2.5 text-center text-[11px] text-muted-foreground">
-                  {de
-                    ? `${hiddenAtomicCount} weitere Meldungen — Filter eingrenzen oder „Alle anzeigen“ nutzen`
-                    : `${hiddenAtomicCount} more alerts — narrow filters or show all`}
+                  {t('notification.more.expanded', { count: hiddenAtomicCount })}
                 </p>
               )}
             </>
@@ -715,7 +754,7 @@ export function ActionQueue({
             <ActionQueueEmpty vm={vm} />
           ) : (
             <p className="px-4 py-3 text-center text-[12px] text-muted-foreground">
-              {de ? 'Keine weiteren Meldungen in diesem Filter.' : 'No more alerts in this filter.'}
+              {t('notification.empty.filter')}
             </p>
           )}
       </div>

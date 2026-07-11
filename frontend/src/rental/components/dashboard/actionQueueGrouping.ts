@@ -116,7 +116,7 @@ export function prepareActionQueueRenderModel(input: {
   const dedupedItems = dedupeActionQueueItems(input.items);
 
   const pinnedItems = dedupedItems
-    .filter((item) => item.pinned && item.groupType !== 'vehicle-health')
+    .filter((item) => item.pinned && item.groupType !== 'vehicle-health' && !isResolvedQueueItem(item))
     .slice(0, PINNED_CAP);
   const pinnedIds = new Set(pinnedItems.map((item) => item.id));
 
@@ -347,8 +347,14 @@ export function groupActionQueueEntries(
 
 // ─── Filtering ────────────────────────────────────────────────────────────
 
+function isResolvedQueueItem(item: ActionQueueItem): boolean {
+  const lifecycle = item.queue?.lifecycleStatus;
+  return lifecycle === 'resolved' || lifecycle === 'archived';
+}
+
 function leafIsCritical(leaf: ActionQueueLeafItem): boolean {
-  return leaf.severity === 'critical' || leaf.isOverdue;
+  if (isResolvedQueueItem(leaf)) return false;
+  return leaf.severity === 'critical' || leaf.isOverdue || leaf.queue?.severity === 'critical';
 }
 
 function leafMatchesTab(leaf: ActionQueueLeafItem, tab: ActionQueueFilterTab): boolean {
@@ -416,7 +422,7 @@ export function computeActionQueueTabCounts(
   const de = locale === 'de';
   const dedupedItems = dedupeActionQueueItems(items);
   const pinnedItems = dedupedItems
-    .filter((item) => item.pinned && item.groupType !== 'vehicle-health')
+    .filter((item) => item.pinned && item.groupType !== 'vehicle-health' && !isResolvedQueueItem(item))
     .slice(0, PINNED_CAP);
   const pinnedIds = new Set(pinnedItems.map((item) => item.id));
   const groupableItems = dedupedItems.filter((item) => !pinnedIds.has(item.id));

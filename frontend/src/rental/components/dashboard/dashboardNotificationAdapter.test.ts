@@ -22,12 +22,12 @@ describe('dashboardNotificationAdapter', () => {
     expect(row.title).toContain('eingeschränkt');
   });
 
-  it('maps RECOVERING insight to alert with unread false', () => {
+  it('maps RECOVERING insight to system type with unread false', () => {
     const [row] = buildDashboardNotificationsFromInsights(
       [drivingAssessmentInsight('RECOVERING')],
       { generatedAt: NOTIFICATION_TEST_INSIGHTS_GENERATED_AT, intlLocale: 'de-DE' },
     );
-    expect(row.type).toBe('alert');
+    expect(row.type).toBe('system');
     expect(row.unread).toBe(false);
     expect(row.title).toContain('normalisiert');
   });

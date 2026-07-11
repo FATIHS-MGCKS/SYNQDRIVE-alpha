@@ -149,7 +149,7 @@ function runtimeReasonToIssueDraft(
     cta: reason.actionTarget && reason.actionLabel ? { label: reason.actionLabel, target: reason.actionTarget } : undefined,
     visibility: recoveringDrivingAssessment
       ? {
-          dashboardAttention: false,
+          dashboardAttention: true,
           dashboardDrawer: true,
           fleetCommand: true,
           vehicleOverview: true,
@@ -447,7 +447,7 @@ function dashboardInsightToIssueDraft(
           : undefined,
         visibility: recovering
           ? {
-              dashboardAttention: false,
+              dashboardAttention: true,
               dashboardDrawer: true,
               fleetCommand: true,
               vehicleOverview: true,

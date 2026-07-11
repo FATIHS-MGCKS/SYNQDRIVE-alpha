@@ -48,6 +48,7 @@ export function buildQueueWithNotifications(
   return buildUnifiedActionQueue({
     ...input,
     notifications: input.notifications?.length ? input.notifications : synth,
+    referenceNowMs: input.referenceNowMs ?? NOTIFICATION_TEST_NOW_MS,
   });
 }
 
@@ -55,10 +56,10 @@ export function classifyDrivingAssessmentPath(item: ActionQueueItem): DrivingAss
   if (item.semanticKey === DRIVING_ASSESSMENT_SEMANTIC_KEY) return 'normalized-issue';
   if (item.id.startsWith('insight-') && item.title.includes('Fahrbewertung')) return 'legacy-insight';
   if (item.id.startsWith('notif-') && item.title.includes('Fahrbewertung')) return 'synthetic-notification';
-  if (item.semanticKey?.includes('technical_observation_active') && item.title.includes('technische Beobachtung')) {
+  if (item.semanticKey?.includes('technical_observation_active') && /technische Beobachtung/i.test(item.title)) {
     return 'health-alert-complaints';
   }
-  if (item.semanticKey?.includes('damage:suspicion') && item.title.includes('technische Beobachtung')) {
+  if (item.semanticKey?.includes('damage:suspicion') && /technische Beobachtung/i.test(item.title)) {
     return 'runtime-complaints';
   }
   if (item.title.includes('Fahrbewertung') && item.source === 'dashboard-insights') return 'legacy-insight';

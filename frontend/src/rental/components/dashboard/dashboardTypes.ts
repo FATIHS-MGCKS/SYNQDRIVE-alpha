@@ -8,6 +8,7 @@ import type { DashboardInsight } from '../../DashboardInsightsContext';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
 import type { PredictiveOperationsInsight } from './derivePredictiveOperationsInsights';
 import type { DashboardNotificationItem } from './dashboardNotificationTypes';
+import type { NotificationQueueModel } from './notificationQueueModel';
 import type { FleetStatusTabKey } from '../../lib/vehicle-status';
 import type { StatusTone } from '../../../components/patterns';
 import type { DashboardDrilldownTarget } from './dashboardDrilldownTypes';
@@ -251,6 +252,10 @@ export interface ActionQueueItem {
   id: string;
   /** Canonical OperationalIssue key when the item was normalized. */
   semanticKey?: string;
+  /** Structured issue type from operational normalization (when available). */
+  issueType?: string;
+  /** Structured notification queue envelope (P0 intermediate model). */
+  queue?: NotificationQueueModel;
   source: InsightDataSource;
   severity: ActionQueueSeverity;
   category: ActionQueueCategory;

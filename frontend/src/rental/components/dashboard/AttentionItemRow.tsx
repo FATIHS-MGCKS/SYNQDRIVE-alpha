@@ -7,19 +7,26 @@ import type {
   ActionQueueItem,
   ActionQueueSeverity,
 } from './dashboardTypes';
+import type { NotificationDomain, NotificationSeverity } from './notificationQueueModel';
+import { NOTIFICATION_CARD_TYPO } from './notificationCardTypography';
 import { attentionCategoryEyebrow, type AttentionRowCopy } from './attentionItemDisplay';
 
-export type AttentionSeverity = ActionQueueSeverity | ActionQueueChildSeverity;
+export type AttentionSeverity =
+  | ActionQueueSeverity
+  | ActionQueueChildSeverity
+  | NotificationSeverity;
 
 function severityLabel(severity: AttentionSeverity, de: boolean): string {
+  if (severity === 'success') return de ? 'Behoben' : 'Resolved';
   if (severity === 'critical') return de ? 'Kritisch' : 'Critical';
   if (severity === 'overdue') return de ? 'Überfällig' : 'Overdue';
   if (severity === 'warning') return de ? 'Warnung' : 'Warning';
   if (severity === 'attention') return de ? 'Hinweis' : 'Notice';
-  return 'Info';
+  return de ? 'Hinweis' : 'Info';
 }
 
 function severityTone(severity: AttentionSeverity) {
+  if (severity === 'success') return 'success' as const;
   if (severity === 'critical') return 'critical' as const;
   if (severity === 'overdue' || severity === 'warning') return 'watch' as const;
   if (severity === 'attention') return 'info' as const;
@@ -38,9 +45,13 @@ function categoryIcon(category: ActionQueueItem['category']) {
 
 function rowTint(severity: AttentionSeverity, pinned: boolean, nested: boolean): string {
   if (nested) return '';
-  const criticalLike = severity === 'critical' || severity === 'overdue' || pinned;
+  const criticalLike =
+    severity === 'critical' || severity === 'overdue' || (pinned && severity !== 'success');
   if (criticalLike) {
     return 'bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-critical)_7%,transparent),color-mix(in_srgb,var(--status-critical)_2%,transparent))]';
+  }
+  if (severity === 'success') {
+    return 'bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-success)_7%,transparent),color-mix(in_srgb,var(--status-success)_2%,transparent))]';
   }
   if (severity === 'warning') {
     return 'bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-watch)_7%,transparent),color-mix(in_srgb,var(--status-watch)_2%,transparent))]';
@@ -55,8 +66,10 @@ function rowTint(severity: AttentionSeverity, pinned: boolean, nested: boolean):
 }
 
 function rowIconTone(severity: AttentionSeverity, pinned: boolean): string {
-  const criticalLike = severity === 'critical' || severity === 'overdue' || pinned;
+  const criticalLike =
+    severity === 'critical' || severity === 'overdue' || (pinned && severity !== 'success');
   if (criticalLike) return 'sq-tone-critical';
+  if (severity === 'success') return 'sq-tone-success';
   if (severity === 'warning') return 'sq-tone-watch';
   if (severity === 'attention') return 'sq-tone-info';
   return 'bg-muted/45 text-muted-foreground';
@@ -86,7 +99,7 @@ export function AttentionRowAction({
       onClick={onClick}
       aria-expanded={ariaExpanded}
       aria-controls={ariaControls}
-      className="sq-press inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md px-2 text-[10.5px] font-medium text-muted-foreground opacity-90 transition-colors hover:bg-muted/40 hover:text-foreground group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
+      className="sq-press inline-flex min-h-8 shrink-0 items-center gap-1 rounded-md px-2 text-[11px] font-medium text-muted-foreground opacity-90 transition-colors hover:bg-muted/40 hover:text-foreground group-hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
     >
       {label}
       <Icon
@@ -106,6 +119,8 @@ export interface AttentionItemRowProps {
   category: ActionQueueItem['category'];
   module?: ActionQueueItem['module'];
   groupType?: ActionQueueItem['groupType'];
+  queueDomain?: NotificationDomain;
+  domainEyebrow?: string;
   copy: AttentionRowCopy;
   timeLabel?: string;
   ctaLabel?: string;
@@ -122,6 +137,8 @@ export const AttentionItemRow = memo(function AttentionItemRow({
   category,
   module,
   groupType,
+  queueDomain,
+  domainEyebrow,
   copy,
   timeLabel,
   ctaLabel,
@@ -132,7 +149,7 @@ export const AttentionItemRow = memo(function AttentionItemRow({
   onRowClick,
   onCtaClick,
 }: AttentionItemRowProps) {
-  const eyebrow = attentionCategoryEyebrow({ category, module, groupType }, de);
+  const eyebrow = domainEyebrow ?? attentionCategoryEyebrow({ category, module, groupType }, de);
   const interactive = Boolean(onRowClick);
   const tint = rowTint(severity, pinned, nested);
 
@@ -164,48 +181,26 @@ export const AttentionItemRow = memo(function AttentionItemRow({
     >
       <div className="flex items-start gap-2">
         <span
-          className={cn(
-            'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md',
-            rowIconTone(severity, pinned),
-          )}
+          className={cn(NOTIFICATION_CARD_TYPO.iconWrap, rowIconTone(severity, pinned))}
           aria-hidden
         >
-          <Icon name={categoryIcon(category)} className="h-3 w-3" />
+          <Icon name={categoryIcon(category)} className={NOTIFICATION_CARD_TYPO.icon} />
         </span>
 
         <div className="min-w-0 flex-1 space-y-0.5">
           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5">
-            <StatusChip
-              tone={severityTone(severity)}
-              className="px-1.5 py-0.5 text-[9.5px] font-semibold"
-            >
+            <StatusChip tone={severityTone(severity)} className={NOTIFICATION_CARD_TYPO.severityChip}>
               {severityLabel(severity, de)}
             </StatusChip>
-            <span className="text-[9.5px] font-semibold text-muted-foreground">
-              {eyebrow}
-            </span>
-            {timeLabel ? (
-              <span className="text-[10.5px] leading-snug tabular-nums text-muted-foreground">
-                {timeLabel}
-              </span>
-            ) : null}
+            <span className={NOTIFICATION_CARD_TYPO.eyebrow}>{eyebrow}</span>
+            {timeLabel ? <span className={NOTIFICATION_CARD_TYPO.time}>{timeLabel}</span> : null}
           </div>
 
-          <p className="text-[12px] font-bold leading-snug tracking-[-0.01em] text-foreground text-pretty">
-            {copy.title}
-          </p>
+          <p className={NOTIFICATION_CARD_TYPO.title}>{copy.title}</p>
 
-          {copy.contextLine ? (
-            <p className="truncate text-[10.5px] leading-snug text-muted-foreground">
-              {copy.contextLine}
-            </p>
-          ) : null}
+          {copy.contextLine ? <p className={NOTIFICATION_CARD_TYPO.context}>{copy.contextLine}</p> : null}
 
-          {copy.hintLine ? (
-            <p className="line-clamp-2 text-[10.5px] leading-snug text-muted-foreground text-pretty">
-              {copy.hintLine}
-            </p>
-          ) : null}
+          {copy.hintLine ? <p className={NOTIFICATION_CARD_TYPO.hint}>{copy.hintLine}</p> : null}
         </div>
 
         <div className="flex shrink-0 flex-col items-end self-start pt-0.5">

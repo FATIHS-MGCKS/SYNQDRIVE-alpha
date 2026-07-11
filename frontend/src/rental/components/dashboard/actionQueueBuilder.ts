@@ -54,6 +54,10 @@ import {
   semanticKeyForPredictiveInsight,
   semanticKeyForReturnItem,
 } from './notificationEngineSemanticKeys';
+import {
+  createNotificationTranslator,
+  enrichNotificationQueueItems,
+} from './notificationQueueEnricher';
 
 const VEHICLE_HEALTH_INSIGHT_TYPES = new Set<InsightType>([
   'BATTERY_CRITICAL',
@@ -181,9 +185,8 @@ function computePriority(
 ): number {
   let score = severityRank(severity) * 1000;
   if (isOverdue) score += 500;
-  const now = Date.now();
-  const proximity = timeSortMs > 0 ? Math.max(0, 400 - Math.floor(Math.abs(timeSortMs - now) / 60_000)) : 0;
-  return score + proximity;
+  const tieBreaker = timeSortMs > 0 ? Math.min(399, Math.floor(timeSortMs / 1000) % 400) : 0;
+  return score + tieBreaker;
 }
 
 function matchesStation(
@@ -232,6 +235,8 @@ export interface BuildActionQueueInput {
   dashboardRuntime?: DashboardRuntimeModel;
   readyToRentCount: number;
   syncStatusLabel: string;
+  /** Deterministic clock for tests; defaults to runtime now only at composition boundary. */
+  referenceNowMs?: number;
 }
 
 function issueSeverityToActionSeverity(severity: OperationalIssueSeverity): ActionQueueSeverity {
@@ -356,6 +361,7 @@ export function mapOperationalIssueToActionQueueItem(
   return {
     id: `issue-${issue.semanticKey}`,
     semanticKey: issue.semanticKey,
+    issueType: issue.issueType,
     source: issueSource(issue.primarySource.sourceType),
     severity,
     category: issueCategory(issue.domain, issue.issueType),
@@ -667,11 +673,19 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
     filterSuppressedQueueSources(items, { suppressSyntheticDrivingAssessment: true }),
   );
 
-  const sorted = normalizeAttentionItems(
+  const referenceNowMs = input.referenceNowMs ?? Date.now();
+  const t = createNotificationTranslator(input.locale);
+  const enrichedItems = enrichNotificationQueueItems(
     dedupedItems.filter((item) => !isIndividualHmOemServiceTrackingQueueItem(item)),
-  ).sort((a, b) => {
+    { locale: input.locale, referenceNowMs, t },
+  );
+
+  const sorted = normalizeAttentionItems(enrichedItems).sort((a, b) => {
+    const aSort = a.queue?.sortMs ?? a.timeSortMs;
+    const bSort = b.queue?.sortMs ?? b.timeSortMs;
+    if (bSort !== aSort) return bSort - aSort;
     if (b.priority !== a.priority) return b.priority - a.priority;
-    return a.timeSortMs - b.timeSortMs;
+    return 0;
   });
 
   const groupedHmOemNote = buildHmOemServiceTrackingGroupedDataNote(
@@ -682,7 +696,15 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
   const withDataNotes = groupedHmOemNote ? [...sorted, groupedHmOemNote] : sorted;
 
   const criticalIds = new Set(
-    withDataNotes.filter((i) => i.severity === 'critical' || i.isOverdue).slice(0, 5).map((i) => i.id),
+    withDataNotes
+      .filter(
+        (i) =>
+          i.queue?.lifecycleStatus !== 'resolved'
+          && i.queue?.lifecycleStatus !== 'archived'
+          && (i.queue?.severity === 'critical' || i.severity === 'critical' || i.isOverdue),
+      )
+      .slice(0, 5)
+      .map((i) => i.id),
   );
   return withDataNotes.map((i) => ({ ...i, pinned: criticalIds.has(i.id) }));
 }
@@ -693,7 +715,12 @@ export function filterActionQueue(
 ): ActionQueueItem[] {
   if (tab === 'all') return items;
   if (tab === 'critical') {
-    return items.filter((i) => i.severity === 'critical' || i.isOverdue);
+    return items.filter(
+      (i) =>
+        i.queue?.lifecycleStatus !== 'resolved'
+        && i.queue?.lifecycleStatus !== 'archived'
+        && (i.queue?.severity === 'critical' || i.severity === 'critical' || i.isOverdue),
+    );
   }
   if (tab === 'operations') {
     return items.filter((i) => i.category === 'operations' || i.category === 'handover');

@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-engine-p0-consistency-v49349-2026-07-11',
+    version: '4.9.349',
+    title: 'V4.9.349 — Dashboard Notification Box: P0-Konsistenz (Queue-Zwischenmodell)',
+    summary: [
+      'Strukturiertes `NotificationQueueModel` (severity, lifecycle, readStatus, domain, timestamps, CTA, semanticKey) via `enrichNotificationQueueItem`.',
+      'RECOVERING Fahrbewertung als `success`/`resolved` statt Warning; Recovery nicht mehr an `type: alert` oder `unread` gekoppelt.',
+      'Zentrale Zeitsemantik (`notificationTimeSemantics`) und CTA-Auflösung (`notificationCtaResolver`); i18n `notification.*` für Panel/Tabs/Titel.',
+      'Typografie-Tokens für Notification Cards; CSS line-clamp statt Titel-Truncation; WOB-L-7503- und Characterization-Tests aktualisiert.',
+    ],
+    reason: 'P0 fachliche und visuelle Konsistenz der Notification Box vor Backend Notification Engine V2.',
+    previousBehavior: 'RECOVERING ausgeblendet oder als Warning; englische Panel-Labels; `Date.now()`-nahe Sortierung; willkürliche CTA-Zuordnung (`open-rental` für Fahrzeugmeldungen).',
+    details: 'Neu: notificationQueueModel.ts, notificationQueueEnricher.ts, notificationTimeSemantics.ts, notificationCtaResolver.ts, notificationCardTypography.ts, Tests. Geändert: actionQueueBuilder.ts, ActionQueue.tsx, AttentionItemRow.tsx, actionQueueGrouping.ts, dashboardNotificationAdapter.ts, de.ts/en.ts, docs/notification-engine-source-ownership.md.',
+    affectsArchitecture: true,
+    module: 'Dashboard',
+    createdAt: '2026-07-11T00:50:00.000Z',
+  },
+  {
     id: 'notification-engine-p0-stabilization-v49348-2026-07-11',
     version: '4.9.348',
     title: 'V4.9.348 — Dashboard Notification Box: P0-Deduplizierung (Übergang)',
