@@ -71,6 +71,10 @@ export interface NotificationDeliveryPolicy {
   respectUserPreferences: boolean;
   /** CRITICAL may bypass user mute settings when true. */
   criticalOverridesPreferences: boolean;
+  /** Send outbound channels when notification transitions to RESOLVED. Default: STATE + outbound channels. */
+  notifyOnResolved?: boolean;
+  /** Send outbound channels on ACKNOWLEDGED transition. Default false. */
+  notifyOnAcknowledged?: boolean;
 }
 
 export interface NotificationExpiryPolicy {

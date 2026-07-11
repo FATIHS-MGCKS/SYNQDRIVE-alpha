@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-engine-delivery-v49358-2026-07-11',
+    version: '4.9.358',
+    title: 'V4.9.358 — Notification Engine: Delivery & Observability',
+    summary: [
+      'Transactional Outbox (`notification_delivery_outbox`) — atomar mit Notification-Create/Update in derselben DB-Transaktion.',
+      'Async Worker `notification.delivery` — E-Mail über bestehende Outbound-Email-Architektur (Org-Absender / noreply); Push vorbereitet, SMS nicht.',
+      'Delivery Policies: OPEN, Severity-Eskalation, Reopen, RESOLVED (STATE/outbound); kein erneuter Versand bei lastSeenAt/occurrenceCount allein.',
+      'Idempotency Key, Retry/Dead-Letter, Quiet Hours + Digest (env), Prometheus-Metriken, Grafana-Panels, Alert-Rules.',
+      'Doku: docs/notification-engine-delivery-and-observability.md.',
+    ],
+    reason:
+      'Production-taugliche Zustell- und Observability-Schicht — ohne E-Mail in der Notification-Transaktion und ohne doppelte Zustellung.',
+    previousBehavior:
+      'Nur In-App über API; Registry deliveryPolicy deklarativ; keine Outbox, kein Delivery-Worker, keine Notification-Prometheus-Metriken.',
+    details:
+      'delivery/* services, Prisma Outbox, BullMQ processor, TripMetricsService counters, synqdrive-ops Grafana + alerts.yml.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-11T12:00:00.000Z',
+  },
+  {
     id: 'notification-engine-permissions-v49357-2026-07-11',
     version: '4.9.357',
     title: 'V4.9.357 — Notification Engine: Rollen, Scope, Receipts & Preferences',

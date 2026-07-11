@@ -13,4 +13,6 @@ export const QUEUE_NAMES = {
   DTC_KNOWLEDGE_ENRICHMENT: 'dtc.knowledge.enrichment',
   /** Notification evaluation — org-scoped BI + V2 producer sync (debounced/scheduled). */
   NOTIFICATION_EVALUATION: 'notification.evaluation',
+  /** Notification delivery — transactional outbox channel dispatch. */
+  NOTIFICATION_DELIVERY: 'notification.delivery',
 } as const;

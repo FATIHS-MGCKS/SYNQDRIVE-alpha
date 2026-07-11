@@ -20,6 +20,7 @@ export const DEFAULT_CRITICAL_DELIVERY: NotificationDeliveryPolicy = {
   channels: ['IN_APP', 'EMAIL', 'PUSH'],
   respectUserPreferences: true,
   criticalOverridesPreferences: true,
+  notifyOnResolved: true,
 };
 
 export const STATE_RESOLUTION: NotificationResolutionPolicy = {

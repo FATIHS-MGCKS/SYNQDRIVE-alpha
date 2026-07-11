@@ -16,6 +16,7 @@ import { TripBehaviorEnrichmentProcessor } from './processors/trip-behavior-enri
 import { DrivingImpactProcessor } from './processors/driving-impact.processor';
 import { DtcKnowledgeProcessor } from './processors/dtc-knowledge.processor';
 import { NotificationEvaluationProcessor } from './processors/notification-evaluation.processor';
+import { NotificationDeliveryProcessor } from './processors/notification-delivery.processor';
 
 import { DimoSnapshotScheduler } from './schedulers/dimo-snapshot.scheduler';
 import { DimoDtcScheduler } from './schedulers/dimo-dtc.scheduler';
@@ -41,6 +42,7 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
       { name: QUEUE_NAMES.DRIVING_IMPACT_COMPUTE },
       { name: QUEUE_NAMES.DTC_KNOWLEDGE_ENRICHMENT },
       { name: QUEUE_NAMES.NOTIFICATION_EVALUATION },
+      { name: QUEUE_NAMES.NOTIFICATION_DELIVERY },
     ),
     DimoModule,
     VehicleIntelligenceModule,
@@ -58,6 +60,7 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
     DrivingImpactProcessor,
     DtcKnowledgeProcessor,
     NotificationEvaluationProcessor,
+    NotificationDeliveryProcessor,
 
     // Schedulers
     DimoSnapshotScheduler,

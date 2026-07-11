@@ -183,3 +183,77 @@ groups:
         annotations:
           summary: Document storage read/write failures detected
           description: Storage failures in the document extraction pipeline — check object storage health.
+
+  - name: synqdrive_notifications
+    rules:
+      - alert: NotificationDeliveryBacklogHigh
+        expr: synqdrive_notification_queue_backlog > 100
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Notification delivery outbox backlog is high
+          description: More than 100 pending or retryable outbox rows for 15 minutes.
+
+      - alert: NotificationDeliveryFailureRateHigh
+        expr: |
+          (
+            sum(rate(synqdrive_notification_delivery_failed_total[15m]))
+            /
+            clamp_min(
+              sum(rate(synqdrive_notification_delivery_sent_total[15m]))
+              + sum(rate(synqdrive_notification_delivery_failed_total[15m])),
+              0.001
+            )
+          ) > 0.2
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Notification delivery failure rate elevated
+          description: More than 20% of delivery attempts are failing.
+
+      - alert: NotificationDeliveryWorkerStalled
+        expr: |
+          synqdrive_notification_queue_backlog > 10
+          and increase(synqdrive_notification_delivery_sent_total[30m]) == 0
+        for: 20m
+        labels:
+          severity: critical
+        annotations:
+          summary: Notification delivery worker appears stalled
+          description: Outbox backlog exists but no successful deliveries in 30 minutes.
+
+      - alert: NotificationOpenAgeHigh
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum by (le, severity) (rate(synqdrive_notification_open_age_seconds_bucket[1h]))
+          ) > 86400
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: Open notifications unusually old
+          description: P95 open notification age exceeds 24 hours.
+
+      - alert: NotificationDuplicateConstraintViolations
+        expr: increase(synqdrive_notification_duplicate_constraint_violation_total[1h]) > 50
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: Elevated notification idempotency collisions
+          description: Many duplicate outbox idempotency key violations in the last hour.
+
+      - alert: NotificationEvaluationRunsMissing
+        expr: |
+          increase(synqdrive_notifications_created_total[6h]) == 0
+          and increase(synqdrive_notifications_updated_total[6h]) == 0
+          and synqdrive_worker_runtime_enabled == 1
+        for: 6h
+        labels:
+          severity: warning
+        annotations:
+          summary: No notification materialization activity
+          description: No created/updated notifications in 6h while workers are enabled — check evaluation scheduler.

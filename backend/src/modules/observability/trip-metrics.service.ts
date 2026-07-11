@@ -63,6 +63,20 @@ export class TripMetricsService implements OnModuleInit {
   readonly documentExtractionClassification: Counter<string>;
   readonly documentExtractionApply: Counter<string>;
 
+  /** Notification engine — low-cardinality labels only. */
+  readonly notificationsCreated: Counter<string>;
+  readonly notificationsUpdated: Counter<string>;
+  readonly notificationsResolved: Counter<string>;
+  readonly notificationsReopened: Counter<string>;
+  readonly notificationOccurrences: Counter<string>;
+  readonly notificationDeduplicated: Counter<string>;
+  readonly notificationLockContention: Counter<string>;
+  readonly notificationDeliveryEnqueued: Counter<string>;
+  readonly notificationDeliverySent: Counter<string>;
+  readonly notificationDeliveryFailed: Counter<string>;
+  readonly notificationDeliveryRetry: Counter<string>;
+  readonly notificationDuplicateConstraintViolation: Counter<string>;
+
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
   // ═══════════════════════════════════════════════════════════════
@@ -79,6 +93,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly clickHouseLastMirrorUnixSeconds: Gauge<string>;
   readonly clickHouseTableRows: Gauge<string>;
   readonly queueFailedJobs: Gauge<string>;
+  readonly notificationQueueBacklog: Gauge<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  HISTOGRAMS
@@ -91,6 +106,9 @@ export class TripMetricsService implements OnModuleInit {
   readonly queueLag: Histogram<string>;
   readonly clickHouseQueryDuration: Histogram<string>;
   readonly documentExtractionDuration: Histogram<string>;
+  readonly notificationProcessingDuration: Histogram<string>;
+  readonly notificationRunDuration: Histogram<string>;
+  readonly notificationOpenAge: Histogram<string>;
 
   constructor() {
     this.registry = new Registry();
@@ -415,6 +433,114 @@ export class TripMetricsService implements OnModuleInit {
       help: 'Document extraction stage duration in seconds',
       buckets: [0.25, 0.5, 1, 2, 5, 15, 30, 60, 120, 300],
       labelNames: ['stage'],
+      registers: [this.registry],
+    });
+
+    this.notificationsCreated = new Counter({
+      name: 'synqdrive_notifications_created_total',
+      help: 'Notifications materialized as new OPEN records',
+      labelNames: ['domain'],
+      registers: [this.registry],
+    });
+
+    this.notificationsUpdated = new Counter({
+      name: 'synqdrive_notifications_updated_total',
+      help: 'Active notifications updated (occurrence/severity)',
+      labelNames: ['domain'],
+      registers: [this.registry],
+    });
+
+    this.notificationsResolved = new Counter({
+      name: 'synqdrive_notifications_resolved_total',
+      help: 'Notifications transitioned to RESOLVED',
+      labelNames: ['domain'],
+      registers: [this.registry],
+    });
+
+    this.notificationsReopened = new Counter({
+      name: 'synqdrive_notifications_reopened_total',
+      help: 'Notifications reopened after RESOLVED',
+      labelNames: ['domain'],
+      registers: [this.registry],
+    });
+
+    this.notificationOccurrences = new Counter({
+      name: 'synqdrive_notification_occurrences_total',
+      help: 'Notification occurrences appended',
+      registers: [this.registry],
+    });
+
+    this.notificationDeduplicated = new Counter({
+      name: 'synqdrive_notification_deduplicated_total',
+      help: 'Ingest operations deduplicated without new delivery',
+      registers: [this.registry],
+    });
+
+    this.notificationLockContention = new Counter({
+      name: 'synqdrive_notification_lock_contention_total',
+      help: 'Notification evaluation org lock contention events',
+      registers: [this.registry],
+    });
+
+    this.notificationDeliveryEnqueued = new Counter({
+      name: 'synqdrive_notification_delivery_enqueued_total',
+      help: 'Outbox delivery rows enqueued',
+      labelNames: ['channel', 'transition'],
+      registers: [this.registry],
+    });
+
+    this.notificationDeliverySent = new Counter({
+      name: 'synqdrive_notification_delivery_sent_total',
+      help: 'Successful channel deliveries',
+      labelNames: ['channel'],
+      registers: [this.registry],
+    });
+
+    this.notificationDeliveryFailed = new Counter({
+      name: 'synqdrive_notification_delivery_failed_total',
+      help: 'Failed channel delivery attempts',
+      labelNames: ['channel', 'error_code'],
+      registers: [this.registry],
+    });
+
+    this.notificationDeliveryRetry = new Counter({
+      name: 'synqdrive_notification_delivery_retry_total',
+      help: 'Delivery retries scheduled',
+      labelNames: ['channel'],
+      registers: [this.registry],
+    });
+
+    this.notificationDuplicateConstraintViolation = new Counter({
+      name: 'synqdrive_notification_duplicate_constraint_violation_total',
+      help: 'Outbox idempotency unique constraint prevented duplicate delivery',
+      registers: [this.registry],
+    });
+
+    this.notificationProcessingDuration = new Histogram({
+      name: 'synqdrive_notification_processing_duration_seconds',
+      help: 'Single outbox delivery processing duration',
+      buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 15, 30],
+      registers: [this.registry],
+    });
+
+    this.notificationRunDuration = new Histogram({
+      name: 'synqdrive_notification_run_duration_seconds',
+      help: 'Notification evaluation run duration',
+      buckets: [0.5, 1, 2, 5, 15, 30, 60, 120, 300],
+      registers: [this.registry],
+    });
+
+    this.notificationOpenAge = new Histogram({
+      name: 'synqdrive_notification_open_age_seconds',
+      help: 'Age distribution of open notifications at observation time',
+      buckets: [300, 900, 3600, 14400, 86400, 604800],
+      labelNames: ['severity'],
+      registers: [this.registry],
+    });
+
+    this.notificationQueueBacklog = new Gauge({
+      name: 'synqdrive_notification_queue_backlog',
+      help: 'Pending or retryable notification delivery outbox rows',
       registers: [this.registry],
     });
   }

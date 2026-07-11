@@ -135,6 +135,80 @@
       "targets": [{ "expr": "sum(rate(synqdrive_document_extraction_apply_total{result=\"error\"}[15m])) / clamp_min(sum(rate(synqdrive_document_extraction_apply_total[15m])), 0.001)", "legendFormat": "apply error ratio", "refId": "A" }],
       "title": "Doc apply error ratio (15m)",
       "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 0, "y": 32 },
+      "id": 20,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "center", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "expr": "sum(increase(synqdrive_notifications_created_total[1h]))", "refId": "A" }],
+      "title": "Notifications created (1h)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 6, "y": 32 },
+      "id": 21,
+      "targets": [{ "expr": "sum(increase(synqdrive_notifications_updated_total[1h]))", "refId": "A" }],
+      "title": "Notifications updated (1h)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 12, "y": 32 },
+      "id": 22,
+      "targets": [{ "expr": "sum(increase(synqdrive_notifications_resolved_total[1h]))", "refId": "A" }],
+      "title": "Notifications resolved (1h)",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 4, "w": 6, "x": 18, "y": 32 },
+      "id": 23,
+      "targets": [{ "expr": "synqdrive_notification_queue_backlog", "refId": "A" }],
+      "title": "Delivery outbox backlog",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
+      "id": 24,
+      "targets": [
+        { "expr": "sum(rate(synqdrive_notification_delivery_sent_total[5m])) / clamp_min(sum(rate(synqdrive_notification_delivery_sent_total[5m])) + sum(rate(synqdrive_notification_delivery_failed_total[5m])), 0.001)", "legendFormat": "success rate", "refId": "A" }
+      ],
+      "title": "Delivery success rate (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
+      "id": 25,
+      "targets": [
+        { "expr": "sum by (channel) (rate(synqdrive_notification_delivery_failed_total[5m]))", "legendFormat": "{{channel}}", "refId": "A" }
+      ],
+      "title": "Delivery failures by channel (5m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 44 },
+      "id": 26,
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(synqdrive_notification_processing_duration_seconds_bucket[10m])))", "legendFormat": "p95", "refId": "A" }
+      ],
+      "title": "Delivery processing p95 (10m)",
+      "type": "timeseries"
+    },
+    {
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 44 },
+      "id": 27,
+      "targets": [
+        { "expr": "sum(increase(synqdrive_notification_duplicate_constraint_violation_total[1h]))", "legendFormat": "dedupe violations", "refId": "A" },
+        { "expr": "sum(increase(synqdrive_notification_lock_contention_total[1h]))", "legendFormat": "lock contention", "refId": "B" }
+      ],
+      "title": "Dedupe violations & lock contention (1h)",
+      "type": "timeseries"
     }
   ],
   "refresh": "30s",

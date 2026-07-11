@@ -41,6 +41,9 @@ import { NotificationSeverity as DomainSeverity, NotificationStatus as DomainSta
 import { NotificationSourceType as DomainSourceType } from './notification.enums';
 import { recordNotificationIngestOperation, recordNotificationFailure } from './runtime/notification-run-context';
 import { isManualResolutionAllowed } from './api/notification-manual-resolution.policy';
+import { NotificationDeliveryEnqueueService } from './delivery/notification-delivery-enqueue.service';
+import { NotificationDeliveryPolicyService } from './delivery/notification-delivery-policy.service';
+import { NotificationDeliverySchedulerService } from './delivery/notification-delivery-scheduler.service';
 
 @Injectable()
 export class NotificationCoreService {
@@ -49,6 +52,9 @@ export class NotificationCoreService {
   constructor(
     private readonly repository: NotificationRepository,
     private readonly engineConfig: NotificationEngineConfig,
+    private readonly deliveryEnqueue: NotificationDeliveryEnqueueService,
+    private readonly deliveryPolicy: NotificationDeliveryPolicyService,
+    private readonly deliveryScheduler: NotificationDeliverySchedulerService,
   ) {}
 
   isEnabled(): boolean {
@@ -86,8 +92,9 @@ export class NotificationCoreService {
       return this.handleRecoveryCandidate(normalized, fingerprint, referenceNow, options);
     }
 
-    return withUniqueConflictRetry(() =>
-      this.repository.runTransaction(async (tx) => {
+    return withUniqueConflictRetry(async (): Promise<MaterializeResult> => {
+      const pendingOutboxIds: string[] = [];
+      const result = await this.repository.runTransaction(async (tx) => {
         const active = await this.repository.findAnyActiveByFingerprint(
           normalized.organizationId,
           fingerprint,
@@ -95,7 +102,20 @@ export class NotificationCoreService {
         );
 
         if (active) {
+          const severityBefore = active.severity;
           const updated = await this.updateActiveFromCandidate(active, normalized, tx);
+          const transition = this.deliveryPolicy.shouldEnqueueForIngestOperation(
+            'updated',
+            updated,
+            severityBefore,
+          );
+          if (transition) {
+            const ids = await this.deliveryEnqueue.enqueueInTransaction(
+              { notification: updated, transition, severityBefore },
+              tx,
+            );
+            pendingOutboxIds.push(...ids);
+          }
           this.logOperation('updated', normalized, {
             notificationId: updated.id,
             fingerprint,
@@ -118,7 +138,7 @@ export class NotificationCoreService {
             reason: 'ARCHIVED',
             runId: options.runId,
           });
-          return { operation: 'ignored', notification: latest, reason: 'ARCHIVED' };
+          return { operation: 'ignored' as const, notification: latest, reason: 'ARCHIVED' };
         }
 
         if (latest?.status === NotificationStatus.RESOLVED) {
@@ -150,7 +170,7 @@ export class NotificationCoreService {
               reason: reopen.reason,
               runId: options.runId,
             });
-            return { operation: 'ignored', notification: latest, reason: reopen.reason };
+            return { operation: 'ignored' as const, notification: latest, reason: reopen.reason };
           }
 
           if (reopen.action === 'REOPEN') {
@@ -160,13 +180,18 @@ export class NotificationCoreService {
               reopen.reopenCount,
               tx,
             );
+            const ids = await this.deliveryEnqueue.enqueueInTransaction(
+              { notification: reopened, transition: 'REOPENED' },
+              tx,
+            );
+            pendingOutboxIds.push(...ids);
             this.logOperation('reopened', normalized, {
               notificationId: reopened.id,
               fingerprint,
               occurrenceCount: reopened.occurrenceCount,
               runId: options.runId,
             });
-            return { operation: 'reopened', notification: reopened };
+            return { operation: 'reopened' as const, notification: reopened };
           }
 
           if (reopen.action === 'CREATE') {
@@ -176,13 +201,18 @@ export class NotificationCoreService {
               reopen.generation,
               tx,
             );
+            const ids = await this.deliveryEnqueue.enqueueInTransaction(
+              { notification: created, transition: 'OPEN_CREATED' },
+              tx,
+            );
+            pendingOutboxIds.push(...ids);
             this.logOperation('created', normalized, {
               notificationId: created.id,
               fingerprint,
               occurrenceCount: created.occurrenceCount,
               runId: options.runId,
             });
-            return { operation: 'created', notification: created };
+            return { operation: 'created' as const, notification: created };
           }
         }
 
@@ -193,15 +223,23 @@ export class NotificationCoreService {
           generation,
           tx,
         );
+        const ids = await this.deliveryEnqueue.enqueueInTransaction(
+          { notification: created, transition: 'OPEN_CREATED' },
+          tx,
+        );
+        pendingOutboxIds.push(...ids);
         this.logOperation('created', normalized, {
           notificationId: created.id,
           fingerprint,
           occurrenceCount: created.occurrenceCount,
           runId: options.runId,
         });
-        return { operation: 'created', notification: created };
-      }),
-    );
+        return { operation: 'created' as const, notification: created };
+      });
+
+      await this.deliveryScheduler.scheduleOutboxIds(pendingOutboxIds);
+      return result;
+    });
   }
 
   async appendOccurrence(notificationId: string, candidate: NotificationCandidate) {
@@ -264,12 +302,35 @@ export class NotificationCoreService {
 
     this.assertTransition(notification.status, NotificationStatus.RESOLVED);
 
-    const updated = await this.repository.updateNotification(notificationId, {
-      status: NotificationStatus.RESOLVED,
-      resolvedAt,
-      snoozedUntil: null,
-      acknowledgedAt: notification.acknowledgedAt,
-    }, notification.version);
+    const pendingOutboxIds: string[] = [];
+    const updated = await this.repository.runTransaction(async (tx) => {
+      const row = await this.repository.updateNotification(
+        notificationId,
+        {
+          status: NotificationStatus.RESOLVED,
+          resolvedAt,
+          snoozedUntil: null,
+          acknowledgedAt: notification.acknowledgedAt,
+        },
+        notification.version,
+        tx,
+      );
+      const transition = this.deliveryPolicy.shouldEnqueueForLifecycleTransition(
+        notification.status,
+        NotificationStatus.RESOLVED,
+        row,
+      );
+      if (transition) {
+        const ids = await this.deliveryEnqueue.enqueueInTransaction(
+          { notification: row, transition },
+          tx,
+        );
+        pendingOutboxIds.push(...ids);
+      }
+      return row;
+    });
+
+    await this.deliveryScheduler.scheduleOutboxIds(pendingOutboxIds);
 
     this.logger.log({
       msg: 'notification.resolved',
@@ -292,20 +353,53 @@ export class NotificationCoreService {
       throw new BadRequestException('Candidate required to reopen with occurrence');
     }
     const normalized = validateNotificationCandidate(candidate);
-    return this.repository.runTransaction(async (tx) =>
-      this.reopenNotificationInternal(notification, normalized, notification.reopenCount + 1, tx),
-    );
+    const pendingOutboxIds: string[] = [];
+    const reopened = await this.repository.runTransaction(async (tx) => {
+      const row = await this.reopenNotificationInternal(
+        notification,
+        normalized,
+        notification.reopenCount + 1,
+        tx,
+      );
+      const ids = await this.deliveryEnqueue.enqueueInTransaction(
+        { notification: row, transition: 'REOPENED' },
+        tx,
+      );
+      pendingOutboxIds.push(...ids);
+      return row;
+    });
+    await this.deliveryScheduler.scheduleOutboxIds(pendingOutboxIds);
+    return reopened;
   }
 
   async acknowledgeNotification(notificationId: string, organizationId: string, at: Date = new Date()) {
     const notification = await this.requireNotification(notificationId, organizationId);
     this.assertTransition(notification.status, NotificationStatus.ACKNOWLEDGED);
 
-    return this.repository.updateNotification(
-      notificationId,
-      { status: NotificationStatus.ACKNOWLEDGED, acknowledgedAt: at },
-      notification.version,
-    );
+    const pendingOutboxIds: string[] = [];
+    const updated = await this.repository.runTransaction(async (tx) => {
+      const row = await this.repository.updateNotification(
+        notificationId,
+        { status: NotificationStatus.ACKNOWLEDGED, acknowledgedAt: at },
+        notification.version,
+        tx,
+      );
+      const transition = this.deliveryPolicy.shouldEnqueueForLifecycleTransition(
+        notification.status,
+        NotificationStatus.ACKNOWLEDGED,
+        row,
+      );
+      if (transition) {
+        const ids = await this.deliveryEnqueue.enqueueInTransaction(
+          { notification: row, transition },
+          tx,
+        );
+        pendingOutboxIds.push(...ids);
+      }
+      return row;
+    });
+    await this.deliveryScheduler.scheduleOutboxIds(pendingOutboxIds);
+    return updated;
   }
 
   async snoozeNotification(notificationId: string, organizationId: string, until: Date) {
@@ -421,16 +515,42 @@ export class NotificationCoreService {
       throw new NotFoundException('No active notification to resolve for recovery');
     }
 
-    const resolved = await this.resolveNotification(active.id, candidate.organizationId, resolvedAt);
-    await this.repository.createOccurrence({
-      notificationId: resolved.id,
-      organizationId: candidate.organizationId,
-      occurredAt: candidate.occurredAt,
-      sourceType: candidate.sourceType,
-      sourceRef: candidate.sourceRef,
-      severityAtOccurrence: candidate.severity,
-      payload: { recovery: true, ...(candidate.metadata ?? {}) } as Prisma.InputJsonValue,
+    const pendingOutboxIds: string[] = [];
+    const resolved = await this.repository.runTransaction(async (tx) => {
+      const row = await this.repository.updateNotification(
+        active.id,
+        {
+          status: NotificationStatus.RESOLVED,
+          resolvedAt,
+          snoozedUntil: null,
+          acknowledgedAt: active.acknowledgedAt,
+        },
+        active.version,
+        tx,
+      );
+      await this.repository.createOccurrence(
+        {
+          notificationId: row.id,
+          organizationId: candidate.organizationId,
+          occurredAt: candidate.occurredAt,
+          sourceType: candidate.sourceType,
+          sourceRef: candidate.sourceRef,
+          severityAtOccurrence: candidate.severity,
+          payload: { recovery: true, ...(candidate.metadata ?? {}) } as Prisma.InputJsonValue,
+        },
+        tx,
+      );
+      const transition = this.deliveryPolicy.shouldEnqueueForIngestOperation('resolved', row);
+      if (transition) {
+        const ids = await this.deliveryEnqueue.enqueueInTransaction(
+          { notification: row, transition },
+          tx,
+        );
+        pendingOutboxIds.push(...ids);
+      }
+      return row;
     });
+    await this.deliveryScheduler.scheduleOutboxIds(pendingOutboxIds);
 
     this.logOperation('resolved', candidate, {
       notificationId: resolved.id,

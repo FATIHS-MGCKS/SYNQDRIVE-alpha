@@ -3,12 +3,28 @@ import { InsightEntityScope, InsightSeverity, InsightType } from '@modules/busin
 import { NotificationEngineConfig } from '../notification-engine.config';
 import { NotificationCoreService } from '../notification-core.service';
 import { NotificationRepository } from '../notification.repository';
+import { NotificationDeliveryEnqueueService } from '../delivery/notification-delivery-enqueue.service';
+import { NotificationDeliveryPolicyService } from '../delivery/notification-delivery-policy.service';
+import { NotificationDeliverySchedulerService } from '../delivery/notification-delivery-scheduler.service';
 import { DrivingAssessmentNotificationAdapter } from './driving-assessment-notification.adapter';
 import { TechnicalObservationNotificationAdapter } from './technical-observation-notification.adapter';
 import { StationShortageNotificationAdapter } from './station-shortage-notification.adapter';
 import { NotificationProducerRouter } from './notification-producer.router';
 import { NotificationProducerIngestService } from './notification-producer.ingest.service';
 import { DEVICE_QUALITY_OBSERVATION_MARKER, DEVICE_QUALITY_WORKER_ID } from '@modules/vehicle-intelligence/trips/driving-assessment-device-quality.detector';
+
+function createDeliveryMocks() {
+  return {
+    deliveryEnqueue: {
+      isDeliveryEnabled: () => false,
+      enqueueInTransaction: jest.fn().mockResolvedValue([]),
+    } as unknown as NotificationDeliveryEnqueueService,
+    deliveryPolicy: new NotificationDeliveryPolicyService(),
+    deliveryScheduler: {
+      scheduleOutboxIds: jest.fn().mockResolvedValue(undefined),
+    } as unknown as NotificationDeliverySchedulerService,
+  };
+}
 
 const ORG = 'org-wob';
 const WOB_VEHICLE_ID = 'veh-wob-l-7503';
@@ -124,7 +140,14 @@ describe('NotificationProducerIngestService — phase 1 migration', () => {
     idSeq = 0;
     jest.clearAllMocks();
 
-    core = new NotificationCoreService(repository, engineConfig);
+    const { deliveryEnqueue, deliveryPolicy, deliveryScheduler } = createDeliveryMocks();
+    core = new NotificationCoreService(
+      repository,
+      engineConfig,
+      deliveryEnqueue,
+      deliveryPolicy,
+      deliveryScheduler,
+    );
     const router = new NotificationProducerRouter(
       core,
       engineConfig,
@@ -140,7 +163,6 @@ describe('NotificationProducerIngestService — phase 1 migration', () => {
       new StationShortageNotificationAdapter(),
     );
   });
-
   describe('WOB L 7503 regression', () => {
     it('degraded driving assessment + real technical observation — two distinct open notifications', async () => {
       await ingest.syncDrivingAssessmentQuality({

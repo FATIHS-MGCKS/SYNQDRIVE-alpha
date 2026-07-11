@@ -137,6 +137,30 @@ enum NotificationEventKind {
   STATE
 }
 
+enum NotificationDeliveryChannel {
+  IN_APP
+  EMAIL
+  PUSH
+  SMS
+}
+
+enum NotificationDeliveryTransition {
+  OPEN_CREATED
+  SEVERITY_ESCALATED
+  ACKNOWLEDGED
+  RESOLVED
+  REOPENED
+}
+
+enum NotificationDeliveryOutboxStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  DEAD_LETTER
+  SUPPRESSED
+}
+
 enum UserPlatformRole {
   MASTER_ADMIN
   USER
@@ -1048,6 +1072,7 @@ model Organization {
   notifications                     Notification[]
   notificationOccurrences           NotificationOccurrence[]
   notificationReceipts              NotificationReceipt[]
+  notificationDeliveryOutbox        NotificationDeliveryOutbox[]
 
   @@index([status])
   @@map("organizations")
@@ -6041,6 +6066,7 @@ enum OrgEmailDomainStatus {
 enum OutboundEmailSourceType {
   BOOKING_DOCUMENTS
   INVOICE_SINGLE
+  NOTIFICATION
   TEST
 }
 
@@ -7212,9 +7238,10 @@ model Notification {
   createdAt           DateTime               @default(now()) @map("created_at")
   updatedAt           DateTime               @updatedAt @map("updated_at")
 
-  organization Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  occurrences  NotificationOccurrence[]
-  receipts     NotificationReceipt[]
+  organization  Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  occurrences   NotificationOccurrence[]
+  receipts      NotificationReceipt[]
+  deliveryOutbox NotificationDeliveryOutbox[]
 
   @@index([organizationId, status, lastSeenAt])
   @@index([organizationId, severity, status])
@@ -7267,6 +7294,36 @@ model NotificationReceipt {
   @@index([userId, readAt])
   @@index([organizationId])
   @@map("notification_receipts")
+}
+
+model NotificationDeliveryOutbox {
+  id                  String                           @id @default(uuid())
+  organizationId      String                           @map("organization_id")
+  notificationId      String                           @map("notification_id")
+  lifecycleGeneration Int                              @map("lifecycle_generation")
+  eventType           String                           @map("event_type")
+  deliveryTransition  NotificationDeliveryTransition   @map("delivery_transition")
+  channel             NotificationDeliveryChannel
+  recipientId         String?                          @map("recipient_id")
+  audienceKey         String                           @map("audience_key")
+  payloadRef          Json                             @default("{}") @map("payload_ref")
+  status              NotificationDeliveryOutboxStatus @default(PENDING)
+  attempts            Int                              @default(0)
+  availableAt         DateTime                         @default(now()) @map("available_at")
+  processedAt         DateTime?                        @map("processed_at")
+  lastError           String?                          @map("last_error")
+  idempotencyKey      String                           @unique @map("idempotency_key")
+  outboundEmailId     String?                          @map("outbound_email_id")
+  createdAt           DateTime                         @default(now()) @map("created_at")
+  updatedAt           DateTime                         @updatedAt @map("updated_at")
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([status, availableAt])
+  @@index([organizationId, status])
+  @@index([notificationId])
+  @@map("notification_delivery_outbox")
 }
 
 // ── AI Tire Spec Job (persisted job lifecycle for AI tire intelligence fetch) ──

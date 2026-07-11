@@ -24,6 +24,21 @@ import {
   NotificationSourceType as DomainSourceType,
 } from './notification.enums';
 import { DEFAULT_STATE_REOPEN_POLICY } from './notification-reopen.policy';
+import { NotificationDeliveryEnqueueService } from './delivery/notification-delivery-enqueue.service';
+import { NotificationDeliveryPolicyService } from './delivery/notification-delivery-policy.service';
+import { NotificationDeliverySchedulerService } from './delivery/notification-delivery-scheduler.service';
+
+function createDeliveryMocks() {
+  const deliveryEnqueue = {
+    isDeliveryEnabled: () => false,
+    enqueueInTransaction: jest.fn().mockResolvedValue([]),
+  } as unknown as NotificationDeliveryEnqueueService;
+  const deliveryPolicy = new NotificationDeliveryPolicyService();
+  const deliveryScheduler = {
+    scheduleOutboxIds: jest.fn().mockResolvedValue(undefined),
+  } as unknown as NotificationDeliverySchedulerService;
+  return { deliveryEnqueue, deliveryPolicy, deliveryScheduler };
+}
 
 const ORG = 'org-1';
 const USER = 'user-1';
@@ -195,7 +210,14 @@ describe('NotificationCoreService', () => {
   };
 
   const repository = new NotificationRepository(prisma as any);
-  const service = new NotificationCoreService(repository, engineConfig);
+  const { deliveryEnqueue, deliveryPolicy, deliveryScheduler } = createDeliveryMocks();
+  const service = new NotificationCoreService(
+    repository,
+    engineConfig,
+    deliveryEnqueue,
+    deliveryPolicy,
+    deliveryScheduler,
+  );
 
   beforeEach(() => {
     notifications = new Map();
