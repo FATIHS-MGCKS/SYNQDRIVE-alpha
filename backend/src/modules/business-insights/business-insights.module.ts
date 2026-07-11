@@ -29,7 +29,7 @@ import { TasksModule } from '../tasks/tasks.module';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 
 @Module({
-  imports: [TasksModule, NotificationsModule, forwardRef(() => VehicleIntelligenceModule)],
+  imports: [TasksModule, forwardRef(() => NotificationsModule), forwardRef(() => VehicleIntelligenceModule)],
   controllers: [DashboardInsightsController, InternalBusinessInsightsController],
   providers: [
     BusinessInsightsService,

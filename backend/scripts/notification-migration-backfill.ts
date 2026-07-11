@@ -9,7 +9,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../src/app.module';
+import { NotificationMigrationCliModule } from '../src/modules/notifications/migration/notification-migration-cli.module';
 import { NotificationMigrationBackfillService } from '../src/modules/notifications/migration/notification-migration-backfill.service';
 import type { NotificationMigrationCheckpoint } from '../src/modules/notifications/migration/notification-migration.types';
 
@@ -45,8 +45,7 @@ async function main() {
     checkpoint = JSON.parse(fs.readFileSync(checkpointPath, 'utf8')) as NotificationMigrationCheckpoint;
   }
 
-  const appModule = await AppModule.forRootAsync();
-  const app = await NestFactory.createApplicationContext(appModule, {
+  const app = await NestFactory.createApplicationContext(NotificationMigrationCliModule, {
     logger: ['error', 'warn', 'log'],
   });
 
