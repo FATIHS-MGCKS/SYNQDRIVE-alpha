@@ -101,6 +101,9 @@ export function DashboardView({
               />
             </DashboardControlHeader>
           </div>
+          <div className={DASHBOARD_LAYOUT.notificationsSlot}>
+            <ActionQueue vm={vm} {...handlers} layout="sidebar" />
+          </div>
           <div className={DASHBOARD_LAYOUT.financeSlot}>
             <BusinessPulse
               businessPulseSlices={vm.businessPulseSlices}
@@ -111,9 +114,6 @@ export function DashboardView({
               loading={!vm.dataFreshness.invoicesLoaded}
               error={vm.dataFreshness.invoicesError}
             />
-          </div>
-          <div className={DASHBOARD_LAYOUT.notificationsSlot}>
-            <ActionQueue vm={vm} {...handlers} layout="sidebar" />
           </div>
         </div>
       </div>

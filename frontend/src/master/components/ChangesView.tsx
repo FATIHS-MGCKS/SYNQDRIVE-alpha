@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-finance-left-notifications-top-v49375-2026-07-11',
+    version: '4.9.375',
+    title: 'V4.9.375 — Dashboard: Meldungen oben rechts, Finanzen unter KPIs',
+    summary: [
+      'Linke Spalte: Control-KPIs oben, Finanzen (`BusinessPulse`) darunter.',
+      'Rechte Spalte: Meldungen oben (`notificationsSlot`, `row-span-2`) mit Scroll-Höhe = linke Spalte gesamt.',
+      'Mobile-Reihenfolge: KPIs → Meldungen → Finanzen (`order-1/2/3`).',
+    ],
+    reason: 'Finanzen gehören unter die operative KPI-Box; Meldungen sollen prominent oben rechts stehen.',
+    previousBehavior: 'Rechts oben Finanzen, unten Meldungen; links nur KPIs über volle Höhe.',
+    details: 'DashboardView.tsx, dashboardShell.tsx — Grid-Placements `financeSlot` row-2 col-1, `notificationsSlot` row-span-2 col-2.',
+    affectsArchitecture: true,
+    module: 'Dashboard',
+    createdAt: '2026-07-11T19:45:00.000Z',
+  },
+  {
     id: 'dashboard-notifications-sidebar-v49374-2026-07-11',
     version: '4.9.374',
     title: 'V4.9.374 — Meldungen unter Finanzen mit Scroll-Höhe',

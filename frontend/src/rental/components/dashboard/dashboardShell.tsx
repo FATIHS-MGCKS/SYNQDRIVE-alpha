@@ -11,15 +11,16 @@ export const DASHBOARD_LAYOUT = {
   focusStack: 'space-y-4',
   opsGrid: 'grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.04fr)_minmax(0,0.96fr)] lg:items-stretch',
   /**
-   * Desktop: Control KPIs (left, row-span 2) + Finanzen (top-right) + Meldungen (bottom-right).
-   * Mobile: Control → Finanzen → Meldungen (stacked).
+   * Desktop: left stack (KPIs + Finanzen) | Meldungen full-height right.
+   * Mobile: KPIs → Meldungen → Finanzen.
    */
   controlFinanceGrid:
-    'grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:grid-rows-[auto_minmax(0,1fr)] lg:items-stretch lg:gap-4 xl:gap-5',
-  controlKpiSlot: 'min-w-0 w-full lg:col-start-1 lg:row-span-2 lg:row-start-1',
-  financeSlot: 'min-w-0 w-full lg:col-start-2 lg:row-start-1',
-  notificationsSlot: 'flex min-h-0 w-full min-w-0 flex-col lg:col-start-2 lg:row-start-2',
-  /** Scrollable notification list body (sidebar layout under Finanzen). */
+    'grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-stretch lg:gap-4 xl:gap-5',
+  controlKpiSlot: 'order-1 min-w-0 w-full lg:order-none lg:col-start-1 lg:row-start-1',
+  financeSlot: 'order-3 min-w-0 w-full lg:order-none lg:col-start-1 lg:row-start-2',
+  notificationsSlot:
+    'order-2 flex min-h-0 w-full min-w-0 flex-col lg:order-none lg:col-start-2 lg:row-span-2 lg:row-start-1',
+  /** Scrollable notification list body (sidebar layout, right column). */
   notificationsPanelScroll:
     'min-h-0 flex-1 overflow-y-auto overscroll-y-contain scrollbar-thin [scrollbar-width:thin] [-webkit-overflow-scrolling:touch]',
   /** @deprecated Meldungen live in `notificationsSlot` under Finanzen. */
