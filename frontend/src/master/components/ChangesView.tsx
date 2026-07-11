@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-v2-vehicle-health-bridge-v49364-2026-07-11',
+    version: '4.9.364',
+    title: 'V4.9.364 — Meldungen: Rental-Health-Warnungen in V2-Panel',
+    summary: [
+      'V2-Meldungen-Panel zeigt wieder Fahrzeug-Warnungen aus Rental Health V1 (DTC, Reifen, …).',
+      'Bridge merged vehicleHealthAlerts in actionQueue ohne Duplikate zu V2-API-Zeilen.',
+      'Tab-Counts (Warnungen/Kritisch) inkludieren ergänzte Health-Items.',
+    ],
+    reason:
+      'Nach V2-Cutover fehlten DTC/Reifen-Warnungen im Meldungen-Panel — sie leben in Rental Health, nicht in migrierten DashboardInsights.',
+    previousBehavior:
+      'NotificationPanel = nur GET /notifications; vehicleHealthAlerts nur noch in Business Insights → Vehicle Alerts.',
+    details: 'merge-v2-with-vehicle-health.ts, useDashboardViewModel.ts.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-11T09:25:00.000Z',
+  },
+  {
     id: 'notification-readable-labels-v49363-2026-07-11',
     version: '4.9.363',
     title: 'V4.9.363 — Notification Panel: Lesbare Fahrzeug-Labels & Insight-Titel',

@@ -89,6 +89,12 @@ import {
   compareNotificationQueuesShadow,
   logShadowCompareDiagnostics,
 } from '../../lib/notifications/notification-shadow-compare';
+import {
+  augmentPrimaryTabCountsWithHealthItems,
+  buildVehicleHealthQueueItems,
+  mergeV2NotificationsWithVehicleHealth,
+  supplementalHealthItems,
+} from '../../lib/notifications/merge-v2-with-vehicle-health';
 
 const BUSINESS_METRIC_IDS: ReadonlySet<string> = new Set<BusinessMetricId>([
   'revenue',
@@ -857,10 +863,15 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     logShadowCompareDiagnostics(result);
   }, [v1ActionQueue, notificationsV2.items, notificationsV2.loading]);
 
-  const actionQueue = useMemo(
-    () => (shouldUseV2NotificationSource() ? notificationsV2.items : v1ActionQueue),
-    [notificationsV2.items, v1ActionQueue],
+  const vehicleHealthQueueItems = useMemo(
+    () => buildVehicleHealthQueueItems(vehicleHealthAlerts, locale, fleetById),
+    [vehicleHealthAlerts, locale, fleetById],
   );
+
+  const actionQueue = useMemo(() => {
+    if (!shouldUseV2NotificationSource()) return v1ActionQueue;
+    return mergeV2NotificationsWithVehicleHealth(notificationsV2.items, vehicleHealthQueueItems);
+  }, [notificationsV2.items, v1ActionQueue, vehicleHealthQueueItems]);
 
   const actionQueueTabCounts = useMemo(
     () => (shouldUseV2NotificationSource() ? notificationsV2.tabCounts : null),
@@ -868,17 +879,18 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   );
 
   const resolvedActionQueueLoading = shouldUseV2NotificationSource()
-    ? notificationsV2.loading
+    ? notificationsV2.loading || vehicleHealthLoading
     : insightsLoading || vehicleHealthLoading || !todayBookingsLoaded;
 
   const resolvedActionQueueError = shouldUseV2NotificationSource()
     ? !!notificationsV2.error
     : insightsError;
 
-  const notificationPrimaryTabCounts = useMemo(
-    () => (shouldUseV2NotificationSource() ? notificationsV2.primaryTabCounts : null),
-    [notificationsV2.primaryTabCounts],
-  );
+  const notificationPrimaryTabCounts = useMemo(() => {
+    if (!shouldUseV2NotificationSource()) return null;
+    const extra = supplementalHealthItems(notificationsV2.items, vehicleHealthQueueItems);
+    return augmentPrimaryTabCountsWithHealthItems(notificationsV2.primaryTabCounts, extra);
+  }, [notificationsV2.items, notificationsV2.primaryTabCounts, vehicleHealthQueueItems]);
 
   const setNotificationListMode = useCallback(
     (mode: 'active' | 'resolved') => {
