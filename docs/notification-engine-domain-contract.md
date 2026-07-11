@@ -269,11 +269,12 @@ Gleiches Fahrzeug WOB L 7503 — **zwei** Fingerprints, **zwei** Notifications.
 
 ## Bewusst nicht in Prompt 5
 
-- Prisma-Migration / `Notification`-Tabelle
 - Dashboard-API-Cutover
 - Entfernen alter Pfade (`DashboardInsight`, `dedupeKey` publish)
 - Delivery-Dispatcher / Inbox-API
 - Produktive Materialisierung aus Detectors
+
+**Prompt 6 (V4.9.351):** Prisma-Tabellen `notifications`, `notification_occurrences`, `notification_receipts` — siehe `docs/notification-engine-migration-plan.md`. Kein Insight-Backfill in diesem Schritt.
 
 ---
 

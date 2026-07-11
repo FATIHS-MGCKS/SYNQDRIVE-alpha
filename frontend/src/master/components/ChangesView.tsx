@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-engine-prisma-v49351-2026-07-11',
+    version: '4.9.351',
+    title: 'V4.9.351 — Notification Engine: Prisma-Datenmodell (additiv)',
+    summary: [
+      'Neue Tabellen `notifications`, `notification_occurrences`, `notification_receipts` mit Domain-Enums (Severity, Status, Domain, EntityType, …).',
+      'Partieller Unique-Index: max. eine aktive Notification pro (organizationId, fingerprint, lifecycleGeneration) für OPEN/ACKNOWLEDGED/SNOOZED.',
+      '`NotificationRepository` für Create/Occurrence/Receipt; `legacy_insight_id` für späteren DashboardInsight-Backfill vorbereitet.',
+      'Migrationsplan `docs/notification-engine-migration-plan.md` (Dry-Run, Rollback, Feature-Flags). Kein Insight-Backfill, kein Dashboard-Cutover.',
+    ],
+    reason: 'Prompt 6: production-taugliches, additives Persistenzmodell vor Materialisierung und Inbox-API.',
+    previousBehavior: 'Nur TypeScript-Domain-Vertrag (V4.9.350); keine Notification-Tabellen in PostgreSQL.',
+    details: 'Neu: Prisma-Modelle + Migration 20260711120000, notification.repository.ts, Tests, docs/notification-engine-migration-plan.md. Geändert: schema.prisma, notifications.module.ts.',
+    affectsArchitecture: true,
+    module: 'Dashboard / Notifications',
+    createdAt: '2026-07-11T02:00:00.000Z',
+  },
+  {
     id: 'notification-engine-domain-contract-v49350-2026-07-11',
     version: '4.9.350',
     title: 'V4.9.350 — Notification Engine: kanonische Backend-Domain (Vertrag)',

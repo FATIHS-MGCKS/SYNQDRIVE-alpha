@@ -6,4 +6,5 @@ export * from './notification-status.transitions';
 export * from './notification-reopen.policy';
 export * from './notification-candidate.validator';
 export * from './insight-candidate.mapper';
+export * from './notification.repository';
 export { NotificationsModule } from './notifications.module';
