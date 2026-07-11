@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { MIGRATABLE_INSIGHT_TYPES } from '../insight-candidate.mapper';
 import type { NotificationMigrationAcceptanceReport } from './notification-migration.types';
 
 @Injectable()
@@ -123,15 +124,7 @@ export class NotificationMigrationAcceptanceService {
         ...(organizationId ? { organizationId } : {}),
         isActive: true,
         type: {
-          in: [
-            'DRIVING_ASSESSMENT_DEVICE_QUALITY',
-            'BATTERY_CRITICAL',
-            'TIRE_CRITICAL',
-            'BRAKE_CRITICAL',
-            'SERVICE_OVERDUE',
-            'PICKUP_OVERDUE',
-            'STATION_SHORTAGE',
-          ],
+          in: [...MIGRATABLE_INSIGHT_TYPES],
         },
       },
       select: { id: true },

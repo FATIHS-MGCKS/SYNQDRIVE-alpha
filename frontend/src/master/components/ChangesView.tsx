@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-engine-production-readiness-v49359-2026-07-11',
+    version: '4.9.359',
+    title: 'V4.9.359 — Notification Engine: Production Readiness Audit & Migration',
+    summary: [
+      'Architektur-Audit der vollständigen Kette Producer → Delivery → Metrics.',
+      'Dry-Run-Analyse (`notification-migration-dry-run.ts`) für Insights, Complaints, V2, Preferences.',
+      'Idempotenter Backfill DashboardInsight → V2 mit Checkpoint, Merge, legacy_insight_id.',
+      'DB-Abnahme (`notification-migration-acceptance.ts`) inkl. Duplicate-Fingerprint-SQL.',
+      'Go/No-Go: CONDITIONAL GO — Doku: docs/notification-engine-production-readiness.md.',
+    ],
+    reason:
+      'Letzter Prompt: keine neue Feature-Entwicklung, sondern Migration, Cutover-Vorbereitung und ehrliche Production-Readiness-Bewertung.',
+    previousBehavior:
+      'Kein Dry-Run/Backfill-Tooling; keine automatisierte DB-Abnahme; kein formales Go/No-Go-Dokument.',
+    details:
+      'migration/* services, scripts/notification-migration-*.ts, acceptance SQL, Architektur-Audit-Service.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-11T14:00:00.000Z',
+  },
+  {
     id: 'notification-engine-delivery-v49358-2026-07-11',
     version: '4.9.358',
     title: 'V4.9.358 — Notification Engine: Delivery & Observability',

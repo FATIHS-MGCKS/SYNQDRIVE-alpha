@@ -17,24 +17,43 @@ import { DEFAULT_STATE_RESOLUTION_POLICY } from './notification-reopen.policy';
 import { fingerprintPartsFromInsightDedupeKey } from './notification-fingerprint.factory';
 
 const INSIGHT_DOMAIN: Partial<Record<InsightType, NotificationDomain>> = {
-  [InsightType.DRIVING_ASSESSMENT_DEVICE_QUALITY]: NotificationDomain.DRIVING_ANALYSIS,
+  [InsightType.TIGHT_HANDOVER]: NotificationDomain.HANDOVERS,
+  [InsightType.RETURN_NEEDS_INSPECTION]: NotificationDomain.HANDOVERS,
+  [InsightType.STATION_SHORTAGE]: NotificationDomain.OPERATIONS,
+  [InsightType.LOW_UTILIZATION]: NotificationDomain.OPERATIONS,
+  [InsightType.SERVICE_WINDOW]: NotificationDomain.VEHICLE_HEALTH,
+  [InsightType.SERVICE_BEFORE_BOOKING]: NotificationDomain.HANDOVERS,
   [InsightType.BATTERY_CRITICAL]: NotificationDomain.VEHICLE_HEALTH,
   [InsightType.TIRE_CRITICAL]: NotificationDomain.VEHICLE_HEALTH,
   [InsightType.BRAKE_CRITICAL]: NotificationDomain.VEHICLE_HEALTH,
   [InsightType.SERVICE_OVERDUE]: NotificationDomain.VEHICLE_HEALTH,
   [InsightType.PICKUP_OVERDUE]: NotificationDomain.HANDOVERS,
-  [InsightType.STATION_SHORTAGE]: NotificationDomain.OPERATIONS,
+  [InsightType.TUV_OVERDUE]: NotificationDomain.VEHICLE_HEALTH,
+  [InsightType.BOKRAFT_OVERDUE]: NotificationDomain.VEHICLE_HEALTH,
+  [InsightType.HM_SERVICE_NO_TRACKING]: NotificationDomain.VEHICLE_HEALTH,
+  [InsightType.DRIVING_ASSESSMENT_DEVICE_QUALITY]: NotificationDomain.DRIVING_ANALYSIS,
 };
 
 const INSIGHT_CONDITION: Partial<Record<InsightType, string>> = {
-  [InsightType.DRIVING_ASSESSMENT_DEVICE_QUALITY]: 'driving_assessment_device_quality',
+  [InsightType.TIGHT_HANDOVER]: 'tight_handover',
+  [InsightType.RETURN_NEEDS_INSPECTION]: 'return_inspection',
+  [InsightType.STATION_SHORTAGE]: 'shortage',
+  [InsightType.LOW_UTILIZATION]: 'low_utilization',
+  [InsightType.SERVICE_WINDOW]: 'service_window',
+  [InsightType.SERVICE_BEFORE_BOOKING]: 'service_before_booking',
   [InsightType.BATTERY_CRITICAL]: 'battery_critical',
   [InsightType.TIRE_CRITICAL]: 'tires_critical',
   [InsightType.BRAKE_CRITICAL]: 'brakes_critical',
   [InsightType.SERVICE_OVERDUE]: 'overdue',
   [InsightType.PICKUP_OVERDUE]: 'pickup_overdue',
-  [InsightType.STATION_SHORTAGE]: 'shortage',
+  [InsightType.TUV_OVERDUE]: 'tuv_overdue',
+  [InsightType.BOKRAFT_OVERDUE]: 'bokraft_overdue',
+  [InsightType.HM_SERVICE_NO_TRACKING]: 'hm_no_tracking',
+  [InsightType.DRIVING_ASSESSMENT_DEVICE_QUALITY]: 'driving_assessment_device_quality',
 };
+
+/** All Prisma InsightType values supported by DashboardInsight backfill. */
+export const MIGRATABLE_INSIGHT_TYPES: readonly InsightType[] = Object.values(InsightType);
 
 function mapInsightSeverity(severity: InsightSeverity): NotificationSeverity {
   switch (severity) {
@@ -67,6 +86,7 @@ function mapEntityScope(scope: InsightEntityScope): NotificationEntityType {
 function mapActionType(actionType?: string): NotificationActionType {
   switch (actionType) {
     case 'OPEN_VEHICLE':
+    case 'navigate_vehicle':
       return NotificationActionType.OPEN_VEHICLE;
     case 'navigate_station':
       return NotificationActionType.OPEN_STATION;
@@ -88,6 +108,11 @@ function titleKeyForInsight(type: InsightType, recovering: boolean): string {
   if (type === InsightType.PICKUP_OVERDUE) return 'notification.title.pickupOverdue';
   if (type === InsightType.STATION_SHORTAGE) return 'notification.title.stationShortage';
   if (type === InsightType.BATTERY_CRITICAL) return 'notification.title.batteryCritical';
+  if (type === InsightType.TIRE_CRITICAL) return 'notification.title.tireCritical';
+  if (type === InsightType.BRAKE_CRITICAL) return 'notification.title.brakeCritical';
+  if (type === InsightType.TUV_OVERDUE || type === InsightType.BOKRAFT_OVERDUE) {
+    return 'notification.title.complianceExpired';
+  }
   return 'notification.fallback';
 }
 
@@ -118,7 +143,12 @@ export function notificationCandidateFromInsight(
   const label =
     typeof insight.metrics?.entityLabel === 'string'
       ? insight.metrics.entityLabel
-      : entityId;
+      : typeof insight.metrics?.vehicleLicense === 'string'
+        ? insight.metrics.vehicleLicense
+        : entityId;
+
+  const metricsBookingId =
+    typeof insight.metrics?.bookingId === 'string' ? insight.metrics.bookingId : undefined;
 
   fingerprintPartsFromInsightDedupeKey(options.organizationId, insight.dedupeKey, entityType);
 
@@ -142,9 +172,13 @@ export function notificationCandidateFromInsight(
     actionTarget: {
       type: mapActionType(insight.actionType),
       vehicleId: entityType === NotificationEntityType.VEHICLE ? entityId : undefined,
-      bookingId: entityType === NotificationEntityType.BOOKING ? entityId : undefined,
+      bookingId:
+        entityType === NotificationEntityType.BOOKING
+          ? entityId
+          : metricsBookingId,
       stationId: entityType === NotificationEntityType.STATION ? entityId : undefined,
     },
+    expiresAt: insight.expiresAt,
     resolutionPolicy: options.resolutionPolicy ?? DEFAULT_STATE_RESOLUTION_POLICY,
     metadata: {
       insightPriority: insight.priority,

@@ -1,19 +1,11 @@
 import { DashboardInsight, InsightEntityScope } from '@prisma/client';
 import type { InsightCandidate } from '@modules/business-insights/insight.types';
-import { notificationCandidateFromInsight } from '../insight-candidate.mapper';
+import { notificationCandidateFromInsight, MIGRATABLE_INSIGHT_TYPES } from '../insight-candidate.mapper';
 import { fingerprintFromCandidate } from '../notification-candidate.validator';
 import { buildNotificationFingerprint } from '../notification-fingerprint.factory';
 import { NotificationEntityType } from '../notification.enums';
 
-const MIGRATABLE_INSIGHT_TYPES = new Set([
-  'DRIVING_ASSESSMENT_DEVICE_QUALITY',
-  'BATTERY_CRITICAL',
-  'TIRE_CRITICAL',
-  'BRAKE_CRITICAL',
-  'SERVICE_OVERDUE',
-  'PICKUP_OVERDUE',
-  'STATION_SHORTAGE',
-]);
+const MIGRATABLE_INSIGHT_TYPE_SET = new Set<string>(MIGRATABLE_INSIGHT_TYPES);
 
 export function dashboardInsightToCandidate(row: DashboardInsight): InsightCandidate {
   const entityIds = Array.isArray(row.entityIds)
@@ -43,7 +35,7 @@ export function dashboardInsightToCandidate(row: DashboardInsight): InsightCandi
 }
 
 export function isMigratableInsightType(type: string): boolean {
-  return MIGRATABLE_INSIGHT_TYPES.has(type);
+  return MIGRATABLE_INSIGHT_TYPE_SET.has(type);
 }
 
 export function mapInsightEntityScope(scope: InsightEntityScope): NotificationEntityType {

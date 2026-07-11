@@ -4,6 +4,7 @@ import {
   isMigratableInsightType,
   resolveInsightFingerprint,
 } from './notification-migration-insight.util';
+import { MIGRATABLE_INSIGHT_TYPES } from '../insight-candidate.mapper';
 import { NotificationDeliveryPolicyService } from '../delivery/notification-delivery-policy.service';
 import { buildDeliveryIdempotencyKey } from '../delivery/notification-delivery-idempotency.util';
 import { NotificationDeliveryChannel, NotificationDeliveryTransition } from '@prisma/client';
@@ -38,7 +39,8 @@ describe('notification-migration-insight.util', () => {
 
   it('maps migratable insight types', () => {
     expect(isMigratableInsightType('STATION_SHORTAGE')).toBe(true);
-    expect(isMigratableInsightType('TIGHT_HANDOVER')).toBe(false);
+    expect(isMigratableInsightType('TIGHT_HANDOVER')).toBe(true);
+    expect(MIGRATABLE_INSIGHT_TYPES).toHaveLength(15);
   });
 
   it('resolves stable fingerprint from dedupe key — not title', () => {
@@ -61,13 +63,16 @@ describe('notification-migration-insight.util', () => {
     expect(fromDedupe).not.toBe(fromCandidate);
   });
 
-  it('returns null for unmigratable type', () => {
-    expect(
-      resolveInsightFingerprint('org-1', {
-        ...baseRow,
-        type: InsightType.LOW_UTILIZATION,
-      } as any),
-    ).toBeNull();
+  it('resolves fingerprint for low utilization insight', () => {
+    const resolved = resolveInsightFingerprint('org-1', {
+      ...baseRow,
+      type: InsightType.LOW_UTILIZATION,
+      entityScope: InsightEntityScope.VEHICLE,
+      entityIds: ['veh-1'],
+      dedupeKey: 'low_utilization:veh-1',
+    } as any);
+    expect(resolved?.fingerprint).toContain('LOW_UTILIZATION');
+    expect(resolved?.fingerprint).toContain('veh-1');
   });
 });
 
