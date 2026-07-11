@@ -84,6 +84,22 @@ describe('notification panel filters', () => {
     expect(result).toHaveLength(1);
     expect(result[0]?.queue?.domain).toBe('bookings');
   });
+
+  it('shows resolved lifecycle items on Behoben tab', () => {
+    const resolved = v2Item({
+      title: 'Reifen-Warnung behoben',
+      queue: {
+        ...v2Item().queue!,
+        severity: 'success',
+        lifecycleStatus: 'resolved',
+        resolvedAt: '2026-07-10T20:00:00.000Z',
+      },
+    });
+    const active = v2Item();
+    const result = filterNotificationPanelItems([resolved, active], 'resolved', null);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.queue?.lifecycleStatus).toBe('resolved');
+  });
 });
 
 describe('notification card view model — WOB L 7503', () => {

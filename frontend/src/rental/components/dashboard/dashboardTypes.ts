@@ -731,6 +731,7 @@ export interface DashboardViewModel {
   actionQueueTabCounts?: Record<ActionQueueFilterTab, number> | null;
   notificationPrimaryTabCounts?: Record<import('./notifications/notificationPanelTypes').NotificationPrimaryTab, number> | null;
   setNotificationListMode?: (mode: 'active' | 'resolved') => void;
+  notificationListMode?: 'active' | 'resolved';
   notificationsV2Mode?: 'off' | 'shadow' | 'on';
   notificationsV2ErrorCode?: string | null;
   notificationMutations?: {

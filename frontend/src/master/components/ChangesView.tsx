@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-resolved-tab-fix-v49369-2026-07-11',
+    version: '4.9.369',
+    title: 'V4.9.369 — Meldungen „Behoben“-Tab zeigt wieder Einträge',
+    summary: [
+      'Behoben-Liste nutzt dieselbe 7-Tage-Fenster-Query wie der Badge (`resolvedRecent`).',
+      'Snooze-Ausschluss gilt nicht mehr für resolvedOnly — sonst Badge≠Liste.',
+      'Panel wartet auf listMode-Wechsel; keine aktive Health-Bridge im Behoben-Tab.',
+    ],
+    reason:
+      'Badge „Behoben: 8“ aber leere Liste — Count und List-Query waren inkonsistent (Snooze-Filter + fehlendes Zeitfenster + aktive Items gefiltert).',
+    previousBehavior:
+      'resolvedRecent zählte kürzlich behobene Zeilen; List mit resolvedOnly versteckte gesnoozte/gleiche Zeilen und Panel filterte noch aktive Bridge-Items.',
+    details:
+      'notification-api.service list(resolvedOnly), useNotifications from-window, NotificationPanel listMode-sync, useDashboardViewModel skip health bridge on resolved.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-11T12:00:00.000Z',
+  },
+  {
     id: 'notification-group-domain-icons-v49368-2026-07-11',
     version: '4.9.368',
     title: 'V4.9.368 — Meldungen-Gruppen: Domain-Icons wie Einzelkarten',

@@ -3112,6 +3112,8 @@ export const api = {
         activeOnly?: boolean;
         unreadOnly?: boolean;
         resolvedOnly?: boolean;
+        from?: string;
+        to?: string;
         sortBy?: 'lastSeenAt' | 'createdAt' | 'severity';
         sortOrder?: 'asc' | 'desc';
       },
@@ -3122,6 +3124,8 @@ export const api = {
       if (params?.activeOnly != null) q.set('activeOnly', String(params.activeOnly));
       if (params?.unreadOnly != null) q.set('unreadOnly', String(params.unreadOnly));
       if (params?.resolvedOnly != null) q.set('resolvedOnly', String(params.resolvedOnly));
+      if (params?.from) q.set('from', params.from);
+      if (params?.to) q.set('to', params.to);
       if (params?.sortBy) q.set('sortBy', params.sortBy);
       if (params?.sortOrder) q.set('sortOrder', params.sortOrder);
       const suffix = q.toString() ? `?${q.toString()}` : '';

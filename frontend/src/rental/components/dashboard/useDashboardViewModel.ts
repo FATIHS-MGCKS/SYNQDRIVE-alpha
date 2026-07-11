@@ -870,8 +870,11 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
 
   const actionQueue = useMemo(() => {
     if (!shouldUseV2NotificationSource()) return v1ActionQueue;
+    if (notificationsV2.listMode === 'resolved') {
+      return [...notificationsV2.items].sort((a, b) => b.timeSortMs - a.timeSortMs);
+    }
     return mergeV2NotificationsWithVehicleHealth(notificationsV2.items, vehicleHealthQueueItems);
-  }, [notificationsV2.items, v1ActionQueue, vehicleHealthQueueItems]);
+  }, [notificationsV2.items, notificationsV2.listMode, v1ActionQueue, vehicleHealthQueueItems]);
 
   const actionQueueTabCounts = useMemo(
     () => (shouldUseV2NotificationSource() ? notificationsV2.tabCounts : null),
@@ -1054,6 +1057,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     actionQueueTabCounts,
     notificationPrimaryTabCounts,
     setNotificationListMode: shouldUseV2NotificationSource() ? setNotificationListMode : undefined,
+    notificationListMode: shouldUseV2NotificationSource() ? notificationsV2.listMode : undefined,
     notificationsV2Mode,
     notificationsV2ErrorCode,
     notificationMutations: shouldUseV2NotificationSource()

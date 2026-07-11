@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { cn } from '../../../../components/ui/utils';
 import { panelShellClass } from '../dashboardShell';
 import type { ActionQueueItem, DashboardViewModel } from '../dashboardTypes';
@@ -137,6 +137,15 @@ export function NotificationPanel({
     [vm],
   );
 
+  useEffect(() => {
+    if (primaryTab === 'resolved') vm.setNotificationListMode?.('resolved');
+    else vm.setNotificationListMode?.('active');
+  }, [primaryTab, vm.setNotificationListMode]);
+
+  const resolvedTabPending =
+    primaryTab === 'resolved' && vm.notificationListMode !== 'resolved';
+  const panelLoading = vm.actionQueueLoading || resolvedTabPending;
+
   const errorBanner = useMemo(() => {
     if (!vm.actionQueueError) return null;
     const code = vm.notificationsV2ErrorCode;
@@ -162,7 +171,7 @@ export function NotificationPanel({
       return emptyVariantForTab(primaryTab, domainFilter != null);
     }
     return null;
-  }, [vm.actionQueueError, vm.actionQueueLoading, entries.length, primaryTab, domainFilter]);
+  }, [vm.actionQueueError, panelLoading, entries.length, primaryTab, domainFilter]);
 
   const snoozeDefaultUntil = () => new Date(Date.now() + 60 * 60_000).toISOString();
 
@@ -209,7 +218,7 @@ export function NotificationPanel({
         aria-live="polite"
         aria-relevant="additions text"
       >
-        {vm.actionQueueLoading ? (
+        {panelLoading ? (
           <NotificationCardSkeleton rows={3} />
         ) : emptyVariant ? (
           <NotificationEmptyState variant={emptyVariant} t={t} />
@@ -266,7 +275,7 @@ export function NotificationPanel({
           </ul>
         )}
 
-        {hiddenAtomicCount > 0 && !vm.actionQueueLoading ? (
+        {hiddenAtomicCount > 0 && !panelLoading ? (
           <p className={cn(NOTIFICATION_PANEL_TYPO.meta, 'border-t border-border/35 px-4 py-2.5 text-center')}>
             {t('notification.more.expanded', { count: hiddenAtomicCount })}
           </p>

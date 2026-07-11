@@ -118,6 +118,8 @@ export interface ApiNotificationListParams {
   activeOnly?: boolean;
   unreadOnly?: boolean;
   resolvedOnly?: boolean;
+  from?: string;
+  to?: string;
   sortBy?: 'lastSeenAt' | 'createdAt' | 'severity';
   sortOrder?: 'asc' | 'desc';
 }

@@ -5,6 +5,7 @@ import type { ApiNotificationListParams, ApiNotificationResponse } from '../lib/
 import { mapNotificationApiList } from '../lib/notifications/map-notification-api-to-view-model';
 import { emptyTabCounts, emptyPrimaryTabCounts, mapApiCountsToPrimaryTabCounts, mapApiCountsToTabCounts } from '../lib/notifications/map-api-counts-to-tab-counts';
 import type { NotificationPrimaryTab } from '../components/dashboard/notifications/notificationPanelTypes';
+import { resolvedRecentFromIso } from '../lib/notifications/notification-resolved-window';
 
 const DEFAULT_PAGE_SIZE = 50;
 
@@ -97,14 +98,25 @@ export function useNotifications({
   );
 
   const listParams = useMemo<ApiNotificationListParams>(
-    () => ({
-      page: 1,
-      limit: DEFAULT_PAGE_SIZE,
-      activeOnly: listMode === 'active',
-      resolvedOnly: listMode === 'resolved',
-      sortBy: 'lastSeenAt',
-      sortOrder: 'desc',
-    }),
+    () => {
+      const base = {
+        page: 1,
+        limit: DEFAULT_PAGE_SIZE,
+        sortBy: 'lastSeenAt' as const,
+        sortOrder: 'desc' as const,
+      };
+      if (listMode === 'resolved') {
+        return {
+          ...base,
+          resolvedOnly: true,
+          from: resolvedRecentFromIso(),
+        };
+      }
+      return {
+        ...base,
+        activeOnly: true,
+      };
+    },
     [listMode],
   );
 

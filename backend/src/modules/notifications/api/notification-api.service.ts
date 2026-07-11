@@ -88,6 +88,8 @@ export class NotificationApiService {
     const pagination = parseNotificationPagination(query);
     const referenceNow = new Date();
 
+    const resolvedOnly = !!query.resolvedOnly;
+
     const listFilters: NotificationListFilters = {
       organizationId: orgId,
       userId: ctx.userId,
@@ -101,8 +103,12 @@ export class NotificationApiService {
       bookingId: query.bookingId,
       unreadOnly: query.unreadOnly,
       activeOnly: query.activeOnly,
-      resolvedOnly: query.resolvedOnly,
-      from: query.from ? new Date(query.from) : undefined,
+      resolvedOnly,
+      from: query.from
+        ? new Date(query.from)
+        : resolvedOnly
+          ? new Date(Date.now() - RESOLVED_RECENT_WINDOW_MS)
+          : undefined,
       to: query.to ? new Date(query.to) : undefined,
       search: query.search,
       sortBy: query.sortBy,
@@ -114,7 +120,7 @@ export class NotificationApiService {
 
     await this.validateEntityFilters(orgId, query);
 
-    const where = this.buildAccessWhere(listFilters, ctx, referenceNow, true);
+    const where = this.buildAccessWhere(listFilters, ctx, referenceNow, !resolvedOnly);
 
     const [rows, total] = await Promise.all([
       this.repository.listNotificationsWhere(where, {
