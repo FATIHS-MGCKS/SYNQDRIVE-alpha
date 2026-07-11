@@ -3111,6 +3111,7 @@ export const api = {
         limit?: number;
         activeOnly?: boolean;
         unreadOnly?: boolean;
+        resolvedOnly?: boolean;
         sortBy?: 'lastSeenAt' | 'createdAt' | 'severity';
         sortOrder?: 'asc' | 'desc';
       },
@@ -3120,6 +3121,7 @@ export const api = {
       if (params?.limit != null) q.set('limit', String(params.limit));
       if (params?.activeOnly != null) q.set('activeOnly', String(params.activeOnly));
       if (params?.unreadOnly != null) q.set('unreadOnly', String(params.unreadOnly));
+      if (params?.resolvedOnly != null) q.set('resolvedOnly', String(params.resolvedOnly));
       if (params?.sortBy) q.set('sortBy', params.sortBy);
       if (params?.sortOrder) q.set('sortOrder', params.sortOrder);
       const suffix = q.toString() ? `?${q.toString()}` : '';

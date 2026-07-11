@@ -11,7 +11,7 @@
 | Area | Status | Notes |
 |------|--------|-------|
 | Architecture (backend) | **Pass** | Single canonical engine; full chain through outbox |
-| Frontend V2 cutover | **Pending merge** | PRs #146/#147 not on delivery branch |
+| Frontend V2 cutover | **Pass** | Cutover + Panel UI merged on integration branch |
 | Data migration tooling | **Ready** | Dry-run + idempotent backfill + acceptance SQL |
 | Legacy cleanup | **Not started** | Flags retained; no file deletion |
 | E2E production test | **Partial** | Unit/integration tests pass; no prod DB run in CI |
@@ -117,9 +117,9 @@ Report fields: `duplicates`, `unmigratable`, `missingEntityIds`, `projected` (mi
 
 ### Migratable insight types
 
-`DRIVING_ASSESSMENT_DEVICE_QUALITY`, `BATTERY_CRITICAL`, `TIRE_CRITICAL`, `BRAKE_CRITICAL`, `SERVICE_OVERDUE`, `PICKUP_OVERDUE`, `STATION_SHORTAGE`
+All 15 Prisma `InsightType` values — see `MIGRATABLE_INSIGHT_TYPES` in `insight-candidate.mapper.ts`.
 
-All other insight types → `unresolved` (not title-matched).
+Previously unmigratable types (now covered): `TIGHT_HANDOVER`, `RETURN_NEEDS_INSPECTION`, `LOW_UTILIZATION`, `SERVICE_WINDOW`, `SERVICE_BEFORE_BOOKING`, `TUV_OVERDUE`, `BOKRAFT_OVERDUE`, `HM_SERVICE_NO_TRACKING`.
 
 ### Commands
 
@@ -247,12 +247,12 @@ Expected: all notification suites pass including `notification-migration.spec.ts
 
 ## 12. Open risks (honest)
 
-1. Frontend V2 not merged to main — cutover incomplete
-2. Backfill not executed against production data in this run
-3. Non-migratable insight types remain V1-only until registry extended
-4. Push channel not implemented
-5. Quiet hours/digest env-only (no per-user DB fields)
-6. `fingerprintPartsFromInsightDedupeKey` bridge ≠ candidate fingerprint for some types — **backfill uses candidate path only**
+1. ~~Frontend V2 not merged to main~~ — **resolved** on integration branch (cutover + panel UI)
+2. Backfill not executed against production data — **operational step** before flag flip (tooling ready)
+3. ~~Non-migratable insight types~~ — **resolved** (all 15 InsightTypes mapped)
+4. Push channel not implemented — **accepted** (intentional stub until provider wired)
+5. Quiet hours/digest env-only (no per-user DB fields) — **accepted** for v1 cutover
+6. `fingerprintPartsFromInsightDedupeKey` bridge ≠ candidate fingerprint for some types — **backfill uses candidate path only** (documented)
 
 ---
 
@@ -270,7 +270,7 @@ Expected: all notification suites pass including `notification-migration.spec.ts
 - [ ] Staging dry-run reviewed
 - [ ] Pilot org backfill applied
 - [ ] Acceptance SQL clean
-- [ ] PR #146/#147 merged
+- [x] PR #146/#147 merged (integration branch)
 - [ ] 48h monitoring clean
 - [ ] Product owner approves flag flip
 

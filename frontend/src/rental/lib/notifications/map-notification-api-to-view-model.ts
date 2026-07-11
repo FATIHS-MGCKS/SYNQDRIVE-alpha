@@ -16,6 +16,19 @@ import {
   mapApiActionType,
 } from './notification-v2-action-router';
 
+function extractEntityContext(params: Record<string, string | number | boolean | null>) {
+  const plate = params.plate ?? params.label;
+  const make = params.make;
+  const model = params.model;
+  const year = params.year;
+  return {
+    plate: plate != null ? String(plate) : undefined,
+    make: make != null ? String(make) : undefined,
+    model: model != null ? String(model) : undefined,
+    year: year != null ? year : undefined,
+  };
+}
+
 const API_DOMAIN_MAP: Record<string, NotificationDomain> = {
   OPERATIONS: 'operations',
   VEHICLE_HEALTH: 'vehicle-health',
@@ -83,19 +96,6 @@ function mapCategory(domain: NotificationDomain): ActionQueueCategory {
   return 'operations';
 }
 
-function formatTimeLabel(iso: string, locale: string): string {
-  try {
-    return new Date(iso).toLocaleString(locale === 'de' ? 'de-DE' : 'en-GB', {
-      day: '2-digit',
-      month: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return '';
-  }
-}
-
 function safeTitleKey(key: string): TranslationKey {
   return key as TranslationKey;
 }
@@ -135,11 +135,13 @@ export function mapNotificationApiToActionQueueItem(
   const queueActionType = knownAction ? mapApiActionType(actionType) : 'open-rental';
   const actionTarget = mapApiActionTarget(actionType, row.action?.target ?? {});
   const sortMs = Date.parse(row.lastSeenAt) || Date.parse(row.firstSeenAt) || 0;
+  const templateParams = row.templateParams ?? {};
+  const entityContextParams = extractEntityContext(templateParams);
   const { title, reason } = interpolateTemplate(
     locale,
     row.titleKey,
     row.bodyKey,
-    row.templateParams ?? {},
+    templateParams,
   );
 
   const queue: NotificationQueueModel = {
@@ -177,11 +179,13 @@ export function mapNotificationApiToActionQueueItem(
     title,
     reason,
     entityLabel: row.entity.displayLabel,
-    timeLabel: formatTimeLabel(row.lastSeenAt, locale),
     timeSortMs: sortMs,
     priority: severity === 'critical' ? 100 : severity === 'warning' ? 50 : 10,
     tone: severity === 'critical' ? 'critical' : severity === 'warning' ? 'warning' : 'info',
     cta: legacyCta,
+    occurrenceCount: row.occurrenceCount,
+    availableActions: row.availableActions,
+    entityContextParams,
     vehicleId: row.action?.target?.vehicleId ?? (row.entity.type === 'VEHICLE' ? row.entity.id : undefined),
     bookingId: row.action?.target?.bookingId ?? (row.entity.type === 'BOOKING' ? row.entity.id : undefined),
     stationId: row.action?.target?.stationId ?? (row.entity.type === 'STATION' ? row.entity.id : undefined),

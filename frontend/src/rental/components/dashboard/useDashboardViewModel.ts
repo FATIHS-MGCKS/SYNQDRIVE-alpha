@@ -875,6 +875,18 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     ? !!notificationsV2.error
     : insightsError;
 
+  const notificationPrimaryTabCounts = useMemo(
+    () => (shouldUseV2NotificationSource() ? notificationsV2.primaryTabCounts : null),
+    [notificationsV2.primaryTabCounts],
+  );
+
+  const setNotificationListMode = useCallback(
+    (mode: 'active' | 'resolved') => {
+      notificationsV2.setListMode(mode);
+    },
+    [notificationsV2.setListMode],
+  );
+
   const notificationsV2ErrorCode = notificationsV2.error?.code ?? null;
 
   const stationCommandDetail = useMemo(() => {
@@ -1028,6 +1040,8 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     actionQueueLoading: resolvedActionQueueLoading,
     actionQueueError: resolvedActionQueueError,
     actionQueueTabCounts,
+    notificationPrimaryTabCounts,
+    setNotificationListMode: shouldUseV2NotificationSource() ? setNotificationListMode : undefined,
     notificationsV2Mode,
     notificationsV2ErrorCode,
     notificationMutations: shouldUseV2NotificationSource()
