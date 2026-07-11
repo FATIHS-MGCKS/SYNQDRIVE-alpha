@@ -247,10 +247,9 @@ Backfill must dedupe active insights per fingerprint before insert or use genera
 
 | Flag | Default | Purpose |
 |------|---------|---------|
-| `NOTIFICATION_ENGINE_PERSIST_ENABLED` | `false` | Gate materialize writes (future prompt) |
-| `NOTIFICATION_ENGINE_INBOX_API_ENABLED` | `false` | Gate read APIs (future prompt) |
+| `NOTIFICATIONS_V2` | `false` | Gate core engine writes (`NotificationCoreService.ingestCandidate`) |
 
-Prompt 6 only adds schema + repository — **no** runtime writes. Flags documented for deployment sequencing.
+Prompt 7 adds `NotificationCoreService` — still no dashboard read path. See `docs/notification-engine-core.md`.
 
 ---
 

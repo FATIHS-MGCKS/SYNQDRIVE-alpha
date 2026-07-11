@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-engine-core-v49352-2026-07-11',
+    version: '4.9.352',
+    title: 'V4.9.352 — Notification Engine: Core Service (Shadow Mode)',
+    summary: [
+      '`NotificationCoreService` mit ingestCandidate, createOrUpdateNotification, Lifecycle (resolve/reopen/ack/snooze/archive), Receipts (read/unread) und Queries.',
+      'Transaktionale Materialisierung mit Fingerprint-Dedup, Severity-Eskalation, Recovery→RESOLVED, Reopen-Policy und P2002-Retry.',
+      'Feature Flag `NOTIFICATIONS_V2` (default false) — Shadow Mode schreibt V2-Tabellen ohne Dashboard-Cutover.',
+      '54 Unit-Tests; Doku `docs/notification-engine-core.md`. Producer noch nicht verdrahtet.',
+    ],
+    reason: 'Prompt 7: kanonische Core Engine für strukturierte NotificationCandidates parallel zum Legacy-Dashboard.',
+    previousBehavior: 'Nur Prisma-Schema + Repository (V4.9.351); keine Materialisierungs-Use-Cases.',
+    details: 'Neu: notification-core.service.ts, notification-engine.config.ts, severity/template/prisma utils, Tests. Geändert: notification.repository.ts, notifications.module.ts, .env.example.',
+    affectsArchitecture: true,
+    module: 'Dashboard / Notifications',
+    createdAt: '2026-07-11T03:00:00.000Z',
+  },
+  {
     id: 'notification-engine-prisma-v49351-2026-07-11',
     version: '4.9.351',
     title: 'V4.9.351 — Notification Engine: Prisma-Datenmodell (additiv)',

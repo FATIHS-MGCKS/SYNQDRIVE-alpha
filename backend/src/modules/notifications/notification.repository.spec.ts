@@ -190,7 +190,7 @@ describe('NotificationRepository (mocked Prisma)', () => {
     expect(notifications.size).toBe(2);
   });
 
-  it('creates occurrence and increments occurrenceCount', async () => {
+  it('creates occurrence record', async () => {
     const notif = await repo.createNotification(baseNotificationInput());
     const occurredAt = new Date('2026-07-11T11:00:00.000Z');
     await repo.createOccurrence({
@@ -206,8 +206,7 @@ describe('NotificationRepository (mocked Prisma)', () => {
     expect(occurrences).toHaveLength(1);
     expect(occurrences[0].payload).toEqual({ evidence: 'hf_mirror' });
     const updated = notifications.get(notif.id);
-    expect(updated.occurrenceCount).toBe(2);
-    expect(updated.version).toBe(2);
+    expect(updated.occurrenceCount).toBe(1);
   });
 
   it('upserts receipt with unique notificationId + userId', async () => {

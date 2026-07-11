@@ -6,5 +6,8 @@ export * from './notification-status.transitions';
 export * from './notification-reopen.policy';
 export * from './notification-candidate.validator';
 export * from './insight-candidate.mapper';
+export * from './notification-core.service';
+export * from './notification-core.types';
+export * from './notification-engine.config';
 export * from './notification.repository';
 export { NotificationsModule } from './notifications.module';
