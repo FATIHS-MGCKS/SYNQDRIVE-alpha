@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-panel-ui-v49359-2026-07-11',
+    version: '4.9.359',
+    title: 'V4.9.359 — Notification Panel UI (V2 Dashboard Box)',
+    summary: [
+      'Professionelle Überarbeitung der Dashboard Notification Box auf V2 ViewModel: 4-Zeilen-Kartenhierarchie, Primary Tabs (Alle/Kritisch/Warnungen/Behoben), Domain-Sekundärfilter per Popover.',
+      'Zentrale Typografie-Tokens (11–14 px), semantischer Header-Statuspunkt, relative Zeitlabels, Read/Ack/Snooze-Menü, Empty/Loading/Skeleton States.',
+      'Mobile-tauglich ab 320 px (44 px Touch, horizontal scroll Tabs), Light/Dark via Design Tokens, DE/EN i18n inkl. WOB-L-7503-Zielzustand.',
+    ],
+    reason:
+      'Notification Box visuell und UX-seitig an kanonische V2 API und SynqDrive Design Language anbinden — ohne Dashboard-Redesign.',
+    previousBehavior:
+      'Legacy ActionQueue mit gemischten Domain/Severity-Tabs, AttentionItemRow-Layout, geschätzte Tab-Counts im V1-Pfad.',
+    details:
+      'Neu: components/dashboard/notifications/*, NotificationPanel bei VITE_NOTIFICATIONS_V2=on. V1-Pfad unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-11T00:00:00.000Z',
+  },
+  {
     id: 'notification-engine-frontend-cutover-v49358-2026-07-11',
     version: '4.9.358',
     title: 'V4.9.358 — Notification Engine: Frontend Dashboard Cutover (V2)',

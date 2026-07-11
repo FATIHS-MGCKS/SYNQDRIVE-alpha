@@ -3,9 +3,12 @@ import type { ActionQueueFilterTab, ActionQueueItem } from '../../components/das
 import { notificationClient, NotificationClientError } from './notification-client';
 import type { ApiNotificationListParams, ApiNotificationResponse } from './notification-api.types';
 import { mapNotificationApiList } from './map-notification-api-to-view-model';
-import { emptyTabCounts, mapApiCountsToTabCounts } from './map-api-counts-to-tab-counts';
+import { emptyTabCounts, emptyPrimaryTabCounts, mapApiCountsToPrimaryTabCounts, mapApiCountsToTabCounts } from './map-api-counts-to-tab-counts';
+import type { NotificationPrimaryTab } from '../../components/dashboard/notifications/notificationPanelTypes';
 
 const DEFAULT_PAGE_SIZE = 50;
+
+export type NotificationListMode = 'active' | 'resolved';
 
 export interface UseNotificationsOptions {
   orgId: string | null | undefined;
@@ -23,6 +26,9 @@ export interface UseNotificationsResult {
   items: ActionQueueItem[];
   apiRows: ApiNotificationResponse[];
   tabCounts: Record<ActionQueueFilterTab, number>;
+  primaryTabCounts: Record<NotificationPrimaryTab, number>;
+  listMode: NotificationListMode;
+  setListMode: (mode: NotificationListMode) => void;
   loading: boolean;
   error: NotificationClientError | null;
   mutation: NotificationMutationState;
@@ -71,6 +77,8 @@ export function useNotifications({
 }: UseNotificationsOptions): UseNotificationsResult {
   const [apiRows, setApiRows] = useState<ApiNotificationResponse[]>([]);
   const [tabCounts, setTabCounts] = useState<Record<ActionQueueFilterTab, number>>(emptyTabCounts);
+  const [primaryTabCounts, setPrimaryTabCounts] = useState(emptyPrimaryTabCounts);
+  const [listMode, setListMode] = useState<NotificationListMode>('active');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<NotificationClientError | null>(null);
   const [mutation, setMutation] = useState<NotificationMutationState>({
@@ -92,17 +100,19 @@ export function useNotifications({
     () => ({
       page: 1,
       limit: DEFAULT_PAGE_SIZE,
-      activeOnly: true,
+      activeOnly: listMode === 'active',
+      resolvedOnly: listMode === 'resolved',
       sortBy: 'lastSeenAt',
       sortOrder: 'desc',
     }),
-    [],
+    [listMode],
   );
 
   const fetchCounts = useCallback(async () => {
     if (!orgId || !enabled) return;
     const counts = await notificationClient.counts(orgId);
     setTabCounts(mapApiCountsToTabCounts(counts));
+    setPrimaryTabCounts(mapApiCountsToPrimaryTabCounts(counts));
   }, [orgId, enabled]);
 
   const fetchPage = useCallback(
@@ -110,6 +120,7 @@ export function useNotifications({
       if (!orgId || !enabled) {
         setApiRows([]);
         setTabCounts(emptyTabCounts());
+        setPrimaryTabCounts(emptyPrimaryTabCounts());
         setError(null);
         return;
       }
@@ -139,6 +150,7 @@ export function useNotifications({
         if (!append) {
           setApiRows([]);
           setTabCounts(emptyTabCounts());
+        setPrimaryTabCounts(emptyPrimaryTabCounts());
         }
       } finally {
         if (!cancelRef.current) setLoading(false);
@@ -339,6 +351,9 @@ export function useNotifications({
     items,
     apiRows,
     tabCounts,
+    primaryTabCounts,
+    listMode,
+    setListMode,
     loading,
     error,
     mutation,

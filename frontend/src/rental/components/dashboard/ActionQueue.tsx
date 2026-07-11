@@ -40,6 +40,8 @@ import {
   panelShellClass,
 } from './dashboardShell';
 import { navigateNotificationV2Action } from '../../lib/notifications/notification-v2-action-router';
+import { NotificationPanel } from './notifications/NotificationPanel';
+import { shouldUseV2NotificationSource } from '../../lib/notifications/notifications-v2-flag';
 
 interface ActionQueueHandlers {
   onOpenVehicleById?: (vehicleId: string) => void;
@@ -681,6 +683,15 @@ export function ActionQueue({
   const handlers = { onOpenVehicleById, onOpenBookingById, onOpenRentalView };
   const hasItems = atomicCount > 0;
   const showEmpty = !actionQueueLoading && !hasItems;
+
+  if (shouldUseV2NotificationSource()) {
+    return (
+      <NotificationPanel
+        vm={vm}
+        handlers={handlers}
+      />
+    );
+  }
 
   return (
     <section

@@ -117,6 +117,7 @@ export interface ApiNotificationListParams {
   limit?: number;
   activeOnly?: boolean;
   unreadOnly?: boolean;
+  resolvedOnly?: boolean;
   sortBy?: 'lastSeenAt' | 'createdAt' | 'severity';
   sortOrder?: 'asc' | 'desc';
 }

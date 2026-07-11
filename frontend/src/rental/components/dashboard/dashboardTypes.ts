@@ -295,6 +295,19 @@ export interface ActionQueueItem {
   ctaLabel?: string;
   stationId?: string;
   customerId?: string;
+
+  /** V2 API — occurrence count for meta row. */
+  occurrenceCount?: number;
+  /** V2 API — allowed user actions from backend. */
+  availableActions?: import('../../../lib/notifications/notification-api.types').ApiNotificationAvailableAction[];
+  /** V2 API — structured entity display (plate · make model year). */
+  entityContextParams?: {
+    plate?: string;
+    make?: string;
+    model?: string;
+    year?: string | number;
+    entityLine?: string;
+  };
 }
 
 /**
@@ -716,6 +729,8 @@ export interface DashboardViewModel {
   actionQueueError: boolean;
   /** When set (V2 path), tab badges use API counts instead of loaded-page estimates. */
   actionQueueTabCounts?: Record<ActionQueueFilterTab, number> | null;
+  notificationPrimaryTabCounts?: Record<import('./notifications/notificationPanelTypes').NotificationPrimaryTab, number> | null;
+  setNotificationListMode?: (mode: 'active' | 'resolved') => void;
   notificationsV2Mode?: 'off' | 'shadow' | 'on';
   notificationsV2ErrorCode?: string | null;
   notificationMutations?: {
