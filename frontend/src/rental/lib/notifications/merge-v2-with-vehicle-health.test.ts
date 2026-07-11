@@ -67,6 +67,22 @@ describe('mergeV2NotificationsWithVehicleHealth', () => {
     const merged = mergeV2NotificationsWithVehicleHealth(v2, health);
     expect(merged).toHaveLength(1);
   });
+
+  it('skips bridge health when V2 already has any health notification for the vehicle', () => {
+    const v2 = [
+      item('veh-1', {
+        id: 'n1',
+        semanticKey: 'VEHICLE:veh-1:VEHICLE_HEALTH:ACTIVE_DTC',
+        issueType: 'ACTIVE_DTC',
+      }),
+    ];
+    const health = [
+      item('veh-1', { semanticKey: 'vehicle:veh-1:health:tires_monitor', issueType: 'tire_monitor' }),
+    ];
+    const merged = mergeV2NotificationsWithVehicleHealth(v2, health);
+    expect(merged).toHaveLength(1);
+    expect(merged[0].semanticKey).toBe('VEHICLE:veh-1:VEHICLE_HEALTH:ACTIVE_DTC');
+  });
 });
 
 describe('augmentPrimaryTabCountsWithHealthItems', () => {

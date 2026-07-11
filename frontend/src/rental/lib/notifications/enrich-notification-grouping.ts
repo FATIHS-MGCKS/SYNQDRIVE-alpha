@@ -106,6 +106,14 @@ function moduleLabel(module: ActionQueueModuleTarget | undefined, de: boolean): 
   }
 }
 
+function normalizeVehicleGroupKey(groupKey: string | undefined): string | undefined {
+  if (!groupKey) return groupKey;
+  if (groupKey.startsWith('vehicle-health:') || groupKey.startsWith('vehicle-ops:')) {
+    return `vehicle:${groupKey.slice(groupKey.indexOf(':') + 1)}`;
+  }
+  return groupKey;
+}
+
 /**
  * Derives stable groupKey/groupType for V2 notification rows so the panel can
  * reuse ActionQueue grouping (vehicle, station, booking, customer).
@@ -115,6 +123,14 @@ export function enrichNotificationGroupingMetadata(
   locale: string,
   referenceNowMs = Date.now(),
 ): ActionQueueItem {
+  const normalizedGroupKey = normalizeVehicleGroupKey(item.groupKey);
+  if (normalizedGroupKey && normalizedGroupKey !== item.groupKey) {
+    return enrichNotificationGroupingMetadata(
+      { ...item, groupKey: normalizedGroupKey },
+      locale,
+      referenceNowMs,
+    );
+  }
   if (item.groupKey) return item;
 
   const de = locale === 'de';

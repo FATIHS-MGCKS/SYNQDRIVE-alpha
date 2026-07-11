@@ -286,7 +286,7 @@ function issueGroupKey(issue: OperationalIssue): string | undefined {
     (issue.domain === 'vehicle_health' || issue.domain === 'service_compliance')
     && issue.vehicleId
   ) {
-    return `vehicle-health:${issue.vehicleId}`;
+    return `vehicle:${issue.vehicleId}`;
   }
   if ((issue.domain === 'rental_readiness' || issue.domain === 'telemetry') && issue.vehicleId) return issue.semanticKey;
   if ((issue.domain === 'booking' || issue.domain === 'return' || issue.domain === 'handover') && issue.bookingId) {
@@ -441,13 +441,13 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
     let insightGroupKey: string | undefined;
     let insightGroupType: ActionQueueItem['groupType'];
     if (insightCat === 'health' && vehicleId) {
-      insightGroupKey = `vehicle-health:${vehicleId}`;
+      insightGroupKey = `vehicle:${vehicleId}`;
       insightGroupType = 'vehicle-health';
     } else if (bookingId) {
       insightGroupKey = `booking:${bookingId}`;
       insightGroupType = 'booking';
     } else if (vehicleId) {
-      insightGroupKey = `vehicle-ops:${vehicleId}`;
+      insightGroupKey = `vehicle:${vehicleId}`;
       insightGroupType = 'vehicle-ops';
     } else if (FINANCIAL_TYPES.has(insight.type)) {
       insightGroupKey = `finance:${insight.id}`;

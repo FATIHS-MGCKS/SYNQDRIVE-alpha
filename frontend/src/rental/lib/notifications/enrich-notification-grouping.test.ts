@@ -105,4 +105,29 @@ describe('notification panel grouping', () => {
       expect(group.subtitle).toBe('2 Meldungen');
     }
   });
+
+  it('normalizes legacy vehicle-health groupKey and merges with V2 rows', () => {
+    const bridgeItem: ActionQueueItem = {
+      ...vehicleItem('bridge-1', 'veh-1', 'TIRE_CRITICAL', 'Reifen prüfen'),
+      id: 'issue-vehicle:veh-1:health:tires_monitor',
+      groupKey: 'vehicle-health:veh-1',
+      groupType: 'vehicle-health',
+      source: 'operational-issue',
+    };
+    const items = enrichNotificationGroupingList(
+      [
+        vehicleItem('n1', 'veh-1', 'ACTIVE_DTC', 'P0675'),
+        bridgeItem,
+      ],
+      'de',
+    );
+    const entries = groupActionQueueEntries(items, 'de');
+    expect(entries).toHaveLength(1);
+    const group = entries[0];
+    expect(group.kind).toBe('group');
+    if (group.kind === 'group') {
+      expect(group.groupKey).toBe('vehicle:veh-1');
+      expect(group.children).toHaveLength(2);
+    }
+  });
 });

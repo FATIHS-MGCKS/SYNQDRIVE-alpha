@@ -27,6 +27,26 @@ function isVehicleHealthQueueItem(item: ActionQueueItem): boolean {
   return item.category === 'health' || item.queue?.domain === 'vehicle-health';
 }
 
+function v2HealthVehicleIds(v2Items: ActionQueueItem[]): Set<string> {
+  const ids = new Set<string>();
+  for (const item of v2Items) {
+    if (isVehicleHealthQueueItem(item) && item.vehicleId) {
+      ids.add(item.vehicleId);
+    }
+  }
+  return ids;
+}
+
+function shouldSkipSupplementalHealthItem(
+  item: ActionQueueItem,
+  coveredSemanticKeys: Set<string>,
+  coveredVehicleIds: Set<string>,
+): boolean {
+  if (coveredSemanticKeys.has(item.semanticKey)) return true;
+  if (item.vehicleId && coveredVehicleIds.has(item.vehicleId)) return true;
+  return false;
+}
+
 /**
  * V2 notifications only include migrated DashboardInsights. Rental-Health-V1 module
  * warnings (DTC, tires, brakes, …) still live in vehicleHealthAlerts until producers
@@ -36,10 +56,13 @@ export function mergeV2NotificationsWithVehicleHealth(
   v2Items: ActionQueueItem[],
   healthItems: ActionQueueItem[],
 ): ActionQueueItem[] {
-  const coveredKeys = new Set(
+  const coveredSemanticKeys = new Set(
     v2Items.filter(isVehicleHealthQueueItem).map((item) => item.semanticKey),
   );
-  const supplemental = healthItems.filter((item) => !coveredKeys.has(item.semanticKey));
+  const coveredVehicleIds = v2HealthVehicleIds(v2Items);
+  const supplemental = healthItems.filter(
+    (item) => !shouldSkipSupplementalHealthItem(item, coveredSemanticKeys, coveredVehicleIds),
+  );
   if (!supplemental.length) {
     return [...v2Items].sort((a, b) => b.timeSortMs - a.timeSortMs);
   }
@@ -50,10 +73,13 @@ export function supplementalHealthItems(
   v2Items: ActionQueueItem[],
   healthItems: ActionQueueItem[],
 ): ActionQueueItem[] {
-  const coveredKeys = new Set(
+  const coveredSemanticKeys = new Set(
     v2Items.filter(isVehicleHealthQueueItem).map((item) => item.semanticKey),
   );
-  return healthItems.filter((item) => !coveredKeys.has(item.semanticKey));
+  const coveredVehicleIds = v2HealthVehicleIds(v2Items);
+  return healthItems.filter(
+    (item) => !shouldSkipSupplementalHealthItem(item, coveredSemanticKeys, coveredVehicleIds),
+  );
 }
 
 export function augmentPrimaryTabCountsWithHealthItems(
