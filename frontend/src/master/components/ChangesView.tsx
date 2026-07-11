@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-grouping-dedupe-v49367-2026-07-11',
+    version: '4.9.367',
+    title: 'V4.9.367 — Meldungen-Gruppierung: keine Doppelkarten pro Fahrzeug',
+    summary: [
+      'Einheitlicher groupKey `vehicle:{id}` für V2-API, Rental-Health-Bridge und Legacy-Insights.',
+      'Bridge-Dedupe pro Fahrzeug: wenn V2 bereits Health-Meldungen hat, keine clientseitigen Duplikate.',
+      'Enricher normalisiert alte `vehicle-health:`/`vehicle-ops:`-Keys vor dem Gruppieren.',
+    ],
+    reason:
+      'Nach V4.9.366 erschienen dieselben Kennzeichen doppelt — V2-Zeilen (`vehicle:`) und Bridge-Zeilen (`vehicle-health:`) landeten in getrennten Buckets.',
+    previousBehavior:
+      'Zwei Gruppenkarten pro Fahrzeug (z.B. KS MS 661 einmal mit Modell, einmal nur Kennzeichen); Bridge-Dedupe nur bei exakt gleichem semanticKey.',
+    details:
+      'actionQueueBuilder issueGroupKey/insightGroupKey → vehicle:{id}; merge-v2-with-vehicle-health vehicleId-Dedupe; enrich-notification-grouping normalizeVehicleGroupKey.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-11T10:48:00.000Z',
+  },
+  {
     id: 'notification-panel-grouping-v49366-2026-07-11',
     version: '4.9.366',
     title: 'V4.9.366 — Meldungen-Panel: Gruppierung nach Fahrzeug/Entität',

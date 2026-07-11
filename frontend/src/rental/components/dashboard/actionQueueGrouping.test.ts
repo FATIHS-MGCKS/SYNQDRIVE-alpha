@@ -274,7 +274,7 @@ describe('groupActionQueueEntries', () => {
     const entries = groupActionQueueEntries(buildHealthOnly(), 'en');
     expect(entries).toHaveLength(1);
     const vehicleGroup = entries.find(
-      (entry): entry is ActionQueueGroupItem => entry.kind === 'group' && entry.groupKey === 'vehicle-health:v1',
+      (entry): entry is ActionQueueGroupItem => entry.kind === 'group' && entry.groupKey === 'vehicle:v1',
     );
     expect(vehicleGroup?.children).toHaveLength(3);
     expect(vehicleGroup?.children.map((child) => child.module)).toEqual([
@@ -287,14 +287,14 @@ describe('groupActionQueueEntries', () => {
 
   it('sets group severity to the highest child severity (critical)', () => {
     const group = groupActionQueueEntries(buildHealthOnly(), 'en').find(
-      (entry): entry is ActionQueueGroupItem => entry.kind === 'group' && entry.groupKey === 'vehicle-health:v1',
+      (entry): entry is ActionQueueGroupItem => entry.kind === 'group' && entry.groupKey === 'vehicle:v1',
     )!;
     expect(group.severity).toBe('critical');
   });
 
   it('orders health children by severity then health module order', () => {
     const group = groupActionQueueEntries(buildHealthOnly(), 'en').find(
-      (entry): entry is ActionQueueGroupItem => entry.kind === 'group' && entry.groupKey === 'vehicle-health:v1',
+      (entry): entry is ActionQueueGroupItem => entry.kind === 'group' && entry.groupKey === 'vehicle:v1',
     )!;
     expect(group.children.map((c) => c.module)).toEqual([
       'battery',
