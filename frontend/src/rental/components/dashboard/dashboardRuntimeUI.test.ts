@@ -166,15 +166,19 @@ describe('dashboard runtime-only UI contracts', () => {
     const shellSrc = readFileSync(resolve(testDir, './dashboardShell.tsx'), 'utf8');
 
     expect(shellSrc).toMatch(/controlFinanceGrid:[\s\S]*lg:grid-cols-2/);
-    expect(shellSrc).toMatch(/notificationsRow/);
+    expect(shellSrc).toMatch(/notificationsSlot:[\s\S]*lg:col-start-2/);
+    expect(shellSrc).toMatch(/notificationsPanelScroll/);
+    expect(shellSrc).toMatch(/lg:grid-rows-\[auto_minmax\(0,1fr\)\]/);
     expect(shellSrc).not.toMatch(/notificationsDayPlanGrid:[\s\S]*lg:grid-cols-2/);
     expect(shellSrc).toMatch(/financeKpiGrid:[\s\S]*sm:grid-cols-4/);
-    expect(shellSrc).toMatch(/lg:items-start/);
+    expect(shellSrc).toMatch(/lg:items-stretch/);
     expect(dashboardViewSrc).toMatch(/controlFinanceGrid/);
     expect(dashboardViewSrc).toMatch(/financeSlot/);
+    expect(dashboardViewSrc).toMatch(/notificationsSlot/);
+    expect(dashboardViewSrc).toMatch(/layout="sidebar"/);
     expect(dashboardViewSrc).toMatch(/<DashboardControlHeader vm=\{vm\}>[\s\S]*<ControlKpiStrip/);
     expect(dashboardViewSrc).not.toMatch(/controlKpiShell/);
-    expect(dashboardViewSrc).toMatch(/notificationsRow/);
+    expect(dashboardViewSrc).not.toMatch(/notificationsRow/);
     expect(dashboardViewSrc).not.toMatch(/OperationsSchedulePanel/);
     expect(dashboardViewSrc).not.toMatch(/dayPlanSlot/);
     expect(businessPulseSrc).not.toMatch(/\bh-full\b/);

@@ -11,24 +11,23 @@ export const DASHBOARD_LAYOUT = {
   focusStack: 'space-y-4',
   opsGrid: 'grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.04fr)_minmax(0,0.96fr)] lg:items-stretch',
   /**
-   * Desktop row 1: Control KPIs (left) + Finances / Business Pulse (right).
-   * Mobile: KPIs, then Finances (stacked).
+   * Desktop: Control KPIs (left, row-span 2) + Finanzen (top-right) + Meldungen (bottom-right).
+   * Mobile: Control → Finanzen → Meldungen (stacked).
    */
   controlFinanceGrid:
-    'grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start lg:gap-4 xl:gap-5',
-  controlKpiSlot: 'min-w-0 w-full',
-  financeSlot: 'min-w-0 w-full',
-  /** Shared outer surface for Control Center header + embedded KPI strip. */
-  controlCenterCard: 'surface-premium rounded-2xl overflow-hidden',
-  controlCenterCardPadding: 'px-4 py-4 sm:p-5 lg:p-6',
-  controlCenterKpiSection: 'mt-4 border-t border-border/35 pt-4 sm:mt-5 sm:pt-5',
-  /**
-   * Row 2: Notifications / Meldungen — full width (Tagesplan removed; ops via Heutige Operationen drilldown).
-   */
+    'grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:grid-rows-[auto_minmax(0,1fr)] lg:items-stretch lg:gap-4 xl:gap-5',
+  controlKpiSlot: 'min-w-0 w-full lg:col-start-1 lg:row-span-2 lg:row-start-1',
+  financeSlot: 'min-w-0 w-full lg:col-start-2 lg:row-start-1',
+  notificationsSlot: 'flex min-h-0 w-full min-w-0 flex-col lg:col-start-2 lg:row-start-2',
+  /** Scrollable notification list body (sidebar layout under Finanzen). */
+  notificationsPanelScroll:
+    'min-h-0 flex-1 overflow-y-auto overscroll-y-contain scrollbar-thin [scrollbar-width:thin] [-webkit-overflow-scrolling:touch]',
+  /** @deprecated Meldungen live in `notificationsSlot` under Finanzen. */
   notificationsRow: 'min-w-0 w-full',
-  /** @deprecated Use `notificationsRow` — kept for changelog references. */
+  /** @deprecated Meldungen live in `notificationsSlot` under Finanzen. */
   notificationsDayPlanGrid: 'min-w-0 w-full',
-  notificationsSlot: 'min-w-0 w-full',
+  /** @deprecated Use `notificationsSlot`. */
+  notificationsSlotLegacy: 'min-w-0 w-full',
   /** @deprecated Tagesplan panel removed from standard dashboard. */
   dayPlanSlot: 'min-w-0 w-full',
   financeZone: 'border-t border-border/50 pt-7',
@@ -36,6 +35,10 @@ export const DASHBOARD_LAYOUT = {
   financeKpiGrid: 'grid w-full grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2',
   financeKpiCard:
     'min-h-[72px] rounded-xl px-2.5 py-2 sm:min-h-[76px] sm:rounded-2xl sm:px-2.5 sm:py-2.5',
+  /** Shared outer surface for Control Center header + embedded KPI strip. */
+  controlCenterCard: 'surface-premium rounded-2xl overflow-hidden',
+  controlCenterCardPadding: 'px-4 py-4 sm:p-5 lg:p-6',
+  controlCenterKpiSection: 'mt-4 border-t border-border/35 pt-4 sm:mt-5 sm:pt-5',
 } as const;
 
 export type DashboardPanelTier = 'primary' | 'secondary' | 'tertiary';

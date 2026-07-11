@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-notifications-sidebar-v49374-2026-07-11',
+    version: '4.9.374',
+    title: 'V4.9.374 — Meldungen unter Finanzen mit Scroll-Höhe',
+    summary: [
+      'Meldungen-Panel rechts unter Finanzen (`notificationsSlot`), nicht mehr full-width darunter.',
+      'CSS-Grid: linke KPI-Spalte `row-span-2`; Meldungen-Höhe = Rest unter Finanzen, max. Gesamthöhe der linken Box.',
+      '`NotificationPanel layout="sidebar"`: scrollbare Liste (`notificationsPanelScroll`), alle Einträge statt „+N weitere“.',
+    ],
+    reason:
+      'Meldungen sollten die rechte Spalte mit Finanzen teilen und nicht über die Control-Center-Höhe hinauswachsen.',
+    previousBehavior:
+      'Meldungen full-width unter der gesamten Control/Finances-Zeile; Listen-Cap mit „weitere Meldungen“-Hinweis.',
+    details:
+      'DashboardView.tsx, dashboardShell.tsx, NotificationPanel.tsx, ActionQueue.tsx (`layout="sidebar"`).',
+    affectsArchitecture: true,
+    module: 'Dashboard',
+    createdAt: '2026-07-11T19:30:00.000Z',
+  },
+  {
     id: 'dashboard-remove-dayplan-finance-row-v49373-2026-07-11',
     version: '4.9.373',
     title: 'V4.9.373 — Dashboard: Tagesplan entfernt, Finanzen-KPIs in einer Reihe',

@@ -112,13 +112,9 @@ export function DashboardView({
               error={vm.dataFreshness.invoicesError}
             />
           </div>
-        </div>
-
-        <div
-          className={`${DASHBOARD_LAYOUT.notificationsRow} animate-fade-up`}
-          style={{ animationDelay: '90ms' }}
-        >
-          <ActionQueue vm={vm} {...handlers} />
+          <div className={DASHBOARD_LAYOUT.notificationsSlot}>
+            <ActionQueue vm={vm} {...handlers} layout="sidebar" />
+          </div>
         </div>
       </div>
       <DashboardDrilldownDrawer

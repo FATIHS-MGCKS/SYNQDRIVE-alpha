@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { cn } from '../../../../components/ui/utils';
 import { api, type Vendor } from '../../../../lib/api';
-import { panelShellClass } from '../dashboardShell';
+import { panelShellClass, DASHBOARD_LAYOUT } from '../dashboardShell';
 import type { ActionQueueItem, DashboardViewModel } from '../dashboardTypes';
 import {
   countAtomicActions,
@@ -33,6 +33,8 @@ import type {
 import { NOTIFICATION_PANEL_TYPO } from './notificationPanelTypography';
 
 const VISIBLE_ENTRY_CAP = 8;
+
+export type NotificationPanelLayout = 'default' | 'sidebar';
 
 interface NotificationPanelHandlers {
   onOpenVehicleById?: (vehicleId: string) => void;
@@ -73,9 +75,11 @@ function runItemCta(item: ActionQueueItem, vm: DashboardViewModel, handlers: Not
 export function NotificationPanel({
   vm,
   handlers,
+  layout = 'default',
 }: {
   vm: DashboardViewModel;
   handlers: NotificationPanelHandlers;
+  layout?: NotificationPanelLayout;
 }) {
   const { t, locale } = useLanguage();
   const { orgId } = useRentalOrg();
@@ -135,11 +139,17 @@ export function NotificationPanel({
   }, [enrichedItems]);
 
   const atomicCount = useMemo(() => countAtomicActions(entries), [entries]);
-  const visibleEntries = isExpanded ? entries.slice(0, VISIBLE_ENTRY_CAP) : entries.slice(0, 3);
+  const isSidebar = layout === 'sidebar';
+  const visibleEntries = isSidebar
+    ? entries
+    : isExpanded
+      ? entries.slice(0, VISIBLE_ENTRY_CAP)
+      : entries.slice(0, 3);
   const hiddenAtomicCount = useMemo(() => {
+    if (isSidebar) return 0;
     const hidden = entries.slice(visibleEntries.length);
     return countAtomicActions(hidden);
-  }, [entries, visibleEntries.length]);
+  }, [entries, visibleEntries.length, isSidebar]);
 
   const statusTone = headerStatusTone(vm.actionQueue, primaryTabCounts);
 
@@ -223,7 +233,11 @@ export function NotificationPanel({
 
   return (
     <section
-      className={cn(panelShellClass('tertiary'), 'w-full min-w-0')}
+      className={cn(
+        panelShellClass('tertiary'),
+        'w-full min-w-0',
+        isSidebar && 'flex h-full min-h-0 flex-col overflow-hidden max-lg:max-h-[min(480px,55vh)]',
+      )}
       aria-label={t('notification.panelTitle')}
     >
       <NotificationPanelHeader
@@ -236,7 +250,7 @@ export function NotificationPanel({
         t={t}
       />
 
-      <div className="border-b border-border/35 px-2 py-1.5 sm:px-2.5">
+      <div className="shrink-0 border-b border-border/35 px-2 py-1.5 sm:px-2.5">
         <div className="flex items-center gap-2">
           <div className="min-w-0 flex-1">
             <NotificationPrimaryTabs
@@ -255,59 +269,69 @@ export function NotificationPanel({
       <div
         id={contentId}
         hidden={!isExpanded}
-        className={isExpanded ? 'animate-fade-up motion-reduce:animate-none' : undefined}
+        className={cn(
+          isExpanded && 'animate-fade-up motion-reduce:animate-none',
+          isSidebar && 'flex min-h-0 flex-1 flex-col overflow-hidden',
+        )}
         aria-live="polite"
         aria-relevant="additions text"
       >
-        {panelLoading ? (
-          <NotificationCardSkeleton rows={3} />
-        ) : emptyVariant ? (
-          <NotificationEmptyState variant={emptyVariant} t={t} />
-        ) : (
-          <ul className="flex flex-col gap-2 px-2 py-2 sm:px-2.5" role="list">
-            {visibleEntries.map((entry) => {
-              if (entry.kind === 'group') {
+        <div
+          className={cn(
+            isSidebar && DASHBOARD_LAYOUT.notificationsPanelScroll,
+            !isSidebar && 'max-lg:max-h-[min(420px,50vh)] max-lg:overflow-y-auto max-lg:scrollbar-thin',
+          )}
+        >
+          {panelLoading ? (
+            <NotificationCardSkeleton rows={3} />
+          ) : emptyVariant ? (
+            <NotificationEmptyState variant={emptyVariant} t={t} />
+          ) : (
+            <ul className="flex flex-col gap-2 px-2 py-2 sm:px-2.5" role="list">
+              {visibleEntries.map((entry) => {
+                if (entry.kind === 'group') {
+                  return (
+                    <li key={entry.id} className="list-none">
+                      <NotificationGroupCard
+                        group={entry}
+                        itemsById={itemsById}
+                        locale={locale}
+                        referenceNowMs={referenceNowMs}
+                        t={t}
+                        onItemCta={runCta}
+                        onCreateTask={openCreateTask}
+                      />
+                    </li>
+                  );
+                }
+
+                const item = itemsById.get(entry.id);
+                if (!item) return null;
+                const mutations = mutationHandlers(entry.id);
+
                 return (
                   <li key={entry.id} className="list-none">
-                    <NotificationGroupCard
-                      group={entry}
-                      itemsById={itemsById}
+                    <NotificationEntryCard
+                      item={item}
                       locale={locale}
                       referenceNowMs={referenceNowMs}
                       t={t}
-                      onItemCta={runCta}
-                      onCreateTask={openCreateTask}
+                      onPrimaryCta={() => runCta(item)}
+                      onCreateTask={() => openCreateTask(item)}
+                      {...mutations}
                     />
                   </li>
                 );
-              }
+              })}
+            </ul>
+          )}
 
-              const item = itemsById.get(entry.id);
-              if (!item) return null;
-              const mutations = mutationHandlers(entry.id);
-
-              return (
-                <li key={entry.id} className="list-none">
-                  <NotificationEntryCard
-                    item={item}
-                    locale={locale}
-                    referenceNowMs={referenceNowMs}
-                    t={t}
-                    onPrimaryCta={() => runCta(item)}
-                    onCreateTask={() => openCreateTask(item)}
-                    {...mutations}
-                  />
-                </li>
-              );
-            })}
-          </ul>
-        )}
-
-        {hiddenAtomicCount > 0 && !panelLoading ? (
-          <p className={cn(NOTIFICATION_PANEL_TYPO.meta, 'border-t border-border/35 px-4 py-2.5 text-center')}>
-            {t('notification.more.expanded', { count: hiddenAtomicCount })}
-          </p>
-        ) : null}
+          {hiddenAtomicCount > 0 && !panelLoading ? (
+            <p className={cn(NOTIFICATION_PANEL_TYPO.meta, 'border-t border-border/35 px-4 py-2.5 text-center')}>
+              {t('notification.more.expanded', { count: hiddenAtomicCount })}
+            </p>
+          ) : null}
+        </div>
       </div>
 
       <ServiceTaskCreateModal

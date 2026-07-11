@@ -37,10 +37,11 @@ import {
 import type { NotificationSeverity } from './notificationQueueModel';
 import {
   ACTION_QUEUE_LIST_CAP,
+  DASHBOARD_LAYOUT,
   panelShellClass,
 } from './dashboardShell';
 import { navigateNotificationV2Action } from '../../lib/notifications/notification-v2-action-router';
-import { NotificationPanel } from './notifications/NotificationPanel';
+import { NotificationPanel, type NotificationPanelLayout } from './notifications/NotificationPanel';
 import { shouldUseV2NotificationSource } from '../../lib/notifications/notifications-v2-flag';
 
 interface ActionQueueHandlers {
@@ -54,6 +55,7 @@ interface ActionQueueProps {
   onOpenVehicleById?: (vehicleId: string) => void;
   onOpenBookingById?: (bookingId: string) => void;
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
+  layout?: NotificationPanelLayout;
 }
 
 const STANDARD_VISIBLE_ITEMS = 8;
@@ -595,6 +597,7 @@ export function ActionQueue({
   onOpenVehicleById,
   onOpenBookingById,
   onOpenRentalView,
+  layout = 'default',
 }: ActionQueueProps) {
   const {
     actionQueue,
@@ -615,7 +618,12 @@ export function ActionQueue({
   const effectiveTab: ActionQueueFilterTab =
     operatorFocusMode || criticalOnly ? 'critical' : filterTab;
 
-  const visibleEntryCap = operatorFocusMode ? ACTION_QUEUE_LIST_CAP : STANDARD_VISIBLE_ITEMS;
+  const isSidebar = layout === 'sidebar';
+  const visibleEntryCap = isSidebar
+    ? Math.max(actionQueue.length, ACTION_QUEUE_LIST_CAP)
+    : operatorFocusMode
+      ? ACTION_QUEUE_LIST_CAP
+      : STANDARD_VISIBLE_ITEMS;
   const collapsedPreviewCap = operatorFocusMode ? 3 : COLLAPSED_PREVIEW_COUNT;
 
   const renderModel = useMemo(
@@ -679,7 +687,7 @@ export function ActionQueue({
     visibleAtomicCount,
   } = renderModel;
 
-  const hiddenAtomicCount = Math.max(0, atomicCount - visibleAtomicCount);
+  const hiddenAtomicCount = isSidebar ? 0 : Math.max(0, atomicCount - visibleAtomicCount);
   const handlers = { onOpenVehicleById, onOpenBookingById, onOpenRentalView };
   const hasItems = atomicCount > 0;
   const showEmpty = !actionQueueLoading && !hasItems;
@@ -689,9 +697,14 @@ export function ActionQueue({
       <NotificationPanel
         vm={vm}
         handlers={handlers}
+        layout={layout}
       />
     );
   }
+
+  const listScrollClass = isSidebar
+    ? DASHBOARD_LAYOUT.notificationsPanelScroll
+    : undefined;
 
   return (
     <section
@@ -703,6 +716,7 @@ export function ActionQueue({
             : '',
         ),
         'w-full min-w-0',
+        isSidebar && 'flex h-full min-h-0 flex-col overflow-hidden max-lg:max-h-[min(480px,55vh)]',
       )}
       aria-label={t('notification.panelTitle')}
     >
@@ -730,7 +744,15 @@ export function ActionQueue({
           t={t}
         />
       )}
-      <div id={contentId} hidden={!isExpanded} className={isExpanded ? 'animate-fade-up' : undefined}>
+      <div
+        id={contentId}
+        hidden={!isExpanded}
+        className={cn(
+          isExpanded && 'animate-fade-up',
+          isSidebar && 'flex min-h-0 flex-1 flex-col overflow-hidden',
+        )}
+      >
+        <div className={listScrollClass}>
           {actionQueueError && notificationErrorBanner && (
             <div className="border-b border-border/40 bg-muted/30 px-4 py-2.5 text-[12px] text-muted-foreground">
               {notificationErrorBanner}
@@ -814,6 +836,7 @@ export function ActionQueue({
               {t('notification.empty.filter')}
             </p>
           )}
+        </div>
       </div>
     </section>
   );
