@@ -43,6 +43,9 @@ export interface VehicleHealthAdapterSource {
   vehicleId: string;
   label: string;
   code?: string;
+  reason?: string;
+  cleared?: boolean;
+  severity?: 'warning' | 'critical';
 }
 
 export interface BookingAdapterSource {

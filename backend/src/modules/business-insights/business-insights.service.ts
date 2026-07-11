@@ -1,6 +1,9 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { NotificationProducerIngestService } from '@modules/notifications/adapters/notification-producer.ingest.service';
+import { projectVehicleHealthWarnings } from '@modules/notifications/adapters/rental-health-notification.projector';
+import { RentalHealthService } from '@modules/rental-health/rental-health.service';
+import { DtcService } from '@modules/vehicle-intelligence/dtc/dtc.service';
 import { TenantInsightPolicyService } from './tenant-insight-policy.service';
 import { InsightRankingService } from './insight-ranking.service';
 import { InsightGroupingService } from './insight-grouping.service';
@@ -59,6 +62,8 @@ export class BusinessInsightsService {
     pickupOverdue: PickupOverdueDetector,
     drivingAssessmentDeviceQuality: DrivingAssessmentDeviceQualityDetector,
     @Optional() private readonly notificationIngest?: NotificationProducerIngestService,
+    @Optional() private readonly rentalHealth?: RentalHealthService,
+    @Optional() private readonly dtcService?: DtcService,
   ) {
     this.detectors = [
       tightHandover,
@@ -155,6 +160,14 @@ export class BusinessInsightsService {
       } catch (ingestErr: any) {
         this.logger.warn(
           `Notification V2 station shortage sync failed for org ${organizationId}: ${ingestErr?.message ?? ingestErr}`,
+        );
+      }
+
+      try {
+        await this.syncVehicleHealthNotifications(organizationId, run.id);
+      } catch (healthIngestErr: any) {
+        this.logger.warn(
+          `Notification V2 vehicle health sync failed for org ${organizationId}: ${healthIngestErr?.message ?? healthIngestErr}`,
         );
       }
 
@@ -310,5 +323,51 @@ export class BusinessInsightsService {
       );
     }
     return policy.enabledTypes.includes(detector.type);
+  }
+
+  /**
+   * Batch-sync Rental Health V1 module warnings into V2 notifications (DTC per code,
+   * battery/tires/brakes per vehicle). Runs after each insights evaluation pass.
+   */
+  private async syncVehicleHealthNotifications(
+    organizationId: string,
+    runId: string,
+  ): Promise<void> {
+    if (!this.notificationIngest || !this.rentalHealth || !this.dtcService) return;
+
+    const vehicles = await this.prisma.vehicle.findMany({
+      where: { organizationId },
+      select: { id: true, licensePlate: true, make: true, model: true },
+    });
+
+    const BATCH = 10;
+    const allSources = [];
+
+    for (let i = 0; i < vehicles.length; i += BATCH) {
+      const slice = vehicles.slice(i, i + BATCH);
+      const batchResults = await Promise.all(
+        slice.map(async (vehicle) => {
+          const label =
+            vehicle.licensePlate?.trim() ||
+            `${vehicle.make ?? ''} ${vehicle.model ?? ''}`.trim() ||
+            vehicle.id;
+          try {
+            const [health, activeDtcs] = await Promise.all([
+              this.rentalHealth!.getVehicleHealth(organizationId, vehicle.id),
+              this.dtcService!.findActive(vehicle.id),
+            ]);
+            return projectVehicleHealthWarnings(vehicle.id, label, health, activeDtcs);
+          } catch (err) {
+            this.logger.warn(
+              `Vehicle health notification projection failed for ${vehicle.id}: ${(err as Error).message}`,
+            );
+            return [];
+          }
+        }),
+      );
+      allSources.push(...batchResults.flat());
+    }
+
+    await this.notificationIngest.syncVehicleHealthWarnings(organizationId, runId, allSources);
   }
 }

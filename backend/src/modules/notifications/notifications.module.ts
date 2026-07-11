@@ -10,6 +10,7 @@ import { DrivingAssessmentNotificationAdapter } from './adapters/driving-assessm
 import { NotificationProducerIngestService } from './adapters/notification-producer.ingest.service';
 import { NotificationProducerRouter } from './adapters/notification-producer.router';
 import { StationShortageNotificationAdapter } from './adapters/station-shortage-notification.adapter';
+import { VehicleHealthNotificationAdapter } from './adapters/vehicle-health-notification.adapter';
 import { TechnicalObservationNotificationAdapter } from './adapters/technical-observation-notification.adapter';
 import { NotificationCoreService } from './notification-core.service';
 import { NotificationEngineConfig } from './notification-engine.config';
@@ -77,6 +78,7 @@ import { NotificationArchitectureAuditService } from './migration/notification-a
     DrivingAssessmentNotificationAdapter,
     TechnicalObservationNotificationAdapter,
     StationShortageNotificationAdapter,
+    VehicleHealthNotificationAdapter,
     NotificationProducerRouter,
     NotificationProducerIngestService,
     NotificationEvaluationObservabilityService,
@@ -102,6 +104,7 @@ import { NotificationArchitectureAuditService } from './migration/notification-a
     DrivingAssessmentNotificationAdapter,
     TechnicalObservationNotificationAdapter,
     StationShortageNotificationAdapter,
+    VehicleHealthNotificationAdapter,
   ],
 })
 export class NotificationsModule {}

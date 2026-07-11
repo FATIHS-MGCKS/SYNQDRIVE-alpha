@@ -97,6 +97,8 @@ export function validateRegistryCandidate(candidate: NotificationCandidate): Not
   const conditionMatches =
     candidate.conditionCode === def.conditionCode
     || (def.eventType === 'TECHNICAL_OBSERVATION_ACTIVE'
+      && candidate.conditionCode.startsWith(`${def.conditionCode}:`))
+    || (def.eventType === 'ACTIVE_DTC'
       && candidate.conditionCode.startsWith(`${def.conditionCode}:`));
   if (!conditionMatches) {
     throw new NotificationRegistryValidationError(

@@ -9,6 +9,7 @@ import { NotificationDeliverySchedulerService } from '../delivery/notification-d
 import { DrivingAssessmentNotificationAdapter } from './driving-assessment-notification.adapter';
 import { TechnicalObservationNotificationAdapter } from './technical-observation-notification.adapter';
 import { StationShortageNotificationAdapter } from './station-shortage-notification.adapter';
+import { VehicleHealthNotificationAdapter } from './vehicle-health-notification.adapter';
 import { NotificationProducerRouter } from './notification-producer.router';
 import { NotificationProducerIngestService } from './notification-producer.ingest.service';
 import { DEVICE_QUALITY_OBSERVATION_MARKER, DEVICE_QUALITY_WORKER_ID } from '@modules/vehicle-intelligence/trips/driving-assessment-device-quality.detector';
@@ -31,6 +32,8 @@ const WOB_VEHICLE_ID = 'veh-wob-l-7503';
 const WOB_PLATE = 'WOB L 7503';
 const REAL_OBS_ID = 'obs-wob-real-1';
 const STATION_ID = 'st-wob';
+const KS_VEHICLE_ID = 'veh-ks-ms-661';
+const KS_PLATE = 'KS MS 661';
 
 describe('NotificationProducerIngestService — phase 1 migration', () => {
   let v2Enabled: boolean;
@@ -154,6 +157,7 @@ describe('NotificationProducerIngestService — phase 1 migration', () => {
       new DrivingAssessmentNotificationAdapter(),
       new TechnicalObservationNotificationAdapter(),
       new StationShortageNotificationAdapter(),
+      new VehicleHealthNotificationAdapter(),
     );
     ingest = new NotificationProducerIngestService(
       router,
@@ -161,6 +165,7 @@ describe('NotificationProducerIngestService — phase 1 migration', () => {
       new DrivingAssessmentNotificationAdapter(),
       new TechnicalObservationNotificationAdapter(),
       new StationShortageNotificationAdapter(),
+      new VehicleHealthNotificationAdapter(),
     );
   });
   describe('WOB L 7503 regression', () => {
@@ -318,6 +323,49 @@ describe('NotificationProducerIngestService — phase 1 migration', () => {
 
       const row = notifications.get(open[0].id);
       expect(row?.status).toBe(NotificationStatus.RESOLVED);
+    });
+  });
+
+  describe('vehicle health producers', () => {
+    it('ingests ACTIVE_DTC and TIRE_CRITICAL, resolves when cleared', async () => {
+      await ingest.syncVehicleHealthWarnings(ORG, 'run-health-1', [
+        {
+          eventType: 'ACTIVE_DTC',
+          vehicleId: KS_VEHICLE_ID,
+          label: KS_PLATE,
+          code: 'P0675',
+          severity: 'warning',
+        },
+        {
+          eventType: 'TIRE_CRITICAL',
+          vehicleId: KS_VEHICLE_ID,
+          label: KS_PLATE,
+          severity: 'warning',
+          reason: 'Reifendruck-Warnung',
+        },
+      ]);
+
+      const open = [...notifications.values()].filter((n) => n.status === NotificationStatus.OPEN);
+      expect(open).toHaveLength(2);
+      expect(open.map((n) => n.eventType).sort()).toEqual(['ACTIVE_DTC', 'TIRE_CRITICAL']);
+
+      const dtc = open.find((n) => n.eventType === 'ACTIVE_DTC');
+      expect(dtc?.entityType).toBe(NotificationEntityType.VEHICLE);
+      expect(dtc?.templateParams).toMatchObject({ label: KS_PLATE, code: 'P0675' });
+      expect(dtc?.fingerprint).toBe(
+        ingest.vehicleHealthFingerprint(ORG, {
+          eventType: 'ACTIVE_DTC',
+          vehicleId: KS_VEHICLE_ID,
+          code: 'P0675',
+        }),
+      );
+
+      await ingest.syncVehicleHealthWarnings(ORG, 'run-health-2', []);
+
+      const dtcRow = notifications.get(dtc!.id);
+      expect(dtcRow?.status).toBe(NotificationStatus.RESOLVED);
+      const tire = open.find((n) => n.eventType === 'TIRE_CRITICAL');
+      expect(notifications.get(tire!.id)?.status).toBe(NotificationStatus.RESOLVED);
     });
   });
 

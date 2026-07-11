@@ -1,10 +1,13 @@
 import { Processor, WorkerHost, InjectQueue } from '@nestjs/bullmq';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Job, Queue } from 'bullmq';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoTelemetryService } from '../../modules/dimo/dimo-telemetry.service';
 import { DimoAuthService } from '../../modules/dimo/dimo-auth.service';
 import { DtcService } from '../../modules/vehicle-intelligence/dtc/dtc.service';
+import { NotificationProducerIngestService } from '@modules/notifications/adapters/notification-producer.ingest.service';
+import { normalizeDtcSeverityBand } from '@modules/vehicle-intelligence/dtc/dtc-severity.util';
+import type { VehicleHealthAdapterSource } from '@modules/notifications/adapters/notification-adapter.types';
 import { QUEUE_NAMES } from '../queues/queue-names';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 
@@ -25,6 +28,7 @@ export class DimoDtcProcessor extends WorkerHost {
     private readonly auth: DimoAuthService,
     private readonly dtcService: DtcService,
     @InjectQueue(QUEUE_NAMES.DTC_POLL) private readonly queue: Queue,
+    @Optional() private readonly notificationIngest?: NotificationProducerIngestService,
   ) {
     super();
   }
@@ -142,6 +146,8 @@ export class DimoDtcProcessor extends WorkerHost {
         },
       });
 
+      await this.emitDtcHealthNotifications(vehicleId, previousCodes, newCodeSet);
+
       this.logger.debug(
         `DTC poll success: vehicleId=${vehicleId} active=${newCodes.length}`,
       );
@@ -170,6 +176,62 @@ export class DimoDtcProcessor extends WorkerHost {
             `DTC poll-failure metadata update also failed: vehicleId=${vehicleId} error=${msg}`,
           );
         });
+    }
+  }
+
+  private async emitDtcHealthNotifications(
+    vehicleId: string,
+    previousCodes: Set<string>,
+    newCodeSet: Set<string>,
+  ): Promise<void> {
+    if (!this.notificationIngest) return;
+
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true, licensePlate: true, make: true, model: true },
+    });
+    if (!vehicle) return;
+
+    const label =
+      vehicle.licensePlate?.trim() ||
+      `${vehicle.make ?? ''} ${vehicle.model ?? ''}`.trim() ||
+      vehicleId;
+
+    const activeDtcs = await this.dtcService.findActive(vehicleId);
+    const sources: VehicleHealthAdapterSource[] = activeDtcs.map((dtc) => {
+      const band = normalizeDtcSeverityBand(dtc.severity);
+      return {
+        eventType: 'ACTIVE_DTC',
+        vehicleId,
+        label,
+        code: dtc.dtcCode,
+        reason: dtc.description ?? undefined,
+        severity: band === 'critical' ? 'critical' : 'warning',
+      };
+    });
+
+    for (const code of previousCodes) {
+      if (!newCodeSet.has(code)) {
+        sources.push({
+          eventType: 'ACTIVE_DTC',
+          vehicleId,
+          label,
+          code,
+          cleared: true,
+        });
+      }
+    }
+
+    try {
+      await this.notificationIngest.ingestVehicleHealthSources(
+        vehicle.organizationId,
+        `dtc-poll:${vehicleId}`,
+        sources,
+      );
+    } catch (err) {
+      this.logger.warn(
+        `DTC notification ingest failed for ${vehicleId}: ${(err as Error).message}`,
+      );
     }
   }
 

@@ -22,6 +22,7 @@ No duplicate external delivery: V2 persists to `Notification` tables only; V1 in
 | 3 | `technical-observations` — `TechnicalObservationsService` | `TECHNICAL_OBSERVATION_ACTIVE` | `TechnicalObservationNotificationAdapter` |
 | 4 | — | *(no aggregate V2 event)* | Generic “N aktive Gesundheitshinweise” stays UI-only grouping |
 | 5 | `business-insights` — `StationShortageDetector` | `STATION_SHORTAGE` | `StationShortageNotificationAdapter` |
+| 6 | `rental-health` + `dtc` — fleet eval + DIMO poll | `ACTIVE_DTC`, `TIRE_CRITICAL`, `BRAKE_CRITICAL`, `BATTERY_CRITICAL` | `VehicleHealthNotificationAdapter` (**live**, `shadowModeOnly: false`) |
 
 Orchestration: `NotificationProducerIngestService` (+ `NotificationProducerRouter`).
 
@@ -90,6 +91,25 @@ Orchestration: `NotificationProducerIngestService` (+ `NotificationProducerRoute
 
 **Resolution:** station absent from current detector output → SUCCESS ingest → `RESOLVED`.
 
+### E. Vehicle health (Rental Health V1) — V4.9.365
+
+| Layer | Old path | V2 hook |
+|-------|----------|---------|
+| Module state | `RentalHealthService.getVehicleHealth` → frontend `useVehicleHealthAlerts` | `projectVehicleHealthWarnings` → `syncVehicleHealthWarnings` |
+| DTC | `VehicleDtcEvent` + DIMO poll | Per-code `ACTIVE_DTC`; realtime via `DimoDtcProcessor.emitDtcHealthNotifications` |
+| Batch | — | `BusinessInsightsService` after each eval run (fleet sweep-resolve) |
+
+**Fingerprints:**
+
+```
+{orgId}|ACTIVE_DTC|VEHICLE|{vehicleId}|active_dtc:{dtcCode}|v1
+{orgId}|TIRE_CRITICAL|VEHICLE|{vehicleId}|tires_critical|v1
+{orgId}|BRAKE_CRITICAL|VEHICLE|{vehicleId}|brakes_critical|v1
+{orgId}|BATTERY_CRITICAL|VEHICLE|{vehicleId}|battery_critical|v1
+```
+
+**Resolution:** module returns good/unknown/n_a, or DTC cleared → SUCCESS ingest → `RESOLVED`. Frontend bridge (`mergeV2NotificationsWithVehicleHealth`) dedupes against API rows during transition.
+
 ---
 
 ## V1 vs V2 comparison
@@ -106,17 +126,18 @@ Orchestration: `NotificationProducerIngestService` (+ `NotificationProducerRoute
 
 ## Remaining problematic producers (not phase 1)
 
-- Other BI detectors (battery, tire, brake, pickup overdue, …) — `shadowModeEnabled: false`
+- Other BI detectors (pickup overdue, compliance, …) — some still V1-only insights
 - Operational issues / blocked vehicle / maintenance — not hooked
-- DIMO webhook / trip analysis event types
-- Generic health aggregation — intentionally no V2 persistence
+- DIMO webhook / trip analysis event types (except DTC poll → ACTIVE_DTC)
+- Service compliance / complaints / OEM alerts — Rental Health modules without dedicated V2 event types yet
 - Driving assessment **BI** path still publishes RECOVERING as V1 INFO (frontend handles); V2 uses runtime recovery only
 
 ---
 
 ## Tests
 
-- `backend/src/modules/notifications/adapters/notification-producers-phase1.spec.ts` — WOB L 7503 + station shortage
+- `backend/src/modules/notifications/adapters/notification-producers-phase1.spec.ts` — WOB L 7503 + station shortage + vehicle health
+- `backend/src/modules/notifications/adapters/rental-health-notification.spec.ts` — projector + adapter
 - `frontend/src/rental/components/dashboard/notificationEngine.wob-l7503.test.ts` — V1 queue regression (unchanged)
 
 **WOB L 7503 expectations (V2):**

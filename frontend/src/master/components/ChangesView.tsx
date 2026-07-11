@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-health-producers-v49365-2026-07-11',
+    version: '4.9.365',
+    title: 'V4.9.365 — Health Producer: Rental Health → V2 Notifications',
+    summary: [
+      'Backend materialisiert DTC, Reifen, Bremsen und Batterie aus Rental Health V1 als echte V2-Notifications.',
+      'Batch-Sync nach jedem Insights/Evaluation-Lauf inkl. Sweep-Resolve veralteter Health-Zeilen.',
+      'Echtzeit-DTC-Ingest nach DIMO-Poll (per Code, inkl. Clear → RESOLVED).',
+    ],
+    reason:
+      'Fahrzeug-Warnungen lebten nur in Rental Health / Frontend-Bridge — Meldungen-Panel braucht persistente V2-Zeilen als Single Source of Truth.',
+    previousBehavior:
+      'V4.9.364 Frontend-Bridge (`mergeV2NotificationsWithVehicleHealth`) ergänzte Health-Alerts clientseitig; keine DB-Notifications für DTC/Reifen.',
+    details:
+      'rental-health-notification.projector.ts, vehicle-health-notification.adapter.ts, notification-producer.ingest.service.ts (syncVehicleHealthWarnings + ingestVehicleHealthSources), BusinessInsightsService.syncVehicleHealthNotifications, DimoDtcProcessor.emitDtcHealthNotifications, registry validator ACTIVE_DTC per-code fingerprints.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-11T09:50:00.000Z',
+  },
+  {
     id: 'notification-v2-vehicle-health-bridge-v49364-2026-07-11',
     version: '4.9.364',
     title: 'V4.9.364 — Meldungen: Rental-Health-Warnungen in V2-Panel',

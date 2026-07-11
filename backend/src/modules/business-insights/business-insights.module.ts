@@ -27,9 +27,15 @@ import { DashboardInsightsController } from './dashboard-insights.controller';
 import { InternalBusinessInsightsController } from './internal-business-insights.controller';
 import { TasksModule } from '../tasks/tasks.module';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
+import { RentalHealthModule } from '../rental-health/rental-health.module';
 
 @Module({
-  imports: [TasksModule, forwardRef(() => NotificationsModule), forwardRef(() => VehicleIntelligenceModule)],
+  imports: [
+    TasksModule,
+    forwardRef(() => NotificationsModule),
+    forwardRef(() => VehicleIntelligenceModule),
+    forwardRef(() => RentalHealthModule),
+  ],
   controllers: [DashboardInsightsController, InternalBusinessInsightsController],
   providers: [
     BusinessInsightsService,

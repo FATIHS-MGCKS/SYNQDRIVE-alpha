@@ -7,6 +7,12 @@ import { NotificationProducerRouter } from './notification-producer.router';
 import { DrivingAssessmentNotificationAdapter } from './driving-assessment-notification.adapter';
 import { TechnicalObservationNotificationAdapter } from './technical-observation-notification.adapter';
 import { StationShortageNotificationAdapter } from './station-shortage-notification.adapter';
+import { VehicleHealthNotificationAdapter } from './vehicle-health-notification.adapter';
+import {
+  VEHICLE_HEALTH_NOTIFICATION_EVENT_TYPES,
+  vehicleHealthSourceFingerprint,
+} from './rental-health-notification.projector';
+import type { VehicleHealthAdapterSource } from './notification-adapter.types';
 import {
   buildTechnicalObservationConditionCode,
   isDeviceQualitySystemObservation,
@@ -48,6 +54,7 @@ export class NotificationProducerIngestService {
     private readonly drivingAssessmentAdapter: DrivingAssessmentNotificationAdapter,
     private readonly technicalObservationAdapter: TechnicalObservationNotificationAdapter,
     private readonly stationShortageAdapter: StationShortageNotificationAdapter,
+    private readonly vehicleHealthAdapter: VehicleHealthNotificationAdapter,
   ) {}
 
   async syncDrivingAssessmentQuality(input: DrivingAssessmentQualityIngestInput): Promise<void> {
@@ -195,6 +202,99 @@ export class NotificationProducerIngestService {
         );
       }
     }
+  }
+
+  /**
+   * Materialize Rental Health warnings (DTC, battery, tires, brakes) as V2 notifications.
+   * Active sources are ingested; stale active rows are resolved via SUCCESS ingest.
+   */
+  async syncVehicleHealthWarnings(
+    organizationId: string,
+    runId: string,
+    sources: VehicleHealthAdapterSource[],
+  ): Promise<void> {
+    const activeFingerprints = new Set<string>();
+
+    for (const source of sources) {
+      if (!source.cleared) {
+        activeFingerprints.add(vehicleHealthSourceFingerprint(organizationId, source));
+      }
+    }
+
+    await this.ingestVehicleHealthSources(organizationId, runId, sources);
+
+    const activeNotifications = await this.repository.listNotifications({
+      organizationId,
+      status: ACTIVE_NOTIFICATION_STATUSES,
+      entityType: NotificationEntityType.VEHICLE,
+      limit: 500,
+    });
+
+    for (const notification of activeNotifications) {
+      if (
+        !VEHICLE_HEALTH_NOTIFICATION_EVENT_TYPES.includes(
+          notification.eventType as (typeof VEHICLE_HEALTH_NOTIFICATION_EVENT_TYPES)[number],
+        )
+      ) {
+        continue;
+      }
+      if (activeFingerprints.has(notification.fingerprint)) continue;
+
+      const params = (notification.templateParams ?? {}) as Record<string, unknown>;
+      const label =
+        typeof params.label === 'string' ? params.label : notification.entityId;
+      const code =
+        notification.eventType === 'ACTIVE_DTC' && typeof params.code === 'string'
+          ? params.code
+          : undefined;
+
+      try {
+        await this.router.ingestFromAdapter(
+          this.vehicleHealthAdapter,
+          {
+            eventType: notification.eventType,
+            vehicleId: notification.entityId,
+            label,
+            code,
+            cleared: true,
+          },
+          this.adapterContext(organizationId, runId, runId),
+        );
+      } catch (err) {
+        if (this.isRecoveryNotFound(err)) continue;
+        this.logger.warn(
+          `Vehicle health V2 resolve failed for ${notification.entityId}/${notification.eventType}: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
+
+  /** Ingest health sources without fleet-wide sweep — for real-time DTC/module updates. */
+  async ingestVehicleHealthSources(
+    organizationId: string,
+    runId: string,
+    sources: VehicleHealthAdapterSource[],
+  ): Promise<void> {
+    for (const source of sources) {
+      try {
+        await this.router.ingestFromAdapter(
+          this.vehicleHealthAdapter,
+          source,
+          this.adapterContext(organizationId, runId, runId),
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Vehicle health V2 ingest failed for ${source.vehicleId}/${source.eventType}: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
+
+  vehicleHealthFingerprint(
+    organizationId: string,
+    source: Pick<VehicleHealthAdapterSource, 'eventType' | 'vehicleId' | 'code'>,
+  ): string {
+    return vehicleHealthSourceFingerprint(organizationId, source);
   }
 
   drivingAssessmentFingerprint(organizationId: string, vehicleId: string): string {
