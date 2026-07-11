@@ -88,7 +88,7 @@ function mapOperationalSeverity(
   if (item.severity === 'critical' || item.isOverdue) return 'critical';
   if (item.severity === 'warning' || item.severity === 'attention') return 'warning';
   if (issueType === 'driving_assessment_device_quality') return recovering ? 'success' : 'warning';
-  if (issueType === 'technical_observation_active') return item.severity === 'critical' ? 'critical' : 'warning';
+  if (issueType === 'technical_observation_active') return 'warning';
   return 'info';
 }
 

@@ -93,7 +93,6 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     module: 'Vehicle Intelligence',
     createdAt: '2026-07-11T00:00:00.000Z',
   },
-  },
   {
     id: 'notification-engine-frontend-cutover-v49358-2026-07-11',
     version: '4.9.358',

@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ActionQueueFilterTab, ActionQueueItem } from '../../components/dashboard/dashboardTypes';
-import { notificationClient, NotificationClientError } from './notification-client';
-import type { ApiNotificationListParams, ApiNotificationResponse } from './notification-api.types';
-import { mapNotificationApiList } from './map-notification-api-to-view-model';
-import { emptyTabCounts, emptyPrimaryTabCounts, mapApiCountsToPrimaryTabCounts, mapApiCountsToTabCounts } from './map-api-counts-to-tab-counts';
-import type { NotificationPrimaryTab } from '../../components/dashboard/notifications/notificationPanelTypes';
+import type { ActionQueueFilterTab, ActionQueueItem } from '../components/dashboard/dashboardTypes';
+import { notificationClient, NotificationClientError } from '../lib/notifications/notification-client';
+import type { ApiNotificationListParams, ApiNotificationResponse } from '../lib/notifications/notification-api.types';
+import { mapNotificationApiList } from '../lib/notifications/map-notification-api-to-view-model';
+import { emptyTabCounts, emptyPrimaryTabCounts, mapApiCountsToPrimaryTabCounts, mapApiCountsToTabCounts } from '../lib/notifications/map-api-counts-to-tab-counts';
+import type { NotificationPrimaryTab } from '../components/dashboard/notifications/notificationPanelTypes';
 
 const DEFAULT_PAGE_SIZE = 50;
 

@@ -25,7 +25,7 @@ function extractEntityContext(params: Record<string, string | number | boolean |
     plate: plate != null ? String(plate) : undefined,
     make: make != null ? String(make) : undefined,
     model: model != null ? String(model) : undefined,
-    year: year != null ? year : undefined,
+    year: typeof year === 'string' || typeof year === 'number' ? year : undefined,
   };
 }
 

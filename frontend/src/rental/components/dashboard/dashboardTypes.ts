@@ -299,7 +299,7 @@ export interface ActionQueueItem {
   /** V2 API — occurrence count for meta row. */
   occurrenceCount?: number;
   /** V2 API — allowed user actions from backend. */
-  availableActions?: import('../../../lib/notifications/notification-api.types').ApiNotificationAvailableAction[];
+  availableActions?: import('../../lib/notifications/notification-api.types').ApiNotificationAvailableAction[];
   /** V2 API — structured entity display (plate · make model year). */
   entityContextParams?: {
     plate?: string;

@@ -32,7 +32,7 @@ function fingerprint(item: ActionQueueItem): ShadowCompareFingerprint {
     key: item.semanticKey ?? item.id,
     severity: item.queue?.severity ?? item.severity,
     entityType: item.queue?.entityType,
-    entityId: item.queue?.entityId,
+    entityId: item.queue?.entityId ?? undefined,
     status: item.queue?.lifecycleStatus,
     cta: item.queue?.actionType ?? item.cta,
   };

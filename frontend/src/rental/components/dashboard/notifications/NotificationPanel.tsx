@@ -7,7 +7,7 @@ import { useLanguage } from '../../../i18n/LanguageContext';
 import { buildNotificationCardViewModel } from './notificationCardViewModel';
 import { NotificationCard } from './NotificationCard';
 import { NotificationCardSkeleton } from './NotificationCardSkeleton';
-import { NotificationDomainFilter } from './NotificationDomainFilter';
+import { NotificationDomainFilter as NotificationDomainFilterControl } from './NotificationDomainFilter';
 import { NotificationEmptyState } from './NotificationEmptyState';
 import {
   filterNotificationPanelItems,
@@ -161,7 +161,7 @@ export function NotificationPanel({
               onSelect={handlePrimaryTab}
             />
           </div>
-          <NotificationDomainFilter value={domainFilter} t={t} onChange={setDomainFilter} />
+          <NotificationDomainFilterControl value={domainFilter} t={t} onChange={setDomainFilter} />
         </div>
       </div>
 

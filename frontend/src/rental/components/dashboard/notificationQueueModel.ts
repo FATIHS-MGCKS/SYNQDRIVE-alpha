@@ -60,6 +60,7 @@ export interface NotificationActionTarget {
   stationId?: string;
   customerId?: string;
   invoiceId?: string;
+  tripId?: string;
   module?: string;
 }
 
