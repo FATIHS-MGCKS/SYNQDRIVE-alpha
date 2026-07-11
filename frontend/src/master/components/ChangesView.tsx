@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-engine-frontend-cutover-v49358-2026-07-11',
+    version: '4.9.358',
+    title: 'V4.9.358 — Notification Engine: Frontend Dashboard Cutover (V2)',
+    summary: [
+      'Feature Flag `VITE_NOTIFICATIONS_V2`: off → V1, shadow → V1 UI + Hintergrund-V2-Vergleich, on → kanonische Notification API als einzige ActionQueue-Quelle.',
+      'Zentraler `notificationClient`, `useNotifications` Hook, DTO→ViewModel Mapper, API-Counts für Tab-Badges, Shadow-Diagnose ohne Doppelanzeige.',
+      'V2-Pfad ohne fachliche Frontend-Dedupe, ohne Insight/Health/Booking-Merge; CTA aus `action.type`/`action.target`; optimistische Read/Snooze-Mutationen mit Rollback.',
+      'Doku: docs/notification-engine-frontend-cutover.md.',
+    ],
+    reason:
+      'Kontrollierter Frontend-Cutover der Dashboard Notification Box auf die versionierte REST API — ohne KPI/Runtime/Business-Pulse zu verändern.',
+    previousBehavior:
+      'ActionQueue aus buildUnifiedActionQueue (Insights, Health, Bookings, derived/predictive); Tab-Counts aus geladener erster Seite.',
+    details:
+      'Neu: rental/lib/notifications/*, hooks/useNotifications.ts, ActionQueue/useDashboardViewModel Integration. V1-Builder bleibt hinter Flag.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-11T00:00:00.000Z',
+  },
+  {
     id: 'notification-engine-permissions-v49357-2026-07-11',
     version: '4.9.357',
     title: 'V4.9.357 — Notification Engine: Rollen, Scope, Receipts & Preferences',

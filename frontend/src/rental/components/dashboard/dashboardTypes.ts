@@ -246,7 +246,8 @@ export type InsightDataSource =
   | 'derived-operations'
   | 'predictive-operations'
   | 'financial'
-  | 'booking';
+  | 'booking'
+  | 'notifications-v2';
 
 export interface ActionQueueItem {
   id: string;
@@ -713,6 +714,21 @@ export interface DashboardViewModel {
   actionQueue: ActionQueueItem[];
   actionQueueLoading: boolean;
   actionQueueError: boolean;
+  /** When set (V2 path), tab badges use API counts instead of loaded-page estimates. */
+  actionQueueTabCounts?: Record<ActionQueueFilterTab, number> | null;
+  notificationsV2Mode?: 'off' | 'shadow' | 'on';
+  notificationsV2ErrorCode?: string | null;
+  notificationMutations?: {
+    markRead: (id: string) => Promise<void>;
+    markUnread: (id: string) => Promise<void>;
+    acknowledge: (id: string) => Promise<void>;
+    snooze: (id: string, until: string) => Promise<void>;
+    unsnooze: (id: string) => Promise<void>;
+    resolveNotification: (id: string) => Promise<void>;
+    archiveNotification: (id: string) => Promise<void>;
+    loadMore: () => Promise<void>;
+    hasMore: boolean;
+  };
   actionQueueEmptySummary: ActionQueueEmptySummary;
   todayBookingsLoaded: boolean;
   todayBookingsError: boolean;
