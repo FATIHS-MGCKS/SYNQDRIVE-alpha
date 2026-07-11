@@ -16,6 +16,7 @@ import {
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
+import { buildDashboardNotificationsFromInsights } from './dashboardNotificationAdapter';
 import type { DashboardNotificationItem } from './dashboardNotificationTypes';
 import {
   dashboardStationIdToFilter,
@@ -564,27 +565,14 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     });
   }, [intlLocale]);
 
-  const dashboardNotifications = useMemo<DashboardNotificationItem[]>(() => {
-    const deviceQualityInsights = insights.filter(
-      (insight) => insight.type === 'DRIVING_ASSESSMENT_DEVICE_QUALITY',
-    );
-    return deviceQualityInsights.map((insight) => {
-      const recovering =
-        typeof insight.metrics?.vehicleStatus === 'string' &&
-        insight.metrics.vehicleStatus === 'RECOVERING';
-      const generatedAt = insightsResponse?.generatedAt;
-      const time = generatedAt
-        ? new Date(generatedAt).toLocaleTimeString(intlLocale, { hour: '2-digit', minute: '2-digit' })
-        : '—';
-      return {
-        type: 'alert' as const,
-        title: insight.title || (recovering ? 'Fahrbewertung normalisiert sich' : 'Fahrbewertung eingeschränkt'),
-        desc: insight.message || '',
-        time,
-        unread: !recovering,
-      };
-    });
-  }, [insights, insightsResponse?.generatedAt, intlLocale]);
+  const dashboardNotifications = useMemo<DashboardNotificationItem[]>(
+    () =>
+      buildDashboardNotificationsFromInsights(insights, {
+        generatedAt: insightsResponse?.generatedAt ?? null,
+        intlLocale,
+      }),
+    [insights, insightsResponse?.generatedAt, intlLocale],
+  );
 
   const dataFreshness = useMemo(
     () => ({
