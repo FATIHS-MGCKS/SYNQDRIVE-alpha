@@ -97,6 +97,15 @@ export interface ListNotificationsFilter {
   offset?: number;
 }
 
+export interface NotificationReceiptMap {
+  [notificationId: string]: {
+    readAt: Date | null;
+    acknowledgedAt: Date | null;
+    snoozedUntil: Date | null;
+    hiddenAt: Date | null;
+  };
+}
+
 @Injectable()
 export class NotificationRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -281,6 +290,57 @@ export class NotificationRepository {
       orderBy: [{ lastSeenAt: 'desc' }, { createdAt: 'desc' }],
       take: filter.limit ?? 50,
       skip: filter.offset ?? 0,
+    });
+  }
+
+  listNotificationsWhere(
+    where: Prisma.NotificationWhereInput,
+    options: {
+      skip: number;
+      take: number;
+      orderBy?: Prisma.NotificationOrderByWithRelationInput[];
+    },
+  ) {
+    return this.prisma.notification.findMany({
+      where,
+      orderBy: options.orderBy ?? [{ lastSeenAt: 'desc' }, { createdAt: 'desc' }],
+      skip: options.skip,
+      take: options.take,
+    });
+  }
+
+  countNotificationsWhere(where: Prisma.NotificationWhereInput) {
+    return this.prisma.notification.count({ where });
+  }
+
+  groupCountBySeverityWhere(where: Prisma.NotificationWhereInput) {
+    return this.prisma.notification.groupBy({
+      by: ['severity'],
+      where,
+      _count: { _all: true },
+    });
+  }
+
+  groupCountByDomainWhere(where: Prisma.NotificationWhereInput) {
+    return this.prisma.notification.groupBy({
+      by: ['domain'],
+      where,
+      _count: { _all: true },
+    });
+  }
+
+  findReceiptsForUser(notificationIds: string[], userId: string) {
+    if (!notificationIds.length) return Promise.resolve([]);
+    return this.prisma.notificationReceipt.findMany({
+      where: { notificationId: { in: notificationIds }, userId },
+    });
+  }
+
+  findReceipt(notificationId: string, userId: string) {
+    return this.prisma.notificationReceipt.findUnique({
+      where: {
+        notificationId_userId: { notificationId, userId },
+      },
     });
   }
 

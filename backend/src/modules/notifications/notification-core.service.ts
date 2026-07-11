@@ -40,6 +40,7 @@ import type {
 import { NotificationSeverity as DomainSeverity, NotificationStatus as DomainStatus } from './notification.enums';
 import { NotificationSourceType as DomainSourceType } from './notification.enums';
 import { recordNotificationIngestOperation, recordNotificationFailure } from './runtime/notification-run-context';
+import { isManualResolutionAllowed } from './api/notification-manual-resolution.policy';
 
 @Injectable()
 export class NotificationCoreService {
@@ -255,8 +256,7 @@ export class NotificationCoreService {
 
     if (context.manual) {
       const allowed =
-        notification.eventKind === NotificationEventKind.EVENT
-        || this.isManualResolutionAllowed(notification.eventType);
+        this.isManualResolutionAllowedForNotification(notification.eventType, notification.eventKind);
       if (!allowed) {
         throw new BadRequestException('Manual resolution not allowed for this event type');
       }
@@ -602,9 +602,11 @@ export class NotificationCoreService {
     }
   }
 
-  private isManualResolutionAllowed(eventType: string): boolean {
-    // EVENT kinds and explicit producer-driven types may be resolved manually.
-    return eventType.endsWith('_CREATED') || eventType.endsWith('_RETURNED');
+  private isManualResolutionAllowedForNotification(
+    eventType: string,
+    eventKind: NotificationEventKind,
+  ): boolean {
+    return isManualResolutionAllowed(eventType, eventKind);
   }
 
   private logOperation(

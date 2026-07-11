@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-engine-api-v49356-2026-07-11',
+    version: '4.9.356',
+    title: 'V4.9.356 — Notification Engine: versionierte REST API (V2)',
+    summary: [
+      'Neue org-scoped Endpunkte unter `/organizations/:orgId/notifications` (list, counts, detail, read/unread, acknowledge, snooze, resolve, archive).',
+      'Tenant-Isolation, Station-Scope, Rollenmatrix aus Event-Registry, paginierte Filter, getrennte Counts (Severity/Domain).',
+      'Response-DTOs mit titleKey/bodyKey, action target, userReceipt, availableActions — keine Fingerprint-Leaks.',
+      'Audit-Logging für acknowledge/snooze/resolve/archive; Throttle auf Schreibaktionen. Doku: docs/notification-engine-api.md.',
+    ],
+    reason:
+      'Frontend soll Notifications nicht mehr aus mehreren Fachquellen zusammensetzen — zentrale V2 API als Single Source of Truth für Inbox und Badges.',
+    previousBehavior:
+      'Nur Core-Service + Shadow-Producers; keine REST-Controller. UI liest weiter Dashboard Insights / Action Queue.',
+    details:
+      'NotificationApiService, NotificationsController, erweiterte Repository-Queries, manual-resolution policy, Tests für Tenant/Scope/Rollen/IDOR/Feature-Flag.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-11T00:00:00.000Z',
+  },
+  {
     id: 'notification-engine-runtime-v49355-2026-07-11',
     version: '4.9.355',
     title: 'V4.9.355 — Notification Engine: production runtime (BullMQ + Redis lock)',

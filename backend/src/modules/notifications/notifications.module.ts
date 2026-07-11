@@ -14,9 +14,11 @@ import { NotificationEngineConfig } from './notification-engine.config';
 import { NotificationRepository } from './notification.repository';
 import { NotificationEvaluationObservabilityService } from './runtime/notification-evaluation-observability.service';
 import { NotificationEvaluationService } from './runtime/notification-evaluation.service';
+import { NotificationsController } from './api/notifications.controller';
+import { NotificationApiService } from './api/notification-api.service';
 
 /**
- * Notification domain — contract, Prisma, core engine, event registry, shadow adapters, evaluation runtime.
+ * Notification domain — contract, Prisma, core engine, event registry, shadow adapters, evaluation runtime, REST API.
  */
 @Module({
   imports: [
@@ -25,10 +27,12 @@ import { NotificationEvaluationService } from './runtime/notification-evaluation
     BullModule.registerQueue({ name: QUEUE_NAMES.NOTIFICATION_EVALUATION }),
     forwardRef(() => BusinessInsightsModule),
   ],
+  controllers: [NotificationsController],
   providers: [
     NotificationRepository,
     NotificationEngineConfig,
     NotificationCoreService,
+    NotificationApiService,
     DrivingAssessmentNotificationAdapter,
     TechnicalObservationNotificationAdapter,
     StationShortageNotificationAdapter,
@@ -36,6 +40,7 @@ import { NotificationEvaluationService } from './runtime/notification-evaluation
     NotificationProducerIngestService,
     NotificationEvaluationObservabilityService,
     NotificationEvaluationService,
+    NotificationApiService,
   ],
   exports: [
     NotificationRepository,
