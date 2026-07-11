@@ -3,6 +3,7 @@ import { canTransitionNotificationStatus } from '../notification-status.transiti
 import { NotificationStatus as DomainStatus } from '../notification.enums';
 import { getEventTypeDefinition } from '../registry/notification-event-registry';
 import { isManualResolutionAllowed } from './notification-manual-resolution.policy';
+import { isUserSnoozeActive } from '../access/notification-receipt.policy';
 
 export type NotificationAvailableAction =
   | 'read'
@@ -25,13 +26,22 @@ const MANUAL_RESOLVE_ROLES: MembershipRole[] = [
   MembershipRole.WORKER,
 ];
 
+const ACTIVE_STATUSES: NotificationStatus[] = [
+  NotificationStatus.OPEN,
+  NotificationStatus.ACKNOWLEDGED,
+  NotificationStatus.SNOOZED,
+];
+
 export interface AvailableActionsInput {
   status: NotificationStatus;
   eventType: string;
   eventKind: NotificationEventKind;
   membershipRole: MembershipRole;
   isRead: boolean;
+  isPersonallyAcknowledged: boolean;
+  userSnoozedUntil: Date | null;
   hasActionTarget: boolean;
+  referenceNow?: Date;
 }
 
 export function deriveAvailableActions(input: AvailableActionsInput): NotificationAvailableAction[] {
@@ -42,6 +52,8 @@ export function deriveAvailableActions(input: AvailableActionsInput): Notificati
 
   const actions: NotificationAvailableAction[] = [];
   const domainStatus = input.status as unknown as DomainStatus;
+  const isActive = ACTIVE_STATUSES.includes(input.status);
+  const userSnoozed = isUserSnoozeActive(input.userSnoozedUntil, input.referenceNow);
 
   if (input.isRead) {
     actions.push('unread');
@@ -49,21 +61,15 @@ export function deriveAvailableActions(input: AvailableActionsInput): Notificati
     actions.push('read');
   }
 
-  if (
-    canTransitionNotificationStatus(domainStatus, DomainStatus.ACKNOWLEDGED)
-    && input.status === NotificationStatus.OPEN
-  ) {
+  if (isActive && !input.isPersonallyAcknowledged) {
     actions.push('acknowledge');
   }
 
-  if (
-    canTransitionNotificationStatus(domainStatus, DomainStatus.SNOOZED)
-    && (input.status === NotificationStatus.OPEN || input.status === NotificationStatus.ACKNOWLEDGED)
-  ) {
+  if (isActive && !userSnoozed) {
     actions.push('snooze');
   }
 
-  if (input.status === NotificationStatus.SNOOZED) {
+  if (userSnoozed) {
     actions.push('unsnooze');
   }
 

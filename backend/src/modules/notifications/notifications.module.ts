@@ -16,6 +16,9 @@ import { NotificationEvaluationObservabilityService } from './runtime/notificati
 import { NotificationEvaluationService } from './runtime/notification-evaluation.service';
 import { NotificationsController } from './api/notifications.controller';
 import { NotificationApiService } from './api/notification-api.service';
+import { NotificationPreferenceService } from './access/notification-preference.service';
+import { NotificationReceiptService } from './access/notification-receipt.service';
+import { NotificationStationScopeService } from './access/notification-station-scope.service';
 
 /**
  * Notification domain — contract, Prisma, core engine, event registry, shadow adapters, evaluation runtime, REST API.
@@ -33,6 +36,9 @@ import { NotificationApiService } from './api/notification-api.service';
     NotificationEngineConfig,
     NotificationCoreService,
     NotificationApiService,
+    NotificationPreferenceService,
+    NotificationReceiptService,
+    NotificationStationScopeService,
     DrivingAssessmentNotificationAdapter,
     TechnicalObservationNotificationAdapter,
     StationShortageNotificationAdapter,
@@ -40,12 +46,14 @@ import { NotificationApiService } from './api/notification-api.service';
     NotificationProducerIngestService,
     NotificationEvaluationObservabilityService,
     NotificationEvaluationService,
-    NotificationApiService,
   ],
   exports: [
     NotificationRepository,
     NotificationEngineConfig,
     NotificationCoreService,
+    NotificationApiService,
+    NotificationReceiptService,
+    NotificationStationScopeService,
     NotificationProducerRouter,
     NotificationProducerIngestService,
     NotificationEvaluationObservabilityService,

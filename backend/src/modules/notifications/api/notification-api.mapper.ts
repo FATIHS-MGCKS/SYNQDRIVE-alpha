@@ -11,6 +11,8 @@ import type {
 } from '@prisma/client';
 import type { NotificationActionTarget } from '../notification.types';
 import type { NotificationAvailableAction } from './notification-available-actions';
+import type { MembershipRole } from '@prisma/client';
+import { redactActionTargetForRole, redactTemplateParamsForRole } from '../access/notification-privacy.policy';
 
 export interface NotificationEntityDto {
   type: NotificationEntityType;
@@ -88,9 +90,20 @@ export function mapNotificationToDto(
   row: Notification,
   receipt: NotificationReceipt | null,
   availableActions: NotificationAvailableAction[],
+  membershipRole?: MembershipRole,
 ): NotificationResponseDto {
-  const templateParams = (row.templateParams ?? {}) as Record<string, string | number | boolean | null>;
-  const actionTarget = (row.actionTarget ?? {}) as unknown as NotificationActionTarget;
+  const templateParamsRaw = (row.templateParams ?? {}) as Record<string, string | number | boolean | null>;
+  const templateParams = membershipRole
+    ? redactTemplateParamsForRole(templateParamsRaw, membershipRole, row.domain)
+    : templateParamsRaw;
+  const actionTargetRaw = (row.actionTarget ?? {}) as unknown as NotificationActionTarget;
+  const actionTarget = membershipRole
+    ? (redactActionTargetForRole(
+        actionTargetRaw as unknown as Record<string, unknown>,
+        membershipRole,
+        row.domain,
+      ) as unknown as NotificationActionTarget)
+    : actionTargetRaw;
 
   return {
     id: row.id,

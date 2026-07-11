@@ -6,6 +6,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { ACTIVE_NOTIFICATION_STATUSES } from '../notification.repository';
+import { buildOrgWideScopeOrClause } from '../access/notification-org-wide.policy';
 
 export type NotificationSortField = 'lastSeenAt' | 'createdAt' | 'severity';
 export type NotificationSortOrder = 'asc' | 'desc';
@@ -31,6 +32,8 @@ export interface NotificationListFilters {
   sortOrder?: NotificationSortOrder;
   /** When set, restrict to notifications tied to these vehicles (station scope). */
   scopedVehicleIds?: string[];
+  /** When set, restrict to notifications tied to these bookings (station scope). */
+  scopedBookingIds?: string[];
   /** When set, restrict to this station (station scope). */
   scopedStationId?: string;
 }
@@ -89,6 +92,7 @@ function entityOrActionTargetFilter(
 function stationScopeFilter(
   scopedStationId: string,
   scopedVehicleIds: string[],
+  scopedBookingIds: string[],
 ): Prisma.NotificationWhereInput {
   const orClauses: Prisma.NotificationWhereInput[] = [
     { entityType: NotificationEntityType.STATION, entityId: scopedStationId },
@@ -102,6 +106,17 @@ function stationScopeFilter(
     for (const vehicleId of scopedVehicleIds) {
       orClauses.push({
         actionTarget: { path: ['vehicleId'], equals: vehicleId },
+      });
+    }
+  }
+  if (scopedBookingIds.length > 0) {
+    orClauses.push({
+      entityType: NotificationEntityType.BOOKING,
+      entityId: { in: scopedBookingIds },
+    });
+    for (const bookingId of scopedBookingIds) {
+      orClauses.push({
+        actionTarget: { path: ['bookingId'], equals: bookingId },
       });
     }
   }
@@ -165,10 +180,18 @@ export function buildNotificationWhereInput(
     };
   }
   if (filters.scopedStationId) {
-    const scopeClause = stationScopeFilter(
+    const stationClause = stationScopeFilter(
       filters.scopedStationId,
       filters.scopedVehicleIds ?? [],
+      filters.scopedBookingIds ?? [],
     );
+    const orgWide = buildOrgWideScopeOrClause();
+    const scopeClause: Prisma.NotificationWhereInput = {
+      OR: [
+        ...(stationClause.OR as Prisma.NotificationWhereInput[]),
+        ...(orgWide.OR as Prisma.NotificationWhereInput[]),
+      ],
+    };
     where.AND = [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), scopeClause];
   }
   if (filters.search && filters.search.trim().length >= 2) {

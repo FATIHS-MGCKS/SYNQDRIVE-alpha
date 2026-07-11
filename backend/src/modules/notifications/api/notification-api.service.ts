@@ -17,8 +17,16 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { NotificationCoreService } from '../notification-core.service';
 import { NotificationEngineConfig } from '../notification-engine.config';
 import { NotificationRepository } from '../notification.repository';
-import { getEventTypeDefinition } from '../registry/notification-event-registry';
 import { NOTIFICATION_EVENT_TYPE_DEFINITIONS } from '../registry/notification-event-registry.definitions';
+import { getEventTypeDefinition } from '../registry/notification-event-registry';
+import type { NotificationAccessContext } from '../access/notification-access.types';
+import { NotificationPreferenceService } from '../access/notification-preference.service';
+import {
+  buildPreferenceWhereClause,
+  buildUserSnoozeExclusionClause,
+} from '../access/notification-preference.query';
+import { NotificationReceiptService } from '../access/notification-receipt.service';
+import { NotificationStationScopeService } from '../access/notification-station-scope.service';
 import { deriveAvailableActions } from './notification-available-actions';
 import { mapNotificationToDto } from './notification-api.mapper';
 import type { NotificationCountsResponseDto, NotificationResponseDto } from './notification-api.mapper';
@@ -47,12 +55,16 @@ const STAFF_ROLES: MembershipRole[] = [
 
 @Injectable()
 export class NotificationApiService {
+  private readonly preferenceService = new NotificationPreferenceService();
+
   constructor(
     private readonly core: NotificationCoreService,
     private readonly repository: NotificationRepository,
     private readonly engineConfig: NotificationEngineConfig,
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly receiptService: NotificationReceiptService,
+    private readonly stationScopeService: NotificationStationScopeService,
   ) {}
 
   assertApiEnabled(): void {
@@ -69,6 +81,7 @@ export class NotificationApiService {
     this.assertApiEnabled();
     const ctx = await this.resolveAccessContext(orgId, user);
     const pagination = parseNotificationPagination(query);
+    const referenceNow = new Date();
 
     const listFilters: NotificationListFilters = {
       organizationId: orgId,
@@ -91,25 +104,12 @@ export class NotificationApiService {
       sortOrder: query.sortOrder,
       scopedStationId: ctx.scopedStationId,
       scopedVehicleIds: ctx.scopedVehicleIds,
+      scopedBookingIds: ctx.scopedBookingIds,
     };
 
-    if (query.vehicleId) {
-      await this.assertEntityInOrg(orgId, 'vehicle', query.vehicleId);
-    }
-    if (query.stationId) {
-      await this.assertEntityInOrg(orgId, 'station', query.stationId);
-    }
-    if (query.bookingId) {
-      await this.assertEntityInOrg(orgId, 'booking', query.bookingId);
-    }
-    if (query.entityId && query.entityType) {
-      await this.assertEntityInOrg(orgId, query.entityType.toLowerCase(), query.entityId);
-    }
+    await this.validateEntityFilters(orgId, query);
 
-    const where = this.applyRoleVisibility(
-      buildNotificationWhereInput(listFilters),
-      ctx.membershipRole,
-    );
+    const where = this.buildAccessWhere(listFilters, ctx, referenceNow, true);
 
     const [rows, total] = await Promise.all([
       this.repository.listNotificationsWhere(where, {
@@ -120,27 +120,12 @@ export class NotificationApiService {
       this.repository.countNotificationsWhere(where),
     ]);
 
-    const receipts = await this.repository.findReceiptsForUser(
-      rows.map((r) => r.id),
-      ctx.userId,
+    return buildNotificationPaginatedResult(
+      await this.mapRows(rows, ctx, referenceNow),
+      total,
+      pagination.page,
+      pagination.limit,
     );
-    const receiptByNotification = new Map(receipts.map((r) => [r.notificationId, r]));
-
-    const data = rows.map((row) => {
-      const receipt = receiptByNotification.get(row.id) ?? null;
-      const isRead = receipt?.readAt != null;
-      const actions = deriveAvailableActions({
-        status: row.status,
-        eventType: row.eventType,
-        eventKind: row.eventKind,
-        membershipRole: ctx.membershipRole,
-        isRead,
-        hasActionTarget: Object.keys((row.actionTarget as object) ?? {}).length > 0,
-      });
-      return mapNotificationToDto(row, receipt, actions);
-    });
-
-    return buildNotificationPaginatedResult(data, total, pagination.page, pagination.limit);
   }
 
   async getById(orgId: string, user: NotificationRequestUser, id: string): Promise<NotificationResponseDto> {
@@ -149,36 +134,29 @@ export class NotificationApiService {
     const row = await this.repository.findById(id, orgId);
     if (!row) throw new NotFoundException('Notification not found');
 
-    this.assertNotificationVisible(row, ctx);
-    await this.assertNotificationStationScope(orgId, row, ctx);
+    await this.assertRowAccessible(row, ctx);
 
-    const receipt = await this.repository.findReceipt(id, ctx.userId);
-    const isRead = receipt?.readAt != null;
-    const actions = deriveAvailableActions({
-      status: row.status,
-      eventType: row.eventType,
-      eventKind: row.eventKind,
-      membershipRole: ctx.membershipRole,
-      isRead,
-      hasActionTarget: Object.keys((row.actionTarget as object) ?? {}).length > 0,
-    });
-
-    return mapNotificationToDto(row, receipt, actions);
+    const [dto] = await this.mapRows([row], ctx);
+    return dto;
   }
 
   async getCounts(orgId: string, user: NotificationRequestUser): Promise<NotificationCountsResponseDto> {
     this.assertApiEnabled();
     const ctx = await this.resolveAccessContext(orgId, user);
+    const referenceNow = new Date();
 
-    const activeWhere = this.applyRoleVisibility(
-      buildNotificationWhereInput({
+    const activeWhere = this.buildAccessWhere(
+      {
         organizationId: orgId,
         userId: ctx.userId,
         activeOnly: true,
         scopedStationId: ctx.scopedStationId,
         scopedVehicleIds: ctx.scopedVehicleIds,
-      }),
-      ctx.membershipRole,
+        scopedBookingIds: ctx.scopedBookingIds,
+      },
+      ctx,
+      referenceNow,
+      true,
     );
 
     const unreadWhere: Prisma.NotificationWhereInput = {
@@ -193,16 +171,19 @@ export class NotificationApiService {
       },
     };
 
-    const resolvedRecentWhere = this.applyRoleVisibility(
-      buildNotificationWhereInput({
+    const resolvedRecentWhere = this.buildAccessWhere(
+      {
         organizationId: orgId,
         userId: ctx.userId,
         status: [NotificationStatus.RESOLVED],
         from: new Date(Date.now() - RESOLVED_RECENT_WINDOW_MS),
         scopedStationId: ctx.scopedStationId,
         scopedVehicleIds: ctx.scopedVehicleIds,
-      }),
-      ctx.membershipRole,
+        scopedBookingIds: ctx.scopedBookingIds,
+      },
+      ctx,
+      referenceNow,
+      false,
     );
 
     const [totalActive, unread, severityGroups, domainGroups, resolvedRecent] = await Promise.all([
@@ -236,14 +217,14 @@ export class NotificationApiService {
 
   async markRead(orgId: string, user: NotificationRequestUser, id: string) {
     return this.withNotificationAction(orgId, user, id, async () => {
-      await this.core.markRead(id, orgId, user.id!);
+      await this.receiptService.markRead(id, orgId, user.id!);
       return this.getById(orgId, user, id);
     });
   }
 
   async markUnread(orgId: string, user: NotificationRequestUser, id: string) {
     return this.withNotificationAction(orgId, user, id, async () => {
-      await this.core.markUnread(id, orgId, user.id!);
+      await this.receiptService.markUnread(id, orgId, user.id!);
       return this.getById(orgId, user, id);
     });
   }
@@ -253,16 +234,16 @@ export class NotificationApiService {
       if (!dto.availableActions.includes('acknowledge')) {
         throw new BadRequestException('Acknowledge is not allowed for this notification');
       }
-      await this.core.acknowledgeNotification(id, orgId);
+      await this.receiptService.acknowledgePersonal(id, orgId, user.id!);
       void this.audit.record({
         actorUserId: user.id,
         actorOrganizationId: orgId,
         action: ActivityAction.UPDATE,
         entity: ActivityEntity.ORGANIZATION,
         entityId: orgId,
-        description: `Notification acknowledged: ${id}`,
+        description: `Notification personally acknowledged: ${id}`,
         route,
-        metaJson: { notificationId: id, action: 'acknowledge' },
+        metaJson: { notificationId: id, action: 'acknowledge_personal' },
       });
       return this.getById(orgId, user, id);
     });
@@ -287,16 +268,16 @@ export class NotificationApiService {
       if (!dto.availableActions.includes('snooze')) {
         throw new BadRequestException('Snooze is not allowed for this notification');
       }
-      await this.core.snoozeNotification(id, orgId, until);
+      await this.receiptService.snoozePersonal(id, orgId, user.id!, until);
       void this.audit.record({
         actorUserId: user.id,
         actorOrganizationId: orgId,
         action: ActivityAction.UPDATE,
         entity: ActivityEntity.ORGANIZATION,
         entityId: orgId,
-        description: `Notification snoozed until ${until.toISOString()}`,
+        description: `Notification personally snoozed until ${until.toISOString()}`,
         route,
-        metaJson: { notificationId: id, action: 'snooze', until: until.toISOString() },
+        metaJson: { notificationId: id, action: 'snooze_personal', until: until.toISOString() },
       });
       return this.getById(orgId, user, id);
     });
@@ -307,7 +288,7 @@ export class NotificationApiService {
       if (!dto.availableActions.includes('unsnooze')) {
         throw new BadRequestException('Unsnooze is not allowed for this notification');
       }
-      await this.core.unsnoozeNotification(id, orgId);
+      await this.receiptService.unsnoozePersonal(id, orgId, user.id!);
       return this.getById(orgId, user, id);
     });
   }
@@ -365,7 +346,10 @@ export class NotificationApiService {
     return fn(current);
   }
 
-  private async resolveAccessContext(orgId: string, user: NotificationRequestUser) {
+  private async resolveAccessContext(
+    orgId: string,
+    user: NotificationRequestUser,
+  ): Promise<NotificationAccessContext> {
     if (!user.id) {
       throw new ForbiddenException('User context required');
     }
@@ -380,46 +364,68 @@ export class NotificationApiService {
     }
 
     const membershipRole = membership.role;
-    if (!STAFF_ROLES.includes(membershipRole)) {
+    if (!STAFF_ROLES.includes(membershipRole) && user.platformRole !== 'MASTER_ADMIN') {
       throw new ForbiddenException('Insufficient role permissions');
     }
 
-    let scopedStationId: string | undefined;
-    let scopedVehicleIds: string[] | undefined;
+    const scopeFields = user.platformRole === 'MASTER_ADMIN'
+      ? { scopedVehicleIds: [], scopedBookingIds: [], bypassStationScope: true }
+      : await this.stationScopeService.buildScopeContext(
+          orgId,
+          membershipRole,
+          membership.stationScope,
+        );
 
-    const scope = membership.stationScope?.trim();
-    if (
-      scope
-      && scope !== 'ALL'
-      && (membershipRole === MembershipRole.SUB_ADMIN || membershipRole === MembershipRole.WORKER)
-    ) {
-      scopedStationId = scope;
-      const vehicles = await this.prisma.vehicle.findMany({
-        where: {
-          organizationId: orgId,
-          OR: [
-            { homeStationId: scope },
-            { currentStationId: scope },
-            { expectedStationId: scope },
-          ],
-        },
-        select: { id: true },
-      });
-      scopedVehicleIds = vehicles.map((v) => v.id);
-    }
+    const preferences = await this.prisma.userNotificationPreference.findMany({
+      where: { userId: user.id, organizationId: orgId },
+    });
 
     return {
       userId: user.id,
+      organizationId: orgId,
       membershipRole,
-      scopedStationId,
-      scopedVehicleIds,
+      platformRole: user.platformRole,
+      stationScope: membership.stationScope,
+      preferences,
+      ...scopeFields,
     };
+  }
+
+  private buildAccessWhere(
+    filters: NotificationListFilters,
+    ctx: NotificationAccessContext,
+    referenceNow: Date,
+    excludeUserSnoozed: boolean,
+  ): Prisma.NotificationWhereInput {
+    let where = buildNotificationWhereInput(filters);
+    where = this.applyRoleVisibility(where, ctx.membershipRole, ctx.platformRole);
+
+    const prefClause = buildPreferenceWhereClause(ctx.preferences);
+    if (prefClause) {
+      where = {
+        AND: [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), prefClause],
+      };
+    }
+
+    if (excludeUserSnoozed) {
+      const snoozeClause = buildUserSnoozeExclusionClause(ctx.userId, referenceNow);
+      where = {
+        AND: [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), snoozeClause],
+      };
+    }
+
+    return where;
   }
 
   private applyRoleVisibility(
     where: Prisma.NotificationWhereInput,
     role: MembershipRole,
+    platformRole?: string,
   ): Prisma.NotificationWhereInput {
+    if (platformRole === 'MASTER_ADMIN') {
+      return where;
+    }
+
     const allowedEventTypes = NOTIFICATION_EVENT_TYPE_DEFINITIONS
       .filter((d) => (d.supportedRoles as readonly MembershipRole[]).includes(role))
       .map((d) => d.eventType);
@@ -428,45 +434,126 @@ export class NotificationApiService {
       return { ...where, id: '__none__' };
     }
 
-    const roleClause: Prisma.NotificationWhereInput = {
-      eventType: { in: allowedEventTypes },
-    };
-
     return {
       ...where,
-      AND: [...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []), roleClause],
+      AND: [
+        ...(Array.isArray(where.AND) ? where.AND : where.AND ? [where.AND] : []),
+        { eventType: { in: allowedEventTypes } },
+      ],
     };
   }
 
-  private assertNotificationVisible(
-    row: { eventType: string },
-    ctx: { membershipRole: MembershipRole },
+  private async assertRowAccessible(
+    row: {
+      id: string;
+      eventType: string;
+      domain: string;
+      severity: import('@prisma/client').NotificationSeverity;
+      entityType: string;
+      entityId: string;
+      actionTarget: unknown;
+      status: string;
+    },
+    ctx: NotificationAccessContext,
   ) {
     const def = getEventTypeDefinition(row.eventType);
-    if (def && !(def.supportedRoles as readonly MembershipRole[]).includes(ctx.membershipRole)) {
+    if (
+      ctx.platformRole !== 'MASTER_ADMIN'
+      && def
+      && !(def.supportedRoles as readonly MembershipRole[]).includes(ctx.membershipRole)
+    ) {
+      throw new NotFoundException('Notification not found');
+    }
+
+    if (!this.stationScopeService.isNotificationInScope(row, ctx)) {
+      if (
+        row.entityType === 'VEHICLE'
+        && ctx.scopedStationId
+        && !ctx.bypassStationScope
+      ) {
+        const vehicleId = row.entityId;
+        const stillInScope = await this.stationScopeService.recheckVehicleStationScope(
+          ctx.organizationId,
+          vehicleId,
+          ctx.scopedStationId,
+        );
+        if (!stillInScope) {
+          throw new NotFoundException('Notification not found');
+        }
+      } else {
+        throw new NotFoundException('Notification not found');
+      }
+    }
+
+    const delivery = this.preferenceService.evaluateInAppDelivery(
+      row.eventType,
+      row.severity,
+      ctx.preferences,
+    );
+    if (delivery.suppressedByPreference) {
       throw new NotFoundException('Notification not found');
     }
   }
 
-  private async assertNotificationStationScope(
-    orgId: string,
-    row: {
+  private async mapRows(
+    rows: Array<{
+      id: string;
+      eventType: string;
+      eventKind: import('@prisma/client').NotificationEventKind;
+      domain: import('@prisma/client').NotificationDomain;
+      severity: import('@prisma/client').NotificationSeverity;
+      status: NotificationStatus;
       entityType: string;
       entityId: string;
       actionTarget: unknown;
-    },
-    ctx: { scopedStationId?: string; scopedVehicleIds?: string[] },
-  ) {
-    if (!ctx.scopedStationId) return;
+      templateParams: unknown;
+      titleKey: string;
+      bodyKey: string;
+      actionType: import('@prisma/client').NotificationActionType;
+      sourceType: import('@prisma/client').NotificationSourceType;
+      primarySourceRef: string;
+      firstSeenAt: Date;
+      lastSeenAt: Date;
+      occurrenceCount: number;
+      resolvedAt: Date | null;
+      expiresAt: Date | null;
+      createdAt: Date;
+      updatedAt: Date;
+    }>,
+    ctx: NotificationAccessContext,
+    referenceNow = new Date(),
+  ): Promise<NotificationResponseDto[]> {
+    const receipts = await this.repository.findReceiptsForUser(
+      rows.map((r) => r.id),
+      ctx.userId,
+    );
+    const receiptByNotification = new Map(receipts.map((r) => [r.notificationId, r]));
 
-    const target = (row.actionTarget ?? {}) as Record<string, string | undefined>;
-    const stationId = row.entityType === 'STATION' ? row.entityId : target.stationId;
-    const vehicleId = row.entityType === 'VEHICLE' ? row.entityId : target.vehicleId;
+    return rows.map((row) => {
+      const receipt = receiptByNotification.get(row.id) ?? null;
+      const isRead = receipt?.readAt != null;
+      const actions = deriveAvailableActions({
+        status: row.status,
+        eventType: row.eventType,
+        eventKind: row.eventKind,
+        membershipRole: ctx.membershipRole,
+        isRead,
+        isPersonallyAcknowledged: receipt?.acknowledgedAt != null,
+        userSnoozedUntil: receipt?.snoozedUntil ?? null,
+        hasActionTarget: Object.keys((row.actionTarget as object) ?? {}).length > 0,
+        referenceNow,
+      });
+      return mapNotificationToDto(row as any, receipt, actions, ctx.membershipRole);
+    });
+  }
 
-    if (stationId === ctx.scopedStationId) return;
-    if (vehicleId && ctx.scopedVehicleIds?.includes(vehicleId)) return;
-
-    throw new NotFoundException('Notification not found');
+  private async validateEntityFilters(orgId: string, query: ListNotificationsQueryDto) {
+    if (query.vehicleId) await this.assertEntityInOrg(orgId, 'vehicle', query.vehicleId);
+    if (query.stationId) await this.assertEntityInOrg(orgId, 'station', query.stationId);
+    if (query.bookingId) await this.assertEntityInOrg(orgId, 'booking', query.bookingId);
+    if (query.entityId && query.entityType) {
+      await this.assertEntityInOrg(orgId, query.entityType.toLowerCase(), query.entityId);
+    }
   }
 
   private async assertEntityInOrg(orgId: string, entityKind: string, entityId: string) {

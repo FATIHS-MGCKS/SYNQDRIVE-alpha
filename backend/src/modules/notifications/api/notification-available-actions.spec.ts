@@ -11,6 +11,8 @@ describe('deriveAvailableActions', () => {
     eventKind: NotificationEventKind.STATE,
     membershipRole: MembershipRole.ORG_ADMIN,
     isRead: false,
+    isPersonallyAcknowledged: false,
+    userSnoozedUntil: null,
     hasActionTarget: true,
   };
 
@@ -29,6 +31,8 @@ describe('deriveAvailableActions', () => {
       eventKind: NotificationEventKind.STATE,
       membershipRole: MembershipRole.WORKER,
       isRead: false,
+      isPersonallyAcknowledged: false,
+      userSnoozedUntil: null,
       hasActionTarget: true,
     });
     expect(actions).not.toContain('resolve');
@@ -52,17 +56,29 @@ describe('deriveAvailableActions', () => {
       eventKind: NotificationEventKind.STATE,
       membershipRole: MembershipRole.DRIVER,
       isRead: false,
+      isPersonallyAcknowledged: false,
+      userSnoozedUntil: null,
       hasActionTarget: true,
     });
     expect(actions).toEqual([]);
   });
 
-  it('includes unsnooze when snoozed', () => {
+  it('includes unsnooze when user personally snoozed', () => {
     const actions = deriveAvailableActions({
       ...base,
-      status: NotificationStatus.SNOOZED,
+      status: NotificationStatus.OPEN,
+      userSnoozedUntil: new Date(Date.now() + 60_000),
     });
     expect(actions).toContain('unsnooze');
     expect(actions).not.toContain('snooze');
+  });
+
+  it('excludes acknowledge when already personally acknowledged', () => {
+    const actions = deriveAvailableActions({
+      ...base,
+      status: NotificationStatus.OPEN,
+      isPersonallyAcknowledged: true,
+    });
+    expect(actions).not.toContain('acknowledge');
   });
 });

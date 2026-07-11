@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-engine-permissions-v49357-2026-07-11',
+    version: '4.9.357',
+    title: 'V4.9.357 — Notification Engine: Rollen, Scope, Receipts & Preferences',
+    summary: [
+      'Rollen-/Sichtbarkeitsmatrix aus Registry; Station-Scope inkl. Buchungen Pickup/Return und org-weite Critical/System-Ausnahmen.',
+      'Acknowledge und Snooze strikt pro User (Receipt) — getrennt vom org-weiten Lifecycle OPEN/RESOLVED/ARCHIVED.',
+      'UserNotificationPreference-Anbindung (Domain/Category, criticalOnly, Pflichtmeldungen); Datenschutz-Redaction pro Rolle.',
+      'Doku: docs/notification-engine-permissions-and-preferences.md.',
+    ],
+    reason:
+      'Notification API muss bestehende Rollen, Station Scope, Preferences und Receipt-Modell korrekt verbinden — ohne neue Rollenstruktur.',
+    previousBehavior:
+      'Acknowledge/Snooze änderten org-weiten notification.status; Station-Scope nur Fahrzeug; keine Preference-Filterung in API.',
+    details:
+      'access/* policies + services, Receipt-basierte Mutationen, Preference-Where-Clauses, Privacy-Redaction, erweiterte Tests.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-11T00:00:00.000Z',
+  },
+  {
     id: 'notification-engine-api-v49356-2026-07-11',
     version: '4.9.356',
     title: 'V4.9.356 — Notification Engine: versionierte REST API (V2)',
