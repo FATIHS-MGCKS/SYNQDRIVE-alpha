@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-panel-grouping-v49366-2026-07-11',
+    version: '4.9.366',
+    title: 'V4.9.366 — Meldungen-Panel: Gruppierung nach Fahrzeug/Entität',
+    summary: [
+      'Mehrere Meldungen pro Fahrzeug werden zu einer aufklappbaren Gruppe zusammengefasst.',
+      'Gruppierung auch für Station, Buchung und Kunde wenn sinnvoll (2+ Items).',
+      'V2-Mapper reichert groupKey/groupType an; Panel nutzt ActionQueue-Grouping.',
+    ],
+    reason:
+      'Meldungen-Panel wirkte unübersichtlich wenn ein Fahrzeug z.B. DTC + Reifen + Auslastung gleichzeitig hatte.',
+    previousBehavior:
+      'Flache NotificationCard-Liste — jede V2-Zeile einzeln, ohne Zusammenfassung pro Fahrzeug.',
+    details:
+      'enrich-notification-grouping.ts, NotificationGroupCard.tsx, NotificationPanel.tsx, actionQueueGrouping resolveBucketGroupType.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-11T10:10:00.000Z',
+  },
+  {
     id: 'notification-health-producers-v49365-2026-07-11',
     version: '4.9.365',
     title: 'V4.9.365 — Health Producer: Rental Health → V2 Notifications',

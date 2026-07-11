@@ -2,10 +2,16 @@ import { useCallback, useMemo, useState } from 'react';
 import { cn } from '../../../../components/ui/utils';
 import { panelShellClass } from '../dashboardShell';
 import type { ActionQueueItem, DashboardViewModel } from '../dashboardTypes';
+import {
+  countAtomicActions,
+  groupActionQueueEntries,
+} from '../actionQueueGrouping';
 import { navigateNotificationV2Action } from '../../../lib/notifications/notification-v2-action-router';
+import { enrichNotificationGroupingList } from '../../../lib/notifications/enrich-notification-grouping';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { buildNotificationCardViewModel } from './notificationCardViewModel';
 import { NotificationCard } from './NotificationCard';
+import { NotificationGroupCard } from './NotificationGroupCard';
 import { NotificationCardSkeleton } from './NotificationCardSkeleton';
 import { NotificationDomainFilter as NotificationDomainFilterControl } from './NotificationDomainFilter';
 import { NotificationEmptyState } from './NotificationEmptyState';
@@ -22,7 +28,7 @@ import type {
 } from './notificationPanelTypes';
 import { NOTIFICATION_PANEL_TYPO } from './notificationPanelTypography';
 
-const VISIBLE_CAP = 8;
+const VISIBLE_ENTRY_CAP = 8;
 
 interface NotificationPanelHandlers {
   onOpenVehicleById?: (vehicleId: string) => void;
@@ -88,14 +94,38 @@ export function NotificationPanel({
     [vm.actionQueue, primaryTab, domainFilter],
   );
 
-  const cards = useMemo(() => {
-    return filteredItems
-      .map((item) => buildNotificationCardViewModel(item, locale, referenceNowMs))
-      .filter((card): card is NonNullable<typeof card> => card != null);
-  }, [filteredItems, locale, referenceNowMs]);
+  const enrichedItems = useMemo(
+    () => enrichNotificationGroupingList(filteredItems, locale, referenceNowMs),
+    [filteredItems, locale, referenceNowMs],
+  );
 
-  const visibleCards = isExpanded ? cards.slice(0, VISIBLE_CAP) : cards.slice(0, 3);
-  const hiddenCount = Math.max(0, cards.length - visibleCards.length);
+  const entries = useMemo(
+    () => groupActionQueueEntries(enrichedItems, locale),
+    [enrichedItems, locale],
+  );
+
+  const itemsById = useMemo(() => {
+    const map = new Map<string, ActionQueueItem>();
+    for (const item of enrichedItems) map.set(item.id, item);
+    return map;
+  }, [enrichedItems]);
+
+  const cardsById = useMemo(() => {
+    const map = new Map<string, ReturnType<typeof buildNotificationCardViewModel>>();
+    for (const item of enrichedItems) {
+      const card = buildNotificationCardViewModel(item, locale, referenceNowMs);
+      if (card) map.set(item.id, card);
+    }
+    return map;
+  }, [enrichedItems, locale, referenceNowMs]);
+
+  const atomicCount = useMemo(() => countAtomicActions(entries), [entries]);
+  const visibleEntries = isExpanded ? entries.slice(0, VISIBLE_ENTRY_CAP) : entries.slice(0, 3);
+  const hiddenAtomicCount = useMemo(() => {
+    const hidden = entries.slice(visibleEntries.length);
+    return countAtomicActions(hidden);
+  }, [entries, visibleEntries.length]);
+
   const statusTone = headerStatusTone(vm.actionQueue, primaryTabCounts);
 
   const handlePrimaryTab = useCallback(
@@ -128,13 +158,18 @@ export function NotificationPanel({
 
   const emptyVariant: NotificationEmptyVariant | null = useMemo(() => {
     if (vm.actionQueueError) return 'api-error';
-    if (!vm.actionQueueLoading && cards.length === 0) {
+    if (!vm.actionQueueLoading && entries.length === 0) {
       return emptyVariantForTab(primaryTab, domainFilter != null);
     }
     return null;
-  }, [vm.actionQueueError, vm.actionQueueLoading, cards.length, primaryTab, domainFilter]);
+  }, [vm.actionQueueError, vm.actionQueueLoading, entries.length, primaryTab, domainFilter]);
 
   const snoozeDefaultUntil = () => new Date(Date.now() + 60 * 60_000).toISOString();
+
+  const runCta = useCallback(
+    (item: ActionQueueItem) => runItemCta(item, vm, handlers),
+    [vm, handlers],
+  );
 
   return (
     <section
@@ -144,7 +179,7 @@ export function NotificationPanel({
       <NotificationPanelHeader
         vm={vm}
         statusTone={statusTone}
-        totalCount={cards.length}
+        totalCount={atomicCount}
         isExpanded={isExpanded}
         onToggle={() => setIsExpanded((v) => !v)}
         controlsId={contentId}
@@ -180,30 +215,48 @@ export function NotificationPanel({
           <NotificationEmptyState variant={emptyVariant} t={t} />
         ) : (
           <ul className="flex flex-col gap-2 px-2 py-2 sm:px-2.5" role="list">
-            {visibleCards.map((card) => {
-              const item = filteredItems.find((i) => i.id === card.id);
-              if (!item) return null;
+            {visibleEntries.map((entry) => {
+              if (entry.kind === 'group') {
+                return (
+                  <li key={entry.id} className="list-none">
+                    <NotificationGroupCard
+                      group={entry}
+                      itemsById={itemsById}
+                      cardsById={cardsById}
+                      t={t}
+                      vm={vm}
+                      onItemCta={runCta}
+                      snoozeDefaultUntil={snoozeDefaultUntil}
+                    />
+                  </li>
+                );
+              }
+
+              const card = cardsById.get(entry.id);
+              const item = itemsById.get(entry.id);
+              if (!card || !item) return null;
+
               return (
-                <li key={card.id} className="list-none">
+                <li key={entry.id} className="list-none">
                   <NotificationCard
                     card={card}
                     t={t}
                     unread={card.readStatus === 'unread'}
-                    onOpen={() => vm.openDrilldown({ type: 'action-item', itemId: card.id })}
-                    onCta={() => runItemCta(item, vm, handlers)}
+                    onOpen={() => vm.openDrilldown({ type: 'action-item', itemId: entry.id })}
+                    onCta={() => runCta(item)}
                     onMarkRead={
                       vm.notificationMutations?.markRead
-                        ? () => void vm.notificationMutations?.markRead(card.id)
+                        ? () => void vm.notificationMutations?.markRead(entry.id)
                         : undefined
                     }
                     onAcknowledge={
                       vm.notificationMutations?.acknowledge
-                        ? () => void vm.notificationMutations?.acknowledge(card.id)
+                        ? () => void vm.notificationMutations?.acknowledge(entry.id)
                         : undefined
                     }
                     onSnooze={
                       vm.notificationMutations?.snooze
-                        ? () => void vm.notificationMutations?.snooze(card.id, snoozeDefaultUntil())
+                        ? () => void vm.notificationMutations?.snooze(entry.id, snoozeDefaultUntil())
                         : undefined
                     }
                   />
@@ -213,9 +266,9 @@ export function NotificationPanel({
           </ul>
         )}
 
-        {hiddenCount > 0 && !vm.actionQueueLoading ? (
+        {hiddenAtomicCount > 0 && !vm.actionQueueLoading ? (
           <p className={cn(NOTIFICATION_PANEL_TYPO.meta, 'border-t border-border/35 px-4 py-2.5 text-center')}>
-            {t('notification.more.expanded', { count: hiddenCount })}
+            {t('notification.more.expanded', { count: hiddenAtomicCount })}
           </p>
         ) : null}
       </div>

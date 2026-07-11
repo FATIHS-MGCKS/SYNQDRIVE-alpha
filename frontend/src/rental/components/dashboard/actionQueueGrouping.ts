@@ -52,7 +52,7 @@ function rebuildGroup(
     ...group,
     children,
     severity,
-    subtitle: groupSubtitle(group.groupType, children.length, de),
+    subtitle: groupSubtitle(group.groupType, children.length, de, group.groupKey),
   };
 }
 
@@ -224,12 +224,21 @@ function groupSubtitle(
   groupType: ActionQueueGroupItem['groupType'],
   count: number,
   de: boolean,
+  groupKey?: string,
 ): string {
   if (groupType === 'vehicle-health') {
     if (de) {
       return count === 1 ? '1 aktiver Gesundheitshinweis' : `${count} aktive Gesundheitshinweise`;
     }
     return count === 1 ? '1 active health issue' : `${count} active health issues`;
+  }
+  if (groupKey?.startsWith('vehicle:')) {
+    if (de) return count === 1 ? '1 Meldung' : `${count} Meldungen`;
+    return count === 1 ? '1 notification' : `${count} notifications`;
+  }
+  if (groupType === 'station-ops') {
+    if (de) return count === 1 ? '1 Stationshinweis' : `${count} Stationshinweise`;
+    return count === 1 ? '1 station notice' : `${count} station notices`;
   }
   if (de) return count === 1 ? '1 Aktion' : `${count} Aktionen`;
   return count === 1 ? '1 action' : `${count} actions`;
@@ -255,13 +264,26 @@ function groupFallbackTitle(
   }
 }
 
+function resolveBucketGroupType(bucket: ActionQueueItem[]): ActionQueueGroupItem['groupType'] {
+  const isHealthish = (item: ActionQueueItem) =>
+    item.groupType === 'vehicle-health'
+    || item.category === 'health'
+    || item.queue?.domain === 'vehicle-health'
+    || item.queue?.domain === 'driving-analysis';
+
+  const healthCount = bucket.filter(isHealthish).length;
+  if (healthCount === bucket.length && bucket.length > 0) return 'vehicle-health';
+  if (healthCount > 0) return 'vehicle-ops';
+  return bucket[0].groupType ?? 'vehicle-ops';
+}
+
 function buildGroup(
   groupKey: string,
   bucket: ActionQueueItem[],
   de: boolean,
 ): ActionQueueGroupItem {
   const head = bucket[0];
-  const groupType = head.groupType ?? 'vehicle-ops';
+  const groupType = resolveBucketGroupType(bucket);
   const isHealth = groupType === 'vehicle-health';
   const children = sortChildren(bucket.map(toChildAction), isHealth);
 
@@ -280,7 +302,7 @@ function buildGroup(
     severity,
     category: head.category,
     title,
-    subtitle: groupSubtitle(groupType, children.length, de),
+    subtitle: groupSubtitle(groupType, children.length, de, groupKey),
     entityLabel: head.entityLabel,
     vehicleId: head.vehicleId,
     bookingId: head.bookingId,

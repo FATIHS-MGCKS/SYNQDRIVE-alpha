@@ -44,6 +44,7 @@ export interface NotificationCardProps {
   card: NotificationCardViewModel;
   t: ReturnType<typeof useLanguage>['t'];
   unread?: boolean;
+  compact?: boolean;
   onOpen: () => void;
   onCta: () => void;
   onMarkRead?: () => void;
@@ -57,6 +58,7 @@ export const NotificationCard = memo(function NotificationCard({
   card,
   t,
   unread = false,
+  compact = false,
   onOpen,
   onCta,
   onMarkRead,
@@ -69,8 +71,10 @@ export const NotificationCard = memo(function NotificationCard({
   return (
     <article
       className={cn(
-        'group relative rounded-xl border px-3 py-2.5 transition-colors motion-reduce:transition-none',
-        severitySurface(card.severity, card.resolved),
+        'group relative rounded-xl border transition-colors motion-reduce:transition-none',
+        compact ? 'border-border/25 bg-muted/[0.04] px-2.5 py-2' : 'px-3 py-2.5',
+        !compact && severitySurface(card.severity, card.resolved),
+        compact && severitySurface(card.severity, card.resolved),
         unread && 'ring-1 ring-[color:color-mix(in_srgb,var(--brand)_18%,transparent)]',
         'hover:bg-muted/15 focus-within:ring-2 focus-within:ring-[color:var(--brand)]',
       )}
@@ -118,7 +122,7 @@ export const NotificationCard = memo(function NotificationCard({
             {card.title}
           </button>
 
-          {card.entityLine ? (
+          {card.entityLine && !compact ? (
             <p className={cn(NOTIFICATION_PANEL_TYPO.entity, 'mt-0.5')}>{card.entityLine}</p>
           ) : null}
 
