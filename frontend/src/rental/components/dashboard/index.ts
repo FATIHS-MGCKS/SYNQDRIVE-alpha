@@ -19,6 +19,7 @@ export type {
 export * from './runtime';
 export { STATION_FILTER_STORAGE_KEY, OPERATOR_FOCUS_MODE_STORAGE_KEY } from './dashboardTypes';
 export { useDashboardViewModel } from './useDashboardViewModel';
+export { useDashboardLeftColumnHeight } from './useDashboardLeftColumnHeight';
 export { DashboardControlHeader } from './DashboardControlHeader';
 export { DashboardDrilldownDrawer } from './DashboardDrilldownDrawer';
 export { ControlKpiStrip } from './ControlKpiStrip';

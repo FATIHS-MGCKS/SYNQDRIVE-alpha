@@ -236,7 +236,7 @@ export function NotificationPanel({
       className={cn(
         panelShellClass('tertiary'),
         'w-full min-w-0',
-        isSidebar && 'flex h-full min-h-0 flex-col overflow-hidden max-lg:max-h-[min(480px,55vh)]',
+        isSidebar && 'flex h-full max-h-full min-h-0 flex-col overflow-hidden max-lg:max-h-[min(480px,55vh)]',
       )}
       aria-label={t('notification.panelTitle')}
     >

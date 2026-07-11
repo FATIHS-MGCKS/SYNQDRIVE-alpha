@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import {
   ActionQueue,
   BusinessPulse,
@@ -10,6 +11,7 @@ import {
   FocusNotReadyVehicles,
   NowNextTimeline,
   useDashboardViewModel,
+  useDashboardLeftColumnHeight,
   type DashboardViewProps,
 } from './dashboard';
 
@@ -37,6 +39,11 @@ export function DashboardView({
     onOpenBookingById,
     onOpenRentalView,
   };
+  const leftColumnRef = useRef<HTMLDivElement>(null);
+  const notificationsMaxHeight = useDashboardLeftColumnHeight(leftColumnRef, [
+    vm.dataFreshness.invoicesLoaded,
+    vm.dataFreshness.fleetLoading,
+  ]);
   const activeDrawerTargetId = vm.activeDashboardSliceId ?? vm.activeBusinessMetricId;
   const drawerLoading = vm.activeBusinessMetricId
     ? !vm.dataFreshness.invoicesLoaded
@@ -89,31 +96,36 @@ export function DashboardView({
     <>
       <div className={DASHBOARD_LAYOUT.shell}>
         <div className={`${DASHBOARD_LAYOUT.controlFinanceGrid} animate-fade-up`} style={{ animationDelay: '0ms' }}>
-          <div className={DASHBOARD_LAYOUT.controlKpiSlot}>
-            <DashboardControlHeader vm={vm}>
-              <ControlKpiStrip
-                dashboardRuntime={vm.dashboardRuntime}
-                activeSliceId={vm.activeDashboardSliceId}
-                onSelectSlice={vm.openSliceDrilldown}
-                embedded
+          <div ref={leftColumnRef} className={DASHBOARD_LAYOUT.controlLeftColumn}>
+            <div className={DASHBOARD_LAYOUT.controlKpiSlot}>
+              <DashboardControlHeader vm={vm}>
+                <ControlKpiStrip
+                  dashboardRuntime={vm.dashboardRuntime}
+                  activeSliceId={vm.activeDashboardSliceId}
+                  onSelectSlice={vm.openSliceDrilldown}
+                  embedded
+                  locale={vm.locale}
+                  dataFreshness={vm.dataFreshness}
+                />
+              </DashboardControlHeader>
+            </div>
+            <div className={DASHBOARD_LAYOUT.financeSlot}>
+              <BusinessPulse
+                businessPulseSlices={vm.businessPulseSlices}
+                onSelectBusinessMetric={vm.openBusinessMetricDrilldown}
+                onOpenBilling={() => onOpenFinanceView?.('invoices')}
                 locale={vm.locale}
-                dataFreshness={vm.dataFreshness}
+                currency="EUR"
+                loading={!vm.dataFreshness.invoicesLoaded}
+                error={vm.dataFreshness.invoicesError}
               />
-            </DashboardControlHeader>
+            </div>
           </div>
-          <div className={DASHBOARD_LAYOUT.notificationsSlot}>
+          <div
+            className={DASHBOARD_LAYOUT.notificationsSlot}
+            style={notificationsMaxHeight ? { maxHeight: notificationsMaxHeight } : undefined}
+          >
             <ActionQueue vm={vm} {...handlers} layout="sidebar" />
-          </div>
-          <div className={DASHBOARD_LAYOUT.financeSlot}>
-            <BusinessPulse
-              businessPulseSlices={vm.businessPulseSlices}
-              onSelectBusinessMetric={vm.openBusinessMetricDrilldown}
-              onOpenBilling={() => onOpenFinanceView?.('invoices')}
-              locale={vm.locale}
-              currency="EUR"
-              loading={!vm.dataFreshness.invoicesLoaded}
-              error={vm.dataFreshness.invoicesError}
-            />
           </div>
         </div>
       </div>

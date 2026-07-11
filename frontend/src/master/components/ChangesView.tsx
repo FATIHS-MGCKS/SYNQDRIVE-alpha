@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-notifications-height-eyebrow-v49376-2026-07-11',
+    version: '4.9.376',
+    title: 'V4.9.376 — Meldungen: Höhe an linke Spalte + kompakter Eyebrow',
+    summary: [
+      'Desktop: `useDashboardLeftColumnHeight` + ResizeObserver — Meldungen-`maxHeight` = KPI+Finanzen-Spalte, interner Scroll.',
+      'Grid: `controlLeftColumn` (`contents` mobil / flex desktop) statt `row-span-2`, das die Zeile aufwuchs.',
+      '`NotificationSummaryRow`: Domain-Eyebrow (z. B. Fahrzeugzustand) rechts neben Severity-Badge — eine Zeile weniger.',
+    ],
+    reason:
+      'Meldungen-Panel wuchs über die linke Spalte hinaus; Eyebrow unter dem Badge kostete unnötig vertikalen Platz.',
+    previousBehavior:
+      'CSS `row-span-2` ließ die Grid-Zeile durch Meldungs-Inhalt wachsen; Eyebrow eigene Zeile unter Warnung/Hinweis-Badge.',
+    details:
+      'useDashboardLeftColumnHeight.ts, DashboardView.tsx, dashboardShell.tsx, NotificationSummaryRow.tsx, NotificationPanel.tsx.',
+    affectsArchitecture: true,
+    module: 'Dashboard',
+    createdAt: '2026-07-11T22:05:00.000Z',
+  },
+  {
     id: 'dashboard-finance-left-notifications-top-v49375-2026-07-11',
     version: '4.9.375',
     title: 'V4.9.375 — Dashboard: Meldungen oben rechts, Finanzen unter KPIs',

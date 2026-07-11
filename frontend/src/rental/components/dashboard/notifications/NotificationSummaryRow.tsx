@@ -81,21 +81,27 @@ export const NotificationSummaryRow = memo(function NotificationSummaryRow({
 
       <div className="min-w-0 flex-1">
         <div className="flex items-start justify-between gap-2">
-          <span
-            className={cn(
-              NOTIFICATION_PANEL_TYPO.metaBadge,
-              severityBadgeTone(summary.severity, summary.resolved),
-            )}
-          >
-            {severityLabel}
-          </span>
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+            <span
+              className={cn(
+                NOTIFICATION_PANEL_TYPO.metaBadge,
+                severityBadgeTone(summary.severity, summary.resolved),
+              )}
+            >
+              {severityLabel}
+            </span>
+            {summary.eyebrowLabel ? (
+              <span className={cn(NOTIFICATION_PANEL_TYPO.eyebrow, 'truncate')}>
+                {summary.eyebrowLabel}
+              </span>
+            ) : null}
+          </div>
           {summary.lastSeenLabel ? (
             <span className={cn(NOTIFICATION_PANEL_TYPO.lastSeen, 'shrink-0 tabular-nums')}>
               {summary.lastSeenLabel}
             </span>
           ) : null}
         </div>
-        <p className={cn(NOTIFICATION_PANEL_TYPO.eyebrow, 'mt-1')}>{summary.eyebrowLabel}</p>
         <p
           className={cn(
             NOTIFICATION_PANEL_TYPO.cardTitle,
