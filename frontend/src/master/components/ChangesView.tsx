@@ -35,7 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'notification-engine-risk-fixes-v49360-2026-07-11',
+    id: 'notification-migration-cli-v49361-2026-07-11',
+    version: '4.9.361',
+    title: 'V4.9.361 — Notification Migration: Prod Cutover Execution',
+    summary: [
+      'Lean `NotificationMigrationCliModule` für Dry-Run/Backfill/Acceptance ohne AppModule-Bootstrap.',
+      'Prod-Migration F.S Mobility: 4 Insights → V2, Acceptance passed.',
+      'Flags: `NOTIFICATIONS_V2=true`, `VITE_NOTIFICATIONS_V2=on`; Delivery bewusst noch aus.',
+    ],
+    reason: 'Cutover-Schritte auf Production ausführen — Migration-Skripte und Feature Flags.',
+    previousBehavior: 'Migration-Skripte scheiterten am BusinessInsights↔Notifications Zyklus; Flags aus.',
+    details: 'notification-migration-cli.module.ts, VPS backfill + env flags + frontend rebuild.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-11T08:45:00.000Z',
+  },
     version: '4.9.360',
     title: 'V4.9.360 — Notification Engine: Risk Fixes & Full Insight Migration',
     summary: [
