@@ -35,10 +35,10 @@ interface ControlKpiStripProps {
 const TOP_KPI_ORDER: DashboardSliceId[] = ['ready-to-rent', 'active-rented'];
 
 const LOWER_KPI_ORDER: DashboardSliceId[] = [
-  'overdue-returns',
   'blocked-maintenance',
-  'overdue-pickups',
+  'overdue-returns',
   'critical-alerts',
+  'overdue-pickups',
 ];
 
 /** Visible strip order — 2×3 grid on desktop when parent is half-width. */

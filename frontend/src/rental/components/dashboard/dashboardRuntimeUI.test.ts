@@ -327,7 +327,7 @@ describe('dashboard runtime-only UI contracts', () => {
     expect(stripSrc).toContain("const TOP_KPI_ORDER: DashboardSliceId[] = ['ready-to-rent', 'active-rented']");
     expect(stripSrc).toContain("'overdue-pickups'");
     expect(stripSrc).toMatch(
-      /const LOWER_KPI_ORDER: DashboardSliceId\[\] = \[\s*'overdue-returns',\s*'blocked-maintenance',\s*'overdue-pickups',\s*'critical-alerts',\s*\]/,
+      /const LOWER_KPI_ORDER: DashboardSliceId\[\] = \[\s*'blocked-maintenance',\s*'overdue-returns',\s*'critical-alerts',\s*'overdue-pickups',\s*\]/,
     );
     expect(stripSrc).not.toMatch(/TOP_KPI_ORDER: DashboardSliceId\[\] = \[[^\]]*'due-soon'/);
     expect(stripSrc).not.toMatch(/LOWER_KPI_ORDER: DashboardSliceId\[\] = \[[^\]]*'due-soon'/);

@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-kpi-grid-swap-v49377-2026-07-11',
+    version: '4.9.377',
+    title: 'V4.9.377 — KPI-Grid: Blockiert/Kritisch ↔ Überfällige Rückgaben/Übergaben',
+    summary: [
+      '`ControlKpiStrip` LOWER_KPI_ORDER: Zeile 2 links Blockiert & Wartung, rechts Überfällige Rückgaben.',
+      'Zeile 3 links Kritische Alerts, rechts Überfällige Übergaben.',
+    ],
+    reason: 'Gewünschte visuelle Gruppierung: Wartung/Alerts links, überfällige Handover-Themen rechts.',
+    previousBehavior:
+      'Zeile 2: Überfällige Rückgaben | Blockiert & Wartung; Zeile 3: Überfällige Übergaben | Kritische Alerts.',
+    details: 'ControlKpiStrip.tsx — nur Render-Reihenfolge, keine Runtime-/Slice-Logik.',
+    affectsArchitecture: false,
+    module: 'Dashboard',
+    createdAt: '2026-07-11T23:10:00.000Z',
+  },
+  {
     id: 'dashboard-notifications-height-eyebrow-v49376-2026-07-11',
     version: '4.9.376',
     title: 'V4.9.376 — Meldungen: Höhe an linke Spalte + kompakter Eyebrow',
