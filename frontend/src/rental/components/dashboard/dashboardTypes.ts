@@ -307,6 +307,13 @@ export interface ActionQueueItem {
     model?: string;
     year?: string | number;
     entityLine?: string;
+    code?: string;
+    reason?: string;
+    idleDays?: number;
+    lostRevenueEur?: number;
+    available?: number;
+    totalVehicles?: number;
+    bookedOut?: number;
   };
 }
 

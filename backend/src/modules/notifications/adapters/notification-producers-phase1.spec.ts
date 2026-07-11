@@ -9,6 +9,7 @@ import { NotificationDeliverySchedulerService } from '../delivery/notification-d
 import { DrivingAssessmentNotificationAdapter } from './driving-assessment-notification.adapter';
 import { TechnicalObservationNotificationAdapter } from './technical-observation-notification.adapter';
 import { StationShortageNotificationAdapter } from './station-shortage-notification.adapter';
+import { LowUtilizationNotificationAdapter } from './low-utilization-notification.adapter';
 import { VehicleHealthNotificationAdapter } from './vehicle-health-notification.adapter';
 import { NotificationProducerRouter } from './notification-producer.router';
 import { NotificationProducerIngestService } from './notification-producer.ingest.service';
@@ -165,7 +166,9 @@ describe('NotificationProducerIngestService — phase 1 migration', () => {
       new DrivingAssessmentNotificationAdapter(),
       new TechnicalObservationNotificationAdapter(),
       new StationShortageNotificationAdapter(),
+      new LowUtilizationNotificationAdapter(),
       new VehicleHealthNotificationAdapter(),
+      core,
     );
   });
   describe('WOB L 7503 regression', () => {

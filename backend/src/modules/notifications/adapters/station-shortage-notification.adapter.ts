@@ -40,6 +40,7 @@ export class StationShortageNotificationAdapter
         label: source.stationName,
         available: source.available,
         totalVehicles: source.totalVehicles,
+        bookedOut: source.bookedOut,
         threshold: source.threshold,
         stationId: source.stationId,
       },

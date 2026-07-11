@@ -51,12 +51,20 @@ export function filterNotificationsByDomain(
   return items.filter((item) => itemDomain(item) === domainFilter);
 }
 
+const PANEL_EXCLUDED_EVENT_TYPES = new Set(['HM_SERVICE_NO_TRACKING']);
+
+function isPanelExcluded(item: ActionQueueItem): boolean {
+  const eventType = (item.issueType ?? item.queue?.conditionCode ?? '').toUpperCase();
+  return PANEL_EXCLUDED_EVENT_TYPES.has(eventType);
+}
+
 export function filterNotificationPanelItems(
   items: ActionQueueItem[],
   primaryTab: NotificationPrimaryTab,
   domainFilter: NotificationDomainFilter | null,
 ): ActionQueueItem[] {
-  const byTab = filterNotificationsByPrimaryTab(items, primaryTab);
+  const visible = items.filter((item) => !isPanelExcluded(item));
+  const byTab = filterNotificationsByPrimaryTab(visible, primaryTab);
   return filterNotificationsByDomain(byTab, domainFilter);
 }
 

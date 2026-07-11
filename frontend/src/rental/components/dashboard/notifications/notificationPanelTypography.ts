@@ -9,7 +9,7 @@ export const NOTIFICATION_PANEL_TYPO = {
   eyebrow: 'text-[11px] font-medium leading-4 text-muted-foreground',
   lastSeen: 'text-[11px] font-medium leading-4 text-muted-foreground',
   cardTitle: 'text-sm font-semibold leading-[19px] tracking-[-0.01em] text-foreground text-pretty line-clamp-2',
-  childTitle: 'text-xs font-semibold leading-4 text-foreground line-clamp-1',
+  childTitle: 'text-xs font-medium leading-4 text-foreground/90 line-clamp-1',
   childDescription: 'text-[11px] font-normal leading-4 text-muted-foreground text-pretty',
   entity: 'text-xs font-medium leading-[17px] text-muted-foreground line-clamp-1',
   description: 'text-xs font-normal leading-[17px] text-muted-foreground text-pretty line-clamp-3',

@@ -7,6 +7,7 @@ import {
   createNotificationTranslator,
 } from '../notificationQueueEnricher';
 import type { NotificationDetailViewModel } from './notification-detail-view-model';
+import { resolveNotificationIssueCopy } from './notification-issue-copy';
 
 const MODULE_MAP: Partial<Record<ActionQueueModuleTarget, HealthActionModule>> = {
   battery: 'battery',
@@ -139,9 +140,10 @@ export function buildNotificationDetailViewModel(
   locale: string,
 ): NotificationDetailViewModel {
   const t = createNotificationTranslator(locale);
+  const copy = resolveNotificationIssueCopy(item, locale);
   return {
-    issueTitle: item.title,
-    issueDescription: item.reason?.trim() || '',
+    issueTitle: copy.headline,
+    issueDescription: copy.detail,
     ctaPrimaryLabel: resolveNotificationPrimaryCtaLabel(item, locale),
     showCreateTask: canCreateTaskFromNotification(item),
     createTaskLabel: t('notification.cta.createTask'),

@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-copy-trust-v49371-2026-07-11',
+    version: '4.9.371',
+    title: 'V4.9.371 — Meldungen: vertrauenswürdige Issue-Copy + Producer-Fixes',
+    summary: [
+      'Gruppen-Kinder zeigen Issue-Headline ohne Kennzeichen + Grund in leichterer Schrift (`notification-issue-copy`).',
+      'ACTIVE_DTC i18n + `templateParams.reason`-Fallback — Fehlercode + Beschreibung statt nur Kennzeichen.',
+      'HM_SERVICE_NO_TRACKING aus Meldungen-Panel entfernt + bestehende Zeilen per BI-Run resolved.',
+      'LOW_UTILIZATION live BI-Sync (`syncLowUtilizationFromInsights`) für konsistente Flotten-Auslastung.',
+      'Station-Shortage Copy: „Wenige/Keine Fahrzeuge verfügbar“ statt „Station ausgelastet“.',
+    ],
+    reason:
+      'Redundante Kennzeichen in Kind-Zeilen, fehlende DTC-Beschreibung, irreführende HM-Tracking-Warnung und inkonsistente Auslastungs-Meldungen untergraben Vertrauen.',
+    previousBehavior:
+      'Titel „Batterie kritisch — KS MX 2024“ bold in Kind-Zeilen; DTC fiel auf Kennzeichen zurück; HM-Tracking als Warnung; LOW_UTILIZATION nur aus Backfill.',
+    details:
+      'notification-issue-copy.ts, map-notification-api-to-view-model.ts, notificationPanelFilters.ts, low-utilization-notification.adapter.ts, notification-producer.ingest.service.ts, business-insights.service.ts, i18n activeDtc/stationShortage.',
+    affectsArchitecture: true,
+    module: 'Notifications',
+    createdAt: '2026-07-11T18:30:00.000Z',
+  },
+  {
     id: 'notification-ui-standardize-v49370-2026-07-11',
     version: '4.9.370',
     title: 'V4.9.370 — Meldungen-Panel: einheitliche Summary-Zeilen + Aufgabe erstellen',

@@ -164,6 +164,29 @@ export class BusinessInsightsService {
       }
 
       try {
+        await this.notificationIngest?.syncLowUtilizationFromInsights(
+          organizationId,
+          run.id,
+          gatedCandidates,
+        );
+      } catch (lowUtilErr: any) {
+        this.logger.warn(
+          `Notification V2 low utilization sync failed for org ${organizationId}: ${lowUtilErr?.message ?? lowUtilErr}`,
+        );
+      }
+
+      try {
+        await this.notificationIngest?.resolveInboxExcludedNotifications(
+          organizationId,
+          run.id,
+        );
+      } catch (excludeErr: any) {
+        this.logger.warn(
+          `Notification V2 excluded resolve failed for org ${organizationId}: ${excludeErr?.message ?? excludeErr}`,
+        );
+      }
+
+      try {
         await this.syncVehicleHealthNotifications(organizationId, run.id);
       } catch (healthIngestErr: any) {
         this.logger.warn(

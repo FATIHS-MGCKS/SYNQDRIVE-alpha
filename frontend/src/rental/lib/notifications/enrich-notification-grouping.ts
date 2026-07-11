@@ -8,7 +8,6 @@ const VEHICLE_HEALTH_EVENT_TYPES = new Set([
   'BATTERY_CRITICAL',
   'SERVICE_OVERDUE',
   'SERVICE_WINDOW',
-  'HM_SERVICE_NO_TRACKING',
   'TUV_OVERDUE',
   'BOKRAFT_OVERDUE',
   'COMPLIANCE_OPERATIONAL',
@@ -58,7 +57,6 @@ function eventTypeToModule(
       return 'battery';
     case 'SERVICE_OVERDUE':
     case 'SERVICE_WINDOW':
-    case 'HM_SERVICE_NO_TRACKING':
     case 'TUV_OVERDUE':
     case 'BOKRAFT_OVERDUE':
       return 'service_compliance';

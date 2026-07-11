@@ -76,7 +76,7 @@ export class LowUtilizationDetector implements InsightDetector {
         actionType: 'navigate_vehicle',
         entityScope: InsightEntityScope.VEHICLE,
         entityIds: [v.id],
-        metrics: { idleDays: lookbackDays, lostRevenueEur: lostRevenue, dailyRateEur: dailyRate },
+        metrics: { idleDays: lookbackDays, lostRevenueEur: lostRevenue, dailyRateEur: dailyRate, entityLabel: label },
         reasons: [`No bookings in past ${lookbackDays} days`, 'No upcoming bookings in next 7 days'],
         confidence: 1.0,
         dedupeKey: `low_utilization:${v.id}`,

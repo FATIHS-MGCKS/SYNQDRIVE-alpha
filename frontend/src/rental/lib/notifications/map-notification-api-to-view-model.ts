@@ -26,6 +26,13 @@ function extractEntityContext(params: Record<string, string | number | boolean |
     make: make != null ? String(make) : undefined,
     model: model != null ? String(model) : undefined,
     year: typeof year === 'string' || typeof year === 'number' ? year : undefined,
+    code: params.code != null ? String(params.code) : undefined,
+    reason: params.reason != null ? String(params.reason) : undefined,
+    idleDays: typeof params.idleDays === 'number' ? params.idleDays : undefined,
+    lostRevenueEur: typeof params.lostRevenueEur === 'number' ? params.lostRevenueEur : undefined,
+    available: typeof params.available === 'number' ? params.available : undefined,
+    totalVehicles: typeof params.totalVehicles === 'number' ? params.totalVehicles : undefined,
+    bookedOut: typeof params.bookedOut === 'number' ? params.bookedOut : undefined,
   };
 }
 
@@ -113,13 +120,30 @@ const LEGACY_FALLBACK_TITLE_KEYS: Record<string, TranslationKey> = {
   BATTERY_CRITICAL: 'notification.title.batteryCritical',
   TIRE_CRITICAL: 'notification.title.tireCritical',
   SERVICE_OVERDUE: 'notification.title.serviceOverdue',
+  ACTIVE_DTC: 'notification.title.activeDtc',
 };
 
 const LEGACY_FALLBACK_BODY_KEYS: Record<string, TranslationKey> = {
   LOW_UTILIZATION: 'notification.body.lowUtilization',
   HM_SERVICE_NO_TRACKING: 'notification.body.hmServiceNoTracking',
   STATION_SHORTAGE: 'notification.body.stationShortage',
+  ACTIVE_DTC: 'notification.body.activeDtc',
 };
+
+function resolveTitleKey(
+  row: ApiNotificationResponse,
+  params: Record<string, string | number | boolean | null>,
+): string {
+  const { titleKey } = resolveTemplateKeys(row);
+  if (row.eventType === 'STATION_SHORTAGE') {
+    const available = typeof params.available === 'number' ? params.available : -1;
+    if (available <= 0) return 'notification.title.stationShortageCritical';
+    return titleKey === 'notification.fallback'
+      ? 'notification.title.stationShortage'
+      : titleKey;
+  }
+  return titleKey;
+}
 
 function resolveTemplateKeys(row: ApiNotificationResponse): { titleKey: string; bodyKey: string } {
   const titleKey =
@@ -163,6 +187,8 @@ function interpolateTemplate(
   const t = createNotificationTranslator(locale);
   const title = t(safeTitleKey(titleKey), params as Record<string, string | number>);
   const body = t(safeTitleKey(bodyKey), params as Record<string, string | number>);
+  const reasonFromParams =
+    params.reason != null && String(params.reason).trim() ? String(params.reason).trim() : '';
   if (title === titleKey) {
     const label =
       displayLabel
@@ -172,10 +198,13 @@ function interpolateTemplate(
       ?? (params.bookingRef != null ? String(params.bookingRef) : undefined);
     return {
       title: label ?? titleKey,
-      reason: body === bodyKey ? '' : body,
+      reason: body === bodyKey ? reasonFromParams : body,
     };
   }
-  return { title, reason: body === bodyKey ? '' : body };
+  return {
+    title,
+    reason: body === bodyKey ? reasonFromParams : body,
+  };
 }
 
 function buildSemanticKey(row: ApiNotificationResponse): string {
@@ -196,7 +225,8 @@ export function mapNotificationApiToActionQueueItem(
   const sortMs = Date.parse(row.lastSeenAt) || Date.parse(row.firstSeenAt) || 0;
   const templateParams = row.templateParams ?? {};
   const entityContextParams = extractEntityContext(templateParams);
-  const { titleKey, bodyKey } = resolveTemplateKeys(row);
+  const { bodyKey } = resolveTemplateKeys(row);
+  const titleKey = resolveTitleKey(row, templateParams);
   const displayLabel = resolveDisplayLabel(row, templateParams);
   const interpolationParams = displayLabel && (isUuidLike(String(templateParams.label ?? '')) || !templateParams.label)
     ? { ...templateParams, label: displayLabel, plate: templateParams.plate && !isUuidLike(String(templateParams.plate)) ? templateParams.plate : displayLabel }

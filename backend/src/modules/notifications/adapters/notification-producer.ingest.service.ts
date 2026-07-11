@@ -7,6 +7,7 @@ import { NotificationProducerRouter } from './notification-producer.router';
 import { DrivingAssessmentNotificationAdapter } from './driving-assessment-notification.adapter';
 import { TechnicalObservationNotificationAdapter } from './technical-observation-notification.adapter';
 import { StationShortageNotificationAdapter } from './station-shortage-notification.adapter';
+import { LowUtilizationNotificationAdapter } from './low-utilization-notification.adapter';
 import { VehicleHealthNotificationAdapter } from './vehicle-health-notification.adapter';
 import {
   VEHICLE_HEALTH_NOTIFICATION_EVENT_TYPES,
@@ -19,6 +20,10 @@ import {
 } from './technical-observation.filters';
 import { ACTIVE_NOTIFICATION_STATUSES, NotificationRepository } from '../notification.repository';
 import { buildRegistryFingerprint } from '../registry/notification-event-registry';
+import { buildCandidateFromRegistry } from '../registry/notification-event-registry';
+import { validateRegistryCandidate } from '../registry/notification-event-registry.validator';
+import { NotificationSeverity } from '../notification.enums';
+import { NotificationCoreService } from '../notification-core.service';
 
 export interface DrivingAssessmentQualityIngestInput {
   organizationId: string;
@@ -54,7 +59,9 @@ export class NotificationProducerIngestService {
     private readonly drivingAssessmentAdapter: DrivingAssessmentNotificationAdapter,
     private readonly technicalObservationAdapter: TechnicalObservationNotificationAdapter,
     private readonly stationShortageAdapter: StationShortageNotificationAdapter,
+    private readonly lowUtilizationAdapter: LowUtilizationNotificationAdapter,
     private readonly vehicleHealthAdapter: VehicleHealthNotificationAdapter,
+    private readonly core: NotificationCoreService,
   ) {}
 
   async syncDrivingAssessmentQuality(input: DrivingAssessmentQualityIngestInput): Promise<void> {
@@ -199,6 +206,132 @@ export class NotificationProducerIngestService {
         if (this.isRecoveryNotFound(err)) continue;
         this.logger.warn(
           `Station shortage V2 resolve failed for ${notification.entityId}: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Sync low-utilization STATE notifications from BI detector output.
+   * Vehicles that no longer qualify are resolved via SUCCESS ingest.
+   */
+  async syncLowUtilizationFromInsights(
+    organizationId: string,
+    runId: string,
+    candidates: InsightCandidate[],
+  ): Promise<void> {
+    const lowUtil = candidates.filter((c) => c.type === InsightType.LOW_UTILIZATION);
+    const activeVehicleIds = new Set(lowUtil.flatMap((c) => c.entityIds));
+
+    for (const insight of lowUtil) {
+      const vehicleId = insight.entityIds[0];
+      if (!vehicleId) continue;
+      const metrics = insight.metrics ?? {};
+      const idleDays = typeof metrics.idleDays === 'number' ? metrics.idleDays : 0;
+      const lostRevenueEur =
+        typeof metrics.lostRevenueEur === 'number' ? metrics.lostRevenueEur : 0;
+      const label =
+        typeof metrics.entityLabel === 'string'
+          ? metrics.entityLabel
+          : insight.message?.split(':')[0]?.trim() || vehicleId;
+
+      try {
+        await this.router.ingestFromAdapter(
+          this.lowUtilizationAdapter,
+          {
+            vehicleId,
+            label,
+            idleDays,
+            lostRevenueEur,
+          },
+          this.adapterContext(organizationId, runId, runId),
+        );
+      } catch (err) {
+        this.logger.warn(
+          `Low utilization V2 ingest failed for ${vehicleId}: ${(err as Error).message}`,
+        );
+      }
+    }
+
+    const activeNotifications = await this.repository.listNotifications({
+      organizationId,
+      status: ACTIVE_NOTIFICATION_STATUSES,
+      entityType: NotificationEntityType.VEHICLE,
+      limit: 500,
+    });
+
+    for (const notification of activeNotifications) {
+      if (notification.eventType !== 'LOW_UTILIZATION') continue;
+      if (activeVehicleIds.has(notification.entityId)) continue;
+
+      const params = (notification.templateParams ?? {}) as Record<string, unknown>;
+      const label =
+        typeof params.label === 'string' ? params.label : notification.entityId;
+      const idleDays = typeof params.idleDays === 'number' ? params.idleDays : 0;
+      const lostRevenueEur =
+        typeof params.lostRevenueEur === 'number' ? params.lostRevenueEur : 0;
+
+      try {
+        await this.router.ingestFromAdapter(
+          this.lowUtilizationAdapter,
+          {
+            vehicleId: notification.entityId,
+            label,
+            idleDays,
+            lostRevenueEur,
+            cleared: true,
+          },
+          this.adapterContext(organizationId, runId, runId),
+        );
+      } catch (err) {
+        if (this.isRecoveryNotFound(err)) continue;
+        this.logger.warn(
+          `Low utilization V2 resolve failed for ${notification.entityId}: ${(err as Error).message}`,
+        );
+      }
+    }
+  }
+
+  /** HM no-tracking is informational only — resolve any active inbox rows. */
+  async resolveInboxExcludedNotifications(
+    organizationId: string,
+    runId: string,
+  ): Promise<void> {
+    const excluded = ['HM_SERVICE_NO_TRACKING'] as const;
+    const activeNotifications = await this.repository.listNotifications({
+      organizationId,
+      status: ACTIVE_NOTIFICATION_STATUSES,
+      limit: 500,
+    });
+
+    for (const notification of activeNotifications) {
+      if (!excluded.includes(notification.eventType as (typeof excluded)[number])) continue;
+
+      const params = (notification.templateParams ?? {}) as Record<string, unknown>;
+      const label =
+        typeof params.label === 'string' ? params.label : notification.entityId;
+
+      try {
+        const candidate = validateRegistryCandidate(
+          buildCandidateFromRegistry({
+            organizationId,
+            eventType: notification.eventType,
+            entityId: notification.entityId,
+            sourceRef: runId,
+            occurredAt: new Date(),
+            severity: NotificationSeverity.SUCCESS,
+            templateParams: { label },
+            actionTargetContext: { vehicleId: notification.entityId },
+            metadata: { runId, resolvedBy: 'inbox_excluded' },
+          }),
+        );
+        if (candidate) {
+          await this.core.ingestCandidate(candidate, { runId });
+        }
+      } catch (err) {
+        if (this.isRecoveryNotFound(err)) continue;
+        this.logger.warn(
+          `Excluded notification resolve failed for ${notification.eventType}/${notification.entityId}: ${(err as Error).message}`,
         );
       }
     }

@@ -79,3 +79,11 @@ export interface StationShortageAdapterSource {
   cleared?: boolean;
   expiresAt?: Date;
 }
+
+export interface LowUtilizationAdapterSource {
+  vehicleId: string;
+  label: string;
+  idleDays: number;
+  lostRevenueEur: number;
+  cleared?: boolean;
+}

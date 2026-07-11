@@ -57,6 +57,16 @@ function v2Item(overrides: Partial<ActionQueueItem> = {}): ActionQueueItem {
 }
 
 describe('notification panel filters', () => {
+  it('hides HM_SERVICE_NO_TRACKING from panel', () => {
+    const hm = v2Item({
+      issueType: 'HM_SERVICE_NO_TRACKING',
+      queue: { ...v2Item().queue!, domain: 'vehicle-health', conditionCode: 'HM_SERVICE_NO_TRACKING' },
+    });
+    const result = filterNotificationPanelItems([hm, v2Item()], 'all', null);
+    expect(result).toHaveLength(1);
+    expect(result[0]?.issueType).toBe('DRIVING_ASSESSMENT_DEVICE_QUALITY');
+  });
+
   it('hides snoozed items from active tabs', () => {
     const snoozed = v2Item({
       queue: { ...v2Item().queue!, lifecycleStatus: 'snoozed' },
