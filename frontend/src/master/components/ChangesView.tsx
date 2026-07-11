@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-engine-event-registry-v49353-2026-07-11',
+    version: '4.9.353',
+    title: 'V4.9.353 — Notification Engine: zentrale Event-Type Registry',
+    summary: [
+      '30 registrierte Event-Typen mit vollständiger Konfiguration (domain, fingerprint, templates, policies, roles, shadow flag).',
+      'Bootstrap verhindert doppelte eventType/slug; Validator für Pflicht-templateParams, Severity, Action Targets.',
+      'Adapter-Verträge + Shadow-Adapter (Fahrbewertung, Technische Beobachtung) + NotificationProducerRouter.',
+      'Legacy fingerprint registry delegiert an Event Registry. Doku: docs/notification-engine-event-registry.md.',
+    ],
+    reason: 'Prompt 8: kontrollierte Producer Registry — keine unkontrollierte Fingerprint-Erfindung, keine vollständige Producer-Migration.',
+    previousBehavior: 'Kleine NOTIFICATION_FINGERPRINT_REGISTRY ohne Templates, Policies oder Adapter-Verträge.',
+    details: 'Neu: registry/*, adapters/*, Tests (70 notification specs). Geändert: notification-fingerprint.registry.ts, notifications.module.ts, notification.types.ts.',
+    affectsArchitecture: true,
+    module: 'Dashboard / Notifications',
+    createdAt: '2026-07-11T04:00:00.000Z',
+  },
+  {
     id: 'notification-engine-core-v49352-2026-07-11',
     version: '4.9.352',
     title: 'V4.9.352 — Notification Engine: Core Service (Shadow Mode)',

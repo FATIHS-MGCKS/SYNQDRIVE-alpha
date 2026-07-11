@@ -73,6 +73,13 @@ export interface NotificationDeliveryPolicy {
   criticalOverridesPreferences: boolean;
 }
 
+export interface NotificationExpiryPolicy {
+  /** Fixed TTL from first materialization. */
+  ttlMs?: number;
+  /** Producer may supply explicit expiresAt. */
+  allowProducerExpiresAt?: boolean;
+}
+
 export interface NotificationActionTarget {
   type: NotificationActionType;
   vehicleId?: string;

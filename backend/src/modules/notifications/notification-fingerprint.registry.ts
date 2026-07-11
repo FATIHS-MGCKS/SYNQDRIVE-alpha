@@ -1,7 +1,13 @@
 import { NotificationEntityType } from './notification.enums';
 import type { NotificationFingerprintParts } from './notification.types';
 import { buildNotificationFingerprint } from './notification-fingerprint.factory';
+import {
+  buildRegistryFingerprint,
+  getEventTypeDefinition,
+  NOTIFICATION_EVENT_REGISTRY,
+} from './registry/notification-event-registry';
 
+/** @deprecated Use NotificationEventTypeDefinition from event registry */
 export interface NotificationFingerprintRegistryEntry {
   eventType: string;
   conditionCode: string;
@@ -13,120 +19,35 @@ export interface NotificationFingerprintRegistryEntry {
 }
 
 /**
- * Canonical registry of SynqDrive notification identities.
- * Producers must register new condition codes here before emitting candidates.
+ * Legacy view of the canonical event registry — kept for backward compatibility.
  */
-export const NOTIFICATION_FINGERPRINT_REGISTRY: readonly NotificationFingerprintRegistryEntry[] = [
-  {
-    eventType: 'DRIVING_ASSESSMENT_DEVICE_QUALITY',
-    conditionCode: 'driving_assessment_device_quality',
-    domain: 'DRIVING_ANALYSIS',
-    eventKind: 'STATE',
-    defaultEntityType: NotificationEntityType.VEHICLE,
-    scopeVersion: 1,
-    description: 'LTE_R1 driving assessment device quality degraded/recovering',
-  },
-  {
-    eventType: 'TECHNICAL_OBSERVATION_ACTIVE',
-    conditionCode: 'technical_observation_active',
-    domain: 'VEHICLE_HEALTH',
-    eventKind: 'STATE',
-    defaultEntityType: NotificationEntityType.VEHICLE,
-    scopeVersion: 1,
-    description: 'Active technical observation (complaints module)',
-  },
-  {
-    eventType: 'BATTERY_CRITICAL',
-    conditionCode: 'battery_critical',
-    domain: 'VEHICLE_HEALTH',
-    eventKind: 'STATE',
-    defaultEntityType: NotificationEntityType.VEHICLE,
-    scopeVersion: 1,
-    description: 'Battery health critical',
-  },
-  {
-    eventType: 'TIRE_CRITICAL',
-    conditionCode: 'tires_critical',
-    domain: 'VEHICLE_HEALTH',
-    eventKind: 'STATE',
-    defaultEntityType: NotificationEntityType.VEHICLE,
-    scopeVersion: 1,
-    description: 'Tire health critical',
-  },
-  {
-    eventType: 'BRAKE_CRITICAL',
-    conditionCode: 'brakes_critical',
-    domain: 'VEHICLE_HEALTH',
-    eventKind: 'STATE',
-    defaultEntityType: NotificationEntityType.VEHICLE,
-    scopeVersion: 1,
-    description: 'Brake health critical',
-  },
-  {
-    eventType: 'SERVICE_OVERDUE',
-    conditionCode: 'overdue',
-    domain: 'VEHICLE_HEALTH',
-    eventKind: 'STATE',
-    defaultEntityType: NotificationEntityType.VEHICLE,
-    scopeVersion: 1,
-    description: 'Service / TÜV compliance overdue (service_compliance domain)',
-  },
-  {
-    eventType: 'PICKUP_OVERDUE',
-    conditionCode: 'pickup_overdue',
-    domain: 'HANDOVERS',
-    eventKind: 'STATE',
-    defaultEntityType: NotificationEntityType.BOOKING,
-    scopeVersion: 1,
-    description: 'Pickup handover overdue',
-  },
-  {
-    eventType: 'RETURN_OVERDUE',
-    conditionCode: 'overdue',
-    domain: 'HANDOVERS',
-    eventKind: 'STATE',
-    defaultEntityType: NotificationEntityType.BOOKING,
-    scopeVersion: 1,
-    description: 'Return handover overdue',
-  },
-  {
-    eventType: 'STATION_SHORTAGE',
-    conditionCode: 'shortage',
-    domain: 'OPERATIONS',
-    eventKind: 'STATE',
-    defaultEntityType: NotificationEntityType.STATION,
-    scopeVersion: 1,
-    description: 'Station vehicle shortage',
-  },
-  {
-    eventType: 'BOOKING_CREATED',
-    conditionCode: 'booking_created',
-    domain: 'BOOKINGS',
-    eventKind: 'EVENT',
-    defaultEntityType: NotificationEntityType.BOOKING,
-    scopeVersion: 1,
-    description: 'New booking created',
-  },
-  {
-    eventType: 'VEHICLE_RETURNED',
-    conditionCode: 'vehicle_returned',
-    domain: 'HANDOVERS',
-    eventKind: 'EVENT',
-    defaultEntityType: NotificationEntityType.BOOKING,
-    scopeVersion: 1,
-    description: 'Vehicle returned at end of rental',
-  },
-] as const;
+export const NOTIFICATION_FINGERPRINT_REGISTRY: readonly NotificationFingerprintRegistryEntry[] =
+  NOTIFICATION_EVENT_REGISTRY.map((def) => ({
+    eventType: def.eventType,
+    conditionCode: def.conditionCode,
+    domain: def.domain,
+    eventKind: def.eventKind,
+    defaultEntityType: def.defaultEntityType,
+    scopeVersion: def.fingerprintVersion,
+    description: `${def.producerModule}: ${def.slug}`,
+  }));
 
 export function lookupFingerprintRegistryEntry(
   eventType: string,
   conditionCode?: string,
 ): NotificationFingerprintRegistryEntry | undefined {
-  return NOTIFICATION_FINGERPRINT_REGISTRY.find(
-    (entry) =>
-      entry.eventType === eventType
-      && (conditionCode == null || entry.conditionCode === conditionCode),
-  );
+  const def = getEventTypeDefinition(eventType);
+  if (!def) return undefined;
+  if (conditionCode != null && conditionCode !== def.conditionCode) return undefined;
+  return {
+    eventType: def.eventType,
+    conditionCode: def.conditionCode,
+    domain: def.domain,
+    eventKind: def.eventKind,
+    defaultEntityType: def.defaultEntityType,
+    scopeVersion: def.fingerprintVersion,
+    description: `${def.producerModule}: ${def.slug}`,
+  };
 }
 
 export function buildRegisteredFingerprint(
@@ -135,21 +56,24 @@ export function buildRegisteredFingerprint(
   entityId: string,
   overrides?: Partial<Pick<NotificationFingerprintParts, 'entityType' | 'conditionCode' | 'scopeVersion'>>,
 ) {
-  const entry = lookupFingerprintRegistryEntry(eventType, overrides?.conditionCode);
-  if (!entry) {
-    throw new Error(`Unregistered notification eventType: ${eventType}`);
+  if (overrides?.conditionCode) {
+    return buildNotificationFingerprint({
+      organizationId,
+      eventType,
+      entityType: overrides.entityType ?? NotificationEntityType.VEHICLE,
+      entityId,
+      conditionCode: overrides.conditionCode,
+      scopeVersion: overrides.scopeVersion ?? 1,
+    });
   }
-  return buildNotificationFingerprint({
+  return buildRegistryFingerprint(
     organizationId,
-    eventType: entry.eventType,
-    entityType: overrides?.entityType ?? entry.defaultEntityType,
+    eventType,
     entityId,
-    conditionCode: overrides?.conditionCode ?? entry.conditionCode,
-    scopeVersion: overrides?.scopeVersion ?? entry.scopeVersion,
-  });
+    overrides?.entityType,
+  );
 }
 
-/** WOB L 7503 — Volkswagen Tiguan, driving assessment + technical observation */
 export const WOB_L7503_VEHICLE_ID = 'veh-wob-l-7503';
 export const WOB_L7503_ORG_ID = 'org-wob-demo';
 
