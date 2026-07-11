@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'notification-group-domain-icons-v49368-2026-07-11',
+    version: '4.9.368',
+    title: 'V4.9.368 — Meldungen-Gruppen: Domain-Icons wie Einzelkarten',
+    summary: [
+      'Gruppen-Header nutzen `notificationGroupIcon` — gleiche Domain→Icon-Map wie NotificationCard.',
+      'Fahrzeug-Gesundheit: Herz; Station: Pin; Buchung: Kalender; Ops: calendar-clock.',
+      'Gemischte Fahrzeug-Gruppen: Icon des schwerwiegendsten Kind-Items nach Domain.',
+    ],
+    reason:
+      'Gruppen zeigten bisher fast überall das Auto-Icon — nicht konsistent mit den Domain-Icons der Einzelmeldungen.',
+    previousBehavior:
+      'NotificationGroupCard: station-ops → map-pin, booking → calendar, sonst immer car.',
+    details:
+      'notificationDomainIcon.ts (+ notificationGroupIcon), NotificationGroupCard.tsx, Tests notificationDomainIcon.test.ts.',
+    affectsArchitecture: false,
+    module: 'Notifications',
+    createdAt: '2026-07-11T11:04:00.000Z',
+  },
+  {
     id: 'notification-grouping-dedupe-v49367-2026-07-11',
     version: '4.9.367',
     title: 'V4.9.367 — Meldungen-Gruppierung: keine Doppelkarten pro Fahrzeug',

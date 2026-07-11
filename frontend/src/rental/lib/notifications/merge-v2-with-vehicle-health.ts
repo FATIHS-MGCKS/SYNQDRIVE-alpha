@@ -37,12 +37,22 @@ function v2HealthVehicleIds(v2Items: ActionQueueItem[]): Set<string> {
   return ids;
 }
 
+function coveredHealthSemanticKeys(v2Items: ActionQueueItem[]): Set<string> {
+  const keys = new Set<string>();
+  for (const item of v2Items) {
+    if (isVehicleHealthQueueItem(item) && item.semanticKey) {
+      keys.add(item.semanticKey);
+    }
+  }
+  return keys;
+}
+
 function shouldSkipSupplementalHealthItem(
   item: ActionQueueItem,
   coveredSemanticKeys: Set<string>,
   coveredVehicleIds: Set<string>,
 ): boolean {
-  if (coveredSemanticKeys.has(item.semanticKey)) return true;
+  if (item.semanticKey && coveredSemanticKeys.has(item.semanticKey)) return true;
   if (item.vehicleId && coveredVehicleIds.has(item.vehicleId)) return true;
   return false;
 }
@@ -56,9 +66,7 @@ export function mergeV2NotificationsWithVehicleHealth(
   v2Items: ActionQueueItem[],
   healthItems: ActionQueueItem[],
 ): ActionQueueItem[] {
-  const coveredSemanticKeys = new Set(
-    v2Items.filter(isVehicleHealthQueueItem).map((item) => item.semanticKey),
-  );
+  const coveredSemanticKeys = coveredHealthSemanticKeys(v2Items);
   const coveredVehicleIds = v2HealthVehicleIds(v2Items);
   const supplemental = healthItems.filter(
     (item) => !shouldSkipSupplementalHealthItem(item, coveredSemanticKeys, coveredVehicleIds),
@@ -73,9 +81,7 @@ export function supplementalHealthItems(
   v2Items: ActionQueueItem[],
   healthItems: ActionQueueItem[],
 ): ActionQueueItem[] {
-  const coveredSemanticKeys = new Set(
-    v2Items.filter(isVehicleHealthQueueItem).map((item) => item.semanticKey),
-  );
+  const coveredSemanticKeys = coveredHealthSemanticKeys(v2Items);
   const coveredVehicleIds = v2HealthVehicleIds(v2Items);
   return healthItems.filter(
     (item) => !shouldSkipSupplementalHealthItem(item, coveredSemanticKeys, coveredVehicleIds),

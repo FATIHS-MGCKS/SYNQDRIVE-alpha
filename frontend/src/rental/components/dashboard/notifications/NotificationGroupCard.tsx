@@ -8,6 +8,7 @@ import { NotificationCard } from './NotificationCard';
 import { NOTIFICATION_PANEL_TYPO } from './notificationPanelTypography';
 import type { useLanguage } from '../../../i18n/LanguageContext';
 import type { DashboardViewModel } from '../dashboardTypes';
+import { notificationGroupIcon } from './notificationDomainIcon';
 
 function groupSeveritySurface(severity: ActionQueueGroupItem['severity']): string {
   if (severity === 'critical' || severity === 'overdue') {
@@ -77,7 +78,7 @@ export const NotificationGroupCard = memo(function NotificationGroupCard({
           aria-hidden
         >
           <Icon
-            name={group.groupType === 'station-ops' ? 'map-pin' : group.groupType === 'booking' ? 'calendar' : 'car'}
+            name={notificationGroupIcon(group, itemsById)}
             className={NOTIFICATION_PANEL_TYPO.icon}
           />
         </div>
