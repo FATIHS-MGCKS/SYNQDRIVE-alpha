@@ -9,6 +9,7 @@ import {
   DASHBOARD_KPI_NUMBER_CLASS,
   DASHBOARD_KPI_TITLE_CLASS,
   dashboardPanelHeaderClass,
+  DASHBOARD_LAYOUT,
   panelShellClass,
 } from './dashboardShell';
 import { formatBusinessMoney, formatDashboardMoneyParts } from './dashboardKpiFormat';
@@ -101,15 +102,15 @@ function FinanceKpiValue({
 
   if (!currency) {
     return (
-      <p className={cn('mt-1', DASHBOARD_KPI_NUMBER_CLASS, toneClass)}>
+      <p className={cn('mt-0.5 sm:mt-1 text-[18px] sm:text-[21px] font-semibold tabular-nums leading-none tracking-[-0.03em]', toneClass)}>
         {amount}
       </p>
     );
   }
 
   return (
-    <p className={cn('mt-1 flex items-baseline gap-0.5', toneClass)}>
-      <span className={DASHBOARD_KPI_NUMBER_CLASS}>{amount}</span>
+    <p className={cn('mt-0.5 sm:mt-1 flex items-baseline gap-0.5', toneClass)}>
+      <span className="text-[18px] sm:text-[21px] font-semibold tabular-nums leading-none tracking-[-0.03em]">{amount}</span>
       <span className={DASHBOARD_KPI_CURRENCY_CLASS}>{currency}</span>
     </p>
   );
@@ -185,7 +186,8 @@ function financeKpiCardClass(metricId: BusinessMetricId, slice: BusinessPulseSli
   const { isCritical, isWatch } = financeKpiVisualState(metricId, slice);
 
   return cn(
-    'surface-elevated sq-press group relative min-h-[88px] overflow-hidden rounded-2xl px-3 py-3 text-left transition-colors duration-200',
+    DASHBOARD_LAYOUT.financeKpiCard,
+    'surface-elevated sq-press group relative overflow-hidden text-left transition-colors duration-200',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
     isCritical && 'border-[color:var(--status-critical)]/35 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-critical)_7%,var(--surface-premium-bg-end)),color-mix(in_srgb,var(--status-critical)_2%,var(--surface-premium-bg-end)))]',
     isWatch && 'border-[color:var(--status-watch)]/30 bg-[linear-gradient(135deg,color-mix(in_srgb,var(--status-warning)_6%,var(--surface-premium-bg-end)),color-mix(in_srgb,var(--status-warning)_2%,var(--surface-premium-bg-end)))]',
@@ -259,9 +261,9 @@ function FinanceKpiCard({
       className={cn(financeKpiCardClass(metricId, slice), !clickable && 'cursor-default')}
       aria-label={`${title}: ${displayValue}${hint ? `, ${hint}` : ''}`}
     >
-      <div className="flex items-start justify-between gap-2">
+      <div className="flex items-start justify-between gap-1.5">
         <div className="min-w-0">
-          <p className={DASHBOARD_KPI_TITLE_CLASS}>{title}</p>
+          <p className={cn(DASHBOARD_KPI_TITLE_CLASS, 'text-[10px] sm:text-[10.5px]')}>{title}</p>
           <FinanceKpiValue
             amount={valueParts?.amount ?? noDataLabel}
             currency={valueParts?.currency}
@@ -271,7 +273,7 @@ function FinanceKpiCard({
           {hint ? (
             <p
               className={cn(
-                'mt-1 truncate',
+                'mt-0.5 line-clamp-1 truncate text-[9.5px] sm:text-[10px]',
                 DASHBOARD_KPI_HINT_CLASS,
                 metricId === 'overdue-receivables' && (slice?.count ?? 0) > 0
                   ? 'text-[color:var(--status-critical)]/80'
@@ -284,11 +286,11 @@ function FinanceKpiCard({
         </div>
         <div
           className={cn(
-            'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors',
+            'flex h-5 w-5 shrink-0 items-center justify-center rounded-md transition-colors sm:h-6 sm:w-6',
             visual.iconTone,
           )}
         >
-          <Icon name={METRIC_ICONS[metricId]} className="h-3 w-3" />
+          <Icon name={METRIC_ICONS[metricId]} className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
         </div>
       </div>
       {visual.isCritical && (slice?.count ?? 0) > 0 ? (
@@ -377,8 +379,8 @@ export function BusinessPulse({
           <div aria-busy>
             <SkeletonMetricGrid
               count={4}
-              className="grid w-full grid-cols-2 gap-3"
-              cardClassName="min-h-[88px] rounded-2xl surface-premium"
+              className={DASHBOARD_LAYOUT.financeKpiGrid}
+              cardClassName="min-h-[72px] rounded-xl surface-premium sm:min-h-[76px] sm:rounded-2xl"
             />
           </div>
         ) : error ? (
@@ -392,7 +394,7 @@ export function BusinessPulse({
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3">
+            <div className={DASHBOARD_LAYOUT.financeKpiGrid}>
               {PRIMARY_BUSINESS_METRICS.map((metricId) => (
                 <FinanceKpiCard
                   key={metricId}

@@ -23,14 +23,19 @@ export const DASHBOARD_LAYOUT = {
   controlCenterCardPadding: 'px-4 py-4 sm:p-5 lg:p-6',
   controlCenterKpiSection: 'mt-4 border-t border-border/35 pt-4 sm:mt-5 sm:pt-5',
   /**
-   * Desktop row 2: Notifications (left) + Day Plan (right).
-   * Mobile: Notifications, then Day Plan (stacked).
+   * Row 2: Notifications / Meldungen — full width (Tagesplan removed; ops via Heutige Operationen drilldown).
    */
-  notificationsDayPlanGrid:
-    'grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start lg:gap-4 xl:gap-5',
+  notificationsRow: 'min-w-0 w-full',
+  /** @deprecated Use `notificationsRow` — kept for changelog references. */
+  notificationsDayPlanGrid: 'min-w-0 w-full',
   notificationsSlot: 'min-w-0 w-full',
+  /** @deprecated Tagesplan panel removed from standard dashboard. */
   dayPlanSlot: 'min-w-0 w-full',
   financeZone: 'border-t border-border/50 pt-7',
+  /** Four finance KPI cards in one row inside the Finanzen panel. */
+  financeKpiGrid: 'grid w-full grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2',
+  financeKpiCard:
+    'min-h-[72px] rounded-xl px-2.5 py-2 sm:min-h-[76px] sm:rounded-2xl sm:px-2.5 sm:py-2.5',
 } as const;
 
 export type DashboardPanelTier = 'primary' | 'secondary' | 'tertiary';

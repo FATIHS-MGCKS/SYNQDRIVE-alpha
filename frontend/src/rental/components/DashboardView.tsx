@@ -9,7 +9,6 @@ import {
   FocusHandoverPanels,
   FocusNotReadyVehicles,
   NowNextTimeline,
-  OperationsSchedulePanel,
   useDashboardViewModel,
   type DashboardViewProps,
 } from './dashboard';
@@ -116,15 +115,10 @@ export function DashboardView({
         </div>
 
         <div
-          className={`${DASHBOARD_LAYOUT.notificationsDayPlanGrid} animate-fade-up`}
+          className={`${DASHBOARD_LAYOUT.notificationsRow} animate-fade-up`}
           style={{ animationDelay: '90ms' }}
         >
-          <div className={DASHBOARD_LAYOUT.notificationsSlot}>
-            <ActionQueue vm={vm} {...handlers} />
-          </div>
-          <div className={DASHBOARD_LAYOUT.dayPlanSlot}>
-            <OperationsSchedulePanel vm={vm} {...handlers} />
-          </div>
+          <ActionQueue vm={vm} {...handlers} />
         </div>
       </div>
       <DashboardDrilldownDrawer

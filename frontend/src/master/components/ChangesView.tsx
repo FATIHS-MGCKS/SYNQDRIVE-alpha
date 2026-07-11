@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-remove-dayplan-finance-row-v49373-2026-07-11',
+    version: '4.9.373',
+    title: 'V4.9.373 — Dashboard: Tagesplan entfernt, Finanzen-KPIs in einer Reihe',
+    summary: [
+      '`OperationsSchedulePanel` / Tagesplan aus Standard-Dashboard entfernt — redundante Duplikation zu „Heutige Operationen“-Drilldown.',
+      'Meldungen (`ActionQueue`) jetzt full-width unter Control Center + Finanzen.',
+      'Finanzen (`BusinessPulse`): vier KPI-Karten kompakt in einer Reihe (`financeKpiGrid` 2×2 mobil, 1×4 ab sm).',
+    ],
+    reason:
+      'Tagesplan und Heutige-Operationen-KPI zeigten dieselben Pickup/Return-Listen; Finanzen-2×2-Grid wirkte zu breit für die halbe Dashboard-Zeile.',
+    previousBehavior:
+      'Zeile 2: Meldungen links, Tagesplan rechts (50/50). Finanzen: Umsatz/Ergebnis/Offene/Überfällig als 2×2-Grid.',
+    details:
+      'DashboardView.tsx, dashboardShell.tsx (`notificationsRow`, `financeKpiGrid`), BusinessPulse.tsx. `OperationsSchedulePanel` bleibt für Operator-Focus exportiert.',
+    affectsArchitecture: true,
+    module: 'Dashboard',
+    createdAt: '2026-07-11T19:15:00.000Z',
+  },
+  {
     id: 'notification-active-dtc-reason-v49372-2026-07-11',
     version: '4.9.372',
     title: 'V4.9.372 — Meldungen: DTC-Beschreibung statt {reason}-Platzhalter',
