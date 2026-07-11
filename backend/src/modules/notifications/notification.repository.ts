@@ -83,6 +83,8 @@ export interface UpdateNotificationInput {
   archivedAt?: Date | null;
   expiresAt?: Date | null;
   primarySourceRef?: string;
+  legacyInsightId?: string | null;
+  firstSeenAt?: Date;
   version?: { increment: number };
 }
 
