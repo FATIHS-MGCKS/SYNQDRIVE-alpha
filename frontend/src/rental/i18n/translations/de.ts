@@ -591,7 +591,7 @@ export const de: Record<TranslationKey, string> = {
   'notification.issue.hmServiceNoTracking': 'Kein Service-Tracking',
   'notification.title.fleetTelemetry': 'Viele Fahrzeuge mit Soft-Offline/Offline-Signal',
   'notification.title.handoverBacklog': 'Offene Übergaben blockieren Betrieb',
-  'notification.title.vehiclesWithoutTariff': 'Fahrzeuge ohne aktive Tarifgruppe',
+  'notification.title.vehiclesWithoutTariff': 'Fahrzeuge ohne Tarif — Buchbarkeit gefährdet',
   'notification.fallback': '{label}',
   'notification.body.stationShortage': '{available} von {totalVehicles} Fahrzeugen in 24 h verfügbar · {bookedOut} gebucht',
   'notification.body.lowUtilization': '{idleDays}+ Tage ohne Buchung · ~{lostRevenueEur} € entgangen',

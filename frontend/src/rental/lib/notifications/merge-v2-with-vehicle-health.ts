@@ -57,6 +57,54 @@ function shouldSkipSupplementalHealthItem(
   return false;
 }
 
+function coveredQueueIds(v2Items: ActionQueueItem[]): Set<string> {
+  return new Set(v2Items.map((item) => item.id));
+}
+
+function coveredQueueSemanticKeys(v2Items: ActionQueueItem[]): Set<string> {
+  const keys = new Set<string>();
+  for (const item of v2Items) {
+    if (item.semanticKey) keys.add(item.semanticKey);
+  }
+  return keys;
+}
+
+function shouldSkipGenericSupplementalItem(
+  item: ActionQueueItem,
+  coveredIds: Set<string>,
+  coveredSemanticKeys: Set<string>,
+): boolean {
+  if (coveredIds.has(item.id)) return true;
+  if (item.semanticKey && coveredSemanticKeys.has(item.semanticKey)) return true;
+  return false;
+}
+
+/**
+ * Client-side derived insights (fleet-level operational signals) are not yet
+ * materialized in Notification V2 — bridge them like rental-health warnings.
+ */
+export function supplementalQueueItems(
+  v2Items: ActionQueueItem[],
+  supplemental: ActionQueueItem[],
+): ActionQueueItem[] {
+  const coveredIds = coveredQueueIds(v2Items);
+  const coveredSemanticKeys = coveredQueueSemanticKeys(v2Items);
+  return supplemental.filter(
+    (item) => !shouldSkipGenericSupplementalItem(item, coveredIds, coveredSemanticKeys),
+  );
+}
+
+export function mergeV2WithSupplemental(
+  v2Items: ActionQueueItem[],
+  supplemental: ActionQueueItem[],
+): ActionQueueItem[] {
+  const extra = supplementalQueueItems(v2Items, supplemental);
+  if (!extra.length) {
+    return [...v2Items].sort((a, b) => b.timeSortMs - a.timeSortMs);
+  }
+  return [...v2Items, ...extra].sort((a, b) => b.timeSortMs - a.timeSortMs);
+}
+
 /**
  * V2 notifications only include migrated DashboardInsights. Rental-Health-V1 module
  * warnings (DTC, tires, brakes, …) still live in vehicleHealthAlerts until producers

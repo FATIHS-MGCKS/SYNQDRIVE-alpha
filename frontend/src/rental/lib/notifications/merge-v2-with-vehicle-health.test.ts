@@ -3,6 +3,8 @@ import type { ActionQueueItem } from '../../components/dashboard/dashboardTypes'
 import {
   augmentPrimaryTabCountsWithHealthItems,
   mergeV2NotificationsWithVehicleHealth,
+  mergeV2WithSupplemental,
+  supplementalQueueItems,
 } from './merge-v2-with-vehicle-health';
 
 function item(
@@ -82,6 +84,53 @@ describe('mergeV2NotificationsWithVehicleHealth', () => {
     const merged = mergeV2NotificationsWithVehicleHealth(v2, health);
     expect(merged).toHaveLength(1);
     expect(merged[0].semanticKey).toBe('VEHICLE:veh-1:VEHICLE_HEALTH:ACTIVE_DTC');
+  });
+});
+
+describe('mergeV2WithSupplemental', () => {
+  it('appends derived operational insights missing from V2 API', () => {
+    const v2 = [item('v-notif', { semanticKey: 'notif:station', category: 'operations', queue: undefined })];
+    const derived = [
+      {
+        id: 'derived-vehicles-without-tariff',
+        semanticKey: 'fleet:operations:vehicles_without_tariff',
+        source: 'derived-operations' as const,
+        severity: 'critical' as const,
+        category: 'operations' as const,
+        title: '3 Fahrzeug(e) ohne Tarif',
+        reason: 'Nicht buchbar',
+        timeSortMs: 2000,
+        priority: 90,
+        tone: 'critical' as const,
+        cta: 'open-price-tariffs' as const,
+        isOverdue: false,
+      },
+    ];
+    const merged = mergeV2WithSupplemental(v2, derived);
+    expect(merged).toHaveLength(2);
+    expect(merged.some((row) => row.id === 'derived-vehicles-without-tariff')).toBe(true);
+  });
+
+  it('dedupes supplemental rows already present in V2 by semantic key', () => {
+    const key = 'fleet:operations:vehicles_without_tariff';
+    const v2 = [item('n1', { semanticKey: key, category: 'operations', queue: undefined })];
+    const derived = [
+      {
+        id: 'derived-vehicles-without-tariff',
+        semanticKey: key,
+        source: 'derived-operations' as const,
+        severity: 'critical' as const,
+        category: 'operations' as const,
+        title: '3 Fahrzeug(e) ohne Tarif',
+        reason: 'Nicht buchbar',
+        timeSortMs: 2000,
+        priority: 90,
+        tone: 'critical' as const,
+        cta: 'open-price-tariffs' as const,
+        isOverdue: false,
+      },
+    ];
+    expect(supplementalQueueItems(v2, derived)).toHaveLength(0);
   });
 });
 

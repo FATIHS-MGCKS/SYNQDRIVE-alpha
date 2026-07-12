@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-tariff-critical-v49381-2026-07-12',
+    version: '4.9.381',
+    title: 'V4.9.381 — Dashboard: kritische Tarif-Meldung im V2-Meldungen-Panel',
+    summary: [
+      'Abgeleitete Tarif-Warnung erscheint jetzt auch bei Notification-V2-Cutover (Bridge wie Rental-Health).',
+      'Severity `critical` — Buchbarkeit gefährdet; Zähler nutzt `catalog.unassignedVehicleCount` vom Backend.',
+    ],
+    reason:
+      'Nach V4.9.380 war die Meldung nur in der V1-ActionQueue — Production nutzt V2 als alleinige Meldungsquelle und verworf die derived Insights.',
+    previousBehavior:
+      'Fahrzeuge ohne Tarifzuweisung: keine Meldung im Dashboard trotz fehlender Buchbarkeit; Severity nur warning in V1.',
+    details:
+      'merge-v2-with-vehicle-health.ts (`mergeV2WithSupplemental`), useDashboardViewModel, deriveOperationalInsights (critical), deriveOperationalInsights.test.ts.',
+    affectsArchitecture: true,
+    module: 'Pricing',
+    createdAt: '2026-07-12T09:55:00.000Z',
+  },
+  {
     id: 'pricing-permanent-delete-unassigned-v49380-2026-07-12',
     version: '4.9.380',
     title: 'V4.9.380 — Tarifgruppen dauerhaft löschbar, Dashboard-Warnung, Buchung blockiert',

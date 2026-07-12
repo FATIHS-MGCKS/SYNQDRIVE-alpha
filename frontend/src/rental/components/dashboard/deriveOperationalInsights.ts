@@ -60,7 +60,7 @@ export function deriveOperationalInsights(input: {
     items.push({
       id: 'derived-vehicles-without-tariff',
       source: 'derived-operations',
-      severity: 'warning',
+      severity: 'critical',
       category: 'operations',
       title: de
         ? `${input.unassignedTariffVehicleCount} Fahrzeug(e) ohne Tarif`

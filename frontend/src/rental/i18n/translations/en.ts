@@ -519,7 +519,7 @@ export const en = {
   'notification.issue.hmServiceNoTracking': 'No service tracking',
   'notification.title.fleetTelemetry': 'Many vehicles with soft-offline/offline signal',
   'notification.title.handoverBacklog': 'Open handovers blocking operations',
-  'notification.title.vehiclesWithoutTariff': 'Vehicles without active tariff group',
+  'notification.title.vehiclesWithoutTariff': 'Vehicles without tariff — booking at risk',
   'notification.fallback': '{label}',
   'notification.body.stationShortage': '{available} of {totalVehicles} vehicles available in 24h · {bookedOut} booked',
   'notification.body.lowUtilization': '{idleDays}+ days without booking · ~{lostRevenueEur} € lost revenue',
