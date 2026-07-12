@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<!--
+  Production logger: warning level only.
+  Default Docker image uses trace — floods text logs and Docker json-file on small VPS hosts.
+-->
+<clickhouse>
+    <logger>
+        <level>warning</level>
+        <size>100M</size>
+        <count>3</count>
+    </logger>
+</clickhouse>

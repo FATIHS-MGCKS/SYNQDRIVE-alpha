@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<!--
+  Reduce query_log volume: only finished queries slower than 1s.
+  Keeps query_log useful for slow-query debugging without logging every SELECT 1 health ping.
+-->
+<clickhouse>
+    <profiles>
+        <default>
+            <log_queries>1</log_queries>
+            <log_queries_min_type>QUERY_FINISH</log_queries_min_type>
+            <log_queries_min_query_duration_ms>1000</log_queries_min_query_duration_ms>
+            <log_query_threads>0</log_query_threads>
+            <log_query_views>0</log_query_views>
+            <log_processors_profiles>0</log_processors_profiles>
+            <query_metric_log_interval>0</query_metric_log_interval>
+        </default>
+    </profiles>
+</clickhouse>

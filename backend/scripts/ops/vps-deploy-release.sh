@@ -8,6 +8,16 @@ TS="$(date -u +%Y%m%d%H%M%S)"
 
 echo "==> Pre-deploy DB backup"
 mkdir -p "$BACKUP_DIR"
+
+DISK_USE_PCT="$(df / | tail -1 | awk '{print $5}' | tr -d '%')"
+if [[ "$DISK_USE_PCT" -ge 90 ]]; then
+  echo "!! ABORT: root filesystem ${DISK_USE_PCT}% full — free disk before deploy" >&2
+  exit 1
+fi
+if [[ "$DISK_USE_PCT" -ge 85 ]]; then
+  echo "!! WARN: root filesystem ${DISK_USE_PCT}% full"
+fi
+
 sudo -u postgres pg_dump synqdrive | gzip > "${BACKUP_DIR}/db-pre-deploy-${TS}.sql.gz"
 
 echo "==> Clone release ${RELEASE_ID}"
