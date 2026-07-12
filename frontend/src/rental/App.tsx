@@ -778,6 +778,7 @@ function RentalAppContent() {
             }}
             onOpenRentalView={(view) => handleViewChange(view)}
             onOpenFinanceView={(view) => handleViewChange(view)}
+            onOpenPriceTariffs={() => handleViewChange('price-tariffs')}
             onOpenBookingById={(bookingId) => {
               setPendingBookingDetailId(bookingId);
               setCurrentView('bookings');

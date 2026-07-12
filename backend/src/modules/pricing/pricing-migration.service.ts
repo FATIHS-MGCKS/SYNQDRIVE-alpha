@@ -34,20 +34,91 @@ export class PricingMigrationService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Idempotent: creates default price book + tariffs from vehicle legacy rates. */
+  /**
+   * Idempotent bootstrap for orgs without pricing.
+   * Once a price book exists, never auto-recreates deleted tariff groups — only assigns
+   * unassigned vehicles to already existing groups when possible.
+   */
   async ensureOrgPricing(orgId: string): Promise<{ migrated: boolean; vehiclesAssigned: number }> {
     const existingBook = await this.prisma.priceBook.findFirst({
       where: { organizationId: orgId, isActive: true },
     });
+
     if (existingBook) {
-      const assignmentCount = await this.prisma.vehicleTariffAssignment.count({
-        where: { organizationId: orgId, isActive: true },
+      const groupCount = await this.prisma.priceTariffGroup.count({
+        where: { organizationId: orgId, priceBookId: existingBook.id },
       });
-      if (assignmentCount > 0) {
-        return { migrated: false, vehiclesAssigned: assignmentCount };
+      if (groupCount === 0) {
+        return { migrated: false, vehiclesAssigned: 0 };
+      }
+      return this.assignUnassignedVehiclesToExistingGroups(orgId, existingBook.id);
+    }
+
+    return this.bootstrapOrgPricing(orgId);
+  }
+
+  private async assignUnassignedVehiclesToExistingGroups(
+    orgId: string,
+    priceBookId: string,
+  ): Promise<{ migrated: boolean; vehiclesAssigned: number }> {
+    const groups = await this.prisma.priceTariffGroup.findMany({
+      where: { organizationId: orgId, priceBookId, isActive: true },
+      orderBy: { sortOrder: 'asc' },
+    });
+    if (groups.length === 0) {
+      return { migrated: false, vehiclesAssigned: 0 };
+    }
+
+    const groupsByCategory = new Map<string, string>();
+    for (const group of groups) {
+      const key = (group.category ?? group.name).trim();
+      if (key && !groupsByCategory.has(key)) {
+        groupsByCategory.set(key, group.id);
       }
     }
 
+    const vehicles = await this.prisma.vehicle.findMany({
+      where: { organizationId: orgId },
+      select: { id: true, model: true, fuelType: true },
+    });
+
+    let assigned = 0;
+    for (const vehicle of vehicles) {
+      const activeAssignment = await this.prisma.vehicleTariffAssignment.findFirst({
+        where: { organizationId: orgId, vehicleId: vehicle.id, isActive: true },
+      });
+      if (activeAssignment) continue;
+
+      const category = inferCategory(vehicle.model, vehicle.fuelType);
+      const groupId = groupsByCategory.get(category);
+      if (!groupId) continue;
+
+      const hasActiveVersion = await this.prisma.priceTariffVersion.findFirst({
+        where: { tariffGroupId: groupId, status: 'ACTIVE' },
+      });
+      if (!hasActiveVersion) continue;
+
+      await this.prisma.vehicleTariffAssignment.create({
+        data: {
+          organizationId: orgId,
+          vehicleId: vehicle.id,
+          tariffGroupId: groupId,
+          priceBookId,
+          validFrom: new Date(),
+          isActive: true,
+        },
+      });
+      assigned++;
+    }
+
+    if (assigned > 0) {
+      this.logger.log(`Pricing reassignment for org ${orgId}: ${assigned} vehicles assigned`);
+    }
+
+    return { migrated: assigned > 0, vehiclesAssigned: assigned };
+  }
+
+  private async bootstrapOrgPricing(orgId: string): Promise<{ migrated: boolean; vehiclesAssigned: number }> {
     const vehicles = await this.prisma.vehicle.findMany({
       where: { organizationId: orgId },
       select: {
@@ -66,16 +137,14 @@ export class PricingMigrationService {
       return { migrated: false, vehiclesAssigned: 0 };
     }
 
-    const priceBook =
-      existingBook ??
-      (await this.prisma.priceBook.create({
-        data: {
-          organizationId: orgId,
-          name: 'Standard Preisbuch',
-          currency: 'EUR',
-          taxRatePercent: DEFAULT_TAX_PERCENT,
-        },
-      }));
+    const priceBook = await this.prisma.priceBook.create({
+      data: {
+        organizationId: orgId,
+        name: 'Standard Preisbuch',
+        currency: 'EUR',
+        taxRatePercent: DEFAULT_TAX_PERCENT,
+      },
+    });
 
     const groupsByCategory = new Map<string, string>();
     let assigned = 0;
@@ -85,94 +154,76 @@ export class PricingMigrationService {
       let groupId = groupsByCategory.get(category);
 
       if (!groupId) {
-        let group = await this.prisma.priceTariffGroup.findFirst({
-          where: { organizationId: orgId, priceBookId: priceBook.id, category },
+        const group = await this.prisma.priceTariffGroup.create({
+          data: {
+            organizationId: orgId,
+            priceBookId: priceBook.id,
+            name: category,
+            category,
+            sortOrder: groupsByCategory.size,
+          },
         });
-        if (!group) {
-          group = await this.prisma.priceTariffGroup.create({
-            data: {
-              organizationId: orgId,
-              priceBookId: priceBook.id,
-              name: category,
-              category,
-              sortOrder: groupsByCategory.size,
-            },
-          });
-        }
 
         groupId = group.id;
         groupsByCategory.set(category, groupId);
 
-        const hasActive = await this.prisma.priceTariffVersion.findFirst({
-          where: { tariffGroupId: groupId, status: 'ACTIVE' },
-        });
+        const sample = vehicles.find((sv) => inferCategory(sv.model, sv.fuelType) === category)!;
+        const dailyGross =
+          sample.dailyRateEur != null && sample.dailyRateEur > 0
+            ? Math.round(sample.dailyRateEur * 100)
+            : this.demoDailyGross(category, sample.year);
+        const weeklyGross =
+          sample.weeklyRateEur != null && sample.weeklyRateEur > 0
+            ? Math.round(sample.weeklyRateEur * 100)
+            : Math.round(dailyGross * 5.5);
+        const monthlyGross =
+          sample.monthlyRateEur != null && sample.monthlyRateEur > 0
+            ? Math.round(sample.monthlyRateEur * 100)
+            : Math.round(dailyGross * 20);
+        const extraKmGross =
+          sample.extraKmPrice != null && sample.extraKmPrice > 0
+            ? Math.round(sample.extraKmPrice * 100)
+            : 22;
 
-        if (!hasActive) {
-          const sample = vehicles.find(
-            (sv) => inferCategory(sv.model, sv.fuelType) === category,
-          )!;
-          const dailyGross =
-            sample.dailyRateEur != null && sample.dailyRateEur > 0
-              ? Math.round(sample.dailyRateEur * 100)
-              : this.demoDailyGross(category, sample.year);
-          const weeklyGross =
-            sample.weeklyRateEur != null && sample.weeklyRateEur > 0
-              ? Math.round(sample.weeklyRateEur * 100)
-              : Math.round(dailyGross * 5.5);
-          const monthlyGross =
-            sample.monthlyRateEur != null && sample.monthlyRateEur > 0
-              ? Math.round(sample.monthlyRateEur * 100)
-              : Math.round(dailyGross * 20);
-          const extraKmGross =
-            sample.extraKmPrice != null && sample.extraKmPrice > 0
-              ? Math.round(sample.extraKmPrice * 100)
-              : 22;
-
-          const version = await this.prisma.priceTariffVersion.create({
-            data: {
-              organizationId: orgId,
-              priceBookId: priceBook.id,
-              tariffGroupId: groupId,
-              versionNumber: 1,
-              status: 'ACTIVE',
-              validFrom: new Date(),
-              rate: {
-                create: {
-                  organizationId: orgId,
-                  dailyRateCents: grossToNetCents(dailyGross, DEFAULT_TAX_PERCENT),
-                  weeklyRateCents: grossToNetCents(weeklyGross, DEFAULT_TAX_PERCENT),
-                  monthlyRateCents: grossToNetCents(monthlyGross, DEFAULT_TAX_PERCENT),
-                  includedKmPerDay: 200,
-                  extraKmPriceCents: extraKmGross,
-                  depositAmountCents: Math.round(dailyGross * 3),
-                },
-              },
-            },
-          });
-
-          await this.seedDefaultOptions(orgId, version.id, category);
-        }
-      }
-
-      const activeAssignment = await this.prisma.vehicleTariffAssignment.findFirst({
-        where: { organizationId: orgId, vehicleId: v.id, isActive: true },
-      });
-      if (!activeAssignment) {
-        await this.prisma.vehicleTariffAssignment.create({
+        const version = await this.prisma.priceTariffVersion.create({
           data: {
             organizationId: orgId,
-            vehicleId: v.id,
-            tariffGroupId: groupId,
             priceBookId: priceBook.id,
+            tariffGroupId: groupId,
+            versionNumber: 1,
+            status: 'ACTIVE',
             validFrom: new Date(),
-            isActive: true,
+            rate: {
+              create: {
+                organizationId: orgId,
+                dailyRateCents: grossToNetCents(dailyGross, DEFAULT_TAX_PERCENT),
+                weeklyRateCents: grossToNetCents(weeklyGross, DEFAULT_TAX_PERCENT),
+                monthlyRateCents: grossToNetCents(monthlyGross, DEFAULT_TAX_PERCENT),
+                includedKmPerDay: 200,
+                extraKmPriceCents: extraKmGross,
+                depositAmountCents: Math.round(dailyGross * 3),
+              },
+            },
           },
         });
-        assigned++;
+
+        await this.seedDefaultOptions(orgId, version.id, category);
       }
+
+      await this.prisma.vehicleTariffAssignment.create({
+        data: {
+          organizationId: orgId,
+          vehicleId: v.id,
+          tariffGroupId: groupId,
+          priceBookId: priceBook.id,
+          validFrom: new Date(),
+          isActive: true,
+        },
+      });
+      assigned++;
     }
 
-    this.logger.log(`Pricing migration for org ${orgId}: ${assigned} vehicles assigned`);
+    this.logger.log(`Pricing bootstrap for org ${orgId}: ${assigned} vehicles assigned`);
     return { migrated: true, vehiclesAssigned: assigned };
   }
 

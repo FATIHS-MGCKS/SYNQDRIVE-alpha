@@ -24,6 +24,7 @@ export function DashboardView({
   onOpenRentalView,
   onOpenBookingById,
   onOpenFinanceView,
+  onOpenPriceTariffs,
 }: DashboardViewProps) {
   const vm = useDashboardViewModel({
     onVehicleSelect,
@@ -32,12 +33,14 @@ export function DashboardView({
     onOpenRentalView,
     onOpenBookingById,
     onOpenFinanceView,
+    onOpenPriceTariffs,
   });
 
   const handlers = {
     onOpenVehicleById,
     onOpenBookingById,
     onOpenRentalView,
+    onOpenPriceTariffs,
   };
   const leftColumnRef = useRef<HTMLDivElement>(null);
   const notificationsMaxHeight = useDashboardLeftColumnHeight(leftColumnRef, [

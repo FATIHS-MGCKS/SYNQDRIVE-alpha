@@ -46,6 +46,7 @@ import {
   buildUnassignedFleetSummary,
   sortStationCommandSummaries,
 } from './stationCommandBuilder';
+import { usePriceTariffs } from '../../hooks/usePriceTariffs';
 import { deriveOperationalInsights } from './deriveOperationalInsights';
 import { derivePredictiveOperationsInsights } from './derivePredictiveOperationsInsights';
 import {
@@ -159,6 +160,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   const { fleetVehicles, loading: fleetLoading, countdown: fleetCountdownSec, refresh: refreshFleet, healthMap } =
     useFleetVehicles();
   const { orgId } = useRentalOrg();
+  const { catalog, loading: catalogLoading } = usePriceTariffs(orgId);
   const { openHandover } = useHandover();
   const {
     insights,
@@ -753,6 +755,14 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     [invoicesApi, locale, dashboardNow],
   );
 
+  const unassignedTariffVehicleCount = useMemo(() => {
+    if (catalogLoading || !catalog) return 0;
+    const assigned = new Set(
+      catalog.assignments.filter((assignment) => assignment.isActive).map((assignment) => assignment.vehicleId),
+    );
+    return filteredFleetVehicles.filter((vehicle) => !assigned.has(vehicle.id)).length;
+  }, [catalog, catalogLoading, filteredFleetVehicles]);
+
   const derivedOperationalInsights = useMemo(
     () =>
       deriveOperationalInsights({
@@ -767,6 +777,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         dashboardRuntime,
         fleetLoading,
         todayBookingsLoaded,
+        unassignedTariffVehicleCount,
       }),
     [
       locale,
@@ -780,6 +791,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
       dashboardRuntime,
       fleetLoading,
       todayBookingsLoaded,
+      unassignedTariffVehicleCount,
     ],
   );
 

@@ -39,6 +39,7 @@ export interface VehiclePickerStepProps {
   fuelTypes: string[];
   pickerHealthMap: Map<string, VehicleHealthResponse | null>;
   catalogLoading: boolean;
+  vehicleHasTariff: (vehicleId: string) => boolean;
   getDailyRateLabel: (vehicleId: string) => string | null;
   isDarkMode: boolean;
 }
@@ -103,6 +104,7 @@ function VehiclePickerCard({
   health,
   dailyLabel,
   catalogLoading,
+  vehicleHasTariff,
   isDarkMode,
   onSelect,
 }: {
@@ -111,13 +113,14 @@ function VehiclePickerCard({
   health: VehicleHealthResponse | null;
   dailyLabel: string | null;
   catalogLoading: boolean;
+  vehicleHasTariff: (vehicleId: string) => boolean;
   isDarkMode: boolean;
   onSelect: () => void;
 }) {
   const preflight = resolveBookingVehiclePreflight(
     vehicle,
     health,
-    Boolean(dailyLabel),
+    vehicleHasTariff(vehicle.id),
     catalogLoading,
   );
   const brandKey = getBrandFromModel({ make: vehicle.make, model: vehicle.model });
@@ -284,6 +287,7 @@ export function VehiclePickerStep({
   fuelTypes,
   pickerHealthMap,
   catalogLoading,
+  vehicleHasTariff,
   getDailyRateLabel,
   isDarkMode,
 }: VehiclePickerStepProps) {
@@ -441,6 +445,7 @@ export function VehiclePickerStep({
             health={pickerHealthMap.get(vehicle.id) ?? null}
             dailyLabel={getDailyRateLabel(vehicle.id)}
             catalogLoading={catalogLoading}
+            vehicleHasTariff={vehicleHasTariff}
             isDarkMode={isDarkMode}
             onSelect={() => onSelectVehicle(vehicle)}
           />

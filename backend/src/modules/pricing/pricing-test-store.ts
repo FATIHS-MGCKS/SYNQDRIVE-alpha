@@ -338,9 +338,20 @@ export function createPricingTestStore(
       ),
     },
     priceTariffGroup: {
+      count: jest.fn(async ({ where }: { where: Record<string, unknown> }) =>
+        groups.filter(
+          (g) =>
+            g.organizationId === where.organizationId &&
+            (where.priceBookId === undefined || g.priceBookId === where.priceBookId),
+        ).length,
+      ),
       findFirst: jest.fn(async ({ where }: { where: Record<string, unknown> }) =>
         groups.find(
-          (g) => g.id === where.id && g.organizationId === where.organizationId,
+          (g) =>
+            g.organizationId === where.organizationId &&
+            (where.id === undefined || g.id === where.id) &&
+            (where.category === undefined || g.category === where.category) &&
+            (where.priceBookId === undefined || g.priceBookId === where.priceBookId),
         ) ?? null,
       ),
       findMany: jest.fn(
@@ -356,7 +367,8 @@ export function createPricingTestStore(
           let matched = groups.filter(
             (g) =>
               g.organizationId === where.organizationId &&
-              (where.priceBookId === undefined || g.priceBookId === where.priceBookId),
+              (where.priceBookId === undefined || g.priceBookId === where.priceBookId) &&
+              (where.isActive === undefined || g.isActive === where.isActive),
           );
           if (orderBy?.sortOrder === 'asc') {
             matched = [...matched].sort((a, b) => (a as { sortOrder?: number }).sortOrder! - (b as { sortOrder?: number }).sortOrder!);

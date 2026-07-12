@@ -8,7 +8,7 @@ import {
 
 export const UNCATEGORIZED_VEHICLE_LABEL = 'Nicht kategorisiert';
 
-export type BookingVehicleHardBlockReason = 'offline' | 'rental_blocked';
+export type BookingVehicleHardBlockReason = 'offline' | 'rental_blocked' | 'no_tariff';
 
 export interface BookingVehiclePreflight {
   fleetStatus: FleetStatus;
@@ -62,6 +62,9 @@ export function resolveBookingVehiclePreflight(
     hardBlockReason = 'rental_blocked';
     blockingReason =
       health?.blocking_reasons?.filter(Boolean).join(' · ') || 'Nicht vermietbar';
+  } else if (noTariff) {
+    hardBlockReason = 'no_tariff';
+    blockingReason = 'Kein aktiver Tarif zugewiesen';
   } else if (isMaintenance) {
     cautionReason = 'In Wartung — Auswahl mit Vorsicht';
   } else if (isRented) {
@@ -72,8 +75,6 @@ export function resolveBookingVehiclePreflight(
     cautionReason =
       health?.blocking_reasons?.[0] ??
       (health?.overall_state === 'critical' ? 'Gesundheit kritisch' : 'Gesundheit Warnung');
-  } else if (noTariff) {
-    cautionReason = 'Kein aktiver Tarif';
   }
 
   return {
@@ -82,7 +83,7 @@ export function resolveBookingVehiclePreflight(
     rentalBlocked,
     healthWarningOnly,
     noTariff,
-    isSelectable: !offline && !rentalBlocked,
+    isSelectable: !offline && !rentalBlocked && !noTariff,
     hardBlockReason,
     blockingReason,
     cautionReason,
@@ -93,8 +94,10 @@ export function resolveBookingVehiclePreflight(
 export function isBookingVehicleHardBlocked(
   vehicle: VehicleData,
   health: VehicleHealthResponse | null | undefined,
+  hasTariff = true,
+  catalogLoading = false,
 ): boolean {
-  return !resolveBookingVehiclePreflight(vehicle, health, true, false).isSelectable;
+  return !resolveBookingVehiclePreflight(vehicle, health, hasTariff, catalogLoading).isSelectable;
 }
 
 export function fleetStatusLabelDe(status: FleetStatus): string {

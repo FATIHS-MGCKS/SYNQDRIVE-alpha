@@ -82,12 +82,20 @@ describe('booking-vehicle-preflight', () => {
     expect(result.cautionReason).toBeTruthy();
   });
 
-  it('flags no tariff as caution while catalog loaded', () => {
+  it('flags no tariff as hard block while catalog loaded', () => {
     const v = baseVehicle();
     const result = resolveBookingVehiclePreflight(v, null, false, false);
+    expect(result.isSelectable).toBe(false);
+    expect(result.hardBlockReason).toBe('no_tariff');
+    expect(result.blockingReason).toContain('Tarif');
+    expect(isBookingVehicleHardBlocked(v, null)).toBe(false);
+  });
+
+  it('does not hard block tariff while catalog is still loading', () => {
+    const v = baseVehicle();
+    const result = resolveBookingVehiclePreflight(v, null, false, true);
     expect(result.isSelectable).toBe(true);
-    expect(result.noTariff).toBe(true);
-    expect(result.cautionReason).toContain('Tarif');
+    expect(result.noTariff).toBe(false);
   });
 
   it('resolves station id from homeStationId', () => {
