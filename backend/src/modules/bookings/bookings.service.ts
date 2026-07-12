@@ -235,7 +235,7 @@ export class BookingsService {
         data: {
           ...bookingData,
           ...pricedFields,
-          ...this.stationFieldsToPrismaInput(stationFields),
+          ...this.stationFieldsToPrismaInput(stationFields, { forCreate: true }),
           organization: { connect: { id: orgId } },
         } as Prisma.BookingCreateInput,
       });
@@ -595,16 +595,20 @@ export class BookingsService {
     };
   }
 
-  private stationFieldsToPrismaInput(fields: {
-    pickupStationId?: string | null;
-    returnStationId?: string | null;
-    actualPickupStationId?: string | null;
-    actualReturnStationId?: string | null;
-    pickupAddressOverride?: string | null;
-    returnAddressOverride?: string | null;
-    isOneWayRental?: boolean;
-    stationTransferFeeCents?: number | null;
-  }): Prisma.BookingUpdateInput {
+  private stationFieldsToPrismaInput(
+    fields: {
+      pickupStationId?: string | null;
+      returnStationId?: string | null;
+      actualPickupStationId?: string | null;
+      actualReturnStationId?: string | null;
+      pickupAddressOverride?: string | null;
+      returnAddressOverride?: string | null;
+      isOneWayRental?: boolean;
+      stationTransferFeeCents?: number | null;
+    },
+    options?: { forCreate?: boolean },
+  ): Prisma.BookingUpdateInput {
+    const forCreate = options?.forCreate === true;
     const input: Prisma.BookingUpdateInput = {
       pickupAddressOverride: fields.pickupAddressOverride ?? undefined,
       returnAddressOverride: fields.returnAddressOverride ?? undefined,
@@ -613,22 +617,22 @@ export class BookingsService {
     };
     if (fields.pickupStationId) {
       input.pickupStation = { connect: { id: fields.pickupStationId } };
-    } else if (fields.pickupStationId === null) {
+    } else if (!forCreate && fields.pickupStationId === null) {
       input.pickupStation = { disconnect: true };
     }
     if (fields.returnStationId) {
       input.returnStation = { connect: { id: fields.returnStationId } };
-    } else if (fields.returnStationId === null) {
+    } else if (!forCreate && fields.returnStationId === null) {
       input.returnStation = { disconnect: true };
     }
     if (fields.actualPickupStationId) {
       input.actualPickupStation = { connect: { id: fields.actualPickupStationId } };
-    } else if (fields.actualPickupStationId === null) {
+    } else if (!forCreate && fields.actualPickupStationId === null) {
       input.actualPickupStation = { disconnect: true };
     }
     if (fields.actualReturnStationId) {
       input.actualReturnStation = { connect: { id: fields.actualReturnStationId } };
-    } else if (fields.actualReturnStationId === null) {
+    } else if (!forCreate && fields.actualReturnStationId === null) {
       input.actualReturnStation = { disconnect: true };
     }
     return input;

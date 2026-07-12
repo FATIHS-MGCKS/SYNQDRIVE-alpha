@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'wizard-draft-station-create-v49393-2026-07-12',
+    version: '4.9.393',
+    title: 'V4.9.393 — Wizard-Draft: Station-Felder bei Buchung create',
+    summary: [
+      'Fix: `POST .../bookings/wizard-draft` 500 nach V4.9.392 — `stationFieldsToPrismaInput` setzte `disconnect: true` auf `actualPickupStation`/`actualReturnStation` beim Create; Prisma erlaubt disconnect nur bei Update.',
+      'Create-Pfad nutzt jetzt `forCreate: true` (nur `connect`, kein disconnect).',
+    ],
+    reason:
+      'Schritt 5 Dokumente zeigten weiterhin Internal server error, obwohl quoteId-Fix live war — Produktions-Log: PrismaClientValidationError auf actualPickupStation.disconnect beim booking.create.',
+    previousBehavior:
+      'Wizard-Draft crashte mit Prisma-Validierungsfehler sobald geplante Stationen gesetzt waren, aber tatsächliche Pickup/Return-Stationen noch null.',
+    details:
+      '`BookingsService.stationFieldsToPrismaInput(fields, { forCreate })` — disconnect nur bei Update; `create()` übergibt `forCreate: true`.',
+    affectsArchitecture: false,
+    module: 'Bookings',
+    createdAt: '2026-07-12T20:55:00.000Z',
+  },
+  {
     id: 'checkout-step5-fixes-v49392-2026-07-12',
     version: '4.9.392',
     title: 'V4.9.392 — Checkout Schritt 5: Dokumente-Fix, FS-Ausstellungsdatum, Pickup-Hinweis',
