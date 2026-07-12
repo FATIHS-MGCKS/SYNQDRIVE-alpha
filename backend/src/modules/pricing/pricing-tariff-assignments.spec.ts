@@ -59,6 +59,29 @@ describe('Tariff assignments and deletion', () => {
     expect(second.id).toBe(first.id);
   });
 
+  it('assignVehicle defaults validFrom to start of org calendar day', async () => {
+    const { store, tariffs } = build();
+    const otherGroupId = 'group-compact';
+    store.groups.push({
+      id: otherGroupId,
+      organizationId: ids.orgId,
+      priceBookId: ids.priceBookId,
+      name: 'Compact',
+      category: 'Compact',
+      isActive: true,
+    });
+
+    const before = Date.now();
+    const assignment = await tariffs.assignVehicle(ids.orgId, {
+      vehicleId: ids.vehicleId,
+      tariffGroupId: otherGroupId,
+    });
+    const after = Date.now();
+
+    expect(assignment.validFrom.getTime()).toBeLessThanOrEqual(before);
+    expect(assignment.validFrom.getTime()).toBeLessThan(after);
+  });
+
   it('discardDraftVersion removes only DRAFT versions', async () => {
     const { store, tariffs } = build();
     const draft = await tariffs.upsertGroupVersion(ids.orgId, ids.groupId, {

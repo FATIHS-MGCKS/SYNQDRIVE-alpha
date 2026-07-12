@@ -27,7 +27,6 @@ export function BookingSummaryPanel(props: BookingSummaryPanelProps) {
     mileagePackages,
     insuranceOptions,
     extraOptions,
-    noTariffForVehicle,
     canCalculatePrice,
     priceLoading,
     priceError,
@@ -169,11 +168,6 @@ export function BookingSummaryPanel(props: BookingSummaryPanelProps) {
         <div className="mb-3 border-t border-border" />
 
         <div className="space-y-2.5">
-          {noTariffForVehicle && (
-            <p className="text-xs text-[color:var(--status-watch)]">
-              Kein aktiver Tarif für dieses Fahrzeug. Zuweisung in Price Tariffs erforderlich.
-            </p>
-          )}
           {canCalculatePrice && priceLoading && (
             <p className="text-xs text-muted-foreground">Preis wird berechnet…</p>
           )}

@@ -1,4 +1,10 @@
 import type { VehicleHealthResponse } from '../../lib/api';
+import type { PriceTariffCatalog } from '../pricing/pricingTypes';
+import {
+  catalogCurrency,
+  formatNetAsGross,
+  getVehicleTariffFromCatalog,
+} from '../pricing/pricingUtils';
 import {
   isVehicleOffline,
   VEHICLE_OFFLINE_LABEL,
@@ -32,6 +38,31 @@ export function vehicleStationDisplay(vehicle: VehicleData): string {
   const named = (vehicle as { stationName?: string | null }).stationName;
   const label = named ?? vehicle.station ?? '';
   return label.trim() || '—';
+}
+
+/** Catalog-based tariff hint for the booking picker (pickup-aware when `pickupAt` is set). */
+export function vehicleHasAssignedTariff(
+  catalog: PriceTariffCatalog | null,
+  vehicleId: string,
+  catalogLoading: boolean,
+  pickupAt?: string | null,
+): boolean {
+  if (catalogLoading) return true;
+  return Boolean(getVehicleTariffFromCatalog(catalog, vehicleId, pickupAt ?? undefined));
+}
+
+export function getVehicleDailyRateLabelFromCatalog(
+  catalog: PriceTariffCatalog | null,
+  vehicleId: string,
+  taxRatePercent: number,
+  catalogLoading: boolean,
+  pickupAt?: string | null,
+): string | null {
+  if (catalogLoading) return null;
+  const ctx = getVehicleTariffFromCatalog(catalog, vehicleId, pickupAt ?? undefined);
+  if (!ctx?.version.rate) return null;
+  const currency = catalogCurrency(catalog) ?? 'EUR';
+  return formatNetAsGross(ctx.version.rate.dailyRateCents, taxRatePercent, currency);
 }
 
 export function resolveBookingVehiclePreflight(
