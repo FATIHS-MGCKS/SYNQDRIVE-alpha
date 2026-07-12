@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 
 import { api, type LegalDocumentDto } from '../../lib/api';
-import { Button } from '../../../components/ui/button';
+import { Button } from '../../components/ui/button';
 import { useRentalOrg } from '../RentalContext';
 import { isLegalPdfFile } from '../lib/legal-documents.utils';
 
