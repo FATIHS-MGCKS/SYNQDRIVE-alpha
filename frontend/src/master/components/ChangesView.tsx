@@ -35,6 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-tariff-subtitle-collapsed-only-v49384-2026-07-12',
+    version: '4.9.384',
+    title: 'V4.9.384 — Tarif-Meldung: Fahrzeugliste nur im zugeklappten Zustand',
+    summary: [
+      'Die Kurzbeschreibung (Fahrzeug-Vorschau) in der Summary-Zeile wird ausgeblendet, sobald die Meldung aufgeklappt ist.',
+      'Vollständige Fahrzeugliste bleibt nur im Detail-Panel sichtbar — keine Doppelung.',
+    ],
+    reason: 'Aufgeklappte Karte zeigte dieselbe Fahrzeugliste zweimal (Summary + Detail).',
+    previousBehavior: 'Subtitle mit Fahrzeugen blieb auch im expanded Zustand unter dem Titel stehen.',
+    details: 'NotificationSummaryRow.tsx — subtitle nur wenn `!expanded`.',
+    affectsArchitecture: false,
+    module: 'Pricing',
+    createdAt: '2026-07-12T11:15:00.000Z',
+  },
+  {
     id: 'dashboard-tariff-vehicle-list-v49383-2026-07-12',
     version: '4.9.383',
     title: 'V4.9.383 — Tarif-Meldung: betroffene Fahrzeuge + symmetrisches Layout',
