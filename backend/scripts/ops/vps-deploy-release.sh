@@ -30,7 +30,7 @@ ln -sfn /opt/synqdrive/shared/uploads "$RELEASE_DIR/backend/uploads"
 
 echo "==> Link shared document storage"
 SHARED_DOCS="/opt/synqdrive/shared/storage/documents"
-mkdir -p "$SHARED_DOCS"
+mkdir -p "$SHARED_DOCS" "$RELEASE_DIR/backend/storage"
 if [[ -d /opt/synqdrive/current/backend/storage/documents ]] && [[ ! -L /opt/synqdrive/current/backend/storage/documents ]]; then
   rsync -a /opt/synqdrive/current/backend/storage/documents/ "$SHARED_DOCS/" || true
 fi
