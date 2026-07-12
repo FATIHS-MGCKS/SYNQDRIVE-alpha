@@ -99,6 +99,7 @@ import {
   supplementalHealthItems,
   supplementalQueueItems,
 } from '../../lib/notifications/merge-v2-with-vehicle-health';
+import { mergeNotificationPrimaryTabCounts } from './notifications/notification-panel-counts';
 
 const BUSINESS_METRIC_IDS: ReadonlySet<string> = new Set<BusinessMetricId>([
   'revenue',
@@ -909,15 +910,37 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
 
   const notificationPrimaryTabCounts = useMemo(() => {
     if (!shouldUseV2NotificationSource()) return null;
+
+    if (notificationsV2.listMode === 'resolved') {
+      return {
+        all: 0,
+        critical: 0,
+        warning: 0,
+        resolved: notificationsV2.primaryTabCounts.resolved,
+      };
+    }
+
     const derivedExtra = supplementalQueueItems(notificationsV2.items, derivedQueueItems);
     const withDerived = [...notificationsV2.items, ...derivedExtra];
     const healthExtra = supplementalHealthItems(withDerived, vehicleHealthQueueItems);
+    const mergedActiveQueue = mergeV2NotificationsWithVehicleHealth(
+      mergeV2WithSupplemental(notificationsV2.items, derivedQueueItems),
+      vehicleHealthQueueItems,
+    );
+
     const withDerivedCounts = augmentPrimaryTabCountsWithHealthItems(
       notificationsV2.primaryTabCounts,
       derivedExtra,
     );
-    return augmentPrimaryTabCountsWithHealthItems(withDerivedCounts, healthExtra);
-  }, [notificationsV2.items, notificationsV2.primaryTabCounts, derivedQueueItems, vehicleHealthQueueItems]);
+    const withHealthCounts = augmentPrimaryTabCountsWithHealthItems(withDerivedCounts, healthExtra);
+    return mergeNotificationPrimaryTabCounts(withHealthCounts, mergedActiveQueue);
+  }, [
+    notificationsV2.items,
+    notificationsV2.listMode,
+    notificationsV2.primaryTabCounts,
+    derivedQueueItems,
+    vehicleHealthQueueItems,
+  ]);
 
   const setNotificationListMode = useCallback(
     (mode: 'active' | 'resolved') => {

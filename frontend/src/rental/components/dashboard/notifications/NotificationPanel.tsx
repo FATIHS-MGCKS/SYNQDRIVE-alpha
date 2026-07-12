@@ -9,6 +9,7 @@ import {
 } from '../actionQueueGrouping';
 import { navigateNotificationV2Action } from '../../../lib/notifications/notification-v2-action-router';
 import { enrichNotificationGroupingList } from '../../../lib/notifications/enrich-notification-grouping';
+import { ensureNotificationPanelQueueItems } from '../notificationQueueEnricher';
 import { useLanguage } from '../../../i18n/LanguageContext';
 import { useRentalOrg } from '../../../RentalContext';
 import { ServiceTaskCreateModal } from '../../service-center/ServiceTaskCreateModal';
@@ -119,12 +120,18 @@ export function NotificationPanel({
 
   const referenceNowMs = useMemo(() => Date.now(), [vm.actionQueue, vm.isRefreshing]);
 
-  const primaryTabCounts = vm.notificationPrimaryTabCounts ?? {
-    all: 0,
-    critical: 0,
-    warning: 0,
-    resolved: 0,
-  };
+  const primaryTabCounts = useMemo(() => {
+    const base = vm.notificationPrimaryTabCounts ?? {
+      all: 0,
+      critical: 0,
+      warning: 0,
+      resolved: 0,
+    };
+    if (primaryTab === 'resolved') {
+      return { ...base, all: 0, critical: 0, warning: 0 };
+    }
+    return base;
+  }, [vm.notificationPrimaryTabCounts, primaryTab]);
 
   const filteredItems = useMemo(
     () => filterNotificationPanelItems(vm.actionQueue, primaryTab, domainFilter),
@@ -132,8 +139,15 @@ export function NotificationPanel({
   );
 
   const enrichedItems = useMemo(
-    () => enrichNotificationGroupingList(filteredItems, locale, referenceNowMs),
-    [filteredItems, locale, referenceNowMs],
+    () => {
+      const withQueue = ensureNotificationPanelQueueItems(filteredItems, {
+        locale,
+        referenceNowMs,
+        t,
+      });
+      return enrichNotificationGroupingList(withQueue, locale, referenceNowMs);
+    },
+    [filteredItems, locale, referenceNowMs, t],
   );
 
   const entries = useMemo(
