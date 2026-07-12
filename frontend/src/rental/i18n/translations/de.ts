@@ -329,6 +329,7 @@ export const de: Record<TranslationKey, string> = {
   'email.docType.DEPOSIT_RECEIPT': 'Kautionsbeleg',
   'email.docType.RENTAL_CONTRACT': 'Mietvertrag',
   'email.docType.TERMS_AND_CONDITIONS': 'AGB',
+  'email.docType.PRIVACY_POLICY': 'Datenschutzerklärung',
   'email.docType.WITHDRAWAL_INFORMATION': 'Widerrufsbelehrung',
   'email.docType.HANDOVER_PICKUP': 'Übergabeprotokoll (Abholung)',
   'email.docType.HANDOVER_RETURN': 'Übergabeprotokoll (Rückgabe)',

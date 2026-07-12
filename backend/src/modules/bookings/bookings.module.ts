@@ -18,6 +18,7 @@ import { StationsModule } from '@modules/stations/stations.module';
 import { RentalRulesModule } from '@modules/rental-rules/rental-rules.module';
 import { CustomerVerificationModule } from '@modules/customer-verification/customer-verification.module';
 import { BookingRentalEligibilityService } from './booking-rental-eligibility.service';
+import { BookingWizardDraftService } from './booking-wizard-draft.service';
 
 @Module({
   imports: [
@@ -34,7 +35,7 @@ import { BookingRentalEligibilityService } from './booking-rental-eligibility.se
     RentalRulesModule,
   ],
   controllers: [BookingsController],
-  providers: [BookingsService, BookingsHandoverService, BookingRentalEligibilityService],
-  exports: [BookingsService, BookingsHandoverService, BookingRentalEligibilityService],
+  providers: [BookingsService, BookingsHandoverService, BookingRentalEligibilityService, BookingWizardDraftService],
+  exports: [BookingsService, BookingsHandoverService, BookingRentalEligibilityService, BookingWizardDraftService],
 })
 export class BookingsModule {}

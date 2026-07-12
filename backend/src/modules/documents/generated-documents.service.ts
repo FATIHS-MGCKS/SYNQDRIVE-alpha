@@ -142,6 +142,17 @@ export class GeneratedDocumentsService {
     });
   }
 
+  async voidAllForBooking(orgId: string, bookingId: string): Promise<number> {
+    const docs = await this.listForBooking(orgId, bookingId);
+    let count = 0;
+    for (const doc of docs) {
+      if (doc.status === DOCUMENT_STATUS.VOID) continue;
+      await this.voidDocument(orgId, doc.id);
+      count += 1;
+    }
+    return count;
+  }
+
   /** Returns a stream + headers for an authenticated download. Serves the stored file. */
   async getDownload(orgId: string, documentId: string): Promise<DocumentDownload> {
     const doc = await this.getById(orgId, documentId);

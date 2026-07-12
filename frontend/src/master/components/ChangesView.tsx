@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-wizard-checkout-docs-v49390-2026-07-12',
+    version: '4.9.390',
+    title: 'V4.9.390 — Neue Buchung: Checkout-Entwurf, echte Dokumente & E-Mail',
+    summary: [
+      'Phase 0: `POST .../bookings/eligibility-check` validiert wieder (DTO-`import type` → Value-Import); Pricing-Context-Debugbox durch „Tarif: Gruppe · km/Tag“ ersetzt.',
+      'Phase 1: Wizard-Draft bei Schritt 5 — `POST/PATCH/confirm/abort .../bookings/wizard-draft` erzeugt PENDING-Buchung + Document-Bundle (Rechnung, Mietvertrag, AGB, Datenschutz); Rabatt aktualisiert bestehenden Entwurf; Abbruch voidet Dokumente und cancelt.',
+      'Checkout: Drucken + manueller E-Mail-Versand pro Dokument (`SendDocumentsEmailModal`); keine Fake-HTML-Generatoren mehr.',
+      'Phase 2: `PRIVACY_POLICY` als org-uploadbarer Rechtstext (wie AGB) + Bundle-Anhang.',
+    ],
+    reason:
+      'Checkout soll echte PDFs aus dem Document-Lifecycle nutzen, E-Mail nur auf Wunsch (Druck bleibt), und bei Abbruch/Rabatt keine verwaisten Buchungen oder Dokumente hinterlassen.',
+    previousBehavior:
+      'Eligibility-Check schlug mit ValidationPipe fehl; Checkout zeigte Pricing-IDs und simulierte Rechnung/Mietvertrag ohne Backend-PDFs; `handleConfirm` rief direkt `POST /bookings` ohne Dokument-Bundle.',
+    details:
+      'Backend: `BookingWizardDraftService`, `booking-wizard-draft.util.ts`, DTOs, `releaseQuoteFromWizardDraft`, `voidAllForBooking`. Frontend: `CheckoutDocumentsPanel`, `NewBookingView` Draft-Lifecycle, `api.bookings.createWizardDraft|updateWizardDraft|confirmWizardDraft|abortWizardDraft`, `LegalDocumentsTab` + `company-utils` für Datenschutz.',
+    affectsArchitecture: true,
+    module: 'Insurance',
+    createdAt: '2026-07-12T19:00:00.000Z',
+  },
+  {
     id: 'booking-tariff-pickup-validfrom-v49389-2026-07-12',
     version: '4.9.389',
     title: 'V4.9.389 — Buchung: Tarif-Fehler bei zugewiesenem Fahrzeug behoben',

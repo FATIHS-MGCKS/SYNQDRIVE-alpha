@@ -359,6 +359,7 @@ export interface DocumentStatusGroup {
 const MANAGEABLE_LEGAL_TYPES = [
   { type: 'TERMS_AND_CONDITIONS', label: 'AGB' },
   { type: 'WITHDRAWAL_INFORMATION', label: 'Widerrufsbelehrung' },
+  { type: 'PRIVACY_POLICY', label: 'Datenschutzerklärung' },
 ] as const;
 
 const SYSTEM_TEMPLATE_ROWS: DocumentStatusRow[] = [
@@ -377,12 +378,6 @@ const SYSTEM_TEMPLATE_ROWS: DocumentStatusRow[] = [
 ];
 
 const UNCONNECTED_ROWS: DocumentStatusRow[] = [
-  {
-    id: 'PRIVACY_POLICY',
-    label: 'Datenschutzerklärung',
-    status: 'unconnected',
-    detail: 'Wird später über Datenschutz / Data Authorization angebunden.',
-  },
   {
     id: 'TELEMATICS_CONSENT',
     label: 'Telematik- / GPS-Einwilligung',
@@ -439,7 +434,7 @@ export function buildDocumentStatusGroups(legalDocs: LegalDocumentDto[]): Docume
     {
       id: 'manageable',
       title: 'Verwaltbare Rechtstexte',
-      description: 'AGB und Widerrufsbelehrung werden unter Rechtliche Dokumente gepflegt.',
+      description: 'AGB, Widerrufsbelehrung und Datenschutzerklärung werden unter Rechtliche Dokumente gepflegt.',
       rows: MANAGEABLE_LEGAL_TYPES.map(({ type, label }) =>
         buildManageableLegalRow(legalDocs, activeByType, type, label),
       ),

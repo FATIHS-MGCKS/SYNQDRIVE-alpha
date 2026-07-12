@@ -1156,6 +1156,11 @@ export interface BookingDocumentBundleView {
   warnings: string[];
 }
 
+export interface BookingWizardDraftResult {
+  booking: Record<string, unknown> & { id: string; bookingRef?: string | null; status?: string };
+  bundle: BookingDocumentBundleView;
+}
+
 export type BookingDetailDocumentSlot = {
   documentType: string;
   status: 'missing' | 'required' | 'generated' | 'signed' | 'void';
@@ -2941,6 +2946,65 @@ export const api = {
         `/organizations/${orgId}/bookings/${bookingId}/rental-eligibility${suffix}`,
       );
     },
+    createWizardDraft: (
+      orgId: string,
+      data: {
+        vehicleId: string;
+        customerId: string;
+        startDate: string;
+        endDate: string;
+        quoteId: string;
+        existingBookingId?: string;
+        pickupStationId?: string;
+        returnStationId?: string;
+        pricingInput?: {
+          selectedMileagePackageId?: string;
+          selectedInsuranceOptionIds?: string[];
+          selectedExtraOptionIds?: string[];
+          manualDiscountCents?: number;
+        };
+        notes?: string;
+      },
+    ) =>
+      post<BookingWizardDraftResult>(
+        `/organizations/${orgId}/bookings/wizard-draft`,
+        data,
+      ),
+    updateWizardDraft: (
+      orgId: string,
+      bookingId: string,
+      data: {
+        quoteId: string;
+        pricingInput?: {
+          selectedMileagePackageId?: string;
+          selectedInsuranceOptionIds?: string[];
+          selectedExtraOptionIds?: string[];
+          manualDiscountCents?: number;
+        };
+      },
+    ) =>
+      patch<BookingWizardDraftResult>(
+        `/organizations/${orgId}/bookings/wizard-draft/${bookingId}`,
+        data,
+      ),
+    confirmWizardDraft: (
+      orgId: string,
+      bookingId: string,
+      data?: {
+        agbAccepted?: boolean;
+        privacyAccepted?: boolean;
+        status?: 'PENDING' | 'CONFIRMED';
+      },
+    ) =>
+      post<BookingWizardDraftResult>(
+        `/organizations/${orgId}/bookings/wizard-draft/${bookingId}/confirm`,
+        data ?? {},
+      ),
+    abortWizardDraft: (orgId: string, bookingId: string) =>
+      post<{ booking: unknown; aborted: boolean }>(
+        `/organizations/${orgId}/bookings/wizard-draft/${bookingId}/abort`,
+        {},
+      ),
     // V4.6.75 — Handover-Protokoll (Übergabe beim Pickup, Rückgabe beim Return).
     // V4.6.81 — Pickup handover now accepts an optional `performedAt`
     // ISO-8601 string so operators can record a handover that physically

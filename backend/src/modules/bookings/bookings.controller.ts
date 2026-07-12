@@ -14,10 +14,16 @@ import {
 import { BookingsService } from './bookings.service';
 import { BookingsHandoverService } from './bookings-handover.service';
 import { BookingRentalEligibilityService } from './booking-rental-eligibility.service';
-import type {
+import { BookingWizardDraftService } from './booking-wizard-draft.service';
+import {
   BookingRentalEligibilityBookingQueryDto,
   BookingRentalEligibilityCheckDto,
 } from './dto/booking-rental-eligibility-check.dto';
+import {
+  BookingWizardDraftBodyDto,
+  BookingWizardDraftConfirmDto,
+  BookingWizardDraftUpdateDto,
+} from './dto/booking-wizard-draft.dto';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
@@ -32,6 +38,7 @@ export class BookingsController {
     private readonly bookingsService: BookingsService,
     private readonly handoverService: BookingsHandoverService,
     private readonly rentalEligibilityService: BookingRentalEligibilityService,
+    private readonly wizardDraftService: BookingWizardDraftService,
   ) {}
 
   @Get('today/pickups')
@@ -78,6 +85,43 @@ export class BookingsController {
       additionalDriverCount: body.additionalDriverCount,
       depositReceived: body.depositReceived,
     });
+  }
+
+  @Post('wizard-draft')
+  async createWizardDraft(
+    @Param('orgId') orgId: string,
+    @CurrentUser('id') userId: string | undefined,
+    @Body() body: BookingWizardDraftBodyDto,
+  ) {
+    return this.wizardDraftService.createOrRefreshDraft(orgId, body, { userId });
+  }
+
+  @Patch('wizard-draft/:bookingId')
+  async updateWizardDraft(
+    @Param('orgId') orgId: string,
+    @Param('bookingId') bookingId: string,
+    @CurrentUser('id') userId: string | undefined,
+    @Body() body: BookingWizardDraftUpdateDto,
+  ) {
+    return this.wizardDraftService.updateDraftQuote(orgId, bookingId, body, { userId });
+  }
+
+  @Post('wizard-draft/:bookingId/confirm')
+  async confirmWizardDraft(
+    @Param('orgId') orgId: string,
+    @Param('bookingId') bookingId: string,
+    @CurrentUser('id') userId: string | undefined,
+    @Body() body: BookingWizardDraftConfirmDto,
+  ) {
+    return this.wizardDraftService.confirmDraft(orgId, bookingId, body, { userId });
+  }
+
+  @Post('wizard-draft/:bookingId/abort')
+  async abortWizardDraft(
+    @Param('orgId') orgId: string,
+    @Param('bookingId') bookingId: string,
+  ) {
+    return this.wizardDraftService.abortDraft(orgId, bookingId);
   }
 
   @Get(':id/rental-eligibility')

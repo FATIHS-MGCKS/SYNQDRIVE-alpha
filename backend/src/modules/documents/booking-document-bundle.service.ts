@@ -221,6 +221,7 @@ export class BookingDocumentBundleService {
         break;
       case DOCUMENT_TYPE.TERMS_AND_CONDITIONS:
       case DOCUMENT_TYPE.WITHDRAWAL_INFORMATION:
+      case DOCUMENT_TYPE.PRIVACY_POLICY:
         await this.attachLegalDocuments(orgId, bundle, booking, userId, true);
         break;
       case DOCUMENT_TYPE.FINAL_INVOICE:
@@ -595,7 +596,11 @@ export class BookingDocumentBundleService {
     force = false,
   ): Promise<void> {
     const active = await this.legalDocs.getActiveByType(orgId, 'de');
-    for (const type of [DOCUMENT_TYPE.TERMS_AND_CONDITIONS, DOCUMENT_TYPE.WITHDRAWAL_INFORMATION] as DocumentType[]) {
+    for (const type of [
+      DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
+      DOCUMENT_TYPE.WITHDRAWAL_INFORMATION,
+      DOCUMENT_TYPE.PRIVACY_POLICY,
+    ] as DocumentType[]) {
       const legal = active[type];
       if (!legal) continue;
       const existing = await this.existingBundleDoc(orgId, bundle, type);
@@ -758,6 +763,7 @@ export class BookingDocumentBundleService {
 
   private async setBundlePointer(bundleId: string, documentType: DocumentType, documentId: string): Promise<void> {
     const field = BUNDLE_FIELD[documentType];
+    if (!field) return;
     await this.prisma.bookingDocumentBundle.update({ where: { id: bundleId }, data: { [field]: documentId } });
   }
 

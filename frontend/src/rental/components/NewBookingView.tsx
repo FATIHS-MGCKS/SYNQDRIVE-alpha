@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { VehicleData } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
 import { useRentalOrg } from '../RentalContext';
-import { api } from '../../lib/api';
+import { api, type BookingDocumentBundleView } from '../../lib/api';
 import { resolveDrivingStressScore } from '../lib/scoreFormat';
 import { usePriceTariffs } from '../hooks/usePriceTariffs';
 import { usePricingSimulation } from '../hooks/usePricingSimulation';
@@ -19,7 +19,6 @@ import {
 import { findLineItemBySourceId, sumExtrasGrossCents } from '../pricing/pricingLineItems';
 import {
   buildCustomerCreatePayload,
-  buildBookingCreatePayload,
   customerTypeApiToUi,
   customerStatusApiToUi,
   customerRiskApiToUi,
@@ -263,11 +262,13 @@ export function NewBookingView({
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [bookingConfirmed, setBookingConfirmed] = useState(false);
   const [createdBookingRef, setCreatedBookingRef] = useState<string | null>(null);
-  const [invoiceGenerated, setInvoiceGenerated] = useState(false);
-  const [contractGenerated, setContractGenerated] = useState(false);
-  const [generatingInvoice, setGeneratingInvoice] = useState(false);
-  const [generatingContract, setGeneratingContract] = useState(false);
-  const [quickViewDoc, setQuickViewDoc] = useState<'invoice' | 'contract' | null>(null);
+  const [draftBookingId, setDraftBookingId] = useState<string | null>(null);
+  const [draftBundle, setDraftBundle] = useState<BookingDocumentBundleView | null>(null);
+  const [draftBundleLoading, setDraftBundleLoading] = useState(false);
+  const [draftBundleError, setDraftBundleError] = useState<string | null>(null);
+  const draftBookingIdRef = useRef<string | null>(null);
+  const draftConfirmedRef = useRef(false);
+  const lastSyncedQuoteIdRef = useRef<string | null>(null);
   // V4.6.67 — Default the calendar to TODAY (was hardcoded to March 2026).
   // Tracks both month and year so the calendar keeps working past 2026.
   const [calendarMonth, setCalendarMonth] = useState<number>(() => new Date().getMonth());
@@ -687,6 +688,168 @@ export function NewBookingView({
   const selectedVehicleHasTariff =
     !selectedVehicle || catalogLoading || vehicleHasTariff(selectedVehicle.id);
 
+  useEffect(() => {
+    draftBookingIdRef.current = draftBookingId;
+  }, [draftBookingId]);
+
+  const resetWizardDraftState = useCallback(() => {
+    setDraftBookingId(null);
+    setDraftBundle(null);
+    setDraftBundleError(null);
+    setDraftBundleLoading(false);
+    draftBookingIdRef.current = null;
+    lastSyncedQuoteIdRef.current = null;
+  }, []);
+
+  const abortWizardDraft = useCallback(async () => {
+    if (!orgId || !draftBookingIdRef.current || draftConfirmedRef.current) return;
+    const bookingId = draftBookingIdRef.current;
+    resetWizardDraftState();
+    try {
+      await api.bookings.abortWizardDraft(orgId, bookingId);
+    } catch {
+      /* best-effort cleanup */
+    }
+  }, [orgId, resetWizardDraftState]);
+
+  const refreshDraftBundle = useCallback(async () => {
+    if (!orgId || !draftBookingId) return;
+    try {
+      const view = await api.documents.listForBooking(orgId, draftBookingId);
+      setDraftBundle(view);
+    } catch (err: unknown) {
+      setDraftBundleError(
+        err instanceof Error ? err.message : 'Dokumente konnten nicht aktualisiert werden',
+      );
+    }
+  }, [orgId, draftBookingId]);
+
+  const buildWizardDraftPricingInput = useCallback(
+    () => ({
+      selectedMileagePackageId: selectedMileagePackage ?? undefined,
+      selectedInsuranceOptionIds: selectedInsurances,
+      selectedExtraOptionIds: extras,
+      ...(manualDiscountCents != null ? { manualDiscountCents } : {}),
+    }),
+    [selectedMileagePackage, selectedInsurances, extras, manualDiscountCents],
+  );
+
+  const buildWizardDraftNotes = useCallback(() => {
+    const paymentLabel =
+      paymentMethod === 'card' ? 'Kreditkarte' : paymentMethod === 'cash' ? 'Barzahlung' : 'Rechnung';
+    const pickupName = orgStations.find((s) => s.id === pickupStationId)?.name ?? '';
+    const effectiveReturnStationId = sameReturnStation ? pickupStationId : returnStationId;
+    const returnName = orgStations.find((s) => s.id === effectiveReturnStationId)?.name ?? '';
+    const vehicleStation = selectedVehicle?.station ?? '';
+    return `Abholung: ${pickupName || vehicleStation} • Rückgabe: ${returnName || pickupName || vehicleStation} • Zahlung: ${paymentLabel}`;
+  }, [
+    paymentMethod,
+    orgStations,
+    pickupStationId,
+    returnStationId,
+    sameReturnStation,
+    selectedVehicle?.station,
+  ]);
+
+  useEffect(() => {
+    if (currentStep !== 5) {
+      void abortWizardDraft();
+      return;
+    }
+    if (
+      !orgId ||
+      !selectedVehicle ||
+      !selectedCustomer ||
+      !pickupDate ||
+      !returnDate ||
+      !pickupAtIso ||
+      !returnAtIso ||
+      !priceSim?.quoteId ||
+      priceLoading
+    ) {
+      return;
+    }
+
+    const effectiveReturnStationId = sameReturnStation ? pickupStationId : returnStationId;
+    if (!pickupStationId || !effectiveReturnStationId) return;
+
+    let cancelled = false;
+    (async () => {
+      const existingId = draftBookingIdRef.current;
+      if (existingId && lastSyncedQuoteIdRef.current === priceSim.quoteId) {
+        return;
+      }
+
+      setDraftBundleLoading(true);
+      setDraftBundleError(null);
+      try {
+        const pricingInput = buildWizardDraftPricingInput();
+        const result = existingId
+          ? await api.bookings.updateWizardDraft(orgId, existingId, {
+              quoteId: priceSim.quoteId,
+              pricingInput,
+            })
+          : await api.bookings.createWizardDraft(orgId, {
+              vehicleId: selectedVehicle.id,
+              customerId: selectedCustomer.id,
+              startDate: pickupAtIso,
+              endDate: returnAtIso,
+              quoteId: priceSim.quoteId,
+              pickupStationId,
+              returnStationId: effectiveReturnStationId,
+              pricingInput,
+              notes: buildWizardDraftNotes(),
+            });
+
+        if (cancelled) return;
+        const bookingId = String(result.booking.id);
+        setDraftBookingId(bookingId);
+        draftBookingIdRef.current = bookingId;
+        lastSyncedQuoteIdRef.current = priceSim.quoteId;
+        setDraftBundle(result.bundle);
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setDraftBundleError(parseApiError(err));
+        }
+      } finally {
+        if (!cancelled) setDraftBundleLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    currentStep,
+    orgId,
+    selectedVehicle,
+    selectedCustomer,
+    pickupDate,
+    returnDate,
+    pickupAtIso,
+    returnAtIso,
+    pickupStationId,
+    returnStationId,
+    sameReturnStation,
+    priceSim?.quoteId,
+    priceLoading,
+    abortWizardDraft,
+    buildWizardDraftPricingInput,
+    buildWizardDraftNotes,
+  ]);
+
+  useEffect(
+    () => () => {
+      void abortWizardDraft();
+    },
+    [abortWizardDraft],
+  );
+
+  const handleLeaveWizard = useCallback(async () => {
+    await abortWizardDraft();
+    onBack();
+  }, [abortWizardDraft, onBack]);
+
   const baseRentalLine = priceSim?.lineItems.find((li) => li.type === 'BASE_RENTAL');
   const subtotal = baseRentalLine ? baseRentalLine.totalGrossCents / 100 : 0;
   const extrasTotal = priceSim ? sumExtrasGrossCents(priceSim.lineItems) / 100 : 0;
@@ -756,55 +919,27 @@ export function NewBookingView({
       return;
     }
 
+    if (!draftBookingId) {
+      toast.error('Dokumente werden vorbereitet', {
+        description: draftBundleError || 'Bitte warten, bis die Checkout-Dokumente erstellt wurden.',
+      });
+      return;
+    }
+
     setIsSavingBooking(true);
     try {
       const insuranceLabel = selectedInsurances.length > 0
         ? insuranceOptions.filter((i) => selectedInsurances.includes(i.id)).map((i) => i.label).join(', ')
         : 'Haftpflicht';
       const paymentLabel = paymentMethod === 'card' ? 'Kreditkarte' : paymentMethod === 'cash' ? 'Barzahlung' : 'Rechnung';
-      const pickupName = orgStations.find((s) => s.id === pickupStationId)?.name ?? '';
-      const returnName = orgStations.find((s) => s.id === effectiveReturnStationId)?.name ?? '';
 
-      const extrasForPayload = extras
-        .map((id) => {
-          const opt = extraOptions.find((o) => o.id === id);
-          if (!opt) return null;
-          const line = findLineItemBySourceId(priceSim.lineItems, opt.id);
-          return {
-            id: opt.id,
-            name: line?.label ?? opt.label,
-            price: line
-              ? line.totalGrossCents / 100
-              : grossFromNetCents(opt.priceCents, resolvedTaxRatePercent) / 100,
-          };
-        })
-        .filter(Boolean) as Array<{ id: string; name: string; price: number }>;
-
-      const payload = buildBookingCreatePayload({
-        vehicleId: selectedVehicle.id,
-        customerId: selectedCustomer.id,
-        pickupDate,
-        pickupTime,
-        returnDate,
-        returnTime,
-        pickupStationId,
-        returnStationId: effectiveReturnStationId,
-        includedKm: totalFreeKm,
-        insuranceLabels: insuranceLabel ? [insuranceLabel] : [],
-        extras: extrasForPayload,
-        pricingInput: {
-          selectedMileagePackageId: selectedMileagePackage ?? undefined,
-          selectedInsuranceOptionIds: selectedInsurances,
-          selectedExtraOptionIds: extras,
-          manualDiscountCents,
-        },
-        quoteId: priceSim.quoteId,
-        notes: `Abholung: ${pickupName || selectedVehicle.station} • Rückgabe: ${returnName || pickupName || selectedVehicle.station} • Zahlung: ${paymentLabel}`,
+      const confirmed = await api.bookings.confirmWizardDraft(orgId, draftBookingId, {
+        agbAccepted,
+        privacyAccepted,
         status: customerEligibility?.canConfirmBooking ? 'CONFIRMED' : 'PENDING',
       });
-
-      const created = await api.bookings.create(orgId, payload as any);
-      const uiBooking = mapApiBooking(created);
+      draftConfirmedRef.current = true;
+      const uiBooking = mapApiBooking(confirmed.booking);
 
       setCreatedBookingRef(uiBooking.bookingRef ?? uiBooking.id ?? null);
       setBookingConfirmed(true);
@@ -1080,6 +1215,8 @@ export function NewBookingView({
     setRedirectCountdown(null);
     setBookingConfirmed(false);
     setCreatedBookingRef(null);
+    draftConfirmedRef.current = false;
+    resetWizardDraftState();
     setCurrentStep(1);
     setSelectedCustomer(null);
     setSelectedVehicle(null);
@@ -1089,11 +1226,6 @@ export function NewBookingView({
     setSelectedMileagePackage(null);
     setSelectedInsurances([]);
     setDiscountPercent(0);
-    setInvoiceGenerated(false);
-    setContractGenerated(false);
-    setGeneratingInvoice(false);
-    setGeneratingContract(false);
-    setQuickViewDoc(null);
   };
 
   const summaryPanelProps = {
@@ -1155,7 +1287,7 @@ export function NewBookingView({
               </div>
             )}
             <button
-              onClick={onBack}
+              onClick={() => void handleLeaveWizard()}
               aria-label="Back"
               className="shrink-0 rounded-lg border p-2.5 transition-all duration-200 hover:shadow-md surface-premium border-border text-muted-foreground hover:bg-muted"
             >
@@ -1190,7 +1322,7 @@ export function NewBookingView({
           pricingCurrency={pricingCurrency}
           bookingRef={createdBookingRef}
           redirectCountdown={redirectCountdown}
-          onBack={onBack}
+          onBack={() => void handleLeaveWizard()}
           onNewBooking={handleResetBooking}
         />
       ) : (
@@ -1346,10 +1478,10 @@ export function NewBookingView({
               />
             )}
 
-            {currentStep === 5 && (
+            {currentStep === 5 && orgId && (
               <CheckoutStep
+                orgId={orgId}
                 selectedCustomer={selectedCustomer}
-                selectedVehicle={selectedVehicle}
                 paymentMethod={paymentMethod}
                 onPaymentMethodChange={setPaymentMethod}
                 discountPercent={discountPercent}
@@ -1359,40 +1491,11 @@ export function NewBookingView({
                 privacyAccepted={privacyAccepted}
                 onAgbAcceptedChange={setAgbAccepted}
                 onPrivacyAcceptedChange={setPrivacyAccepted}
-                invoiceGenerated={invoiceGenerated}
-                contractGenerated={contractGenerated}
-                generatingInvoice={generatingInvoice}
-                generatingContract={generatingContract}
-                onGenerateInvoice={() => {
-                  setGeneratingInvoice(true);
-                  setTimeout(() => {
-                    setGeneratingInvoice(false);
-                    setInvoiceGenerated(true);
-                  }, 1500);
-                }}
-                onGenerateContract={() => {
-                  setGeneratingContract(true);
-                  setTimeout(() => {
-                    setGeneratingContract(false);
-                    setContractGenerated(true);
-                  }, 2000);
-                }}
-                quickViewDoc={quickViewDoc}
-                onQuickViewDocChange={setQuickViewDoc}
-                pickupDate={pickupDate}
-                returnDate={returnDate}
-                pickupTime={pickupTime}
-                returnTime={returnTime}
-                rentalDays={rentalDays}
-                displayRentalDays={displayRentalDays}
-                taxRatePercent={resolvedTaxRatePercent}
-                subtotal={subtotal}
-                extrasTotal={extrasTotal}
-                tax={tax}
-                grandTotal={grandTotal}
-                depositAmount={depositAmount}
-                totalFreeKm={totalFreeKm}
-                dailyRateGross={dailyRateGross}
+                draftBookingId={draftBookingId}
+                draftBundle={draftBundle}
+                draftBundleLoading={draftBundleLoading}
+                draftBundleError={draftBundleError}
+                onRefreshDraftBundle={() => void refreshDraftBundle()}
                 pricingCurrency={pricingCurrency}
               />
             )}

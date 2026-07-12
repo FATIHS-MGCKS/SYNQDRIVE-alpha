@@ -103,7 +103,7 @@ describe('buildDocumentStatusGroups', () => {
   it('groups manageable, system, and unconnected documents', () => {
     const groups = buildDocumentStatusGroups([]);
     expect(groups.map((g) => g.id)).toEqual(['manageable', 'system', 'unconnected']);
-    expect(groups[0].rows.map((r) => r.label)).toEqual(['AGB', 'Widerrufsbelehrung']);
+    expect(groups[0].rows.map((r) => r.label)).toEqual(['AGB', 'Widerrufsbelehrung', 'Datenschutzerklärung']);
     expect(groups[1].rows.every((r) => r.status === 'generated')).toBe(true);
     expect(groups[2].rows.every((r) => r.status === 'unconnected')).toBe(true);
   });
@@ -132,11 +132,10 @@ describe('buildDocumentStatusGroups', () => {
     });
   });
 
-  it('shows privacy and telematics as not yet connected', () => {
+  it('shows telematics consent as not yet connected', () => {
     const groups = buildDocumentStatusGroups([]);
     const unconnected = groups.find((g) => g.id === 'unconnected')!;
-    expect(unconnected.rows[0].detail).toContain('Data Authorization');
-    expect(unconnected.rows[1].label).toContain('Telematik');
+    expect(unconnected.rows[0].label).toContain('Telematik');
   });
 });
 

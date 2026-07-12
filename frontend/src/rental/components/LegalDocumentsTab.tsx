@@ -23,6 +23,11 @@ const LEGAL_TYPES: { key: string; title: string; hint: string }[] = [
     title: 'Widerrufsbelehrung',
     hint: 'Pflichtinformation zum Widerrufsrecht, wird der Buchung beigefügt.',
   },
+  {
+    key: 'PRIVACY_POLICY',
+    title: 'Datenschutzerklärung',
+    hint: 'Wird dem Kunden bei der Buchung zur Verfügung gestellt und kann per E-Mail versendet werden.',
+  },
 ];
 
 interface LegalDocumentsTabProps {
@@ -59,6 +64,7 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
   const [uploads, setUploads] = useState<Record<string, UploadState>>({
     TERMS_AND_CONDITIONS: { versionLabel: '', title: '', busy: false },
     WITHDRAWAL_INFORMATION: { versionLabel: '', title: '', busy: false },
+    PRIVACY_POLICY: { versionLabel: '', title: '', busy: false },
   });
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 

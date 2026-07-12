@@ -257,6 +257,7 @@ export const en = {
   'email.docType.DEPOSIT_RECEIPT': 'Deposit receipt',
   'email.docType.RENTAL_CONTRACT': 'Rental contract',
   'email.docType.TERMS_AND_CONDITIONS': 'Terms & conditions',
+  'email.docType.PRIVACY_POLICY': 'Privacy policy',
   'email.docType.WITHDRAWAL_INFORMATION': 'Withdrawal information',
   'email.docType.HANDOVER_PICKUP': 'Handover protocol (pickup)',
   'email.docType.HANDOVER_RETURN': 'Handover protocol (return)',
