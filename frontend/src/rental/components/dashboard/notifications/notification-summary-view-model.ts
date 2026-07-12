@@ -90,8 +90,10 @@ function summaryFromItem(
   const t = createNotificationTranslator(locale);
   const severity = resolveSeverity(item);
 
+  const isTariffFleetAlert =
+    item.id === 'derived-vehicles-without-tariff' || item.issueType === 'vehicles_without_tariff';
   const subtitle =
-    item.affectedVehicles && item.affectedVehicles.length > 0
+    !isTariffFleetAlert && item.affectedVehicles && item.affectedVehicles.length > 0
       ? formatAffectedVehiclesPreview(item.affectedVehicles, locale)
       : undefined;
 
