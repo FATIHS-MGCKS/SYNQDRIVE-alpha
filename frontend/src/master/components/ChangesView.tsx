@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'clickhouse-log-hardening-v49388-2026-07-12',
+    version: '4.9.388',
+    title: 'V4.9.388 — ClickHouse/VPS: Log-Härtung gegen Disk-Full',
+    summary: [
+      'ClickHouse: logger `warning`, noisy system.*_log tables disabled, query_log 7d / metric_log 3d / part_log 7d TTL.',
+      'Nur langsame Queries (>1s) in query_log; Docker json-file Rotation (50m×3) für alle Infra-Container.',
+      'Ops: `vps-clickhouse-log-hardening.sh`; Deploy bricht ab bei Disk ≥90%.',
+    ],
+    reason: 'Docker-ClickHouse-json.log wuchs auf 168 GB (trace-Level + keine Rotation) → Postgres/Redis/App-Ausfall.',
+    previousBehavior: 'Default image trace logging; unbounded Docker logs; ~2.5 GB system.*_log tables on VPS.',
+    details:
+      'docker/clickhouse/config.d/01_logger.xml, z_system_logs.xml, users.d/z_log_profiles.xml, docker-compose.yml, vps-clickhouse-log-hardening.sh, vps-deploy-release.sh.',
+    affectsArchitecture: true,
+    module: 'Infrastructure',
+    createdAt: '2026-07-12T15:50:00.000Z',
+  },
+  {
     id: 'dashboard-tariff-alert-icon-count-v49387-2026-07-12',
     version: '4.9.387',
     title: 'V4.9.387 — Tarif-Meldung: Tag-Icon + Anzahl betroffener Fahrzeuge',

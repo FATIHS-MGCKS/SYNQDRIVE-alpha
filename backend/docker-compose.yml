@@ -2,6 +2,11 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: synqdrive-postgres
+    logging: &docker_log_limits
+      driver: json-file
+      options:
+        max-size: '50m'
+        max-file: '3'
     ports:
       - '5432:5432'
     environment:
@@ -19,6 +24,7 @@ services:
   redis:
     image: redis:7-alpine
     container_name: synqdrive-redis
+    logging: *docker_log_limits
     ports:
       - '6379:6379'
     volumes:
@@ -35,6 +41,7 @@ services:
   clickhouse:
     image: clickhouse/clickhouse-server:25.8
     container_name: synqdrive-clickhouse
+    logging: *docker_log_limits
     ports:
       # Bind to localhost only — never expose ClickHouse publicly.
       - '127.0.0.1:8123:8123'
@@ -53,6 +60,9 @@ services:
       - clickhouse_logs:/var/log/clickhouse-server
       - ./storage/clickhouse/backups:/backups
       - ./docker/clickhouse/config.d/backup_disk.xml:/etc/clickhouse-server/config.d/backup_disk.xml:ro
+      - ./docker/clickhouse/config.d/01_logger.xml:/etc/clickhouse-server/config.d/01_logger.xml:ro
+      - ./docker/clickhouse/config.d/z_system_logs.xml:/etc/clickhouse-server/config.d/z_system_logs.xml:ro
+      - ./docker/clickhouse/users.d/z_log_profiles.xml:/etc/clickhouse-server/users.d/z_log_profiles.xml:ro
     healthcheck:
       test:
         - 'CMD-SHELL'
@@ -71,6 +81,7 @@ services:
     profiles: [monitoring]
     image: prom/prometheus:v2.54.1
     container_name: synqdrive-prometheus
+    logging: *docker_log_limits
     ports:
       - '127.0.0.1:9090:9090'
     volumes:
