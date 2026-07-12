@@ -191,6 +191,9 @@ export const en = {
   'email.settings.replyTo': 'Reply-To',
   'email.settings.replyToPlaceholder': 'billing@your-domain.com',
   'email.settings.signature': 'Signature (HTML)',
+  'email.settings.autoSendBookingDocs': 'Automatically send booking documents after confirmation',
+  'email.settings.autoSendBookingDocsHint':
+    'After completing a booking (wizard or operator), all sendable PDFs are emailed to the customer. Manual send and print remain available anytime.',
   'email.settings.save': 'Save',
   'email.settings.saved': 'Email settings saved',
   'email.settings.loadError': 'Failed to load',

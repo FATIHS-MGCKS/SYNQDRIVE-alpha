@@ -10,6 +10,7 @@ import { Icon } from '../ui/Icon';
 
 const CHECKOUT_DOC_TYPES = [
   { type: 'TERMS_AND_CONDITIONS', icon: 'file-text' as const, tone: 'text-[color:var(--status-info)]' },
+  { type: 'WITHDRAWAL_INFORMATION', icon: 'file-text' as const, tone: 'text-[color:var(--status-watch)]' },
   { type: 'PRIVACY_POLICY', icon: 'shield' as const, tone: 'text-[color:var(--status-ai)]' },
   { type: 'BOOKING_INVOICE', icon: 'receipt' as const, tone: 'text-[color:var(--status-watch)]' },
   { type: 'RENTAL_CONTRACT', icon: 'file-text' as const, tone: 'text-[color:var(--status-positive)]' },
@@ -23,6 +24,7 @@ export interface CheckoutDocumentsPanelProps {
   loading: boolean;
   error?: string | null;
   onRefresh?: () => void;
+  showBulkSend?: boolean;
 }
 
 export function CheckoutDocumentsPanel({
@@ -33,6 +35,7 @@ export function CheckoutDocumentsPanel({
   loading,
   error,
   onRefresh,
+  showBulkSend = false,
 }: CheckoutDocumentsPanelProps) {
   const { t } = useLanguage();
   const [sendOpen, setSendOpen] = useState(false);
@@ -73,6 +76,7 @@ export function CheckoutDocumentsPanel({
         const doc = docsByType.get(type);
         const label = emailDocTypeLabel(t, type);
         const ready = doc && isEmailSendableDocument(doc.status);
+        const sent = doc?.status === 'SENT';
         return (
           <div
             key={type}
@@ -83,9 +87,15 @@ export function CheckoutDocumentsPanel({
               <div className="min-w-0">
                 <span className="text-xs text-foreground">{label}</span>
                 {ready ? (
-                  <span className="ml-2 rounded-full px-1.5 py-0.5 text-[11px] sq-chip-success">
-                    Bereit
-                  </span>
+                  sent ? (
+                    <span className="ml-2 rounded-full px-1.5 py-0.5 text-[11px] sq-chip-neutral">
+                      Versendet
+                    </span>
+                  ) : (
+                    <span className="ml-2 rounded-full px-1.5 py-0.5 text-[11px] sq-chip-success">
+                      Bereit
+                    </span>
+                  )
                 ) : (
                   <span className="ml-2 text-[11px] text-muted-foreground">
                     {loading ? 'Wird erstellt…' : 'Noch nicht verfügbar'}
@@ -116,6 +126,20 @@ export function CheckoutDocumentsPanel({
           </div>
         );
       })}
+
+      {showBulkSend && bookingId && sendableDocs.length > 0 && (
+        <button
+          type="button"
+          disabled={!customerEmail}
+          onClick={() => {
+            setPreselectedIds(sendableDocs.map((d) => d.id));
+            setSendOpen(true);
+          }}
+          className="sq-3d-btn sq-3d-btn--primary w-full px-3 py-2 text-xs disabled:opacity-50"
+        >
+          {t('email.send.sendAll')}
+        </button>
+      )}
 
       {bookingId && (
         <SendDocumentsEmailModal

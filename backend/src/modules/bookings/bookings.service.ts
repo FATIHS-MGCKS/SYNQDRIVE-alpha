@@ -37,7 +37,9 @@ import type {
   HandoverSideSummary,
 } from './booking-detail.types';
 import { DOCUMENT_TYPE } from '@modules/documents/documents.constants';
+import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
 import { formatStationAddress } from '@modules/stations/station.types';
+import { BookingDocumentEmailService } from '@modules/outbound-email/booking-document-email.service';
 import type { Station } from '@prisma/client';
 
 const BOOKING_STATUS_DISPLAY: Record<string, string> = {
@@ -65,6 +67,10 @@ export class BookingsService {
     // booking is confirmed. Fire-and-forget; never blocks/breaks booking create.
     @Inject(forwardRef(() => BookingDocumentBundleService))
     private readonly bookingDocumentBundleService: BookingDocumentBundleService,
+    @Inject(forwardRef(() => GeneratedDocumentsService))
+    private readonly generatedDocumentsService: GeneratedDocumentsService,
+    @Inject(forwardRef(() => BookingDocumentEmailService))
+    private readonly bookingDocumentEmailService: BookingDocumentEmailService,
     // V4.8.3 Task Action Layer — materializes booking lifecycle tasks
     // (preparation / pickup / return / invoice). Idempotent + fire-and-forget;
     // never blocks/breaks booking writes.
@@ -260,13 +266,21 @@ export class BookingsService {
       })
       .catch(() => null);
 
-    // Generate the initial document bundle once the booking is CONFIRMED.
-    // Sequenced AFTER the invoice attempt so the bundle reuses that invoice
-    // instead of creating a duplicate. Fully fire-and-forget — booking creation
-    // is never blocked or failed by document generation.
-    if (booking.status === 'CONFIRMED') {
+    // Generate the initial document bundle for operator/rental bookings once
+    // created (PENDING or CONFIRMED). Wizard checkout drafts call generate
+    // explicitly as well — the bundle service is idempotent.
+    if (booking.status === 'CONFIRMED' || booking.status === 'PENDING') {
       void invoicePromise
         .then(() => this.bookingDocumentBundleService.generateInitialBundle(orgId, booking.id))
+        .then(() => {
+          if (booking.status === 'CONFIRMED') {
+            return this.bookingDocumentEmailService.maybeAutoSendBookingDocuments(
+              orgId,
+              booking.id,
+              options?.userId ?? null,
+            );
+          }
+        })
         .catch(() => {});
     }
 
@@ -1653,7 +1667,12 @@ export class BookingsService {
     // Generate the initial document bundle when a booking transitions INTO
     // CONFIRMED via update. Idempotent + fire-and-forget.
     if (updated.status === 'CONFIRMED' && existing.status !== 'CONFIRMED') {
-      this.bookingDocumentBundleService.generateInitialBundle(orgId, id).catch(() => {});
+      void this.bookingDocumentBundleService
+        .generateInitialBundle(orgId, id)
+        .then(() =>
+          this.bookingDocumentEmailService.maybeAutoSendBookingDocuments(orgId, id, null),
+        )
+        .catch(() => {});
     }
     // Materialize booking lifecycle tasks on any status transition. The
     // automation service is idempotent (dedup per generatedKey), so calling it
@@ -1677,6 +1696,8 @@ export class BookingsService {
       where: { id, organizationId: orgId },
       include: { vehicle: true },
     });
+
+    await this.generatedDocumentsService.voidAllForBooking(orgId, id).catch(() => {});
 
     const [updated] = await this.prisma.$transaction([
       this.prisma.booking.update({

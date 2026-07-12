@@ -262,6 +262,13 @@ export function NewBookingView({
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [bookingConfirmed, setBookingConfirmed] = useState(false);
   const [createdBookingRef, setCreatedBookingRef] = useState<string | null>(null);
+  const [confirmedBookingId, setConfirmedBookingId] = useState<string | null>(null);
+  const [confirmedBundle, setConfirmedBundle] = useState<BookingDocumentBundleView | null>(null);
+  const [confirmAutoSend, setConfirmAutoSend] = useState<{
+    sent: boolean;
+    reason?: string;
+    error?: string;
+  } | null>(null);
   const [draftBookingId, setDraftBookingId] = useState<string | null>(null);
   const [draftBundle, setDraftBundle] = useState<BookingDocumentBundleView | null>(null);
   const [draftBundleLoading, setDraftBundleLoading] = useState(false);
@@ -941,6 +948,9 @@ export function NewBookingView({
       draftConfirmedRef.current = true;
       const uiBooking = mapApiBooking(confirmed.booking);
 
+      setConfirmedBookingId(uiBooking.id);
+      setConfirmedBundle(confirmed.bundle);
+      setConfirmAutoSend(confirmed.autoSend ?? null);
       setCreatedBookingRef(uiBooking.bookingRef ?? uiBooking.id ?? null);
       setBookingConfirmed(true);
       toast.success('Buchung erfolgreich erstellt!', {
@@ -1215,6 +1225,9 @@ export function NewBookingView({
     setRedirectCountdown(null);
     setBookingConfirmed(false);
     setCreatedBookingRef(null);
+    setConfirmedBookingId(null);
+    setConfirmedBundle(null);
+    setConfirmAutoSend(null);
     draftConfirmedRef.current = false;
     resetWizardDraftState();
     setCurrentStep(1);
@@ -1313,8 +1326,10 @@ export function NewBookingView({
       )}
 
       {/* Step Content */}
-      {bookingConfirmed ? (
+      {bookingConfirmed && orgId ? (
         <BookingSuccessState
+          orgId={orgId}
+          bookingId={confirmedBookingId}
           selectedCustomer={selectedCustomer}
           selectedVehicle={selectedVehicle}
           rentalDays={rentalDays}
@@ -1322,10 +1337,12 @@ export function NewBookingView({
           pricingCurrency={pricingCurrency}
           bookingRef={createdBookingRef}
           redirectCountdown={redirectCountdown}
+          initialBundle={confirmedBundle}
+          autoSend={confirmAutoSend}
           onBack={() => void handleLeaveWizard()}
           onNewBooking={handleResetBooking}
         />
-      ) : (
+      ) : bookingConfirmed ? null : (
         <div className="grid w-full min-w-0 max-w-full grid-cols-1 gap-3 lg:grid-cols-3">
           {/* Main Content - 2 cols on desktop */}
           <div className="min-w-0 space-y-5 lg:col-span-2">

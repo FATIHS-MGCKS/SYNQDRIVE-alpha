@@ -85,6 +85,7 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
         defaultFromName: settings.defaultFromName,
         replyToEmail: settings.replyToEmail,
         signatureHtml: settings.signatureHtml,
+        autoSendBookingDocumentsOnConfirm: settings.autoSendBookingDocumentsOnConfirm,
       };
       const updated = await api.orgEmail.updateSettings(orgId, payload);
       setSettings(updated);
@@ -292,6 +293,24 @@ export function EmailVersandTab({ isDarkMode }: EmailVersandTabProps) {
                 placeholder="<p>Mit freundlichen Grüßen<br/>Ihr Team</p>"
               />
             </div>
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-muted/30 p-3">
+              <input
+                type="checkbox"
+                disabled={!canManage}
+                checked={settings.autoSendBookingDocumentsOnConfirm}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    autoSendBookingDocumentsOnConfirm: e.target.checked,
+                  })
+                }
+                className="mt-0.5"
+              />
+              <span className="text-xs text-foreground">
+                <span className="font-medium">{t('email.settings.autoSendBookingDocs')}</span>
+                <span className={`mt-1 block ${subtle}`}>{t('email.settings.autoSendBookingDocsHint')}</span>
+              </span>
+            </label>
             {canManage && (
               <button
                 type="button"

@@ -1051,6 +1051,7 @@ export interface OrgEmailSettingsDto {
   defaultFromName: string | null;
   replyToEmail: string | null;
   signatureHtml: string | null;
+  autoSendBookingDocumentsOnConfirm: boolean;
   platformSender: {
     fromEmail: string;
     fromName: string;
@@ -1061,7 +1062,7 @@ export interface OrgEmailSettingsDto {
 /** Writable fields for PUT /organizations/:orgId/email/settings (excludes read-only platformSender). */
 export type UpdateOrgEmailSettingsPayload = Pick<
   OrgEmailSettingsDto,
-  'mode' | 'defaultFromName' | 'replyToEmail' | 'signatureHtml'
+  'mode' | 'defaultFromName' | 'replyToEmail' | 'signatureHtml' | 'autoSendBookingDocumentsOnConfirm'
 >;
 
 export interface PlatformEmailSettingsAdminDto {
@@ -1159,6 +1160,11 @@ export interface BookingDocumentBundleView {
 export interface BookingWizardDraftResult {
   booking: Record<string, unknown> & { id: string; bookingRef?: string | null; status?: string };
   bundle: BookingDocumentBundleView;
+  autoSend?: {
+    sent: boolean;
+    reason?: string;
+    error?: string;
+  } | null;
 }
 
 export type BookingDetailDocumentSlot = {

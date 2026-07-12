@@ -252,6 +252,80 @@ export class BookingDocumentEmailService {
     return this.outboundEmail.toDto(updated);
   }
 
+  /**
+   * When enabled in org email settings, sends all email-ready booking documents
+   * to the customer after confirmation. Best-effort — never throws to callers.
+   */
+  async maybeAutoSendBookingDocuments(
+    orgId: string,
+    bookingId: string,
+    userId: string | null,
+  ) {
+    try {
+      const settings = await this.prisma.orgEmailSettings.findUnique({
+        where: { organizationId: orgId },
+      });
+      if (!settings?.autoSendBookingDocumentsOnConfirm) {
+        return { sent: false as const, reason: 'DISABLED' as const };
+      }
+
+      const recentSend = await this.prisma.outboundEmail.count({
+        where: {
+          organizationId: orgId,
+          bookingId,
+          sourceType: OutboundEmailSourceType.BOOKING_DOCUMENTS,
+          status: {
+            in: [
+              OutboundEmailStatus.QUEUED,
+              OutboundEmailStatus.SENDING,
+              OutboundEmailStatus.SENT,
+              OutboundEmailStatus.SENT_SIMULATED,
+            ],
+          },
+          createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) },
+        },
+      });
+      if (recentSend > 0) {
+        return { sent: false as const, reason: 'ALREADY_SENT_RECENTLY' as const };
+      }
+
+      const booking = await this.prisma.booking.findFirst({
+        where: { id: bookingId, organizationId: orgId },
+        include: { customer: true },
+      });
+      if (!booking) return { sent: false as const, reason: 'BOOKING_NOT_FOUND' as const };
+
+      const toEmail = booking.customer?.email?.trim();
+      if (!toEmail) return { sent: false as const, reason: 'NO_CUSTOMER_EMAIL' as const };
+
+      const docs = await this.generatedDocuments.listForBooking(orgId, bookingId);
+      const sendable = docs.filter((d) => isEmailSendableDocumentStatus(d.status));
+      if (sendable.length === 0) {
+        return { sent: false as const, reason: 'NO_SENDABLE_DOCUMENTS' as const };
+      }
+
+      const bookingNumber = booking.id.slice(0, 8).toUpperCase();
+      const subject = `Ihre Buchungsdokumente — ${bookingNumber}`;
+      const bodyHtml =
+        '<p>Sehr geehrte Damen und Herren,</p><p>im Anhang finden Sie die Dokumente zu Ihrer Buchung.</p><p>Mit freundlichen Grüßen</p>';
+
+      const result = await this.sendBookingDocuments(orgId, bookingId, userId, {
+        toEmail,
+        subject,
+        bodyHtml,
+        documentIds: sendable.map((d) => d.id),
+      });
+
+      return { sent: true as const, email: result };
+    } catch (err) {
+      return {
+        sent: false as const,
+        reason: 'FAILED' as const,
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+
   async sendTestEmail(orgId: string, userId: string | null, toEmail: string) {
     if (!this.policy.isValidEmail(toEmail)) {
       throw new BadRequestException('Invalid recipient email');

@@ -9,6 +9,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
 import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
 import { InvoicesService } from '@modules/invoices/invoices.service';
+import { BookingDocumentEmailService } from '@modules/outbound-email/booking-document-email.service';
 import { PricingService } from '@modules/pricing/pricing.service';
 import {
   PricingQuoteService,
@@ -37,6 +38,7 @@ export class BookingWizardDraftService {
     private readonly bundleService: BookingDocumentBundleService,
     private readonly generatedDocuments: GeneratedDocumentsService,
     private readonly invoicesService: InvoicesService,
+    private readonly bookingDocumentEmailService: BookingDocumentEmailService,
   ) {}
 
   async createOrRefreshDraft(
@@ -159,7 +161,7 @@ export class BookingWizardDraftService {
     orgId: string,
     bookingId: string,
     body: BookingWizardDraftConfirmDto,
-    _options?: { userId?: string | null },
+    options?: { userId?: string | null },
   ) {
     const draft = await this.requireWizardDraft(orgId, bookingId);
     const targetStatus: BookingStatus = body.status === 'PENDING' ? 'PENDING' : 'CONFIRMED';
@@ -168,7 +170,12 @@ export class BookingWizardDraftService {
       notes: stripWizardDraftMarker(draft.notes) || null,
     });
     const bundle = await this.bundleService.getBundleView(orgId, bookingId);
-    return { booking, bundle };
+    const autoSend = await this.bookingDocumentEmailService.maybeAutoSendBookingDocuments(
+      orgId,
+      bookingId,
+      options?.userId ?? null,
+    );
+    return { booking, bundle, autoSend };
   }
 
   async abortDraft(orgId: string, bookingId: string) {
