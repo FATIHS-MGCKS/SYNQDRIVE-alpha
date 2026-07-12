@@ -265,6 +265,21 @@ export class PricingQuoteService {
     }
   }
 
+  async releaseQuoteFromWizardDraft(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    bookingId: string,
+  ): Promise<void> {
+    await tx.pricingQuote.updateMany({
+      where: { organizationId, consumedByBookingId: bookingId },
+      data: {
+        status: PricingQuoteStatus.EXPIRED,
+        consumedByBookingId: null,
+        consumedAt: null,
+      },
+    });
+  }
+
   decodeStoredQuote(quote: {
     pricingContextJson: Prisma.JsonValue;
     pricingInputJson: Prisma.JsonValue;

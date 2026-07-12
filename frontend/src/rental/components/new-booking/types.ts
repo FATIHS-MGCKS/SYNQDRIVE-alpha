@@ -14,6 +14,7 @@ import type { AddCustomerFormState } from '../../lib/add-customer-wizard';
 import type { CustomerVerificationPlanState } from '../add-customer/AddCustomerVerificationPlanSection';
 import type { PendingCustomerDocumentFiles } from '../../lib/entityMappers';
 import type { CustomerVerificationEligibility } from '../../lib/customer-verification';
+import type { BookingDocumentBundleView } from '../../../lib/api';
 
 export type BookingPaymentMethod = 'card' | 'cash' | 'invoice';
 
@@ -204,8 +205,8 @@ export interface CustomerStepProps {
 }
 
 export interface CheckoutStepProps {
+  orgId: string;
   selectedCustomer: BookingCustomer | null;
-  selectedVehicle: VehicleData | null;
   paymentMethod: BookingPaymentMethod;
   onPaymentMethodChange: (method: BookingPaymentMethod) => void;
   discountPercent: number;
@@ -215,27 +216,10 @@ export interface CheckoutStepProps {
   privacyAccepted: boolean;
   onAgbAcceptedChange: (accepted: boolean) => void;
   onPrivacyAcceptedChange: (accepted: boolean) => void;
-  invoiceGenerated: boolean;
-  contractGenerated: boolean;
-  generatingInvoice: boolean;
-  generatingContract: boolean;
-  onGenerateInvoice: () => void;
-  onGenerateContract: () => void;
-  quickViewDoc: 'invoice' | 'contract' | null;
-  onQuickViewDocChange: (doc: 'invoice' | 'contract' | null) => void;
-  pickupDate: string;
-  returnDate: string;
-  pickupTime: string;
-  returnTime: string;
-  rentalDays: number;
-  displayRentalDays: number;
-  taxRatePercent: number;
-  subtotal: number;
-  extrasTotal: number;
-  tax: number | null;
-  grandTotal: number | null;
-  depositAmount: number | null;
-  totalFreeKm: number;
-  dailyRateGross: number | null;
+  draftBookingId: string | null;
+  draftBundle: BookingDocumentBundleView | null;
+  draftBundleLoading: boolean;
+  draftBundleError: string | null;
+  onRefreshDraftBundle: () => void;
   pricingCurrency: string | null;
 }
