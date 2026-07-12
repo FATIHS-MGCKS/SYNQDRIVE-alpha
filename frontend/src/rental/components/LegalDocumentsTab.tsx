@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 
 import { api, type LegalDocumentDto } from '../../lib/api';
+import { Button } from '../../../components/ui/button';
 import { useRentalOrg } from '../RentalContext';
 import { isLegalPdfFile } from '../lib/legal-documents.utils';
 
@@ -323,17 +324,16 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
                         isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground' : 'bg-white border-gray-300 text-gray-900'
                       }`}
                     />
-                    <button
+                    <Button
                       type="button"
+                      variant="primary"
+                      size="sm"
                       disabled={up?.busy}
                       onClick={() => openFilePicker(type.key)}
-                      className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium ${
-                        isDarkMode ? 'bg-white text-neutral-900 hover:bg-gray-100' : 'bg-neutral-900 text-white hover:surface-premium'
-                      } disabled:opacity-50`}
                     >
-                      {up?.busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                      {up?.busy ? <Loader2 className="animate-spin" /> : <Upload />}
                       PDF hochladen
-                    </button>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -364,33 +364,34 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
                         </div>
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <button
+                        <Button
                           type="button"
+                          variant="ghost"
+                          size="icon"
                           title="Herunterladen"
                           onClick={() => void api.legalDocuments.open(orgId, v.id)}
-                          className={`p-1.5 rounded-lg ${isDarkMode ? 'hover:bg-muted/80 text-foreground/85' : 'hover:bg-gray-200 text-gray-600'}`}
                         >
-                          <Download className="w-4 h-4" />
-                        </button>
+                          <Download />
+                        </Button>
                         {isOrgAdmin && v.status !== 'ACTIVE' && (
-                          <button
+                          <Button
                             type="button"
+                            variant="success"
+                            size="sm"
                             onClick={() => void handleActivate(v.id)}
-                            className={`text-xs font-medium px-2 py-1 rounded-lg ${
-                              isDarkMode ? 'bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25' : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                            }`}
                           >
                             Aktivieren
-                          </button>
+                          </Button>
                         )}
                         {isOrgAdmin && v.status === 'DRAFT' && (
-                          <button
+                          <Button
                             type="button"
+                            variant="ghost"
+                            size="sm"
                             onClick={() => void handleArchive(v.id)}
-                            className={`text-xs font-medium px-2 py-1 rounded-lg ${isDarkMode ? 'text-muted-foreground hover:bg-muted/80' : 'text-gray-500 hover:bg-gray-200'}`}
                           >
                             Archivieren
-                          </button>
+                          </Button>
                         )}
                       </div>
                     </div>
