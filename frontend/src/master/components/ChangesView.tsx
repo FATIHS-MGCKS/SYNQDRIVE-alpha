@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pricing-delete-quotes-fk-v49379-2026-07-12',
+    version: '4.9.379',
+    title: 'V4.9.379 — Tarif löschen: PricingQuotes vor Version-Cascade entfernen',
+    summary: [
+      '`deleteTariffGroup` und `discardDraftVersion` löschen zuerst abhängige `pricing_quotes`.',
+      'Behebt Internal Server Error beim Löschen von Sedan (und anderen Gruppen mit Simulator-Quotes).',
+    ],
+    reason:
+      '`pricing_quotes.tariff_version_id` ist NOT NULL, FK nutzt aber ON DELETE SET NULL — PostgreSQL blockiert das Löschen der Tarifversion.',
+    previousBehavior: 'DELETE Tarifgruppe → 500 Internal Server Error wenn Quotes auf Versionen der Gruppe zeigen.',
+    details: 'price-tariffs.service.ts, pricing-tariff-assignments.spec.ts, pricing-test-store.ts.',
+    affectsArchitecture: false,
+    module: 'Pricing',
+    createdAt: '2026-07-12T09:15:00.000Z',
+  },
+  {
     id: 'pricing-tariffs-delete-options-reassign-v49378-2026-07-12',
     version: '4.9.378',
     title: 'V4.9.378 — Preise & Tarife: Löschen, Extras bearbeiten, Fahrzeug-Neuzuweisung',

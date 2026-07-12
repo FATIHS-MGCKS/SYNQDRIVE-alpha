@@ -93,4 +93,33 @@ describe('Tariff assignments and deletion', () => {
     const assignment = store.assignments.find((a) => a.id === ids.assignmentId);
     expect(assignment?.isActive).toBe(false);
   });
+
+  it('deleteTariffGroup removes pricing quotes that block version cascade delete', async () => {
+    const { store, tariffs } = build();
+    store.quotes.push({
+      id: 'quote-sedan-active',
+      organizationId: ids.orgId,
+      createdByUserId: null,
+      vehicleId: ids.vehicleId,
+      pickupAt: new Date('2026-08-01T10:00:00.000Z'),
+      returnAt: new Date('2026-08-05T10:00:00.000Z'),
+      tariffVersionId: ids.activeVersionId,
+      currency: 'EUR',
+      status: 'ACTIVE',
+      calculatedAt: new Date(),
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+      consumedAt: null,
+      consumedByBookingId: null,
+      pricingContextJson: {},
+      pricingInputJson: {},
+      lineItemsJson: [],
+      totalsJson: {},
+      integrityHash: 'hash',
+    });
+
+    await tariffs.deleteTariffGroup(ids.orgId, ids.groupId);
+
+    expect(store.quotes.some((q) => q.tariffVersionId === ids.activeVersionId)).toBe(false);
+    expect(store.groups.some((g) => g.id === ids.groupId)).toBe(false);
+  });
 });

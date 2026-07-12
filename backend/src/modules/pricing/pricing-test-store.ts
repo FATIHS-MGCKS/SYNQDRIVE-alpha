@@ -927,6 +927,19 @@ export function createPricingTestStore(
           return { count };
         },
       ),
+      deleteMany: jest.fn(async ({ where }: { where: Record<string, unknown> }) => {
+        const versionIn = (where.tariffVersionId as { in?: string[] } | undefined)?.in;
+        const before = quotes.length;
+        const kept = quotes.filter((row) => {
+          if (where.organizationId && row.organizationId !== where.organizationId) return true;
+          if (versionIn && versionIn.includes(row.tariffVersionId)) return false;
+          if (where.tariffVersionId && row.tariffVersionId === where.tariffVersionId) return false;
+          return true;
+        });
+        quotes.length = 0;
+        quotes.push(...kept);
+        return { count: before - quotes.length };
+      }),
     },
     organization: {
       findFirst: jest.fn(async () => ({ timezone: 'Europe/Berlin' })),

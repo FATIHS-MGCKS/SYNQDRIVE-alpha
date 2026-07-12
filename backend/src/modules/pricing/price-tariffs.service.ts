@@ -507,6 +507,21 @@ export class PriceTariffsService {
     await this.requireGroup(orgId, groupId);
 
     await this.prisma.$transaction(async (tx) => {
+      const versionIds = (
+        await tx.priceTariffVersion.findMany({
+          where: { organizationId: orgId, tariffGroupId: groupId },
+          select: { id: true },
+        })
+      ).map((v) => v.id);
+
+      if (versionIds.length > 0) {
+        // pricing_quotes.tariff_version_id is NOT NULL but FK uses ON DELETE SET NULL —
+        // remove dependent quotes before cascading version deletion.
+        await tx.pricingQuote.deleteMany({
+          where: { organizationId: orgId, tariffVersionId: { in: versionIds } },
+        });
+      }
+
       await tx.vehicleTariffAssignment.updateMany({
         where: { organizationId: orgId, tariffGroupId: groupId, isActive: true },
         data: { isActive: false, validTo: new Date() },
@@ -531,8 +546,13 @@ export class PriceTariffsService {
       throw new BadRequestException('Nur Entwürfe können verworfen werden');
     }
 
-    await this.prisma.priceTariffVersion.delete({
-      where: { id: versionId },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.pricingQuote.deleteMany({
+        where: { organizationId: orgId, tariffVersionId: versionId },
+      });
+      await tx.priceTariffVersion.delete({
+        where: { id: versionId },
+      });
     });
 
     return { discarded: true, versionId };
