@@ -35,6 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-tariff-detail-no-duplicate-copy-v49385-2026-07-12',
+    version: '4.9.385',
+    title: 'V4.9.385 — Tarif-Meldung: kein doppelter Text im aufgeklappten Panel',
+    summary: [
+      'Aufgeklappt: nur Fahrzeugliste + CTA — Titel und „Diese Fahrzeuge sind nicht buchbar…“ entfallen im Detail.',
+      'Zugeklappt unverändert: Titel + Fahrzeug-Vorschau in der Summary-Zeile.',
+    ],
+    reason: 'Im expanded Zustand wiederholten sich Überschrift und Kurzbeschreibung aus der Summary.',
+    previousBehavior: 'Detail-Panel zeigte erneut Headline + Erklärungstext neben der Fahrzeugliste.',
+    details: 'notification-task-bridge.ts, NotificationDetailPanel.tsx.',
+    affectsArchitecture: false,
+    module: 'Pricing',
+    createdAt: '2026-07-12T11:20:00.000Z',
+  },
+  {
     id: 'dashboard-tariff-subtitle-collapsed-only-v49384-2026-07-12',
     version: '4.9.384',
     title: 'V4.9.384 — Tarif-Meldung: Fahrzeugliste nur im zugeklappten Zustand',

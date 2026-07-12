@@ -38,6 +38,8 @@ describe('tariff notification vehicle list', () => {
 
     const detail = buildNotificationDetailViewModel(enriched, 'de');
     expect(detail.ctaPrimaryLabel).toBe('Preise & Tarife öffnen');
+    expect(detail.issueTitle).toBe('');
+    expect(detail.issueDescription).toBe('');
     expect(detail.affectedVehicles).toHaveLength(3);
     expect(detail.affectedVehiclesLabel).toContain('3');
   });
