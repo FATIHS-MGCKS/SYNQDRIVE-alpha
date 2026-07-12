@@ -48,12 +48,31 @@ export function deriveOperationalInsights(input: {
   dashboardRuntime?: DashboardRuntimeModel;
   fleetLoading: boolean;
   todayBookingsLoaded: boolean;
+  unassignedTariffVehicleCount?: number;
 }): DerivedOperationalInsight[] {
   const de = input.locale === 'de';
   const items: DerivedOperationalInsight[] = [];
   const now = Date.now();
 
   if (!input.todayBookingsLoaded || input.fleetLoading) return items;
+
+  if ((input.unassignedTariffVehicleCount ?? 0) > 0) {
+    items.push({
+      id: 'derived-vehicles-without-tariff',
+      source: 'derived-operations',
+      severity: 'warning',
+      category: 'operations',
+      title: de
+        ? `${input.unassignedTariffVehicleCount} Fahrzeug(e) ohne Tarif`
+        : `${input.unassignedTariffVehicleCount} vehicle(s) without tariff`,
+      reason: de
+        ? 'Diese Fahrzeuge sind nicht buchbar, bis eine aktive Tarifgruppe zugewiesen ist.'
+        : 'These vehicles cannot be booked until an active tariff group is assigned.',
+      timeSortMs: now,
+      cta: 'open-price-tariffs',
+      isOverdue: false,
+    });
+  }
 
   const pendingPickups = input.pickupItems.filter((p) => !p.done && p.bookingId);
   const pendingReturns = input.returnItems.filter((r) => !r.done && r.bookingId);

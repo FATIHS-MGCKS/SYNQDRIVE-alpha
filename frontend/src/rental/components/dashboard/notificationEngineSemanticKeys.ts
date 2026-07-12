@@ -100,6 +100,9 @@ export function semanticKeyForDerivedInsight(insight: DerivedOperationalInsight)
   if (insight.id === 'derived-handover-backlog') {
     return 'fleet:handover:derived_handover_backlog';
   }
+  if (insight.id === 'derived-vehicles-without-tariff') {
+    return 'fleet:operations:vehicles_without_tariff';
+  }
   return `derived:${insight.category}:${insight.id}`;
 }
 

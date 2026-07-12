@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pricing-permanent-delete-unassigned-v49380-2026-07-12',
+    version: '4.9.380',
+    title: 'V4.9.380 — Tarifgruppen dauerhaft löschbar, Dashboard-Warnung, Buchung blockiert',
+    summary: [
+      '`ensureOrgPricing` erstellt gelöschte Tarifgruppen nicht mehr neu (Bootstrap nur ohne Price Book).',
+      'Gelöschte Gruppen deaktivieren Fahrzeugzuweisungen; Dashboard meldet Fahrzeuge ohne aktive Tarifgruppe.',
+      'Neue Buchung blockiert Fahrzeuge ohne Tarif hart (`no_tariff`), solange der Katalog geladen ist.',
+    ],
+    reason:
+      'Nach dem Löschen von Electric/Sedan/Compact erschienen die Gruppen beim nächsten Katalog-Load wieder, weil die Migration bei `assignmentCount === 0` die Flotte neu kategorisierte.',
+    previousBehavior:
+      'Alle Tarifgruppen löschen → `getFullCatalog`/`ensureOrgPricing` legte Electric/Sedan/Compact erneut an; Dashboard ohne Hinweis; Buchung teils ohne Tarif möglich.',
+    details:
+      'Backend: `pricing-migration.service.ts`, `pricing-migration.service.spec.ts`. Frontend: `deriveOperationalInsights`, `useDashboardViewModel` (Katalog), `booking-vehicle-preflight`, `NewBookingView`, Dashboard-CTA `open-price-tariffs`, i18n.',
+    affectsArchitecture: true,
+    module: 'Pricing',
+    createdAt: '2026-07-12T10:30:00.000Z',
+  },
+  {
     id: 'pricing-delete-quotes-fk-v49379-2026-07-12',
     version: '4.9.379',
     title: 'V4.9.379 — Tarif löschen: PricingQuotes vor Version-Cascade entfernen',

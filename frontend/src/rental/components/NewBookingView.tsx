@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect, useRef } from 'react';
+﻿import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 
 import { VehicleData } from '../data/vehicles';
@@ -9,6 +9,9 @@ import { resolveDrivingStressScore } from '../lib/scoreFormat';
 import { usePriceTariffs } from '../hooks/usePriceTariffs';
 import { usePricingSimulation } from '../hooks/usePricingSimulation';
 import {
+  formatNetAsGross,
+  getVehicleTariffFromCatalog,
+  catalogCurrency,
   discountableNetCents,
   grossFromNetCents,
   isPricingQuoteStaleError,
@@ -194,7 +197,24 @@ export function NewBookingView({
     };
   }, [orgId]);
 
-  const getVehicleDailyRateLabel = (_vehicleId: string): string | null => null;
+  const getVehicleDailyRateLabel = useCallback(
+    (vehicleId: string): string | null => {
+      if (catalogLoading) return null;
+      const ctx = getVehicleTariffFromCatalog(catalog, vehicleId);
+      if (!ctx?.version.rate) return null;
+      const currency = catalogCurrency(catalog) ?? 'EUR';
+      return formatNetAsGross(ctx.version.rate.dailyRateCents, taxRatePercent, currency);
+    },
+    [catalog, catalogLoading, taxRatePercent],
+  );
+
+  const vehicleHasTariff = useCallback(
+    (vehicleId: string): boolean => {
+      if (catalogLoading) return true;
+      return Boolean(getVehicleTariffFromCatalog(catalog, vehicleId));
+    },
+    [catalog, catalogLoading],
+  );
 
   const [currentStep, setCurrentStep] = useState<BookingWizardStepId>(1);
 
@@ -646,7 +666,7 @@ export function NewBookingView({
   );
   const canCalculatePrice = Boolean(periodSelected && (priceLoading || pricingContext));
   const selectedVehicleHasTariff =
-    !periodSelected || priceLoading || Boolean(pricingContext) || !priceError;
+    !selectedVehicle || catalogLoading || vehicleHasTariff(selectedVehicle.id);
 
   const baseRentalLine = priceSim?.lineItems.find((li) => li.type === 'BASE_RENTAL');
   const subtotal = baseRentalLine ? baseRentalLine.totalGrossCents / 100 : 0;
@@ -688,11 +708,13 @@ export function NewBookingView({
       return;
     }
 
-    if (isBookingVehicleHardBlocked(selectedVehicle, selectedVehicleHealth)) {
+    if (isBookingVehicleHardBlocked(selectedVehicle, selectedVehicleHealth, vehicleHasTariff(selectedVehicle.id), catalogLoading)) {
       toast.error('Fahrzeug nicht vermietbar', {
         description:
           selectedVehicleHealth?.blocking_reasons?.join(' · ') ||
-          'Dieses Fahrzeug kann aktuell nicht gebucht werden.',
+          (!vehicleHasTariff(selectedVehicle.id)
+            ? 'Kein aktiver Tarif zugewiesen — bitte unter Preise & Tarife zuweisen.'
+            : 'Dieses Fahrzeug kann aktuell nicht gebucht werden.'),
         duration: 8000,
       });
       return;
@@ -983,7 +1005,12 @@ export function NewBookingView({
     switch (currentStep) {
       case 1: {
         if (!selectedVehicle) return false;
-        return !isBookingVehicleHardBlocked(selectedVehicle, selectedVehicleHealth);
+        return !isBookingVehicleHardBlocked(
+          selectedVehicle,
+          selectedVehicleHealth,
+          vehicleHasTariff(selectedVehicle.id),
+          catalogLoading,
+        );
       }
       case 2: {
         if (!pickupDate || !returnDate || rentalDays <= 0) return false;
@@ -1012,7 +1039,7 @@ export function NewBookingView({
 
   const handleSelectVehicle = (v: VehicleData) => {
     const health = pickerHealthMap.get(v.id) ?? null;
-    if (isBookingVehicleHardBlocked(v, health)) return;
+    if (isBookingVehicleHardBlocked(v, health, vehicleHasTariff(v.id), catalogLoading)) return;
     setSelectedVehicle(v);
     const defaultPickup = resolveDefaultPickupStationId(
       orgStations,
@@ -1229,6 +1256,7 @@ export function NewBookingView({
                   fuelTypes={fuelTypes}
                   pickerHealthMap={pickerHealthMap}
                   catalogLoading={catalogLoading}
+                  vehicleHasTariff={vehicleHasTariff}
                   getDailyRateLabel={getVehicleDailyRateLabel}
                   isDarkMode={isDarkMode}
                 />

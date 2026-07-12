@@ -231,6 +231,7 @@ export type NotificationTitleKey =
   | 'notification.title.serviceOverdue'
   | 'notification.title.fleetTelemetry'
   | 'notification.title.handoverBacklog'
+  | 'notification.title.vehiclesWithoutTariff'
   | 'notification.fallback';
 
 export function resolveNotificationTitleKey(
@@ -253,6 +254,7 @@ export function resolveNotificationTitleKey(
   if (type === 'service_overdue') return 'notification.title.serviceOverdue';
   if (item.id === 'derived-fleet-soft-offline-telemetry') return 'notification.title.fleetTelemetry';
   if (item.id === 'derived-handover-backlog') return 'notification.title.handoverBacklog';
+  if (item.id === 'derived-vehicles-without-tariff') return 'notification.title.vehiclesWithoutTariff';
   if (item.pickupItem && !item.pickupItem.isOverdue) return 'notification.title.pickupScheduled';
   if (item.returnItem && !item.returnItem.isOverdue) return 'notification.title.returnScheduled';
   return 'notification.fallback';

@@ -95,6 +95,7 @@ export interface DashboardViewProps {
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
   onOpenBookingById?: (bookingId: string) => void;
   onOpenFinanceView?: (view: 'financial-insights' | 'invoices') => void;
+  onOpenPriceTariffs?: () => void;
 }
 
 export interface DashboardInvoice {
@@ -171,7 +172,8 @@ export type ActionQueueCta =
   | 'start-handover-pickup'
   | 'start-handover-return'
   | 'open-rental'
-  | 'open-stations';
+  | 'open-stations'
+  | 'open-price-tariffs';
 
 /**
  * Coarse contextual bucket a set of atomic actions belongs to. Used to group

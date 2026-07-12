@@ -40,6 +40,7 @@ interface NotificationPanelHandlers {
   onOpenVehicleById?: (vehicleId: string) => void;
   onOpenBookingById?: (bookingId: string) => void;
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
+  onOpenPriceTariffs?: () => void;
 }
 
 function emptyVariantForTab(tab: NotificationPrimaryTab, hasDomainFilter: boolean): NotificationEmptyVariant {
@@ -66,6 +67,14 @@ function runItemCta(item: ActionQueueItem, vm: DashboardViewModel, handlers: Not
       },
     })
   ) {
+    return;
+  }
+  if (item.cta === 'open-price-tariffs') {
+    handlers.onOpenPriceTariffs?.();
+    return;
+  }
+  if (item.cta === 'open-stations') {
+    handlers.onOpenRentalView?.('stations');
     return;
   }
   if (item.vehicleId && handlers.onOpenVehicleById) handlers.onOpenVehicleById(item.vehicleId);

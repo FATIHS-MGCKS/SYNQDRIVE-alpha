@@ -48,6 +48,7 @@ interface ActionQueueHandlers {
   onOpenVehicleById?: (vehicleId: string) => void;
   onOpenBookingById?: (bookingId: string) => void;
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
+  onOpenPriceTariffs?: () => void;
 }
 
 interface ActionQueueProps {
@@ -55,6 +56,7 @@ interface ActionQueueProps {
   onOpenVehicleById?: (vehicleId: string) => void;
   onOpenBookingById?: (bookingId: string) => void;
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
+  onOpenPriceTariffs?: () => void;
   layout?: NotificationPanelLayout;
 }
 
@@ -69,6 +71,7 @@ function ctaLabelLegacy(cta: ActionQueueCta, de: boolean): string {
   if (cta === 'start-handover-pickup') return de ? 'Übergabe starten' : 'Start handover';
   if (cta === 'start-handover-return') return de ? 'Rückgabe starten' : 'Start return';
   if (cta === 'open-stations') return de ? 'Stationen öffnen' : 'Open stations';
+  if (cta === 'open-price-tariffs') return de ? 'Preise & Tarife öffnen' : 'Open price tariffs';
   return de ? 'Vermietung öffnen' : 'Open rental';
 }
 
@@ -142,6 +145,9 @@ function runCta(
     case 'open-stations':
       onOpenRentalView?.('stations');
       break;
+    case 'open-price-tariffs':
+      handlers.onOpenPriceTariffs?.();
+      break;
     case 'open-rental':
     default:
       onOpenRentalView?.('bookings');
@@ -155,7 +161,7 @@ function runCta(
  * only need the navigation subset here.
  */
 function runChildCta(child: ActionQueueChildAction, handlers: ActionQueueHandlers) {
-  const { onOpenVehicleById, onOpenBookingById, onOpenRentalView } = handlers;
+  const { onOpenVehicleById, onOpenBookingById, onOpenRentalView, onOpenPriceTariffs } = handlers;
   switch (child.cta) {
     case 'open-vehicle':
       if (child.vehicleId && onOpenVehicleById) onOpenVehicleById(child.vehicleId);
@@ -166,6 +172,9 @@ function runChildCta(child: ActionQueueChildAction, handlers: ActionQueueHandler
       break;
     case 'open-stations':
       onOpenRentalView?.('stations');
+      break;
+    case 'open-price-tariffs':
+      onOpenPriceTariffs?.();
       break;
     default:
       if (child.vehicleId && onOpenVehicleById) onOpenVehicleById(child.vehicleId);
@@ -597,6 +606,7 @@ export function ActionQueue({
   onOpenVehicleById,
   onOpenBookingById,
   onOpenRentalView,
+  onOpenPriceTariffs,
   layout = 'default',
 }: ActionQueueProps) {
   const {
@@ -688,7 +698,7 @@ export function ActionQueue({
   } = renderModel;
 
   const hiddenAtomicCount = isSidebar ? 0 : Math.max(0, atomicCount - visibleAtomicCount);
-  const handlers = { onOpenVehicleById, onOpenBookingById, onOpenRentalView };
+  const handlers = { onOpenVehicleById, onOpenBookingById, onOpenRentalView, onOpenPriceTariffs };
   const hasItems = atomicCount > 0;
   const showEmpty = !actionQueueLoading && !hasItems;
 
