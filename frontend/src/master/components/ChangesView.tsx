@@ -35,7 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
-    id: 'legal-privacy-upload-v49394-2026-07-12',
+    id: 'pdfkit-bundle-generation-v49395-2026-07-12',
+    version: '4.9.395',
+    title: 'V4.9.395 — Buchungsdokumente: PDFKit-Fix & korrekte Fehlermeldung',
+    summary: [
+      'Fix: `pdfkit_1.default is not a constructor` — PDFKit-CJS-Import korrigiert; Rechnung/Mietvertrag/Kaution werden wieder gerendert.',
+      'Legal-Docs (AGB/Widerruf/Datenschutz) werden unabhängig von PDF-Rendering zuerst ans Bundle angehängt.',
+      'Warnung unterscheidet jetzt: fehlende Uploads in Administration vs. Dokumentenerstellungsfehler vs. „wird vorbereitet“.',
+      'Bundle-View erkennt angehängte Legal-Docs auch über `generatedDocument`-Liste (nicht nur Bundle-Pointer).',
+    ],
+    reason:
+      'Checkout Schritt 5 zeigte fälschlich „AGB/Widerruf fehlt — hochladen“, obwohl alle Rechtstexte aktiv waren. Produktion: Bundle status FAILED, lastError pdfkit default constructor.',
+    previousBehavior:
+      'TS default-import von pdfkit → `.default` zur Laufzeit undefined; gesamte `generateInitialBundle` brach ab, bevor Legal-Docs angehängt wurden; irreführende Upload-Warnung.',
+    details:
+      '`pdfkit-document.ts`, `document-renderer.service.ts`, `booking-document-bundle.service` (getBundleView-Warnlogik, attachLegalDocuments vor Render-Schritten).',
+    affectsArchitecture: true,
+    module: 'Documents',
+    createdAt: '2026-07-12T22:15:00.000Z',
+  },
     version: '4.9.394',
     title: 'V4.9.394 — Rechtliche Dokumente: Datenschutz-Upload & Bundle-Verdrahtung',
     summary: [

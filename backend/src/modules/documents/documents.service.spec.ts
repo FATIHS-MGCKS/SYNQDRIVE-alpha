@@ -269,7 +269,7 @@ describe('GeneratedDocumentsService — org scoping + storage', () => {
 describe('BookingDocumentBundleService', () => {
   function makeService(prisma: any, config = configStub()) {
     const generatedDocs = { listForBooking: jest.fn().mockResolvedValue([]), toDto: jest.fn((d: any) => d) } as any;
-    const legalDocs = {} as any;
+    const legalDocs = { getActiveByType: jest.fn().mockResolvedValue({}) } as any;
     const numbering = {} as any;
     const invoices = {} as any;
     const renderer = { renderPdf: jest.fn() } as any;
@@ -286,7 +286,7 @@ describe('BookingDocumentBundleService', () => {
     await expect(svc.getOrCreateBundle('org-1', 'bk-1')).rejects.toBeInstanceOf(NotFoundException);
   });
 
-  it('getBundleView reports missing AGB/Widerruf with a warning', async () => {
+  it('getBundleView reports missing AGB/Widerruf with upload warning when org has none', async () => {
     const prisma = {
       bookingDocumentBundle: { findUnique: jest.fn().mockResolvedValue({ id: 'b', organizationId: 'org-1', bookingId: 'bk-1', status: BUNDLE_STATUS.PARTIAL, termsDocumentId: null, withdrawalDocumentId: null, generatedAt: null, lastError: null }) },
     } as any;
@@ -294,14 +294,43 @@ describe('BookingDocumentBundleService', () => {
     const view = await svc.getBundleView('org-1', 'bk-1');
     expect(view.legal.missing).toEqual([DOCUMENT_TYPE.TERMS_AND_CONDITIONS, DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]);
     expect(view.missingLegalDocuments).toEqual(['TERMS_AND_CONDITIONS', 'REVOCATION_POLICY']);
-    expect(view.warnings[0]).toContain('Dokumentenpaket unvollständig');
+    expect(view.warnings[0]).toContain('Administration → Unternehmen hochladen');
+  });
+
+  it('getBundleView reports generation error when org legal exists but bundle attach failed', async () => {
+    const prisma = {
+      bookingDocumentBundle: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'b',
+          organizationId: 'org-1',
+          bookingId: 'bk-1',
+          status: BUNDLE_STATUS.FAILED,
+          termsDocumentId: null,
+          withdrawalDocumentId: null,
+          generatedAt: null,
+          lastError: 'pdfkit_1.default is not a constructor',
+        }),
+      },
+    } as any;
+    const { svc } = makeService(prisma);
+    (svc as any).legalDocs.getActiveByType.mockResolvedValue({
+      [DOCUMENT_TYPE.TERMS_AND_CONDITIONS]: { id: 't1' },
+      [DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]: { id: 'w1' },
+    });
+    const view = await svc.getBundleView('org-1', 'bk-1');
+    expect(view.warnings[0]).toContain('Dokumentenerstellung fehlgeschlagen');
+    expect(view.warnings[0]).toContain('pdfkit');
   });
 
   it('getBundleView has no warning once both legal docs are attached', async () => {
     const prisma = {
       bookingDocumentBundle: { findUnique: jest.fn().mockResolvedValue({ id: 'b', organizationId: 'org-1', bookingId: 'bk-1', status: BUNDLE_STATUS.COMPLETE, termsDocumentId: 't', withdrawalDocumentId: 'w', generatedAt: new Date(), lastError: null }) },
     } as any;
-    const { svc } = makeService(prisma);
+    const { svc, generatedDocs } = makeService(prisma);
+    generatedDocs.listForBooking.mockResolvedValue([
+      { id: 't', documentType: DOCUMENT_TYPE.TERMS_AND_CONDITIONS, status: DOCUMENT_STATUS.GENERATED },
+      { id: 'w', documentType: DOCUMENT_TYPE.WITHDRAWAL_INFORMATION, status: DOCUMENT_STATUS.GENERATED },
+    ]);
     const view = await svc.getBundleView('org-1', 'bk-1');
     expect(view.legal.missing).toEqual([]);
     expect(view.warnings).toEqual([]);

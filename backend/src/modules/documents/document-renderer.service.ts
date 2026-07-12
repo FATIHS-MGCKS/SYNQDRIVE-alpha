@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import PDFDocument from 'pdfkit';
+import { PDFDocument } from './pdfkit-document';
 import {
   DocumentRenderer,
   DocumentRenderInput,

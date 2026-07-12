@@ -135,8 +135,11 @@ export class BookingDocumentBundleService {
   async getBundleView(orgId: string, bookingId: string): Promise<BundleView> {
     const bundle = await this.getOrCreateBundle(orgId, bookingId);
     const documents = await this.generatedDocs.listForBooking(orgId, bookingId);
-    const termsAttached = !!bundle.termsDocumentId;
-    const withdrawalAttached = !!bundle.withdrawalDocumentId;
+    const hasDoc = (type: DocumentType) =>
+      documents.some((d) => d.documentType === type && d.status !== DOCUMENT_STATUS.VOID);
+    const termsAttached = !!bundle.termsDocumentId || hasDoc(DOCUMENT_TYPE.TERMS_AND_CONDITIONS);
+    const withdrawalAttached =
+      !!bundle.withdrawalDocumentId || hasDoc(DOCUMENT_TYPE.WITHDRAWAL_INFORMATION);
     const missing: string[] = [];
     const missingLegalDocuments: string[] = [];
     if (!termsAttached) {
@@ -149,9 +152,20 @@ export class BookingDocumentBundleService {
     }
     const warnings: string[] = [];
     if (missing.length) {
-      warnings.push(
-        'Dokumentenpaket unvollständig: AGB/Widerrufsbelehrung fehlt. Bitte in Administration → Unternehmen hochladen.',
-      );
+      const activeLegal = await this.legalDocs.getActiveByType(orgId, 'de');
+      const orgMissingTerms = !activeLegal[DOCUMENT_TYPE.TERMS_AND_CONDITIONS];
+      const orgMissingWithdrawal = !activeLegal[DOCUMENT_TYPE.WITHDRAWAL_INFORMATION];
+      if (orgMissingTerms || orgMissingWithdrawal) {
+        warnings.push(
+          'Dokumentenpaket unvollständig: AGB/Widerrufsbelehrung fehlt. Bitte in Administration → Unternehmen hochladen.',
+        );
+      } else if (bundle.lastError) {
+        warnings.push(`Dokumentenerstellung fehlgeschlagen: ${bundle.lastError}`);
+      } else {
+        warnings.push(
+          'Dokumente werden vorbereitet. Bitte kurz warten oder die Seite aktualisieren.',
+        );
+      }
     }
     return {
       bundle: {
@@ -185,14 +199,24 @@ export class BookingDocumentBundleService {
 
     const booking = await this.loadBooking(orgId, bookingId);
     let lastError: string | null = null;
+
+    try {
+      await this.attachLegalDocuments(orgId, bundle, booking, userId);
+    } catch (err) {
+      lastError = this.shortError(err);
+      this.logger.warn(
+        `generateInitialBundle(${bookingRef(bookingId)}) legal attach error: ${lastError}`,
+      );
+    }
+
     try {
       await this.ensureBookingInvoice(orgId, bundle, booking, userId, false);
       await this.ensureDepositReceipt(orgId, bundle, booking, userId, false);
       await this.ensureRentalContract(orgId, bundle, booking, userId, false);
-      await this.attachLegalDocuments(orgId, bundle, booking, userId);
     } catch (err) {
-      lastError = this.shortError(err);
-      this.logger.warn(`generateInitialBundle(${bookingRef(bookingId)}) error: ${lastError}`);
+      const renderError = this.shortError(err);
+      lastError = lastError ? `${lastError}; ${renderError}` : renderError;
+      this.logger.warn(`generateInitialBundle(${bookingRef(bookingId)}) error: ${renderError}`);
     }
 
     await this.refreshBundleStatus(orgId, bookingId, booking.status, lastError);
