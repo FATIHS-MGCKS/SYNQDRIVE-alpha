@@ -8,6 +8,7 @@ import {
 } from '../notificationQueueEnricher';
 import type { NotificationDetailViewModel } from './notification-detail-view-model';
 import { resolveNotificationIssueCopy } from './notification-issue-copy';
+import { affectedVehiclesSectionLabel } from './notification-affected-vehicles';
 
 const MODULE_MAP: Partial<Record<ActionQueueModuleTarget, HealthActionModule>> = {
   battery: 'battery',
@@ -123,6 +124,9 @@ export function resolveNotificationPrimaryCtaLabel(
   if (item.bookingId || domain === 'bookings' || domain === 'handovers') {
     return t('notification.cta.openBooking');
   }
+  if (item.cta === 'open-price-tariffs' || item.id === 'derived-vehicles-without-tariff') {
+    return t('notification.cta.openPriceTariffs');
+  }
   if (actionType) {
     const key = notificationCtaLabelKey(actionType);
     if (key === 'notification.cta.openVehicle') return t('notification.cta.checkVehicle');
@@ -141,6 +145,7 @@ export function buildNotificationDetailViewModel(
 ): NotificationDetailViewModel {
   const t = createNotificationTranslator(locale);
   const copy = resolveNotificationIssueCopy(item, locale);
+  const affectedVehicles = item.affectedVehicles;
   return {
     issueTitle: copy.headline,
     issueDescription: copy.detail,
@@ -148,5 +153,9 @@ export function buildNotificationDetailViewModel(
     showCreateTask: canCreateTaskFromNotification(item),
     createTaskLabel: t('notification.cta.createTask'),
     availableActions: item.availableActions ?? [],
+    affectedVehicles,
+    affectedVehiclesLabel: affectedVehicles?.length
+      ? affectedVehiclesSectionLabel(affectedVehicles.length, locale)
+      : undefined,
   };
 }

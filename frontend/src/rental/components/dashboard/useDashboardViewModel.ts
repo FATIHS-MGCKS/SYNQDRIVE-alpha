@@ -48,6 +48,7 @@ import {
   sortStationCommandSummaries,
 } from './stationCommandBuilder';
 import { usePriceTariffs } from '../../hooks/usePriceTariffs';
+import { formatVehicleIssueEntityLabel } from '../../lib/operational-issues';
 import { deriveOperationalInsights } from './deriveOperationalInsights';
 import { derivePredictiveOperationsInsights } from './derivePredictiveOperationsInsights';
 import {
@@ -759,10 +760,26 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     [invoicesApi, locale, dashboardNow],
   );
 
-  const unassignedTariffVehicleCount = useMemo(() => {
-    if (catalogLoading || !catalog) return 0;
-    return catalog.unassignedVehicleCount ?? 0;
-  }, [catalog, catalogLoading]);
+  const unassignedTariffVehicles = useMemo(() => {
+    if (catalogLoading || !catalog) return [];
+    const assigned = new Set(
+      catalog.assignments.filter((assignment) => assignment.isActive).map((assignment) => assignment.vehicleId),
+    );
+    return fleetVehicles
+      .filter((vehicle) => !assigned.has(vehicle.id))
+      .map((vehicle) => ({
+        id: vehicle.id,
+        label: formatVehicleIssueEntityLabel({
+          license: vehicle.license,
+          make: (vehicle as { make?: string }).make,
+          model: vehicle.model,
+          year: vehicle.year,
+        }),
+      }))
+      .sort((a, b) => a.label.localeCompare(b.label, locale === 'de' ? 'de' : 'en'));
+  }, [catalog, catalogLoading, fleetVehicles, locale]);
+
+  const unassignedTariffVehicleCount = unassignedTariffVehicles.length;
 
   const derivedOperationalInsights = useMemo(
     () =>
@@ -779,6 +796,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
         fleetLoading,
         todayBookingsLoaded,
         unassignedTariffVehicleCount,
+        unassignedTariffVehicles,
       }),
     [
       locale,
@@ -793,6 +811,7 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
       fleetLoading,
       todayBookingsLoaded,
       unassignedTariffVehicleCount,
+      unassignedTariffVehicles,
     ],
   );
 

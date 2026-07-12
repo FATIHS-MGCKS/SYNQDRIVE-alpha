@@ -209,6 +209,8 @@ export function mapDerivedInsightToActionQueueItem(
     vehicleId: insight.vehicleId,
     bookingId: insight.bookingId,
     isOverdue: insight.isOverdue,
+    affectedVehicles: insight.affectedVehicles,
+    issueType: insight.id === 'derived-vehicles-without-tariff' ? 'vehicles_without_tariff' : undefined,
   };
 }
 

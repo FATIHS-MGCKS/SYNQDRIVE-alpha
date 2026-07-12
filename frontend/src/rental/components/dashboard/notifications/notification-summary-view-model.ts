@@ -7,6 +7,7 @@ import {
 } from '../notificationQueueEnricher';
 import { formatNotificationLastSeenShort } from '../notificationTimeSemantics';
 import { notificationDomainIcon, notificationGroupIcon } from './notificationDomainIcon';
+import { formatAffectedVehiclesPreview } from './notification-affected-vehicles';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -67,6 +68,7 @@ export interface NotificationSummaryViewModel {
   severityLabelKey: TranslationKey;
   eyebrowLabel: string;
   headlineTitle: string;
+  subtitle?: string;
   lastSeenLabel: string;
   iconName: string;
   iconCount: number;
@@ -88,12 +90,18 @@ function summaryFromItem(
   const t = createNotificationTranslator(locale);
   const severity = resolveSeverity(item);
 
+  const subtitle =
+    item.affectedVehicles && item.affectedVehicles.length > 0
+      ? formatAffectedVehiclesPreview(item.affectedVehicles, locale)
+      : undefined;
+
   return {
     id: overrides.id ?? item.id,
     severity,
     severityLabelKey: severityLabelKey(severity, queue.lifecycleStatus),
     eyebrowLabel: notificationDomainLabel(queue.domain, t),
     headlineTitle: buildNotificationHeadlineTitle(item) ?? item.title,
+    subtitle,
     lastSeenLabel: formatNotificationLastSeenShort(queue, { locale, referenceNowMs }),
     iconName: notificationDomainIcon(queue.domain, item.issueType),
     iconCount: overrides.iconCount ?? 1,

@@ -96,6 +96,14 @@ export function resolveNotificationCta(item: ActionQueueItem, issueType?: string
     };
   }
 
+  if (item.cta === 'open-price-tariffs' || item.id === 'derived-vehicles-without-tariff') {
+    return {
+      actionType: 'open-rental',
+      actionTarget: { type: 'open-rental' },
+      legacyCta: 'open-price-tariffs',
+    };
+  }
+
   if (vehicleId) {
     return {
       actionType: module ? 'open-vehicle-module' : 'open-vehicle',

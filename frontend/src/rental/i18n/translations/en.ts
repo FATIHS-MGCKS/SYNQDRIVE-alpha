@@ -532,6 +532,7 @@ export const en = {
   'notification.cta.startReturn': 'Start return',
   'notification.cta.openStation': 'Open station',
   'notification.cta.openRental': 'Open rental',
+  'notification.cta.openPriceTariffs': 'Open price tariffs',
   'notification.cta.createTask': 'Create task',
   'notification.count.one': '1 message',
   'notification.count.many': '{count} messages',

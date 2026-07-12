@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-tariff-vehicle-list-v49383-2026-07-12',
+    version: '4.9.383',
+    title: 'V4.9.383 — Tarif-Meldung: betroffene Fahrzeuge + symmetrisches Layout',
+    summary: [
+      'Kritische Tarif-Meldung listet alle betroffenen Fahrzeuge (Kennzeichen · Modell) in Summary und Detail.',
+      'CTA korrigiert auf „Preise & Tarife öffnen“; symmetrisches 2-Spalten-Grid im Detail-Panel.',
+    ],
+    reason: 'Operatoren sahen nur die Anzahl ohne konkrete Fahrzeuge; CTA zeigte fälschlich „Vermietung öffnen“.',
+    previousBehavior: 'Nur generischer Text ohne Fahrzeugliste; asymmetrisches Detail-Layout; falscher CTA.',
+    details:
+      'deriveOperationalInsights, useDashboardViewModel, NotificationDetailPanel, NotificationSummaryRow, notification-affected-vehicles.ts, notificationCtaResolver.',
+    affectsArchitecture: false,
+    module: 'Pricing',
+    createdAt: '2026-07-12T10:20:00.000Z',
+  },
+  {
     id: 'dashboard-tariff-panel-render-v49382-2026-07-12',
     version: '4.9.382',
     title: 'V4.9.382 — Meldungen-Panel: Bridge-Einträge sichtbar rendern',
