@@ -4,6 +4,7 @@ import type { NotificationDomain } from '../notificationQueueModel';
 
 /** Consistent domain → icon mapping for notification cards. */
 export function notificationDomainIcon(domain: NotificationDomain | undefined, eventType?: string): string {
+  if (eventType === 'VEHICLES_WITHOUT_TARIFF' || eventType === 'vehicles_without_tariff') return 'tags';
   if (eventType === 'DRIVING_ASSESSMENT_DEVICE_QUALITY') return 'gauge';
   if (eventType === 'TECHNICAL_OBSERVATION_ACTIVE') return 'alert-triangle';
   if (domain === 'driving-analysis') return 'gauge';

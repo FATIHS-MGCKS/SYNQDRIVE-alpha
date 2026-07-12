@@ -2,6 +2,10 @@ import type { TranslationKey } from '../../../i18n/translations/en';
 import { sanitizeTemplateValue } from '../../../lib/notifications/template-placeholder';
 import type { ActionQueueItem } from '../dashboardTypes';
 import { createNotificationTranslator } from '../notificationQueueEnricher';
+import {
+  affectedVehiclesSectionLabel,
+  formatAffectedVehiclesPreview,
+} from './notification-affected-vehicles';
 
 const ISSUE_HEADLINE_KEYS: Record<string, TranslationKey> = {
   ACTIVE_DTC: 'notification.issue.activeDtc',
@@ -78,6 +82,16 @@ function issueHeadline(item: ActionQueueItem, locale: string): string {
 }
 
 function issueDetail(item: ActionQueueItem, locale: string): string {
+  if (item.id === 'derived-vehicles-without-tariff' || item.issueType === 'vehicles_without_tariff') {
+    const de = locale === 'de';
+    const intro = de
+      ? 'Diese Fahrzeuge sind nicht buchbar, bis eine aktive Tarifgruppe zugewiesen ist.'
+      : 'These vehicles cannot be booked until an active tariff group is assigned.';
+    const vehicles = item.affectedVehicles ?? [];
+    if (vehicles.length === 0) return intro;
+    return intro;
+  }
+
   const params = item.entityContextParams;
   const reason =
     sanitizeTemplateValue(item.reason)

@@ -111,6 +111,11 @@ export const NotificationSummaryRow = memo(function NotificationSummaryRow({
         >
           {summary.headlineTitle}
         </p>
+        {summary.subtitle ? (
+          <p className={cn(NOTIFICATION_PANEL_TYPO.description, 'mt-1 line-clamp-2')}>
+            {summary.subtitle}
+          </p>
+        ) : null}
       </div>
 
       {showChevron ? (

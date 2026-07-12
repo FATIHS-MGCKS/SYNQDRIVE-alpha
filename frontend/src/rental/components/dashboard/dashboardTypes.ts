@@ -317,6 +317,8 @@ export interface ActionQueueItem {
     totalVehicles?: number;
     bookedOut?: number;
   };
+  /** Fleet-level bridge insights (e.g. vehicles without tariff). */
+  affectedVehicles?: Array<{ id: string; label: string }>;
 }
 
 /**

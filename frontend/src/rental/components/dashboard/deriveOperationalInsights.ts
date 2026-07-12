@@ -30,6 +30,7 @@ export interface DerivedOperationalInsight {
   vehicleId?: string;
   bookingId?: string;
   isOverdue: boolean;
+  affectedVehicles?: Array<{ id: string; label: string }>;
 }
 
 /**
@@ -49,6 +50,7 @@ export function deriveOperationalInsights(input: {
   fleetLoading: boolean;
   todayBookingsLoaded: boolean;
   unassignedTariffVehicleCount?: number;
+  unassignedTariffVehicles?: Array<{ id: string; label: string }>;
 }): DerivedOperationalInsight[] {
   const de = input.locale === 'de';
   const items: DerivedOperationalInsight[] = [];
@@ -57,6 +59,7 @@ export function deriveOperationalInsights(input: {
   if (!input.todayBookingsLoaded || input.fleetLoading) return items;
 
   if ((input.unassignedTariffVehicleCount ?? 0) > 0) {
+    const vehicles = input.unassignedTariffVehicles ?? [];
     items.push({
       id: 'derived-vehicles-without-tariff',
       source: 'derived-operations',
@@ -71,6 +74,7 @@ export function deriveOperationalInsights(input: {
       timeSortMs: now,
       cta: 'open-price-tariffs',
       isOverdue: false,
+      affectedVehicles: vehicles,
     });
   }
 

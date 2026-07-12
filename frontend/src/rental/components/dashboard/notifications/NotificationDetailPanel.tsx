@@ -29,17 +29,41 @@ export const NotificationDetailPanel = memo(function NotificationDetailPanel({
 }: NotificationDetailPanelProps) {
   const actions = detail.availableActions ?? [];
   const hasMenu = Boolean(onMarkRead || onAcknowledge || onSnooze);
+  const affectedVehicles = detail.affectedVehicles ?? [];
 
   return (
-    <div className="border-t border-border/25 px-3 py-2.5 sm:pl-[2.875rem]">
-      <p className={NOTIFICATION_PANEL_TYPO.childTitle}>{detail.issueTitle}</p>
-      {detail.issueDescription ? (
-        <p className={cn(NOTIFICATION_PANEL_TYPO.childDescription, 'mt-0.5')}>
-          {detail.issueDescription}
-        </p>
-      ) : null}
+    <div className="border-t border-border/25 px-3 py-3 sm:px-3.5">
+      <div className="space-y-2">
+        <p className={NOTIFICATION_PANEL_TYPO.childTitle}>{detail.issueTitle}</p>
+        {detail.issueDescription ? (
+          <p className={NOTIFICATION_PANEL_TYPO.childDescription}>{detail.issueDescription}</p>
+        ) : null}
 
-      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {affectedVehicles.length > 0 ? (
+          <div className="rounded-lg border border-border/35 bg-muted/15 p-2.5">
+            {detail.affectedVehiclesLabel ? (
+              <p className={cn(NOTIFICATION_PANEL_TYPO.meta, 'mb-2 font-medium text-foreground/80')}>
+                {detail.affectedVehiclesLabel}
+              </p>
+            ) : null}
+            <ul className="grid gap-1.5 sm:grid-cols-2" role="list">
+              {affectedVehicles.map((vehicle) => (
+                <li
+                  key={vehicle.id}
+                  className="flex min-h-9 items-center gap-2 rounded-md border border-border/30 bg-background/70 px-2.5 py-1.5"
+                >
+                  <Icon name="car" className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
+                  <span className={cn(NOTIFICATION_PANEL_TYPO.entity, 'min-w-0 text-foreground/90')}>
+                    {vehicle.label}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center justify-start gap-2">
         <button
           type="button"
           onClick={onPrimaryCta}
