@@ -251,7 +251,11 @@ export const en = {
   'email.send.success': 'Email sent successfully',
   'email.send.defaultSubject': 'Your booking documents',
   'email.send.defaultSubjectWithNumber': 'Your booking documents — {number}',
+  'email.send.defaultSubjectBooking': 'Your booking {number} on {period}',
+  'email.send.defaultCustomerName': 'Sir or Madam',
   'email.send.defaultBody': '<p>Dear Sir or Madam,</p><p>Please find the requested documents for your booking attached.</p><p>Kind regards</p>',
+  'email.send.defaultBodyBooking':
+    '<p>Dear {customerName},</p><p>Thank you very much for your booking.</p><p>Please find the following documents and your invoice attached:</p>{documentsList}<p>Kind regards</p>',
   'email.send.sendAll': 'Send all by email',
   'email.send.sendOne': 'Send by email',
   'email.booking.history': 'Email history for this booking',

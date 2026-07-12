@@ -323,7 +323,11 @@ export const de: Record<TranslationKey, string> = {
   'email.send.success': 'E-Mail erfolgreich gesendet',
   'email.send.defaultSubject': 'Ihre Buchungsdokumente',
   'email.send.defaultSubjectWithNumber': 'Ihre Buchungsdokumente — {number}',
+  'email.send.defaultSubjectBooking': 'Ihre Buchung {number} am {period}',
+  'email.send.defaultCustomerName': 'Damen und Herren',
   'email.send.defaultBody': '<p>Sehr geehrte Damen und Herren,</p><p>im Anhang finden Sie die angeforderten Dokumente zu Ihrer Buchung.</p><p>Mit freundlichen Grüßen</p>',
+  'email.send.defaultBodyBooking':
+    '<p>Sehr geehrte/r {customerName},</p><p>vielen Dank für Ihre Buchung.</p><p>Im Anhang finden Sie folgende Dokumente sowie Ihre Rechnung:</p>{documentsList}<p>Mit freundlichen Grüßen</p>',
   'email.send.sendAll': 'Alle per E-Mail senden',
   'email.send.sendOne': 'Per E-Mail senden',
   'email.booking.history': 'E-Mail-Historie dieser Buchung',

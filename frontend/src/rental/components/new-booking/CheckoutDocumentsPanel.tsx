@@ -3,6 +3,8 @@ import { Loader2 } from 'lucide-react';
 
 import { SendDocumentsEmailModal } from '../../../components/email/SendDocumentsEmailModal';
 import { api, type BookingDocumentBundleView, type GeneratedDocumentDto } from '../../../lib/api';
+import { dedupeDocumentsByType } from '../../../lib/document-list.utils';
+import { bookingRef } from '../bookings/bookingUtils';
 import { isEmailSendableDocument } from '../../../lib/email-sendable';
 import { emailDocTypeLabel } from '../../../lib/email-i18n';
 import { useLanguage } from '../../i18n/LanguageContext';
@@ -20,6 +22,8 @@ export interface CheckoutDocumentsPanelProps {
   orgId: string;
   bookingId: string | null;
   customerEmail?: string | null;
+  customerName?: string | null;
+  bookingPeriodLabel?: string | null;
   bundle: BookingDocumentBundleView | null;
   loading: boolean;
   error?: string | null;
@@ -31,6 +35,8 @@ export function CheckoutDocumentsPanel({
   orgId,
   bookingId,
   customerEmail,
+  customerName,
+  bookingPeriodLabel,
   bundle,
   loading,
   error,
@@ -50,7 +56,10 @@ export function CheckoutDocumentsPanel({
   }, [bundle]);
 
   const sendableDocs = useMemo(
-    () => (bundle?.documents ?? []).filter((d) => isEmailSendableDocument(d.status)),
+    () =>
+      dedupeDocumentsByType(
+        (bundle?.documents ?? []).filter((d) => isEmailSendableDocument(d.status)),
+      ),
     [bundle],
   );
 
@@ -147,6 +156,9 @@ export function CheckoutDocumentsPanel({
           onOpenChange={setSendOpen}
           orgId={orgId}
           bookingId={bookingId}
+          bookingNumber={bookingId ? bookingRef(bookingId) : null}
+          bookingPeriodLabel={bookingPeriodLabel}
+          customerName={customerName}
           defaultToEmail={customerEmail}
           documents={sendableDocs}
           preselectedDocumentIds={preselectedIds}

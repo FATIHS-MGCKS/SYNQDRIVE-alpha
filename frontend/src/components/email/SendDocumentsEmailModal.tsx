@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Button } from '../ui/button';
 import { FormDialog } from '../patterns';
 import { api, type GeneratedDocumentDto } from '../../lib/api';
+import { dedupeDocumentsByType } from '../../lib/document-list.utils';
 import { isEmailSendableDocument } from '../../lib/email-sendable';
 import { emailDocTypeLabel } from '../../lib/email-i18n';
 import { useLanguage } from '../../rental/i18n/LanguageContext';
@@ -15,6 +16,8 @@ export interface SendDocumentsEmailModalProps {
   orgId: string;
   bookingId: string;
   bookingNumber?: string | null;
+  bookingPeriodLabel?: string | null;
+  customerName?: string | null;
   defaultToEmail?: string | null;
   documents: GeneratedDocumentDto[];
   preselectedDocumentIds?: string[];
@@ -27,6 +30,8 @@ export function SendDocumentsEmailModal({
   orgId,
   bookingId,
   bookingNumber,
+  bookingPeriodLabel,
+  customerName,
   defaultToEmail,
   documents,
   preselectedDocumentIds,
@@ -35,9 +40,17 @@ export function SendDocumentsEmailModal({
   const { t } = useLanguage();
 
   const sendable = useMemo(
-    () => documents.filter((d) => isEmailSendableDocument(d.status)),
+    () => dedupeDocumentsByType(documents.filter((d) => isEmailSendableDocument(d.status))),
     [documents],
   );
+
+  const buildDocumentsListHtml = (ids: string[]) => {
+    const labels = sendable
+      .filter((d) => ids.includes(d.id))
+      .map((d) => emailDocTypeLabel(t, d.documentType, d.title));
+    if (labels.length === 0) return '<ul></ul>';
+    return `<ul>${labels.map((label) => `<li>${label}</li>`).join('')}</ul>`;
+  };
 
   const [toEmail, setToEmail] = useState(defaultToEmail ?? '');
   const [subject, setSubject] = useState('');
@@ -51,26 +64,43 @@ export function SendDocumentsEmailModal({
   useEffect(() => {
     if (!open) return;
     setToEmail(defaultToEmail ?? '');
-    setSubject(
-      bookingNumber
-        ? t('email.send.defaultSubjectWithNumber', { number: bookingNumber })
-        : t('email.send.defaultSubject'),
-    );
-    setBodyHtml(t('email.send.defaultBody'));
     const defaults =
       preselectedDocumentIds && preselectedDocumentIds.length > 0
         ? preselectedDocumentIds
         : sendable.map((d) => d.id);
-    setSelectedIds(defaults.filter((id) => sendable.some((d) => d.id === id)));
+    const selected = defaults.filter((id) => sendable.some((d) => d.id === id));
+    const number = bookingNumber?.trim() || '—';
+    const period = bookingPeriodLabel?.trim() || '—';
+    const name = customerName?.trim() || t('email.send.defaultCustomerName');
+    setSubject(t('email.send.defaultSubjectBooking', { number, period }));
+    setBodyHtml(
+      t('email.send.defaultBodyBooking', {
+        customerName: name,
+        documentsList: buildDocumentsListHtml(selected),
+      }),
+    );
+    setSelectedIds(selected);
     setCcEmails('');
     setBccEmails('');
     setError(null);
-  }, [open, defaultToEmail, bookingNumber, preselectedDocumentIds, sendable, t]);
+  }, [open, defaultToEmail, bookingNumber, bookingPeriodLabel, customerName, preselectedDocumentIds, sendable, t]);
+
+  const refreshBodyForSelection = (ids: string[]) => {
+    const name = customerName?.trim() || t('email.send.defaultCustomerName');
+    setBodyHtml(
+      t('email.send.defaultBodyBooking', {
+        customerName: name,
+        documentsList: buildDocumentsListHtml(ids),
+      }),
+    );
+  };
 
   const toggleDoc = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    setSelectedIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      refreshBodyForSelection(next);
+      return next;
+    });
   };
 
   const parseEmailList = (value: string): string[] | undefined => {

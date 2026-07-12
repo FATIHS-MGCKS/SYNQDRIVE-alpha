@@ -192,6 +192,20 @@ export class BookingDocumentBundleService {
     bookingId: string,
     userId?: string | null,
   ): Promise<BundleView> {
+    const lockKey = `bundle-gen:${bookingId}`;
+    await this.prisma.$executeRaw`SELECT pg_advisory_lock(hashtext(${lockKey}))`;
+    try {
+      return await this.generateInitialBundleLocked(orgId, bookingId, userId);
+    } finally {
+      await this.prisma.$executeRaw`SELECT pg_advisory_unlock(hashtext(${lockKey}))`;
+    }
+  }
+
+  private async generateInitialBundleLocked(
+    orgId: string,
+    bookingId: string,
+    userId?: string | null,
+  ): Promise<BundleView> {
     const bundle = await this.getOrCreateBundle(orgId, bookingId);
     if (!this.generationEnabled) {
       return this.getBundleView(orgId, bookingId);
@@ -627,6 +641,23 @@ export class BookingDocumentBundleService {
     ] as DocumentType[]) {
       const legal = active[type];
       if (!legal) continue;
+
+      const existingActive = await this.prisma.generatedDocument.findFirst({
+        where: {
+          organizationId: orgId,
+          bookingId: booking.id,
+          documentType: type,
+          status: { not: DOCUMENT_STATUS.VOID },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (existingActive && !force) {
+        if (existingActive.legalDocumentId === legal.id) {
+          await this.setBundlePointer(bundle.id, type, existingActive.id);
+          continue;
+        }
+      }
+
       const existing = await this.existingBundleDoc(orgId, bundle, type);
       if (existing && !force && existing.legalDocumentId === legal.id) continue;
 

@@ -517,6 +517,16 @@ export function NewBookingView({
     ? new Date(`${returnDate}T${returnTime || '10:00'}:00`).toISOString()
     : '';
 
+  const bookingPeriodLabel = useMemo(() => {
+    if (!pickupDate || !returnDate) return null;
+    const fmt = (isoDate: string) => {
+      const d = new Date(`${isoDate}T12:00:00`);
+      if (Number.isNaN(d.getTime())) return isoDate;
+      return d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    };
+    return `${fmt(pickupDate)} – ${fmt(returnDate)}`;
+  }, [pickupDate, returnDate]);
+
   useEffect(() => {
     if (!orgId || !selectedVehicle?.id || !selectedCustomer?.id || !pickupAtIso) {
       setRentalEligibility(null);
@@ -1515,6 +1525,7 @@ export function NewBookingView({
                 draftBundleError={draftBundleError}
                 onRefreshDraftBundle={() => void refreshDraftBundle()}
                 pricingCurrency={pricingCurrency}
+                bookingPeriodLabel={bookingPeriodLabel}
               />
             )}
           </div>

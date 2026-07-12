@@ -28,6 +28,19 @@ ln -sfn /opt/synqdrive/shared/backend.env "$RELEASE_DIR/backend/.env"
 ln -sfn /opt/synqdrive/shared/frontend.env "$RELEASE_DIR/frontend/.env"
 ln -sfn /opt/synqdrive/shared/uploads "$RELEASE_DIR/backend/uploads"
 
+echo "==> Link shared document storage"
+SHARED_DOCS="/opt/synqdrive/shared/storage/documents"
+mkdir -p "$SHARED_DOCS"
+if [[ -d /opt/synqdrive/current/backend/storage/documents ]] && [[ ! -L /opt/synqdrive/current/backend/storage/documents ]]; then
+  rsync -a /opt/synqdrive/current/backend/storage/documents/ "$SHARED_DOCS/" || true
+fi
+for legacy_docs in /opt/synqdrive/releases/*/backend/storage/documents; do
+  if [[ -d "$legacy_docs" ]] && [[ ! -L "$legacy_docs" ]]; then
+    rsync -a "$legacy_docs/" "$SHARED_DOCS/" || true
+  fi
+done
+ln -sfn "$SHARED_DOCS" "$RELEASE_DIR/backend/storage/documents"
+
 echo "==> Backend install/build/migrate"
 cd "$RELEASE_DIR/backend"
 npm ci

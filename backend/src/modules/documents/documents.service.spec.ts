@@ -274,7 +274,11 @@ describe('BookingDocumentBundleService', () => {
     const invoices = {} as any;
     const renderer = { renderPdf: jest.fn() } as any;
     const taskAutomation = { ensureBookingLifecycleTasks: jest.fn() } as any;
-    const svc = new BookingDocumentBundleService(prisma, config, generatedDocs, legalDocs, numbering, invoices, renderer, taskAutomation);
+    const prismaWithLock = {
+      ...prisma,
+      $executeRaw: jest.fn().mockResolvedValue(undefined),
+    };
+    const svc = new BookingDocumentBundleService(prismaWithLock, config, generatedDocs, legalDocs, numbering, invoices, renderer, taskAutomation);
     return { svc, generatedDocs, renderer };
   }
 

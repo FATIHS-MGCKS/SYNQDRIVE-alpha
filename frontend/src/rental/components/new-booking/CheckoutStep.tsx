@@ -22,6 +22,7 @@ export function CheckoutStep({
   draftBundleError,
   onRefreshDraftBundle,
   pricingCurrency,
+  bookingPeriodLabel,
 }: CheckoutStepProps) {
   const ccy = pricingCurrency;
   const fmt = (value: number | null | undefined) =>
@@ -105,6 +106,14 @@ export function CheckoutStep({
             orgId={orgId}
             bookingId={draftBookingId}
             customerEmail={selectedCustomer?.email}
+            customerName={
+              selectedCustomer
+                ? selectedCustomer.name?.trim() ||
+                  selectedCustomer.company?.trim() ||
+                  null
+                : null
+            }
+            bookingPeriodLabel={bookingPeriodLabel}
             bundle={draftBundle}
             loading={draftBundleLoading}
             error={draftBundleError}

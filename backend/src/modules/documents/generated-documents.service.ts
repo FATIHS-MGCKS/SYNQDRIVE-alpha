@@ -8,6 +8,7 @@ import {
   DocumentStoragePort,
 } from './storage/document-storage.interface';
 import { DOCUMENT_ORIGIN, DOCUMENT_STATUS } from './documents.constants';
+import { dedupeDocumentsByType } from './document-list-dedupe.util';
 
 export interface CreateGeneratedDocumentInput {
   organizationId: string;
@@ -128,10 +129,11 @@ export class GeneratedDocumentsService {
   }
 
   async listForBooking(orgId: string, bookingId: string): Promise<GeneratedDocument[]> {
-    return this.prisma.generatedDocument.findMany({
+    const rows = await this.prisma.generatedDocument.findMany({
       where: { organizationId: orgId, bookingId },
       orderBy: { createdAt: 'asc' },
     });
+    return dedupeDocumentsByType(rows);
   }
 
   async voidDocument(orgId: string, documentId: string): Promise<GeneratedDocument> {

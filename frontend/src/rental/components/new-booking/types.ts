@@ -222,4 +222,5 @@ export interface CheckoutStepProps {
   draftBundleError: string | null;
   onRefreshDraftBundle: () => void;
   pricingCurrency: string | null;
+  bookingPeriodLabel?: string | null;
 }

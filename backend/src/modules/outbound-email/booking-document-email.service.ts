@@ -18,7 +18,7 @@ import {
 import { ActivityLogService } from '@modules/activity-log/activity-log.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
-import { DOCUMENT_STATUS, isEmailSendableDocumentStatus } from '@modules/documents/documents.constants';
+import { DOCUMENT_STATUS, DOCUMENT_ORIGIN, DOCUMENT_TITLE_DE, isEmailSendableDocumentStatus } from '@modules/documents/documents.constants';
 import {
   DOCUMENTS_STORAGE,
   DocumentStoragePort,
@@ -114,7 +114,7 @@ export class BookingDocumentEmailService {
 
     for (const doc of documents) {
       await this.generatedDocuments.getById(orgId, doc.id);
-      const buffer = await this.documentStorage.getObject(doc.objectKey);
+      const buffer = await this.loadAttachmentBuffer(orgId, doc);
       totalBytes += buffer.length;
       if (totalBytes > maxBytes) {
         throw new BadRequestException('Total attachment size exceeds the allowed limit');
@@ -304,10 +304,12 @@ export class BookingDocumentEmailService {
         return { sent: false as const, reason: 'NO_SENDABLE_DOCUMENTS' as const };
       }
 
-      const bookingNumber = booking.id.slice(0, 8).toUpperCase();
-      const subject = `Ihre Buchungsdokumente — ${bookingNumber}`;
-      const bodyHtml =
-        '<p>Sehr geehrte Damen und Herren,</p><p>im Anhang finden Sie die Dokumente zu Ihrer Buchung.</p><p>Mit freundlichen Grüßen</p>';
+      const bookingNumber = `BK-${booking.id.slice(-6).toUpperCase()}`;
+      const period = this.formatBookingPeriod(booking.startDate, booking.endDate);
+      const customerName = this.formatCustomerName(booking.customer);
+      const docLabels = sendable.map((d) => DOCUMENT_TITLE_DE[d.documentType as keyof typeof DOCUMENT_TITLE_DE] ?? d.title);
+      const subject = `Ihre Buchung ${bookingNumber} am ${period}`;
+      const bodyHtml = this.buildDefaultBookingDocumentsBody(customerName, docLabels);
 
       const result = await this.sendBookingDocuments(orgId, bookingId, userId, {
         toEmail,
@@ -439,5 +441,55 @@ export class BookingDocumentEmailService {
 
   private stripHtml(html: string): string {
     return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+
+  private async loadAttachmentBuffer(orgId: string, doc: { objectKey: string; legalDocumentId: string | null; origin: string; title: string }): Promise<Buffer> {
+    const keys = [doc.objectKey];
+    if (doc.origin === DOCUMENT_ORIGIN.STATIC_LEGAL && doc.legalDocumentId) {
+      const legal = await this.prisma.organizationLegalDocument.findFirst({
+        where: { id: doc.legalDocumentId, organizationId: orgId },
+        select: { objectKey: true },
+      });
+      if (legal?.objectKey && !keys.includes(legal.objectKey)) {
+        keys.unshift(legal.objectKey);
+      }
+    }
+    let lastErr: Error | null = null;
+    for (const key of keys) {
+      try {
+        return await this.documentStorage.getObject(key);
+      } catch (err) {
+        lastErr = err instanceof Error ? err : new Error(String(err));
+      }
+    }
+    throw new BadRequestException(
+      `Datei für „${doc.title}“ nicht gefunden. Bitte Buchungsdokumente neu generieren oder Rechtstexte in Administration prüfen.`,
+      { cause: lastErr ?? undefined },
+    );
+  }
+
+  private formatBookingPeriod(start: Date, end: Date): string {
+    const fmt = (d: Date) =>
+      d.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return `${fmt(start)} – ${fmt(end)}`;
+  }
+
+  private formatCustomerName(customer: { firstName?: string | null; lastName?: string | null; company?: string | null } | null): string {
+    if (!customer) return 'Damen und Herren';
+    const person = [customer.firstName, customer.lastName].filter(Boolean).join(' ').trim();
+    if (person) return person;
+    if (customer.company?.trim()) return customer.company.trim();
+    return 'Damen und Herren';
+  }
+
+  private buildDefaultBookingDocumentsBody(customerName: string, docLabels: string[]): string {
+    const items = docLabels.map((label) => `<li>${label}</li>`).join('');
+    return [
+      `<p>Sehr geehrte/r ${customerName},</p>`,
+      '<p>vielen Dank für Ihre Buchung.</p>',
+      '<p>Im Anhang finden Sie folgende Dokumente sowie Ihre Rechnung:</p>',
+      `<ul>${items}</ul>`,
+      '<p>Mit freundlichen Grüßen</p>',
+    ].join('');
   }
 }

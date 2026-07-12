@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-email-send-fix-v49396-2026-07-12',
+    version: '4.9.396',
+    title: 'V4.9.396 — Buchungs-E-Mail: Duplikate, Storage & personalisierte Vorlage',
+    summary: [
+      'Fix: Doppelte Anhänge im SendDocumentsEmailModal — Dedupe pro documentType (Frontend + listForBooking).',
+      'Fix: E-Mail-Versand 500 (ENOENT) — shared `storage/documents` auf VPS + Legal-PDF-Fallback beim Anhang-Laden.',
+      'Bundle-Generierung: Advisory-Lock + Idempotenz bei attachLegalDocuments gegen parallele Wizard-Calls.',
+      'Standard-Betreff/Text: „Ihre Buchung BK-… am DD.MM – DD.MM“, persönliche Anrede + Dokumentenliste.',
+    ],
+    reason:
+      'Checkout Schritt 5: Anhänge doppelt (z. B. zwei AGB), Zähler falsch; Senden → Internal server error weil Legal-PDFs nach Deploy im alten Release-Ordner lagen.',
+    previousBehavior:
+      'Concurrent wizard-draft erzeugte doppelte generatedDocument-Zeilen; storage/documents release-lokal; generische E-Mail-Vorlage.',
+    details:
+      '`document-list-dedupe`, `vps-deploy-release.sh` shared documents, `booking-document-email.service` loadAttachmentBuffer, `SendDocumentsEmailModal` + i18n.',
+    affectsArchitecture: true,
+    module: 'Documents',
+    createdAt: '2026-07-12T22:45:00.000Z',
+  },
+  {
     id: 'pdfkit-bundle-generation-v49395-2026-07-12',
     version: '4.9.395',
     title: 'V4.9.395 — Buchungsdokumente: PDFKit-Fix & korrekte Fehlermeldung',
