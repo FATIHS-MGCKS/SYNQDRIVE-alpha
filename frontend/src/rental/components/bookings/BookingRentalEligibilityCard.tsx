@@ -136,6 +136,15 @@ export function BookingRentalEligibilityCard({
         </p>
       ))}
 
+      {result.warningReasons.some((reason) => /deposit|kaution/i.test(reason)) && (
+        <p className="text-muted-foreground leading-relaxed flex gap-1.5">
+          <Icon name="alert-triangle" className="w-3.5 h-3.5 shrink-0 mt-0.5 text-[color:var(--status-watch)]" aria-hidden />
+          <span>
+            Der Führerschein muss beim Pickup zwingend manuell kontrolliert werden.
+          </span>
+        </p>
+      )}
+
       <div className="flex flex-wrap gap-2 pt-0.5">
         {result.status === 'MISSING_INFORMATION' && onCompleteCustomerData && (
           <button

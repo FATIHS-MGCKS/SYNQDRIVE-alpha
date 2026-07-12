@@ -181,6 +181,9 @@ export class BookingWizardDraftService {
   async abortDraft(orgId: string, bookingId: string) {
     await this.requireWizardDraft(orgId, bookingId);
     await this.generatedDocuments.voidAllForBooking(orgId, bookingId);
+    await this.prisma.$transaction(async (tx) => {
+      await this.pricingQuoteService.releaseQuoteFromWizardDraft(tx, orgId, bookingId);
+    });
     const booking = await this.bookingsService.cancel(orgId, bookingId);
     return { booking, aborted: true };
   }

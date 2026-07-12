@@ -9,8 +9,8 @@ import {
   calculateAgeAtDate,
   evaluateRentalEligibilityChecks,
   monthsBetween,
-  parseLicenseIssuedAtFromExtractedJson,
 } from './booking-rental-eligibility.util';
+import { parseLicenseIssuedAtFromExtractedJson } from '@shared/utils/license-issued-at.util';
 
 @Injectable()
 export class BookingRentalEligibilityService {
@@ -29,6 +29,7 @@ export class BookingRentalEligibilityService {
         id: true,
         organizationId: true,
         dateOfBirth: true,
+        licenseIssuedAt: true,
       },
     });
     if (!customer) {
@@ -49,10 +50,12 @@ export class BookingRentalEligibilityService {
     );
     const formattedRules = this.rentalEffectiveRules.formatEffectiveRules(rules);
 
-    const licenseIssuedAt = await this.resolveLicenseIssuedAt(
-      input.organizationId,
-      input.customerId,
-    );
+    const licenseIssuedAt =
+      customer.licenseIssuedAt ??
+      (await this.resolveLicenseIssuedAtFromDocuments(
+        input.organizationId,
+        input.customerId,
+      ));
 
     const hasDateOfBirth = customer.dateOfBirth != null;
     const customerAge = customer.dateOfBirth
@@ -176,7 +179,7 @@ export class BookingRentalEligibilityService {
     });
   }
 
-  private async resolveLicenseIssuedAt(
+  private async resolveLicenseIssuedAtFromDocuments(
     orgId: string,
     customerId: string,
   ): Promise<Date | null> {

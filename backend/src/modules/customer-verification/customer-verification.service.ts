@@ -22,6 +22,7 @@ import { ManualPickupCheckDto } from './dto/manual-pickup-check.dto';
 import { StartDiditSessionDto } from './dto/start-didit-session.dto';
 import { DiditService } from './providers/didit/didit.service';
 import { parseIsoDate } from './providers/didit/didit-decision.parser';
+import { parseLicenseIssuedAtFromExtractedJson } from '@shared/utils/license-issued-at.util';
 import {
   buildVerificationPlanDescription,
   kindForPlanDomain,
@@ -1101,7 +1102,9 @@ export class CustomerVerificationService {
         ? extracted.expiration_date
         : undefined,
     );
+    const licenseIssuedAt = parseLicenseIssuedAtFromExtractedJson(extracted);
     if (licenseExpiry) data.licenseExpiry = licenseExpiry;
+    if (licenseIssuedAt) data.licenseIssuedAt = licenseIssuedAt;
   }
 
   private async getOrCreatePolicy(

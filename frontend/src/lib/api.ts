@@ -1702,6 +1702,7 @@ export interface CustomerApiRecord {
   createdAt?: string | null;
   joinDate?: string | null;
   licenseExpiry?: string | null;
+  licenseIssuedAt?: string | null;
   accidents?: number | null;
   violations?: number | null;
   currentVehicle?: string | null;

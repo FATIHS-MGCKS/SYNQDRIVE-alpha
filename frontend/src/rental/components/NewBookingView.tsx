@@ -321,6 +321,7 @@ export function NewBookingView({
       if (newCustomer.type === 'Corporate' && !newCustomer.company.trim()) errors.company = 'Company name required';
     } else if (step === 1) {
       if (!newCustomer.licenseNumber.trim()) errors.licenseNumber = 'License number required';
+      if (!newCustomer.licenseIssuedAt) errors.licenseIssuedAt = 'Issue date required';
       if (!newCustomer.licenseExpiry) errors.licenseExpiry = 'Expiry date required';
       if (!newCustomer.idNumber.trim()) errors.idNumber = 'ID number required';
       if (!newCustomer.idExpiry) errors.idExpiry = 'Expiry date required';

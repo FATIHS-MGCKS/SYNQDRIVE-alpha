@@ -632,6 +632,7 @@ export interface BuildCustomerCreatePayloadArgs {
   type: CustomerUiType | string;
   company?: string;
   licenseNumber?: string;
+  licenseIssuedAt?: string;
   licenseExpiry?: string;
   licenseClass?: string;
   idType?: string;
@@ -660,6 +661,7 @@ export function buildCustomerCreatePayload(args: BuildCustomerCreatePayloadArgs)
     companyName: args.company?.trim() || undefined,
     customerType: customerTypeUiToApi(args.type),
     licenseNumber: args.licenseNumber?.trim() || undefined,
+    licenseIssuedAt: toIso(args.licenseIssuedAt) ?? undefined,
     licenseExpiry: toIso(args.licenseExpiry) ?? undefined,
     idNumber: args.idNumber?.trim() || undefined,
     idExpiry: toIso(args.idExpiry) ?? undefined,

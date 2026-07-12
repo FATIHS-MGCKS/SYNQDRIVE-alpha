@@ -245,6 +245,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
       if (newCustomer.type === 'Corporate' && !newCustomer.company.trim()) errors.company = 'Firmenname erforderlich';
     } else if (step === 1) {
       if (!newCustomer.licenseNumber.trim()) errors.licenseNumber = 'Führerscheinnummer erforderlich';
+      if (!newCustomer.licenseIssuedAt) errors.licenseIssuedAt = 'Ausstellungsdatum erforderlich';
       if (!newCustomer.licenseExpiry) errors.licenseExpiry = 'Ablaufdatum erforderlich';
       if (!newCustomer.idNumber.trim()) errors.idNumber = 'Ausweisnummer erforderlich';
       if (!newCustomer.idExpiry) errors.idExpiry = 'Ablaufdatum erforderlich';
@@ -781,12 +782,18 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
                 {addStep === 1 && (
                   <div className="space-y-5">
                     {sectionTitle(Car, 'Führerschein')}
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       <div>
                         <label className={labelClass}>Führerscheinnr. *</label>
                         <input type="text" placeholder="B072RRE2I55" value={newCustomer.licenseNumber}
                           onChange={(e) => setNewCustomer({ ...newCustomer, licenseNumber: e.target.value })} className={inputClass} />
                         {formErrors.licenseNumber && <p className="text-[11px] text-red-500 mt-1">{formErrors.licenseNumber}</p>}
+                      </div>
+                      <div>
+                        <label className={labelClass}>Ausstellungsdatum *</label>
+                        <input type="date" value={newCustomer.licenseIssuedAt}
+                          onChange={(e) => setNewCustomer({ ...newCustomer, licenseIssuedAt: e.target.value })} className={inputClass} />
+                        {formErrors.licenseIssuedAt && <p className="text-[11px] text-red-500 mt-1">{formErrors.licenseIssuedAt}</p>}
                       </div>
                       <div>
                         <label className={labelClass}>Gültig bis *</label>
@@ -879,6 +886,7 @@ export function CustomersView({ onOpenCustomerDetail, additionalCustomers = [] }
                     </div>
                     <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-0 divide-y divide-border">
                       <SummaryRow label="Führerscheinnr." value={newCustomer.licenseNumber} />
+                      <SummaryRow label="Ausstellungsdatum" value={newCustomer.licenseIssuedAt} />
                       <SummaryRow label="Klasse" value={newCustomer.licenseClass} />
                       <SummaryRow label="FS gültig bis" value={newCustomer.licenseExpiry} />
                       <SummaryRow label="Ausweistyp" value={newCustomer.idType} />

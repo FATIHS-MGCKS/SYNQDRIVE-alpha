@@ -9,6 +9,9 @@ import type {
   BookingRentalEligibilityStatus,
 } from './booking-rental-eligibility.types';
 import { YOUNG_DRIVER_MAX_AGE_YEARS } from './booking-rental-eligibility.types';
+import { parseLicenseIssuedAtFromExtractedJson } from '@shared/utils/license-issued-at.util';
+
+export { parseLicenseIssuedAtFromExtractedJson };
 
 export function calculateAgeAtDate(dateOfBirth: Date, at: Date): number {
   let age = at.getFullYear() - dateOfBirth.getFullYear();
@@ -26,27 +29,6 @@ export function monthsBetween(start: Date, end: Date): number {
     months -= 1;
   }
   return Math.max(0, months);
-}
-
-export function parseLicenseIssuedAtFromExtractedJson(
-  extractedJson: unknown,
-): Date | null {
-  if (!extractedJson || typeof extractedJson !== 'object') return null;
-  const record = extractedJson as Record<string, unknown>;
-  const candidates = [
-    record.licenseIssuedAt,
-    record.issueDate,
-    record.issuedAt,
-    record.issuedOn,
-    record.dateOfIssue,
-  ];
-  for (const value of candidates) {
-    if (typeof value === 'string' || value instanceof Date) {
-      const parsed = value instanceof Date ? value : new Date(value);
-      if (!Number.isNaN(parsed.getTime())) return parsed;
-    }
-  }
-  return null;
 }
 
 export function isYoungDriver(age: number, minimumAgeYears: number | null): boolean {

@@ -43,6 +43,7 @@ function extractIdVerification(
     'last_name',
     'document_type',
     'date_of_birth',
+    'issue_date',
     'expiration_date',
     'issuing_state',
     'nationality',

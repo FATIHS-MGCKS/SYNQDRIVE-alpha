@@ -24,6 +24,7 @@ export type AddCustomerFormState = {
   type: 'Individual' | 'Corporate';
   company: string;
   licenseNumber: string;
+  licenseIssuedAt: string;
   licenseExpiry: string;
   licenseClass: string;
   idType: 'Personalausweis' | 'Reisepass';
@@ -43,6 +44,7 @@ export const DEFAULT_ADD_CUSTOMER_FORM: AddCustomerFormState = {
   type: 'Individual',
   company: '',
   licenseNumber: '',
+  licenseIssuedAt: '',
   licenseExpiry: '',
   licenseClass: 'B',
   idType: 'Personalausweis',
@@ -77,6 +79,7 @@ export function addCustomerFormToPayload(
     type: form.type,
     company: form.type === 'Corporate' ? form.company : undefined,
     licenseNumber: form.licenseNumber,
+    licenseIssuedAt: form.licenseIssuedAt,
     licenseExpiry: form.licenseExpiry,
     licenseClass: form.licenseClass,
     idType: form.idType,

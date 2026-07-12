@@ -29,6 +29,7 @@ export type DiditIdVerification = {
   last_name?: string;
   document_type?: string;
   date_of_birth?: string;
+  issue_date?: string;
   expiration_date?: string;
   issuing_state?: string;
   nationality?: string;

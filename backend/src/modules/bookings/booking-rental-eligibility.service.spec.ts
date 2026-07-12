@@ -95,7 +95,7 @@ describe('BookingRentalEligibilityService', () => {
 
   function mockCustomer(overrides: {
     dateOfBirth?: Date | null;
-    licenseIssuedAt?: string;
+    licenseIssuedAt?: string | null;
   } = {}) {
     (prisma.customer.findFirst as jest.Mock).mockResolvedValue({
       id: 'cust1',
@@ -104,10 +104,16 @@ describe('BookingRentalEligibilityService', () => {
         overrides.dateOfBirth !== undefined
           ? overrides.dateOfBirth
           : new Date('1990-01-15'),
+      licenseIssuedAt:
+        overrides.licenseIssuedAt === null
+          ? null
+          : overrides.licenseIssuedAt
+            ? new Date(overrides.licenseIssuedAt)
+            : new Date('2018-01-01'),
     });
-    if (overrides.licenseIssuedAt) {
+    if (overrides.licenseIssuedAt === null) {
       (prisma.customerDocument.findFirst as jest.Mock).mockResolvedValue({
-        extractedJson: { licenseIssuedAt: overrides.licenseIssuedAt },
+        extractedJson: { licenseIssuedAt: '2018-01-01' },
       });
     }
   }

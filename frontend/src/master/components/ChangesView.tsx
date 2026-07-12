@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'checkout-step5-fixes-v49392-2026-07-12',
+    version: '4.9.392',
+    title: 'V4.9.392 — Checkout Schritt 5: Dokumente-Fix, FS-Ausstellungsdatum, Pickup-Hinweis',
+    summary: [
+      'Fix: `POST .../bookings/wizard-draft` 500 — `quoteId`/`pricingInput` werden vor `prisma.booking.create` entfernt (Prisma Unknown argument).',
+      'Wizard-Abort gibt Preisquote wieder frei (`releaseQuoteFromWizardDraft`).',
+      'Kunde: neues Feld `licenseIssuedAt` (manuell + Didit-Sync) — Ausstellungsdatum im Kunden-anlegen-Wizard.',
+      'Eligibility-Card: Hinweis unter Kaution — Führerschein beim Pickup manuell prüfen.',
+    ],
+    reason:
+      'Schritt 5 zeigte „Internal server error“ bei Dokumenten; fehlendes FS-Ausstellungsdatum blockierte Eligibility trotz manuell gepflegtem Ablaufdatum; Pickup-Prüfhinweis fehlte bei Kaution.',
+    previousBehavior:
+      'Wizard-Draft crashte mit Prisma-Fehler; nur Ablaufdatum erfassbar; Eligibility las issue date nur aus Didit-Extraktion; kein expliziter Pickup-FS-Hinweis.',
+    details:
+      'Backend: `stripBookingCreateScalars` in `BookingsService.create`; `BookingWizardDraftService.abortDraft` + Quote-Release; Migration `license_issued_at`; `CreateCustomerDto` + Didit `issue_date`; `BookingRentalEligibilityService` priorisiert `customer.licenseIssuedAt`. Frontend: `AddCustomerFormState.licenseIssuedAt` in CustomersView + NewBookingView; `BookingRentalEligibilityCard` Deposit-Hinweis.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-12T20:15:00.000Z',
+  },
+  {
     id: 'booking-wizard-phase3-ux-v49391-2026-07-12',
     version: '4.9.391',
     title: 'V4.9.391 — Buchungs-Wizard Phase 3: UX, Auto-Send & Storno-Void',

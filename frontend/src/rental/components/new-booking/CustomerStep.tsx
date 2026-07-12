@@ -349,12 +349,18 @@ export function CustomerStep({
                 {addStep === 1 && (
                   <div className="space-y-5">
                     {sectionTitle(Car, 'Führerschein')}
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       <div>
                         <label className={labelClass}>Führerscheinnr. *</label>
                         <input type="text" placeholder="B072RRE2I55" value={newCustomer.licenseNumber}
                           onChange={(e) => onNewCustomerChange({ ...newCustomer, licenseNumber: e.target.value })} className={inputClass} />
                         {formErrors.licenseNumber && <p className="text-[11px] text-red-500 mt-1">{formErrors.licenseNumber}</p>}
+                      </div>
+                      <div>
+                        <label className={labelClass}>Ausstellungsdatum *</label>
+                        <input type="date" value={newCustomer.licenseIssuedAt}
+                          onChange={(e) => onNewCustomerChange({ ...newCustomer, licenseIssuedAt: e.target.value })} className={inputClass} />
+                        {formErrors.licenseIssuedAt && <p className="text-[11px] text-red-500 mt-1">{formErrors.licenseIssuedAt}</p>}
                       </div>
                       <div>
                         <label className={labelClass}>Gültig bis *</label>
@@ -442,6 +448,7 @@ export function CustomerStep({
                     </div>
                     <div className={`rounded-lg border p-4 space-y-0 divide-y ${ 'bg-muted/40 border border-border divide-border' }`}>
                       <SummaryRow label="Führerscheinnr." value={newCustomer.licenseNumber} />
+                      <SummaryRow label="Ausstellungsdatum" value={newCustomer.licenseIssuedAt} />
                       <SummaryRow label="Klasse" value={newCustomer.licenseClass} />
                       <SummaryRow label="FS gültig bis" value={newCustomer.licenseExpiry} />
                       <SummaryRow label="Ausweistyp" value={newCustomer.idType} />

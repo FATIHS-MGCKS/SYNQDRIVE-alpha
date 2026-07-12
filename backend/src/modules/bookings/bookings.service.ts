@@ -228,7 +228,7 @@ export class BookingsService {
       orgId,
       await this.applyBookingStationDefaults(orgId, anyData, vehicleId),
     );
-    const bookingData = this.stripBookingStationScalars(data as Record<string, unknown>);
+    const bookingData = this.stripBookingCreateScalars(data as Record<string, unknown>);
 
     const booking = await this.prisma.$transaction(async (tx) => {
       const created = await tx.booking.create({
@@ -646,6 +646,16 @@ export class BookingsService {
       actualReturnStation: _ars,
       ...rest
     } = data;
+    return rest;
+  }
+
+  /** Remove API-only fields that must not be passed to `prisma.booking.create`. */
+  private stripBookingCreateScalars(data: Record<string, unknown>): Record<string, unknown> {
+    const {
+      quoteId: _quoteId,
+      pricingInput: _pricingInput,
+      ...rest
+    } = this.stripBookingStationScalars(data);
     return rest;
   }
 

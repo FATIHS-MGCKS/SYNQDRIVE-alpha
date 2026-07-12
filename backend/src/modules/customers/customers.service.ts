@@ -87,6 +87,7 @@ export class CustomersService {
         customerType: dto.customerType ?? 'INDIVIDUAL',
         licenseNumber: dto.licenseNumber?.trim() || null,
         licenseExpiry: dto.licenseExpiry ? new Date(dto.licenseExpiry) : null,
+        licenseIssuedAt: dto.licenseIssuedAt ? new Date(dto.licenseIssuedAt) : null,
         idNumber: dto.idNumber?.trim() || null,
         idExpiry: dto.idExpiry ? new Date(dto.idExpiry) : null,
         notes: dto.notes?.trim() || null,
@@ -296,6 +297,9 @@ export class CustomersService {
         }),
         ...(dto.licenseExpiry !== undefined && {
           licenseExpiry: dto.licenseExpiry ? new Date(dto.licenseExpiry) : null,
+        }),
+        ...(dto.licenseIssuedAt !== undefined && {
+          licenseIssuedAt: dto.licenseIssuedAt ? new Date(dto.licenseIssuedAt) : null,
         }),
         ...(dto.idNumber !== undefined && {
           idNumber: dto.idNumber?.trim() || null,

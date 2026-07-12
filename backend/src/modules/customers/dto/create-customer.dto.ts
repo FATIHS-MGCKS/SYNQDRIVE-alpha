@@ -81,6 +81,10 @@ export class CreateCustomerDto {
   licenseExpiry?: string;
 
   @IsOptional()
+  @IsDateString()
+  licenseIssuedAt?: string;
+
+  @IsOptional()
   @IsString()
   @MaxLength(80)
   idNumber?: string;

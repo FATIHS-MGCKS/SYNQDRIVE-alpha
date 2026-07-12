@@ -7,6 +7,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { parseIsoDate } from './providers/didit/didit-decision.parser';
+import { parseLicenseIssuedAtFromExtractedJson } from '@shared/utils/license-issued-at.util';
 
 const TERMINAL_CHECK_STATUSES = new Set<CustomerVerificationCheckStatus>([
   'VERIFIED',
@@ -112,6 +113,8 @@ export class CustomerVerificationReadModelService {
         ? extracted.expiration_date
         : undefined,
     );
+    const licenseIssuedAt = parseLicenseIssuedAtFromExtractedJson(extracted);
     if (licenseExpiry) data.licenseExpiry = licenseExpiry;
+    if (licenseIssuedAt) data.licenseIssuedAt = licenseIssuedAt;
   }
 }

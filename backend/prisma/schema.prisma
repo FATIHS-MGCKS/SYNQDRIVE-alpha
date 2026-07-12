@@ -2727,6 +2727,7 @@ model Customer {
   riskUpdatedByUserId       String?                    @map("risk_updated_by_user_id")
   notes                     String?
   licenseExpiry             DateTime?                  @map("license_expiry")
+  licenseIssuedAt           DateTime?                  @map("license_issued_at")
   licenseClass              String?                    @map("license_class")
   idType                    String?                    @map("id_type")
   idNumber                  String?                    @map("id_number")
