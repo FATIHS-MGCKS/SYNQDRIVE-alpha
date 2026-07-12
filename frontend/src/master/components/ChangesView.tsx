@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-tariff-panel-render-v49382-2026-07-12',
+    version: '4.9.382',
+    title: 'V4.9.382 — Meldungen-Panel: Bridge-Einträge sichtbar rendern',
+    summary: [
+      'Derived/Bridge-Meldungen (z. B. Fahrzeuge ohne Tarif) erhalten vor dem Rendern ein `queue`-Model.',
+      'Tab-Badges werden mit renderbaren Einträgen abgeglichen; Behoben-Tab zeigt nur resolved-Zähler.',
+    ],
+    reason:
+      'Badge-Zähler stimmten (z. B. Kritisch 1), aber `NotificationEntryCard` rendert nur Items mit `queue` — Bridge-Items aus V4.9.381 blieben unsichtbar.',
+    previousBehavior:
+      'Kritisch/Alle/Behoben zeigten Zähler ohne sichtbare Zeilen; supplementäre Insights hatten kein Notification-Queue-Model.',
+    details:
+      'NotificationPanel.tsx (`ensureNotificationPanelQueueItems`), notificationQueueEnricher.ts, notification-panel-counts.ts, useDashboardViewModel.ts, Tests.',
+    affectsArchitecture: false,
+    module: 'Pricing',
+    createdAt: '2026-07-12T10:05:00.000Z',
+  },
+  {
     id: 'dashboard-tariff-critical-v49381-2026-07-12',
     version: '4.9.381',
     title: 'V4.9.381 — Dashboard: kritische Tarif-Meldung im V2-Meldungen-Panel',

@@ -343,3 +343,15 @@ export function enrichNotificationQueueItems(
 ): EnrichedActionQueueItem[] {
   return items.map((item) => enrichNotificationQueueItem(item, options));
 }
+
+/** Bridge items (derived insights, rental-health) may lack `queue` until enriched for the V2 panel. */
+export function ensureNotificationPanelQueueItems(
+  items: ActionQueueItem[],
+  options: {
+    locale: Locale | string;
+    referenceNowMs: number;
+    t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
+  },
+): EnrichedActionQueueItem[] {
+  return items.map((item) => (item.queue ? (item as EnrichedActionQueueItem) : enrichNotificationQueueItem(item, options)));
+}
