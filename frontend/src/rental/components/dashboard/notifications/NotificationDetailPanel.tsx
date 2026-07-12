@@ -34,7 +34,9 @@ export const NotificationDetailPanel = memo(function NotificationDetailPanel({
   return (
     <div className="border-t border-border/25 px-3 py-3 sm:px-3.5">
       <div className="space-y-2">
-        <p className={NOTIFICATION_PANEL_TYPO.childTitle}>{detail.issueTitle}</p>
+        {detail.issueTitle ? (
+          <p className={NOTIFICATION_PANEL_TYPO.childTitle}>{detail.issueTitle}</p>
+        ) : null}
         {detail.issueDescription ? (
           <p className={NOTIFICATION_PANEL_TYPO.childDescription}>{detail.issueDescription}</p>
         ) : null}

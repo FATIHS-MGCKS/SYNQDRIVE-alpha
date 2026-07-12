@@ -146,9 +146,12 @@ export function buildNotificationDetailViewModel(
   const t = createNotificationTranslator(locale);
   const copy = resolveNotificationIssueCopy(item, locale);
   const affectedVehicles = item.affectedVehicles;
+  const isTariffFleetAlert =
+    item.id === 'derived-vehicles-without-tariff' || item.issueType === 'vehicles_without_tariff';
+
   return {
-    issueTitle: copy.headline,
-    issueDescription: copy.detail,
+    issueTitle: isTariffFleetAlert ? '' : copy.headline,
+    issueDescription: isTariffFleetAlert ? '' : copy.detail,
     ctaPrimaryLabel: resolveNotificationPrimaryCtaLabel(item, locale),
     showCreateTask: canCreateTaskFromNotification(item),
     createTaskLabel: t('notification.cta.createTask'),
