@@ -35,6 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-tariff-alert-icon-count-v49387-2026-07-12',
+    version: '4.9.387',
+    title: 'V4.9.387 — Tarif-Meldung: Tag-Icon + Anzahl betroffener Fahrzeuge',
+    summary: [
+      'Tarif-Meldung nutzt das Tag-Icon (Tarifgruppe) statt fehlendem `tags`-Alias.',
+      'Badge am Icon zeigt die Anzahl betroffener Fahrzeuge (wie bei gruppierten Meldungen).',
+    ],
+    reason: 'Icon wurde nicht gerendert; die Anzahl der betroffenen Fahrzeuge fehlte visuell am Icon.',
+    previousBehavior: 'Falsches Icon-Name `tags` ohne Mapping; kein Zähler-Badge am Icon.',
+    details: 'notificationDomainIcon.ts, notification-summary-view-model.ts.',
+    affectsArchitecture: false,
+    module: 'Pricing',
+    createdAt: '2026-07-12T12:05:00.000Z',
+  },
+  {
     id: 'dashboard-tariff-subtitle-expanded-detail-v49386-2026-07-12',
     version: '4.9.386',
     title: 'V4.9.386 — Tarif-Meldung: Kurzbeschreibung nur im aufgeklappten Detail',
