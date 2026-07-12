@@ -92,9 +92,10 @@ function summaryFromItem(
 
   const isTariffFleetAlert =
     item.id === 'derived-vehicles-without-tariff' || item.issueType === 'vehicles_without_tariff';
+  const affectedVehicleCount = item.affectedVehicles?.length ?? 0;
   const subtitle =
-    !isTariffFleetAlert && item.affectedVehicles && item.affectedVehicles.length > 0
-      ? formatAffectedVehiclesPreview(item.affectedVehicles, locale)
+    !isTariffFleetAlert && affectedVehicleCount > 0
+      ? formatAffectedVehiclesPreview(item.affectedVehicles!, locale)
       : undefined;
 
   return {
@@ -106,8 +107,11 @@ function summaryFromItem(
     subtitle,
     lastSeenLabel: formatNotificationLastSeenShort(queue, { locale, referenceNowMs }),
     iconName: notificationDomainIcon(queue.domain, item.issueType),
-    iconCount: overrides.iconCount ?? 1,
-    showIconCount: false,
+    iconCount:
+      isTariffFleetAlert && affectedVehicleCount > 0
+        ? affectedVehicleCount
+        : (overrides.iconCount ?? 1),
+    showIconCount: isTariffFleetAlert && affectedVehicleCount > 0,
     resolved: queue.lifecycleStatus === 'resolved' || queue.lifecycleStatus === 'archived',
     unread: queue.readStatus === 'unread',
     expandable: overrides.expandable ?? true,

@@ -39,6 +39,9 @@ describe('tariff notification vehicle list', () => {
     const summary = buildNotificationSummaryFromItem(enriched, 'de', Date.now());
     expect(summary?.subtitle).toBeUndefined();
     expect(summary?.headlineTitle).toContain('ohne Tarif');
+    expect(summary?.iconName).toBe('tag');
+    expect(summary?.showIconCount).toBe(true);
+    expect(summary?.iconCount).toBe(3);
 
     const detail = buildNotificationDetailViewModel(enriched, 'de');
     expect(detail.ctaPrimaryLabel).toBe('Preise & Tarife öffnen');
