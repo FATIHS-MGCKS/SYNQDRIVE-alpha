@@ -33,6 +33,7 @@ import {
 } from './dashboardTypes';
 import {
   buildActionQueueEmptySummary,
+  buildDerivedOperationalQueueItems,
   buildUnifiedActionQueue,
 } from './actionQueueBuilder';
 import {
@@ -94,7 +95,9 @@ import {
   augmentPrimaryTabCountsWithHealthItems,
   buildVehicleHealthQueueItems,
   mergeV2NotificationsWithVehicleHealth,
+  mergeV2WithSupplemental,
   supplementalHealthItems,
+  supplementalQueueItems,
 } from '../../lib/notifications/merge-v2-with-vehicle-health';
 
 const BUSINESS_METRIC_IDS: ReadonlySet<string> = new Set<BusinessMetricId>([
@@ -757,11 +760,8 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
 
   const unassignedTariffVehicleCount = useMemo(() => {
     if (catalogLoading || !catalog) return 0;
-    const assigned = new Set(
-      catalog.assignments.filter((assignment) => assignment.isActive).map((assignment) => assignment.vehicleId),
-    );
-    return filteredFleetVehicles.filter((vehicle) => !assigned.has(vehicle.id)).length;
-  }, [catalog, catalogLoading, filteredFleetVehicles]);
+    return catalog.unassignedVehicleCount ?? 0;
+  }, [catalog, catalogLoading]);
 
   const derivedOperationalInsights = useMemo(
     () =>
@@ -875,6 +875,11 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     logShadowCompareDiagnostics(result);
   }, [v1ActionQueue, notificationsV2.items, notificationsV2.loading]);
 
+  const derivedQueueItems = useMemo(
+    () => buildDerivedOperationalQueueItems(derivedOperationalInsights),
+    [derivedOperationalInsights],
+  );
+
   const vehicleHealthQueueItems = useMemo(
     () => buildVehicleHealthQueueItems(vehicleHealthAlerts, locale, fleetById),
     [vehicleHealthAlerts, locale, fleetById],
@@ -885,8 +890,9 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     if (notificationsV2.listMode === 'resolved') {
       return [...notificationsV2.items].sort((a, b) => b.timeSortMs - a.timeSortMs);
     }
-    return mergeV2NotificationsWithVehicleHealth(notificationsV2.items, vehicleHealthQueueItems);
-  }, [notificationsV2.items, notificationsV2.listMode, v1ActionQueue, vehicleHealthQueueItems]);
+    const withDerived = mergeV2WithSupplemental(notificationsV2.items, derivedQueueItems);
+    return mergeV2NotificationsWithVehicleHealth(withDerived, vehicleHealthQueueItems);
+  }, [notificationsV2.items, notificationsV2.listMode, v1ActionQueue, derivedQueueItems, vehicleHealthQueueItems]);
 
   const actionQueueTabCounts = useMemo(
     () => (shouldUseV2NotificationSource() ? notificationsV2.tabCounts : null),
@@ -903,9 +909,15 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
 
   const notificationPrimaryTabCounts = useMemo(() => {
     if (!shouldUseV2NotificationSource()) return null;
-    const extra = supplementalHealthItems(notificationsV2.items, vehicleHealthQueueItems);
-    return augmentPrimaryTabCountsWithHealthItems(notificationsV2.primaryTabCounts, extra);
-  }, [notificationsV2.items, notificationsV2.primaryTabCounts, vehicleHealthQueueItems]);
+    const derivedExtra = supplementalQueueItems(notificationsV2.items, derivedQueueItems);
+    const withDerived = [...notificationsV2.items, ...derivedExtra];
+    const healthExtra = supplementalHealthItems(withDerived, vehicleHealthQueueItems);
+    const withDerivedCounts = augmentPrimaryTabCountsWithHealthItems(
+      notificationsV2.primaryTabCounts,
+      derivedExtra,
+    );
+    return augmentPrimaryTabCountsWithHealthItems(withDerivedCounts, healthExtra);
+  }, [notificationsV2.items, notificationsV2.primaryTabCounts, derivedQueueItems, vehicleHealthQueueItems]);
 
   const setNotificationListMode = useCallback(
     (mode: 'active' | 'resolved') => {

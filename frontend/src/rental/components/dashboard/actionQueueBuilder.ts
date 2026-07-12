@@ -189,6 +189,42 @@ function computePriority(
   return score + tieBreaker;
 }
 
+export function mapDerivedInsightToActionQueueItem(
+  insight: DerivedOperationalInsight,
+): ActionQueueItem {
+  return {
+    id: insight.id,
+    semanticKey: semanticKeyForDerivedInsight(insight),
+    source: insight.source,
+    severity: insight.severity,
+    category: insight.category,
+    title: sanitizeUserFacingIssueText(insight.title),
+    reason: sanitizeUserFacingIssueText(insight.reason),
+    entityLabel: insight.entityLabel,
+    timeLabel: insight.timeLabel,
+    timeSortMs: insight.timeSortMs,
+    priority: computePriority(insight.severity, insight.isOverdue, insight.timeSortMs) + 20,
+    tone: severityToTone(insight.severity),
+    cta: insight.cta,
+    vehicleId: insight.vehicleId,
+    bookingId: insight.bookingId,
+    isOverdue: insight.isOverdue,
+  };
+}
+
+export function buildDerivedOperationalQueueItems(
+  derivedInsights: DerivedOperationalInsight[],
+): ActionQueueItem[] {
+  const seen = new Set<string>();
+  const items: ActionQueueItem[] = [];
+  for (const insight of derivedInsights) {
+    if (seen.has(insight.id)) continue;
+    seen.add(insight.id);
+    items.push(mapDerivedInsightToActionQueueItem(insight));
+  }
+  return items;
+}
+
 function matchesStation(
   stationFilter: string | null,
   fleetById: Map<string, VehicleData>,
@@ -609,24 +645,7 @@ export function buildUnifiedActionQueue(input: BuildActionQueueInput): ActionQue
   for (const d of input.derivedInsights) {
     if (seenDerived.has(d.id) || existingIds.has(d.id)) continue;
     seenDerived.add(d.id);
-    items.push({
-      id: d.id,
-      semanticKey: semanticKeyForDerivedInsight(d),
-      source: d.source,
-      severity: d.severity,
-      category: d.category,
-      title: sanitizeUserFacingIssueText(d.title),
-      reason: sanitizeUserFacingIssueText(d.reason),
-      entityLabel: d.entityLabel,
-      timeLabel: d.timeLabel,
-      timeSortMs: d.timeSortMs,
-      priority: computePriority(d.severity, d.isOverdue, d.timeSortMs) + 20,
-      tone: severityToTone(d.severity),
-      cta: d.cta,
-      vehicleId: d.vehicleId,
-      bookingId: d.bookingId,
-      isOverdue: d.isOverdue,
-    });
+    items.push(mapDerivedInsightToActionQueueItem(d));
   }
 
   for (const p of input.predictiveInsights) {
