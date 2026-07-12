@@ -263,6 +263,9 @@ export const de: Record<TranslationKey, string> = {
   'email.settings.replyTo': 'Reply-To',
   'email.settings.replyToPlaceholder': 'rechnung@ihre-domain.de',
   'email.settings.signature': 'Signatur (HTML)',
+  'email.settings.autoSendBookingDocs': 'Buchungsdokumente nach Bestätigung automatisch senden',
+  'email.settings.autoSendBookingDocsHint':
+    'Nach Abschluss einer Buchung (Wizard oder Operator) werden alle versendbaren PDFs an die Kunden-E-Mail geschickt. Manueller Versand und Druck bleiben jederzeit möglich.',
   'email.settings.save': 'Speichern',
   'email.settings.saved': 'E-Mail-Einstellungen gespeichert',
   'email.settings.loadError': 'Laden fehlgeschlagen',

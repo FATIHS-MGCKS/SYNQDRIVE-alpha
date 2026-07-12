@@ -14,6 +14,7 @@ export interface OrgEmailSettingsDto {
   defaultFromName: string | null;
   replyToEmail: string | null;
   signatureHtml: string | null;
+  autoSendBookingDocumentsOnConfirm: boolean;
   platformSender: {
     fromEmail: string;
     fromName: string;
@@ -77,6 +78,7 @@ export class OutboundEmailDomainService {
         defaultFromName: input.defaultFromName ?? null,
         replyToEmail: input.replyToEmail ?? null,
         signatureHtml: input.signatureHtml ?? null,
+        autoSendBookingDocumentsOnConfirm: input.autoSendBookingDocumentsOnConfirm ?? false,
       },
       update: {
         ...(input.mode !== undefined ? { mode: input.mode } : {}),
@@ -85,6 +87,9 @@ export class OutboundEmailDomainService {
           : {}),
         ...(input.replyToEmail !== undefined ? { replyToEmail: input.replyToEmail } : {}),
         ...(input.signatureHtml !== undefined ? { signatureHtml: input.signatureHtml } : {}),
+        ...(input.autoSendBookingDocumentsOnConfirm !== undefined
+          ? { autoSendBookingDocumentsOnConfirm: input.autoSendBookingDocumentsOnConfirm }
+          : {}),
       },
     });
 
@@ -231,6 +236,7 @@ export class OutboundEmailDomainService {
       defaultFromName: string | null;
       replyToEmail: string | null;
       signatureHtml: string | null;
+      autoSendBookingDocumentsOnConfirm: boolean;
     },
     platformDefaults: {
       defaultFromEmail: string;
@@ -243,6 +249,7 @@ export class OutboundEmailDomainService {
       defaultFromName: row.defaultFromName,
       replyToEmail: row.replyToEmail,
       signatureHtml: row.signatureHtml,
+      autoSendBookingDocumentsOnConfirm: row.autoSendBookingDocumentsOnConfirm,
       platformSender: {
         fromEmail: platformDefaults.defaultFromEmail,
         fromName: platformDefaults.defaultFromName,

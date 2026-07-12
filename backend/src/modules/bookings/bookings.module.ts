@@ -16,6 +16,7 @@ import { WorkflowsModule } from '@modules/workflows/workflows.module';
 import { PricingModule } from '@modules/pricing/pricing.module';
 import { StationsModule } from '@modules/stations/stations.module';
 import { RentalRulesModule } from '@modules/rental-rules/rental-rules.module';
+import { OutboundEmailModule } from '@modules/outbound-email/outbound-email.module';
 import { CustomerVerificationModule } from '@modules/customer-verification/customer-verification.module';
 import { BookingRentalEligibilityService } from './booking-rental-eligibility.service';
 import { BookingWizardDraftService } from './booking-wizard-draft.service';
@@ -33,6 +34,7 @@ import { BookingWizardDraftService } from './booking-wizard-draft.service';
     PricingModule,
     StationsModule,
     RentalRulesModule,
+    OutboundEmailModule,
   ],
   controllers: [BookingsController],
   providers: [BookingsService, BookingsHandoverService, BookingRentalEligibilityService, BookingWizardDraftService],

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-wizard-phase3-ux-v49391-2026-07-12',
+    version: '4.9.391',
+    title: 'V4.9.391 — Buchungs-Wizard Phase 3: UX, Auto-Send & Storno-Void',
+    summary: [
+      '3.1: Org-Einstellung `autoSendBookingDocumentsOnConfirm` — nach Buchungsbestätigung optional alle versendbaren PDFs an Kunden-E-Mail (Wizard + Operator CONFIRMED).',
+      '3.2: Success-Screen zeigt Dokumentstatus (Bereit/Versendet) + „Alle per E-Mail senden“ / Erneut senden.',
+      '3.3: `bookings.cancel` voidet jetzt alle Buchungsdokumente (nicht nur Wizard-Abort).',
+      '3.4: Operator-PENDING-Buchungen erhalten beim Anlegen ebenfalls ein Document-Bundle; Widerrufsbelehrung im Checkout sichtbar.',
+    ],
+    reason:
+      'Phase 3 schließt Automatisierung und UX-Lücken nach dem Checkout-Entwurf (V4.9.390): Storno soll keine gültigen PDFs hinterlassen, Success-Screen soll Versandstatus zeigen, Auto-Send nur wenn Org es will.',
+    previousBehavior:
+      'Storno ließ Dokumente gültig; Success-Screen ohne Dokumente; kein Auto-Send; Operator-PENDING ohne Bundle; Widerruf nur im Backend-Bundle, nicht im Checkout-UI.',
+    details:
+      'Migration `20260712183000_org_email_auto_send_booking_docs`, `BookingDocumentEmailService.maybeAutoSendBookingDocuments`, `BookingSuccessState` + `CheckoutDocumentsPanel` (WITHDRAWAL_INFORMATION, bulk send), `EmailVersandTab` Toggle.',
+    affectsArchitecture: true,
+    module: 'Insurance',
+    createdAt: '2026-07-12T19:30:00.000Z',
+  },
+  {
     id: 'booking-wizard-checkout-docs-v49390-2026-07-12',
     version: '4.9.390',
     title: 'V4.9.390 — Neue Buchung: Checkout-Entwurf, echte Dokumente & E-Mail',

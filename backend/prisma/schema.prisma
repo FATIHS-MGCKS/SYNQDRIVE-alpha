@@ -6108,6 +6108,7 @@ model OrgEmailSettings {
   defaultFromName String?      @map("default_from_name")
   replyToEmail    String?      @map("reply_to_email")
   signatureHtml   String?      @map("signature_html")
+  autoSendBookingDocumentsOnConfirm Boolean @default(false) @map("auto_send_booking_documents_on_confirm")
   createdAt       DateTime     @default(now()) @map("created_at")
   updatedAt       DateTime     @updatedAt @map("updated_at")
 

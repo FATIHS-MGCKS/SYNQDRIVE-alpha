@@ -1,4 +1,4 @@
-import { IsEmail, IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsEmail, IsEnum, IsOptional, IsString } from 'class-validator';
 import { OrgEmailMode } from '@prisma/client';
 
 export class UpdateOrgEmailSettingsDto {
@@ -17,4 +17,8 @@ export class UpdateOrgEmailSettingsDto {
   @IsOptional()
   @IsString()
   signatureHtml?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  autoSendBookingDocumentsOnConfirm?: boolean;
 }
