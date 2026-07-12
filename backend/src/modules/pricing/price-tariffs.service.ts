@@ -23,7 +23,11 @@ import {
   assertTariffVersionPublishable,
   resolvePublishTargetStatus,
 } from './tariff-version-lifecycle.util';
-import { DEFAULT_TARIFF_TIMEZONE, parseTariffEffectiveInstant } from './tariff-instant.util';
+import {
+  DEFAULT_TARIFF_TIMEZONE,
+  defaultTariffAssignmentValidFrom,
+  parseTariffEffectiveInstant,
+} from './tariff-instant.util';
 import {
   syncExtraOptionsForVersion,
   syncInsuranceOptionsForVersion,
@@ -474,6 +478,15 @@ export class PriceTariffsService {
     });
     if (!vehicle) throw new NotFoundException('Fahrzeug nicht gefunden');
 
+    const org = await this.prisma.organization.findFirst({
+      where: { id: orgId },
+      select: { timezone: true },
+    });
+    const orgTimezone = org?.timezone?.trim() || DEFAULT_TARIFF_TIMEZONE;
+    const assignmentValidFrom = dto.validFrom
+      ? parseTariffEffectiveInstant(dto.validFrom, orgTimezone)
+      : defaultTariffAssignmentValidFrom(orgTimezone);
+
     return this.prisma.$transaction(async (tx) => {
       const existing = await tx.vehicleTariffAssignment.findFirst({
         where: { organizationId: orgId, vehicleId: dto.vehicleId, isActive: true },
@@ -496,7 +509,7 @@ export class PriceTariffsService {
           vehicleId: dto.vehicleId,
           tariffGroupId: group.id,
           priceBookId: group.priceBookId,
-          validFrom: dto.validFrom ? new Date(dto.validFrom) : new Date(),
+          validFrom: assignmentValidFrom,
           isActive: true,
         },
       });

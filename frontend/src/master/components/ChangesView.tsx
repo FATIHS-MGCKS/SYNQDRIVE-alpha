@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-tariff-pickup-validfrom-v49389-2026-07-12',
+    version: '4.9.389',
+    title: 'V4.9.389 — Buchung: Tarif-Fehler bei zugewiesenem Fahrzeug behoben',
+    summary: [
+      'Ursache: `assignVehicle` setzte `validFrom` auf exakt „jetzt“ — Abholung am selben Tag vor der Zuweisungszeit führte zu `NO_ACTIVE_TARIFF`, obwohl Price Tariffs das Fahrzeug als zugewiesen zeigte.',
+      'Backend: Standard-`validFrom` = Tagesbeginn in Org-Zeitzone (Europe/Berlin); Buchung nutzt weiterhin `pricingContext` aus `simulate` als Preis-Wahrheit.',
+      'Frontend: Pickup-bewusste Tarifprüfung im Picker; doppelte Fehlermeldung in der Buchungsübersicht entfernt (nur noch API-`priceError`).',
+    ],
+    reason:
+      'Katalog zeigte aktive Zuweisung ohne Gültigkeitsfenster; Server prüft `[validFrom, validTo)` am Abholzeitpunkt — Mismatch bei Nachmittags-Zuweisung + Vormittags-Abholung.',
+    previousBehavior:
+      'Zwei Meldungen („Zuweisung in Price Tariffs erforderlich“ + „Kein aktiver Tarif zugewiesen“); Preise blieben leer trotz sichtbarer Tarifgruppe.',
+    details:
+      'Bestehende Zuweisungen mit `validFrom` nach Tagesbeginn: einmalig unter Preise & Tarife neu zuweisen (oder erneutes Zuweisen nach Deploy).',
+    affectsArchitecture: true,
+    module: 'Insurance',
+    createdAt: '2026-07-12T18:30:00.000Z',
+  },
+  {
     id: 'clickhouse-log-hardening-v49388-2026-07-12',
     version: '4.9.388',
     title: 'V4.9.388 — ClickHouse/VPS: Log-Härtung gegen Disk-Full',

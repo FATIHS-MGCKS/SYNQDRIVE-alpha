@@ -4,6 +4,30 @@ const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 export const DEFAULT_TARIFF_TIMEZONE = 'Europe/Berlin';
 
+/** Calendar date `YYYY-MM-DD` for an instant in an IANA timezone. */
+export function zonedDateOnly(
+  instant: Date,
+  timeZone: string = DEFAULT_TARIFF_TIMEZONE,
+): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(instant);
+}
+
+/**
+ * Default `validFrom` for new vehicle assignments — start of the assignment
+ * calendar day in the org timezone so same-day pickups before "now" still resolve.
+ */
+export function defaultTariffAssignmentValidFrom(
+  timeZone: string = DEFAULT_TARIFF_TIMEZONE,
+  reference: Date = new Date(),
+): Date {
+  return zonedStartOfDayToUtc(zonedDateOnly(reference, timeZone), timeZone);
+}
+
 /**
  * Parse a tariff instant for validity boundaries.
  * - Full ISO-8601 strings → absolute instant (UTC storage).

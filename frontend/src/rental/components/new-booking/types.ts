@@ -78,7 +78,6 @@ export interface BookingSummaryPanelProps {
   mileagePackages: Array<{ id: string; includedKm: number }>;
   insuranceOptions: Array<{ id: string; label: string }>;
   extraOptions: Array<{ id: string; label: string }>;
-  noTariffForVehicle: boolean;
   canCalculatePrice: boolean;
   priceLoading: boolean;
   priceError: string | null;

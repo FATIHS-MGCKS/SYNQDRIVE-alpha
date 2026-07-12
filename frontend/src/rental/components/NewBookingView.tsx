@@ -9,9 +9,6 @@ import { resolveDrivingStressScore } from '../lib/scoreFormat';
 import { usePriceTariffs } from '../hooks/usePriceTariffs';
 import { usePricingSimulation } from '../hooks/usePricingSimulation';
 import {
-  formatNetAsGross,
-  getVehicleTariffFromCatalog,
-  catalogCurrency,
   discountableNetCents,
   grossFromNetCents,
   isPricingQuoteStaleError,
@@ -49,7 +46,9 @@ import type { Station } from '../../lib/api';
 import { buildMMY } from '../lib/vehicleMmy';
 import { BookingVehiclePreflightBanner } from '../lib/booking-vehicle-preflight-banner';
 import {
+  getVehicleDailyRateLabelFromCatalog,
   isBookingVehicleHardBlocked,
+  vehicleHasAssignedTariff,
   vehicleStationId,
 } from '../lib/booking-vehicle-preflight';
 import { VehiclePickerStep } from './new-booking/VehiclePickerStep';
@@ -196,25 +195,6 @@ export function NewBookingView({
       cancelled = true;
     };
   }, [orgId]);
-
-  const getVehicleDailyRateLabel = useCallback(
-    (vehicleId: string): string | null => {
-      if (catalogLoading) return null;
-      const ctx = getVehicleTariffFromCatalog(catalog, vehicleId);
-      if (!ctx?.version.rate) return null;
-      const currency = catalogCurrency(catalog) ?? 'EUR';
-      return formatNetAsGross(ctx.version.rate.dailyRateCents, taxRatePercent, currency);
-    },
-    [catalog, catalogLoading, taxRatePercent],
-  );
-
-  const vehicleHasTariff = useCallback(
-    (vehicleId: string): boolean => {
-      if (catalogLoading) return true;
-      return Boolean(getVehicleTariffFromCatalog(catalog, vehicleId));
-    },
-    [catalog, catalogLoading],
-  );
 
   const [currentStep, setCurrentStep] = useState<BookingWizardStepId>(1);
 
@@ -613,6 +593,48 @@ export function NewBookingView({
   const pricingContext = priceSim?.pricingContext ?? priceSimBase?.pricingContext ?? null;
   const resolvedTaxRatePercent = pricingContext?.taxRatePercent ?? taxRatePercent;
 
+  const getVehicleDailyRateLabel = useCallback(
+    (vehicleId: string): string | null =>
+      getVehicleDailyRateLabelFromCatalog(
+        catalog,
+        vehicleId,
+        resolvedTaxRatePercent,
+        catalogLoading,
+        pickupAtIso || null,
+      ),
+    [catalog, catalogLoading, resolvedTaxRatePercent, pickupAtIso],
+  );
+
+  const vehicleHasTariff = useCallback(
+    (vehicleId: string): boolean => {
+      if (
+        selectedVehicle?.id === vehicleId &&
+        pickupDate &&
+        returnDate &&
+        (priceLoading || pricingContext)
+      ) {
+        if (priceLoading) return true;
+        return Boolean(pricingContext);
+      }
+      return vehicleHasAssignedTariff(
+        catalog,
+        vehicleId,
+        catalogLoading,
+        pickupAtIso || null,
+      );
+    },
+    [
+      catalog,
+      catalogLoading,
+      pickupAtIso,
+      pickupDate,
+      returnDate,
+      priceLoading,
+      pricingContext,
+      selectedVehicle?.id,
+    ],
+  );
+
   const mileagePackages = useMemo(
     () => pricingContext?.mileagePackages.filter((p) => p.isActive) ?? [],
     [pricingContext],
@@ -661,9 +683,6 @@ export function NewBookingView({
   const discountAmount = manualDiscountCents != null ? manualDiscountCents / 100 : 0;
   const hasPrice = Boolean(priceSim && grandTotal != null);
   const periodSelected = Boolean(selectedVehicle && pickupDate && returnDate);
-  const noTariffForVehicle = Boolean(
-    periodSelected && !priceLoading && !pricingContext && Boolean(priceError || priceSimBase === null),
-  );
   const canCalculatePrice = Boolean(periodSelected && (priceLoading || pricingContext));
   const selectedVehicleHasTariff =
     !selectedVehicle || catalogLoading || vehicleHasTariff(selectedVehicle.id);
@@ -1096,7 +1115,6 @@ export function NewBookingView({
     mileagePackages,
     insuranceOptions,
     extraOptions,
-    noTariffForVehicle,
     canCalculatePrice,
     priceLoading,
     priceError,

@@ -45,6 +45,44 @@ export function getActiveVersion(group: PriceTariffGroup): PriceTariffVersion | 
   return group.versions.find((v) => v.status === 'ACTIVE') ?? null;
 }
 
+const RESOLVABLE_TARIFF_VERSION_STATUSES = ['ACTIVE', 'SCHEDULED', 'ARCHIVED'] as const;
+
+/** Half-open validity [validFrom, validTo) — mirrors backend tariff-validity.util. */
+export function isTariffEffectiveAt(
+  validFrom: string | Date,
+  validTo: string | Date | null | undefined,
+  instant: Date,
+): boolean {
+  const from = typeof validFrom === 'string' ? new Date(validFrom) : validFrom;
+  const t = instant.getTime();
+  if (from.getTime() > t) return false;
+  if (validTo != null) {
+    const to = typeof validTo === 'string' ? new Date(validTo) : validTo;
+    if (to.getTime() <= t) return false;
+  }
+  return true;
+}
+
+export function pickEffectiveTariffVersionFromGroup(
+  group: PriceTariffGroup,
+  instant: Date,
+): PriceTariffVersion | null {
+  const candidates = group.versions.filter(
+    (v) =>
+      (RESOLVABLE_TARIFF_VERSION_STATUSES as readonly string[]).includes(v.status) &&
+      isTariffEffectiveAt(v.validFrom, v.validTo, instant) &&
+      v.rate,
+  );
+  candidates.sort((a, b) => {
+    const fromDiff = new Date(b.validFrom).getTime() - new Date(a.validFrom).getTime();
+    if (fromDiff !== 0) return fromDiff;
+    const verDiff = b.versionNumber - a.versionNumber;
+    if (verDiff !== 0) return verDiff;
+    return b.id.localeCompare(a.id);
+  });
+  return candidates[0] ?? null;
+}
+
 export function getDraftVersion(group: PriceTariffGroup): PriceTariffVersion | null {
   if (group.draftVersion != null) return group.draftVersion;
   return group.versions.find((v) => v.status === 'DRAFT') ?? null;
@@ -112,19 +150,42 @@ export const STATUS_BADGE: Record<
 export function getVehicleTariffFromCatalog(
   catalog: PriceTariffCatalog | null,
   vehicleId: string,
+  pickupAt?: string | Date | null,
 ): {
   group: PriceTariffGroup;
   version: PriceTariffVersion;
   assignment: VehicleTariffAssignment;
 } | null {
   if (!catalog) return null;
-  const assignment = catalog.assignments.find(
+  const instant =
+    pickupAt != null && pickupAt !== ''
+      ? typeof pickupAt === 'string'
+        ? new Date(pickupAt)
+        : pickupAt
+      : null;
+
+  const matching = catalog.assignments.filter(
     (a) => a.isActive && a.vehicleId === vehicleId,
   );
-  if (!assignment) return null;
+  if (matching.length === 0) return null;
+
+  let assignment: VehicleTariffAssignment;
+  if (instant && !Number.isNaN(instant.getTime())) {
+    const effective = matching
+      .filter((a) => isTariffEffectiveAt(a.validFrom, a.validTo, instant))
+      .sort((a, b) => new Date(b.validFrom).getTime() - new Date(a.validFrom).getTime());
+    if (effective.length === 0) return null;
+    assignment = effective[0];
+  } else {
+    assignment = matching[0];
+  }
+
   const group = catalog.groups.find((g) => g.id === assignment.tariffGroupId);
-  if (!group) return null;
-  const version = getActiveVersion(group);
+  if (!group || !group.isActive) return null;
+  const version =
+    instant && !Number.isNaN(instant.getTime())
+      ? pickEffectiveTariffVersionFromGroup(group, instant)
+      : getActiveVersion(group);
   if (!version?.rate) return null;
   return { group, version, assignment };
 }
