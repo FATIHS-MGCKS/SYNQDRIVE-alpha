@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pricing-tariffs-delete-options-reassign-v49378-2026-07-12',
+    version: '4.9.378',
+    title: 'V4.9.378 — Preise & Tarife: Löschen, Extras bearbeiten, Fahrzeug-Neuzuweisung',
+    summary: [
+      'Tarifgruppen können endgültig gelöscht werden; offene Entwürfe können verworfen werden.',
+      'Versicherungen, Extras und Kilometerpakete sind im Tarif-Editor vollständig editierbar.',
+      'Fahrzeugzuweisung ersetzt bestehende aktive Zuweisung automatisch (z. B. VW Tiguan → neuer Tarif).',
+      'Klarere Live/Entwurf-UX: Banner, verständlichere Labels, „Jetzt veröffentlichen“ als Primäraktion.',
+    ],
+    reason:
+      'Nutzer konnten Tarife nicht vollständig löschen, Extras nicht konfigurieren und Fahrzeugzuweisungen schlugen still fehl; Live-vs-Entwurf war unverständlich.',
+    previousBehavior:
+      'Kein DELETE für Gruppen/Entwürfe; Options-Tab read-only; assignVehicle warf bei bestehender Zuweisung Fehler (Frontend schluckte Fehler); verwirrende Copy „unveröffentlichter Entwurf / aktuell live“.',
+    details:
+      'Backend: `deleteTariffGroup`, `discardDraftVersion`, `assignVehicle` mit automatischer Deaktivierung alter Zuweisung. Frontend: `TariffOptionsEditor`, Danger Zone im Drawer, `VehicleAssignmentsTab` Fehler-Feedback, i18n-Refresh. Tests: `pricing-tariff-assignments.spec.ts`.',
+    affectsArchitecture: true,
+    module: 'Pricing',
+    createdAt: '2026-07-12T08:55:00.000Z',
+  },
+  {
     id: 'dashboard-kpi-grid-swap-v49377-2026-07-11',
     version: '4.9.377',
     title: 'V4.9.377 — KPI-Grid: Blockiert/Kritisch ↔ Überfällige Rückgaben/Übergaben',

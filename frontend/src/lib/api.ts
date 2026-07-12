@@ -3995,6 +3995,14 @@ export const api = {
       post<any>(`/organizations/${orgId}/price-tariffs/groups`, data),
     updateGroup: (orgId: string, groupId: string, data: Record<string, unknown>) =>
       patch<any>(`/organizations/${orgId}/price-tariffs/groups/${groupId}`, data),
+    deleteGroup: (orgId: string, groupId: string) =>
+      del<{ deleted: boolean; groupId: string }>(
+        `/organizations/${orgId}/price-tariffs/groups/${groupId}`,
+      ),
+    discardDraft: (orgId: string, groupId: string, versionId: string) =>
+      del<{ discarded: boolean; versionId: string }>(
+        `/organizations/${orgId}/price-tariffs/groups/${groupId}/drafts/${versionId}`,
+      ),
     upsertVersion: (orgId: string, groupId: string, data: Record<string, unknown>) =>
       post<any>(`/organizations/${orgId}/price-tariffs/groups/${groupId}/version`, data),
     updateVersion: (orgId: string, versionId: string, data: Record<string, unknown>) =>

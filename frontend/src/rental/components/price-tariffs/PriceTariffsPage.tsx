@@ -367,6 +367,8 @@ export function PriceTariffsPage({ isDarkMode }: PriceTariffsPageProps) {
             const refreshedGroup = freshCatalog?.groups.find((g) => g.id === groupId);
             if (refreshedGroup) {
               setDrawerGroup(refreshedGroup);
+            } else {
+              setDrawerGroup(null);
             }
           }}
         />

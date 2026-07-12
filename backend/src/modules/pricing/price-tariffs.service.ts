@@ -474,25 +474,68 @@ export class PriceTariffsService {
     });
     if (!vehicle) throw new NotFoundException('Fahrzeug nicht gefunden');
 
-    const existing = await this.prisma.vehicleTariffAssignment.findFirst({
-      where: { organizationId: orgId, vehicleId: dto.vehicleId, isActive: true },
+    return this.prisma.$transaction(async (tx) => {
+      const existing = await tx.vehicleTariffAssignment.findFirst({
+        where: { organizationId: orgId, vehicleId: dto.vehicleId, isActive: true },
+      });
+
+      if (existing?.tariffGroupId === group.id) {
+        return existing;
+      }
+
+      if (existing) {
+        await tx.vehicleTariffAssignment.update({
+          where: { id: existing.id },
+          data: { isActive: false, validTo: new Date() },
+        });
+      }
+
+      return tx.vehicleTariffAssignment.create({
+        data: {
+          organizationId: orgId,
+          vehicleId: dto.vehicleId,
+          tariffGroupId: group.id,
+          priceBookId: group.priceBookId,
+          validFrom: dto.validFrom ? new Date(dto.validFrom) : new Date(),
+          isActive: true,
+        },
+      });
     });
-    if (existing) {
-      throw new BadRequestException(
-        'Fahrzeug hat bereits eine aktive Tarifzuweisung — bitte zuerst deaktivieren',
-      );
+  }
+
+  async deleteTariffGroup(orgId: string, groupId: string) {
+    await this.requireGroup(orgId, groupId);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.vehicleTariffAssignment.updateMany({
+        where: { organizationId: orgId, tariffGroupId: groupId, isActive: true },
+        data: { isActive: false, validTo: new Date() },
+      });
+
+      await tx.priceTariffGroup.delete({
+        where: { id: groupId },
+      });
+    });
+
+    return { deleted: true, groupId };
+  }
+
+  async discardDraftVersion(orgId: string, groupId: string, versionId: string) {
+    await this.requireGroup(orgId, groupId);
+    const version = await this.requireVersion(orgId, versionId);
+
+    if (version.tariffGroupId !== groupId) {
+      throw new BadRequestException('Entwurf gehört nicht zu dieser Tarifgruppe');
+    }
+    if (version.status !== 'DRAFT') {
+      throw new BadRequestException('Nur Entwürfe können verworfen werden');
     }
 
-    return this.prisma.vehicleTariffAssignment.create({
-      data: {
-        organizationId: orgId,
-        vehicleId: dto.vehicleId,
-        tariffGroupId: group.id,
-        priceBookId: group.priceBookId,
-        validFrom: dto.validFrom ? new Date(dto.validFrom) : new Date(),
-        isActive: true,
-      },
+    await this.prisma.priceTariffVersion.delete({
+      where: { id: versionId },
     });
+
+    return { discarded: true, versionId };
   }
 
   async deactivateAssignment(orgId: string, assignmentId: string) {

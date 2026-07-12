@@ -7,7 +7,12 @@ import { useRentalOrg } from '../../RentalContext';
 import { useFleetVehicles } from '../../FleetContext';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { PriceTariffCatalog } from '../../pricing/pricingTypes';
-import { formatNetAsGross, getActiveVersion, getVehicleTariffFromCatalog, catalogCurrency } from '../../pricing/pricingUtils';
+import {
+  catalogCurrency,
+  extractPricingApiError,
+  formatNetAsGross,
+  getVehicleTariffFromCatalog,
+} from '../../pricing/pricingUtils';
 
 interface VehicleAssignmentsTabProps {
   catalog: PriceTariffCatalog;
@@ -64,15 +69,25 @@ export function VehicleAssignmentsTab({ catalog, onReload }: VehicleAssignmentsT
     if (!orgId || !bulkGroupId || selected.length === 0) return;
     setAssigning(true);
     let ok = 0;
+    const failed: string[] = [];
     for (const vehicleId of selected) {
       try {
         await api.pricing.assignVehicle(orgId, { vehicleId, tariffGroupId: bulkGroupId });
         ok++;
-      } catch {
-        /* skip conflict */
+      } catch (e: unknown) {
+        const row = rows.find((r) => r.id === vehicleId);
+        const structured = extractPricingApiError(e);
+        failed.push(structured?.message ?? row?.label ?? vehicleId);
       }
     }
-    toast.success(t('priceTariffs.assignments.bulkSuccess', { count: ok }));
+    if (ok > 0) {
+      toast.success(t('priceTariffs.assignments.bulkSuccess', { count: ok }));
+    }
+    if (failed.length > 0) {
+      toast.error(t('priceTariffs.assignments.bulkFailed', { count: failed.length }), {
+        description: failed.slice(0, 3).join(' · '),
+      });
+    }
     setSelected([]);
     setAssigning(false);
     onReload();

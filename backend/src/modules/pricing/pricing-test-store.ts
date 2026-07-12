@@ -380,6 +380,12 @@ export function createPricingTestStore(
         Object.assign(g, data);
         return g;
       }),
+      delete: jest.fn(async ({ where }: { where: { id: string } }) => {
+        const idx = groups.findIndex((row) => row.id === where.id);
+        if (idx < 0) throw new Error('group not found');
+        const [removed] = groups.splice(idx, 1);
+        return removed;
+      }),
     },
     priceTariffVersion: {
       findFirst: jest.fn(
@@ -500,6 +506,12 @@ export function createPricingTestStore(
         const row = versions.find((v) => v.id === where.id);
         if (!row) throw new Error('version not found');
         return include ? includeVersion(row) : row;
+      }),
+      delete: jest.fn(async ({ where }: { where: { id: string } }) => {
+        const idx = versions.findIndex((v) => v.id === where.id);
+        if (idx < 0) throw new Error('version not found');
+        const [removed] = versions.splice(idx, 1);
+        return removed;
       }),
     },
     tariffRate: {
@@ -625,6 +637,53 @@ export function createPricingTestStore(
             matched.sort((x, y) => y.validFrom.getTime() - x.validFrom.getTime());
           }
           return matched;
+        },
+      ),
+      create: jest.fn(async ({ data }: { data: Record<string, unknown> }) => {
+        const row: AssignmentRow = {
+          id: nextId('assignment'),
+          organizationId: data.organizationId as string,
+          vehicleId: data.vehicleId as string,
+          tariffGroupId: data.tariffGroupId as string,
+          priceBookId: data.priceBookId as string,
+          validFrom: data.validFrom as Date,
+          validTo: (data.validTo as Date | null) ?? null,
+          isActive: (data.isActive as boolean) ?? true,
+        };
+        assignments.push(row);
+        return row;
+      }),
+      update: jest.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where: { id: string };
+          data: Partial<AssignmentRow>;
+        }) => {
+          const row = assignments.find((a) => a.id === where.id);
+          if (!row) throw new Error('assignment not found');
+          Object.assign(row, data);
+          return row;
+        },
+      ),
+      updateMany: jest.fn(
+        async ({
+          where,
+          data,
+        }: {
+          where: Record<string, unknown>;
+          data: Partial<AssignmentRow>;
+        }) => {
+          let count = 0;
+          for (const row of assignments) {
+            if (where.organizationId && row.organizationId !== where.organizationId) continue;
+            if (where.tariffGroupId && row.tariffGroupId !== where.tariffGroupId) continue;
+            if (where.isActive !== undefined && row.isActive !== where.isActive) continue;
+            Object.assign(row, data);
+            count += 1;
+          }
+          return { count };
         },
       ),
     },

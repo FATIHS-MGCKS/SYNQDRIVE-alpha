@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -49,6 +50,20 @@ export class PricingController {
     @Body() body: UpdateTariffGroupDto,
   ) {
     return this.priceTariffs.updateGroup(orgId, groupId, body);
+  }
+
+  @Delete('price-tariffs/groups/:groupId')
+  deleteGroup(@Param('orgId') orgId: string, @Param('groupId') groupId: string) {
+    return this.priceTariffs.deleteTariffGroup(orgId, groupId);
+  }
+
+  @Delete('price-tariffs/groups/:groupId/drafts/:versionId')
+  discardDraft(
+    @Param('orgId') orgId: string,
+    @Param('groupId') groupId: string,
+    @Param('versionId') versionId: string,
+  ) {
+    return this.priceTariffs.discardDraftVersion(orgId, groupId, versionId);
   }
 
   @Post('price-tariffs/groups/:groupId/version')
