@@ -34,7 +34,7 @@ interface BookingDocumentsSectionProps {
 const GROUPS: { label: string; types: string[] }[] = [
   {
     label: 'Bei Buchung',
-    types: ['BOOKING_INVOICE', 'DEPOSIT_RECEIPT', 'RENTAL_CONTRACT', 'TERMS_AND_CONDITIONS', 'WITHDRAWAL_INFORMATION'],
+    types: ['BOOKING_INVOICE', 'DEPOSIT_RECEIPT', 'RENTAL_CONTRACT', 'TERMS_AND_CONDITIONS', 'WITHDRAWAL_INFORMATION', 'PRIVACY_POLICY'],
   },
   { label: 'Bei Abholung', types: ['HANDOVER_PICKUP'] },
   { label: 'Bei Rückgabe', types: ['HANDOVER_RETURN', 'FINAL_INVOICE'] },
@@ -46,6 +46,7 @@ const TYPE_LABEL: Record<string, string> = {
   RENTAL_CONTRACT: 'Mietvertrag',
   TERMS_AND_CONDITIONS: 'AGB',
   WITHDRAWAL_INFORMATION: 'Widerrufsbelehrung',
+  PRIVACY_POLICY: 'Datenschutzerklärung',
   HANDOVER_PICKUP: 'Übergabeprotokoll (Abholung)',
   HANDOVER_RETURN: 'Übergabeprotokoll (Rückgabe)',
   FINAL_INVOICE: 'Schlussrechnung',
@@ -57,9 +58,10 @@ const REGENERABLE = new Set([
   'RENTAL_CONTRACT',
   'TERMS_AND_CONDITIONS',
   'WITHDRAWAL_INFORMATION',
+  'PRIVACY_POLICY',
   'FINAL_INVOICE',
 ]);
-const LEGAL = new Set(['TERMS_AND_CONDITIONS', 'WITHDRAWAL_INFORMATION']);
+const LEGAL = new Set(['TERMS_AND_CONDITIONS', 'WITHDRAWAL_INFORMATION', 'PRIVACY_POLICY']);
 
 const BUNDLE_BADGE: Record<DocumentBundleStatus, { label: string; cls: (d: boolean) => string }> = {
   COMPLETE: { label: 'Vollständig', cls: (d) => (d ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' : 'bg-emerald-50 text-emerald-700 border-emerald-200') },
@@ -246,7 +248,15 @@ export function BookingDocumentsSection({
           <span>
             Dokumentenpaket unvollständig:{' '}
             {(view?.missingLegalDocuments ?? [])
-              .map((d) => (d === 'TERMS_AND_CONDITIONS' ? 'AGB' : d === 'REVOCATION_POLICY' ? 'Widerrufsbelehrung' : d))
+              .map((d) =>
+                d === 'TERMS_AND_CONDITIONS'
+                  ? 'AGB'
+                  : d === 'REVOCATION_POLICY' || d === 'WITHDRAWAL_INFORMATION'
+                    ? 'Widerrufsbelehrung'
+                    : d === 'PRIVACY_POLICY'
+                      ? 'Datenschutzerklärung'
+                      : d,
+              )
               .join(' / ') || 'AGB/Widerrufsbelehrung'}{' '}
             fehlt. Bitte in Administration → Unternehmen hochladen.
           </span>

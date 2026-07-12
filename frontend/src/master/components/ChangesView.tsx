@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'legal-privacy-upload-v49394-2026-07-12',
+    version: '4.9.394',
+    title: 'V4.9.394 — Rechtliche Dokumente: Datenschutz-Upload & Bundle-Verdrahtung',
+    summary: [
+      'Fix: PDF-Upload für Datenschutzerklärung auf Mobile — leere MIME-Types (iOS) werden per `.pdf`-Endung akzeptiert (Frontend + Backend).',
+      'LegalDocumentsTab: ein gemeinsames File-Input (Mobile-Kompatibilität), Versionsprüfung vor Dateiauswahl, stabilere Upload-State-Refs.',
+      'Bundle: `existingBundleDoc` findet PRIVACY_POLICY auch ohne Bundle-Pointer (keine Duplikate).',
+      'Booking/Operator-Dokument-UI: Datenschutzerklärung in Listen und Labels ergänzt.',
+    ],
+    reason:
+      'Datenschutz-PDF ließ sich in Unternehmen → Rechtliche Dokumente nicht hochladen (typisch Mobile), während AGB/Widerruf bereits aktiv waren.',
+    previousBehavior:
+      'Strikte `application/pdf`-MIME-Prüfung blockierte iOS-Uploads; mehrere versteckte File-Inputs; PRIVACY im Buchungsdokument-UI teilweise unsichtbar.',
+    details:
+      '`legal-documents.util.ts`, `LegalDocumentsTab`, `legal-documents.controller/service`, `booking-document-bundle.service` existingBundleDoc-Fallback, `BookingDocumentsSection`, `operatorBookingDocuments.utils`.',
+    affectsArchitecture: true,
+    module: 'Documents',
+    createdAt: '2026-07-12T21:45:00.000Z',
+  },
+  {
     id: 'wizard-draft-station-create-v49393-2026-07-12',
     version: '4.9.393',
     title: 'V4.9.393 — Wizard-Draft: Station-Felder bei Buchung create',

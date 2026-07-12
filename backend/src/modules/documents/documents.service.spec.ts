@@ -136,7 +136,9 @@ describe('LegalDocumentsService', () => {
 
   it('rejects non-PDF uploads', async () => {
     const svc = new LegalDocumentsService({} as any, storage);
-    await expect(svc.upload({ ...baseInput(), mimeType: 'image/png' })).rejects.toBeInstanceOf(BadRequestException);
+    await expect(
+      svc.upload({ ...baseInput(), fileName: 'scan.png', mimeType: 'image/png' }),
+    ).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('rejects unknown legal document types', async () => {
@@ -147,6 +149,27 @@ describe('LegalDocumentsService', () => {
   it('rejects a missing version label', async () => {
     const svc = new LegalDocumentsService({} as any, storage);
     await expect(svc.upload({ ...baseInput(), versionLabel: '   ' })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('accepts PRIVACY_POLICY uploads with empty client mime when filename ends with .pdf', async () => {
+    const prisma = {
+      organizationLegalDocument: {
+        create: jest.fn().mockImplementation(({ data }) => Promise.resolve({ id: 'legal-privacy', ...data })),
+      },
+    } as any;
+    const svc = new LegalDocumentsService(prisma, storage);
+    const doc = await svc.upload({
+      ...baseInput(),
+      documentType: DOCUMENT_TYPE.PRIVACY_POLICY,
+      fileName: 'datenschutz.pdf',
+      mimeType: '',
+    });
+    expect(doc.documentType).toBe(DOCUMENT_TYPE.PRIVACY_POLICY);
+    expect(prisma.organizationLegalDocument.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ mimeType: 'application/pdf' }),
+      }),
+    );
   });
 
   it('activating a version archives the other ACTIVE version of the same type+language (single-active)', async () => {
@@ -359,7 +382,9 @@ describe('BookingDocumentBundleService', () => {
         findFirst: jest
           .fn()
           .mockResolvedValueOnce({ id: 'g1', organizationId: 'org-1', status: DOCUMENT_STATUS.GENERATED })
-          .mockResolvedValueOnce({ id: 'g2', organizationId: 'org-1', status: DOCUMENT_STATUS.VOID }),
+          .mockResolvedValueOnce({ id: 'g2', organizationId: 'org-1', status: DOCUMENT_STATUS.VOID })
+          .mockResolvedValueOnce(null)
+          .mockResolvedValueOnce(null),
       },
     } as any;
     const { svc } = makeService(prisma);

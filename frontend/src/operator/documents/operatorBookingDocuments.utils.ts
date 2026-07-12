@@ -12,7 +12,7 @@ export interface OperatorDocumentSlot {
 export const OPERATOR_BOOKING_DOCUMENT_GROUPS: { groupLabel: string; types: string[] }[] = [
   {
     groupLabel: 'Vertrag & Bedingungen',
-    types: ['RENTAL_CONTRACT', 'TERMS_AND_CONDITIONS', 'WITHDRAWAL_INFORMATION'],
+    types: ['RENTAL_CONTRACT', 'TERMS_AND_CONDITIONS', 'WITHDRAWAL_INFORMATION', 'PRIVACY_POLICY'],
   },
   {
     groupLabel: 'Abholung',
@@ -34,6 +34,7 @@ export const OPERATOR_DOCUMENT_TYPE_LABELS: Record<string, string> = {
   RENTAL_CONTRACT: 'Mietvertrag',
   TERMS_AND_CONDITIONS: 'AGB',
   WITHDRAWAL_INFORMATION: 'Widerrufsbelehrung',
+  PRIVACY_POLICY: 'Datenschutzerklärung',
   HANDOVER_PICKUP: 'Pickup-Protokoll',
   HANDOVER_RETURN: 'Return-Protokoll',
   FINAL_INVOICE: 'Schlussrechnung',

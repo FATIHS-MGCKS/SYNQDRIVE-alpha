@@ -11,6 +11,7 @@ import {
 
 import { api, type LegalDocumentDto } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
+import { isLegalPdfFile } from '../lib/legal-documents.utils';
 
 const LEGAL_TYPES: { key: string; title: string; hint: string }[] = [
   {
@@ -66,7 +67,10 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
     WITHDRAWAL_INFORMATION: { versionLabel: '', title: '', busy: false },
     PRIVACY_POLICY: { versionLabel: '', title: '', busy: false },
   });
-  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const uploadsRef = useRef(uploads);
+  uploadsRef.current = uploads;
+  const [pendingUploadType, setPendingUploadType] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const load = useCallback(async () => {
     if (!orgId) return;
@@ -106,12 +110,12 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
   const handleUpload = useCallback(
     async (type: string, file: File) => {
       if (!orgId) return;
-      const state = uploads[type];
+      const state = uploadsRef.current[type];
       if (!state?.versionLabel.trim()) {
         setBanner({ kind: 'error', text: 'Bitte zuerst eine Versionsbezeichnung eingeben.' });
         return;
       }
-      if (file.type !== 'application/pdf') {
+      if (!isLegalPdfFile(file)) {
         setBanner({ kind: 'error', text: 'Nur PDF-Dateien sind erlaubt.' });
         return;
       }
@@ -129,11 +133,23 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
         await load();
       } catch (err) {
         setUpload(type, { busy: false });
-        setBanner({ kind: 'error', text: (err as Error).message || 'Upload fehlgeschlagen' });
+        const message = err instanceof Error ? err.message : 'Upload fehlgeschlagen';
+        setBanner({ kind: 'error', text: message });
       }
     },
-    [orgId, uploads, load],
+    [orgId, load],
   );
+
+  const openFilePicker = useCallback((type: string) => {
+    const state = uploadsRef.current[type];
+    if (!state?.versionLabel.trim()) {
+      setBanner({ kind: 'error', text: 'Bitte zuerst eine Versionsbezeichnung eingeben.' });
+      return;
+    }
+    setBanner(null);
+    setPendingUploadType(type);
+    fileInputRef.current?.click();
+  }, []);
 
   const handleActivate = useCallback(
     async (id: string) => {
@@ -194,8 +210,8 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
           Rechtliche Dokumente
         </h2>
         <p className={`text-sm mt-0.5 ${subtle}`}>
-          Laden Sie Ihre AGB und Widerrufsbelehrung hoch und verwalten Sie Versionen. Die aktive
-          Version wird automatisch an Buchungsdokumente angehängt. SynqDrive generiert diese
+          Laden Sie AGB, Widerrufsbelehrung und Datenschutzerklärung hoch und verwalten Sie Versionen.
+          Die aktive Version wird automatisch an Buchungsdokumente angehängt. SynqDrive generiert diese
           Rechtstexte nicht — sie werden von Ihrem Unternehmen verwaltet.
         </p>
       </div>
@@ -235,6 +251,22 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
             bleiben dadurch unvollständig.
           </span>
         </div>
+      )}
+
+      {isOrgAdmin && (
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/pdf,.pdf"
+          className="hidden"
+          onChange={(e) => {
+            const type = pendingUploadType;
+            const f = e.target.files?.[0];
+            e.target.value = '';
+            setPendingUploadType(null);
+            if (type && f) void handleUpload(type, f);
+          }}
+        />
       )}
 
       {loading ? (
@@ -291,23 +323,10 @@ export function LegalDocumentsTab({ isDarkMode }: LegalDocumentsTabProps) {
                         isDarkMode ? 'bg-muted border-border text-foreground placeholder:text-muted-foreground' : 'bg-white border-gray-300 text-gray-900'
                       }`}
                     />
-                    <input
-                      ref={(el) => {
-                        fileRefs.current[type.key] = el;
-                      }}
-                      type="file"
-                      accept="application/pdf"
-                      className="hidden"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (f) void handleUpload(type.key, f);
-                        e.target.value = '';
-                      }}
-                    />
                     <button
                       type="button"
                       disabled={up?.busy}
-                      onClick={() => fileRefs.current[type.key]?.click()}
+                      onClick={() => openFilePicker(type.key)}
                       className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium ${
                         isDarkMode ? 'bg-white text-neutral-900 hover:bg-gray-100' : 'bg-neutral-900 text-white hover:surface-premium'
                       } disabled:opacity-50`}

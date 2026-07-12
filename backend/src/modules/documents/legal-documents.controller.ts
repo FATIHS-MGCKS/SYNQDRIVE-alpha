@@ -20,6 +20,7 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { LegalDocumentsService } from './legal-documents.service';
+import { isLegalPdfUpload } from './legal-documents.util';
 
 const MAX_LEGAL_BYTES =
   Math.max(1, parseInt(process.env.DOCUMENT_LEGAL_UPLOAD_MAX_MB || '15', 10)) * 1024 * 1024;
@@ -49,7 +50,7 @@ export class LegalDocumentsController {
       storage: memoryStorage(),
       limits: { fileSize: MAX_LEGAL_BYTES },
       fileFilter: (_req, file, cb) => {
-        if (file.mimetype !== 'application/pdf') {
+        if (!isLegalPdfUpload(file)) {
           cb(new BadRequestException('Legal documents must be PDF files'), false);
           return;
         }

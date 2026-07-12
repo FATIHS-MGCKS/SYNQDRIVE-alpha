@@ -3121,8 +3121,11 @@ export const api = {
         body: form,
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.message || `API error ${res.status}`);
+        const body = await res.json().catch(() => ({})) as { message?: string | string[] };
+        const msg = body.message;
+        throw new Error(
+          Array.isArray(msg) ? msg.join(', ') : msg || `API error ${res.status}`,
+        );
       }
       return res.json() as Promise<LegalDocumentDto>;
     },

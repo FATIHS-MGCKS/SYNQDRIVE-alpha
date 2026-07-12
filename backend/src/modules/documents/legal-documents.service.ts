@@ -19,6 +19,7 @@ import {
   isLegalDocumentType,
 } from './documents.constants';
 import { DocumentDownload } from './generated-documents.service';
+import { isLegalPdfUpload, normalizeLegalPdfMimeType } from './legal-documents.util';
 
 export interface UploadLegalDocumentInput {
   organizationId: string;
@@ -67,7 +68,7 @@ export class LegalDocumentsService {
         `documentType must be one of: ${LEGAL_DOCUMENT_TYPES.join(', ')}`,
       );
     }
-    if (input.mimeType !== 'application/pdf') {
+    if (!isLegalPdfUpload({ mimetype: input.mimeType, originalname: input.fileName })) {
       throw new BadRequestException('Legal documents must be PDF files');
     }
     const versionLabel = (input.versionLabel || '').trim();
@@ -76,13 +77,14 @@ export class LegalDocumentsService {
     }
 
     const language = (input.language || 'de').toLowerCase();
+    const mimeType = normalizeLegalPdfMimeType(input.mimeType, input.fileName);
     const stored = await this.storage.putObject({
       organizationId: input.organizationId,
       bookingId: null,
       documentType: input.documentType,
       originalName: input.fileName,
       buffer: input.buffer,
-      mimeType: input.mimeType,
+      mimeType,
     });
     const checksum = createHash('sha256').update(input.buffer).digest('hex');
 
@@ -95,7 +97,7 @@ export class LegalDocumentsService {
         language,
         status: LEGAL_STATUS.DRAFT,
         fileName: input.fileName,
-        mimeType: input.mimeType,
+        mimeType,
         storageProvider: stored.storageProvider,
         objectKey: stored.objectKey,
         checksum,

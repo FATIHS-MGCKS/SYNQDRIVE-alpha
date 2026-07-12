@@ -754,11 +754,22 @@ export class BookingDocumentBundleService {
     documentType: DocumentType,
   ): Promise<GeneratedDocument | null> {
     const field = BUNDLE_FIELD[documentType];
-    const id = bundle[field] as string | null;
-    if (!id) return null;
-    const doc = await this.prisma.generatedDocument.findFirst({ where: { id, organizationId: orgId } });
-    if (!doc || doc.status === DOCUMENT_STATUS.VOID) return null;
-    return doc;
+    const pointerId = field ? (bundle[field] as string | null) : null;
+    if (pointerId) {
+      const doc = await this.prisma.generatedDocument.findFirst({
+        where: { id: pointerId, organizationId: orgId },
+      });
+      if (doc && doc.status !== DOCUMENT_STATUS.VOID) return doc;
+    }
+    return this.prisma.generatedDocument.findFirst({
+      where: {
+        organizationId: orgId,
+        bookingId: bundle.bookingId,
+        documentType,
+        status: { not: DOCUMENT_STATUS.VOID },
+      },
+      orderBy: { createdAt: 'desc' },
+    }).then((doc) => doc ?? null);
   }
 
   private async setBundlePointer(bundleId: string, documentType: DocumentType, documentId: string): Promise<void> {
