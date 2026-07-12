@@ -54,6 +54,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     module: 'Documents',
     createdAt: '2026-07-12T22:15:00.000Z',
   },
+  {
+    id: 'legal-privacy-upload-v49394-2026-07-12',
     version: '4.9.394',
     title: 'V4.9.394 — Rechtliche Dokumente: Datenschutz-Upload & Bundle-Verdrahtung',
     summary: [
