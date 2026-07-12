@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-tariff-subtitle-expanded-detail-v49386-2026-07-12',
+    version: '4.9.386',
+    title: 'V4.9.386 — Tarif-Meldung: Kurzbeschreibung nur im aufgeklappten Detail',
+    summary: [
+      'Zugeklappt: nur Titel (keine Fahrzeug-Vorschau in der Summary-Zeile).',
+      'Aufgeklappt: Kurzbeschreibung („Diese Fahrzeuge sind nicht buchbar…“) + Fahrzeugliste im Detail-Panel.',
+      'Korrektur von V4.9.384/385 — vorher war die Logik vertauscht.',
+    ],
+    reason: 'Kurzbeschreibung soll im zugeklappten Zustand wegfallen und erst im aufgeklappten Detail sichtbar sein.',
+    previousBehavior: 'V4.9.384/385 blendeten die Kurzbeschreibung im Detail aus und zeigten die Fahrzeug-Vorschau nur zugeklappt.',
+    details:
+      'notification-summary-view-model.ts, notification-task-bridge.ts, NotificationSummaryRow.tsx.',
+    affectsArchitecture: false,
+    module: 'Pricing',
+    createdAt: '2026-07-12T11:30:00.000Z',
+  },
+  {
     id: 'dashboard-tariff-detail-no-duplicate-copy-v49385-2026-07-12',
     version: '4.9.385',
     title: 'V4.9.385 — Tarif-Meldung: kein doppelter Text im aufgeklappten Panel',

@@ -24,22 +24,25 @@ const tariffInsight: DerivedOperationalInsight = {
 };
 
 describe('tariff notification vehicle list', () => {
-  it('shows affected vehicles in summary subtitle and detail panel', () => {
+  it('hides vehicle preview in collapsed summary; shows description in detail when expanded', () => {
     const item = mapDerivedInsightToActionQueueItem(tariffInsight);
     const [enriched] = ensureNotificationPanelQueueItems([item], {
       locale: 'de',
       referenceNowMs: Date.now(),
-      t: (key) => (key === 'notification.cta.openPriceTariffs' ? 'Preise & Tarife öffnen' : key),
+      t: (key) => {
+        if (key === 'notification.cta.openPriceTariffs') return 'Preise & Tarife öffnen';
+        if (key === 'notification.title.vehiclesWithoutTariff') return '3 Fahrzeug(e) ohne Tarif';
+        return key;
+      },
     });
 
     const summary = buildNotificationSummaryFromItem(enriched, 'de', Date.now());
-    expect(summary?.subtitle).toContain('KS MX 2024');
-    expect(summary?.subtitle).toContain('KS FH 660E');
+    expect(summary?.subtitle).toBeUndefined();
+    expect(summary?.headlineTitle).toContain('ohne Tarif');
 
     const detail = buildNotificationDetailViewModel(enriched, 'de');
     expect(detail.ctaPrimaryLabel).toBe('Preise & Tarife öffnen');
-    expect(detail.issueTitle).toBe('');
-    expect(detail.issueDescription).toBe('');
+    expect(detail.issueDescription).toContain('nicht buchbar');
     expect(detail.affectedVehicles).toHaveLength(3);
     expect(detail.affectedVehiclesLabel).toContain('3');
   });
