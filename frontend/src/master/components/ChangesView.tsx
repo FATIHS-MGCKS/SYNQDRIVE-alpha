@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'today-ops-timezone-v49397-2026-07-13',
+    version: '4.9.397',
+    title: 'V4.9.397 — Heutige Operationen: Org-Zeitzone für Today-Pickups/Returns',
+    summary: [
+      'Fix: `findTodaysPickups` / `findTodaysReturns` nutzen jetzt den Org-Kalendertag (`Organization.timezone`, Default Europe/Berlin) statt VPS-UTC-Mitternacht.',
+      'Symptom: 2 bestätigte Übergaben am 13.07. (lokal) zeigten in „Heutige Operationen“ 0 Übergaben, sobald UTC noch auf dem 12.07. lag.',
+      'Neuer Helper `booking-day-window.util.ts` (wiederverwendet `zonedDateOnly` / `zonedStartOfDayToUtc` aus Tariff-Utils).',
+      '`getBookingStats` (revenueToday / MTD) verwendet dieselbe Org-Tagesgrenze.',
+    ],
+    reason:
+      'Dashboard-KPI „Übergaben“ und Today-Operations-Panel lesen `pickupItems` aus den Today-APIs. Die Backend-Queries filterten mit `setHours(0,0,0,0)` auf Server-UTC — für deutsche Tenants fehlten Abholungen nach 22:00 UTC (Mitternacht CEST) bis zum UTC-Tageswechsel.',
+    previousBehavior:
+      'Prod 2026-07-12 23:17 UTC: 2 CONFIRMED-Bookings mit startDate 2026-07-13T00:00Z und 08:00Z; `findTodaysPickups` lieferte 0, Berlin-Fenster lieferte 2.',
+    details:
+      '`backend/src/modules/bookings/booking-day-window.util.ts`, `bookings.service.ts` (`resolveOrgTimezone`, findTodaysPickups/Returns, getBookingStats). Frontend unverändert — Datenfluss bleibt API → mapPickupItems → KPI/TodayOperations.',
+    affectsArchitecture: true,
+    module: 'Bookings',
+    createdAt: '2026-07-13T00:20:00.000Z',
+  },
+  {
     id: 'booking-email-send-fix-v49396-2026-07-12',
     version: '4.9.396',
     title: 'V4.9.396 — Buchungs-E-Mail: Duplikate, Storage & personalisierte Vorlage',

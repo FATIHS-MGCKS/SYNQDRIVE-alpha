@@ -41,6 +41,14 @@ import { GeneratedDocumentsService } from '@modules/documents/generated-document
 import { formatStationAddress } from '@modules/stations/station.types';
 import { BookingDocumentEmailService } from '@modules/outbound-email/booking-document-email.service';
 import type { Station } from '@prisma/client';
+import {
+  DEFAULT_TARIFF_TIMEZONE,
+  zonedStartOfDayToUtc,
+} from '@modules/pricing/tariff-instant.util';
+import {
+  resolveZonedCalendarDayWindow,
+  zonedLookbackStart,
+} from './booking-day-window.util';
 
 const BOOKING_STATUS_DISPLAY: Record<string, string> = {
   PENDING: 'Pending',
@@ -1186,6 +1194,14 @@ export class BookingsService {
     };
   }
 
+  private async resolveOrgTimezone(orgId: string): Promise<string> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { timezone: true },
+    });
+    return org?.timezone?.trim() || DEFAULT_TARIFF_TIMEZONE;
+  }
+
   async findTodaysPickups(orgId: string) {
     // V4.6.81 — "Pick Up Today" must also surface overdue pickups so the
     // operator still sees them on the dashboard. Previously the window
@@ -1199,14 +1215,17 @@ export class BookingsService {
     // day still come through the original branch (PENDING or
     // CONFIRMED, no protocol constraint needed because they cannot be
     // handed over yet).
+    //
+    // V4.9.397 — "today" is resolved in the organization's IANA timezone
+    // (default Europe/Berlin), not the VPS/server local day. Server-UTC
+    // midnight hid pickups after ~22:00 UTC for German tenants.
     const now = new Date();
-    const todayStart = new Date(now);
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(now);
-    todayEnd.setHours(23, 59, 59, 999);
-    const overdueLookbackStart = new Date(
-      now.getTime() - 7 * 24 * 60 * 60 * 1000,
+    const orgTimezone = await this.resolveOrgTimezone(orgId);
+    const { todayStart, todayEnd, dateOnly } = resolveZonedCalendarDayWindow(
+      now,
+      orgTimezone,
     );
+    const overdueLookbackStart = zonedLookbackStart(dateOnly, 7, orgTimezone);
 
     const data = await this.prisma.booking.findMany({
       where: {
@@ -1373,10 +1392,11 @@ export class BookingsService {
   }
 
   async findTodaysReturns(orgId: string) {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
+    const orgTimezone = await this.resolveOrgTimezone(orgId);
+    const { todayStart, todayEnd } = resolveZonedCalendarDayWindow(
+      new Date(),
+      orgTimezone,
+    );
 
     const data = await this.prisma.booking.findMany({
       where: {
@@ -1473,14 +1493,12 @@ export class BookingsService {
   }
 
   async getBookingStats(orgId: string) {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date();
-    todayEnd.setHours(23, 59, 59, 999);
-
-    const monthStart = new Date();
-    monthStart.setDate(1);
-    monthStart.setHours(0, 0, 0, 0);
+    const orgTimezone = await this.resolveOrgTimezone(orgId);
+    const { todayStart, todayEnd, dateOnly } = resolveZonedCalendarDayWindow(
+      new Date(),
+      orgTimezone,
+    );
+    const monthStart = zonedStartOfDayToUtc(`${dateOnly.slice(0, 7)}-01`, orgTimezone);
 
     const [active, pending, completed, completedToday, completedMtd] = await Promise.all([
       this.prisma.booking.count({
