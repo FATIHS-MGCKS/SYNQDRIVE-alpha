@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'today-ops-drilldown-v49398-2026-07-13',
+    version: '4.9.398',
+    title: 'V4.9.398 — Heutige Operationen: Drilldown-Sidebar für Übergaben/Rückgaben',
+    summary: [
+      'Fix: Klick auf „Übergaben“, „Rückgaben“ oder „Aktive Vermietungen“ in der KPI-Karte öffnet jetzt die passende Sektion in der rechten Sidebar — nicht mehr den leeren Fahrzeug-Empty-State.',
+      'Runtime-Slice `active-rented` enthält echte `pickups-today`/`returns-today`-Gruppen mit Buchungszeilen statt reiner KPI-Metadaten.',
+      '`ControlKpiStrip`: separate Klickziele pro Sektion → `openSliceDrilldown(sliceId, groupId)`.',
+      '`DashboardDrilldownDrawer` + `buildDashboardGroups`: `focusedGroupId` filtert Drawer-Inhalt, Titel und Zähler.',
+    ],
+    reason:
+      'Nach dem Timezone-Fix zeigte die KPI-Karte korrekte Zähler (z. B. 2 Übergaben), aber der Drilldown öffnete den gesamten `active-rented`-Slice — nur Fahrzeug-Gruppen (`on-time`, …). Bei 0 aktiven Vermietungen erschien „Keine Fahrzeuge“.',
+    previousBehavior:
+      'Ganze Operations-Karte war ein Button; Drawer lud nur aktive Mietfahrzeuge. `pickups-today`/`returns-today` hatten Count ohne Rows und wurden von `buildDashboardGroups` ausgefiltert.',
+    details:
+      '`dashboardSliceBuilder.ts`, `ControlKpiStrip.tsx`, `dashboardDrilldownGroups.ts`, `DashboardDrilldownDrawer.tsx`, `DashboardView.tsx`, `useDashboardViewModel.ts`, `dashboardDrilldownTypes.ts`. Tests: `dashboardRuntimeUI.test.ts`.',
+    affectsArchitecture: true,
+    module: 'Dashboard',
+    createdAt: '2026-07-13T01:00:00.000Z',
+  },
+  {
     id: 'today-ops-timezone-v49397-2026-07-13',
     version: '4.9.397',
     title: 'V4.9.397 — Heutige Operationen: Org-Zeitzone für Today-Pickups/Returns',

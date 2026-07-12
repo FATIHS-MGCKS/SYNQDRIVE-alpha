@@ -396,19 +396,50 @@ function buildActiveRentedSlice(
     .filter((state) => state.isCritical)
     .map((state) => vehicleRow({ state, slice: 'active-critical', locale, severity: 'critical', reasons: state.criticalReasons }));
 
+  const pickupsTodayRows = dedupeRows(
+    pickupItems
+      .filter((item) => !item.done)
+      .map((item) =>
+        pickupRow(
+          item,
+          findVehicleState(states, item),
+          locale,
+          item.isOverdue ? 'pickup-overdue' : 'pickup-due-soon',
+        ),
+      ),
+  );
+  const returnsTodayRows = dedupeRows(
+    returnItems
+      .filter((item) => !item.done)
+      .map((item) =>
+        returnRow(
+          item,
+          findVehicleState(states, item),
+          locale,
+          item.isOverdue ? 'return-overdue' : 'return-due-soon',
+        ),
+      ),
+  );
+
   return {
     ...buildEmptySlice('active-rented', locale),
     count: rows.length,
     tone: rows.length > 0 ? 'info' : 'neutral',
     rows,
     groups: [
+      group('pickups-today', label(locale, 'Übergaben', 'Pickups'), pickupsTodayRows),
+      group('returns-today', label(locale, 'Rückgaben', 'Returns'), returnsTodayRows),
       group('on-time', label(locale, 'Planmäßig', 'On time'), onTimeRows),
       group('return-due-soon', label(locale, 'Rückgabe bald fällig', 'Return due soon'), dueSoonRows),
       group('return-overdue', label(locale, 'Rückgabe überfällig', 'Return overdue'), overdueRows),
       group('critical-during-rental', label(locale, 'Kritisch während Vermietung', 'Critical during rental'), criticalRows),
-      kpiCountGroup('pickups-today', label(locale, 'Übergaben', 'Pickups'), pickupItems.length),
-      kpiCountGroup('returns-today', label(locale, 'Rückgaben', 'Returns'), returnItems.length),
     ],
+    emptyTitle: label(locale, 'Keine Operationen heute', 'No operations today'),
+    emptyDescription: label(
+      locale,
+      'Keine Übergaben, Rückgaben oder aktiven Vermietungen in diesem Bereich.',
+      'No pickups, returns, or active rentals in this scope.',
+    ),
   };
 }
 

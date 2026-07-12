@@ -317,8 +317,20 @@ describe('dashboard runtime-only UI contracts', () => {
     });
 
     const drawerGroups = buildDashboardGroups(slice, 'en');
-    expect(drawerGroups.some((group) => group.id === 'pickups-today')).toBe(false);
-    expect(drawerGroups.some((group) => group.id === 'returns-today')).toBe(false);
+    expect(drawerGroups.some((group) => group.id === 'pickups-today')).toBe(true);
+    expect(drawerGroups.some((group) => group.id === 'returns-today')).toBe(true);
+    expect(drawerGroups.find((group) => group.id === 'pickups-today')?.rows).toHaveLength(2);
+    expect(drawerGroups.find((group) => group.id === 'returns-today')?.rows).toHaveLength(1);
+
+    const pickupFocused = buildDashboardGroups(slice, 'en', { focusedGroupId: 'pickups-today' });
+    expect(pickupFocused).toHaveLength(1);
+    expect(pickupFocused[0]?.id).toBe('pickups-today');
+    expect(pickupFocused[0]?.rows).toHaveLength(2);
+
+    const activeFocused = buildDashboardGroups(slice, 'en', { focusedGroupId: 'active-rentals' });
+    expect(activeFocused.some((group) => group.id === 'pickups-today')).toBe(false);
+    expect(activeFocused.some((group) => group.id === 'returns-today')).toBe(false);
+    expect(activeFocused.some((group) => group.id === 'on-time')).toBe(true);
   });
 
   it('keeps due-soon out of the visible KPI strip order and includes overdue-pickups', () => {

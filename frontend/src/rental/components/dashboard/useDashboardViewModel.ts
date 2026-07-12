@@ -71,7 +71,11 @@ import {
   syncStatusLabel,
   type ReadyToRentOptions,
 } from './dashboardUtils';
-import type { DashboardDrilldownTarget, StationDrilldownMetric } from './dashboardDrilldownTypes';
+import type {
+  DashboardDrilldownTarget,
+  StationDrilldownMetric,
+  TodaysOperationsDrilldownGroupId,
+} from './dashboardDrilldownTypes';
 import { buildDataTrustLayer } from './dataTrustBuilder';
 import {
   buildBusinessPulseSlices,
@@ -572,11 +576,11 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   );
 
   const openSliceDrilldown = useCallback(
-    (sliceId: DashboardSliceId) => {
+    (sliceId: DashboardSliceId, groupId?: TodaysOperationsDrilldownGroupId) => {
       if (sliceId === 'critical-alerts') {
         setCriticalOnly(true);
       }
-      openDrilldown({ type: 'kpi', target: sliceId });
+      openDrilldown({ type: 'kpi', target: sliceId, groupId });
     },
     [openDrilldown],
   );

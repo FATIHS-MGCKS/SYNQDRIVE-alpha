@@ -48,17 +48,21 @@ export function DashboardView({
     vm.dataFreshness.fleetLoading,
   ]);
   const activeDrawerTargetId = vm.activeDashboardSliceId ?? vm.activeBusinessMetricId;
+  const focusedOperationsGroupId =
+    vm.drilldownTarget?.type === 'kpi' ? vm.drilldownTarget.groupId ?? null : null;
   const drawerLoading = vm.activeBusinessMetricId
     ? !vm.dataFreshness.invoicesLoaded
     : vm.activeDashboardSliceId === 'due-soon' ||
         vm.activeDashboardSliceId === 'overdue-returns' ||
         vm.activeDashboardSliceId === 'overdue-pickups'
       ? !vm.dataFreshness.todayBookingsLoaded
-      : vm.activeDashboardSliceId === 'critical-alerts'
-        ? vm.dataFreshness.insightsLoading
-        : vm.activeDashboardSliceId != null
-          ? vm.dataFreshness.fleetLoading
-          : false;
+      : vm.activeDashboardSliceId === 'active-rented'
+        ? vm.dataFreshness.fleetLoading || !vm.dataFreshness.todayBookingsLoaded
+        : vm.activeDashboardSliceId === 'critical-alerts'
+          ? vm.dataFreshness.insightsLoading
+          : vm.activeDashboardSliceId != null
+            ? vm.dataFreshness.fleetLoading
+            : false;
 
   if (vm.operatorFocusMode) {
     return (
@@ -80,6 +84,7 @@ export function DashboardView({
         </div>
         <DashboardDrilldownDrawer
           activeTargetId={activeDrawerTargetId}
+          focusedGroupId={focusedOperationsGroupId}
           dashboardRuntime={vm.dashboardRuntime}
           businessPulseSlices={vm.businessPulseSlices}
           loading={drawerLoading}
@@ -134,6 +139,7 @@ export function DashboardView({
       </div>
       <DashboardDrilldownDrawer
         activeTargetId={activeDrawerTargetId}
+        focusedGroupId={focusedOperationsGroupId}
         dashboardRuntime={vm.dashboardRuntime}
         businessPulseSlices={vm.businessPulseSlices}
         loading={drawerLoading}

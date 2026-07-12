@@ -69,8 +69,14 @@ export type StationDrilldownMetric =
   | 'returns'
   | 'vehicles';
 
+/** Drilldown section inside the active-rented (Today's Operations) slice. */
+export type TodaysOperationsDrilldownGroupId =
+  | 'pickups-today'
+  | 'returns-today'
+  | 'active-rentals';
+
 export type DashboardDrilldownTarget =
-  | { type: 'kpi'; target: DashboardSliceId }
+  | { type: 'kpi'; target: DashboardSliceId; groupId?: TodaysOperationsDrilldownGroupId }
   | { type: 'action-item'; itemId: string }
   | { type: 'fleet-lane'; lane: FleetBoardLane }
   | { type: 'station-metric'; stationId: string; metric: StationDrilldownMetric }

@@ -26,7 +26,7 @@ import {
   drawerStationScopeLabel,
 } from './dashboardDrilldownUi';
 import { drawerHeaderHint } from './dashboardDrawerNormalize';
-import type { DashboardViewModel, DashboardViewProps } from './dashboardTypes';
+import type { TodaysOperationsDrilldownGroupId } from './dashboardDrilldownTypes';
 import type {
   BusinessMetricId,
   BusinessPulseRow,
@@ -38,9 +38,11 @@ import type {
   VehicleRuntimeState,
 } from './runtime';
 import { formatDashboardMoney } from './dashboardKpiFormat';
+import { resolveTodaysOperationsKpiCounts } from './dashboardSliceAccess';
 
 interface DashboardDrilldownDrawerProps {
   activeTargetId: DashboardSliceId | BusinessMetricId | null;
+  focusedGroupId?: TodaysOperationsDrilldownGroupId | null;
   dashboardRuntime: DashboardRuntimeModel;
   businessPulseSlices?: Record<BusinessMetricId, BusinessPulseSlice>;
   loading?: boolean;
@@ -418,6 +420,79 @@ function BusinessRowCard({
   );
 }
 
+function resolveOperationsFocusedCount(
+  slice: DashboardSlice,
+  focusedGroupId: TodaysOperationsDrilldownGroupId | null | undefined,
+): number | null {
+  if (slice.id !== 'active-rented' || !focusedGroupId) return slice.count;
+  const counts = resolveTodaysOperationsKpiCounts(slice);
+  if (focusedGroupId === 'pickups-today') return counts.pickupsToday;
+  if (focusedGroupId === 'returns-today') return counts.returnsToday;
+  if (focusedGroupId === 'active-rentals') return counts.activeRentalsCount;
+  return slice.count;
+}
+
+function operationsDrawerTitle(
+  focusedGroupId: TodaysOperationsDrilldownGroupId | null | undefined,
+  de: boolean,
+): string | null {
+  if (focusedGroupId === 'pickups-today') return de ? 'Übergaben' : 'Pickups';
+  if (focusedGroupId === 'returns-today') return de ? 'Rückgaben' : 'Returns';
+  if (focusedGroupId === 'active-rentals') return de ? 'Aktive Vermietungen' : 'Active rentals';
+  return null;
+}
+
+function operationsDrawerHint(
+  focusedGroupId: TodaysOperationsDrilldownGroupId,
+  count: number | null,
+  de: boolean,
+): string {
+  const n = count ?? 0;
+  if (focusedGroupId === 'pickups-today') {
+    return de ? `${n} Übergabe${n === 1 ? '' : 'n'} heute` : `${n} pickup${n === 1 ? '' : 's'} today`;
+  }
+  if (focusedGroupId === 'returns-today') {
+    return de ? `${n} Rückgabe${n === 1 ? '' : 'n'} heute` : `${n} return${n === 1 ? '' : 's'} today`;
+  }
+  return de ? `${n} aktive Vermietung${n === 1 ? '' : 'en'}` : `${n} active rental${n === 1 ? '' : 's'}`;
+}
+
+function operationsDrawerEmptyCopy(
+  focusedGroupId: TodaysOperationsDrilldownGroupId | null | undefined,
+  de: boolean,
+): { title: string; description: string } {
+  if (focusedGroupId === 'pickups-today') {
+    return {
+      title: de ? 'Keine Übergaben heute' : 'No pickups today',
+      description: de
+        ? 'Für heute sind keine offenen Übergaben geplant.'
+        : 'There are no open pickups scheduled for today.',
+    };
+  }
+  if (focusedGroupId === 'returns-today') {
+    return {
+      title: de ? 'Keine Rückgaben heute' : 'No returns today',
+      description: de
+        ? 'Für heute sind keine offenen Rückgaben geplant.'
+        : 'There are no open returns scheduled for today.',
+    };
+  }
+  if (focusedGroupId === 'active-rentals') {
+    return {
+      title: de ? 'Keine aktiven Vermietungen' : 'No active rentals',
+      description: de
+        ? 'Aktuell sind keine Fahrzeuge aktiv vermietet.'
+        : 'No vehicles are currently on active rental.',
+    };
+  }
+  return {
+    title: de ? 'Keine Operationen heute' : 'No operations today',
+    description: de
+      ? 'Keine Übergaben, Rückgaben oder aktiven Vermietungen in diesem Bereich.'
+      : 'No pickups, returns, or active rentals in this scope.',
+  };
+}
+
 function EmptyState({ title, description }: { title: string; description: string }) {
   return (
     <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-border/60 bg-muted/10 px-4 py-10 text-center">
@@ -432,6 +507,7 @@ function EmptyState({ title, description }: { title: string; description: string
 
 function DashboardGroupList({
   slice,
+  focusedGroupId,
   vehicleStates,
   fleetVehicleById,
   fleetHealthById,
@@ -443,6 +519,7 @@ function DashboardGroupList({
   onClose,
 }: {
   slice: DashboardSlice;
+  focusedGroupId?: TodaysOperationsDrilldownGroupId | null;
   vehicleStates: Map<string, VehicleRuntimeState>;
   fleetVehicleById: Map<string, VehicleData>;
   fleetHealthById: Map<string, VehicleHealthResponse>;
@@ -458,16 +535,33 @@ function DashboardGroupList({
 
   useEffect(() => {
     setSearchQuery('');
-  }, [slice.id]);
+  }, [slice.id, focusedGroupId]);
 
   const groups = useMemo(() => {
-    const built = buildDashboardGroups(slice, locale);
+    const built = buildDashboardGroups(slice, locale, {
+      focusedGroupId: slice.id === 'active-rented' ? focusedGroupId ?? undefined : undefined,
+    });
     if (slice.id !== 'ready-to-rent') return built;
     return sortReadyToRentDrawerGroupsByLastSignal(built, {
       vehicleStates,
       fleetVehicleById,
     });
-  }, [slice, locale, vehicleStates, fleetVehicleById]);
+  }, [slice, locale, focusedGroupId, vehicleStates, fleetVehicleById]);
+
+  const emptyCopy =
+    slice.id === 'active-rented'
+      ? operationsDrawerEmptyCopy(focusedGroupId, de)
+      : {
+          title: isVehicleDrawer ? vehicleDrawerEmptyTitle(slice, de) : emptyTitle(slice, de),
+          description: isVehicleDrawer
+            ? vehicleDrawerEmptyDescription(slice, de)
+            : emptyDescription(slice, de),
+        };
+
+  if (groups.length === 0) {
+    return <EmptyState title={emptyCopy.title} description={emptyCopy.description} />;
+  }
+
   const filteredGroups = useMemo(() => {
     if (!isVehicleDrawer || !searchQuery.trim()) return groups;
     return filterDashboardDrawerGroups(groups, vehicleStates, searchQuery, locale);
@@ -475,17 +569,6 @@ function DashboardGroupList({
 
   const searchPlaceholder = de ? 'Kennzeichen, Marke, Modell…' : 'Plate, make, model…';
   const stationScopeLabel = drawerStationScopeLabel(selectedStationName, de);
-
-  if (groups.length === 0) {
-    return (
-      <EmptyState
-        title={isVehicleDrawer ? vehicleDrawerEmptyTitle(slice, de) : emptyTitle(slice, de)}
-        description={
-          isVehicleDrawer ? vehicleDrawerEmptyDescription(slice, de) : emptyDescription(slice, de)
-        }
-      />
-    );
-  }
 
   return (
     <div className="space-y-3">
@@ -597,6 +680,7 @@ function BusinessGroupList({
 
 export function DashboardDrilldownDrawer({
   activeTargetId,
+  focusedGroupId,
   dashboardRuntime,
   businessPulseSlices,
   loading = false,
@@ -621,10 +705,17 @@ export function DashboardDrilldownDrawer({
     ? businessPulseSlices?.[activeTargetId] ?? null
     : null;
   const open = Boolean(activeTargetId);
-  const title = dashboardSlice
-    ? sliceDisplayTitle(dashboardSlice, de)
-    : businessSlice?.title ?? (de ? 'Details' : 'Details');
-  const count = dashboardSlice?.count ?? businessSlice?.count ?? null;
+  const operationsTitle =
+    dashboardSlice?.id === 'active-rented' && focusedGroupId
+      ? operationsDrawerTitle(focusedGroupId, de)
+      : null;
+  const title = operationsTitle
+    ?? (dashboardSlice
+      ? sliceDisplayTitle(dashboardSlice, de)
+      : businessSlice?.title ?? (de ? 'Details' : 'Details'));
+  const count = dashboardSlice
+    ? resolveOperationsFocusedCount(dashboardSlice, focusedGroupId)
+    : businessSlice?.count ?? null;
   const value =
     businessSlice?.valueCents != null
       ? formatDashboardMoney(businessSlice.valueCents, businessSlice.rows[0]?.currency ?? 'EUR', locale)
@@ -636,6 +727,10 @@ export function DashboardDrilldownDrawer({
       <div className="space-y-1">
         {dashboardSlice.id === 'ready-to-rent' ? (
           <p className="text-[12px] leading-relaxed text-muted-foreground">{readyToRentDrawerHint(dashboardSlice, locale)}</p>
+        ) : dashboardSlice.id === 'active-rented' && focusedGroupId ? (
+          <p className="text-[12px] text-muted-foreground">
+            {operationsDrawerHint(focusedGroupId, count, de)}
+          </p>
         ) : drawerHeaderHint(dashboardSlice, locale) ? (
           <p className="text-[12px] text-muted-foreground">{drawerHeaderHint(dashboardSlice, locale)}</p>
         ) : null}
@@ -701,6 +796,7 @@ export function DashboardDrilldownDrawer({
       ) : dashboardSlice ? (
         <DashboardGroupList
           slice={dashboardSlice}
+          focusedGroupId={focusedGroupId}
           vehicleStates={vehicleStatesById(dashboardRuntime.vehicleStates)}
           fleetVehicleById={fleetVehicleById}
           fleetHealthById={healthMap}

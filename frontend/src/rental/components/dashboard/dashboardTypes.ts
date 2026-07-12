@@ -11,7 +11,7 @@ import type { DashboardNotificationItem } from './dashboardNotificationTypes';
 import type { NotificationQueueModel } from './notificationQueueModel';
 import type { FleetStatusTabKey } from '../../lib/vehicle-status';
 import type { StatusTone } from '../../../components/patterns';
-import type { DashboardDrilldownTarget } from './dashboardDrilldownTypes';
+import type { DashboardDrilldownTarget, TodaysOperationsDrilldownGroupId } from './dashboardDrilldownTypes';
 import type { DataTrustLayer, DashboardTrustHint } from './dataTrustBuilder';
 import type {
   BusinessMetricId,
@@ -683,7 +683,7 @@ export interface DashboardViewModel {
   dateLabel: string;
 
   controlCenterStatus: ControlCenterStatus;
-  openSliceDrilldown: (sliceId: DashboardSliceId) => void;
+  openSliceDrilldown: (sliceId: DashboardSliceId, groupId?: TodaysOperationsDrilldownGroupId) => void;
   openBusinessMetricDrilldown: (metricId: BusinessMetricId) => void;
   drilldownTarget: DashboardDrilldownTarget | null;
   openDrilldown: (target: DashboardDrilldownTarget) => void;

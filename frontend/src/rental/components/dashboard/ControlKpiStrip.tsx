@@ -17,12 +17,13 @@ import {
   isReadySlice,
 } from './dashboardKpiVisual';
 import type { DashboardRuntimeModel, DashboardSlice, DashboardSliceId } from './runtime';
+import type { TodaysOperationsDrilldownGroupId } from './dashboardDrilldownTypes';
 import type { DataFreshnessSummary } from './dashboardTypes';
 
 interface ControlKpiStripProps {
   dashboardRuntime: DashboardRuntimeModel;
   activeSliceId?: DashboardSliceId | null;
-  onSelectSlice: (sliceId: DashboardSliceId) => void;
+  onSelectSlice: (sliceId: DashboardSliceId, groupId?: TodaysOperationsDrilldownGroupId) => void;
   embedded?: boolean;
   locale?: string;
   dataFreshness?: DataFreshnessSummary;
@@ -145,12 +146,43 @@ interface KpiTwinFooterColumnProps {
   valueClassName?: string;
 }
 
-function KpiTwinFooterColumn({ label, value, valueClassName }: KpiTwinFooterColumnProps) {
-  return (
-    <div className="min-w-0 text-center">
+function KpiTwinFooterColumn({
+  label,
+  value,
+  valueClassName,
+  onClick,
+  disabled,
+  ariaLabel,
+}: KpiTwinFooterColumnProps & {
+  onClick?: () => void;
+  disabled?: boolean;
+  ariaLabel?: string;
+}) {
+  const content = (
+    <>
       <p className={KPI_FOOTER_LABEL_CLASS}>{label}</p>
       <p className={cn(KPI_FOOTER_VALUE_CLASS, valueClassName)}>{value}</p>
-    </div>
+    </>
+  );
+
+  if (!onClick) {
+    return <div className="min-w-0 text-center">{content}</div>;
+  }
+
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={onClick}
+      aria-label={ariaLabel ?? label}
+      className={cn(
+        'min-w-0 rounded-lg text-center transition-colors',
+        'hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+        disabled && 'cursor-not-allowed opacity-60',
+      )}
+    >
+      {content}
+    </button>
   );
 }
 
@@ -206,30 +238,58 @@ function ReadyForRentingKpiContent({ slice, disabled, locale }: ReadyForRentingK
   );
 }
 
-function TodaysOperationsKpiContent({ slice, disabled, locale }: ReadyForRentingKpiContentProps) {
+interface OperationsKpiContentProps {
+  slice: DashboardSlice;
+  disabled: boolean;
+  locale?: string;
+  onSelectOperationsSection?: (groupId: TodaysOperationsDrilldownGroupId) => void;
+}
+
+function TodaysOperationsKpiContent({
+  slice,
+  disabled,
+  locale,
+  onSelectOperationsSection,
+}: OperationsKpiContentProps) {
   const labels = operationsKpiLabels(locale);
   const { activeRentalsCount, pickupsToday, returnsToday } = resolveTodaysOperationsKpiCounts(slice);
+  const openSection = (groupId: TodaysOperationsDrilldownGroupId) => {
+    if (disabled) return;
+    onSelectOperationsSection?.(groupId);
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="flex shrink-0 items-start justify-between gap-2">
-        <p className={KPI_TITLE_CLASS}>{slice.title}</p>
-        <div
-          className={cn(
-            'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors',
-            getKpiIconTileClass(slice),
-          )}
-        >
-          <Icon name="car" className="h-3 w-3" />
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => openSection('active-rentals')}
+        aria-label={`${labels.activeRentals}: ${formatKpiCount(activeRentalsCount, disabled)}`}
+        className={cn(
+          'flex min-h-0 flex-1 flex-col rounded-lg text-left transition-colors',
+          'hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+          disabled && 'cursor-not-allowed',
+        )}
+      >
+        <div className="flex shrink-0 items-start justify-between gap-2">
+          <p className={KPI_TITLE_CLASS}>{slice.title}</p>
+          <div
+            className={cn(
+              'flex h-6 w-6 shrink-0 items-center justify-center rounded-md transition-colors',
+              getKpiIconTileClass(slice),
+            )}
+          >
+            <Icon name="car" className="h-3 w-3" />
+          </div>
         </div>
-      </div>
 
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-1 py-1.5 text-center">
-        <p className={cn(KPI_NUMBER_CLASS, getKpiValueGradientClass('neutral', disabled))}>
-          {formatKpiCount(activeRentalsCount, disabled)}
-        </p>
-        <p className={KPI_MAIN_LABEL_CLASS}>{labels.activeRentals}</p>
-      </div>
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-1 py-1.5 text-center">
+          <p className={cn(KPI_NUMBER_CLASS, getKpiValueGradientClass('neutral', disabled))}>
+            {formatKpiCount(activeRentalsCount, disabled)}
+          </p>
+          <p className={KPI_MAIN_LABEL_CLASS}>{labels.activeRentals}</p>
+        </div>
+      </button>
 
       <div className={KPI_SEPARATOR_CLASS} role="separator" aria-hidden />
 
@@ -238,11 +298,17 @@ function TodaysOperationsKpiContent({ slice, disabled, locale }: ReadyForRenting
           label={labels.pickupsToday}
           value={formatKpiCount(pickupsToday, disabled)}
           valueClassName={getKpiValueGradientClass('neutral', disabled)}
+          disabled={disabled || pickupsToday === 0}
+          onClick={() => openSection('pickups-today')}
+          ariaLabel={`${labels.pickupsToday}: ${formatKpiCount(pickupsToday, disabled)}`}
         />
         <KpiTwinFooterColumn
           label={labels.returnsToday}
           value={formatKpiCount(returnsToday, disabled)}
           valueClassName={getKpiValueGradientClass('neutral', disabled)}
+          disabled={disabled || returnsToday === 0}
+          onClick={() => openSection('returns-today')}
+          ariaLabel={`${labels.returnsToday}: ${formatKpiCount(returnsToday, disabled)}`}
         />
         <div className={KPI_FOOTER_DIVIDER_CLASS} aria-hidden />
       </div>
@@ -289,7 +355,7 @@ interface KpiStripButtonProps {
   embedded: boolean;
   locale?: string;
   activeSliceId?: DashboardSliceId | null;
-  onSelectSlice: (sliceId: DashboardSliceId) => void;
+  onSelectSlice: (sliceId: DashboardSliceId, groupId?: TodaysOperationsDrilldownGroupId) => void;
 }
 
 function KpiStripButton({ id, slice, embedded, locale, activeSliceId, onSelectSlice }: KpiStripButtonProps) {
@@ -302,6 +368,37 @@ function KpiStripButton({ id, slice, embedded, locale, activeSliceId, onSelectSl
   const isTwinCard = isReadyCard || isOperationsCard;
   const readyCounts = isReadyCard ? resolveReadyForRentingKpiCounts(slice) : null;
   const operationsCounts = isOperationsCard ? resolveTodaysOperationsKpiCounts(slice) : null;
+
+  if (isOperationsCard) {
+    return (
+      <div
+        key={id}
+        className={cn(
+          kpiCardClass(slice, embedded, isActive, 'twin'),
+          disabled && 'cursor-not-allowed opacity-60',
+          'relative',
+        )}
+        aria-label={
+          operationsCounts
+            ? `${slice.title}: ${formatKpiCount(operationsCounts.activeRentalsCount, disabled)} active rentals, ${formatKpiCount(operationsCounts.pickupsToday, disabled)} pickups, ${formatKpiCount(operationsCounts.returnsToday, disabled)} returns`
+            : `${slice.title}: ${displayValue}`
+        }
+      >
+        <TodaysOperationsKpiContent
+          slice={slice}
+          disabled={disabled}
+          locale={locale}
+          onSelectOperationsSection={(groupId) => onSelectSlice(id, groupId)}
+        />
+        {isCritical && (
+          <span
+            className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[color:var(--status-critical)]"
+            aria-hidden
+          />
+        )}
+      </div>
+    );
+  }
 
   return (
     <button
@@ -318,16 +415,12 @@ function KpiStripButton({ id, slice, embedded, locale, activeSliceId, onSelectSl
       aria-label={
         isReadyCard && readyCounts
           ? `${slice.title}: ${formatKpiCount(readyCounts.readyCount, disabled)} ready, ${formatKpiCount(readyCounts.availableCount, disabled)} available, ${formatKpiCount(readyCounts.notReadyCount, disabled)} not ready`
-          : isOperationsCard && operationsCounts
-            ? `${slice.title}: ${formatKpiCount(operationsCounts.activeRentalsCount, disabled)} active rentals, ${formatKpiCount(operationsCounts.pickupsToday, disabled)} pickups, ${formatKpiCount(operationsCounts.returnsToday, disabled)} returns`
-            : `${slice.title}: ${displayValue}`
+          : `${slice.title}: ${displayValue}`
       }
       aria-pressed={isActive}
     >
       {isReadyCard ? (
         <ReadyForRentingKpiContent slice={slice} disabled={disabled} locale={locale} />
-      ) : isOperationsCard ? (
-        <TodaysOperationsKpiContent slice={slice} disabled={disabled} locale={locale} />
       ) : (
         <CompactKpiContent
           slice={slice}
