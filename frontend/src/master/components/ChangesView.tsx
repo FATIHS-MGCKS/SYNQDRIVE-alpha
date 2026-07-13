@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'active-rentals-drawer-v49409-2026-07-13',
+    version: '4.9.409',
+    title: 'V4.9.409 — Aktive Vermietungen-Drawer: Mietkontext & KM-Fortschritt',
+    summary: [
+      'Neue Karte **ActiveRentalDrawerRowCard** für den Drawer „Aktive Vermietungen“.',
+      'Zeilen: **Kunde**, **Buchungsnummer**, Station; Tank/Telemetrie/KM wie Fleet.',
+      'KM-Rest-Fortschrittsbalken + **Gemietet bis**; CTAs **Zur Buchung** und **Zum Fahrzeug**.',
+    ],
+    reason: 'Aktive Vermietungen sollen wie Übergaben den Mietkontext priorisieren, nicht nur Fleet-Zeile.',
+    previousBehavior:
+      'Aktive Vermietungen nutzten CompactFleetDrawerVehicleRow mit „Öffnen“ und ohne Kunde/Buchung/KM-Rest.',
+    details:
+      '**Dateien**: `ActiveRentalDrawerRowCard.tsx`, `activeRentalDrawer.utils.ts`, `DashboardDrilldownDrawer.tsx`.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T15:30:00.000Z',
+  },
+  {
     id: 'fleet-health-pickup-decouple-v49408-2026-07-13',
     version: '4.9.408',
     title: 'V4.9.408 — Flotte: Überfällige Abholung beeinflusst Health-Badge nicht',

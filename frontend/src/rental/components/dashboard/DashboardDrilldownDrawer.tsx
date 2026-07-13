@@ -6,6 +6,7 @@ import { cn } from '../../../components/ui/utils';
 import type { VehicleHealthResponse } from '../../../lib/api';
 import type { VehicleData } from '../../data/vehicles';
 import { useFleetVehicles } from '../../FleetContext';
+import { ActiveRentalDrawerRowCard } from './ActiveRentalDrawerRowCard';
 import { CompactFleetDrawerVehicleRow } from './CompactFleetDrawerVehicleRow';
 import {
   dedupeDisplayReasons,
@@ -417,6 +418,7 @@ function BookingDrawerRowCard({
 function DashboardRowCard({
   row,
   sliceId,
+  focusedGroupId,
   state,
   vehicle,
   health,
@@ -427,6 +429,7 @@ function DashboardRowCard({
 }: {
   row: DashboardSliceRow;
   sliceId: DashboardSliceId;
+  focusedGroupId?: TodaysOperationsDrilldownGroupId | null;
   state?: VehicleRuntimeState;
   vehicle?: VehicleData;
   health?: VehicleHealthResponse | null;
@@ -437,6 +440,21 @@ function DashboardRowCard({
 }) {
   const locale = de ? 'de' : 'en';
   if (row.vehicleId && !row.bookingId) {
+    if (!vehicle) return null;
+    if (sliceId === 'active-rented' && focusedGroupId === 'active-rentals') {
+      return (
+        <ActiveRentalDrawerRowCard
+          row={row}
+          vehicle={vehicle}
+          health={health}
+          runtimeState={state}
+          locale={locale}
+          onOpenVehicle={onOpenVehicle}
+          onOpenBooking={onOpenBooking}
+          onClose={onClose}
+        />
+      );
+    }
     return (
       <CompactFleetDrawerVehicleRow
         row={row}
@@ -701,6 +719,7 @@ function DashboardGroupList({
                   key={row.id}
                   row={row}
                   sliceId={slice.id}
+                  focusedGroupId={focusedGroupId}
                   state={row.vehicleId ? vehicleStates.get(row.vehicleId) : undefined}
                   vehicle={row.vehicleId ? fleetVehicleById.get(row.vehicleId) : undefined}
                   health={row.vehicleId ? fleetHealthById.get(row.vehicleId) ?? null : null}
