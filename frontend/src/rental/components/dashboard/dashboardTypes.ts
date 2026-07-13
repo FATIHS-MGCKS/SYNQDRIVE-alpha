@@ -113,6 +113,9 @@ export interface DashboardInvoice {
   createdAt: string | null;
   vehicleId?: string | null;
   customerId?: string | null;
+  bookingId?: string | null;
+  title?: string | null;
+  invoiceNumberDisplay?: string | null;
 }
 
 /** Today pickup/return row shape from bookings API (partial — defensive mapping). */

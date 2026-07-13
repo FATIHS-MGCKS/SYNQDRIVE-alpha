@@ -10,6 +10,7 @@ import {
   overdueOutgoingReceivables,
   paidRevenueInRange,
   preIssuedBookingRevenueInRange,
+  reservedRevenueInRange,
   sumCents,
 } from '../../../../frontend/src/rental/lib/financial-insights.logic';
 
@@ -24,6 +25,7 @@ const inv = (
     paidAt: string | null;
     createdAt: string;
     currency: string;
+    bookingId: string | null;
   }> = {},
 ) => ({
   id: overrides.id ?? 'i1',
@@ -35,6 +37,7 @@ const inv = (
   dueDate: overrides.dueDate ?? '2026-06-20',
   paidAt: overrides.paidAt ?? null,
   createdAt: overrides.createdAt ?? '2026-06-10',
+  bookingId: overrides.bookingId ?? null,
 });
 
 describe('financial-insights.logic (Insights cockpit)', () => {
@@ -112,7 +115,7 @@ describe('financial-insights.logic (Insights cockpit)', () => {
     expect(preIssuedBookingRevenueInRange(rows, monthStart, now).map((r) => r.id)).toEqual(['draft-booking']);
   });
 
-  it('mtdRevenueInRange dedupes issued, paid, and prepaid booking drafts', () => {
+  it('mtdRevenueInRange dedupes issued and paid only (Option A — no drafts)', () => {
     const rows = [
       inv({ id: 'issued', invoiceDate: '2026-06-08', totalCents: 5_000 }),
       inv({
@@ -125,9 +128,31 @@ describe('financial-insights.logic (Insights cockpit)', () => {
       inv({ id: 'draft-booking', status: 'DRAFT', invoiceDate: '2026-06-12', totalCents: 3_000 }),
     ];
     expect(mtdRevenueInRange(rows, monthStart, now).map((r) => r.id).sort()).toEqual([
-      'draft-booking',
       'issued',
       'paid',
     ]);
+  });
+
+  it('reservedRevenueInRange dedupes draft booking invoices per bookingId', () => {
+    const rows = [
+      inv({
+        id: 'draft-a',
+        status: 'DRAFT',
+        invoiceDate: '2026-06-08',
+        totalCents: 12_000,
+        createdAt: '2026-06-08',
+        bookingId: 'b1',
+      }),
+      inv({
+        id: 'draft-b',
+        status: 'DRAFT',
+        invoiceDate: '2026-06-09',
+        totalCents: 12_000,
+        createdAt: '2026-06-09',
+        bookingId: 'b1',
+      }),
+      inv({ id: 'issued', invoiceDate: '2026-06-08' }),
+    ];
+    expect(reservedRevenueInRange(rows, monthStart, now).map((r) => r.id)).toEqual(['draft-b']);
   });
 });

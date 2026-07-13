@@ -22,6 +22,9 @@ function invoice(overrides: Partial<DashboardInvoice> = {}): DashboardInvoice {
     paidAt: overrides.paidAt ?? null,
     customerId: overrides.customerId ?? null,
     vehicleId: overrides.vehicleId ?? null,
+    bookingId: overrides.bookingId ?? null,
+    title: overrides.title ?? null,
+    invoiceNumberDisplay: overrides.invoiceNumberDisplay ?? null,
   };
 }
 
@@ -159,7 +162,8 @@ describe('buildBusinessPulseSlices invoice classification', () => {
     expect(slices.expenses.valueCents).toBe(0);
   });
 
-  it('includes prepaid booking draft invoices and paid revenue in MTD totals', () => {
+  it('excludes prepaid booking drafts from MTD revenue and tracks them as reserved revenue', () => {
+    const sharedBookingId = 'booking-abc-123';
     const slices = buildBusinessPulseSlices({
       locale: 'de',
       now: NOW,
@@ -170,6 +174,17 @@ describe('buildBusinessPulseSlices invoice classification', () => {
           status: 'DRAFT',
           totalCents: 15_000,
           invoiceDate: '2026-07-08T00:00:00.000Z',
+          bookingId: sharedBookingId,
+          title: 'Buchungsrechnung #booking',
+        }),
+        invoice({
+          id: 'draft-booking-dup',
+          type: 'OUTGOING_BOOKING',
+          status: 'DRAFT',
+          totalCents: 15_000,
+          invoiceDate: '2026-07-09T00:00:00.000Z',
+          bookingId: sharedBookingId,
+          createdAt: '2026-07-09T00:00:00.000Z',
         }),
         invoice({
           id: 'paid-old-issue',
@@ -189,9 +204,12 @@ describe('buildBusinessPulseSlices invoice classification', () => {
       ],
     });
 
-    expect(slices.revenue.valueCents).toBe(24_000);
-    expect(slices.revenue.count).toBe(2);
-    expect(slices.profit.valueCents).toBe(24_000);
+    expect(slices.revenue.valueCents).toBe(9_000);
+    expect(slices.revenue.count).toBe(1);
+    expect(slices['reserved-revenue'].valueCents).toBe(15_000);
+    expect(slices['reserved-revenue'].count).toBe(1);
+    expect(slices.profit.valueCents).toBe(9_000);
+    expect(slices.revenue.rows[0]?.title).not.toContain('outgoing');
   });
 });
 

@@ -18,6 +18,7 @@ export const PRIMARY_BUSINESS_METRICS: BusinessMetricId[] = [
 ];
 
 export const OPTIONAL_BUSINESS_METRICS: BusinessMetricId[] = [
+  'reserved-revenue',
   'draft-invoices',
   'failed-payments',
   'paid-invoices',
@@ -32,6 +33,7 @@ export const METRIC_TITLE_KEYS: Record<BusinessMetricId, TranslationKey> = {
   'paid-invoices': 'dashboard.paidInvoicesLabel',
   'draft-invoices': 'dashboard.draftInvoicesLabel',
   'failed-payments': 'dashboard.failedPaymentsLabel',
+  'reserved-revenue': 'dashboard.reservedRevenue',
 };
 
 const METRIC_ICONS: Record<BusinessMetricId, IconName> = {
@@ -43,6 +45,7 @@ const METRIC_ICONS: Record<BusinessMetricId, IconName> = {
   'paid-invoices': 'check-circle',
   'draft-invoices': 'file-text',
   'failed-payments': 'alert-circle',
+  'reserved-revenue': 'calendar',
 };
 
 export function hasOptionalBusinessMetrics(
@@ -220,6 +223,8 @@ function countHint(
       return t('dashboard.failedPaymentCount', { count: slice.count });
     case 'paid-invoices':
       return t('dashboard.paidInvoiceCount', { count: slice.count });
+    case 'reserved-revenue':
+      return t('dashboard.reservedRevenueCount', { count: slice.count });
     default:
       return slice.hint;
   }

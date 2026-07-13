@@ -22,6 +22,7 @@ export interface InvoiceSlice {
   createdAt: string | null;
   customerId?: string | null;
   vehicleId?: string | null;
+  bookingId?: string | null;
 }
 
 export {
@@ -88,7 +89,7 @@ export function paidRevenueInRange<T extends InvoiceSlice>(
 
 /**
  * Prepaid rental bookings often keep an OUTGOING_BOOKING invoice in DRAFT until
- * handover/finalization — include those rows in dashboard MTD revenue.
+ * handover/finalization — tracked separately as reserved revenue, not MTD Umsatz.
  */
 export function preIssuedBookingRevenueInRange<T extends InvoiceSlice & { type?: string }>(
   invoices: T[],
@@ -105,8 +106,8 @@ export function preIssuedBookingRevenueInRange<T extends InvoiceSlice & { type?:
   });
 }
 
-/** Dashboard MTD revenue — issued + cash collected + prepaid booking drafts (deduped). */
-export function mtdRevenueInRange<T extends InvoiceSlice & { type?: string }>(
+/** Dashboard MTD revenue (Option A) — issued outgoing + cash collected in range; no DRAFT. */
+export function mtdRevenueInRange<T extends InvoiceSlice>(
   invoices: T[],
   from: Date,
   to: Date,
@@ -115,11 +116,41 @@ export function mtdRevenueInRange<T extends InvoiceSlice & { type?: string }>(
   for (const row of [
     ...issuedRevenueInRange(invoices, from, to),
     ...paidRevenueInRange(invoices, from, to),
-    ...preIssuedBookingRevenueInRange(invoices, from, to),
   ]) {
     byId.set(row.id, row);
   }
   return [...byId.values()];
+}
+
+function createdAtMs(inv: InvoiceSlice): number {
+  if (!inv.createdAt) return 0;
+  const ms = Date.parse(inv.createdAt);
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+/** Reserved revenue — prepaid OUTGOING_BOOKING drafts in range, one row per bookingId. */
+export function reservedRevenueInRange<T extends InvoiceSlice & { type?: string; bookingId?: string | null }>(
+  invoices: T[],
+  from: Date,
+  to: Date,
+): T[] {
+  const drafts = preIssuedBookingRevenueInRange(invoices, from, to);
+  const byBooking = new Map<string, T>();
+  const withoutBooking: T[] = [];
+
+  for (const row of drafts) {
+    const bookingId = row.bookingId?.trim();
+    if (!bookingId) {
+      withoutBooking.push(row);
+      continue;
+    }
+    const existing = byBooking.get(bookingId);
+    if (!existing || createdAtMs(row) >= createdAtMs(existing)) {
+      byBooking.set(bookingId, row);
+    }
+  }
+
+  return [...byBooking.values(), ...withoutBooking];
 }
 
 export function expensesInRange<T extends InvoiceSlice>(
