@@ -11,6 +11,10 @@ import {
   resolveHandoverVehicleReasonBadge,
 } from './dashboardDrilldownRowDisplay';
 import { DrawerRowActionButton } from './dashboardDrawerRowActions';
+import {
+  DrawerCustomerBnrRow,
+  drawerRowActionStackClassName,
+} from './dashboardDrawerRowLines';
 import type { DashboardSliceRow, VehicleRuntimeState } from './runtime';
 import {
   activeRentalKmBarFillPercent,
@@ -112,18 +116,11 @@ export function ActiveRentalDrawerRowCard({
             <span className="truncate text-[10.5px] text-muted-foreground">{fleetVehicleTitle(vehicle)}</span>
           </div>
 
-          <div className="space-y-0.5 text-[10.5px] text-muted-foreground">
-            {customer ? (
-              <p className="truncate">
-                {de ? 'Kunde:' : 'Customer:'} {customer}
-              </p>
-            ) : null}
-            {bookingNumber ? (
-              <p className="truncate">
-                {de ? 'Buchungsnummer:' : 'Booking no.:'} {bookingNumber}
-              </p>
-            ) : null}
-          </div>
+          <DrawerCustomerBnrRow
+            customerName={customer}
+            bookingRef={bookingNumber}
+            de={de}
+          />
 
           {showOpsMeta ? (
             <div className="flex min-w-0 items-center gap-x-1 overflow-hidden text-[10px] tabular-nums text-muted-foreground">
@@ -210,7 +207,7 @@ export function ActiveRentalDrawerRowCard({
             </StatusChip>
           </div>
 
-          <div className="mt-auto flex flex-col items-end gap-1">
+          <div className={drawerRowActionStackClassName}>
             {canOpenBooking ? (
               <DrawerRowActionButton
                 tone="booking"
