@@ -35,6 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pickup-drawer-cta-layout-v49406-2026-07-13',
+    version: '4.9.406',
+    title: 'V4.9.406 — Übergaben-Drawer: Zur Buchung unten rechts, Badges oben rechts',
+    summary: [
+      'CTA umbenannt: **Zur Buchung** (statt „Buchung öffnen“).',
+      'Layout: Timing- und Status-Badges oben rechts; Button unten rechts unter den Details.',
+    ],
+    reason: 'Mehr Platz für Badges und klarere Navigationsformulierung.',
+    previousBehavior: 'Button rechts neben dem Inhalt; Label „Buchung öffnen“.',
+    details: '**Dateien**: `DashboardDrilldownDrawer.tsx`, `dashboardSliceBuilder.ts`.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T14:00:00.000Z',
+  },
+  {
     id: 'pickup-drawer-reserved-badge-v49405-2026-07-13',
     version: '4.9.405',
     title: 'V4.9.405 — Übergaben-Drawer: Reserviert-Badge statt Nicht bereit',

@@ -328,7 +328,7 @@ function pickupRow(
     severity: variant === 'pickup-overdue' ? 'critical' : 'info',
     ...(timingLabel ? { statusLabel: timingLabel } : {}),
     ...(readiness ?? {}),
-    primaryActionLabel: label(locale, 'Buchung öffnen', 'Open booking'),
+    primaryActionLabel: label(locale, 'Zur Buchung', 'To booking'),
   };
 }
 
@@ -359,7 +359,7 @@ function returnRow(
     ...(timingLabel ? { statusLabel: timingLabel } : {}),
     ...(readiness ?? {}),
     ...(reasons.length > 0 ? { reasons, reasonIds: reasons.map((reason) => reason.id) } : {}),
-    primaryActionLabel: label(locale, 'Buchung öffnen', 'Open booking'),
+    primaryActionLabel: label(locale, 'Zur Buchung', 'To booking'),
   };
 }
 

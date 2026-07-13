@@ -373,7 +373,7 @@ describe('dashboard runtime-only UI contracts', () => {
     expect(pickupRow?.readinessLabel).toBe('Reserviert');
     expect(pickupRow?.readinessTone).toBe('info');
     expect(pickupRow?.bookingId).toBe('booking-uuid-abc123');
-    expect(pickupRow?.primaryActionLabel).toBe('Buchung öffnen');
+    expect(pickupRow?.primaryActionLabel).toBe('Zur Buchung');
   });
 
   it('formats overdue pickup timing with Seit prefix and English am/pm time', () => {
