@@ -578,6 +578,7 @@ export const en = {
   'dashboard.openReceivableCount': '{count} open receivables',
   'dashboard.overdueReceivableCount': '{count} overdue',
   'dashboard.draftInvoiceCount': '{count} drafts',
+  'dashboard.reservedRevenueCount': '{count} bookings',
   'dashboard.failedPaymentCount': '{count} failed payments',
   'dashboard.paidInvoiceCount': '{count} paid invoices',
   'dashboard.paidInvoicesLabel': 'Paid invoices',

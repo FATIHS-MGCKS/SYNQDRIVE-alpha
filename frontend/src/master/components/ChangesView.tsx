@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'finance-kpi-option-a-reserved-revenue-v49426-2026-07-13',
+    version: '4.9.426',
+    title: 'V4.9.426 — Finanz-KPIs: Umsatz Option A + Reservierter Umsatz',
+    summary: [
+      'MTD-Umsatz (Option A): nur ausgestellte + per paidAt bezahlte Rechnungen — keine DRAFT-Buchungsrechnungen mehr im Umsatz/Ergebnis.',
+      'Neue Metrik „Reservierter Umsatz“ (`reserved-revenue`): OUTGOING_BOOKING/DRAFT im Monat, dedupliziert pro bookingId.',
+      'Drawer-Zeilen: Rechnungsnummer/Titel/Buchungsref statt UUID; Status + Datum lokal formatiert (kein ISO-Rohstring).',
+      '`createBookingInvoice` idempotent — kein neuer Entwurf bei Wizard-Refresh; Audit-Skript für Duplikate.',
+      'Financial Insights nutzt dieselbe `mtdRevenueInRange`-Definition wie das Dashboard.',
+    ],
+    reason:
+      'Umsatz zeigte 3.580 € mit 12× ENTWURF bei nur 2 Buchungen: DRAFT-Duplikate aus wiederholtem `createBookingInvoice` und V4.9.423 zählten Entwürfe als Umsatz.',
+    previousBehavior:
+      'mtdRevenueInRange inkl. preIssuedBookingRevenueInRange; Drawer mit outgoing booking · {uuid} und DRAFT · ISO-Timestamp; kein bookingId-Mapping.',
+    details:
+      'financial-insights.logic.ts (`mtdRevenueInRange`, `reservedRevenueInRange`), businessPulseSliceBuilder.ts, dashboardUtils.ts, financeKpiCards.tsx, FinancialInsightsView.tsx, invoices.service.ts (`createBookingInvoice` idempotency), scripts/ops/audit-duplicate-booking-invoices.ts, Tests.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T20:00:00.000Z',
+  },
+  {
     id: 'overdue-handover-eyebrow-specific-v49425-2026-07-13',
     version: '4.9.425',
     title: 'V4.9.425 — Meldungen: Eyebrow je Übergabe oder Rückgabe',

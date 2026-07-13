@@ -178,7 +178,8 @@ export type BusinessMetricId =
   | 'overdue-receivables'
   | 'paid-invoices'
   | 'draft-invoices'
-  | 'failed-payments';
+  | 'failed-payments'
+  | 'reserved-revenue';
 
 export type BusinessDocumentState =
   | 'paid'
