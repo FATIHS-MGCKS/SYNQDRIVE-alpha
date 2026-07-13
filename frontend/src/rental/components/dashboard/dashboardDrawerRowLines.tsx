@@ -99,9 +99,9 @@ export function DrawerCustomerBnrRow({
   if (!customer && !bnr) return null;
 
   return (
-    <p className={cn('min-w-0 truncate text-[10.5px] text-muted-foreground', className)}>
+    <p className={cn('text-[10.5px] leading-snug text-muted-foreground', className)}>
       {customer ? (
-        <span>
+        <span className="break-words">
           {de ? 'Kunde:' : 'Customer:'} {customer}
         </span>
       ) : null}
@@ -119,9 +119,9 @@ export interface DrawerVehiclePlateModelRowProps {
 
 export function DrawerVehiclePlateModelRow({ plate, model, className }: DrawerVehiclePlateModelRowProps) {
   return (
-    <p className={cn('flex min-w-0 items-baseline gap-1.5 text-[10.5px]', className)}>
-      <span className="shrink-0 font-bold tabular-nums tracking-[-0.01em] text-foreground">{plate}</span>
-      {model ? <span className="truncate text-muted-foreground">{model}</span> : null}
+    <p className={cn('text-[10.5px] leading-snug', className)}>
+      <span className="font-bold tabular-nums tracking-[-0.01em] text-foreground">{plate}</span>
+      {model ? <span className="text-muted-foreground"> {model}</span> : null}
     </p>
   );
 }

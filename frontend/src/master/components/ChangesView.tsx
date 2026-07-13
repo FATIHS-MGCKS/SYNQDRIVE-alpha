@@ -35,6 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'drawer-no-truncate-bnr-model-v49413-2026-07-13',
+    version: '4.9.413',
+    title: 'V4.9.413 — Drawer: BNR & Fahrzeugmodell ohne Abkürzung',
+    summary: [
+      'Buchungsnummer (**BNR**) und Make/Model/Year werden in Drawer-Zeilen nicht mehr mit … abgeschnitten.',
+      'Zeilen dürfen umbrechen; BNR bleibt vollständig sichtbar.',
+    ],
+    reason: 'Operative Drawer brauchen vollständige Buchungs- und Fahrzeugbezeichnung.',
+    previousBehavior: 'truncate auf Kunde/BNR-Zeile und Fahrzeugmodell-Zeile.',
+    details: '**Dateien**: `dashboardDrawerRowLines.tsx`, `ActiveRentalDrawerRowCard.tsx`.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T16:40:00.000Z',
+  },
+  {
     id: 'drawer-cta-bnr-inline-v49412-2026-07-13',
     version: '4.9.412',
     title: 'V4.9.412 — Drawer: einheitliche CTA-Breite & BNR inline',
