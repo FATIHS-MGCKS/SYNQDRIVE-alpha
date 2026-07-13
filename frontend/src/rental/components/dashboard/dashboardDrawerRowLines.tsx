@@ -86,7 +86,7 @@ export interface DrawerCustomerBnrRowProps {
   className?: string;
 }
 
-/** Single row: customer left, full BNR right on the same line. */
+/** Single row: customer then BNR directly adjacent on the left. */
 export function DrawerCustomerBnrRow({
   subtitle,
   customerName,
@@ -99,16 +99,15 @@ export function DrawerCustomerBnrRow({
   if (!customer && !bnr) return null;
 
   return (
-    <div className={cn('flex items-center justify-between gap-2 text-[10.5px] text-muted-foreground', className)}>
+    <p className={cn('text-[10.5px] leading-snug text-muted-foreground', className)}>
       {customer ? (
-        <span className="min-w-0 truncate">
+        <span>
           {de ? 'Kunde:' : 'Customer:'} {customer}
         </span>
-      ) : (
-        <span className="min-w-0 flex-1" />
-      )}
-      {bnr ? <span className="shrink-0 whitespace-nowrap tabular-nums">{bnr}</span> : null}
-    </div>
+      ) : null}
+      {customer && bnr ? <span className="text-muted-foreground/45"> · </span> : null}
+      {bnr ? <span className="whitespace-nowrap tabular-nums">{bnr}</span> : null}
+    </p>
   );
 }
 
