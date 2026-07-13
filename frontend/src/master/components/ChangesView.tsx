@@ -35,6 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'cleanup-invalid-invoices-v49428-2026-07-13',
+    version: '4.9.428',
+    title: 'V4.9.428 — Ungültige/Entwurfs-Rechnungen entfernen',
+    summary: [
+      'Ops-Skript `cleanup-invalid-invoices.ts` löscht VOID-Duplikate, DRAFT auf stornierten Buchungen und überholte Entwürfe.',
+      'Invoice-Liste (`findByOrg`) blendet VOID/CANCELLED/CREDITED standardmäßig aus — Dashboard zeigt sie nicht mehr.',
+    ],
+    reason: 'Alte Wizard-Duplikate und VOID-Stornos verwirrten KPI-Drawer und Rechnungsentwürfe trotz bereinigter Buchungen.',
+    previousBehavior: 'Alle Rechnungsstatus inkl. VOID und DRAFT-Storno-Reste wurden an Dashboard/Listen geliefert.',
+    details: 'cleanup-invalid-invoices.ts, invoices.service.ts findByOrg status filter.',
+    affectsArchitecture: true,
+    module: 'Invoices / Dashboard',
+    createdAt: '2026-07-13T20:20:00.000Z',
+  },
+  {
     id: 'booking-invoice-lifecycle-v49427-2026-07-13',
     version: '4.9.427',
     title: 'V4.9.427 — Buchungsrechnungen: kein DRAFT nach Bestätigung + Duplikat-Reparatur',
