@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-invoice-lifecycle-v49427-2026-07-13',
+    version: '4.9.427',
+    title: 'V4.9.427 — Buchungsrechnungen: kein DRAFT nach Bestätigung + Duplikat-Reparatur',
+    summary: [
+      'Nach Checkout-Bestätigung: kanonische OUTGOING_BOOKING-Rechnung ausstellen; bei Kartenzahlung sofort als bezahlt verbuchen.',
+      'Duplikat-Entwürfe pro Buchung werden automatisch storniert (VOID); Wizard übergibt `paymentMethod` an den Confirm-Endpunkt.',
+      'Ops-Skript `repair-duplicate-booking-invoices.ts` bereinigt bestehende Duplikate und finalisiert DRAFT-Rechnungen für bestätigte Buchungen.',
+    ],
+    reason:
+      'Buchungsrechnungen blieben dauerhaft DRAFT (nie `issue`/`recordPayment` nach Confirm); Wizard-Refresh erzeugte vor V4.9.426 mehrere Entwürfe pro Buchung.',
+    previousBehavior:
+      'Nur `createBookingInvoice` (Status DRAFT); `confirmDraft` änderte nur Buchungsstatus — Rechnungen blieben Entwürfe trotz gebuchter/bezahlter Buchungen.',
+    details:
+      'booking-invoice-lifecycle.service.ts, booking-wizard-draft.service.ts, repair-duplicate-booking-invoices.ts, NewBookingView paymentMethod on confirm.',
+    affectsArchitecture: true,
+    module: 'Bookings / Invoices',
+    createdAt: '2026-07-13T20:15:00.000Z',
+  },
+  {
     id: 'finance-kpi-option-a-reserved-revenue-v49426-2026-07-13',
     version: '4.9.426',
     title: 'V4.9.426 — Finanz-KPIs: Umsatz Option A + Reservierter Umsatz',

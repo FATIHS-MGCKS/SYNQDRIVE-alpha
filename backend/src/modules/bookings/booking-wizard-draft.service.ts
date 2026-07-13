@@ -9,6 +9,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
 import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
 import { InvoicesService } from '@modules/invoices/invoices.service';
+import { BookingInvoiceLifecycleService } from '@modules/invoices/booking-invoice-lifecycle.service';
 import { BookingDocumentEmailService } from '@modules/outbound-email/booking-document-email.service';
 import { PricingService } from '@modules/pricing/pricing.service';
 import {
@@ -38,6 +39,7 @@ export class BookingWizardDraftService {
     private readonly bundleService: BookingDocumentBundleService,
     private readonly generatedDocuments: GeneratedDocumentsService,
     private readonly invoicesService: InvoicesService,
+    private readonly bookingInvoiceLifecycle: BookingInvoiceLifecycleService,
     private readonly bookingDocumentEmailService: BookingDocumentEmailService,
   ) {}
 
@@ -169,6 +171,17 @@ export class BookingWizardDraftService {
       status: targetStatus,
       notes: stripWizardDraftMarker(draft.notes) || null,
     });
+
+    await this.bookingInvoiceLifecycle
+      .syncOnBookingConfirmed(orgId, bookingId, {
+        paymentMethod: body.paymentMethod,
+        userId: options?.userId ?? null,
+      })
+      .catch((err) => {
+        // Non-blocking — booking is confirmed; finance sync can be repaired via ops script.
+        console.error('[BookingWizardDraft] invoice sync failed', err);
+      });
+
     const bundle = await this.bundleService.getBundleView(orgId, bookingId);
     const autoSend = await this.bookingDocumentEmailService.maybeAutoSendBookingDocuments(
       orgId,
