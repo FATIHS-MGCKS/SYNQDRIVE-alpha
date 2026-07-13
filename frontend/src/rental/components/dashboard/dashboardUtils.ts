@@ -225,12 +225,37 @@ export function normalizeBookingList(raw: unknown): TodayBookingApiRow[] {
   return [];
 }
 
+export function mapInvoiceToDashboardInvoice(raw: Record<string, unknown>): DashboardInvoice | null {
+  const id = typeof raw.id === 'string' ? raw.id : null;
+  if (!id) return null;
+
+  return {
+    id,
+    type: String(raw.type ?? ''),
+    status: raw.status != null ? String(raw.status) : undefined,
+    totalCents: typeof raw.totalCents === 'number' ? raw.totalCents : null,
+    paidCents: typeof raw.paidCents === 'number' ? raw.paidCents : null,
+    outstandingCents: typeof raw.outstandingCents === 'number' ? raw.outstandingCents : null,
+    currency: raw.currency != null ? String(raw.currency) : null,
+    invoiceDate: raw.invoiceDate != null ? String(raw.invoiceDate) : null,
+    dueDate: raw.dueDate != null ? String(raw.dueDate) : null,
+    paidAt: raw.paidAt != null ? String(raw.paidAt) : null,
+    createdAt: raw.createdAt != null ? String(raw.createdAt) : null,
+    vehicleId: typeof raw.vehicleId === 'string' ? raw.vehicleId : null,
+    customerId: typeof raw.customerId === 'string' ? raw.customerId : null,
+  };
+}
+
 export function normalizeInvoiceList(raw: unknown): DashboardInvoice[] {
-  if (Array.isArray(raw)) return raw as DashboardInvoice[];
-  if (raw && typeof raw === 'object' && Array.isArray((raw as { data?: unknown }).data)) {
-    return (raw as { data: DashboardInvoice[] }).data;
-  }
-  return [];
+  const rows = Array.isArray(raw)
+    ? raw
+    : raw && typeof raw === 'object' && Array.isArray((raw as { data?: unknown }).data)
+      ? (raw as { data: unknown[] }).data
+      : [];
+
+  return rows
+    .map((row) => mapInvoiceToDashboardInvoice(row as Record<string, unknown>))
+    .filter((inv): inv is DashboardInvoice => inv != null);
 }
 
 /* ── Control Center header + operative KPIs ─────────────────────────── */

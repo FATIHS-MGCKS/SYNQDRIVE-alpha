@@ -48,7 +48,7 @@ describe('buildBusinessPulseSlices invoice classification', () => {
       locale: 'de',
       now: NOW,
       invoices: [
-        invoice({ id: 'draft', status: 'DRAFT', totalCents: 12_000, invoiceDate: '2026-07-10T00:00:00.000Z' }),
+        invoice({ id: 'draft', type: 'OUTGOING_MANUAL', status: 'DRAFT', totalCents: 12_000, invoiceDate: '2026-07-10T00:00:00.000Z' }),
         invoice({ id: 'issued', status: 'ISSUED', totalCents: 8_000, invoiceDate: '2026-07-11T00:00:00.000Z' }),
       ],
     });
@@ -157,6 +157,41 @@ describe('buildBusinessPulseSlices invoice classification', () => {
 
     expect(slices.revenue.valueCents).toBe(12_000);
     expect(slices.expenses.valueCents).toBe(0);
+  });
+
+  it('includes prepaid booking draft invoices and paid revenue in MTD totals', () => {
+    const slices = buildBusinessPulseSlices({
+      locale: 'de',
+      now: NOW,
+      invoices: [
+        invoice({
+          id: 'draft-booking',
+          type: 'OUTGOING_BOOKING',
+          status: 'DRAFT',
+          totalCents: 15_000,
+          invoiceDate: '2026-07-08T00:00:00.000Z',
+        }),
+        invoice({
+          id: 'paid-old-issue',
+          type: 'OUTGOING_BOOKING',
+          status: 'PAID',
+          totalCents: 9_000,
+          invoiceDate: '2026-06-01T00:00:00.000Z',
+          paidAt: '2026-07-09T00:00:00.000Z',
+        }),
+        invoice({
+          id: 'draft-old',
+          type: 'OUTGOING_BOOKING',
+          status: 'DRAFT',
+          totalCents: 50_000,
+          invoiceDate: '2026-05-01T00:00:00.000Z',
+        }),
+      ],
+    });
+
+    expect(slices.revenue.valueCents).toBe(24_000);
+    expect(slices.revenue.count).toBe(2);
+    expect(slices.profit.valueCents).toBe(24_000);
   });
 });
 

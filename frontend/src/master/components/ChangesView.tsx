@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'finance-kpi-prepaid-booking-revenue-v49423-2026-07-13',
+    version: '4.9.423',
+    title: 'V4.9.423 — Finanz-KPIs: bezahlte Buchungen & MTD-Umsatz',
+    summary: [
+      'Dashboard-Umsatz nutzt `mtdRevenueInRange`: ausgestellte + bezahlte + Buchungs-Entwürfe (OUTGOING_BOOKING/DRAFT) im Monat.',
+      '`normalizeInvoiceList` mappt API-Felder explizit (totalCents, paid/outstanding, Daten) statt blindem Cast.',
+      '`effectiveInvoiceDate` ignoriert leere Strings; `paidRevenueInRange` normalisiert Status.',
+    ],
+    reason: 'Nach Hard-Refresh blieben Umsatz/Ergebnis bei 0 €, obwohl bezahlte Buchungen existierten: nur ausgestellte Rechnungen zählten; Buchungsrechnungen bleiben oft DRAFT bis zur Übergabe.',
+    previousBehavior: 'Nur `issuedRevenueInRange` — DRAFT-Buchungsrechnungen und per paidAt bezahlte Umsätze fehlten.',
+    details:
+      'financial-insights.logic.ts (`mtdRevenueInRange`, `preIssuedBookingRevenueInRange`), businessPulseSliceBuilder.ts, dashboardUtils.ts, Tests.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T18:45:00.000Z',
+  },
+  {
     id: 'overdue-handover-notifications-v49422-2026-07-13',
     version: '4.9.422',
     title: 'V4.9.422 — Überfällige Übergaben/Rückgaben als kritische Meldungen',

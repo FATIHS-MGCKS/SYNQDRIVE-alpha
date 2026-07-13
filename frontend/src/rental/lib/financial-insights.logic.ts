@@ -7,6 +7,7 @@ import {
   isReceivableInvoice,
   isRevenueInvoice,
   isExpenseInvoice,
+  normalizeInvoiceStatus,
 } from '../components/invoices/invoiceClassification';
 
 export interface InvoiceSlice {
@@ -38,10 +39,14 @@ export function isEurInvoice(inv: InvoiceSlice): boolean {
 }
 
 export function effectiveInvoiceDate(inv: InvoiceSlice): Date | null {
-  const raw = inv.invoiceDate ?? inv.createdAt;
-  if (!raw) return null;
-  const d = new Date(raw);
-  return Number.isNaN(d.getTime()) ? null : d;
+  for (const value of [inv.invoiceDate, inv.createdAt]) {
+    if (value == null) continue;
+    const trimmed = String(value).trim();
+    if (!trimmed) continue;
+    const d = new Date(trimmed);
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  return null;
 }
 
 export function sumCents<T extends InvoiceSlice>(rows: T[]): number {
@@ -75,10 +80,46 @@ export function paidRevenueInRange<T extends InvoiceSlice>(
 ): T[] {
   return invoices.filter((inv) => {
     if (!isRevenueInvoice(inv) || !isEurInvoice(inv)) return false;
-    if (inv.status !== 'PAID' || !inv.paidAt) return false;
+    if (normalizeInvoiceStatus(inv.status) !== 'PAID' || !inv.paidAt) return false;
     const d = new Date(inv.paidAt);
     return !Number.isNaN(d.getTime()) && d >= from && d <= to;
   });
+}
+
+/**
+ * Prepaid rental bookings often keep an OUTGOING_BOOKING invoice in DRAFT until
+ * handover/finalization — include those rows in dashboard MTD revenue.
+ */
+export function preIssuedBookingRevenueInRange<T extends InvoiceSlice & { type?: string }>(
+  invoices: T[],
+  from: Date,
+  to: Date,
+): T[] {
+  return invoices.filter((inv) => {
+    if (inv.type !== 'OUTGOING_BOOKING') return false;
+    if (normalizeInvoiceStatus(inv.status) !== 'DRAFT') return false;
+    if (!isEurInvoice(inv)) return false;
+    const d = effectiveInvoiceDate(inv);
+    if (d == null || d < from || d > to) return false;
+    return (inv.totalCents ?? 0) > 0;
+  });
+}
+
+/** Dashboard MTD revenue — issued + cash collected + prepaid booking drafts (deduped). */
+export function mtdRevenueInRange<T extends InvoiceSlice & { type?: string }>(
+  invoices: T[],
+  from: Date,
+  to: Date,
+): T[] {
+  const byId = new Map<string, T>();
+  for (const row of [
+    ...issuedRevenueInRange(invoices, from, to),
+    ...paidRevenueInRange(invoices, from, to),
+    ...preIssuedBookingRevenueInRange(invoices, from, to),
+  ]) {
+    byId.set(row.id, row);
+  }
+  return [...byId.values()];
 }
 
 export function expensesInRange<T extends InvoiceSlice>(

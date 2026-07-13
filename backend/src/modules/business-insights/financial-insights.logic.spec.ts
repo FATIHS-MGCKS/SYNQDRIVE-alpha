@@ -5,9 +5,11 @@
 import {
   expensesInRange,
   issuedRevenueInRange,
+  mtdRevenueInRange,
   openOutgoingReceivables,
   overdueOutgoingReceivables,
   paidRevenueInRange,
+  preIssuedBookingRevenueInRange,
   sumCents,
 } from '../../../../frontend/src/rental/lib/financial-insights.logic';
 
@@ -99,5 +101,33 @@ describe('financial-insights.logic (Insights cockpit)', () => {
   it('sumCents aggregates totals', () => {
     const rows = [inv({ totalCents: 1500 }), inv({ totalCents: 2500 })];
     expect(sumCents(rows)).toBe(4000);
+  });
+
+  it('preIssuedBookingRevenueInRange includes draft booking invoices in month', () => {
+    const rows = [
+      inv({ id: 'draft-booking', status: 'DRAFT', invoiceDate: '2026-06-08', totalCents: 12_000 }),
+      inv({ id: 'draft-manual', type: 'OUTGOING_MANUAL', status: 'DRAFT', invoiceDate: '2026-06-08' }),
+      inv({ id: 'old-draft', status: 'DRAFT', invoiceDate: '2026-05-01' }),
+    ];
+    expect(preIssuedBookingRevenueInRange(rows, monthStart, now).map((r) => r.id)).toEqual(['draft-booking']);
+  });
+
+  it('mtdRevenueInRange dedupes issued, paid, and prepaid booking drafts', () => {
+    const rows = [
+      inv({ id: 'issued', invoiceDate: '2026-06-08', totalCents: 5_000 }),
+      inv({
+        id: 'paid',
+        status: 'PAID',
+        invoiceDate: '2026-05-01',
+        paidAt: '2026-06-10',
+        totalCents: 7_000,
+      }),
+      inv({ id: 'draft-booking', status: 'DRAFT', invoiceDate: '2026-06-12', totalCents: 3_000 }),
+    ];
+    expect(mtdRevenueInRange(rows, monthStart, now).map((r) => r.id).sort()).toEqual([
+      'draft-booking',
+      'issued',
+      'paid',
+    ]);
   });
 });

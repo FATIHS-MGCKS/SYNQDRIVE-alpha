@@ -1,7 +1,7 @@
 import type { DashboardInvoice } from '../dashboardTypes';
 import {
   expensesInRange,
-  issuedRevenueInRange,
+  mtdRevenueInRange,
   openOutgoingReceivables,
   overdueOutgoingReceivables,
   type InvoiceSlice,
@@ -272,7 +272,7 @@ export function buildBusinessPulseSlices(
   const rows = input.invoices.map((inv) => invoiceRow(inv, input.locale, now, currency));
   const rowByInvoiceId = new Map(rows.map((row) => [row.invoiceId, row]));
 
-  const revenueInvoices = issuedRevenueInRange(invoiceSlices, monthStart, monthEnd);
+  const revenueInvoices = mtdRevenueInRange(invoiceSlices, monthStart, monthEnd);
   const expenseInvoices = expensesInRange(invoiceSlices, monthStart, monthEnd);
   const outgoingRows = rowsForInvoices(invoicesFromSlices(input.invoices, revenueInvoices), rowByInvoiceId);
   const incomingRows = rowsForInvoices(invoicesFromSlices(input.invoices, expenseInvoices), rowByInvoiceId);
