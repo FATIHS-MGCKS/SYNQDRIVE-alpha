@@ -35,6 +35,20 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'drawer-bnr-inline-adjacent-v49415-2026-07-13',
+    version: '4.9.415',
+    title: 'V4.9.415 — Drawer: BNR direkt hinter Kundennamen',
+    summary: [
+      'BNR steht wieder unmittelbar nach dem Kundennamen (`Kunde: Name · BNR: …`), nicht am rechten Rand.',
+    ],
+    reason: 'justify-between schob die Buchungsnummer zu weit von der Kundenzeile weg.',
+    previousBehavior: 'Kunde links, BNR mit großem Abstand rechts in derselben Zeile.',
+    details: '**Datei**: `dashboardDrawerRowLines.tsx`.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T16:55:00.000Z',
+  },
+  {
     id: 'drawer-handover-layout-v49414-2026-07-13',
     version: '4.9.414',
     title: 'V4.9.414 — Übergaben-Drawer: kompakter Header & Zeilenlayout',
