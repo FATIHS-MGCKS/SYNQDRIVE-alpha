@@ -1,8 +1,10 @@
-import { Moon, Sun, Bell, Search, Settings, LogOut } from 'lucide-react';
+import { Bell, Search, Settings, LogOut } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { clearAuth, getStoredUser } from '../../lib/auth';
 import { formatTopBarWelcomeLabel } from '../../lib/topbarUserLabel';
 import { OperatorEntryButton } from '../../operator/components/OperatorEntryButton';
+import { ThemeToggleButton } from '../../components/ThemeToggleButton';
+import { useAppTheme } from '../../context/AppThemeContext';
 
 // ISO-2 code pills instead of emoji flags (anti-emoji design policy,
 // consistent with the rental TopBar).
@@ -15,8 +17,9 @@ const languages = [
 ];
 
 interface TopBarProps {
-  isDarkMode: boolean;
-  setIsDarkMode: (value: boolean) => void;
+  /** @deprecated theme is global via AppThemeProvider */
+  isDarkMode?: boolean;
+  setIsDarkMode?: (value: boolean) => void;
 }
 
 function formatLoggedInLabel(user: ReturnType<typeof getStoredUser>): string {
@@ -27,7 +30,8 @@ function formatLoggedInLabel(user: ReturnType<typeof getStoredUser>): string {
   );
 }
 
-export function TopBar({ isDarkMode, setIsDarkMode }: TopBarProps) {
+export function TopBar(_props: TopBarProps) {
+  const { preference, cycleThemePreference } = useAppTheme();
   const [isLanguageOpen, setIsLanguageOpen] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState(languages[1]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -66,9 +70,7 @@ export function TopBar({ isDarkMode, setIsDarkMode }: TopBarProps) {
       {/* Actions */}
       <div className="flex items-center gap-2 shrink-0">
         <OperatorEntryButton />
-        <button onClick={() => setIsDarkMode(!isDarkMode)} className="p-1.5 rounded-md transition-colors hover:bg-muted text-muted-foreground">
-          {isDarkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </button>
+        <ThemeToggleButton preference={preference} onCycle={cycleThemePreference} />
 
         <button className="p-1.5 rounded-md transition-colors hover:bg-muted text-muted-foreground">
           <Settings className="w-4 h-4" />

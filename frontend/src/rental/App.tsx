@@ -8,6 +8,7 @@ import {
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
+import { useAppTheme } from '../context/AppThemeContext';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { NewTaskModal } from './components/NewTaskModal';
@@ -173,7 +174,7 @@ function RentalAppContent() {
     const id = window.setInterval(() => void loadUnread(), 60_000);
     return () => window.clearInterval(id);
   }, [orgId]);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { isDarkMode } = useAppTheme();
   const [cleaningStatus, setCleaningStatus] = useState<'Clean' | 'Needs Cleaning'>('Clean');
   const [vehicleStatus, setVehicleStatus] = useState<'Available' | 'Manual Block' | 'Maintenance'>('Available');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
@@ -273,10 +274,6 @@ function RentalAppContent() {
     [setCurrentView, setHighlightedVehicleTaskId, setPendingBookingDetailId],
   );
   
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDarkMode);
-  }, [isDarkMode]);
-
   useEffect(() => {
     if (!fleetLoading && fleetVehicles.length > 0 && !selectedVehicle) {
       setSelectedVehicle(fleetVehicles[0]);
@@ -576,8 +573,6 @@ function RentalAppContent() {
       <VehicleLiveTelemetryBinder vehicleId={liveTelemetryVehicleId} orgId={orgId} />
       <Toaster position="top-right" richColors closeButton theme={isDarkMode ? 'dark' : 'light'} />
             <TopBar
-              isDarkMode={isDarkMode}
-              setIsDarkMode={setIsDarkMode}
               onViewChange={handleViewChange}
               onVehicleSelect={setSelectedVehicle}
               onSettingsTabChange={applySettingsTab}

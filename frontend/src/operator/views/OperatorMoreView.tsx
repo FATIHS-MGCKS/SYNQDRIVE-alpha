@@ -1,5 +1,8 @@
 import { CalendarPlus, ExternalLink, Sparkles, Disc3, Info, Car } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { ThemeToggleButton } from '../../components/ThemeToggleButton';
+import { useAppTheme } from '../../context/AppThemeContext';
+import { themePreferenceLabel } from '../../lib/theme';
 import { OperatorGlassCard } from '../components/OperatorGlassCard';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import { useOperatorVehiclesData } from '../hooks/useOperatorVehiclesData';
@@ -7,6 +10,7 @@ import { useState } from 'react';
 
 export function OperatorMoreView() {
   const { openSheet, setActiveTab, setScanQuery } = useOperatorShell();
+  const { preference, cycleThemePreference } = useAppTheme();
   const { allVehicles } = useOperatorVehiclesData();
   const [pickerOpen, setPickerOpen] = useState<'ai' | 'tire' | null>(null);
 
@@ -123,6 +127,17 @@ export function OperatorMoreView() {
           className="flex min-h-[48px] w-full items-center justify-between p-4"
         >
           <span className="text-sm font-semibold">Fahrzeug suchen / Scan</span>
+        </OperatorGlassCard>
+      </section>
+
+      <section>
+        <h2 className="sq-section-label mb-2 px-0.5">Darstellung</h2>
+        <OperatorGlassCard className="flex min-h-[56px] items-center justify-between gap-3 p-4">
+          <div>
+            <p className="text-sm font-semibold text-foreground">Design</p>
+            <p className="text-xs text-muted-foreground">{themePreferenceLabel(preference)}</p>
+          </div>
+          <ThemeToggleButton preference={preference} onCycle={cycleThemePreference} />
         </OperatorGlassCard>
       </section>
 

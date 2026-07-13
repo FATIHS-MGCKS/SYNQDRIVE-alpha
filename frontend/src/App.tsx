@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { isAuthenticated, getStoredUser } from './lib/auth';
+import { AppThemeProvider } from './context/AppThemeContext';
 import MasterApp from './master/App';
 import RentalApp from './rental/App';
 import OperatorApp from './operator/OperatorApp';
@@ -43,8 +44,9 @@ function DefaultRedirect() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <Routes>
+    <AppThemeProvider>
+      <BrowserRouter>
+        <Routes>
         <Route path="/login" element={<LoginRoute />} />
         <Route path="/verification/done" element={<VerificationDonePage />} />
         <Route
@@ -72,7 +74,8 @@ export default function App() {
           }
         />
         <Route path="*" element={<DefaultRedirect />} />
-      </Routes>
-    </BrowserRouter>
+        </Routes>
+      </BrowserRouter>
+    </AppThemeProvider>
   );
 }
