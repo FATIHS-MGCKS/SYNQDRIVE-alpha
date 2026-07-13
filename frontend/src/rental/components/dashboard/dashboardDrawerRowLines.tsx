@@ -86,7 +86,7 @@ export interface DrawerCustomerBnrRowProps {
   className?: string;
 }
 
-/** Single row: customer left, abbreviated booking ref right. */
+/** Single row: customer then BNR inline with compact spacing. */
 export function DrawerCustomerBnrRow({
   subtitle,
   customerName,
@@ -99,16 +99,15 @@ export function DrawerCustomerBnrRow({
   if (!customer && !bnr) return null;
 
   return (
-    <div className={cn('flex items-center justify-between gap-2 text-[10.5px] text-muted-foreground', className)}>
+    <p className={cn('min-w-0 truncate text-[10.5px] text-muted-foreground', className)}>
       {customer ? (
-        <p className="min-w-0 truncate">
+        <span>
           {de ? 'Kunde:' : 'Customer:'} {customer}
-        </p>
-      ) : (
-        <span className="min-w-0 flex-1" />
-      )}
-      {bnr ? <p className="shrink-0 whitespace-nowrap tabular-nums">{bnr}</p> : null}
-    </div>
+        </span>
+      ) : null}
+      {customer && bnr ? <span className="text-muted-foreground/45"> · </span> : null}
+      {bnr ? <span className="whitespace-nowrap tabular-nums">{bnr}</span> : null}
+    </p>
   );
 }
 
@@ -127,4 +126,7 @@ export function DrawerVehiclePlateModelRow({ plate, model, className }: DrawerVe
   );
 }
 
-export const drawerRowActionStackClassName = 'mt-auto flex w-[8.5rem] flex-col items-stretch gap-1';
+export const drawerRowActionWidthClassName = 'w-[8.5rem]';
+
+export const drawerRowActionStackClassName =
+  'mt-auto flex shrink-0 flex-col items-stretch gap-1';

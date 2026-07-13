@@ -7,6 +7,7 @@ import { FleetEnergyIndicator } from '../fleet/FleetEnergyIndicator';
 import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
 import { resolveDrawerVehicleReasonBadge } from './dashboardDrilldownRowDisplay';
 import { DrawerRowActionButton } from './dashboardDrawerRowActions';
+import { drawerRowActionStackClassName } from './dashboardDrawerRowLines';
 import type { DashboardSliceRow, VehicleRuntimeState } from './runtime';
 
 function reasonChipClass(tone: StatusTone): string {
@@ -195,7 +196,7 @@ export function CompactFleetDrawerVehicleRow({
           ) : null}
         </div>
 
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
+        <div className="flex shrink-0 flex-col items-end gap-1.5 self-stretch justify-between">
           <div className="flex flex-wrap items-center justify-end gap-1">
             {healthChip ? (
               <StatusChip
@@ -214,15 +215,17 @@ export function CompactFleetDrawerVehicleRow({
           </div>
 
           {canOpen ? (
-            <DrawerRowActionButton
-              tone="vehicle"
-              onClick={() => {
-                if (row.vehicleId && onOpenVehicle) onOpenVehicle(row.vehicleId);
-                onClose();
-              }}
-            >
-              {ctaLabel}
-            </DrawerRowActionButton>
+            <div className={drawerRowActionStackClassName}>
+              <DrawerRowActionButton
+                tone="vehicle"
+                onClick={() => {
+                  if (row.vehicleId && onOpenVehicle) onOpenVehicle(row.vehicleId);
+                  onClose();
+                }}
+              >
+                {ctaLabel}
+              </DrawerRowActionButton>
+            </div>
           ) : null}
         </div>
       </div>
