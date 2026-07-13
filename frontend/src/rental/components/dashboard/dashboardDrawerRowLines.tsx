@@ -99,15 +99,14 @@ export function DrawerCustomerBnrRow({
   if (!customer && !bnr) return null;
 
   return (
-    <p className={cn('text-[10.5px] leading-snug text-muted-foreground', className)}>
+    <span className={cn('inline-flex max-w-full flex-wrap items-baseline gap-x-1.5 text-[10.5px] leading-snug text-muted-foreground', className)}>
       {customer ? (
-        <span>
+        <span className="shrink-0">
           {de ? 'Kunde:' : 'Customer:'} {customer}
         </span>
       ) : null}
-      {customer && bnr ? <span className="text-muted-foreground/45"> · </span> : null}
-      {bnr ? <span className="whitespace-nowrap tabular-nums">{bnr}</span> : null}
-    </p>
+      {bnr ? <span className="shrink-0 whitespace-nowrap tabular-nums">{bnr}</span> : null}
+    </span>
   );
 }
 
