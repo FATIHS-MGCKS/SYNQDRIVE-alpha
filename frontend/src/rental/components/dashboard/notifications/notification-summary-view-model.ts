@@ -107,7 +107,7 @@ function summaryFromItem(
     severity,
     severityLabelKey: severityLabelKey(severity, queue.lifecycleStatus),
     eyebrowLabel: isOverdueHandoverNotification(item)
-      ? resolveOverdueHandoverEyebrow(locale)
+      ? resolveOverdueHandoverEyebrow(item, locale)
       : notificationDomainLabel(queue.domain, t),
     headlineTitle: buildNotificationHeadlineTitle(item) ?? item.title,
     subtitle,

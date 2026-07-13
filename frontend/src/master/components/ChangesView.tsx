@@ -35,11 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'overdue-handover-eyebrow-specific-v49425-2026-07-13',
+    version: '4.9.425',
+    title: 'V4.9.425 — Meldungen: Eyebrow je Übergabe oder Rückgabe',
+    summary: [
+      'Überfällige Handover-Meldungen zeigen „Überfällige Übergabe“ bzw. „Überfällige Rückgabe“ — nicht mehr die kombinierte Form.',
+    ],
+    reason: 'Eyebrow soll den konkreten Vorfall widerspiegeln (Abholung vs. Rückgabe), nicht beides gleichzeitig.',
+    previousBehavior: 'Einheitliches Label „Überfällige Übergabe oder Rückgabe“ für alle overdue-handover Items.',
+    details: 'notification-handover-copy.ts (`resolveOverdueHandoverEyebrow(item, locale)`), Tests.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T19:10:00.000Z',
+  },
+  {
     id: 'overdue-handover-notification-ui-v49424-2026-07-13',
     version: '4.9.424',
     title: 'V4.9.424 — Meldungen: überfällige Übergabe/Rückgabe lesbar & korrekte CTAs',
     summary: [
-      'Eyebrow „Überfällige Übergabe oder Rückgabe“; Headline Kennzeichen · Make Model Year wie bei Fahrzeug-Warnungen.',
+      'Eyebrow je Vorfall: „Überfällige Übergabe“ oder „Überfällige Rückgabe“; Headline Kennzeichen · Make Model Year wie bei Fahrzeug-Warnungen.',
       'Expand: „Abholung/Rückgabe überfällig seit …“ + strukturierte Felder BNR, Kunde, Station, Abhol-/Rückgabe-Termin.',
       '„Buchung öffnen“ navigiert zur Buchung (nicht Fahrzeug); sekundärer Button „Kunde kontaktieren“ öffnet Kundendetail.',
       'Drei-Punkte-Aktionsmenü nutzt Radix-Popover (Portal) — nicht mehr hinter Scroll/overflow der Meldungskarte.',

@@ -111,9 +111,9 @@ describe('notification-handover-copy', () => {
 describe('overdue handover notification presentation', () => {
   const referenceNowMs = Date.parse('2026-07-13T10:10:00.000Z');
 
-  it('uses custom eyebrow and plate · make model year headline', () => {
+  it('uses pickup-specific eyebrow and plate · make model year headline', () => {
     const summary = buildNotificationSummaryFromItem(overduePickupItem(), 'de', referenceNowMs);
-    expect(summary?.eyebrowLabel).toBe(resolveOverdueHandoverEyebrow('de'));
+    expect(summary?.eyebrowLabel).toBe('Überfällige Übergabe');
     expect(buildNotificationHeadlineTitle(overduePickupItem())).toBe(
       'WOB L 7503 · Mercedes-Benz C 63 AMG 2018',
     );
@@ -128,5 +128,19 @@ describe('overdue handover notification presentation', () => {
     expect(detail.ctaPrimaryLabel).toBe('Buchung öffnen');
     expect(detail.ctaSecondaryLabel).toBe('Kunde kontaktieren');
     expect(detail.showContactCustomer).toBe(true);
+  });
+
+  it('formats return-specific eyebrow', () => {
+    const returnItem = overduePickupItem({
+      id: 'return-bk-faef3a',
+      pickupItem: undefined,
+      returnItem: {
+        ...pickupTile,
+        endDate: pickupTile.startDate,
+        isOverdue: true,
+      },
+      issueType: 'return_overdue',
+    });
+    expect(resolveOverdueHandoverEyebrow(returnItem, 'de')).toBe('Überfällige Rückgabe');
   });
 });

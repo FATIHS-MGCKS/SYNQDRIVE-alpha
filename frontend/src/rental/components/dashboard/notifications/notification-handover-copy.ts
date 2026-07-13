@@ -74,10 +74,16 @@ export function buildOverdueHandoverIssueHeadline(
   return de ? `Abholung überfällig seit ${duration}` : `Pickup overdue since ${duration}`;
 }
 
-export function resolveOverdueHandoverEyebrow(locale: string): string {
-  return locale === 'de'
-    ? 'Überfällige Übergabe oder Rückgabe'
-    : 'Overdue handover or return';
+export function resolveOverdueHandoverEyebrow(item: ActionQueueItem, locale: string): string {
+  const kind = resolveHandoverKind(item);
+  const de = locale === 'de';
+  if (kind === 'return') {
+    return de ? 'Überfällige Rückgabe' : 'Overdue return';
+  }
+  if (kind === 'pickup') {
+    return de ? 'Überfällige Übergabe' : 'Overdue handover';
+  }
+  return de ? 'Überfällige Übergabe' : 'Overdue handover';
 }
 
 export function buildHandoverEntityContext(
