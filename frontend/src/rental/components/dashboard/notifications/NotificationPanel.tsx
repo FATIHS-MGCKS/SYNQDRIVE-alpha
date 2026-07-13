@@ -32,6 +32,7 @@ import type {
   NotificationPrimaryTab,
 } from './notificationPanelTypes';
 import { NOTIFICATION_PANEL_TYPO } from './notificationPanelTypography';
+import { isOverdueHandoverNotification, resolveHandoverCustomerId } from './notification-handover-copy';
 
 const VISIBLE_ENTRY_CAP = 8;
 
@@ -40,6 +41,7 @@ export type NotificationPanelLayout = 'default' | 'sidebar';
 interface NotificationPanelHandlers {
   onOpenVehicleById?: (vehicleId: string) => void;
   onOpenBookingById?: (bookingId: string) => void;
+  onOpenCustomerById?: (customerId: string) => void;
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
   onOpenPriceTariffs?: () => void;
 }
@@ -77,6 +79,28 @@ function runItemCta(item: ActionQueueItem, vm: DashboardViewModel, handlers: Not
   if (item.cta === 'open-stations') {
     handlers.onOpenRentalView?.('stations');
     return;
+  }
+  if (
+    item.bookingId
+    && handlers.onOpenBookingById
+    && (item.cta === 'open-booking' || isOverdueHandoverNotification(item))
+  ) {
+    handlers.onOpenBookingById(item.bookingId);
+    return;
+  }
+  if (item.cta === 'start-handover-pickup' && item.bookingId) {
+    const pickup = vm.pickupItems.find((p) => p.bookingId === item.bookingId);
+    if (pickup) {
+      vm.handleConfirmPickup(pickup);
+      return;
+    }
+  }
+  if (item.cta === 'start-handover-return' && item.bookingId) {
+    const ret = vm.returnItems.find((r) => r.bookingId === item.bookingId);
+    if (ret) {
+      vm.handleConfirmReturn(ret);
+      return;
+    }
   }
   if (item.vehicleId && handlers.onOpenVehicleById) handlers.onOpenVehicleById(item.vehicleId);
   else handlers.onOpenRentalView?.('bookings');
@@ -228,6 +252,14 @@ export function NotificationPanel({
     [vm, handlers],
   );
 
+  const runContactCustomer = useCallback(
+    (item: ActionQueueItem) => {
+      const customerId = resolveHandoverCustomerId(item);
+      if (customerId) handlers.onOpenCustomerById?.(customerId);
+    },
+    [handlers],
+  );
+
   const openCreateTask = useCallback(
     (item: ActionQueueItem) => {
       const prefill = buildNotificationTaskPrefill(item, vendors);
@@ -340,6 +372,7 @@ export function NotificationPanel({
                       referenceNowMs={referenceNowMs}
                       t={t}
                       onPrimaryCta={() => runCta(item)}
+                      onSecondaryCta={() => runContactCustomer(item)}
                       onCreateTask={() => openCreateTask(item)}
                       {...mutations}
                     />

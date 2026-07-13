@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'overdue-handover-notification-ui-v49424-2026-07-13',
+    version: '4.9.424',
+    title: 'V4.9.424 — Meldungen: überfällige Übergabe/Rückgabe lesbar & korrekte CTAs',
+    summary: [
+      'Eyebrow „Überfällige Übergabe oder Rückgabe“; Headline Kennzeichen · Make Model Year wie bei Fahrzeug-Warnungen.',
+      'Expand: „Abholung/Rückgabe überfällig seit …“ + strukturierte Felder BNR, Kunde, Station, Abhol-/Rückgabe-Termin.',
+      '„Buchung öffnen“ navigiert zur Buchung (nicht Fahrzeug); sekundärer Button „Kunde kontaktieren“ öffnet Kundendetail.',
+    ],
+    reason: 'Kritische Handover-Meldungen zeigten nur Kennzeichen ohne Fahrzeugkontext, eine Zeile Kunde·Station und der CTA öffnete fälschlich das Fahrzeug.',
+    previousBehavior: 'Domain-Label „Übergaben“, Headline nur Kennzeichen, Detail als Freitext, CTA fiel auf vehicleId zurück.',
+    details:
+      'notification-handover-copy.ts, actionQueueBuilder (entityContextParams + open-booking bei overdue), notificationCtaResolver, NotificationPanel runItemCta, NotificationDetailPanel detailFields, mapPickupItems/mapReturnItems (customerId, bookingNumber), Tests.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T18:55:00.000Z',
+  },
+  {
     id: 'finance-kpi-prepaid-booking-revenue-v49423-2026-07-13',
     version: '4.9.423',
     title: 'V4.9.423 — Finanz-KPIs: bezahlte Buchungen & MTD-Umsatz',

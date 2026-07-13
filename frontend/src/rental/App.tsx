@@ -778,6 +778,10 @@ function RentalAppContent() {
               setPendingBookingDetailId(bookingId);
               setCurrentView('bookings');
             }}
+            onOpenCustomerById={(customerId) => {
+              setDetailCustomer({ id: customerId });
+              setCurrentView('customer-detail');
+            }}
           />
         ) : currentView === 'bookings' ? (
           <BookingsView onActiveBookingRefChange={setActiveBookingRef} onNavigateToVehicle={(vehicleName) => {

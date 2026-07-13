@@ -26,6 +26,7 @@ export interface NotificationEntryCardProps {
   referenceNowMs: number;
   t: ReturnType<typeof useLanguage>['t'];
   onPrimaryCta: () => void;
+  onSecondaryCta?: () => void;
   onCreateTask?: () => void;
   onMarkRead?: () => void;
   onAcknowledge?: () => void;
@@ -38,6 +39,7 @@ export const NotificationEntryCard = memo(function NotificationEntryCard({
   referenceNowMs,
   t,
   onPrimaryCta,
+  onSecondaryCta,
   onCreateTask,
   onMarkRead,
   onAcknowledge,
@@ -47,7 +49,7 @@ export const NotificationEntryCard = memo(function NotificationEntryCard({
   const summary = buildNotificationSummaryFromItem(item, locale, referenceNowMs);
   if (!summary) return null;
 
-  const detail = buildNotificationDetailViewModel(item, locale);
+  const detail = buildNotificationDetailViewModel(item, locale, referenceNowMs);
   const contentId = `notification-entry-${item.id}`;
 
   return (
@@ -79,6 +81,7 @@ export const NotificationEntryCard = memo(function NotificationEntryCard({
             t={t}
             readStatus={item.queue?.readStatus}
             onPrimaryCta={onPrimaryCta}
+            onSecondaryCta={onSecondaryCta}
             onCreateTask={onCreateTask}
             onMarkRead={onMarkRead}
             onAcknowledge={onAcknowledge}

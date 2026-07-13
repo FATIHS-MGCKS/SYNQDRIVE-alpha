@@ -23,6 +23,7 @@ export function DashboardView({
   onOpenVehicleById,
   onOpenRentalView,
   onOpenBookingById,
+  onOpenCustomerById,
   onOpenFinanceView,
   onOpenPriceTariffs,
 }: DashboardViewProps) {
@@ -32,6 +33,7 @@ export function DashboardView({
     onOpenVehicleById,
     onOpenRentalView,
     onOpenBookingById,
+    onOpenCustomerById,
     onOpenFinanceView,
     onOpenPriceTariffs,
   });
@@ -39,6 +41,7 @@ export function DashboardView({
   const handlers = {
     onOpenVehicleById,
     onOpenBookingById,
+    onOpenCustomerById,
     onOpenRentalView,
     onOpenPriceTariffs,
   };

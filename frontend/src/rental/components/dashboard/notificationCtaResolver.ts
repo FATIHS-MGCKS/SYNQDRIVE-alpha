@@ -1,5 +1,6 @@
 import type { ActionQueueItem, ActionQueueModuleTarget } from './dashboardTypes';
 import type { NotificationActionTarget, NotificationActionType } from './notificationQueueModel';
+import { isOverdueHandoverNotification } from './notifications/notification-handover-copy';
 
 export interface ResolvedNotificationCta {
   actionType: NotificationActionType;
@@ -53,6 +54,14 @@ export function resolveNotificationCta(item: ActionQueueItem, issueType?: string
       actionTarget: { type: 'open-vehicle-module', vehicleId, module: module ?? 'overview' },
       legacyCta: 'open-vehicle',
       module: module ?? 'overview',
+    };
+  }
+
+  if (isOverdueHandoverNotification(item) && bookingId) {
+    return {
+      actionType: 'open-booking',
+      actionTarget: { type: 'open-booking', bookingId, vehicleId },
+      legacyCta: 'open-booking',
     };
   }
 

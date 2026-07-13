@@ -228,6 +228,8 @@ export interface PickupTileItem {
   plate: string;
   customer: string;
   station: string;
+  customerId?: string;
+  bookingNumber?: string;
   done: boolean;
   vehicleId: string;
   needsCleaning: boolean;
@@ -249,6 +251,8 @@ export interface ReturnTileItem {
   plate: string;
   customer: string;
   station: string;
+  customerId?: string;
+  bookingNumber?: string;
   done: boolean;
   vehicleId: string;
   hasError?: boolean;

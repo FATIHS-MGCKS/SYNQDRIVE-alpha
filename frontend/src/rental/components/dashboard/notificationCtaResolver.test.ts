@@ -48,6 +48,37 @@ describe('notificationCtaResolver', () => {
     expect(cta.legacyCta).toBe('open-stations');
   });
 
+  it('overdue handover opens booking instead of starting pickup', () => {
+    const pickup: PickupTileItem = {
+      time: '10:00',
+      vehicle: 'VW Tiguan',
+      plate: 'WOB L 7503',
+      customer: 'Test',
+      station: 'Zentrale',
+      done: false,
+      vehicleId: 'veh-1',
+      needsCleaning: false,
+      hasAlert: false,
+      hasError: false,
+      bookingId: 'bk-1',
+      isOverdue: true,
+      minutesOverdue: 30,
+    };
+    const cta = resolveNotificationCta(
+      item({
+        bookingId: 'bk-1',
+        vehicleId: 'veh-1',
+        category: 'handover',
+        pickupItem: pickup,
+        isOverdue: true,
+        cta: 'start-handover-pickup',
+      }),
+      'pickup_overdue',
+    );
+    expect(cta.actionType).toBe('open-booking');
+    expect(cta.legacyCta).toBe('open-booking');
+  });
+
   it('booking handover opens booking', () => {
     const cta = resolveNotificationCta(
       item({ bookingId: 'bk-1', category: 'handover', cta: 'open-booking' }),

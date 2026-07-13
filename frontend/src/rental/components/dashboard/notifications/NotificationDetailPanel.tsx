@@ -10,6 +10,7 @@ export interface NotificationDetailPanelProps {
   detail: NotificationDetailViewModel;
   t: ReturnType<typeof useLanguage>['t'];
   onPrimaryCta: () => void;
+  onSecondaryCta?: () => void;
   onCreateTask?: () => void;
   onMarkRead?: () => void;
   onAcknowledge?: () => void;
@@ -21,6 +22,7 @@ export const NotificationDetailPanel = memo(function NotificationDetailPanel({
   detail,
   t,
   onPrimaryCta,
+  onSecondaryCta,
   onCreateTask,
   onMarkRead,
   onAcknowledge,
@@ -30,6 +32,7 @@ export const NotificationDetailPanel = memo(function NotificationDetailPanel({
   const actions = detail.availableActions ?? [];
   const hasMenu = Boolean(onMarkRead || onAcknowledge || onSnooze);
   const affectedVehicles = detail.affectedVehicles ?? [];
+  const detailFields = detail.detailFields ?? [];
 
   return (
     <div className="border-t border-border/25 px-3 py-3 sm:px-3.5">
@@ -39,6 +42,17 @@ export const NotificationDetailPanel = memo(function NotificationDetailPanel({
         ) : null}
         {detail.issueDescription ? (
           <p className={NOTIFICATION_PANEL_TYPO.childDescription}>{detail.issueDescription}</p>
+        ) : null}
+
+        {detailFields.length > 0 ? (
+          <dl className="space-y-1.5">
+            {detailFields.map((field) => (
+              <div key={field.label} className="grid grid-cols-[minmax(5.5rem,auto)_1fr] gap-x-2 gap-y-0.5">
+                <dt className={cn(NOTIFICATION_PANEL_TYPO.meta, 'text-muted-foreground')}>{field.label}:</dt>
+                <dd className={cn(NOTIFICATION_PANEL_TYPO.childDescription, 'text-foreground/90')}>{field.value}</dd>
+              </div>
+            ))}
+          </dl>
         ) : null}
 
         {affectedVehicles.length > 0 ? (
@@ -76,6 +90,19 @@ export const NotificationDetailPanel = memo(function NotificationDetailPanel({
         >
           {detail.ctaPrimaryLabel}
         </button>
+
+        {detail.showContactCustomer && onSecondaryCta && detail.ctaSecondaryLabel ? (
+          <button
+            type="button"
+            onClick={onSecondaryCta}
+            className={cn(
+              NOTIFICATION_PANEL_TYPO.cta,
+              'sq-press inline-flex min-h-9 items-center rounded-md border border-border/50 bg-muted/20 px-2.5 text-foreground transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+            )}
+          >
+            {detail.ctaSecondaryLabel}
+          </button>
+        ) : null}
 
         {detail.showCreateTask && onCreateTask ? (
           <button

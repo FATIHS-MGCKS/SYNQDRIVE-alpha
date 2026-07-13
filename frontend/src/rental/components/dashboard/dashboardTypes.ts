@@ -94,6 +94,7 @@ export interface DashboardViewProps {
   onOpenVehicleById?: (vehicleId: string) => void;
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
   onOpenBookingById?: (bookingId: string) => void;
+  onOpenCustomerById?: (customerId: string) => void;
   onOpenFinanceView?: (view: 'financial-insights' | 'invoices') => void;
   onOpenPriceTariffs?: () => void;
 }

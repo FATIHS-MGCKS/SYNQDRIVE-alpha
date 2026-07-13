@@ -614,6 +614,7 @@ export const de: Record<TranslationKey, string> = {
   'notification.cta.openRental': 'Vermietung öffnen',
   'notification.cta.openPriceTariffs': 'Preise & Tarife öffnen',
   'notification.cta.createTask': 'Aufgabe erstellen',
+  'notification.cta.contactCustomer': 'Kunde kontaktieren',
   'notification.count.one': '1 Meldung',
   'notification.count.many': '{count} Meldungen',
   'notification.expand.all': 'Alle {count} anzeigen',

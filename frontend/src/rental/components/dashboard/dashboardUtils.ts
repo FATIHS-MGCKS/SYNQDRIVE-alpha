@@ -7,6 +7,7 @@ import {
 import type { VehicleData } from '../../data/vehicles';
 import type { DashboardInsight } from '../../DashboardInsightsContext';
 import { countFleetStatusTab } from '../../lib/vehicle-status';
+import { bookingRef } from '../bookings/bookingUtils';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
 import type {
   ControlCenterKpi,
@@ -102,12 +103,15 @@ export function mapPickupItems(
   return filtered.map((p) => {
     const license = p.vehicleLicense || '';
     const v = license ? vehicleLookup.byLicense.get(license) : undefined;
+    const bookingId = String(p.id ?? '');
     return {
-      bookingId: String(p.id ?? ''),
+      bookingId,
+      bookingNumber: bookingId ? bookingRef(bookingId) : undefined,
       time: formatApiTime(p.startDate, locale),
       vehicle: p.vehicleName || '',
       plate: license,
       customer: p.customerName || '',
+      customerId: typeof p.customerId === 'string' ? p.customerId : undefined,
       station: p.stationLabel || p.pickupStationName || p.station || '',
       done: !!p.pickupProtocol,
       vehicleId: v?.id || p.vehicleId || '',
@@ -137,12 +141,15 @@ export function mapReturnItems(
     const license = r.vehicleLicense || '';
     const v = license ? vehicleLookup.byLicense.get(license) : undefined;
     const pickupProto = r.pickupProtocol as { odometerKm?: number | null } | undefined;
+    const bookingId = String(r.id ?? '');
     return {
-      bookingId: String(r.id ?? ''),
+      bookingId,
+      bookingNumber: bookingId ? bookingRef(bookingId) : undefined,
       time: formatApiTime(r.endDate, locale),
       vehicle: r.vehicleName || '',
       plate: license,
       customer: r.customerName || '',
+      customerId: typeof r.customerId === 'string' ? r.customerId : undefined,
       station: r.stationLabel || r.returnStationName || r.station || '',
       done: !!r.returnProtocol,
       vehicleId: v?.id || r.vehicleId || '',

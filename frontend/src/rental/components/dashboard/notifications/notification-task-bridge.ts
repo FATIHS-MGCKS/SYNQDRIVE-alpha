@@ -9,6 +9,12 @@ import {
 import type { NotificationDetailViewModel } from './notification-detail-view-model';
 import { resolveNotificationIssueCopy } from './notification-issue-copy';
 import { affectedVehiclesSectionLabel } from './notification-affected-vehicles';
+import {
+  buildOverdueHandoverDetailFields,
+  buildOverdueHandoverIssueHeadline,
+  isOverdueHandoverNotification,
+  resolveHandoverCustomerId,
+} from './notification-handover-copy';
 
 const MODULE_MAP: Partial<Record<ActionQueueModuleTarget, HealthActionModule>> = {
   battery: 'battery',
@@ -142,15 +148,26 @@ export function resolveNotificationPrimaryCtaLabel(
 export function buildNotificationDetailViewModel(
   item: ActionQueueItem,
   locale: string,
+  referenceNowMs: number = Date.now(),
 ): NotificationDetailViewModel {
   const t = createNotificationTranslator(locale);
-  const copy = resolveNotificationIssueCopy(item, locale);
+  const overdueHandover = isOverdueHandoverNotification(item);
+  const copy = overdueHandover
+    ? {
+        headline: buildOverdueHandoverIssueHeadline(item, locale, referenceNowMs),
+        detail: '',
+      }
+    : resolveNotificationIssueCopy(item, locale);
   const affectedVehicles = item.affectedVehicles;
+  const customerId = resolveHandoverCustomerId(item);
 
   return {
     issueTitle: copy.headline,
     issueDescription: copy.detail,
+    detailFields: overdueHandover ? buildOverdueHandoverDetailFields(item, locale) : undefined,
     ctaPrimaryLabel: resolveNotificationPrimaryCtaLabel(item, locale),
+    ctaSecondaryLabel: overdueHandover && customerId ? t('notification.cta.contactCustomer') : undefined,
+    showContactCustomer: overdueHandover && Boolean(customerId),
     showCreateTask: canCreateTaskFromNotification(item),
     createTaskLabel: t('notification.cta.createTask'),
     availableActions: item.availableActions ?? [],

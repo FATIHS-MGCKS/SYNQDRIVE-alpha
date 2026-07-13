@@ -8,6 +8,10 @@ import {
 import { formatNotificationLastSeenShort } from '../notificationTimeSemantics';
 import { notificationDomainIcon, notificationGroupIcon } from './notificationDomainIcon';
 import { formatAffectedVehiclesPreview } from './notification-affected-vehicles';
+import {
+  isOverdueHandoverNotification,
+  resolveOverdueHandoverEyebrow,
+} from './notification-handover-copy';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -102,7 +106,9 @@ function summaryFromItem(
     id: overrides.id ?? item.id,
     severity,
     severityLabelKey: severityLabelKey(severity, queue.lifecycleStatus),
-    eyebrowLabel: notificationDomainLabel(queue.domain, t),
+    eyebrowLabel: isOverdueHandoverNotification(item)
+      ? resolveOverdueHandoverEyebrow(locale)
+      : notificationDomainLabel(queue.domain, t),
     headlineTitle: buildNotificationHeadlineTitle(item) ?? item.title,
     subtitle,
     lastSeenLabel: formatNotificationLastSeenShort(queue, { locale, referenceNowMs }),
