@@ -131,6 +131,8 @@ export interface DashboardSliceRow {
   meta?: string;
   stationLabel?: string | null;
   severity: 'neutral' | 'success' | 'info' | 'warning' | 'critical';
+  /** Operational timing chip, e.g. "in 45 Min." or "2 Std. überfällig". */
+  statusLabel?: string;
   reasonIds?: string[];
   reasons?: RuntimeReason[];
   primaryActionLabel?: string;

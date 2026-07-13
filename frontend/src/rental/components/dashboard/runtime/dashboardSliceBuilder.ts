@@ -190,29 +190,79 @@ function findVehicleState(
   });
 }
 
-function bookingTitle(item: Pick<PickupTileItem | ReturnTileItem, 'plate' | 'vehicle' | 'customer'>): string {
-  return [item.plate || item.vehicle, item.customer].filter(Boolean).join(' · ') || item.vehicle || item.plate || 'Booking';
+function formatDurationLabel(minutes: number, overdue: boolean, locale: string): string {
+  const de = isDe(locale);
+  const safe = Math.max(0, Math.round(minutes));
+  const hours = Math.floor(safe / 60);
+  const mins = safe % 60;
+  const parts: string[] = [];
+  if (hours > 0) parts.push(de ? `${hours} Std.` : `${hours}h`);
+  if (mins > 0 || hours === 0) parts.push(de ? `${mins} Min.` : `${mins}m`);
+  const duration = parts.join(' ');
+  return overdue
+    ? de
+      ? `${duration} überfällig`
+      : `${duration} overdue`
+    : de
+      ? `in ${duration}`
+      : `in ${duration}`;
+}
+
+function minutesUntil(iso: string | undefined, nowMs: number): number | null {
+  const ms = parseTimeMs(iso);
+  if (ms == null) return null;
+  return Math.round((ms - nowMs) / MS_MINUTE);
+}
+
+function minutesOverdueFromIso(iso: string | undefined, nowMs: number): number {
+  const ms = parseTimeMs(iso);
+  if (ms == null) return 0;
+  const diff = nowMs - ms;
+  return diff > 0 ? Math.round(diff / MS_MINUTE) : 0;
+}
+
+function buildOperationTimingLabel(
+  item: PickupTileItem | ReturnTileItem,
+  scheduledIso: string | undefined,
+  nowMs: number,
+  locale: string,
+): string | undefined {
+  if (item.isOverdue) {
+    const mins =
+      'minutesOverdue' in item && typeof item.minutesOverdue === 'number' && item.minutesOverdue > 0
+        ? item.minutesOverdue
+        : minutesOverdueFromIso(scheduledIso, nowMs);
+    return mins > 0 ? formatDurationLabel(mins, true, locale) : label(locale, 'Überfällig', 'Overdue');
+  }
+  const until = minutesUntil(scheduledIso, nowMs);
+  if (until != null && until > 0) return formatDurationLabel(until, false, locale);
+  return undefined;
+}
+
+function operationVehicleLine(item: PickupTileItem | ReturnTileItem): string | undefined {
+  const parts = [item.plate, item.vehicle].map((value) => value?.trim()).filter(Boolean) as string[];
+  return parts.length > 0 ? parts.join(' · ') : undefined;
 }
 
 function pickupRow(
   item: PickupTileItem,
   state: VehicleRuntimeState | undefined,
   locale: string,
+  nowMs: number,
   variant: 'pickup-due-soon' | 'pickup-overdue' = 'pickup-due-soon',
 ): DashboardSliceRow {
-  const meta =
-    variant === 'pickup-overdue'
-      ? label(locale, 'Überfällig', 'Overdue')
-      : [item.time, item.station].filter(Boolean).join(' · ') || undefined;
+  const timingLabel = buildOperationTimingLabel(item, item.startDate, nowMs, locale);
+  const vehicleLine = operationVehicleLine(item);
   return {
     id: `booking:${item.bookingId || stableFallbackId('pickup', item)}:${variant}`,
     ...(item.vehicleId || state?.vehicleId ? { vehicleId: item.vehicleId || state?.vehicleId } : {}),
     ...(item.bookingId ? { bookingId: item.bookingId } : {}),
-    title: bookingTitle(item),
+    title: item.time || label(locale, 'Abholung', 'Pickup'),
     ...(item.customer ? { subtitle: item.customer } : {}),
-    ...(meta ? { meta } : {}),
+    ...(vehicleLine ? { meta: vehicleLine } : {}),
     stationLabel: item.station || state?.stationLabel || null,
-    severity: variant === 'pickup-overdue' ? 'critical' : 'warning',
+    severity: variant === 'pickup-overdue' ? 'critical' : 'info',
+    ...(timingLabel ? { statusLabel: timingLabel } : {}),
     primaryActionLabel: label(locale, 'Buchung öffnen', 'Open booking'),
   };
 }
@@ -221,21 +271,22 @@ function returnRow(
   item: ReturnTileItem,
   state: VehicleRuntimeState | undefined,
   locale: string,
+  nowMs: number,
   variant: 'return-due-soon' | 'return-overdue',
 ): DashboardSliceRow {
-  const meta = item.isOverdue
-    ? label(locale, 'Überfällig', 'Overdue')
-    : [item.time, item.station].filter(Boolean).join(' · ') || undefined;
+  const timingLabel = buildOperationTimingLabel(item, item.endDate, nowMs, locale);
+  const vehicleLine = operationVehicleLine(item);
   const reasons = variant === 'return-overdue' ? state?.criticalReasons ?? [] : state?.warningReasons ?? [];
   return {
     id: `booking:${item.bookingId || stableFallbackId('return', item)}:${variant}`,
     ...(item.vehicleId || state?.vehicleId ? { vehicleId: item.vehicleId || state?.vehicleId } : {}),
     ...(item.bookingId ? { bookingId: item.bookingId } : {}),
-    title: bookingTitle(item),
+    title: item.time || label(locale, 'Rückgabe', 'Return'),
     ...(item.customer ? { subtitle: item.customer } : {}),
-    ...(meta ? { meta } : {}),
+    ...(vehicleLine ? { meta: vehicleLine } : {}),
     stationLabel: item.station || state?.stationLabel || null,
-    severity: variant === 'return-overdue' || item.hasError ? 'critical' : 'warning',
+    severity: variant === 'return-overdue' || item.hasError ? 'critical' : 'info',
+    ...(timingLabel ? { statusLabel: timingLabel } : {}),
     ...(reasons.length > 0 ? { reasons, reasonIds: reasons.map((reason) => reason.id) } : {}),
     primaryActionLabel: label(locale, 'Buchung öffnen', 'Open booking'),
   };
@@ -371,7 +422,9 @@ function buildActiveRentedSlice(
   locale: string,
   pickupItems: PickupTileItem[],
   returnItems: ReturnTileItem[],
+  now: Date,
 ): DashboardSlice {
+  const nowMs = now.getTime();
   const active = states
     .filter(
       (state) =>
@@ -404,6 +457,7 @@ function buildActiveRentedSlice(
           item,
           findVehicleState(states, item),
           locale,
+          nowMs,
           item.isOverdue ? 'pickup-overdue' : 'pickup-due-soon',
         ),
       ),
@@ -416,6 +470,7 @@ function buildActiveRentedSlice(
           item,
           findVehicleState(states, item),
           locale,
+          nowMs,
           item.isOverdue ? 'return-overdue' : 'return-due-soon',
         ),
       ),
@@ -447,10 +502,10 @@ function buildDueSoonSlice(input: BuildDashboardSlicesInput): DashboardSlice {
   const nowMs = input.now.getTime();
   const pickupRows = input.pickupItems
     .filter((item) => !item.done && !item.isOverdue && isWithinDueSoon(item.startDate, nowMs, input.dueSoonMinutes))
-    .map((item) => pickupRow(item, findVehicleState(input.vehicleStates, item), input.locale));
+    .map((item) => pickupRow(item, findVehicleState(input.vehicleStates, item), input.locale, nowMs));
   const returnRows = input.returnItems
     .filter((item) => !item.done && item.isOverdue !== true && isWithinDueSoon(item.endDate, nowMs, input.dueSoonMinutes))
-    .map((item) => returnRow(item, findVehicleState(input.vehicleStates, item), input.locale, 'return-due-soon'));
+    .map((item) => returnRow(item, findVehicleState(input.vehicleStates, item), input.locale, nowMs, 'return-due-soon'));
   const rows = dedupeRows([...pickupRows, ...returnRows]);
 
   return {
@@ -466,11 +521,12 @@ function buildDueSoonSlice(input: BuildDashboardSlicesInput): DashboardSlice {
 }
 
 function buildOverduePickupsSlice(input: BuildDashboardSlicesInput): DashboardSlice {
+  const nowMs = input.now.getTime();
   const rows = dedupeRows(
     input.pickupItems
       .filter((item) => item.isOverdue === true && !item.done)
       .map((item) =>
-        pickupRow(item, findVehicleState(input.vehicleStates, item), input.locale, 'pickup-overdue'),
+        pickupRow(item, findVehicleState(input.vehicleStates, item), input.locale, nowMs, 'pickup-overdue'),
       ),
   );
 
@@ -485,10 +541,11 @@ function buildOverduePickupsSlice(input: BuildDashboardSlicesInput): DashboardSl
 }
 
 function buildOverdueReturnsSlice(input: BuildDashboardSlicesInput): DashboardSlice {
+  const nowMs = input.now.getTime();
   const rows = dedupeRows(
     input.returnItems
       .filter((item) => item.isOverdue === true && !item.done)
-      .map((item) => returnRow(item, findVehicleState(input.vehicleStates, item), input.locale, 'return-overdue')),
+      .map((item) => returnRow(item, findVehicleState(input.vehicleStates, item), input.locale, nowMs, 'return-overdue')),
   );
 
   return {
@@ -742,7 +799,13 @@ function buildCriticalAlertsSlice(input: BuildDashboardSlicesInput): DashboardSl
 function buildDashboardSlices(input: BuildDashboardSlicesInput): Record<DashboardSliceId, DashboardSlice> {
   return {
     'ready-to-rent': buildReadyToRentSlice(input.vehicleStates, input.locale),
-    'active-rented': buildActiveRentedSlice(input.vehicleStates, input.locale, input.pickupItems, input.returnItems),
+    'active-rented': buildActiveRentedSlice(
+      input.vehicleStates,
+      input.locale,
+      input.pickupItems,
+      input.returnItems,
+      input.now,
+    ),
     'due-soon': buildDueSoonSlice(input),
     'overdue-returns': buildOverdueReturnsSlice(input),
     'overdue-pickups': buildOverduePickupsSlice(input),

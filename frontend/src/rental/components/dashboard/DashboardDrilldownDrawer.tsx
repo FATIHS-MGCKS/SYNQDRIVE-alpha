@@ -224,18 +224,18 @@ function BookingDrawerRowCard({
     && (!primaryReasonText || metaNormalized !== primaryReasonText.trim().toLowerCase());
   const showStation = row.stationLabel
     && !metaNormalized.includes(row.stationLabel.trim().toLowerCase());
-  const severityText =
-    row.severity === 'critical'
+  const severityText = row.statusLabel
+    ?? (row.severity === 'critical'
       ? de ? 'Kritisch' : 'Critical'
       : row.severity === 'warning'
         ? de ? 'Warnung' : 'Warning'
         : row.severity === 'success'
           ? de ? 'Bereit' : 'Ready'
-          : null;
-  const canOpenVehicle = Boolean(row.vehicleId && onOpenVehicle);
+          : null);
   const canOpenBooking = Boolean(row.bookingId && onOpenBooking);
+  const canOpenVehicle = Boolean(row.vehicleId && onOpenVehicle);
   const ctaLabel = row.primaryActionLabel ?? (row.bookingId ? defaultBookingCta(de) : defaultVehicleCta(de));
-  const canOpen = canOpenVehicle || canOpenBooking;
+  const canOpen = canOpenBooking || canOpenVehicle;
 
   return (
     <article className="rounded-lg border border-border/45 surface-premium/45 px-2.5 py-2 shadow-sm shadow-black/[0.02] transition-colors hover:border-border/65 hover:bg-muted/10">
@@ -301,8 +301,8 @@ function BookingDrawerRowCard({
           <button
             type="button"
             onClick={() => {
-              if (row.vehicleId && onOpenVehicle) onOpenVehicle(row.vehicleId);
-              else if (row.bookingId && onOpenBooking) onOpenBooking(row.bookingId);
+              if (row.bookingId && onOpenBooking) onOpenBooking(row.bookingId);
+              else if (row.vehicleId && onOpenVehicle) onOpenVehicle(row.vehicleId);
               onClose();
             }}
             className="sq-btn sq-btn-secondary min-h-9 shrink-0 px-2 text-[11px]"

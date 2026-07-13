@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pickup-drawer-ux-v49403-2026-07-13',
+    version: '4.9.403',
+    title: 'V4.9.403 — Dashboard: Übergaben-Drawer mit Abholzeit & Buchungsnavigation',
+    summary: [
+      'Fix: Drawer „Übergaben heute“ zeigt jetzt **Abholzeit**, **Kunde**, **Station** und **Rest-/Überfälligkeitszeit** statt Kennzeichen·Kunde mit doppeltem Namen.',
+      'Fix: „Buchung öffnen“ navigiert zur Buchung (nicht mehr zum Fahrzeug, wenn beides vorhanden).',
+      'Runtime: `pickupRow`/`returnRow` in `dashboardSliceBuilder` mit `statusLabel` (z. B. „in 45 Min.“ / „2 Std. überfällig“).',
+      '`DashboardDrilldownDrawer`: CTA priorisiert `bookingId`; Chip nutzt `statusLabel`.',
+    ],
+    reason:
+      'Operative Übergaben brauchen Zeitkontext und korrekte Buchungsnavigation — nicht Fahrzeugdetails.',
+    previousBehavior:
+      'Titel = Kennzeichen · Kunde, Kunde doppelt, generisches „Kritisch“-Badge; Buchung öffnen → Fahrzeug.',
+    details:
+      '**Dateien**: `dashboardSliceBuilder.ts`, `dashboardRuntimeTypes.ts`, `DashboardDrilldownDrawer.tsx`. Keine Backend-Änderung.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T12:00:00.000Z',
+  },
+  {
     id: 'dashboard-drawer-close-v49402-2026-07-13',
     version: '4.9.402',
     title: 'V4.9.402 — Dashboard-Drilldown: Schließen-Button mobil + Desktop-Fix',

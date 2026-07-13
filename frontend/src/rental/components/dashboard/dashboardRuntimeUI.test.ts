@@ -333,6 +333,54 @@ describe('dashboard runtime-only UI contracts', () => {
     expect(activeFocused.some((group) => group.id === 'on-time')).toBe(true);
   });
 
+  it('shapes pickup drawer rows with time, customer, station, and timing label', () => {
+    const pickupAt = new Date(NOW.getTime() + 45 * 60_000).toISOString();
+    const runtime = buildDashboardRuntimeModel({
+      locale: 'de',
+      fleetVehicles: [vehicle({ id: 'pickup-1', license: 'WOB L 7503' })],
+      pickupItems: [
+        {
+          bookingId: 'b1',
+          time: '10:45',
+          vehicle: 'VW Golf',
+          plate: 'WOB L 7503',
+          customer: 'Kübra Serin',
+          station: 'Zentrale',
+          done: false,
+          vehicleId: 'pickup-1',
+          needsCleaning: false,
+          hasAlert: false,
+          hasError: false,
+          startDate: pickupAt,
+          endDate: pickupAt,
+          isOverdue: false,
+          minutesOverdue: 0,
+        } satisfies PickupTileItem,
+      ],
+      now: NOW,
+    });
+
+    const pickupRow = runtime.slices['active-rented'].groups
+      ?.find((group) => group.id === 'pickups-today')
+      ?.rows[0];
+
+    expect(pickupRow?.title).toBe('10:45');
+    expect(pickupRow?.subtitle).toBe('Kübra Serin');
+    expect(pickupRow?.meta).toBe('WOB L 7503 · VW Golf');
+    expect(pickupRow?.stationLabel).toBe('Zentrale');
+    expect(pickupRow?.statusLabel).toBe('in 45 Min.');
+    expect(pickupRow?.bookingId).toBe('b1');
+    expect(pickupRow?.primaryActionLabel).toBe('Buchung öffnen');
+  });
+
+  it('prefers booking navigation over vehicle in pickup drawer CTA', () => {
+    const drawerSrc = readFileSync(resolve(testDir, './DashboardDrilldownDrawer.tsx'), 'utf8');
+    expect(drawerSrc).toMatch(/if \(row\.bookingId && onOpenBooking\) onOpenBooking\(row\.bookingId\)/);
+    expect(drawerSrc).not.toMatch(
+      /if \(row\.vehicleId && onOpenVehicle\) onOpenVehicle\(row\.vehicleId\);\s*else if \(row\.bookingId && onOpenBooking\)/,
+    );
+  });
+
   it('keeps due-soon out of the visible KPI strip order and includes overdue-pickups', () => {
     const stripSrc = readFileSync(resolve(testDir, './ControlKpiStrip.tsx'), 'utf8');
 
