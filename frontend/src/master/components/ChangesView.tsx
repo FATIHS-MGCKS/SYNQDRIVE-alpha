@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'drawer-cta-bnr-inline-v49412-2026-07-13',
+    version: '4.9.412',
+    title: 'V4.9.412 — Drawer: einheitliche CTA-Breite & BNR inline',
+    summary: [
+      'Alle Drawer-CTAs: feste Breite **8.5rem** wie im Aktive-Vermietungen-Drawer.',
+      'Übergaben-Layout an Active-Rental-Spaltenstruktur angeglichen (Button rechts unten).',
+      'BNR direkt hinter Kundennamen mit · Trenner statt weit rechts.',
+    ],
+    reason: 'Inkonsistente Button-Breiten und zu großer Abstand zwischen Kunde und BNR.',
+    previousBehavior:
+      'Übergaben-Button volle Zeilenbreite; BNR mit justify-between am rechten Rand.',
+    details:
+      '**Dateien**: `dashboardDrawerRowActions.tsx`, `dashboardDrawerRowLines.tsx`, `DashboardDrilldownDrawer.tsx`, `CompactFleetDrawerVehicleRow.tsx`.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T16:25:00.000Z',
+  },
+  {
     id: 'drawer-bnr-vehicle-row-v49411-2026-07-13',
     version: '4.9.411',
     title: 'V4.9.411 — Drawer: BNR-Zeile, Fahrzeugzeile & symmetrische CTAs',

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Icon } from '../ui/Icon';
 import { cn } from '../../../components/ui/utils';
+import { drawerRowActionWidthClassName } from './dashboardDrawerRowLines';
 
 export type DrawerRowActionTone = 'booking' | 'vehicle';
 
@@ -30,7 +31,8 @@ export function DrawerRowActionButton({
       type="button"
       onClick={onClick}
       className={cn(
-        'sq-press inline-flex h-8 w-full min-w-[8.5rem] shrink-0 items-center justify-center gap-1 rounded-md border px-2.5 text-[10.5px] font-medium leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+        'sq-press inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-md border px-2.5 text-[10.5px] font-medium leading-none transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]',
+        drawerRowActionWidthClassName,
         toneClassName[tone],
         className,
       )}
