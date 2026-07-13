@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useAppTheme } from '../context/AppThemeContext';
 import { Sidebar } from './components/Sidebar';
 import type { MasterView } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
@@ -173,7 +174,7 @@ const STATUS_LABEL_TO_ENUM: Record<string, string> = {
 };
 
 export default function App() {
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const { isDarkMode } = useAppTheme();
   const [currentView, setCurrentView] = useState<MasterView>('dashboard');
   const [settingsTab, setSettingsTab] = useState<string>('general');
   const [billingFocusOrgId, setBillingFocusOrgId] = useState<string | null>(null);
@@ -184,10 +185,6 @@ export default function App() {
   const [registeredVehicles, setRegisteredVehicles] = useState<RegisteredVehicle[]>([]);
   const [dimoVehicles, setDimoVehicles] = useState<DimoVehicle[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', isDarkMode);
-  }, [isDarkMode]);
 
   useEffect(() => {
     const load = async () => {
@@ -592,10 +589,7 @@ export default function App() {
     >
       <Toaster position="top-right" richColors closeButton theme={isDarkMode ? 'dark' : 'light'} />
 
-            <TopBar
-              isDarkMode={isDarkMode}
-              setIsDarkMode={setIsDarkMode}
-            />
+            <TopBar />
 
             {/* DASHBOARD */}
             {currentView === 'dashboard' && (

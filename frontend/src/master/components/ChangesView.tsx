@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'system-theme-preference-v49401-2026-07-13',
+    version: '4.9.401',
+    title: 'V4.9.401 — Design: System-Hell/Dunkel-Erkennung + Nutzerwahl',
+    summary: [
+      'Neuer globaler Theme-Modus: **System** (Default), **Hell**, **Dunkel` — folgt `prefers-color-scheme` des OS/Browsers.',
+      'Wahl wird in `localStorage` (`synqdrive-theme-preference`) persistiert; Inline-Bootstrap in `index.html` verhindert Flash beim Laden.',
+      'TopBar (Rental + Master): Klick auf Theme-Button wechselt System → Hell → Dunkel → System (Icons: Monitor/Sonne/Mond).',
+      'Operator **Mehr**-Tab: eigene Design-Zeile mit gleichem Toggle.',
+      '`AppThemeProvider` setzt `document.documentElement.dark` zentral; Operator/Handover lesen weiterhin die DOM-Klasse.',
+    ],
+    reason:
+      'App startete immer im Light Mode und ignorierte die Systemeinstellung des Nutzers. Nach Reload ging manuelle Dark-Mode-Wahl verloren.',
+    previousBehavior:
+      '`useState(false)` in Rental/Master App; binärer Sonne/Mond-Toggle ohne Persistenz und ohne `matchMedia`.',
+    details:
+      '`lib/theme.ts`, `context/AppThemeContext.tsx`, `components/ThemeToggleButton.tsx`, `index.html` bootstrap script, Rental/Master TopBar, OperatorMoreView. Tests: `theme.test.ts`.',
+    affectsArchitecture: true,
+    module: 'UI',
+    createdAt: '2026-07-13T09:20:00.000Z',
+  },
+  {
     id: 'operator-today-tasks-v49400-2026-07-13',
     version: '4.9.400',
     title: 'V4.9.400 — Operator App: Heute-Aufgaben klickbar, Gruppierung & UI-Parität',

@@ -10,6 +10,8 @@ import { useRentalOrg } from '../RentalContext';
 import { useLanguage, type Locale } from '../i18n/LanguageContext';
 import { api } from '../../lib/api';
 import { OperatorEntryButton } from '../../operator/components/OperatorEntryButton';
+import { ThemeToggleButton } from '../../components/ThemeToggleButton';
+import { useAppTheme } from '../../context/AppThemeContext';
 import type { SettingsTabInput } from './settings/settingsTypes';
 
 // V4.6.86 — flags replaced with ISO-2 code pills (anti-emoji, per design direction).
@@ -25,8 +27,6 @@ const languages = [
 ];
 
 interface TopBarProps {
-  isDarkMode: boolean;
-  setIsDarkMode: (value: boolean) => void;
   onViewChange?: (view: string) => void;
   onVehicleSelect?: (vehicle: VehicleData) => void;
   onSettingsTabChange?: (tab: SettingsTabInput) => void;
@@ -44,7 +44,8 @@ function formatLoggedInLabel(
   );
 }
 
-export function TopBar({ isDarkMode, setIsDarkMode, onViewChange, onVehicleSelect, onSettingsTabChange, onFinanceTabChange }: TopBarProps) {
+export function TopBar({ onViewChange, onVehicleSelect, onSettingsTabChange, onFinanceTabChange }: TopBarProps) {
+  const { preference, cycleThemePreference } = useAppTheme();
   const { locale, setLocale, t } = useLanguage();
   const { fleetVehicles } = useFleetVehicles();
   const { orgId } = useRentalOrg();
@@ -441,18 +442,7 @@ export function TopBar({ isDarkMode, setIsDarkMode, onViewChange, onVehicleSelec
       <div className="flex items-center gap-1 lg:gap-1.5 shrink-0">
         <OperatorEntryButton />
 
-        {/* Dark Mode Toggle — V4.6.86: soft press + subtle rotation micro-motion */}
-        <button
-          onClick={() => setIsDarkMode(!isDarkMode)}
-          className="w-8 h-8 flex items-center justify-center rounded-md transition-all duration-200 ease-out hover:bg-muted text-muted-foreground hover:text-foreground sq-press"
-          aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
-        >
-          {isDarkMode ? (
-            <Icon name="sun" className="w-4 h-4 transition-transform duration-300 ease-out hover:rotate-45" />
-          ) : (
-            <Icon name="moon" className="w-4 h-4 transition-transform duration-300 ease-out hover:-rotate-12" />
-          )}
-        </button>
+        <ThemeToggleButton preference={preference} onCycle={cycleThemePreference} />
 
         {/* Language Selector — ISO-code pill (V4.6.86: anti-emoji) */}
         <div className="relative hidden sm:block">
