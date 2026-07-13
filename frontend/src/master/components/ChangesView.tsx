@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'active-rentals-drawer-polish-v49410-2026-07-13',
+    version: '4.9.410',
+    title: 'V4.9.410 — Aktive Vermietungen-Drawer: Layout & einheitliche CTA-Buttons',
+    summary: [
+      'Station in die Telemetrie-Zeile (statt Kilometerstand); eigene Stationszeile entfällt.',
+      'KM-Zeile symmetrisch: **Frei: X km** · Fortschrittsbalken · **Bis:** Rückgabezeit.',
+      'Neue **DrawerRowActionButton**-Optik in allen Dashboard-Drawern (Buchung brand, Fahrzeug neutral).',
+    ],
+    reason: 'Kompakteres Miet-Layout und konsistente Drawer-Aktionen über alle Drill-downs.',
+    previousBehavior:
+      'Kilometerstand + Stationszeile; „981 km Rest“ über dem Balken; Zur Buchung als sq-btn-secondary.',
+    details:
+      '**Dateien**: `ActiveRentalDrawerRowCard.tsx`, `activeRentalDrawer.utils.ts`, `dashboardDrawerRowActions.tsx`, `DashboardDrilldownDrawer.tsx`, `CompactFleetDrawerVehicleRow.tsx`.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T15:45:00.000Z',
+  },
+  {
     id: 'active-rentals-drawer-v49409-2026-07-13',
     version: '4.9.409',
     title: 'V4.9.409 — Aktive Vermietungen-Drawer: Mietkontext & KM-Fortschritt',

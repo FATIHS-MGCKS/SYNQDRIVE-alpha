@@ -3,7 +3,7 @@ import {
   activeRentalKmBarFillPercent,
   activeRentalKmBarTone,
   activeRentalRentedTillText,
-  formatKmRemainingLabel,
+  formatFreeKmLabel,
   kmProgressPercent,
   kmRemainingPercent,
 } from './activeRentalDrawer.utils';
@@ -16,10 +16,10 @@ describe('activeRentalDrawer.utils', () => {
     expect(kmProgressPercent(100, 0)).toBeNull();
   });
 
-  it('formats remaining km label in de and en', () => {
-    expect(formatKmRemainingLabel(250, 1000, 'de')).toBe('750 km Rest');
-    expect(formatKmRemainingLabel(250, 1000, 'en')).toBe('750 km left');
-    expect(formatKmRemainingLabel(1100, 1000, 'de')).toBe('+100 km');
+  it('formats free km label in de and en', () => {
+    expect(formatFreeKmLabel(250, 1000, 'de')).toBe('Frei: 750 km');
+    expect(formatFreeKmLabel(250, 1000, 'en')).toBe('Free: 750 km');
+    expect(formatFreeKmLabel(1100, 1000, 'de')).toBe('Frei: +100 km');
   });
 
   it('derives bar tone from consumed share', () => {
@@ -35,7 +35,7 @@ describe('activeRentalDrawer.utils', () => {
 
   it('formats rented till prefix with locale', () => {
     const text = activeRentalRentedTillText('2026-07-20T18:00:00.000Z', 'de');
-    expect(text.startsWith('Gemietet bis:')).toBe(true);
-    expect(activeRentalRentedTillText('2026-07-20T18:00:00.000Z', 'en').startsWith('Rented till:')).toBe(true);
+    expect(text.startsWith('Bis:')).toBe(true);
+    expect(activeRentalRentedTillText('2026-07-20T18:00:00.000Z', 'en').startsWith('Until:')).toBe(true);
   });
 });

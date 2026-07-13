@@ -10,12 +10,13 @@ import {
   resolveDrawerVehicleReasonBadge,
   resolveHandoverVehicleReasonBadge,
 } from './dashboardDrilldownRowDisplay';
+import { DrawerRowActionButton } from './dashboardDrawerRowActions';
 import type { DashboardSliceRow, VehicleRuntimeState } from './runtime';
 import {
   activeRentalKmBarFillPercent,
   activeRentalKmBarTone,
   activeRentalRentedTillText,
-  formatKmRemainingLabel,
+  formatFreeKmLabel,
 } from './activeRentalDrawer.utils';
 
 function fleetVehicleTitle(v: VehicleData): string {
@@ -87,7 +88,7 @@ export function ActiveRentalDrawerRowCard({
         ? 'watch'
         : 'neutral';
 
-  const kmRemainingLabel = formatKmRemainingLabel(
+  const freeKmLabel = formatFreeKmLabel(
     vehicle.activeKmDriven,
     vehicle.activeKmIncluded,
     locale,
@@ -98,8 +99,7 @@ export function ActiveRentalDrawerRowCard({
   const rentedTill = activeRentalRentedTillText(vehicle.activeReturnAt, locale);
 
   const hasEnergy = display.energy.percent != null;
-  const hasOdometer = Boolean(display.odometerLabel);
-  const showOpsMeta = hasEnergy || hasOdometer || display.telemetryLabel;
+  const showOpsMeta = hasEnergy || Boolean(display.telemetryLabel) || Boolean(station);
 
   return (
     <article className="rounded-lg border border-border/45 surface-premium/45 px-2.5 py-2 shadow-sm shadow-black/[0.02] transition-colors hover:border-border/65 hover:bg-muted/10">
@@ -121,12 +121,6 @@ export function ActiveRentalDrawerRowCard({
             {bookingNumber ? (
               <p className="truncate">
                 {de ? 'Buchungsnummer:' : 'Booking no.:'} {bookingNumber}
-              </p>
-            ) : null}
-            {station ? (
-              <p className="flex min-w-0 items-center gap-1 text-[10px]">
-                <Icon name="map-pin" className="h-3 w-3 shrink-0" />
-                <span className="truncate">{station}</span>
               </p>
             ) : null}
           </div>
@@ -155,12 +149,15 @@ export function ActiveRentalDrawerRowCard({
                   {display.telemetryLabel}
                 </span>
               ) : null}
-              {hasOdometer ? (
+              {station ? (
                 <>
-                  {display.telemetryLabel ? (
+                  {(hasEnergy || display.telemetryLabel) ? (
                     <span aria-hidden className="shrink-0 text-muted-foreground/50">·</span>
                   ) : null}
-                  <span className="shrink-0 whitespace-nowrap">{display.odometerLabel}</span>
+                  <span className="inline-flex min-w-0 max-w-[46%] shrink items-center gap-0.5">
+                    <Icon name="map-pin" className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{station}</span>
+                  </span>
                 </>
               ) : null}
             </div>
@@ -168,10 +165,10 @@ export function ActiveRentalDrawerRowCard({
 
           {showKmRow ? (
             <div className="flex items-center gap-2 pt-0.5">
+              <span className="shrink-0 whitespace-nowrap text-[10px] tabular-nums text-muted-foreground">
+                {freeKmLabel}
+              </span>
               <div className="min-w-0 flex-1">
-                <div className="mb-1 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
-                  <span className="truncate">{kmRemainingLabel}</span>
-                </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-muted/80">
                   <div
                     className={cn('h-full rounded-full transition-[width]', kmBarClass(kmBarTone))}
@@ -179,9 +176,9 @@ export function ActiveRentalDrawerRowCard({
                   />
                 </div>
               </div>
-              <p className="max-w-[46%] shrink-0 text-right text-[10px] font-medium leading-snug text-foreground">
+              <span className="max-w-[42%] shrink-0 whitespace-nowrap text-right text-[10px] font-medium leading-snug text-foreground">
                 {rentedTill}
-              </p>
+              </span>
             </div>
           ) : (
             <p className="text-[10px] font-medium text-foreground">{rentedTill}</p>
@@ -215,30 +212,26 @@ export function ActiveRentalDrawerRowCard({
 
           <div className="mt-auto flex flex-col items-end gap-1">
             {canOpenBooking ? (
-              <button
-                type="button"
+              <DrawerRowActionButton
+                tone="booking"
                 onClick={() => {
                   if (bookingId && onOpenBooking) onOpenBooking(bookingId);
                   onClose();
                 }}
-                className="sq-btn sq-btn-secondary min-h-8 shrink-0 px-2.5 text-[11px]"
               >
                 {de ? 'Zur Buchung' : 'To booking'}
-                <Icon name="arrow-right" className="h-3.5 w-3.5 opacity-70" />
-              </button>
+              </DrawerRowActionButton>
             ) : null}
             {canOpenVehicle ? (
-              <button
-                type="button"
+              <DrawerRowActionButton
+                tone="vehicle"
                 onClick={() => {
                   if (vehicle.id && onOpenVehicle) onOpenVehicle(vehicle.id);
                   onClose();
                 }}
-                className="sq-press inline-flex min-h-8 items-center gap-1 rounded-md border border-border/50 px-2.5 text-[10.5px] font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
               >
                 {de ? 'Zum Fahrzeug' : 'To vehicle'}
-                <Icon name="arrow-right" className="h-3 w-3 opacity-70" />
-              </button>
+              </DrawerRowActionButton>
             ) : null}
           </div>
         </div>

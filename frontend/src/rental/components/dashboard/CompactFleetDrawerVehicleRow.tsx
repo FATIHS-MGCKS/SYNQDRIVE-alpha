@@ -6,6 +6,7 @@ import { getShortModel, type VehicleData } from '../../data/vehicles';
 import { FleetEnergyIndicator } from '../fleet/FleetEnergyIndicator';
 import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
 import { resolveDrawerVehicleReasonBadge } from './dashboardDrilldownRowDisplay';
+import { DrawerRowActionButton } from './dashboardDrawerRowActions';
 import type { DashboardSliceRow, VehicleRuntimeState } from './runtime';
 
 function reasonChipClass(tone: StatusTone): string {
@@ -213,17 +214,15 @@ export function CompactFleetDrawerVehicleRow({
           </div>
 
           {canOpen ? (
-            <button
-              type="button"
+            <DrawerRowActionButton
+              tone="vehicle"
               onClick={() => {
                 if (row.vehicleId && onOpenVehicle) onOpenVehicle(row.vehicleId);
                 onClose();
               }}
-              className="sq-press inline-flex min-h-8 items-center gap-1 rounded-md px-2 text-[10.5px] font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
             >
               {ctaLabel}
-              <Icon name="arrow-right" className="h-3 w-3 opacity-70" />
-            </button>
+            </DrawerRowActionButton>
           ) : null}
         </div>
       </div>
