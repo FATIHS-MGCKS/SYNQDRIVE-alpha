@@ -6,6 +6,7 @@ import type { NotificationCardViewModel } from './notificationCardViewModel';
 import { getNotificationCardSeverityLabel } from './notificationCardViewModel';
 import { notificationDomainIcon } from './notificationDomainIcon';
 import type { useLanguage } from '../../../i18n/LanguageContext';
+import { NotificationActionsMenu } from './NotificationActionsMenu';
 
 function severitySurface(severity: NotificationCardViewModel['severity'], resolved: boolean): string {
   if (resolved || severity === 'success') {
@@ -66,7 +67,6 @@ export const NotificationCard = memo(function NotificationCard({
   onSnooze,
 }: NotificationCardProps) {
   const severityLabel = getNotificationCardSeverityLabel(card, t);
-  const hasMenu = Boolean(onMarkRead || onAcknowledge || onSnooze);
 
   return (
     <article
@@ -142,50 +142,16 @@ export const NotificationCard = memo(function NotificationCard({
               {card.ctaLabel}
             </button>
 
-            {hasMenu ? (
-              <div className="relative">
-                <details className="group/menu">
-                  <summary
-                    className={cn(
-                      NOTIFICATION_PANEL_TYPO.cta,
-                      'sq-press inline-flex min-h-11 cursor-pointer list-none items-center rounded-md px-2.5 text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] [&::-webkit-details-marker]:hidden',
-                    )}
-                    aria-label={t('notification.action.more')}
-                  >
-                    <Icon name="more-horizontal" className="h-4 w-4" aria-hidden />
-                  </summary>
-                  <div className="absolute right-0 z-20 mt-1 min-w-[11rem] rounded-lg border border-border/50 bg-popover p-1 shadow-[var(--shadow-md)]">
-                    {onMarkRead && card.readStatus === 'unread' ? (
-                      <button
-                        type="button"
-                        className="flex w-full min-h-11 items-center rounded-md px-2.5 text-left text-xs leading-4 hover:bg-muted/50"
-                        onClick={onMarkRead}
-                      >
-                        {t('notification.action.markRead')}
-                      </button>
-                    ) : null}
-                    {onAcknowledge && card.availableActions.includes('acknowledge') ? (
-                      <button
-                        type="button"
-                        className="flex w-full min-h-11 items-center rounded-md px-2.5 text-left text-xs leading-4 hover:bg-muted/50"
-                        onClick={onAcknowledge}
-                      >
-                        {t('notification.action.acknowledge')}
-                      </button>
-                    ) : null}
-                    {onSnooze && card.availableActions.includes('snooze') ? (
-                      <button
-                        type="button"
-                        className="flex w-full min-h-11 items-center rounded-md px-2.5 text-left text-xs leading-4 hover:bg-muted/50"
-                        onClick={onSnooze}
-                      >
-                        {t('notification.action.snooze')}
-                      </button>
-                    ) : null}
-                  </div>
-                </details>
-              </div>
-            ) : null}
+            <NotificationActionsMenu
+              t={t}
+              readStatus={card.readStatus}
+              availableActions={card.availableActions}
+              onMarkRead={onMarkRead}
+              onAcknowledge={onAcknowledge}
+              onSnooze={onSnooze}
+              triggerClassName="min-h-11 px-2.5"
+              itemClassName="min-h-11"
+            />
           </div>
         </div>
       </div>

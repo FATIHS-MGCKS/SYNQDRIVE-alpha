@@ -42,6 +42,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
       'Eyebrow „Überfällige Übergabe oder Rückgabe“; Headline Kennzeichen · Make Model Year wie bei Fahrzeug-Warnungen.',
       'Expand: „Abholung/Rückgabe überfällig seit …“ + strukturierte Felder BNR, Kunde, Station, Abhol-/Rückgabe-Termin.',
       '„Buchung öffnen“ navigiert zur Buchung (nicht Fahrzeug); sekundärer Button „Kunde kontaktieren“ öffnet Kundendetail.',
+      'Drei-Punkte-Aktionsmenü nutzt Radix-Popover (Portal) — nicht mehr hinter Scroll/overflow der Meldungskarte.',
     ],
     reason: 'Kritische Handover-Meldungen zeigten nur Kennzeichen ohne Fahrzeugkontext, eine Zeile Kunde·Station und der CTA öffnete fälschlich das Fahrzeug.',
     previousBehavior: 'Domain-Label „Übergaben“, Headline nur Kennzeichen, Detail als Freitext, CTA fiel auf vehicleId zurück.',
