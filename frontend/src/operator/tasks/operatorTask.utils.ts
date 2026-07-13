@@ -13,7 +13,7 @@ export interface OperatorTaskViewFilters {
 }
 
 export const DEFAULT_OPERATOR_TASK_FILTERS: OperatorTaskViewFilters = {
-  scope: 'mine',
+  scope: 'all',
   today: false,
   overdue: false,
   vehicleId: null,

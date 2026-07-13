@@ -1,4 +1,4 @@
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import {
   AlertTriangle,
   ArrowDownLeft,
@@ -8,25 +8,79 @@ import {
   Plus,
 } from 'lucide-react';
 import { EmptyState, ErrorState, SkeletonRows } from '../../components/patterns';
+import { useFleetVehicles } from '../../rental/FleetContext';
+import { taskRequiresResolutionNote } from '../../rental/lib/task-detail.utils';
+import type { ApiTask } from '../../lib/api';
 import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
 import { useOperatorToday } from '../hooks/useOperatorToday';
+import { useOperatorOperationalAlerts } from '../hooks/useOperatorOperationalAlerts';
 import { OperatorBookingCard } from '../components/OperatorBookingCard';
 import { OperatorBookingDetailSheet } from '../components/OperatorBookingDetailSheet';
+import { OperatorBookingTaskGroupCard } from '../components/OperatorBookingTaskGroupCard';
 import { OperatorListCard } from '../components/OperatorListCard';
 import { OperatorTodaySection } from '../components/OperatorTodaySection';
 import { OperatorTabletFrame } from '../components/OperatorTabletFrame';
-import { OperatorVehicleQuickView } from '../components/OperatorVehicleQuickView';
+import { useOperatorData } from '../context/OperatorDataContext';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
 import type { OperatorTodayBookingItem } from '../lib/operatorData';
 import { toHandoverBookingSeed } from '../lib/operatorData';
+import { OperatorTaskCard } from '../tasks/OperatorTaskCard';
+import { useOperatorTaskActions } from '../tasks/useOperatorTaskActions';
 
 export function OperatorTodayView() {
   const { orgId, orgLoading, snapshot, loading, error, reload } = useOperatorToday('de');
   const { openHandover } = useOperatorHandover();
-  const { selectedVehicleId, setSelectedVehicleId, openSheet } = useOperatorShell();
+  const { openSheet, setActiveTab, setPendingTasksBookingId, setSelectedVehicleId } = useOperatorShell();
+  const { fleetVehicles } = useFleetVehicles();
+  const { reloadTasks } = useOperatorData();
+  const { alerts: operationalAlerts } = useOperatorOperationalAlerts(5);
   const isTablet = useOperatorTabletLayout();
   const [detailItem, setDetailItem] = useState<OperatorTodayBookingItem | null>(null);
+
+  const { mutating, start, complete } = useOperatorTaskActions(() => {
+    void reloadTasks();
+  });
+
+  const vehicleMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const vehicle of fleetVehicles) {
+      map.set(vehicle.id, vehicle.license || vehicle.model);
+    }
+    return map;
+  }, [fleetVehicles]);
+
+  const openTask = useCallback(
+    (task: ApiTask, focusComment = false) => {
+      openSheet({
+        type: 'task-detail',
+        taskId: task.id,
+        task,
+        focusComment,
+        onUpdated: () => void reloadTasks(),
+      });
+    },
+    [openSheet, reloadTasks],
+  );
+
+  const openBookingTaskGroup = useCallback(
+    (bookingId: string) => {
+      setPendingTasksBookingId(bookingId);
+      setActiveTab('tasks');
+    },
+    [setActiveTab, setPendingTasksBookingId],
+  );
+
+  const handleQuickComplete = useCallback(
+    async (task: ApiTask) => {
+      if (taskRequiresResolutionNote(task.type)) {
+        openTask(task);
+        return;
+      }
+      await complete(task.id);
+    },
+    [complete, openTask],
+  );
 
   const startHandover = useCallback(
     (item: OperatorTodayBookingItem, kind: 'PICKUP' | 'RETURN') => {
@@ -54,6 +108,25 @@ export function OperatorTodayView() {
     <EmptyState compact icon={icon} title={title} description={description} />
   );
 
+  const showAllTasksAction =
+    snapshot.totalOpenTasksCount > snapshot.openTaskEntries.length ? (
+      <button
+        type="button"
+        onClick={() => setActiveTab('tasks')}
+        className="sq-btn sq-btn-secondary min-h-8 px-2.5 text-[11px]"
+      >
+        Alle anzeigen ({snapshot.totalOpenTasksCount})
+      </button>
+    ) : snapshot.totalOpenTasksCount > 0 ? (
+      <button
+        type="button"
+        onClick={() => setActiveTab('tasks')}
+        className="sq-btn sq-btn-secondary min-h-8 px-2.5 text-[11px]"
+      >
+        Alle Aufgaben
+      </button>
+    ) : null;
+
   const mainContent = (
     <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain pb-4">
       <button
@@ -72,6 +145,35 @@ export function OperatorTodayView() {
 
       {!loading && !error && (
         <>
+          {operationalAlerts.length > 0 && (
+            <OperatorTodaySection title="Operative Hinweise" count={operationalAlerts.length}>
+              <div className="space-y-2">
+                {operationalAlerts.map((alert) => (
+                  <OperatorListCard
+                    key={alert.id}
+                    title={alert.title}
+                    subtitle={alert.message}
+                    badges={[
+                      {
+                        kind: 'blocked',
+                        label: alert.severity === 'CRITICAL' ? 'Kritisch' : 'Warnung',
+                        tone: alert.severity === 'CRITICAL' ? 'critical' : 'warning',
+                      },
+                    ]}
+                    onClick={
+                      alert.bookingId
+                        ? () => {
+                            setPendingTasksBookingId(alert.bookingId!);
+                            setActiveTab('tasks');
+                          }
+                        : () => setActiveTab('tasks')
+                    }
+                  />
+                ))}
+              </div>
+            </OperatorTodaySection>
+          )}
+
           <OperatorTodaySection
             title="Jetzt fällig"
             count={snapshot.dueNow.length}
@@ -143,8 +245,9 @@ export function OperatorTodayView() {
 
           <OperatorTodaySection
             title="Offene Aufgaben"
-            count={snapshot.openTasks.length}
-            isEmpty={snapshot.openTasks.length === 0}
+            count={snapshot.totalOpenTasksCount}
+            action={showAllTasksAction}
+            isEmpty={snapshot.openTaskEntries.length === 0}
             empty={sectionEmpty(
               <ListTodo className="h-5 w-5" />,
               'Keine offenen Aufgaben',
@@ -152,26 +255,33 @@ export function OperatorTodayView() {
             )}
           >
             <div className="space-y-2">
-              {snapshot.openTasks.map((task) => (
-                <OperatorListCard
-                  key={task.id}
-                  title={task.title}
-                  subtitle={task.category || task.type}
-                  meta={task.dueDate ? new Date(task.dueDate).toLocaleDateString('de-DE') : undefined}
-                  badges={[
-                    {
-                      kind: 'task_open',
-                      label: task.isOverdue ? 'Überfällig' : 'Offen',
-                      tone: task.isOverdue ? 'critical' : 'info',
-                    },
-                  ]}
-                  onClick={
-                    task.vehicleId
-                      ? () => setSelectedVehicleId(task.vehicleId!)
-                      : undefined
-                  }
-                />
-              ))}
+              {snapshot.openTaskEntries.map((entry) =>
+                entry.kind === 'booking-group' ? (
+                  <OperatorBookingTaskGroupCard
+                    key={`group-${entry.bookingId}`}
+                    bookingId={entry.bookingId}
+                    tasks={entry.tasks}
+                    vehicleLabel={entry.vehicleId ? vehicleMap.get(entry.vehicleId) ?? null : null}
+                    bookingLabel={`Buchung ${entry.bookingId.slice(0, 8)}…`}
+                    disabled={mutating}
+                    onOpen={() => openBookingTaskGroup(entry.bookingId)}
+                  />
+                ) : (
+                  <OperatorTaskCard
+                    key={entry.task.id}
+                    task={entry.task}
+                    vehicleLabel={entry.task.vehicleId ? vehicleMap.get(entry.task.vehicleId) ?? null : null}
+                    bookingLabel={
+                      entry.task.bookingId ? `Buchung ${entry.task.bookingId.slice(0, 8)}…` : null
+                    }
+                    disabled={mutating}
+                    onOpen={() => openTask(entry.task)}
+                    onStart={() => void start(entry.task.id)}
+                    onComplete={() => void handleQuickComplete(entry.task)}
+                    onComment={() => openTask(entry.task, true)}
+                  />
+                ),
+              )}
             </div>
           </OperatorTodaySection>
 
@@ -179,11 +289,15 @@ export function OperatorTodayView() {
             <OperatorTodaySection title="Fahrzeugchecks" count={snapshot.vehicleCheckTasks.length}>
               <div className="space-y-2">
                 {snapshot.vehicleCheckTasks.map((task) => (
-                  <OperatorListCard
+                  <OperatorTaskCard
                     key={`check-${task.id}`}
-                    title={task.title}
-                    subtitle={task.type}
-                    onClick={task.vehicleId ? () => setSelectedVehicleId(task.vehicleId!) : undefined}
+                    task={task}
+                    vehicleLabel={task.vehicleId ? vehicleMap.get(task.vehicleId) ?? null : null}
+                    disabled={mutating}
+                    onOpen={() => openTask(task)}
+                    onStart={() => void start(task.id)}
+                    onComplete={() => void handleQuickComplete(task)}
+                    onComment={() => openTask(task, true)}
                   />
                 ))}
               </div>
@@ -207,7 +321,10 @@ export function OperatorTodayView() {
                   title={`${v.label} · ${v.plate}`}
                   subtitle={v.station || undefined}
                   badges={[{ kind: 'blocked', label: 'Blockiert', tone: 'critical' }]}
-                  onClick={() => setSelectedVehicleId(v.vehicleId)}
+                  onClick={() => {
+                    setSelectedVehicleId(v.vehicleId);
+                    setActiveTab('vehicles');
+                  }}
                 />
               ))}
             </div>
@@ -217,18 +334,20 @@ export function OperatorTodayView() {
     </div>
   );
 
-  const detailPanel = selectedVehicleId ? (
-    <OperatorVehicleQuickView vehicleId={selectedVehicleId} onClose={() => setSelectedVehicleId(null)} />
-  ) : (
-    <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-border/60 bg-muted/10 p-8 text-center">
-      <p className="text-sm text-muted-foreground">Fahrzeug oder Aufgabe für Quick Actions wählen</p>
-    </div>
-  );
-
   return (
     <>
       {isTablet ? (
-        <OperatorTabletFrame list={mainContent} detail={detailPanel} showDetail={Boolean(selectedVehicleId)} />
+        <OperatorTabletFrame
+          list={mainContent}
+          detail={
+            <div className="flex h-full items-center justify-center rounded-2xl border border-dashed border-border/60 bg-muted/10 p-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                Aufgaben und Buchungen öffnen sich als Vollbild-Sheets auf dem Gerät.
+              </p>
+            </div>
+          }
+          showDetail={false}
+        />
       ) : (
         mainContent
       )}

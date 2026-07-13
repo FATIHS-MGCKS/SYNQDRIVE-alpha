@@ -50,7 +50,7 @@ export function OperatorVehiclesView() {
             className={`sq-press shrink-0 rounded-full border px-3 py-2 text-[11px] font-semibold min-h-[36px] ${
               filter === f.id
                 ? 'border-[color:var(--brand)]/30 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
-                : 'border-border text-muted-foreground'
+                : 'border-border surface-premium text-muted-foreground'
             }`}
           >
             {f.label}

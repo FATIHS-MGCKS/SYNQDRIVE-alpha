@@ -2,6 +2,12 @@ import type { ApiTask, VehicleHealthResponse } from '../../lib/api';
 import type { VehicleData } from '../../rental/data/vehicles';
 import type { TodayBookingApiRow } from '../../rental/components/dashboard/dashboardTypes';
 import {
+  buildOperatorTodayTaskEntries,
+  isVehicleCheckTask,
+  type OperatorTodayTaskEntry,
+} from '../tasks/operatorTodayTasks';
+import { sortOperatorTasks } from '../tasks/operatorTask.utils';
+import {
   bookingStatusLabel,
   normalizeBookingStatus,
   type BookingUiStatus,
@@ -55,18 +61,13 @@ export interface OperatorTodaySnapshot {
   dueNow: OperatorTodayBookingItem[];
   pickupsToday: OperatorTodayBookingItem[];
   returnsToday: OperatorTodayBookingItem[];
-  openTasks: ApiTask[];
+  openTaskEntries: OperatorTodayTaskEntry[];
+  totalOpenTasksCount: number;
   vehicleCheckTasks: ApiTask[];
   blockedVehicles: OperatorBlockedVehicleItem[];
 }
 
-const CHECK_TASK_TYPES = new Set<ApiTask['type']>([
-  'VEHICLE_INSPECTION',
-  'TIRE_CHECK',
-  'BRAKE_CHECK',
-  'BATTERY_CHECK',
-  'BOOKING_PREPARATION',
-]);
+export type { OperatorTodayTaskEntry };
 
 const DUE_NOW_WINDOW_MS = 2 * 60 * 60 * 1000;
 
@@ -199,16 +200,9 @@ export function buildOperatorTodaySnapshot(input: {
     .filter((item) => !item.isDone && item.isDueNow)
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
 
-  const openTasks = [...input.tasks].sort((a, b) => {
-    if (a.isOverdue !== b.isOverdue) return a.isOverdue ? -1 : 1;
-    const ad = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
-    const bd = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
-    return ad - bd;
-  });
-
-  const vehicleCheckTasks = openTasks.filter(
-    (t) => CHECK_TASK_TYPES.has(t.type) || t.blocksVehicleAvailability,
-  );
+  const sortedOpenTasks = sortOperatorTasks(input.tasks);
+  const openTaskEntries = buildOperatorTodayTaskEntries(sortedOpenTasks);
+  const vehicleCheckTasks = sortedOpenTasks.filter(isVehicleCheckTask);
 
   const blockedVehicles: OperatorBlockedVehicleItem[] = [];
   for (const v of input.fleetVehicles) {
@@ -227,7 +221,8 @@ export function buildOperatorTodaySnapshot(input: {
     dueNow,
     pickupsToday,
     returnsToday,
-    openTasks: openTasks.slice(0, 8),
+    openTaskEntries: openTaskEntries.slice(0, 8),
+    totalOpenTasksCount: sortedOpenTasks.length,
     vehicleCheckTasks: vehicleCheckTasks.slice(0, 6),
     blockedVehicles,
   };

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'operator-today-tasks-v49400-2026-07-13',
+    version: '4.9.400',
+    title: 'V4.9.400 — Operator App: Heute-Aufgaben klickbar, Gruppierung & UI-Parität',
+    summary: [
+      'P0: Aufgaben auf dem Heute-Tab öffnen jetzt das `task-detail`-Sheet (auch ohne `vehicleId`, auch auf dem Handy) — nicht mehr nur Fahrzeug-Quick-View bei gesetztem `vehicleId`.',
+      'P1: Buchungs-Lifecycle-Triplets (Vorbereiten/Reinigen/Dokumente) werden pro Buchung gruppiert; `OperatorTaskCard` mit Kennzeichen/Buchung; „Alle anzeigen“ springt zum Aufgaben-Tab; Fahrzeugchecks dedupliziert von Offenen Aufgaben.',
+      'P2: Content-Cards nutzen `surface-premium` (`OperatorGlassCard` variant content); Filter-Chips und sekundäre Actions mit `sq-btn`/`surface-premium` wie Rental.',
+      'P3: Aufgaben-Tab default scope `all`; serverseitige Filter via `buildTaskListApiFilters` + `api.tasks.list`; operative Hinweise aus `dashboard-insights` auf Heute.',
+    ],
+    reason:
+      'Audit: 8 „Offene Aufgaben“ wirkten wie Mock-Duplikate, waren nicht klickbar (Tablet-only Detail + vehicleId-Gate) und wichen visuell von Rental ab. Daten waren real (Booking-Automation), UX/Navigation fehlte.',
+    previousBehavior:
+      'Heute: `OperatorListCard` nur bei `vehicleId` → Fahrzeug-Tab; Triplets einzeln; Cap 8 ohne Kontext. Aufgaben-Tab: default `mine`, nur Client-Filter. Keine Insights auf Heute.',
+    details:
+      '`operatorTodayTasks.ts`, `OperatorBookingTaskGroupCard.tsx`, `OperatorTodayView.tsx`, `operatorData.ts`, `OperatorTasksView.tsx`, `OperatorGlassCard.tsx`, `useOperatorOperationalAlerts.ts`, `OperatorShellContext.tsx` (pendingTasksBookingId). Tests: `operatorTodayTasks.test.ts`.',
+    affectsArchitecture: true,
+    module: 'Operator',
+    createdAt: '2026-07-13T02:00:00.000Z',
+  },
+  {
     id: 'handover-telemetry-prefill-v49399-2026-07-13',
     version: '4.9.399',
     title: 'V4.9.399 — Übergabe/Rückgabe: Kilometer- und Tankstand aus Telemetrie',

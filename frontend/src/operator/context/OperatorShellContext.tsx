@@ -23,6 +23,8 @@ interface OperatorShellContextValue {
   setSelectedVehicleId: (id: string | null) => void;
   focusedBookingId: string | null;
   setFocusedBookingId: (id: string | null) => void;
+  pendingTasksBookingId: string | null;
+  setPendingTasksBookingId: (id: string | null) => void;
   scanQuery: string;
   setScanQuery: (q: string) => void;
   sheetAction: OperatorSheetAction | null;
@@ -69,6 +71,7 @@ export function OperatorShellProvider({ children }: { children: ReactNode }) {
   const [activeTab, setActiveTabState] = useState<OperatorTab>(initialTab);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(initialVehicleId);
   const [focusedBookingId, setFocusedBookingId] = useState<string | null>(initialBookingId);
+  const [pendingTasksBookingId, setPendingTasksBookingId] = useState<string | null>(null);
   const [scanQuery, setScanQuery] = useState(initialQuery);
   const [sheetAction, setSheetAction] = useState<OperatorSheetAction | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
@@ -106,6 +109,8 @@ export function OperatorShellProvider({ children }: { children: ReactNode }) {
       setSelectedVehicleId,
       focusedBookingId,
       setFocusedBookingId,
+      pendingTasksBookingId,
+      setPendingTasksBookingId,
       scanQuery,
       setScanQuery,
       sheetAction,
@@ -120,6 +125,7 @@ export function OperatorShellProvider({ children }: { children: ReactNode }) {
       activeTab,
       selectedVehicleId,
       focusedBookingId,
+      pendingTasksBookingId,
       scanQuery,
       sheetAction,
       syncState,

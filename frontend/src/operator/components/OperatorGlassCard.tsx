@@ -7,6 +7,8 @@ interface OperatorGlassCardProps {
   onClick?: () => void;
   as?: 'div' | 'button';
   disabled?: boolean;
+  /** `chrome` = nav/header frost; `content` = list/panel premium solid */
+  variant?: 'chrome' | 'content';
 }
 
 export function OperatorGlassCard({
@@ -15,9 +17,11 @@ export function OperatorGlassCard({
   onClick,
   as = 'div',
   disabled,
+  variant = 'content',
 }: OperatorGlassCardProps) {
+  const surface = variant === 'chrome' ? 'surface-frosted' : 'surface-premium';
   const base = cn(
-    'surface-frosted rounded-2xl border border-border/60 shadow-[var(--shadow-1)]',
+    `${surface} rounded-2xl border border-border/60 shadow-[var(--shadow-1)]`,
     onClick && !disabled && 'sq-press cursor-pointer active:scale-[0.99]',
     disabled && 'opacity-60 pointer-events-none',
     className,
