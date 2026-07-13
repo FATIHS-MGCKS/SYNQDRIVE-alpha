@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-kpi-polish-v49420-2026-07-13',
+    version: '4.9.420',
+    title: 'V4.9.420 — Dashboard: Twin-KPI-Luft, Ergebnis-Hint, Finanzen-Hülle',
+    summary: [
+      'Operative Twin-KPIs etwas kompakter (min-h 172px, weniger Innenabstand).',
+      'Ergebnis-KPI ohne Unterzeile „Umsatz minus Ausgaben“.',
+      'Alte Finanzen-Box (`BusinessPulse`) im Standard-Dashboard entfernt — Finanz-KPIs nur noch im Control Center.',
+    ],
+    reason: 'Twin-Höhe V4.9.418 war zu luftig; Ergebnis-Hint redundant; separate Finanzen-Hülle unten überflüssig nach V4.9.419.',
+    previousBehavior: 'Twin min-h 200px; Ergebnis mit profitHint; optionale Finanzen-Panel-Hülle unter Meldungen.',
+    details: 'ControlKpiStrip.tsx, financeKpiCards.tsx, DashboardView.tsx. Keine Datenlogik/API-Änderung.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T19:30:00.000Z',
+  },
+  {
     id: 'dashboard-finance-kpi-under-ops-v49419-2026-07-13',
     version: '4.9.419',
     title: 'V4.9.419 — Finanz-KPIs unter operative Twin-Karten',

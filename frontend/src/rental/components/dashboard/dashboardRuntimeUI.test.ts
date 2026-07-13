@@ -179,7 +179,8 @@ describe('dashboard runtime-only UI contracts', () => {
     expect(dashboardViewSrc).toMatch(/controlLeftColumn/);
     expect(dashboardViewSrc).toMatch(/notificationsMaxHeight/);
     expect(dashboardViewSrc).toMatch(/controlFinanceGrid/);
-    expect(dashboardViewSrc).toMatch(/financeSlot/);
+    expect(dashboardViewSrc).not.toMatch(/<BusinessPulse/);
+    expect(dashboardViewSrc).not.toMatch(/financeSlot/);
     expect(dashboardViewSrc).toMatch(/notificationsSlot/);
     expect(dashboardViewSrc).toMatch(/layout="sidebar"/);
     expect(dashboardViewSrc).toMatch(/<DashboardControlHeader vm=\{vm\}>[\s\S]*<ControlKpiStrip/);
@@ -195,6 +196,7 @@ describe('dashboard runtime-only UI contracts', () => {
     expect(businessPulseSrc).not.toMatch(/financeKpiGrid/);
     expect(financeStripSrc).toMatch(/PRIMARY_BUSINESS_METRICS/);
     expect(financeStripSrc).toMatch(/controlFinanceKpiGrid/);
+    expect(readFileSync(resolve(testDir, './financeKpiCards.tsx'), 'utf8')).not.toMatch(/profitHint/);
     expect(businessPulseSrc).not.toMatch(/Slice based|Slice-basiert|Business Pulse ·|Dokumente/);
     expect(businessPulseSrc).not.toMatch(/Einträge|document\$\{/);
     expect(businessPulseSrc).not.toMatch(/Source:|Quelle:/);

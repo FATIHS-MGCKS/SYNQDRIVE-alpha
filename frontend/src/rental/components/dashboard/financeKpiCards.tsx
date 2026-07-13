@@ -203,10 +203,6 @@ function countHint(
 ): string | undefined {
   if (!slice) return undefined;
 
-  if (slice.id === 'profit') {
-    return t('dashboard.profitHint');
-  }
-
   if (slice.count == null || slice.count <= 0) {
     return undefined;
   }

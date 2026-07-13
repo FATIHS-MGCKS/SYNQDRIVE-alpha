@@ -1,7 +1,6 @@
 import { useRef } from 'react';
 import {
   ActionQueue,
-  BusinessPulse,
   ControlKpiStrip,
   DashboardControlHeader,
   DashboardDrilldownDrawer,
@@ -129,13 +128,6 @@ export function DashboardView({
                   />
                 </div>
               </DashboardControlHeader>
-            </div>
-            <div className={DASHBOARD_LAYOUT.financeSlot}>
-              <BusinessPulse
-                businessPulseSlices={vm.businessPulseSlices}
-                onSelectBusinessMetric={vm.openBusinessMetricDrilldown}
-                onOpenBilling={() => onOpenFinanceView?.('invoices')}
-              />
             </div>
           </div>
           <div

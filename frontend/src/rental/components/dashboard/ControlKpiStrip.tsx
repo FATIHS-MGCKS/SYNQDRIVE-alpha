@@ -34,9 +34,9 @@ interface ControlKpiStripProps {
  */
 const VISIBLE_KPI_ORDER: DashboardSliceId[] = ['ready-to-rent', 'active-rented'];
 
-/** Twin KPI shell height — two-card strip reuses vertical space from removed lower row. */
-const TWIN_KPI_MIN_HEIGHT_EMBEDDED = 'min-h-[200px]';
-const TWIN_KPI_MIN_HEIGHT_STANDARD = 'min-h-[168px]';
+/** Twin KPI shell height — balanced between compact and airy. */
+const TWIN_KPI_MIN_HEIGHT_EMBEDDED = 'min-h-[172px]';
+const TWIN_KPI_MIN_HEIGHT_STANDARD = 'min-h-[156px]';
 
 function kpiStripGapClass(embedded: boolean): string {
   return embedded ? 'gap-3 sm:gap-3.5' : 'gap-1.5';
@@ -69,8 +69,8 @@ function kpiCardClass(
   const paddingClass =
     size === 'twin'
       ? embedded
-        ? 'rounded-2xl px-3 py-4'
-        : 'rounded-lg px-2.5 py-3'
+        ? 'rounded-2xl px-3 py-3.5'
+        : 'rounded-lg px-2.5 py-2.5'
       : embedded
         ? 'rounded-2xl px-3 py-3'
         : 'rounded-lg px-2.5 py-2';
@@ -113,7 +113,7 @@ const KPI_TITLE_CLASS = DASHBOARD_KPI_TITLE_CLASS;
 const KPI_NUMBER_CLASS = DASHBOARD_KPI_NUMBER_CLASS;
 const KPI_SECONDARY_TEXT_CLASS = DASHBOARD_KPI_HINT_CLASS;
 const KPI_MAIN_LABEL_CLASS = cn('mt-1.5 text-center', KPI_SECONDARY_TEXT_CLASS);
-const KPI_SEPARATOR_CLASS = 'mx-1.5 my-3 shrink-0 border-t border-border/30';
+const KPI_SEPARATOR_CLASS = 'mx-1.5 my-2.5 shrink-0 border-t border-border/30';
 const KPI_FOOTER_GRID_CLASS = 'relative grid shrink-0 grid-cols-2 items-center gap-y-0.5';
 const KPI_FOOTER_LABEL_CLASS = cn(
   'text-center whitespace-nowrap',
@@ -195,7 +195,7 @@ function ReadyForRentingKpiContent({ slice, disabled, locale }: ReadyForRentingK
         </div>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-1 py-2.5 text-center">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-1 py-2 text-center">
         <p className={cn(KPI_NUMBER_CLASS, getKpiValueGradientClass(mainTone, disabled))}>
           {formatKpiCount(readyCount, disabled)}
         </p>
@@ -274,7 +274,7 @@ function TodaysOperationsKpiContent({
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-1 py-2.5 text-center">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-1 py-2 text-center">
           <p className={cn(KPI_NUMBER_CLASS, getKpiValueGradientClass('neutral', disabled))}>
             {formatKpiCount(activeRentalsCount, disabled)}
           </p>
@@ -388,7 +388,7 @@ export function ControlKpiStrip({
   if (loading) {
     const gridClass = kpiGridClass(embedded);
     const skeletonCardClass = embedded
-      ? `${TWIN_KPI_MIN_HEIGHT_EMBEDDED} rounded-2xl p-4`
+      ? `${TWIN_KPI_MIN_HEIGHT_EMBEDDED} rounded-2xl p-3.5`
       : undefined;
 
     return (
