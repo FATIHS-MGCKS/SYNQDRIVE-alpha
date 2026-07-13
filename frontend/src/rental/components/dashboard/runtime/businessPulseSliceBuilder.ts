@@ -4,6 +4,7 @@ import {
   issuedRevenueInRange,
   openOutgoingReceivables,
   overdueOutgoingReceivables,
+  type InvoiceSlice,
 } from '../../../lib/financial-insights.logic';
 import {
   isExpenseInvoice,
@@ -49,6 +50,30 @@ function isPaid(status: string, inv: DashboardInvoice): boolean {
 
 function isCancelled(status: string): boolean {
   return status === 'CANCELLED' || status === 'CANCELED' || status === 'VOID';
+}
+
+function asInvoiceSlice(inv: DashboardInvoice): InvoiceSlice {
+  return {
+    id: inv.id,
+    type: inv.type,
+    status: inv.status ?? '',
+    totalCents: inv.totalCents,
+    currency: inv.currency ?? 'EUR',
+    invoiceDate: inv.invoiceDate,
+    dueDate: inv.dueDate ?? null,
+    paidAt: inv.paidAt ?? null,
+    createdAt: inv.createdAt,
+    customerId: inv.customerId ?? null,
+    vehicleId: inv.vehicleId ?? null,
+  };
+}
+
+function invoicesFromSlices(
+  invoices: DashboardInvoice[],
+  slices: InvoiceSlice[],
+): DashboardInvoice[] {
+  const byId = new Map(invoices.map((inv) => [inv.id, inv]));
+  return slices.map((slice) => byId.get(slice.id)).filter((inv): inv is DashboardInvoice => !!inv);
 }
 
 function monthWindow(now: Date): { from: Date; to: Date } {
@@ -243,18 +268,25 @@ export function buildBusinessPulseSlices(
   const { from: monthStart, to: monthEnd } = monthWindow(now);
   const periodLabel = monthLabel(now, input.locale);
 
+  const invoiceSlices = input.invoices.map(asInvoiceSlice);
   const rows = input.invoices.map((inv) => invoiceRow(inv, input.locale, now, currency));
   const rowByInvoiceId = new Map(rows.map((row) => [row.invoiceId, row]));
 
-  const revenueInvoices = issuedRevenueInRange(input.invoices, monthStart, monthEnd);
-  const expenseInvoices = expensesInRange(input.invoices, monthStart, monthEnd);
-  const outgoingRows = rowsForInvoices(revenueInvoices, rowByInvoiceId);
-  const incomingRows = rowsForInvoices(expenseInvoices, rowByInvoiceId);
+  const revenueInvoices = issuedRevenueInRange(invoiceSlices, monthStart, monthEnd);
+  const expenseInvoices = expensesInRange(invoiceSlices, monthStart, monthEnd);
+  const outgoingRows = rowsForInvoices(invoicesFromSlices(input.invoices, revenueInvoices), rowByInvoiceId);
+  const incomingRows = rowsForInvoices(invoicesFromSlices(input.invoices, expenseInvoices), rowByInvoiceId);
 
-  const openReceivableInvoices = openOutgoingReceivables(input.invoices, now);
-  const overdueReceivableInvoices = overdueOutgoingReceivables(input.invoices, now);
-  const openReceivables = rowsForInvoices(openReceivableInvoices, rowByInvoiceId);
-  const overdueReceivables = rowsForInvoices(overdueReceivableInvoices, rowByInvoiceId);
+  const openReceivableInvoices = openOutgoingReceivables(invoiceSlices, now);
+  const overdueReceivableInvoices = overdueOutgoingReceivables(invoiceSlices, now);
+  const openReceivables = rowsForInvoices(
+    invoicesFromSlices(input.invoices, openReceivableInvoices),
+    rowByInvoiceId,
+  );
+  const overdueReceivables = rowsForInvoices(
+    invoicesFromSlices(input.invoices, overdueReceivableInvoices),
+    rowByInvoiceId,
+  );
 
   const paidInvoices = rows.filter((row) => {
     if (row.state !== 'paid') return false;
