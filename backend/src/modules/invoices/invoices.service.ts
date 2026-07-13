@@ -106,11 +106,14 @@ export class InvoicesService {
 
   async findByOrg(
     orgId: string,
-    params?: { type?: string; status?: string; direction?: string },
+    params?: { type?: string; status?: string; direction?: string; includeVoid?: boolean },
   ) {
     const where: Prisma.OrgInvoiceWhereInput = { organizationId: orgId };
     if (params?.type) where.type = params.type as OrgInvoiceType;
     if (params?.status) where.status = params.status as OrgInvoiceStatus;
+    if (!params?.includeVoid && !params?.status) {
+      where.status = { notIn: ['VOID', 'CANCELLED', 'CREDITED'] };
+    }
     if (params?.direction === 'outgoing') {
       where.type = { in: ['OUTGOING_BOOKING', 'OUTGOING_MANUAL', 'OUTGOING_FINAL'] };
     } else if (params?.direction === 'incoming') {
