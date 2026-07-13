@@ -316,11 +316,42 @@ function BookingDrawerRowCard({
 
   return (
     <article className="rounded-lg border border-border/45 surface-premium/45 px-2.5 py-2 shadow-sm shadow-black/[0.02] transition-colors hover:border-border/65 hover:bg-muted/10">
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <h3 className="shrink-0 text-[12px] font-semibold tracking-[-0.01em] text-foreground">
+          {display.title}
+        </h3>
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-1">
+          {timingText ? (
+            <StatusChip
+              tone={severityTone(row.severity)}
+              className="px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide"
+            >
+              {timingText}
+            </StatusChip>
+          ) : null}
+          {readinessChip ? (
+            <StatusChip
+              tone={
+                readinessChip.tone === 'watch'
+                  ? 'watch'
+                  : readinessChip.tone === 'critical'
+                    ? 'critical'
+                    : readinessChip.tone === 'success'
+                      ? 'success'
+                      : readinessChip.tone === 'info'
+                        ? 'info'
+                        : 'neutral'
+              }
+              className="px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide"
+            >
+              {readinessChip.label}
+            </StatusChip>
+          ) : null}
+        </div>
+      </div>
+
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1 space-y-1">
-          <h3 className="truncate text-[12px] font-semibold tracking-[-0.01em] text-foreground">
-            {display.title}
-          </h3>
           {vehiclePlateModel ? (
             <DrawerVehiclePlateModelRow
               plate={vehiclePlateModel.plate}
@@ -383,51 +414,20 @@ function BookingDrawerRowCard({
           ) : null}
         </div>
 
-        <div className="flex shrink-0 flex-col items-end gap-1.5 self-stretch justify-between">
-          <div className="flex flex-wrap items-center justify-end gap-1">
-            {timingText ? (
-              <StatusChip
-                tone={severityTone(row.severity)}
-                className="px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide"
-              >
-                {timingText}
-              </StatusChip>
-            ) : null}
-            {readinessChip ? (
-              <StatusChip
-                tone={
-                  readinessChip.tone === 'watch'
-                    ? 'watch'
-                    : readinessChip.tone === 'critical'
-                      ? 'critical'
-                      : readinessChip.tone === 'success'
-                        ? 'success'
-                        : readinessChip.tone === 'info'
-                          ? 'info'
-                          : 'neutral'
-                }
-                className="px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide"
-              >
-                {readinessChip.label}
-              </StatusChip>
-            ) : null}
+        {canOpen ? (
+          <div className={drawerRowActionStackClassName}>
+            <DrawerRowActionButton
+              tone={canOpenBooking ? 'booking' : 'vehicle'}
+              onClick={() => {
+                if (row.bookingId && onOpenBooking) onOpenBooking(row.bookingId);
+                else if (row.vehicleId && onOpenVehicle) onOpenVehicle(row.vehicleId);
+                onClose();
+              }}
+            >
+              {ctaLabel}
+            </DrawerRowActionButton>
           </div>
-
-          {canOpen ? (
-            <div className={drawerRowActionStackClassName}>
-              <DrawerRowActionButton
-                tone={canOpenBooking ? 'booking' : 'vehicle'}
-                onClick={() => {
-                  if (row.bookingId && onOpenBooking) onOpenBooking(row.bookingId);
-                  else if (row.vehicleId && onOpenVehicle) onOpenVehicle(row.vehicleId);
-                  onClose();
-                }}
-              >
-                {ctaLabel}
-              </DrawerRowActionButton>
-            </div>
-          ) : null}
-        </div>
+        ) : null}
       </div>
     </article>
   );

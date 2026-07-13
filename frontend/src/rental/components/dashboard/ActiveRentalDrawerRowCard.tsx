@@ -109,12 +109,12 @@ export function ActiveRentalDrawerRowCard({
     <article className="rounded-lg border border-border/45 surface-premium/45 px-2.5 py-2 shadow-sm shadow-black/[0.02] transition-colors hover:border-border/65 hover:bg-muted/10">
       <div className="flex items-start gap-2">
         <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex min-w-0 flex-wrap items-baseline gap-x-1.5 gap-y-0.5">
-            <span className="shrink-0 text-[12px] font-bold tabular-nums tracking-[-0.01em] text-foreground">
+          <p className="whitespace-nowrap text-[10.5px] leading-snug">
+            <span className="text-[12px] font-bold tabular-nums tracking-[-0.01em] text-foreground">
               {vehicle.license || row.title}
             </span>
-            <span className="text-[10.5px] leading-snug text-muted-foreground">{fleetVehicleTitle(vehicle)}</span>
-          </div>
+            <span className="text-muted-foreground"> {fleetVehicleTitle(vehicle)}</span>
+          </p>
 
           <DrawerCustomerBnrRow
             customerName={customer}
@@ -207,7 +207,7 @@ export function ActiveRentalDrawerRowCard({
             </StatusChip>
           </div>
 
-          <div className={drawerRowActionStackClassName}>
+          <div className={cn(drawerRowActionStackClassName, 'mt-auto')}>
             {canOpenBooking ? (
               <DrawerRowActionButton
                 tone="booking"

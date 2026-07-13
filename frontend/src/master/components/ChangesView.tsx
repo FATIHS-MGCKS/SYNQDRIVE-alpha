@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'drawer-handover-layout-v49414-2026-07-13',
+    version: '4.9.414',
+    title: 'V4.9.414 — Übergaben-Drawer: kompakter Header & Zeilenlayout',
+    summary: [
+      'Uhrzeit + Badges in eigener Kopfzeile — mehr Breite für Kennzeichen/Modell.',
+      'Fahrzeugzeile **nowrap**; BNR rechts neben Kunde auf einer Zeile (vollständig).',
+    ],
+    reason: 'Badge-Spalte drückte Fahrzeug- und BNR-Zeilen unschön um.',
+    previousBehavior:
+      'Badges neben Inhalt; Fahrzeugjahr umbrochen; BNR unter Kundennamen.',
+    details:
+      '**Dateien**: `DashboardDrilldownDrawer.tsx`, `dashboardDrawerRowLines.tsx`.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T16:50:00.000Z',
+  },
+  {
     id: 'drawer-no-truncate-bnr-model-v49413-2026-07-13',
     version: '4.9.413',
     title: 'V4.9.413 — Drawer: BNR & Fahrzeugmodell ohne Abkürzung',

@@ -215,7 +215,7 @@ export function CompactFleetDrawerVehicleRow({
           </div>
 
           {canOpen ? (
-            <div className={drawerRowActionStackClassName}>
+            <div className={cn(drawerRowActionStackClassName, 'mt-auto')}>
               <DrawerRowActionButton
                 tone="vehicle"
                 onClick={() => {
