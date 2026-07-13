@@ -3,7 +3,6 @@ import { StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import type { VehicleHealthResponse } from '../../../lib/api';
 import { getShortModel, type VehicleData } from '../../data/vehicles';
-import { FleetEnergyIndicator } from '../fleet/FleetEnergyIndicator';
 import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
 import { bookingRef } from '../bookings/bookingUtils';
 import {
@@ -27,11 +26,6 @@ function fleetVehicleTitle(v: VehicleData): string {
   const model = typeof v.model === 'string' ? v.model : '';
   const shortModel = model ? getShortModel(model) : '';
   return [v.make, shortModel, v.year].filter(Boolean).join(' ') || model || '';
-}
-
-function vehicleStationLabel(v: VehicleData): string {
-  const named = (v as { stationName?: string | null }).stationName;
-  return named ?? v.station ?? v.activeReturnStationName ?? '';
 }
 
 function reasonChipClass(tone: 'success' | 'watch' | 'warning' | 'critical' | 'neutral'): string {
@@ -65,7 +59,6 @@ export function ActiveRentalDrawerRowCard({
   row,
   vehicle,
   health = null,
-  runtimeState,
   locale,
   onOpenVehicle,
   onOpenBooking,
@@ -79,7 +72,6 @@ export function ActiveRentalDrawerRowCard({
   const bookingId = vehicle.activeBookingId ?? row.bookingId;
   const bookingNumber = bookingId ? bookingRef(bookingId) : row.bookingRef;
   const customer = vehicle.activeCustomerName?.trim();
-  const station = vehicleStationLabel(vehicle) || row.stationLabel || runtimeState?.stationLabel;
   const canOpenBooking = Boolean(bookingId && onOpenBooking);
   const canOpenVehicle = Boolean(vehicle.id && onOpenVehicle);
 
@@ -102,9 +94,6 @@ export function ActiveRentalDrawerRowCard({
   const showKmRow = vehicle.activeKmIncluded != null && vehicle.activeKmIncluded > 0;
   const rentedTill = activeRentalRentedTillText(vehicle.activeReturnAt, locale);
 
-  const hasEnergy = display.energy.percent != null;
-  const showOpsMeta = hasEnergy || Boolean(display.telemetryLabel) || Boolean(station);
-
   return (
     <article className="rounded-lg border border-border/45 surface-premium/45 px-2.5 py-2 shadow-sm shadow-black/[0.02] transition-colors hover:border-border/65 hover:bg-muted/10">
       <div className="flex items-start gap-2">
@@ -121,44 +110,6 @@ export function ActiveRentalDrawerRowCard({
             bookingRef={bookingNumber}
             de={de}
           />
-
-          {showOpsMeta ? (
-            <div className="flex min-w-0 items-center gap-x-1 overflow-hidden text-[10px] tabular-nums text-muted-foreground">
-              {hasEnergy ? (
-                <span className="inline-flex shrink-0 items-center whitespace-nowrap">
-                  <FleetEnergyIndicator
-                    percent={display.energy.percent}
-                    isElectric={display.energy.kind === 'battery'}
-                    tone={display.energy.tone}
-                  />
-                </span>
-              ) : null}
-              {hasEnergy && display.telemetryLabel ? (
-                <span aria-hidden className="shrink-0 text-muted-foreground/50">·</span>
-              ) : null}
-              {display.telemetryLabel ? (
-                <span
-                  className={cn(
-                    'min-w-0 shrink truncate',
-                    display.showTelemetryWarning && 'text-[color:var(--status-watch)]',
-                  )}
-                >
-                  {display.telemetryLabel}
-                </span>
-              ) : null}
-              {station ? (
-                <>
-                  {(hasEnergy || display.telemetryLabel) ? (
-                    <span aria-hidden className="shrink-0 text-muted-foreground/50">·</span>
-                  ) : null}
-                  <span className="inline-flex min-w-0 max-w-[46%] shrink items-center gap-0.5">
-                    <Icon name="map-pin" className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{station}</span>
-                  </span>
-                </>
-              ) : null}
-            </div>
-          ) : null}
 
           {showKmRow ? (
             <div className="flex items-center gap-2 pt-0.5">

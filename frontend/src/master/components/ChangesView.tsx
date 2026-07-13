@@ -35,6 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'active-rental-drawer-trim-v49416-2026-07-13',
+    version: '4.9.416',
+    title: 'V4.9.416 — Aktive Vermietungen: BNR inline & ohne Telemetrie-Zeile',
+    summary: [
+      'BNR direkt neben Kundennamen (`inline-flex`, kein Leerraum dazwischen).',
+      'Telemetrie-Zeile (Tank, Standby, Station) im Aktive-Vermietungen-Drawer entfernt.',
+    ],
+    reason: 'Mietkontext kompakter; operative Fleet-Details dort redundant.',
+    previousBehavior: 'BNR weit rechts; extra Zeile mit Tank/Standby/Station.',
+    details: '**Dateien**: `ActiveRentalDrawerRowCard.tsx`, `dashboardDrawerRowLines.tsx`.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T17:00:00.000Z',
+  },
+  {
     id: 'drawer-bnr-inline-adjacent-v49415-2026-07-13',
     version: '4.9.415',
     title: 'V4.9.415 — Drawer: BNR direkt hinter Kundennamen',
