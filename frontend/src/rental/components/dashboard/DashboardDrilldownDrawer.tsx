@@ -774,6 +774,7 @@ export function DashboardDrilldownDrawer({
         ) : undefined
       }
       widthClassName="sm:max-w-xl"
+      closeLabel={de ? 'Schließen' : 'Close'}
       footer={
         businessSlice && onOpenBilling ? (
           <button

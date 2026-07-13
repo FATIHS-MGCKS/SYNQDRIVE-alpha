@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-drawer-close-v49402-2026-07-13',
+    version: '4.9.402',
+    title: 'V4.9.402 — Dashboard-Drilldown: Schließen-Button mobil + Desktop-Fix',
+    summary: [
+      'Fix: KPI-Drilldown-Drawer (Mietbereitschaft, Heutige Operationen, Finanzen) haben jetzt ein sichtbares **X** oben rechts — auch auf Mobile.',
+      'Ursache: Standard-Sheet-Close lag unter dem sticky `DetailDrawer`-Header (`z-10`) und war schwer sichtbar/klickbar.',
+      '`DetailDrawer`: eigener Header-Close-Button; Default-Sheet-X deaktiviert (`showCloseButton={false}`).',
+      'Globales `SheetContent`-Close (andere Sheets): `z-[60]`, höherer Kontrast.',
+    ],
+    reason:
+      'Nutzer konnten Drilldown-Sidebar/Drawer auf dem Handy nicht schließen; Desktop-X reagierte teils nicht wegen überlagerndem Header.',
+    previousBehavior:
+      'Nur Radix `SheetPrimitive.Close` absolut positioniert ohne ausreichendes z-index; DetailDrawer-Header überdeckte Klickfläche.',
+    details:
+      '`detail-drawer.tsx`, `sheet.tsx`, `DashboardDrilldownDrawer.tsx` (closeLabel de/en).',
+    affectsArchitecture: false,
+    module: 'Dashboard',
+    createdAt: '2026-07-13T12:50:00.000Z',
+  },
+  {
     id: 'system-theme-preference-v49401-2026-07-13',
     version: '4.9.401',
     title: 'V4.9.401 — Design: System-Hell/Dunkel-Erkennung + Nutzerwahl',
