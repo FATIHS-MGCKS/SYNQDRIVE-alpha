@@ -16,26 +16,6 @@ import type {
 } from '../../lib/fleet-operator-panel';
 import { fleetCommandReasonChipClass, fleetCommandRowSurfaceClass } from './fleetOperatorUi';
 
-function commandSeverityHealthChip(
-  severity: FleetCommandRowSeverity,
-  locale: string,
-): { label: string; tone: StatusTone } {
-  const de = locale === 'de';
-  if (severity === 'critical') {
-    return { label: de ? 'Kritisch' : 'Critical', tone: 'critical' };
-  }
-  if (severity === 'warning') {
-    return { label: de ? 'Warnung' : 'Warning', tone: 'watch' };
-  }
-  return { label: de ? 'Gut' : 'Good', tone: 'success' };
-}
-
-function commandSeverityRentalTone(severity: FleetCommandRowSeverity): StatusTone {
-  if (severity === 'critical') return 'critical';
-  if (severity === 'warning') return 'watch';
-  return 'success';
-}
-
 function fleetVehicleTitle(v: VehicleData): string {
   const model = typeof v.model === 'string' ? v.model : '';
   const shortModel = model ? getShortModel(model) : '';
@@ -93,18 +73,8 @@ export function FleetOperatorRow({
     locale,
   });
   const { healthDisplay, rentalDisplay, reasonBadge } = display;
-  const severityHealth = commandSeverityHealthChip(commandSeverity, locale);
-  const rowHealth =
-    commandSeverity === 'good'
-      ? healthDisplay
-      : { label: severityHealth.label, tone: severityHealth.tone };
-  const rowRental =
-    commandSeverity === 'good'
-      ? rentalDisplay
-      : {
-          ...rentalDisplay,
-          tone: commandSeverityRentalTone(commandSeverity),
-        };
+  const rowHealth = healthDisplay;
+  const rowRental = rentalDisplay;
 
   const dimmed = display.showTelemetryWarning && v.status === 'Available';
 

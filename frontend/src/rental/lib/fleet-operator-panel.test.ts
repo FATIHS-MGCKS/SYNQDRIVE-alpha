@@ -384,6 +384,21 @@ describe('fleet-operator-panel', () => {
     expect(resolveFleetCommandRowSeverity(ctx)).toBe('good');
   });
 
+  it('resolveFleetCommandRowSeverity does not elevate overdue pickup to warning', () => {
+    const [ctx] = buildFleetVehicleContexts(
+      [
+        vehicle({
+          status: 'Reserved',
+          reservedBookingId: 'b1',
+          reservedIsOverdue: true,
+          healthStatus: 'Good Health',
+        }),
+      ],
+      () => null,
+    );
+    expect(resolveFleetCommandRowSeverity(ctx)).toBe('good');
+  });
+
   it('resolveFleetCommandRowSeverity honors canonical critical vehicle ids', () => {
     const [ctx] = buildFleetVehicleContexts([vehicle({ id: 'x' })], () => null);
     expect(resolveFleetCommandRowSeverity(ctx)).toBe('good');

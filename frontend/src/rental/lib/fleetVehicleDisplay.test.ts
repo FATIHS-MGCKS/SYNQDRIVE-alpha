@@ -322,6 +322,22 @@ describe('health vs rental display separation', () => {
     expect(reserved.rentalDisplay.label).toBe('Reserved');
   });
 
+  it('overdue pickup does not downgrade health or operational status to warning', () => {
+    const d = resolveFleetVehicleDisplayState(
+      vehicle({
+        status: 'Reserved',
+        reservedBookingId: 'r1',
+        reservedIsOverdue: true,
+        healthStatus: 'Good Health',
+      }),
+      { locale: 'de' },
+    );
+    expect(d.primaryStatus).toBe('reserved');
+    expect(d.healthDisplay.status).toBe('good');
+    expect(d.healthDisplay.label).toBe('Gut');
+    expect(d.reasonBadge?.text).toBe('Abholung überfällig');
+  });
+
   it('hard offline available → Not Ready rental, but health stays Good (separate concerns)', () => {
     const d = resolveFleetVehicleDisplayState(
       vehicle({ onlineStatus: 'OFFLINE', isFresh: false, lastSignal: hoursAgoIso(49) }),

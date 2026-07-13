@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-health-pickup-decouple-v49408-2026-07-13',
+    version: '4.9.408',
+    title: 'V4.9.408 — Flotte: Überfällige Abholung beeinflusst Health-Badge nicht',
+    summary: [
+      'Fix: **Überfällige Abholung** erzeugt kein Health-**Warnung**-Badge mehr (z. B. WOB L 7503).',
+      'Pickup/Rückgabe-Überfälligkeit bleibt operativ: Reason-Chip „Abholung überfällig“, Timing im Übergaben-Drawer.',
+      'Health-Chips in Fleet Command zeigen nur noch echte Vehicle-Health-Daten.',
+    ],
+    reason: 'Operative Pickup-Delays und Fahrzeuggesundheit sind getrennte Signale — Vermischung war missverständlich.',
+    previousBehavior:
+      'reservedIsOverdue setzte operational warning, Health-Chip „Warnung“ und orange Rental-Tönung.',
+    details:
+      '**Dateien**: `fleetVehicleDisplay.ts`, `fleetVisualState.ts`, `fleet-operator-panel.ts`, `FleetOperatorRow.tsx`.',
+    affectsArchitecture: false,
+    module: 'Fleet',
+    createdAt: '2026-07-13T14:25:00.000Z',
+  },
+  {
     id: 'pickup-drawer-handover-health-v49407-2026-07-13',
     version: '4.9.407',
     title: 'V4.9.407 — Übergaben-Drawer: Header, CTA-Ausrichtung & Health-Badge',

@@ -102,7 +102,6 @@ export function resolveFleetCommandRowSeverity(
   if (health?.overall_state === 'warning') return 'warning';
   if (visual.attentionLevel === 'warning') return 'warning';
   if (v.healthStatus === 'Warning') return 'warning';
-  if (v.reservedIsOverdue) return 'warning';
   if (hasWarningHealthModule(health)) return 'warning';
   if (hasCriticalOrWarningDtc(health) && health?.modules?.error_codes?.state === 'warning') {
     return 'warning';

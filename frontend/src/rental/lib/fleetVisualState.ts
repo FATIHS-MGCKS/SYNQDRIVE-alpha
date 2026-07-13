@@ -357,7 +357,7 @@ export function deriveFleetVisualState(
     visualStatus = 'no_location';
   } else if (
     rentalStatus === 'available' &&
-    (healthCritical || healthWarning || vehicle.reservedIsOverdue)
+    (healthCritical || healthWarning)
   ) {
     visualStatus = 'attention';
   } else if (rentalStatus === 'available') {
@@ -377,7 +377,6 @@ export function deriveFleetVisualState(
   } else if (
     isOffline ||
     healthWarning ||
-    vehicle.reservedIsOverdue ||
     vehicle.maintenanceUrgency === 'planned'
   ) {
     attentionLevel = 'warning';

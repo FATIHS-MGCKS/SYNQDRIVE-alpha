@@ -217,9 +217,9 @@ function resolveOperationalStatus(
   if (healthCritical) return 'critical';
   if (rentalBlocked || visual.isBlocked) return 'blocked';
   if (v.status === 'Maintenance') return 'maintenance';
-  if (v.activeIsOverdue || v.reservedIsOverdue || healthWarning) return 'warning';
-  if (v.status === 'Active Rented') return 'active';
+  if (v.status === 'Active Rented') return v.activeIsOverdue ? 'warning' : 'active';
   if (v.status === 'Reserved') return 'reserved';
+  if (v.activeIsOverdue || healthWarning) return 'warning';
   if (v.status === 'Available') return 'ready';
   return 'unknown';
 }
@@ -455,7 +455,7 @@ function buildReasonBadge(
   const tone: StatusTone =
     health === 'critical' || blocked || v.activeIsOverdue
       ? 'critical'
-      : health === 'warning' || v.reservedIsOverdue
+      : health === 'warning'
         ? 'watch'
         : 'neutral';
 
