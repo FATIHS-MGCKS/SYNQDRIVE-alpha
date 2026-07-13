@@ -7,22 +7,34 @@
  * Apply fixes:
  *   CONFIRM=1 ORG_ID=<uuid> npx ts-node -r tsconfig-paths/register scripts/ops/repair-duplicate-booking-invoices.ts
  */
+import * as fs from 'fs';
+import * as path from 'path';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../../src/app.module';
 import { BookingInvoiceLifecycleService } from '../../src/modules/invoices/booking-invoice-lifecycle.service';
-import { InvoicesModule } from '../../src/modules/invoices/invoices.module';
 import { PrismaService } from '../../src/shared/database/prisma.service';
+
+{
+  const envPath = path.resolve(__dirname, '..', '..', '.env');
+  if (fs.existsSync(envPath)) {
+    for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+      if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^"(.*)"$/, '$1');
+    }
+  }
+}
 
 async function main() {
   const orgId = process.env.ORG_ID?.trim();
   const confirm = process.env.CONFIRM === '1' || process.env.CONFIRM === 'true';
 
-  const app = await NestFactory.createApplicationContext(AppModule, {
+  const appModule = await AppModule.forRootAsync();
+  const app = await NestFactory.createApplicationContext(appModule, {
     logger: ['error', 'warn', 'log'],
   });
 
   try {
-    const lifecycle = app.select(InvoicesModule).get(BookingInvoiceLifecycleService);
+    const lifecycle = app.get(BookingInvoiceLifecycleService);
     const prisma = app.get(PrismaService);
 
     const orgIds = orgId
