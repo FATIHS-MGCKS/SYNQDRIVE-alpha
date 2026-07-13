@@ -103,6 +103,8 @@ export interface DashboardInvoice {
   type: string;
   status?: string;
   totalCents: number | null;
+  paidCents?: number | null;
+  outstandingCents?: number | null;
   currency?: string | null;
   invoiceDate: string | null;
   dueDate?: string | null;

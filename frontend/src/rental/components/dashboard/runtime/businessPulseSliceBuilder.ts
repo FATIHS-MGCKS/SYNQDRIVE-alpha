@@ -1,7 +1,12 @@
 import type { DashboardInvoice } from '../dashboardTypes';
 import {
+  expensesInRange,
+  issuedRevenueInRange,
+  openOutgoingReceivables,
+  overdueOutgoingReceivables,
+} from '../../../lib/financial-insights.logic';
+import {
   isExpenseInvoice,
-  isOutgoingInvoice,
   isOverdueReceivable,
   isReceivableInvoice,
   isRevenueInvoice,
@@ -46,6 +51,31 @@ function isCancelled(status: string): boolean {
   return status === 'CANCELLED' || status === 'CANCELED' || status === 'VOID';
 }
 
+function monthWindow(now: Date): { from: Date; to: Date } {
+  return {
+    from: new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0),
+    to: now,
+  };
+}
+
+function monthLabel(now: Date, locale: string): string {
+  return now.toLocaleDateString(locale === 'de' ? 'de-DE' : 'en-US', {
+    month: 'long',
+    year: 'numeric',
+  });
+}
+
+/** Open receivable balance — outstanding when available, else total minus paid. */
+export function receivableAmountCents(inv: DashboardInvoice): number {
+  if (typeof inv.outstandingCents === 'number') {
+    return Math.max(0, inv.outstandingCents);
+  }
+  const total = inv.totalCents ?? 0;
+  const paid = inv.paidCents ?? 0;
+  if (paid > 0) return Math.max(0, total - paid);
+  return Math.max(0, total);
+}
+
 export function deriveBusinessDocumentState(
   inv: DashboardInvoice,
   now: Date = new Date(),
@@ -86,9 +116,19 @@ function rowSubtitle(inv: DashboardInvoice): string | undefined {
   return [inv.status, inv.invoiceDate || inv.createdAt].filter(Boolean).join(' · ') || undefined;
 }
 
-function invoiceRow(inv: DashboardInvoice, locale: string, now: Date, fallbackCurrency: string): BusinessPulseRow {
+function invoiceRow(
+  inv: DashboardInvoice,
+  locale: string,
+  now: Date,
+  fallbackCurrency: string,
+  amountCents?: number,
+): BusinessPulseRow {
   const state = deriveBusinessDocumentState(inv, now);
   const currency = (inv.currency || fallbackCurrency || 'EUR').toUpperCase();
+  const resolvedAmount =
+    amountCents ??
+    (isReceivableInvoice(inv) ? receivableAmountCents(inv) : inv.totalCents ?? undefined);
+
   return {
     id: `invoice:${inv.id}`,
     invoiceId: inv.id,
@@ -96,7 +136,7 @@ function invoiceRow(inv: DashboardInvoice, locale: string, now: Date, fallbackCu
     ...(inv.vehicleId ? { vehicleId: inv.vehicleId } : {}),
     title: rowTitle(inv, locale),
     ...(rowSubtitle(inv) ? { subtitle: rowSubtitle(inv) } : {}),
-    ...(typeof inv.totalCents === 'number' ? { amountCents: inv.totalCents } : {}),
+    ...(typeof resolvedAmount === 'number' ? { amountCents: resolvedAmount } : {}),
     currency,
     state,
     dueDate: inv.dueDate ?? null,
@@ -200,21 +240,27 @@ export function buildBusinessPulseSlices(
 ): Record<BusinessMetricId, BusinessPulseSlice> {
   const now = input.now ?? new Date();
   const currency = input.currency ?? 'EUR';
+  const { from: monthStart, to: monthEnd } = monthWindow(now);
+  const periodLabel = monthLabel(now, input.locale);
+
   const rows = input.invoices.map((inv) => invoiceRow(inv, input.locale, now, currency));
   const rowByInvoiceId = new Map(rows.map((row) => [row.invoiceId, row]));
 
-  const revenueInvoices = input.invoices.filter(isRevenueInvoice);
-  const expenseInvoices = input.invoices.filter(isExpenseInvoice);
+  const revenueInvoices = issuedRevenueInRange(input.invoices, monthStart, monthEnd);
+  const expenseInvoices = expensesInRange(input.invoices, monthStart, monthEnd);
   const outgoingRows = rowsForInvoices(revenueInvoices, rowByInvoiceId);
   const incomingRows = rowsForInvoices(expenseInvoices, rowByInvoiceId);
 
-  const receivableInvoices = input.invoices.filter(isReceivableInvoice);
-  const openReceivableInvoices = receivableInvoices.filter((inv) => !isOverdueReceivable(inv, now));
-  const overdueReceivableInvoices = receivableInvoices.filter((inv) => isOverdueReceivable(inv, now));
+  const openReceivableInvoices = openOutgoingReceivables(input.invoices, now);
+  const overdueReceivableInvoices = overdueOutgoingReceivables(input.invoices, now);
   const openReceivables = rowsForInvoices(openReceivableInvoices, rowByInvoiceId);
   const overdueReceivables = rowsForInvoices(overdueReceivableInvoices, rowByInvoiceId);
 
-  const paidInvoices = outgoingRows.filter((row) => row.state === 'paid');
+  const paidInvoices = rows.filter((row) => {
+    if (row.state !== 'paid') return false;
+    const inv = input.invoices.find((item) => item.id === row.invoiceId);
+    return inv ? isRevenueInvoice(inv) : false;
+  });
   const draftInvoices = rows.filter((row) => row.state === 'draft');
   const failedPayments = rows.filter((row) => row.state === 'failed' || row.state === 'disputed');
 
@@ -230,6 +276,7 @@ export function buildBusinessPulseSlices(
       locale: input.locale,
       valueCents: revenueCents,
       tone: revenueCents > 0 ? 'success' : 'neutral',
+      hint: label(input.locale, `${periodLabel} · MTD`, `${periodLabel} · MTD`),
     }),
     profit: makeSlice({
       id: 'profit',
@@ -256,7 +303,7 @@ export function buildBusinessPulseSlices(
       valueCents: profitCents,
       count: null,
       tone: profitCents >= 0 ? 'success' : 'critical',
-      hint: label(input.locale, 'Umsatz minus Ausgaben', 'Revenue minus expenses'),
+      hint: periodLabel,
     }),
     expenses: makeSlice({
       id: 'expenses',
@@ -265,6 +312,7 @@ export function buildBusinessPulseSlices(
       locale: input.locale,
       valueCents: expensesCents,
       tone: expensesCents > 0 ? 'watch' : 'neutral',
+      hint: label(input.locale, `${periodLabel} · MTD`, `${periodLabel} · MTD`),
     }),
     'open-receivables': makeSlice({
       id: 'open-receivables',

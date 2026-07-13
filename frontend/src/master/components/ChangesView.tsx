@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'finance-kpi-mtd-wiring-v49421-2026-07-13',
+    version: '4.9.421',
+    title: 'V4.9.421 — Finanz-KPIs: MTD-Verdrahtung & offene Salden',
+    summary: [
+      '`buildBusinessPulseSlices` nutzt wieder dieselbe MTD-Logik wie Financial Insights (`issuedRevenueInRange`, `expensesInRange`).',
+      'Offene/überfällige Forderungen summieren `outstandingCents` (Fallback: total − paid), nicht blind `totalCents`.',
+      'Entwürfe zählen nicht in Umsatz/Ergebnis/Forderungen — nur ausgestellte Rechnungen im Monat bzw. offene Salden.',
+    ],
+    reason: 'Dashboard-Finanz-KPIs zeigten dauerhaft 0 €, obwohl Rechnungen existierten: Builder summierte lifetime/ohne MTD-Filter falsch; Forderungen ignorierten Teilzahlungen.',
+    previousBehavior: 'Alle nicht-Draft-Rechnungen lifetime in Umsatz; Forderungen auf Bruttobetrag ohne outstanding.',
+    details:
+      'businessPulseSliceBuilder.ts, dashboardTypes.ts (paid/outstanding), Tests. Keine API-Änderung — gleiche `api.invoices.list`-Quelle wie Invoices/Financial Insights.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T20:00:00.000Z',
+  },
+  {
     id: 'dashboard-kpi-polish-v49420-2026-07-13',
     version: '4.9.420',
     title: 'V4.9.420 — Dashboard: Twin-KPI-Luft, Ergebnis-Hint, Finanzen-Hülle',
