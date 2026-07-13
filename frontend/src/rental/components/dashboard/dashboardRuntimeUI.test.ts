@@ -337,7 +337,7 @@ describe('dashboard runtime-only UI contracts', () => {
     const pickupAt = new Date(NOW.getTime() + 45 * 60_000).toISOString();
     const runtime = buildDashboardRuntimeModel({
       locale: 'de',
-      fleetVehicles: [vehicle({ id: 'pickup-1', license: 'WOB L 7503' })],
+      fleetVehicles: [vehicle({ id: 'pickup-1', license: 'WOB L 7503', status: 'Reserved' })],
       pickupItems: [
         {
           bookingId: 'booking-uuid-abc123',
@@ -370,8 +370,8 @@ describe('dashboard runtime-only UI contracts', () => {
     expect(pickupRow?.meta).toBe('WOB L 7503 · VW Golf');
     expect(pickupRow?.stationLabel).toBe('Zentrale');
     expect(pickupRow?.statusLabel).toBe('In 45 Min.');
-    expect(pickupRow?.readinessLabel).toBe('Bereit');
-    expect(pickupRow?.readinessTone).toBe('success');
+    expect(pickupRow?.readinessLabel).toBe('Reserviert');
+    expect(pickupRow?.readinessTone).toBe('info');
     expect(pickupRow?.bookingId).toBe('booking-uuid-abc123');
     expect(pickupRow?.primaryActionLabel).toBe('Buchung öffnen');
   });
@@ -380,7 +380,7 @@ describe('dashboard runtime-only UI contracts', () => {
     const overdueAt = new Date(NOW.getTime() - (5 * 60 + 17) * 60_000).toISOString();
     const deRuntime = buildDashboardRuntimeModel({
       locale: 'de',
-      fleetVehicles: [vehicle({ id: 'pickup-1', license: 'WOB L 7503', cleaningStatus: 'Needs Cleaning' })],
+      fleetVehicles: [vehicle({ id: 'pickup-1', license: 'WOB L 7503', status: 'Reserved', cleaningStatus: 'Needs Cleaning' })],
       pickupItems: [
         {
           bookingId: 'b-overdue',
@@ -406,11 +406,12 @@ describe('dashboard runtime-only UI contracts', () => {
       ?.find((group) => group.id === 'pickups-today')
       ?.rows[0];
     expect(deRow?.statusLabel).toBe('Seit 5 Std. 17 Min.');
-    expect(deRow?.readinessLabel).toBe('Nicht bereit');
+    expect(deRow?.readinessLabel).toBe('Reserviert');
+    expect(deRow?.readinessTone).toBe('info');
 
     const enRuntime = buildDashboardRuntimeModel({
       locale: 'en',
-      fleetVehicles: [vehicle({ id: 'pickup-1', license: 'WOB L 7503' })],
+      fleetVehicles: [vehicle({ id: 'pickup-1', license: 'WOB L 7503', status: 'Reserved' })],
       pickupItems: [
         {
           bookingId: 'b-en',

@@ -35,6 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pickup-drawer-reserved-badge-v49405-2026-07-13',
+    version: '4.9.405',
+    title: 'V4.9.405 — Übergaben-Drawer: Reserviert-Badge statt Nicht bereit',
+    summary: [
+      'Fix: Übergaben-Drawer zeigt bei reservierten Fahrzeugen **Reserviert** (wie Flottenansicht), nicht mehr **Nicht bereit**.',
+      'Runtime-Badge folgt `operationalStatus` / `bookingState` analog `fleetVehicleDisplay` (Reserved → info, Active → Aktiv).',
+    ],
+    reason: 'Reservierte Abhol-Fahrzeuge sind operativ reserviert — „Nicht bereit“ war irreführend.',
+    previousBehavior: 'Reservierte Pickup-Fahrzeuge bekamen das Badge „Nicht bereit“.',
+    details: '**Datei**: `dashboardSliceBuilder.ts` (`operationReadiness`). Keine Backend-Änderung.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T13:50:00.000Z',
+  },
+  {
     id: 'pickup-drawer-labels-v49404-2026-07-13',
     version: '4.9.404',
     title: 'V4.9.404 — Übergaben-Drawer: Uhrzeit, Seit/In, Kunde & Bereit-Badge',

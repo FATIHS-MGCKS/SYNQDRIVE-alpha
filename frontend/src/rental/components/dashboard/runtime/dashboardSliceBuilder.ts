@@ -272,19 +272,33 @@ function operationReadiness(
   state: VehicleRuntimeState | undefined,
   item: PickupTileItem | ReturnTileItem,
   locale: string,
+  kind: 'pickup' | 'return',
 ): Pick<DashboardSliceRow, 'readinessLabel' | 'readinessTone'> | undefined {
   if (state) {
-    return state.isReadyToRent
-      ? { readinessLabel: label(locale, 'Bereit', 'Ready'), readinessTone: 'success' }
-      : { readinessLabel: label(locale, 'Nicht bereit', 'Not ready'), readinessTone: 'watch' };
-  }
-  const needsAttention =
-    ('needsCleaning' in item && item.needsCleaning) || item.hasAlert || item.hasError;
-  if (needsAttention) {
+    const isReserved =
+      state.operationalStatus === 'reserved'
+      || (kind === 'pickup' && (state.bookingState === 'reserved' || state.bookingState === 'pickup_due_soon'));
+    if (isReserved) {
+      return { readinessLabel: label(locale, 'Reserviert', 'Reserved'), readinessTone: 'info' };
+    }
+    const isActiveRental =
+      state.operationalStatus === 'active_rented'
+      || state.bookingState === 'active_rented'
+      || state.bookingState === 'return_due_soon'
+      || state.bookingState === 'return_overdue';
+    if (isActiveRental) {
+      return { readinessLabel: label(locale, 'Aktiv', 'Active'), readinessTone: 'info' };
+    }
+    if (state.isReadyToRent) {
+      return { readinessLabel: label(locale, 'Bereit', 'Ready'), readinessTone: 'success' };
+    }
     return { readinessLabel: label(locale, 'Nicht bereit', 'Not ready'), readinessTone: 'watch' };
   }
-  if (item.vehicleId) {
-    return { readinessLabel: label(locale, 'Bereit', 'Ready'), readinessTone: 'success' };
+  if (kind === 'pickup') {
+    return { readinessLabel: label(locale, 'Reserviert', 'Reserved'), readinessTone: 'info' };
+  }
+  if (kind === 'return' && item.vehicleId) {
+    return { readinessLabel: label(locale, 'Aktiv', 'Active'), readinessTone: 'info' };
   }
   return undefined;
 }
@@ -298,7 +312,7 @@ function pickupRow(
 ): DashboardSliceRow {
   const timingLabel = buildOperationTimingLabel(item, item.startDate, nowMs, locale);
   const vehicleLine = operationVehicleLine(item);
-  const readiness = operationReadiness(state, item, locale);
+  const readiness = operationReadiness(state, item, locale, 'pickup');
   const ref = item.bookingId ? bookingRef(item.bookingId) : undefined;
   return {
     id: `booking:${item.bookingId || stableFallbackId('pickup', item)}:${variant}`,
@@ -328,7 +342,7 @@ function returnRow(
   const timingLabel = buildOperationTimingLabel(item, item.endDate, nowMs, locale);
   const vehicleLine = operationVehicleLine(item);
   const reasons = variant === 'return-overdue' ? state?.criticalReasons ?? [] : state?.warningReasons ?? [];
-  const readiness = operationReadiness(state, item, locale);
+  const readiness = operationReadiness(state, item, locale, 'return');
   const ref = item.bookingId ? bookingRef(item.bookingId) : undefined;
   return {
     id: `booking:${item.bookingId || stableFallbackId('return', item)}:${variant}`,
