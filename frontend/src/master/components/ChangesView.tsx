@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pickup-drawer-handover-health-v49407-2026-07-13',
+    version: '4.9.407',
+    title: 'V4.9.407 — Übergaben-Drawer: Header, CTA-Ausrichtung & Health-Badge',
+    summary: [
+      'Drawer-Header: **heutiges Datum** und **Station** ergänzt.',
+      '„Zur Buchung“ bündig mit Stationszeile; Reserviert-Badge farbcodiert nach **Vehicle Health** (grün/orange/rot).',
+      'Fahrzeug-Warnungen unten wie in der Fleet-Liste; Überfälligkeit nur im Timing-Chip.',
+    ],
+    reason: 'Operative Übergaben brauchen Stations-/Datums-Kontext und health-basierte Übergabefreigabe.',
+    previousBehavior:
+      'Kein Datum/Station im Header; CTA zu tief; Reserviert grau; Timing-Warnungen vermischt mit Health.',
+    details:
+      '**Dateien**: `DashboardDrilldownDrawer.tsx`, `dashboardDrilldownRowDisplay.ts`.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T14:15:00.000Z',
+  },
+  {
     id: 'pickup-drawer-cta-layout-v49406-2026-07-13',
     version: '4.9.406',
     title: 'V4.9.406 — Übergaben-Drawer: Zur Buchung unten rechts, Badges oben rechts',

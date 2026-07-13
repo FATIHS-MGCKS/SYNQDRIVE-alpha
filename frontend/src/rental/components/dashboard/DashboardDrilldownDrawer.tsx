@@ -17,6 +17,8 @@ import {
   composeBookingDrawerRowDisplay,
   filterDashboardDrawerGroups,
   readyToRentDrawerHint,
+  resolveHandoverReadinessBadge,
+  resolveHandoverVehicleReasonBadge,
   sortReadyToRentDrawerGroupsByLastSignal,
 } from './dashboardDrilldownRowDisplay';
 import {
@@ -109,6 +111,36 @@ function readinessTone(tone: DashboardSliceRow['readinessTone'] | undefined) {
   if (tone === 'success') return 'success';
   if (tone === 'info') return 'info';
   return 'neutral';
+}
+
+function handoverReasonChipClass(tone: 'success' | 'watch' | 'warning' | 'critical' | 'neutral'): string {
+  if (tone === 'critical') {
+    return 'bg-[color:color-mix(in_srgb,var(--status-critical)_10%,transparent)] text-[color:var(--status-critical)]';
+  }
+  if (tone === 'watch' || tone === 'warning') {
+    return 'bg-[color:color-mix(in_srgb,var(--status-watch)_12%,transparent)] text-[color:var(--status-watch)]';
+  }
+  if (tone === 'success') {
+    return 'bg-[color:color-mix(in_srgb,var(--status-success)_12%,transparent)] text-[color:var(--status-success)]';
+  }
+  return 'bg-muted text-muted-foreground';
+}
+
+function formatOperationsDrawerDate(locale: string, now = new Date()): string {
+  return new Intl.DateTimeFormat(locale === 'de' ? 'de-DE' : 'en-US', {
+    weekday: 'long',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  }).format(now);
+}
+
+function operationsDrawerStationLabel(
+  selectedStationName: string | null | undefined,
+  de: boolean,
+): string {
+  const trimmed = selectedStationName?.trim();
+  return trimmed || (de ? 'Alle Stationen' : 'All stations');
 }
 
 function formatDate(value: string | null | undefined, locale: string): string | null {
@@ -204,12 +236,18 @@ function emptyDescription(slice: DashboardSlice, de: boolean): string {
 function BookingDrawerRowCard({
   row,
   de,
+  vehicle,
+  health,
+  runtimeState,
   onOpenVehicle,
   onOpenBooking,
   onClose,
 }: {
   row: DashboardSliceRow;
   de: boolean;
+  vehicle?: VehicleData;
+  health?: VehicleHealthResponse | null;
+  runtimeState?: VehicleRuntimeState;
   onOpenVehicle?: DashboardViewProps['onOpenVehicleById'];
   onOpenBooking?: DashboardViewProps['onOpenBookingById'];
   onClose: () => void;
@@ -247,6 +285,19 @@ function BookingDrawerRowCard({
   const bookingNumberLine = row.bookingRef
     ? `${de ? 'Buchungsnummer' : 'Booking no.'}: ${row.bookingRef}`
     : undefined;
+  const handoverReadiness = resolveHandoverReadinessBadge(
+    vehicle,
+    health,
+    runtimeState,
+    locale,
+    row.readinessLabel,
+  );
+  const readinessChip = handoverReadiness
+    ? { label: handoverReadiness.label, tone: handoverReadiness.tone }
+    : row.readinessLabel
+      ? { label: row.readinessLabel, tone: readinessTone(row.readinessTone) }
+      : null;
+  const vehicleReasonBadge = resolveHandoverVehicleReasonBadge(row, vehicle, health, locale);
 
   return (
     <article className="rounded-lg border border-border/45 surface-premium/45 px-2.5 py-2 shadow-sm shadow-black/[0.02] transition-colors hover:border-border/65 hover:bg-muted/10">
@@ -263,12 +314,22 @@ function BookingDrawerRowCard({
               {timingText}
             </StatusChip>
           ) : null}
-          {row.readinessLabel ? (
+          {readinessChip ? (
             <StatusChip
-              tone={readinessTone(row.readinessTone)}
+              tone={
+                readinessChip.tone === 'watch'
+                  ? 'watch'
+                  : readinessChip.tone === 'critical'
+                    ? 'critical'
+                    : readinessChip.tone === 'success'
+                      ? 'success'
+                      : readinessChip.tone === 'info'
+                        ? 'info'
+                        : 'neutral'
+              }
               className="px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide"
             >
-              {row.readinessLabel}
+              {readinessChip.label}
             </StatusChip>
           ) : null}
         </div>
@@ -281,14 +342,42 @@ function BookingDrawerRowCard({
         {bookingNumberLine ? (
           <p className="truncate text-[10.5px] text-muted-foreground">{bookingNumberLine}</p>
         ) : null}
-        {showStation ? (
-          <p className="flex items-center gap-1 text-[10px] text-muted-foreground">
-            <Icon name="map-pin" className="h-3 w-3 shrink-0" />
-            <span className="truncate">{row.stationLabel}</span>
-          </p>
-        ) : null}
+        <div className="flex items-center justify-between gap-2">
+          {showStation ? (
+            <p className="flex min-w-0 flex-1 items-center gap-1 text-[10px] text-muted-foreground">
+              <Icon name="map-pin" className="h-3 w-3 shrink-0" />
+              <span className="truncate">{row.stationLabel}</span>
+            </p>
+          ) : (
+            <span className="flex-1" />
+          )}
+          {canOpen ? (
+            <button
+              type="button"
+              onClick={() => {
+                if (row.bookingId && onOpenBooking) onOpenBooking(row.bookingId);
+                else if (row.vehicleId && onOpenVehicle) onOpenVehicle(row.vehicleId);
+                onClose();
+              }}
+              className="sq-btn sq-btn-secondary min-h-8 shrink-0 px-2.5 text-[11px]"
+            >
+              {ctaLabel}
+              <Icon name="arrow-right" className="h-3.5 w-3.5 opacity-70" />
+            </button>
+          ) : null}
+        </div>
         {showMeta ? (
           <p className="line-clamp-2 text-[10.5px] leading-snug text-muted-foreground/90 text-pretty">{display.meta}</p>
+        ) : null}
+        {vehicleReasonBadge ? (
+          <span
+            className={cn(
+              'inline-flex max-w-full items-center rounded-full px-2 py-0.5 text-[10px] font-medium',
+              handoverReasonChipClass(vehicleReasonBadge.tone),
+            )}
+          >
+            <span className="truncate">{vehicleReasonBadge.text}</span>
+          </span>
         ) : null}
         {primaryReasonText ? (
           <p className="line-clamp-2 text-[10.5px] leading-snug text-muted-foreground/95 text-pretty">
@@ -321,23 +410,6 @@ function BookingDrawerRowCard({
           </div>
         ) : null}
       </div>
-
-      {canOpen ? (
-        <div className="mt-2 flex justify-end">
-          <button
-            type="button"
-            onClick={() => {
-              if (row.bookingId && onOpenBooking) onOpenBooking(row.bookingId);
-              else if (row.vehicleId && onOpenVehicle) onOpenVehicle(row.vehicleId);
-              onClose();
-            }}
-            className="sq-btn sq-btn-secondary min-h-9 shrink-0 px-2.5 text-[11px]"
-          >
-            {ctaLabel}
-            <Icon name="arrow-right" className="h-3.5 w-3.5 opacity-70" />
-          </button>
-        </div>
-      ) : null}
     </article>
   );
 }
@@ -382,6 +454,9 @@ function DashboardRowCard({
     <BookingDrawerRowCard
       row={row}
       de={de}
+      vehicle={vehicle}
+      health={health}
+      runtimeState={state}
       onOpenVehicle={onOpenVehicle}
       onOpenBooking={onOpenBooking}
       onClose={onClose}
@@ -755,9 +830,16 @@ export function DashboardDrilldownDrawer({
         {dashboardSlice.id === 'ready-to-rent' ? (
           <p className="text-[12px] leading-relaxed text-muted-foreground">{readyToRentDrawerHint(dashboardSlice, locale)}</p>
         ) : dashboardSlice.id === 'active-rented' && focusedGroupId ? (
-          <p className="text-[12px] text-muted-foreground">
-            {operationsDrawerHint(focusedGroupId, count, de)}
-          </p>
+          <div className="space-y-0.5">
+            <p className="text-[12px] text-muted-foreground">
+              {formatOperationsDrawerDate(locale)}
+              {' · '}
+              {operationsDrawerStationLabel(selectedStationName, de)}
+            </p>
+            <p className="text-[12px] text-muted-foreground">
+              {operationsDrawerHint(focusedGroupId, count, de)}
+            </p>
+          </div>
         ) : drawerHeaderHint(dashboardSlice, locale) ? (
           <p className="text-[12px] text-muted-foreground">{drawerHeaderHint(dashboardSlice, locale)}</p>
         ) : null}

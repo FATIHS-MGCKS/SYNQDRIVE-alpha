@@ -8,6 +8,8 @@ import {
   filterReadyToRentDrawerGroups,
   readyToRentDrawerHint,
   resolveDrawerVehicleReasonBadge,
+  resolveHandoverReadinessBadge,
+  resolveHandoverVehicleReasonBadge,
   dashboardDrawerRowHaystack,
   sortReadyToRentDrawerGroupsByLastSignal,
   sortRowsByLastSignalFreshFirst,
@@ -335,6 +337,62 @@ describe('dashboardDrawerRowHaystack', () => {
     );
     expect(haystack).toContain('service overdue');
     expect(haystack).toContain('zentrale');
+  });
+});
+
+describe('resolveHandoverReadinessBadge', () => {
+  it('uses success tone for healthy reserved vehicles', () => {
+    const badge = resolveHandoverReadinessBadge(
+      {
+        id: 'v1',
+        license: 'WOB 1',
+        status: 'Reserved',
+        cleaningStatus: 'Clean',
+        healthStatus: 'Good Health',
+      } as any,
+      null,
+      {
+        vehicleId: 'v1',
+        displayName: 'WOB 1',
+        operationalStatus: 'reserved',
+        bookingState: 'reserved',
+        isReadyToRent: false,
+        isCritical: false,
+        isWarning: false,
+        blockLevel: 'none',
+      } as any,
+      'de',
+    );
+    expect(badge?.label).toBe('Reserviert');
+    expect(badge?.tone).toBe('success');
+  });
+
+  it('uses watch tone for reserved vehicles with cleaning needs', () => {
+    const badge = resolveHandoverReadinessBadge(
+      {
+        id: 'v1',
+        license: 'WOB 1',
+        status: 'Reserved',
+        cleaningStatus: 'Needs Cleaning',
+        healthStatus: 'Good Health',
+      } as any,
+      null,
+      undefined,
+      'de',
+    );
+    expect(badge?.tone).toBe('watch');
+  });
+});
+
+describe('resolveHandoverVehicleReasonBadge', () => {
+  it('filters pickup overdue timing reasons from fleet badge', () => {
+    const badge = resolveHandoverVehicleReasonBadge(
+      { id: 'r1', title: '10:00', severity: 'info' } as any,
+      { id: 'v1', license: 'WOB 1', status: 'Reserved' } as any,
+      null,
+      'de',
+    );
+    expect(badge).toBeNull();
   });
 });
 
