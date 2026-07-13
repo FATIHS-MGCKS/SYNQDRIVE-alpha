@@ -1,8 +1,9 @@
 import { Car, MapPin, User, Wrench } from 'lucide-react';
 import { Icon } from '../ui/Icon';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { api, type Station } from '../../../lib/api';
+import { useHandoverVehicleTelemetryPrefill } from '../../lib/useHandoverVehicleTelemetryPrefill';
 import type { DamageSeverity } from '../../lib/damage.types';
 import { stationsForPickup, stationsForReturn } from '../../lib/stationBookingUtils';
 import { SignaturePad } from './SignaturePad';
@@ -130,6 +131,15 @@ export function HandoverProtocolDialog({
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [orgStations, setOrgStations] = useState<Station[]>([]);
   const [actualStationId, setActualStationId] = useState<string>('');
+  const telemetryAppliedRef = useRef<string | null>(null);
+
+  const { prefill: telemetryPrefill } = useHandoverVehicleTelemetryPrefill(
+    isOpen,
+    orgId,
+    booking?.vehicleId,
+    kind,
+    booking?.pickupOdometerKm,
+  );
 
   useEffect(() => {
     if (!isOpen) {
@@ -143,9 +153,8 @@ export function HandoverProtocolDialog({
   // Reset when opened for a new booking
   useEffect(() => {
     if (!isOpen || !booking) return;
-    setOdometerKm(
-      booking.pickupOdometerKm != null ? String(booking.pickupOdometerKm) : '',
-    );
+    telemetryAppliedRef.current = null;
+    setOdometerKm('');
     setFuelPercent(100);
     setFuelFull(true);
     setChecks({
@@ -172,6 +181,25 @@ export function HandoverProtocolDialog({
       kind === 'PICKUP' ? booking.pickupStationId : booking.returnStationId;
     setActualStationId(plannedId ?? '');
   }, [isOpen, booking?.id, kind, booking?.pickupStationId, booking?.returnStationId]);
+
+  useEffect(() => {
+    if (!isOpen || !booking) return;
+    const key = `${booking.id}:${kind}:${telemetryPrefill.odometerKm}:${telemetryPrefill.fuelPercent}:${telemetryPrefill.fuelFull}`;
+    if (telemetryAppliedRef.current === key) return;
+    if (!telemetryPrefill.odometerFromTelemetry && !telemetryPrefill.fuelFromTelemetry) {
+      if (kind === 'RETURN' && booking.pickupOdometerKm != null) {
+        setOdometerKm(String(booking.pickupOdometerKm));
+      }
+      return;
+    }
+
+    telemetryAppliedRef.current = key;
+    if (telemetryPrefill.odometerKm) setOdometerKm(telemetryPrefill.odometerKm);
+    if (telemetryPrefill.fuelFromTelemetry) {
+      setFuelPercent(telemetryPrefill.fuelPercent);
+      setFuelFull(telemetryPrefill.fuelFull);
+    }
+  }, [isOpen, booking, kind, telemetryPrefill]);
 
   useEffect(() => {
     if (!isOpen || !orgId) return;
@@ -620,6 +648,11 @@ export function HandoverProtocolDialog({
                   )}
                 </p>
               )}
+              {telemetryPrefill.odometerFromTelemetry && (
+                <p className={`text-[11px] mt-1.5 ${textMuted}`}>
+                  Automatisch aus aktueller Fahrzeugtelemetrie übernommen.
+                </p>
+              )}
             </div>
 
             <div className={`rounded-xl border p-4 ${borderColor} ${cardBg}`}>
@@ -656,6 +689,11 @@ export function HandoverProtocolDialog({
                 />
                 <span className={`text-[11px] ${textMuted}`}>Tank voll / vollständig geladen</span>
               </label>
+              {telemetryPrefill.fuelFromTelemetry && (
+                <p className={`text-[11px] mt-1.5 ${textMuted}`}>
+                  Tank / SoC aus aktueller Fahrzeugtelemetrie übernommen.
+                </p>
+              )}
             </div>
           </div>
 

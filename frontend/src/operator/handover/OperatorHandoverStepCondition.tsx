@@ -53,6 +53,11 @@ export function OperatorHandoverStepCondition({
             Pickup: {booking.pickupOdometerKm.toLocaleString('de-DE')} km
           </p>
         )}
+        {form.telemetryPrefill.odometerFromTelemetry && (
+          <p className="text-[11px] text-muted-foreground">
+            Automatisch aus aktueller Fahrzeugtelemetrie übernommen — bei Abweichung anpassbar.
+          </p>
+        )}
       </OperatorHandoverField>
 
       <div className="rounded-2xl border border-border/60 surface-premium p-4 space-y-3">
@@ -85,6 +90,11 @@ export function OperatorHandoverStepCondition({
             })
           }
         />
+        {form.telemetryPrefill.fuelFromTelemetry && (
+          <p className="text-[11px] text-muted-foreground">
+            Tank / SoC aus aktueller Fahrzeugtelemetrie übernommen.
+          </p>
+        )}
       </div>
 
       <div className="space-y-2">

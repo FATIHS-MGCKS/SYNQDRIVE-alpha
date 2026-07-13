@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api, type Station } from '../../lib/api';
 import type { DamageResponse } from '../../rental/lib/damage.types';
+import { useHandoverVehicleTelemetryPrefill } from '../../rental/lib/useHandoverVehicleTelemetryPrefill';
 import { stationsForPickup, stationsForReturn } from '../../rental/lib/stationBookingUtils';
 import type {
   HandoverDialogBookingInfo,
@@ -27,12 +28,37 @@ export function useOperatorHandoverForm(
   const [loadingDamages, setLoadingDamages] = useState(false);
   const [documentsReloadKey, setDocumentsReloadKey] = useState(0);
   const [damageError, setDamageError] = useState<string | null>(null);
+  const telemetryAppliedRef = useRef<string | null>(null);
+
+  const { prefill: telemetryPrefill, vehicle: telemetryVehicle } = useHandoverVehicleTelemetryPrefill(
+    isOpen,
+    orgId,
+    booking?.vehicleId,
+    kind,
+    booking?.pickupOdometerKm,
+  );
 
   useEffect(() => {
     if (!isOpen || !booking) return;
+    telemetryAppliedRef.current = null;
     setState(createInitialHandoverState(booking, kind));
     setDamageError(null);
   }, [isOpen, booking?.id, kind, booking]);
+
+  useEffect(() => {
+    if (!isOpen || !booking) return;
+    const key = `${booking.id}:${kind}:${telemetryPrefill.odometerKm}:${telemetryPrefill.fuelPercent}:${telemetryPrefill.fuelFull}`;
+    if (telemetryAppliedRef.current === key) return;
+    if (!telemetryPrefill.odometerFromTelemetry && !telemetryPrefill.fuelFromTelemetry) return;
+
+    telemetryAppliedRef.current = key;
+    setState((prev) => ({
+      ...prev,
+      odometerKm: telemetryPrefill.odometerKm || prev.odometerKm,
+      fuelPercent: telemetryPrefill.fuelFromTelemetry ? telemetryPrefill.fuelPercent : prev.fuelPercent,
+      fuelFull: telemetryPrefill.fuelFromTelemetry ? telemetryPrefill.fuelFull : prev.fuelFull,
+    }));
+  }, [isOpen, booking, kind, telemetryPrefill]);
 
   /** Drop signature bitmaps from memory when the flow closes (sensitive data). */
   useEffect(() => {
@@ -192,6 +218,7 @@ export function useOperatorHandoverForm(
     booking,
     kind,
     state,
+    telemetryPrefill,
     setState,
     patchState,
     toggleCheck,

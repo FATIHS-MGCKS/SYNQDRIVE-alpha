@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'handover-telemetry-prefill-v49399-2026-07-13',
+    version: '4.9.399',
+    title: 'V4.9.399 — Übergabe/Rückgabe: Kilometer- und Tankstand aus Telemetrie',
+    summary: [
+      'Pickup- und Return-Handover übernehmen Kilometerstand und Tank/SoC automatisch aus der aktuellen Fahrzeugtelemetrie (Fleet-Map / `vehicles.telemetry`).',
+      'Return: `max(pickupOdometerKm, liveOdometerKm)` — Validierung bleibt ≥ Pickup-KM.',
+      'Operator-Wizard (Schritt Zustand) und Rental-`HandoverProtocolDialog` nutzen dieselbe Prefill-Logik.',
+      'Felder bleiben bei Abweichung manuell anpassbar; Hinweis „aus Telemetrie übernommen“.',
+    ],
+    reason:
+      'Manuelle Eingabe von KM/Tank bei jeder Übergabe ist fehleranfällig und redundant, wenn Live-Telemetrie (DIMO/VehicleLatestState) bereits verfügbar ist.',
+    previousBehavior:
+      'Pickup: leerer KM, Tank default 100 %. Return: nur Pickup-KM vorbefüllt, Tank default 100 %.',
+    details:
+      '`handoverVehicleTelemetry.ts`, `useHandoverVehicleTelemetryPrefill.ts`, `operatorHandoverPayload.ts`, `useOperatorHandoverForm.ts`, `OperatorHandoverStepCondition.tsx`, `HandoverProtocolDialog.tsx`.',
+    affectsArchitecture: true,
+    module: 'Handover',
+    createdAt: '2026-07-13T00:30:00.000Z',
+  },
+  {
     id: 'today-ops-drilldown-v49398-2026-07-13',
     version: '4.9.398',
     title: 'V4.9.398 — Heutige Operationen: Drilldown-Sidebar für Übergaben/Rückgaben',

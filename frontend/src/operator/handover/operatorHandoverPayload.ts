@@ -1,5 +1,9 @@
 import type { HandoverDialogKind } from '../../rental/components/handover/HandoverProtocolDialog';
 import {
+  buildHandoverTelemetryPrefill,
+  type HandoverVehicleTelemetryLike,
+} from '../../rental/lib/handoverVehicleTelemetry';
+import {
   collectTechnicalObservationsForPayload,
   type HandoverTechnicalObservationPayloadItem,
   type OperatorHandoverObservationDraft,
@@ -100,16 +104,19 @@ export interface OperatorHandoverValidationIssue {
 export function createInitialHandoverState(
   booking: OperatorHandoverBookingRef | null,
   kind: HandoverDialogKind,
+  vehicle?: HandoverVehicleTelemetryLike | null,
 ): OperatorHandoverFormState {
   const plannedId =
     kind === 'PICKUP' ? booking?.pickupStationId : booking?.returnStationId;
+  const prefill = buildHandoverTelemetryPrefill({
+    kind,
+    vehicle,
+    pickupOdometerKm: booking?.pickupOdometerKm,
+  });
   return {
-    odometerKm:
-      booking?.pickupOdometerKm != null && kind === 'RETURN'
-        ? String(booking.pickupOdometerKm)
-        : '',
-    fuelPercent: 100,
-    fuelFull: true,
+    odometerKm: prefill.odometerKm,
+    fuelPercent: prefill.fuelPercent,
+    fuelFull: prefill.fuelFull,
     performedAtLocal: '',
     checks: {
       exteriorClean: true,
