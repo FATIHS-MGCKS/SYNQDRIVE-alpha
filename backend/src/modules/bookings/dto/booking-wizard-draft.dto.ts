@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDateString,
+  IsIn,
   IsOptional,
   IsString,
   IsUUID,
@@ -69,4 +70,8 @@ export class BookingWizardDraftConfirmDto {
   @IsOptional()
   @IsString()
   status?: 'PENDING' | 'CONFIRMED';
+
+  @IsOptional()
+  @IsIn(['card', 'cash', 'invoice'])
+  paymentMethod?: 'card' | 'cash' | 'invoice';
 }

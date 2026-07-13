@@ -3001,6 +3001,7 @@ export const api = {
         agbAccepted?: boolean;
         privacyAccepted?: boolean;
         status?: 'PENDING' | 'CONFIRMED';
+        paymentMethod?: 'card' | 'cash' | 'invoice';
       },
     ) =>
       post<BookingWizardDraftResult>(

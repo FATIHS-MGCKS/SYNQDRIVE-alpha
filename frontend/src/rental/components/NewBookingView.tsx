@@ -955,6 +955,7 @@ export function NewBookingView({
         agbAccepted,
         privacyAccepted,
         status: customerEligibility?.canConfirmBooking ? 'CONFIRMED' : 'PENDING',
+        paymentMethod,
       });
       draftConfirmedRef.current = true;
       const uiBooking = mapApiBooking(confirmed.booking);
