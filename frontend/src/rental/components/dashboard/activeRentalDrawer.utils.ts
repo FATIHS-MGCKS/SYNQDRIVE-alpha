@@ -17,7 +17,7 @@ export function kmRemainingPercent(
   return Math.max(0, Math.min(100, 100 - consumed));
 }
 
-export function formatKmRemainingLabel(
+export function formatFreeKmLabel(
   driven: number | null | undefined,
   included: number | null | undefined,
   locale: string,
@@ -26,9 +26,18 @@ export function formatKmRemainingLabel(
   const remaining = Math.round(included - driven);
   const formatted = Math.abs(remaining).toLocaleString(locale === 'de' ? 'de-DE' : 'en-US');
   if (remaining < 0) {
-    return locale === 'de' ? `+${formatted} km` : `+${formatted} km`;
+    return locale === 'de' ? `Frei: +${formatted} km` : `Free: +${formatted} km`;
   }
-  return locale === 'de' ? `${formatted} km Rest` : `${formatted} km left`;
+  return locale === 'de' ? `Frei: ${formatted} km` : `Free: ${formatted} km`;
+}
+
+/** @deprecated Use formatFreeKmLabel */
+export function formatKmRemainingLabel(
+  driven: number | null | undefined,
+  included: number | null | undefined,
+  locale: string,
+): string {
+  return formatFreeKmLabel(driven, included, locale);
 }
 
 export function activeRentalKmBarTone(
@@ -57,7 +66,7 @@ export function activeRentalRentedTillText(
   returnAt: string | null | undefined,
   locale: string,
 ): string {
-  const prefix = locale === 'de' ? 'Gemietet bis:' : 'Rented till:';
+  const prefix = locale === 'de' ? 'Bis:' : 'Until:';
   const when = formatFleetDateTime(returnAt, locale === 'de' ? 'de-DE' : 'en-US');
   return `${prefix} ${when}`;
 }

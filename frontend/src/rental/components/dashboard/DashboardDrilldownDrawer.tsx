@@ -8,6 +8,7 @@ import type { VehicleData } from '../../data/vehicles';
 import { useFleetVehicles } from '../../FleetContext';
 import { ActiveRentalDrawerRowCard } from './ActiveRentalDrawerRowCard';
 import { CompactFleetDrawerVehicleRow } from './CompactFleetDrawerVehicleRow';
+import { DrawerRowActionButton } from './dashboardDrawerRowActions';
 import {
   dedupeDisplayReasons,
   formatRuntimeReasonLabel,
@@ -353,18 +354,16 @@ function BookingDrawerRowCard({
             <span className="flex-1" />
           )}
           {canOpen ? (
-            <button
-              type="button"
+            <DrawerRowActionButton
+              tone={canOpenBooking ? 'booking' : 'vehicle'}
               onClick={() => {
                 if (row.bookingId && onOpenBooking) onOpenBooking(row.bookingId);
                 else if (row.vehicleId && onOpenVehicle) onOpenVehicle(row.vehicleId);
                 onClose();
               }}
-              className="sq-btn sq-btn-secondary min-h-8 shrink-0 px-2.5 text-[11px]"
             >
               {ctaLabel}
-              <Icon name="arrow-right" className="h-3.5 w-3.5 opacity-70" />
-            </button>
+            </DrawerRowActionButton>
           ) : null}
         </div>
         {showMeta ? (
@@ -521,18 +520,17 @@ function BusinessRowCard({
         <div className="flex shrink-0 flex-col items-end gap-2">
           {amount ? <span className="text-[14px] font-semibold tabular-nums text-foreground">{amount}</span> : null}
           {canOpen ? (
-            <button
-              type="button"
+            <DrawerRowActionButton
+              tone="booking"
+              className="min-h-9 px-2 text-[12px]"
               onClick={() => {
                 if (row.invoiceId && onOpenInvoice) onOpenInvoice(row.invoiceId);
                 else onOpenBilling?.();
                 onClose();
               }}
-              className="sq-btn sq-btn-secondary min-h-9 px-2 text-[12px]"
             >
               {row.primaryActionLabel ?? defaultInvoiceCta(de)}
-              <Icon name="arrow-right" className="h-4 w-4 opacity-70" />
-            </button>
+            </DrawerRowActionButton>
           ) : null}
         </div>
       </div>
