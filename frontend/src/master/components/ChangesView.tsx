@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-finance-kpi-under-ops-v49419-2026-07-13',
+    version: '4.9.419',
+    title: 'V4.9.419 — Finanz-KPIs unter operative Twin-Karten',
+    summary: [
+      'Umsatz, Ergebnis, Offene und Überfällige Forderungen stehen jetzt im Control Center unter Bereit zur Vermietung / Heutige Operationen (2×2).',
+      'Neue `FinanceKpiStrip` im `DashboardControlHeader`; `BusinessPulse` zeigt nur noch optionale Zusatzmetriken (Entwürfe, Fehlzahlungen, Bezahlt), wenn vorhanden.',
+      '„Rechnungen öffnen“-Link direkt unter den Finanz-KPIs im Control Center.',
+    ],
+    reason: 'Nach Entfernung der vier unteren operativen KPI-Boxen bietet dieselbe Fläche Platz für die Finanz-KPIs — weniger redundante Finanzen-Box.',
+    previousBehavior: 'Vier Finanz-KPIs in separater Finanzen-Box unter dem Control Center; operative KPIs nur oben (2 Twin-Karten).',
+    details:
+      '**Dateien**: `FinanceKpiStrip.tsx`, `financeKpiCards.tsx`, `BusinessPulse.tsx`, `DashboardView.tsx`, `dashboardShell.tsx`. Keine Invoice-Berechnung, API oder Backend-Änderung.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T19:00:00.000Z',
+  },
+  {
     id: 'dashboard-kpi-twin-height-v49418-2026-07-13',
     version: '4.9.418',
     title: 'V4.9.418 — Dashboard: Twin-KPIs höher nach 2-Boxen-Strip',

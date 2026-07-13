@@ -23,6 +23,7 @@ export { useDashboardLeftColumnHeight } from './useDashboardLeftColumnHeight';
 export { DashboardControlHeader } from './DashboardControlHeader';
 export { DashboardDrilldownDrawer } from './DashboardDrilldownDrawer';
 export { ControlKpiStrip } from './ControlKpiStrip';
+export { FinanceKpiStrip } from './FinanceKpiStrip';
 export { ActionQueue } from './ActionQueue';
 export { NowNextTimeline } from './NowNextTimeline';
 export { OperationsSchedulePanel } from './OperationsSchedulePanel';

@@ -35,7 +35,10 @@ export const DASHBOARD_LAYOUT = {
   /** @deprecated Tagesplan panel removed from standard dashboard. */
   dayPlanSlot: 'min-w-0 w-full',
   financeZone: 'border-t border-border/50 pt-7',
-  /** Four finance KPI cards in one row inside the Finanzen panel. */
+  /** Primary finance KPIs embedded under operational twin cards in the control center. */
+  controlFinanceKpiGrid: 'grid grid-cols-2 items-stretch gap-3 sm:gap-3.5',
+  controlFinanceKpiCard: 'min-h-[88px] rounded-2xl px-3 py-3',
+  /** Four finance KPI cards in one row inside the legacy Finanzen panel. */
   financeKpiGrid: 'grid w-full grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2',
   financeKpiCard:
     'min-h-[72px] rounded-xl px-2.5 py-2 sm:min-h-[76px] sm:rounded-2xl sm:px-2.5 sm:py-2.5',

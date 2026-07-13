@@ -162,6 +162,7 @@ describe('dashboard runtime-only UI contracts', () => {
 
   it('keeps Business Pulse UI free of technical sublines and source labels', () => {
     const businessPulseSrc = readFileSync(resolve(testDir, './BusinessPulse.tsx'), 'utf8');
+    const financeStripSrc = readFileSync(resolve(testDir, './FinanceKpiStrip.tsx'), 'utf8');
     const dashboardViewSrc = readFileSync(resolve(testDir, '../DashboardView.tsx'), 'utf8');
     const shellSrc = readFileSync(resolve(testDir, './dashboardShell.tsx'), 'utf8');
 
@@ -172,7 +173,7 @@ describe('dashboard runtime-only UI contracts', () => {
     expect(shellSrc).toMatch(/financeSlot:[\s\S]*order-3/);
     expect(shellSrc).toMatch(/notificationsPanelScroll/);
     expect(shellSrc).not.toMatch(/notificationsDayPlanGrid:[\s\S]*lg:grid-cols-2/);
-    expect(shellSrc).toMatch(/financeKpiGrid:[\s\S]*sm:grid-cols-4/);
+    expect(shellSrc).toMatch(/controlFinanceKpiGrid:[\s\S]*grid-cols-2/);
     expect(shellSrc).toMatch(/lg:items-start/);
     expect(dashboardViewSrc).toMatch(/useDashboardLeftColumnHeight/);
     expect(dashboardViewSrc).toMatch(/controlLeftColumn/);
@@ -182,6 +183,7 @@ describe('dashboard runtime-only UI contracts', () => {
     expect(dashboardViewSrc).toMatch(/notificationsSlot/);
     expect(dashboardViewSrc).toMatch(/layout="sidebar"/);
     expect(dashboardViewSrc).toMatch(/<DashboardControlHeader vm=\{vm\}>[\s\S]*<ControlKpiStrip/);
+    expect(dashboardViewSrc).toMatch(/<FinanceKpiStrip/);
     expect(dashboardViewSrc).not.toMatch(/controlKpiShell/);
     expect(dashboardViewSrc).not.toMatch(/notificationsRow/);
     expect(dashboardViewSrc).not.toMatch(/OperationsSchedulePanel/);
@@ -189,12 +191,13 @@ describe('dashboard runtime-only UI contracts', () => {
     expect(businessPulseSrc).not.toMatch(/\bh-full\b/);
     expect(businessPulseSrc).toMatch(/dashboard\.financesTitle/);
     expect(businessPulseSrc).toMatch(/dashboard\.openInvoices/);
-    expect(businessPulseSrc).toMatch(/financeKpiGrid/);
-    expect(shellSrc).toMatch(/financeKpiGrid:[\s\S]*sm:grid-cols-4/);
+    expect(businessPulseSrc).toMatch(/hasOptionalBusinessMetrics/);
+    expect(businessPulseSrc).not.toMatch(/financeKpiGrid/);
+    expect(financeStripSrc).toMatch(/PRIMARY_BUSINESS_METRICS/);
+    expect(financeStripSrc).toMatch(/controlFinanceKpiGrid/);
     expect(businessPulseSrc).not.toMatch(/Slice based|Slice-basiert|Business Pulse ·|Dokumente/);
     expect(businessPulseSrc).not.toMatch(/Einträge|document\$\{/);
     expect(businessPulseSrc).not.toMatch(/Source:|Quelle:/);
-    expect(businessPulseSrc).toMatch(/dashboard\.profitHint/);
     expect(businessPulseSrc).not.toMatch(/'expenses'/);
   });
 

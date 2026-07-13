@@ -6,6 +6,7 @@ import {
   DashboardControlHeader,
   DashboardDrilldownDrawer,
   DASHBOARD_LAYOUT,
+  FinanceKpiStrip,
   FocusDataFreshnessBanner,
   FocusHandoverPanels,
   FocusNotReadyVehicles,
@@ -107,14 +108,26 @@ export function DashboardView({
           <div ref={leftColumnRef} className={DASHBOARD_LAYOUT.controlLeftColumn}>
             <div className={DASHBOARD_LAYOUT.controlKpiSlot}>
               <DashboardControlHeader vm={vm}>
-                <ControlKpiStrip
-                  dashboardRuntime={vm.dashboardRuntime}
-                  activeSliceId={vm.activeDashboardSliceId}
-                  onSelectSlice={vm.openSliceDrilldown}
-                  embedded
-                  locale={vm.locale}
-                  dataFreshness={vm.dataFreshness}
-                />
+                <div className="space-y-3 sm:space-y-3.5">
+                  <ControlKpiStrip
+                    dashboardRuntime={vm.dashboardRuntime}
+                    activeSliceId={vm.activeDashboardSliceId}
+                    onSelectSlice={vm.openSliceDrilldown}
+                    embedded
+                    locale={vm.locale}
+                    dataFreshness={vm.dataFreshness}
+                  />
+                  <FinanceKpiStrip
+                    businessPulseSlices={vm.businessPulseSlices}
+                    onSelectBusinessMetric={vm.openBusinessMetricDrilldown}
+                    onOpenBilling={() => onOpenFinanceView?.('invoices')}
+                    activeBusinessMetricId={vm.activeBusinessMetricId}
+                    locale={vm.locale}
+                    currency="EUR"
+                    loading={!vm.dataFreshness.invoicesLoaded}
+                    error={vm.dataFreshness.invoicesError}
+                  />
+                </div>
               </DashboardControlHeader>
             </div>
             <div className={DASHBOARD_LAYOUT.financeSlot}>
@@ -122,10 +135,6 @@ export function DashboardView({
                 businessPulseSlices={vm.businessPulseSlices}
                 onSelectBusinessMetric={vm.openBusinessMetricDrilldown}
                 onOpenBilling={() => onOpenFinanceView?.('invoices')}
-                locale={vm.locale}
-                currency="EUR"
-                loading={!vm.dataFreshness.invoicesLoaded}
-                error={vm.dataFreshness.invoicesError}
               />
             </div>
           </div>
