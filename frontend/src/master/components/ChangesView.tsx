@@ -35,6 +35,21 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-kpi-twin-height-v49418-2026-07-13',
+    version: '4.9.418',
+    title: 'V4.9.418 — Dashboard: Twin-KPIs höher nach 2-Boxen-Strip',
+    summary: [
+      'Bereit zur Vermietung / Heutige Operationen: min-h 200px (embedded), etwas mehr Innenabstand — Inhalt unverändert.',
+      'Skeleton-Loading und Separator-/Hauptbereich-Abstände angeglichen.',
+    ],
+    reason: 'Nach Entfernung der vier unteren KPI-Boxen wirkten die zwei verbleibenden Twin-Karten zu gedrängt.',
+    previousBehavior: 'Twin-Karten min-h 140px (embedded), kompakter Separator und Hauptbereich.',
+    details: 'ControlKpiStrip.tsx — nur KPI-Shell-Höhe und Spacing, keine Datenlogik.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T18:30:00.000Z',
+  },
+  {
     id: 'dashboard-kpi-strip-consolidation-v49417-2026-07-13',
     version: '4.9.417',
     title: 'V4.9.417 — Dashboard-KPIs: vier redundante Boxen entfernt',
