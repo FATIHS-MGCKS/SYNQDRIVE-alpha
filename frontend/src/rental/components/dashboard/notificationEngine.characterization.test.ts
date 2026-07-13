@@ -345,4 +345,53 @@ describe('notification engine — adapter unit tests', () => {
     const items = buildUnifiedActionQueue(baseQueueInput());
     expect(items).toHaveLength(0);
   });
+
+  it('buildUnifiedActionQueue surfaces overdue pickup and return as critical handover items', () => {
+    const items = buildUnifiedActionQueue(
+      baseQueueInput({
+        pickupItems: [
+          {
+            bookingId: 'bk-pickup-overdue',
+            time: '10:00',
+            vehicle: 'VW Tiguan',
+            plate: 'WOB L 7503',
+            customer: 'Max M.',
+            station: 'Wolfsburg',
+            done: false,
+            vehicleId: WOB_VEHICLE_ID,
+            startDate: '2026-07-10T08:00:00.000Z',
+            endDate: '2026-07-12T18:00:00.000Z',
+            isOverdue: true,
+            minutesOverdue: 120,
+          },
+        ],
+        returnItems: [
+          {
+            bookingId: 'bk-return-overdue',
+            time: '18:00',
+            vehicle: 'VW Tiguan',
+            plate: 'WOB L 7503',
+            customer: 'Erika E.',
+            station: 'Wolfsburg',
+            done: false,
+            vehicleId: WOB_VEHICLE_ID,
+            startDate: '2026-07-08T08:00:00.000Z',
+            endDate: '2026-07-10T10:00:00.000Z',
+            isOverdue: true,
+            hasError: false,
+            kmExceeded: false,
+            extraKm: null,
+            returnProtocolStatus: null,
+          },
+        ],
+      }),
+    );
+
+    const pickup = items.find((item) => item.bookingId === 'bk-pickup-overdue');
+    const ret = items.find((item) => item.bookingId === 'bk-return-overdue');
+    expect(pickup?.severity).toBe('critical');
+    expect(pickup?.isOverdue).toBe(true);
+    expect(ret?.severity).toBe('critical');
+    expect(ret?.isOverdue).toBe(true);
+  });
 });

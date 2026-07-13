@@ -94,6 +94,34 @@ export function supplementalQueueItems(
   );
 }
 
+function isOverdueHandoverQueueItem(item: ActionQueueItem): boolean {
+  if (!item.isOverdue || item.category !== 'handover' || !item.bookingId) return false;
+  if (item.pickupItem || item.returnItem) return true;
+  if (item.id.startsWith('pickup-') || item.id.startsWith('return-')) return true;
+  return item.issueType === 'pickup_overdue' || item.issueType === 'return_overdue';
+}
+
+function ensureCriticalOverdueHandoverItem(item: ActionQueueItem): ActionQueueItem {
+  return {
+    ...item,
+    severity: 'critical',
+    isOverdue: true,
+    tone: 'critical',
+    queue: item.queue
+      ? { ...item.queue, severity: 'critical' }
+      : item.queue,
+  };
+}
+
+/**
+ * Live booking tiles (today pickups/returns) still own per-booking overdue handover
+ * semantics. Notification V2 may not yet materialize every RETURN_OVERDUE row —
+ * bridge overdue Übergabe/Rückgabe from the V1 builder into the Meldungen panel.
+ */
+export function extractOverdueHandoverQueueItems(v1Items: ActionQueueItem[]): ActionQueueItem[] {
+  return v1Items.filter(isOverdueHandoverQueueItem).map(ensureCriticalOverdueHandoverItem);
+}
+
 export function mergeV2WithSupplemental(
   v2Items: ActionQueueItem[],
   supplemental: ActionQueueItem[],

@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'overdue-handover-notifications-v49422-2026-07-13',
+    version: '4.9.422',
+    title: 'V4.9.422 — Überfällige Übergaben/Rückgaben als kritische Meldungen',
+    summary: [
+      'Notification-V2-Cutover: überfällige Abholungen und Rückgaben aus Live-Buchungsdaten werden in die Meldungen-Box übernommen.',
+      '`extractOverdueHandoverQueueItems` bridged per-booking overdue handovers aus dem V1-Builder — Severity immer `critical`.',
+      'Tab-Counts (Kritisch/Alle) zählen die supplemental overdue-Handover-Zeilen mit.',
+    ],
+    reason: 'Bei `VITE_NOTIFICATIONS_V2=on` fehlten überfällige Übergaben/Rückgaben in der Notification Box, obwohl KPIs sie rot anzeigten — V2-API materialisiert RETURN_OVERDUE noch nicht zuverlässig pro Buchung.',
+    previousBehavior: 'V2-ActionQueue nur aus `/notifications` + derived + rental-health; overdue booking tiles nur im V1-Builder.',
+    details:
+      'merge-v2-with-vehicle-health.ts (`extractOverdueHandoverQueueItems`), useDashboardViewModel.ts (Supplemental-Merge + Counts), Tests.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T18:30:00.000Z',
+  },
+  {
     id: 'finance-kpi-mtd-wiring-v49421-2026-07-13',
     version: '4.9.421',
     title: 'V4.9.421 — Finanz-KPIs: MTD-Verdrahtung & offene Salden',

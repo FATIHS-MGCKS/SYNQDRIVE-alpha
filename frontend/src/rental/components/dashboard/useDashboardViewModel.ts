@@ -99,6 +99,7 @@ import {
 import {
   augmentPrimaryTabCountsWithHealthItems,
   buildVehicleHealthQueueItems,
+  extractOverdueHandoverQueueItems,
   mergeV2NotificationsWithVehicleHealth,
   mergeV2WithSupplemental,
   supplementalHealthItems,
@@ -909,14 +910,27 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     [vehicleHealthAlerts, locale, fleetById],
   );
 
+  const overdueHandoverQueueItems = useMemo(
+    () => extractOverdueHandoverQueueItems(v1ActionQueue),
+    [v1ActionQueue],
+  );
+
   const actionQueue = useMemo(() => {
     if (!shouldUseV2NotificationSource()) return v1ActionQueue;
     if (notificationsV2.listMode === 'resolved') {
       return [...notificationsV2.items].sort((a, b) => b.timeSortMs - a.timeSortMs);
     }
     const withDerived = mergeV2WithSupplemental(notificationsV2.items, derivedQueueItems);
-    return mergeV2NotificationsWithVehicleHealth(withDerived, vehicleHealthQueueItems);
-  }, [notificationsV2.items, notificationsV2.listMode, v1ActionQueue, derivedQueueItems, vehicleHealthQueueItems]);
+    const withHandovers = mergeV2WithSupplemental(withDerived, overdueHandoverQueueItems);
+    return mergeV2NotificationsWithVehicleHealth(withHandovers, vehicleHealthQueueItems);
+  }, [
+    notificationsV2.items,
+    notificationsV2.listMode,
+    v1ActionQueue,
+    derivedQueueItems,
+    overdueHandoverQueueItems,
+    vehicleHealthQueueItems,
+  ]);
 
   const actionQueueTabCounts = useMemo(
     () => (shouldUseV2NotificationSource() ? notificationsV2.tabCounts : null),
@@ -944,10 +958,20 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
     }
 
     const derivedExtra = supplementalQueueItems(notificationsV2.items, derivedQueueItems);
+    const handoverExtra = supplementalQueueItems(
+      [...notificationsV2.items, ...derivedExtra],
+      overdueHandoverQueueItems,
+    );
     const withDerived = [...notificationsV2.items, ...derivedExtra];
-    const healthExtra = supplementalHealthItems(withDerived, vehicleHealthQueueItems);
+    const healthExtra = supplementalHealthItems(
+      [...withDerived, ...handoverExtra],
+      vehicleHealthQueueItems,
+    );
     const mergedActiveQueue = mergeV2NotificationsWithVehicleHealth(
-      mergeV2WithSupplemental(notificationsV2.items, derivedQueueItems),
+      mergeV2WithSupplemental(
+        mergeV2WithSupplemental(notificationsV2.items, derivedQueueItems),
+        overdueHandoverQueueItems,
+      ),
       vehicleHealthQueueItems,
     );
 
@@ -955,13 +979,15 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
       notificationsV2.primaryTabCounts,
       derivedExtra,
     );
-    const withHealthCounts = augmentPrimaryTabCountsWithHealthItems(withDerivedCounts, healthExtra);
+    const withHandoverCounts = augmentPrimaryTabCountsWithHealthItems(withDerivedCounts, handoverExtra);
+    const withHealthCounts = augmentPrimaryTabCountsWithHealthItems(withHandoverCounts, healthExtra);
     return mergeNotificationPrimaryTabCounts(withHealthCounts, mergedActiveQueue);
   }, [
     notificationsV2.items,
     notificationsV2.listMode,
     notificationsV2.primaryTabCounts,
     derivedQueueItems,
+    overdueHandoverQueueItems,
     vehicleHealthQueueItems,
   ]);
 
