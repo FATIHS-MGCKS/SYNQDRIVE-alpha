@@ -1,9 +1,11 @@
 import type { DashboardInvoice } from '../dashboardTypes';
+import { bookingRef } from '../../bookings/bookingUtils';
 import {
   expensesInRange,
   mtdRevenueInRange,
   openOutgoingReceivables,
   overdueOutgoingReceivables,
+  reservedRevenueInRange,
   type InvoiceSlice,
 } from '../../../lib/financial-insights.logic';
 import {
@@ -11,6 +13,7 @@ import {
   isOverdueReceivable,
   isReceivableInvoice,
   isRevenueInvoice,
+  normalizeInvoiceStatus,
 } from '../../invoices/invoiceClassification';
 import type {
   BusinessDocumentState,
@@ -65,6 +68,7 @@ function asInvoiceSlice(inv: DashboardInvoice): InvoiceSlice {
     createdAt: inv.createdAt,
     customerId: inv.customerId ?? null,
     vehicleId: inv.vehicleId ?? null,
+    bookingId: inv.bookingId ?? null,
   };
 }
 
@@ -132,13 +136,46 @@ function rowSeverity(state: BusinessDocumentState): BusinessPulseRow['severity']
   return 'neutral';
 }
 
-function rowTitle(inv: DashboardInvoice, locale: string): string {
-  const typeLabel = inv.type.replace(/_/g, ' ').toLowerCase();
-  return inv.id ? `${typeLabel} · ${inv.id.slice(0, 8)}` : label(locale, 'Rechnung', 'Invoice');
+function formatShortDate(iso: string | null | undefined, locale: string): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString(locale === 'de' ? 'de-DE' : 'en-US', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
 }
 
-function rowSubtitle(inv: DashboardInvoice): string | undefined {
-  return [inv.status, inv.invoiceDate || inv.createdAt].filter(Boolean).join(' · ') || undefined;
+function invoiceStatusLabel(status: string | undefined, locale: string): string {
+  const normalized = normalizeInvoiceStatus(status);
+  const de = isDe(locale);
+  if (normalized === 'PAID') return de ? 'Bezahlt' : 'Paid';
+  if (normalized === 'DRAFT') return de ? 'Entwurf' : 'Draft';
+  if (normalized === 'OVERDUE') return de ? 'Überfällig' : 'Overdue';
+  if (normalized === 'OPEN' || normalized === 'ISSUED' || normalized === 'SENT') {
+    return de ? 'Offen' : 'Open';
+  }
+  if (normalized === 'PARTIALLY_PAID') return de ? 'Teilweise bezahlt' : 'Partially paid';
+  if (normalized === 'CANCELLED' || normalized === 'CANCELED' || normalized === 'VOID') {
+    return de ? 'Storniert' : 'Void';
+  }
+  return status?.trim() || (de ? 'Unbekannt' : 'Unknown');
+}
+
+function rowTitle(inv: DashboardInvoice, locale: string): string {
+  if (inv.invoiceNumberDisplay?.trim()) return inv.invoiceNumberDisplay.trim();
+  if (inv.title?.trim()) return inv.title.trim();
+  if (inv.bookingId) {
+    return label(locale, `Buchung ${bookingRef(inv.bookingId)}`, `Booking ${bookingRef(inv.bookingId)}`);
+  }
+  return label(locale, 'Rechnung', 'Invoice');
+}
+
+function rowSubtitle(inv: DashboardInvoice, locale: string): string | undefined {
+  const status = invoiceStatusLabel(inv.status, locale);
+  const date = formatShortDate(inv.invoiceDate || inv.createdAt, locale);
+  return [status, date].filter(Boolean).join(' · ') || undefined;
 }
 
 function invoiceRow(
@@ -157,10 +194,11 @@ function invoiceRow(
   return {
     id: `invoice:${inv.id}`,
     invoiceId: inv.id,
+    ...(inv.bookingId ? { bookingId: inv.bookingId } : {}),
     ...(inv.customerId ? { customerId: inv.customerId } : {}),
     ...(inv.vehicleId ? { vehicleId: inv.vehicleId } : {}),
     title: rowTitle(inv, locale),
-    ...(rowSubtitle(inv) ? { subtitle: rowSubtitle(inv) } : {}),
+    ...(rowSubtitle(inv, locale) ? { subtitle: rowSubtitle(inv, locale) } : {}),
     ...(typeof resolvedAmount === 'number' ? { amountCents: resolvedAmount } : {}),
     currency,
     state,
@@ -273,8 +311,10 @@ export function buildBusinessPulseSlices(
   const rowByInvoiceId = new Map(rows.map((row) => [row.invoiceId, row]));
 
   const revenueInvoices = mtdRevenueInRange(invoiceSlices, monthStart, monthEnd);
+  const reservedInvoices = reservedRevenueInRange(invoiceSlices, monthStart, monthEnd);
   const expenseInvoices = expensesInRange(invoiceSlices, monthStart, monthEnd);
   const outgoingRows = rowsForInvoices(invoicesFromSlices(input.invoices, revenueInvoices), rowByInvoiceId);
+  const reservedRows = rowsForInvoices(invoicesFromSlices(input.invoices, reservedInvoices), rowByInvoiceId);
   const incomingRows = rowsForInvoices(invoicesFromSlices(input.invoices, expenseInvoices), rowByInvoiceId);
 
   const openReceivableInvoices = openOutgoingReceivables(invoiceSlices, now);
@@ -385,6 +425,15 @@ export function buildBusinessPulseSlices(
       locale: input.locale,
       valueCents: sumCents(failedPayments),
       tone: failedPayments.length > 0 ? 'critical' : 'neutral',
+    }),
+    'reserved-revenue': makeSlice({
+      id: 'reserved-revenue',
+      title: label(input.locale, 'Reservierter Umsatz', 'Reserved revenue'),
+      rows: reservedRows,
+      locale: input.locale,
+      valueCents: sumCents(reservedRows),
+      tone: reservedRows.length > 0 ? 'info' : 'neutral',
+      hint: label(input.locale, `${periodLabel} · Vorauszahlung`, `${periodLabel} · Prepaid`),
     }),
   };
 }

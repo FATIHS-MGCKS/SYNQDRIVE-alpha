@@ -449,6 +449,18 @@ export class InvoicesService {
     currency?: string;
     kmIncluded?: number | null;
   }) {
+    const existing = await this.prisma.orgInvoice.findFirst({
+      where: {
+        organizationId: orgId,
+        bookingId: booking.id,
+        type: 'OUTGOING_BOOKING',
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (existing) {
+      return this.findById(existing.id, orgId);
+    }
+
     const snapshot = await this.prisma.bookingPriceSnapshot.findFirst({
       where: { bookingId: booking.id, organizationId: orgId },
       include: { lineItems: { orderBy: { sortOrder: 'asc' } } },

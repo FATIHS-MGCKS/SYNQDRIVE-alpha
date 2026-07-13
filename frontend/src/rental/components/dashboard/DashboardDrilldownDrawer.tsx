@@ -97,6 +97,7 @@ const BUSINESS_METRIC_IDS = new Set<BusinessMetricId>([
   'paid-invoices',
   'draft-invoices',
   'failed-payments',
+  'reserved-revenue',
 ]);
 
 function isDashboardSliceId(id: string): id is DashboardSliceId {

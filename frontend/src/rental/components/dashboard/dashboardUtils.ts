@@ -250,6 +250,10 @@ export function mapInvoiceToDashboardInvoice(raw: Record<string, unknown>): Dash
     createdAt: raw.createdAt != null ? String(raw.createdAt) : null,
     vehicleId: typeof raw.vehicleId === 'string' ? raw.vehicleId : null,
     customerId: typeof raw.customerId === 'string' ? raw.customerId : null,
+    bookingId: typeof raw.bookingId === 'string' ? raw.bookingId : null,
+    title: raw.title != null ? String(raw.title) : null,
+    invoiceNumberDisplay:
+      typeof raw.invoiceNumberDisplay === 'string' ? raw.invoiceNumberDisplay : null,
   };
 }
 

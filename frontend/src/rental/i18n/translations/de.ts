@@ -650,6 +650,7 @@ export const de: Record<TranslationKey, string> = {
   'dashboard.openReceivableCount': '{count} offene Forderungen',
   'dashboard.overdueReceivableCount': '{count} überfällig',
   'dashboard.draftInvoiceCount': '{count} Entwürfe',
+  'dashboard.reservedRevenueCount': '{count} Buchungen',
   'dashboard.failedPaymentCount': '{count} fehlgeschlagene Zahlungen',
   'dashboard.paidInvoiceCount': '{count} bezahlte Rechnungen',
   'dashboard.paidInvoicesLabel': 'Bezahlte Rechnungen',

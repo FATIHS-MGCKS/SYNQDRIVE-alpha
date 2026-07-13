@@ -19,7 +19,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 import { InsightsCockpit } from './insights/InsightsCockpit';
 import {
   expensesInRange,
-  issuedRevenueInRange,
+  mtdRevenueInRange,
   openOutgoingReceivables,
   overdueOutgoingReceivables,
   paidRevenueInRange,
@@ -218,20 +218,20 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
   const bucketed = useMemo(() => {
     const outstandingRevenue = openOutgoingReceivables(invoices, now);
     const overdueRevenue = overdueOutgoingReceivables(invoices, now);
-    const mtdIssued = issuedRevenueInRange(invoices, monthStart, now);
+    const mtdRevenueRows = mtdRevenueInRange(invoices, monthStart, now);
     const mtdPaid = paidRevenueInRange(invoices, monthStart, now);
     const mtdExpenseRows = expensesInRange(invoices, monthStart, now);
-    const prevIssued = issuedRevenueInRange(invoices, prevMonthStart, prevMonthEnd);
+    const prevRevenueRows = mtdRevenueInRange(invoices, prevMonthStart, prevMonthEnd);
 
     return {
-      mtdRevenue: mtdIssued,
+      mtdRevenue: mtdRevenueRows,
       mtdExpense: mtdExpenseRows,
-      prevRevenue: prevIssued,
+      prevRevenue: prevRevenueRows,
       prevExpense: expensesInRange(invoices, prevMonthStart, prevMonthEnd),
       outstandingRevenue,
       overdueRevenue,
       mtdPaid,
-      mtdInvoices: mtdIssued,
+      mtdInvoices: mtdRevenueRows,
     };
   }, [invoices, monthStart, prevMonthStart, prevMonthEnd, now]);
 
@@ -454,7 +454,7 @@ export function FinancialInsightsView({ isDarkMode }: FinancialInsightsViewProps
           color="green"
           isDarkMode={isDarkMode}
           delta={revenueDeltaPct}
-          subtle={`${bucketed.mtdRevenue.length} Rechnungen ausgestellt`}
+          subtle={`${bucketed.mtdRevenue.length} Umsatzpositionen (MTD)`}
           onClick={() => setActivePopup('revenue')}
           clickable
         />

@@ -116,6 +116,7 @@ const BUSINESS_METRIC_IDS: ReadonlySet<string> = new Set<BusinessMetricId>([
   'paid-invoices',
   'draft-invoices',
   'failed-payments',
+  'reserved-revenue',
 ]);
 
 function sliceIdFromFleetLane(lane: FleetBoardLane): DashboardSliceId | null {
