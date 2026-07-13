@@ -27,6 +27,7 @@ import {
 } from './dashboardDrilldownUi';
 import { drawerHeaderHint } from './dashboardDrawerNormalize';
 import type { TodaysOperationsDrilldownGroupId } from './dashboardDrilldownTypes';
+import type { DashboardViewModel, DashboardViewProps } from './dashboardTypes';
 import type {
   BusinessMetricId,
   BusinessPulseRow,
