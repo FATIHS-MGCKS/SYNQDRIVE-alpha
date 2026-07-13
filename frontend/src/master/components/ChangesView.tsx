@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'drawer-bnr-vehicle-row-v49411-2026-07-13',
+    version: '4.9.411',
+    title: 'V4.9.411 — Drawer: BNR-Zeile, Fahrzeugzeile & symmetrische CTAs',
+    summary: [
+      '**BNR:** rechts neben Kunde auf einer Zeile (Aktive Vermietungen + Übergaben/Rückgaben).',
+      'Übergaben-Drawer: Kennzeichen + Make/Model/Year zwischen Abholzeit und Kunde.',
+      'Drawer-CTAs: gleiche Außenmaße (h-8, feste Breite), nur Farbe unterscheidet Buchung/Fahrzeug.',
+    ],
+    reason: 'Weniger Zeilen, klarere Hierarchie und konsistente Button-Proportionen in allen Drawern.',
+    previousBehavior:
+      'Buchungsnummer eigene Zeile; Fahrzeug fehlte im Übergaben-Drawer; Zur Buchung unsymmetrisch zu Zum Fahrzeug.',
+    details:
+      '**Dateien**: `dashboardDrawerRowLines.ts(x)`, `ActiveRentalDrawerRowCard.tsx`, `DashboardDrilldownDrawer.tsx`, `dashboardDrawerRowActions.tsx`.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T16:00:00.000Z',
+  },
+  {
     id: 'active-rentals-drawer-polish-v49410-2026-07-13',
     version: '4.9.410',
     title: 'V4.9.410 — Aktive Vermietungen-Drawer: Layout & einheitliche CTA-Buttons',

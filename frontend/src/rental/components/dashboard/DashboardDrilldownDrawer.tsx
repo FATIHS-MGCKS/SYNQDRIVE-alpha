@@ -10,6 +10,13 @@ import { ActiveRentalDrawerRowCard } from './ActiveRentalDrawerRowCard';
 import { CompactFleetDrawerVehicleRow } from './CompactFleetDrawerVehicleRow';
 import { DrawerRowActionButton } from './dashboardDrawerRowActions';
 import {
+  DrawerCustomerBnrRow,
+  DrawerVehiclePlateModelRow,
+  drawerVehicleMetaKey,
+  normalizeDrawerMetaKey,
+  resolveDrawerVehiclePlateModel,
+} from './dashboardDrawerRowLines';
+import {
   dedupeDisplayReasons,
   formatRuntimeReasonLabel,
   runtimeReasonTooltip,
@@ -267,9 +274,17 @@ function BookingDrawerRowCard({
     ? formatRuntimeReasonLabel(visibleReasons[0], locale)
     : undefined;
   const metaNormalized = (display.meta ?? '').trim().toLowerCase();
-  const showMeta = display.meta
+  const vehiclePlateModel = resolveDrawerVehiclePlateModel({
+    vehicle,
+    runtimeState,
+    metaFallback: display.meta,
+  });
+  const showMeta = Boolean(
+    display.meta
     && !metaNormalized.includes((row.stationLabel ?? '').trim().toLowerCase())
-    && (!primaryReasonText || metaNormalized !== primaryReasonText.trim().toLowerCase());
+    && (!primaryReasonText || metaNormalized !== primaryReasonText.trim().toLowerCase())
+    && normalizeDrawerMetaKey(display.meta) !== drawerVehicleMetaKey(vehiclePlateModel),
+  );
   const showStation = row.stationLabel
     && !metaNormalized.includes(row.stationLabel.trim().toLowerCase());
   const timingText = row.statusLabel
@@ -284,9 +299,6 @@ function BookingDrawerRowCard({
   const canOpenVehicle = Boolean(row.vehicleId && onOpenVehicle);
   const ctaLabel = row.primaryActionLabel ?? (row.bookingId ? defaultBookingCta(de) : defaultVehicleCta(de));
   const canOpen = canOpenBooking || canOpenVehicle;
-  const bookingNumberLine = row.bookingRef
-    ? `${de ? 'Buchungsnummer' : 'Booking no.'}: ${row.bookingRef}`
-    : undefined;
   const handoverReadiness = resolveHandoverReadinessBadge(
     vehicle,
     health,
@@ -338,12 +350,17 @@ function BookingDrawerRowCard({
       </div>
 
       <div className="mt-1 space-y-1">
-        {display.subtitle ? (
-          <p className="truncate text-[10.5px] text-muted-foreground">{display.subtitle}</p>
+        {vehiclePlateModel ? (
+          <DrawerVehiclePlateModelRow
+            plate={vehiclePlateModel.plate}
+            model={vehiclePlateModel.model}
+          />
         ) : null}
-        {bookingNumberLine ? (
-          <p className="truncate text-[10.5px] text-muted-foreground">{bookingNumberLine}</p>
-        ) : null}
+        <DrawerCustomerBnrRow
+          subtitle={display.subtitle}
+          bookingRef={row.bookingRef}
+          de={de}
+        />
         <div className="flex items-center justify-between gap-2">
           {showStation ? (
             <p className="flex min-w-0 flex-1 items-center gap-1 text-[10px] text-muted-foreground">
