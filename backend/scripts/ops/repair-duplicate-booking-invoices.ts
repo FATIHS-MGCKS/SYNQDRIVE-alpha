@@ -10,6 +10,7 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../../src/app.module';
 import { BookingInvoiceLifecycleService } from '../../src/modules/invoices/booking-invoice-lifecycle.service';
+import { InvoicesModule } from '../../src/modules/invoices/invoices.module';
 import { PrismaService } from '../../src/shared/database/prisma.service';
 
 async function main() {
@@ -21,7 +22,7 @@ async function main() {
   });
 
   try {
-    const lifecycle = app.get(BookingInvoiceLifecycleService);
+    const lifecycle = app.select(InvoicesModule).get(BookingInvoiceLifecycleService);
     const prisma = app.get(PrismaService);
 
     const orgIds = orgId
