@@ -314,6 +314,8 @@ describe('dashboard runtime-only UI contracts', () => {
       activeRentalsCount: 2,
       pickupsToday: 2,
       returnsToday: 1,
+      hasOverduePickups: false,
+      hasOverdueReturns: false,
     });
 
     const drawerGroups = buildDashboardGroups(slice, 'en');
@@ -408,6 +410,7 @@ describe('dashboard runtime-only UI contracts', () => {
     expect(deRow?.statusLabel).toBe('Seit 5 Std. 17 Min.');
     expect(deRow?.readinessLabel).toBe('Reserviert');
     expect(deRow?.readinessTone).toBe('info');
+    expect(resolveTodaysOperationsKpiCounts(deRuntime.slices['active-rented']).hasOverduePickups).toBe(true);
 
     const enRuntime = buildDashboardRuntimeModel({
       locale: 'en',
@@ -448,15 +451,16 @@ describe('dashboard runtime-only UI contracts', () => {
     );
   });
 
-  it('keeps due-soon out of the visible KPI strip order and includes overdue-pickups', () => {
+  it('keeps only twin KPI cards in the visible strip and due-soon out of render order', () => {
     const stripSrc = readFileSync(resolve(testDir, './ControlKpiStrip.tsx'), 'utf8');
 
-    expect(stripSrc).toContain("const TOP_KPI_ORDER: DashboardSliceId[] = ['ready-to-rent', 'active-rented']");
-    expect(stripSrc).toContain("'overdue-pickups'");
     expect(stripSrc).toMatch(
-      /const LOWER_KPI_ORDER: DashboardSliceId\[\] = \[\s*'blocked-maintenance',\s*'overdue-returns',\s*'critical-alerts',\s*'overdue-pickups',\s*\]/,
+      /const VISIBLE_KPI_ORDER: DashboardSliceId\[\] = \['ready-to-rent', 'active-rented'\]/,
     );
-    expect(stripSrc).not.toMatch(/TOP_KPI_ORDER: DashboardSliceId\[\] = \[[^\]]*'due-soon'/);
-    expect(stripSrc).not.toMatch(/LOWER_KPI_ORDER: DashboardSliceId\[\] = \[[^\]]*'due-soon'/);
+    expect(stripSrc).not.toContain('LOWER_KPI_ORDER');
+    expect(stripSrc).not.toMatch(/VISIBLE_KPI_ORDER[^\n]*'due-soon'/);
+    expect(stripSrc).not.toMatch(/VISIBLE_KPI_ORDER[^\n]*'overdue-pickups'/);
+    expect(stripSrc).not.toMatch(/VISIBLE_KPI_ORDER[^\n]*'blocked-maintenance'/);
+    expect(stripSrc).not.toMatch(/VISIBLE_KPI_ORDER[^\n]*'critical-alerts'/);
   });
 });

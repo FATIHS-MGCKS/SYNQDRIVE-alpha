@@ -55,7 +55,11 @@ export function getKpiCardTone(slice: DashboardSlice): KpiCardTone {
 export function getKpiValueTone(
   slice: DashboardSlice,
   role: KpiValueRole,
-  options?: { notReadyCount?: number | null },
+  options?: {
+    notReadyCount?: number | null;
+    hasOverduePickups?: boolean;
+    hasOverdueReturns?: boolean;
+  },
 ): KpiCardTone {
   if (isReadySlice(slice.id)) {
     if (role === 'main') return 'positive';
@@ -64,6 +68,8 @@ export function getKpiValueTone(
   }
 
   if (slice.id === 'active-rented') {
+    if (role === 'footer-left' && (options?.hasOverduePickups ?? false)) return 'critical';
+    if (role === 'footer-right' && (options?.hasOverdueReturns ?? false)) return 'critical';
     return 'neutral';
   }
 

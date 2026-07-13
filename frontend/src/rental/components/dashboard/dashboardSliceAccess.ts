@@ -20,12 +20,25 @@ export interface TodaysOperationsKpiCounts {
   activeRentalsCount: number | null;
   pickupsToday: number;
   returnsToday: number;
+  hasOverduePickups: boolean;
+  hasOverdueReturns: boolean;
+}
+
+function groupHasCriticalRows(slice: DashboardSlice, groupId: string): boolean {
+  const rows = slice.groups?.find((group) => group.id === groupId)?.rows ?? [];
+  return rows.some((row) => row.severity === 'critical');
 }
 
 /** KPI counts for Today's Operations card — reads runtime slice groups only. */
 export function resolveTodaysOperationsKpiCounts(slice: DashboardSlice): TodaysOperationsKpiCounts {
   if (slice.id !== 'active-rented' || slice.count === null) {
-    return { activeRentalsCount: slice.count, pickupsToday: 0, returnsToday: 0 };
+    return {
+      activeRentalsCount: slice.count,
+      pickupsToday: 0,
+      returnsToday: 0,
+      hasOverduePickups: false,
+      hasOverdueReturns: false,
+    };
   }
 
   const activeRentalsCount = slice.count ?? slice.rows.length;
@@ -36,6 +49,8 @@ export function resolveTodaysOperationsKpiCounts(slice: DashboardSlice): TodaysO
     activeRentalsCount,
     pickupsToday,
     returnsToday,
+    hasOverduePickups: groupHasCriticalRows(slice, 'pickups-today'),
+    hasOverdueReturns: groupHasCriticalRows(slice, 'returns-today'),
   };
 }
 

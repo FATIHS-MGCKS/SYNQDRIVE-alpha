@@ -156,11 +156,13 @@ describe('dashboardKpiVisual', () => {
       expect(getKpiValueTone(readySlice, 'footer-left')).toBe('neutral');
     });
 
-    it('active-rented values stay neutral', () => {
+    it('active-rented values stay neutral unless overdue pickups or returns exist', () => {
       const opsSlice = slice('active-rented', 8, 'info');
       expect(getKpiValueTone(opsSlice, 'main')).toBe('neutral');
       expect(getKpiValueTone(opsSlice, 'footer-left')).toBe('neutral');
       expect(getKpiValueTone(opsSlice, 'footer-right')).toBe('neutral');
+      expect(getKpiValueTone(opsSlice, 'footer-left', { hasOverduePickups: true })).toBe('critical');
+      expect(getKpiValueTone(opsSlice, 'footer-right', { hasOverdueReturns: true })).toBe('critical');
     });
 
     it('compact values follow card tone', () => {

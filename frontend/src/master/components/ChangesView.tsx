@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dashboard-kpi-strip-consolidation-v49417-2026-07-13',
+    version: '4.9.417',
+    title: 'V4.9.417 — Dashboard-KPIs: vier redundante Boxen entfernt',
+    summary: [
+      'KPI-Strip zeigt nur noch „Bereit zur Vermietung“ und „Heutige Operationen“ (2 statt 6 Boxen).',
+      'Übergaben/Rückgaben in Heutige Operationen werden rot, wenn überfällige Einträge in der jeweiligen Gruppe existieren.',
+      'Runtime-Slices `overdue-*`, `blocked-maintenance`, `critical-alerts` bleiben für Drilldowns und Meldungen erhalten.',
+    ],
+    reason:
+      'Überfällige Übergaben/Rückgaben, Blockiert & Wartung und Kritische Alerts waren redundant zu Heutige Operationen, Ready-for-Renting und der Meldungen-Box.',
+    previousBehavior:
+      'Sechs KPI-Boxen im 2×3-Grid; separate Karten für Überfällige Übergaben/Rückgaben, Blockiert & Wartung und Kritische Alerts.',
+    details:
+      '**Dateien**: `ControlKpiStrip.tsx`, `dashboardSliceAccess.ts`, `dashboardKpiVisual.ts`, Tests. Keine Runtime-Builder-, API- oder Backend-Änderung.',
+    affectsArchitecture: true,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T18:00:00.000Z',
+  },
+  {
     id: 'active-rental-drawer-trim-v49416-2026-07-13',
     version: '4.9.416',
     title: 'V4.9.416 — Aktive Vermietungen: BNR inline & ohne Telemetrie-Zeile',
