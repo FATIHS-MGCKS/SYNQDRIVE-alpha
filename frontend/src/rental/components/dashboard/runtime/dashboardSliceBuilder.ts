@@ -2,6 +2,7 @@ import type { VehicleHealthResponse } from '../../../../lib/api';
 import type { DashboardInsight } from '../../../DashboardInsightsContext';
 import type { VehicleData } from '../../../data/vehicles';
 import type { PickupTileItem, ReturnTileItem } from '../../StatInlineDetail';
+import { bookingRef } from '../../bookings/bookingUtils';
 import {
   canonicalCriticalReasonKey,
   dedupeRuntimeReasons,
@@ -190,6 +191,32 @@ function findVehicleState(
   });
 }
 
+function formatOperationDrawerTime(
+  iso: string | undefined,
+  fallbackTime: string | undefined,
+  locale: string,
+): string {
+  const de = isDe(locale);
+  if (iso) {
+    const ms = parseTimeMs(iso);
+    if (ms != null) {
+      const date = new Date(ms);
+      if (de) {
+        return `${date.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', hour12: false })} Uhr`;
+      }
+      return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    }
+  }
+  const trimmed = fallbackTime?.trim();
+  if (trimmed) return de ? `${trimmed} Uhr` : trimmed;
+  return label(locale, 'Abholung', 'Pickup');
+}
+
+function labeledField(fieldLabel: string, value: string | undefined): string | undefined {
+  const trimmed = value?.trim();
+  return trimmed ? `${fieldLabel}: ${trimmed}` : undefined;
+}
+
 function formatDurationLabel(minutes: number, overdue: boolean, locale: string): string {
   const de = isDe(locale);
   const safe = Math.max(0, Math.round(minutes));
@@ -199,13 +226,10 @@ function formatDurationLabel(minutes: number, overdue: boolean, locale: string):
   if (hours > 0) parts.push(de ? `${hours} Std.` : `${hours}h`);
   if (mins > 0 || hours === 0) parts.push(de ? `${mins} Min.` : `${mins}m`);
   const duration = parts.join(' ');
-  return overdue
-    ? de
-      ? `${duration} überfällig`
-      : `${duration} overdue`
-    : de
-      ? `in ${duration}`
-      : `in ${duration}`;
+  if (overdue) {
+    return de ? `Seit ${duration}` : `Since ${duration}`;
+  }
+  return `In ${duration}`;
 }
 
 function minutesUntil(iso: string | undefined, nowMs: number): number | null {
@@ -244,6 +268,27 @@ function operationVehicleLine(item: PickupTileItem | ReturnTileItem): string | u
   return parts.length > 0 ? parts.join(' · ') : undefined;
 }
 
+function operationReadiness(
+  state: VehicleRuntimeState | undefined,
+  item: PickupTileItem | ReturnTileItem,
+  locale: string,
+): Pick<DashboardSliceRow, 'readinessLabel' | 'readinessTone'> | undefined {
+  if (state) {
+    return state.isReadyToRent
+      ? { readinessLabel: label(locale, 'Bereit', 'Ready'), readinessTone: 'success' }
+      : { readinessLabel: label(locale, 'Nicht bereit', 'Not ready'), readinessTone: 'watch' };
+  }
+  const needsAttention =
+    ('needsCleaning' in item && item.needsCleaning) || item.hasAlert || item.hasError;
+  if (needsAttention) {
+    return { readinessLabel: label(locale, 'Nicht bereit', 'Not ready'), readinessTone: 'watch' };
+  }
+  if (item.vehicleId) {
+    return { readinessLabel: label(locale, 'Bereit', 'Ready'), readinessTone: 'success' };
+  }
+  return undefined;
+}
+
 function pickupRow(
   item: PickupTileItem,
   state: VehicleRuntimeState | undefined,
@@ -253,16 +298,22 @@ function pickupRow(
 ): DashboardSliceRow {
   const timingLabel = buildOperationTimingLabel(item, item.startDate, nowMs, locale);
   const vehicleLine = operationVehicleLine(item);
+  const readiness = operationReadiness(state, item, locale);
+  const ref = item.bookingId ? bookingRef(item.bookingId) : undefined;
   return {
     id: `booking:${item.bookingId || stableFallbackId('pickup', item)}:${variant}`,
     ...(item.vehicleId || state?.vehicleId ? { vehicleId: item.vehicleId || state?.vehicleId } : {}),
     ...(item.bookingId ? { bookingId: item.bookingId } : {}),
-    title: item.time || label(locale, 'Abholung', 'Pickup'),
-    ...(item.customer ? { subtitle: item.customer } : {}),
+    title: formatOperationDrawerTime(item.startDate, item.time, locale),
+    ...(item.customer
+      ? { subtitle: labeledField(label(locale, 'Kunde', 'Customer'), item.customer) }
+      : {}),
+    ...(ref ? { bookingRef: ref } : {}),
     ...(vehicleLine ? { meta: vehicleLine } : {}),
     stationLabel: item.station || state?.stationLabel || null,
     severity: variant === 'pickup-overdue' ? 'critical' : 'info',
     ...(timingLabel ? { statusLabel: timingLabel } : {}),
+    ...(readiness ?? {}),
     primaryActionLabel: label(locale, 'Buchung öffnen', 'Open booking'),
   };
 }
@@ -277,16 +328,22 @@ function returnRow(
   const timingLabel = buildOperationTimingLabel(item, item.endDate, nowMs, locale);
   const vehicleLine = operationVehicleLine(item);
   const reasons = variant === 'return-overdue' ? state?.criticalReasons ?? [] : state?.warningReasons ?? [];
+  const readiness = operationReadiness(state, item, locale);
+  const ref = item.bookingId ? bookingRef(item.bookingId) : undefined;
   return {
     id: `booking:${item.bookingId || stableFallbackId('return', item)}:${variant}`,
     ...(item.vehicleId || state?.vehicleId ? { vehicleId: item.vehicleId || state?.vehicleId } : {}),
     ...(item.bookingId ? { bookingId: item.bookingId } : {}),
-    title: item.time || label(locale, 'Rückgabe', 'Return'),
-    ...(item.customer ? { subtitle: item.customer } : {}),
+    title: formatOperationDrawerTime(item.endDate, item.time, locale),
+    ...(item.customer
+      ? { subtitle: labeledField(label(locale, 'Kunde', 'Customer'), item.customer) }
+      : {}),
+    ...(ref ? { bookingRef: ref } : {}),
     ...(vehicleLine ? { meta: vehicleLine } : {}),
     stationLabel: item.station || state?.stationLabel || null,
     severity: variant === 'return-overdue' || item.hasError ? 'critical' : 'info',
     ...(timingLabel ? { statusLabel: timingLabel } : {}),
+    ...(readiness ?? {}),
     ...(reasons.length > 0 ? { reasons, reasonIds: reasons.map((reason) => reason.id) } : {}),
     primaryActionLabel: label(locale, 'Buchung öffnen', 'Open booking'),
   };

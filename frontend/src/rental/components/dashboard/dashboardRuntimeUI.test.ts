@@ -340,7 +340,7 @@ describe('dashboard runtime-only UI contracts', () => {
       fleetVehicles: [vehicle({ id: 'pickup-1', license: 'WOB L 7503' })],
       pickupItems: [
         {
-          bookingId: 'b1',
+          bookingId: 'booking-uuid-abc123',
           time: '10:45',
           vehicle: 'VW Golf',
           plate: 'WOB L 7503',
@@ -364,13 +364,79 @@ describe('dashboard runtime-only UI contracts', () => {
       ?.find((group) => group.id === 'pickups-today')
       ?.rows[0];
 
-    expect(pickupRow?.title).toBe('10:45');
-    expect(pickupRow?.subtitle).toBe('Kübra Serin');
+    expect(pickupRow?.title).toMatch(/\d{2}:\d{2} Uhr$/);
+    expect(pickupRow?.subtitle).toBe('Kunde: Kübra Serin');
+    expect(pickupRow?.bookingRef).toBe('BK-ABC123');
     expect(pickupRow?.meta).toBe('WOB L 7503 · VW Golf');
     expect(pickupRow?.stationLabel).toBe('Zentrale');
-    expect(pickupRow?.statusLabel).toBe('in 45 Min.');
-    expect(pickupRow?.bookingId).toBe('b1');
+    expect(pickupRow?.statusLabel).toBe('In 45 Min.');
+    expect(pickupRow?.readinessLabel).toBe('Bereit');
+    expect(pickupRow?.readinessTone).toBe('success');
+    expect(pickupRow?.bookingId).toBe('booking-uuid-abc123');
     expect(pickupRow?.primaryActionLabel).toBe('Buchung öffnen');
+  });
+
+  it('formats overdue pickup timing with Seit prefix and English am/pm time', () => {
+    const overdueAt = new Date(NOW.getTime() - (5 * 60 + 17) * 60_000).toISOString();
+    const deRuntime = buildDashboardRuntimeModel({
+      locale: 'de',
+      fleetVehicles: [vehicle({ id: 'pickup-1', license: 'WOB L 7503', cleaningStatus: 'Needs Cleaning' })],
+      pickupItems: [
+        {
+          bookingId: 'b-overdue',
+          time: '04:43',
+          vehicle: 'VW Golf',
+          plate: 'WOB L 7503',
+          customer: 'Kübra Serin',
+          station: 'Zentrale',
+          done: false,
+          vehicleId: 'pickup-1',
+          needsCleaning: true,
+          hasAlert: false,
+          hasError: false,
+          startDate: overdueAt,
+          endDate: overdueAt,
+          isOverdue: true,
+          minutesOverdue: 317,
+        } satisfies PickupTileItem,
+      ],
+      now: NOW,
+    });
+    const deRow = deRuntime.slices['active-rented'].groups
+      ?.find((group) => group.id === 'pickups-today')
+      ?.rows[0];
+    expect(deRow?.statusLabel).toBe('Seit 5 Std. 17 Min.');
+    expect(deRow?.readinessLabel).toBe('Nicht bereit');
+
+    const enRuntime = buildDashboardRuntimeModel({
+      locale: 'en',
+      fleetVehicles: [vehicle({ id: 'pickup-1', license: 'WOB L 7503' })],
+      pickupItems: [
+        {
+          bookingId: 'b-en',
+          time: '10:00',
+          vehicle: 'VW Golf',
+          plate: 'WOB L 7503',
+          customer: 'Jane Doe',
+          station: 'Central',
+          done: false,
+          vehicleId: 'pickup-1',
+          needsCleaning: false,
+          hasAlert: false,
+          hasError: false,
+          startDate: '2026-06-24T10:00:00.000Z',
+          endDate: '2026-06-24T10:00:00.000Z',
+          isOverdue: false,
+          minutesOverdue: 0,
+        } satisfies PickupTileItem,
+      ],
+      now: NOW,
+    });
+    const enRow = enRuntime.slices['active-rented'].groups
+      ?.find((group) => group.id === 'pickups-today')
+      ?.rows[0];
+    expect(enRow?.title).toMatch(/10:00\s?(AM|am)/);
+    expect(enRow?.subtitle).toBe('Customer: Jane Doe');
   });
 
   it('prefers booking navigation over vehicle in pickup drawer CTA', () => {

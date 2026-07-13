@@ -103,6 +103,14 @@ function severityTone(severity: DashboardSliceRow['severity'] | BusinessPulseRow
   return 'neutral';
 }
 
+function readinessTone(tone: DashboardSliceRow['readinessTone'] | undefined) {
+  if (tone === 'critical') return 'critical';
+  if (tone === 'watch') return 'watch';
+  if (tone === 'success') return 'success';
+  if (tone === 'info') return 'info';
+  return 'neutral';
+}
+
 function formatDate(value: string | null | undefined, locale: string): string | null {
   if (!value) return null;
   const date = new Date(value);
@@ -224,7 +232,7 @@ function BookingDrawerRowCard({
     && (!primaryReasonText || metaNormalized !== primaryReasonText.trim().toLowerCase());
   const showStation = row.stationLabel
     && !metaNormalized.includes(row.stationLabel.trim().toLowerCase());
-  const severityText = row.statusLabel
+  const timingText = row.statusLabel
     ?? (row.severity === 'critical'
       ? de ? 'Kritisch' : 'Critical'
       : row.severity === 'warning'
@@ -236,6 +244,9 @@ function BookingDrawerRowCard({
   const canOpenVehicle = Boolean(row.vehicleId && onOpenVehicle);
   const ctaLabel = row.primaryActionLabel ?? (row.bookingId ? defaultBookingCta(de) : defaultVehicleCta(de));
   const canOpen = canOpenBooking || canOpenVehicle;
+  const bookingNumberLine = row.bookingRef
+    ? `${de ? 'Buchungsnummer' : 'Booking no.'}: ${row.bookingRef}`
+    : undefined;
 
   return (
     <article className="rounded-lg border border-border/45 surface-premium/45 px-2.5 py-2 shadow-sm shadow-black/[0.02] transition-colors hover:border-border/65 hover:bg-muted/10">
@@ -245,17 +256,30 @@ function BookingDrawerRowCard({
             <h3 className="truncate text-[12px] font-semibold tracking-[-0.01em] text-foreground">
               {display.title}
             </h3>
-            {severityText ? (
-              <StatusChip
-                tone={severityTone(row.severity)}
-                className="px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide"
-              >
-                {severityText}
-              </StatusChip>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {timingText ? (
+                <StatusChip
+                  tone={severityTone(row.severity)}
+                  className="px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide"
+                >
+                  {timingText}
+                </StatusChip>
+              ) : null}
+              {row.readinessLabel ? (
+                <StatusChip
+                  tone={readinessTone(row.readinessTone)}
+                  className="px-1.5 py-0.5 text-[9.5px] uppercase tracking-wide"
+                >
+                  {row.readinessLabel}
+                </StatusChip>
+              ) : null}
+            </div>
           </div>
           {display.subtitle ? (
             <p className="truncate text-[10.5px] text-muted-foreground">{display.subtitle}</p>
+          ) : null}
+          {bookingNumberLine ? (
+            <p className="truncate text-[10.5px] text-muted-foreground">{bookingNumberLine}</p>
           ) : null}
           {showStation ? (
             <p className="flex items-center gap-1 text-[10px] text-muted-foreground">

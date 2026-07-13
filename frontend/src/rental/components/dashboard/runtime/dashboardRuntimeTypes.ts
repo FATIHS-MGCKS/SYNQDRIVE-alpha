@@ -131,8 +131,13 @@ export interface DashboardSliceRow {
   meta?: string;
   stationLabel?: string | null;
   severity: 'neutral' | 'success' | 'info' | 'warning' | 'critical';
-  /** Operational timing chip, e.g. "in 45 Min." or "2 Std. überfällig". */
+  /** Operational timing chip, e.g. "In 45 Min." or "Seit 2 Std. überfällig". */
   statusLabel?: string;
+  /** Display booking reference, e.g. BK-1A2B3C. */
+  bookingRef?: string;
+  /** Vehicle rental readiness for handover rows. */
+  readinessLabel?: string;
+  readinessTone?: 'neutral' | 'success' | 'info' | 'watch' | 'critical';
   reasonIds?: string[];
   reasons?: RuntimeReason[];
   primaryActionLabel?: string;

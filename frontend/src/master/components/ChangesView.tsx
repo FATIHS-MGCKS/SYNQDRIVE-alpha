@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'pickup-drawer-labels-v49404-2026-07-13',
+    version: '4.9.404',
+    title: 'V4.9.404 — Übergaben-Drawer: Uhrzeit, Seit/In, Kunde & Bereit-Badge',
+    summary: [
+      'Übergaben-Drawer: Zeit mit **Uhr** (DE) bzw. **am/pm** (EN).',
+      'Timing-Badge: **Seit** bei Überfälligkeit, **In** bei bevorstehenden Terminen.',
+      'Zeilen mit **Kunde:**, **Buchungsnummer:** (BK-…), Fahrzeugzeile und symmetrischen Chips für Zeit + **Bereit/Nicht bereit**.',
+    ],
+    reason: 'Operative Übergaben brauchen vollständige Kontext-Labels und Mietbereitschaft auf einen Blick.',
+    previousBehavior:
+      'Zeit ohne „Uhr“, Badge ohne Seit/In, Kunde ohne Label, keine Buchungsnummer, kein Bereit-Badge.',
+    details:
+      '**Dateien**: `dashboardSliceBuilder.ts`, `dashboardRuntimeTypes.ts`, `DashboardDrilldownDrawer.tsx`. Keine Backend-Änderung.',
+    affectsArchitecture: false,
+    module: 'Rental Dashboard',
+    createdAt: '2026-07-13T13:30:00.000Z',
+  },
+  {
     id: 'pickup-drawer-ux-v49403-2026-07-13',
     version: '4.9.403',
     title: 'V4.9.403 — Dashboard: Übergaben-Drawer mit Abholzeit & Buchungsnavigation',
