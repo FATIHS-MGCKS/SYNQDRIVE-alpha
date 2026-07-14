@@ -15,6 +15,9 @@ import { PaymentsPermissionGuard } from './guards/payments-permission.guard';
 import { OrganizationPaymentAccountRepository } from './repositories/organization-payment-account.repository';
 import { BookingPaymentRequestRepository } from './repositories/booking-payment-request.repository';
 import { PaymentTransactionRepository } from './repositories/payment-transaction.repository';
+import { StripeConnectWebhookController } from './stripe-connect-webhook.controller';
+import { StripeConnectWebhookService } from './stripe-connect-webhook.service';
+import { StripeConnectWebhookProcessorService } from './stripe-connect-webhook.processor';
 import { StripeConnectWebhookEventRepository } from './repositories/stripe-connect-webhook-event.repository';
 import { OrganizationPaymentAccountService } from './organization-payment-account.service';
 import { StripeConnectAccountService } from './stripe-connect-account.service';
@@ -27,7 +30,11 @@ import {
 
 @Module({
   imports: [PrismaModule, ConfigModule, InvoicesModule],
-  controllers: [PaymentsConnectController, BookingPaymentRequestController],
+  controllers: [
+    PaymentsConnectController,
+    BookingPaymentRequestController,
+    StripeConnectWebhookController,
+  ],
   providers: [
     PaymentStatusService,
     PaymentsAccessService,
@@ -35,6 +42,8 @@ import {
     PaymentFeeService,
     BookingPaymentRequestService,
     StripeCheckoutService,
+    StripeConnectWebhookService,
+    StripeConnectWebhookProcessorService,
     PaymentsFeatureGuard,
     PaymentsPermissionGuard,
     OrganizationPaymentAccountRepository,
@@ -64,6 +73,7 @@ import {
     StripeConnectAccountService,
     BookingPaymentRequestService,
     StripeCheckoutService,
+    StripeConnectWebhookService,
     stripeConnectAdapterProvider,
   ],
 })

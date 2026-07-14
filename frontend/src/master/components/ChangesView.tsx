@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stripe-connect-webhook-v49444-2026-07-14',
+    version: '4.9.444',
+    title: 'V4.9.444 — End-Customer Payments: separater Stripe-Connect-Webhook',
+    summary: [
+      'POST /api/v1/webhooks/stripe-connect — getrennt vom Billing-Webhook /webhooks/stripe.',
+      'Eigenes Secret STRIPE_CONNECT_WEBHOOK_SECRET; Raw Body + Signaturprüfung + Idempotenz via StripeConnectWebhookEvent.',
+      'Account-Kontext aus event.account; unbekannte Accounts als UNRESOLVED_ACCOUNT ohne Org-Zuordnung.',
+      'MVP-Eventtypen gespeichert (RECEIVED); weitere Events IGNORED; keine PAID/Invoice/E-Mail-Verarbeitung.',
+    ],
+    reason:
+      'Connect-Endkundenzahlungen brauchen einen eigenen, signaturgesicherten Event Store, bevor Zahlungsstatus per Worker verarbeitet wird.',
+    previousBehavior: 'Nur Billing-Webhook unter /webhooks/stripe; Connect-Events ohne Ingress.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_STRIPE_CONNECT_WEBHOOK_2026-07-14.md, stripe-connect-webhook.service.ts, auth.guard PUBLIC path.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Connect Webhook',
+    createdAt: '2026-07-14T23:30:00.000Z',
+  },
+  {
     id: 'stripe-checkout-session-v49443-2026-07-14',
     version: '4.9.443',
     title: 'V4.9.443 — End-Customer Payments: Stripe Checkout Session (Direct Charge)',

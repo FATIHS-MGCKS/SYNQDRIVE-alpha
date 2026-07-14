@@ -15,6 +15,7 @@ export interface CreateStripeConnectWebhookEventInput {
   objectId?: string | null;
   payloadHash?: string | null;
   safeEventData?: Prisma.InputJsonValue;
+  processingStatus?: StripeConnectWebhookProcessingStatus;
 }
 
 export interface UpdateStripeConnectWebhookEventInput {
@@ -46,7 +47,8 @@ export class StripeConnectWebhookEventRepository {
         objectId: data.objectId ?? null,
         payloadHash: data.payloadHash ?? null,
         safeEventData: data.safeEventData,
-        processingStatus: StripeConnectWebhookProcessingStatus.RECEIVED,
+        processingStatus:
+          data.processingStatus ?? StripeConnectWebhookProcessingStatus.RECEIVED,
       },
     });
   }

@@ -4063,6 +4063,7 @@ enum StripeConnectWebhookProcessingStatus {
   PROCESSED
   FAILED
   IGNORED
+  UNRESOLVED_ACCOUNT
 }
 
 model OrganizationPaymentAccount {
