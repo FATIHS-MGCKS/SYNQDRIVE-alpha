@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-detail-header-v49458-2026-07-14',
+    version: '4.9.458',
+    title: 'V4.9.458 — Rechnungsdetail: neuer Header, Support-CTA entfernt',
+    summary: [
+      '`InvoiceDetailDto` + Mapper für Header-Felder und Aktionsmatrix (PDF, E-Mail, Mehr-Menü).',
+      'Header zeigt Nummer, Art, Status, Beträge, Rechnungs-/Fälligkeitsdatum; mobile-first Aktionsleiste.',
+      '`SupportContextButton` vollständig aus Rechnungsdetail entfernt.',
+      'Deaktivierte Aktionen mit sichtbarem Grund (nicht nur Tooltip); StatusChips nach Designsystem.',
+    ],
+    reason:
+      'Klarere Priorisierung der Dokument-/Versandaktionen und Entfernung des Support-Buttons aus dem Rechnungskopf.',
+    previousBehavior:
+      'Kompakter Header mit Support-CTA, verstreuten Aktionsbuttons und Beträgen in einer Zeile.',
+    details:
+      'InvoiceDetailHeader.tsx, invoiceDetailTypes.ts, invoiceDetail.mapper.ts, invoiceDetail.mapper.test.ts, architecture/INVOICE_DETAIL_HEADER_2026-07-14.md.',
+    affectsArchitecture: true,
+    module: 'Finance',
+    createdAt: '2026-07-14T22:22:00.000Z',
+  },
+  {
     id: 'invoice-frontend-module-split-v49457-2026-07-14',
     version: '4.9.457',
     title: 'V4.9.457 — Invoices: monolithische View in Module zerlegt',

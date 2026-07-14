@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 
 import { Icon } from '../ui/Icon';
 import { useRentalOrg } from '../../RentalContext';
 import { useInvoiceActions } from './hooks/useInvoiceActions';
+import { buildInvoiceDetailDto } from './invoiceDetail.mapper';
 import type { Invoice } from './invoiceTypes';
 import type { InvoiceThemeClasses } from './invoiceTheme';
 import { InvoiceDetailHeader } from './InvoiceDetailHeader';
@@ -21,6 +23,20 @@ interface InvoiceDetailProps extends InvoiceThemeClasses {
   onUpdate: (inv: Invoice) => void;
 }
 
+function useViewportWidth(): number {
+  const [width, setWidth] = useState(
+    typeof window !== 'undefined' ? window.innerWidth : 390,
+  );
+
+  useEffect(() => {
+    const onResize = () => setWidth(window.innerWidth);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+
+  return width;
+}
+
 export function InvoiceDetail({
   isDarkMode,
   invoice,
@@ -34,6 +50,8 @@ export function InvoiceDetail({
 }: InvoiceDetailProps) {
   const { userRole } = useRentalOrg();
   const canManageEmail = userRole === 'ORG_ADMIN' || userRole === 'MASTER_ADMIN';
+  const viewportWidth = useViewportWidth();
+  const notesAnchorRef = useRef<HTMLDivElement>(null);
 
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState('');
@@ -42,17 +60,19 @@ export function InvoiceDetail({
 
   const actions = useInvoiceActions(orgId, invoice, onUpdate);
 
-  const outstanding = invoice.outstandingCents ?? Math.max(0, invoice.totalCents - (invoice.paidCents ?? 0));
-  const paidCents = invoice.paidCents ?? 0;
+  const detail = useMemo(
+    () => buildInvoiceDetailDto(invoice, { canManageEmail }),
+    [invoice, canManageEmail],
+  );
+
+  const outstanding = detail.amounts.outstandingCents;
+  const paidCents = detail.amounts.paidCents;
   const lineItems = Array.isArray(invoice.lineItems) ? invoice.lineItems : [];
   const payments = invoice.payments ?? [];
 
-  const handleTogglePaymentForm = () => {
-    setShowPaymentForm((prev) => {
-      const next = !prev;
-      if (next) setPaymentAmount((outstanding / 100).toFixed(2));
-      return next;
-    });
+  const openPaymentForm = () => {
+    setShowPaymentForm(true);
+    setPaymentAmount((outstanding / 100).toFixed(2));
   };
 
   const handleSubmitPayment = async () => {
@@ -65,6 +85,20 @@ export function InvoiceDetail({
     }
   };
 
+  const handleCopyInternalId = async () => {
+    try {
+      await navigator.clipboard.writeText(detail.core.invoiceId);
+      toast.success('Interne ID kopiert');
+    } catch {
+      toast.error('Kopieren fehlgeschlagen');
+    }
+  };
+
+  const handleEdit = () => {
+    notesAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast.message('Notizen und Stammdaten weiter unten bearbeiten');
+  };
+
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <button type="button" onClick={onBack} className={`flex items-center gap-1 text-xs font-medium ${ts}`}>
@@ -72,23 +106,27 @@ export function InvoiceDetail({
       </button>
 
       <InvoiceDetailHeader
-        invoice={invoice}
-        paidCents={paidCents}
-        outstanding={outstanding}
-        issuing={actions.issuing}
+        detail={detail}
+        viewportWidth={viewportWidth}
+        loadingSendDoc={actions.loadingSendDoc}
+        generatingPdf={actions.generatingPdf}
+        regeneratingPdf={actions.regeneratingPdf}
         markingSent={actions.markingSent}
-        markingPaid={actions.markingPaid}
-        refreshing={actions.refreshing}
         showPaymentForm={showPaymentForm}
         paymentAmount={paymentAmount}
         paymentMethod={paymentMethod}
         paymentReference={paymentReference}
         recordingPayment={actions.recordingPayment}
+        onViewPdf={actions.handleViewPdf}
+        onGeneratePdf={() => void actions.regenerateBookingInvoicePdf()}
+        onSendEmail={() => void actions.openInvoiceEmail()}
         onIssue={() => void actions.handleIssue()}
-        onMarkSent={() => void actions.handleMarkSent()}
-        onMarkPaid={() => void actions.handleMarkPaid()}
-        onRefresh={() => void actions.refreshInvoice()}
-        onTogglePaymentForm={handleTogglePaymentForm}
+        onRegeneratePdf={() => void actions.handleRegeneratePdf()}
+        onMarkSentExternally={() => void actions.handleMarkSent()}
+        onRecordPayment={openPaymentForm}
+        onEdit={handleEdit}
+        onCancel={() => toast.message(detail.actions.cancel.reason ?? 'Stornierung nicht verfügbar')}
+        onCopyInternalId={() => void handleCopyInternalId()}
         onPaymentAmountChange={setPaymentAmount}
         onPaymentMethodChange={setPaymentMethod}
         onPaymentReferenceChange={setPaymentReference}
@@ -170,15 +208,17 @@ export function InvoiceDetail({
         </div>
       )}
 
-      <InvoiceNotes
-        invoice={invoice}
-        onSave={actions.saveNotes}
-        isDarkMode={isDarkMode}
-        card={card}
-        tp={tp}
-        ts={ts}
-        inputCls={inputCls}
-      />
+      <div ref={notesAnchorRef}>
+        <InvoiceNotes
+          invoice={invoice}
+          onSave={actions.saveNotes}
+          isDarkMode={isDarkMode}
+          card={card}
+          tp={tp}
+          ts={ts}
+          inputCls={inputCls}
+        />
+      </div>
 
       {invoice.description && (
         <div className={`${card} p-5`}>

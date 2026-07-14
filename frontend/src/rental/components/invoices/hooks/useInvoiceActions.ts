@@ -15,6 +15,8 @@ export function useInvoiceActions(orgId: string, invoice: Invoice, onUpdate: (in
   const [sendOpen, setSendOpen] = useState(false);
   const [sendDoc, setSendDoc] = useState<GeneratedDocumentDto | null>(null);
   const [loadingSendDoc, setLoadingSendDoc] = useState(false);
+  const [generatingPdf, setGeneratingPdf] = useState(false);
+  const [regeneratingPdf, setRegeneratingPdf] = useState(false);
   const [invoiceCustomerEmail, setInvoiceCustomerEmail] = useState<string | null>(null);
 
   const refreshInvoice = useCallback(async () => {
@@ -134,6 +136,46 @@ export function useInvoiceActions(orgId: string, invoice: Invoice, onUpdate: (in
     isOutgoing(invoice.type) &&
     invoice.status !== 'DRAFT';
 
+  const handleViewPdf = useCallback(() => {
+    if (invoice.generatedDocumentId) {
+      api.documents.open(orgId, invoice.generatedDocumentId);
+      return;
+    }
+    if (invoice.imageUrl) {
+      window.open(invoice.imageUrl, '_blank', 'noopener,noreferrer');
+    }
+  }, [orgId, invoice.generatedDocumentId, invoice.imageUrl]);
+
+  const regenerateBookingInvoicePdf = useCallback(async () => {
+    if (!invoice.bookingId) return;
+    setGeneratingPdf(true);
+    try {
+      await api.documents.regenerate(orgId, invoice.bookingId, 'BOOKING_INVOICE');
+      const fresh = await api.invoices.get(orgId, invoice.id);
+      onUpdate(fresh);
+      toast.success('PDF erzeugt');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'PDF konnte nicht erzeugt werden');
+    } finally {
+      setGeneratingPdf(false);
+    }
+  }, [orgId, invoice.bookingId, invoice.id, onUpdate]);
+
+  const handleRegeneratePdf = useCallback(async () => {
+    if (!invoice.bookingId) return;
+    setRegeneratingPdf(true);
+    try {
+      await api.documents.regenerate(orgId, invoice.bookingId, 'BOOKING_INVOICE');
+      const fresh = await api.invoices.get(orgId, invoice.id);
+      onUpdate(fresh);
+      toast.success('PDF neu erzeugt');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'PDF konnte nicht neu erzeugt werden');
+    } finally {
+      setRegeneratingPdf(false);
+    }
+  }, [orgId, invoice.bookingId, invoice.id, onUpdate]);
+
   return {
     issuing,
     markingSent,
@@ -144,8 +186,13 @@ export function useInvoiceActions(orgId: string, invoice: Invoice, onUpdate: (in
     setSendOpen,
     sendDoc,
     loadingSendDoc,
+    generatingPdf,
+    regeneratingPdf,
     invoiceCustomerEmail,
     canEmailDocument,
+    handleViewPdf,
+    regenerateBookingInvoicePdf,
+    handleRegeneratePdf,
     refreshInvoice,
     handleIssue,
     handleMarkSent,

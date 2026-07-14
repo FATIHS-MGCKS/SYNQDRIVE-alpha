@@ -1,62 +1,85 @@
-import { Icon } from '../ui/Icon';
-import { SupportContextButton } from '../../../components/support/SupportContextButton';
+import { useMemo } from 'react';
+
+import { StatusChip } from '../../../components/patterns';
 import { INVOICE_TYPE_MAP } from './invoiceConstants';
-import {
-  STATUS_MAP,
-  canIssue,
-  canMarkSent,
-  canRecordPayment,
-  displayNumber,
-  formatAmount,
-  isOutgoing,
-} from './invoiceFormatters';
-import type { Invoice } from './invoiceTypes';
-import { INVOICE_ACTION_BTN, INVOICE_DISABLED_BTN, type InvoiceThemeClasses } from './invoiceTheme';
+import { invoiceStatusTone } from './invoiceDetailStatus.util';
+import type { InvoiceDetailDto } from './invoiceDetailTypes';
+import { primaryActionsGridClass, resolveInvoiceHeaderLayoutMode } from './invoiceDetailHeader.layout';
+import { HeaderActionButton } from './InvoiceHeaderActionButton';
+import { InvoiceHeaderMoreMenu } from './InvoiceHeaderMoreMenu';
+import type { InvoiceThemeClasses } from './invoiceTheme';
 import { RecordPaymentDialog } from './RecordPaymentDialog';
 
-interface InvoiceDetailHeaderProps extends InvoiceThemeClasses {
-  invoice: Invoice;
-  paidCents: number;
-  outstanding: number;
-  issuing: boolean;
-  markingSent: boolean;
-  markingPaid: boolean;
-  refreshing: boolean;
-  showPaymentForm: boolean;
-  paymentAmount: string;
-  paymentMethod: string;
-  paymentReference: string;
-  recordingPayment: boolean;
-  onIssue: () => void;
-  onMarkSent: () => void;
-  onMarkPaid: () => void;
-  onRefresh: () => void;
-  onTogglePaymentForm: () => void;
-  onPaymentAmountChange: (value: string) => void;
-  onPaymentMethodChange: (value: string) => void;
-  onPaymentReferenceChange: (value: string) => void;
-  onCancelPaymentForm: () => void;
-  onSubmitPayment: () => void;
+export interface InvoiceDetailHeaderProps extends InvoiceThemeClasses {
+  detail: InvoiceDetailDto;
+  viewportWidth?: number;
+  loadingSendDoc?: boolean;
+  generatingPdf?: boolean;
+  regeneratingPdf?: boolean;
+  markingSent?: boolean;
+  showPaymentForm?: boolean;
+  paymentAmount?: string;
+  paymentMethod?: string;
+  paymentReference?: string;
+  recordingPayment?: boolean;
+  onViewPdf?: () => void;
+  onGeneratePdf?: () => void;
+  onSendEmail?: () => void;
+  onIssue?: () => void;
+  onRegeneratePdf?: () => void;
+  onMarkSentExternally?: () => void;
+  onRecordPayment?: () => void;
+  onEdit?: () => void;
+  onCancel?: () => void;
+  onCopyInternalId?: () => void;
+  onPaymentAmountChange?: (value: string) => void;
+  onPaymentMethodChange?: (value: string) => void;
+  onPaymentReferenceChange?: (value: string) => void;
+  onCancelPaymentForm?: () => void;
+  onSubmitPayment?: () => void;
+}
+
+function AmountCell({ label, value, emphasize }: { label: string; value: string; emphasize?: 'watch' | 'success' }) {
+  return (
+    <div className="min-w-0 rounded-lg border border-border/50 bg-muted/20 px-3 py-2">
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p
+        className={`mt-0.5 truncate text-sm font-semibold tabular-nums tracking-tight ${
+          emphasize === 'watch'
+            ? 'text-[color:var(--status-watch)]'
+            : emphasize === 'success'
+              ? 'text-[color:var(--status-positive)]'
+              : 'text-foreground'
+        }`}
+      >
+        {value}
+      </p>
+    </div>
+  );
 }
 
 export function InvoiceDetailHeader({
-  invoice,
-  paidCents,
-  outstanding,
-  issuing,
+  detail,
+  viewportWidth = 390,
+  loadingSendDoc,
+  generatingPdf,
+  regeneratingPdf,
   markingSent,
-  markingPaid,
-  refreshing,
   showPaymentForm,
-  paymentAmount,
-  paymentMethod,
-  paymentReference,
+  paymentAmount = '',
+  paymentMethod = 'BANK_TRANSFER',
+  paymentReference = '',
   recordingPayment,
+  onViewPdf,
+  onGeneratePdf,
+  onSendEmail,
   onIssue,
-  onMarkSent,
-  onMarkPaid,
-  onRefresh,
-  onTogglePaymentForm,
+  onRegeneratePdf,
+  onMarkSentExternally,
+  onRecordPayment,
+  onEdit,
+  onCancel,
+  onCopyInternalId,
   onPaymentAmountChange,
   onPaymentMethodChange,
   onPaymentReferenceChange,
@@ -68,134 +91,106 @@ export function InvoiceDetailHeader({
   inputCls,
   isDarkMode,
 }: InvoiceDetailHeaderProps) {
-  const st = STATUS_MAP[invoice.status] || STATUS_MAP.DRAFT;
-  const ty = INVOICE_TYPE_MAP[invoice.type] || INVOICE_TYPE_MAP.OUTGOING_MANUAL;
-  const TypeIcon = ty.icon;
-  const showIssue = canIssue(invoice.status, invoice.type);
-  const showMarkSent = canMarkSent(invoice.status, invoice.type);
-  const showPayments = canRecordPayment(invoice.status) && outstanding > 0 && invoice.status !== 'PAID';
+  const layoutMode = useMemo(() => resolveInvoiceHeaderLayoutMode(viewportWidth), [viewportWidth]);
+  const typeMeta = INVOICE_TYPE_MAP[detail.core.type] || INVOICE_TYPE_MAP.OUTGOING_MANUAL;
+  const TypeIcon = typeMeta.icon;
+  const statusTone = invoiceStatusTone(detail.core.status);
+
+  const showViewPdf = detail.document.hasPdf && detail.primary.viewPdf.allowed;
+
+  const primaryGrid = primaryActionsGridClass(layoutMode);
 
   return (
-    <div className={`${card} p-5`}>
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <span className="text-xs font-bold text-brand">{displayNumber(invoice)}</span>
-            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold ${ty.color}`}>
-              <TypeIcon className="w-3 h-3" /> {ty.label}
+    <div className={`${card} p-4 sm:p-5 space-y-4`}>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-bold text-brand tabular-nums">{detail.core.invoiceNumberDisplay}</span>
+            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold ${typeMeta.color}`}>
+              <TypeIcon className="h-3 w-3 shrink-0" aria-hidden />
+              {detail.core.typeLabel}
             </span>
-            <span
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${st.bg} ${st.text}`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${st.dot}`} /> {st.label}
-            </span>
+            <StatusChip tone={statusTone} dot>
+              {detail.core.statusLabel}
+            </StatusChip>
           </div>
-          <h2 className={`text-base font-bold ${tp}`}>{invoice.title}</h2>
-          <p className={`text-xs mt-1 ${ts}`}>
-            Gesamt {formatAmount(invoice.totalCents, invoice.currency)}
-            {paidCents > 0 && (
-              <span className="ml-2">
-                · Bezahlt {formatAmount(paidCents, invoice.currency)}
-                {outstanding > 0 && ` · Offen ${formatAmount(outstanding, invoice.currency)}`}
-              </span>
-            )}
+
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <AmountCell label="Gesamtbetrag" value={detail.amounts.totalFormatted} />
+            <AmountCell label="Bezahlt" value={detail.amounts.paidFormatted} emphasize="success" />
+            <AmountCell
+              label="Offen"
+              value={detail.amounts.outstandingFormatted}
+              emphasize={detail.amounts.outstandingCents > 0 ? 'watch' : undefined}
+            />
+            <AmountCell label="Fälligkeit" value={detail.amounts.dueDateFormatted} />
+          </div>
+
+          <p className={`text-[11px] ${ts}`}>
+            Rechnungsdatum:{' '}
+            <span className={`font-medium tabular-nums ${tp}`}>{detail.amounts.invoiceDateFormatted}</span>
           </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
-          <SupportContextButton
-            kind="invoice"
-            contextData={{
-              invoiceId: invoice.id,
-              invoiceNumber: displayNumber(invoice),
-              amountCents: invoice.totalCents,
-              status: invoice.status,
-              title: invoice.title,
-            }}
-          />
-          {showIssue && (
-            <button
-              type="button"
-              onClick={onIssue}
-              disabled={issuing}
-              className="flex items-center gap-1.5 px-3 py-2 bg-brand text-brand-foreground rounded-xl text-xs font-semibold hover:bg-brand-hover disabled:opacity-50"
-            >
-              {issuing ? (
-                <Icon name="loader-2" className="w-3 h-3 animate-spin" />
-              ) : (
-                <Icon name="file-text" className="w-3 h-3" />
-              )}
-              Ausstellen
-            </button>
-          )}
-          {isOutgoing(invoice.type) && invoice.status !== 'DRAFT' && (
-            showMarkSent ? (
-              <button
-                type="button"
-                onClick={onMarkSent}
-                disabled={markingSent}
-                className={INVOICE_ACTION_BTN}
-                title="Manuell als gesendet markieren (kein E-Mail-Versand)"
-              >
-                {markingSent ? (
-                  <Icon name="loader-2" className="w-3 h-3 animate-spin" />
-                ) : (
-                  <Icon name="send" className="w-3 h-3" />
-                )}
-                Als gesendet
-              </button>
-            ) : invoice.status === 'SENT' ? null : (
-              <button type="button" disabled className={INVOICE_DISABLED_BTN} title="Zuerst ausstellen">
-                <Icon name="send" className="w-3 h-3" /> Als gesendet
-              </button>
-            )
-          )}
-          {showPayments && (
-            <>
-              <button type="button" onClick={onTogglePaymentForm} className={INVOICE_ACTION_BTN}>
-                <Icon name="dollar-sign" className="w-3 h-3" /> Zahlung erfassen
-              </button>
-              <button
-                type="button"
-                onClick={onMarkPaid}
-                disabled={markingPaid}
-                className="sq-3d-btn sq-3d-btn--success flex items-center gap-1.5 px-3 py-2 text-xs font-semibold disabled:opacity-50"
-              >
-                {markingPaid ? (
-                  <Icon name="loader-2" className="w-3 h-3 animate-spin" />
-                ) : (
-                  <Icon name="check-circle" className="w-3 h-3" />
-                )}
-                Rest bezahlen
-              </button>
-            </>
-          )}
-          <button
-            type="button"
-            onClick={onRefresh}
-            disabled={refreshing}
-            className={INVOICE_ACTION_BTN}
-            title="Aktualisieren"
-          >
-            {refreshing ? (
-              <Icon name="loader-2" className="w-3 h-3 animate-spin" />
+
+        <div className={layoutMode === 'desktop' ? 'w-auto' : 'w-full'}>
+          <div className={primaryGrid}>
+            {showViewPdf ? (
+              <HeaderActionButton
+                label="PDF ansehen"
+                icon="file-text"
+                disabled={!detail.primary.viewPdf.allowed}
+                reason={detail.primary.viewPdf.reason}
+                onClick={onViewPdf}
+                variant="primary"
+                className={layoutMode === 'compact' ? 'col-span-2' : undefined}
+              />
             ) : (
-              <Icon name="refresh-cw" className="w-3 h-3" />
+              <HeaderActionButton
+                label="PDF erzeugen"
+                icon="file-check"
+                disabled={!detail.primary.generatePdf.allowed}
+                reason={detail.primary.generatePdf.reason}
+                loading={generatingPdf}
+                onClick={onGeneratePdf}
+                variant="primary"
+                className={layoutMode === 'compact' ? 'col-span-2' : undefined}
+              />
             )}
-          </button>
+            <HeaderActionButton
+              label="Per E-Mail senden"
+              icon="mail"
+              disabled={!detail.primary.sendEmail.allowed}
+              reason={detail.primary.sendEmail.reason}
+              loading={loadingSendDoc}
+              onClick={onSendEmail}
+            />
+            <InvoiceHeaderMoreMenu
+              actions={detail.actions}
+              onIssue={onIssue}
+              onRegeneratePdf={onRegeneratePdf}
+              onMarkSentExternally={onMarkSentExternally}
+              onRecordPayment={onRecordPayment}
+              onEdit={onEdit}
+              onCancel={onCancel}
+              onCopyInternalId={onCopyInternalId}
+              regenerating={regeneratingPdf}
+              markingSent={markingSent}
+            />
+          </div>
         </div>
       </div>
 
       <RecordPaymentDialog
-        open={showPaymentForm}
+        open={Boolean(showPaymentForm)}
         paymentAmount={paymentAmount}
         paymentMethod={paymentMethod}
         paymentReference={paymentReference}
-        recordingPayment={recordingPayment}
-        onPaymentAmountChange={onPaymentAmountChange}
-        onPaymentMethodChange={onPaymentMethodChange}
-        onPaymentReferenceChange={onPaymentReferenceChange}
-        onCancel={onCancelPaymentForm}
-        onSubmit={onSubmitPayment}
+        recordingPayment={Boolean(recordingPayment)}
+        onPaymentAmountChange={onPaymentAmountChange ?? (() => undefined)}
+        onPaymentMethodChange={onPaymentMethodChange ?? (() => undefined)}
+        onPaymentReferenceChange={onPaymentReferenceChange ?? (() => undefined)}
+        onCancel={onCancelPaymentForm ?? (() => undefined)}
+        onSubmit={onSubmitPayment ?? (() => undefined)}
         isDarkMode={isDarkMode}
         tp={tp}
         ts={ts}
