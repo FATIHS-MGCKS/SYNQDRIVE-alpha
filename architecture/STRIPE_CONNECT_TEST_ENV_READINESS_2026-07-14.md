@@ -35,12 +35,23 @@ Prompt 3: prepare and verify test-mode E2E prerequisites only. No booking or pay
 
 ## VPS deployment gap (blocker)
 
-Deployed release `20260713195722_v4994` (`f79abf1`) predates end-customer payments stack:
+**Resolved 2026-07-14** — Release `20260714181422_v4994` (`361803f`):
 
-- Prisma: 97 migrations applied; **9 payment migrations pending** on `main`
-- No `paymentsEnabled` column, no `organization_payment_accounts`, no `stripe_connect_webhook_events`
-- `POST /webhooks/stripe-connect` → **404** (route not deployed)
-- PM2 worker active (Redis bootstrap); reconciliation scheduler not present in deployed build
+- 106 migrations applied (9 payment migrations included)
+- `payments_enabled` column present; default `false` for FMS org
+- `POST /webhooks/stripe-connect` → **400** missing signature (route live, secret configured on VPS)
+- PM2 stable after `PaymentEmailModule` re-export fix
+
+## Readiness decision
+
+**Deploy complete — E2E prerequisites from Prompt 3 still require:**
+
+1. `paymentsEnabled=true` for FMS test org only
+2. Connect onboarding via UI
+3. Webhook signature test with `account.updated`
+4. `audit-connect-payment-integrity.ts` HIGH = 0
+
+**Prompt 4** can proceed after onboarding + webhook verification.
 
 ## VPS env prepared (2026-07-14, no secrets in git)
 
@@ -54,14 +65,14 @@ Non-secret URLs configured in `/opt/synqdrive/shared/backend.env`:
 
 ## Readiness decision
 
-**NOT READY FOR TEST E2E** until:
+**NOT READY FOR TEST E2E** (onboarding/webhook verify pending) — **stack deployed**:
 
-1. Payment branch merged to `main` and VPS deploy completes (migrations + routes)
-2. PM2 restart with updated env
-3. Test org `paymentsEnabled=true` only
-4. Connect onboarding completed via UI flow
-5. Connect webhook delivery + signature + dedupe verified against live route
-6. `audit-connect-payment-integrity.ts` HIGH = 0
+1. ~~Payment branch merged to `main` and VPS deploy~~ ✅
+2. ~~PM2 restart with updated env~~ ✅
+3. Test org `paymentsEnabled=true` only — **pending Prompt 4**
+4. Connect onboarding completed via UI flow — **pending Prompt 4**
+5. Connect webhook delivery + signature + dedupe verified — **route live, test pending**
+6. `audit-connect-payment-integrity.ts` HIGH = 0 — **pending Prompt 4**
 
 ## Next step (Prompt 4)
 
