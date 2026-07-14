@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-frontend-module-split-v49457-2026-07-14',
+    version: '4.9.457',
+    title: 'V4.9.457 — Invoices: monolithische View in Module zerlegt',
+    summary: [
+      '`InvoicesView.tsx` (~1300 Zeilen) → `InvoicesPage` + List/Detail/Dialog-Komponenten + Hooks.',
+      'API-Aufrufe in `useInvoices`, `useInvoiceDetail`, `useInvoiceActions`; Formatierung zentral in `invoiceFormatters`/`invoiceUtils`.',
+      'Kein sichtbares UI-/Verhaltens-Refactoring — strukturelle Vorbereitung für Design-Pass.',
+      'Tests: `invoiceList.util.test.ts`; Frontend Build + Typecheck grün.',
+    ],
+    reason:
+      'Monolithische Rechnungs-Frontend-Komponente erschwerte geplante UI-Änderungen; klare Modulgrenzen ohne Funktionsduplikat.',
+    previousBehavior:
+      'Gesamte Rechnungs-UI (Liste, Filter, KPI, Create, Detail, Zahlung, E-Mail) in einer Datei mit Inline-Subkomponenten.',
+    details:
+      'frontend/src/rental/components/invoices/*, InvoicesView.tsx (thin wrapper), architecture/INVOICE_FRONTEND_MODULE_SPLIT_2026-07-14.md.',
+    affectsArchitecture: true,
+    module: 'Finance',
+    createdAt: '2026-07-14T22:20:00.000Z',
+  },
+  {
     id: 'stripe-connect-e2e-blocked-v49455-2026-07-14',
     version: '4.9.455',
     title: 'V4.9.455 — Stripe Connect: Testmode-E2E blockiert (Onboarding/CAPTCHA)',
