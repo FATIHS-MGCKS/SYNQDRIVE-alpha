@@ -247,6 +247,66 @@ export const de: Record<TranslationKey, string> = {
   'adminTab.emailVersand': 'E-Mail & Versand',
   'adminTab.rentalRules': 'Mietregeln',
 
+  // ─── Billing sections (SynqDrive-Abo vs Kundenzahlungen) ───
+  'billing.section.tablistAria': 'Abrechnungsbereiche',
+  'billing.section.separationHint':
+    'SynqDrive-Abonnement und Kundenzahlungen/Auszahlungen sind getrennt. Ihre Abo-Zahlungsmethode ist nicht dasselbe wie Ihr Auszahlungskonto.',
+  'billing.section.subscription': 'SynqDrive-Abonnement',
+  'billing.section.customerPayments': 'Kundenzahlungen & Auszahlungen',
+
+  'billing.customerPayments.title': 'Kundenzahlungen & Auszahlungen',
+  'billing.customerPayments.subtitle':
+    'Nehmen Sie Mietzahlungen von Kunden entgegen und erhalten Sie Auszahlungen auf Ihr Organisations-Bankkonto über Stripe Connect.',
+  'billing.customerPayments.noAccessTitle': 'Kein Zugriff auf Kundenzahlungen',
+  'billing.customerPayments.noAccessDescription':
+    'Du benötigst Leseberechtigung für Kundenzahlungs-Einstellungen.',
+  'billing.customerPayments.orgMissingTitle': 'Organisation konnte nicht bestimmt werden',
+  'billing.customerPayments.orgMissingDescription':
+    'Bitte Organisation neu laden oder erneut anmelden.',
+  'billing.customerPayments.loadErrorTitle': 'Status konnte nicht geladen werden',
+  'billing.customerPayments.featureDisabledTitle': 'Kundenzahlungen nicht aktiviert',
+  'billing.customerPayments.featureDisabledDescription':
+    'Endkundenzahlungen sind für deine Organisation noch nicht freigeschaltet. Wende dich an SynqDrive Support oder deinen Plattform-Administrator.',
+  'billing.customerPayments.notStartedTitle': 'Stripe-Zahlungskonto einrichten',
+  'billing.customerPayments.notStartedDescription':
+    'Verbinde ein eigenes Stripe-Konto für Kundenzahlungen und Auszahlungen. Dies ist getrennt von deiner SynqDrive-Abo-Zahlungsmethode.',
+  'billing.customerPayments.setupCta': 'Stripe-Zahlungskonto einrichten',
+  'billing.customerPayments.settingUp': 'Wird eingerichtet…',
+  'billing.customerPayments.manageOnlyHint':
+    'Nur Organisations-Administratoren können das Connect-Onboarding starten.',
+  'billing.customerPayments.onboardingDescription':
+    'Schließe das Stripe-Onboarding ab, um Kundenzahlungen und Auszahlungen zu aktivieren.',
+  'billing.customerPayments.restrictedDescription':
+    'Dein Zahlungskonto benötigt zusätzliche Angaben, bevor Kundenzahlungen live gehen können.',
+  'billing.customerPayments.continueCta': 'Einrichtung fortsetzen',
+  'billing.customerPayments.openingOnboarding': 'Onboarding wird geöffnet…',
+  'billing.customerPayments.activeDescription':
+    'Kundenzahlungen und Auszahlungen sind für deine Organisation aktiv.',
+  'billing.customerPayments.disabledTitle': 'Zahlungskonto deaktiviert',
+  'billing.customerPayments.disabledDescription':
+    'Zahlungslinks und Auszahlungen sind nicht verfügbar, bis das Konto wiederhergestellt ist.',
+  'billing.customerPayments.noPaymentLinksHint':
+    'Zahlungslinks können nicht erstellt werden, solange das Konto deaktiviert ist.',
+  'billing.customerPayments.requirementsOpen': 'Offene Anforderungen',
+  'billing.customerPayments.paymentsEnabled': 'Kundenzahlungen',
+  'billing.customerPayments.payoutsEnabled': 'Auszahlungen',
+  'billing.customerPayments.country': 'Land',
+  'billing.customerPayments.currency': 'Währung',
+  'billing.customerPayments.bankAccount': 'Auszahlungskonto',
+  'billing.customerPayments.lastSynced': 'Zuletzt synchronisiert',
+  'billing.customerPayments.sync': 'Status synchronisieren',
+  'billing.customerPayments.syncing': 'Synchronisiert…',
+  'billing.customerPayments.safeDataHint':
+    'Es werden nur sichere Metadaten angezeigt — keine vollständige IBAN, keine KYC-Dokumente, keine Personendaten.',
+  'billing.customerPayments.state.notStarted': 'Nicht gestartet',
+  'billing.customerPayments.state.onboarding': 'Einrichtung',
+  'billing.customerPayments.state.restricted': 'Eingeschränkt',
+  'billing.customerPayments.state.active': 'Aktiv',
+  'billing.customerPayments.state.disabled': 'Deaktiviert',
+  'billing.customerPayments.state.featureDisabled': 'Nicht verfügbar',
+
+  'common.retry': 'Erneut versuchen',
+
   // ─── E-Mail & Versand (Outbound) ───
   'email.settings.title': 'E-Mail & Versand',
   'email.settings.subtitle': 'Absender, Reply-To, Signatur und eigene Domains für den Dokumentenversand. Ohne eigene Domain wird der SynqDrive-Plattform-Absender verwendet.',

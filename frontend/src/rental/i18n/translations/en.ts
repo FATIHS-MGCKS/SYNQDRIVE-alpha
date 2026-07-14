@@ -175,6 +175,66 @@ export const en = {
   'adminTab.emailVersand': 'Email & delivery',
   'adminTab.rentalRules': 'Rental Rules',
 
+  // ─── Billing sections (SynqDrive subscription vs customer payments) ───
+  'billing.section.tablistAria': 'Billing sections',
+  'billing.section.separationHint':
+    'SynqDrive subscription billing and customer payment payouts are separate. Your subscription card is not the same as your payout bank account.',
+  'billing.section.subscription': 'SynqDrive subscription',
+  'billing.section.customerPayments': 'Customer payments & payouts',
+
+  'billing.customerPayments.title': 'Customer payments & payouts',
+  'billing.customerPayments.subtitle':
+    'Accept rental payments from customers and receive payouts to your organization bank account via Stripe Connect.',
+  'billing.customerPayments.noAccessTitle': 'No access to customer payments',
+  'billing.customerPayments.noAccessDescription':
+    'You need read permission for customer payment settings.',
+  'billing.customerPayments.orgMissingTitle': 'Organization could not be determined',
+  'billing.customerPayments.orgMissingDescription':
+    'Please reload the organization or sign in again.',
+  'billing.customerPayments.loadErrorTitle': 'Status could not be loaded',
+  'billing.customerPayments.featureDisabledTitle': 'Customer payments not enabled',
+  'billing.customerPayments.featureDisabledDescription':
+    'End-customer payments are not enabled for your organization yet. Contact SynqDrive support or your platform administrator.',
+  'billing.customerPayments.notStartedTitle': 'Set up your Stripe payment account',
+  'billing.customerPayments.notStartedDescription':
+    'Connect a dedicated Stripe account for customer rental payments and payouts. This is separate from your SynqDrive subscription payment method.',
+  'billing.customerPayments.setupCta': 'Set up Stripe payment account',
+  'billing.customerPayments.settingUp': 'Setting up…',
+  'billing.customerPayments.manageOnlyHint':
+    'Only organization administrators can start Connect onboarding.',
+  'billing.customerPayments.onboardingDescription':
+    'Complete Stripe onboarding to activate customer payments and payouts.',
+  'billing.customerPayments.restrictedDescription':
+    'Your payment account needs additional information before customer payments can go live.',
+  'billing.customerPayments.continueCta': 'Continue setup',
+  'billing.customerPayments.openingOnboarding': 'Opening onboarding…',
+  'billing.customerPayments.activeDescription':
+    'Customer payments and payouts are active for your organization.',
+  'billing.customerPayments.disabledTitle': 'Payment account disabled',
+  'billing.customerPayments.disabledDescription':
+    'Customer payment links and payouts are unavailable until the account is restored.',
+  'billing.customerPayments.noPaymentLinksHint':
+    'Payment links cannot be created while the account is disabled.',
+  'billing.customerPayments.requirementsOpen': 'Outstanding requirements',
+  'billing.customerPayments.paymentsEnabled': 'Customer payments',
+  'billing.customerPayments.payoutsEnabled': 'Payouts',
+  'billing.customerPayments.country': 'Country',
+  'billing.customerPayments.currency': 'Currency',
+  'billing.customerPayments.bankAccount': 'Payout account',
+  'billing.customerPayments.lastSynced': 'Last synced',
+  'billing.customerPayments.sync': 'Sync status',
+  'billing.customerPayments.syncing': 'Syncing…',
+  'billing.customerPayments.safeDataHint':
+    'Only safe metadata is shown — no full IBAN, KYC documents, or personal details.',
+  'billing.customerPayments.state.notStarted': 'Not started',
+  'billing.customerPayments.state.onboarding': 'Onboarding',
+  'billing.customerPayments.state.restricted': 'Restricted',
+  'billing.customerPayments.state.active': 'Active',
+  'billing.customerPayments.state.disabled': 'Disabled',
+  'billing.customerPayments.state.featureDisabled': 'Not available',
+
+  'common.retry': 'Try again',
+
   // ─── Email & delivery (outbound) ───
   'email.settings.title': 'Email & delivery',
   'email.settings.subtitle': 'Sender, reply-to, signature and custom domains for document delivery. Without a custom domain the SynqDrive platform sender is used.',

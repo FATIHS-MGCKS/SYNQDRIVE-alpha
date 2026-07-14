@@ -1,4 +1,4 @@
-import { Settings, Globe, Zap, CheckCircle, Copy, Eye, EyeOff, Save, Wifi, WifiOff, RefreshCw, CreditCard, AlertTriangle, Trash2, Activity, Mail } from 'lucide-react';
+import { Settings, Globe, Save, CreditCard, AlertTriangle, Activity, Mail } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { SystemMonitoringView } from './SystemMonitoringView';
@@ -10,17 +10,14 @@ interface PlatformSettingsViewProps {
   onTabChange?: (tab: string) => void;
   dimoConnected: boolean;
   onDimoToggle: () => void;
-  stripeConnected: boolean;
-  onStripeToggle: () => void;
   onPrune?: () => Promise<void>;
 }
 
-export function PlatformSettingsView({ isDarkMode, activeTab = 'general', onTabChange, dimoConnected, onDimoToggle, stripeConnected, onStripeToggle, onPrune }: PlatformSettingsViewProps) {
+export function PlatformSettingsView({ isDarkMode, activeTab = 'general', onTabChange, dimoConnected, onDimoToggle, onPrune }: PlatformSettingsViewProps) {
   const [showApiKey, setShowApiKey] = useState(false);
   const [dimoApiKey, setDimoApiKey] = useState('dimo_test_a8f2b3c4d5e6f7g8');
   const [dimoEnv, setDimoEnv] = useState<'Production' | 'Sandbox'>('Sandbox');
   const [dimoTesting, setDimoTesting] = useState(false);
-  const [stripeTesting, setStripeTesting] = useState(false);
 
   const tabs = [
     { id: 'general', label: 'General', icon: Settings },
@@ -40,14 +37,6 @@ export function PlatformSettingsView({ isDarkMode, activeTab = 'general', onTabC
       if (!dimoConnected) { onDimoToggle(); }
       toast.success('DIMO connection successful! Vehicles loaded.');
     }, 1500);
-  };
-
-  const testStripe = () => {
-    setStripeTesting(true);
-    setTimeout(() => {
-      setStripeTesting(false);
-      toast.success('Stripe test payment successful (€1.00)');
-    }, 1200);
   };
 
   return (
@@ -86,39 +75,32 @@ export function PlatformSettingsView({ isDarkMode, activeTab = 'general', onTabC
 
       {activeTab === 'email' && <PlatformEmailSettingsPanel isDarkMode={isDarkMode} />}
 
-      {/* INTEGRATIONS (Stripe) */}
+      {/* INTEGRATIONS (Stripe — platform config is env-driven, not toggled here) */}
       {activeTab === 'integrations' && (
         <div className={`${cardClass} p-8`}>
-          <div className="flex items-start justify-between mb-6">
-            <div className="flex items-center gap-4">
-              <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${stripeConnected ? 'bg-purple-50' : isDarkMode ? 'surface-premium' : 'bg-gray-100'}`}>
-                <CreditCard className={`w-7 h-7 ${stripeConnected ? 'text-purple-600' : 'text-muted-foreground'}`} />
-              </div>
-              <div>
-                <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Stripe</h2>
-                <p className={`text-sm ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>Payment processing & billing</p>
-              </div>
+          <div className="flex items-start gap-4 mb-6">
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${isDarkMode ? 'surface-premium' : 'bg-gray-100'}`}>
+              <CreditCard className="w-7 h-7 text-muted-foreground" />
             </div>
-            <span className={`px-3 py-1 rounded-lg text-xs font-semibold ${stripeConnected ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-gray-100 text-gray-500 border border-gray-200'}`}>{stripeConnected ? 'Connected' : 'Disconnected'}</span>
+            <div>
+              <h2 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Stripe</h2>
+              <p className={`text-sm ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>
+                Platform billing & Connect are configured via server environment and Master Billing Control Center — not via this demo toggle.
+              </p>
+            </div>
           </div>
 
-          {stripeConnected && (
-            <div className="space-y-3 mb-6">
-              <div className="flex justify-between"><span className={`text-sm ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>Account ID</span><span className={`text-sm font-mono ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>acct_1SqD2025XyZ</span></div>
-              <div className="flex justify-between"><span className={`text-sm ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>Payment Status</span><span className="text-sm font-semibold text-green-600">Active</span></div>
-              <div className="flex justify-between"><span className={`text-sm ${isDarkMode ? 'text-muted-foreground' : 'text-gray-500'}`}>Last Payment</span><span className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Mar 7, 2026</span></div>
+          <div className={`rounded-xl border px-4 py-3 text-sm ${isDarkMode ? 'border-amber-500/30 bg-amber-500/10 text-amber-100' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold">No live Stripe connection on this screen</p>
+                <p className="mt-1 opacity-90">
+                  SynqDrive subscription Stripe status and webhooks are managed under Master → Billing → Stripe / Webhooks.
+                  Tenant Connect onboarding is under Administration → Billing → Customer payments & payouts.
+                </p>
+              </div>
             </div>
-          )}
-
-          <div className="flex gap-3">
-            <button onClick={onStripeToggle} className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${stripeConnected ? 'bg-red-50 text-red-700 hover:bg-red-100' : 'bg-gradient-to-br from-purple-500 to-purple-600 text-white hover:shadow-lg'}`}>
-              {stripeConnected ? <><WifiOff className="w-4 h-4" /> Disconnect Stripe</> : <><Wifi className="w-4 h-4" /> Connect Stripe</>}
-            </button>
-            {stripeConnected && (
-              <button onClick={testStripe} disabled={stripeTesting} className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border transition-all ${isDarkMode ? 'border-neutral-700 text-gray-300 hover:surface-premium' : 'border-gray-200 text-gray-700 hover:bg-gray-50'}`}>
-                <RefreshCw className={`w-4 h-4 ${stripeTesting ? 'animate-spin' : ''}`} /> Test Payment
-              </button>
-            )}
           </div>
         </div>
       )}

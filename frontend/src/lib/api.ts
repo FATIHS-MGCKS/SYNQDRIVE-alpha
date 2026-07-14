@@ -3810,6 +3810,30 @@ export const api = {
     adminSyncStripe: (orgId: string) =>
       post<any>(`/admin/billing/organizations/${encodeURIComponent(orgId)}/sync-stripe`, {}),
   },
+  paymentsConnect: {
+    getStatus: (orgId: string) =>
+      get<import('../rental/types/payments-connect.types').ConnectStatusDto>(
+        `/organizations/${encodeURIComponent(orgId)}/payments/connect/status`,
+      ),
+    createAccount: (orgId: string) =>
+      post<import('../rental/types/payments-connect.types').ConnectStatusDto>(
+        `/organizations/${encodeURIComponent(orgId)}/payments/connect/account`,
+        {},
+      ),
+    createOnboardingLink: (
+      orgId: string,
+      body?: { returnUrl?: string; refreshUrl?: string },
+    ) =>
+      post<import('../rental/types/payments-connect.types').ConnectOnboardingLinkDto>(
+        `/organizations/${encodeURIComponent(orgId)}/payments/connect/onboarding-link`,
+        body ?? {},
+      ),
+    refresh: (orgId: string) =>
+      post<import('../rental/types/payments-connect.types').ConnectStatusDto>(
+        `/organizations/${encodeURIComponent(orgId)}/payments/connect/refresh`,
+        {},
+      ),
+  },
   support: {
     stats: () => get<SupportTicketStats>('/admin/support/stats'),
     newest: (limit?: number) => get<SupportTicket[]>(`/admin/support/newest${limit ? `?limit=${limit}` : ''}`),

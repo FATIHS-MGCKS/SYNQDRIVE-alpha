@@ -595,6 +595,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
       { label: 'Fee policy (V4.9.438)', detail: 'Line-item commissionable base + PaymentFeeService — architecture/END_CUSTOMER_PAYMENTS_FEE_POLICY_2026-07-14.md' },
       { label: 'Connect adapter (V4.9.439)', detail: 'StripeConnectAdapter V1 Express + AccountService — architecture/END_CUSTOMER_PAYMENTS_STRIPE_CONNECT_ADAPTER_2026-07-14.md' },
       { label: 'Connect API (V4.9.440)', detail: 'PaymentsConnectController — account/onboarding-link/status/refresh; URL allowlist — architecture/END_CUSTOMER_PAYMENTS_CONNECT_API_2026-07-14.md' },
+      { label: 'Connect UI (V4.9.441)', detail: 'Billing sub-tab Customer payments & payouts — architecture/END_CUSTOMER_PAYMENTS_CONNECT_UI_2026-07-14.md' },
       { label: 'Connect (planned)', detail: 'Direct Charges + application_fee_amount; separates Connect webhook (STRIPE_CONNECT_WEBHOOK_SECRET) — siehe architecture/STRIPE_CONNECT_VERIFICATION_DECISION_2026-07-14.md' },
       { label: 'Adapter boundary', detail: 'Future modules/payments: createConnectedAccount, createOnboardingSession, getAccountStatus, createCheckoutSession, createRefund — domain Stripe-agnostic' },
       { label: 'MCP verify', detail: '2026-07-14: Sandbox acct testmode, 0 connected accounts; Accounts v2 + Connect Dashboard ⏳ manual' },

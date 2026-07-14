@@ -214,7 +214,6 @@ export default function App() {
 
   // Connection states (DIMO from API)
   const [dimoConnected, setDimoConnected] = useState(false);
-  const [stripeConnected, setStripeConnected] = useState(true);
 
   // Organization detail
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
@@ -560,12 +559,6 @@ export default function App() {
   const handleDimoToggle = () => {
     setDimoConnected(prev => !prev);
   };
-  const handleStripeToggle = () => {
-    setStripeConnected(prev => {
-      toast.success(prev ? 'Stripe disconnected' : 'Stripe connected');
-      return !prev;
-    });
-  };
 
   // Helper: get org users/vehicles
   const getOrgUsers = (orgId: string) => users.filter(u => u.organizationId === orgId);
@@ -698,8 +691,6 @@ export default function App() {
                 onTabChange={setSettingsTab}
                 dimoConnected={dimoConnected}
                 onDimoToggle={handleDimoToggle}
-                stripeConnected={stripeConnected}
-                onStripeToggle={handleStripeToggle}
               />
             )}
 

@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'customer-payments-ui-v49441-2026-07-14',
+    version: '4.9.441',
+    title: 'V4.9.441 — Kundenzahlungen UI in Administration → Abrechnung',
+    summary: [
+      'Billing-Sub-Tab „Kundenzahlungen & Auszahlungen“ getrennt vom SynqDrive-Abo.',
+      'Zustände NOT_STARTED/ONBOARDING/RESTRICTED/ACTIVE/DISABLED mit sicheren Metadaten und DE/EN i18n.',
+      'API-Anbindung an payments/connect Endpoints; permissions-connect read/manage.',
+      'Master Platform Settings: kosmetischer Stripe-Toggle entfernt, Hinweis auf echte Konfiguration.',
+    ],
+    reason:
+      'Org-Admins müssen Abo-Zahlung und Auszahlungskonto klar unterscheiden können, bevor Payment Links gebaut werden.',
+    previousBehavior: 'Kein Tenant-UI für Connect; irreführender Stripe-Schalter in Master Platform Settings.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_CONNECT_UI_2026-07-14.md, CustomerPaymentsTab.tsx, BillingSectionTabBar.tsx.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Connect UI',
+    createdAt: '2026-07-14T21:00:00.000Z',
+  },
+  {
     id: 'payments-connect-api-v49440-2026-07-14',
     version: '4.9.440',
     title: 'V4.9.440 — End-Customer Payments: Connect Onboarding API',
