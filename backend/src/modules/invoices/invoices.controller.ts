@@ -7,6 +7,7 @@ import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { InvoicesService } from './invoices.service';
+import { InvoiceDetailReadService } from './invoice-detail-read.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { StorageService } from '@shared/storage/storage.service';
@@ -24,6 +25,7 @@ if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
 export class InvoicesController {
   constructor(
     private readonly invoicesService: InvoicesService,
+    private readonly invoiceDetail: InvoiceDetailReadService,
     private readonly storage: StorageService,
   ) {}
 
@@ -46,6 +48,12 @@ export class InvoicesController {
   @UseGuards(OrgScopingGuard, RolesGuard)
   async getStats(@Param('orgId') orgId: string) {
     return this.invoicesService.getStats(orgId);
+  }
+
+  @Get('organizations/:orgId/invoices/:id/detail')
+  @UseGuards(OrgScopingGuard, RolesGuard)
+  async findDetail(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.invoiceDetail.findDetail(orgId, id);
   }
 
   @Get('organizations/:orgId/invoices/:id')

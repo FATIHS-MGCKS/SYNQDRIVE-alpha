@@ -1,0 +1,170 @@
+import type { InvoiceDocumentSummaryDto } from './invoice-document-read.types';
+
+export type InvoiceDirection = 'OUTGOING' | 'INCOMING';
+
+export type InvoiceDocumentGenerationAggregateStatus =
+  | 'NOT_STARTED'
+  | 'PROCESSING'
+  | 'SUCCEEDED'
+  | 'FAILED'
+  | 'PARTIAL';
+
+export interface InvoiceDetailInvoiceDto {
+  id: string;
+  invoiceNumber: string;
+  legacyInvoiceNumber: number | null;
+  sequenceYear: number | null;
+  sequenceNumber: number | null;
+  direction: InvoiceDirection;
+  type: string;
+  status: string;
+  title: string;
+  description: string;
+  currency: string;
+  invoiceDate: string;
+  issueDate: string | null;
+  dueDate: string | null;
+  sentAt: string | null;
+  paidAt: string | null;
+  cancelledAt: string | null;
+  voidedAt: string | null;
+  creditedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  generatedDocumentId: string | null;
+  activeDocumentId: string | null;
+  documentCacheMismatch: boolean;
+  documentExtractionId: string | null;
+  imageUrl: string | null;
+}
+
+export interface InvoiceDetailAmountsDto {
+  subtotalNetCents: number;
+  taxTotalCents: number;
+  totalGrossCents: number;
+  paidAmountCents: number;
+  outstandingAmountCents: number;
+  creditAmountCents: number | null;
+}
+
+export interface InvoiceCustomerSummaryDto {
+  id: string;
+  displayName: string;
+  email: string | null;
+  phone: string | null;
+  company: string | null;
+  status: string | null;
+}
+
+export interface InvoiceSupplierSummaryDto {
+  id: string;
+  displayName: string;
+  email: string | null;
+  phone: string | null;
+}
+
+export interface InvoiceBookingSummaryDto {
+  id: string;
+  reference: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface InvoiceVehicleSummaryDto {
+  id: string;
+  displayName: string;
+  licensePlate: string | null;
+  vin: string | null;
+  make: string | null;
+  model: string | null;
+  year: number | null;
+}
+
+export interface InvoiceDetailLineItemDto {
+  description: string;
+  quantity: number;
+  unitPriceNetCents: number;
+  taxRate: number;
+  netCents: number;
+  taxCents: number;
+  grossCents: number;
+}
+
+export interface InvoiceDetailPaymentDto {
+  id: string;
+  amountCents: number;
+  method: string;
+  paidAt: string;
+  reference: string | null;
+  note: string | null;
+}
+
+export interface InvoiceOutboundEmailSummaryDto {
+  id: string;
+  status: string;
+  toEmail: string;
+  subject: string;
+  sentAt: string | null;
+  createdAt: string;
+  attachmentDocumentIds: string[];
+}
+
+export interface InvoiceLinkedTaskDto {
+  id: string;
+  title: string;
+  status: string;
+  priority: string;
+  description: string | null;
+  dueAt: string | null;
+}
+
+export interface InvoiceProvenanceDto {
+  kind: 'BOOKING_AUTOMATIC' | 'BOOKING_FINAL' | 'MANUAL' | 'DOCUMENT_EXTRACTION' | 'VENDOR';
+  label: string;
+  documentExtractionId: string | null;
+  bookingId: string | null;
+}
+
+export interface InvoiceTimelineEventDto {
+  id: string;
+  action: string;
+  description: string;
+  createdAt: string;
+}
+
+export interface InvoiceDetailCapabilitiesDto {
+  canEdit: boolean;
+  canIssue: boolean;
+  canSend: boolean;
+  canCancel: boolean;
+  canRecordPayment: boolean;
+  documentGenerationStatus: InvoiceDocumentGenerationAggregateStatus;
+  sendAvailability: 'AVAILABLE' | 'UNAVAILABLE';
+  paymentAvailability: 'AVAILABLE' | 'UNAVAILABLE' | 'SETTLED';
+  blockingReasons: {
+    edit: string[];
+    issue: string[];
+    send: string[];
+    cancel: string[];
+    recordPayment: string[];
+  };
+}
+
+export interface InvoiceDetailDto {
+  invoice: InvoiceDetailInvoiceDto;
+  amounts: InvoiceDetailAmountsDto;
+  customer: InvoiceCustomerSummaryDto | null;
+  supplier: InvoiceSupplierSummaryDto | null;
+  booking: InvoiceBookingSummaryDto | null;
+  vehicle: InvoiceVehicleSummaryDto | null;
+  lineItems: InvoiceDetailLineItemDto[];
+  payments: InvoiceDetailPaymentDto[];
+  documents: InvoiceDocumentSummaryDto[];
+  outboundEmails: InvoiceOutboundEmailSummaryDto[];
+  linkedTasks: InvoiceLinkedTaskDto[];
+  notes: string;
+  provenance: InvoiceProvenanceDto;
+  timeline: InvoiceTimelineEventDto[];
+  capabilities: InvoiceDetailCapabilitiesDto;
+}

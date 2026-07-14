@@ -93,3 +93,27 @@ export interface InvoiceStats {
   paidRevenueCents?: number;
   totalExpensesCents: number;
 }
+
+/** Typed read model from GET .../invoices/:id/detail (backend InvoiceDetailDto). */
+export interface InvoiceDetail extends Invoice {
+  activeDocumentId?: string | null;
+  documentCacheMismatch?: boolean;
+  documents?: unknown[];
+  capabilities?: {
+    canEdit: boolean;
+    canIssue: boolean;
+    canSend: boolean;
+    canCancel: boolean;
+    canRecordPayment: boolean;
+    documentGenerationStatus: string;
+    sendAvailability: string;
+    paymentAvailability: string;
+    blockingReasons: Record<string, string[]>;
+  };
+  customer?: { id: string; displayName: string; email: string | null } | null;
+  booking?: { id: string; reference: string; status: string } | null;
+  vehicle?: { id: string; displayName: string; licensePlate: string | null } | null;
+  provenance?: { kind: string; label: string };
+  timeline?: { id: string; action: string; description: string; createdAt: string }[];
+  outboundEmails?: unknown[];
+}

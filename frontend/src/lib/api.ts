@@ -4007,6 +4007,10 @@ export const api = {
       get<import('../rental/components/invoices/invoiceTypes').Invoice>(
         `/organizations/${orgId}/invoices/${id}`,
       ),
+    getDetail: (orgId: string, id: string) =>
+      get<import('../rental/components/invoices/invoiceTypes').InvoiceDetail>(
+        `/organizations/${orgId}/invoices/${id}/detail`,
+      ),
     create: (orgId: string, data: Record<string, unknown>) =>
       post<import('../rental/components/invoices/invoiceTypes').Invoice>(
         `/organizations/${orgId}/invoices`,

@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-detail-read-model-m1-2026-07-14',
+    version: '4.9.431',
+    title: 'V4.9.431 — Rechnungsdetail: typisiertes Read-Model (GET /invoices/:id/detail)',
+    summary: [
+      'Neuer Endpunkt `GET .../invoices/:id/detail` liefert aggregiertes `InvoiceDetailDto` in einer Orchestrierung.',
+      'Enthält Summen, Line Items, Payments, Dokumentversionen, E-Mail-Historie, Tasks, Provenance, Timeline und Capabilities mit Blockierungsgründen.',
+      'Kunden-/Fahrzeug-/Buchungs-Summaries mit Display-Werten (kein „Verknüpft“); Legacy `GET :id` bleibt kompatibel.',
+    ],
+    reason:
+      'Rechnungsdetail-API lieferte nur Skalar-IDs ohne fachliche Labels; UI musste mehrere Roundtrips und clientseitige Ableitungen machen.',
+    previousBehavior:
+      'findById: customerId/bookingId/vehicleId ohne aufgelöste Namen; keine Capabilities, keine E-Mail-Historie, keine Timeline.',
+    details:
+      'invoice-detail-read.service.ts, invoice-detail.mapper.ts, invoice-detail-actions.util.ts, invoices.controller.ts.',
+    affectsArchitecture: true,
+    module: 'Invoices',
+    createdAt: '2026-07-14T21:00:00.000Z',
+  },
+  {
     id: 'invoice-document-generation-m2-2026-07-14',
     version: '4.9.430',
     title: 'V4.9.430 — Rechnungs-PDF-Erzeugung: versionierter Write-Pfad + persistente Fehler',
