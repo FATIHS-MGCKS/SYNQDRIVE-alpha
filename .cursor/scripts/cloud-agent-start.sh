@@ -57,4 +57,9 @@ if [[ -n "${TAILSCALE_AUTH_KEY:-}" ]]; then
   bash "$(dirname "${BASH_SOURCE[0]}")/cloud-agent-verify-vps.sh" || true
 fi
 
+if [[ ! -f "${SCRIPT_DIR}/../mcp.json" ]]; then
+  echo "[cloud-agent] MCP config missing — generating from template..."
+  CLOUD_AGENT_REGENERATE_MCP=1 bash "${SCRIPT_DIR}/cloud-agent-mcp-setup.sh" || true
+fi
+
 echo "[cloud-agent] Start complete. Source ${PROXY_ENV} in shells if HTTP proxy is needed."

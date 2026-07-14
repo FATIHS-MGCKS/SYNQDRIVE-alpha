@@ -85,6 +85,22 @@ Build-time-only credentials (private npm registries) → **Build Secret** (not u
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Runtime Secret | As needed | As needed |
 | Other keys from `backend/.env.example` | Runtime Secret | As needed | As needed |
 
+#### MCP servers (Cursor agent tooling)
+
+Project template: `.cursor/mcp.json.example` (committed). Runtime config: `.cursor/mcp.json` (gitignored, generated at Cloud Agent install).
+
+| Server | Auth | Required secrets / setup |
+|--------|------|--------------------------|
+| **didit** | OAuth (browser on first tool call) | No API key — log in via Cursor MCP UI |
+| **dimo** | Env | `DIMO_CLIENT_ID`, `DIMO_PRIVATE_KEY`, `DIMO_DOMAIN` (e.g. `https://app.synqdrive.eu/auth/dimo/callback`) |
+| **resend** | Env | `RESEND_API_KEY` |
+| **stripe** | Env | `STRIPE_SECRET_KEY` (Bearer to `https://mcp.stripe.com`) |
+| **hostinger-api** | Env | `HOSTINGER_API_TOKEN` |
+
+Cloud Agent bootstrap runs `cloud-agent-mcp-setup.sh` during install (writes `.cursor/mcp.json`). After adding secrets, restart the Cloud Agent. Didit still needs one-time OAuth in the MCP panel.
+
+Local Cursor: copy the example or run `bash .cursor/scripts/cloud-agent-mcp-setup.sh`, then reload the window.
+
 `CLOUD_AGENT_SSH_PRIVATE_KEY` = full PEM from local `id_ed25519` (Windows: `C:\Users\<you>\.ssh\id_ed25519`).
 
 ### VPS connectivity

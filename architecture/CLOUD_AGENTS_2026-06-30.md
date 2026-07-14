@@ -8,6 +8,8 @@
   PostgreSQL client, OpenSSH client, Tailscale.
 - Restored `.cursor/scripts/` — `cloud-agent-install.sh`, `cloud-agent-start.sh`,
   `tailscale-daemon.sh`, `cloud-agent-verify-vps.sh`.
+- **Added** `.cursor/scripts/cloud-agent-mcp-setup.sh` — generates `.cursor/mcp.json` from
+  `.cursor/mcp.json.example` (env placeholders, no secrets in git).
 - **Added** `.cursor/scripts/cloud-agent-deploy.sh` — commit/push preflight + SSH deploy
   via `vps-deploy-release.sh` + public health verification (parity with local agent flow).
 - **Added** `.cursor/scripts/cloud-agent-ssh-common.sh` — normalizes Cursor-delivered SSH
@@ -34,6 +36,11 @@
   plus required Cursor artifact S3 host; Tailscale ACLs enforce port-level access.
 - **Local infra fallback** remains `backend/docker-compose.yml` inside the agent VM
   when tasks should not touch production VPS data.
+- **MCP tooling path**: `cloud-agent-install.sh` → `cloud-agent-mcp-setup.sh` →
+  `.cursor/mcp.json` from example; secrets from Dashboard Runtime Secrets (`${env:…}` in
+  config). Didit uses hosted OAuth MCP; DIMO/Resend/Hostinger via `npx`; Stripe via hosted MCP +
+  `STRIPE_SECRET_KEY` header. Didit OAuth remains a one-time user action in Cursor MCP settings
+  after agent boot.
 
 ## Notes
 
