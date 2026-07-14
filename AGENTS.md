@@ -93,7 +93,7 @@ Project template: `.cursor/mcp.json.example` (committed). Runtime config: `.curs
 |--------|------|--------------------------|
 | **didit** | OAuth (browser on first tool call) | No API key — log in via Cursor MCP UI |
 | **dimo** | Env | `DIMO_CLIENT_ID`, `DIMO_PRIVATE_KEY`, `DIMO_DOMAIN` (e.g. `https://app.synqdrive.eu/auth/dimo/callback`) |
-| **resend** | Env | `RESEND_API_KEY` |
+| **resend** | Env | `RESEND_API_KEY` (Bearer to `https://mcp.resend.com/mcp`) |
 | **stripe** | Env | `STRIPE_SECRET_KEY` (Bearer to `https://mcp.stripe.com`) |
 | **hostinger-api** | Env | `HOSTINGER_API_TOKEN` |
 
