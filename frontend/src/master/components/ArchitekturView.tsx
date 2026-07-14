@@ -590,7 +590,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
-    name: 'Cursor MCP Tooling — V4.9.429',
+    name: 'Cursor MCP Tooling — V4.9.430',
     icon: Code2,
     color: 'text-[color:var(--brand)]',
     apis: [
@@ -599,7 +599,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
       { label: 'DIMO', detail: 'npx mcp-dimo@1.5.5 — DIMO_CLIENT_ID + DIMO_PRIVATE_KEY + DIMO_DOMAIN from Dashboard secrets' },
       { label: 'Resend', detail: 'npx resend-mcp@2.11.0 — RESEND_API_KEY from Runtime Secret' },
       { label: 'Stripe', detail: 'Hosted MCP + STRIPE_SECRET_KEY header' },
-      { label: 'Hostinger', detail: 'npx hostinger-api-mcp — HOSTINGER_API_TOKEN for DNS/VPS ops scripts' },
+      { label: 'Hostinger', detail: 'npx hostinger-api-mcp@1.5.5 — HOSTINGER_API_TOKEN for DNS/VPS ops scripts' },
     ],
   },
   {

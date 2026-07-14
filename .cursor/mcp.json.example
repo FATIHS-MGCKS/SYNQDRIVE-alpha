@@ -14,7 +14,7 @@
     },
     "hostinger-api": {
       "command": "npx",
-      "args": ["-y", "hostinger-api-mcp@2.11.0"],
+      "args": ["-y", "hostinger-api-mcp@1.5.5"],
       "env": {
         "DEBUG": "false",
         "API_TOKEN": "${env:HOSTINGER_API_TOKEN}"
