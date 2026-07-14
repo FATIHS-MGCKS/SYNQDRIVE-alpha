@@ -1736,6 +1736,29 @@ export const en = {
   'invoicePayment.error.generic': 'Payment could not be recorded',
   'invoicePayment.success.recorded': 'Payment recorded',
   'invoicePayment.sort.newest': 'Newest payments first',
+
+  // ─── Invoice line items (detail) ───
+  'invoiceLineItem.section.title': 'Line items & totals',
+  'invoiceLineItem.col.description': 'Description',
+  'invoiceLineItem.col.quantity': 'Quantity',
+  'invoiceLineItem.col.unit': 'Unit',
+  'invoiceLineItem.col.unitPriceNet': 'Unit price (net)',
+  'invoiceLineItem.col.taxRate': 'Tax rate',
+  'invoiceLineItem.col.taxAmount': 'Tax amount',
+  'invoiceLineItem.col.lineTotalGross': 'Total (gross)',
+  'invoiceLineItem.tax.free': 'Tax-exempt',
+  'invoiceLineItem.tax.rate': '{rate}% VAT',
+  'invoiceLineItem.mobile.qtyTimesPrice': '{qty} × {price} net',
+  'invoiceLineItem.mobile.lineTotal': 'Line total (gross)',
+  'invoiceLineItem.summary.net': 'Net',
+  'invoiceLineItem.summary.tax': 'Tax',
+  'invoiceLineItem.summary.taxAtRate': 'Tax ({rate}%)',
+  'invoiceLineItem.summary.gross': 'Gross',
+  'invoiceLineItem.summary.paid': 'Paid',
+  'invoiceLineItem.summary.outstanding': 'Outstanding',
+  'invoiceLineItem.summary.credit': 'Credits',
+  'invoiceLineItem.summary.creditNote': 'Invoice credited',
+  'invoiceLineItem.empty': 'No line items.',
 } as const;
 
 export type TranslationKey = keyof typeof en;

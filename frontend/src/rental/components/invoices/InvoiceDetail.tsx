@@ -90,7 +90,6 @@ export function InvoiceDetail({
 
   const paymentsHook = useInvoicePayments(orgId, invoice, onUpdate, detail.actions.record_payment);
 
-  const lineItems = Array.isArray(invoice.lineItems) ? invoice.lineItems : [];
   const payments = invoice.payments ?? [];
 
   const handleCopyInternalId = async () => {
@@ -232,7 +231,7 @@ export function InvoiceDetail({
       />
 
       <InvoiceLineItems
-        lineItems={lineItems}
+        invoice={invoice}
         isDarkMode={isDarkMode}
         card={card}
         tp={tp}

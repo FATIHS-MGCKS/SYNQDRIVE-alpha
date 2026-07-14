@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-detail-line-items-v49463-2026-07-14',
+    version: '4.9.463',
+    title: 'V4.9.463 — Rechnungsdetail Positionen & Summen: klare Netto/Brutto-Darstellung',
+    summary: [
+      'Desktop: `table-fixed` mit Beschreibung, Menge, Einheit, Einzelpreis (netto), Steuersatz, Steuerbetrag, Gesamt (brutto); SR-kompatible Überschriften.',
+      'Mobile: strukturierte Positions-Cards statt gequetschter Tabelle (Menge × Einzelpreis netto, Steuersatz, Positionsgesamtbetrag brutto).',
+      'Summenblock: Netto, Steuer (aufgeschlüsselt bei mehreren Sätzen), Brutto, Bezahlt, Offen, Gutschriften bei CREDITED/Rabatt.',
+      'Mapper nutzt gespeicherte `netCents`/`taxCents`/`grossCents` — kein falsches `unitNet×qty` als Brutto; Währung aus Rechnung.',
+      'Regression 5 Tage / 600,00 € brutto abgedeckt; Tests für alle geforderten Szenarien.',
+    ],
+    reason:
+      'Positionen zeigten Einzelpreis netto und Gesamt brutto ohne klare Kennzeichnung; Mobile-Tabelle war unlesbar; Rundungs-/Berechnungsdarstellung wirkte inkonsistent.',
+    previousBehavior:
+      '`InvoiceLineItems` nutzte `overflow-x-auto`, `formatAmount` ohne Währung und einen fehlerhaften Brutto-Fallback `unit × Menge` ohne Steuer.',
+    details: 'Siehe `architecture/INVOICE_DETAIL_LINE_ITEMS_2026-07-14.md`.',
+    affectsArchitecture: true,
+    module: 'Invoice Finance Workflow',
+    createdAt: '2026-07-14T23:12:00.000Z',
+  },
+  {
     id: 'invoice-detail-payments-v49462-2026-07-14',
     version: '4.9.462',
     title: 'V4.9.462 — Rechnungsdetail Zahlungen: lokalisierte UI, Mobile Cards, transparenter Erfassungsdialog',

@@ -24,6 +24,8 @@ export type OrgInvoiceStatus =
 export interface InvoiceLineItem {
   description: string;
   quantity: number;
+  unit?: string | null;
+  unitLabel?: string | null;
   unitPriceNetCents?: number;
   unitPriceCents?: number;
   taxRate?: number;
@@ -77,6 +79,7 @@ export interface Invoice {
   generatedDocumentId?: string | null;
   notes: string;
   paidAt: string | null;
+  creditedAt?: string | null;
   issuedAt?: string | null;
   sentAt?: string | null;
   createdAt: string;
