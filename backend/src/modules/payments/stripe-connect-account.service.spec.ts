@@ -44,6 +44,7 @@ describe('StripeConnectAccountService', () => {
     createConnectedAccount: jest.fn(),
     getConnectedAccountStatus: jest.fn(),
     createOnboardingSession: jest.fn(),
+    createCheckoutSession: jest.fn(),
     refreshConnectedAccount: jest.fn(),
     getSafePayoutSummary: jest.fn(),
   };

@@ -29,5 +29,13 @@ export default registerAs('stripe', () => {
       process.env.STRIPE_CONNECT_REFRESH_URL?.trim() ||
       process.env.APP_URL?.trim() ||
       portalReturnUrl,
+    checkoutSuccessUrl:
+      process.env.STRIPE_CHECKOUT_SUCCESS_URL?.trim() ||
+      process.env.APP_URL?.trim() ||
+      portalReturnUrl,
+    checkoutCancelUrl:
+      process.env.STRIPE_CHECKOUT_CANCEL_URL?.trim() ||
+      process.env.APP_URL?.trim() ||
+      portalReturnUrl,
   };
 });

@@ -4023,6 +4023,7 @@ enum BookingPaymentRequestStatus {
   DRAFT
   OPEN
   LINK_PENDING
+  CHECKOUT_READY
   LINK_SENT
   PROCESSING
   PAID
@@ -4122,6 +4123,8 @@ model BookingPaymentRequest {
   checkoutUrl               String?                     @map("checkout_url")
   checkoutCreatedAt         DateTime?                   @map("checkout_created_at")
   checkoutExpiresAt         DateTime?                   @map("checkout_expires_at")
+  checkoutIdempotencyKey    String?                     @map("checkout_idempotency_key")
+  stripeLivemode            Boolean?                    @map("stripe_livemode")
   recipientEmail            String?                     @map("recipient_email")
   sendEmailOnLink           Boolean                     @default(false) @map("send_email_on_link")
   lastSentAt                DateTime?                   @map("last_sent_at")

@@ -23,12 +23,14 @@ const PRE_PAYMENT_STATUSES: readonly BookingPaymentRequestStatus[] = [
   BookingPaymentRequestStatus.DRAFT,
   BookingPaymentRequestStatus.OPEN,
   BookingPaymentRequestStatus.LINK_PENDING,
+  BookingPaymentRequestStatus.CHECKOUT_READY,
   BookingPaymentRequestStatus.LINK_SENT,
 ];
 
 const IN_FLIGHT_STATUSES: readonly BookingPaymentRequestStatus[] = [
   BookingPaymentRequestStatus.OPEN,
   BookingPaymentRequestStatus.LINK_PENDING,
+  BookingPaymentRequestStatus.CHECKOUT_READY,
   BookingPaymentRequestStatus.LINK_SENT,
   BookingPaymentRequestStatus.PROCESSING,
 ];
@@ -56,7 +58,17 @@ const BASE_TRANSITIONS: Readonly<
     BookingPaymentRequestStatus.LINK_PENDING,
     BookingPaymentRequestStatus.CANCELLED,
   ],
-  [BookingPaymentRequestStatus.LINK_PENDING]: [BookingPaymentRequestStatus.LINK_SENT],
+  [BookingPaymentRequestStatus.LINK_PENDING]: [
+    BookingPaymentRequestStatus.CHECKOUT_READY,
+    BookingPaymentRequestStatus.OPEN,
+  ],
+  [BookingPaymentRequestStatus.CHECKOUT_READY]: [
+    BookingPaymentRequestStatus.LINK_PENDING,
+    BookingPaymentRequestStatus.LINK_SENT,
+    BookingPaymentRequestStatus.PROCESSING,
+    BookingPaymentRequestStatus.CANCELLED,
+    BookingPaymentRequestStatus.EXPIRED,
+  ],
   [BookingPaymentRequestStatus.LINK_SENT]: [
     BookingPaymentRequestStatus.PROCESSING,
     BookingPaymentRequestStatus.CANCELLED,

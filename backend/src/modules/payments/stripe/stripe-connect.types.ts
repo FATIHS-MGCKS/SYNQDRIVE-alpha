@@ -49,3 +49,35 @@ export interface CreateOnboardingSessionInput {
   returnUrl: string;
   refreshUrl: string;
 }
+
+export interface CheckoutSessionLineItem {
+  name: string;
+  amountCents: number;
+  quantity: number;
+}
+
+export interface CreateCheckoutSessionInput {
+  connectedAccountId: string;
+  currency: string;
+  lineItems: readonly CheckoutSessionLineItem[];
+  applicationFeeAmountCents: number;
+  customerEmail: string;
+  successUrl: string;
+  cancelUrl: string;
+  expiresAt: Date;
+  metadata: {
+    organizationId: string;
+    bookingId: string;
+    invoiceId: string;
+    paymentRequestId: string;
+  };
+  stripeIdempotencyKey: string;
+}
+
+export interface CheckoutSessionRef {
+  sessionId: string;
+  url: string;
+  expiresAt: Date;
+  paymentIntentId: string | null;
+  livemode: boolean;
+}

@@ -4,6 +4,8 @@ import { ConnectNotConfiguredError } from './stripe-connect.errors';
 import type {
   ConnectedAccountRef,
   ConnectedAccountStatus,
+  CheckoutSessionRef,
+  CreateCheckoutSessionInput,
   CreateConnectedAccountInput,
   CreateOnboardingSessionInput,
   OnboardingSessionRef,
@@ -31,6 +33,10 @@ export class StripeConnectV2Adapter implements StripeConnectAdapter {
   }
 
   createOnboardingSession(_input: CreateOnboardingSessionInput): Promise<OnboardingSessionRef> {
+    return Promise.reject(this.notConfigured());
+  }
+
+  createCheckoutSession(_input: CreateCheckoutSessionInput): Promise<CheckoutSessionRef> {
     return Promise.reject(this.notConfigured());
   }
 

@@ -35,6 +35,7 @@ export const ACTIVE_RENTAL_PAYMENT_REQUEST_STATUSES: BookingPaymentRequestStatus
   BookingPaymentRequestStatus.DRAFT,
   BookingPaymentRequestStatus.OPEN,
   BookingPaymentRequestStatus.LINK_PENDING,
+  BookingPaymentRequestStatus.CHECKOUT_READY,
   BookingPaymentRequestStatus.LINK_SENT,
   BookingPaymentRequestStatus.PROCESSING,
 ];
@@ -57,6 +58,8 @@ export interface UpdateBookingPaymentRequestInput {
   checkoutUrl?: string | null;
   checkoutCreatedAt?: Date | null;
   checkoutExpiresAt?: Date | null;
+  checkoutIdempotencyKey?: string | null;
+  stripeLivemode?: boolean | null;
   lastSentAt?: Date | null;
   sendAttemptCount?: number;
   paidAt?: Date | null;
@@ -101,6 +104,15 @@ export class BookingPaymentRequestRepository {
         status: { in: ACTIVE_RENTAL_PAYMENT_REQUEST_STATUSES },
       },
       orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  findByCheckoutIdempotencyKey(
+    organizationId: string,
+    checkoutIdempotencyKey: string,
+  ): Promise<BookingPaymentRequest | null> {
+    return this.prisma.bookingPaymentRequest.findFirst({
+      where: { organizationId, checkoutIdempotencyKey },
     });
   }
 

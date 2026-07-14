@@ -53,6 +53,7 @@ const ACTIVE_STATUSES: BookingPaymentRequestStatus[] = [
   BookingPaymentRequestStatus.DRAFT,
   BookingPaymentRequestStatus.OPEN,
   BookingPaymentRequestStatus.LINK_PENDING,
+  BookingPaymentRequestStatus.CHECKOUT_READY,
   BookingPaymentRequestStatus.LINK_SENT,
   BookingPaymentRequestStatus.PROCESSING,
 ];

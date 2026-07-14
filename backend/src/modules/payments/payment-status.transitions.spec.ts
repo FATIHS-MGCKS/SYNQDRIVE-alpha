@@ -64,8 +64,16 @@ describe('payment-status.transitions', () => {
         BookingPaymentRequestStatus.CANCELLED,
       ]);
       expect(allowedPaymentRequestStatusTargets(BookingPaymentRequestStatus.LINK_PENDING)).toEqual([
-        BookingPaymentRequestStatus.LINK_SENT,
+        BookingPaymentRequestStatus.CHECKOUT_READY,
+        BookingPaymentRequestStatus.OPEN,
       ]);
+      expect(allowedPaymentRequestStatusTargets(BookingPaymentRequestStatus.CHECKOUT_READY)).toEqual(
+        expect.arrayContaining([
+          BookingPaymentRequestStatus.LINK_PENDING,
+          BookingPaymentRequestStatus.LINK_SENT,
+          BookingPaymentRequestStatus.PROCESSING,
+        ]),
+      );
       expect(allowedPaymentRequestStatusTargets(BookingPaymentRequestStatus.LINK_SENT)).toEqual([
         BookingPaymentRequestStatus.PROCESSING,
         BookingPaymentRequestStatus.CANCELLED,
@@ -97,6 +105,7 @@ describe('payment-status.transitions', () => {
       BookingPaymentRequestStatus.DRAFT,
       BookingPaymentRequestStatus.OPEN,
       BookingPaymentRequestStatus.LINK_PENDING,
+      BookingPaymentRequestStatus.CHECKOUT_READY,
       BookingPaymentRequestStatus.LINK_SENT,
       BookingPaymentRequestStatus.PROCESSING,
       BookingPaymentRequestStatus.PAID,

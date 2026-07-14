@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stripe-checkout-session-v49443-2026-07-14',
+    version: '4.9.443',
+    title: 'V4.9.443 — End-Customer Payments: Stripe Checkout Session (Direct Charge)',
+    summary: [
+      'POST …/payment-requests/:requestId/checkout erzeugt individuelle Stripe Checkout Session auf Connected Account.',
+      'Direct Charge via stripeAccount; application_fee_amount aus eingefrorenem Fee-Snapshot; line_items aus Snapshot ohne Kaution.',
+      'Status OPEN → LINK_PENDING → CHECKOUT_READY; LINK_SENT erst nach künftigem E-Mail-Versand.',
+      'Idempotenz: Stripe Idempotency-Key + DB checkoutIdempotencyKey; aktive Session wird wiederverwendet, abgelaufene nicht.',
+    ],
+    reason:
+      'Kundenzahlung braucht eine Hosted-Checkout-URL auf dem Org-Connected-Account, bevor Webhooks und E-Mail folgen.',
+    previousBehavior: 'BookingPaymentRequest ohne Checkout Session; keine Stripe-Zahlungs-URL.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_STRIPE_CHECKOUT_2026-07-14.md, stripe-checkout.service.ts, StripeConnectV1Adapter.createCheckoutSession.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Checkout',
+    createdAt: '2026-07-14T23:00:00.000Z',
+  },
+  {
     id: 'booking-payment-request-v49442-2026-07-14',
     version: '4.9.442',
     title: 'V4.9.442 — End-Customer Payments: BookingPaymentRequest (RENTAL_PAYMENT)',

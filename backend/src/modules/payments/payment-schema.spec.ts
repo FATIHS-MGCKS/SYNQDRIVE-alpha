@@ -35,7 +35,7 @@ describe('payments domain schema contracts', () => {
     expect(Object.values(BookingPaymentRequestStatus)).toContain('LINK_SENT');
     expect(Object.values(BookingPaymentRequestStatus)).toContain('PAID');
     expect(Object.values(BookingPaymentRequestStatus)).toContain('DISPUTED');
-    expect(Object.values(BookingPaymentRequestStatus)).not.toContain('CHECKOUT_PENDING');
+    expect(Object.values(BookingPaymentRequestStatus)).toContain('CHECKOUT_READY');
   });
 
   it('defines booking payment purposes without deposit (BookingDeposit stays separate)', () => {

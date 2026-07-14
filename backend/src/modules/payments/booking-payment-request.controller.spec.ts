@@ -5,6 +5,7 @@ import { PaymentsFeatureGuard } from './guards/payments-feature.guard';
 import { PaymentsPermissionGuard } from './guards/payments-permission.guard';
 import { PAYMENT_PERMISSION_KEY } from './decorators/require-payment-permission.decorator';
 import { CreateBookingPaymentRequestDto } from './dto/booking-payment-request.dto';
+import { CreateCheckoutSessionDto } from './dto/stripe-checkout.dto';
 
 describe('BookingPaymentRequestController', () => {
   it('uses org-scoped booking payment-requests route', () => {
@@ -23,6 +24,11 @@ describe('BookingPaymentRequestController', () => {
     const handler = BookingPaymentRequestController.prototype.createPaymentRequest;
     expect(Reflect.getMetadata(PAYMENT_PERMISSION_KEY, handler)).toBe('payments.create');
   });
+
+  it('requires payments.create permission for checkout endpoint', () => {
+    const handler = BookingPaymentRequestController.prototype.createCheckoutSession;
+    expect(Reflect.getMetadata(PAYMENT_PERMISSION_KEY, handler)).toBe('payments.create');
+  });
 });
 
 describe('CreateBookingPaymentRequestDto', () => {
@@ -31,5 +37,13 @@ describe('CreateBookingPaymentRequestDto', () => {
     expect(keys).not.toContain('amountCents');
     expect(keys).not.toContain('totalDueNowCents');
     expect(keys).not.toContain('applicationFeeAmountCents');
+  });
+});
+
+describe('CreateCheckoutSessionDto', () => {
+  it('does not define client amount fields', () => {
+    const keys = Object.keys(new CreateCheckoutSessionDto());
+    expect(keys).not.toContain('amountCents');
+    expect(keys).not.toContain('lineItems');
   });
 });

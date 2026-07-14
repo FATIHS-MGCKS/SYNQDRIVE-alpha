@@ -18,6 +18,8 @@ import {
 import type {
   ConnectedAccountRef,
   ConnectedAccountStatus,
+  CheckoutSessionRef,
+  CreateCheckoutSessionInput,
   CreateConnectedAccountInput,
   CreateOnboardingSessionInput,
   OnboardingSessionRef,
@@ -119,6 +121,80 @@ export class StripeConnectV1Adapter implements StripeConnectAdapter {
       if (error instanceof ConnectProviderError) throw error;
       throw new ConnectProviderError(
         error instanceof Error ? error.message : 'Stripe onboarding session failed',
+      );
+    }
+  }
+
+  /**
+   * Direct Charge on connected account — platform fee via application_fee_amount.
+   * Verified architecture: Prompt 4 Direct Charges + Checkout Sessions.
+   */
+  async createCheckoutSession(input: CreateCheckoutSessionInput): Promise<CheckoutSessionRef> {
+    const stripe = this.requireStripe();
+    const currency = input.currency.toLowerCase();
+    const expiresAtUnix = Math.floor(input.expiresAt.getTime() / 1000);
+
+    try {
+      const session = await stripe.checkout.sessions.create(
+        {
+          mode: 'payment',
+          customer_email: input.customerEmail,
+          line_items: input.lineItems.map((item) => ({
+            quantity: item.quantity,
+            price_data: {
+              currency,
+              unit_amount: item.amountCents,
+              product_data: {
+                name: item.name,
+              },
+            },
+          })),
+          payment_intent_data: {
+            application_fee_amount: input.applicationFeeAmountCents,
+            metadata: {
+              organizationId: input.metadata.organizationId,
+              bookingId: input.metadata.bookingId,
+              invoiceId: input.metadata.invoiceId,
+              paymentRequestId: input.metadata.paymentRequestId,
+            },
+          },
+          metadata: {
+            organizationId: input.metadata.organizationId,
+            bookingId: input.metadata.bookingId,
+            invoiceId: input.metadata.invoiceId,
+            paymentRequestId: input.metadata.paymentRequestId,
+          },
+          success_url: input.successUrl,
+          cancel_url: input.cancelUrl,
+          expires_at: expiresAtUnix,
+        },
+        {
+          stripeAccount: input.connectedAccountId,
+          idempotencyKey: input.stripeIdempotencyKey,
+        },
+      );
+
+      if (!session.url) {
+        throw new ConnectProviderError('Stripe did not return a checkout URL');
+      }
+
+      const paymentIntentId =
+        typeof session.payment_intent === 'string'
+          ? session.payment_intent
+          : session.payment_intent?.id ?? null;
+
+      return {
+        sessionId: session.id,
+        url: session.url,
+        expiresAt: new Date((session.expires_at ?? expiresAtUnix) * 1000),
+        paymentIntentId,
+        livemode: session.livemode,
+      };
+    } catch (error) {
+      if (error instanceof ConnectProviderError) throw error;
+      this.logger.warn(`Stripe createCheckoutSession failed: ${(error as Error).message}`);
+      throw new ConnectProviderError(
+        error instanceof Error ? error.message : 'Stripe checkout session creation failed',
       );
     }
   }

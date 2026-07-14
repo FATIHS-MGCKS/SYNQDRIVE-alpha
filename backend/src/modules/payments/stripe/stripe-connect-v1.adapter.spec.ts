@@ -14,6 +14,11 @@ describe('StripeConnectV1Adapter', () => {
     accountLinks: {
       create: jest.fn(),
     },
+    checkout: {
+      sessions: {
+        create: jest.fn(),
+      },
+    },
   };
 
   const configService = {
@@ -97,5 +102,48 @@ describe('StripeConnectV1Adapter', () => {
     });
     expect(session.url).toContain('stripe.com');
     expect(session.expiresAt).toBeInstanceOf(Date);
+  });
+
+  it('creates checkout session on connected account with application fee', async () => {
+    stripeMock.checkout.sessions.create.mockResolvedValue({
+      id: 'cs_test_1',
+      url: 'https://checkout.stripe.test/cs_test_1',
+      expires_at: 1_700_000_000,
+      payment_intent: 'pi_test_1',
+      livemode: false,
+    });
+
+    const session = await adapter.createCheckoutSession({
+      connectedAccountId: 'acct_connected',
+      currency: 'EUR',
+      lineItems: [{ name: 'Miete', amountCents: 59_500, quantity: 1 }],
+      applicationFeeAmountCents: 1_488,
+      customerEmail: 'customer@example.com',
+      successUrl: 'https://app.example/success',
+      cancelUrl: 'https://app.example/cancel',
+      expiresAt: new Date(1_700_000_000 * 1000),
+      metadata: {
+        organizationId: 'org-1',
+        bookingId: 'booking-1',
+        invoiceId: 'inv-1',
+        paymentRequestId: 'pr-1',
+      },
+      stripeIdempotencyKey: 'checkout:org-1:pr-1:idem',
+    });
+
+    expect(session.sessionId).toBe('cs_test_1');
+    expect(stripeMock.checkout.sessions.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: 'payment',
+        payment_intent_data: expect.objectContaining({
+          application_fee_amount: 1_488,
+          metadata: expect.objectContaining({ paymentRequestId: 'pr-1' }),
+        }),
+      }),
+      expect.objectContaining({
+        stripeAccount: 'acct_connected',
+        idempotencyKey: 'checkout:org-1:pr-1:idem',
+      }),
+    );
   });
 });
