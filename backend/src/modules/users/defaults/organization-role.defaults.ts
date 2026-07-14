@@ -13,6 +13,44 @@ export interface DefaultRoleTemplate {
 
 const all = (read: boolean, write: boolean, manage = false) => ({ read, write, manage });
 
+function paymentModulePermissions(config: {
+  payments?: { read: boolean; write: boolean };
+  refund?: boolean;
+  disputesRead?: boolean;
+  connectRead?: boolean;
+  connectManage?: boolean;
+  settingsManage?: boolean;
+}): MembershipPermissionsMap {
+  const perms: MembershipPermissionsMap = {};
+  if (config.payments) {
+    perms.payments = all(config.payments.read, config.payments.write);
+  }
+  if (config.refund !== undefined) {
+    perms['payments-refund'] = all(config.refund, config.refund);
+  }
+  if (config.disputesRead !== undefined) {
+    perms['payments-disputes'] = all(config.disputesRead, false);
+  }
+  if (config.connectRead !== undefined || config.connectManage !== undefined) {
+    perms['payments-connect'] = all(
+      config.connectRead ?? false,
+      false,
+      config.connectManage ?? false,
+    );
+  }
+  if (config.settingsManage !== undefined) {
+    perms['payments-settings'] = all(false, false, config.settingsManage);
+  }
+  return perms;
+}
+
+function mergePermissions(
+  base: MembershipPermissionsMap,
+  extra: MembershipPermissionsMap,
+): MembershipPermissionsMap {
+  return { ...base, ...extra };
+}
+
 function adminPermissions(): MembershipPermissionsMap {
   const keys = [
     'dashboard', 'bookings', 'fleet', 'customers', 'stations', 'fleet-condition',
@@ -24,7 +62,14 @@ function adminPermissions(): MembershipPermissionsMap {
   for (const key of keys) {
     perms[key] = all(true, true, true);
   }
-  return perms;
+  return mergePermissions(perms, paymentModulePermissions({
+    payments: { read: true, write: true },
+    refund: true,
+    disputesRead: true,
+    connectRead: true,
+    connectManage: true,
+    settingsManage: true,
+  }));
 }
 
 function subAdminPermissions(): MembershipPermissionsMap {
@@ -33,6 +78,15 @@ function subAdminPermissions(): MembershipPermissionsMap {
     if (['company-info', 'users-roles', 'billing', 'data-authorization'].includes(key)) {
       perms[key as keyof MembershipPermissionsMap] = all(true, false, false);
     }
+  }
+  for (const key of [
+    'payments',
+    'payments-refund',
+    'payments-disputes',
+    'payments-connect',
+    'payments-settings',
+  ] as const) {
+    delete perms[key];
   }
   return perms;
 }
@@ -77,14 +131,28 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     name: 'Disposition',
     description: 'Buchungen, Flotte und Kunden im Tagesgeschäft.',
     membershipRole: MembershipRole.SUB_ADMIN,
-    permissions: workerReadPermissions(['bookings', 'customers', 'fleet']),
+    permissions: mergePermissions(
+      workerReadPermissions(['bookings', 'customers', 'fleet']),
+      paymentModulePermissions({
+        payments: { read: true, write: true },
+        disputesRead: true,
+      }),
+    ),
   },
   {
     systemKey: 'accounting',
     name: 'Buchhaltung',
     description: 'Rechnungen, Mahnungen und Finanzdaten.',
     membershipRole: MembershipRole.SUB_ADMIN,
-    permissions: workerReadPermissions(['invoices', 'fines', 'price-tariffs']),
+    permissions: mergePermissions(
+      workerReadPermissions(['invoices', 'fines', 'price-tariffs']),
+      paymentModulePermissions({
+        payments: { read: true, write: true },
+        refund: true,
+        disputesRead: true,
+        connectRead: true,
+      }),
+    ),
   },
   {
     systemKey: 'station_manager',
@@ -92,14 +160,23 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     description: 'Stationen, Übergaben und lokale Flotte.',
     membershipRole: MembershipRole.SUB_ADMIN,
     fieldAgentAccessDefault: true,
-    permissions: workerReadPermissions(['stations', 'bookings', 'fleet', 'tasks']),
+    permissions: mergePermissions(
+      workerReadPermissions(['stations', 'bookings', 'fleet', 'tasks']),
+      paymentModulePermissions({
+        payments: { read: true, write: true },
+        disputesRead: true,
+      }),
+    ),
   },
   {
     systemKey: 'employee',
     name: 'Mitarbeiter',
     description: 'Standardzugriff für operative Mitarbeit.',
     membershipRole: MembershipRole.WORKER,
-    permissions: workerReadPermissions(),
+    permissions: mergePermissions(
+      workerReadPermissions(),
+      paymentModulePermissions({ payments: { read: true, write: false } }),
+    ),
   },
   {
     systemKey: 'driver',
@@ -114,20 +191,29 @@ export const DEFAULT_ORGANIZATION_ROLE_TEMPLATES: DefaultRoleTemplate[] = [
     description: 'Übergabe- und Rückgabeprozesse vor Ort.',
     membershipRole: MembershipRole.WORKER,
     fieldAgentAccessDefault: true,
-    permissions: workerReadPermissions(['bookings', 'fleet', 'tasks']),
+    permissions: mergePermissions(
+      workerReadPermissions(['bookings', 'fleet', 'tasks']),
+      paymentModulePermissions({ payments: { read: true, write: false } }),
+    ),
   },
   {
     systemKey: 'service',
     name: 'Service / Werkstatt',
     description: 'Werkstatt, Servicepartner und Fahrzeugzustand.',
     membershipRole: MembershipRole.WORKER,
-    permissions: workerReadPermissions(['vendor-management', 'fleet-condition', 'fleet']),
+    permissions: mergePermissions(
+      workerReadPermissions(['vendor-management', 'fleet-condition', 'fleet']),
+      paymentModulePermissions({ payments: { read: true, write: false } }),
+    ),
   },
   {
     systemKey: 'read_only',
     name: 'Read-only',
     description: 'Nur Lesezugriff auf operative Bereiche.',
     membershipRole: MembershipRole.WORKER,
-    permissions: workerReadPermissions(),
+    permissions: mergePermissions(
+      workerReadPermissions(),
+      paymentModulePermissions({ payments: { read: true, write: false } }),
+    ),
   },
 ];

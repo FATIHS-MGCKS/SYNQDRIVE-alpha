@@ -14,6 +14,16 @@ import { headerBadgeFromSummary } from './billing.utils';
 import { getBillingStripeUiState } from './billing-stripe-ui';
 import { useBillingStripeActions } from './useBillingStripeActions';
 import { Icon } from '../ui/Icon';
+import { BillingSectionTabBar, type BillingSectionTab } from './BillingSectionTabBar';
+import { CustomerPaymentsTab } from './CustomerPaymentsTab';
+
+function readInitialBillingSection(): BillingSectionTab {
+  if (typeof window === 'undefined') return 'subscription';
+  const params = new URLSearchParams(window.location.search);
+  return params.get('billingSection') === 'customer-payments'
+    ? 'customer-payments'
+    : 'subscription';
+}
 
 function BillingLoadingSkeleton() {
   return (
@@ -35,6 +45,7 @@ function BillingLoadingSkeleton() {
 export function BillingTab() {
   const { orgId, hasPermission, loading: orgLoading } = useRentalOrg();
   const canRead = hasPermission('billing', 'read');
+  const [section, setSection] = useState<BillingSectionTab>(readInitialBillingSection);
   const { summary, invoices, billableVehicles, loading, error, reload } = useBillingData(orgId);
   const [vehiclesOpen, setVehiclesOpen] = useState(false);
 
@@ -109,7 +120,11 @@ export function BillingTab() {
         }
       />
 
-      {loading ? (
+      <BillingSectionTabBar activeTab={section} onTabChange={setSection} />
+
+      {section === 'customer-payments' ? (
+        <CustomerPaymentsTab />
+      ) : loading ? (
         <BillingLoadingSkeleton />
       ) : error ? (
         <ErrorState

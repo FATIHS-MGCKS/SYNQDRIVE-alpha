@@ -3,12 +3,17 @@ import { InvoicePaymentMethod, OrgInvoice, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { InvoicesService } from './invoices.service';
 
-export type BookingCheckoutPaymentMethod = 'card' | 'cash' | 'invoice';
+import type { BookingCheckoutPaymentIntent } from '@modules/bookings/booking-payment-intent.types';
+
+export type BookingCheckoutPaymentMethod = BookingCheckoutPaymentIntent;
 
 export interface SyncBookingInvoiceOptions {
-  paymentMethod?: BookingCheckoutPaymentMethod;
+  /** Checkout payment intent only — does not record payment or mark invoice paid. */
+  paymentIntent?: BookingCheckoutPaymentIntent;
+  /** @deprecated use paymentIntent */
+  paymentMethod?: BookingCheckoutPaymentIntent;
   userId?: string | null;
-  /** When true, mark rental invoice paid after issue (checkout prepaid). */
+  /** Explicit authorized manual payment after issue (ops / staff action). */
   markPaid?: boolean;
 }
 
@@ -22,8 +27,9 @@ export class BookingInvoiceLifecycleService {
   ) {}
 
   /**
-   * After booking confirmation: void duplicate drafts, issue canonical invoice,
-   * record payment when checkout was prepaid (card).
+   * After booking confirmation: void duplicate drafts, issue canonical invoice.
+   * Records payment only when markPaid is explicitly true (authorized manual action).
+   * paymentMethod is checkout intent only and must not imply money received.
    */
   async syncOnBookingConfirmed(
     orgId: string,
@@ -47,17 +53,15 @@ export class BookingInvoiceLifecycleService {
       });
     }
 
-    const shouldMarkPaid =
-      options?.markPaid === true || options?.paymentMethod === 'card';
-
-    if (!shouldMarkPaid) return invoice;
+    if (options?.markPaid !== true) return invoice;
 
     const outstanding = Math.max(0, invoice.totalCents - invoice.paidCents);
     if (outstanding <= 0 || invoice.status === 'PAID') return invoice;
 
+    const intent = options?.paymentIntent ?? options?.paymentMethod;
     const method =
-      options?.paymentMethod === 'card'
-        ? InvoicePaymentMethod.CARD
+      intent === 'cash'
+        ? InvoicePaymentMethod.CASH
         : InvoicePaymentMethod.BANK_TRANSFER;
 
     return this.invoicesService.recordPayment(
@@ -207,7 +211,6 @@ export class BookingInvoiceLifecycleService {
 
       const synced = await this.syncOnBookingConfirmed(orgId, booking.id, {
         markPaid: shouldPay,
-        paymentMethod: shouldPay ? 'card' : undefined,
       });
 
       report.push({

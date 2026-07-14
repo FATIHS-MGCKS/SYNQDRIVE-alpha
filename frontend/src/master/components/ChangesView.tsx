@@ -35,6 +35,432 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stripe-connect-test-env-readiness-v49453-2026-07-14',
+    version: '4.9.453',
+    title: 'V4.9.453 — Stripe Connect: isolierte Testumgebung vorbereitet (Readiness-Audit)',
+    summary: [
+      'Stripe MCP + VPS-Audit: Testmodus bestätigt (sk_test_), keine Connected Accounts, 0 Webhooks vor Setup.',
+      'Connect-Webhook im Stripe-Testmodus angelegt (7 Events, livemode=false) + VPS-Env URLs/Secret (nicht in Git).',
+      'Blocker dokumentiert: Payment-Stack nicht auf VPS deployed (9 Migrationen, Route 404), kein Onboarding.',
+      'Entscheidung: NOT READY FOR TEST E2E — Deploy + Migration + Onboarding in Prompt 4.',
+    ],
+    reason:
+      'Prompt 3 verlangt vollständig isolierte Stripe-Testumgebung für Endkundenzahlungen ohne Live-Keys oder echte Zahlungen.',
+    previousBehavior:
+      'STRIPE_CONNECT_WEBHOOK_SECRET und Connect-Return/Checkout-URLs auf VPS nicht gesetzt; Connect-Route nicht erreichbar.',
+    details:
+      'architecture/STRIPE_CONNECT_TEST_ENV_READINESS_2026-07-14.md; VPS backend.env (Secret nur remote).',
+    affectsArchitecture: true,
+    module: 'Payments',
+    createdAt: '2026-07-14T18:00:00.000Z',
+  },
+  {
+    id: 'cloud-agent-ssh-single-line-pem-v49452-2026-07-14',
+    version: '4.9.452',
+    title: 'V4.9.452 — Cloud Agent: Einzeilen-PEM SSH-Secret Normalisierung',
+    summary: [
+      '`cloud_agent_materialize_ssh_key` normalisiert jetzt auch Einzeilen-PEM (BEGIN+Body+END ohne Zeilenumbrüche).',
+      'Bare-Base64 (Option B) und mehrzeiliges PEM werden einheitlich zu gefaltetem OpenSSH-PEM geschrieben.',
+      'Neuer Test: `.cursor/scripts/cloud-agent-ssh-common.test.sh` (Fixture + optional Live-Secret).',
+    ],
+    reason:
+      'Cursor Secrets können PEM-Header liefern, aber alles in einer Zeile — libcrypto-Fehler trotz V4.9.131 bare-base64-Fix.',
+    previousBehavior:
+      'Bei vorhandenem BEGIN-Header wurde Secret 1:1 geschrieben; Einzeilen-PEM blieb unparsebar.',
+    details:
+      'cloud-agent-ssh-common.sh, cloud-agent-ssh-common.test.sh. Option B (nur Base64) unverändert unterstützt.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-14T00:00:00.000Z',
+  },
+  {
+    id: 'payments-frontend-typecheck-v49451-2026-07-14',
+    version: '4.9.451',
+    title: 'V4.9.451 — End-Customer Payments: Frontend Typecheck & Success-Panel Fixes',
+    summary: [
+      'CustomerPaymentsTab: TS2367 behoben, Hinweise bei charges/payouts disabled im ACTIVE-Zustand.',
+      'BookingPaymentSuccessPanel: sichere Datumsformatierung, kein implizites EUR, Szenarien paid/expired/checkout_ready.',
+      'booking-payment-status.utils: API-DTO-Re-Export, resolvePaymentSuccessScenario verschärft (kein E-Mail-Erfolg nur bei Buchung).',
+      'DE/EN i18n für neue Payment-Success- und Connect-Hinweistexte; erweiterte Vitest-Abdeckung.',
+    ],
+    reason:
+      'Production-Build (tsc -b) schlug nach Prompt 20 mit Payment-UI-Typfehlern fehl; Verträge und Szenario-Logik mussten ohne TS-Unterdrückung konsistent werden.',
+    previousBehavior:
+      'CustomerPaymentsTab verglich DISABLED in ONBOARDING/RESTRICTED-Branch; Success-Panel hatte Operator-Precedence-Bug bei checkoutExpiresAt und zeigte ggf. E-Mail-Erfolg ohne Checkout.',
+    details:
+      'CustomerPaymentsTab.tsx, BookingPaymentSuccessPanel.tsx, booking-payment-status.utils.ts, en.ts/de.ts, payments-connect.utils.test.ts, booking-payment-status.utils.test.ts.',
+    affectsArchitecture: false,
+    module: 'Payments',
+    createdAt: '2026-07-14T00:00:00.000Z',
+  },
+  {
+    id: 'payments-go-live-audit-v49450-2026-07-14',
+    version: '4.9.450',
+    title: 'V4.9.450 — End-Customer Payments: Go-Live Hardening & Audit',
+    summary: [
+      'Periodischer Payment-Connect-Reconciliation-Job (Webhooks, stuck PROCESSING, expired checkouts, account sync).',
+      'Observability: Payment-Prometheus-Metriken, strukturierte Logs, Alerts, Dead-Letter-Gauge.',
+      'Read-only Connect-Payment-Audit + ops-Script; Go-Live-Dokumentation.',
+      'Webhook-Processor markiert FAILED statt HTTP-Fehler; Stripe retrieve im Connected-Account-Kontext.',
+    ],
+    reason:
+      'Produktionsreife Absicherung: keine stillen Inkonsistenzen, Alerts statt unsicherer Auto-Reparatur, Audit vor Pilot.',
+    previousBehavior:
+      'Nur event-getriebene Reconciliation; keine periodische Nachverarbeitung, keine Payment-Metriken, kein Integritäts-Audit.',
+    details:
+      'PaymentConnectReconciliationService, PaymentConnectReconciliationScheduler, PaymentMetricsService, ConnectPaymentAuditService, audit-connect-payment-integrity.ts, architecture/END_CUSTOMER_PAYMENTS_GO_LIVE_AUDIT_2026-07-14.md.',
+    affectsArchitecture: true,
+    module: 'Payments',
+    createdAt: '2026-07-14T00:00:00.000Z',
+  },
+  {
+    id: 'booking-payment-refund-dispute-v49449-2026-07-14',
+    version: '4.9.449',
+    title: 'V4.9.449 — End-Customer Payments: Refunds & Disputes MVP',
+    summary: [
+      'POST /organizations/:orgId/payment-requests/:id/refund mit payments.refund, Idempotency-Key, Fee-Policy.',
+      'Ledger REFUND + REFUND_APPLICATION_FEE append-only; Invoice paidCents/outstanding angepasst.',
+      'Webhooks charge.refunded + charge.dispute.created; DISPUTED-Status, Audit, Notification.',
+      'BookingPaymentCard: Refund-Dialog mit Permission, Max-Betrag, Grund, Bestätigung.',
+    ],
+    reason:
+      'Sichere operative Rückerstattungen und sichtbare Disputes im Direct-Charge-Modell ohne Billing-Rechte oder Deposit-Refunds.',
+    previousBehavior:
+      'charge.refunded und charge.dispute.created wurden deferred; keine Refund-API oder UI.',
+    details:
+      'BookingPaymentRefundService, OrganizationPaymentRequestController, Stripe createRefund, PaymentReconciliationService, architecture/END_CUSTOMER_PAYMENTS_REFUNDS_DISPUTES_2026-07-14.md.',
+    affectsArchitecture: true,
+    module: 'Payments',
+    createdAt: '2026-07-14T00:00:00.000Z',
+  },
+  {
+    id: 'booking-payment-status-ui-v49448-2026-07-14',
+    version: '4.9.448',
+    title: 'V4.9.448 — Zahlungsstatus nach Buchung und im Buchungsdetail',
+    summary: [
+      'Booking Success: Szenarien A/B/C (vollständig, E-Mail-Fehler, Request-Fehler) mit Live-Polling.',
+      'Booking Detail Payment Card: Status, Beträge, Kaution separat, Link-Aktionen, Stripe-Refs gekürzt.',
+      'GET payment-requests + cancel; BookingDetailDto.payments aus Payment Request + Invoice.',
+      'DE/EN i18n, Mobile-Karten, Sticky Actions, ARIA-Status.',
+    ],
+    reason:
+      'Mitarbeiter müssen Buchungs- und Zahlungsstatus getrennt und jederzeit transparent sehen — inklusive Teilfehler nach payment_link.',
+    previousBehavior:
+      'Success-Screen zeigte nur Confirm-Zeitpunkt-Flags; Buchungsdetail hatte nur Rechnungs-Finanzblock ohne Payment Request.',
+    details:
+      'BookingPaymentCardService, BookingPaymentSuccessPanel, BookingPaymentCard, api.bookingPaymentRequests, booking-payment-status.utils.',
+    affectsArchitecture: true,
+    module: 'Bookings / Payments',
+    createdAt: '2026-07-14T00:00:00.000Z',
+  },
+  {
+    id: 'booking-payment-intent-v49447-2026-07-14',
+    version: '4.9.447',
+    title: 'V4.9.447 — Neue Buchung: Zahlungsabsichten statt irreführender Kartenzahlung',
+    summary: [
+      'Checkout-Optionen: payment_link, pay_on_pickup, cash, invoice — „Kartenzahlung“ entfernt.',
+      'Booking.paymentIntent persistiert auf Confirm; kein PAID allein durch Absicht.',
+      'GET wizard-draft/:id/checkout-context — serverseitige Beträge (online ohne Kaution, Kaution separat) + payment_link-Eligibility.',
+      'payment_link Confirm: PaymentRequest → Checkout → E-Mail mit Teilfehler-Reporting.',
+      'Frontend CheckoutStep + BookingSuccessState mit DE/EN i18n.',
+    ],
+    reason:
+      '„Kartenzahlung“ suggerierte sofortige Bezahlung. MVP braucht explizite Zahlungsabsichten mit klarer Trennung von Buchungsbestätigung und tatsächlicher Zahlung.',
+    previousBehavior:
+      'Wizard bot card/cash/invoice; card markierte fälschlich Rechnungen als bezahlt (V4.9.432 behoben Backend, UI blieb irreführend).',
+    details:
+      'booking-payment-intent.types.ts, BookingWizardCheckoutContextService, BookingWizardPaymentFlowService, booking-wizard-draft.service confirm, CheckoutStep, NewBookingView, BookingSuccessState, migration booking_payment_intent.',
+    affectsArchitecture: true,
+    module: 'Bookings / Payments',
+    createdAt: '2026-07-14T00:00:00.000Z',
+  },
+  {
+    id: 'payment-email-flow-v49446-2026-07-14',
+    version: '4.9.446',
+    title: 'V4.9.446 — End-Customer Payments: zuverlässiger Zahlungs-E-Mail-Flow',
+    summary: [
+      'PaymentEmailOutbox + BullMQ payment.email — BOOKING_PAYMENT_REQUEST und PAYMENT_CONFIRMATION über OutboundEmail/Resend.',
+      'LINK_SENT erst nach erfolgreichem Versand; sendAttemptCount, lastSentAt, lastEmailErrorMessage für UI.',
+      'Resend-Endpoint mit Session-Wiederverwendung oder kontrollierter Neuerstellung nach Ablauf.',
+      'Payment Confirmation nur nach PAID-Reconciliation, außerhalb der Webhook-Transaktion.',
+    ],
+    reason:
+      'Zahlungslinks und Bestätigungen brauchen nachvollziehbaren, wiederholbaren Versand getrennt vom Zahlungsstatus.',
+    previousBehavior: 'sendEmailOnLink gespeichert aber nicht versendet; PaymentConfirmationNotifier war No-Op.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_PAYMENT_EMAIL_2026-07-14.md, payment-email-*.ts, POST …/payment-requests/:id/resend.',
+    affectsArchitecture: true,
+    module: 'Payments / Email',
+    createdAt: '2026-07-15T01:00:00.000Z',
+  },
+  {
+    id: 'payment-reconciliation-v49445-2026-07-14',
+    version: '4.9.445',
+    title: 'V4.9.445 — End-Customer Payments: idempotente Connect-Zahlungsabgleich',
+    summary: [
+      'PaymentReconciliationService verarbeitet gespeicherte StripeConnectWebhookEvents in einer DB-Transaktion.',
+      'Kanonisch: payment_intent.succeeded — CHARGE, OrgInvoicePayment (STRIPE), PAID, Booking paymentStatus, Audit; E-Mail nur nach Commit.',
+      'checkout.session.completed → PROCESSING ohne Invoice-Verbuchung; failed/expired ohne PAID-Rückstufung.',
+      'Idempotenz: stripeEventId, PaymentIntent/CHARGE, bookingPaymentRequestId; Out-of-order robust.',
+    ],
+    reason:
+      'Connect-Events dürfen checkout.session.completed und payment_intent.succeeded nicht doppelt verbuchen; asynchrone Zahlungsarten erfordern kanonischen Geldeingang per PaymentIntent.',
+    previousBehavior: 'Webhook-Ingress nur Speicherung (RECEIVED); Processor-Stub ohne finanzielle Verarbeitung.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_PAYMENT_RECONCILIATION_2026-07-14.md, payment-reconciliation.service.ts, stripe-connect-webhook.processor.ts.',
+    affectsArchitecture: true,
+    module: 'Payments / Reconciliation',
+    createdAt: '2026-07-15T00:00:00.000Z',
+  },
+  {
+    id: 'stripe-connect-webhook-v49444-2026-07-14',
+    version: '4.9.444',
+    title: 'V4.9.444 — End-Customer Payments: separater Stripe-Connect-Webhook',
+    summary: [
+      'POST /api/v1/webhooks/stripe-connect — getrennt vom Billing-Webhook /webhooks/stripe.',
+      'Eigenes Secret STRIPE_CONNECT_WEBHOOK_SECRET; Raw Body + Signaturprüfung + Idempotenz via StripeConnectWebhookEvent.',
+      'Account-Kontext aus event.account; unbekannte Accounts als UNRESOLVED_ACCOUNT ohne Org-Zuordnung.',
+      'MVP-Eventtypen gespeichert (RECEIVED); weitere Events IGNORED; keine PAID/Invoice/E-Mail-Verarbeitung.',
+    ],
+    reason:
+      'Connect-Endkundenzahlungen brauchen einen eigenen, signaturgesicherten Event Store, bevor Zahlungsstatus per Worker verarbeitet wird.',
+    previousBehavior: 'Nur Billing-Webhook unter /webhooks/stripe; Connect-Events ohne Ingress.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_STRIPE_CONNECT_WEBHOOK_2026-07-14.md, stripe-connect-webhook.service.ts, auth.guard PUBLIC path.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Connect Webhook',
+    createdAt: '2026-07-14T23:30:00.000Z',
+  },
+  {
+    id: 'stripe-checkout-session-v49443-2026-07-14',
+    version: '4.9.443',
+    title: 'V4.9.443 — End-Customer Payments: Stripe Checkout Session (Direct Charge)',
+    summary: [
+      'POST …/payment-requests/:requestId/checkout erzeugt individuelle Stripe Checkout Session auf Connected Account.',
+      'Direct Charge via stripeAccount; application_fee_amount aus eingefrorenem Fee-Snapshot; line_items aus Snapshot ohne Kaution.',
+      'Status OPEN → LINK_PENDING → CHECKOUT_READY; LINK_SENT erst nach künftigem E-Mail-Versand.',
+      'Idempotenz: Stripe Idempotency-Key + DB checkoutIdempotencyKey; aktive Session wird wiederverwendet, abgelaufene nicht.',
+    ],
+    reason:
+      'Kundenzahlung braucht eine Hosted-Checkout-URL auf dem Org-Connected-Account, bevor Webhooks und E-Mail folgen.',
+    previousBehavior: 'BookingPaymentRequest ohne Checkout Session; keine Stripe-Zahlungs-URL.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_STRIPE_CHECKOUT_2026-07-14.md, stripe-checkout.service.ts, StripeConnectV1Adapter.createCheckoutSession.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Checkout',
+    createdAt: '2026-07-14T23:00:00.000Z',
+  },
+  {
+    id: 'booking-payment-request-v49442-2026-07-14',
+    version: '4.9.442',
+    title: 'V4.9.442 — End-Customer Payments: BookingPaymentRequest (RENTAL_PAYMENT)',
+    summary: [
+      'POST /organizations/:orgId/bookings/:bookingId/payment-requests — serverseitiger eingefrorener Zahlungs-Snapshot ohne Checkout/E-Mail.',
+      'Betrag aus BookingPriceSnapshot + OrgInvoice (validiert); keine Client-Totals, kein totalDueNowCents, keine Kaution im amountCents.',
+      'MVP-Zweck RENTAL_PAYMENT; Fee-Snapshot via PaymentFeeService; Idempotency-Key + Advisory Lock; max. ein aktiver Request pro Invoice.',
+      'Response mit depositInfoCents separat; applicationFeeAmountCents nur mit payments.settings.manage oder Org-Admin.',
+    ],
+    reason:
+      'Zahlungslinks brauchen einen unveränderlichen serverseitigen Betrag, bevor Stripe Checkout und E-Mail angebunden werden.',
+    previousBehavior: 'Kein API-Endpunkt zur Erstellung von BookingPaymentRequest; Beträge nur implizit in Snapshot/Invoice.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_BOOKING_PAYMENT_REQUEST_2026-07-14.md, booking-payment-request.service.ts, booking-payment-request.controller.ts.',
+    affectsArchitecture: true,
+    module: 'Payments / Booking Payment Request',
+    createdAt: '2026-07-14T22:00:00.000Z',
+  },
+  {
+    id: 'customer-payments-ui-v49441-2026-07-14',
+    version: '4.9.441',
+    title: 'V4.9.441 — Kundenzahlungen UI in Administration → Abrechnung',
+    summary: [
+      'Billing-Sub-Tab „Kundenzahlungen & Auszahlungen“ getrennt vom SynqDrive-Abo.',
+      'Zustände NOT_STARTED/ONBOARDING/RESTRICTED/ACTIVE/DISABLED mit sicheren Metadaten und DE/EN i18n.',
+      'API-Anbindung an payments/connect Endpoints; permissions-connect read/manage.',
+      'Master Platform Settings: kosmetischer Stripe-Toggle entfernt, Hinweis auf echte Konfiguration.',
+    ],
+    reason:
+      'Org-Admins müssen Abo-Zahlung und Auszahlungskonto klar unterscheiden können, bevor Payment Links gebaut werden.',
+    previousBehavior: 'Kein Tenant-UI für Connect; irreführender Stripe-Schalter in Master Platform Settings.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_CONNECT_UI_2026-07-14.md, CustomerPaymentsTab.tsx, BillingSectionTabBar.tsx.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Connect UI',
+    createdAt: '2026-07-14T21:00:00.000Z',
+  },
+  {
+    id: 'payments-connect-api-v49440-2026-07-14',
+    version: '4.9.440',
+    title: 'V4.9.440 — End-Customer Payments: Connect Onboarding API',
+    summary: [
+      'Org-scoped REST: POST account, POST onboarding-link, GET status, POST refresh unter /organizations/:orgId/payments/connect/*.',
+      'Guards: OrgScopingGuard + PaymentsFeatureGuard + PaymentsPermissionGuard; manage/read gemäß Connect-Berechtigungen.',
+      'Return/Refresh-URLs gegen CORS-Allowlist + konfigurierte Defaults validiert; Account-Link nur ephemer zurückgegeben.',
+      'GET status liest persistierten DB-Stand; POST refresh synchronisiert von Stripe — Redirect markiert nicht automatisch ACTIVE.',
+    ],
+    reason:
+      'Berechtigte Org-Admins brauchen eine sichere Backend-API für Connect-Onboarding, bevor Frontend angebunden wird.',
+    previousBehavior: 'Connect-Logik nur als Service ohne HTTP-Endpunkte; keine URL-Validierung für Onboarding-Redirects.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_CONNECT_API_2026-07-14.md, payments-connect.controller.ts, payments-connect-url.util.ts.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Connect',
+    createdAt: '2026-07-14T20:00:00.000Z',
+  },
+  {
+    id: 'stripe-connect-adapter-v49439-2026-07-14',
+    version: '4.9.439',
+    title: 'V4.9.439 — End-Customer Payments: Stripe Connect Adapter-Schicht',
+    summary: [
+      'Abstrahierte Connect-Grenze: StripeConnectAdapter + V1 Express-Implementierung (Prompt 4 Direct Charges Architektur).',
+      'StripeConnectAccountService + OrganizationPaymentAccountService — create/status/onboarding/refresh/payout ohne Stripe-Typen in Domain.',
+      'Guards: paymentsEnabled, connect.manage, Testmodus-only, Org-Profil vollständig; Idempotenz via DB-Unique + Advisory Lock.',
+      'V2-Adapter-Stub bis Dashboard Accounts v2; 103 Unit-Tests im payments-Modul.',
+    ],
+    reason:
+      'Stripe Connect muss hinter einer versionierten Adapter-Grenze liegen, bevor Payment Requests und Checkout angebunden werden.',
+    previousBehavior: 'Keine Connect-Adapter-Implementierung; nur Prisma-Modell OrganizationPaymentAccount.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_STRIPE_CONNECT_ADAPTER_2026-07-14.md, stripe-connect-v1.adapter.ts, stripe-connect-account.service.ts.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Connect',
+    createdAt: '2026-07-14T19:00:00.000Z',
+  },
+  {
+    id: 'payment-fee-policy-v49438-2026-07-14',
+    version: '4.9.438',
+    title: 'V4.9.438 — End-Customer Payments: Application-Fee-Policy',
+    summary: [
+      'Sichere Fee-Policy aus BookingPriceSnapshot-Line-Items — niemals totalDueNowCents oder Kaution.',
+      'Positivliste: BASE_RENTAL, INSURANCE, EXTRA, MILEAGE_PACKAGE, EXTRA_KM; DISCOUNT als Basis-Adjustment; DEPOSIT/TAX/MANUAL_ADJUSTMENT ausgeschlossen.',
+      'PaymentPolicyService + PaymentFeeService: Prozent-/Fix-/Min-/Max-Gebühr, proportionale Refund-Fee, immutable Snapshot auf BookingPaymentRequest.',
+      '24 Unit-Tests inkl. Kaution, Rabatt, Rundung, Currency, Policy-Version.',
+    ],
+    reason:
+      'SynqDrive Application Fees dürfen nur auf provisionsfähige Mietpositionen berechnet werden; Kaution ist im MVP weder online kassierbar noch provisionierbar.',
+    previousBehavior: 'Keine serverseitige Fee-Basis-Logik; commissionableAmount ohne Line-Item-Positivliste.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_FEE_POLICY_2026-07-14.md, payment-policy.service.ts, payment-fee.service.ts, Migration payment_fee_policy_snapshot.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Connect',
+    createdAt: '2026-07-14T18:30:00.000Z',
+  },
+  {
+    id: 'payments-feature-permissions-v49437-2026-07-14',
+    version: '4.9.437',
+    title: 'V4.9.437 — End-Customer Payments: Feature-Flag + Permissions',
+    summary: [
+      'Serverseitiges Organisations-Feature `paymentsEnabled` (Default false) — keine Auto-Aktivierung.',
+      'Neue Payment-Permissions getrennt von billing: payments, payments-refund, payments-disputes, payments-connect, payments-settings.',
+      'PaymentsFeatureGuard + PaymentsPermissionGuard + PaymentsAccessService; Rollen konservativ in organization-role.defaults.',
+      'Plattform-Aktivierung: PATCH admin/organizations/:id/payments-enabled (MASTER_ADMIN). 65 Unit-Tests.',
+    ],
+    reason:
+      'Endkundenzahlungen dürfen nur für explizit freigeschaltete Organisationen und berechtigte Rollen verfügbar sein, bevor Stripe angebunden wird.',
+    previousBehavior: 'Kein serverseitiges Payment-Feature-Gate; keine granularen Payment-Permissions.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_FEATURE_PERMISSIONS_2026-07-14.md, payments-access.service.ts, guards/*, permission.constants.ts, organization-role.defaults.ts.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Connect',
+    createdAt: '2026-07-14T18:00:00.000Z',
+  },
+  {
+    id: 'payment-domain-logic-v49436-2026-07-14',
+    version: '4.9.436',
+    title: 'V4.9.436 — End-Customer Payments: Domain-Statusmaschine ohne Stripe',
+    summary: [
+      'Zentrale Payment-Statuslogik: canTransition, applyTransition, deriveBookingPaymentStatus, calculateOutstanding/RefundableAmount.',
+      'BookingPaymentRequest-Lifecycle: DRAFT → OPEN → LINK_PENDING → LINK_SENT → PROCESSING → PAID (+ Refund/Dispute-Pfade).',
+      'Finanz-Guards: kein PAID ohne CHARGE-Ledger, kein Refund ohne Zahlung, kein Cancel nach Vollzahlung, kein PAID-Reset.',
+      'PaymentStatusService als einziger Gate für Statusänderungen; 42 Unit-Tests.',
+    ],
+    reason:
+      'Statusübergänge müssen zentral regelbasiert erfolgen, bevor Stripe-Webhooks oder Checkout angebunden werden.',
+    previousBehavior: 'Prisma-Schema ohne erzwingbare Übergangsregeln; beliebige Repository-Updates möglich.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_DOMAIN_LOGIC_2026-07-14.md, payment-status.transitions.ts, payment-status.service.ts, Migration payment_request_status_lifecycle.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Connect',
+    createdAt: '2026-07-14T17:30:00.000Z',
+  },
+  {
+    id: 'end-customer-payments-domain-v49435-2026-07-14',
+    version: '4.9.435',
+    title: 'V4.9.435 — End-Customer Payments: Prisma-Domain (ohne Stripe-API/UI)',
+    summary: [
+      'Neue Payment-Domain getrennt von modules/billing: OrganizationPaymentAccount, BookingPaymentRequest, PaymentTransaction (append-only Ledger), StripeConnectWebhookEvent.',
+      'Booking.paymentStatus als abgeleitete Zusammenfassung; OrgInvoicePayment erweitert um stripePaymentIntentId, stripeChargeId, bookingPaymentRequestId.',
+      'Enums, Constraints (org+provider unique, Stripe-ID pro Connected Account, Ledger-Idempotenz), Migration 20260714160000_end_customer_payments_domain.',
+      'Thin Repositories unter modules/payments + Schema-/Repository-Tests (13). Keine Stripe-API, kein Checkout, keine UI.',
+    ],
+    reason:
+      'Vor Connect-Checkout und Webhook-Verarbeitung muss die finanzielle Datenmodell-Schicht tenant-sicher und append-only definiert sein, ohne Billing-Abo-Modelle zu vermischen.',
+    previousBehavior: 'Keine dedizierten End-Customer-Payment-Tabellen; OrgInvoicePayment ohne Stripe-Connect-Verknüpfung.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_DOMAIN_SCHEMA_2026-07-14.md, prisma/schema.prisma, modules/payments/*, payment-schema.spec.ts, payments.repository.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Connect',
+    createdAt: '2026-07-14T17:00:00.000Z',
+  },
+  {
+    id: 'stripe-connect-verify-decision-v49434-2026-07-14',
+    version: '4.9.434',
+    title: 'V4.9.434 — Stripe Connect: Test-Konfiguration verifiziert + Architekturentscheidung',
+    summary: [
+      'Read-only Stripe-MCP-Verifikation des SynqDrive Sandbox-Kontos (Testmodus, DE/EUR, 0 Connected Accounts).',
+      'Entscheidungsdokument: Direct Charges + application_fee_amount, Accounts v2 (pending Dashboard), separates Connect-Webhook geplant.',
+      'Konzeptionelle Stripe-Adapter-Grenze (createConnectedAccount, createOnboardingSession, getAccountStatus, createCheckoutSession, createRefund) — keine Implementierung.',
+      'Manuelle Dashboard-Checks dokumentiert für Connect-Aktivierung, Accounts v2, Webhooks, Payment Methods.',
+    ],
+    reason:
+      'Vor Connect-Implementierung muss die tatsächliche Stripe-Testkonfiguration verifiziert und architektonisch entschieden werden, ohne Stripe-Objekte anzulegen.',
+    previousBehavior: 'Keine verifizierte Connect-Kontobasis; Billing-Webhook allein für SynqDrive-Abo.',
+    details:
+      'architecture/STRIPE_CONNECT_VERIFICATION_DECISION_2026-07-14.md, ArchitekturView (Stripe-Integration). Stripe MCP nur lesend.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Connect',
+    createdAt: '2026-07-14T16:30:00.000Z',
+  },
+  {
+    id: 'fake-paid-card-audit-v49433-2026-07-14',
+    version: '4.9.433',
+    title: 'V4.9.433 — Read-only Audit: Fake-PAID durch Checkout-Kartenauswahl',
+    summary: [
+      'Neues read-only Ops-Audit `audit-fake-paid-card-invoices.ts` + `FakePaidCardAuditService` — identifiziert historische CARD/STRIPE-Zahlungen auf Buchungsrechnungen ohne Stripe-Nachweis.',
+      'Verdachtskriterien mit Confidence HIGH/MEDIUM/LOW; Filter orgId + Zeitraum; JSON und `--human` Ausgabe.',
+      'Keine Datenänderung, keine Reparatur, kein Stripe-Live-Zugriff.',
+      '15 Unit-Tests (Kandidaten + legitime Gegenbeispiele).',
+    ],
+    reason:
+      'Nach Fix V4.9.432 müssen historisch fälschlich als bezahlt markierte Buchungsrechnungen identifizierbar sein, bevor eine optionale Korrektur in einem Folge-Prompt erfolgt.',
+    previousBehavior: 'Kein Audit-Werkzeug für Fake-PAID-Kandidaten; Alt-Daten nur manuell prüfbar.',
+    details:
+      'architecture/FAKE_PAID_CARD_AUDIT_2026-07-14.md, fake-paid-card-audit.service.ts, fake-paid-card-audit.util.ts, scripts/ops/audit-fake-paid-card-invoices.ts, ArchitekturView.',
+    affectsArchitecture: true,
+    module: 'Invoices / Audit',
+    createdAt: '2026-07-14T16:00:00.000Z',
+  },
+  {
+    id: 'booking-payment-intent-fix-v49432-2026-07-14',
+    version: '4.9.432',
+    title: 'V4.9.432 — Buchung: Kartenzahlung simuliert keine Zahlung mehr',
+    summary: [
+      'Kritischer Fix: `paymentMethod = card` im Checkout markiert Rechnungen nicht mehr automatisch als PAID.',
+      '`BookingInvoiceLifecycleService.syncOnBookingConfirmed` verbucht Zahlungen nur noch bei explizitem `markPaid: true` (autorisierte manuelle Aktion).',
+      'Zahlungsart (`card`/`cash`/`invoice`) ist reine Zahlungsabsicht — keine OrgInvoicePayment-Zeile, kein Stripe PaymentIntent/Checkout Session.',
+      '10 Regressionstests in `booking-invoice-lifecycle.service.spec.ts`; Repair-Skript nutzt kein fake `paymentMethod: card` mehr.',
+    ],
+    reason:
+      'Eine bloße Auswahl „Kartenzahlung“ im Buchungswizard durfte niemals als Nachweis eines Geldeingangs gelten — bisher wurde fälschlich `recordPayment` mit `InvoicePaymentMethod.CARD` ausgelöst.',
+    previousBehavior:
+      '`shouldMarkPaid = markPaid || paymentMethod === card` → Rechnung sofort PAID ohne echte Stripe-Zahlung.',
+    details:
+      'architecture/BOOKING_PAYMENT_INTENT_VS_PAID_2026-07-14.md, booking-invoice-lifecycle.service.ts, booking-invoice-lifecycle.service.spec.ts, ArchitekturView.',
+    affectsArchitecture: true,
+    module: 'Invoices / Booking Checkout',
+    createdAt: '2026-07-14T15:30:00.000Z',
+  },
+  {
     id: 'hostinger-mcp-version-fix-v49430-2026-07-14',
     version: '4.9.430',
     title: 'V4.9.430 — MCP: Hostinger-Version + Resend gehostet',

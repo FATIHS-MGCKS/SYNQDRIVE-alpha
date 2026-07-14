@@ -257,3 +257,53 @@ groups:
         annotations:
           summary: No notification materialization activity
           description: No created/updated notifications in 6h while workers are enabled — check evaluation scheduler.
+
+  - name: synqdrive_payments
+    rules:
+      - alert: ConnectWebhookBacklogHigh
+        expr: |
+          sum(synqdrive_payment_connect_webhook_backlog{status=~"RECEIVED|FAILED"}) > 25
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Stripe Connect webhook backlog is high
+          description: More than 25 Connect webhook events are pending RECEIVED/FAILED processing.
+
+      - alert: PaymentReconciliationMismatch
+        expr: increase(synqdrive_payment_reconciliation_mismatch_total[30m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Payment reconciliation integrity mismatch detected
+          description: Periodic reconciliation found ledger/invoice/booking mismatches — run audit-connect-payment-integrity.
+
+      - alert: PaymentCheckoutFailureSpike
+        expr: |
+          rate(synqdrive_payment_checkout_creation_total{result="failure"}[15m]) > 0
+          and rate(synqdrive_payment_checkout_creation_total{result="success"}[15m]) == 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: Checkout creation failures without successes
+          description: Stripe Connect checkout sessions are failing — check connected account readiness and Stripe status.
+
+      - alert: PaymentEmailDeadLetter
+        expr: synqdrive_payment_email_dead_letter > 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: Payment email dead-letter backlog
+          description: Payment email outbox has dead-letter entries — inspect payment.email queue and outbox.
+
+      - alert: UnknownConnectAccountWebhooks
+        expr: increase(synqdrive_payment_unknown_connected_account_total[1h]) > 0
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: Connect webhooks with unresolved accounts
+          description: Webhooks arrived for unknown connected accounts — verify Stripe Connect webhook endpoint and account mapping.

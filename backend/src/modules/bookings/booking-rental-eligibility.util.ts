@@ -43,7 +43,9 @@ export interface EligibilityEvaluationContext {
   licenseHoldingMonths: number | null;
   hasDateOfBirth: boolean;
   hasLicenseIssuedAt: boolean;
-  paymentMethod?: 'card' | 'cash' | 'invoice';
+  paymentIntent?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
+  /** @deprecated */
+  paymentMethod?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
   foreignTravelRequested: boolean;
   additionalDriverCount: number;
   depositReceived: boolean;
@@ -95,10 +97,11 @@ export function evaluateRentalEligibilityChecks(
   }
 
   if (ctx.rules.creditCardRequired.value === true) {
-    if (ctx.paymentMethod && ctx.paymentMethod !== 'card') {
-      blockingReasons.push('This vehicle requires payment by credit card.');
-    } else if (!ctx.paymentMethod) {
-      warningReasons.push('Credit card payment is required for this vehicle.');
+    const intent = ctx.paymentIntent ?? ctx.paymentMethod;
+    if (intent && intent !== 'payment_link') {
+      blockingReasons.push('This vehicle requires online payment by card (payment link).');
+    } else if (!intent) {
+      warningReasons.push('Online card payment via payment link is required for this vehicle.');
     }
   }
 

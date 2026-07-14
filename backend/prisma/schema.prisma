@@ -624,6 +624,14 @@ enum BookingStatus {
   NO_SHOW
 }
 
+enum BookingPaymentIntent {
+  PAYMENT_LINK
+  PAY_ON_PICKUP
+  CASH
+  INVOICE
+  TERMINAL
+}
+
 enum InsightType {
   TIGHT_HANDOVER
   RETURN_NEEDS_INSPECTION
@@ -999,6 +1007,8 @@ model Organization {
   managerEmail      String?            @map("manager_email")
   logoUrl           String?            @map("logo_url")
   status            OrganizationStatus @default(ACTIVE)
+  /// End-customer Stripe Connect payments — disabled by default; enable via platform admin only.
+  paymentsEnabled   Boolean            @default(false) @map("payments_enabled")
   lastActiveAt      DateTime?          @map("last_active_at")
   createdAt         DateTime           @default(now()) @map("created_at")
   updatedAt         DateTime           @updatedAt @map("updated_at")
@@ -1047,6 +1057,11 @@ model Organization {
   legalDocuments                    OrganizationLegalDocument[]
   bookingDocumentBundles            BookingDocumentBundle[]
   bookingDeposits                   BookingDeposit[]
+  organizationPaymentAccounts       OrganizationPaymentAccount[]
+  bookingPaymentRequests            BookingPaymentRequest[]
+  paymentEmailOutbox                PaymentEmailOutbox[]
+  paymentTransactions               PaymentTransaction[]
+  stripeConnectWebhookEvents        StripeConnectWebhookEvent[]
   rentalContracts                   RentalContract[]
   misuseCases                       MisuseCase[]
   orgInvoices                       OrgInvoice[]
@@ -2756,14 +2771,15 @@ model Customer {
   createdAt                 DateTime                   @default(now()) @map("created_at")
   updatedAt                 DateTime                   @updatedAt @map("updated_at")
 
-  organization          Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  bookings              Booking[]
-  rentalDrivingAnalyses RentalDrivingAnalysis[]
-  documents             CustomerDocument[]
-  verificationChecks    CustomerVerificationCheck[]
-  timelineEvents        CustomerTimelineEvent[]
-  misuseCases           MisuseCase[]
-  outboundEmails        OutboundEmail[]
+  organization           Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  bookings               Booking[]
+  rentalDrivingAnalyses  RentalDrivingAnalysis[]
+  documents              CustomerDocument[]
+  verificationChecks     CustomerVerificationCheck[]
+  timelineEvents         CustomerTimelineEvent[]
+  misuseCases            MisuseCase[]
+  outboundEmails         OutboundEmail[]
+  bookingPaymentRequests BookingPaymentRequest[]
 
   vehicleDamages        VehicleDamage[]
   whatsappConversations WhatsAppConversation[]
@@ -3027,50 +3043,55 @@ model VehicleRentalRequirementOverride {
 // ------------------------------------------------
 
 model Booking {
-  id                      String        @id @default(uuid())
-  organizationId          String        @map("organization_id")
-  customerId              String        @map("customer_id")
-  vehicleId               String        @map("vehicle_id")
-  pickupStationId         String?       @map("pickup_station_id")
-  returnStationId         String?       @map("return_station_id")
-  actualPickupStationId   String?       @map("actual_pickup_station_id")
-  actualReturnStationId   String?       @map("actual_return_station_id")
-  pickupAddressOverride   String?       @map("pickup_address_override")
-  returnAddressOverride   String?       @map("return_address_override")
-  isOneWayRental          Boolean       @default(false) @map("is_one_way_rental")
-  stationTransferFeeCents Int?          @map("station_transfer_fee_cents")
-  startDate               DateTime      @map("start_date")
-  endDate                 DateTime      @map("end_date")
-  dailyRateCents          Int?          @map("daily_rate_cents")
-  totalPriceCents         Int?          @map("total_price_cents")
-  kmIncluded              Int?          @map("km_included")
-  kmDriven                Int?          @map("km_driven")
-  insuranceOptions        Json?         @map("insurance_options")
-  extrasJson              Json?         @map("extras_json")
-  currency                String        @default("eur")
-  status                  BookingStatus @default(PENDING)
+  id                      String               @id @default(uuid())
+  organizationId          String               @map("organization_id")
+  customerId              String               @map("customer_id")
+  vehicleId               String               @map("vehicle_id")
+  pickupStationId         String?              @map("pickup_station_id")
+  returnStationId         String?              @map("return_station_id")
+  actualPickupStationId   String?              @map("actual_pickup_station_id")
+  actualReturnStationId   String?              @map("actual_return_station_id")
+  pickupAddressOverride   String?              @map("pickup_address_override")
+  returnAddressOverride   String?              @map("return_address_override")
+  isOneWayRental          Boolean              @default(false) @map("is_one_way_rental")
+  stationTransferFeeCents Int?                 @map("station_transfer_fee_cents")
+  startDate               DateTime             @map("start_date")
+  endDate                 DateTime             @map("end_date")
+  dailyRateCents          Int?                 @map("daily_rate_cents")
+  totalPriceCents         Int?                 @map("total_price_cents")
+  kmIncluded              Int?                 @map("km_included")
+  kmDriven                Int?                 @map("km_driven")
+  insuranceOptions        Json?                @map("insurance_options")
+  extrasJson              Json?                @map("extras_json")
+  currency                String               @default("eur")
+  status                  BookingStatus        @default(PENDING)
+  /// Derived summary from BookingPaymentRequest / invoice state — not financial source of truth.
+  paymentStatus           BookingPaymentStatus @default(UNPAID) @map("payment_status")
+  /// Checkout payment intent from wizard — does not imply money received.
+  paymentIntent           BookingPaymentIntent? @map("payment_intent")
   notes                   String?
-  cancelledAt             DateTime?     @map("cancelled_at")
-  completedAt             DateTime?     @map("completed_at")
-  createdAt               DateTime      @default(now()) @map("created_at")
-  updatedAt               DateTime      @updatedAt @map("updated_at")
+  cancelledAt             DateTime?            @map("cancelled_at")
+  completedAt             DateTime?            @map("completed_at")
+  createdAt               DateTime             @default(now()) @map("created_at")
+  updatedAt               DateTime             @updatedAt @map("updated_at")
 
-  organization          Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  customer              Customer                    @relation(fields: [customerId], references: [id])
-  vehicle               Vehicle                     @relation(fields: [vehicleId], references: [id])
-  pickupStation         Station?                    @relation("BookingPickupStation", fields: [pickupStationId], references: [id], onDelete: SetNull)
-  returnStation         Station?                    @relation("BookingReturnStation", fields: [returnStationId], references: [id], onDelete: SetNull)
-  actualPickupStation   Station?                    @relation("BookingActualPickupStation", fields: [actualPickupStationId], references: [id], onDelete: SetNull)
-  actualReturnStation   Station?                    @relation("BookingActualReturnStation", fields: [actualReturnStationId], references: [id], onDelete: SetNull)
-  rentalDrivingAnalysis RentalDrivingAnalysis?
-  handoverProtocols     BookingHandoverProtocol[]
-  verificationChecks    CustomerVerificationCheck[]
-  misuseCases           MisuseCase[]
-  priceSnapshots        BookingPriceSnapshot[]
-  pricingQuote          PricingQuote?               @relation("PricingQuoteConsumedBooking")
-  vehicleDamages        VehicleDamage[]
-  whatsappConversations WhatsAppConversation[]
-  outboundEmails        OutboundEmail[]
+  organization           Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer               Customer                    @relation(fields: [customerId], references: [id])
+  vehicle                Vehicle                     @relation(fields: [vehicleId], references: [id])
+  pickupStation          Station?                    @relation("BookingPickupStation", fields: [pickupStationId], references: [id], onDelete: SetNull)
+  returnStation          Station?                    @relation("BookingReturnStation", fields: [returnStationId], references: [id], onDelete: SetNull)
+  actualPickupStation    Station?                    @relation("BookingActualPickupStation", fields: [actualPickupStationId], references: [id], onDelete: SetNull)
+  actualReturnStation    Station?                    @relation("BookingActualReturnStation", fields: [actualReturnStationId], references: [id], onDelete: SetNull)
+  rentalDrivingAnalysis  RentalDrivingAnalysis?
+  handoverProtocols      BookingHandoverProtocol[]
+  verificationChecks     CustomerVerificationCheck[]
+  misuseCases            MisuseCase[]
+  priceSnapshots         BookingPriceSnapshot[]
+  pricingQuote           PricingQuote?               @relation("PricingQuoteConsumedBooking")
+  vehicleDamages         VehicleDamage[]
+  whatsappConversations  WhatsAppConversation[]
+  outboundEmails         OutboundEmail[]
+  bookingPaymentRequests BookingPaymentRequest[]
 
   @@index([organizationId])
   @@index([customerId])
@@ -3978,6 +3999,277 @@ enum InvoicePaymentMethod {
   OTHER
 }
 
+// ------------------------------------------------
+// END-CUSTOMER PAYMENTS (Connect) — separate from modules/billing
+// ------------------------------------------------
+
+enum PaymentProvider {
+  STRIPE
+}
+
+enum StripeAccountGeneration {
+  V1
+  V2
+}
+
+enum OrganizationPaymentAccountStatus {
+  PENDING
+  ONBOARDING
+  ACTIVE
+  RESTRICTED
+  DISABLED
+  REJECTED
+}
+
+enum BookingPaymentStatus {
+  UNPAID
+  PENDING
+  PARTIALLY_PAID
+  PAID
+  FAILED
+  REFUNDED
+}
+
+enum BookingPaymentRequestStatus {
+  DRAFT
+  OPEN
+  LINK_PENDING
+  CHECKOUT_READY
+  LINK_SENT
+  PROCESSING
+  PAID
+  PARTIALLY_REFUNDED
+  REFUNDED
+  FAILED
+  CANCELLED
+  EXPIRED
+  DISPUTED
+}
+
+enum PaymentEmailType {
+  BOOKING_PAYMENT_REQUEST
+  PAYMENT_CONFIRMATION
+  PAYMENT_FAILED
+  PAYMENT_EXPIRED
+  PAYMENT_REFUND
+  PAYMENT_DISPUTE
+}
+
+enum PaymentEmailOutboxStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  DEAD_LETTER
+}
+
+enum BookingPaymentPurpose {
+  RENTAL_PAYMENT
+  BOOKING_INVOICE
+  INVOICE_SETTLEMENT
+}
+
+enum PaymentTransactionType {
+  CHARGE
+  APPLICATION_FEE
+  REFUND
+  REFUND_APPLICATION_FEE
+  DISPUTE
+  DISPUTE_REVERSAL
+  ADJUSTMENT
+}
+
+enum PaymentTransactionStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum StripeConnectWebhookProcessingStatus {
+  RECEIVED
+  PROCESSED
+  FAILED
+  IGNORED
+  UNRESOLVED_ACCOUNT
+}
+
+model OrganizationPaymentAccount {
+  id                              String                           @id @default(uuid())
+  organizationId                  String                           @map("organization_id")
+  provider                        PaymentProvider                  @default(STRIPE)
+  status                          OrganizationPaymentAccountStatus @default(PENDING)
+  stripeConnectedAccountId        String?                          @map("stripe_connected_account_id")
+  stripeAccountGeneration         StripeAccountGeneration          @default(V1) @map("stripe_account_generation")
+  livemode                        Boolean                          @default(false)
+  country                         String?
+  defaultCurrency                 String                           @default("EUR") @map("default_currency")
+  detailsSubmitted                Boolean                          @default(false) @map("details_submitted")
+  chargesEnabled                  Boolean                          @default(false) @map("charges_enabled")
+  payoutsEnabled                  Boolean                          @default(false) @map("payouts_enabled")
+  disabledReason                  String?                          @map("disabled_reason")
+  requirementsCurrentlyDue        Json?                            @map("requirements_currently_due")
+  requirementsPastDue             Json?                            @map("requirements_past_due")
+  requirementsPendingVerification Json?                            @map("requirements_pending_verification")
+  bankAccountLast4                String?                          @map("bank_account_last4")
+  lastSyncedAt                    DateTime?                        @map("last_synced_at")
+  lastStripeEventAt               DateTime?                        @map("last_stripe_event_at")
+  createdAt                       DateTime                         @default(now()) @map("created_at")
+  updatedAt                       DateTime                         @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, provider])
+  @@unique([stripeConnectedAccountId])
+  @@index([organizationId, status])
+  @@map("organization_payment_accounts")
+}
+
+model BookingPaymentRequest {
+  id                        String                      @id @default(uuid())
+  organizationId            String                      @map("organization_id")
+  bookingId                 String                      @map("booking_id")
+  invoiceId                 String?                     @map("invoice_id")
+  customerId                String                      @map("customer_id")
+  provider                  PaymentProvider             @default(STRIPE)
+  purpose                   BookingPaymentPurpose
+  status                    BookingPaymentRequestStatus @default(DRAFT)
+  amountCents               Int                         @map("amount_cents")
+  paidAmountCents           Int                         @default(0) @map("paid_amount_cents")
+  refundedAmountCents       Int                         @default(0) @map("refunded_amount_cents")
+  currency                  String                      @default("EUR")
+  stripeConnectedAccountId  String?                     @map("stripe_connected_account_id")
+  stripeCheckoutSessionId   String?                     @map("stripe_checkout_session_id")
+  stripePaymentIntentId     String?                     @map("stripe_payment_intent_id")
+  stripeChargeId            String?                     @map("stripe_charge_id")
+  stripeApplicationFeeId    String?                     @map("stripe_application_fee_id")
+  commissionableAmountCents Int?                        @map("commissionable_amount_cents")
+  applicationFeeAmountCents Int?                        @map("application_fee_amount_cents")
+  feeRateBps                Int?                        @map("fee_rate_bps")
+  fixedFeeCents             Int?                        @map("fixed_fee_cents")
+  feePolicyVersion          String?                     @map("fee_policy_version")
+  feeBasis                  String?                     @map("fee_basis")
+  checkoutUrl               String?                     @map("checkout_url")
+  checkoutCreatedAt         DateTime?                   @map("checkout_created_at")
+  checkoutExpiresAt         DateTime?                   @map("checkout_expires_at")
+  checkoutIdempotencyKey    String?                     @map("checkout_idempotency_key")
+  stripeLivemode            Boolean?                    @map("stripe_livemode")
+  recipientEmail            String?                     @map("recipient_email")
+  sendEmailOnLink           Boolean                     @default(false) @map("send_email_on_link")
+  lastSentAt                DateTime?                   @map("last_sent_at")
+  sendAttemptCount          Int                         @default(0) @map("send_attempt_count")
+  lastEmailErrorAt          DateTime?                   @map("last_email_error_at")
+  lastEmailErrorMessage     String?                     @map("last_email_error_message")
+  paidAt                    DateTime?                   @map("paid_at")
+  failedAt                  DateTime?                   @map("failed_at")
+  cancelledAt               DateTime?                   @map("cancelled_at")
+  idempotencyKey            String                      @map("idempotency_key")
+  version                   Int                         @default(1)
+  createdAt                 DateTime                    @default(now()) @map("created_at")
+  updatedAt                 DateTime                    @updatedAt @map("updated_at")
+
+  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking        Booking              @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  invoice        OrgInvoice?          @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  customer       Customer             @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  transactions   PaymentTransaction[]
+  invoicePayment OrgInvoicePayment?
+  paymentEmailOutbox PaymentEmailOutbox[]
+  outboundEmails     OutboundEmail[]
+
+  @@unique([organizationId, idempotencyKey])
+  @@unique([stripeConnectedAccountId, stripeCheckoutSessionId], map: "booking_payment_requests_stripe_acct_checkout_session_key")
+  @@unique([stripeConnectedAccountId, stripePaymentIntentId], map: "booking_payment_requests_stripe_acct_payment_intent_key")
+  @@unique([stripeConnectedAccountId, stripeChargeId], map: "booking_payment_requests_stripe_acct_charge_key")
+  @@index([organizationId])
+  @@index([bookingId, purpose, status])
+  @@index([invoiceId])
+  @@index([customerId])
+  @@index([status])
+  @@map("booking_payment_requests")
+}
+
+model PaymentEmailOutbox {
+  id               String                   @id @default(uuid())
+  organizationId   String                   @map("organization_id")
+  paymentRequestId String                   @map("payment_request_id")
+  emailType        PaymentEmailType         @map("email_type")
+  status           PaymentEmailOutboxStatus @default(PENDING)
+  idempotencyKey   String                   @unique @map("idempotency_key")
+  attempts         Int                      @default(0)
+  availableAt      DateTime                 @default(now()) @map("available_at")
+  outboundEmailId  String?                  @map("outbound_email_id")
+  errorMessage     String?                  @map("error_message")
+  sentByUserId     String?                  @map("sent_by_user_id")
+  createdAt        DateTime                 @default(now()) @map("created_at")
+  updatedAt        DateTime                 @updatedAt @map("updated_at")
+  processedAt      DateTime?                @map("processed_at")
+
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  paymentRequest BookingPaymentRequest @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
+  outboundEmail  OutboundEmail?        @relation(fields: [outboundEmailId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([paymentRequestId])
+  @@index([status, availableAt])
+  @@map("payment_email_outbox")
+}
+
+/// Append-only financial ledger — never update or delete rows in application code.
+model PaymentTransaction {
+  id                        String                   @id @default(uuid())
+  organizationId            String                   @map("organization_id")
+  paymentRequestId          String                   @map("payment_request_id")
+  type                      PaymentTransactionType
+  status                    PaymentTransactionStatus @default(PENDING)
+  amountCents               Int                      @map("amount_cents")
+  currency                  String                   @default("EUR")
+  provider                  PaymentProvider          @default(STRIPE)
+  providerObjectType        String?                  @map("provider_object_type")
+  providerObjectId          String?                  @map("provider_object_id")
+  providerEventId           String?                  @map("provider_event_id")
+  parentTransactionId       String?                  @map("parent_transaction_id")
+  balanceImpactCents        Int                      @default(0) @map("balance_impact_cents")
+  applicationFeeImpactCents Int                      @default(0) @map("application_fee_impact_cents")
+  occurredAt                DateTime                 @map("occurred_at")
+  metadata                  Json?
+  createdAt                 DateTime                 @default(now()) @map("created_at")
+
+  organization      Organization          @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  paymentRequest    BookingPaymentRequest @relation(fields: [paymentRequestId], references: [id], onDelete: Restrict)
+  parentTransaction PaymentTransaction?   @relation("PaymentTransactionChain", fields: [parentTransactionId], references: [id], onDelete: Restrict)
+  childTransactions PaymentTransaction[]  @relation("PaymentTransactionChain")
+
+  @@unique([provider, providerEventId, type])
+  @@index([organizationId, occurredAt])
+  @@index([paymentRequestId])
+  @@index([providerObjectType, providerObjectId])
+  @@map("payment_transactions")
+}
+
+model StripeConnectWebhookEvent {
+  id                       String                               @id @default(uuid())
+  stripeEventId            String                               @unique @map("stripe_event_id")
+  stripeConnectedAccountId String?                              @map("stripe_connected_account_id")
+  organizationId           String?                              @map("organization_id")
+  eventType                String                               @map("event_type")
+  objectId                 String?                              @map("object_id")
+  livemode                 Boolean                              @default(false)
+  processingStatus         StripeConnectWebhookProcessingStatus @default(RECEIVED) @map("processing_status")
+  attempts                 Int                                  @default(0)
+  payloadHash              String?                              @map("payload_hash")
+  safeEventData            Json?                                @map("safe_event_data")
+  receivedAt               DateTime                             @default(now()) @map("received_at")
+  processedAt              DateTime?                            @map("processed_at")
+  errorMessage             String?                              @map("error_message")
+
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+
+  @@index([processingStatus, receivedAt])
+  @@index([organizationId, receivedAt])
+  @@index([stripeConnectedAccountId])
+  @@map("stripe_connect_webhook_events")
+}
+
 model OrgInvoiceSequence {
   id             String   @id @default(uuid())
   organizationId String   @map("organization_id")
@@ -3992,22 +4284,28 @@ model OrgInvoiceSequence {
 }
 
 model OrgInvoicePayment {
-  id              String               @id @default(uuid())
-  organizationId  String               @map("organization_id")
-  invoiceId       String               @map("invoice_id")
-  amountCents     Int                  @map("amount_cents")
-  method          InvoicePaymentMethod @default(BANK_TRANSFER)
-  paidAt          DateTime             @map("paid_at")
-  reference       String?
-  note            String?
-  createdByUserId String?              @map("created_by_user_id")
-  createdAt       DateTime             @default(now()) @map("created_at")
+  id                      String               @id @default(uuid())
+  organizationId          String               @map("organization_id")
+  invoiceId               String               @map("invoice_id")
+  amountCents             Int                  @map("amount_cents")
+  method                  InvoicePaymentMethod @default(BANK_TRANSFER)
+  paidAt                  DateTime             @map("paid_at")
+  reference               String?
+  note                    String?
+  stripePaymentIntentId   String?              @map("stripe_payment_intent_id")
+  stripeChargeId          String?              @map("stripe_charge_id")
+  bookingPaymentRequestId String?              @unique @map("booking_payment_request_id")
+  createdByUserId         String?              @map("created_by_user_id")
+  createdAt               DateTime             @default(now()) @map("created_at")
 
-  invoice OrgInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice               OrgInvoice             @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  bookingPaymentRequest BookingPaymentRequest? @relation(fields: [bookingPaymentRequestId], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
   @@index([invoiceId])
   @@index([paidAt])
+  @@index([stripePaymentIntentId])
+  @@index([stripeChargeId])
   @@map("org_invoice_payments")
 }
 
@@ -4053,10 +4351,11 @@ model OrgInvoice {
   createdAt            DateTime         @default(now()) @map("created_at")
   updatedAt            DateTime         @updatedAt @map("updated_at")
 
-  tasks        OrgTask[]
-  payments     OrgInvoicePayment[]
-  vendor       Vendor?             @relation(fields: [vendorId], references: [id], onDelete: SetNull)
-  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tasks                  OrgTask[]
+  payments               OrgInvoicePayment[]
+  bookingPaymentRequests BookingPaymentRequest[]
+  vendor                 Vendor?                 @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  organization           Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, sequenceYear, sequenceNumber])
   @@index([organizationId])
@@ -6069,6 +6368,12 @@ enum OutboundEmailSourceType {
   INVOICE_SINGLE
   NOTIFICATION
   TEST
+  BOOKING_PAYMENT_REQUEST
+  PAYMENT_CONFIRMATION
+  PAYMENT_FAILED
+  PAYMENT_EXPIRED
+  PAYMENT_REFUND
+  PAYMENT_DISPUTE
 }
 
 enum OutboundEmailStatus {
@@ -6103,15 +6408,15 @@ model PlatformEmailSettings {
 }
 
 model OrgEmailSettings {
-  id              String       @id @default(uuid())
-  organizationId  String       @unique @map("organization_id")
-  mode            OrgEmailMode @default(SYNQDRIVE_DEFAULT)
-  defaultFromName String?      @map("default_from_name")
-  replyToEmail    String?      @map("reply_to_email")
-  signatureHtml   String?      @map("signature_html")
-  autoSendBookingDocumentsOnConfirm Boolean @default(false) @map("auto_send_booking_documents_on_confirm")
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @updatedAt @map("updated_at")
+  id                                String       @id @default(uuid())
+  organizationId                    String       @unique @map("organization_id")
+  mode                              OrgEmailMode @default(SYNQDRIVE_DEFAULT)
+  defaultFromName                   String?      @map("default_from_name")
+  replyToEmail                      String?      @map("reply_to_email")
+  signatureHtml                     String?      @map("signature_html")
+  autoSendBookingDocumentsOnConfirm Boolean      @default(false) @map("auto_send_booking_documents_on_confirm")
+  createdAt                         DateTime     @default(now()) @map("created_at")
+  updatedAt                         DateTime     @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -6142,12 +6447,13 @@ model OrgEmailDomain {
 }
 
 model OutboundEmail {
-  id                String                  @id @default(uuid())
-  organizationId    String                  @map("organization_id")
-  bookingId         String?                 @map("booking_id")
-  customerId        String?                 @map("customer_id")
-  invoiceId         String?                 @map("invoice_id")
-  sourceType        OutboundEmailSourceType @map("source_type")
+  id                      String                  @id @default(uuid())
+  organizationId          String                  @map("organization_id")
+  bookingId               String?                 @map("booking_id")
+  customerId              String?                 @map("customer_id")
+  invoiceId               String?                 @map("invoice_id")
+  bookingPaymentRequestId String?                 @map("booking_payment_request_id")
+  sourceType              OutboundEmailSourceType @map("source_type")
   status            OutboundEmailStatus     @default(QUEUED)
   fromEmail         String                  @map("from_email")
   fromName          String?                 @map("from_name")
@@ -6170,13 +6476,16 @@ model OutboundEmail {
   organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   booking      Booking?                  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   customer     Customer?                 @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  bookingPaymentRequest BookingPaymentRequest? @relation(fields: [bookingPaymentRequestId], references: [id], onDelete: SetNull)
   sentByUser   User?                     @relation("OutboundEmailSentBy", fields: [sentByUserId], references: [id], onDelete: SetNull)
   attachments  OutboundEmailAttachment[]
   events       OutboundEmailEvent[]
+  paymentEmailOutbox PaymentEmailOutbox[]
 
   @@index([organizationId])
   @@index([organizationId, bookingId])
   @@index([organizationId, customerId])
+  @@index([bookingPaymentRequestId])
   @@index([status])
   @@index([createdAt])
   @@map("outbound_emails")
@@ -7240,9 +7549,9 @@ model Notification {
   createdAt           DateTime               @default(now()) @map("created_at")
   updatedAt           DateTime               @updatedAt @map("updated_at")
 
-  organization  Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  occurrences   NotificationOccurrence[]
-  receipts      NotificationReceipt[]
+  organization   Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  occurrences    NotificationOccurrence[]
+  receipts       NotificationReceipt[]
   deliveryOutbox NotificationDeliveryOutbox[]
 
   @@index([organizationId, status, lastSeenAt])

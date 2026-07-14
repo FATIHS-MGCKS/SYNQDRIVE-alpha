@@ -80,7 +80,8 @@ export class BookingsController {
       customerId: body.customerId,
       startDate,
       endDate: endDate && !Number.isNaN(endDate.getTime()) ? endDate : undefined,
-      paymentMethod: body.paymentMethod,
+      paymentIntent: body.paymentIntent ?? body.paymentMethod,
+      paymentMethod: body.paymentIntent ?? body.paymentMethod,
       foreignTravelRequested: body.foreignTravelRequested,
       additionalDriverCount: body.additionalDriverCount,
       depositReceived: body.depositReceived,
@@ -104,6 +105,14 @@ export class BookingsController {
     @Body() body: BookingWizardDraftUpdateDto,
   ) {
     return this.wizardDraftService.updateDraftQuote(orgId, bookingId, body, { userId });
+  }
+
+  @Get('wizard-draft/:bookingId/checkout-context')
+  async getWizardCheckoutContext(
+    @Param('orgId') orgId: string,
+    @Param('bookingId') bookingId: string,
+  ) {
+    return this.wizardDraftService.getCheckoutContext(orgId, bookingId);
   }
 
   @Post('wizard-draft/:bookingId/confirm')
@@ -131,7 +140,8 @@ export class BookingsController {
     @Query() query: BookingRentalEligibilityBookingQueryDto,
   ) {
     return this.rentalEligibilityService.checkForBooking(orgId, id, {
-      paymentMethod: query.paymentMethod,
+      paymentIntent: query.paymentIntent ?? query.paymentMethod,
+      paymentMethod: query.paymentIntent ?? query.paymentMethod,
       foreignTravelRequested:
         query.foreignTravelRequested === true ||
         (query.foreignTravelRequested as unknown) === 'true',

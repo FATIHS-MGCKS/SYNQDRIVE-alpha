@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { Booking, BookingStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import type { PermissionActor } from '@shared/auth/permission.util';
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
 import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
 import { InvoicesService } from '@modules/invoices/invoices.service';
@@ -28,6 +29,22 @@ import type {
   BookingWizardDraftUpdateDto,
 } from './dto/booking-wizard-draft.dto';
 import { BookingsService } from './bookings.service';
+import {
+  BOOKING_CHECKOUT_PAYMENT_INTENTS,
+  type BookingCheckoutPaymentIntent,
+  toPrismaBookingPaymentIntent,
+} from './booking-payment-intent.types';
+import { BookingWizardCheckoutContextService } from './booking-wizard-checkout-context.service';
+import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.service';
+import type { WizardPaymentFlowResult } from './booking-wizard-payment-flow.service';
+
+export interface BookingWizardConfirmResult {
+  booking: Booking;
+  bundle: Awaited<ReturnType<BookingDocumentBundleService['getBundleView']>>;
+  autoSend: Awaited<ReturnType<BookingDocumentEmailService['maybeAutoSendBookingDocuments']>>;
+  paymentIntent: BookingCheckoutPaymentIntent | null;
+  paymentFlow?: WizardPaymentFlowResult | null;
+}
 
 @Injectable()
 export class BookingWizardDraftService {
@@ -41,6 +58,8 @@ export class BookingWizardDraftService {
     private readonly invoicesService: InvoicesService,
     private readonly bookingInvoiceLifecycle: BookingInvoiceLifecycleService,
     private readonly bookingDocumentEmailService: BookingDocumentEmailService,
+    private readonly checkoutContextService: BookingWizardCheckoutContextService,
+    private readonly paymentFlowService: BookingWizardPaymentFlowService,
   ) {}
 
   async createOrRefreshDraft(
@@ -159,28 +178,62 @@ export class BookingWizardDraftService {
     return this.refreshDraftBundle(orgId, bookingId, options?.userId ?? null);
   }
 
+  async getCheckoutContext(orgId: string, bookingId: string) {
+    await this.requireWizardDraft(orgId, bookingId);
+    return this.checkoutContextService.getCheckoutContext(orgId, bookingId);
+  }
+
   async confirmDraft(
     orgId: string,
     bookingId: string,
     body: BookingWizardDraftConfirmDto,
     options?: { userId?: string | null },
-  ) {
+  ): Promise<BookingWizardConfirmResult> {
+    const paymentIntent = body.paymentIntent ?? body.paymentMethod;
     const draft = await this.requireWizardDraft(orgId, bookingId);
+    const resolvedIntent = this.resolvePaymentIntent(paymentIntent);
+
+    if (resolvedIntent === 'payment_link') {
+      const context = await this.checkoutContextService.getCheckoutContext(orgId, bookingId);
+      if (!context.paymentLinkEligibility.eligible) {
+        throw new BadRequestException({
+          message: 'Payment link is not available for this booking',
+          code: 'PAYMENT_LINK_NOT_ELIGIBLE',
+          reasons: context.paymentLinkEligibility.reasons,
+        });
+      }
+    }
+
     const targetStatus: BookingStatus = body.status === 'PENDING' ? 'PENDING' : 'CONFIRMED';
     const booking = await this.bookingsService.update(orgId, bookingId, {
       status: targetStatus,
       notes: stripWizardDraftMarker(draft.notes) || null,
+      paymentIntent: toPrismaBookingPaymentIntent(resolvedIntent),
     });
 
     await this.bookingInvoiceLifecycle
       .syncOnBookingConfirmed(orgId, bookingId, {
-        paymentMethod: body.paymentMethod,
+        paymentIntent: resolvedIntent,
         userId: options?.userId ?? null,
       })
       .catch((err) => {
-        // Non-blocking — booking is confirmed; finance sync can be repaired via ops script.
         console.error('[BookingWizardDraft] invoice sync failed', err);
       });
+
+    let paymentFlow: WizardPaymentFlowResult | null = null;
+    if (resolvedIntent === 'payment_link') {
+      const actor: PermissionActor = {
+        id: options?.userId ?? undefined,
+        organizationId: orgId,
+      };
+      const context = await this.checkoutContextService.getCheckoutContext(orgId, bookingId);
+      paymentFlow = await this.paymentFlowService.executePaymentLinkFlow({
+        organizationId: orgId,
+        bookingId,
+        actor,
+        recipientEmail: context.recipientEmail ?? undefined,
+      });
+    }
 
     const bundle = await this.bundleService.getBundleView(orgId, bookingId);
     const autoSend = await this.bookingDocumentEmailService.maybeAutoSendBookingDocuments(
@@ -188,7 +241,14 @@ export class BookingWizardDraftService {
       bookingId,
       options?.userId ?? null,
     );
-    return { booking, bundle, autoSend };
+
+    return {
+      booking,
+      bundle,
+      autoSend,
+      paymentIntent: resolvedIntent,
+      paymentFlow,
+    };
   }
 
   async abortDraft(orgId: string, bookingId: string) {
@@ -199,6 +259,15 @@ export class BookingWizardDraftService {
     });
     const booking = await this.bookingsService.cancel(orgId, bookingId);
     return { booking, aborted: true };
+  }
+
+  private resolvePaymentIntent(
+    value: BookingCheckoutPaymentIntent | undefined,
+  ): BookingCheckoutPaymentIntent {
+    if (!value || !BOOKING_CHECKOUT_PAYMENT_INTENTS.includes(value)) {
+      return 'pay_on_pickup';
+    }
+    return value;
   }
 
   private async requireWizardDraft(orgId: string, bookingId: string): Promise<Booking> {

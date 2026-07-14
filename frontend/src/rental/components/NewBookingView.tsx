@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { VehicleData } from '../data/vehicles';
 import { useFleetVehicles } from '../FleetContext';
 import { useRentalOrg } from '../RentalContext';
-import { api, type BookingDocumentBundleView } from '../../lib/api';
+import { api, type BookingDocumentBundleView, type WizardCheckoutContext } from '../../lib/api';
 import { resolveDrivingStressScore } from '../lib/scoreFormat';
 import { usePriceTariffs } from '../hooks/usePriceTariffs';
 import { usePricingSimulation } from '../hooks/usePricingSimulation';
@@ -53,14 +53,20 @@ import {
 import { VehiclePickerStep } from './new-booking/VehiclePickerStep';
 import { BookingStepper } from './new-booking/BookingStepper';
 import { BookingStepCard } from './new-booking/BookingStepCard';
-import { BookingSuccessState } from './new-booking/BookingSuccessState';
+import { BookingSuccessState, type BookingSuccessPaymentFlow } from './new-booking/BookingSuccessState';
 import { BookingSidebar } from './new-booking/BookingSidebar';
 import { MobileBookingFooter } from './new-booking/MobileBookingFooter';
 import { PeriodStep } from './new-booking/PeriodStep';
 import { ExtrasStep } from './new-booking/ExtrasStep';
 import { CustomerStep } from './new-booking/CustomerStep';
 import { CheckoutStep } from './new-booking/CheckoutStep';
-import type { BookingCustomer, BookingCustomerEligibility, BookingWizardStepId } from './new-booking/types';
+import { paymentIntentNotesLabel } from './new-booking/payment-intent';
+import type {
+  BookingCustomer,
+  BookingCustomerEligibility,
+  BookingPaymentIntent,
+  BookingWizardStepId,
+} from './new-booking/types';
 import { Icon } from './ui/Icon';
 import { useCustomerVerification } from './customer-verification/useCustomerVerification';
 import { useDocumentDark } from '../hooks/useDocumentDark';
@@ -69,6 +75,7 @@ const EM_DASH = '\u2014';
 
 interface NewBookingViewProps {
   onBack: () => void;
+  onViewBooking?: (bookingId: string) => void;
   onCustomerCreated?: (customer: any) => void;
   onBookingCreated?: (booking: any) => void;
   /** Pre-select customer when opening booking flow from Customer Detail. */
@@ -115,6 +122,7 @@ const mapApiCustomerToBookingCustomer = (c: any): BookingCustomer => {
 
 export function NewBookingView({
   onBack,
+  onViewBooking,
   onCustomerCreated,
   onBookingCreated,
   initialCustomerId = null,
@@ -253,7 +261,17 @@ export function NewBookingView({
   const [pickupStationId, setPickupStationId] = useState('');
   const [returnStationId, setReturnStationId] = useState('');
   const [sameReturnStation, setSameReturnStation] = useState(true);
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'cash' | 'invoice'>('card');
+  const [paymentIntent, setPaymentIntent] = useState<BookingPaymentIntent>('pay_on_pickup');
+  const [checkoutContext, setCheckoutContext] = useState<WizardCheckoutContext | null>(null);
+  const [checkoutContextLoading, setCheckoutContextLoading] = useState(false);
+  const [checkoutContextError, setCheckoutContextError] = useState<string | null>(null);
+  const [confirmPaymentIntent, setConfirmPaymentIntent] = useState<BookingPaymentIntent | null>(null);
+  const [confirmPaymentFlow, setConfirmPaymentFlow] = useState<BookingSuccessPaymentFlow | null>(null);
+  const [confirmCheckoutAmounts, setConfirmCheckoutAmounts] = useState<{
+    onlineAmountCents: number;
+    depositAmountCents: number;
+    currency: string;
+  } | null>(null);
   const [discountPercent, setDiscountPercent] = useState(0);
   const [extras, setExtras] = useState<string[]>([]);
   const [selectedMileagePackage, setSelectedMileagePackage] = useState<string | null>(null);
@@ -543,7 +561,7 @@ export function NewBookingView({
         customerId: selectedCustomer.id,
         startDate: pickupAtIso,
         endDate: returnAtIso || undefined,
-        paymentMethod,
+        paymentIntent,
       })
       .then((result) => {
         if (!cancelled) setRentalEligibility(result);
@@ -562,7 +580,7 @@ export function NewBookingView({
     return () => {
       cancelled = true;
     };
-  }, [orgId, selectedVehicle?.id, selectedCustomer?.id, pickupAtIso, returnAtIso, paymentMethod]);
+  }, [orgId, selectedVehicle?.id, selectedCustomer?.id, pickupAtIso, returnAtIso, paymentIntent]);
 
   const pricingInputBase = useMemo(
     () => ({
@@ -753,15 +771,14 @@ export function NewBookingView({
   );
 
   const buildWizardDraftNotes = useCallback(() => {
-    const paymentLabel =
-      paymentMethod === 'card' ? 'Kreditkarte' : paymentMethod === 'cash' ? 'Barzahlung' : 'Rechnung';
+    const paymentLabel = paymentIntentNotesLabel(paymentIntent);
     const pickupName = orgStations.find((s) => s.id === pickupStationId)?.name ?? '';
     const effectiveReturnStationId = sameReturnStation ? pickupStationId : returnStationId;
     const returnName = orgStations.find((s) => s.id === effectiveReturnStationId)?.name ?? '';
     const vehicleStation = selectedVehicle?.station ?? '';
     return `Abholung: ${pickupName || vehicleStation} • Rückgabe: ${returnName || pickupName || vehicleStation} • Zahlung: ${paymentLabel}`;
   }, [
-    paymentMethod,
+    paymentIntent,
     orgStations,
     pickupStationId,
     returnStationId,
@@ -856,6 +873,47 @@ export function NewBookingView({
     buildWizardDraftNotes,
   ]);
 
+  useEffect(() => {
+    if (currentStep !== 5 || !orgId || !draftBookingId) {
+      setCheckoutContext(null);
+      setCheckoutContextError(null);
+      setCheckoutContextLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    setCheckoutContextLoading(true);
+    setCheckoutContextError(null);
+    api.bookings
+      .getWizardCheckoutContext(orgId, draftBookingId)
+      .then((ctx) => {
+        if (!cancelled) setCheckoutContext(ctx);
+      })
+      .catch((err: unknown) => {
+        if (!cancelled) {
+          setCheckoutContext(null);
+          setCheckoutContextError(
+            err instanceof Error ? err.message : 'Zahlungskontext konnte nicht geladen werden',
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setCheckoutContextLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [currentStep, orgId, draftBookingId, priceSim?.quoteId]);
+
+  useEffect(() => {
+    if (paymentIntent !== 'payment_link') return;
+    if (!checkoutContext) return;
+    if (!checkoutContext.paymentLinkEligibility.eligible) {
+      setPaymentIntent('pay_on_pickup');
+    }
+  }, [paymentIntent, checkoutContext]);
+
   useEffect(
     () => () => {
       void abortWizardDraft();
@@ -949,13 +1007,13 @@ export function NewBookingView({
       const insuranceLabel = selectedInsurances.length > 0
         ? insuranceOptions.filter((i) => selectedInsurances.includes(i.id)).map((i) => i.label).join(', ')
         : 'Haftpflicht';
-      const paymentLabel = paymentMethod === 'card' ? 'Kreditkarte' : paymentMethod === 'cash' ? 'Barzahlung' : 'Rechnung';
+      const paymentLabel = paymentIntentNotesLabel(paymentIntent);
 
       const confirmed = await api.bookings.confirmWizardDraft(orgId, draftBookingId, {
         agbAccepted,
         privacyAccepted,
         status: customerEligibility?.canConfirmBooking ? 'CONFIRMED' : 'PENDING',
-        paymentMethod,
+        paymentIntent,
       });
       draftConfirmedRef.current = true;
       const uiBooking = mapApiBooking(confirmed.booking);
@@ -963,6 +1021,15 @@ export function NewBookingView({
       setConfirmedBookingId(uiBooking.id);
       setConfirmedBundle(confirmed.bundle);
       setConfirmAutoSend(confirmed.autoSend ?? null);
+      setConfirmPaymentIntent(confirmed.paymentIntent ?? paymentIntent);
+      setConfirmPaymentFlow(confirmed.paymentFlow ?? null);
+      if (checkoutContext) {
+        setConfirmCheckoutAmounts({
+          onlineAmountCents: checkoutContext.onlineAmountCents,
+          depositAmountCents: checkoutContext.depositAmountCents,
+          currency: checkoutContext.currency,
+        });
+      }
       setCreatedBookingRef(uiBooking.bookingRef ?? uiBooking.id ?? null);
       setBookingConfirmed(true);
       toast.success('Buchung erfolgreich erstellt!', {
@@ -1240,6 +1307,12 @@ export function NewBookingView({
     setConfirmedBookingId(null);
     setConfirmedBundle(null);
     setConfirmAutoSend(null);
+    setConfirmPaymentIntent(null);
+    setConfirmPaymentFlow(null);
+    setConfirmCheckoutAmounts(null);
+    setPaymentIntent('pay_on_pickup');
+    setCheckoutContext(null);
+    setCheckoutContextError(null);
     draftConfirmedRef.current = false;
     resetWizardDraftState();
     setCurrentStep(1);
@@ -1351,6 +1424,12 @@ export function NewBookingView({
           redirectCountdown={redirectCountdown}
           initialBundle={confirmedBundle}
           autoSend={confirmAutoSend}
+          paymentIntent={confirmPaymentIntent}
+          paymentFlow={confirmPaymentFlow}
+          checkoutOnlineAmountCents={confirmCheckoutAmounts?.onlineAmountCents ?? null}
+          checkoutDepositAmountCents={confirmCheckoutAmounts?.depositAmountCents ?? null}
+          checkoutCurrency={confirmCheckoutAmounts?.currency ?? null}
+          onViewBooking={onViewBooking}
           onBack={() => void handleLeaveWizard()}
           onNewBooking={handleResetBooking}
         />
@@ -1511,8 +1590,11 @@ export function NewBookingView({
               <CheckoutStep
                 orgId={orgId}
                 selectedCustomer={selectedCustomer}
-                paymentMethod={paymentMethod}
-                onPaymentMethodChange={setPaymentMethod}
+                paymentIntent={paymentIntent}
+                onPaymentIntentChange={setPaymentIntent}
+                checkoutContext={checkoutContext}
+                checkoutContextLoading={checkoutContextLoading}
+                checkoutContextError={checkoutContextError}
                 discountPercent={discountPercent}
                 onDiscountPercentChange={setDiscountPercent}
                 discountAmount={discountAmount}

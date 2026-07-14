@@ -1,12 +1,13 @@
 import {
   IsBoolean,
   IsDateString,
-  IsEnum,
+  IsIn,
   IsInt,
   IsOptional,
   IsUUID,
   Min,
 } from 'class-validator';
+import { BOOKING_CHECKOUT_PAYMENT_INTENTS } from '../booking-payment-intent.types';
 
 export class BookingRentalEligibilityCheckDto {
   @IsUUID('4')
@@ -23,8 +24,13 @@ export class BookingRentalEligibilityCheckDto {
   endDate?: string;
 
   @IsOptional()
-  @IsEnum(['card', 'cash', 'invoice'])
-  paymentMethod?: 'card' | 'cash' | 'invoice';
+  @IsIn([...BOOKING_CHECKOUT_PAYMENT_INTENTS])
+  paymentIntent?: (typeof BOOKING_CHECKOUT_PAYMENT_INTENTS)[number];
+
+  /** @deprecated use paymentIntent */
+  @IsOptional()
+  @IsIn([...BOOKING_CHECKOUT_PAYMENT_INTENTS])
+  paymentMethod?: (typeof BOOKING_CHECKOUT_PAYMENT_INTENTS)[number];
 
   @IsOptional()
   @IsBoolean()
@@ -42,8 +48,13 @@ export class BookingRentalEligibilityCheckDto {
 
 export class BookingRentalEligibilityBookingQueryDto {
   @IsOptional()
-  @IsEnum(['card', 'cash', 'invoice'])
-  paymentMethod?: 'card' | 'cash' | 'invoice';
+  @IsIn([...BOOKING_CHECKOUT_PAYMENT_INTENTS])
+  paymentIntent?: (typeof BOOKING_CHECKOUT_PAYMENT_INTENTS)[number];
+
+  /** @deprecated use paymentMethod */
+  @IsOptional()
+  @IsIn([...BOOKING_CHECKOUT_PAYMENT_INTENTS])
+  paymentMethod?: (typeof BOOKING_CHECKOUT_PAYMENT_INTENTS)[number];
 
   @IsOptional()
   @IsBoolean()

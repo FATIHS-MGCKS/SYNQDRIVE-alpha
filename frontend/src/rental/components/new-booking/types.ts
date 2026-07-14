@@ -14,9 +14,12 @@ import type { AddCustomerFormState } from '../../lib/add-customer-wizard';
 import type { CustomerVerificationPlanState } from '../add-customer/AddCustomerVerificationPlanSection';
 import type { PendingCustomerDocumentFiles } from '../../lib/entityMappers';
 import type { CustomerVerificationEligibility } from '../../lib/customer-verification';
-import type { BookingDocumentBundleView } from '../../../lib/api';
+import type { BookingDocumentBundleView, WizardCheckoutContext } from '../../../lib/api';
 
-export type BookingPaymentMethod = 'card' | 'cash' | 'invoice';
+export type BookingPaymentIntent = 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
+
+/** @deprecated use BookingPaymentIntent */
+export type BookingPaymentMethod = BookingPaymentIntent;
 
 export type BookingWizardStepId = 1 | 2 | 3 | 4 | 5;
 
@@ -207,8 +210,11 @@ export interface CustomerStepProps {
 export interface CheckoutStepProps {
   orgId: string;
   selectedCustomer: BookingCustomer | null;
-  paymentMethod: BookingPaymentMethod;
-  onPaymentMethodChange: (method: BookingPaymentMethod) => void;
+  paymentIntent: BookingPaymentIntent;
+  onPaymentIntentChange: (intent: BookingPaymentIntent) => void;
+  checkoutContext: WizardCheckoutContext | null;
+  checkoutContextLoading: boolean;
+  checkoutContextError: string | null;
   discountPercent: number;
   onDiscountPercentChange: (percent: number) => void;
   discountAmount: number;

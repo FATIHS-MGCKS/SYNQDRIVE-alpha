@@ -126,7 +126,7 @@ describe('BookingRentalEligibilityService', () => {
       vehicleId: 'veh1',
       customerId: 'cust1',
       startDate,
-      paymentMethod: 'card',
+      paymentIntent: 'payment_link',
     });
 
     expect(result.status).toBe('ELIGIBLE');

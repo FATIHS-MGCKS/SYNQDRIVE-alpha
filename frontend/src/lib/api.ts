@@ -1158,13 +1158,41 @@ export interface BookingDocumentBundleView {
 }
 
 export interface BookingWizardDraftResult {
-  booking: Record<string, unknown> & { id: string; bookingRef?: string | null; status?: string };
+  booking: Record<string, unknown> & { id: string; bookingRef?: string | null; status?: string; paymentIntent?: string | null };
   bundle: BookingDocumentBundleView;
   autoSend?: {
     sent: boolean;
     reason?: string;
     error?: string;
   } | null;
+  paymentIntent?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
+  paymentFlow?: {
+    intent: 'payment_link';
+    bookingConfirmed: boolean;
+    paymentRequestCreated: boolean;
+    paymentRequestId?: string;
+    checkoutCreated: boolean;
+    checkoutUrl?: string;
+    emailQueued: boolean;
+    partialFailures: Array<{ step: string; message: string }>;
+  } | null;
+}
+
+export interface WizardCheckoutContext {
+  currency: string;
+  onlineAmountCents: number;
+  depositAmountCents: number;
+  totalGrossCents: number;
+  recipientEmail: string | null;
+  paymentLinkEligibility: {
+    eligible: boolean;
+    reasons: string[];
+    paymentsEnabled: boolean;
+    connectAccountReady: boolean;
+    customerEmailPresent: boolean;
+    paymentRequestPossible: boolean;
+  };
+  checkoutExpiresInSeconds: number;
 }
 
 export type BookingDetailDocumentSlot = {
@@ -1393,6 +1421,86 @@ export type BookingDetailDto = {
     description: string;
     createdAt: string;
   }>;
+  payments: BookingPaymentCardDto | null;
+};
+
+export type BookingPaymentCardDto = {
+  enabled: boolean;
+  summary: {
+    bookingPaymentStatus: string;
+    paymentIntent: string | null;
+  };
+  primaryRequest: BookingPaymentCardRequestDto | null;
+  requests: BookingPaymentCardRequestDto[];
+  invoice: {
+    id: string;
+    invoiceNumber: string | null;
+    status: string;
+    totalCents: number;
+    paidCents: number;
+    outstandingCents: number;
+  } | null;
+};
+
+export type BookingPaymentCardRequestDto = {
+  id: string;
+  status: string;
+  purpose: string;
+  amountCents: number;
+  paidAmountCents: number;
+  openAmountCents: number;
+  refundedAmountCents: number;
+  refundableAmountCents: number;
+  currency: string;
+  depositAmountCents: number;
+  recipientEmail: string | null;
+  checkoutUrl: string | null;
+  checkoutExpiresAt: string | null;
+  lastSentAt: string | null;
+  paidAt: string | null;
+  failedAt: string | null;
+  cancelledAt: string | null;
+  sendAttemptCount: number;
+  lastEmailErrorMessage: string | null;
+  stripeCheckoutSessionId: string | null;
+  stripePaymentIntentId: string | null;
+  stripeChargeId: string | null;
+  paymentMethodLabel: string | null;
+  refundStatus: 'NONE' | 'PARTIAL' | 'FULL';
+  disputeStatus: 'NONE' | 'OPEN';
+};
+
+export type BookingPaymentRefundResponseDto = {
+  paymentRequest: BookingPaymentRequestDto;
+  refundAmountCents: number;
+  applicationFeeRefundCents: number;
+  refundableAmountCents: number;
+  stripeRefundId: string;
+  idempotentReplay: boolean;
+};
+
+export type BookingPaymentRequestDto = {
+  id: string;
+  status: string;
+  purpose: string;
+  amountCents: number;
+  paidAmountCents: number;
+  openAmountCents: number;
+  refundedAmountCents: number;
+  currency: string;
+  depositInfoCents: number;
+  recipientEmail: string | null;
+  checkoutUrl: string | null;
+  checkoutExpiresAt: string | null;
+  sendEmailOnLink: boolean;
+  sendAttemptCount: number;
+  lastSentAt: string | null;
+  lastEmailErrorMessage: string | null;
+  paidAt: string | null;
+  failedAt: string | null;
+  cancelledAt: string | null;
+  stripeCheckoutSessionId: string | null;
+  stripePaymentIntentId: string | null;
 };
 
 export interface LegalDocumentDto {
@@ -2921,7 +3029,8 @@ export const api = {
         customerId: string;
         startDate: string;
         endDate?: string;
-        paymentMethod?: 'card' | 'cash' | 'invoice';
+        paymentIntent?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
+        paymentMethod?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
         foreignTravelRequested?: boolean;
         additionalDriverCount?: number;
         depositReceived?: boolean;
@@ -2935,14 +3044,16 @@ export const api = {
       orgId: string,
       bookingId: string,
       params?: {
-        paymentMethod?: 'card' | 'cash' | 'invoice';
+        paymentIntent?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
+        paymentMethod?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
         foreignTravelRequested?: boolean;
         additionalDriverCount?: number;
         depositReceived?: boolean;
       },
     ) => {
       const q = new URLSearchParams();
-      if (params?.paymentMethod) q.set('paymentMethod', params.paymentMethod);
+      if (params?.paymentIntent) q.set('paymentIntent', params.paymentIntent);
+      else if (params?.paymentMethod) q.set('paymentMethod', params.paymentMethod);
       if (params?.foreignTravelRequested) q.set('foreignTravelRequested', 'true');
       if (params?.additionalDriverCount != null) {
         q.set('additionalDriverCount', String(params.additionalDriverCount));
@@ -2994,6 +3105,10 @@ export const api = {
         `/organizations/${orgId}/bookings/wizard-draft/${bookingId}`,
         data,
       ),
+    getWizardCheckoutContext: (orgId: string, bookingId: string) =>
+      get<WizardCheckoutContext>(
+        `/organizations/${orgId}/bookings/wizard-draft/${bookingId}/checkout-context`,
+      ),
     confirmWizardDraft: (
       orgId: string,
       bookingId: string,
@@ -3001,7 +3116,8 @@ export const api = {
         agbAccepted?: boolean;
         privacyAccepted?: boolean;
         status?: 'PENDING' | 'CONFIRMED';
-        paymentMethod?: 'card' | 'cash' | 'invoice';
+        paymentIntent?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
+        paymentMethod?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
       },
     ) =>
       post<BookingWizardDraftResult>(
@@ -3809,6 +3925,91 @@ export const api = {
       post<any>(`/billing/stripe/setup-intent${billingTenantQuery(orgId)}`, {}),
     adminSyncStripe: (orgId: string) =>
       post<any>(`/admin/billing/organizations/${encodeURIComponent(orgId)}/sync-stripe`, {}),
+  },
+  bookingPaymentRequests: {
+    list: (orgId: string, bookingId: string) =>
+      get<BookingPaymentRequestDto[]>(
+        `/organizations/${orgId}/bookings/${bookingId}/payment-requests`,
+      ),
+    get: (orgId: string, bookingId: string, requestId: string) =>
+      get<BookingPaymentRequestDto>(
+        `/organizations/${orgId}/bookings/${bookingId}/payment-requests/${requestId}`,
+      ),
+    create: (
+      orgId: string,
+      bookingId: string,
+      data?: { recipientEmail?: string; expiresIn?: number; sendEmail?: boolean },
+      idempotencyKey?: string,
+    ) =>
+      request<BookingPaymentRequestDto>(
+        `/organizations/${orgId}/bookings/${bookingId}/payment-requests`,
+        {
+          method: 'POST',
+          body: JSON.stringify(data ?? {}),
+          headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+        },
+      ),
+    resend: (orgId: string, bookingId: string, requestId: string, idempotencyKey?: string) =>
+      request<{
+        paymentRequestId: string;
+        status: string;
+        checkoutUrl: string;
+        checkoutExpiresAt: string | null;
+        lastSentAt: string | null;
+        lastEmailErrorMessage: string | null;
+      }>(
+        `/organizations/${orgId}/bookings/${bookingId}/payment-requests/${requestId}/resend`,
+        {
+          method: 'POST',
+          body: JSON.stringify({}),
+          headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+        },
+      ),
+    cancel: (orgId: string, bookingId: string, requestId: string) =>
+      post<BookingPaymentRequestDto>(
+        `/organizations/${orgId}/bookings/${bookingId}/payment-requests/${requestId}/cancel`,
+        {},
+      ),
+  },
+  organizationPaymentRequests: {
+    refund: (
+      orgId: string,
+      requestId: string,
+      data: { amountCents?: number; reason: string },
+      idempotencyKey: string,
+    ) =>
+      request<BookingPaymentRefundResponseDto>(
+        `/organizations/${orgId}/payment-requests/${requestId}/refund`,
+        {
+          method: 'POST',
+          body: JSON.stringify(data),
+          headers: { 'Idempotency-Key': idempotencyKey },
+        },
+      ),
+  },
+  paymentsConnect: {
+    getStatus: (orgId: string) =>
+      get<import('../rental/types/payments-connect.types').ConnectStatusDto>(
+        `/organizations/${encodeURIComponent(orgId)}/payments/connect/status`,
+      ),
+    createAccount: (orgId: string) =>
+      post<import('../rental/types/payments-connect.types').ConnectStatusDto>(
+        `/organizations/${encodeURIComponent(orgId)}/payments/connect/account`,
+        {},
+      ),
+    createOnboardingLink: (
+      orgId: string,
+      body?: { returnUrl?: string; refreshUrl?: string },
+    ) =>
+      post<import('../rental/types/payments-connect.types').ConnectOnboardingLinkDto>(
+        `/organizations/${encodeURIComponent(orgId)}/payments/connect/onboarding-link`,
+        body ?? {},
+      ),
+    refresh: (orgId: string) =>
+      post<import('../rental/types/payments-connect.types').ConnectStatusDto>(
+        `/organizations/${encodeURIComponent(orgId)}/payments/connect/refresh`,
+        {},
+      ),
   },
   support: {
     stats: () => get<SupportTicketStats>('/admin/support/stats'),

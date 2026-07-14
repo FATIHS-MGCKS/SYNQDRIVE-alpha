@@ -83,7 +83,8 @@ export class BookingRentalEligibilityService {
       licenseHoldingMonths,
       hasDateOfBirth,
       hasLicenseIssuedAt,
-      paymentMethod: input.paymentMethod,
+      paymentIntent: input.paymentIntent ?? input.paymentMethod,
+      paymentMethod: input.paymentIntent ?? input.paymentMethod,
       foreignTravelRequested: input.foreignTravelRequested === true,
       additionalDriverCount: Math.max(0, input.additionalDriverCount ?? 0),
       depositReceived,
@@ -147,6 +148,7 @@ export class BookingRentalEligibilityService {
     overrides: Partial<
       Pick<
         BookingRentalEligibilityInput,
+        | 'paymentIntent'
         | 'paymentMethod'
         | 'foreignTravelRequested'
         | 'additionalDriverCount'
