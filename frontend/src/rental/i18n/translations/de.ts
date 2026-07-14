@@ -282,6 +282,10 @@ export const de: Record<TranslationKey, string> = {
   'billing.customerPayments.openingOnboarding': 'Onboarding wird geöffnet…',
   'billing.customerPayments.activeDescription':
     'Kundenzahlungen und Auszahlungen sind für deine Organisation aktiv.',
+  'billing.customerPayments.chargesDisabledHint':
+    'Kundenzahlungen sind noch nicht freigeschaltet — Zahlungslinks können erst erstellt werden, wenn Stripe Zahlungen akzeptiert.',
+  'billing.customerPayments.payoutsDisabledHint':
+    'Auszahlungen sind noch nicht freigeschaltet — eingegangene Zahlungen können zurückgehalten werden, bis die Auszahlungseinrichtung abgeschlossen ist.',
   'billing.customerPayments.disabledTitle': 'Zahlungskonto deaktiviert',
   'billing.customerPayments.disabledDescription':
     'Zahlungslinks und Auszahlungen sind nicht verfügbar, bis das Konto wiederhergestellt ist.',
@@ -1232,9 +1236,13 @@ export const de: Record<TranslationKey, string> = {
   'bookingPayment.card.title': 'Online-Zahlung',
   'bookingPayment.success.title': 'Zahlungsstatus',
   'bookingPayment.success.full': 'Buchung erstellt. Zahlungslink wurde erstellt und per E-Mail versendet. Die Zahlung ist noch offen.',
+  'bookingPayment.success.checkoutReady':
+    'Buchung erstellt. Zahlungslink ist bereit. Die Zahlung ist noch offen.',
   'bookingPayment.success.emailFailed': 'Buchung erfolgreich. Zahlung offen — der Link ist vorhanden, die E-Mail konnte nicht versendet werden.',
   'bookingPayment.success.requestFailed': 'Buchung erfolgreich. Die Zahlungsanforderung konnte nicht erstellt werden — bitte im Buchungsdetail erneut versuchen.',
   'bookingPayment.success.nonLink': 'Buchung erfolgreich. Zahlung wird separat abgewickelt.',
+  'bookingPayment.success.paid': 'Buchung erstellt. Die Zahlung ist eingegangen.',
+  'bookingPayment.success.expired': 'Buchung erstellt. Der Zahlungslink ist abgelaufen — bitte im Buchungsdetail einen neuen Link senden.',
   'bookingPayment.success.emailErrorDetail': 'E-Mail-Fehler',
   'bookingPayment.field.status': 'Zahlungsstatus',
   'bookingPayment.field.intent': 'Zahlungsabsicht',

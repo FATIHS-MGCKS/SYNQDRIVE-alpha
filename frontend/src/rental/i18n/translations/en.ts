@@ -210,6 +210,10 @@ export const en = {
   'billing.customerPayments.openingOnboarding': 'Opening onboarding…',
   'billing.customerPayments.activeDescription':
     'Customer payments and payouts are active for your organization.',
+  'billing.customerPayments.chargesDisabledHint':
+    'Customer payments are not enabled yet — payment links cannot be created until Stripe enables charges.',
+  'billing.customerPayments.payoutsDisabledHint':
+    'Payouts are not enabled yet — collected payments may be held until payout setup is complete.',
   'billing.customerPayments.disabledTitle': 'Payment account disabled',
   'billing.customerPayments.disabledDescription':
     'Customer payment links and payouts are unavailable until the account is restored.',
@@ -1160,9 +1164,13 @@ export const en = {
   'bookingPayment.card.title': 'Online payment',
   'bookingPayment.success.title': 'Payment status',
   'bookingPayment.success.full': 'Booking created. Payment link was created and emailed. Payment is still open.',
+  'bookingPayment.success.checkoutReady':
+    'Booking created. Payment link is ready. Payment is still open.',
   'bookingPayment.success.emailFailed': 'Booking successful. Payment open — link is available but the email could not be sent.',
   'bookingPayment.success.requestFailed': 'Booking successful. Payment request could not be created — retry in booking detail.',
   'bookingPayment.success.nonLink': 'Booking successful. Payment is handled separately.',
+  'bookingPayment.success.paid': 'Booking created. Payment has been received.',
+  'bookingPayment.success.expired': 'Booking created. The payment link has expired — send a new link from booking detail.',
   'bookingPayment.success.emailErrorDetail': 'Email error',
   'bookingPayment.field.status': 'Payment status',
   'bookingPayment.field.intent': 'Payment intent',

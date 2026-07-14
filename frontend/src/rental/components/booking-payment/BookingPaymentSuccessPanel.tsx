@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { api } from '../../../lib/api';
-import { formatMoneyCents } from '../../../lib/money';
-import type { TranslationKey } from '../../i18n/translations/en';
+import { formatMoneyCents, normalizeCurrencyCode } from '../../../lib/money';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { Icon } from '../ui/Icon';
@@ -11,8 +10,10 @@ import {
   canCopyPaymentLink,
   canResendPaymentLink,
   copyTextToClipboard,
+  formatPaymentTimestamp,
   paymentRequestStatusLabel,
   paymentRequestStatusTone,
+  resolvePaymentSuccessMessageKey,
   resolvePaymentSuccessScenario,
   type BookingPaymentRequestDto,
 } from './booking-payment-status.utils';
@@ -85,12 +86,17 @@ export function BookingPaymentSuccessPanel({
   const scenario = resolvePaymentSuccessScenario({
     paymentIntent: 'payment_link',
     paymentRequestCreated: paymentFlow?.paymentRequestCreated,
+    checkoutCreated: paymentFlow?.checkoutCreated,
+    emailQueued: paymentFlow?.emailQueued,
     partialFailures: paymentFlow?.partialFailures,
     liveRequest,
   });
 
   const checkoutUrl = liveRequest?.checkoutUrl ?? paymentFlow?.checkoutUrl ?? null;
-  const currency = liveRequest?.currency ?? checkoutCurrency ?? 'EUR';
+  const currency =
+    normalizeCurrencyCode(liveRequest?.currency)
+    ?? normalizeCurrencyCode(checkoutCurrency)
+    ?? '';
   const fmt = (cents: number | null | undefined) =>
     formatMoneyCents(cents, currency, locale === 'de' ? 'de-DE' : 'en-US');
 
@@ -119,23 +125,11 @@ export function BookingPaymentSuccessPanel({
   const status = liveRequest?.status ?? (paymentFlow?.checkoutCreated ? 'CHECKOUT_READY' : 'OPEN');
   const tone = paymentRequestStatusTone(status);
 
-  const expiryLabel =
-    liveRequest?.checkoutExpiresAt ?? null
-      ? new Date(liveRequest.checkoutExpiresAt).toLocaleString(locale === 'de' ? 'de-DE' : 'en-US', {
-          dateStyle: 'medium',
-          timeStyle: 'short',
-        })
-      : null;
+  const dateLocale = locale === 'de' ? 'de' : 'en';
 
-  const renderScenarioMessage = () => {
-    const keyMap: Record<typeof scenario, TranslationKey> = {
-      full_success: 'bookingPayment.success.full',
-      email_failed: 'bookingPayment.success.emailFailed',
-      request_failed: 'bookingPayment.success.requestFailed',
-      non_payment_link: 'bookingPayment.success.nonLink',
-    };
-    return t(keyMap[scenario]);
-  };
+  const expiryLabel = formatPaymentTimestamp(liveRequest?.checkoutExpiresAt, dateLocale);
+
+  const renderScenarioMessage = () => t(resolvePaymentSuccessMessageKey(scenario));
 
   return (
     <section
@@ -194,7 +188,7 @@ export function BookingPaymentSuccessPanel({
             <div className="flex justify-between gap-3">
               <dt className="text-muted-foreground">{t('bookingPayment.field.sentAt')}</dt>
               <dd className="text-foreground">
-                {new Date(liveRequest.lastSentAt).toLocaleString(locale === 'de' ? 'de-DE' : 'en-US')}
+                {formatPaymentTimestamp(liveRequest.lastSentAt, dateLocale) ?? '—'}
               </dd>
             </div>
           )}

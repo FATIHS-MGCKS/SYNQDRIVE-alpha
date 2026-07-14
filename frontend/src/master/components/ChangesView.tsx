@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'payments-frontend-typecheck-v49451-2026-07-14',
+    version: '4.9.451',
+    title: 'V4.9.451 — End-Customer Payments: Frontend Typecheck & Success-Panel Fixes',
+    summary: [
+      'CustomerPaymentsTab: TS2367 behoben, Hinweise bei charges/payouts disabled im ACTIVE-Zustand.',
+      'BookingPaymentSuccessPanel: sichere Datumsformatierung, kein implizites EUR, Szenarien paid/expired/checkout_ready.',
+      'booking-payment-status.utils: API-DTO-Re-Export, resolvePaymentSuccessScenario verschärft (kein E-Mail-Erfolg nur bei Buchung).',
+      'DE/EN i18n für neue Payment-Success- und Connect-Hinweistexte; erweiterte Vitest-Abdeckung.',
+    ],
+    reason:
+      'Production-Build (tsc -b) schlug nach Prompt 20 mit Payment-UI-Typfehlern fehl; Verträge und Szenario-Logik mussten ohne TS-Unterdrückung konsistent werden.',
+    previousBehavior:
+      'CustomerPaymentsTab verglich DISABLED in ONBOARDING/RESTRICTED-Branch; Success-Panel hatte Operator-Precedence-Bug bei checkoutExpiresAt und zeigte ggf. E-Mail-Erfolg ohne Checkout.',
+    details:
+      'CustomerPaymentsTab.tsx, BookingPaymentSuccessPanel.tsx, booking-payment-status.utils.ts, en.ts/de.ts, payments-connect.utils.test.ts, booking-payment-status.utils.test.ts.',
+    affectsArchitecture: false,
+    module: 'Payments',
+    createdAt: '2026-07-14T00:00:00.000Z',
+  },
+  {
     id: 'payments-go-live-audit-v49450-2026-07-14',
     version: '4.9.450',
     title: 'V4.9.450 — End-Customer Payments: Go-Live Hardening & Audit',

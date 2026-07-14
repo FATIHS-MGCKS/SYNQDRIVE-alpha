@@ -54,6 +54,9 @@ describe('mapConnectStatusToUiState', () => {
     expect(
       mapConnectStatusToUiState({ ...baseStatus, onboardingStatus: 'DISABLED' }),
     ).toBe('DISABLED');
+    expect(
+      mapConnectStatusToUiState({ ...baseStatus, onboardingStatus: 'REJECTED' }),
+    ).toBe('DISABLED');
   });
 
   it('maps ONBOARDING for pending states', () => {
@@ -111,6 +114,13 @@ describe('billing customer payments i18n', () => {
     'billing.customerPayments.setupCta',
     'billing.customerPayments.continueCta',
     'billing.customerPayments.state.active',
+    'billing.customerPayments.state.disabled',
+    'billing.customerPayments.state.featureDisabled',
+    'billing.customerPayments.chargesDisabledHint',
+    'billing.customerPayments.payoutsDisabledHint',
+    'bookingPayment.success.checkoutReady',
+    'bookingPayment.success.paid',
+    'bookingPayment.success.expired',
   ] as const;
 
   it('defines DE and EN labels for customer payments', () => {
@@ -129,6 +139,10 @@ describe('CustomerPaymentsTab layout', () => {
     expect(source).toContain('sm:flex-row');
     expect(source).toContain('grid-cols-1 sm:grid-cols-2');
     expect(source).toContain('data-testid="customer-payments-tab"');
+    expect(source).toContain('chargesDisabledHint');
+    expect(source).toContain('payoutsDisabledHint');
+    expect(source).toContain("hasPermission('payments-connect', 'read')");
+    expect(source).toContain("hasPermission('payments-connect', 'manage')");
   });
 });
 

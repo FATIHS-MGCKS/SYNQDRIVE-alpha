@@ -1,4 +1,7 @@
+import type { BookingPaymentRequestDto as ApiBookingPaymentRequestDto } from '../../../lib/api';
 import type { TranslationKey } from '../../i18n/translations/en';
+
+export type BookingPaymentRequestDto = ApiBookingPaymentRequestDto;
 
 export type BookingPaymentRequestStatus =
   | 'DRAFT'
@@ -17,33 +20,12 @@ export type BookingPaymentRequestStatus =
 
 export type BookingPaymentSuccessScenario =
   | 'full_success'
+  | 'checkout_ready'
   | 'email_failed'
   | 'request_failed'
-  | 'non_payment_link';
-
-export interface BookingPaymentRequestDto {
-  id: string;
-  status: string;
-  purpose: string;
-  amountCents: number;
-  paidAmountCents: number;
-  openAmountCents: number;
-  refundedAmountCents: number;
-  currency: string;
-  depositInfoCents: number;
-  recipientEmail: string | null;
-  checkoutUrl: string | null;
-  checkoutExpiresAt: string | null;
-  sendEmailOnLink: boolean;
-  sendAttemptCount: number;
-  lastSentAt: string | null;
-  lastEmailErrorMessage: string | null;
-  paidAt: string | null;
-  failedAt: string | null;
-  cancelledAt: string | null;
-  stripeCheckoutSessionId: string | null;
-  stripePaymentIntentId: string | null;
-}
+  | 'non_payment_link'
+  | 'paid'
+  | 'expired';
 
 export interface BookingPaymentCardRequestDto {
   id: string;
@@ -154,21 +136,78 @@ export function canRefundPaymentRequest(request: {
   return (request.refundableAmountCents ?? 0) > 0;
 }
 
+const CHECKOUT_READY_STATUSES = new Set([
+  'CHECKOUT_READY',
+  'LINK_SENT',
+  'LINK_PENDING',
+  'PROCESSING',
+  'OPEN',
+]);
+
+export function formatPaymentTimestamp(
+  iso: string | null | undefined,
+  locale: 'de' | 'en',
+): string | null {
+  if (!iso) return null;
+  const parsed = new Date(iso);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return parsed.toLocaleString(locale === 'de' ? 'de-DE' : 'en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+}
+
+export function resolvePaymentSuccessMessageKey(
+  scenario: BookingPaymentSuccessScenario,
+): TranslationKey {
+  const keyMap: Record<BookingPaymentSuccessScenario, TranslationKey> = {
+    full_success: 'bookingPayment.success.full',
+    checkout_ready: 'bookingPayment.success.checkoutReady',
+    email_failed: 'bookingPayment.success.emailFailed',
+    request_failed: 'bookingPayment.success.requestFailed',
+    non_payment_link: 'bookingPayment.success.nonLink',
+    paid: 'bookingPayment.success.paid',
+    expired: 'bookingPayment.success.expired',
+  };
+  return keyMap[scenario];
+}
+
 export function resolvePaymentSuccessScenario(params: {
   paymentIntent: string | null | undefined;
   paymentRequestCreated?: boolean;
+  checkoutCreated?: boolean;
+  emailQueued?: boolean;
   partialFailures?: Array<{ step: string }>;
   liveRequest?: BookingPaymentRequestDto | null;
 }): BookingPaymentSuccessScenario {
   if (params.paymentIntent !== 'payment_link') return 'non_payment_link';
-  if (!params.paymentRequestCreated && !params.liveRequest) return 'request_failed';
-  const emailFailed = params.partialFailures?.some((f) => f.step === 'email');
+
+  const liveStatus = params.liveRequest?.status?.toUpperCase() ?? '';
+  if (liveStatus === 'PAID') return 'paid';
+  if (liveStatus === 'EXPIRED') return 'expired';
+
+  const hasPaymentRequest = Boolean(params.paymentRequestCreated || params.liveRequest);
+  if (!hasPaymentRequest) return 'request_failed';
+
+  const hasCheckout =
+    Boolean(params.checkoutCreated)
+    || Boolean(params.liveRequest?.checkoutUrl)
+    || CHECKOUT_READY_STATUSES.has(liveStatus);
+  if (!hasCheckout) return 'request_failed';
+
+  const emailFailed = params.partialFailures?.some((failure) => failure.step === 'email');
   const liveEmailFailed =
     !!params.liveRequest?.lastEmailErrorMessage
     && !params.liveRequest?.lastSentAt
-    && ['CHECKOUT_READY', 'LINK_SENT', 'OPEN'].includes(params.liveRequest.status.toUpperCase());
+    && CHECKOUT_READY_STATUSES.has(liveStatus);
   if (emailFailed || liveEmailFailed) return 'email_failed';
-  return 'full_success';
+
+  const emailSent =
+    Boolean(params.liveRequest?.lastSentAt)
+    || (Boolean(params.emailQueued) && Boolean(params.checkoutCreated) && !emailFailed);
+  if (emailSent) return 'full_success';
+
+  return 'checkout_ready';
 }
 
 export async function copyTextToClipboard(text: string): Promise<boolean> {

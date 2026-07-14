@@ -251,7 +251,7 @@ export function CustomerPaymentsTab() {
                 ...(status?.requirementsPastDue ?? []),
               ]}
             />
-            {canManage && uiState !== 'DISABLED' && (
+            {canManage && (
               <Button
                 type="button"
                 size="sm"
@@ -269,6 +269,16 @@ export function CustomerPaymentsTab() {
             <p className="text-[12px] sq-tone-success rounded-lg px-3 py-2">
               {t('billing.customerPayments.activeDescription')}
             </p>
+            {status && !status.chargesEnabled && (
+              <p className="text-[12px] sq-tone-critical rounded-lg px-3 py-2" role="status">
+                {t('billing.customerPayments.chargesDisabledHint')}
+              </p>
+            )}
+            {status && status.chargesEnabled && !status.payoutsEnabled && (
+              <p className="text-[12px] sq-tone-watch rounded-lg px-3 py-2" role="status">
+                {t('billing.customerPayments.payoutsDisabledHint')}
+              </p>
+            )}
             {status && <ActiveDetails status={status} />}
           </div>
         ) : (
