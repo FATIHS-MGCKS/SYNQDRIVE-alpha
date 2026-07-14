@@ -12,7 +12,7 @@ import { InvoiceKpiGrid } from './InvoiceKpiGrid';
 import { InvoiceList } from './InvoiceList';
 import { useInvoiceDetail } from './hooks/useInvoiceDetail';
 import { useInvoices } from './hooks/useInvoices';
-import type { Invoice } from './invoiceTypes';
+import type { Invoice, InvoiceListItem } from './invoiceTypes';
 import { getInvoiceThemeClasses } from './invoiceTheme';
 import type { InvoiceRelationNavigation } from './InvoiceRelations';
 
@@ -33,8 +33,8 @@ export function InvoicesPage({ isDarkMode, navigation }: InvoicesPageProps) {
   const [view, setView] = useState<InvoicePageView>('list');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
 
-  const handleOpenDetail = (inv: Invoice) => {
-    void openDetail(inv, (full) => {
+  const handleOpenDetail = (item: InvoiceListItem) => {
+    void openDetail(item, (full) => {
       setSelectedInvoice(full);
       setView('detail');
     });
@@ -129,35 +129,31 @@ export function InvoicesPage({ isDarkMode, navigation }: InvoicesPageProps) {
 
       <InvoiceFilters
         {...theme}
+        filters={invoicesState.filters}
+        onPatchFilters={invoicesState.patchFilters}
         searchTerm={invoicesState.searchTerm}
         onSearchTermChange={invoicesState.setSearchTerm}
-        statusFilter={invoicesState.statusFilter}
-        onStatusFilterChange={invoicesState.setStatusFilter}
-        directionFilter={invoicesState.directionFilter}
-        onDirectionFilterChange={invoicesState.setDirectionFilter}
-        isDirectionOpen={invoicesState.isDirectionOpen}
-        onDirectionOpenChange={invoicesState.setIsDirectionOpen}
-        isStatusOpen={invoicesState.isStatusOpen}
-        onStatusOpenChange={invoicesState.setIsStatusOpen}
+        stations={invoicesState.stations}
         filteredCount={invoicesState.listTotal}
         totalCount={invoicesState.stats?.total ?? invoicesState.listTotal}
         statusCount={invoicesState.statusCount}
         directionCount={invoicesState.directionCount}
-        activeDirectionLabel={invoicesState.activeDirectionLabel}
-        activeStatusLabel={invoicesState.activeStatusLabel}
+        stationLabel={invoicesState.stationLabel}
         hasActiveFilters={invoicesState.hasActiveFilters}
         onClearFilters={invoicesState.clearFilters}
       />
 
       <InvoiceList
-        invoices={invoicesState.filtered}
+        items={invoicesState.items}
         loading={invoicesState.loading}
+        error={invoicesState.error}
+        hasActiveFilters={invoicesState.hasActiveFilters}
         searchTerm={invoicesState.searchTerm}
-        statusFilter={invoicesState.statusFilter}
-        isDarkMode={isDarkMode}
-        tp={theme.tp}
-        ts={theme.ts}
+        meta={invoicesState.meta}
         onSelect={handleOpenDetail}
+        onRetry={() => void invoicesState.reload()}
+        onPageChange={invoicesState.setPage}
+        onClearFilters={invoicesState.clearFilters}
       />
     </div>
   );

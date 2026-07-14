@@ -2,21 +2,24 @@ import { useCallback } from 'react';
 import { toast } from 'sonner';
 
 import { api } from '../../../../lib/api';
-import type { Invoice } from '../invoiceTypes';
+import type { Invoice, InvoiceListItem } from '../invoiceTypes';
 
 export function useInvoiceDetail(orgId: string) {
   const openDetail = useCallback(
     async (
-      inv: Invoice,
+      invoiceOrId: Invoice | InvoiceListItem | string,
       onLoaded: (invoice: Invoice) => void,
     ) => {
       if (!orgId) return;
+      const id =
+        typeof invoiceOrId === 'string'
+          ? invoiceOrId
+          : invoiceOrId.id;
       try {
-        const full = await api.invoices.get(orgId, inv.id);
+        const full = await api.invoices.get(orgId, id);
         onLoaded(full);
       } catch {
         toast.error('Rechnungsdetails konnten nicht geladen werden');
-        onLoaded(inv);
       }
     },
     [orgId],

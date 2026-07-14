@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-list-ui-v49466-2026-07-14',
+    version: '4.9.466',
+    title: 'V4.9.466 — Rechnungsübersicht vollständig auf List-Read-Model + responsive UI',
+    summary: [
+      'Listen-UI nutzt direkt `InvoiceListItem` (kein Legacy-`Invoice`-Mapping, keine Kunden-/Fahrzeug-Lookups für Namensauflösung).',
+      'Desktop-`DataTable` mit allen Pflichtspalten; Mobile kompakte Cards (Nr., Status, Kunde, Betrag, Fällig, Offen).',
+      'Debounced serverseitige Suche, URL-Query-State (`invQ`, `invDir`, …), erweiterte Filter (Dokument, Versand, Typ, Station, Zeitraum, Sortierung), Pagination.',
+      'Skeleton-Ladezustand, ErrorState mit Retry, Empty States mit Filter-Reset, aktive Filter-Chips.',
+      'Technische Enums (Dokument/Versand) lokalisiert; Zeilenklick öffnet Detail.',
+    ],
+    reason:
+      'Nach dem Backend-Read-Model war die Übersicht noch auf der alten Tabellenstruktur und clientseitigen Filterlogik aufgebaut.',
+    previousBehavior:
+      'Schmale Legacy-Tabelle (`InvoiceListRow`), begrenzte Filter, kein Pagination/Skeleton/Error-UI, Mapping auf `Invoice`.',
+    details: 'Siehe `architecture/INVOICE_LIST_READ_MODEL_2026-07-14.md` (UI-Abschnitt V4.9.466).',
+    affectsArchitecture: true,
+    module: 'Invoice Finance Workflow',
+    createdAt: '2026-07-14T23:55:00.000Z',
+  },
+  {
     id: 'invoice-list-read-model-v49465-2026-07-14',
     version: '4.9.465',
     title: 'V4.9.465 — Rechnungsübersicht: Backend-Read-Model mit Pagination/Suche/Filter',

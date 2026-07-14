@@ -1,73 +1,84 @@
-import { Icon } from '../ui/Icon';
-import type { Invoice } from './invoiceTypes';
-import type { InvoiceThemeClasses } from './invoiceTheme';
-import { InvoiceListRow } from './InvoiceListRow';
+import { Receipt } from 'lucide-react';
 
-interface InvoiceListProps extends Pick<InvoiceThemeClasses, 'isDarkMode' | 'tp' | 'ts'> {
-  invoices: Invoice[];
+import { EmptyState, ErrorState, SkeletonCard } from '../../../components/patterns';
+import { Button } from '../../../components/ui/button';
+import type { InvoiceListItem } from './invoiceTypes';
+import { InvoiceListMobileCards } from './InvoiceListMobileCards';
+import { InvoiceListPagination } from './InvoiceListPagination';
+import { InvoiceListTable } from './InvoiceListTable';
+
+interface InvoiceListProps {
+  items: InvoiceListItem[];
   loading: boolean;
+  error: string | null;
+  hasActiveFilters: boolean;
   searchTerm: string;
-  statusFilter: string;
-  onSelect: (invoice: Invoice) => void;
+  meta: import('./invoiceTypes').InvoiceListMeta | null;
+  onSelect: (item: InvoiceListItem) => void;
+  onRetry: () => void;
+  onPageChange: (page: number) => void;
+  onClearFilters: () => void;
 }
 
-const TABLE_HEADERS = ['Nr.', 'Typ', 'Titel', 'Betrag', 'Datum', 'Fällig', 'Status', 'Aufgabe'];
+function InvoiceListSkeleton() {
+  return (
+    <div className="space-y-3 p-4" aria-hidden>
+      <SkeletonCard className="hidden h-52 rounded-xl md:block" />
+      {Array.from({ length: 4 }).map((_, i) => (
+        <SkeletonCard key={i} className="h-28 rounded-xl md:hidden" />
+      ))}
+    </div>
+  );
+}
 
 export function InvoiceList({
-  invoices,
+  items,
   loading,
+  error,
+  hasActiveFilters,
   searchTerm,
-  statusFilter,
-  isDarkMode,
-  tp,
-  ts,
+  meta,
   onSelect,
+  onRetry,
+  onPageChange,
+  onClearFilters,
 }: InvoiceListProps) {
   return (
-    <div className="surface-premium rounded-2xl overflow-hidden shadow-[var(--shadow-1)]">
-      {loading ? (
-        <div className="flex items-center justify-center py-16">
-          <Icon name="loader-2" className={`w-5 h-5 animate-spin ${ts}`} />
-        </div>
-      ) : invoices.length === 0 ? (
-        <div className="text-center py-16">
-          <Icon name="receipt" className={`w-10 h-10 mx-auto mb-3 ${ts} opacity-40`} />
-          <p className={`text-sm font-medium ${tp}`}>Keine Rechnungen gefunden</p>
-          <p className={`text-xs mt-1 ${ts}`}>
-            {searchTerm || statusFilter !== 'all'
-              ? 'Versuchen Sie andere Filter.'
-              : 'Erstellen Sie Ihre erste Rechnung oder laden Sie ein Dokument hoch.'}
-          </p>
-        </div>
+    <div className="surface-premium overflow-hidden rounded-2xl shadow-[var(--shadow-1)]">
+      {error && !loading ? (
+        <ErrorState
+          title="Rechnungen konnten nicht geladen werden"
+          description={error}
+          onRetry={onRetry}
+          retryLabel="Erneut laden"
+        />
+      ) : loading && items.length === 0 ? (
+        <InvoiceListSkeleton />
+      ) : items.length === 0 ? (
+        <EmptyState
+          icon={<Receipt className="h-5 w-5" />}
+          title="Keine Rechnungen gefunden"
+          description={
+            hasActiveFilters || searchTerm.trim()
+              ? 'Für die aktuelle Suche oder Filter gibt es keine Treffer. Passen Sie die Kriterien an oder setzen Sie die Filter zurück.'
+              : 'Erstellen Sie Ihre erste Rechnung oder laden Sie ein Dokument per KI-Upload hoch.'
+          }
+          action={
+            hasActiveFilters || searchTerm.trim() ? (
+              <Button type="button" variant="neutral" size="sm" onClick={onClearFilters}>
+                Filter zurücksetzen
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[850px]">
-            <thead>
-              <tr className="bg-muted/50">
-                {TABLE_HEADERS.map((h) => (
-                  <th
-                    key={h}
-                    className={`text-left px-4 py-3 text-[11px] font-semibold uppercase tracking-wider ${ts}`}
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className={`divide-y ${isDarkMode ? 'divide-border/30' : 'divide-gray-100'}`}>
-              {invoices.map((inv) => (
-                <InvoiceListRow
-                  key={inv.id}
-                  invoice={inv}
-                  isDarkMode={isDarkMode}
-                  tp={tp}
-                  ts={ts}
-                  onSelect={onSelect}
-                />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <InvoiceListTable items={items} loading={loading} onSelect={onSelect} />
+          <div className="p-3 md:hidden">
+            <InvoiceListMobileCards items={items} onSelect={onSelect} />
+          </div>
+          <InvoiceListPagination meta={meta} onPageChange={onPageChange} disabled={loading} />
+        </>
       )}
     </div>
   );

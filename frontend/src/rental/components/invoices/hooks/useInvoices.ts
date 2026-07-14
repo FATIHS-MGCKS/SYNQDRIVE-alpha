@@ -1,11 +1,19 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
-import { api } from '../../../../lib/api';
-import type { Invoice, InvoiceStats } from '../invoiceTypes';
+import { api, type Station } from '../../../lib/api';
+import { useDebouncedValue } from '../../hooks/useDebouncedValue';
 import type { InvoiceDirectionFilter } from '../invoiceConstants';
 import { STATUS_MAP } from '../invoiceFormatters';
-import { mapInvoiceListItemToInvoiceRow } from '../invoiceListItem.mapper';
+import {
+  buildInvoiceListApiParams,
+  DEFAULT_INVOICE_LIST_FILTERS,
+  hasActiveInvoiceListFilters,
+  readInvoiceListFiltersFromUrl,
+  syncInvoiceListFiltersToUrl,
+  type InvoiceListFilters,
+} from '../invoiceListState';
+import type { InvoiceListItem, InvoiceStats, PaginatedInvoiceList } from '../invoiceTypes';
 
 export interface InvoiceLookupVehicle {
   id: string;
@@ -24,9 +32,17 @@ export interface InvoiceLookupData {
 }
 
 export function useInvoices(orgId: string | undefined) {
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [listTotal, setListTotal] = useState(0);
+  const [filters, setFilters] = useState<InvoiceListFilters>(() => ({
+    ...DEFAULT_INVOICE_LIST_FILTERS,
+    ...readInvoiceListFiltersFromUrl(),
+  }));
+  const [searchDraft, setSearchDraft] = useState(() => filters.search);
+  const debouncedSearch = useDebouncedValue(searchDraft, 350);
+
+  const [items, setItems] = useState<InvoiceListItem[]>([]);
+  const [meta, setMeta] = useState<PaginatedInvoiceList['meta'] | null>(null);
   const [stats, setStats] = useState<InvoiceStats | null>(null);
+  const [stations, setStations] = useState<Station[]>([]);
   const [lookup, setLookup] = useState<InvoiceLookupData>({
     customers: [],
     vehicles: [],
@@ -34,45 +50,66 @@ export function useInvoices(orgId: string | undefined) {
   });
   const [lookupLoaded, setLookupLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [directionFilter, setDirectionFilter] = useState<InvoiceDirectionFilter>('all');
-  const [isDirectionOpen, setIsDirectionOpen] = useState(false);
-  const [isStatusOpen, setIsStatusOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fetchGeneration = useRef(0);
+  const prevDebouncedSearch = useRef(debouncedSearch);
+
+  useEffect(() => {
+    if (prevDebouncedSearch.current !== debouncedSearch) {
+      prevDebouncedSearch.current = debouncedSearch;
+      setFilters((prev) => ({ ...prev, page: 1 }));
+    }
+  }, [debouncedSearch]);
 
   const reload = useCallback(async () => {
     if (!orgId) return;
+    const generation = ++fetchGeneration.current;
     setLoading(true);
+    setError(null);
     try {
       const [listResult, iStats] = await Promise.all([
-        api.invoices.listItems(orgId, {
-          page: 1,
-          limit: 100,
-          search: searchTerm.trim() || undefined,
-          status: statusFilter !== 'all' ? statusFilter : undefined,
-          direction: directionFilter !== 'all' ? directionFilter : undefined,
-          sortBy: 'invoiceDate',
-          sortOrder: 'desc',
-        }),
+        api.invoices.listItems(orgId, buildInvoiceListApiParams(filters, debouncedSearch)),
         api.invoices.stats(orgId),
       ]);
-      setInvoices(listResult.data.map(mapInvoiceListItemToInvoiceRow));
-      setListTotal(listResult.meta.total);
+      if (generation !== fetchGeneration.current) return;
+      setItems(listResult.data);
+      setMeta(listResult.meta);
       setStats(iStats);
-    } catch {
+    } catch (e: unknown) {
+      if (generation !== fetchGeneration.current) return;
+      const message = e instanceof Error ? e.message : 'Rechnungen konnten nicht geladen werden';
+      setError(message);
+      setItems([]);
+      setMeta(null);
       toast.error('Rechnungen konnten nicht geladen werden');
-      setInvoices([]);
-      setListTotal(0);
     } finally {
-      setLoading(false);
+      if (generation === fetchGeneration.current) {
+        setLoading(false);
+      }
     }
-  }, [orgId, searchTerm, statusFilter, directionFilter]);
+  }, [orgId, filters, debouncedSearch]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  useEffect(() => {
+    syncInvoiceListFiltersToUrl({ ...filters, search: debouncedSearch });
+  }, [filters, debouncedSearch]);
+
+  useEffect(() => {
+    if (!orgId) return;
+    api.stations
+      .list(orgId, { selectableOnly: true })
+      .then((list) => setStations(Array.isArray(list) ? list : []))
+      .catch(() => setStations([]));
+  }, [orgId]);
 
   const loadLookup = useCallback(async () => {
     if (!orgId || lookupLoaded) return;
     try {
       const [cList, vList, venList] = await Promise.all([
-        api.customers.list(orgId).catch(() => []),
+        api.customers.list(orgId, { limit: 100 }).catch(() => ({ data: [] })),
         api.vehicles.listByOrg(orgId).catch(() => []),
         api.vendors.list(orgId).catch(() => []),
       ]);
@@ -87,77 +124,105 @@ export function useInvoices(orgId: string | undefined) {
     }
   }, [orgId, lookupLoaded]);
 
-  useEffect(() => {
-    void reload();
-  }, [reload]);
+  const patchFilters = useCallback((patch: Partial<InvoiceListFilters>) => {
+    setFilters((prev) => ({
+      ...prev,
+      ...patch,
+      page: patch.page ?? 1,
+    }));
+  }, []);
 
-  const filtered = invoices;
+  const setPage = useCallback((page: number) => {
+    setFilters((prev) => ({ ...prev, page }));
+  }, []);
+
+  const setSearchTerm = useCallback((value: string) => {
+    setSearchDraft(value);
+  }, []);
+
+  const setDirectionFilter = useCallback((direction: InvoiceDirectionFilter) => {
+    patchFilters({ direction, page: 1 });
+  }, [patchFilters]);
+
+  const setStatusFilter = useCallback((status: string) => {
+    patchFilters({
+      status,
+      overdue: status === 'OVERDUE',
+      page: 1,
+    });
+  }, [patchFilters]);
+
+  const clearFilters = useCallback(() => {
+    setSearchDraft('');
+    setFilters({ ...DEFAULT_INVOICE_LIST_FILTERS });
+  }, []);
 
   const statusCount = useCallback(
     (status: string) => {
-      if (status === 'all') return stats?.total ?? listTotal;
+      if (status === 'all') return stats?.total ?? meta?.total ?? 0;
       return stats?.statusCounts?.[status] ?? 0;
     },
-    [stats, listTotal],
+    [stats, meta],
   );
 
   const directionCount = useCallback(
     (direction: InvoiceDirectionFilter) => {
-      if (direction === 'all') return stats?.total ?? listTotal;
+      if (direction === 'all') return stats?.total ?? meta?.total ?? 0;
       if (direction === 'outgoing') return stats?.outgoing ?? 0;
       return stats?.incoming ?? 0;
     },
-    [stats, listTotal],
+    [stats, meta],
   );
 
-  const unpaidCount = stats?.unpaid ?? 0;
-  const overdueCount = stats?.overdue ?? 0;
-
   const activeDirectionLabel =
-    directionFilter === 'all'
+    filters.direction === 'all'
       ? 'Alle Richtungen'
-      : directionFilter === 'outgoing'
+      : filters.direction === 'outgoing'
         ? 'Ausgehend'
         : 'Eingehend';
 
   const activeStatusLabel =
-    statusFilter === 'all' ? 'Alle Status' : STATUS_MAP[statusFilter]?.label || statusFilter;
+    filters.status === 'all' ? 'Alle Status' : STATUS_MAP[filters.status]?.label || filters.status;
 
-  const hasActiveFilters =
-    Boolean(searchTerm) || statusFilter !== 'all' || directionFilter !== 'all';
+  const hasActiveFilters = hasActiveInvoiceListFilters(
+    { ...filters, search: debouncedSearch },
+    debouncedSearch,
+  );
 
-  const clearFilters = useCallback(() => {
-    setSearchTerm('');
-    setStatusFilter('all');
-    setDirectionFilter('all');
-    setIsDirectionOpen(false);
-    setIsStatusOpen(false);
-  }, []);
+  const listTotal = meta?.total ?? 0;
+
+  const stationLabel = useMemo(() => {
+    if (!filters.stationId) return null;
+    return stations.find((s) => s.id === filters.stationId)?.name ?? 'Station';
+  }, [filters.stationId, stations]);
 
   return {
-    invoices,
+    items,
+    meta,
     stats,
+    stations,
     lookup,
     loading,
+    error,
     reload,
     loadLookup,
-    searchTerm,
+    filters,
+    patchFilters,
+    setPage,
+    searchTerm: searchDraft,
     setSearchTerm,
-    statusFilter,
+    statusFilter: filters.status,
     setStatusFilter,
-    directionFilter,
+    directionFilter: filters.direction,
     setDirectionFilter,
-    isDirectionOpen,
-    setIsDirectionOpen,
-    isStatusOpen,
-    setIsStatusOpen,
-    filtered,
+    filtered: items,
     statusCount,
     directionCount,
-    unpaidCount,
-    overdueCount,
+    unpaidCount: stats?.unpaid ?? 0,
+    overdueCount: stats?.overdue ?? 0,
     activeDirectionLabel,
     activeStatusLabel,
+    stationLabel,
     hasActiveFilters,
     clearFilters,
     listTotal,

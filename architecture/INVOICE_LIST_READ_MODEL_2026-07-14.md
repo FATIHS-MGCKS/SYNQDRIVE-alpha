@@ -46,7 +46,7 @@ Legacy `GET /organizations/:orgId/invoices` remains for detail-adjacent consumer
 
 - `useInvoices` → `api.invoices.listItems` + `api.invoices.stats`
 - Lookup data (customers/vehicles/vendors) lazy-loaded only for create/upload dialogs
-- `invoiceListItem.mapper.ts` maps read-model rows to legacy `Invoice` list row shape
+- **V4.9.466**: `InvoiceListTable` + `InvoiceListMobileCards` render `InvoiceListItem` directly; `invoiceListState` URL sync; debounced search; extended filters (document/send/type/station/date); pagination, skeleton, error retry, empty states; `invoiceListLabels` for enum localization
 
 ## Tests
 
