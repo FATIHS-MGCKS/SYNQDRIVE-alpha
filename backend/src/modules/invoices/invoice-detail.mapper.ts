@@ -1,6 +1,8 @@
 import { OrgInvoiceType } from '@prisma/client';
 import { displayInvoiceNumber, isOutgoingInvoiceType } from './invoice-domain.util';
 import { parseLegacyLineItems, computeInvoiceTotals } from './invoice-line-items.util';
+import type { OrgTaxSettings } from './invoice-tax.util';
+import { resolveOrgDefaultTaxRate } from './invoice-tax.util';
 import { buildInvoiceDetailCapabilities } from './invoice-detail-actions.util';
 import type { InvoiceDocumentsViewDto } from './invoice-document-read.types';
 import {
@@ -62,6 +64,7 @@ export interface InvoiceDetailMapperInput {
   timeline: ActivityRow[];
   includeVin?: boolean;
   createdByActor?: InvoiceProvenanceActorRow | null;
+  orgTax?: OrgTaxSettings;
 }
 
 function iso(date: Date | null | undefined): string | null {
@@ -72,24 +75,31 @@ function mapDirection(type: OrgInvoiceType): InvoiceDirection {
   return isOutgoingInvoiceType(type) ? 'OUTGOING' : 'INCOMING';
 }
 
-function mapLineItems(raw: unknown, fallbackTotalCents: number): InvoiceDetailLineItemDto[] {
-  const parsed = parseLegacyLineItems(raw);
+function mapLineItems(
+  raw: unknown,
+  fallbackTotalCents: number,
+  orgTax?: OrgTaxSettings,
+): InvoiceDetailLineItemDto[] {
+  const taxOptions = orgTax ? { orgTax } : undefined;
+  const parsed = parseLegacyLineItems(raw, taxOptions);
   if (!parsed.length) {
     if (fallbackTotalCents <= 0) return [];
-    const totals = computeInvoiceTotals([], fallbackTotalCents);
+    const totals = computeInvoiceTotals([], fallbackTotalCents, taxOptions);
+    const defaultRate =
+      totals.taxMeta?.assumedTaxRatePercent ?? resolveOrgDefaultTaxRate(orgTax ?? {});
     return [
       {
         description: 'Gesamtbetrag',
         quantity: 1,
         unitPriceNetCents: totals.subtotalCents,
-        taxRate: 19,
+        taxRate: defaultRate,
         netCents: totals.subtotalCents,
         taxCents: totals.taxCents,
         grossCents: totals.totalCents,
       },
     ];
   }
-  const computed = computeInvoiceTotals(parsed, fallbackTotalCents);
+  const computed = computeInvoiceTotals(parsed, fallbackTotalCents, taxOptions);
   return computed.lineItems.map((item) => ({
     description: item.description,
     quantity: item.quantity,
@@ -251,7 +261,7 @@ export function mapInvoiceDetail(input: InvoiceDetailMapperInput): InvoiceDetail
     booking,
     vehicle,
     relations,
-    lineItems: mapLineItems(inv.lineItems, totalCents),
+    lineItems: mapLineItems(inv.lineItems, totalCents, input.orgTax),
     payments: mapPayments(inv.payments),
     documents: documentsView.documents,
     outboundEmails: mapOutboundEmails(input.outboundEmails),

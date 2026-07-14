@@ -18,6 +18,7 @@ import {
   bookingInvoiceTitle,
   unpaidOutgoingTaskTitleIssued,
   makeBookingPriceSnapshot,
+  makeOrgInvoicePolicies,
   makeOrgInvoiceRow,
 } from './__fixtures__/invoice-baseline.fixtures';
 
@@ -73,6 +74,7 @@ describe('InvoicesService — baseline regression (audit 2026-07-14)', () => {
         invoiceNumberDisplay: 'FSM-2026-0042',
       }),
     };
+    prisma.organization.findFirst.mockResolvedValue(makeOrgInvoicePolicies());
     service = new InvoicesService(
       prisma as unknown as PrismaService,
       tasksService as unknown as TasksService,
@@ -174,6 +176,51 @@ describe('InvoicesService — baseline regression (audit 2026-07-14)', () => {
       expect(result).not.toBeNull();
       expect(result!.title).toContain(BOOKING_NUMBER);
       expect(result!.title).not.toMatch(/#[0-9a-f]{8}/i);
+    });
+
+    it('createBookingInvoice uses org payment terms on INVOICE_DATE (not booking+14)', async () => {
+      prisma.orgInvoice.findFirst.mockResolvedValue(null);
+      prisma.bookingPriceSnapshot.findFirst.mockResolvedValue(makeBookingPriceSnapshot());
+      prisma.customer.findFirst.mockResolvedValue({ id: CUSTOMER_MUELLER });
+      prisma.vehicle.findFirst.mockResolvedValue({ id: VEHICLE_GOLF });
+      prisma.booking.findFirst.mockResolvedValue({ id: BOOKING_REF });
+      prisma.organization.findFirst.mockResolvedValue(makeOrgInvoicePolicies({ paymentTermsDays: 14 }));
+
+      const created = makeOrgInvoiceRow({
+        id: 'new-inv',
+        status: 'DRAFT',
+        invoiceNumberDisplay: null,
+        sequenceNumber: null,
+      });
+      prisma.orgInvoice.create.mockResolvedValue(created);
+      prisma.orgInvoice.findFirst
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce(created);
+
+      await service.createBookingInvoice(ORG_A, {
+        id: BOOKING_REF,
+        customerId: CUSTOMER_MUELLER,
+        vehicleId: VEHICLE_GOLF,
+        totalPriceCents: 53550,
+        dailyRateCents: 17850,
+        startDate: new Date('2026-07-14'),
+        endDate: new Date('2026-07-17'),
+        currency: 'EUR',
+      });
+
+      expect(prisma.orgInvoice.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            dueDateBase: 'INVOICE_DATE',
+            paymentTermsDaysAtCreate: 14,
+          }),
+        }),
+      );
+      const createData = prisma.orgInvoice.create.mock.calls[0][0].data;
+      expect(createData.dueDate).toBeInstanceOf(Date);
+      expect(createData.dueDate.getTime()).not.toBe(
+        new Date('2026-07-28').setHours(0, 0, 0, 0),
+      );
     });
   });
 

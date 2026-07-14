@@ -4001,6 +4001,14 @@ enum InvoiceTriggeredByType {
   MIGRATION
 }
 
+/// Calendar anchor for computing `dueDate` from org payment terms (V4.9.435).
+enum InvoiceDueDateBase {
+  INVOICE_DATE
+  ISSUE_DATE
+  BOOKING_START
+  CUSTOM
+}
+
 enum InvoicePaymentMethod {
   CASH
   BANK_TRANSFER
@@ -4068,6 +4076,9 @@ model OrgInvoice {
   currency             String           @default("EUR")
   invoiceDate          DateTime         @default(now()) @map("invoice_date")
   dueDate              DateTime?        @map("due_date")
+  dueDateBase          InvoiceDueDateBase? @map("due_date_base")
+  /// Snapshot of org `paymentTermsDays` when due date was auto-computed.
+  paymentTermsDaysAtCreate Int?         @map("payment_terms_days_at_create")
   status               OrgInvoiceStatus @default(DRAFT)
   templateId           String?          @map("template_id")
   imageUrl             String?          @map("image_url")

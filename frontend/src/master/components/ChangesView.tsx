@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-due-tax-fallback-2026-07-14',
+    version: '4.9.435',
+    title: 'V4.9.435 — Rechnungen: Fälligkeit & Steuer-Fallback',
+    summary: [
+      'Fälligkeit: `dueDateBase` (`INVOICE_DATE` | `ISSUE_DATE` | `BOOKING_START` | `CUSTOM`) + Snapshot `paymentTermsDaysAtCreate`; Standard outgoing = Rechnungsdatum + Org-Zahlungsziel (nicht Buchungsbeginn +14).',
+      'Zeitzonen-sichere Kalendertage via `tariff-instant.util`; explizite/manuelle `dueDate` → `CUSTOM` (nicht überschreiben); Legacy-Rechnungen (`dueDateBase` null) unverändert.',
+      'Steuer: `invoice-tax.util` + org `defaultVatRate` / `isSmallBusiness`; keine unkontrollierte `/1.19`-Logik mehr auf Create-Pfaden.',
+      'Legacy-Brutto-Split protokolliert (`Logger.warn` + `taxMeta`); centgenaue Positions- und Gesamtrundung.',
+      'Tests: `invoice-due-date.util.spec`, `invoice-line-items.util.spec`, Baseline für Buchungsrechnung.',
+    ],
+    reason:
+      'Buchungsrechnungen nutzten hartkodiert Buchungsbeginn +14 Tage und 19%-Steuer, obwohl Organisations-Zahlungsziele und Steuerkonfiguration existieren.',
+    previousBehavior:
+      '`createBookingInvoice`: `startDate + 14`; Fallback `/1.19` und `taxRate: 19`; Schlussrechnung und Dokumentenextraktion ebenfalls mit festem 19%.',
+    details:
+      'invoice-due-date.util.ts, invoice-tax.util.ts, invoices.service, document-extraction-apply, invoice-detail.mapper/read.service, Prisma-Migration 20260714220000.',
+    affectsArchitecture: true,
+    module: 'Invoices',
+    createdAt: '2026-07-14T23:45:00.000Z',
+  },
+  {
     id: 'invoice-display-references-2026-07-14',
     version: '4.9.434',
     title: 'V4.9.434 — Rechnungstexte ohne UUID-Fragmente',

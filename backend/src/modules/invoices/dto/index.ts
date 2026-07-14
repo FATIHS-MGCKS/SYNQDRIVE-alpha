@@ -10,7 +10,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { InvoicePaymentMethod, OrgInvoiceStatus, OrgInvoiceType } from '@prisma/client';
+import { InvoicePaymentMethod, InvoiceDueDateBase, OrgInvoiceStatus, OrgInvoiceType } from '@prisma/client';
 
 export class InvoiceLineItemDto {
   @IsString()
@@ -95,6 +95,10 @@ export class CreateInvoiceDto {
   @IsOptional()
   @IsISO8601()
   dueDate?: string;
+
+  @IsOptional()
+  @IsEnum(InvoiceDueDateBase)
+  dueDateBase?: InvoiceDueDateBase;
 
   @IsOptional()
   @IsString()

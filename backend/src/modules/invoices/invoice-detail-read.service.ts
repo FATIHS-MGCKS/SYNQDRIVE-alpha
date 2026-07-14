@@ -30,7 +30,7 @@ export class InvoiceDetailReadService {
     });
     if (!invoice) throw new NotFoundException('Invoice not found');
 
-    const [customer, vehicle, booking, outboundEmails, timeline, documentsView, createdByActor] =
+    const [customer, vehicle, booking, outboundEmails, timeline, documentsView, createdByActor, orgTax] =
       await Promise.all([
         invoice.customerId
           ? this.prisma.customer.findFirst({
@@ -109,6 +109,10 @@ export class InvoiceDetailReadService {
               })
               .then((m) => m?.user ?? null)
           : Promise.resolve(null),
+        this.prisma.organization.findFirst({
+          where: { id: orgId },
+          select: { defaultVatRate: true, isSmallBusiness: true },
+        }),
       ]);
 
     return mapInvoiceDetail({
@@ -121,6 +125,7 @@ export class InvoiceDetailReadService {
       timeline,
       includeVin: options?.includeVin ?? false,
       createdByActor,
+      orgTax: orgTax ?? undefined,
     });
   }
 }

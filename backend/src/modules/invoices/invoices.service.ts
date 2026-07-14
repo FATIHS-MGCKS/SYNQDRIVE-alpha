@@ -1,9 +1,11 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
+  InvoiceDueDateBase,
   InvoicePaymentMethod,
   OrgInvoiceStatus,
   OrgInvoiceType,
@@ -31,7 +33,19 @@ import {
   InvoiceLineItemInput,
   normalizeTaxRate,
   parseLegacyLineItems,
+  resolveDefaultTaxRateForInvoice,
 } from './invoice-line-items.util';
+import {
+  resolveDueDateForCreate,
+  resolveDueDateOnIssue,
+  resolveOrgTimezone,
+  type OrgDueDateSettings,
+} from './invoice-due-date.util';
+import {
+  netCentsFromGrossCents,
+  resolveOrgDefaultTaxRate,
+  type OrgTaxSettings,
+} from './invoice-tax.util';
 import { InvoiceNumberService } from './invoice-number.service';
 import { InvoiceDocumentsReadService } from './invoice-documents-read.service';
 import type { InvoiceProvenanceWriteInput } from './invoice-provenance.util';
@@ -76,6 +90,8 @@ export interface CreateFinalInvoiceContext {
 
 @Injectable()
 export class InvoicesService {
+  private readonly logger = new Logger(InvoicesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly tasksService: TasksService,
@@ -274,12 +290,21 @@ export class InvoicesService {
   ) {
     await this.assertRelations(orgId, data);
 
+    const orgPolicies = await this.loadOrgInvoicePolicies(orgId);
+    const defaultTaxRate = resolveOrgDefaultTaxRate(orgPolicies);
+    const taxOptions = { orgTax: orgPolicies, defaultTaxRate };
+
     const lineInputs: InvoiceLineItemInput[] = (data.lineItems ?? []).map((item) => ({
       ...item,
-      taxRate: normalizeTaxRate(item.taxRate),
+      taxRate: normalizeTaxRate(item.taxRate, defaultTaxRate),
     }));
 
-    const totals = computeInvoiceTotals(lineInputs, data.totalCents);
+    const totals = computeInvoiceTotals(lineInputs, data.totalCents, taxOptions);
+    if (totals.taxMeta) {
+      this.logger.warn(
+        `Invoice tax fallback org=${orgId}: ${totals.taxMeta.reason} (rate=${totals.taxMeta.assumedTaxRatePercent}%)`,
+      );
+    }
     if (totals.totalCents <= 0 && !data.fromExtraction) {
       throw new BadRequestException('Invoice total must be greater than zero');
     }
@@ -291,6 +316,22 @@ export class InvoicesService {
     const vendorName = await this.resolveVendorName(orgId, data.vendorId, data.vendorName);
     const provenance = await this.resolveCreateProvenance(orgId, data, context);
     const createdByUserId = await this.resolveOrgScopedUserId(orgId, provenance.createdByUserId);
+
+    const invoiceDate = data.invoiceDate ? new Date(data.invoiceDate) : new Date();
+    const bookingStartDate = await this.resolveBookingStartDate(
+      orgId,
+      data.bookingId,
+      data.dueDateBase,
+    );
+    const dueResolved = resolveDueDateForCreate({
+      explicitDueDate: data.dueDate,
+      dueDateBase: data.dueDateBase,
+      invoiceDate,
+      bookingStartDate,
+      paymentTermsDays: orgPolicies.paymentTermsDays,
+      timezone: resolveOrgTimezone(orgPolicies.timezone),
+      isOutgoing: isOutgoingInvoiceType(data.type),
+    });
 
     const invoice = await this.prisma.orgInvoice.create({
       data: {
@@ -312,8 +353,10 @@ export class InvoicesService {
         paidCents: 0,
         outstandingCents: totals.totalCents,
         currency: data.currency || 'EUR',
-        invoiceDate: data.invoiceDate ? new Date(data.invoiceDate) : new Date(),
-        dueDate: data.dueDate ? new Date(data.dueDate) : null,
+        invoiceDate,
+        dueDate: dueResolved.dueDate,
+        dueDateBase: dueResolved.dueDateBase,
+        paymentTermsDaysAtCreate: dueResolved.paymentTermsDaysAtCreate,
         status,
         templateId: data.templateId,
         imageUrl: data.imageUrl,
@@ -366,17 +409,21 @@ export class InvoicesService {
       } as CreateInvoiceDto);
     }
 
+    const orgPolicies = await this.loadOrgInvoicePolicies(orgId!);
+    const taxOptions = { orgTax: orgPolicies };
+
     const lineInputs: InvoiceLineItemInput[] =
       data.lineItems !== undefined
         ? data.lineItems.map((item) => ({
             ...item,
-            taxRate: normalizeTaxRate(item.taxRate),
+            taxRate: normalizeTaxRate(item.taxRate, resolveOrgDefaultTaxRate(orgPolicies)),
           }))
-        : parseLegacyLineItems(existing.lineItems);
+        : parseLegacyLineItems(existing.lineItems, taxOptions);
 
     const totals = computeInvoiceTotals(
       lineInputs,
       data.totalCents ?? existing.totalCents,
+      taxOptions,
     );
 
     const updateData: Prisma.OrgInvoiceUpdateInput = {};
@@ -386,6 +433,10 @@ export class InvoicesService {
     if (data.templateId !== undefined) updateData.templateId = data.templateId;
     if (data.dueDate !== undefined) {
       updateData.dueDate = data.dueDate ? new Date(data.dueDate) : null;
+      if (data.dueDate) {
+        updateData.dueDateBase = InvoiceDueDateBase.CUSTOM;
+        updateData.paymentTermsDaysAtCreate = null;
+      }
     }
     if (data.customerId !== undefined) updateData.customerId = data.customerId;
     if (data.vendorId !== undefined) {
@@ -428,6 +479,16 @@ export class InvoicesService {
 
     const year = new Date(inv.invoiceDate).getFullYear();
     const allocated = await this.invoiceNumbers.allocate(orgId, year);
+    const issuedAt = new Date();
+    const orgPolicies = await this.loadOrgInvoicePolicies(orgId);
+    const dueDate = resolveDueDateOnIssue({
+      dueDateBase: inv.dueDateBase,
+      currentDueDate: inv.dueDate,
+      issuedAt,
+      paymentTermsDaysAtCreate: inv.paymentTermsDaysAtCreate,
+      paymentTermsDays: orgPolicies.paymentTermsDays,
+      timezone: resolveOrgTimezone(orgPolicies.timezone),
+    });
 
     const issuedReference: InvoiceReferenceInput = {
       ...allocated,
@@ -450,7 +511,8 @@ export class InvoicesService {
         ...allocated,
         title: issuedTitle,
         status: 'ISSUED',
-        issuedAt: new Date(),
+        issuedAt,
+        dueDate,
         outstandingCents: Math.max(0, inv.totalCents - inv.paidCents),
       },
     });
@@ -462,7 +524,7 @@ export class InvoicesService {
       inv.totalCents,
       inv.currency,
       inv.type,
-      inv.dueDate?.toISOString(),
+      dueDate?.toISOString(),
     );
 
     return this.findById(id, orgId);
@@ -608,16 +670,22 @@ export class InvoicesService {
       }
     } else {
       // Defensive fallback when snapshot missing (e.g. legacy bookings).
+      const orgPolicies = await this.loadOrgInvoicePolicies(orgId);
+      const defaultTaxRate = resolveOrgDefaultTaxRate(orgPolicies);
       const days = Math.max(1, Math.ceil((booking.endDate.getTime() - booking.startDate.getTime()) / 86400000));
       totalCents = booking.totalPriceCents || (booking.dailyRateCents || 0) * days;
       if (totalCents <= 0) return null;
-      const unitNet = Math.round((booking.dailyRateCents || Math.round(totalCents / days)) / 1.19);
+      const grossPerDay = booking.dailyRateCents || Math.round(totalCents / days);
+      const unitNet = netCentsFromGrossCents(grossPerDay, defaultTaxRate);
+      this.logger.warn(
+        `Booking invoice tax fallback org=${orgId} booking=${booking.id}: legacy gross split (rate=${defaultTaxRate}%)`,
+      );
       lineItems = [
         {
           description: `Fahrzeugmiete (${days} Tage)`,
           quantity: days,
           unitPriceNetCents: unitNet,
-          taxRate: 19,
+          taxRate: defaultTaxRate,
           bookingId: booking.id,
           vehicleId: booking.vehicleId,
         },
@@ -625,9 +693,6 @@ export class InvoicesService {
     }
 
     if (totalCents <= 0) return null;
-
-    const dueDate = new Date(booking.startDate);
-    dueDate.setDate(dueDate.getDate() + 14);
 
     return this.create(
       orgId,
@@ -642,7 +707,6 @@ export class InvoicesService {
         totalCents,
         currency,
         invoiceDate: new Date().toISOString(),
-        dueDate: dueDate.toISOString(),
       },
       {
         userId: context?.userId,
@@ -674,8 +738,21 @@ export class InvoicesService {
     });
     if (existing) return existing;
 
+    const orgPolicies = await this.loadOrgInvoicePolicies(orgId);
     const totalCents = context.totalCents;
-    const subtotalCents = totalCents > 0 ? Math.round(totalCents / 1.19) : 0;
+    const totals = computeInvoiceTotals([], totalCents, { orgTax: orgPolicies });
+    if (totals.taxMeta) {
+      this.logger.warn(
+        `Final invoice tax fallback org=${orgId} booking=${booking.id}: ${totals.taxMeta.reason}`,
+      );
+    }
+    const invoiceDate = new Date();
+    const dueResolved = resolveDueDateForCreate({
+      invoiceDate,
+      paymentTermsDays: orgPolicies.paymentTermsDays,
+      timezone: resolveOrgTimezone(orgPolicies.timezone),
+      isOutgoing: true,
+    });
     const provenance = provenanceForBundlePipelineInvoice({
       bookingId: booking.id,
       userId: context.userId,
@@ -715,11 +792,15 @@ export class InvoicesService {
           originalSequenceYear: originalInvoiceRef?.sequenceYear,
           originalSequenceNumber: originalInvoiceRef?.sequenceNumber,
         }),
-        subtotalCents,
-        taxCents: totalCents - subtotalCents,
-        totalCents,
-        outstandingCents: totalCents,
+        subtotalCents: totals.subtotalCents,
+        taxCents: totals.taxCents,
+        totalCents: totals.totalCents,
+        outstandingCents: totals.totalCents,
         currency: (booking.currency || 'EUR').toUpperCase(),
+        invoiceDate,
+        dueDate: dueResolved.dueDate,
+        dueDateBase: dueResolved.dueDateBase,
+        paymentTermsDaysAtCreate: dueResolved.paymentTermsDaysAtCreate,
         status: 'DRAFT',
         ...provenanceToPrismaFields({ ...provenance, createdByUserId }),
       },
@@ -822,6 +903,42 @@ export class InvoicesService {
       paidRevenueCents,
       totalExpensesCents,
     };
+  }
+
+  private async loadOrgInvoicePolicies(
+    orgId: string,
+  ): Promise<OrgDueDateSettings & OrgTaxSettings> {
+    const org = await this.prisma.organization.findFirst({
+      where: { id: orgId },
+      select: {
+        paymentTermsDays: true,
+        timezone: true,
+        defaultVatRate: true,
+        isSmallBusiness: true,
+      },
+    });
+    if (!org) throw new NotFoundException('Organization not found');
+    return {
+      paymentTermsDays: org.paymentTermsDays,
+      timezone: org.timezone,
+      defaultVatRate: org.defaultVatRate,
+      isSmallBusiness: org.isSmallBusiness,
+    };
+  }
+
+  private async resolveBookingStartDate(
+    orgId: string,
+    bookingId?: string | null,
+    dueDateBase?: InvoiceDueDateBase | null,
+  ): Promise<Date | null> {
+    if (!bookingId || dueDateBase !== InvoiceDueDateBase.BOOKING_START) {
+      return null;
+    }
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: bookingId, organizationId: orgId },
+      select: { startDate: true },
+    });
+    return booking?.startDate ?? null;
   }
 
   private async resolveOrgScopedUserId(

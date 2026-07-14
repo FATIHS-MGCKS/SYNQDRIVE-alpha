@@ -1,5 +1,5 @@
 import { OrgInvoiceType } from '@prisma/client';
-import { ORG_A, BOOKING_REF, CUSTOMER_MUELLER, VEHICLE_GOLF } from './__fixtures__/invoice-baseline.fixtures';
+import { ORG_A, BOOKING_REF, CUSTOMER_MUELLER, VEHICLE_GOLF, makeOrgInvoicePolicies } from './__fixtures__/invoice-baseline.fixtures';
 import { mockInvoiceDocumentsRead } from './__fixtures__/invoice-documents-read.mock';
 import { InvoiceDocumentsReadService } from './invoice-documents-read.service';
 import { InvoiceNumberService } from './invoice-number.service';
@@ -29,6 +29,7 @@ describe('InvoicesService — provenance on create paths', () => {
     booking: { findFirst: jest.Mock };
     organizationMembership: { findFirst: jest.Mock };
     bookingPriceSnapshot: { findFirst: jest.Mock };
+    organization: { findFirst: jest.Mock };
   };
   let service: InvoicesService;
 
@@ -44,6 +45,7 @@ describe('InvoicesService — provenance on create paths', () => {
       booking: { findFirst: jest.fn().mockResolvedValue({ id: BOOKING_REF }) },
       organizationMembership: { findFirst: jest.fn().mockResolvedValue({ userId: 'user-1' }) },
       bookingPriceSnapshot: { findFirst: jest.fn().mockResolvedValue(null) },
+      organization: { findFirst: jest.fn().mockResolvedValue(makeOrgInvoicePolicies()) },
     };
     service = new InvoicesService(
       prisma as never,

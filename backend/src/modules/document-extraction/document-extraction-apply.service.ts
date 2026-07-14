@@ -452,16 +452,6 @@ export class DocumentExtractionApplyService {
           extractedData: d,
           documentExtractionId: input.extractionId,
           fromExtraction: true,
-          lineItems: totalCentsParsed > 0
-            ? [
-                {
-                  description: this.str(d.title) ?? 'Eingangsrechnung',
-                  quantity: 1,
-                  unitPriceNetCents: Math.round(totalCentsParsed / 1.19),
-                  taxRate: 19,
-                },
-              ]
-            : undefined,
         },
         {
           userId: input.confirmedByUserId,

@@ -22,6 +22,16 @@ export const BOOKING_REF_SHORT = BOOKING_REF.slice(0, 8);
 
 export const BOOKING_NUMBER = bookingNumberFromId(BOOKING_REF);
 
+export function makeOrgInvoicePolicies(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    paymentTermsDays: 7,
+    timezone: 'Europe/Berlin',
+    defaultVatRate: 19,
+    isSmallBusiness: false,
+    ...overrides,
+  };
+}
+
 export function bookingInvoiceTitle(): string {
   return `Buchungsrechnung · ${BOOKING_NUMBER}`;
 }

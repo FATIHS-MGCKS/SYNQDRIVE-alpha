@@ -23,6 +23,7 @@ describe('InvoiceDetailReadService', () => {
     organizationMembership: { findFirst: jest.Mock };
     outboundEmail: { findMany: jest.Mock };
     activityLog: { findMany: jest.Mock };
+    organization: { findFirst: jest.Mock };
   };
   let invoiceDocuments: ReturnType<typeof mockInvoiceDocumentsRead>;
   let service: InvoiceDetailReadService;
@@ -37,6 +38,9 @@ describe('InvoiceDetailReadService', () => {
       organizationMembership: { findFirst: jest.fn() },
       outboundEmail: { findMany: jest.fn().mockResolvedValue([]) },
       activityLog: { findMany: jest.fn().mockResolvedValue([]) },
+      organization: {
+        findFirst: jest.fn().mockResolvedValue({ defaultVatRate: 19, isSmallBusiness: false }),
+      },
     };
     service = new InvoiceDetailReadService(
       prisma as never,
