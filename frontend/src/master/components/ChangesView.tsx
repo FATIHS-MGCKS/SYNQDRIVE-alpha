@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'payments-feature-permissions-v49437-2026-07-14',
+    version: '4.9.437',
+    title: 'V4.9.437 — End-Customer Payments: Feature-Flag + Permissions',
+    summary: [
+      'Serverseitiges Organisations-Feature `paymentsEnabled` (Default false) — keine Auto-Aktivierung.',
+      'Neue Payment-Permissions getrennt von billing: payments, payments-refund, payments-disputes, payments-connect, payments-settings.',
+      'PaymentsFeatureGuard + PaymentsPermissionGuard + PaymentsAccessService; Rollen konservativ in organization-role.defaults.',
+      'Plattform-Aktivierung: PATCH admin/organizations/:id/payments-enabled (MASTER_ADMIN). 65 Unit-Tests.',
+    ],
+    reason:
+      'Endkundenzahlungen dürfen nur für explizit freigeschaltete Organisationen und berechtigte Rollen verfügbar sein, bevor Stripe angebunden wird.',
+    previousBehavior: 'Kein serverseitiges Payment-Feature-Gate; keine granularen Payment-Permissions.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_FEATURE_PERMISSIONS_2026-07-14.md, payments-access.service.ts, guards/*, permission.constants.ts, organization-role.defaults.ts.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Connect',
+    createdAt: '2026-07-14T18:00:00.000Z',
+  },
+  {
     id: 'payment-domain-logic-v49436-2026-07-14',
     version: '4.9.436',
     title: 'V4.9.436 — End-Customer Payments: Domain-Statusmaschine ohne Stripe',
