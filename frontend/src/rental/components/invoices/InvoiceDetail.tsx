@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
+import { api } from '../../../lib/api';
 import { Icon } from '../ui/Icon';
 import { useRentalOrg } from '../../RentalContext';
 import { useInvoiceActions } from './hooks/useInvoiceActions';
+import { useInvoiceDocuments } from './hooks/useInvoiceDocuments';
 import {
   useInvoiceRelationsEnrichment,
   useInvoiceRelationsPermissions,
@@ -65,8 +67,18 @@ export function InvoiceDetail({
   const [paymentAmount, setPaymentAmount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('BANK_TRANSFER');
   const [paymentReference, setPaymentReference] = useState('');
+  const [sendOpen, setSendOpen] = useState(false);
+  const [defaultToEmail, setDefaultToEmail] = useState<string | null>(null);
 
   const actions = useInvoiceActions(orgId, invoice, onUpdate);
+
+  const refreshInvoice = useCallback(async () => {
+    await actions.refreshInvoice();
+  }, [actions]);
+
+  const documents = useInvoiceDocuments(orgId, invoice, () => {
+    void refreshInvoice();
+  });
 
   const detail = useMemo(
     () =>
@@ -74,8 +86,9 @@ export function InvoiceDetail({
         canManageEmail,
         relationsEnrichment: enrichment,
         relationsPermissions,
+        documentsPanel: documents.panel,
       }),
-    [invoice, canManageEmail, enrichment, relationsPermissions],
+    [invoice, canManageEmail, enrichment, relationsPermissions, documents.panel],
   );
 
   const outstanding = detail.amounts.outstandingCents;
@@ -112,6 +125,27 @@ export function InvoiceDetail({
     toast.message('Notizen und Stammdaten weiter unten bearbeiten');
   };
 
+  const openSendEmailDialog = useCallback(async () => {
+    if (!detail.primary.sendEmail.allowed) return;
+    try {
+      const customer = invoice.customerId
+        ? await api.customers.get(orgId, invoice.customerId).catch(() => null)
+        : null;
+      setDefaultToEmail(customer?.email ?? null);
+      setSendOpen(true);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'E-Mail-Dialog konnte nicht geöffnet werden');
+    }
+  }, [detail.primary.sendEmail.allowed, invoice.customerId, orgId]);
+
+  const handleGeneratePdf = useCallback(() => {
+    if (detail.document.hasPdf) {
+      void documents.generatePdf(true);
+      return;
+    }
+    void documents.generatePdf(false);
+  }, [detail.document.hasPdf, documents]);
+
   return (
     <div className="max-w-3xl mx-auto space-y-4">
       <button type="button" onClick={onBack} className={`flex items-center gap-1 text-xs font-medium ${ts}`}>
@@ -121,20 +155,20 @@ export function InvoiceDetail({
       <InvoiceDetailHeader
         detail={detail}
         viewportWidth={viewportWidth}
-        loadingSendDoc={actions.loadingSendDoc}
-        generatingPdf={actions.generatingPdf}
-        regeneratingPdf={actions.regeneratingPdf}
+        loadingSendDoc={documents.sendingEmail}
+        generatingPdf={documents.generating}
+        regeneratingPdf={documents.generating}
         markingSent={actions.markingSent}
         showPaymentForm={showPaymentForm}
         paymentAmount={paymentAmount}
         paymentMethod={paymentMethod}
         paymentReference={paymentReference}
         recordingPayment={actions.recordingPayment}
-        onViewPdf={actions.handleViewPdf}
-        onGeneratePdf={() => void actions.regenerateBookingInvoicePdf()}
-        onSendEmail={() => void actions.openInvoiceEmail()}
+        onViewPdf={documents.previewActiveDocument}
+        onGeneratePdf={handleGeneratePdf}
+        onSendEmail={() => void openSendEmailDialog()}
         onIssue={() => void actions.handleIssue()}
-        onRegeneratePdf={() => void actions.handleRegeneratePdf()}
+        onRegeneratePdf={() => void documents.generatePdf(true)}
         onMarkSentExternally={() => void actions.handleMarkSent()}
         onRecordPayment={openPaymentForm}
         onEdit={handleEdit}
@@ -177,11 +211,18 @@ export function InvoiceDetail({
           />
 
           <InvoiceDocuments
-            invoice={invoice}
-            canManageEmail={canManageEmail}
-            canEmailDocument={actions.canEmailDocument && canManageEmail}
-            loadingSendDoc={actions.loadingSendDoc}
-            onSendEmail={() => void actions.openInvoiceEmail()}
+            panel={documents.panel}
+            loading={documents.loading}
+            generating={documents.generating}
+            sendingEmail={documents.sendingEmail}
+            retryingEmailId={documents.retryingEmailId}
+            onPreview={documents.previewDocument}
+            onDownload={documents.downloadDocument}
+            onPreviewIncoming={documents.previewIncomingAttachment}
+            onGenerate={(regenerate) => void documents.generatePdf(regenerate)}
+            onSendEmail={() => void openSendEmailDialog()}
+            onRetryGeneration={() => void documents.generatePdf(false)}
+            onRetryDelivery={(emailId) => void documents.retryDelivery(emailId)}
             isDarkMode={isDarkMode}
             card={card}
             tp={tp}
@@ -210,19 +251,6 @@ export function InvoiceDetail({
         inputCls={inputCls}
       />
 
-      {invoice.imageUrl && (
-        <div className={`${card} p-5`}>
-          <h3 className={`text-xs font-bold ${tp} mb-3 uppercase tracking-wider`}>Anhang</h3>
-          <button
-            type="button"
-            onClick={() => window.open(invoice.imageUrl!, '_blank')}
-            className="text-xs font-medium text-brand"
-          >
-            Dokument öffnen
-          </button>
-        </div>
-      )}
-
       <div ref={notesAnchorRef}>
         <InvoiceNotes
           invoice={invoice}
@@ -246,12 +274,13 @@ export function InvoiceDetail({
 
       <SendInvoiceDialog
         invoice={invoice}
-        orgId={orgId}
-        open={actions.sendOpen}
-        onOpenChange={actions.setSendOpen}
-        sendDoc={actions.sendDoc}
-        defaultToEmail={actions.invoiceCustomerEmail}
-        onSent={() => void actions.refreshInvoice()}
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        defaultToEmail={defaultToEmail}
+        defaultSubject={documents.defaultEmailSubject}
+        documentId={documents.panel?.activeDocument?.id ?? invoice.generatedDocumentId}
+        sending={documents.sendingEmail}
+        onSend={documents.sendEmail}
       />
     </div>
   );

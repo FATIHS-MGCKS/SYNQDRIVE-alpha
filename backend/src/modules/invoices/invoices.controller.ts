@@ -7,6 +7,8 @@ import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { InvoicesService } from './invoices.service';
+import { Roles } from '@shared/decorators/roles.decorator';
+import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { StorageService } from '@shared/storage/storage.service';
@@ -16,6 +18,9 @@ import {
   RecordInvoicePaymentDto,
   UpdateInvoiceDto,
 } from './dto';
+import { SendInvoiceEmailDto } from './dto/send-invoice-email.dto';
+import { InvoiceDocumentsService } from './invoice-documents.service';
+import { InvoiceDocumentEmailService } from '@modules/outbound-email/invoice-document-email.service';
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads', 'invoices');
 if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -25,6 +30,8 @@ export class InvoicesController {
   constructor(
     private readonly invoicesService: InvoicesService,
     private readonly storage: StorageService,
+    private readonly invoiceDocuments: InvoiceDocumentsService,
+    private readonly invoiceEmail: InvoiceDocumentEmailService,
   ) {}
 
   @Get('organizations/:orgId/invoices')
@@ -105,6 +112,55 @@ export class InvoicesController {
   @UseGuards(OrgScopingGuard, RolesGuard)
   async markPaid(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.invoicesService.markPaid(id, orgId);
+  }
+
+  @Get('organizations/:orgId/invoices/:id/documents')
+  @UseGuards(OrgScopingGuard, RolesGuard)
+  async getDocumentsPanel(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @CurrentUser('membershipRole') membershipRole?: string,
+  ) {
+    const isAdmin = membershipRole === 'ORG_ADMIN' || membershipRole === 'MASTER_ADMIN';
+    return this.invoiceDocuments.getPanel(orgId, id, { isAdmin });
+  }
+
+  @Post('organizations/:orgId/invoices/:id/documents/generate')
+  @UseGuards(OrgScopingGuard, RolesGuard)
+  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  async generateDocument(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
+    @Query('regenerate') regenerate?: string,
+  ) {
+    return this.invoiceDocuments.generate(orgId, id, userId ?? null, {
+      regenerate: regenerate === 'true' || regenerate === '1',
+    });
+  }
+
+  @Post('organizations/:orgId/invoices/:id/documents/send-email')
+  @UseGuards(OrgScopingGuard, RolesGuard)
+  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  async sendInvoiceEmail(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Body() body: SendInvoiceEmailDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.invoiceEmail.sendInvoiceEmail(orgId, id, userId ?? null, body);
+  }
+
+  @Post('organizations/:orgId/invoices/:id/documents/delivery/:emailId/retry')
+  @UseGuards(OrgScopingGuard, RolesGuard)
+  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  async retryInvoiceEmail(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Param('emailId') emailId: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.invoiceEmail.retryInvoiceEmail(orgId, id, emailId, userId ?? null);
   }
 
   /** Legacy attachment upload only — NOT for AI extraction. Use document-extraction upload. */

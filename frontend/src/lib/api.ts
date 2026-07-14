@@ -4259,6 +4259,29 @@ export const api = {
       if (!res.ok) throw new Error('Upload failed');
       return res.json() as Promise<{ url: string }>;
     },
+    getDocumentsPanel: (orgId: string, invoiceId: string) =>
+      get<import('../rental/components/invoices/invoiceDocumentTypes').InvoiceDocumentsPanel>(
+        `/organizations/${orgId}/invoices/${invoiceId}/documents`,
+      ),
+    generateDocument: (orgId: string, invoiceId: string, regenerate = false) =>
+      post<import('../rental/components/invoices/invoiceDocumentTypes').InvoiceDocumentsPanel>(
+        `/organizations/${orgId}/invoices/${invoiceId}/documents/generate${regenerate ? '?regenerate=true' : ''}`,
+        {},
+      ),
+    sendDocumentEmail: (
+      orgId: string,
+      invoiceId: string,
+      payload: import('../rental/components/invoices/invoiceDocumentTypes').SendInvoiceEmailPayload,
+    ) =>
+      post<OutboundEmailDto>(
+        `/organizations/${orgId}/invoices/${invoiceId}/documents/send-email`,
+        payload,
+      ),
+    retryDocumentEmail: (orgId: string, invoiceId: string, emailId: string) =>
+      post<OutboundEmailDto>(
+        `/organizations/${orgId}/invoices/${invoiceId}/documents/delivery/${emailId}/retry`,
+        {},
+      ),
   },
   pricing: {
     catalog: (orgId: string) => get<any>(`/organizations/${orgId}/price-tariffs`),

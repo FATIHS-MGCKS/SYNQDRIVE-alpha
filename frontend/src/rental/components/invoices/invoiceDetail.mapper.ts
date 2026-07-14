@@ -11,6 +11,8 @@ import {
 } from './invoiceFormatters';
 import type { Invoice } from './invoiceTypes';
 import type { InvoiceActionGate, InvoiceDetailDto } from './invoiceDetailTypes';
+import { documentGatesFromPanel } from './invoiceDocuments.mapper';
+import type { InvoiceDocumentsPanel } from './invoiceDocumentTypes';
 import { buildInvoiceRelationsDto } from './invoiceRelations.mapper';
 import type { InvoiceRelationsEnrichment, InvoiceRelationsPermissions } from './invoiceRelations.mapper';
 
@@ -19,6 +21,7 @@ export interface BuildInvoiceDetailDtoContext {
   canManageFinance?: boolean;
   relationsEnrichment?: InvoiceRelationsEnrichment;
   relationsPermissions?: InvoiceRelationsPermissions;
+  documentsPanel?: InvoiceDocumentsPanel | null;
 }
 
 function gate(allowed: boolean, reason?: string): InvoiceActionGate {
@@ -36,8 +39,9 @@ export function buildInvoiceDetailDto(
     invoice.outstandingCents ?? Math.max(0, invoice.totalCents - paidCents);
   const currency = invoice.currency || 'EUR';
   const outgoing = isOutgoing(invoice.type);
-  const hasGeneratedPdf = Boolean(invoice.generatedDocumentId);
-  const hasAttachment = Boolean(invoice.imageUrl);
+  const hasPanelDocument = Boolean(ctx.documentsPanel?.activeDocument);
+  const hasGeneratedPdf = hasPanelDocument || Boolean(invoice.generatedDocumentId);
+  const hasAttachment = ctx.documentsPanel?.hasIncomingAttachment ?? Boolean(invoice.imageUrl);
   const hasPdf = hasGeneratedPdf || hasAttachment;
   const bookingId = invoice.bookingId;
   const regenerateDocumentType =
@@ -141,11 +145,17 @@ export function buildInvoiceDetailDto(
 
   const copyIdGate = gate(true);
 
+  const panelGates = documentGatesFromPanel(ctx.documentsPanel);
+  const resolvedViewPdf = panelGates?.viewPdf ?? viewPdfGate;
+  const resolvedGeneratePdf = panelGates?.generatePdf ?? generatePdfGate;
+  const resolvedSendEmail = panelGates?.sendEmail ?? sendEmailGate;
+  const resolvedRegeneratePdf = panelGates?.regeneratePdf ?? regeneratePdfGate;
+
   const actions = {
-    view_pdf: viewPdfGate,
-    generate_pdf: generatePdfGate,
-    send_email: sendEmailGate,
-    regenerate_pdf: regeneratePdfGate,
+    view_pdf: resolvedViewPdf,
+    generate_pdf: resolvedGeneratePdf,
+    send_email: resolvedSendEmail,
+    regenerate_pdf: resolvedRegeneratePdf,
     mark_sent_externally: markSentGate,
     record_payment: recordPaymentGate,
     edit: editGate,
@@ -191,9 +201,9 @@ export function buildInvoiceDetailDto(
     },
     actions,
     primary: {
-      viewPdf: viewPdfGate,
-      generatePdf: generatePdfGate,
-      sendEmail: sendEmailGate,
+      viewPdf: resolvedViewPdf,
+      generatePdf: resolvedGeneratePdf,
+      sendEmail: resolvedSendEmail,
     },
     relations: buildInvoiceRelationsDto(
       invoice,

@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { createHash } from 'crypto';
 import { Readable } from 'stream';
-import { GeneratedDocument } from '@prisma/client';
+import { GeneratedDocument, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   DOCUMENTS_STORAGE,
@@ -134,6 +134,28 @@ export class GeneratedDocumentsService {
       orderBy: { createdAt: 'asc' },
     });
     return dedupeDocumentsByType(rows);
+  }
+
+  async listForInvoice(
+    orgId: string,
+    invoiceId: string,
+    bookingId?: string | null,
+    legacyDocumentId?: string | null,
+  ): Promise<GeneratedDocument[]> {
+    const or: Prisma.GeneratedDocumentWhereInput[] = [{ invoiceId }];
+    if (legacyDocumentId) {
+      or.push({ id: legacyDocumentId });
+    }
+    if (bookingId) {
+      or.push({
+        bookingId,
+        documentType: { in: ['BOOKING_INVOICE', 'FINAL_INVOICE'] },
+      });
+    }
+    return this.prisma.generatedDocument.findMany({
+      where: { organizationId: orgId, OR: or },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   async voidDocument(orgId: string, documentId: string): Promise<GeneratedDocument> {

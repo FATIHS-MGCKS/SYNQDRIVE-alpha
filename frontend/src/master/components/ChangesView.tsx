@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-detail-documents-v49460-2026-07-14',
+    version: '4.9.460',
+    title: 'V4.9.460 — Rechnungsdetail Dokumente: kanonisches Panel + Invoice-E-Mail',
+    summary: [
+      'Backend: `GET/POST …/invoices/:id/documents` (Panel, Generate, Send-Email, Delivery-Retry) — `InvoiceDocumentsService` + `InvoiceDocumentEmailService` (`INVOICE_SINGLE`, kein bookingId-Zwang).',
+      'Frontend: `InvoiceDocuments` mit Zuständen A–E (aktiv/leer/generierend/fehlgeschlagen/Versionen) + Versandhistorie; Capabilities aus Backend.',
+      '`SendInvoiceDialog` nutzt Invoice-Endpunkt statt `SendDocumentsEmailModal`; signed URLs nur bei Aktion (`api.documents.open`).',
+      'Header-Aktionen (PDF/E-Mail) über `documentsPanel.capabilities` in `buildInvoiceDetailDto`.',
+      'Tests: `InvoiceDocuments.test.tsx`, `invoiceDocuments.mapper.test.ts`, `useInvoiceDocuments.integration.test.ts`.',
+    ],
+    reason:
+      'PDF generieren und E-Mail waren deaktiviert, obwohl Dokumente existieren konnten — bookingId-Pflicht und fehlendes Invoice-Dokumentmodell.',
+    previousBehavior:
+      'Client prüfte `bookingId` + `generatedDocumentId`; E-Mail lief über buchungsgebundenen Dokumentflow; Dokumentkarte zeigte UUID-Schnipsel.',
+    details:
+      'Siehe `architecture/INVOICE_DETAIL_DOCUMENTS_2026-07-14.md`. Backend: `invoice-documents.*`, `invoice-document-email.service.ts`. Frontend: `useInvoiceDocuments`, `invoiceDocuments.api.ts`, `InvoiceDocuments.tsx`.',
+    affectsArchitecture: true,
+    module: 'Invoice Finance Workflow',
+    createdAt: '2026-07-14T22:40:00.000Z',
+  },
+  {
     id: 'invoice-detail-relations-v49459-2026-07-14',
     version: '4.9.459',
     title: 'V4.9.459 — Rechnungsdetail Zuordnung: angereicherte Relationen + Herkunft',
