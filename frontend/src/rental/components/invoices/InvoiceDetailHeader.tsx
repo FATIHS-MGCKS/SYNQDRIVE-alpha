@@ -25,7 +25,6 @@ export interface InvoiceDetailHeaderProps extends InvoiceThemeClasses {
   onRecordPayment?: () => void;
   onEdit?: () => void;
   onCancel?: () => void;
-  onCopyInternalId?: () => void;
 }
 
 function AmountCell({ label, value, emphasize }: { label: string; value: string; emphasize?: 'watch' | 'success' }) {
@@ -63,7 +62,6 @@ export function InvoiceDetailHeader({
   onRecordPayment,
   onEdit,
   onCancel,
-  onCopyInternalId,
   card,
   tp,
   ts,
@@ -149,7 +147,6 @@ export function InvoiceDetailHeader({
               onRecordPayment={onRecordPayment}
               onEdit={onEdit}
               onCancel={onCancel}
-              onCopyInternalId={onCopyInternalId}
               regenerating={regeneratingPdf}
               markingSent={markingSent}
             />

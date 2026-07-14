@@ -16,7 +16,6 @@ export interface InvoiceHeaderMoreMenuProps {
   onRecordPayment?: () => void;
   onEdit?: () => void;
   onCancel?: () => void;
-  onCopyInternalId?: () => void;
   regenerating?: boolean;
   markingSent?: boolean;
 }
@@ -59,7 +58,6 @@ export function InvoiceHeaderMoreMenu({
   onRecordPayment,
   onEdit,
   onCancel,
-  onCopyInternalId,
   regenerating,
   markingSent,
 }: InvoiceHeaderMoreMenuProps) {
@@ -94,8 +92,6 @@ export function InvoiceHeaderMoreMenu({
         <MoreItem label="Bearbeiten" gate={actions.edit} onClick={onEdit} />
         <DropdownMenuSeparator />
         <MoreItem label="Stornieren" gate={actions.cancel} onClick={onCancel} destructive />
-        <DropdownMenuSeparator />
-        <MoreItem label="Interne ID kopieren" gate={actions.copy_internal_id} onClick={onCopyInternalId} />
       </DropdownMenuContent>
     </DropdownMenu>
   );

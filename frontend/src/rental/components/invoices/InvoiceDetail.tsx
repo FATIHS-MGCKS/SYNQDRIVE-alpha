@@ -15,12 +15,11 @@ import { buildInvoiceDetailDto } from './invoiceDetail.mapper';
 import type { Invoice } from './invoiceTypes';
 import type { InvoiceThemeClasses } from './invoiceTheme';
 import { InvoiceDetailHeader } from './InvoiceDetailHeader';
+import { InvoiceDetailSecondary } from './InvoiceDetailSecondary';
 import { InvoiceDocuments } from './InvoiceDocuments';
 import { InvoiceLineItems } from './InvoiceLineItems';
-import { InvoiceNotes } from './InvoiceNotes';
 import { InvoicePayments } from './InvoicePayments';
 import { InvoiceRelations, type InvoiceRelationNavigation } from './InvoiceRelations';
-import { InvoiceTimeline } from './InvoiceTimeline';
 import { SendInvoiceDialog } from './SendInvoiceDialog';
 
 interface InvoiceDetailProps extends InvoiceThemeClasses {
@@ -62,7 +61,8 @@ export function InvoiceDetail({
   const relationsPermissions = useInvoiceRelationsPermissions();
   const { enrichment } = useInvoiceRelationsEnrichment(orgId, invoice);
   const viewportWidth = useViewportWidth();
-  const notesAnchorRef = useRef<HTMLDivElement>(null);
+  const notesSectionRef = useRef<HTMLDivElement>(null);
+  const [expandMoreInfoTrigger, setExpandMoreInfoTrigger] = useState(0);
 
   const [sendOpen, setSendOpen] = useState(false);
   const [defaultToEmail, setDefaultToEmail] = useState<string | null>(null);
@@ -102,8 +102,11 @@ export function InvoiceDetail({
   };
 
   const handleEdit = () => {
-    notesAnchorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    toast.message('Notizen und Stammdaten weiter unten bearbeiten');
+    if (!detail.actions.edit.allowed) {
+      toast.message(detail.actions.edit.reason ?? 'Bearbeiten nicht verfügbar');
+      return;
+    }
+    setExpandMoreInfoTrigger((n) => n + 1);
   };
 
   const openSendEmailDialog = useCallback(async () => {
@@ -128,7 +131,7 @@ export function InvoiceDetail({
   }, [detail.document.hasPdf, documents]);
 
   return (
-    <div className="max-w-3xl mx-auto space-y-4">
+    <div className="max-w-3xl mx-auto space-y-3 md:space-y-4">
       <button type="button" onClick={onBack} className={`flex items-center gap-1 text-xs font-medium ${ts}`}>
         <Icon name="chevron-left" className="w-4 h-4" /> Zurück
       </button>
@@ -149,7 +152,6 @@ export function InvoiceDetail({
         onRecordPayment={paymentsHook.openRecordDialog}
         onEdit={handleEdit}
         onCancel={() => toast.message(detail.actions.cancel.reason ?? 'Stornierung nicht verfügbar')}
-        onCopyInternalId={() => void handleCopyInternalId()}
         isDarkMode={isDarkMode}
         card={card}
         tp={tp}
@@ -157,50 +159,24 @@ export function InvoiceDetail({
         inputCls={inputCls}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <InvoiceTimeline
-          orgId={orgId}
-          invoiceId={invoice.id}
-          isDarkMode={isDarkMode}
-          card={card}
-          tp={tp}
-          ts={ts}
-          inputCls={inputCls}
-        />
+      <InvoiceRelations
+        detail={detail}
+        navigation={navigation}
+        isDarkMode={isDarkMode}
+        card={card}
+        tp={tp}
+        ts={ts}
+        inputCls={inputCls}
+      />
 
-        <div className="space-y-4">
-          <InvoiceRelations
-            detail={detail}
-            navigation={navigation}
-            tasks={invoice.tasks}
-            isDarkMode={isDarkMode}
-            card={card}
-            tp={tp}
-            ts={ts}
-            inputCls={inputCls}
-          />
-
-          <InvoiceDocuments
-            panel={documents.panel}
-            loading={documents.loading}
-            generating={documents.generating}
-            sendingEmail={documents.sendingEmail}
-            retryingEmailId={documents.retryingEmailId}
-            onPreview={documents.previewDocument}
-            onDownload={documents.downloadDocument}
-            onPreviewIncoming={documents.previewIncomingAttachment}
-            onGenerate={(regenerate) => void documents.generatePdf(regenerate)}
-            onSendEmail={() => void openSendEmailDialog()}
-            onRetryGeneration={() => void documents.generatePdf(false)}
-            onRetryDelivery={(emailId) => void documents.retryDelivery(emailId)}
-            isDarkMode={isDarkMode}
-            card={card}
-            tp={tp}
-            ts={ts}
-            inputCls={inputCls}
-          />
-        </div>
-      </div>
+      <InvoiceLineItems
+        invoice={invoice}
+        isDarkMode={isDarkMode}
+        card={card}
+        tp={tp}
+        ts={ts}
+        inputCls={inputCls}
+      />
 
       <InvoicePayments
         invoice={invoice}
@@ -230,8 +206,19 @@ export function InvoiceDetail({
         inputCls={inputCls}
       />
 
-      <InvoiceLineItems
-        invoice={invoice}
+      <InvoiceDocuments
+        panel={documents.panel}
+        loading={documents.loading}
+        generating={documents.generating}
+        sendingEmail={documents.sendingEmail}
+        retryingEmailId={documents.retryingEmailId}
+        onPreview={documents.previewDocument}
+        onDownload={documents.downloadDocument}
+        onPreviewIncoming={documents.previewIncomingAttachment}
+        onGenerate={(regenerate) => void documents.generatePdf(regenerate)}
+        onSendEmail={() => void openSendEmailDialog()}
+        onRetryGeneration={() => void documents.generatePdf(false)}
+        onRetryDelivery={(emailId) => void documents.retryDelivery(emailId)}
         isDarkMode={isDarkMode}
         card={card}
         tp={tp}
@@ -239,26 +226,21 @@ export function InvoiceDetail({
         inputCls={inputCls}
       />
 
-      <div ref={notesAnchorRef}>
-        <InvoiceNotes
-          invoice={invoice}
-          onSave={actions.saveNotes}
-          isDarkMode={isDarkMode}
-          card={card}
-          tp={tp}
-          ts={ts}
-          inputCls={inputCls}
-        />
-      </div>
-
-      {invoice.description && (
-        <div className={`${card} p-5`}>
-          <h3 className={`text-xs font-bold ${tp} mb-2 uppercase tracking-wider`}>Beschreibung</h3>
-          <p className={`text-xs leading-relaxed ${isDarkMode ? 'text-foreground/85' : 'text-gray-700'}`}>
-            {invoice.description}
-          </p>
-        </div>
-      )}
+      <InvoiceDetailSecondary
+        invoice={invoice}
+        detail={detail}
+        orgId={orgId}
+        viewportWidth={viewportWidth}
+        notesSectionRef={notesSectionRef}
+        expandMoreInfoTrigger={expandMoreInfoTrigger}
+        onSaveNotes={actions.saveNotes}
+        onCopyInternalId={() => void handleCopyInternalId()}
+        isDarkMode={isDarkMode}
+        card={card}
+        tp={tp}
+        ts={ts}
+        inputCls={inputCls}
+      />
 
       <SendInvoiceDialog
         invoice={invoice}

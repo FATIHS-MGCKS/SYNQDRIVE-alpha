@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-detail-hierarchy-v49464-2026-07-14',
+    version: '4.9.464',
+    title: 'V4.9.464 — Rechnungsdetail: sekundäre Inhalte gruppiert, Mobile verkürzt',
+    summary: [
+      'Primärreihenfolge: Header → Zuordnung (nur Entitäten) → Positionen → Zahlungen → Dokumente.',
+      'Sekundär in einem Accordion: Weitere Informationen (Beschreibung + interne Notizen), Aufgaben, Herkunft & Audit (inkl. Verlauf, interne ID).',
+      '4 große Einzelkarten entfernt (Aufgaben, Notizen, Beschreibung, Verlauf); leere Notizen nicht mehr als übergroße Karte.',
+      'Interne Notizen vs. Kundenbeschreibung klar getrennt; Bearbeiten nur bei `edit`-Gate; erledigte Aufgaben sekundär; Aufgabentitel ohne UUID.',
+      'Interne ID nur noch bewusst unter Herkunft & Audit — nicht mehr im Header-Menü.',
+    ],
+    reason:
+      'Sekundäre Bereiche (Notizen, Beschreibung, Aufgaben, Herkunft, Verlauf) belegten jeweils große eigene Karten und verlängerten die Mobile-Seite unnötig.',
+    previousBehavior:
+      '2-Spalten-Grid mit Verlauf + Zuordnung/Herkunft/Aufgaben; separate Notizen- und Beschreibungskarten am Seitenende.',
+    details: 'Siehe `architecture/INVOICE_DETAIL_HIERARCHY_2026-07-14.md`.',
+    affectsArchitecture: true,
+    module: 'Invoice Finance Workflow',
+    createdAt: '2026-07-14T23:20:00.000Z',
+  },
+  {
     id: 'invoice-detail-line-items-v49463-2026-07-14',
     version: '4.9.463',
     title: 'V4.9.463 — Rechnungsdetail Positionen & Summen: klare Netto/Brutto-Darstellung',

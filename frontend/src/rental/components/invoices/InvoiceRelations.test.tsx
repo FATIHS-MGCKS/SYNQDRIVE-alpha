@@ -45,7 +45,7 @@ const theme = {
 };
 
 describe('InvoiceRelations component', () => {
-  it('renders provenance fields separately and never shows Verknüpft', () => {
+  it('renders entity relations without provenance block', () => {
     const detail = buildInvoiceDetailDto(sampleInvoice(), {
       canManageEmail: true,
       relationsEnrichment: {
@@ -68,11 +68,9 @@ describe('InvoiceRelations component', () => {
 
     expect(html).toContain('Erika Beispiel');
     expect(html).toContain('KD-555555');
-    expect(html).toContain('Erstellt von');
-    expect(html).toContain('Erstellt über');
-    expect(html).toContain('Quelle');
-    expect(html).toContain('Tom Tenant');
-    expect(html).toContain('Buchungsassistent');
+    expect(html).not.toContain('Erstellt von');
+    expect(html).not.toContain('Erstellt über');
+    expect(html).not.toContain('Quelle');
     expect(html).not.toContain('Verknüpft');
     expect(html).not.toContain('cust-11111111');
     expect(html).not.toContain('Automatisch (Buchung)');
@@ -246,7 +244,7 @@ describe('InvoiceRelations component', () => {
 
     const html = renderToStaticMarkup(<InvoiceRelations detail={detail} {...theme} />);
     expect(html).toContain('Relation gelöscht');
-    expect(html).toContain('Legacy-Herkunft');
+    expect(html).not.toContain('Legacy-Herkunft');
     expect(html).not.toContain('BK-');
   });
 });

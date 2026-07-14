@@ -5,12 +5,13 @@ import { useInvoiceTimeline } from './hooks/useInvoiceTimeline';
 import { mapInvoiceTimelinePanel } from './invoiceTimeline.mapper';
 import type { InvoiceThemeClasses } from './invoiceTheme';
 
-interface InvoiceTimelineProps extends InvoiceThemeClasses {
+interface InvoiceTimelineProps extends Partial<InvoiceThemeClasses> {
   orgId: string;
   invoiceId: string;
+  embedded?: boolean;
 }
 
-export function InvoiceTimeline({ orgId, invoiceId, card, tp, ts }: InvoiceTimelineProps) {
+export function InvoiceTimeline({ orgId, invoiceId, card, tp, ts, embedded = false }: InvoiceTimelineProps) {
   const { panel, loading, error } = useInvoiceTimeline(orgId, invoiceId);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
@@ -25,12 +26,15 @@ export function InvoiceTimeline({ orgId, invoiceId, card, tp, ts }: InvoiceTimel
     });
   };
 
+  const titleClass = tp ?? 'text-foreground';
+  const mutedClass = ts ?? 'text-muted-foreground';
+
   return (
-    <div className={`${card} p-5 space-y-3`}>
+    <div className={embedded ? 'space-y-2 pt-2 border-t border-border/40' : `${card} p-5 space-y-3`}>
       <div className="flex items-center justify-between gap-2">
-        <h3 className={`text-xs font-bold ${tp} uppercase tracking-wider`}>Verlauf</h3>
+        <h3 className={`text-[10px] font-semibold ${titleClass} uppercase tracking-wider`}>Verlauf</h3>
         {panel?.isLegacyReduced ? (
-          <span className={`text-[10px] ${ts}`} title="Reduzierter Verlauf für ältere Rechnungen">
+          <span className={`text-[10px] ${mutedClass}`} title="Reduzierter Verlauf für ältere Rechnungen">
             Basis-Verlauf
           </span>
         ) : null}
@@ -50,7 +54,7 @@ export function InvoiceTimeline({ orgId, invoiceId, card, tp, ts }: InvoiceTimel
       ) : null}
 
       {panel && items.length === 0 ? (
-        <p className={`text-xs ${ts}`}>Noch keine Ereignisse für diese Rechnung.</p>
+        <p className={`text-xs ${mutedClass}`}>Noch keine Ereignisse für diese Rechnung.</p>
       ) : null}
 
       {items.length > 0 ? (
@@ -84,16 +88,16 @@ export function InvoiceTimeline({ orgId, invoiceId, card, tp, ts }: InvoiceTimel
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-start justify-between gap-2">
-                    <p className={`text-xs font-semibold leading-snug ${tp}`}>{item.title}</p>
+                    <p className={`text-xs font-semibold leading-snug ${titleClass}`}>{item.title}</p>
                     <time
-                      className={`shrink-0 text-[10px] tabular-nums ${ts}`}
+                      className={`shrink-0 text-[10px] tabular-nums ${mutedClass}`}
                       dateTime={item.occurredAt}
                     >
                       {item.time}
                     </time>
                   </div>
 
-                  <p className={`mt-0.5 text-[11px] leading-snug ${ts}`}>{item.actorLine}</p>
+                  <p className={`mt-0.5 text-[11px] leading-snug ${mutedClass}`}>{item.actorLine}</p>
 
                   {item.detail && canExpand ? (
                     <button
@@ -107,7 +111,7 @@ export function InvoiceTimeline({ orgId, invoiceId, card, tp, ts }: InvoiceTimel
                   ) : null}
 
                   {item.detail && (!canExpand || expanded) ? (
-                    <p className={`mt-1 text-[11px] leading-relaxed ${ts}`}>{item.detail}</p>
+                    <p className={`mt-1 text-[11px] leading-relaxed ${mutedClass}`}>{item.detail}</p>
                   ) : null}
                 </div>
               </li>
@@ -117,7 +121,7 @@ export function InvoiceTimeline({ orgId, invoiceId, card, tp, ts }: InvoiceTimel
       ) : null}
 
       {panel?.sortOrder === 'desc' ? (
-        <p className={`text-[10px] ${ts}`}>Neueste Ereignisse zuerst</p>
+        <p className={`text-[10px] ${mutedClass}`}>Neueste Ereignisse zuerst</p>
       ) : null}
     </div>
   );
