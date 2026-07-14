@@ -6,6 +6,7 @@ import { Icon } from '../ui/Icon';
 import { useRentalOrg } from '../../RentalContext';
 import { useInvoiceActions } from './hooks/useInvoiceActions';
 import { useInvoiceDocuments } from './hooks/useInvoiceDocuments';
+import { useInvoicePayments } from './hooks/useInvoicePayments';
 import {
   useInvoiceRelationsEnrichment,
   useInvoiceRelationsPermissions,
@@ -63,10 +64,6 @@ export function InvoiceDetail({
   const viewportWidth = useViewportWidth();
   const notesAnchorRef = useRef<HTMLDivElement>(null);
 
-  const [showPaymentForm, setShowPaymentForm] = useState(false);
-  const [paymentAmount, setPaymentAmount] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState('BANK_TRANSFER');
-  const [paymentReference, setPaymentReference] = useState('');
   const [sendOpen, setSendOpen] = useState(false);
   const [defaultToEmail, setDefaultToEmail] = useState<string | null>(null);
 
@@ -91,25 +88,10 @@ export function InvoiceDetail({
     [invoice, canManageEmail, enrichment, relationsPermissions, documents.panel],
   );
 
-  const outstanding = detail.amounts.outstandingCents;
-  const paidCents = detail.amounts.paidCents;
+  const paymentsHook = useInvoicePayments(orgId, invoice, onUpdate, detail.actions.record_payment);
+
   const lineItems = Array.isArray(invoice.lineItems) ? invoice.lineItems : [];
   const payments = invoice.payments ?? [];
-
-  const openPaymentForm = () => {
-    setShowPaymentForm(true);
-    setPaymentAmount((outstanding / 100).toFixed(2));
-  };
-
-  const handleSubmitPayment = async () => {
-    const amountCents = Math.round(parseFloat(paymentAmount || '0') * 100);
-    const ok = await actions.handleRecordPayment(amountCents, paymentMethod, paymentReference);
-    if (ok) {
-      setShowPaymentForm(false);
-      setPaymentAmount('');
-      setPaymentReference('');
-    }
-  };
 
   const handleCopyInternalId = async () => {
     try {
@@ -159,26 +141,16 @@ export function InvoiceDetail({
         generatingPdf={documents.generating}
         regeneratingPdf={documents.generating}
         markingSent={actions.markingSent}
-        showPaymentForm={showPaymentForm}
-        paymentAmount={paymentAmount}
-        paymentMethod={paymentMethod}
-        paymentReference={paymentReference}
-        recordingPayment={actions.recordingPayment}
         onViewPdf={documents.previewActiveDocument}
         onGeneratePdf={handleGeneratePdf}
         onSendEmail={() => void openSendEmailDialog()}
         onIssue={() => void actions.handleIssue()}
         onRegeneratePdf={() => void documents.generatePdf(true)}
         onMarkSentExternally={() => void actions.handleMarkSent()}
-        onRecordPayment={openPaymentForm}
+        onRecordPayment={paymentsHook.openRecordDialog}
         onEdit={handleEdit}
         onCancel={() => toast.message(detail.actions.cancel.reason ?? 'Stornierung nicht verfügbar')}
         onCopyInternalId={() => void handleCopyInternalId()}
-        onPaymentAmountChange={setPaymentAmount}
-        onPaymentMethodChange={setPaymentMethod}
-        onPaymentReferenceChange={setPaymentReference}
-        onCancelPaymentForm={() => setShowPaymentForm(false)}
-        onSubmitPayment={() => void handleSubmitPayment()}
         isDarkMode={isDarkMode}
         card={card}
         tp={tp}
@@ -234,6 +206,24 @@ export function InvoiceDetail({
       <InvoicePayments
         invoice={invoice}
         payments={payments}
+        recordGate={detail.actions.record_payment}
+        recordDialogOpen={paymentsHook.recordDialogOpen}
+        onRecordDialogOpenChange={paymentsHook.setRecordDialogOpen}
+        amountInput={paymentsHook.amountInput}
+        method={paymentsHook.method}
+        paidAt={paymentsHook.paidAt}
+        reference={paymentsHook.reference}
+        note={paymentsHook.note}
+        recording={paymentsHook.recording}
+        detailPaymentId={paymentsHook.detailPaymentId}
+        onDetailPaymentIdChange={paymentsHook.setDetailPaymentId}
+        onAmountInputChange={paymentsHook.setAmountInput}
+        onMethodChange={paymentsHook.setMethod}
+        onPaidAtChange={paymentsHook.setPaidAt}
+        onReferenceChange={paymentsHook.setReference}
+        onNoteChange={paymentsHook.setNote}
+        onOpenRecordDialog={paymentsHook.openRecordDialog}
+        onSubmitRecord={() => void paymentsHook.submitRecord()}
         isDarkMode={isDarkMode}
         card={card}
         tp={tp}

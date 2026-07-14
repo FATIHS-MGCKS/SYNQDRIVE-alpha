@@ -4231,7 +4231,7 @@ export const api = {
     recordPayment: (
       orgId: string,
       id: string,
-      data: { amountCents: number; method?: string; paidAt?: string; reference?: string; note?: string },
+      data: { amountCents: number; method: string; paidAt?: string; reference?: string; note?: string },
     ) =>
       post<import('../rental/components/invoices/invoiceTypes').Invoice>(
         `/organizations/${orgId}/invoices/${id}/payments`,

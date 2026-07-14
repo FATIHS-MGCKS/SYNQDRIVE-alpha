@@ -163,9 +163,8 @@ export class RecordInvoicePaymentDto {
   @Min(1)
   amountCents!: number;
 
-  @IsOptional()
   @IsEnum(InvoicePaymentMethod)
-  method?: InvoicePaymentMethod;
+  method!: InvoicePaymentMethod;
 
   @IsOptional()
   @IsISO8601()

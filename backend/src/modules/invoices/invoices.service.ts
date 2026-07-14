@@ -33,6 +33,8 @@ import {
   parseLegacyLineItems,
 } from './invoice-line-items.util';
 import { InvoiceNumberService } from './invoice-number.service';
+import { userDisplayName } from './invoice-documents.labels';
+import { presentInvoicePayment } from './invoice-payments.presentation';
 
 @Injectable()
 export class InvoicesService {
@@ -129,23 +131,18 @@ export class InvoicesService {
         payments: { orderBy: { paidAt: 'desc' }, take: 5 },
       },
     });
-    return invoices.map((inv) => {
-      const formatted = this.format(inv as unknown as Record<string, unknown>);
-      formatted.tasks = (inv.tasks || []).map((t) => ({
-        id: t.id,
-        title: t.title,
-        status: t.status,
-      }));
-      formatted.payments = (inv.payments || []).map((p) => ({
-        id: p.id,
-        amountCents: p.amountCents,
-        method: p.method,
-        paidAt: p.paidAt.toISOString(),
-        reference: p.reference,
-        note: p.note,
-      }));
-      return formatted;
-    });
+    return Promise.all(
+      invoices.map(async (inv) => {
+        const formatted = this.format(inv as unknown as Record<string, unknown>);
+        formatted.tasks = (inv.tasks || []).map((t) => ({
+          id: t.id,
+          title: t.title,
+          status: t.status,
+        }));
+        formatted.payments = await this.presentPayments(orgId, inv.payments || []);
+        return formatted;
+      }),
+    );
   }
 
   async findByCustomer(orgId: string, customerId: string) {
@@ -184,14 +181,16 @@ export class InvoicesService {
       priority: t.priority,
       description: t.description,
     }));
-    formatted.payments = (inv.payments || []).map((p) => ({
-      id: p.id,
-      amountCents: p.amountCents,
-      method: p.method,
-      paidAt: p.paidAt.toISOString(),
-      reference: p.reference,
-      note: p.note,
-    }));
+    formatted.payments = orgId
+      ? await this.presentPayments(orgId, inv.payments || [])
+      : (inv.payments || []).map((p) => ({
+          id: p.id,
+          amountCents: p.amountCents,
+          method: p.method,
+          paidAt: p.paidAt.toISOString(),
+          reference: p.reference,
+          note: p.note,
+        }));
     return formatted;
   }
 
@@ -386,12 +385,42 @@ export class InvoicesService {
   async recordPayment(id: string, orgId: string, dto: RecordInvoicePaymentDto, createdByUserId?: string) {
     const inv = await this.requireInvoice(id, orgId);
     if (!canRecordPayment(inv.status)) {
-      throw new BadRequestException(`Cannot record payment for status ${inv.status}`);
+      throw new BadRequestException('Zahlung für diesen Rechnungsstatus nicht möglich');
+    }
+
+    if (!Number.isInteger(dto.amountCents) || dto.amountCents < 1) {
+      throw new BadRequestException('Ungültiger Betrag');
     }
 
     const outstanding = Math.max(0, inv.totalCents - inv.paidCents);
     if (dto.amountCents > outstanding) {
-      throw new BadRequestException('Payment exceeds outstanding amount');
+      throw new BadRequestException('Betrag übersteigt den offenen Restbetrag');
+    }
+
+    const reference = dto.reference?.trim() || null;
+    if (reference) {
+      const duplicateRef = await this.prisma.orgInvoicePayment.findFirst({
+        where: { organizationId: orgId, invoiceId: id, reference },
+      });
+      if (duplicateRef) {
+        throw new BadRequestException('Diese Referenz wurde bereits verbucht');
+      }
+    }
+
+    if (dto.method === InvoicePaymentMethod.STRIPE && reference) {
+      const duplicateProvider = await this.prisma.orgInvoicePayment.findFirst({
+        where: {
+          organizationId: orgId,
+          OR: [
+            { stripePaymentIntentId: reference },
+            { stripeChargeId: reference },
+            { reference },
+          ],
+        },
+      });
+      if (duplicateProvider) {
+        throw new BadRequestException('Diese Anbieterzahlung wurde bereits verbucht');
+      }
     }
 
     await this.prisma.orgInvoicePayment.create({
@@ -399,10 +428,10 @@ export class InvoicesService {
         organizationId: orgId,
         invoiceId: id,
         amountCents: dto.amountCents,
-        method: dto.method ?? InvoicePaymentMethod.BANK_TRANSFER,
+        method: dto.method,
         paidAt: dto.paidAt ? new Date(dto.paidAt) : new Date(),
-        reference: dto.reference,
-        note: dto.note,
+        reference,
+        note: dto.note?.trim() || null,
         createdByUserId,
       },
     });
@@ -685,6 +714,37 @@ export class InvoicesService {
     const isOverdue = Number.isFinite(dueMs) && dueMs < Date.now();
     if (isOverdue) return totalCents >= 50000 ? 'CRITICAL' : 'HIGH';
     return totalCents >= 50000 ? 'HIGH' : 'NORMAL';
+  }
+
+  private async presentPayments(
+    orgId: string,
+    payments: Array<{
+      id: string;
+      amountCents: number;
+      method: InvoicePaymentMethod;
+      paidAt: Date;
+      reference: string | null;
+      note: string | null;
+      createdByUserId: string | null;
+      stripePaymentIntentId: string | null;
+      stripeChargeId: string | null;
+      bookingPaymentRequestId: string | null;
+    }>,
+  ) {
+    const userIds = [...new Set(payments.map((p) => p.createdByUserId).filter(Boolean))] as string[];
+    const users = userIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, name: true, firstName: true, lastName: true, email: true },
+        })
+      : [];
+    const userMap = new Map(users.map((u) => [u.id, u]));
+    return payments.map((payment) =>
+      presentInvoicePayment(
+        payment as Parameters<typeof presentInvoicePayment>[0],
+        payment.createdByUserId ? userDisplayName(userMap.get(payment.createdByUserId)) : null,
+      ),
+    );
   }
 
   private async createUnpaidTask(

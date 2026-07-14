@@ -40,6 +40,11 @@ export interface InvoicePayment {
   paidAt: string;
   reference?: string | null;
   note?: string | null;
+  createdByUserId?: string | null;
+  createdByName?: string | null;
+  statusKind?: 'recorded' | 'provider_confirmed';
+  statusLabel?: string;
+  isProviderBacked?: boolean;
 }
 
 export interface Invoice {

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-detail-payments-v49462-2026-07-14',
+    version: '4.9.462',
+    title: 'V4.9.462 — Rechnungsdetail Zahlungen: lokalisierte UI, Mobile Cards, transparenter Erfassungsdialog',
+    summary: [
+      'Backend: `presentInvoicePayment` + `presentPayments` mit `createdByName`, Status (`recorded`/`provider_confirmed`); `recordPayment` mit Pflichtfeld `method`, deutschen Fehlern (Überzahlung, doppelte Referenz/Anbieter).',
+      'Frontend: `InvoicePayments` immer sichtbar — Summen bezahlt/offen; Desktop-Tabelle; Mobile Cards statt gequetschter Tabelle; zentrale i18n-Formatter (`invoicePayment.*`).',
+      '`RecordPaymentDialog` als `FormDialog` (Betrag vorausgefüllt, Zahlungsart Pflicht, Datum/Referenz/Notiz); `InvoicePaymentDetailDialog` für Details.',
+      'Kein Header-Inline-Formular; kein „vollständig bezahlt“-Shortcut in der UI; Korrigieren/Stornieren nicht exponiert (kein Backend-Endpunkt).',
+      'Tests: `invoice-payments.presentation.spec.ts`, `invoicePayments.mapper.test.ts`, `InvoicePayments.test.tsx` (320–desktop), `useInvoicePayments.integration.test.ts`.',
+    ],
+    reason:
+      'Zahlungen zeigten Roh-Enums wie CARD, die mobile Tabelle war unlesbar, und die Zahlungsverbuchung war im UI nicht nachvollziehbar.',
+    previousBehavior:
+      '`InvoicePayments` war eine schmale Tabelle mit `p.method` als Enum; Zahlungserfassung als Inline-Formular im Header ohne Datum/Notiz.',
+    details: 'Siehe `architecture/INVOICE_DETAIL_PAYMENTS_2026-07-14.md`.',
+    affectsArchitecture: true,
+    module: 'Invoice Finance Workflow',
+    createdAt: '2026-07-14T23:10:00.000Z',
+  },
+  {
     id: 'invoice-detail-timeline-v49461-2026-07-14',
     version: '4.9.461',
     title: 'V4.9.461 — Rechnungsdetail Verlauf: Timeline aus Audit- und Domänenereignissen',

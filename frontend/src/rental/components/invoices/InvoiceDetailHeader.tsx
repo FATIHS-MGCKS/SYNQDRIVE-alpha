@@ -8,7 +8,6 @@ import { primaryActionsGridClass, resolveInvoiceHeaderLayoutMode } from './invoi
 import { HeaderActionButton } from './InvoiceHeaderActionButton';
 import { InvoiceHeaderMoreMenu } from './InvoiceHeaderMoreMenu';
 import type { InvoiceThemeClasses } from './invoiceTheme';
-import { RecordPaymentDialog } from './RecordPaymentDialog';
 
 export interface InvoiceDetailHeaderProps extends InvoiceThemeClasses {
   detail: InvoiceDetailDto;
@@ -17,11 +16,6 @@ export interface InvoiceDetailHeaderProps extends InvoiceThemeClasses {
   generatingPdf?: boolean;
   regeneratingPdf?: boolean;
   markingSent?: boolean;
-  showPaymentForm?: boolean;
-  paymentAmount?: string;
-  paymentMethod?: string;
-  paymentReference?: string;
-  recordingPayment?: boolean;
   onViewPdf?: () => void;
   onGeneratePdf?: () => void;
   onSendEmail?: () => void;
@@ -32,11 +26,6 @@ export interface InvoiceDetailHeaderProps extends InvoiceThemeClasses {
   onEdit?: () => void;
   onCancel?: () => void;
   onCopyInternalId?: () => void;
-  onPaymentAmountChange?: (value: string) => void;
-  onPaymentMethodChange?: (value: string) => void;
-  onPaymentReferenceChange?: (value: string) => void;
-  onCancelPaymentForm?: () => void;
-  onSubmitPayment?: () => void;
 }
 
 function AmountCell({ label, value, emphasize }: { label: string; value: string; emphasize?: 'watch' | 'success' }) {
@@ -65,11 +54,6 @@ export function InvoiceDetailHeader({
   generatingPdf,
   regeneratingPdf,
   markingSent,
-  showPaymentForm,
-  paymentAmount = '',
-  paymentMethod = 'BANK_TRANSFER',
-  paymentReference = '',
-  recordingPayment,
   onViewPdf,
   onGeneratePdf,
   onSendEmail,
@@ -80,16 +64,9 @@ export function InvoiceDetailHeader({
   onEdit,
   onCancel,
   onCopyInternalId,
-  onPaymentAmountChange,
-  onPaymentMethodChange,
-  onPaymentReferenceChange,
-  onCancelPaymentForm,
-  onSubmitPayment,
   card,
   tp,
   ts,
-  inputCls,
-  isDarkMode,
 }: InvoiceDetailHeaderProps) {
   const layoutMode = useMemo(() => resolveInvoiceHeaderLayoutMode(viewportWidth), [viewportWidth]);
   const typeMeta = INVOICE_TYPE_MAP[detail.core.type] || INVOICE_TYPE_MAP.OUTGOING_MANUAL;
@@ -179,24 +156,6 @@ export function InvoiceDetailHeader({
           </div>
         </div>
       </div>
-
-      <RecordPaymentDialog
-        open={Boolean(showPaymentForm)}
-        paymentAmount={paymentAmount}
-        paymentMethod={paymentMethod}
-        paymentReference={paymentReference}
-        recordingPayment={Boolean(recordingPayment)}
-        onPaymentAmountChange={onPaymentAmountChange ?? (() => undefined)}
-        onPaymentMethodChange={onPaymentMethodChange ?? (() => undefined)}
-        onPaymentReferenceChange={onPaymentReferenceChange ?? (() => undefined)}
-        onCancel={onCancelPaymentForm ?? (() => undefined)}
-        onSubmit={onSubmitPayment ?? (() => undefined)}
-        isDarkMode={isDarkMode}
-        tp={tp}
-        ts={ts}
-        card={card}
-        inputCls={inputCls}
-      />
     </div>
   );
 }

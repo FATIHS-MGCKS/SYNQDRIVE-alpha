@@ -106,8 +106,9 @@ export class InvoicesController {
     @Param('orgId') orgId: string,
     @Param('id') id: string,
     @Body() body: RecordInvoicePaymentDto,
+    @CurrentUser('id') userId: string | undefined,
   ) {
-    return this.invoicesService.recordPayment(id, orgId, body);
+    return this.invoicesService.recordPayment(id, orgId, body, userId);
   }
 
   @Patch('organizations/:orgId/invoices/:id/pay')
