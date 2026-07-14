@@ -231,7 +231,7 @@ describe('InvoiceDocumentEmailService', () => {
       }),
     );
     expect(storage.getObject).toHaveBeenCalledWith('key-1');
-    expect(activityLog.log).toHaveBeenCalledTimes(2);
+    expect(activityLog.log).toHaveBeenCalledTimes(3);
     expect(prisma.generatedDocument.updateMany).toHaveBeenCalled();
   });
 });

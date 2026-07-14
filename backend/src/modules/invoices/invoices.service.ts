@@ -15,6 +15,7 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { CreateInvoiceDto, RecordInvoicePaymentDto, UpdateInvoiceDto } from './dto';
+import { validateExternalMarkSent } from './invoice-status.transitions';
 import {
   canRecordPayment,
   defaultStatusForCreate,
@@ -532,19 +533,18 @@ export class InvoicesService {
 
   async markSent(id: string, orgId: string) {
     const inv = await this.requireInvoice(id, orgId);
-    if (!isOutgoingInvoiceType(inv.type)) {
-      throw new BadRequestException('Only outgoing invoices can be marked as sent');
-    }
-    if (!['ISSUED', 'SENT', 'PARTIALLY_PAID', 'OVERDUE'].includes(inv.status)) {
-      throw new BadRequestException('Invoice must be issued before marking as sent');
-    }
-    if (!inv.sequenceNumber) {
-      throw new BadRequestException('Issue the invoice before marking as sent');
+    const validation = validateExternalMarkSent({
+      type: inv.type,
+      status: inv.status,
+      sequenceNumber: inv.sequenceNumber,
+    });
+    if (!validation.ok) {
+      throw new BadRequestException(validation.message);
     }
 
     await this.prisma.orgInvoice.update({
       where: { id },
-      data: { status: 'SENT', sentAt: new Date() },
+      data: { status: 'SENT', sentAt: validation.sentAt },
     });
     return this.findById(id, orgId);
   }

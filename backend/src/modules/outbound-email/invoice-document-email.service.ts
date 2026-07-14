@@ -30,6 +30,7 @@ import {
 } from '@modules/documents/storage/document-storage.interface';
 import { InvoiceDocumentsReadService } from '@modules/invoices/invoice-documents-read.service';
 import { validateInvoiceEmailSend } from '@modules/invoices/invoice-send-email.util';
+import { logInvoiceCommunicationStatusChange } from '@modules/invoices/invoice-outbound-status-coordinator.util';
 import {
   buildDefaultInvoiceEmailHtml,
   buildDefaultInvoiceEmailSubject,
@@ -38,6 +39,12 @@ import {
 import { OutboundEmailPolicyService } from './outbound-email-policy.service';
 import { OutboundEmailService } from './outbound-email.service';
 import { sanitizeOutboundErrorMessage } from './outbound-email-audit.util';
+import {
+  buildPreparingPatch,
+  buildProviderFailurePatch,
+  buildProviderResultPatch,
+  deriveOutboundCommunicationPhase,
+} from './outbound-email-status.transitions';
 import { EmailProviderRegistry } from './providers/email-provider.registry';
 
 export interface SendInvoiceEmailInput {
@@ -237,7 +244,7 @@ export class InvoiceDocumentEmailService {
 
     await this.prisma.outboundEmail.update({
       where: { id: outbound.id },
-      data: { status: OutboundEmailStatus.SENDING },
+      data: buildPreparingPatch(),
     });
     await this.outboundEmail.recordEvent(outbound.id, OutboundEmailEventType.SENDING);
 
@@ -267,20 +274,30 @@ export class InvoiceDocumentEmailService {
       const message = sanitizeOutboundErrorMessage(
         err instanceof Error ? err.message : String(err),
       );
-      const failedAt = new Date();
+      const failPatch = buildProviderFailurePatch('PROVIDER_ERROR', message);
+      const previous = {
+        status: OutboundEmailStatus.SENDING,
+        deliveryStatus: OutboundEmailDeliveryStatus.PENDING,
+      };
       await this.prisma.outboundEmail.update({
         where: { id: outbound.id },
-        data: {
-          status: OutboundEmailStatus.FAILED,
-          deliveryStatus: OutboundEmailDeliveryStatus.FAILED,
-          errorCode: 'PROVIDER_ERROR',
-          errorMessage: message,
-          failedAt,
-        },
+        data: failPatch,
       });
       await this.outboundEmail.recordEvent(outbound.id, OutboundEmailEventType.FAILED, {
         errorCode: 'PROVIDER_ERROR',
         errorMessage: message,
+      });
+      await logInvoiceCommunicationStatusChange(this.activityLog, {
+        organizationId: orgId,
+        invoiceId,
+        outboundEmailId: outbound.id,
+        userId,
+        previous,
+        next: {
+          status: failPatch.status!,
+          deliveryStatus: failPatch.deliveryStatus!,
+        },
+        documentId: document.id,
       });
       await this.activityLog.log({
         organizationId: orgId,
@@ -297,38 +314,19 @@ export class InvoiceDocumentEmailService {
       );
     }
 
-    const finalStatus =
-      result.status === 'SENT'
-        ? OutboundEmailStatus.SENT
-        : result.status === 'SENT_SIMULATED'
-          ? OutboundEmailStatus.SENT_SIMULATED
-          : OutboundEmailStatus.FAILED;
-
-    const acceptedAt =
-      finalStatus === OutboundEmailStatus.SENT ||
-      finalStatus === OutboundEmailStatus.SENT_SIMULATED
-        ? new Date()
-        : null;
-    const failedAt = finalStatus === OutboundEmailStatus.FAILED ? new Date() : null;
+    const previous = {
+      status: OutboundEmailStatus.SENDING,
+      deliveryStatus: OutboundEmailDeliveryStatus.PENDING,
+    };
+    const resultPatch = buildProviderResultPatch(previous, result);
 
     const updated = await this.prisma.outboundEmail.update({
       where: { id: outbound.id },
-      data: {
-        status: finalStatus,
-        deliveryStatus:
-          finalStatus === OutboundEmailStatus.FAILED
-            ? OutboundEmailDeliveryStatus.FAILED
-            : OutboundEmailDeliveryStatus.ACCEPTED,
-        provider: result.provider,
-        providerMessageId: result.providerMessageId,
-        errorCode: result.errorCode ?? null,
-        errorMessage: sanitizeOutboundErrorMessage(result.errorMessage),
-        acceptedAt,
-        sentAt: acceptedAt,
-        failedAt,
-      },
+      data: resultPatch,
       include: { attachments: true, events: { orderBy: { occurredAt: 'asc' } } },
     });
+
+    const finalStatus = resultPatch.status ?? OutboundEmailStatus.FAILED;
 
     await this.outboundEmail.recordEvent(
       outbound.id,
@@ -340,8 +338,26 @@ export class InvoiceDocumentEmailService {
         providerMessageId: result.providerMessageId,
         errorCode: result.errorCode,
         errorMessage: result.errorMessage,
+        communicationPhase: deriveOutboundCommunicationPhase({
+          status: finalStatus,
+          deliveryStatus: resultPatch.deliveryStatus!,
+        }),
       },
     );
+
+    await logInvoiceCommunicationStatusChange(this.activityLog, {
+      organizationId: orgId,
+      invoiceId,
+      outboundEmailId: outbound.id,
+      userId,
+      previous,
+      next: {
+        status: updated.status,
+        deliveryStatus: updated.deliveryStatus,
+      },
+      documentId: document.id,
+      provider: result.provider,
+    });
 
     if (
       finalStatus === OutboundEmailStatus.SENT ||

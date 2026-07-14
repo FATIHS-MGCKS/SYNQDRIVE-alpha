@@ -4,6 +4,10 @@ import type {
   OutboundEmailStatus,
 } from '@prisma/client';
 import {
+  communicationPhaseLabel,
+  deriveOutboundCommunicationPhase,
+} from '@modules/outbound-email/outbound-email-status.transitions';
+import {
   isRetryableOutboundEmail,
   resolveDisplayTimestamp,
   sanitizeOutboundErrorMessage,
@@ -95,6 +99,7 @@ export function mapInvoiceEmailSendHistory(
     .map((row) => {
       const doc = resolveDocumentVersion(row);
       const userSafeError = sanitizeOutboundErrorMessage(row.errorMessage);
+      const communicationPhase = deriveOutboundCommunicationPhase(row);
       return {
         id: row.id,
         recipient: row.toEmail,
@@ -105,7 +110,9 @@ export function mapInvoiceEmailSendHistory(
         documentVersion: doc.version,
         sendStatus: row.status,
         deliveryStatus: row.deliveryStatus,
-        statusLabel: `${row.status} / ${row.deliveryStatus}`,
+        communicationPhase,
+        communicationPhaseLabel: communicationPhaseLabel(communicationPhase),
+        statusLabel: communicationPhaseLabel(communicationPhase),
         occurredAt: resolveDisplayTimestamp(row),
         requestedAt: row.requestedAt.toISOString(),
         acceptedAt: row.acceptedAt?.toISOString() ?? null,

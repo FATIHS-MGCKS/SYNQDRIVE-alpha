@@ -189,6 +189,8 @@ export interface InvoiceEmailSendHistoryEntryDto {
   idempotencyKey: string | null;
   correlationId: string | null;
   retryPossible: boolean;
+  communicationPhase: string;
+  communicationPhaseLabel: string;
 }
 
 export interface InvoiceLinkedTaskDto {

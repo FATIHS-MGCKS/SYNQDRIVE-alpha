@@ -12,6 +12,7 @@ import {
   PaginationParams,
 } from '@shared/utils/pagination';
 import { sanitizeOutboundErrorMessage } from './outbound-email-audit.util';
+import { resolveWebhookStatusPatch } from './outbound-email-status.transitions';
 
 export interface OutboundEmailAttachmentDto {
   id: string;
@@ -63,17 +64,6 @@ export interface OutboundEmailDto {
   attachments: OutboundEmailAttachmentDto[];
   events: OutboundEmailEventDto[];
 }
-
-type OutboundEmailAuditPatch = {
-  status?: OutboundEmailStatus;
-  deliveryStatus?: OutboundEmailDeliveryStatus;
-  errorCode?: string | null;
-  errorMessage?: string | null;
-  acceptedAt?: Date;
-  sentAt?: Date;
-  deliveredAt?: Date;
-  failedAt?: Date;
-};
 
 @Injectable()
 export class OutboundEmailService {
@@ -151,7 +141,16 @@ export class OutboundEmailService {
     });
     if (duplicate) return email.id;
 
-    const statusPatch = this.resolveStatusPatch(eventType, email.status, payload);
+    const statusPatch = resolveWebhookStatusPatch(
+      eventType,
+      {
+        status: email.status,
+        deliveryStatus: email.deliveryStatus,
+        acceptedAt: email.acceptedAt,
+        sentAt: email.sentAt,
+      },
+      payload,
+    );
 
     await this.prisma.$transaction([
       this.prisma.outboundEmailEvent.create({
@@ -175,58 +174,6 @@ export class OutboundEmailService {
     ]);
 
     return email.id;
-  }
-
-  private resolveStatusPatch(
-    eventType: OutboundEmailEventType,
-    currentStatus: OutboundEmailStatus,
-    payload?: Record<string, unknown>,
-  ): OutboundEmailAuditPatch | null {
-    const now = new Date();
-    switch (eventType) {
-      case OutboundEmailEventType.BOUNCED:
-        return {
-          status: OutboundEmailStatus.FAILED,
-          deliveryStatus: OutboundEmailDeliveryStatus.BOUNCED,
-          errorCode: 'BOUNCED',
-          errorMessage: this.extractWebhookErrorMessage(payload) ?? 'Email bounced',
-          failedAt: now,
-        };
-      case OutboundEmailEventType.COMPLAINED:
-        return {
-          status: OutboundEmailStatus.FAILED,
-          deliveryStatus: OutboundEmailDeliveryStatus.COMPLAINED,
-          errorCode: 'COMPLAINED',
-          errorMessage: 'Recipient marked email as spam',
-          failedAt: now,
-        };
-      case OutboundEmailEventType.DELIVERED:
-        return {
-          ...(currentStatus === OutboundEmailStatus.SENDING
-            ? { status: OutboundEmailStatus.SENT, sentAt: now, acceptedAt: now }
-            : {}),
-          deliveryStatus: OutboundEmailDeliveryStatus.DELIVERED,
-          deliveredAt: now,
-        };
-      case OutboundEmailEventType.FAILED:
-        return {
-          status: OutboundEmailStatus.FAILED,
-          deliveryStatus: OutboundEmailDeliveryStatus.FAILED,
-          errorCode: 'PROVIDER_FAILED',
-          errorMessage: this.extractWebhookErrorMessage(payload) ?? 'Email delivery failed',
-          failedAt: now,
-        };
-      default:
-        return null;
-    }
-  }
-
-  private extractWebhookErrorMessage(payload?: Record<string, unknown>): string | null {
-    if (!payload) return null;
-    const bounce = payload.bounce as { message?: string } | undefined;
-    if (bounce?.message?.trim()) return bounce.message.trim();
-    const message = payload.message;
-    return typeof message === 'string' && message.trim() ? message.trim() : null;
   }
 
   toDto(row: {

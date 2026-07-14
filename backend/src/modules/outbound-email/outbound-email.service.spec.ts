@@ -27,6 +27,9 @@ describe('OutboundEmailService — invoice audit webhooks', () => {
     prisma.outboundEmail.findFirst.mockResolvedValue({
       id: 'mail-1',
       status: OutboundEmailStatus.SENT,
+      deliveryStatus: OutboundEmailDeliveryStatus.ACCEPTED,
+      acceptedAt: new Date('2026-07-14T10:00:00.000Z'),
+      sentAt: new Date('2026-07-14T10:00:00.000Z'),
     });
     prisma.outboundEmailEvent.findFirst.mockResolvedValue(null);
     prisma.outboundEmailEvent.create.mockResolvedValue({ id: 'evt-1' });

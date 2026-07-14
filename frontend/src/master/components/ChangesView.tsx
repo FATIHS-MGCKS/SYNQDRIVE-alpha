@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-email-status-transitions-2026-07-14',
+    version: '4.9.438',
+    title: 'V4.9.438 — Rechnung vs. E-Mail: zentrale Statusübergänge',
+    summary: [
+      'Getrennte Wahrheiten: `OrgInvoiceStatus` (Geschäft) vs. `OutboundEmail` Kommunikationsphase (PREPARING → DELIVERED/BOUNCED).',
+      '`outbound-email-status.transitions` — validierte Send-/Delivery-Graphs; `sentAt` nur mit `acceptedAt` (Provider-Annahme).',
+      '`invoice-status.transitions` — `validateExternalMarkSent` für manuellen Versand; E-Mail-Erfolg setzt Rechnung nicht auf SENT.',
+      'Webhook Bounce nach DELIVERED: Audit bleibt, Rechnungsstatus unverändert; Activity-Log bei Kommunikationsphasenwechsel.',
+      'Detail-DTO `emailSendHistory.communicationPhase` + deutsches Label.',
+    ],
+    reason:
+      'Statusübergänge waren verteilt; fehlgeschlagener Versand durfte nicht implizit Rechnung als versendet markieren; Bounce/Delivery brauchten klare Regeln.',
+    previousBehavior:
+      'Webhook DELIVERED konnte sentAt neu setzen; keine zentrale Transition-Validierung; Rechnung und E-Mail-Status nicht formal getrennt dokumentiert.',
+    details:
+      'outbound-email-status.transitions.ts, invoice-status.transitions.ts, invoice-outbound-status-coordinator.util.ts',
+    affectsArchitecture: true,
+    module: 'Invoices',
+    createdAt: '2026-07-15T01:30:00.000Z',
+  },
+  {
     id: 'invoice-email-audit-2026-07-14',
     version: '4.9.437',
     title: 'V4.9.437 — Rechnungs-E-Mail: revisionsfähiger Versand-Audit',
