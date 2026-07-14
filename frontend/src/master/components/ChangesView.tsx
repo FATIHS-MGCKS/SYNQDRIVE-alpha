@@ -35,6 +35,22 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'mcp-cloud-agent-setup-v49429-2026-07-14',
+    version: '4.9.429',
+    title: 'V4.9.429 — MCP-Server: Cloud-Agent-Setup + Stripe-Template-Fix',
+    summary: [
+      '`.cursor/mcp.json.example` — Merge-Konflikt Stripe behoben; alle Secrets via `${env:…}` (Didit, DIMO, Resend, Stripe, Hostinger).',
+      'Neues Skript `cloud-agent-mcp-setup.sh` schreibt `.cursor/mcp.json` aus dem Example (gitignored).',
+      'Cloud-Agent `install`/`start` rufen MCP-Setup auf; `AGENTS.md` + Architektur dokumentieren Secrets und OAuth-Hinweise.',
+    ],
+    reason: 'Didit/Resend/Stripe/DIMO MCP waren in Cloud-Agent-Sessions nicht verbunden — `mcp.json` fehlte und das Stripe-Example war durch Merge-Konflikt kaputt.',
+    previousBehavior: 'Nur `cursor-cloud` + unauthentifiziertes Figma MCP sichtbar; `.cursor/mcp.json` nicht generiert.',
+    details: 'mcp.json.example, cloud-agent-mcp-setup.sh, cloud-agent-install.sh, cloud-agent-start.sh, AGENTS.md, architecture/CLOUD_AGENTS_2026-06-30.md, ArchitekturView Integrations.',
+    affectsArchitecture: true,
+    module: 'Cloud Agents / MCP',
+    createdAt: '2026-07-14T12:50:00.000Z',
+  },
+  {
     id: 'cleanup-invalid-invoices-v49428-2026-07-13',
     version: '4.9.428',
     title: 'V4.9.428 — Ungültige/Entwurfs-Rechnungen entfernen',

@@ -4,36 +4,34 @@
       "url": "https://mcp.didit.me/mcp"
     },
     "dimo": {
-      "command": "mcp-dimo",
+      "command": "npx",
+      "args": ["-y", "mcp-dimo@1.5.5"],
       "env": {
-        "DIMO_CLIENT_ID": "<your-dimo-client-id>",
-        "DIMO_DOMAIN": "http://localhost:5173/auth/dimo/callback",
-        "DIMO_PRIVATE_KEY": "<your-dimo-private-key>"
+        "DIMO_CLIENT_ID": "${env:DIMO_CLIENT_ID}",
+        "DIMO_DOMAIN": "${env:DIMO_DOMAIN}",
+        "DIMO_PRIVATE_KEY": "${env:DIMO_PRIVATE_KEY}"
       }
     },
     "hostinger-api": {
-      "command": "hostinger-api-mcp",
+      "command": "npx",
+      "args": ["-y", "hostinger-api-mcp@2.11.0"],
       "env": {
         "DEBUG": "false",
-        "API_TOKEN": "<your-hostinger-api-token>"
+        "API_TOKEN": "${env:HOSTINGER_API_TOKEN}"
       }
     },
     "resend": {
       "command": "npx",
-      "args": ["-y", "resend-mcp@2.10.1"],
+      "args": ["-y", "resend-mcp@2.11.0"],
       "env": {
-        "RESEND_API_KEY": "<your-resend-api-key>"
+        "RESEND_API_KEY": "${env:RESEND_API_KEY}"
       }
     },
     "stripe": {
-<<<<<<< HEAD
-      "url": "https://mcp.stripe.com"
-=======
       "url": "https://mcp.stripe.com",
       "headers": {
         "Authorization": "Bearer ${env:STRIPE_SECRET_KEY}"
       }
->>>>>>> 43fcd04 (chore: document Stripe MCP config in mcp.json.example)
     }
   }
 }
