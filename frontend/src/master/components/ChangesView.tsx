@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stripe-connect-test-env-readiness-v49453-2026-07-14',
+    version: '4.9.453',
+    title: 'V4.9.453 — Stripe Connect: isolierte Testumgebung vorbereitet (Readiness-Audit)',
+    summary: [
+      'Stripe MCP + VPS-Audit: Testmodus bestätigt (sk_test_), keine Connected Accounts, 0 Webhooks vor Setup.',
+      'Connect-Webhook im Stripe-Testmodus angelegt (7 Events, livemode=false) + VPS-Env URLs/Secret (nicht in Git).',
+      'Blocker dokumentiert: Payment-Stack nicht auf VPS deployed (9 Migrationen, Route 404), kein Onboarding.',
+      'Entscheidung: NOT READY FOR TEST E2E — Deploy + Migration + Onboarding in Prompt 4.',
+    ],
+    reason:
+      'Prompt 3 verlangt vollständig isolierte Stripe-Testumgebung für Endkundenzahlungen ohne Live-Keys oder echte Zahlungen.',
+    previousBehavior:
+      'STRIPE_CONNECT_WEBHOOK_SECRET und Connect-Return/Checkout-URLs auf VPS nicht gesetzt; Connect-Route nicht erreichbar.',
+    details:
+      'architecture/STRIPE_CONNECT_TEST_ENV_READINESS_2026-07-14.md; VPS backend.env (Secret nur remote).',
+    affectsArchitecture: true,
+    module: 'Payments',
+    createdAt: '2026-07-14T18:00:00.000Z',
+  },
+  {
     id: 'cloud-agent-ssh-single-line-pem-v49452-2026-07-14',
     version: '4.9.452',
     title: 'V4.9.452 — Cloud Agent: Einzeilen-PEM SSH-Secret Normalisierung',

@@ -602,7 +602,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
       { label: 'Payment reconciliation (V4.9.445)', detail: 'PaymentReconciliationService — kanonisch payment_intent.succeeded — architecture/END_CUSTOMER_PAYMENTS_PAYMENT_RECONCILIATION_2026-07-14.md' },
       { label: 'Payment email (V4.9.446)', detail: 'PaymentEmailOutbox + Resend — LINK_SENT after send — architecture/END_CUSTOMER_PAYMENTS_PAYMENT_EMAIL_2026-07-14.md' },
       { label: 'Adapter boundary', detail: 'Future modules/payments: createConnectedAccount, createOnboardingSession, getAccountStatus, createCheckoutSession, createRefund — domain Stripe-agnostic' },
-      { label: 'MCP verify', detail: '2026-07-14: Sandbox acct testmode, 0 connected accounts; Accounts v2 + Connect Dashboard ⏳ manual' },
+      { label: 'MCP verify', detail: '2026-07-14 Prompt 3: Sandbox acct_1Tnz17… testmode DE/EUR; 0 connected accounts; Connect webhook we_1TtAbX… livemode=false on VPS env — route 404 until deploy — architecture/STRIPE_CONNECT_TEST_ENV_READINESS_2026-07-14.md' },
       { label: 'Cursor MCP', detail: 'Hosted https://mcp.stripe.com — read-only verification in Prompt 4' },
     ],
   },
