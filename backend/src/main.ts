@@ -1,5 +1,7 @@
 import { NestFactory } from '@nestjs/core';
+import { RawBodyRequest } from '@nestjs/common/interfaces';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import type { Request } from 'express';
 import { ValidationPipe, Logger, LogLevel } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
@@ -84,8 +86,11 @@ async function bootstrap() {
   // endpoints (vehicle damage & exterior images, handover signatures) while bounding
   // abuse. useBodyParser() keeps the rawBody capture used for webhook HMAC verification.
   const bodyLimit = process.env.HTTP_BODY_LIMIT || '12mb';
-  app.useBodyParser('json', { limit: bodyLimit });
-  app.useBodyParser('urlencoded', { limit: bodyLimit, extended: true });
+  const captureRawBody = (req: RawBodyRequest<Request>, _res: unknown, buf: Buffer) => {
+    req.rawBody = buf;
+  };
+  app.useBodyParser('json', { limit: bodyLimit, verify: captureRawBody });
+  app.useBodyParser('urlencoded', { limit: bodyLimit, extended: true, verify: captureRawBody });
 
   // CORS: explicit allowlist from config — no wildcard origin
   const allowedOrigins = configService.get<string[]>('app.corsOrigins', []);

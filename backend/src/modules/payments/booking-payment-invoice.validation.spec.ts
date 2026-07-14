@@ -42,6 +42,24 @@ describe('validateSnapshotInvoiceAlignment', () => {
     ).toThrow(InvalidCurrencyError);
   });
 
+  it('accepts rental-only booking invoice without subtracting deposit from total', () => {
+    expect(() =>
+      validateSnapshotInvoiceAlignment({
+        snapshot,
+        invoice: {
+          currency: 'EUR',
+          totalCents: 80_000,
+          paidCents: 0,
+          outstandingCents: 80_000,
+          status: 'ISSUED',
+          bookingId: 'bk-1',
+        },
+        rentalPaymentAmountCents: 80_000,
+        excludedDepositCents: 50_000,
+      }),
+    ).not.toThrow();
+  });
+
   it('rejects when rental amount exceeds outstanding', () => {
     expect(() =>
       validateSnapshotInvoiceAlignment({

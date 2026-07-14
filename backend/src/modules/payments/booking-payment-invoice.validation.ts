@@ -49,19 +49,19 @@ export function validateSnapshotInvoiceAlignment(
     );
   }
 
-  const invoiceTotalExDeposit = Math.max(
-    0,
-    input.invoice.totalCents - input.excludedDepositCents,
-  );
-
-  if (
+  // Booking invoices exclude DEPOSIT line items — totalCents is rental-only.
+  // Only subtract excluded deposit when the invoice total likely includes it.
+  const depositLikelyOnInvoice =
     input.excludedDepositCents > 0
-    && invoiceTotalExDeposit > 0
-    && input.rentalPaymentAmountCents > invoiceTotalExDeposit
-  ) {
-    throw new SnapshotInvoiceConflictError(
-      'Payment amount exceeds invoice rental total after excluding deposit',
-    );
+    && input.invoice.totalCents >= input.rentalPaymentAmountCents + input.excludedDepositCents;
+
+  if (depositLikelyOnInvoice) {
+    const invoiceTotalExDeposit = input.invoice.totalCents - input.excludedDepositCents;
+    if (invoiceTotalExDeposit > 0 && input.rentalPaymentAmountCents > invoiceTotalExDeposit) {
+      throw new SnapshotInvoiceConflictError(
+        'Payment amount exceeds invoice rental total after excluding deposit',
+      );
+    }
   }
 }
 
