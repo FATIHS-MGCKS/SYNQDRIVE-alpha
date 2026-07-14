@@ -10,6 +10,8 @@ import { InvoicesService } from './invoices.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { InvoiceNumberService } from './invoice-number.service';
+import { InvoiceDocumentsReadService } from './invoice-documents-read.service';
+import { mockInvoiceDocumentsRead } from './__fixtures__/invoice-documents-read.mock';
 import {
   DOC_BOOKING_INVOICE,
   INVOICE_BOOKING,
@@ -63,13 +65,53 @@ describe('Invoice ↔ GeneratedDocument link — baseline regression', () => {
     );
   });
 
-  it('current divergence: OrgInvoice.generatedDocumentId stays null while GeneratedDocument.invoiceId is set', async () => {
+  it('findById resolves generatedDocumentId from canonical invoiceId link when cache is null', async () => {
     const generated = makeGeneratedBookingInvoiceDoc();
     const invoiceRow = makeOrgInvoiceRow({ generatedDocumentId: null });
 
-    expect(generated.invoiceId).toBe(INVOICE_BOOKING);
-    expect(invoiceRow.generatedDocumentId).toBeNull();
+    const prisma = {
+      orgInvoice: { findFirst: jest.fn().mockResolvedValue(invoiceRow) },
+    } as unknown as PrismaService;
+    const invoiceDocuments = mockInvoiceDocumentsRead({
+      activeDocumentId: DOC_BOOKING_INVOICE,
+      documents: [
+        {
+          id: DOC_BOOKING_INVOICE,
+          documentType: DOCUMENT_TYPE.BOOKING_INVOICE,
+          filename: 'booking_invoice.pdf',
+          version: 1,
+          status: DOCUMENT_STATUS.GENERATED,
+          generationStatus: null,
+          lifecycle: 'ACTIVE',
+          isActive: true,
+          createdAt: '2026-07-10T10:10:00.000Z',
+          createdBy: null,
+          mimeType: 'application/pdf',
+          sizeBytes: 12,
+          downloadAvailable: true,
+          previewAvailable: true,
+          downloadPath: `/organizations/${ORG_A}/documents/${DOC_BOOKING_INVOICE}/download`,
+          lastError: null,
+          retryable: false,
+        },
+      ],
+    });
+    const service = new InvoicesService(
+      prisma,
+      { upsertByDedup: jest.fn() } as unknown as TasksService,
+      { allocate: jest.fn() } as unknown as InvoiceNumberService,
+      invoiceDocuments as unknown as InvoiceDocumentsReadService,
+    );
 
+    const dto = await service.findById(INVOICE_BOOKING, ORG_A);
+    expect(dto.generatedDocumentId).toBe(DOC_BOOKING_INVOICE);
+    expect(dto.activeDocumentId).toBe(DOC_BOOKING_INVOICE);
+    expect(dto.documents).toHaveLength(1);
+    expect(generated.invoiceId).toBe(dto.id);
+  });
+
+  it('findById keeps generatedDocumentId null when no documents exist', async () => {
+    const invoiceRow = makeOrgInvoiceRow({ generatedDocumentId: null });
     const prisma = {
       orgInvoice: { findFirst: jest.fn().mockResolvedValue(invoiceRow) },
     } as unknown as PrismaService;
@@ -77,11 +119,11 @@ describe('Invoice ↔ GeneratedDocument link — baseline regression', () => {
       prisma,
       { upsertByDedup: jest.fn() } as unknown as TasksService,
       { allocate: jest.fn() } as unknown as InvoiceNumberService,
+      mockInvoiceDocumentsRead() as unknown as InvoiceDocumentsReadService,
     );
 
     const dto = await service.findById(INVOICE_BOOKING, ORG_A);
     expect(dto.generatedDocumentId).toBeNull();
-    expect(generated.invoiceId).toBe(dto.id);
   });
 
   it('InvoicesService does not persist generatedDocumentId on orgInvoice create/update', () => {
@@ -114,14 +156,15 @@ describe('Invoice ↔ GeneratedDocument link — baseline regression', () => {
         prisma,
         { upsertByDedup: jest.fn() } as unknown as TasksService,
         { allocate: jest.fn() } as unknown as InvoiceNumberService,
+        mockInvoiceDocumentsRead() as unknown as InvoiceDocumentsReadService,
       );
 
       await expect(service.findById(INVOICE_BOOKING, ORG_B)).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 
-  describe.skip('target state — enable after generatedDocumentId sync (phase P0)', () => {
-    it('findById should return generatedDocumentId matching BOOKING_INVOICE document', async () => {
+  describe('target state — canonical read path', () => {
+    it('findById returns generatedDocumentId from cache when read service resolves active doc', async () => {
       const invoiceRow = makeOrgInvoiceRow({ generatedDocumentId: DOC_BOOKING_INVOICE });
       const prisma = {
         orgInvoice: { findFirst: jest.fn().mockResolvedValue(invoiceRow) },
@@ -130,6 +173,7 @@ describe('Invoice ↔ GeneratedDocument link — baseline regression', () => {
         prisma,
         { upsertByDedup: jest.fn() } as unknown as TasksService,
         { allocate: jest.fn() } as unknown as InvoiceNumberService,
+        mockInvoiceDocumentsRead({ activeDocumentId: DOC_BOOKING_INVOICE }) as unknown as InvoiceDocumentsReadService,
       );
       const dto = await service.findById(INVOICE_BOOKING, ORG_A);
       expect(dto.generatedDocumentId).toBe(DOC_BOOKING_INVOICE);

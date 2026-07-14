@@ -4,6 +4,8 @@ import { InvoicePaymentMethod, OrgInvoiceType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { InvoiceNumberService } from './invoice-number.service';
+import { InvoiceDocumentsReadService } from './invoice-documents-read.service';
+import { mockInvoiceDocumentsRead } from './__fixtures__/invoice-documents-read.mock';
 import { InvoicesService } from './invoices.service';
 import {
   BOOKING_REF,
@@ -34,9 +36,11 @@ describe('InvoicesService — baseline regression (audit 2026-07-14)', () => {
   };
   let tasksService: { upsertByDedup: jest.Mock };
   let invoiceNumbers: { allocate: jest.Mock };
+  let invoiceDocuments: ReturnType<typeof mockInvoiceDocumentsRead>;
   let service: InvoicesService;
 
   beforeEach(() => {
+    invoiceDocuments = mockInvoiceDocumentsRead();
     prisma = {
       orgInvoice: {
         findFirst: jest.fn(),
@@ -72,6 +76,7 @@ describe('InvoicesService — baseline regression (audit 2026-07-14)', () => {
       prisma as unknown as PrismaService,
       tasksService as unknown as TasksService,
       invoiceNumbers as unknown as InvoiceNumberService,
+      invoiceDocuments as unknown as InvoiceDocumentsReadService,
     );
   });
 

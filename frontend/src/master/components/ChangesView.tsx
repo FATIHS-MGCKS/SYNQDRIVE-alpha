@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-document-read-canonical-m1-2026-07-14',
+    version: '4.9.429',
+    title: 'V4.9.429 — Rechnungs-PDFs: kanonischer Lesezugriff (Backend M1)',
+    summary: [
+      '`InvoiceDocumentsReadService` lädt alle `GeneratedDocument`-Versionen über `invoiceId` (ADR hybrid C+A).',
+      'Rechnungsdetail: neues `documents[]` mit Lifecycle (ACTIVE/REPLACED/FAILED/VOIDED/GENERATING), `activeDocumentId`, `documentCacheMismatch`.',
+      '`generatedDocumentId` in API bleibt kompatibel — zeigt jetzt kanonisch aufgelöste aktive Version mit Legacy-Cache-Fallback.',
+      'Listen-Endpunkt: Batch-Auflösung ohne N+1; autorisierte `downloadPath` statt Storage-URLs.',
+    ],
+    reason:
+      'Rechnungsdetail las nur die ungenutzte Spalte `OrgInvoice.generatedDocumentId`; PDFs existierten über `GeneratedDocument.invoiceId` ohne API-Exposure.',
+    previousBehavior:
+      'GET invoice/:id lieferte `generatedDocumentId` aus DB-Cache (meist null); kein Versionsverlauf, kein Reverse-Lookup.',
+    details:
+      'invoice-documents-read.service.ts, invoice-document-read.util.ts, invoices.service.ts findById/findByOrg; Tests in invoice-documents-read.service.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Invoices / Documents',
+    createdAt: '2026-07-14T20:45:00.000Z',
+  },
+  {
     id: 'cleanup-invalid-invoices-v49428-2026-07-13',
     version: '4.9.428',
     title: 'V4.9.428 — Ungültige/Entwurfs-Rechnungen entfernen',

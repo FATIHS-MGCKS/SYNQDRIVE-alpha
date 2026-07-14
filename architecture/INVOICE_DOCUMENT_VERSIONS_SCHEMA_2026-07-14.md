@@ -49,12 +49,18 @@ Existing fields retained: `status` (document lifecycle), `generatedByUserId` (cr
 
 **Org safety:** No composite `(organization_id, invoice_id)` FK — would break ON DELETE SET NULL with required `organization_id`. Tenant validation remains application-level (ADR M1).
 
+## Read path (M1 — implemented)
+
+- [INVOICE_DOCUMENT_READ_PATH_2026-07-14.md](./INVOICE_DOCUMENT_READ_PATH_2026-07-14.md)
+- `InvoiceDocumentsReadService` + `InvoicesService.findById` / `findByOrg`
+- Canonical load via `invoiceId`; legacy `generatedDocumentId` as validated fallback
+
 ## Not in this phase
 
-- Backfill `versionNumber`, `isActiveVersion`, `OrgInvoice.generatedDocumentId` (ADR M2)
+- Backfill `versionNumber`, `isActiveVersion`, `OrgInvoice.generatedDocumentId` (ADR M2) — tool exists, not auto-run
 - `createFromPdf` / `voidDocument` cache sync (ADR M2–M3)
 - `FAILED` generation rows on render errors (ADR M5)
-- Frontend changes
+- Frontend invoice detail UI
 
 ## Diagnostic tool (read-only)
 

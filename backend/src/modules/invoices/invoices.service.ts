@@ -33,6 +33,7 @@ import {
   parseLegacyLineItems,
 } from './invoice-line-items.util';
 import { InvoiceNumberService } from './invoice-number.service';
+import { InvoiceDocumentsReadService } from './invoice-documents-read.service';
 
 @Injectable()
 export class InvoicesService {
@@ -40,6 +41,7 @@ export class InvoicesService {
     private readonly prisma: PrismaService,
     private readonly tasksService: TasksService,
     private readonly invoiceNumbers: InvoiceNumberService,
+    private readonly invoiceDocuments: InvoiceDocumentsReadService,
   ) {}
 
   private format(inv: Record<string, unknown>) {
@@ -129,22 +131,38 @@ export class InvoicesService {
         payments: { orderBy: { paidAt: 'desc' }, take: 5 },
       },
     });
+
+    const documentsByInvoice = await this.invoiceDocuments.getDocumentsForInvoicesBatch(
+      orgId,
+      invoices.map((inv) => ({
+        id: inv.id,
+        type: inv.type,
+        generatedDocumentId: inv.generatedDocumentId,
+      })),
+    );
+
     return invoices.map((inv) => {
+      const documentsView = documentsByInvoice.get(inv.id);
       const formatted = this.format(inv as unknown as Record<string, unknown>);
-      formatted.tasks = (inv.tasks || []).map((t) => ({
-        id: t.id,
-        title: t.title,
-        status: t.status,
-      }));
-      formatted.payments = (inv.payments || []).map((p) => ({
-        id: p.id,
-        amountCents: p.amountCents,
-        method: p.method,
-        paidAt: p.paidAt.toISOString(),
-        reference: p.reference,
-        note: p.note,
-      }));
-      return formatted;
+      return {
+        ...formatted,
+        generatedDocumentId:
+          documentsView?.activeDocumentId ?? inv.generatedDocumentId ?? null,
+        activeDocumentId: documentsView?.activeDocumentId ?? null,
+        tasks: (inv.tasks || []).map((t) => ({
+          id: t.id,
+          title: t.title,
+          status: t.status,
+        })),
+        payments: (inv.payments || []).map((p) => ({
+          id: p.id,
+          amountCents: p.amountCents,
+          method: p.method,
+          paidAt: p.paidAt.toISOString(),
+          reference: p.reference,
+          note: p.note,
+        })),
+      };
     });
   }
 
@@ -176,23 +194,38 @@ export class InvoicesService {
           },
         });
     if (!inv) throw new NotFoundException('Invoice not found');
+
+    const documentsView = await this.invoiceDocuments.getDocumentsForInvoice({
+      organizationId: inv.organizationId,
+      invoiceId: inv.id,
+      invoiceType: inv.type,
+      cacheDocumentId: inv.generatedDocumentId,
+    });
+
     const formatted = this.format(inv as unknown as Record<string, unknown>);
-    formatted.tasks = (inv.tasks || []).map((t) => ({
-      id: t.id,
-      title: t.title,
-      status: t.status,
-      priority: t.priority,
-      description: t.description,
-    }));
-    formatted.payments = (inv.payments || []).map((p) => ({
-      id: p.id,
-      amountCents: p.amountCents,
-      method: p.method,
-      paidAt: p.paidAt.toISOString(),
-      reference: p.reference,
-      note: p.note,
-    }));
-    return formatted;
+    return {
+      ...formatted,
+      generatedDocumentId:
+        documentsView.activeDocumentId ?? inv.generatedDocumentId ?? null,
+      activeDocumentId: documentsView.activeDocumentId,
+      documentCacheMismatch: documentsView.cacheMismatch,
+      documents: documentsView.documents,
+      tasks: (inv.tasks || []).map((t) => ({
+        id: t.id,
+        title: t.title,
+        status: t.status,
+        priority: t.priority,
+        description: t.description,
+      })),
+      payments: (inv.payments || []).map((p) => ({
+        id: p.id,
+        amountCents: p.amountCents,
+        method: p.method,
+        paidAt: p.paidAt.toISOString(),
+        reference: p.reference,
+        note: p.note,
+      })),
+    };
   }
 
   async create(orgId: string, data: CreateInvoiceDto & { extractedData?: Record<string, unknown>; fromExtraction?: boolean }) {
