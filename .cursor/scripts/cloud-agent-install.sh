@@ -16,7 +16,7 @@ cd "$ROOT/frontend"
 npm ci
 
 echo "[cloud-agent] Configuring MCP servers..."
-chmod +x .cursor/scripts/cloud-agent-mcp-setup.sh
-CLOUD_AGENT_REGENERATE_MCP=1 bash .cursor/scripts/cloud-agent-mcp-setup.sh
+chmod +x "${ROOT}/.cursor/scripts/cloud-agent-mcp-setup.sh"
+CLOUD_AGENT_REGENERATE_MCP=1 bash "${ROOT}/.cursor/scripts/cloud-agent-mcp-setup.sh"
 
 echo "[cloud-agent] Install complete."
