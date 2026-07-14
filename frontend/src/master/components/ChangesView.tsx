@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'cloud-agent-ssh-single-line-pem-v49452-2026-07-14',
+    version: '4.9.452',
+    title: 'V4.9.452 — Cloud Agent: Einzeilen-PEM SSH-Secret Normalisierung',
+    summary: [
+      '`cloud_agent_materialize_ssh_key` normalisiert jetzt auch Einzeilen-PEM (BEGIN+Body+END ohne Zeilenumbrüche).',
+      'Bare-Base64 (Option B) und mehrzeiliges PEM werden einheitlich zu gefaltetem OpenSSH-PEM geschrieben.',
+      'Neuer Test: `.cursor/scripts/cloud-agent-ssh-common.test.sh` (Fixture + optional Live-Secret).',
+    ],
+    reason:
+      'Cursor Secrets können PEM-Header liefern, aber alles in einer Zeile — libcrypto-Fehler trotz V4.9.131 bare-base64-Fix.',
+    previousBehavior:
+      'Bei vorhandenem BEGIN-Header wurde Secret 1:1 geschrieben; Einzeilen-PEM blieb unparsebar.',
+    details:
+      'cloud-agent-ssh-common.sh, cloud-agent-ssh-common.test.sh. Option B (nur Base64) unverändert unterstützt.',
+    affectsArchitecture: true,
+    module: 'Automation',
+    createdAt: '2026-07-14T00:00:00.000Z',
+  },
+  {
     id: 'payments-frontend-typecheck-v49451-2026-07-14',
     version: '4.9.451',
     title: 'V4.9.451 — End-Customer Payments: Frontend Typecheck & Success-Panel Fixes',
