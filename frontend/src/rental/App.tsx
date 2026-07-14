@@ -1004,6 +1004,10 @@ function RentalAppContent() {
             }}
             onCustomerCreated={(c) => setNewlyCreatedCustomers(prev => [c, ...prev])}
             onBookingCreated={(b) => { setCreatedBookings(prev => [b, ...prev]); bumpBookingsVersion(); }}
+            onViewBooking={(bookingId) => {
+              setPendingBookingDetailId(bookingId);
+              setCurrentView('bookings');
+            }}
           />
         ) : currentView === 'overview' ? (
           <VehicleOverviewTab

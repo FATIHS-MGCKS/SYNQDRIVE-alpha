@@ -1421,6 +1421,76 @@ export type BookingDetailDto = {
     description: string;
     createdAt: string;
   }>;
+  payments: BookingPaymentCardDto | null;
+};
+
+export type BookingPaymentCardDto = {
+  enabled: boolean;
+  summary: {
+    bookingPaymentStatus: string;
+    paymentIntent: string | null;
+  };
+  primaryRequest: BookingPaymentCardRequestDto | null;
+  requests: BookingPaymentCardRequestDto[];
+  invoice: {
+    id: string;
+    invoiceNumber: string | null;
+    status: string;
+    totalCents: number;
+    paidCents: number;
+    outstandingCents: number;
+  } | null;
+};
+
+export type BookingPaymentCardRequestDto = {
+  id: string;
+  status: string;
+  purpose: string;
+  amountCents: number;
+  paidAmountCents: number;
+  openAmountCents: number;
+  refundedAmountCents: number;
+  currency: string;
+  depositAmountCents: number;
+  recipientEmail: string | null;
+  checkoutUrl: string | null;
+  checkoutExpiresAt: string | null;
+  lastSentAt: string | null;
+  paidAt: string | null;
+  failedAt: string | null;
+  cancelledAt: string | null;
+  sendAttemptCount: number;
+  lastEmailErrorMessage: string | null;
+  stripeCheckoutSessionId: string | null;
+  stripePaymentIntentId: string | null;
+  stripeChargeId: string | null;
+  paymentMethodLabel: string | null;
+  refundStatus: 'NONE' | 'PARTIAL' | 'FULL';
+  disputeStatus: 'NONE' | 'OPEN';
+};
+
+export type BookingPaymentRequestDto = {
+  id: string;
+  status: string;
+  purpose: string;
+  amountCents: number;
+  paidAmountCents: number;
+  openAmountCents: number;
+  refundedAmountCents: number;
+  currency: string;
+  depositInfoCents: number;
+  recipientEmail: string | null;
+  checkoutUrl: string | null;
+  checkoutExpiresAt: string | null;
+  sendEmailOnLink: boolean;
+  sendAttemptCount: number;
+  lastSentAt: string | null;
+  lastEmailErrorMessage: string | null;
+  paidAt: string | null;
+  failedAt: string | null;
+  cancelledAt: string | null;
+  stripeCheckoutSessionId: string | null;
+  stripePaymentIntentId: string | null;
 };
 
 export interface LegalDocumentDto {
@@ -3845,6 +3915,51 @@ export const api = {
       post<any>(`/billing/stripe/setup-intent${billingTenantQuery(orgId)}`, {}),
     adminSyncStripe: (orgId: string) =>
       post<any>(`/admin/billing/organizations/${encodeURIComponent(orgId)}/sync-stripe`, {}),
+  },
+  bookingPaymentRequests: {
+    list: (orgId: string, bookingId: string) =>
+      get<BookingPaymentRequestDto[]>(
+        `/organizations/${orgId}/bookings/${bookingId}/payment-requests`,
+      ),
+    get: (orgId: string, bookingId: string, requestId: string) =>
+      get<BookingPaymentRequestDto>(
+        `/organizations/${orgId}/bookings/${bookingId}/payment-requests/${requestId}`,
+      ),
+    create: (
+      orgId: string,
+      bookingId: string,
+      data?: { recipientEmail?: string; expiresIn?: number; sendEmail?: boolean },
+      idempotencyKey?: string,
+    ) =>
+      request<BookingPaymentRequestDto>(
+        `/organizations/${orgId}/bookings/${bookingId}/payment-requests`,
+        {
+          method: 'POST',
+          body: JSON.stringify(data ?? {}),
+          headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+        },
+      ),
+    resend: (orgId: string, bookingId: string, requestId: string, idempotencyKey?: string) =>
+      request<{
+        paymentRequestId: string;
+        status: string;
+        checkoutUrl: string;
+        checkoutExpiresAt: string | null;
+        lastSentAt: string | null;
+        lastEmailErrorMessage: string | null;
+      }>(
+        `/organizations/${orgId}/bookings/${bookingId}/payment-requests/${requestId}/resend`,
+        {
+          method: 'POST',
+          body: JSON.stringify({}),
+          headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+        },
+      ),
+    cancel: (orgId: string, bookingId: string, requestId: string) =>
+      post<BookingPaymentRequestDto>(
+        `/organizations/${orgId}/bookings/${bookingId}/payment-requests/${requestId}/cancel`,
+        {},
+      ),
   },
   paymentsConnect: {
     getStatus: (orgId: string) =>

@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Get,
   Headers,
   Param,
   Post,
@@ -32,6 +33,38 @@ export class BookingPaymentRequestController {
     private readonly stripeCheckoutService: StripeCheckoutService,
     private readonly paymentEmailResendService: PaymentEmailResendService,
   ) {}
+
+  @Get()
+  @RequirePaymentPermission('payments.read')
+  async listPaymentRequests(
+    @Param('orgId') orgId: string,
+    @Param('bookingId') bookingId: string,
+    @Req() req: AuthedRequest,
+  ) {
+    const results = await this.bookingPaymentRequestService.listForBooking(
+      orgId,
+      bookingId,
+      req.user ?? {},
+    );
+    return results.map(mapBookingPaymentRequestResponse);
+  }
+
+  @Get(':requestId')
+  @RequirePaymentPermission('payments.read')
+  async getPaymentRequest(
+    @Param('orgId') orgId: string,
+    @Param('bookingId') bookingId: string,
+    @Param('requestId') requestId: string,
+    @Req() req: AuthedRequest,
+  ) {
+    const result = await this.bookingPaymentRequestService.getForBooking(
+      orgId,
+      bookingId,
+      requestId,
+      req.user ?? {},
+    );
+    return mapBookingPaymentRequestResponse(result);
+  }
 
   @Post()
   @RequirePaymentPermission('payments.create')
@@ -95,5 +128,22 @@ export class BookingPaymentRequestController {
       idempotencyKey: idempotencyKey ?? '',
       sentByUserId: req.user?.id ?? null,
     });
+  }
+
+  @Post(':requestId/cancel')
+  @RequirePaymentPermission('payments.cancel')
+  async cancelPaymentRequest(
+    @Param('orgId') orgId: string,
+    @Param('bookingId') bookingId: string,
+    @Param('requestId') requestId: string,
+    @Req() req: AuthedRequest,
+  ) {
+    const result = await this.bookingPaymentRequestService.cancelPaymentRequest(
+      orgId,
+      bookingId,
+      requestId,
+      req.user ?? {},
+    );
+    return mapBookingPaymentRequestResponse(result);
   }
 }

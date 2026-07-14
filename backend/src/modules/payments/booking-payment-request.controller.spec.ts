@@ -29,6 +29,16 @@ describe('BookingPaymentRequestController', () => {
     const handler = BookingPaymentRequestController.prototype.createCheckoutSession;
     expect(Reflect.getMetadata(PAYMENT_PERMISSION_KEY, handler)).toBe('payments.create');
   });
+
+  it('requires payments.read permission for list endpoint', () => {
+    const handler = BookingPaymentRequestController.prototype.listPaymentRequests;
+    expect(Reflect.getMetadata(PAYMENT_PERMISSION_KEY, handler)).toBe('payments.read');
+  });
+
+  it('requires payments.cancel permission for cancel endpoint', () => {
+    const handler = BookingPaymentRequestController.prototype.cancelPaymentRequest;
+    expect(Reflect.getMetadata(PAYMENT_PERMISSION_KEY, handler)).toBe('payments.cancel');
+  });
 });
 
 describe('CreateBookingPaymentRequestDto', () => {

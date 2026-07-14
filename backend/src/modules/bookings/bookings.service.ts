@@ -49,6 +49,7 @@ import {
   resolveZonedCalendarDayWindow,
   zonedLookbackStart,
 } from './booking-day-window.util';
+import { BookingPaymentCardService } from '@modules/payments/booking-payment-card.service';
 
 const BOOKING_STATUS_DISPLAY: Record<string, string> = {
   PENDING: 'Pending',
@@ -87,6 +88,8 @@ export class BookingsService {
     private readonly pricingService: PricingService,
     private readonly pricingQuoteService: PricingQuoteService,
     private readonly stationValidation: StationValidationService,
+    @Inject(forwardRef(() => BookingPaymentCardService))
+    private readonly bookingPaymentCardService: BookingPaymentCardService,
   ) {}
 
   /**
@@ -842,7 +845,7 @@ export class BookingsService {
       performedByName: p.performedByName,
     });
 
-    const [deposit, priceSnapshot, invoices, tasks, misuseCount, analysis, activityRows, noShowCount, openInvoices, openFines] =
+    const [deposit, priceSnapshot, invoices, tasks, misuseCount, analysis, activityRows, noShowCount, openInvoices, openFines, paymentsCard] =
       await Promise.all([
         this.prisma.bookingDeposit.findFirst({
           where: { organizationId: orgId, bookingId: id },
@@ -888,6 +891,7 @@ export class BookingsService {
             status: { notIn: ['RESOLVED', 'CLOSED'] },
           },
         }),
+        this.bookingPaymentCardService.buildForBooking(orgId, id),
       ]);
 
     let bundleView: Awaited<ReturnType<BookingDocumentBundleService['getBundleView']>> | null =
@@ -1191,6 +1195,7 @@ export class BookingsService {
         description: a.description,
         createdAt: a.createdAt.toISOString(),
       })),
+      payments: paymentsCard,
     };
   }
 

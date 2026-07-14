@@ -189,7 +189,15 @@ export function BookingDossier({
 
       {activeTab === 'overview' && <BookingOverviewTab detail={detail} matrix={matrix} />}
       {activeTab === 'finance_documents' && orgId && (
-        <BookingFinanceDocumentsTab orgId={orgId} detail={detail} isDarkMode={isDarkMode} />
+        <BookingFinanceDocumentsTab
+          orgId={orgId}
+          detail={detail}
+          isDarkMode={isDarkMode}
+          onRefresh={refresh}
+          onRecordManualPayment={() => {
+            toast.info('Manuelle Zahlung bitte in der Rechnungsansicht erfassen.');
+          }}
+        />
       )}
       {activeTab === 'handover' && (
         <BookingHandoverTab

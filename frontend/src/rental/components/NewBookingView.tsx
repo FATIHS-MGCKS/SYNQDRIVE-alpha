@@ -75,6 +75,7 @@ const EM_DASH = '\u2014';
 
 interface NewBookingViewProps {
   onBack: () => void;
+  onViewBooking?: (bookingId: string) => void;
   onCustomerCreated?: (customer: any) => void;
   onBookingCreated?: (booking: any) => void;
   /** Pre-select customer when opening booking flow from Customer Detail. */
@@ -121,6 +122,7 @@ const mapApiCustomerToBookingCustomer = (c: any): BookingCustomer => {
 
 export function NewBookingView({
   onBack,
+  onViewBooking,
   onCustomerCreated,
   onBookingCreated,
   initialCustomerId = null,
@@ -1427,6 +1429,7 @@ export function NewBookingView({
           checkoutOnlineAmountCents={confirmCheckoutAmounts?.onlineAmountCents ?? null}
           checkoutDepositAmountCents={confirmCheckoutAmounts?.depositAmountCents ?? null}
           checkoutCurrency={confirmCheckoutAmounts?.currency ?? null}
+          onViewBooking={onViewBooking}
           onBack={() => void handleLeaveWizard()}
           onNewBooking={handleResetBooking}
         />

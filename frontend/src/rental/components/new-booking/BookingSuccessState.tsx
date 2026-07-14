@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { VehicleData } from '../../data/vehicles';
 import { api, type BookingDocumentBundleView } from '../../../lib/api';
-import { formatMoneyCents } from '../../../lib/money';
-import type { TranslationKey } from '../../i18n/translations/en';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { buildMMY } from '../../lib/vehicleMmy';
 import { Icon } from '../ui/Icon';
 import { BookingStepCard } from './BookingStepCard';
 import { CheckoutDocumentsPanel } from './CheckoutDocumentsPanel';
 import { formatBookingAmount } from './format';
-import { formatCheckoutExpiryDays, paymentIntentLabel } from './payment-intent';
+import { paymentIntentLabel } from './payment-intent';
+import { BookingPaymentSuccessPanel } from '../booking-payment/BookingPaymentSuccessPanel';
 import type { BookingCustomer, BookingPaymentIntent } from './types';
 
 export interface BookingSuccessAutoSendResult {
@@ -46,20 +45,9 @@ export interface BookingSuccessStateProps {
   checkoutOnlineAmountCents?: number | null;
   checkoutDepositAmountCents?: number | null;
   checkoutCurrency?: string | null;
+  onViewBooking?: (bookingId: string) => void;
   onBack: () => void;
   onNewBooking: () => void;
-}
-
-function partialFailureLabel(
-  step: string,
-  t: (key: TranslationKey, vars?: Record<string, string | number>) => string,
-): string {
-  const map: Record<string, TranslationKey> = {
-    payment_request: 'newBooking.success.partial.paymentRequest',
-    checkout: 'newBooking.success.partial.checkout',
-    email: 'newBooking.success.partial.email',
-  };
-  return map[step] ? t(map[step]) : step;
 }
 
 export function BookingSuccessState({
@@ -79,10 +67,11 @@ export function BookingSuccessState({
   checkoutOnlineAmountCents = null,
   checkoutDepositAmountCents = null,
   checkoutCurrency = null,
+  onViewBooking,
   onBack,
   onNewBooking,
 }: BookingSuccessStateProps) {
-  const { t, locale } = useLanguage();
+  const { t } = useLanguage();
   const refLabel = bookingRef
     ? t('newBooking.success.refLabel', { ref: bookingRef })
     : t('newBooking.success.created');
@@ -90,10 +79,6 @@ export function BookingSuccessState({
   const [bundleLoading, setBundleLoading] = useState(false);
 
   const displayCurrency = checkoutCurrency ?? pricingCurrency;
-  const fmtCents = (cents: number | null | undefined) =>
-    displayCurrency
-      ? formatMoneyCents(cents, displayCurrency, locale === 'de' ? 'de-DE' : 'en-US')
-      : '—';
 
   const refreshBundle = useCallback(async () => {
     if (!orgId || !bookingId) return;
@@ -151,71 +136,22 @@ export function BookingSuccessState({
             </p>
           )}
 
-          {paymentIntent === 'payment_link' && paymentFlow && (
-            <div className="mb-3 rounded-lg border border-border bg-muted/40 p-3 text-left text-xs">
-              <p className="mb-2 font-medium text-foreground">{t('newBooking.success.paymentLinkStatus')}</p>
-              <ul className="space-y-1 text-muted-foreground">
-                <li>
-                  {paymentFlow.bookingConfirmed
-                    ? `✓ ${t('newBooking.success.step.bookingConfirmed')}`
-                    : `✗ ${t('newBooking.success.step.bookingConfirmed')}`}
-                </li>
-                <li>
-                  {paymentFlow.paymentRequestCreated
-                    ? `✓ ${t('newBooking.success.step.paymentRequest')}`
-                    : `✗ ${t('newBooking.success.step.paymentRequest')}`}
-                </li>
-                <li>
-                  {paymentFlow.checkoutCreated
-                    ? `✓ ${t('newBooking.success.step.checkout')}`
-                    : `✗ ${t('newBooking.success.step.checkout')}`}
-                </li>
-                <li>
-                  {paymentFlow.emailQueued
-                    ? `✓ ${t('newBooking.success.step.emailSent')}`
-                    : `○ ${t('newBooking.success.step.emailPending')}`}
-                </li>
-              </ul>
-              {checkoutOnlineAmountCents != null && (
-                <div className="mt-2 border-t border-border pt-2">
-                  <div className="flex justify-between gap-2">
-                    <span>{t('newBooking.paymentIntent.onlineAmount')}</span>
-                    <span className="text-foreground">
-                      {fmtCents(checkoutOnlineAmountCents)}
-                      <span className="ml-1 text-muted-foreground">
-                        ({t('newBooking.paymentIntent.excludingDeposit')})
-                      </span>
-                    </span>
-                  </div>
-                  {(checkoutDepositAmountCents ?? 0) > 0 && (
-                    <div className="mt-1 flex justify-between gap-2">
-                      <span>{t('newBooking.paymentIntent.depositAtPickup')}</span>
-                      <span className="text-foreground">{fmtCents(checkoutDepositAmountCents)}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-              {paymentOpen && (
-                <p className="mt-2 text-[color:var(--status-watch)]">
-                  {t('newBooking.success.paymentOpen')}
-                </p>
-              )}
-            </div>
+          {paymentIntent === 'payment_link' && bookingId && (
+            <BookingPaymentSuccessPanel
+              orgId={orgId}
+              bookingId={bookingId}
+              paymentFlow={paymentFlow}
+              checkoutOnlineAmountCents={checkoutOnlineAmountCents}
+              checkoutDepositAmountCents={checkoutDepositAmountCents}
+              checkoutCurrency={checkoutCurrency}
+              onViewBooking={onViewBooking}
+            />
           )}
 
-          {hasPartialFailures && (
-            <div className="mb-3 rounded-lg border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/10 p-3 text-left">
-              <p className="mb-1 text-xs font-medium text-[color:var(--status-watch)]">
-                {t('newBooking.success.partial.title')}
-              </p>
-              <ul className="space-y-1 text-xs text-muted-foreground">
-                {paymentFlow?.partialFailures.map((failure) => (
-                  <li key={`${failure.step}-${failure.message}`}>
-                    • {partialFailureLabel(failure.step, t)}: {failure.message}
-                  </li>
-                ))}
-              </ul>
-            </div>
+          {paymentIntent && paymentIntent !== 'payment_link' && paymentOpen && (
+            <p className="mb-2 text-xs text-[color:var(--status-watch)]">
+              {t('newBooking.success.paymentOpen')}
+            </p>
           )}
 
           {autoSend?.sent && (

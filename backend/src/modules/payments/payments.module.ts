@@ -5,6 +5,7 @@ import { InvoicesModule } from '@modules/invoices/invoices.module';
 import { PaymentsConnectController } from './payments-connect.controller';
 import { BookingPaymentRequestController } from './booking-payment-request.controller';
 import { BookingPaymentRequestService } from './booking-payment-request.service';
+import { BookingPaymentCardService } from './booking-payment-card.service';
 import { StripeCheckoutService } from './stripe-checkout.service';
 import { PaymentStatusService } from './payment-status.service';
 import { PaymentsAccessService } from './payments-access.service';
@@ -46,6 +47,7 @@ import {
     PaymentPolicyService,
     PaymentFeeService,
     BookingPaymentRequestService,
+    BookingPaymentCardService,
     StripeCheckoutService,
     StripeConnectWebhookService,
     StripeConnectWebhookProcessorService,
@@ -81,6 +83,7 @@ import {
     OrganizationPaymentAccountService,
     StripeConnectAccountService,
     BookingPaymentRequestService,
+    BookingPaymentCardService,
     StripeCheckoutService,
     StripeConnectWebhookService,
     PaymentReconciliationService,

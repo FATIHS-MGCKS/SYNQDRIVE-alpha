@@ -1,5 +1,6 @@
 import type { BookingDetailDto } from '../../../lib/api';
 import { BookingDocumentsSection } from '../BookingDocumentsSection';
+import { BookingPaymentCard } from '../booking-payment/BookingPaymentCard';
 import { EM_DASH, formatCurrencyCents, parseBookingExtras, paymentStatusLabel, depositStatusLabel } from './bookingDetailUtils';
 
 import { bd } from './booking-detail-ui';
@@ -8,21 +9,37 @@ interface BookingFinanceDocumentsTabProps {
   orgId: string;
   detail: BookingDetailDto;
   isDarkMode: boolean;
+  onRefresh: () => void;
+  onRecordManualPayment?: (invoiceId: string) => void;
 }
 
-export function BookingFinanceDocumentsTab({ orgId, detail, isDarkMode }: BookingFinanceDocumentsTabProps) {
+export function BookingFinanceDocumentsTab({
+  orgId,
+  detail,
+  isDarkMode,
+  onRefresh,
+  onRecordManualPayment,
+}: BookingFinanceDocumentsTabProps) {
   const f = detail.finance;
   const extras = parseBookingExtras(detail.core.extras);
   const currency = detail.core.currency || 'EUR';
 
   return (
     <div className="space-y-6">
+      <BookingPaymentCard
+        orgId={orgId}
+        bookingId={detail.core.bookingId}
+        detail={detail}
+        onRefresh={onRefresh}
+        onRecordManualPayment={onRecordManualPayment}
+      />
+
       <div className={bd.card}>
-        <h3 className="text-xs font-bold mb-4">Zahlung</h3>
+        <h3 className="text-xs font-bold mb-4">Rechnungsübersicht</h3>
         {!f.computed ? (
           <p className="text-sm text-muted-foreground">Noch nicht berechnet — keine verlässlichen Beträge vorhanden.</p>
         ) : (
-          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 text-xs">
+          <dl className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-x-6 sm:gap-y-2 text-xs">
             <FinRow label="Mietpreis" value={formatCurrencyCents(f.basePriceCents, currency)} />
             <FinRow label="Extras" value={formatCurrencyCents(f.extrasPriceCents, currency)} />
             <FinRow label="Rabatt" value={formatCurrencyCents(f.discountAmountCents, currency)} />
@@ -32,7 +49,7 @@ export function BookingFinanceDocumentsTab({ orgId, detail, isDarkMode }: Bookin
             <FinRow label="Brutto" value={formatCurrencyCents(f.grossAmountCents, currency)} />
             <FinRow label="Bezahlt" value={formatCurrencyCents(f.paidAmountCents, currency)} />
             <FinRow label="Offen" value={formatCurrencyCents(f.openAmountCents, currency)} />
-            <FinRow label="Zahlungsstatus" value={paymentStatusLabel(f.paymentStatus)} />
+            <FinRow label="Zahlungsstatus (Rechnung)" value={paymentStatusLabel(f.paymentStatus)} />
             <FinRow label="Rechnungsstatus" value={f.invoiceStatus ?? EM_DASH} />
             <FinRow label="Schlussrechnung" value={f.finalInvoiceStatus ?? EM_DASH} />
             <FinRow label="Zusatzkosten" value={formatCurrencyCents(f.additionalChargesCents, currency)} />
@@ -47,7 +64,19 @@ export function BookingFinanceDocumentsTab({ orgId, detail, isDarkMode }: Bookin
         {extras.length === 0 ? (
           <p className="text-xs text-muted-foreground">Keine strukturierten Extras hinterlegt.</p>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="space-y-2 sm:hidden">
+            {extras.map((ex, i) => (
+              <div key={`${ex.name}-${i}`} className="rounded-lg border border-border p-3 text-xs">
+                <p className="font-medium text-foreground">{ex.name}</p>
+                <p className="text-muted-foreground">Menge: {ex.quantity}</p>
+                <p className="text-muted-foreground">Einzel: {formatCurrencyCents(ex.unitPriceCents, currency)}</p>
+                <p className="text-foreground">Gesamt: {formatCurrencyCents(ex.totalPriceCents, currency)}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        {extras.length > 0 && (
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full text-xs">
               <thead>
                 <tr className="text-left text-muted-foreground border-b border-border">

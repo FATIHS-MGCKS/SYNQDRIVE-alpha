@@ -351,4 +351,70 @@ export class BookingPaymentRequestService {
       return false;
     }
   }
+
+  async listForBooking(
+    organizationId: string,
+    bookingId: string,
+    actor: PermissionActor,
+  ): Promise<BookingPaymentRequestResult[]> {
+    await this.paymentsAccess.assertPaymentPermission(
+      organizationId,
+      actor,
+      'payments.read',
+    );
+
+    const requests = await this.paymentRequestRepository.listByBooking(
+      organizationId,
+      bookingId,
+    );
+    const depositInfoCents = await this.loadDepositInfo(bookingId);
+    return Promise.all(requests.map((request) => this.toResult(request, actor, depositInfoCents)));
+  }
+
+  async getForBooking(
+    organizationId: string,
+    bookingId: string,
+    requestId: string,
+    actor: PermissionActor,
+  ): Promise<BookingPaymentRequestResult> {
+    await this.paymentsAccess.assertPaymentPermission(
+      organizationId,
+      actor,
+      'payments.read',
+    );
+
+    const request = await this.paymentRequestRepository.findById(organizationId, requestId);
+    if (!request || request.bookingId !== bookingId) {
+      throw new NotFoundException('Payment request not found');
+    }
+    const depositInfoCents = await this.loadDepositInfo(bookingId);
+    return this.toResult(request, actor, depositInfoCents);
+  }
+
+  async cancelPaymentRequest(
+    organizationId: string,
+    bookingId: string,
+    requestId: string,
+    actor: PermissionActor,
+  ): Promise<BookingPaymentRequestResult> {
+    await this.paymentsAccess.assertPaymentPermission(
+      organizationId,
+      actor,
+      'payments.cancel',
+    );
+
+    const request = await this.paymentRequestRepository.findById(organizationId, requestId);
+    if (!request || request.bookingId !== bookingId) {
+      throw new NotFoundException('Payment request not found');
+    }
+
+    const result = await this.paymentStatusService.transitionPaymentRequest({
+      organizationId,
+      paymentRequestId: requestId,
+      toStatus: BookingPaymentRequestStatus.CANCELLED,
+    });
+
+    const depositInfoCents = await this.loadDepositInfo(bookingId);
+    return this.toResult(result.request, actor, depositInfoCents);
+  }
 }
