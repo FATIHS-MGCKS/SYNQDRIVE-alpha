@@ -5,6 +5,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Booking, BookingStatus } from '@prisma/client';
+import {
+  OrgInvoiceProcessEntityType,
+  OrgInvoiceProcessType,
+} from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { PermissionActor } from '@shared/auth/permission.util';
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
@@ -37,6 +41,7 @@ import {
 import { BookingWizardCheckoutContextService } from './booking-wizard-checkout-context.service';
 import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.service';
 import type { WizardPaymentFlowResult } from './booking-wizard-payment-flow.service';
+import { InvoiceProcessOutboxService } from '@modules/invoices/invoice-process/invoice-process-outbox.service';
 
 export interface BookingWizardConfirmResult {
   booking: Booking;
@@ -60,6 +65,7 @@ export class BookingWizardDraftService {
     private readonly bookingDocumentEmailService: BookingDocumentEmailService,
     private readonly checkoutContextService: BookingWizardCheckoutContextService,
     private readonly paymentFlowService: BookingWizardPaymentFlowService,
+    private readonly invoiceProcessOutbox: InvoiceProcessOutboxService,
   ) {}
 
   async createOrRefreshDraft(
@@ -211,14 +217,24 @@ export class BookingWizardDraftService {
       paymentIntent: toPrismaBookingPaymentIntent(resolvedIntent),
     });
 
-    await this.bookingInvoiceLifecycle
-      .syncOnBookingConfirmed(orgId, bookingId, {
+    try {
+      await this.bookingInvoiceLifecycle.syncOnBookingConfirmed(orgId, bookingId, {
         paymentIntent: resolvedIntent,
         userId: options?.userId ?? null,
-      })
-      .catch((err) => {
-        console.error('[BookingWizardDraft] invoice sync failed', err);
       });
+    } catch (err) {
+      await this.invoiceProcessOutbox.recordFailure({
+        organizationId: orgId,
+        processType: OrgInvoiceProcessType.BOOKING_FINANCE_SYNC,
+        entityType: OrgInvoiceProcessEntityType.BOOKING,
+        entityId: bookingId,
+        error: err,
+        payloadJson: {
+          paymentIntent: resolvedIntent,
+          userId: options?.userId ?? null,
+        },
+      });
+    }
 
     let paymentFlow: WizardPaymentFlowResult | null = null;
     if (resolvedIntent === 'payment_link') {

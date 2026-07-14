@@ -1068,6 +1068,7 @@ model Organization {
   userAccountPreferences            UserAccountPreference[]
   userNotificationPreferences       UserNotificationPreference[]
   orgInvoiceSequences               OrgInvoiceSequence[]
+  orgInvoiceProcesses               OrgInvoiceProcess[]
   priceBooks                        PriceBook[]
   priceTariffGroups                 PriceTariffGroup[]
   priceTariffVersions               PriceTariffVersion[]
@@ -1131,6 +1132,7 @@ model User {
   organizationRolesCreated    OrganizationRole[]           @relation("RolesCreated")
   billingPriceVersionsCreated BillingPriceVersion[]        @relation("BillingPriceVersionsCreated")
   outboundEmailsSent          OutboundEmail[]              @relation("OutboundEmailSentBy")
+  invoiceProcessesResolved    OrgInvoiceProcess[]          @relation("OrgInvoiceProcessResolvedBy")
   pricingQuotesCreated        PricingQuote[]               @relation("PricingQuotesCreated")
   notificationReceipts        NotificationReceipt[]
 
@@ -3999,6 +4001,35 @@ enum InvoicePaymentMethod {
   OTHER
 }
 
+enum OrgInvoiceProcessType {
+  BOOKING_INVOICE_CREATE
+  BOOKING_FINANCE_SYNC
+  INVOICE_DOCUMENT_GENERATE
+  DOCUMENT_STORE
+  INVOICE_DOCUMENT_LINK
+  INVOICE_EMAIL_SEND
+  PROVIDER_STATUS_SYNC
+  PAYMENT_SYNC
+  LINKED_TASK_UPDATE
+}
+
+enum OrgInvoiceProcessStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  RETRY_SCHEDULED
+  MANUAL_REVIEW
+}
+
+enum OrgInvoiceProcessEntityType {
+  BOOKING
+  INVOICE
+  DOCUMENT
+  OUTBOUND_EMAIL
+  TASK
+}
+
 // ------------------------------------------------
 // END-CUSTOMER PAYMENTS (Connect) — separate from modules/billing
 // ------------------------------------------------
@@ -4307,6 +4338,37 @@ model OrgInvoicePayment {
   @@index([stripePaymentIntentId])
   @@index([stripeChargeId])
   @@map("org_invoice_payments")
+}
+
+model OrgInvoiceProcess {
+  id                 String                      @id @default(uuid())
+  organizationId     String                      @map("organization_id")
+  processType        OrgInvoiceProcessType       @map("process_type")
+  entityType         OrgInvoiceProcessEntityType @map("entity_type")
+  entityId           String                      @map("entity_id")
+  status             OrgInvoiceProcessStatus     @default(PENDING)
+  attemptCount       Int                         @default(0) @map("attempt_count")
+  lastAttemptAt      DateTime?                   @map("last_attempt_at")
+  nextRetryAt        DateTime?                   @map("next_retry_at")
+  lastErrorCode      String?                     @map("last_error_code")
+  lastErrorMessage   String?                     @map("last_error_message")
+  correlationId      String?                     @map("correlation_id")
+  payloadJson        Json?                       @map("payload_json")
+  idempotencyKey     String                      @map("idempotency_key")
+  resolvedAt         DateTime?                   @map("resolved_at")
+  resolvedByUserId   String?                     @map("resolved_by_user_id")
+  createdAt          DateTime                    @default(now()) @map("created_at")
+  updatedAt          DateTime                    @updatedAt @map("updated_at")
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  resolvedByUser User?        @relation("OrgInvoiceProcessResolvedBy", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([status, nextRetryAt])
+  @@index([organizationId, status])
+  @@index([entityType, entityId])
+  @@index([processType, status])
+  @@map("org_invoice_processes")
 }
 
 model OrgInvoice {

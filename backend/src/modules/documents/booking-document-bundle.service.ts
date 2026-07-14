@@ -13,6 +13,11 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { InvoicesService } from '@modules/invoices/invoices.service';
+import { InvoiceProcessOutboxService } from '@modules/invoices/invoice-process/invoice-process-outbox.service';
+import {
+  OrgInvoiceProcessEntityType,
+  OrgInvoiceProcessType,
+} from '@prisma/client';
 import { GeneratedDocumentsService } from './generated-documents.service';
 import { LegalDocumentsService } from './legal-documents.service';
 import { DocumentNumberingService } from './document-numbering.service';
@@ -98,6 +103,7 @@ export class BookingDocumentBundleService {
     private readonly legalDocs: LegalDocumentsService,
     private readonly numbering: DocumentNumberingService,
     private readonly invoices: InvoicesService,
+    private readonly invoiceProcessOutbox: InvoiceProcessOutboxService,
     @Inject(DOCUMENT_RENDERER) private readonly renderer: DocumentRenderer,
     private readonly taskAutomation: TaskAutomationService,
   ) {}
@@ -456,8 +462,8 @@ export class BookingDocumentBundleService {
       orderBy: { createdAt: 'asc' },
     });
     if (!invoice) {
-      await this.invoices
-        .createBookingInvoice(orgId, {
+      try {
+        await this.invoices.createBookingInvoice(orgId, {
           id: booking.id,
           customerId: booking.customerId,
           vehicleId: booking.vehicleId,
@@ -467,12 +473,33 @@ export class BookingDocumentBundleService {
           endDate: booking.endDate,
           currency: booking.currency,
           kmIncluded: booking.kmIncluded,
-        })
-        .catch(() => null);
+        });
+      } catch (err) {
+        await this.invoiceProcessOutbox.recordFailure({
+          organizationId: orgId,
+          processType: OrgInvoiceProcessType.BOOKING_INVOICE_CREATE,
+          entityType: OrgInvoiceProcessEntityType.BOOKING,
+          entityId: booking.id,
+          error: err,
+        });
+        throw err;
+      }
       invoice = await this.prisma.orgInvoice.findFirst({
         where: { organizationId: orgId, bookingId: booking.id, type: 'OUTGOING_BOOKING' },
         orderBy: { createdAt: 'asc' },
       });
+    }
+
+    if (!invoice) {
+      const err = new Error('Booking invoice could not be created');
+      await this.invoiceProcessOutbox.recordFailure({
+        organizationId: orgId,
+        processType: OrgInvoiceProcessType.BOOKING_INVOICE_CREATE,
+        entityType: OrgInvoiceProcessEntityType.BOOKING,
+        entityId: booking.id,
+        error: err,
+      });
+      throw err;
     }
 
     const cur = (invoice?.currency || booking.currency || 'EUR').toUpperCase();

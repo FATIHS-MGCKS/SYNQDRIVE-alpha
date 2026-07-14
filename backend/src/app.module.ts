@@ -9,7 +9,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { join } from 'path';
 import Redis from 'ioredis';
 
-import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, aiConfig, emailConfig, notificationEvaluationConfig, notificationDeliveryConfig, paymentEmailConfig } from '@config/index';
+import { appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, aiConfig, emailConfig, notificationEvaluationConfig, notificationDeliveryConfig, paymentEmailConfig, invoiceProcessConfig } from '@config/index';
 
 import { PrismaModule } from '@shared/database/prisma.module';
 import { RedisModule } from '@shared/redis/redis.module';
@@ -129,7 +129,7 @@ export class AppModule {
       imports: [
         ConfigModule.forRoot({
           isGlobal: true,
-          load: [appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, aiConfig, emailConfig, notificationEvaluationConfig, notificationDeliveryConfig, paymentEmailConfig],
+          load: [appConfig, databaseConfig, redisConfig, dimoConfig, workerConfig, highMobilityConfig, retentionConfig, storageConfig, documentExtractionConfig, documentsConfig, whatsappConfig, diditConfig, stripeConfig, aiConfig, emailConfig, notificationEvaluationConfig, notificationDeliveryConfig, paymentEmailConfig, invoiceProcessConfig],
         }),
 
         // Global throttler: 200 requests per minute per IP (normal API usage)

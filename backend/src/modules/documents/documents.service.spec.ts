@@ -278,7 +278,17 @@ describe('BookingDocumentBundleService', () => {
       ...prisma,
       $executeRaw: jest.fn().mockResolvedValue(undefined),
     };
-    const svc = new BookingDocumentBundleService(prismaWithLock, config, generatedDocs, legalDocs, numbering, invoices, renderer, taskAutomation);
+    const svc = new BookingDocumentBundleService(
+      prismaWithLock,
+      config,
+      generatedDocs,
+      legalDocs,
+      numbering,
+      invoices,
+      { recordFailure: jest.fn(), enqueue: jest.fn(), isEnabled: jest.fn() } as never,
+      renderer,
+      taskAutomation,
+    );
     return { svc, generatedDocs, renderer };
   }
 

@@ -18,3 +18,4 @@ export { default as emailConfig } from './email.config';
 export { default as notificationEvaluationConfig } from './notification-evaluation.config';
 export { default as notificationDeliveryConfig } from './notification-delivery.config';
 export { default as paymentEmailConfig } from './payment-email.config';
+export { default as invoiceProcessConfig } from './invoice-process.config';
