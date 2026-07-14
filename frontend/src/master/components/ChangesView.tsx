@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-detail-timeline-v49461-2026-07-14',
+    version: '4.9.461',
+    title: 'V4.9.461 — Rechnungsdetail Verlauf: Timeline aus Audit- und Domänenereignissen',
+    summary: [
+      'Backend: `GET …/invoices/:id/timeline` aggregiert ActivityLog, Zahlungen, GeneratedDocument, OutboundEmail/Events — kein Parallel-Auditmodell.',
+      'Fachliche Ereignisse (Ausstellung, PDF, Versand, Zahlung, Überfällig, Storno …) mit Actor, Kanal, Referenz; Deduplizierung technischer Doppel-Events.',
+      'Legacy-Rechnungen: reduzierter Basis-Verlauf aus kanonischen Meilenstein-Feldern (`isLegacyReduced`).',
+      'Frontend: `InvoiceTimeline` mobil kompakt, Org-Zeitzone, einklappbare Details, nicht editierbar.',
+      'Tests: `invoice-timeline.builder.spec.ts`, `invoiceTimeline.mapper.test.ts`, `InvoiceTimeline.test.tsx`, Integration.',
+    ],
+    reason:
+      'Die bisherige „Timeline“ zeigte nur statische Datumsfelder — operativ fehlte ein auditierbarer Verlauf aus echten Systemereignissen.',
+    previousBehavior:
+      '`InvoiceTimeline` listete Beträge und `invoiceDate`/`sentAt`/`paidAt` ohne Ereigniskontext oder Actor.',
+    details: 'Siehe `architecture/INVOICE_DETAIL_TIMELINE_2026-07-14.md`.',
+    affectsArchitecture: true,
+    module: 'Invoice Finance Workflow',
+    createdAt: '2026-07-14T22:46:00.000Z',
+  },
+  {
     id: 'invoice-detail-documents-v49460-2026-07-14',
     version: '4.9.460',
     title: 'V4.9.460 — Rechnungsdetail Dokumente: kanonisches Panel + Invoice-E-Mail',
