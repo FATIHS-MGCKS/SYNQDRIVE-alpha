@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-payment-status-ui-v49448-2026-07-14',
+    version: '4.9.448',
+    title: 'V4.9.448 — Zahlungsstatus nach Buchung und im Buchungsdetail',
+    summary: [
+      'Booking Success: Szenarien A/B/C (vollständig, E-Mail-Fehler, Request-Fehler) mit Live-Polling.',
+      'Booking Detail Payment Card: Status, Beträge, Kaution separat, Link-Aktionen, Stripe-Refs gekürzt.',
+      'GET payment-requests + cancel; BookingDetailDto.payments aus Payment Request + Invoice.',
+      'DE/EN i18n, Mobile-Karten, Sticky Actions, ARIA-Status.',
+    ],
+    reason:
+      'Mitarbeiter müssen Buchungs- und Zahlungsstatus getrennt und jederzeit transparent sehen — inklusive Teilfehler nach payment_link.',
+    previousBehavior:
+      'Success-Screen zeigte nur Confirm-Zeitpunkt-Flags; Buchungsdetail hatte nur Rechnungs-Finanzblock ohne Payment Request.',
+    details:
+      'BookingPaymentCardService, BookingPaymentSuccessPanel, BookingPaymentCard, api.bookingPaymentRequests, booking-payment-status.utils.',
+    affectsArchitecture: true,
+    module: 'Bookings / Payments',
+    createdAt: '2026-07-14T00:00:00.000Z',
+  },
+  {
     id: 'booking-payment-intent-v49447-2026-07-14',
     version: '4.9.447',
     title: 'V4.9.447 — Neue Buchung: Zahlungsabsichten statt irreführender Kartenzahlung',
