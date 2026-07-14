@@ -28,6 +28,7 @@ import { PaymentReconciliationService } from './payment-reconciliation.service';
 import { PaymentConfirmationNotifierService } from './payment-confirmation-notifier.service';
 import { PaymentDisputeNotifierService } from './payment-dispute-notifier.service';
 import { PaymentEmailModule } from './email/payment-email.module';
+import { PaymentEmailEnqueueService } from './email/payment-email-enqueue.service';
 import { PaymentEmailProcessorService } from './email/payment-email-processor.service';
 import { PaymentEmailResendService } from './email/payment-email-resend.service';
 import { StripeConnectWebhookEventRepository } from './repositories/stripe-connect-webhook-event.repository';
@@ -104,6 +105,7 @@ import {
     PaymentMetricsService,
     ConnectPaymentAuditService,
     PaymentEmailProcessorService,
+    PaymentEmailEnqueueService,
     stripeConnectAdapterProvider,
   ],
 })
