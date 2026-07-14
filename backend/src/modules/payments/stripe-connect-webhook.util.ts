@@ -80,6 +80,25 @@ export function buildSafeConnectWebhookEventData(event: Stripe.Event): Prisma.In
     amount_total: typeof object?.amount_total === 'number' ? object.amount_total : null,
     currency: typeof object?.currency === 'string' ? object.currency : null,
     payment_intent: paymentIntent,
+    latest_charge:
+      typeof object?.latest_charge === 'string'
+        ? object.latest_charge
+        : object?.latest_charge && typeof object.latest_charge === 'object'
+          ? (object.latest_charge as { id?: string }).id ?? null
+          : null,
+    last_payment_error:
+      object?.last_payment_error && typeof object.last_payment_error === 'object'
+        ? {
+            code:
+              typeof (object.last_payment_error as { code?: string }).code === 'string'
+                ? (object.last_payment_error as { code?: string }).code
+                : undefined,
+            message:
+              typeof (object.last_payment_error as { message?: string }).message === 'string'
+                ? (object.last_payment_error as { message?: string }).message
+                : undefined,
+          }
+        : null,
     metadata: sanitizeMetadata(object?.metadata),
   };
 }

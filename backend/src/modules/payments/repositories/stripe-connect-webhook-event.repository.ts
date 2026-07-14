@@ -36,6 +36,12 @@ export class StripeConnectWebhookEventRepository {
     });
   }
 
+  findById(id: string): Promise<StripeConnectWebhookEvent | null> {
+    return this.prisma.stripeConnectWebhookEvent.findUnique({
+      where: { id },
+    });
+  }
+
   create(data: CreateStripeConnectWebhookEventInput): Promise<StripeConnectWebhookEvent> {
     return this.prisma.stripeConnectWebhookEvent.create({
       data: {

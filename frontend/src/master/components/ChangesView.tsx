@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'payment-reconciliation-v49445-2026-07-14',
+    version: '4.9.445',
+    title: 'V4.9.445 — End-Customer Payments: idempotente Connect-Zahlungsabgleich',
+    summary: [
+      'PaymentReconciliationService verarbeitet gespeicherte StripeConnectWebhookEvents in einer DB-Transaktion.',
+      'Kanonisch: payment_intent.succeeded — CHARGE, OrgInvoicePayment (STRIPE), PAID, Booking paymentStatus, Audit; E-Mail nur nach Commit.',
+      'checkout.session.completed → PROCESSING ohne Invoice-Verbuchung; failed/expired ohne PAID-Rückstufung.',
+      'Idempotenz: stripeEventId, PaymentIntent/CHARGE, bookingPaymentRequestId; Out-of-order robust.',
+    ],
+    reason:
+      'Connect-Events dürfen checkout.session.completed und payment_intent.succeeded nicht doppelt verbuchen; asynchrone Zahlungsarten erfordern kanonischen Geldeingang per PaymentIntent.',
+    previousBehavior: 'Webhook-Ingress nur Speicherung (RECEIVED); Processor-Stub ohne finanzielle Verarbeitung.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_PAYMENT_RECONCILIATION_2026-07-14.md, payment-reconciliation.service.ts, stripe-connect-webhook.processor.ts.',
+    affectsArchitecture: true,
+    module: 'Payments / Reconciliation',
+    createdAt: '2026-07-15T00:00:00.000Z',
+  },
+  {
     id: 'stripe-connect-webhook-v49444-2026-07-14',
     version: '4.9.444',
     title: 'V4.9.444 — End-Customer Payments: separater Stripe-Connect-Webhook',

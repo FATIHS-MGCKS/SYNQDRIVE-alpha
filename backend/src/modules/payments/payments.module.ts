@@ -18,6 +18,8 @@ import { PaymentTransactionRepository } from './repositories/payment-transaction
 import { StripeConnectWebhookController } from './stripe-connect-webhook.controller';
 import { StripeConnectWebhookService } from './stripe-connect-webhook.service';
 import { StripeConnectWebhookProcessorService } from './stripe-connect-webhook.processor';
+import { PaymentReconciliationService } from './payment-reconciliation.service';
+import { PaymentConfirmationNotifierService } from './payment-confirmation-notifier.service';
 import { StripeConnectWebhookEventRepository } from './repositories/stripe-connect-webhook-event.repository';
 import { OrganizationPaymentAccountService } from './organization-payment-account.service';
 import { StripeConnectAccountService } from './stripe-connect-account.service';
@@ -44,6 +46,8 @@ import {
     StripeCheckoutService,
     StripeConnectWebhookService,
     StripeConnectWebhookProcessorService,
+    PaymentReconciliationService,
+    PaymentConfirmationNotifierService,
     PaymentsFeatureGuard,
     PaymentsPermissionGuard,
     OrganizationPaymentAccountRepository,
@@ -74,6 +78,7 @@ import {
     BookingPaymentRequestService,
     StripeCheckoutService,
     StripeConnectWebhookService,
+    PaymentReconciliationService,
     stripeConnectAdapterProvider,
   ],
 })

@@ -66,11 +66,13 @@ const BASE_TRANSITIONS: Readonly<
     BookingPaymentRequestStatus.LINK_PENDING,
     BookingPaymentRequestStatus.LINK_SENT,
     BookingPaymentRequestStatus.PROCESSING,
+    BookingPaymentRequestStatus.FAILED,
     BookingPaymentRequestStatus.CANCELLED,
     BookingPaymentRequestStatus.EXPIRED,
   ],
   [BookingPaymentRequestStatus.LINK_SENT]: [
     BookingPaymentRequestStatus.PROCESSING,
+    BookingPaymentRequestStatus.FAILED,
     BookingPaymentRequestStatus.CANCELLED,
     BookingPaymentRequestStatus.EXPIRED,
   ],

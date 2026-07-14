@@ -57,7 +57,13 @@ describe('payments domain schema contracts', () => {
 
   it('defines connect webhook processing statuses aligned with billing webhook pattern', () => {
     expect(Object.values(StripeConnectWebhookProcessingStatus)).toEqual(
-      expect.arrayContaining(['RECEIVED', 'PROCESSED', 'FAILED', 'IGNORED', 'UNRESOLVED_ACCOUNT']),
+      expect.arrayContaining([
+        'RECEIVED',
+        'PROCESSED',
+        'FAILED',
+        'IGNORED',
+        'UNRESOLVED_ACCOUNT',
+      ]),
     );
   });
 
