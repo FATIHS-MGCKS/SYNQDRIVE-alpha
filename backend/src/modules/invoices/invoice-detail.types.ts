@@ -47,13 +47,78 @@ export interface InvoiceDetailAmountsDto {
   creditAmountCents: number | null;
 }
 
+export type RelationAvailability = 'AVAILABLE' | 'ARCHIVED' | 'DELETED' | 'MISSING';
+
+export interface InvoiceEntityNavigationDto {
+  entityId: string;
+  routeKey: 'customer-detail' | 'bookings' | 'fleet';
+  label: string;
+}
+
+export interface InvoiceRelationSnapshotsDto {
+  customerDisplayName?: string | null;
+  companyName?: string | null;
+  vehicleDisplayName?: string | null;
+  licensePlate?: string | null;
+  vehicleMake?: string | null;
+  vehicleModel?: string | null;
+}
+
 export interface InvoiceCustomerSummaryDto {
   id: string;
+  availability: RelationAvailability;
   displayName: string;
+  firstName: string | null;
+  lastName: string | null;
+  companyName: string | null;
+  customerNumber: string;
   email: string | null;
   phone: string | null;
-  company: string | null;
   status: string | null;
+  navigation: InvoiceEntityNavigationDto | null;
+}
+
+export interface InvoiceBookingStationSummaryDto {
+  id: string;
+  name: string;
+  code: string | null;
+}
+
+export interface InvoiceBookingSummaryDto {
+  id: string;
+  availability: RelationAvailability;
+  bookingNumber: string;
+  reference: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  pickupStation: InvoiceBookingStationSummaryDto | null;
+  returnStation: InvoiceBookingStationSummaryDto | null;
+  bookingCustomerId: string | null;
+  navigation: InvoiceEntityNavigationDto | null;
+  unavailableLabel: string | null;
+}
+
+export interface InvoiceVehicleSummaryDto {
+  id: string;
+  availability: RelationAvailability;
+  displayName: string;
+  make: string | null;
+  model: string | null;
+  modelYear: number | null;
+  licensePlate: string | null;
+  fleetName: string | null;
+  vin: string | null;
+  status: string | null;
+  navigation: InvoiceEntityNavigationDto | null;
+  unavailableLabel: string | null;
+}
+
+export interface InvoiceRelationDivergenceDto {
+  customerDiverges: boolean;
+  invoiceCustomerId: string | null;
+  bookingCustomerId: string | null;
+  message: string | null;
 }
 
 export interface InvoiceSupplierSummaryDto {
@@ -61,24 +126,6 @@ export interface InvoiceSupplierSummaryDto {
   displayName: string;
   email: string | null;
   phone: string | null;
-}
-
-export interface InvoiceBookingSummaryDto {
-  id: string;
-  reference: string;
-  status: string;
-  startDate: string;
-  endDate: string;
-}
-
-export interface InvoiceVehicleSummaryDto {
-  id: string;
-  displayName: string;
-  licensePlate: string | null;
-  vin: string | null;
-  make: string | null;
-  model: string | null;
-  year: number | null;
 }
 
 export interface InvoiceDetailLineItemDto {
@@ -158,6 +205,7 @@ export interface InvoiceDetailDto {
   supplier: InvoiceSupplierSummaryDto | null;
   booking: InvoiceBookingSummaryDto | null;
   vehicle: InvoiceVehicleSummaryDto | null;
+  relations: InvoiceRelationDivergenceDto;
   lineItems: InvoiceDetailLineItemDto[];
   payments: InvoiceDetailPaymentDto[];
   documents: InvoiceDocumentSummaryDto[];

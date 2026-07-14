@@ -1,39 +1,38 @@
+import { OrgInvoiceType } from '@prisma/client';
+import { displayInvoiceNumber, isOutgoingInvoiceType } from './invoice-domain.util';
+import { parseLegacyLineItems, computeInvoiceTotals } from './invoice-line-items.util';
+import { buildInvoiceDetailCapabilities } from './invoice-detail-actions.util';
+import type { InvoiceDocumentsViewDto } from './invoice-document-read.types';
 import {
+  buildCustomerDivergence,
+  mapInvoiceBookingSummary,
+  mapInvoiceCustomerSummary,
+  mapInvoiceVehicleSummary,
+  parseInvoiceRelationSnapshots,
+  type BookingRow,
+  type CustomerRow,
+  type VehicleRow,
+} from './invoice-detail-relations.util';
+import type {
+  InvoiceDetailDto,
+  InvoiceDetailLineItemDto,
+  InvoiceDetailPaymentDto,
+  InvoiceDirection,
+  InvoiceLinkedTaskDto,
+  InvoiceOutboundEmailSummaryDto,
+  InvoiceProvenanceDto,
+  InvoiceSupplierSummaryDto,
+  InvoiceTimelineEventDto,
+} from './invoice-detail.types';
+import type {
   Customer,
   OrgInvoice,
   OrgInvoicePayment,
-  OrgInvoiceType,
   OrgTask,
   OutboundEmail,
   OutboundEmailAttachment,
   Vehicle,
 } from '@prisma/client';
-import { bookingRef } from '@modules/documents/templates/template-helpers';
-import { displayInvoiceNumber, isOutgoingInvoiceType } from './invoice-domain.util';
-import { parseLegacyLineItems, computeInvoiceTotals } from './invoice-line-items.util';
-import { buildInvoiceDetailCapabilities } from './invoice-detail-actions.util';
-import type { InvoiceDocumentsViewDto } from './invoice-document-read.types';
-import type {
-  InvoiceBookingSummaryDto,
-  InvoiceCustomerSummaryDto,
-  InvoiceDetailDto,
-  InvoiceDetailLineItemDto,
-  InvoiceDetailPaymentDto,
-  InvoiceDirection,
-  InvoiceOutboundEmailSummaryDto,
-  InvoiceProvenanceDto,
-  InvoiceSupplierSummaryDto,
-  InvoiceTimelineEventDto,
-  InvoiceVehicleSummaryDto,
-  InvoiceLinkedTaskDto,
-} from './invoice-detail.types';
-
-type BookingRow = {
-  id: string;
-  status: string;
-  startDate: Date;
-  endDate: Date;
-};
 
 type VendorRow = {
   id: string;
@@ -61,24 +60,11 @@ export interface InvoiceDetailMapperInput {
   documentsView: InvoiceDocumentsViewDto;
   outboundEmails: Array<OutboundEmail & { attachments: OutboundEmailAttachment[] }>;
   timeline: ActivityRow[];
+  includeVin?: boolean;
 }
 
 function iso(date: Date | null | undefined): string | null {
   return date ? date.toISOString() : null;
-}
-
-function customerDisplayName(c: Customer): string {
-  const person = [c.firstName, c.lastName].filter(Boolean).join(' ').trim();
-  if (person) return person;
-  if (c.company) return c.company;
-  return `Kunde ${c.id.slice(0, 8)}`;
-}
-
-function vehicleDisplayName(v: Vehicle): string {
-  if (v.vehicleName?.trim()) return v.vehicleName.trim();
-  const base = [v.make, v.model].filter(Boolean).join(' ');
-  const year = v.year ? ` (${v.year})` : '';
-  return `${base}${year}`.trim() || `Fahrzeug ${v.id.slice(0, 8)}`;
 }
 
 function mapDirection(type: OrgInvoiceType): InvoiceDirection {
@@ -155,18 +141,6 @@ function mapProvenance(inv: OrgInvoice): InvoiceProvenanceDto {
   };
 }
 
-function mapCustomer(c: Customer | null): InvoiceCustomerSummaryDto | null {
-  if (!c) return null;
-  return {
-    id: c.id,
-    displayName: customerDisplayName(c),
-    email: c.email,
-    phone: c.phone,
-    company: c.company,
-    status: c.status,
-  };
-}
-
 function mapSupplier(inv: InvoiceDetailMapperInput['invoice']): InvoiceSupplierSummaryDto | null {
   if (inv.vendor) {
     return {
@@ -185,30 +159,6 @@ function mapSupplier(inv: InvoiceDetailMapperInput['invoice']): InvoiceSupplierS
     };
   }
   return null;
-}
-
-function mapBooking(b: BookingRow | null): InvoiceBookingSummaryDto | null {
-  if (!b) return null;
-  return {
-    id: b.id,
-    reference: bookingRef(b.id),
-    status: b.status,
-    startDate: b.startDate.toISOString(),
-    endDate: b.endDate.toISOString(),
-  };
-}
-
-function mapVehicle(v: Vehicle | null): InvoiceVehicleSummaryDto | null {
-  if (!v) return null;
-  return {
-    id: v.id,
-    displayName: vehicleDisplayName(v),
-    licensePlate: v.licensePlate,
-    vin: v.vin,
-    make: v.make,
-    model: v.model,
-    year: v.year,
-  };
 }
 
 function mapPayments(payments: OrgInvoicePayment[]): InvoiceDetailPaymentDto[] {
@@ -265,6 +215,27 @@ export function mapInvoiceDetail(input: InvoiceDetailMapperInput): InvoiceDetail
   const outstandingCents =
     inv.outstandingCents ?? Math.max(0, totalCents - paidCents);
   const activeDocumentId = documentsView.activeDocumentId;
+  const snapshots = parseInvoiceRelationSnapshots(inv.extractedData);
+
+  const customer = mapInvoiceCustomerSummary({
+    customerId: inv.customerId,
+    customer: input.customer as CustomerRow | null,
+    snapshots,
+  });
+  const booking = mapInvoiceBookingSummary({
+    bookingId: inv.bookingId,
+    booking: input.booking,
+  });
+  const vehicle = mapInvoiceVehicleSummary({
+    vehicleId: inv.vehicleId,
+    vehicle: input.vehicle as VehicleRow | null,
+    snapshots,
+    includeVin: input.includeVin ?? false,
+  });
+  const relations = buildCustomerDivergence({
+    invoiceCustomerId: inv.customerId,
+    booking: input.booking,
+  });
 
   const capabilities = buildInvoiceDetailCapabilities({
     type: inv.type,
@@ -315,10 +286,11 @@ export function mapInvoiceDetail(input: InvoiceDetailMapperInput): InvoiceDetail
       outstandingAmountCents: outstandingCents,
       creditAmountCents: inv.status === 'CREDITED' ? totalCents : null,
     },
-    customer: mapCustomer(input.customer),
+    customer,
     supplier: mapSupplier(inv),
-    booking: mapBooking(input.booking),
-    vehicle: mapVehicle(input.vehicle),
+    booking,
+    vehicle,
+    relations,
     lineItems: mapLineItems(inv.lineItems, totalCents),
     payments: mapPayments(inv.payments),
     documents: documentsView.documents,

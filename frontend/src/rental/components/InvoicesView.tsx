@@ -22,7 +22,8 @@ import { Button } from '../../components/ui/button';
 import { cn } from '../../components/ui/utils';
 import { SupportContextButton } from '../../components/support/SupportContextButton';
 import { useRentalOrg } from '../RentalContext';
-import type { Invoice, InvoiceStats } from './invoices/invoiceTypes';
+import type { Invoice, InvoiceDetail, InvoiceStats } from './invoices/invoiceTypes';
+import { normalizeInvoiceDetailFromApi } from './invoices/invoice-detail-api.util';
 import {
   STATUS_MAP,
   isOutgoing,
@@ -157,7 +158,7 @@ export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
   const [isDirectionOpen, setIsDirectionOpen] = useState(false);
   const [isStatusOpen, setIsStatusOpen] = useState(false);
   const [view, setView] = useState<'list' | 'create' | 'upload' | 'detail'>('list');
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceDetail | null>(null);
 
   const tp = isDarkMode ? 'text-white' : 'text-gray-900';
   const ts = isDarkMode ? 'text-muted-foreground' : 'text-gray-500';
@@ -189,15 +190,20 @@ export function InvoicesView({ isDarkMode }: InvoicesViewProps) {
 
   useEffect(() => { load(); }, [load]);
 
+  const loadInvoiceDetail = useCallback(async (invoiceId: string): Promise<InvoiceDetail> => {
+    const raw = await api.invoices.getDetail(orgId!, invoiceId);
+    return normalizeInvoiceDetailFromApi(raw as Parameters<typeof normalizeInvoiceDetailFromApi>[0]);
+  }, [orgId]);
+
   const openDetail = async (inv: Invoice) => {
     if (!orgId) return;
     try {
-      const full = await api.invoices.get(orgId, inv.id);
+      const full = await loadInvoiceDetail(inv.id);
       setSelectedInvoice(full);
       setView('detail');
     } catch {
       toast.error('Rechnungsdetails konnten nicht geladen werden');
-      setSelectedInvoice(inv);
+      setSelectedInvoice(inv as InvoiceDetail);
       setView('detail');
     }
   };
@@ -829,8 +835,8 @@ function CreateInvoiceForm({ isDarkMode, orgId, customers, vehicles, vendors, on
 // ════════════════════════════════════════════════
 
 function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp, ts, inputCls }: {
-  isDarkMode: boolean; invoice: Invoice; orgId: string;
-  onBack: () => void; onUpdate: (inv: Invoice) => void;
+  isDarkMode: boolean; invoice: InvoiceDetail; orgId: string;
+  onBack: () => void; onUpdate: (inv: InvoiceDetail) => void;
   card: string; tp: string; ts: string; inputCls: string;
 }) {
   const { userRole } = useRentalOrg();
@@ -861,14 +867,9 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
     if (!invoice.bookingId || !invoice.generatedDocumentId) return;
     setLoadingSendDoc(true);
     try {
-      const [meta, customer] = await Promise.all([
-        api.documents.metadata(orgId, invoice.generatedDocumentId),
-        invoice.customerId
-          ? api.customers.get(orgId, invoice.customerId).catch(() => null)
-          : Promise.resolve(null),
-      ]);
+      const meta = await api.documents.metadata(orgId, invoice.generatedDocumentId);
       setSendDoc(meta);
-      setInvoiceCustomerEmail(customer?.email ?? null);
+      setInvoiceCustomerEmail(invoice.customer?.email ?? null);
       setSendOpen(true);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Dokument konnte nicht geladen werden');
@@ -882,12 +883,28 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
   const TypeIcon = ty.icon;
   const outstanding = invoice.outstandingCents ?? Math.max(0, invoice.totalCents - (invoice.paidCents ?? 0));
   const paidCents = invoice.paidCents ?? 0;
+  const customerLabel =
+    invoice.customer?.displayName ??
+    (invoice.customerId ? 'Kunde nicht mehr verfügbar' : null);
+  const bookingLabel =
+    invoice.booking?.bookingNumber ??
+    (invoice.bookingId ? 'Buchung nicht mehr verfügbar' : null);
+  const vehicleLabel =
+    invoice.vehicle?.displayName ??
+    (invoice.vehicleId ? 'Fahrzeugdaten nicht verfügbar' : null);
+  const provenanceLabel =
+    invoice.provenance?.label ??
+    (invoice.type === 'OUTGOING_BOOKING'
+      ? 'Automatisch (Buchung)'
+      : invoice.type === 'INCOMING_UPLOADED' || invoice.documentExtractionId
+        ? 'Document Extraction'
+        : 'Manuell');
 
   const refreshInvoice = async () => {
     setRefreshing(true);
     try {
-      const fresh = await api.invoices.get(orgId, invoice.id);
-      onUpdate(fresh);
+      const raw = await api.invoices.getDetail(orgId, invoice.id);
+      onUpdate(normalizeInvoiceDetailFromApi(raw as Parameters<typeof normalizeInvoiceDetailFromApi>[0]));
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Rechnung konnte nicht aktualisiert werden');
     } finally {
@@ -898,9 +915,9 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
   const handleIssue = async () => {
     setIssuing(true);
     try {
-      const updated = await api.invoices.issue(orgId, invoice.id);
-      onUpdate(updated);
-      toast.success('Rechnung ausgestellt', { description: displayNumber(updated) });
+      await api.invoices.issue(orgId, invoice.id);
+      await refreshInvoice();
+      toast.success('Rechnung ausgestellt', { description: displayNumber(invoice) });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Ausstellen fehlgeschlagen');
     } finally {
@@ -911,8 +928,8 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
   const handleMarkSent = async () => {
     setMarkingSent(true);
     try {
-      const updated = await api.invoices.markSent(orgId, invoice.id);
-      onUpdate(updated);
+      await api.invoices.markSent(orgId, invoice.id);
+      await refreshInvoice();
       toast.success('Als gesendet markiert');
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Status konnte nicht gesetzt werden');
@@ -924,8 +941,8 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
   const handleMarkPaid = async () => {
     setMarkingPaid(true);
     try {
-      const updated = await api.invoices.markPaid(orgId, invoice.id);
-      onUpdate(updated);
+      await api.invoices.markPaid(orgId, invoice.id);
+      await refreshInvoice();
       toast.success('Vollständig bezahlt erfasst');
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Zahlung konnte nicht erfasst werden');
@@ -942,12 +959,12 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
     }
     setRecordingPayment(true);
     try {
-      const updated = await api.invoices.recordPayment(orgId, invoice.id, {
+      await api.invoices.recordPayment(orgId, invoice.id, {
         amountCents,
         method: paymentMethod,
         reference: paymentReference || undefined,
       });
-      onUpdate(updated);
+      await refreshInvoice();
       setShowPaymentForm(false);
       setPaymentAmount('');
       setPaymentReference('');
@@ -961,8 +978,8 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
 
   const saveNotes = async () => {
     try {
-      const updated = await api.invoices.update(orgId, invoice.id, { notes });
-      onUpdate(updated);
+      await api.invoices.update(orgId, invoice.id, { notes });
+      await refreshInvoice();
       setEditingNotes(false);
       toast.success('Notizen gespeichert');
     } catch (e: unknown) {
@@ -1120,20 +1137,17 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
         <div className="space-y-4">
           <div className={`${card} p-5`}>
             <h3 className={`text-xs font-bold ${tp} mb-3 uppercase tracking-wider`}>Zuordnung</h3>
+            {invoice.relations?.customerDiverges && invoice.relations.message && (
+              <p className={`text-[10px] mb-3 rounded-lg px-3 py-2 ${isDarkMode ? 'bg-amber-500/10 text-amber-300' : 'bg-amber-50 text-amber-800'}`}>
+                {invoice.relations.message}
+              </p>
+            )}
             <div className={`divide-y ${isDarkMode ? 'divide-border/30' : 'divide-gray-100'}`}>
-              {invoice.customerId && row('Kunde', <span className="text-emerald-500 font-medium">Verknüpft</span>, User)}
+              {customerLabel && row('Kunde', <span className="text-emerald-500 font-medium">{customerLabel}</span>, User)}
               {invoice.vendorName && row('Lieferant', invoice.vendorName, Building2)}
-              {invoice.bookingId && row('Buchung', <span className="text-status-info font-medium">Verknüpft</span>, Calendar)}
-              {invoice.vehicleId && row('Fahrzeug', <span className="font-mono text-[11px]">{invoice.vehicleId.slice(0, 12)}…</span>, Tag)}
-              {row(
-                'Herkunft',
-                invoice.type === 'OUTGOING_BOOKING'
-                  ? 'Automatisch (Buchung)'
-                  : invoice.type === 'INCOMING_UPLOADED' || invoice.documentExtractionId
-                    ? 'Document Extraction'
-                    : 'Manuell',
-                FileText,
-              )}
+              {bookingLabel && row('Buchung', <span className="text-status-info font-medium">{bookingLabel}</span>, Calendar)}
+              {vehicleLabel && row('Fahrzeug', <span className="font-medium text-sm">{vehicleLabel}</span>, Tag)}
+              {row('Herkunft', provenanceLabel, FileText)}
               {invoice.templateId && row('Vorlage', TEMPLATES.find((t) => t.id === invoice.templateId)?.name || invoice.templateId, Receipt)}
             </div>
           </div>

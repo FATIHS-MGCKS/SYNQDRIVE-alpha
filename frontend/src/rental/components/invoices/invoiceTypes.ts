@@ -95,10 +95,48 @@ export interface InvoiceStats {
 }
 
 /** Typed read model from GET .../invoices/:id/detail (backend InvoiceDetailDto). */
+export interface InvoiceDetailRelationSummary {
+  id: string;
+  availability: string;
+  displayName: string;
+  navigation?: { entityId: string; routeKey: string; label: string } | null;
+}
+
+export interface InvoiceDetailBookingSummary extends InvoiceDetailRelationSummary {
+  bookingNumber: string;
+  reference: string;
+  startDate: string;
+  endDate: string;
+  status: string;
+  pickupStation?: { id: string; name: string; code: string | null } | null;
+  returnStation?: { id: string; name: string; code: string | null } | null;
+}
+
 export interface InvoiceDetail extends Invoice {
   activeDocumentId?: string | null;
   documentCacheMismatch?: boolean;
   documents?: unknown[];
+  relations?: {
+    customerDiverges: boolean;
+    invoiceCustomerId: string | null;
+    bookingCustomerId: string | null;
+    message: string | null;
+  };
+  customer?: (InvoiceDetailRelationSummary & {
+    firstName?: string | null;
+    lastName?: string | null;
+    companyName?: string | null;
+    customerNumber?: string;
+    email?: string | null;
+  }) | null;
+  booking?: InvoiceDetailBookingSummary | null;
+  vehicle?: (InvoiceDetailRelationSummary & {
+    licensePlate?: string | null;
+    make?: string | null;
+    model?: string | null;
+    modelYear?: number | null;
+    fleetName?: string | null;
+  }) | null;
   capabilities?: {
     canEdit: boolean;
     canIssue: boolean;
@@ -110,9 +148,6 @@ export interface InvoiceDetail extends Invoice {
     paymentAvailability: string;
     blockingReasons: Record<string, string[]>;
   };
-  customer?: { id: string; displayName: string; email: string | null } | null;
-  booking?: { id: string; reference: string; status: string } | null;
-  vehicle?: { id: string; displayName: string; licensePlate: string | null } | null;
   provenance?: { kind: string; label: string };
   timeline?: { id: string; action: string; description: string; createdAt: string }[];
   outboundEmails?: unknown[];

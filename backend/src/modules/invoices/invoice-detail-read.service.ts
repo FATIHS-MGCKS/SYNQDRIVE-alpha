@@ -2,7 +2,11 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { InvoiceDocumentsReadService } from './invoice-documents-read.service';
 import { mapInvoiceDetail } from './invoice-detail.mapper';
-import type { InvoiceDetailDto } from './invoice-detail.types';
+
+export interface InvoiceDetailReadOptions {
+  /** VIN is secondary and only included when explicitly allowed (e.g. admin). */
+  includeVin?: boolean;
+}
 
 @Injectable()
 export class InvoiceDetailReadService {
@@ -11,7 +15,11 @@ export class InvoiceDetailReadService {
     private readonly invoiceDocuments: InvoiceDocumentsReadService,
   ) {}
 
-  async findDetail(orgId: string, invoiceId: string): Promise<InvoiceDetailDto> {
+  async findDetail(
+    orgId: string,
+    invoiceId: string,
+    options?: InvoiceDetailReadOptions,
+  ) {
     const invoice = await this.prisma.orgInvoice.findFirst({
       where: { id: invoiceId, organizationId: orgId },
       include: {
@@ -39,9 +47,14 @@ export class InvoiceDetailReadService {
               where: { id: invoice.bookingId, organizationId: orgId },
               select: {
                 id: true,
+                customerId: true,
                 status: true,
                 startDate: true,
                 endDate: true,
+                pickupStationId: true,
+                returnStationId: true,
+                pickupStation: { select: { id: true, name: true, code: true } },
+                returnStation: { select: { id: true, name: true, code: true } },
               },
             })
           : Promise.resolve(null),
@@ -85,6 +98,7 @@ export class InvoiceDetailReadService {
       documentsView,
       outboundEmails,
       timeline,
+      includeVin: options?.includeVin ?? false,
     });
   }
 }

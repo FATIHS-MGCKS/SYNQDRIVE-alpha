@@ -48,7 +48,7 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     previousBehavior:
       'findById: customerId/bookingId/vehicleId ohne aufgelöste Namen; keine Capabilities, keine E-Mail-Historie, keine Timeline.',
     details:
-      'invoice-detail-read.service.ts, invoice-detail.mapper.ts, invoice-detail-actions.util.ts, invoices.controller.ts.',
+      'invoice-detail-read.service.ts, invoice-detail.mapper.ts, invoice-detail-relations.util.ts, invoice-detail-actions.util.ts, invoices.controller.ts; Frontend: getDetail + normalizeInvoiceDetailFromApi in InvoicesView.',
     affectsArchitecture: true,
     module: 'Invoices',
     createdAt: '2026-07-14T21:00:00.000Z',

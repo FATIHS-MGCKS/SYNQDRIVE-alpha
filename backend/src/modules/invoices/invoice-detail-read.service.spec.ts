@@ -64,15 +64,22 @@ describe('InvoiceDetailReadService', () => {
     });
     prisma.booking.findFirst.mockResolvedValue({
       id: BOOKING_REF,
+      customerId: CUSTOMER_MUELLER,
       status: 'CONFIRMED',
       startDate: new Date('2026-07-10T08:00:00.000Z'),
       endDate: new Date('2026-07-13T18:00:00.000Z'),
+      pickupStationId: 'st-1',
+      returnStationId: null,
+      pickupStation: { id: 'st-1', name: 'Zentrum', code: 'ZEN' },
+      returnStation: null,
     });
 
     const detail = await service.findDetail(ORG_A, INVOICE_BOOKING);
 
     expect(detail.customer?.displayName).toBe('Anna Test');
+    expect(detail.customer?.customerNumber).toMatch(/^K-/);
     expect(detail.vehicle?.displayName).toContain('Golf');
+    expect(detail.booking?.bookingNumber).toMatch(/^BK-/);
     expect(detail.booking?.reference).toBe(BOOKING_REF.slice(0, 8).toUpperCase());
     expect(invoiceDocuments.getDocumentsForInvoice).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -93,6 +100,44 @@ describe('InvoiceDetailReadService', () => {
     await expect(service.findDetail(ORG_B, INVOICE_BOOKING)).rejects.toBeInstanceOf(
       NotFoundException,
     );
+  });
+
+  it('does not resolve cross-tenant relation IDs (org-scoped findFirst returns null)', async () => {
+    const row = makeOrgInvoiceRow();
+    prisma.orgInvoice.findFirst.mockResolvedValue(row);
+    prisma.customer.findFirst.mockResolvedValue(null);
+    prisma.vehicle.findFirst.mockResolvedValue(null);
+    prisma.booking.findFirst.mockResolvedValue(null);
+
+    const detail = await service.findDetail(ORG_A, INVOICE_BOOKING);
+
+    expect(prisma.customer.findFirst).toHaveBeenCalledWith({
+      where: { id: CUSTOMER_MUELLER, organizationId: ORG_A },
+    });
+    expect(prisma.vehicle.findFirst).toHaveBeenCalledWith({
+      where: { id: VEHICLE_GOLF, organizationId: ORG_A },
+    });
+    expect(prisma.booking.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: BOOKING_REF, organizationId: ORG_A },
+      }),
+    );
+    expect(detail.customer?.availability).toBe('DELETED');
+    expect(detail.vehicle?.displayName).toBe('Fahrzeugdaten nicht verfügbar');
+    expect(detail.booking?.availability).toBe('DELETED');
+  });
+
+  it('returns null booking summary when invoice has no bookingId', async () => {
+    const row = makeOrgInvoiceRow({ bookingId: null });
+    prisma.orgInvoice.findFirst.mockResolvedValue(row);
+    prisma.customer.findFirst.mockResolvedValue(null);
+    prisma.vehicle.findFirst.mockResolvedValue(null);
+
+    const detail = await service.findDetail(ORG_A, INVOICE_BOOKING);
+
+    expect(prisma.booking.findFirst).not.toHaveBeenCalled();
+    expect(detail.booking).toBeNull();
+    expect(detail.relations.customerDiverges).toBe(false);
   });
 
   it('includes outbound email history by invoice or booking', async () => {

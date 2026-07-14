@@ -10,30 +10,37 @@ import {
   VEHICLE_GOLF,
 } from './invoice-baseline.fixtures';
 
-/**
- * Source-level regression locks for InvoicesView detail UX debt (audit 2026-07-14).
- * Intentionally avoids large UI snapshots.
- */
-describe('InvoicesView detail UI — baseline regression locks', () => {
+describe('InvoicesView detail UI — relation summaries from getDetail', () => {
   const viewPath = resolve(__dirname, '../InvoicesView.tsx');
   const source = readFileSync(viewPath, 'utf8');
 
-  const currentRegressionFragments = [
-    "row('Kunde', <span className=\"text-emerald-500 font-medium\">Verknüpft</span>",
-    "row('Buchung', <span className=\"text-status-info font-medium\">Verknüpft</span>",
-    'vehicleId.slice(0, 12)',
-    'generatedDocumentId.slice(0, 8)',
-    '{p.method}',
-    'invoice.bookingId && invoice.generatedDocumentId',
-    'api.documents.metadata(orgId, invoice.generatedDocumentId)',
-  ];
+  it('loads detail via api.invoices.getDetail', () => {
+    expect(source).toContain('api.invoices.getDetail');
+    expect(source).toContain('normalizeInvoiceDetailFromApi');
+  });
 
-  it.each(currentRegressionFragments)(
-    'current implementation still contains regression marker: %s',
-    (fragment) => {
-      expect(source).toContain(fragment);
-    },
-  );
+  it('does not show placeholder Verknüpft for customer or booking', () => {
+    expect(source).not.toContain('Verknüpft</span>, User)');
+    expect(source).not.toContain('Verknüpft</span>, Calendar)');
+  });
+
+  it('does not use vehicleId UUID fragment as primary vehicle label', () => {
+    expect(source).not.toContain('vehicleId.slice(0, 12)');
+  });
+
+  it('renders resolved customer, booking and vehicle display names', () => {
+    expect(source).toContain('customerLabel');
+    expect(source).toContain('bookingLabel');
+    expect(source).toContain('vehicleLabel');
+    expect(source).toContain('invoice.customer?.displayName');
+    expect(source).toContain('invoice.booking?.bookingNumber');
+    expect(source).toContain('invoice.vehicle?.displayName');
+  });
+
+  it('shows customer divergence message when relations diverge', () => {
+    expect(source).toContain('invoice.relations?.customerDiverges');
+    expect(source).toContain('invoice.relations.message');
+  });
 
   it('InvoiceDetail does not receive customers/vehicles props from parent', () => {
     expect(source).toMatch(
@@ -41,10 +48,6 @@ describe('InvoicesView detail UI — baseline regression locks', () => {
     );
     expect(source).not.toMatch(/<InvoiceDetail[^>]*customers=/);
     expect(source).not.toMatch(/<InvoiceDetail[^>]*vehicles=/);
-  });
-
-  it('does not call api.documents.open for generated PDF', () => {
-    expect(source).not.toContain('api.documents.open');
   });
 });
 
@@ -75,12 +78,6 @@ describe('InvoicesView detail — behavioral baseline helpers', () => {
     expect(canEmailInvoiceDocument({ canManageEmail: false, invoice: inv })).toBe(false);
   });
 
-  it('vehicle assignment UI uses UUID fragment not license plate', () => {
-    const fragment = `${VEHICLE_GOLF.slice(0, 12)}`;
-    expect(fragment).toHaveLength(12);
-    expect(fragment).not.toMatch(/[A-Z]{1,3}-[A-Z]{1,2}\s?\d+/);
-  });
-
   it('payment table shows raw CARD enum (current)', () => {
     expect(formatPaymentMethodForTable('CARD')).toBe('CARD');
   });
@@ -91,17 +88,12 @@ describe('InvoicesView detail — behavioral baseline helpers', () => {
   });
 });
 
-describe.skip('InvoicesView detail — target state (enable after phase P0–P2)', () => {
+describe.skip('InvoicesView detail — future improvements', () => {
   const viewPath = resolve(__dirname, '../InvoicesView.tsx');
 
   it('should open PDF via api.documents.open', () => {
     const source = readFileSync(viewPath, 'utf8');
     expect(source).toContain('api.documents.open');
-  });
-
-  it('should not show placeholder Verknüpft for customer', () => {
-    const source = readFileSync(viewPath, 'utf8');
-    expect(source).not.toContain('Verknüpft');
   });
 
   it('should translate CARD payment method in payments table', () => {

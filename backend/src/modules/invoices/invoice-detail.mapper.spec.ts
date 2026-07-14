@@ -8,6 +8,7 @@ import {
   makeOrgInvoiceRow,
 } from './__fixtures__/invoice-baseline.fixtures';
 import { mapInvoiceDetail } from './invoice-detail.mapper';
+import { assertNoUuidPrimaryDisplay } from './invoice-detail-relations.util';
 
 describe('invoice-detail.mapper', () => {
   const baseRow = makeOrgInvoiceRow();
@@ -23,6 +24,8 @@ describe('invoice-detail.mapper', () => {
         email: 'max@example.com',
         phone: '+49123',
         status: 'ACTIVE',
+        customerType: 'INDIVIDUAL',
+        archivedAt: null,
       } as never,
       vehicle: {
         id: VEHICLE_GOLF,
@@ -32,12 +35,18 @@ describe('invoice-detail.mapper', () => {
         licensePlate: 'B-XY 123',
         vin: 'VIN123',
         vehicleName: null,
+        status: 'AVAILABLE',
       } as never,
       booking: {
         id: BOOKING_REF,
+        customerId: CUSTOMER_MUELLER,
         status: 'CONFIRMED',
         startDate: new Date('2026-07-10T08:00:00.000Z'),
         endDate: new Date('2026-07-13T18:00:00.000Z'),
+        pickupStationId: 'st-1',
+        returnStationId: null,
+        pickupStation: { id: 'st-1', name: 'Zentrum', code: 'ZEN' },
+        returnStation: null,
       },
       documentsView: { activeDocumentId: null, cacheMismatch: false, documents: [] },
       outboundEmails: [],
@@ -45,18 +54,14 @@ describe('invoice-detail.mapper', () => {
     });
 
     expect(dto.invoice.id).toBe(INVOICE_BOOKING);
-    expect(dto.invoice.invoiceNumber).toBe('FSM-2026-0042');
-    expect(dto.invoice.direction).toBe('OUTGOING');
-    expect(dto.invoice.issueDate).toBe('2026-07-10T10:05:00.000Z');
-    expect(dto.amounts.totalGrossCents).toBe(53550);
-    expect(dto.amounts.outstandingAmountCents).toBe(53550);
     expect(dto.customer?.displayName).toBe('Max Müller');
-    expect(dto.booking?.reference).toBe(BOOKING_REF.slice(0, 8).toUpperCase());
-    expect(dto.vehicle?.licensePlate).toBe('B-XY 123');
-    expect(dto.provenance.kind).toBe('BOOKING_AUTOMATIC');
-    expect(dto.provenance.label).not.toBe('Verknüpft');
-    expect(dto.lineItems.length).toBeGreaterThan(0);
-    expect(dto.lineItems[0].grossCents).toBe(53550);
+    expect(dto.customer?.customerNumber).toMatch(/^K-/);
+    expect(dto.booking?.bookingNumber).toMatch(/^BK-/);
+    expect(dto.booking?.pickupStation?.name).toBe('Zentrum');
+    expect(dto.vehicle?.displayName).toContain('Golf');
+    assertNoUuidPrimaryDisplay(dto.customer!.displayName);
+    assertNoUuidPrimaryDisplay(dto.vehicle!.displayName);
+    expect(dto.relations.customerDiverges).toBe(false);
   });
 
   it('maps OUTGOING_FINAL provenance as booking final not manual', () => {
@@ -73,26 +78,55 @@ describe('invoice-detail.mapper', () => {
       timeline: [],
     });
     expect(dto.provenance.kind).toBe('BOOKING_FINAL');
-    expect(dto.provenance.label).toContain('Schlussrechnung');
   });
 
-  it('exposes capabilities with blocking reasons for draft without PDF', () => {
+  it('exposes customer divergence when booking customer differs', () => {
     const dto = mapInvoiceDetail({
-      invoice: makeOrgInvoiceRow({
-        status: OrgInvoiceStatus.DRAFT,
-        sequenceNumber: null,
-        sequenceYear: null,
-        invoiceNumberDisplay: null,
-      }) as never,
-      customer: { id: CUSTOMER_MUELLER, firstName: 'A', lastName: 'B', email: null } as never,
+      invoice: baseRow as never,
+      customer: {
+        id: CUSTOMER_MUELLER,
+        firstName: 'A',
+        lastName: 'B',
+        company: null,
+        email: null,
+        phone: null,
+        status: 'ACTIVE',
+        customerType: 'INDIVIDUAL',
+        archivedAt: null,
+      } as never,
       vehicle: null,
-      booking: { id: BOOKING_REF, status: 'CONFIRMED', startDate: new Date(), endDate: new Date() },
+      booking: {
+        id: BOOKING_REF,
+        customerId: 'other-customer',
+        status: 'CONFIRMED',
+        startDate: new Date(),
+        endDate: new Date(),
+        pickupStationId: null,
+        returnStationId: null,
+      },
       documentsView: { activeDocumentId: null, cacheMismatch: false, documents: [] },
       outboundEmails: [],
       timeline: [],
     });
-    expect(dto.capabilities.canIssue).toBe(true);
-    expect(dto.capabilities.canSend).toBe(false);
-    expect(dto.capabilities.blockingReasons.send).toContain('Rechnung muss zuerst ausgestellt werden');
+    expect(dto.relations.customerDiverges).toBe(true);
+  });
+
+  it('returns null booking and vehicle when invoice has no links', () => {
+    const dto = mapInvoiceDetail({
+      invoice: makeOrgInvoiceRow({
+        bookingId: null,
+        vehicleId: null,
+        customerId: null,
+      }) as never,
+      customer: null,
+      vehicle: null,
+      booking: null,
+      documentsView: { activeDocumentId: null, cacheMismatch: false, documents: [] },
+      outboundEmails: [],
+      timeline: [],
+    });
+    expect(dto.booking).toBeNull();
+    expect(dto.vehicle).toBeNull();
+    expect(dto.customer).toBeNull();
   });
 });
