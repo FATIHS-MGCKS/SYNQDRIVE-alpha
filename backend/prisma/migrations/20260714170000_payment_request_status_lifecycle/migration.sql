@@ -1,5 +1,7 @@
 -- Align BookingPaymentRequestStatus with domain lifecycle (OPEN → LINK_* → PROCESSING → PAID).
 -- CHECKOUT_PENDING is replaced by OPEN (no production rows expected; safe default mapping).
+-- PostgreSQL: enum ADD VALUE + UPDATE cannot run in one transaction (55P04).
+-- disable-transaction
 
 ALTER TYPE "BookingPaymentRequestStatus" ADD VALUE IF NOT EXISTS 'OPEN';
 ALTER TYPE "BookingPaymentRequestStatus" ADD VALUE IF NOT EXISTS 'LINK_PENDING';
