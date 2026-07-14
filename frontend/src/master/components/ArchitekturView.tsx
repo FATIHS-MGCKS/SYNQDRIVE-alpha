@@ -592,6 +592,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
       { label: 'Connect schema (V4.9.435)', detail: 'Prisma: OrganizationPaymentAccount, BookingPaymentRequest, PaymentTransaction (append-only), StripeConnectWebhookEvent — architecture/END_CUSTOMER_PAYMENTS_DOMAIN_SCHEMA_2026-07-14.md' },
       { label: 'Domain logic (V4.9.436)', detail: 'PaymentStatusService + status machine — architecture/END_CUSTOMER_PAYMENTS_DOMAIN_LOGIC_2026-07-14.md' },
       { label: 'Feature + permissions (V4.9.437)', detail: 'Organization.paymentsEnabled + PaymentsFeatureGuard / PaymentsPermissionGuard — architecture/END_CUSTOMER_PAYMENTS_FEATURE_PERMISSIONS_2026-07-14.md' },
+      { label: 'Fee policy (V4.9.438)', detail: 'Line-item commissionable base + PaymentFeeService — architecture/END_CUSTOMER_PAYMENTS_FEE_POLICY_2026-07-14.md' },
       { label: 'Connect (planned)', detail: 'Direct Charges + application_fee_amount; separates Connect webhook (STRIPE_CONNECT_WEBHOOK_SECRET) — siehe architecture/STRIPE_CONNECT_VERIFICATION_DECISION_2026-07-14.md' },
       { label: 'Adapter boundary', detail: 'Future modules/payments: createConnectedAccount, createOnboardingSession, getAccountStatus, createCheckoutSession, createRefund — domain Stripe-agnostic' },
       { label: 'MCP verify', detail: '2026-07-14: Sandbox acct testmode, 0 connected accounts; Accounts v2 + Connect Dashboard ⏳ manual' },

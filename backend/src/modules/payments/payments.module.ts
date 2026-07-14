@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { PaymentStatusService } from './payment-status.service';
 import { PaymentsAccessService } from './payments-access.service';
+import { PaymentPolicyService } from './payment-policy.service';
+import { PaymentFeeService } from './payment-fee.service';
 import { PaymentsFeatureGuard } from './guards/payments-feature.guard';
 import { PaymentsPermissionGuard } from './guards/payments-permission.guard';
 import { OrganizationPaymentAccountRepository } from './repositories/organization-payment-account.repository';
@@ -10,10 +13,12 @@ import { PaymentTransactionRepository } from './repositories/payment-transaction
 import { StripeConnectWebhookEventRepository } from './repositories/stripe-connect-webhook-event.repository';
 
 @Module({
-  imports: [PrismaModule],
+  imports: [PrismaModule, ConfigModule],
   providers: [
     PaymentStatusService,
     PaymentsAccessService,
+    PaymentPolicyService,
+    PaymentFeeService,
     PaymentsFeatureGuard,
     PaymentsPermissionGuard,
     OrganizationPaymentAccountRepository,
@@ -24,6 +29,8 @@ import { StripeConnectWebhookEventRepository } from './repositories/stripe-conne
   exports: [
     PaymentStatusService,
     PaymentsAccessService,
+    PaymentPolicyService,
+    PaymentFeeService,
     PaymentsFeatureGuard,
     PaymentsPermissionGuard,
     OrganizationPaymentAccountRepository,

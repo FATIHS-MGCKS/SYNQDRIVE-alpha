@@ -4116,6 +4116,8 @@ model BookingPaymentRequest {
   applicationFeeAmountCents Int?                        @map("application_fee_amount_cents")
   feeRateBps                Int?                        @map("fee_rate_bps")
   fixedFeeCents             Int?                        @map("fixed_fee_cents")
+  feePolicyVersion          String?                     @map("fee_policy_version")
+  feeBasis                  String?                     @map("fee_basis")
   checkoutUrl               String?                     @map("checkout_url")
   checkoutCreatedAt         DateTime?                   @map("checkout_created_at")
   checkoutExpiresAt         DateTime?                   @map("checkout_expires_at")

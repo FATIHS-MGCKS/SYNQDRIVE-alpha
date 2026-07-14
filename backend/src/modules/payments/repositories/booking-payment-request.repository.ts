@@ -34,6 +34,8 @@ export interface UpdateBookingPaymentRequestInput {
   applicationFeeAmountCents?: number | null;
   feeRateBps?: number | null;
   fixedFeeCents?: number | null;
+  feePolicyVersion?: string | null;
+  feeBasis?: string | null;
   checkoutUrl?: string | null;
   checkoutCreatedAt?: Date | null;
   checkoutExpiresAt?: Date | null;

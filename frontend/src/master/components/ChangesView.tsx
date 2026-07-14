@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'payment-fee-policy-v49438-2026-07-14',
+    version: '4.9.438',
+    title: 'V4.9.438 — End-Customer Payments: Application-Fee-Policy',
+    summary: [
+      'Sichere Fee-Policy aus BookingPriceSnapshot-Line-Items — niemals totalDueNowCents oder Kaution.',
+      'Positivliste: BASE_RENTAL, INSURANCE, EXTRA, MILEAGE_PACKAGE, EXTRA_KM; DISCOUNT als Basis-Adjustment; DEPOSIT/TAX/MANUAL_ADJUSTMENT ausgeschlossen.',
+      'PaymentPolicyService + PaymentFeeService: Prozent-/Fix-/Min-/Max-Gebühr, proportionale Refund-Fee, immutable Snapshot auf BookingPaymentRequest.',
+      '24 Unit-Tests inkl. Kaution, Rabatt, Rundung, Currency, Policy-Version.',
+    ],
+    reason:
+      'SynqDrive Application Fees dürfen nur auf provisionsfähige Mietpositionen berechnet werden; Kaution ist im MVP weder online kassierbar noch provisionierbar.',
+    previousBehavior: 'Keine serverseitige Fee-Basis-Logik; commissionableAmount ohne Line-Item-Positivliste.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_FEE_POLICY_2026-07-14.md, payment-policy.service.ts, payment-fee.service.ts, Migration payment_fee_policy_snapshot.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Connect',
+    createdAt: '2026-07-14T18:30:00.000Z',
+  },
+  {
     id: 'payments-feature-permissions-v49437-2026-07-14',
     version: '4.9.437',
     title: 'V4.9.437 — End-Customer Payments: Feature-Flag + Permissions',
