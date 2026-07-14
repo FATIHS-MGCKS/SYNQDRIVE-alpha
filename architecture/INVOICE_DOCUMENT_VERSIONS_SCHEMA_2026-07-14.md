@@ -56,6 +56,12 @@ Existing fields retained: `status` (document lifecycle), `generatedByUserId` (cr
 - `FAILED` generation rows on render errors (ADR M5)
 - Frontend changes
 
+## Diagnostic tool (read-only)
+
+- `backend/scripts/ops/audit-invoice-documents.ts`
+- `docs/audit/invoice-document-integrity-audit-2026-07-14.md`
+- Run before M2 backfill to baseline inconsistencies per organization.
+
 ## Legacy dependencies
 
 - `BookingDocumentBundle.*DocumentId` — booking-scoped pointers unchanged
