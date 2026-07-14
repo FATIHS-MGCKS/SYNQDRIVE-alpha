@@ -49,6 +49,10 @@ export interface UpdateBookingPaymentRequestInput {
 export class BookingPaymentRequestRepository {
   constructor(private readonly prisma: PrismaService) {}
 
+  /**
+   * Status mutations must go through PaymentStatusService — do not call update() for
+   * lifecycle transitions from controllers or unrelated modules.
+   */
   findById(organizationId: string, id: string): Promise<BookingPaymentRequest | null> {
     return this.prisma.bookingPaymentRequest.findFirst({
       where: { id, organizationId },

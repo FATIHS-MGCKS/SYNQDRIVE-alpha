@@ -4019,7 +4019,9 @@ enum BookingPaymentStatus {
 
 enum BookingPaymentRequestStatus {
   DRAFT
-  CHECKOUT_PENDING
+  OPEN
+  LINK_PENDING
+  LINK_SENT
   PROCESSING
   PAID
   PARTIALLY_REFUNDED
@@ -4027,6 +4029,7 @@ enum BookingPaymentRequestStatus {
   FAILED
   CANCELLED
   EXPIRED
+  DISPUTED
 }
 
 enum BookingPaymentPurpose {

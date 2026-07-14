@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'payment-domain-logic-v49436-2026-07-14',
+    version: '4.9.436',
+    title: 'V4.9.436 — End-Customer Payments: Domain-Statusmaschine ohne Stripe',
+    summary: [
+      'Zentrale Payment-Statuslogik: canTransition, applyTransition, deriveBookingPaymentStatus, calculateOutstanding/RefundableAmount.',
+      'BookingPaymentRequest-Lifecycle: DRAFT → OPEN → LINK_PENDING → LINK_SENT → PROCESSING → PAID (+ Refund/Dispute-Pfade).',
+      'Finanz-Guards: kein PAID ohne CHARGE-Ledger, kein Refund ohne Zahlung, kein Cancel nach Vollzahlung, kein PAID-Reset.',
+      'PaymentStatusService als einziger Gate für Statusänderungen; 42 Unit-Tests.',
+    ],
+    reason:
+      'Statusübergänge müssen zentral regelbasiert erfolgen, bevor Stripe-Webhooks oder Checkout angebunden werden.',
+    previousBehavior: 'Prisma-Schema ohne erzwingbare Übergangsregeln; beliebige Repository-Updates möglich.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_DOMAIN_LOGIC_2026-07-14.md, payment-status.transitions.ts, payment-status.service.ts, Migration payment_request_status_lifecycle.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Connect',
+    createdAt: '2026-07-14T17:30:00.000Z',
+  },
+  {
     id: 'end-customer-payments-domain-v49435-2026-07-14',
     version: '4.9.435',
     title: 'V4.9.435 — End-Customer Payments: Prisma-Domain (ohne Stripe-API/UI)',

@@ -16,7 +16,7 @@
 - `StripeAccountGeneration` — `V1`, `V2`
 - `OrganizationPaymentAccountStatus`
 - `BookingPaymentStatus` — derived summary on `Booking` only
-- `BookingPaymentRequestStatus`
+- `BookingPaymentRequestStatus` — `DRAFT`, `OPEN`, `LINK_PENDING`, `LINK_SENT`, `PROCESSING`, `PAID`, `PARTIALLY_REFUNDED`, `REFUNDED`, `FAILED`, `CANCELLED`, `EXPIRED`, `DISPUTED`
 - `BookingPaymentPurpose` — `BOOKING_INVOICE`, `INVOICE_SETTLEMENT` (no deposit)
 - `PaymentTransactionType` / `PaymentTransactionStatus`
 - `StripeConnectWebhookProcessingStatus`
