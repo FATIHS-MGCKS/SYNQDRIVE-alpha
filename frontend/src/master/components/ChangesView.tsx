@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'payments-stack-deploy-v49454-2026-07-14',
+    version: '4.9.454',
+    title: 'V4.9.454 — End-Customer Payments: Merge + VPS-Deploy',
+    summary: [
+      'Gesamter Payment-Stack (Prompts 1–20 + SSH-Fix + Test-Env-Docs) als ein Merge nach main.',
+      '9 Prisma-Migrationen auf VPS angewendet (106 total); Enum-Migration 170000 ohne UPDATE (PG 55P04).',
+      'Nest DI: PaymentEmailModule aus PaymentsModule re-exportiert für BookingsModule.',
+      'Release 20260714181422_v4994 live — Health OK, Connect-Webhook-Route aktiv.',
+    ],
+    reason:
+      'Isolierte Stripe-Testumgebung und E2E-Vorbereitung erforderten Deployment des vollständigen Endkundenzahlungs-Stacks auf app.synqdrive.eu.',
+    previousBehavior:
+      'VPS auf f79abf1 ohne Payment-Tabellen, Connect-Route 404, PM2-Crashloop nach erstem Deploy-Versuch.',
+    details:
+      'main @ 361803f; architecture/STRIPE_CONNECT_TEST_ENV_READINESS_2026-07-14.md; payments.module.ts DI-Fix.',
+    affectsArchitecture: true,
+    module: 'Payments',
+    createdAt: '2026-07-14T18:18:00.000Z',
+  },
+  {
     id: 'stripe-connect-test-env-readiness-v49453-2026-07-14',
     version: '4.9.453',
     title: 'V4.9.453 — Stripe Connect: isolierte Testumgebung vorbereitet (Readiness-Audit)',
