@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stripe-connect-payments-baseline-v49431-2026-07-14',
+    version: '4.9.431',
+    title: 'V4.9.431 — Stripe Connect Endkundenzahlungen: Baseline & Domain-Trennung (Schritt 1)',
+    summary: [
+      'Neues Architektur-Dokument `architecture/STRIPE_CONNECT_PAYMENTS_BASELINE_2026-07-14.md` — Ist-Zustand, Baseline-Befehle/Ergebnisse, bestehende Fehler vor Implementierung.',
+      'Klare Trennung dokumentiert: `modules/billing` = SynqDrive-Abo (Org→SynqDrive); geplante `modules/payments` = Endkunde→Org + Application Fee.',
+      'Keine funktionale Änderung: keine Prisma-Migration, keine Stripe-Objekte, kein Billing-Verhalten geändert.',
+      'ArchitekturView: Stripe-Integration und Billing-Modul um Connect-Payments-Guardrail ergänzt.',
+    ],
+    reason:
+      'Erster Schritt für Stripe Connect Endkundenzahlungen erfordert belastbare Baseline und architektonische Abgrenzung, bevor Code in einer separaten Payment-Domain entsteht.',
+    previousBehavior:
+      'Billing und hypothetische Endkundenzahlungen waren nur implizit getrennt; kein dediziertes Baseline-Dokument; `modules/payments` existierte nicht.',
+    details:
+      'architecture/STRIPE_CONNECT_PAYMENTS_BASELINE_2026-07-14.md, ArchitekturView (Integrations + Billing-Modul). Stripe MCP nur lesend (Account SynqDrive Sandbox). Kein ADR — keine ADR-Struktur im Repo.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Connect',
+    createdAt: '2026-07-14T14:50:00.000Z',
+  },
+  {
     id: 'hostinger-mcp-version-fix-v49430-2026-07-14',
     version: '4.9.430',
     title: 'V4.9.430 — MCP: Hostinger-Version + Resend gehostet',
