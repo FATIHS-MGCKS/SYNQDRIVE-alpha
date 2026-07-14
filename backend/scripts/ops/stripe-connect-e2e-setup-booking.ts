@@ -13,6 +13,7 @@ import { CustomersService } from '../../src/modules/customers/customers.service'
 import { BookingWizardDraftService } from '../../src/modules/bookings/booking-wizard-draft.service';
 import { BookingWizardCheckoutContextService } from '../../src/modules/bookings/booking-wizard-checkout-context.service';
 import { PaymentFeeService } from '../../src/modules/payments/payment-fee.service';
+import { PaymentPolicyService } from '../../src/modules/payments/payment-policy.service';
 
 const ORG_ID = process.env.E2E_ORG_ID?.trim() || 'faa710c9-6d91-4079-a7d5-91fdccdec14a';
 const TARGET_RENT_CENTS = Number(process.env.E2E_RENT_CENTS ?? 80_000);
@@ -42,6 +43,7 @@ async function main() {
     const wizard = app.get(BookingWizardDraftService);
     const checkoutContext = app.get(BookingWizardCheckoutContextService);
     const feeService = app.get(PaymentFeeService);
+    const paymentPolicy = app.get(PaymentPolicyService);
 
     const membership = await prisma.organizationMembership.findFirst({
       where: { organizationId: ORG_ID, role: 'ORG_ADMIN', status: 'ACTIVE' },
@@ -87,13 +89,21 @@ async function main() {
       1,
       Math.ceil((returnAt.getTime() - pickupAt.getTime()) / (24 * 60 * 60 * 1000)),
     );
-    const targetDailyRateCents = Math.ceil(TARGET_RENT_CENTS / rentalDays);
+
+    const org = await prisma.organization.findUnique({
+      where: { id: ORG_ID },
+      select: { defaultVatRate: true },
+    });
+    const vatRate = Number(org?.defaultVatRate ?? 19) / 100;
+    const vatFactor = 1 + vatRate;
+    const targetDailyNetCents = Math.round(TARGET_RENT_CENTS / rentalDays / vatFactor);
+
     const rateUpdates: { depositAmountCents?: number; dailyRateCents?: number } = {};
     if (rate.depositAmountCents !== TARGET_DEPOSIT_CENTS) {
       rateUpdates.depositAmountCents = TARGET_DEPOSIT_CENTS;
     }
-    if (rate.dailyRateCents !== targetDailyRateCents) {
-      rateUpdates.dailyRateCents = targetDailyRateCents;
+    if (rate.dailyRateCents !== targetDailyNetCents) {
+      rateUpdates.dailyRateCents = targetDailyNetCents;
     }
     if (Object.keys(rateUpdates).length > 0) {
       await prisma.tariffRate.update({ where: { id: rate.id }, data: rateUpdates });
@@ -110,9 +120,16 @@ async function main() {
       selectedInsuranceOptionIds: [],
     });
 
-    if (simulation.totalGrossCents !== TARGET_RENT_CENTS) {
+    const policy = paymentPolicy.resolvePolicyForOrganization(ORG_ID, simulation.currency);
+    const preFeeSnapshot = feeService.buildFeeSnapshotFromLineItems(
+      simulation.lineItems,
+      policy,
+      simulation.currency,
+    );
+
+    if (Math.abs(preFeeSnapshot.rentalPaymentAmountCents - TARGET_RENT_CENTS) > 2) {
       throw new Error(
-        `Expected rent ${TARGET_RENT_CENTS} ct, got ${simulation.totalGrossCents} ct — tune tariff rate`,
+        `Expected online rent ${TARGET_RENT_CENTS} ct, got ${preFeeSnapshot.rentalPaymentAmountCents} ct — tune tariff rate`,
       );
     }
 

@@ -209,14 +209,18 @@ export class StripeConnectV1Adapter implements StripeConnectAdapter {
   async createRefund(input: CreateRefundInput): Promise<RefundRef> {
     const stripe = this.requireStripe();
     try {
+      const refundParams: Stripe.RefundCreateParams = {
+        ...(input.paymentIntentId
+          ? { payment_intent: input.paymentIntentId }
+          : input.chargeId
+            ? { charge: input.chargeId }
+            : {}),
+        ...(input.amountCents != null ? { amount: input.amountCents } : {}),
+        refund_application_fee: input.refundApplicationFee,
+        ...(input.reason ? { reason: input.reason as Stripe.RefundCreateParams.Reason } : {}),
+      };
       const refund = await stripe.refunds.create(
-        {
-          payment_intent: input.paymentIntentId,
-          ...(input.chargeId ? { charge: input.chargeId } : {}),
-          ...(input.amountCents != null ? { amount: input.amountCents } : {}),
-          refund_application_fee: input.refundApplicationFee,
-          ...(input.reason ? { reason: input.reason as Stripe.RefundCreateParams.Reason } : {}),
-        },
+        refundParams,
         {
           stripeAccount: input.connectedAccountId,
           idempotencyKey: input.stripeIdempotencyKey,

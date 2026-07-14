@@ -68,9 +68,17 @@ async function main() {
         : session.payment_intent?.id ?? null);
 
     if (!paymentIntentId) {
-      throw new Error(
-        'No payment_intent on checkout session — open checkout URL once or recreate session',
+      const created = await stripe.paymentIntents.create(
+        {
+          amount: pr?.amountCents ?? session.amount_total ?? 0,
+          currency: (pr?.currency ?? session.currency ?? 'eur').toLowerCase(),
+          application_fee_amount: pr?.applicationFeeAmountCents ?? undefined,
+          metadata: session.metadata ?? {},
+          payment_method_types: ['card'],
+        },
+        { stripeAccount: connectedAccountId },
       );
+      paymentIntentId = created.id;
     }
 
     const pm = await stripe.paymentMethods.create(
