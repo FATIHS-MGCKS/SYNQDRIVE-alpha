@@ -40,7 +40,7 @@ describe('payments domain schema contracts', () => {
 
   it('defines booking payment purposes without deposit (BookingDeposit stays separate)', () => {
     expect(Object.values(BookingPaymentPurpose)).toEqual(
-      expect.arrayContaining(['BOOKING_INVOICE', 'INVOICE_SETTLEMENT']),
+      expect.arrayContaining(['RENTAL_PAYMENT', 'BOOKING_INVOICE', 'INVOICE_SETTLEMENT']),
     );
     expect(Object.values(BookingPaymentPurpose)).not.toContain('DEPOSIT');
   });

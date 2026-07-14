@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-payment-request-v49442-2026-07-14',
+    version: '4.9.442',
+    title: 'V4.9.442 — End-Customer Payments: BookingPaymentRequest (RENTAL_PAYMENT)',
+    summary: [
+      'POST /organizations/:orgId/bookings/:bookingId/payment-requests — serverseitiger eingefrorener Zahlungs-Snapshot ohne Checkout/E-Mail.',
+      'Betrag aus BookingPriceSnapshot + OrgInvoice (validiert); keine Client-Totals, kein totalDueNowCents, keine Kaution im amountCents.',
+      'MVP-Zweck RENTAL_PAYMENT; Fee-Snapshot via PaymentFeeService; Idempotency-Key + Advisory Lock; max. ein aktiver Request pro Invoice.',
+      'Response mit depositInfoCents separat; applicationFeeAmountCents nur mit payments.settings.manage oder Org-Admin.',
+    ],
+    reason:
+      'Zahlungslinks brauchen einen unveränderlichen serverseitigen Betrag, bevor Stripe Checkout und E-Mail angebunden werden.',
+    previousBehavior: 'Kein API-Endpunkt zur Erstellung von BookingPaymentRequest; Beträge nur implizit in Snapshot/Invoice.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_BOOKING_PAYMENT_REQUEST_2026-07-14.md, booking-payment-request.service.ts, booking-payment-request.controller.ts.',
+    affectsArchitecture: true,
+    module: 'Payments / Booking Payment Request',
+    createdAt: '2026-07-14T22:00:00.000Z',
+  },
+  {
     id: 'customer-payments-ui-v49441-2026-07-14',
     version: '4.9.441',
     title: 'V4.9.441 — Kundenzahlungen UI in Administration → Abrechnung',

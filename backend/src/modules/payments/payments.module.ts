@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@shared/database/prisma.module';
+import { InvoicesModule } from '@modules/invoices/invoices.module';
 import { PaymentsConnectController } from './payments-connect.controller';
+import { BookingPaymentRequestController } from './booking-payment-request.controller';
+import { BookingPaymentRequestService } from './booking-payment-request.service';
 import { PaymentStatusService } from './payment-status.service';
 import { PaymentsAccessService } from './payments-access.service';
 import { PaymentPolicyService } from './payment-policy.service';
@@ -22,18 +25,20 @@ import {
 } from './stripe/stripe-connect-adapter.factory';
 
 @Module({
-  imports: [PrismaModule, ConfigModule],
-  controllers: [PaymentsConnectController],
+  imports: [PrismaModule, ConfigModule, InvoicesModule],
+  controllers: [PaymentsConnectController, BookingPaymentRequestController],
   providers: [
     PaymentStatusService,
     PaymentsAccessService,
     PaymentPolicyService,
     PaymentFeeService,
+    BookingPaymentRequestService,
     PaymentsFeatureGuard,
     PaymentsPermissionGuard,
     OrganizationPaymentAccountRepository,
     OrganizationPaymentAccountService,
     StripeConnectAccountService,
+    BookingPaymentRequestService,
     StripeConnectV1Adapter,
     StripeConnectV2Adapter,
     StripeConnectAdapterFactory,
@@ -55,6 +60,7 @@ import {
     StripeConnectWebhookEventRepository,
     OrganizationPaymentAccountService,
     StripeConnectAccountService,
+    BookingPaymentRequestService,
     stripeConnectAdapterProvider,
   ],
 })

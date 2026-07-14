@@ -19,7 +19,25 @@ export interface CreateBookingPaymentRequestInput {
   idempotencyKey: string;
   provider?: PaymentProvider;
   status?: BookingPaymentRequestStatus;
+  stripeConnectedAccountId?: string | null;
+  commissionableAmountCents?: number | null;
+  applicationFeeAmountCents?: number | null;
+  feeRateBps?: number | null;
+  fixedFeeCents?: number | null;
+  feePolicyVersion?: string | null;
+  feeBasis?: string | null;
+  recipientEmail?: string | null;
+  sendEmailOnLink?: boolean;
+  checkoutExpiresAt?: Date | null;
 }
+
+export const ACTIVE_RENTAL_PAYMENT_REQUEST_STATUSES: BookingPaymentRequestStatus[] = [
+  BookingPaymentRequestStatus.DRAFT,
+  BookingPaymentRequestStatus.OPEN,
+  BookingPaymentRequestStatus.LINK_PENDING,
+  BookingPaymentRequestStatus.LINK_SENT,
+  BookingPaymentRequestStatus.PROCESSING,
+];
 
 export interface UpdateBookingPaymentRequestInput {
   status?: BookingPaymentRequestStatus;
@@ -70,6 +88,22 @@ export class BookingPaymentRequestRepository {
     });
   }
 
+  findActiveByInvoiceAndPurpose(
+    organizationId: string,
+    invoiceId: string,
+    purpose: BookingPaymentPurpose,
+  ): Promise<BookingPaymentRequest | null> {
+    return this.prisma.bookingPaymentRequest.findFirst({
+      where: {
+        organizationId,
+        invoiceId,
+        purpose,
+        status: { in: ACTIVE_RENTAL_PAYMENT_REQUEST_STATUSES },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
   listByBooking(
     organizationId: string,
     bookingId: string,
@@ -99,6 +133,16 @@ export class BookingPaymentRequestRepository {
         idempotencyKey: data.idempotencyKey,
         provider: data.provider ?? PaymentProvider.STRIPE,
         status: data.status ?? BookingPaymentRequestStatus.DRAFT,
+        stripeConnectedAccountId: data.stripeConnectedAccountId ?? null,
+        commissionableAmountCents: data.commissionableAmountCents ?? null,
+        applicationFeeAmountCents: data.applicationFeeAmountCents ?? null,
+        feeRateBps: data.feeRateBps ?? null,
+        fixedFeeCents: data.fixedFeeCents ?? null,
+        feePolicyVersion: data.feePolicyVersion ?? null,
+        feeBasis: data.feeBasis ?? null,
+        recipientEmail: data.recipientEmail ?? null,
+        sendEmailOnLink: data.sendEmailOnLink ?? false,
+        checkoutExpiresAt: data.checkoutExpiresAt ?? null,
       },
     });
   }

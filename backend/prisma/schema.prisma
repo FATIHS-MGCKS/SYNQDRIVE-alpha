@@ -4035,6 +4035,7 @@ enum BookingPaymentRequestStatus {
 }
 
 enum BookingPaymentPurpose {
+  RENTAL_PAYMENT
   BOOKING_INVOICE
   INVOICE_SETTLEMENT
 }
@@ -4121,6 +4122,8 @@ model BookingPaymentRequest {
   checkoutUrl               String?                     @map("checkout_url")
   checkoutCreatedAt         DateTime?                   @map("checkout_created_at")
   checkoutExpiresAt         DateTime?                   @map("checkout_expires_at")
+  recipientEmail            String?                     @map("recipient_email")
+  sendEmailOnLink           Boolean                     @default(false) @map("send_email_on_link")
   lastSentAt                DateTime?                   @map("last_sent_at")
   sendAttemptCount          Int                         @default(0) @map("send_attempt_count")
   paidAt                    DateTime?                   @map("paid_at")
