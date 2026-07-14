@@ -4,8 +4,9 @@
       "url": "https://mcp.didit.me/mcp"
     },
     "dimo": {
-      "command": "npx",
-      "args": ["-y", "mcp-dimo@1.5.5"],
+      "type": "stdio",
+      "command": "node",
+      "args": ["${workspaceFolder}/.cursor/vendor/mcp-dimo/dist/index.js"],
       "env": {
         "DIMO_CLIENT_ID": "${env:DIMO_CLIENT_ID}",
         "DIMO_DOMAIN": "${env:DIMO_DOMAIN}",
@@ -13,14 +14,16 @@
       }
     },
     "hostinger-api": {
+      "type": "stdio",
       "command": "npx",
-      "args": ["-y", "hostinger-api-mcp@2.11.0"],
+      "args": ["-y", "hostinger-api-mcp@1.5.5"],
       "env": {
         "DEBUG": "false",
         "API_TOKEN": "${env:HOSTINGER_API_TOKEN}"
       }
     },
     "resend": {
+      "type": "stdio",
       "command": "npx",
       "args": ["-y", "resend-mcp@2.11.0"],
       "env": {

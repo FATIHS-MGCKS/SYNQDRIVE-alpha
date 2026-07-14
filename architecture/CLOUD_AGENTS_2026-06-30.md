@@ -37,10 +37,12 @@
 - **Local infra fallback** remains `backend/docker-compose.yml` inside the agent VM
   when tasks should not touch production VPS data.
 - **MCP tooling path**: `cloud-agent-install.sh` → `cloud-agent-mcp-setup.sh` →
-  `.cursor/mcp.json` from example; secrets from Dashboard Runtime Secrets (`${env:…}` in
-  config). Didit uses hosted OAuth MCP; DIMO/Resend/Hostinger via `npx`; Stripe via hosted MCP +
-  `STRIPE_SECRET_KEY` header. Didit OAuth remains a one-time user action in Cursor MCP settings
-  after agent boot.
+  `cloud-agent-mcp-dimo-ensure.sh` + `mcp-resolve-env.js` → `.cursor/mcp.json`,
+  `~/.cursor/mcp.json`, and `.cursor/mcp.dashboard.json` (dashboard paste target).
+  Template uses `${env:…}`; resolver inlines Dashboard Runtime Secrets at boot.
+  **Cloud Agents read MCP from [cursor.com/agents](https://cursor.com/agents) dashboard** —
+  `${env:…}` interpolation is not supported there; copy `mcp.dashboard.json` or hardcode
+  secrets in Custom MCP. Didit OAuth remains a one-time user action in Cursor MCP settings.
 
 ## Notes
 

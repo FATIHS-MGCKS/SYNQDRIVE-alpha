@@ -35,6 +35,23 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'mcp-cloud-agent-dashboard-resolve-v49430-2026-07-14',
+    version: '4.9.430',
+    title: 'V4.9.430 — MCP Cloud Agents: Dashboard-Config + Env-Resolver',
+    summary: [
+      'Ursache für fehlende Didit/Resend/Stripe-MCP: Cloud Agents lesen MCP aus cursor.com/agents (Custom MCP), nicht automatisch aus Repo-mcp.json; `${env:…}` wird im Dashboard nicht aufgelöst.',
+      'Neues `mcp-resolve-env.js` schreibt `.cursor/mcp.json`, `~/.cursor/mcp.json` und `.cursor/mcp.dashboard.json` (Secrets inlined, gitignored) aus dem Example-Template.',
+      '`cloud-agent-mcp-dimo-ensure.sh` baut DIMO MCP nach `.cursor/vendor/mcp-dimo` (npm-Paket existiert nicht); Hostinger-Pin auf `1.5.5` korrigiert (2.11.0 existiert nicht).',
+      'AGENTS.md + CLOUD_AGENTS-Architektur: Dashboard als Single Source of Truth für Cloud-Agent-MCP dokumentiert.',
+    ],
+    reason: 'Resend/Stripe-Secrets waren gesetzt und Pakete starten lokal, aber GetMcpTools zeigte nur cursor-cloud + Figma — weil Dashboard-MCP fehlte bzw. `${env:}` im Portal nicht funktioniert.',
+    previousBehavior: 'Nur Template-Copy nach mcp.json; Hostinger@2.11.0 → npm ETARGET; mcp-dimo@1.5.5 → npm 404; Cloud Agents ohne Dashboard-Config.',
+    details: 'mcp.json.example, mcp-resolve-env.js, cloud-agent-mcp-dimo-ensure.sh, cloud-agent-mcp-setup.sh, cloud-agent-start.sh, .gitignore, AGENTS.md, architecture/CLOUD_AGENTS_2026-06-30.md, ArchitekturView.',
+    affectsArchitecture: true,
+    module: 'Cloud Agents / MCP',
+    createdAt: '2026-07-14T13:45:00.000Z',
+  },
+  {
     id: 'mcp-cloud-agent-setup-v49429-2026-07-14',
     version: '4.9.429',
     title: 'V4.9.429 — MCP-Server: Cloud-Agent-Setup + Stripe-Template-Fix',

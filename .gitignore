@@ -19,6 +19,8 @@ backend/public/
 # Cursor MCP config — contains provider secrets (DIMO private key, Hostinger token).
 # NEVER commit. Use .cursor/mcp.json.example for a redacted template.
 .cursor/mcp.json
+.cursor/mcp.dashboard.json
+.cursor/vendor/
 
 # Environment files (NEVER commit secrets)
 .env

@@ -60,6 +60,10 @@ fi
 if [[ ! -f "${SCRIPT_DIR}/../mcp.json" ]]; then
   echo "[cloud-agent] MCP config missing — generating from template..."
   CLOUD_AGENT_REGENERATE_MCP=1 bash "${SCRIPT_DIR}/cloud-agent-mcp-setup.sh" || true
+else
+  echo "[cloud-agent] Refreshing MCP runtime configs (env → mcp.json)..."
+  bash "${SCRIPT_DIR}/cloud-agent-mcp-dimo-ensure.sh" 2>/dev/null || true
+  node "${SCRIPT_DIR}/mcp-resolve-env.js" 2>/dev/null || true
 fi
 
 echo "[cloud-agent] Start complete. Source ${PROXY_ENV} in shells if HTTP proxy is needed."

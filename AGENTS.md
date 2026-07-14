@@ -87,19 +87,24 @@ Build-time-only credentials (private npm registries) → **Build Secret** (not u
 
 #### MCP servers (Cursor agent tooling)
 
-Project template: `.cursor/mcp.json.example` (committed). Runtime config: `.cursor/mcp.json` (gitignored, generated at Cloud Agent install).
+Project template: `.cursor/mcp.json.example` (committed). Runtime configs (gitignored, generated at install):
+
+- `.cursor/mcp.json` — resolved secrets for local IDE / VM
+- `.cursor/mcp.dashboard.json` — **paste into [cursor.com/agents](https://cursor.com/agents) → Custom MCP**
 
 | Server | Auth | Required secrets / setup |
 |--------|------|--------------------------|
 | **didit** | OAuth (browser on first tool call) | No API key — log in via Cursor MCP UI |
-| **dimo** | Env | `DIMO_CLIENT_ID`, `DIMO_PRIVATE_KEY`, `DIMO_DOMAIN` (e.g. `https://app.synqdrive.eu/auth/dimo/callback`) |
+| **dimo** | Env | `DIMO_CLIENT_ID`, `DIMO_PRIVATE_KEY`, `DIMO_DOMAIN` (vendor build: `.cursor/vendor/mcp-dimo`) |
 | **resend** | Env | `RESEND_API_KEY` |
 | **stripe** | Env | `STRIPE_SECRET_KEY` (Bearer to `https://mcp.stripe.com`) |
 | **hostinger-api** | Env | `HOSTINGER_API_TOKEN` |
 
-Cloud Agent bootstrap runs `cloud-agent-mcp-setup.sh` during install (writes `.cursor/mcp.json`). After adding secrets, restart the Cloud Agent. Didit still needs one-time OAuth in the MCP panel.
+**Cloud Agents:** MCP servers must be configured in the **[Agents dashboard](https://cursor.com/agents)** (Custom MCP). The dashboard does **not** resolve `${env:…}` — use `.cursor/mcp.dashboard.json` (secrets inlined by `mcp-resolve-env.js`) or paste literal values. Repo `.cursor/mcp.json` alone is not enough for Cloud Agent tool access. Didit and Figma need one-time OAuth in the MCP UI after dashboard setup.
 
-Local Cursor: copy the example or run `bash .cursor/scripts/cloud-agent-mcp-setup.sh`, then reload the window.
+Install/start runs `cloud-agent-mcp-setup.sh` → `cloud-agent-mcp-dimo-ensure.sh` → `mcp-resolve-env.js`. After adding secrets, restart the Cloud Agent and refresh dashboard MCP config from `mcp.dashboard.json`.
+
+Local Cursor: run `bash .cursor/scripts/cloud-agent-mcp-setup.sh`, then reload the window.
 
 `CLOUD_AGENT_SSH_PRIVATE_KEY` = full PEM from local `id_ed25519` (Windows: `C:\Users\<you>\.ssh\id_ed25519`).
 
