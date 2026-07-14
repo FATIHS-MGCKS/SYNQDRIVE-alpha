@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'end-customer-payments-domain-v49435-2026-07-14',
+    version: '4.9.435',
+    title: 'V4.9.435 — End-Customer Payments: Prisma-Domain (ohne Stripe-API/UI)',
+    summary: [
+      'Neue Payment-Domain getrennt von modules/billing: OrganizationPaymentAccount, BookingPaymentRequest, PaymentTransaction (append-only Ledger), StripeConnectWebhookEvent.',
+      'Booking.paymentStatus als abgeleitete Zusammenfassung; OrgInvoicePayment erweitert um stripePaymentIntentId, stripeChargeId, bookingPaymentRequestId.',
+      'Enums, Constraints (org+provider unique, Stripe-ID pro Connected Account, Ledger-Idempotenz), Migration 20260714160000_end_customer_payments_domain.',
+      'Thin Repositories unter modules/payments + Schema-/Repository-Tests (13). Keine Stripe-API, kein Checkout, keine UI.',
+    ],
+    reason:
+      'Vor Connect-Checkout und Webhook-Verarbeitung muss die finanzielle Datenmodell-Schicht tenant-sicher und append-only definiert sein, ohne Billing-Abo-Modelle zu vermischen.',
+    previousBehavior: 'Keine dedizierten End-Customer-Payment-Tabellen; OrgInvoicePayment ohne Stripe-Connect-Verknüpfung.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_DOMAIN_SCHEMA_2026-07-14.md, prisma/schema.prisma, modules/payments/*, payment-schema.spec.ts, payments.repository.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Connect',
+    createdAt: '2026-07-14T17:00:00.000Z',
+  },
+  {
     id: 'stripe-connect-verify-decision-v49434-2026-07-14',
     version: '4.9.434',
     title: 'V4.9.434 — Stripe Connect: Test-Konfiguration verifiziert + Architekturentscheidung',

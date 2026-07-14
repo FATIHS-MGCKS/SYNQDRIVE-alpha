@@ -580,13 +580,16 @@ const INTEGRATIONS: IntegrationEntry[] = [
     ],
   },
   {
-    name: 'Stripe',
+    name: 'Stripe — V4.9.434 Connect verification',
     icon: Zap,
     color: 'text-[color:var(--status-ai)]',
     apis: [
-      { label: 'Billing', detail: 'Subscriptions & invoices' },
-      { label: 'Payments', detail: 'Payment processing' },
-      { label: 'Cursor MCP', detail: 'Hosted https://mcp.stripe.com — Bearer ${env:STRIPE_SECRET_KEY} in .cursor/mcp.json' },
+      { label: 'Billing (live)', detail: 'modules/billing — SynqDrive-Abo; POST /api/v1/webhooks/stripe + STRIPE_WEBHOOK_SECRET' },
+      { label: 'Connect schema (V4.9.435)', detail: 'Prisma: OrganizationPaymentAccount, BookingPaymentRequest, PaymentTransaction (append-only), StripeConnectWebhookEvent — architecture/END_CUSTOMER_PAYMENTS_DOMAIN_SCHEMA_2026-07-14.md' },
+      { label: 'Connect (planned)', detail: 'Direct Charges + application_fee_amount; separates Connect webhook (STRIPE_CONNECT_WEBHOOK_SECRET) — siehe architecture/STRIPE_CONNECT_VERIFICATION_DECISION_2026-07-14.md' },
+      { label: 'Adapter boundary', detail: 'Future modules/payments: createConnectedAccount, createOnboardingSession, getAccountStatus, createCheckoutSession, createRefund — domain Stripe-agnostic' },
+      { label: 'MCP verify', detail: '2026-07-14: Sandbox acct testmode, 0 connected accounts; Accounts v2 + Connect Dashboard ⏳ manual' },
+      { label: 'Cursor MCP', detail: 'Hosted https://mcp.stripe.com — read-only verification in Prompt 4' },
     ],
   },
   {
