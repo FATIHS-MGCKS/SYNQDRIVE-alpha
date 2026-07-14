@@ -2,6 +2,9 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@shared/database/prisma.module';
 import { InvoicesModule } from '@modules/invoices/invoices.module';
+import { ConnectPaymentAuditService } from './audit/connect-payment-audit.service';
+import { PaymentConnectReconciliationService } from './payment-connect-reconciliation.service';
+import { PaymentMetricsService } from './observability/payment-metrics.service';
 import { PaymentsConnectController } from './payments-connect.controller';
 import { BookingPaymentRequestController } from './booking-payment-request.controller';
 import { OrganizationPaymentRequestController } from './organization-payment-request.controller';
@@ -57,6 +60,9 @@ import {
     StripeConnectWebhookService,
     StripeConnectWebhookProcessorService,
     PaymentReconciliationService,
+    PaymentConnectReconciliationService,
+    PaymentMetricsService,
+    ConnectPaymentAuditService,
     PaymentConfirmationNotifierService,
     PaymentDisputeNotifierService,
     PaymentEmailProcessorService,
@@ -94,6 +100,9 @@ import {
     StripeCheckoutService,
     StripeConnectWebhookService,
     PaymentReconciliationService,
+    PaymentConnectReconciliationService,
+    PaymentMetricsService,
+    ConnectPaymentAuditService,
     PaymentEmailProcessorService,
     stripeConnectAdapterProvider,
   ],

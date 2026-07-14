@@ -25,6 +25,8 @@ import type {
   CreateRefundInput,
   OnboardingSessionRef,
   RefundRef,
+  RetrievedCheckoutSessionRef,
+  RetrievedPaymentIntentRef,
   SafePayoutSummary,
 } from './stripe-connect.types';
 
@@ -233,6 +235,65 @@ export class StripeConnectV1Adapter implements StripeConnectAdapter {
       this.logger.warn(`Stripe createRefund failed: ${(error as Error).message}`);
       throw new ConnectProviderError(
         error instanceof Error ? error.message : 'Stripe refund creation failed',
+      );
+    }
+  }
+
+  async retrievePaymentIntent(
+    connectedAccountId: string,
+    paymentIntentId: string,
+  ): Promise<RetrievedPaymentIntentRef> {
+    const stripe = this.requireStripe();
+    try {
+      const pi = await stripe.paymentIntents.retrieve(
+        paymentIntentId,
+        { stripeAccount: connectedAccountId },
+      );
+      const chargeId =
+        typeof pi.latest_charge === 'string'
+          ? pi.latest_charge
+          : pi.latest_charge?.id ?? null;
+      return {
+        paymentIntentId: pi.id,
+        status: pi.status,
+        amountCents: pi.amount,
+        currency: (pi.currency ?? 'eur').toUpperCase(),
+        chargeId,
+        livemode: this.livemode(),
+      };
+    } catch (error) {
+      throw new ConnectProviderError(
+        error instanceof Error ? error.message : 'Stripe payment intent retrieve failed',
+      );
+    }
+  }
+
+  async retrieveCheckoutSession(
+    connectedAccountId: string,
+    sessionId: string,
+  ): Promise<RetrievedCheckoutSessionRef> {
+    const stripe = this.requireStripe();
+    try {
+      const session = await stripe.checkout.sessions.retrieve(
+        sessionId,
+        { stripeAccount: connectedAccountId },
+      );
+      const paymentIntentId =
+        typeof session.payment_intent === 'string'
+          ? session.payment_intent
+          : session.payment_intent?.id ?? null;
+      return {
+        sessionId: session.id,
+        status: session.status ?? 'unknown',
+        paymentIntentId,
+        amountTotalCents: session.amount_total ?? null,
+        currency: session.currency ? session.currency.toUpperCase() : null,
+        expiresAt: session.expires_at ? new Date(session.expires_at * 1000) : null,
+        livemode: this.livemode(),
+      };
+    } catch (error) {
+      throw new ConnectProviderError(
+        error instanceof Error ? error.message : 'Stripe checkout session retrieve failed',
       );
     }
   }

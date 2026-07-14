@@ -8,6 +8,8 @@ import type {
   CreateRefundInput,
   OnboardingSessionRef,
   RefundRef,
+  RetrievedCheckoutSessionRef,
+  RetrievedPaymentIntentRef,
   SafePayoutSummary,
 } from './stripe-connect.types';
 
@@ -23,6 +25,14 @@ export interface StripeConnectAdapter {
   createOnboardingSession(input: CreateOnboardingSessionInput): Promise<OnboardingSessionRef>;
   createCheckoutSession(input: CreateCheckoutSessionInput): Promise<CheckoutSessionRef>;
   createRefund(input: CreateRefundInput): Promise<RefundRef>;
+  retrievePaymentIntent(
+    connectedAccountId: string,
+    paymentIntentId: string,
+  ): Promise<RetrievedPaymentIntentRef>;
+  retrieveCheckoutSession(
+    connectedAccountId: string,
+    sessionId: string,
+  ): Promise<RetrievedCheckoutSessionRef>;
   refreshConnectedAccount(connectedAccountId: string): Promise<ConnectedAccountStatus>;
   getSafePayoutSummary(connectedAccountId: string): Promise<SafePayoutSummary>;
 }

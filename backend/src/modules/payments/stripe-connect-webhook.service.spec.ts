@@ -6,6 +6,7 @@ import { StripeConnectWebhookProcessorService } from './stripe-connect-webhook.p
 import { StripeConnectWebhookEventRepository } from './repositories/stripe-connect-webhook-event.repository';
 import { OrganizationPaymentAccountRepository } from './repositories/organization-payment-account.repository';
 import { StripeModeMismatchError } from './stripe/stripe-connect.errors';
+import { PaymentMetricsService } from './observability/payment-metrics.service';
 import * as clientUtil from './stripe/stripe-connect-client.util';
 
 describe('StripeConnectWebhookService', () => {
@@ -20,6 +21,10 @@ describe('StripeConnectWebhookService', () => {
 
   const processorService = {
     enqueueForProcessing: jest.fn(),
+  };
+
+  const paymentMetrics = {
+    unknownConnectedAccount: { inc: jest.fn() },
   };
 
   const configService = {
@@ -61,6 +66,7 @@ describe('StripeConnectWebhookService', () => {
       webhookEventRepository as unknown as StripeConnectWebhookEventRepository,
       organizationPaymentAccountRepository as unknown as OrganizationPaymentAccountRepository,
       processorService as unknown as StripeConnectWebhookProcessorService,
+      paymentMetrics as unknown as PaymentMetricsService,
     );
     jest.spyOn(clientUtil, 'getStripeConnectClient').mockReturnValue(stripeMock as never);
     stripeMock.webhooks.constructEvent.mockReturnValue(baseEvent);

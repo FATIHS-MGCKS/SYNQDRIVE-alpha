@@ -38,6 +38,7 @@ import {
 } from './utils/checkout-line-items.util';
 import { resolveAllowedCheckoutRedirectUrl } from './utils/payments-checkout-url.util';
 import { PaymentEmailEnqueueService } from './email/payment-email-enqueue.service';
+import { PaymentMetricsService } from './observability/payment-metrics.service';
 
 export interface CreateCheckoutSessionInput {
   organizationId: string;
@@ -81,6 +82,7 @@ export class StripeCheckoutService {
     @Inject(STRIPE_CONNECT_ADAPTER)
     private readonly stripeConnectAdapter: StripeConnectAdapter,
     private readonly paymentEmailEnqueue: PaymentEmailEnqueueService,
+    private readonly paymentMetrics: PaymentMetricsService,
   ) {}
 
   async createCheckoutSessionForPaymentRequest(
@@ -191,6 +193,7 @@ export class StripeCheckoutService {
         stripeIdempotencyKey,
       });
     } catch (error) {
+      this.paymentMetrics.checkoutCreation.inc({ result: 'failure' });
       await this.safeRollbackToOpen(input.organizationId, pending.request.id, pending.request.status);
       if (error instanceof ConnectProviderError) {
         throw new StripeCheckoutFailedError(error.message);
@@ -263,6 +266,7 @@ export class StripeCheckoutService {
       paymentRequestId: ready.request.id,
     });
 
+    this.paymentMetrics.checkoutCreation.inc({ result: 'success' });
     return this.toResult(ready.request);
   }
 

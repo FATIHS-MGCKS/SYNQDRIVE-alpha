@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'payments-go-live-audit-v49450-2026-07-14',
+    version: '4.9.450',
+    title: 'V4.9.450 — End-Customer Payments: Go-Live Hardening & Audit',
+    summary: [
+      'Periodischer Payment-Connect-Reconciliation-Job (Webhooks, stuck PROCESSING, expired checkouts, account sync).',
+      'Observability: Payment-Prometheus-Metriken, strukturierte Logs, Alerts, Dead-Letter-Gauge.',
+      'Read-only Connect-Payment-Audit + ops-Script; Go-Live-Dokumentation.',
+      'Webhook-Processor markiert FAILED statt HTTP-Fehler; Stripe retrieve im Connected-Account-Kontext.',
+    ],
+    reason:
+      'Produktionsreife Absicherung: keine stillen Inkonsistenzen, Alerts statt unsicherer Auto-Reparatur, Audit vor Pilot.',
+    previousBehavior:
+      'Nur event-getriebene Reconciliation; keine periodische Nachverarbeitung, keine Payment-Metriken, kein Integritäts-Audit.',
+    details:
+      'PaymentConnectReconciliationService, PaymentConnectReconciliationScheduler, PaymentMetricsService, ConnectPaymentAuditService, audit-connect-payment-integrity.ts, architecture/END_CUSTOMER_PAYMENTS_GO_LIVE_AUDIT_2026-07-14.md.',
+    affectsArchitecture: true,
+    module: 'Payments',
+    createdAt: '2026-07-14T00:00:00.000Z',
+  },
+  {
     id: 'booking-payment-refund-dispute-v49449-2026-07-14',
     version: '4.9.449',
     title: 'V4.9.449 — End-Customer Payments: Refunds & Disputes MVP',

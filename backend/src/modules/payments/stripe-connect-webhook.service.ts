@@ -14,6 +14,8 @@ import { StripeConnectWebhookEventRepository } from './repositories/stripe-conne
 import { StripeConnectWebhookProcessorService } from './stripe-connect-webhook.processor';
 import { getStripeConnectClient, inferStripeLiveMode } from './stripe/stripe-connect-client.util';
 import { StripeModeMismatchError } from './stripe/stripe-connect.errors';
+import { PaymentMetricsService } from './observability/payment-metrics.service';
+import { formatPaymentLogPayload } from './utils/payment-log.util';
 import {
   buildSafeConnectWebhookEventData,
   extractConnectedAccountId,
@@ -43,6 +45,7 @@ export class StripeConnectWebhookService {
     private readonly webhookEventRepository: StripeConnectWebhookEventRepository,
     private readonly organizationPaymentAccountRepository: OrganizationPaymentAccountRepository,
     private readonly processorService: StripeConnectWebhookProcessorService,
+    private readonly paymentMetrics: PaymentMetricsService,
   ) {}
 
   constructEvent(rawBody: Buffer, signature: string | undefined): Stripe.Event {
@@ -168,8 +171,12 @@ export class StripeConnectWebhookService {
     }
 
     if (processingStatus === StripeConnectWebhookProcessingStatus.UNRESOLVED_ACCOUNT) {
+      this.paymentMetrics.unknownConnectedAccount.inc();
       this.logger.warn(
-        `Connect webhook ${event.id} stored with unresolved account ${stripeConnectedAccountId ?? 'missing'}`,
+        formatPaymentLogPayload(
+          'CONNECT_WEBHOOK_UNRESOLVED_ACCOUNT',
+          { connectedAccountId: stripeConnectedAccountId ?? undefined, stripeEventId: event.id },
+        ),
       );
       return {
         received: true,

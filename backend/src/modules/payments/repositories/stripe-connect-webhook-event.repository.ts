@@ -68,4 +68,39 @@ export class StripeConnectWebhookEventRepository {
       data,
     });
   }
+
+  findPendingForReconciliation(params: {
+    limit: number;
+    maxAttempts: number;
+    olderThan?: Date;
+  }): Promise<StripeConnectWebhookEvent[]> {
+    return this.prisma.stripeConnectWebhookEvent.findMany({
+      where: {
+        processingStatus: {
+          in: [
+            StripeConnectWebhookProcessingStatus.RECEIVED,
+            StripeConnectWebhookProcessingStatus.FAILED,
+          ],
+        },
+        attempts: { lt: params.maxAttempts },
+        ...(params.olderThan ? { receivedAt: { lte: params.olderThan } } : {}),
+      },
+      orderBy: { receivedAt: 'asc' },
+      take: params.limit,
+    });
+  }
+
+  countByProcessingStatus(): Promise<
+    { processingStatus: StripeConnectWebhookProcessingStatus; count: number }[]
+  > {
+    return this.prisma.stripeConnectWebhookEvent.groupBy({
+      by: ['processingStatus'],
+      _count: { _all: true },
+    }).then((rows) =>
+      rows.map((row) => ({
+        processingStatus: row.processingStatus,
+        count: row._count._all,
+      })),
+    );
+  }
 }

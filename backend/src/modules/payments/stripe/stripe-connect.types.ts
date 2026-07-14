@@ -99,3 +99,22 @@ export interface RefundRef {
   status: string;
   livemode: boolean;
 }
+
+export interface RetrievedPaymentIntentRef {
+  paymentIntentId: string;
+  status: string;
+  amountCents: number;
+  currency: string;
+  chargeId: string | null;
+  livemode: boolean;
+}
+
+export interface RetrievedCheckoutSessionRef {
+  sessionId: string;
+  status: string;
+  paymentIntentId: string | null;
+  amountTotalCents: number | null;
+  currency: string | null;
+  expiresAt: Date | null;
+  livemode: boolean;
+}
