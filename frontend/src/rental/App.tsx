@@ -929,6 +929,23 @@ function RentalAppContent() {
             isDarkMode={isDarkMode}
             activeTab={currentView as FinanceTab}
             onTabChange={(tab) => { setFinanceTab(tab); handleViewChange(tab); }}
+            invoiceNavigation={{
+              onOpenCustomer: (customerId) => {
+                setDetailCustomer({ id: customerId });
+                setCurrentView('customer-detail');
+              },
+              onOpenBooking: (bookingId) => {
+                setPendingBookingDetailId(bookingId);
+                setCurrentView('bookings');
+              },
+              onOpenVehicle: (vehicleId) => {
+                const v = fleetVehicles.find((vehicle) => vehicle.id === vehicleId);
+                if (v) {
+                  setSelectedVehicle(v);
+                  setCurrentView('overview');
+                }
+              },
+            }}
           />
         ) : currentView === 'vendor-detail' && detailVendorId ? (
           <VendorDetailView

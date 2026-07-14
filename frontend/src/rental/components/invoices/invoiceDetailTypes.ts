@@ -61,4 +61,41 @@ export type InvoiceDetailDto = {
     generatePdf: InvoiceActionGate;
     sendEmail: InvoiceActionGate;
   };
+  relations: InvoiceRelationsDto;
+};
+
+export type InvoiceRelationFallback =
+  | 'archived'
+  | 'deleted'
+  | 'unavailable'
+  | 'legacy';
+
+export type InvoiceRelationKind = 'customer' | 'booking' | 'vehicle' | 'vendor';
+
+export type InvoiceEntityRelation = {
+  kind: InvoiceRelationKind;
+  label: string;
+  primary: string;
+  secondary: string | null;
+  tertiary: string | null;
+  fallback: InvoiceRelationFallback | null;
+  entityId: string | null;
+  navigable: boolean;
+  navigationBlockedReason: string | null;
+};
+
+export type InvoiceProvenanceDto = {
+  erstelltVon: string;
+  erstelltUeber: string;
+  quelle: string;
+  isLegacy: boolean;
+};
+
+export type InvoiceRelationsDto = {
+  customer: InvoiceEntityRelation | null;
+  booking: InvoiceEntityRelation | null;
+  vehicle: InvoiceEntityRelation | null;
+  vendor: InvoiceEntityRelation | null;
+  provenance: InvoiceProvenanceDto;
+  template: { id: string; name: string } | null;
 };

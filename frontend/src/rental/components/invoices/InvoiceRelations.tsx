@@ -1,68 +1,93 @@
-import { Building2, Calendar, FileText, Receipt, Tag, User } from 'lucide-react';
+import { FileText, Receipt } from 'lucide-react';
 
 import { Icon } from '../ui/Icon';
-import { INVOICE_TEMPLATES } from './invoiceConstants';
-import type { Invoice } from './invoiceTypes';
+import type { InvoiceDetailDto } from './invoiceDetailTypes';
 import { InvoiceDetailRow } from './InvoiceDetailRow';
+import { InvoiceRelationRow } from './InvoiceRelationRow';
+import type { InvoiceEntityRelation } from './invoiceDetailTypes';
 import type { InvoiceThemeClasses } from './invoiceTheme';
 
+export type InvoiceRelationNavigation = {
+  onOpenCustomer?: (customerId: string) => void;
+  onOpenBooking?: (bookingId: string) => void;
+  onOpenVehicle?: (vehicleId: string) => void;
+};
+
 interface InvoiceRelationsProps extends InvoiceThemeClasses {
-  invoice: Invoice;
+  detail: InvoiceDetailDto;
+  navigation?: InvoiceRelationNavigation;
+  tasks?: { id: string; title: string; status: string }[];
 }
 
-export function InvoiceRelations({ invoice, card, tp, ts, isDarkMode }: InvoiceRelationsProps) {
+export function InvoiceRelations({
+  detail,
+  navigation,
+  tasks,
+  card,
+  tp,
+  ts,
+  isDarkMode,
+}: InvoiceRelationsProps) {
+  const { relations } = detail;
+
+  const handleNavigate = (relation: InvoiceEntityRelation) => {
+    if (!relation.navigable || !relation.entityId) return;
+    switch (relation.kind) {
+      case 'customer':
+        navigation?.onOpenCustomer?.(relation.entityId);
+        break;
+      case 'booking':
+        navigation?.onOpenBooking?.(relation.entityId);
+        break;
+      case 'vehicle':
+        navigation?.onOpenVehicle?.(relation.entityId);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const entityRelations = [
+    relations.customer,
+    relations.vendor,
+    relations.booking,
+    relations.vehicle,
+  ].filter((row): row is InvoiceEntityRelation => row != null);
+
   return (
     <>
       <div className={`${card} p-5`}>
         <h3 className={`text-xs font-bold ${tp} mb-3 uppercase tracking-wider`}>Zuordnung</h3>
         <div className={`divide-y ${isDarkMode ? 'divide-border/30' : 'divide-gray-100'}`}>
-          {invoice.customerId && (
-            <InvoiceDetailRow
-              label="Kunde"
-              value={<span className="text-emerald-500 font-medium">Verknüpft</span>}
-              icon={User}
+          {entityRelations.map((relation) => (
+            <InvoiceRelationRow
+              key={relation.kind}
+              relation={relation}
+              onNavigate={handleNavigate}
+              isDarkMode={isDarkMode}
               tp={tp}
               ts={ts}
             />
-          )}
-          {invoice.vendorName && (
-            <InvoiceDetailRow label="Lieferant" value={invoice.vendorName} icon={Building2} tp={tp} ts={ts} />
-          )}
-          {invoice.bookingId && (
-            <InvoiceDetailRow
-              label="Buchung"
-              value={<span className="text-status-info font-medium">Verknüpft</span>}
-              icon={Calendar}
-              tp={tp}
-              ts={ts}
-            />
-          )}
-          {invoice.vehicleId && (
-            <InvoiceDetailRow
-              label="Fahrzeug"
-              value={<span className="font-mono text-[11px]">{invoice.vehicleId.slice(0, 12)}…</span>}
-              icon={Tag}
-              tp={tp}
-              ts={ts}
-            />
-          )}
-          <InvoiceDetailRow
-            label="Herkunft"
-            value={
-              invoice.type === 'OUTGOING_BOOKING'
-                ? 'Automatisch (Buchung)'
-                : invoice.type === 'INCOMING_UPLOADED' || invoice.documentExtractionId
-                  ? 'Document Extraction'
-                  : 'Manuell'
-            }
-            icon={FileText}
-            tp={tp}
-            ts={ts}
-          />
-          {invoice.templateId && (
+          ))}
+
+          <div className="py-2.5">
+            <div className="flex items-start gap-3">
+              <FileText className={`w-4 h-4 mt-0.5 ${ts} shrink-0`} aria-hidden />
+              <div className="flex-1 min-w-0 space-y-2">
+                <p className={`text-[10px] ${ts} uppercase tracking-wider font-semibold`}>Herkunft</p>
+                <dl className="space-y-1.5">
+                  <ProvenanceItem label="Erstellt von" value={relations.provenance.erstelltVon} tp={tp} ts={ts} />
+                  <ProvenanceItem label="Erstellt über" value={relations.provenance.erstelltUeber} tp={tp} ts={ts} />
+                  <ProvenanceItem label="Quelle" value={relations.provenance.quelle} tp={tp} ts={ts} />
+                </dl>
+              </div>
+            </div>
+          </div>
+
+          {relations.template && (
             <InvoiceDetailRow
               label="Vorlage"
-              value={INVOICE_TEMPLATES.find((t) => t.id === invoice.templateId)?.name || invoice.templateId}
+              value={relations.template.name}
               icon={Receipt}
               tp={tp}
               ts={ts}
@@ -71,10 +96,10 @@ export function InvoiceRelations({ invoice, card, tp, ts, isDarkMode }: InvoiceR
         </div>
       </div>
 
-      {invoice.tasks && invoice.tasks.length > 0 && (
+      {tasks && tasks.length > 0 && (
         <div className={`${card} p-5`}>
           <h3 className={`text-xs font-bold ${tp} mb-3 uppercase tracking-wider`}>Verknüpfte Aufgabe</h3>
-          {invoice.tasks.map((t) => (
+          {tasks.map((t) => (
             <div
               key={t.id}
               className={`flex items-center gap-3 p-3 rounded-xl border ${isDarkMode ? 'border-border/30 bg-muted/30' : 'border-gray-100 bg-gray-50/50'}`}
@@ -94,5 +119,24 @@ export function InvoiceRelations({ invoice, card, tp, ts, isDarkMode }: InvoiceR
         </div>
       )}
     </>
+  );
+}
+
+function ProvenanceItem({
+  label,
+  value,
+  tp,
+  ts,
+}: {
+  label: string;
+  value: string;
+  tp: string;
+  ts: string;
+}) {
+  return (
+    <div className="flex flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-3">
+      <dt className={`text-[10px] ${ts} uppercase tracking-wider font-semibold sm:w-28 shrink-0`}>{label}</dt>
+      <dd className={`text-xs ${tp} break-words`}>{value}</dd>
+    </div>
   );
 }

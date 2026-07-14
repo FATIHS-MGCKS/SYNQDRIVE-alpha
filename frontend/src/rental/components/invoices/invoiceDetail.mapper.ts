@@ -11,10 +11,14 @@ import {
 } from './invoiceFormatters';
 import type { Invoice } from './invoiceTypes';
 import type { InvoiceActionGate, InvoiceDetailDto } from './invoiceDetailTypes';
+import { buildInvoiceRelationsDto } from './invoiceRelations.mapper';
+import type { InvoiceRelationsEnrichment, InvoiceRelationsPermissions } from './invoiceRelations.mapper';
 
 export interface BuildInvoiceDetailDtoContext {
   canManageEmail: boolean;
   canManageFinance?: boolean;
+  relationsEnrichment?: InvoiceRelationsEnrichment;
+  relationsPermissions?: InvoiceRelationsPermissions;
 }
 
 function gate(allowed: boolean, reason?: string): InvoiceActionGate {
@@ -191,5 +195,10 @@ export function buildInvoiceDetailDto(
       generatePdf: generatePdfGate,
       sendEmail: sendEmailGate,
     },
+    relations: buildInvoiceRelationsDto(
+      invoice,
+      ctx.relationsEnrichment,
+      ctx.relationsPermissions,
+    ),
   };
 }

@@ -4,6 +4,10 @@ import { toast } from 'sonner';
 import { Icon } from '../ui/Icon';
 import { useRentalOrg } from '../../RentalContext';
 import { useInvoiceActions } from './hooks/useInvoiceActions';
+import {
+  useInvoiceRelationsEnrichment,
+  useInvoiceRelationsPermissions,
+} from './hooks/useInvoiceRelationsEnrichment';
 import { buildInvoiceDetailDto } from './invoiceDetail.mapper';
 import type { Invoice } from './invoiceTypes';
 import type { InvoiceThemeClasses } from './invoiceTheme';
@@ -12,7 +16,7 @@ import { InvoiceDocuments } from './InvoiceDocuments';
 import { InvoiceLineItems } from './InvoiceLineItems';
 import { InvoiceNotes } from './InvoiceNotes';
 import { InvoicePayments } from './InvoicePayments';
-import { InvoiceRelations } from './InvoiceRelations';
+import { InvoiceRelations, type InvoiceRelationNavigation } from './InvoiceRelations';
 import { InvoiceTimeline } from './InvoiceTimeline';
 import { SendInvoiceDialog } from './SendInvoiceDialog';
 
@@ -21,6 +25,7 @@ interface InvoiceDetailProps extends InvoiceThemeClasses {
   orgId: string;
   onBack: () => void;
   onUpdate: (inv: Invoice) => void;
+  navigation?: InvoiceRelationNavigation;
 }
 
 function useViewportWidth(): number {
@@ -43,6 +48,7 @@ export function InvoiceDetail({
   orgId,
   onBack,
   onUpdate,
+  navigation,
   card,
   tp,
   ts,
@@ -50,6 +56,8 @@ export function InvoiceDetail({
 }: InvoiceDetailProps) {
   const { userRole } = useRentalOrg();
   const canManageEmail = userRole === 'ORG_ADMIN' || userRole === 'MASTER_ADMIN';
+  const relationsPermissions = useInvoiceRelationsPermissions();
+  const { enrichment } = useInvoiceRelationsEnrichment(orgId, invoice);
   const viewportWidth = useViewportWidth();
   const notesAnchorRef = useRef<HTMLDivElement>(null);
 
@@ -61,8 +69,13 @@ export function InvoiceDetail({
   const actions = useInvoiceActions(orgId, invoice, onUpdate);
 
   const detail = useMemo(
-    () => buildInvoiceDetailDto(invoice, { canManageEmail }),
-    [invoice, canManageEmail],
+    () =>
+      buildInvoiceDetailDto(invoice, {
+        canManageEmail,
+        relationsEnrichment: enrichment,
+        relationsPermissions,
+      }),
+    [invoice, canManageEmail, enrichment, relationsPermissions],
   );
 
   const outstanding = detail.amounts.outstandingCents;
@@ -153,7 +166,9 @@ export function InvoiceDetail({
 
         <div className="space-y-4">
           <InvoiceRelations
-            invoice={invoice}
+            detail={detail}
+            navigation={navigation}
+            tasks={invoice.tasks}
             isDarkMode={isDarkMode}
             card={card}
             tp={tp}

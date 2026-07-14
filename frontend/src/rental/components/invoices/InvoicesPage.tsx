@@ -14,14 +14,16 @@ import { useInvoiceDetail } from './hooks/useInvoiceDetail';
 import { useInvoices } from './hooks/useInvoices';
 import type { Invoice } from './invoiceTypes';
 import { getInvoiceThemeClasses } from './invoiceTheme';
+import type { InvoiceRelationNavigation } from './InvoiceRelations';
 
 export type InvoicePageView = 'list' | 'create' | 'upload' | 'detail';
 
 interface InvoicesPageProps {
   isDarkMode: boolean;
+  navigation?: InvoiceRelationNavigation;
 }
 
-export function InvoicesPage({ isDarkMode }: InvoicesPageProps) {
+export function InvoicesPage({ isDarkMode, navigation }: InvoicesPageProps) {
   const { orgId } = useRentalOrg();
   const theme = useMemo(() => getInvoiceThemeClasses(isDarkMode), [isDarkMode]);
 
@@ -44,6 +46,7 @@ export function InvoicesPage({ isDarkMode }: InvoicesPageProps) {
         {...theme}
         invoice={selectedInvoice}
         orgId={orgId || ''}
+        navigation={navigation}
         onBack={() => {
           setView('list');
           setSelectedInvoice(null);

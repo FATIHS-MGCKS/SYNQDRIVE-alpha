@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-detail-relations-v49459-2026-07-14',
+    version: '4.9.459',
+    title: 'V4.9.459 — Rechnungsdetail Zuordnung: angereicherte Relationen + Herkunft',
+    summary: [
+      '`InvoiceDetailDto.relations` mit Kunde, Buchung, Fahrzeug, Lieferant und dreiteiliger Herkunft (Erstellt von / über / Quelle).',
+      'Client-seitige Anreicherung via `useInvoiceRelationsEnrichment` (Customer, Booking-Detail, Fleet-Lookup, Activity-Log).',
+      'Klickbare Zeilen mit Hover/Focus/Tastatur; Navigation zu Kunde/Buchung/Fahrzeug nur bei Berechtigung.',
+      'Keine Platzhalter mehr („Verknüpft“, UUID, pauschales „Automatisch (Buchung)“ bei User-Auslösung).',
+      'Tests: `invoiceRelations.mapper.test.ts`, `InvoiceRelations.test.tsx` (Relationen + Fallbacks).',
+    ],
+    reason:
+      'Zuordnungskarte war operativ unbrauchbar (generische Labels, UUID-Schnipsel, falsche Herkunft) — Nutzer brauchen benannte Entitäten mit Deep-Links.',
+    previousBehavior:
+      'Kunde/Buchung zeigten nur „Verknüpft“, Fahrzeug eine UUID, Herkunft pauschal „Automatisch (Buchung)“ / „Manuell“.',
+    details:
+      'invoiceRelations.mapper.ts, InvoiceRelationRow.tsx, InvoiceRelations.tsx, useInvoiceRelationsEnrichment.ts, App.tsx (Navigation), architecture/INVOICE_DETAIL_RELATIONS_2026-07-14.md.',
+    affectsArchitecture: true,
+    module: 'Finance',
+    createdAt: '2026-07-14T22:30:00.000Z',
+  },
+  {
     id: 'invoice-detail-header-v49458-2026-07-14',
     version: '4.9.458',
     title: 'V4.9.458 — Rechnungsdetail: neuer Header, Support-CTA entfernt',

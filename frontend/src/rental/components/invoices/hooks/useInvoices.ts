@@ -17,6 +17,7 @@ export interface InvoiceLookupVehicle {
   model?: string;
   licensePlate?: string;
   license?: string;
+  vehicleName?: string;
   vin?: string;
 }
 
