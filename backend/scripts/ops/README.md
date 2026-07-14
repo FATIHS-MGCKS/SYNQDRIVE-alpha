@@ -42,6 +42,7 @@ storage growth. These are deliberately **not** wired into the app (no automatic
 | `backfill-brake-health-from-registration-specs.ts` | Initialize `BrakeHealthCurrent` for vehicles with registration/manual brake specs but no baseline | mutating — run `--dry-run` first |
 | `audit-pricing-integrity.ts` | Read-only pricing data integrity audit (tariff versions, assignments, snapshots, quotes) | read-only — JSON report, exit code 1/2 on warnings/errors |
 | `audit-invoice-documents.ts` | Read-only invoice ↔ generated document integrity audit (cache pointer, versions, bundle links) | read-only — JSON report; see `docs/audit/invoice-document-integrity-audit-2026-07-14.md` |
+| `backfill-invoice-documents.ts` | Controlled backfill for unambiguous invoice↔document links (dry-run default) | mutating — `--apply --confirm` required; see `docs/audit/invoice-document-backfill-2026-07-14.md` |
 | `repair-pricing-integrity.ts` | Controlled repair: expire stale quotes, deactivate assignments on inactive groups | mutating — `--dry-run` default path; `--execute --confirm` required |
 | `prod-cleanup-dimo-device-connection-duplicates.sh` | VPS wrapper for the cleanup script above | mutating — backup first |
 | `vps-setup-prometheus.sh` | Install/refresh Prometheus Docker on VPS (localhost:9090, scrapes :3001) | safe — requires `METRICS_BEARER_TOKEN` |

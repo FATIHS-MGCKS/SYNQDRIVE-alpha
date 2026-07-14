@@ -62,6 +62,12 @@ Existing fields retained: `status` (document lifecycle), `generatedByUserId` (cr
 - `docs/audit/invoice-document-integrity-audit-2026-07-14.md`
 - Run before M2 backfill to baseline inconsistencies per organization.
 
+## Controlled backfill (M2)
+
+- `backend/scripts/ops/backfill-invoice-documents.ts`
+- `docs/audit/invoice-document-backfill-2026-07-14.md`
+- Dry-run default; `--apply --confirm` for writes. Not for production without audit review.
+
 ## Legacy dependencies
 
 - `BookingDocumentBundle.*DocumentId` — booking-scoped pointers unchanged
