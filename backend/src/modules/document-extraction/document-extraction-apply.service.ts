@@ -26,6 +26,7 @@ import { BatteryHealthService } from '@modules/vehicle-intelligence/battery-heal
 import { DamagesService } from '@modules/vehicle-intelligence/damages/damages.service';
 import { normalizeBatteryDocumentConfirm } from '@modules/vehicle-intelligence/battery-health/battery-document-confirmation.util';
 import { InvoicesService } from '@modules/invoices/invoices.service';
+import { provenanceForDocumentExtractionInvoice } from '@modules/invoices/invoice-provenance-write.util';
 import { ConfirmedExtractionData } from './document-extraction.types';
 
 export interface ApplyInput {
@@ -34,6 +35,8 @@ export interface ApplyInput {
   documentType: DocumentExtractionType;
   sourceFileUrl: string | null;
   confirmedData: ConfirmedExtractionData;
+  confirmedByUserId?: string | null;
+  correlationId?: string | null;
 }
 
 export interface ApplyResult {
@@ -433,31 +436,43 @@ export class DocumentExtractionApplyService {
       }
       const invoiceDate =
         this.str(d.invoiceDate) ?? this.str(d.eventDate) ?? new Date().toISOString();
-      await this.invoicesService.create(orgId, {
-        type: 'INCOMING_UPLOADED',
-        vehicleId,
-        title: this.str(d.title) ?? this.str(d.invoiceTitle) ?? 'Hochgeladene Rechnung',
-        description: this.str(d.description) ?? '',
-        vendorId,
-        vendorName: vendorNameRaw,
-        totalCents: totalCentsParsed,
-        invoiceDate,
-        dueDate: this.str(d.dueDate),
-        imageUrl: sourceFileUrl || undefined,
-        extractedData: d,
-        documentExtractionId: input.extractionId,
-        fromExtraction: true,
-        lineItems: totalCentsParsed > 0
-          ? [
-              {
-                description: this.str(d.title) ?? 'Eingangsrechnung',
-                quantity: 1,
-                unitPriceNetCents: Math.round(totalCentsParsed / 1.19),
-                taxRate: 19,
-              },
-            ]
-          : undefined,
-      });
+      await this.invoicesService.create(
+        orgId,
+        {
+          type: 'INCOMING_UPLOADED',
+          vehicleId,
+          title: this.str(d.title) ?? this.str(d.invoiceTitle) ?? 'Hochgeladene Rechnung',
+          description: this.str(d.description) ?? '',
+          vendorId,
+          vendorName: vendorNameRaw,
+          totalCents: totalCentsParsed,
+          invoiceDate,
+          dueDate: this.str(d.dueDate),
+          imageUrl: sourceFileUrl || undefined,
+          extractedData: d,
+          documentExtractionId: input.extractionId,
+          fromExtraction: true,
+          lineItems: totalCentsParsed > 0
+            ? [
+                {
+                  description: this.str(d.title) ?? 'Eingangsrechnung',
+                  quantity: 1,
+                  unitPriceNetCents: Math.round(totalCentsParsed / 1.19),
+                  taxRate: 19,
+                },
+              ]
+            : undefined,
+        },
+        {
+          userId: input.confirmedByUserId,
+          correlationId: input.correlationId ?? input.extractionId,
+          provenance: provenanceForDocumentExtractionInvoice({
+            extractionId: input.extractionId,
+            userId: input.confirmedByUserId,
+            correlationId: input.correlationId ?? input.extractionId,
+          }),
+        },
+      );
     }
     return {};
   }

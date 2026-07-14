@@ -231,17 +231,21 @@ export class BookingWizardDraftService {
         where: { id: bookingId, organizationId: orgId },
       }));
 
-    await this.invoicesService.createBookingInvoice(orgId, {
-      id: row.id,
-      customerId: row.customerId,
-      vehicleId: row.vehicleId,
-      totalPriceCents: row.totalPriceCents,
-      dailyRateCents: row.dailyRateCents,
-      startDate: row.startDate,
-      endDate: row.endDate,
-      currency: row.currency,
-      kmIncluded: row.kmIncluded,
-    });
+    await this.invoicesService.createBookingInvoice(
+      orgId,
+      {
+        id: row.id,
+        customerId: row.customerId,
+        vehicleId: row.vehicleId,
+        totalPriceCents: row.totalPriceCents,
+        dailyRateCents: row.dailyRateCents,
+        startDate: row.startDate,
+        endDate: row.endDate,
+        currency: row.currency,
+        kmIncluded: row.kmIncluded,
+      },
+      { userId, correlationId: row.id },
+    );
 
     const bundle = await this.bundleService.generateInitialBundle(orgId, bookingId, userId);
     return { booking: row, bundle };

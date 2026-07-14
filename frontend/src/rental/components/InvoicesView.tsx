@@ -893,6 +893,7 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
     invoice.vehicle?.displayName ??
     (invoice.vehicleId ? 'Fahrzeugdaten nicht verfügbar' : null);
   const provenanceLabel =
+    invoice.provenance?.summary ??
     invoice.provenance?.label ??
     (invoice.type === 'OUTGOING_BOOKING'
       ? 'Automatisch (Buchung)'

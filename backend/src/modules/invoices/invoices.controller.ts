@@ -1,7 +1,8 @@
 import {
-  Controller, Get, Post, Patch, Body, Param, Query,
+  Controller, Get, Post, Patch, Body, Param, Query, Req,
   UseGuards, UseInterceptors, UploadedFile, BadRequestException,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
@@ -10,6 +11,7 @@ import { InvoicesService } from './invoices.service';
 import { InvoiceDetailReadService } from './invoice-detail-read.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { StorageService } from '@shared/storage/storage.service';
 import {
   CreateInvoiceDto,
@@ -73,8 +75,16 @@ export class InvoicesController {
 
   @Post('organizations/:orgId/invoices')
   @UseGuards(OrgScopingGuard, RolesGuard)
-  async create(@Param('orgId') orgId: string, @Body() body: CreateInvoiceDto) {
-    return this.invoicesService.create(orgId, body);
+  async create(
+    @Param('orgId') orgId: string,
+    @CurrentUser('id') userId: string | undefined,
+    @Req() req: Request & { requestId?: string },
+    @Body() body: CreateInvoiceDto,
+  ) {
+    return this.invoicesService.create(orgId, body, {
+      userId,
+      correlationId: req.requestId ?? null,
+    });
   }
 
   @Patch('organizations/:orgId/invoices/:id')

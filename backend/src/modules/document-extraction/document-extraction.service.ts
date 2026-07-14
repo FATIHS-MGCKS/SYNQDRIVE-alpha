@@ -733,6 +733,8 @@ export class DocumentExtractionService implements OnModuleInit {
         documentType: applyDocumentType,
         sourceFileUrl,
         confirmedData,
+        confirmedByUserId: userId ?? null,
+        correlationId: extractionId,
       });
       this.observability.recordApply('success');
       this.observability.logEvent({
@@ -812,6 +814,8 @@ export class DocumentExtractionService implements OnModuleInit {
         documentType: applyDocumentType,
         sourceFileUrl,
         confirmedData: record.confirmedData as Record<string, unknown>,
+        confirmedByUserId: record.confirmedById ?? null,
+        correlationId: extractionId,
       });
       await this.prisma.vehicleDocumentExtraction.updateMany({
         where: { id: extractionId, status: 'CONFIRMED' },

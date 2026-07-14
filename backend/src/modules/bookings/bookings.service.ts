@@ -264,17 +264,21 @@ export class BookingsService {
     });
 
     const invoicePromise = this.invoicesService
-      .createBookingInvoice(orgId, {
-        id: booking.id,
-        customerId: booking.customerId,
-        vehicleId: booking.vehicleId,
-        totalPriceCents: booking.totalPriceCents,
-        dailyRateCents: booking.dailyRateCents,
-        startDate: booking.startDate,
-        endDate: booking.endDate,
-        currency: booking.currency,
-        kmIncluded: booking.kmIncluded,
-      })
+      .createBookingInvoice(
+        orgId,
+        {
+          id: booking.id,
+          customerId: booking.customerId,
+          vehicleId: booking.vehicleId,
+          totalPriceCents: booking.totalPriceCents,
+          dailyRateCents: booking.dailyRateCents,
+          startDate: booking.startDate,
+          endDate: booking.endDate,
+          currency: booking.currency,
+          kmIncluded: booking.kmIncluded,
+        },
+        { userId: options?.userId ?? null },
+      )
       .catch((err) => {
         this.logger.error(
           `createBookingInvoice failed for booking ${booking.id}: ${err instanceof Error ? err.message : err}`,

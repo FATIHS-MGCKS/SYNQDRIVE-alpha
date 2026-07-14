@@ -34,6 +34,36 @@ import {
 } from './invoice-line-items.util';
 import { InvoiceNumberService } from './invoice-number.service';
 import { InvoiceDocumentsReadService } from './invoice-documents-read.service';
+import type { InvoiceProvenanceWriteInput } from './invoice-provenance.util';
+import {
+  provenanceForBookingWizardInvoice,
+  provenanceForDocumentExtractionInvoice,
+  provenanceForManualUiInvoice,
+  provenanceForApiInvoice,
+  provenanceForBundlePipelineInvoice,
+  provenanceToPrismaFields,
+} from './invoice-provenance-write.util';
+
+export interface InvoiceCreateContext {
+  userId?: string | null;
+  correlationId?: string | null;
+  provenance?: InvoiceProvenanceWriteInput;
+  /** When set, use API provenance preset for manual creates without explicit provenance. */
+  viaApi?: boolean;
+}
+
+export interface CreateBookingInvoiceContext {
+  userId?: string | null;
+  correlationId?: string | null;
+  provenance?: InvoiceProvenanceWriteInput;
+}
+
+export interface CreateFinalInvoiceContext {
+  userId?: string | null;
+  correlationId?: string | null;
+  originalInvoiceId?: string | null;
+  totalCents: number;
+}
 
 @Injectable()
 export class InvoicesService {
@@ -228,7 +258,11 @@ export class InvoicesService {
     };
   }
 
-  async create(orgId: string, data: CreateInvoiceDto & { extractedData?: Record<string, unknown>; fromExtraction?: boolean }) {
+  async create(
+    orgId: string,
+    data: CreateInvoiceDto & { extractedData?: Record<string, unknown>; fromExtraction?: boolean },
+    context?: InvoiceCreateContext,
+  ) {
     await this.assertRelations(orgId, data);
 
     const lineInputs: InvoiceLineItemInput[] = (data.lineItems ?? []).map((item) => ({
@@ -246,6 +280,8 @@ export class InvoicesService {
       Boolean(data.fromExtraction || data.documentExtractionId),
     );
     const vendorName = await this.resolveVendorName(orgId, data.vendorId, data.vendorName);
+    const provenance = await this.resolveCreateProvenance(orgId, data, context);
+    const createdByUserId = await this.resolveOrgScopedUserId(orgId, provenance.createdByUserId);
 
     const invoice = await this.prisma.orgInvoice.create({
       data: {
@@ -277,6 +313,10 @@ export class InvoicesService {
           : undefined,
         documentExtractionId: data.documentExtractionId,
         notes: data.notes,
+        ...provenanceToPrismaFields({
+          ...provenance,
+          createdByUserId,
+        }),
       },
     });
 
@@ -474,7 +514,9 @@ export class InvoicesService {
     );
   }
 
-  async createBookingInvoice(orgId: string, booking: {
+  async createBookingInvoice(
+    orgId: string,
+    booking: {
     id: string;
     customerId: string;
     vehicleId: string;
@@ -484,7 +526,9 @@ export class InvoicesService {
     endDate: Date;
     currency?: string;
     kmIncluded?: number | null;
-  }) {
+  },
+    context?: CreateBookingInvoiceContext,
+  ) {
     const existing = await this.prisma.orgInvoice.findFirst({
       where: {
         organizationId: orgId,
@@ -554,18 +598,80 @@ export class InvoicesService {
     const dueDate = new Date(booking.startDate);
     dueDate.setDate(dueDate.getDate() + 14);
 
-    return this.create(orgId, {
-      type: 'OUTGOING_BOOKING',
-      customerId: booking.customerId,
+    return this.create(
+      orgId,
+      {
+        type: 'OUTGOING_BOOKING',
+        customerId: booking.customerId,
+        bookingId: booking.id,
+        vehicleId: booking.vehicleId,
+        title: `Buchungsrechnung #${booking.id.slice(0, 8)}`,
+        description: `Mietrechnung für Buchungszeitraum ${booking.startDate.toLocaleDateString('de-DE')} – ${booking.endDate.toLocaleDateString('de-DE')}`,
+        lineItems,
+        totalCents,
+        currency,
+        invoiceDate: new Date().toISOString(),
+        dueDate: dueDate.toISOString(),
+      },
+      {
+        userId: context?.userId,
+        correlationId: context?.correlationId,
+        provenance:
+          context?.provenance ??
+          provenanceForBookingWizardInvoice({
+            bookingId: booking.id,
+            userId: context?.userId,
+            correlationId: context?.correlationId,
+          }),
+      },
+    );
+  }
+
+  async createFinalInvoice(
+    orgId: string,
+    booking: {
+      id: string;
+      customerId: string;
+      vehicleId: string;
+      currency?: string | null;
+    },
+    context: CreateFinalInvoiceContext,
+  ) {
+    const existing = await this.prisma.orgInvoice.findFirst({
+      where: { organizationId: orgId, bookingId: booking.id, type: 'OUTGOING_FINAL' },
+      orderBy: { createdAt: 'asc' },
+    });
+    if (existing) return existing;
+
+    const totalCents = context.totalCents;
+    const subtotalCents = totalCents > 0 ? Math.round(totalCents / 1.19) : 0;
+    const provenance = provenanceForBundlePipelineInvoice({
       bookingId: booking.id,
-      vehicleId: booking.vehicleId,
-      title: `Buchungsrechnung #${booking.id.slice(0, 8)}`,
-      description: `Mietrechnung für Buchungszeitraum ${booking.startDate.toLocaleDateString('de-DE')} – ${booking.endDate.toLocaleDateString('de-DE')}`,
-      lineItems,
-      totalCents,
-      currency,
-      invoiceDate: new Date().toISOString(),
-      dueDate: dueDate.toISOString(),
+      userId: context.userId,
+      correlationId: context.correlationId ?? booking.id,
+      variant: 'FINAL_INVOICE',
+    });
+    const createdByUserId = await this.resolveOrgScopedUserId(orgId, provenance.createdByUserId);
+
+    return this.prisma.orgInvoice.create({
+      data: {
+        organizationId: orgId,
+        type: 'OUTGOING_FINAL',
+        customerId: booking.customerId,
+        bookingId: booking.id,
+        vehicleId: booking.vehicleId,
+        title: `Schlussrechnung #${booking.id.slice(0, 8).toUpperCase()}`,
+        description: context.originalInvoiceId
+          ? `Endabrechnung zur Buchung ${booking.id.slice(0, 8).toUpperCase()}`
+          : undefined,
+        subtotalCents,
+        taxCents: totalCents - subtotalCents,
+        totalCents,
+        outstandingCents: totalCents,
+        currency: (booking.currency || 'EUR').toUpperCase(),
+        status: 'DRAFT',
+        ...provenanceToPrismaFields({ ...provenance, createdByUserId }),
+      },
     });
   }
 
@@ -665,6 +771,50 @@ export class InvoicesService {
       paidRevenueCents,
       totalExpensesCents,
     };
+  }
+
+  private async resolveOrgScopedUserId(
+    orgId: string,
+    userId?: string | null,
+  ): Promise<string | null> {
+    if (!userId) return null;
+    const membership = await this.prisma.organizationMembership.findFirst({
+      where: { organizationId: orgId, userId },
+      select: { userId: true },
+    });
+    return membership ? userId : null;
+  }
+
+  private async resolveCreateProvenance(
+    orgId: string,
+    data: CreateInvoiceDto & { fromExtraction?: boolean },
+    context?: InvoiceCreateContext,
+  ): Promise<InvoiceProvenanceWriteInput> {
+    if (context?.provenance) return context.provenance;
+
+    if (data.fromExtraction || data.documentExtractionId) {
+      return provenanceForDocumentExtractionInvoice({
+        extractionId: data.documentExtractionId!,
+        userId: context?.userId,
+        correlationId: context?.correlationId ?? data.documentExtractionId ?? null,
+      });
+    }
+
+    if (context?.viaApi) {
+      return provenanceForApiInvoice({
+        userId: context.userId,
+        bookingId: data.bookingId,
+        vehicleId: data.vehicleId,
+        correlationId: context.correlationId,
+      });
+    }
+
+    return provenanceForManualUiInvoice({
+      userId: context?.userId,
+      bookingId: data.bookingId,
+      vehicleId: data.vehicleId,
+      correlationId: context?.correlationId,
+    });
   }
 
   private async requireInvoice(id: string, orgId?: string) {

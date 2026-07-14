@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-provenance-write-paths-2026-07-14',
+    version: '4.9.433',
+    title: 'V4.9.433 — Rechnungs-Provenance auf allen Create-Pfaden',
+    summary: [
+      'Neue Rechnungen persistieren `creationChannel`, `sourceType`, `sourceId`, `createdByUserId`, `triggeredByType`, `automationId`, `correlationId` über `invoice-provenance-write.util` + `InvoicesService.create` / `createBookingInvoice`.',
+      'Buchungsformular & Booking Wizard: `BOOKING_WIZARD` + `USER` + Quelle `BOOKING` — nicht mehr pauschal „Automatisch (Buchung)“.',
+      'Manuelle UI, Dokumentenextraktion (confirm), Bundle-Pipeline (Schlussrechnung/Fallback) mit org-scoped Actor-Validierung.',
+      'Detail-DTO: menschenlesbare `summary`/`channelLabel`/`sourceLabel`/`triggerLabel`; Listen-Herkunft nutzt `provenance.summary`.',
+      'Tests: `invoice-provenance-write.util.spec`, `invoices.service.provenance.spec`, Wizard-Baseline aktualisiert.',
+    ],
+    reason:
+      'Provenance-Spalten existierten nur im Read-Model; Create-Pfade mussten Kanal, Auslöser und Quelle fachlich korrekt setzen (Generator ≠ Trigger).',
+    previousBehavior:
+      'Rechnungen ohne Provenance-Felder; Herkunft aus `type`/Legacy-Heuristik; Wizard-Rechnungen wirkten automatisch.',
+    details:
+      'bookings.service, booking-wizard-draft.service, invoices.controller, document-extraction-apply, booking-document-bundle.service, invoices.service.',
+    affectsArchitecture: true,
+    module: 'Invoices',
+    createdAt: '2026-07-14T22:30:00.000Z',
+  },
+  {
     id: 'invoice-provenance-model-2026-07-14',
     version: '4.9.432',
     title: 'V4.9.432 — Rechnungs-Provenance: Typ ≠ Herkunft',

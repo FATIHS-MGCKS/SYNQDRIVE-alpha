@@ -43,6 +43,7 @@ import { buildReturnHandoverDocument } from './templates/return-handover.templat
 import { buildFinalInvoiceDocument, FinalInvoiceLineItem } from './templates/final-invoice.template';
 import { TaskAutomationService } from '@modules/tasks/task-automation.service';
 import { isInvoiceDocumentType } from '@modules/invoices/invoice-document-integrity-audit.util';
+import { provenanceForBundlePipelineInvoice } from '@modules/invoices/invoice-provenance-write.util';
 import { InvoiceDocumentGenerationService } from './invoice-document-generation.service';
 
 const TEMPLATE_VERSION = '1';
@@ -402,7 +403,21 @@ export class BookingDocumentBundleService {
 
     // Persist an OUTGOING_FINAL OrgInvoice (direct create — keeps invoice CRUD
     // intact and avoids the booking-invoice task side effect).
-    const finalInvoice = await this.upsertFinalInvoice(orgId, booking, originalInvoice?.id ?? null, chargesTotalCents);
+    const finalInvoice = await this.invoices.createFinalInvoice(
+      orgId,
+      {
+        id: booking.id,
+        customerId: booking.customerId,
+        vehicleId: booking.vehicleId,
+        currency: booking.currency,
+      },
+      {
+        userId: userId ?? null,
+        correlationId: booking.id,
+        originalInvoiceId: originalInvoice?.id ?? null,
+        totalCents: chargesTotalCents,
+      },
+    );
 
     const cur = (booking.currency || 'EUR').toUpperCase();
     const renderable = buildFinalInvoiceDocument({
@@ -459,17 +474,30 @@ export class BookingDocumentBundleService {
       orderBy: { createdAt: 'asc' },
     });
     if (!invoice) {
-      await this.invoices.createBookingInvoice(orgId, {
-        id: booking.id,
-        customerId: booking.customerId,
-        vehicleId: booking.vehicleId,
-        totalPriceCents: booking.totalPriceCents,
-        dailyRateCents: booking.dailyRateCents,
-        startDate: booking.startDate,
-        endDate: booking.endDate,
-        currency: booking.currency,
-        kmIncluded: booking.kmIncluded,
-      });
+      await this.invoices.createBookingInvoice(
+        orgId,
+        {
+          id: booking.id,
+          customerId: booking.customerId,
+          vehicleId: booking.vehicleId,
+          totalPriceCents: booking.totalPriceCents,
+          dailyRateCents: booking.dailyRateCents,
+          startDate: booking.startDate,
+          endDate: booking.endDate,
+          currency: booking.currency,
+          kmIncluded: booking.kmIncluded,
+        },
+        {
+          userId: userId ?? null,
+          correlationId: booking.id,
+          provenance: provenanceForBundlePipelineInvoice({
+            bookingId: booking.id,
+            userId,
+            correlationId: booking.id,
+            variant: 'BOOKING_INVOICE',
+          }),
+        },
+      );
       invoice = await this.prisma.orgInvoice.findFirst({
         where: { organizationId: orgId, bookingId: booking.id, type: 'OUTGOING_BOOKING' },
         orderBy: { createdAt: 'asc' },
@@ -964,36 +992,6 @@ export class BookingDocumentBundleService {
       if (row) return row;
       throw new NotFoundException('Contract could not be created');
     }
-  }
-
-  private async upsertFinalInvoice(
-    orgId: string,
-    booking: BookingWithRelations,
-    originalInvoiceId: string | null,
-    totalCents: number,
-  ) {
-    const existing = await this.prisma.orgInvoice.findFirst({
-      where: { organizationId: orgId, bookingId: booking.id, type: 'OUTGOING_FINAL' },
-      orderBy: { createdAt: 'asc' },
-    });
-    if (existing) return existing;
-    const subtotalCents = totalCents > 0 ? Math.round(totalCents / 1.19) : 0;
-    return this.prisma.orgInvoice.create({
-      data: {
-        organizationId: orgId,
-        type: 'OUTGOING_FINAL',
-        customerId: booking.customerId,
-        bookingId: booking.id,
-        vehicleId: booking.vehicleId,
-        title: `Schlussrechnung #${bookingRef(booking.id)}`,
-        description: originalInvoiceId ? `Endabrechnung zur Buchung ${bookingRef(booking.id)}` : undefined,
-        subtotalCents,
-        taxCents: totalCents - subtotalCents,
-        totalCents,
-        currency: (booking.currency || 'EUR').toUpperCase(),
-        status: 'DRAFT',
-      },
-    });
   }
 
   private async loadBooking(orgId: string, bookingId: string): Promise<BookingWithRelations> {

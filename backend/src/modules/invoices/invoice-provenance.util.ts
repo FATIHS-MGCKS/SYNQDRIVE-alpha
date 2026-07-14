@@ -56,9 +56,17 @@ export interface InvoiceProvenanceDto {
   automationId: string | null;
   correlationId: string | null;
   createdAt: string;
-  /** @deprecated Prefer creationChannel + sourceType — retained for UI migration */
+  /** Human-readable channel label (de). */
+  channelLabel: string;
+  /** Human-readable source label (de). */
+  sourceLabel: string;
+  /** Human-readable trigger label (de). */
+  triggerLabel: string;
+  /** One-line summary for detail UI. */
+  summary: string;
+  /** @deprecated Prefer summary + canonical fields — retained for UI migration */
   kind: InvoiceProvenanceLegacyKind;
-  /** @deprecated Prefer canonical provenance fields */
+  /** @deprecated Prefer summary */
   label: string;
   documentExtractionId: string | null;
   bookingId: string | null;
@@ -125,21 +133,21 @@ function legacyKindAndLabel(
   return { kind: 'LEGACY', label: 'Legacy (unbekannte Herkunft)' };
 }
 
-function labelFromRecordedProvenance(args: {
-  creationChannel: InvoiceCreationChannel;
-  sourceType: InvoiceSourceType;
-  triggeredByType: InvoiceTriggeredByType;
-}): string {
-  const channelLabels: Record<InvoiceCreationChannel, string> = {
+function channelLabel(channel: InvoiceCreationChannel): string {
+  const labels: Record<InvoiceCreationChannel, string> = {
     MANUAL_UI: 'Manuell (UI)',
-    BOOKING_WIZARD: 'Buchungs-Wizard',
+    BOOKING_WIZARD: 'Buchungsassistent',
     API: 'API',
     IMPORT: 'Import',
     DOCUMENT_EXTRACTION: 'Document Extraction',
-    AUTOMATION: 'Automatisierung',
+    AUTOMATION: 'Systemprozess',
     SYSTEM_MIGRATION: 'System-Migration',
   };
-  const sourceLabels: Record<InvoiceSourceType, string> = {
+  return labels[channel];
+}
+
+function sourceLabel(sourceType: InvoiceSourceType): string {
+  const labels: Record<InvoiceSourceType, string> = {
     BOOKING: 'Buchung',
     DAMAGE: 'Schaden',
     SERVICE: 'Service',
@@ -148,19 +156,67 @@ function labelFromRecordedProvenance(args: {
     SUBSCRIPTION: 'Abo',
     OTHER: 'Sonstiges',
   };
-  return `${channelLabels[args.creationChannel]} · ${sourceLabels[args.sourceType]}`;
+  return labels[sourceType];
+}
+
+function triggerLabel(triggeredBy: InvoiceTriggeredByType): string {
+  const labels: Record<InvoiceTriggeredByType, string> = {
+    USER: 'Benutzer',
+    SYSTEM: 'System',
+    AUTOMATION: 'Automatisierung',
+    API_CLIENT: 'API-Client',
+    MIGRATION: 'Migration',
+  };
+  return labels[triggeredBy];
+}
+
+function buildProvenanceSummary(args: {
+  creationChannel: InvoiceCreationChannel;
+  sourceType: InvoiceSourceType;
+  triggeredByType: InvoiceTriggeredByType;
+  actorDisplayName?: string | null;
+}): string {
+  const { creationChannel, sourceType, triggeredByType, actorDisplayName } = args;
+
+  if (creationChannel === 'BOOKING_WIZARD' && triggeredByType === 'USER') {
+    if (actorDisplayName) {
+      return `Erstellt von ${actorDisplayName} über den Buchungsassistent · Quelle: Buchung`;
+    }
+    return 'Erstellt über den Buchungsassistent · Quelle: Buchung';
+  }
+
+  if (creationChannel === 'AUTOMATION' && triggeredByType === 'USER') {
+    const actor = actorDisplayName ? `von ${actorDisplayName} ` : '';
+    return `Ausgelöst ${actor}· erzeugt durch Systemprozess · Quelle: ${sourceLabel(sourceType)}`;
+  }
+
+  if (triggeredByType === 'USER' && actorDisplayName) {
+    return `Erstellt von ${actorDisplayName} über ${channelLabel(creationChannel)} · Quelle: ${sourceLabel(sourceType)}`;
+  }
+
+  return `${channelLabel(creationChannel)} · Quelle: ${sourceLabel(sourceType)} · Auslöser: ${triggerLabel(triggeredByType)}`;
+}
+
+function labelFromRecordedProvenance(args: {
+  creationChannel: InvoiceCreationChannel;
+  sourceType: InvoiceSourceType;
+  triggeredByType: InvoiceTriggeredByType;
+  actorDisplayName?: string | null;
+}): string {
+  return buildProvenanceSummary(args);
 }
 
 function kindFromRecordedProvenance(args: {
   creationChannel: InvoiceCreationChannel;
   sourceType: InvoiceSourceType;
+  triggeredByType: InvoiceTriggeredByType;
 }): InvoiceProvenanceLegacyKind {
   if (args.sourceType === 'BOOKING') {
-    if (
-      args.creationChannel === 'AUTOMATION' ||
-      args.creationChannel === 'BOOKING_WIZARD'
-    ) {
+    if (args.creationChannel === 'AUTOMATION' && args.triggeredByType !== 'USER') {
       return 'BOOKING_AUTOMATIC';
+    }
+    if (args.creationChannel === 'BOOKING_WIZARD') {
+      return 'MANUAL';
     }
     return 'BOOKING_FINAL';
   }
@@ -175,12 +231,13 @@ export function mapInvoiceProvenance(
   row: InvoiceProvenanceRow,
   actor?: InvoiceProvenanceActorRow | null,
 ): InvoiceProvenanceDto {
+  const actorDisplayName = actor ? formatProvenanceActorDisplay(actor) : null;
   const base = {
     documentExtractionId: row.documentExtractionId,
     bookingId: row.bookingId,
     createdAt: row.createdAt.toISOString(),
     createdByUserId: row.createdByUserId,
-    createdByUserDisplayName: actor ? formatProvenanceActorDisplay(actor) : null,
+    createdByUserDisplayName: actorDisplayName,
     automationId: row.automationId,
     correlationId: row.correlationId,
   };
@@ -189,18 +246,25 @@ export function mapInvoiceProvenance(
     const creationChannel = row.creationChannel!;
     const sourceType = row.sourceType!;
     const triggeredByType = row.triggeredByType!;
-    const { kind, label } = {
-      kind: kindFromRecordedProvenance({ creationChannel, sourceType }),
-      label: labelFromRecordedProvenance({ creationChannel, sourceType, triggeredByType }),
-    };
+    const summary = buildProvenanceSummary({
+      creationChannel,
+      sourceType,
+      triggeredByType,
+      actorDisplayName,
+    });
+    const kind = kindFromRecordedProvenance({ creationChannel, sourceType, triggeredByType });
     return {
       classification: 'RECORDED',
       creationChannel,
       sourceType,
       sourceId: row.sourceId,
       triggeredByType,
+      channelLabel: channelLabel(creationChannel),
+      sourceLabel: sourceLabel(sourceType),
+      triggerLabel: triggerLabel(triggeredByType),
+      summary,
       kind,
-      label,
+      label: summary,
       ...base,
     };
   }
@@ -214,6 +278,13 @@ export function mapInvoiceProvenance(
     sourceType: legacySource.sourceType,
     sourceId: legacySource.sourceId,
     triggeredByType: 'UNKNOWN',
+    channelLabel: 'Legacy',
+    sourceLabel:
+      legacySource.sourceType === 'UNKNOWN'
+        ? 'Unbekannt'
+        : sourceLabel(legacySource.sourceType as InvoiceSourceType),
+    triggerLabel: 'Unbekannt',
+    summary: label,
     kind,
     label,
     ...base,

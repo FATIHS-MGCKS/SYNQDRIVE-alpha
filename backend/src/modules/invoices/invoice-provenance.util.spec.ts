@@ -154,6 +154,30 @@ describe('invoice-provenance.util', () => {
       expect(dto.automationId).toBe('wf-booking-invoice');
       expect(dto.triggeredByType).toBe('AUTOMATION');
     });
+
+    it('booking wizard + user shows human summary not Automatisch (Buchung)', () => {
+      const dto = mapInvoiceProvenance(
+        {
+          ...baseLegacyRow,
+          creationChannel: InvoiceCreationChannel.BOOKING_WIZARD,
+          sourceType: InvoiceSourceType.BOOKING,
+          sourceId: BOOKING_REF,
+          triggeredByType: InvoiceTriggeredByType.USER,
+          createdByUserId: 'user-1',
+        } as never,
+        {
+          id: 'user-1',
+          name: null,
+          firstName: 'Anna',
+          lastName: 'Admin',
+          email: 'anna@org.de',
+        },
+      );
+      expect(dto.summary).toContain('Buchungsassistent');
+      expect(dto.summary).toContain('Anna Admin');
+      expect(dto.summary).not.toContain('Automatisch (Buchung)');
+      expect(dto.kind).toBe('MANUAL');
+    });
   });
 
   describe('formatProvenanceActorDisplay', () => {

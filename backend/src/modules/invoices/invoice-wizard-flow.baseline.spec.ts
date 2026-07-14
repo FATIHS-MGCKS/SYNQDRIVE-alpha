@@ -86,6 +86,7 @@ describe('Booking wizard → invoice baseline flow', () => {
     expect(invoicesService.createBookingInvoice).toHaveBeenCalledWith(
       ORG_A,
       expect.objectContaining({ id: BOOKING_REF }),
+      expect.objectContaining({ userId: 'user-1' }),
     );
     expect(bundleService.generateInitialBundle).toHaveBeenCalledWith(ORG_A, BOOKING_REF, 'user-1');
   });
@@ -139,19 +140,19 @@ describe('Booking create → invoice/document sync error swallowing (regression 
 
   it('bookings.service catches createBookingInvoice failures without surfacing', () => {
     expect(bookingsSource).toContain('createBookingInvoice');
-    expect(bookingsSource).toMatch(/createBookingInvoice[\s\S]{0,400}\.catch\(\(\) => null\)/);
+    expect(bookingsSource).toMatch(/createBookingInvoice[\s\S]{0,500}\.catch\(/);
   });
 
   it('bookings.service catches bundle/email failures after invoice creation', () => {
     expect(bookingsSource).toMatch(/generateInitialBundle[\s\S]{0,600}\.catch\(\(\) => \{\}\)/);
   });
 
-  it('wizard refreshDraftBundle catches createBookingInvoice failures', () => {
+  it('wizard refreshDraftBundle awaits createBookingInvoice (provenance path)', () => {
     expect(wizardSource).toContain('createBookingInvoice');
-    expect(wizardSource).toContain('.catch(() => null)');
+    expect(wizardSource).toContain('correlationId: row.id');
     const refreshIdx = wizardSource.indexOf('refreshDraftBundle');
-    const catchIdx = wizardSource.indexOf('.catch(() => null)', refreshIdx);
-    expect(catchIdx).toBeGreaterThan(refreshIdx);
+    const createIdx = wizardSource.indexOf('createBookingInvoice', refreshIdx);
+    expect(createIdx).toBeGreaterThan(refreshIdx);
   });
 
   it('wizard confirmDraft catches syncOnBookingConfirmed failures', () => {

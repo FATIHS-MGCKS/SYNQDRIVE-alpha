@@ -159,8 +159,10 @@ export interface InvoiceDetail extends Invoice {
     automationId?: string | null;
     correlationId?: string | null;
     createdAt: string;
-    kind: string;
-    label: string;
+    summary: string;
+    channelLabel: string;
+    sourceLabel: string;
+    triggerLabel: string;
     documentExtractionId?: string | null;
     bookingId?: string | null;
   };
