@@ -191,6 +191,10 @@ cd backend && npm test -- invoice-document-integrity-audit.spec.ts
 
 Uses in-memory fixtures (`invoice-baseline.fixtures.ts`) — **no database required**.
 
+## Related: controlled backfill
+
+See [invoice-document-backfill-2026-07-14.md](./invoice-document-backfill-2026-07-14.md) for dry-run/apply repair after audit.
+
 ---
 
 ## Changes / Architektur
