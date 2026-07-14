@@ -67,6 +67,14 @@ describe('BookingInvoiceLifecycleService', () => {
 
     expect(service.voidDuplicateBookingInvoices).toHaveBeenCalledWith('org', 'bk-1', 'inv-1');
     expect(invoicesService.issue).toHaveBeenCalledWith('inv-1', 'org');
-    expect(invoicesService.recordPayment).toHaveBeenCalled();
+    expect(invoicesService.recordPayment).toHaveBeenCalledWith(
+      'inv-1',
+      'org',
+      expect.objectContaining({
+        amountCents: 10_000,
+        method: 'CARD',
+      }),
+      'user-1',
+    );
   });
 });
