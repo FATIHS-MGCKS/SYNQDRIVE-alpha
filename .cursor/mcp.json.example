@@ -24,6 +24,9 @@
       "env": {
         "RESEND_API_KEY": "<your-resend-api-key>"
       }
+    },
+    "stripe": {
+      "url": "https://mcp.stripe.com"
     }
   }
 }
