@@ -148,7 +148,22 @@ export interface InvoiceDetail extends Invoice {
     paymentAvailability: string;
     blockingReasons: Record<string, string[]>;
   };
-  provenance?: { kind: string; label: string };
+  provenance?: {
+    classification: 'RECORDED' | 'LEGACY';
+    creationChannel: string;
+    sourceType: string;
+    sourceId: string | null;
+    createdByUserId: string | null;
+    createdByUserDisplayName?: string | null;
+    triggeredByType: string;
+    automationId?: string | null;
+    correlationId?: string | null;
+    createdAt: string;
+    kind: string;
+    label: string;
+    documentExtractionId?: string | null;
+    bookingId?: string | null;
+  };
   timeline?: { id: string; action: string; description: string; createdAt: string }[];
   outboundEmails?: unknown[];
 }

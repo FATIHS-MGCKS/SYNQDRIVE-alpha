@@ -64,7 +64,7 @@ describe('invoice-detail.mapper', () => {
     expect(dto.relations.customerDiverges).toBe(false);
   });
 
-  it('maps OUTGOING_FINAL provenance as booking final not manual', () => {
+  it('maps OUTGOING_FINAL provenance as legacy booking-final (type ≠ channel)', () => {
     const dto = mapInvoiceDetail({
       invoice: makeOrgInvoiceRow({
         type: OrgInvoiceType.OUTGOING_FINAL,
@@ -77,7 +77,59 @@ describe('invoice-detail.mapper', () => {
       outboundEmails: [],
       timeline: [],
     });
+    expect(dto.provenance.classification).toBe('LEGACY');
     expect(dto.provenance.kind).toBe('BOOKING_FINAL');
+    expect(dto.provenance.creationChannel).toBe('LEGACY');
+    expect(dto.provenance.triggeredByType).toBe('UNKNOWN');
+  });
+
+  it('maps recorded provenance when columns are populated', () => {
+    const dto = mapInvoiceDetail({
+      invoice: makeOrgInvoiceRow({
+        creationChannel: 'MANUAL_UI',
+        sourceType: 'MANUAL',
+        sourceId: null,
+        triggeredByType: 'USER',
+        createdByUserId: 'user-1',
+        correlationId: 'corr-1',
+      }) as never,
+      customer: null,
+      vehicle: null,
+      booking: null,
+      documentsView: { activeDocumentId: null, cacheMismatch: false, documents: [] },
+      outboundEmails: [],
+      timeline: [],
+      createdByActor: {
+        id: 'user-1',
+        name: null,
+        firstName: 'Anna',
+        lastName: 'Admin',
+        email: 'anna@org.de',
+      },
+    });
+    expect(dto.provenance.classification).toBe('RECORDED');
+    expect(dto.provenance.creationChannel).toBe('MANUAL_UI');
+    expect(dto.provenance.createdByUserDisplayName).toBe('Anna Admin');
+  });
+
+  it('strips createdByUserId when actor is not org member', () => {
+    const dto = mapInvoiceDetail({
+      invoice: makeOrgInvoiceRow({
+        creationChannel: 'MANUAL_UI',
+        sourceType: 'MANUAL',
+        triggeredByType: 'USER',
+        createdByUserId: 'foreign-user',
+      }) as never,
+      customer: null,
+      vehicle: null,
+      booking: null,
+      documentsView: { activeDocumentId: null, cacheMismatch: false, documents: [] },
+      outboundEmails: [],
+      timeline: [],
+      createdByActor: null,
+    });
+    expect(dto.provenance.createdByUserId).toBeNull();
+    expect(dto.provenance.createdByUserDisplayName).toBeNull();
   });
 
   it('exposes customer divergence when booking customer differs', () => {

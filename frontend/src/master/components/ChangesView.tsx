@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-provenance-model-2026-07-14',
+    version: '4.9.432',
+    title: 'V4.9.432 — Rechnungs-Provenance: Typ ≠ Herkunft',
+    summary: [
+      'Additive Spalten auf `org_invoices`: `creationChannel`, `sourceType`, `sourceId`, `createdByUserId`, `triggeredByType`, `automationId`, `correlationId`.',
+      '`mapInvoiceProvenance` trennt Kanal, Auslöser, Quellobjekt und Automatisierung — unabhängig von `OrgInvoiceType`.',
+      'Legacy-Rechnungen: `classification: LEGACY`, Kanal/Actor `UNKNOWN`/`LEGACY`; Quelle nur aus bestehenden FKs, nicht erfunden.',
+      'Actor-Anzeige org-scoped über Membership; kein PII-Snapshot auf der Rechnung.',
+    ],
+    reason:
+      'Rechnungstyp und Herkunft wurden vermischt (z. B. OUTGOING_FINAL als „Manuell“); Audit und UI brauchen getrennte Dimensionen.',
+    previousBehavior:
+      'Herkunft nur aus `type` abgeleitet (`mapProvenance` im Detail-Mapper); keine persistente Provenance.',
+    details:
+      'invoice-provenance.util.ts, Prisma-Migration 20260714210000_invoice_provenance, invoice-detail.mapper/read.service.',
+    affectsArchitecture: true,
+    module: 'Invoices',
+    createdAt: '2026-07-14T21:10:00.000Z',
+  },
+  {
     id: 'invoice-detail-read-model-m1-2026-07-14',
     version: '4.9.431',
     title: 'V4.9.431 — Rechnungsdetail: typisiertes Read-Model (GET /invoices/:id/detail)',

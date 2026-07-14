@@ -1,4 +1,5 @@
 import type { InvoiceDocumentSummaryDto } from './invoice-document-read.types';
+import type { InvoiceProvenanceDto } from './invoice-provenance.util';
 
 export type InvoiceDirection = 'OUTGOING' | 'INCOMING';
 
@@ -166,12 +167,15 @@ export interface InvoiceLinkedTaskDto {
   dueAt: string | null;
 }
 
-export interface InvoiceProvenanceDto {
-  kind: 'BOOKING_AUTOMATIC' | 'BOOKING_FINAL' | 'MANUAL' | 'DOCUMENT_EXTRACTION' | 'VENDOR';
-  label: string;
-  documentExtractionId: string | null;
-  bookingId: string | null;
-}
+export type {
+  InvoiceProvenanceClassification,
+  InvoiceProvenanceChannelValue,
+  InvoiceProvenanceTriggeredByValue,
+  InvoiceProvenanceSourceTypeValue,
+  InvoiceProvenanceLegacyKind,
+  InvoiceProvenanceDto,
+  InvoiceProvenanceWriteInput,
+} from './invoice-provenance.util';
 
 export interface InvoiceTimelineEventDto {
   id: string;

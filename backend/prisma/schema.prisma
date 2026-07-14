@@ -3970,6 +3970,37 @@ enum OrgInvoiceStatus {
   REJECTED
 }
 
+/// How the invoice creation was initiated (channel), independent of `OrgInvoiceType`.
+enum InvoiceCreationChannel {
+  MANUAL_UI
+  BOOKING_WIZARD
+  API
+  IMPORT
+  DOCUMENT_EXTRACTION
+  AUTOMATION
+  SYSTEM_MIGRATION
+}
+
+/// Fachliches Ursprungsobjekt — unabhängig vom Rechnungstyp.
+enum InvoiceSourceType {
+  BOOKING
+  DAMAGE
+  SERVICE
+  MANUAL
+  DOCUMENT
+  SUBSCRIPTION
+  OTHER
+}
+
+/// Wer/was die Erstellung ausgelöst hat.
+enum InvoiceTriggeredByType {
+  USER
+  SYSTEM
+  AUTOMATION
+  API_CLIENT
+  MIGRATION
+}
+
 enum InvoicePaymentMethod {
   CASH
   BANK_TRANSFER
@@ -4052,6 +4083,14 @@ model OrgInvoice {
   creditedAt           DateTime?        @map("credited_at")
   createdAt            DateTime         @default(now()) @map("created_at")
   updatedAt            DateTime         @updatedAt @map("updated_at")
+  // Provenance (V4.9.432) — additive; null on legacy rows until write paths populate.
+  creationChannel      InvoiceCreationChannel? @map("creation_channel")
+  sourceType           InvoiceSourceType?      @map("source_type")
+  sourceId             String?                 @map("source_id")
+  createdByUserId      String?                 @map("created_by_user_id")
+  triggeredByType      InvoiceTriggeredByType? @map("triggered_by_type")
+  automationId         String?                 @map("automation_id")
+  correlationId        String?                 @map("correlation_id")
 
   tasks                   OrgTask[]
   payments                OrgInvoicePayment[]
@@ -4073,6 +4112,10 @@ model OrgInvoice {
   @@index([organizationId, status])
   @@index([organizationId, invoiceDate])
   @@index([generatedDocumentId], map: "org_invoices_generated_document_id_idx")
+  @@index([creationChannel])
+  @@index([sourceType])
+  @@index([createdByUserId])
+  @@index([triggeredByType])
   @@map("org_invoices")
 }
 

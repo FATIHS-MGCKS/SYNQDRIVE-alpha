@@ -13,6 +13,7 @@ import {
   type CustomerRow,
   type VehicleRow,
 } from './invoice-detail-relations.util';
+import { mapInvoiceProvenance, type InvoiceProvenanceActorRow } from './invoice-provenance.util';
 import type {
   InvoiceDetailDto,
   InvoiceDetailLineItemDto,
@@ -20,7 +21,6 @@ import type {
   InvoiceDirection,
   InvoiceLinkedTaskDto,
   InvoiceOutboundEmailSummaryDto,
-  InvoiceProvenanceDto,
   InvoiceSupplierSummaryDto,
   InvoiceTimelineEventDto,
 } from './invoice-detail.types';
@@ -61,6 +61,7 @@ export interface InvoiceDetailMapperInput {
   outboundEmails: Array<OutboundEmail & { attachments: OutboundEmailAttachment[] }>;
   timeline: ActivityRow[];
   includeVin?: boolean;
+  createdByActor?: InvoiceProvenanceActorRow | null;
 }
 
 function iso(date: Date | null | undefined): string | null {
@@ -98,47 +99,6 @@ function mapLineItems(raw: unknown, fallbackTotalCents: number): InvoiceDetailLi
     taxCents: item.taxCents,
     grossCents: item.grossCents,
   }));
-}
-
-function mapProvenance(inv: OrgInvoice): InvoiceProvenanceDto {
-  if (inv.type === 'OUTGOING_BOOKING') {
-    return {
-      kind: 'BOOKING_AUTOMATIC',
-      label: 'Automatisch (Buchung)',
-      documentExtractionId: inv.documentExtractionId,
-      bookingId: inv.bookingId,
-    };
-  }
-  if (inv.type === 'OUTGOING_FINAL') {
-    return {
-      kind: 'BOOKING_FINAL',
-      label: 'Automatisch (Schlussrechnung)',
-      documentExtractionId: inv.documentExtractionId,
-      bookingId: inv.bookingId,
-    };
-  }
-  if (inv.type === 'INCOMING_UPLOADED' || inv.documentExtractionId) {
-    return {
-      kind: 'DOCUMENT_EXTRACTION',
-      label: 'Document Extraction',
-      documentExtractionId: inv.documentExtractionId,
-      bookingId: inv.bookingId,
-    };
-  }
-  if (inv.type === 'INCOMING_VENDOR') {
-    return {
-      kind: 'VENDOR',
-      label: 'Lieferant / Eingangsrechnung',
-      documentExtractionId: inv.documentExtractionId,
-      bookingId: inv.bookingId,
-    };
-  }
-  return {
-    kind: 'MANUAL',
-    label: 'Manuell',
-    documentExtractionId: inv.documentExtractionId,
-    bookingId: inv.bookingId,
-  };
 }
 
 function mapSupplier(inv: InvoiceDetailMapperInput['invoice']): InvoiceSupplierSummaryDto | null {
@@ -297,7 +257,13 @@ export function mapInvoiceDetail(input: InvoiceDetailMapperInput): InvoiceDetail
     outboundEmails: mapOutboundEmails(input.outboundEmails),
     linkedTasks: mapTasks(inv.tasks),
     notes: inv.notes ?? '',
-    provenance: mapProvenance(inv),
+    provenance: (() => {
+      const mapped = mapInvoiceProvenance(inv, input.createdByActor ?? null);
+      if (mapped.createdByUserId && !input.createdByActor) {
+        return { ...mapped, createdByUserId: null, createdByUserDisplayName: null };
+      }
+      return mapped;
+    })(),
     timeline: mapTimeline(input.timeline),
     capabilities,
   };

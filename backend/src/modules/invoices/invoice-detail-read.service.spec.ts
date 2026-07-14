@@ -19,6 +19,7 @@ describe('InvoiceDetailReadService', () => {
     customer: { findFirst: jest.Mock };
     vehicle: { findFirst: jest.Mock };
     booking: { findFirst: jest.Mock };
+    organizationMembership: { findFirst: jest.Mock };
     outboundEmail: { findMany: jest.Mock };
     activityLog: { findMany: jest.Mock };
   };
@@ -32,6 +33,7 @@ describe('InvoiceDetailReadService', () => {
       customer: { findFirst: jest.fn() },
       vehicle: { findFirst: jest.fn() },
       booking: { findFirst: jest.fn() },
+      organizationMembership: { findFirst: jest.fn() },
       outboundEmail: { findMany: jest.fn().mockResolvedValue([]) },
       activityLog: { findMany: jest.fn().mockResolvedValue([]) },
     };
@@ -73,6 +75,7 @@ describe('InvoiceDetailReadService', () => {
       pickupStation: { id: 'st-1', name: 'Zentrum', code: 'ZEN' },
       returnStation: null,
     });
+    prisma.organizationMembership.findFirst.mockResolvedValue(null);
 
     const detail = await service.findDetail(ORG_A, INVOICE_BOOKING);
 
@@ -81,6 +84,8 @@ describe('InvoiceDetailReadService', () => {
     expect(detail.vehicle?.displayName).toContain('Golf');
     expect(detail.booking?.bookingNumber).toMatch(/^BK-/);
     expect(detail.booking?.reference).toBe(BOOKING_REF.slice(0, 8).toUpperCase());
+    expect(detail.provenance.classification).toBe('LEGACY');
+    expect(detail.provenance.sourceType).toBe('BOOKING');
     expect(invoiceDocuments.getDocumentsForInvoice).toHaveBeenCalledWith(
       expect.objectContaining({
         organizationId: ORG_A,
@@ -173,6 +178,37 @@ describe('InvoiceDetailReadService', () => {
         }),
       }),
     );
+  });
+
+  it('resolves createdBy actor org-scoped for recorded provenance', async () => {
+    const row = makeOrgInvoiceRow({
+      creationChannel: 'MANUAL_UI',
+      sourceType: 'MANUAL',
+      triggeredByType: 'USER',
+      createdByUserId: 'user-1',
+    });
+    prisma.orgInvoice.findFirst.mockResolvedValue(row);
+    prisma.customer.findFirst.mockResolvedValue(null);
+    prisma.vehicle.findFirst.mockResolvedValue(null);
+    prisma.booking.findFirst.mockResolvedValue(null);
+    prisma.organizationMembership.findFirst.mockResolvedValue({
+      user: {
+        id: 'user-1',
+        name: null,
+        firstName: 'Ops',
+        lastName: 'User',
+        email: 'ops@example.com',
+      },
+    });
+
+    const detail = await service.findDetail(ORG_A, INVOICE_BOOKING);
+
+    expect(prisma.organizationMembership.findFirst).toHaveBeenCalledWith({
+      where: { organizationId: ORG_A, userId: 'user-1' },
+      select: expect.any(Object),
+    });
+    expect(detail.provenance.classification).toBe('RECORDED');
+    expect(detail.provenance.createdByUserDisplayName).toBe('Ops User');
   });
 
   it('does not expose internal document errors', async () => {
