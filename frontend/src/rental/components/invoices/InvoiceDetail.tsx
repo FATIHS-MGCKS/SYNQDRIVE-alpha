@@ -188,9 +188,8 @@ export function InvoiceDetail({
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <InvoiceTimeline
-          invoice={invoice}
-          paidCents={paidCents}
-          outstanding={outstanding}
+          orgId={orgId}
+          invoiceId={invoice.id}
           isDarkMode={isDarkMode}
           card={card}
           tp={tp}

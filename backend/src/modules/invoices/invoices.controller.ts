@@ -20,6 +20,7 @@ import {
 } from './dto';
 import { SendInvoiceEmailDto } from './dto/send-invoice-email.dto';
 import { InvoiceDocumentsService } from './invoice-documents.service';
+import { InvoiceTimelineService } from './invoice-timeline.service';
 import { InvoiceDocumentEmailService } from '@modules/outbound-email/invoice-document-email.service';
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads', 'invoices');
@@ -31,6 +32,7 @@ export class InvoicesController {
     private readonly invoicesService: InvoicesService,
     private readonly storage: StorageService,
     private readonly invoiceDocuments: InvoiceDocumentsService,
+    private readonly invoiceTimeline: InvoiceTimelineService,
     private readonly invoiceEmail: InvoiceDocumentEmailService,
   ) {}
 
@@ -112,6 +114,12 @@ export class InvoicesController {
   @UseGuards(OrgScopingGuard, RolesGuard)
   async markPaid(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.invoicesService.markPaid(id, orgId);
+  }
+
+  @Get('organizations/:orgId/invoices/:id/timeline')
+  @UseGuards(OrgScopingGuard, RolesGuard)
+  async getTimeline(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.invoiceTimeline.getTimeline(orgId, id);
   }
 
   @Get('organizations/:orgId/invoices/:id/documents')

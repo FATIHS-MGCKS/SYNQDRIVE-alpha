@@ -4282,6 +4282,10 @@ export const api = {
         `/organizations/${orgId}/invoices/${invoiceId}/documents/delivery/${emailId}/retry`,
         {},
       ),
+    getTimeline: (orgId: string, invoiceId: string) =>
+      get<import('../rental/components/invoices/invoiceTimelineTypes').InvoiceTimelinePanel>(
+        `/organizations/${orgId}/invoices/${invoiceId}/timeline`,
+      ),
   },
   pricing: {
     catalog: (orgId: string) => get<any>(`/organizations/${orgId}/price-tariffs`),

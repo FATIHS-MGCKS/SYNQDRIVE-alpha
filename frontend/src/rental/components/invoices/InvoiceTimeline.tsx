@@ -1,117 +1,124 @@
-import { Calendar, CheckCircle, Clock, DollarSign, FileText } from 'lucide-react';
+import { useMemo, useState } from 'react';
 
-import { formatAmount, formatDate } from './invoiceFormatters';
-import type { Invoice } from './invoiceTypes';
-import { InvoiceDetailRow } from './InvoiceDetailRow';
+import { Icon } from '../ui/Icon';
+import { useInvoiceTimeline } from './hooks/useInvoiceTimeline';
+import { mapInvoiceTimelinePanel } from './invoiceTimeline.mapper';
 import type { InvoiceThemeClasses } from './invoiceTheme';
 
 interface InvoiceTimelineProps extends InvoiceThemeClasses {
-  invoice: Invoice;
-  paidCents: number;
-  outstanding: number;
+  orgId: string;
+  invoiceId: string;
 }
 
-export function InvoiceTimeline({
-  invoice,
-  paidCents,
-  outstanding,
-  card,
-  tp,
-  ts,
-  isDarkMode,
-}: InvoiceTimelineProps) {
+export function InvoiceTimeline({ orgId, invoiceId, card, tp, ts }: InvoiceTimelineProps) {
+  const { panel, loading, error } = useInvoiceTimeline(orgId, invoiceId);
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  const items = useMemo(() => (panel ? mapInvoiceTimelinePanel(panel) : []), [panel]);
+
+  const toggleExpanded = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   return (
-    <div className={`${card} p-5`}>
-      <h3 className={`text-xs font-bold ${tp} mb-3 uppercase tracking-wider`}>Rechnungsdetails</h3>
-      <div className={`divide-y ${isDarkMode ? 'divide-border/30' : 'divide-gray-100'}`}>
-        <InvoiceDetailRow
-          label="Betrag"
-          value={<span className="font-bold text-sm">{formatAmount(invoice.totalCents, invoice.currency)}</span>}
-          icon={DollarSign}
-          tp={tp}
-          ts={ts}
-        />
-        {invoice.subtotalCents !== invoice.totalCents && (
-          <InvoiceDetailRow
-            label="Netto"
-            value={formatAmount(invoice.subtotalCents, invoice.currency)}
-            tp={tp}
-            ts={ts}
-          />
-        )}
-        {invoice.taxCents > 0 && (
-          <InvoiceDetailRow
-            label="MwSt"
-            value={formatAmount(invoice.taxCents, invoice.currency)}
-            tp={tp}
-            ts={ts}
-          />
-        )}
-        {paidCents > 0 && (
-          <InvoiceDetailRow
-            label="Bezahlt"
-            value={formatAmount(paidCents, invoice.currency)}
-            icon={CheckCircle}
-            tp={tp}
-            ts={ts}
-          />
-        )}
-        {outstanding > 0 && invoice.status !== 'PAID' && (
-          <InvoiceDetailRow
-            label="Offen"
-            value={<span className="font-semibold text-amber-500">{formatAmount(outstanding, invoice.currency)}</span>}
-            icon={Clock}
-            tp={tp}
-            ts={ts}
-          />
-        )}
-        <InvoiceDetailRow
-          label="Rechnungsdatum"
-          value={formatDate(invoice.invoiceDate)}
-          icon={Calendar}
-          tp={tp}
-          ts={ts}
-        />
-        <InvoiceDetailRow
-          label="Fälligkeitsdatum"
-          value={formatDate(invoice.dueDate)}
-          icon={Clock}
-          tp={tp}
-          ts={ts}
-        />
-        {invoice.issuedAt && (
-          <InvoiceDetailRow
-            label="Ausgestellt am"
-            value={formatDate(invoice.issuedAt)}
-            icon={FileText}
-            tp={tp}
-            ts={ts}
-          />
-        )}
-        {invoice.sentAt && (
-          <InvoiceDetailRow
-            label="Gesendet am"
-            value={formatDate(invoice.sentAt)}
-            icon={FileText}
-            tp={tp}
-            ts={ts}
-          />
-        )}
-        <InvoiceDetailRow
-          label="Bezahlt am"
-          value={invoice.paidAt ? formatDate(invoice.paidAt) : '—'}
-          icon={CheckCircle}
-          tp={tp}
-          ts={ts}
-        />
-        <InvoiceDetailRow
-          label="Erstellt am"
-          value={formatDate(invoice.createdAt)}
-          icon={Calendar}
-          tp={tp}
-          ts={ts}
-        />
+    <div className={`${card} p-5 space-y-3`}>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className={`text-xs font-bold ${tp} uppercase tracking-wider`}>Verlauf</h3>
+        {panel?.isLegacyReduced ? (
+          <span className={`text-[10px] ${ts}`} title="Reduzierter Verlauf für ältere Rechnungen">
+            Basis-Verlauf
+          </span>
+        ) : null}
       </div>
+
+      {loading && !panel ? (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground" role="status">
+          <Icon name="loader-2" className="h-4 w-4 animate-spin" />
+          Verlauf wird geladen…
+        </div>
+      ) : null}
+
+      {error && !panel ? (
+        <p className="text-xs text-[color:var(--status-critical)]" role="alert">
+          {error}
+        </p>
+      ) : null}
+
+      {panel && items.length === 0 ? (
+        <p className={`text-xs ${ts}`}>Noch keine Ereignisse für diese Rechnung.</p>
+      ) : null}
+
+      {items.length > 0 ? (
+        <ol className="relative space-y-0" aria-label="Rechnungsverlauf">
+          {items.map((item, index) => {
+            const last = index === items.length - 1;
+            const expanded = expandedIds.has(item.id);
+            const canExpand = item.hasCollapsibleDetail;
+
+            return (
+              <li key={item.id} className="relative flex gap-3 pb-3 last:pb-0">
+                <div className="relative flex flex-col items-center">
+                  <span className="mt-1 flex h-3.5 w-3.5 items-center justify-center">
+                    <span
+                      className={`sq-dot h-2.5 w-2.5 ${
+                        item.tone === 'success'
+                          ? 'bg-[color:var(--status-positive)]'
+                          : item.tone === 'critical'
+                            ? 'bg-[color:var(--status-critical)]'
+                            : item.tone === 'watch'
+                              ? 'bg-[color:var(--status-watch)]'
+                              : item.tone === 'info'
+                                ? 'bg-[color:var(--status-info)]'
+                                : 'bg-muted-foreground/50'
+                      }`}
+                      aria-hidden
+                    />
+                  </span>
+                  {!last ? <span className="mt-1 w-px flex-1 bg-border" aria-hidden /> : null}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className={`text-xs font-semibold leading-snug ${tp}`}>{item.title}</p>
+                    <time
+                      className={`shrink-0 text-[10px] tabular-nums ${ts}`}
+                      dateTime={item.occurredAt}
+                    >
+                      {item.time}
+                    </time>
+                  </div>
+
+                  <p className={`mt-0.5 text-[11px] leading-snug ${ts}`}>{item.actorLine}</p>
+
+                  {item.detail && canExpand ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleExpanded(item.id)}
+                      className="mt-1 text-left text-[11px] font-medium text-brand hover:underline"
+                      aria-expanded={expanded}
+                    >
+                      {expanded ? 'Weniger anzeigen' : 'Details anzeigen'}
+                    </button>
+                  ) : null}
+
+                  {item.detail && (!canExpand || expanded) ? (
+                    <p className={`mt-1 text-[11px] leading-relaxed ${ts}`}>{item.detail}</p>
+                  ) : null}
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      ) : null}
+
+      {panel?.sortOrder === 'desc' ? (
+        <p className={`text-[10px] ${ts}`}>Neueste Ereignisse zuerst</p>
+      ) : null}
     </div>
   );
 }
