@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-process-integration-tests-v49468-2026-07-14',
+    version: '4.9.468',
+    title: 'V4.9.468 — Backend-Integrationstestmatrix Rechnungsprozess (51 Szenarien)',
+    summary: [
+      'Neuer relationaler In-Memory-Store `invoices-test-store.ts` + Harness für echte Service-Verdrahtung.',
+      '`invoices.pipeline.integration.spec.ts`: Erstellung, Dokumente, Versand, Zahlungen, Status, Sicherheit, Reconciliation.',
+      'Provider/Renderer/Storage gemockt; keine echten E-Mails; deterministische Fixtures.',
+      'Deckt u. a. Wizard-Bestätigung, PDF-Versionen, Parallel-Generierung, Stripe-Duplikat, Cross-Tenant, Reconciliation-Lücken.',
+    ],
+    reason:
+      'Der finale Rechnungsprozess brauchte eine durchgängige Integrationstestmatrix jenseits isolierter Unit-Tests.',
+    previousBehavior:
+      'Keine invoice-spezifischen Integrationstests; nur Unit-Tests für List/Timeline/Lifecycle.',
+    details:
+      'Siehe `architecture/INVOICE_PROCESS_INTEGRATION_TESTS_2026-07-14.md`. Run: `npm test -- invoices.pipeline.integration.spec.ts`.',
+    affectsArchitecture: true,
+    module: 'Invoices',
+    createdAt: '2026-07-14T23:35:00.000Z',
+  },
+  {
     id: 'invoice-document-legacy-audit-v49467-2026-07-14',
     version: '4.9.467',
     title: 'V4.9.467 — Legacy-Audit Rechnung↔Dokument: sichere Bereinigung + Dry-Run',
