@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-process-reconciliation-2026-07-14',
+    version: '4.9.456',
+    title: 'V4.9.456 — Rechnungsprozess: Retry, Reconciliation, Manual Review',
+    summary: [
+      '`OrgInvoiceProcess` Outbox — Zustände PENDING/PROCESSING/COMPLETED/FAILED/RETRY_SCHEDULED/MANUAL_REVIEW.',
+      '9 Subprozesse (Buchungsrechnung, Finanzsync, Dokument, E-Mail, Provider, Zahlung, Tasks …).',
+      'Exponentielles Backoff + Maximalversuche; idempotente Jobs pro org+idempotencyKey.',
+      'Recovery-Scheduler (60s) + Reconciliation-Scheduler (15min) für inkonsistente Zustände.',
+      'API: `GET/POST .../invoice-processes`, manueller Retry; UI-DTO mit deutschem `userMessage`.',
+      'Keine stillen `.catch(() => null)` mehr in Buchungs-/Bundle-Pipeline — `recordFailure`.',
+    ],
+    reason:
+      'Fehler in der Rechnungskette (Buchung → Rechnung → PDF → E-Mail) gingen verloren; keine Retry- oder Reparatur-Mechanik.',
+    previousBehavior:
+      'Fire-and-forget mit `.catch(() => null)` / leeren catch-Blöcken; keine persistierte Prozessverfolgung.',
+    details:
+      'InvoiceProcessModule, migration 20260715000000_org_invoice_process, architecture/INVOICE_PROCESS_RECONCILIATION_2026-07-14.md',
+    affectsArchitecture: true,
+    module: 'Invoices',
+    createdAt: '2026-07-14T22:10:00.000Z',
+  },
+  {
     id: 'stripe-connect-e2e-blocked-v49455-2026-07-14',
     version: '4.9.455',
     title: 'V4.9.455 — Stripe Connect: Testmode-E2E blockiert (Onboarding/CAPTCHA)',

@@ -4,6 +4,7 @@ import {
   forwardRef,
   BadRequestException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { Booking, Prisma, BookingStatus, VehicleStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -50,6 +51,11 @@ import {
   zonedLookbackStart,
 } from './booking-day-window.util';
 import { BookingPaymentCardService } from '@modules/payments/booking-payment-card.service';
+import { InvoiceProcessOutboxService } from '@modules/invoices/invoice-process/invoice-process-outbox.service';
+import {
+  OrgInvoiceProcessEntityType,
+  OrgInvoiceProcessType,
+} from '@prisma/client';
 
 const BOOKING_STATUS_DISPLAY: Record<string, string> = {
   PENDING: 'Pending',
@@ -62,6 +68,8 @@ const BOOKING_STATUS_DISPLAY: Record<string, string> = {
 
 @Injectable()
 export class BookingsService {
+  private readonly logger = new Logger(BookingsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly rentalDrivingAnalysisService: RentalDrivingAnalysisService,
@@ -90,6 +98,8 @@ export class BookingsService {
     private readonly stationValidation: StationValidationService,
     @Inject(forwardRef(() => BookingPaymentCardService))
     private readonly bookingPaymentCardService: BookingPaymentCardService,
+    @Inject(forwardRef(() => InvoiceProcessOutboxService))
+    private readonly invoiceProcessOutbox: InvoiceProcessOutboxService,
   ) {}
 
   /**
@@ -275,7 +285,19 @@ export class BookingsService {
         currency: booking.currency,
         kmIncluded: booking.kmIncluded,
       })
-      .catch(() => null);
+      .catch(async (err) => {
+        this.logger.error(
+          `createBookingInvoice failed for booking ${booking.id}: ${err instanceof Error ? err.message : err}`,
+        );
+        await this.invoiceProcessOutbox.recordFailure({
+          organizationId: orgId,
+          processType: OrgInvoiceProcessType.BOOKING_INVOICE_CREATE,
+          entityType: OrgInvoiceProcessEntityType.BOOKING,
+          entityId: booking.id,
+          error: err,
+        });
+        return null;
+      });
 
     // Generate the initial document bundle for operator/rental bookings once
     // created (PENDING or CONFIRMED). Wizard checkout drafts call generate
@@ -292,7 +314,19 @@ export class BookingsService {
             );
           }
         })
-        .catch(() => {});
+        .catch(async (err) => {
+          this.logger.error(
+            `Booking document pipeline failed for ${booking.id}: ${err instanceof Error ? err.message : err}`,
+          );
+          await this.invoiceProcessOutbox.recordFailure({
+            organizationId: orgId,
+            processType: OrgInvoiceProcessType.INVOICE_DOCUMENT_GENERATE,
+            entityType: OrgInvoiceProcessEntityType.BOOKING,
+            entityId: booking.id,
+            error: err,
+            payloadJson: { userId: options?.userId ?? null },
+          });
+        });
     }
 
     void this.taskAutomationService
@@ -1709,7 +1743,18 @@ export class BookingsService {
         .then(() =>
           this.bookingDocumentEmailService.maybeAutoSendBookingDocuments(orgId, id, null),
         )
-        .catch(() => {});
+        .catch(async (err) => {
+          this.logger.error(
+            `generateInitialBundle failed on confirm for booking ${id}: ${err instanceof Error ? err.message : err}`,
+          );
+          await this.invoiceProcessOutbox.recordFailure({
+            organizationId: orgId,
+            processType: OrgInvoiceProcessType.INVOICE_DOCUMENT_GENERATE,
+            entityType: OrgInvoiceProcessEntityType.BOOKING,
+            entityId: id,
+            error: err,
+          });
+        });
     }
     // Materialize booking lifecycle tasks on any status transition. The
     // automation service is idempotent (dedup per generatedKey), so calling it

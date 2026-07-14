@@ -19,11 +19,13 @@ import { BookingRentalEligibilityService } from './booking-rental-eligibility.se
 import { BookingWizardDraftService } from './booking-wizard-draft.service';
 import { BookingWizardCheckoutContextService } from './booking-wizard-checkout-context.service';
 import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.service';
+import { InvoiceProcessModule } from '@modules/invoices/invoice-process/invoice-process.module';
 
 @Module({
   imports: [
     RentalDrivingAnalysisModule,
     forwardRef(() => InvoicesModule),
+    forwardRef(() => InvoiceProcessModule),
     forwardRef(() => RentalHealthModule),
     forwardRef(() => DocumentsModule),
     TasksModule,
