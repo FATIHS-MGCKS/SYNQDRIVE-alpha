@@ -85,7 +85,10 @@ const BASE_TRANSITIONS: Readonly<
     BookingPaymentRequestStatus.REFUNDED,
     BookingPaymentRequestStatus.DISPUTED,
   ],
-  [BookingPaymentRequestStatus.PARTIALLY_REFUNDED]: [BookingPaymentRequestStatus.REFUNDED],
+  [BookingPaymentRequestStatus.PARTIALLY_REFUNDED]: [
+    BookingPaymentRequestStatus.REFUNDED,
+    BookingPaymentRequestStatus.DISPUTED,
+  ],
   [BookingPaymentRequestStatus.REFUNDED]: [],
   [BookingPaymentRequestStatus.FAILED]: [],
   [BookingPaymentRequestStatus.CANCELLED]: [],

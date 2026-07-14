@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { api, type BookingDetailDto } from '../../../lib/api';
 import { formatMoneyCents } from '../../../lib/money';
@@ -12,6 +12,7 @@ import { bd } from '../booking-detail/booking-detail-ui';
 import {
   canCancelPaymentRequest,
   canCopyPaymentLink,
+  canRefundPaymentRequest,
   canResendPaymentLink,
   copyTextToClipboard,
   paymentRequestStatusLabel,
@@ -77,12 +78,29 @@ export function BookingPaymentCard({
   const canCreate = hasPermission('payments', 'write');
   const canResend = hasPermission('payments', 'write');
   const canCancel = hasPermission('payments', 'write');
+  const canRefund = hasPermission('payments-refund', 'write');
   const canManualPay = hasPermission('invoices', 'write');
 
   const request = payments?.primaryRequest ?? null;
   const currency = request?.currency ?? detail.core.currency ?? 'EUR';
   const fmt = (cents: number | null | undefined) =>
     formatMoneyCents(cents, currency, locale === 'de' ? 'de-DE' : 'en-US');
+
+  const [refundOpen, setRefundOpen] = useState(false);
+  const [refundAmountInput, setRefundAmountInput] = useState('');
+  const [refundReason, setRefundReason] = useState('');
+  const [refundConfirmed, setRefundConfirmed] = useState(false);
+
+  const refundableCents = request?.refundableAmountCents
+    ?? Math.max(0, (request?.paidAmountCents ?? 0) - (request?.refundedAmountCents ?? 0));
+
+  const parsedRefundCents = useMemo(() => {
+    if (!refundAmountInput.trim()) return undefined;
+    const normalized = refundAmountInput.replace(',', '.').trim();
+    const euros = Number.parseFloat(normalized);
+    if (!Number.isFinite(euros) || euros <= 0) return null;
+    return Math.round(euros * 100);
+  }, [refundAmountInput]);
 
   const intent = payments?.summary.paymentIntent as BookingPaymentIntent | null;
   const bookingPaymentStatus = payments?.summary.bookingPaymentStatus ?? 'UNPAID';
@@ -119,6 +137,61 @@ export function BookingPaymentCard({
       setBusy(null);
     }
   }, [orgId, bookingId, onRefresh, t]);
+
+  const resetRefundForm = useCallback(() => {
+    setRefundAmountInput('');
+    setRefundReason('');
+    setRefundConfirmed(false);
+    setRefundOpen(false);
+  }, []);
+
+  const handleRefund = useCallback(async () => {
+    if (!request || !refundConfirmed || !refundReason.trim()) return;
+    if (parsedRefundCents === null) {
+      toast.error(t('bookingPayment.action.refundFailed'));
+      return;
+    }
+    if (parsedRefundCents != null && parsedRefundCents > refundableCents) {
+      toast.error(t('bookingPayment.action.refundFailed'));
+      return;
+    }
+
+    setBusy('refund');
+    try {
+      const idempotencyKey = `refund:${request.id}:${Date.now()}`;
+      const result = await api.organizationPaymentRequests.refund(
+        orgId,
+        request.id,
+        {
+          reason: refundReason.trim(),
+          ...(parsedRefundCents != null ? { amountCents: parsedRefundCents } : {}),
+        },
+        idempotencyKey,
+      );
+      toast.success(
+        result.idempotentReplay
+          ? t('bookingPayment.action.refundSuccess')
+          : `${t('bookingPayment.action.refundSuccess')} · ${fmt(result.refundAmountCents)}`,
+      );
+      resetRefundForm();
+      onRefresh();
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : t('bookingPayment.action.refundFailed'));
+    } finally {
+      setBusy(null);
+    }
+  }, [
+    fmt,
+    onRefresh,
+    orgId,
+    parsedRefundCents,
+    refundConfirmed,
+    refundReason,
+    refundableCents,
+    request,
+    resetRefundForm,
+    t,
+  ]);
 
   const handleCreateLink = useCallback(async () => {
     setBusy('create');
@@ -222,6 +295,12 @@ export function BookingPaymentCard({
               </div>
             )}
             <InfoRow label={t('bookingPayment.field.refundStatus')} value={refundLabel(request)} />
+            {refundableCents > 0 && (
+              <InfoRow
+                label={t('bookingPayment.field.refundableAmount')}
+                value={fmt(refundableCents)}
+              />
+            )}
             <InfoRow label={t('bookingPayment.field.disputeStatus')} value={disputeLabel(request)} />
             {request.stripeCheckoutSessionId && (
               <InfoRow
@@ -302,6 +381,20 @@ export function BookingPaymentCard({
               {t('bookingPayment.action.cancelRequest')}
             </button>
           )}
+          {request && canRefund && canRefundPaymentRequest({
+            status: request.status,
+            refundableAmountCents: refundableCents,
+            disputeStatus: request.disputeStatus,
+          }) && (
+            <button
+              type="button"
+              disabled={busy === 'refund'}
+              onClick={() => setRefundOpen(true)}
+              className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs hover:bg-muted disabled:opacity-50"
+            >
+              {t('bookingPayment.action.refund')}
+            </button>
+          )}
           {payments.invoice && canManualPay && onRecordManualPayment && (
             <button
               type="button"
@@ -311,6 +404,79 @@ export function BookingPaymentCard({
               {t('bookingPayment.action.recordManualPayment')}
             </button>
           )}
+        </div>
+      )}
+
+      {refundOpen && request && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="booking-refund-dialog-title"
+        >
+          <div className="w-full max-w-md rounded-xl border border-border bg-background p-4 shadow-lg">
+            <h4 id="booking-refund-dialog-title" className="mb-3 text-sm font-bold">
+              {t('bookingPayment.refund.modalTitle')}
+            </h4>
+            <p className="mb-3 text-xs text-muted-foreground">
+              {t('bookingPayment.refund.maxAmount')}: {fmt(refundableCents)}
+            </p>
+            <label className="mb-3 block text-xs">
+              <span className="mb-1 block text-muted-foreground">{t('bookingPayment.refund.amount')}</span>
+              <input
+                type="text"
+                inputMode="decimal"
+                value={refundAmountInput}
+                onChange={(e) => setRefundAmountInput(e.target.value)}
+                placeholder={fmt(refundableCents)}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              />
+              <span className="mt-1 block text-[11px] text-muted-foreground">
+                {t('bookingPayment.refund.amountHint')}
+              </span>
+            </label>
+            <label className="mb-3 block text-xs">
+              <span className="mb-1 block text-muted-foreground">{t('bookingPayment.refund.reason')}</span>
+              <textarea
+                value={refundReason}
+                onChange={(e) => setRefundReason(e.target.value)}
+                rows={3}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              />
+            </label>
+            <label className="mb-4 flex items-start gap-2 text-xs">
+              <input
+                type="checkbox"
+                checked={refundConfirmed}
+                onChange={(e) => setRefundConfirmed(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span>{t('bookingPayment.refund.confirm')}</span>
+            </label>
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                disabled={busy === 'refund'}
+                onClick={resetRefundForm}
+                className="inline-flex min-h-11 items-center justify-center rounded-lg border border-border px-3 py-2 text-xs"
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                disabled={
+                  busy === 'refund'
+                  || !refundConfirmed
+                  || !refundReason.trim()
+                  || parsedRefundCents === null
+                }
+                onClick={() => void handleRefund()}
+                className="sq-3d-btn sq-3d-btn--primary inline-flex min-h-11 items-center justify-center px-3 py-2 text-xs disabled:opacity-50"
+              >
+                {busy === 'refund' ? t('bookingPayment.action.refunding') : t('bookingPayment.action.refundSubmit')}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

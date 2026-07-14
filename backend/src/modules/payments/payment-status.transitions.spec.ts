@@ -94,6 +94,7 @@ describe('payment-status.transitions', () => {
       ]);
       expect(allowedPaymentRequestStatusTargets(BookingPaymentRequestStatus.PARTIALLY_REFUNDED)).toEqual([
         BookingPaymentRequestStatus.REFUNDED,
+        BookingPaymentRequestStatus.DISPUTED,
       ]);
       expect(allowedPaymentRequestStatusTargets(BookingPaymentRequestStatus.EXPIRED)).toEqual([
         BookingPaymentRequestStatus.OPEN,

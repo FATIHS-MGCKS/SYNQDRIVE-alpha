@@ -81,3 +81,21 @@ export interface CheckoutSessionRef {
   paymentIntentId: string | null;
   livemode: boolean;
 }
+
+export interface CreateRefundInput {
+  connectedAccountId: string;
+  paymentIntentId: string;
+  chargeId?: string | null;
+  amountCents?: number;
+  refundApplicationFee: boolean;
+  reason?: string;
+  stripeIdempotencyKey: string;
+}
+
+export interface RefundRef {
+  refundId: string;
+  amountCents: number;
+  currency: string;
+  status: string;
+  livemode: boolean;
+}

@@ -78,6 +78,7 @@ export function buildSafeConnectWebhookEventData(event: Stripe.Event): Prisma.In
     status: typeof object?.status === 'string' ? object.status : null,
     amount: typeof object?.amount === 'number' ? object.amount : null,
     amount_total: typeof object?.amount_total === 'number' ? object.amount_total : null,
+    amount_refunded: typeof object?.amount_refunded === 'number' ? object.amount_refunded : null,
     currency: typeof object?.currency === 'string' ? object.currency : null,
     payment_intent: paymentIntent,
     latest_charge:
@@ -85,6 +86,12 @@ export function buildSafeConnectWebhookEventData(event: Stripe.Event): Prisma.In
         ? object.latest_charge
         : object?.latest_charge && typeof object.latest_charge === 'object'
           ? (object.latest_charge as { id?: string }).id ?? null
+          : null,
+    charge:
+      typeof object?.charge === 'string'
+        ? object.charge
+        : object?.charge && typeof object.charge === 'object'
+          ? (object.charge as { id?: string }).id ?? null
           : null,
     last_payment_error:
       object?.last_payment_error && typeof object.last_payment_error === 'object'

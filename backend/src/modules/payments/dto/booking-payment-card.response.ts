@@ -18,6 +18,7 @@ export interface BookingPaymentCardRequestDto {
   paidAmountCents: number;
   openAmountCents: number;
   refundedAmountCents: number;
+  refundableAmountCents: number;
   currency: string;
   depositAmountCents: number;
   recipientEmail: string | null;
@@ -91,6 +92,7 @@ export function mapPaymentRequestToCardDto(
     paidAmountCents: request.paidAmountCents,
     openAmountCents,
     refundedAmountCents: request.refundedAmountCents,
+    refundableAmountCents: Math.max(0, request.paidAmountCents - request.refundedAmountCents),
     currency: request.currency,
     depositAmountCents,
     recipientEmail: request.recipientEmail,

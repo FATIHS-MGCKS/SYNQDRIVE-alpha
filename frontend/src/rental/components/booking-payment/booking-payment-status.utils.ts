@@ -53,6 +53,7 @@ export interface BookingPaymentCardRequestDto {
   paidAmountCents: number;
   openAmountCents: number;
   refundedAmountCents: number;
+  refundableAmountCents: number;
   currency: string;
   depositAmountCents: number;
   recipientEmail: string | null;
@@ -140,6 +141,17 @@ export function canCancelPaymentRequest(status: string): boolean {
 
 export function canCopyPaymentLink(request: { checkoutUrl: string | null; status: string }): boolean {
   return !!request.checkoutUrl && !['PAID', 'CANCELLED', 'REFUNDED'].includes(request.status.toUpperCase());
+}
+
+export function canRefundPaymentRequest(request: {
+  status: string;
+  refundableAmountCents?: number;
+  disputeStatus?: 'NONE' | 'OPEN';
+}): boolean {
+  const status = request.status.toUpperCase();
+  if (!['PAID', 'PARTIALLY_REFUNDED'].includes(status)) return false;
+  if (request.disputeStatus === 'OPEN' || status === 'DISPUTED') return false;
+  return (request.refundableAmountCents ?? 0) > 0;
 }
 
 export function resolvePaymentSuccessScenario(params: {

@@ -37,6 +37,7 @@ describe('booking payment card mapping', () => {
 
     expect(dto.openAmountCents).toBe(10_000);
     expect(dto.depositAmountCents).toBe(5_000);
+    expect(dto.refundableAmountCents).toBe(0);
     expect(dto.refundStatus).toBe('NONE');
     expect(dto.stripeCheckoutSessionId).toBe('cs_test_…7890');
   });
@@ -57,6 +58,7 @@ describe('booking payment card mapping', () => {
       [{ type: 'CHARGE', status: 'SUCCEEDED', amountCents: 10_000 } as never],
     );
     expect(paid.openAmountCents).toBe(0);
+    expect(paid.refundableAmountCents).toBe(10_000);
     expect(paid.paymentMethodLabel).toBe('Karte (Stripe)');
 
     const partial = mapPaymentRequestToCardDto(

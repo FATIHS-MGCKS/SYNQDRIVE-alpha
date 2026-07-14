@@ -1450,6 +1450,7 @@ export type BookingPaymentCardRequestDto = {
   paidAmountCents: number;
   openAmountCents: number;
   refundedAmountCents: number;
+  refundableAmountCents: number;
   currency: string;
   depositAmountCents: number;
   recipientEmail: string | null;
@@ -1467,6 +1468,15 @@ export type BookingPaymentCardRequestDto = {
   paymentMethodLabel: string | null;
   refundStatus: 'NONE' | 'PARTIAL' | 'FULL';
   disputeStatus: 'NONE' | 'OPEN';
+};
+
+export type BookingPaymentRefundResponseDto = {
+  paymentRequest: BookingPaymentRequestDto;
+  refundAmountCents: number;
+  applicationFeeRefundCents: number;
+  refundableAmountCents: number;
+  stripeRefundId: string;
+  idempotentReplay: boolean;
 };
 
 export type BookingPaymentRequestDto = {
@@ -3959,6 +3969,22 @@ export const api = {
       post<BookingPaymentRequestDto>(
         `/organizations/${orgId}/bookings/${bookingId}/payment-requests/${requestId}/cancel`,
         {},
+      ),
+  },
+  organizationPaymentRequests: {
+    refund: (
+      orgId: string,
+      requestId: string,
+      data: { amountCents?: number; reason: string },
+      idempotencyKey: string,
+    ) =>
+      request<BookingPaymentRefundResponseDto>(
+        `/organizations/${orgId}/payment-requests/${requestId}/refund`,
+        {
+          method: 'POST',
+          body: JSON.stringify(data),
+          headers: { 'Idempotency-Key': idempotencyKey },
+        },
       ),
   },
   paymentsConnect: {

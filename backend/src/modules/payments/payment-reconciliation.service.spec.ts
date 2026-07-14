@@ -8,6 +8,9 @@ import {
 } from '@prisma/client';
 import { PaymentReconciliationService } from './payment-reconciliation.service';
 import { PaymentConfirmationNotifierService } from './payment-confirmation-notifier.service';
+import { PaymentDisputeNotifierService } from './payment-dispute-notifier.service';
+import { BookingPaymentRefundService } from './booking-payment-refund.service';
+import { PaymentFeeService } from './payment-fee.service';
 import { OrganizationPaymentAccountService } from './organization-payment-account.service';
 import type { StripeConnectAdapter } from './stripe/stripe-connect.adapter';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -73,6 +76,7 @@ describe('PaymentReconciliationService', () => {
     paymentTransaction: {
       findFirst: jest.fn(),
       findMany: jest.fn(),
+      findUnique: jest.fn(),
       create: jest.fn(),
     },
     orgInvoicePayment: {
@@ -111,6 +115,25 @@ describe('PaymentReconciliationService', () => {
     schedulePaymentConfirmation: jest.fn(),
   };
 
+  const paymentDisputeNotifier = {
+    scheduleDisputeNotification: jest.fn(),
+  };
+
+  const bookingPaymentRefundService = {
+    applyRefundLedgerInTx: jest.fn().mockResolvedValue({
+      ...baseRequest,
+      status: BookingPaymentRequestStatus.PARTIALLY_REFUNDED,
+      refundedAmountCents: 2_500,
+    }),
+  };
+
+  const paymentFeeService = {
+    calculateRefundFee: jest.fn().mockReturnValue({
+      applicationFeeRefundCents: 62,
+      isFullRefund: false,
+    }),
+  };
+
   const stripeConnectAdapter = {
     getConnectedAccountStatus: jest.fn(),
     getSafePayoutSummary: jest.fn(),
@@ -124,6 +147,9 @@ describe('PaymentReconciliationService', () => {
       prisma as unknown as PrismaService,
       organizationPaymentAccountService as unknown as OrganizationPaymentAccountService,
       paymentConfirmationNotifier as unknown as PaymentConfirmationNotifierService,
+      paymentDisputeNotifier as unknown as PaymentDisputeNotifierService,
+      bookingPaymentRefundService as unknown as BookingPaymentRefundService,
+      paymentFeeService as unknown as PaymentFeeService,
       stripeConnectAdapter as unknown as StripeConnectAdapter,
     );
 
@@ -428,5 +454,176 @@ describe('PaymentReconciliationService', () => {
         data: { paymentStatus: BookingPaymentStatus.PAID },
       }),
     );
+  });
+
+  it('processes charge.refunded webhook delta', async () => {
+    const paid = {
+      ...baseRequest,
+      status: BookingPaymentRequestStatus.PAID,
+      paidAmountCents: 59_500,
+      stripePaymentIntentId: 'pi_1',
+      stripeChargeId: 'ch_1',
+      refundedAmountCents: 0,
+    };
+    prisma.stripeConnectWebhookEvent.findUnique.mockResolvedValue({
+      id: 'evt-refund',
+      stripeEventId: 'evt_refund',
+      eventType: 'charge.refunded',
+      organizationId,
+      processingStatus: StripeConnectWebhookProcessingStatus.RECEIVED,
+      safeEventData: {
+        objectId: 'ch_1',
+        amount_refunded: 2_500,
+        payment_intent: 'pi_1',
+        metadata,
+      },
+    });
+    tx.stripeConnectWebhookEvent.findUnique.mockResolvedValue({
+      id: 'evt-refund',
+      stripeEventId: 'evt_refund',
+      eventType: 'charge.refunded',
+      organizationId,
+      stripeConnectedAccountId: 'acct_1',
+      livemode: false,
+      processingStatus: StripeConnectWebhookProcessingStatus.RECEIVED,
+      safeEventData: {
+        objectId: 'ch_1',
+        amount_refunded: 2_500,
+        payment_intent: 'pi_1',
+        metadata,
+      },
+    });
+    tx.paymentTransaction.findUnique.mockResolvedValue(null);
+    tx.bookingPaymentRequest.findFirst.mockResolvedValue(paid);
+    tx.paymentTransaction.findFirst.mockResolvedValue({
+      id: 'tx-charge',
+      type: PaymentTransactionType.CHARGE,
+      status: PaymentTransactionStatus.SUCCEEDED,
+    });
+
+    const result = await service.processStoredWebhookEvent('evt-refund');
+    expect(result.outcome).toBe('processed');
+    expect(bookingPaymentRefundService.applyRefundLedgerInTx).toHaveBeenCalledWith(
+      tx,
+      expect.objectContaining({ refundAmountCents: 2_500 }),
+    );
+  });
+
+  it('skips duplicate charge.refunded webhook', async () => {
+    prisma.stripeConnectWebhookEvent.findUnique.mockResolvedValue({
+      id: 'evt-refund-dup',
+      stripeEventId: 'evt_refund_dup',
+      eventType: 'charge.refunded',
+      organizationId,
+      processingStatus: StripeConnectWebhookProcessingStatus.RECEIVED,
+      safeEventData: { objectId: 'ch_1', amount_refunded: 2_500, metadata },
+    });
+    tx.stripeConnectWebhookEvent.findUnique.mockResolvedValue({
+      id: 'evt-refund-dup',
+      stripeEventId: 'evt_refund_dup',
+      eventType: 'charge.refunded',
+      organizationId,
+      stripeConnectedAccountId: 'acct_1',
+      livemode: false,
+      processingStatus: StripeConnectWebhookProcessingStatus.RECEIVED,
+      safeEventData: { objectId: 'ch_1', amount_refunded: 2_500, metadata },
+    });
+    tx.paymentTransaction.findUnique.mockResolvedValue({
+      paymentRequestId,
+      type: PaymentTransactionType.REFUND,
+    });
+
+    const result = await service.processStoredWebhookEvent('evt-refund-dup');
+    expect(result.outcome).toBe('skipped_duplicate');
+    expect(bookingPaymentRefundService.applyRefundLedgerInTx).not.toHaveBeenCalled();
+  });
+
+  it('processes charge.dispute.created and schedules notification', async () => {
+    const paid = {
+      ...baseRequest,
+      status: BookingPaymentRequestStatus.PAID,
+      paidAmountCents: 59_500,
+      stripeChargeId: 'ch_1',
+    };
+    prisma.stripeConnectWebhookEvent.findUnique.mockResolvedValue({
+      id: 'evt-dispute',
+      stripeEventId: 'evt_dispute',
+      eventType: 'charge.dispute.created',
+      organizationId,
+      processingStatus: StripeConnectWebhookProcessingStatus.RECEIVED,
+      safeEventData: {
+        objectId: 'dp_1',
+        charge: 'ch_1',
+        amount: 59_500,
+        metadata,
+      },
+    });
+    tx.stripeConnectWebhookEvent.findUnique.mockResolvedValue({
+      id: 'evt-dispute',
+      stripeEventId: 'evt_dispute',
+      eventType: 'charge.dispute.created',
+      organizationId,
+      stripeConnectedAccountId: 'acct_1',
+      livemode: false,
+      processingStatus: StripeConnectWebhookProcessingStatus.RECEIVED,
+      safeEventData: {
+        objectId: 'dp_1',
+        charge: 'ch_1',
+        amount: 59_500,
+        metadata,
+      },
+    });
+    tx.paymentTransaction.findUnique.mockResolvedValue(null);
+    tx.bookingPaymentRequest.findFirst.mockResolvedValue(paid);
+    tx.bookingPaymentRequest.findUniqueOrThrow.mockResolvedValue({
+      ...paid,
+      status: BookingPaymentRequestStatus.DISPUTED,
+    });
+    tx.paymentTransaction.findMany.mockResolvedValue([]);
+    tx.bookingPaymentRequest.update.mockResolvedValue({
+      ...paid,
+      status: BookingPaymentRequestStatus.DISPUTED,
+    });
+
+    const result = await service.processStoredWebhookEvent('evt-dispute');
+    expect(result.outcome).toBe('processed');
+    expect(tx.paymentTransaction.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ type: PaymentTransactionType.DISPUTE }),
+      }),
+    );
+    expect(paymentDisputeNotifier.scheduleDisputeNotification).toHaveBeenCalledWith(
+      paymentRequestId,
+      organizationId,
+    );
+  });
+
+  it('skips duplicate dispute webhook', async () => {
+    prisma.stripeConnectWebhookEvent.findUnique.mockResolvedValue({
+      id: 'evt-dispute-dup',
+      stripeEventId: 'evt_dispute_dup',
+      eventType: 'charge.dispute.created',
+      organizationId,
+      processingStatus: StripeConnectWebhookProcessingStatus.RECEIVED,
+      safeEventData: { objectId: 'dp_1', charge: 'ch_1', amount: 59_500, metadata },
+    });
+    tx.stripeConnectWebhookEvent.findUnique.mockResolvedValue({
+      id: 'evt-dispute-dup',
+      stripeEventId: 'evt_dispute_dup',
+      eventType: 'charge.dispute.created',
+      organizationId,
+      stripeConnectedAccountId: 'acct_1',
+      livemode: false,
+      processingStatus: StripeConnectWebhookProcessingStatus.RECEIVED,
+      safeEventData: { objectId: 'dp_1', charge: 'ch_1', amount: 59_500, metadata },
+    });
+    tx.paymentTransaction.findUnique.mockResolvedValue({
+      paymentRequestId,
+      type: PaymentTransactionType.DISPUTE,
+    });
+
+    const result = await service.processStoredWebhookEvent('evt-dispute-dup');
+    expect(result.outcome).toBe('skipped_duplicate');
+    expect(tx.paymentTransaction.create).not.toHaveBeenCalled();
   });
 });

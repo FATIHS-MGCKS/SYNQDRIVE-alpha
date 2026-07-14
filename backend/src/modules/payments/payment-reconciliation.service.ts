@@ -15,6 +15,9 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { derivePaymentStatus, canRecordPayment, isOutgoingInvoiceType } from '@modules/invoices/invoice-domain.util';
 import { OrganizationPaymentAccountService } from './organization-payment-account.service';
 import { PaymentConfirmationNotifierService } from './payment-confirmation-notifier.service';
+import { PaymentDisputeNotifierService } from './payment-dispute-notifier.service';
+import { BookingPaymentRefundService } from './booking-payment-refund.service';
+import { PaymentFeeService } from './payment-fee.service';
 import {
   PaymentReconciliationAmountMismatchError,
   PaymentReconciliationDomainError,
@@ -62,6 +65,9 @@ export class PaymentReconciliationService {
     private readonly prisma: PrismaService,
     private readonly organizationPaymentAccountService: OrganizationPaymentAccountService,
     private readonly paymentConfirmationNotifier: PaymentConfirmationNotifierService,
+    private readonly paymentDisputeNotifier: PaymentDisputeNotifierService,
+    private readonly bookingPaymentRefundService: BookingPaymentRefundService,
+    private readonly paymentFeeService: PaymentFeeService,
     @Inject(STRIPE_CONNECT_ADAPTER)
     private readonly stripeConnectAdapter: StripeConnectAdapter,
   ) {}
@@ -110,8 +116,9 @@ export class PaymentReconciliationService {
           case 'checkout.session.expired':
             return this.reconcileCheckoutSessionExpired(tx, locked, safe);
           case 'charge.refunded':
+            return this.reconcileChargeRefunded(tx, locked, safe);
           case 'charge.dispute.created':
-            return this.markDeferred(tx, locked, 'deferred');
+            return this.reconcileDisputeCreated(tx, locked, safe);
           default:
             return this.markDeferred(tx, locked, 'deferred');
         }
@@ -125,6 +132,18 @@ export class PaymentReconciliationService {
       && pending.organizationId
     ) {
       this.paymentConfirmationNotifier.schedulePaymentConfirmation(
+        result.paymentRequestId,
+        pending.organizationId,
+      );
+    }
+
+    if (
+      result.outcome === 'processed'
+      && result.paymentRequestId
+      && pending.eventType === 'charge.dispute.created'
+      && pending.organizationId
+    ) {
+      this.paymentDisputeNotifier.scheduleDisputeNotification(
         result.paymentRequestId,
         pending.organizationId,
       );
@@ -542,6 +561,248 @@ export class PaymentReconciliationService {
       outcome: 'processed',
       paymentRequestId: current.id,
     });
+  }
+
+  private async reconcileChargeRefunded(
+    tx: TxClient,
+    event: {
+      id: string;
+      stripeEventId: string;
+      eventType: string;
+      organizationId: string | null;
+      stripeConnectedAccountId: string | null;
+      livemode: boolean;
+    },
+    safe: ConnectWebhookSafeEventData,
+  ): Promise<ReconciliationResult> {
+    if (!event.organizationId) {
+      return this.markDeferred(tx, event, 'deferred');
+    }
+
+    const existingEventTx = await tx.paymentTransaction.findUnique({
+      where: {
+        provider_providerEventId_type: {
+          provider: PaymentProvider.STRIPE,
+          providerEventId: event.stripeEventId,
+          type: PaymentTransactionType.REFUND,
+        },
+      },
+    });
+    if (existingEventTx) {
+      return this.markProcessed(tx, event, {
+        outcome: 'skipped_duplicate',
+        paymentRequestId: existingEventTx.paymentRequestId,
+      });
+    }
+
+    const request = await this.findRequestForChargeEvent(tx, event, safe);
+    if (!request) {
+      return this.markDeferred(tx, event, 'deferred');
+    }
+
+    const amountRefundedOnCharge =
+      safe.amount_refunded ?? request.refundedAmountCents;
+    const delta = amountRefundedOnCharge - request.refundedAmountCents;
+    if (delta <= 0) {
+      return this.markProcessed(tx, event, {
+        outcome: 'skipped_duplicate',
+        paymentRequestId: request.id,
+      });
+    }
+
+    const chargeTx = await tx.paymentTransaction.findFirst({
+      where: {
+        paymentRequestId: request.id,
+        type: PaymentTransactionType.CHARGE,
+        status: PaymentTransactionStatus.SUCCEEDED,
+      },
+    });
+    if (!chargeTx) {
+      return this.markDeferred(tx, event, 'deferred');
+    }
+
+    const feeAdjustment = this.paymentFeeService.calculateRefundFee(
+      {
+        applicationFeeAmountCents: request.applicationFeeAmountCents ?? 0,
+        rentalPaymentAmountCents: request.amountCents,
+      },
+      delta,
+      request.refundedAmountCents,
+      request.paidAmountCents,
+    );
+
+    const stripeRefundId = safe.objectId
+      ? `${safe.objectId}:${event.stripeEventId}`
+      : event.stripeEventId;
+
+    await this.bookingPaymentRefundService.applyRefundLedgerInTx(tx, {
+      organizationId: event.organizationId,
+      paymentRequestId: request.id,
+      refundAmountCents: delta,
+      applicationFeeRefundCents: feeAdjustment.applicationFeeRefundCents,
+      currency: request.currency,
+      stripeRefundId,
+      providerEventId: event.stripeEventId,
+      parentChargeTransactionId: chargeTx.id,
+      reason: 'stripe_charge.refunded',
+    });
+
+    return this.markProcessed(tx, event, {
+      outcome: 'processed',
+      paymentRequestId: request.id,
+    });
+  }
+
+  private async reconcileDisputeCreated(
+    tx: TxClient,
+    event: {
+      id: string;
+      stripeEventId: string;
+      eventType: string;
+      organizationId: string | null;
+      stripeConnectedAccountId: string | null;
+      livemode: boolean;
+    },
+    safe: ConnectWebhookSafeEventData,
+  ): Promise<ReconciliationResult> {
+    if (!event.organizationId) {
+      return this.markDeferred(tx, event, 'deferred');
+    }
+
+    const existingDispute = await tx.paymentTransaction.findUnique({
+      where: {
+        provider_providerEventId_type: {
+          provider: PaymentProvider.STRIPE,
+          providerEventId: event.stripeEventId,
+          type: PaymentTransactionType.DISPUTE,
+        },
+      },
+    });
+    if (existingDispute) {
+      return this.markProcessed(tx, event, {
+        outcome: 'skipped_duplicate',
+        paymentRequestId: existingDispute.paymentRequestId,
+      });
+    }
+
+    const request = await this.findRequestForChargeEvent(tx, event, safe);
+    if (!request) {
+      return this.markDeferred(tx, event, 'deferred');
+    }
+
+    const disputeAmountCents = safe.amount ?? request.paidAmountCents;
+    const chargeTx = await tx.paymentTransaction.findFirst({
+      where: {
+        paymentRequestId: request.id,
+        type: PaymentTransactionType.CHARGE,
+        status: PaymentTransactionStatus.SUCCEEDED,
+      },
+    });
+
+    await tx.paymentTransaction.create({
+      data: {
+        organizationId: event.organizationId,
+        paymentRequestId: request.id,
+        type: PaymentTransactionType.DISPUTE,
+        status: PaymentTransactionStatus.SUCCEEDED,
+        amountCents: disputeAmountCents,
+        currency: request.currency,
+        provider: PaymentProvider.STRIPE,
+        providerObjectType: 'dispute',
+        providerObjectId: safe.objectId,
+        providerEventId: event.stripeEventId,
+        parentTransactionId: chargeTx?.id ?? null,
+        balanceImpactCents: -disputeAmountCents,
+        applicationFeeImpactCents: 0,
+        occurredAt: new Date(),
+        metadata: {
+          chargeId: safe.latest_charge ?? request.stripeChargeId,
+          livemode: event.livemode,
+        },
+      },
+    });
+
+    let current = request;
+    if (current.status !== BookingPaymentRequestStatus.DISPUTED) {
+      current = await this.transitionRequestInTx(tx, current, BookingPaymentRequestStatus.DISPUTED);
+    }
+
+    await this.syncBookingPaymentSummary(tx, current.organizationId, current.bookingId);
+
+    await this.writeAuditLog(tx, {
+      organizationId: current.organizationId,
+      entityId: current.id,
+      description: `Stripe dispute opened for payment request ${current.id}`,
+      changeSummary: `dispute=${safe.objectId ?? 'n/a'};amount=${disputeAmountCents}`,
+      metaJson: {
+        stripeEventId: event.stripeEventId,
+        disputeId: safe.objectId,
+        amountCents: disputeAmountCents,
+      },
+    });
+
+    return this.markProcessed(tx, event, {
+      outcome: 'processed',
+      paymentRequestId: current.id,
+    });
+  }
+
+  private async findRequestForChargeEvent(
+    tx: TxClient,
+    event: {
+      organizationId: string | null;
+      stripeConnectedAccountId: string | null;
+    },
+    safe: ConnectWebhookSafeEventData,
+  ) {
+    if (!event.organizationId) {
+      return null;
+    }
+
+    const metadata = extractPaymentRequestMetadata(safe);
+    if (metadata) {
+      const byMetadata = await tx.bookingPaymentRequest.findFirst({
+        where: {
+          id: metadata.paymentRequestId,
+          organizationId: event.organizationId,
+        },
+      });
+      if (byMetadata) {
+        return byMetadata;
+      }
+    }
+
+    const chargeId = safe.charge ?? safe.objectId ?? safe.latest_charge ?? null;
+    const paymentIntentId = safe.payment_intent ?? null;
+
+    if (chargeId) {
+      const byCharge = await tx.bookingPaymentRequest.findFirst({
+        where: {
+          organizationId: event.organizationId,
+          stripeChargeId: chargeId,
+          ...(event.stripeConnectedAccountId
+            ? { stripeConnectedAccountId: event.stripeConnectedAccountId }
+            : {}),
+        },
+      });
+      if (byCharge) {
+        return byCharge;
+      }
+    }
+
+    if (paymentIntentId) {
+      return tx.bookingPaymentRequest.findFirst({
+        where: {
+          organizationId: event.organizationId,
+          stripePaymentIntentId: paymentIntentId,
+          ...(event.stripeConnectedAccountId
+            ? { stripeConnectedAccountId: event.stripeConnectedAccountId }
+            : {}),
+        },
+      });
+    }
+
+    return null;
   }
 
   private async loadPaymentContext(

@@ -4,6 +4,8 @@ import { PrismaModule } from '@shared/database/prisma.module';
 import { InvoicesModule } from '@modules/invoices/invoices.module';
 import { PaymentsConnectController } from './payments-connect.controller';
 import { BookingPaymentRequestController } from './booking-payment-request.controller';
+import { OrganizationPaymentRequestController } from './organization-payment-request.controller';
+import { BookingPaymentRefundService } from './booking-payment-refund.service';
 import { BookingPaymentRequestService } from './booking-payment-request.service';
 import { BookingPaymentCardService } from './booking-payment-card.service';
 import { StripeCheckoutService } from './stripe-checkout.service';
@@ -21,6 +23,7 @@ import { StripeConnectWebhookService } from './stripe-connect-webhook.service';
 import { StripeConnectWebhookProcessorService } from './stripe-connect-webhook.processor';
 import { PaymentReconciliationService } from './payment-reconciliation.service';
 import { PaymentConfirmationNotifierService } from './payment-confirmation-notifier.service';
+import { PaymentDisputeNotifierService } from './payment-dispute-notifier.service';
 import { PaymentEmailModule } from './email/payment-email.module';
 import { PaymentEmailProcessorService } from './email/payment-email-processor.service';
 import { PaymentEmailResendService } from './email/payment-email-resend.service';
@@ -39,6 +42,7 @@ import {
   controllers: [
     PaymentsConnectController,
     BookingPaymentRequestController,
+    OrganizationPaymentRequestController,
     StripeConnectWebhookController,
   ],
   providers: [
@@ -47,12 +51,14 @@ import {
     PaymentPolicyService,
     PaymentFeeService,
     BookingPaymentRequestService,
+    BookingPaymentRefundService,
     BookingPaymentCardService,
     StripeCheckoutService,
     StripeConnectWebhookService,
     StripeConnectWebhookProcessorService,
     PaymentReconciliationService,
     PaymentConfirmationNotifierService,
+    PaymentDisputeNotifierService,
     PaymentEmailProcessorService,
     PaymentEmailResendService,
     PaymentsFeatureGuard,
@@ -83,6 +89,7 @@ import {
     OrganizationPaymentAccountService,
     StripeConnectAccountService,
     BookingPaymentRequestService,
+    BookingPaymentRefundService,
     BookingPaymentCardService,
     StripeCheckoutService,
     StripeConnectWebhookService,

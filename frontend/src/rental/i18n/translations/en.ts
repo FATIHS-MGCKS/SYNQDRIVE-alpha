@@ -1222,6 +1222,18 @@ export const en = {
   'bookingPayment.action.cancelled': 'Payment request cancelled',
   'bookingPayment.action.cancelFailed': 'Cancel failed',
   'bookingPayment.action.recordManualPayment': 'Record manual payment',
+  'bookingPayment.action.refund': 'Refund payment',
+  'bookingPayment.action.refundSubmit': 'Confirm refund',
+  'bookingPayment.action.refunding': 'Processing refund…',
+  'bookingPayment.action.refundSuccess': 'Refund processed',
+  'bookingPayment.action.refundFailed': 'Refund failed',
+  'bookingPayment.refund.modalTitle': 'Refund payment',
+  'bookingPayment.refund.maxAmount': 'Maximum refundable',
+  'bookingPayment.refund.amount': 'Refund amount (optional)',
+  'bookingPayment.refund.amountHint': 'Leave empty for full refund',
+  'bookingPayment.refund.reason': 'Reason',
+  'bookingPayment.refund.confirm': 'This action cannot be undone. Continue?',
+  'bookingPayment.field.refundableAmount': 'Refundable amount',
 
   // ─── New Task Modal ───
   'newTaskModal.title': 'New Task',

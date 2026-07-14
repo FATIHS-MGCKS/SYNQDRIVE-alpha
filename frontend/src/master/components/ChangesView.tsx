@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-payment-refund-dispute-v49449-2026-07-14',
+    version: '4.9.449',
+    title: 'V4.9.449 — End-Customer Payments: Refunds & Disputes MVP',
+    summary: [
+      'POST /organizations/:orgId/payment-requests/:id/refund mit payments.refund, Idempotency-Key, Fee-Policy.',
+      'Ledger REFUND + REFUND_APPLICATION_FEE append-only; Invoice paidCents/outstanding angepasst.',
+      'Webhooks charge.refunded + charge.dispute.created; DISPUTED-Status, Audit, Notification.',
+      'BookingPaymentCard: Refund-Dialog mit Permission, Max-Betrag, Grund, Bestätigung.',
+    ],
+    reason:
+      'Sichere operative Rückerstattungen und sichtbare Disputes im Direct-Charge-Modell ohne Billing-Rechte oder Deposit-Refunds.',
+    previousBehavior:
+      'charge.refunded und charge.dispute.created wurden deferred; keine Refund-API oder UI.',
+    details:
+      'BookingPaymentRefundService, OrganizationPaymentRequestController, Stripe createRefund, PaymentReconciliationService, architecture/END_CUSTOMER_PAYMENTS_REFUNDS_DISPUTES_2026-07-14.md.',
+    affectsArchitecture: true,
+    module: 'Payments',
+    createdAt: '2026-07-14T00:00:00.000Z',
+  },
+  {
     id: 'booking-payment-status-ui-v49448-2026-07-14',
     version: '4.9.448',
     title: 'V4.9.448 — Zahlungsstatus nach Buchung und im Buchungsdetail',

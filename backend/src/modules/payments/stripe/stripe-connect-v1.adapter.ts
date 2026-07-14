@@ -22,7 +22,9 @@ import type {
   CreateCheckoutSessionInput,
   CreateConnectedAccountInput,
   CreateOnboardingSessionInput,
+  CreateRefundInput,
   OnboardingSessionRef,
+  RefundRef,
   SafePayoutSummary,
 } from './stripe-connect.types';
 
@@ -195,6 +197,42 @@ export class StripeConnectV1Adapter implements StripeConnectAdapter {
       this.logger.warn(`Stripe createCheckoutSession failed: ${(error as Error).message}`);
       throw new ConnectProviderError(
         error instanceof Error ? error.message : 'Stripe checkout session creation failed',
+      );
+    }
+  }
+
+  /**
+   * Direct Charge refund on connected account — optional proportional application_fee refund.
+   */
+  async createRefund(input: CreateRefundInput): Promise<RefundRef> {
+    const stripe = this.requireStripe();
+    try {
+      const refund = await stripe.refunds.create(
+        {
+          payment_intent: input.paymentIntentId,
+          ...(input.chargeId ? { charge: input.chargeId } : {}),
+          ...(input.amountCents != null ? { amount: input.amountCents } : {}),
+          refund_application_fee: input.refundApplicationFee,
+          ...(input.reason ? { reason: input.reason as Stripe.RefundCreateParams.Reason } : {}),
+        },
+        {
+          stripeAccount: input.connectedAccountId,
+          idempotencyKey: input.stripeIdempotencyKey,
+        },
+      );
+
+      return {
+        refundId: refund.id,
+        amountCents: refund.amount,
+        currency: (refund.currency ?? 'eur').toUpperCase(),
+        status: refund.status ?? 'pending',
+        livemode: this.livemode(),
+      };
+    } catch (error) {
+      if (error instanceof ConnectProviderError) throw error;
+      this.logger.warn(`Stripe createRefund failed: ${(error as Error).message}`);
+      throw new ConnectProviderError(
+        error instanceof Error ? error.message : 'Stripe refund creation failed',
       );
     }
   }

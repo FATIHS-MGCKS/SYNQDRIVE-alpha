@@ -130,4 +130,34 @@ export class PaymentEmailEnqueueService {
     await this.scheduler.scheduleOutboxIds([row.id]);
     return row.id;
   }
+
+  async enqueuePaymentDispute(params: {
+    organizationId: string;
+    paymentRequestId: string;
+  }): Promise<string | null> {
+    if (!this.isEnabled()) {
+      return null;
+    }
+
+    const idempotencyKey = buildPaymentEmailIdempotencyKey({
+      organizationId: params.organizationId,
+      paymentRequestId: params.paymentRequestId,
+      emailType: PaymentEmailType.PAYMENT_DISPUTE,
+      suffix: 'once',
+    });
+
+    const row = await this.outboxRepo.createEntryIdempotent({
+      organizationId: params.organizationId,
+      paymentRequestId: params.paymentRequestId,
+      emailType: PaymentEmailType.PAYMENT_DISPUTE,
+      idempotencyKey,
+    });
+
+    if (!row) {
+      return null;
+    }
+
+    await this.scheduler.scheduleOutboxIds([row.id]);
+    return row.id;
+  }
 }

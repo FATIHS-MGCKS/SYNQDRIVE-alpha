@@ -19,9 +19,11 @@ export interface ConnectWebhookSafeEventData {
   status?: string | null;
   amount?: number | null;
   amount_total?: number | null;
+  amount_refunded?: number | null;
   currency?: string | null;
   payment_intent?: string | null;
   latest_charge?: string | null;
+  charge?: string | null;
   metadata?: Record<string, string> | null;
   last_payment_error?: { code?: string; message?: string } | null;
 }

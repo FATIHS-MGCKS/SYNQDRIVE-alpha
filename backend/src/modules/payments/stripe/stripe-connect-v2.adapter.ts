@@ -8,7 +8,9 @@ import type {
   CreateCheckoutSessionInput,
   CreateConnectedAccountInput,
   CreateOnboardingSessionInput,
+  CreateRefundInput,
   OnboardingSessionRef,
+  RefundRef,
   SafePayoutSummary,
 } from './stripe-connect.types';
 
@@ -37,6 +39,10 @@ export class StripeConnectV2Adapter implements StripeConnectAdapter {
   }
 
   createCheckoutSession(_input: CreateCheckoutSessionInput): Promise<CheckoutSessionRef> {
+    return Promise.reject(this.notConfigured());
+  }
+
+  createRefund(_input: CreateRefundInput): Promise<RefundRef> {
     return Promise.reject(this.notConfigured());
   }
 

@@ -1294,6 +1294,18 @@ export const de: Record<TranslationKey, string> = {
   'bookingPayment.action.cancelled': 'Zahlungsanforderung storniert',
   'bookingPayment.action.cancelFailed': 'Stornierung fehlgeschlagen',
   'bookingPayment.action.recordManualPayment': 'Manuelle Zahlung erfassen',
+  'bookingPayment.action.refund': 'Zahlung erstatten',
+  'bookingPayment.action.refundSubmit': 'Erstattung bestätigen',
+  'bookingPayment.action.refunding': 'Erstattung wird verarbeitet…',
+  'bookingPayment.action.refundSuccess': 'Erstattung verarbeitet',
+  'bookingPayment.action.refundFailed': 'Erstattung fehlgeschlagen',
+  'bookingPayment.refund.modalTitle': 'Zahlung erstatten',
+  'bookingPayment.refund.maxAmount': 'Maximal erstattbar',
+  'bookingPayment.refund.amount': 'Erstattungsbetrag (optional)',
+  'bookingPayment.refund.amountHint': 'Leer lassen für Vollständige Erstattung',
+  'bookingPayment.refund.reason': 'Grund',
+  'bookingPayment.refund.confirm': 'Diese Aktion kann nicht rückgängig gemacht werden. Fortfahren?',
+  'bookingPayment.field.refundableAmount': 'Erstattbarer Betrag',
 
   // ─── New Task Modal ───
   'newTaskModal.title': 'Neue Aufgabe',
