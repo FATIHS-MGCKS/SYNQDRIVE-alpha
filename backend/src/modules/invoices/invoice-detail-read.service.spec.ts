@@ -2,6 +2,7 @@ import { NotFoundException } from '@nestjs/common';
 import { OrgInvoiceType } from '@prisma/client';
 import {
   BOOKING_REF,
+  BOOKING_NUMBER,
   CUSTOMER_MUELLER,
   INVOICE_BOOKING,
   ORG_A,
@@ -83,7 +84,7 @@ describe('InvoiceDetailReadService', () => {
     expect(detail.customer?.customerNumber).toMatch(/^K-/);
     expect(detail.vehicle?.displayName).toContain('Golf');
     expect(detail.booking?.bookingNumber).toMatch(/^BK-/);
-    expect(detail.booking?.reference).toBe(BOOKING_REF.slice(0, 8).toUpperCase());
+    expect(detail.booking?.reference).toBe(BOOKING_NUMBER);
     expect(detail.provenance.classification).toBe('LEGACY');
     expect(detail.provenance.sourceType).toBe('BOOKING');
     expect(invoiceDocuments.getDocumentsForInvoice).toHaveBeenCalledWith(

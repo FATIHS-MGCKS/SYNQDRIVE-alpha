@@ -9,13 +9,14 @@ import { mockInvoiceDocumentsRead } from './__fixtures__/invoice-documents-read.
 import { InvoicesService } from './invoices.service';
 import {
   BOOKING_REF,
-  BOOKING_REF_SHORT,
+  BOOKING_NUMBER,
   CUSTOMER_MUELLER,
   INVOICE_BOOKING,
   ORG_A,
   ORG_B,
   VEHICLE_GOLF,
   bookingInvoiceTitle,
+  unpaidOutgoingTaskTitleIssued,
   makeBookingPriceSnapshot,
   makeOrgInvoiceRow,
 } from './__fixtures__/invoice-baseline.fixtures';
@@ -131,7 +132,7 @@ describe('InvoicesService — baseline regression (audit 2026-07-14)', () => {
       expect(prisma.orgInvoice.create).not.toHaveBeenCalled();
     });
 
-    it('createBookingInvoice uses booking UUID fragment in title (current UX debt)', async () => {
+    it('createBookingInvoice uses booking number in title (no UUID fragment)', async () => {
       prisma.orgInvoice.findFirst.mockResolvedValue(null);
       prisma.bookingPriceSnapshot.findFirst.mockResolvedValue(makeBookingPriceSnapshot());
       prisma.customer.findFirst.mockResolvedValue({ id: CUSTOMER_MUELLER });
@@ -165,13 +166,14 @@ describe('InvoicesService — baseline regression (audit 2026-07-14)', () => {
         expect.objectContaining({
           data: expect.objectContaining({
             type: OrgInvoiceType.OUTGOING_BOOKING,
-            title: `Buchungsrechnung #${BOOKING_REF_SHORT}`,
+            title: bookingInvoiceTitle(),
             bookingId: BOOKING_REF,
           }),
         }),
       );
       expect(result).not.toBeNull();
-      expect(result!.title).toContain(BOOKING_REF_SHORT);
+      expect(result!.title).toContain(BOOKING_NUMBER);
+      expect(result!.title).not.toMatch(/#[0-9a-f]{8}/i);
     });
   });
 
@@ -210,8 +212,8 @@ describe('InvoicesService — baseline regression (audit 2026-07-14)', () => {
     });
   });
 
-  describe('unpaid task titles inherit invoice title with UUID fragment', () => {
-    it('issue() creates task title containing the booking id fragment from invoice title', async () => {
+  describe('unpaid task titles use business references', () => {
+    it('issue() creates task title with invoice number after allocation', async () => {
       const draft = makeOrgInvoiceRow({
         status: 'DRAFT',
         sequenceNumber: null,
@@ -231,7 +233,34 @@ describe('InvoicesService — baseline regression (audit 2026-07-14)', () => {
         ORG_A,
         `invoice:unpaid:${INVOICE_BOOKING}`,
         expect.objectContaining({
-          title: expect.stringContaining(BOOKING_REF_SHORT),
+          title: unpaidOutgoingTaskTitleIssued(),
+        }),
+      );
+    });
+
+    it('issue() updates booking invoice title to include allocated number', async () => {
+      const draft = makeOrgInvoiceRow({
+        status: 'DRAFT',
+        sequenceNumber: null,
+        invoiceNumberDisplay: null,
+        title: bookingInvoiceTitle(),
+        type: OrgInvoiceType.OUTGOING_BOOKING,
+        bookingId: BOOKING_REF,
+      });
+      const issued = makeOrgInvoiceRow({ status: 'ISSUED' });
+
+      prisma.orgInvoice.findFirst
+        .mockResolvedValueOnce(draft)
+        .mockResolvedValueOnce(issued);
+      prisma.orgInvoice.update.mockResolvedValue(issued);
+
+      await service.issue(INVOICE_BOOKING, ORG_A);
+
+      expect(prisma.orgInvoice.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            title: `Buchungsrechnung · FSM-2026-0042`,
+          }),
         }),
       );
     });

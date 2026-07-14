@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-display-references-2026-07-14',
+    version: '4.9.434',
+    title: 'V4.9.434 — Rechnungstexte ohne UUID-Fragmente',
+    summary: [
+      '`invoice-display-reference.util` — fachliche Referenzen für Titel, Aufgaben, Beschreibungen: Rechnungsnummer nach Ausstellung, sonst Buchungsnummer (`BK-…`).',
+      'Buchungsrechnung/Schlussrechnung: `Buchungsrechnung · BK-…` statt `#d8e9f0a1`; `issue()` aktualisiert Titel + Unpaid-Task auf `Zahlungseingang prüfen · Rechnung FSM-…`.',
+      'Dokument-Bundle: `bookingRef` → `BK-…`; PDF-Labels via `displayInvoiceNumber`. Frontend: `resolveLinkedDocumentLabel`, keine `generatedDocumentId.slice` in der UI.',
+      'Dedup-Keys (`invoice:unpaid:{id}`) unverändert; historische Aufgaben werden nicht backgefüllt.',
+    ],
+    reason:
+      'Sichtbare Texte enthielten interne UUID-Fragmente (z. B. Aufgabe „Zahlungseingang prüfen: Buchungsrechnung #f82515ad“) statt Buchungs-/Rechnungsnummer.',
+    previousBehavior:
+      'Titel und Tasks nutzten `booking.id.slice(0,8)`; Dokumenttitel und Frontend-Fallbacks zeigten ID-Fragmente.',
+    details:
+      'invoice-display-reference.util.ts, invoices.service issue/create, template-helpers bookingRef, InvoicesView.',
+    affectsArchitecture: true,
+    module: 'Invoices',
+    createdAt: '2026-07-14T23:20:00.000Z',
+  },
+  {
     id: 'invoice-provenance-write-paths-2026-07-14',
     version: '4.9.433',
     title: 'V4.9.433 — Rechnungs-Provenance auf allen Create-Pfaden',

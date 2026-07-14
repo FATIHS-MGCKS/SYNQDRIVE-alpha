@@ -3,6 +3,7 @@
  * IDs resemble production UUIDs but are fixed for reproducibility.
  */
 import { InvoicePaymentMethod, OrgInvoiceStatus, OrgInvoiceType } from '@prisma/client';
+import { bookingNumberFromId } from '../invoice-detail-relations.util';
 
 export const ORG_A = 'faa710c9-6d91-4079-a7d5-91fdccdec14a';
 export const ORG_B = 'b2c821d0-7ea2-4180-b8fe-a02eddde25b';
@@ -16,10 +17,21 @@ export const INVOICE_MANUAL = 'f0a1b2c3-5555-4666-8777-888899990000';
 
 export const DOC_BOOKING_INVOICE = 'a1b2c3d4-6666-4777-8888-999900001111';
 
-export const BOOKING_REF_SHORT = BOOKING_REF.slice(0, 8); // 'd8e9f0a1'
+/** @deprecated Use BOOKING_NUMBER for display assertions */
+export const BOOKING_REF_SHORT = BOOKING_REF.slice(0, 8);
+
+export const BOOKING_NUMBER = bookingNumberFromId(BOOKING_REF);
 
 export function bookingInvoiceTitle(): string {
-  return `Buchungsrechnung #${BOOKING_REF_SHORT}`;
+  return `Buchungsrechnung · ${BOOKING_NUMBER}`;
+}
+
+export function unpaidOutgoingTaskTitleDraft(): string {
+  return `Zahlungseingang prüfen · Buchung ${BOOKING_NUMBER}`;
+}
+
+export function unpaidOutgoingTaskTitleIssued(): string {
+  return 'Zahlungseingang prüfen · Rechnung FSM-2026-0042';
 }
 
 export function makeOrgInvoiceRow(overrides: Partial<Record<string, unknown>> = {}) {
@@ -98,9 +110,9 @@ export function makeGeneratedBookingInvoiceDoc(overrides: Partial<Record<string,
     customerId: CUSTOMER_MUELLER,
     vehicleId: VEHICLE_GOLF,
     invoiceId: INVOICE_BOOKING,
-    title: `Buchungsrechnung · ${BOOKING_REF_SHORT}`,
+    title: `Buchungsrechnung · ${BOOKING_NUMBER}`,
     documentNumber: 'RE-2026-0042',
-    fileName: `booking_invoice-${BOOKING_REF_SHORT}.pdf`,
+    fileName: `booking_invoice-${BOOKING_NUMBER}.pdf`,
     mimeType: 'application/pdf',
     objectKey: `organizations/${ORG_A}/bookings/${BOOKING_REF}/BOOKING_INVOICE/2026/07/${DOC_BOOKING_INVOICE}.pdf`,
     ...overrides,

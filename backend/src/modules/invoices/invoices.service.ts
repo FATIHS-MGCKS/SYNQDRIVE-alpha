@@ -43,6 +43,15 @@ import {
   provenanceForBundlePipelineInvoice,
   provenanceToPrismaFields,
 } from './invoice-provenance-write.util';
+import {
+  buildBookingInvoiceTitle,
+  buildFinalInvoiceDescription,
+  buildFinalInvoiceTitle,
+  buildUnpaidIncomingTaskTitle,
+  buildUnpaidOutgoingTaskTitle,
+  buildUnpaidTaskDescription,
+  type InvoiceReferenceInput,
+} from './invoice-display-reference.util';
 
 export interface InvoiceCreateContext {
   userId?: string | null;
@@ -326,7 +335,13 @@ export class InvoicesService {
       await this.createUnpaidTask(
         orgId,
         invoice.id,
-        data.title,
+        {
+          title: data.title,
+          bookingId: data.bookingId,
+          type: data.type,
+          vendorName: vendorName ?? undefined,
+          status,
+        },
         totals.totalCents,
         data.currency || 'EUR',
         data.type,
@@ -414,10 +429,26 @@ export class InvoicesService {
     const year = new Date(inv.invoiceDate).getFullYear();
     const allocated = await this.invoiceNumbers.allocate(orgId, year);
 
+    const issuedReference: InvoiceReferenceInput = {
+      ...allocated,
+      status: 'ISSUED',
+      bookingId: inv.bookingId,
+      type: inv.type,
+      vendorName: inv.vendorName,
+      title: inv.title,
+    };
+    const issuedTitle =
+      inv.type === 'OUTGOING_BOOKING' && inv.bookingId
+        ? buildBookingInvoiceTitle({ bookingId: inv.bookingId, ...allocated, status: 'ISSUED' })
+        : inv.type === 'OUTGOING_FINAL' && inv.bookingId
+          ? buildFinalInvoiceTitle({ bookingId: inv.bookingId, ...allocated, status: 'ISSUED' })
+          : inv.title;
+
     await this.prisma.orgInvoice.update({
       where: { id },
       data: {
         ...allocated,
+        title: issuedTitle,
         status: 'ISSUED',
         issuedAt: new Date(),
         outstandingCents: Math.max(0, inv.totalCents - inv.paidCents),
@@ -427,7 +458,7 @@ export class InvoicesService {
     await this.createUnpaidTask(
       orgId,
       id,
-      inv.title,
+      issuedReference,
       inv.totalCents,
       inv.currency,
       inv.type,
@@ -605,7 +636,7 @@ export class InvoicesService {
         customerId: booking.customerId,
         bookingId: booking.id,
         vehicleId: booking.vehicleId,
-        title: `Buchungsrechnung #${booking.id.slice(0, 8)}`,
+        title: buildBookingInvoiceTitle({ bookingId: booking.id }),
         description: `Mietrechnung für Buchungszeitraum ${booking.startDate.toLocaleDateString('de-DE')} – ${booking.endDate.toLocaleDateString('de-DE')}`,
         lineItems,
         totalCents,
@@ -653,6 +684,22 @@ export class InvoicesService {
     });
     const createdByUserId = await this.resolveOrgScopedUserId(orgId, provenance.createdByUserId);
 
+    let originalInvoiceRef: {
+      invoiceNumberDisplay?: string | null;
+      sequenceYear?: number | null;
+      sequenceNumber?: number | null;
+    } | null = null;
+    if (context.originalInvoiceId) {
+      originalInvoiceRef = await this.prisma.orgInvoice.findFirst({
+        where: { id: context.originalInvoiceId, organizationId: orgId },
+        select: {
+          invoiceNumberDisplay: true,
+          sequenceYear: true,
+          sequenceNumber: true,
+        },
+      });
+    }
+
     return this.prisma.orgInvoice.create({
       data: {
         organizationId: orgId,
@@ -660,10 +707,14 @@ export class InvoicesService {
         customerId: booking.customerId,
         bookingId: booking.id,
         vehicleId: booking.vehicleId,
-        title: `Schlussrechnung #${booking.id.slice(0, 8).toUpperCase()}`,
-        description: context.originalInvoiceId
-          ? `Endabrechnung zur Buchung ${booking.id.slice(0, 8).toUpperCase()}`
-          : undefined,
+        title: buildFinalInvoiceTitle({ bookingId: booking.id }),
+        description: buildFinalInvoiceDescription({
+          bookingId: booking.id,
+          originalInvoiceId: context.originalInvoiceId,
+          originalInvoiceNumberDisplay: originalInvoiceRef?.invoiceNumberDisplay,
+          originalSequenceYear: originalInvoiceRef?.sequenceYear,
+          originalSequenceNumber: originalInvoiceRef?.sequenceNumber,
+        }),
         subtotalCents,
         taxCents: totalCents - subtotalCents,
         totalCents,
@@ -873,7 +924,7 @@ export class InvoicesService {
   private async createUnpaidTask(
     orgId: string,
     invoiceId: string,
-    title: string,
+    reference: InvoiceReferenceInput,
     totalCents: number,
     currency: string,
     type: string,
@@ -882,9 +933,9 @@ export class InvoicesService {
     const isIncoming = type.startsWith('INCOMING');
     await this.tasksService.upsertByDedup(orgId, `invoice:unpaid:${invoiceId}`, {
       title: isIncoming
-        ? `Eingangsrechnung bezahlen: ${title}`
-        : `Zahlungseingang prüfen: ${title}`,
-      description: `Rechnung "${title}" (${(totalCents / 100).toFixed(2)} ${currency}) ist noch unbezahlt.`,
+        ? buildUnpaidIncomingTaskTitle(reference)
+        : buildUnpaidOutgoingTaskTitle(reference),
+      description: buildUnpaidTaskDescription(reference, totalCents, currency),
       category: 'invoice',
       type: 'INVOICE_REQUIRED',
       source: 'INVOICE',

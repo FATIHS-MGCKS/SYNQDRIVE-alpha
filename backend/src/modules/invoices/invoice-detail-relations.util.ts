@@ -1,5 +1,4 @@
 import type { Customer, Vehicle } from '@prisma/client';
-import { bookingRef } from '@modules/documents/templates/template-helpers';
 import { vehicleDisplayName as centralVehicleDisplayName } from '@modules/rental-rules/rental-rules.mapper';
 import type {
   InvoiceBookingStationSummaryDto,
@@ -213,7 +212,7 @@ export function mapInvoiceBookingSummary(args: {
     id,
     availability,
     bookingNumber: bookingNumberFromId(id),
-    reference: bookingRef(id),
+    reference: bookingNumberFromId(id),
     startDate: args.booking?.startDate.toISOString() ?? '',
     endDate: args.booking?.endDate.toISOString() ?? '',
     status: args.booking?.status ?? 'UNKNOWN',

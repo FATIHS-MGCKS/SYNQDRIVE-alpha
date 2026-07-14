@@ -162,8 +162,9 @@ export function vehicleLabel(v: VehicleInfo): string {
   return `${base}${year}`.trim() || 'Fahrzeug';
 }
 
+/** Human booking reference for UI, documents, and operator-facing text (not internal UUID). */
 export function bookingRef(bookingId: string): string {
-  return bookingId.slice(0, 8).toUpperCase();
+  return `BK-${bookingId.slice(-6).toUpperCase()}`;
 }
 
 /** Default footer lines: org name + contact, plus a managed-legal note. */

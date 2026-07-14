@@ -44,6 +44,7 @@ import { buildFinalInvoiceDocument, FinalInvoiceLineItem } from './templates/fin
 import { TaskAutomationService } from '@modules/tasks/task-automation.service';
 import { isInvoiceDocumentType } from '@modules/invoices/invoice-document-integrity-audit.util';
 import { provenanceForBundlePipelineInvoice } from '@modules/invoices/invoice-provenance-write.util';
+import { displayInvoiceNumber } from '@modules/invoices/invoice-domain.util';
 import { InvoiceDocumentGenerationService } from './invoice-document-generation.service';
 
 const TEMPLATE_VERSION = '1';
@@ -426,7 +427,16 @@ export class BookingDocumentBundleService {
       vehicle: this.vehicleInfo(booking.vehicle),
       booking: this.bookingInfo(booking),
       documentNumber: await this.numbering.nextNumber(orgId, DOCUMENT_TYPE.FINAL_INVOICE),
-      originalInvoiceRef: originalInvoice ? `#${originalInvoice.invoiceNumber}` : null,
+      originalInvoiceRef: originalInvoice
+        ? displayInvoiceNumber({
+            invoiceNumberDisplay: originalInvoice.invoiceNumberDisplay,
+            legacyInvoiceNumber: originalInvoice.legacyInvoiceNumber ?? originalInvoice.invoiceNumber,
+            invoiceNumber: originalInvoice.invoiceNumber,
+            sequenceYear: originalInvoice.sequenceYear,
+            sequenceNumber: originalInvoice.sequenceNumber,
+            status: originalInvoice.status,
+          })
+        : null,
       currency: cur,
       pickupOdometerKm: pickupProto?.odometerKm ?? null,
       returnOdometerKm: returnProto?.odometerKm ?? null,
@@ -519,7 +529,16 @@ export class BookingDocumentBundleService {
       vehicle: this.vehicleInfo(booking.vehicle),
       booking: this.bookingInfo(booking),
       documentNumber: await this.numbering.nextNumber(orgId, DOCUMENT_TYPE.BOOKING_INVOICE),
-      invoiceNumberLabel: invoice ? `#${invoice.invoiceNumber}` : null,
+      invoiceNumberLabel: invoice
+        ? displayInvoiceNumber({
+            invoiceNumberDisplay: invoice.invoiceNumberDisplay,
+            legacyInvoiceNumber: invoice.legacyInvoiceNumber ?? invoice.invoiceNumber,
+            invoiceNumber: invoice.invoiceNumber,
+            sequenceYear: invoice.sequenceYear,
+            sequenceNumber: invoice.sequenceNumber,
+            status: invoice.status,
+          })
+        : null,
       invoiceDate: invoice?.invoiceDate ?? new Date(),
       dueDate: invoice?.dueDate ?? null,
       lineItems,

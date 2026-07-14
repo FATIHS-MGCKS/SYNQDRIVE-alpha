@@ -24,6 +24,7 @@ import { SupportContextButton } from '../../components/support/SupportContextBut
 import { useRentalOrg } from '../RentalContext';
 import type { Invoice, InvoiceDetail, InvoiceStats } from './invoices/invoiceTypes';
 import { normalizeInvoiceDetailFromApi } from './invoices/invoice-detail-api.util';
+import { resolveLinkedDocumentLabel } from './invoices/invoice-display.util';
 import {
   STATUS_MAP,
   isOutgoing,
@@ -892,6 +893,7 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
   const vehicleLabel =
     invoice.vehicle?.displayName ??
     (invoice.vehicleId ? 'Fahrzeugdaten nicht verfügbar' : null);
+  const linkedDocumentLabel = resolveLinkedDocumentLabel(invoice);
   const provenanceLabel =
     invoice.provenance?.summary ??
     invoice.provenance?.label ??
@@ -1156,8 +1158,8 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
           <div className={`${card} p-5`}>
             <h3 className={`text-xs font-bold ${tp} mb-3 uppercase tracking-wider`}>Dokumente</h3>
             <div className="space-y-2">
-              {invoice.generatedDocumentId ? (
-                <p className={`text-xs ${tp}`}>Generiertes Dokument verknüpft ({invoice.generatedDocumentId.slice(0, 8)}…)</p>
+              {linkedDocumentLabel ? (
+                <p className={`text-xs ${tp}`}>{linkedDocumentLabel}</p>
               ) : (
                 <button type="button" disabled className={disabledBtn} title="Dokumentengenerierung noch nicht verbunden">
                   <Icon name="file-text" className="w-3 h-3" /> PDF generieren
@@ -1184,7 +1186,7 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
                 Per E-Mail senden
               </button>
               {invoice.documentExtractionId && (
-                <p className={`text-[10px] ${ts}`}>Extraktion: {invoice.documentExtractionId.slice(0, 12)}…</p>
+                <p className={`text-[10px] ${ts}`}>Dokumentenextraktion verknüpft</p>
               )}
             </div>
           </div>

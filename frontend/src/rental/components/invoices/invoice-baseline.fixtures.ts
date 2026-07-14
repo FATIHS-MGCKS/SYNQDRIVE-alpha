@@ -9,7 +9,16 @@ export const VEHICLE_GOLF = 'v7e8f9a0-2222-4333-8444-555566667777';
 export const BOOKING_REF = 'd8e9f0a1-3333-4444-8555-666677778888';
 export const INVOICE_BOOKING = 'e9f0a1b2-4444-4555-8666-777788889999';
 export const DOC_BOOKING_INVOICE = 'a1b2c3d4-6666-4777-8888-999900001111';
-export const BOOKING_REF_SHORT = BOOKING_REF.slice(0, 8);
+
+export const BOOKING_NUMBER = `BK-${BOOKING_REF.slice(-6).toUpperCase()}`;
+
+export function bookingInvoiceTitle(): string {
+  return `Buchungsrechnung · ${BOOKING_NUMBER}`;
+}
+
+export function unpaidOutgoingTaskTitleIssued(): string {
+  return 'Zahlungseingang prüfen · Rechnung FSM-2026-0042';
+}
 
 export function makeInvoice(overrides: Partial<Invoice> = {}): Invoice {
   return {
@@ -22,7 +31,7 @@ export function makeInvoice(overrides: Partial<Invoice> = {}): Invoice {
     vendorName: null,
     bookingId: BOOKING_REF,
     vehicleId: VEHICLE_GOLF,
-    title: `Buchungsrechnung #${BOOKING_REF_SHORT}`,
+    title: bookingInvoiceTitle(),
     description: 'Mietrechnung',
     lineItems: null,
     subtotalCents: 45000,
@@ -47,7 +56,7 @@ export function makeInvoice(overrides: Partial<Invoice> = {}): Invoice {
     tasks: [
       {
         id: 'task-1',
-        title: `Zahlungseingang prüfen: Buchungsrechnung #${BOOKING_REF_SHORT}`,
+        title: unpaidOutgoingTaskTitleIssued(),
         status: 'DONE',
       },
     ],

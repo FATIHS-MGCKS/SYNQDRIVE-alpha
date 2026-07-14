@@ -91,6 +91,7 @@ describe('invoice-detail-relations.util', () => {
         },
       });
       expect(summary?.bookingNumber).toBe(`BK-${BOOKING_REF.slice(-6).toUpperCase()}`);
+      expect(summary?.reference).toBe(`BK-${BOOKING_REF.slice(-6).toUpperCase()}`);
       expect(summary?.pickupStation?.name).toBe('Hauptbahnhof');
       expect(summary?.navigation?.routeKey).toBe('bookings');
     });

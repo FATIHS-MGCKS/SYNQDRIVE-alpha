@@ -6,9 +6,11 @@ import {
   canEmailInvoiceDocument,
   formatPaymentMethodForTable,
   makeInvoice,
-  BOOKING_REF,
+  BOOKING_NUMBER,
+  unpaidOutgoingTaskTitleIssued,
   VEHICLE_GOLF,
 } from './invoice-baseline.fixtures';
+import { resolveLinkedDocumentLabel } from './invoice-display.util';
 
 describe('InvoicesView detail UI — relation summaries from getDetail', () => {
   const viewPath = resolve(__dirname, '../InvoicesView.tsx');
@@ -26,6 +28,18 @@ describe('InvoicesView detail UI — relation summaries from getDetail', () => {
 
   it('does not use vehicleId UUID fragment as primary vehicle label', () => {
     expect(source).not.toContain('vehicleId.slice(0, 12)');
+  });
+
+  it('does not use generatedDocumentId UUID fragment in source', () => {
+    expect(source).not.toContain('generatedDocumentId.slice');
+  });
+
+  it('does not use documentExtractionId UUID fragment in source', () => {
+    expect(source).not.toContain('documentExtractionId.slice');
+  });
+
+  it('uses resolveLinkedDocumentLabel for document display', () => {
+    expect(source).toContain('resolveLinkedDocumentLabel');
   });
 
   it('renders resolved customer, booking and vehicle display names', () => {
@@ -82,9 +96,21 @@ describe('InvoicesView detail — behavioral baseline helpers', () => {
     expect(formatPaymentMethodForTable('CARD')).toBe('CARD');
   });
 
-  it('task titles can contain booking UUID fragment from backend title', () => {
+  it('task titles use business references from backend', () => {
     const inv = makeInvoice();
-    expect(inv.tasks?.[0]?.title).toContain(BOOKING_REF.slice(0, 8));
+    expect(inv.tasks?.[0]?.title).toBe(unpaidOutgoingTaskTitleIssued());
+    expect(inv.tasks?.[0]?.title).not.toMatch(/#[0-9a-f]{8}/i);
+  });
+
+  it('resolveLinkedDocumentLabel prefers filename over ids', () => {
+    const label = resolveLinkedDocumentLabel({
+      generatedDocumentId: 'doc-1',
+      activeDocumentId: 'doc-1',
+      invoiceNumberDisplay: 'FSM-2026-0042',
+      documents: [{ id: 'doc-1', filename: 'booking_invoice-BK-778888.pdf' }],
+      booking: { id: 'b1', bookingNumber: BOOKING_NUMBER } as never,
+    });
+    expect(label).toBe('booking_invoice-BK-778888.pdf');
   });
 });
 
