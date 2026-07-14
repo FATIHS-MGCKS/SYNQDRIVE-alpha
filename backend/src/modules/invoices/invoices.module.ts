@@ -8,6 +8,7 @@ import { BookingInvoiceLifecycleService } from './booking-invoice-lifecycle.serv
 import { FakePaidCardAuditService } from './fake-paid-card-audit.service';
 import { InvoiceDocumentsService } from './invoice-documents.service';
 import { InvoiceListReadService } from './invoice-list-read.service';
+import { InvoiceTimelineService } from './invoice-timeline.service';
 import { TasksModule } from '@modules/tasks/tasks.module';
 
 @Module({

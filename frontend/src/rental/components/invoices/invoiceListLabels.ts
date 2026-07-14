@@ -49,7 +49,7 @@ export function documentStatusTone(status: string | null | undefined): StatusTon
   if (status === 'FAILED') return 'critical';
   if (status === 'GENERATED' || status === 'SENT') return 'success';
   if (status === 'DRAFT') return 'neutral';
-  if (status === 'VOID') return 'muted';
+  if (status === 'VOID') return 'neutral';
   return 'info';
 }
 

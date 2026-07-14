@@ -106,6 +106,7 @@ export class InvoicesController {
     return this.invoicesService.issue(id, orgId);
   }
 
+  /** @deprecated Prefer `POST …/documents/send-email` for PDF delivery; retained for external/manual send marking. */
   @Post('organizations/:orgId/invoices/:id/mark-sent')
   @UseGuards(OrgScopingGuard, RolesGuard)
   async markSent(@Param('orgId') orgId: string, @Param('id') id: string) {
@@ -123,6 +124,7 @@ export class InvoicesController {
     return this.invoicesService.recordPayment(id, orgId, body, userId);
   }
 
+  /** @deprecated Prefer `POST …/payments` with explicit amount/method; shortcut for full bank-transfer settlement. */
   @Patch('organizations/:orgId/invoices/:id/pay')
   @UseGuards(OrgScopingGuard, RolesGuard)
   async markPaid(@Param('orgId') orgId: string, @Param('id') id: string) {

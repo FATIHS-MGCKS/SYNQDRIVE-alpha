@@ -350,6 +350,7 @@ export class InvoiceDocumentsService {
     );
   }
 
+  /** Sets OrgInvoice.generatedDocumentId (active PDF pointer). Document.invoiceId is set at create time. */
   private async linkInvoiceToDocument(invoiceId: string, documentId: string): Promise<void> {
     await this.prisma.orgInvoice.update({
       where: { id: invoiceId },

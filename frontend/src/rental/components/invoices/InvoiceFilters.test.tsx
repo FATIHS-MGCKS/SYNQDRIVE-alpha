@@ -3,12 +3,12 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 import { InvoiceFilters } from './InvoiceFilters';
 import { DEFAULT_INVOICE_LIST_FILTERS } from './invoiceListState';
+import { getInvoiceThemeClasses } from './invoiceTheme';
 
 describe('InvoiceFilters', () => {
+  const theme = getInvoiceThemeClasses(false);
   const baseProps = {
-    isDarkMode: false,
-    tp: 'text-foreground',
-    ts: 'text-muted-foreground',
+    ...theme,
     filters: DEFAULT_INVOICE_LIST_FILTERS,
     onPatchFilters: vi.fn(),
     searchTerm: '',

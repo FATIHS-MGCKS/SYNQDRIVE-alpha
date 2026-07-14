@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-document-legacy-audit-v49467-2026-07-14',
+    version: '4.9.467',
+    title: 'V4.9.467 — Legacy-Audit Rechnung↔Dokument: sichere Bereinigung + Dry-Run',
+    summary: [
+      'Repositoryweite Klassifikation: aktiv / Legacy-Fallback / ungenutzt / gefährlich / migrationsabhängig.',
+      'Neues Read-only-Skript `audit-invoice-document-links.ts` (per `--org`, Exit 1 bei kritischen Inkonsistenzen).',
+      'Entfernt: toter `invoiceListItem.mapper` (Liste nutzt seit V4.9.466 direkt `InvoiceListItem`).',
+      '`mark-sent` / `mark-paid` API als deprecated dokumentiert; `listForInvoice`-Fallbacks kommentiert.',
+      'Keine Schema-/Daten-Löschung: `generatedDocumentId`, Bundle-Pointer und Booking-Mailflow bleiben.',
+    ],
+    reason:
+      'Nach Panel- und Listen-Migration sollten Legacy-Pfade nur noch mit Evidenz entfernt werden — nicht spekulativ.',
+    previousBehavior:
+      'Legacy-Mapper existierte noch ohne Consumer; Fallback-OR in `listForInvoice` und alte APIs ohne Deprecation-Hinweis.',
+    details:
+      'Siehe `architecture/INVOICE_DOCUMENT_LINK_LEGACY_AUDIT_2026-07-14.md`. Sieben Entfernungs-Gates dokumentiert; Phase-2 für Fallback-Entfernung und optionalen Backfill.',
+    affectsArchitecture: true,
+    module: 'Invoices',
+    createdAt: '2026-07-14T23:30:00.000Z',
+  },
+  {
     id: 'invoice-list-ui-v49466-2026-07-14',
     version: '4.9.466',
     title: 'V4.9.466 — Rechnungsübersicht vollständig auf List-Read-Model + responsive UI',

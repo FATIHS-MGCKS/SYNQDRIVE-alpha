@@ -136,6 +136,13 @@ export class GeneratedDocumentsService {
     return dedupeDocumentsByType(rows);
   }
 
+  /**
+   * Lists documents for an invoice. Primary path: `GeneratedDocument.invoiceId`.
+   *
+   * Legacy fallbacks (phase-2 removal): `legacyDocumentId` (= OrgInvoice.generatedDocumentId)
+   * and booking-scoped BOOKING_INVOICE/FINAL_INVOICE when `invoiceId` was not backfilled.
+   * Run `scripts/ops/audit-invoice-document-links.ts` before removing OR branches.
+   */
   async listForInvoice(
     orgId: string,
     invoiceId: string,
