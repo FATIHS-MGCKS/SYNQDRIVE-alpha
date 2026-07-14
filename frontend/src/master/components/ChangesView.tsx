@@ -37,15 +37,16 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
     id: 'hostinger-mcp-version-fix-v49430-2026-07-14',
     version: '4.9.430',
-    title: 'V4.9.430 — Hostinger MCP: korrekte npm-Version',
+    title: 'V4.9.430 — MCP: Hostinger-Version + Resend gehostet',
     summary: [
       '`.cursor/mcp.json.example` — `hostinger-api-mcp@2.11.0` → `@1.5.5` (2.11.0 existiert nicht auf npm; war fälschlich die Resend-Version).',
-      'ArchitekturView Hostinger-Zeile mit Pin `@1.5.5` ergänzt.',
+      'Resend MCP: stdio `npx resend-mcp` → gehostet `https://mcp.resend.com/mcp` mit Bearer `${env:RESEND_API_KEY}` (wie Stripe — stdio-Server laden in Cloud Agents nicht zuverlässig).',
+      'ArchitekturView + `docs/resend-setup.md` + `AGENTS.md` angepasst.',
     ],
     reason:
-      'Hostinger MCP startete in Cloud-Agent-Sessions nicht — `npx` schlug mit ETARGET fehl, weil Version 2.11.0 im Registry nicht existiert.',
+      'Hostinger MCP startete nicht (falsche npm-Version). Resend-Config war korrekt, aber stdio/npx-MCP-Server erscheinen in Cloud-Agent-Sessions nicht im Katalog — nur URL-basierte Server (Stripe) laden zuverlässig.',
     previousBehavior: 'hostinger-api-mcp@2.11.0 in MCP-Template; Server nicht im Agent-MCP-Katalog.',
-    details: '.cursor/mcp.json.example, ArchitekturView Cursor MCP Tooling.',
+    details: '.cursor/mcp.json.example, ArchitekturView, docs/resend-setup.md, AGENTS.md.',
     affectsArchitecture: true,
     module: 'Cloud Agents / MCP',
     createdAt: '2026-07-14T14:30:00.000Z',

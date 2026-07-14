@@ -597,7 +597,7 @@ const INTEGRATIONS: IntegrationEntry[] = [
       { label: 'Config', detail: 'Template .cursor/mcp.json.example → generated .cursor/mcp.json via cloud-agent-mcp-setup.sh (gitignored)' },
       { label: 'Didit', detail: 'Hosted OAuth MCP https://mcp.didit.me/mcp — workflows/webhooks setup (not backend API key)' },
       { label: 'DIMO', detail: 'npx mcp-dimo@1.5.5 — DIMO_CLIENT_ID + DIMO_PRIVATE_KEY + DIMO_DOMAIN from Dashboard secrets' },
-      { label: 'Resend', detail: 'npx resend-mcp@2.11.0 — RESEND_API_KEY from Runtime Secret' },
+      { label: 'Resend', detail: 'Hosted https://mcp.resend.com/mcp — Bearer ${env:RESEND_API_KEY}' },
       { label: 'Stripe', detail: 'Hosted MCP + STRIPE_SECRET_KEY header' },
       { label: 'Hostinger', detail: 'npx hostinger-api-mcp@1.5.5 — HOSTINGER_API_TOKEN for DNS/VPS ops scripts' },
     ],

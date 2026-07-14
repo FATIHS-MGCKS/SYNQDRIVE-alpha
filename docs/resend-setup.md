@@ -54,12 +54,12 @@ bash backend/scripts/ops/sync-resend-env-to-vps.sh
 
 ## Resend MCP (Cursor)
 
-Projektdatei: `.cursor/mcp.json` — Server `resend` via `npx resend-mcp@2.10.1`.
+Projektdatei: `.cursor/mcp.json` — Server `resend` via gehostetem MCP `https://mcp.resend.com/mcp` (Bearer `RESEND_API_KEY`), analog zu Stripe.
 
-- **Cloud Agent:** `RESEND_API_KEY` als Runtime Secret → MCP erbt die Variable
-- **Lokal:** Key in `~/.cursor/mcp.json` unter `mcpServers.resend.env` oder global in Cursor Settings → MCP
+- **Cloud Agent:** `RESEND_API_KEY` als Runtime Secret → MCP-Header `Authorization: Bearer …`
+- **Lokal:** Key in `~/.cursor/mcp.json` unter `mcpServers.resend.headers` oder global in Cursor Settings → MCP
 
-Remote-Alternative (OAuth im Browser): `https://mcp.resend.com/mcp`
+Lokale stdio-Alternative: `npx resend-mcp@2.11.0` mit `RESEND_API_KEY` in `env` (in Cloud Agents weniger zuverlässig als die gehostete URL).
 
 ---
 
