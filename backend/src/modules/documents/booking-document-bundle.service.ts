@@ -42,6 +42,8 @@ import { buildPickupHandoverDocument, HandoverContext } from './templates/pickup
 import { buildReturnHandoverDocument } from './templates/return-handover.template';
 import { buildFinalInvoiceDocument, FinalInvoiceLineItem } from './templates/final-invoice.template';
 import { TaskAutomationService } from '@modules/tasks/task-automation.service';
+import { isInvoiceDocumentType } from '@modules/invoices/invoice-document-integrity-audit.util';
+import { InvoiceDocumentGenerationService } from './invoice-document-generation.service';
 
 const TEMPLATE_VERSION = '1';
 
@@ -100,6 +102,7 @@ export class BookingDocumentBundleService {
     private readonly invoices: InvoicesService,
     @Inject(DOCUMENT_RENDERER) private readonly renderer: DocumentRenderer,
     private readonly taskAutomation: TaskAutomationService,
+    private readonly invoiceDocGen: InvoiceDocumentGenerationService,
   ) {}
 
   private get generationEnabled(): boolean {
@@ -429,10 +432,10 @@ export class BookingDocumentBundleService {
       documentType: DOCUMENT_TYPE.FINAL_INVOICE,
       renderable,
       userId,
+      force,
       links: { invoiceId: finalInvoice.id },
       snapshot: { kind: 'FINAL_INVOICE', chargesTotalCents, depositReceivedCents, retainedCents, refundCents, balanceCents },
     });
-    if (existing && force) await this.generatedDocs.voidDocument(orgId, existing.id);
     await this.setBundlePointer(bundle.id, DOCUMENT_TYPE.FINAL_INVOICE, doc.id);
     return doc;
   }
@@ -456,23 +459,24 @@ export class BookingDocumentBundleService {
       orderBy: { createdAt: 'asc' },
     });
     if (!invoice) {
-      await this.invoices
-        .createBookingInvoice(orgId, {
-          id: booking.id,
-          customerId: booking.customerId,
-          vehicleId: booking.vehicleId,
-          totalPriceCents: booking.totalPriceCents,
-          dailyRateCents: booking.dailyRateCents,
-          startDate: booking.startDate,
-          endDate: booking.endDate,
-          currency: booking.currency,
-          kmIncluded: booking.kmIncluded,
-        })
-        .catch(() => null);
+      await this.invoices.createBookingInvoice(orgId, {
+        id: booking.id,
+        customerId: booking.customerId,
+        vehicleId: booking.vehicleId,
+        totalPriceCents: booking.totalPriceCents,
+        dailyRateCents: booking.dailyRateCents,
+        startDate: booking.startDate,
+        endDate: booking.endDate,
+        currency: booking.currency,
+        kmIncluded: booking.kmIncluded,
+      });
       invoice = await this.prisma.orgInvoice.findFirst({
         where: { organizationId: orgId, bookingId: booking.id, type: 'OUTGOING_BOOKING' },
         orderBy: { createdAt: 'asc' },
       });
+    }
+    if (!invoice) {
+      throw new NotFoundException('Booking invoice could not be created for document generation');
     }
 
     const cur = (invoice?.currency || booking.currency || 'EUR').toUpperCase();
@@ -503,10 +507,10 @@ export class BookingDocumentBundleService {
       documentType: DOCUMENT_TYPE.BOOKING_INVOICE,
       renderable,
       userId,
-      links: { invoiceId: invoice?.id ?? null },
-      snapshot: { kind: 'BOOKING_INVOICE', invoiceId: invoice?.id ?? null, totalCents },
+      force,
+      links: { invoiceId: invoice.id },
+      snapshot: { kind: 'BOOKING_INVOICE', invoiceId: invoice.id, totalCents },
     });
-    if (existing && force) await this.generatedDocs.voidDocument(orgId, existing.id);
     await this.setBundlePointer(bundle.id, DOCUMENT_TYPE.BOOKING_INVOICE, doc.id);
   }
 
@@ -839,6 +843,7 @@ export class BookingDocumentBundleService {
     documentType: DocumentType;
     renderable: RenderableDocument;
     userId?: string | null;
+    force?: boolean;
     documentNumber?: string | null;
     links?: Partial<{
       invoiceId: string | null;
@@ -850,6 +855,36 @@ export class BookingDocumentBundleService {
   }): Promise<GeneratedDocument> {
     const { orgId, booking, documentType, renderable } = args;
     const fileName = `${documentType.toLowerCase()}-${bookingRef(booking.id)}.pdf`;
+    const invoiceId = args.links?.invoiceId ?? null;
+
+    if (invoiceId && isInvoiceDocumentType(documentType)) {
+      const result = await this.invoiceDocGen.generate({
+        organizationId: orgId,
+        invoiceId,
+        documentType,
+        title: `${DOCUMENT_TITLE_DE[documentType]} · ${bookingRef(booking.id)}`,
+        fileName,
+        renderPdf: async () =>
+          this.renderer.renderPdf({
+            document: renderable,
+            fileName,
+            documentType,
+            organizationId: orgId,
+            bookingId: booking.id,
+          }),
+        bookingId: booking.id,
+        customerId: booking.customerId,
+        vehicleId: booking.vehicleId,
+        documentNumber: args.documentNumber ?? renderable.documentNumber ?? null,
+        templateKey: documentType,
+        templateVersion: TEMPLATE_VERSION,
+        generatedByUserId: args.userId ?? null,
+        snapshot: args.snapshot ?? null,
+        force: args.force ?? false,
+      });
+      return result.document;
+    }
+
     const buffer = await this.renderer.renderPdf({
       document: renderable,
       fileName,

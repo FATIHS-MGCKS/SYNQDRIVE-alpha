@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Booking, BookingStatus } from '@prisma/client';
@@ -31,6 +32,8 @@ import { BookingsService } from './bookings.service';
 
 @Injectable()
 export class BookingWizardDraftService {
+  private readonly logger = new Logger(BookingWizardDraftService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly bookingsService: BookingsService,
@@ -228,19 +231,17 @@ export class BookingWizardDraftService {
         where: { id: bookingId, organizationId: orgId },
       }));
 
-    await this.invoicesService
-      .createBookingInvoice(orgId, {
-        id: row.id,
-        customerId: row.customerId,
-        vehicleId: row.vehicleId,
-        totalPriceCents: row.totalPriceCents,
-        dailyRateCents: row.dailyRateCents,
-        startDate: row.startDate,
-        endDate: row.endDate,
-        currency: row.currency,
-        kmIncluded: row.kmIncluded,
-      })
-      .catch(() => null);
+    await this.invoicesService.createBookingInvoice(orgId, {
+      id: row.id,
+      customerId: row.customerId,
+      vehicleId: row.vehicleId,
+      totalPriceCents: row.totalPriceCents,
+      dailyRateCents: row.dailyRateCents,
+      startDate: row.startDate,
+      endDate: row.endDate,
+      currency: row.currency,
+      kmIncluded: row.kmIncluded,
+    });
 
     const bundle = await this.bundleService.generateInitialBundle(orgId, bookingId, userId);
     return { booking: row, bundle };
@@ -250,8 +251,10 @@ export class BookingWizardDraftService {
     for (const type of ['BOOKING_INVOICE', 'RENTAL_CONTRACT', 'DEPOSIT_RECEIPT'] as const) {
       try {
         await this.bundleService.regenerate(orgId, bookingId, type, userId);
-      } catch {
-        /* best-effort */
+      } catch (err) {
+        this.logger.warn(
+          `regeneratePricingDocuments(${bookingId}) failed for ${type}: ${err instanceof Error ? err.message : err}`,
+        );
       }
     }
   }

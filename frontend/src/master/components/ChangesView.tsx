@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-document-generation-m2-2026-07-14',
+    version: '4.9.430',
+    title: 'V4.9.430 — Rechnungs-PDF-Erzeugung: versionierter Write-Pfad + persistente Fehler',
+    summary: [
+      '`InvoiceDocumentGenerationService` — 12-Schritt-Flow: PROCESSING → Render → Storage → atomare Aktivierung + Cache-Pointer.',
+      'Versionierung (`versionNumber`, `isActiveVersion`), `generationStatus`, Fehlercodes und Retry-Felder werden beim Erzeugen gesetzt.',
+      'Regenerierung voidet alte Version erst nach erfolgreichem Speichern; bei Fehler bleibt aktive Version erhalten.',
+      'Advisory Lock gegen parallele Generierung; stille `catch(() => null)` auf kritischen Rechnungs-Pfaden entfernt/ersetzt.',
+    ],
+    reason:
+      'PDF-Erzeugung setzte weder Versionsfelder noch `OrgInvoice.generatedDocumentId`; Fehler wurden verschluckt oder nur im Bundle-`lastError` gehalten.',
+    previousBehavior:
+      'Synchrones `createFromPdf` ohne PROCESSING/FAILED-Zeilen; `voidDocument` vor Pointer-Update; stille Catches in Wizard/Booking/Bundle.',
+    details:
+      'invoice-document-generation.service.ts, booking-document-bundle.service.ts renderAndStore, booking-wizard-draft.service.ts, bookings.service.ts logging.',
+    affectsArchitecture: true,
+    module: 'Invoices / Documents',
+    createdAt: '2026-07-14T20:50:00.000Z',
+  },
+  {
     id: 'invoice-document-read-canonical-m1-2026-07-14',
     version: '4.9.429',
     title: 'V4.9.429 — Rechnungs-PDFs: kanonischer Lesezugriff (Backend M1)',

@@ -4,6 +4,7 @@ import {
   forwardRef,
   BadRequestException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { Booking, Prisma, BookingStatus, VehicleStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -61,6 +62,8 @@ const BOOKING_STATUS_DISPLAY: Record<string, string> = {
 
 @Injectable()
 export class BookingsService {
+  private readonly logger = new Logger(BookingsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly rentalDrivingAnalysisService: RentalDrivingAnalysisService,
@@ -272,7 +275,12 @@ export class BookingsService {
         currency: booking.currency,
         kmIncluded: booking.kmIncluded,
       })
-      .catch(() => null);
+      .catch((err) => {
+        this.logger.error(
+          `createBookingInvoice failed for booking ${booking.id}: ${err instanceof Error ? err.message : err}`,
+        );
+        return null;
+      });
 
     // Generate the initial document bundle for operator/rental bookings once
     // created (PENDING or CONFIRMED). Wizard checkout drafts call generate
@@ -289,7 +297,11 @@ export class BookingsService {
             );
           }
         })
-        .catch(() => {});
+        .catch((err) => {
+          this.logger.error(
+            `generateInitialBundle failed for booking ${booking.id}: ${err instanceof Error ? err.message : err}`,
+          );
+        });
     }
 
     void this.taskAutomationService
