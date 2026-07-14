@@ -10,6 +10,9 @@ export interface BookingPaymentRequestResponse {
   recipientEmail: string | null;
   checkoutExpiresAt: string | null;
   sendEmailOnLink: boolean;
+  sendAttemptCount: number;
+  lastSentAt: string | null;
+  lastEmailErrorMessage: string | null;
   applicationFeeAmountCents?: number;
   feePolicyVersion?: string | null;
 }
@@ -27,6 +30,9 @@ export function mapBookingPaymentRequestResponse(
     recipientEmail: request.recipientEmail,
     checkoutExpiresAt: request.checkoutExpiresAt?.toISOString() ?? null,
     sendEmailOnLink: request.sendEmailOnLink,
+    sendAttemptCount: request.sendAttemptCount,
+    lastSentAt: request.lastSentAt?.toISOString() ?? null,
+    lastEmailErrorMessage: request.lastEmailErrorMessage,
   };
 
   if (canViewFee) {

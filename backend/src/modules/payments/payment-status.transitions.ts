@@ -89,7 +89,7 @@ const BASE_TRANSITIONS: Readonly<
   [BookingPaymentRequestStatus.REFUNDED]: [],
   [BookingPaymentRequestStatus.FAILED]: [],
   [BookingPaymentRequestStatus.CANCELLED]: [],
-  [BookingPaymentRequestStatus.EXPIRED]: [],
+  [BookingPaymentRequestStatus.EXPIRED]: [BookingPaymentRequestStatus.OPEN],
   [BookingPaymentRequestStatus.DISPUTED]: [],
 };
 

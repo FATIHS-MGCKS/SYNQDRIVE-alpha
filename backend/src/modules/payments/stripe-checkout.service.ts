@@ -37,6 +37,7 @@ import {
   resolveStripeCheckoutExpiresAt,
 } from './utils/checkout-line-items.util';
 import { resolveAllowedCheckoutRedirectUrl } from './utils/payments-checkout-url.util';
+import { PaymentEmailEnqueueService } from './email/payment-email-enqueue.service';
 
 export interface CreateCheckoutSessionInput {
   organizationId: string;
@@ -79,6 +80,7 @@ export class StripeCheckoutService {
     private readonly organizationPaymentAccountService: OrganizationPaymentAccountService,
     @Inject(STRIPE_CONNECT_ADAPTER)
     private readonly stripeConnectAdapter: StripeConnectAdapter,
+    private readonly paymentEmailEnqueue: PaymentEmailEnqueueService,
   ) {}
 
   async createCheckoutSessionForPaymentRequest(
@@ -254,6 +256,11 @@ export class StripeCheckoutService {
       organizationId: input.organizationId,
       paymentRequestId: withCheckoutFields.id,
       toStatus: BookingPaymentRequestStatus.CHECKOUT_READY,
+    });
+
+    await this.paymentEmailEnqueue.maybeEnqueueAfterCheckout({
+      organizationId: input.organizationId,
+      paymentRequestId: ready.request.id,
     });
 
     return this.toResult(ready.request);

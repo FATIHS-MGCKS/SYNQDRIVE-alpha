@@ -92,9 +92,12 @@ describe('payment-status.transitions', () => {
         BookingPaymentRequestStatus.REFUNDED,
         BookingPaymentRequestStatus.DISPUTED,
       ]);
-      expect(
-        allowedPaymentRequestStatusTargets(BookingPaymentRequestStatus.PARTIALLY_REFUNDED),
-      ).toEqual([BookingPaymentRequestStatus.REFUNDED]);
+      expect(allowedPaymentRequestStatusTargets(BookingPaymentRequestStatus.PARTIALLY_REFUNDED)).toEqual([
+        BookingPaymentRequestStatus.REFUNDED,
+      ]);
+      expect(allowedPaymentRequestStatusTargets(BookingPaymentRequestStatus.EXPIRED)).toEqual([
+        BookingPaymentRequestStatus.OPEN,
+      ]);
     });
 
     it('exposes every enum value in BASE_TRANSITIONS', () => {

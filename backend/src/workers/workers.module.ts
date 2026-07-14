@@ -6,6 +6,7 @@ import { DimoModule } from '@modules/dimo/dimo.module';
 import { VehicleIntelligenceModule } from '@modules/vehicle-intelligence/vehicle-intelligence.module';
 import { HighMobilityModule } from '@modules/high-mobility/high-mobility.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
+import { PaymentsModule } from '@modules/payments/payments.module';
 
 import { DimoSnapshotProcessor } from './processors/dimo-snapshot.processor';
 import { DimoVehicleSyncProcessor } from './processors/dimo-vehicle-sync.processor';
@@ -17,6 +18,7 @@ import { DrivingImpactProcessor } from './processors/driving-impact.processor';
 import { DtcKnowledgeProcessor } from './processors/dtc-knowledge.processor';
 import { NotificationEvaluationProcessor } from './processors/notification-evaluation.processor';
 import { NotificationDeliveryProcessor } from './processors/notification-delivery.processor';
+import { PaymentEmailProcessor } from './processors/payment-email.processor';
 
 import { DimoSnapshotScheduler } from './schedulers/dimo-snapshot.scheduler';
 import { DimoDtcScheduler } from './schedulers/dimo-dtc.scheduler';
@@ -43,11 +45,13 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
       { name: QUEUE_NAMES.DTC_KNOWLEDGE_ENRICHMENT },
       { name: QUEUE_NAMES.NOTIFICATION_EVALUATION },
       { name: QUEUE_NAMES.NOTIFICATION_DELIVERY },
+      { name: QUEUE_NAMES.PAYMENT_EMAIL },
     ),
     DimoModule,
     VehicleIntelligenceModule,
     HighMobilityModule,
     NotificationsModule,
+    PaymentsModule,
   ],
   providers: [
     // Processors
@@ -61,6 +65,7 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
     DtcKnowledgeProcessor,
     NotificationEvaluationProcessor,
     NotificationDeliveryProcessor,
+    PaymentEmailProcessor,
 
     // Schedulers
     DimoSnapshotScheduler,

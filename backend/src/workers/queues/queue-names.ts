@@ -15,4 +15,5 @@ export const QUEUE_NAMES = {
   NOTIFICATION_EVALUATION: 'notification.evaluation',
   /** Notification delivery — transactional outbox channel dispatch. */
   NOTIFICATION_DELIVERY: 'notification.delivery',
+  PAYMENT_EMAIL: 'payment.email',
 } as const;

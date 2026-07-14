@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'payment-email-flow-v49446-2026-07-14',
+    version: '4.9.446',
+    title: 'V4.9.446 — End-Customer Payments: zuverlässiger Zahlungs-E-Mail-Flow',
+    summary: [
+      'PaymentEmailOutbox + BullMQ payment.email — BOOKING_PAYMENT_REQUEST und PAYMENT_CONFIRMATION über OutboundEmail/Resend.',
+      'LINK_SENT erst nach erfolgreichem Versand; sendAttemptCount, lastSentAt, lastEmailErrorMessage für UI.',
+      'Resend-Endpoint mit Session-Wiederverwendung oder kontrollierter Neuerstellung nach Ablauf.',
+      'Payment Confirmation nur nach PAID-Reconciliation, außerhalb der Webhook-Transaktion.',
+    ],
+    reason:
+      'Zahlungslinks und Bestätigungen brauchen nachvollziehbaren, wiederholbaren Versand getrennt vom Zahlungsstatus.',
+    previousBehavior: 'sendEmailOnLink gespeichert aber nicht versendet; PaymentConfirmationNotifier war No-Op.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_PAYMENT_EMAIL_2026-07-14.md, payment-email-*.ts, POST …/payment-requests/:id/resend.',
+    affectsArchitecture: true,
+    module: 'Payments / Email',
+    createdAt: '2026-07-15T01:00:00.000Z',
+  },
+  {
     id: 'payment-reconciliation-v49445-2026-07-14',
     version: '4.9.445',
     title: 'V4.9.445 — End-Customer Payments: idempotente Connect-Zahlungsabgleich',

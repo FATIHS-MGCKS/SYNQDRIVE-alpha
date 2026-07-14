@@ -93,6 +93,10 @@ describe('StripeCheckoutService', () => {
     }),
   };
 
+  const paymentEmailEnqueue = {
+    maybeEnqueueAfterCheckout: jest.fn(),
+  };
+
   let service: StripeCheckoutService;
 
   beforeEach(() => {
@@ -105,6 +109,7 @@ describe('StripeCheckoutService', () => {
       paymentRequestRepository as unknown as BookingPaymentRequestRepository,
       organizationPaymentAccountService as unknown as OrganizationPaymentAccountService,
       stripeConnectAdapter as unknown as StripeConnectAdapter,
+      paymentEmailEnqueue as never,
     );
 
     paymentRequestRepository.findById.mockResolvedValue({ ...baseRequest });

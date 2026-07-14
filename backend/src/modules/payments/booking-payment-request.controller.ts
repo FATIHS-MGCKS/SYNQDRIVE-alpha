@@ -11,6 +11,7 @@ import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import type { PermissionActor } from '@shared/auth/permission.util';
 import { BookingPaymentRequestService } from './booking-payment-request.service';
 import { StripeCheckoutService } from './stripe-checkout.service';
+import { PaymentEmailResendService } from './email/payment-email-resend.service';
 import { RequirePaymentPermission } from './decorators/require-payment-permission.decorator';
 import { CreateBookingPaymentRequestDto } from './dto/booking-payment-request.dto';
 import { mapBookingPaymentRequestResponse } from './dto/booking-payment-request.response';
@@ -29,6 +30,7 @@ export class BookingPaymentRequestController {
   constructor(
     private readonly bookingPaymentRequestService: BookingPaymentRequestService,
     private readonly stripeCheckoutService: StripeCheckoutService,
+    private readonly paymentEmailResendService: PaymentEmailResendService,
   ) {}
 
   @Post()
@@ -74,5 +76,24 @@ export class BookingPaymentRequestController {
     });
 
     return mapCheckoutSessionResponse(result);
+  }
+
+  @Post(':requestId/resend')
+  @RequirePaymentPermission('payments.resend')
+  async resendPaymentLink(
+    @Param('orgId') orgId: string,
+    @Param('bookingId') bookingId: string,
+    @Param('requestId') requestId: string,
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.paymentEmailResendService.resendPaymentLink({
+      organizationId: orgId,
+      bookingId,
+      paymentRequestId: requestId,
+      actor: req.user ?? {},
+      idempotencyKey: idempotencyKey ?? '',
+      sentByUserId: req.user?.id ?? null,
+    });
   }
 }

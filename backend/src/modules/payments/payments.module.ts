@@ -20,6 +20,9 @@ import { StripeConnectWebhookService } from './stripe-connect-webhook.service';
 import { StripeConnectWebhookProcessorService } from './stripe-connect-webhook.processor';
 import { PaymentReconciliationService } from './payment-reconciliation.service';
 import { PaymentConfirmationNotifierService } from './payment-confirmation-notifier.service';
+import { PaymentEmailModule } from './email/payment-email.module';
+import { PaymentEmailProcessorService } from './email/payment-email-processor.service';
+import { PaymentEmailResendService } from './email/payment-email-resend.service';
 import { StripeConnectWebhookEventRepository } from './repositories/stripe-connect-webhook-event.repository';
 import { OrganizationPaymentAccountService } from './organization-payment-account.service';
 import { StripeConnectAccountService } from './stripe-connect-account.service';
@@ -31,7 +34,7 @@ import {
 } from './stripe/stripe-connect-adapter.factory';
 
 @Module({
-  imports: [PrismaModule, ConfigModule, InvoicesModule],
+  imports: [PrismaModule, ConfigModule, InvoicesModule, PaymentEmailModule],
   controllers: [
     PaymentsConnectController,
     BookingPaymentRequestController,
@@ -48,6 +51,8 @@ import {
     StripeConnectWebhookProcessorService,
     PaymentReconciliationService,
     PaymentConfirmationNotifierService,
+    PaymentEmailProcessorService,
+    PaymentEmailResendService,
     PaymentsFeatureGuard,
     PaymentsPermissionGuard,
     OrganizationPaymentAccountRepository,
@@ -79,6 +84,7 @@ import {
     StripeCheckoutService,
     StripeConnectWebhookService,
     PaymentReconciliationService,
+    PaymentEmailProcessorService,
     stripeConnectAdapterProvider,
   ],
 })
