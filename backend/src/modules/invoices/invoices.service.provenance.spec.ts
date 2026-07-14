@@ -3,6 +3,7 @@ import { ORG_A, BOOKING_REF, CUSTOMER_MUELLER, VEHICLE_GOLF, makeOrgInvoicePolic
 import { mockInvoiceDocumentsRead } from './__fixtures__/invoice-documents-read.mock';
 import { InvoiceDocumentsReadService } from './invoice-documents-read.service';
 import { InvoiceNumberService } from './invoice-number.service';
+import { InvoicePaymentService } from './invoice-payment.service';
 import { InvoicesService } from './invoices.service';
 import {
   provenanceForDocumentExtractionInvoice,
@@ -52,6 +53,7 @@ describe('InvoicesService — provenance on create paths', () => {
       { upsertByDedup: jest.fn() } as never,
       { allocate: jest.fn() } as unknown as InvoiceNumberService,
       invoiceDocuments as unknown as InvoiceDocumentsReadService,
+      { recordPayment: jest.fn(), recordFullBalancePayment: jest.fn() } as unknown as InvoicePaymentService,
     );
     prisma.orgInvoice.create.mockImplementation(async ({ data }) => ({
       id: 'inv-new',

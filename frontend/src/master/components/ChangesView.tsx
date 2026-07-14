@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-payment-command-2026-07-14',
+    version: '4.9.440',
+    title: 'V4.9.440 — Zentraler Rechnungs-Zahlungsbefehl',
+    summary: [
+      '`InvoicePaymentService.recordPayment` — explizite `paymentMethod`, Währungsprüfung, Minor Units (Cents).',
+      'Kein automatisches `BANK_TRANSFER` mehr bei „Vollständig bezahlt“ (`PATCH .../pay` erfordert `paymentMethod`).',
+      '`OrgInvoicePayment`: `currency`, `source` (MANUAL|PROVIDER), `providerTransactionId`, `idempotencyKey`.',
+      'Teilzahlung → PARTIALLY_PAID; Vollzahlung → PAID; Aufgaben erst bei Restbetrag 0.',
+      'Detail-DTO: `methodLabel` (deutsch), `source`, `currency` — kein Enum als UI-Text.',
+    ],
+    reason:
+      '„Vollständig bezahlt markieren“ erzeugte still eine Überweisung ohne Benutzerangabe — fachlich falsch und nicht auditierbar.',
+    previousBehavior:
+      '`markPaid` rief `recordPayment` mit hardcodiertem `BANK_TRANSFER` für den offenen Betrag auf.',
+    details:
+      'InvoicePaymentService, invoice-payment.util, migration 20260714260000_invoice_payment_command, RecordInvoicePaymentDto',
+    affectsArchitecture: true,
+    module: 'Invoices',
+    createdAt: '2026-07-15T03:00:00.000Z',
+  },
+  {
     id: 'invoice-external-send-2026-07-14',
     version: '4.9.439',
     title: 'V4.9.439 — Externer Rechnungsversand explizit erfassen',

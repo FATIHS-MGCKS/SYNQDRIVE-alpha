@@ -1,10 +1,11 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { InvoicePaymentMethod, OrgInvoiceType } from '@prisma/client';
 
 import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { InvoiceNumberService } from './invoice-number.service';
 import { InvoiceDocumentsReadService } from './invoice-documents-read.service';
+import { InvoicePaymentService } from './invoice-payment.service';
 import { mockInvoiceDocumentsRead } from './__fixtures__/invoice-documents-read.mock';
 import { InvoicesService } from './invoices.service';
 import {
@@ -39,10 +40,18 @@ describe('InvoicesService — baseline regression (audit 2026-07-14)', () => {
   let tasksService: { upsertByDedup: jest.Mock };
   let invoiceNumbers: { allocate: jest.Mock };
   let invoiceDocuments: ReturnType<typeof mockInvoiceDocumentsRead>;
+  let invoicePayments: {
+    recordPayment: jest.Mock;
+    recordFullBalancePayment: jest.Mock;
+  };
   let service: InvoicesService;
 
   beforeEach(() => {
     invoiceDocuments = mockInvoiceDocumentsRead();
+    invoicePayments = {
+      recordPayment: jest.fn(),
+      recordFullBalancePayment: jest.fn(),
+    };
     prisma = {
       orgInvoice: {
         findFirst: jest.fn(),
@@ -80,6 +89,7 @@ describe('InvoicesService — baseline regression (audit 2026-07-14)', () => {
       tasksService as unknown as TasksService,
       invoiceNumbers as unknown as InvoiceNumberService,
       invoiceDocuments as unknown as InvoiceDocumentsReadService,
+      invoicePayments as unknown as InvoicePaymentService,
     );
   });
 
@@ -224,38 +234,33 @@ describe('InvoicesService — baseline regression (audit 2026-07-14)', () => {
     });
   });
 
-  describe('markPaid payment method (current: always BANK_TRANSFER)', () => {
-    it('markPaid records the outstanding balance with BANK_TRANSFER even after CARD checkout', async () => {
+  describe('markPaid requires explicit paymentMethod (no auto BANK_TRANSFER)', () => {
+    it('markPaid delegates to recordFullBalancePayment with given method', async () => {
       const row = makeOrgInvoiceRow({
         status: 'ISSUED',
         paidCents: 0,
         outstandingCents: 53550,
       });
-      const paidRow = {
-        ...row,
-        paidCents: 53550,
-        outstandingCents: 0,
-        status: 'PAID',
-        payments: [],
-        tasks: [],
-      };
-
-      prisma.orgInvoice.findFirst.mockImplementation((args: { include?: unknown }) =>
-        args?.include ? Promise.resolve(paidRow) : Promise.resolve(row),
-      );
-      prisma.orgInvoicePayment.create.mockResolvedValue({ id: 'pay-1' });
-      prisma.orgInvoice.update.mockResolvedValue(paidRow);
-
-      await service.markPaid(INVOICE_BOOKING, ORG_A);
-
-      expect(prisma.orgInvoicePayment.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          organizationId: ORG_A,
-          invoiceId: INVOICE_BOOKING,
-          amountCents: 53550,
-          method: InvoicePaymentMethod.BANK_TRANSFER,
-        }),
+      prisma.orgInvoice.findFirst.mockResolvedValue(row);
+      invoicePayments.recordFullBalancePayment.mockResolvedValue({
+        invoice: { status: 'PAID' },
       });
+
+      await service.markPaid(INVOICE_BOOKING, ORG_A, InvoicePaymentMethod.CASH);
+
+      expect(invoicePayments.recordFullBalancePayment).toHaveBeenCalledWith(
+        ORG_A,
+        INVOICE_BOOKING,
+        null,
+        InvoicePaymentMethod.CASH,
+      );
+    });
+
+    it('markPaid rejects missing paymentMethod', async () => {
+      await expect(service.markPaid(INVOICE_BOOKING, ORG_A)).rejects.toBeInstanceOf(
+        BadRequestException,
+      );
+      expect(invoicePayments.recordFullBalancePayment).not.toHaveBeenCalled();
     });
   });
 

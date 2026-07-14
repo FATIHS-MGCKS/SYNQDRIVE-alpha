@@ -4027,6 +4027,11 @@ enum InvoicePaymentMethod {
   OTHER
 }
 
+enum InvoicePaymentSource {
+  MANUAL
+  PROVIDER
+}
+
 model OrgInvoiceSequence {
   id             String   @id @default(uuid())
   organizationId String   @map("organization_id")
@@ -4041,19 +4046,25 @@ model OrgInvoiceSequence {
 }
 
 model OrgInvoicePayment {
-  id              String               @id @default(uuid())
-  organizationId  String               @map("organization_id")
-  invoiceId       String               @map("invoice_id")
-  amountCents     Int                  @map("amount_cents")
-  method          InvoicePaymentMethod @default(BANK_TRANSFER)
-  paidAt          DateTime             @map("paid_at")
-  reference       String?
-  note            String?
-  createdByUserId String?              @map("created_by_user_id")
-  createdAt       DateTime             @default(now()) @map("created_at")
+  id                    String               @id @default(uuid())
+  organizationId        String               @map("organization_id")
+  invoiceId             String               @map("invoice_id")
+  amountCents           Int                  @map("amount_cents")
+  currency              String               @default("EUR")
+  method                InvoicePaymentMethod @default(BANK_TRANSFER)
+  source                InvoicePaymentSource @default(MANUAL)
+  paidAt                DateTime             @map("paid_at")
+  reference             String?
+  note                  String?
+  providerTransactionId String?              @map("provider_transaction_id")
+  idempotencyKey        String?              @map("idempotency_key")
+  createdByUserId       String?              @map("created_by_user_id")
+  createdAt             DateTime             @default(now()) @map("created_at")
 
   invoice OrgInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 
+  @@unique([organizationId, idempotencyKey])
+  @@unique([organizationId, providerTransactionId])
   @@index([organizationId])
   @@index([invoiceId])
   @@index([paidAt])

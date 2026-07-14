@@ -36,10 +36,52 @@ export interface InvoiceLineItem {
 export interface InvoicePayment {
   id: string;
   amountCents: number;
+  currency?: string;
   method: string;
+  methodLabel?: string;
+  source?: string;
   paidAt: string;
   reference?: string | null;
   note?: string | null;
+  providerTransactionId?: string | null;
+}
+
+export type InvoicePaymentMethod =
+  | 'BANK_TRANSFER'
+  | 'CARD'
+  | 'CASH'
+  | 'STRIPE'
+  | 'OTHER';
+
+export interface RecordInvoicePaymentInput {
+  amountCents: number;
+  paymentMethod: InvoicePaymentMethod;
+  currency?: string;
+  paidAt?: string;
+  reference?: string;
+  note?: string;
+  providerTransactionId?: string;
+  idempotencyKey?: string;
+}
+
+export interface MarkInvoicePaidInput {
+  paymentMethod: InvoicePaymentMethod;
+  paidAt?: string;
+  reference?: string;
+  note?: string;
+}
+
+export interface RecordInvoicePaymentResponse {
+  payment: InvoicePayment & { methodLabel: string; source: string };
+  invoice: {
+    id: string;
+    status: string;
+    paidCents: number;
+    outstandingCents: number;
+    paidAt: string | null;
+    currency: string;
+  };
+  idempotentReplay: boolean;
 }
 
 export interface Invoice {

@@ -10,6 +10,7 @@ import { InvoicesService } from './invoices.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { InvoiceNumberService } from './invoice-number.service';
+import { InvoicePaymentService } from './invoice-payment.service';
 import { InvoiceDocumentsReadService } from './invoice-documents-read.service';
 import { mockInvoiceDocumentsRead } from './__fixtures__/invoice-documents-read.mock';
 import {
@@ -101,6 +102,7 @@ describe('Invoice ↔ GeneratedDocument link — baseline regression', () => {
       { upsertByDedup: jest.fn() } as unknown as TasksService,
       { allocate: jest.fn() } as unknown as InvoiceNumberService,
       invoiceDocuments as unknown as InvoiceDocumentsReadService,
+      { recordPayment: jest.fn(), recordFullBalancePayment: jest.fn() } as unknown as InvoicePaymentService,
     );
 
     const dto = await service.findById(INVOICE_BOOKING, ORG_A);
@@ -120,6 +122,7 @@ describe('Invoice ↔ GeneratedDocument link — baseline regression', () => {
       { upsertByDedup: jest.fn() } as unknown as TasksService,
       { allocate: jest.fn() } as unknown as InvoiceNumberService,
       mockInvoiceDocumentsRead() as unknown as InvoiceDocumentsReadService,
+      { recordPayment: jest.fn(), recordFullBalancePayment: jest.fn() } as unknown as InvoicePaymentService,
     );
 
     const dto = await service.findById(INVOICE_BOOKING, ORG_A);
@@ -157,6 +160,7 @@ describe('Invoice ↔ GeneratedDocument link — baseline regression', () => {
         { upsertByDedup: jest.fn() } as unknown as TasksService,
         { allocate: jest.fn() } as unknown as InvoiceNumberService,
         mockInvoiceDocumentsRead() as unknown as InvoiceDocumentsReadService,
+        { recordPayment: jest.fn(), recordFullBalancePayment: jest.fn() } as unknown as InvoicePaymentService,
       );
 
       await expect(service.findById(INVOICE_BOOKING, ORG_B)).rejects.toBeInstanceOf(NotFoundException);
@@ -174,6 +178,7 @@ describe('Invoice ↔ GeneratedDocument link — baseline regression', () => {
         { upsertByDedup: jest.fn() } as unknown as TasksService,
         { allocate: jest.fn() } as unknown as InvoiceNumberService,
         mockInvoiceDocumentsRead({ activeDocumentId: DOC_BOOKING_INVOICE }) as unknown as InvoiceDocumentsReadService,
+        { recordPayment: jest.fn(), recordFullBalancePayment: jest.fn() } as unknown as InvoicePaymentService,
       );
       const dto = await service.findById(INVOICE_BOOKING, ORG_A);
       expect(dto.generatedDocumentId).toBe(DOC_BOOKING_INVOICE);

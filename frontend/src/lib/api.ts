@@ -4044,16 +4044,20 @@ export const api = {
     recordPayment: (
       orgId: string,
       id: string,
-      data: { amountCents: number; method?: string; paidAt?: string; reference?: string; note?: string },
+      data: import('../rental/components/invoices/invoiceTypes').RecordInvoicePaymentInput,
     ) =>
-      post<import('../rental/components/invoices/invoiceTypes').Invoice>(
+      post<import('../rental/components/invoices/invoiceTypes').RecordInvoicePaymentResponse>(
         `/organizations/${orgId}/invoices/${id}/payments`,
         data,
       ),
-    markPaid: (orgId: string, id: string) =>
-      patch<import('../rental/components/invoices/invoiceTypes').Invoice>(
+    markPaid: (
+      orgId: string,
+      id: string,
+      data: import('../rental/components/invoices/invoiceTypes').MarkInvoicePaidInput,
+    ) =>
+      patch<import('../rental/components/invoices/invoiceTypes').RecordInvoicePaymentResponse>(
         `/organizations/${orgId}/invoices/${id}/pay`,
-        {},
+        data,
       ),
     byCustomer: (orgId: string, customerId: string) =>
       get<import('../rental/components/invoices/invoiceTypes').Invoice[]>(

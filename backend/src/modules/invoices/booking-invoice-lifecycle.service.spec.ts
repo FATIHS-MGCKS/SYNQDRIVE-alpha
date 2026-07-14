@@ -72,7 +72,7 @@ describe('BookingInvoiceLifecycleService', () => {
       'org',
       expect.objectContaining({
         amountCents: 10_000,
-        method: 'CARD',
+        paymentMethod: 'CARD',
       }),
       'user-1',
     );

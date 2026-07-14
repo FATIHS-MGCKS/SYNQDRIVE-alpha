@@ -167,9 +167,43 @@ export class RecordInvoicePaymentDto {
   @Min(1)
   amountCents!: number;
 
+  @IsEnum(InvoicePaymentMethod)
+  paymentMethod!: InvoicePaymentMethod;
+
+  /** @deprecated Use paymentMethod */
   @IsOptional()
   @IsEnum(InvoicePaymentMethod)
   method?: InvoicePaymentMethod;
+
+  @IsOptional()
+  @IsString()
+  currency?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  paidAt?: string;
+
+  @IsOptional()
+  @IsString()
+  reference?: string;
+
+  @IsOptional()
+  @IsString()
+  note?: string;
+
+  @IsOptional()
+  @IsString()
+  providerTransactionId?: string;
+
+  @IsOptional()
+  @IsString()
+  idempotencyKey?: string;
+}
+
+/** @deprecated Prefer POST .../payments with explicit paymentMethod. */
+export class MarkInvoicePaidDto {
+  @IsEnum(InvoicePaymentMethod)
+  paymentMethod!: InvoicePaymentMethod;
 
   @IsOptional()
   @IsISO8601()

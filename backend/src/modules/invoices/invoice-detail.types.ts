@@ -142,10 +142,14 @@ export interface InvoiceDetailLineItemDto {
 export interface InvoiceDetailPaymentDto {
   id: string;
   amountCents: number;
+  currency: string;
   method: string;
+  methodLabel: string;
+  source: string;
   paidAt: string;
   reference: string | null;
   note: string | null;
+  providerTransactionId: string | null;
 }
 
 export interface InvoiceOutboundEmailSummaryDto {

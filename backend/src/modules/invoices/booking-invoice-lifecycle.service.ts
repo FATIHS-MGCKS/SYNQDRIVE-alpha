@@ -65,7 +65,8 @@ export class BookingInvoiceLifecycleService {
       orgId,
       {
         amountCents: outstanding,
-        method,
+        paymentMethod: method,
+        currency: invoice.currency,
         note: 'Buchungsbestätigung — Vorauszahlung',
       },
       options?.userId ?? undefined,

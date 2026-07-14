@@ -944,7 +944,9 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
   const handleMarkPaid = async () => {
     setMarkingPaid(true);
     try {
-      await api.invoices.markPaid(orgId, invoice.id);
+      await api.invoices.markPaid(orgId, invoice.id, {
+        paymentMethod: paymentMethod as import('./invoices/invoiceTypes').InvoicePaymentMethod,
+      });
       await refreshInvoice();
       toast.success('Vollständig bezahlt erfasst');
     } catch (e: unknown) {
@@ -964,7 +966,7 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
     try {
       await api.invoices.recordPayment(orgId, invoice.id, {
         amountCents,
-        method: paymentMethod,
+        paymentMethod: paymentMethod as import('./invoices/invoiceTypes').InvoicePaymentMethod,
         reference: paymentReference || undefined,
       });
       await refreshInvoice();
@@ -1074,6 +1076,18 @@ function InvoiceDetail({ isDarkMode, invoice, orgId, onBack, onUpdate, card, tp,
             )}
             {showPayments && (
               <>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className={`${inputCls} !w-auto min-w-[7.5rem] text-xs py-1.5`}
+                  title="Zahlungsmethode"
+                >
+                  <option value="BANK_TRANSFER">Überweisung</option>
+                  <option value="CASH">Bar</option>
+                  <option value="CARD">Karte</option>
+                  <option value="STRIPE">Stripe</option>
+                  <option value="OTHER">Sonstige</option>
+                </select>
                 <button type="button" onClick={() => { setShowPaymentForm(!showPaymentForm); setPaymentAmount((outstanding / 100).toFixed(2)); }} className={actionBtn}>
                   <Icon name="dollar-sign" className="w-3 h-3" /> Zahlung erfassen
                 </button>

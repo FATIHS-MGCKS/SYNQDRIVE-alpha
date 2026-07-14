@@ -17,6 +17,7 @@ import {
 } from './invoice-detail-relations.util';
 import { mapInvoiceEmailSendHistory } from './invoice-email-send-history.util';
 import { mapInvoiceExternalSendHistory } from './invoice-external-send.mapper';
+import { invoicePaymentMethodLabel } from './invoice-payment.util';
 import { mergeInvoiceTimeline } from './invoice-timeline.util';
 import {
   mapInvoiceProvenance,
@@ -144,10 +145,14 @@ function mapPayments(payments: OrgInvoicePayment[]): InvoiceDetailPaymentDto[] {
   return payments.map((p) => ({
     id: p.id,
     amountCents: p.amountCents,
+    currency: p.currency,
     method: p.method,
+    methodLabel: invoicePaymentMethodLabel(p.method),
+    source: p.source,
     paidAt: p.paidAt.toISOString(),
     reference: p.reference,
     note: p.note,
+    providerTransactionId: p.providerTransactionId,
   }));
 }
 

@@ -48,6 +48,7 @@ import {
   type OrgTaxSettings,
 } from './invoice-tax.util';
 import { InvoiceNumberService } from './invoice-number.service';
+import { InvoicePaymentService } from './invoice-payment.service';
 import { InvoiceDocumentsReadService } from './invoice-documents-read.service';
 import type { InvoiceProvenanceWriteInput } from './invoice-provenance.util';
 import {
@@ -98,6 +99,7 @@ export class InvoicesService {
     private readonly tasksService: TasksService,
     private readonly invoiceNumbers: InvoiceNumberService,
     private readonly invoiceDocuments: InvoiceDocumentsReadService,
+    private readonly invoicePayments: InvoicePaymentService,
   ) {}
 
   private format(inv: Record<string, unknown>) {
@@ -553,62 +555,41 @@ export class InvoicesService {
     return this.findById(id, orgId);
   }
 
-  async recordPayment(id: string, orgId: string, dto: RecordInvoicePaymentDto, createdByUserId?: string) {
-    const inv = await this.requireInvoice(id, orgId);
-    if (!canRecordPayment(inv.status)) {
-      throw new BadRequestException(`Cannot record payment for status ${inv.status}`);
-    }
-
-    const outstanding = Math.max(0, inv.totalCents - inv.paidCents);
-    if (dto.amountCents > outstanding) {
-      throw new BadRequestException('Payment exceeds outstanding amount');
-    }
-
-    await this.prisma.orgInvoicePayment.create({
-      data: {
-        organizationId: orgId,
-        invoiceId: id,
-        amountCents: dto.amountCents,
-        method: dto.method ?? InvoicePaymentMethod.BANK_TRANSFER,
-        paidAt: dto.paidAt ? new Date(dto.paidAt) : new Date(),
-        reference: dto.reference,
-        note: dto.note,
-        createdByUserId,
-      },
-    });
-
-    const newPaid = inv.paidCents + dto.amountCents;
-    const newOutstanding = Math.max(0, inv.totalCents - newPaid);
-    const newStatus = derivePaymentStatus(newPaid, inv.totalCents, inv.status, isOutgoingInvoiceType(inv.type));
-
-    await this.prisma.orgInvoice.update({
-      where: { id },
-      data: {
-        paidCents: newPaid,
-        outstandingCents: newOutstanding,
-        status: newStatus,
-        paidAt: newOutstanding === 0 ? new Date() : inv.paidAt,
-      },
-    });
-
-    if (newOutstanding === 0) {
-      await this.closeLinkedTasks(id);
-    }
-
+  async recordPayment(
+    id: string,
+    orgId: string,
+    dto: RecordInvoicePaymentDto,
+    createdByUserId?: string,
+  ) {
+    const result = await this.invoicePayments.recordPayment(
+      orgId,
+      id,
+      createdByUserId ?? null,
+      dto,
+    );
     return this.findById(id, orgId);
   }
 
-  async markPaid(id: string, orgId?: string) {
-    const inv = await this.requireInvoice(id, orgId);
-    const outstanding = Math.max(0, inv.totalCents - inv.paidCents);
-    if (outstanding <= 0) {
-      return this.findById(id, orgId);
+  /**
+   * @deprecated Use POST .../payments or PATCH .../pay with explicit paymentMethod.
+   */
+  async markPaid(
+    id: string,
+    orgId?: string,
+    paymentMethod?: InvoicePaymentMethod,
+  ) {
+    if (!paymentMethod) {
+      throw new BadRequestException(
+        'paymentMethod is required — use POST .../invoices/:id/payments or PATCH .../pay with paymentMethod',
+      );
     }
-    return this.recordPayment(
-      id,
+    await this.invoicePayments.recordFullBalancePayment(
       orgId!,
-      { amountCents: outstanding, method: InvoicePaymentMethod.BANK_TRANSFER },
+      id,
+      null,
+      paymentMethod,
     );
+    return this.findById(id, orgId);
   }
 
   async createBookingInvoice(
@@ -1065,17 +1046,5 @@ export class InvoicesService {
       invoiceId,
       dueDate: dueDate ? new Date(dueDate) : undefined,
     });
-  }
-
-  private async closeLinkedTasks(invoiceId: string) {
-    const tasks = await this.prisma.orgTask.findMany({
-      where: { invoiceId, status: { not: 'DONE' } },
-    });
-    for (const task of tasks) {
-      await this.prisma.orgTask.update({
-        where: { id: task.id },
-        data: { status: 'DONE', completedAt: new Date() },
-      });
-    }
   }
 }

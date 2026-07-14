@@ -17,9 +17,11 @@ import { StorageService } from '@shared/storage/storage.service';
 import { InvoiceDocumentEmailService } from '@modules/outbound-email/invoice-document-email.service';
 import { SendInvoiceEmailDto } from '@modules/outbound-email/dto/send-invoice-email.dto';
 import { InvoiceExternalSendService } from './invoice-external-send.service';
+import { InvoicePaymentService } from './invoice-payment.service';
 import {
   CreateInvoiceDto,
   InvoiceQueryDto,
+  MarkInvoicePaidDto,
   RecordExternalSendDto,
   RecordInvoicePaymentDto,
   UpdateInvoiceDto,
@@ -35,6 +37,7 @@ export class InvoicesController {
     private readonly invoiceDetail: InvoiceDetailReadService,
     private readonly invoiceEmail: InvoiceDocumentEmailService,
     private readonly invoiceExternalSend: InvoiceExternalSendService,
+    private readonly invoicePayments: InvoicePaymentService,
     private readonly storage: StorageService,
   ) {}
 
@@ -140,18 +143,43 @@ export class InvoicesController {
 
   @Post('organizations/:orgId/invoices/:id/payments')
   @UseGuards(OrgScopingGuard, RolesGuard)
+  @Roles('ORG_ADMIN', 'MASTER_ADMIN', 'SUB_ADMIN')
   async recordPayment(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
     @Body() body: RecordInvoicePaymentDto,
   ) {
-    return this.invoicesService.recordPayment(id, orgId, body);
+    const result = await this.invoicePayments.recordPayment(
+      orgId,
+      id,
+      userId ?? null,
+      body,
+    );
+    return result;
   }
 
+  /** @deprecated Use POST .../payments with explicit paymentMethod and amount. */
   @Patch('organizations/:orgId/invoices/:id/pay')
   @UseGuards(OrgScopingGuard, RolesGuard)
-  async markPaid(@Param('orgId') orgId: string, @Param('id') id: string) {
-    return this.invoicesService.markPaid(id, orgId);
+  @Roles('ORG_ADMIN', 'MASTER_ADMIN', 'SUB_ADMIN')
+  async markPaid(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
+    @Body() body: MarkInvoicePaidDto,
+  ) {
+    return this.invoicePayments.recordFullBalancePayment(
+      orgId,
+      id,
+      userId ?? null,
+      body.paymentMethod,
+      {
+        paidAt: body.paidAt,
+        note: body.note,
+        reference: body.reference,
+      },
+    );
   }
 
   @Post('organizations/:orgId/invoices/:invoiceId/send-email')
