@@ -577,6 +577,7 @@ export class InvoicesService {
       draftCount,
       reviewCount,
       invoices,
+      statusGroups,
     ] = await Promise.all([
       this.prisma.orgInvoice.count({ where: { organizationId: orgId } }),
       this.prisma.orgInvoice.count({ where: { organizationId: orgId, type: { in: outgoingTypes } } }),
@@ -595,6 +596,11 @@ export class InvoicesService {
           outstandingCents: true,
           dueDate: true,
         },
+      }),
+      this.prisma.orgInvoice.groupBy({
+        by: ['status'],
+        where: { organizationId: orgId },
+        _count: { _all: true },
       }),
     ]);
 
@@ -647,6 +653,10 @@ export class InvoicesService {
       if (inv.status === 'PAID' || inv.paidCents >= inv.totalCents) paid += 1;
     }
 
+    const statusCounts = Object.fromEntries(
+      statusGroups.map((group) => [group.status, group._count._all]),
+    ) as Record<string, number>;
+
     return {
       total,
       outgoing,
@@ -656,6 +666,7 @@ export class InvoicesService {
       overdue,
       draftCount,
       reviewCount,
+      statusCounts,
       totalRevenueCents,
       finalInvoiceRevenueCents,
       paidRevenueCents,

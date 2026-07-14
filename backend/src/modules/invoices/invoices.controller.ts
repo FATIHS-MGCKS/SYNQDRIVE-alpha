@@ -15,9 +15,11 @@ import { StorageService } from '@shared/storage/storage.service';
 import {
   CreateInvoiceDto,
   InvoiceQueryDto,
+  ListInvoicesQueryDto,
   RecordInvoicePaymentDto,
   UpdateInvoiceDto,
 } from './dto';
+import { InvoiceListReadService } from './invoice-list-read.service';
 import { SendInvoiceEmailDto } from './dto/send-invoice-email.dto';
 import { InvoiceDocumentsService } from './invoice-documents.service';
 import { InvoiceTimelineService } from './invoice-timeline.service';
@@ -30,11 +32,21 @@ if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
 export class InvoicesController {
   constructor(
     private readonly invoicesService: InvoicesService,
+    private readonly invoiceListRead: InvoiceListReadService,
     private readonly storage: StorageService,
     private readonly invoiceDocuments: InvoiceDocumentsService,
     private readonly invoiceTimeline: InvoiceTimelineService,
     private readonly invoiceEmail: InvoiceDocumentEmailService,
   ) {}
+
+  @Get('organizations/:orgId/invoices/list')
+  @UseGuards(OrgScopingGuard, RolesGuard)
+  async listItems(
+    @Param('orgId') orgId: string,
+    @Query() query: ListInvoicesQueryDto,
+  ) {
+    return this.invoiceListRead.list(orgId, query);
+  }
 
   @Get('organizations/:orgId/invoices')
   @UseGuards(OrgScopingGuard, RolesGuard)

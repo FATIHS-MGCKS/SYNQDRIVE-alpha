@@ -96,8 +96,53 @@ export interface InvoiceStats {
   overdue?: number;
   draftCount?: number;
   reviewCount?: number;
+  statusCounts?: Record<string, number>;
   totalRevenueCents: number;
   finalInvoiceRevenueCents?: number;
   paidRevenueCents?: number;
   totalExpensesCents: number;
+}
+
+export interface InvoiceListItem {
+  id: string;
+  invoiceNumber: string;
+  type: OrgInvoiceType | string;
+  direction: 'outgoing' | 'incoming';
+  status: OrgInvoiceStatus | string;
+  title: string;
+  customerDisplayName: string | null;
+  customerId: string | null;
+  supplierDisplayName: string | null;
+  supplierId: string | null;
+  bookingNumber: string | null;
+  bookingId: string | null;
+  vehicleDisplayName: string | null;
+  licensePlate: string | null;
+  invoiceDate: string;
+  dueDate: string | null;
+  totalGross: number;
+  paidAmount: number;
+  outstandingAmount: number;
+  currency: string;
+  documentStatus: string | null;
+  activeDocumentId: string | null;
+  lastSendStatus: string | null;
+  lastSentAt: string | null;
+  isOverdue: boolean;
+  sourceType: string | null;
+  creationChannel: string | null;
+  openTaskCount: number;
+  hasOpenTask: boolean;
+}
+
+export interface InvoiceListMeta {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export interface PaginatedInvoiceList {
+  data: InvoiceListItem[];
+  meta: InvoiceListMeta;
 }

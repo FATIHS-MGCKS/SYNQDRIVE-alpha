@@ -5,11 +5,7 @@ import { api } from '../../../../lib/api';
 import type { Invoice, InvoiceStats } from '../invoiceTypes';
 import type { InvoiceDirectionFilter } from '../invoiceConstants';
 import { STATUS_MAP } from '../invoiceFormatters';
-import {
-  countInvoicesByDirection,
-  countInvoicesByStatus,
-  filterInvoices,
-} from '../invoiceList.util';
+import { mapInvoiceListItemToInvoiceRow } from '../invoiceListItem.mapper';
 
 export interface InvoiceLookupVehicle {
   id: string;
@@ -29,12 +25,14 @@ export interface InvoiceLookupData {
 
 export function useInvoices(orgId: string | undefined) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [listTotal, setListTotal] = useState(0);
   const [stats, setStats] = useState<InvoiceStats | null>(null);
   const [lookup, setLookup] = useState<InvoiceLookupData>({
     customers: [],
     vehicles: [],
     vendors: [],
   });
+  const [lookupLoaded, setLookupLoaded] = useState(false);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -46,49 +44,74 @@ export function useInvoices(orgId: string | undefined) {
     if (!orgId) return;
     setLoading(true);
     try {
-      const [iList, iStats, cList, vList, venList] = await Promise.all([
-        api.invoices.list(orgId),
+      const [listResult, iStats] = await Promise.all([
+        api.invoices.listItems(orgId, {
+          page: 1,
+          limit: 100,
+          search: searchTerm.trim() || undefined,
+          status: statusFilter !== 'all' ? statusFilter : undefined,
+          direction: directionFilter !== 'all' ? directionFilter : undefined,
+          sortBy: 'invoiceDate',
+          sortOrder: 'desc',
+        }),
         api.invoices.stats(orgId),
+      ]);
+      setInvoices(listResult.data.map(mapInvoiceListItemToInvoiceRow));
+      setListTotal(listResult.meta.total);
+      setStats(iStats);
+    } catch {
+      toast.error('Rechnungen konnten nicht geladen werden');
+      setInvoices([]);
+      setListTotal(0);
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId, searchTerm, statusFilter, directionFilter]);
+
+  const loadLookup = useCallback(async () => {
+    if (!orgId || lookupLoaded) return;
+    try {
+      const [cList, vList, venList] = await Promise.all([
         api.customers.list(orgId).catch(() => []),
         api.vehicles.listByOrg(orgId).catch(() => []),
         api.vendors.list(orgId).catch(() => []),
       ]);
-      setInvoices(Array.isArray(iList) ? iList : (iList as { data?: Invoice[] })?.data || []);
-      setStats(iStats);
       setLookup({
         customers: Array.isArray(cList) ? cList : (cList as { data?: Array<Record<string, unknown>> })?.data || [],
         vehicles: (Array.isArray(vList) ? vList : (vList as { data?: InvoiceLookupVehicle[] })?.data || []) as InvoiceLookupVehicle[],
         vendors: (Array.isArray(venList) ? venList : []) as Array<{ id: string; name: string }>,
       });
+      setLookupLoaded(true);
     } catch {
-      toast.error('Rechnungen konnten nicht geladen werden');
-      setInvoices([]);
-    } finally {
-      setLoading(false);
+      // Create/upload dialogs degrade gracefully without lookup.
     }
-  }, [orgId]);
+  }, [orgId, lookupLoaded]);
 
   useEffect(() => {
     void reload();
   }, [reload]);
 
-  const filtered = useMemo(
-    () => filterInvoices(invoices, searchTerm, statusFilter, directionFilter),
-    [invoices, searchTerm, statusFilter, directionFilter],
-  );
+  const filtered = invoices;
 
   const statusCount = useCallback(
-    (status: string) => countInvoicesByStatus(invoices, status),
-    [invoices],
+    (status: string) => {
+      if (status === 'all') return stats?.total ?? listTotal;
+      return stats?.statusCounts?.[status] ?? 0;
+    },
+    [stats, listTotal],
   );
 
   const directionCount = useCallback(
-    (direction: InvoiceDirectionFilter) => countInvoicesByDirection(invoices, direction),
-    [invoices],
+    (direction: InvoiceDirectionFilter) => {
+      if (direction === 'all') return stats?.total ?? listTotal;
+      if (direction === 'outgoing') return stats?.outgoing ?? 0;
+      return stats?.incoming ?? 0;
+    },
+    [stats, listTotal],
   );
 
   const unpaidCount = stats?.unpaid ?? 0;
-  const overdueCount = stats?.overdue ?? invoices.filter((inv) => inv.status === 'OVERDUE').length;
+  const overdueCount = stats?.overdue ?? 0;
 
   const activeDirectionLabel =
     directionFilter === 'all'
@@ -117,6 +140,7 @@ export function useInvoices(orgId: string | undefined) {
     lookup,
     loading,
     reload,
+    loadLookup,
     searchTerm,
     setSearchTerm,
     statusFilter,
@@ -136,5 +160,6 @@ export function useInvoices(orgId: string | undefined) {
     activeStatusLabel,
     hasActiveFilters,
     clearFilters,
+    listTotal,
   };
 }

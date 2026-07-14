@@ -4200,6 +4200,41 @@ export const api = {
         `/organizations/${orgId}/invoices${qs ? `?${qs}` : ''}`,
       );
     },
+    listItems: (
+      orgId: string,
+      params?: {
+        page?: number;
+        limit?: number;
+        search?: string;
+        type?: string;
+        status?: string;
+        direction?: string;
+        dueFrom?: string;
+        dueTo?: string;
+        dateFrom?: string;
+        dateTo?: string;
+        overdue?: boolean;
+        documentStatus?: string;
+        sendStatus?: string;
+        stationId?: string;
+        includeVoid?: boolean;
+        sortBy?: string;
+        sortOrder?: string;
+      },
+    ) => {
+      const q = new URLSearchParams();
+      if (params) {
+        for (const [key, value] of Object.entries(params)) {
+          if (value !== undefined && value !== null && value !== '') {
+            q.set(key, String(value));
+          }
+        }
+      }
+      const qs = q.toString();
+      return get<import('../rental/components/invoices/invoiceTypes').PaginatedInvoiceList>(
+        `/organizations/${orgId}/invoices/list${qs ? `?${qs}` : ''}`,
+      );
+    },
     stats: (orgId: string) =>
       get<import('../rental/components/invoices/invoiceTypes').InvoiceStats>(
         `/organizations/${orgId}/invoices/stats`,

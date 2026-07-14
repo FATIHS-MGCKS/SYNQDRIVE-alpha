@@ -7,7 +7,7 @@ import { InvoiceNumberService } from './invoice-number.service';
 import { BookingInvoiceLifecycleService } from './booking-invoice-lifecycle.service';
 import { FakePaidCardAuditService } from './fake-paid-card-audit.service';
 import { InvoiceDocumentsService } from './invoice-documents.service';
-import { InvoiceTimelineService } from './invoice-timeline.service';
+import { InvoiceListReadService } from './invoice-list-read.service';
 import { TasksModule } from '@modules/tasks/tasks.module';
 
 @Module({
@@ -20,7 +20,8 @@ import { TasksModule } from '@modules/tasks/tasks.module';
     FakePaidCardAuditService,
     InvoiceDocumentsService,
     InvoiceTimelineService,
+    InvoiceListReadService,
   ],
-  exports: [InvoicesService, BookingInvoiceLifecycleService, FakePaidCardAuditService, InvoiceDocumentsService, InvoiceTimelineService],
+  exports: [InvoicesService, BookingInvoiceLifecycleService, FakePaidCardAuditService, InvoiceDocumentsService, InvoiceTimelineService, InvoiceListReadService],
 })
 export class InvoicesModule {}

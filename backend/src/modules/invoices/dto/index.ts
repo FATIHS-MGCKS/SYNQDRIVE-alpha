@@ -179,6 +179,9 @@ export class RecordInvoicePaymentDto {
   note?: string;
 }
 
+export * from './invoice-list-item.dto';
+export * from './list-invoices-query.dto';
+
 export class InvoiceQueryDto {
   @IsOptional()
   @IsEnum(OrgInvoiceType)

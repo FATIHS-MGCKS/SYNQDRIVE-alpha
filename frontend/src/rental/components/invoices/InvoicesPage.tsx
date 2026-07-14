@@ -99,11 +99,11 @@ export function InvoicesPage({ isDarkMode, navigation }: InvoicesPageProps) {
         className="mb-4 flex-row items-center justify-between gap-2 sm:mb-5 sm:items-start sm:gap-4"
         actions={(
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
-            <Button type="button" variant="ai" size="sm" onClick={() => setView('upload')}>
+            <Button type="button" variant="ai" size="sm" onClick={() => { void invoicesState.loadLookup(); setView('upload'); }}>
               <Icon name="sparkles" className="size-3.5" />
               KI-Upload
             </Button>
-            <Button type="button" variant="primary" size="sm" onClick={() => setView('create')}>
+            <Button type="button" variant="primary" size="sm" onClick={() => { void invoicesState.loadLookup(); setView('create'); }}>
               <Icon name="plus" className="size-3.5" />
               <span className="hidden min-[420px]:inline">Rechnung erstellen</span>
               <span className="min-[420px]:hidden">Neu</span>
@@ -114,8 +114,8 @@ export function InvoicesPage({ isDarkMode, navigation }: InvoicesPageProps) {
 
       <InvoiceKpiGrid
         stats={invoicesState.stats}
-        totalInvoices={invoicesState.invoices.length}
-        filteredCount={invoicesState.filtered.length}
+        totalInvoices={invoicesState.stats?.total ?? invoicesState.listTotal}
+        filteredCount={invoicesState.listTotal}
         directionCount={invoicesState.directionCount}
         unpaidCount={invoicesState.unpaidCount}
         overdueCount={invoicesState.overdueCount}
@@ -139,8 +139,8 @@ export function InvoicesPage({ isDarkMode, navigation }: InvoicesPageProps) {
         onDirectionOpenChange={invoicesState.setIsDirectionOpen}
         isStatusOpen={invoicesState.isStatusOpen}
         onStatusOpenChange={invoicesState.setIsStatusOpen}
-        filteredCount={invoicesState.filtered.length}
-        totalCount={invoicesState.invoices.length}
+        filteredCount={invoicesState.listTotal}
+        totalCount={invoicesState.stats?.total ?? invoicesState.listTotal}
         statusCount={invoicesState.statusCount}
         directionCount={invoicesState.directionCount}
         activeDirectionLabel={invoicesState.activeDirectionLabel}

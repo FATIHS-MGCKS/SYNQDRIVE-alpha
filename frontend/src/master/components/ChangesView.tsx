@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-list-read-model-v49465-2026-07-14',
+    version: '4.9.465',
+    title: 'V4.9.465 — Rechnungsübersicht: Backend-Read-Model mit Pagination/Suche/Filter',
+    summary: [
+      'Neuer Endpoint `GET /organizations/:orgId/invoices/list` liefert `InvoiceListItemDto` paginiert mit angereicherten Display-Feldern (Kunde, Buchung, Fahrzeug, Dokument, Versand).',
+      'Serverseitige Pagination (max 100), Sortierung mit stabiler `id`-Tie-Breaker, Suche und Filter (Richtung, Status, Fälligkeit, überfällig, Dokument, Versand, Station, Zeitraum).',
+      'Batch-Enrichment ohne N+1; DB-Indizes für `(orgId, dueDate)`, `(orgId, type, status)` und OutboundEmail `(orgId, invoiceId)`.',
+      'Frontend `useInvoices` nutzt Read-Model + Stats; Lookup-Daten nur noch lazy für Erstellen/Upload.',
+      'Legacy `GET /invoices` bleibt für Financial Insights und Dashboard.',
+    ],
+    reason:
+      'Die Rechnungsübersicht lud bisher die volle Liste plus Kunden, Fahrzeuge und Lieferanten im Frontend und setzte Anzeigedaten clientseitig zusammen.',
+    previousBehavior:
+      '`useInvoices` → `api.invoices.list` + `customers.list` + `vehicles.list` + `vendors.list`; Filter/Suche rein im Browser.',
+    details: 'Siehe `architecture/INVOICE_LIST_READ_MODEL_2026-07-14.md`.',
+    affectsArchitecture: true,
+    module: 'Invoice Finance Workflow',
+    createdAt: '2026-07-14T23:45:00.000Z',
+  },
+  {
     id: 'invoice-detail-hierarchy-v49464-2026-07-14',
     version: '4.9.464',
     title: 'V4.9.464 — Rechnungsdetail: sekundäre Inhalte gruppiert, Mobile verkürzt',

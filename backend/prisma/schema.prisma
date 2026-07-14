@@ -4367,6 +4367,8 @@ model OrgInvoice {
   @@index([invoiceDate])
   @@index([organizationId, status])
   @@index([organizationId, invoiceDate])
+  @@index([organizationId, dueDate])
+  @@index([organizationId, type, status])
   @@map("org_invoices")
 }
 
@@ -6485,6 +6487,7 @@ model OutboundEmail {
   @@index([organizationId])
   @@index([organizationId, bookingId])
   @@index([organizationId, customerId])
+  @@index([organizationId, invoiceId])
   @@index([bookingPaymentRequestId])
   @@index([status])
   @@index([createdAt])
