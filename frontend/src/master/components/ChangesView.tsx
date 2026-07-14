@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-email-send-2026-07-14',
+    version: '4.9.436',
+    title: 'V4.9.436 — Rechnungsversand ohne Buchungsbindung',
+    summary: [
+      '`POST .../invoices/:invoiceId/send-email` — eigenständiger Ausgangsrechnungsversand (kein Pflicht-`bookingId`).',
+      'Empfänger aus Kunde oder explizitem `recipient`; aktives PDF über kanonische `invoiceId`-Relation; Org-Absender aus E-Mail & Versand.',
+      'Template-Defaults für Betreff/Body (`invoice-email.template`); Anhang nur aus autorisiertem Storage-Buffer.',
+      '`OutboundEmail` mit `INVOICE_SINGLE`, Client-`idempotencyKey`, Audit auf `INVOICE` + `OUTBOUND_EMAIL`.',
+      'Capabilities: `canSend` ohne Buchungsverknüpfung wenn PDF verfügbar.',
+    ],
+    reason:
+      'Rechnungsversand war nur über Buchungsdokumenten-E-Mail mit bookingId erreichbar; manuelle/ausgestellte Rechnungen brauchen einen fachlichen Invoice-Pfad.',
+    previousBehavior:
+      'Nur `POST .../bookings/:bookingId/documents/send-email`; Detail-Capabilities blockierten ohne `bookingId`.',
+    details:
+      'InvoiceDocumentEmailService, SendInvoiceEmailDto, invoices.controller, invoice-send-email.util, Prisma idempotency_key.',
+    affectsArchitecture: true,
+    module: 'Invoices',
+    createdAt: '2026-07-15T00:10:00.000Z',
+  },
+  {
     id: 'invoice-due-tax-fallback-2026-07-14',
     version: '4.9.435',
     title: 'V4.9.435 — Rechnungen: Fälligkeit & Steuer-Fallback',

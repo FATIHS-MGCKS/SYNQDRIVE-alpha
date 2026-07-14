@@ -87,12 +87,14 @@ export function buildInvoiceDetailCapabilities(
     blocking.send.push('Nur Ausgangsrechnungen können versendet werden');
   } else if (input.status === 'DRAFT') {
     blocking.send.push('Rechnung muss zuerst ausgestellt werden');
-  } else if (!input.bookingId) {
-    blocking.send.push('Keine Buchungsverknüpfung für Dokumentenversand');
   } else if (!input.documentsView.activeDocumentId || !activeDoc?.downloadAvailable) {
-    blocking.send.push('Kein versendbares PDF verfügbar');
-  } else if (!input.customerEmail) {
-    blocking.send.push('Keine Kunden-E-Mail hinterlegt');
+    if (documentGenerationStatus === 'PROCESSING') {
+      blocking.send.push('Rechnungs-PDF wird noch erstellt');
+    } else if (documentGenerationStatus === 'FAILED') {
+      blocking.send.push('Dokumentgenerierung fehlgeschlagen');
+    } else {
+      blocking.send.push('Kein versendbares PDF verfügbar');
+    }
   } else {
     canSend = true;
   }

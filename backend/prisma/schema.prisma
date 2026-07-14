@@ -6241,6 +6241,7 @@ model OutboundEmail {
   errorMessage      String?                 @map("error_message")
   sentByUserId      String?                 @map("sent_by_user_id")
   sentAt            DateTime?               @map("sent_at")
+  idempotencyKey    String?                 @map("idempotency_key")
   createdAt         DateTime                @default(now()) @map("created_at")
   updatedAt         DateTime                @updatedAt @map("updated_at")
 
@@ -6254,6 +6255,8 @@ model OutboundEmail {
   @@index([organizationId])
   @@index([organizationId, bookingId])
   @@index([organizationId, customerId])
+  @@index([organizationId, invoiceId])
+  @@unique([organizationId, idempotencyKey])
   @@index([status])
   @@index([createdAt])
   @@map("outbound_emails")

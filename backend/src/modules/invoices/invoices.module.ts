@@ -1,5 +1,6 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { PrismaModule } from '@shared/database/prisma.module';
+import { OutboundEmailModule } from '@modules/outbound-email/outbound-email.module';
 import { InvoicesController } from './invoices.controller';
 import { InvoicesService } from './invoices.service';
 import { InvoiceNumberService } from './invoice-number.service';
@@ -9,7 +10,7 @@ import { InvoiceDetailReadService } from './invoice-detail-read.service';
 import { TasksModule } from '@modules/tasks/tasks.module';
 
 @Module({
-  imports: [TasksModule, PrismaModule],
+  imports: [TasksModule, PrismaModule, forwardRef(() => OutboundEmailModule)],
   controllers: [InvoicesController],
   providers: [
     InvoicesService,
