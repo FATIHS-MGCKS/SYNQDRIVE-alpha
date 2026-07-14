@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stripe-connect-e2e-blocked-v49455-2026-07-14',
+    version: '4.9.455',
+    title: 'V4.9.455 — Stripe Connect: Testmode-E2E blockiert (Onboarding/CAPTCHA)',
+    summary: [
+      'Prompt-4 E2E: Voraussetzungen geprüft (Builds grün, Audits HIGH=0, Webhook-Route live).',
+      'Express Connected Account acct_1TtB6x… vorhanden, aber chargesEnabled=false.',
+      'Hosted Connect-Onboarding durch Stripe-CAPTCHA blockiert — kein automatisierbarer Abschluss.',
+      'Schritte 1–11 (Buchung → Checkout → Zahlung → Refund) nicht ausführbar; Rollback-Simulation paymentsEnabled=false OK.',
+    ],
+    reason:
+      'Vollständiger Stripe-Testmode-E2E erfordert chargesEnabled=true; Onboarding konnte weder per API noch per Agent-Browser abgeschlossen werden.',
+    previousBehavior:
+      'Nach Deploy V4.9.454 war Payment-Stack live, aber Connect-Konto unvollständig onboarded.',
+    details:
+      'architecture/STRIPE_CONNECT_E2E_TEST_REPORT_2026-07-14.md; Urteil NOT READY FOR INTERNAL PILOT.',
+    affectsArchitecture: true,
+    module: 'Payments',
+    createdAt: '2026-07-14T19:00:00.000Z',
+  },
+  {
     id: 'payments-stack-deploy-v49454-2026-07-14',
     version: '4.9.454',
     title: 'V4.9.454 — End-Customer Payments: Merge + VPS-Deploy',

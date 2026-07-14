@@ -77,3 +77,13 @@ Non-secret URLs configured in `/opt/synqdrive/shared/backend.env`:
 ## Next step (Prompt 4)
 
 Deploy payments stack → enable flag for FMS org → complete Express onboarding → send `account.updated` test event → verify `StripeConnectWebhookEvent` row → proceed to booking checkout E2E.
+
+---
+
+## Prompt 4 update (2026-07-14)
+
+- FMS `paymentsEnabled=true` during prep; rollback simulation set `false` at end of E2E run.
+- Connected account `acct_1TtB6x…` created; **`chargesEnabled=false`** — onboarding blocked by Stripe CAPTCHA on hosted Account Link.
+- Audits re-run: **HIGH = 0** (2 MEDIUM legacy fake-PAID).
+- Full E2E report: `architecture/STRIPE_CONNECT_E2E_TEST_REPORT_2026-07-14.md`
+- **Verdict: NOT READY FOR INTERNAL PILOT** until manual Connect onboarding completes.
