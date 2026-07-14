@@ -30,7 +30,7 @@ export class InvoiceDetailReadService {
     });
     if (!invoice) throw new NotFoundException('Invoice not found');
 
-    const [customer, vehicle, booking, outboundEmails, timeline, documentsView, createdByActor, orgTax] =
+    const [customer, vehicle, booking, outboundEmails, externalSendRows, timeline, documentsView, createdByActor, orgTax] =
       await Promise.all([
         invoice.customerId
           ? this.prisma.customer.findFirst({
@@ -78,6 +78,11 @@ export class InvoiceDetailReadService {
             },
           },
         }),
+        this.prisma.orgInvoiceExternalSend.findMany({
+          where: { organizationId: orgId, invoiceId },
+          orderBy: { sentAt: 'desc' },
+          take: 50,
+        }),
         this.prisma.activityLog.findMany({
           where: { organizationId: orgId, entity: 'INVOICE', entityId: invoiceId },
           orderBy: { createdAt: 'desc' },
@@ -123,6 +128,34 @@ export class InvoiceDetailReadService {
         }),
       ]);
 
+    const actorIds = [
+      ...new Set(
+        externalSendRows
+          .map((r) => r.recordedByUserId)
+          .filter((id): id is string => !!id),
+      ),
+    ];
+    const actors =
+      actorIds.length > 0
+        ? await this.prisma.user.findMany({
+            where: { id: { in: actorIds } },
+            select: {
+              id: true,
+              name: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+            },
+          })
+        : [];
+    const actorById = new Map(actors.map((u) => [u.id, u]));
+    const externalSends = externalSendRows.map((row) => ({
+      ...row,
+      recordedByUser: row.recordedByUserId
+        ? actorById.get(row.recordedByUserId) ?? null
+        : null,
+    }));
+
     return mapInvoiceDetail({
       invoice,
       customer,
@@ -130,6 +163,7 @@ export class InvoiceDetailReadService {
       booking,
       documentsView,
       outboundEmails,
+      externalSends,
       timeline,
       includeVin: options?.includeVin ?? false,
       createdByActor,

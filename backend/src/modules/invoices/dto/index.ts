@@ -197,3 +197,5 @@ export class InvoiceQueryDto {
   @IsString()
   direction?: 'outgoing' | 'incoming';
 }
+
+export { RecordExternalSendDto } from './record-external-send.dto';

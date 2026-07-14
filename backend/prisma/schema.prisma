@@ -1050,6 +1050,7 @@ model Organization {
   rentalContracts                   RentalContract[]
   misuseCases                       MisuseCase[]
   orgInvoices                       OrgInvoice[]
+  orgInvoiceExternalSends           OrgInvoiceExternalSend[]
   userAccountPreferences            UserAccountPreference[]
   userNotificationPreferences       UserNotificationPreference[]
   orgInvoiceSequences               OrgInvoiceSequence[]
@@ -3970,6 +3971,15 @@ enum OrgInvoiceStatus {
   REJECTED
 }
 
+/// Channel for externally recorded invoice delivery (not SynqDrive OutboundEmail).
+enum InvoiceExternalSendChannel {
+  EXTERNAL_EMAIL
+  POSTAL_MAIL
+  IN_PERSON
+  CUSTOMER_PORTAL
+  OTHER
+}
+
 /// How the invoice creation was initiated (channel), independent of `OrgInvoiceType`.
 enum InvoiceCreationChannel {
   MANUAL_UI
@@ -4050,6 +4060,34 @@ model OrgInvoicePayment {
   @@map("org_invoice_payments")
 }
 
+model OrgInvoiceExternalSend {
+  id                String                     @id @default(uuid())
+  organizationId    String                     @map("organization_id")
+  invoiceId         String                     @map("invoice_id")
+  channel           InvoiceExternalSendChannel
+  sentAt            DateTime                   @map("sent_at")
+  recipient         String?
+  note              String?
+  externalReference String?                    @map("external_reference")
+  idempotencyKey    String?                    @map("idempotency_key")
+  duplicateOfId     String?                    @map("duplicate_of_id")
+  recordedByUserId  String?                    @map("recorded_by_user_id")
+  correlationId     String?                    @map("correlation_id")
+  createdAt         DateTime                   @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invoice      OrgInvoice   @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  duplicateOf  OrgInvoiceExternalSend?  @relation("ExternalSendDuplicate", fields: [duplicateOfId], references: [id], onDelete: SetNull)
+  duplicates   OrgInvoiceExternalSend[] @relation("ExternalSendDuplicate")
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId])
+  @@index([invoiceId])
+  @@index([organizationId, invoiceId])
+  @@index([sentAt])
+  @@map("org_invoice_external_sends")
+}
+
 model OrgInvoice {
   id                   String           @id @default(uuid())
   /// @deprecated Legacy global autoincrement — use invoiceNumberDisplay + sequence fields for new invoices.
@@ -4112,6 +4150,7 @@ model OrgInvoice {
   /// Canonical collection: all document versions linked via GeneratedDocument.invoiceId.
   generatedDocuments      GeneratedDocument[] @relation("OrgInvoiceDocuments")
   outboundEmails          OutboundEmail[]     @relation("OrgInvoiceOutboundEmails")
+  externalSends           OrgInvoiceExternalSend[]
 
   @@unique([organizationId, sequenceYear, sequenceNumber])
   @@index([organizationId])

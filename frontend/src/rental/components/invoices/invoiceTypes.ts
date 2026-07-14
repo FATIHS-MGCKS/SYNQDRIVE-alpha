@@ -166,6 +166,43 @@ export interface InvoiceDetail extends Invoice {
     documentExtractionId?: string | null;
     bookingId?: string | null;
   };
-  timeline?: { id: string; action: string; description: string; createdAt: string }[];
+  timeline?: { id: string; action: string; description: string; createdAt: string; kind?: string }[];
   outboundEmails?: unknown[];
+  externalSendHistory?: InvoiceExternalSendEntry[];
+}
+
+export type InvoiceExternalSendChannel =
+  | 'EXTERNAL_EMAIL'
+  | 'POSTAL_MAIL'
+  | 'IN_PERSON'
+  | 'CUSTOMER_PORTAL'
+  | 'OTHER';
+
+export interface RecordExternalSendInput {
+  channel: InvoiceExternalSendChannel;
+  sentAt: string;
+  recipient?: string;
+  note?: string;
+  externalReference?: string;
+  idempotencyKey?: string;
+}
+
+export interface InvoiceExternalSendEntry {
+  id: string;
+  channel: InvoiceExternalSendChannel;
+  channelLabel: string;
+  sentAt: string;
+  recordedAt: string;
+  recipient: string | null;
+  note: string | null;
+  externalReference: string | null;
+  source: 'EXTERNAL_RECORDED';
+  possibleDuplicate: boolean;
+  duplicateOfId: string | null;
+}
+
+export interface RecordExternalSendResponse {
+  externalSend: InvoiceExternalSendEntry;
+  invoice: { id: string; status: string; sentAt: string | null };
+  idempotentReplay: boolean;
 }

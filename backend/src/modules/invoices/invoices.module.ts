@@ -7,6 +7,7 @@ import { InvoiceNumberService } from './invoice-number.service';
 import { BookingInvoiceLifecycleService } from './booking-invoice-lifecycle.service';
 import { InvoiceDocumentsReadService } from './invoice-documents-read.service';
 import { InvoiceDetailReadService } from './invoice-detail-read.service';
+import { InvoiceExternalSendService } from './invoice-external-send.service';
 import { TasksModule } from '@modules/tasks/tasks.module';
 
 @Module({
@@ -18,7 +19,8 @@ import { TasksModule } from '@modules/tasks/tasks.module';
     BookingInvoiceLifecycleService,
     InvoiceDocumentsReadService,
     InvoiceDetailReadService,
+    InvoiceExternalSendService,
   ],
-  exports: [InvoicesService, BookingInvoiceLifecycleService, InvoiceDocumentsReadService, InvoiceDetailReadService],
+  exports: [InvoicesService, BookingInvoiceLifecycleService, InvoiceDocumentsReadService, InvoiceDetailReadService, InvoiceExternalSendService],
 })
 export class InvoicesModule {}

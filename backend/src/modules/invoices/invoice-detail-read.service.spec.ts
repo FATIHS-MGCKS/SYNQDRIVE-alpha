@@ -22,6 +22,8 @@ describe('InvoiceDetailReadService', () => {
     booking: { findFirst: jest.Mock };
     organizationMembership: { findFirst: jest.Mock };
     outboundEmail: { findMany: jest.Mock };
+    orgInvoiceExternalSend: { findMany: jest.Mock };
+    user: { findMany: jest.Mock };
     activityLog: { findMany: jest.Mock };
     organization: { findFirst: jest.Mock };
   };
@@ -37,6 +39,8 @@ describe('InvoiceDetailReadService', () => {
       booking: { findFirst: jest.fn() },
       organizationMembership: { findFirst: jest.fn() },
       outboundEmail: { findMany: jest.fn().mockResolvedValue([]) },
+      orgInvoiceExternalSend: { findMany: jest.fn().mockResolvedValue([]) },
+      user: { findMany: jest.fn().mockResolvedValue([]) },
       activityLog: { findMany: jest.fn().mockResolvedValue([]) },
       organization: {
         findFirst: jest.fn().mockResolvedValue({ defaultVatRate: 19, isSmallBusiness: false }),

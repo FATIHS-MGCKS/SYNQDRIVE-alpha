@@ -4031,6 +4031,16 @@ export const api = {
         `/organizations/${orgId}/invoices/${id}/mark-sent`,
         {},
       ),
+    /** Records delivery outside SynqDrive (V4.9.439). */
+    recordExternalSend: (
+      orgId: string,
+      invoiceId: string,
+      data: import('../rental/components/invoices/invoiceTypes').RecordExternalSendInput,
+    ) =>
+      post<import('../rental/components/invoices/invoiceTypes').RecordExternalSendResponse>(
+        `/organizations/${orgId}/invoices/${invoiceId}/record-external-send`,
+        data,
+      ),
     recordPayment: (
       orgId: string,
       id: string,

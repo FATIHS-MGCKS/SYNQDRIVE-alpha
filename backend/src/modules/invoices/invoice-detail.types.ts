@@ -217,6 +217,30 @@ export interface InvoiceTimelineEventDto {
   action: string;
   description: string;
   createdAt: string;
+  kind?: 'ACTIVITY' | 'EXTERNAL_SEND' | 'SYNQDRIVE_EMAIL';
+  channel?: string;
+  externalSendId?: string;
+  source?: string;
+  sentAt?: string;
+  recipient?: string | null;
+}
+
+export interface InvoiceExternalSendEntryDto {
+  id: string;
+  channel: string;
+  channelLabel: string;
+  sentAt: string;
+  recordedAt: string;
+  recipient: string | null;
+  note: string | null;
+  externalReference: string | null;
+  recordedByUserId: string | null;
+  recordedByDisplayName: string | null;
+  source: 'EXTERNAL_RECORDED';
+  possibleDuplicate: boolean;
+  duplicateOfId: string | null;
+  idempotencyKey: string | null;
+  correlationId: string | null;
 }
 
 export interface InvoiceDetailCapabilitiesDto {
@@ -250,6 +274,7 @@ export interface InvoiceDetailDto {
   documents: InvoiceDocumentSummaryDto[];
   outboundEmails: InvoiceOutboundEmailSummaryDto[];
   emailSendHistory: InvoiceEmailSendHistoryEntryDto[];
+  externalSendHistory: InvoiceExternalSendEntryDto[];
   linkedTasks: InvoiceLinkedTaskDto[];
   notes: string;
   provenance: InvoiceProvenanceDto;

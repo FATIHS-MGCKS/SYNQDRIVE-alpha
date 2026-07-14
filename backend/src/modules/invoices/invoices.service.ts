@@ -15,7 +15,7 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { CreateInvoiceDto, RecordInvoicePaymentDto, UpdateInvoiceDto } from './dto';
-import { validateExternalMarkSent } from './invoice-status.transitions';
+import { validateRecordExternalSend } from './invoice-status.transitions';
 import {
   canRecordPayment,
   defaultStatusForCreate,
@@ -531,12 +531,16 @@ export class InvoicesService {
     return this.findById(id, orgId);
   }
 
-  async markSent(id: string, orgId: string) {
+  /** @deprecated Delegates to InvoiceExternalSendService via controller. */
+  async markSent(id: string, orgId: string, userId?: string | null) {
+    void userId;
     const inv = await this.requireInvoice(id, orgId);
-    const validation = validateExternalMarkSent({
+    const validation = validateRecordExternalSend({
       type: inv.type,
       status: inv.status,
       sequenceNumber: inv.sequenceNumber,
+      issuedAt: inv.issuedAt,
+      sentAt: new Date(),
     });
     if (!validation.ok) {
       throw new BadRequestException(validation.message);

@@ -16,9 +16,11 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { StorageService } from '@shared/storage/storage.service';
 import { InvoiceDocumentEmailService } from '@modules/outbound-email/invoice-document-email.service';
 import { SendInvoiceEmailDto } from '@modules/outbound-email/dto/send-invoice-email.dto';
+import { InvoiceExternalSendService } from './invoice-external-send.service';
 import {
   CreateInvoiceDto,
   InvoiceQueryDto,
+  RecordExternalSendDto,
   RecordInvoicePaymentDto,
   UpdateInvoiceDto,
 } from './dto';
@@ -32,6 +34,7 @@ export class InvoicesController {
     private readonly invoicesService: InvoicesService,
     private readonly invoiceDetail: InvoiceDetailReadService,
     private readonly invoiceEmail: InvoiceDocumentEmailService,
+    private readonly invoiceExternalSend: InvoiceExternalSendService,
     private readonly storage: StorageService,
   ) {}
 
@@ -107,10 +110,32 @@ export class InvoicesController {
     return this.invoicesService.issue(id, orgId);
   }
 
+  /** @deprecated Use POST .../record-external-send */
   @Post('organizations/:orgId/invoices/:id/mark-sent')
   @UseGuards(OrgScopingGuard, RolesGuard)
-  async markSent(@Param('orgId') orgId: string, @Param('id') id: string) {
-    return this.invoicesService.markSent(id, orgId);
+  @Roles('ORG_ADMIN', 'MASTER_ADMIN', 'SUB_ADMIN')
+  async markSent(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.invoiceExternalSend.recordLegacyMarkSent(orgId, id, userId ?? null);
+  }
+
+  @Post('organizations/:orgId/invoices/:invoiceId/record-external-send')
+  @UseGuards(OrgScopingGuard, RolesGuard)
+  @Roles('ORG_ADMIN', 'MASTER_ADMIN', 'SUB_ADMIN')
+  async recordExternalSend(
+    @Param('orgId') orgId: string,
+    @Param('invoiceId') invoiceId: string,
+    @CurrentUser('id') userId: string | undefined,
+    @Req() req: Request & { requestId?: string },
+    @Body() body: RecordExternalSendDto,
+  ) {
+    return this.invoiceExternalSend.recordExternalSend(orgId, invoiceId, userId ?? null, {
+      ...body,
+      correlationId: req.requestId ?? undefined,
+    });
   }
 
   @Post('organizations/:orgId/invoices/:id/payments')

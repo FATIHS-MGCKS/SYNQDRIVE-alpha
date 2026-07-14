@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-external-send-2026-07-14',
+    version: '4.9.439',
+    title: 'V4.9.439 — Externer Rechnungsversand explizit erfassen',
+    summary: [
+      '`POST .../invoices/:invoiceId/record-external-send` — Kanal, sentAt, Empfänger, Notiz, externe Referenz.',
+      'Persistenz in `OrgInvoiceExternalSend` (nicht OutboundEmail); Audit unterscheidet SynqDrive vs. extern.',
+      'Idempotency-Key + Doppelerkennung (`duplicateOfId`); Rechnung SENT nur mit Versandnachweis.',
+      '`mark-sent` deprecated → delegiert an OTHER-Kanal mit Hinweis.',
+      'Detail-DTO: `externalSendHistory` + Timeline-Einträge `EXTERNAL_SEND`.',
+    ],
+    reason:
+      '„Als gesendet markieren“ setzte nur sentAt ohne Kanal/Nachweis und war fachlich ungenau.',
+    previousBehavior:
+      '`POST mark-sent` setzte status=SENT + sentAt=now ohne strukturierten Versandnachweis.',
+    details:
+      'OrgInvoiceExternalSend, InvoiceExternalSendService, record-external-send.dto, invoice-timeline.util',
+    affectsArchitecture: true,
+    module: 'Invoices',
+    createdAt: '2026-07-15T02:00:00.000Z',
+  },
+  {
     id: 'invoice-email-status-transitions-2026-07-14',
     version: '4.9.438',
     title: 'V4.9.438 — Rechnung vs. E-Mail: zentrale Statusübergänge',

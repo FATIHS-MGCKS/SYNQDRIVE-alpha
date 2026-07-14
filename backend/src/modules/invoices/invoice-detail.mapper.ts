@@ -16,6 +16,8 @@ import {
   type VehicleRow,
 } from './invoice-detail-relations.util';
 import { mapInvoiceEmailSendHistory } from './invoice-email-send-history.util';
+import { mapInvoiceExternalSendHistory } from './invoice-external-send.mapper';
+import { mergeInvoiceTimeline } from './invoice-timeline.util';
 import {
   mapInvoiceProvenance,
   type InvoiceProvenanceActorRow,
@@ -25,6 +27,7 @@ import type {
   InvoiceDetailLineItemDto,
   InvoiceDetailPaymentDto,
   InvoiceDirection,
+  InvoiceExternalSendEntryDto,
   InvoiceLinkedTaskDto,
   InvoiceOutboundEmailSummaryDto,
   InvoiceSupplierSummaryDto,
@@ -33,6 +36,7 @@ import type {
 import type {
   Customer,
   OrgInvoice,
+  OrgInvoiceExternalSend,
   OrgInvoicePayment,
   OrgTask,
   OutboundEmail,
@@ -65,6 +69,7 @@ export interface InvoiceDetailMapperInput {
   booking: BookingRow | null;
   documentsView: InvoiceDocumentsViewDto;
   outboundEmails: Array<OutboundEmail & { attachments: OutboundEmailAttachment[] }>;
+  externalSends: Array<OrgInvoiceExternalSend & { recordedByUser?: InvoiceProvenanceActorRow | null }>;
   timeline: ActivityRow[];
   includeVin?: boolean;
   createdByActor?: InvoiceProvenanceActorRow | null;
@@ -173,13 +178,11 @@ function mapOutboundEmails(
   }));
 }
 
-function mapTimeline(rows: ActivityRow[]): InvoiceTimelineEventDto[] {
-  return rows.map((r) => ({
-    id: r.id,
-    action: r.action,
-    description: r.description,
-    createdAt: r.createdAt.toISOString(),
-  }));
+function mapTimeline(
+  rows: ActivityRow[],
+  externalSends: InvoiceExternalSendEntryDto[],
+): InvoiceTimelineEventDto[] {
+  return mergeInvoiceTimeline(rows, externalSends);
 }
 
 export function mapInvoiceDetail(input: InvoiceDetailMapperInput): InvoiceDetailDto {
@@ -222,6 +225,8 @@ export function mapInvoiceDetail(input: InvoiceDetailMapperInput): InvoiceDetail
     customerEmail: input.customer?.email ?? null,
     documentsView,
   });
+
+  const externalSendHistory = mapInvoiceExternalSendHistory(input.externalSends);
 
   return {
     invoice: {
@@ -270,6 +275,7 @@ export function mapInvoiceDetail(input: InvoiceDetailMapperInput): InvoiceDetail
     documents: documentsView.documents,
     outboundEmails: mapOutboundEmails(input.outboundEmails),
     emailSendHistory: mapInvoiceEmailSendHistory(input.outboundEmails),
+    externalSendHistory,
     linkedTasks: mapTasks(inv.tasks),
     notes: inv.notes ?? '',
     provenance: (() => {
@@ -279,7 +285,7 @@ export function mapInvoiceDetail(input: InvoiceDetailMapperInput): InvoiceDetail
       }
       return mapped;
     })(),
-    timeline: mapTimeline(input.timeline),
+    timeline: mapTimeline(input.timeline, externalSendHistory),
     capabilities,
   };
 }

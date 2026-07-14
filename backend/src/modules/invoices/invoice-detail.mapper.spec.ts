@@ -50,6 +50,7 @@ describe('invoice-detail.mapper', () => {
       },
       documentsView: { activeDocumentId: null, cacheMismatch: false, documents: [] },
       outboundEmails: [],
+      externalSends: [],
       timeline: [],
     });
 
@@ -75,6 +76,7 @@ describe('invoice-detail.mapper', () => {
       booking: null,
       documentsView: { activeDocumentId: null, cacheMismatch: false, documents: [] },
       outboundEmails: [],
+      externalSends: [],
       timeline: [],
     });
     expect(dto.provenance.classification).toBe('LEGACY');
@@ -98,6 +100,7 @@ describe('invoice-detail.mapper', () => {
       booking: null,
       documentsView: { activeDocumentId: null, cacheMismatch: false, documents: [] },
       outboundEmails: [],
+      externalSends: [],
       timeline: [],
       createdByActor: {
         id: 'user-1',
@@ -125,6 +128,7 @@ describe('invoice-detail.mapper', () => {
       booking: null,
       documentsView: { activeDocumentId: null, cacheMismatch: false, documents: [] },
       outboundEmails: [],
+      externalSends: [],
       timeline: [],
       createdByActor: null,
     });
@@ -158,6 +162,7 @@ describe('invoice-detail.mapper', () => {
       },
       documentsView: { activeDocumentId: null, cacheMismatch: false, documents: [] },
       outboundEmails: [],
+      externalSends: [],
       timeline: [],
     });
     expect(dto.relations.customerDiverges).toBe(true);
@@ -175,6 +180,7 @@ describe('invoice-detail.mapper', () => {
       booking: null,
       documentsView: { activeDocumentId: null, cacheMismatch: false, documents: [] },
       outboundEmails: [],
+      externalSends: [],
       timeline: [],
     });
     expect(dto.booking).toBeNull();
@@ -221,6 +227,7 @@ describe('invoice-detail.mapper', () => {
           attachments: [{ generatedDocumentId: 'doc-1' }],
         } as never,
       ],
+      externalSends: [],
       timeline: [],
     });
     expect(dto.emailSendHistory).toHaveLength(1);

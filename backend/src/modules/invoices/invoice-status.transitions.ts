@@ -68,34 +68,57 @@ export interface ValidateExternalMarkSentInput {
   type: OrgInvoiceType | string;
   status: OrgInvoiceStatus;
   sequenceNumber: number | null;
+  issuedAt?: Date | null;
+  sentAt?: Date;
 }
 
 export type ValidateExternalMarkSentResult =
   | { ok: true; sentAt: Date }
   | { ok: false; message: string };
 
+const MAX_FUTURE_SENT_AT_MS = 5 * 60 * 1000;
+
 /**
- * External/manual mark-sent — does not require or imply outbound email success.
+ * Validates whether an external send may be recorded and promotes invoice sentAt.
  */
-export function validateExternalMarkSent(
+export function validateRecordExternalSend(
   input: ValidateExternalMarkSentInput,
 ): ValidateExternalMarkSentResult {
   if (!isOutgoingInvoiceType(input.type)) {
-    return { ok: false, message: 'Only outgoing invoices can be marked as sent' };
+    return { ok: false, message: 'Only outgoing invoices can be recorded as sent externally' };
   }
   if (!EXTERNAL_MARK_SENT_SOURCE_STATUSES.includes(input.status)) {
     return {
       ok: false,
-      message: 'Invoice must be issued before marking as sent',
+      message: 'Invoice must be issued before recording external delivery',
     };
   }
   if (!input.sequenceNumber) {
     return {
       ok: false,
-      message: 'Issue the invoice before marking as sent',
+      message: 'Issue the invoice before recording external delivery',
     };
   }
-  return { ok: true, sentAt: new Date() };
+
+  const sentAt = input.sentAt ?? new Date();
+  const now = Date.now();
+  if (sentAt.getTime() > now + MAX_FUTURE_SENT_AT_MS) {
+    return { ok: false, message: 'sentAt cannot be in the future' };
+  }
+  if (input.issuedAt && sentAt.getTime() < input.issuedAt.getTime()) {
+    return { ok: false, message: 'sentAt cannot be before invoice issue date' };
+  }
+
+  return { ok: true, sentAt };
+}
+
+/**
+ * @deprecated Use validateRecordExternalSend — kept for legacy mark-sent compat.
+ */
+export function validateExternalMarkSent(
+  input: ValidateExternalMarkSentInput,
+): ValidateExternalMarkSentResult {
+  return validateRecordExternalSend({ ...input, sentAt: input.sentAt ?? new Date() });
 }
 
 /**
