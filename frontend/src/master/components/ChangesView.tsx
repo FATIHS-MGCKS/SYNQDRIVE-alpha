@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'payments-connect-api-v49440-2026-07-14',
+    version: '4.9.440',
+    title: 'V4.9.440 — End-Customer Payments: Connect Onboarding API',
+    summary: [
+      'Org-scoped REST: POST account, POST onboarding-link, GET status, POST refresh unter /organizations/:orgId/payments/connect/*.',
+      'Guards: OrgScopingGuard + PaymentsFeatureGuard + PaymentsPermissionGuard; manage/read gemäß Connect-Berechtigungen.',
+      'Return/Refresh-URLs gegen CORS-Allowlist + konfigurierte Defaults validiert; Account-Link nur ephemer zurückgegeben.',
+      'GET status liest persistierten DB-Stand; POST refresh synchronisiert von Stripe — Redirect markiert nicht automatisch ACTIVE.',
+    ],
+    reason:
+      'Berechtigte Org-Admins brauchen eine sichere Backend-API für Connect-Onboarding, bevor Frontend angebunden wird.',
+    previousBehavior: 'Connect-Logik nur als Service ohne HTTP-Endpunkte; keine URL-Validierung für Onboarding-Redirects.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_CONNECT_API_2026-07-14.md, payments-connect.controller.ts, payments-connect-url.util.ts.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Connect',
+    createdAt: '2026-07-14T20:00:00.000Z',
+  },
+  {
     id: 'stripe-connect-adapter-v49439-2026-07-14',
     version: '4.9.439',
     title: 'V4.9.439 — End-Customer Payments: Stripe Connect Adapter-Schicht',

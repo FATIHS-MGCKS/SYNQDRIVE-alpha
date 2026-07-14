@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from '@shared/database/prisma.module';
+import { PaymentsConnectController } from './payments-connect.controller';
 import { PaymentStatusService } from './payment-status.service';
 import { PaymentsAccessService } from './payments-access.service';
 import { PaymentPolicyService } from './payment-policy.service';
@@ -22,6 +23,7 @@ import {
 
 @Module({
   imports: [PrismaModule, ConfigModule],
+  controllers: [PaymentsConnectController],
   providers: [
     PaymentStatusService,
     PaymentsAccessService,

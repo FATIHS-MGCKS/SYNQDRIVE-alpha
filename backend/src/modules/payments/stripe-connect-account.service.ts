@@ -18,6 +18,7 @@ import {
   StripeConnectDomainError,
 } from './stripe/stripe-connect.errors';
 import { assertConnectTestModeOnly } from './stripe/stripe-connect-client.util';
+import { resolveAllowedConnectRedirectUrl } from './utils/payments-connect-url.util';
 import type {
   ConnectedAccountStatus,
   OnboardingSessionRef,
@@ -155,6 +156,19 @@ export class StripeConnectAccountService {
     });
   }
 
+  async getStoredConnectStatus(
+    organizationId: string,
+    actor: PermissionActor,
+  ): Promise<ConnectAccountContext> {
+    await this.assertConnectReadAccess(organizationId, actor);
+    const account = await this.requireLocalAccount(organizationId);
+    return {
+      organizationId,
+      account,
+      status: this.mapStoredAccountToStatus(account),
+    };
+  }
+
   async getConnectedAccountStatus(
     organizationId: string,
     actor: PermissionActor,
@@ -185,8 +199,16 @@ export class StripeConnectAccountService {
 
     return this.stripeConnectAdapter.createOnboardingSession({
       connectedAccountId,
-      returnUrl: urls?.returnUrl ?? this.configService.get<string>('stripe.connectReturnUrl')!,
-      refreshUrl: urls?.refreshUrl ?? this.configService.get<string>('stripe.connectRefreshUrl')!,
+      returnUrl: resolveAllowedConnectRedirectUrl(
+        this.configService,
+        urls?.returnUrl,
+        'stripe.connectReturnUrl',
+      ),
+      refreshUrl: resolveAllowedConnectRedirectUrl(
+        this.configService,
+        urls?.refreshUrl,
+        'stripe.connectRefreshUrl',
+      ),
     });
   }
 
@@ -194,7 +216,7 @@ export class StripeConnectAccountService {
     organizationId: string,
     actor: PermissionActor,
   ): Promise<ConnectAccountContext> {
-    await this.assertConnectReadAccess(organizationId, actor);
+    await this.assertConnectManageAccess(organizationId, actor);
     const account = await this.requireLocalAccount(organizationId);
     const connectedAccountId = account.stripeConnectedAccountId!;
 
@@ -298,6 +320,32 @@ export class StripeConnectAccountService {
     }
 
     return { ...org, country: org.country?.trim() || 'DE' };
+  }
+
+  private mapStoredAccountToStatus(
+    account: OrganizationPaymentAccount,
+  ): ConnectedAccountStatus {
+    return {
+      status: account.status,
+      detailsSubmitted: account.detailsSubmitted,
+      chargesEnabled: account.chargesEnabled,
+      payoutsEnabled: account.payoutsEnabled,
+      disabledReason: account.disabledReason,
+      requirements: {
+        currentlyDue: Array.isArray(account.requirementsCurrentlyDue)
+          ? (account.requirementsCurrentlyDue as string[])
+          : [],
+        pastDue: Array.isArray(account.requirementsPastDue)
+          ? (account.requirementsPastDue as string[])
+          : [],
+        pendingVerification: Array.isArray(account.requirementsPendingVerification)
+          ? (account.requirementsPendingVerification as string[])
+          : [],
+      },
+      country: account.country,
+      defaultCurrency: account.defaultCurrency,
+      livemode: account.livemode,
+    };
   }
 
   private async requireLocalAccount(

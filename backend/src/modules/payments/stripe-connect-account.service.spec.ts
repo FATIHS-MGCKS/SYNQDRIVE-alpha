@@ -199,7 +199,58 @@ describe('StripeConnectAccountService', () => {
     ).rejects.toBeInstanceOf(ConnectNotConfiguredError);
   });
 
-  it('scopes operations to organization tenant', async () => {
+  it('rejects invalid onboarding redirect URL origin', async () => {
+    jest.spyOn(orgPaymentAccountService, 'findByOrganization').mockResolvedValue({
+      id: 'opa-1',
+      organizationId,
+      stripeConnectedAccountId: 'acct_test_1',
+      status: OrganizationPaymentAccountStatus.ONBOARDING,
+    } as never);
+    (configService.get as jest.Mock).mockImplementation((key: string, defaultValue?: unknown) => {
+      const map: Record<string, unknown> = {
+        'stripe.secretKey': 'sk_test_123',
+        'stripe.connectReturnUrl': 'https://app.example/return',
+        'stripe.connectRefreshUrl': 'https://app.example/refresh',
+        'stripe.portalReturnUrl': 'https://app.example/portal',
+        'app.corsOrigins': ['https://app.example'],
+      };
+      return map[key] ?? defaultValue;
+    });
+
+    await expect(
+      service.createOnboardingSession(organizationId, actor, {
+        returnUrl: 'https://evil.example/redirect',
+      }),
+    ).rejects.toThrow('Redirect URL origin is not allowed');
+    expect(adapter.createOnboardingSession).not.toHaveBeenCalled();
+  });
+
+  it('returns stored status from database without live Stripe fetch', async () => {
+    jest.spyOn(orgPaymentAccountService, 'findByOrganization').mockResolvedValue({
+      id: 'opa-1',
+      organizationId,
+      stripeConnectedAccountId: 'acct_test_1',
+      status: OrganizationPaymentAccountStatus.ONBOARDING,
+      detailsSubmitted: false,
+      chargesEnabled: false,
+      payoutsEnabled: false,
+      disabledReason: null,
+      requirementsCurrentlyDue: ['external_account'],
+      requirementsPastDue: [],
+      requirementsPendingVerification: [],
+      country: 'DE',
+      defaultCurrency: 'EUR',
+      livemode: false,
+    } as never);
+
+    const result = await service.getStoredConnectStatus(organizationId, actor);
+
+    expect(adapter.getConnectedAccountStatus).not.toHaveBeenCalled();
+    expect(result.status.status).toBe(OrganizationPaymentAccountStatus.ONBOARDING);
+    expect(result.status.chargesEnabled).toBe(false);
+  });
+
+  it('scopes refresh to organization tenant with manage permission', async () => {
     jest.spyOn(orgPaymentAccountService, 'findByOrganization').mockResolvedValue({
       id: 'opa-1',
       organizationId,
@@ -217,7 +268,7 @@ describe('StripeConnectAccountService', () => {
     expect(paymentsAccess.assertPaymentPermission).toHaveBeenCalledWith(
       organizationId,
       actor,
-      'payments.connect.read',
+      'payments.connect.manage',
     );
     expect(adapter.refreshConnectedAccount).toHaveBeenCalledWith('acct_test_1');
   });
