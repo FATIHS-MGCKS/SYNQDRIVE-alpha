@@ -3,11 +3,15 @@ import { InvoicePaymentMethod, OrgInvoice, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { InvoicesService } from './invoices.service';
 
-export type BookingCheckoutPaymentMethod = 'card' | 'cash' | 'invoice';
+import type { BookingCheckoutPaymentIntent } from '@modules/bookings/booking-payment-intent.types';
+
+export type BookingCheckoutPaymentMethod = BookingCheckoutPaymentIntent;
 
 export interface SyncBookingInvoiceOptions {
   /** Checkout payment intent only — does not record payment or mark invoice paid. */
-  paymentMethod?: BookingCheckoutPaymentMethod;
+  paymentIntent?: BookingCheckoutPaymentIntent;
+  /** @deprecated use paymentIntent */
+  paymentMethod?: BookingCheckoutPaymentIntent;
   userId?: string | null;
   /** Explicit authorized manual payment after issue (ops / staff action). */
   markPaid?: boolean;
@@ -54,8 +58,9 @@ export class BookingInvoiceLifecycleService {
     const outstanding = Math.max(0, invoice.totalCents - invoice.paidCents);
     if (outstanding <= 0 || invoice.status === 'PAID') return invoice;
 
+    const intent = options?.paymentIntent ?? options?.paymentMethod;
     const method =
-      options?.paymentMethod === 'cash'
+      intent === 'cash'
         ? InvoicePaymentMethod.CASH
         : InvoicePaymentMethod.BANK_TRANSFER;
 

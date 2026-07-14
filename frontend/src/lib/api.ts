@@ -1158,13 +1158,41 @@ export interface BookingDocumentBundleView {
 }
 
 export interface BookingWizardDraftResult {
-  booking: Record<string, unknown> & { id: string; bookingRef?: string | null; status?: string };
+  booking: Record<string, unknown> & { id: string; bookingRef?: string | null; status?: string; paymentIntent?: string | null };
   bundle: BookingDocumentBundleView;
   autoSend?: {
     sent: boolean;
     reason?: string;
     error?: string;
   } | null;
+  paymentIntent?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
+  paymentFlow?: {
+    intent: 'payment_link';
+    bookingConfirmed: boolean;
+    paymentRequestCreated: boolean;
+    paymentRequestId?: string;
+    checkoutCreated: boolean;
+    checkoutUrl?: string;
+    emailQueued: boolean;
+    partialFailures: Array<{ step: string; message: string }>;
+  } | null;
+}
+
+export interface WizardCheckoutContext {
+  currency: string;
+  onlineAmountCents: number;
+  depositAmountCents: number;
+  totalGrossCents: number;
+  recipientEmail: string | null;
+  paymentLinkEligibility: {
+    eligible: boolean;
+    reasons: string[];
+    paymentsEnabled: boolean;
+    connectAccountReady: boolean;
+    customerEmailPresent: boolean;
+    paymentRequestPossible: boolean;
+  };
+  checkoutExpiresInSeconds: number;
 }
 
 export type BookingDetailDocumentSlot = {
@@ -2921,7 +2949,8 @@ export const api = {
         customerId: string;
         startDate: string;
         endDate?: string;
-        paymentMethod?: 'card' | 'cash' | 'invoice';
+        paymentIntent?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
+        paymentMethod?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
         foreignTravelRequested?: boolean;
         additionalDriverCount?: number;
         depositReceived?: boolean;
@@ -2935,14 +2964,16 @@ export const api = {
       orgId: string,
       bookingId: string,
       params?: {
-        paymentMethod?: 'card' | 'cash' | 'invoice';
+        paymentIntent?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
+        paymentMethod?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
         foreignTravelRequested?: boolean;
         additionalDriverCount?: number;
         depositReceived?: boolean;
       },
     ) => {
       const q = new URLSearchParams();
-      if (params?.paymentMethod) q.set('paymentMethod', params.paymentMethod);
+      if (params?.paymentIntent) q.set('paymentIntent', params.paymentIntent);
+      else if (params?.paymentMethod) q.set('paymentMethod', params.paymentMethod);
       if (params?.foreignTravelRequested) q.set('foreignTravelRequested', 'true');
       if (params?.additionalDriverCount != null) {
         q.set('additionalDriverCount', String(params.additionalDriverCount));
@@ -2994,6 +3025,10 @@ export const api = {
         `/organizations/${orgId}/bookings/wizard-draft/${bookingId}`,
         data,
       ),
+    getWizardCheckoutContext: (orgId: string, bookingId: string) =>
+      get<WizardCheckoutContext>(
+        `/organizations/${orgId}/bookings/wizard-draft/${bookingId}/checkout-context`,
+      ),
     confirmWizardDraft: (
       orgId: string,
       bookingId: string,
@@ -3001,7 +3036,8 @@ export const api = {
         agbAccepted?: boolean;
         privacyAccepted?: boolean;
         status?: 'PENDING' | 'CONFIRMED';
-        paymentMethod?: 'card' | 'cash' | 'invoice';
+        paymentIntent?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
+        paymentMethod?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
       },
     ) =>
       post<BookingWizardDraftResult>(

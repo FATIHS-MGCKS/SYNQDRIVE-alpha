@@ -624,6 +624,14 @@ enum BookingStatus {
   NO_SHOW
 }
 
+enum BookingPaymentIntent {
+  PAYMENT_LINK
+  PAY_ON_PICKUP
+  CASH
+  INVOICE
+  TERMINAL
+}
+
 enum InsightType {
   TIGHT_HANDOVER
   RETURN_NEEDS_INSPECTION
@@ -3059,6 +3067,8 @@ model Booking {
   status                  BookingStatus        @default(PENDING)
   /// Derived summary from BookingPaymentRequest / invoice state — not financial source of truth.
   paymentStatus           BookingPaymentStatus @default(UNPAID) @map("payment_status")
+  /// Checkout payment intent from wizard — does not imply money received.
+  paymentIntent           BookingPaymentIntent? @map("payment_intent")
   notes                   String?
   cancelledAt             DateTime?            @map("cancelled_at")
   completedAt             DateTime?            @map("completed_at")

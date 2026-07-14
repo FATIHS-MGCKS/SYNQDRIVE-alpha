@@ -17,7 +17,9 @@ export interface BookingRentalEligibilityInput {
   customerId: string;
   startDate: Date;
   endDate?: Date;
-  paymentMethod?: 'card' | 'cash' | 'invoice';
+  paymentIntent?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
+  /** @deprecated */
+  paymentMethod?: 'payment_link' | 'pay_on_pickup' | 'cash' | 'invoice';
   foreignTravelRequested?: boolean;
   additionalDriverCount?: number;
   depositReceived?: boolean;

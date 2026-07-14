@@ -9,6 +9,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { BookingPricingInputDto } from '@modules/pricing/dto';
+import { BOOKING_CHECKOUT_PAYMENT_INTENTS } from '../booking-payment-intent.types';
 
 export class BookingWizardDraftBodyDto {
   @IsUUID('4')
@@ -72,6 +73,11 @@ export class BookingWizardDraftConfirmDto {
   status?: 'PENDING' | 'CONFIRMED';
 
   @IsOptional()
-  @IsIn(['card', 'cash', 'invoice'])
-  paymentMethod?: 'card' | 'cash' | 'invoice';
+  @IsIn([...BOOKING_CHECKOUT_PAYMENT_INTENTS])
+  paymentIntent?: (typeof BOOKING_CHECKOUT_PAYMENT_INTENTS)[number];
+
+  /** @deprecated use paymentIntent */
+  @IsOptional()
+  @IsIn([...BOOKING_CHECKOUT_PAYMENT_INTENTS])
+  paymentMethod?: (typeof BOOKING_CHECKOUT_PAYMENT_INTENTS)[number];
 }

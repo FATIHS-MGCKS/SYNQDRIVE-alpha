@@ -64,11 +64,11 @@ describe('BookingInvoiceLifecycleService', () => {
   });
 
   describe('syncOnBookingConfirmed — payment intent must not simulate payment', () => {
-    it('card: issues draft invoice but does not record payment (invoice stays open)', async () => {
+    it('payment_link: issues draft invoice but does not record payment (invoice stays open)', async () => {
       mockIssueFlow();
 
       const result = await service.syncOnBookingConfirmed('org', 'bk-1', {
-        paymentMethod: 'card',
+        paymentIntent: 'payment_link',
         userId: 'user-1',
       });
 
@@ -77,24 +77,36 @@ describe('BookingInvoiceLifecycleService', () => {
       expect(result?.status).toBe('ISSUED');
     });
 
-    it('card: does not create OrgInvoicePayment (no recordPayment call)', async () => {
+    it('payment_link: does not create OrgInvoicePayment (no recordPayment call)', async () => {
       mockIssueFlow();
 
       await service.syncOnBookingConfirmed('org', 'bk-1', {
-        paymentMethod: 'card',
+        paymentIntent: 'payment_link',
       });
 
       expect(invoicesService.recordPayment).not.toHaveBeenCalled();
     });
 
-    it('card: does not trigger Stripe PaymentIntent or Checkout Session (no payment path)', async () => {
+    it('payment_link: does not trigger immediate Stripe payment (no recordPayment)', async () => {
       mockIssueFlow();
 
       await service.syncOnBookingConfirmed('org', 'bk-1', {
-        paymentMethod: 'card',
+        paymentIntent: 'payment_link',
       });
 
       expect(invoicesService.recordPayment).not.toHaveBeenCalled();
+    });
+
+    it('pay_on_pickup: invoice stays open', async () => {
+      mockIssueFlow();
+
+      const result = await service.syncOnBookingConfirmed('org', 'bk-1', {
+        paymentIntent: 'pay_on_pickup',
+      });
+
+      expect(invoicesService.issue).toHaveBeenCalled();
+      expect(invoicesService.recordPayment).not.toHaveBeenCalled();
+      expect(result?.status).toBe('ISSUED');
     });
 
     it('invoice: issues draft but invoice stays open', async () => {
@@ -159,11 +171,11 @@ describe('BookingInvoiceLifecycleService', () => {
       );
     });
 
-    it('markPaid=true with paymentMethod=card still uses BANK_TRANSFER (card is intent only)', async () => {
+    it('markPaid=true with paymentIntent=payment_link still uses BANK_TRANSFER (intent only)', async () => {
       mockIssueFlow();
 
       await service.syncOnBookingConfirmed('org', 'bk-1', {
-        paymentMethod: 'card',
+        paymentIntent: 'payment_link',
         markPaid: true,
         userId: 'user-1',
       });

@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-payment-intent-v49447-2026-07-14',
+    version: '4.9.447',
+    title: 'V4.9.447 — Neue Buchung: Zahlungsabsichten statt irreführender Kartenzahlung',
+    summary: [
+      'Checkout-Optionen: payment_link, pay_on_pickup, cash, invoice — „Kartenzahlung“ entfernt.',
+      'Booking.paymentIntent persistiert auf Confirm; kein PAID allein durch Absicht.',
+      'GET wizard-draft/:id/checkout-context — serverseitige Beträge (online ohne Kaution, Kaution separat) + payment_link-Eligibility.',
+      'payment_link Confirm: PaymentRequest → Checkout → E-Mail mit Teilfehler-Reporting.',
+      'Frontend CheckoutStep + BookingSuccessState mit DE/EN i18n.',
+    ],
+    reason:
+      '„Kartenzahlung“ suggerierte sofortige Bezahlung. MVP braucht explizite Zahlungsabsichten mit klarer Trennung von Buchungsbestätigung und tatsächlicher Zahlung.',
+    previousBehavior:
+      'Wizard bot card/cash/invoice; card markierte fälschlich Rechnungen als bezahlt (V4.9.432 behoben Backend, UI blieb irreführend).',
+    details:
+      'booking-payment-intent.types.ts, BookingWizardCheckoutContextService, BookingWizardPaymentFlowService, booking-wizard-draft.service confirm, CheckoutStep, NewBookingView, BookingSuccessState, migration booking_payment_intent.',
+    affectsArchitecture: true,
+    module: 'Bookings / Payments',
+    createdAt: '2026-07-14T00:00:00.000Z',
+  },
+  {
     id: 'payment-email-flow-v49446-2026-07-14',
     version: '4.9.446',
     title: 'V4.9.446 — End-Customer Payments: zuverlässiger Zahlungs-E-Mail-Flow',

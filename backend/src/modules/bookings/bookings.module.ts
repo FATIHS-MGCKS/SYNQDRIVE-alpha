@@ -4,12 +4,8 @@ import { BookingsService } from './bookings.service';
 import { BookingsHandoverService } from './bookings-handover.service';
 import { RentalDrivingAnalysisModule } from '../rental-driving-analysis/rental-driving-analysis.module';
 import { InvoicesModule } from '@modules/invoices/invoices.module';
-// V4.6.76 Rental Health V1 — BookingsService.create enforces the
-// rental_blocked hard-gate via RentalHealthService.
 import { RentalHealthModule } from '@modules/rental-health/rental-health.module';
-// Booking Document Lifecycle — confirmed-booking + handover document triggers.
 import { DocumentsModule } from '@modules/documents/documents.module';
-// V4.8.3 Task Action Layer — booking lifecycle task automation.
 import { TasksModule } from '@modules/tasks/tasks.module';
 import { CustomersModule } from '@modules/customers/customers.module';
 import { WorkflowsModule } from '@modules/workflows/workflows.module';
@@ -18,8 +14,11 @@ import { StationsModule } from '@modules/stations/stations.module';
 import { RentalRulesModule } from '@modules/rental-rules/rental-rules.module';
 import { OutboundEmailModule } from '@modules/outbound-email/outbound-email.module';
 import { CustomerVerificationModule } from '@modules/customer-verification/customer-verification.module';
+import { PaymentsModule } from '@modules/payments/payments.module';
 import { BookingRentalEligibilityService } from './booking-rental-eligibility.service';
 import { BookingWizardDraftService } from './booking-wizard-draft.service';
+import { BookingWizardCheckoutContextService } from './booking-wizard-checkout-context.service';
+import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.service';
 
 @Module({
   imports: [
@@ -35,9 +34,22 @@ import { BookingWizardDraftService } from './booking-wizard-draft.service';
     StationsModule,
     RentalRulesModule,
     OutboundEmailModule,
+    forwardRef(() => PaymentsModule),
   ],
   controllers: [BookingsController],
-  providers: [BookingsService, BookingsHandoverService, BookingRentalEligibilityService, BookingWizardDraftService],
-  exports: [BookingsService, BookingsHandoverService, BookingRentalEligibilityService, BookingWizardDraftService],
+  providers: [
+    BookingsService,
+    BookingsHandoverService,
+    BookingRentalEligibilityService,
+    BookingWizardDraftService,
+    BookingWizardCheckoutContextService,
+    BookingWizardPaymentFlowService,
+  ],
+  exports: [
+    BookingsService,
+    BookingsHandoverService,
+    BookingRentalEligibilityService,
+    BookingWizardDraftService,
+  ],
 })
 export class BookingsModule {}
