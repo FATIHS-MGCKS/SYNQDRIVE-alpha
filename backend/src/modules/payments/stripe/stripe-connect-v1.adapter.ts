@@ -71,6 +71,7 @@ export class StripeConnectV1Adapter implements StripeConnectAdapter {
         },
         capabilities: {
           card_payments: { requested: true },
+          transfers: { requested: true },
         },
         metadata: {
           synqdrive_organization_id: input.organizationId,

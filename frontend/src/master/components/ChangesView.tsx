@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stripe-connect-transfers-capability-v49456-2026-07-14',
+    version: '4.9.456',
+    title: 'V4.9.456 — Stripe Connect: transfers-Capability bei Account-Erstellung',
+    summary: [
+      'Express Connected Account Creation fordert jetzt card_payments + transfers an.',
+      'Behebt Stripe-Fehler „card_payments without transfers“ bei neuer Kontoanlage.',
+      'FMS Test-Org: paymentsEnabled=true, neues Connect-Konto + Onboarding-Link bereitgestellt.',
+    ],
+    reason:
+      'Stripe Test-API lehnte reine card_payments-Capability ab; ohne transfers schlägt Kontoerstellung in UI und Ops fehl.',
+    previousBehavior:
+      'createConnectedAccount requestete nur card_payments — Account Links / Create Account 400.',
+    details: 'stripe-connect-v1.adapter.ts; FMS VPS-Reset acct_1TtCNf…',
+    affectsArchitecture: false,
+    module: 'Payments',
+    createdAt: '2026-07-14T19:55:00.000Z',
+  },
+  {
     id: 'stripe-connect-e2e-blocked-v49455-2026-07-14',
     version: '4.9.455',
     title: 'V4.9.455 — Stripe Connect: Testmode-E2E blockiert (Onboarding/CAPTCHA)',

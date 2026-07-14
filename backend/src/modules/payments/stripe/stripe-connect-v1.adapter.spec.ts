@@ -45,7 +45,7 @@ describe('StripeConnectV1Adapter', () => {
     jest.restoreAllMocks();
   });
 
-  it('creates express connected account with card_payments capability', async () => {
+  it('creates express connected account with card_payments and transfers capabilities', async () => {
     stripeMock.accounts.create.mockResolvedValue({ id: 'acct_new' });
     const ref = await adapter.createConnectedAccount({
       organizationId: 'org-1',
@@ -61,7 +61,10 @@ describe('StripeConnectV1Adapter', () => {
         type: 'express',
         country: 'DE',
         metadata: { synqdrive_organization_id: 'org-1' },
-        capabilities: { card_payments: { requested: true } },
+        capabilities: {
+          card_payments: { requested: true },
+          transfers: { requested: true },
+        },
       }),
     );
   });
