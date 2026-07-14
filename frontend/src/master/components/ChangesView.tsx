@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'booking-payment-intent-fix-v49432-2026-07-14',
+    version: '4.9.432',
+    title: 'V4.9.432 — Buchung: Kartenzahlung simuliert keine Zahlung mehr',
+    summary: [
+      'Kritischer Fix: `paymentMethod = card` im Checkout markiert Rechnungen nicht mehr automatisch als PAID.',
+      '`BookingInvoiceLifecycleService.syncOnBookingConfirmed` verbucht Zahlungen nur noch bei explizitem `markPaid: true` (autorisierte manuelle Aktion).',
+      'Zahlungsart (`card`/`cash`/`invoice`) ist reine Zahlungsabsicht — keine OrgInvoicePayment-Zeile, kein Stripe PaymentIntent/Checkout Session.',
+      '10 Regressionstests in `booking-invoice-lifecycle.service.spec.ts`; Repair-Skript nutzt kein fake `paymentMethod: card` mehr.',
+    ],
+    reason:
+      'Eine bloße Auswahl „Kartenzahlung“ im Buchungswizard durfte niemals als Nachweis eines Geldeingangs gelten — bisher wurde fälschlich `recordPayment` mit `InvoicePaymentMethod.CARD` ausgelöst.',
+    previousBehavior:
+      '`shouldMarkPaid = markPaid || paymentMethod === card` → Rechnung sofort PAID ohne echte Stripe-Zahlung.',
+    details:
+      'architecture/BOOKING_PAYMENT_INTENT_VS_PAID_2026-07-14.md, booking-invoice-lifecycle.service.ts, booking-invoice-lifecycle.service.spec.ts, ArchitekturView.',
+    affectsArchitecture: true,
+    module: 'Invoices / Booking Checkout',
+    createdAt: '2026-07-14T15:30:00.000Z',
+  },
+  {
     id: 'hostinger-mcp-version-fix-v49430-2026-07-14',
     version: '4.9.430',
     title: 'V4.9.430 — MCP: Hostinger-Version + Resend gehostet',
