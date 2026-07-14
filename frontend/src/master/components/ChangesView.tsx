@@ -35,6 +35,44 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stripe-connect-verify-decision-v49434-2026-07-14',
+    version: '4.9.434',
+    title: 'V4.9.434 — Stripe Connect: Test-Konfiguration verifiziert + Architekturentscheidung',
+    summary: [
+      'Read-only Stripe-MCP-Verifikation des SynqDrive Sandbox-Kontos (Testmodus, DE/EUR, 0 Connected Accounts).',
+      'Entscheidungsdokument: Direct Charges + application_fee_amount, Accounts v2 (pending Dashboard), separates Connect-Webhook geplant.',
+      'Konzeptionelle Stripe-Adapter-Grenze (createConnectedAccount, createOnboardingSession, getAccountStatus, createCheckoutSession, createRefund) — keine Implementierung.',
+      'Manuelle Dashboard-Checks dokumentiert für Connect-Aktivierung, Accounts v2, Webhooks, Payment Methods.',
+    ],
+    reason:
+      'Vor Connect-Implementierung muss die tatsächliche Stripe-Testkonfiguration verifiziert und architektonisch entschieden werden, ohne Stripe-Objekte anzulegen.',
+    previousBehavior: 'Keine verifizierte Connect-Kontobasis; Billing-Webhook allein für SynqDrive-Abo.',
+    details:
+      'architecture/STRIPE_CONNECT_VERIFICATION_DECISION_2026-07-14.md, ArchitekturView (Stripe-Integration). Stripe MCP nur lesend.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Connect',
+    createdAt: '2026-07-14T16:30:00.000Z',
+  },
+  {
+    id: 'fake-paid-card-audit-v49433-2026-07-14',
+    version: '4.9.433',
+    title: 'V4.9.433 — Read-only Audit: Fake-PAID durch Checkout-Kartenauswahl',
+    summary: [
+      'Neues read-only Ops-Audit `audit-fake-paid-card-invoices.ts` + `FakePaidCardAuditService` — identifiziert historische CARD/STRIPE-Zahlungen auf Buchungsrechnungen ohne Stripe-Nachweis.',
+      'Verdachtskriterien mit Confidence HIGH/MEDIUM/LOW; Filter orgId + Zeitraum; JSON und `--human` Ausgabe.',
+      'Keine Datenänderung, keine Reparatur, kein Stripe-Live-Zugriff.',
+      '15 Unit-Tests (Kandidaten + legitime Gegenbeispiele).',
+    ],
+    reason:
+      'Nach Fix V4.9.432 müssen historisch fälschlich als bezahlt markierte Buchungsrechnungen identifizierbar sein, bevor eine optionale Korrektur in einem Folge-Prompt erfolgt.',
+    previousBehavior: 'Kein Audit-Werkzeug für Fake-PAID-Kandidaten; Alt-Daten nur manuell prüfbar.',
+    details:
+      'architecture/FAKE_PAID_CARD_AUDIT_2026-07-14.md, fake-paid-card-audit.service.ts, fake-paid-card-audit.util.ts, scripts/ops/audit-fake-paid-card-invoices.ts, ArchitekturView.',
+    affectsArchitecture: true,
+    module: 'Invoices / Audit',
+    createdAt: '2026-07-14T16:00:00.000Z',
+  },
+  {
     id: 'booking-payment-intent-fix-v49432-2026-07-14',
     version: '4.9.432',
     title: 'V4.9.432 — Buchung: Kartenzahlung simuliert keine Zahlung mehr',
