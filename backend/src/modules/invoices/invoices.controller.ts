@@ -136,9 +136,13 @@ export class InvoicesController {
     @Param('orgId') orgId: string,
     @Param('invoiceId') invoiceId: string,
     @CurrentUser('id') userId: string | undefined,
+    @Req() req: Request & { requestId?: string },
     @Body() body: SendInvoiceEmailDto,
   ) {
-    return this.invoiceEmail.sendInvoiceEmail(orgId, invoiceId, userId ?? null, body);
+    return this.invoiceEmail.sendInvoiceEmail(orgId, invoiceId, userId ?? null, {
+      ...body,
+      correlationId: req.requestId ?? undefined,
+    });
   }
 
   /** Legacy attachment upload only — NOT for AI extraction. Use document-extraction upload. */

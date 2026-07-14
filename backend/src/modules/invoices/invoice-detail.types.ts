@@ -158,6 +158,39 @@ export interface InvoiceOutboundEmailSummaryDto {
   attachmentDocumentIds: string[];
 }
 
+/** Full audit trail entry for invoice email sends (V4.9.437). */
+export interface InvoiceEmailSendHistoryEntryDto {
+  id: string;
+  recipient: string;
+  cc: string[];
+  bcc: string[];
+  channel: string;
+  documentId: string | null;
+  documentVersion: number | null;
+  sendStatus: string;
+  deliveryStatus: string;
+  statusLabel: string;
+  occurredAt: string;
+  requestedAt: string;
+  acceptedAt: string | null;
+  sentAt: string | null;
+  deliveredAt: string | null;
+  failedAt: string | null;
+  triggeredByUserId: string | null;
+  triggeredByDisplayName: string | null;
+  senderFromEmail: string;
+  senderFromName: string | null;
+  senderReplyToEmail: string | null;
+  provider: string | null;
+  providerMessageId: string | null;
+  subject: string;
+  errorCode: string | null;
+  errorMessage: string | null;
+  idempotencyKey: string | null;
+  correlationId: string | null;
+  retryPossible: boolean;
+}
+
 export interface InvoiceLinkedTaskDto {
   id: string;
   title: string;
@@ -214,6 +247,7 @@ export interface InvoiceDetailDto {
   payments: InvoiceDetailPaymentDto[];
   documents: InvoiceDocumentSummaryDto[];
   outboundEmails: InvoiceOutboundEmailSummaryDto[];
+  emailSendHistory: InvoiceEmailSendHistoryEntryDto[];
   linkedTasks: InvoiceLinkedTaskDto[];
   notes: string;
   provenance: InvoiceProvenanceDto;

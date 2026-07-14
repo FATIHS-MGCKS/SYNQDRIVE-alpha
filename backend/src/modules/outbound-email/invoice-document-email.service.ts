@@ -11,6 +11,7 @@ import { ConfigService } from '@nestjs/config';
 import {
   ActivityAction,
   ActivityEntity,
+  OutboundEmailDeliveryStatus,
   OutboundEmailEventType,
   OutboundEmailSourceType,
   OutboundEmailStatus,
@@ -36,6 +37,7 @@ import {
 } from './invoice-email.template';
 import { OutboundEmailPolicyService } from './outbound-email-policy.service';
 import { OutboundEmailService } from './outbound-email.service';
+import { sanitizeOutboundErrorMessage } from './outbound-email-audit.util';
 import { EmailProviderRegistry } from './providers/email-provider.registry';
 
 export interface SendInvoiceEmailInput {
@@ -46,6 +48,7 @@ export interface SendInvoiceEmailInput {
   message?: string;
   documentId?: string;
   idempotencyKey?: string;
+  correlationId?: string;
 }
 
 @Injectable()
@@ -191,15 +194,21 @@ export class InvoiceDocumentEmailService {
       throw new BadRequestException('Attachment exceeds the allowed size limit');
     }
 
+    const requestedAt = new Date();
     const outbound = await this.prisma.outboundEmail.create({
       data: {
         organizationId: orgId,
         invoiceId,
         bookingId: invoice.bookingId,
         customerId: invoice.customerId,
+        generatedDocumentId: document.id,
+        documentVersionNumber: document.versionNumber,
         sourceType: OutboundEmailSourceType.INVOICE_SINGLE,
         status: OutboundEmailStatus.QUEUED,
+        deliveryStatus: OutboundEmailDeliveryStatus.PENDING,
         idempotencyKey: input.idempotencyKey?.trim() || null,
+        correlationId: input.correlationId?.trim() || null,
+        requestedAt,
         fromEmail: identity.fromEmail,
         fromName: identity.fromName,
         replyToEmail: identity.replyToEmail,
@@ -255,13 +264,18 @@ export class InvoiceDocumentEmailService {
         idempotencyKey: outbound.id,
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
+      const message = sanitizeOutboundErrorMessage(
+        err instanceof Error ? err.message : String(err),
+      );
+      const failedAt = new Date();
       await this.prisma.outboundEmail.update({
         where: { id: outbound.id },
         data: {
           status: OutboundEmailStatus.FAILED,
+          deliveryStatus: OutboundEmailDeliveryStatus.FAILED,
           errorCode: 'PROVIDER_ERROR',
           errorMessage: message,
+          failedAt,
         },
       });
       await this.outboundEmail.recordEvent(outbound.id, OutboundEmailEventType.FAILED, {
@@ -290,19 +304,28 @@ export class InvoiceDocumentEmailService {
           ? OutboundEmailStatus.SENT_SIMULATED
           : OutboundEmailStatus.FAILED;
 
+    const acceptedAt =
+      finalStatus === OutboundEmailStatus.SENT ||
+      finalStatus === OutboundEmailStatus.SENT_SIMULATED
+        ? new Date()
+        : null;
+    const failedAt = finalStatus === OutboundEmailStatus.FAILED ? new Date() : null;
+
     const updated = await this.prisma.outboundEmail.update({
       where: { id: outbound.id },
       data: {
         status: finalStatus,
+        deliveryStatus:
+          finalStatus === OutboundEmailStatus.FAILED
+            ? OutboundEmailDeliveryStatus.FAILED
+            : OutboundEmailDeliveryStatus.ACCEPTED,
         provider: result.provider,
         providerMessageId: result.providerMessageId,
         errorCode: result.errorCode ?? null,
-        errorMessage: result.errorMessage ?? null,
-        sentAt:
-          finalStatus === OutboundEmailStatus.SENT ||
-          finalStatus === OutboundEmailStatus.SENT_SIMULATED
-            ? new Date()
-            : null,
+        errorMessage: sanitizeOutboundErrorMessage(result.errorMessage),
+        acceptedAt,
+        sentAt: acceptedAt,
+        failedAt,
       },
       include: { attachments: true, events: { orderBy: { occurredAt: 'asc' } } },
     });

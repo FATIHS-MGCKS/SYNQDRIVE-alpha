@@ -25,6 +25,7 @@ describe('InvoicesController — send-email', () => {
       'org-1',
       'inv-1',
       'user-1',
+      { requestId: 'req-abc' } as never,
       { recipient: 'payee@test.com', idempotencyKey: 'key-1' },
     );
 
@@ -32,7 +33,7 @@ describe('InvoicesController — send-email', () => {
       'org-1',
       'inv-1',
       'user-1',
-      { recipient: 'payee@test.com', idempotencyKey: 'key-1' },
+      { recipient: 'payee@test.com', idempotencyKey: 'key-1', correlationId: 'req-abc' },
     );
     expect(result).toEqual({ id: 'mail-1', status: 'SENT' });
   });

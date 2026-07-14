@@ -15,7 +15,11 @@ import {
   type CustomerRow,
   type VehicleRow,
 } from './invoice-detail-relations.util';
-import { mapInvoiceProvenance, type InvoiceProvenanceActorRow } from './invoice-provenance.util';
+import { mapInvoiceEmailSendHistory } from './invoice-email-send-history.util';
+import {
+  mapInvoiceProvenance,
+  type InvoiceProvenanceActorRow,
+} from './invoice-provenance.util';
 import type {
   InvoiceDetailDto,
   InvoiceDetailLineItemDto,
@@ -265,6 +269,7 @@ export function mapInvoiceDetail(input: InvoiceDetailMapperInput): InvoiceDetail
     payments: mapPayments(inv.payments),
     documents: documentsView.documents,
     outboundEmails: mapOutboundEmails(input.outboundEmails),
+    emailSendHistory: mapInvoiceEmailSendHistory(input.outboundEmails),
     linkedTasks: mapTasks(inv.tasks),
     notes: inv.notes ?? '',
     provenance: (() => {

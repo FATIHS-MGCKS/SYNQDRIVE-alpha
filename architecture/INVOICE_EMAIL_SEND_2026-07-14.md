@@ -47,3 +47,4 @@ Roles: `ORG_ADMIN`, `MASTER_ADMIN`, `SUB_ADMIN`
 
 - `outbound_emails.idempotency_key` + unique `(organization_id, idempotency_key)`
 - Index `(organization_id, invoice_id)`
+- **V4.9.437**: `delivery_status`, `generated_document_id`, `document_version_number`, lifecycle timestamps, FK to `org_invoices` — see `architecture/INVOICE_EMAIL_AUDIT_2026-07-14.md`

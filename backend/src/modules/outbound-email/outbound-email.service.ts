@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
+  OutboundEmailDeliveryStatus,
   OutboundEmailEventType,
   OutboundEmailSourceType,
   OutboundEmailStatus,
@@ -10,6 +11,7 @@ import {
   parsePagination,
   PaginationParams,
 } from '@shared/utils/pagination';
+import { sanitizeOutboundErrorMessage } from './outbound-email-audit.util';
 
 export interface OutboundEmailAttachmentDto {
   id: string;
@@ -33,8 +35,11 @@ export interface OutboundEmailDto {
   bookingId: string | null;
   customerId: string | null;
   invoiceId: string | null;
+  generatedDocumentId: string | null;
+  documentVersionNumber: number | null;
   sourceType: OutboundEmailSourceType;
   status: OutboundEmailStatus;
+  deliveryStatus: OutboundEmailDeliveryStatus;
   fromEmail: string;
   fromName: string | null;
   replyToEmail: string | null;
@@ -42,18 +47,33 @@ export interface OutboundEmailDto {
   ccEmails: string[];
   bccEmails: string[];
   subject: string;
-  bodyText: string | null;
-  bodyHtml: string | null;
   provider: string | null;
   providerMessageId: string | null;
   errorCode: string | null;
   errorMessage: string | null;
   sentByUserId: string | null;
+  requestedAt: string;
+  acceptedAt: string | null;
   sentAt: string | null;
+  deliveredAt: string | null;
+  failedAt: string | null;
+  idempotencyKey: string | null;
+  correlationId: string | null;
   createdAt: string;
   attachments: OutboundEmailAttachmentDto[];
   events: OutboundEmailEventDto[];
 }
+
+type OutboundEmailAuditPatch = {
+  status?: OutboundEmailStatus;
+  deliveryStatus?: OutboundEmailDeliveryStatus;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  acceptedAt?: Date;
+  sentAt?: Date;
+  deliveredAt?: Date;
+  failedAt?: Date;
+};
 
 @Injectable()
 export class OutboundEmailService {
@@ -70,20 +90,25 @@ export class OutboundEmailService {
 
   async listForOrg(
     orgId: string,
-    params: PaginationParams & { bookingId?: string; customerId?: string },
+    params: PaginationParams & {
+      bookingId?: string;
+      customerId?: string;
+      invoiceId?: string;
+    },
   ) {
     const { skip, take } = parsePagination(params);
     const where = {
       organizationId: orgId,
       ...(params.bookingId ? { bookingId: params.bookingId } : {}),
       ...(params.customerId ? { customerId: params.customerId } : {}),
+      ...(params.invoiceId ? { invoiceId: params.invoiceId } : {}),
     };
 
     const [rows, total] = await Promise.all([
       this.prisma.outboundEmail.findMany({
         where,
         include: { attachments: true, events: { orderBy: { occurredAt: 'asc' } } },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { requestedAt: 'desc' },
         skip,
         take,
       }),
@@ -140,7 +165,10 @@ export class OutboundEmailService {
         ? [
             this.prisma.outboundEmail.update({
               where: { id: email.id },
-              data: statusPatch,
+              data: {
+                ...statusPatch,
+                errorMessage: sanitizeOutboundErrorMessage(statusPatch.errorMessage),
+              },
             }),
           ]
         : []),
@@ -153,29 +181,41 @@ export class OutboundEmailService {
     eventType: OutboundEmailEventType,
     currentStatus: OutboundEmailStatus,
     payload?: Record<string, unknown>,
-  ): {
-    status?: OutboundEmailStatus;
-    errorCode?: string | null;
-    errorMessage?: string | null;
-  } | null {
+  ): OutboundEmailAuditPatch | null {
+    const now = new Date();
     switch (eventType) {
       case OutboundEmailEventType.BOUNCED:
         return {
           status: OutboundEmailStatus.FAILED,
+          deliveryStatus: OutboundEmailDeliveryStatus.BOUNCED,
           errorCode: 'BOUNCED',
           errorMessage: this.extractWebhookErrorMessage(payload) ?? 'Email bounced',
+          failedAt: now,
         };
       case OutboundEmailEventType.COMPLAINED:
         return {
           status: OutboundEmailStatus.FAILED,
+          deliveryStatus: OutboundEmailDeliveryStatus.COMPLAINED,
           errorCode: 'COMPLAINED',
           errorMessage: 'Recipient marked email as spam',
+          failedAt: now,
         };
       case OutboundEmailEventType.DELIVERED:
-        if (currentStatus === OutboundEmailStatus.SENDING) {
-          return { status: OutboundEmailStatus.SENT };
-        }
-        return null;
+        return {
+          ...(currentStatus === OutboundEmailStatus.SENDING
+            ? { status: OutboundEmailStatus.SENT, sentAt: now, acceptedAt: now }
+            : {}),
+          deliveryStatus: OutboundEmailDeliveryStatus.DELIVERED,
+          deliveredAt: now,
+        };
+      case OutboundEmailEventType.FAILED:
+        return {
+          status: OutboundEmailStatus.FAILED,
+          deliveryStatus: OutboundEmailDeliveryStatus.FAILED,
+          errorCode: 'PROVIDER_FAILED',
+          errorMessage: this.extractWebhookErrorMessage(payload) ?? 'Email delivery failed',
+          failedAt: now,
+        };
       default:
         return null;
     }
@@ -195,8 +235,11 @@ export class OutboundEmailService {
     bookingId: string | null;
     customerId: string | null;
     invoiceId: string | null;
+    generatedDocumentId?: string | null;
+    documentVersionNumber?: number | null;
     sourceType: OutboundEmailSourceType;
     status: OutboundEmailStatus;
+    deliveryStatus: OutboundEmailDeliveryStatus;
     fromEmail: string;
     fromName: string | null;
     replyToEmail: string | null;
@@ -204,14 +247,20 @@ export class OutboundEmailService {
     ccEmails: string[];
     bccEmails: string[];
     subject: string;
-    bodyText: string | null;
-    bodyHtml: string | null;
+    bodyText?: string | null;
+    bodyHtml?: string | null;
     provider: string | null;
     providerMessageId: string | null;
     errorCode: string | null;
     errorMessage: string | null;
     sentByUserId: string | null;
+    requestedAt: Date;
+    acceptedAt: Date | null;
     sentAt: Date | null;
+    deliveredAt: Date | null;
+    failedAt: Date | null;
+    idempotencyKey: string | null;
+    correlationId: string | null;
     createdAt: Date;
     attachments: Array<{
       id: string;
@@ -234,8 +283,11 @@ export class OutboundEmailService {
       bookingId: row.bookingId,
       customerId: row.customerId,
       invoiceId: row.invoiceId,
+      generatedDocumentId: row.generatedDocumentId ?? null,
+      documentVersionNumber: row.documentVersionNumber ?? null,
       sourceType: row.sourceType,
       status: row.status,
+      deliveryStatus: row.deliveryStatus,
       fromEmail: row.fromEmail,
       fromName: row.fromName,
       replyToEmail: row.replyToEmail,
@@ -243,14 +295,18 @@ export class OutboundEmailService {
       ccEmails: row.ccEmails,
       bccEmails: row.bccEmails,
       subject: row.subject,
-      bodyText: row.bodyText,
-      bodyHtml: row.bodyHtml,
       provider: row.provider,
       providerMessageId: row.providerMessageId,
       errorCode: row.errorCode,
-      errorMessage: row.errorMessage,
+      errorMessage: sanitizeOutboundErrorMessage(row.errorMessage),
       sentByUserId: row.sentByUserId,
+      requestedAt: row.requestedAt.toISOString(),
+      acceptedAt: row.acceptedAt?.toISOString() ?? null,
       sentAt: row.sentAt?.toISOString() ?? null,
+      deliveredAt: row.deliveredAt?.toISOString() ?? null,
+      failedAt: row.failedAt?.toISOString() ?? null,
+      idempotencyKey: row.idempotencyKey,
+      correlationId: row.correlationId,
       createdAt: row.createdAt.toISOString(),
       attachments: row.attachments.map((a) => ({
         id: a.id,

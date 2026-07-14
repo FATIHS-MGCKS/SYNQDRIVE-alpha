@@ -181,4 +181,55 @@ describe('invoice-detail.mapper', () => {
     expect(dto.vehicle).toBeNull();
     expect(dto.customer).toBeNull();
   });
+
+  it('maps emailSendHistory from outbound audit rows', () => {
+    const dto = mapInvoiceDetail({
+      invoice: baseRow as never,
+      customer: null,
+      vehicle: null,
+      booking: null,
+      documentsView: { activeDocumentId: null, cacheMismatch: false, documents: [] },
+      outboundEmails: [
+        {
+          id: 'mail-1',
+          invoiceId: INVOICE_BOOKING,
+          sourceType: 'INVOICE_SINGLE',
+          status: 'FAILED',
+          deliveryStatus: 'FAILED',
+          toEmail: 'fail@example.com',
+          ccEmails: [],
+          bccEmails: [],
+          subject: 'Rechnung',
+          fromEmail: 'noreply@test.de',
+          fromName: null,
+          replyToEmail: null,
+          provider: 'resend',
+          providerMessageId: null,
+          errorCode: 'PROVIDER_ERROR',
+          errorMessage: 'Mailbox unavailable',
+          generatedDocumentId: 'doc-1',
+          documentVersionNumber: 1,
+          sentByUserId: null,
+          idempotencyKey: null,
+          correlationId: null,
+          requestedAt: new Date('2026-07-11T09:00:00.000Z'),
+          acceptedAt: null,
+          sentAt: null,
+          deliveredAt: null,
+          failedAt: new Date('2026-07-11T09:05:00.000Z'),
+          createdAt: new Date('2026-07-11T09:00:00.000Z'),
+          attachments: [{ generatedDocumentId: 'doc-1' }],
+        } as never,
+      ],
+      timeline: [],
+    });
+    expect(dto.emailSendHistory).toHaveLength(1);
+    expect(dto.emailSendHistory[0]).toMatchObject({
+      recipient: 'fail@example.com',
+      channel: 'E-Mail (Rechnung)',
+      documentVersion: 1,
+      retryPossible: true,
+      errorMessage: 'Mailbox unavailable',
+    });
+  });
 });

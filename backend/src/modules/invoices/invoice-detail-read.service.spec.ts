@@ -150,7 +150,7 @@ describe('InvoiceDetailReadService', () => {
     expect(detail.relations.customerDiverges).toBe(false);
   });
 
-  it('includes outbound email history by invoice or booking', async () => {
+  it('includes outbound email history by invoiceId only', async () => {
     const row = makeOrgInvoiceRow();
     prisma.orgInvoice.findFirst.mockResolvedValue(row);
     prisma.customer.findFirst.mockResolvedValue(null);
@@ -159,12 +159,40 @@ describe('InvoiceDetailReadService', () => {
     prisma.outboundEmail.findMany.mockResolvedValue([
       {
         id: 'mail-1',
+        invoiceId: INVOICE_BOOKING,
+        sourceType: 'INVOICE_SINGLE',
         status: 'SENT',
+        deliveryStatus: 'DELIVERED',
         toEmail: 'k@example.com',
+        ccEmails: [],
+        bccEmails: [],
         subject: 'Rechnung',
+        fromEmail: 'noreply@synqdrive.eu',
+        fromName: 'SynqDrive',
+        replyToEmail: null,
+        provider: 'resend',
+        providerMessageId: 'msg-1',
+        errorCode: null,
+        errorMessage: null,
+        generatedDocumentId: 'doc-1',
+        documentVersionNumber: 2,
+        sentByUserId: 'user-1',
+        idempotencyKey: null,
+        correlationId: 'corr-1',
+        requestedAt: new Date('2026-07-11T09:00:00.000Z'),
+        acceptedAt: new Date('2026-07-11T09:01:00.000Z'),
         sentAt: new Date('2026-07-11T10:00:00.000Z'),
+        deliveredAt: new Date('2026-07-11T10:05:00.000Z'),
+        failedAt: null,
         createdAt: new Date('2026-07-11T09:00:00.000Z'),
         attachments: [{ generatedDocumentId: 'doc-1' }],
+        sentByUser: {
+          id: 'user-1',
+          name: null,
+          firstName: 'Ops',
+          lastName: 'User',
+          email: 'ops@example.com',
+        },
       },
     ]);
 
@@ -172,15 +200,21 @@ describe('InvoiceDetailReadService', () => {
 
     expect(detail.outboundEmails).toHaveLength(1);
     expect(detail.outboundEmails[0].attachmentDocumentIds).toEqual(['doc-1']);
+    expect(detail.emailSendHistory).toHaveLength(1);
+    expect(detail.emailSendHistory[0]).toMatchObject({
+      recipient: 'k@example.com',
+      channel: 'E-Mail (Rechnung)',
+      documentId: 'doc-1',
+      documentVersion: 2,
+      sendStatus: 'SENT',
+      deliveryStatus: 'DELIVERED',
+      triggeredByDisplayName: 'Ops User',
+      retryPossible: false,
+    });
     expect(prisma.outboundEmail.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({
-          organizationId: ORG_A,
-          OR: expect.arrayContaining([
-            { invoiceId: INVOICE_BOOKING },
-            { bookingId: BOOKING_REF },
-          ]),
-        }),
+        where: { organizationId: ORG_A, invoiceId: INVOICE_BOOKING },
+        orderBy: { requestedAt: 'desc' },
       }),
     );
   });

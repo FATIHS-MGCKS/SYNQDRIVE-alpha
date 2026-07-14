@@ -1,9 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { OutboundEmailEventType, OutboundEmailStatus } from '@prisma/client';
+import {
+  OutboundEmailDeliveryStatus,
+  OutboundEmailEventType,
+  OutboundEmailStatus,
+} from '@prisma/client';
 import { OutboundEmailService } from './outbound-email.service';
 import { PrismaService } from '@shared/database/prisma.service';
 
-describe('OutboundEmailService', () => {
+describe('OutboundEmailService — invoice audit webhooks', () => {
   let service: OutboundEmailService;
 
   const prisma = {
@@ -35,18 +39,34 @@ describe('OutboundEmailService', () => {
     service = module.get(OutboundEmailService);
   });
 
-  it('updates parent status to FAILED on bounce webhook', async () => {
+  it('updates deliveryStatus and deliveredAt on delivered webhook', async () => {
+    await service.applyWebhookEvent('em_1', OutboundEmailEventType.DELIVERED);
+
+    expect(prisma.outboundEmail.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'mail-1' },
+        data: expect.objectContaining({
+          deliveryStatus: OutboundEmailDeliveryStatus.DELIVERED,
+          deliveredAt: expect.any(Date),
+        }),
+      }),
+    );
+  });
+
+  it('updates bounce audit fields on bounced webhook', async () => {
     await service.applyWebhookEvent('em_1', OutboundEmailEventType.BOUNCED, {
       bounce: { message: 'Mailbox full' },
     });
 
     expect(prisma.outboundEmail.update).toHaveBeenCalledWith({
       where: { id: 'mail-1' },
-      data: {
+      data: expect.objectContaining({
         status: OutboundEmailStatus.FAILED,
+        deliveryStatus: OutboundEmailDeliveryStatus.BOUNCED,
         errorCode: 'BOUNCED',
         errorMessage: 'Mailbox full',
-      },
+        failedAt: expect.any(Date),
+      }),
     });
   });
 
@@ -57,19 +77,5 @@ describe('OutboundEmailService', () => {
 
     expect(result).toBe('mail-1');
     expect(prisma.$transaction).not.toHaveBeenCalled();
-  });
-
-  it('promotes SENDING to SENT on delivered webhook', async () => {
-    prisma.outboundEmail.findFirst.mockResolvedValueOnce({
-      id: 'mail-2',
-      status: OutboundEmailStatus.SENDING,
-    });
-
-    await service.applyWebhookEvent('em_2', OutboundEmailEventType.DELIVERED);
-
-    expect(prisma.outboundEmail.update).toHaveBeenCalledWith({
-      where: { id: 'mail-2' },
-      data: { status: OutboundEmailStatus.SENT },
-    });
   });
 });
