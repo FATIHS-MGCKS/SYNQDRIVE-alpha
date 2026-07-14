@@ -999,6 +999,8 @@ model Organization {
   managerEmail      String?            @map("manager_email")
   logoUrl           String?            @map("logo_url")
   status            OrganizationStatus @default(ACTIVE)
+  /// End-customer Stripe Connect payments — disabled by default; enable via platform admin only.
+  paymentsEnabled   Boolean            @default(false) @map("payments_enabled")
   lastActiveAt      DateTime?          @map("last_active_at")
   createdAt         DateTime           @default(now()) @map("created_at")
   updatedAt         DateTime           @updatedAt @map("updated_at")

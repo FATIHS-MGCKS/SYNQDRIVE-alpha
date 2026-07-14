@@ -26,6 +26,11 @@ export const PERMISSION_MODULE_KEYS = [
   'data-authorization',
   'billing',
   'support',
+  'payments',
+  'payments-refund',
+  'payments-disputes',
+  'payments-connect',
+  'payments-settings',
 ] as const;
 
 export type PermissionModuleKey = (typeof PERMISSION_MODULE_KEYS)[number];

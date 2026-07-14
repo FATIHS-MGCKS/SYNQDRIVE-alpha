@@ -10,6 +10,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { OrganizationsService } from './organizations.service';
+import { PaymentsAccessService } from '@modules/payments/payments-access.service';
 import { Roles } from '@shared/decorators/roles.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
 
@@ -17,7 +18,10 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 @UseGuards(RolesGuard)
 @Roles('MASTER_ADMIN')
 export class OrganizationsController {
-  constructor(private readonly organizationsService: OrganizationsService) {}
+  constructor(
+    private readonly organizationsService: OrganizationsService,
+    private readonly paymentsAccessService: PaymentsAccessService,
+  ) {}
 
   @Get()
   async findAll(
@@ -57,6 +61,14 @@ export class OrganizationsController {
   @Get(':id')
   async findOne(@Param('id') id: string) {
     return this.organizationsService.findById(id);
+  }
+
+  @Patch(':id/payments-enabled')
+  async setPaymentsEnabled(
+    @Param('id') id: string,
+    @Body() body: { enabled: boolean },
+  ) {
+    return this.paymentsAccessService.setPaymentsEnabled(id, body.enabled === true);
   }
 
   @Patch(':id')
