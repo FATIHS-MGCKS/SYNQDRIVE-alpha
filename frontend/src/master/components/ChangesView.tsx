@@ -5487,6 +5487,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-06-30T22:10:00.000Z',
   },
   {
+    id: 'insights-categorization-filter-v49141-2026-07-01',
+    version: '4.9.141',
+    title: 'V4.9.141 — Insights: Kategorisierung, Cent/Euro & Station-Filter korrigiert',
+    summary: [
+      '`resolveInsightCategory` respektiert alle bekannten `metrics.category`-Werte (inkl. FINANCIAL, MISUSE_ABUSE, OPERATIONAL_RECOMMENDATION).',
+      '`financialImpactEur`: `financialImpactCents` ÷ 100, `lostRevenueEur` unverändert in Euro — keine Schwellwert-Heuristik mehr.',
+      '`matchesStationIdFilter`: FLEET/STATION/VEHICLE/Booking-Kontext sauber; unbekannte Zuordnungen schließen bei aktivem Station-Filter aus.',
+      '`MisuseAbuseSection`: org-weiter Load + clientseitiger Filter über `vehicleId` → Station (Backend hat keinen `stationId`-Query).',
+      'Tests: `insights-categories.test.ts` (12 Cases).',
+    ],
+    reason:
+      'Falsche Kategorie-Fallbacks, Cent/Euro-Vermischung (>1000-Heuristik) und zu permissiver Station-Filter ließen Insights falsch einsortieren oder stationenübergreifend erscheinen.',
+    previousBehavior:
+      'Nur BUSINESS_RISK/REVENUE_LEAKAGE aus metrics; FINANCIAL/MISUSE_ABUSE fielen auf OPERATIONAL_RECOMMENDATION; Cent/Euro per Magnitude geraten; leere/unbekannte entityIds passten immer; Misuse org-weit.',
+    details:
+      'Geändert: `insights-categories.ts`, `InsightsCockpit.tsx`, `insights-categories.test.ts`. Keine UI-/Styling-Änderung.',
+    affectsArchitecture: false,
+    module: 'Rental Insights',
+    createdAt: '2026-07-01T14:00:00.000Z',
+  },
+  {
     id: 'insights-page-kpi-cleanup-v49126-2026-06-30',
     version: '4.9.126',
     title: 'V4.9.126 — Insights Page: KPI-Standard & redundante Refresh-Buttons entfernt',
