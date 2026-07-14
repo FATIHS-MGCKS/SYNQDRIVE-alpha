@@ -18,5 +18,16 @@ export default registerAs('stripe', () => {
     portalReturnUrl,
     configured: Boolean(secretKey),
     webhookConfigured: Boolean(webhookSecret),
+    connectAccountGeneration: (
+      process.env.STRIPE_CONNECT_ACCOUNT_GENERATION?.trim() || 'V1'
+    ).toUpperCase(),
+    connectReturnUrl:
+      process.env.STRIPE_CONNECT_RETURN_URL?.trim() ||
+      process.env.APP_URL?.trim() ||
+      portalReturnUrl,
+    connectRefreshUrl:
+      process.env.STRIPE_CONNECT_REFRESH_URL?.trim() ||
+      process.env.APP_URL?.trim() ||
+      portalReturnUrl,
   };
 });

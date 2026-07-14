@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stripe-connect-adapter-v49439-2026-07-14',
+    version: '4.9.439',
+    title: 'V4.9.439 — End-Customer Payments: Stripe Connect Adapter-Schicht',
+    summary: [
+      'Abstrahierte Connect-Grenze: StripeConnectAdapter + V1 Express-Implementierung (Prompt 4 Direct Charges Architektur).',
+      'StripeConnectAccountService + OrganizationPaymentAccountService — create/status/onboarding/refresh/payout ohne Stripe-Typen in Domain.',
+      'Guards: paymentsEnabled, connect.manage, Testmodus-only, Org-Profil vollständig; Idempotenz via DB-Unique + Advisory Lock.',
+      'V2-Adapter-Stub bis Dashboard Accounts v2; 103 Unit-Tests im payments-Modul.',
+    ],
+    reason:
+      'Stripe Connect muss hinter einer versionierten Adapter-Grenze liegen, bevor Payment Requests und Checkout angebunden werden.',
+    previousBehavior: 'Keine Connect-Adapter-Implementierung; nur Prisma-Modell OrganizationPaymentAccount.',
+    details:
+      'architecture/END_CUSTOMER_PAYMENTS_STRIPE_CONNECT_ADAPTER_2026-07-14.md, stripe-connect-v1.adapter.ts, stripe-connect-account.service.ts.',
+    affectsArchitecture: true,
+    module: 'Payments / Stripe Connect',
+    createdAt: '2026-07-14T19:00:00.000Z',
+  },
+  {
     id: 'payment-fee-policy-v49438-2026-07-14',
     version: '4.9.438',
     title: 'V4.9.438 — End-Customer Payments: Application-Fee-Policy',

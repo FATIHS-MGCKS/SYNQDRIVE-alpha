@@ -11,6 +11,14 @@ import { OrganizationPaymentAccountRepository } from './repositories/organizatio
 import { BookingPaymentRequestRepository } from './repositories/booking-payment-request.repository';
 import { PaymentTransactionRepository } from './repositories/payment-transaction.repository';
 import { StripeConnectWebhookEventRepository } from './repositories/stripe-connect-webhook-event.repository';
+import { OrganizationPaymentAccountService } from './organization-payment-account.service';
+import { StripeConnectAccountService } from './stripe-connect-account.service';
+import { StripeConnectV1Adapter } from './stripe/stripe-connect-v1.adapter';
+import { StripeConnectV2Adapter } from './stripe/stripe-connect-v2.adapter';
+import {
+  StripeConnectAdapterFactory,
+  stripeConnectAdapterProvider,
+} from './stripe/stripe-connect-adapter.factory';
 
 @Module({
   imports: [PrismaModule, ConfigModule],
@@ -22,6 +30,12 @@ import { StripeConnectWebhookEventRepository } from './repositories/stripe-conne
     PaymentsFeatureGuard,
     PaymentsPermissionGuard,
     OrganizationPaymentAccountRepository,
+    OrganizationPaymentAccountService,
+    StripeConnectAccountService,
+    StripeConnectV1Adapter,
+    StripeConnectV2Adapter,
+    StripeConnectAdapterFactory,
+    stripeConnectAdapterProvider,
     BookingPaymentRequestRepository,
     PaymentTransactionRepository,
     StripeConnectWebhookEventRepository,
@@ -37,6 +51,9 @@ import { StripeConnectWebhookEventRepository } from './repositories/stripe-conne
     BookingPaymentRequestRepository,
     PaymentTransactionRepository,
     StripeConnectWebhookEventRepository,
+    OrganizationPaymentAccountService,
+    StripeConnectAccountService,
+    stripeConnectAdapterProvider,
   ],
 })
 export class PaymentsModule {}
