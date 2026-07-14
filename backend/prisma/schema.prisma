@@ -4053,10 +4053,14 @@ model OrgInvoice {
   createdAt            DateTime         @default(now()) @map("created_at")
   updatedAt            DateTime         @updatedAt @map("updated_at")
 
-  tasks        OrgTask[]
-  payments     OrgInvoicePayment[]
-  vendor       Vendor?             @relation(fields: [vendorId], references: [id], onDelete: SetNull)
-  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tasks                   OrgTask[]
+  payments                OrgInvoicePayment[]
+  vendor                  Vendor?             @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  organization            Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  /// Denormalized cache pointer to the active generated PDF (ADR: hybrid A+C).
+  activeGeneratedDocument GeneratedDocument?  @relation("OrgInvoiceActiveDocument", fields: [generatedDocumentId], references: [id], onDelete: SetNull)
+  /// Canonical collection: all document versions linked via GeneratedDocument.invoiceId.
+  generatedDocuments      GeneratedDocument[] @relation("OrgInvoiceDocuments")
 
   @@unique([organizationId, sequenceYear, sequenceNumber])
   @@index([organizationId])
@@ -4068,6 +4072,7 @@ model OrgInvoice {
   @@index([invoiceDate])
   @@index([organizationId, status])
   @@index([organizationId, invoiceDate])
+  @@index([generatedDocumentId], map: "org_invoices_generated_document_id_idx")
   @@map("org_invoices")
 }
 
@@ -4083,40 +4088,53 @@ model OrgInvoice {
 // columns + indexes (no Prisma relations) to avoid migration friction.
 
 model GeneratedDocument {
-  id                 String       @id @default(uuid())
-  organizationId     String       @map("organization_id")
-  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  documentType       String       @map("document_type") // BOOKING_INVOICE, DEPOSIT_RECEIPT, RENTAL_CONTRACT, TERMS_AND_CONDITIONS, WITHDRAWAL_INFORMATION, HANDOVER_PICKUP, HANDOVER_RETURN, FINAL_INVOICE
-  origin             String       @default("GENERATED") // GENERATED, STATIC_LEGAL, UPLOADED_REFERENCE
-  status             String       @default("GENERATED") // DRAFT, GENERATED, SENT, VOID, FAILED
-  bookingId          String?      @map("booking_id")
-  customerId         String?      @map("customer_id")
-  vehicleId          String?      @map("vehicle_id")
-  invoiceId          String?      @map("invoice_id")
-  handoverProtocolId String?      @map("handover_protocol_id")
-  rentalContractId   String?      @map("rental_contract_id")
-  depositId          String?      @map("deposit_id")
-  legalDocumentId    String?      @map("legal_document_id")
-  title              String
-  documentNumber     String?      @map("document_number")
-  fileName           String       @map("file_name")
-  mimeType           String       @default("application/pdf") @map("mime_type")
-  storageProvider    String       @default("local") @map("storage_provider")
-  objectKey          String       @map("object_key")
-  sizeBytes          Int?         @map("size_bytes")
-  checksum           String?
-  templateKey        String?      @map("template_key")
-  templateVersion    String?      @map("template_version")
-  legalVersionLabel  String?      @map("legal_version_label")
-  generatedAt        DateTime?    @map("generated_at")
-  generatedByUserId  String?      @map("generated_by_user_id")
-  sentAt             DateTime?    @map("sent_at")
-  signedAt           DateTime?    @map("signed_at")
-  voidedAt           DateTime?    @map("voided_at")
-  metadata           Json?
-  snapshot           Json?
-  createdAt          DateTime     @default(now()) @map("created_at")
-  updatedAt          DateTime     @updatedAt @map("updated_at")
+  id                      String       @id @default(uuid())
+  organizationId          String       @map("organization_id")
+  organization            Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documentType            String       @map("document_type") // BOOKING_INVOICE, DEPOSIT_RECEIPT, RENTAL_CONTRACT, TERMS_AND_CONDITIONS, WITHDRAWAL_INFORMATION, HANDOVER_PICKUP, HANDOVER_RETURN, FINAL_INVOICE
+  origin                  String       @default("GENERATED") // GENERATED, STATIC_LEGAL, UPLOADED_REFERENCE
+  status                  String       @default("GENERATED") // DRAFT, GENERATED, SENT, VOID, FAILED
+  bookingId               String?      @map("booking_id")
+  customerId              String?      @map("customer_id")
+  vehicleId               String?      @map("vehicle_id")
+  invoiceId               String?      @map("invoice_id")
+  invoice                 OrgInvoice?  @relation("OrgInvoiceDocuments", fields: [invoiceId], references: [id], onDelete: SetNull)
+  activeForInvoices       OrgInvoice[] @relation("OrgInvoiceActiveDocument")
+  /// Monotonic version per (organizationId, invoiceId, documentType); null for non-invoice docs.
+  versionNumber           Int?         @map("version_number")
+  /// Denormalized flag: at most one active version per invoice + documentType (partial unique in DB).
+  isActiveVersion         Boolean      @default(false) @map("is_active_version")
+  /// Rendering pipeline state — see DOCUMENT_GENERATION_STATUS constants.
+  generationStatus        String?      @map("generation_status")
+  generationErrorCode     String?      @map("generation_error_code")
+  lastErrorMessage        String?      @map("last_error_message")
+  generationAttemptCount  Int          @default(0) @map("generation_attempt_count")
+  lastGenerationAttemptAt DateTime?    @map("last_generation_attempt_at")
+  nextRetryAt             DateTime?    @map("next_retry_at")
+  handoverProtocolId      String?      @map("handover_protocol_id")
+  rentalContractId        String?      @map("rental_contract_id")
+  depositId               String?      @map("deposit_id")
+  legalDocumentId         String?      @map("legal_document_id")
+  title                   String
+  documentNumber          String?      @map("document_number")
+  fileName                String       @map("file_name")
+  mimeType                String       @default("application/pdf") @map("mime_type")
+  storageProvider         String       @default("local") @map("storage_provider")
+  objectKey               String       @map("object_key")
+  sizeBytes               Int?         @map("size_bytes")
+  checksum                String?
+  templateKey             String?      @map("template_key")
+  templateVersion         String?      @map("template_version")
+  legalVersionLabel       String?      @map("legal_version_label")
+  generatedAt             DateTime?    @map("generated_at")
+  generatedByUserId       String?      @map("generated_by_user_id")
+  sentAt                  DateTime?    @map("sent_at")
+  signedAt                DateTime?    @map("signed_at")
+  voidedAt                DateTime?    @map("voided_at")
+  metadata                Json?
+  snapshot                Json?
+  createdAt               DateTime     @default(now()) @map("created_at")
+  updatedAt               DateTime     @updatedAt @map("updated_at")
 
   outboundEmailAttachments OutboundEmailAttachment[]
 
@@ -4127,6 +4145,11 @@ model GeneratedDocument {
   @@index([invoiceId])
   @@index([documentType])
   @@index([status])
+  @@index([organizationId, invoiceId, documentType, status], map: "generated_documents_org_invoice_type_status_idx")
+  @@index([organizationId, invoiceId, documentType, isActiveVersion], map: "generated_documents_org_invoice_type_active_idx")
+  @@index([organizationId, invoiceId, documentType, createdAt], map: "generated_documents_org_invoice_type_created_idx")
+  @@index([generationStatus, nextRetryAt], map: "generated_documents_generation_status_next_retry_idx")
+  @@index([organizationId, generationStatus, nextRetryAt], map: "generated_documents_org_generation_status_next_retry_idx")
   @@map("generated_documents")
 }
 
@@ -6103,15 +6126,15 @@ model PlatformEmailSettings {
 }
 
 model OrgEmailSettings {
-  id              String       @id @default(uuid())
-  organizationId  String       @unique @map("organization_id")
-  mode            OrgEmailMode @default(SYNQDRIVE_DEFAULT)
-  defaultFromName String?      @map("default_from_name")
-  replyToEmail    String?      @map("reply_to_email")
-  signatureHtml   String?      @map("signature_html")
-  autoSendBookingDocumentsOnConfirm Boolean @default(false) @map("auto_send_booking_documents_on_confirm")
-  createdAt       DateTime     @default(now()) @map("created_at")
-  updatedAt       DateTime     @updatedAt @map("updated_at")
+  id                                String       @id @default(uuid())
+  organizationId                    String       @unique @map("organization_id")
+  mode                              OrgEmailMode @default(SYNQDRIVE_DEFAULT)
+  defaultFromName                   String?      @map("default_from_name")
+  replyToEmail                      String?      @map("reply_to_email")
+  signatureHtml                     String?      @map("signature_html")
+  autoSendBookingDocumentsOnConfirm Boolean      @default(false) @map("auto_send_booking_documents_on_confirm")
+  createdAt                         DateTime     @default(now()) @map("created_at")
+  updatedAt                         DateTime     @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
@@ -7240,9 +7263,9 @@ model Notification {
   createdAt           DateTime               @default(now()) @map("created_at")
   updatedAt           DateTime               @updatedAt @map("updated_at")
 
-  organization  Organization                  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  occurrences   NotificationOccurrence[]
-  receipts      NotificationReceipt[]
+  organization   Organization                 @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  occurrences    NotificationOccurrence[]
+  receipts       NotificationReceipt[]
   deliveryOutbox NotificationDeliveryOutbox[]
 
   @@index([organizationId, status, lastSeenAt])

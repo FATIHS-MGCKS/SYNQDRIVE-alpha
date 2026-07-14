@@ -51,6 +51,19 @@ export const DOCUMENT_STATUS = {
   FAILED: 'FAILED',
 } as const;
 
+/** PDF rendering / generation pipeline state (persisted on GeneratedDocument). */
+export const DOCUMENT_GENERATION_STATUS = {
+  IDLE: 'IDLE',
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  SUCCEEDED: 'SUCCEEDED',
+  FAILED: 'FAILED',
+  RETRY_SCHEDULED: 'RETRY_SCHEDULED',
+} as const;
+
+export type DocumentGenerationStatus =
+  (typeof DOCUMENT_GENERATION_STATUS)[keyof typeof DOCUMENT_GENERATION_STATUS];
+
 /** Statuses allowed as outbound-email PDF attachments (GENERATED + re-send of SENT). */
 export const EMAIL_SENDABLE_DOCUMENT_STATUSES = new Set<string>([
   DOCUMENT_STATUS.GENERATED,
