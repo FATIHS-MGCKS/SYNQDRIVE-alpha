@@ -12,7 +12,10 @@ import { InvoiceDetailReadService } from './invoice-detail-read.service';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
+import { Roles } from '@shared/decorators/roles.decorator';
 import { StorageService } from '@shared/storage/storage.service';
+import { InvoiceDocumentEmailService } from '@modules/outbound-email/invoice-document-email.service';
+import { SendInvoiceEmailDto } from '@modules/outbound-email/dto/send-invoice-email.dto';
 import {
   CreateInvoiceDto,
   InvoiceQueryDto,
@@ -28,6 +31,7 @@ export class InvoicesController {
   constructor(
     private readonly invoicesService: InvoicesService,
     private readonly invoiceDetail: InvoiceDetailReadService,
+    private readonly invoiceEmail: InvoiceDocumentEmailService,
     private readonly storage: StorageService,
   ) {}
 
@@ -123,6 +127,22 @@ export class InvoicesController {
   @UseGuards(OrgScopingGuard, RolesGuard)
   async markPaid(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.invoicesService.markPaid(id, orgId);
+  }
+
+  @Post('organizations/:orgId/invoices/:invoiceId/send-email')
+  @UseGuards(OrgScopingGuard, RolesGuard)
+  @Roles('ORG_ADMIN', 'MASTER_ADMIN', 'SUB_ADMIN')
+  async sendEmail(
+    @Param('orgId') orgId: string,
+    @Param('invoiceId') invoiceId: string,
+    @CurrentUser('id') userId: string | undefined,
+    @Req() req: Request & { requestId?: string },
+    @Body() body: SendInvoiceEmailDto,
+  ) {
+    return this.invoiceEmail.sendInvoiceEmail(orgId, invoiceId, userId ?? null, {
+      ...body,
+      correlationId: req.requestId ?? undefined,
+    });
   }
 
   /** Legacy attachment upload only — NOT for AI extraction. Use document-extraction upload. */

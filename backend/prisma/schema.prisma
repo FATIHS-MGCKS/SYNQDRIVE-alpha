@@ -4111,6 +4111,7 @@ model OrgInvoice {
   activeGeneratedDocument GeneratedDocument?  @relation("OrgInvoiceActiveDocument", fields: [generatedDocumentId], references: [id], onDelete: SetNull)
   /// Canonical collection: all document versions linked via GeneratedDocument.invoiceId.
   generatedDocuments      GeneratedDocument[] @relation("OrgInvoiceDocuments")
+  outboundEmails          OutboundEmail[]     @relation("OrgInvoiceOutboundEmails")
 
   @@unique([organizationId, sequenceYear, sequenceNumber])
   @@index([organizationId])
@@ -4191,6 +4192,7 @@ model GeneratedDocument {
   updatedAt               DateTime     @updatedAt @map("updated_at")
 
   outboundEmailAttachments OutboundEmailAttachment[]
+  outboundEmailDeliveries  OutboundEmail[]          @relation("OutboundEmailDocument")
 
   @@index([organizationId])
   @@index([bookingId])
@@ -6156,6 +6158,15 @@ enum OutboundEmailStatus {
   SENT_SIMULATED
 }
 
+enum OutboundEmailDeliveryStatus {
+  PENDING
+  ACCEPTED
+  DELIVERED
+  BOUNCED
+  COMPLAINED
+  FAILED
+}
+
 enum OutboundEmailEventType {
   QUEUED
   SENDING
@@ -6219,43 +6230,60 @@ model OrgEmailDomain {
 }
 
 model OutboundEmail {
-  id                String                  @id @default(uuid())
-  organizationId    String                  @map("organization_id")
-  bookingId         String?                 @map("booking_id")
-  customerId        String?                 @map("customer_id")
-  invoiceId         String?                 @map("invoice_id")
-  sourceType        OutboundEmailSourceType @map("source_type")
-  status            OutboundEmailStatus     @default(QUEUED)
-  fromEmail         String                  @map("from_email")
-  fromName          String?                 @map("from_name")
-  replyToEmail      String?                 @map("reply_to_email")
-  toEmail           String                  @map("to_email")
-  ccEmails          String[]                @default([]) @map("cc_emails")
-  bccEmails         String[]                @default([]) @map("bcc_emails")
-  subject           String
-  bodyText          String?                 @map("body_text")
-  bodyHtml          String?                 @map("body_html")
-  provider          String?
-  providerMessageId String?                 @map("provider_message_id")
-  errorCode         String?                 @map("error_code")
-  errorMessage      String?                 @map("error_message")
-  sentByUserId      String?                 @map("sent_by_user_id")
-  sentAt            DateTime?               @map("sent_at")
-  createdAt         DateTime                @default(now()) @map("created_at")
-  updatedAt         DateTime                @updatedAt @map("updated_at")
+  id                      String                      @id @default(uuid())
+  organizationId          String                      @map("organization_id")
+  bookingId               String?                     @map("booking_id")
+  customerId              String?                     @map("customer_id")
+  invoiceId               String?                     @map("invoice_id")
+  generatedDocumentId     String?                     @map("generated_document_id")
+  documentVersionNumber   Int?                        @map("document_version_number")
+  sourceType              OutboundEmailSourceType     @map("source_type")
+  status                  OutboundEmailStatus         @default(QUEUED)
+  deliveryStatus          OutboundEmailDeliveryStatus @default(PENDING) @map("delivery_status")
+  fromEmail               String                      @map("from_email")
+  fromName                String?                     @map("from_name")
+  replyToEmail            String?                     @map("reply_to_email")
+  toEmail                 String                      @map("to_email")
+  ccEmails                String[]                    @default([]) @map("cc_emails")
+  bccEmails               String[]                    @default([]) @map("bcc_emails")
+  subject                 String
+  bodyText                String?                     @map("body_text")
+  bodyHtml                String?                     @map("body_html")
+  provider                String?
+  providerMessageId       String?                     @map("provider_message_id")
+  errorCode               String?                     @map("error_code")
+  errorMessage            String?                     @map("error_message")
+  sentByUserId            String?                     @map("sent_by_user_id")
+  requestedAt             DateTime                    @default(now()) @map("requested_at")
+  acceptedAt              DateTime?                   @map("accepted_at")
+  sentAt                  DateTime?                   @map("sent_at")
+  deliveredAt             DateTime?                   @map("delivered_at")
+  failedAt                DateTime?                   @map("failed_at")
+  idempotencyKey          String?                     @map("idempotency_key")
+  correlationId           String?                     @map("correlation_id")
+  createdAt               DateTime                    @default(now()) @map("created_at")
+  updatedAt               DateTime                    @updatedAt @map("updated_at")
 
-  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  booking      Booking?                  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-  customer     Customer?                 @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  sentByUser   User?                     @relation("OutboundEmailSentBy", fields: [sentByUserId], references: [id], onDelete: SetNull)
-  attachments  OutboundEmailAttachment[]
-  events       OutboundEmailEvent[]
+  organization      Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  booking           Booking?                  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  customer          Customer?                 @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  invoice           OrgInvoice?               @relation("OrgInvoiceOutboundEmails", fields: [invoiceId], references: [id], onDelete: SetNull)
+  generatedDocument GeneratedDocument?        @relation("OutboundEmailDocument", fields: [generatedDocumentId], references: [id], onDelete: SetNull)
+  sentByUser        User?                     @relation("OutboundEmailSentBy", fields: [sentByUserId], references: [id], onDelete: SetNull)
+  attachments       OutboundEmailAttachment[]
+  events            OutboundEmailEvent[]
 
   @@index([organizationId])
   @@index([organizationId, bookingId])
   @@index([organizationId, customerId])
+  @@index([organizationId, invoiceId])
+  @@index([organizationId, generatedDocumentId])
+  @@unique([organizationId, idempotencyKey])
   @@index([status])
+  @@index([deliveryStatus])
+  @@index([providerMessageId])
   @@index([createdAt])
+  @@index([requestedAt])
   @@map("outbound_emails")
 }
 

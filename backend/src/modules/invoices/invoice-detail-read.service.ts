@@ -61,14 +61,22 @@ export class InvoiceDetailReadService {
         this.prisma.outboundEmail.findMany({
           where: {
             organizationId: orgId,
-            OR: [
-              { invoiceId },
-              ...(invoice.bookingId ? [{ bookingId: invoice.bookingId }] : []),
-            ],
+            invoiceId,
           },
-          orderBy: { createdAt: 'desc' },
-          take: 25,
-          include: { attachments: true },
+          orderBy: { requestedAt: 'desc' },
+          take: 50,
+          include: {
+            attachments: true,
+            sentByUser: {
+              select: {
+                id: true,
+                name: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+              },
+            },
+          },
         }),
         this.prisma.activityLog.findMany({
           where: { organizationId: orgId, entity: 'INVOICE', entityId: invoiceId },

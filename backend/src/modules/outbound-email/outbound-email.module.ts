@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { DocumentsModule } from '@modules/documents/documents.module';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
+import { InvoicesModule } from '@modules/invoices/invoices.module';
 import { OrgEmailController } from './org-email.controller';
 import { PlatformEmailController } from './platform-email.controller';
 import { BookingDocumentsEmailController } from './booking-documents-email.controller';
@@ -11,12 +12,13 @@ import { OutboundEmailPolicyService } from './outbound-email-policy.service';
 import { OutboundEmailDomainService } from './outbound-email-domain.service';
 import { OutboundEmailService } from './outbound-email.service';
 import { BookingDocumentEmailService } from './booking-document-email.service';
+import { InvoiceDocumentEmailService } from './invoice-document-email.service';
 import { DevEmailProvider } from './providers/dev-email.provider';
 import { ResendEmailProvider } from './providers/resend-email.provider';
 import { EmailProviderRegistry } from './providers/email-provider.registry';
 
 @Module({
-  imports: [DocumentsModule, ActivityLogModule],
+  imports: [DocumentsModule, ActivityLogModule, forwardRef(() => InvoicesModule)],
   controllers: [OrgEmailController, PlatformEmailController, BookingDocumentsEmailController, ResendWebhookController],
   providers: [
     PlatformEmailSettingsService,
@@ -24,6 +26,7 @@ import { EmailProviderRegistry } from './providers/email-provider.registry';
     OutboundEmailDomainService,
     OutboundEmailService,
     BookingDocumentEmailService,
+    InvoiceDocumentEmailService,
     DevEmailProvider,
     ResendEmailProvider,
     EmailProviderRegistry,
@@ -35,6 +38,7 @@ import { EmailProviderRegistry } from './providers/email-provider.registry';
     OutboundEmailDomainService,
     OutboundEmailService,
     BookingDocumentEmailService,
+    InvoiceDocumentEmailService,
     EmailProviderRegistry,
   ],
 })
