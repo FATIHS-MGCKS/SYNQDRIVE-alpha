@@ -23,6 +23,7 @@ import {
   QuantityResolverService,
   SubscriptionResolverService,
 } from './resolvers';
+import { BillingLegacyBackfillService } from './migration/billing-legacy-backfill.service';
 
 @Module({
   controllers: [BillingController, StripeWebhookController],
@@ -47,6 +48,7 @@ import {
     EntitlementResolverService,
     StripeBillingAdapter,
     BillingEventPublisher,
+    BillingLegacyBackfillService,
   ],
   exports: [
     BillingService,
@@ -69,6 +71,7 @@ import {
     EntitlementResolverService,
     StripeBillingAdapter,
     BillingEventPublisher,
+    BillingLegacyBackfillService,
   ],
 })
 export class BillingModule {}
