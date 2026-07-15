@@ -43,8 +43,12 @@ export function useBillingTariffVehicles(orgId: string | undefined) {
   const [vehicleQuery, setVehicleQuery] = useState<BillableVehicleListQuery>(DEFAULT_VEHICLE_QUERY);
   const [changesQuery, setChangesQuery] = useState<VehicleBillingChangesQuery>(DEFAULT_CHANGES_QUERY);
 
-  const vehicleQueryKey = serializeBillingQueryKey(vehicleQuery);
-  const changesQueryKey = serializeBillingQueryKey(changesQuery);
+  const vehicleQueryKey = serializeBillingQueryKey(
+    vehicleQuery as Record<string, string | number | undefined | null>,
+  );
+  const changesQueryKey = serializeBillingQueryKey(
+    changesQuery as Record<string, string | number | undefined | null>,
+  );
 
   const tariffQuery = useBillingQuery<TenantSubscriptionTariffDto>({
     orgId,
@@ -56,7 +60,11 @@ export function useBillingTariffVehicles(orgId: string | undefined) {
     orgId,
     deps: [billingQueryKeys.billableVehicleList(orgId ?? '', vehicleQueryKey)],
     fetcher: async (signal) => {
-      const payload = await api.billing.orgBillableVehiclesList(orgId, vehicleQuery, { signal });
+      const payload = await api.billing.orgBillableVehiclesList(
+        orgId,
+        vehicleQuery as Record<string, string | number | undefined>,
+        { signal },
+      );
       return parseBillingPaginated<TenantBillableVehicleListItemDto>(payload);
     },
   });
@@ -65,7 +73,11 @@ export function useBillingTariffVehicles(orgId: string | undefined) {
     orgId,
     deps: [billingQueryKeys.vehicleBillingChanges(orgId ?? '', changesQueryKey)],
     fetcher: async (signal) => {
-      const payload = await api.billing.orgVehicleBillingChanges(orgId, changesQuery, { signal });
+      const payload = await api.billing.orgVehicleBillingChanges(
+        orgId,
+        changesQuery as Record<string, string | number | undefined>,
+        { signal },
+      );
       return parseBillingPaginated<TenantVehicleBillingChangeDto>(payload);
     },
   });

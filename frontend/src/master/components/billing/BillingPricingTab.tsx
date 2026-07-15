@@ -1015,7 +1015,7 @@ export function BillingPricingTab({
           <p>Kein Mapping vorhanden.</p>
           <button
             type="button"
-            disabled={stripeLoading || resolvePriceVersionDisplayStatus(selectedVersion ?? { status: 'DRAFT' }) === 'DRAFT'}
+            disabled={stripeLoading || resolvePriceVersionDisplayStatus(selectedVersion ?? { status: 'DRAFT', effectiveFrom: null }) === 'DRAFT'}
             onClick={() => void createStripeCatalog(mode)}
             className="px-3 py-1.5 rounded-lg text-[11px] font-semibold border border-border/70"
           >
