@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-booking-context-fail-closed-v49480-2026-07-15',
+    version: '4.9.480',
+    title: 'V4.9.480 — Fleet Status: fail-closed Booking-Context-Queries (Prompt 14/43)',
+    summary: [
+      '`vehicle-booking-context.load.ts` — `finalizeBookingContextMap`, `resolveBookingStateForVehicle`; niemals fail-open bei Query-Fehlern.',
+      'Booking-Query-Fehler → `dataQualityState: UNAVAILABLE` + `BOOKING_QUERY_FAILED` für alle Fahrzeuge im Scope; Engine → UNKNOWN.',
+      'Handover-/Station-Teilfehler → DEGRADED (`HANDOVER_QUERY_FAILED`, `BOOKING_PARTIAL_RESULT`); strukturierte Logs mit organizationId + vehicleScope + errorClass.',
+      'Assembler befüllt jedes vehicleId (RELIABLE-leer bei Erfolg ohne Buchungen); `deriveFleetStatusContext` fail-closed wenn Kontext fehlt.',
+    ],
+    reason:
+      'Prompt 14/43: technische Booking-Abfragefehler dürfen nicht wie „keine Buchung" interpretiert werden — kein stilles AVAILABLE.',
+    previousBehavior:
+      'catch → [] ohne Logging; fehlende Map-Einträge → null bookingState → RELIABLE-leer; Handover-Fehler nur bei ACTIVE-Kandidaten.',
+    details:
+      'Tests: `vehicle-booking-context.load.spec.ts` (DB, Timeout, Teilfehler, UNAVAILABLE→UNKNOWN). Fleet-Liste liefert pro-Fahrzeug UNKNOWN statt Gesamt-500.',
+    affectsArchitecture: true,
+    module: 'Vehicles',
+    createdAt: '2026-07-16T00:15:00.000Z',
+  },
+  {
     id: 'vehicle-future-occupancy-v49479-2026-07-15',
     version: '4.9.479',
     title: 'V4.9.479 — Fleet Status: zukünftige Belegung nextBooking (Prompt 13/43)',

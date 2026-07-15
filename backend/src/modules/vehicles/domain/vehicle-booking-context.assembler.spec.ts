@@ -269,6 +269,20 @@ describe('vehicle-booking-context.assembler', () => {
   });
 
   describe('tenant / vehicle separation', () => {
+    it('includes RELIABLE-empty entry for vehicles without bookings', () => {
+      const map = assembleBookingContextMap({
+        organizationId: ORG_A,
+        vehicleIds: [VEHICLE_A, VEHICLE_B],
+        bookings: [],
+        evaluationAt: EVALUATION_AT,
+        organizationTimezone: TIMEZONE,
+      });
+
+      expect(map.get(VEHICLE_A)?.dataQualityState).toBe('RELIABLE');
+      expect(map.get(VEHICLE_B)?.dataQualityState).toBe('RELIABLE');
+      expect(map.get(VEHICLE_A)?.nextBooking).toBeNull();
+    });
+
     it('does not mix bookings across vehicle ids', () => {
       const bookings = [
         activeRow({

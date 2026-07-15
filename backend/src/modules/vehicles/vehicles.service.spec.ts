@@ -77,7 +77,15 @@ describe('VehiclesService.deriveFleetStatusContext (delegation)', () => {
     const result = service.deriveFleetStatusContext({
       vehicle: { id: 'v-ghost', status: VehicleStatus.RENTED },
       state: null,
-      bookingState: null,
+      bookingState: {
+        activeBooking: null,
+        reservationWindowBooking: null,
+        nextBooking: null,
+        futureBookingCount: 0,
+        futureBookings: [],
+        dataQualityState: 'RELIABLE',
+        dataQualityReasons: [],
+      },
       pickupOdoByBooking: new Map(),
     });
 
@@ -119,6 +127,38 @@ describe('VehiclesService.deriveFleetStatusContext (delegation)', () => {
         reservedBookingId: null,
       }),
     );
+  });
+
+  it('fail-closed when bookingState omitted entirely', () => {
+    const result = service.deriveFleetStatusContext({
+      vehicle: { id: 'v-missing-ctx', status: VehicleStatus.AVAILABLE },
+      state: null,
+      bookingState: null,
+      pickupOdoByBooking: new Map(),
+    });
+
+    expect(result.status).toBe('Unknown');
+  });
+
+  it('returns UNKNOWN when booking context is UNAVAILABLE', () => {
+    const result = service.deriveFleetStatusContext({
+      vehicle: { id: 'v-unavail', status: VehicleStatus.AVAILABLE },
+      state: null,
+      bookingState: {
+        activeBooking: null,
+        reservationWindowBooking: null,
+        nextBooking: null,
+        futureBookingCount: 0,
+        futureBookings: [],
+        dataQualityState: 'UNAVAILABLE',
+        dataQualityReasons: ['BOOKING_QUERY_FAILED'],
+      },
+      pickupOdoByBooking: new Map(),
+    });
+
+    expect(result.status).toBe('Unknown');
+    expect(result.nextBooking).toBeNull();
+    expect(result.futureBookingCount).toBe(0);
   });
 
   it('exposes EMPTY_BOOKING_CONTEXT on the class for legacy callers', () => {

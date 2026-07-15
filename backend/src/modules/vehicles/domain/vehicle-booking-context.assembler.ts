@@ -112,8 +112,7 @@ export function assembleBookingContextMap(
   }
 
   for (const vehicleId of vehicleIds) {
-    const vehicleBookings = bookingsByVehicle.get(vehicleId);
-    if (!vehicleBookings || vehicleBookings.length === 0) continue;
+    const vehicleBookings = bookingsByVehicle.get(vehicleId) ?? [];
     map.set(
       vehicleId,
       assembleVehicleBookingContext({

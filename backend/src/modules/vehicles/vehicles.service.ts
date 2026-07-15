@@ -58,8 +58,14 @@ import {
 } from './domain/vehicle-operational-state.builder';
 import {
   assembleBookingContextMap,
-  unavailableBookingContextMap,
 } from './domain/vehicle-booking-context.assembler';
+import { resolveBookingStateForVehicle } from './domain/vehicle-booking-context.load';
+import {
+  classifyBookingContextQueryError,
+  finalizeBookingContextMap,
+  logBookingContextQueryFailure,
+  unavailableBookingContextForVehicle,
+} from './domain/vehicle-booking-context.load';
 import {
   formatBookingCustomerLabel,
   type VehicleBookingQueryRow,
@@ -260,7 +266,11 @@ export class VehiclesService {
     if (vehicleIds.length === 0) return new Map();
 
     const evaluationAt = new Date();
-    let queryFailed = false;
+    let bookingQueryFailed = false;
+    let bookingQueryErrorClass: ReturnType<
+      typeof classifyBookingContextQueryError
+    > = 'UNKNOWN';
+
     const rows = await this.prisma.booking
       .findMany({
         where: {
@@ -295,13 +305,30 @@ export class VehiclesService {
         },
         orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
       })
-      .catch(() => {
-        queryFailed = true;
+      .catch((err: unknown) => {
+        bookingQueryFailed = true;
+        bookingQueryErrorClass = classifyBookingContextQueryError(err);
+        logBookingContextQueryFailure(this.logger, {
+          msg: 'fleet booking context primary query failed',
+          organizationId,
+          vehicleScope: { count: vehicleIds.length },
+          queryLayer: 'BOOKING',
+          errorClass: bookingQueryErrorClass,
+        });
         return [];
       });
 
-    if (queryFailed) {
-      return unavailableBookingContextMap(vehicleIds);
+    if (bookingQueryFailed) {
+      return finalizeBookingContextMap({
+        organizationId,
+        vehicleIds,
+        organizationTimezone,
+        evaluationAt,
+        bookingRows: [],
+        bookingQueryFailed: true,
+        handoverQueryFailed: false,
+        stationQueryFailed: false,
+      });
     }
 
     const stationIds = Array.from(
@@ -311,6 +338,7 @@ export class VehiclesService {
           .filter((x): x is string => !!x),
       ),
     );
+    let stationQueryFailed = false;
     const stationMap = new Map<string, string>();
     if (stationIds.length > 0) {
       const stations = await this.prisma.station
@@ -318,7 +346,17 @@ export class VehiclesService {
           where: { id: { in: stationIds }, organizationId },
           select: { id: true, name: true },
         })
-        .catch(() => [] as Array<{ id: string; name: string }>);
+        .catch((err: unknown) => {
+          stationQueryFailed = true;
+          logBookingContextQueryFailure(this.logger, {
+            msg: 'fleet booking context station lookup failed',
+            organizationId,
+            vehicleScope: { count: vehicleIds.length },
+            queryLayer: 'STATION',
+            errorClass: classifyBookingContextQueryError(err),
+          });
+          return [] as Array<{ id: string; name: string }>;
+        });
       for (const s of stations) stationMap.set(s.id, s.name);
     }
 
@@ -339,8 +377,15 @@ export class VehiclesService {
                 performedAt: true,
               },
             })
-            .catch(() => {
+            .catch((err: unknown) => {
               handoverQueryFailed = true;
+              logBookingContextQueryFailure(this.logger, {
+                msg: 'fleet booking context handover query failed',
+                organizationId,
+                vehicleScope: { count: vehicleIds.length },
+                queryLayer: 'HANDOVER',
+                errorClass: classifyBookingContextQueryError(err),
+              });
               return [] as Array<{
                 bookingId: string;
                 kind: 'PICKUP' | 'RETURN';
@@ -395,34 +440,16 @@ export class VehiclesService {
       };
     });
 
-    const map = assembleBookingContextMap({
+    return finalizeBookingContextMap({
       organizationId,
       vehicleIds,
-      bookings: bookingRows,
-      evaluationAt,
       organizationTimezone,
+      evaluationAt,
+      bookingRows,
+      bookingQueryFailed: false,
+      handoverQueryFailed,
+      stationQueryFailed,
     });
-
-    if (handoverQueryFailed) {
-      for (const [vehicleId, state] of map.entries()) {
-        const hasActiveCandidate = bookingRows.some(
-          (b) => b.vehicleId === vehicleId && b.status === 'ACTIVE',
-        );
-        if (!hasActiveCandidate) continue;
-        const reasons = [...state.dataQualityReasons];
-        if (!reasons.includes('HANDOVER_QUERY_FAILED')) {
-          reasons.push('HANDOVER_QUERY_FAILED');
-        }
-        map.set(vehicleId, {
-          ...state,
-          activeBooking: null,
-          dataQualityState: 'DEGRADED',
-          dataQualityReasons: reasons,
-        });
-      }
-    }
-
-    return map;
   }
 
   /**
@@ -624,7 +651,10 @@ export class VehiclesService {
     // that case because the vehicle has no in-flight booking at that
     // call site; the derivation will fall through the `liveKmDriven`
     // branch safely.
-    const bookingState = bookingContextMap?.get(v.id) ?? null;
+    const bookingState = resolveBookingStateForVehicle(
+      bookingContextMap,
+      v.id,
+    );
     const fleetCtx = this.deriveFleetStatusContext({
       vehicle: v,
       state,
@@ -797,7 +827,8 @@ export class VehiclesService {
         licensePlate: input.vehicle.licensePlate,
         tankCapacityLiters: input.vehicle.tankCapacityLiters,
       },
-      bookingState: input.bookingState,
+      bookingState:
+        input.bookingState ?? unavailableBookingContextForVehicle(),
       organizationTimezone:
         input.organizationTimezone ?? DEFAULT_ORGANIZATION_TIMEZONE,
       telemetry: input.state,
@@ -1026,7 +1057,10 @@ export class VehiclesService {
         tripState,
       );
 
-      const bookingState = bookingContextMap.get(vehicle.id) ?? null;
+      const bookingState = resolveBookingStateForVehicle(
+        bookingContextMap,
+        vehicle.id,
+      );
       const fleetCtx = this.deriveFleetStatusContext({
         vehicle: { ...vehicle, organizationId },
         state,
