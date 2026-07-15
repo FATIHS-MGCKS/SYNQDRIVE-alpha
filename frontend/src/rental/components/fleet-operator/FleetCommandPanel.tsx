@@ -51,6 +51,8 @@ export interface FleetCommandPanelProps {
   canonicalAlertCounts?: { critical: number; warning: number };
   /** Vehicle IDs from the canonical Critical Alerts slice (Dashboard). */
   canonicalCriticalVehicleIds?: ReadonlySet<string>;
+  /** Tab badge counts from dashboard runtime vehicle states (same scope as contexts). */
+  canonicalTabCounts?: Record<FleetCommandTab, number>;
 }
 
 export function FleetCommandPanel({
@@ -77,13 +79,17 @@ export function FleetCommandPanel({
   listPanelRef,
   canonicalAlertCounts,
   canonicalCriticalVehicleIds,
+  canonicalTabCounts,
 }: FleetCommandPanelProps) {
   const severityOptions = useMemo<ResolveFleetCommandRowSeverityOptions>(
     () => ({ canonicalCriticalVehicleIds }),
     [canonicalCriticalVehicleIds],
   );
 
-  const tabCounts = useMemo(() => computeCommandTabCounts(contexts), [contexts]);
+  const tabCounts = useMemo(
+    () => canonicalTabCounts ?? computeCommandTabCounts(contexts),
+    [canonicalTabCounts, contexts],
+  );
 
   const attentionStats = useMemo(() => {
     if (canonicalAlertCounts) return canonicalAlertCounts;

@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { VehicleData } from '../../data/vehicles';
 import type { VehicleHealthResponse } from '../../../lib/api';
 import type { DashboardRuntimeModel } from '../dashboard/runtime/dashboardRuntimeTypes';
+import { resolveFleetTabCountsFromRuntime } from '../dashboard/runtime/runtimeSliceConsistency';
 import { FleetCommandPanel } from './FleetCommandPanel';
 import {
   type FleetCommandTab,
@@ -117,6 +118,12 @@ export function FleetCommandView({
     [dashboardRuntime],
   );
 
+  const canonicalTabCounts = useMemo(() => {
+    if (!dashboardRuntime) return undefined;
+    const scopeIds = new Set(vehicles.map((v) => v.id));
+    return resolveFleetTabCountsFromRuntime(dashboardRuntime, scopeIds);
+  }, [dashboardRuntime, vehicles]);
+
   return (
     <FleetCommandPanel
       contexts={searchContexts}
@@ -136,6 +143,7 @@ export function FleetCommandView({
       headerAction={headerAction}
       canonicalAlertCounts={canonicalAlertCounts}
       canonicalCriticalVehicleIds={canonicalCriticalVehicleIds}
+      canonicalTabCounts={canonicalTabCounts}
       onRowClick={openVehicle}
       onDetailClick={(ctx, e) => {
         e.stopPropagation();

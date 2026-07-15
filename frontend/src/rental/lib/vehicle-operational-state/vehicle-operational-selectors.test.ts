@@ -66,6 +66,23 @@ describe('selectOperationalStatus', () => {
     ).toBe(expected);
   });
 
+  it('normalizes legacy flat display status when operationalState is absent', () => {
+    expect(
+      selectOperationalStatus(
+        vehicle({
+          status: 'Available' as unknown as typeof VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
+        }),
+      ),
+    ).toBe(VEHICLE_OPERATIONAL_STATUS.AVAILABLE);
+    expect(
+      selectOperationalStatus(
+        vehicle({
+          status: 'Active Rented' as unknown as typeof VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+        }),
+      ),
+    ).toBe(VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED);
+  });
+
   it('prefers operationalState.status over flat status', () => {
     expect(
       selectOperationalStatus(

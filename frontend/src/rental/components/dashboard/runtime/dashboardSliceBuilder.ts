@@ -278,18 +278,10 @@ function operationReadiness(
   kind: 'pickup' | 'return',
 ): Pick<DashboardSliceRow, 'readinessLabel' | 'readinessTone'> | undefined {
   if (state) {
-    const isReserved =
-      state.operationalStatus === 'reserved'
-      || (kind === 'pickup' && (state.bookingState === 'reserved' || state.bookingState === 'pickup_due_soon'));
-    if (isReserved) {
+    if (state.operationalStatus === 'reserved') {
       return { readinessLabel: label(locale, 'Reserviert', 'Reserved'), readinessTone: 'info' };
     }
-    const isActiveRental =
-      state.operationalStatus === 'active_rented'
-      || state.bookingState === 'active_rented'
-      || state.bookingState === 'return_due_soon'
-      || state.bookingState === 'return_overdue';
-    if (isActiveRental) {
+    if (state.operationalStatus === 'active_rented') {
       return { readinessLabel: label(locale, 'Aktiv', 'Active'), readinessTone: 'info' };
     }
     if (state.isReadyToRent) {

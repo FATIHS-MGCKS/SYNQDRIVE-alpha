@@ -9,7 +9,7 @@ import { resolveDrawerVehicleReasonBadge } from './dashboardDrilldownRowDisplay'
 import { DrawerRowActionButton } from './dashboardDrawerRowActions';
 import { drawerRowActionStackClassName } from './dashboardDrawerRowLines';
 import type { DashboardSliceRow, VehicleRuntimeState } from './runtime';
-import { VEHICLE_OPERATIONAL_STATUS } from '../../lib/vehicle-operational-state';
+import { selectIsCurrentlyAvailable } from '../../lib/vehicle-operational-state';
 
 function reasonChipClass(tone: StatusTone): string {
   if (tone === 'critical') {
@@ -106,7 +106,7 @@ export function CompactFleetDrawerVehicleRow({
   );
   const energy = fleetDisplay?.energy;
   const odometerLabel = fleetDisplay?.odometerLabel ?? null;
-  const dimmed = fleetDisplay?.showTelemetryWarning && vehicle?.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE;
+  const dimmed = fleetDisplay?.showTelemetryWarning && vehicle && selectIsCurrentlyAvailable(vehicle);
 
   const showOpsMeta = energy?.percent != null || odometerLabel || telemetryLabel;
 
