@@ -3925,6 +3925,134 @@ export const api = {
       post<any>(`/billing/stripe/setup-intent${billingTenantQuery(orgId)}`, {}),
     adminSyncStripe: (orgId: string) =>
       post<any>(`/admin/billing/organizations/${encodeURIComponent(orgId)}/sync-stripe`, {}),
+    masterSubscriptionPath: (orgId: string, suffix = '') =>
+      `/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription${suffix}`,
+    masterSubscriptionGet: (orgId: string, suffix = '') =>
+      get<any>(`/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription${suffix}`),
+    masterSubscriptionMutate: (
+      orgId: string,
+      suffix: string,
+      method: 'POST' | 'PATCH',
+      body: Record<string, unknown>,
+      idempotencyKey?: string,
+    ) =>
+      request<any>(`/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription${suffix}`, {
+        method,
+        body: JSON.stringify(body),
+        headers: idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined,
+      }),
+    masterSubscriptionContract: (orgId: string) =>
+      get<any>(`/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription`),
+    masterSubscriptionOverview: (orgId: string) =>
+      get<any>(`/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription/overview`),
+    masterSubscriptionHistory: (orgId: string) =>
+      get<any>(`/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription/history`),
+    masterSubscriptionPreview: (orgId: string, body: Record<string, unknown>) =>
+      post<any>(
+        `/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription/preview`,
+        body,
+      ),
+    masterSubscriptionCreateDraft: (orgId: string, body: Record<string, unknown>, idempotencyKey: string) =>
+      request<any>(`/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription/draft`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers: { 'Idempotency-Key': idempotencyKey },
+      }),
+    masterSubscriptionAssignRental: (orgId: string, body: Record<string, unknown>, idempotencyKey: string) =>
+      request<any>(
+        `/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription/assign-rental`,
+        { method: 'POST', body: JSON.stringify(body), headers: { 'Idempotency-Key': idempotencyKey } },
+      ),
+    masterSubscriptionAssignFleet: (orgId: string, body: Record<string, unknown>, idempotencyKey: string) =>
+      request<any>(
+        `/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription/assign-fleet`,
+        { method: 'POST', body: JSON.stringify(body), headers: { 'Idempotency-Key': idempotencyKey } },
+      ),
+    masterSubscriptionSelectPriceVersion: (
+      orgId: string,
+      body: Record<string, unknown>,
+      idempotencyKey: string,
+    ) =>
+      request<any>(
+        `/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription/price-version`,
+        { method: 'PATCH', body: JSON.stringify(body), headers: { 'Idempotency-Key': idempotencyKey } },
+      ),
+    masterSubscriptionConfigureTrial: (orgId: string, body: Record<string, unknown>, idempotencyKey: string) =>
+      request<any>(`/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription/trial`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers: { 'Idempotency-Key': idempotencyKey },
+      }),
+    masterSubscriptionActivate: (orgId: string, body: Record<string, unknown>, idempotencyKey: string) =>
+      request<any>(`/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription/activate`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers: { 'Idempotency-Key': idempotencyKey },
+      }),
+    masterSubscriptionPause: (orgId: string, body: Record<string, unknown>, idempotencyKey: string) =>
+      request<any>(`/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription/pause`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers: { 'Idempotency-Key': idempotencyKey },
+      }),
+    masterSubscriptionReactivate: (orgId: string, body: Record<string, unknown>, idempotencyKey: string) =>
+      request<any>(
+        `/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription/reactivate`,
+        { method: 'POST', body: JSON.stringify(body), headers: { 'Idempotency-Key': idempotencyKey } },
+      ),
+    masterSubscriptionScheduleCancel: (orgId: string, body: Record<string, unknown>, idempotencyKey: string) =>
+      request<any>(
+        `/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription/schedule-cancel`,
+        { method: 'POST', body: JSON.stringify(body), headers: { 'Idempotency-Key': idempotencyKey } },
+      ),
+    masterSubscriptionRevokeCancel: (orgId: string, body: Record<string, unknown>, idempotencyKey: string) =>
+      request<any>(
+        `/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription/revoke-cancel`,
+        { method: 'POST', body: JSON.stringify(body), headers: { 'Idempotency-Key': idempotencyKey } },
+      ),
+    masterSubscriptionScheduleTariffChange: (
+      orgId: string,
+      body: Record<string, unknown>,
+      idempotencyKey: string,
+    ) =>
+      request<any>(
+        `/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription/schedule-tariff-change`,
+        { method: 'POST', body: JSON.stringify(body), headers: { 'Idempotency-Key': idempotencyKey } },
+      ),
+    masterSubscriptionSchedulePriceVersionChange: (
+      orgId: string,
+      body: Record<string, unknown>,
+      idempotencyKey: string,
+    ) =>
+      request<any>(
+        `/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription/schedule-price-version-change`,
+        { method: 'POST', body: JSON.stringify(body), headers: { 'Idempotency-Key': idempotencyKey } },
+      ),
+    masterSubscriptionAddDiscount: (orgId: string, body: Record<string, unknown>, idempotencyKey: string) =>
+      request<any>(`/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription/discounts`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers: { 'Idempotency-Key': idempotencyKey },
+      }),
+    masterSubscriptionEndDiscount: (
+      orgId: string,
+      discountId: string,
+      body: Record<string, unknown>,
+      idempotencyKey: string,
+    ) =>
+      request<any>(
+        `/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription/discounts/${encodeURIComponent(discountId)}/end`,
+        { method: 'POST', body: JSON.stringify(body), headers: { 'Idempotency-Key': idempotencyKey } },
+      ),
+    masterSubscriptionConfigureBillingAnchor: (
+      orgId: string,
+      body: Record<string, unknown>,
+      idempotencyKey: string,
+    ) =>
+      request<any>(
+        `/admin/billing/organizations/${encodeURIComponent(orgId)}/subscription/billing-anchor`,
+        { method: 'PATCH', body: JSON.stringify(body), headers: { 'Idempotency-Key': idempotencyKey } },
+      ),
   },
   bookingPaymentRequests: {
     list: (orgId: string, bookingId: string) =>

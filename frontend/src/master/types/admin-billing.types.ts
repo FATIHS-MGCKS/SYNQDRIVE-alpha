@@ -23,14 +23,37 @@ export interface AdminOrgBillingRowDto {
   subscription: {
     id: string;
     status: string;
+    lockVersion?: number;
     currentPeriodStart: string | null;
     currentPeriodEnd: string | null;
+    trialEndAt?: string | null;
+    startedAt?: string | null;
+    cancelAt?: string | null;
+    cancelAtPeriodEnd?: boolean;
+    billingAnchorDay?: number | null;
+    stripeCustomerId?: string | null;
+    stripeSubscriptionId?: string | null;
   } | null;
+  contract?: {
+    productKey: string | null;
+    productName: string | null;
+    priceBookId: string | null;
+    priceBookName: string | null;
+    priceVersionId: string | null;
+    priceVersionLabel: string | null;
+    priceVersionStatus: string | null;
+  } | null;
+  tariffLabel?: string | null;
   products: Array<{
     plan: string;
     status: string;
     product: { slug: string; name: string };
   }>;
+  entitlements?: {
+    baseProduct: 'RENTAL' | 'FLEET' | null;
+    status: string;
+    active: boolean;
+  };
   connectedVehicleCount: number;
   billableVehicleCount: number;
   currentTier: {
@@ -40,6 +63,8 @@ export interface AdminOrgBillingRowDto {
   } | null;
   priceStatus: string;
   projectedMonthlyAmountCents: number | null;
+  discountCents?: number | null;
+  discountSummary?: string | null;
   paymentMethodStatus: string;
   lastInvoice: {
     id: string;
@@ -47,11 +72,20 @@ export interface AdminOrgBillingRowDto {
     status: string;
     invoiceDate: string;
   } | null;
+  openAmountCents?: number;
+  nextChargeAt?: string | null;
+  syncStatus?: 'NONE' | 'MISSING' | 'PARTIAL' | 'SYNCED';
   nextInvoicePreview: {
     subtotalCents: number | null;
+    discountCents?: number | null;
+    amountAfterDiscountCents?: number | null;
+    taxCents?: number | null;
     totalCents: number | null;
     calculationStatus: string;
     billableVehicleCount: number;
+    discounts?: Array<{ label?: string; amountCents?: number }>;
+    warnings?: string[];
+    legacyFallbacks?: string[];
   };
   warnings: string[];
 }

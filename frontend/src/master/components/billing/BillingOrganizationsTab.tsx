@@ -6,11 +6,10 @@ import {
   formatMoneyCents,
   paymentMethodStatusLabel,
   paymentMethodStatusTone,
-  priceStatusLabel,
-  priceStatusTone,
   subscriptionStatusLabel,
   subscriptionStatusTone,
 } from './admin-billing.utils';
+import { syncStatusLabel, syncStatusTone, tariffLabelFromRow } from './master-contract.utils';
 
 type OrgFilter = 'all' | 'payment_missing' | 'price_not_configured' | 'past_due';
 
@@ -48,13 +47,28 @@ export function BillingOrganizationsTab({ organizations, onSelectOrg }: BillingO
   const inputClass =
     'w-full px-3 py-2 rounded-xl border border-border/70 bg-background text-xs outline-none focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand-soft)]';
 
+  const columns = [
+    'Unternehmen',
+    'Tarif',
+    'Status',
+    'Fahrzeuge',
+    'Price Version',
+    'Monatswert',
+    'Rabatt',
+    'Zahlung',
+    'Letzte Rechnung',
+    'Offen',
+    'Nächste Abbuchung',
+    'Sync',
+  ] as const;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-testid="master-contract-organizations-table">
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_160px_180px] gap-3">
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Organisation suchen…"
+          placeholder="Unternehmen suchen…"
           className={inputClass}
         />
         <select value={status} onChange={(e) => setStatus(e.target.value)} className={inputClass}>
@@ -76,45 +90,34 @@ export function BillingOrganizationsTab({ organizations, onSelectOrg }: BillingO
         <EmptyState compact title="Keine Organisationen gefunden" />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border/60">
-          <table className="w-full min-w-[1100px]">
+          <table className="w-full min-w-[1280px]">
             <thead>
               <tr className="bg-muted/40">
-                {[
-                  'Organisation',
-                  'Produkte',
-                  'Status',
-                  'Verbunden',
-                  'Billable',
-                  'Preisstatus',
-                  'Proj. Monat',
-                  'Zahlung',
-                  'Letzte Rechnung',
-                  'Periodenende',
-                ].map((h) => (
+                {columns.map((header) => (
                   <th
-                    key={h}
-                    className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground"
+                    key={header}
+                    className="text-left px-3 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap"
                   >
-                    {h}
+                    {header}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {filtered.map((row) => {
-                const products = row.products.map((p) => p.product.name).join(' · ') || '—';
                 const subStatus = row.subscription?.status ?? 'NONE';
                 return (
                   <tr
                     key={row.organization.id}
                     className="border-t border-border/50 hover:bg-muted/20 cursor-pointer"
                     onClick={() => onSelectOrg(row)}
+                    data-testid={`master-contract-org-row-${row.organization.id}`}
                   >
                     <td className="px-3 py-2.5 text-xs font-semibold text-foreground">
                       {row.organization.companyName}
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-muted-foreground max-w-[140px] truncate">
-                      {products}
+                    <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                      {tariffLabelFromRow(row.tariffLabel, row.contract?.productKey)}
                     </td>
                     <td className="px-3 py-2.5">
                       <span
@@ -123,19 +126,21 @@ export function BillingOrganizationsTab({ organizations, onSelectOrg }: BillingO
                         {subscriptionStatusLabel(subStatus)}
                       </span>
                     </td>
-                    <td className="px-3 py-2.5 text-xs tabular-nums">{row.connectedVehicleCount}</td>
-                    <td className="px-3 py-2.5 text-xs tabular-nums">{row.billableVehicleCount}</td>
-                    <td className="px-3 py-2.5">
-                      <span
-                        className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${priceStatusTone(row.priceStatus)}`}
-                      >
-                        {priceStatusLabel(row.priceStatus)}
-                      </span>
+                    <td className="px-3 py-2.5 text-xs tabular-nums">
+                      {row.billableVehicleCount}
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-muted-foreground max-w-[120px] truncate">
+                      {row.contract?.priceVersionLabel ?? '—'}
                     </td>
                     <td className="px-3 py-2.5 text-xs tabular-nums font-medium">
                       {row.projectedMonthlyAmountCents != null
                         ? formatMoneyCents(row.projectedMonthlyAmountCents)
                         : '—'}
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-muted-foreground">
+                      {row.discountCents && row.discountCents > 0
+                        ? formatMoneyCents(row.discountCents)
+                        : row.discountSummary ?? '—'}
                     </td>
                     <td className="px-3 py-2.5">
                       <span
@@ -145,12 +150,22 @@ export function BillingOrganizationsTab({ organizations, onSelectOrg }: BillingO
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                      {row.lastInvoice
-                        ? formatMoneyCents(row.lastInvoice.amountCents)
+                      {row.lastInvoice ? formatMoneyCents(row.lastInvoice.amountCents) : '—'}
+                    </td>
+                    <td className="px-3 py-2.5 text-xs tabular-nums">
+                      {row.openAmountCents && row.openAmountCents > 0
+                        ? formatMoneyCents(row.openAmountCents)
                         : '—'}
                     </td>
-                    <td className="px-3 py-2.5 text-xs text-muted-foreground">
-                      {formatDateDe(row.subscription?.currentPeriodEnd)}
+                    <td className="px-3 py-2.5 text-xs text-muted-foreground whitespace-nowrap">
+                      {formatDateDe(row.nextChargeAt ?? row.subscription?.currentPeriodEnd)}
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <span
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${syncStatusTone(row.syncStatus)}`}
+                      >
+                        {syncStatusLabel(row.syncStatus)}
+                      </span>
                     </td>
                   </tr>
                 );

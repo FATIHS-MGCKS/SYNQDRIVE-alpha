@@ -271,6 +271,7 @@ export function BillingControlCenter({
             syncMasterBillingUrl(activeSection, activeSubTab, null, true);
           }
         }}
+        onContractUpdated={() => void reload()}
       />
     </div>
   );

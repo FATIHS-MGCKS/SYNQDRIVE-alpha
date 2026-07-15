@@ -4,6 +4,7 @@ import {
   BillingPaymentMethodStatus,
   BillingPaymentStatus,
   BillingStatus,
+  BillingSubscriptionItemRole,
   BillingUsageCalculationStatus,
   InvoiceStatus,
   StripeWebhookEventStatus,
@@ -155,6 +156,18 @@ export class BillingAdminService {
           take: 1,
           include: {
             invoices: { take: 1, orderBy: { invoiceDate: 'desc' } },
+            items: {
+              where: { itemRole: BillingSubscriptionItemRole.BASE_PLAN },
+              orderBy: { validFrom: 'desc' },
+              take: 1,
+              include: {
+                billingProduct: { select: { key: true, name: true } },
+                priceVersion: {
+                  select: { id: true, versionNumber: true, versionLabel: true, status: true },
+                },
+                priceBook: { select: { id: true, name: true } },
+              },
+            },
           },
         },
         organizationProducts: {
@@ -162,6 +175,22 @@ export class BillingAdminService {
         },
       },
     });
+
+    const openInvoiceRows = await this.prisma.billingInvoice.findMany({
+      where: { status: InvoiceStatus.OPEN },
+      select: {
+        amountCents: true,
+        subscription: { select: { organizationId: true } },
+      },
+    });
+    const openAmountByOrg = new Map<string, number>();
+    for (const invoice of openInvoiceRows) {
+      const organizationId = invoice.subscription.organizationId;
+      openAmountByOrg.set(
+        organizationId,
+        (openAmountByOrg.get(organizationId) ?? 0) + invoice.amountCents,
+      );
+    }
 
     const rows = await Promise.all(
       orgs.map(async (org) => {
@@ -189,6 +218,16 @@ export class BillingAdminService {
         }
 
         const entitlements = await this.entitlementResolver.resolve(org.id);
+        const baseItem = sub?.items[0] ?? null;
+        const stripeCustomerMapped = Boolean(sub?.stripeCustomerId);
+        const stripeSubscriptionMapped = Boolean(sub?.stripeSubscriptionId);
+        const syncStatus = !sub
+          ? 'NONE'
+          : stripeCustomerMapped && stripeSubscriptionMapped
+            ? 'SYNCED'
+            : stripeCustomerMapped || stripeSubscriptionMapped
+              ? 'PARTIAL'
+              : 'MISSING';
 
         return {
           organization: {
@@ -200,10 +239,39 @@ export class BillingAdminService {
             ? {
                 id: sub.id,
                 status: sub.status,
+                lockVersion: sub.lockVersion,
                 currentPeriodStart: sub.currentPeriodStart?.toISOString() ?? null,
                 currentPeriodEnd: sub.currentPeriodEnd?.toISOString() ?? null,
+                trialEndAt: sub.trialEndAt?.toISOString() ?? null,
+                startedAt: sub.startedAt?.toISOString() ?? null,
+                cancelAt: sub.cancelAt?.toISOString() ?? null,
+                cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
+                billingAnchorDay: sub.billingAnchorDay,
+                stripeCustomerId: sub.stripeCustomerId,
+                stripeSubscriptionId: sub.stripeSubscriptionId,
               }
             : null,
+          contract: baseItem
+            ? {
+                productKey: baseItem.billingProduct?.key ?? null,
+                productName: baseItem.billingProduct?.name ?? null,
+                priceBookId: baseItem.priceBookId,
+                priceBookName: baseItem.priceBook?.name ?? null,
+                priceVersionId: baseItem.priceVersionId,
+                priceVersionLabel:
+                  baseItem.priceVersion?.versionLabel ??
+                  (baseItem.priceVersion
+                    ? `v${baseItem.priceVersion.versionNumber}`
+                    : null),
+                priceVersionStatus: baseItem.priceVersion?.status ?? null,
+              }
+            : null,
+          tariffLabel:
+            entitlements.baseProduct === 'RENTAL'
+              ? 'Rental'
+              : entitlements.baseProduct === 'FLEET'
+                ? 'Fleet'
+                : baseItem?.billingProduct?.name ?? null,
           products: org.organizationProducts,
           entitlements,
           connectedVehicleCount: vehicles.connectedVehicleCount,
@@ -217,6 +285,11 @@ export class BillingAdminService {
             : null,
           priceStatus: preview.calculationStatus,
           projectedMonthlyAmountCents: preview.totalCents,
+          discountCents: preview.discountCents,
+          discountSummary:
+            preview.discountCents && preview.discountCents > 0
+              ? `${preview.discounts.length} Rabatt(e)`
+              : null,
           paymentMethodStatus: paymentMethod?.status ?? 'MISSING',
           lastInvoice: sub?.invoices[0]
             ? {
@@ -226,6 +299,9 @@ export class BillingAdminService {
                 invoiceDate: sub.invoices[0].invoiceDate.toISOString(),
               }
             : null,
+          openAmountCents: openAmountByOrg.get(org.id) ?? 0,
+          nextChargeAt: sub?.currentPeriodEnd?.toISOString() ?? null,
+          syncStatus,
           nextInvoicePreview: {
             subtotalCents: preview.subtotalCents,
             discountCents: preview.discountCents,
