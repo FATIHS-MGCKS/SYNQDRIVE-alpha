@@ -167,6 +167,7 @@ describe('fleet-operator-panel', () => {
       () => null,
     );
     const counts = computeCommandTabCounts(contexts);
+    expect(counts.All).toBe(3);
     expect(counts.Available).toBe(2);
     expect(counts.Active).toBe(1);
     expect(counts.Reserved).toBe(0);

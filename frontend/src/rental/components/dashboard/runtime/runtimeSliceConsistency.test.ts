@@ -3,9 +3,9 @@ import type { VehicleData } from '../../../data/vehicles';
 import type { PickupTileItem, ReturnTileItem } from '../../StatInlineDetail';
 import {
   computeCommandTabCounts,
-  buildFleetVehicleContexts,
   type FleetCommandTab,
-} from '../../../lib/fleet-operator-panel';
+} from '../../../lib/fleet-command-filters';
+import { buildFleetVehicleContexts } from '../../../lib/fleet-operator-panel';
 import {
   selectIsCurrentlyAvailable,
   selectIsCurrentlyRented,
