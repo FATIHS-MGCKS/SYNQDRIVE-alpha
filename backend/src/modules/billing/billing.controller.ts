@@ -39,6 +39,7 @@ import { BillingUsageService } from './billing-usage.service';
 import { BillingAdminService } from './billing-admin.service';
 
 import { BillingSummaryService } from './billing-summary.service';
+import { TenantSubscriptionOverviewService } from './tenant-subscription-overview.service';
 
 import { BillableVehiclesService } from './billable-vehicles.service';
 
@@ -113,6 +114,8 @@ export class BillingController {
     private readonly adminService: BillingAdminService,
 
     private readonly summaryService: BillingSummaryService,
+
+    private readonly subscriptionOverviewService: TenantSubscriptionOverviewService,
 
     private readonly billableVehiclesService: BillableVehiclesService,
 
@@ -213,6 +216,26 @@ export class BillingController {
     const scoped = resolveOrgScope(req?.user, orgId);
 
     return this.summaryService.getNextInvoicePreview(scoped);
+
+  }
+
+
+
+  @Get('billing/subscription/overview')
+
+  @RequirePermission('billing', 'read')
+
+  async getSubscriptionOverview(
+
+    @Query('orgId') orgId: string | undefined,
+
+    @Req() req: any,
+
+  ) {
+
+    const scoped = resolveOrgScope(req?.user, orgId);
+
+    return this.subscriptionOverviewService.getOverview(scoped);
 
   }
 

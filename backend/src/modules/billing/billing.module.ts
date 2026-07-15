@@ -9,6 +9,7 @@ import { BillingAuditService } from './billing-audit.service';
 import { BillableVehiclesService } from './billable-vehicles.service';
 import { BillingPriceResolutionService } from './billing-price-resolution.service';
 import { BillingSummaryService } from './billing-summary.service';
+import { TenantSubscriptionOverviewService } from './tenant-subscription-overview.service';
 import { BillingAdminService } from './billing-admin.service';
 import { StripePreparedService } from './stripe-prepared.service';
 import { StripeBillingService } from './stripe-billing.service';
@@ -72,6 +73,7 @@ import { StripeWebhookProcessorService } from './stripe-webhook.processor';
     BillableVehiclesService,
     BillingPriceResolutionService,
     BillingSummaryService,
+    TenantSubscriptionOverviewService,
     BillingAdminService,
     StripeBillingService,
     StripeInvoiceMirrorService,
@@ -127,6 +129,7 @@ import { StripeWebhookProcessorService } from './stripe-webhook.processor';
     BillableVehiclesService,
     BillingPriceResolutionService,
     BillingSummaryService,
+    TenantSubscriptionOverviewService,
     BillingAdminService,
     StripeBillingService,
     StripeInvoiceMirrorService,

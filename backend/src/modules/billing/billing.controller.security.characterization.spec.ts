@@ -27,6 +27,7 @@ describe('BillingController security characterization', () => {
       'getBillingSummary',
       'getBillableVehicles',
       'getNextInvoicePreview',
+      'getSubscriptionOverview',
       'findSubscriptions',
       'findInvoices',
       'findSubscriptionById',
@@ -114,6 +115,7 @@ describe('BillingController tenant org isolation characterization', () => {
     findPaymentMethods: jest.fn(),
   };
   const summaryService = { getSummary: jest.fn(), getNextInvoicePreview: jest.fn() };
+  const subscriptionOverviewService = { getOverview: jest.fn() };
   const pricebookService = {};
   const usageService = {};
   const adminService = {};
@@ -136,6 +138,7 @@ describe('BillingController tenant org isolation characterization', () => {
       usageService as never,
       adminService as never,
       summaryService as never,
+      subscriptionOverviewService as never,
       billableVehiclesService as never,
       stripePreparedService as never,
       paymentLedgerService as never,
@@ -215,5 +218,24 @@ describe('BillingController tenant org isolation characterization', () => {
     });
 
     expect(summaryService.getSummary).toHaveBeenCalledWith('org-b');
+  });
+
+  it('scopes subscription overview to JWT org for tenant users', async () => {
+    subscriptionOverviewService.getOverview.mockResolvedValue({ asOf: '2026-07-15T12:00:00.000Z' });
+
+    await controller.getSubscriptionOverview(undefined, {
+      user: { platformRole: 'USER', organizationId: 'org-a' },
+    });
+
+    expect(subscriptionOverviewService.getOverview).toHaveBeenCalledWith('org-a');
+  });
+
+  it('rejects tenant spoofing orgId on subscription overview', async () => {
+    await expect(
+      controller.getSubscriptionOverview('org-b', {
+        user: { platformRole: 'USER', organizationId: 'org-a' },
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(subscriptionOverviewService.getOverview).not.toHaveBeenCalled();
   });
 });

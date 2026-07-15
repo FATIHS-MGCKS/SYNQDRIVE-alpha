@@ -14,6 +14,7 @@ import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { RequireMasterBilling } from '@shared/decorators/require-master-billing.decorator';
 import { BillingSubscriptionAdminService } from './billing-subscription-admin.service';
+import { TenantSubscriptionOverviewService } from './tenant-subscription-overview.service';
 import {
   MasterSubscriptionActivateDto,
   MasterSubscriptionAddDiscountDto,
@@ -34,11 +35,19 @@ import {
 @UseGuards(RolesGuard, PermissionsGuard, MasterBillingGuard)
 @RequireMasterBilling()
 export class MasterSubscriptionController {
-  constructor(private readonly subscriptionAdmin: BillingSubscriptionAdminService) {}
+  constructor(
+    private readonly subscriptionAdmin: BillingSubscriptionAdminService,
+    private readonly subscriptionOverview: TenantSubscriptionOverviewService,
+  ) {}
 
   @Get()
   async getContract(@Param('orgId') orgId: string) {
     return this.subscriptionAdmin.getContract(orgId);
+  }
+
+  @Get('overview')
+  async getSubscriptionOverview(@Param('orgId') orgId: string) {
+    return this.subscriptionOverview.getOverview(orgId);
   }
 
   @Get('history')
