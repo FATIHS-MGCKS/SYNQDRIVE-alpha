@@ -40,7 +40,8 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     title: 'V4.9.471 — Produktions-Hotfix: DocumentsModule ↔ InvoicesModule forwardRef',
     summary: [
       'NestJS-Startfehler nach V4.9.470-Deploy behoben: `DocumentsModule`/`InvoicesModule` nutzen `forwardRef()` gegenseitig.',
-      'Crash-Loop (834 Restarts) durch zirkuläre Modul-Imports über `OutboundEmailModule → DocumentsModule → InvoicesModule` beseitigt.',
+      '`DocumentNumberingService` + `DOCUMENT_RENDERER` aus `DocumentsModule` exportiert (DI für `InvoiceDocumentsService`).',
+      'Crash-Loop durch zirkuläre Modul-Imports über `OutboundEmailModule → DocumentsModule → InvoicesModule` beseitigt.',
     ],
     reason:
       'Nach Merge/Deploy V4.9.470 startete PM2 nicht (502); Logs: `DocumentsModule imports[0] is undefined` im Scope Notifications → OutboundEmail.',
