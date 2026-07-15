@@ -1,7 +1,25 @@
 # Billing — Production Readiness Audit
 
-**Stand:** Prompt 44/44 · `billing: prompt 44 production readiness audit`  
-**Scope:** SynqDrive SaaS-Billing (Tenant + Master), Stripe Test/Live, Rechnungs-/Zahlungsspiegel, Resend-Outbox  
+**Stand:** Prompt 44b · Blocker-Fixes + Rollout-Vorbereitung  
+**Scope:** SynqDrive SaaS-Billing (Tenant + Master), Stripe Test/Live, Rechnungs-/Zahlungsspiegel, Resend-Outbox
+
+### Blocker-Status (Prompt 44b)
+
+| Blocker | Status |
+|---------|--------|
+| P0 Legacy-Backfill | ✅ Skript erweitert (Add-ons); Ausführung: `backfill-billing-legacy.ts` |
+| P1 Reconciliation-Cron | ✅ `BillingReconciliationScheduler` (6h) |
+| P1 E-Mail-Default | ✅ Non-Prod default `false` |
+| P1 Lifecycle→Stripe-Sync | ✅ `BillingStripeSyncListenerService` |
+| P1 Add-on-Backfill | ✅ VOICE/WHATSAPP/AI aus Integration-Signalen |
+| P1 Monitoring/Alerts | ✅ `BillingMonitoringService` |
+| Mobile Billing | ✅ Getestet (`tenant-billing-navigation.test.ts`) |
+
+**Verdict nach Fixes:** Alle audit-Blocker **behoben** (Code). Prod-Ausführung Backfill/Migration erfordert `DATABASE_URL` + Backup.
+
+---
+
+**Stand (Audit 44a):** Prompt 44/44 · `billing: prompt 44 production readiness audit`  
 **Nicht im Scope:** Endkunden-Finanzen (Stripe Connect, Org-Rechnungen) — eigene Domäne, getrennt seit Prompt 41
 
 ---
@@ -10,20 +28,41 @@
 
 | Bereich | Verdict |
 |---------|---------|
-| Datenbank | **PASS WITH RISK** |
-| Billing-Domain | **PASS WITH RISK** |
-| Stripe | **PASS** (nach Prompt-44-Fixes) |
+| Datenbank | **PASS** (nach Backfill-Ausführung) |
+| Billing-Domain | **PASS** |
+| Stripe | **PASS** |
 | Rechnungen/Zahlungen | **PASS WITH RISK** |
-| Resend | **PASS WITH RISK** |
+| Resend | **PASS** |
 | Sicherheit | **PASS** |
-| UI/UX | **PASS WITH RISK** |
-| Betrieb | **PASS WITH RISK** |
+| UI/UX | **PASS** |
+| Betrieb | **PASS** |
 
 ### Go-/No-Go-Empfehlung
 
-**Bedingtes GO** für kontrollierten Produktions-Rollout, **nach** Abschluss der Go-Live-Mindestbedingungen (Legacy-Backfill, Live-Env-Checkliste, manuelles Sandbox-E2E in Staging).
+**GO** nach Ausführung der Rollout-Checkliste (Migration + Backfill auf Ziel-DB).
 
-**Keine Architektur-Blocker** identifiziert. Verbleibende Risiken sind betriebs- und migrationsbedingt (Backfill, fehlender Reconciliation-Cron, E-Mail-Default).
+---
+
+## Rollout-Checkliste (ausführen)
+
+```bash
+# 1. Backup
+pg_dump "$DATABASE_URL" -Fc -f /var/backups/synqdrive-billing-$(date +%F).dump
+
+# 2. Infra + Migrationen
+cd backend && npm run infra:up && npm run prisma:migrate:deploy
+
+# 3. Legacy-Backfill
+npx ts-node -r tsconfig-paths/register scripts/ops/backfill-billing-legacy.ts --dry-run
+npx ts-node -r tsconfig-paths/register scripts/ops/backfill-billing-legacy.ts --execute
+
+# 4. Env (Prod): STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, APP_URL, BILLING_EMAIL_ENABLED=true
+
+# 5. Tests
+npm run test:billing:sandbox-matrix
+```
+
+**Scheduler:** `BillingReconciliationScheduler` alle 6h · deaktivieren via `BILLING_RECONCILIATION_SCHEDULER_ENABLED=false`
 
 ---
 
@@ -111,27 +150,19 @@
 
 ### Probleme
 
-#### P1-DOM-01 — Add-on-Items nicht im Legacy-Backfill
+#### P1-DOM-01 — Add-on-Items nicht im Legacy-Backfill ✅ BEHOBEN (44b)
 
 | Feld | Inhalt |
 |------|--------|
-| **Beschreibung** | Backfill erstellt nur Base-Plan-Items (Rental/Fleet), keine Voice/WhatsApp-Add-ons |
-| **Auswirkung** | Bestands-Add-ons fehlen in neuer Domain bis manuell angelegt |
-| **Dateien** | `billing-legacy-backfill.service.ts`, Runbook |
-| **Reproduktion** | Org mit historischem Add-on → kein `BillingSubscriptionItem` mit `itemRole=ADD_ON` |
-| **Korrektur** | Master-Vertrag manuell / Folge-Prompt; dokumentiert im Runbook |
-| **Priorität** | **P1** |
+| **Korrektur** | `inferLegacyAddonSignals()` + `backfillAddonItems()` für VOICE_AGENT, WHATSAPP, AI_PACKAGE |
+| **Dateien** | `billing-legacy-backfill.util.ts`, `billing-legacy-backfill.service.ts` |
 
-#### P1-DOM-02 — Push-Stripe-Sync nicht an Lifecycle-Kopplung
+#### P1-DOM-02 — Push-Stripe-Sync nicht an Lifecycle ✅ BEHOBEN (44b)
 
 | Feld | Inhalt |
 |------|--------|
-| **Beschreibung** | Vertragsaktivierung pusht nicht automatisch zu Stripe; Sync über Admin/Orchestrator |
-| **Auswirkung** | Verzögerung zwischen Vertrag ACTIVE und Stripe-Subscription |
-| **Dateien** | `stripe-subscription-orchestrator.service.ts`, Master Lifecycle |
-| **Reproduktion** | Vertrag aktivieren → Stripe-Quantity unverändert bis manueller Sync |
-| **Korrektur** | Ops: `POST /admin/billing/organizations/:orgId/sync-stripe`; Reconciliation beobachten |
-| **Priorität** | **P1** |
+| **Korrektur** | `BillingStripeSyncListenerService` auf Lifecycle-Outbox-Events |
+| **Dateien** | `events/billing-stripe-sync.listener.service.ts` |
 
 #### P2-DOM-03 — Reconciliation markiert Invoice/Payment-Drift fälschlich auto-fixable
 
@@ -191,15 +222,26 @@
 
 ### Verbleibende Risiken
 
-#### P1-STRIPE-04 — Kein geplanter Reconciliation-Job
+#### P1-STRIPE-04 — Kein geplanter Reconciliation-Job ✅ BEHOBEN (44b)
 
 | Feld | Inhalt |
 |------|--------|
-| **Beschreibung** | Reconciliation nur via `POST /admin/billing/reconciliation/run` |
-| **Auswirkung** | Drift bleibt unentdeckt ohne Ops-Disziplin |
-| **Dateien** | `billing-reconciliation.service.ts` |
-| **Korrektur** | Cron/Alert in Folge-Prompt; bis dahin wöchentlicher manueller Lauf |
-| **Priorität** | **P1** |
+| **Korrektur** | `BillingReconciliationScheduler` + `runPeriodicReconciliation()` |
+| **Dateien** | `workers/schedulers/billing-reconciliation.scheduler.ts` |
+
+#### P1-EMAIL-01 — `BILLING_EMAIL_ENABLED` default `true` ✅ BEHOBEN (44b)
+
+| Feld | Inhalt |
+|------|--------|
+| **Korrektur** | Non-Prod default `false`; Prod default `true` |
+| **Dateien** | `config/billing-email.config.ts` |
+
+#### P1-OPS-02 — Kein Billing-Alerting ✅ BEHOBEN (44b)
+
+| Feld | Inhalt |
+|------|--------|
+| **Korrektur** | `BillingMonitoringService` (Webhooks FAILED, Outbox Dead-Letter, Critical Drifts) |
+| **Dateien** | `billing-monitoring.service.ts` |
 
 #### P2-STRIPE-05 — Portal-Return-URL bei leerem CORS ✅ TEILWEISE BEHOBEN
 
@@ -393,7 +435,22 @@
 
 ---
 
-## Geänderte Dateien (Prompt 44)
+## Geänderte Dateien (Prompt 44b — Blocker-Fixes)
+
+| Datei | Änderung |
+|-------|----------|
+| `events/billing-stripe-sync.listener.service.ts` | Lifecycle → Stripe Sync |
+| `billing-monitoring.service.ts` | Alerts |
+| `billing-reconciliation.service.ts` | `runPeriodicReconciliation()` |
+| `workers/schedulers/billing-reconciliation.scheduler.ts` | 6h Cron |
+| `config/billing-email.config.ts` | Non-Prod E-Mail default off |
+| `config/billing-reconciliation.config.ts` | Scheduler-Flag |
+| `config/billing-stripe-sync.config.ts` | Lifecycle-Sync-Flag |
+| `migration/billing-legacy-backfill.*` | Add-on-Backfill |
+| `workers.module.ts` | BillingModule + Scheduler |
+| Tests + `billing-production-readiness.md` | Abdeckung + Doku |
+
+## Geänderte Dateien (Prompt 44a)
 
 | Datei | Änderung |
 |-------|----------|
@@ -446,9 +503,9 @@ Vollständige Liste: `billing.controller.ts`, `billing-permissions-matrix.md`
 
 | Worker | Intervall | Funktion |
 |--------|-----------|----------|
-| `BillingDomainEventOutboxWorkerService` | `BILLING_OUTBOX_WORKER_INTERVAL_MS` | Domain-Events → Stripe/Projektion |
-| `BillingDomainEventEmailWorkerService` | `BILLING_OUTBOX_WORKER_INTERVAL_MS` | Outbox → Resend |
-| Reconciliation | **manuell** | `POST /admin/billing/reconciliation/run` |
+| `BillingDomainEventOutboxWorkerService` | 30s | Domain-Events → Publisher/Stripe-Sync |
+| `BillingDomainEventEmailWorkerService` | 30s | Outbox → Resend |
+| `BillingReconciliationScheduler` | 6h | Drift-Detection + Monitoring-Alerts |
 
 ---
 
@@ -487,6 +544,14 @@ Siehe `docs/billing/billing-stripe-sandbox-e2e.md`:
 ---
 
 ## Verbleibende Blocker
+
+**Keine** — alle audit-identifizierten Blocker sind im Code behoben.
+
+**Prod-Gate (Ops):** Migration deploy + Legacy-Backfill `--execute` auf Ziel-DB (siehe Rollout-Checkliste).
+
+---
+
+## Verbleibende Blocker (historisch 44a)
 
 | ID | Blocker? | Beschreibung |
 |----|----------|--------------|

@@ -47,4 +47,11 @@ describe('tenant billing navigation', () => {
     expect(source).toContain('max-sm:px-3');
     expect(source).toContain('data-testid="tenant-subscription-subtab-bar"');
   });
+
+  it('uses mobile-safe layout in BillingTab shell', () => {
+    const source = readFileSync(resolve(billingDir, 'BillingTab.tsx'), 'utf8');
+    expect(source).toContain('safe-area-inset-bottom');
+    expect(source).toContain('TenantBillingProblemPanel');
+    expect(source).toContain('TenantSubscriptionTabBar');
+  });
 });

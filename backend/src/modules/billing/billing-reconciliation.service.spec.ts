@@ -109,6 +109,7 @@ describe('BillingReconciliationService', () => {
     syncPaymentMethods: jest.fn(async () => ({ synced: 1 })),
   };
   const audit = { log: jest.fn() };
+  const monitoring = { collectAlerts: jest.fn(async () => []) };
   const configService = {
     get: jest.fn((key: string) =>
       key === 'stripe.secretKey' ? 'sk_test_reconciliation' : undefined,
@@ -186,6 +187,7 @@ describe('BillingReconciliationService', () => {
       catalogMappings as any,
       paymentMethodService as any,
       audit as any,
+      monitoring as any,
     );
   });
 
@@ -252,7 +254,7 @@ describe('BillingReconciliationService', () => {
         expect.objectContaining({
           driftType: BillingReconciliationDriftType.MISSING_LOCAL_INVOICE,
           stripeValue: 'in_missing',
-          autoFixable: true,
+          autoFixable: false,
         }),
       ]),
     );

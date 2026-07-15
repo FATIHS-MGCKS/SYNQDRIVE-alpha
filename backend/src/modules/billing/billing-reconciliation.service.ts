@@ -21,6 +21,7 @@ import { getStripeClient } from './stripe-client.util';
 import { StripeCatalogMappingService } from './stripe-catalog-mapping.service';
 import { StripePaymentMethodService } from './stripe-payment-method.service';
 import { BillingAuditService } from './billing-audit.service';
+import { BillingMonitoringService } from './billing-monitoring.service';
 import { resolveStripeModeFromSecretKey } from './migration/billing-legacy-backfill.util';
 import {
   BILLING_RECONCILIATION_DEFAULT_BATCH_SIZE,
@@ -76,6 +77,7 @@ export class BillingReconciliationService {
     private readonly catalogMappings: StripeCatalogMappingService,
     private readonly paymentMethods: StripePaymentMethodService,
     private readonly audit: BillingAuditService,
+    private readonly monitoring: BillingMonitoringService,
   ) {}
 
   async runBatch(
@@ -226,6 +228,46 @@ export class BillingReconciliationService {
       cursor: updatedRun.cursor,
       hasMore,
       drifts: persistedDrifts,
+    };
+  }
+
+  async runPeriodicReconciliation(): Promise<{
+    runId: string;
+    status: BillingReconciliationRunStatus;
+    scanned: number;
+    driftCount: number;
+    errorCount: number;
+    alerts: Awaited<ReturnType<BillingMonitoringService['collectAlerts']>>;
+  }> {
+    let runId: string | undefined;
+    let cursor: string | null = null;
+    let scanned = 0;
+    let driftCount = 0;
+    let errorCount = 0;
+    let status: BillingReconciliationRunStatus = BillingReconciliationRunStatus.RUNNING;
+
+    do {
+      const batch = await this.runBatch({
+        runId,
+        cursor,
+        actorUserId: null,
+      });
+      runId = batch.runId;
+      scanned += batch.scanned;
+      driftCount += batch.driftCount;
+      errorCount += batch.errorCount;
+      status = batch.status;
+      cursor = batch.hasMore ? batch.cursor : null;
+    } while (cursor && status === BillingReconciliationRunStatus.RUNNING);
+
+    const alerts = await this.monitoring.collectAlerts();
+    return {
+      runId: runId!,
+      status,
+      scanned,
+      driftCount,
+      errorCount,
+      alerts,
     };
   }
 

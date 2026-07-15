@@ -19,4 +19,6 @@ export { default as notificationEvaluationConfig } from './notification-evaluati
 export { default as notificationDeliveryConfig } from './notification-delivery.config';
 export { default as paymentEmailConfig } from './payment-email.config';
 export { default as billingEmailConfig } from './billing-email.config';
+export { default as billingReconciliationConfig } from './billing-reconciliation.config';
+export { default as billingStripeSyncConfig } from './billing-stripe-sync.config';
 export { default as taskAutomationOutboxConfig } from './task-automation-outbox.config';

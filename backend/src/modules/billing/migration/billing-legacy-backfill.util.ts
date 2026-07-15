@@ -1,4 +1,5 @@
 import { BillingStripeMode, BillingStatus, BusinessType, ProductSlug } from '@prisma/client';
+import { BILLING_ADDON_KEYS } from '../domain/billing-domain.types';
 import { BillingLegacyBackfillConflictCode } from './billing-legacy-backfill.types';
 
 export const BASE_BILLING_PRODUCT_KEYS = ['RENTAL', 'FLEET'] as const;
@@ -181,4 +182,52 @@ export function sourcesConflict(
   priceBookKey: BaseBillingProductKey | null,
 ): boolean {
   return Boolean(orgProductKey && priceBookKey && orgProductKey !== priceBookKey);
+}
+
+export type BillingAddonProductKey = (typeof BILLING_ADDON_KEYS)[number];
+
+export interface LegacyAddonInferenceInput {
+  orgProductSlugs: string[];
+  voiceAssistantConnected: boolean;
+  whatsAppActive: boolean;
+  workflowAutomationEnabled: boolean;
+}
+
+export interface LegacyAddonInferenceResult {
+  addonKey: BillingAddonProductKey;
+  source: 'ORG_PRODUCT' | 'VOICE_ASSISTANT' | 'WHATSAPP_CONFIG' | 'WORKFLOW_AUTOMATION';
+}
+
+export function inferLegacyAddonSignals(
+  input: LegacyAddonInferenceInput,
+): LegacyAddonInferenceResult[] {
+  const signals: LegacyAddonInferenceResult[] = [];
+  const slugSet = new Set(input.orgProductSlugs.map(normalizeSlug));
+  const hasAddon = (key: BillingAddonProductKey) =>
+    signals.some((signal) => signal.addonKey === key);
+
+  for (const key of BILLING_ADDON_KEYS) {
+    if (slugSet.has(key)) {
+      signals.push({ addonKey: key, source: 'ORG_PRODUCT' });
+    }
+  }
+
+  if (input.voiceAssistantConnected && !hasAddon('VOICE_AGENT')) {
+    signals.push({ addonKey: 'VOICE_AGENT', source: 'VOICE_ASSISTANT' });
+  }
+  if (input.whatsAppActive && !hasAddon('WHATSAPP')) {
+    signals.push({ addonKey: 'WHATSAPP', source: 'WHATSAPP_CONFIG' });
+  }
+  if (input.workflowAutomationEnabled && !hasAddon('AI_PACKAGE')) {
+    signals.push({ addonKey: 'AI_PACKAGE', source: 'WORKFLOW_AUTOMATION' });
+  }
+
+  return signals;
+}
+
+export function buildAddonBackfillIdempotencyKey(
+  organizationId: string,
+  addonKey: string,
+): string {
+  return `legacy-backfill:addon:v1:${organizationId}:${addonKey}`;
 }

@@ -5,6 +5,7 @@ import {
   buildQuantityBackfillIdempotencyKey,
   classifyStripePriceIdMode,
   inferBaseBillingProductKey,
+  inferLegacyAddonSignals,
   resolveStripeModeFromSecretKey,
   sourcesConflict,
 } from './billing-legacy-backfill.util';
@@ -80,6 +81,22 @@ describe('billing legacy backfill utilities', () => {
       });
       expect(result.productKey).toBeNull();
       expect(result.conflicts).toContain('AMBIGUOUS_BASE_PRODUCT');
+    });
+  });
+
+  describe('inferLegacyAddonSignals', () => {
+    it('detects addons from integration signals', () => {
+      const signals = inferLegacyAddonSignals({
+        orgProductSlugs: [],
+        voiceAssistantConnected: true,
+        whatsAppActive: true,
+        workflowAutomationEnabled: true,
+      });
+      expect(signals.map((row) => row.addonKey)).toEqual([
+        'VOICE_AGENT',
+        'WHATSAPP',
+        'AI_PACKAGE',
+      ]);
     });
   });
 
@@ -180,6 +197,9 @@ describe('BillingLegacyBackfillService fixtures', () => {
       { product: { slug: ProductSlug.RENTAL }, status: 'ACTIVE' },
     ],
     billingOrgPriceOverrides: [],
+    voiceAssistant: null,
+    whatsappConfig: null,
+    taskAutomationRuleOverrides: [],
   };
 
   it('skips org without subscription and without billing signals', async () => {
@@ -189,6 +209,9 @@ describe('BillingLegacyBackfillService fixtures', () => {
       businessType: BusinessType.OTHER,
       organizationProducts: [],
       billingOrgPriceOverrides: [],
+      voiceAssistant: null,
+      whatsappConfig: null,
+      taskAutomationRuleOverrides: [],
     });
     mockPrisma.organization.findMany.mockResolvedValue([{ id: 'org-empty' }]);
     mockPrisma.billingSubscription.findMany.mockResolvedValue([]);
@@ -271,6 +294,7 @@ describe('BillingLegacyBackfillService fixtures', () => {
             quantity: 3,
             itemRole: 'BASE_PLAN',
             status: 'ACTIVE',
+            billingProductId: 'bprod-rental',
           },
         ],
       },

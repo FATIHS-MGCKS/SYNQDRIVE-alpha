@@ -7,6 +7,7 @@ import { VehicleIntelligenceModule } from '@modules/vehicle-intelligence/vehicle
 import { HighMobilityModule } from '@modules/high-mobility/high-mobility.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { PaymentsModule } from '@modules/payments/payments.module';
+import { BillingModule } from '@modules/billing/billing.module';
 import { TaskAutomationOutboxModule } from '@modules/tasks/outbox/task-automation-outbox.module';
 
 import { DimoSnapshotProcessor } from './processors/dimo-snapshot.processor';
@@ -31,6 +32,7 @@ import { TripTrackingRecoveryScheduler } from './schedulers/trip-tracking-recove
 import { TripAnalysisRecoveryScheduler } from './schedulers/trip-analysis-recovery.scheduler';
 import { TripReconciliationScheduler } from './schedulers/trip-reconciliation.scheduler';
 import { PaymentConnectReconciliationScheduler } from './schedulers/payment-connect-reconciliation.scheduler';
+import { BillingReconciliationScheduler } from './schedulers/billing-reconciliation.scheduler';
 import { HmHealthPollingScheduler } from './schedulers/hm-health-polling.scheduler';
 import { DataRetentionScheduler } from './schedulers/data-retention.scheduler';
 import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.scheduler';
@@ -56,6 +58,7 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
     HighMobilityModule,
     NotificationsModule,
     PaymentsModule,
+    BillingModule,
     TaskAutomationOutboxModule,
   ],
   providers: [
@@ -83,6 +86,7 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
     TripAnalysisRecoveryScheduler,
     TripReconciliationScheduler,
     PaymentConnectReconciliationScheduler,
+    BillingReconciliationScheduler,
     HmHealthPollingScheduler,
     DataRetentionScheduler,
     StorageOrphanSweepScheduler,

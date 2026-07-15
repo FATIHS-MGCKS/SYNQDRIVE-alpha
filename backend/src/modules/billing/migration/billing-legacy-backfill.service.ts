@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   BillingOrgPriceOverrideStatus,
   BillingPriceVersionStatus,
+  BillingStatus,
   BillingStripeMappingStatus,
   BillingStripeMode,
   BillingSubscriptionItemRole,
@@ -17,10 +18,12 @@ import {
   appendLegacyBackfillMarker,
   BaseBillingProductKey,
   BILLING_CATALOG_BASE_PRODUCT_SEEDS,
+  buildAddonBackfillIdempotencyKey,
   buildQuantityBackfillIdempotencyKey,
   classifyStripePriceIdMode,
   hasLegacyBackfillMarker,
   inferBaseBillingProductKey,
+  inferLegacyAddonSignals,
   mapSubscriptionStatusToItemStatus,
   resolveStripeModeFromSecretKey,
   sourcesConflict,
@@ -270,6 +273,9 @@ export class BillingLegacyBackfillService {
         billingOrgPriceOverrides: {
           where: { status: BillingOrgPriceOverrideStatus.ACTIVE },
         },
+        voiceAssistant: { select: { connectionStatus: true } },
+        whatsappConfig: { select: { isActive: true, isConnected: true } },
+        taskAutomationRuleOverrides: { take: 1, select: { id: true } },
       },
     });
 
@@ -280,8 +286,14 @@ export class BillingLegacyBackfillService {
         priceBook: { select: { id: true, productKey: true, billingProductId: true } },
         items: {
           where: {
-            itemRole: BillingSubscriptionItemRole.BASE_PLAN,
             status: { in: [BillingSubscriptionItemStatus.ACTIVE, BillingSubscriptionItemStatus.TRIALING] },
+            itemRole: { in: [BillingSubscriptionItemRole.BASE_PLAN, BillingSubscriptionItemRole.ADDON] },
+          },
+          select: {
+            id: true,
+            billingProductId: true,
+            itemRole: true,
+            quantity: true,
           },
         },
       },
@@ -474,7 +486,9 @@ export class BillingLegacyBackfillService {
       };
     }
 
-    const existingBaseItem = subscription.items[0] ?? null;
+    const existingBaseItem =
+      subscription.items.find((item) => item.itemRole === BillingSubscriptionItemRole.BASE_PLAN) ??
+      null;
     if (existingBaseItem) {
       for (const override of org.billingOrgPriceOverrides) {
         actions.push({
@@ -524,6 +538,15 @@ export class BillingLegacyBackfillService {
           });
         }
       }
+
+      await this.backfillAddonItems({
+        organizationId,
+        subscription,
+        org,
+        dryRun,
+        actions,
+        warnings,
+      });
 
       return {
         organizationId,
@@ -621,6 +644,15 @@ export class BillingLegacyBackfillService {
       });
     }
 
+    await this.backfillAddonItems({
+      organizationId,
+      subscription,
+      org,
+      dryRun,
+      actions,
+      warnings,
+    });
+
     for (const override of org.billingOrgPriceOverrides) {
       actions.push({
         kind: 'document_price_override',
@@ -647,6 +679,136 @@ export class BillingLegacyBackfillService {
       actions,
       warnings,
     };
+  }
+
+  private async findPriceBookForAddon(addonKey: string) {
+    return this.prisma.billingPriceBook.findFirst({
+      where: {
+        status: 'ACTIVE',
+        OR: [
+          { productKey: addonKey },
+          { billingProduct: { key: addonKey } },
+        ],
+      },
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
+      select: { id: true, productKey: true, billingProductId: true },
+    });
+  }
+
+  private async backfillAddonItems(input: {
+    organizationId: string;
+    subscription: {
+      id: string;
+      status: BillingStatus;
+      stripeMode: BillingStripeMode | null;
+      items: Array<{ billingProductId: string; itemRole: BillingSubscriptionItemRole }>;
+    };
+    org: {
+      organizationProducts: Array<{ product: { slug: string } }>;
+      voiceAssistant: { connectionStatus: string } | null;
+      whatsappConfig: { isActive: boolean; isConnected: boolean } | null;
+      taskAutomationRuleOverrides: Array<{ id: string }>;
+    };
+    dryRun: boolean;
+    actions: BillingLegacyBackfillAction[];
+    warnings: string[];
+  }): Promise<void> {
+    const orgProductSlugs = input.org.organizationProducts.map((p) => p.product.slug);
+    const existingAddonProductIds = new Set(
+      input.subscription.items
+        .filter((item) => item.itemRole === BillingSubscriptionItemRole.ADDON)
+        .map((item) => item.billingProductId),
+    );
+
+    const addonSignals = inferLegacyAddonSignals({
+      orgProductSlugs,
+      voiceAssistantConnected:
+        input.org.voiceAssistant?.connectionStatus === 'CONNECTED' ||
+        input.org.voiceAssistant?.connectionStatus === 'DEGRADED',
+      whatsAppActive: Boolean(
+        input.org.whatsappConfig?.isActive || input.org.whatsappConfig?.isConnected,
+      ),
+      workflowAutomationEnabled: input.org.taskAutomationRuleOverrides.length > 0,
+    });
+
+    for (const signal of addonSignals) {
+      const catalogProduct = await this.prisma.billingCatalogProduct.findUnique({
+        where: { key: signal.addonKey },
+        select: { id: true },
+      });
+      if (!catalogProduct) {
+        input.warnings.push(`Addon catalog product ${signal.addonKey} missing`);
+        continue;
+      }
+      if (existingAddonProductIds.has(catalogProduct.id)) {
+        continue;
+      }
+
+      const priceBook = await this.findPriceBookForAddon(signal.addonKey);
+      if (!priceBook) {
+        input.warnings.push(`No active price book for addon ${signal.addonKey}`);
+        continue;
+      }
+
+      const activeVersion = await this.pricebook.findActiveVersion(priceBook.id);
+      if (!activeVersion || activeVersion.status !== BillingPriceVersionStatus.ACTIVE) {
+        input.warnings.push(`No active price version for addon ${signal.addonKey}`);
+        continue;
+      }
+
+      const idempotencyKey = buildAddonBackfillIdempotencyKey(
+        input.organizationId,
+        signal.addonKey,
+      );
+      const existingMarker = await this.prisma.billingQuantityEvent.findUnique({
+        where: { idempotencyKey },
+        select: { id: true },
+      });
+      if (existingMarker) {
+        continue;
+      }
+
+      input.actions.push({
+        kind: 'create_subscription_item',
+        entityType: 'BillingSubscriptionItem',
+        detail: `Create addon ${signal.addonKey} from ${signal.source}`,
+      });
+
+      if (!input.dryRun) {
+        const item = await this.prisma.billingSubscriptionItem.create({
+          data: {
+            subscriptionId: input.subscription.id,
+            organizationId: input.organizationId,
+            billingProductId: catalogProduct.id,
+            itemRole: BillingSubscriptionItemRole.ADDON,
+            priceBookId: priceBook.id,
+            priceVersionId: activeVersion.id,
+            quantity: 1,
+            validFrom: new Date(),
+            status: mapSubscriptionStatusToItemStatus(
+              input.subscription.status,
+            ) as BillingSubscriptionItemStatus,
+            stripeMode: input.subscription.stripeMode ?? undefined,
+          },
+        });
+        await this.prisma.billingQuantityEvent.create({
+          data: {
+            organizationId: input.organizationId,
+            subscriptionId: input.subscription.id,
+            subscriptionItemId: item.id,
+            eventType: 'SUBSCRIPTION_SYNC',
+            delta: 1,
+            quantityBefore: 0,
+            quantityAfter: 1,
+            effectiveAt: new Date(),
+            source: 'SYSTEM',
+            reason: `Legacy backfill: addon ${signal.addonKey} from ${signal.source}`,
+            idempotencyKey,
+          },
+        });
+        existingAddonProductIds.add(catalogProduct.id);
+      }
+    }
   }
 
   private resolveOrgProductBaseKey(slugs: string[]): BaseBillingProductKey | null {
