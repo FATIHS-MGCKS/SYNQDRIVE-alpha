@@ -11,10 +11,10 @@ import {
   type OperatorTodayFeedBucket,
   type OperatorTodayFeedState,
 } from './operatorTodayFeed.utils';
-
-const ACTIONABLE_PREVIEW_LIMIT = 8;
+import { OPERATOR_TODAY_BUCKET_PREVIEW_LIMITS } from '../views/operatorTodayView.utils';
 
 export interface UseOperatorTodayFeedResult extends OperatorTodayFeedState {
+  isStale: boolean;
   reload: () => Promise<void>;
 }
 
@@ -60,10 +60,7 @@ export function useOperatorTodayFeed(): UseOperatorTodayFeedResult {
         out[bucket] = undefined;
         continue;
       }
-      const previewLimit =
-        bucket === 'NOW' || bucket === 'TODAY' || bucket === 'UPCOMING'
-          ? ACTIONABLE_PREVIEW_LIMIT
-          : undefined;
+      const previewLimit = OPERATOR_TODAY_BUCKET_PREVIEW_LIMITS[bucket];
       out[bucket] = buildBucketSlice({
         bucket,
         tasks: query.tasks,
@@ -114,6 +111,13 @@ export function useOperatorTodayFeed(): UseOperatorTodayFeedResult {
     summaryQuery,
   ]);
 
+  const isStale =
+    nowQuery.isStale ||
+    todayQuery.isStale ||
+    upcomingQuery.isStale ||
+    plannedQuery.isStale ||
+    (canViewUnassigned && unassignedQuery.isStale);
+
   return {
     buckets,
     summary,
@@ -121,6 +125,7 @@ export function useOperatorTodayFeed(): UseOperatorTodayFeedResult {
     summaryLoading: summaryQuery.loading,
     summaryError: summaryQuery.error,
     canViewUnassigned,
+    isStale,
     reload,
   };
 }

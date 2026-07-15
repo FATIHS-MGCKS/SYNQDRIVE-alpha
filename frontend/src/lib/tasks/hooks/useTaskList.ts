@@ -16,6 +16,8 @@ export interface UseTaskListResult {
   tasks: ApiTask[];
   loading: boolean;
   error: string | null;
+  /** True when the latest fetch failed but a previous successful payload is still shown. */
+  isStale: boolean;
   reload: () => Promise<ApiTask[]>;
 }
 
@@ -28,8 +30,13 @@ export function useTaskList({
   const [tasks, setTasks] = useState<ApiTask[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const tasksRef = useRef<ApiTask[]>([]);
   const filtersRef = useRef(filters);
   filtersRef.current = filters;
+
+  useEffect(() => {
+    tasksRef.current = tasks;
+  }, [tasks]);
 
   const queryKey = bucket
     ? taskQueryKeys.listBucket(orgId ?? '', bucket, filters)
@@ -55,8 +62,11 @@ export function useTaskList({
     } catch (e) {
       const message = e instanceof Error ? e.message : 'Aufgaben konnten nicht geladen werden';
       setError(message);
-      setTasks([]);
-      return [];
+      if (tasksRef.current.length === 0) {
+        setTasks([]);
+        return [];
+      }
+      return tasksRef.current;
     } finally {
       setLoading(false);
     }
@@ -73,5 +83,5 @@ export function useTaskList({
     });
   }, [orgId, bucket, reload]);
 
-  return { queryKey, tasks, loading, error, reload };
+  return { queryKey, tasks, loading, error, isStale: Boolean(error) && tasks.length > 0, reload };
 }
