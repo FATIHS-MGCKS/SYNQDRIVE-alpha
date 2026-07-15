@@ -61,7 +61,7 @@ export function OperatorBookingCancelSheet({ action }: OperatorBookingCancelShee
   const handleCancel = async () => {
     if (!bookingId || !cancelAllowed) return;
     clearError();
-    await cancelBooking(bookingId, () => {
+    await cancelBooking(bookingId, detail.vehicle.vehicleId, () => {
       action.onSuccess?.();
       closeSheet();
     });

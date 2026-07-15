@@ -1041,6 +1041,7 @@ export function NewBookingView({
       if (onBookingCreated) {
         onBookingCreated({
           id: uiBooking.id,
+          vehicleId: selectedVehicle.id,
           customer: uiBooking.customer,
           customerPhone: selectedCustomer.phone || '+49 000 0000 0000',
           vehicle: uiBooking.vehicle,

@@ -11,13 +11,13 @@ import {
   type FleetMapFeatureVisualProperties,
   type FleetMapVisualGeoJson,
 } from '../lib/fleetVisualState';
+import {
+  normalizeFleetOperationalStatus,
+} from '../lib/vehicle-status';
+
 import type {
-  VehicleData,
-  VehicleDisplayIgnition,
-  VehicleDisplayState,
-  VehicleOnlineStatus,
-  FleetMaintenanceReasonCode,
-} from '../data/vehicles';
+  FleetOperationalOptimisticPatch,
+} from '../lib/vehicle-operational-query/types';
 
 export const FLEET_MAP_REFRESH_MS = 30_000;
 export const ALL_STATIONS_FILTER = 'all';
@@ -45,6 +45,11 @@ export interface FleetMapFilters {
   stationId: string;
 }
 
+interface OptimisticOperationalEntry {
+  token: string;
+  snapshots: Map<string, FleetMapVehicle>;
+}
+
 interface FleetMapState {
   vehicles: FleetMapVehicle[];
   filters: FleetMapFilters;
@@ -54,8 +59,27 @@ interface FleetMapState {
   lastFetchedAt: number | null;
   refreshIntervalMs: number;
   fetchFleetMap: (orgId: string) => Promise<void>;
+  applyOptimisticOperationalPatches: (
+    patches: Array<{ vehicleId: string; patch: FleetOperationalOptimisticPatch }>,
+  ) => string | null;
+  rollbackOptimisticOperationalPatches: (token: string) => void;
+  commitOptimisticOperationalPatches: (token: string) => void;
   setStationFilter: (stationId: string) => void;
   setSelectedVehicleId: (vehicleId: string | null) => void;
+}
+
+let optimisticTokenCounter = 0;
+const pendingOptimisticPatches = new Map<string, OptimisticOperationalEntry>();
+
+function applyPatchToVehicle(
+  vehicle: FleetMapVehicle,
+  patch: FleetOperationalOptimisticPatch,
+): FleetMapVehicle {
+  return {
+    ...vehicle,
+    ...patch,
+    status: patch.status ?? vehicle.status,
+  };
 }
 
 function toFiniteNumber(value: unknown): number | undefined {
@@ -74,13 +98,6 @@ function normalizeFuelType(raw: string | null | undefined): VehicleData['fuelTyp
   return 'Petrol';
 }
 
-function normalizeStatus(raw: string | null | undefined): VehicleData['status'] {
-  const value = (raw ?? '').toLowerCase();
-  if (value.includes('rented')) return 'Active Rented';
-  if (value.includes('reserved')) return 'Reserved';
-  if (value.includes('maintenance') || value.includes('service')) return 'Maintenance';
-  return 'Available';
-}
 
 function normalizeHealthStatus(raw: string | null | undefined): VehicleData['healthStatus'] {
   const value = (raw ?? '').toLowerCase();
@@ -128,7 +145,12 @@ function normalizeTelemetryFreshness(
 
 function mapFleetVehicle(raw: FleetMapVehicleResponse): FleetMapVehicle {
   const fuelType = normalizeFuelType(raw.fuelType);
-  const status = normalizeStatus(raw.status);
+  const normalizedStatus = normalizeFleetOperationalStatus({
+    status: raw.status,
+    dataQualityState: (raw as { dataQualityState?: string | null }).dataQualityState,
+    isReliable: (raw as { isReliable?: boolean | null }).isReliable,
+  });
+  const status = normalizedStatus.status;
   const healthStatus = normalizeHealthStatus(raw.healthStatus);
   const cleaningStatus = normalizeCleaningStatus(raw.cleaningStatus);
   const isElectric =
@@ -165,6 +187,8 @@ function mapFleetVehicle(raw: FleetMapVehicleResponse): FleetMapVehicle {
     expectedStationId: raw.expectedStationId ?? null,
     fuelType,
     status,
+    dataQualityState: normalizedStatus.dataQualityState,
+    isReliable: normalizedStatus.isReliable,
     cleaningStatus,
     healthStatus,
     online: raw.isFresh,
@@ -256,6 +280,41 @@ export const useFleetMapStore = create<FleetMapState>((set) => ({
   error: null,
   lastFetchedAt: null,
   refreshIntervalMs: FLEET_MAP_REFRESH_MS,
+  applyOptimisticOperationalPatches: (patches) => {
+    if (patches.length === 0) return null;
+
+    const token = `fleet-opt-${++optimisticTokenCounter}`;
+    const snapshots = new Map<string, FleetMapVehicle>();
+    const patchById = new Map(patches.map((p) => [p.vehicleId, p.patch]));
+
+    set((state) => {
+      const nextVehicles = state.vehicles.map((vehicle) => {
+        const patch = patchById.get(vehicle.id);
+        if (!patch) return vehicle;
+        snapshots.set(vehicle.id, vehicle);
+        return applyPatchToVehicle(vehicle, patch);
+      });
+      return { vehicles: nextVehicles };
+    });
+
+    pendingOptimisticPatches.set(token, { token, snapshots });
+    return token;
+  },
+  rollbackOptimisticOperationalPatches: (token) => {
+    const entry = pendingOptimisticPatches.get(token);
+    if (!entry) return;
+    pendingOptimisticPatches.delete(token);
+
+    set((state) => ({
+      vehicles: state.vehicles.map((vehicle) => {
+        const snapshot = entry.snapshots.get(vehicle.id);
+        return snapshot ?? vehicle;
+      }),
+    }));
+  },
+  commitOptimisticOperationalPatches: (token) => {
+    pendingOptimisticPatches.delete(token);
+  },
   fetchFleetMap: async (orgId: string) => {
     if (!orgId) {
       set({
@@ -310,6 +369,11 @@ export const useFleetMapStore = create<FleetMapState>((set) => ({
           lastFetchedAt: Date.now(),
         };
       });
+
+      // Server response supersedes any committed optimistic overlay.
+      for (const entry of pendingOptimisticPatches.values()) {
+        pendingOptimisticPatches.delete(entry.token);
+      }
     } catch (error) {
       set({
         loading: false,

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-operational-query-invalidation-v49489-2026-07-15',
+    version: '4.9.489',
+    title: 'V4.9.489 — Frontend vehicle operational query invalidation (Prompt 25/43)',
+    summary: [
+      'Neues Modul `vehicle-operational-query/` — TanStack-kompatible Query-Key-Fabrik, Invalidierungs-Registry und zentraler Bus `invalidateVehicleOperationalState`.',
+      'Gezielte Invalidierung nach Pickup/Return, Booking create/update/cancel/no-show, Cleaning/Status-PATCH — Fleet Map, Fleet Health, Dashboard Today/Runtime, Operator Today/Tasks, Vehicle Detail.',
+      'Optimistische Fleet-Patches mit Rollback: Pickup → Active Rented, Return/Release → Available nur bei zuverlässigem Status; Unknown → keine Available-Annahme.',
+      'Fahrzeugwechsel bustet alte + neue Vehicle ID. Kein globaler Query-Cache-Clear. 13 Vitest-Fälle.',
+    ],
+    reason:
+      'Prompt 25/43: Frontend-Caches hatten verstreute `refreshFleet()`-Hooks ohne einheitliche Keys, ohne Vehicle-Swap-Dual-Bust und ohne fail-closed Optimistic Updates.',
+    previousBehavior:
+      'Ad-hoc `refreshFleet()` / `handover:completed`-Listener; Dashboard lud nach Handover nur teilweise nach; Rental-Handover ohne `reloadHealth`; kein zentraler Query-Key-Layer.',
+    details:
+      'Neu: `frontend/src/rental/lib/vehicle-operational-query/*`. FleetProvider/Dashboard/Operator/Overview registrieren Handler. HandoverProvider + OperatorHandoverProvider rufen Invalidierung vor Event. `vehicle-status.ts` fail-closed normalizer + `Unknown` in FleetStatus.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-15T22:42:00.000Z',
+  },
+  {
     id: 'invoice-production-ready-v49475-2026-07-15',
     version: '4.9.475',
     title: 'V4.9.475 — Rechnungsmodul production-ready: P1-Fixes + Merge-Vorbereitung',

@@ -12,13 +12,19 @@ export type FleetMaintenanceReasonCode = 'SCHEDULED_SERVICE' | 'OPERATIONAL_BLOC
 // longer emits, producing dead branches. Keep this type as the single
 // source of truth and let TypeScript fail the build the next time
 // someone drifts the label.
-export type FleetStatus = 'Available' | 'Active Rented' | 'Reserved' | 'Maintenance';
+export type FleetStatus =
+  | 'Available'
+  | 'Active Rented'
+  | 'Reserved'
+  | 'Maintenance'
+  | 'Unknown';
 
 export const FLEET_STATUSES: readonly FleetStatus[] = [
   'Available',
   'Reserved',
   'Active Rented',
   'Maintenance',
+  'Unknown',
 ] as const;
 
 export interface VehicleData {
@@ -42,6 +48,8 @@ export interface VehicleData {
   expectedStationId?: string | null;
   fuelType: 'Petrol' | 'Diesel' | 'Electric' | 'Hybrid' | 'PHEV';
   status: FleetStatus;
+  dataQualityState?: 'RELIABLE' | 'DEGRADED' | 'UNAVAILABLE' | null;
+  isReliable?: boolean | null;
   cleaningStatus: 'Clean' | 'Needs Cleaning';
   healthStatus: 'Good Health' | 'Warning' | 'Critical';
   online: boolean;

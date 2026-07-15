@@ -14,6 +14,7 @@ import {
   HandoverDialogKind,
   HandoverDialogBookingInfo,
 } from './components/handover/HandoverProtocolDialog';
+import { invalidateVehicleOperationalState } from './lib/vehicle-operational-query';
 
 // V4.6.75 — Global handover context.
 // Any component inside the rental app can call `openHandover({ bookingId,
@@ -169,8 +170,22 @@ export function HandoverProvider({
   );
 
   const handleSuccess = useCallback(() => {
+    if (orgId && booking?.vehicleId) {
+      void invalidateVehicleOperationalState({
+        orgId,
+        vehicleIds: [booking.vehicleId],
+        reason: kind === 'PICKUP' ? 'handover-pickup' : 'handover-return',
+        optimistic: kind === 'PICKUP' ? 'pickup' : 'return',
+        bookingContext: {
+          bookingId: booking.id,
+          customerName: booking.customerName,
+          returnAt: booking.endDate,
+          returnStationName: booking.returnLocation ?? null,
+        },
+      });
+    }
     window.dispatchEvent(new CustomEvent('handover:completed'));
-  }, []);
+  }, [booking, orgId, kind]);
 
   const value = useMemo(() => ({ openHandover }), [openHandover]);
 

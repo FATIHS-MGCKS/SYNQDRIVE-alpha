@@ -317,7 +317,7 @@ export function OperatorBookingFormSheet({ action }: OperatorBookingFormSheetPro
       return;
     }
 
-    await updateBooking(bookingId, patch, handleSuccess);
+    await updateBooking(bookingId, patch, handleSuccess, detail.vehicle.vehicleId);
   };
 
   const title = isEdit ? 'Buchung bearbeiten' : 'Buchung aufnehmen';
