@@ -147,7 +147,7 @@ describe('VehicleStateEngine input/output model (Prompt 7)', () => {
   });
 
   describe('DEGRADED booking state', () => {
-    it('passes data quality through without switching V1 status derivation', () => {
+    it('fails closed to UNKNOWN with degraded data quality', () => {
       const output = buildVehicleOperationalStateFromEngineInput(
         fullEngineInput({
           bookingState: {
@@ -163,7 +163,8 @@ describe('VehicleStateEngine input/output model (Prompt 7)', () => {
 
       expect(output.operationalState.dataQualityState).toBe('DEGRADED');
       expect(output.operationalState.isReliable).toBe(false);
-      expect(output.operationalState.status).toBe('AVAILABLE');
+      expect(output.operationalState.status).toBe('UNKNOWN');
+      expect(output.operationalState.reason).toBe('BOOKING_STATE_INCONSISTENT');
       expect(output.diagnosticReasons).toContain('BOOKING_PARTIAL_RESULT');
     });
   });
@@ -189,7 +190,7 @@ describe('VehicleStateEngine input/output model (Prompt 7)', () => {
       expect(output.legacy.status).toBe('Maintenance');
     });
 
-    it('carries hard block input alongside V1 Maintenance fleet label', () => {
+    it('carries hard block input alongside legacy Maintenance fleet label', () => {
       const output = buildVehicleOperationalStateFromEngineInput(
         fullEngineInput({
           vehicle: {
@@ -203,6 +204,8 @@ describe('VehicleStateEngine input/output model (Prompt 7)', () => {
         }),
       );
 
+      expect(output.operationalState.status).toBe('BLOCKED');
+      expect(output.operationalState.reason).toBe('HARD_BLOCK_ACTIVE');
       expect(output.legacy.status).toBe('Maintenance');
       expect(output.diagnosticReasons).toContain('OPERATIONAL_BLOCK');
       expect(output.rawVehicleStatus.value).toBe(VehicleStatus.OUT_OF_SERVICE);

@@ -12,6 +12,8 @@ import type {
   BookingContextBlock,
   CanonicalOperationalStatus,
   DataQualityReasonCode,
+  DataQualityState,
+  DomainBookingRef,
   OperationalReasonCode,
   OperationalStateBlock,
   OperationalStateSource,
@@ -19,11 +21,14 @@ import type {
   RawVehicleStatusDiagnostic,
   VehicleStateEngineInput,
   VehicleStateEngineOutput,
+  VehicleStateEngineVehicleInput,
 } from './vehicle-operational-state.engine.types';
 import {
   assertEngineTimezone,
+  buildVehicleStateEngineInput,
   mapBookingStateToLegacyDto,
 } from './vehicle-operational-state.input-mapper';
+import { DEFAULT_ORGANIZATION_TIMEZONE } from './vehicle-operational-state.engine.types';
 
 export {
   EMPTY_BOOKING_CONTEXT,
@@ -165,154 +170,162 @@ export function deriveMaintenanceContext(
   };
 }
 
+const KNOWN_RAW_STATUSES = new Set<string>([
+  VehicleStatus.AVAILABLE,
+  VehicleStatus.IN_SERVICE,
+  VehicleStatus.OUT_OF_SERVICE,
+  VehicleStatus.RENTED,
+  VehicleStatus.RESERVED,
+]);
+
+const CANONICAL_TO_LEGACY_STATUS: Record<CanonicalOperationalStatus, string> = {
+  AVAILABLE: 'Available',
+  RESERVED: 'Reserved',
+  ACTIVE_RENTED: 'Active Rented',
+  MAINTENANCE: 'Maintenance',
+  BLOCKED: 'Maintenance',
+  UNKNOWN: 'Unknown',
+};
+
+const FAIL_CLOSED_QUALITY_CODES: DataQualityReasonCode[] = [
+  'BOOKING_QUERY_FAILED',
+  'HANDOVER_QUERY_FAILED',
+  'MULTIPLE_ACTIVE_BOOKINGS',
+  'ACTIVE_WITHOUT_PICKUP_PROTOCOL',
+];
+
 function buildGhostStateWarning(
-  vehicle: VehicleOperationalStateInput['vehicle'],
+  vehicle: Pick<VehicleStateEngineVehicleInput, 'id' | 'licensePlate'>,
   ghostLabel: string,
   rawStatus: string,
 ): string {
   return `[fleet-status] Ghost ${ghostLabel} state on vehicle ${
     vehicle.id ?? vehicle.licensePlate ?? '<unknown>'
-  }: Vehicle.status is ${rawStatus} but no matching booking truth. Treating as Available.`;
+  }: Vehicle.status is ${rawStatus} but no matching booking truth. Operational state is Unknown.`;
 }
 
-function resolveLiveKmDriven(
-  bookingDto: FleetVehicleBookingContextDto,
-  state: VehicleOperationalStateInput['state'],
-  pickupOdoByBooking: Map<string, number>,
-): number | null {
-  if (!bookingDto.activeBookingId) {
-    return bookingDto.activeKmDriven ?? null;
-  }
-  if (bookingDto.activeKmDriven != null) return bookingDto.activeKmDriven;
-  const pickupOdo = pickupOdoByBooking.get(bookingDto.activeBookingId);
-  const currentOdo =
-    typeof state?.odometerKm === 'number' ? state.odometerKm : null;
-  if (pickupOdo == null || currentOdo == null) return null;
-  return Math.max(0, Math.floor(currentOdo - pickupOdo));
+function isKnownRawStatus(raw: VehicleStatus | string): boolean {
+  return KNOWN_RAW_STATUSES.has(String(raw));
 }
 
-/**
- * Canonical fleet operational-state builder (V1 semantics).
- *
- * Single pure derivation used by `/vehicles` and `/fleet-map`. No Prisma,
- * cache, or controller dependencies.
- */
-export function buildVehicleOperationalState(
-  input: VehicleOperationalStateInput,
-): VehicleOperationalStateResult {
-  const { vehicle, state, bookingCtx, pickupOdoByBooking } = input;
-  const dbStatus =
-    RENTAL_STATUS_MAP[vehicle.status as VehicleStatus] ?? 'Available';
-  const bookingDerived: 'Active Rented' | 'Reserved' | null =
-    bookingCtx && bookingCtx.activeBookingId
-      ? 'Active Rented'
-      : bookingCtx && bookingCtx.reservedBookingId
-        ? 'Reserved'
-        : null;
-
-  let status: string;
-  let ghostStateWarning: string | null = null;
-
-  if (dbStatus === 'Maintenance') {
-    status = 'Maintenance';
-  } else if (bookingDerived) {
-    status = bookingDerived;
-  } else if (dbStatus === 'Active Rented' || dbStatus === 'Reserved') {
-    status = 'Available';
-    ghostStateWarning = buildGhostStateWarning(
-      vehicle,
-      dbStatus,
-      String(vehicle.status),
-    );
-  } else {
-    status = dbStatus;
-  }
-
-  const maintenanceCtx: FleetVehicleMaintenanceContextDto =
-    status === 'Maintenance'
-      ? deriveMaintenanceContext(vehicle.status)
-      : {
-          maintenanceReason: null,
-          maintenanceReasonCode: null,
-          maintenanceUrgency: null,
-        };
-
-  const bookingDto: FleetVehicleBookingContextDto =
-    status === 'Active Rented' || status === 'Reserved'
-      ? bookingCtx ?? EMPTY_BOOKING_CONTEXT
-      : EMPTY_BOOKING_CONTEXT;
-
-  const liveKmDriven = resolveLiveKmDriven(
-    bookingDto,
-    state,
-    pickupOdoByBooking,
+function areBookingSlicesLoaded(
+  bookingState: VehicleStateEngineInput['bookingState'],
+): boolean {
+  return (
+    bookingState.activeBooking !== undefined &&
+    bookingState.reservationWindowBooking !== undefined &&
+    bookingState.nextBooking !== undefined
   );
+}
 
-  const odometerKm =
-    typeof state?.odometerKm === 'number' && Number.isFinite(state.odometerKm)
-      ? Math.floor(state.odometerKm)
-      : null;
-
-  const fuelPercent = resolveFleetFuelPercentOrNull(
-    state,
-    vehicle.tankCapacityLiters,
+function isActiveRentalConsistent(
+  activeBooking: DomainBookingRef | null | undefined,
+): activeBooking is DomainBookingRef {
+  if (!activeBooking) return false;
+  return (
+    activeBooking.phase === 'active_rental' || activeBooking.status === 'ACTIVE'
   );
-
-  const evSoc =
-    typeof state?.evSoc === 'number' && Number.isFinite(state.evSoc)
-      ? Math.min(100, Math.max(0, Math.ceil(state.evSoc)))
-      : null;
-
-  return {
-    status,
-    maintenanceCtx,
-    bookingDto,
-    liveKmDriven,
-    odometerKm,
-    fuelPercent,
-    evSoc,
-    ghostStateWarning,
-  };
 }
 
-const LEGACY_TO_CANONICAL_STATUS: Record<string, CanonicalOperationalStatus> = {
-  Available: 'AVAILABLE',
-  Reserved: 'RESERVED',
-  'Active Rented': 'ACTIVE_RENTED',
-  Maintenance: 'MAINTENANCE',
-};
+function isReservationWindowConsistent(
+  reservationWindowBooking: DomainBookingRef | null | undefined,
+): reservationWindowBooking is DomainBookingRef {
+  if (!reservationWindowBooking) return false;
+  return (
+    reservationWindowBooking.phase === 'pickup_window' ||
+    reservationWindowBooking.status === 'PENDING' ||
+    reservationWindowBooking.status === 'CONFIRMED'
+  );
+}
 
-function mapLegacyStatusToCanonical(
-  legacyStatus: string,
-  blockingState: VehicleStateEngineInput['blockingState'],
-): CanonicalOperationalStatus {
-  if (blockingState.isBlocked && blockingState.level === 'hard') {
-    // V1 fleet label collapses OUT_OF_SERVICE into Maintenance — output carries both signals.
-    return LEGACY_TO_CANONICAL_STATUS[legacyStatus] ?? 'UNKNOWN';
+function detectBookingInconsistency(
+  input: VehicleStateEngineInput,
+): OperationalReasonCode | null {
+  const { bookingState, vehicle } = input;
+  const active = bookingState.activeBooking ?? null;
+  const reserved = bookingState.reservationWindowBooking ?? null;
+
+  if (active && reserved) {
+    return 'BOOKING_STATE_INCONSISTENT';
   }
-  return LEGACY_TO_CANONICAL_STATUS[legacyStatus] ?? 'UNKNOWN';
-}
-
-function mapLegacyStatusToReason(
-  canonicalStatus: CanonicalOperationalStatus,
-  legacy: VehicleOperationalStateResult,
-): OperationalReasonCode {
-  if (legacy.ghostStateWarning) {
+  if (active && !isActiveRentalConsistent(active)) {
+    return 'BOOKING_STATE_INCONSISTENT';
+  }
+  if (reserved && !isReservationWindowConsistent(reserved)) {
+    return 'BOOKING_STATE_INCONSISTENT';
+  }
+  if (vehicle.rawStatus === VehicleStatus.RENTED && !active) {
     return 'RAW_STATUS_INCONSISTENT';
   }
-  switch (canonicalStatus) {
-    case 'AVAILABLE':
-      return 'NO_ACTIVE_OR_UPCOMING_WINDOW';
-    case 'RESERVED':
-      return 'PICKUP_WINDOW_ACTIVE';
-    case 'ACTIVE_RENTED':
-      return 'ACTIVE_BOOKING';
+  if (
+    vehicle.rawStatus === VehicleStatus.RESERVED &&
+    !reserved &&
+    !active
+  ) {
+    return 'RAW_STATUS_INCONSISTENT';
+  }
+  if (!isKnownRawStatus(vehicle.rawStatus)) {
+    return 'UNKNOWN_STATUS_VALUE';
+  }
+  return null;
+}
+
+function resolvePriorityOneReason(
+  input: VehicleStateEngineInput,
+): OperationalReasonCode | null {
+  const { bookingState } = input;
+
+  if (!areBookingSlicesLoaded(bookingState)) {
+    return 'BOOKING_DATA_UNAVAILABLE';
+  }
+  if (bookingState.dataQualityState === 'UNAVAILABLE') {
+    return 'BOOKING_DATA_UNAVAILABLE';
+  }
+  if (bookingState.dataQualityState === 'DEGRADED') {
+    return 'BOOKING_STATE_INCONSISTENT';
+  }
+  for (const code of bookingState.dataQualityReasons) {
+    if (FAIL_CLOSED_QUALITY_CODES.includes(code)) {
+      if (code === 'ACTIVE_WITHOUT_PICKUP_PROTOCOL') {
+        return 'HANDOVER_STATE_INCONSISTENT';
+      }
+      if (code === 'MULTIPLE_ACTIVE_BOOKINGS') {
+        return 'BOOKING_STATE_INCONSISTENT';
+      }
+      return 'BOOKING_DATA_UNAVAILABLE';
+    }
+  }
+  return detectBookingInconsistency(input);
+}
+
+function resolveEffectiveWindow(
+  status: CanonicalOperationalStatus,
+  input: VehicleStateEngineInput,
+): { effectiveFrom: string | null; effectiveUntil: string | null } {
+  const { bookingState, vehicle } = input;
+  switch (status) {
+    case 'ACTIVE_RENTED': {
+      const booking = bookingState.activeBooking;
+      return {
+        effectiveFrom: booking?.pickupAt ?? null,
+        effectiveUntil: booking?.returnAt ?? null,
+      };
+    }
+    case 'RESERVED': {
+      const booking = bookingState.reservationWindowBooking;
+      return {
+        effectiveFrom: booking?.pickupAt ?? null,
+        effectiveUntil: booking?.returnAt ?? null,
+      };
+    }
     case 'MAINTENANCE':
-      return 'MAINTENANCE_ACTIVE';
     case 'BLOCKED':
-      return 'HARD_BLOCK_ACTIVE';
+      return {
+        effectiveFrom: vehicle.persistedAt ?? null,
+        effectiveUntil: null,
+      };
     default:
-      return 'UNKNOWN_STATUS_VALUE';
+      return { effectiveFrom: null, effectiveUntil: null };
   }
 }
 
@@ -320,8 +333,11 @@ function resolveOperationalSource(
   input: VehicleStateEngineInput,
   canonicalStatus: CanonicalOperationalStatus,
 ): OperationalStateSource {
-  if (input.bookingState.dataQualityState === 'UNAVAILABLE') {
-    return 'FAIL_CLOSED';
+  if (canonicalStatus === 'UNKNOWN') {
+    if (input.bookingState.dataQualityState === 'UNAVAILABLE') {
+      return 'FAIL_CLOSED';
+    }
+    return 'DERIVATION_ENGINE';
   }
   if (
     canonicalStatus === 'MAINTENANCE' &&
@@ -344,9 +360,231 @@ function resolveOperationalSource(
   return 'DERIVATION_ENGINE';
 }
 
+interface CanonicalDerivation {
+  status: CanonicalOperationalStatus;
+  reason: OperationalReasonCode;
+  ghostStateWarning: string | null;
+  outputDataQualityState: DataQualityState;
+  outputDataQualityReasons: DataQualityReasonCode[];
+}
+
+/**
+ * Kanonische V2-Prioritätskette — §15.1 vehicle-operational-state-v2.md
+ */
+export function deriveCanonicalOperationalState(
+  input: VehicleStateEngineInput,
+): CanonicalDerivation {
+  const { bookingState, maintenanceState, blockingState, vehicle } = input;
+  let ghostStateWarning: string | null = null;
+  const outputDataQualityReasons = [...bookingState.dataQualityReasons];
+  let outputDataQualityState = bookingState.dataQualityState;
+
+  const priorityOneReason = resolvePriorityOneReason(input);
+  if (priorityOneReason) {
+    if (priorityOneReason === 'RAW_STATUS_INCONSISTENT') {
+      const ghostLabel =
+        vehicle.rawStatus === VehicleStatus.RENTED
+          ? 'Active Rented'
+          : 'Reserved';
+      ghostStateWarning = buildGhostStateWarning(
+        vehicle,
+        ghostLabel,
+        String(vehicle.rawStatus),
+      );
+      if (vehicle.rawStatus === VehicleStatus.RENTED) {
+        if (!outputDataQualityReasons.includes('RAW_STATUS_LEGACY_RENTED')) {
+          outputDataQualityReasons.push('RAW_STATUS_LEGACY_RENTED');
+        }
+      }
+      if (vehicle.rawStatus === VehicleStatus.RESERVED) {
+        if (!outputDataQualityReasons.includes('RAW_STATUS_LEGACY_RESERVED')) {
+          outputDataQualityReasons.push('RAW_STATUS_LEGACY_RESERVED');
+        }
+      }
+      if (outputDataQualityState === 'RELIABLE') {
+        outputDataQualityState = 'DEGRADED';
+      }
+    }
+    if (
+      priorityOneReason === 'UNKNOWN_STATUS_VALUE' &&
+      !outputDataQualityReasons.includes('UNKNOWN_RAW_STATUS_ENUM')
+    ) {
+      outputDataQualityReasons.push('UNKNOWN_RAW_STATUS_ENUM');
+      if (outputDataQualityState === 'RELIABLE') {
+        outputDataQualityState = 'DEGRADED';
+      }
+    }
+    return {
+      status: 'UNKNOWN',
+      reason: priorityOneReason,
+      ghostStateWarning,
+      outputDataQualityState,
+      outputDataQualityReasons,
+    };
+  }
+
+  if (maintenanceState.isMaintenance) {
+    return {
+      status: 'MAINTENANCE',
+      reason: 'MAINTENANCE_ACTIVE',
+      ghostStateWarning: null,
+      outputDataQualityState,
+      outputDataQualityReasons,
+    };
+  }
+
+  if (blockingState.isBlocked && blockingState.level === 'hard') {
+    return {
+      status: 'BLOCKED',
+      reason: 'HARD_BLOCK_ACTIVE',
+      ghostStateWarning: null,
+      outputDataQualityState,
+      outputDataQualityReasons,
+    };
+  }
+
+  if (isActiveRentalConsistent(bookingState.activeBooking)) {
+    return {
+      status: 'ACTIVE_RENTED',
+      reason: 'ACTIVE_BOOKING',
+      ghostStateWarning: null,
+      outputDataQualityState,
+      outputDataQualityReasons,
+    };
+  }
+
+  if (isReservationWindowConsistent(bookingState.reservationWindowBooking)) {
+    return {
+      status: 'RESERVED',
+      reason: 'PICKUP_WINDOW_ACTIVE',
+      ghostStateWarning: null,
+      outputDataQualityState,
+      outputDataQualityReasons,
+    };
+  }
+
+  return {
+    status: 'AVAILABLE',
+    reason: 'NO_ACTIVE_OR_UPCOMING_WINDOW',
+    ghostStateWarning: null,
+    outputDataQualityState,
+    outputDataQualityReasons,
+  };
+}
+
+function resolveLiveKmDriven(
+  bookingDto: FleetVehicleBookingContextDto,
+  state: VehicleOperationalStateInput['state'],
+  pickupOdoByBooking: Map<string, number>,
+): number | null {
+  if (!bookingDto.activeBookingId) {
+    return bookingDto.activeKmDriven ?? null;
+  }
+  if (bookingDto.activeKmDriven != null) return bookingDto.activeKmDriven;
+  const pickupOdo = pickupOdoByBooking.get(bookingDto.activeBookingId);
+  const currentOdo =
+    typeof state?.odometerKm === 'number' ? state.odometerKm : null;
+  if (pickupOdo == null || currentOdo == null) return null;
+  return Math.max(0, Math.floor(currentOdo - pickupOdo));
+}
+
+/**
+ * Fleet operational-state builder — delegates to the V2 state engine and
+ * returns the legacy fleet projection for API compatibility.
+ */
+export function buildVehicleOperationalState(
+  input: VehicleOperationalStateInput,
+): VehicleOperationalStateResult {
+  const engineInput = buildVehicleStateEngineInput({
+    vehicle: {
+      id: input.vehicle.id ?? 'unknown',
+      organizationId: 'legacy',
+      status: input.vehicle.status ?? VehicleStatus.AVAILABLE,
+      licensePlate: input.vehicle.licensePlate,
+      tankCapacityLiters: input.vehicle.tankCapacityLiters,
+    },
+    bookingCtx: input.bookingCtx,
+    organizationTimezone: DEFAULT_ORGANIZATION_TIMEZONE,
+    telemetry: input.state,
+    pickupOdoByBooking: input.pickupOdoByBooking,
+  });
+  return buildVehicleOperationalStateFromEngineInput(engineInput).legacy;
+}
+
+function buildLegacyMaintenanceContext(
+  canonicalStatus: CanonicalOperationalStatus,
+  rawStatus: VehicleStatus | string,
+): FleetVehicleMaintenanceContextDto {
+  if (canonicalStatus === 'MAINTENANCE' || canonicalStatus === 'BLOCKED') {
+    return deriveMaintenanceContext(rawStatus);
+  }
+  return {
+    maintenanceReason: null,
+    maintenanceReasonCode: null,
+    maintenanceUrgency: null,
+  };
+}
+
+function buildLegacyBookingDto(
+  canonicalStatus: CanonicalOperationalStatus,
+  input: VehicleStateEngineInput,
+): FleetVehicleBookingContextDto {
+  if (canonicalStatus === 'ACTIVE_RENTED' || canonicalStatus === 'RESERVED') {
+    return (
+      mapBookingStateToLegacyDto(input.bookingState, input.vehicle.id) ??
+      EMPTY_BOOKING_CONTEXT
+    );
+  }
+  return EMPTY_BOOKING_CONTEXT;
+}
+
+function buildLegacyProjection(
+  input: VehicleStateEngineInput,
+  derivation: CanonicalDerivation,
+): VehicleOperationalStateResult {
+  const { vehicle, telemetry, pickupOdoByBooking } = input;
+  const legacyStatus = CANONICAL_TO_LEGACY_STATUS[derivation.status];
+  const bookingDto = buildLegacyBookingDto(derivation.status, input);
+  const maintenanceCtx = buildLegacyMaintenanceContext(
+    derivation.status,
+    vehicle.rawStatus,
+  );
+
+  const odometerKm =
+    typeof telemetry?.odometerKm === 'number' &&
+    Number.isFinite(telemetry.odometerKm)
+      ? Math.floor(telemetry.odometerKm)
+      : null;
+
+  const fuelPercent = resolveFleetFuelPercentOrNull(
+    telemetry,
+    vehicle.tankCapacityLiters,
+  );
+
+  const evSoc =
+    typeof telemetry?.evSoc === 'number' && Number.isFinite(telemetry.evSoc)
+      ? Math.min(100, Math.max(0, Math.ceil(telemetry.evSoc)))
+      : null;
+
+  return {
+    status: legacyStatus,
+    maintenanceCtx,
+    bookingDto,
+    liveKmDriven: resolveLiveKmDriven(
+      bookingDto,
+      telemetry ?? null,
+      pickupOdoByBooking ?? new Map(),
+    ),
+    odometerKm,
+    fuelPercent,
+    evSoc,
+    ghostStateWarning: derivation.ghostStateWarning,
+  };
+}
+
 function buildRawVehicleStatusDiagnostic(
   input: VehicleStateEngineInput,
-  legacy: VehicleOperationalStateResult,
+  derivation: CanonicalDerivation,
 ): RawVehicleStatusDiagnostic {
   const diagnosticCodes: RawStatusDiagnosticCode[] = [];
   const raw = input.vehicle.rawStatus;
@@ -357,16 +595,10 @@ function buildRawVehicleStatusDiagnostic(
   if (raw === VehicleStatus.RESERVED) {
     diagnosticCodes.push('LEGACY_RESERVED_PERSISTED');
   }
-  if (
-    raw !== VehicleStatus.AVAILABLE &&
-    raw !== VehicleStatus.IN_SERVICE &&
-    raw !== VehicleStatus.OUT_OF_SERVICE &&
-    raw !== VehicleStatus.RENTED &&
-    raw !== VehicleStatus.RESERVED
-  ) {
+  if (!isKnownRawStatus(raw)) {
     diagnosticCodes.push('UNKNOWN_ENUM_VALUE');
   }
-  if (legacy.ghostStateWarning) {
+  if (derivation.reason === 'RAW_STATUS_INCONSISTENT') {
     diagnosticCodes.push('CONFLICTS_WITH_OPERATIONAL_STATE');
   }
 
@@ -374,7 +606,7 @@ function buildRawVehicleStatusDiagnostic(
     value: raw,
     persistedAt: input.vehicle.persistedAt ?? null,
     isLegacyOrInconsistent:
-      diagnosticCodes.length > 0 || legacy.ghostStateWarning != null,
+      diagnosticCodes.length > 0 || derivation.status === 'UNKNOWN',
     diagnosticCodes,
   };
 }
@@ -383,6 +615,14 @@ function buildBookingContextBlock(
   input: VehicleStateEngineInput,
 ): BookingContextBlock {
   const { bookingState } = input;
+  if (bookingState.dataQualityState === 'UNAVAILABLE') {
+    return {
+      activeBooking: null,
+      reservedBooking: null,
+      nextBooking: null,
+      futureBookingCount: 0,
+    };
+  }
   return {
     activeBooking: bookingState.activeBooking ?? null,
     reservedBooking: bookingState.reservationWindowBooking ?? null,
@@ -393,84 +633,54 @@ function buildBookingContextBlock(
 
 function collectDiagnosticReasons(
   input: VehicleStateEngineInput,
-  legacy: VehicleOperationalStateResult,
+  derivation: CanonicalDerivation,
 ): string[] {
-  const reasons: string[] = [];
-  for (const code of input.bookingState.dataQualityReasons) {
-    reasons.push(code);
-  }
-  for (const code of input.maintenanceState.reasonCodes) {
-    reasons.push(code);
-  }
-  for (const code of input.blockingState.reasonCodes) {
-    reasons.push(code);
-  }
-  if (legacy.ghostStateWarning) {
+  const reasons: string[] = [
+    ...derivation.outputDataQualityReasons,
+    ...input.maintenanceState.reasonCodes,
+    ...input.blockingState.reasonCodes,
+  ];
+  if (derivation.ghostStateWarning) {
     reasons.push('RAW_STATUS_INCONSISTENT');
   }
   return [...new Set(reasons)];
 }
 
-function toLegacyOperationalInput(
-  input: VehicleStateEngineInput,
-): VehicleOperationalStateInput {
-  return {
-    vehicle: {
-      id: input.vehicle.id,
-      status: input.vehicle.rawStatus,
-      licensePlate: input.vehicle.licensePlate,
-      tankCapacityLiters: input.vehicle.tankCapacityLiters,
-    },
-    state: input.telemetry ?? null,
-    bookingCtx: mapBookingStateToLegacyDto(
-      input.bookingState,
-      input.vehicle.id,
-    ),
-    pickupOdoByBooking: input.pickupOdoByBooking ?? new Map(),
-  };
-}
-
 /**
  * V2 state engine entry point — accepts normalized domain inputs (§16).
- *
- * Derivation semantics remain V1 until Prompt 8+; this function structures
- * inputs/outputs per the architecture contract without changing Reserved rules.
  */
 export function buildVehicleOperationalStateFromEngineInput(
   input: VehicleStateEngineInput,
 ): VehicleStateEngineOutput {
   assertEngineTimezone(input.context);
 
-  const legacy = buildVehicleOperationalState(toLegacyOperationalInput(input));
+  const derivation = deriveCanonicalOperationalState(input);
   const derivedAt = input.context.now.toISOString();
-  const dataQualityState = input.bookingState.dataQualityState;
-  const dataQualityReasons: DataQualityReasonCode[] = [
-    ...input.bookingState.dataQualityReasons,
-  ];
-
-  const canonicalStatus = mapLegacyStatusToCanonical(
-    legacy.status,
-    input.blockingState,
+  const { effectiveFrom, effectiveUntil } = resolveEffectiveWindow(
+    derivation.status,
+    input,
   );
-  const reason = mapLegacyStatusToReason(canonicalStatus, legacy);
+  const legacy = buildLegacyProjection(input, derivation);
 
   const operationalState: OperationalStateBlock = {
-    status: canonicalStatus,
-    reason,
-    source: resolveOperationalSource(input, canonicalStatus),
-    effectiveFrom: null,
-    effectiveUntil: null,
+    status: derivation.status,
+    reason: derivation.reason,
+    source: resolveOperationalSource(input, derivation.status),
+    effectiveFrom,
+    effectiveUntil,
     derivedAt,
-    dataQualityState,
-    dataQualityReasons,
-    isReliable: dataQualityState === 'RELIABLE',
+    dataQualityState: derivation.outputDataQualityState,
+    dataQualityReasons: derivation.outputDataQualityReasons,
+    isReliable:
+      derivation.outputDataQualityState === 'RELIABLE' &&
+      derivation.status !== 'UNKNOWN',
   };
 
   return {
     operationalState,
     bookingContext: buildBookingContextBlock(input),
-    rawVehicleStatus: buildRawVehicleStatusDiagnostic(input, legacy),
-    diagnosticReasons: collectDiagnosticReasons(input, legacy),
+    rawVehicleStatus: buildRawVehicleStatusDiagnostic(input, derivation),
+    diagnosticReasons: collectDiagnosticReasons(input, derivation),
     legacy,
   };
 }

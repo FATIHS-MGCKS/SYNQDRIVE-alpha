@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-operational-state-v2-priority-v49474-2026-07-15',
+    version: '4.9.474',
+    title: 'V4.9.474 — Fleet Status: kanonische V2-Prioritätslogik (Prompt 8/43)',
+    summary: [
+      '`deriveCanonicalOperationalState` implementiert §15.1: UNKNOWN → MAINTENANCE → BLOCKED → ACTIVE_RENTED → RESERVED → AVAILABLE.',
+      '`buildVehicleOperationalStateFromEngineInput` nutzt V2-Ableitung; Legacy-Projection für Fleet-API (`status`, `bookingDto`, Telemetrie).',
+      'Ghost RENTED/RESERVED ohne Buchungswahrheit → UNKNOWN (nicht Available); DEGRADED → UNKNOWN fail-closed.',
+      '`nextBooking` allein löst kein RESERVED aus; `futureBookingCount` ändert den Status nicht.',
+      'Characterization-Tests auf V2-Zielsemantik umgestellt; keine Query-/Fenster-Berechnungsänderung.',
+    ],
+    reason:
+      'Prompt 8/43: verbindliche Prioritätskette in der State Engine — KS-FH-660E-Fall (future CONFIRMED = AVAILABLE + nextBooking).',
+    previousBehavior:
+      'V1: jede CONFIRMED-Buchung sofort Reserved; Ghost RENTED demoted zu Available; DEGRADED behielt Available.',
+    details:
+      'Output: operationalState mit reason/source/derivedAt/dataQualityState/isReliable/effectiveFrom/effectiveUntil; bookingContext vollständig durchgereicht. Legacy `Unknown` für kanonisches UNKNOWN.',
+    affectsArchitecture: true,
+    module: 'Vehicles',
+    createdAt: '2026-07-15T22:00:00.000Z',
+  },
+  {
     id: 'vehicle-operational-state-engine-io-v49473-2026-07-15',
     version: '4.9.473',
     title: 'V4.9.473 — Fleet Status: V2 Engine Input/Output-Modell (Prompt 7/43)',

@@ -1,244 +1,414 @@
 import { VehicleStatus } from '@prisma/client';
 import {
   buildVehicleOperationalState,
+  buildVehicleOperationalStateFromEngineInput,
   EMPTY_BOOKING_CONTEXT,
 } from './vehicle-operational-state.builder';
+import type { VehicleStateEngineInput } from './vehicle-operational-state.engine.types';
 
 /**
- * Characterization tests for V1 fleet operational-state derivation.
- *
- * These lock the current behavior before V2 semantic changes (Prompts 3–5).
- * Tests marked `@v2-behavior-change` document expectations that WILL change
- * when the reservation-window rules from vehicle-operational-state-v2.md
- * are implemented.
+ * V2 characterization tests for canonical fleet operational-state derivation.
+ * Uses prepared engine inputs — no reservation-window calculation changes here.
  */
 
-const BOOKING_WITH_ACTIVE = {
-  ...EMPTY_BOOKING_CONTEXT,
-  activeBookingId: 'b-active-1',
-  activeCustomerName: 'Jane Doe',
-  activeReturnAt: '2026-04-25T12:00:00.000Z',
-  activeReturnStationName: 'Station A',
-  activeKmIncluded: 500,
-  activeKmDriven: 120,
+const BASE_CONTEXT = {
+  now: new Date('2026-07-15T12:00:00.000Z'),
+  organizationTimezone: 'Europe/Berlin',
 };
 
-const BOOKING_WITH_RESERVED = {
-  ...EMPTY_BOOKING_CONTEXT,
-  reservedBookingId: 'b-reserved-1',
-  reservedCustomerName: 'John Doe',
-  reservedPickupAt: '2026-08-01T10:00:00.000Z',
-  reservedReturnAt: '2026-08-06T18:00:00.000Z',
-  reservedPickupStationName: 'Station B',
-  reservedIsOverdue: false,
+function fullEngineInput(
+  overrides: Partial<VehicleStateEngineInput> = {},
+): VehicleStateEngineInput {
+  return {
+    vehicle: {
+      id: 'v-1',
+      organizationId: 'org-1',
+      rawStatus: VehicleStatus.AVAILABLE,
+      licensePlate: 'AB-CD-1',
+      tankCapacityLiters: 50,
+      persistedAt: '2026-07-01T08:00:00.000Z',
+      ...overrides.vehicle,
+    },
+    bookingState: {
+      activeBooking: null,
+      reservationWindowBooking: null,
+      nextBooking: null,
+      futureBookingCount: 0,
+      dataQualityState: 'RELIABLE',
+      dataQualityReasons: [],
+      ...overrides.bookingState,
+    },
+    maintenanceState: {
+      isMaintenance: false,
+      reasonCodes: [],
+      source: 'NONE',
+      ...overrides.maintenanceState,
+    },
+    blockingState: {
+      isBlocked: false,
+      level: 'none',
+      reasonCodes: [],
+      source: 'NONE',
+      ...overrides.blockingState,
+    },
+    context: {
+      ...BASE_CONTEXT,
+      ...overrides.context,
+    },
+    telemetry: overrides.telemetry ?? null,
+    pickupOdoByBooking: overrides.pickupOdoByBooking ?? new Map(),
+  };
+}
+
+const ACTIVE_BOOKING_REF = {
+  id: 'b-active-1',
+  bookingNumber: 'BK-000101',
+  status: 'ACTIVE',
+  pickupAt: '2026-07-15T08:00:00.000Z',
+  returnAt: '2026-07-20T18:00:00.000Z',
+  customerLabel: 'Jane Doe',
+  vehicleId: 'v-1',
+  phase: 'active_rental' as const,
+  returnStationName: 'Station A',
+  kmIncluded: 500,
+  kmDriven: 120,
 };
 
-/** Simulates buildBookingContextMap output for a future CONFIRMED booking. */
-const BOOKING_FUTURE_CONFIRMED = {
-  ...EMPTY_BOOKING_CONTEXT,
-  reservedBookingId: 'b-future-1',
-  reservedCustomerName: 'Future Customer',
-  reservedPickupAt: '2026-08-01T10:00:00.000+02:00',
-  reservedReturnAt: '2026-08-06T18:00:00.000+02:00',
-  reservedPickupStationName: 'Station C',
-  reservedIsOverdue: false,
+const RESERVATION_WINDOW_REF = {
+  id: 'b-reserved-1',
+  bookingNumber: 'BK-000102',
+  status: 'CONFIRMED',
+  pickupAt: '2026-08-01T10:00:00.000Z',
+  returnAt: '2026-08-06T18:00:00.000Z',
+  customerLabel: 'John Doe',
+  vehicleId: 'v-1',
+  phase: 'pickup_window' as const,
+  pickupStationName: 'Station B',
 };
 
-describe('buildVehicleOperationalState (V1 characterization)', () => {
-  describe('precedence: Maintenance > Active Rented > Reserved > Available', () => {
-    it('returns Maintenance when Vehicle.status=IN_SERVICE even with an ACTIVE booking', () => {
-      const result = buildVehicleOperationalState({
-        vehicle: { id: 'v1', status: VehicleStatus.IN_SERVICE },
-        state: null,
-        bookingCtx: BOOKING_WITH_ACTIVE,
-        pickupOdoByBooking: new Map(),
-      });
+const FUTURE_BOOKING_REF = {
+  id: 'b-future-1',
+  bookingNumber: 'BK-000103',
+  status: 'CONFIRMED',
+  pickupAt: '2026-08-01T10:00:00.000+02:00',
+  returnAt: '2026-08-06T18:00:00.000+02:00',
+  customerLabel: 'Future Customer',
+  vehicleId: 'ks-fh-660e',
+  phase: 'future' as const,
+  pickupStationName: 'Station C',
+};
 
-      expect(result.status).toBe('Maintenance');
-      expect(result.maintenanceCtx.maintenanceReasonCode).toBe(
-        'SCHEDULED_SERVICE',
+describe('deriveCanonicalOperationalState (V2 characterization)', () => {
+  describe('priority chain: Maintenance > Blocked > Active Rented > Reserved > Available', () => {
+    it('returns MAINTENANCE when maintenance is active even with ACTIVE booking', () => {
+      const output = buildVehicleOperationalStateFromEngineInput(
+        fullEngineInput({
+          vehicle: {
+            id: 'v1',
+            organizationId: 'org-1',
+            rawStatus: VehicleStatus.IN_SERVICE,
+          },
+          maintenanceState: {
+            isMaintenance: true,
+            reasonCodes: ['SCHEDULED_SERVICE'],
+            source: 'ADMIN_PERSISTED',
+          },
+          bookingState: {
+            activeBooking: ACTIVE_BOOKING_REF,
+            reservationWindowBooking: null,
+            nextBooking: null,
+            futureBookingCount: 0,
+            dataQualityState: 'RELIABLE',
+            dataQualityReasons: [],
+          },
+        }),
       );
-      expect(result.bookingDto.activeBookingId).toBeNull();
+
+      expect(output.operationalState.status).toBe('MAINTENANCE');
+      expect(output.operationalState.reason).toBe('MAINTENANCE_ACTIVE');
+      expect(output.bookingContext.activeBooking?.id).toBe('b-active-1');
+      expect(output.legacy.bookingDto.activeBookingId).toBeNull();
     });
 
-    it('returns Active Rented when an ACTIVE booking exists and vehicle is AVAILABLE', () => {
-      const result = buildVehicleOperationalState({
-        vehicle: { id: 'v3', status: VehicleStatus.AVAILABLE },
-        state: null,
-        bookingCtx: BOOKING_WITH_ACTIVE,
-        pickupOdoByBooking: new Map(),
-      });
+    it('returns ACTIVE_RENTED when an ACTIVE booking exists and vehicle is AVAILABLE', () => {
+      const output = buildVehicleOperationalStateFromEngineInput(
+        fullEngineInput({
+          bookingState: {
+            activeBooking: ACTIVE_BOOKING_REF,
+            reservationWindowBooking: null,
+            nextBooking: null,
+            futureBookingCount: 0,
+            dataQualityState: 'RELIABLE',
+            dataQualityReasons: [],
+          },
+        }),
+      );
 
-      expect(result.status).toBe('Active Rented');
-      expect(result.bookingDto.activeBookingId).toBe('b-active-1');
+      expect(output.operationalState.status).toBe('ACTIVE_RENTED');
+      expect(output.operationalState.reason).toBe('ACTIVE_BOOKING');
+      expect(output.legacy.status).toBe('Active Rented');
+      expect(output.legacy.bookingDto.activeBookingId).toBe('b-active-1');
     });
 
-    it('returns Reserved when only a reserved booking exists', () => {
-      const result = buildVehicleOperationalState({
-        vehicle: { id: 'v4', status: VehicleStatus.AVAILABLE },
-        state: null,
-        bookingCtx: BOOKING_WITH_RESERVED,
-        pickupOdoByBooking: new Map(),
-      });
+    it('returns RESERVED when pickup window booking is active', () => {
+      const output = buildVehicleOperationalStateFromEngineInput(
+        fullEngineInput({
+          bookingState: {
+            activeBooking: null,
+            reservationWindowBooking: RESERVATION_WINDOW_REF,
+            nextBooking: null,
+            futureBookingCount: 0,
+            dataQualityState: 'RELIABLE',
+            dataQualityReasons: [],
+          },
+        }),
+      );
 
-      expect(result.status).toBe('Reserved');
-      expect(result.bookingDto.reservedBookingId).toBe('b-reserved-1');
+      expect(output.operationalState.status).toBe('RESERVED');
+      expect(output.operationalState.reason).toBe('PICKUP_WINDOW_ACTIVE');
+      expect(output.legacy.status).toBe('Reserved');
+      expect(output.legacy.bookingDto.reservedBookingId).toBe('b-reserved-1');
     });
 
-    it('prefers Active over Reserved when both are set on the same booking context', () => {
-      const result = buildVehicleOperationalState({
-        vehicle: { id: 'v5', status: VehicleStatus.AVAILABLE },
-        state: null,
-        bookingCtx: {
-          ...EMPTY_BOOKING_CONTEXT,
-          activeBookingId: BOOKING_WITH_ACTIVE.activeBookingId,
-          activeCustomerName: BOOKING_WITH_ACTIVE.activeCustomerName,
-          activeReturnAt: BOOKING_WITH_ACTIVE.activeReturnAt,
-          activeReturnStationName: BOOKING_WITH_ACTIVE.activeReturnStationName,
-          activeKmIncluded: BOOKING_WITH_ACTIVE.activeKmIncluded,
-          activeKmDriven: BOOKING_WITH_ACTIVE.activeKmDriven,
-          reservedBookingId: BOOKING_WITH_RESERVED.reservedBookingId,
-          reservedCustomerName: BOOKING_WITH_RESERVED.reservedCustomerName,
-          reservedPickupAt: BOOKING_WITH_RESERVED.reservedPickupAt,
-          reservedPickupStationName:
-            BOOKING_WITH_RESERVED.reservedPickupStationName,
-        },
-        pickupOdoByBooking: new Map(),
-      });
+    it('prefers ACTIVE_RENTED over RESERVED when both refs are inconsistent with BC-1', () => {
+      const output = buildVehicleOperationalStateFromEngineInput(
+        fullEngineInput({
+          bookingState: {
+            activeBooking: ACTIVE_BOOKING_REF,
+            reservationWindowBooking: RESERVATION_WINDOW_REF,
+            nextBooking: null,
+            futureBookingCount: 0,
+            dataQualityState: 'RELIABLE',
+            dataQualityReasons: [],
+          },
+        }),
+      );
 
-      expect(result.status).toBe('Active Rented');
+      expect(output.operationalState.status).toBe('UNKNOWN');
+      expect(output.operationalState.reason).toBe('BOOKING_STATE_INCONSISTENT');
     });
 
-    it('returns Available when no booking and vehicle is AVAILABLE', () => {
-      const result = buildVehicleOperationalState({
-        vehicle: { id: 'v6', status: VehicleStatus.AVAILABLE },
-        state: null,
-        bookingCtx: null,
-        pickupOdoByBooking: new Map(),
-      });
+    it('returns AVAILABLE when no booking slots are set', () => {
+      const output = buildVehicleOperationalStateFromEngineInput(
+        fullEngineInput(),
+      );
 
-      expect(result.status).toBe('Available');
-      expect(result.bookingDto).toEqual(EMPTY_BOOKING_CONTEXT);
+      expect(output.operationalState.status).toBe('AVAILABLE');
+      expect(output.operationalState.reason).toBe('NO_ACTIVE_OR_UPCOMING_WINDOW');
+      expect(output.legacy.status).toBe('Available');
+      expect(output.legacy.bookingDto).toEqual(EMPTY_BOOKING_CONTEXT);
     });
   });
 
-  describe('booking context characterization', () => {
-    /**
-     * @v2-behavior-change
-     * V2 (§5.3): CONFIRMED booking weeks before pickup window → AVAILABLE + nextBooking.
-     * V1: any PENDING/CONFIRMED with endDate >= now yields Reserved immediately.
-     */
-    it('@v2-behavior-change future CONFIRMED booking currently yields Reserved', () => {
-      const result = buildVehicleOperationalState({
-        vehicle: { id: 'ks-fh-660e', status: VehicleStatus.AVAILABLE },
-        state: null,
-        bookingCtx: BOOKING_FUTURE_CONFIRMED,
-        pickupOdoByBooking: new Map(),
-      });
+  describe('V2 booking context semantics', () => {
+    it('future booking in two weeks yields AVAILABLE with nextBooking', () => {
+      const output = buildVehicleOperationalStateFromEngineInput(
+        fullEngineInput({
+          vehicle: {
+            id: 'ks-fh-660e',
+            organizationId: 'org-1',
+            rawStatus: VehicleStatus.AVAILABLE,
+          },
+          bookingState: {
+            activeBooking: null,
+            reservationWindowBooking: null,
+            nextBooking: FUTURE_BOOKING_REF,
+            futureBookingCount: 1,
+            dataQualityState: 'RELIABLE',
+            dataQualityReasons: [],
+          },
+        }),
+      );
 
-      expect(result.status).toBe('Reserved');
-      expect(result.bookingDto.reservedBookingId).toBe('b-future-1');
-      expect(result.bookingDto.reservedCustomerName).toBe('Future Customer');
+      expect(output.operationalState.status).toBe('AVAILABLE');
+      expect(output.operationalState.reason).toBe('NO_ACTIVE_OR_UPCOMING_WINDOW');
+      expect(output.bookingContext.nextBooking?.id).toBe('b-future-1');
+      expect(output.bookingContext.reservedBooking).toBeNull();
+      expect(output.legacy.status).toBe('Available');
+      expect(output.legacy.bookingDto).toEqual(EMPTY_BOOKING_CONTEXT);
     });
 
-    it('ACTIVE booking context yields Active Rented regardless of raw AVAILABLE', () => {
-      const result = buildVehicleOperationalState({
-        vehicle: { id: 'v-active', status: VehicleStatus.AVAILABLE },
-        state: null,
-        bookingCtx: BOOKING_WITH_ACTIVE,
-        pickupOdoByBooking: new Map(),
-      });
+    it('futureBookingCount alone does not change operational status', () => {
+      const output = buildVehicleOperationalStateFromEngineInput(
+        fullEngineInput({
+          bookingState: {
+            activeBooking: null,
+            reservationWindowBooking: null,
+            nextBooking: null,
+            futureBookingCount: 3,
+            dataQualityState: 'RELIABLE',
+            dataQualityReasons: [],
+          },
+        }),
+      );
 
-      expect(result.status).toBe('Active Rented');
-      expect(result.maintenanceCtx.maintenanceReason).toBeNull();
+      expect(output.operationalState.status).toBe('AVAILABLE');
+      expect(output.bookingContext.futureBookingCount).toBe(3);
     });
 
-    it('null booking context with AVAILABLE raw status stays Available', () => {
-      const result = buildVehicleOperationalState({
-        vehicle: { id: 'v-empty', status: VehicleStatus.AVAILABLE },
-        state: null,
-        bookingCtx: null,
-        pickupOdoByBooking: new Map(),
-      });
+    it('DEGRADED booking state yields UNKNOWN', () => {
+      const output = buildVehicleOperationalStateFromEngineInput(
+        fullEngineInput({
+          bookingState: {
+            activeBooking: null,
+            reservationWindowBooking: null,
+            nextBooking: null,
+            futureBookingCount: 0,
+            dataQualityState: 'DEGRADED',
+            dataQualityReasons: ['BOOKING_PARTIAL_RESULT'],
+          },
+        }),
+      );
 
-      expect(result.status).toBe('Available');
-      expect(result.ghostStateWarning).toBeNull();
-      expect(result.bookingDto).toEqual(EMPTY_BOOKING_CONTEXT);
+      expect(output.operationalState.status).toBe('UNKNOWN');
+      expect(output.operationalState.reason).toBe('BOOKING_STATE_INCONSISTENT');
+      expect(output.operationalState.isReliable).toBe(false);
+      expect(output.operationalState.dataQualityState).toBe('DEGRADED');
     });
   });
 
   describe('ghost-state guard (raw RENTED/RESERVED without booking truth)', () => {
-    it('demotes RENTED with no backing booking to Available and returns warning', () => {
-      const result = buildVehicleOperationalState({
-        vehicle: { id: 'v-ghost-1', status: VehicleStatus.RENTED },
-        state: null,
-        bookingCtx: null,
-        pickupOdoByBooking: new Map(),
-      });
+    it('raw RENTED without active booking yields UNKNOWN and warning', () => {
+      const output = buildVehicleOperationalStateFromEngineInput(
+        fullEngineInput({
+          vehicle: {
+            id: 'v-ghost-1',
+            organizationId: 'org-1',
+            rawStatus: VehicleStatus.RENTED,
+          },
+        }),
+      );
 
-      expect(result.status).toBe('Available');
-      expect(result.bookingDto).toEqual(EMPTY_BOOKING_CONTEXT);
-      expect(result.ghostStateWarning).toContain('Ghost Active Rented');
+      expect(output.operationalState.status).toBe('UNKNOWN');
+      expect(output.operationalState.reason).toBe('RAW_STATUS_INCONSISTENT');
+      expect(output.legacy.status).toBe('Unknown');
+      expect(output.legacy.ghostStateWarning).toContain('Ghost Active Rented');
+      expect(output.legacy.ghostStateWarning).toContain('Unknown');
     });
 
-    it('demotes RESERVED with no backing booking to Available and returns warning', () => {
-      const result = buildVehicleOperationalState({
-        vehicle: { id: 'v-ghost-2', status: VehicleStatus.RESERVED },
-        state: null,
-        bookingCtx: null,
-        pickupOdoByBooking: new Map(),
-      });
+    it('raw RESERVED without reservation window yields UNKNOWN', () => {
+      const output = buildVehicleOperationalStateFromEngineInput(
+        fullEngineInput({
+          vehicle: {
+            id: 'v-ghost-2',
+            organizationId: 'org-1',
+            rawStatus: VehicleStatus.RESERVED,
+          },
+        }),
+      );
 
-      expect(result.status).toBe('Available');
-      expect(result.ghostStateWarning).toContain('Ghost Reserved');
+      expect(output.operationalState.status).toBe('UNKNOWN');
+      expect(output.operationalState.reason).toBe('RAW_STATUS_INCONSISTENT');
+      expect(output.legacy.status).toBe('Unknown');
     });
 
     it('does NOT warn when RENTED has a matching ACTIVE booking', () => {
-      const result = buildVehicleOperationalState({
-        vehicle: { id: 'v-legit', status: VehicleStatus.RENTED },
-        state: null,
-        bookingCtx: BOOKING_WITH_ACTIVE,
-        pickupOdoByBooking: new Map(),
-      });
+      const output = buildVehicleOperationalStateFromEngineInput(
+        fullEngineInput({
+          vehicle: {
+            id: 'v-legit',
+            organizationId: 'org-1',
+            rawStatus: VehicleStatus.RENTED,
+          },
+          bookingState: {
+            activeBooking: ACTIVE_BOOKING_REF,
+            reservationWindowBooking: null,
+            nextBooking: null,
+            futureBookingCount: 0,
+            dataQualityState: 'RELIABLE',
+            dataQualityReasons: [],
+          },
+        }),
+      );
 
-      expect(result.status).toBe('Active Rented');
-      expect(result.ghostStateWarning).toBeNull();
+      expect(output.operationalState.status).toBe('ACTIVE_RENTED');
+      expect(output.legacy.ghostStateWarning).toBeNull();
     });
   });
 
-  describe('maintenance context fields', () => {
-    it('populates maintenance reason codes for IN_SERVICE', () => {
-      const result = buildVehicleOperationalState({
-        vehicle: { id: 'v-maint', status: VehicleStatus.IN_SERVICE },
-        state: null,
-        bookingCtx: null,
-        pickupOdoByBooking: new Map(),
-      });
+  describe('operationalState metadata', () => {
+    it('fills reason, source, derivedAt, dataQualityState and isReliable', () => {
+      const output = buildVehicleOperationalStateFromEngineInput(
+        fullEngineInput({
+          bookingState: {
+            activeBooking: null,
+            reservationWindowBooking: RESERVATION_WINDOW_REF,
+            nextBooking: null,
+            futureBookingCount: 0,
+            dataQualityState: 'RELIABLE',
+            dataQualityReasons: [],
+          },
+        }),
+      );
 
-      expect(result.status).toBe('Maintenance');
-      expect(result.maintenanceCtx).toEqual({
+      expect(output.operationalState).toMatchObject({
+        status: 'RESERVED',
+        reason: 'PICKUP_WINDOW_ACTIVE',
+        source: 'BOOKING_LIFECYCLE',
+        derivedAt: BASE_CONTEXT.now.toISOString(),
+        dataQualityState: 'RELIABLE',
+        isReliable: true,
+      });
+      expect(output.operationalState.effectiveFrom).toBe(
+        RESERVATION_WINDOW_REF.pickupAt,
+      );
+      expect(output.operationalState.effectiveUntil).toBe(
+        RESERVATION_WINDOW_REF.returnAt,
+      );
+    });
+  });
+
+  describe('maintenance context fields (legacy projection)', () => {
+    it('populates maintenance reason codes for IN_SERVICE', () => {
+      const output = buildVehicleOperationalStateFromEngineInput(
+        fullEngineInput({
+          vehicle: {
+            id: 'v-maint',
+            organizationId: 'org-1',
+            rawStatus: VehicleStatus.IN_SERVICE,
+          },
+          maintenanceState: {
+            isMaintenance: true,
+            reasonCodes: ['SCHEDULED_SERVICE'],
+            source: 'ADMIN_PERSISTED',
+          },
+        }),
+      );
+
+      expect(output.legacy.status).toBe('Maintenance');
+      expect(output.legacy.maintenanceCtx).toEqual({
         maintenanceReason: 'Scheduled service',
         maintenanceReasonCode: 'SCHEDULED_SERVICE',
         maintenanceUrgency: 'planned',
       });
     });
 
-    it('populates urgent maintenance for OUT_OF_SERVICE', () => {
-      const result = buildVehicleOperationalState({
-        vehicle: { id: 'v-blocked', status: VehicleStatus.OUT_OF_SERVICE },
-        state: null,
-        bookingCtx: null,
-        pickupOdoByBooking: new Map(),
-      });
+    it('populates urgent maintenance for OUT_OF_SERVICE hard block', () => {
+      const output = buildVehicleOperationalStateFromEngineInput(
+        fullEngineInput({
+          vehicle: {
+            id: 'v-blocked',
+            organizationId: 'org-1',
+            rawStatus: VehicleStatus.OUT_OF_SERVICE,
+          },
+          blockingState: {
+            isBlocked: true,
+            level: 'hard',
+            reasonCodes: ['OPERATIONAL_BLOCK'],
+            source: 'ADMIN_PERSISTED',
+          },
+        }),
+      );
 
-      expect(result.maintenanceCtx.maintenanceReasonCode).toBe(
+      expect(output.operationalState.status).toBe('BLOCKED');
+      expect(output.legacy.status).toBe('Maintenance');
+      expect(output.legacy.maintenanceCtx.maintenanceReasonCode).toBe(
         'OPERATIONAL_BLOCK',
       );
-      expect(result.maintenanceCtx.maintenanceUrgency).toBe('urgent');
     });
   });
 
-  describe('null-preserving telemetry', () => {
+  describe('null-preserving telemetry via legacy wrapper', () => {
     it('returns null telemetry fields when state is null', () => {
       const result = buildVehicleOperationalState({
         vehicle: { id: 'v7', status: VehicleStatus.AVAILABLE },
@@ -257,9 +427,13 @@ describe('buildVehicleOperationalState (V1 characterization)', () => {
   describe('liveKmDriven', () => {
     it('derives liveKmDriven from pickupOdo + current odometer', () => {
       const result = buildVehicleOperationalState({
-        vehicle: { id: 'v21', status: VehicleStatus.RENTED },
+        vehicle: { id: 'v21', status: VehicleStatus.AVAILABLE },
         state: { odometerKm: 10500.9 },
-        bookingCtx: { ...BOOKING_WITH_ACTIVE, activeKmDriven: null },
+        bookingCtx: {
+          ...EMPTY_BOOKING_CONTEXT,
+          activeBookingId: 'b-active-1',
+          activeKmDriven: null,
+        },
         pickupOdoByBooking: new Map([['b-active-1', 10000]]),
       });
       expect(result.liveKmDriven).toBe(500);

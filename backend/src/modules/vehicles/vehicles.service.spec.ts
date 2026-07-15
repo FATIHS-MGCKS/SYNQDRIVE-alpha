@@ -46,18 +46,19 @@ describe('VehiclesService.deriveFleetStatusContext (delegation)', () => {
     expect(result.bookingDto.activeBookingId).toBe('b-active-1');
   });
 
-  it('logs ghost-state warning via service logger', () => {
+  it('logs ghost-state warning via service logger for raw RENTED inconsistency', () => {
     const warnSpy = jest
       .spyOn((service as any).logger, 'warn')
       .mockImplementation(() => undefined);
 
-    service.deriveFleetStatusContext({
+    const result = service.deriveFleetStatusContext({
       vehicle: { id: 'v-ghost', status: VehicleStatus.RENTED },
       state: null,
       bookingCtx: null,
       pickupOdoByBooking: new Map(),
     });
 
+    expect(result.status).toBe('Unknown');
     expect(warnSpy).toHaveBeenCalledWith(
       expect.stringContaining('Ghost Active Rented'),
     );
