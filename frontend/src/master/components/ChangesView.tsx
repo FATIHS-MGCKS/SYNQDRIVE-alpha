@@ -35,6 +35,46 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-status-booking-display-v49498-2026-07-15',
+    version: '4.9.498',
+    title: 'V4.9.498 — Fleet List/Map/Vehicle Detail status + booking supplement (Prompt 34/43)',
+    summary: [
+      'Neu: `vehicle-operational-booking-display.ts` — Statusbadge nur aus `operationalState`, Zusatzzeile aus `bookingContext` (nextBooking/Reserved/Active).',
+      'UNKNOWN neutral ohne grüne Available-Darstellung; Datenqualitäts-Hinweis bei nicht belastbarem Status.',
+      'Zeitzone-aware Formatierung (IANA, Default Europe/Berlin); keine UUIDs in UI; lange Kundennamen per `truncateMiddle`.',
+      'Fleet List (`FleetOperatorRow`), Map HUD (`FleetMapVehicleStatusHud`), Vehicle Detail Header und Compact Drawer nutzen `statusBadge` + `bookingSupplement`.',
+      '12 Display-Tests + erweiterte `fleetVehicleDisplay`-Tests; Build grün.',
+    ],
+    reason:
+      'Prompt 34/43: Status und Buchungskontext in Fleet-Flächen klar trennen — operationalStatus als Badge, bookingContext als kompakte Zusatzzeile mit voller Info im Tooltip.',
+    previousBehavior:
+      'Fleet-Rows mischten Ready/Not-Ready-Readiness mit Status; Buchungstermine kamen aus Legacy-Flat-Feldern (`activeReturnAt`/`reservedPickupAt`), nextBooking fehlte als Zusatz.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-15T23:50:00.000Z',
+  },
+  {
+    id: 'canonical-slice-consistency-v49497-2026-07-15',
+    version: '4.9.497',
+    title: 'V4.9.497 — Canonical status source for all Dashboard/Fleet slices (Prompt 33/43)',
+    summary: [
+      'Neu: `runtimeSliceConsistency.ts` — zentrale KPI/Drawer/Fleet-Tab-Konsistenzprüfungen aus derselben `DashboardRuntimeModel`-Instanz.',
+      '`selectOperationalStatus` normalisiert Legacy-Flat-Status (`Available`, `Active Rented`, …) wie der Runtime-Builder — kein UNKNOWN-Fehlgriff mehr.',
+      'Fleet Command nutzt `canonicalTabCounts` aus Runtime; `operationReadiness` nur noch kanonischer `operationalStatus`.',
+      'Migration: `stationCommandBuilder`, `dashboardFocusMode`, `FleetOperatorRow`, `CompactFleetDrawerVehicleRow`, `derivePredictiveOperationsInsights` weg von `vehicle.status`.',
+      '8 Konsistenztests + 24 Selector-Tests grün; Build grün.',
+    ],
+    reason:
+      'Prompt 33/43: Dashboard-Slices, Fleet-Tabs, KPI-Counts und Drilldown-Drawer müssen dieselbe kanonische Statusquelle nutzen — ohne parallele Berechnung pro Komponente.',
+    previousBehavior:
+      'Legacy `vehicle.status`-Strings und Runtime-Builder wichen auseinander; Fleet-Tab-Badges wurden lokal aus Kontexten gezählt ohne Runtime-Scope.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-15T23:45:00.000Z',
+  },
+  {
     id: 'todays-operational-slice-v49496-2026-07-15',
     version: '4.9.496',
     title: "V4.9.496 — Today's Operational booking/status slices (Prompt 32/43)",

@@ -19,6 +19,7 @@ import {
 } from '../stores/useFleetMapStore';
 import { buildFleetMapGeoJson, vehicleHasFleetLocation } from '../lib/fleetVisualState';
 import { FleetMapControls } from './FleetMapControls';
+import { FleetMapVehicleStatusHud } from './fleet-operator/FleetMapVehicleStatusHud';
 import { FleetCommandPanel } from './fleet-operator/FleetCommandPanel';
 import {
   buildFleetVehicleContexts,
@@ -238,6 +239,12 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
     return baseContexts.find((c) => c.vehicle.id === selectedVehicleId) ?? null;
   }, [selectedVehicleId, visibleIds, baseContexts]);
 
+  const mapHudContext = useMemo(() => {
+    const id = hoveredVehicleId ?? selectedVehicleId;
+    if (!id) return null;
+    return baseContexts.find((c) => c.vehicle.id === id) ?? null;
+  }, [baseContexts, hoveredVehicleId, selectedVehicleId]);
+
   const handleTabChange = useCallback((tab: FleetCommandTab) => {
     userPickedTabRef.current = true;
     setActiveTab(tab);
@@ -373,6 +380,7 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
             onLocateSelected={() => setFocusNonce((n) => n + 1)}
             onToggleStations={() => setShowStationsOnMap((v) => !v)}
           />
+          <FleetMapVehicleStatusHud ctx={mapHudContext} locale="de" />
           {stationFiltered.length === 0 && !loading && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[5]">
               <div className="sq-map-liquid-empty px-5 py-4 rounded-2xl max-w-[280px] text-center">

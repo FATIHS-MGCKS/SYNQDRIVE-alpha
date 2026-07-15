@@ -6,6 +6,7 @@ import { StatusChip, type StatusTone } from '../../../components/patterns';
 import type { VehicleData } from '../../data/vehicles';
 import { useEffectiveHealth } from '../../FleetContext';
 import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
+import { useLanguage } from '../../i18n/LanguageContext';
 import {
   VehicleConnectionBadge,
   VehicleHealthChip,
@@ -45,12 +46,15 @@ function readinessChipFromDisplay(
   vehicleStatus: VehicleOperationalUiStatus,
   vehicle: VehicleData,
   rentalHealth: ReturnType<typeof useEffectiveHealth>['health'],
-): { label: string; tone: StatusTone; icon: ReactNode } {
+  locale: string,
+): { label: string; tone: StatusTone; icon: ReactNode; supplement: string | null; supplementDetail: string | null } {
   if (vehicleStatus === 'Manual Block') {
     return {
       label: 'Manual Block',
       tone: 'critical',
       icon: <Icon name="x-circle" className="h-3 w-3" />,
+      supplement: null,
+      supplementDetail: null,
     };
   }
   if (vehicleStatus === 'Maintenance') {
@@ -58,22 +62,33 @@ function readinessChipFromDisplay(
       label: 'Maintenance',
       tone: 'warning',
       icon: <Icon name="wrench" className="h-3 w-3" />,
+      supplement: null,
+      supplementDetail: null,
     };
   }
 
-  const display = resolveFleetVehicleDisplayState(vehicle, { rentalHealth, locale: 'en' });
-  const { rentalDisplay } = display;
-  if (rentalDisplay.status === 'ready') {
-    return {
-      label: 'Ready',
-      tone: 'success',
-      icon: <Icon name="check-circle" className="h-3 w-3" />,
-    };
-  }
+  const display = resolveFleetVehicleDisplayState(vehicle, {
+    rentalHealth,
+    locale,
+    compact: false,
+  });
+  const { statusBadge, bookingSupplement } = display;
+
   return {
-    label: 'Not Ready',
-    tone: rentalDisplay.status === 'blocked' ? 'critical' : 'warning',
-    icon: <Icon name="x-circle" className="h-3 w-3" />,
+    label: statusBadge.label,
+    tone: statusBadge.tone,
+    icon:
+      statusBadge.status === 'AVAILABLE' ? (
+        <Icon name="check-circle" className="h-3 w-3" />
+      ) : statusBadge.status === 'ACTIVE_RENTED' ? (
+        <Icon name="car" className="h-3 w-3" />
+      ) : statusBadge.status === 'RESERVED' ? (
+        <Icon name="calendar" className="h-3 w-3" />
+      ) : (
+        <Icon name="alert-triangle" className="h-3 w-3" />
+      ),
+    supplement: bookingSupplement?.short ?? statusBadge.dataQualityHint,
+    supplementDetail: bookingSupplement?.detail ?? statusBadge.dataQualityHint,
   };
 }
 
@@ -90,8 +105,9 @@ export function VehicleDetailHeader({
   onBack,
 }: VehicleDetailHeaderProps) {
   const isDarkMode = useDocumentDark();
+  const { locale } = useLanguage();
   const { health: rentalHealth } = useEffectiveHealth(vehicle.id ?? null);
-  const readinessChip = readinessChipFromDisplay(vehicleStatus, vehicle, rentalHealth);
+  const readinessChip = readinessChipFromDisplay(vehicleStatus, vehicle, rentalHealth, locale);
   const title = `${vehicle.make ?? ''} ${vehicle.model} ${vehicle.year}`.trim();
   const brand = getBrandFromModel({ make: vehicle.make, model: vehicle.model });
   const hasLicense = Boolean(vehicle.license);
@@ -148,7 +164,8 @@ export function VehicleDetailHeader({
               </h1>
             </div>
 
-            <div className="flex flex-wrap items-center gap-1.5 sm:shrink-0">
+            <div className="flex min-w-0 flex-col items-start gap-1 sm:shrink-0">
+              <div className="flex flex-wrap items-center gap-1.5">
               <div className="relative">
                 <button
                   type="button"
@@ -235,6 +252,16 @@ export function VehicleDetailHeader({
               <div className="hidden sm:block">
                 <VehicleConnectionBadge vehicleId={vehicle.id} />
               </div>
+              </div>
+
+              {readinessChip.supplement ? (
+                <p
+                  className="max-w-full truncate text-[10.5px] text-muted-foreground sm:max-w-[min(100%,420px)]"
+                  title={readinessChip.supplementDetail ?? readinessChip.supplement}
+                >
+                  {readinessChip.supplement}
+                </p>
+              ) : null}
             </div>
           </div>
         </div>

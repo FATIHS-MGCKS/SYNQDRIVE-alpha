@@ -22,6 +22,13 @@ import {
   resolveTelemetryFreshness,
   type TelemetryFreshness,
 } from './telemetryFreshness';
+import {
+  resolveBookingSupplement,
+  resolveOperationalStatusBadge,
+  type BookingSupplementDisplay,
+  type OperationalStatusBadgeDisplay,
+} from './vehicle-operational-booking-display';
+import type { VehicleOperationalDisplayLocale } from './vehicle-operational-state';
 
 /**
  * Shared display layer for fleet vehicle rows (Dashboard Fleet State Board +
@@ -95,6 +102,10 @@ export interface FleetReasonBadge {
 }
 
 export interface FleetVehicleDisplayState {
+  /** Canonical operational status badge — sourced from operationalState only. */
+  statusBadge: OperationalStatusBadgeDisplay;
+  /** Booking context supplement line (nextBooking, pickup, return). */
+  bookingSupplement: BookingSupplementDisplay | null;
   primaryStatus: FleetOperationalStatus;
   primaryLabel: string;
   primaryTone: StatusTone;
@@ -517,7 +528,11 @@ export interface ResolveFleetVehicleDisplayOptions {
   /** Pre-computed visual state to avoid recomputation. Derived if omitted. */
   visual?: FleetVisualState;
   locale?: string;
+  /** IANA timezone for booking supplements (org/user). Defaults to Europe/Berlin. */
+  timeZone?: string;
   now?: number;
+  /** Compact booking supplement copy for list/map surfaces. */
+  compact?: boolean;
 }
 
 export function resolveFleetVehicleDisplayState(
@@ -526,9 +541,19 @@ export function resolveFleetVehicleDisplayState(
 ): FleetVehicleDisplayState {
   const rentalHealth = options.rentalHealth ?? null;
   const de = options.locale === 'de';
+  const locale: VehicleOperationalDisplayLocale = de ? 'de' : 'en';
   const now = options.now ?? Date.now();
   const visual =
     options.visual ?? deriveFleetVisualState(vehicle, { rentalHealth });
+  const displayTimeOptions = {
+    locale,
+    timeZone: options.timeZone,
+    now,
+    compact: options.compact,
+  };
+
+  const statusBadge = resolveOperationalStatusBadge(vehicle, displayTimeOptions);
+  const bookingSupplement = resolveBookingSupplement(vehicle, displayTimeOptions);
 
   const primaryStatus = resolveOperationalStatus(vehicle, rentalHealth, visual);
   const primaryLabel = primaryLabelFor(primaryStatus, vehicle, de);
@@ -569,6 +594,8 @@ export function resolveFleetVehicleDisplayState(
   }
 
   return {
+    statusBadge,
+    bookingSupplement,
     primaryStatus,
     primaryLabel,
     primaryTone,

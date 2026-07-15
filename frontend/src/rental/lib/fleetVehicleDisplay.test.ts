@@ -549,4 +549,39 @@ describe('fleetOperationalSortScore', () => {
     expect(critStale).toBeGreaterThan(readyFresh);
     expect(readyFresh).toBeGreaterThan(readyOffline);
   });
+
+  it('exposes operational status badge and booking supplement from bookingContext', () => {
+    const d = resolveFleetVehicleDisplayState(
+      vehicle({
+        status: VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
+        bookingContext: {
+          activeBooking: null,
+          reservedBooking: null,
+          nextBooking: {
+            bookingId: 'bk-next',
+            customerName: 'Max Mustermann',
+            pickupAt: '2026-08-01T08:00:00.000Z',
+            returnAt: '2026-08-06T18:00:00.000Z',
+            pickupStationName: null,
+            returnStationName: null,
+            isOverdue: false,
+          },
+          futureBookingCount: 1,
+        },
+      }),
+      { locale: 'de', timeZone: 'Europe/Berlin', compact: true },
+    );
+    expect(d.statusBadge.label).toBe('Verfügbar');
+    expect(d.statusBadge.tone).toBe('success');
+    expect(d.bookingSupplement?.short).toMatch(/^Nächste Buchung:/);
+  });
+
+  it('UNKNOWN status badge stays neutral without Available green tone', () => {
+    const d = resolveFleetVehicleDisplayState(
+      vehicle({ status: VEHICLE_OPERATIONAL_STATUS.UNKNOWN }),
+      { locale: 'en' },
+    );
+    expect(d.statusBadge.tone).toBe('neutral');
+    expect(d.statusBadge.dataQualityHint).toBeTruthy();
+  });
 });
