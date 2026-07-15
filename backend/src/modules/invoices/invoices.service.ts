@@ -453,7 +453,7 @@ export class InvoicesService {
     });
 
     if (newOutstanding === 0) {
-      await this.closeLinkedTasks(orgId, id);
+      await this.tasksService.closeInvoiceLinkedTasks(orgId, id);
     }
 
     return this.findById(id, orgId);
@@ -810,15 +810,4 @@ export class InvoicesService {
     });
   }
 
-  private async closeLinkedTasks(orgId: string, invoiceId: string) {
-    const tasks = await this.prisma.orgTask.findMany({
-      where: { organizationId: orgId, invoiceId, status: { not: 'DONE' } },
-    });
-    for (const task of tasks) {
-      await this.prisma.orgTask.update({
-        where: { id: task.id },
-        data: { status: 'DONE', completedAt: new Date() },
-      });
-    }
-  }
 }

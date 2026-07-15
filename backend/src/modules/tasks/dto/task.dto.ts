@@ -3,6 +3,7 @@ import {
   IsArray,
   IsBoolean,
   IsEnum,
+  IsIn,
   IsISO8601,
   IsInt,
   IsOptional,
@@ -12,6 +13,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { TaskPriority, TaskSource, TaskStatus, TaskType } from '@prisma/client';
+import { TASK_OPERATOR_BUCKETS } from '../task-bucket.util';
 
 /** Query/body strings like `vehicleId=` normalize to undefined so filters do not match empty ids. */
 export function trimEmptyToUndefined({ value }: { value: unknown }): unknown {
@@ -46,6 +48,11 @@ export class ChecklistItemDto {
   @IsInt()
   @Min(0)
   sortOrder?: number;
+
+  /** When true, item is marked required for future completion policy (V2). Default false. */
+  @IsOptional()
+  @IsBoolean()
+  isRequired?: boolean;
 }
 
 export class CreateTaskDto {
@@ -77,6 +84,10 @@ export class CreateTaskDto {
   @IsOptional()
   @IsISO8601()
   dueDate?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  activatesAt?: string;
 
   @IsOptional()
   @Transform(trimEmptyToUndefined)
@@ -128,6 +139,11 @@ export class CreateTaskDto {
   @IsInt()
   @Min(0)
   estimatedCostCents?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  estimatedDurationMinutes?: number;
 
   @IsOptional()
   @IsArray()
@@ -208,9 +224,25 @@ export class CompleteTaskDto {
   resolutionNote?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  resolutionCode?: string;
+
+  @IsOptional()
   @IsInt()
   @Min(0)
   actualCostCents?: number;
+
+  /** Manager override: complete despite open required checklist items. */
+  @IsOptional()
+  @IsBoolean()
+  overrideIncompleteChecklist?: boolean;
+
+  /** Mandatory when {@link overrideIncompleteChecklist} is true and required items are open. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  overrideReason?: string;
 }
 
 export class AddCommentDto {
@@ -238,6 +270,10 @@ export class UpdateChecklistItemDto {
   @IsOptional()
   @IsBoolean()
   isDone?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  isRequired?: boolean;
 }
 
 export class AddAttachmentDto {
@@ -336,4 +372,15 @@ export class ListTasksQueryDto {
   @IsString()
   @MaxLength(200)
   search?: string;
+
+  /** Operator bucket filter (server-side canonical semantics). */
+  @IsOptional()
+  @IsIn([...TASK_OPERATOR_BUCKETS])
+  bucket?: (typeof TASK_OPERATOR_BUCKETS)[number];
+
+  /** When filtering `bucket=COMPLETED`, include CANCELLED tasks (default true). */
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true' || value === '1')
+  @IsBoolean()
+  includeCancelled?: boolean;
 }

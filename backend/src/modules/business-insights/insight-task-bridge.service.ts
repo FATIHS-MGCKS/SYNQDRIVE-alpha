@@ -108,17 +108,11 @@ export class InsightTaskBridgeService {
     }
 
     let closed = 0;
-    try {
-      closed = await this.tasks.closeStaleInsightTasks(
-        organizationId,
-        seenKeys,
-        InsightTaskBridgeService.BRIDGE_SOURCES,
-      );
-    } catch (err: any) {
-      this.logger.warn(
-        `closeStaleInsightTasks failed for org ${organizationId}: ${err?.message ?? err}`,
-      );
-    }
+    closed = await this.tasks.closeStaleInsightTasks(
+      organizationId,
+      seenKeys,
+      InsightTaskBridgeService.BRIDGE_SOURCES,
+    );
 
     if (upserted > 0 || closed > 0) {
       this.logger.log(

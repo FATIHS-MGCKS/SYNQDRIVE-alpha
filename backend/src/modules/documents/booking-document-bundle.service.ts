@@ -42,6 +42,13 @@ import { buildPickupHandoverDocument, HandoverContext } from './templates/pickup
 import { buildReturnHandoverDocument } from './templates/return-handover.template';
 import { buildFinalInvoiceDocument, FinalInvoiceLineItem } from './templates/final-invoice.template';
 import { TaskAutomationService } from '@modules/tasks/task-automation.service';
+import {
+  applicableDocumentPhases,
+  bookingDocumentPackageDedupKey,
+  documentPhaseForBookingStatus,
+} from './booking-document-phase.util';
+import { computeMissingDocumentSlots } from './booking-document-missing-slots.util';
+import { BookingDocumentOrgLegalNotificationService } from './booking-document-org-legal-notification.service';
 
 const TEMPLATE_VERSION = '1';
 
@@ -100,6 +107,7 @@ export class BookingDocumentBundleService {
     private readonly invoices: InvoicesService,
     @Inject(DOCUMENT_RENDERER) private readonly renderer: DocumentRenderer,
     private readonly taskAutomation: TaskAutomationService,
+    private readonly orgLegalNotification: BookingDocumentOrgLegalNotificationService,
   ) {}
 
   private get generationEnabled(): boolean {
@@ -434,6 +442,7 @@ export class BookingDocumentBundleService {
     });
     if (existing && force) await this.generatedDocs.voidDocument(orgId, existing.id);
     await this.setBundlePointer(bundle.id, DOCUMENT_TYPE.FINAL_INVOICE, doc.id);
+    await this.refreshBundleStatus(orgId, bookingId, booking.status, null);
     return doc;
   }
 
@@ -748,7 +757,7 @@ export class BookingDocumentBundleService {
     );
   }
 
-  /** Materialize DOCUMENT_REVIEW / INVOICE_REQUIRED tasks for missing bundle docs. */
+  /** Materialize a single DOCUMENT_REVIEW task per booking document phase. */
   private async syncMissingDocumentTasks(
     orgId: string,
     bookingId: string,
@@ -763,46 +772,40 @@ export class BookingDocumentBundleService {
     });
     if (!booking) return;
 
-    const required = this.requiredTypesForStage(bookingStatus);
-    const base = {
-      bookingId: booking.id,
-      vehicleId: booking.vehicleId,
-    };
+    const orgActiveLegal = await this.legalDocs.getActiveByType(orgId, 'de');
+    void this.orgLegalNotification.syncFromOrgLegalState(orgId, orgActiveLegal).catch(() => {});
 
-    for (const docType of required) {
-      if (bundle[BUNDLE_FIELD[docType]]) continue;
-      const isInvoice =
-        docType === DOCUMENT_TYPE.BOOKING_INVOICE || docType === DOCUMENT_TYPE.FINAL_INVOICE;
-      await this.taskAutomation.ensureDocumentTask(orgId, {
-        kind: docType,
-        ...base,
-        title: `Fehlendes Dokument: ${DOCUMENT_TITLE_DE[docType] ?? docType}`,
-        description: `Erforderliches Buchungsdokument fehlt noch (${DOCUMENT_TITLE_DE[docType] ?? docType}).`,
-        type: isInvoice ? 'INVOICE_REQUIRED' : 'DOCUMENT_REVIEW',
-        priority: docType === DOCUMENT_TYPE.FINAL_INVOICE ? 'HIGH' : 'NORMAL',
-      });
+    if (!documentPhaseForBookingStatus(bookingStatus)) {
+      void this.taskAutomation.supersedeBookingDocumentPackageTasks(orgId, bookingId).catch(() => {});
+      return;
     }
 
-    if (!bundle.termsDocumentId) {
-      await this.taskAutomation.ensureDocumentTask(orgId, {
-        kind: DOCUMENT_TYPE.TERMS_AND_CONDITIONS,
-        ...base,
-        title: `Fehlendes Dokument: ${DOCUMENT_TITLE_DE[DOCUMENT_TYPE.TERMS_AND_CONDITIONS]}`,
-        description: 'AGB fehlen in Administration oder im Buchungspaket.',
-        type: 'DOCUMENT_REVIEW',
-        priority: 'NORMAL',
+    const bundleRow = bundle as unknown as Record<string, string | null | undefined>;
+    const phases = applicableDocumentPhases(bookingStatus);
+    const activeKeys: string[] = [];
+
+    for (const phase of phases) {
+      const missingDocuments = computeMissingDocumentSlots({
+        phase,
+        bundle: bundleRow,
+        orgActiveLegal,
+        generationError: bundle.lastError,
+      });
+      const dedupKey = bookingDocumentPackageDedupKey(phase, bookingId);
+      activeKeys.push(dedupKey);
+      await this.taskAutomation.syncBookingDocumentPackageTask(orgId, {
+        bookingId: booking.id,
+        vehicleId: booking.vehicleId,
+        customerId: booking.customerId,
+        phase,
+        dedupKey,
+        missingDocuments,
       });
     }
-    if (!bundle.withdrawalDocumentId) {
-      await this.taskAutomation.ensureDocumentTask(orgId, {
-        kind: DOCUMENT_TYPE.WITHDRAWAL_INFORMATION,
-        ...base,
-        title: `Fehlendes Dokument: ${DOCUMENT_TITLE_DE[DOCUMENT_TYPE.WITHDRAWAL_INFORMATION]}`,
-        description: 'Widerrufsbelehrung fehlt in Administration oder im Buchungspaket.',
-        type: 'DOCUMENT_REVIEW',
-        priority: 'NORMAL',
-      });
-    }
+
+    void this.taskAutomation
+      .closeStaleDocumentPackageTasksForBooking(orgId, bookingId, activeKeys)
+      .catch(() => {});
   }
 
   // ── helpers ───────────────────────────────────────────────────────────

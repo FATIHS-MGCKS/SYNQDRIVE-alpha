@@ -10,7 +10,7 @@ describe('VehicleCleaningTaskService', () => {
   const tasks = {
     upsertByDedup: jest.fn(),
     getTaskById: jest.fn(),
-    completeTask: jest.fn(),
+    autoResolveTask: jest.fn(),
   };
 
   let svc: VehicleCleaningTaskService;
@@ -62,14 +62,23 @@ describe('VehicleCleaningTaskService', () => {
     );
   });
 
-  it('completes open cleaning tasks when vehicle is marked clean', async () => {
+  it('auto-resolves open cleaning tasks when vehicle is marked clean', async () => {
     prisma.orgTask.findMany.mockResolvedValue([{ id: 't1' }, { id: 't2' }]);
-    tasks.completeTask.mockResolvedValue({ id: 't1', status: 'DONE' });
+    tasks.autoResolveTask.mockResolvedValue({ id: 't1', status: 'DONE', completionMode: 'AUTO_RESOLVED' });
 
     const res = await svc.completeOpenCleaningTasks('org1', 'v1', 'u1');
 
     expect(res.action).toBe('completed');
     expect(res.completedCount).toBe(2);
-    expect(tasks.completeTask).toHaveBeenCalledTimes(2);
+    expect(tasks.autoResolveTask).toHaveBeenCalledTimes(2);
+    expect(tasks.autoResolveTask).toHaveBeenCalledWith('org1', 't1', {
+      resolutionCode: 'VEHICLE_CLEANED',
+      reason: 'Vehicle marked as clean',
+      metadata: {
+        ruleId: 'vehicle.cleaning_auto_resolve',
+        vehicleId: 'v1',
+        triggeredByUserId: 'u1',
+      },
+    });
   });
 });

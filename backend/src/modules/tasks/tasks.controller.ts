@@ -13,7 +13,7 @@ import type { Request } from 'express';
 import { TasksService } from './tasks.service';
 
 interface TaskAuthRequest extends Request {
-  user?: { id?: string };
+  user?: { id?: string; platformRole?: string };
 }
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
@@ -59,6 +59,8 @@ export class TasksController {
       dueTo: query.dueTo,
       overdue: query.overdue,
       search: query.search,
+      bucket: query.bucket,
+      includeCancelled: query.includeCancelled,
     });
   }
 
@@ -68,8 +70,16 @@ export class TasksController {
   }
 
   @Get('organizations/:orgId/tasks/:id')
-  async findOne(@Param('orgId') orgId: string, @Param('id') id: string) {
-    return this.tasksService.getTaskById(id, orgId);
+  async findOne(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Req() req: TaskAuthRequest,
+  ) {
+    return this.tasksService.getTaskById(
+      id,
+      orgId,
+      req.user?.id ? { id: req.user.id, platformRole: req.user.platformRole } : undefined,
+    );
   }
 
   @Post('organizations/:orgId/tasks')
@@ -84,6 +94,7 @@ export class TasksController {
         priority: body.priority,
         category: body.category,
         dueDate: body.dueDate,
+        activatesAt: body.activatesAt,
         assignedUserId: body.assignedUserId,
         vehicleId: body.vehicleId,
         bookingId: body.bookingId,
@@ -93,6 +104,7 @@ export class TasksController {
         documentId: body.documentId,
         serviceCaseId: body.serviceCaseId,
         estimatedCostCents: body.estimatedCostCents,
+        estimatedDurationMinutes: body.estimatedDurationMinutes,
         checklist: body.checklist,
         blocksVehicleAvailability: body.blocksVehicleAvailability,
         metadata: {
@@ -160,8 +172,14 @@ export class TasksController {
     return this.tasksService.completeTask(
       orgId,
       id,
-      { resolutionNote: body.resolutionNote, actualCostCents: body.actualCostCents },
-      req.user?.id,
+      {
+        resolutionNote: body.resolutionNote,
+        resolutionCode: body.resolutionCode,
+        actualCostCents: body.actualCostCents,
+        overrideIncompleteChecklist: body.overrideIncompleteChecklist,
+        overrideReason: body.overrideReason,
+      },
+      req.user?.id ? { id: req.user.id, platformRole: req.user.platformRole } : undefined,
     );
   }
 
@@ -192,7 +210,12 @@ export class TasksController {
     return this.tasksService.addChecklistItem(
       orgId,
       id,
-      { title: body.title, description: body.description, sortOrder: body.sortOrder },
+      {
+        title: body.title,
+        description: body.description,
+        sortOrder: body.sortOrder,
+        isRequired: body.isRequired,
+      },
       req.user?.id,
     );
   }

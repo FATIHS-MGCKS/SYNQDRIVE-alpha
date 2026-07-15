@@ -101,9 +101,15 @@ export class VehicleCleaningTaskService {
     }
 
     for (const row of openTasks) {
-      await this.tasks.completeTask(orgId, row.id, {
-        resolutionNote: 'Vehicle marked as clean',
-      }, actorUserId);
+      await this.tasks.autoResolveTask(orgId, row.id, {
+        resolutionCode: 'VEHICLE_CLEANED',
+        reason: 'Vehicle marked as clean',
+        metadata: {
+          ruleId: 'vehicle.cleaning_auto_resolve',
+          vehicleId,
+          ...(actorUserId ? { triggeredByUserId: actorUserId } : {}),
+        },
+      });
     }
 
     return {

@@ -20,6 +20,7 @@ import {
 } from './handover.types';
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
 import { WorkflowEventService } from '@modules/workflows/workflow-event.service';
+import { TaskAutomationService } from '@modules/tasks/task-automation.service';
 import {
   parseAffectedArea,
   parseCategory,
@@ -46,6 +47,7 @@ export class BookingsHandoverService {
     @Inject(forwardRef(() => BookingDocumentBundleService))
     private readonly bookingDocumentBundleService: BookingDocumentBundleService,
     private readonly workflowEvents: WorkflowEventService,
+    private readonly taskAutomation: TaskAutomationService,
   ) {}
 
   async createHandover(
@@ -64,6 +66,7 @@ export class BookingsHandoverService {
         customerId: true,
         status: true,
         startDate: true,
+        endDate: true,
         pickupStationId: true,
         returnStationId: true,
       },
@@ -308,6 +311,19 @@ export class BookingsHandoverService {
       this.bookingDocumentBundleService
         .generatePickupProtocolDocument(orgId, bookingId, protocol.id, payload.performedByUserId ?? null)
         .catch(() => {});
+      void this.taskAutomation
+        .onPickupHandoverCompleted({
+          id: bookingId,
+          organizationId: orgId,
+          vehicleId: booking.vehicleId,
+          customerId: booking.customerId,
+          status: 'ACTIVE',
+          startDate: booking.startDate,
+          endDate: booking.endDate,
+          pickupStationId: booking.pickupStationId,
+          returnStationId: booking.returnStationId,
+        })
+        .catch(() => {});
     } else {
       this.bookingDocumentBundleService
         .generateReturnProtocolDocument(orgId, bookingId, protocol.id, payload.performedByUserId ?? null)
@@ -336,6 +352,19 @@ export class BookingsHandoverService {
         type: 'booking.completed',
         idempotencyKey: `booking.completed:${bookingId}`,
       });
+      void this.taskAutomation
+        .onReturnHandoverCompleted({
+          id: bookingId,
+          organizationId: orgId,
+          vehicleId: booking.vehicleId,
+          customerId: booking.customerId,
+          status: 'COMPLETED',
+          startDate: booking.startDate,
+          endDate: booking.endDate,
+          pickupStationId: booking.pickupStationId,
+          returnStationId: booking.returnStationId,
+        })
+        .catch(() => {});
     }
 
     return {

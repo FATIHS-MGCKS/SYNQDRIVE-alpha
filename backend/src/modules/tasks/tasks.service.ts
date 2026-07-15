@@ -1,35 +1,52 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { Prisma, TaskPriority, TaskSource, TaskStatus, TaskType } from '@prisma/client';
+import { ActivityAction, ActivityEntity, Prisma, TaskCompletionMode, TaskPriority, TaskSource, TaskStatus, TaskType } from '@prisma/client';
+import { ActivityLogService } from '@modules/activity-log/activity-log.service';
 import { PrismaService } from '@shared/database/prisma.service';
-import { checklistForType } from './task-templates';
+import type { PermissionActor } from '@shared/auth/permission.util';
+import { checklistForType, type TaskChecklistTemplateItem } from './task-templates';
+import {
+  aggregateChecklistProgressByTaskId,
+  calculateChecklistProgress,
+  calculateChecklistProgressFromCounts,
+  type ChecklistProgressCounts,
+} from './checklist-progress.util';
+import { assertManualCompletionAllowedByChecklist, getOpenRequiredChecklistItems } from './task-checklist-completion.policy';
+import {
+  assertTaskChecklistCompletionOverrideAllowed,
+  resolveManualCompletionChecklistGate,
+  type ManualCompletionOverrideInput,
+  type ResolvedManualCompletionChecklistGate,
+} from './task-checklist-override.policy';
+import { TaskLinkedObjectResolverService } from './task-linked-object-resolver.service';
+import {
+  buildTaskDetailNormalizedSections,
+  buildUserDisplayName,
+  type LegacyFormattedTask,
+} from './task-detail-view.builder';
+import type { TaskDetailResponse, TaskUserRef } from './task-detail-view.types';
+import { canOverrideTaskChecklistCompletion } from './task-checklist-override.policy';
+import { RESOLUTION_REQUIRED_TYPES } from './task-resolution.constants';
+import {
+  ACTIVE_TASK_STATUSES,
+  assertTaskTransition,
+  isActiveTaskStatus,
+} from './task-transition.policy';
+import {
+  buildTaskBucketOrderBy,
+  buildTaskBucketWhere,
+  classifyPrimaryTaskBucket,
+  createTaskBucketContext,
+  emptyTaskBucketSummaryCounts,
+  isTaskActivated,
+  isTaskOverdue,
+  TASK_OPERATOR_BUCKETS,
+  type TaskOperatorBucket,
+} from './task-bucket.util';
+import { DEFAULT_TARIFF_TIMEZONE } from '@modules/pricing/tariff-instant.util';
 
 // ─── Domain constants (V4.8.3 Task Action Layer) ─────────────────────────
 
-/** Active = not terminal. Used for overdue/dedup/summary semantics. */
-export const ACTIVE_TASK_STATUSES: TaskStatus[] = ['OPEN', 'IN_PROGRESS', 'WAITING'];
-
-/**
- * Allowed status transitions. DONE/CANCELLED are terminal — there is no
- * reopen flow in the repo, so reopening is rejected rather than silently
- * mutating a closed task.
- */
-const STATUS_TRANSITIONS: Record<TaskStatus, TaskStatus[]> = {
-  OPEN: ['IN_PROGRESS', 'WAITING', 'DONE', 'CANCELLED'],
-  IN_PROGRESS: ['WAITING', 'DONE', 'CANCELLED'],
-  WAITING: ['IN_PROGRESS', 'DONE', 'CANCELLED'],
-  DONE: [],
-  CANCELLED: [],
-};
-
-/** Completing one of these requires a resolution note (operational evidence). */
-export const RESOLUTION_REQUIRED_TYPES: TaskType[] = [
-  'REPAIR',
-  'BRAKE_CHECK',
-  'TIRE_CHECK',
-  'BATTERY_CHECK',
-  'VEHICLE_SERVICE',
-  'VEHICLE_INSPECTION',
-];
+export { RESOLUTION_REQUIRED_TYPES } from './task-resolution.constants';
 
 export interface TaskLinks {
   vehicleId?: string | null;
@@ -53,10 +70,34 @@ export interface CreateManualTaskInput extends TaskLinks {
   priority?: TaskPriority;
   category?: string;
   dueDate?: string | Date | null;
+  activatesAt?: string | Date | null;
   estimatedCostCents?: number | null;
+  estimatedDurationMinutes?: number | null;
   metadata?: Prisma.InputJsonValue;
-  checklist?: Array<{ title: string; description?: string; sortOrder?: number }>;
+  checklist?: Array<{ title: string; description?: string; sortOrder?: number; isRequired?: boolean }>;
   blocksVehicleAvailability?: boolean;
+}
+
+export interface AutoResolveTaskInput {
+  resolutionCode: string;
+  reason: string;
+  metadata?: Prisma.InputJsonValue;
+  resolvedAt?: string | Date;
+}
+
+export interface SupersedeTaskInput {
+  reason: string;
+  resolutionCode: string;
+  supersededByTaskId?: string;
+  metadata?: Prisma.InputJsonValue;
+}
+
+export interface CompleteTaskInput {
+  resolutionNote?: string;
+  resolutionCode?: string;
+  actualCostCents?: number;
+  overrideIncompleteChecklist?: boolean;
+  overrideReason?: string;
 }
 
 export interface UpdateTaskInput {
@@ -89,6 +130,8 @@ export interface ListTasksFilters {
   dueTo?: string;
   overdue?: boolean;
   search?: string;
+  bucket?: TaskOperatorBucket;
+  includeCancelled?: boolean;
 }
 
 type OrgTaskDetail = Prisma.OrgTaskGetPayload<{
@@ -105,20 +148,62 @@ type OrgTaskRow = Prisma.OrgTaskGetPayload<object> | OrgTaskDetail;
 export class TasksService {
   private readonly logger = new Logger(TasksService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  /** Limits concurrent terminal transitions per batch (each task still gets its own audit event). */
+  private static readonly TERMINAL_TRANSITION_BATCH_SIZE = 20;
+
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly activityLog: ActivityLogService,
+    private readonly linkedObjectResolver: TaskLinkedObjectResolverService,
+  ) {}
 
   // ─── Serialization ─────────────────────────────────────────────────────
 
-  private isOverdue(t: { dueDate: Date | null; status: TaskStatus }, now = new Date()): boolean {
-    return (
-      !!t.dueDate &&
-      t.dueDate.getTime() < now.getTime() &&
-      t.status !== 'DONE' &&
-      t.status !== 'CANCELLED'
+  private effectiveActivatesAt(t: { activatesAt?: Date | null; createdAt: Date }): Date {
+    return t.activatesAt ?? t.createdAt;
+  }
+
+  private isOverdue(
+    t: {
+      dueDate: Date | null;
+      status: TaskStatus;
+      priority: TaskPriority;
+      activatesAt?: Date | null;
+      createdAt: Date;
+      assignedUserId?: string | null;
+      blocksVehicleAvailability?: boolean;
+    },
+    now = new Date(),
+  ): boolean {
+    return isTaskOverdue(
+      {
+        status: t.status,
+        priority: t.priority,
+        dueDate: t.dueDate,
+        activatesAt: t.activatesAt ?? null,
+        createdAt: t.createdAt,
+        assignedUserId: t.assignedUserId ?? null,
+        blocksVehicleAvailability: t.blocksVehicleAvailability ?? false,
+      },
+      now,
     );
   }
 
-  private format(t: OrgTaskRow, now = new Date()) {
+  private format(t: OrgTaskRow, now = new Date(), checklistProgressCounts?: ChecklistProgressCounts | null) {
+    const isTerminal = t.status === 'DONE' || t.status === 'CANCELLED';
+    const checklistProgress =
+      'checklistItems' in t && t.checklistItems
+        ? calculateChecklistProgress(
+            t.checklistItems.map((c) => ({
+              isDone: c.isDone,
+              isRequired: c.isRequired ?? false,
+            })),
+            { isTerminal },
+          )
+        : checklistProgressCounts
+          ? calculateChecklistProgressFromCounts(checklistProgressCounts, { isTerminal })
+          : calculateChecklistProgress([], { isTerminal });
+
     return {
       id: t.id,
       organizationId: t.organizationId,
@@ -146,6 +231,12 @@ export class TasksService {
       estimatedCostCents: t.estimatedCostCents ?? null,
       actualCostCents: t.actualCostCents ?? null,
       resolutionNote: t.resolutionNote || null,
+      activatesAt: this.effectiveActivatesAt(t).toISOString(),
+      completionMode: t.completionMode ?? null,
+      resolutionCode: t.resolutionCode ?? null,
+      completedByUserId: t.completedByUserId ?? null,
+      supersededByTaskId: t.supersededByTaskId ?? null,
+      estimatedDurationMinutes: t.estimatedDurationMinutes ?? null,
       blocksVehicleAvailability: t.blocksVehicleAvailability ?? false,
       metadata: t.metadata ?? null,
       isOverdue: this.isOverdue(t, now),
@@ -155,6 +246,7 @@ export class TasksService {
       cancelledAt: (t.cancelledAt as Date)?.toISOString?.() || null,
       createdAt: (t.createdAt as Date)?.toISOString?.() || '',
       updatedAt: (t.updatedAt as Date)?.toISOString?.() || '',
+      checklistProgress,
       ...( 'checklistItems' in t && t.checklistItems
         ? {
             checklist: t.checklistItems.map((c) => this.formatChecklistItem(c)),
@@ -177,6 +269,7 @@ export class TasksService {
       description: c.description || '',
       sortOrder: c.sortOrder,
       isDone: c.isDone,
+      isRequired: c.isRequired ?? false,
       completedAt: (c.completedAt as Date)?.toISOString?.() || null,
       completedByUserId: c.completedByUserId || null,
     };
@@ -218,15 +311,19 @@ export class TasksService {
   // ─── Tenant-scoped link validation ───────────────────────────────────────
   // Every relational id supplied by a caller must belong to the same org.
 
+  private async assertOrgMember(orgId: string, userId: string): Promise<void> {
+    const member = await this.prisma.organizationMembership.findFirst({
+      where: { userId, organizationId: orgId },
+      select: { id: true },
+    });
+    if (!member) {
+      throw new BadRequestException('User is not a member of this organization');
+    }
+  }
+
   private async assertLinksBelongToOrg(orgId: string, links: TaskLinks): Promise<void> {
     if (links.assignedUserId) {
-      const member = await this.prisma.organizationMembership.findFirst({
-        where: { userId: links.assignedUserId, organizationId: orgId },
-        select: { id: true },
-      });
-      if (!member) {
-        throw new BadRequestException('Assigned user is not a member of this organization');
-      }
+      await this.assertOrgMember(orgId, links.assignedUserId);
     }
     const checks: Array<[string | null | undefined, () => Promise<unknown>, string]> = [
       [links.vehicleId, () => this.prisma.vehicle.findFirst({ where: { id: links.vehicleId!, organizationId: orgId }, select: { id: true } }), 'Vehicle'],
@@ -288,6 +385,168 @@ export class TasksService {
     }
   }
 
+  /** Status transitions only — must run inside a transaction; failures propagate. */
+  private async recordStatusChangedEvent(
+    tx: Prisma.TransactionClient,
+    taskId: string,
+    actorUserId: string | null | undefined,
+    oldValue: TaskStatus,
+    newValue: TaskStatus,
+    metadata?: Prisma.InputJsonValue,
+  ): Promise<void> {
+    await tx.taskEvent.create({
+      data: {
+        taskId,
+        type: 'STATUS_CHANGED',
+        actorUserId: actorUserId ?? null,
+        oldValue,
+        newValue,
+        metadata,
+      },
+    });
+  }
+
+  private statusChangedEventMetadata(
+    to: TaskStatus,
+    checklistGate?: ResolvedManualCompletionChecklistGate,
+  ): Prisma.InputJsonValue | undefined {
+    if (to === 'DONE' || to === 'CANCELLED') {
+      const metadata: Record<string, unknown> = { resolutionKind: TaskCompletionMode.MANUAL };
+      if (checklistGate?.checklistOverridden) {
+        metadata.overriddenBlockers = ['CHECKLIST'];
+        metadata.checklistOverride = true;
+      }
+      return metadata as Prisma.InputJsonValue;
+    }
+    return { transition: to };
+  }
+
+  private async recordChecklistCompletionOverriddenEvent(
+    tx: Prisma.TransactionClient,
+    taskId: string,
+    actorUserId: string | null | undefined,
+    fromStatus: TaskStatus,
+    metadata: Prisma.InputJsonValue,
+  ): Promise<void> {
+    await tx.taskEvent.create({
+      data: {
+        taskId,
+        type: 'CHECKLIST_COMPLETION_OVERRIDDEN',
+        actorUserId: actorUserId ?? null,
+        oldValue: fromStatus,
+        newValue: 'DONE',
+        metadata,
+      },
+    });
+  }
+
+  private buildAutoResolvedEventMetadata(
+    resolutionCode: string,
+    reason: string,
+    metadata?: Prisma.InputJsonValue,
+  ): Prisma.InputJsonValue {
+    const base: Record<string, unknown> = {
+      resolutionCode,
+      reason,
+      resolutionKind: TaskCompletionMode.AUTO_RESOLVED,
+    };
+    if (metadata && typeof metadata === 'object' && !Array.isArray(metadata)) {
+      Object.assign(base, metadata as Record<string, unknown>);
+    } else if (metadata !== undefined) {
+      base.context = metadata;
+    }
+    return base as Prisma.InputJsonValue;
+  }
+
+  private async recordAutoResolvedEvent(
+    tx: Prisma.TransactionClient,
+    taskId: string,
+    oldStatus: TaskStatus,
+    metadata: Prisma.InputJsonValue,
+  ): Promise<void> {
+    await tx.taskEvent.create({
+      data: {
+        taskId,
+        type: 'AUTO_RESOLVED',
+        actorUserId: null,
+        oldValue: oldStatus,
+        newValue: 'DONE',
+        metadata,
+      },
+    });
+  }
+
+  private buildSupersededEventMetadata(
+    resolutionCode: string,
+    reason: string,
+    supersededByTaskId: string | null,
+    metadata?: Prisma.InputJsonValue,
+  ): Prisma.InputJsonValue {
+    const base: Record<string, unknown> = {
+      resolutionCode,
+      reason,
+      resolutionKind: TaskCompletionMode.SUPERSEDED,
+      supersededByTaskId,
+    };
+    if (metadata && typeof metadata === 'object' && !Array.isArray(metadata)) {
+      Object.assign(base, metadata as Record<string, unknown>);
+    } else if (metadata !== undefined) {
+      base.context = metadata;
+    }
+    return base as Prisma.InputJsonValue;
+  }
+
+  private async recordSupersededEvent(
+    tx: Prisma.TransactionClient,
+    taskId: string,
+    oldStatus: TaskStatus,
+    metadata: Prisma.InputJsonValue,
+  ): Promise<void> {
+    await tx.taskEvent.create({
+      data: {
+        taskId,
+        type: 'SUPERSEDED',
+        actorUserId: null,
+        oldValue: oldStatus,
+        newValue: 'DONE',
+        metadata,
+      },
+    });
+  }
+
+  /**
+   * Walks the superseded-by chain from `successorId` and rejects if `taskId`
+   * would appear in the chain (direct or indirect cycle).
+   */
+  private async assertNoSupersedeCycle(orgId: string, taskId: string, successorId: string): Promise<void> {
+    const visited = new Set<string>();
+    let current: string | null = successorId;
+    while (current) {
+      if (current === taskId) {
+        throw new BadRequestException('supersededByTaskId would create a supersede cycle');
+      }
+      if (visited.has(current)) break;
+      visited.add(current);
+      const row: { supersededByTaskId: string | null } | null = await this.prisma.orgTask.findFirst({
+        where: { id: current, organizationId: orgId },
+        select: { supersededByTaskId: true },
+      });
+      if (!row) break;
+      current = row.supersededByTaskId;
+    }
+  }
+
+  private isIdempotentSupersedeState(
+    task: { status: TaskStatus; completionMode: TaskCompletionMode | null; supersededByTaskId: string | null },
+    supersededByTaskId: string | null,
+  ): boolean {
+    return (
+      task.status === 'DONE' &&
+      task.completionMode === TaskCompletionMode.SUPERSEDED &&
+      (task.supersededByTaskId ?? null) === supersededByTaskId
+    );
+  }
+
   /**
    * Notification hook. No notification system exists yet (V4.8.3); this is the
    * single seam where task assignment / overdue / critical-creation events
@@ -303,6 +562,70 @@ export class TasksService {
     return task;
   }
 
+  private assertChecklistMutable(task: { status: TaskStatus }): void {
+    if (task.status === 'DONE' || task.status === 'CANCELLED') {
+      throw new BadRequestException(
+        'Checklistenpunkte können nach Abschluss oder Stornierung nicht mehr geändert werden.',
+      );
+    }
+  }
+
+  /** Tenant-scoped load + canonical progress gate for MANUAL completion only. */
+  private async resolveManualCompletionChecklistGate(
+    orgId: string,
+    taskId: string,
+    actor: PermissionActor | undefined,
+    override?: ManualCompletionOverrideInput,
+  ): Promise<ResolvedManualCompletionChecklistGate> {
+    const items = await this.prisma.taskChecklistItem.findMany({
+      where: { taskId, task: { id: taskId, organizationId: orgId } },
+      select: { id: true, title: true, isDone: true, isRequired: true },
+      orderBy: { sortOrder: 'asc' },
+    });
+    const openRequiredItems = getOpenRequiredChecklistItems(items);
+    const gate = resolveManualCompletionChecklistGate(openRequiredItems, override);
+
+    if (openRequiredItems.length > 0 && !gate.checklistOverridden) {
+      assertManualCompletionAllowedByChecklist(items);
+    }
+
+    if (gate.checklistOverridden) {
+      await assertTaskChecklistCompletionOverrideAllowed(this.prisma, actor, orgId);
+    }
+
+    return gate;
+  }
+
+  private async recordTaskChecklistOverrideActivityLog(
+    orgId: string,
+    taskId: string,
+    actorUserId: string | undefined,
+    gate: ResolvedManualCompletionChecklistGate,
+  ): Promise<void> {
+    if (!gate.checklistOverridden || !gate.overrideReason) return;
+
+    try {
+      await this.activityLog.log({
+        organizationId: orgId,
+        userId: actorUserId,
+        action: ActivityAction.UPDATE,
+        entity: ActivityEntity.TASK,
+        entityId: taskId,
+        description: `Task abgeschlossen trotz ${gate.openRequiredItems.length} offener Pflicht-Checklistenpunkte (Manager-Override)`,
+        metaJson: {
+          kind: 'TASK_CHECKLIST_COMPLETION_OVERRIDE',
+          reason: gate.overrideReason,
+          openRequiredItems: gate.openRequiredItems,
+          remainingRequiredItems: gate.openRequiredItems.length,
+        },
+      });
+    } catch (err: any) {
+      this.logger.warn(
+        `Failed to record activity log for checklist override on task ${taskId}: ${err?.message ?? err}`,
+      );
+    }
+  }
+
   // ─── Read APIs ───────────────────────────────────────────────────────────
 
   async findByOrg(orgId: string) {
@@ -311,7 +634,10 @@ export class TasksService {
 
   async listTasks(orgId: string, filters: ListTasksFilters) {
     const now = new Date();
+    const timeZone = await this.resolveOrgTimezone(orgId);
+    const bucketContext = createTaskBucketContext(now, timeZone);
     const where: Prisma.OrgTaskWhereInput = { organizationId: orgId };
+    const andFilters: Prisma.OrgTaskWhereInput[] = [];
 
     const vehicleId = filters.vehicleId?.trim() || undefined;
     const vendorId = filters.vendorId?.trim() || undefined;
@@ -343,8 +669,15 @@ export class TasksService {
     }
 
     if (filters.overdue) {
-      where.status = { in: ACTIVE_TASK_STATUSES };
-      where.dueDate = { ...(where.dueDate as object), lt: now };
+      andFilters.push(buildTaskBucketWhere('OVERDUE', orgId, bucketContext));
+    }
+
+    if (filters.bucket) {
+      andFilters.push(
+        buildTaskBucketWhere(filters.bucket, orgId, bucketContext, {
+          includeCancelled: filters.includeCancelled,
+        }),
+      );
     }
 
     if (search) {
@@ -354,8 +687,15 @@ export class TasksService {
       ];
     }
 
+    const mergedWhere: Prisma.OrgTaskWhereInput =
+      andFilters.length > 0 ? { AND: [where, ...andFilters] } : where;
+
+    const orderBy = filters.bucket
+      ? buildTaskBucketOrderBy(filters.bucket)
+      : [{ priority: 'desc' as const }, { dueDate: 'asc' as const }, { createdAt: 'desc' as const }];
+
     const tasks = await this.prisma.orgTask.findMany({
-      where,
+      where: mergedWhere,
       include: {
         attachments: {
           select: {
@@ -369,12 +709,38 @@ export class TasksService {
           },
         },
       },
-      orderBy: [{ priority: 'desc' }, { dueDate: 'asc' }, { createdAt: 'desc' }],
+      orderBy,
     });
-    return tasks.map((t) => this.format(t, now));
+
+    const taskIds = tasks.map((t) => t.id);
+    const checklistRows =
+      taskIds.length > 0
+        ? await this.prisma.taskChecklistItem.findMany({
+            where: { taskId: { in: taskIds } },
+            select: { taskId: true, isDone: true, isRequired: true },
+          })
+        : [];
+    const checklistProgressByTaskId = aggregateChecklistProgressByTaskId(checklistRows);
+
+    return tasks.map((t) => {
+      const formatted = this.format(t, now, checklistProgressByTaskId.get(t.id) ?? null);
+      return {
+        ...formatted,
+        isActivated: isTaskActivated(t, now),
+        bucket: classifyPrimaryTaskBucket(t, bucketContext),
+      };
+    });
   }
 
-  async getTaskById(id: string, orgId: string) {
+  private async resolveOrgTimezone(orgId: string): Promise<string> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { timezone: true },
+    });
+    return org?.timezone?.trim() || DEFAULT_TARIFF_TIMEZONE;
+  }
+
+  async getTaskById(id: string, orgId: string, actor?: PermissionActor): Promise<TaskDetailResponse> {
     const task = await this.prisma.orgTask.findFirst({
       where: { id, organizationId: orgId },
       include: {
@@ -385,7 +751,96 @@ export class TasksService {
       },
     });
     if (!task) throw new NotFoundException('Task not found');
-    return this.format(task);
+
+    const linkedObjects = await this.linkedObjectResolver.resolveForTask(orgId, {
+      vehicleId: task.vehicleId,
+      bookingId: task.bookingId,
+      customerId: task.customerId,
+      vendorId: task.vendorId,
+      alertId: task.alertId,
+      documentId: task.documentId,
+      fineId: task.fineId,
+      invoiceId: task.invoiceId,
+      serviceCaseId: task.serviceCaseId,
+    });
+
+    const legacyFormatted = this.format(task);
+    const timeZone = await this.resolveOrgTimezone(orgId);
+    const bucketContext = createTaskBucketContext(new Date(), timeZone);
+    const usersById = await this.loadTaskDetailUsers(task, legacyFormatted.timeline ?? []);
+    const canOverrideChecklist = await this.resolveCanOverrideChecklistCompletion(actor, orgId);
+    const normalized = buildTaskDetailNormalizedSections({
+      legacy: legacyFormatted as LegacyFormattedTask,
+      linkedObjects,
+      usersById,
+      blocksVehicleAvailability: task.blocksVehicleAvailability ?? false,
+      canOverrideChecklist,
+      bucketContext,
+    });
+
+    return {
+      ...legacyFormatted,
+      ...normalized,
+      timeline: normalized.timeline,
+    };
+  }
+
+  private async loadTaskDetailUsers(
+    task: {
+      assignedUserId: string | null;
+      createdByUserId: string | null;
+      completedByUserId: string | null;
+      comments?: Array<{ userId: string | null }>;
+    },
+    timeline: Array<{ actorUserId: string | null }>,
+  ): Promise<Map<string, TaskUserRef>> {
+    const ids = new Set<string>();
+    if (task.assignedUserId) ids.add(task.assignedUserId);
+    if (task.createdByUserId) ids.add(task.createdByUserId);
+    if (task.completedByUserId) ids.add(task.completedByUserId);
+    for (const comment of task.comments ?? []) {
+      if (comment.userId) ids.add(comment.userId);
+    }
+    for (const event of timeline) {
+      if (event.actorUserId) ids.add(event.actorUserId);
+    }
+
+    if (ids.size === 0) return new Map();
+
+    const rows = await this.prisma.user.findMany({
+      where: { id: { in: [...ids] } },
+      select: { id: true, name: true, firstName: true, lastName: true, email: true },
+    });
+
+    return new Map(
+      rows.map((row) => [
+        row.id,
+        {
+          id: row.id,
+          displayName: buildUserDisplayName(row),
+          email: row.email,
+        },
+      ]),
+    );
+  }
+
+  private async resolveCanOverrideChecklistCompletion(
+    actor: PermissionActor | undefined,
+    orgId: string,
+  ): Promise<boolean> {
+    if (!actor?.id) return false;
+    if (actor.platformRole === 'MASTER_ADMIN') return true;
+
+    const membership = await this.prisma.organizationMembership.findFirst({
+      where: {
+        userId: actor.id,
+        organizationId: orgId,
+        status: 'ACTIVE',
+      },
+      select: { role: true, permissions: true },
+    });
+
+    return canOverrideTaskChecklistCompletion(actor, membership);
   }
 
   /** Backward-compatible alias (used by the controller). Returns full detail. */
@@ -436,21 +891,41 @@ export class TasksService {
 
   async getDashboardSummary(orgId: string, currentUserId?: string) {
     const now = new Date();
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endOfDay = new Date(startOfDay.getTime() + 24 * 60 * 60 * 1000);
+    const timeZone = await this.resolveOrgTimezone(orgId);
+    const bucketContext = createTaskBucketContext(now, timeZone);
     const activeFilter = { organizationId: orgId, status: { in: ACTIVE_TASK_STATUSES } };
 
-    const [byStatusRaw, byPriorityRaw, open, overdue, dueToday, critical, assignedToMe] = await Promise.all([
+    const bucketCounts = emptyTaskBucketSummaryCounts();
+
+    const [byStatusRaw, byPriorityRaw, open, critical, assignedToMe, ...bucketCountResults] =
+      await Promise.all([
       this.prisma.orgTask.groupBy({ by: ['status'], where: { organizationId: orgId }, _count: { _all: true } }),
       this.prisma.orgTask.groupBy({ by: ['priority'], where: activeFilter, _count: { _all: true } }),
       this.prisma.orgTask.count({ where: { organizationId: orgId, status: 'OPEN' } }),
-      this.prisma.orgTask.count({ where: { ...activeFilter, dueDate: { lt: now } } }),
-      this.prisma.orgTask.count({ where: { ...activeFilter, dueDate: { gte: startOfDay, lt: endOfDay } } }),
-      this.prisma.orgTask.count({ where: { ...activeFilter, priority: 'CRITICAL' } }),
+      this.prisma.orgTask.count({
+        where: {
+          ...activeFilter,
+          AND: [
+            {
+              OR: [{ activatesAt: null }, { activatesAt: { lte: now } }],
+            },
+          ],
+          priority: 'CRITICAL',
+        },
+      }),
       currentUserId
         ? this.prisma.orgTask.count({ where: { ...activeFilter, assignedUserId: currentUserId } })
         : Promise.resolve(0),
+      ...TASK_OPERATOR_BUCKETS.map((bucket) =>
+        this.prisma.orgTask.count({
+          where: buildTaskBucketWhere(bucket, orgId, bucketContext),
+        }),
+      ),
     ]);
+
+    TASK_OPERATOR_BUCKETS.forEach((bucket, index) => {
+      bucketCounts[bucket] = bucketCountResults[index] ?? 0;
+    });
 
     const byStatus = Object.fromEntries(byStatusRaw.map((r) => [r.status, r._count._all]));
     const byPriority = Object.fromEntries(byPriorityRaw.map((r) => [r.priority, r._count._all]));
@@ -463,12 +938,14 @@ export class TasksService {
       waiting: byStatus.WAITING ?? 0,
       done: byStatus.DONE ?? 0,
       cancelled: byStatus.CANCELLED ?? 0,
-      dueToday,
-      overdue,
+      dueToday: bucketCounts.TODAY,
+      overdue: bucketCounts.OVERDUE,
       critical,
       assignedToMe,
       byStatus,
       byPriority,
+      buckets: bucketCounts,
+      timezone: timeZone,
     };
   }
 
@@ -476,11 +953,24 @@ export class TasksService {
 
   private resolveChecklist(
     type: TaskType,
-    provided?: Array<{ title: string; description?: string; sortOrder?: number }>,
-  ): Array<{ title: string; description?: string; sortOrder?: number }> | undefined {
-    if (provided && provided.length > 0) return provided;
+    provided?: Array<{ title: string; description?: string; sortOrder?: number; isRequired?: boolean }>,
+  ): Array<{ title: string; description?: string; sortOrder: number; isRequired: boolean }> | undefined {
+    if (provided && provided.length > 0) {
+      return provided.map((item, index) => ({
+        title: item.title,
+        description: item.description,
+        sortOrder: item.sortOrder ?? index,
+        isRequired: item.isRequired ?? false,
+      }));
+    }
     const template = checklistForType(type);
-    return template.length > 0 ? template : undefined;
+    if (template.length === 0) return undefined;
+    return template.map((item: TaskChecklistTemplateItem) => ({
+      title: item.title,
+      description: item.description,
+      sortOrder: item.sortOrder,
+      isRequired: item.isRequired,
+    }));
   }
 
   async createManualTask(orgId: string, input: CreateManualTaskInput, createdByUserId?: string) {
@@ -511,7 +1001,9 @@ export class TasksService {
         serviceCaseId: input.serviceCaseId ?? undefined,
         assignedUserId: input.assignedUserId ?? undefined,
         dueDate: input.dueDate ? new Date(input.dueDate) : null,
+        activatesAt: input.activatesAt ? new Date(input.activatesAt) : null,
         estimatedCostCents: input.estimatedCostCents ?? undefined,
+        estimatedDurationMinutes: input.estimatedDurationMinutes ?? undefined,
         blocksVehicleAvailability: input.blocksVehicleAvailability ?? false,
         metadata: input.metadata,
         createdByUserId: createdByUserId ?? null,
@@ -521,6 +1013,7 @@ export class TasksService {
                 title: c.title,
                 description: c.description,
                 sortOrder: c.sortOrder ?? i,
+                isRequired: c.isRequired ?? false,
               })),
             }
           : undefined,
@@ -655,40 +1148,75 @@ export class TasksService {
     return this.getTaskById(id, orgId);
   }
 
-  private assertTransition(from: TaskStatus, to: TaskStatus): void {
-    if (from === to) return;
-    if (!STATUS_TRANSITIONS[from].includes(to)) {
-      throw new BadRequestException(`Invalid status transition ${from} → ${to}`);
-    }
-  }
+  // ─── Status transitions (task-transition.policy) ─────────────────────────
 
   private async changeStatus(
     orgId: string,
     id: string,
     to: TaskStatus,
-    extra?: { resolutionNote?: string; actualCostCents?: number },
-    actorUserId?: string,
+    extra?: CompleteTaskInput,
+    actor?: PermissionActor,
   ) {
+    const actorUserId = actor?.id;
     const task = await this.loadTaskOrThrow(id, orgId);
-    this.assertTransition(task.status, to);
+    assertTaskTransition(task.status, to);
     if (task.status === to) return this.getTaskById(id, orgId);
 
     const now = new Date();
     const update: Prisma.OrgTaskUpdateInput = { status: to, updatedByUserId: actorUserId ?? null };
+    let checklistGate: ResolvedManualCompletionChecklistGate = {
+      checklistOverridden: false,
+      openRequiredItems: [],
+    };
 
     if (to === 'IN_PROGRESS' && !task.startedAt) update.startedAt = now;
     if (to === 'DONE') {
+      checklistGate = await this.resolveManualCompletionChecklistGate(orgId, id, actor, {
+        overrideIncompleteChecklist: extra?.overrideIncompleteChecklist,
+        overrideReason: extra?.overrideReason,
+      });
       if (RESOLUTION_REQUIRED_TYPES.includes(task.type) && !extra?.resolutionNote?.trim()) {
         throw new BadRequestException(`A resolution note is required to complete a ${task.type} task`);
       }
       update.completedAt = now;
+      update.completionMode = TaskCompletionMode.MANUAL;
       if (extra?.resolutionNote !== undefined) update.resolutionNote = extra.resolutionNote;
+      if (extra?.resolutionCode !== undefined) update.resolutionCode = extra.resolutionCode;
       if (extra?.actualCostCents !== undefined) update.actualCostCents = extra.actualCostCents;
+      if (actorUserId) {
+        await this.assertOrgMember(orgId, actorUserId);
+        update.completedByUserId = actorUserId;
+      }
     }
-    if (to === 'CANCELLED') update.cancelledAt = now;
+    if (to === 'CANCELLED') {
+      update.cancelledAt = now;
+      update.completionMode = TaskCompletionMode.MANUAL;
+      if (actorUserId) {
+        await this.assertOrgMember(orgId, actorUserId);
+        update.completedByUserId = actorUserId;
+      }
+    }
 
-    await this.prisma.orgTask.update({ where: { id }, data: update });
-    await this.recordEvent(id, 'STATUS_CHANGED', actorUserId, task.status, to);
+    const eventMetadata = this.statusChangedEventMetadata(to, checklistGate);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.orgTask.update({ where: { id }, data: update });
+      await this.recordStatusChangedEvent(tx, id, actorUserId, task.status, to, eventMetadata);
+      if (to === 'DONE' && checklistGate.checklistOverridden) {
+        await this.recordChecklistCompletionOverriddenEvent(tx, id, actorUserId, task.status, {
+          reason: checklistGate.overrideReason,
+          openRequiredItems: checklistGate.openRequiredItems,
+          remainingRequiredItems: checklistGate.openRequiredItems.length,
+          overriddenAt: now.toISOString(),
+          overriddenBlockers: ['CHECKLIST'],
+        } as unknown as Prisma.InputJsonValue);
+      }
+    });
+
+    if (to === 'DONE' && checklistGate.checklistOverridden) {
+      await this.recordTaskChecklistOverrideActivityLog(orgId, id, actorUserId, checklistGate);
+    }
+
     const result = await this.getTaskById(id, orgId);
     if (to === 'DONE') this.notify('completed', result);
     if (to === 'CANCELLED') this.notify('cancelled', result);
@@ -709,24 +1237,176 @@ export class TasksService {
   }
 
   async startTask(orgId: string, id: string, actorUserId?: string) {
-    return this.changeStatus(orgId, id, 'IN_PROGRESS', undefined, actorUserId);
+    return this.changeStatus(orgId, id, 'IN_PROGRESS', undefined, actorUserId ? { id: actorUserId } : undefined);
   }
 
   async moveTaskToWaiting(orgId: string, id: string, actorUserId?: string) {
-    return this.changeStatus(orgId, id, 'WAITING', undefined, actorUserId);
+    return this.changeStatus(orgId, id, 'WAITING', undefined, actorUserId ? { id: actorUserId } : undefined);
   }
 
-  async completeTask(
-    orgId: string,
-    id: string,
-    extra?: { resolutionNote?: string; actualCostCents?: number },
-    actorUserId?: string,
-  ) {
-    return this.changeStatus(orgId, id, 'DONE', extra, actorUserId);
+  async completeTask(orgId: string, id: string, extra?: CompleteTaskInput, actor?: PermissionActor) {
+    return this.changeStatus(orgId, id, 'DONE', extra, actor);
   }
 
   async cancelTask(orgId: string, id: string, actorUserId?: string) {
-    return this.changeStatus(orgId, id, 'CANCELLED', undefined, actorUserId);
+    return this.changeStatus(orgId, id, 'CANCELLED', undefined, actorUserId ? { id: actorUserId } : undefined);
+  }
+
+  /**
+   * Tenant-scoped system close when an external condition is satisfied (invoice paid,
+   * insight cleared, document generated, …). Does not attribute completion to a user.
+   */
+  async autoResolveTask(orgId: string, taskId: string, input: AutoResolveTaskInput) {
+    const resolutionCode = input.resolutionCode?.trim();
+    const reason = input.reason?.trim();
+    if (!resolutionCode) {
+      throw new BadRequestException('resolutionCode is required for auto-resolve');
+    }
+    if (!reason) {
+      throw new BadRequestException('reason is required for auto-resolve');
+    }
+
+    const task = await this.loadTaskOrThrow(taskId, orgId);
+
+    if (task.status === 'DONE' && task.completionMode === TaskCompletionMode.AUTO_RESOLVED) {
+      return this.getTaskById(taskId, orgId);
+    }
+
+    if (!isActiveTaskStatus(task.status)) {
+      const detail =
+        task.status === 'DONE' && task.completionMode
+          ? ` (completionMode=${task.completionMode})`
+          : '';
+      throw new BadRequestException(`Task cannot be auto-resolved from status ${task.status}${detail}`);
+    }
+
+    const completedAt = input.resolvedAt ? new Date(input.resolvedAt) : new Date();
+    const resolutionNote = `[Auto-resolved] ${reason}`;
+    const eventMetadata = this.buildAutoResolvedEventMetadata(resolutionCode, reason, input.metadata);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.orgTask.update({
+        where: { id: taskId },
+        data: {
+          status: 'DONE',
+          completionMode: TaskCompletionMode.AUTO_RESOLVED,
+          resolutionCode,
+          resolutionNote,
+          completedAt,
+          completedByUserId: null,
+        },
+      });
+      await this.recordAutoResolvedEvent(tx, taskId, task.status, eventMetadata);
+    });
+
+    const result = await this.getTaskById(taskId, orgId);
+    this.notify('completed', result);
+    return result;
+  }
+
+  /**
+   * Tenant-scoped system close when a task is obsolete because process moved on
+   * (booking phase change, new task with same dedup scope, …).
+   */
+  async supersedeTask(orgId: string, taskId: string, input: SupersedeTaskInput) {
+    const resolutionCode = input.resolutionCode?.trim();
+    const reason = input.reason?.trim();
+    if (!resolutionCode) {
+      throw new BadRequestException('resolutionCode is required for supersede');
+    }
+    if (!reason) {
+      throw new BadRequestException('reason is required for supersede');
+    }
+
+    const successorId = input.supersededByTaskId?.trim() || null;
+    if (successorId && successorId === taskId) {
+      throw new BadRequestException('A task cannot supersede itself');
+    }
+
+    const task = await this.loadTaskOrThrow(taskId, orgId);
+    const normalizedSuccessorId = successorId;
+
+    if (this.isIdempotentSupersedeState(task, normalizedSuccessorId)) {
+      return this.getTaskById(taskId, orgId);
+    }
+
+    if (!isActiveTaskStatus(task.status)) {
+      const detail =
+        task.status === 'DONE' && task.completionMode
+          ? ` (completionMode=${task.completionMode})`
+          : '';
+      throw new BadRequestException(`Task cannot be superseded from status ${task.status}${detail}`);
+    }
+
+    if (normalizedSuccessorId) {
+      await this.loadTaskOrThrow(normalizedSuccessorId, orgId);
+      await this.assertNoSupersedeCycle(orgId, taskId, normalizedSuccessorId);
+    }
+
+    const completedAt = new Date();
+    const resolutionNote = `[Superseded] ${reason}`;
+    const eventMetadata = this.buildSupersededEventMetadata(
+      resolutionCode,
+      reason,
+      normalizedSuccessorId,
+      input.metadata,
+    );
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.orgTask.update({
+        where: { id: taskId },
+        data: {
+          status: 'DONE',
+          completionMode: TaskCompletionMode.SUPERSEDED,
+          resolutionCode,
+          resolutionNote,
+          completedAt,
+          completedByUserId: null,
+          supersededByTaskId: normalizedSuccessorId,
+        },
+      });
+      await this.recordSupersededEvent(tx, taskId, task.status, eventMetadata);
+    });
+
+    const result = await this.getTaskById(taskId, orgId);
+    this.notify('completed', result);
+    return result;
+  }
+
+  private chunkItems<T>(items: T[], size: number): T[][] {
+    const chunks: T[][] = [];
+    for (let i = 0; i < items.length; i += size) {
+      chunks.push(items.slice(i, i + size));
+    }
+    return chunks;
+  }
+
+  /**
+   * Batch wrapper around {@link autoResolveTask}. Processes tasks in controlled
+   * parallel chunks; each task still receives its own atomic update + event.
+   */
+  async autoResolveTasks(orgId: string, taskIds: string[], input: AutoResolveTaskInput): Promise<number> {
+    if (taskIds.length === 0) return 0;
+    let resolved = 0;
+    for (const batch of this.chunkItems(taskIds, TasksService.TERMINAL_TRANSITION_BATCH_SIZE)) {
+      await Promise.all(batch.map((taskId) => this.autoResolveTask(orgId, taskId, input)));
+      resolved += batch.length;
+    }
+    return resolved;
+  }
+
+  /**
+   * Batch wrapper around {@link supersedeTask}. Processes tasks in controlled
+   * parallel chunks; each task still receives its own atomic update + event.
+   */
+  async supersedeTasks(orgId: string, taskIds: string[], input: SupersedeTaskInput): Promise<number> {
+    if (taskIds.length === 0) return 0;
+    let superseded = 0;
+    for (const batch of this.chunkItems(taskIds, TasksService.TERMINAL_TRANSITION_BATCH_SIZE)) {
+      await Promise.all(batch.map((taskId) => this.supersedeTask(orgId, taskId, input)));
+      superseded += batch.length;
+    }
+    return superseded;
   }
 
   // ─── Child resources ───────────────────────────────────────────────────────
@@ -742,14 +1422,21 @@ export class TasksService {
   async addChecklistItem(
     orgId: string,
     taskId: string,
-    item: { title: string; description?: string; sortOrder?: number },
+    item: { title: string; description?: string; sortOrder?: number; isRequired?: boolean },
     actorUserId?: string,
   ) {
-    await this.loadTaskOrThrow(taskId, orgId);
+    const task = await this.loadTaskOrThrow(taskId, orgId);
+    this.assertChecklistMutable(task);
     if (!item.title?.trim()) throw new BadRequestException('Checklist item title is required');
     const count = await this.prisma.taskChecklistItem.count({ where: { taskId } });
     await this.prisma.taskChecklistItem.create({
-      data: { taskId, title: item.title.trim(), description: item.description, sortOrder: item.sortOrder ?? count },
+      data: {
+        taskId,
+        title: item.title.trim(),
+        description: item.description,
+        sortOrder: item.sortOrder ?? count,
+        isRequired: item.isRequired ?? false,
+      },
     });
     await this.recordEvent(taskId, 'CHECKLIST_ITEM_ADDED', actorUserId);
     return this.getTaskById(taskId, orgId);
@@ -759,16 +1446,18 @@ export class TasksService {
     orgId: string,
     taskId: string,
     itemId: string,
-    patch: { title?: string; description?: string; sortOrder?: number; isDone?: boolean },
+    patch: { title?: string; description?: string; sortOrder?: number; isDone?: boolean; isRequired?: boolean },
     actorUserId?: string,
   ) {
-    await this.loadTaskOrThrow(taskId, orgId);
+    const task = await this.loadTaskOrThrow(taskId, orgId);
+    this.assertChecklistMutable(task);
     const item = await this.prisma.taskChecklistItem.findFirst({ where: { id: itemId, taskId }, select: { id: true } });
     if (!item) throw new NotFoundException('Checklist item not found');
     const data: Prisma.TaskChecklistItemUpdateInput = {};
     if (patch.title !== undefined) data.title = patch.title;
     if (patch.description !== undefined) data.description = patch.description;
     if (patch.sortOrder !== undefined) data.sortOrder = patch.sortOrder;
+    if (patch.isRequired !== undefined) data.isRequired = patch.isRequired;
     if (patch.isDone !== undefined) {
       data.isDone = patch.isDone;
       data.completedAt = patch.isDone ? new Date() : null;
@@ -839,9 +1528,10 @@ export class TasksService {
       invoiceId?: string | null;
       source: string;
       dueDate?: Date | null;
+      activatesAt?: Date | null;
       metadata?: Prisma.InputJsonValue;
       // Applied only when a brand-new task is created (never on escalation).
-      checklist?: Array<{ title: string; description?: string; sortOrder?: number }>;
+      checklist?: Array<{ title: string; description?: string; sortOrder?: number; isRequired?: boolean }>;
       blocksVehicleAvailability?: boolean;
     },
   ) {
@@ -872,7 +1562,9 @@ export class TasksService {
           documentId: payload.documentId ?? existing!.documentId,
           fineId: payload.fineId ?? existing!.fineId,
           invoiceId: payload.invoiceId ?? existing!.invoiceId,
-          dueDate: payload.dueDate ?? null,
+          dueDate: payload.dueDate !== undefined ? payload.dueDate : existing!.dueDate,
+          activatesAt:
+            payload.activatesAt !== undefined ? payload.activatesAt : existing!.activatesAt,
           source: payload.source,
           metadata: payload.metadata,
           blocksVehicleAvailability: payload.blocksVehicleAvailability ?? existing!.blocksVehicleAvailability,
@@ -909,6 +1601,7 @@ export class TasksService {
         fineId: payload.fineId ?? undefined,
         invoiceId: payload.invoiceId ?? undefined,
         dueDate: payload.dueDate ?? null,
+        activatesAt: payload.activatesAt ?? null,
         source: payload.source,
         dedupKey,
         metadata: payload.metadata,
@@ -919,6 +1612,7 @@ export class TasksService {
                   title: c.title,
                   description: c.description,
                   sortOrder: c.sortOrder ?? i,
+                  isRequired: c.isRequired ?? false,
                 })),
             }
           : undefined,
@@ -926,6 +1620,196 @@ export class TasksService {
     });
     await this.recordEvent(task.id, 'CREATED', null, null, task.status, { auto: true });
     return this.format(task);
+  }
+
+  /**
+   * Updates `activatesAt` / `dueDate` on an active task and records `TIMING_CHANGED`.
+   * Terminal tasks are left unchanged (no reopen).
+   */
+  async updateTaskTiming(
+    orgId: string,
+    taskId: string,
+    timing: { activatesAt: Date; dueDate: Date; priority?: TaskPriority },
+    context?: {
+      ruleId?: string;
+      pickupAt?: Date;
+      returnAt?: Date;
+      timeZone?: string;
+      bookingId?: string;
+    },
+  ) {
+    const task = await this.loadTaskOrThrow(taskId, orgId);
+    if (!isActiveTaskStatus(task.status)) {
+      return this.getTaskById(taskId, orgId);
+    }
+
+    const oldActivatesAt = task.activatesAt;
+    const oldDueDate = task.dueDate;
+    const activatesAt = timing.activatesAt;
+    const dueDate = timing.dueDate;
+    const priority = timing.priority;
+
+    const timingUnchanged =
+      (oldActivatesAt?.getTime() ?? null) === activatesAt.getTime() &&
+      (oldDueDate?.getTime() ?? null) === dueDate.getTime() &&
+      (priority === undefined || task.priority === priority);
+
+    if (timingUnchanged) {
+      return this.getTaskById(taskId, orgId);
+    }
+
+    await this.prisma.orgTask.update({
+      where: { id: taskId },
+      data: {
+        activatesAt,
+        dueDate,
+        ...(priority !== undefined ? { priority } : {}),
+      },
+    });
+
+    await this.recordEvent(
+      taskId,
+      'TIMING_CHANGED',
+      null,
+      JSON.stringify({
+        activatesAt: oldActivatesAt?.toISOString() ?? null,
+        dueDate: oldDueDate?.toISOString() ?? null,
+      }),
+      JSON.stringify({
+        activatesAt: activatesAt.toISOString(),
+        dueDate: dueDate.toISOString(),
+      }),
+      {
+        ruleId: context?.ruleId ?? 'booking.lifecycle.confirmed.prep',
+        bookingId: context?.bookingId ?? task.bookingId,
+        pickupAt: context?.pickupAt?.toISOString() ?? null,
+        returnAt: context?.returnAt?.toISOString() ?? null,
+        timeZone: context?.timeZone ?? null,
+      } as Prisma.InputJsonValue,
+    );
+
+    return this.getTaskById(taskId, orgId);
+  }
+
+  /**
+   * Auto-resolves the canonical active pickup or return handover task after a
+   * successful booking handover. Idempotent when already auto-resolved.
+   */
+  async autoResolveActiveBookingHandoverTask(
+    orgId: string,
+    bookingId: string,
+    type: Extract<TaskType, 'BOOKING_PICKUP' | 'BOOKING_RETURN'>,
+    input: {
+      resolutionCode: string;
+      reason: string;
+      ruleId: string;
+      handoverKind: 'PICKUP' | 'RETURN';
+    },
+  ): Promise<number> {
+    const tasks = await this.prisma.orgTask.findMany({
+      where: {
+        organizationId: orgId,
+        bookingId,
+        type,
+        source: 'BOOKING',
+        status: { in: ACTIVE_TASK_STATUSES },
+      },
+      select: { id: true, dedupKey: true },
+    });
+    if (tasks.length === 0) return 0;
+
+    for (const batch of this.chunkItems(tasks, TasksService.TERMINAL_TRANSITION_BATCH_SIZE)) {
+      await Promise.all(
+        batch.map((task) =>
+          this.autoResolveTask(orgId, task.id, {
+            resolutionCode: input.resolutionCode,
+            reason: input.reason,
+            metadata: {
+              ruleId: input.ruleId,
+              bookingId,
+              handoverKind: input.handoverKind,
+              dedupKey: task.dedupKey,
+            },
+          }),
+        ),
+      );
+    }
+    return tasks.length;
+  }
+
+  /**
+   * Supersedes all active booking lifecycle tasks (prep, pickup, return) when a
+   * booking is cancelled or otherwise withdrawn from the rental pipeline.
+   */
+  async supersedeActiveBookingLifecycleTasks(
+    orgId: string,
+    bookingId: string,
+    input: {
+      resolutionCode: string;
+      reason: string;
+      ruleId: string;
+    },
+  ): Promise<number> {
+    const tasks = await this.prisma.orgTask.findMany({
+      where: {
+        organizationId: orgId,
+        bookingId,
+        source: 'BOOKING',
+        type: { in: ['BOOKING_PREPARATION', 'BOOKING_PICKUP', 'BOOKING_RETURN'] },
+        status: { in: ACTIVE_TASK_STATUSES },
+      },
+      select: { id: true, dedupKey: true },
+    });
+    if (tasks.length === 0) return 0;
+
+    for (const batch of this.chunkItems(tasks, TasksService.TERMINAL_TRANSITION_BATCH_SIZE)) {
+      await Promise.all(
+        batch.map((task) =>
+          this.supersedeTask(orgId, task.id, {
+            resolutionCode: input.resolutionCode,
+            reason: input.reason,
+            metadata: {
+              ruleId: input.ruleId,
+              bookingId,
+              dedupKey: task.dedupKey,
+            },
+          }),
+        ),
+      );
+    }
+    return tasks.length;
+  }
+
+  /** Supersedes open/planned BOOKING_PREPARATION tasks when a booking is cancelled. */
+  async supersedeActiveBookingPreparationTasks(orgId: string, bookingId: string): Promise<number> {
+    const tasks = await this.prisma.orgTask.findMany({
+      where: {
+        organizationId: orgId,
+        bookingId,
+        type: 'BOOKING_PREPARATION',
+        source: 'BOOKING',
+        status: { in: ACTIVE_TASK_STATUSES },
+      },
+      select: { id: true, dedupKey: true },
+    });
+    if (tasks.length === 0) return 0;
+
+    for (const batch of this.chunkItems(tasks, TasksService.TERMINAL_TRANSITION_BATCH_SIZE)) {
+      await Promise.all(
+        batch.map((task) =>
+          this.supersedeTask(orgId, task.id, {
+            resolutionCode: 'BOOKING_CANCELLED',
+            reason: `Booking ${bookingId} cancelled — preparation task superseded`,
+            metadata: {
+              ruleId: 'booking.lifecycle.cancelled',
+              bookingId,
+              dedupKey: task.dedupKey,
+            },
+          }),
+        ),
+      );
+    }
+    return tasks.length;
   }
 
   /**
@@ -938,26 +1822,35 @@ export class TasksService {
       where: {
         organizationId: orgId,
         source: { in: sources },
-        status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] },
+        status: { in: ACTIVE_TASK_STATUSES },
         dedupKey: { notIn: activeDedupKeys.length > 0 ? activeDedupKeys : ['__never__'] },
       },
-      select: { id: true },
+      select: { id: true, source: true, dedupKey: true },
     });
     if (tasks.length === 0) return 0;
 
-    const now = new Date();
-    await this.prisma.$transaction(
-      tasks.map((t) =>
-        this.prisma.orgTask.update({ where: { id: t.id }, data: { status: 'DONE', completedAt: now } }),
-      ),
-    );
+    for (const batch of this.chunkItems(tasks, TasksService.TERMINAL_TRANSITION_BATCH_SIZE)) {
+      await Promise.all(
+        batch.map((task) =>
+          this.autoResolveTask(orgId, task.id, {
+            resolutionCode: 'INSIGHT_CLEARED',
+            reason: `Insight condition no longer active (${task.source ?? 'INSIGHT'})`,
+            metadata: {
+              ruleId: 'insight.stale_close',
+              source: task.source,
+              dedupKey: task.dedupKey,
+            },
+          }),
+        ),
+      );
+    }
     return tasks.length;
   }
 
   /**
-   * Auto-closes superseded booking lifecycle tasks when a booking advances to a
-   * new phase. Scoped to one booking so prep/pickup/return keys from prior
-   * phases are completed without touching other bookings.
+   * Supersedes booking lifecycle tasks when a booking advances to a new phase.
+   * Scoped to one booking so prep/pickup/return keys from prior phases are closed
+   * without touching other bookings.
    */
   async closeStaleBookingLifecycleTasks(
     orgId: string,
@@ -969,19 +1862,255 @@ export class TasksService {
         organizationId: orgId,
         bookingId,
         source: 'BOOKING',
-        status: { in: ['OPEN', 'IN_PROGRESS', 'WAITING'] },
+        status: { in: ACTIVE_TASK_STATUSES },
         dedupKey: { notIn: activeDedupKeys.length > 0 ? activeDedupKeys : ['__never__'] },
+      },
+      select: { id: true, dedupKey: true },
+    });
+    if (tasks.length === 0) return 0;
+
+    for (const batch of this.chunkItems(tasks, TasksService.TERMINAL_TRANSITION_BATCH_SIZE)) {
+      await Promise.all(
+        batch.map((task) =>
+          this.supersedeTask(orgId, task.id, {
+            resolutionCode: 'BOOKING_PHASE_SUPERSEDED',
+            reason: `Booking lifecycle advanced; obsolete task for booking ${bookingId}`,
+            metadata: {
+              ruleId: 'booking.lifecycle_supersede',
+              bookingId,
+              dedupKey: task.dedupKey,
+              activeDedupKeys,
+            },
+          }),
+        ),
+      );
+    }
+    return tasks.length;
+  }
+
+  /** Auto-resolves all active tasks linked to a fully paid invoice. */
+  async closeInvoiceLinkedTasks(orgId: string, invoiceId: string): Promise<number> {
+    const tasks = await this.prisma.orgTask.findMany({
+      where: {
+        organizationId: orgId,
+        invoiceId,
+        status: { in: ACTIVE_TASK_STATUSES },
       },
       select: { id: true },
     });
     if (tasks.length === 0) return 0;
 
-    const now = new Date();
-    await this.prisma.$transaction(
-      tasks.map((t) =>
-        this.prisma.orgTask.update({ where: { id: t.id }, data: { status: 'DONE', completedAt: now } }),
-      ),
-    );
+    return this.autoResolveTasks(orgId, tasks.map((t) => t.id), {
+      resolutionCode: 'INVOICE_PAID',
+      reason: 'Invoice fully paid',
+      metadata: { ruleId: 'invoice.paid_close', invoiceId },
+    });
+  }
+
+  /**
+   * Synchronises checklist rows for a document-package task: one row per missing
+   * slot, auto-completing rows when the underlying document appears.
+   */
+  async syncDocumentPackageChecklist(
+    orgId: string,
+    taskId: string,
+    slots: Array<{ marker: string; title: string; satisfied: boolean }>,
+  ): Promise<void> {
+    const task = await this.loadTaskOrThrow(taskId, orgId);
+    if (!isActiveTaskStatus(task.status)) return;
+
+    const existing = await this.prisma.taskChecklistItem.findMany({
+      where: { taskId },
+      orderBy: { sortOrder: 'asc' },
+    });
+
+    const slotMarkers = new Set(slots.map((s) => s.marker));
+    let sortOrder = existing.length;
+
+    for (const slot of slots) {
+      const row = existing.find((i) => i.description === slot.marker);
+      if (!row) {
+        await this.prisma.taskChecklistItem.create({
+          data: {
+            taskId,
+            title: slot.title,
+            description: slot.marker,
+            sortOrder: sortOrder++,
+            isRequired: true,
+            isDone: slot.satisfied,
+            completedAt: slot.satisfied ? new Date() : null,
+          },
+        });
+        continue;
+      }
+      if (row.title !== slot.title || row.isDone !== slot.satisfied) {
+        await this.prisma.taskChecklistItem.update({
+          where: { id: row.id },
+          data: {
+            title: slot.title,
+            isDone: slot.satisfied,
+            completedAt: slot.satisfied ? row.completedAt ?? new Date() : null,
+          },
+        });
+      }
+    }
+
+    for (const row of existing) {
+      if (!row.description || slotMarkers.has(row.description)) continue;
+      if (!row.isDone) {
+        await this.prisma.taskChecklistItem.update({
+          where: { id: row.id },
+          data: { isDone: true, completedAt: new Date() },
+        });
+      }
+    }
+  }
+
+  /** Auto-resolves the canonical document-package task for a booking phase. */
+  async autoResolveActiveDocumentPackageTask(
+    orgId: string,
+    bookingId: string,
+    dedupKey: string,
+    input: { phase: string; ruleId?: string },
+  ): Promise<number> {
+    const tasks = await this.prisma.orgTask.findMany({
+      where: {
+        organizationId: orgId,
+        bookingId,
+        dedupKey,
+        type: 'DOCUMENT_REVIEW',
+        source: 'DOCUMENT',
+        status: { in: ACTIVE_TASK_STATUSES },
+      },
+      select: { id: true },
+    });
+    if (tasks.length === 0) return 0;
+
+    for (const batch of this.chunkItems(tasks, TasksService.TERMINAL_TRANSITION_BATCH_SIZE)) {
+      await Promise.all(
+        batch.map((task) =>
+          this.autoResolveTask(orgId, task.id, {
+            resolutionCode: 'DOCUMENT_PACKAGE_COMPLETE',
+            reason: `All required documents present for phase ${input.phase}`,
+            metadata: {
+              ruleId: input.ruleId ?? 'booking.document.package.complete',
+              bookingId,
+              phase: input.phase,
+              dedupKey,
+            },
+          }),
+        ),
+      );
+    }
+    return tasks.length;
+  }
+
+  /** Supersedes legacy per-type document tasks (`document:{type}:{bookingId}`). */
+  async supersedeLegacyPerTypeDocumentTasks(orgId: string, bookingId: string): Promise<number> {
+    const tasks = await this.prisma.orgTask.findMany({
+      where: {
+        organizationId: orgId,
+        bookingId,
+        source: 'DOCUMENT',
+        status: { in: ACTIVE_TASK_STATUSES },
+        AND: [
+          { dedupKey: { startsWith: 'document:' } },
+          { NOT: { dedupKey: { startsWith: 'document:package:' } } },
+        ],
+      },
+      select: { id: true, dedupKey: true },
+    });
+    if (tasks.length === 0) return 0;
+
+    for (const batch of this.chunkItems(tasks, TasksService.TERMINAL_TRANSITION_BATCH_SIZE)) {
+      await Promise.all(
+        batch.map((task) =>
+          this.supersedeTask(orgId, task.id, {
+            resolutionCode: 'DOCUMENT_TASK_SUPERSEDED',
+            reason: `Legacy per-type document task superseded by package task for booking ${bookingId}`,
+            metadata: {
+              ruleId: 'booking.document.package.migrate',
+              bookingId,
+              dedupKey: task.dedupKey,
+            },
+          }),
+        ),
+      );
+    }
+    return tasks.length;
+  }
+
+  /** Supersedes document-package tasks whose phase is no longer active for the booking. */
+  async closeStaleDocumentPackageTasks(
+    orgId: string,
+    bookingId: string,
+    activeDedupKeys: string[],
+  ): Promise<number> {
+    const tasks = await this.prisma.orgTask.findMany({
+      where: {
+        organizationId: orgId,
+        bookingId,
+        source: 'DOCUMENT',
+        type: 'DOCUMENT_REVIEW',
+        status: { in: ACTIVE_TASK_STATUSES },
+        dedupKey: { startsWith: 'document:package:' },
+        ...(activeDedupKeys.length > 0
+          ? { dedupKey: { notIn: activeDedupKeys } }
+          : {}),
+      },
+      select: { id: true, dedupKey: true },
+    });
+    if (tasks.length === 0) return 0;
+
+    for (const batch of this.chunkItems(tasks, TasksService.TERMINAL_TRANSITION_BATCH_SIZE)) {
+      await Promise.all(
+        batch.map((task) =>
+          this.supersedeTask(orgId, task.id, {
+            resolutionCode: 'DOCUMENT_PHASE_SUPERSEDED',
+            reason: `Document package phase superseded for booking ${bookingId}`,
+            metadata: {
+              ruleId: 'booking.document.package.supersede',
+              bookingId,
+              dedupKey: task.dedupKey,
+              activeDedupKeys,
+            },
+          }),
+        ),
+      );
+    }
+    return tasks.length;
+  }
+
+  /** Supersedes active document-package tasks when a booking leaves the rental pipeline. */
+  async supersedeActiveDocumentPackageTasks(orgId: string, bookingId: string): Promise<number> {
+    const tasks = await this.prisma.orgTask.findMany({
+      where: {
+        organizationId: orgId,
+        bookingId,
+        source: 'DOCUMENT',
+        type: 'DOCUMENT_REVIEW',
+        status: { in: ACTIVE_TASK_STATUSES },
+        dedupKey: { startsWith: 'document:package:' },
+      },
+      select: { id: true, dedupKey: true },
+    });
+    if (tasks.length === 0) return 0;
+
+    for (const batch of this.chunkItems(tasks, TasksService.TERMINAL_TRANSITION_BATCH_SIZE)) {
+      await Promise.all(
+        batch.map((task) =>
+          this.supersedeTask(orgId, task.id, {
+            resolutionCode: 'BOOKING_CANCELLED',
+            reason: `Booking ${bookingId} left document pipeline — package task superseded`,
+            metadata: {
+              ruleId: 'booking.document.package.cancelled',
+              bookingId,
+              dedupKey: task.dedupKey,
+            },
+          }),
+        ),
+      );
+    }
     return tasks.length;
   }
 }

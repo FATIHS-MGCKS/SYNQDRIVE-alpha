@@ -273,13 +273,28 @@ describe('BookingDocumentBundleService', () => {
     const numbering = {} as any;
     const invoices = {} as any;
     const renderer = { renderPdf: jest.fn() } as any;
-    const taskAutomation = { ensureBookingLifecycleTasks: jest.fn() } as any;
+    const taskAutomation = {
+      syncBookingDocumentPackageTask: jest.fn(),
+      supersedeBookingDocumentPackageTasks: jest.fn(),
+      closeStaleDocumentPackageTasksForBooking: jest.fn(),
+    } as any;
+    const orgLegalNotification = { syncFromOrgLegalState: jest.fn().mockResolvedValue(undefined) } as any;
     const prismaWithLock = {
       ...prisma,
       $executeRaw: jest.fn().mockResolvedValue(undefined),
     };
-    const svc = new BookingDocumentBundleService(prismaWithLock, config, generatedDocs, legalDocs, numbering, invoices, renderer, taskAutomation);
-    return { svc, generatedDocs, renderer };
+    const svc = new BookingDocumentBundleService(
+      prismaWithLock,
+      config,
+      generatedDocs,
+      legalDocs,
+      numbering,
+      invoices,
+      renderer,
+      taskAutomation,
+      orgLegalNotification,
+    );
+    return { svc, generatedDocs, renderer, taskAutomation, orgLegalNotification };
   }
 
   it('getOrCreateBundle rejects cross-org access (tenant isolation)', async () => {

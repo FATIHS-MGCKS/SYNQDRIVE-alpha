@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from 'react';
 import { api, type ApiTask, type ApiTaskSummary } from '../../lib/api';
+import { matchesTaskListInvalidation, matchesTaskSummaryInvalidation, subscribeTaskQueryInvalidation } from '../../lib/tasks/invalidate';
 import type { TodayBookingApiRow } from '../../rental/components/dashboard/dashboardTypes';
 import { useRentalOrg } from '../../rental/RentalContext';
 import { normalizeTodayRows } from '../lib/operatorData';
@@ -108,6 +109,16 @@ export function OperatorDataProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     void reloadAll();
   }, [reloadAll, refreshToken]);
+
+  useEffect(() => {
+    return subscribeTaskQueryInvalidation((detail) => {
+      if (!orgId || detail.orgId !== orgId) return;
+      if (matchesTaskListInvalidation(detail, orgId)) void reloadTasks();
+      if (matchesTaskSummaryInvalidation(detail, orgId)) {
+        void api.tasks.summary(orgId).then(setTaskSummary).catch(() => undefined);
+      }
+    });
+  }, [orgId, reloadTasks]);
 
   const tasksByVehicleId = useMemo(() => {
     const map = new Map<string, number>();

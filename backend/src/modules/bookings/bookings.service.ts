@@ -311,6 +311,10 @@ export class BookingsService {
         vehicleId: booking.vehicleId,
         customerId: booking.customerId,
         status: booking.status,
+        startDate: booking.startDate,
+        endDate: booking.endDate,
+        pickupStationId: booking.pickupStationId,
+        returnStationId: booking.returnStationId,
       })
       .catch(() => {});
 
@@ -1731,8 +1735,63 @@ export class BookingsService {
           vehicleId: updated.vehicleId,
           customerId: updated.customerId,
           status: updated.status,
+          startDate: updated.startDate,
+          endDate: updated.endDate,
+          pickupStationId: updated.pickupStationId,
+          returnStationId: updated.returnStationId,
         })
         .catch(() => {});
+    } else if (
+      updated.status === 'CONFIRMED' &&
+      (updated.vehicleId !== existing.vehicleId ||
+        updated.customerId !== existing.customerId ||
+        updated.startDate.getTime() !== existing.startDate.getTime())
+    ) {
+      const lifecycleInput = {
+        id: updated.id,
+        organizationId: orgId,
+        vehicleId: updated.vehicleId,
+        customerId: updated.customerId,
+        status: updated.status,
+        startDate: updated.startDate,
+        endDate: updated.endDate,
+        pickupStationId: updated.pickupStationId,
+        returnStationId: updated.returnStationId,
+      };
+      if (updated.startDate.getTime() !== existing.startDate.getTime()) {
+        void this.taskAutomationService
+          .syncBookingPreparationTiming(lifecycleInput, { previousStartDate: existing.startDate })
+          .catch(() => {});
+        void this.taskAutomationService
+          .syncBookingPickupTiming(lifecycleInput, { previousStartDate: existing.startDate })
+          .catch(() => {});
+      } else {
+        void this.taskAutomationService.ensureBookingLifecycleTasks(lifecycleInput).catch(() => {});
+      }
+    } else if (
+      updated.status === 'ACTIVE' &&
+      (updated.vehicleId !== existing.vehicleId ||
+        updated.customerId !== existing.customerId ||
+        updated.endDate.getTime() !== existing.endDate.getTime())
+    ) {
+      const lifecycleInput = {
+        id: updated.id,
+        organizationId: orgId,
+        vehicleId: updated.vehicleId,
+        customerId: updated.customerId,
+        status: updated.status,
+        startDate: updated.startDate,
+        endDate: updated.endDate,
+        pickupStationId: updated.pickupStationId,
+        returnStationId: updated.returnStationId,
+      };
+      if (updated.endDate.getTime() !== existing.endDate.getTime()) {
+        void this.taskAutomationService
+          .syncBookingReturnTiming(lifecycleInput, { previousEndDate: existing.endDate })
+          .catch(() => {});
+      } else {
+        void this.taskAutomationService.ensureBookingLifecycleTasks(lifecycleInput).catch(() => {});
+      }
     }
     return updated;
   }
@@ -1767,6 +1826,10 @@ export class BookingsService {
         data: { status: VehicleStatus.AVAILABLE },
       }),
     ]);
+
+    void this.taskAutomationService
+      .supersedeBookingLifecycleOnCancellation(orgId, id)
+      .catch(() => {});
 
     return updated;
   }
@@ -1850,6 +1913,8 @@ export class BookingsService {
         data: { status: VehicleStatus.AVAILABLE },
       }),
     ]);
+
+    void this.taskAutomationService.handleBookingNoShow(orgId, id).catch(() => {});
 
     return updated;
   }

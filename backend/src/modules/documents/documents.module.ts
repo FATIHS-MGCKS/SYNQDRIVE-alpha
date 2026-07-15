@@ -1,11 +1,13 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { InvoicesModule } from '@modules/invoices/invoices.module';
+import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
 import { DocumentsController } from './documents.controller';
 import { LegalDocumentsController } from './legal-documents.controller';
 import { GeneratedDocumentsService } from './generated-documents.service';
 import { LegalDocumentsService } from './legal-documents.service';
 import { BookingDocumentBundleService } from './booking-document-bundle.service';
+import { BookingDocumentOrgLegalNotificationService } from './booking-document-org-legal-notification.service';
 import { DocumentNumberingService } from './document-numbering.service';
 import { DocumentRendererService } from './document-renderer.service';
 import { DOCUMENT_RENDERER } from './renderers/render-model';
@@ -22,7 +24,7 @@ import { LocalDocumentStorageService } from './storage/local-document-storage.se
  * tokens so a future S3 / Chromium implementation can be swapped in.
  */
 @Module({
-  imports: [forwardRef(() => InvoicesModule), TasksModule],
+  imports: [forwardRef(() => InvoicesModule), NotificationsModule, TasksModule],
   controllers: [DocumentsController, LegalDocumentsController],
   providers: [
     LocalDocumentStorageService,
@@ -32,6 +34,7 @@ import { LocalDocumentStorageService } from './storage/local-document-storage.se
     GeneratedDocumentsService,
     LegalDocumentsService,
     DocumentNumberingService,
+    BookingDocumentOrgLegalNotificationService,
     BookingDocumentBundleService,
   ],
   exports: [

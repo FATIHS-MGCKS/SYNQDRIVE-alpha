@@ -81,7 +81,10 @@ export function OperatorTaskDetail({ taskId, initialTask, onTaskUpdated, focusCo
       setShowCompleteNote(true);
       return;
     }
-    const updated = await complete(task.id, completeNote.trim() || undefined);
+    const updated = await complete(
+      task.id,
+      completeNote.trim() ? { resolutionNote: completeNote.trim() } : undefined,
+    );
     if (updated) {
       setShowCompleteNote(false);
       setCompleteNote('');

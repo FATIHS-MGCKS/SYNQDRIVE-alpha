@@ -18,6 +18,7 @@ Documents and rules read:
 | `frontend/src/master/components/ArchitekturView.tsx` | Tasks module, insight bridge, operator, service center |
 | `frontend/src/master/components/ChangesView.tsx` | Historical task-related releases (V4.7.59–V4.9.18) |
 | `docs/booking-document-lifecycle.md` | Document bundle context (indirect task trigger) |
+| `docs/architecture/task-domain-v2.md` | Normative **Ziel-Spezifikation** (nicht Ist); referenziert dieses Audit in §12 |
 
 Repository searches executed (representative):
 
@@ -27,6 +28,7 @@ rg 'orgTask\.(create|update|updateMany|upsert)' backend --glob '*.{ts,tsx}'
 rg 'OrgTask|TasksService|TaskAutomation|upsertByDedup|dedupKey|sourceType|TaskEvent' backend --glob '*.{ts,tsx}'
 rg 'ensureBookingLifecycleTasks|closeLinkedTasks|closeStale|materializeCompliance|convertToTask' backend
 rg 'orgTask|TasksService' backend/src/workers
+rg 'orgTask\.(create|update|updateMany)' backend --glob '*.ts' -g '!*.spec.ts' -g '!*-harness.ts' -g '!*-test-store.ts'
 
 # Frontend surfaces
 rg 'api\.tasks\.|materializeComplianceTask|convertToTask' frontend --glob '*.{ts,tsx}'
@@ -95,7 +97,7 @@ Immutable timeline: `type` (free string), `actorUserId`, `oldValue`, `newValue`,
 | `compliance-task-materialize.service.ts` | `materializeSignal`, `upsertFromSignal` | → `upsertByDedup` |
 | `booking-document-bundle.service.ts` | `syncMissingDocumentTasks` | → `taskAutomation.ensureDocumentTask` |
 | `bookings.service.ts` | `create`, `update` (status change) | → `taskAutomation.ensureBookingLifecycleTasks` (fire-and-forget) |
-| `invoices.service.ts` | `create`, `issue` → `createUnpaidTask`; `recordPayment` → `closeLinkedTasks` | upsert + **direct Prisma close** |
+| `invoices.service.ts` | `create`, `issue` → `createUnpaidTask`; `recordPayment` → `closeInvoiceLinkedTasks` | upsert + **canonical `autoResolveTask`** (2026-07-15) |
 | `fines.service.ts` | `create` | → `upsertByDedup` |
 | `vehicle-cleaning-task.service.ts` | `ensureCleaningTask`, `completeOpenCleaningTasks` | upsert + `completeTask` |
 | `vehicles.controller.ts` | `PATCH .../vehicles/:id/status` (`cleaningStatus`) | → cleaning service |
@@ -114,12 +116,16 @@ Immutable timeline: `type` (free string), `actorUserId`, `oldValue`, `newValue`,
 | `service-cases.service.ts` | Includes linked tasks in case detail (read only) |
 | `invoice-list-item.mapper.ts` | `openTasks` enrichment for invoice list |
 | `scripts/ops/cleanup-invalid-invoices.ts` | `orgTask.updateMany` — unlinks `invoiceId` only |
+| `customers/customer-eligibility.service.ts` | `prisma.orgTask.count` — open HIGH/CRITICAL tasks for `customerId` (eligibility warnings) |
+| `stations/stations.service.ts` | `prisma.orgTask.count` — open tasks for station vehicles/bookings (station KPI) |
+| `invoices/invoice-list-read.service.ts` + `invoice-list-item.mapper.ts` | Loads `openTasks` per invoice; maps `openTaskCount` / `hasOpenTask` (read only) |
+| `vehicle-intelligence/damages/damages.service.ts` | `prisma.orgTask.findFirst` — resolve linked repair task for damage detail (read only) |
 
 ### 1.4 Backend — schedulers / workers
 
 | Component | File | Task interaction |
 |-----------|------|------------------|
-| Business insights cron | `business-insights-scheduler.service.ts` | Cron `2,32 * * * *` → `NotificationEvaluationService` → `BusinessInsightsService.runForOrganization` → `InsightTaskBridgeService.materialize` |
+| Business insights cron | `business-insights-scheduler.service.ts` | Cron `2,32 * * * *` → `NotificationEvaluationService.scheduleScheduledEvaluation` (BullMQ) → `BusinessInsightsService.runForOrganization` → `InsightTaskBridgeService.materialize` |
 | Notification evaluation | `notification-evaluation.service.ts` | Indirect — triggers insights run |
 | Invoice overdue cron | `invoice-overdue-scheduler.service.ts` | Invoice status only — **no OrgTask** |
 | Workers (`backend/src/workers/**`) | — | **No** `OrgTask` / `TasksService` usage found |
@@ -133,22 +139,42 @@ Immutable timeline: `type` (free string), `actorUserId`, `oldValue`, `newValue`,
 | `frontend/src/lib/api.ts` | `api.vehicles.technicalObservations.convertToTask` |
 | `frontend/src/lib/api.ts` | `api.serviceCases.*` — defined, **not used** by service-center task UI |
 
+### 1.5b Frontend — shared libs / hooks
+
+| File | Role |
+|------|------|
+| `frontend/src/rental/lib/task-list.utils.ts` | Status/priority/category mapping; `mapTaskStatus` synthetic `Overdue` |
+| `frontend/src/rental/lib/task-display.utils.ts` | Vehicle task rows, overdue badge |
+| `frontend/src/rental/lib/task-operator.utils.ts` | Queue groups, next-best-action, blocking badges |
+| `frontend/src/rental/lib/task-create.utils.ts` | Shared category→type, priority mapping |
+| `frontend/src/rental/lib/task-detail.utils.ts` | `taskRequiresResolutionNote` |
+| `frontend/src/rental/lib/task-responsibility.utils.ts` | Display-only assignee routing |
+| `frontend/src/rental/lib/task-timeline-display.utils.ts` | Timeline labels for `TaskEvent` |
+| `frontend/src/rental/lib/damage-repair-task.ts` | Repair task payload builder |
+| `frontend/src/rental/lib/health-task-bridge.utils.ts` | Health notification → task prefill |
+| `frontend/src/rental/components/dashboard/notifications/notification-task-bridge.ts` | Notification → `ServiceTaskCreateModal` prefill |
+| `frontend/src/operator/tasks/operatorTask.utils.ts` | Operator filters + `buildTaskListApiFilters` |
+| `frontend/src/operator/tasks/operatorTodayTasks.ts` | Today-tab booking task grouping |
+| `frontend/src/rental/components/service-center/useServiceCenterData.ts` | Service center task list + summary |
+| `frontend/src/operator/context/OperatorDataContext.tsx` | Operator task snapshot (filters terminal client-side) |
+
 ### 1.6 Frontend — UI surfaces
 
 | Entry / route | Component(s) | Primary API |
 |---------------|--------------|-------------|
 | Rental `currentView: tasks` | `TasksView.tsx`, `GlobalTaskDetailPanel.tsx` | `list`, `summary`, `get`, `create`, mutations |
-| Rental `currentView: vehicle-tasks` | `VehicleTasksView.tsx`, `VehicleTaskDetailDrawer.tsx` | `forVehicle`, `get`, mutations |
+| Rental `currentView: vehicle-tasks` | `VehicleTasksView.tsx`, `VehicleTaskDetailDrawer.tsx`, `CreateVehicleTaskDialog.tsx` | `forVehicle`, `get`, mutations |
 | Rental fleet → Zustand & Service | `FleetHealthServiceTasksPanel` → `ServiceTasksPanel.tsx` | `list`, `summary` via `useServiceCenterData` |
-| Service overview | `ServiceOverviewPanel.tsx` | Props + direct `complete`/`waiting` |
-| Vehicle overview | `VehicleServiceContextPanel.tsx` | `forVehicle`, `ServiceTaskCreateModal` |
-| Health | `HealthServiceActions.tsx`, `ComplianceTaskActions.tsx`, `TechnicalObservationsHealthModule.tsx` | `forVehicle`, `materializeComplianceTask`, `convertToTask` |
-| Damages | `CreateRepairTaskDialog.tsx`, `useVehicleDamageActions.ts` | `api.tasks.create` |
+| Service center | `ServiceCenterView.tsx`, `ServiceOverviewPanel.tsx`, `ServiceTaskCreateModal.tsx` | Props + `api.tasks.*` mutations |
+| Vehicle overview | `VehicleServiceContextPanel.tsx` | `forVehicle`, create modal |
+| Health / compliance | `HealthServiceActions.tsx`, `ComplianceTaskActions.tsx`, `HealthErrorsView.tsx` → `TechnicalObservationsHealthModule.tsx` | `forVehicle`, `materializeComplianceTask`, `convertToTask` |
+| Damages | `DamagesView.tsx`, `CreateRepairTaskDialog.tsx`, `useVehicleDamageActions.ts` | `api.tasks.create` (`REPAIR`) |
 | Booking detail tab | `BookingTasksTimelineTab.tsx` → `EntityTasksSection.tsx` | `forBooking` (read-only) |
 | Vendor detail | `VendorOperationalTasks.tsx` | `forVendor` (read-only) |
-| Notifications | `notification-task-bridge.ts` → `ServiceTaskCreateModal` | `create` with health prefill |
-| Operator `/operator` (today) | `OperatorTodayView.tsx`, `OperatorBookingTaskGroupCard.tsx` | Tasks from `OperatorDataContext` |
-| Operator `/operator?tab=tasks` | `OperatorTasksView.tsx`, `OperatorTaskSheet.tsx` | `list` (+ filtered), `summary` |
+| Documents (vehicle) | `DocumentsView.tsx` | `forVehicle` (context strip) |
+| Notifications | `NotificationPanel.tsx` via `notification-task-bridge.ts` | Prefill → `ServiceTaskCreateModal` → `create` |
+| Operator `/operator` (today) | `OperatorTodayView.tsx`, `OperatorBookingTaskGroupCard.tsx` | `OperatorDataContext` snapshot |
+| Operator `/operator?tab=tasks` | `OperatorTasksView.tsx`, `OperatorTaskSheet.tsx`, `OperatorTaskCreateForm.tsx` | `list` (+ server filters), `summary`, mutations |
 | Master support | `SupportOpsWorkspace.tsx` | `api.tasks.create` (follow-up) |
 | Voice assistant | `VoiceConversationsPanel.tsx` | `api.tasks.create` |
 | TopBar search | `TopBar.tsx` | `api.tasks.list` |
@@ -179,7 +205,8 @@ Immutable timeline: `type` (free string), `actorUserId`, `oldValue`, `newValue`,
 | P2 | `TaskAutomationService.ensureBookingLifecycleTasks` | Booking `create`; booking `update` when status changes | See booking table below | `BOOKING` | `BOOKING` | `booking:*` | `vehicleId`, `bookingId`, `customerId` |
 | P3 | `TaskAutomationService.ensureDocumentTask` | `BookingDocumentBundleService.syncMissingDocumentTasks` | `DOCUMENT_REVIEW` or `INVOICE_REQUIRED` | `DOCUMENT` | `DOCUMENT` | `document:{kind}:{ref}` | `documentId?`, `bookingId?`, `vehicleId?` |
 | P4 | `TaskAutomationService.ensureRepairTask` | **No call sites in repo** | `REPAIR` | `VENDOR` | `VENDOR` | `vendor:repair:{vehicleId}:{vendorId\|none}:{reason}` | `vehicleId`, `vendorId?` |
-| P5 | `InsightTaskBridgeService.materialize` | After `BusinessInsightsService.runForOrganization` | Per insight type (see §2.1) | `INSIGHT_*` | `ALERT` | Candidate `dedupeKey` | `vehicleId`, `alertId?` |
+| P5 | `InsightTaskBridgeService.materialize` | After `BusinessInsightsService.runForOrganization` (triggered by notification evaluation cron/boot) | Per insight type (see §2.1) | `INSIGHT_*` | `ALERT` | Candidate `dedupeKey` | `vehicleId`, `alertId?` |
+| P5b | `ComplianceOperationalDetector` + `buildComplianceInsightCandidates` | Same insights pipeline (feeds P5) | `SERVICE_OVERDUE`, `TUV_OVERDUE`, `BOKRAFT_OVERDUE`, `HM_SERVICE_NO_TRACKING` | — (candidates only) | — | `service_overdue:`, `tuv_overdue:`, `bokraft_overdue:`, `hm_no_tracking:` + `{kind.key}:` | Bridge materializes subset only (§2.1) |
 | P6 | `ComplianceTaskMaterializeService.upsertFromSignal` | `POST .../compliance-task-signals/:key/materialize` | From signal | `INSIGHT_SERVICE` / `INSIGHT_COMPLIANCE` | `ALERT` | `{dedupeBase}:{vehicleId}` | `vehicleId` |
 | P7 | `InvoicesService.createUnpaidTask` | Incoming create (reviewable statuses); outgoing `issue` | `INVOICE_REQUIRED` | `INVOICE` | `SYSTEM` | `invoice:unpaid:{invoiceId}` | `invoiceId` |
 | P8 | `FinesService.create` | Fine create | `CUSTOMER_FOLLOWUP` | `FINE` | `SYSTEM` | `fine:{fineId}` | `vehicleId`, `customerId?`, `fineId` |
@@ -306,20 +333,23 @@ Bridge filters: `entityScope === VEHICLE`, exactly one `entityId`, type in `TASK
 
 **Resolution required types** (lines 25–32): `REPAIR`, `BRAKE_CHECK`, `TIRE_CHECK`, `BATTERY_CHECK`, `VEHICLE_SERVICE`, `VEHICLE_INSPECTION`.
 
-### 3.2 Status changes outside `TasksService.changeStatus`
+### 3.2 Status changes outside canonical terminal paths
 
-| File | Method | Transition | TaskEvent? |
-|------|--------|------------|------------|
-| `invoices.service.ts:818–820` | `closeLinkedTasks` | any non-`DONE` → `DONE` | **No** |
-| `tasks.service.ts:951` | `closeStaleInsightTasks` | active → `DONE` | **No** |
-| `tasks.service.ts:982` | `closeStaleBookingLifecycleTasks` | active → `DONE` | **No** |
-| `vehicle-cleaning-task.service.ts:50–53` | `ensureCleaningTask` | `dedupKey` backfill only | **No** (not status) |
+| File | Method | Transition | TaskEvent? | Status (2026-07-15) |
+|------|--------|------------|------------|---------------------|
+| `tasks.service.ts` | `changeStatus` / `autoResolveTask` / `supersedeTask` | active → terminal | **Yes** (`STATUS_CHANGED` / `AUTO_RESOLVED` / `SUPERSEDED`) | **Canonical** |
+| `vehicle-cleaning-task.service.ts:50–53` | `ensureCleaningTask` | `dedupKey` backfill only | **No** (not status) | OK — non-status field |
 
-### 3.3 Indirect completes (via `TasksService.completeTask` — **with** TaskEvent)
+**Migrated (2026-07-15):** All productive `orgTask.status` writes now route through `TasksService` terminal paths:
 
-| File | Method | Notes |
-|------|--------|-------|
-| `vehicle-cleaning-task.service.ts` | `completeOpenCleaningTasks` | Resolution note: `"Vehicle marked as clean"` |
+| Former bypass | New path | Event |
+|---------------|----------|-------|
+| `invoices.service.closeLinkedTasks` | `TasksService.closeInvoiceLinkedTasks` → `autoResolveTasks` | `AUTO_RESOLVED` |
+| `closeStaleInsightTasks` | per-task `autoResolveTask` | `AUTO_RESOLVED` |
+| `closeStaleBookingLifecycleTasks` | per-task `supersedeTask` | `SUPERSEDED` |
+| `completeOpenCleaningTasks` | per-task `autoResolveTask` | `AUTO_RESOLVED` |
+
+**Note:** `TasksService` also exposes legacy `create()` / `update()` wrappers (`tasks.service.ts:540–656`) that delegate to `createManualTask` / `changeStatus` — used by older call paths; controller uses `createManualTask` / `updateTask` directly.
 
 ---
 
@@ -327,14 +357,14 @@ Bridge filters: `entityScope === VEHICLE`, exactly one `entityId`, type in `TASK
 
 | Path | Trigger | Scope | Mechanism | TaskEvent? |
 |------|---------|-------|-----------|------------|
-| Insight stale close | Each insights run after bridge upserts | `source IN (INSIGHT_SERVICE, INSIGHT_COMPLIANCE, INSIGHT_HEALTH)` AND active status AND `dedupKey NOT IN` current run keys | `closeStaleInsightTasks` → direct `DONE` | No |
-| Booking phase supersede | Booking status transition | Same `bookingId`, `source=BOOKING`, active, dedupKey not in active set for new phase | `closeStaleBookingLifecycleTasks` | No |
-| Invoice fully paid | `InvoicesService.recordPayment` when `outstanding === 0` | Tasks with `invoiceId` | `closeLinkedTasks` → direct `DONE` | No |
-| Vehicle marked clean | `cleaningStatus=CLEAN` | All active `VEHICLE_CLEANING` for vehicle | `completeOpenCleaningTasks` → `completeTask` | **Yes** |
+| Insight stale close | Each insights run after bridge upserts | `source IN (INSIGHT_SERVICE, INSIGHT_COMPLIANCE, INSIGHT_HEALTH)` AND active status AND `dedupKey NOT IN` current run keys | `closeStaleInsightTasks` → `autoResolveTask` × N | **Yes** (`AUTO_RESOLVED`) |
+| Booking phase supersede | Booking status transition | Same `bookingId`, `source=BOOKING`, active, dedupKey not in active set for new phase | `closeStaleBookingLifecycleTasks` → `supersedeTask` × N | **Yes** (`SUPERSEDED`) |
+| Invoice fully paid | `InvoicesService.recordPayment` when `outstanding === 0` | Tasks with `invoiceId` | `closeInvoiceLinkedTasks` → `autoResolveTask` × N | **Yes** (`AUTO_RESOLVED`) |
+| Vehicle marked clean | `cleaningStatus=CLEAN` | All active `VEHICLE_CLEANING` for vehicle | `completeOpenCleaningTasks` → `autoResolveTask` × N | **Yes** (`AUTO_RESOLVED`) |
 
 **Gaps (factual):**
 
-- `payment-reconciliation.service.ts` — no `OrgTask` references; invoice PAID via reconciliation does not call `closeLinkedTasks` (documented by integration test case 51, `invoices.pipeline.integration.spec.ts:763–779`).
+- `payment-reconciliation.service.ts` — no `OrgTask` references; invoice PAID via reconciliation does not call `closeInvoiceLinkedTasks` (documented by integration test case 51, `invoices.pipeline.integration.spec.ts:763–779`).
 - Booking `cancel` / `NO_SHOW` — no auto-close of open booking lifecycle tasks.
 - Document tasks — no auto-close when missing documents are later generated (only upsert on `syncMissingDocumentTasks`; no stale-close for `source=DOCUMENT`).
 
@@ -374,8 +404,8 @@ Server-provided: `ApiTask.isOverdue`, `ApiTask.status`, booking detail embedded 
 |---------|-------|------------------------|
 | `TasksView.tsx` 4-step create | `estimatedDuration` | **No** — list shows `'—'` |
 | `TasksView.tsx` 4-step create | `notes` (summary step) | **No** |
-| `NewTaskModal.tsx` | All fields | Component wired in `App.tsx` but **never opened** (`setIsNewTaskModalOpen(true)` has no callers) |
-| `TasksSectionView.tsx` | — | **Not imported** anywhere |
+| `NewTaskModal.tsx` | All fields | Imported in `rental/App.tsx` but **`setIsNewTaskModalOpen(true)` has zero call sites** in production rental app — modal never opens |
+| `TasksSectionView.tsx` | — | **Not imported** in production `rental/App.tsx` (only `figma-rental/App.tsx`); dead in prod SPA |
 
 `stationId` is persisted via `metadata.stationId` from create flows that send it.
 
@@ -412,11 +442,11 @@ Server-provided: `ApiTask.isOverdue`, `ApiTask.status`, booking detail embedded 
 |-------|-------------|
 | **Architektur claims vs cancel** | Architektur states booking lifecycle automation; `cancel` does not invoke it — open prep/pickup tasks may remain |
 | **Invoice task close paths** | `recordPayment` closes tasks; Stripe/payment-reconciliation path to PAID does not (test 51) |
-| **TaskEvent completeness** | Auto-close paths (`closeLinkedTasks`, `closeStale*`) bypass timeline — UI timeline incomplete for system closes |
+| **TaskEvent completeness** | Auto-close paths now emit `AUTO_RESOLVED` / `SUPERSEDED` (2026-07-15); payment reconciliation + booking cancel still open |
 | **`createVehicleComplaint`** | Bypasses `TasksService` — no `TaskEvent`, no `type`/`sourceType`/`dedupKey` alignment with task architecture |
 | **`ensureRepairTask`** | Implemented and exported but zero call sites — dead automation hook |
 | **Service case vs task** | `ServiceCase` groups tasks optionally; UI still task-primary; `api.serviceCases` unused in service center |
-| **Booking detail `tasks.overdue`** | Embedded DTO uses `t.overdue` on raw Prisma rows — field is computed in `TasksService.format`, not on DB row (verify mapping in `bookings.service.ts` taskItems builder) |
+| **Booking detail `tasks.overdue`** | `bookings.service.ts:1001–1010` computes `overdue` inline from `dueDate` + status — **not** `TasksService.isOverdue`; consistent with server logic but duplicated from `format()` |
 | **Operator task snapshot** | `OperatorDataContext` filters terminal tasks client-side — counts/summary may disagree with full `TasksView` |
 | **Resolution note enforcement** | Backend enforces for specific types; `ServiceOverviewPanel` calls `complete` without note — backend may reject for e.g. `BRAKE_CHECK` |
 | **Document task lifecycle** | Tasks created when docs missing; no documented auto-close when bundle becomes complete |
@@ -428,10 +458,8 @@ Server-provided: `ApiTask.isOverdue`, `ApiTask.status`, booking detail embedded 
 ### P0 — Correctness / architecture integrity
 
 1. **`vehicles.service.createVehicleComplaint`** — direct `prisma.orgTask.create` bypasses `TasksService`, dedup, and `TaskEvent` (`vehicles.service.ts:2117–2127`).
-2. **`invoices.service.closeLinkedTasks`** — direct status `DONE` without `TaskEvent` (`invoices.service.ts:813–822`).
-3. **`closeStaleInsightTasks` / `closeStaleBookingLifecycleTasks`** — system closes without `TaskEvent` (`tasks.service.ts:936–985`).
-4. **Booking cancel leaves lifecycle tasks open** — `bookings.service.cancel` has no task hook (`bookings.service.ts:1740–1771`).
-5. **Payment reconciliation does not close invoice tasks** — `payment-reconciliation.service.ts` has no task integration; test 51 documents PAID + open task state.
+2. **Booking cancel leaves lifecycle tasks open** — `bookings.service.cancel` has no task hook (`bookings.service.ts:1740–1771`).
+3. **Payment reconciliation does not close invoice tasks** — `payment-reconciliation.service.ts` has no task integration; test 51 documents PAID + open task state.
 
 ### P1 — Duplicate / consistency risks
 
@@ -466,7 +494,7 @@ Server-provided: `ApiTask.isOverdue`, `ApiTask.status`, booking detail embedded 
 ### Backend — integrators
 
 - `backend/src/modules/bookings/bookings.service.ts` — cancel/no-show task lifecycle
-- `backend/src/modules/invoices/invoices.service.ts` — `closeLinkedTasks` → `TasksService`
+- `backend/src/modules/invoices/invoices.service.ts` — uses `closeInvoiceLinkedTasks` ✅ (2026-07-15)
 - `backend/src/modules/payments/payment-reconciliation.service.ts` — invoice task close on full payment
 - `backend/src/modules/documents/booking-document-bundle.service.ts` — document task stale-close
 - `backend/src/modules/vehicles/vehicles.service.ts` — complaint → `TasksService`
@@ -503,6 +531,23 @@ Server-provided: `ApiTask.isOverdue`, `ApiTask.status`, booking detail embedded 
 - `backend/src/modules/invoices/invoices.pipeline.integration.spec.ts`
 - New: `frontend/e2e/tasks-*.spec.ts` (recommended)
 - `frontend/src/master/components/ArchitekturView.tsx` + `ChangesView.tsx` (per project rules, after implementation)
+
+---
+
+## Appendix C — Production `prisma.orgTask` write sites (verified 2026-07-15, updated post-migration)
+
+Excludes `*.spec.ts`, harness, and test-store files.
+
+| File | Operation | Via canonical terminal path? | Notes |
+|------|-----------|------------------------------|-------|
+| `tasks/tasks.service.ts` | `create`, field `update`, `upsertByDedup`, `changeStatus`, `autoResolve*`, `supersede*` | Self | **Only** module that may set `status` / `completionMode` |
+| `tasks/vehicle-cleaning-task.service.ts` | `update` (dedupKey backfill only) | N/A | Non-status; closes via `autoResolveTask` |
+| `vehicles/vehicles.service.ts` | `create` | **No** | `createVehicleComplaint` — create bypass, not status |
+| `scripts/ops/cleanup-invalid-invoices.ts` | `updateMany` | **No** | Unlinks `invoiceId` only — **not status** (ops script) |
+
+**No remaining productive `orgTask.status` direct writes outside `tasks.service.ts`.**
+
+**Workers (`backend/src/workers/**`):** no `OrgTask` / `TasksService` references found.
 
 ---
 
@@ -547,11 +592,13 @@ Server-provided: `ApiTask.isOverdue`, `ApiTask.status`, booking detail embedded 
 
 ## Summary
 
-- **Canonical backend:** `TasksService` + `TasksController` under `organizations/:orgId/tasks`; system producers use `upsertByDedup` except **vehicle complaints** (raw Prisma).
-- **15+ automated producers** across bookings, documents, insights, compliance, invoices, fines, cleaning, workflows, WhatsApp, observations.
-- **3 auto-close mechanisms** bypass `TaskEvent` (invoice paid, stale insight, stale booking phase); cleaning uses proper `completeTask`.
-- **Frontend:** Rental `TasksView` + vehicle/service/operator surfaces; primary API `api.tasks.*`; parallel paths for compliance materialize and observation convert.
-- **Highest duplicate risk:** overlapping dedup keys for cleaning and invoice flows.
-- **Highest integrity gaps:** complaint create bypass, cancel without task cleanup, reconciliation without task close.
+- **Vollständiges Audit:** `docs/audits/task-management-inventory.md` (dieses Dokument). **Soll-Spez:** `docs/architecture/task-domain-v2.md`.
+- **Canonical backend:** `TasksService` + `TasksController` under `organizations/:orgId/tasks`; terminal status only via `changeStatus` / `autoResolveTask` / `supersedeTask` (2026-07-15).
+- **16 automated producer paths** (P1–P15 + compliance insight candidates P5b) across bookings, documents, insights, compliance, invoices, fines, cleaning, workflows, WhatsApp, observations.
+- **Auto-close paths** now emit `AUTO_RESOLVED` or `SUPERSEDED` events (invoice paid, stale insight, booking phase, vehicle cleaned).
+- **Remaining create bypass:** `createVehicleComplaint` (raw Prisma create, not status).
+- **Frontend:** Rental `TasksView` + vehicle/service/operator surfaces; primary API `api.tasks.*`; parallel create paths: `materializeComplianceTask`, `convertToTask`, WhatsApp/voice/support.
+- **Highest duplicate risk:** overlapping dedup keys for cleaning (`booking:clean` vs `vehicle:cleaning`) and invoice (`booking:invoice` vs `invoice:unpaid`).
+- **Highest integrity gaps:** complaint create bypass, booking cancel/no-show without task hook, payment reconciliation without task close (integration test case 51).
 
 **Changes / Architektur:** Not updated (audit-only task per instructions).

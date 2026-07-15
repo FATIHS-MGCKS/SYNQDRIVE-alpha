@@ -3,8 +3,37 @@
 **Version:** 2.0 (Spezifikation)  
 **Date:** 2026-07-15  
 **Status:** Normativ für zukünftige Implementierung — **keine produktive Umsetzung in diesem Dokument**  
-**Basis:** `docs/audits/task-management-inventory.md`, bestehendes `OrgTask` / `TaskEvent` / `ServiceCase`  
+**Basis:** `docs/audits/task-management-inventory.md` (Ist-Inventur 2026-07-15), bestehendes `OrgTask` / `TaskEvent` / `ServiceCase`  
 **Prinzip:** Eine Task-Engine (`TasksService` + `OrgTask`). Keine parallele Task-Architektur.
+
+---
+
+## Inhaltsverzeichnis
+
+| # | Abschnitt | Inhalt |
+|---|-----------|--------|
+| 0 | Zweck und Geltungsbereich | Multi-Tenant, Schreibpfad, Lesepfade |
+| **1** | **Domänenobjekte** | |
+| 1.1 | Task | Zuweisbare menschliche Aktion |
+| 1.2 | Workflow-Schritt | Prozessschritt ohne Pflicht-Inbox |
+| 1.3 | Alert / Insight | Automatisch erkannter Zustand |
+| 1.4 | ServiceCase | Mehrstufiger Wartungs-/Reparaturfall |
+| **A** | Task-Hauptstatus | `OPEN` … `CANCELLED` |
+| **B** | Abschlussarten | `MANUAL`, `AUTO_RESOLVED`, `SUPERSEDED` |
+| **C** | Statusübergänge | Matrix, Terminal, Idempotenz |
+| **D** | Zeitsemantik | `createdAt` … `cancelledAt`, `activatesAt` |
+| **E** | Checklisten | Pflicht/optional, Blocker, Override |
+| **F** | Abschlussnachweise | Policy pro `TaskType` |
+| **G** | Verknüpfte Objekte | Fahrzeug, Buchung, … Vendor |
+| **H** | Dedup | Technisch, fachlich, Wiederkehr, Zeitfenster |
+| **I** | Operator-Buckets | Jetzt erforderlich … Erledigt |
+| **J** | Automationsregeln | `ruleId`, Eskalation, Overrides |
+| **K** | Audit-Trail | `TaskEvent`-Pflicht |
+| 8 | Rückwärtskompatibilität | Bestehende `OrgTask`-Rows |
+| 9 | Ist-Widersprüche | Audit-basiert, priorisiert |
+| 10 | Ziel-Architektur | Eine Engine (Diagramm) |
+| 11 | Akzeptanzkriterien | AC-01 … AC-21 |
+| 12 | Referenzen | Code und Dokumente |
 
 ---
 
@@ -50,7 +79,11 @@ Dieses Dokument definiert die **Ziel-Domäne** für operative Aufgaben in SynqDr
 - ein ServiceCase-Container (§1.4),
 - eine Notification.
 
+**Nächster Schritt (ableitbar):** API-Feld `metadata.nextStep` oder UI-Derivat aus `TaskType` + offener Checkliste + Link-Kontext (z. B. „Pickup durchführen“, „Rechnung prüfen“). Ist: primär Titel und Template-Checkliste.
+
 **Sichtbarkeit:** Tasks erscheinen in globalen Task-Listen (`TasksView`, Operator Tasks), entity-scoped Listen (`forVehicle`, `forBooking`, …) und aggregierten KPIs (`GET /tasks/summary`).
+
+**Invariante T1:** Ein Task ist immer genau ein `OrgTask`-Datensatz. Es gibt keinen zweiten Task-Typ, keine Shadow-Inbox und keine parallele State Machine außerhalb `TasksService`.
 
 ---
 
@@ -217,6 +250,17 @@ Zeilen = Von, Spalten = Nach. `✓` = erlaubt, `—` = verboten.
 
 **Terminalstatus:** `DONE`, `CANCELLED` — keine ausgehenden Übergänge (kein Reopen in V2).
 
+### C.1b Verbotene Übergänge (explizit)
+
+| Von | Nach | Grund |
+|-----|------|-------|
+| `IN_PROGRESS` | `OPEN` | Kein „Zurückstellen“ ohne explizites Reopen-Feature (nicht in V2) |
+| `WAITING` | `OPEN` | Wartend ist aktiv; Fortsetzung nur über `IN_PROGRESS` (`start`) |
+| `DONE` | `OPEN`, `IN_PROGRESS`, `WAITING`, `CANCELLED` | Terminal |
+| `CANCELLED` | `OPEN`, `IN_PROGRESS`, `WAITING`, `DONE` | Terminal |
+| Beliebig aktiv | `DONE` / `CANCELLED` | Nur wenn Completion-Policy (§F) bzw. Cancel-Policy erfüllt; `activatesAt > now` blockiert `complete` (CB4) |
+| `CANCELLED` (automatisch) | — | **Verboten in V2** — System schließt nur mit `DONE` + `AUTO_RESOLVED` oder `SUPERSEDED` (Regel B1) |
+
 ### C.2 API-Operationen → Übergang
 
 | Operation | Übergang | `resolutionKind` |
@@ -233,7 +277,9 @@ Zeilen = Von, Spalten = Nach. `✓` = erlaubt, `—` = verboten.
 
 | Szenario | Verhalten |
 |----------|-----------|
-| `start` bei bereits `IN_PROGRESS` | HTTP 200; kein zweites `startedAt`; kein doppeltes `TaskEvent` |
+| `start` bei bereits `IN_PROGRESS` | HTTP 200; kein zweites `startedAt`; **kein** zweites `TaskEvent` (Ist: `changeStatus` bricht bei `from === to` ab — korrekt) |
+| `waiting` bei bereits `WAITING` | HTTP 200; kein Event |
+| `cancel` bei bereits `CANCELLED` | HTTP 200; kein Event |
 | `complete` bei bereits `DONE` | HTTP 200; keine Änderung; kein Event |
 | `upsertByDedup` bei aktivem Key | Update Felder (Eskalation); Status unverändert |
 | `upsertByDedup` bei geschlossenem Key | Neuer Task; alter Key → `{dedupKey}:closed:{taskId}` |
@@ -249,7 +295,7 @@ Zeilen = Von, Spalten = Nach. `✓` = erlaubt, `—` = verboten.
 | Booking-Phase wechselt | ACTIVE (alte Phase) | DONE | `SUPERSEDED` |
 | Invoice vollständig bezahlt | ACTIVE | DONE | `AUTO_RESOLVED` |
 | Dokument erzeugt / Bundle complete | ACTIVE | DONE | `AUTO_RESOLVED` |
-| Booking `CANCELLED` / `NO_SHOW` | ACTIVE (lifecycle) | DONE oder CANCELLED | `SUPERSEDED` / `MANUAL` (festzulegen) |
+| Booking `CANCELLED` / `NO_SHOW` | ACTIVE (lifecycle, `source=BOOKING`) | DONE | **`SUPERSEDED`** (V2-Norm: Buchung beendet, Schritte obsolet — kein `CANCELLED` durch System) |
 | Fahrzeug `cleaningStatus=CLEAN` | ACTIVE (`VEHICLE_CLEANING`) | DONE | `AUTO_RESOLVED` |
 
 ---
@@ -348,9 +394,8 @@ mit verpflichtendem `TaskEvent`:
 | `BOOKING_RETURN` | Optional | Nein | Optional | **Ja** (Return abgeschlossen) |
 | `DOCUMENT_REVIEW` | Optional | Nein | Nein | **Ja** (Dokument vorhanden) |
 | `INVOICE_REQUIRED` | Optional | Nein | Nein | **Ja** (Invoice PAID) |
-| `CUSTOMER_FOLLOWUP` | Optional | Nein | Nein | **Ja** (Fine settled — Ziel) |
-| `CUSTOM` | Optional | Nein | Nein | Nein |
-| `CUSTOM` (manual) | Optional | Nein | Nein | Nein |
+| `CUSTOMER_FOLLOWUP` | Optional | Nein | Nein | **Ja** (Fine settled — Ziel; Ist: kein Auto-Close) |
+| `CUSTOM` | Optional | Nein | Nein | Nur wenn `metadata.allowAutoResolve=true` (System/Workflow); sonst Nein |
 
 **`resolutionCode` (Ziel-Enum, Auszug):**
 
@@ -484,7 +529,8 @@ Persistenz-Ziel: `OrgTask.metadata.automation = { ruleId, ruleVersion, ... }`.
 | `insight.compliance.tuv_overdue` | 1 | Insight run | `VEHICLE_INSPECTION` | `tuv_overdue:{vehicleId}` | true |
 | `vehicle.cleaning.required` | 1 | `cleaningStatus=NEEDS_CLEANING` | `VEHICLE_CLEANING` | `vehicle:cleaning:{vehicleId}` | true |
 | `fine.created` | 1 | Fine create | `CUSTOMER_FOLLOWUP` | `fine:{fineId}` | true |
-| `booking.lifecycle.cancelled` | 1 | Booking `CANCELLED`/`NO_SHOW` | — | — | close ACTIVE lifecycle |
+| `booking.lifecycle.cancelled` | 1 | Booking `CANCELLED`/`NO_SHOW` | — | — | `SUPERSEDED` close all ACTIVE `source=BOOKING` for `bookingId` |
+| `booking.lifecycle.cancelled.noshow` | 1 | Booking `NO_SHOW` | — | — | gleich wie cancelled |
 
 ### J.3 Regel-Verhalten
 
@@ -524,6 +570,10 @@ Automation-Fehler **dürfen** den auslösenden Domain-Write nicht abbrechen (bes
 
 **Regel K2:** Timeline in UI (`GlobalTaskDetailPanel`, `OperatorTaskDetail`) ist vollständige Projektion von `TaskEvent` — keine lokalen erfundenen Events.
 
+> **⚠ Ist-Widerspruch:** `updateChecklistItem` persistiert Änderungen, erzeugt aber **kein** `CHECKLIST_ITEM_UPDATED`-Event (`tasks.service.ts`). V2 verlangt Event pro relevantem Checklisten-Toggle.
+
+> **⚠ Ist-Widerspruch:** Auto-Close-Pfade (`closeLinkedTasks`, `closeStaleInsightTasks`, `closeStaleBookingLifecycleTasks`) und `createVehicleComplaint` umgehen `TaskEvent` vollständig — siehe Audit Appendix C.
+
 ---
 
 ## 8. Rückwärtskompatibilität
@@ -546,21 +596,27 @@ Automation-Fehler **dürfen** den auslösenden Domain-Write nicht abbrechen (bes
 
 ## 9. Ist-Widersprüche (explizit)
 
-| # | Soll (V2) | Ist | Priorität |
-|---|-----------|-----|-----------|
-| W1 | Booking-Lifecycle nur als Task wenn W1–W4 | Immer materialisiert | P1 |
-| W2 | Ein kanonischer Cleaning-Key | `booking:clean` + `vehicle:cleaning` | P0 |
-| W3 | Ein kanonischer Invoice-Key | `booking:invoice` + `invoice:unpaid` | P0 |
-| W4 | Alle Statusänderungen via `TasksService` + Event | `closeLinkedTasks`, `closeStale*` direkt | P0 |
-| W5 | `resolutionKind` persistiert | Fehlt | P1 |
-| W6 | `activatesAt` für geplante Tasks | Fehlt | P2 |
-| W7 | Booking cancel → lifecycle close | Kein Hook | P0 |
-| W8 | Payment reconciliation → task close | Fehlt | P0 |
-| W9 | Document task auto-close | Fehlt | P1 |
-| W10 | `createVehicleComplaint` via TasksService | Raw Prisma | P0 |
-| W11 | Server-side Operator buckets | Client-derived | P2 |
-| W12 | `resolutionCode` | Fehlt | P2 |
-| W13 | Manager override | Fehlt | P2 |
+Quelle: `docs/audits/task-management-inventory.md` — verifizierte Call Sites und Producer-Registry.
+
+| # | Soll (V2) | Ist (belegt) | Priorität |
+|---|-----------|--------------|-----------|
+| W1 | Booking-Lifecycle nur als Task wenn W1–W4 (§1.2) | `TaskAutomationService.ensureBookingLifecycleTasks` materialisiert bei `CONFIRMED`/`ACTIVE`/`COMPLETED` immer bis zu 6 Task-Typen | P1 |
+| W2 | Ein kanonischer Cleaning-Key `vehicle:cleaning:{vehicleId}` | Zusätzlich `booking:clean:{bookingId}` — zwei offene `VEHICLE_CLEANING` möglich | P0 |
+| W3 | Ein kanonischer Invoice-Key `invoice:unpaid:{invoiceId}` | Zusätzlich `booking:invoice:{bookingId}` bei `COMPLETED` | P0 |
+| W4 | Alle Statusänderungen via `TasksService` + `TaskEvent` | `invoices.closeLinkedTasks`, `closeStaleInsightTasks`, `closeStaleBookingLifecycleTasks` — direktes `prisma.orgTask.update` ohne Event | P0 |
+| W5 | `resolutionKind` bei Terminalstatus | Feld fehlt im Schema; nur `status` | P1 |
+| W6 | `activatesAt` für geplante Tasks | Feld fehlt; Default = `createdAt` | P2 |
+| W7 | Booking `cancel` / `NO_SHOW` → lifecycle `SUPERSEDED` | `bookings.service.cancel` / `markNoShow` ohne Task-Hook | P0 |
+| W8 | Payment reconciliation → Invoice-Task `AUTO_RESOLVED` | `payment-reconciliation.service` ohne OrgTask; Test 51 dokumentiert offene Task bei PAID | P0 |
+| W9 | Document-Task auto-close bei Bundle `COMPLETE` | Nur `syncMissingDocumentTasks` (Erzeugung); kein Stale-Close für `source=DOCUMENT` | P1 |
+| W10 | `createVehicleComplaint` via `TasksService` | `vehicles.service.ts` — raw `prisma.orgTask.create`, kein `TaskEvent`/`dedupKey` | P0 |
+| W11 | Server-side Operator-Buckets (§I) | `TasksView`, `task-list.utils`, `OperatorDataContext` leiten teils clientseitig ab | P2 |
+| W12 | `resolutionCode` strukturiert | Nur `resolutionNote` für `RESOLUTION_REQUIRED_TYPES` | P2 |
+| W13 | Manager-Override + `COMPLETION_OVERRIDDEN` | Nicht implementiert; `ServiceOverviewPanel` ruft `complete` ohne Note auf | P2 |
+| W14 | Checklisten-Events vollständig | `updateChecklistItem` ohne `TaskEvent` | P1 |
+| W15 | `ensureRepairTask` angebunden | Implementiert, **0 Call Sites** — Schaden/Repair nutzt `api.tasks.create` | P1 |
+| W16 | Parallele Create-APIs ohne Dedup | WhatsApp, Observations, Voice, Support — `createManualTask` ohne `dedupKey` | P1 |
+| W17 | `TasksView` Pflichtfeld `estimatedDuration` | UI-validiert, nicht in `CreateTaskPayload` | P2 |
 
 ---
 
@@ -656,6 +712,12 @@ Die folgenden Kriterien müssen für ein Release „Task Domain V2 Phase 1“ er
 
 ---
 
-**Nächster Schritt (außerhalb dieses Dokuments):** Implementierungsplan in Phasen — Phase 1: Schreibpfad-Integrität + Dedup-Vereinheitlichung (P0); Phase 2: `resolutionKind`, Automation-Metadaten, Cancel/Reconciliation; Phase 3: Workflow-Schritt-Entkopplung + Server-Buckets + `resolutionCode`.
+**Nächster Schritt (außerhalb dieses Dokuments):** Implementierungsplan in Phasen:
 
-**Changes / Architektur (SynqDrive Code):** Dieses Dokument ist die normative Spezifikation. `ArchitekturView.tsx` / `ChangesView.tsx` werden erst bei Implementierungsstart aktualisiert.
+| Phase | Fokus | Widersprüche |
+|-------|-------|--------------|
+| **1** | Schreibpfad-Integrität, Dedup-Vereinheitlichung, Cancel-Hook, Reconciliation-Close | W2, W3, W4, W7, W8, W10 |
+| **2** | `resolutionKind`, `metadata.automation`, Document auto-close, Checklisten-Events | W5, W9, W14, W15 |
+| **3** | Workflow-Schritt-Entkopplung (W1–W4), Server-Buckets, `resolutionCode`, Manager-Override, `activatesAt` | W1, W6, W11–W13, W17 |
+
+**Changes / Architektur (SynqDrive Code):** Dieses Dokument ist die normative Spezifikation. `ArchitekturView.tsx` / `ChangesView.tsx` werden erst bei Implementierungsstart aktualisiert — **keine produktiven Dateien in diesem Schritt geändert**.

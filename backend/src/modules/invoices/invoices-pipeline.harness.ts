@@ -122,6 +122,23 @@ export function createInvoicePipelineHarness(): InvoicePipelineHarness {
         priority: data.priority ?? 'NORMAL',
       });
     }),
+    closeInvoiceLinkedTasks: jest.fn(async (orgId: string, invoiceId: string) => {
+      let closed = 0;
+      for (const task of store.tables.orgTasks) {
+        if (
+          task.organizationId === orgId &&
+          task.invoiceId === invoiceId &&
+          task.status !== 'DONE' &&
+          task.status !== 'CANCELLED'
+        ) {
+          task.status = 'DONE';
+          task.completionMode = 'AUTO_RESOLVED';
+          task.completedAt = new Date();
+          closed++;
+        }
+      }
+      return closed;
+    }),
   };
 
   const invoiceNumbers = new InvoiceNumberService(prisma);

@@ -3043,37 +3043,37 @@ model VehicleRentalRequirementOverride {
 // ------------------------------------------------
 
 model Booking {
-  id                      String               @id @default(uuid())
-  organizationId          String               @map("organization_id")
-  customerId              String               @map("customer_id")
-  vehicleId               String               @map("vehicle_id")
-  pickupStationId         String?              @map("pickup_station_id")
-  returnStationId         String?              @map("return_station_id")
-  actualPickupStationId   String?              @map("actual_pickup_station_id")
-  actualReturnStationId   String?              @map("actual_return_station_id")
-  pickupAddressOverride   String?              @map("pickup_address_override")
-  returnAddressOverride   String?              @map("return_address_override")
-  isOneWayRental          Boolean              @default(false) @map("is_one_way_rental")
-  stationTransferFeeCents Int?                 @map("station_transfer_fee_cents")
-  startDate               DateTime             @map("start_date")
-  endDate                 DateTime             @map("end_date")
-  dailyRateCents          Int?                 @map("daily_rate_cents")
-  totalPriceCents         Int?                 @map("total_price_cents")
-  kmIncluded              Int?                 @map("km_included")
-  kmDriven                Int?                 @map("km_driven")
-  insuranceOptions        Json?                @map("insurance_options")
-  extrasJson              Json?                @map("extras_json")
-  currency                String               @default("eur")
-  status                  BookingStatus        @default(PENDING)
+  id                      String                @id @default(uuid())
+  organizationId          String                @map("organization_id")
+  customerId              String                @map("customer_id")
+  vehicleId               String                @map("vehicle_id")
+  pickupStationId         String?               @map("pickup_station_id")
+  returnStationId         String?               @map("return_station_id")
+  actualPickupStationId   String?               @map("actual_pickup_station_id")
+  actualReturnStationId   String?               @map("actual_return_station_id")
+  pickupAddressOverride   String?               @map("pickup_address_override")
+  returnAddressOverride   String?               @map("return_address_override")
+  isOneWayRental          Boolean               @default(false) @map("is_one_way_rental")
+  stationTransferFeeCents Int?                  @map("station_transfer_fee_cents")
+  startDate               DateTime              @map("start_date")
+  endDate                 DateTime              @map("end_date")
+  dailyRateCents          Int?                  @map("daily_rate_cents")
+  totalPriceCents         Int?                  @map("total_price_cents")
+  kmIncluded              Int?                  @map("km_included")
+  kmDriven                Int?                  @map("km_driven")
+  insuranceOptions        Json?                 @map("insurance_options")
+  extrasJson              Json?                 @map("extras_json")
+  currency                String                @default("eur")
+  status                  BookingStatus         @default(PENDING)
   /// Derived summary from BookingPaymentRequest / invoice state — not financial source of truth.
-  paymentStatus           BookingPaymentStatus @default(UNPAID) @map("payment_status")
+  paymentStatus           BookingPaymentStatus  @default(UNPAID) @map("payment_status")
   /// Checkout payment intent from wizard — does not imply money received.
   paymentIntent           BookingPaymentIntent? @map("payment_intent")
   notes                   String?
-  cancelledAt             DateTime?            @map("cancelled_at")
-  completedAt             DateTime?            @map("completed_at")
-  createdAt               DateTime             @default(now()) @map("created_at")
-  updatedAt               DateTime             @updatedAt @map("updated_at")
+  cancelledAt             DateTime?             @map("cancelled_at")
+  completedAt             DateTime?             @map("completed_at")
+  createdAt               DateTime              @default(now()) @map("created_at")
+  updatedAt               DateTime              @updatedAt @map("updated_at")
 
   organization           Organization                @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   customer               Customer                    @relation(fields: [customerId], references: [id])
@@ -3696,57 +3696,75 @@ enum TaskSource {
   VENDOR
 }
 
+// Task Domain V2 — how a terminal task reached DONE/CANCELLED (maps to spec
+// `resolutionKind`). NULL while the task is active or for legacy rows.
+enum TaskCompletionMode {
+  MANUAL
+  AUTO_RESOLVED
+  SUPERSEDED
+}
+
 model OrgTask {
-  id                        String       @id @default(uuid())
-  organizationId            String       @map("organization_id")
+  id                        String              @id @default(uuid())
+  organizationId            String              @map("organization_id")
   title                     String
   description               String?
   category                  String?
-  type                      TaskType     @default(CUSTOM)
-  status                    TaskStatus   @default(OPEN)
-  priority                  TaskPriority @default(NORMAL)
+  type                      TaskType            @default(CUSTOM)
+  status                    TaskStatus          @default(OPEN)
+  priority                  TaskPriority        @default(NORMAL)
   // Canonical link targets. All optional — a task may link to a vehicle, a
   // booking, a customer, a vendor, an alert (DashboardInsight) or a document,
   // but never has to have all of them. Stored as plain scoped ids (org
   // ownership validated in TasksService) mirroring OrgInvoice's link columns.
-  vehicleId                 String?      @map("vehicle_id")
-  bookingId                 String?      @map("booking_id")
-  customerId                String?      @map("customer_id")
-  vendorId                  String?      @map("vendor_id")
-  alertId                   String?      @map("alert_id")
-  documentId                String?      @map("document_id")
-  fineId                    String?      @map("fine_id")
-  invoiceId                 String?      @map("invoice_id")
-  assignedUserId            String?      @map("assigned_to")
-  dueDate                   DateTime?    @map("due_date")
-  startedAt                 DateTime?    @map("started_at")
-  completedAt               DateTime?    @map("completed_at")
-  cancelledAt               DateTime?    @map("cancelled_at")
-  estimatedCostCents        Int?         @map("estimated_cost_cents")
-  actualCostCents           Int?         @map("actual_cost_cents")
-  resolutionNote            String?      @map("resolution_note")
+  vehicleId                 String?             @map("vehicle_id")
+  bookingId                 String?             @map("booking_id")
+  customerId                String?             @map("customer_id")
+  vendorId                  String?             @map("vendor_id")
+  alertId                   String?             @map("alert_id")
+  documentId                String?             @map("document_id")
+  fineId                    String?             @map("fine_id")
+  invoiceId                 String?             @map("invoice_id")
+  assignedUserId            String?             @map("assigned_to")
+  dueDate                   DateTime?           @map("due_date")
+  startedAt                 DateTime?           @map("started_at")
+  completedAt               DateTime?           @map("completed_at")
+  cancelledAt               DateTime?           @map("cancelled_at")
+  estimatedCostCents        Int?                @map("estimated_cost_cents")
+  actualCostCents           Int?                @map("actual_cost_cents")
+  resolutionNote            String?             @map("resolution_note")
   // V4.9.17 — When true, operators should treat this task as blocking vehicle
   // rental/availability until resolved. Default false for all legacy rows.
-  blocksVehicleAvailability Boolean      @default(false) @map("blocks_vehicle_availability")
+  blocksVehicleAvailability Boolean             @default(false) @map("blocks_vehicle_availability")
   metadata                  Json?
-  createdByUserId           String?      @map("created_by_user_id")
-  updatedByUserId           String?      @map("updated_by_user_id")
+  createdByUserId           String?             @map("created_by_user_id")
+  updatedByUserId           String?             @map("updated_by_user_id")
   // V4.7.59 — Auto-task provenance. `source` distinguishes operator-created
   // tasks (null) from system-generated ones (e.g. INSIGHT_SERVICE,
   // INSIGHT_COMPLIANCE). `dedupKey` is the idempotency key the Insight→Task
   // bridge uses to upsert/escalate a single task per (vehicle, condition)
   // instead of duplicating it on every insight run. `sourceType` is the
   // coarse origin domain (V4.8.3).
-  source                    String?      @map("source")
-  sourceType                TaskSource   @default(MANUAL) @map("source_type")
-  dedupKey                  String?      @map("dedup_key")
-  serviceCaseId             String?      @map("service_case_id")
-  createdAt                 DateTime     @default(now()) @map("created_at")
-  updatedAt                 DateTime     @updatedAt @map("updated_at")
+  source                    String?             @map("source")
+  sourceType                TaskSource          @default(MANUAL) @map("source_type")
+  dedupKey                  String?             @map("dedup_key")
+  serviceCaseId             String?             @map("service_case_id")
+  // Task Domain V2 — additive lifecycle / completion columns (nullable for
+  // legacy rows; business rules enforced in TasksService, not DB constraints).
+  activatesAt               DateTime?           @map("activates_at")
+  completionMode            TaskCompletionMode? @map("completion_mode")
+  resolutionCode            String?             @map("resolution_code")
+  completedByUserId         String?             @map("completed_by_user_id")
+  supersededByTaskId        String?             @map("superseded_by_task_id")
+  estimatedDurationMinutes  Int?                @map("estimated_duration_minutes")
+  createdAt                 DateTime            @default(now()) @map("created_at")
+  updatedAt                 DateTime            @updatedAt @map("updated_at")
 
   fine           Fine?               @relation(fields: [fineId], references: [id], onDelete: SetNull)
   invoice        OrgInvoice?         @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
   serviceCase    ServiceCase?        @relation(fields: [serviceCaseId], references: [id], onDelete: SetNull)
+  supersededBy   OrgTask?            @relation("TaskSupersession", fields: [supersededByTaskId], references: [id], onDelete: SetNull)
+  supersedes     OrgTask[]           @relation("TaskSupersession")
   checklistItems TaskChecklistItem[]
   comments       TaskComment[]
   attachments    TaskAttachment[]
@@ -3776,6 +3794,9 @@ model OrgTask {
   @@index([organizationId, assignedUserId])
   @@index([organizationId, dueDate])
   @@index([organizationId, source])
+  @@index([organizationId, status, activatesAt])
+  @@index([completionMode])
+  @@index([supersededByTaskId])
   @@map("org_tasks")
 }
 
@@ -3788,6 +3809,7 @@ model TaskChecklistItem {
   description       String?
   sortOrder         Int       @default(0) @map("sort_order")
   isDone            Boolean   @default(false) @map("is_done")
+  isRequired        Boolean   @default(false) @map("is_required")
   completedAt       DateTime? @map("completed_at")
   completedByUserId String?   @map("completed_by_user_id")
   createdAt         DateTime  @default(now()) @map("created_at")
@@ -4167,12 +4189,12 @@ model BookingPaymentRequest {
   createdAt                 DateTime                    @default(now()) @map("created_at")
   updatedAt                 DateTime                    @updatedAt @map("updated_at")
 
-  organization   Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  booking        Booking              @relation(fields: [bookingId], references: [id], onDelete: Restrict)
-  invoice        OrgInvoice?          @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
-  customer       Customer             @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  transactions   PaymentTransaction[]
-  invoicePayment OrgInvoicePayment?
+  organization       Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  booking            Booking              @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  invoice            OrgInvoice?          @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  customer           Customer             @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  transactions       PaymentTransaction[]
+  invoicePayment     OrgInvoicePayment?
   paymentEmailOutbox PaymentEmailOutbox[]
   outboundEmails     OutboundEmail[]
 
@@ -6461,34 +6483,34 @@ model OutboundEmail {
   invoiceId               String?                 @map("invoice_id")
   bookingPaymentRequestId String?                 @map("booking_payment_request_id")
   sourceType              OutboundEmailSourceType @map("source_type")
-  status            OutboundEmailStatus     @default(QUEUED)
-  fromEmail         String                  @map("from_email")
-  fromName          String?                 @map("from_name")
-  replyToEmail      String?                 @map("reply_to_email")
-  toEmail           String                  @map("to_email")
-  ccEmails          String[]                @default([]) @map("cc_emails")
-  bccEmails         String[]                @default([]) @map("bcc_emails")
-  subject           String
-  bodyText          String?                 @map("body_text")
-  bodyHtml          String?                 @map("body_html")
-  provider          String?
-  providerMessageId String?                 @map("provider_message_id")
-  errorCode         String?                 @map("error_code")
-  errorMessage      String?                 @map("error_message")
-  sentByUserId      String?                 @map("sent_by_user_id")
-  sentAt            DateTime?               @map("sent_at")
-  createdAt         DateTime                @default(now()) @map("created_at")
-  updatedAt         DateTime                @updatedAt @map("updated_at")
+  status                  OutboundEmailStatus     @default(QUEUED)
+  fromEmail               String                  @map("from_email")
+  fromName                String?                 @map("from_name")
+  replyToEmail            String?                 @map("reply_to_email")
+  toEmail                 String                  @map("to_email")
+  ccEmails                String[]                @default([]) @map("cc_emails")
+  bccEmails               String[]                @default([]) @map("bcc_emails")
+  subject                 String
+  bodyText                String?                 @map("body_text")
+  bodyHtml                String?                 @map("body_html")
+  provider                String?
+  providerMessageId       String?                 @map("provider_message_id")
+  errorCode               String?                 @map("error_code")
+  errorMessage            String?                 @map("error_message")
+  sentByUserId            String?                 @map("sent_by_user_id")
+  sentAt                  DateTime?               @map("sent_at")
+  createdAt               DateTime                @default(now()) @map("created_at")
+  updatedAt               DateTime                @updatedAt @map("updated_at")
 
-  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  booking      Booking?                  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-  customer     Customer?                 @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  invoice      OrgInvoice?               @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
-  bookingPaymentRequest BookingPaymentRequest? @relation(fields: [bookingPaymentRequestId], references: [id], onDelete: SetNull)
-  sentByUser   User?                     @relation("OutboundEmailSentBy", fields: [sentByUserId], references: [id], onDelete: SetNull)
-  attachments  OutboundEmailAttachment[]
-  events       OutboundEmailEvent[]
-  paymentEmailOutbox PaymentEmailOutbox[]
+  organization          Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  booking               Booking?                  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  customer              Customer?                 @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  invoice               OrgInvoice?               @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  bookingPaymentRequest BookingPaymentRequest?    @relation(fields: [bookingPaymentRequestId], references: [id], onDelete: SetNull)
+  sentByUser            User?                     @relation("OutboundEmailSentBy", fields: [sentByUserId], references: [id], onDelete: SetNull)
+  attachments           OutboundEmailAttachment[]
+  events                OutboundEmailEvent[]
+  paymentEmailOutbox    PaymentEmailOutbox[]
 
   @@index([organizationId])
   @@index([organizationId, bookingId])

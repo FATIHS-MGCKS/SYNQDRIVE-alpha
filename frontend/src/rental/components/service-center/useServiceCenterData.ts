@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api, type ApiTask, type ApiTaskSummary, type Vendor } from '../../../lib/api';
+import { matchesTaskListInvalidation, matchesTaskSummaryInvalidation, subscribeTaskQueryInvalidation } from '../../../lib/tasks/invalidate';
 import { deriveServiceKpis, isActiveTask } from './service-center.utils';
 import type { ServiceCenterData } from './service-center.types';
 
@@ -45,6 +46,15 @@ export function useServiceCenterData(orgId: string | null | undefined): ServiceC
   useEffect(() => {
     void reload();
   }, [reload]);
+
+  useEffect(() => {
+    return subscribeTaskQueryInvalidation((detail) => {
+      if (!orgId || detail.orgId !== orgId) return;
+      if (matchesTaskListInvalidation(detail, orgId) || matchesTaskSummaryInvalidation(detail, orgId)) {
+        void reload();
+      }
+    });
+  }, [orgId, reload]);
 
   const activeTasks = useMemo(() => tasks.filter(isActiveTask), [tasks]);
   const historyTasks = useMemo(

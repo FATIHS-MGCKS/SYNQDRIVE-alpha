@@ -530,27 +530,62 @@ function del<T>(path: string) {
   return request<T>(path, { method: 'DELETE' });
 }
 
-// ── Task Action Layer types (V4.8.3) ────────────────────────────────────────
-// Mirrors the backend TasksService read model. `isOverdue` is derived
-// server-side (dueDate < now && status not terminal) and must be used as-is.
-export type ApiTaskStatus = 'OPEN' | 'IN_PROGRESS' | 'WAITING' | 'DONE' | 'CANCELLED';
-export type ApiTaskPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'CRITICAL';
-export type ApiTaskType =
-  | 'VEHICLE_SERVICE'
-  | 'VEHICLE_INSPECTION'
-  | 'TIRE_CHECK'
-  | 'BRAKE_CHECK'
-  | 'BATTERY_CHECK'
-  | 'VEHICLE_CLEANING'
-  | 'BOOKING_PREPARATION'
-  | 'BOOKING_PICKUP'
-  | 'BOOKING_RETURN'
-  | 'DOCUMENT_REVIEW'
-  | 'INVOICE_REQUIRED'
-  | 'CUSTOMER_FOLLOWUP'
-  | 'REPAIR'
-  | 'CUSTOM';
-export type ApiTaskSource = 'MANUAL' | 'SYSTEM' | 'ALERT' | 'HEALTH' | 'BOOKING' | 'DOCUMENT' | 'VENDOR';
+// ── Task Action Layer types (V4.8.3 + V2 detail/buckets) ───────────────────
+import type {
+  ApiTask,
+  ApiTaskDetail,
+  ApiTaskSummary,
+  ApiTaskStatus,
+  ApiTaskPriority,
+  ApiTaskType,
+  CompleteTaskPayload,
+  CreateTaskPayload,
+  TaskBucket,
+  TaskListFilters,
+  UpdateChecklistItemPayload,
+} from './tasks/types';
+
+export type {
+  ApiTask,
+  ApiTaskDetail,
+  ApiTaskSummary,
+  ApiTaskStatus,
+  ApiTaskPriority,
+  ApiTaskType,
+  ApiTaskSource,
+  ApiTaskChecklistItem,
+  ApiTaskComment,
+  ApiTaskAttachment,
+  ApiTaskEvent,
+  ApiTaskDetailNormalizedSections,
+  TaskListFilters,
+  CreateTaskPayload,
+  CompleteTaskPayload,
+  UpdateChecklistItemPayload,
+  TaskCompletionMode,
+  TaskBucket,
+  TaskBucketSummaryCounts,
+  TaskChecklistProgress,
+  TaskLinkedObject,
+  TaskLinkedObjectType,
+  TaskLinkedObjectActionType,
+  TaskLinkedObjectActionDescriptor,
+  TaskAvailableActions,
+  TaskActionAvailability,
+  TaskUserRef,
+  TaskDetailSummary,
+  TaskDetailReason,
+  TaskDetailNextAction,
+  TaskDetailAssignment,
+  TaskDetailTiming,
+  TaskDetailCompletion,
+  TaskDetailTechnicalMetadata,
+  NormalizedTaskTimelineEvent,
+  TaskNextActionType,
+  TaskNextActionTargetType,
+} from './tasks/types';
+
+export { TASK_BUCKETS } from './tasks/types';
 
 export type ApiServiceCaseCategory =
   | 'SERVICE'
@@ -852,140 +887,6 @@ export interface CreateSupportMessagePayload {
   content?: string;
   imageUrl?: string;
   attachments?: SupportTicketAttachmentRef[];
-}
-
-export interface ApiTaskChecklistItem {
-  id: string;
-  title: string;
-  description: string;
-  sortOrder: number;
-  isDone: boolean;
-  completedAt: string | null;
-  completedByUserId: string | null;
-}
-export interface ApiTaskComment {
-  id: string;
-  userId: string | null;
-  body: string;
-  createdAt: string;
-}
-export interface ApiTaskAttachment {
-  id: string;
-  fileUrl: string;
-  fileName: string | null;
-  mimeType: string | null;
-  size: number | null;
-  uploadedByUserId: string | null;
-  createdAt: string;
-}
-export interface ApiTaskEvent {
-  id: string;
-  type: string;
-  actorUserId: string | null;
-  oldValue: string | null;
-  newValue: string | null;
-  metadata: Record<string, unknown> | null;
-  createdAt: string;
-}
-export interface ApiTask {
-  id: string;
-  organizationId: string;
-  title: string;
-  description: string;
-  category: string;
-  type: ApiTaskType;
-  status: ApiTaskStatus;
-  priority: ApiTaskPriority;
-  source: string | null;
-  sourceType: ApiTaskSource;
-  dedupKey: string | null;
-  vehicleId: string | null;
-  bookingId: string | null;
-  customerId: string | null;
-  vendorId: string | null;
-  alertId: string | null;
-  documentId: string | null;
-  fineId: string | null;
-  invoiceId: string | null;
-  serviceCaseId: string | null;
-  assignedUserId: string | null;
-  createdByUserId?: string | null;
-  updatedByUserId?: string | null;
-  createdByName?: string | null;
-  updatedByName?: string | null;
-  assignedUserName?: string | null;
-  estimatedCostCents: number | null;
-  actualCostCents: number | null;
-  resolutionNote: string | null;
-  blocksVehicleAvailability: boolean;
-  metadata: Record<string, unknown> | null;
-  isOverdue: boolean;
-  dueDate: string | null;
-  startedAt: string | null;
-  completedAt: string | null;
-  cancelledAt: string | null;
-  createdAt: string;
-  updatedAt: string;
-  checklist?: ApiTaskChecklistItem[];
-  comments?: ApiTaskComment[];
-  attachments?: ApiTaskAttachment[];
-  timeline?: ApiTaskEvent[];
-}
-export interface ApiTaskSummary {
-  open: number;
-  active: number;
-  inProgress: number;
-  waiting: number;
-  done: number;
-  cancelled: number;
-  dueToday: number;
-  overdue: number;
-  critical: number;
-  assignedToMe: number;
-  byStatus: Record<string, number>;
-  byPriority: Record<string, number>;
-}
-export interface TaskListFilters {
-  status?: ApiTaskStatus;
-  priority?: ApiTaskPriority;
-  type?: ApiTaskType;
-  source?: ApiTaskSource;
-  assignedUserId?: string;
-  vehicleId?: string;
-  bookingId?: string;
-  customerId?: string;
-  vendorId?: string;
-  alertId?: string;
-  documentId?: string;
-  serviceCaseId?: string;
-  dueFrom?: string;
-  dueTo?: string;
-  overdue?: boolean;
-  search?: string;
-}
-export interface CreateTaskPayload {
-  title: string;
-  description?: string;
-  type: ApiTaskType;
-  source?: ApiTaskSource;
-  priority?: ApiTaskPriority;
-  category?: string;
-  dueDate?: string;
-  assignedUserId?: string;
-  vehicleId?: string;
-  bookingId?: string;
-  customerId?: string;
-  vendorId?: string;
-  alertId?: string;
-  documentId?: string;
-  serviceCaseId?: string;
-  stationId?: string;
-  estimatedCostCents?: number;
-  blocksVehicleAvailability?: boolean;
-  metadata?: Record<string, unknown>;
-  /** String source field on OrgTask (e.g. HEALTH_UI, INSIGHT_HEALTH). */
-  sourceKey?: string;
-  checklist?: Array<{ title: string; description?: string; sortOrder?: number }>;
 }
 
 // ── Authenticated binary download (private documents) ───────────────────────
@@ -4105,33 +4006,69 @@ export const api = {
       const qs = q.toString();
       return get<ApiTask[]>(`/organizations/${orgId}/tasks${qs ? `?${qs}` : ''}`);
     },
+    listByBucket: (
+      orgId: string,
+      bucket: TaskBucket,
+      filters?: Omit<TaskListFilters, 'bucket'>,
+    ) => {
+      const q = new URLSearchParams();
+      const merged: TaskListFilters = { ...filters, bucket };
+      for (const [k, v] of Object.entries(merged)) {
+        if (v === undefined || v === null || v === '') continue;
+        q.set(k, String(v));
+      }
+      const qs = q.toString();
+      return get<ApiTask[]>(`/organizations/${orgId}/tasks${qs ? `?${qs}` : ''}`);
+    },
     summary: (orgId: string) => get<ApiTaskSummary>(`/organizations/${orgId}/tasks/summary`),
-    get: (orgId: string, id: string) => get<ApiTask>(`/organizations/${orgId}/tasks/${id}`),
-    create: (orgId: string, data: CreateTaskPayload) => post<ApiTask>(`/organizations/${orgId}/tasks`, data),
+    get: (orgId: string, id: string) => get<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}`),
+    create: (orgId: string, data: CreateTaskPayload) =>
+      post<ApiTaskDetail>(`/organizations/${orgId}/tasks`, data),
     update: (
       orgId: string,
       id: string,
-      data: Partial<Pick<CreateTaskPayload, 'title' | 'description' | 'category' | 'priority' | 'dueDate' | 'assignedUserId' | 'estimatedCostCents' | 'blocksVehicleAvailability'>> & { actualCostCents?: number },
-    ) => patch<ApiTask>(`/organizations/${orgId}/tasks/${id}`, data),
+      data: Partial<
+        Pick<
+          CreateTaskPayload,
+          | 'title'
+          | 'description'
+          | 'category'
+          | 'priority'
+          | 'dueDate'
+          | 'assignedUserId'
+          | 'estimatedCostCents'
+          | 'blocksVehicleAvailability'
+        >
+      > & { actualCostCents?: number },
+    ) => patch<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}`, data),
     assign: (orgId: string, id: string, assignedUserId: string | null) =>
-      patch<ApiTask>(`/organizations/${orgId}/tasks/${id}/assign`, { assignedUserId }),
-    start: (orgId: string, id: string) => patch<ApiTask>(`/organizations/${orgId}/tasks/${id}/start`, {}),
-    waiting: (orgId: string, id: string) => patch<ApiTask>(`/organizations/${orgId}/tasks/${id}/waiting`, {}),
-    complete: (orgId: string, id: string, data?: { resolutionNote?: string; actualCostCents?: number }) =>
-      patch<ApiTask>(`/organizations/${orgId}/tasks/${id}/complete`, data ?? {}),
-    cancel: (orgId: string, id: string) => patch<ApiTask>(`/organizations/${orgId}/tasks/${id}/cancel`, {}),
+      patch<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}/assign`, { assignedUserId }),
+    start: (orgId: string, id: string) =>
+      patch<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}/start`, {}),
+    waiting: (orgId: string, id: string) =>
+      patch<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}/waiting`, {}),
+    complete: (orgId: string, id: string, data?: CompleteTaskPayload) =>
+      patch<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}/complete`, data ?? {}),
+    cancel: (orgId: string, id: string) =>
+      patch<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}/cancel`, {}),
     addComment: (orgId: string, id: string, body: string) =>
-      post<ApiTask>(`/organizations/${orgId}/tasks/${id}/comments`, { body }),
-    addChecklistItem: (orgId: string, id: string, item: { title: string; description?: string; sortOrder?: number }) =>
-      post<ApiTask>(`/organizations/${orgId}/tasks/${id}/checklist`, item),
+      post<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}/comments`, { body }),
+    addChecklistItem: (
+      orgId: string,
+      id: string,
+      item: { title: string; description?: string; sortOrder?: number; isRequired?: boolean },
+    ) => post<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}/checklist`, item),
     updateChecklistItem: (
       orgId: string,
       id: string,
       itemId: string,
-      patchData: { title?: string; description?: string; sortOrder?: number; isDone?: boolean },
-    ) => patch<ApiTask>(`/organizations/${orgId}/tasks/${id}/checklist/${itemId}`, patchData),
-    addAttachment: (orgId: string, id: string, data: { fileUrl: string; fileName?: string; mimeType?: string; size?: number }) =>
-      post<ApiTask>(`/organizations/${orgId}/tasks/${id}/attachments`, data),
+      patchData: UpdateChecklistItemPayload,
+    ) => patch<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}/checklist/${itemId}`, patchData),
+    addAttachment: (
+      orgId: string,
+      id: string,
+      data: { fileUrl: string; fileName?: string; mimeType?: string; size?: number },
+    ) => post<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}/attachments`, data),
     forVehicle: (orgId: string, vehicleId: string) => get<ApiTask[]>(`/organizations/${orgId}/vehicles/${vehicleId}/tasks`),
     forBooking: (orgId: string, bookingId: string) => get<ApiTask[]>(`/organizations/${orgId}/bookings/${bookingId}/tasks`),
     forVendor: (orgId: string, vendorId: string) => get<ApiTask[]>(`/organizations/${orgId}/vendors/${vendorId}/tasks`),

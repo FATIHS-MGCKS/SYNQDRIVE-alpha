@@ -1,28 +1,44 @@
 import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
-import { api, type ApiTask } from '../../lib/api';
+import { api, type ApiTaskDetail, type CompleteTaskPayload } from '../../lib/api';
+import { invalidateTaskQueries } from '../../lib/tasks/invalidate';
 import { useRentalOrg } from '../../rental/RentalContext';
 import { useOperatorData } from '../context/OperatorDataContext';
 import { dispatchOperatorTaskUpdated } from './operatorTask.utils';
 
-export function useOperatorTaskActions(onTaskChanged?: (task: ApiTask) => void) {
+export function useOperatorTaskActions(onTaskChanged?: (task: ApiTaskDetail) => void) {
   const { orgId } = useRentalOrg();
   const { reloadTasks } = useOperatorData();
   const [mutating, setMutating] = useState(false);
 
   const afterMutation = useCallback(
-    async (task: ApiTask, message: string) => {
+    async (task: ApiTaskDetail, message: string) => {
       toast.success(message);
       onTaskChanged?.(task);
       dispatchOperatorTaskUpdated(task.vehicleId);
+      if (orgId) {
+        invalidateTaskQueries({
+          orgId,
+          taskId: task.id,
+          vehicleId: task.vehicleId,
+          bookingId: task.bookingId,
+          buckets: (() => {
+            const bucket = task.bucket ?? task.timing?.bucket;
+            return bucket ? [bucket] : undefined;
+          })(),
+          lists: true,
+          summary: true,
+          detail: true,
+        });
+      }
       await reloadTasks();
       return task;
     },
-    [onTaskChanged, reloadTasks],
+    [onTaskChanged, orgId, reloadTasks],
   );
 
   const run = useCallback(
-    async (fn: () => Promise<ApiTask>, message: string): Promise<ApiTask | null> => {
+    async (fn: () => Promise<ApiTaskDetail>, message: string): Promise<ApiTaskDetail | null> => {
       if (!orgId || mutating) return null;
       setMutating(true);
       try {
@@ -50,11 +66,8 @@ export function useOperatorTaskActions(onTaskChanged?: (task: ApiTask) => void) 
   );
 
   const complete = useCallback(
-    (taskId: string, resolutionNote?: string) =>
-      run(
-        () => api.tasks.complete(orgId!, taskId, resolutionNote ? { resolutionNote } : undefined),
-        'Aufgabe erledigt',
-      ),
+    (taskId: string, payload?: CompleteTaskPayload) =>
+      run(() => api.tasks.complete(orgId!, taskId, payload), 'Aufgabe erledigt'),
     [orgId, run],
   );
 
