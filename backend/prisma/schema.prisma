@@ -541,6 +541,11 @@ enum BillingQuantityEventType {
   VEHICLE_DISCONNECTED
   VEHICLE_EXCLUDED
   VEHICLE_INCLUDED
+  VEHICLE_ORG_TRANSFERRED
+  SUBSCRIPTION_ACTIVATED
+  SUBSCRIPTION_PAUSED
+  BASE_PLAN_CHANGED
+  ORG_BILLING_DEACTIVATED
   MANUAL_ADJUSTMENT
   SNAPSHOT_LOCK
   SUBSCRIPTION_SYNC
@@ -1694,6 +1699,7 @@ model Vehicle {
   rentalRequirementOverride  VehicleRentalRequirementOverride?
   whatsappConversations      WhatsAppConversation[]
   billingBillableVehicleAssignments BillingBillableVehicleAssignment[]
+  billingQuantityEvents             BillingQuantityEvent[]
 
   @@unique([vin, organizationId])
   @@index([organizationId])
@@ -2771,6 +2777,7 @@ model BillingSubscription {
   invoices      BillingInvoice[]
   items         BillingSubscriptionItem[]
   discounts     BillingDiscount[]
+  quantityEvents BillingQuantityEvent[]
 
   @@unique([stripeSubscriptionId, stripeMode])
   @@unique([stripeCustomerId, stripeMode])
@@ -2985,7 +2992,9 @@ model BillingBillableVehicleAssignment {
 model BillingQuantityEvent {
   id                 String                   @id @default(uuid())
   organizationId     String                   @map("organization_id")
+  subscriptionId     String?                  @map("subscription_id")
   subscriptionItemId String                   @map("subscription_item_id")
+  vehicleId          String?                  @map("vehicle_id")
   eventType          BillingQuantityEventType @map("event_type")
   delta              Int
   quantityBefore     Int                      @map("quantity_before")
@@ -2998,11 +3007,15 @@ model BillingQuantityEvent {
   createdAt          DateTime                 @default(now()) @map("created_at")
 
   organization     Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscription     BillingSubscription?  @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
   subscriptionItem BillingSubscriptionItem @relation(fields: [subscriptionItemId], references: [id], onDelete: Cascade)
+  vehicle          Vehicle?              @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   actorUser        User?                 @relation("BillingQuantityEventsActed", fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, effectiveAt])
   @@index([subscriptionItemId, effectiveAt])
+  @@index([subscriptionId, effectiveAt])
+  @@index([vehicleId, effectiveAt])
   @@index([eventType, effectiveAt])
   @@map("billing_quantity_events")
 }

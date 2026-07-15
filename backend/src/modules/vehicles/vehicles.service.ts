@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Inject, Logger, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, Logger, forwardRef, Optional } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import {
   Vehicle,
@@ -50,6 +50,7 @@ import { DataAuthorizationEnforcementService } from '@modules/data-authorization
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { buildFleetDeviceConnectionFields } from '@modules/dimo/device-connection-read-model';
 import { TasksService } from '@modules/tasks/tasks.service';
+import { BillingQuantityVehicleIntegration } from '@modules/billing/billing-quantity-vehicle.integration';
 
 const DIMO_FUEL_TYPE_MAP: Record<string, FuelType> = {
   GASOLINE: FuelType.GASOLINE,
@@ -246,6 +247,8 @@ export class VehiclesService {
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
     @Inject(dimoConfig.KEY) private readonly dimoConf: ConfigType<typeof dimoConfig>,
     private readonly tasksService: TasksService,
+    @Optional()
+    private readonly billingQuantity?: BillingQuantityVehicleIntegration,
   ) {}
 
   // Short-lived cache for the fleet-map endpoint. The UI polls every few
@@ -1074,13 +1077,30 @@ export class VehiclesService {
     data: Omit<Prisma.VehicleCreateInput, 'organization'>,
     createdByUserId?: string,
   ): Promise<Vehicle> {
-    return this.prisma.vehicle.create({
+    const vehicle = await this.prisma.vehicle.create({
       data: {
         ...data,
         organization: { connect: { id: organizationId } },
         createdByUserId: createdByUserId ?? null,
       },
     });
+
+    void this.billingQuantity
+      ?.onVehicleProvisioned({
+        organizationId,
+        vehicleId: vehicle.id,
+        actorUserId: createdByUserId ?? null,
+      })
+      .catch((error) => {
+        this.logger.warn({
+          msg: 'billing.quantity.vehicle_provision_hook_failed',
+          organizationId,
+          vehicleId: vehicle.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+
+    return vehicle;
   }
 
   async findByOrganization(
@@ -1681,6 +1701,20 @@ export class VehiclesService {
       },
     });
 
+    await this.billingQuantity
+      ?.onVehicleRemoved({
+        organizationId: vehicle.organizationId,
+        vehicleId: vehicle.id,
+      })
+      .catch((error) => {
+        this.logger.warn({
+          msg: 'billing.quantity.vehicle_remove_hook_failed',
+          organizationId: vehicle.organizationId,
+          vehicleId: vehicle.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+
     await this.prisma.vehicle.delete({ where: { id: vehicleId } });
 
     this.logger.log(
@@ -1974,6 +2008,21 @@ export class VehiclesService {
     ]);
 
     void this.dataAuthorizations.ensureDimoTelemetryAuthorization(orgId);
+
+    void this.billingQuantity
+      ?.onVehicleProvisioned({
+        organizationId: orgId,
+        vehicleId: vehicle.id,
+        actorUserId: createdByUserId ?? null,
+      })
+      .catch((error) => {
+        this.logger.warn({
+          msg: 'billing.quantity.vehicle_provision_hook_failed',
+          organizationId: orgId,
+          vehicleId: vehicle.id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
 
     return vehicle;
   }

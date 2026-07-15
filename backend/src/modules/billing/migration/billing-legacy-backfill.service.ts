@@ -510,6 +510,7 @@ export class BillingLegacyBackfillService {
           await this.prisma.billingQuantityEvent.create({
             data: {
               organizationId,
+              subscriptionId: subscription.id,
               subscriptionItemId: existingBaseItem.id,
               eventType: 'SUBSCRIPTION_SYNC',
               delta: 0,
@@ -600,6 +601,7 @@ export class BillingLegacyBackfillService {
       await this.prisma.billingQuantityEvent.create({
         data: {
           organizationId,
+          subscriptionId: subscription.id,
           subscriptionItemId: item.id,
           eventType: 'SUBSCRIPTION_SYNC',
           delta: quantity,

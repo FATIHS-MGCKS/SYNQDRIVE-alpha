@@ -190,10 +190,14 @@ describe('Billing resolver service boundaries', () => {
   });
 
   it('QuantityResolver delegates to BillableVehiclesService only', async () => {
-    const service = new QuantityResolverService(billableVehicles as never);
+    const quantityLedger = { reconstructQuantity: jest.fn() };
+    const service = new QuantityResolverService(billableVehicles as never, quantityLedger as never);
     const quantity = await service.resolveQuantity('org-1');
 
-    expect(billableVehicles.getBillableConnectedVehiclesForOrganization).toHaveBeenCalledWith('org-1');
+    expect(billableVehicles.getBillableConnectedVehiclesForOrganization).toHaveBeenCalledWith(
+      'org-1',
+      expect.any(Date),
+    );
     expect(quantity.billableVehicleCount).toBe(2);
     assertNoStripeTypes(quantity);
   });

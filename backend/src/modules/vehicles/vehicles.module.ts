@@ -9,6 +9,7 @@ import { DimoModule } from '../dimo/dimo.module';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 import { DataAuthorizationsModule } from '../data-authorizations/data-authorizations.module';
 import { TasksModule } from '../tasks/tasks.module';
+import { BillingModule } from '../billing/billing.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { TasksModule } from '../tasks/tasks.module';
     forwardRef(() => VehicleIntelligenceModule),
     DataAuthorizationsModule,
     TasksModule,
+    forwardRef(() => BillingModule),
   ],
   controllers: [VehiclesController],
   providers: [

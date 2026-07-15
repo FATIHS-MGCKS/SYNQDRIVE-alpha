@@ -44,6 +44,8 @@ describe('Billing usage ledger & outbox schema (Prompt 08)', () => {
     expect(schema).toMatch(/model BillingQuantityEvent[\s\S]*?quantityBefore/);
     expect(schema).toMatch(/model BillingQuantityEvent[\s\S]*?quantityAfter/);
     expect(schema).toMatch(/model BillingQuantityEvent[\s\S]*?effectiveAt/);
+    expect(schema).toMatch(/model BillingQuantityEvent[\s\S]*?subscriptionId/);
+    expect(schema).toMatch(/model BillingQuantityEvent[\s\S]*?vehicleId/);
     expect(schema).toContain('@@map("billing_quantity_events")');
   });
 
