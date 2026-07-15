@@ -281,6 +281,9 @@ export class VehiclesService {
           kmDriven: true,
           pickupStationId: true,
           returnStationId: true,
+          actualPickupStationId: true,
+          actualReturnStationId: true,
+          completedAt: true,
           customer: {
             select: { firstName: true, lastName: true, company: true },
           },
@@ -314,32 +317,106 @@ export class VehiclesService {
       for (const s of stations) stationMap.set(s.id, s.name);
     }
 
-    const bookingRows: VehicleBookingQueryRow[] = rows.map((r) => ({
-      id: r.id,
-      vehicleId: r.vehicleId,
-      organizationId: r.organizationId,
-      status: r.status,
-      startDate: r.startDate,
-      endDate: r.endDate,
-      kmIncluded: r.kmIncluded,
-      kmDriven: r.kmDriven,
-      pickupStationId: r.pickupStationId,
-      returnStationId: r.returnStationId,
-      customerLabel: formatBookingCustomerLabel(r.customer),
-      pickupStationName: r.pickupStationId
-        ? stationMap.get(r.pickupStationId) ?? null
-        : null,
-      returnStationName: r.returnStationId
-        ? stationMap.get(r.returnStationId) ?? null
-        : null,
-    }));
+    const bookingIds = rows.map((r) => r.id);
+    let handoverQueryFailed = false;
+    const handoverRows =
+      bookingIds.length === 0
+        ? []
+        : await this.prisma.bookingHandoverProtocol
+            .findMany({
+              where: {
+                organizationId,
+                bookingId: { in: bookingIds },
+              },
+              select: {
+                bookingId: true,
+                kind: true,
+                performedAt: true,
+              },
+            })
+            .catch(() => {
+              handoverQueryFailed = true;
+              return [] as Array<{
+                bookingId: string;
+                kind: 'PICKUP' | 'RETURN';
+                performedAt: Date;
+              }>;
+            });
 
-    return assembleBookingContextMap({
+    const handoverByBooking = new Map<
+      string,
+      { pickupPerformedAt: Date | null; returnPerformedAt: Date | null }
+    >();
+    for (const id of bookingIds) {
+      handoverByBooking.set(id, {
+        pickupPerformedAt: null,
+        returnPerformedAt: null,
+      });
+    }
+    for (const h of handoverRows) {
+      const entry = handoverByBooking.get(h.bookingId)!;
+      if (h.kind === 'PICKUP') entry.pickupPerformedAt = h.performedAt;
+      if (h.kind === 'RETURN') entry.returnPerformedAt = h.performedAt;
+    }
+
+    const bookingRows: VehicleBookingQueryRow[] = rows.map((r) => {
+      const handoverSignals = handoverByBooking.get(r.id)!;
+      return {
+        id: r.id,
+        vehicleId: r.vehicleId,
+        organizationId: r.organizationId,
+        status: r.status,
+        startDate: r.startDate,
+        endDate: r.endDate,
+        kmIncluded: r.kmIncluded,
+        kmDriven: r.kmDriven,
+        pickupStationId: r.pickupStationId,
+        returnStationId: r.returnStationId,
+        customerLabel: formatBookingCustomerLabel(r.customer),
+        pickupStationName: r.pickupStationId
+          ? stationMap.get(r.pickupStationId) ?? null
+          : null,
+        returnStationName: r.returnStationId
+          ? stationMap.get(r.returnStationId) ?? null
+          : null,
+        handover: {
+          pickupPerformedAt: handoverSignals.pickupPerformedAt,
+          returnPerformedAt: handoverSignals.returnPerformedAt,
+          completedAt: r.completedAt,
+          actualPickupStationId: r.actualPickupStationId,
+          actualReturnStationId: r.actualReturnStationId,
+        },
+      };
+    });
+
+    const map = assembleBookingContextMap({
+      organizationId,
       vehicleIds,
       bookings: bookingRows,
       evaluationAt,
       organizationTimezone,
     });
+
+    if (handoverQueryFailed) {
+      for (const [vehicleId, state] of map.entries()) {
+        const hasActiveCandidate = bookingRows.some(
+          (b) => b.vehicleId === vehicleId && b.status === 'ACTIVE',
+        );
+        if (!hasActiveCandidate) continue;
+        const reasons = [...state.dataQualityReasons];
+        if (!reasons.includes('HANDOVER_QUERY_FAILED')) {
+          reasons.push('HANDOVER_QUERY_FAILED');
+        }
+        map.set(vehicleId, {
+          ...state,
+          activeBooking: null,
+          dataQualityState: 'DEGRADED',
+          dataQualityReasons: reasons,
+        });
+      }
+    }
+
+    return map;
   }
 
   /**

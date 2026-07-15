@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-active-rental-policy-v49477-2026-07-15',
+    version: '4.9.477',
+    title: 'V4.9.477 — Fleet Status: kanonische Active-Rental-Policy (Prompt 11/43)',
+    summary: [
+      'Neue Domain-Policy `vehicle-active-rental.policy.ts` — `ACTIVE_RENTED` nur bei ACTIVE + Pickup-Nachweis (PICKUP-Protokoll oder `actualPickupStationId`) + offenem Return + Tenant/Vehicle-Scope + max. eine ACTIVE-Buchung.',
+      'Inkonsistenzen fail-closed: ACTIVE ohne Pickup, Pickup ohne ACTIVE, Return bei ACTIVE, mehrere ACTIVE, Tenant-Mismatch → `dataQualityState: DEGRADED`, kein stiller Available-Fallback.',
+      '`buildBookingContextMap` lädt Handover-Protokolle (PICKUP/RETURN `performedAt`) + `completedAt`/`actualPickupStationId`/`actualReturnStationId` batchweise.',
+      'Assembler delegiert `activeBooking` an `resolveActiveRentalForVehicle`; Engine mappt neue Reason-Codes auf `HANDOVER_STATE_INCONSISTENT` → UNKNOWN.',
+    ],
+    reason:
+      'Prompt 11/43: Ermittlung aktiver Vermietung härten — Booking.status=ACTIVE allein reicht nicht; Handover-Wahrheit aus Pickup-/Return-Protokollen und kanonischen Station-Feldern.',
+    previousBehavior:
+      'Jede ACTIVE-Buchung wurde blind als `activeBooking` gesetzt; mehrere ACTIVE → früheste behalten; keine Pickup-/Return-Konsistenzprüfung.',
+    details:
+      'Tests: `vehicle-active-rental.policy.spec.ts` (6 Fälle), erweitert `vehicle-booking-context.assembler.spec.ts`. Keine Auto-Reparatur, kein Vehicle.status-Write, Pickup-/Return-Handover unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicles',
+    createdAt: '2026-07-15T23:30:00.000Z',
+  },
+  {
     id: 'vehicle-booking-context-assembler-v49476-2026-07-15',
     version: '4.9.476',
     title: 'V4.9.476 — Fleet Status: Booking-Context-Ermittlung V2 (Prompt 10/43)',

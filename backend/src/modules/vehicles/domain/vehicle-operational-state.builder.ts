@@ -192,6 +192,9 @@ const FAIL_CLOSED_QUALITY_CODES: DataQualityReasonCode[] = [
   'HANDOVER_QUERY_FAILED',
   'MULTIPLE_ACTIVE_BOOKINGS',
   'ACTIVE_WITHOUT_PICKUP_PROTOCOL',
+  'PICKUP_WITHOUT_ACTIVE_BOOKING',
+  'RETURN_COMPLETED_WHILE_ACTIVE',
+  'BOOKING_TENANT_SCOPE_VIOLATION',
 ];
 
 function buildGhostStateWarning(
@@ -285,6 +288,13 @@ function resolvePriorityOneReason(
   for (const code of bookingState.dataQualityReasons) {
     if (FAIL_CLOSED_QUALITY_CODES.includes(code)) {
       if (code === 'ACTIVE_WITHOUT_PICKUP_PROTOCOL') {
+        return 'HANDOVER_STATE_INCONSISTENT';
+      }
+      if (
+        code === 'PICKUP_WITHOUT_ACTIVE_BOOKING' ||
+        code === 'RETURN_COMPLETED_WHILE_ACTIVE' ||
+        code === 'BOOKING_TENANT_SCOPE_VIOLATION'
+      ) {
         return 'HANDOVER_STATE_INCONSISTENT';
       }
       if (code === 'MULTIPLE_ACTIVE_BOOKINGS') {

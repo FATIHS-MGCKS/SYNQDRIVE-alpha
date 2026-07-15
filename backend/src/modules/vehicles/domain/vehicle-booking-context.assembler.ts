@@ -7,11 +7,13 @@ import type {
 } from './vehicle-operational-state.engine.types';
 import { EMPTY_BOOKING_STATE_INPUT } from './vehicle-operational-state.engine.types';
 import { resolveReservationWindowBooking } from './vehicle-booking-context.reservation-window';
+import { resolveActiveRentalForVehicle } from './vehicle-active-rental.policy';
 import type {
   AssembleBookingContextMapParams,
   AssembleVehicleBookingContextParams,
   VehicleBookingQueryRow,
 } from './vehicle-booking-context.types';
+import { compareBookingsByPickupStable } from './vehicle-booking-context.types';
 
 /** Non-terminal statuses considered for fleet operational booking context. */
 export const OPERATIONAL_BOOKING_STATUSES: BookingStatus[] = [
@@ -20,14 +22,7 @@ export const OPERATIONAL_BOOKING_STATUSES: BookingStatus[] = [
   'ACTIVE',
 ];
 
-export function compareBookingsByPickupStable(
-  a: Pick<VehicleBookingQueryRow, 'startDate' | 'id'>,
-  b: Pick<VehicleBookingQueryRow, 'startDate' | 'id'>,
-): number {
-  const timeDiff = a.startDate.getTime() - b.startDate.getTime();
-  if (timeDiff !== 0) return timeDiff;
-  return a.id.localeCompare(b.id);
-}
+export { compareBookingsByPickupStable } from './vehicle-booking-context.types';
 
 function toDomainBookingRef(
   row: VehicleBookingQueryRow,
@@ -35,11 +30,15 @@ function toDomainBookingRef(
   evaluationAt: Date,
 ): DomainBookingRef {
   const isActivePhase = phase === 'active_rental';
+  const pickupInstant =
+    isActivePhase && row.handover.pickupPerformedAt
+      ? row.handover.pickupPerformedAt
+      : row.startDate;
   return {
     id: row.id,
     bookingNumber: '',
     status: row.status,
-    pickupAt: row.startDate.toISOString(),
+    pickupAt: pickupInstant.toISOString(),
     returnAt: row.endDate.toISOString(),
     customerLabel: row.customerLabel,
     vehicleId: row.vehicleId,
@@ -60,25 +59,25 @@ function toDomainBookingRef(
 export function assembleVehicleBookingContext(
   params: AssembleVehicleBookingContextParams,
 ): VehicleStateEngineBookingStateInput {
-  const { vehicleId, bookings, evaluationAt, organizationTimezone } = params;
+  const { vehicleId, organizationId, bookings, evaluationAt, organizationTimezone } =
+    params;
 
   const vehicleBookings = bookings
     .filter((b) => b.vehicleId === vehicleId)
     .filter((b) => OPERATIONAL_BOOKING_STATUSES.includes(b.status));
 
-  const dataQualityReasons: DataQualityReasonCode[] = [];
+  const activeRental = resolveActiveRentalForVehicle({
+    vehicleId,
+    organizationId,
+    bookings: vehicleBookings,
+  });
 
-  const activeCandidates = vehicleBookings
-    .filter((b) => b.status === 'ACTIVE')
-    .sort(compareBookingsByPickupStable);
+  const dataQualityReasons: DataQualityReasonCode[] = [
+    ...activeRental.dataQualityReasons,
+  ];
 
-  if (activeCandidates.length > 1) {
-    dataQualityReasons.push('MULTIPLE_ACTIVE_BOOKINGS');
-  }
-
-  const activeRow = activeCandidates[0] ?? null;
-  const activeBooking = activeRow
-    ? toDomainBookingRef(activeRow, 'active_rental', evaluationAt)
+  const activeBooking = activeRental.activeRow
+    ? toDomainBookingRef(activeRental.activeRow, 'active_rental', evaluationAt)
     : null;
   const activeId = activeBooking?.id ?? null;
 
@@ -116,7 +115,8 @@ export function assembleVehicleBookingContext(
     reservationWindowBooking,
     nextBooking,
     futureBookingCount,
-    dataQualityState: 'RELIABLE',
+    dataQualityState:
+      dataQualityReasons.length > 0 ? 'DEGRADED' : 'RELIABLE',
     dataQualityReasons,
   };
 }
@@ -124,7 +124,8 @@ export function assembleVehicleBookingContext(
 export function assembleBookingContextMap(
   params: AssembleBookingContextMapParams,
 ): Map<string, VehicleStateEngineBookingStateInput> {
-  const { vehicleIds, bookings, evaluationAt, organizationTimezone } = params;
+  const { organizationId, vehicleIds, bookings, evaluationAt, organizationTimezone } =
+    params;
   const map = new Map<string, VehicleStateEngineBookingStateInput>();
 
   const bookingsByVehicle = new Map<string, VehicleBookingQueryRow[]>();
@@ -141,6 +142,7 @@ export function assembleBookingContextMap(
       vehicleId,
       assembleVehicleBookingContext({
         vehicleId,
+        organizationId,
         bookings: vehicleBookings,
         evaluationAt,
         organizationTimezone,

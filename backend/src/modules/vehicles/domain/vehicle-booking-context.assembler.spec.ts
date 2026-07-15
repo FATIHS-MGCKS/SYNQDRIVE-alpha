@@ -4,7 +4,10 @@ import {
   assembleVehicleBookingContext,
   compareBookingsByPickupStable,
 } from './vehicle-booking-context.assembler';
-import type { VehicleBookingQueryRow } from './vehicle-booking-context.types';
+import {
+  EMPTY_HANDOVER_SIGNALS,
+  type VehicleBookingQueryRow,
+} from './vehicle-booking-context.types';
 
 const EVALUATION_AT = new Date('2026-07-15T12:00:00.000Z');
 const TIMEZONE = 'Europe/Berlin';
@@ -31,8 +34,27 @@ function row(
     customerLabel: 'Test Customer',
     pickupStationName: null,
     returnStationName: null,
+    handover: { ...EMPTY_HANDOVER_SIGNALS, ...overrides.handover },
     ...overrides,
   };
+}
+
+function activeRow(
+  overrides: Partial<VehicleBookingQueryRow> & {
+    id: string;
+    startDate: Date;
+    endDate: Date;
+  },
+): VehicleBookingQueryRow {
+  return row({
+    status: 'ACTIVE',
+    handover: {
+      ...EMPTY_HANDOVER_SIGNALS,
+      pickupPerformedAt: overrides.startDate,
+      ...overrides.handover,
+    },
+    ...overrides,
+  });
 }
 
 function assembleForVehicle(
@@ -41,6 +63,7 @@ function assembleForVehicle(
 ) {
   return assembleVehicleBookingContext({
     vehicleId,
+    organizationId: ORG_A,
     bookings,
     evaluationAt: EVALUATION_AT,
     organizationTimezone: TIMEZONE,
@@ -94,9 +117,8 @@ describe('vehicle-booking-context.assembler', () => {
       {
         name: 'active booking',
         bookings: [
-          row({
+          activeRow({
             id: 'b-active',
-            status: 'ACTIVE',
             startDate: new Date('2026-07-10T08:00:00.000Z'),
             endDate: new Date('2026-07-20T18:00:00.000Z'),
             kmDriven: 120,
@@ -183,9 +205,8 @@ describe('vehicle-booking-context.assembler', () => {
       {
         name: 'active booking excludes same id from next',
         bookings: [
-          row({
+          activeRow({
             id: 'b-active',
-            status: 'ACTIVE',
             startDate: new Date('2026-07-10T08:00:00.000Z'),
             endDate: new Date('2026-07-20T18:00:00.000Z'),
           }),
@@ -249,10 +270,9 @@ describe('vehicle-booking-context.assembler', () => {
   describe('tenant / vehicle separation', () => {
     it('does not mix bookings across vehicle ids', () => {
       const bookings = [
-        row({
+        activeRow({
           id: 'b-v1',
           vehicleId: VEHICLE_A,
-          status: 'ACTIVE',
           startDate: new Date('2026-07-10T08:00:00.000Z'),
           endDate: new Date('2026-07-20T18:00:00.000Z'),
         }),
@@ -266,6 +286,7 @@ describe('vehicle-booking-context.assembler', () => {
       ];
 
       const map = assembleBookingContextMap({
+        organizationId: ORG_A,
         vehicleIds: [VEHICLE_A, VEHICLE_B],
         bookings,
         evaluationAt: EVALUATION_AT,
@@ -296,24 +317,40 @@ describe('vehicle-booking-context.assembler', () => {
   });
 
   describe('data quality signals', () => {
-    it('flags multiple ACTIVE bookings while picking earliest', () => {
+    it('flags multiple ACTIVE bookings and withholds active rental', () => {
       const state = assembleForVehicle([
-        row({
+        activeRow({
           id: 'b-active-2',
-          status: 'ACTIVE',
           startDate: new Date('2026-07-12T08:00:00.000Z'),
           endDate: new Date('2026-07-22T18:00:00.000Z'),
         }),
-        row({
+        activeRow({
           id: 'b-active-1',
+          startDate: new Date('2026-07-10T08:00:00.000Z'),
+          endDate: new Date('2026-07-20T18:00:00.000Z'),
+        }),
+      ]);
+
+      expect(state.activeBooking).toBeNull();
+      expect(state.dataQualityState).toBe('DEGRADED');
+      expect(state.dataQualityReasons).toContain('MULTIPLE_ACTIVE_BOOKINGS');
+    });
+
+    it('withholds ACTIVE without pickup evidence and marks DEGRADED', () => {
+      const state = assembleForVehicle([
+        row({
+          id: 'b-active-no-pickup',
           status: 'ACTIVE',
           startDate: new Date('2026-07-10T08:00:00.000Z'),
           endDate: new Date('2026-07-20T18:00:00.000Z'),
         }),
       ]);
 
-      expect(state.activeBooking?.id).toBe('b-active-1');
-      expect(state.dataQualityReasons).toContain('MULTIPLE_ACTIVE_BOOKINGS');
+      expect(state.activeBooking).toBeNull();
+      expect(state.dataQualityState).toBe('DEGRADED');
+      expect(state.dataQualityReasons).toContain(
+        'ACTIVE_WITHOUT_PICKUP_PROTOCOL',
+      );
     });
   });
 
