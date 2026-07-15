@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-booking-context-assembler-v49476-2026-07-15',
+    version: '4.9.476',
+    title: 'V4.9.476 — Fleet Status: Booking-Context-Ermittlung V2 (Prompt 10/43)',
+    summary: [
+      'Neue Domain-Schicht `vehicle-booking-context.assembler.ts` ersetzt unscharfe `activeBookingId`/`reservedBookingId`-Logik durch `activeBooking`, `reservationWindowBooking`, `nextBooking`, `futureBookingCount`, `dataQualityState`.',
+      '`resolveReservationWindowBooking` isoliert (Stub bis Prompt 11); zukünftige Buchungen landen in `nextBooking`.',
+      '`VehiclesService.buildBookingContextMap` lädt tenant-sicher per Batch-Query + Stations-Lookup, delegiert an Assembler.',
+      '`deriveFleetStatusContext` akzeptiert `bookingState`; Legacy-API-Felder weiter aus Engine-Projection.',
+    ],
+    reason:
+      'Prompt 10/43: klare Booking-Context-Struktur für State Engine — KS-FH-660E-Pattern (future CONFIRMED → nextBooking, nicht reserved).',
+    previousBehavior:
+      'buildBookingContextMap schrieb erste PENDING/CONFIRMED direkt in reservedBookingId → sofort Reserved in V1.',
+    details:
+      'Tests: `vehicle-booking-context.assembler.spec.ts` (aktiv, future, multi, tenant, same start). Keine Konfliktprüfungs-Änderung.',
+    affectsArchitecture: true,
+    module: 'Vehicles',
+    createdAt: '2026-07-15T23:00:00.000Z',
+  },
+  {
     id: 'vehicle-operational-state-engine-matrix-v49475-2026-07-15',
     version: '4.9.475',
     title: 'V4.9.475 — Fleet Status: tabellengetriebenes Engine-Testpaket (Prompt 9/43)',

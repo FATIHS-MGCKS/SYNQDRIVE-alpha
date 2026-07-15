@@ -84,8 +84,12 @@ These are intentionally **out of scope** for Prompt 9 (no DB, prepared inputs on
 
 ```bash
 cd backend
-npm test -- --testPathPattern="vehicle-operational-state"
+npm test -- --testPathPattern="vehicle-operational-state|vehicle-booking-context"
 npx tsc --noEmit
 ```
 
-Expected: all `vehicle-operational-state*.spec.ts` suites green, zero type errors.
+Expected: all `vehicle-operational-state*.spec.ts` and `vehicle-booking-context*.spec.ts` suites green, zero type errors.
+
+## Booking context assembly (Prompt 10)
+
+`vehicle-booking-context.assembler.ts` loads prepared rows (from `VehiclesService.buildBookingContextMap`) and outputs `VehicleStateEngineBookingStateInput` per vehicle. `resolveReservationWindowBooking` is a stub until Prompt 11 — all binding future bookings flow to `nextBooking` until window logic lands.
