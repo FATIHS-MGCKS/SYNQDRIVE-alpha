@@ -4,7 +4,7 @@ import type { ApiTask } from '../../lib/api';
 import { OperatorTodaySection } from '../components/OperatorTodaySection';
 import type { OperatorTodayFeedBucket } from '../hooks/operatorTodayFeed.utils';
 import type { OperatorTodayTaskEntry } from '../tasks/operatorTodayTasks';
-import { OperatorTaskCard } from '../tasks/OperatorTaskCard';
+import { OperatorTaskCardConnected } from '../tasks/OperatorTaskCardConnected';
 import type { FleetVehicleLookup } from '../tasks/operatorTaskDisplay.utils';
 import {
   getOperatorTodayBucketSections,
@@ -15,12 +15,10 @@ export interface OperatorTodayTaskFeedProps {
   buckets: Record<string, OperatorTodayBucketSlice | undefined>;
   canViewUnassigned: boolean;
   vehicleById: Map<string, FleetVehicleLookup>;
-  mutating: boolean;
   plannedOpen: boolean;
   onPlannedOpenChange: (open: boolean) => void;
   onOpenTask: (task: ApiTask, focusComment?: boolean) => void;
-  onStartTask: (taskId: string) => void;
-  onCompleteTask: (task: ApiTask) => void;
+  onTaskChanged?: () => void | Promise<void>;
   onReload: () => void;
   sectionExtras?: Partial<Record<OperatorTodayFeedBucket, ReactNode>>;
   renderEntry?: (entry: OperatorTodayTaskEntry) => ReactNode;
@@ -30,30 +28,25 @@ export function OperatorTodayTaskFeed({
   buckets,
   canViewUnassigned,
   vehicleById,
-  mutating,
   plannedOpen,
   onPlannedOpenChange,
   onOpenTask,
-  onStartTask,
-  onCompleteTask,
+  onTaskChanged,
   onReload,
   sectionExtras,
   renderEntry,
 }: OperatorTodayTaskFeedProps) {
   const defaultRenderEntry = useCallback(
     (entry: OperatorTodayTaskEntry) => (
-      <OperatorTaskCard
+      <OperatorTaskCardConnected
         key={entry.task.id}
         task={entry.task}
         vehicleById={vehicleById}
-        disabled={mutating}
-        onOpen={() => onOpenTask(entry.task)}
-        onStart={() => onStartTask(entry.task.id)}
-        onComplete={() => onCompleteTask(entry.task)}
-        onComment={() => onOpenTask(entry.task, true)}
+        onOpenTask={onOpenTask}
+        onTaskChanged={onTaskChanged}
       />
     ),
-    [mutating, onCompleteTask, onOpenTask, onStartTask, vehicleById],
+    [onOpenTask, onTaskChanged, vehicleById],
   );
 
   const renderTaskEntry = renderEntry ?? defaultRenderEntry;

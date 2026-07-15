@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ApiTask } from '../../lib/api';
 import { buildBucketSlice } from '../hooks/operatorTodayFeed.utils';
+import { OperatorTaskCard } from '../tasks/OperatorTaskCard';
 import { OperatorTodayTaskFeed } from '../components/OperatorTodayTaskFeed';
 
 function task(partial: Partial<ApiTask> & Pick<ApiTask, 'id' | 'title'>): ApiTask {
@@ -92,13 +93,17 @@ describe('OperatorTodayTaskFeed', () => {
         }}
         canViewUnassigned={false}
         vehicleById={new Map()}
-        mutating={false}
         plannedOpen={false}
         onPlannedOpenChange={noop}
         onOpenTask={noop}
-        onStartTask={noop}
-        onCompleteTask={noop}
         onReload={noop}
+        renderEntry={(entry) => (
+          <OperatorTaskCard
+            key={entry.task.id}
+            task={entry.task}
+            onOpen={noop}
+          />
+        )}
       />,
     );
 
@@ -127,13 +132,13 @@ describe('OperatorTodayTaskFeed', () => {
           }}
           canViewUnassigned={false}
           vehicleById={new Map()}
-          mutating={false}
           plannedOpen={true}
           onPlannedOpenChange={noop}
           onOpenTask={noop}
-          onStartTask={noop}
-          onCompleteTask={noop}
           onReload={noop}
+          renderEntry={(entry) => (
+            <OperatorTaskCard key={entry.task.id} task={entry.task} onOpen={noop} />
+          )}
         />
       </div>,
     );
@@ -158,13 +163,13 @@ describe('OperatorTodayTaskFeed', () => {
         }}
         canViewUnassigned
         vehicleById={new Map()}
-        mutating={false}
         plannedOpen={false}
         onPlannedOpenChange={noop}
         onOpenTask={noop}
-        onStartTask={noop}
-        onCompleteTask={noop}
         onReload={noop}
+        renderEntry={(entry) => (
+          <OperatorTaskCard key={entry.task.id} task={entry.task} onOpen={noop} />
+        )}
       />,
     );
 
@@ -188,13 +193,17 @@ describe('OperatorTodayTaskFeed', () => {
         }}
         canViewUnassigned={false}
         vehicleById={new Map()}
-        mutating={false}
         plannedOpen={false}
         onPlannedOpenChange={noop}
         onOpenTask={noop}
-        onStartTask={noop}
-        onCompleteTask={noop}
         onReload={noop}
+        renderEntry={(entry) => (
+          <OperatorTaskCard
+            key={entry.task.id}
+            task={entry.task}
+            onOpen={noop}
+          />
+        )}
       />,
     );
 

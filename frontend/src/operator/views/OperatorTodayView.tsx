@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { EmptyState, ErrorState, SkeletonRows } from '../../components/patterns';
 import { useFleetVehicles } from '../../rental/FleetContext';
-import { taskRequiresResolutionNote } from '../../rental/lib/task-detail.utils';
 import type { ApiTask } from '../../lib/api';
 import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
 import { useOperatorToday } from '../hooks/useOperatorToday';
@@ -24,7 +23,6 @@ import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
 import type { OperatorTodayBookingItem } from '../lib/operatorData';
 import { toHandoverBookingSeed } from '../lib/operatorData';
 import { buildFleetVehicleById } from '../tasks/operatorTaskDisplay.utils';
-import { useOperatorTaskActions } from '../tasks/useOperatorTaskActions';
 import {
   countVisibleTaskFeedEntries,
   hasAnyTaskBucketContent,
@@ -86,10 +84,6 @@ export function OperatorTodayView() {
   const [detailItem, setDetailItem] = useState<OperatorTodayBookingItem | null>(null);
   const [plannedOpen, setPlannedOpen] = useState(false);
 
-  const { mutating, start, complete } = useOperatorTaskActions(() => {
-    void reload();
-  });
-
   const vehicleById = useMemo(() => buildFleetVehicleById(fleetVehicles), [fleetVehicles]);
 
   const hasTaskBuckets = hasAnyTaskBucketContent(
@@ -130,17 +124,6 @@ export function OperatorTodayView() {
       });
     },
     [openSheet, reload],
-  );
-
-  const handleQuickComplete = useCallback(
-    async (task: ApiTask) => {
-      if (taskRequiresResolutionNote(task.type)) {
-        openTask(task);
-        return;
-      }
-      await complete(task.id);
-    },
-    [complete, openTask],
   );
 
   const startHandover = useCallback(
@@ -309,12 +292,10 @@ export function OperatorTodayView() {
                 buckets={snapshot.taskFeed.buckets}
                 canViewUnassigned={snapshot.taskFeed.canViewUnassigned}
                 vehicleById={vehicleById}
-                mutating={mutating}
                 plannedOpen={plannedOpen}
                 onPlannedOpenChange={setPlannedOpen}
                 onOpenTask={openTask}
-                onStartTask={(taskId) => void start(taskId)}
-                onCompleteTask={(task) => void handleQuickComplete(task)}
+                onTaskChanged={() => void reload()}
                 onReload={() => void reload()}
                 sectionExtras={sectionExtras}
               />

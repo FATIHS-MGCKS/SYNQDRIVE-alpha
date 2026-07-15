@@ -10,7 +10,7 @@ import { useOperatorData } from '../context/OperatorDataContext';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import { OperatorTabletFrame } from '../components/OperatorTabletFrame';
 import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
-import { OperatorTaskCard } from '../tasks/OperatorTaskCard';
+import { OperatorTaskCardConnected } from '../tasks/OperatorTaskCardConnected';
 import { OperatorTaskDetail } from '../tasks/OperatorTaskDetail';
 import { filterCanonicalOperatorTasks } from '../tasks/operatorTodayTasks';
 import {
@@ -25,8 +25,6 @@ import {
   sortOperatorTasks,
   type OperatorTaskViewFilters,
 } from '../tasks/operatorTask.utils';
-import { useOperatorTaskActions } from '../tasks/useOperatorTaskActions';
-import { taskRequiresResolutionNote } from '../../rental/lib/task-detail.utils';
 
 type FilterChip = 'today' | 'overdue' | 'vehicle' | 'booking';
 
@@ -65,10 +63,9 @@ export function OperatorTasksView() {
     }
   }, [apiFilters, orgId]);
 
-  const { mutating, start, complete } = useOperatorTaskActions(() => {
-    void reloadTasks();
-    void fetchRemoteTasks();
-  });
+  const reloadTaskLists = useCallback(async () => {
+    await Promise.all([reloadTasks(), fetchRemoteTasks()]);
+  }, [fetchRemoteTasks, reloadTasks]);
 
   useEffect(() => {
     if (!pendingTasksBookingId) return;
@@ -139,16 +136,12 @@ export function OperatorTasksView() {
     });
   };
 
-  const handleQuickComplete = useCallback(
-    async (task: ApiTask) => {
-      if (taskRequiresResolutionNote(task.type)) {
-        setSelectedTaskId(task.id);
-        setFocusComment(false);
-        return;
-      }
-      await complete(task.id);
+  const openTask = useCallback(
+    (task: ApiTask, options?: { focusComment?: boolean }) => {
+      setFocusComment(Boolean(options?.focusComment));
+      setSelectedTaskId(task.id);
     },
-    [complete],
+    [],
   );
 
   const summaryRow = taskSummary && (
@@ -294,21 +287,12 @@ export function OperatorTasksView() {
         {!tasksLoading &&
           !remoteLoading &&
           filtered.map((task) => (
-            <OperatorTaskCard
+            <OperatorTaskCardConnected
               key={task.id}
               task={task}
               vehicleById={vehicleById}
-              disabled={mutating}
-              onOpen={() => {
-                setFocusComment(false);
-                setSelectedTaskId(task.id);
-              }}
-              onStart={() => void start(task.id)}
-              onComplete={() => void handleQuickComplete(task)}
-              onComment={() => {
-                setFocusComment(true);
-                setSelectedTaskId(task.id);
-              }}
+              onOpenTask={openTask}
+              onTaskChanged={() => void reloadTaskLists()}
             />
           ))}
       </div>
