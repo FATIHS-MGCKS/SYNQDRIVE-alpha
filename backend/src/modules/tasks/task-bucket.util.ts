@@ -173,9 +173,7 @@ export function taskMatchesBucket(
 }
 
 function activatedWhere(now: Date): Prisma.OrgTaskWhereInput {
-  return {
-    OR: [{ activatesAt: null }, { activatesAt: { lte: now } }],
-  };
+  return { activatesAt: { lte: now } };
 }
 
 function activeStatusWhere(): Prisma.OrgTaskWhereInput {

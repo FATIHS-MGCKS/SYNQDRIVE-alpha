@@ -249,7 +249,7 @@ export class TaskAutomationService {
       documentId: payload.documentId ?? null,
       source: payload.source,
       dueDate: payload.dueDate ?? null,
-      activatesAt: payload.activatesAt ?? null,
+      activatesAt: payload.activatesAt ?? new Date(),
       metadata: payload.metadata ?? { generatedKey },
       checklist: payload.withChecklist
         ? checklistForType(payload.type)

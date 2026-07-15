@@ -705,12 +705,7 @@ export class TasksService {
       const activatesRange: Prisma.DateTimeFilter = {};
       if (filters.activatesFrom) activatesRange.gte = new Date(filters.activatesFrom);
       if (filters.activatesTo) activatesRange.lte = new Date(filters.activatesTo);
-      andFilters.push({
-        OR: [
-          { activatesAt: activatesRange },
-          { activatesAt: null, createdAt: activatesRange },
-        ],
-      });
+      andFilters.push({ activatesAt: activatesRange });
     }
 
     if (filters.dueFrom || filters.dueTo) {
@@ -956,11 +951,7 @@ export class TasksService {
       this.prisma.orgTask.count({
         where: {
           ...activeFilter,
-          AND: [
-            {
-              OR: [{ activatesAt: null }, { activatesAt: { lte: now } }],
-            },
-          ],
+          AND: [{ activatesAt: { lte: now } }],
           priority: 'CRITICAL',
         },
       }),
@@ -1082,7 +1073,7 @@ export class TasksService {
           serviceCaseId: input.serviceCaseId ?? undefined,
           assignedUserId: input.assignedUserId ?? undefined,
           dueDate: input.dueDate ? new Date(input.dueDate) : null,
-          activatesAt: input.activatesAt ? new Date(input.activatesAt) : null,
+          activatesAt: input.activatesAt ? new Date(input.activatesAt) : new Date(),
           estimatedCostCents: input.estimatedCostCents ?? undefined,
           estimatedDurationMinutes: input.estimatedDurationMinutes ?? undefined,
           blocksVehicleAvailability: input.blocksVehicleAvailability ?? false,
@@ -1804,7 +1795,7 @@ export class TasksService {
           invoiceId: payload.invoiceId ?? existing!.invoiceId,
           dueDate: payload.dueDate !== undefined ? payload.dueDate : existing!.dueDate,
           activatesAt:
-            payload.activatesAt !== undefined ? payload.activatesAt : existing!.activatesAt,
+            payload.activatesAt != null ? payload.activatesAt : existing!.activatesAt,
           source: payload.source,
           metadata: payload.metadata,
           blocksVehicleAvailability: payload.blocksVehicleAvailability ?? existing!.blocksVehicleAvailability,
@@ -1841,7 +1832,7 @@ export class TasksService {
         fineId: payload.fineId ?? undefined,
         invoiceId: payload.invoiceId ?? undefined,
         dueDate: payload.dueDate ?? null,
-        activatesAt: payload.activatesAt ?? null,
+        activatesAt: payload.activatesAt ?? new Date(),
         source: payload.source,
         dedupKey,
         metadata: payload.metadata,
