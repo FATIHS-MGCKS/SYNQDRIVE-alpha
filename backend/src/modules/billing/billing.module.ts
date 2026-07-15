@@ -29,6 +29,7 @@ import { BillingQuantityService } from './billing-quantity.service';
 import { BillingQuantityVehicleIntegration } from './billing-quantity-vehicle.integration';
 import { BillingPeriodResolverService } from './billing-period-resolver.service';
 import { UsageSnapshotService } from './usage-snapshot.service';
+import { SubscriptionLifecycleService } from './subscription-lifecycle.service';
 
 @Module({
   controllers: [BillingController, StripeWebhookController],
@@ -59,6 +60,7 @@ import { UsageSnapshotService } from './usage-snapshot.service';
     BillingQuantityVehicleIntegration,
     BillingPeriodResolverService,
     UsageSnapshotService,
+    SubscriptionLifecycleService,
   ],
   exports: [
     BillingService,
@@ -87,6 +89,7 @@ import { UsageSnapshotService } from './usage-snapshot.service';
     BillingQuantityVehicleIntegration,
     BillingPeriodResolverService,
     UsageSnapshotService,
+    SubscriptionLifecycleService,
   ],
 })
 export class BillingModule {}

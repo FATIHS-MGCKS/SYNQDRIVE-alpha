@@ -55,6 +55,22 @@ export class BillingEventPublisher {
     });
   }
 
+  async publishSubscriptionStatusChanged(
+    organizationId: string,
+    payload: Record<string, unknown>,
+    correlationId?: string,
+    actorUserId?: string | null,
+  ): Promise<void> {
+    await this.publish({
+      type: BillingDomainEventType.SUBSCRIPTION_STATUS_CHANGED,
+      organizationId,
+      occurredAt: new Date(),
+      payload,
+      correlationId,
+      actorUserId,
+    });
+  }
+
   async publishInvoiceMirrored(
     organizationId: string,
     payload: Record<string, unknown>,
