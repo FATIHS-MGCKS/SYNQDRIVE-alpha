@@ -3735,6 +3735,33 @@ export const api = {
       return get<DataAuthorizationAuditEntry[]>(`/organizations/${orgId}/data-authorizations/audit-log${q}`);
     },
   },
+  taskAutomation: {
+    listRules: (orgId: string) =>
+      get<import('../rental/components/workflow-automation/task-automation.types').TaskAutomationRulesOverviewDto>(
+        `/organizations/${orgId}/task-automation/rules`,
+      ),
+    getRule: (orgId: string, ruleId: string) =>
+      get<import('../rental/components/workflow-automation/task-automation.types').TaskAutomationRuleDto>(
+        `/organizations/${orgId}/task-automation/rules/${encodeURIComponent(ruleId)}`,
+      ),
+    upsertOverride: (
+      orgId: string,
+      ruleId: string,
+      data: import('../rental/components/workflow-automation/task-automation.types').TaskAutomationOverridePayload,
+    ) =>
+      patch<import('../rental/components/workflow-automation/task-automation.types').TaskAutomationRuleDto>(
+        `/organizations/${orgId}/task-automation/rules/${encodeURIComponent(ruleId)}/override`,
+        data,
+      ),
+    resetOverride: (orgId: string, ruleId: string, expectedVersion?: number) =>
+      request<import('../rental/components/workflow-automation/task-automation.types').TaskAutomationRuleDto>(
+        `/organizations/${orgId}/task-automation/rules/${encodeURIComponent(ruleId)}/override`,
+        {
+          method: 'DELETE',
+          body: JSON.stringify(expectedVersion != null ? { expectedVersion } : {}),
+        },
+      ),
+  },
   workflows: {
     list: (orgId: string, params?: { status?: string; category?: string }) => {
       const q = new URLSearchParams();

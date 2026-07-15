@@ -35,6 +35,7 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
   const { t } = useLanguage();
   const { hasPermission } = useRentalOrg();
   const canDataAnalyse = hasPermission('data-analyse', 'read');
+  const canWorkflowAutomation = hasPermission('workflow-automation', 'read');
   const isFleetActive =
     currentView === 'fleet' ||
     currentView === 'fleet-condition-detail' ||
@@ -169,13 +170,15 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
 
       {/* AUTOMATION */}
       <div className="mt-5 mb-1">
-        <NavSectionHeader section="automation" label={t('nav.automation')} badge={t('nav.comingSoon')} />
+        <NavSectionHeader section="automation" label={t('nav.automation')} />
       </div>
       {expandedSections.includes('automation') && (
         <nav className="space-y-0.5 mb-1 animate-fade-up">
+          {canWorkflowAutomation && (
           <button onClick={() => handleViewChange('workflow-automation')} className={subNavBtnClass(currentView === 'workflow-automation')}>
             <Zap className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.workflowAutomation')}</span>
           </button>
+          )}
           <button onClick={() => handleViewChange('ai-voice-assistant')} className={subNavBtnClass(currentView === 'ai-voice-assistant')}>
             <MessageSquare className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.aiVoiceAssistant')}</span>
           </button>

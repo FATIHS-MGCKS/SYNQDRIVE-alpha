@@ -161,7 +161,7 @@ function readPersistedSettingsView(): boolean {
 }
 
 function RentalAppContent() {
-  const { orgId } = useRentalOrg();
+  const { orgId, hasPermission } = useRentalOrg();
   const { fleetVehicles, loading: fleetLoading, refresh: refreshFleet } = useFleetVehicles();
 
   useEffect(() => {
@@ -1041,7 +1041,11 @@ function RentalAppContent() {
             onUnreadCountChange={setSupportUnreadCount}
           />
         ) : currentView === 'workflow-automation' ? (
-          <WorkflowAutomationView isDarkMode={isDarkMode} />
+          <WorkflowAutomationView
+            isDarkMode={isDarkMode}
+            canRead={hasPermission('workflow-automation', 'read')}
+            canWrite={hasPermission('workflow-automation', 'write')}
+          />
         ) : currentView === 'whatsapp-business' ? (
           <WhatsAppBusinessView isDarkMode={isDarkMode} />
         ) : currentView === 'parts-accessories' ? (

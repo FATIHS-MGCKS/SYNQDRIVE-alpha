@@ -5,6 +5,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { api } from '../../lib/api';
 import { useRentalOrg } from '../RentalContext';
 import { EmptyState } from '../../components/patterns';
+import { TaskAutomationRulesSection } from './workflow-automation/TaskAutomationRulesSection';
 
 // ─── Types ───────────────────────────────────────
 
@@ -70,7 +71,11 @@ interface WorkflowRun {
   }>;
 }
 
-interface Props { isDarkMode: boolean; canWrite?: boolean; }
+interface Props {
+  isDarkMode: boolean;
+  canWrite?: boolean;
+  canRead?: boolean;
+}
 
 // ─── Constants ───────────────────────────────────
 
@@ -285,7 +290,7 @@ const RUN_STATUS_CONFIG: Record<string, { label: string; bgClass: string; textCl
 
 // ─── Main Component ──────────────────────────────
 
-export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
+export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = true }: Props) {
   const { orgId } = useRentalOrg();
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [stats, setStats] = useState<Stats>({
@@ -300,6 +305,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
   const [selectedWorkflow, setSelectedWorkflow] = useState<Workflow | null>(null);
   const [showTemplates, setShowTemplates] = useState(false);
   const [builderData, setBuilderData] = useState<Partial<Workflow> | null>(null);
+  const [mainTab, setMainTab] = useState<'workflows' | 'task-automations'>('workflows');
   const [saving, setSaving] = useState(false);
 
   const cardBg = isDarkMode ? 'bg-[#1e1e2e]' : 'bg-white';
@@ -432,6 +438,17 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
 
   // ─── Render ──────────────────────────────────
 
+  if (!canRead) {
+    return (
+      <div className="rounded-xl border border-border/60 px-6 py-10 text-center">
+        <p className="text-sm font-medium text-foreground">Kein Zugriff auf Workflow-Automatisierung</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Ihre Rolle hat keine Berechtigung für Workflow-Automatisierung.
+        </p>
+      </div>
+    );
+  }
+
   if (view === 'detail' && selectedWorkflow) return (
     <DetailView
       wf={selectedWorkflow}
@@ -473,7 +490,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
             Tenant-scoped automation with real execution logs — manual test and booking return hooks active
           </p>
         </div>
-        {canWrite && (
+        {canWrite && mainTab === 'workflows' && (
           <div className="flex items-center gap-2">
             <button
               onClick={() => setShowTemplates(!showTemplates)}
@@ -494,6 +511,30 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
         )}
       </div>
 
+      <div className="flex flex-wrap items-center gap-2">
+        {[
+          { key: 'workflows', label: 'Eigene Workflows' },
+          { key: 'task-automations', label: 'Aufgaben-Automationen' },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setMainTab(tab.key as 'workflows' | 'task-automations')}
+            className={`rounded-md px-3 py-1.5 text-[11px] font-semibold transition-colors ${
+              mainTab === tab.key
+                ? 'bg-brand text-brand-foreground'
+                : `${isDarkMode ? 'text-gray-400 hover:text-white hover:bg-white/5' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'}`
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {mainTab === 'task-automations' ? (
+        <TaskAutomationRulesSection canWrite={canWrite} />
+      ) : (
+        <>
       {/* Stats */}
       <div className="grid grid-cols-4 gap-3">
         {[
@@ -679,6 +720,8 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true }: Props) {
             />
           ))}
         </div>
+      )}
+        </>
       )}
     </div>
   );

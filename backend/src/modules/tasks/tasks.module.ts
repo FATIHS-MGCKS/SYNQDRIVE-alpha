@@ -10,10 +10,12 @@ import { TaskDataDiagnosticService } from './diagnostic/task-data-diagnostic.ser
 import { TaskDataRepairService } from './diagnostic/task-data-repair.service';
 import { TaskAutomationRuleResolverService } from './automation/task-automation-rule-resolver.service';
 import { TaskAutomationRuleOverrideService } from './automation/task-automation-rule-override.service';
+import { TaskAutomationAdminService } from './automation/task-automation-admin.service';
+import { TaskAutomationAdminController } from './automation/task-automation-admin.controller';
 
 @Module({
   imports: [ActivityLogModule, TaskAutomationOutboxCoreModule],
-  controllers: [TasksController],
+  controllers: [TasksController, TaskAutomationAdminController],
   providers: [
     TasksService,
     TaskAutomationService,
@@ -23,6 +25,7 @@ import { TaskAutomationRuleOverrideService } from './automation/task-automation-
     TaskDataRepairService,
     TaskAutomationRuleResolverService,
     TaskAutomationRuleOverrideService,
+    TaskAutomationAdminService,
   ],
   exports: [
     TasksService,
