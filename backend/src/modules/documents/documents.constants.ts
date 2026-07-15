@@ -51,6 +51,30 @@ export const DOCUMENT_STATUS = {
   FAILED: 'FAILED',
 } as const;
 
+/** Generation pipeline status (orthogonal to document lifecycle `status`). */
+export const DOCUMENT_GENERATION_STATUS = {
+  IDLE: 'IDLE',
+  PENDING: 'PENDING',
+  PROCESSING: 'PROCESSING',
+  SUCCEEDED: 'SUCCEEDED',
+  FAILED: 'FAILED',
+} as const;
+
+export type DocumentGenerationStatus =
+  (typeof DOCUMENT_GENERATION_STATUS)[keyof typeof DOCUMENT_GENERATION_STATUS];
+
+/** Who/what initiated PDF generation. */
+export const DOCUMENT_GENERATION_TRIGGER_SOURCE = {
+  USER: 'USER',
+  SYSTEM: 'SYSTEM',
+  BUNDLE: 'BUNDLE',
+  INVOICE_PANEL: 'INVOICE_PANEL',
+  REGENERATE: 'REGENERATE',
+} as const;
+
+export type DocumentGenerationTriggerSource =
+  (typeof DOCUMENT_GENERATION_TRIGGER_SOURCE)[keyof typeof DOCUMENT_GENERATION_TRIGGER_SOURCE];
+
 /** Statuses allowed as outbound-email PDF attachments (GENERATED + re-send of SENT). */
 export const EMAIL_SENDABLE_DOCUMENT_STATUSES = new Set<string>([
   DOCUMENT_STATUS.GENERATED,

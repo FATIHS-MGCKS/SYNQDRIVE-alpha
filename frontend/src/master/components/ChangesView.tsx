@@ -54,6 +54,47 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-07-15T07:55:00.000Z',
   },
   {
+    id: 'generated-document-versioning-schema-2026-07-15',
+    version: '4.9.473',
+    title: 'Schema: GeneratedDocument Versionierung + Generierungszustand (additiv)',
+    summary: [
+      'Migration `20260715190000_generated_document_versioning_generation_state`: neue Spalten auf `generated_documents` für Version, Generierungsstatus, Fehler, Versuche, Retry, Trigger.',
+      'Partielle Unique-Indizes nur für versionierte Zeilen (`version_number IS NOT NULL`) — Legacy-Daten unberührt.',
+      'Trigger `generated_documents_invoice_org_check`: invoice_id muss zur gleichen organization_id gehören.',
+      '`OrgInvoice.generatedDocumentId` und bestehende FKs unverändert; kein Backfill in Migration.',
+      'Konstanten `DOCUMENT_GENERATION_STATUS` / `DOCUMENT_GENERATION_TRIGGER_SOURCE` in `documents.constants.ts`.',
+    ],
+    reason:
+      'ADR V4.9.472 verlangt persistente Versionierung und Generierungszustände — Schema-Erweiterung vor Business-Logik-Anpassung.',
+    previousBehavior:
+      'Version nur zur Laufzeit aus createdAt; Generierungsfehler teils in metadata/in-memory; keine DB-Constraints für Version oder Org-Invoice-Match.',
+    details:
+      'Siehe `architecture/INVOICE_DOCUMENT_RELATION_CANONICAL_MODEL_ADR_2026-07-15.md`. Nächster Schritt: Backfill `version_number` + Write-Pfad in Services.',
+    affectsArchitecture: true,
+    module: 'Invoices',
+    createdAt: '2026-07-15T19:50:00.000Z',
+  },
+  {
+    id: 'invoice-document-relation-adr-2026-07-15',
+    version: '4.9.472',
+    title: 'ADR — Kanonisches Zielmodell Rechnung ↔ Generierte Dokumente',
+    summary: [
+      'Neue ADR `INVOICE_DOCUMENT_RELATION_CANONICAL_MODEL_ADR_2026-07-15.md`: Ist-Analyse aller Pointer, Versionen, Status und Schreib-/Lesepfade.',
+      'Entscheidung: `GeneratedDocument.invoiceId` = kanonische Relation; `OrgInvoice.generatedDocumentId` = denormalisierter Aktiv-Cache (Variante A + algorithmische Aktivität C).',
+      'Kein neues DB-Feld in Phase 1; Migrations-/Backfill-Phasen dokumentiert, aber in diesem Schritt nicht ausgeführt.',
+      'Legacy-Fallbacks (`listForInvoice` Booking-OR, Bundle-Pointer) bleiben bis Audit-Gates grün.',
+    ],
+    reason:
+      'Vor weiterer Härtung oder Fallback-Entfernung brauchte das System eine codebelegte Architekturentscheidung für die Dual-Link-Realität zwischen Rechnung und PDF.',
+    previousBehavior:
+      'Zwei teils divergierende Wahrheiten (`invoiceId` vs. `generatedDocumentId`), drei Pointer-Ebenen (Rechnung, Dokument, Bundle), Legacy-OR in Reads.',
+    details:
+      'Siehe `architecture/INVOICE_DOCUMENT_RELATION_CANONICAL_MODEL_ADR_2026-07-15.md`. Bezug: `INVOICE_DOCUMENT_LINK_LEGACY_AUDIT_2026-07-14.md`, Test-Baseline `docs/audits/invoice-function-test-safety-net.md`.',
+    affectsArchitecture: true,
+    module: 'Invoices',
+    createdAt: '2026-07-15T19:45:00.000Z',
+  },
+  {
     id: 'invoice-readonly-audit-fixes-v49470-2026-07-15',
     version: '4.9.470',
     title: 'V4.9.470 — Rechnungsmodul: Read-only-Audit-Fixes (B1–K4, M1–M8)',
