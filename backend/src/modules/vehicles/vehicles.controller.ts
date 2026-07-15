@@ -24,13 +24,13 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { PaginationParams } from '@shared/utils/pagination';
 import {
   Prisma,
-  CleaningStatus,
-  HealthStatus,
-  VehicleStatus,
   VehicleType,
   FuelType,
 } from '@prisma/client';
 import { FleetConnectivityQueryDto } from './dto/fleet-connectivity-query.dto';
+import { VehicleGenericPatchDto } from './dto/vehicle-generic-patch.dto';
+import { UpdateVehicleStatusDto } from './dto/update-vehicle-status.dto';
+import { ADMIN_WRITABLE_VEHICLE_STATUSES } from './vehicle-operational-status.constants';
 import { VehicleCleaningTaskService } from '../tasks/vehicle-cleaning-task.service';
 
 interface VehicleStatusAuthRequest {
@@ -181,12 +181,13 @@ export class VehiclesController {
   }
 
   @Patch('organizations/:orgId/vehicles/:vehicleId')
+  @UseGuards(OrgScopingGuard)
   async updateByOrg(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
-    @Body() body: Prisma.VehicleUpdateInput,
+    @Body() body: VehicleGenericPatchDto,
   ) {
-    return this.vehiclesService.update(vehicleId, body, orgId);
+    return this.vehiclesService.updateMasterData(vehicleId, body, orgId);
   }
 
   @Put('organizations/:orgId/vehicles/:vehicleId/tires')
@@ -231,29 +232,17 @@ export class VehiclesController {
    * `VehiclesService.deriveFleetStatusContext`), but we also reject the
    * write boundary here so the DB truth stays consistent.
    */
-  private static readonly ADMIN_WRITABLE_VEHICLE_STATES: ReadonlySet<VehicleStatus> =
-    new Set<VehicleStatus>([
-      'AVAILABLE' as VehicleStatus,
-      'IN_SERVICE' as VehicleStatus,
-      'OUT_OF_SERVICE' as VehicleStatus,
-    ]);
-
   @Patch('organizations/:orgId/vehicles/:vehicleId/status')
   @UseGuards(OrgScopingGuard)
   async updateVehicleStatus(
     @Param('orgId') orgId: string,
     @Param('vehicleId') vehicleId: string,
     @Req() req: VehicleStatusAuthRequest,
-    @Body()
-    body: {
-      status?: VehicleStatus;
-      cleaningStatus?: CleaningStatus;
-      healthStatus?: HealthStatus;
-    },
+    @Body() body: UpdateVehicleStatusDto,
   ) {
     const data: Prisma.VehicleUpdateInput = {};
     if (body.status) {
-      if (!VehiclesController.ADMIN_WRITABLE_VEHICLE_STATES.has(body.status)) {
+      if (!ADMIN_WRITABLE_VEHICLE_STATUSES.has(body.status)) {
         throw new BadRequestException(
           `Vehicle status '${body.status}' cannot be set via the admin status endpoint. RENTED / RESERVED are derived from booking and handover events; create/cancel the booking instead.`,
         );
@@ -354,17 +343,14 @@ export class VehiclesController {
   @UseGuards(VehicleOwnershipGuard)
   async update(
     @Param('vehicleId') vehicleId: string,
-    @Body() body: Prisma.VehicleUpdateInput,
+    @Body() body: VehicleGenericPatchDto,
     @Req() req: any,
   ) {
-    // Service-side defense-in-depth: only allow update when the vehicle
-    // belongs to the caller's organization (skipped for MASTER_ADMIN which
-    // passes the guard without an organizationId check).
     const orgId: string | undefined =
       req?.user?.platformRole === 'MASTER_ADMIN'
         ? undefined
         : req?.user?.organizationId;
-    return this.vehiclesService.update(vehicleId, body, orgId);
+    return this.vehiclesService.updateMasterData(vehicleId, body, orgId);
   }
 
   @Delete('vehicles/:vehicleId')

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, Inject, Logger, forwardRef } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Inject, Logger, forwardRef } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import {
   Vehicle,
@@ -85,6 +85,8 @@ import {
   buildRawStatusGuardLogEvent,
   isLegacyRentalRawStatus,
 } from './domain/vehicle-raw-status.guard';
+import type { VehicleGenericPatchDto } from './dto/vehicle-generic-patch.dto';
+import { mapVehicleGenericPatchToUpdateInput } from './vehicle-generic-patch.mapper';
 export { EMPTY_BOOKING_CONTEXT } from './domain/vehicle-operational-state.builder';
 
 const DIMO_FUEL_TYPE_MAP: Record<string, FuelType> = {
@@ -1458,6 +1460,24 @@ export class VehiclesService {
       await this.prisma.vehicle.findUniqueOrThrow({ where: { id } });
     }
     return this.prisma.vehicle.update({ where, data });
+  }
+
+  /**
+   * Master-data PATCH only — whitelisted scalar fields from {@link VehicleGenericPatchDto}.
+   * Operational status must use PATCH .../vehicles/:id/status or booking/handover flows.
+   */
+  async updateMasterData(
+    vehicleId: string,
+    patch: VehicleGenericPatchDto,
+    organizationId?: string,
+  ): Promise<Vehicle> {
+    const data = mapVehicleGenericPatchToUpdateInput(patch);
+    if (Object.keys(data).length === 0) {
+      throw new BadRequestException(
+        'At least one editable vehicle field must be provided',
+      );
+    }
+    return this.update(vehicleId, data, organizationId);
   }
 
   async upsertTireData(

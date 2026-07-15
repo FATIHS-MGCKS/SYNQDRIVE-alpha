@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-generic-patch-guard-v49483-2026-07-15',
+    version: '4.9.483',
+    title: 'V4.9.483 — Vehicle PATCH: Whitelist-DTO blockiert Status-Mass-Assignment (Prompt 18/43)',
+    summary: [
+      'Generische PATCH `.../vehicles/:id` und `PATCH /vehicles/:id` nutzen `VehicleGenericPatchDto` (Whitelist) statt `Prisma.VehicleUpdateInput`.',
+      '`status`, `cleaningStatus`, `healthStatus`, Relations und unbekannte Keys → `400` via `forbidNonWhitelisted` (kein stilles Ignorieren).',
+      'RENTED/RESERVED nur weiterhin über Handover/Booking; manuelle Grundzustände nur `PATCH .../status` (`AVAILABLE`, `IN_SERVICE`, `OUT_OF_SERVICE`).',
+      '`VehiclesService.updateMasterData` + `OrgScopingGuard` auf org-scoped PATCH.',
+    ],
+    reason:
+      'Prompt 18/43: Audit vehicle-status-write-paths — generische Endpunkte durften booking-gesteuerte Statuswerte und Nested Prisma-Payloads schreiben.',
+    previousBehavior:
+      '`PATCH .../vehicles/:vehicleId` akzeptierte volles `VehicleUpdateInput` inkl. `status: RENTED|RESERVED` und `organization.connect`.',
+    details:
+      'Neu: `dto/vehicle-generic-patch.dto.ts`, `dto/update-vehicle-status.dto.ts`, `vehicle-generic-patch.mapper.ts`, `vehicle-operational-status.constants.ts`. Tests: `vehicle-generic-patch.util.spec.ts`, `vehicles.controller.patch.spec.ts`. Audit: `docs/audits/vehicle-status-write-paths.md`.',
+    affectsArchitecture: true,
+    module: 'Vehicles',
+    createdAt: '2026-07-16T02:00:00.000Z',
+  },
+  {
     id: 'fleet-status-fail-closed-normalizer-v49482-2026-07-15',
     version: '4.9.482',
     title: 'V4.9.482 — Fleet Status: fail-closed Frontend-Normalizer (Prompt 16/43)',
