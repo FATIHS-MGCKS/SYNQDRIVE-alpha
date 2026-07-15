@@ -13,15 +13,18 @@ import { buildOutboxMeta } from '@modules/tasks/outbox/task-automation-outbox-me
 import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
 import { DEFAULT_TARIFF_TIMEZONE } from '@modules/pricing/tariff-instant.util';
 import {
+  automationOutboxIdentity,
+  buildAutomationMetadataBlock,
+  buildAutomationMetadataRef,
+  getAutomationRuleByCatalogKey,
+  requireAutomationRuleById,
+} from '@modules/tasks/automation/task-automation-rule.util';
+import {
   canRecordPayment,
   displayInvoiceNumber,
   isIncomingInvoiceType,
   isOutgoingInvoiceType,
 } from './invoice-domain.util';
-import {
-  INVOICE_PAYMENT_CHECK_RULE_ID,
-  INVOICE_PAYMENT_CHECK_RULE_VERSION,
-} from './invoice-payment-task.rules';
 import {
   buildIncomingPaymentCheckTitle,
   buildOutgoingPaymentCheckTitle,
@@ -30,6 +33,8 @@ import {
   legacyInvoiceUnpaidDedupKey,
   resolveInvoicePaymentDueDate,
 } from './invoice-payment-task.util';
+
+const invoicePaymentRule = getAutomationRuleByCatalogKey('INVOICE_PAYMENT_CHECK');
 
 const OPEN_PAYMENT_CHECK_STATUSES: OrgInvoiceStatus[] = [
   'ISSUED',
@@ -86,8 +91,7 @@ export class InvoicePaymentTaskService {
     await this.outboxEnqueue.enqueueFailure(
       buildOutboxMeta({
         organizationId: orgId,
-        ruleId: INVOICE_PAYMENT_CHECK_RULE_ID,
-        ruleVersion: INVOICE_PAYMENT_CHECK_RULE_VERSION,
+        ...automationOutboxIdentity(invoicePaymentRule),
         entityType: 'INVOICE',
         entityId: invoiceId,
         operation: 'SYNC_INVOICE_PAYMENT_CHECK',
@@ -136,10 +140,10 @@ export class InvoicePaymentTaskService {
       await this.tasks.upsertByDedup(orgId, dedupKey, {
         title,
         description: this.buildTaskDescription(invoice),
-        category: 'invoice',
-        type: 'INVOICE_REQUIRED',
-        source: 'INVOICE',
-        sourceType: 'SYSTEM',
+        category: invoicePaymentRule.category,
+        type: invoicePaymentRule.taskType!,
+        source: invoicePaymentRule.source,
+        sourceType: invoicePaymentRule.sourceType,
         priority: timing.priority,
         invoiceId: invoice.id,
         bookingId: invoice.bookingId ?? null,
@@ -166,7 +170,7 @@ export class InvoicePaymentTaskService {
             priority: timing.priority,
           },
           {
-            ruleId: INVOICE_PAYMENT_CHECK_RULE_ID,
+            ruleId: invoicePaymentRule.ruleId,
             bookingId: invoice.bookingId ?? undefined,
           },
         );
@@ -190,7 +194,7 @@ export class InvoicePaymentTaskService {
       resolutionCode: 'PAYMENT_RECEIVED',
       reason: `Invoice ${invoiceId} fully paid`,
       metadata: {
-        ruleId: 'invoice.payment.received',
+        ruleId: requireAutomationRuleById('invoice.payment.received').ruleId,
         invoiceId,
       },
     });
@@ -205,13 +209,14 @@ export class InvoicePaymentTaskService {
     const resolutionCode = this.terminalResolutionCode(status);
     if (!resolutionCode) return 0;
 
+    const terminalRule = requireAutomationRuleById('invoice.payment.terminal');
     const reason = `Invoice ${invoiceId} is ${status}`;
     if (status === 'CANCELLED' || status === 'VOID') {
       return this.tasks.supersedeInvoicePaymentCheckTasks(orgId, invoiceId, {
         resolutionCode,
         reason,
         metadata: {
-          ruleId: 'invoice.payment.terminal',
+          ruleId: terminalRule.ruleId,
           invoiceId,
           invoiceStatus: status,
         },
@@ -222,7 +227,7 @@ export class InvoicePaymentTaskService {
       resolutionCode,
       reason,
       metadata: {
-        ruleId: 'invoice.payment.terminal',
+        ruleId: terminalRule.ruleId,
         invoiceId,
         invoiceStatus: status,
       },
@@ -325,11 +330,7 @@ export class InvoicePaymentTaskService {
   ): Prisma.InputJsonValue {
     return {
       generatedKey: dedupKey,
-      automation: {
-        ruleId: INVOICE_PAYMENT_CHECK_RULE_ID,
-        ruleVersion: INVOICE_PAYMENT_CHECK_RULE_VERSION,
-        ruleScope: 'ORG',
-      },
+      automation: buildAutomationMetadataBlock(invoicePaymentRule),
       invoicePaymentCheck: {
         invoiceId: invoice.id,
         invoiceStatus: invoice.status,

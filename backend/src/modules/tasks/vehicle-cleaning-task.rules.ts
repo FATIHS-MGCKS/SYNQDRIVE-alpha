@@ -1,12 +1,18 @@
+import {
+  getAutomationRuleByCatalogKey,
+  getConfigurableNumberDefault,
+  LEGACY_BOOKING_CLEAN_DEDUP_PREFIX,
+  VEHICLE_CLEANING_TASK_DEDUP_PREFIX,
+} from '@modules/tasks/automation/task-automation-rule.util';
+
+const vehicleCleaningRule = getAutomationRuleByCatalogKey('VEHICLE_CLEANING_REQUIRED');
+
 /** Canonical dedup prefix — identity is vehicle + preparation window, not booking. */
-export const VEHICLE_CLEANING_TASK_DEDUP_PREFIX = 'vehicle:cleaning:' as const;
+export { VEHICLE_CLEANING_TASK_DEDUP_PREFIX, LEGACY_BOOKING_CLEAN_DEDUP_PREFIX };
 
-/** Legacy booking-scoped key superseded by canonical vehicle cleaning tasks. */
-export const LEGACY_BOOKING_CLEAN_DEDUP_PREFIX = 'booking:clean:' as const;
+export const VEHICLE_CLEANING_RULE_ID = vehicleCleaningRule.ruleId;
 
-export const VEHICLE_CLEANING_RULE_ID = 'vehicle.cleaning.required' as const;
-
-export const VEHICLE_CLEANING_RULE_VERSION = 1;
+export const VEHICLE_CLEANING_RULE_VERSION = vehicleCleaningRule.version;
 
 /** Fachliche Reinigungszwecke — bestimmen den Vorbereitungsfenster-Suffix im dedupKey. */
 export type CleaningPurpose = 'PRE_BOOKING' | 'STANDALONE';
@@ -15,4 +21,8 @@ export type CleaningPurpose = 'PRE_BOOKING' | 'STANDALONE';
 export type PreparationWindow = 'PRE_BOOKING';
 
 /** Hours before next pickup when cleaning priority escalates to HIGH. */
-export const VEHICLE_CLEANING_URGENT_BEFORE_PICKUP_HOURS = 24;
+export const VEHICLE_CLEANING_URGENT_BEFORE_PICKUP_HOURS = getConfigurableNumberDefault(
+  vehicleCleaningRule,
+  'urgentBeforePickupHours',
+  24,
+);

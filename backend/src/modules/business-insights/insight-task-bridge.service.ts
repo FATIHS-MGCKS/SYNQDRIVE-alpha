@@ -7,6 +7,14 @@ import { TaskAutomationOutboxExecutionContext } from '@modules/tasks/outbox/task
 import { buildOutboxMeta } from '@modules/tasks/outbox/task-automation-outbox-meta.util';
 import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
 import {
+  automationOutboxIdentity,
+  buildAutomationMetadataBlock,
+  buildAutomationMetadataRef,
+  getAutomationRuleByInsightType,
+  INSIGHT_TASK_BRIDGE_SOURCES,
+  listMaterializationAutomationRules,
+} from '@modules/tasks/automation/task-automation-rule.util';
+import {
   shouldAutoMaterializeServiceOverdueTask,
   type ServiceOverdueTaskContext,
 } from '@modules/vehicle-intelligence/service-compliance/service-overdue-task.util';
@@ -35,16 +43,20 @@ interface TaskTypeConfig {
 export class InsightTaskBridgeService {
   private readonly logger = new Logger(InsightTaskBridgeService.name);
 
-  private static readonly TASK_TYPE_CONFIG: Partial<Record<InsightType, TaskTypeConfig>> = {
-    [InsightType.SERVICE_OVERDUE]: { category: 'Maintenance', source: 'INSIGHT_SERVICE', taskType: 'VEHICLE_SERVICE', sourceType: 'ALERT' },
-    [InsightType.TUV_OVERDUE]: { category: 'TÜV', source: 'INSIGHT_COMPLIANCE', taskType: 'VEHICLE_INSPECTION', sourceType: 'ALERT' },
-    [InsightType.BOKRAFT_OVERDUE]: { category: 'BOKraft', source: 'INSIGHT_COMPLIANCE', taskType: 'VEHICLE_INSPECTION', sourceType: 'ALERT' },
-    [InsightType.TIRE_CRITICAL]: { category: 'Tire Change', source: 'INSIGHT_HEALTH', taskType: 'TIRE_CHECK', sourceType: 'ALERT' },
-    [InsightType.BRAKE_CRITICAL]: { category: 'Repair', source: 'INSIGHT_HEALTH', taskType: 'BRAKE_CHECK', sourceType: 'ALERT' },
-    [InsightType.BATTERY_CRITICAL]: { category: 'Maintenance', source: 'INSIGHT_HEALTH', taskType: 'BATTERY_CHECK', sourceType: 'ALERT' },
-  };
-
-  private static readonly BRIDGE_SOURCES = ['INSIGHT_SERVICE', 'INSIGHT_COMPLIANCE', 'INSIGHT_HEALTH'];
+  private static readonly TASK_TYPE_CONFIG: Partial<Record<InsightType, TaskTypeConfig>> =
+    Object.fromEntries(
+      listMaterializationAutomationRules()
+        .filter((rule) => rule.insightType)
+        .map((rule) => [
+          rule.insightType!,
+          {
+            category: rule.category,
+            source: rule.source,
+            taskType: rule.taskType!,
+            sourceType: rule.sourceType,
+          },
+        ]),
+    ) as Partial<Record<InsightType, TaskTypeConfig>>;
 
   constructor(
     private readonly tasks: TasksService,
@@ -98,6 +110,7 @@ export class InsightTaskBridgeService {
       if (!this.shouldMaterializeTask(c)) continue;
 
       const cfg = InsightTaskBridgeService.TASK_TYPE_CONFIG[c.type]!;
+      const catalogRule = getAutomationRuleByInsightType(c.type)!;
       const vehicleId = c.entityIds[0];
       const dedupKey = c.dedupeKey;
       seenKeys.push(dedupKey);
@@ -149,6 +162,7 @@ export class InsightTaskBridgeService {
             blocksVehicleAvailability: blocksRental,
             metadata: {
               generatedKey: dedupKey,
+              automation: buildAutomationMetadataBlock(catalogRule),
               insightType: c.type,
               insightSeverity: c.severity,
               suggestionOnly: c.severity === 'WARNING',
@@ -165,8 +179,7 @@ export class InsightTaskBridgeService {
         await this.outboxEnqueue.enqueueFailure(
           buildOutboxMeta({
             organizationId,
-            ruleId: `insight.task.${c.type}`,
-            ruleVersion: 1,
+            ...automationOutboxIdentity(catalogRule),
             entityType: 'INSIGHT',
             entityId: vehicleId,
             operation: 'MATERIALIZE_INSIGHT_TASK',
@@ -188,7 +201,7 @@ export class InsightTaskBridgeService {
     closed = await this.tasks.closeStaleInsightTasks(
       organizationId,
       seenKeys,
-      InsightTaskBridgeService.BRIDGE_SOURCES,
+      INSIGHT_TASK_BRIDGE_SOURCES,
     );
 
     if (upserted > 0 || closed > 0) {

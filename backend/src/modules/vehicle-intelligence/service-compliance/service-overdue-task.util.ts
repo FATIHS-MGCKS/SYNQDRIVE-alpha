@@ -1,9 +1,9 @@
 import { Prisma } from '@prisma/client';
 import type { NextServiceComplianceDto } from './service-compliance.types';
+import { buildAutomationMetadataBlock } from '@modules/tasks/automation/task-automation-rule.util';
 import {
   SERVICE_OVERDUE_TASK_DEDUP_PREFIX,
   SERVICE_OVERDUE_TASK_RULE_ID,
-  SERVICE_OVERDUE_TASK_RULE_VERSION,
 } from './service-overdue-task.rules';
 
 export type ServiceOdometerReliability = 'HM_OEM' | 'VEHICLE_MILEAGE' | 'UNKNOWN';
@@ -206,11 +206,7 @@ export function buildServiceOverdueTaskMetadata(input: {
     allowAutoResolve: true,
     ruleId: SERVICE_OVERDUE_TASK_RULE_ID,
     evidenceSummary: buildServiceOverdueEvidenceSummary(input.ctx),
-    automation: {
-      ruleId: SERVICE_OVERDUE_TASK_RULE_ID,
-      ruleVersion: SERVICE_OVERDUE_TASK_RULE_VERSION,
-      ruleScope: 'ORG',
-    },
+    automation: buildAutomationMetadataBlock('VEHICLE_SERVICE_OVERDUE'),
     serviceOverdue: {
       ...input.ctx,
       intervalExceeded: describeIntervalExceeded(input.ctx),

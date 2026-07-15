@@ -1,20 +1,20 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, TaskPriority, TaskType } from '@prisma/client';
+import { Prisma, TaskPriority, TaskSource, TaskType } from '@prisma/client';
 import { DEFAULT_TARIFF_TIMEZONE } from '@modules/pricing/tariff-instant.util';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
-  BOOKING_PICKUP_RULE_ID,
-  BOOKING_PICKUP_RULE_VERSION,
-  BOOKING_PREPARATION_RULE_ID,
-  BOOKING_PREPARATION_RULE_VERSION,
-  BOOKING_RETURN_RULE_ID,
-  BOOKING_RETURN_RULE_VERSION,
   activeRentalPhaseDedupKeys,
   bookingPickupDedupKey,
   bookingPreparationDedupKey,
   bookingReturnDedupKey,
+  automationOutboxIdentity,
+  buildAutomationMetadataBlock,
+  buildAutomationMetadataRef,
   confirmedPhaseActiveDedupKeys,
-} from './booking-task-automation.constants';
+  getAutomationRuleByCatalogKey,
+  requireAutomationRuleById,
+  vendorRepairDedupKey,
+} from './automation/task-automation-rule.util';
 import {
   computeBookingPickupTiming,
   computeBookingReturnTiming,
@@ -129,11 +129,7 @@ export class TaskAutomationService {
 
     return {
       generatedKey,
-      automation: {
-        ruleId: BOOKING_PREPARATION_RULE_ID,
-        ruleVersion: BOOKING_PREPARATION_RULE_VERSION,
-        ruleScope: 'ORG',
-      },
+      automation: buildAutomationMetadataBlock('BOOKING_PREPARATION'),
       timing: {
         pickupAt: timing.pickupAt.toISOString(),
         scheduledActivatesAt: timing.scheduledActivatesAt.toISOString(),
@@ -154,8 +150,7 @@ export class TaskAutomationService {
   private buildHandoverMetadata(
     generatedKey: string,
     timing: BookingHandoverTiming,
-    ruleId: string,
-    ruleVersion: number,
+    catalogKey: 'BOOKING_PICKUP' | 'BOOKING_RETURN',
     milestoneField: 'pickupAt' | 'returnAt',
     leadMs: number,
     stationContext?: {
@@ -169,11 +164,7 @@ export class TaskAutomationService {
 
     return {
       generatedKey,
-      automation: {
-        ruleId,
-        ruleVersion,
-        ruleScope: 'ORG',
-      },
+      automation: buildAutomationMetadataBlock(catalogKey),
       timing: {
         [milestoneField]: timing.milestoneAt.toISOString(),
         scheduledActivatesAt: timing.scheduledActivatesAt.toISOString(),
@@ -202,7 +193,7 @@ export class TaskAutomationService {
       type: TaskType;
       priority?: TaskPriority;
       source: string;
-      sourceType: 'BOOKING' | 'DOCUMENT' | 'VENDOR';
+      sourceType: TaskSource;
       vehicleId?: string | null;
       bookingId?: string | null;
       customerId?: string | null;
@@ -280,7 +271,7 @@ export class TaskAutomationService {
             existing.id,
             { activatesAt: timing.activatesAt, dueDate: timing.dueDate },
             {
-              ruleId: BOOKING_PREPARATION_RULE_ID,
+              ruleId: getAutomationRuleByCatalogKey('BOOKING_PREPARATION').ruleId,
               pickupAt: timing.pickupAt,
               timeZone,
               bookingId: booking.id,
@@ -303,8 +294,7 @@ export class TaskAutomationService {
       await this.handleAutomationFailure(
         buildOutboxMeta({
           organizationId: booking.organizationId,
-          ruleId: BOOKING_PREPARATION_RULE_ID,
-          ruleVersion: BOOKING_PREPARATION_RULE_VERSION,
+          ...automationOutboxIdentity('BOOKING_PREPARATION'),
           entityType: 'BOOKING',
           entityId: booking.id,
           operation: 'SYNC_BOOKING_PREPARATION',
@@ -372,8 +362,7 @@ export class TaskAutomationService {
       await this.handleAutomationFailure(
         buildOutboxMeta({
           organizationId: booking.organizationId,
-          ruleId: BOOKING_PICKUP_RULE_ID,
-          ruleVersion: BOOKING_PICKUP_RULE_VERSION,
+          ...automationOutboxIdentity('BOOKING_PICKUP'),
           entityType: 'BOOKING',
           entityId: booking.id,
           operation: 'SYNC_BOOKING_PICKUP',
@@ -441,8 +430,7 @@ export class TaskAutomationService {
       await this.handleAutomationFailure(
         buildOutboxMeta({
           organizationId: booking.organizationId,
-          ruleId: BOOKING_RETURN_RULE_ID,
-          ruleVersion: BOOKING_RETURN_RULE_VERSION,
+          ...automationOutboxIdentity('BOOKING_RETURN'),
           entityType: 'BOOKING',
           entityId: booking.id,
           operation: 'SYNC_BOOKING_RETURN',
@@ -459,18 +447,18 @@ export class TaskAutomationService {
 
   /** Supersedes open booking lifecycle tasks when a booking is cancelled. */
   async supersedeBookingLifecycleOnCancellation(orgId: string, bookingId: string): Promise<void> {
+    const cancelledRule = requireAutomationRuleById('booking.lifecycle.cancelled');
     try {
       await this.tasks.supersedeActiveBookingLifecycleTasks(orgId, bookingId, {
         resolutionCode: 'BOOKING_CANCELLED',
         reason: `Booking ${bookingId} cancelled — lifecycle tasks superseded`,
-        ruleId: 'booking.lifecycle.cancelled',
+        ruleId: cancelledRule.ruleId,
       });
     } catch (err: unknown) {
       await this.handleAutomationFailure(
         buildOutboxMeta({
           organizationId: orgId,
-          ruleId: 'booking.lifecycle.cancelled',
-          ruleVersion: 1,
+          ...automationOutboxIdentity(cancelledRule.ruleId),
           entityType: 'BOOKING',
           entityId: bookingId,
           operation: 'SUPERSEDE_BOOKING_LIFECYCLE',
@@ -493,24 +481,24 @@ export class TaskAutomationService {
    * are superseded.
    */
   async handleBookingNoShow(orgId: string, bookingId: string): Promise<void> {
+    const noShowRule = requireAutomationRuleById('booking.lifecycle.cancelled.noshow');
     try {
       await this.tasks.autoResolveActiveBookingHandoverTask(orgId, bookingId, 'BOOKING_PICKUP', {
         resolutionCode: 'BOOKING_NO_SHOW',
         reason: `Booking ${bookingId} marked no-show — pickup task closed`,
-        ruleId: 'booking.lifecycle.cancelled.noshow',
+        ruleId: noShowRule.ruleId,
         handoverKind: 'PICKUP',
       });
       await this.tasks.supersedeActiveBookingLifecycleTasks(orgId, bookingId, {
         resolutionCode: 'BOOKING_NO_SHOW',
         reason: `Booking ${bookingId} marked no-show — lifecycle tasks superseded`,
-        ruleId: 'booking.lifecycle.cancelled.noshow',
+        ruleId: noShowRule.ruleId,
       });
     } catch (err: unknown) {
       await this.handleAutomationFailure(
         buildOutboxMeta({
           organizationId: orgId,
-          ruleId: 'booking.lifecycle.cancelled.noshow',
-          ruleVersion: 1,
+          ...automationOutboxIdentity(noShowRule.ruleId),
           entityType: 'BOOKING',
           entityId: bookingId,
           operation: 'HANDLE_BOOKING_NO_SHOW',
@@ -527,6 +515,7 @@ export class TaskAutomationService {
    * materialize the return task for the now-active rental.
    */
   async onPickupHandoverCompleted(booking: BookingLifecycleTaskInput): Promise<void> {
+    const pickupCompletedRule = requireAutomationRuleById('booking.handover.pickup.completed');
     try {
       await this.tasks.autoResolveActiveBookingHandoverTask(
         booking.organizationId,
@@ -535,7 +524,7 @@ export class TaskAutomationService {
         {
           resolutionCode: 'HANDOVER_PICKUP_COMPLETED',
           reason: `Pickup handover completed for booking ${booking.id}`,
-          ruleId: 'booking.handover.pickup.completed',
+          ruleId: pickupCompletedRule.ruleId,
           handoverKind: 'PICKUP',
         },
       );
@@ -544,8 +533,7 @@ export class TaskAutomationService {
       await this.handleAutomationFailure(
         buildOutboxMeta({
           organizationId: booking.organizationId,
-          ruleId: 'booking.handover.pickup.completed',
-          ruleVersion: 1,
+          ...automationOutboxIdentity(pickupCompletedRule.ruleId),
           entityType: 'BOOKING',
           entityId: booking.id,
           operation: 'ON_PICKUP_HANDOVER_COMPLETED',
@@ -562,6 +550,7 @@ export class TaskAutomationService {
    * any remaining booking lifecycle tasks for the completed rental.
    */
   async onReturnHandoverCompleted(booking: BookingLifecycleTaskInput): Promise<void> {
+    const returnCompletedRule = requireAutomationRuleById('booking.handover.return.completed');
     try {
       await this.tasks.autoResolveActiveBookingHandoverTask(
         booking.organizationId,
@@ -570,7 +559,7 @@ export class TaskAutomationService {
         {
           resolutionCode: 'HANDOVER_RETURN_COMPLETED',
           reason: `Return handover completed for booking ${booking.id}`,
-          ruleId: 'booking.handover.return.completed',
+          ruleId: returnCompletedRule.ruleId,
           handoverKind: 'RETURN',
         },
       );
@@ -579,8 +568,7 @@ export class TaskAutomationService {
       await this.handleAutomationFailure(
         buildOutboxMeta({
           organizationId: booking.organizationId,
-          ruleId: 'booking.handover.return.completed',
-          ruleVersion: 1,
+          ...automationOutboxIdentity(returnCompletedRule.ruleId),
           entityType: 'BOOKING',
           entityId: booking.id,
           operation: 'ON_RETURN_HANDOVER_COMPLETED',
@@ -597,16 +585,17 @@ export class TaskAutomationService {
     timing: BookingPreparationTiming,
     dedupKey: string,
   ): Promise<void> {
+    const rule = getAutomationRuleByCatalogKey('BOOKING_PREPARATION');
     await this.safeUpsert(booking.organizationId, dedupKey, {
       vehicleId: booking.vehicleId,
       bookingId: booking.id,
       customerId: booking.customerId,
-      title: 'Buchung vorbereiten',
-      description: 'Fahrzeug, Dokumente und Übergabe für die anstehende Buchung vorbereiten.',
-      category: 'Booking',
-      type: 'BOOKING_PREPARATION',
-      source: 'BOOKING',
-      sourceType: 'BOOKING',
+      title: rule.nameDe,
+      description: rule.descriptionDe,
+      category: rule.category,
+      type: rule.taskType!,
+      source: rule.source,
+      sourceType: rule.sourceType,
       withChecklist: true,
       activatesAt: timing.activatesAt,
       dueDate: timing.dueDate,
@@ -619,25 +608,25 @@ export class TaskAutomationService {
     timing: BookingHandoverTiming,
     dedupKey: string,
   ): Promise<void> {
+    const rule = getAutomationRuleByCatalogKey('BOOKING_PICKUP');
     await this.safeUpsert(booking.organizationId, dedupKey, {
       vehicleId: booking.vehicleId,
       bookingId: booking.id,
       customerId: booking.customerId,
-      title: 'Fahrzeugübergabe (Pickup)',
-      description: 'Operative Übergabe im kanonischen Handover-Flow durchführen.',
-      category: 'Booking',
-      type: 'BOOKING_PICKUP',
+      title: rule.nameDe,
+      description: rule.descriptionDe,
+      category: rule.category,
+      type: rule.taskType!,
       priority: timing.priority,
-      source: 'BOOKING',
-      sourceType: 'BOOKING',
+      source: rule.source,
+      sourceType: rule.sourceType,
       withChecklist: true,
       activatesAt: timing.activatesAt,
       dueDate: timing.dueDate,
       metadata: this.buildHandoverMetadata(
         dedupKey,
         timing,
-        BOOKING_PICKUP_RULE_ID,
-        BOOKING_PICKUP_RULE_VERSION,
+        'BOOKING_PICKUP',
         'pickupAt',
         BOOKING_PICKUP_TIMING_RULE.activationLeadBeforePickupMs,
         booking,
@@ -650,25 +639,25 @@ export class TaskAutomationService {
     timing: BookingHandoverTiming,
     dedupKey: string,
   ): Promise<void> {
+    const rule = getAutomationRuleByCatalogKey('BOOKING_RETURN');
     await this.safeUpsert(booking.organizationId, dedupKey, {
       vehicleId: booking.vehicleId,
       bookingId: booking.id,
       customerId: booking.customerId,
-      title: 'Fahrzeugrücknahme (Return)',
-      description: 'Operative Rücknahme im kanonischen Return-Handover abschließen.',
-      category: 'Booking',
-      type: 'BOOKING_RETURN',
+      title: rule.nameDe,
+      description: rule.descriptionDe,
+      category: rule.category,
+      type: rule.taskType!,
       priority: timing.priority,
-      source: 'BOOKING',
-      sourceType: 'BOOKING',
+      source: rule.source,
+      sourceType: rule.sourceType,
       withChecklist: true,
       activatesAt: timing.activatesAt,
       dueDate: timing.dueDate,
       metadata: this.buildHandoverMetadata(
         dedupKey,
         timing,
-        BOOKING_RETURN_RULE_ID,
-        BOOKING_RETURN_RULE_VERSION,
+        'BOOKING_RETURN',
         'returnAt',
         BOOKING_RETURN_TIMING_RULE.activationLeadBeforeReturnMs,
         booking,
@@ -683,6 +672,7 @@ export class TaskAutomationService {
     dedupKey: string,
     timeZone: string,
   ): Promise<void> {
+    const pickupRule = getAutomationRuleByCatalogKey('BOOKING_PICKUP');
     await this.tasks.updateTaskTiming(
       booking.organizationId,
       taskId,
@@ -692,7 +682,7 @@ export class TaskAutomationService {
         priority: timing.priority,
       },
       {
-        ruleId: BOOKING_PICKUP_RULE_ID,
+        ruleId: pickupRule.ruleId,
         pickupAt: timing.milestoneAt,
         timeZone,
         bookingId: booking.id,
@@ -706,8 +696,7 @@ export class TaskAutomationService {
         metadata: this.buildHandoverMetadata(
           dedupKey,
           timing,
-          BOOKING_PICKUP_RULE_ID,
-          BOOKING_PICKUP_RULE_VERSION,
+          'BOOKING_PICKUP',
           'pickupAt',
           BOOKING_PICKUP_TIMING_RULE.activationLeadBeforePickupMs,
           booking,
@@ -723,6 +712,7 @@ export class TaskAutomationService {
     dedupKey: string,
     timeZone: string,
   ): Promise<void> {
+    const returnRule = getAutomationRuleByCatalogKey('BOOKING_RETURN');
     await this.tasks.updateTaskTiming(
       booking.organizationId,
       taskId,
@@ -732,7 +722,7 @@ export class TaskAutomationService {
         priority: timing.priority,
       },
       {
-        ruleId: BOOKING_RETURN_RULE_ID,
+        ruleId: returnRule.ruleId,
         returnAt: timing.milestoneAt,
         timeZone,
         bookingId: booking.id,
@@ -746,8 +736,7 @@ export class TaskAutomationService {
         metadata: this.buildHandoverMetadata(
           dedupKey,
           timing,
-          BOOKING_RETURN_RULE_ID,
-          BOOKING_RETURN_RULE_VERSION,
+          'BOOKING_RETURN',
           'returnAt',
           BOOKING_RETURN_TIMING_RULE.activationLeadBeforeReturnMs,
           booking,
@@ -780,8 +769,7 @@ export class TaskAutomationService {
       await this.handleAutomationFailure(
         buildOutboxMeta({
           organizationId: orgId,
-          ruleId: 'booking.lifecycle.ensure',
-          ruleVersion: 1,
+          ...automationOutboxIdentity('booking.lifecycle.ensure'),
           entityType: 'BOOKING',
           entityId: id,
           operation: 'ENSURE_BOOKING_LIFECYCLE',
@@ -821,26 +809,29 @@ export class TaskAutomationService {
       priority?: TaskPriority;
     },
   ): Promise<void> {
-    const key = `vendor:repair:${input.vehicleId}:${input.vendorId ?? 'none'}:${input.reason}`;
+    const repairRule = getAutomationRuleByCatalogKey('REPAIR_REQUIRED');
+    const key = vendorRepairDedupKey(input.vehicleId, input.vendorId, input.reason);
     try {
       await this.safeUpsert(orgId, key, {
-        title: input.title,
-        description: input.description,
-        category: 'Repair',
-        type: 'REPAIR',
-        priority: input.priority ?? 'HIGH',
-        source: 'VENDOR',
-        sourceType: 'VENDOR',
+        title: input.title || repairRule.nameDe,
+        description: input.description ?? repairRule.descriptionDe,
+        category: repairRule.category,
+        type: repairRule.taskType!,
+        priority: input.priority ?? repairRule.defaultPriority,
+        source: repairRule.source,
+        sourceType: repairRule.sourceType,
         vehicleId: input.vehicleId,
         vendorId: input.vendorId ?? null,
-        metadata: { generatedKey: key },
+        metadata: {
+          generatedKey: key,
+          automation: buildAutomationMetadataBlock('REPAIR_REQUIRED'),
+        },
       });
     } catch (err: unknown) {
       await this.handleAutomationFailure(
         buildOutboxMeta({
           organizationId: orgId,
-          ruleId: 'vendor.repair.ensure',
-          ruleVersion: 1,
+          ...automationOutboxIdentity('REPAIR_REQUIRED'),
           entityType: 'VENDOR',
           entityId: input.vendorId ?? input.vehicleId,
           operation: 'ENSURE_REPAIR_TASK',
@@ -888,14 +879,11 @@ export class TaskAutomationService {
         return;
       }
 
+      const documentRule = getAutomationRuleByCatalogKey('DOCUMENT_PACKAGE_INCOMPLETE');
       const title = this.buildDocumentPackageTitle(input.missingDocuments.length);
       const metadata: Prisma.InputJsonValue = {
         generatedKey: input.dedupKey,
-        automation: {
-          ruleId: 'booking.document.package.review',
-          ruleVersion: 1,
-          ruleScope: 'ORG',
-        },
+        automation: buildAutomationMetadataBlock('DOCUMENT_PACKAGE_INCOMPLETE'),
         documentPackage: {
           phase: input.phase,
           missingDocuments: input.missingDocuments,
@@ -907,14 +895,14 @@ export class TaskAutomationService {
         bookingId: input.bookingId,
         customerId: input.customerId,
         title,
-        description: 'Fehlende Dokumente im Buchungspaket prüfen oder erzeugen.',
-        category: 'Documents',
-        type: 'DOCUMENT_REVIEW',
-        source: 'DOCUMENT',
-        sourceType: 'DOCUMENT',
+        description: documentRule.descriptionDe,
+        category: documentRule.category,
+        type: documentRule.taskType!,
+        source: documentRule.source,
+        sourceType: documentRule.sourceType,
         priority: input.missingDocuments.some((d) => d.documentType === 'FINAL_INVOICE')
           ? 'HIGH'
-          : 'NORMAL',
+          : documentRule.defaultPriority,
         metadata,
         checklist: input.missingDocuments.map((slot, index) => ({
           title: slot.humanReadableLabel,
@@ -943,8 +931,7 @@ export class TaskAutomationService {
       await this.handleAutomationFailure(
         buildOutboxMeta({
           organizationId: orgId,
-          ruleId: 'booking.document.package.review',
-          ruleVersion: 1,
+          ...automationOutboxIdentity('DOCUMENT_PACKAGE_INCOMPLETE'),
           entityType: 'DOCUMENT',
           entityId: input.bookingId,
           operation: 'SYNC_DOCUMENT_PACKAGES',
@@ -969,8 +956,7 @@ export class TaskAutomationService {
       await this.handleAutomationFailure(
         buildOutboxMeta({
           organizationId: orgId,
-          ruleId: 'booking.document.package.supersede',
-          ruleVersion: 1,
+          ...automationOutboxIdentity('booking.document.package.supersede'),
           entityType: 'DOCUMENT',
           entityId: bookingId,
           operation: 'SUPERSEDE_DOCUMENT_PACKAGES',
@@ -993,8 +979,7 @@ export class TaskAutomationService {
       await this.handleAutomationFailure(
         buildOutboxMeta({
           organizationId: orgId,
-          ruleId: 'booking.document.package.close_stale',
-          ruleVersion: 1,
+          ...automationOutboxIdentity('booking.document.package.close_stale'),
           entityType: 'DOCUMENT',
           entityId: bookingId,
           operation: 'CLOSE_STALE_DOCUMENT_PACKAGES',

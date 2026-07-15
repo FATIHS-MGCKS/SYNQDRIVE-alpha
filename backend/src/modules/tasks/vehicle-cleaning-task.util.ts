@@ -1,12 +1,11 @@
 import { Prisma, TaskPriority } from '@prisma/client';
+import { buildAutomationMetadataBlock } from './automation/task-automation-rule.util';
 import {
   CleaningPurpose,
   PreparationWindow,
-  VEHICLE_CLEANING_RULE_ID,
-  VEHICLE_CLEANING_RULE_VERSION,
-  VEHICLE_CLEANING_TASK_DEDUP_PREFIX,
   VEHICLE_CLEANING_URGENT_BEFORE_PICKUP_HOURS,
   LEGACY_BOOKING_CLEAN_DEDUP_PREFIX,
+  VEHICLE_CLEANING_TASK_DEDUP_PREFIX,
 } from './vehicle-cleaning-task.rules';
 
 const PURPOSE_SUFFIX: Record<CleaningPurpose, string> = {
@@ -81,11 +80,7 @@ export function buildVehicleCleaningMetadata(input: {
       nextBookingId: input.nextBookingId ?? null,
       nextPickupAt: input.nextPickupAt ?? null,
     },
-    automation: {
-      ruleId: VEHICLE_CLEANING_RULE_ID,
-      ruleVersion: VEHICLE_CLEANING_RULE_VERSION,
-      ruleScope: 'ORG',
-    },
+    automation: buildAutomationMetadataBlock('VEHICLE_CLEANING_REQUIRED'),
     ...(input.customerId ? { customerId: input.customerId } : {}),
   };
 }

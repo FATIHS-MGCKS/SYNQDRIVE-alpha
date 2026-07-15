@@ -2,12 +2,18 @@ import { TaskPriority } from '@prisma/client';
 import { resolveZonedCalendarDayWindow } from '@modules/bookings/booking-day-window.util';
 import { DEFAULT_TARIFF_TIMEZONE } from '@modules/pricing/tariff-instant.util';
 import {
+  invoicePaymentCheckDedupKey,
+  legacyInvoiceUnpaidDedupKey,
+} from '@modules/tasks/automation/task-automation-rule.util';
+import {
   INVOICE_PAYMENT_CRITICAL_OVERDUE_AFTER_MS,
   INVOICE_PAYMENT_DEFAULT_DUE_DAYS,
   INVOICE_PAYMENT_OVERDUE_PRIORITY,
   INVOICE_PAYMENT_TASK_DEDUP_PREFIX,
   LEGACY_INVOICE_UNPAID_DEDUP_PREFIX,
 } from './invoice-payment-task.rules';
+
+export { invoicePaymentCheckDedupKey, legacyInvoiceUnpaidDedupKey };
 
 export interface InvoicePaymentTaskTiming {
   dueDate: Date;
@@ -17,14 +23,6 @@ export interface InvoicePaymentTaskTiming {
   isOverdue: boolean;
   isPlanned: boolean;
   timeZone: string;
-}
-
-export function invoicePaymentCheckDedupKey(invoiceId: string): string {
-  return `${INVOICE_PAYMENT_TASK_DEDUP_PREFIX}${invoiceId}`;
-}
-
-export function legacyInvoiceUnpaidDedupKey(invoiceId: string): string {
-  return `${LEGACY_INVOICE_UNPAID_DEDUP_PREFIX}${invoiceId}`;
 }
 
 export function isInvoicePaymentCheckDedupKey(dedupKey: string | null | undefined): boolean {
