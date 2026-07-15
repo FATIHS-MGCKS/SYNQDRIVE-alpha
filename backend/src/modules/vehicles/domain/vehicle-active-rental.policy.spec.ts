@@ -27,6 +27,7 @@ function bookingRow(
     kmDriven: null,
     pickupStationId: null,
     returnStationId: null,
+    notes: null,
     customerLabel: 'Customer',
     pickupStationName: null,
     returnStationName: null,

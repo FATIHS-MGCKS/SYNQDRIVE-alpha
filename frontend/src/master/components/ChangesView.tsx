@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-reservation-window-v49478-2026-07-15',
+    version: '4.9.478',
+    title: 'V4.9.478 — Fleet Status: kanonisches Reservierungsfenster (Prompt 12/43)',
+    summary: [
+      '`vehicle-booking-context.reservation-window.ts` implementiert §3.4: Fenster `[startOfCalendarDay(pickup, orgTZ), min(pickupProtocol, endDate))`.',
+      'CONFIRMED verbindlich; PENDING verbindlich außer Wizard-Checkout-Drafts (`[synq:wizard-draft]`). ACTIVE/CANCELLED/COMPLETED/NO_SHOW ausgeschlossen.',
+      'Mehrere Buchungen im selben Fenster → `MULTIPLE_RESERVATION_WINDOW_BOOKINGS` + DEGRADED; `nextBooking` bleibt unabhängig.',
+      '`buildBookingContextMap` lädt `notes` für Wizard-Draft-Erkennung; keine Server-Lokalzeit, keine UTC-Tagesabschneidung.',
+    ],
+    reason:
+      'Prompt 12/43: RESERVED erst ab Pickup-Tag 00:00 Org-Zeitzone — z. B. 01.08.2026 10:00 CEST → Fenster ab 01.08. 00:00 Europe/Berlin, nicht sofort bei Buchung.',
+    previousBehavior:
+      '`resolveReservationWindowBooking` war Stub (immer null) — alle CONFIRMED landeten in `nextBooking`, V2-Engine konnte RESERVED nicht aus Kontext ableiten.',
+    details:
+      'Tests: `vehicle-booking-context.reservation-window.spec.ts` (heute/morgen/2 Wochen/Mitternacht/DST/Storno/ACTIVE/No-show/multi). Assembler-Integrationstests ergänzt.',
+    affectsArchitecture: true,
+    module: 'Vehicles',
+    createdAt: '2026-07-15T23:45:00.000Z',
+  },
+  {
     id: 'vehicle-active-rental-policy-v49477-2026-07-15',
     version: '4.9.477',
     title: 'V4.9.477 — Fleet Status: kanonische Active-Rental-Policy (Prompt 11/43)',

@@ -31,6 +31,7 @@ function row(
     kmDriven: null,
     pickupStationId: null,
     returnStationId: null,
+    notes: null,
     customerLabel: 'Test Customer',
     pickupStationName: null,
     returnStationName: null,
@@ -354,8 +355,8 @@ describe('vehicle-booking-context.assembler', () => {
     });
   });
 
-  describe('reservation window placeholder (Prompt 10)', () => {
-    it('leaves reservationWindowBooking null until window logic lands', () => {
+  describe('reservation window (Prompt 12)', () => {
+    it('places pickup-today CONFIRMED in reservationWindowBooking', () => {
       const state = assembleForVehicle([
         row({
           id: 'b-pickup-today',
@@ -365,9 +366,85 @@ describe('vehicle-booking-context.assembler', () => {
         }),
       ]);
 
+      expect(state.reservationWindowBooking?.id).toBe('b-pickup-today');
+      expect(state.reservationWindowBooking?.phase).toBe('pickup_window');
+      expect(state.nextBooking).toBeNull();
+      expect(state.dataQualityState).toBe('RELIABLE');
+    });
+
+    it('keeps pre-window booking in nextBooking only', () => {
+      const state = assembleForVehicle([
+        row({
+          id: 'b-future',
+          status: 'CONFIRMED',
+          startDate: new Date('2026-08-01T10:00:00.000Z'),
+          endDate: new Date('2026-08-06T18:00:00.000Z'),
+        }),
+      ]);
+
       expect(state.reservationWindowBooking).toBeNull();
-      expect(state.nextBooking?.id).toBe('b-pickup-today');
+      expect(state.nextBooking?.id).toBe('b-future');
       expect(state.nextBooking?.phase).toBe('future');
+    });
+
+    it('preserves nextBooking for second future booking while first is in window', () => {
+      const state = assembleForVehicle([
+        row({
+          id: 'b-window',
+          status: 'CONFIRMED',
+          startDate: new Date('2026-07-15T08:00:00.000Z'),
+          endDate: new Date('2026-07-20T18:00:00.000Z'),
+        }),
+        row({
+          id: 'b-later',
+          status: 'CONFIRMED',
+          startDate: new Date('2026-08-01T10:00:00.000Z'),
+          endDate: new Date('2026-08-06T18:00:00.000Z'),
+        }),
+      ]);
+
+      expect(state.reservationWindowBooking?.id).toBe('b-window');
+      expect(state.nextBooking?.id).toBe('b-later');
+      expect(state.futureBookingCount).toBe(0);
+    });
+
+    it('flags multiple bookings in the same window as DEGRADED', () => {
+      const sharedStart = new Date('2026-07-15T08:00:00.000Z');
+      const state = assembleForVehicle([
+        row({
+          id: 'b-win-a',
+          status: 'CONFIRMED',
+          startDate: sharedStart,
+          endDate: new Date('2026-07-18T18:00:00.000Z'),
+        }),
+        row({
+          id: 'b-win-b',
+          status: 'CONFIRMED',
+          startDate: sharedStart,
+          endDate: new Date('2026-07-19T18:00:00.000Z'),
+        }),
+      ]);
+
+      expect(state.reservationWindowBooking).toBeNull();
+      expect(state.dataQualityState).toBe('DEGRADED');
+      expect(state.dataQualityReasons).toContain(
+        'MULTIPLE_RESERVATION_WINDOW_BOOKINGS',
+      );
+    });
+
+    it('does not reserve wizard draft PENDING on pickup day', () => {
+      const state = assembleForVehicle([
+        row({
+          id: 'b-draft',
+          status: 'PENDING',
+          notes: '[synq:wizard-draft]',
+          startDate: new Date('2026-07-15T08:00:00.000Z'),
+          endDate: new Date('2026-07-20T18:00:00.000Z'),
+        }),
+      ]);
+
+      expect(state.reservationWindowBooking).toBeNull();
+      expect(state.nextBooking?.id).toBe('b-draft');
     });
   });
 });

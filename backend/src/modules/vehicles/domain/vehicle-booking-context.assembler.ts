@@ -90,10 +90,16 @@ export function assembleVehicleBookingContext(
     .filter((b) => b.id !== activeId)
     .sort(compareBookingsByPickupStable);
 
-  const reservationRow = resolveReservationWindowBooking(futureCandidates, {
+  const reservationResult = resolveReservationWindowBooking(futureCandidates, {
     evaluationAt,
     organizationTimezone,
   });
+
+  if (reservationResult.dataQualityReasons.length > 0) {
+    dataQualityReasons.push(...reservationResult.dataQualityReasons);
+  }
+
+  const reservationRow = reservationResult.booking;
 
   const reservationWindowBooking = reservationRow
     ? toDomainBookingRef(reservationRow, 'pickup_window', evaluationAt)

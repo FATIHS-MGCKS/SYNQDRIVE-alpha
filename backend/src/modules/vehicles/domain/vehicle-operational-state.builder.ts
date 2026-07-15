@@ -195,6 +195,7 @@ const FAIL_CLOSED_QUALITY_CODES: DataQualityReasonCode[] = [
   'PICKUP_WITHOUT_ACTIVE_BOOKING',
   'RETURN_COMPLETED_WHILE_ACTIVE',
   'BOOKING_TENANT_SCOPE_VIOLATION',
+  'MULTIPLE_RESERVATION_WINDOW_BOOKINGS',
 ];
 
 function buildGhostStateWarning(
@@ -298,6 +299,9 @@ function resolvePriorityOneReason(
         return 'HANDOVER_STATE_INCONSISTENT';
       }
       if (code === 'MULTIPLE_ACTIVE_BOOKINGS') {
+        return 'BOOKING_STATE_INCONSISTENT';
+      }
+      if (code === 'MULTIPLE_RESERVATION_WINDOW_BOOKINGS') {
         return 'BOOKING_STATE_INCONSISTENT';
       }
       return 'BOOKING_DATA_UNAVAILABLE';

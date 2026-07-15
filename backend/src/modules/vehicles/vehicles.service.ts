@@ -284,6 +284,7 @@ export class VehiclesService {
           actualPickupStationId: true,
           actualReturnStationId: true,
           completedAt: true,
+          notes: true,
           customer: {
             select: { firstName: true, lastName: true, company: true },
           },
@@ -372,6 +373,7 @@ export class VehiclesService {
         kmDriven: r.kmDriven,
         pickupStationId: r.pickupStationId,
         returnStationId: r.returnStationId,
+        notes: r.notes,
         customerLabel: formatBookingCustomerLabel(r.customer),
         pickupStationName: r.pickupStationId
           ? stationMap.get(r.pickupStationId) ?? null

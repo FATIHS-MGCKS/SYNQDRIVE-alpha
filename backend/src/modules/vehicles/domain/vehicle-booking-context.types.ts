@@ -35,6 +35,8 @@ export interface VehicleBookingQueryRow {
   kmDriven: number | null;
   pickupStationId: string | null;
   returnStationId: string | null;
+  /** Used to exclude ephemeral wizard checkout drafts from binding PENDING. */
+  notes: string | null;
   customerLabel: string;
   pickupStationName: string | null;
   returnStationName: string | null;
