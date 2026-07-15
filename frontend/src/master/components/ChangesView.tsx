@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-module-forwardref-hotfix-v49471-2026-07-15',
+    version: '4.9.471',
+    title: 'V4.9.471 — Produktions-Hotfix: DocumentsModule ↔ InvoicesModule forwardRef',
+    summary: [
+      'NestJS-Startfehler nach V4.9.470-Deploy behoben: `DocumentsModule`/`InvoicesModule` nutzen `forwardRef()` gegenseitig.',
+      'Crash-Loop (834 Restarts) durch zirkuläre Modul-Imports über `OutboundEmailModule → DocumentsModule → InvoicesModule` beseitigt.',
+    ],
+    reason:
+      'Nach Merge/Deploy V4.9.470 startete PM2 nicht (502); Logs: `DocumentsModule imports[0] is undefined` im Scope Notifications → OutboundEmail.',
+    previousBehavior:
+      'Direkte gegenseitige `imports` ohne `forwardRef` — zur Laufzeit `undefined` wenn der Modulgraph über OutboundEmail geladen wird.',
+    details:
+      'Betroffen: `documents.module.ts`, `invoices.module.ts`. Keine API- oder Datenmodell-Änderung.',
+    affectsArchitecture: false,
+    module: 'Invoices',
+    createdAt: '2026-07-15T07:55:00.000Z',
+  },
+  {
     id: 'invoice-readonly-audit-fixes-v49470-2026-07-15',
     version: '4.9.470',
     title: 'V4.9.470 — Rechnungsmodul: Read-only-Audit-Fixes (B1–K4, M1–M8)',

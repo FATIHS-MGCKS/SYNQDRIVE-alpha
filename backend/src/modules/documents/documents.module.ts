@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { InvoicesModule } from '@modules/invoices/invoices.module';
 import { TasksModule } from '@modules/tasks/tasks.module';
 import { DocumentsController } from './documents.controller';
@@ -22,7 +22,7 @@ import { LocalDocumentStorageService } from './storage/local-document-storage.se
  * tokens so a future S3 / Chromium implementation can be swapped in.
  */
 @Module({
-  imports: [InvoicesModule, TasksModule],
+  imports: [forwardRef(() => InvoicesModule), TasksModule],
   controllers: [DocumentsController, LegalDocumentsController],
   providers: [
     LocalDocumentStorageService,

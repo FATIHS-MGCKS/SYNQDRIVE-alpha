@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { DocumentsModule } from '@modules/documents/documents.module';
 import { OutboundEmailModule } from '@modules/outbound-email/outbound-email.module';
 import { InvoicesController } from './invoices.controller';
@@ -14,7 +14,7 @@ import { InvoiceAttachmentsService } from './invoice-attachments.service';
 import { TasksModule } from '@modules/tasks/tasks.module';
 
 @Module({
-  imports: [TasksModule, DocumentsModule, OutboundEmailModule],
+  imports: [TasksModule, forwardRef(() => DocumentsModule), OutboundEmailModule],
   controllers: [InvoicesController],
   providers: [
     InvoicesService,
