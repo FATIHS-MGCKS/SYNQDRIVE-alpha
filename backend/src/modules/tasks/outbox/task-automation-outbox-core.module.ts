@@ -30,6 +30,7 @@ import { TaskAutomationOutboxExecutionContext } from './task-automation-outbox-e
     TaskAutomationOutboxSchedulerService,
     TaskAutomationOutboxRepository,
     TaskAutomationOutboxExecutionContext,
+    TaskAutomationOutboxObservabilityService,
   ],
 })
 export class TaskAutomationOutboxCoreModule {}
