@@ -164,7 +164,11 @@ export function ServiceOverviewPanel({
         setLocalTasks((prev) =>
           prev.map((t) =>
             t.id === updated.summary.id
-              ? { ...t, status: updated.summary.status, completedAt: updated.summary.completedAt ?? t.completedAt }
+              ? {
+                  ...t,
+                  status: updated.summary.status,
+                  completedAt: updated.timing.completedAt ?? t.completedAt,
+                }
               : t,
           ),
         );
