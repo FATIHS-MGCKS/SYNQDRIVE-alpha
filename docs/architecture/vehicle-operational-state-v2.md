@@ -535,7 +535,7 @@ interface VehicleOperationalSnapshot {
 | AC-4 | Intervall 1.8.–6.8. ist in §5 blockiert, auch wenn AC-1 `AVAILABLE` zeigt |
 | AC-5 | Ableitungsfehler → `UNKNOWN`, niemals `AVAILABLE` |
 | AC-6 | Fleet-Map, `/vehicles`, Detail liefern identischen `operationalState` |
-| AC-7 | Master-Admin zeigt `persistedRawStatus` getrennt von `operationalState` |
+| AC-7 | Master-Admin zeigt `rawVehicleStatus` getrennt von `operationalState.status` (§16.6) |
 | AC-8 | Jeder nicht-`AVAILABLE`/`ACTIVE_RENTED`-Zustand hat ≥1 Reason-Code |
 | AC-9 | Jeder Consumer (§16.9) erhält `operationalState` mit `status`, `reason`, `isReliable` — kein Consumer leitet operativen Status aus `rawVehicleStatus` ab |
 | AC-10 | `bookingContext.activeBooking` gesetzt ⇔ `operationalState.status = ACTIVE_RENTED` **oder** parallele Belegung (§15.3) |
