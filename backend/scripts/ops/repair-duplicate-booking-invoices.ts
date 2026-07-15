@@ -6,6 +6,7 @@
  *
  * Apply fixes:
  *   CONFIRM=1 ORG_ID=<uuid> npx ts-node -r tsconfig-paths/register scripts/ops/repair-duplicate-booking-invoices.ts
+ *   MARK_CONFIRMED_PAID=0 CONFIRM=1 …  # void/issue only — do not auto-record payments
  */
 import * as fs from 'fs';
 import * as path from 'path';
@@ -27,6 +28,8 @@ import { PrismaService } from '../../src/shared/database/prisma.service';
 async function main() {
   const orgId = process.env.ORG_ID?.trim();
   const confirm = process.env.CONFIRM === '1' || process.env.CONFIRM === 'true';
+  const markConfirmedPaid =
+    process.env.MARK_CONFIRMED_PAID !== '0' && process.env.MARK_CONFIRMED_PAID !== 'false';
 
   const appModule = await AppModule.forRootAsync();
   const app = await NestFactory.createApplicationContext(appModule, {
@@ -51,7 +54,7 @@ async function main() {
       results.push(
         await lifecycle.repairBookingInvoicesForOrg(id, {
           dryRun: !confirm,
-          markConfirmedPaid: true,
+          markConfirmedPaid,
         }),
       );
     }
