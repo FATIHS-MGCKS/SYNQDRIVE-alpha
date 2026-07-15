@@ -1,16 +1,16 @@
 # Stripe Connect — Testmode End-to-End Test Report (2026-07-14, Re-run)
 
 **Prompt 4:** Full Stripe test-mode E2E of SynqDrive end-customer payments after Connect onboarding completion.  
-**Host:** `https://app.synqdrive.eu` (hot-patched `main` @ `6d3a945` + VPS patches)  
+**Host:** `https://app.synqdrive.eu` — Release `20260714231005_v4994` (`d39397e`)  
 **Mode:** Test only (`sk_test_`, `livemode=false`).
 
 ---
 
 ## Executive verdict
 
-**READY FOR INTERNAL PILOT (testmode)** — with one ops follow-up
+**READY FOR INTERNAL PILOT (testmode)**
 
-End-to-end payment, webhook reconciliation, idempotency, partial/full refund, and rollback simulation succeeded for FMS org after Connect onboarding was completed manually. Two production blockers were found and fixed during this run (webhook raw body, refund API params). Audit reports **HIGH=1** from **legacy** unresolved Connect webhook rows (pre-onboarding account attempts), not from the successful E2E payment path.
+End-to-end payment, webhook reconciliation, idempotency, partial/full refund, and rollback simulation succeeded for FMS org after Connect onboarding was completed manually. Two production blockers were found and fixed during this run (webhook raw body, refund API params). Formal VPS deploy completed; legacy webhook cleanup applied — **audit HIGH=0** for FMS org.
 
 ---
 
@@ -72,7 +72,7 @@ End-to-end payment, webhook reconciliation, idempotency, partial/full refund, an
 | 9 — Partial refund | ✅ 20 000 ct → PARTIALLY_REFUNDED |
 | 10 — Full refund | ✅ 59 998 ct → **REFUNDED** |
 | 11 — Dispute | ⏭️ Not live-tested (unit tests pass) |
-| 12 — Audits | ⚠️ HIGH=1 legacy unresolved webhooks; MEDIUM=2 legacy fake-PAID candidates |
+| 12 — Audits | ✅ HIGH=0 (2 MEDIUM legacy fake-PAID); nach Deploy + Webhook-Archivierung |
 | 13 — Build / tests | ✅ `nest build`, 302 Jest suites green |
 | 14 — Rollback sim | ✅ `paymentsEnabled=false` then restored `true` |
 
@@ -105,10 +105,19 @@ After `evt_3TtEod3ZTEq6a95J0UQDwrzW` reconciliation:
 
 ## 7. Residual ops / pilot caveats
 
-1. **Purge or resolve 17 `UNRESOLVED_ACCOUNT` webhook rows** from pre-onboarding Connect attempts (audit HIGH).
+1. ~~**Purge or resolve 17 `UNRESOLVED_ACCOUNT` webhook rows**~~ ✅ Done (2026-07-14): archived as `IGNORED` — `account.updated` without connected account ID.
 2. **Resend failed Stripe webhook deliveries** from before 2026-07-14 ~22:24 UTC if any payments occurred during that window.
 3. **Browser Checkout UI** not automated (Stripe hosted page / agent browser limits); API `tok_visa` confirm used for payment step.
 4. **Email outbox** not asserted in this re-run.
+
+### Production deploy (V4.9.457)
+
+| Item | Value |
+|------|--------|
+| Release | `20260714231005_v4994` |
+| Commit | `d39397e` |
+| Deployed | 2026-07-14T23:12 UTC |
+| Health | `GET /api/v1/health` → 200 |
 
 ---
 

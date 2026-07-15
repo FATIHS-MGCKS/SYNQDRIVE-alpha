@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'stripe-connect-e2e-deploy-v49457-2026-07-14',
+    version: '4.9.457',
+    title: 'V4.9.457 — Stripe Connect E2E-Fixes: VPS-Deploy + Legacy-Webhook-Bereinigung',
+    summary: [
+      'Formaler VPS-Deploy Release 20260714231005_v4994 (main @ d39397e) — Webhook rawBody + Refund-API-Fix live.',
+      'Health OK; PM2 synqdrive online auf app.synqdrive.eu.',
+      'Ops: 17 UNRESOLVED_ACCOUNT-Webhook-Rows (account.updated ohne Connected-Account-ID) → IGNORED archiviert.',
+      'Connect-Payment-Audit FMS: HIGH=0 (2 MEDIUM legacy fake-PAID unverändert).',
+    ],
+    reason:
+      'E2E-Blocker-Fixes mussten formal auf Production-VPS; Audit HIGH=1 durch Pre-Onboarding-Webhook-Rauschen blockierte Pilot-Freigabe.',
+    previousBehavior:
+      'Hot-Patch auf alter Release; 17 Webhooks UNRESOLVED_ACCOUNT; Audit HIGH=1.',
+    details:
+      'Release 20260714231005_v4994; architecture/STRIPE_CONNECT_E2E_TEST_REPORT_2026-07-14.md; VPS-Ops Webhook-Archivierung.',
+    affectsArchitecture: true,
+    module: 'Payments',
+    createdAt: '2026-07-14T23:15:00.000Z',
+  },
+  {
     id: 'stripe-connect-e2e-rerun-v49456-2026-07-14',
     version: '4.9.456',
     title: 'V4.9.456 — Stripe Connect: Testmode-E2E bestanden (nach Onboarding)',
