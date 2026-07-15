@@ -1,34 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
-import {
-  ConfirmDialog,
-  DetailDrawer,
-  PriorityBadge,
-  StatusChip,
-  Timeline,
-  type TimelineItem,
-} from '../../../components/patterns';
+import { ConfirmDialog } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
 import { api, type ApiTask } from '../../../lib/api';
 import { getStoredUser } from '../../../lib/auth';
 import {
-  formatTaskDate,
-  formatTaskDateTime,
+  buildTaskDetailViewModel,
+  TaskDetailShell,
+} from '../../../lib/tasks';
+import {
   isActiveTaskStatus,
   isTerminalTaskStatus,
   taskRequiresResolutionNote,
-  taskStatusLabelDe,
-  taskStatusTone,
 } from '../../lib/task-detail.utils';
 import type { OrgMemberRef, TaskListRow } from '../../lib/task-list.utils';
-import { resolveCreatorName, resolveDisplaySource, shortTaskId } from '../../lib/task-list.utils';
+import { resolveCreatorName, resolveDisplaySource } from '../../lib/task-list.utils';
 import { mapApiPriority, vehicleTaskPriorityLabel } from '../../lib/task-display.utils';
 import {
   canAssignTasks,
   resolveTaskResponsibility,
   resolveTaskStationId,
 } from '../../lib/task-responsibility.utils';
-import { formatTaskTimelineTitle } from '../../lib/task-timeline-display.utils';
 import { Icon } from '../ui/Icon';
 
 export interface GlobalTaskDetailPanelProps {
@@ -102,14 +94,21 @@ export function GlobalTaskDetailPanel({
   const currentMember = orgMembers.find((m) => m.id === currentUserId) ?? null;
   const mayAssign = canAssignTasks(userRole, canManageTasks, canWriteTasks, currentMember, stationId);
 
-  const timelineItems = useMemo((): TimelineItem[] => {
-    if (!detail?.timeline?.length) return [];
-    return detail.timeline.map((ev) => ({
-      id: ev.id,
-      title: formatTaskTimelineTitle(ev, orgMembers),
-      time: formatTaskDateTime(ev.createdAt),
-    }));
-  }, [detail?.timeline, orgMembers]);
+  const detailModel = useMemo(() => {
+    if (!detail) return null;
+    return buildTaskDetailViewModel(detail, {
+      subtitle: taskRow
+        ? `Quelle: ${taskRow.displaySource}`
+        : resolveDisplaySource(detail.sourceType, detail.source),
+      displaySource: taskRow?.displaySource ?? resolveDisplaySource(detail.sourceType, detail.source),
+      category: taskRow?.category ?? detail.category,
+      priorityLabel: vehicleTaskPriorityLabel(mapApiPriority(detail.priority)),
+      orgMembers,
+      vehicleLabel: taskRow?.vehicleLicense || undefined,
+      vehicleModel: taskRow?.vehicleModel || undefined,
+      stationLabel: taskRow?.station || undefined,
+    });
+  }, [detail, orgMembers, taskRow]);
 
   const handleCompleteClick = () => {
     if (!detail) return;
@@ -158,13 +157,16 @@ export function GlobalTaskDetailPanel({
     toast.success('Notiz gespeichert');
   };
 
-  const statusChip =
-    detail && taskRow ? (
-      <StatusChip tone={taskStatusTone(detail.status, detail.isOverdue)}>
-        {taskStatusLabelDe(detail.status)}
-        {detail.isOverdue && !isTerminalTaskStatus(detail.status) ? ' · Überfällig' : ''}
-      </StatusChip>
-    ) : null;
+  const handlePrimaryAction = () => {
+    if (!orgId || !detail || mutating) return;
+    if (detail.status === 'OPEN' || detail.status === 'WAITING') {
+      void runTaskAction(() => api.tasks.start(orgId, detail.id));
+      return;
+    }
+    if (detail.status === 'IN_PROGRESS') {
+      handleCompleteClick();
+    }
+  };
 
   const footer =
     detail && !detailLoading && !isTerminalTaskStatus(detail.status) ? (
@@ -215,238 +217,47 @@ export function GlobalTaskDetailPanel({
 
   return (
     <>
-      <DetailDrawer
+      <TaskDetailShell
+        variant="drawer"
         open={open}
         onOpenChange={onOpenChange}
-        title={taskRow?.title ?? 'Aufgabe'}
-        description={
-          taskRow ? (
-            <span className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-[10px] text-muted-foreground" title={taskRow.id}>
-                {shortTaskId(taskRow.id)}
-              </span>
-              <span className="text-muted-foreground">·</span>
-              <span>Quelle: {taskRow.displaySource}</span>
-            </span>
-          ) : undefined
-        }
-        status={statusChip}
+        model={detailModel}
+        loading={detailLoading || !taskRow}
+        density="desktop"
         widthClassName="sm:max-w-2xl"
         footer={footer}
-      >
-        {detailLoading && (
-          <div className="space-y-3" aria-busy="true">
-            <div className="h-4 w-2/3 animate-pulse rounded bg-muted" />
-            <div className="h-20 animate-pulse rounded-xl bg-muted/60" />
-            <div className="h-20 animate-pulse rounded-xl bg-muted/60" />
-          </div>
-        )}
-
-        {!detailLoading && taskRow && detail && (
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
-            <div className="space-y-4 min-w-0">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <PriorityBadge
-                  priority={detail.priority}
-                  label={vehicleTaskPriorityLabel(mapApiPriority(detail.priority))}
-                />
-                <span className="sq-chip sq-tone-neutral text-[10px]">{taskRow.category}</span>
-              </div>
-
-              <Section title="Beschreibung">
-                <p className="text-[12px] leading-relaxed text-foreground/90">
-                  {taskRow.description?.trim() || '—'}
+        bodyProps={{
+          onPrimaryAction: handlePrimaryAction,
+          checklistDisabled: mutating || !detail || isTerminalTaskStatus(detail.status),
+          onChecklistToggle: (itemId, isDone) => {
+            if (!orgId || !detail) return;
+            void runTaskAction(() =>
+              api.tasks.updateChecklistItem(orgId, detail.id, itemId, { isDone }),
+            );
+          },
+          commentDraft,
+          onCommentDraftChange: setCommentDraft,
+          onAddComment: () => void handleAddComment(),
+          commentError,
+          showCommentForm: Boolean(detail && isActiveTaskStatus(detail.status)),
+          afterSections: detail ? (
+            <div className="mt-4 space-y-3 border-t border-border/60 pt-4">
+              {mayAssign && isActiveTaskStatus(detail.status) ? (
+                <Button
+                  type="button"
+                  variant="neutral"
+                  size="sm"
+                  disabled={mutating}
+                  onClick={() => setAssignOpen(true)}
+                >
+                  {detail.assignedUserId ? 'Weiterleiten' : 'Zuweisen'}
+                </Button>
+              ) : null}
+              {responsibility?.requiresAssignment ? (
+                <p className="text-[10px] text-[color:var(--status-watch)]">
+                  Zuweisung erforderlich — kein Bearbeiter gesetzt.
                 </p>
-                {taskRow.notes ? (
-                  <p className="mt-2 text-[11px] text-muted-foreground">{taskRow.notes}</p>
-                ) : null}
-              </Section>
-
-              {detail.checklist && detail.checklist.length > 0 && (
-                <Section title="Checkliste">
-                  <div className="space-y-1.5">
-                    {detail.checklist.map((item) => (
-                      <label
-                        key={item.id}
-                        className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-border bg-muted/20 px-3 py-2"
-                      >
-                        <input
-                          type="checkbox"
-                          checked={item.isDone}
-                          disabled={mutating || isTerminalTaskStatus(detail.status)}
-                          onChange={(e) =>
-                            void runTaskAction(() =>
-                              api.tasks.updateChecklistItem(orgId!, detail.id, item.id, {
-                                isDone: e.target.checked,
-                              }),
-                            )
-                          }
-                          className="h-4 w-4 accent-[color:var(--status-positive)]"
-                        />
-                        <span
-                          className={`text-[12px] ${item.isDone ? 'text-muted-foreground line-through' : 'text-foreground'}`}
-                        >
-                          {item.title}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </Section>
-              )}
-
-              <Section title="Notizen">
-                {detail.comments && detail.comments.length > 0 ? (
-                  <div className="mb-3 space-y-2">
-                    {detail.comments.map((c) => (
-                      <div key={c.id} className="rounded-lg border border-border bg-muted/20 px-3 py-2">
-                        <p className="text-[12px] text-foreground">{c.body}</p>
-                        <p className="mt-1 text-[10px] text-muted-foreground">
-                          {c.userId
-                            ? orgMembers.find((m) => m.id === c.userId)?.name ?? 'Unbekannter Nutzer'
-                            : 'Unbekannter Nutzer'}
-                          {' · '}
-                          {formatTaskDateTime(c.createdAt)}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="mb-3 text-[11px] text-muted-foreground">Noch keine Notizen.</p>
-                )}
-                {isActiveTaskStatus(detail.status) && (
-                  <div className="space-y-2">
-                    <textarea
-                      value={commentDraft}
-                      onChange={(e) => setCommentDraft(e.target.value)}
-                      disabled={mutating}
-                      placeholder="Notiz hinzufügen …"
-                      className="min-h-[72px] w-full resize-y rounded-lg border border-border surface-premium px-3 py-2 text-[12px]"
-                    />
-                    {commentError ? (
-                      <p className="text-[10px] font-medium text-[color:var(--status-critical)]">{commentError}</p>
-                    ) : null}
-                    <Button
-                      type="button"
-                      variant="neutral"
-                      size="sm"
-                      disabled={mutating || !commentDraft.trim()}
-                      onClick={() => void handleAddComment()}
-                    >
-                      Notiz speichern
-                    </Button>
-                  </div>
-                )}
-              </Section>
-
-              {timelineItems.length > 0 && (
-                <Section title="Aktivität">
-                  <Timeline items={timelineItems} />
-                </Section>
-              )}
-
-              {detail.attachments && detail.attachments.length > 0 && (
-                <Section title="Anhänge">
-                  <div className="space-y-1.5">
-                    {detail.attachments.map((a) => (
-                      <a
-                        key={a.id}
-                        href={a.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block truncate text-[12px] font-medium text-[color:var(--brand)] underline"
-                      >
-                        {a.fileName ?? a.fileUrl}
-                      </a>
-                    ))}
-                  </div>
-                </Section>
-              )}
-            </div>
-
-            <div className="space-y-3 min-w-0">
-              <Section title="Kurzinfo">
-                <dl className="space-y-2 text-[12px]">
-                  <InfoRow label="Fällig am" value={formatTaskDate(detail.dueDate)} highlight={detail.isOverdue} />
-                  <InfoRow label="Erstellt am" value={formatTaskDateTime(detail.createdAt)} />
-                  {detail.completedAt && (
-                    <InfoRow label="Abgeschlossen" value={formatTaskDateTime(detail.completedAt)} />
-                  )}
-                  <InfoRow label="Geschätzte Dauer" value={taskRow.estimatedDuration} />
-                  <InfoRow label="Station" value={taskRow.station || '—'} />
-                </dl>
-              </Section>
-
-              <Section title="Verantwortlichkeit">
-                <dl className="space-y-2 text-[12px]">
-                  <InfoRow
-                    label="Zugewiesen an"
-                    value={responsibility?.displayName ?? '—'}
-                    hint={responsibility?.hint}
-                  />
-                  <InfoRow
-                    label="Erstellt von"
-                    value={resolveCreatorName(detail, orgMembers)}
-                  />
-                  <InfoRow
-                    label="Quelle"
-                    value={resolveDisplaySource(detail.sourceType, detail.source)}
-                  />
-                </dl>
-                {mayAssign && isActiveTaskStatus(detail.status) ? (
-                  <Button
-                    type="button"
-                    variant="neutral"
-                    size="sm"
-                    className="mt-3"
-                    disabled={mutating}
-                    onClick={() => setAssignOpen(true)}
-                  >
-                    {detail.assignedUserId ? 'Weiterleiten' : 'Zuweisen'}
-                  </Button>
-                ) : null}
-                {responsibility?.requiresAssignment ? (
-                  <p className="mt-2 text-[10px] text-[color:var(--status-watch)]">
-                    Zuweisung erforderlich — kein Bearbeiter gesetzt.
-                  </p>
-                ) : null}
-              </Section>
-
-              <Section title="Verknüpftes Objekt">
-                {taskRow.vehicleId ? (
-                  <div className="flex items-start gap-2">
-                    <Icon name="car" className="mt-0.5 h-4 w-4 text-[color:var(--brand)]" />
-                    <div className="min-w-0">
-                      <p className="text-[12px] font-semibold text-foreground">
-                        {taskRow.vehicleLicense || 'Kennzeichen wird geladen…'}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {taskRow.vehicleModel || 'Fahrzeugdaten werden geladen…'}
-                        {taskRow.station ? ` · ${taskRow.station}` : ''}
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-[11px] text-muted-foreground">Kein Fahrzeug verknüpft</p>
-                )}
-              </Section>
-
-              {detail.resolutionNote && (
-                <Section title="Abschluss-Notiz">
-                  <p className="text-[12px] text-foreground/90">{detail.resolutionNote}</p>
-                </Section>
-              )}
-
-              <details className="rounded-xl border border-border/60 bg-muted/10 px-3 py-2">
-                <summary className="cursor-pointer text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Technische Details
-                </summary>
-                <dl className="mt-2 space-y-1.5 text-[10px] text-muted-foreground">
-                  <InfoRow label="Referenz" value={shortTaskId(detail.id)} />
-                  <InfoRow label="Typ" value={detail.type.replace(/_/g, ' ')} />
-                  <InfoRow label="Rohquelle" value={detail.source ?? '—'} />
-                </dl>
-              </details>
-
+              ) : null}
               <button
                 type="button"
                 onClick={onReloadDetail}
@@ -455,9 +266,18 @@ export function GlobalTaskDetailPanel({
                 Detail aktualisieren
               </button>
             </div>
-          </div>
-        )}
-      </DetailDrawer>
+          ) : null,
+          technicalExtra: detail ? (
+            <div className="mt-3 space-y-1.5 border-t border-border/40 pt-3 text-[10px] text-muted-foreground">
+              <p>
+                Verantwortlich: {responsibility?.displayName ?? '—'}
+                {responsibility?.hint ? ` (${responsibility.hint})` : ''}
+              </p>
+              <p>Erstellt von: {resolveCreatorName(detail, orgMembers)}</p>
+            </div>
+          ) : null,
+        }}
+      />
 
       <ConfirmDialog
         open={completeOpen}
@@ -534,40 +354,5 @@ export function GlobalTaskDetailPanel({
         </label>
       </ConfirmDialog>
     </>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <section className="rounded-xl border border-border/60 surface-premium p-3">
-      <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{title}</h4>
-      {children}
-    </section>
-  );
-}
-
-function InfoRow({
-  label,
-  value,
-  hint,
-  highlight,
-}: {
-  label: string;
-  value: string;
-  hint?: string;
-  highlight?: boolean;
-}) {
-  return (
-    <div>
-      <div className="flex items-start justify-between gap-2">
-        <span className="text-muted-foreground">{label}</span>
-        <span
-          className={`text-right font-medium ${highlight ? 'text-[color:var(--status-critical)]' : 'text-foreground'}`}
-        >
-          {value}
-        </span>
-      </div>
-      {hint ? <p className="mt-0.5 text-[10px] text-muted-foreground">{hint}</p> : null}
-    </div>
   );
 }

@@ -1,14 +1,8 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import {
-  ConfirmDialog,
-  DetailDrawer,
-  PriorityBadge,
-  StatusChip,
-  Timeline,
-  type TimelineItem,
-} from '../../../components/patterns';
+import { ConfirmDialog } from '../../../components/patterns';
 import { api, type ApiTask } from '../../../lib/api';
+import { buildTaskDetailViewModel, TaskDetailShell } from '../../../lib/tasks';
 import type { VehicleData } from '../../data/vehicles';
 import {
   formatTaskDate,
@@ -16,8 +10,6 @@ import {
   isActiveTaskStatus,
   isTerminalTaskStatus,
   taskRequiresResolutionNote,
-  taskStatusLabelDe,
-  taskStatusTone,
   toDateInputValue,
 } from '../../lib/task-detail.utils';
 import { mapApiPriority, vehicleTaskPriorityLabel } from '../../lib/task-display.utils';
@@ -139,16 +131,16 @@ export function VehicleTaskDetailDrawer({
     return orgMembers.find((m) => m.id === detail.assignedUserId)?.name ?? detail.assignedUserId;
   }, [detail?.assignedUserId, orgMembers]);
 
-  const timelineItems = useMemo((): TimelineItem[] => {
-    if (!detail?.timeline?.length) return [];
-    return detail.timeline.map((ev) => ({
-      id: ev.id,
-      title: ev.type.replace(/_/g, ' '),
-      time: formatTaskDateTime(ev.createdAt),
-      description:
-        ev.oldValue || ev.newValue ? `${ev.oldValue ?? '—'} → ${ev.newValue ?? '—'}` : undefined,
-    }));
-  }, [detail?.timeline]);
+  const detailModel = useMemo(() => {
+    if (!detail) return null;
+    return buildTaskDetailViewModel(detail, {
+      eyebrow: 'Fahrzeugaufgabe',
+      priorityLabel: vehicleTaskPriorityLabel(mapApiPriority(detail.priority)),
+      orgMembers,
+      vehicleLabel: vehicle?.license ?? undefined,
+      vehicleModel: [vehicle?.make, vehicle?.model].filter(Boolean).join(' ') || undefined,
+    });
+  }, [detail, orgMembers, vehicle]);
 
   const handleStart = () => {
     if (!orgId || !detail) return;
@@ -168,10 +160,7 @@ export function VehicleTaskDetailDrawer({
       setCompleteOpen(true);
       return;
     }
-    void runAction(
-      () => api.tasks.complete(orgId!, detail.id),
-      'Aufgabe abgeschlossen',
-    );
+    void runAction(() => api.tasks.complete(orgId!, detail.id), 'Aufgabe abgeschlossen');
   };
 
   const handleCompleteConfirm = async () => {
@@ -247,6 +236,17 @@ export function VehicleTaskDetailDrawer({
     if (updated) setCommentDraft('');
   };
 
+  const handlePrimaryAction = () => {
+    if (!detail || mutating) return;
+    if (detail.status === 'OPEN' || detail.status === 'WAITING') {
+      handleStart();
+      return;
+    }
+    if (detail.status === 'IN_PROGRESS') {
+      handleCompleteClick();
+    }
+  };
+
   const renderFooter = () => {
     if (!detail || loading) return null;
     if (isTerminalTaskStatus(detail.status)) {
@@ -316,41 +316,137 @@ export function VehicleTaskDetailDrawer({
     );
   };
 
-  const statusChip = detail ? (
-    <StatusChip tone={taskStatusTone(detail.status, detail.isOverdue)}>
-      {taskStatusLabelDe(detail.status)}
-      {detail.isOverdue && detail.status !== 'DONE' && detail.status !== 'CANCELLED' ? ' · Überfällig' : ''}
-    </StatusChip>
-  ) : null;
-
-  return (
-    <>
-      <DetailDrawer
-        open={open}
-        onOpenChange={onOpenChange}
-        eyebrow="Fahrzeugaufgabe"
-        title={detail?.title ?? 'Aufgabe'}
-        description={detail?.description?.trim() || undefined}
-        status={statusChip}
-        widthClassName="sm:max-w-xl"
-        footer={renderFooter()}
-      >
-        {loading && (
-          <div className="space-y-3" aria-hidden>
-            <div className="flex gap-2">
-              <div className="h-5 w-16 rounded-full bg-muted animate-pulse" />
-              <div className="h-5 w-14 rounded-full bg-muted animate-pulse" />
-            </div>
-            <div className="h-4 w-2/3 rounded bg-muted animate-pulse" />
-            <div className="h-24 rounded-xl bg-muted/60 animate-pulse" />
-            <div className="h-24 rounded-xl bg-muted/60 animate-pulse" />
+  const vehicleContextSlot: ReactNode =
+    detail && !loading && !loadError ? (
+      <>
+        {actionError && (
+          <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+            {actionError}
           </div>
         )}
 
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <TaskSourceBadgePill label={taskSourceBadgeLabel(deriveTaskSourceBadge(detail))} />
+          <TaskBlockingBadgePill badge={deriveTaskBlockingBadge(detail)} />
+          <span className="sq-chip sq-tone-neutral text-[10px]">{detail.category || '—'}</span>
+        </div>
+
+        {onOpenInGlobalTasks && (
+          <button
+            type="button"
+            onClick={() => onOpenInGlobalTasks(detail.id)}
+            className="sq-press mb-4 inline-flex items-center gap-1 text-[11px] font-semibold text-[color:var(--brand)]"
+          >
+            <Icon name="external-link" className="w-3 h-3" />
+            In Tasks öffnen
+          </button>
+        )}
+
+        <VehicleMetaSection title="Fahrzeug">
+          <p className="text-[12px] font-semibold text-foreground">{vehicle?.license ?? '—'}</p>
+          <p className="text-[11px] text-muted-foreground">
+            {[vehicle?.make, vehicle?.model].filter(Boolean).join(' ') || '—'}
+          </p>
+        </VehicleMetaSection>
+
+        <VehicleMetaSection title="Zuweisung & Termine">
+          {isActiveTaskStatus(detail.status) && (
+            <button
+              type="button"
+              onClick={() => setEditingMeta((value) => !value)}
+              className="sq-press mb-2 text-[10px] font-semibold text-[color:var(--brand)]"
+            >
+              {editingMeta ? 'Bearbeitung abbrechen' : 'Bearbeiten'}
+            </button>
+          )}
+          {editingMeta && isActiveTaskStatus(detail.status) ? (
+            <div className="space-y-2">
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Zuständig
+                <select
+                  value={assignDraft}
+                  onChange={(e) => setAssignDraft(e.target.value)}
+                  disabled={mutating}
+                  className="mt-1 w-full rounded-lg border border-border surface-premium px-2.5 py-2 text-xs"
+                >
+                  <option value="">Nicht zugewiesen</option>
+                  {orgMembers.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Fällig am
+                <input
+                  type="date"
+                  value={dueDraft}
+                  onChange={(e) => setDueDraft(e.target.value)}
+                  disabled={mutating}
+                  className="mt-1 w-full rounded-lg border border-border surface-premium px-2.5 py-2 text-xs"
+                />
+              </label>
+              <button
+                type="button"
+                disabled={mutating}
+                onClick={() => void handleSaveMeta()}
+                className="sq-cta px-3 py-2 text-[11px] font-semibold disabled:opacity-60"
+              >
+                Speichern
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-1.5 text-[11px]">
+              <MetaRow label="Zuständig" value={assigneeName} />
+              <MetaRow label="Fällig" value={formatTaskDate(detail.dueDate)} highlight={detail.isOverdue} />
+              <MetaRow label="Erstellt" value={formatTaskDateTime(detail.createdAt)} />
+              <MetaRow label="Aktualisiert" value={formatTaskDateTime(detail.updatedAt)} />
+              {detail.startedAt && <MetaRow label="Gestartet" value={formatTaskDateTime(detail.startedAt)} />}
+              {detail.completedAt && (
+                <MetaRow label="Abgeschlossen" value={formatTaskDateTime(detail.completedAt)} />
+              )}
+              {detail.cancelledAt && (
+                <MetaRow label="Storniert" value={formatTaskDateTime(detail.cancelledAt)} />
+              )}
+            </div>
+          )}
+        </VehicleMetaSection>
+
+        <HealthTaskContextPanel
+          task={detail}
+          onOpenVehicleHealth={vehicle?.id ? () => onOpenChange(false) : undefined}
+        />
+      </>
+    ) : null;
+
+  return (
+    <>
+      <TaskDetailShell
+        variant="drawer"
+        open={open}
+        onOpenChange={onOpenChange}
+        model={detailModel}
+        loading={loading}
+        density="desktop"
+        widthClassName="sm:max-w-xl"
+        footer={renderFooter()}
+        bodyProps={{
+          onPrimaryAction: handlePrimaryAction,
+          checklistDisabled: mutating || !detail || isTerminalTaskStatus(detail?.status ?? 'DONE'),
+          onChecklistToggle: handleChecklistToggle,
+          commentDraft,
+          onCommentDraftChange: setCommentDraft,
+          onAddComment: () => void handleAddComment(),
+          commentError,
+          showCommentForm: Boolean(detail && isActiveTaskStatus(detail.status)),
+          beforeSections: vehicleContextSlot,
+        }}
+      >
         {!loading && loadError && (
           <div className="rounded-xl border border-[color:var(--status-critical)]/30 bg-[color:var(--status-critical-soft)] px-3 py-3 text-[12px] text-foreground">
             <p className="font-medium">Aufgabe konnte nicht geladen werden</p>
-            <p className="mt-1 text-muted-foreground text-[11px]">
+            <p className="mt-1 text-[11px] text-muted-foreground">
               {import.meta.env.DEV ? loadError : 'Bitte versuchen Sie es erneut.'}
             </p>
             <button
@@ -362,223 +458,7 @@ export function VehicleTaskDetailDrawer({
             </button>
           </div>
         )}
-
-        {!loading && detail && (
-          <div className="space-y-4">
-            {actionError && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-[11px] text-red-800 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
-                {actionError}
-              </div>
-            )}
-
-            <div className="flex flex-wrap items-center gap-2">
-              <PriorityBadge
-                priority={detail.priority}
-                label={vehicleTaskPriorityLabel(mapApiPriority(detail.priority))}
-              />
-              <TaskSourceBadgePill label={taskSourceBadgeLabel(deriveTaskSourceBadge(detail))} />
-              <TaskBlockingBadgePill badge={deriveTaskBlockingBadge(detail)} />
-              <span className="sq-chip sq-tone-neutral text-[10px]">{detail.category || '—'}</span>
-              <span className="sq-chip sq-tone-neutral text-[10px]">{detail.type.replace(/_/g, ' ')}</span>
-            </div>
-
-            {onOpenInGlobalTasks && (
-              <button
-                type="button"
-                onClick={() => onOpenInGlobalTasks(detail.id)}
-                className="sq-press inline-flex items-center gap-1 text-[11px] font-semibold text-[color:var(--brand)]"
-              >
-                <Icon name="external-link" className="w-3 h-3" />
-                In Tasks öffnen
-              </button>
-            )}
-
-            <MetaSection title="Fahrzeug">
-              <p className="text-[12px] font-semibold text-foreground">{vehicle?.license ?? '—'}</p>
-              <p className="text-[11px] text-muted-foreground">
-                {[vehicle?.make, vehicle?.model].filter(Boolean).join(' ') || '—'}
-              </p>
-            </MetaSection>
-
-            <MetaSection title="Zuweisung & Termine">
-              {isActiveTaskStatus(detail.status) && (
-                <button
-                  type="button"
-                  onClick={() => setEditingMeta((v) => !v)}
-                  className="sq-press mb-2 text-[10px] font-semibold text-[color:var(--brand)]"
-                >
-                  {editingMeta ? 'Bearbeitung abbrechen' : 'Bearbeiten'}
-                </button>
-              )}
-              {editingMeta && isActiveTaskStatus(detail.status) ? (
-                <div className="space-y-2">
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Zuständig
-                    <select
-                      value={assignDraft}
-                      onChange={(e) => setAssignDraft(e.target.value)}
-                      disabled={mutating}
-                      className="mt-1 w-full rounded-lg border border-border surface-premium px-2.5 py-2 text-xs"
-                    >
-                      <option value="">Nicht zugewiesen</option>
-                      {orgMembers.map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    Fällig am
-                    <input
-                      type="date"
-                      value={dueDraft}
-                      onChange={(e) => setDueDraft(e.target.value)}
-                      disabled={mutating}
-                      className="mt-1 w-full rounded-lg border border-border surface-premium px-2.5 py-2 text-xs"
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    disabled={mutating}
-                    onClick={() => void handleSaveMeta()}
-                    className="sq-cta px-3 py-2 text-[11px] font-semibold disabled:opacity-60"
-                  >
-                    Speichern
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-1.5 text-[11px]">
-                  <MetaRow label="Zuständig" value={assigneeName} />
-                  <MetaRow label="Fällig" value={formatTaskDate(detail.dueDate)} highlight={detail.isOverdue} />
-                  <MetaRow label="Erstellt" value={formatTaskDateTime(detail.createdAt)} />
-                  <MetaRow label="Aktualisiert" value={formatTaskDateTime(detail.updatedAt)} />
-                  {detail.startedAt && <MetaRow label="Gestartet" value={formatTaskDateTime(detail.startedAt)} />}
-                  {detail.completedAt && (
-                    <MetaRow label="Abgeschlossen" value={formatTaskDateTime(detail.completedAt)} />
-                  )}
-                  {detail.cancelledAt && (
-                    <MetaRow label="Storniert" value={formatTaskDateTime(detail.cancelledAt)} />
-                  )}
-                </div>
-              )}
-            </MetaSection>
-
-            <MetaSection title="Quelle">
-              <div className="space-y-1.5 text-[11px]">
-                <MetaRow label="Quelltyp" value={detail.sourceType} />
-                {detail.source && <MetaRow label="Quelle" value={detail.source} />}
-              </div>
-            </MetaSection>
-
-            <HealthTaskContextPanel
-              task={detail}
-              onOpenVehicleHealth={
-                vehicle?.id
-                  ? () => onOpenChange(false)
-                  : undefined
-              }
-            />
-
-            {detail.resolutionNote && (
-              <MetaSection title="Abschluss-Notiz">
-                <p className="text-[12px] text-foreground/90">{detail.resolutionNote}</p>
-              </MetaSection>
-            )}
-
-            <MetaSection title="Checkliste">
-              {detail.checklist && detail.checklist.length > 0 ? (
-                <div className="space-y-1.5">
-                  {detail.checklist.map((item) => (
-                    <label
-                      key={item.id}
-                      className="flex cursor-pointer items-center gap-2.5 rounded-lg border border-border bg-muted/30 px-3 py-2"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={item.isDone}
-                        disabled={mutating || isTerminalTaskStatus(detail.status)}
-                        onChange={(e) => handleChecklistToggle(item.id, e.target.checked)}
-                        className="h-4 w-4 rounded accent-[color:var(--status-positive)]"
-                      />
-                      <span
-                        className={`text-[11px] ${item.isDone ? 'text-muted-foreground line-through' : 'text-foreground'}`}
-                      >
-                        {item.title}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[11px] text-muted-foreground">Keine Checkliste für diese Aufgabe.</p>
-              )}
-            </MetaSection>
-
-            <MetaSection title="Kommentare">
-              {detail.comments && detail.comments.length > 0 ? (
-                <div className="mb-3 space-y-2">
-                  {detail.comments.map((c) => (
-                    <div key={c.id} className="rounded-lg border border-border bg-muted/30 px-3 py-2">
-                      <p className="text-[11px] text-foreground">{c.body}</p>
-                      <p className="mt-1 text-[10px] text-muted-foreground">{formatTaskDateTime(c.createdAt)}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="mb-3 text-[11px] text-muted-foreground">Noch keine Kommentare.</p>
-              )}
-              {isActiveTaskStatus(detail.status) && (
-                <div className="space-y-2">
-                  <textarea
-                    value={commentDraft}
-                    onChange={(e) => setCommentDraft(e.target.value)}
-                    disabled={mutating}
-                    placeholder="Neuer Kommentar…"
-                    className="min-h-[64px] w-full resize-y rounded-lg border border-border surface-premium px-3 py-2 text-xs"
-                  />
-                  {commentError && (
-                    <p className="text-[10px] font-medium text-red-600 dark:text-red-400">{commentError}</p>
-                  )}
-                  <button
-                    type="button"
-                    disabled={mutating || !commentDraft.trim()}
-                    onClick={() => void handleAddComment()}
-                    className="sq-press rounded-lg border border-border px-3 py-2 text-[11px] font-semibold disabled:opacity-60"
-                  >
-                    Kommentar hinzufügen
-                  </button>
-                </div>
-              )}
-            </MetaSection>
-
-            <MetaSection title="Anhänge">
-              {detail.attachments && detail.attachments.length > 0 ? (
-                <div className="space-y-1.5">
-                  {detail.attachments.map((a) => (
-                    <a
-                      key={a.id}
-                      href={a.fileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block truncate text-[11px] font-medium text-[color:var(--brand)] underline"
-                    >
-                      {a.fileName ?? a.fileUrl}
-                    </a>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-[11px] text-muted-foreground">Keine Anhänge vorhanden.</p>
-              )}
-            </MetaSection>
-
-            {timelineItems.length > 0 && (
-              <MetaSection title="Verlauf">
-                <Timeline items={timelineItems} />
-              </MetaSection>
-            )}
-          </div>
-        )}
-      </DetailDrawer>
+      </TaskDetailShell>
 
       <ConfirmDialog
         open={completeOpen}
@@ -628,9 +508,9 @@ export function VehicleTaskDetailDrawer({
   );
 }
 
-function MetaSection({ title, children }: { title: string; children: ReactNode }) {
+function VehicleMetaSection({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="rounded-xl border border-border bg-muted/20 p-3">
+    <section className="mb-4 rounded-xl border border-border/50 bg-muted/10 p-3">
       <h4 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</h4>
       {children}
     </section>
@@ -649,7 +529,9 @@ function MetaRow({
   return (
     <div className="flex items-center justify-between gap-3">
       <span className="text-muted-foreground">{label}</span>
-      <span className={`font-medium tabular-nums ${highlight ? 'text-[color:var(--status-critical)]' : 'text-foreground'}`}>
+      <span
+        className={`font-medium tabular-nums ${highlight ? 'text-[color:var(--status-critical)]' : 'text-foreground'}`}
+      >
         {value}
       </span>
     </div>
