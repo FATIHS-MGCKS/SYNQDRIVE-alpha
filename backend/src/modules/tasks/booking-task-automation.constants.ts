@@ -31,7 +31,7 @@ export function bookingReturnDedupKey(bookingId: string): string {
  * single-task preparation model. Kept in the active set so re-processing
  * CONFIRMED does not supersede existing clean/document tasks (no backfill).
  */
-export const LEGACY_CONFIRMED_BOOKING_DEDUP_KEYS = ['booking:clean', 'booking:document'] as const;
+export const LEGACY_CONFIRMED_BOOKING_DEDUP_KEYS = ['booking:document'] as const;
 
 export function legacyConfirmedBookingDedupKeys(bookingId: string): string[] {
   return LEGACY_CONFIRMED_BOOKING_DEDUP_KEYS.map((prefix) => `${prefix}:${bookingId}`);

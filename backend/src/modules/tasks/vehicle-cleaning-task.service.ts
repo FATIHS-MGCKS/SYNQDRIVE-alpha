@@ -1,8 +1,22 @@
-import { Injectable } from '@nestjs/common';
-import { TaskPriority, TaskType } from '@prisma/client';
+import { Injectable, Logger } from '@nestjs/common';
+import { CleaningStatus, Prisma, TaskPriority, TaskType } from '@prisma/client';
+import { DEFAULT_TARIFF_TIMEZONE } from '@modules/pricing/tariff-instant.util';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from './tasks.service';
 import { checklistForType } from './task-templates';
+import type { BookingLifecycleTaskInput } from './task-automation.service';
+import { computeBookingPreparationTiming } from './booking-preparation-timing.util';
+import {
+  buildVehicleCleaningMetadata,
+  isBareLegacyVehicleCleaningDedupKey,
+  isLegacyBookingCleanDedupKey,
+  legacyBookingCleanDedupKey,
+  readCleaningMetadataNextBookingId,
+  resolveCleaningPriorityFromPickup,
+  resolveCleaningPurpose,
+  vehicleCleaningDedupKey,
+} from './vehicle-cleaning-task.util';
+import { CleaningPurpose } from './vehicle-cleaning-task.rules';
 
 export type CleaningTaskAction = 'created' | 'existing' | 'updated' | 'completed' | 'none';
 
@@ -14,70 +28,146 @@ export interface CleaningTaskMaterializeResult {
 
 const ACTIVE_STATUSES = ['OPEN', 'IN_PROGRESS', 'WAITING'] as const;
 
-function cleaningDedupKey(vehicleId: string): string {
-  return `vehicle:cleaning:${vehicleId}`;
-}
-
 @Injectable()
 export class VehicleCleaningTaskService {
+  private readonly logger = new Logger(VehicleCleaningTaskService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly tasks: TasksService,
   ) {}
 
   /**
-   * Ensures exactly one active cleaning task exists for the vehicle.
-   * Uses dedupKey + open-task scan so legacy rows without dedupKey are reused.
+   * Ensures exactly one active cleaning task exists when the vehicle is marked
+   * NEEDS_CLEANING. Uses canonical dedup + open-task scan (legacy rows included).
    */
   async ensureCleaningTask(orgId: string, vehicleId: string): Promise<CleaningTaskMaterializeResult> {
-    const vehicle = await this.prisma.vehicle.findFirst({
-      where: { id: vehicleId, organizationId: orgId },
-      select: {
-        id: true,
-        licensePlate: true,
-        make: true,
-        model: true,
-        organizationId: true,
-      },
-    });
-    if (!vehicle) {
+    return this.syncVehicleCleaningTask(orgId, vehicleId, { materializeIfNeeded: true });
+  }
+
+  /**
+   * Refreshes booking context on an existing cleaning task for a CONFIRMED booking.
+   * Does not auto-create a cleaning task — only materializes when cleaning is needed.
+   */
+  async syncBookingPreparationContext(
+    booking: BookingLifecycleTaskInput,
+    options?: { now?: Date },
+  ): Promise<CleaningTaskMaterializeResult> {
+    if (booking.status !== 'CONFIRMED') {
       return { action: 'none' };
     }
 
-    const existingOpen = await this.findOpenCleaningTask(orgId, vehicleId);
-    if (existingOpen) {
-      if (!existingOpen.dedupKey) {
-        await this.prisma.orgTask.update({
-          where: { id: existingOpen.id },
-          data: { dedupKey: cleaningDedupKey(vehicleId) },
-        });
+    try {
+      const needsCleaning = await this.vehicleNeedsCleaning(booking.organizationId, booking.vehicleId);
+      const existing = await this.findPrimaryOpenCleaningTask(booking.organizationId, booking.vehicleId);
+
+      if (!needsCleaning && !existing) {
+        return { action: 'none' };
       }
-      const full = await this.tasks.getTaskById(existingOpen.id, orgId);
-      return { action: 'existing', taskId: full.id };
+
+      return this.syncVehicleCleaningTask(booking.organizationId, booking.vehicleId, {
+        materializeIfNeeded: needsCleaning,
+        bookingContext: booking,
+        now: options?.now,
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`syncBookingPreparationContext(${booking.id}) failed: ${message}`);
+      return { action: 'none' };
     }
+  }
 
-    const priority = await this.resolveCleaningPriority(orgId, vehicleId);
-    const label = [vehicle.make, vehicle.model].filter(Boolean).join(' ') || vehicle.licensePlate || vehicleId;
-    const plate = vehicle.licensePlate ?? '—';
-
-    const task = await this.tasks.upsertByDedup(orgId, cleaningDedupKey(vehicleId), {
-      title: 'Vehicle cleaning required',
-      description: `Interior/exterior cleaning required for ${label} (${plate}).`,
-      category: 'Cleaning',
-      type: 'VEHICLE_CLEANING' as TaskType,
-      sourceType: 'SYSTEM',
-      source: 'VEHICLE_CLEANING',
-      vehicleId,
-      priority,
-      blocksVehicleAvailability: true,
-      checklist: checklistForType('VEHICLE_CLEANING'),
-      metadata: {
-        origin: 'VEHICLE_CLEANING',
+  /** Detaches or closes cleaning tasks when a booking is cancelled. */
+  async onBookingCancelled(
+    orgId: string,
+    bookingId: string,
+    vehicleId: string,
+  ): Promise<void> {
+    try {
+      await this.tasks.supersedeLegacyBookingCleanTasks(orgId, {
+        bookingId,
         vehicleId,
-      },
-    });
+        reason: `Booking ${bookingId} cancelled — legacy booking:clean superseded`,
+      });
 
-    return { action: 'created', taskId: task.id };
+      const needsCleaning = await this.vehicleNeedsCleaning(orgId, vehicleId);
+      const openTasks = await this.findOpenCleaningTasks(orgId, vehicleId);
+
+      for (const task of openTasks) {
+        const linked =
+          task.bookingId === bookingId ||
+          readCleaningMetadataNextBookingId(task.metadata) === bookingId;
+        if (!linked) continue;
+
+        if (needsCleaning) {
+          await this.detachBookingContext(orgId, task, vehicleId);
+        } else {
+          await this.tasks.supersedeTask(orgId, task.id, {
+            resolutionCode: 'BOOKING_CANCELLED',
+            reason: `Booking ${bookingId} cancelled — no cleaning need remains`,
+            metadata: {
+              ruleId: 'vehicle.cleaning.cancel',
+              bookingId,
+              vehicleId,
+            },
+          });
+        }
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`onBookingCancelled(${bookingId}) failed: ${message}`);
+    }
+  }
+
+  /** Moves booking context when a confirmed booking switches vehicles. */
+  async onBookingVehicleChanged(
+    booking: BookingLifecycleTaskInput,
+    previousVehicleId: string,
+    options?: { now?: Date },
+  ): Promise<void> {
+    if (previousVehicleId === booking.vehicleId) return;
+
+    try {
+      await this.tasks.supersedeLegacyBookingCleanTasks(booking.organizationId, {
+        bookingId: booking.id,
+        vehicleId: previousVehicleId,
+        reason: `Booking ${booking.id} vehicle changed — legacy clean on old vehicle superseded`,
+      });
+
+      const oldTasks = await this.findOpenCleaningTasks(booking.organizationId, previousVehicleId);
+      for (const task of oldTasks) {
+        const linked =
+          task.bookingId === booking.id ||
+          readCleaningMetadataNextBookingId(task.metadata) === booking.id;
+        if (!linked) continue;
+
+        const needsCleaningOld = await this.vehicleNeedsCleaning(
+          booking.organizationId,
+          previousVehicleId,
+        );
+        if (needsCleaningOld) {
+          await this.detachBookingContext(booking.organizationId, task, previousVehicleId);
+        } else {
+          await this.tasks.supersedeTask(booking.organizationId, task.id, {
+            resolutionCode: 'BOOKING_VEHICLE_CHANGED',
+            reason: `Booking ${booking.id} moved to another vehicle — cleaning no longer required here`,
+            metadata: {
+              ruleId: 'vehicle.cleaning.vehicle_change',
+              bookingId: booking.id,
+              vehicleId: previousVehicleId,
+              nextVehicleId: booking.vehicleId,
+            },
+          });
+        }
+      }
+
+      if (booking.status === 'CONFIRMED') {
+        await this.syncBookingPreparationContext(booking, options);
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`onBookingVehicleChanged(${booking.id}) failed: ${message}`);
+    }
   }
 
   /** Completes all active cleaning tasks when the vehicle is marked clean. */
@@ -86,15 +176,7 @@ export class VehicleCleaningTaskService {
     vehicleId: string,
     actorUserId?: string,
   ): Promise<CleaningTaskMaterializeResult> {
-    const openTasks = await this.prisma.orgTask.findMany({
-      where: {
-        organizationId: orgId,
-        vehicleId,
-        type: 'VEHICLE_CLEANING',
-        status: { in: [...ACTIVE_STATUSES] },
-      },
-      select: { id: true },
-    });
+    const openTasks = await this.findOpenCleaningTasks(orgId, vehicleId);
 
     if (openTasks.length === 0) {
       return { action: 'none', completedCount: 0 };
@@ -119,8 +201,257 @@ export class VehicleCleaningTaskService {
     };
   }
 
-  private async findOpenCleaningTask(orgId: string, vehicleId: string) {
-    return this.prisma.orgTask.findFirst({
+  private async syncVehicleCleaningTask(
+    orgId: string,
+    vehicleId: string,
+    options: {
+      materializeIfNeeded: boolean;
+      bookingContext?: BookingLifecycleTaskInput;
+      now?: Date;
+    },
+  ): Promise<CleaningTaskMaterializeResult> {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId, organizationId: orgId },
+      select: {
+        id: true,
+        licensePlate: true,
+        make: true,
+        model: true,
+        organizationId: true,
+        cleaningStatus: true,
+      },
+    });
+    if (!vehicle) {
+      return { action: 'none' };
+    }
+
+    const needsCleaning = vehicle.cleaningStatus === 'NEEDS_CLEANING';
+    const now = options.now ?? new Date();
+    let existing = await this.findPrimaryOpenCleaningTask(orgId, vehicleId);
+
+    if (!needsCleaning) {
+      if (existing) {
+        await this.tasks.supersedeTask(orgId, existing.id, {
+          resolutionCode: 'VEHICLE_CLEANED',
+          reason: 'Vehicle is clean — open cleaning task superseded',
+          metadata: {
+            ruleId: 'vehicle.cleaning.clean_status',
+            vehicleId,
+          },
+        });
+      }
+      await this.tasks.supersedeLegacyBookingCleanTasks(orgId, {
+        vehicleId,
+        bookingId: options.bookingContext?.id,
+        reason: `No cleaning need for vehicle ${vehicleId}`,
+      });
+      return { action: 'none' };
+    }
+
+    const bookingContext =
+      options.bookingContext ??
+      (await this.resolveNextBookingContext(orgId, vehicleId));
+
+    await this.tasks.supersedeLegacyBookingCleanTasks(orgId, {
+      vehicleId,
+      bookingId: bookingContext?.id,
+      excludeTaskId: existing?.id,
+      reason: `Canonical vehicle cleaning task for vehicle ${vehicleId}`,
+    });
+
+    existing = (await this.findPrimaryOpenCleaningTask(orgId, vehicleId)) ?? existing;
+
+    const purpose = resolveCleaningPurpose({
+      nextBookingId: bookingContext?.id,
+      preparationWindow: bookingContext ? 'PRE_BOOKING' : null,
+    });
+    const dedupKey = vehicleCleaningDedupKey(vehicleId, purpose);
+    const priority = await this.resolveCleaningPriority(
+      orgId,
+      vehicleId,
+      bookingContext?.startDate ?? null,
+      now,
+    );
+    const timing = bookingContext
+      ? await this.resolvePreparationTiming(bookingContext, now)
+      : null;
+
+    if (existing) {
+      await this.refreshCleaningTask(orgId, existing, {
+        vehicle,
+        dedupKey,
+        purpose,
+        priority,
+        bookingContext,
+        timing,
+      });
+      return {
+        action: options.bookingContext ? 'updated' : 'existing',
+        taskId: existing.id,
+      };
+    }
+
+    if (!needsCleaning) {
+      return { action: 'none' };
+    }
+
+    const label =
+      [vehicle.make, vehicle.model].filter(Boolean).join(' ') ||
+      vehicle.licensePlate ||
+      vehicleId;
+    const plate = vehicle.licensePlate ?? '—';
+
+    const task = await this.tasks.upsertByDedup(orgId, dedupKey, {
+      title: 'Vehicle cleaning required',
+      description: `Interior/exterior cleaning required for ${label} (${plate}).`,
+      category: 'Cleaning',
+      type: 'VEHICLE_CLEANING' as TaskType,
+      sourceType: 'SYSTEM',
+      source: 'VEHICLE_CLEANING',
+      vehicleId,
+      bookingId: bookingContext?.id ?? null,
+      customerId: bookingContext?.customerId ?? null,
+      priority,
+      blocksVehicleAvailability: true,
+      dueDate: timing?.dueDate ?? null,
+      activatesAt: timing?.activatesAt ?? now,
+      checklist: checklistForType('VEHICLE_CLEANING'),
+      metadata: buildVehicleCleaningMetadata({
+        dedupKey,
+        vehicleId,
+        cleaningPurpose: purpose,
+        nextBookingId: bookingContext?.id ?? null,
+        nextPickupAt: bookingContext?.startDate?.toISOString() ?? null,
+        customerId: bookingContext?.customerId ?? null,
+      }),
+    });
+
+    return { action: 'created', taskId: task.id };
+  }
+
+  private async refreshCleaningTask(
+    orgId: string,
+    task: { id: string; dedupKey: string | null; metadata: unknown },
+    input: {
+      vehicle: {
+        id: string;
+        licensePlate: string | null;
+        make: string | null;
+        model: string | null;
+      };
+      dedupKey: string;
+      purpose: CleaningPurpose;
+      priority: TaskPriority;
+      bookingContext?: BookingLifecycleTaskInput | null;
+      timing?: { activatesAt: Date; dueDate: Date } | null;
+    },
+  ): Promise<void> {
+    const metadata = buildVehicleCleaningMetadata({
+      dedupKey: input.dedupKey,
+      vehicleId: input.vehicle.id,
+      cleaningPurpose: input.purpose,
+      nextBookingId: input.bookingContext?.id ?? null,
+      nextPickupAt: input.bookingContext?.startDate?.toISOString() ?? null,
+      customerId: input.bookingContext?.customerId ?? null,
+    });
+
+    const nextDedupKey =
+      task.dedupKey && task.dedupKey !== input.dedupKey
+        ? input.dedupKey
+        : task.dedupKey ?? input.dedupKey;
+
+    if (
+      !task.dedupKey ||
+      isBareLegacyVehicleCleaningDedupKey(task.dedupKey) ||
+      isLegacyBookingCleanDedupKey(task.dedupKey) ||
+      task.dedupKey !== input.dedupKey
+    ) {
+      const conflict = await this.prisma.orgTask.findFirst({
+        where: {
+          organizationId: orgId,
+          dedupKey: input.dedupKey,
+          NOT: { id: task.id },
+        },
+        select: { id: true },
+      });
+      if (!conflict) {
+        await this.prisma.orgTask.update({
+          where: { id: task.id },
+          data: { dedupKey: input.dedupKey },
+        });
+      }
+    }
+
+    await this.prisma.orgTask.update({
+      where: { id: task.id },
+      data: {
+        bookingId: input.bookingContext?.id ?? null,
+        customerId: input.bookingContext?.customerId ?? null,
+        priority: input.priority,
+        dueDate: input.timing?.dueDate ?? null,
+        activatesAt: input.timing?.activatesAt ?? undefined,
+        metadata: metadata as Prisma.InputJsonValue,
+        ...(nextDedupKey !== task.dedupKey && !isBareLegacyVehicleCleaningDedupKey(task.dedupKey ?? '')
+          ? {}
+          : {}),
+      },
+    });
+
+    if (input.timing) {
+      await this.tasks.updateTaskTiming(
+        orgId,
+        task.id,
+        {
+          activatesAt: input.timing.activatesAt,
+          dueDate: input.timing.dueDate,
+          priority: input.priority,
+        },
+        {
+          ruleId: 'vehicle.cleaning.context_sync',
+          bookingId: input.bookingContext?.id,
+        },
+      );
+    }
+  }
+
+  private async detachBookingContext(
+    orgId: string,
+    task: { id: string; dedupKey: string | null; metadata: unknown },
+    vehicleId: string,
+  ): Promise<void> {
+    const purpose: CleaningPurpose = 'STANDALONE';
+    const dedupKey = vehicleCleaningDedupKey(vehicleId, purpose);
+    const metadata = buildVehicleCleaningMetadata({
+      dedupKey,
+      vehicleId,
+      cleaningPurpose: purpose,
+      nextBookingId: null,
+      nextPickupAt: null,
+    });
+
+    const conflict = await this.prisma.orgTask.findFirst({
+      where: {
+        organizationId: orgId,
+        dedupKey,
+        NOT: { id: task.id },
+      },
+      select: { id: true },
+    });
+
+    await this.prisma.orgTask.update({
+      where: { id: task.id },
+      data: {
+        bookingId: null,
+        customerId: null,
+        priority: 'NORMAL',
+        metadata: metadata as Prisma.InputJsonValue,
+        ...(conflict ? {} : { dedupKey }),
+      },
+    });
+  }
+
+  private async findOpenCleaningTasks(orgId: string, vehicleId: string) {
+    return this.prisma.orgTask.findMany({
       where: {
         organizationId: orgId,
         vehicleId,
@@ -131,19 +462,96 @@ export class VehicleCleaningTaskService {
     });
   }
 
-  private async resolveCleaningPriority(orgId: string, vehicleId: string): Promise<TaskPriority> {
+  private async findPrimaryOpenCleaningTask(orgId: string, vehicleId: string) {
+    const openTasks = await this.findOpenCleaningTasks(orgId, vehicleId);
+    if (openTasks.length === 0) return null;
+    if (openTasks.length === 1) return openTasks[0]!;
+
+    const [primary, ...duplicates] = openTasks;
+    for (const dup of duplicates) {
+      await this.tasks.supersedeTask(orgId, dup.id, {
+        resolutionCode: 'CLEANING_TASK_SUPERSEDED',
+        reason: 'Duplicate cleaning task consolidated under canonical vehicle identity',
+        metadata: {
+          ruleId: 'vehicle.cleaning.dedup',
+          canonicalTaskId: primary!.id,
+          vehicleId,
+        },
+      });
+    }
+    return primary!;
+  }
+
+  private async vehicleNeedsCleaning(orgId: string, vehicleId: string): Promise<boolean> {
+    const vehicle = await this.prisma.vehicle.findFirst({
+      where: { id: vehicleId, organizationId: orgId },
+      select: { cleaningStatus: true },
+    });
+    return vehicle?.cleaningStatus === ('NEEDS_CLEANING' as CleaningStatus);
+  }
+
+  private async resolveNextBookingContext(
+    orgId: string,
+    vehicleId: string,
+    excludeBookingId?: string,
+  ): Promise<BookingLifecycleTaskInput | null> {
     const nextBooking = await this.prisma.booking.findFirst({
       where: {
         organizationId: orgId,
         vehicleId,
         status: { in: ['PENDING', 'CONFIRMED'] },
         startDate: { gt: new Date() },
+        ...(excludeBookingId ? { NOT: { id: excludeBookingId } } : {}),
+      },
+      orderBy: { startDate: 'asc' },
+      select: {
+        id: true,
+        organizationId: true,
+        vehicleId: true,
+        customerId: true,
+        status: true,
+        startDate: true,
+        endDate: true,
+        pickupStationId: true,
+        returnStationId: true,
+      },
+    });
+    return nextBooking;
+  }
+
+  private async resolveCleaningPriority(
+    orgId: string,
+    vehicleId: string,
+    nextPickupAt: Date | null,
+    now: Date,
+  ): Promise<TaskPriority> {
+    if (nextPickupAt) {
+      return resolveCleaningPriorityFromPickup(nextPickupAt, now);
+    }
+    const nextBooking = await this.prisma.booking.findFirst({
+      where: {
+        organizationId: orgId,
+        vehicleId,
+        status: { in: ['PENDING', 'CONFIRMED'] },
+        startDate: { gt: now },
       },
       orderBy: { startDate: 'asc' },
       select: { startDate: true },
     });
-    if (!nextBooking?.startDate) return 'NORMAL';
-    const hoursUntil = (nextBooking.startDate.getTime() - Date.now()) / (1000 * 60 * 60);
-    return hoursUntil <= 24 ? 'HIGH' : 'NORMAL';
+    return resolveCleaningPriorityFromPickup(nextBooking?.startDate ?? null, now);
+  }
+
+  private async resolvePreparationTiming(booking: BookingLifecycleTaskInput, now: Date) {
+    const timeZone = await this.resolveOrgTimezone(booking.organizationId);
+    const timing = computeBookingPreparationTiming(booking.startDate, now, timeZone);
+    return { activatesAt: timing.activatesAt, dueDate: timing.dueDate };
+  }
+
+  private async resolveOrgTimezone(orgId: string): Promise<string> {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+      select: { timezone: true },
+    });
+    return org?.timezone?.trim() || DEFAULT_TARIFF_TIMEZONE;
   }
 }

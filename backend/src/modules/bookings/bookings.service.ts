@@ -20,6 +20,7 @@ import {
 import { HandoverProtocolDto } from './handover.types';
 import { RentalHealthService } from '@modules/rental-health/rental-health.service';
 import { TaskAutomationService } from '@modules/tasks/task-automation.service';
+import { VehicleCleaningTaskService } from '@modules/tasks/vehicle-cleaning-task.service';
 import { CustomerEligibilityService } from '@modules/customers/customer-eligibility.service';
 import { PricingService } from '@modules/pricing/pricing.service';
 import {
@@ -87,6 +88,7 @@ export class BookingsService {
     // (preparation / pickup / return / invoice). Idempotent + fire-and-forget;
     // never blocks/breaks booking writes.
     private readonly taskAutomationService: TaskAutomationService,
+    private readonly vehicleCleaningTasks: VehicleCleaningTaskService,
     private readonly customerEligibilityService: CustomerEligibilityService,
     private readonly pricingService: PricingService,
     private readonly pricingQuoteService: PricingQuoteService,
@@ -1758,6 +1760,11 @@ export class BookingsService {
         pickupStationId: updated.pickupStationId,
         returnStationId: updated.returnStationId,
       };
+      if (updated.vehicleId !== existing.vehicleId) {
+        void this.vehicleCleaningTasks
+          .onBookingVehicleChanged(lifecycleInput, existing.vehicleId)
+          .catch(() => {});
+      }
       if (updated.startDate.getTime() !== existing.startDate.getTime()) {
         void this.taskAutomationService
           .syncBookingPreparationTiming(lifecycleInput, { previousStartDate: existing.startDate })
@@ -1785,6 +1792,11 @@ export class BookingsService {
         pickupStationId: updated.pickupStationId,
         returnStationId: updated.returnStationId,
       };
+      if (updated.vehicleId !== existing.vehicleId) {
+        void this.vehicleCleaningTasks
+          .onBookingVehicleChanged(lifecycleInput, existing.vehicleId)
+          .catch(() => {});
+      }
       if (updated.endDate.getTime() !== existing.endDate.getTime()) {
         void this.taskAutomationService
           .syncBookingReturnTiming(lifecycleInput, { previousEndDate: existing.endDate })
@@ -1829,6 +1841,9 @@ export class BookingsService {
 
     void this.taskAutomationService
       .supersedeBookingLifecycleOnCancellation(orgId, id)
+      .catch(() => {});
+    void this.vehicleCleaningTasks
+      .onBookingCancelled(orgId, id, booking.vehicleId)
       .catch(() => {});
 
     return updated;

@@ -2,6 +2,7 @@ import { ActivityLogService } from '@modules/activity-log/activity-log.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TaskLinkedObjectResolverService } from './task-linked-object-resolver.service';
 import { TaskAutomationService } from './task-automation.service';
+import { VehicleCleaningTaskService } from './vehicle-cleaning-task.service';
 import { TasksService } from './tasks.service';
 import { createBookingTaskTestStore, type BookingTaskTestStore } from './booking-task-test-store';
 
@@ -9,6 +10,7 @@ export interface BookingTaskPipelineHarness {
   store: BookingTaskTestStore;
   tasks: TasksService;
   automation: TaskAutomationService;
+  vehicleCleaningTasks: VehicleCleaningTaskService;
 }
 
 export function createBookingTaskPipelineHarness(options?: {
@@ -23,7 +25,8 @@ export function createBookingTaskPipelineHarness(options?: {
   } as unknown as TaskLinkedObjectResolverService;
 
   const tasks = new TasksService(prisma, activityLog, linkedObjectResolver);
-  const automation = new TaskAutomationService(tasks, prisma);
+  const vehicleCleaningTasks = new VehicleCleaningTaskService(prisma, tasks);
+  const automation = new TaskAutomationService(tasks, prisma, vehicleCleaningTasks);
 
-  return { store, tasks, automation };
+  return { store, tasks, automation, vehicleCleaningTasks };
 }

@@ -15,6 +15,7 @@ import { BOOKING_PREPARATION_TIMING_RULE } from './booking-preparation-timing.ru
 import { BOOKING_RETURN_TIMING_RULE } from './booking-pickup-return-timing.rules';
 import { TaskAutomationService } from './task-automation.service';
 import { TasksService } from './tasks.service';
+import { VehicleCleaningTaskService } from './vehicle-cleaning-task.service';
 import { checklistForType } from './task-templates';
 
 describe('TaskAutomationService — booking lifecycle tasks', () => {
@@ -70,6 +71,12 @@ describe('TaskAutomationService — booking lifecycle tasks', () => {
         TaskAutomationService,
         { provide: TasksService, useValue: tasks },
         { provide: PrismaService, useValue: prisma },
+        {
+          provide: VehicleCleaningTaskService,
+          useValue: {
+            syncBookingPreparationContext: jest.fn().mockResolvedValue({ action: 'none' }),
+          },
+        },
       ],
     }).compile();
 

@@ -35,6 +35,7 @@ import { BOOKING_PREPARATION_TIMING_RULE } from './booking-preparation-timing.ru
 import { TasksService } from './tasks.service';
 import { checklistForType } from './task-templates';
 import { isActiveTaskStatus } from './task-transition.policy';
+import { VehicleCleaningTaskService } from './vehicle-cleaning-task.service';
 
 export interface BookingLifecycleTaskInput {
   id: string;
@@ -80,6 +81,7 @@ export class TaskAutomationService {
   constructor(
     private readonly tasks: TasksService,
     private readonly prisma: PrismaService,
+    private readonly vehicleCleaningTasks: VehicleCleaningTaskService,
   ) {}
 
   private async resolveOrgTimezone(orgId: string): Promise<string> {
@@ -657,6 +659,7 @@ export class TaskAutomationService {
     if (status === 'CONFIRMED') {
       await this.syncBookingPreparationTiming(booking);
       await this.syncBookingPickupTiming(booking);
+      await this.vehicleCleaningTasks.syncBookingPreparationContext(booking);
     }
 
     if (status === 'ACTIVE') {

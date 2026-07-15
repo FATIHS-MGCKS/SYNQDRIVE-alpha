@@ -2134,6 +2134,65 @@ export class TasksService {
     return tasks.length;
   }
 
+  /** Supersedes legacy `booking:clean:{bookingId}` rows after canonical vehicle cleaning migration. */
+  async supersedeLegacyBookingCleanTasks(
+    orgId: string,
+    input: {
+      bookingId?: string;
+      vehicleId?: string;
+      reason: string;
+      excludeTaskId?: string;
+    },
+  ): Promise<number> {
+    const orClauses: Prisma.OrgTaskWhereInput[] = [];
+    if (input.bookingId) {
+      orClauses.push({ dedupKey: `booking:clean:${input.bookingId}` });
+      orClauses.push({
+        bookingId: input.bookingId,
+        type: 'VEHICLE_CLEANING',
+        dedupKey: { startsWith: 'booking:clean:' },
+      });
+    }
+    if (input.vehicleId) {
+      orClauses.push({
+        vehicleId: input.vehicleId,
+        type: 'VEHICLE_CLEANING',
+        dedupKey: { startsWith: 'booking:clean:' },
+        status: { in: ACTIVE_TASK_STATUSES },
+      });
+    }
+    if (orClauses.length === 0) return 0;
+
+    const tasks = await this.prisma.orgTask.findMany({
+      where: {
+        organizationId: orgId,
+        status: { in: ACTIVE_TASK_STATUSES },
+        ...(input.excludeTaskId ? { NOT: { id: input.excludeTaskId } } : {}),
+        OR: orClauses,
+      },
+      select: { id: true, dedupKey: true, bookingId: true },
+    });
+    if (tasks.length === 0) return 0;
+
+    for (const batch of this.chunkItems(tasks, TasksService.TERMINAL_TRANSITION_BATCH_SIZE)) {
+      await Promise.all(
+        batch.map((task) =>
+          this.supersedeTask(orgId, task.id, {
+            resolutionCode: 'CLEANING_TASK_SUPERSEDED',
+            reason: input.reason,
+            metadata: {
+              ruleId: 'vehicle.cleaning.migrate',
+              bookingId: task.bookingId ?? input.bookingId,
+              vehicleId: input.vehicleId,
+              dedupKey: task.dedupKey,
+            },
+          }),
+        ),
+      );
+    }
+    return tasks.length;
+  }
+
   /** Supersedes document-package tasks whose phase is no longer active for the booking. */
   async closeStaleDocumentPackageTasks(
     orgId: string,

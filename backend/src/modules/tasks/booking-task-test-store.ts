@@ -152,6 +152,33 @@ export function createBookingTaskTestStore(options?: BookingTaskTestStoreOptions
   const taskChecklistItems: Row[] = [];
   const taskComments: Row[] = [];
   const taskAttachments: Row[] = [];
+  const vehicles: Row[] = [
+    {
+      id: ids.vehicleA,
+      organizationId: ids.orgA,
+      licensePlate: 'M-VA 100',
+      make: 'VW',
+      model: 'Golf',
+      cleaningStatus: 'CLEAN',
+    },
+    {
+      id: ids.vehicleB,
+      organizationId: ids.orgA,
+      licensePlate: 'M-VB 200',
+      make: 'BMW',
+      model: 'X1',
+      cleaningStatus: 'CLEAN',
+    },
+    {
+      id: ids.vehicleOtherOrg,
+      organizationId: ids.orgB,
+      licensePlate: 'B-XX 1',
+      make: 'Audi',
+      model: 'A3',
+      cleaningStatus: 'CLEAN',
+    },
+  ];
+  const bookings: Row[] = [];
 
   const tableFor = (model: string): Row[] => {
     switch (model) {
@@ -171,6 +198,10 @@ export function createBookingTaskTestStore(options?: BookingTaskTestStoreOptions
         return users;
       case 'organizationMembership':
         return organizationMemberships;
+      case 'vehicle':
+        return vehicles;
+      case 'booking':
+        return bookings;
       default:
         throw new Error(`Unknown model ${model}`);
     }
@@ -375,6 +406,8 @@ export function createBookingTaskTestStore(options?: BookingTaskTestStoreOptions
     taskAttachment: modelApi('taskAttachment'),
     user: modelApi('user'),
     organizationMembership: modelApi('organizationMembership'),
+    vehicle: modelApi('vehicle'),
+    booking: modelApi('booking'),
     $transaction: async <T>(
       arg: ((tx: typeof prisma) => Promise<T> | T) | Array<Promise<unknown>>,
     ): Promise<T> => {
@@ -393,7 +426,7 @@ export function createBookingTaskTestStore(options?: BookingTaskTestStoreOptions
     ids,
     prisma,
     nowFn,
-    tables: { organizations, orgTasks, taskEvents, taskChecklistItems },
+    tables: { organizations, orgTasks, taskEvents, taskChecklistItems, vehicles, bookings },
     seedLegacyCleanTask: (bookingId: string, vehicleId: string) => {
       const row: Row = {
         id: nextId('task'),
@@ -422,6 +455,41 @@ export function createBookingTaskTestStore(options?: BookingTaskTestStoreOptions
       ),
     tasksByDedupKey: (orgId: string, dedupKey: string) =>
       orgTasks.filter((t) => t.organizationId === orgId && t.dedupKey === dedupKey),
+    setVehicleCleaningStatus: (vehicleId: string, cleaningStatus: 'CLEAN' | 'NEEDS_CLEANING') => {
+      const row = vehicles.find((v) => v.id === vehicleId);
+      if (row) row.cleaningStatus = cleaningStatus;
+    },
+    seedBooking: (input: {
+      id: string;
+      organizationId: string;
+      vehicleId: string;
+      customerId: string;
+      status?: string;
+      startDate: Date;
+      endDate: Date;
+    }) => {
+      const row: Row = {
+        id: input.id,
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        customerId: input.customerId,
+        status: input.status ?? 'CONFIRMED',
+        startDate: input.startDate,
+        endDate: input.endDate,
+        pickupStationId: 'station-pickup',
+        returnStationId: 'station-return',
+      };
+      bookings.push(row);
+      return row;
+    },
+    activeCleaningTasksForVehicle: (orgId: string, vehicleId: string) =>
+      orgTasks.filter(
+        (t) =>
+          t.organizationId === orgId &&
+          t.vehicleId === vehicleId &&
+          t.type === 'VEHICLE_CLEANING' &&
+          ['OPEN', 'IN_PROGRESS', 'WAITING'].includes(String(t.status)),
+      ),
     eventsForTask: (taskId: string) => taskEvents.filter((e) => e.taskId === taskId),
   };
 }

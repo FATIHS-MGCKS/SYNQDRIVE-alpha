@@ -205,7 +205,7 @@ describe('Booking task pipeline integration', () => {
       expect(store.tasksByDedupKey(ids.orgA, bookingPreparationDedupKey(ids.bookingA))).toHaveLength(1);
     });
 
-    it('does not touch legacy clean task on old vehicle when booking vehicle changes', async () => {
+    it('supersedes orphaned legacy clean on the old vehicle when lifecycle re-processes', async () => {
       const { store, automation } = createBookingTaskPipelineHarness();
       const booking = bookingConfirmed();
       const legacy = store.seedLegacyCleanTask(ids.bookingA, ids.vehicleA);
@@ -215,7 +215,8 @@ describe('Booking task pipeline integration', () => {
 
       const legacyAfter = store.tables.orgTasks.find((t) => t.id === legacy.id);
       expect(legacyAfter?.vehicleId).toBe(ids.vehicleA);
-      expect(legacyAfter?.status).toBe('OPEN');
+      expect(legacyAfter?.status).toBe('DONE');
+      expect(legacyAfter?.completionMode).toBe(TaskCompletionMode.SUPERSEDED);
     });
   });
 
