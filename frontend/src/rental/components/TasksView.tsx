@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ListTodo } from 'lucide-react';
 import { PageHeader, EmptyState, ErrorState } from '../../components/patterns';
 import { Button } from '../../components/ui/button';
-import { api, type ApiTask, type Station } from '../../lib/api';
+import { api, type ApiServiceCase, type ApiTask, type Station } from '../../lib/api';
 import { getStoredUser } from '../../lib/auth';
 import {
   matchesTaskDetailInvalidation,
@@ -46,6 +46,7 @@ import {
   syncTasksListFiltersToUrl,
   type TasksListFilters,
 } from './tasks/tasksListState';
+import type { Invoice } from './invoices/invoiceTypes';
 import { Icon } from './ui/Icon';
 
 interface TasksViewProps {
@@ -58,10 +59,10 @@ interface TasksViewProps {
 type Task = TaskListRow;
 
 interface EntityLookupState {
-  bookings: Array<{ id: string; label: string }>;
-  customers: Array<{ id: string; label: string }>;
-  invoices: Array<{ id: string; label: string }>;
-  serviceCases: Array<{ id: string; label: string }>;
+  bookings: Array<{ value: string; label: string }>;
+  customers: Array<{ value: string; label: string }>;
+  invoices: Array<{ value: string; label: string }>;
+  serviceCases: Array<{ value: string; label: string }>;
 }
 
 const EMPTY_LOOKUP: EntityLookupState = {
@@ -180,20 +181,20 @@ export function TasksView({
         const serviceCases = Array.isArray(serviceCasesRes) ? serviceCasesRes : [];
 
         setEntityLookup({
-          bookings: bookings.map((row) => ({
-            id: String(row.id ?? ''),
+          bookings: (bookings as Array<Record<string, unknown>>).map((row) => ({
+            value: String(row.id ?? ''),
             label: String(row.bookingNumber ?? row.id ?? 'Buchung'),
           })),
-          customers: customers.map((row) => ({
-            id: String(row.id ?? ''),
+          customers: (customers as Array<Record<string, unknown>>).map((row) => ({
+            value: String(row.id ?? ''),
             label: String(row.name ?? row.companyName ?? row.email ?? row.id ?? 'Kunde'),
           })),
-          invoices: invoices.map((row) => ({
-            id: String(row.id ?? ''),
+          invoices: (invoices as Invoice[]).map((row) => ({
+            value: String(row.id ?? ''),
             label: String(row.invoiceNumber ?? row.id ?? 'Rechnung'),
           })),
-          serviceCases: serviceCases.map((row) => ({
-            id: String(row.id ?? ''),
+          serviceCases: (serviceCases as ApiServiceCase[]).map((row) => ({
+            value: String(row.id ?? ''),
             label: String(row.title ?? row.id ?? 'Servicefall'),
           })),
         });

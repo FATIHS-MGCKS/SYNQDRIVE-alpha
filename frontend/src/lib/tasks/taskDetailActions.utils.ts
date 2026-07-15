@@ -83,7 +83,14 @@ export function buildTaskDetailActionPlan(detail: ApiTaskDetail): TaskDetailActi
   const start = actionItem('start', 'Starten', actions.start, 'primary');
   const resume = actionItem('resume', 'Fortsetzen', actions.resume, 'primary');
   const waiting = actionItem('moveToWaiting', 'Warten', actions.moveToWaiting, 'secondary');
-  const complete = actionItem('complete', 'Erledigen', actions.complete, 'primary');
+  const completeAvailability =
+    actions.complete.enabled || actions.overrideCompletion.enabled
+      ? {
+          ...actions.complete,
+          enabled: actions.complete.enabled || actions.overrideCompletion.enabled,
+        }
+      : actions.complete;
+  const complete = actionItem('complete', 'Erledigen', completeAvailability, 'primary');
   const comment = actionItem('comment', 'Kommentar', actions.comment, 'secondary');
   const cancel = actionItem('cancel', 'Abbrechen', actions.cancel, 'overflow');
 

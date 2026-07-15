@@ -6,7 +6,7 @@ import {
   isNormalizedTaskDetail,
   matchesTaskDetailInvalidation,
   subscribeTaskQueryInvalidation,
-  TaskDetailActionsHost,
+  useTaskDetailActionsHost,
   TaskDetailShell,
   type TaskNotesActivityTab,
   useRentalTaskLinkedObjectNavigation,
@@ -206,19 +206,14 @@ export function VehicleTaskDetailDrawer({
     setFocusComment(true);
   };
 
-  const renderFooter = () => {
-    if (!normalizedDetail || loading) return null;
-    return (
-      <TaskDetailActionsHost
-        detail={normalizedDetail}
-        orgId={orgId}
-        variant="desktop-footer"
-        onTaskUpdated={handleDetailUpdated}
-        onComment={handleCommentFromBar}
-        onOpenSuccessorTask={onOpenInGlobalTasks}
-      />
-    );
-  };
+  const taskActions = useTaskDetailActionsHost({
+    detail: normalizedDetail && !loading ? normalizedDetail : null,
+    orgId,
+    variant: 'desktop-footer',
+    onTaskUpdated: handleDetailUpdated,
+    onComment: handleCommentFromBar,
+    onOpenSuccessorTask: onOpenInGlobalTasks,
+  });
 
   const vehicleContextSlot: ReactNode =
     detail && !loading && !loadError ? (
@@ -333,8 +328,9 @@ export function VehicleTaskDetailDrawer({
         loading={loading}
         density="desktop"
         widthClassName="sm:max-w-xl"
-        footer={renderFooter()}
+        footer={taskActions.footer}
         bodyProps={{
+          onChecklistOverride: taskActions.openCompleteDialog,
           onLinkedObjectClick: navigateLinkedObject,
           pendingChecklistItemIds: pendingItemIds,
           onChecklistToggle: (itemId, isDone) => void toggleItem(itemId, isDone),
@@ -366,6 +362,8 @@ export function VehicleTaskDetailDrawer({
           </div>
         )}
       </TaskDetailShell>
+
+      {taskActions.dialogs}
     </>
   );
 }

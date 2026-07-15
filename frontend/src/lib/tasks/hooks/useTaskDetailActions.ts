@@ -5,7 +5,7 @@ import { invalidateTaskQueries } from '../invalidate';
 import type { CompleteTaskPayload } from '../types';
 import type { ApiTaskDetail } from '../types';
 import type { TaskBucket } from '../types';
-import type { TaskDetailActionKind } from './taskDetailActions.utils';
+import type { TaskDetailActionKind } from '../taskDetailActions.utils';
 
 export interface UseTaskDetailActionsOptions {
   orgId: string | null | undefined;

@@ -22,7 +22,7 @@ export { TaskDetailChecklistOverrideDialog } from './components/TaskDetailCheckl
 export { TaskDetailNotesActivitySection } from './components/TaskDetailNotesActivitySection';
 export type { TaskNotesActivityTab } from './components/TaskDetailNotesActivitySection';
 export { TaskDetailShell } from './components/TaskDetailShell';
-export { TaskDetailActionsHost } from './components/TaskDetailActionsHost';
+export { TaskDetailActionsHost, useTaskDetailActionsHost } from './components/TaskDetailActionsHost';
 export { TaskDetailActionBar } from './components/TaskDetailActionBar';
 export type { TaskDetailActionBarVariant } from './components/TaskDetailActionBar';
 export { TaskDetailCompleteDialog } from './components/TaskDetailCompleteDialog';

@@ -225,4 +225,22 @@ describe('operatorTaskDisplay.utils', () => {
     expect(model.subpoints).toHaveLength(3);
     expect(model.overflowCount).toBe(1);
   });
+
+  it('does not emit generic Dokumente labels when concrete names exist', () => {
+    const model = buildOperatorTaskDisplayModel(
+      task({
+        id: 'doc-2',
+        title: 'Dokumente prüfen',
+        type: 'DOCUMENT_REVIEW',
+        metadata: {
+          documentPackage: {
+            missingDocuments: [{ humanReadableLabel: 'Mietvertrag' }],
+          },
+        },
+      }),
+    );
+
+    expect(model.subpoints).toEqual(['Mietvertrag']);
+    expect(model.subpoints).not.toContain('Dokumente');
+  });
 });

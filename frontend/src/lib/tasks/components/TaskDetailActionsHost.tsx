@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 import { ConfirmDialog } from '../../../components/patterns';
-import { formatTaskDateTime, taskStatusLabelDe } from '../../rental/lib/task-detail.utils';
+import { formatTaskDateTime, taskStatusLabelDe } from '../../../rental/lib/task-detail.utils';
 import {
   buildTaskDetailActionPlan,
   buildTaskDetailCompletionSummary,
@@ -24,7 +24,14 @@ export interface TaskDetailActionsHostProps {
   onCancelSuccess?: () => void;
 }
 
-export function TaskDetailActionsHost({
+export interface TaskDetailActionsHostResult {
+  footer: ReactNode | null;
+  dialogs: ReactNode;
+  mobileCompletionOverlay: ReactNode | null;
+  openCompleteDialog: () => void;
+}
+
+export function useTaskDetailActionsHost({
   detail,
   orgId,
   variant,
@@ -34,10 +41,11 @@ export function TaskDetailActionsHost({
   onComment,
   onOpenSuccessorTask,
   onCancelSuccess,
-}: TaskDetailActionsHostProps) {
+}: TaskDetailActionsHostProps): TaskDetailActionsHostResult {
   const [completeOpen, setCompleteOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const openCompleteDialog = useCallback(() => setCompleteOpen(true), []);
 
   const actions = useTaskDetailActions({
     orgId,
@@ -56,7 +64,7 @@ export function TaskDetailActionsHost({
       detail && plan?.isTerminal
         ? buildTaskDetailCompletionSummary(detail, {
             statusLabel: taskStatusLabelDe(detail.summary.status),
-            formatDateTime: (iso) => (iso ? formatTaskDateTime(iso) : null),
+            formatDateTime: (iso) => (iso ? formatTaskDateTime(iso) : '—'),
           })
         : null,
     [detail, plan?.isTerminal],
@@ -118,7 +126,14 @@ export function TaskDetailActionsHost({
     }
   };
 
-  if (!detail || !plan) return null;
+  if (!detail || !plan) {
+    return {
+      footer: null,
+      dialogs: null,
+      mobileCompletionOverlay: null,
+      openCompleteDialog,
+    };
+  }
 
   const mobile = variant === 'mobile-sticky';
   const blockerSummary =
@@ -135,39 +150,43 @@ export function TaskDetailActionsHost({
       />
     ) : null;
 
-  return (
-    <>
-      {completionSummaryNode ? (
-        mobile ? (
-          <div
-            className="fixed inset-x-0 z-[45] border-t border-border/50 surface-frosted px-4 py-3"
-            style={{
-              bottom:
-                mobileBottomOffset === 'sheet'
-                  ? 'max(0px, env(safe-area-inset-bottom))'
-                  : 'calc(4.5rem + max(0px, env(safe-area-inset-bottom)))',
-              paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))',
-            }}
-            data-testid="task-detail-completion-summary-mobile"
-          >
-            {completionSummaryNode}
-          </div>
-        ) : (
-          completionSummaryNode
-        )
-      ) : (
-        <TaskDetailActionBar
-          variant={variant}
-          primary={plan.primary}
-          secondaries={plan.secondaries}
-          overflow={plan.overflow}
-          pendingAction={actions.pendingAction}
-          blockerSummary={blockerSummary}
-          mobileBottomOffset={mobileBottomOffset}
-          onAction={(kind) => void handleAction(kind)}
-        />
-      )}
+  const footer =
+    completionSummaryNode && !mobile ? (
+      completionSummaryNode
+    ) : !completionSummaryNode ? (
+      <TaskDetailActionBar
+        variant={variant}
+        primary={plan.primary}
+        secondaries={plan.secondaries}
+        overflow={plan.overflow}
+        pendingAction={actions.pendingAction}
+        blockerSummary={blockerSummary}
+        mobileBottomOffset={mobileBottomOffset}
+        onAction={(kind) => void handleAction(kind)}
+      />
+    ) : null;
 
+  const mobileCompletionOverlay =
+    completionSummaryNode && mobile ? (
+      <div
+        className="fixed inset-x-0 z-[45] border-t border-border/50 surface-frosted px-4 py-3"
+        style={{
+          bottom:
+            mobileBottomOffset === 'sheet'
+              ? 'max(0px, env(safe-area-inset-bottom))'
+              : 'calc(4.5rem + max(0px, env(safe-area-inset-bottom)))',
+          paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))',
+        }}
+        data-testid="task-detail-completion-summary-mobile"
+      >
+        {completionSummaryNode}
+      </div>
+    ) : mobile && footer ? (
+      footer
+    ) : null;
+
+  const dialogs = (
+    <>
       <TaskDetailCompleteDialog
         open={completeOpen}
         onOpenChange={setCompleteOpen}
@@ -188,6 +207,24 @@ export function TaskDetailActionsHost({
         loading={actions.pendingAction === 'cancel'}
         onConfirm={() => void handleCancelConfirm()}
       />
+    </>
+  );
+
+  return {
+    footer,
+    dialogs,
+    mobileCompletionOverlay,
+    openCompleteDialog,
+  };
+}
+
+export function TaskDetailActionsHost(props: TaskDetailActionsHostProps) {
+  const { footer, dialogs, mobileCompletionOverlay } = useTaskDetailActionsHost(props);
+
+  return (
+    <>
+      {mobileCompletionOverlay ?? footer}
+      {dialogs}
     </>
   );
 }

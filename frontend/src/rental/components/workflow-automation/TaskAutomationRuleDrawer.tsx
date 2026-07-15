@@ -5,7 +5,7 @@ import { api } from '../../../lib/api';
 import { Button } from '../../../components/ui/button';
 import { DetailDrawer } from '../../../components/patterns';
 import { useRentalOrg } from '../../RentalContext';
-import { RuleValueTile } from '../../shared/rental-requirements-ui';
+import { RuleValueTile } from '../shared/rental-requirements-ui';
 import { TaskAutomationSimulationPanel } from './TaskAutomationSimulationPanel';
 import type {
   TaskAutomationOverrideFormState,

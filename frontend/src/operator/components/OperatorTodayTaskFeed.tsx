@@ -2,7 +2,7 @@ import { useCallback, type ReactNode } from 'react';
 import { ErrorState, SkeletonRows } from '../../components/patterns';
 import type { ApiTask } from '../../lib/api';
 import { OperatorTodaySection } from '../components/OperatorTodaySection';
-import type { OperatorTodayFeedBucket } from '../hooks/operatorTodayFeed.utils';
+import type { OperatorTodayFeedBucket, OperatorTodayBucketSlice } from '../hooks/operatorTodayFeed.utils';
 import type { OperatorTodayTaskEntry } from '../tasks/operatorTodayTasks';
 import { OperatorTaskCardConnected } from '../tasks/OperatorTaskCardConnected';
 import type { FleetVehicleLookup } from '../tasks/operatorTaskDisplay.utils';
@@ -17,7 +17,7 @@ export interface OperatorTodayTaskFeedProps {
   vehicleById: Map<string, FleetVehicleLookup>;
   plannedOpen: boolean;
   onPlannedOpenChange: (open: boolean) => void;
-  onOpenTask: (task: ApiTask, focusComment?: boolean) => void;
+  onOpenTask: (task: ApiTask, options?: { focusComment?: boolean }) => void;
   onTaskChanged?: () => void | Promise<void>;
   onReload: () => void;
   sectionExtras?: Partial<Record<OperatorTodayFeedBucket, ReactNode>>;
@@ -91,7 +91,7 @@ export function OperatorTodayTaskFeed({
         {showEntries && (
           <div className="space-y-2">
             {extras}
-            {slice.entries.map((entry) => renderTaskEntry(entry))}
+            {slice.entries.map((entry: OperatorTodayTaskEntry) => renderTaskEntry(entry))}
           </div>
         )}
       </OperatorTodaySection>

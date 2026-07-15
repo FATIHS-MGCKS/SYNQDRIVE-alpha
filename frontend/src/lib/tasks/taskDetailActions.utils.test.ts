@@ -174,6 +174,26 @@ describe('buildTaskDetailActionPlan', () => {
     expect(plan.overflow.map((item) => item.kind)).toContain('cancel');
   });
 
+  it('enables Erledigen when manager override is available despite open checklist', () => {
+    const detail = normalizedDetail(
+      baseTask({ id: 't-override', title: 'Checkliste', type: 'CUSTOM', status: 'IN_PROGRESS' }),
+      {
+        availableActions: {
+          start: { enabled: false },
+          resume: { enabled: false },
+          moveToWaiting: { enabled: true },
+          complete: { enabled: false, disabledReason: 'Offene Pflichtpunkte in der Checkliste.' },
+          cancel: { enabled: true },
+          comment: { enabled: true },
+          overrideCompletion: { enabled: true },
+        },
+      },
+    );
+    const plan = buildTaskDetailActionPlan(detail);
+    expect(plan.primary?.kind).toBe('complete');
+    expect(plan.primary?.enabled).toBe(true);
+  });
+
   it('marks terminal tasks without workflow buttons', () => {
     const detail = normalizedDetail(
       baseTask({ id: 't-done', title: 'Fertig', type: 'CUSTOM', status: 'DONE' }),

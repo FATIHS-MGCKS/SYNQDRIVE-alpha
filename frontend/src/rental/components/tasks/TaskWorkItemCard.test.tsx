@@ -37,6 +37,7 @@ function taskFixture(overrides?: Partial<TaskListRow>): TaskListRow {
     completionModeLabel: null,
     isOverdue: false,
     serverBucket: 'TODAY',
+    completedAtRaw: null,
     ...overrides,
   };
 }

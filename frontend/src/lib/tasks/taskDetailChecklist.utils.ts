@@ -1,6 +1,7 @@
 import { isActiveTaskStatus, isTerminalTaskStatus } from '../../rental/lib/task-detail.utils';
 import { isTaskActivated } from '../../operator/tasks/operatorTaskCard.utils';
 import type {
+  ApiTask,
   ApiTaskChecklistItem,
   ApiTaskDetail,
   TaskActionAvailability,
@@ -183,10 +184,12 @@ export function patchTaskChecklistItem(
   const patched: ApiTaskDetail = {
     ...task,
     checklist,
-    checklistProgress: undefined,
   };
   return {
     ...patched,
-    checklistProgress: inferTaskChecklistProgress(patched),
+    checklistProgress: inferTaskChecklistProgress({
+      ...(patched as ApiTask),
+      checklistProgress: undefined,
+    }),
   };
 }

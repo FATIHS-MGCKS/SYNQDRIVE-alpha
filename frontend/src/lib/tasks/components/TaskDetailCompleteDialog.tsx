@@ -44,7 +44,7 @@ export function TaskDetailCompleteDialog({
 
   return (
     <AppDialog open={open} onOpenChange={onOpenChange} maxWidthClassName="sm:max-w-lg" hideClose>
-      <div className="p-5">
+      <div className="p-5" data-testid="task-complete-dialog">
         <h2 className="text-base font-semibold text-foreground">Aufgabe abschließen</h2>
         <p className="mt-1 text-xs text-muted-foreground">
           Prüfen Sie die Pflichtangaben, bevor Sie die Aufgabe erledigen.

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { taskRequiresResolutionNote } from '../../rental/lib/task-detail.utils';
 import type { ApiTaskDetail } from './types';
 import type { CompleteTaskPayload } from './types';
@@ -135,16 +135,20 @@ export function useTaskCompleteForm(detail: ApiTaskDetail | null) {
     [detail],
   );
 
-  const reset = (nextDetail: ApiTaskDetail | null) => {
-    setForm(nextDetail ? createTaskCompleteFormState(nextDetail) : {
-      resolutionCode: '',
-      resolutionNote: '',
-      actualCostEuros: '',
-      overrideReason: '',
-      useOverride: false,
-    });
+  const reset = useCallback((nextDetail: ApiTaskDetail | null) => {
+    setForm(
+      nextDetail
+        ? createTaskCompleteFormState(nextDetail)
+        : {
+            resolutionCode: '',
+            resolutionNote: '',
+            actualCostEuros: '',
+            overrideReason: '',
+            useOverride: false,
+          },
+    );
     setErrors({});
-  };
+  }, []);
 
   const patch = (partial: Partial<TaskCompleteFormState>) => {
     setForm((current) => ({ ...current, ...partial }));

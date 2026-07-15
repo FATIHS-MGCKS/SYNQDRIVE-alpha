@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { FormDialog } from '../../../components/patterns';
-import { api, type ApiTask, type Station } from '../../../lib/api';
+import { api, type ApiServiceCase, type ApiTask, type Station, type Vendor } from '../../../lib/api';
 import {
   buildManualTaskCreatePayload,
   canSetBlocksVehicleAvailability,
@@ -14,6 +14,7 @@ import type { OrgMemberRef } from '../../lib/task-list.utils';
 import type { VehicleData } from '../../data/vehicles';
 import { useRentalOrg } from '../../RentalContext';
 import { Icon } from '../ui/Icon';
+import type { Invoice } from '../invoices/invoiceTypes';
 import { ManualTaskCreateForm } from './ManualTaskCreateForm';
 
 interface TasksNewTaskDialogProps {
@@ -27,11 +28,11 @@ interface TasksNewTaskDialogProps {
 }
 
 interface EntityLookupState {
-  bookings: Array<{ id: string; label: string }>;
-  customers: Array<{ id: string; label: string }>;
-  invoices: Array<{ id: string; label: string }>;
-  vendors: Array<{ id: string; label: string }>;
-  serviceCases: Array<{ id: string; label: string }>;
+  bookings: Array<{ value: string; label: string }>;
+  customers: Array<{ value: string; label: string }>;
+  invoices: Array<{ value: string; label: string }>;
+  vendors: Array<{ value: string; label: string }>;
+  serviceCases: Array<{ value: string; label: string }>;
 }
 
 const EMPTY_LOOKUP: EntityLookupState = {
@@ -92,24 +93,24 @@ export function TasksNewTaskDialog({
         const vendors = Array.isArray(vendorsRes) ? vendorsRes : [];
         const serviceCases = Array.isArray(serviceCasesRes) ? serviceCasesRes : [];
         setLookup({
-          bookings: bookings.map((row) => ({
-            id: String(row.id ?? ''),
+          bookings: (bookings as Array<Record<string, unknown>>).map((row) => ({
+            value: String(row.id ?? ''),
             label: String(row.bookingNumber ?? row.id ?? 'Buchung'),
           })),
-          customers: customers.map((row) => ({
-            id: String(row.id ?? ''),
+          customers: (customers as Array<Record<string, unknown>>).map((row) => ({
+            value: String(row.id ?? ''),
             label: String(row.name ?? row.companyName ?? row.email ?? row.id ?? 'Kunde'),
           })),
-          invoices: invoices.map((row) => ({
-            id: String(row.id ?? ''),
+          invoices: (invoices as Invoice[]).map((row) => ({
+            value: String(row.id ?? ''),
             label: String(row.invoiceNumber ?? row.id ?? 'Rechnung'),
           })),
-          vendors: vendors.map((row) => ({
-            id: String(row.id ?? ''),
+          vendors: (vendors as Vendor[]).map((row) => ({
+            value: String(row.id ?? ''),
             label: String(row.name ?? row.id ?? 'Lieferant'),
           })),
-          serviceCases: serviceCases.map((row) => ({
-            id: String(row.id ?? ''),
+          serviceCases: (serviceCases as ApiServiceCase[]).map((row) => ({
+            value: String(row.id ?? ''),
             label: String(row.title ?? row.id ?? 'Servicefall'),
           })),
         });

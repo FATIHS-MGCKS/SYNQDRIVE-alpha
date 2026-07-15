@@ -7,7 +7,7 @@ import { getStoredUser } from '../../../lib/auth';
 import {
   buildTaskDetailViewModel,
   isNormalizedTaskDetail,
-  TaskDetailActionsHost,
+  useTaskDetailActionsHost,
   TaskDetailShell,
   type TaskNotesActivityTab,
   useRentalTaskLinkedObjectNavigation,
@@ -149,18 +149,15 @@ export function GlobalTaskDetailPanel({
     setFocusComment(true);
   };
 
-  const footer =
-    normalizedDetail && !detailLoading ? (
-      <TaskDetailActionsHost
-        detail={normalizedDetail}
-        orgId={orgId}
-        variant="desktop-footer"
-        onTaskUpdated={onTaskUpdated}
-        onComment={handleCommentFromBar}
-        onOpenSuccessorTask={onOpenSuccessorTask}
-        onCancelSuccess={() => onOpenChange(false)}
-      />
-    ) : null;
+  const taskActions = useTaskDetailActionsHost({
+    detail: normalizedDetail && !detailLoading ? normalizedDetail : null,
+    orgId,
+    variant: 'desktop-footer',
+    onTaskUpdated,
+    onComment: handleCommentFromBar,
+    onOpenSuccessorTask,
+    onCancelSuccess: () => onOpenChange(false),
+  });
 
   return (
     <>
@@ -172,8 +169,9 @@ export function GlobalTaskDetailPanel({
         loading={detailLoading || !taskRow}
         density="desktop"
         widthClassName="sm:max-w-2xl"
-        footer={footer}
+        footer={taskActions.footer}
         bodyProps={{
+          onChecklistOverride: taskActions.openCompleteDialog,
           onLinkedObjectClick: navigateLinkedObject,
           pendingChecklistItemIds: pendingItemIds,
           onChecklistToggle: (itemId, isDone) => void toggleItem(itemId, isDone),
@@ -208,6 +206,8 @@ export function GlobalTaskDetailPanel({
           ) : null,
         }}
       />
+
+      {taskActions.dialogs}
 
       <ConfirmDialog
         open={assignOpen}

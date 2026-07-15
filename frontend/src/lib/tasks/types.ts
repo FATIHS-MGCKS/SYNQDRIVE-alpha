@@ -384,6 +384,7 @@ export interface CreateTaskPayload {
   customerId?: string;
   vendorId?: string;
   alertId?: string;
+  invoiceId?: string;
   documentId?: string;
   serviceCaseId?: string;
   stationId?: string;

@@ -174,7 +174,8 @@ describe('dashboardAttentionBuilder', () => {
 
     const serviceItems = items.filter((item) => item.title.toLowerCase().includes('service'));
     expect(serviceItems).toHaveLength(1);
-    expect(serviceItems[0]?.title).toContain('117 Tagen');
+    expect(serviceItems[0]?.title).toContain('Service überfällig');
+    expect(serviceItems[0]?.title).toContain('KS MX 2024');
   });
 
   it('labels attention counts as Meldungen and supports visible/total copy', () => {

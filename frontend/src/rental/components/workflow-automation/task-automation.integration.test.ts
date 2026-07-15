@@ -11,10 +11,12 @@ describe('task automation workflow integration', () => {
     const workflowSource = readFileSync(resolve(workflowDir, '../WorkflowAutomationView.tsx'), 'utf8');
     const sidebarSource = readFileSync(resolve(rentalDir, 'components/Sidebar.tsx'), 'utf8');
 
+    const drawerSource = readFileSync(resolve(workflowDir, 'TaskAutomationRuleDrawer.tsx'), 'utf8');
+
     expect(appSource).toContain("hasPermission('workflow-automation', 'read')");
     expect(appSource).toContain("hasPermission('workflow-automation', 'write')");
     expect(workflowSource).toContain('Aufgaben-Automationen');
-    expect(workflowSource).toContain('TaskAutomationSimulationPanel');
+    expect(drawerSource).toContain('TaskAutomationSimulationPanel');
     expect(sidebarSource).toContain("hasPermission('workflow-automation', 'read')");
   });
 

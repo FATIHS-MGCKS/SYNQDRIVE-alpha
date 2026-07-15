@@ -114,12 +114,12 @@ export function OperatorTodayView() {
   const showAllOpenNav = shouldShowAllOpenTasksNav(snapshot.totalOpenTasksCount, visibleFeedEntries);
 
   const openTask = useCallback(
-    (task: ApiTask, focusComment = false) => {
+    (task: ApiTask, options?: { focusComment?: boolean }) => {
       openSheet({
         type: 'task-detail',
         taskId: task.id,
         task,
-        focusComment,
+        focusComment: Boolean(options?.focusComment),
         onUpdated: () => void reload(),
       });
     },
