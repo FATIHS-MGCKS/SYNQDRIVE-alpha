@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-runtime-state-builder-v49494-2026-07-15',
+    version: '4.9.494',
+    title: 'V4.9.494 — Vehicle Runtime State Builder canonical backend block (Prompt 30/43)',
+    summary: [
+      '`vehicleRuntimeStateBuilder` übernimmt den kanonischen Backend-Block (`operationalState.status/reason`, `dataQualityState`, `bookingContext`) über zentrale Selectors — keine eigenständige Ableitung von Available/Reserved/Active Rented.',
+      '`resolveVehicleRuntimeOperationalBlock` kapselt Runtime-Operational-Read-Model; `rawVehicleStatus` nur diagnostisch.',
+      'Diagnose-Reasons bei widersprüchlichem Payload (fail-closed UNKNOWN), Backend-DEGRADED und Rohstatus-Abweichung — ohne Available-Annahme.',
+      'Rental Readiness, Block Level, Health/Compliance/Cleaning/Booking-Reasons unverändert erhalten. 10 neue Runtime-Builder-Tests + 27 bestehende Runtime-Tests grün.',
+    ],
+    reason:
+      'Prompt 30/43: Der Dashboard-Runtime-Builder soll operative Status nicht erneut ableiten, sondern den Backend-Source-of-Truth-Block konsumieren.',
+    previousBehavior:
+      '`selectFleetRuntimeOperationalStatus` ohne expliziten Backend-Block; `dataQualityState` nur aus Telemetrie; keine Payload-Inkonsistenz-Diagnose.',
+    details:
+      'Geändert: `vehicleRuntimeStateBuilder.ts`, neu `vehicleRuntimeStateBuilder.test.ts`. Nutzt `resolveVehicleRuntimeOperationalBlock`, `selectIsCurrentlyAvailable`, `selectBookingContext`.',
+    affectsArchitecture: true,
+    module: 'Dashboard',
+    createdAt: '2026-07-15T23:29:00.000Z',
+  },
+  {
     id: 'vehicle-operational-selectors-v49493-2026-07-15',
     version: '4.9.493',
     title: 'V4.9.493 — Central Vehicle Operational Selectors (Prompt 29/43)',
