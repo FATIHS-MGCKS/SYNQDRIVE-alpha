@@ -1,4 +1,5 @@
 import type { ApiTask } from '../../lib/api';
+import type { TaskBucket, TaskCompletionMode } from '../../lib/tasks/types';
 import { resolveTaskResponsibility, type OrgMemberForRouting } from './task-responsibility.utils';
 import {
   TASK_CATEGORIES,
@@ -37,6 +38,14 @@ export interface TaskListRow {
   completedDate?: string;
   estimatedDuration: string;
   notes?: string;
+  linkedObjectLabel: string;
+  linkedObjectSecondary: string | null;
+  checklistProgressPercent: number | null;
+  checklistProgressLabel: string | null;
+  completionMode: TaskCompletionMode | null;
+  completionModeLabel: string | null;
+  isOverdue: boolean;
+  serverBucket: TaskBucket | null;
 }
 
 export type OrgMemberRef = OrgMemberForRouting;
@@ -89,22 +98,16 @@ export function mapTaskPriority(p?: string): TaskListPriority {
   }
 }
 
-export function mapTaskStatus(status: string, dueIso?: string | null): TaskListStatus {
+export function mapTaskStatus(
+  status: string,
+  isOverdue = false,
+): TaskListStatus {
   const s = (status || '').toUpperCase();
   if (s === 'DONE' || s === 'CANCELLED') return 'Completed';
   if (s === 'WAITING') return 'Waiting';
-  if (dueIso) {
-    const due = new Date(dueIso);
-    if (
-      !Number.isNaN(due.getTime()) &&
-      due.getTime() < Date.now() &&
-      s !== 'IN_PROGRESS' &&
-      s !== 'WAITING'
-    ) {
-      return 'Overdue';
-    }
-  }
-  return s === 'IN_PROGRESS' ? 'In Progress' : 'Open';
+  if (s === 'IN_PROGRESS') return 'In Progress';
+  if (isOverdue) return 'Overdue';
+  return 'Open';
 }
 
 export function resolveDisplaySource(
@@ -191,6 +194,45 @@ export function userInitials(name: string): string {
   return '?';
 }
 
+export function resolvePrimaryLinkedObjectLabel(
+  task: Pick<ApiTask, 'linkedObjects' | 'vehicleId' | 'bookingId' | 'invoiceId' | 'documentId'>,
+  vehicle?: FleetVehicleRef,
+): { primary: string; secondary: string | null } {
+  const linked = task.linkedObjects?.[0];
+  if (linked?.primaryLabel) {
+    return {
+      primary: linked.primaryLabel,
+      secondary: linked.secondaryLabel ?? null,
+    };
+  }
+  if (vehicle?.license) {
+    return {
+      primary: vehicle.license,
+      secondary: vehicle.model || null,
+    };
+  }
+  if (task.bookingId) return { primary: 'Buchung', secondary: null };
+  if (task.invoiceId) return { primary: 'Rechnung', secondary: null };
+  if (task.documentId) return { primary: 'Dokument', secondary: null };
+  return { primary: '—', secondary: null };
+}
+
+function formatChecklistProgressLabel(
+  progress: ApiTask['checklistProgress'],
+): { percent: number | null; label: string | null } {
+  if (!progress?.hasChecklist) return { percent: null, label: null };
+  const percent = progress.progressPercent;
+  const label = `${progress.completedItems} von ${progress.totalItems}`;
+  return { percent, label };
+}
+
+function resolveCompletionModeLabel(mode: TaskCompletionMode | null | undefined): string | null {
+  if (!mode || mode === 'MANUAL') return null;
+  if (mode === 'AUTO_RESOLVED') return 'Automatisch aufgelöst';
+  if (mode === 'SUPERSEDED') return 'Ersetzt';
+  return null;
+}
+
 export function mapApiTaskToTaskListRow(
   task: ApiTask,
   ctx: {
@@ -212,6 +254,8 @@ export function mapApiTaskToTaskListRow(
   const stationId =
     typeof task.metadata?.stationId === 'string' ? task.metadata.stationId : null;
   const responsibility = resolveTaskResponsibility(task, ctx.orgMembers, stationId);
+  const linked = resolvePrimaryLinkedObjectLabel(task, veh);
+  const checklist = formatChecklistProgressLabel(task.checklistProgress);
 
   return {
     id: task.id,
@@ -219,7 +263,7 @@ export function mapApiTaskToTaskListRow(
     description: task.description || '',
     category: mapTaskCategory(task.category),
     type: task.type,
-    status: mapTaskStatus(task.status, task.dueDate),
+    status: mapTaskStatus(task.status, task.isOverdue),
     priority: mapTaskPriority(task.priority),
     source: task.source,
     sourceType: task.sourceType,
@@ -243,6 +287,14 @@ export function mapApiTaskToTaskListRow(
     notes: systemTask && task.source?.startsWith('INSIGHT_')
       ? 'Automatisch erzeugt durch SynqDrive Insights.'
       : undefined,
+    linkedObjectLabel: linked.primary,
+    linkedObjectSecondary: linked.secondary,
+    checklistProgressPercent: checklist.percent,
+    checklistProgressLabel: checklist.label,
+    completionMode: task.completionMode ?? null,
+    completionModeLabel: resolveCompletionModeLabel(task.completionMode),
+    isOverdue: task.isOverdue,
+    serverBucket: task.bucket ?? null,
   };
 }
 
