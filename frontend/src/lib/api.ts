@@ -3828,6 +3828,71 @@ export const api = {
       const q = params ? '?' + new URLSearchParams(params).toString() : '';
       return get<any>(`/admin/billing/invoices${q}`);
     },
+    adminInvoice: (invoiceId: string) =>
+      get<any>(`/admin/billing/invoices/${encodeURIComponent(invoiceId)}`),
+    adminInvoicePayments: (invoiceId: string) =>
+      get<any>(`/admin/billing/invoices/${encodeURIComponent(invoiceId)}/payments`),
+    adminRecordManualPayment: (
+      invoiceId: string,
+      body: {
+        orgId: string;
+        amountCents: number;
+        currency?: string;
+        paymentType: 'BANK_TRANSFER' | 'CASH' | 'CHECK' | 'OTHER';
+        reference?: string;
+        receiptNote?: string;
+      },
+      idempotencyKey: string,
+    ) =>
+      request<any>(`/admin/billing/invoices/${encodeURIComponent(invoiceId)}/manual-payments`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers: { 'Idempotency-Key': idempotencyKey },
+      }),
+    adminPayments: (params?: Record<string, string>) => {
+      const q = params ? '?' + new URLSearchParams(params).toString() : '';
+      return get<any>(`/admin/billing/payments${q}`);
+    },
+    adminPaymentAttempts: (params?: Record<string, string>) => {
+      const q = params ? '?' + new URLSearchParams(params).toString() : '';
+      return get<any>(`/admin/billing/payment-attempts${q}`);
+    },
+    adminRefunds: (params?: Record<string, string>) => {
+      const q = params ? '?' + new URLSearchParams(params).toString() : '';
+      return get<any>(`/admin/billing/refunds${q}`);
+    },
+    adminCreditNotes: (params?: Record<string, string>) => {
+      const q = params ? '?' + new URLSearchParams(params).toString() : '';
+      return get<any>(`/admin/billing/credit-notes${q}`);
+    },
+    adminEmailDeliveries: (params?: Record<string, string>) => {
+      const q = params ? '?' + new URLSearchParams(params).toString() : '';
+      return get<any>(`/admin/billing/email-deliveries${q}`);
+    },
+    adminEmailDelivery: (deliveryId: string) =>
+      get<any>(`/admin/billing/email-deliveries/${encodeURIComponent(deliveryId)}`),
+    adminEmailDeliveryResend: (deliveryId: string, body?: { idempotencySuffix?: string }) =>
+      post<any>(`/admin/billing/email-deliveries/${encodeURIComponent(deliveryId)}/resend`, body ?? {}),
+    adminEmailDeliveryReplay: (deliveryId: string) =>
+      post<any>(`/admin/billing/email-deliveries/${encodeURIComponent(deliveryId)}/replay`, {}),
+    adminOutboxDeliveries: (params?: Record<string, string>) => {
+      const q = params ? '?' + new URLSearchParams(params).toString() : '';
+      return get<any>(`/admin/billing/outbox-deliveries${q}`);
+    },
+    adminReconciliationRun: (body?: {
+      organizationId?: string;
+      runId?: string;
+      cursor?: string | null;
+      batchSize?: number;
+    }) => post<any>('/admin/billing/reconciliation/run', body ?? {}),
+    adminReconciliationDrifts: (params?: Record<string, string>) => {
+      const q = params ? '?' + new URLSearchParams(params).toString() : '';
+      return get<any>(`/admin/billing/reconciliation/drifts${q}`);
+    },
+    adminResolveReconciliationDrift: (driftId: string) =>
+      post<any>(`/admin/billing/reconciliation/drifts/${encodeURIComponent(driftId)}/resolve`, {}),
+    adminAutoFixReconciliationDrift: (driftId: string) =>
+      post<any>(`/admin/billing/reconciliation/drifts/${encodeURIComponent(driftId)}/auto-fix`, {}),
     auditLog: (params?: Record<string, string>) => {
       const q = params ? '?' + new URLSearchParams(params).toString() : '';
       return get<any>(`/admin/billing/audit-log${q}`);

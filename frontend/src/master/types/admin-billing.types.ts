@@ -219,8 +219,10 @@ export interface AdminStripeCatalogMappingStatusDto {
 export interface AdminBillingInvoiceDto {
   id: string;
   stripeInvoiceId?: string | null;
+  invoiceNumber?: string | null;
+  invoiceNumberDisplay?: string | null;
   status: string;
-  displayStatus?: string;
+  displayStatus?: string | null;
   amountCents: number;
   currency?: string;
   invoiceDate: string;
@@ -229,12 +231,21 @@ export interface AdminBillingInvoiceDto {
   periodStart?: string | null;
   periodEnd?: string | null;
   netAmountCents?: number | null;
-  taxCents?: number | null;
+  taxAmountCents?: number | null;
   grossAmountCents?: number | null;
+  amountRemainingCents?: number | null;
+  hostedInvoiceUrl?: string | null;
   invoicePdfUrl?: string | null;
+  paymentSummary?: {
+    attemptCount: number;
+    paymentStatus: string | null;
+    paymentMethodLabel: string | null;
+    paymentMethodStatus: string | null;
+  };
   subscription?: {
-    organizationId: string;
+    organizationId?: string;
     organization: { companyName: string };
+    stripeCustomerId?: string | null;
   };
   invoiceLines?: Array<{
     id: string;
@@ -270,9 +281,12 @@ export interface AdminStripeStatusDto {
   integrationStatus: 'NOT_CONNECTED' | 'PREPARED' | 'CONNECTED';
   stripeSecretConfigured: boolean;
   stripeWebhookConfigured: boolean;
+  runtimeStripeMode?: 'TEST' | 'LIVE' | null;
   stripeCustomerMappingCount: number;
   webhookEventCount: number;
   failedWebhookCount: number;
+  lastSuccessfulWebhookAt?: string | null;
+  lastWebhookAt?: string | null;
   recentEvents: AdminWebhookEventDto[];
 }
 
@@ -303,6 +317,155 @@ export interface PaginatedResult<T> {
   total: number;
   page: number;
   limit: number;
+}
+
+export interface AdminBillingPaymentRowDto {
+  id: string;
+  invoiceId: string;
+  organizationName: string;
+  invoiceNumberLabel: string;
+  amountCents: number;
+  currency: string;
+  status: string;
+  statusLabel: string;
+  providerLabel: string;
+  attemptCount: number;
+  succeededAt: string | null;
+  failedAt: string | null;
+  lastAttemptError: string | null;
+  lastAttemptAt: string | null;
+}
+
+export interface AdminBillingPaymentAttemptRowDto {
+  id: string;
+  paymentId: string;
+  invoiceId: string;
+  organizationName: string;
+  invoiceNumberLabel: string;
+  attemptNumber: number;
+  amountCents: number;
+  currency: string;
+  status: string;
+  statusLabel: string;
+  safeErrorMessage: string | null;
+  attemptedAt: string;
+  nextRetryAt: string | null;
+}
+
+export interface AdminBillingRefundRowDto {
+  id: string;
+  paymentId: string;
+  invoiceId: string;
+  organizationName: string;
+  invoiceNumberLabel: string;
+  amountCents: number;
+  currency: string;
+  status: string;
+  statusLabel: string;
+  isPartial: boolean;
+  refundedAt: string | null;
+  stripeRefundId: string | null;
+}
+
+export interface AdminBillingCreditNoteRowDto {
+  id: string;
+  invoiceId: string | null;
+  organizationName: string;
+  invoiceNumberLabel: string;
+  amountCents: number;
+  currency: string;
+  status: string;
+  statusLabel: string;
+  issuedAt: string | null;
+  hostedUrl: string | null;
+  pdfUrl: string | null;
+}
+
+export interface AdminBillingReconciliationDriftDto {
+  id: string;
+  organizationId: string;
+  subscriptionId: string | null;
+  driftType: string;
+  severity: string;
+  detectedAt: string;
+  autoFixable: boolean;
+  detailJson: unknown;
+  resolvedAt: string | null;
+}
+
+export interface AdminBillingEmailDeliverySummaryDto {
+  deliveryId: string;
+  outboxEventId: string;
+  eventType: string;
+  organizationId: string | null;
+  deliveryStatus: string;
+  deliveryState: string;
+  retryCount: number;
+  deadLetterReason: string | null;
+  resendMessageId: string | null;
+  recipientEmail: string | null;
+  updatedAt: string;
+}
+
+export interface AdminBillingOutboxDeliveryRowDto {
+  id: string;
+  outboxEventId: string;
+  consumerId: string;
+  eventType: string;
+  organizationId: string | null;
+  aggregateType: string;
+  aggregateId: string;
+  status: string;
+  retryCount: number;
+  lastError: string | null;
+  nextRetryAt: string | null;
+  updatedAt: string;
+  occurredAt: string;
+}
+
+export interface AdminInvoicePaymentHistoryDto {
+  invoiceId: string;
+  currency: string;
+  amountRemaining: { cents: number; currency: string };
+  payments: Array<{
+    amount: { cents: number; currency: string };
+    status: string;
+    statusLabel: string;
+    providerLabel: string;
+    succeededAt: string | null;
+    failedAt: string | null;
+    attempts: Array<{
+      attemptNumber: number;
+      status: string;
+      statusLabel: string;
+      safeErrorMessage: string | null;
+      attemptedAt: string;
+      nextRetryAt: string | null;
+    }>;
+    refunds: Array<{
+      amount: { cents: number; currency: string };
+      status: string;
+      statusLabel: string;
+      isPartial: boolean;
+      refundedAt: string | null;
+    }>;
+  }>;
+  failedAttempts: Array<{
+    attemptNumber: number;
+    status: string;
+    statusLabel: string;
+    safeErrorMessage: string | null;
+    attemptedAt: string;
+  }>;
+  refunds: AdminInvoicePaymentHistoryDto['payments'][number]['refunds'];
+  creditNotes: Array<{
+    amount: { cents: number; currency: string };
+    status: string;
+    statusLabel: string;
+    issuedAt: string | null;
+    hostedUrl: string | null;
+    pdfUrl: string | null;
+  }>;
 }
 
 export type AdminBillingTab =

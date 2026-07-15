@@ -78,6 +78,8 @@ import {
 
   AdminInvoiceQueryDto,
 
+  AdminBillingListQueryDto,
+
   AuditLogQueryDto,
 
   CreatePriceBookDto,
@@ -856,6 +858,104 @@ export class BillingController {
 
 
 
+  @Get('admin/billing/invoices/:invoiceId')
+
+  @Roles('MASTER_ADMIN')
+
+  async getAdminInvoice(@Param('invoiceId') invoiceId: string) {
+
+    const invoice = await this.adminService.getInvoice(invoiceId);
+
+    if (!invoice) throw new NotFoundException('Invoice not found');
+
+    return invoice;
+
+  }
+
+
+
+  @Get('admin/billing/invoices/:invoiceId/payments')
+
+  @Roles('MASTER_ADMIN')
+
+  async getAdminInvoicePayments(@Param('invoiceId') invoiceId: string) {
+
+    const invoice = await this.adminService.getInvoice(invoiceId);
+
+    if (!invoice) throw new NotFoundException('Invoice not found');
+
+    return this.tenantPaymentsService.getInvoicePaymentHistory(
+
+      invoice.subscription.organizationId,
+
+      invoiceId,
+
+    );
+
+  }
+
+
+
+  @Get('admin/billing/payments')
+
+  @Roles('MASTER_ADMIN')
+
+  async listAdminPayments(@Query() query: AdminBillingListQueryDto) {
+
+    return this.adminService.listAdminPayments(query);
+
+  }
+
+
+
+  @Get('admin/billing/payment-attempts')
+
+  @Roles('MASTER_ADMIN')
+
+  async listAdminPaymentAttempts(@Query() query: AdminBillingListQueryDto) {
+
+    return this.adminService.listAdminPaymentAttempts(query);
+
+  }
+
+
+
+  @Get('admin/billing/refunds')
+
+  @Roles('MASTER_ADMIN')
+
+  async listAdminRefunds(@Query() query: AdminBillingListQueryDto) {
+
+    return this.adminService.listAdminRefunds(query);
+
+  }
+
+
+
+  @Get('admin/billing/credit-notes')
+
+  @Roles('MASTER_ADMIN')
+
+  async listAdminCreditNotes(@Query() query: AdminBillingListQueryDto) {
+
+    return this.adminService.listAdminCreditNotes(query);
+
+  }
+
+
+
+  @Get('admin/billing/outbox-deliveries')
+
+  @Roles('MASTER_ADMIN')
+
+  async listAdminOutboxDeliveries(@Query() query: AdminBillingListQueryDto) {
+
+    return this.adminService.listOutboxDeliveries(query);
+
+  }
+
+
+
   @Post('admin/billing/invoices/:invoiceId/manual-payments')
 
   @Roles('MASTER_ADMIN')
@@ -961,6 +1061,50 @@ export class BillingController {
       subscriptionId,
 
     });
+
+  }
+
+
+
+  @Post('admin/billing/reconciliation/drifts/:driftId/resolve')
+
+  @Roles('MASTER_ADMIN')
+
+  @UseGuards(MasterBillingGuard)
+
+  @RequireMasterBilling()
+
+  async resolveBillingReconciliationDrift(
+
+    @Param('driftId') driftId: string,
+
+    @Req() req: any,
+
+  ) {
+
+    return this.reconciliationService.resolveDrift(driftId, req?.user?.id);
+
+  }
+
+
+
+  @Post('admin/billing/reconciliation/drifts/:driftId/auto-fix')
+
+  @Roles('MASTER_ADMIN')
+
+  @UseGuards(MasterBillingGuard)
+
+  @RequireMasterBilling()
+
+  async autoFixBillingReconciliationDrift(
+
+    @Param('driftId') driftId: string,
+
+    @Req() req: any,
+
+  ) {
+
+    return this.reconciliationService.applyAutoFix(driftId, req?.user?.id);
 
   }
 

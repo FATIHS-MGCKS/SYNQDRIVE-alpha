@@ -149,6 +149,21 @@ export class AdminInvoiceQueryDto {
   status?: string;
 
   @IsOptional()
+  @IsIn([
+    'DRAFT',
+    'PENDING',
+    'OPEN',
+    'PAID',
+    'OVERDUE',
+    'VOID',
+    'UNCOLLECTIBLE',
+    'FAILED',
+    'REFUNDED',
+    'PARTIALLY_REFUNDED',
+  ])
+  displayStatus?: string;
+
+  @IsOptional()
   @IsISO8601()
   from?: string;
 
@@ -159,6 +174,40 @@ export class AdminInvoiceQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  limit?: number;
+}
+
+export class AdminBillingListQueryDto {
+  @IsOptional()
+  @IsString()
+  organizationId?: string;
+
+  @IsOptional()
+  @IsString()
+  search?: string;
+
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  from?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  to?: string;
 
   @IsOptional()
   @Type(() => Number)

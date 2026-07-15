@@ -21,8 +21,21 @@ import { BillingUsageService } from './billing-usage.service';
 import { PricebookService } from './pricebook.service';
 import { BillingAuditService } from './billing-audit.service';
 import { BillingEntitlementResolver } from './billing-entitlement-resolver.service';
-import { AdminInvoiceQueryDto, AuditLogQueryDto } from './dto/billing.dto';
+import {
+  AdminBillingListQueryDto,
+  AdminInvoiceQueryDto,
+  AuditLogQueryDto,
+} from './dto/billing.dto';
 import { BillingService } from './billing.service';
+import { resolveStripeModeFromSecretKey } from './migration/billing-legacy-backfill.util';
+import {
+  resolveAttemptStatusLabel,
+  resolveCreditNoteStatusLabel,
+  resolveInvoiceNumberLabel,
+  resolvePaymentStatusLabel,
+  resolveProviderLabel,
+  resolveRefundStatusLabel,
+} from './tenant-billing.mapper';
 
 @Injectable()
 export class BillingAdminService {
@@ -332,6 +345,27 @@ export class BillingAdminService {
     if (query.status) {
       where.status = query.status;
     }
+    if (query.displayStatus === 'OVERDUE') {
+      where.status = InvoiceStatus.OPEN;
+      where.dueDate = { lt: new Date() };
+    } else if (query.displayStatus === 'PENDING' || query.displayStatus === 'OPEN') {
+      where.status = InvoiceStatus.OPEN;
+      where.OR = [{ dueDate: null }, { dueDate: { gte: new Date() } }];
+    } else if (query.displayStatus === 'DRAFT') {
+      where.status = InvoiceStatus.DRAFT;
+    } else if (query.displayStatus === 'PAID') {
+      where.status = InvoiceStatus.PAID;
+    } else if (query.displayStatus === 'VOID') {
+      where.status = InvoiceStatus.VOID;
+    } else if (query.displayStatus === 'UNCOLLECTIBLE') {
+      where.status = InvoiceStatus.UNCOLLECTIBLE;
+    } else if (query.displayStatus === 'FAILED') {
+      where.payments = { some: { status: BillingPaymentStatus.FAILED } };
+    } else if (query.displayStatus === 'REFUNDED') {
+      where.payments = { some: { status: BillingPaymentStatus.REFUNDED } };
+    } else if (query.displayStatus === 'PARTIALLY_REFUNDED') {
+      where.payments = { some: { status: BillingPaymentStatus.PARTIALLY_REFUNDED } };
+    }
     if (query.from || query.to) {
       where.invoiceDate = {};
       if (query.from) where.invoiceDate.gte = new Date(query.from);
@@ -341,6 +375,7 @@ export class BillingAdminService {
       where.OR = [
         { id: { contains: query.search, mode: 'insensitive' } },
         { stripeInvoiceId: { contains: query.search, mode: 'insensitive' } },
+        { invoiceNumber: { contains: query.search, mode: 'insensitive' } },
       ];
     }
 
@@ -355,6 +390,15 @@ export class BillingAdminService {
             select: {
               organizationId: true,
               organization: { select: { companyName: true } },
+            },
+          },
+          payments: {
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+            select: {
+              attemptCount: true,
+              status: true,
+              stripePaymentMethodId: true,
             },
           },
           lines: {
@@ -376,12 +420,348 @@ export class BillingAdminService {
       this.prisma.billingInvoice.count({ where }),
     ]);
 
-    const data = rows.map((inv) => ({
-      ...this.billingService.formatInvoiceForApi(inv),
-      subscription: inv.subscription,
-    }));
+    const orgIds = [...new Set(rows.map((row) => row.subscription.organizationId))];
+    const defaultMethods = orgIds.length
+      ? await this.prisma.billingPaymentMethod.findMany({
+          where: { organizationId: { in: orgIds }, isDefault: true },
+          select: {
+            organizationId: true,
+            type: true,
+            brand: true,
+            last4: true,
+            status: true,
+          },
+        })
+      : [];
+    const methodByOrg = new Map(defaultMethods.map((method) => [method.organizationId, method]));
+
+    const data = rows.map((inv) => {
+      const latestPayment = inv.payments[0] ?? null;
+      const defaultMethod = methodByOrg.get(inv.subscription.organizationId) ?? null;
+      return {
+        ...this.billingService.formatInvoiceForApi(inv),
+        subscription: inv.subscription,
+        paymentSummary: {
+          attemptCount: latestPayment?.attemptCount ?? 0,
+          paymentStatus: latestPayment?.status ?? null,
+          paymentMethodLabel: defaultMethod
+            ? `${defaultMethod.brand ?? defaultMethod.type} •••• ${defaultMethod.last4 ?? '—'}`
+            : null,
+          paymentMethodStatus: defaultMethod?.status ?? null,
+        },
+      };
+    });
 
     return buildPaginatedResult(data, total, query);
+  }
+
+  async getInvoice(invoiceId: string) {
+    const inv = await this.prisma.billingInvoice.findUnique({
+      where: { id: invoiceId },
+      include: {
+        subscription: {
+          select: {
+            organizationId: true,
+            stripeCustomerId: true,
+            organization: { select: { companyName: true } },
+          },
+        },
+        lines: {
+          include: {
+            usageSnapshot: {
+              select: {
+                id: true,
+                billableVehicleCount: true,
+                unitPriceCents: true,
+                calculationStatus: true,
+                periodStart: true,
+                periodEnd: true,
+              },
+            },
+          },
+        },
+      },
+    });
+    if (!inv) return null;
+    return {
+      ...this.billingService.formatInvoiceForApi(inv),
+      subscription: inv.subscription,
+    };
+  }
+
+  async listAdminPayments(query: AdminBillingListQueryDto) {
+    const { skip, take } = parsePagination(query);
+    const where: any = {};
+    if (query.organizationId) {
+      where.invoice = { subscription: { organizationId: query.organizationId } };
+    }
+    if (query.status) {
+      where.status = query.status;
+    }
+    if (query.search) {
+      where.invoice = {
+        ...(where.invoice ?? {}),
+        invoiceNumber: { contains: query.search, mode: 'insensitive' },
+      };
+    }
+    const [rows, total] = await Promise.all([
+      this.prisma.billingPayment.findMany({
+        where,
+        skip,
+        take,
+        orderBy: [{ failedAt: 'desc' }, { succeededAt: 'desc' }],
+        include: {
+          invoice: {
+            select: {
+              id: true,
+              invoiceNumber: true,
+              subscription: {
+                select: {
+                  organization: { select: { companyName: true } },
+                },
+              },
+            },
+          },
+          attempts: {
+            orderBy: { attemptedAt: 'desc' },
+            take: 1,
+            select: {
+              safeErrorMessage: true,
+              attemptedAt: true,
+              status: true,
+            },
+          },
+        },
+      }),
+      this.prisma.billingPayment.count({ where }),
+    ]);
+    return buildPaginatedResult(
+      rows.map((row) => ({
+        id: row.id,
+        invoiceId: row.invoice.id,
+        organizationName: row.invoice.subscription.organization.companyName,
+        invoiceNumberLabel: resolveInvoiceNumberLabel(row.invoice.invoiceNumber),
+        amountCents: row.amountCents,
+        currency: row.currency.toUpperCase(),
+        status: row.status,
+        statusLabel: resolvePaymentStatusLabel(row.status),
+        providerLabel: resolveProviderLabel(row.provider),
+        attemptCount: row.attemptCount,
+        succeededAt: row.succeededAt?.toISOString() ?? null,
+        failedAt: row.failedAt?.toISOString() ?? null,
+        lastAttemptError: row.attempts[0]?.safeErrorMessage ?? null,
+        lastAttemptAt: row.attempts[0]?.attemptedAt?.toISOString() ?? null,
+      })),
+      total,
+      query,
+    );
+  }
+
+  async listAdminPaymentAttempts(query: AdminBillingListQueryDto) {
+    const { skip, take } = parsePagination(query);
+    const where: any = {
+      status: query.status ?? 'FAILED',
+    };
+    if (query.organizationId) {
+      where.payment = {
+        invoice: { subscription: { organizationId: query.organizationId } },
+      };
+    }
+    const [rows, total] = await Promise.all([
+      this.prisma.billingPaymentAttempt.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { attemptedAt: 'desc' },
+        include: {
+          payment: {
+            include: {
+              invoice: {
+                select: {
+                  id: true,
+                  invoiceNumber: true,
+                  subscription: {
+                    select: {
+                      organization: { select: { companyName: true } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.billingPaymentAttempt.count({ where }),
+    ]);
+    return buildPaginatedResult(
+      rows.map((row) => ({
+        id: row.id,
+        paymentId: row.paymentId,
+        invoiceId: row.payment.invoice.id,
+        organizationName: row.payment.invoice.subscription.organization.companyName,
+        invoiceNumberLabel: resolveInvoiceNumberLabel(row.payment.invoice.invoiceNumber),
+        attemptNumber: row.attemptNumber,
+        amountCents: row.amountCents,
+        currency: row.payment.currency.toUpperCase(),
+        status: row.status,
+        statusLabel: resolveAttemptStatusLabel(row.status),
+        safeErrorMessage: row.safeErrorMessage,
+        attemptedAt: row.attemptedAt.toISOString(),
+        nextRetryAt: row.nextRetryAt?.toISOString() ?? null,
+      })),
+      total,
+      query,
+    );
+  }
+
+  async listAdminRefunds(query: AdminBillingListQueryDto) {
+    const { skip, take } = parsePagination(query);
+    const where: any = {};
+    if (query.organizationId) {
+      where.payment = { invoice: { subscription: { organizationId: query.organizationId } } };
+    }
+    if (query.status) where.status = query.status;
+    const [rows, total] = await Promise.all([
+      this.prisma.billingRefund.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          payment: {
+            include: {
+              invoice: {
+                select: {
+                  id: true,
+                  invoiceNumber: true,
+                  subscription: {
+                    select: {
+                      organization: { select: { companyName: true } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.billingRefund.count({ where }),
+    ]);
+    return buildPaginatedResult(
+      rows.map((row) => ({
+        id: row.id,
+        paymentId: row.paymentId,
+        invoiceId: row.payment.invoice.id,
+        organizationName: row.payment.invoice.subscription.organization.companyName,
+        invoiceNumberLabel: resolveInvoiceNumberLabel(row.payment.invoice.invoiceNumber),
+        amountCents: row.amountCents,
+        currency: row.currency.toUpperCase(),
+        status: row.status,
+        statusLabel: resolveRefundStatusLabel(row.status),
+        isPartial: row.isPartial,
+        refundedAt: row.refundedAt?.toISOString() ?? null,
+        stripeRefundId: row.stripeRefundId,
+      })),
+      total,
+      query,
+    );
+  }
+
+  async listAdminCreditNotes(query: AdminBillingListQueryDto) {
+    const { skip, take } = parsePagination(query);
+    const where: any = {};
+    if (query.organizationId) {
+      where.invoice = { subscription: { organizationId: query.organizationId } };
+    }
+    if (query.status) where.status = query.status;
+    const [rows, total] = await Promise.all([
+      this.prisma.billingCreditNote.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          invoice: {
+            select: {
+              id: true,
+              invoiceNumber: true,
+              subscription: {
+                select: {
+                  organization: { select: { companyName: true } },
+                },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.billingCreditNote.count({ where }),
+    ]);
+    return buildPaginatedResult(
+      rows.map((row) => ({
+        id: row.id,
+        invoiceId: row.invoice?.id ?? null,
+        organizationName: row.invoice?.subscription.organization.companyName ?? '—',
+        invoiceNumberLabel: resolveInvoiceNumberLabel(row.invoice?.invoiceNumber ?? null),
+        amountCents: row.amountCents,
+        currency: row.currency.toUpperCase(),
+        status: row.status,
+        statusLabel: resolveCreditNoteStatusLabel(row.status),
+        issuedAt: row.issuedAt?.toISOString() ?? null,
+        hostedUrl: row.hostedUrl,
+        pdfUrl: row.pdfUrl,
+      })),
+      total,
+      query,
+    );
+  }
+
+  async listOutboxDeliveries(query: AdminBillingListQueryDto) {
+    const { skip, take } = parsePagination(query);
+    const where: any = {};
+    if (query.status) where.status = query.status;
+    if (query.organizationId) {
+      where.outboxEvent = { organizationId: query.organizationId };
+    }
+    const [rows, total] = await Promise.all([
+      this.prisma.billingDomainEventOutboxDelivery.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { updatedAt: 'desc' },
+        include: {
+          outboxEvent: {
+            select: {
+              id: true,
+              eventType: true,
+              organizationId: true,
+              aggregateType: true,
+              aggregateId: true,
+              occurredAt: true,
+            },
+          },
+        },
+      }),
+      this.prisma.billingDomainEventOutboxDelivery.count({ where }),
+    ]);
+    return buildPaginatedResult(
+      rows.map((row) => ({
+        id: row.id,
+        outboxEventId: row.outboxEventId,
+        consumerId: row.consumerId,
+        eventType: row.outboxEvent.eventType,
+        organizationId: row.outboxEvent.organizationId,
+        aggregateType: row.outboxEvent.aggregateType,
+        aggregateId: row.outboxEvent.aggregateId,
+        status: row.status,
+        retryCount: row.retryCount,
+        lastError: row.lastError ? String(row.lastError).slice(0, 240) : null,
+        nextRetryAt: row.nextRetryAt?.toISOString() ?? null,
+        updatedAt: row.updatedAt.toISOString(),
+        occurredAt: row.outboxEvent.occurredAt.toISOString(),
+      })),
+      total,
+      query,
+    );
   }
 
   async listAuditLog(query: AuditLogQueryDto) {
@@ -439,11 +819,14 @@ export class BillingAdminService {
   async getStripeStatus() {
     const stripeSecretConfigured = Boolean(process.env.STRIPE_SECRET_KEY?.trim());
     const stripeWebhookConfigured = Boolean(process.env.STRIPE_WEBHOOK_SECRET?.trim());
+    const runtimeStripeMode = resolveStripeModeFromSecretKey(process.env.STRIPE_SECRET_KEY);
 
     const [
       stripeCustomerMappingCount,
       webhookEventCount,
       failedWebhookCount,
+      lastSuccessfulWebhook,
+      lastWebhook,
       recentEvents,
     ] = await Promise.all([
       this.prisma.billingSubscription.count({
@@ -452,6 +835,13 @@ export class BillingAdminService {
       this.prisma.stripeWebhookEvent.count(),
       this.prisma.stripeWebhookEvent.count({
         where: { status: StripeWebhookEventStatus.FAILED },
+      }),
+      this.prisma.stripeWebhookEvent.findFirst({
+        where: { status: StripeWebhookEventStatus.PROCESSED },
+        orderBy: { processedAt: 'desc' },
+      }),
+      this.prisma.stripeWebhookEvent.findFirst({
+        orderBy: { createdAt: 'desc' },
       }),
       this.prisma.stripeWebhookEvent.findMany({
         orderBy: { createdAt: 'desc' },
@@ -462,17 +852,22 @@ export class BillingAdminService {
     let integrationStatus: 'NOT_CONNECTED' | 'PREPARED' | 'CONNECTED' = 'PREPARED';
     if (!stripeSecretConfigured && !stripeWebhookConfigured && webhookEventCount === 0) {
       integrationStatus = 'NOT_CONNECTED';
-    } else if (stripeSecretConfigured && stripeWebhookConfigured) {
+    } else if (stripeSecretConfigured && stripeWebhookConfigured && lastWebhook) {
       integrationStatus = 'CONNECTED';
+    } else if (stripeSecretConfigured || stripeWebhookConfigured || webhookEventCount > 0) {
+      integrationStatus = 'PREPARED';
     }
 
     return {
       integrationStatus,
       stripeSecretConfigured,
       stripeWebhookConfigured,
+      runtimeStripeMode,
       stripeCustomerMappingCount,
       webhookEventCount,
       failedWebhookCount,
+      lastSuccessfulWebhookAt: lastSuccessfulWebhook?.processedAt?.toISOString() ?? null,
+      lastWebhookAt: lastWebhook?.createdAt.toISOString() ?? null,
       recentEvents: recentEvents.map((e) => ({
         id: e.id,
         stripeEventId: e.stripeEventId,
@@ -485,9 +880,12 @@ export class BillingAdminService {
     };
   }
 
-  async listWebhookEvents(query: AuditLogQueryDto) {
+  async listWebhookEvents(query: AuditLogQueryDto & { status?: string }) {
     const { skip, take } = parsePagination(query as PaginationParams);
     const where: any = {};
+    if (query.status) {
+      where.status = query.status;
+    }
 
     const [data, total] = await Promise.all([
       this.prisma.stripeWebhookEvent.findMany({

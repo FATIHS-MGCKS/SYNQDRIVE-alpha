@@ -1,7 +1,9 @@
 import type { AdminOrgBillingRowDto } from '../../types/admin-billing.types';
-import { EmptyState } from '../../../components/patterns/states';
 import { BillingInvoicesTab } from './BillingInvoicesTab';
 import { BillingPaymentMethodsTab } from './BillingPaymentMethodsTab';
+import { BillingPaymentAttemptsTab } from './BillingPaymentAttemptsTab';
+import { BillingRefundsTab } from './BillingRefundsTab';
+import { BillingCreditNotesTab } from './BillingCreditNotesTab';
 import { MasterBillingSubTabBar } from './MasterBillingSubTabBar';
 import {
   MASTER_BILLING_INVOICES_PAYMENTS_TABS,
@@ -14,25 +16,6 @@ interface BillingInvoicesPaymentsSectionProps {
   activeSubTab: string | null;
   onSubTabChange: (tab: MasterBillingInvoicesPaymentsTab) => void;
 }
-
-const PLACEHOLDER_COPY: Record<
-  Exclude<MasterBillingInvoicesPaymentsTab, 'invoices' | 'payment-methods'>,
-  { title: string; description: string }
-> = {
-  'payment-attempts': {
-    title: 'Zahlungsversuche',
-    description:
-      'Übersicht über fehlgeschlagene und wiederholte Zahlungsversuche folgt in einem späteren Schritt.',
-  },
-  refunds: {
-    title: 'Refunds',
-    description: 'Rückerstattungen und Teilrefunds werden hier master-seitig nachverfolgt.',
-  },
-  'credit-notes': {
-    title: 'Credit Notes',
-    description: 'Gutschriften und Korrekturrechnungen werden in diesem Bereich gebündelt.',
-  },
-};
 
 export function BillingInvoicesPaymentsSection({
   organizations,
@@ -66,13 +49,9 @@ export function BillingInvoicesPaymentsSection({
       {subTab === 'payment-methods' ? (
         <BillingPaymentMethodsTab organizations={organizations} />
       ) : null}
-      {subTab !== 'invoices' && subTab !== 'payment-methods' ? (
-        <EmptyState
-          compact
-          title={PLACEHOLDER_COPY[subTab].title}
-          description={PLACEHOLDER_COPY[subTab].description}
-        />
-      ) : null}
+      {subTab === 'payment-attempts' ? <BillingPaymentAttemptsTab /> : null}
+      {subTab === 'refunds' ? <BillingRefundsTab /> : null}
+      {subTab === 'credit-notes' ? <BillingCreditNotesTab /> : null}
     </div>
   );
 }

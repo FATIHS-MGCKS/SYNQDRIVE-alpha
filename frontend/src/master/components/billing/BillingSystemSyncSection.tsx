@@ -1,5 +1,7 @@
-import { EmptyState } from '../../../components/patterns/states';
 import { BillingStripeTab } from './BillingStripeTab';
+import { BillingReconciliationTab } from './BillingReconciliationTab';
+import { BillingResendTab } from './BillingResendTab';
+import { BillingOutboxTab } from './BillingOutboxTab';
 import { MasterBillingSubTabBar } from './MasterBillingSubTabBar';
 import {
   MASTER_BILLING_SYSTEM_SYNC_TABS,
@@ -11,25 +13,6 @@ interface BillingSystemSyncSectionProps {
   activeSubTab: string | null;
   onSubTabChange: (tab: MasterBillingSystemSyncTab) => void;
 }
-
-const PLACEHOLDER_COPY: Record<
-  Exclude<MasterBillingSystemSyncTab, 'stripe-api' | 'webhooks'>,
-  { title: string; description: string }
-> = {
-  reconciliation: {
-    title: 'Reconciliation',
-    description:
-      'Abgleich zwischen SynqDrive und Stripe inklusive Drift-Erkennung wird hier gebündelt.',
-  },
-  resend: {
-    title: 'Resend',
-    description: 'E-Mail-Zustellung über Resend und Retry-Status für Billing-Benachrichtigungen.',
-  },
-  outbox: {
-    title: 'Outbox',
-    description: 'Domain-Event-Outbox und Zustellversuche für asynchrone Billing-Prozesse.',
-  },
-};
 
 export function BillingSystemSyncSection({
   activeSubTab,
@@ -61,13 +44,9 @@ export function BillingSystemSyncSection({
 
       {subTab === 'stripe-api' ? <BillingStripeTab mode="api" /> : null}
       {subTab === 'webhooks' ? <BillingStripeTab mode="webhooks" /> : null}
-      {subTab !== 'stripe-api' && subTab !== 'webhooks' ? (
-        <EmptyState
-          compact
-          title={PLACEHOLDER_COPY[subTab].title}
-          description={PLACEHOLDER_COPY[subTab].description}
-        />
-      ) : null}
+      {subTab === 'reconciliation' ? <BillingReconciliationTab /> : null}
+      {subTab === 'resend' ? <BillingResendTab /> : null}
+      {subTab === 'outbox' ? <BillingOutboxTab /> : null}
     </div>
   );
 }
