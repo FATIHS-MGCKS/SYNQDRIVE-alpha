@@ -49,7 +49,7 @@ async function main() {
   try {
     const invoices = await prisma.orgInvoice.findMany({
       where: { organizationId: orgId },
-      select: { id: true, bookingId: true, generatedDocumentId: true },
+      select: { id: true, bookingId: true, generatedDocumentId: true, status: true },
     });
 
     const docs = await prisma.generatedDocument.findMany({
@@ -65,6 +65,20 @@ async function main() {
     });
 
     for (const invoice of invoices) {
+      const terminal = ['VOID', 'CANCELLED', 'CREDITED', 'REJECTED'].includes(invoice.status);
+      if (terminal) {
+        if (invoice.generatedDocumentId) {
+          console.log(`[invoice.pointer.clear] ${invoice.id} (terminal status ${invoice.status})`);
+          if (apply) {
+            await prisma.orgInvoice.update({
+              where: { id: invoice.id },
+              data: { generatedDocumentId: null },
+            });
+          }
+        }
+        continue;
+      }
+
       const linked = docs.filter((d) => d.invoiceId === invoice.id && d.status !== 'VOID');
       const bookingFallback =
         invoice.bookingId && linked.length === 0
@@ -95,6 +109,15 @@ async function main() {
       }
 
       if (activeId && invoice.generatedDocumentId !== activeId) {
+        const takenBy = invoices.find(
+          (row) => row.id !== invoice.id && row.generatedDocumentId === activeId,
+        );
+        if (takenBy) {
+          console.log(
+            `[invoice.pointer.skip] ${invoice.id} -> ${activeId} (already on ${takenBy.id})`,
+          );
+          continue;
+        }
         invoicePointerUpdates += 1;
         console.log(`[invoice.pointer] ${invoice.id} -> ${activeId}`);
         if (apply) {
