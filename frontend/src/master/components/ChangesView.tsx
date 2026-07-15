@@ -54,6 +54,26 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-07-15T07:55:00.000Z',
   },
   {
+    id: 'invoice-document-relation-adr-2026-07-15',
+    version: '4.9.472',
+    title: 'ADR — Kanonisches Zielmodell Rechnung ↔ Generierte Dokumente',
+    summary: [
+      'Neue ADR `INVOICE_DOCUMENT_RELATION_CANONICAL_MODEL_ADR_2026-07-15.md`: Ist-Analyse aller Pointer, Versionen, Status und Schreib-/Lesepfade.',
+      'Entscheidung: `GeneratedDocument.invoiceId` = kanonische Relation; `OrgInvoice.generatedDocumentId` = denormalisierter Aktiv-Cache (Variante A + algorithmische Aktivität C).',
+      'Kein neues DB-Feld in Phase 1; Migrations-/Backfill-Phasen dokumentiert, aber in diesem Schritt nicht ausgeführt.',
+      'Legacy-Fallbacks (`listForInvoice` Booking-OR, Bundle-Pointer) bleiben bis Audit-Gates grün.',
+    ],
+    reason:
+      'Vor weiterer Härtung oder Fallback-Entfernung brauchte das System eine codebelegte Architekturentscheidung für die Dual-Link-Realität zwischen Rechnung und PDF.',
+    previousBehavior:
+      'Zwei teils divergierende Wahrheiten (`invoiceId` vs. `generatedDocumentId`), drei Pointer-Ebenen (Rechnung, Dokument, Bundle), Legacy-OR in Reads.',
+    details:
+      'Siehe `architecture/INVOICE_DOCUMENT_RELATION_CANONICAL_MODEL_ADR_2026-07-15.md`. Bezug: `INVOICE_DOCUMENT_LINK_LEGACY_AUDIT_2026-07-14.md`, Test-Baseline `docs/audits/invoice-function-test-safety-net.md`.',
+    affectsArchitecture: true,
+    module: 'Invoices',
+    createdAt: '2026-07-15T19:45:00.000Z',
+  },
+  {
     id: 'invoice-readonly-audit-fixes-v49470-2026-07-15',
     version: '4.9.470',
     title: 'V4.9.470 — Rechnungsmodul: Read-only-Audit-Fixes (B1–K4, M1–M8)',
