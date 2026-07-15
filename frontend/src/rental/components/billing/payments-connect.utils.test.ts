@@ -147,13 +147,21 @@ describe('CustomerPaymentsTab layout', () => {
 });
 
 describe('BillingTab subscription section', () => {
-  it('still renders subscription billing components', () => {
+  it('renders tenant subscription sub-tabs and overview', () => {
     const source = readFileSync(resolve(billingDir, 'BillingTab.tsx'), 'utf8');
-    expect(source).toContain('BillingStatusHero');
-    expect(source).toContain('BillingSubscriptionCard');
-    expect(source).toContain('BillingPaymentMethodCard');
-    expect(source).toContain('BillingInvoiceSection');
+    expect(source).toContain('TenantSubscriptionTabBar');
+    expect(source).toContain('TenantBillingOverviewTab');
+    expect(source).toContain('TenantBillingTariffVehiclesTab');
+    expect(source).toContain('TenantBillingAddOnsTab');
+    expect(source).toContain('TenantBillingInvoicesTab');
+    expect(source).toContain('TenantBillingPaymentMethodTab');
     expect(source).toContain("section === 'customer-payments'");
     expect(source).toContain('CustomerPaymentsTab');
+
+    const invoicesTabSource = readFileSync(
+      resolve(billingDir, 'TenantBillingInvoicesTab.tsx'),
+      'utf8',
+    );
+    expect(invoicesTabSource).toContain('BillingInvoiceSection');
   });
 });

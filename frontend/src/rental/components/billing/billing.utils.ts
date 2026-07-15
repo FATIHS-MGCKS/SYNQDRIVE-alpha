@@ -100,6 +100,9 @@ export function headerBadgeFromSummary(
   if (subscriptionStatus === 'CANCELLED') {
     return { label: 'Gekündigt', tone: 'sq-tone-neutral' };
   }
+  if (subscriptionStatus === 'CANCEL_SCHEDULED') {
+    return { label: 'Kündigung geplant', tone: 'sq-tone-warning' };
+  }
   if (subscriptionStatus === 'ACTIVE') {
     return { label: 'Aktiv', tone: 'sq-tone-success' };
   }

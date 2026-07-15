@@ -42,7 +42,7 @@ export function BillingPaymentMethodCard({
             Zahlungsmethode
           </h3>
           <p className="text-[12px] mt-0.5 text-muted-foreground">
-            Nur Stripe-Metadaten — keine Kartendaten im System gespeichert.
+            Nur sichere Zahlungsdaten — Kartendetails werden nicht im System gespeichert.
           </p>
         </div>
         {pm.exists && pm.status && (
@@ -75,9 +75,9 @@ export function BillingPaymentMethodCard({
           </p>
           <p className="text-[12px] mt-1 text-muted-foreground max-w-sm mx-auto">
             {stripeState === 'configured'
-              ? 'Hinterlege eine Zahlungsmethode über das Stripe-Kundenportal.'
+              ? 'Hinterlegen Sie eine Zahlungsmethode im sicheren Kundenbereich.'
               : stripeState === 'prepared'
-                ? 'Stripe wird vorbereitet. Zahlungsaktionen sind noch nicht verfügbar.'
+                ? 'Die Online-Zahlung wird vorbereitet. Bitte später erneut versuchen.'
                 : 'Online-Zahlungen sind für diese Organisation noch nicht freigeschaltet.'}
           </p>
           {canUseStripePayments ? (
@@ -93,7 +93,7 @@ export function BillingPaymentMethodCard({
             </Button>
           ) : stripeState === 'prepared' ? (
             <Button type="button" variant="outline" size="sm" className="mt-4" disabled>
-              Stripe wird vorbereitet
+              Online-Zahlung wird vorbereitet
             </Button>
           ) : null}
         </div>
@@ -132,7 +132,7 @@ export function BillingPaymentMethodCard({
             </Button>
           ) : stripeState === 'prepared' ? (
             <Button type="button" variant="outline" size="sm" disabled>
-              Stripe wird vorbereitet
+              Online-Zahlung wird vorbereitet
             </Button>
           ) : null}
         </div>

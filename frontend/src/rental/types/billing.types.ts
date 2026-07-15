@@ -137,6 +137,8 @@ export interface BillingInvoiceDto {
   id: string;
   subscriptionId?: string;
   stripeInvoiceId?: string | null;
+  invoiceNumber?: string | null;
+  invoiceNumberLabel?: string | null;
   amountCents?: number;
   amount?: number;
   currency?: string;
@@ -163,4 +165,84 @@ export interface PaginatedBillingInvoices {
     limit: number;
     totalPages: number;
   };
+}
+
+export interface TenantMoneyDto {
+  cents: number;
+  currency: string;
+  formatted: string;
+}
+
+export interface TenantSubscriptionOverviewDto {
+  asOf: string;
+  plan: { kind: string; name: string } | null;
+  contract: {
+    status: string;
+    statusLabel: string;
+    trialEndsAt: string | null;
+    startedAt: string | null;
+    cancellationScheduledAt: string | null;
+    billingInterval: string;
+    billingIntervalLabel: string;
+    currentPeriodStart: string;
+    currentPeriodEnd: string;
+    nextPeriodStart: string;
+    nextPeriodEnd: string;
+  } | null;
+  pricing: {
+    asOf: string;
+    billableVehicleCount: number;
+    connectedVehicleCount: number;
+    appliedTier: {
+      label: string;
+      minVehicles: number;
+      maxVehicles: number | null;
+      unitPrice: TenantMoneyDto | null;
+    } | null;
+    baseAmount: TenantMoneyDto | null;
+    discounts: Array<{ label: string; amount: TenantMoneyDto }>;
+    netAmount: TenantMoneyDto | null;
+    taxAmount: TenantMoneyDto | null;
+    grossAmount: TenantMoneyDto | null;
+    taxConfigured: boolean;
+    pricingModel: 'VOLUME' | 'GRADUATED' | null;
+  } | null;
+  billing: {
+    nextExpectedInvoice: {
+      periodStart: string;
+      periodEnd: string;
+      grossAmount: TenantMoneyDto | null;
+      dueAt: string | null;
+    } | null;
+    nextChargeAt: string | null;
+  } | null;
+  paymentMethod: {
+    status: string;
+    statusLabel: string;
+    defaultMethod: {
+      type: string;
+      typeLabel: string;
+      brand: string | null;
+      last4: string | null;
+      expMonth: number | null;
+      expYear: number | null;
+      bankName: string | null;
+      mandateStatusLabel: string | null;
+    } | null;
+    asOf: string;
+  } | null;
+  addOns: Array<{ key: string; name: string; statusLabel: string; active: boolean }>;
+  warnings: TenantBillingWarningDto[];
+  availableActions: Array<{
+    action: string;
+    label: string;
+    requiresWritePermission: boolean;
+  }>;
+  sectionErrors: Array<{ section: string; message: string }>;
+}
+
+export interface TenantBillingWarningDto {
+  severity: 'info' | 'warning' | 'critical';
+  message: string;
+  actionHint: string | null;
 }

@@ -7,16 +7,13 @@ import {
   invoiceStatusLabel,
   invoiceStatusTone,
 } from './billing.utils';
+import { resolveInvoiceNumberLabel } from './tenant-billing-overview.utils';
 import { Icon } from '../ui/Icon';
 
 interface BillingInvoiceDetailDrawerProps {
   invoice: BillingInvoiceDto | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}
-
-function invoiceNumber(inv: BillingInvoiceDto): string {
-  return inv.stripeInvoiceId ?? `RE-${inv.id.slice(0, 8).toUpperCase()}`;
 }
 
 export function BillingInvoiceDetailDrawer({
@@ -38,7 +35,7 @@ export function BillingInvoiceDetailDrawer({
     <DetailDrawer
       open={open}
       onOpenChange={onOpenChange}
-      title={`Rechnung ${invoiceNumber(invoice)}`}
+      title={`Rechnung ${resolveInvoiceNumberLabel(invoice)}`}
       description="Detailansicht mit Positionen und Nutzungskontext."
       status={
         <span

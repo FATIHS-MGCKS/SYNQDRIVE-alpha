@@ -1,5 +1,6 @@
 import type { BillingPriceTierDto } from '../../types/billing.types';
 import { formatMoneyCents, formatTierRange } from './billing.utils';
+import { pricingModelLabel } from './tenant-billing-overview.utils';
 import { EmptyState } from '../../../components/patterns/states';
 import { Icon } from '../ui/Icon';
 
@@ -7,12 +8,14 @@ interface BillingPriceTierLadderProps {
   tiers: BillingPriceTierDto[];
   currency: string;
   currentTierId: string | null;
+  pricingModel?: 'VOLUME' | 'GRADUATED' | null;
 }
 
 export function BillingPriceTierLadder({
   tiers,
   currency,
   currentTierId,
+  pricingModel = 'VOLUME',
 }: BillingPriceTierLadderProps) {
   if (!tiers.length) {
     return (
@@ -37,7 +40,8 @@ export function BillingPriceTierLadder({
       <div className="mb-4">
         <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">Preisstaffel</h3>
         <p className="text-[11px] mt-0.5 text-muted-foreground">
-          VOLUME-Modell: gesamter Bestand wird mit der passenden Staffel berechnet.
+          {pricingModelLabel(pricingModel)}: Ihr gesamter Fahrzeugbestand wird mit der passenden
+          Staffel berechnet.
         </p>
       </div>
 

@@ -31,7 +31,7 @@ export function BillingSubscriptionCard({ summary, onShowVehicles }: BillingSubs
       : 'Noch nicht konfiguriert';
 
   const rows: Array<{ label: string; value: ReactNode }> = [
-    { label: 'Plan / Produkt', value: planLabel },
+    { label: 'Tarif', value: planLabel },
     { label: 'Abrechnungsmodell', value: 'Pro verbundenem Fahrzeug' },
     { label: 'Aktive Fahrzeuge (verbunden)', value: String(summary.connectedVehicleCount) },
     { label: 'Abrechenbare Fahrzeuge', value: String(summary.billableVehicleCount) },
@@ -61,7 +61,7 @@ export function BillingSubscriptionCard({ summary, onShowVehicles }: BillingSubs
     <div className="surface-premium rounded-2xl p-4 sm:p-5 shadow-[var(--shadow-1)]">
       <div className="mb-4">
         <h3 className="text-[15px] font-semibold tracking-[-0.01em] text-foreground">
-          Subscription
+          SynqDrive-Abo
         </h3>
         <p className="text-[12px] mt-0.5 text-muted-foreground">
           Abrechnung basiert auf verbundenen, abrechenbaren Fahrzeugen.

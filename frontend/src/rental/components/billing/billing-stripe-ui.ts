@@ -15,7 +15,7 @@ export function stripeStateLabel(state: BillingStripeUiState): string {
     case 'configured':
       return 'Zahlungen aktiv';
     case 'prepared':
-      return 'Stripe wird vorbereitet';
+      return 'Online-Zahlung wird vorbereitet';
     default:
       return 'Online-Zahlung nicht aktiv';
   }
@@ -35,9 +35,9 @@ export function stripeStateTone(state: BillingStripeUiState): string {
 export function stripeStateHint(state: BillingStripeUiState): string {
   switch (state) {
     case 'configured':
-      return 'Zahlungsmethoden und Rechnungen werden über Stripe verwaltet.';
+      return 'Zahlungsmethoden und Rechnungen werden im sicheren Kundenbereich verwaltet.';
     case 'prepared':
-      return 'Die Stripe-Anbindung wird vorbereitet. Zahlungsaktionen sind noch nicht verfügbar.';
+      return 'Die Online-Zahlung wird vorbereitet. Zahlungsaktionen sind noch nicht verfügbar.';
     default:
       return 'Online-Zahlungen sind für diese Organisation noch nicht freigeschaltet.';
   }

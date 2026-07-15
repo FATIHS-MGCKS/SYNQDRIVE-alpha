@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { api } from '../../../lib/api';
 import { billingQueryKeys } from './billing-query.utils';
 import { mapOverviewToSummaryShape } from './billing-overview.adapter';
-import type { BillingSummaryDto } from '../../types/billing.types';
+import type { BillingSummaryDto, TenantSubscriptionOverviewDto } from '../../types/billing.types';
 import { useBillingQuery } from './useBillingQuery';
 
 export function useBillingSubscriptionOverview(orgId: string | undefined) {
@@ -21,7 +21,7 @@ export function useBillingSubscriptionOverview(orgId: string | undefined) {
   );
 
   return {
-    overview: query.data,
+    overview: query.data as TenantSubscriptionOverviewDto | null,
     summary: summary as BillingSummaryDto | null,
     loading: query.loading,
     error: query.error,

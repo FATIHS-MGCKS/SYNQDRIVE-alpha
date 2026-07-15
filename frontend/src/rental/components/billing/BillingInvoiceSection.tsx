@@ -6,6 +6,7 @@ import {
   invoiceStatusLabel,
   invoiceStatusTone,
 } from './billing.utils';
+import { resolveInvoiceNumberLabel } from './tenant-billing-overview.utils';
 import { EmptyState, ErrorState, SkeletonCard } from '../../../components/patterns/states';
 import { Button } from '../../../components/ui/button';
 import { BillingInvoiceDetailDrawer } from './BillingInvoiceDetailDrawer';
@@ -24,14 +25,6 @@ interface BillingInvoiceSectionProps {
 }
 
 type StatusFilter = 'all' | 'PAID' | 'OPEN' | 'OVERDUE';
-
-function invoiceNumber(inv: BillingInvoiceDto): string {
-  return (
-    (inv as BillingInvoiceDto & { invoiceNumberLabel?: string }).invoiceNumberLabel ??
-    (inv as BillingInvoiceDto & { invoiceNumber?: string }).invoiceNumber ??
-    `RE-${inv.id.slice(0, 8).toUpperCase()}`
-  );
-}
 
 function mapStatusFilter(status: StatusFilter): string | undefined {
   if (status === 'all') return undefined;
@@ -174,7 +167,7 @@ export function BillingInvoiceSection({
                       onClick={() => setSelected(inv)}
                     >
                       <td className="px-3 py-2.5 text-[12px] font-medium text-foreground">
-                        {invoiceNumber(inv)}
+                        {resolveInvoiceNumberLabel(inv)}
                       </td>
                       <td className="px-3 py-2.5 text-[12px] text-muted-foreground">
                         {formatDateDe(inv.periodStart)} – {formatDateDe(inv.periodEnd)}
