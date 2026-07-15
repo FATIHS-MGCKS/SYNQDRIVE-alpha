@@ -48,6 +48,18 @@ export interface FleetVehicleMaintenanceContextDto {
   maintenanceUrgency: 'planned' | 'urgent' | null;
 }
 
+/** Compact future-booking ref for fleet list/map/detail APIs (Prompt 13). */
+export interface FleetVehicleFutureBookingDto {
+  id: string;
+  bookingNumber: string;
+  status: string;
+  pickupAt: string;
+  returnAt: string;
+  customerLabel?: string | null;
+  vehicleId: string;
+  phase: 'future' | 'pickup_window' | 'active_rental' | 'terminal';
+}
+
 export const EMPTY_BOOKING_CONTEXT: FleetVehicleBookingContextDto = {
   reservedBookingId: null,
   reservedCustomerName: null,

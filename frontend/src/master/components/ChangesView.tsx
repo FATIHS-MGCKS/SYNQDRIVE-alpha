@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-future-occupancy-v49479-2026-07-15',
+    version: '4.9.479',
+    title: 'V4.9.479 — Fleet Status: zukünftige Belegung nextBooking (Prompt 13/43)',
+    summary: [
+      'Neues Modul `vehicle-booking-context.future-occupancy.ts` — chronologisch nächste verbindliche Buchung + `futureBookingCount`.',
+      '`vehicle-booking-ref.serializer.ts` — `bookingNumber` als `BK-XXXXXX`, volle `pickupAt`/`returnAt`-ISO-Instants, kein UUID-Label.',
+      'Assembler: Wizard-Drafts ausgeschlossen; Reservierungsfenster-Buchung nicht doppelt in `nextBooking`; optional `futureBookings[]` für Vehicle Detail.',
+      'API: `nextBooking` + `futureBookingCount` in Fleet List/Map; `futureBookings` nur bei `findOne` (kompakt).',
+    ],
+    reason:
+      'Prompt 13/43: vollständige Ermittlung/Serialisierung zukünftiger Belegung unabhängig vom operativen Status — §5 vehicle-operational-state-v2.',
+    previousBehavior:
+      '`nextBooking` ohne `bookingNumber`; Wizard-Drafts konnten in Queue; keine API-Serialisierung von Future-Occupancy-Feldern.',
+    details:
+      'Tests: future-occupancy.spec, booking-ref.serializer.spec, erweitert assembler.spec + vehicles.service.spec. Konfliktprüfung unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicles',
+    createdAt: '2026-07-16T00:00:00.000Z',
+  },
+  {
     id: 'vehicle-reservation-window-v49478-2026-07-15',
     version: '4.9.478',
     title: 'V4.9.478 — Fleet Status: kanonisches Reservierungsfenster (Prompt 12/43)',

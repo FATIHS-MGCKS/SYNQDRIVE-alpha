@@ -68,8 +68,13 @@ import type { VehicleStateEngineBookingStateInput } from './domain/vehicle-opera
 import type {
   FleetMaintenanceReasonCode,
   FleetVehicleBookingContextDto,
+  FleetVehicleFutureBookingDto,
   FleetVehicleMaintenanceContextDto,
 } from './domain/vehicle-operational-state.types';
+import {
+  serializeFleetBookingRef,
+  serializeFleetBookingRefs,
+} from './domain/vehicle-booking-ref.serializer';
 export { EMPTY_BOOKING_CONTEXT } from './domain/vehicle-operational-state.builder';
 
 const DIMO_FUEL_TYPE_MAP: Record<string, FuelType> = {
@@ -183,13 +188,12 @@ export interface FleetMapVehicleDto
   isLiveTracking: boolean;
   heading: number | null;
   imageUrl: string | null;
-  // V4.6.84 — telemetry summary so map markers can render fuel/SoC and
-  // odometer without a second round-trip. Nullable when no telemetry
-  // state exists yet.
   odometerKm: number | null;
   fuelPercent: number | null;
   evSoc: number | null;
   isElectric: boolean;
+  nextBooking: FleetVehicleFutureBookingDto | null;
+  futureBookingCount: number;
 }
 
 @Injectable()
@@ -584,6 +588,8 @@ export class VehiclesService {
     fleetContextOptions?: {
       organizationId: string;
       organizationTimezone: string;
+      /** Vehicle detail only — fleet list/map stay compact. */
+      includeFutureBookings?: boolean;
     },
   ) {
     const state = v.latestState;
@@ -720,6 +726,11 @@ export class VehiclesService {
       maintenanceReason: fleetCtx.maintenanceCtx.maintenanceReason,
       maintenanceReasonCode: fleetCtx.maintenanceCtx.maintenanceReasonCode,
       maintenanceUrgency: fleetCtx.maintenanceCtx.maintenanceUrgency,
+      nextBooking: fleetCtx.nextBooking,
+      futureBookingCount: fleetCtx.futureBookingCount,
+      ...(fleetContextOptions?.includeFutureBookings
+        ? { futureBookings: fleetCtx.futureBookings ?? [] }
+        : {}),
     };
   }
 
@@ -769,6 +780,9 @@ export class VehiclesService {
     status: string;
     maintenanceCtx: FleetVehicleMaintenanceContextDto;
     bookingDto: FleetVehicleBookingContextDto;
+    nextBooking: FleetVehicleFutureBookingDto | null;
+    futureBookingCount: number;
+    futureBookings: FleetVehicleFutureBookingDto[];
     liveKmDriven: number | null;
     odometerKm: number | null;
     fuelPercent: number | null;
@@ -795,7 +809,13 @@ export class VehiclesService {
       this.logger.warn(engineOutput.legacy.ghostStateWarning);
     }
     const { ghostStateWarning: _ghost, ...fleetCtx } = engineOutput.legacy;
-    return fleetCtx;
+    const bookingState = input.bookingState;
+    return {
+      ...fleetCtx,
+      nextBooking: serializeFleetBookingRef(bookingState?.nextBooking),
+      futureBookingCount: bookingState?.futureBookingCount ?? 0,
+      futureBookings: serializeFleetBookingRefs(bookingState?.futureBookings),
+    };
   }
 
   private extractHeading(rawPayload: unknown): number | null {
@@ -1057,6 +1077,8 @@ export class VehiclesService {
         isElectric,
         ...fleetCtx.bookingDto,
         activeKmDriven: fleetCtx.liveKmDriven,
+        nextBooking: fleetCtx.nextBooking,
+        futureBookingCount: fleetCtx.futureBookingCount,
         ...fleetCtx.maintenanceCtx,
       };
     });
@@ -1113,7 +1135,11 @@ export class VehiclesService {
       tripStateMap,
       bookingContextMap,
       pickupOdoByBooking,
-      { organizationId, organizationTimezone },
+      {
+        organizationId,
+        organizationTimezone,
+        includeFutureBookings: true,
+      },
     );
   }
 

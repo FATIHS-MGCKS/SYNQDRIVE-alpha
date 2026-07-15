@@ -71,6 +71,11 @@ export function formatBookingCustomerLabel(customer: {
   return personal || customer.company || '';
 }
 
+/** Display ref for fleet/API — never expose raw UUID as user-visible label. */
+export function formatBookingDisplayNumber(bookingId: string): string {
+  return `BK-${bookingId.slice(-6).toUpperCase()}`;
+}
+
 export function compareBookingsByPickupStable(
   a: Pick<VehicleBookingQueryRow, 'startDate' | 'id'>,
   b: Pick<VehicleBookingQueryRow, 'startDate' | 'id'>,

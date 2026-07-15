@@ -444,7 +444,73 @@ describe('vehicle-booking-context.assembler', () => {
       ]);
 
       expect(state.reservationWindowBooking).toBeNull();
-      expect(state.nextBooking?.id).toBe('b-draft');
+      expect(state.nextBooking).toBeNull();
+    });
+  });
+
+  describe('future occupancy serialization (Prompt 13)', () => {
+    it('exposes bookingNumber and full pickup/return on nextBooking', () => {
+      const state = assembleForVehicle([
+        row({
+          id: 'booking-abc123def456',
+          status: 'CONFIRMED',
+          startDate: new Date('2026-08-01T08:00:00.000Z'),
+          endDate: new Date('2026-08-06T18:00:00.000Z'),
+        }),
+      ]);
+
+      expect(state.nextBooking?.bookingNumber).toBe('BK-DEF456');
+      expect(state.nextBooking?.pickupAt).toBe('2026-08-01T08:00:00.000Z');
+      expect(state.nextBooking?.returnAt).toBe('2026-08-06T18:00:00.000Z');
+      expect(state.nextBooking?.phase).toBe('future');
+    });
+
+    it('lists further future bookings internally without duplicating reservation slot', () => {
+      const state = assembleForVehicle([
+        row({
+          id: 'b-window',
+          status: 'CONFIRMED',
+          startDate: new Date('2026-07-15T08:00:00.000Z'),
+          endDate: new Date('2026-07-20T18:00:00.000Z'),
+        }),
+        row({
+          id: 'b-later-1',
+          status: 'CONFIRMED',
+          startDate: new Date('2026-08-01T08:00:00.000Z'),
+          endDate: new Date('2026-08-06T18:00:00.000Z'),
+        }),
+        row({
+          id: 'b-later-2',
+          status: 'CONFIRMED',
+          startDate: new Date('2026-08-10T08:00:00.000Z'),
+          endDate: new Date('2026-08-15T18:00:00.000Z'),
+        }),
+      ]);
+
+      expect(state.reservationWindowBooking?.id).toBe('b-window');
+      expect(state.nextBooking?.id).toBe('b-later-1');
+      expect(state.futureBookingCount).toBe(1);
+      expect(state.futureBookings?.map((b) => b.id)).toEqual(['b-later-2']);
+    });
+
+    it('active rental is never nextBooking while future queue remains', () => {
+      const state = assembleForVehicle([
+        activeRow({
+          id: 'b-active',
+          startDate: new Date('2026-07-10T08:00:00.000Z'),
+          endDate: new Date('2026-07-20T18:00:00.000Z'),
+        }),
+        row({
+          id: 'b-future',
+          status: 'CONFIRMED',
+          startDate: new Date('2026-08-01T08:00:00.000Z'),
+          endDate: new Date('2026-08-06T18:00:00.000Z'),
+        }),
+      ]);
+
+      expect(state.activeBooking?.id).toBe('b-active');
+      expect(state.nextBooking?.id).toBe('b-future');
+      expect(state.nextBooking?.phase).toBe('future');
     });
   });
 });

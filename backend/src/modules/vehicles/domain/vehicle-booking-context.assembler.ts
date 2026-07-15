@@ -1,19 +1,20 @@
-import type { BookingStatus } from '@prisma/client';
-import type {
-  BookingPhase,
-  DataQualityReasonCode,
-  DomainBookingRef,
-  VehicleStateEngineBookingStateInput,
-} from './vehicle-operational-state.engine.types';
-import { EMPTY_BOOKING_STATE_INPUT } from './vehicle-operational-state.engine.types';
+import { resolveFutureOccupancy } from './vehicle-booking-context.future-occupancy';
+import { isRelevantFutureOccupancyBooking } from './vehicle-booking-context.future-occupancy';
 import { resolveReservationWindowBooking } from './vehicle-booking-context.reservation-window';
 import { resolveActiveRentalForVehicle } from './vehicle-active-rental.policy';
+import { toDomainBookingRef } from './vehicle-booking-ref.serializer';
 import type {
   AssembleBookingContextMapParams,
   AssembleVehicleBookingContextParams,
   VehicleBookingQueryRow,
 } from './vehicle-booking-context.types';
 import { compareBookingsByPickupStable } from './vehicle-booking-context.types';
+import type { BookingStatus } from '@prisma/client';
+import type {
+  DataQualityReasonCode,
+  VehicleStateEngineBookingStateInput,
+} from './vehicle-operational-state.engine.types';
+import { EMPTY_BOOKING_STATE_INPUT } from './vehicle-operational-state.engine.types';
 
 /** Non-terminal statuses considered for fleet operational booking context. */
 export const OPERATIONAL_BOOKING_STATUSES: BookingStatus[] = [
@@ -23,35 +24,6 @@ export const OPERATIONAL_BOOKING_STATUSES: BookingStatus[] = [
 ];
 
 export { compareBookingsByPickupStable } from './vehicle-booking-context.types';
-
-function toDomainBookingRef(
-  row: VehicleBookingQueryRow,
-  phase: BookingPhase,
-  evaluationAt: Date,
-): DomainBookingRef {
-  const isActivePhase = phase === 'active_rental';
-  const pickupInstant =
-    isActivePhase && row.handover.pickupPerformedAt
-      ? row.handover.pickupPerformedAt
-      : row.startDate;
-  return {
-    id: row.id,
-    bookingNumber: '',
-    status: row.status,
-    pickupAt: pickupInstant.toISOString(),
-    returnAt: row.endDate.toISOString(),
-    customerLabel: row.customerLabel,
-    vehicleId: row.vehicleId,
-    phase,
-    pickupStationName: row.pickupStationName,
-    returnStationName: row.returnStationName,
-    kmIncluded: row.kmIncluded,
-    kmDriven: row.kmDriven,
-    isOverdue: isActivePhase
-      ? row.endDate.getTime() < evaluationAt.getTime()
-      : row.startDate.getTime() < evaluationAt.getTime(),
-  };
-}
 
 /**
  * Assembles normalized engine booking state for a single vehicle.
@@ -81,16 +53,12 @@ export function assembleVehicleBookingContext(
     : null;
   const activeId = activeBooking?.id ?? null;
 
-  const futureCandidates = vehicleBookings
-    .filter(
-      (b) =>
-        (b.status === 'PENDING' || b.status === 'CONFIRMED') &&
-        b.endDate.getTime() >= evaluationAt.getTime(),
-    )
+  const bindingFutureRows = vehicleBookings
+    .filter((b) => isRelevantFutureOccupancyBooking(b, evaluationAt))
     .filter((b) => b.id !== activeId)
     .sort(compareBookingsByPickupStable);
 
-  const reservationResult = resolveReservationWindowBooking(futureCandidates, {
+  const reservationResult = resolveReservationWindowBooking(bindingFutureRows, {
     evaluationAt,
     organizationTimezone,
   });
@@ -100,27 +68,29 @@ export function assembleVehicleBookingContext(
   }
 
   const reservationRow = reservationResult.booking;
-
   const reservationWindowBooking = reservationRow
     ? toDomainBookingRef(reservationRow, 'pickup_window', evaluationAt)
     : null;
   const reservationId = reservationWindowBooking?.id ?? null;
 
-  const futureQueue = futureCandidates.filter((b) => b.id !== reservationId);
-  const nextRow = futureQueue[0] ?? null;
-  const nextBooking = nextRow
-    ? toDomainBookingRef(nextRow, 'future', evaluationAt)
+  const futureOccupancy = resolveFutureOccupancy(bindingFutureRows, {
+    evaluationAt,
+    excludeBookingIds: reservationId ? [reservationId] : [],
+  });
+
+  const nextBooking = futureOccupancy.nextRow
+    ? toDomainBookingRef(futureOccupancy.nextRow, 'future', evaluationAt)
     : null;
-  const futureBookingCount = Math.max(
-    0,
-    futureQueue.length - (nextBooking ? 1 : 0),
+  const futureBookings = futureOccupancy.furtherRows.map((row) =>
+    toDomainBookingRef(row, 'future', evaluationAt),
   );
 
   return {
     activeBooking,
     reservationWindowBooking,
     nextBooking,
-    futureBookingCount,
+    futureBookingCount: futureOccupancy.futureBookingCount,
+    futureBookings,
     dataQualityState:
       dataQualityReasons.length > 0 ? 'DEGRADED' : 'RELIABLE',
     dataQualityReasons,
@@ -169,6 +139,7 @@ export function unavailableBookingContextMap(
       activeBooking: null,
       reservationWindowBooking: null,
       nextBooking: null,
+      futureBookings: [],
       dataQualityState: 'UNAVAILABLE',
       dataQualityReasons: ['BOOKING_QUERY_FAILED'],
     });

@@ -45,12 +45,28 @@ describe('VehiclesService.deriveFleetStatusContext (delegation)', () => {
     const result = service.deriveFleetStatusContext({
       vehicle: { id: 'v1', status: VehicleStatus.AVAILABLE },
       state: null,
-      bookingState: ACTIVE_BOOKING_STATE,
+      bookingState: {
+        ...ACTIVE_BOOKING_STATE,
+        nextBooking: {
+          id: 'b-future-1',
+          bookingNumber: 'BK-FUTURE',
+          status: 'CONFIRMED',
+          pickupAt: '2026-08-01T10:00:00.000Z',
+          returnAt: '2026-08-06T18:00:00.000Z',
+          customerLabel: 'Future Customer',
+          vehicleId: 'v1',
+          phase: 'future',
+        },
+        futureBookingCount: 2,
+        futureBookings: [],
+      },
       pickupOdoByBooking: new Map(),
     });
 
     expect(result.status).toBe('Active Rented');
     expect(result.bookingDto.activeBookingId).toBe('b-active-1');
+    expect(result.nextBooking?.bookingNumber).toBe('BK-FUTURE');
+    expect(result.futureBookingCount).toBe(2);
   });
 
   it('logs ghost-state warning via service logger for raw RENTED inconsistency', () => {

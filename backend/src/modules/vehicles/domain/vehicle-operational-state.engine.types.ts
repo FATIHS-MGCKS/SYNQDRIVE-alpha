@@ -118,6 +118,8 @@ export interface VehicleStateEngineBookingStateInput {
   reservationWindowBooking?: DomainBookingRef | null;
   nextBooking?: DomainBookingRef | null;
   futureBookingCount: number;
+  /** Chronological tail after nextBooking — optional for vehicle detail/diagnostics. */
+  futureBookings?: DomainBookingRef[];
   dataQualityState: DataQualityState;
   dataQualityReasons: DataQualityReasonCode[];
 }
@@ -216,6 +218,7 @@ export const EMPTY_BOOKING_STATE_INPUT: VehicleStateEngineBookingStateInput = {
   reservationWindowBooking: null,
   nextBooking: null,
   futureBookingCount: 0,
+  futureBookings: [],
   dataQualityState: 'RELIABLE',
   dataQualityReasons: [],
 };
