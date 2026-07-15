@@ -7,6 +7,7 @@ import {
 describe('stripe-status.mapper', () => {
   it('maps active subscription', () => {
     expect(mapStripeSubscriptionStatus('active')).toEqual({
+      domainStatus: 'ACTIVE',
       billingStatus: BillingStatus.ACTIVE,
       attentionRequired: false,
       displayState: 'active',

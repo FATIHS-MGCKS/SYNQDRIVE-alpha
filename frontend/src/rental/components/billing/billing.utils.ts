@@ -3,6 +3,11 @@ import type {
   BillingSubscriptionStatus,
   BillingSummaryDto,
 } from '../../types/billing.types';
+import {
+  mapInvoiceStatusToLabel,
+  mapInvoiceStatusToTone,
+  SubscriptionStatus,
+} from '../../../lib/billing-domain';
 
 export function formatMoneyCents(
   cents: number | null | undefined,
@@ -36,14 +41,24 @@ export function formatTierRange(min: number, max: number | null): string {
 
 export function subscriptionStatusLabel(status: BillingSubscriptionStatus): string {
   switch (status) {
+    case SubscriptionStatus.ACTIVE:
     case 'ACTIVE':
       return 'Aktiv';
+    case SubscriptionStatus.TRIALING:
     case 'TRIALING':
       return 'Testphase';
+    case SubscriptionStatus.PAST_DUE:
     case 'PAST_DUE':
       return 'Überfällig';
+    case SubscriptionStatus.CANCELLED:
     case 'CANCELLED':
       return 'Gekündigt';
+    case SubscriptionStatus.CANCEL_SCHEDULED:
+      return 'Kündigung geplant';
+    case SubscriptionStatus.PAUSED:
+      return 'Pausiert';
+    case SubscriptionStatus.INCOMPLETE:
+      return 'Unvollständig';
     case 'NONE':
       return 'Kein Abo';
     default:
@@ -92,19 +107,11 @@ export function headerBadgeFromSummary(
 }
 
 export function invoiceStatusLabel(status: string | null | undefined): string {
-  const s = (status ?? '').toLowerCase();
-  if (s === 'paid' || s === 'bezahlt') return 'Bezahlt';
-  if (s === 'open' || s === 'pending' || s === 'draft') return 'Offen';
-  if (s === 'overdue' || s === 'uncollectible') return 'Überfällig';
-  if (s === 'void') return 'Storniert';
-  return status ?? 'Offen';
+  return mapInvoiceStatusToLabel(status);
 }
 
 export function invoiceStatusTone(status: string | null | undefined): string {
-  const s = (status ?? '').toLowerCase();
-  if (s === 'paid') return 'sq-tone-success';
-  if (s === 'overdue' || s === 'uncollectible') return 'sq-tone-critical';
-  return 'sq-tone-warning';
+  return mapInvoiceStatusToTone(status);
 }
 
 export function exclusionReasonLabel(reason: string): string {

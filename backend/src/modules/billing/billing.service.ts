@@ -15,6 +15,7 @@ import {
 import { BillingUsageService } from './billing-usage.service';
 import { PricebookService } from './pricebook.service';
 import { BillingAuditService } from './billing-audit.service';
+import { mapPrismaInvoiceToDisplayStatus } from './domain';
 
 const PLAN_RANK: Record<string, number> = {
   STARTER: 0,
@@ -49,20 +50,9 @@ export class BillingService {
   ) {}
 
   private mapInvoiceStatus(invoice: { status: InvoiceStatus; dueDate?: Date | null }): string {
-    switch (invoice.status) {
-      case 'PAID':
-        return 'Paid';
-      case 'OPEN':
-        return invoice.dueDate && new Date(invoice.dueDate) < new Date() ? 'Overdue' : 'Pending';
-      case 'DRAFT':
-        return 'Pending';
-      case 'VOID':
-        return 'Paid';
-      case 'UNCOLLECTIBLE':
-        return 'Overdue';
-      default:
-        return 'Pending';
-    }
+    return mapPrismaInvoiceToDisplayStatus(invoice.status, {
+      dueDate: invoice.dueDate ?? null,
+    });
   }
 
   private computePlan(orgProducts: { plan: OrgProductPlan; status: string }[]): string {

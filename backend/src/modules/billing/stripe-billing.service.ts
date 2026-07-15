@@ -320,7 +320,9 @@ export class StripeBillingService {
   }
 
   async applyStripeSubscription(organizationId: string, stripeSub: Stripe.Subscription) {
-    const mapped = mapStripeSubscriptionStatus(stripeSub.status);
+    const mapped = mapStripeSubscriptionStatus(stripeSub.status, {
+      cancelAtPeriodEnd: stripeSub.cancel_at_period_end ?? false,
+    });
     const sub =
       (await this.findPrimarySubscription(organizationId)) ??
       (await this.ensurePrimarySubscriptionRecord(organizationId));

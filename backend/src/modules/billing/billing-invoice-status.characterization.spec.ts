@@ -61,16 +61,15 @@ describe('Billing invoice status mapping characterization', () => {
     expect(formatted.displayStatus).toBe('Overdue');
   });
 
-  it('legacy behavior – VOID maps to displayStatus Paid (to be corrected in prompt 25)', () => {
-    // Current behavior: VOID invoices are shown as "Paid" in tenant/admin UI.
-    // Problematic: voided invoices should not appear as successfully paid.
+  it('maps VOID invoice to Void displayStatus — never Paid', () => {
     const svc = buildBillingService();
     const formatted = svc.formatInvoiceForApi({
       ...baseInvoice,
       status: InvoiceStatus.VOID,
     });
     expect(formatted.status).toBe(InvoiceStatus.VOID);
-    expect(formatted.displayStatus).toBe('Paid');
+    expect(formatted.displayStatus).toBe('Void');
+    expect(formatted.displayStatus).not.toBe('Paid');
   });
 
   it('maps Stripe void status to local VOID enum', () => {
