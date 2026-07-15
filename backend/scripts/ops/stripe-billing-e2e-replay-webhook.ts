@@ -48,7 +48,7 @@ function loadFixtureEvent(): Stripe.Event {
   );
   const raw = JSON.parse(fs.readFileSync(fixturePath, 'utf8')) as Stripe.Event;
   if (raw.livemode) throw new Error('Fixture must be test mode');
-  const object = raw.data?.object as Record<string, unknown> | undefined;
+  const object = raw.data?.object as unknown as Record<string, unknown> | undefined;
   if (object && typeof object === 'object') {
     const metadata =
       typeof object.metadata === 'object' && object.metadata !== null
