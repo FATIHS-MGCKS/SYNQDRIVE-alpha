@@ -119,6 +119,11 @@ describe('BillingController tenant org isolation characterization', () => {
   const adminService = {};
   const billableVehiclesService = {};
   const stripePreparedService = {};
+  const paymentLedgerService = { getInvoicePaymentLedger: jest.fn() };
+  const manualPaymentService = { recordManualPayment: jest.fn() };
+  const prisma = {
+    billingInvoice: { findUnique: jest.fn() },
+  };
 
   let controller: BillingController;
 
@@ -132,6 +137,9 @@ describe('BillingController tenant org isolation characterization', () => {
       summaryService as never,
       billableVehiclesService as never,
       stripePreparedService as never,
+      paymentLedgerService as never,
+      manualPaymentService as never,
+      prisma as never,
     );
   });
 

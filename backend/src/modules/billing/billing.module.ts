@@ -43,6 +43,8 @@ import { StripeSubscriptionOrchestratorService } from './stripe-subscription-orc
 import { StripePaymentMethodService } from './stripe-payment-method.service';
 import { StripeWebhookDispatcherService } from './stripe-webhook-dispatcher.service';
 import { StripePaymentLedgerService } from './stripe-payment-ledger.service';
+import { BillingPaymentLedgerService } from './billing-payment-ledger.service';
+import { BillingManualPaymentService } from './billing-manual-payment.service';
 import { StripeWebhookProcessorService } from './stripe-webhook.processor';
 
 @Module({
@@ -85,6 +87,8 @@ import { StripeWebhookProcessorService } from './stripe-webhook.processor';
     StripeSubscriptionOrchestratorService,
     StripePaymentMethodService,
     StripeWebhookDispatcherService,
+    BillingPaymentLedgerService,
+    BillingManualPaymentService,
     StripePaymentLedgerService,
     StripeWebhookProcessorService,
   ],
@@ -126,6 +130,8 @@ import { StripeWebhookProcessorService } from './stripe-webhook.processor';
     StripeSubscriptionOrchestratorService,
     StripePaymentMethodService,
     StripeWebhookDispatcherService,
+    BillingPaymentLedgerService,
+    BillingManualPaymentService,
     StripePaymentLedgerService,
     StripeWebhookProcessorService,
   ],

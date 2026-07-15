@@ -14,6 +14,7 @@ export const BillingDomainEventType = {
   DISPUTE_OPENED: 'billing.dispute.opened',
   DISPUTE_CLOSED: 'billing.dispute.closed',
   WEBHOOK_UNRESOLVED: 'billing.webhook.unresolved_mapping',
+  MANUAL_PAYMENT_RECORDED: 'billing.manual_payment.recorded',
   PRICE_VERSION_PUBLISHED: 'billing.price_version.published',
   USAGE_SNAPSHOT_CREATED: 'billing.usage_snapshot.created',
   CONTRACT_RESOLVED: 'billing.contract.resolved',

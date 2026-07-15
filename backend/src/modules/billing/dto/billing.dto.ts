@@ -144,6 +144,31 @@ export class AdminInvoiceQueryDto {
   limit?: number;
 }
 
+export class RecordManualPaymentDto {
+  @IsString()
+  @MinLength(1)
+  orgId!: string;
+
+  @IsInt()
+  @Min(1)
+  amountCents!: number;
+
+  @IsOptional()
+  @IsIn(['EUR', 'eur'])
+  currency?: string;
+
+  @IsIn(['BANK_TRANSFER', 'CASH', 'CHECK', 'OTHER'])
+  paymentType!: 'BANK_TRANSFER' | 'CASH' | 'CHECK' | 'OTHER';
+
+  @IsOptional()
+  @IsString()
+  reference?: string;
+
+  @IsOptional()
+  @IsString()
+  receiptNote?: string;
+}
+
 export class AuditLogQueryDto {
   @IsOptional()
   @IsString()

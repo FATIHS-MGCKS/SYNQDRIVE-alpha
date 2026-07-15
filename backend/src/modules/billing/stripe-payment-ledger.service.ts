@@ -5,17 +5,17 @@ import {
   BillingPaymentStatus,
   BillingRefundStatus,
   BillingStripeMode,
-  Prisma,
 } from '@prisma/client';
 import Stripe from 'stripe';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
-import { BillingDomainEventOutboxService } from './billing-domain-event-outbox.service';
-import { BillingDomainEventType } from './domain/billing-domain.events';
+import { BillingPaymentLedgerService } from './billing-payment-ledger.service';
 import { mapStripeDisputeStatus, isDisputeClosedStatus } from './domain/stripe-webhook-matrix';
 import { mapStripePaymentIntentToDomainStatus } from './domain/mappers/stripe-payment-status.mapper';
 import { PaymentStatusDomain } from './domain/billing-domain.types';
 import { resolveStripeModeFromSecretKey } from './migration/billing-legacy-backfill.util';
+import { BillingDomainEventOutboxService } from './billing-domain-event-outbox.service';
+import { BillingDomainEventType } from './domain/billing-domain.events';
 
 function readId(value: string | { id: string } | null | undefined): string | null {
   if (!value) return null;
@@ -37,6 +37,24 @@ function mapPaymentStatusToPrisma(status: PaymentStatusDomain): BillingPaymentSt
   }
 }
 
+function mapAttemptStatus(status: PaymentStatusDomain): BillingPaymentAttemptStatus {
+  switch (status) {
+    case PaymentStatusDomain.SUCCEEDED:
+      return BillingPaymentAttemptStatus.SUCCEEDED;
+    case PaymentStatusDomain.FAILED:
+      return BillingPaymentAttemptStatus.FAILED;
+    default:
+      return BillingPaymentAttemptStatus.PENDING;
+  }
+}
+
+function readCreditNoteHostedUrl(creditNote: Stripe.CreditNote): string | null {
+  const extended = creditNote as Stripe.CreditNote & {
+    hosted_credit_note_url?: string | null;
+  };
+  return extended.hosted_credit_note_url ?? null;
+}
+
 @Injectable()
 export class StripePaymentLedgerService {
   private readonly logger = new Logger(StripePaymentLedgerService.name);
@@ -44,6 +62,7 @@ export class StripePaymentLedgerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly ledger: BillingPaymentLedgerService,
     private readonly outbox: BillingDomainEventOutboxService,
   ) {}
 
@@ -68,6 +87,7 @@ export class StripePaymentLedgerService {
             stripeMode: input.stripeMode,
           },
         },
+        include: { subscription: { select: { organizationId: true } } },
       });
       if (byStripe) return byStripe;
     }
@@ -79,13 +99,14 @@ export class StripePaymentLedgerService {
     const subscription = await this.prisma.billingSubscription.findFirst({
       where: { stripeCustomerId: input.stripeCustomerId },
       orderBy: { updatedAt: 'desc' },
-      select: { id: true },
+      select: { id: true, organizationId: true },
     });
     if (!subscription) return null;
 
     return this.prisma.billingInvoice.findFirst({
       where: { subscriptionId: subscription.id },
       orderBy: { createdAt: 'desc' },
+      include: { subscription: { select: { organizationId: true } } },
     });
   }
 
@@ -113,87 +134,44 @@ export class StripePaymentLedgerService {
     }
 
     const domainStatus = mapStripePaymentIntentToDomainStatus(paymentIntent.status);
+    const prismaStatus = mapPaymentStatusToPrisma(domainStatus);
     const amountCents = paymentIntent.amount_received || paymentIntent.amount || 0;
     const currency = (paymentIntent.currency || invoice.currency || 'eur').toLowerCase();
     const latestChargeId = readId(paymentIntent.latest_charge);
+    const paymentMethodId = readId(paymentIntent.payment_method);
 
-    const payment = await this.prisma.$transaction(async (tx) => {
-      const row = await tx.billingPayment.upsert({
-        where: {
-          stripePaymentIntentId_stripeMode: {
-            stripePaymentIntentId: paymentIntent.id,
-            stripeMode,
-          },
-        },
-        create: {
-          invoiceId: invoice.id,
-          amountCents,
-          currency,
-          status: mapPaymentStatusToPrisma(domainStatus),
-          stripePaymentIntentId: paymentIntent.id,
-          stripeChargeId: latestChargeId,
-          stripeMode,
-          attemptCount: 1,
-        },
-        update: {
-          amountCents,
-          currency,
-          status: mapPaymentStatusToPrisma(domainStatus),
-          stripeChargeId: latestChargeId ?? undefined,
-          attemptCount: { increment: paymentIntent.status === 'requires_payment_method' ? 0 : 1 },
-        },
-      });
-
-      const attemptStatus =
-        domainStatus === PaymentStatusDomain.SUCCEEDED
-          ? BillingPaymentAttemptStatus.SUCCEEDED
-          : domainStatus === PaymentStatusDomain.FAILED
-            ? BillingPaymentAttemptStatus.FAILED
-            : BillingPaymentAttemptStatus.PENDING;
-
-      if (latestChargeId) {
-        await tx.billingPaymentAttempt.upsert({
-          where: {
-            stripeChargeId_stripeMode: {
-              stripeChargeId: latestChargeId,
-              stripeMode,
-            },
-          },
-          create: {
-            paymentId: row.id,
-            attemptNumber: row.attemptCount,
-            amountCents,
-            status: attemptStatus,
-            stripeChargeId: latestChargeId,
-            stripeMode,
-            errorCode: paymentIntent.last_payment_error?.code ?? null,
-            errorMessage: paymentIntent.last_payment_error?.message ?? null,
-          },
-          update: {
-            status: attemptStatus,
-            errorCode: paymentIntent.last_payment_error?.code ?? null,
-            errorMessage: paymentIntent.last_payment_error?.message ?? null,
-          },
-        });
-      }
-
-      await this.outbox.enqueue(tx, {
-        eventType: BillingDomainEventType.PAYMENT_RECORDED,
-        aggregateType: 'BillingPayment',
-        aggregateId: row.id,
-        idempotencyKey: `stripe-webhook:${stripeEventId}:payment:${paymentIntent.id}`,
-        payload: {
-          organizationId,
-          paymentId: row.id,
-          invoiceId: invoice.id,
-          stripePaymentIntentId: paymentIntent.id,
-          status: row.status,
-          amountCents,
-        },
-      });
-
-      return row;
+    const payment = await this.ledger.recordPayment({
+      invoiceId: invoice.id,
+      organizationId,
+      amountCents,
+      currency,
+      status: prismaStatus,
+      stripePaymentIntentId: paymentIntent.id,
+      stripeChargeId: latestChargeId,
+      stripePaymentMethodId: paymentMethodId,
+      stripeMode,
+      succeededAt: prismaStatus === BillingPaymentStatus.SUCCEEDED ? new Date() : null,
+      failedAt: prismaStatus === BillingPaymentStatus.FAILED ? new Date() : null,
+      idempotencyKey: `stripe-webhook:${stripeEventId}:payment:${paymentIntent.id}`,
     });
+
+    if (latestChargeId) {
+      await this.ledger.appendPaymentAttempt({
+        paymentId: payment.id,
+        organizationId,
+        amountCents,
+        status: mapAttemptStatus(domainStatus),
+        stripeChargeId: latestChargeId,
+        stripeMode,
+        errorCode: paymentIntent.last_payment_error?.code ?? null,
+        declineCode: paymentIntent.last_payment_error?.decline_code ?? null,
+        errorMessage: paymentIntent.last_payment_error?.message ?? null,
+        nextRetryAt: paymentIntent.next_action?.type
+          ? new Date(Date.now() + 24 * 60 * 60 * 1000)
+          : null,
+        idempotencyKey: `stripe-webhook:${stripeEventId}:attempt:${latestChargeId}`,
+      });
+    }
 
     return payment.id;
   }
@@ -231,74 +209,32 @@ export class StripePaymentLedgerService {
 
     for (const refund of refunds) {
       if (!refund.id) continue;
-      await this.prisma.$transaction(async (tx) => {
-        const row = await tx.billingRefund.upsert({
-          where: {
-            stripeRefundId_stripeMode: {
-              stripeRefundId: refund.id,
-              stripeMode,
-            },
-          },
-          create: {
-            paymentId: payment.id,
-            invoiceId: payment.invoiceId,
-            amountCents: refund.amount ?? 0,
-            currency: (refund.currency || payment.currency || 'eur').toLowerCase(),
-            status:
-              refund.status === 'succeeded'
-                ? BillingRefundStatus.SUCCEEDED
-                : refund.status === 'failed'
-                  ? BillingRefundStatus.FAILED
-                  : refund.status === 'canceled'
-                    ? BillingRefundStatus.CANCELLED
-                    : BillingRefundStatus.PENDING,
-            reason: refund.reason ?? null,
-            stripeRefundId: refund.id,
-            stripeMode,
-          },
-          update: {
-            amountCents: refund.amount ?? 0,
-            status:
-              refund.status === 'succeeded'
-                ? BillingRefundStatus.SUCCEEDED
-                : refund.status === 'failed'
-                  ? BillingRefundStatus.FAILED
-                  : refund.status === 'canceled'
-                    ? BillingRefundStatus.CANCELLED
-                    : BillingRefundStatus.PENDING,
-            reason: refund.reason ?? null,
-          },
-        });
-
-        await this.outbox.enqueue(tx, {
-          eventType: BillingDomainEventType.REFUND_RECORDED,
-          aggregateType: 'BillingRefund',
-          aggregateId: row.id,
-          idempotencyKey: `stripe-webhook:${stripeEventId}:refund:${refund.id}`,
-          payload: {
-            organizationId,
-            refundId: row.id,
-            paymentId: payment.id,
-            stripeRefundId: refund.id,
-            amountCents: row.amountCents,
-          },
-        });
+      const result = await this.ledger.recordRefund({
+        paymentId: payment.id,
+        organizationId,
+        invoiceId: payment.invoiceId,
+        amountCents: refund.amount ?? 0,
+        currency: (refund.currency || payment.currency || 'eur').toLowerCase(),
+        status:
+          refund.status === 'succeeded'
+            ? BillingRefundStatus.SUCCEEDED
+            : refund.status === 'failed'
+              ? BillingRefundStatus.FAILED
+              : refund.status === 'canceled'
+                ? BillingRefundStatus.CANCELLED
+                : BillingRefundStatus.PENDING,
+        reason: refund.reason ?? null,
+        stripeRefundId: refund.id,
+        stripeMode,
+        refundedAt: refund.created ? new Date(refund.created * 1000) : null,
+        idempotencyKey: `stripe-webhook:${stripeEventId}:refund:${refund.id}`,
       });
-      mirrored += 1;
+      if (!result.duplicate) {
+        mirrored += 1;
+      }
     }
 
-    const refundedAmount = charge.amount_refunded ?? 0;
-    if (refundedAmount > 0) {
-      const nextStatus =
-        refundedAmount >= (charge.amount ?? 0)
-          ? BillingPaymentStatus.REFUNDED
-          : BillingPaymentStatus.PARTIALLY_REFUNDED;
-      await this.prisma.billingPayment.update({
-        where: { id: payment.id },
-        data: { status: nextStatus },
-      });
-    }
-
+    await this.ledger.reconcilePaymentRefundState(payment.id);
     return mirrored;
   }
 
@@ -333,48 +269,29 @@ export class StripePaymentLedgerService {
           ? BillingCreditNoteStatus.ISSUED
           : BillingCreditNoteStatus.DRAFT;
 
-    const row = await this.prisma.$transaction(async (tx) => {
-      const note = await tx.billingCreditNote.upsert({
-        where: {
-          stripeCreditNoteId_stripeMode: {
-            stripeCreditNoteId: creditNote.id,
-            stripeMode,
-          },
-        },
-        create: {
-          invoiceId: invoice.id,
-          amountCents: creditNote.total ?? creditNote.amount ?? 0,
-          currency: (creditNote.currency || invoice.currency || 'eur').toLowerCase(),
-          status,
-          reason: creditNote.reason ?? null,
-          stripeCreditNoteId: creditNote.id,
-          stripeMode,
-        },
-        update: {
-          amountCents: creditNote.total ?? creditNote.amount ?? 0,
-          status,
-          reason: creditNote.reason ?? null,
-        },
-      });
-
-      await this.outbox.enqueue(tx, {
-        eventType: BillingDomainEventType.CREDIT_NOTE_RECORDED,
-        aggregateType: 'BillingCreditNote',
-        aggregateId: note.id,
-        idempotencyKey: `stripe-webhook:${stripeEventId}:credit_note:${creditNote.id}`,
-        payload: {
-          organizationId,
-          creditNoteId: note.id,
-          invoiceId: invoice.id,
-          stripeCreditNoteId: creditNote.id,
-          amountCents: note.amountCents,
-        },
-      });
-
-      return note;
+    const result = await this.ledger.recordCreditNote({
+      invoiceId: invoice.id,
+      organizationId,
+      amountCents: creditNote.total ?? creditNote.amount ?? 0,
+      currency: (creditNote.currency || invoice.currency || 'eur').toLowerCase(),
+      status,
+      reason: creditNote.reason ?? null,
+      stripeCreditNoteId: creditNote.id,
+      stripeMode,
+      hostedUrl: readCreditNoteHostedUrl(creditNote),
+      pdfUrl: creditNote.pdf ?? null,
+      issuedAt:
+        creditNote.status === 'issued' && creditNote.created
+          ? new Date(creditNote.created * 1000)
+          : null,
+      voidedAt:
+        creditNote.status === 'void' && creditNote.created
+          ? new Date(creditNote.created * 1000)
+          : null,
+      idempotencyKey: `stripe-webhook:${stripeEventId}:credit_note:${creditNote.id}`,
     });
 
-    return row.id;
+    return result.creditNote.id;
   }
 
   async mirrorDispute(

@@ -571,6 +571,13 @@ enum BillingPaymentProvider {
   MANUAL
 }
 
+enum BillingManualPaymentType {
+  BANK_TRANSFER
+  CASH
+  CHECK
+  OTHER
+}
+
 enum BillingPaymentStatus {
   PENDING
   PROCESSING
@@ -1313,6 +1320,7 @@ model User {
   billingSubscriptionsUpdated   BillingSubscription[]      @relation("BillingSubscriptionsUpdated")
   billingDiscountsCreated       BillingDiscount[]            @relation("BillingDiscountsCreated")
   billingQuantityEventsActed    BillingQuantityEvent[]       @relation("BillingQuantityEventsActed")
+  billingPaymentsRecorded     BillingPayment[]             @relation("BillingPaymentsRecorded")
   billingUsageSnapshotsCreated  BillingUsageSnapshot[]       @relation("BillingUsageSnapshotsCreated")
   billingVehicleAssignmentsApproved BillingBillableVehicleAssignment[] @relation("BillingVehicleAssignmentsApproved")
   outboundEmailsSent          OutboundEmail[]              @relation("OutboundEmailSentBy")
@@ -3103,44 +3111,61 @@ model BillingQuantityEvent {
 
 /// SaaS payment aggregate for a billing invoice.
 model BillingPayment {
-  id                    String               @id @default(uuid())
-  invoiceId             String               @map("invoice_id")
-  amountCents           Int                  @map("amount_cents")
-  currency              String               @default("EUR") @db.Char(3)
-  status                BillingPaymentStatus @default(PENDING)
-  provider              BillingPaymentProvider @default(STRIPE)
-  stripePaymentIntentId String?              @map("stripe_payment_intent_id")
-  stripeChargeId        String?              @map("stripe_charge_id")
-  stripeMode            BillingStripeMode?   @map("stripe_mode")
-  attemptCount          Int                  @default(0) @map("attempt_count")
-  createdAt             DateTime             @default(now()) @map("created_at")
-  updatedAt             DateTime             @updatedAt @map("updated_at")
+  id                    String                  @id @default(uuid())
+  invoiceId             String                  @map("invoice_id")
+  amountCents           Int                     @map("amount_cents")
+  currency              String                  @default("EUR") @db.Char(3)
+  status                BillingPaymentStatus    @default(PENDING)
+  provider              BillingPaymentProvider  @default(STRIPE)
+  stripePaymentIntentId String?                 @map("stripe_payment_intent_id")
+  stripeChargeId        String?                 @map("stripe_charge_id")
+  stripePaymentMethodId String?                 @map("stripe_payment_method_id")
+  stripeMode            BillingStripeMode?      @map("stripe_mode")
+  attemptCount          Int                     @default(0) @map("attempt_count")
+  refundedAmountCents   Int                     @default(0) @map("refunded_amount_cents")
+  remainingAmountCents  Int?                    @map("remaining_amount_cents")
+  succeededAt           DateTime?               @map("succeeded_at")
+  failedAt              DateTime?               @map("failed_at")
+  cancelledAt           DateTime?               @map("cancelled_at")
+  manualPaymentType     BillingManualPaymentType? @map("manual_payment_type")
+  manualReference       String?                 @map("manual_reference")
+  manualReceiptNote     String?                 @map("manual_receipt_note")
+  recordedByUserId      String?                 @map("recorded_by_user_id")
+  idempotencyKey        String?                 @unique @map("idempotency_key")
+  createdAt             DateTime                @default(now()) @map("created_at")
+  updatedAt             DateTime                @updatedAt @map("updated_at")
 
-  invoice  BillingInvoice          @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  attempts BillingPaymentAttempt[]
-  refunds  BillingRefund[]
-  disputes BillingDispute[]
+  invoice    BillingInvoice          @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  recordedBy User?                   @relation("BillingPaymentsRecorded", fields: [recordedByUserId], references: [id], onDelete: SetNull)
+  attempts   BillingPaymentAttempt[]
+  refunds    BillingRefund[]
+  disputes   BillingDispute[]
 
   @@unique([stripePaymentIntentId, stripeMode])
   @@unique([stripeChargeId, stripeMode])
   @@index([invoiceId, status])
+  @@index([provider, status])
   @@map("billing_payments")
 }
 
 /// Append-only payment attempt log.
 model BillingPaymentAttempt {
-  id              String                    @id @default(uuid())
-  paymentId       String                    @map("payment_id")
-  attemptNumber   Int                       @map("attempt_number")
-  amountCents     Int                       @map("amount_cents")
-  status          BillingPaymentAttemptStatus @default(PENDING)
-  provider        BillingPaymentProvider    @default(STRIPE)
-  stripeChargeId  String?                   @map("stripe_charge_id")
-  stripeMode      BillingStripeMode?        @map("stripe_mode")
-  errorCode       String?                   @map("error_code")
-  errorMessage    String?                   @map("error_message")
-  attemptedAt     DateTime                  @default(now()) @map("attempted_at")
-  createdAt       DateTime                  @default(now()) @map("created_at")
+  id               String                      @id @default(uuid())
+  paymentId        String                      @map("payment_id")
+  attemptNumber    Int                         @map("attempt_number")
+  amountCents      Int                         @map("amount_cents")
+  status           BillingPaymentAttemptStatus @default(PENDING)
+  provider         BillingPaymentProvider      @default(STRIPE)
+  stripeChargeId   String?                     @map("stripe_charge_id")
+  stripeMode       BillingStripeMode?          @map("stripe_mode")
+  errorCode        String?                     @map("error_code")
+  declineCode      String?                     @map("decline_code")
+  errorMessage     String?                     @map("error_message")
+  safeErrorMessage String?                     @map("safe_error_message")
+  nextRetryAt      DateTime?                   @map("next_retry_at")
+  idempotencyKey   String?                     @unique @map("idempotency_key")
+  attemptedAt      DateTime                    @default(now()) @map("attempted_at")
+  createdAt        DateTime                    @default(now()) @map("created_at")
 
   payment BillingPayment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
 
@@ -3152,16 +3177,19 @@ model BillingPaymentAttempt {
 
 /// Append-only refund record.
 model BillingRefund {
-  id             String            @id @default(uuid())
-  paymentId      String            @map("payment_id")
-  invoiceId      String?           @map("invoice_id")
-  amountCents    Int               @map("amount_cents")
-  currency       String            @default("EUR") @db.Char(3)
+  id             String              @id @default(uuid())
+  paymentId      String              @map("payment_id")
+  invoiceId      String?             @map("invoice_id")
+  amountCents    Int                 @map("amount_cents")
+  currency       String              @default("EUR") @db.Char(3)
   status         BillingRefundStatus @default(PENDING)
+  isPartial      Boolean             @default(false) @map("is_partial")
   reason         String?
-  stripeRefundId String?           @map("stripe_refund_id")
-  stripeMode     BillingStripeMode? @map("stripe_mode")
-  createdAt      DateTime          @default(now()) @map("created_at")
+  stripeRefundId String?             @map("stripe_refund_id")
+  stripeMode     BillingStripeMode?  @map("stripe_mode")
+  refundedAt     DateTime?           @map("refunded_at")
+  idempotencyKey String?             @unique @map("idempotency_key")
+  createdAt      DateTime            @default(now()) @map("created_at")
 
   payment     BillingPayment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
   invoice     BillingInvoice?     @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
@@ -3175,16 +3203,21 @@ model BillingRefund {
 
 /// Append-only credit note linked to invoice/refund.
 model BillingCreditNote {
-  id                   String                @id @default(uuid())
-  invoiceId            String                @map("invoice_id")
-  refundId             String?               @map("refund_id")
-  amountCents          Int                   @map("amount_cents")
-  currency             String                @default("EUR") @db.Char(3)
-  status               BillingCreditNoteStatus @default(DRAFT)
-  reason               String?
-  stripeCreditNoteId   String?               @map("stripe_credit_note_id")
-  stripeMode           BillingStripeMode?    @map("stripe_mode")
-  createdAt            DateTime              @default(now()) @map("created_at")
+  id                 String                  @id @default(uuid())
+  invoiceId          String                  @map("invoice_id")
+  refundId           String?                 @map("refund_id")
+  amountCents        Int                     @map("amount_cents")
+  currency           String                  @default("EUR") @db.Char(3)
+  status             BillingCreditNoteStatus @default(DRAFT)
+  reason             String?
+  stripeCreditNoteId String?                 @map("stripe_credit_note_id")
+  stripeMode         BillingStripeMode?      @map("stripe_mode")
+  hostedUrl          String?                 @map("hosted_url")
+  pdfUrl             String?                 @map("pdf_url")
+  issuedAt           DateTime?               @map("issued_at")
+  voidedAt           DateTime?               @map("voided_at")
+  idempotencyKey     String?                 @unique @map("idempotency_key")
+  createdAt          DateTime                @default(now()) @map("created_at")
 
   invoice BillingInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   refund  BillingRefund? @relation(fields: [refundId], references: [id], onDelete: SetNull)

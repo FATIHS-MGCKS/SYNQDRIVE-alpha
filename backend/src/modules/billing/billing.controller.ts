@@ -20,9 +20,13 @@ import {
 
   Req,
 
+  Headers,
+
   UseGuards,
 
   NotFoundException,
+
+  BadRequestException,
 
 } from '@nestjs/common';
 
@@ -39,6 +43,12 @@ import { BillingSummaryService } from './billing-summary.service';
 import { BillableVehiclesService } from './billable-vehicles.service';
 
 import { StripePreparedService } from './stripe-prepared.service';
+
+import { BillingPaymentLedgerService } from './billing-payment-ledger.service';
+
+import { BillingManualPaymentService } from './billing-manual-payment.service';
+
+import { PrismaService } from '@shared/database/prisma.service';
 
 import { RolesGuard } from '@shared/auth/roles.guard';
 
@@ -76,6 +86,8 @@ import {
 
   CreateSetupIntentDto,
 
+  RecordManualPaymentDto,
+
 } from './dto/billing.dto';
 
 
@@ -101,6 +113,12 @@ export class BillingController {
     private readonly billableVehiclesService: BillableVehiclesService,
 
     private readonly stripePreparedService: StripePreparedService,
+
+    private readonly paymentLedgerService: BillingPaymentLedgerService,
+
+    private readonly manualPaymentService: BillingManualPaymentService,
+
+    private readonly prisma: PrismaService,
 
   ) {}
 
@@ -231,6 +249,42 @@ export class BillingController {
     const scoped = resolveOrgScope(req?.user, orgId);
 
     return this.billingService.findInvoices(scoped, query);
+
+  }
+
+
+
+  @Get('billing/invoices/:invoiceId/payments')
+
+  @RequirePermission('billing', 'read')
+
+  async getInvoicePayments(
+
+    @Param('invoiceId') invoiceId: string,
+
+    @Query('orgId') orgId: string | undefined,
+
+    @Req() req: any,
+
+  ) {
+
+    const scoped = resolveOrgScope(req?.user, orgId);
+
+    const invoice = await this.prisma.billingInvoice.findUnique({
+
+      where: { id: invoiceId },
+
+      select: { id: true, subscription: { select: { organizationId: true } } },
+
+    });
+
+    if (!invoice || invoice.subscription.organizationId !== scoped) {
+
+      throw new NotFoundException('Invoice not found');
+
+    }
+
+    return this.paymentLedgerService.getInvoicePaymentLedger(invoiceId);
 
   }
 
@@ -593,6 +647,58 @@ export class BillingController {
   async listAdminInvoices(@Query() query: AdminInvoiceQueryDto) {
 
     return this.adminService.listInvoices(query);
+
+  }
+
+
+
+  @Post('admin/billing/invoices/:invoiceId/manual-payments')
+
+  @Roles('MASTER_ADMIN')
+
+  @UseGuards(MasterBillingGuard)
+
+  @RequireMasterBilling()
+
+  async recordManualPayment(
+
+    @Param('invoiceId') invoiceId: string,
+
+    @Body() body: RecordManualPaymentDto,
+
+    @Headers('idempotency-key') idempotencyKey: string | undefined,
+
+    @Req() req: any,
+
+  ) {
+
+    if (!idempotencyKey) {
+
+      throw new BadRequestException('Idempotency-Key header is required');
+
+    }
+
+    return this.manualPaymentService.recordManualPayment({
+
+      invoiceId,
+
+      organizationId: body.orgId,
+
+      amountCents: body.amountCents,
+
+      currency: body.currency,
+
+      paymentType: body.paymentType,
+
+      reference: body.reference ?? null,
+
+      receiptNote: body.receiptNote ?? null,
+
+      actorUserId: req?.user?.id,
+
+      idempotencyKey,
+
+    });
 
   }
 
