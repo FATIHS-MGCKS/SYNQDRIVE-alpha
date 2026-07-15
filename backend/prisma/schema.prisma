@@ -468,6 +468,35 @@ enum BillingModel {
 
 enum BillingInterval {
   MONTHLY
+  YEARLY
+}
+
+enum BillingProductRole {
+  BASE_PLAN
+  ADDON
+}
+
+enum BillingCatalogStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum BillingPriceBookStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum BillingStripeMode {
+  TEST
+  LIVE
+}
+
+enum BillingStripeMappingStatus {
+  PENDING
+  SYNCED
+  FAILED
+  DRIFTED
 }
 
 enum BillingPriceVersionStatus {
@@ -1149,6 +1178,7 @@ model User {
   invitesAccepted             OrganizationUserInvite[]     @relation("InvitesAccepted")
   organizationRolesCreated    OrganizationRole[]           @relation("RolesCreated")
   billingPriceVersionsCreated BillingPriceVersion[]        @relation("BillingPriceVersionsCreated")
+  billingPriceVersionsPublished BillingPriceVersion[]      @relation("BillingPriceVersionsPublished")
   outboundEmailsSent          OutboundEmail[]              @relation("OutboundEmailSentBy")
   pricingQuotesCreated        PricingQuote[]               @relation("PricingQuotesCreated")
   notificationReceipts        NotificationReceipt[]
@@ -2470,43 +2500,72 @@ model OrganizationIntegration {
 // BILLING
 // ------------------------------------------------
 
-model BillingPriceBook {
-  id           String          @id @default(uuid())
-  name         String
-  productKey   String          @map("product_key")
-  billingModel BillingModel    @default(PER_CONNECTED_VEHICLE) @map("billing_model")
-  interval     BillingInterval @default(MONTHLY)
-  currency     String          @default("EUR")
-  isDefault    Boolean         @default(false) @map("is_default")
-  createdAt    DateTime        @default(now()) @map("created_at")
-  updatedAt    DateTime        @updatedAt @map("updated_at")
+/// Canonical SaaS billing product catalog (distinct from org licensing `products`).
+model BillingCatalogProduct {
+  id          String               @id @default(uuid())
+  key         String               @unique
+  name        String
+  description String?
+  productRole BillingProductRole   @map("product_role")
+  status      BillingCatalogStatus @default(ACTIVE)
+  sortOrder   Int                  @default(0) @map("sort_order")
+  metadata    Json?
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
 
+  priceBooks      BillingPriceBook[]
+  stripeMappings  BillingStripePriceMapping[]
+
+  @@index([status, sortOrder])
+  @@map("billing_catalog_products")
+}
+
+model BillingPriceBook {
+  id               String                 @id @default(uuid())
+  name             String
+  productKey       String                 @map("product_key")
+  billingProductId String?                @map("billing_product_id")
+  billingModel     BillingModel           @default(PER_CONNECTED_VEHICLE) @map("billing_model")
+  interval         BillingInterval        @default(MONTHLY)
+  currency         String                 @default("EUR") @db.Char(3)
+  status           BillingPriceBookStatus @default(ACTIVE)
+  internalLabel    String?                @map("internal_label")
+  isDefault        Boolean                @default(false) @map("is_default")
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
+
+  billingProduct    BillingCatalogProduct?           @relation(fields: [billingProductId], references: [id], onDelete: SetNull)
   versions          BillingPriceVersion[]
   usageSnapshots    BillingUsageSnapshot[]
   orgPriceOverrides BillingOrganizationPriceOverride[]
   subscriptions     BillingSubscription[]
+  stripeMappings    BillingStripePriceMapping[]
 
   @@index([productKey])
+  @@index([billingProductId])
   @@index([isDefault])
+  @@index([status])
   @@map("billing_price_books")
 }
 
 model BillingPriceVersion {
-  id              String                    @id @default(uuid())
-  priceBookId     String                    @map("price_book_id")
-  versionNumber   Int                       @map("version_number")
-  versionLabel    String?                   @map("version_label")
-  status          BillingPriceVersionStatus @default(DRAFT)
-  effectiveFrom   DateTime?                 @map("effective_from")
-  effectiveTo     DateTime?                 @map("effective_to")
-  tierMode        BillingTierMode           @default(VOLUME) @map("tier_mode")
-  createdByUserId String?                   @map("created_by_user_id")
-  publishedAt     DateTime?                 @map("published_at")
-  createdAt       DateTime                  @default(now()) @map("created_at")
-  updatedAt       DateTime                  @updatedAt @map("updated_at")
+  id                String                    @id @default(uuid())
+  priceBookId       String                    @map("price_book_id")
+  versionNumber     Int                       @map("version_number")
+  versionLabel      String?                   @map("version_label")
+  status            BillingPriceVersionStatus @default(DRAFT)
+  effectiveFrom     DateTime?                 @map("effective_from")
+  effectiveTo       DateTime?                 @map("effective_to")
+  tierMode          BillingTierMode           @default(VOLUME) @map("tier_mode")
+  createdByUserId   String?                   @map("created_by_user_id")
+  publishedByUserId String?                   @map("published_by_user_id")
+  publishedAt       DateTime?                 @map("published_at")
+  createdAt         DateTime                  @default(now()) @map("created_at")
+  updatedAt         DateTime                  @updatedAt @map("updated_at")
 
   priceBook         BillingPriceBook                   @relation(fields: [priceBookId], references: [id], onDelete: Cascade)
   createdByUser     User?                              @relation("BillingPriceVersionsCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  publishedByUser   User?                              @relation("BillingPriceVersionsPublished", fields: [publishedByUserId], references: [id], onDelete: SetNull)
   tiers             BillingPriceTier[]
   usageSnapshots    BillingUsageSnapshot[]
   orgPriceOverrides BillingOrganizationPriceOverride[]
@@ -2514,9 +2573,11 @@ model BillingPriceVersion {
 
   @@unique([priceBookId, versionNumber])
   @@index([priceBookId, status])
+  @@index([status, publishedAt])
   @@map("billing_price_versions")
 }
 
+/// Quantity tiers for a price version. `minVehicles`/`maxVehicles` are the billable quantity axis for per-vehicle SaaS pricing.
 model BillingPriceTier {
   id             String   @id @default(uuid())
   priceVersionId String   @map("price_version_id")
@@ -2532,6 +2593,31 @@ model BillingPriceTier {
 
   @@index([priceVersionId, sortOrder])
   @@map("billing_price_tiers")
+}
+
+/// Stripe Product/Price mapping per pricebook. TEST and LIVE are strictly separated.
+model BillingStripePriceMapping {
+  id                String                     @id @default(uuid())
+  priceBookId       String                     @map("price_book_id")
+  billingProductId  String?                    @map("billing_product_id")
+  stripeMode        BillingStripeMode          @map("stripe_mode")
+  stripeProductId   String?                    @map("stripe_product_id")
+  stripePriceId     String?                    @map("stripe_price_id")
+  mappingStatus     BillingStripeMappingStatus @default(PENDING) @map("mapping_status")
+  lastSyncedAt      DateTime?                  @map("last_synced_at")
+  lastError         String?                    @map("last_error")
+  createdAt         DateTime                   @default(now()) @map("created_at")
+  updatedAt         DateTime                   @updatedAt @map("updated_at")
+
+  priceBook      BillingPriceBook       @relation(fields: [priceBookId], references: [id], onDelete: Cascade)
+  billingProduct BillingCatalogProduct? @relation(fields: [billingProductId], references: [id], onDelete: SetNull)
+
+  @@unique([priceBookId, stripeMode])
+  @@unique([stripePriceId, stripeMode])
+  @@index([billingProductId])
+  @@index([mappingStatus])
+  @@index([stripeProductId, stripeMode])
+  @@map("billing_stripe_price_mappings")
 }
 
 model BillingSubscription {

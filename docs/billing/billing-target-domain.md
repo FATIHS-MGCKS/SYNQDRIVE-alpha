@@ -1,6 +1,6 @@
 # Billing Target Domain
 
-**Stand:** Prompt 5/44 — Domain Service Boundaries  
+**Stand:** Prompt 6/44 — Persistenz Produkt & Preis  
 **Bezug:** `docs/billing/billing-current-state.md` (Ist-Zustand)  
 **Typen & Mapper:** `backend/src/modules/billing/domain/`, `frontend/src/lib/billing-domain.ts`
 
@@ -615,6 +615,35 @@ flowchart TD
 | O6 | **Override-Scope** | Discount nur auf Version vs. auf gesamtes Pricebook |
 | O7 | **Multi-Subscription** | Strikt eine Subscription vs. eine pro Product (aktuell: eine Subscription, mehrere Items) |
 | O8 | **Stripe Price Granularität** | Ein Stripe Price pro Tier vs. metered/quantity-basiert |
+
+---
+
+## Persistenz — Produkt & Preis (Prompt 6)
+
+Additive Erweiterung des Prisma-Modells. Bestehende `billing_price_*`-Tabellen bleiben erhalten.
+
+| Fachlich | Prisma-Modell | Tabelle |
+|----------|---------------|---------|
+| Billing Product | `BillingCatalogProduct` | `billing_catalog_products` |
+| Pricebook | `BillingPriceBook` *(erweitert)* | `billing_price_books` |
+| Price Version | `BillingPriceVersion` *(erweitert)* | `billing_price_versions` |
+| Price Tier | `BillingPriceTier` | `billing_price_tiers` |
+| Stripe Mapping | `BillingStripePriceMapping` | `billing_stripe_price_mappings` |
+
+**Migration:** `20260715190000_billing_product_price_schema`
+
+**Constraints & Indexe:**
+- `billing_catalog_products.key` — UNIQUE (Produkt-Key)
+- `billing_price_versions (price_book_id, version_number)` — UNIQUE
+- `billing_stripe_price_mappings (price_book_id, stripe_mode)` — UNIQUE (TEST/LIVE getrennt)
+- `billing_stripe_price_mappings (stripe_price_id, stripe_mode)` — UNIQUE
+- Published-Guards: PostgreSQL-Trigger auf `billing_price_versions` und `billing_price_tiers` (ACTIVE + `published_at` → immutable)
+
+**Semantik:** `BillingPriceVersionStatus.ACTIVE` = veröffentlicht (Draft = `DRAFT`, Archiv = `ARCHIVED`).
+
+**Backfill (in Migration):** Seed RENTAL/FLEET/Add-ons; `billing_price_books.billing_product_id` aus `product_key`.
+
+**Offen:** Application-Layer auf `BillingCatalogProduct` umstellen; Stripe-Mapping befüllen (Prompt 15).
 
 ---
 
