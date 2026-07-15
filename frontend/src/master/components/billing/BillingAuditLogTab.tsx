@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '../../../lib/api';
 import type { AdminBillingAuditLogDto } from '../../types/admin-billing.types';
 import { DetailDrawer } from '../../../components/patterns/detail-drawer';
 import { EmptyState, ErrorState, SkeletonCard } from '../../../components/patterns/states';
 import { formatDateDe, parsePaginated } from './admin-billing.utils';
 
-export function BillingAuditLogTab() {
+interface BillingAuditLogTabProps {
+  filterPredicate?: (log: AdminBillingAuditLogDto) => boolean;
+}
+
+export function BillingAuditLogTab({ filterPredicate }: BillingAuditLogTabProps = {}) {
   const [logs, setLogs] = useState<AdminBillingAuditLogDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +32,11 @@ export function BillingAuditLogTab() {
     void load();
   }, [load]);
 
+  const visibleLogs = useMemo(
+    () => (filterPredicate ? logs.filter(filterPredicate) : logs),
+    [filterPredicate, logs],
+  );
+
   if (loading) return <SkeletonCard className="h-64" />;
   if (error) {
     return <ErrorState title="Audit Log nicht verfügbar" description={error} onRetry={() => void load()} />;
@@ -35,8 +44,8 @@ export function BillingAuditLogTab() {
 
   return (
     <>
-      {logs.length === 0 ? (
-        <EmptyState compact title="Noch keine Audit-Einträge" />
+      {visibleLogs.length === 0 ? (
+        <EmptyState compact title="Noch keine Audit-Einträge für diesen Bereich" />
       ) : (
         <div className="overflow-x-auto rounded-xl border border-border/60">
           <table className="w-full min-w-[800px]">
@@ -53,7 +62,7 @@ export function BillingAuditLogTab() {
               </tr>
             </thead>
             <tbody>
-              {logs.map((log) => (
+              {visibleLogs.map((log) => (
                 <tr
                   key={log.id}
                   className="border-t border-border/50 hover:bg-muted/20 cursor-pointer"

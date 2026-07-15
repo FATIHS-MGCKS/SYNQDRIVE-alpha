@@ -126,7 +126,7 @@ export function Sidebar({ isDarkMode, currentView, onViewChange, settingsTab, on
             <Gauge className={icon} /><span>Platform Health</span>
           </button>
           <button onClick={() => go('billing')} className={itemCls(active('billing'))}>
-            <CreditCard className={icon} /><span>Billing</span>
+            <CreditCard className={icon} /><span>Abrechnung</span>
           </button>
           <button onClick={() => go('support')} className={itemCls(active('support'))}>
             <Headphones className={icon} /><span>Support Center</span>

@@ -27,6 +27,7 @@ export interface BillingPaymentHistoryQuery {
   from?: string;
   to?: string;
   sort?: string;
+  [key: string]: string | number | undefined;
 }
 
 const DEFAULT_QUERY: BillingPaymentHistoryQuery = {

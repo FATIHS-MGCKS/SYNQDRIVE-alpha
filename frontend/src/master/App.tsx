@@ -610,6 +610,8 @@ export default function App() {
                 onOpenBillingCenter={(orgId) => {
                   setBillingFocusOrgId(orgId);
                   setCurrentView('billing');
+                  const nextSearch = `?masterBilling=organizations&orgId=${encodeURIComponent(orgId)}`;
+                  window.history.pushState(null, '', `${window.location.pathname}${nextSearch}`);
                 }}
               />
             )}

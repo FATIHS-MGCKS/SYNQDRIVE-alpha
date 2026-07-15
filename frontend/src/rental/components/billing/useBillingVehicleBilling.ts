@@ -26,6 +26,7 @@ export interface BillingVehicleBillingQuery {
   from?: string;
   to?: string;
   sort?: string;
+  [key: string]: string | number | undefined;
 }
 
 export function useBillingVehicleBilling(

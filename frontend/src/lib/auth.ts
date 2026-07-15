@@ -6,6 +6,7 @@ export interface AuthUser {
   email: string;
   name: string | null;
   platformRole: string;
+  platformPermissions?: string[];
   membershipRole: string | null;
   organizationId: string | null;
   organizationName: string | null;
@@ -57,4 +58,13 @@ export function isAuthenticated(): boolean {
 export function isMasterAdmin(): boolean {
   const user = getStoredUser();
   return user?.platformRole === 'MASTER_ADMIN';
+}
+
+const MASTER_BILLING_PLATFORM_PERMISSION = 'master-billing';
+
+export function hasMasterBillingAccess(): boolean {
+  const user = getStoredUser();
+  if (!user) return false;
+  if (user.platformRole === 'MASTER_ADMIN') return true;
+  return (user.platformPermissions ?? []).includes(MASTER_BILLING_PLATFORM_PERMISSION);
 }

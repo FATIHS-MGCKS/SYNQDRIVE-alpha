@@ -12,6 +12,9 @@ export interface AdminBillingOverviewDto {
   billableConnectedVehicles: number;
   organizationsWithPriceNotConfigured: number;
   stripeSyncErrors: number;
+  failedPayments?: number;
+  reconciliationDrifts?: number;
+  failedEmailDeliveries?: number;
   pricingConfigured: boolean;
 }
 
@@ -185,7 +188,9 @@ export type AdminBillingTab =
   | 'overview'
   | 'organizations'
   | 'pricing'
-  | 'invoices'
-  | 'payment-methods'
-  | 'stripe'
+  | 'invoices-payments'
+  | 'system-sync'
   | 'audit';
+
+/** @deprecated Use MasterBillingSection from master-billing-navigation.ts */
+export type MasterBillingSection = AdminBillingTab;

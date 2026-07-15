@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import {
+  BillingDomainEventOutboxDeliveryStatus,
   BillingPaymentMethodStatus,
+  BillingPaymentStatus,
   BillingStatus,
   BillingUsageCalculationStatus,
   InvoiceStatus,
@@ -44,6 +46,9 @@ export class BillingAdminService {
       paidThisMonth,
       missingPaymentMethods,
       stripeSyncErrors,
+      failedPayments,
+      reconciliationDrifts,
+      failedEmailDeliveries,
       orgs,
     ] = await Promise.all([
       this.prisma.billingSubscription.findMany({
@@ -62,6 +67,15 @@ export class BillingAdminService {
       this.countOrgsMissingPaymentMethod(),
       this.prisma.stripeWebhookEvent.count({
         where: { status: StripeWebhookEventStatus.FAILED },
+      }),
+      this.prisma.billingPayment.count({
+        where: { status: BillingPaymentStatus.FAILED },
+      }),
+      this.prisma.billingReconciliationDrift.count({
+        where: { resolvedAt: null },
+      }),
+      this.prisma.billingDomainEventOutboxDelivery.count({
+        where: { status: BillingDomainEventOutboxDeliveryStatus.DEAD_LETTER },
       }),
       this.prisma.organization.findMany({
         where: { status: 'ACTIVE' },
@@ -122,6 +136,9 @@ export class BillingAdminService {
       billableConnectedVehicles,
       organizationsWithPriceNotConfigured,
       stripeSyncErrors,
+      failedPayments,
+      reconciliationDrifts,
+      failedEmailDeliveries,
       pricingConfigured: organizationsWithPriceNotConfigured === 0,
     };
   }
