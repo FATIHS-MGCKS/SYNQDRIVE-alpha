@@ -890,6 +890,10 @@ export class SubscriptionLifecycleService {
     return this.resolveStatusFromParts(subscription, baseItem?.status ?? null);
   }
 
+  async getContractState(subscriptionId: string) {
+    return this.loadContract(subscriptionId);
+  }
+
   private async loadContract(subscriptionId: string) {
     const subscription = await this.requireSubscription(subscriptionId);
     const [baseItem, items] = await Promise.all([
