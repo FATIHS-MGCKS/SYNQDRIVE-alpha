@@ -2,6 +2,7 @@ export * from './billing-domain.types';
 export * from './tier-pricing-calculator';
 export * from './discount-calculator';
 export * from './subscription-price-preview.types';
+export * from './billable-vehicle-policy';
 export * from './billing-domain.utils';
 export * from './billing-resolver.types';
 export * from './billing-domain.events';

@@ -1,23 +1,22 @@
 import { Injectable } from '@nestjs/common';
 import {
+  BillingSubscriptionItemRole,
+  BillingSubscriptionItemStatus,
   OrganizationStatus,
   VehicleProviderConsentStatus,
-  VehicleStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import {
+  BillableVehicleExclusionReason,
+  BillableVehiclePolicyResult,
+  evaluateBillableVehiclePolicy,
+  ExcludedBillableVehiclePolicyRow,
+  VehicleConnectivityStatus,
+  VehicleBillingStatus,
+} from './domain/billable-vehicle-policy';
 
-export type VehicleExclusionReason =
-  | 'NOT_CONNECTED'
-  | 'ARCHIVED'
-  | 'DEMO'
-  | 'DISABLED'
-  | 'BILLING_EXCLUDED'
-  | 'ORG_INACTIVE'
-  | 'UNKNOWN';
-
-export type VehicleConnectivityStatus = 'CONNECTED' | 'NOT_CONNECTED';
-
-export type VehicleBillingStatus = 'BILLABLE' | 'EXCLUDED';
+export type VehicleExclusionReason = BillableVehicleExclusionReason;
+export type { VehicleConnectivityStatus, VehicleBillingStatus };
 
 export interface BillableVehicleRow {
   id: string;
@@ -31,6 +30,8 @@ export interface BillableVehicleRow {
 
 export interface ExcludedVehicleRow extends BillableVehicleRow {
   reason: VehicleExclusionReason;
+  assignmentId?: string;
+  reasonCode?: string | null;
 }
 
 export interface BillableVehiclesResult {
@@ -41,17 +42,10 @@ export interface BillableVehiclesResult {
 }
 
 /**
- * Determines which org vehicles are billable for per-vehicle SaaS billing.
+ * Resolves billable vehicles for per-vehicle SaaS billing via {@link evaluateBillableVehiclePolicy}.
  *
- * Connectivity proxy (no single `isConnected` on Vehicle):
- *   1. `VehicleProviderConsent.status = ACTIVE`, or
- *   2. `VehicleDataSourceLink.isActive = true` (DIMO / High Mobility binding)
- *
- * Billable additionally requires:
- *   - org status ACTIVE
- *   - vehicle status !== OUT_OF_SERVICE
- *   - `billingExcluded = false`
- *   - vehicle name does not carry demo marker `[DEMO]` (until a dedicated flag exists)
+ * Connectivity is reported for operations visibility only — it does not affect billing.
+ * Vehicle name, operational status, telemetry and `billingExcluded` flag do not affect billing.
  */
 @Injectable()
 export class BillableVehiclesService {
@@ -59,97 +53,121 @@ export class BillableVehiclesService {
 
   async getBillableConnectedVehiclesForOrganization(
     organizationId: string,
+    asOf: Date = new Date(),
   ): Promise<BillableVehiclesResult> {
-    const org = await this.prisma.organization.findUnique({
-      where: { id: organizationId },
-      select: { status: true },
-    });
-
-    const orgInactive = org?.status !== OrganizationStatus.ACTIVE;
-
-    const vehicles = await this.prisma.vehicle.findMany({
-      where: { organizationId },
-      select: {
-        id: true,
-        licensePlate: true,
-        vin: true,
-        make: true,
-        model: true,
-        vehicleName: true,
-        status: true,
-        billingExcluded: true,
-        providerConsents: {
-          where: { status: VehicleProviderConsentStatus.ACTIVE },
-          select: { id: true },
-          take: 1,
+    const [org, baseItem, assignmentCount, vehicles] = await Promise.all([
+      this.prisma.organization.findUnique({
+        where: { id: organizationId },
+        select: { status: true },
+      }),
+      this.prisma.billingSubscriptionItem.findFirst({
+        where: {
+          organizationId,
+          itemRole: BillingSubscriptionItemRole.BASE_PLAN,
+          status: {
+            in: [BillingSubscriptionItemStatus.ACTIVE, BillingSubscriptionItemStatus.TRIALING],
+          },
         },
-        dataSourceLinks: {
-          where: { isActive: true },
-          select: { id: true },
-          take: 1,
+        orderBy: { validFrom: 'desc' },
+        select: { id: true, status: true },
+      }),
+      this.prisma.billingBillableVehicleAssignment.count({
+        where: { organizationId },
+      }),
+      this.prisma.vehicle.findMany({
+        where: { organizationId },
+        select: {
+          id: true,
+          organizationId: true,
+          licensePlate: true,
+          vin: true,
+          make: true,
+          model: true,
+          providerConsents: {
+            where: { status: VehicleProviderConsentStatus.ACTIVE },
+            select: { id: true },
+            take: 1,
+          },
+          dataSourceLinks: {
+            where: { isActive: true },
+            select: { id: true },
+            take: 1,
+          },
         },
-      },
-      orderBy: { licensePlate: 'asc' },
-    });
+        orderBy: { licensePlate: 'asc' },
+      }),
+    ]);
 
-    const billableVehicles: BillableVehicleRow[] = [];
-    const excludedVehicles: ExcludedVehicleRow[] = [];
-    let connectedVehicleCount = 0;
+    const vehicleIds = vehicles.map((vehicle) => vehicle.id);
+    const assignments =
+      vehicleIds.length === 0
+        ? []
+        : await this.prisma.billingBillableVehicleAssignment.findMany({
+            where: {
+              organizationId,
+              vehicleId: { in: vehicleIds },
+            },
+            select: {
+              id: true,
+              organizationId: true,
+              vehicleId: true,
+              subscriptionItemId: true,
+              billableFrom: true,
+              billableUntil: true,
+              status: true,
+              reasonCode: true,
+              reasonNote: true,
+              approvedByUserId: true,
+            },
+          });
 
-    for (const v of vehicles) {
-      const isConnected =
-        v.providerConsents.length > 0 || v.dataSourceLinks.length > 0;
-      const connectivityStatus: VehicleConnectivityStatus = isConnected
-        ? 'CONNECTED'
-        : 'NOT_CONNECTED';
-
-      if (isConnected) connectedVehicleCount++;
-
-      const baseRow = {
-        id: v.id,
-        licensePlate: v.licensePlate,
-        vin: v.vin,
-        make: v.make,
-        model: v.model,
-        connectivityStatus,
-        billingStatus: 'EXCLUDED' as const,
-      };
-
-      let reason: VehicleExclusionReason | null = null;
-
-      if (orgInactive) {
-        reason = 'ORG_INACTIVE';
-      } else if (v.billingExcluded) {
-        reason = 'BILLING_EXCLUDED';
-      } else if (v.status === VehicleStatus.OUT_OF_SERVICE) {
-        reason = 'DISABLED';
-      } else if (this.isDemoVehicle(v.vehicleName)) {
-        reason = 'DEMO';
-      } else if (!isConnected) {
-        reason = 'NOT_CONNECTED';
-      }
-
-      if (reason) {
-        excludedVehicles.push({ ...baseRow, reason });
-      } else {
-        billableVehicles.push({
-          ...baseRow,
-          billingStatus: 'BILLABLE',
-        });
-      }
+    const connectivityByVehicleId: Record<string, boolean> = {};
+    for (const vehicle of vehicles) {
+      connectivityByVehicleId[vehicle.id] =
+        vehicle.providerConsents.length > 0 || vehicle.dataSourceLinks.length > 0;
     }
 
-    return {
-      connectedVehicleCount,
-      billableVehicleCount: billableVehicles.length,
-      billableVehicles,
-      excludedVehicles,
-    };
+    const policyResult = evaluateBillableVehiclePolicy({
+      organizationId,
+      organizationActive: org?.status === OrganizationStatus.ACTIVE,
+      baseSubscriptionItemId: baseItem?.id ?? null,
+      baseSubscriptionItemActive:
+        baseItem?.status === BillingSubscriptionItemStatus.ACTIVE ||
+        baseItem?.status === BillingSubscriptionItemStatus.TRIALING,
+      asOf,
+      legacyImplicitAssignments: assignmentCount === 0,
+      vehicles: vehicles.map((vehicle) => ({
+        id: vehicle.id,
+        organizationId: vehicle.organizationId,
+        licensePlate: vehicle.licensePlate,
+        vin: vehicle.vin,
+        make: vehicle.make,
+        model: vehicle.model,
+      })),
+      assignments,
+      connectivityByVehicleId,
+    });
+
+    return this.mapPolicyResult(policyResult);
   }
 
-  /** Demo marker until a dedicated schema flag exists. */
-  private isDemoVehicle(vehicleName: string | null | undefined): boolean {
-    if (!vehicleName) return false;
-    return /^\[DEMO\]/i.test(vehicleName.trim());
+  private mapPolicyResult(result: BillableVehiclePolicyResult): BillableVehiclesResult {
+    return {
+      connectedVehicleCount: result.connectedVehicleCount,
+      billableVehicleCount: result.billableVehicleCount,
+      billableVehicles: result.billableVehicles,
+      excludedVehicles: result.excludedVehicles.map((row: ExcludedBillableVehiclePolicyRow) => ({
+        id: row.id,
+        licensePlate: row.licensePlate,
+        vin: row.vin,
+        make: row.make,
+        model: row.model,
+        connectivityStatus: row.connectivityStatus,
+        billingStatus: row.billingStatus,
+        reason: row.reason,
+        assignmentId: row.assignmentId,
+        reasonCode: row.reasonCode,
+      })),
+    };
   }
 }
