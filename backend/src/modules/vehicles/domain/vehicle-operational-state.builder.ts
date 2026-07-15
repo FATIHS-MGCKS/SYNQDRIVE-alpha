@@ -8,6 +8,22 @@ import {
   VehicleOperationalStateResult,
   VehicleOperationalTelemetryState,
 } from './vehicle-operational-state.types';
+import type {
+  BookingContextBlock,
+  CanonicalOperationalStatus,
+  DataQualityReasonCode,
+  OperationalReasonCode,
+  OperationalStateBlock,
+  OperationalStateSource,
+  RawStatusDiagnosticCode,
+  RawVehicleStatusDiagnostic,
+  VehicleStateEngineInput,
+  VehicleStateEngineOutput,
+} from './vehicle-operational-state.engine.types';
+import {
+  assertEngineTimezone,
+  mapBookingStateToLegacyDto,
+} from './vehicle-operational-state.input-mapper';
 
 export {
   EMPTY_BOOKING_CONTEXT,
@@ -21,6 +37,36 @@ export type {
   VehicleOperationalStateInput,
   VehicleOperationalStateResult,
 } from './vehicle-operational-state.types';
+export type {
+  BookingContextBlock,
+  BuildVehicleStateEngineInputParams,
+  CanonicalOperationalStatus,
+  DataQualityReasonCode,
+  DataQualityState,
+  DomainBookingRef,
+  OperationalReasonCode,
+  OperationalStateBlock,
+  OperationalStateSource,
+  RawVehicleStatusDiagnostic,
+  VehicleStateEngineBlockingStateInput,
+  VehicleStateEngineBookingStateInput,
+  VehicleStateEngineContextInput,
+  VehicleStateEngineInput,
+  VehicleStateEngineMaintenanceStateInput,
+  VehicleStateEngineOutput,
+  VehicleStateEngineVehicleInput,
+} from './vehicle-operational-state.engine.types';
+export {
+  DEFAULT_ORGANIZATION_TIMEZONE,
+  EMPTY_BOOKING_STATE_INPUT,
+} from './vehicle-operational-state.engine.types';
+export {
+  assertEngineTimezone,
+  buildVehicleStateEngineInput,
+  mapLegacyBookingDtoToBookingState,
+  mapRawStatusToBlockingState,
+  mapRawStatusToMaintenanceState,
+} from './vehicle-operational-state.input-mapper';
 
 function signalTimestamp(signal: unknown): Date | null {
   if (!signal || typeof signal !== 'object') return null;
@@ -226,5 +272,205 @@ export function buildVehicleOperationalState(
     fuelPercent,
     evSoc,
     ghostStateWarning,
+  };
+}
+
+const LEGACY_TO_CANONICAL_STATUS: Record<string, CanonicalOperationalStatus> = {
+  Available: 'AVAILABLE',
+  Reserved: 'RESERVED',
+  'Active Rented': 'ACTIVE_RENTED',
+  Maintenance: 'MAINTENANCE',
+};
+
+function mapLegacyStatusToCanonical(
+  legacyStatus: string,
+  blockingState: VehicleStateEngineInput['blockingState'],
+): CanonicalOperationalStatus {
+  if (blockingState.isBlocked && blockingState.level === 'hard') {
+    // V1 fleet label collapses OUT_OF_SERVICE into Maintenance — output carries both signals.
+    return LEGACY_TO_CANONICAL_STATUS[legacyStatus] ?? 'UNKNOWN';
+  }
+  return LEGACY_TO_CANONICAL_STATUS[legacyStatus] ?? 'UNKNOWN';
+}
+
+function mapLegacyStatusToReason(
+  canonicalStatus: CanonicalOperationalStatus,
+  legacy: VehicleOperationalStateResult,
+): OperationalReasonCode {
+  if (legacy.ghostStateWarning) {
+    return 'RAW_STATUS_INCONSISTENT';
+  }
+  switch (canonicalStatus) {
+    case 'AVAILABLE':
+      return 'NO_ACTIVE_OR_UPCOMING_WINDOW';
+    case 'RESERVED':
+      return 'PICKUP_WINDOW_ACTIVE';
+    case 'ACTIVE_RENTED':
+      return 'ACTIVE_BOOKING';
+    case 'MAINTENANCE':
+      return 'MAINTENANCE_ACTIVE';
+    case 'BLOCKED':
+      return 'HARD_BLOCK_ACTIVE';
+    default:
+      return 'UNKNOWN_STATUS_VALUE';
+  }
+}
+
+function resolveOperationalSource(
+  input: VehicleStateEngineInput,
+  canonicalStatus: CanonicalOperationalStatus,
+): OperationalStateSource {
+  if (input.bookingState.dataQualityState === 'UNAVAILABLE') {
+    return 'FAIL_CLOSED';
+  }
+  if (
+    canonicalStatus === 'MAINTENANCE' &&
+    input.maintenanceState.source === 'ADMIN_PERSISTED'
+  ) {
+    return 'ADMIN_PERSISTED';
+  }
+  if (
+    canonicalStatus === 'BLOCKED' &&
+    input.blockingState.source === 'ADMIN_PERSISTED'
+  ) {
+    return 'ADMIN_PERSISTED';
+  }
+  if (
+    canonicalStatus === 'ACTIVE_RENTED' ||
+    canonicalStatus === 'RESERVED'
+  ) {
+    return 'BOOKING_LIFECYCLE';
+  }
+  return 'DERIVATION_ENGINE';
+}
+
+function buildRawVehicleStatusDiagnostic(
+  input: VehicleStateEngineInput,
+  legacy: VehicleOperationalStateResult,
+): RawVehicleStatusDiagnostic {
+  const diagnosticCodes: RawStatusDiagnosticCode[] = [];
+  const raw = input.vehicle.rawStatus;
+
+  if (raw === VehicleStatus.RENTED) {
+    diagnosticCodes.push('LEGACY_RENTED_PERSISTED');
+  }
+  if (raw === VehicleStatus.RESERVED) {
+    diagnosticCodes.push('LEGACY_RESERVED_PERSISTED');
+  }
+  if (
+    raw !== VehicleStatus.AVAILABLE &&
+    raw !== VehicleStatus.IN_SERVICE &&
+    raw !== VehicleStatus.OUT_OF_SERVICE &&
+    raw !== VehicleStatus.RENTED &&
+    raw !== VehicleStatus.RESERVED
+  ) {
+    diagnosticCodes.push('UNKNOWN_ENUM_VALUE');
+  }
+  if (legacy.ghostStateWarning) {
+    diagnosticCodes.push('CONFLICTS_WITH_OPERATIONAL_STATE');
+  }
+
+  return {
+    value: raw,
+    persistedAt: input.vehicle.persistedAt ?? null,
+    isLegacyOrInconsistent:
+      diagnosticCodes.length > 0 || legacy.ghostStateWarning != null,
+    diagnosticCodes,
+  };
+}
+
+function buildBookingContextBlock(
+  input: VehicleStateEngineInput,
+): BookingContextBlock {
+  const { bookingState } = input;
+  return {
+    activeBooking: bookingState.activeBooking ?? null,
+    reservedBooking: bookingState.reservationWindowBooking ?? null,
+    nextBooking: bookingState.nextBooking ?? null,
+    futureBookingCount: bookingState.futureBookingCount,
+  };
+}
+
+function collectDiagnosticReasons(
+  input: VehicleStateEngineInput,
+  legacy: VehicleOperationalStateResult,
+): string[] {
+  const reasons: string[] = [];
+  for (const code of input.bookingState.dataQualityReasons) {
+    reasons.push(code);
+  }
+  for (const code of input.maintenanceState.reasonCodes) {
+    reasons.push(code);
+  }
+  for (const code of input.blockingState.reasonCodes) {
+    reasons.push(code);
+  }
+  if (legacy.ghostStateWarning) {
+    reasons.push('RAW_STATUS_INCONSISTENT');
+  }
+  return [...new Set(reasons)];
+}
+
+function toLegacyOperationalInput(
+  input: VehicleStateEngineInput,
+): VehicleOperationalStateInput {
+  return {
+    vehicle: {
+      id: input.vehicle.id,
+      status: input.vehicle.rawStatus,
+      licensePlate: input.vehicle.licensePlate,
+      tankCapacityLiters: input.vehicle.tankCapacityLiters,
+    },
+    state: input.telemetry ?? null,
+    bookingCtx: mapBookingStateToLegacyDto(
+      input.bookingState,
+      input.vehicle.id,
+    ),
+    pickupOdoByBooking: input.pickupOdoByBooking ?? new Map(),
+  };
+}
+
+/**
+ * V2 state engine entry point — accepts normalized domain inputs (§16).
+ *
+ * Derivation semantics remain V1 until Prompt 8+; this function structures
+ * inputs/outputs per the architecture contract without changing Reserved rules.
+ */
+export function buildVehicleOperationalStateFromEngineInput(
+  input: VehicleStateEngineInput,
+): VehicleStateEngineOutput {
+  assertEngineTimezone(input.context);
+
+  const legacy = buildVehicleOperationalState(toLegacyOperationalInput(input));
+  const derivedAt = input.context.now.toISOString();
+  const dataQualityState = input.bookingState.dataQualityState;
+  const dataQualityReasons: DataQualityReasonCode[] = [
+    ...input.bookingState.dataQualityReasons,
+  ];
+
+  const canonicalStatus = mapLegacyStatusToCanonical(
+    legacy.status,
+    input.blockingState,
+  );
+  const reason = mapLegacyStatusToReason(canonicalStatus, legacy);
+
+  const operationalState: OperationalStateBlock = {
+    status: canonicalStatus,
+    reason,
+    source: resolveOperationalSource(input, canonicalStatus),
+    effectiveFrom: null,
+    effectiveUntil: null,
+    derivedAt,
+    dataQualityState,
+    dataQualityReasons,
+    isReliable: dataQualityState === 'RELIABLE',
+  };
+
+  return {
+    operationalState,
+    bookingContext: buildBookingContextBlock(input),
+    rawVehicleStatus: buildRawVehicleStatusDiagnostic(input, legacy),
+    diagnosticReasons: collectDiagnosticReasons(input, legacy),
+    legacy,
   };
 }

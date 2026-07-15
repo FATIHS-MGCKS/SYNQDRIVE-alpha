@@ -50,7 +50,9 @@ import { DataAuthorizationEnforcementService } from '@modules/data-authorization
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { buildFleetDeviceConnectionFields } from '@modules/dimo/device-connection-read-model';
 import {
-  buildVehicleOperationalState,
+  buildVehicleOperationalStateFromEngineInput,
+  buildVehicleStateEngineInput,
+  DEFAULT_ORGANIZATION_TIMEZONE,
   EMPTY_BOOKING_CONTEXT,
   resolveFleetFuelPercent,
 } from './domain/vehicle-operational-state.builder';
@@ -557,6 +559,10 @@ export class VehiclesService {
     tripStateMap?: Map<string, { state: any }>,
     bookingContextMap?: Map<string, FleetVehicleBookingContextDto>,
     pickupOdoByBooking?: Map<string, number>,
+    fleetContextOptions?: {
+      organizationId: string;
+      organizationTimezone: string;
+    },
   ) {
     const state = v.latestState;
     const leasing = v.leasingRateCents ?? 0;
@@ -596,6 +602,11 @@ export class VehiclesService {
       state,
       bookingCtx,
       pickupOdoByBooking: pickupOdoByBooking ?? new Map(),
+      organizationId:
+        fleetContextOptions?.organizationId ?? v.organizationId ?? undefined,
+      organizationTimezone:
+        fleetContextOptions?.organizationTimezone ??
+        DEFAULT_ORGANIZATION_TIMEZONE,
     });
 
     // Legacy numeric fallbacks for existing consumers (RentalVehicleTable
@@ -716,6 +727,7 @@ export class VehiclesService {
   public deriveFleetStatusContext(input: {
     vehicle: {
       id?: string;
+      organizationId?: string;
       status: VehicleStatus | string | null | undefined;
       licensePlate?: string | null;
       tankCapacityLiters?: number | null;
@@ -729,6 +741,8 @@ export class VehiclesService {
     } | null;
     bookingCtx: FleetVehicleBookingContextDto | null;
     pickupOdoByBooking: Map<string, number>;
+    organizationId?: string;
+    organizationTimezone?: string;
   }): {
     status: string;
     maintenanceCtx: FleetVehicleMaintenanceContextDto;
@@ -738,11 +752,27 @@ export class VehiclesService {
     fuelPercent: number | null;
     evSoc: number | null;
   } {
-    const result = buildVehicleOperationalState(input);
-    if (result.ghostStateWarning) {
-      this.logger.warn(result.ghostStateWarning);
+    const engineInput = buildVehicleStateEngineInput({
+      vehicle: {
+        id: input.vehicle.id ?? 'unknown',
+        organizationId:
+          input.organizationId ?? input.vehicle.organizationId ?? 'unknown',
+        status: input.vehicle.status ?? VehicleStatus.AVAILABLE,
+        licensePlate: input.vehicle.licensePlate,
+        tankCapacityLiters: input.vehicle.tankCapacityLiters,
+      },
+      bookingCtx: input.bookingCtx,
+      organizationTimezone:
+        input.organizationTimezone ?? DEFAULT_ORGANIZATION_TIMEZONE,
+      telemetry: input.state,
+      pickupOdoByBooking: input.pickupOdoByBooking,
+    });
+    const engineOutput =
+      buildVehicleOperationalStateFromEngineInput(engineInput);
+    if (engineOutput.legacy.ghostStateWarning) {
+      this.logger.warn(engineOutput.legacy.ghostStateWarning);
     }
-    const { ghostStateWarning: _ghost, ...fleetCtx } = result;
+    const { ghostStateWarning: _ghost, ...fleetCtx } = engineOutput.legacy;
     return fleetCtx;
   }
 
@@ -831,6 +861,8 @@ export class VehiclesService {
       activeBookingIds,
     );
 
+    const orgTimezone = await this.resolveOrganizationTimezone(organizationId);
+
     return buildPaginatedResult(
       data.map((v) =>
         this.mapToVehicleData(
@@ -838,11 +870,24 @@ export class VehiclesService {
           tripStateMap,
           bookingContextMap,
           pickupOdoByBooking,
+          { organizationId, organizationTimezone: orgTimezone },
         ),
       ),
       total,
       params || {},
     );
+  }
+
+  private async resolveOrganizationTimezone(
+    organizationId: string,
+  ): Promise<string> {
+    const org = await this.prisma.organization
+      .findUnique({
+        where: { id: organizationId },
+        select: { timezone: true },
+      })
+      .catch(() => null);
+    return org?.timezone?.trim() || DEFAULT_ORGANIZATION_TIMEZONE;
   }
 
   async getFleetMapData(organizationId: string): Promise<FleetMapVehicleDto[]> {
@@ -922,6 +967,8 @@ export class VehiclesService {
       organizationId,
       activeBookingIds,
     );
+    const organizationTimezone =
+      await this.resolveOrganizationTimezone(organizationId);
 
     const result: FleetMapVehicleDto[] = vehicles.map((vehicle) => {
       const state = vehicle.latestState;
@@ -941,10 +988,12 @@ export class VehiclesService {
 
       const bookingCtx = bookingContextMap.get(vehicle.id) ?? null;
       const fleetCtx = this.deriveFleetStatusContext({
-        vehicle,
+        vehicle: { ...vehicle, organizationId },
         state,
         bookingCtx,
         pickupOdoByBooking,
+        organizationId,
+        organizationTimezone,
       });
       const isElectric =
         vehicle.fuelType === FuelType.ELECTRIC ||
@@ -1033,11 +1082,14 @@ export class VehiclesService {
       organizationId,
       activeBookingIds,
     );
+    const organizationTimezone =
+      await this.resolveOrganizationTimezone(organizationId);
     return this.mapToVehicleData(
       vehicle,
       tripStateMap,
       bookingContextMap,
       pickupOdoByBooking,
+      { organizationId, organizationTimezone },
     );
   }
 
