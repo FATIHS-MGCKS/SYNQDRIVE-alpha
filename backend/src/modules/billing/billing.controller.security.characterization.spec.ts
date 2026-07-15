@@ -4,6 +4,7 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { PERMISSION_KEY } from '@shared/decorators/require-permission.decorator';
 import { ROLES_KEY } from '@shared/decorators/roles.decorator';
+import { MASTER_BILLING_KEY } from '@shared/decorators/require-master-billing.decorator';
 import { BillingController } from './billing.controller';
 
 function permissionOf(target: object, method: string) {
@@ -114,6 +115,24 @@ describe('BillingController security characterization', () => {
       expect(rolesOf(BillingController.prototype, method)).toEqual(['MASTER_ADMIN']);
     });
   });
+
+  describe('master billing mutation endpoints', () => {
+    const mutationHandlers = [
+      'syncOrganizationStripe',
+      'syncOrganizationPaymentMethods',
+      'adminSetDefaultPaymentMethod',
+      'adminDetachPaymentMethod',
+      'recordManualPayment',
+      'runBillingReconciliation',
+      'resolveBillingReconciliationDrift',
+      'autoFixBillingReconciliationDrift',
+    ] as const;
+
+    it.each(mutationHandlers)('%s requires master-billing platform permission', (method) => {
+      const proto = BillingController.prototype as unknown as Record<string, unknown>;
+      expect(Reflect.getMetadata(MASTER_BILLING_KEY, proto[method] as object)).toBe(true);
+    });
+  });
 });
 
 describe('BillingController tenant org isolation characterization', () => {
@@ -143,6 +162,9 @@ describe('BillingController tenant org isolation characterization', () => {
     setDefaultPaymentMethod: jest.fn(),
     detachPaymentMethod: jest.fn(),
   };
+  const tenantTariffService = {};
+  const tenantBillableVehiclesListService = {};
+  const tenantVehicleBillingChangesService = {};
   const pricebookService = {};
   const usageService = {};
   const adminService = {};
@@ -168,11 +190,14 @@ describe('BillingController tenant org isolation characterization', () => {
       subscriptionOverviewService as never,
       tenantInvoicesService as never,
       tenantPaymentsService as never,
-      tenantPaymentsListService as never,
+      tenantPaymentMethodsService as never,
       tenantVehicleLicensesService as never,
+      tenantTariffService as never,
+      tenantBillableVehiclesListService as never,
+      tenantVehicleBillingChangesService as never,
+      tenantPaymentsListService as never,
       tenantContractHistoryService as never,
       tenantEmailHistoryService as never,
-      tenantPaymentMethodsService as never,
       billableVehiclesService as never,
       stripePreparedService as never,
       paymentLedgerService as never,

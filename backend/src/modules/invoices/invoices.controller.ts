@@ -8,10 +8,11 @@ import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { InvoicesService } from './invoices.service';
-import { Roles } from '@shared/decorators/roles.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
+import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
+import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import {
   CreateInvoiceDto,
   InvoiceQueryDto,
@@ -30,6 +31,7 @@ const UPLOAD_DIR = join(process.cwd(), 'uploads', 'invoices');
 if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
 
 @Controller()
+@UseGuards(OrgScopingGuard, RolesGuard, PermissionsGuard)
 export class InvoicesController {
   constructor(
     private readonly invoicesService: InvoicesService,
@@ -41,7 +43,7 @@ export class InvoicesController {
   ) {}
 
   @Get('organizations/:orgId/invoices/list')
-  @UseGuards(OrgScopingGuard, RolesGuard)
+  @RequirePermission('invoices', 'read')
   async listItems(
     @Param('orgId') orgId: string,
     @Query() query: ListInvoicesQueryDto,
@@ -50,7 +52,7 @@ export class InvoicesController {
   }
 
   @Get('organizations/:orgId/invoices')
-  @UseGuards(OrgScopingGuard, RolesGuard)
+  @RequirePermission('invoices', 'read')
   async findAll(
     @Param('orgId') orgId: string,
     @Query() query: InvoiceQueryDto,
@@ -65,19 +67,19 @@ export class InvoicesController {
   }
 
   @Get('organizations/:orgId/invoices/stats')
-  @UseGuards(OrgScopingGuard, RolesGuard)
+  @RequirePermission('invoices', 'read')
   async getStats(@Param('orgId') orgId: string) {
     return this.invoicesService.getStats(orgId);
   }
 
   @Get('organizations/:orgId/invoices/:id')
-  @UseGuards(OrgScopingGuard, RolesGuard)
+  @RequirePermission('invoices', 'read')
   async findOne(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.invoicesService.findById(id, orgId);
   }
 
   @Get('organizations/:orgId/customers/:customerId/invoices')
-  @UseGuards(OrgScopingGuard, RolesGuard)
+  @RequirePermission('invoices', 'read')
   async findByCustomer(
     @Param('orgId') orgId: string,
     @Param('customerId') customerId: string,
@@ -86,13 +88,13 @@ export class InvoicesController {
   }
 
   @Post('organizations/:orgId/invoices')
-  @UseGuards(OrgScopingGuard, RolesGuard)
+  @RequirePermission('invoices', 'write')
   async create(@Param('orgId') orgId: string, @Body() body: CreateInvoiceDto) {
     return this.invoicesService.create(orgId, body);
   }
 
   @Patch('organizations/:orgId/invoices/:id')
-  @UseGuards(OrgScopingGuard, RolesGuard)
+  @RequirePermission('invoices', 'write')
   async update(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -102,26 +104,26 @@ export class InvoicesController {
   }
 
   @Post('organizations/:orgId/invoices/:id/issue')
-  @UseGuards(OrgScopingGuard, RolesGuard)
+  @RequirePermission('invoices', 'write')
   async issue(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.invoicesService.issue(id, orgId);
   }
 
   @Post('organizations/:orgId/invoices/:id/cancel')
-  @UseGuards(OrgScopingGuard, RolesGuard)
+  @RequirePermission('invoices', 'write')
   async cancel(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.invoicesService.cancel(id, orgId);
   }
 
   /** @deprecated Prefer `POST …/documents/send-email` for PDF delivery; retained for external/manual send marking. */
   @Post('organizations/:orgId/invoices/:id/mark-sent')
-  @UseGuards(OrgScopingGuard, RolesGuard)
+  @RequirePermission('invoices', 'write')
   async markSent(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.invoicesService.markSent(id, orgId);
   }
 
   @Post('organizations/:orgId/invoices/:id/payments')
-  @UseGuards(OrgScopingGuard, RolesGuard)
+  @RequirePermission('invoices', 'write')
   async recordPayment(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -133,19 +135,19 @@ export class InvoicesController {
 
   /** @deprecated Prefer `POST …/payments` with explicit amount/method; shortcut for full bank-transfer settlement. */
   @Patch('organizations/:orgId/invoices/:id/pay')
-  @UseGuards(OrgScopingGuard, RolesGuard)
+  @RequirePermission('invoices', 'write')
   async markPaid(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.invoicesService.markPaid(id, orgId);
   }
 
   @Get('organizations/:orgId/invoices/:id/timeline')
-  @UseGuards(OrgScopingGuard, RolesGuard)
+  @RequirePermission('invoices', 'read')
   async getTimeline(@Param('orgId') orgId: string, @Param('id') id: string) {
     return this.invoiceTimeline.getTimeline(orgId, id);
   }
 
   @Get('organizations/:orgId/invoices/:id/documents')
-  @UseGuards(OrgScopingGuard, RolesGuard)
+  @RequirePermission('invoices', 'read')
   async getDocumentsPanel(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -156,8 +158,7 @@ export class InvoicesController {
   }
 
   @Post('organizations/:orgId/invoices/:id/documents/generate')
-  @UseGuards(OrgScopingGuard, RolesGuard)
-  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  @RequirePermission('invoices', 'write')
   async generateDocument(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -170,8 +171,7 @@ export class InvoicesController {
   }
 
   @Post('organizations/:orgId/invoices/:id/documents/send-email')
-  @UseGuards(OrgScopingGuard, RolesGuard)
-  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  @RequirePermission('invoices', 'write')
   async sendInvoiceEmail(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -182,8 +182,7 @@ export class InvoicesController {
   }
 
   @Post('organizations/:orgId/invoices/:id/documents/delivery/:emailId/retry')
-  @UseGuards(OrgScopingGuard, RolesGuard)
-  @Roles('ORG_ADMIN', 'MASTER_ADMIN')
+  @RequirePermission('invoices', 'write')
   async retryInvoiceEmail(
     @Param('orgId') orgId: string,
     @Param('id') id: string,
@@ -194,7 +193,7 @@ export class InvoicesController {
   }
 
   @Get('organizations/:orgId/invoices/:id/attachment')
-  @UseGuards(OrgScopingGuard, RolesGuard)
+  @RequirePermission('invoices', 'read')
   @Header('Cache-Control', 'no-store')
   async downloadAttachment(
     @Param('orgId') orgId: string,
@@ -219,7 +218,7 @@ export class InvoicesController {
 
   /** Legacy attachment upload only — NOT for AI extraction. Use document-extraction upload. */
   @Post('organizations/:orgId/invoices/upload')
-  @UseGuards(OrgScopingGuard, RolesGuard)
+  @RequirePermission('invoices', 'write')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
