@@ -1,0 +1,20 @@
+{
+  "id": "evt_sandbox_sub_cancel_001",
+  "object": "event",
+  "type": "customer.subscription.updated",
+  "created": 1752614200,
+  "livemode": false,
+  "data": {
+    "object": {
+      "id": "sub_sandbox_001",
+      "object": "subscription",
+      "customer": "cus_sandbox_001",
+      "status": "active",
+      "cancel_at_period_end": true,
+      "cancel_at": 1755292800,
+      "metadata": {
+        "synqdriveOrganizationId": "org-sandbox-billing-e2e"
+      }
+    }
+  }
+}

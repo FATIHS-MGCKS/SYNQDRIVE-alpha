@@ -1,0 +1,22 @@
+{
+  "id": "evt_sandbox_refund_partial_001",
+  "object": "event",
+  "type": "charge.refunded",
+  "created": 1752614850,
+  "livemode": false,
+  "data": {
+    "object": {
+      "id": "ch_sandbox_002",
+      "object": "charge",
+      "customer": "cus_sandbox_001",
+      "invoice": "in_sandbox_paid_001",
+      "amount": 3000,
+      "amount_refunded": 1000,
+      "currency": "eur",
+      "refunded": false,
+      "metadata": {
+        "synqdriveOrganizationId": "org-sandbox-billing-e2e"
+      }
+    }
+  }
+}

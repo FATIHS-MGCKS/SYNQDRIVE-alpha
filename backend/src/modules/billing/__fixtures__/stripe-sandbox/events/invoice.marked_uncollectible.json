@@ -1,0 +1,22 @@
+{
+  "id": "evt_sandbox_invoice_uncollectible_001",
+  "object": "event",
+  "type": "invoice.marked_uncollectible",
+  "created": 1752614700,
+  "livemode": false,
+  "data": {
+    "object": {
+      "id": "in_sandbox_uncollectible_001",
+      "object": "invoice",
+      "customer": "cus_sandbox_001",
+      "subscription": "sub_sandbox_001",
+      "status": "uncollectible",
+      "amount_due": 3000,
+      "amount_paid": 0,
+      "currency": "eur",
+      "metadata": {
+        "synqdriveOrganizationId": "org-sandbox-billing-e2e"
+      }
+    }
+  }
+}

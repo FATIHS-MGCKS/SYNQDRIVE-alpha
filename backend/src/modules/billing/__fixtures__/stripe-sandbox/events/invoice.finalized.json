@@ -1,0 +1,22 @@
+{
+  "id": "evt_sandbox_invoice_finalized_001",
+  "object": "event",
+  "type": "invoice.finalized",
+  "created": 1752614300,
+  "livemode": false,
+  "data": {
+    "object": {
+      "id": "in_sandbox_open_001",
+      "object": "invoice",
+      "customer": "cus_sandbox_001",
+      "subscription": "sub_sandbox_001",
+      "status": "open",
+      "amount_due": 3000,
+      "amount_paid": 0,
+      "currency": "eur",
+      "metadata": {
+        "synqdriveOrganizationId": "org-sandbox-billing-e2e"
+      }
+    }
+  }
+}

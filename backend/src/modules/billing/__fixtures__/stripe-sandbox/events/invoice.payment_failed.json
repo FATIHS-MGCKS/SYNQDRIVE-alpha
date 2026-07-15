@@ -1,0 +1,23 @@
+{
+  "id": "evt_sandbox_invoice_failed_001",
+  "object": "event",
+  "type": "invoice.payment_failed",
+  "created": 1752614500,
+  "livemode": false,
+  "data": {
+    "object": {
+      "id": "in_sandbox_failed_001",
+      "object": "invoice",
+      "customer": "cus_sandbox_001",
+      "subscription": "sub_sandbox_001",
+      "status": "open",
+      "amount_due": 3000,
+      "amount_paid": 0,
+      "currency": "eur",
+      "attempt_count": 1,
+      "metadata": {
+        "synqdriveOrganizationId": "org-sandbox-billing-e2e"
+      }
+    }
+  }
+}

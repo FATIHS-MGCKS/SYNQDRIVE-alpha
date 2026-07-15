@@ -1,0 +1,20 @@
+{
+  "id": "evt_sandbox_credit_note_001",
+  "object": "event",
+  "type": "credit_note.created",
+  "created": 1752614900,
+  "livemode": false,
+  "data": {
+    "object": {
+      "id": "cn_sandbox_001",
+      "object": "credit_note",
+      "customer": "cus_sandbox_001",
+      "invoice": "in_sandbox_paid_001",
+      "amount": 500,
+      "currency": "eur",
+      "metadata": {
+        "synqdriveOrganizationId": "org-sandbox-billing-e2e"
+      }
+    }
+  }
+}

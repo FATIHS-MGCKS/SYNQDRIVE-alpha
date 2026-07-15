@@ -1,0 +1,20 @@
+{
+  "id": "evt_sandbox_sub_trial_001",
+  "object": "event",
+  "type": "customer.subscription.updated",
+  "created": 1752614100,
+  "livemode": false,
+  "data": {
+    "object": {
+      "id": "sub_sandbox_001",
+      "object": "subscription",
+      "customer": "cus_sandbox_001",
+      "status": "trialing",
+      "trial_end": 1753209600,
+      "cancel_at_period_end": false,
+      "metadata": {
+        "synqdriveOrganizationId": "org-sandbox-billing-e2e"
+      }
+    }
+  }
+}
