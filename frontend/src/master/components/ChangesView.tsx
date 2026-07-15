@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-operational-state-engine-matrix-v49475-2026-07-15',
+    version: '4.9.475',
+    title: 'V4.9.475 — Fleet Status: tabellengetriebenes Engine-Testpaket (Prompt 9/43)',
+    summary: [
+      'Neues Matrix-Suite `vehicle-operational-state.engine.matrix.spec.ts` mit 20+ tabellengetriebenen Fällen.',
+      'Shared Fixtures in `vehicle-operational-state.engine.test-fixtures.ts`; Dokumentation in `docs/architecture/vehicle-operational-state-engine-test-matrix.md`.',
+      'Bugfix Prompt 8: ACTIVE + reservationWindowBooking → ACTIVE_RENTED (§15.4 Prio 4 > 5), nicht UNKNOWN.',
+      'Keine neue Produktfunktion; reine Unit-Tests ohne Datenbank.',
+    ],
+    reason:
+      'Prompt 9/43: vollständige Testmatrix für die zentrale Vehicle Operational State Engine vor Query-/Mapper-Änderungen.',
+    previousBehavior:
+      'Characterization-Tests in builder.spec/engine.spec; gleichzeitiges ACTIVE+Window fälschlich als BOOKING_STATE_INCONSISTENT behandelt.',
+    details:
+      '49 Tests grün (`npm test --testPathPattern=vehicle-operational-state`), `npx tsc --noEmit` grün. Verbleibende Randfälle in Testmatrix-Dokument.',
+    affectsArchitecture: true,
+    module: 'Vehicles',
+    createdAt: '2026-07-15T22:30:00.000Z',
+  },
+  {
     id: 'vehicle-operational-state-v2-priority-v49474-2026-07-15',
     version: '4.9.474',
     title: 'V4.9.474 — Fleet Status: kanonische V2-Prioritätslogik (Prompt 8/43)',
