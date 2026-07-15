@@ -54,6 +54,27 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-07-15T07:55:00.000Z',
   },
   {
+    id: 'generated-document-versioning-schema-2026-07-15',
+    version: '4.9.473',
+    title: 'Schema: GeneratedDocument Versionierung + Generierungszustand (additiv)',
+    summary: [
+      'Migration `20260715190000_generated_document_versioning_generation_state`: neue Spalten auf `generated_documents` für Version, Generierungsstatus, Fehler, Versuche, Retry, Trigger.',
+      'Partielle Unique-Indizes nur für versionierte Zeilen (`version_number IS NOT NULL`) — Legacy-Daten unberührt.',
+      'Trigger `generated_documents_invoice_org_check`: invoice_id muss zur gleichen organization_id gehören.',
+      '`OrgInvoice.generatedDocumentId` und bestehende FKs unverändert; kein Backfill in Migration.',
+      'Konstanten `DOCUMENT_GENERATION_STATUS` / `DOCUMENT_GENERATION_TRIGGER_SOURCE` in `documents.constants.ts`.',
+    ],
+    reason:
+      'ADR V4.9.472 verlangt persistente Versionierung und Generierungszustände — Schema-Erweiterung vor Business-Logik-Anpassung.',
+    previousBehavior:
+      'Version nur zur Laufzeit aus createdAt; Generierungsfehler teils in metadata/in-memory; keine DB-Constraints für Version oder Org-Invoice-Match.',
+    details:
+      'Siehe `architecture/INVOICE_DOCUMENT_RELATION_CANONICAL_MODEL_ADR_2026-07-15.md`. Nächster Schritt: Backfill `version_number` + Write-Pfad in Services.',
+    affectsArchitecture: true,
+    module: 'Invoices',
+    createdAt: '2026-07-15T19:50:00.000Z',
+  },
+  {
     id: 'invoice-document-relation-adr-2026-07-15',
     version: '4.9.472',
     title: 'ADR — Kanonisches Zielmodell Rechnung ↔ Generierte Dokumente',

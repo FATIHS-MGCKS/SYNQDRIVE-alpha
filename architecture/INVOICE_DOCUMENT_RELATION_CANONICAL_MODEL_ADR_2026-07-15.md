@@ -417,3 +417,18 @@ CREATE UNIQUE INDEX CONCURRENTLY IF NOT EXISTS
 | Audit (read-only) | `backend/scripts/ops/audit-invoice-document-links.ts` |
 | Backfill (optional) | `backend/scripts/ops/backfill-invoice-document-links.ts` |
 | Schema | `backend/prisma/schema.prisma` (`OrgInvoice`, `GeneratedDocument`, `BookingDocumentBundle`) |
+| Schema-Migration (Phase 1) | `backend/prisma/migrations/20260715190000_generated_document_versioning_generation_state/` |
+
+---
+
+## 13. Schema-Umsetzung Phase 1 (2026-07-15)
+
+Additive Migration `20260715190000_generated_document_versioning_generation_state` — **kein Backfill**, Legacy `generatedDocumentId` unverändert.
+
+Neue `GeneratedDocument`-Spalten: `version_number`, `generation_status`, `generation_error_code`, `last_error_message`, `generation_attempt_count` (default 0), `last_generation_attempt_at`, `next_retry_at`, `triggered_by_user_id`, `triggered_by_source`.
+
+Constraints (nur für `version_number IS NOT NULL`): Unique `(org, invoice, document_type, version_number)`; partial unique ein aktives Doc pro `(org, invoice, document_type)` wenn `status NOT IN (VOID, FAILED)`.
+
+Trigger: `generated_documents_invoice_org_check` — `invoice_id` muss `org_invoices.organization_id` matchen.
+
+**Nächster Schritt (Phase 2):** Services befüllen Version/Generation-Felder; Backfill-Skript für `version_number` auf historischen Zeilen.

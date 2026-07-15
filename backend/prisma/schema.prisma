@@ -4463,6 +4463,25 @@ model GeneratedDocument {
   sentAt             DateTime?    @map("sent_at")
   signedAt           DateTime?    @map("signed_at")
   voidedAt           DateTime?    @map("voided_at")
+  /// Monotonic version per invoice + documentType (null on legacy rows until backfill).
+  versionNumber            Int?      @map("version_number")
+  /// Generation pipeline state (orthogonal to document lifecycle `status`).
+  /// Values: IDLE | PENDING | PROCESSING | SUCCEEDED | FAILED
+  generationStatus         String?   @map("generation_status")
+  /// Machine-readable failure class (e.g. RENDER_ERROR, STORAGE_ERROR).
+  generationErrorCode      String?   @map("generation_error_code")
+  /// Last generation error message (user-facing or technical).
+  lastErrorMessage         String?   @map("last_error_message")
+  /// Total generation attempts including failures.
+  generationAttemptCount   Int       @default(0) @map("generation_attempt_count")
+  /// Timestamp of the most recent generation attempt.
+  lastGenerationAttemptAt  DateTime? @map("last_generation_attempt_at")
+  /// Optional scheduled retry for workers/backoff.
+  nextRetryAt              DateTime? @map("next_retry_at")
+  /// Actor who triggered generation (may differ from generatedByUserId on retries).
+  triggeredByUserId        String?   @map("triggered_by_user_id")
+  /// Trigger source: USER | SYSTEM | BUNDLE | INVOICE_PANEL | REGENERATE
+  triggeredBySource        String?   @map("triggered_by_source")
   metadata           Json?
   snapshot           Json?
   createdAt          DateTime     @default(now()) @map("created_at")
@@ -4479,6 +4498,10 @@ model GeneratedDocument {
   @@index([invoiceId])
   @@index([documentType])
   @@index([status])
+  @@index([organizationId, invoiceId, documentType], map: "generated_documents_org_invoice_doc_type_idx")
+  @@index([organizationId, invoiceId, documentType, versionNumber], map: "generated_documents_org_invoice_doc_type_version_idx")
+  @@index([generationStatus], map: "generated_documents_generation_status_idx")
+  @@index([nextRetryAt], map: "generated_documents_next_retry_at_idx")
   @@map("generated_documents")
 }
 
