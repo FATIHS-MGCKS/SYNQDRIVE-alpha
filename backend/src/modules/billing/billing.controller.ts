@@ -40,6 +40,9 @@ import { BillingAdminService } from './billing-admin.service';
 
 import { BillingSummaryService } from './billing-summary.service';
 import { TenantSubscriptionOverviewService } from './tenant-subscription-overview.service';
+import { TenantBillingInvoicesService } from './tenant-billing-invoices.service';
+import { TenantBillingPaymentsService } from './tenant-billing-payments.service';
+import { TenantBillingPaymentMethodsService } from './tenant-billing-payment-methods.service';
 
 import { BillableVehiclesService } from './billable-vehicles.service';
 
@@ -95,6 +98,12 @@ import {
 
 } from './dto/billing.dto';
 
+import { TenantInvoiceQueryDto } from './dto/tenant-billing-invoices.dto';
+import {
+  TenantCreateSetupIntentDto,
+  TenantCustomerPortalDto,
+} from './dto/tenant-billing-payment-methods.dto';
+
 
 
 @Controller()
@@ -116,6 +125,12 @@ export class BillingController {
     private readonly summaryService: BillingSummaryService,
 
     private readonly subscriptionOverviewService: TenantSubscriptionOverviewService,
+
+    private readonly tenantInvoicesService: TenantBillingInvoicesService,
+
+    private readonly tenantPaymentsService: TenantBillingPaymentsService,
+
+    private readonly tenantPaymentMethodsService: TenantBillingPaymentMethodsService,
 
     private readonly billableVehiclesService: BillableVehiclesService,
 
@@ -269,7 +284,7 @@ export class BillingController {
 
     @Query('orgId') orgId: string | undefined,
 
-    @Query() query: PaginationParams,
+    @Query() query: TenantInvoiceQueryDto,
 
     @Req() req: any,
 
@@ -277,7 +292,73 @@ export class BillingController {
 
     const scoped = resolveOrgScope(req?.user, orgId);
 
-    return this.billingService.findInvoices(scoped, query);
+    return this.tenantInvoicesService.listInvoices(scoped, query);
+
+  }
+
+
+
+  @Get('billing/invoices/:invoiceId')
+
+  @RequirePermission('billing', 'read')
+
+  async getInvoiceDetail(
+
+    @Param('invoiceId') invoiceId: string,
+
+    @Query('orgId') orgId: string | undefined,
+
+    @Req() req: any,
+
+  ) {
+
+    const scoped = resolveOrgScope(req?.user, orgId);
+
+    return this.tenantInvoicesService.getInvoiceDetail(scoped, invoiceId);
+
+  }
+
+
+
+  @Get('billing/invoices/:invoiceId/hosted')
+
+  @RequirePermission('billing', 'read')
+
+  async getInvoiceHostedUrl(
+
+    @Param('invoiceId') invoiceId: string,
+
+    @Query('orgId') orgId: string | undefined,
+
+    @Req() req: any,
+
+  ) {
+
+    const scoped = resolveOrgScope(req?.user, orgId);
+
+    return this.tenantInvoicesService.getHostedInvoiceUrl(scoped, invoiceId);
+
+  }
+
+
+
+  @Get('billing/invoices/:invoiceId/pdf')
+
+  @RequirePermission('billing', 'read')
+
+  async getInvoicePdfUrl(
+
+    @Param('invoiceId') invoiceId: string,
+
+    @Query('orgId') orgId: string | undefined,
+
+    @Req() req: any,
+
+  ) {
+
+    const scoped = resolveOrgScope(req?.user, orgId);
+
+    return this.tenantInvoicesService.getInvoicePdfUrl(scoped, invoiceId);
 
   }
 
@@ -299,21 +380,7 @@ export class BillingController {
 
     const scoped = resolveOrgScope(req?.user, orgId);
 
-    const invoice = await this.prisma.billingInvoice.findUnique({
-
-      where: { id: invoiceId },
-
-      select: { id: true, subscription: { select: { organizationId: true } } },
-
-    });
-
-    if (!invoice || invoice.subscription.organizationId !== scoped) {
-
-      throw new NotFoundException('Invoice not found');
-
-    }
-
-    return this.paymentLedgerService.getInvoicePaymentLedger(invoiceId);
+    return this.tenantPaymentsService.getInvoicePaymentHistory(scoped, invoiceId);
 
   }
 
@@ -431,7 +498,7 @@ export class BillingController {
 
     const scoped = resolveOrgScope(req?.user, orgId);
 
-    return this.stripePreparedService.listPaymentMethods(scoped);
+    return this.tenantPaymentMethodsService.listPaymentMethods(scoped);
 
   }
 
@@ -451,7 +518,7 @@ export class BillingController {
 
     const scoped = resolveOrgScope(req?.user, orgId);
 
-    return this.stripePreparedService.getDefaultPaymentMethod(scoped);
+    return this.tenantPaymentMethodsService.getDefaultPaymentMethod(scoped);
 
   }
 
@@ -465,7 +532,7 @@ export class BillingController {
 
     @Query('orgId') orgId: string | undefined,
 
-    @Body() body: StripeCustomerPortalDto,
+    @Body() body: TenantCustomerPortalDto,
 
     @Req() req: any,
 
@@ -473,7 +540,7 @@ export class BillingController {
 
     const scoped = resolveOrgScope(req?.user, orgId);
 
-    return this.stripePreparedService.createCustomerPortalSession(scoped, body?.returnUrl);
+    return this.tenantPaymentMethodsService.createCustomerPortalSession(scoped, body?.returnUrl);
 
   }
 
@@ -487,7 +554,7 @@ export class BillingController {
 
     @Query('orgId') orgId: string | undefined,
 
-    @Body() body: CreateSetupIntentDto,
+    @Body() body: TenantCreateSetupIntentDto,
 
     @Req() req: any,
 
@@ -495,7 +562,7 @@ export class BillingController {
 
     const scoped = resolveOrgScope(req?.user, orgId);
 
-    return this.stripePreparedService.createSetupIntent(scoped, body?.paymentMethodType);
+    return this.tenantPaymentMethodsService.createSetupIntent(scoped, body?.paymentMethodType);
 
   }
 
@@ -537,7 +604,7 @@ export class BillingController {
 
     const scoped = resolveOrgScope(req?.user, orgId);
 
-    return this.stripePreparedService.setDefaultPaymentMethod(scoped, paymentMethodId);
+    return this.tenantPaymentMethodsService.setDefaultPaymentMethod(scoped, paymentMethodId);
 
   }
 
@@ -559,7 +626,7 @@ export class BillingController {
 
     const scoped = resolveOrgScope(req?.user, orgId);
 
-    return this.stripePreparedService.detachPaymentMethod(scoped, paymentMethodId);
+    return this.tenantPaymentMethodsService.detachPaymentMethod(scoped, paymentMethodId);
 
   }
 

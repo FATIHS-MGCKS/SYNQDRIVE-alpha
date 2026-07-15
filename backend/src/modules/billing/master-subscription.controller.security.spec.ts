@@ -17,12 +17,16 @@ describe('MasterSubscriptionController security characterization', () => {
     createDraft: jest.fn(),
     pause: jest.fn(),
   };
+  const subscriptionOverview = { getOverview: jest.fn() };
 
   let controller: MasterSubscriptionController;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    controller = new MasterSubscriptionController(subscriptionAdmin as never);
+    controller = new MasterSubscriptionController(
+      subscriptionAdmin as never,
+      subscriptionOverview as never,
+    );
   });
 
   it('applies RolesGuard, PermissionsGuard and MasterBillingGuard', () => {

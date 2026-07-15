@@ -28,8 +28,12 @@ describe('BillingController security characterization', () => {
       'getBillableVehicles',
       'getNextInvoicePreview',
       'getSubscriptionOverview',
-      'findSubscriptions',
       'findInvoices',
+      'getInvoiceDetail',
+      'getInvoiceHostedUrl',
+      'getInvoicePdfUrl',
+      'getInvoicePayments',
+      'findSubscriptions',
       'findSubscriptionById',
       'previewUsage',
       'listUsageSnapshots',
@@ -116,6 +120,21 @@ describe('BillingController tenant org isolation characterization', () => {
   };
   const summaryService = { getSummary: jest.fn(), getNextInvoicePreview: jest.fn() };
   const subscriptionOverviewService = { getOverview: jest.fn() };
+  const tenantInvoicesService = {
+    listInvoices: jest.fn(),
+    getInvoiceDetail: jest.fn(),
+    getHostedInvoiceUrl: jest.fn(),
+    getInvoicePdfUrl: jest.fn(),
+  };
+  const tenantPaymentsService = { getInvoicePaymentHistory: jest.fn() };
+  const tenantPaymentMethodsService = {
+    listPaymentMethods: jest.fn(),
+    getDefaultPaymentMethod: jest.fn(),
+    createCustomerPortalSession: jest.fn(),
+    createSetupIntent: jest.fn(),
+    setDefaultPaymentMethod: jest.fn(),
+    detachPaymentMethod: jest.fn(),
+  };
   const pricebookService = {};
   const usageService = {};
   const adminService = {};
@@ -139,6 +158,9 @@ describe('BillingController tenant org isolation characterization', () => {
       adminService as never,
       summaryService as never,
       subscriptionOverviewService as never,
+      tenantInvoicesService as never,
+      tenantPaymentsService as never,
+      tenantPaymentMethodsService as never,
       billableVehiclesService as never,
       stripePreparedService as never,
       paymentLedgerService as never,
@@ -237,5 +259,24 @@ describe('BillingController tenant org isolation characterization', () => {
       }),
     ).rejects.toBeInstanceOf(ForbiddenException);
     expect(subscriptionOverviewService.getOverview).not.toHaveBeenCalled();
+  });
+
+  it('scopes invoice detail to JWT org for tenant users', async () => {
+    tenantInvoicesService.getInvoiceDetail.mockResolvedValue({ id: 'inv-1' });
+
+    await controller.getInvoiceDetail('inv-1', undefined, {
+      user: { platformRole: 'USER', organizationId: 'org-a' },
+    });
+
+    expect(tenantInvoicesService.getInvoiceDetail).toHaveBeenCalledWith('org-a', 'inv-1');
+  });
+
+  it('rejects tenant spoofing orgId on invoice detail', async () => {
+    await expect(
+      controller.getInvoiceDetail('inv-1', 'org-b', {
+        user: { platformRole: 'USER', organizationId: 'org-a' },
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenException);
+    expect(tenantInvoicesService.getInvoiceDetail).not.toHaveBeenCalled();
   });
 });
