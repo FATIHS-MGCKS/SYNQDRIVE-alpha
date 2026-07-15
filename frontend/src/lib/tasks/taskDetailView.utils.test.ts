@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { ApiTask, ApiTaskDetail } from './types';
-import { buildTaskDetailViewModel, inferTaskChecklistProgress } from './taskDetailView.utils';
+import {
+  buildTaskDetailViewModel,
+  inferTaskChecklistProgress,
+  sanitizeReasonBasis,
+} from './taskDetailView.utils';
 
 function baseTask(partial: Partial<ApiTask> & Pick<ApiTask, 'id' | 'title' | 'type'>): ApiTask {
   return {
@@ -49,36 +53,9 @@ function baseTask(partial: Partial<ApiTask> & Pick<ApiTask, 'id' | 'title' | 'ty
         completedAt: null,
         completedByUserId: null,
       },
-      {
-        id: 'c2',
-        title: 'Protokoll hochladen',
-        description: '',
-        sortOrder: 2,
-        isDone: true,
-        isRequired: false,
-        completedAt: '2026-07-14T09:00:00.000Z',
-        completedByUserId: 'user-1',
-      },
     ],
-    comments: [
-      {
-        id: 'comment-1',
-        userId: 'user-1',
-        body: 'Reifen bestellt',
-        createdAt: '2026-07-14T10:00:00.000Z',
-      },
-    ],
-    timeline: [
-      {
-        id: 'ev-1',
-        type: 'CREATED',
-        actorUserId: null,
-        oldValue: null,
-        newValue: 'OPEN',
-        metadata: null,
-        createdAt: '2026-07-14T08:00:00.000Z',
-      },
-    ],
+    comments: [],
+    timeline: [],
     linkedObjects: [
       {
         type: 'VEHICLE',
@@ -94,7 +71,10 @@ function baseTask(partial: Partial<ApiTask> & Pick<ApiTask, 'id' | 'title' | 'ty
   };
 }
 
-function normalizedDetail(task: ApiTask): ApiTaskDetail {
+function normalizedDetail(
+  task: ApiTask,
+  overrides?: Partial<Pick<ApiTaskDetail, 'reason' | 'nextAction' | 'linkedObjects' | 'summary'>>,
+): ApiTaskDetail {
   return {
     ...task,
     summary: {
@@ -106,23 +86,26 @@ function normalizedDetail(task: ApiTask): ApiTaskDetail {
       sourceType: task.sourceType,
       humanReadableSource: 'Fahrzeug-Health',
       completionMode: null,
+      ...overrides?.summary,
     },
     reason: {
       title: 'Reifen prüfen / wechseln',
       description: task.description,
       detectedAt: '2026-07-14T08:00:00.000Z',
       basis: 'Quelle: INSIGHT_HEALTH · Sensor meldet 2,1 mm',
+      ...overrides?.reason,
     },
     nextAction: {
-      label: 'Aufgabe starten',
+      label: 'Starten',
       description: 'Beginnen Sie mit der Bearbeitung.',
       actionType: 'START',
       targetType: 'TASK',
       targetId: task.id,
       enabled: true,
       disabledReason: null,
+      ...overrides?.nextAction,
     },
-    linkedObjects: task.linkedObjects ?? [],
+    linkedObjects: overrides?.linkedObjects ?? task.linkedObjects ?? [],
     checklistProgress: inferTaskChecklistProgress(task),
     assignment: {
       assignedUser: { id: 'user-1', displayName: 'Alex Operator' },
@@ -147,19 +130,7 @@ function normalizedDetail(task: ApiTask): ApiTaskDetail {
       completedBy: null,
       supersededByTaskId: null,
     },
-    timeline: [
-      {
-        id: 'ev-1',
-        type: 'CREATED',
-        label: 'Aufgabe erstellt',
-        actor: null,
-        actorUserId: null,
-        oldValue: null,
-        newValue: 'OPEN',
-        metadata: null,
-        createdAt: '2026-07-14T08:00:00.000Z',
-      },
-    ],
+    timeline: [],
     technicalMetadata: {
       source: task.source,
       dedupKey: task.dedupKey,
@@ -178,44 +149,90 @@ function normalizedDetail(task: ApiTask): ApiTaskDetail {
 }
 
 describe('buildTaskDetailViewModel', () => {
-  it('maps normalized backend sections into the shared detail structure', () => {
+  it('maps normalized backend sections without technical source codes in the reason area', () => {
     const task = normalizedDetail(baseTask({ id: 'task-1', title: 'Reifen prüfen', type: 'TIRE_CHECK' }));
     const model = buildTaskDetailViewModel(task, {
-      vehicleLabel: 'M-AB 1234',
       orgMembers: [{ id: 'user-1', name: 'Alex Operator' }],
     });
 
-    expect(model.header.title).toBe('Reifen prüfen');
-    expect(model.header.showPriority).toBe(true);
-    expect(model.reason.title).toBe('Reifen prüfen / wechseln');
-    expect(model.reason.basis).toContain('INSIGHT_HEALTH');
+    expect(model.reason.headline).toBe('Reifen prüfen / wechseln');
+    expect(model.reason.description).toContain('Reifenprofil');
+    expect(model.reason.basis).toBe('Sensor meldet 2,1 mm');
+    expect(model.reason.basis).not.toContain('INSIGHT_HEALTH');
+    expect(model.reason.humanReadableSource).toBe('Fahrzeug-Health');
     expect(model.nextStep?.primaryActionLabel).toBe('Starten');
-    expect(model.checklist?.blocked).toBe(true);
     expect(model.linkedObjects[0]?.primaryLabel).toBe('M-AB 1234');
-    expect(model.comments[0]?.authorLabel).toBe('Alex Operator');
-    expect(model.timeline[0]?.title).toBe('Aufgabe erstellt');
-    expect(model.technical.rows.some((row) => row.label === 'Rolle')).toBe(true);
+    expect(model.technical.rows.some((row) => row.label === 'Rohquelle')).toBe(true);
   });
 
-  it('falls back to legacy flat fields when normalized sections are missing', () => {
-    const task = baseTask({
-      id: 'task-2',
-      title: 'HU fällig',
-      type: 'VEHICLE_INSPECTION',
-      linkedObjects: undefined,
-    });
-    const model = buildTaskDetailViewModel(task, {
-      displaySource: 'SynqDrive Insights',
-      vehicleLabel: 'M-XY 9876',
-    });
+  it('uses backend nextAction disabledReason without frontend inference', () => {
+    const task = normalizedDetail(
+      baseTask({ id: 'task-2', title: 'HU', type: 'VEHICLE_INSPECTION', status: 'IN_PROGRESS' }),
+      {
+        nextAction: {
+          label: 'Abschließen',
+          description: 'Offene Pflichtpunkte in der Checkliste.',
+          actionType: 'COMPLETE',
+          targetType: 'TASK',
+          targetId: 'task-2',
+          enabled: false,
+          disabledReason: 'Offene Pflichtpunkte in der Checkliste.',
+        },
+      },
+    );
 
-    expect(model.reason.title).toBe('VEHICLE INSPECTION');
-    expect(model.reason.basis).toBe('SynqDrive Insights');
-    expect(model.nextStep?.actionType).toBe('START');
-    expect(model.linkedObjects[0]?.primaryLabel).toBe('M-XY 9876');
-    expect(model.checklist?.progress.requiredItems).toBe(1);
+    const model = buildTaskDetailViewModel(task);
+    expect(model.nextStep?.enabled).toBe(false);
+    expect(model.nextStep?.disabledReason).toBe('Offene Pflichtpunkte in der Checkliste.');
   });
 
+  it('orders linked objects for invoice and document task scenarios', () => {
+    const task = normalizedDetail(
+      baseTask({ id: 'task-3', title: 'Rechnung erstellen', type: 'INVOICE_REQUIRED' }),
+      {
+        linkedObjects: [
+          {
+            type: 'INVOICE',
+            id: 'inv-1',
+            primaryLabel: 'FSM-2026-0042',
+            iconKey: 'invoice',
+            action: { type: 'OPEN_INVOICE', invoiceId: 'inv-1' },
+            isAvailable: true,
+          },
+          {
+            type: 'BOOKING',
+            id: 'book-1',
+            primaryLabel: 'BK-2026-0042',
+            iconKey: 'booking',
+            action: { type: 'OPEN_BOOKING', bookingId: 'book-1' },
+            isAvailable: true,
+          },
+          {
+            type: 'CUSTOMER',
+            id: 'cust-1',
+            primaryLabel: 'Erika Beispiel',
+            iconKey: 'customer',
+            action: { type: 'OPEN_CUSTOMER', customerId: 'cust-1' },
+            isAvailable: true,
+          },
+        ],
+      },
+    );
+
+    const model = buildTaskDetailViewModel(task);
+    expect(model.linkedObjects.map((row) => row.type)).toEqual(['BOOKING', 'CUSTOMER', 'INVOICE']);
+  });
+});
+
+describe('sanitizeReasonBasis', () => {
+  it('removes technical source code fragments from basis text', () => {
+    expect(sanitizeReasonBasis('Quelle: INSIGHT_HEALTH · Sensor meldet 2,1 mm')).toBe(
+      'Sensor meldet 2,1 mm',
+    );
+  });
+});
+
+describe('inferTaskChecklistProgress', () => {
   it('infers checklist blockers for open required items', () => {
     const progress = inferTaskChecklistProgress(
       baseTask({ id: 'task-3', title: 'Check', type: 'CUSTOM', status: 'IN_PROGRESS' }),

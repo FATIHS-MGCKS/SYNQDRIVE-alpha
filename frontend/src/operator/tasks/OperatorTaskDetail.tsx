@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { api, type ApiTask } from '../../lib/api';
-import { buildTaskDetailViewModel, TaskDetailShell } from '../../lib/tasks';
+import { buildTaskDetailViewModel, isNormalizedTaskDetail, TaskDetailShell, useOperatorTaskLinkedObjectNavigation, useTaskLinkedObjectNavigator } from '../../lib/tasks';
 import { useRentalOrg } from '../../rental/RentalContext';
-import { useFleetVehicles } from '../../rental/FleetContext';
 import {
   isActiveTaskStatus,
   isTerminalTaskStatus,
@@ -22,7 +21,6 @@ interface Props {
 
 export function OperatorTaskDetail({ taskId, initialTask, onTaskUpdated, focusComment, layout = 'tab' }: Props) {
   const { orgId } = useRentalOrg();
-  const { fleetVehicles } = useFleetVehicles();
   const [task, setTask] = useState<ApiTask | null>(initialTask ?? null);
   const [loading, setLoading] = useState(!initialTask);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -67,17 +65,15 @@ export function OperatorTaskDetail({ taskId, initialTask, onTaskUpdated, focusCo
     }
   }, [initialTask, taskId]);
 
-  const vehicle = task?.vehicleId
-    ? fleetVehicles.find((entry) => entry.id === task.vehicleId)
-    : undefined;
+  const operatorNavigation = useOperatorTaskLinkedObjectNavigation();
+  const navigateLinkedObject = useTaskLinkedObjectNavigator(operatorNavigation, {
+    taskVehicleId: task?.vehicleId ?? null,
+  });
 
   const detailModel = useMemo(() => {
-    if (!task) return null;
-    return buildTaskDetailViewModel(task, {
-      vehicleLabel: vehicle?.license ?? undefined,
-      vehicleModel: [vehicle?.make, vehicle?.model].filter(Boolean).join(' ') || undefined,
-    });
-  }, [task, vehicle]);
+    if (!task || !isNormalizedTaskDetail(task)) return null;
+    return buildTaskDetailViewModel(task);
+  }, [task]);
 
   const handleComplete = async () => {
     if (!task) return;
@@ -190,6 +186,7 @@ export function OperatorTaskDetail({ taskId, initialTask, onTaskUpdated, focusCo
           density="mobile"
           bodyProps={{
             onPrimaryAction: handlePrimaryAction,
+            onLinkedObjectClick: navigateLinkedObject,
             checklistDisabled: !active || mutating,
             onChecklistToggle: (itemId, isDone) => void toggleChecklist(task.id, itemId, isDone),
             commentDraft,

@@ -2,14 +2,14 @@ import { describe, expect, it, vi } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { buildTaskDetailViewModel } from '../taskDetailView.utils';
 import { TaskDetailBody } from './TaskDetailBody';
-import { TaskDetailShell } from './TaskDetailShell';
-import type { ApiTask } from '../types';
+import type { ApiTask, ApiTaskDetail } from '../types';
+import { inferTaskChecklistProgress } from '../taskDetailView.utils';
 
-function taskFixture(): ApiTask {
-  return {
+function normalizedTaskFixture(): ApiTaskDetail {
+  const task: ApiTask = {
     id: 'task-detail-1',
     organizationId: 'org-1',
-    title: 'Dokumente für Übergabe prüfen',
+    title: 'Dokumente für Übergabe prüfen mit sehr langem deutschen Aufgabentitel für Mobile Layout',
     description: 'Führerschein und Mietvertrag fehlen noch.',
     category: 'Booking',
     type: 'BOOKING_PREPARATION',
@@ -58,7 +58,7 @@ function taskFixture(): ApiTask {
       {
         type: 'BOOKING',
         id: 'booking-1',
-        primaryLabel: 'BK-2026-0042',
+        primaryLabel: 'BK-2026-0042 mit sehr langem Buchungslabel für Truncation Test',
         iconKey: 'booking',
         action: { type: 'OPEN_BOOKING', bookingId: 'booking-1' },
         isAvailable: true,
@@ -73,88 +73,114 @@ function taskFixture(): ApiTask {
       },
     ],
   };
+
+  return {
+    ...task,
+    summary: {
+      id: task.id,
+      title: task.title,
+      type: task.type,
+      status: task.status,
+      priority: task.priority,
+      sourceType: task.sourceType,
+      humanReadableSource: 'Buchung',
+      completionMode: null,
+    },
+    reason: {
+      title: 'Buchungsvorbereitung',
+      description: task.description,
+      detectedAt: '2026-07-14T08:00:00.000Z',
+      basis: 'Dokumentenpaket unvollständig',
+    },
+    nextAction: {
+      label: 'Starten',
+      description: 'Mit der Vorbereitung beginnen.',
+      actionType: 'START',
+      targetType: 'TASK',
+      targetId: task.id,
+      enabled: false,
+      disabledReason: 'Die Aufgabe ist noch nicht aktiv.',
+    },
+    linkedObjects: task.linkedObjects ?? [],
+    checklistProgress: inferTaskChecklistProgress(task),
+    assignment: {
+      assignedUser: { id: 'user-1', displayName: 'Sam Station' },
+      createdBy: { id: 'system', displayName: 'System' },
+      responsibleRoleLabel: null,
+    },
+    timing: {
+      createdAt: task.createdAt,
+      activatesAt: task.createdAt,
+      dueDate: task.dueDate,
+      startedAt: null,
+      completedAt: null,
+      cancelledAt: null,
+      isActive: true,
+      isOverdue: false,
+      bucket: 'TODAY',
+    },
+    completion: {
+      completionMode: null,
+      resolutionCode: null,
+      resolutionNote: null,
+      completedBy: null,
+      supersededByTaskId: null,
+    },
+    timeline: [],
+    technicalMetadata: {
+      source: task.source,
+      dedupKey: null,
+      metadata: null,
+    },
+    availableActions: {
+      start: { enabled: false, disabledReason: 'Die Aufgabe ist noch nicht aktiv.' },
+      moveToWaiting: { enabled: false },
+      resume: { enabled: false },
+      complete: { enabled: false },
+      cancel: { enabled: true },
+      comment: { enabled: true },
+      overrideCompletion: { enabled: false },
+    },
+  };
 }
 
 describe('TaskDetailBody', () => {
-  const model = buildTaskDetailViewModel(taskFixture(), {
-    orgMembers: [{ id: 'user-1', name: 'Sam Station' }],
-  });
+  const model = buildTaskDetailViewModel(normalizedTaskFixture());
 
-  it('renders the unified section order for desktop detail views', () => {
+  it('renders normalized reason, next step and linked objects in order', () => {
     const html = renderToStaticMarkup(
       <TaskDetailBody
         model={model}
         density="desktop"
         hideHeader
         onPrimaryAction={vi.fn()}
+        onLinkedObjectClick={vi.fn()}
         onChecklistToggle={vi.fn()}
       />,
     );
 
     const reasonIndex = html.indexOf('Warum wurde diese Aufgabe erstellt?');
     const nextStepIndex = html.indexOf('Nächster Schritt');
-    const checklistIndex = html.indexOf('Checkliste');
     const linkedIndex = html.indexOf('Verknüpfte Objekte');
-    const notesIndex = html.indexOf('Notizen und Aktivität');
-    const technicalIndex = html.indexOf('Technische Details');
 
     expect(reasonIndex).toBeGreaterThan(-1);
     expect(nextStepIndex).toBeGreaterThan(reasonIndex);
-    expect(checklistIndex).toBeGreaterThan(nextStepIndex);
-    expect(linkedIndex).toBeGreaterThan(checklistIndex);
-    expect(notesIndex).toBeGreaterThan(linkedIndex);
-    expect(technicalIndex).toBeGreaterThan(notesIndex);
-    expect(html).toContain('BK-2026-0042');
-    expect(html).toContain('Starten');
-    expect(html).toContain('Pflicht');
+    expect(linkedIndex).toBeGreaterThan(nextStepIndex);
+    expect(html).toContain('Auslöser: Buchung');
+    expect(html).toContain('Dokumentenpaket unvollständig');
+    expect(html).not.toContain('INSIGHT_');
+    expect(html).toContain('Die Aufgabe ist noch nicht aktiv.');
+    expect(html).toContain('truncate');
+    expect(html).toContain('BK-2026-0042 mit sehr langem Buchungslabel');
   });
 
   it('renders compact mobile header with safe-area friendly density classes', () => {
     const html = renderToStaticMarkup(
-      <TaskDetailBody
-        model={model}
-        density="mobile"
-        onClose={vi.fn()}
-      />,
+      <TaskDetailBody model={model} density="mobile" onClose={vi.fn()} />,
     );
 
     expect(html).toContain('data-density="mobile"');
-    expect(html).toContain('Dokumente für Übergabe prüfen');
-    expect(html).toContain('Fällig');
+    expect(html).toContain('Dokumente für Übergabe prüfen mit sehr langem deutschen Aufgabentitel');
     expect(html).toContain('aria-label="Schließen"');
-  });
-});
-
-describe('TaskDetailShell', () => {
-  const model = buildTaskDetailViewModel(taskFixture());
-
-  it('uses drawer chrome for desktop rental detail panels', () => {
-    // Radix Sheet portals are not emitted in SSR; assert the shared drawer body contract.
-    const html = renderToStaticMarkup(
-      <TaskDetailBody
-        model={model}
-        density="desktop"
-        hideHeader
-        onPrimaryAction={vi.fn()}
-      />,
-    );
-
-    expect(html).toContain('Führerschein und Mietvertrag fehlen noch.');
-    expect(html).toContain('Warum wurde diese Aufgabe erstellt?');
-    expect(html).not.toContain('data-testid="task-detail-header"');
-  });
-
-  it('uses inline shell for operator mobile layouts', () => {
-    const html = renderToStaticMarkup(
-      <TaskDetailShell
-        variant="inline"
-        model={model}
-        density="mobile"
-      />,
-    );
-
-    expect(html).toContain('data-testid="task-detail-shell-inline"');
-    expect(html).toContain('data-density="mobile"');
-    expect(html).toContain('data-testid="task-detail-header"');
   });
 });

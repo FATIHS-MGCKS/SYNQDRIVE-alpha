@@ -67,6 +67,10 @@ import {
   useVehicleOverviewSummary,
 } from './components/vehicle-detail';
 import type { ServiceCenterNavState } from './lib/service-center-navigation';
+import {
+  RentalEntityNavigationProvider,
+  type RentalEntityNavigationValue,
+} from './context/RentalEntityNavigationContext';
 
 // Views that render the vehicle detail header (incl. <VehicleConnectionBadge>).
 // The live-telemetry binder must cover the same set so the Online/Offline +
@@ -193,6 +197,7 @@ function RentalAppContent() {
   // konsumiert das Feld in einem useEffect und setzt anschliessend
   // `setPendingBookingDetailId(null)` über den Reset-Callback zurück.
   const [pendingBookingDetailId, setPendingBookingDetailId] = useState<string | null>(null);
+  const [pendingInvoiceDetailId, setPendingInvoiceDetailId] = useState<string | null>(null);
   const [supportUnreadCount, setSupportUnreadCount] = useState(0);
   const [helpCenterAttempted, setHelpCenterAttempted] = useState(
     () => typeof sessionStorage !== 'undefined' && sessionStorage.getItem('support_help_center_attempted') === '1',
@@ -480,6 +485,61 @@ function RentalAppContent() {
     setCurrentView('fleet');
   }, []);
 
+  const rentalEntityNavigation = useMemo<RentalEntityNavigationValue>(
+    () => ({
+      openVehicleById: (vehicleId) => {
+        const match = fleetVehicles.find((vehicle) => vehicle.id === vehicleId);
+        if (match) {
+          setSelectedVehicle(match);
+          setCurrentView('overview');
+          return;
+        }
+        toast.info('Fahrzeug konnte nicht geöffnet werden.');
+      },
+      openBookingById: (bookingId) => {
+        setPendingBookingDetailId(bookingId);
+        setCurrentView('bookings');
+      },
+      openCustomerById: (customerId) => {
+        setDetailCustomer({ id: customerId });
+        setCurrentView('customer-detail');
+      },
+      openInvoiceById: (invoiceId) => {
+        setPendingInvoiceDetailId(invoiceId);
+        setFinanceTab('invoices');
+        setCurrentView('invoices');
+      },
+      openDocumentById: (_documentId, options) => {
+        if (options?.vehicleId) {
+          const match = fleetVehicles.find((vehicle) => vehicle.id === options.vehicleId);
+          if (match) setSelectedVehicle(match);
+        }
+        setCurrentView('documents');
+      },
+      openAlertById: (_alertId, options) => {
+        if (options?.vehicleId) {
+          const match = fleetVehicles.find((vehicle) => vehicle.id === options.vehicleId);
+          if (match) setSelectedVehicle(match);
+        }
+        setCurrentView('health-errors');
+      },
+      openServiceCaseById: (_serviceCaseId, options) => {
+        openServiceCenter({
+          vehicleId: options?.vehicleId ?? selectedVehicle?.id,
+          tab: 'tasks',
+        });
+      },
+      openFineById: () => {
+        toast.info('Bußgelder können derzeit nur in der Verwaltung geöffnet werden.');
+      },
+      openVendorById: (vendorId) => {
+        setDetailVendorId(vendorId);
+        setCurrentView('vendor-detail');
+      },
+    }),
+    [fleetVehicles, openServiceCenter, selectedVehicle?.id],
+  );
+
   /** Central view router — maps legacy views to the new IA. */
   const handleViewChange = (view: string) => {
     if (view === 'fleet-condition') {
@@ -552,6 +612,7 @@ function RentalAppContent() {
   })();
 
   return (
+    <RentalEntityNavigationProvider value={rentalEntityNavigation}>
     <HandoverProvider isDarkMode={isDarkMode}>
     <AppShell
       variant="rental"
@@ -929,6 +990,8 @@ function RentalAppContent() {
             isDarkMode={isDarkMode}
             activeTab={currentView as FinanceTab}
             onTabChange={(tab) => { setFinanceTab(tab); handleViewChange(tab); }}
+            initialInvoiceId={pendingInvoiceDetailId}
+            onConsumeInitialInvoiceId={() => setPendingInvoiceDetailId(null)}
             invoiceNavigation={{
               onOpenCustomer: (customerId) => {
                 setDetailCustomer({ id: customerId });
@@ -1174,6 +1237,7 @@ function RentalAppContent() {
 
     </AppShell>
     </HandoverProvider>
+    </RentalEntityNavigationProvider>
   );
 }
 

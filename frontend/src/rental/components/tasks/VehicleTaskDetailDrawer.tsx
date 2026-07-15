@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../../../components/patterns';
 import { api, type ApiTask } from '../../../lib/api';
-import { buildTaskDetailViewModel, TaskDetailShell } from '../../../lib/tasks';
+import { buildTaskDetailViewModel, isNormalizedTaskDetail, TaskDetailShell, useRentalTaskLinkedObjectNavigation, useTaskLinkedObjectNavigator } from '../../../lib/tasks';
 import type { VehicleData } from '../../data/vehicles';
 import {
   formatTaskDate,
@@ -15,12 +15,9 @@ import {
 import { mapApiPriority, vehicleTaskPriorityLabel } from '../../lib/task-display.utils';
 import {
   deriveTaskBlockingBadge,
-  deriveTaskSourceBadge,
-  taskSourceBadgeLabel,
 } from '../../lib/task-operator.utils';
 import {
   TaskBlockingBadgePill,
-  TaskSourceBadgePill,
 } from './VehicleTaskActionCenter';
 import { HealthTaskContextPanel } from '../health/HealthTaskContextPanel';
 import { Icon } from '../ui/Icon';
@@ -131,14 +128,19 @@ export function VehicleTaskDetailDrawer({
     return orgMembers.find((m) => m.id === detail.assignedUserId)?.name ?? detail.assignedUserId;
   }, [detail?.assignedUserId, orgMembers]);
 
+  const rentalNavigation = useRentalTaskLinkedObjectNavigation();
+  const navigateLinkedObject = useTaskLinkedObjectNavigator(rentalNavigation, {
+    taskVehicleId: detail?.vehicleId ?? vehicle?.id ?? null,
+    onNavigated: () => onOpenChange(false),
+  });
+
   const detailModel = useMemo(() => {
-    if (!detail) return null;
+    if (!detail || !isNormalizedTaskDetail(detail)) return null;
     return buildTaskDetailViewModel(detail, {
       eyebrow: 'Fahrzeugaufgabe',
       priorityLabel: vehicleTaskPriorityLabel(mapApiPriority(detail.priority)),
       orgMembers,
-      vehicleLabel: vehicle?.license ?? undefined,
-      vehicleModel: [vehicle?.make, vehicle?.model].filter(Boolean).join(' ') || undefined,
+      stationLabel: vehicle?.station || undefined,
     });
   }, [detail, orgMembers, vehicle]);
 
@@ -326,7 +328,6 @@ export function VehicleTaskDetailDrawer({
         )}
 
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <TaskSourceBadgePill label={taskSourceBadgeLabel(deriveTaskSourceBadge(detail))} />
           <TaskBlockingBadgePill badge={deriveTaskBlockingBadge(detail)} />
           <span className="sq-chip sq-tone-neutral text-[10px]">{detail.category || '—'}</span>
         </div>
@@ -433,6 +434,7 @@ export function VehicleTaskDetailDrawer({
         footer={renderFooter()}
         bodyProps={{
           onPrimaryAction: handlePrimaryAction,
+          onLinkedObjectClick: navigateLinkedObject,
           checklistDisabled: mutating || !detail || isTerminalTaskStatus(detail?.status ?? 'DONE'),
           onChecklistToggle: handleChecklistToggle,
           commentDraft,

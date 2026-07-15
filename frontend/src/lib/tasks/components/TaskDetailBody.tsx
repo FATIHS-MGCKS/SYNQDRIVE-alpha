@@ -219,24 +219,27 @@ function TaskDetailReasonSection({
         title="Warum wurde diese Aufgabe erstellt?"
         className="mb-2.5"
       />
-      <p className={cn('font-medium text-foreground', mobile ? 'text-sm' : 'text-[13px]')}>
-        {reason.title}
+      <p className={cn('sq-section-label mb-1.5', mobile ? 'text-xs' : 'text-[11px]')}>
+        {reason.headline}
       </p>
       <p
         className={cn(
-          'mt-1.5 leading-relaxed text-foreground/90',
-          mobile ? 'text-sm' : 'text-[12.5px]',
+          'leading-relaxed text-foreground',
+          mobile ? 'text-sm' : 'text-[13px]',
         )}
       >
         {reason.description}
       </p>
-      {(reason.basis || reason.detectedAtLabel) && (
-        <p className={cn('mt-2 text-muted-foreground', mobile ? 'text-xs' : 'text-[11px]')}>
+      {reason.basis && (
+        <p className={cn('mt-2 text-foreground/85', mobile ? 'text-sm' : 'text-[12.5px]')}>
           {reason.basis}
-          {reason.basis && reason.detectedAtLabel ? ' · ' : ''}
-          {reason.detectedAtLabel ? `Erkannt ${reason.detectedAtLabel}` : ''}
         </p>
       )}
+      <div className={cn('mt-2.5 flex flex-wrap gap-x-2 gap-y-1 text-muted-foreground', mobile ? 'text-xs' : 'text-[11px]')}>
+        {reason.detectedAtLabel && <span>Erkannt am {reason.detectedAtLabel}</span>}
+        {reason.detectedAtLabel && reason.humanReadableSource && <span aria-hidden>·</span>}
+        {reason.humanReadableSource && <span>Auslöser: {reason.humanReadableSource}</span>}
+      </div>
     </section>
   );
 }
@@ -256,38 +259,53 @@ function TaskDetailNextStepSection({
   return (
     <section className="py-4" data-section="next-step">
       <SectionHeader as="label" title="Nächster Schritt" className="mb-2.5" />
-      <p className={cn('font-medium text-foreground', mobile ? 'text-sm' : 'text-[13px]')}>
-        {nextStep.label}
-      </p>
-      {nextStep.description && (
-        <p className={cn('mt-1 text-muted-foreground', mobile ? 'text-xs' : 'text-[12px]')}>
-          {nextStep.description}
+      <div
+        className={cn(
+          'rounded-xl border p-4',
+          nextStep.enabled
+            ? 'border-[color:var(--brand)]/30 bg-[color:var(--brand)]/[0.06]'
+            : 'border-border/70 bg-muted/15',
+        )}
+      >
+        <p className={cn('font-semibold text-foreground', mobile ? 'text-base' : 'text-[15px]')}>
+          {nextStep.label}
         </p>
-      )}
-      {nextStep.primaryActionLabel && (
-        <div className="mt-3">
-          <button
-            type="button"
-            disabled={!nextStep.enabled}
-            onClick={onPrimaryAction}
-            title={nextStep.disabledReason ?? undefined}
-            className={cn(
-              'sq-press inline-flex items-center justify-center rounded-xl border font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50',
-              mobile ? 'min-h-[44px] w-full px-4 text-sm' : 'px-3.5 py-2 text-[12px]',
-              nextStep.enabled
-                ? 'border-[color:var(--brand)]/30 bg-[color:var(--brand)]/10 text-[color:var(--brand-ink)]'
-                : 'border-border bg-muted/30 text-muted-foreground',
+        {nextStep.description && (
+          <p className={cn('mt-1.5 text-muted-foreground', mobile ? 'text-sm' : 'text-[12.5px]')}>
+            {nextStep.description}
+          </p>
+        )}
+        {nextStep.primaryActionLabel && (
+          <div className="mt-3.5">
+            <button
+              type="button"
+              disabled={!nextStep.enabled}
+              onClick={onPrimaryAction}
+              title={nextStep.disabledReason ?? undefined}
+              className={cn(
+                'sq-press inline-flex w-full items-center justify-center rounded-xl border font-semibold transition-colors disabled:cursor-not-allowed',
+                mobile ? 'min-h-[48px] px-4 text-sm' : 'min-h-[40px] px-4 text-[13px]',
+                nextStep.enabled
+                  ? 'border-[color:var(--brand)] bg-[color:var(--brand)] text-white shadow-sm disabled:opacity-50'
+                  : 'border-border bg-muted/40 text-muted-foreground opacity-80',
+              )}
+            >
+              {nextStep.primaryActionLabel}
+            </button>
+            {!nextStep.enabled && nextStep.disabledReason && (
+              <p
+                className={cn(
+                  'mt-2 rounded-lg border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/[0.06] px-3 py-2 text-[color:var(--status-watch)]',
+                  mobile ? 'text-xs' : 'text-[11px]',
+                )}
+                role="status"
+              >
+                {nextStep.disabledReason}
+              </p>
             )}
-          >
-            {nextStep.primaryActionLabel}
-          </button>
-          {!nextStep.enabled && nextStep.disabledReason && (
-            <p className={cn('mt-1.5 text-[color:var(--status-watch)]', mobile ? 'text-xs' : 'text-[11px]')}>
-              {nextStep.disabledReason}
-            </p>
-          )}
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </section>
   );
 }
@@ -416,7 +434,8 @@ function TaskDetailLinkedObjectsSection({
         <ul className="space-y-1.5">
           {linkedObjects.map((object) => {
             const Icon = linkedObjectIcon(object.type);
-            const interactive = Boolean(onObjectClick) && object.isAvailable;
+            const interactive = Boolean(onObjectClick);
+            const navigable = interactive && object.isAvailable;
 
             return (
               <li key={`${object.type}-${object.id}`}>
@@ -424,11 +443,12 @@ function TaskDetailLinkedObjectsSection({
                   type="button"
                   disabled={!interactive}
                   onClick={() => onObjectClick?.(object)}
+                  title={[object.primaryLabel, object.secondaryLabel].filter(Boolean).join(' · ')}
                   className={cn(
                     'flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors',
                     object.isAvailable
-                      ? 'border-border bg-muted/10 hover:bg-muted/25'
-                      : 'border-border/50 bg-muted/5 opacity-80',
+                      ? 'border-border bg-muted/10 hover:bg-muted/25 sq-press'
+                      : 'border-border/50 bg-muted/5',
                     !interactive && 'cursor-default',
                   )}
                 >
@@ -436,10 +456,20 @@ function TaskDetailLinkedObjectsSection({
                     <Icon className="h-4 w-4" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className={cn('block font-medium text-foreground', mobile ? 'text-sm' : 'text-[12px]')}>
+                    <span
+                      className={cn(
+                        'block truncate font-medium text-foreground',
+                        mobile ? 'text-sm' : 'text-[12px]',
+                      )}
+                    >
                       {object.primaryLabel}
                     </span>
-                    <span className={cn('block text-muted-foreground', mobile ? 'text-xs' : 'text-[11px]')}>
+                    <span
+                      className={cn(
+                        'block truncate text-muted-foreground',
+                        mobile ? 'text-xs' : 'text-[11px]',
+                      )}
+                    >
                       {object.typeLabel}
                       {object.secondaryLabel ? ` · ${object.secondaryLabel}` : ''}
                       {object.statusLabel ? ` · ${object.statusLabel}` : ''}
@@ -450,7 +480,7 @@ function TaskDetailLinkedObjectsSection({
                       </span>
                     )}
                   </span>
-                  {interactive && <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
+                  {navigable && <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />}
                 </button>
               </li>
             );

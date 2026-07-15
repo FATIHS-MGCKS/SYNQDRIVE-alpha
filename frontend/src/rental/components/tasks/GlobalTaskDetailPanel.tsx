@@ -6,7 +6,10 @@ import { api, type ApiTask } from '../../../lib/api';
 import { getStoredUser } from '../../../lib/auth';
 import {
   buildTaskDetailViewModel,
+  isNormalizedTaskDetail,
   TaskDetailShell,
+  useRentalTaskLinkedObjectNavigation,
+  useTaskLinkedObjectNavigator,
 } from '../../../lib/tasks';
 import {
   isActiveTaskStatus,
@@ -14,7 +17,6 @@ import {
   taskRequiresResolutionNote,
 } from '../../lib/task-detail.utils';
 import type { OrgMemberRef, TaskListRow } from '../../lib/task-list.utils';
-import { resolveCreatorName, resolveDisplaySource } from '../../lib/task-list.utils';
 import { mapApiPriority, vehicleTaskPriorityLabel } from '../../lib/task-display.utils';
 import {
   canAssignTasks,
@@ -94,18 +96,18 @@ export function GlobalTaskDetailPanel({
   const currentMember = orgMembers.find((m) => m.id === currentUserId) ?? null;
   const mayAssign = canAssignTasks(userRole, canManageTasks, canWriteTasks, currentMember, stationId);
 
+  const rentalNavigation = useRentalTaskLinkedObjectNavigation();
+  const navigateLinkedObject = useTaskLinkedObjectNavigator(rentalNavigation, {
+    taskVehicleId: detail?.vehicleId ?? null,
+    onNavigated: () => onOpenChange(false),
+  });
+
   const detailModel = useMemo(() => {
-    if (!detail) return null;
+    if (!detail || !isNormalizedTaskDetail(detail)) return null;
     return buildTaskDetailViewModel(detail, {
-      subtitle: taskRow
-        ? `Quelle: ${taskRow.displaySource}`
-        : resolveDisplaySource(detail.sourceType, detail.source),
-      displaySource: taskRow?.displaySource ?? resolveDisplaySource(detail.sourceType, detail.source),
       category: taskRow?.category ?? detail.category,
       priorityLabel: vehicleTaskPriorityLabel(mapApiPriority(detail.priority)),
       orgMembers,
-      vehicleLabel: taskRow?.vehicleLicense || undefined,
-      vehicleModel: taskRow?.vehicleModel || undefined,
       stationLabel: taskRow?.station || undefined,
     });
   }, [detail, orgMembers, taskRow]);
@@ -228,6 +230,7 @@ export function GlobalTaskDetailPanel({
         footer={footer}
         bodyProps={{
           onPrimaryAction: handlePrimaryAction,
+          onLinkedObjectClick: navigateLinkedObject,
           checklistDisabled: mutating || !detail || isTerminalTaskStatus(detail.status),
           onChecklistToggle: (itemId, isDone) => {
             if (!orgId || !detail) return;
@@ -265,15 +268,6 @@ export function GlobalTaskDetailPanel({
               >
                 Detail aktualisieren
               </button>
-            </div>
-          ) : null,
-          technicalExtra: detail ? (
-            <div className="mt-3 space-y-1.5 border-t border-border/40 pt-3 text-[10px] text-muted-foreground">
-              <p>
-                Verantwortlich: {responsibility?.displayName ?? '—'}
-                {responsibility?.hint ? ` (${responsibility.hint})` : ''}
-              </p>
-              <p>Erstellt von: {resolveCreatorName(detail, orgMembers)}</p>
             </div>
           ) : null,
         }}

@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { toast } from 'sonner';
 
 import { PageHeader } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
+import { api } from '../../../lib/api';
 import { useRentalOrg } from '../../RentalContext';
 import { Icon } from '../ui/Icon';
 import { CreateInvoiceDialog } from './CreateInvoiceDialog';
@@ -21,9 +23,16 @@ export type InvoicePageView = 'list' | 'create' | 'upload' | 'detail';
 interface InvoicesPageProps {
   isDarkMode: boolean;
   navigation?: InvoiceRelationNavigation;
+  initialInvoiceId?: string | null;
+  onConsumeInitialInvoiceId?: () => void;
 }
 
-export function InvoicesPage({ isDarkMode, navigation }: InvoicesPageProps) {
+export function InvoicesPage({
+  isDarkMode,
+  navigation,
+  initialInvoiceId,
+  onConsumeInitialInvoiceId,
+}: InvoicesPageProps) {
   const { orgId } = useRentalOrg();
   const theme = useMemo(() => getInvoiceThemeClasses(isDarkMode), [isDarkMode]);
 
@@ -39,6 +48,21 @@ export function InvoicesPage({ isDarkMode, navigation }: InvoicesPageProps) {
       setView('detail');
     });
   };
+
+  useEffect(() => {
+    if (!orgId || !initialInvoiceId) return;
+    void (async () => {
+      try {
+        const full = await api.invoices.get(orgId, initialInvoiceId);
+        setSelectedInvoice(full);
+        setView('detail');
+      } catch {
+        toast.error('Rechnung konnte nicht geöffnet werden.');
+      } finally {
+        onConsumeInitialInvoiceId?.();
+      }
+    })();
+  }, [initialInvoiceId, onConsumeInitialInvoiceId, orgId]);
 
   if (view === 'detail' && selectedInvoice) {
     return (
