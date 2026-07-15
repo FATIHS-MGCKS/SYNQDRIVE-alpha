@@ -56,13 +56,16 @@ import {
   EMPTY_BOOKING_CONTEXT,
   resolveFleetFuelPercent,
 } from './domain/vehicle-operational-state.builder';
+import {
+  assembleBookingContextMap,
+  unavailableBookingContextMap,
+} from './domain/vehicle-booking-context.assembler';
+import {
+  formatBookingCustomerLabel,
+  type VehicleBookingQueryRow,
+} from './domain/vehicle-booking-context.types';
+import type { VehicleStateEngineBookingStateInput } from './domain/vehicle-operational-state.engine.types';
 import type {
-  FleetMaintenanceReasonCode,
-  FleetVehicleBookingContextDto,
-  FleetVehicleMaintenanceContextDto,
-} from './domain/vehicle-operational-state.types';
-
-export type {
   FleetMaintenanceReasonCode,
   FleetVehicleBookingContextDto,
   FleetVehicleMaintenanceContextDto,
@@ -239,54 +242,38 @@ export class VehiclesService {
   }
 
   /**
-   * V4.6.84 — Single canonical booking context resolver for the Fleet
-   * page, Dashboard fleet-status tabs and any other surface that needs
-   * to render "who is this vehicle reserved for / rented to". Returns
-   * one entry per vehicle that has at least one PENDING / CONFIRMED /
-   * ACTIVE booking, with an ACTIVE booking always winning over a future
-   * reservation.
+   * V4.9.476 — Canonical booking context for fleet operational state.
    *
-   * Booking lifecycle we respect:
-   *   1. ACTIVE (regardless of endDate) → Active Rented; when endDate is
-   *      in the past we additionally flag `activeIsOverdue = true` so
-   *      the operator sees the overdue state until the return handover
-   *      is recorded.
-   *   2. PENDING / CONFIRMED with `endDate >= now` → Reserved. When
-   *      `startDate < now` we additionally flag `reservedIsOverdue = true`
-   *      (the planned pickup time has passed — no-show / late backlog).
-   *   3. Maintenance is resolved separately from `Vehicle.status`; this
-   *      helper never downgrades a maintenance vehicle.
-   *
-   * All booking fields are resolved server-side so the frontend never
-   * has to stitch customer names, pickup/return times or km allowance
-   * from multiple endpoints.
+   * Loads tenant-scoped bookings in one query (+ batched stations), then
+   * assembles normalized engine input: activeBooking, reservationWindowBooking,
+   * nextBooking, futureBookingCount, dataQualityState.
    */
   private async buildBookingContextMap(
     organizationId: string,
     vehicleIds: string[],
-  ): Promise<Map<string, FleetVehicleBookingContextDto>> {
-    const map = new Map<string, FleetVehicleBookingContextDto>();
-    if (vehicleIds.length === 0) return map;
+    organizationTimezone: string = DEFAULT_ORGANIZATION_TIMEZONE,
+  ): Promise<Map<string, VehicleStateEngineBookingStateInput>> {
+    if (vehicleIds.length === 0) return new Map();
 
-    const now = new Date();
+    const evaluationAt = new Date();
+    let queryFailed = false;
     const rows = await this.prisma.booking
       .findMany({
         where: {
           organizationId,
           vehicleId: { in: vehicleIds },
           OR: [
-            {
-              status: 'ACTIVE',
-            },
+            { status: 'ACTIVE' },
             {
               status: { in: ['PENDING', 'CONFIRMED'] as BookingStatus[] },
-              endDate: { gte: now },
+              endDate: { gte: evaluationAt },
             },
           ],
         },
         select: {
           id: true,
           vehicleId: true,
+          organizationId: true,
           status: true,
           startDate: true,
           endDate: true,
@@ -294,30 +281,21 @@ export class VehiclesService {
           kmDriven: true,
           pickupStationId: true,
           returnStationId: true,
-          customer: { select: { firstName: true, lastName: true, company: true } },
+          customer: {
+            select: { firstName: true, lastName: true, company: true },
+          },
         },
-        orderBy: { startDate: 'asc' },
+        orderBy: [{ startDate: 'asc' }, { id: 'asc' }],
       })
-      .catch(
-        () =>
-          [] as Array<{
-            id: string;
-            vehicleId: string;
-            status: BookingStatus;
-            startDate: Date;
-            endDate: Date;
-            kmIncluded: number | null;
-            kmDriven: number | null;
-            pickupStationId: string | null;
-            returnStationId: string | null;
-            customer: { firstName: string; lastName: string; company: string | null };
-          }>,
-      );
+      .catch(() => {
+        queryFailed = true;
+        return [];
+      });
 
-    // Resolve station names in a single batched query (Booking has no
-    // direct `pickupStation` / `returnStation` relation — only the FK
-    // scalar columns exist). This keeps the helper tenant-safe and
-    // avoids N+1.
+    if (queryFailed) {
+      return unavailableBookingContextMap(vehicleIds);
+    }
+
     const stationIds = Array.from(
       new Set(
         rows
@@ -336,67 +314,32 @@ export class VehiclesService {
       for (const s of stations) stationMap.set(s.id, s.name);
     }
 
-    const fmtCustomer = (c: {
-      firstName: string;
-      lastName: string;
-      company: string | null;
-    }): string => {
-      const personal = `${c.firstName} ${c.lastName}`.trim();
-      if (c.company && c.company.trim().length > 0) {
-        return personal ? `${personal} · ${c.company}` : c.company;
-      }
-      return personal || c.company || '';
-    };
-
-    const empty = (): FleetVehicleBookingContextDto => ({
-      ...EMPTY_BOOKING_CONTEXT,
-    });
-
-    for (const r of rows) {
-      const existing = map.get(r.vehicleId) ?? empty();
-      if (r.status === 'ACTIVE') {
-        // ACTIVE always wins. If multiple ACTIVE rows exist (unexpected),
-        // keep the earliest — matches `orderBy: { startDate: 'asc' }`.
-        if (existing.activeBookingId) continue;
-        existing.activeBookingId = r.id;
-        existing.activeCustomerName = fmtCustomer(r.customer);
-        // V4.6.94 — booking startDate is the canonical "rental began"
-        // marker for the time-progress bar. Pickup-protocol timestamps
-        // (BookingsService.findHandoverProtocolForBooking) may differ
-        // and are recorded separately.
-        existing.activeStartAt = r.startDate.toISOString();
-        existing.activeReturnAt = r.endDate.toISOString();
-        existing.activeReturnStationName = r.returnStationId
-          ? stationMap.get(r.returnStationId) ?? null
-          : null;
-        existing.activeKmIncluded = r.kmIncluded ?? null;
-        existing.activeKmDriven = r.kmDriven ?? null;
-        existing.activeIsOverdue = r.endDate.getTime() < now.getTime();
-        map.set(r.vehicleId, existing);
-        continue;
-      }
-      // PENDING / CONFIRMED → Reserved slot. Keep the earliest upcoming
-      // one (first by startDate); skip if vehicle already has ACTIVE or
-      // a reservation registered.
-      if (existing.activeBookingId || existing.reservedBookingId) {
-        map.set(r.vehicleId, existing);
-        continue;
-      }
-      existing.reservedBookingId = r.id;
-      existing.reservedCustomerName = fmtCustomer(r.customer);
-      existing.reservedPickupAt = r.startDate.toISOString();
-      // V4.6.94 — Booking endDate exposed so the Reserved card can
-      // render the planned rental duration ("for how long").
-      existing.reservedReturnAt = r.endDate.toISOString();
-      existing.reservedPickupStationName = r.pickupStationId
+    const bookingRows: VehicleBookingQueryRow[] = rows.map((r) => ({
+      id: r.id,
+      vehicleId: r.vehicleId,
+      organizationId: r.organizationId,
+      status: r.status,
+      startDate: r.startDate,
+      endDate: r.endDate,
+      kmIncluded: r.kmIncluded,
+      kmDriven: r.kmDriven,
+      pickupStationId: r.pickupStationId,
+      returnStationId: r.returnStationId,
+      customerLabel: formatBookingCustomerLabel(r.customer),
+      pickupStationName: r.pickupStationId
         ? stationMap.get(r.pickupStationId) ?? null
-        : null;
-      // V4.6.85 — planned pickup is in the past but endDate hasn't
-      // expired yet → reservation is overdue (no-show risk).
-      existing.reservedIsOverdue = r.startDate.getTime() < now.getTime();
-      map.set(r.vehicleId, existing);
-    }
-    return map;
+        : null,
+      returnStationName: r.returnStationId
+        ? stationMap.get(r.returnStationId) ?? null
+        : null,
+    }));
+
+    return assembleBookingContextMap({
+      vehicleIds,
+      bookings: bookingRows,
+      evaluationAt,
+      organizationTimezone,
+    });
   }
 
   /**
@@ -557,7 +500,7 @@ export class VehiclesService {
   mapToVehicleData(
     v: any,
     tripStateMap?: Map<string, { state: any }>,
-    bookingContextMap?: Map<string, FleetVehicleBookingContextDto>,
+    bookingContextMap?: Map<string, VehicleStateEngineBookingStateInput>,
     pickupOdoByBooking?: Map<string, number>,
     fleetContextOptions?: {
       organizationId: string;
@@ -596,11 +539,11 @@ export class VehiclesService {
     // that case because the vehicle has no in-flight booking at that
     // call site; the derivation will fall through the `liveKmDriven`
     // branch safely.
-    const bookingCtx = bookingContextMap?.get(v.id) ?? null;
+    const bookingState = bookingContextMap?.get(v.id) ?? null;
     const fleetCtx = this.deriveFleetStatusContext({
       vehicle: v,
       state,
-      bookingCtx,
+      bookingState,
       pickupOdoByBooking: pickupOdoByBooking ?? new Map(),
       organizationId:
         fleetContextOptions?.organizationId ?? v.organizationId ?? undefined,
@@ -711,7 +654,7 @@ export class VehiclesService {
    * marking every field as required means the TypeScript compiler now
    * flags the mistake at build time instead of at runtime.
    *
-   * Callers MUST pre-compute `bookingCtx` via `buildBookingContextMap`
+   * Callers MUST pre-compute `bookingState` via `buildBookingContextMap`
    * and `pickupOdoByBooking` via `fetchPickupOdometerMap`. Passing an
    * empty map for vehicles without active bookings is correct and safe.
    */
@@ -739,7 +682,7 @@ export class VehiclesService {
       fuelLevelAbsolute?: number | null;
       rawPayloadJson?: unknown;
     } | null;
-    bookingCtx: FleetVehicleBookingContextDto | null;
+    bookingState: VehicleStateEngineBookingStateInput | null;
     pickupOdoByBooking: Map<string, number>;
     organizationId?: string;
     organizationTimezone?: string;
@@ -761,7 +704,7 @@ export class VehiclesService {
         licensePlate: input.vehicle.licensePlate,
         tankCapacityLiters: input.vehicle.tankCapacityLiters,
       },
-      bookingCtx: input.bookingCtx,
+      bookingState: input.bookingState,
       organizationTimezone:
         input.organizationTimezone ?? DEFAULT_ORGANIZATION_TIMEZONE,
       telemetry: input.state,
@@ -849,19 +792,18 @@ export class VehiclesService {
     ]);
 
     const vehicleIds = data.map((v) => v.id);
+    const orgTimezone = await this.resolveOrganizationTimezone(organizationId);
     const [tripStateMap, bookingContextMap] = await Promise.all([
       this.buildTripStateMap(vehicleIds),
-      this.buildBookingContextMap(organizationId, vehicleIds),
+      this.buildBookingContextMap(organizationId, vehicleIds, orgTimezone),
     ]);
     const activeBookingIds = Array.from(bookingContextMap.values())
-      .map((ctx) => ctx.activeBookingId)
+      .map((ctx) => ctx.activeBooking?.id ?? null)
       .filter((id): id is string => !!id);
     const pickupOdoByBooking = await this.fetchPickupOdometerMap(
       organizationId,
       activeBookingIds,
     );
-
-    const orgTimezone = await this.resolveOrganizationTimezone(organizationId);
 
     return buildPaginatedResult(
       data.map((v) =>
@@ -950,25 +892,24 @@ export class VehiclesService {
     });
 
     const vehicleIdsForMap = vehicles.map((v) => v.id);
+    const organizationTimezone =
+      await this.resolveOrganizationTimezone(organizationId);
     const [tripStateMap, bookingContextMap] = await Promise.all([
       this.buildTripStateMap(vehicleIdsForMap),
-      this.buildBookingContextMap(organizationId, vehicleIdsForMap),
+      this.buildBookingContextMap(
+        organizationId,
+        vehicleIdsForMap,
+        organizationTimezone,
+      ),
     ]);
 
-    // V4.6.84 — Live kmDriven for ACTIVE bookings is computed here in
-    // one batched query: pickup-handover odometer per active booking +
-    // vehicle.latestState.odometerKm (already loaded above). Falls back
-    // to `Booking.kmDriven` when the return handover has already
-    // persisted the final value.
     const activeBookingIds = Array.from(bookingContextMap.values())
-      .map((ctx) => ctx.activeBookingId)
+      .map((ctx) => ctx.activeBooking?.id ?? null)
       .filter((id): id is string => !!id);
     const pickupOdoByBooking = await this.fetchPickupOdometerMap(
       organizationId,
       activeBookingIds,
     );
-    const organizationTimezone =
-      await this.resolveOrganizationTimezone(organizationId);
 
     const result: FleetMapVehicleDto[] = vehicles.map((vehicle) => {
       const state = vehicle.latestState;
@@ -986,11 +927,11 @@ export class VehiclesService {
         tripState,
       );
 
-      const bookingCtx = bookingContextMap.get(vehicle.id) ?? null;
+      const bookingState = bookingContextMap.get(vehicle.id) ?? null;
       const fleetCtx = this.deriveFleetStatusContext({
         vehicle: { ...vehicle, organizationId },
         state,
-        bookingCtx,
+        bookingState,
         pickupOdoByBooking,
         organizationId,
         organizationTimezone,
@@ -1071,19 +1012,23 @@ export class VehiclesService {
       include: FULL_VEHICLE_INCLUDE,
     });
     if (!vehicle) return null;
+    const organizationTimezone =
+      await this.resolveOrganizationTimezone(organizationId);
     const [tripStateMap, bookingContextMap] = await Promise.all([
       this.buildTripStateMap([vehicle.id]),
-      this.buildBookingContextMap(organizationId, [vehicle.id]),
+      this.buildBookingContextMap(
+        organizationId,
+        [vehicle.id],
+        organizationTimezone,
+      ),
     ]);
     const activeBookingIds = Array.from(bookingContextMap.values())
-      .map((ctx) => ctx.activeBookingId)
+      .map((ctx) => ctx.activeBooking?.id ?? null)
       .filter((id): id is string => !!id);
     const pickupOdoByBooking = await this.fetchPickupOdometerMap(
       organizationId,
       activeBookingIds,
     );
-    const organizationTimezone =
-      await this.resolveOrganizationTimezone(organizationId);
     return this.mapToVehicleData(
       vehicle,
       tripStateMap,

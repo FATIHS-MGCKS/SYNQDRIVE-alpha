@@ -155,6 +155,13 @@ export function buildVehicleStateEngineInput(
   };
   assertEngineTimezone(context);
 
+  const bookingState =
+    params.bookingState ??
+    mapLegacyBookingDtoToBookingState(params.bookingCtx ?? null, params.vehicle.id, {
+      dataQualityState: params.bookingDataQuality,
+      dataQualityReasons: params.bookingDataQualityReasons,
+    });
+
   return {
     vehicle: {
       id: params.vehicle.id,
@@ -165,14 +172,7 @@ export function buildVehicleStateEngineInput(
       serviceNote: params.vehicle.serviceNote ?? null,
       persistedAt: toIso(params.vehicle.updatedAt),
     },
-    bookingState: mapLegacyBookingDtoToBookingState(
-      params.bookingCtx,
-      params.vehicle.id,
-      {
-        dataQualityState: params.bookingDataQuality,
-        dataQualityReasons: params.bookingDataQualityReasons,
-      },
-    ),
+    bookingState,
     maintenanceState: mapRawStatusToMaintenanceState(params.vehicle.status),
     blockingState: mapRawStatusToBlockingState(params.vehicle.status),
     context,

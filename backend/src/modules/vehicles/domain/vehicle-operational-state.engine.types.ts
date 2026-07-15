@@ -193,7 +193,10 @@ export interface BuildVehicleStateEngineInputParams {
     serviceNote?: string | null;
     updatedAt?: Date | string | null;
   };
-  bookingCtx: FleetVehicleBookingContextDto | null;
+  /** Normalized booking state from `assembleBookingContextMap` (preferred). */
+  bookingState?: VehicleStateEngineBookingStateInput | null;
+  /** @deprecated Legacy flat DTO — use `bookingState` when available. */
+  bookingCtx?: FleetVehicleBookingContextDto | null;
   bookingDataQuality?: DataQualityState;
   bookingDataQualityReasons?: DataQualityReasonCode[];
   organizationTimezone: string;

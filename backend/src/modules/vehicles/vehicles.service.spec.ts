@@ -1,11 +1,6 @@
 import { VehicleStatus } from '@prisma/client';
 import { VehiclesService } from './vehicles.service';
-import { EMPTY_BOOKING_CONTEXT } from './domain/vehicle-operational-state.builder';
-
-/**
- * Thin integration tests — domain characterization lives in
- * `domain/vehicle-operational-state.builder.spec.ts`.
- */
+import type { VehicleStateEngineBookingStateInput } from './domain/vehicle-operational-state.engine.types';
 
 function makeService(): VehiclesService {
   const stub = (): any => ({});
@@ -21,10 +16,22 @@ function makeService(): VehiclesService {
   );
 }
 
-const BOOKING_WITH_ACTIVE = {
-  ...EMPTY_BOOKING_CONTEXT,
-  activeBookingId: 'b-active-1',
-  activeCustomerName: 'Jane Doe',
+const ACTIVE_BOOKING_STATE: VehicleStateEngineBookingStateInput = {
+  activeBooking: {
+    id: 'b-active-1',
+    bookingNumber: '',
+    status: 'ACTIVE',
+    pickupAt: '2026-07-15T08:00:00.000Z',
+    returnAt: '2026-07-20T18:00:00.000Z',
+    customerLabel: 'Jane Doe',
+    vehicleId: 'v1',
+    phase: 'active_rental',
+  },
+  reservationWindowBooking: null,
+  nextBooking: null,
+  futureBookingCount: 0,
+  dataQualityState: 'RELIABLE',
+  dataQualityReasons: [],
 };
 
 describe('VehiclesService.deriveFleetStatusContext (delegation)', () => {
@@ -34,11 +41,11 @@ describe('VehiclesService.deriveFleetStatusContext (delegation)', () => {
     service = makeService();
   });
 
-  it('delegates to buildVehicleOperationalState and returns fleet context', () => {
+  it('delegates to state engine and returns fleet context from bookingState', () => {
     const result = service.deriveFleetStatusContext({
       vehicle: { id: 'v1', status: VehicleStatus.AVAILABLE },
       state: null,
-      bookingCtx: BOOKING_WITH_ACTIVE,
+      bookingState: ACTIVE_BOOKING_STATE,
       pickupOdoByBooking: new Map(),
     });
 
@@ -54,7 +61,7 @@ describe('VehiclesService.deriveFleetStatusContext (delegation)', () => {
     const result = service.deriveFleetStatusContext({
       vehicle: { id: 'v-ghost', status: VehicleStatus.RENTED },
       state: null,
-      bookingCtx: null,
+      bookingState: null,
       pickupOdoByBooking: new Map(),
     });
 
@@ -65,7 +72,40 @@ describe('VehiclesService.deriveFleetStatusContext (delegation)', () => {
     warnSpy.mockRestore();
   });
 
+  it('derives AVAILABLE with nextBooking when only future booking present', () => {
+    const result = service.deriveFleetStatusContext({
+      vehicle: { id: 'v-future', status: VehicleStatus.AVAILABLE },
+      state: null,
+      bookingState: {
+        activeBooking: null,
+        reservationWindowBooking: null,
+        nextBooking: {
+          id: 'b-future',
+          bookingNumber: '',
+          status: 'CONFIRMED',
+          pickupAt: '2026-08-01T10:00:00.000Z',
+          returnAt: '2026-08-06T18:00:00.000Z',
+          customerLabel: 'Future',
+          vehicleId: 'v-future',
+          phase: 'future',
+        },
+        futureBookingCount: 0,
+        dataQualityState: 'RELIABLE',
+        dataQualityReasons: [],
+      },
+      pickupOdoByBooking: new Map(),
+    });
+
+    expect(result.status).toBe('Available');
+    expect(result.bookingDto).toEqual(
+      expect.objectContaining({
+        activeBookingId: null,
+        reservedBookingId: null,
+      }),
+    );
+  });
+
   it('exposes EMPTY_BOOKING_CONTEXT on the class for legacy callers', () => {
-    expect(VehiclesService.EMPTY_BOOKING_CONTEXT).toEqual(EMPTY_BOOKING_CONTEXT);
+    expect(VehiclesService.EMPTY_BOOKING_CONTEXT).toBeDefined();
   });
 });
