@@ -3,7 +3,14 @@ import { BillingDomainEventType } from './billing-domain.events';
 import { sanitizeBillingAuditPayload } from './billing-command';
 
 export const BILLING_OUTBOX_PAYLOAD_VERSION = 1 as const;
-export const BILLING_OUTBOX_DEFAULT_CONSUMER_ID = 'billing.primary' as const;
+export const BILLING_OUTBOX_PRIMARY_CONSUMER_ID = 'billing.primary' as const;
+export const BILLING_OUTBOX_EMAIL_CONSUMER_ID = 'billing.email' as const;
+/** @deprecated use BILLING_OUTBOX_PRIMARY_CONSUMER_ID */
+export const BILLING_OUTBOX_DEFAULT_CONSUMER_ID = BILLING_OUTBOX_PRIMARY_CONSUMER_ID;
+export const BILLING_OUTBOX_DEFAULT_CONSUMER_IDS = [
+  BILLING_OUTBOX_PRIMARY_CONSUMER_ID,
+  BILLING_OUTBOX_EMAIL_CONSUMER_ID,
+] as const;
 export const BILLING_OUTBOX_MAX_RETRIES = 5;
 export const BILLING_OUTBOX_RETRY_BASE_MS = 1_000;
 export const BILLING_OUTBOX_BATCH_SIZE = 25;
@@ -95,4 +102,28 @@ export function resolveSubscriptionLifecycleOutboxEvent(input: {
 
 export function truncateBillingOutboxError(message: string): string {
   return message.slice(0, 500);
+}
+
+/** Event types that trigger a tenant billing notification email. */
+export const BILLING_EMAIL_EVENT_TYPES = new Set<string>([
+  BillingDomainEventType.SUBSCRIPTION_ACTIVATED,
+  BillingDomainEventType.TRIAL_ENDING,
+  BillingDomainEventType.SUBSCRIPTION_CHANGED,
+  BillingDomainEventType.SUBSCRIPTION_CANCEL_SCHEDULED,
+  BillingDomainEventType.SUBSCRIPTION_CANCELLED,
+  BillingDomainEventType.INVOICE_FINALIZED,
+  BillingDomainEventType.PAYMENT_SUCCEEDED,
+  BillingDomainEventType.PAYMENT_FAILED,
+  BillingDomainEventType.PAYMENT_METHOD_MISSING,
+  BillingDomainEventType.INVOICE_OVERDUE,
+  BillingDomainEventType.REFUND_CREATED,
+  BillingDomainEventType.CREDIT_NOTE_CREATED,
+]);
+
+export function isBillingEmailEventType(eventType: string): boolean {
+  return BILLING_EMAIL_EVENT_TYPES.has(eventType);
+}
+
+export function buildBillingEmailIdempotencyKey(outboxIdempotencyKey: string): string {
+  return `billing-email:${outboxIdempotencyKey}`;
 }

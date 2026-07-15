@@ -94,8 +94,7 @@ describe('Outbound email / Resend infrastructure characterization', () => {
   });
 
   describe('billing integration boundary', () => {
-    it('legacy behavior – SaaS billing services do not import Resend/outbound email (prompt 30+)', () => {
-      // Current: invoice.paid webhooks mirror locally only; no platform billing email is sent.
+    it('core billing services do not import Resend directly — email is outbox consumer only', () => {
       const { readFileSync } = require('fs') as typeof import('fs');
       const { resolve } = require('path') as typeof import('path');
       const billingDir = resolve(__dirname, '../billing');
@@ -103,11 +102,18 @@ describe('Outbound email / Resend infrastructure characterization', () => {
         'stripe-webhook.service.ts',
         'stripe-invoice-mirror.service.ts',
         'billing-summary.service.ts',
+        'subscription-lifecycle.service.ts',
+        'billing-payment-ledger.service.ts',
       ];
       for (const file of sources) {
         const content = readFileSync(resolve(billingDir, file), 'utf8');
-        expect(content).not.toMatch(/outbound-email|ResendEmailProvider|InvoiceDocumentEmailService/);
+        expect(content).not.toMatch(/ResendEmailProvider|resend-email\.provider/);
       }
+      const emailConsumer = readFileSync(
+        resolve(billingDir, 'email/billing-email-sender.service.ts'),
+        'utf8',
+      );
+      expect(emailConsumer).toContain('EmailProviderRegistry');
     });
   });
 });

@@ -6,7 +6,7 @@ import {
 } from '@prisma/client';
 import { sanitizeBillingAuditPayload } from './domain/billing-command';
 import {
-  BILLING_OUTBOX_DEFAULT_CONSUMER_ID,
+  BILLING_OUTBOX_DEFAULT_CONSUMER_IDS,
   BILLING_OUTBOX_PAYLOAD_VERSION,
   buildVersionedBillingOutboxPayload,
   sanitizeBillingOutboxPayload,
@@ -64,7 +64,7 @@ export class BillingDomainEventOutboxService {
 
     const consumerIds = input.consumerIds?.length
       ? input.consumerIds
-      : [BILLING_OUTBOX_DEFAULT_CONSUMER_ID];
+      : [...BILLING_OUTBOX_DEFAULT_CONSUMER_IDS];
 
     for (const consumerId of consumerIds) {
       await tx.billingDomainEventOutboxDelivery.create({

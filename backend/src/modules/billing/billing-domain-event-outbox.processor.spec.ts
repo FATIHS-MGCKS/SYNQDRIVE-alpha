@@ -6,7 +6,11 @@ import { BillingDomainEventOutboxService } from './billing-domain-event-outbox.s
 import { BillingDomainEventOutboxRepository } from './billing-domain-event-outbox.repository';
 import { BillingDomainEventOutboxProcessorService } from './billing-domain-event-outbox.processor.service';
 import { BillingDomainEventType } from './domain/billing-domain.events';
-import { BILLING_OUTBOX_MAX_RETRIES } from './domain/billing-outbox';
+import {
+  BILLING_OUTBOX_EMAIL_CONSUMER_ID,
+  BILLING_OUTBOX_MAX_RETRIES,
+  BILLING_OUTBOX_PRIMARY_CONSUMER_ID,
+} from './domain/billing-outbox';
 
 describe('BillingDomainEventOutbox transactional flow', () => {
   let outboxRows: any[];
@@ -151,7 +155,7 @@ describe('BillingDomainEventOutbox transactional flow', () => {
     );
 
     expect(outboxRows).toHaveLength(1);
-    expect(deliveryRows).toHaveLength(1);
+    expect(deliveryRows).toHaveLength(2);
     expect(outboxRows[0].payload).toMatchObject({
       payloadVersion: 1,
       paymentId: 'pay-1',
@@ -196,7 +200,7 @@ describe('BillingDomainEventOutbox transactional flow', () => {
     );
 
     expect(outboxRows).toHaveLength(1);
-    expect(deliveryRows).toHaveLength(1);
+    expect(deliveryRows).toHaveLength(2);
   });
 
   it('delivers event once and marks published', async () => {
@@ -210,13 +214,21 @@ describe('BillingDomainEventOutbox transactional flow', () => {
       }),
     );
 
+    deliveryRows
+      .filter((row) => row.consumerId === BILLING_OUTBOX_EMAIL_CONSUMER_ID)
+      .forEach((row) => {
+        row.status = BillingDomainEventOutboxDeliveryStatus.DELIVERED;
+      });
+
     const claimed = await repository.claimPendingDeliveries(10, 'worker-a');
     const outcome = await processor.processClaimedDelivery(claimed[0]!);
 
     expect(outcome).toBe('delivered');
     expect(publisher.publish).toHaveBeenCalledTimes(1);
     expect(outboxRows[0].status).toBe(BillingDomainEventOutboxStatus.PUBLISHED);
-    expect(deliveryRows[0].status).toBe(BillingDomainEventOutboxDeliveryStatus.DELIVERED);
+    expect(
+      deliveryRows.find((row) => row.consumerId === BILLING_OUTBOX_PRIMARY_CONSUMER_ID)!.status,
+    ).toBe(BillingDomainEventOutboxDeliveryStatus.DELIVERED);
   });
 
   it('does not redeliver already published events', async () => {
@@ -248,15 +260,26 @@ describe('BillingDomainEventOutbox transactional flow', () => {
     );
 
     for (let attempt = 0; attempt < BILLING_OUTBOX_MAX_RETRIES; attempt += 1) {
-      deliveryRows[0].status = BillingDomainEventOutboxDeliveryStatus.PENDING;
-      deliveryRows[0].nextRetryAt = new Date(0);
+      const primaryDelivery = deliveryRows.find(
+        (row) => row.consumerId === BILLING_OUTBOX_PRIMARY_CONSUMER_ID,
+      )!;
+      primaryDelivery.status = BillingDomainEventOutboxDeliveryStatus.PENDING;
+      primaryDelivery.nextRetryAt = new Date(0);
+      deliveryRows
+        .filter((row) => row.consumerId !== BILLING_OUTBOX_PRIMARY_CONSUMER_ID)
+        .forEach((row) => {
+          row.status = BillingDomainEventOutboxDeliveryStatus.DELIVERED;
+        });
       outboxRows[0].status = BillingDomainEventOutboxStatus.FAILED;
       const claimed = await repository.claimPendingDeliveries(1, 'worker-retry');
       if (!claimed[0]) continue;
       await processor.processClaimedDelivery(claimed[0]);
     }
 
-    expect(deliveryRows[0].status).toBe(BillingDomainEventOutboxDeliveryStatus.DEAD_LETTER);
+    const primaryDelivery = deliveryRows.find(
+      (row) => row.consumerId === BILLING_OUTBOX_PRIMARY_CONSUMER_ID,
+    )!;
+    expect(primaryDelivery.status).toBe(BillingDomainEventOutboxDeliveryStatus.DEAD_LETTER);
     expect(outboxRows[0].status).toBe(BillingDomainEventOutboxStatus.DEAD_LETTER);
     expect(publisher.publish.mock.calls.length).toBe(BILLING_OUTBOX_MAX_RETRIES);
   });

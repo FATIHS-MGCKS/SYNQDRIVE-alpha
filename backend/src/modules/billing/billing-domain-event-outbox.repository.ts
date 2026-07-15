@@ -39,7 +39,7 @@ export class BillingDomainEventOutboxRepository {
   async claimPendingDeliveries(
     limit = BILLING_OUTBOX_BATCH_SIZE,
     workerId: string,
-    consumerId = BILLING_OUTBOX_DEFAULT_CONSUMER_ID,
+    consumerId: string = BILLING_OUTBOX_DEFAULT_CONSUMER_ID,
     now = new Date(),
   ): Promise<ClaimedBillingOutboxDelivery[]> {
     const candidates = await this.prisma.billingDomainEventOutboxDelivery.findMany({
@@ -95,26 +95,19 @@ export class BillingDomainEventOutboxRepository {
         },
       });
 
+      await this.syncOutboxStatusFromDeliveries(tx, outboxEventId, now);
+
       const remaining = await tx.billingDomainEventOutboxDelivery.count({
         where: {
           outboxEventId,
-          status: { not: BillingDomainEventOutboxDeliveryStatus.DELIVERED },
+          status: {
+            in: [
+              BillingDomainEventOutboxDeliveryStatus.PENDING,
+              BillingDomainEventOutboxDeliveryStatus.PROCESSING,
+            ],
+          },
         },
       });
-
-      if (remaining === 0) {
-        await tx.billingDomainEventOutbox.update({
-          where: { id: outboxEventId },
-          data: {
-            status: BillingDomainEventOutboxStatus.PUBLISHED,
-            publishedAt: now,
-            lastError: null,
-            nextRetryAt: null,
-            lockOwner: null,
-            lockedAt: null,
-          },
-        });
-      }
 
       return remaining === 0;
     });
@@ -143,46 +136,63 @@ export class BillingDomainEventOutboxRepository {
             lockedAt: null,
           },
         });
-        await tx.billingDomainEventOutbox.update({
-          where: { id: outboxEventId },
-          data: {
-            status: BillingDomainEventOutboxStatus.DEAD_LETTER,
-            retryCount: nextRetryCount,
-            lastError: safeError,
-            lockOwner: null,
-            lockedAt: null,
-          },
-        });
+        await this.syncOutboxStatusFromDeliveries(tx, outboxEventId, new Date());
       });
       return { outcome: 'dead_letter' as const, retryCount: nextRetryCount };
     }
 
     const nextRetryAt = computeBillingOutboxNextRetryAt(nextRetryCount);
-    await this.prisma.$transaction(async (tx) => {
-      await tx.billingDomainEventOutboxDelivery.update({
-        where: { id: deliveryId },
-        data: {
-          status: BillingDomainEventOutboxDeliveryStatus.PENDING,
-          retryCount: nextRetryCount,
-          nextRetryAt,
-          lastError: safeError,
-          lockOwner: null,
-          lockedAt: null,
-        },
-      });
-      await tx.billingDomainEventOutbox.update({
-        where: { id: outboxEventId },
-        data: {
-          status: BillingDomainEventOutboxStatus.FAILED,
-          retryCount: nextRetryCount,
-          nextRetryAt,
-          lastError: safeError,
-          lockOwner: null,
-          lockedAt: null,
-        },
-      });
+    await this.prisma.billingDomainEventOutboxDelivery.update({
+      where: { id: deliveryId },
+      data: {
+        status: BillingDomainEventOutboxDeliveryStatus.PENDING,
+        retryCount: nextRetryCount,
+        nextRetryAt,
+        lastError: safeError,
+        lockOwner: null,
+        lockedAt: null,
+      },
     });
 
     return { outcome: 'retry' as const, retryCount: nextRetryCount, nextRetryAt };
+  }
+
+  private async syncOutboxStatusFromDeliveries(
+    tx: Prisma.TransactionClient,
+    outboxEventId: string,
+    now: Date,
+  ) {
+    const deliveries = await tx.billingDomainEventOutboxDelivery.findMany({
+      where: { outboxEventId },
+    });
+    const inFlight = deliveries.some(
+      (row) =>
+        row.status === BillingDomainEventOutboxDeliveryStatus.PENDING
+        || row.status === BillingDomainEventOutboxDeliveryStatus.PROCESSING,
+    );
+    if (inFlight) {
+      return;
+    }
+
+    const allDelivered = deliveries.every(
+      (row) => row.status === BillingDomainEventOutboxDeliveryStatus.DELIVERED,
+    );
+    const hasDeadLetter = deliveries.some(
+      (row) => row.status === BillingDomainEventOutboxDeliveryStatus.DEAD_LETTER,
+    );
+
+    await tx.billingDomainEventOutbox.update({
+      where: { id: outboxEventId },
+      data: {
+        status: allDelivered
+          ? BillingDomainEventOutboxStatus.PUBLISHED
+          : hasDeadLetter
+            ? BillingDomainEventOutboxStatus.DEAD_LETTER
+            : BillingDomainEventOutboxStatus.FAILED,
+        publishedAt: allDelivered ? now : null,
+        lockOwner: null,
+        lockedAt: null,
+      },
+    });
   }
 }
