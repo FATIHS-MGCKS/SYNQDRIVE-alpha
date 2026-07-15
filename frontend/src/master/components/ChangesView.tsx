@@ -322,6 +322,47 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     createdAt: '2026-07-14T22:20:00.000Z',
   },
   {
+    id: 'stripe-connect-e2e-deploy-v49457-2026-07-14',
+    version: '4.9.457',
+    title: 'V4.9.457 — Stripe Connect E2E-Fixes: VPS-Deploy + Legacy-Webhook-Bereinigung',
+    summary: [
+      'Formaler VPS-Deploy Release 20260714231005_v4994 (main @ d39397e) — Webhook rawBody + Refund-API-Fix live.',
+      'Health OK; PM2 synqdrive online auf app.synqdrive.eu.',
+      'Ops: 17 UNRESOLVED_ACCOUNT-Webhook-Rows (account.updated ohne Connected-Account-ID) → IGNORED archiviert.',
+      'Connect-Payment-Audit FMS: HIGH=0 (2 MEDIUM legacy fake-PAID unverändert).',
+    ],
+    reason:
+      'E2E-Blocker-Fixes mussten formal auf Production-VPS; Audit HIGH=1 durch Pre-Onboarding-Webhook-Rauschen blockierte Pilot-Freigabe.',
+    previousBehavior:
+      'Hot-Patch auf alter Release; 17 Webhooks UNRESOLVED_ACCOUNT; Audit HIGH=1.',
+    details:
+      'Release 20260714231005_v4994; architecture/STRIPE_CONNECT_E2E_TEST_REPORT_2026-07-14.md; VPS-Ops Webhook-Archivierung.',
+    affectsArchitecture: true,
+    module: 'Payments',
+    createdAt: '2026-07-14T23:15:00.000Z',
+  },
+  {
+    id: 'stripe-connect-e2e-rerun-v49456-2026-07-14',
+    version: '4.9.456',
+    title: 'V4.9.456 — Stripe Connect: Testmode-E2E bestanden (nach Onboarding)',
+    summary: [
+      'Prompt-4 Re-Run nach manuellem Connect-Onboarding: chargesEnabled=true, FMS acct_1TtCNf3ZTEq6a95J ACTIVE.',
+      'Blocker behoben: Connect-Webhook rawBody (HTTP 500), Refund API charge+payment_intent, Invoice-Deposit-Validierung.',
+      'E2E: Buchung 79 998 ct Miete + 50 000 ct Kaution getrennt → Checkout → Zahlung → Webhook → PAID → Teil-/Vollrefund.',
+      'Idempotenz + ungültige Signatur geprüft; Rollback paymentsEnabled=false OK. Urteil: READY FOR INTERNAL PILOT (testmode).',
+    ],
+    reason:
+      'Nach abgeschlossenem Connect-Onboarding sollte der vollständige Testmode-E2E erneut verifiziert werden; zwei Produktionsblocker in Webhook-Ingest und Refund-Pfad gefunden.',
+    previousBehavior:
+      'Erster Prompt-4-Lauf blockiert durch Onboarding/CAPTCHA; Webhooks lieferten 500 wegen fehlendem rawBody.',
+    details:
+      'architecture/STRIPE_CONNECT_E2E_TEST_REPORT_2026-07-14.md, main.ts, stripe-connect-v1.adapter.ts, scripts/ops/stripe-connect-e2e-*.ts.',
+    affectsArchitecture: true,
+    module: 'Payments',
+    createdAt: '2026-07-14T22:35:00.000Z',
+  },
+  },
+  {
     id: 'stripe-connect-e2e-blocked-v49455-2026-07-14',
     version: '4.9.455',
     title: 'V4.9.455 — Stripe Connect: Testmode-E2E blockiert (Onboarding/CAPTCHA)',
