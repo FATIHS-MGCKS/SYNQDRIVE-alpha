@@ -392,6 +392,7 @@ export interface CreateTaskPayload {
   blocksVehicleAvailability?: boolean;
   metadata?: Record<string, unknown>;
   sourceKey?: string;
+  initialNote?: string;
   checklist?: Array<{ title: string; description?: string; sortOrder?: number; isRequired?: boolean }>;
 }
 

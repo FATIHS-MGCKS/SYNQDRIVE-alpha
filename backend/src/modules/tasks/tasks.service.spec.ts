@@ -1804,4 +1804,207 @@ describe('TasksService', () => {
       cancelSpy.mockRestore();
     });
   });
+
+  describe('createManualTask field persistence', () => {
+    function mockCreatedTask(over: Record<string, unknown> = {}) {
+      return baseTask({
+        id: 'created-1',
+        title: 'Vollständige Aufgabe',
+        description: 'Beschreibung',
+        type: 'VEHICLE_SERVICE',
+        priority: 'HIGH',
+        assignedUserId: 'u2',
+        vehicleId: 'veh-1',
+        bookingId: 'book-1',
+        customerId: 'cust-1',
+        invoiceId: 'inv-1',
+        vendorId: 'ven-1',
+        documentId: 'doc-1',
+        serviceCaseId: 'sc-1',
+        dueDate: new Date('2026-08-01T10:00:00.000Z'),
+        activatesAt: new Date('2026-07-20T08:00:00.000Z'),
+        estimatedDurationMinutes: 120,
+        blocksVehicleAvailability: true,
+        metadata: { stationId: 'station-1' },
+        comments: [{ id: 'c1', userId: 'u1', body: 'Erste Notiz', createdAt: new Date() }],
+        checklistItems: [
+          { id: 'cl1', title: 'Pflicht', isDone: false, isRequired: true, sortOrder: 0, description: null, completedAt: null, completedByUserId: null },
+        ],
+        ...over,
+      });
+    }
+
+    beforeEach(() => {
+      prisma.vehicle.findFirst.mockResolvedValue({ id: 'veh-1' });
+      prisma.booking.findFirst.mockResolvedValue({ id: 'book-1' });
+      prisma.customer.findFirst.mockResolvedValue({ id: 'cust-1' });
+      prisma.orgInvoice.findFirst.mockResolvedValue({ id: 'inv-1' });
+      prisma.vendor.findFirst.mockResolvedValue({ id: 'ven-1' });
+      prisma.serviceCase.findFirst.mockResolvedValue({
+        id: 'sc-1',
+        vehicleId: 'veh-1',
+        vendorId: 'ven-1',
+        status: 'OPEN',
+      });
+      prisma.organizationMembership.findFirst.mockResolvedValue({ id: 'm1' });
+      prisma.orgTask.create.mockImplementation(async ({ data }: any) =>
+        baseTask({
+          id: 'created-1',
+          title: data.title,
+          description: data.description,
+          type: data.type,
+          priority: data.priority,
+          assignedUserId: data.assignedUserId,
+          vehicleId: data.vehicleId,
+          bookingId: data.bookingId,
+          customerId: data.customerId,
+          invoiceId: data.invoiceId,
+          vendorId: data.vendorId,
+          documentId: data.documentId,
+          serviceCaseId: data.serviceCaseId,
+          dueDate: data.dueDate,
+          activatesAt: data.activatesAt,
+          estimatedDurationMinutes: data.estimatedDurationMinutes,
+          blocksVehicleAvailability: data.blocksVehicleAvailability,
+          metadata: data.metadata,
+        }),
+      );
+      prisma.orgTask.findFirst.mockImplementation(async () => mockCreatedTask());
+      prisma.taskComment.create.mockResolvedValue({ id: 'comment-1' });
+    });
+
+    it('persists all supported create fields and returns them on read', async () => {
+      await svc.createManualTask(
+        'org1',
+        {
+          title: 'Vollständige Aufgabe',
+          description: 'Beschreibung',
+          type: 'VEHICLE_SERVICE',
+          priority: 'HIGH',
+          assignedUserId: 'u2',
+          vehicleId: 'veh-1',
+          bookingId: 'book-1',
+          customerId: 'cust-1',
+          invoiceId: 'inv-1',
+          vendorId: 'ven-1',
+          documentId: 'doc-1',
+          serviceCaseId: 'sc-1',
+          dueDate: '2026-08-01T10:00:00.000Z',
+          activatesAt: '2026-07-20T08:00:00.000Z',
+          estimatedDurationMinutes: 120,
+          blocksVehicleAvailability: true,
+          metadata: { stationId: 'station-1' },
+          checklist: [{ title: 'Pflicht', isRequired: true }],
+        },
+        'u1',
+      );
+
+      expect(prisma.orgTask.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            title: 'Vollständige Aufgabe',
+            description: 'Beschreibung',
+            type: 'VEHICLE_SERVICE',
+            priority: 'HIGH',
+            assignedUserId: 'u2',
+            vehicleId: 'veh-1',
+            bookingId: 'book-1',
+            customerId: 'cust-1',
+            invoiceId: 'inv-1',
+            vendorId: 'ven-1',
+            documentId: 'doc-1',
+            serviceCaseId: 'sc-1',
+            estimatedDurationMinutes: 120,
+            blocksVehicleAvailability: true,
+            metadata: { stationId: 'station-1' },
+            checklistItems: {
+              create: [{ title: 'Pflicht', description: undefined, sortOrder: 0, isRequired: true }],
+            },
+          }),
+        }),
+      );
+    });
+
+    it('stores initialNote as comment with CREATED context in the same transaction', async () => {
+      await svc.createManualTask(
+        'org1',
+        {
+          title: 'Mit Notiz',
+          type: 'CUSTOM',
+          initialNote: 'Bitte vor Ort prüfen',
+        },
+        'u1',
+      );
+
+      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(prisma.taskComment.create).toHaveBeenCalledWith({
+        data: {
+          taskId: 'created-1',
+          body: 'Bitte vor Ort prüfen',
+          userId: 'u1',
+        },
+      });
+      expect(prisma.taskEvent.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            type: 'COMMENT_ADDED',
+            metadata: expect.objectContaining({
+              context: 'CREATED',
+              commentId: 'comment-1',
+            }),
+          }),
+        }),
+      );
+    });
+
+    it('rejects due date earlier than activation time', async () => {
+      await expect(
+        svc.createManualTask('org1', {
+          title: 'Timing',
+          type: 'CUSTOM',
+          activatesAt: '2026-08-10T10:00:00.000Z',
+          dueDate: '2026-08-01T10:00:00.000Z',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+      expect(prisma.orgTask.create).not.toHaveBeenCalled();
+    });
+
+    it('rejects checklist items without title', async () => {
+      await expect(
+        svc.createManualTask('org1', {
+          title: 'Checklist',
+          type: 'CUSTOM',
+          checklist: [{ title: '   ' }],
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('rejects linking a completed service case', async () => {
+      prisma.serviceCase.findFirst.mockResolvedValue({
+        id: 'sc-done',
+        vehicleId: 'veh-1',
+        vendorId: null,
+        status: 'COMPLETED',
+      });
+
+      await expect(
+        svc.createManualTask('org1', {
+          title: 'Service',
+          type: 'CUSTOM',
+          serviceCaseId: 'sc-done',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('rejects vehicle from another organization', async () => {
+      prisma.vehicle.findFirst.mockResolvedValue(null);
+      await expect(
+        svc.createManualTask('org1', {
+          title: 'Fremd',
+          type: 'CUSTOM',
+          vehicleId: 'veh-other',
+        }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+  });
 });

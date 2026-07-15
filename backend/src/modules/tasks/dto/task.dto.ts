@@ -8,6 +8,7 @@ import {
   IsIn,
   IsISO8601,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
   MaxLength,
@@ -38,6 +39,7 @@ export function trimEmptyToUndefined({ value }: { value: unknown }): unknown {
 
 export class ChecklistItemDto {
   @IsString()
+  @IsNotEmpty()
   @MaxLength(300)
   title!: string;
 
@@ -130,6 +132,17 @@ export class CreateTaskDto {
   @Transform(trimEmptyToUndefined)
   @IsString()
   serviceCaseId?: string;
+
+  @IsOptional()
+  @Transform(trimEmptyToUndefined)
+  @IsString()
+  invoiceId?: string;
+
+  /** Optional first comment stored together with task creation. */
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
+  initialNote?: string;
 
   /** Operational station reference — persisted in task metadata. */
   @IsOptional()

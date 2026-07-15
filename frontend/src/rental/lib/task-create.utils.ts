@@ -49,3 +49,20 @@ export const VIEW_PRIORITY_TO_API: Record<TaskPriorityView, NonNullable<CreateTa
   High: 'HIGH',
   Critical: 'CRITICAL',
 };
+
+export const TASK_TYPE_LABELS: Record<ApiTaskType, string> = {
+  VEHICLE_SERVICE: 'Fahrzeug-Service',
+  VEHICLE_INSPECTION: 'Inspektion / HU',
+  TIRE_CHECK: 'Reifenprüfung',
+  BRAKE_CHECK: 'Bremsenprüfung',
+  BATTERY_CHECK: 'Batterieprüfung',
+  VEHICLE_CLEANING: 'Fahrzeugreinigung',
+  BOOKING_PREPARATION: 'Buchungsvorbereitung',
+  BOOKING_PICKUP: 'Fahrzeugübergabe',
+  BOOKING_RETURN: 'Fahrzeugrückgabe',
+  DOCUMENT_REVIEW: 'Dokumentenprüfung',
+  INVOICE_REQUIRED: 'Rechnung erforderlich',
+  CUSTOMER_FOLLOWUP: 'Kunden-Nachverfolgung',
+  REPAIR: 'Reparatur',
+  CUSTOM: 'Individuelle Aufgabe',
+};

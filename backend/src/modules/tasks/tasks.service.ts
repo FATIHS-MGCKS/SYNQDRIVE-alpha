@@ -76,6 +76,7 @@ export interface CreateManualTaskInput extends TaskLinks {
   metadata?: Prisma.InputJsonValue;
   checklist?: Array<{ title: string; description?: string; sortOrder?: number; isRequired?: boolean }>;
   blocksVehicleAvailability?: boolean;
+  initialNote?: string;
 }
 
 export interface AutoResolveTaskInput {
@@ -1005,12 +1006,16 @@ export class TasksService {
     provided?: Array<{ title: string; description?: string; sortOrder?: number; isRequired?: boolean }>,
   ): Array<{ title: string; description?: string; sortOrder: number; isRequired: boolean }> | undefined {
     if (provided && provided.length > 0) {
-      return provided.map((item, index) => ({
-        title: item.title,
-        description: item.description,
-        sortOrder: item.sortOrder ?? index,
-        isRequired: item.isRequired ?? false,
-      }));
+      return provided.map((item, index) => {
+        const title = item.title?.trim();
+        if (!title) throw new BadRequestException('Checklist item title is required');
+        return {
+          title,
+          description: item.description,
+          sortOrder: item.sortOrder ?? index,
+          isRequired: item.isRequired ?? false,
+        };
+      });
     }
     const template = checklistForType(type);
     if (template.length === 0) return undefined;
@@ -1022,54 +1027,117 @@ export class TasksService {
     }));
   }
 
+  private assertManualTaskTiming(input: {
+    dueDate?: string | Date | null;
+    activatesAt?: string | Date | null;
+  }): void {
+    if (!input.dueDate || !input.activatesAt) return;
+    const due = new Date(input.dueDate);
+    const activates = new Date(input.activatesAt);
+    if (Number.isNaN(due.getTime()) || Number.isNaN(activates.getTime())) {
+      throw new BadRequestException('Invalid task date values');
+    }
+    if (due.getTime() < activates.getTime()) {
+      throw new BadRequestException('Due date cannot be earlier than activation time');
+    }
+  }
+
+  private assertManualTaskDuration(estimatedDurationMinutes?: number | null): void {
+    if (estimatedDurationMinutes === undefined || estimatedDurationMinutes === null) return;
+    if (!Number.isInteger(estimatedDurationMinutes) || estimatedDurationMinutes < 1) {
+      throw new BadRequestException('Estimated duration must be a positive number of minutes');
+    }
+  }
+
   async createManualTask(orgId: string, input: CreateManualTaskInput, createdByUserId?: string) {
     if (!input.title?.trim()) throw new BadRequestException('Title is required');
+    this.assertManualTaskTiming(input);
+    this.assertManualTaskDuration(input.estimatedDurationMinutes ?? undefined);
     await this.assertLinksBelongToOrg(orgId, input);
 
     const type = input.type ?? 'CUSTOM';
     const checklist = this.resolveChecklist(type, input.checklist);
+    const initialNote = input.initialNote?.trim() || undefined;
 
-    const task = await this.prisma.orgTask.create({
-      data: {
-        organizationId: orgId,
-        title: input.title.trim(),
-        description: input.description,
-        category: input.category,
-        type,
-        priority: input.priority ?? 'NORMAL',
-        source: input.source ?? null,
-        sourceType: input.sourceType ?? 'MANUAL',
-        vehicleId: input.vehicleId ?? undefined,
-        bookingId: input.bookingId ?? undefined,
-        customerId: input.customerId ?? undefined,
-        vendorId: input.vendorId ?? undefined,
-        alertId: input.alertId ?? undefined,
-        documentId: input.documentId ?? undefined,
-        fineId: input.fineId ?? undefined,
-        invoiceId: input.invoiceId ?? undefined,
-        serviceCaseId: input.serviceCaseId ?? undefined,
-        assignedUserId: input.assignedUserId ?? undefined,
-        dueDate: input.dueDate ? new Date(input.dueDate) : null,
-        activatesAt: input.activatesAt ? new Date(input.activatesAt) : null,
-        estimatedCostCents: input.estimatedCostCents ?? undefined,
-        estimatedDurationMinutes: input.estimatedDurationMinutes ?? undefined,
-        blocksVehicleAvailability: input.blocksVehicleAvailability ?? false,
-        metadata: input.metadata,
-        createdByUserId: createdByUserId ?? null,
-        checklistItems: checklist
-          ? {
-              create: checklist.map((c, i) => ({
-                title: c.title,
-                description: c.description,
-                sortOrder: c.sortOrder ?? i,
-                isRequired: c.isRequired ?? false,
-              })),
-            }
-          : undefined,
-      },
+    const task = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.orgTask.create({
+        data: {
+          organizationId: orgId,
+          title: input.title.trim(),
+          description: input.description,
+          category: input.category,
+          type,
+          priority: input.priority ?? 'NORMAL',
+          source: input.source ?? null,
+          sourceType: input.sourceType ?? 'MANUAL',
+          vehicleId: input.vehicleId ?? undefined,
+          bookingId: input.bookingId ?? undefined,
+          customerId: input.customerId ?? undefined,
+          vendorId: input.vendorId ?? undefined,
+          alertId: input.alertId ?? undefined,
+          documentId: input.documentId ?? undefined,
+          fineId: input.fineId ?? undefined,
+          invoiceId: input.invoiceId ?? undefined,
+          serviceCaseId: input.serviceCaseId ?? undefined,
+          assignedUserId: input.assignedUserId ?? undefined,
+          dueDate: input.dueDate ? new Date(input.dueDate) : null,
+          activatesAt: input.activatesAt ? new Date(input.activatesAt) : null,
+          estimatedCostCents: input.estimatedCostCents ?? undefined,
+          estimatedDurationMinutes: input.estimatedDurationMinutes ?? undefined,
+          blocksVehicleAvailability: input.blocksVehicleAvailability ?? false,
+          metadata: input.metadata,
+          createdByUserId: createdByUserId ?? null,
+          checklistItems: checklist
+            ? {
+                create: checklist.map((c, i) => ({
+                  title: c.title,
+                  description: c.description,
+                  sortOrder: c.sortOrder ?? i,
+                  isRequired: c.isRequired ?? false,
+                })),
+              }
+            : undefined,
+        },
+      });
+
+      await tx.taskEvent.create({
+        data: {
+          taskId: created.id,
+          type: 'CREATED',
+          actorUserId: createdByUserId ?? null,
+          oldValue: null,
+          newValue: created.status,
+        },
+      });
+
+      if (initialNote) {
+        const comment = await tx.taskComment.create({
+          data: {
+            taskId: created.id,
+            body: initialNote,
+            userId: createdByUserId ?? null,
+          },
+        });
+        await tx.taskEvent.create({
+          data: {
+            taskId: created.id,
+            type: 'COMMENT_ADDED',
+            actorUserId: createdByUserId ?? null,
+            oldValue: null,
+            newValue: null,
+            metadata: {
+              commentId: comment.id,
+              context: 'CREATED',
+              bodyPreview:
+                initialNote.length > 160 ? `${initialNote.slice(0, 157)}…` : initialNote,
+            },
+          },
+        });
+      }
+
+      return created;
     });
 
-    await this.recordEvent(task.id, 'CREATED', createdByUserId, null, task.status);
     if (task.priority === 'CRITICAL') this.notify('created_critical', task);
     return this.getTaskById(task.id, orgId);
   }

@@ -108,10 +108,12 @@ export class TasksController {
         alertId: body.alertId,
         documentId: body.documentId,
         serviceCaseId: body.serviceCaseId,
+        invoiceId: body.invoiceId,
         estimatedCostCents: body.estimatedCostCents,
         estimatedDurationMinutes: body.estimatedDurationMinutes,
         checklist: body.checklist,
         blocksVehicleAvailability: body.blocksVehicleAvailability,
+        initialNote: body.initialNote,
         metadata: {
           ...(body.metadata && typeof body.metadata === 'object' ? body.metadata : {}),
           ...(body.stationId ? { stationId: body.stationId } : {}),

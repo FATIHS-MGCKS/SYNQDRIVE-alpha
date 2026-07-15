@@ -1,18 +1,24 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { api, type ApiTaskPriority } from '../../lib/api';
+import { api, type ApiTask } from '../../lib/api';
 import { useOperatorData } from '../context/OperatorDataContext';
+import {
+  buildManualTaskCreatePayload,
+  EMPTY_MANUAL_TASK_FORM,
+  type ManualTaskChecklistDraft,
+  type ManualTaskFormState,
+  validateManualTaskForm,
+} from '../../rental/lib/task-create-form.utils';
+import { ManualTaskCreateForm } from '../../rental/components/tasks/ManualTaskCreateForm';
 import { dispatchOperatorTaskUpdated } from './operatorTask.utils';
-
-const PRIORITIES: ApiTaskPriority[] = ['LOW', 'NORMAL', 'HIGH', 'CRITICAL'];
 
 interface Props {
   orgId: string;
   vehicleId?: string;
   vehicleLabel?: string;
   bookingId?: string;
-  onCreated?: () => void;
+  onCreated?: (task: ApiTask) => void;
   onCancel?: () => void;
 }
 
@@ -25,35 +31,40 @@ export function OperatorTaskCreateForm({
   onCancel,
 }: Props) {
   const { reloadTasks } = useOperatorData();
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [priority, setPriority] = useState<ApiTaskPriority>('NORMAL');
-  const [dueDate, setDueDate] = useState('');
+  const [form, setForm] = useState<ManualTaskFormState>({
+    ...EMPTY_MANUAL_TASK_FORM,
+    vehicleId: vehicleId ?? '',
+    bookingId: bookingId ?? '',
+  });
+  const [checklistItems, setChecklistItems] = useState<ManualTaskChecklistDraft[]>([]);
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    setForm({
+      ...EMPTY_MANUAL_TASK_FORM,
+      vehicleId: vehicleId ?? '',
+      bookingId: bookingId ?? '',
+    });
+    setChecklistItems([]);
+    setErrors({});
+    setError(null);
+  }, [vehicleId, bookingId, orgId]);
+
   const handleSubmit = async () => {
-    if (!title.trim()) {
-      setError('Titel ist erforderlich.');
-      return;
-    }
+    const nextErrors = validateManualTaskForm(form, { checklistItems });
+    setErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+
     setSubmitting(true);
     setError(null);
     try {
-      const created = await api.tasks.create(orgId, {
-        title: title.trim(),
-        description: description.trim() || undefined,
-        type: 'CUSTOM',
-        priority,
-        vehicleId,
-        bookingId,
-        dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
-        source: 'MANUAL',
-      });
+      const created = await api.tasks.create(orgId, buildManualTaskCreatePayload(form, checklistItems));
       toast.success('Aufgabe erstellt');
       dispatchOperatorTaskUpdated(created.vehicleId);
       await reloadTasks();
-      onCreated?.();
+      onCreated?.(created);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erstellen fehlgeschlagen');
     } finally {
@@ -63,61 +74,34 @@ export function OperatorTaskCreateForm({
 
   return (
     <div className="space-y-4">
-      {vehicleLabel && (
+      {vehicleLabel ? (
         <p className="text-xs text-muted-foreground">
           Fahrzeug: <span className="font-semibold text-foreground">{vehicleLabel}</span>
         </p>
-      )}
-      <label className="block">
-        <span className="text-[10px] font-semibold uppercase text-muted-foreground">Titel *</span>
-        <input
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="mt-1 h-12 w-full rounded-xl border border-border surface-premium px-3 text-base"
-          placeholder="Kurz beschreiben"
-        />
-      </label>
-      <label className="block">
-        <span className="text-[10px] font-semibold uppercase text-muted-foreground">Beschreibung</span>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={3}
-          className="mt-1 w-full rounded-xl border border-border surface-premium px-3 py-2 text-sm resize-y"
-        />
-      </label>
-      <div>
-        <p className="mb-2 text-[10px] font-semibold uppercase text-muted-foreground">Priorität</p>
-        <div className="flex flex-wrap gap-2">
-          {PRIORITIES.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => setPriority(p)}
-              className={`sq-press min-h-[44px] rounded-xl border px-3 py-2 text-xs font-semibold ${
-                priority === p
-                  ? 'border-[color:var(--brand)]/35 bg-[color:var(--brand-soft)] text-[color:var(--brand-ink)]'
-                  : 'border-border surface-premium'
-              }`}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
-      </div>
-      <label className="block">
-        <span className="text-[10px] font-semibold uppercase text-muted-foreground">Fällig (optional)</span>
-        <input
-          type="datetime-local"
-          value={dueDate}
-          onChange={(e) => setDueDate(e.target.value)}
-          className="mt-1 h-12 w-full rounded-xl border border-border surface-premium px-3 text-sm"
-        />
-      </label>
-      {error && <p className="text-sm text-[color:var(--status-critical)]">{error}</p>}
+      ) : null}
+      {error ? <p className="text-sm text-[color:var(--status-critical)]">{error}</p> : null}
+      <ManualTaskCreateForm
+        form={form}
+        errors={errors}
+        checklistItems={checklistItems}
+        onFormChange={(patch) => setForm((current) => ({ ...current, ...patch }))}
+        onChecklistChange={setChecklistItems}
+        vehicleOptions={vehicleId && vehicleLabel ? [{ value: vehicleId, label: vehicleLabel }] : []}
+        assigneeOptions={[]}
+        stationOptions={[]}
+        bookingOptions={[]}
+        customerOptions={[]}
+        invoiceOptions={[]}
+        vendorOptions={[]}
+        serviceCaseOptions={[]}
+        lockedVehicleId={vehicleId}
+        lockedBookingId={bookingId}
+        showVehicleField={!vehicleId}
+        showLinksSection={!bookingId}
+        disabled={submitting}
+      />
       <div className="flex gap-2">
-        {onCancel && (
+        {onCancel ? (
           <button
             type="button"
             onClick={onCancel}
@@ -125,7 +109,7 @@ export function OperatorTaskCreateForm({
           >
             Abbrechen
           </button>
-        )}
+        ) : null}
         <button
           type="button"
           disabled={submitting}

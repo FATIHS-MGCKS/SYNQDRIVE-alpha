@@ -530,12 +530,15 @@ export function TasksView({
         open={isNewTaskOpen}
         onOpenChange={setIsNewTaskOpen}
         orgId={orgId}
-        mutating={mutating}
-        onMutatingChange={setMutating}
         fleetVehicles={fleetVehicles}
         orgMembers={orgMembers}
         orgStations={orgStations}
-        onCreated={() => void reloadTasks()}
+        onCreated={async (task) => {
+          await reloadTasks();
+          setFlashingTaskId(task.id);
+          openTaskDetail(mapApiTaskToTaskListRow(task, rowContext));
+          setDetailFull(task);
+        }}
       />
     </div>
   );
