@@ -1,0 +1,71 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { BillingDomainEvent, BillingDomainEventType } from '../domain/billing-domain.events';
+import { BillingAuditService } from '../billing-audit.service';
+
+export type BillingDomainEventListener = (event: BillingDomainEvent) => void | Promise<void>;
+
+/**
+ * Publishes billing domain events for audit and downstream handlers.
+ * Does NOT send email — email delivery is a separate concern (Prompt 30+).
+ */
+@Injectable()
+export class BillingEventPublisher {
+  private readonly logger = new Logger(BillingEventPublisher.name);
+  private readonly listeners = new Set<BillingDomainEventListener>();
+
+  constructor(private readonly audit: BillingAuditService) {}
+
+  registerListener(listener: BillingDomainEventListener): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  async publish(event: BillingDomainEvent): Promise<void> {
+    this.logger.debug(`Billing domain event: ${event.type} org=${event.organizationId ?? 'n/a'}`);
+
+    await this.audit.log({
+      organizationId: event.organizationId,
+      actorUserId: event.actorUserId ?? null,
+      action: event.type,
+      entityType: 'BillingDomainEvent',
+      entityId: event.correlationId ?? null,
+      after: {
+        type: event.type,
+        occurredAt: event.occurredAt.toISOString(),
+        payload: event.payload,
+      },
+    });
+
+    for (const listener of this.listeners) {
+      await listener(event);
+    }
+  }
+
+  async publishSubscriptionSynced(
+    organizationId: string,
+    payload: Record<string, unknown>,
+    correlationId?: string,
+  ): Promise<void> {
+    await this.publish({
+      type: BillingDomainEventType.SUBSCRIPTION_SYNCED,
+      organizationId,
+      occurredAt: new Date(),
+      payload,
+      correlationId,
+    });
+  }
+
+  async publishInvoiceMirrored(
+    organizationId: string,
+    payload: Record<string, unknown>,
+    correlationId?: string,
+  ): Promise<void> {
+    await this.publish({
+      type: BillingDomainEventType.INVOICE_MIRRORED,
+      organizationId,
+      occurredAt: new Date(),
+      payload,
+      correlationId,
+    });
+  }
+}

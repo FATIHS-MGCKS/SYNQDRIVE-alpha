@@ -13,6 +13,15 @@ describe('StripeWebhookService', () => {
     },
   };
 
+  const stripeAdapter = {
+    applyStripeSubscription: jest.fn().mockResolvedValue({ syncStatus: 'SYNCED' }),
+    syncPaymentMethods: jest.fn().mockResolvedValue({ syncStatus: 'SYNCED', synced: 0 }),
+  };
+
+  const billingEvents = {
+    publishSubscriptionSynced: jest.fn().mockResolvedValue(undefined),
+  };
+
   const stripeBilling = {
     findOrganizationIdByStripeCustomer: jest.fn(),
     findOrganizationIdByStripeSubscription: jest.fn(),
@@ -49,7 +58,9 @@ describe('StripeWebhookService', () => {
       prisma as never,
       configService,
       stripeBilling as never,
+      stripeAdapter as never,
       invoiceMirror as never,
+      billingEvents as never,
     );
     jest.spyOn(stripeClientUtil, 'getStripeClient').mockReturnValue(stripeMock as never);
   });
@@ -105,6 +116,6 @@ describe('StripeWebhookService', () => {
     const result = await service.ingestRawWebhook(Buffer.from('{}'), 'sig');
     expect(result.status).toBe('processed');
     expect(invoiceMirror.mirrorStripeInvoice).toHaveBeenCalledWith(invoice);
-    expect(stripeBilling.applyStripeSubscription).toHaveBeenCalled();
+    expect(stripeAdapter.applyStripeSubscription).toHaveBeenCalled();
   });
 });

@@ -1,6 +1,6 @@
 # Billing Target Domain
 
-**Stand:** Prompt 4/44 — Fachliche Billing-Wahrheit  
+**Stand:** Prompt 5/44 — Domain Service Boundaries  
 **Bezug:** `docs/billing/billing-current-state.md` (Ist-Zustand)  
 **Typen & Mapper:** `backend/src/modules/billing/domain/`, `frontend/src/lib/billing-domain.ts`
 
@@ -618,7 +618,136 @@ flowchart TD
 
 ---
 
-## Abschluss
+## Service Ownership & Abhängigkeiten (Prompt 5)
+
+### Schichtenmodell
+
+```
+Controller / Webhook
+  → Application Services (BillingSummary, BillingService, BillingUsage, …)
+    → Resolvers (Domain-Auflösung)
+      → Legacy Services / Prisma (Pricebook, BillableVehicles, PriceResolution, …)
+StripeBillingAdapter → StripeBillingService → Stripe SDK
+BillingEventPublisher → BillingAuditLog (+ optionale Listener)
+```
+
+**Regeln:**
+
+| Regel | Umsetzung |
+|-------|-----------|
+| Domain exportiert keine Stripe-Typen | `domain/` enthält nur Domain- und Resolver-Typen |
+| Controller enthalten keine Preislogik | Preis über `PricingResolverService` |
+| Frontend-DTOs bestimmen nicht die Domain | Resolver liefern Domain-Typen; DTOs mappen in Controllern |
+| Keine zyklischen Abhängigkeiten | Resolvers bilden DAG; `SubscriptionResolver` kennt keinen `QuantityResolver` |
+| Stripe nur im Adapter | `adapters/stripe-billing.adapter.ts` |
+
+### Service Ownership
+
+| Service | Verantwortung | Delegiert an |
+|---------|---------------|--------------|
+| **SubscriptionResolverService** | Organisationsvertrag zu Stichtag | `PrismaService`, `PricebookService` |
+| **PricingResolverService** | Price Version + Tier + Betrag für Item | `BillingPriceResolutionService` |
+| **QuantityResolverService** | Abrechenbare Menge (Fahrzeuge) | `BillableVehiclesService` |
+| **DiscountResolverService** | Org-Rabatte + Reihenfolge | `PrismaService` (`BillingOrganizationPriceOverride`) |
+| **InvoiceResolverService** | Lokale Rechnungen + Zahlungsstatus | `PrismaService`, Domain-Invoice-Mapper |
+| **EntitlementResolverService** | Berechtigungsprojektion | `SubscriptionResolverService`, `PrismaService` |
+| **StripeBillingAdapter** | Stripe-Operationen, Domain-Mapping | `StripeBillingService` |
+| **BillingEventPublisher** | Domain Events (ohne E-Mail) | `BillingAuditService` |
+
+### Erlaubte Abhängigkeiten
+
+```mermaid
+flowchart TD
+  subgraph Application
+    BS[BillingSummaryService]
+    BU[BillingUsageService]
+    WH[StripeWebhookService]
+  end
+
+  subgraph Resolvers
+    SR[SubscriptionResolver]
+    PR[PricingResolver]
+    QR[QuantityResolver]
+    DR[DiscountResolver]
+    IR[InvoiceResolver]
+    ER[EntitlementResolver]
+  end
+
+  subgraph Legacy
+    PB[PricebookService]
+    BV[BillableVehiclesService]
+    BPR[BillingPriceResolutionService]
+    DB[(Prisma)]
+  end
+
+  subgraph Infrastructure
+    SA[StripeBillingAdapter]
+    SBS[StripeBillingService]
+    EP[BillingEventPublisher]
+    AUDIT[BillingAuditService]
+  end
+
+  BS --> SR
+  BS --> PR
+  BS --> QR
+  BS --> DR
+  BU --> PR
+  BU --> QR
+  BU --> DR
+  ER --> SR
+  PR --> BPR
+  QR --> BV
+  SR --> PB
+  SR --> DB
+  DR --> DB
+  IR --> DB
+  WH --> SA
+  WH --> EP
+  SA --> SBS
+  EP --> AUDIT
+```
+
+### Verbotene Abhängigkeiten
+
+| Von | Nach | Grund |
+|-----|------|-------|
+| `domain/` | `stripe` Paket | Stripe-Typen bleiben im Adapter |
+| Resolver | `StripeBillingService` | Zahlung ≠ Vertragsauflösung |
+| `SubscriptionResolver` | `QuantityResolver` | Zyklusgefahr; Quantity wird vom Caller übergeben |
+| `PricingResolver` | `StripeBillingAdapter` | Preis ist lokale Wahrheit |
+| `BillingEventPublisher` | E-Mail / Resend | Prompt 30+ |
+| Controller | `BillingPriceResolutionService` direkt | Nur über Resolver oder Application Service |
+
+### Integrationen (Prompt 5)
+
+| Consumer | Vorher | Nachher |
+|----------|--------|---------|
+| `BillingSummaryService` | Direkt Prisma + PriceResolution + BillableVehicles | Resolver-Orchestrierung |
+| `BillingUsageService` | Direkt Override-Query + PriceResolution | `DiscountResolver` + `PricingResolver` |
+| `StripeWebhookService` (Subscription) | `StripeBillingService.applyStripeSubscription` | `StripeBillingAdapter` + `BillingEventPublisher` |
+
+### Übergangsstrukturen (noch aktiv)
+
+| Struktur | Status |
+|----------|--------|
+| `BillingPriceResolutionService` | Interner Motor von `PricingResolver` |
+| `BillableVehiclesService` | Interner Motor von `QuantityResolver` |
+| `StripeBillingService` | Wird nur noch vom Adapter aufgerufen (Webhooks teilweise migriert) |
+| `BillingOrganizationPriceOverride` | Über `DiscountResolver`; formales Discount-Modell folgt Prompt 12 |
+| Synthetische Subscription Items | In `SubscriptionResolver` bis `BillingSubscriptionItem` existiert |
+| `OrganizationProduct` in Entitlements | Legacy-Spiegel in `EntitlementResolver` |
+
+### Tests (Prompt 5)
+
+| Datei | Prüft |
+|-------|-------|
+| `resolvers/billing-resolver.boundaries.spec.ts` | Resolver-Grenzen, keine Stripe-Typen in Responses |
+| `adapters/stripe-billing.adapter.spec.ts` | Domain-Mapping aus Stripe-Operationen |
+| `events/billing-event.publisher.spec.ts` | Audit-Persistenz ohne E-Mail |
+
+---
+
+## Abschluss (Prompt 4)
 
 ### Kanonische Wahrheit
 
@@ -643,9 +772,12 @@ Subscription-first Preisauflösung → Subscription Items → Discount-API → S
 ### Tests
 
 `backend/src/modules/billing/domain/billing-domain.mappers.spec.ts`  
+`backend/src/modules/billing/resolvers/billing-resolver.boundaries.spec.ts`  
+`backend/src/modules/billing/adapters/stripe-billing.adapter.spec.ts`  
+`backend/src/modules/billing/events/billing-event.publisher.spec.ts`  
 `backend/src/modules/billing/*.characterization.spec.ts` (Ist-Verhalten dokumentiert)  
 `frontend/src/lib/billing-domain.test.ts`
 
 ---
 
-*Ende Ziel-Domäne Prompt 4 — keine Produktionslogik verändert.*
+*Ende Ziel-Domäne Prompt 5 — Servicegrenzen eingeführt, keine Parallelarchitektur.*

@@ -4,6 +4,11 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { PricebookService } from './pricebook.service';
 import { BillableVehiclesService } from './billable-vehicles.service';
 import { BillingPriceResolutionService } from './billing-price-resolution.service';
+import {
+  DiscountResolverService,
+  PricingResolverService,
+  QuantityResolverService,
+} from './resolvers';
 
 export interface UsagePeriod {
   periodStart: Date;
@@ -33,6 +38,9 @@ export class BillingUsageService {
     private readonly pricebook: PricebookService,
     private readonly billableVehicles: BillableVehiclesService,
     private readonly priceResolution: BillingPriceResolutionService,
+    private readonly quantityResolver: QuantityResolverService,
+    private readonly discountResolver: DiscountResolverService,
+    private readonly pricingResolver: PricingResolverService,
   ) {}
 
   async resolveBillableVehicles(organizationId: string) {
@@ -61,21 +69,26 @@ export class BillingUsageService {
   }
 
   async resolveOrgPriceOverride(organizationId: string, asOf: Date = new Date()) {
-    return this.prisma.billingOrganizationPriceOverride.findFirst({
-      where: {
-        organizationId,
-        status: 'ACTIVE',
-        validFrom: { lte: asOf },
-        OR: [{ validTo: null }, { validTo: { gte: asOf } }],
-      },
-      orderBy: { validFrom: 'desc' },
-    });
+    const discount = await this.discountResolver.resolvePrimaryDiscount(organizationId, { asOf });
+    if (!discount) return null;
+    return {
+      id: discount.id,
+      customUnitPriceCents: discount.customUnitPriceCents,
+      customMonthlyMinimumCents: discount.customMonthlyMinimumCents,
+      priceBookId: discount.priceBookId,
+      priceVersionId: discount.priceVersionId,
+      reason: discount.reason,
+      validFrom: discount.validFrom,
+      validTo: discount.validTo,
+    };
   }
 
   async previewUsage(organizationId: string): Promise<UsageCalculationPreview> {
-    const vehicleData = await this.resolveBillableVehicles(organizationId);
-    const pricing = await this.pricebook.getPricingConfiguration();
-    const override = await this.resolveOrgPriceOverride(organizationId);
+    const [vehicleData, pricing, discounts] = await Promise.all([
+      this.resolveBillableVehicles(organizationId),
+      this.pricebook.getPricingConfiguration(),
+      this.discountResolver.resolveDiscounts(organizationId),
+    ]);
 
     const base: UsageCalculationPreview = {
       configured: pricing.configured,
@@ -93,18 +106,16 @@ export class BillingUsageService {
       priceTierId: null,
     };
 
-    const priceResult = await this.priceResolution.calculateVolumePrice(
-      vehicleData.billableVehicleCount,
-      {
-        customUnitPriceCents: override?.customUnitPriceCents ?? null,
-        customMonthlyMinimumCents: override?.customMonthlyMinimumCents ?? null,
-      },
-    );
+    const priceResult = await this.pricingResolver.resolveItemPricing({
+      billableQuantity: vehicleData.billableVehicleCount,
+      priceBookId: pricing.priceBook?.id ?? null,
+      discounts,
+    });
 
     return {
       ...base,
       configured: pricing.configured,
-      calculationStatus: priceResult.calculationStatus,
+      calculationStatus: priceResult.calculationStatus as BillingUsageCalculationStatus,
       unitPriceCents: priceResult.unitPriceCents,
       subtotalCents: priceResult.subtotalCents,
       totalCents: priceResult.totalCents,

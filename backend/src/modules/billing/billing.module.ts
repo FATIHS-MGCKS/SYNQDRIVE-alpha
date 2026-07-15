@@ -13,6 +13,16 @@ import { StripePreparedService } from './stripe-prepared.service';
 import { StripeBillingService } from './stripe-billing.service';
 import { StripeInvoiceMirrorService } from './stripe-invoice-mirror.service';
 import { StripeWebhookService } from './stripe-webhook.service';
+import { StripeBillingAdapter } from './adapters/stripe-billing.adapter';
+import { BillingEventPublisher } from './events/billing-event.publisher';
+import {
+  DiscountResolverService,
+  EntitlementResolverService,
+  InvoiceResolverService,
+  PricingResolverService,
+  QuantityResolverService,
+  SubscriptionResolverService,
+} from './resolvers';
 
 @Module({
   controllers: [BillingController, StripeWebhookController],
@@ -29,6 +39,14 @@ import { StripeWebhookService } from './stripe-webhook.service';
     StripeInvoiceMirrorService,
     StripeWebhookService,
     StripePreparedService,
+    SubscriptionResolverService,
+    PricingResolverService,
+    QuantityResolverService,
+    DiscountResolverService,
+    InvoiceResolverService,
+    EntitlementResolverService,
+    StripeBillingAdapter,
+    BillingEventPublisher,
   ],
   exports: [
     BillingService,
@@ -43,6 +61,14 @@ import { StripeWebhookService } from './stripe-webhook.service';
     StripeInvoiceMirrorService,
     StripeWebhookService,
     StripePreparedService,
+    SubscriptionResolverService,
+    PricingResolverService,
+    QuantityResolverService,
+    DiscountResolverService,
+    InvoiceResolverService,
+    EntitlementResolverService,
+    StripeBillingAdapter,
+    BillingEventPublisher,
   ],
 })
 export class BillingModule {}

@@ -13,6 +13,15 @@ describe('StripeWebhookService characterization', () => {
     },
   };
 
+  const stripeAdapter = {
+    applyStripeSubscription: jest.fn().mockResolvedValue({ syncStatus: 'SYNCED' }),
+    syncPaymentMethods: jest.fn().mockResolvedValue({ syncStatus: 'SYNCED', synced: 0 }),
+  };
+
+  const billingEvents = {
+    publishSubscriptionSynced: jest.fn().mockResolvedValue(undefined),
+  };
+
   const stripeBilling = {
     findOrganizationIdByStripeCustomer: jest.fn(),
     findOrganizationIdByStripeSubscription: jest.fn(),
@@ -45,7 +54,9 @@ describe('StripeWebhookService characterization', () => {
       prisma as never,
       configService,
       stripeBilling as never,
+      stripeAdapter as never,
       invoiceMirror as never,
+      billingEvents as never,
     );
     jest.spyOn(stripeClientUtil, 'getStripeClient').mockReturnValue(stripeMock as never);
   });
@@ -79,7 +90,9 @@ describe('StripeWebhookService characterization', () => {
         prisma as never,
         noSecretConfig,
         stripeBilling as never,
+        stripeAdapter as never,
         invoiceMirror as never,
+        billingEvents as never,
       );
 
       expect(() => localService.constructEvent(Buffer.from('{}'), 'sig')).toThrow(
@@ -178,8 +191,8 @@ describe('StripeWebhookService characterization', () => {
       await service.ingestRawWebhook(Buffer.from('{}'), 'sig');
 
       expect(invoiceMirror.mirrorStripeInvoice).toHaveBeenCalledWith(invoice);
-      expect(stripeBilling.applyStripeSubscription).toHaveBeenCalled();
-      expect(stripeBilling.syncPaymentMethods).toHaveBeenCalledWith('org-1');
+      expect(stripeAdapter.applyStripeSubscription).toHaveBeenCalled();
+      expect(stripeAdapter.syncPaymentMethods).toHaveBeenCalledWith('org-1');
     });
 
     it('charge.refunded only syncs payment methods — legacy behavior (to be corrected in prompt 25)', () => {

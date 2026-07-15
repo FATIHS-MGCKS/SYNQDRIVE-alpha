@@ -1,6 +1,6 @@
 # Billing — Technische Bestandsaufnahme (Current State)
 
-**Stand:** Code-Inventur Prompt 1/44 · Characterization Tests Prompt 2/44 · Canonical Types Prompt 3/44 · Target Domain Prompt 4/44  
+**Stand:** Code-Inventur Prompt 1/44 · Characterization Tests Prompt 2/44 · Canonical Types Prompt 3/44 · Target Domain Prompt 4/44 · Service Boundaries Prompt 5/44  
 **Repository:** `SYNQDRIVE-alpha`  
 **Scope:** Verwaltung → Abrechnung & Abo → SynqDrive-Abonnement (Platform-SaaS-Billing)
 
@@ -19,7 +19,7 @@ Im Code existieren **vier getrennte Billing-/Preis-Domänen**, die nicht vollst�
 
 Diese Dokumentation fokussiert auf **Platform SaaS Billing** und die direkt verknüpften Querschnitte (Produkte, Fahrzeug-Abrechnung, Stripe, Resend).
 
-**Ziel-Domäne (Prompt 4):** `docs/billing/billing-target-domain.md` — fachliche Billing-Wahrheit, Entitätshierarchie, Ist-Klassifikation, Auflösungsdiagramme; Typen/Mapper unter `backend/src/modules/billing/domain/`.
+**Ziel-Domäne (Prompt 4–5):** `docs/billing/billing-target-domain.md` — fachliche Billing-Wahrheit, Entitätshierarchie, **Service Ownership & Resolver-Grenzen**; Typen/Mapper unter `backend/src/modules/billing/domain/`, Resolver unter `resolvers/`.
 
 ---
 

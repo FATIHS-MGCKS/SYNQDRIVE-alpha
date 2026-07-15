@@ -11,6 +11,8 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { getStripeClient } from './stripe-client.util';
 import { StripeBillingService } from './stripe-billing.service';
 import { StripeInvoiceMirrorService } from './stripe-invoice-mirror.service';
+import { StripeBillingAdapter } from './adapters/stripe-billing.adapter';
+import { BillingEventPublisher } from './events/billing-event.publisher';
 
 @Injectable()
 export class StripeWebhookService {
@@ -20,7 +22,9 @@ export class StripeWebhookService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly stripeBilling: StripeBillingService,
+    private readonly stripeAdapter: StripeBillingAdapter,
     private readonly invoiceMirror: StripeInvoiceMirrorService,
+    private readonly billingEvents: BillingEventPublisher,
   ) {}
 
   constructEvent(rawBody: Buffer, signature: string | undefined): Stripe.Event {
@@ -171,8 +175,12 @@ export class StripeWebhookService {
       this.logger.warn(`Subscription webhook without org mapping: ${subscription.id}`);
       return;
     }
-    await this.stripeBilling.applyStripeSubscription(orgId, subscription);
-    await this.stripeBilling.syncPaymentMethods(orgId);
+    await this.stripeAdapter.applyStripeSubscription(orgId, subscription);
+    await this.stripeAdapter.syncPaymentMethods(orgId);
+    await this.billingEvents.publishSubscriptionSynced(orgId, {
+      stripeSubscriptionId: subscription.id,
+      stripeStatus: subscription.status,
+    });
   }
 
   private async handleInvoiceEvent(invoice: Stripe.Invoice) {
@@ -189,11 +197,16 @@ export class StripeWebhookService {
       const stripe = getStripeClient(this.configService.get<string>('stripe.secretKey'));
       if (stripe) {
         const sub = await stripe.subscriptions.retrieve(subscriptionId);
-        await this.stripeBilling.applyStripeSubscription(orgId, sub);
+        await this.stripeAdapter.applyStripeSubscription(orgId, sub);
+        await this.billingEvents.publishSubscriptionSynced(orgId, {
+          stripeSubscriptionId: sub.id,
+          stripeStatus: sub.status,
+          source: 'invoice_webhook',
+        });
       }
     }
 
-    await this.stripeBilling.syncPaymentMethods(orgId);
+    await this.stripeAdapter.syncPaymentMethods(orgId);
   }
 
   private async handleChargeRefunded(charge: Stripe.Charge) {

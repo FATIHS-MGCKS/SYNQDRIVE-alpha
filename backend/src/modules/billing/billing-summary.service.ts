@@ -1,22 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import {
-  BillingOrgPriceOverrideStatus,
   BillingPaymentMethodStatus,
   BillingStatus,
   BillingUsageCalculationStatus,
-  InvoiceStatus,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import {
-  parsePagination,
-  buildPaginatedResult,
-  PaginationParams,
-} from '@shared/utils/pagination';
-import { BillableVehiclesService } from './billable-vehicles.service';
-import { BillingPriceResolutionService } from './billing-price-resolution.service';
-import { BillingUsageService } from './billing-usage.service';
 import { PricebookService } from './pricebook.service';
 import { StripePreparedService } from './stripe-prepared.service';
+import {
+  DiscountResolverService,
+  PricingResolverService,
+  QuantityResolverService,
+  SubscriptionResolverService,
+} from './resolvers';
 
 const PLAN_DISPLAY: Record<string, string> = {
   STARTER: 'Starter',
@@ -30,50 +26,46 @@ const PLAN_DISPLAY: Record<string, string> = {
 export class BillingSummaryService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly billableVehicles: BillableVehiclesService,
-    private readonly priceResolution: BillingPriceResolutionService,
-    private readonly usageService: BillingUsageService,
+    private readonly subscriptionResolver: SubscriptionResolverService,
+    private readonly quantityResolver: QuantityResolverService,
+    private readonly pricingResolver: PricingResolverService,
+    private readonly discountResolver: DiscountResolverService,
     private readonly pricebook: PricebookService,
     private readonly stripePrepared: StripePreparedService,
   ) {}
 
   async getSummary(organizationId: string) {
-    const [sub, orgProducts, vehicles, pricingConfig, override, defaultPm] =
-      await Promise.all([
-        this.prisma.billingSubscription.findFirst({
-          where: { organizationId },
-          orderBy: { createdAt: 'desc' },
-        }),
-        this.prisma.organizationProduct.findMany({
-          where: { organizationId },
-          include: { product: { select: { slug: true, name: true } } },
-        }),
-        this.billableVehicles.getBillableConnectedVehiclesForOrganization(organizationId),
-        this.pricebook.getPricingConfiguration(),
-        this.prisma.billingOrganizationPriceOverride.findFirst({
-          where: {
-            organizationId,
-            status: BillingOrgPriceOverrideStatus.ACTIVE,
-            validFrom: { lte: new Date() },
-            OR: [{ validTo: null }, { validTo: { gte: new Date() } }],
-          },
-          orderBy: { validFrom: 'desc' },
-        }),
-        this.prisma.billingPaymentMethod.findFirst({
-          where: { organizationId: organizationId, isDefault: true },
-          orderBy: { createdAt: 'desc' },
-        }),
-      ]);
+    const [quantity, discounts, pricingConfig, defaultPm, orgProducts] = await Promise.all([
+      this.quantityResolver.resolveQuantity(organizationId),
+      this.discountResolver.resolveDiscounts(organizationId),
+      this.pricebook.getPricingConfiguration(),
+      this.prisma.billingPaymentMethod.findFirst({
+        where: { organizationId: organizationId, isDefault: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.organizationProduct.findMany({
+        where: { organizationId },
+        include: { product: { select: { slug: true, name: true } } },
+      }),
+    ]);
 
-    const priceResult = await this.priceResolution.calculateVolumePrice(
-      vehicles.billableVehicleCount,
-      {
-        customUnitPriceCents: override?.customUnitPriceCents ?? null,
-        customMonthlyMinimumCents: override?.customMonthlyMinimumCents ?? null,
-      },
-    );
+    const contract = await this.subscriptionResolver.resolveContract(organizationId, {
+      baseItemQuantity: quantity.billableVehicleCount,
+    });
 
-    const period = this.resolveBillingPeriod(sub);
+    const priceResult = await this.pricingResolver.resolveItemPricing({
+      billableQuantity: quantity.billableVehicleCount,
+      priceBookId: contract.priceBookId,
+      discounts,
+    });
+
+    const sub = contract.subscriptionId
+      ? await this.prisma.billingSubscription.findUnique({
+          where: { id: contract.subscriptionId },
+        })
+      : null;
+
+    const period = contract.currentPeriod;
     const stripeStatus = this.stripePrepared.getPreparedStatus();
     const warnings = this.buildWarnings(sub, priceResult.calculationStatus, defaultPm);
 
@@ -91,9 +83,9 @@ export class BillingSummaryService {
           }
         : null,
       subscriptionStatus: sub?.status ?? null,
-      currentPeriodStart: sub?.currentPeriodStart?.toISOString() ?? period.start.toISOString(),
-      currentPeriodEnd: sub?.currentPeriodEnd?.toISOString() ?? period.end.toISOString(),
-      cancelAtPeriodEnd: sub?.cancelAtPeriodEnd ?? false,
+      currentPeriodStart: period.start.toISOString(),
+      currentPeriodEnd: period.end.toISOString(),
+      cancelAtPeriodEnd: contract.cancelAtPeriodEnd,
       products: activeProducts.map((p) => ({
         slug: p.product.slug,
         name: p.product.name,
@@ -102,8 +94,8 @@ export class BillingSummaryService {
         status: p.status,
       })),
       billingModel: 'PER_CONNECTED_VEHICLE' as const,
-      connectedVehicleCount: vehicles.connectedVehicleCount,
-      billableVehicleCount: vehicles.billableVehicleCount,
+      connectedVehicleCount: quantity.connectedVehicleCount,
+      billableVehicleCount: quantity.billableVehicleCount,
       currentTier: priceResult.tier
         ? {
             id: priceResult.tier.id,
@@ -150,7 +142,7 @@ export class BillingSummaryService {
         periodStart: period.start.toISOString(),
         periodEnd: period.end.toISOString(),
         explanation: this.buildPreviewExplanation(
-          vehicles.billableVehicleCount,
+          quantity.billableVehicleCount,
           priceResult,
         ),
       },
@@ -170,26 +162,23 @@ export class BillingSummaryService {
   }
 
   async getNextInvoicePreview(organizationId: string) {
-    const vehicles =
-      await this.billableVehicles.getBillableConnectedVehiclesForOrganization(organizationId);
-    const override = await this.usageService.resolveOrgPriceOverride(organizationId);
-    const priceResult = await this.priceResolution.calculateVolumePrice(
-      vehicles.billableVehicleCount,
-      {
-        customUnitPriceCents: override?.customUnitPriceCents ?? null,
-        customMonthlyMinimumCents: override?.customMonthlyMinimumCents ?? null,
-      },
-    );
+    const [quantity, discounts, contract] = await Promise.all([
+      this.quantityResolver.resolveQuantity(organizationId),
+      this.discountResolver.resolveDiscounts(organizationId),
+      this.subscriptionResolver.resolveContract(organizationId),
+    ]);
 
-    const sub = await this.prisma.billingSubscription.findFirst({
-      where: { organizationId },
-      orderBy: { createdAt: 'desc' },
+    const priceResult = await this.pricingResolver.resolveItemPricing({
+      billableQuantity: quantity.billableVehicleCount,
+      priceBookId: contract.priceBookId,
+      discounts,
     });
-    const period = this.resolveBillingPeriod(sub);
+
+    const period = contract.currentPeriod;
 
     return {
-      billableVehicleCount: vehicles.billableVehicleCount,
-      connectedVehicleCount: vehicles.connectedVehicleCount,
+      billableVehicleCount: quantity.billableVehicleCount,
+      connectedVehicleCount: quantity.connectedVehicleCount,
       tier: priceResult.tier,
       calculationStatus: priceResult.calculationStatus,
       unitPriceCents: priceResult.unitPriceCents,
@@ -202,18 +191,8 @@ export class BillingSummaryService {
       priceNotConfigured:
         priceResult.calculationStatus === BillingUsageCalculationStatus.PRICE_NOT_CONFIGURED ||
         priceResult.calculationStatus === BillingUsageCalculationStatus.NO_ACTIVE_PRICE_VERSION,
-      explanation: this.buildPreviewExplanation(vehicles.billableVehicleCount, priceResult),
+      explanation: this.buildPreviewExplanation(quantity.billableVehicleCount, priceResult),
     };
-  }
-
-  private resolveBillingPeriod(sub: { currentPeriodStart: Date | null; currentPeriodEnd: Date | null } | null) {
-    if (sub?.currentPeriodStart && sub?.currentPeriodEnd) {
-      return { start: sub.currentPeriodStart, end: sub.currentPeriodEnd };
-    }
-    const now = new Date();
-    const start = new Date(now.getFullYear(), now.getMonth(), 1);
-    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-    return { start, end };
   }
 
   private buildWarnings(
