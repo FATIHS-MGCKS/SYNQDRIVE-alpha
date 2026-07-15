@@ -13,6 +13,7 @@ export * from './stripe-catalog-mapping';
 export * from './stripe-catalog-sync';
 export * from './stripe-subscription-orchestrator';
 export * from './stripe-payment-methods';
+export * from './stripe-webhook-matrix';
 export * from './billing-domain.utils';
 export * from './billing-resolver.types';
 export * from './billing-domain.events';

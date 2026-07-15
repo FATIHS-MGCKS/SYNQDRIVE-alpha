@@ -5,40 +5,17 @@ import { StripeWebhookService } from './stripe-webhook.service';
 import * as stripeClientUtil from './stripe-client.util';
 
 describe('StripeWebhookService characterization', () => {
+  const dispatcher = {
+    resolveOrganizationId: jest.fn(),
+    dispatch: jest.fn(),
+  };
+
   const prisma = {
     stripeWebhookEvent: {
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
     },
-  };
-
-  const stripeAdapter = {
-    applyStripeSubscription: jest.fn().mockResolvedValue({ syncStatus: 'SYNCED' }),
-    syncPaymentMethods: jest.fn().mockResolvedValue({ syncStatus: 'SYNCED', synced: 0 }),
-  };
-
-  const billingEvents = {
-    publishSubscriptionSynced: jest.fn().mockResolvedValue(undefined),
-  };
-
-  const stripeBilling = {
-    findOrganizationIdByStripeCustomer: jest.fn(),
-    findOrganizationIdByStripeSubscription: jest.fn(),
-    applyStripeSubscription: jest.fn(),
-    syncPaymentMethods: jest.fn(),
-  };
-
-  const invoiceMirror = {
-    mirrorStripeInvoice: jest.fn(),
-  };
-
-  const paymentMethods = {
-    syncPaymentMethods: jest.fn().mockResolvedValue({ synced: 0 }),
-    handlePaymentMethodDetached: jest.fn().mockResolvedValue(undefined),
-    handlePaymentMethodUpdated: jest.fn().mockResolvedValue(undefined),
-    handleSetupIntentSucceeded: jest.fn().mockResolvedValue(undefined),
-    handleSetupIntentFailed: jest.fn().mockResolvedValue(undefined),
   };
 
   const configService = {
@@ -51,23 +28,16 @@ describe('StripeWebhookService characterization', () => {
 
   const stripeMock = {
     webhooks: { constructEvent: jest.fn() },
-    subscriptions: { retrieve: jest.fn() },
   };
 
   let service: StripeWebhookService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new StripeWebhookService(
-      prisma as never,
-      configService,
-      stripeBilling as never,
-      stripeAdapter as never,
-      invoiceMirror as never,
-      billingEvents as never,
-      paymentMethods as never,
-    );
+    service = new StripeWebhookService(prisma as never, configService, dispatcher as never);
     jest.spyOn(stripeClientUtil, 'getStripeClient').mockReturnValue(stripeMock as never);
+    dispatcher.resolveOrganizationId.mockResolvedValue('org-1');
+    dispatcher.dispatch.mockResolvedValue({ outcome: 'processed', organizationId: 'org-1' });
   });
 
   afterEach(() => {
@@ -98,11 +68,7 @@ describe('StripeWebhookService characterization', () => {
       const localService = new StripeWebhookService(
         prisma as never,
         noSecretConfig,
-        stripeBilling as never,
-        stripeAdapter as never,
-        invoiceMirror as never,
-        billingEvents as never,
-        paymentMethods as never,
+        dispatcher as never,
       );
 
       expect(() => localService.constructEvent(Buffer.from('{}'), 'sig')).toThrow(
@@ -116,6 +82,8 @@ describe('StripeWebhookService characterization', () => {
       stripeMock.webhooks.constructEvent.mockReturnValue({
         id: 'evt_processed',
         type: 'invoice.paid',
+        created: 1,
+        livemode: false,
         data: { object: {} },
       });
       prisma.stripeWebhookEvent.findUnique.mockResolvedValue({
@@ -127,30 +95,29 @@ describe('StripeWebhookService characterization', () => {
 
       expect(result.duplicate).toBe(true);
       expect(result.status).toBe('skipped_processed');
-      expect(invoiceMirror.mirrorStripeInvoice).not.toHaveBeenCalled();
-      expect(prisma.stripeWebhookEvent.update).not.toHaveBeenCalled();
+      expect(dispatcher.dispatch).not.toHaveBeenCalled();
     });
 
     it('re-processes event when prior row exists but is not PROCESSED', async () => {
-      const invoice = { id: 'in_retry', customer: 'cus_1', subscription: 'sub_1', status: 'paid' };
       stripeMock.webhooks.constructEvent.mockReturnValue({
         id: 'evt_retry',
         type: 'invoice.paid',
-        data: { object: invoice },
+        created: 1,
+        livemode: false,
+        data: { object: { id: 'in_retry' } },
       });
       prisma.stripeWebhookEvent.findUnique.mockResolvedValue({
         stripeEventId: 'evt_retry',
         status: StripeWebhookEventStatus.RECEIVED,
+        retryCount: 0,
       });
       prisma.stripeWebhookEvent.update.mockResolvedValue({});
-      stripeBilling.findOrganizationIdByStripeCustomer.mockResolvedValue('org-1');
-      stripeMock.subscriptions.retrieve.mockResolvedValue({ id: 'sub_1', status: 'active' });
 
       const result = await service.ingestRawWebhook(Buffer.from('{}'), 'sig');
 
       expect(result.duplicate).toBe(false);
       expect(result.status).toBe('processed');
-      expect(invoiceMirror.mirrorStripeInvoice).toHaveBeenCalledWith(invoice);
+      expect(dispatcher.dispatch).toHaveBeenCalled();
       expect(prisma.stripeWebhookEvent.create).not.toHaveBeenCalled();
     });
 
@@ -158,12 +125,13 @@ describe('StripeWebhookService characterization', () => {
       stripeMock.webhooks.constructEvent.mockReturnValue({
         id: 'evt_new',
         type: 'customer.updated',
+        created: 1,
+        livemode: false,
         data: { object: { id: 'cus_1' } },
       });
       prisma.stripeWebhookEvent.findUnique.mockResolvedValue(null);
-      prisma.stripeWebhookEvent.create.mockResolvedValue({});
+      prisma.stripeWebhookEvent.create.mockResolvedValue({ retryCount: 0 });
       prisma.stripeWebhookEvent.update.mockResolvedValue({});
-      stripeBilling.findOrganizationIdByStripeCustomer.mockResolvedValue('org-1');
 
       await service.ingestRawWebhook(Buffer.from('payload'), 'sig');
 
@@ -179,61 +147,36 @@ describe('StripeWebhookService characterization', () => {
     });
   });
 
-  describe('event dispatch', () => {
-    it('mirrors invoice on invoice.payment_failed and refreshes subscription', async () => {
-      const invoice = {
-        id: 'in_failed',
-        customer: 'cus_1',
-        subscription: 'sub_1',
-        status: 'open',
-      };
+  describe('event dispatch delegation', () => {
+    it('delegates invoice.payment_failed to dispatcher', async () => {
       stripeMock.webhooks.constructEvent.mockReturnValue({
         id: 'evt_fail',
         type: 'invoice.payment_failed',
-        data: { object: invoice },
+        created: 1,
+        livemode: false,
+        data: { object: { id: 'in_failed' } },
       });
       prisma.stripeWebhookEvent.findUnique.mockResolvedValue(null);
-      prisma.stripeWebhookEvent.create.mockResolvedValue({});
+      prisma.stripeWebhookEvent.create.mockResolvedValue({ retryCount: 0 });
       prisma.stripeWebhookEvent.update.mockResolvedValue({});
-      stripeBilling.findOrganizationIdByStripeCustomer.mockResolvedValue('org-1');
-      stripeMock.subscriptions.retrieve.mockResolvedValue({ id: 'sub_1', status: 'past_due' });
 
       await service.ingestRawWebhook(Buffer.from('{}'), 'sig');
 
-      expect(invoiceMirror.mirrorStripeInvoice).toHaveBeenCalledWith(invoice);
-      expect(stripeAdapter.applyStripeSubscription).toHaveBeenCalled();
-      expect(stripeAdapter.syncPaymentMethods).toHaveBeenCalledWith('org-1');
+      expect(dispatcher.dispatch).toHaveBeenCalledWith(
+        expect.objectContaining({ event: expect.objectContaining({ type: 'invoice.payment_failed' }) }),
+      );
     });
 
-    it('charge.refunded only syncs payment methods — legacy behavior (to be corrected in prompt 25)', () => {
-      // Current: refunds are not persisted locally; only payment method sync runs.
-      const charge = { id: 'ch_1', customer: 'cus_1' };
-      stripeMock.webhooks.constructEvent.mockReturnValue({
-        id: 'evt_refund',
-        type: 'charge.refunded',
-        data: { object: charge },
-      });
-      prisma.stripeWebhookEvent.findUnique.mockResolvedValue(null);
-      prisma.stripeWebhookEvent.create.mockResolvedValue({});
-      prisma.stripeWebhookEvent.update.mockResolvedValue({});
-      stripeBilling.findOrganizationIdByStripeCustomer.mockResolvedValue('org-1');
-
-      return service.ingestRawWebhook(Buffer.from('{}'), 'sig').then((result) => {
-        expect(result.status).toBe('processed');
-        expect(invoiceMirror.mirrorStripeInvoice).not.toHaveBeenCalled();
-        expect(stripeBilling.syncPaymentMethods).toHaveBeenCalledWith('org-1');
-      });
-    });
-
-    it('marks unknown event types as IGNORED', async () => {
+    it('marks unknown event types as IGNORED without dispatch', async () => {
       stripeMock.webhooks.constructEvent.mockReturnValue({
         id: 'evt_unknown',
         type: 'account.updated',
+        created: 1,
+        livemode: false,
         data: { object: {} },
       });
       prisma.stripeWebhookEvent.findUnique.mockResolvedValue(null);
-      prisma.stripeWebhookEvent.create.mockResolvedValue({});
-      prisma.stripeWebhookEvent.update.mockResolvedValue({});
+      prisma.stripeWebhookEvent.create.mockResolvedValue({ retryCount: 0 });
 
       const result = await service.ingestRawWebhook(Buffer.from('{}'), 'sig');
 

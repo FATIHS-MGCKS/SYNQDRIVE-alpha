@@ -100,4 +100,87 @@ export class BillingEventPublisher {
       correlationId,
     });
   }
+
+  async publishPaymentRecorded(
+    organizationId: string,
+    payload: Record<string, unknown>,
+    correlationId?: string,
+  ): Promise<void> {
+    await this.publish({
+      type: BillingDomainEventType.PAYMENT_RECORDED,
+      organizationId,
+      occurredAt: new Date(),
+      payload,
+      correlationId,
+    });
+  }
+
+  async publishRefundRecorded(
+    organizationId: string,
+    payload: Record<string, unknown>,
+    correlationId?: string,
+  ): Promise<void> {
+    await this.publish({
+      type: BillingDomainEventType.REFUND_RECORDED,
+      organizationId,
+      occurredAt: new Date(),
+      payload,
+      correlationId,
+    });
+  }
+
+  async publishCreditNoteRecorded(
+    organizationId: string,
+    payload: Record<string, unknown>,
+    correlationId?: string,
+  ): Promise<void> {
+    await this.publish({
+      type: BillingDomainEventType.CREDIT_NOTE_RECORDED,
+      organizationId,
+      occurredAt: new Date(),
+      payload,
+      correlationId,
+    });
+  }
+
+  async publishDisputeOpened(
+    organizationId: string,
+    payload: Record<string, unknown>,
+    correlationId?: string,
+  ): Promise<void> {
+    await this.publish({
+      type: BillingDomainEventType.DISPUTE_OPENED,
+      organizationId,
+      occurredAt: new Date(),
+      payload,
+      correlationId,
+    });
+  }
+
+  async publishDisputeClosed(
+    organizationId: string,
+    payload: Record<string, unknown>,
+    correlationId?: string,
+  ): Promise<void> {
+    await this.publish({
+      type: BillingDomainEventType.DISPUTE_CLOSED,
+      organizationId,
+      occurredAt: new Date(),
+      payload,
+      correlationId,
+    });
+  }
+
+  async publishWebhookUnresolved(
+    payload: Record<string, unknown>,
+    correlationId?: string,
+  ): Promise<void> {
+    await this.publish({
+      type: BillingDomainEventType.WEBHOOK_UNRESOLVED,
+      organizationId: null,
+      occurredAt: new Date(),
+      payload,
+      correlationId,
+    });
+  }
 }

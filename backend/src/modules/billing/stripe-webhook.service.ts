@@ -4,16 +4,34 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { StripeWebhookEventStatus } from '@prisma/client';
+import { Prisma, StripeWebhookEventStatus } from '@prisma/client';
 import Stripe from 'stripe';
 import { createHash } from 'crypto';
 import { PrismaService } from '@shared/database/prisma.service';
 import { getStripeClient } from './stripe-client.util';
-import { StripeBillingService } from './stripe-billing.service';
-import { StripeInvoiceMirrorService } from './stripe-invoice-mirror.service';
-import { StripeBillingAdapter } from './adapters/stripe-billing.adapter';
-import { BillingEventPublisher } from './events/billing-event.publisher';
-import { StripePaymentMethodService } from './stripe-payment-method.service';
+import { StripeWebhookDispatcherService } from './stripe-webhook-dispatcher.service';
+import {
+  isSupportedStripeBillingWebhookEvent,
+} from './domain/stripe-webhook-matrix';
+import {
+  buildSafeStripeWebhookPayload,
+  extractStripeObjectId,
+  sanitizeSafePayload,
+} from './stripe-webhook.util';
+
+export interface StripeWebhookIngestResult {
+  received: boolean;
+  duplicate: boolean;
+  eventId: string;
+  type: string;
+  status:
+    | 'processed'
+    | 'ignored'
+    | 'skipped_processed'
+    | 'unresolved_mapping'
+    | 'failed';
+  organizationId?: string | null;
+}
 
 @Injectable()
 export class StripeWebhookService {
@@ -22,11 +40,7 @@ export class StripeWebhookService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
-    private readonly stripeBilling: StripeBillingService,
-    private readonly stripeAdapter: StripeBillingAdapter,
-    private readonly invoiceMirror: StripeInvoiceMirrorService,
-    private readonly billingEvents: BillingEventPublisher,
-    private readonly paymentMethods: StripePaymentMethodService,
+    private readonly dispatcher: StripeWebhookDispatcherService,
   ) {}
 
   constructEvent(rawBody: Buffer, signature: string | undefined): Stripe.Event {
@@ -55,9 +69,42 @@ export class StripeWebhookService {
     return createHash('sha256').update(rawBody).digest('hex');
   }
 
-  async ingestRawWebhook(rawBody: Buffer, signature: string | undefined) {
+  private mapOutcomeToStatus(
+    outcome: 'processed' | 'ignored' | 'unresolved_mapping',
+  ): StripeWebhookEventStatus {
+    switch (outcome) {
+      case 'ignored':
+        return StripeWebhookEventStatus.IGNORED;
+      case 'unresolved_mapping':
+        return StripeWebhookEventStatus.UNRESOLVED_MAPPING;
+      default:
+        return StripeWebhookEventStatus.PROCESSED;
+    }
+  }
+
+  private mapOutcomeToResponseStatus(
+    outcome: 'processed' | 'ignored' | 'unresolved_mapping',
+  ): StripeWebhookIngestResult['status'] {
+    switch (outcome) {
+      case 'ignored':
+        return 'ignored';
+      case 'unresolved_mapping':
+        return 'unresolved_mapping';
+      default:
+        return 'processed';
+    }
+  }
+
+  async ingestRawWebhook(
+    rawBody: Buffer,
+    signature: string | undefined,
+  ): Promise<StripeWebhookIngestResult> {
     const event = this.constructEvent(rawBody, signature);
     const payloadHash = this.hashPayload(rawBody);
+    const organizationId = await this.dispatcher.resolveOrganizationId(event);
+    const safePayload = sanitizeSafePayload(
+      buildSafeStripeWebhookPayload(event, organizationId),
+    );
 
     const existing = await this.prisma.stripeWebhookEvent.findUnique({
       where: { stripeEventId: event.id },
@@ -70,28 +117,25 @@ export class StripeWebhookService {
         eventId: event.id,
         type: event.type,
         status: 'skipped_processed',
+        organizationId: existing.organizationId,
       };
     }
 
-    if (!existing) {
-      await this.prisma.stripeWebhookEvent.create({
-        data: {
-          stripeEventId: event.id,
-          type: event.type,
-          status: StripeWebhookEventStatus.RECEIVED,
-          payloadHash,
-        },
-      });
-    }
+    const isRetry = Boolean(existing);
+    const stored = await this.ensureStoredEvent({
+      event,
+      payloadHash,
+      safePayload,
+      organizationId,
+      isRetry,
+      existingRetryCount: existing?.retryCount ?? 0,
+    });
 
-    try {
-      const ignored = await this.dispatchEvent(event);
+    if (!isSupportedStripeBillingWebhookEvent(event.type)) {
       await this.prisma.stripeWebhookEvent.update({
         where: { stripeEventId: event.id },
         data: {
-          status: ignored
-            ? StripeWebhookEventStatus.IGNORED
-            : StripeWebhookEventStatus.PROCESSED,
+          status: StripeWebhookEventStatus.IGNORED,
           processedAt: new Date(),
           errorMessage: null,
         },
@@ -101,7 +145,32 @@ export class StripeWebhookService {
         duplicate: false,
         eventId: event.id,
         type: event.type,
-        status: ignored ? 'ignored' : 'processed',
+        status: 'ignored',
+        organizationId: stored.organizationId,
+      };
+    }
+
+    try {
+      const result = await this.dispatcher.dispatch({ event, organizationId });
+      const status = this.mapOutcomeToStatus(result.outcome);
+
+      await this.prisma.stripeWebhookEvent.update({
+        where: { stripeEventId: event.id },
+        data: {
+          status,
+          organizationId: result.organizationId ?? organizationId,
+          processedAt: new Date(),
+          errorMessage: result.message ?? null,
+        },
+      });
+
+      return {
+        received: true,
+        duplicate: false,
+        eventId: event.id,
+        type: event.type,
+        status: this.mapOutcomeToResponseStatus(result.outcome),
+        organizationId: result.organizationId ?? organizationId,
       };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Webhook processing failed';
@@ -111,138 +180,69 @@ export class StripeWebhookService {
         data: {
           status: StripeWebhookEventStatus.FAILED,
           errorMessage: message.slice(0, 500),
+          retryCount: (stored.retryCount ?? 0) + 1,
         },
       });
       throw err;
     }
   }
 
-  /** @returns true when event type is intentionally ignored */
-  private async dispatchEvent(event: Stripe.Event): Promise<boolean> {
-    switch (event.type) {
-      case 'customer.updated':
-        await this.handleCustomerUpdated(event.data.object as Stripe.Customer);
-        return false;
-      case 'payment_method.attached':
-        await this.handlePaymentMethodAttached(event.data.object as Stripe.PaymentMethod);
-        return false;
-      case 'payment_method.detached':
-        await this.handlePaymentMethodDetached(event.data.object as Stripe.PaymentMethod);
-        return false;
-      case 'payment_method.updated':
-      case 'payment_method.automatically_updated':
-        await this.handlePaymentMethodUpdated(event.data.object as Stripe.PaymentMethod);
-        return false;
-      case 'setup_intent.succeeded':
-        await this.handleSetupIntentSucceeded(event.data.object as Stripe.SetupIntent);
-        return false;
-      case 'setup_intent.setup_failed':
-        await this.handleSetupIntentFailed(event.data.object as Stripe.SetupIntent);
-        return false;
-      case 'customer.subscription.created':
-      case 'customer.subscription.updated':
-      case 'customer.subscription.deleted':
-        await this.handleSubscriptionEvent(event.data.object as Stripe.Subscription);
-        return false;
-      case 'invoice.created':
-      case 'invoice.finalized':
-      case 'invoice.paid':
-      case 'invoice.payment_failed':
-        await this.handleInvoiceEvent(event.data.object as Stripe.Invoice);
-        return false;
-      case 'charge.refunded':
-        await this.handleChargeRefunded(event.data.object as Stripe.Charge);
-        return false;
-      default:
-        return true;
+  private async ensureStoredEvent(input: {
+    event: Stripe.Event;
+    payloadHash: string;
+    safePayload: Record<string, unknown>;
+    organizationId: string | null;
+    isRetry: boolean;
+    existingRetryCount: number;
+  }): Promise<{ retryCount: number; organizationId: string | null }> {
+    if (input.isRetry) {
+      return this.prisma.stripeWebhookEvent.update({
+        where: { stripeEventId: input.event.id },
+        data: {
+          type: input.event.type,
+          payloadHash: input.payloadHash,
+          safePayload: input.safePayload as Prisma.InputJsonValue,
+          organizationId: input.organizationId,
+          stripeObjectId: extractStripeObjectId(input.event),
+          eventCreatedAt: new Date(input.event.created * 1000),
+          retryCount: input.existingRetryCount + 1,
+          status: StripeWebhookEventStatus.RECEIVED,
+          errorMessage: null,
+        },
+      });
     }
-  }
 
-  private async resolveOrgIdFromCustomer(
-    customerRef: string | Stripe.Customer | Stripe.DeletedCustomer | null,
-  ): Promise<string | null> {
-    const customerId =
-      typeof customerRef === 'string' ? customerRef : customerRef?.id ?? null;
-    if (!customerId) return null;
-    return this.stripeBilling.findOrganizationIdByStripeCustomer(customerId);
-  }
-
-  private async handleCustomerUpdated(customer: Stripe.Customer) {
-    const orgId =
-      customer.metadata?.organizationId ||
-      (await this.stripeBilling.findOrganizationIdByStripeCustomer(customer.id));
-    if (!orgId) return;
-    await this.stripeBilling.syncPaymentMethods(orgId);
-  }
-
-  private async handlePaymentMethodAttached(paymentMethod: Stripe.PaymentMethod) {
-    const orgId = await this.resolveOrgIdFromCustomer(paymentMethod.customer ?? null);
-    if (!orgId) return;
-    await this.paymentMethods.syncPaymentMethods(orgId);
-  }
-
-  private async handlePaymentMethodDetached(paymentMethod: Stripe.PaymentMethod) {
-    await this.paymentMethods.handlePaymentMethodDetached(paymentMethod);
-  }
-
-  private async handlePaymentMethodUpdated(paymentMethod: Stripe.PaymentMethod) {
-    await this.paymentMethods.handlePaymentMethodUpdated(paymentMethod);
-  }
-
-  private async handleSetupIntentSucceeded(setupIntent: Stripe.SetupIntent) {
-    await this.paymentMethods.handleSetupIntentSucceeded(setupIntent);
-  }
-
-  private async handleSetupIntentFailed(setupIntent: Stripe.SetupIntent) {
-    await this.paymentMethods.handleSetupIntentFailed(setupIntent);
-  }
-
-  private async handleSubscriptionEvent(subscription: Stripe.Subscription) {
-    const orgId =
-      subscription.metadata?.organizationId ||
-      (await this.stripeBilling.findOrganizationIdByStripeSubscription(subscription.id)) ||
-      (await this.resolveOrgIdFromCustomer(subscription.customer));
-    if (!orgId) {
-      this.logger.warn(`Subscription webhook without org mapping: ${subscription.id}`);
-      return;
-    }
-    await this.stripeAdapter.applyStripeSubscription(orgId, subscription);
-    await this.stripeAdapter.syncPaymentMethods(orgId);
-    await this.billingEvents.publishSubscriptionSynced(orgId, {
-      stripeSubscriptionId: subscription.id,
-      stripeStatus: subscription.status,
-    });
-  }
-
-  private async handleInvoiceEvent(invoice: Stripe.Invoice) {
-    await this.invoiceMirror.mirrorStripeInvoice(invoice);
-
-    const orgId = await this.resolveOrgIdFromCustomer(invoice.customer ?? null);
-    if (!orgId) return;
-
-    if (invoice.subscription) {
-      const subscriptionId =
-        typeof invoice.subscription === 'string'
-          ? invoice.subscription
-          : invoice.subscription.id;
-      const stripe = getStripeClient(this.configService.get<string>('stripe.secretKey'));
-      if (stripe) {
-        const sub = await stripe.subscriptions.retrieve(subscriptionId);
-        await this.stripeAdapter.applyStripeSubscription(orgId, sub);
-        await this.billingEvents.publishSubscriptionSynced(orgId, {
-          stripeSubscriptionId: sub.id,
-          stripeStatus: sub.status,
-          source: 'invoice_webhook',
+    try {
+      return await this.prisma.stripeWebhookEvent.create({
+        data: {
+          stripeEventId: input.event.id,
+          type: input.event.type,
+          status: StripeWebhookEventStatus.RECEIVED,
+          organizationId: input.organizationId,
+          stripeObjectId: extractStripeObjectId(input.event),
+          payloadHash: input.payloadHash,
+          safePayload: input.safePayload as Prisma.InputJsonValue,
+          eventCreatedAt: new Date(input.event.created * 1000),
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const raced = await this.prisma.stripeWebhookEvent.findUnique({
+          where: { stripeEventId: input.event.id },
+        });
+        if (raced?.status === StripeWebhookEventStatus.PROCESSED) {
+          return raced;
+        }
+        return this.ensureStoredEvent({
+          ...input,
+          isRetry: true,
+          existingRetryCount: raced?.retryCount ?? 0,
         });
       }
+      throw error;
     }
-
-    await this.stripeAdapter.syncPaymentMethods(orgId);
-  }
-
-  private async handleChargeRefunded(charge: Stripe.Charge) {
-    const orgId = await this.resolveOrgIdFromCustomer(charge.customer ?? null);
-    if (!orgId) return;
-    await this.stripeBilling.syncPaymentMethods(orgId);
   }
 }

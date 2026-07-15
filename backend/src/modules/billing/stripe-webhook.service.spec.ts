@@ -1,44 +1,21 @@
 import { BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { StripeWebhookEventStatus } from '@prisma/client';
+import { Prisma, StripeWebhookEventStatus } from '@prisma/client';
 import { StripeWebhookService } from './stripe-webhook.service';
 import * as stripeClientUtil from './stripe-client.util';
 
-describe('StripeWebhookService', () => {
+describe('StripeWebhookService ingest', () => {
+  const dispatcher = {
+    resolveOrganizationId: jest.fn(),
+    dispatch: jest.fn(),
+  };
+
   const prisma = {
     stripeWebhookEvent: {
       findUnique: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
     },
-  };
-
-  const stripeAdapter = {
-    applyStripeSubscription: jest.fn().mockResolvedValue({ syncStatus: 'SYNCED' }),
-    syncPaymentMethods: jest.fn().mockResolvedValue({ syncStatus: 'SYNCED', synced: 0 }),
-  };
-
-  const billingEvents = {
-    publishSubscriptionSynced: jest.fn().mockResolvedValue(undefined),
-  };
-
-  const stripeBilling = {
-    findOrganizationIdByStripeCustomer: jest.fn(),
-    findOrganizationIdByStripeSubscription: jest.fn(),
-    applyStripeSubscription: jest.fn(),
-    syncPaymentMethods: jest.fn(),
-  };
-
-  const invoiceMirror = {
-    mirrorStripeInvoice: jest.fn(),
-  };
-
-  const paymentMethods = {
-    syncPaymentMethods: jest.fn().mockResolvedValue({ synced: 0 }),
-    handlePaymentMethodDetached: jest.fn().mockResolvedValue(undefined),
-    handlePaymentMethodUpdated: jest.fn().mockResolvedValue(undefined),
-    handleSetupIntentSucceeded: jest.fn().mockResolvedValue(undefined),
-    handleSetupIntentFailed: jest.fn().mockResolvedValue(undefined),
   };
 
   const configService = {
@@ -49,29 +26,18 @@ describe('StripeWebhookService', () => {
     }),
   } as unknown as ConfigService;
 
-  let service: StripeWebhookService;
-
   const stripeMock = {
-    webhooks: {
-      constructEvent: jest.fn(),
-    },
-    subscriptions: {
-      retrieve: jest.fn(),
-    },
+    webhooks: { constructEvent: jest.fn() },
   };
+
+  let service: StripeWebhookService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new StripeWebhookService(
-      prisma as never,
-      configService,
-      stripeBilling as never,
-      stripeAdapter as never,
-      invoiceMirror as never,
-      billingEvents as never,
-      paymentMethods as never,
-    );
+    service = new StripeWebhookService(prisma as never, configService, dispatcher as never);
     jest.spyOn(stripeClientUtil, 'getStripeClient').mockReturnValue(stripeMock as never);
+    dispatcher.resolveOrganizationId.mockResolvedValue('org-1');
+    dispatcher.dispatch.mockResolvedValue({ outcome: 'processed', organizationId: 'org-1' });
   });
 
   afterEach(() => {
@@ -83,48 +49,176 @@ describe('StripeWebhookService', () => {
       throw new Error('No signatures found');
     });
 
-    expect(() =>
-      service.constructEvent(Buffer.from('{}'), 'bad-signature'),
-    ).toThrow(BadRequestException);
+    expect(() => service.constructEvent(Buffer.from('{}'), 'bad-signature')).toThrow(
+      BadRequestException,
+    );
+  });
+
+  it('stores event before processing and marks processed', async () => {
+    stripeMock.webhooks.constructEvent.mockReturnValue({
+      id: 'evt_1',
+      type: 'invoice.paid',
+      created: 1_700_000_000,
+      livemode: false,
+      data: { object: { id: 'in_1', customer: 'cus_1' } },
+    });
+    prisma.stripeWebhookEvent.findUnique.mockResolvedValue(null);
+    prisma.stripeWebhookEvent.create.mockResolvedValue({ retryCount: 0 });
+
+    const result = await service.ingestRawWebhook(Buffer.from('{}'), 'sig');
+
+    expect(prisma.stripeWebhookEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          stripeEventId: 'evt_1',
+          status: StripeWebhookEventStatus.RECEIVED,
+          organizationId: 'org-1',
+        }),
+      }),
+    );
+    expect(dispatcher.dispatch).toHaveBeenCalled();
+    expect(result.status).toBe('processed');
   });
 
   it('skips duplicate processed webhook events', async () => {
     stripeMock.webhooks.constructEvent.mockReturnValue({
       id: 'evt_dup',
       type: 'invoice.paid',
+      created: 1,
+      livemode: false,
       data: { object: {} },
     });
     prisma.stripeWebhookEvent.findUnique.mockResolvedValue({
       stripeEventId: 'evt_dup',
       status: StripeWebhookEventStatus.PROCESSED,
+      organizationId: 'org-1',
     });
 
     const result = await service.ingestRawWebhook(Buffer.from('{}'), 'sig');
+
     expect(result.duplicate).toBe(true);
-    expect(prisma.stripeWebhookEvent.create).not.toHaveBeenCalled();
+    expect(result.status).toBe('skipped_processed');
+    expect(dispatcher.dispatch).not.toHaveBeenCalled();
   });
 
-  it('stores and processes invoice.paid webhook', async () => {
-    const invoice = {
-      id: 'in_1',
-      customer: 'cus_1',
-      subscription: 'sub_1',
-      status: 'paid',
-    };
+  it('retries failed events by re-dispatching', async () => {
     stripeMock.webhooks.constructEvent.mockReturnValue({
-      id: 'evt_1',
+      id: 'evt_retry',
       type: 'invoice.paid',
-      data: { object: invoice },
+      created: 1,
+      livemode: false,
+      data: { object: { id: 'in_retry' } },
+    });
+    prisma.stripeWebhookEvent.findUnique.mockResolvedValue({
+      stripeEventId: 'evt_retry',
+      status: StripeWebhookEventStatus.FAILED,
+      retryCount: 1,
+    });
+    prisma.stripeWebhookEvent.update.mockResolvedValue({ retryCount: 2 });
+
+    await service.ingestRawWebhook(Buffer.from('{}'), 'sig');
+
+    expect(prisma.stripeWebhookEvent.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { stripeEventId: 'evt_retry' },
+        data: expect.objectContaining({ retryCount: 2 }),
+      }),
+    );
+    expect(dispatcher.dispatch).toHaveBeenCalled();
+  });
+
+  it('marks unsupported events as ignored after store', async () => {
+    stripeMock.webhooks.constructEvent.mockReturnValue({
+      id: 'evt_unknown',
+      type: 'account.updated',
+      created: 1,
+      livemode: false,
+      data: { object: {} },
     });
     prisma.stripeWebhookEvent.findUnique.mockResolvedValue(null);
-    prisma.stripeWebhookEvent.create.mockResolvedValue({});
-    prisma.stripeWebhookEvent.update.mockResolvedValue({});
-    stripeBilling.findOrganizationIdByStripeCustomer.mockResolvedValue('org-1');
-    stripeMock.subscriptions.retrieve.mockResolvedValue({ id: 'sub_1', status: 'active' });
+    prisma.stripeWebhookEvent.create.mockResolvedValue({ retryCount: 0 });
 
     const result = await service.ingestRawWebhook(Buffer.from('{}'), 'sig');
-    expect(result.status).toBe('processed');
-    expect(invoiceMirror.mirrorStripeInvoice).toHaveBeenCalledWith(invoice);
-    expect(stripeAdapter.applyStripeSubscription).toHaveBeenCalled();
+
+    expect(result.status).toBe('ignored');
+    expect(dispatcher.dispatch).not.toHaveBeenCalled();
+  });
+
+  it('handles create race with unique stripe event id', async () => {
+    stripeMock.webhooks.constructEvent.mockReturnValue({
+      id: 'evt_race',
+      type: 'invoice.paid',
+      created: 1,
+      livemode: false,
+      data: { object: { id: 'in_race' } },
+    });
+    prisma.stripeWebhookEvent.findUnique
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({
+        stripeEventId: 'evt_race',
+        status: StripeWebhookEventStatus.RECEIVED,
+        retryCount: 0,
+      });
+    prisma.stripeWebhookEvent.create.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('duplicate', {
+        code: 'P2002',
+        clientVersion: 'test',
+      }),
+    );
+    prisma.stripeWebhookEvent.update.mockResolvedValue({ retryCount: 1 });
+
+    await service.ingestRawWebhook(Buffer.from('{}'), 'sig');
+
+    expect(dispatcher.dispatch).toHaveBeenCalled();
+  });
+
+  it('marks unresolved mapping from dispatcher', async () => {
+    stripeMock.webhooks.constructEvent.mockReturnValue({
+      id: 'evt_unresolved',
+      type: 'customer.subscription.updated',
+      created: 1,
+      livemode: false,
+      data: { object: { id: 'sub_x' } },
+    });
+    prisma.stripeWebhookEvent.findUnique.mockResolvedValue(null);
+    prisma.stripeWebhookEvent.create.mockResolvedValue({ retryCount: 0 });
+    dispatcher.dispatch.mockResolvedValue({
+      outcome: 'unresolved_mapping',
+      organizationId: null,
+      message: 'No organization mapping',
+    });
+
+    const result = await service.ingestRawWebhook(Buffer.from('{}'), 'sig');
+
+    expect(result.status).toBe('unresolved_mapping');
+    expect(prisma.stripeWebhookEvent.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: StripeWebhookEventStatus.UNRESOLVED_MAPPING,
+        }),
+      }),
+    );
+  });
+
+  it('marks failed processing and rethrows for Stripe retry', async () => {
+    stripeMock.webhooks.constructEvent.mockReturnValue({
+      id: 'evt_fail',
+      type: 'invoice.paid',
+      created: 1,
+      livemode: false,
+      data: { object: { id: 'in_fail' } },
+    });
+    prisma.stripeWebhookEvent.findUnique.mockResolvedValue(null);
+    prisma.stripeWebhookEvent.create.mockResolvedValue({ retryCount: 0 });
+    dispatcher.dispatch.mockRejectedValue(new Error('db unavailable'));
+
+    await expect(service.ingestRawWebhook(Buffer.from('{}'), 'sig')).rejects.toThrow(
+      'db unavailable',
+    );
+    expect(prisma.stripeWebhookEvent.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: StripeWebhookEventStatus.FAILED }),
+      }),
+    );
   });
 });
