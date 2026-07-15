@@ -1,8 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { BillingStripeMode, BillingSubscription, InvoiceStatus } from '@prisma/client';
+import { BillingStripeMode, BillingSubscription, Prisma } from '@prisma/client';
 import Stripe from 'stripe';
 import { PrismaService } from '@shared/database/prisma.service';
-import { mapStripeInvoiceStatus } from './stripe-status.mapper';
+import {
+  buildMirroredInvoicePayload,
+  mergeImmutableInvoiceSnapshots,
+  mergeImmutableLineSnapshots,
+  MirroredInvoiceLinePayload,
+} from './domain/stripe-invoice-mirror';
 
 @Injectable()
 export class StripeInvoiceMirrorService {
@@ -43,6 +48,25 @@ export class StripeInvoiceMirrorService {
     });
   }
 
+  private async loadOrganizationSnapshot(organizationId: string) {
+    return this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      select: {
+        companyName: true,
+        legalCompanyName: true,
+        vatId: true,
+        taxId: true,
+        taxNumber: true,
+        invoiceEmail: true,
+        address: true,
+        city: true,
+        state: true,
+        zip: true,
+        country: true,
+      },
+    });
+  }
+
   async mirrorStripeInvoice(invoice: Stripe.Invoice): Promise<string | null> {
     if (!invoice.id) return null;
 
@@ -54,36 +78,15 @@ export class StripeInvoiceMirrorService {
       return null;
     }
 
-    const status = mapStripeInvoiceStatus(invoice.status) as InvoiceStatus;
-    const amountCents = invoice.total ?? invoice.amount_due ?? 0;
-    const currency = (invoice.currency || 'eur').toLowerCase();
-    const invoiceDate = invoice.created
-      ? new Date(invoice.created * 1000)
-      : new Date();
-    const dueDate = invoice.due_date ? new Date(invoice.due_date * 1000) : null;
-    const paidAt = invoice.status_transitions?.paid_at
-      ? new Date(invoice.status_transitions.paid_at * 1000)
-      : null;
-    const periodStart = invoice.period_start
-      ? new Date(invoice.period_start * 1000)
-      : null;
-    const periodEnd = invoice.period_end ? new Date(invoice.period_end * 1000) : null;
+    const organization = await this.loadOrganizationSnapshot(subscription.organizationId);
+    if (!organization) {
+      this.logger.warn(
+        `Skipping invoice mirror ${invoice.id}: organization ${subscription.organizationId} missing`,
+      );
+      return null;
+    }
 
-    const lines = (invoice.lines?.data ?? []).map((line) => ({
-      stripeInvoiceLineId: line.id ?? null,
-      description: line.description || line.plan?.nickname || 'Subscription',
-      quantity: line.quantity ?? 1,
-      unitAmountCents: line.price?.unit_amount ?? null,
-      subtotalCents: line.amount ?? 0,
-      taxRateBps: null,
-      taxCents: null,
-      totalCents: line.amount ?? 0,
-      periodStart: line.period?.start
-        ? new Date(line.period.start * 1000)
-        : periodStart,
-      periodEnd: line.period?.end ? new Date(line.period.end * 1000) : periodEnd,
-    }));
-
+    const mirrored = buildMirroredInvoicePayload({ invoice, organization });
     const stripeMode = this.resolveStripeMode(invoice, subscription);
 
     const existing = await this.prisma.billingInvoice.findUnique({
@@ -93,53 +96,65 @@ export class StripeInvoiceMirrorService {
           stripeMode,
         },
       },
-      select: { id: true },
+      select: {
+        id: true,
+        customerSnapshotJson: true,
+        companySnapshotJson: true,
+        billingAddressJson: true,
+        taxIdSnapshot: true,
+      },
     });
+
+    const snapshots = mergeImmutableInvoiceSnapshots(
+      existing as {
+        customerSnapshotJson?: unknown;
+        companySnapshotJson?: unknown;
+        billingAddressJson?: unknown;
+        taxIdSnapshot?: string | null;
+      } | null,
+      {
+        customerSnapshotJson: mirrored.customerSnapshotJson,
+        companySnapshotJson: mirrored.companySnapshotJson,
+        billingAddressJson: mirrored.billingAddressJson,
+        taxIdSnapshot: mirrored.taxIdSnapshot,
+      },
+    );
+
+    const headerData = {
+      invoiceNumber: mirrored.invoiceNumber,
+      amountCents: mirrored.grossAmountCents,
+      netAmountCents: mirrored.netAmountCents,
+      discountAmountCents: mirrored.discountAmountCents,
+      taxAmountCents: mirrored.taxAmountCents,
+      amountDueCents: mirrored.amountDueCents,
+      amountPaidCents: mirrored.amountPaidCents,
+      amountRemainingCents: mirrored.amountRemainingCents,
+      currency: mirrored.currency,
+      status: mirrored.status,
+      periodStart: mirrored.periodStart,
+      periodEnd: mirrored.periodEnd,
+      stripeCreatedAt: mirrored.stripeCreatedAt,
+      finalizedAt: mirrored.finalizedAt,
+      invoiceDate: mirrored.stripeCreatedAt,
+      dueDate: mirrored.dueDate,
+      paidAt: mirrored.paidAt,
+      voidedAt: mirrored.voidedAt,
+      hostedInvoiceUrl: mirrored.hostedInvoiceUrl,
+      invoicePdfUrl: mirrored.invoicePdfUrl,
+      customerSnapshotJson: snapshots.customerSnapshotJson as unknown as Prisma.InputJsonValue,
+      companySnapshotJson: snapshots.companySnapshotJson as unknown as Prisma.InputJsonValue,
+      billingAddressJson: snapshots.billingAddressJson as unknown as Prisma.InputJsonValue,
+      taxIdSnapshot: snapshots.taxIdSnapshot,
+      stripeMode,
+    };
 
     if (existing) {
       await this.prisma.$transaction(async (tx) => {
         await tx.billingInvoice.update({
           where: { id: existing.id },
-          data: {
-            amountCents,
-            currency,
-            status,
-            invoiceDate,
-            dueDate,
-            paidAt,
-            invoicePdfUrl: invoice.invoice_pdf ?? null,
-            stripeMode,
-          },
+          data: headerData,
         });
-        for (const line of lines) {
-          if (!line.stripeInvoiceLineId) continue;
-          const lineExists = await tx.billingInvoiceLine.findUnique({
-            where: {
-              stripeInvoiceLineId_stripeMode: {
-                stripeInvoiceLineId: line.stripeInvoiceLineId,
-                stripeMode,
-              },
-            },
-            select: { id: true },
-          });
-          if (lineExists) continue;
-          await tx.billingInvoiceLine.create({
-            data: {
-              invoiceId: existing.id,
-              description: line.description,
-              quantity: line.quantity,
-              unitAmountCents: line.unitAmountCents,
-              subtotalCents: line.subtotalCents,
-              taxRateBps: line.taxRateBps,
-              taxCents: line.taxCents,
-              totalCents: line.totalCents,
-              periodStart: line.periodStart,
-              periodEnd: line.periodEnd,
-              stripeInvoiceLineId: line.stripeInvoiceLineId,
-              stripeMode,
-            },
-          });
-        }
+        await this.syncMirroredLines(tx, existing.id, mirrored.lines, stripeMode);
       });
       return existing.id;
     }
@@ -148,38 +163,73 @@ export class StripeInvoiceMirrorService {
       const row = await tx.billingInvoice.create({
         data: {
           subscriptionId: subscription.id,
-          stripeInvoiceId: invoice.id,
-          stripeMode,
-          amountCents,
-          currency,
-          status,
-          invoiceDate,
-          dueDate,
-          paidAt,
-          invoicePdfUrl: invoice.invoice_pdf ?? null,
+          stripeInvoiceId: mirrored.stripeInvoiceId,
+          ...headerData,
         },
       });
-      if (lines.length) {
-        await tx.billingInvoiceLine.createMany({
-          data: lines.map((line) => ({
-            invoiceId: row.id,
-            description: line.description,
-            quantity: line.quantity,
-            unitAmountCents: line.unitAmountCents,
-            subtotalCents: line.subtotalCents,
-            taxRateBps: line.taxRateBps,
-            taxCents: line.taxCents,
-            totalCents: line.totalCents,
-            periodStart: line.periodStart,
-            periodEnd: line.periodEnd,
-            stripeInvoiceLineId: line.stripeInvoiceLineId,
-            stripeMode: line.stripeInvoiceLineId ? stripeMode : null,
-          })),
-        });
-      }
+      await this.syncMirroredLines(tx, row.id, mirrored.lines, stripeMode);
       return row;
     });
 
     return created.id;
+  }
+
+  private async syncMirroredLines(
+    tx: Prisma.TransactionClient,
+    invoiceId: string,
+    lines: MirroredInvoiceLinePayload[],
+    stripeMode: BillingStripeMode,
+  ) {
+    for (const line of lines) {
+      const existingLine = await tx.billingInvoiceLine.findUnique({
+        where: {
+          stripeInvoiceLineId_stripeMode: {
+            stripeInvoiceLineId: line.stripeInvoiceLineId,
+            stripeMode,
+          },
+        },
+        select: {
+          id: true,
+          productSnapshotJson: true,
+          priceSnapshotJson: true,
+        },
+      });
+
+      const lineSnapshots = mergeImmutableLineSnapshots(existingLine, line);
+      const lineData = {
+        description: line.description,
+        quantity: line.quantity,
+        unitAmountCents: line.unitAmountCents,
+        discountCents: line.discountCents,
+        subtotalCents: line.subtotalCents,
+        netCents: line.netCents,
+        taxRateBps: line.taxRateBps,
+        taxCents: line.taxCents,
+        totalCents: line.totalCents,
+        periodStart: line.periodStart,
+        periodEnd: line.periodEnd,
+        productSnapshotJson: lineSnapshots.productSnapshotJson as unknown as Prisma.InputJsonValue,
+        priceSnapshotJson: lineSnapshots.priceSnapshotJson as unknown as Prisma.InputJsonValue,
+        discountDetailsJson: line.discountDetailsJson as unknown as Prisma.InputJsonValue,
+        taxDetailsJson: line.taxDetailsJson as unknown as Prisma.InputJsonValue,
+        stripeMode,
+      };
+
+      if (existingLine) {
+        await tx.billingInvoiceLine.update({
+          where: { id: existingLine.id },
+          data: lineData,
+        });
+        continue;
+      }
+
+      await tx.billingInvoiceLine.create({
+        data: {
+          invoiceId,
+          stripeInvoiceLineId: line.stripeInvoiceLineId,
+          ...lineData,
+        },
+      });
+    }
   }
 }

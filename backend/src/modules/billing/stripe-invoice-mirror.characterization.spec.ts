@@ -5,8 +5,8 @@ import { StripeInvoiceMirrorService } from './stripe-invoice-mirror.service';
 describe('StripeInvoiceMirrorService characterization', () => {
   const prisma = {
     billingSubscription: { findFirst: jest.fn() },
+    organization: { findUnique: jest.fn() },
     billingInvoice: { findUnique: jest.fn() },
-    billingInvoiceLine: { deleteMany: jest.fn(), createMany: jest.fn() },
     $transaction: jest.fn(),
   };
 
@@ -18,14 +18,24 @@ describe('StripeInvoiceMirrorService characterization', () => {
     subscription: 'sub_stripe_1',
     livemode: true,
     status: 'paid',
-    total: 4500,
+    number: 'ACME-2026-0042',
+    subtotal: 4500,
+    tax: 855,
+    total: 5355,
+    amount_due: 0,
+    amount_paid: 5355,
+    amount_remaining: 0,
     currency: 'eur',
     created: 1_700_000_000,
     due_date: null,
     period_start: 1_699_000_000,
     period_end: 1_701_000_000,
+    hosted_invoice_url: 'https://invoice.stripe.com/i/test',
     invoice_pdf: 'https://pay.stripe.com/invoice/pdf/test',
-    status_transitions: { paid_at: 1_700_000_100 },
+    customer_name: 'Acme GmbH',
+    customer_email: 'billing@acme.test',
+    status_transitions: { paid_at: 1_700_000_100, finalized_at: 1_700_000_050, voided_at: null },
+    total_discount_amounts: [],
     lines: {
       data: [
         {
@@ -33,8 +43,15 @@ describe('StripeInvoiceMirrorService characterization', () => {
           description: 'SynqDrive per vehicle',
           quantity: 3,
           amount: 4500,
-          price: { unit_amount: 1500 },
-          plan: { nickname: 'Fleet tier' },
+          price: {
+            id: 'price_1',
+            unit_amount: 1500,
+            currency: 'eur',
+            product: { id: 'prod_1', name: 'SynqDrive Rental' },
+          },
+          tax_amounts: [{ amount: 855, inclusive: false, tax_rate: 'txr_1' }],
+          tax_rates: [{ effective_percentage: 19 }],
+          discount_amounts: [],
         },
       ],
     },
@@ -47,6 +64,19 @@ describe('StripeInvoiceMirrorService characterization', () => {
       id: 'local-sub-1',
       organizationId: 'org-a',
       stripeSubscriptionId: 'sub_stripe_1',
+    });
+    prisma.organization.findUnique.mockResolvedValue({
+      companyName: 'Acme GmbH',
+      legalCompanyName: 'Acme GmbH legal',
+      vatId: 'DE123456789',
+      taxId: null,
+      taxNumber: null,
+      invoiceEmail: 'billing@acme.test',
+      address: 'Street 1',
+      city: 'Berlin',
+      state: 'BE',
+      zip: '10115',
+      country: 'DE',
     });
   });
 
@@ -67,7 +97,9 @@ describe('StripeInvoiceMirrorService characterization', () => {
           create: jest.fn().mockResolvedValue(createdRow),
         },
         billingInvoiceLine: {
-          createMany: jest.fn().mockResolvedValue({ count: 1 }),
+          findUnique: jest.fn().mockResolvedValue(null),
+          create: jest.fn().mockResolvedValue({ id: 'line-1' }),
+          update: jest.fn(),
         },
       };
       return fn(tx as never);
@@ -79,16 +111,35 @@ describe('StripeInvoiceMirrorService characterization', () => {
     expect(prisma.$transaction).toHaveBeenCalled();
   });
 
-  it('updates existing invoice header without replacing mirrored line items', async () => {
-    prisma.billingInvoice.findUnique.mockResolvedValue({ id: 'local-inv-existing' });
+  it('updates existing invoice header and line amounts without replacing snapshots', async () => {
+    prisma.billingInvoice.findUnique.mockResolvedValue({
+      id: 'local-inv-existing',
+      customerSnapshotJson: { name: 'Frozen GmbH', email: 'frozen@acme.test', phone: null },
+      companySnapshotJson: {
+        companyName: 'Frozen GmbH',
+        legalCompanyName: null,
+        vatId: 'DE999',
+        taxId: null,
+        taxNumber: null,
+        invoiceEmail: null,
+      },
+      billingAddressJson: null,
+      taxIdSnapshot: 'DE999',
+    });
     const txUpdate = jest.fn().mockResolvedValue({});
-    const txFindLine = jest.fn().mockResolvedValue({ id: 'line-existing' });
+    const txFindLine = jest.fn().mockResolvedValue({
+      id: 'line-existing',
+      productSnapshotJson: { productId: 'frozen' },
+      priceSnapshotJson: { priceId: 'frozen_price' },
+    });
+    const txUpdateLine = jest.fn().mockResolvedValue({});
     const txCreateLine = jest.fn().mockResolvedValue({ id: 'line-new' });
     prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) =>
       fn({
         billingInvoice: { update: txUpdate },
         billingInvoiceLine: {
           findUnique: txFindLine,
+          update: txUpdateLine,
           create: txCreateLine,
         },
       }),
@@ -98,29 +149,24 @@ describe('StripeInvoiceMirrorService characterization', () => {
       ...stripeInvoice,
       status: 'open',
       total: 5000,
+      amount_paid: 0,
+      amount_remaining: 5000,
+      status_transitions: { paid_at: null, finalized_at: 1_700_000_050, voided_at: null },
     } as Stripe.Invoice);
 
     expect(id).toBe('local-inv-existing');
-    expect(prisma.billingInvoice.findUnique).toHaveBeenCalledWith({
-      where: {
-        stripeInvoiceId_stripeMode: {
-          stripeInvoiceId: 'in_mirror_1',
-          stripeMode: 'LIVE',
-        },
-      },
-      select: { id: true },
-    });
     expect(txUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'local-inv-existing' },
         data: expect.objectContaining({
           amountCents: 5000,
           status: InvoiceStatus.OPEN,
-          stripeMode: 'LIVE',
+          paidAt: null,
+          customerSnapshotJson: expect.objectContaining({ name: 'Frozen GmbH' }),
         }),
       }),
     );
-    expect(txFindLine).toHaveBeenCalled();
+    expect(txUpdateLine).toHaveBeenCalled();
     expect(txCreateLine).not.toHaveBeenCalled();
   });
 
@@ -133,25 +179,40 @@ describe('StripeInvoiceMirrorService characterization', () => {
     expect(prisma.billingInvoice.findUnique).not.toHaveBeenCalled();
   });
 
-  it('legacy behavior – mirrored lines never link usageSnapshotId (to be corrected in prompt 25)', async () => {
+  it('mirrors draft invoice without official number', async () => {
     prisma.billingInvoice.findUnique.mockResolvedValue(null);
-    let capturedLineData: unknown;
+    let capturedData: unknown;
     prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) =>
       fn({
-        billingInvoice: { create: jest.fn().mockResolvedValue({ id: 'inv-x' }) },
-        billingInvoiceLine: {
-          createMany: jest.fn().mockImplementation(({ data }) => {
-            capturedLineData = data;
-            return { count: 1 };
+        billingInvoice: {
+          create: jest.fn().mockImplementation(({ data }) => {
+            capturedData = data;
+            return { id: 'inv-draft' };
           }),
+        },
+        billingInvoiceLine: {
+          findUnique: jest.fn().mockResolvedValue(null),
+          create: jest.fn(),
+          update: jest.fn(),
         },
       }),
     );
 
-    await service.mirrorStripeInvoice(stripeInvoice);
+    await service.mirrorStripeInvoice({
+      ...stripeInvoice,
+      status: 'draft',
+      number: null,
+      amount_paid: 0,
+      amount_remaining: 5355,
+      status_transitions: { paid_at: null, finalized_at: null, voided_at: null },
+    } as Stripe.Invoice);
 
-    expect(capturedLineData).toEqual([
-      expect.not.objectContaining({ usageSnapshotId: expect.anything() }),
-    ]);
+    expect(capturedData).toEqual(
+      expect.objectContaining({
+        invoiceNumber: null,
+        status: InvoiceStatus.DRAFT,
+        paidAt: null,
+      }),
+    );
   });
 });

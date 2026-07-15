@@ -248,17 +248,40 @@ export class BillingService {
 
   private formatInvoice(
     inv: BillingInvoice & {
+      invoiceNumber?: string | null;
+      netAmountCents?: number | null;
+      discountAmountCents?: number | null;
+      taxAmountCents?: number | null;
+      amountDueCents?: number | null;
+      amountPaidCents?: number | null;
+      amountRemainingCents?: number | null;
+      periodStart?: Date | null;
+      periodEnd?: Date | null;
+      stripeCreatedAt?: Date | null;
+      finalizedAt?: Date | null;
+      voidedAt?: Date | null;
+      hostedInvoiceUrl?: string | null;
+      customerSnapshotJson?: unknown;
+      companySnapshotJson?: unknown;
+      billingAddressJson?: unknown;
+      taxIdSnapshot?: string | null;
       lines?: Array<{
         id: string;
         description: string;
         quantity: number;
         unitAmountCents: number | null;
+        discountCents?: number | null;
         subtotalCents: number;
+        netCents?: number | null;
         taxRateBps: number | null;
         taxCents: number | null;
         totalCents: number;
         periodStart: Date | null;
         periodEnd: Date | null;
+        productSnapshotJson?: unknown;
+        priceSnapshotJson?: unknown;
+        discountDetailsJson?: unknown;
+        taxDetailsJson?: unknown;
         usageSnapshot?: {
           id: string;
           billableVehicleCount: number;
@@ -270,38 +293,64 @@ export class BillingService {
       }>;
     },
   ) {
-    const linePeriodStart = inv.lines?.find((l) => l.periodStart)?.periodStart ?? null;
-    const linePeriodEnd = inv.lines?.find((l) => l.periodEnd)?.periodEnd ?? null;
-    const netFromLines = inv.lines?.reduce((sum, l) => sum + l.subtotalCents, 0) ?? null;
+    const linePeriodStart =
+      inv.periodStart ?? inv.lines?.find((l) => l.periodStart)?.periodStart ?? null;
+    const linePeriodEnd =
+      inv.periodEnd ?? inv.lines?.find((l) => l.periodEnd)?.periodEnd ?? null;
+    const netFromLines = inv.lines?.reduce((sum, l) => sum + (l.netCents ?? l.subtotalCents), 0) ?? null;
     const taxFromLines = inv.lines?.reduce((sum, l) => sum + (l.taxCents ?? 0), 0) ?? null;
+    const discountFromLines =
+      inv.lines?.reduce((sum, l) => sum + (l.discountCents ?? 0), 0) ?? null;
 
     return {
       id: inv.id,
       subscriptionId: inv.subscriptionId,
       stripeInvoiceId: inv.stripeInvoiceId,
+      invoiceNumber: inv.invoiceNumber ?? null,
+      invoiceNumberDisplay:
+        inv.invoiceNumber?.trim() || 'Noch nicht finalisiert',
       amountCents: inv.amountCents,
       currency: inv.currency,
       status: inv.status,
       displayStatus: this.mapInvoiceStatus(inv),
       invoiceDate: inv.invoiceDate.toISOString(),
+      stripeCreatedAt: inv.stripeCreatedAt?.toISOString() ?? inv.invoiceDate.toISOString(),
+      finalizedAt: inv.finalizedAt?.toISOString() ?? null,
       dueDate: inv.dueDate?.toISOString() ?? null,
       paidAt: inv.paidAt?.toISOString() ?? null,
+      voidedAt: inv.voidedAt?.toISOString() ?? null,
+      hostedInvoiceUrl: inv.hostedInvoiceUrl ?? null,
       invoicePdfUrl: inv.invoicePdfUrl ?? null,
       periodStart: linePeriodStart?.toISOString() ?? null,
       periodEnd: linePeriodEnd?.toISOString() ?? null,
-      netAmountCents: netFromLines ?? inv.amountCents,
-      taxCents: taxFromLines,
+      netAmountCents: inv.netAmountCents ?? netFromLines ?? inv.amountCents,
+      discountAmountCents: inv.discountAmountCents ?? discountFromLines ?? 0,
+      taxAmountCents: inv.taxAmountCents ?? taxFromLines,
       grossAmountCents: inv.amountCents,
+      amountDueCents: inv.amountDueCents ?? null,
+      amountPaidCents: inv.amountPaidCents ?? null,
+      amountRemainingCents: inv.amountRemainingCents ?? null,
+      taxIdSnapshot: inv.taxIdSnapshot ?? null,
+      customerSnapshot: inv.customerSnapshotJson ?? null,
+      companySnapshot: inv.companySnapshotJson ?? null,
+      billingAddress: inv.billingAddressJson ?? null,
       invoiceLines: (inv.lines ?? []).map((line) => ({
         id: line.id,
         description: line.description,
         quantity: line.quantity,
         unitAmountCents: line.unitAmountCents,
+        discountCents: line.discountCents ?? 0,
         subtotalCents: line.subtotalCents,
+        netCents: line.netCents ?? line.subtotalCents,
+        taxRateBps: line.taxRateBps,
         taxCents: line.taxCents,
         totalCents: line.totalCents,
         periodStart: line.periodStart?.toISOString() ?? null,
         periodEnd: line.periodEnd?.toISOString() ?? null,
+        productSnapshot: line.productSnapshotJson ?? null,
+        priceSnapshot: line.priceSnapshotJson ?? null,
+        discountDetails: line.discountDetailsJson ?? null,
+        taxDetails: line.taxDetailsJson ?? null,
         usageSnapshot: line.usageSnapshot
           ? {
               id: line.usageSnapshot.id,
