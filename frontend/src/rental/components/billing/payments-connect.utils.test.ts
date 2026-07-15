@@ -152,6 +152,7 @@ describe('BillingTab subscription section', () => {
     expect(source).toContain('TenantSubscriptionTabBar');
     expect(source).toContain('TenantBillingOverviewTab');
     expect(source).toContain('TenantBillingTariffVehiclesTab');
+    expect(source).toContain('useBillingTariffVehicles');
     expect(source).toContain('TenantBillingAddOnsTab');
     expect(source).toContain('TenantBillingInvoicesTab');
     expect(source).toContain('TenantBillingPaymentMethodTab');

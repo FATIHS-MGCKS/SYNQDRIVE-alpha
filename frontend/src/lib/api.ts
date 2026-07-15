@@ -3983,8 +3983,15 @@ export const api = {
       get<any>(`/billing/summary${billingTenantQuery(orgId)}`, init),
     orgSubscriptionOverview: (orgId?: string, init?: RequestInit) =>
       get<any>(`/billing/subscription/overview${billingTenantQuery(orgId)}`, init),
+    orgSubscriptionTariff: (orgId?: string, init?: RequestInit) =>
+      get<any>(`/billing/subscription/tariff${billingTenantQuery(orgId)}`, init),
     orgBillableVehicles: (orgId?: string, init?: RequestInit) =>
       get<any>(`/billing/billable-vehicles${billingTenantQuery(orgId)}`, init),
+    orgBillableVehiclesList: (
+      orgId?: string,
+      params?: Record<string, string | number | undefined>,
+      init?: RequestInit,
+    ) => get<any>(`/billing/billable-vehicles/list${billingTenantQuery(orgId, params)}`, init),
     orgNextInvoicePreview: (orgId?: string, init?: RequestInit) =>
       get<any>(`/billing/next-invoice-preview${billingTenantQuery(orgId)}`, init),
     orgSubscriptions: (orgId?: string, init?: RequestInit) =>
@@ -4011,6 +4018,11 @@ export const api = {
       params?: Record<string, string | number | undefined>,
       init?: RequestInit,
     ) => get<any>(`/billing/vehicle-licenses${billingTenantQuery(orgId, params)}`, init),
+    orgVehicleBillingChanges: (
+      orgId?: string,
+      params?: Record<string, string | number | undefined>,
+      init?: RequestInit,
+    ) => get<any>(`/billing/vehicle-billing/changes${billingTenantQuery(orgId, params)}`, init),
     orgContractHistory: (
       orgId?: string,
       params?: Record<string, string | number | undefined>,

@@ -2,6 +2,11 @@ import { mapBillingLoadError } from './billing-load.utils';
 
 export const billingQueryKeys = {
   subscriptionOverview: (orgId: string) => ['billing', 'subscription-overview', orgId] as const,
+  subscriptionTariff: (orgId: string) => ['billing', 'subscription-tariff', orgId] as const,
+  billableVehicleList: (orgId: string, queryKey: string) =>
+    ['billing', 'billable-vehicle-list', orgId, queryKey] as const,
+  vehicleBillingChanges: (orgId: string, queryKey: string) =>
+    ['billing', 'vehicle-billing-changes', orgId, queryKey] as const,
   vehicleBilling: (orgId: string, queryKey: string) =>
     ['billing', 'vehicle-billing', orgId, queryKey] as const,
   invoices: (orgId: string, queryKey: string) => ['billing', 'invoices', orgId, queryKey] as const,

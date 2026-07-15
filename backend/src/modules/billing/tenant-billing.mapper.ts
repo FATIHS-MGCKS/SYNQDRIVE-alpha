@@ -144,6 +144,65 @@ export function resolveVehicleLicenseEventLabel(eventType: string): string {
   return VEHICLE_LICENSE_EVENT_LABELS[eventType] ?? 'Abrechnungsänderung';
 }
 
+const BILLABLE_VEHICLE_EXCLUSION_LABELS: Record<string, string> = {
+  ORG_INACTIVE: 'Organisation inaktiv',
+  NO_BASE_PLAN: 'Kein aktiver Tarif',
+  NO_ASSIGNMENT: 'Keine Abrechnungszuordnung',
+  NOT_PROVISIONED: 'Nicht für Abrechnung freigegeben',
+  ASSIGNMENT_ENDED: 'Abrechnungszeitraum beendet',
+  DEMO_ASSIGNMENT: 'Demo-Zuordnung',
+  BILLING_EXCLUSION: 'Manuell von Abrechnung ausgeschlossen',
+  CROSS_TENANT: 'Anderer Mandant',
+  ARCHIVED: 'Archiviert',
+};
+
+const BILLABLE_VEHICLE_INCLUSION_LABELS: Record<string, string> = {
+  DEMO: 'Demo-Zuordnung (nicht abrechenbar)',
+  TEST: 'Test-Zuordnung (nicht abrechenbar)',
+  NON_BILLABLE: 'Als nicht abrechenbar markiert',
+  BILLING_EXCLUSION: 'Manuell ausgeschlossen',
+};
+
+export function resolveBillableVehicleExclusionLabel(reason: string | null | undefined): string {
+  if (!reason?.trim()) return 'Nicht abrechenbar';
+  return BILLABLE_VEHICLE_EXCLUSION_LABELS[reason] ?? 'Nicht abrechenbar';
+}
+
+export function resolveBillableVehicleReasonLabel(input: {
+  billingStatus: 'BILLABLE' | 'EXCLUDED';
+  exclusionReason?: string | null;
+  reasonCode?: string | null;
+  reasonNote?: string | null;
+}): string | null {
+  if (input.billingStatus === 'BILLABLE') {
+    return input.reasonNote?.trim() || null;
+  }
+  if (input.reasonCode && BILLABLE_VEHICLE_INCLUSION_LABELS[input.reasonCode]) {
+    return BILLABLE_VEHICLE_INCLUSION_LABELS[input.reasonCode];
+  }
+  if (input.exclusionReason) {
+    return resolveBillableVehicleExclusionLabel(input.exclusionReason);
+  }
+  return input.reasonNote?.trim() || 'Nicht abrechenbar';
+}
+
+export function resolveVehicleLicenseChangeType(
+  eventType: string,
+  delta?: number | null,
+): 'ADDED' | 'REMOVED' | 'CHANGED' {
+  if (eventType === 'VEHICLE_CONNECTED' || eventType === 'VEHICLE_INCLUDED') {
+    return 'ADDED';
+  }
+  if (eventType === 'VEHICLE_DISCONNECTED' || eventType === 'VEHICLE_EXCLUDED') {
+    return 'REMOVED';
+  }
+  if (typeof delta === 'number') {
+    if (delta > 0) return 'ADDED';
+    if (delta < 0) return 'REMOVED';
+  }
+  return 'CHANGED';
+}
+
 export function resolveContractActionLabel(action: string): string {
   return CONTRACT_ACTION_LABELS[action] ?? action.replace(/_/g, ' ');
 }

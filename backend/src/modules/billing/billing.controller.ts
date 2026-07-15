@@ -44,6 +44,9 @@ import { TenantBillingInvoicesService } from './tenant-billing-invoices.service'
 import { TenantBillingPaymentsService } from './tenant-billing-payments.service';
 import { TenantBillingPaymentMethodsService } from './tenant-billing-payment-methods.service';
 import { TenantBillingVehicleLicensesService } from './tenant-billing-vehicle-licenses.service';
+import { TenantBillingTariffService } from './tenant-billing-tariff.service';
+import { TenantBillableVehiclesListService } from './tenant-billable-vehicles-list.service';
+import { TenantVehicleBillingChangesService } from './tenant-vehicle-billing-changes.service';
 import { TenantBillingPaymentsListService } from './tenant-billing-payments-list.service';
 import { TenantBillingContractHistoryService } from './tenant-billing-contract-history.service';
 import { TenantBillingEmailHistoryService } from './tenant-billing-email-history.service';
@@ -117,6 +120,7 @@ import {
   TenantPaymentListQueryDto,
   TenantVehicleLicenseQueryDto,
 } from './dto/tenant-billing-history.dto';
+import { TenantBillableVehicleListQueryDto } from './dto/tenant-billing-tariff.dto';
 
 
 
@@ -147,6 +151,12 @@ export class BillingController {
     private readonly tenantPaymentMethodsService: TenantBillingPaymentMethodsService,
 
     private readonly tenantVehicleLicensesService: TenantBillingVehicleLicensesService,
+
+    private readonly tenantTariffService: TenantBillingTariffService,
+
+    private readonly tenantBillableVehiclesListService: TenantBillableVehiclesListService,
+
+    private readonly tenantVehicleBillingChangesService: TenantVehicleBillingChangesService,
 
     private readonly tenantPaymentsListService: TenantBillingPaymentsListService,
 
@@ -273,6 +283,70 @@ export class BillingController {
     const scoped = resolveOrgScope(req?.user, orgId);
 
     return this.subscriptionOverviewService.getOverview(scoped);
+
+  }
+
+
+
+  @Get('billing/subscription/tariff')
+
+  @RequirePermission('billing', 'read')
+
+  async getSubscriptionTariff(
+
+    @Query('orgId') orgId: string | undefined,
+
+    @Req() req: any,
+
+  ) {
+
+    const scoped = resolveOrgScope(req?.user, orgId);
+
+    return this.tenantTariffService.getTariff(scoped);
+
+  }
+
+
+
+  @Get('billing/billable-vehicles/list')
+
+  @RequirePermission('billing', 'read')
+
+  async listBillableVehicles(
+
+    @Query('orgId') orgId: string | undefined,
+
+    @Query() query: TenantBillableVehicleListQueryDto,
+
+    @Req() req: any,
+
+  ) {
+
+    const scoped = resolveOrgScope(req?.user, orgId);
+
+    return this.tenantBillableVehiclesListService.listVehicles(scoped, query);
+
+  }
+
+
+
+  @Get('billing/vehicle-billing/changes')
+
+  @RequirePermission('billing', 'read')
+
+  async listVehicleBillingChanges(
+
+    @Query('orgId') orgId: string | undefined,
+
+    @Query() query: TenantVehicleLicenseQueryDto,
+
+    @Req() req: any,
+
+  ) {
+
+    const scoped = resolveOrgScope(req?.user, orgId);
+
+    return this.tenantVehicleBillingChangesService.listChanges(scoped, query);
 
   }
 

@@ -9,10 +9,9 @@ import { Icon } from '../ui/Icon';
 import { BillingSectionTabBar, type BillingSectionTab } from './BillingSectionTabBar';
 import { CustomerPaymentsTab } from './CustomerPaymentsTab';
 import { useBillingSubscriptionOverview } from './useBillingSubscriptionOverview';
-import { useBillingVehicleBilling } from './useBillingVehicleBilling';
+import { useBillingTariffVehicles } from './useBillingTariffVehicles';
 import { useBillingInvoices } from './useBillingInvoices';
 import { useBillingPaymentMethods } from './useBillingPaymentMethods';
-import { BillableVehiclesDrawer } from './BillableVehiclesDrawer';
 import { TenantSubscriptionTabBar } from './TenantSubscriptionTabBar';
 import {
   buildTenantBillingSubTabSearch,
@@ -46,10 +45,9 @@ export function BillingTab() {
   const [subTab, setSubTab] = useState<TenantSubscriptionSubTab>(() =>
     readTenantBillingSubTab(window.location.search),
   );
-  const [vehiclesOpen, setVehiclesOpen] = useState(false);
 
   const overviewQuery = useBillingSubscriptionOverview(orgId);
-  const vehicles = useBillingVehicleBilling(orgId);
+  const tariffVehicles = useBillingTariffVehicles(orgId);
   const invoices = useBillingInvoices(orgId);
   const lastPaidInvoices = useBillingInvoices(orgId, { page: 1, pageSize: 1, status: 'PAID' });
   const paymentMethods = useBillingPaymentMethods(orgId);
@@ -94,7 +92,7 @@ export function BillingTab() {
   const reloadAll = () =>
     Promise.allSettled([
       overviewQuery.reload(),
-      vehicles.reloadAll(),
+      tariffVehicles.reloadAll(),
       invoices.reload(),
       lastPaidInvoices.reload(),
       paymentMethods.reload(),
@@ -173,14 +171,7 @@ export function BillingTab() {
           ) : null}
 
           {subTab === 'tariff-vehicles' ? (
-            <TenantBillingTariffVehiclesTab
-              summary={summary}
-              pricingModel={overview?.pricing?.pricingModel ?? null}
-              loading={overviewQuery.loading}
-              error={overviewQuery.error}
-              onRetry={overviewQuery.reload}
-              onShowVehicles={() => setVehiclesOpen(true)}
-            />
+            <TenantBillingTariffVehiclesTab data={tariffVehicles} />
           ) : null}
 
           {subTab === 'addons' ? (
@@ -217,15 +208,6 @@ export function BillingTab() {
               portalError={stripeActions.error}
             />
           ) : null}
-
-          <BillableVehiclesDrawer
-            open={vehiclesOpen}
-            onOpenChange={setVehiclesOpen}
-            data={vehicles.billableVehicles}
-            licenseHistory={vehicles.vehicleLicenses?.data ?? []}
-            licenseHistoryError={vehicles.licensesError}
-            onReloadLicenses={vehicles.reloadLicenses}
-          />
         </>
       )}
     </div>

@@ -10,6 +10,16 @@ import { BillableVehiclesService } from './billable-vehicles.service';
 import { BillingPriceResolutionService } from './billing-price-resolution.service';
 import { BillingSummaryService } from './billing-summary.service';
 import { TenantSubscriptionOverviewService } from './tenant-subscription-overview.service';
+import { TenantBillingInvoicesService } from './tenant-billing-invoices.service';
+import { TenantBillingPaymentsService } from './tenant-billing-payments.service';
+import { TenantBillingPaymentMethodsService } from './tenant-billing-payment-methods.service';
+import { TenantBillingVehicleLicensesService } from './tenant-billing-vehicle-licenses.service';
+import { TenantBillingTariffService } from './tenant-billing-tariff.service';
+import { TenantBillableVehiclesListService } from './tenant-billable-vehicles-list.service';
+import { TenantVehicleBillingChangesService } from './tenant-vehicle-billing-changes.service';
+import { TenantBillingPaymentsListService } from './tenant-billing-payments-list.service';
+import { TenantBillingContractHistoryService } from './tenant-billing-contract-history.service';
+import { TenantBillingEmailHistoryService } from './tenant-billing-email-history.service';
 import { BillingAdminService } from './billing-admin.service';
 import { StripePreparedService } from './stripe-prepared.service';
 import { StripeBillingService } from './stripe-billing.service';
@@ -78,6 +88,9 @@ import { StripeWebhookProcessorService } from './stripe-webhook.processor';
     TenantBillingPaymentsService,
     TenantBillingPaymentMethodsService,
     TenantBillingVehicleLicensesService,
+    TenantBillingTariffService,
+    TenantBillableVehiclesListService,
+    TenantVehicleBillingChangesService,
     TenantBillingPaymentsListService,
     TenantBillingContractHistoryService,
     TenantBillingEmailHistoryService,
@@ -141,6 +154,9 @@ import { StripeWebhookProcessorService } from './stripe-webhook.processor';
     TenantBillingPaymentsService,
     TenantBillingPaymentMethodsService,
     TenantBillingVehicleLicensesService,
+    TenantBillingTariffService,
+    TenantBillableVehiclesListService,
+    TenantVehicleBillingChangesService,
     TenantBillingPaymentsListService,
     TenantBillingContractHistoryService,
     TenantBillingEmailHistoryService,
