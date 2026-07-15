@@ -248,15 +248,25 @@ export class PricingResolverService {
       return this.emptyPricing(input.billableQuantity, asOf, assignment);
     }
 
-    const primaryDiscount = this.selectPrimaryDiscount(input.discounts ?? []);
+    const baseAdjustments = (input.discounts ?? []).filter(
+      (discount) =>
+        discount.applicationPhase === 'UNIT_PRICE' || discount.applicationPhase === 'MINIMUM',
+    );
+    const unitPriceOverride =
+      baseAdjustments.find((discount) => discount.customUnitPriceCents != null)
+        ?.customUnitPriceCents ?? null;
+    const minimumOverride =
+      baseAdjustments.find((discount) => discount.customMonthlyMinimumCents != null)
+        ?.customMonthlyMinimumCents ?? null;
+
     const priceResult = await this.priceResolution.calculateVolumePriceForVersion(
       assignment.priceVersionId,
       input.billableQuantity,
       {
         asOf,
         priceBookId: assignment.priceBookId,
-        customUnitPriceCents: primaryDiscount?.customUnitPriceCents ?? null,
-        customMonthlyMinimumCents: primaryDiscount?.customMonthlyMinimumCents ?? null,
+        customUnitPriceCents: unitPriceOverride,
+        customMonthlyMinimumCents: minimumOverride,
       },
     );
 
@@ -282,14 +292,23 @@ export class PricingResolverService {
    */
   async resolveItemPricing(input: ResolveItemPricingLegacyInput): Promise<ResolvedItemPricing> {
     const asOf = input.asOf ?? new Date();
-    const primaryDiscount = this.selectPrimaryDiscount(input.discounts ?? []);
+    const baseAdjustments = (input.discounts ?? []).filter(
+      (discount) =>
+        discount.applicationPhase === 'UNIT_PRICE' || discount.applicationPhase === 'MINIMUM',
+    );
+    const unitPriceOverride =
+      baseAdjustments.find((discount) => discount.customUnitPriceCents != null)
+        ?.customUnitPriceCents ?? null;
+    const minimumOverride =
+      baseAdjustments.find((discount) => discount.customMonthlyMinimumCents != null)
+        ?.customMonthlyMinimumCents ?? null;
 
     const priceResult = await this.priceResolution.calculateVolumePrice(input.billableQuantity, {
       priceBookId: input.priceBookId ?? undefined,
       priceVersionId: input.priceVersionId ?? undefined,
       asOf,
-      customUnitPriceCents: primaryDiscount?.customUnitPriceCents ?? null,
-      customMonthlyMinimumCents: primaryDiscount?.customMonthlyMinimumCents ?? null,
+      customUnitPriceCents: unitPriceOverride,
+      customMonthlyMinimumCents: minimumOverride,
     });
 
     return {
@@ -419,8 +438,12 @@ export class PricingResolverService {
   }
 
   private selectPrimaryDiscount(discounts: ResolvedDiscount[]): ResolvedDiscount | null {
-    if (discounts.length === 0) return null;
-    return [...discounts].sort((a, b) => {
+    const baseAdjustments = discounts.filter(
+      (discount) =>
+        discount.applicationPhase === 'UNIT_PRICE' || discount.applicationPhase === 'MINIMUM',
+    );
+    if (baseAdjustments.length === 0) return null;
+    return [...baseAdjustments].sort((a, b) => {
       if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
       return b.validFrom.getTime() - a.validFrom.getTime();
     })[0];

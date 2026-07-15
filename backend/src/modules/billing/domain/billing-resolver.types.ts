@@ -102,11 +102,21 @@ export interface ResolvedQuantity {
 }
 
 /** Org-specific discount resolved for application to pricing. */
+export type DiscountSource = 'BILLING_DISCOUNT' | 'LEGACY_PRICE_OVERRIDE';
+
+export type DiscountApplicationPhase = 'UNIT_PRICE' | 'MINIMUM' | 'SUBTOTAL';
+
 export interface ResolvedDiscount {
   id: string;
+  source: DiscountSource;
+  applicationPhase: DiscountApplicationPhase;
   kind: DiscountKind;
+  percentBps: number | null;
+  fixedAmountCents: number | null;
+  currency: string | null;
   customUnitPriceCents: number | null;
   customMonthlyMinimumCents: number | null;
+  subscriptionItemId: string | null;
   priceBookId: string | null;
   priceVersionId: string | null;
   reason: string | null;

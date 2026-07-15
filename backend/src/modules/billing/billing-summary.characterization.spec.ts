@@ -5,7 +5,7 @@ import {
   OrgProductPlan,
   OrgProductStatus,
 } from '@prisma/client';
-import { SubscriptionStatus } from './domain';
+import { PricingModel, SubscriptionStatus } from './domain';
 import { BillingSummaryService } from './billing-summary.service';
 
 describe('BillingSummaryService characterization', () => {
@@ -17,17 +17,15 @@ describe('BillingSummaryService characterization', () => {
   const subscriptionResolver = { resolveContract: jest.fn() };
   const quantityResolver = { resolveQuantity: jest.fn() };
   const pricingResolver = {
-    resolveItemPricing: jest.fn(),
-    resolveItemPricingForOrganization: jest.fn(),
     resolvePriceAssignment: jest.fn(),
   };
-  const discountResolver = { resolveDiscounts: jest.fn() };
   const pricebook = {
     getPricingConfiguration: jest.fn(),
     getPriceBook: jest.fn(),
     getVersionWithTiers: jest.fn(),
   };
   const stripePrepared = { getPreparedStatus: jest.fn() };
+  const pricePreview = { preview: jest.fn() };
 
   let service: BillingSummaryService;
 
@@ -49,10 +47,23 @@ describe('BillingSummaryService characterization', () => {
     resolvedAt: new Date(),
   };
 
-  const basePricing = {
-    priceBookId: 'book-1',
-    priceVersionId: 'ver-1',
-    currency: 'EUR',
+  const basePreview = {
+    organizationId: 'org-a',
+    subscriptionId: 'sub-1',
+    subscriptionItemId: 'item-1',
+    calculationStatus: BillingUsageCalculationStatus.OK,
+    tariff: {
+      priceBookId: 'book-1',
+      name: 'Rental',
+      productKey: 'RENTAL',
+      interval: 'MONTHLY',
+    },
+    product: { slug: 'RENTAL', name: 'SynqDrive Rental', plan: 'BUSINESS' },
+    priceVersion: { id: 'ver-1', versionNumber: 1, versionLabel: 'v1', status: 'ACTIVE' },
+    pricingModel: PricingModel.VOLUME,
+    vehicleCount: 2,
+    connectedVehicleCount: 3,
+    tierBreakdown: [],
     tier: {
       id: 'tier-1',
       minVehicles: 1,
@@ -62,10 +73,25 @@ describe('BillingSummaryService characterization', () => {
       status: 'CONFIGURED' as const,
     },
     unitPriceCents: 1500,
-    subtotalCents: 3000,
-    totalCents: 3000,
-    calculationStatus: BillingUsageCalculationStatus.OK,
-    quantity: 2,
+    baseAmountCents: 3000,
+    discounts: [],
+    skippedDiscounts: [],
+    amountAfterDiscountCents: 3000,
+    totalDiscountCents: 0,
+    tax: {
+      configured: false,
+      taxRateBps: null,
+      taxBasisCents: 3000,
+      taxCents: null,
+      netCents: 3000,
+      grossCents: 3000,
+    },
+    currency: 'EUR',
+    warnings: [],
+    legacyFallbacks: [],
+    priceResolutionSource: 'SUBSCRIPTION_ITEM_VERSION',
+    pricingErrorCode: null,
+    legacyFallbackUsed: false,
     resolvedAt: new Date(),
   };
 
@@ -76,9 +102,9 @@ describe('BillingSummaryService characterization', () => {
       subscriptionResolver as never,
       quantityResolver as never,
       pricingResolver as never,
-      discountResolver as never,
       pricebook as never,
       stripePrepared as never,
+      pricePreview as never,
     );
 
     subscriptionResolver.resolveContract.mockResolvedValue(baseContract);
@@ -90,8 +116,7 @@ describe('BillingSummaryService characterization', () => {
       billableVehicleIds: [],
       excludedVehicleIds: [],
     });
-    discountResolver.resolveDiscounts.mockResolvedValue([]);
-    pricingResolver.resolveItemPricingForOrganization.mockResolvedValue(basePricing);
+    pricePreview.preview.mockResolvedValue(basePreview);
     pricingResolver.resolvePriceAssignment.mockResolvedValue({
       organizationId: 'org-a',
       subscriptionId: 'sub-1',
@@ -133,26 +158,6 @@ describe('BillingSummaryService characterization', () => {
         product: { slug: 'RENTAL', name: 'SynqDrive Rental' },
       },
     ]);
-    pricebook.getPricingConfiguration.mockResolvedValue({
-      configured: true,
-      reason: null,
-      priceBook: {
-        id: 'book-1',
-        name: 'Default',
-        currency: 'EUR',
-        interval: 'MONTHLY',
-      },
-      activeVersion: {
-        id: 'ver-1',
-        versionNumber: 1,
-        versionLabel: 'v1',
-        status: 'ACTIVE',
-        effectiveFrom: new Date('2026-01-01'),
-        tiers: [
-          { id: 'tier-1', minVehicles: 1, maxVehicles: 10, unitPriceCents: 1500, sortOrder: 0 },
-        ],
-      },
-    });
     prisma.billingPaymentMethod.findFirst.mockResolvedValue({
       type: 'CARD',
       brand: 'visa',
@@ -182,64 +187,70 @@ describe('BillingSummaryService characterization', () => {
     expect(summary.nextInvoicePreview.totalCents).toBe(3000);
     expect(summary.billingModel).toBe('PER_CONNECTED_VEHICLE');
     expect(summary.paymentMethod.exists).toBe(true);
+    expect(pricePreview.preview).toHaveBeenCalledWith('org-a');
   });
 
   it('uses org-scoped price assignment — not global default pricebook', async () => {
-    subscriptionResolver.resolveContract.mockResolvedValue({
-      ...baseContract,
-      priceBookId: 'book-1',
-      priceVersionId: 'ver-1',
-    });
-
     await service.getSummary('org-a');
 
     expect(pricingResolver.resolvePriceAssignment).toHaveBeenCalledWith('org-a');
-    expect(pricingResolver.resolveItemPricingForOrganization).toHaveBeenCalledWith(
-      expect.objectContaining({
-        organizationId: 'org-a',
-        billableQuantity: 2,
-        discounts: [],
-      }),
-    );
+    expect(pricePreview.preview).toHaveBeenCalledWith('org-a');
     expect(pricebook.getPricingConfiguration).not.toHaveBeenCalled();
   });
 
-  it('applies org price override when resolving preview amounts', async () => {
-    discountResolver.resolveDiscounts.mockResolvedValue([
-      {
-        id: 'disc-1',
-        kind: 'FIXED_AMOUNT',
-        customUnitPriceCents: 1200,
-        customMonthlyMinimumCents: 5000,
-        priceBookId: null,
-        priceVersionId: null,
-        reason: null,
-        validFrom: new Date(),
-        validTo: null,
-        sortOrder: 0,
+  it('surfaces discount breakdown from shared preview engine', async () => {
+    pricePreview.preview.mockResolvedValue({
+      ...basePreview,
+      totalDiscountCents: 300,
+      amountAfterDiscountCents: 2700,
+      discounts: [
+        {
+          discountId: 'disc-1',
+          kind: 'PERCENTAGE',
+          percentBps: 1000,
+          fixedAmountCents: null,
+          appliedAmountCents: 300,
+          sortOrder: 1000,
+          reason: 'Promo',
+          subscriptionItemId: null,
+          validFrom: new Date(),
+          validTo: null,
+        },
+      ],
+      tax: {
+        configured: false,
+        taxRateBps: null,
+        taxBasisCents: 2700,
+        taxCents: null,
+        netCents: 2700,
+        grossCents: 2700,
       },
-    ]);
+    });
 
-    await service.getSummary('org-a');
+    const summary = await service.getSummary('org-a');
 
-    expect(pricingResolver.resolveItemPricingForOrganization).toHaveBeenCalledWith(
-      expect.objectContaining({
-        discounts: expect.arrayContaining([
-          expect.objectContaining({ customUnitPriceCents: 1200 }),
-        ]),
-      }),
-    );
+    expect(summary.nextInvoicePreview.discountCents).toBe(300);
+    expect(summary.nextInvoicePreview.amountAfterDiscountCents).toBe(2700);
+    expect(summary.nextInvoicePreview.discounts).toHaveLength(1);
   });
 
   it('surfaces warnings for missing payment method and unconfigured price', async () => {
     prisma.billingPaymentMethod.findFirst.mockResolvedValue(null);
-    pricingResolver.resolveItemPricingForOrganization.mockResolvedValue({
-      ...basePricing,
+    pricePreview.preview.mockResolvedValue({
+      ...basePreview,
       calculationStatus: BillingUsageCalculationStatus.NO_ACTIVE_PRICE_VERSION,
       tier: null,
       unitPriceCents: null,
-      subtotalCents: null,
-      totalCents: null,
+      baseAmountCents: null,
+      amountAfterDiscountCents: null,
+      tax: {
+        configured: false,
+        taxRateBps: null,
+        taxBasisCents: null,
+        taxCents: null,
+        netCents: null,
+        grossCents: null,
+      },
     });
 
     const summary = await service.getSummary('org-a');
@@ -249,33 +260,28 @@ describe('BillingSummaryService characterization', () => {
     );
   });
 
-  it('getNextInvoicePreview delegates vehicle count and override resolution', async () => {
-    discountResolver.resolveDiscounts.mockResolvedValue([
-      {
-        id: 'disc-1',
-        kind: 'FIXED_AMOUNT',
-        customUnitPriceCents: 999,
-        customMonthlyMinimumCents: null,
-        priceBookId: null,
-        priceVersionId: null,
-        reason: null,
-        validFrom: new Date(),
-        validTo: null,
-        sortOrder: 0,
-      },
-    ]);
-    pricingResolver.resolveItemPricingForOrganization.mockResolvedValue({
-      ...basePricing,
-      tier: null,
+  it('getNextInvoicePreview delegates to shared preview engine', async () => {
+    pricePreview.preview.mockResolvedValue({
+      ...basePreview,
+      totalDiscountCents: 0,
+      amountAfterDiscountCents: 1998,
       unitPriceCents: 999,
-      subtotalCents: 1998,
-      totalCents: 1998,
+      baseAmountCents: 1998,
+      tier: null,
+      tax: {
+        configured: false,
+        taxRateBps: null,
+        taxBasisCents: 1998,
+        taxCents: null,
+        netCents: 1998,
+        grossCents: 1998,
+      },
     });
 
     const preview = await service.getNextInvoicePreview('org-a');
 
     expect(preview.billableVehicleCount).toBe(2);
     expect(preview.totalCents).toBe(1998);
-    expect(discountResolver.resolveDiscounts).toHaveBeenCalledWith('org-a');
+    expect(pricePreview.preview).toHaveBeenCalledWith('org-a');
   });
 });

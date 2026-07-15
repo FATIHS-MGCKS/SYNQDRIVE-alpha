@@ -1,14 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { BillingUsageCalculationStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { PricebookService } from './pricebook.service';
 import { BillableVehiclesService } from './billable-vehicles.service';
-import { BillingPriceResolutionService } from './billing-price-resolution.service';
+import { AppliedDiscountLine } from './domain/discount-calculator';
+import { TierPricingLine } from './domain/tier-pricing-calculator';
 import {
   DiscountResolverService,
-  PricingResolverService,
   QuantityResolverService,
 } from './resolvers';
+import { SubscriptionPricePreviewService } from './subscription-price-preview.service';
 
 export interface UsagePeriod {
   periodStart: Date;
@@ -24,23 +24,29 @@ export interface UsageCalculationPreview {
   excludedVehicleIds: string[];
   unitPriceCents: number | null;
   subtotalCents: number | null;
+  discountCents: number;
+  amountAfterDiscountCents: number | null;
+  taxCents: number | null;
   totalCents: number | null;
   currency: string | null;
   priceBookId: string | null;
   priceVersionId: string | null;
   priceTierId: string | null;
+  pricingModel: string | null;
+  tierBreakdown: TierPricingLine[];
+  discounts: AppliedDiscountLine[];
+  warnings: string[];
+  legacyFallbacks: string[];
 }
 
 @Injectable()
 export class BillingUsageService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly pricebook: PricebookService,
     private readonly billableVehicles: BillableVehiclesService,
-    private readonly priceResolution: BillingPriceResolutionService,
     private readonly quantityResolver: QuantityResolverService,
     private readonly discountResolver: DiscountResolverService,
-    private readonly pricingResolver: PricingResolverService,
+    private readonly pricePreview: SubscriptionPricePreviewService,
   ) {}
 
   async resolveBillableVehicles(organizationId: string) {
@@ -84,31 +90,33 @@ export class BillingUsageService {
   }
 
   async previewUsage(organizationId: string): Promise<UsageCalculationPreview> {
-    const [vehicleData, discounts] = await Promise.all([
+    const [vehicleData, preview] = await Promise.all([
       this.resolveBillableVehicles(organizationId),
-      this.discountResolver.resolveDiscounts(organizationId),
+      this.pricePreview.preview(organizationId),
     ]);
 
-    const priceResult = await this.pricingResolver.resolveItemPricingForOrganization({
-      organizationId,
-      billableQuantity: vehicleData.billableVehicleCount,
-      discounts,
-    });
-
     return {
-      configured: priceResult.priceVersionId != null,
-      calculationStatus: priceResult.calculationStatus as BillingUsageCalculationStatus,
+      configured: preview.priceVersion.id != null,
+      calculationStatus: preview.calculationStatus,
       connectedVehicleCount: vehicleData.connectedVehicleCount,
       billableVehicleCount: vehicleData.billableVehicleCount,
       billableVehicleIds: vehicleData.billableVehicleIds,
       excludedVehicleIds: vehicleData.excludedVehicleIds,
-      unitPriceCents: priceResult.unitPriceCents,
-      subtotalCents: priceResult.subtotalCents,
-      totalCents: priceResult.totalCents,
-      currency: priceResult.currency,
-      priceBookId: priceResult.priceBookId,
-      priceVersionId: priceResult.priceVersionId,
-      priceTierId: priceResult.tier?.id ?? null,
+      unitPriceCents: preview.unitPriceCents,
+      subtotalCents: preview.baseAmountCents,
+      discountCents: preview.totalDiscountCents,
+      amountAfterDiscountCents: preview.amountAfterDiscountCents,
+      taxCents: preview.tax.taxCents,
+      totalCents: preview.tax.grossCents,
+      currency: preview.currency,
+      priceBookId: preview.tariff.priceBookId,
+      priceVersionId: preview.priceVersion.id,
+      priceTierId: preview.tier?.id ?? null,
+      pricingModel: preview.pricingModel,
+      tierBreakdown: preview.tierBreakdown,
+      discounts: preview.discounts,
+      warnings: preview.warnings,
+      legacyFallbacks: preview.legacyFallbacks,
     };
   }
 
@@ -133,7 +141,7 @@ export class BillingUsageService {
         priceTierId: preview.priceTierId,
         unitPriceCents: preview.unitPriceCents,
         subtotalCents: preview.subtotalCents,
-        taxCents: null,
+        taxCents: preview.taxCents,
         totalCents: preview.totalCents,
         currency: preview.currency ?? 'EUR',
         calculationStatus: preview.calculationStatus,

@@ -206,11 +206,17 @@ export class BillingAdminService {
             : null,
           nextInvoicePreview: {
             subtotalCents: preview.subtotalCents,
+            discountCents: preview.discountCents,
+            amountAfterDiscountCents: preview.amountAfterDiscountCents,
+            taxCents: preview.taxCents,
             totalCents: preview.totalCents,
             calculationStatus: preview.calculationStatus,
             billableVehicleCount: preview.billableVehicleCount,
+            discounts: preview.discounts,
+            warnings: preview.warnings,
+            legacyFallbacks: preview.legacyFallbacks,
           },
-          warnings,
+          warnings: [...warnings, ...preview.warnings],
         };
       }),
     );

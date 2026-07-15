@@ -1,14 +1,26 @@
 import { Injectable } from '@nestjs/common';
-import { BillingOrgPriceOverrideStatus } from '@prisma/client';
+import {
+  BillingDiscountStatus,
+  BillingDiscountType,
+  BillingOrgPriceOverrideStatus,
+} from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DiscountKind } from '../domain';
-import { ResolvedDiscount } from '../domain/billing-resolver.types';
+import {
+  DiscountApplicationPhase,
+  DiscountSource,
+  ResolvedDiscount,
+} from '../domain/billing-resolver.types';
 
 export interface ResolveDiscountsOptions {
   asOf?: Date;
   priceBookId?: string | null;
   priceVersionId?: string | null;
+  subscriptionItemId?: string | null;
 }
+
+const LEGACY_SORT_OFFSET = 0;
+const FORMAL_SORT_OFFSET = 1_000;
 
 @Injectable()
 export class DiscountResolverService {
@@ -20,6 +32,12 @@ export class DiscountResolverService {
   ): Promise<ResolvedDiscount[]> {
     const asOf = opts.asOf ?? new Date();
 
+    const subscription = await this.prisma.billingSubscription.findFirst({
+      where: { organizationId },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+
     const overrides = await this.prisma.billingOrganizationPriceOverride.findMany({
       where: {
         organizationId,
@@ -30,7 +48,19 @@ export class DiscountResolverService {
       orderBy: [{ validFrom: 'desc' }],
     });
 
-    const scoped = overrides.filter((row) => {
+    const formalDiscounts = subscription
+      ? await this.prisma.billingDiscount.findMany({
+          where: {
+            subscriptionId: subscription.id,
+            status: BillingDiscountStatus.ACTIVE,
+            validFrom: { lte: asOf },
+            OR: [{ validTo: null }, { validTo: { gte: asOf } }],
+          },
+          orderBy: [{ validFrom: 'asc' }, { createdAt: 'asc' }],
+        })
+      : [];
+
+    const scopedOverrides = overrides.filter((row) => {
       if (opts.priceBookId && row.priceBookId && row.priceBookId !== opts.priceBookId) {
         return false;
       }
@@ -40,7 +70,24 @@ export class DiscountResolverService {
       return true;
     });
 
-    return scoped.map((row, index) => this.mapOverride(row, index));
+    const legacyDiscounts = scopedOverrides.map((row, index) =>
+      this.mapLegacyOverride(row, LEGACY_SORT_OFFSET + index),
+    );
+
+    const scopedFormal = formalDiscounts.filter((row) => {
+      if (!row.subscriptionItemId) return true;
+      if (!opts.subscriptionItemId) return true;
+      return row.subscriptionItemId === opts.subscriptionItemId;
+    });
+
+    const subscriptionDiscounts = scopedFormal.map((row, index) =>
+      this.mapFormalDiscount(row, FORMAL_SORT_OFFSET + index),
+    );
+
+    return [...legacyDiscounts, ...subscriptionDiscounts].sort((a, b) => {
+      if (a.sortOrder !== b.sortOrder) return a.sortOrder - b.sortOrder;
+      return a.validFrom.getTime() - b.validFrom.getTime();
+    });
   }
 
   async resolvePrimaryDiscount(
@@ -48,11 +95,15 @@ export class DiscountResolverService {
     opts: ResolveDiscountsOptions = {},
   ): Promise<ResolvedDiscount | null> {
     const discounts = await this.resolveDiscounts(organizationId, opts);
-    if (discounts.length === 0) return null;
-    return [...discounts].sort((a, b) => a.sortOrder - b.sortOrder)[0];
+    const baseAdjustments = discounts.filter(
+      (discount) =>
+        discount.applicationPhase === 'UNIT_PRICE' || discount.applicationPhase === 'MINIMUM',
+    );
+    if (baseAdjustments.length === 0) return null;
+    return [...baseAdjustments].sort((a, b) => a.sortOrder - b.sortOrder)[0];
   }
 
-  private mapOverride(
+  private mapLegacyOverride(
     row: {
       id: string;
       customUnitPriceCents: number | null;
@@ -63,24 +114,68 @@ export class DiscountResolverService {
       validFrom: Date;
       validTo: Date | null;
     },
-    index: number,
+    sortOrder: number,
   ): ResolvedDiscount {
-    const kind =
-      row.customUnitPriceCents != null || row.customMonthlyMinimumCents != null
-        ? DiscountKind.FIXED_AMOUNT
-        : DiscountKind.PERCENTAGE;
+    const applicationPhase: DiscountApplicationPhase = row.customMonthlyMinimumCents != null
+      ? 'MINIMUM'
+      : 'UNIT_PRICE';
 
     return {
       id: row.id,
-      kind,
+      source: 'LEGACY_PRICE_OVERRIDE' satisfies DiscountSource,
+      applicationPhase,
+      kind: DiscountKind.FIXED_AMOUNT,
+      percentBps: null,
+      fixedAmountCents: null,
+      currency: null,
       customUnitPriceCents: row.customUnitPriceCents,
       customMonthlyMinimumCents: row.customMonthlyMinimumCents,
+      subscriptionItemId: null,
       priceBookId: row.priceBookId,
       priceVersionId: row.priceVersionId,
       reason: row.reason,
       validFrom: row.validFrom,
       validTo: row.validTo,
-      sortOrder: index,
+      sortOrder,
+    };
+  }
+
+  private mapFormalDiscount(
+    row: {
+      id: string;
+      discountType: BillingDiscountType;
+      percentBps: number | null;
+      fixedAmountCents: number | null;
+      currency: string | null;
+      subscriptionItemId: string | null;
+      reason: string | null;
+      validFrom: Date;
+      validTo: Date | null;
+    },
+    sortOrder: number,
+  ): ResolvedDiscount {
+    const kind =
+      row.discountType === BillingDiscountType.FIXED_AMOUNT
+        ? DiscountKind.FIXED_AMOUNT
+        : DiscountKind.PERCENTAGE;
+
+    return {
+      id: row.id,
+      source: 'BILLING_DISCOUNT' satisfies DiscountSource,
+      applicationPhase: 'SUBTOTAL',
+      kind,
+      percentBps: row.percentBps,
+      fixedAmountCents: row.fixedAmountCents,
+      currency: row.currency,
+      customUnitPriceCents: null,
+      customMonthlyMinimumCents: null,
+      subscriptionItemId: row.subscriptionItemId,
+      priceBookId: null,
+      priceVersionId: null,
+      reason: row.reason,
+      validFrom: row.validFrom,
+      validTo: row.validTo,
+      sortOrder,
     };
   }
 }

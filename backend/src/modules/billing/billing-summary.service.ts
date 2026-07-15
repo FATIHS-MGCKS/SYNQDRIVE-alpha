@@ -8,11 +8,11 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { PricebookService } from './pricebook.service';
 import { StripePreparedService } from './stripe-prepared.service';
 import {
-  DiscountResolverService,
   PricingResolverService,
   QuantityResolverService,
   SubscriptionResolverService,
 } from './resolvers';
+import { SubscriptionPricePreviewService } from './subscription-price-preview.service';
 
 const PLAN_DISPLAY: Record<string, string> = {
   STARTER: 'Starter',
@@ -29,15 +29,14 @@ export class BillingSummaryService {
     private readonly subscriptionResolver: SubscriptionResolverService,
     private readonly quantityResolver: QuantityResolverService,
     private readonly pricingResolver: PricingResolverService,
-    private readonly discountResolver: DiscountResolverService,
     private readonly pricebook: PricebookService,
     private readonly stripePrepared: StripePreparedService,
+    private readonly pricePreview: SubscriptionPricePreviewService,
   ) {}
 
   async getSummary(organizationId: string) {
-    const [quantity, discounts, defaultPm, orgProducts] = await Promise.all([
+    const [quantity, defaultPm, orgProducts, pricePreview] = await Promise.all([
       this.quantityResolver.resolveQuantity(organizationId),
-      this.discountResolver.resolveDiscounts(organizationId),
       this.prisma.billingPaymentMethod.findFirst({
         where: { organizationId: organizationId, isDefault: true },
         orderBy: { createdAt: 'desc' },
@@ -46,20 +45,14 @@ export class BillingSummaryService {
         where: { organizationId },
         include: { product: { select: { slug: true, name: true } } },
       }),
+      this.pricePreview.preview(organizationId),
     ]);
 
     const contract = await this.subscriptionResolver.resolveContract(organizationId, {
       baseItemQuantity: quantity.billableVehicleCount,
     });
 
-    const [priceAssignment, priceResult] = await Promise.all([
-      this.pricingResolver.resolvePriceAssignment(organizationId),
-      this.pricingResolver.resolveItemPricingForOrganization({
-        organizationId,
-        billableQuantity: quantity.billableVehicleCount,
-        discounts,
-      }),
-    ]);
+    const priceAssignment = await this.pricingResolver.resolvePriceAssignment(organizationId);
 
     const resolvedPriceBook = priceAssignment.priceBookId
       ? await this.pricebook.getPriceBook(priceAssignment.priceBookId).catch(() => null)
@@ -78,11 +71,12 @@ export class BillingSummaryService {
     const stripeStatus = this.stripePrepared.getPreparedStatus();
     const warnings = this.buildWarnings(
       sub,
-      priceResult.calculationStatus,
+      pricePreview.calculationStatus,
       defaultPm,
-      priceResult.pricingErrorCode,
-      priceResult.legacyFallbackUsed,
+      pricePreview.pricingErrorCode,
+      pricePreview.legacyFallbackUsed,
     );
+    warnings.push(...pricePreview.warnings);
 
     const activeProducts = orgProducts.filter(
       (p) => p.status === 'ACTIVE' || p.status === 'TRIAL',
@@ -111,14 +105,14 @@ export class BillingSummaryService {
       billingModel: 'PER_CONNECTED_VEHICLE' as const,
       connectedVehicleCount: quantity.connectedVehicleCount,
       billableVehicleCount: quantity.billableVehicleCount,
-      currentTier: priceResult.tier
+      currentTier: pricePreview.tier
         ? {
-            id: priceResult.tier.id,
-            minVehicles: priceResult.tier.minVehicles,
-            maxVehicles: priceResult.tier.maxVehicles,
-            unitPriceCents: priceResult.unitPriceCents,
-            currency: priceResult.currency,
-            status: priceResult.tier.status,
+            id: pricePreview.tier.id,
+            minVehicles: pricePreview.tier.minVehicles,
+            maxVehicles: pricePreview.tier.maxVehicles,
+            unitPriceCents: pricePreview.unitPriceCents,
+            currency: pricePreview.currency,
+            status: pricePreview.tier.status,
           }
         : null,
       priceBook: resolvedPriceBook
@@ -149,20 +143,27 @@ export class BillingSummaryService {
       })),
       stripePortalPrepared: stripeStatus.portalPrepared,
       stripeConfigured: stripeStatus.configured,
-      calculationStatus: priceResult.calculationStatus,
-      priceResolutionSource: priceResult.priceResolutionSource ?? null,
-      pricingErrorCode: priceResult.pricingErrorCode ?? null,
-      legacyFallbackUsed: priceResult.legacyFallbackUsed ?? false,
+      calculationStatus: pricePreview.calculationStatus,
+      priceResolutionSource: pricePreview.priceResolutionSource ?? null,
+      pricingErrorCode: pricePreview.pricingErrorCode ?? null,
+      legacyFallbackUsed: pricePreview.legacyFallbackUsed ?? false,
       nextInvoicePreview: {
-        subtotalCents: priceResult.subtotalCents,
-        taxCents: null as number | null,
-        totalCents: priceResult.totalCents,
-        currency: priceResult.currency,
+        subtotalCents: pricePreview.baseAmountCents,
+        discountCents: pricePreview.totalDiscountCents,
+        amountAfterDiscountCents: pricePreview.amountAfterDiscountCents,
+        taxCents: pricePreview.tax.taxCents,
+        netCents: pricePreview.tax.netCents,
+        grossCents: pricePreview.tax.grossCents,
+        totalCents: pricePreview.tax.grossCents,
+        currency: pricePreview.currency,
+        pricingModel: pricePreview.pricingModel,
+        tierBreakdown: pricePreview.tierBreakdown,
+        discounts: pricePreview.discounts,
         periodStart: period.start.toISOString(),
         periodEnd: period.end.toISOString(),
         explanation: this.buildPreviewExplanation(
           quantity.billableVehicleCount,
-          priceResult,
+          pricePreview,
         ),
       },
       paymentMethod: defaultPm
@@ -181,36 +182,39 @@ export class BillingSummaryService {
   }
 
   async getNextInvoicePreview(organizationId: string) {
-    const [quantity, discounts, contract] = await Promise.all([
+    const [quantity, contract, pricePreview] = await Promise.all([
       this.quantityResolver.resolveQuantity(organizationId),
-      this.discountResolver.resolveDiscounts(organizationId),
       this.subscriptionResolver.resolveContract(organizationId),
+      this.pricePreview.preview(organizationId),
     ]);
-
-    const priceResult = await this.pricingResolver.resolveItemPricingForOrganization({
-      organizationId,
-      billableQuantity: quantity.billableVehicleCount,
-      discounts,
-    });
 
     const period = contract.currentPeriod;
 
     return {
       billableVehicleCount: quantity.billableVehicleCount,
       connectedVehicleCount: quantity.connectedVehicleCount,
-      tier: priceResult.tier,
-      calculationStatus: priceResult.calculationStatus,
-      unitPriceCents: priceResult.unitPriceCents,
-      subtotalCents: priceResult.subtotalCents,
-      taxCents: null,
-      totalCents: priceResult.totalCents,
-      currency: priceResult.currency,
+      tier: pricePreview.tier,
+      calculationStatus: pricePreview.calculationStatus,
+      unitPriceCents: pricePreview.unitPriceCents,
+      subtotalCents: pricePreview.baseAmountCents,
+      discountCents: pricePreview.totalDiscountCents,
+      amountAfterDiscountCents: pricePreview.amountAfterDiscountCents,
+      taxCents: pricePreview.tax.taxCents,
+      netCents: pricePreview.tax.netCents,
+      grossCents: pricePreview.tax.grossCents,
+      totalCents: pricePreview.tax.grossCents,
+      currency: pricePreview.currency,
+      pricingModel: pricePreview.pricingModel,
+      tierBreakdown: pricePreview.tierBreakdown,
+      discounts: pricePreview.discounts,
+      warnings: pricePreview.warnings,
+      legacyFallbacks: pricePreview.legacyFallbacks,
       periodStart: period.start.toISOString(),
       periodEnd: period.end.toISOString(),
       priceNotConfigured:
-        priceResult.calculationStatus === BillingUsageCalculationStatus.PRICE_NOT_CONFIGURED ||
-        priceResult.calculationStatus === BillingUsageCalculationStatus.NO_ACTIVE_PRICE_VERSION,
-      explanation: this.buildPreviewExplanation(quantity.billableVehicleCount, priceResult),
+        pricePreview.calculationStatus === BillingUsageCalculationStatus.PRICE_NOT_CONFIGURED ||
+        pricePreview.calculationStatus === BillingUsageCalculationStatus.NO_ACTIVE_PRICE_VERSION,
+      explanation: this.buildPreviewExplanation(quantity.billableVehicleCount, pricePreview),
     };
   }
 
@@ -269,10 +273,14 @@ export class BillingSummaryService {
     price: {
       calculationStatus: BillingUsageCalculationStatus;
       unitPriceCents: number | null;
-      subtotalCents: number | null;
+      baseAmountCents?: number | null;
+      subtotalCents?: number | null;
+      amountAfterDiscountCents?: number | null;
+      totalDiscountCents?: number;
       currency: string | null;
     },
   ): string {
+    const subtotal = price.baseAmountCents ?? price.subtotalCents;
     if (price.calculationStatus === BillingUsageCalculationStatus.NO_ACTIVE_PRICE_VERSION) {
       return 'No active price version configured.';
     }
@@ -282,8 +290,12 @@ export class BillingSummaryService {
     if (price.calculationStatus === BillingUsageCalculationStatus.NO_BILLABLE_VEHICLES) {
       return 'No billable connected vehicles for this organization.';
     }
-    if (price.unitPriceCents != null && price.subtotalCents != null) {
-      return `${count} billable connected vehicles × ${(price.unitPriceCents / 100).toFixed(2)} ${price.currency ?? 'EUR'} per vehicle`;
+    if (price.unitPriceCents != null && subtotal != null) {
+      const discountNote =
+        price.totalDiscountCents && price.totalDiscountCents > 0
+          ? ` after ${(price.totalDiscountCents / 100).toFixed(2)} ${price.currency ?? 'EUR'} discount`
+          : '';
+      return `${count} billable connected vehicles × ${(price.unitPriceCents / 100).toFixed(2)} ${price.currency ?? 'EUR'} per vehicle${discountNote}`;
     }
     return 'Unable to calculate preview.';
   }

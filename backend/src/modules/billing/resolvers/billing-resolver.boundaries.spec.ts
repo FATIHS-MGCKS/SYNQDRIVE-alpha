@@ -57,6 +57,9 @@ describe('Billing resolver service boundaries', () => {
     billingOrganizationPriceOverride: {
       findMany: jest.fn(),
     },
+    billingDiscount: {
+      findMany: jest.fn(),
+    },
     billingSubscriptionItem: {
       findFirst: jest.fn(),
       findMany: jest.fn(),
@@ -156,6 +159,7 @@ describe('Billing resolver service boundaries', () => {
         status: BillingOrgPriceOverrideStatus.ACTIVE,
       },
     ]);
+    prisma.billingDiscount.findMany.mockResolvedValue([]);
     prisma.billingSubscription.findMany.mockResolvedValue([{ id: 'sub-1' }]);
     prisma.billingInvoice.findMany.mockResolvedValue([
       {
@@ -200,6 +204,8 @@ describe('Billing resolver service boundaries', () => {
 
     expect(discounts).toHaveLength(1);
     expect(discounts[0].customUnitPriceCents).toBe(900);
+    expect(discounts[0].source).toBe('LEGACY_PRICE_OVERRIDE');
+    expect(discounts[0].applicationPhase).toBe('UNIT_PRICE');
     assertNoStripeTypes(discounts);
   });
 
@@ -215,7 +221,12 @@ describe('Billing resolver service boundaries', () => {
       discounts: [
         {
           id: 'd1',
+          source: 'LEGACY_PRICE_OVERRIDE',
+          applicationPhase: 'UNIT_PRICE',
           kind: 'FIXED_AMOUNT',
+          percentBps: null,
+          fixedAmountCents: null,
+          currency: null,
           customUnitPriceCents: 900,
           customMonthlyMinimumCents: null,
           priceBookId: null,
@@ -224,6 +235,7 @@ describe('Billing resolver service boundaries', () => {
           validFrom: new Date(),
           validTo: null,
           sortOrder: 0,
+          subscriptionItemId: null,
         },
       ],
     });
