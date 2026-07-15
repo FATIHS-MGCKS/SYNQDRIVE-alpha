@@ -42,6 +42,7 @@ describe('StripeBillingService payment sync characterization', () => {
       configService,
       billableVehiclesService as never,
       { resolveStripePrice: jest.fn() } as never,
+      { syncOrganizationSubscription: jest.fn() } as never,
     );
     jest.spyOn(stripeClientUtil, 'getStripeClient').mockReturnValue(stripeMock as never);
   });

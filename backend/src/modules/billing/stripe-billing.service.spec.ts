@@ -58,6 +58,10 @@ describe('StripeBillingService', () => {
     resolveStripePrice: jest.fn(),
   };
 
+  const subscriptionOrchestrator = {
+    syncOrganizationSubscription: jest.fn(),
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     service = new StripeBillingService(
@@ -65,6 +69,7 @@ describe('StripeBillingService', () => {
       configService,
       billableVehiclesService as never,
       catalogMappings as never,
+      subscriptionOrchestrator as never,
     );
     jest.spyOn(stripeClientUtil, 'getStripeClient').mockReturnValue(stripeMock as never);
   });

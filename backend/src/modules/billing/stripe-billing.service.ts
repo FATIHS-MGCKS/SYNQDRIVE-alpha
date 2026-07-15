@@ -16,6 +16,7 @@ import Stripe from 'stripe';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BillableVehiclesService } from './billable-vehicles.service';
 import { StripeCatalogMappingService } from './stripe-catalog-mapping.service';
+import { StripeSubscriptionOrchestratorService } from './stripe-subscription-orchestrator.service';
 import { getStripeClient } from './stripe-client.util';
 import { mapStripeSubscriptionStatus } from './stripe-status.mapper';
 
@@ -34,6 +35,7 @@ export class StripeBillingService {
     private readonly configService: ConfigService,
     private readonly billableVehiclesService: BillableVehiclesService,
     private readonly catalogMappings: StripeCatalogMappingService,
+    private readonly subscriptionOrchestrator: StripeSubscriptionOrchestratorService,
   ) {}
 
   isStripeConfigured(): boolean {
@@ -359,90 +361,46 @@ export class StripeBillingService {
   }
 
   async createOrUpdateSubscriptionForOrg(organizationId: string) {
-    const localSub = await this.findPrimarySubscription(organizationId);
-    const baseItem = localSub
-      ? await this.prisma.billingSubscriptionItem.findFirst({
-          where: {
-            organizationId,
-            subscriptionId: localSub.id,
-            itemRole: 'BASE_PLAN',
-          },
-          orderBy: { validFrom: 'desc' },
-          select: { priceVersionId: true },
-        })
-      : null;
-
-    const priceVersionId = localSub?.priceVersionId ?? baseItem?.priceVersionId ?? null;
-
-    let resolvedPriceId: string;
     try {
-      if (!priceVersionId) {
-        const legacy = await this.catalogMappings.resolveStripePrice({
-          organizationId,
-          priceVersionId: 'legacy-unversioned',
-          allowLegacyFallback: true,
-        });
-        resolvedPriceId = legacy.stripePriceId;
-      } else {
-        const resolved = await this.catalogMappings.resolveStripePrice({
-          organizationId,
-          priceVersionId,
-          subscriptionPriceVersionId: localSub?.priceVersionId ?? null,
-          subscriptionItemPriceVersionId: baseItem?.priceVersionId ?? null,
-          allowLegacyFallback: !localSub?.priceVersionId && !baseItem?.priceVersionId,
-        });
-        resolvedPriceId = resolved.stripePriceId;
-      }
+      const result = await this.subscriptionOrchestrator.syncOrganizationSubscription({
+        organizationId,
+      });
+
+      const mapped = await this.prisma.billingSubscription.findUnique({
+        where: { id: result.subscriptionId },
+        select: { status: true, cancelAtPeriodEnd: true },
+      });
+
+      return {
+        prepared: false,
+        created: result.created,
+        subscriptionId: result.subscriptionId,
+        stripeSubscriptionId: result.stripeSubscriptionId,
+        status: mapped
+          ? mapStripeSubscriptionStatus(
+              result.syncStatus === 'SYNCED' ? 'active' : 'incomplete',
+              { cancelAtPeriodEnd: mapped.cancelAtPeriodEnd },
+            )
+          : mapStripeSubscriptionStatus('active'),
+        quantity: result.itemCount,
+        priceId: null,
+        synced: true,
+      };
     } catch (error) {
-      const legacyPriceId = this.configService.get<string>('stripe.defaultPriceId');
-      if (!legacyPriceId) {
+      if (error instanceof HttpException && error.getStatus() === HttpStatus.NOT_IMPLEMENTED) {
+        const response = error.getResponse();
+        const message =
+          response && typeof response === 'object' && 'message' in response
+            ? String((response as { message: string }).message)
+            : 'Stripe is not configured. Set STRIPE_SECRET_KEY.';
         return {
           prepared: true,
           created: false,
-          message:
-            'Stripe subscription creation requires an explicit catalog mapping for the assigned price version.',
+          message,
         };
       }
       throw error;
     }
-
-    const stripe = this.requireStripe();
-    const customerId = await this.ensureCustomerForOrganization(organizationId);
-    const billable =
-      await this.billableVehiclesService.getBillableConnectedVehiclesForOrganization(
-        organizationId,
-      );
-    const quantity = Math.max(billable.billableVehicleCount, 1);
-
-    const localSubRecord = localSub ?? (await this.findPrimarySubscription(organizationId));
-    let stripeSub: Stripe.Subscription;
-
-    if (localSubRecord?.stripeSubscriptionId) {
-      const existing = await stripe.subscriptions.retrieve(localSubRecord.stripeSubscriptionId);
-      const itemId = existing.items.data[0]?.id;
-      if (!itemId) {
-        throw new BadRequestException('Stripe subscription has no line items');
-      }
-      stripeSub = await stripe.subscriptions.update(localSubRecord.stripeSubscriptionId, {
-        items: [{ id: itemId, quantity }],
-        metadata: { organizationId },
-      });
-    } else {
-      stripeSub = await stripe.subscriptions.create({
-        customer: customerId,
-        items: [{ price: resolvedPriceId, quantity }],
-        metadata: { organizationId },
-      });
-    }
-
-    const result = await this.applyStripeSubscription(organizationId, stripeSub);
-    return {
-      prepared: false,
-      created: true,
-      quantity,
-      priceId: resolvedPriceId,
-      ...result,
-    };
   }
 
   async syncOrganizationStripe(organizationId: string) {

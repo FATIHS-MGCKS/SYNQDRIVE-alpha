@@ -39,6 +39,7 @@ import { BillingEntitlementResolver } from './billing-entitlement-resolver.servi
 import { StripeCatalogMappingService } from './stripe-catalog-mapping.service';
 import { StripeCatalogMappingController } from './stripe-catalog-mapping.controller';
 import { StripeCatalogSyncService } from './stripe-catalog-sync.service';
+import { StripeSubscriptionOrchestratorService } from './stripe-subscription-orchestrator.service';
 
 @Module({
   controllers: [BillingController, StripeWebhookController, MasterSubscriptionController, StripeCatalogMappingController],
@@ -77,6 +78,7 @@ import { StripeCatalogSyncService } from './stripe-catalog-sync.service';
     BillingEntitlementResolver,
     StripeCatalogMappingService,
     StripeCatalogSyncService,
+    StripeSubscriptionOrchestratorService,
   ],
   exports: [
     BillingService,
@@ -113,6 +115,7 @@ import { StripeCatalogSyncService } from './stripe-catalog-sync.service';
     BillingEntitlementResolver,
     StripeCatalogMappingService,
     StripeCatalogSyncService,
+    StripeSubscriptionOrchestratorService,
   ],
 })
 export class BillingModule {}
