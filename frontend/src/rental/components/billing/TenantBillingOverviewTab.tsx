@@ -1,6 +1,6 @@
 import { Button } from '../../../components/ui/button';
 import { EmptyState, ErrorState } from '../../../components/patterns/states';
-import type { BillingInvoiceDto, TenantSubscriptionOverviewDto } from '../../types/billing.types';
+import type { TenantInvoiceListItemDto, TenantSubscriptionOverviewDto } from '../../types/billing.types';
 import { formatDateDe } from './billing.utils';
 import {
   nextAmountLabel,
@@ -9,18 +9,19 @@ import {
   warningTone,
 } from './tenant-billing-overview.utils';
 import { resolveInvoiceNumberLabel } from './tenant-billing-overview.utils';
-import { formatMoneyCents } from './billing.utils';
 
 interface TenantBillingOverviewTabProps {
   overview: TenantSubscriptionOverviewDto | null;
   loading: boolean;
   error: string | null;
   onRetry: () => void;
-  lastPaidInvoice: BillingInvoiceDto | null;
+  lastPaidInvoice: TenantInvoiceListItemDto | null;
   lastPaidInvoiceLoading: boolean;
   lastPaidInvoiceError: string | null;
+  canWrite?: boolean;
   onManagePaymentMethod?: () => void;
   onViewInvoices?: () => void;
+  onOpenPortal?: () => void;
 }
 
 function MetricCard({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -43,8 +44,10 @@ export function TenantBillingOverviewTab({
   lastPaidInvoice,
   lastPaidInvoiceLoading,
   lastPaidInvoiceError,
+  canWrite = false,
   onManagePaymentMethod,
   onViewInvoices,
+  onOpenPortal,
 }: TenantBillingOverviewTabProps) {
   if (loading) {
     return <div className="space-y-3" data-testid="tenant-overview-loading" />;
@@ -180,10 +183,7 @@ export function TenantBillingOverviewTab({
               <p className="font-semibold">{resolveInvoiceNumberLabel(lastPaidInvoice)}</p>
               <p className="text-muted-foreground mt-0.5">
                 {formatDateDe(lastPaidInvoice.paidAt ?? lastPaidInvoice.invoiceDate)} ·{' '}
-                {formatMoneyCents(
-                  lastPaidInvoice.grossAmountCents ?? lastPaidInvoice.amountCents,
-                  currency,
-                )}
+                {lastPaidInvoice.grossAmount?.formatted ?? '—'}
               </p>
             </div>
             {onViewInvoices ? (
@@ -200,6 +200,9 @@ export function TenantBillingOverviewTab({
       {overview.availableActions.length > 0 ? (
         <div className="flex flex-wrap gap-2">
           {overview.availableActions.map((action) => {
+            if (action.requiresWritePermission && !canWrite) {
+              return null;
+            }
             if (action.action === 'VIEW_INVOICES' && onViewInvoices) {
               return (
                 <Button key={action.action} type="button" size="sm" variant="outline" onClick={onViewInvoices}>
@@ -210,7 +213,7 @@ export function TenantBillingOverviewTab({
             if (
               (action.action === 'ADD_PAYMENT_METHOD' ||
                 action.action === 'MANAGE_PAYMENT_METHOD' ||
-                action.action === 'OPEN_CUSTOMER_PORTAL') &&
+                action.action === 'UPDATE_PAYMENT_METHOD') &&
               onManagePaymentMethod
             ) {
               return (
@@ -220,6 +223,19 @@ export function TenantBillingOverviewTab({
                   size="sm"
                   variant="outline"
                   onClick={onManagePaymentMethod}
+                >
+                  {action.label}
+                </Button>
+              );
+            }
+            if (action.action === 'OPEN_CUSTOMER_PORTAL' && onOpenPortal) {
+              return (
+                <Button
+                  key={action.action}
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={onOpenPortal}
                 >
                   {action.label}
                 </Button>

@@ -156,6 +156,7 @@ describe('BillingTab subscription section', () => {
     expect(source).toContain('TenantBillingAddOnsTab');
     expect(source).toContain('TenantBillingInvoicesTab');
     expect(source).toContain('TenantBillingPaymentMethodTab');
+    expect(source).toContain('TenantBillingProblemPanel');
     expect(source).toContain("section === 'customer-payments'");
     expect(source).toContain('CustomerPaymentsTab');
 
@@ -163,6 +164,12 @@ describe('BillingTab subscription section', () => {
       resolve(billingDir, 'TenantBillingInvoicesTab.tsx'),
       'utf8',
     );
-    expect(invoicesTabSource).toContain('BillingInvoiceSection');
+    expect(invoicesTabSource).toContain('TenantInvoicesSection');
+
+    const paymentTabSource = readFileSync(
+      resolve(billingDir, 'TenantBillingPaymentMethodTab.tsx'),
+      'utf8',
+    );
+    expect(paymentTabSource).toContain('TenantPaymentMethodsSection');
   });
 });

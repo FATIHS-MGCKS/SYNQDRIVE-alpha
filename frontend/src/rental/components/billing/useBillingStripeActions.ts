@@ -5,11 +5,12 @@ import type { BillingStripeUiState } from './billing-stripe-ui';
 export function useBillingStripeActions(
   orgId: string | undefined,
   stripeState: BillingStripeUiState,
+  canWrite = false,
 ) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const canUseStripePayments = stripeState === 'configured' && Boolean(orgId);
+  const canUseStripePayments = stripeState === 'configured' && Boolean(orgId) && canWrite;
 
   const openCustomerPortal = useCallback(async () => {
     if (!orgId || !canUseStripePayments) return;

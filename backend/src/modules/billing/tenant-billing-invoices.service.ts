@@ -143,8 +143,11 @@ export class TenantBillingInvoicesService {
       subscriptionId: { in: subscriptionIds },
     };
 
-    if (query.status) {
-      where.status = query.status;
+    if (query.status === 'OVERDUE') {
+      where.status = InvoiceStatus.OPEN;
+      where.dueDate = { lt: new Date() };
+    } else if (query.status) {
+      where.status = query.status as InvoiceStatus;
     }
 
     if (parsed.from || parsed.to) {
@@ -217,7 +220,7 @@ export class TenantBillingInvoicesService {
 
     return {
       ...list,
-      statusLabel: resolveInvoiceStatusLabel(invoice.status),
+      statusLabel: resolveInvoiceDisplayLabel(invoice.status, invoice.dueDate),
       amountPaid: toTenantMoney(invoice.amountPaidCents, currency),
       voidedAt: invoice.voidedAt?.toISOString() ?? null,
       lines: invoice.lines.map((line) => ({

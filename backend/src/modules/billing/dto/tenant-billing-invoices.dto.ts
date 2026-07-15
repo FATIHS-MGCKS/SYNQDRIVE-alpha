@@ -12,8 +12,8 @@ export class TenantInvoiceQueryDto extends TenantBillingListQueryDto {
   ] as const;
 
   @IsOptional()
-  @IsIn(['DRAFT', 'OPEN', 'PAID', 'VOID', 'UNCOLLECTIBLE'])
-  declare status?: InvoiceStatus;
+  @IsIn(['DRAFT', 'OPEN', 'PAID', 'VOID', 'UNCOLLECTIBLE', 'OVERDUE'])
+  declare status?: InvoiceStatus | 'OVERDUE';
 }
 
 export interface TenantMoneyDto {

@@ -5,7 +5,7 @@ import {
   parseBillingPaginated,
   serializeBillingQueryKey,
 } from './billing-query.utils';
-import type { BillingInvoiceDto } from '../../types/billing.types';
+import type { TenantInvoiceListItemDto } from '../../types/billing.types';
 import { useBillingQuery } from './useBillingQuery';
 
 export interface BillingInvoicesQuery {
@@ -38,7 +38,7 @@ export function useBillingInvoices(orgId: string | undefined, initialQuery: Bill
     deps: [billingQueryKeys.invoices(orgId ?? '', queryKey)],
     fetcher: async (signal) => {
       const payload = await api.billing.orgInvoices(orgId, query, { signal });
-      return parseBillingPaginated<BillingInvoiceDto>(payload);
+      return parseBillingPaginated<TenantInvoiceListItemDto>(payload);
     },
   });
 

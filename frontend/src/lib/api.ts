@@ -4008,6 +4008,16 @@ export const api = {
         `/billing/invoices/${encodeURIComponent(invoiceId)}/payments${billingTenantQuery(orgId)}`,
         init,
       ),
+    orgInvoiceHosted: (orgId: string | undefined, invoiceId: string, init?: RequestInit) =>
+      get<{ url: string }>(
+        `/billing/invoices/${encodeURIComponent(invoiceId)}/hosted${billingTenantQuery(orgId)}`,
+        init,
+      ),
+    orgInvoicePdf: (orgId: string | undefined, invoiceId: string, init?: RequestInit) =>
+      get<{ url: string }>(
+        `/billing/invoices/${encodeURIComponent(invoiceId)}/pdf${billingTenantQuery(orgId)}`,
+        init,
+      ),
     orgPayments: (
       orgId?: string,
       params?: Record<string, string | number | undefined>,
@@ -4043,8 +4053,20 @@ export const api = {
       post<any>(`/billing/stripe/customer-portal${billingTenantQuery(orgId)}`, {
         returnUrl,
       }),
-    orgStripeSetupIntent: (orgId?: string) =>
-      post<any>(`/billing/stripe/setup-intent${billingTenantQuery(orgId)}`, {}),
+    orgStripeSetupIntent: (
+      orgId?: string,
+      body?: { paymentMethodType?: 'card' | 'sepa_debit' },
+    ) => post<any>(`/billing/stripe/setup-intent${billingTenantQuery(orgId)}`, body ?? {}),
+    orgPaymentMethodSetDefault: (orgId: string | undefined, paymentMethodId: string) =>
+      post<any>(
+        `/billing/payment-methods/${encodeURIComponent(paymentMethodId)}/set-default${billingTenantQuery(orgId)}`,
+        {},
+      ),
+    orgPaymentMethodDetach: (orgId: string | undefined, paymentMethodId: string) =>
+      request<{ paymentMethods: unknown[] }>(
+        `/billing/payment-methods/${encodeURIComponent(paymentMethodId)}${billingTenantQuery(orgId)}`,
+        { method: 'DELETE' },
+      ),
     adminSyncStripe: (orgId: string) =>
       post<any>(`/admin/billing/organizations/${encodeURIComponent(orgId)}/sync-stripe`, {}),
     masterSubscriptionPath: (orgId: string, suffix = '') =>

@@ -327,3 +327,116 @@ export interface TenantVehicleBillingChangeDto {
   prorationAmount: TenantMoneyDto | null;
   reason: string | null;
 }
+
+export interface TenantInvoiceListItemDto {
+  id: string;
+  invoiceNumber: string | null;
+  invoiceNumberLabel: string;
+  invoiceDate: string;
+  periodStart: string | null;
+  periodEnd: string | null;
+  status: string;
+  statusLabel: string;
+  netAmount: TenantMoneyDto;
+  taxAmount: TenantMoneyDto | null;
+  grossAmount: TenantMoneyDto;
+  amountDue: TenantMoneyDto | null;
+  amountRemaining: TenantMoneyDto | null;
+  dueDate: string | null;
+  paidAt: string | null;
+  hasHostedInvoice: boolean;
+  hasPdf: boolean;
+}
+
+export interface TenantInvoiceLineDto {
+  description: string;
+  quantity: number;
+  unitAmount: TenantMoneyDto | null;
+  netAmount: TenantMoneyDto;
+  taxAmount: TenantMoneyDto | null;
+  grossAmount: TenantMoneyDto;
+  periodStart: string | null;
+  periodEnd: string | null;
+}
+
+export interface TenantInvoiceDetailDto extends TenantInvoiceListItemDto {
+  amountPaid: TenantMoneyDto | null;
+  voidedAt: string | null;
+  lines: TenantInvoiceLineDto[];
+}
+
+export interface TenantPaymentAttemptDto {
+  attemptNumber: number;
+  status: string;
+  statusLabel: string;
+  safeReason: string | null;
+  attemptedAt: string;
+  nextRetryAt: string | null;
+}
+
+export interface TenantPaymentRefundDto {
+  amount: TenantMoneyDto;
+  status: string;
+  statusLabel: string;
+  isPartial: boolean;
+  reason: string | null;
+  refundedAt: string | null;
+}
+
+export interface TenantInvoicePaymentDto {
+  amount: TenantMoneyDto;
+  status: string;
+  statusLabel: string;
+  providerLabel: string;
+  succeededAt: string | null;
+  failedAt: string | null;
+  refundedAmount: TenantMoneyDto | null;
+  remainingAmount: TenantMoneyDto | null;
+  attempts: TenantPaymentAttemptDto[];
+  refunds: TenantPaymentRefundDto[];
+}
+
+export interface TenantInvoicePaymentHistoryDto {
+  invoiceId: string;
+  currency: string;
+  amountRemaining: TenantMoneyDto;
+  payments: TenantInvoicePaymentDto[];
+  failedAttempts: TenantPaymentAttemptDto[];
+  refunds: TenantPaymentRefundDto[];
+  creditNotes: Array<{
+    amount: TenantMoneyDto;
+    status: string;
+    statusLabel: string;
+    reason: string | null;
+    issuedAt: string | null;
+    hasHostedDocument: boolean;
+    hasPdf: boolean;
+  }>;
+}
+
+export type TenantPaymentMethodBillingState =
+  | 'READY'
+  | 'MISSING'
+  | 'REQUIRES_ACTION'
+  | 'FAILED';
+
+export interface TenantPaymentMethodDto {
+  id: string;
+  type: 'CARD' | 'SEPA_DEBIT' | 'OTHER';
+  typeLabel: string;
+  brand: string | null;
+  last4: string | null;
+  expMonth: number | null;
+  expYear: number | null;
+  bankName: string | null;
+  mandateStatusLabel: string | null;
+  isDefault: boolean;
+  statusLabel: string;
+  billingState: TenantPaymentMethodBillingState;
+}
+
+export interface TenantPaymentMethodsDto {
+  configured: boolean;
+  defaultMethodId: string | null;
+  paymentMethods: TenantPaymentMethodDto[];
+}
