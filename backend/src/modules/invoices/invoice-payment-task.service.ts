@@ -6,6 +6,8 @@ import {
   TaskPriority,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { TaskAutomationRuleResolverService } from '@modules/tasks/automation/task-automation-rule-resolver.service';
+import { shouldMaterializeFromResolvedRule, applyTimingOffsets } from '@modules/tasks/automation/task-automation-effective-rule.util';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { TaskAutomationOutboxEnqueueService } from '@modules/tasks/outbox/task-automation-outbox-enqueue.service';
 import { TaskAutomationOutboxExecutionContext } from '@modules/tasks/outbox/task-automation-outbox-execution.context';
@@ -15,7 +17,6 @@ import { DEFAULT_TARIFF_TIMEZONE } from '@modules/pricing/tariff-instant.util';
 import {
   automationOutboxIdentity,
   buildAutomationMetadataBlock,
-  buildAutomationMetadataRef,
   getAutomationRuleByCatalogKey,
   requireAutomationRuleById,
 } from '@modules/tasks/automation/task-automation-rule.util';
@@ -78,6 +79,7 @@ export class InvoicePaymentTaskService {
     private readonly tasks: TasksService,
     private readonly outboxEnqueue: TaskAutomationOutboxEnqueueService,
     private readonly outboxContext: TaskAutomationOutboxExecutionContext,
+    private readonly ruleResolver: TaskAutomationRuleResolverService,
   ) {}
 
   private async handleAutomationFailure(
@@ -125,6 +127,14 @@ export class InvoicePaymentTaskService {
         return;
       }
 
+      const resolved = await this.ruleResolver.resolveTaskAutomationRule(
+        orgId,
+        invoicePaymentRule.ruleId,
+      );
+      if (!shouldMaterializeFromResolvedRule(resolved)) {
+        return;
+      }
+
       await this.tasks.supersedeLegacyInvoicePaymentCheckTasks(orgId, invoice.id);
 
       const timeZone = await this.resolveOrgTimezone(orgId);
@@ -133,6 +143,12 @@ export class InvoicePaymentTaskService {
         invoiceDate: invoice.invoiceDate,
       });
       const timing = computeInvoicePaymentTaskTiming(dueDate, now, timeZone);
+      const adjustedTiming = applyTimingOffsets({
+        activatesAt: timing.activatesAt,
+        dueDate: timing.dueDate,
+        activationOffsetMinutes: resolved.effective.activationOffsetMinutes,
+        dueOffsetMinutes: resolved.effective.dueOffsetMinutes,
+      });
       const dedupKey = invoicePaymentCheckDedupKey(invoice.id);
       const title = this.buildTaskTitle(invoice);
       const metadata = this.buildTaskMetadata(dedupKey, invoice, timing);
@@ -144,13 +160,13 @@ export class InvoicePaymentTaskService {
         type: invoicePaymentRule.taskType!,
         source: invoicePaymentRule.source,
         sourceType: invoicePaymentRule.sourceType,
-        priority: timing.priority,
+        priority: timing.priority === 'CRITICAL' ? timing.priority : resolved.effective.priority,
         invoiceId: invoice.id,
         bookingId: invoice.bookingId ?? null,
         customerId: invoice.customerId ?? null,
         vehicleId: this.optionalVehicleLink(invoice),
-        dueDate: timing.dueDate,
-        activatesAt: timing.activatesAt,
+        dueDate: adjustedTiming.dueDate,
+        activatesAt: adjustedTiming.activatesAt,
         metadata,
       });
 

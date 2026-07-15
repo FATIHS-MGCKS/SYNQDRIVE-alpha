@@ -9,7 +9,6 @@ import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-o
 import {
   automationOutboxIdentity,
   buildAutomationMetadataBlock,
-  buildAutomationMetadataRef,
   getAutomationRuleByInsightType,
   INSIGHT_TASK_BRIDGE_SOURCES,
   listMaterializationAutomationRules,
@@ -18,6 +17,8 @@ import {
   shouldAutoMaterializeServiceOverdueTask,
   type ServiceOverdueTaskContext,
 } from '@modules/vehicle-intelligence/service-compliance/service-overdue-task.util';
+import { TaskAutomationRuleResolverService } from '@modules/tasks/automation/task-automation-rule-resolver.service';
+import { shouldMaterializeFromResolvedRule } from '@modules/tasks/automation/task-automation-effective-rule.util';
 import { TasksService } from '../tasks/tasks.service';
 import { checklistForType } from '../tasks/task-templates';
 import {
@@ -64,6 +65,7 @@ export class InsightTaskBridgeService {
     private readonly serviceOverdueTasks: ServiceOverdueTaskService,
     private readonly outboxEnqueue: TaskAutomationOutboxEnqueueService,
     private readonly outboxContext: TaskAutomationOutboxExecutionContext,
+    private readonly ruleResolver: TaskAutomationRuleResolverService,
   ) {}
 
   private shouldMaterializeTask(candidate: InsightCandidate): boolean {
@@ -111,6 +113,12 @@ export class InsightTaskBridgeService {
 
       const cfg = InsightTaskBridgeService.TASK_TYPE_CONFIG[c.type]!;
       const catalogRule = getAutomationRuleByInsightType(c.type)!;
+      const resolved = await this.ruleResolver.resolveTaskAutomationRule(
+        organizationId,
+        catalogRule.ruleId,
+      );
+      if (!shouldMaterializeFromResolvedRule(resolved)) continue;
+
       const vehicleId = c.entityIds[0];
       const dedupKey = c.dedupeKey;
       seenKeys.push(dedupKey);

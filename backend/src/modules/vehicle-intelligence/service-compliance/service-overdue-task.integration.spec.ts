@@ -3,6 +3,7 @@ import { InsightEntityScope, InsightSeverity, InsightType } from '@prisma/client
 import type { InsightCandidate } from '@modules/business-insights/insight.types';
 import { InsightTaskBridgeService } from '@modules/business-insights/insight-task-bridge.service';
 import { createNoopTaskAutomationOutboxDeps } from '@modules/tasks/outbox/task-automation-outbox-test.util';
+import { createDefaultTaskAutomationRuleResolverMock } from '@modules/tasks/automation/task-automation-rule-resolver.test.util';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { ServiceOverdueTaskService } from './service-overdue-task.service';
 import { buildServiceOverdueTaskContext } from './service-overdue-task.util';
@@ -84,6 +85,7 @@ describe('Service overdue task automation', () => {
       serviceOverdueTasks,
       outboxEnqueue,
       outboxContext,
+      createDefaultTaskAutomationRuleResolverMock(),
     );
 
     await bridge.materialize(orgId, [overdueCandidate()]);
@@ -124,6 +126,7 @@ describe('Service overdue task automation', () => {
       serviceOverdueTasks,
       outboxEnqueue,
       outboxContext,
+      createDefaultTaskAutomationRuleResolverMock(),
     );
 
     await bridge.materialize(orgId, [overdueCandidate(true)]);

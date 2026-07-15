@@ -9,6 +9,7 @@ import { createInvoiceTestStore, type InvoiceTestStore } from './invoices-test-s
 import { InvoiceNumberService } from './invoice-number.service';
 import { InvoicePaymentTaskService } from './invoice-payment-task.service';
 import { createNoopTaskAutomationOutboxDeps } from '@modules/tasks/outbox/task-automation-outbox-test.util';
+import { createDefaultTaskAutomationRuleResolverMock } from '@modules/tasks/automation/task-automation-rule-resolver.test.util';
 import { InvoicesService } from './invoices.service';
 import { invoicePaymentCheckDedupKey } from './invoice-payment-task.util';
 
@@ -35,6 +36,7 @@ export function createInvoicePaymentTaskHarness(): InvoicePaymentTaskHarness {
     tasks,
     outboxEnqueue,
     outboxContext,
+    createDefaultTaskAutomationRuleResolverMock(),
   );
   const invoiceNumbers = new InvoiceNumberService(prisma);
   const invoices = new InvoicesService(prisma, invoiceNumbers, invoicePaymentTasks);

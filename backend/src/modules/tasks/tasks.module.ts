@@ -8,11 +8,32 @@ import { TaskLinkedObjectResolverService } from './task-linked-object-resolver.s
 import { TaskAutomationOutboxCoreModule } from './outbox/task-automation-outbox-core.module';
 import { TaskDataDiagnosticService } from './diagnostic/task-data-diagnostic.service';
 import { TaskDataRepairService } from './diagnostic/task-data-repair.service';
+import { TaskAutomationRuleResolverService } from './automation/task-automation-rule-resolver.service';
+import { TaskAutomationRuleOverrideService } from './automation/task-automation-rule-override.service';
 
 @Module({
   imports: [ActivityLogModule, TaskAutomationOutboxCoreModule],
   controllers: [TasksController],
-  providers: [TasksService, TaskAutomationService, VehicleCleaningTaskService, TaskLinkedObjectResolverService, TaskDataDiagnosticService, TaskDataRepairService],
-  exports: [TasksService, TaskAutomationService, VehicleCleaningTaskService, TaskLinkedObjectResolverService, TaskAutomationOutboxCoreModule, TaskDataDiagnosticService, TaskDataRepairService],
+  providers: [
+    TasksService,
+    TaskAutomationService,
+    VehicleCleaningTaskService,
+    TaskLinkedObjectResolverService,
+    TaskDataDiagnosticService,
+    TaskDataRepairService,
+    TaskAutomationRuleResolverService,
+    TaskAutomationRuleOverrideService,
+  ],
+  exports: [
+    TasksService,
+    TaskAutomationService,
+    VehicleCleaningTaskService,
+    TaskLinkedObjectResolverService,
+    TaskAutomationOutboxCoreModule,
+    TaskDataDiagnosticService,
+    TaskDataRepairService,
+    TaskAutomationRuleResolverService,
+    TaskAutomationRuleOverrideService,
+  ],
 })
 export class TasksModule {}

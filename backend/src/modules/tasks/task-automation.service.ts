@@ -9,12 +9,17 @@ import {
   bookingReturnDedupKey,
   automationOutboxIdentity,
   buildAutomationMetadataBlock,
-  buildAutomationMetadataRef,
   confirmedPhaseActiveDedupKeys,
   getAutomationRuleByCatalogKey,
   requireAutomationRuleById,
   vendorRepairDedupKey,
 } from './automation/task-automation-rule.util';
+import {
+  applyTimingOffsets,
+  shouldMaterializeFromResolvedRule,
+} from './automation/task-automation-effective-rule.util';
+import { TaskAutomationRuleResolverService } from './automation/task-automation-rule-resolver.service';
+import type { ResolvedTaskAutomationRule, TaskAutomationCatalogKey } from './automation/task-automation-rule.types';
 import {
   computeBookingPickupTiming,
   computeBookingReturnTiming,
@@ -89,7 +94,31 @@ export class TaskAutomationService {
     private readonly vehicleCleaningTasks: VehicleCleaningTaskService,
     private readonly outboxEnqueue: TaskAutomationOutboxEnqueueService,
     private readonly outboxContext: TaskAutomationOutboxExecutionContext,
+    private readonly ruleResolver: TaskAutomationRuleResolverService,
   ) {}
+
+  private async resolveMaterializationRule(
+    orgId: string,
+    catalogKey: TaskAutomationCatalogKey,
+  ): Promise<ResolvedTaskAutomationRule | null> {
+    const resolved = await this.ruleResolver.resolveByCatalogKey(orgId, catalogKey);
+    if (!shouldMaterializeFromResolvedRule(resolved)) {
+      return null;
+    }
+    return resolved;
+  }
+
+  private applyResolvedTiming(
+    timing: { activatesAt: Date; dueDate: Date },
+    resolved: ResolvedTaskAutomationRule,
+  ): { activatesAt: Date; dueDate: Date } {
+    return applyTimingOffsets({
+      activatesAt: timing.activatesAt,
+      dueDate: timing.dueDate,
+      activationOffsetMinutes: resolved.effective.activationOffsetMinutes,
+      dueOffsetMinutes: resolved.effective.dueOffsetMinutes,
+    });
+  }
 
   private shouldPropagateError(): boolean {
     return this.outboxContext.fromOutbox;
@@ -239,9 +268,16 @@ export class TaskAutomationService {
     if (booking.status !== 'CONFIRMED') return;
 
     try {
+      const resolved = await this.resolveMaterializationRule(
+        booking.organizationId,
+        'BOOKING_PREPARATION',
+      );
+      if (!resolved) return;
+
       const now = options?.now ?? new Date();
       const timeZone = await this.resolveOrgTimezone(booking.organizationId);
       const timing = computeBookingPreparationTiming(booking.startDate, now, timeZone);
+      const adjustedTiming = this.applyResolvedTiming(timing, resolved);
       const dedupKey = bookingPreparationDedupKey(booking.id);
 
       const existing = await this.prisma.orgTask.findFirst({
@@ -258,7 +294,12 @@ export class TaskAutomationService {
           if (
             isSignificantBookingPickupReschedule(options.previousStartDate!, booking.startDate)
           ) {
-            await this.materializeBookingPreparationTask(booking, timing, dedupKey);
+            await this.materializeBookingPreparationTask(
+              booking,
+              { ...timing, ...adjustedTiming },
+              dedupKey,
+              resolved,
+            );
           }
           return;
         }
@@ -266,10 +307,11 @@ export class TaskAutomationService {
           return;
         }
         if (isActiveTaskStatus(existing.status)) {
+          const effectiveTiming = { ...timing, ...adjustedTiming };
           await this.tasks.updateTaskTiming(
             booking.organizationId,
             existing.id,
-            { activatesAt: timing.activatesAt, dueDate: timing.dueDate },
+            { activatesAt: effectiveTiming.activatesAt, dueDate: effectiveTiming.dueDate },
             {
               ruleId: getAutomationRuleByCatalogKey('BOOKING_PREPARATION').ruleId,
               pickupAt: timing.pickupAt,
@@ -282,14 +324,23 @@ export class TaskAutomationService {
             data: {
               vehicleId: booking.vehicleId,
               customerId: booking.customerId,
-              metadata: this.buildPreparationMetadata(dedupKey, timing, booking) as Prisma.InputJsonValue,
+              metadata: this.buildPreparationMetadata(
+                dedupKey,
+                effectiveTiming,
+                booking,
+              ) as Prisma.InputJsonValue,
             },
           });
           return;
         }
       }
 
-      await this.materializeBookingPreparationTask(booking, timing, dedupKey);
+      await this.materializeBookingPreparationTask(
+        booking,
+        { ...timing, ...adjustedTiming },
+        dedupKey,
+        resolved,
+      );
     } catch (err: unknown) {
       await this.handleAutomationFailure(
         buildOutboxMeta({
@@ -320,6 +371,9 @@ export class TaskAutomationService {
     if (booking.status !== 'CONFIRMED') return;
 
     try {
+      const resolved = await this.resolveMaterializationRule(booking.organizationId, 'BOOKING_PICKUP');
+      if (!resolved) return;
+
       const now = options?.now ?? new Date();
       const timeZone = await this.resolveOrgTimezone(booking.organizationId);
       const timing = computeBookingPickupTiming(booking.startDate, now, timeZone);
@@ -388,6 +442,9 @@ export class TaskAutomationService {
     if (booking.status !== 'ACTIVE') return;
 
     try {
+      const resolved = await this.resolveMaterializationRule(booking.organizationId, 'BOOKING_RETURN');
+      if (!resolved) return;
+
       const now = options?.now ?? new Date();
       const timeZone = await this.resolveOrgTimezone(booking.organizationId);
       const timing = computeBookingReturnTiming(booking.endDate, now, timeZone);
@@ -584,6 +641,7 @@ export class TaskAutomationService {
     booking: BookingLifecycleTaskInput,
     timing: BookingPreparationTiming,
     dedupKey: string,
+    resolved: ResolvedTaskAutomationRule,
   ): Promise<void> {
     const rule = getAutomationRuleByCatalogKey('BOOKING_PREPARATION');
     await this.safeUpsert(booking.organizationId, dedupKey, {
@@ -599,6 +657,7 @@ export class TaskAutomationService {
       withChecklist: true,
       activatesAt: timing.activatesAt,
       dueDate: timing.dueDate,
+      priority: resolved.effective.priority,
       metadata: this.buildPreparationMetadata(dedupKey, timing, booking),
     });
   }
@@ -810,6 +869,9 @@ export class TaskAutomationService {
     },
   ): Promise<void> {
     const repairRule = getAutomationRuleByCatalogKey('REPAIR_REQUIRED');
+    const resolved = await this.resolveMaterializationRule(orgId, 'REPAIR_REQUIRED');
+    if (!resolved) return;
+
     const key = vendorRepairDedupKey(input.vehicleId, input.vendorId, input.reason);
     try {
       await this.safeUpsert(orgId, key, {
@@ -817,7 +879,7 @@ export class TaskAutomationService {
         description: input.description ?? repairRule.descriptionDe,
         category: repairRule.category,
         type: repairRule.taskType!,
-        priority: input.priority ?? repairRule.defaultPriority,
+        priority: input.priority ?? resolved.effective.priority,
         source: repairRule.source,
         sourceType: repairRule.sourceType,
         vehicleId: input.vehicleId,
@@ -870,6 +932,9 @@ export class TaskAutomationService {
     },
   ): Promise<void> {
     try {
+      const resolved = await this.resolveMaterializationRule(orgId, 'DOCUMENT_PACKAGE_INCOMPLETE');
+      if (!resolved) return;
+
       await this.tasks.supersedeLegacyPerTypeDocumentTasks(orgId, input.bookingId);
 
       if (input.missingDocuments.length === 0) {
@@ -902,7 +967,7 @@ export class TaskAutomationService {
         sourceType: documentRule.sourceType,
         priority: input.missingDocuments.some((d) => d.documentType === 'FINAL_INVOICE')
           ? 'HIGH'
-          : documentRule.defaultPriority,
+          : resolved.effective.priority,
         metadata,
         checklist: input.missingDocuments.map((slot, index) => ({
           title: slot.humanReadableLabel,

@@ -61,9 +61,94 @@ export interface TaskAutomationDedupScope {
 
 export interface TaskAutomationConfigurableField {
   field: string;
-  type: 'string' | 'number' | 'boolean';
-  defaultValue: string | number | boolean;
+  type: 'string' | 'number' | 'boolean' | 'json';
+  defaultValue: string | number | boolean | null;
   descriptionDe?: string;
+  /** When true, organizations may override this field via OrgTaskAutomationRuleOverride. */
+  orgOverridable?: boolean;
+}
+
+/** Standard org override columns backed by OrgTaskAutomationRuleOverride. */
+export type TaskAutomationOrgOverrideFieldKey =
+  | 'enabled'
+  | 'activationOffsetMinutes'
+  | 'dueOffsetMinutes'
+  | 'priority'
+  | 'assignmentStrategy'
+  | 'assignedUserId'
+  | 'assignedRoleKey'
+  | 'stationScope'
+  | 'escalationConfig'
+  | 'notificationConfig'
+  | 'checklistOverrides';
+
+export const TASK_AUTOMATION_ORG_OVERRIDE_FIELD_KEYS: readonly TaskAutomationOrgOverrideFieldKey[] = [
+  'enabled',
+  'activationOffsetMinutes',
+  'dueOffsetMinutes',
+  'priority',
+  'assignmentStrategy',
+  'assignedUserId',
+  'assignedRoleKey',
+  'stationScope',
+  'escalationConfig',
+  'notificationConfig',
+  'checklistOverrides',
+] as const;
+
+export type TaskAutomationConfigSource = 'PLATFORM_DEFAULT' | 'ORG_OVERRIDE';
+
+export interface EffectiveTaskAutomationField<T> {
+  value: T;
+  source: TaskAutomationConfigSource;
+}
+
+export interface TaskAutomationPlatformDefaults {
+  enabled: boolean;
+  activationOffsetMinutes: number;
+  dueOffsetMinutes: number;
+  priority: TaskPriority;
+  assignmentStrategy: TaskAutomationAssignmentStrategy;
+  assignedUserId: string | null;
+  assignedRoleKey: string | null;
+  stationScope: string | null;
+  escalationConfig: Record<string, unknown> | null;
+  notificationConfig: Record<string, unknown> | null;
+  checklistOverrides: Record<string, unknown> | null;
+  ruleConfig: Record<string, string | number | boolean | null>;
+}
+
+export interface TaskAutomationOrgOverrideSnapshot {
+  id: string;
+  organizationId: string;
+  ruleId: string;
+  enabled: boolean | null;
+  activationOffsetMinutes: number | null;
+  dueOffsetMinutes: number | null;
+  priority: TaskPriority | null;
+  assignmentStrategy: string | null;
+  assignedUserId: string | null;
+  assignedRoleKey: string | null;
+  stationScope: string | null;
+  escalationConfig: Record<string, unknown> | null;
+  notificationConfig: Record<string, unknown> | null;
+  checklistOverrides: Record<string, unknown> | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ResolvedTaskAutomationRule {
+  ruleId: string;
+  catalogVersion: number;
+  catalogKey: TaskAutomationCatalogKey | null;
+  materializesTask: boolean;
+  default: TaskAutomationPlatformDefaults;
+  override: TaskAutomationOrgOverrideSnapshot | null;
+  effective: TaskAutomationPlatformDefaults;
+  fieldProvenance: Record<string, EffectiveTaskAutomationField<unknown>>;
+  /** False when the org disabled the rule — future materializations must be skipped. */
+  effectivelyEnabled: boolean;
 }
 
 export interface TaskAutomationRuleDefinition {

@@ -19,6 +19,33 @@ import { VehicleCleaningTaskService } from './vehicle-cleaning-task.service';
 import { checklistForType } from './task-templates';
 import { TaskAutomationOutboxEnqueueService } from './outbox/task-automation-outbox-enqueue.service';
 import { TaskAutomationOutboxExecutionContext } from './outbox/task-automation-outbox-execution.context';
+import { TaskAutomationRuleResolverService } from './automation/task-automation-rule-resolver.service';
+import {
+  buildResolvedTaskAutomationRule,
+  getOrgOverridableFieldKeys,
+} from './automation/task-automation-effective-rule.util';
+import { getAutomationRuleByCatalogKey } from './automation/task-automation-rule.util';
+
+function createRuleResolverMock() {
+  return {
+    resolveByCatalogKey: jest.fn(async (_orgId: string, catalogKey: string) => {
+      const rule = getAutomationRuleByCatalogKey(catalogKey as any);
+      return buildResolvedTaskAutomationRule({
+        rule,
+        override: null,
+        allowedOverrideFields: getOrgOverridableFieldKeys(rule),
+      });
+    }),
+    resolveTaskAutomationRule: jest.fn(async (_orgId: string, ruleId: string) => {
+      const rule = getAutomationRuleByCatalogKey('BOOKING_PREPARATION');
+      return buildResolvedTaskAutomationRule({
+        rule: { ...rule, ruleId },
+        override: null,
+        allowedOverrideFields: getOrgOverridableFieldKeys(rule),
+      });
+    }),
+  };
+}
 
 describe('TaskAutomationService — booking lifecycle tasks', () => {
   let service: TaskAutomationService;
@@ -84,6 +111,7 @@ describe('TaskAutomationService — booking lifecycle tasks', () => {
           useValue: { isEnabled: () => false, enqueueFailure: jest.fn() },
         },
         { provide: TaskAutomationOutboxExecutionContext, useValue: { fromOutbox: false } },
+        { provide: TaskAutomationRuleResolverService, useValue: createRuleResolverMock() },
       ],
     }).compile();
 
@@ -104,6 +132,7 @@ describe('TaskAutomationService — booking lifecycle tasks', () => {
           },
           { provide: TaskAutomationOutboxEnqueueService, useValue: enqueue },
           { provide: TaskAutomationOutboxExecutionContext, useValue: { fromOutbox: false } },
+          { provide: TaskAutomationRuleResolverService, useValue: createRuleResolverMock() },
         ],
       }).compile();
 

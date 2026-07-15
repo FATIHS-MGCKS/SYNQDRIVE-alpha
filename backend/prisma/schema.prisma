@@ -785,6 +785,7 @@ enum ActivityEntity {
   REFRESH_TOKEN // refresh token lifecycle
   SUPPORT_MESSAGE // support ticket message
   TASK // org task
+  TASK_AUTOMATION_RULE // org task automation rule override
   INVOICE // org invoice
   FINE // fine record
   VENDOR // external service provider / supplier
@@ -1105,6 +1106,7 @@ model Organization {
   notificationReceipts              NotificationReceipt[]
   notificationDeliveryOutbox        NotificationDeliveryOutbox[]
   taskAutomationOutbox              TaskAutomationOutbox[]
+  taskAutomationRuleOverrides       OrgTaskAutomationRuleOverride[]
 
   @@index([status])
   @@map("organizations")
@@ -1150,6 +1152,9 @@ model User {
   outboundEmailsSent          OutboundEmail[]              @relation("OutboundEmailSentBy")
   pricingQuotesCreated        PricingQuote[]               @relation("PricingQuotesCreated")
   notificationReceipts        NotificationReceipt[]
+  taskAutomationRuleOverridesCreated OrgTaskAutomationRuleOverride[] @relation("TaskAutomationRuleOverrideCreated")
+  taskAutomationRuleOverridesUpdated OrgTaskAutomationRuleOverride[] @relation("TaskAutomationRuleOverrideUpdated")
+  taskAutomationRuleOverrideRevisions  OrgTaskAutomationRuleOverrideRevision[] @relation("TaskAutomationRuleOverrideRevisionChanged")
 
   @@map("users")
 }
@@ -7708,6 +7713,65 @@ model TaskAutomationOutbox {
   @@index([organizationId])
   @@index([status, availableAt])
   @@map("task_automation_outbox")
+}
+
+/// Per-organization overrides for canonical task automation catalog rules.
+/// Null column values inherit the platform default from the code catalog.
+model OrgTaskAutomationRuleOverride {
+  id                      String        @id @default(uuid())
+  organizationId          String        @map("organization_id")
+  ruleId                  String        @map("rule_id")
+  enabled                 Boolean?
+  activationOffsetMinutes Int?          @map("activation_offset_minutes")
+  dueOffsetMinutes        Int?          @map("due_offset_minutes")
+  priority                TaskPriority?
+  assignmentStrategy      String?       @map("assignment_strategy")
+  assignedUserId          String?       @map("assigned_user_id")
+  assignedRoleKey         String?       @map("assigned_role_key")
+  stationScope            String?       @map("station_scope")
+  escalationConfig        Json?         @map("escalation_config")
+  notificationConfig      Json?         @map("notification_config")
+  checklistOverrides      Json?         @map("checklist_overrides")
+  version                 Int           @default(1)
+  createdByUserId         String?       @map("created_by_user_id")
+  updatedByUserId         String?       @map("updated_by_user_id")
+  createdAt               DateTime      @default(now()) @map("created_at")
+  updatedAt               DateTime      @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User?        @relation("TaskAutomationRuleOverrideCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy    User?        @relation("TaskAutomationRuleOverrideUpdated", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  revisions    OrgTaskAutomationRuleOverrideRevision[]
+
+  @@unique([organizationId, ruleId])
+  @@index([organizationId])
+  @@map("org_task_automation_rule_overrides")
+}
+
+enum TaskAutomationRuleOverrideChangeType {
+  CREATE
+  UPDATE
+  RESET
+}
+
+/// Immutable audit snapshots for org task automation rule overrides.
+model OrgTaskAutomationRuleOverrideRevision {
+  id              String                               @id @default(uuid())
+  overrideId      String                               @map("override_id")
+  organizationId  String                               @map("organization_id")
+  ruleId          String                               @map("rule_id")
+  overrideVersion Int                                  @map("override_version")
+  changeType      TaskAutomationRuleOverrideChangeType @map("change_type")
+  snapshot        Json
+  changedByUserId String?                              @map("changed_by_user_id")
+  createdAt       DateTime                             @default(now()) @map("created_at")
+
+  override  OrgTaskAutomationRuleOverride @relation(fields: [overrideId], references: [id], onDelete: Cascade)
+  changedBy User?                         @relation("TaskAutomationRuleOverrideRevisionChanged", fields: [changedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, ruleId])
+  @@index([overrideId, createdAt])
+  @@map("org_task_automation_rule_override_revisions")
 }
 
 // ── AI Tire Spec Job (persisted job lifecycle for AI tire intelligence fetch) ──

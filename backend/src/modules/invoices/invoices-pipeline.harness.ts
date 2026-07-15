@@ -18,6 +18,7 @@ import { InvoiceDocumentsService } from './invoice-documents.service';
 import { InvoiceNumberService } from './invoice-number.service';
 import { InvoicePaymentTaskService } from './invoice-payment-task.service';
 import { createNoopTaskAutomationOutboxDeps } from '@modules/tasks/outbox/task-automation-outbox-test.util';
+import { createDefaultTaskAutomationRuleResolverMock } from '@modules/tasks/automation/task-automation-rule-resolver.test.util';
 import { createInvoiceTestStore, type InvoiceTestStore } from './invoices-test-store';
 import { InvoicesService } from './invoices.service';
 
@@ -119,6 +120,7 @@ export function createInvoicePipelineHarness(): InvoicePipelineHarness {
     tasks,
     outboxEnqueue,
     outboxContext,
+    createDefaultTaskAutomationRuleResolverMock(),
   );
   const invoiceNumbers = new InvoiceNumberService(prisma);
   const invoices = new InvoicesService(prisma, invoiceNumbers, invoicePaymentTasks);
