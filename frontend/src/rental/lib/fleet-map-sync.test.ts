@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
 import {
   fleetStatusToOperatorTab,
   formatFleetMapRefreshAgo,
@@ -6,11 +7,13 @@ import {
 
 describe('fleet-map-sync', () => {
   it('maps fleet status to operator tab', () => {
-    expect(fleetStatusToOperatorTab('Available')).toBe('Available');
-    expect(fleetStatusToOperatorTab('Active Rented')).toBe('Active Rented');
-    expect(fleetStatusToOperatorTab('Reserved')).toBe('Reserved');
-    expect(fleetStatusToOperatorTab('Maintenance')).toBe('Maintenance');
-    expect(fleetStatusToOperatorTab('Unknown')).toBe('Available');
+    expect(fleetStatusToOperatorTab('Available')).toBe(VEHICLE_OPERATIONAL_STATUS.AVAILABLE);
+    expect(fleetStatusToOperatorTab('Active Rented')).toBe(
+      VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+    );
+    expect(fleetStatusToOperatorTab('Reserved')).toBe(VEHICLE_OPERATIONAL_STATUS.RESERVED);
+    expect(fleetStatusToOperatorTab('Maintenance')).toBe(VEHICLE_OPERATIONAL_STATUS.MAINTENANCE);
+    expect(fleetStatusToOperatorTab('Unknown')).toBe(VEHICLE_OPERATIONAL_STATUS.UNKNOWN);
   });
 
   it('formats refresh ago labels', () => {

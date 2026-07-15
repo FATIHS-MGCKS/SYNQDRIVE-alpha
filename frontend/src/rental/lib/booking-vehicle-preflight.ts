@@ -5,12 +5,12 @@ import {
   formatNetAsGross,
   getVehicleTariffFromCatalog,
 } from '../pricing/pricingUtils';
+import type { FleetStatus, VehicleData } from '../data/vehicles';
+import { isVehicleOffline, VEHICLE_OFFLINE_LABEL } from '../data/vehicles';
 import {
-  isVehicleOffline,
-  VEHICLE_OFFLINE_LABEL,
-  type FleetStatus,
-  type VehicleData,
-} from '../data/vehicles';
+  VEHICLE_OPERATIONAL_STATUS,
+  formatVehicleOperationalStatusLabel,
+} from './vehicle-operational-state';
 
 export const UNCATEGORIZED_VEHICLE_LABEL = 'Nicht kategorisiert';
 
@@ -78,9 +78,9 @@ export function resolveBookingVehiclePreflight(
     (health?.overall_state === 'warning' || health?.overall_state === 'critical');
   const noTariff = !hasTariff && !catalogLoading;
 
-  const isMaintenance = vehicle.status === 'Maintenance';
-  const isRented = vehicle.status === 'Active Rented';
-  const isReserved = vehicle.status === 'Reserved';
+  const isMaintenance = vehicle.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE;
+  const isRented = vehicle.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED;
+  const isReserved = vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED;
 
   let hardBlockReason: BookingVehicleHardBlockReason | null = null;
   let blockingReason: string | null = null;
@@ -132,16 +132,5 @@ export function isBookingVehicleHardBlocked(
 }
 
 export function fleetStatusLabelDe(status: FleetStatus): string {
-  switch (status) {
-    case 'Available':
-      return 'Verfügbar';
-    case 'Reserved':
-      return 'Reserviert';
-    case 'Active Rented':
-      return 'Aktuell vermietet';
-    case 'Maintenance':
-      return 'Wartung';
-    default:
-      return status;
-  }
+  return formatVehicleOperationalStatusLabel(status, 'de');
 }

@@ -1,4 +1,5 @@
-import type { FleetStatusKey } from '../vehicle-status';
+import type { VehicleOperationalStatus } from '../vehicle-operational-state';
+import { VEHICLE_OPERATIONAL_STATUS } from '../vehicle-operational-state';
 
 export type VehicleOperationalInvalidationReason =
   | 'booking-created'
@@ -43,7 +44,7 @@ export interface VehicleOperationalInvalidationContext
 }
 
 export interface FleetOperationalOptimisticPatch {
-  status?: FleetStatusKey;
+  status?: VehicleOperationalStatus;
   reservedBookingId?: string | null;
   reservedCustomerName?: string | null;
   reservedPickupAt?: string | null;

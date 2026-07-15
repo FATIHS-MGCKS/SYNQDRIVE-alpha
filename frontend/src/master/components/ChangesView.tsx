@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-operational-domain-types-v49490-2026-07-15',
+    version: '4.9.490',
+    title: 'V4.9.490 — Frontend Vehicle Operational State Domain Types (Prompt 26/43)',
+    summary: [
+      'Neues Modul `vehicle-operational-state/` — kanonische Enums `VehicleOperationalStatus` (AVAILABLE, RESERVED, ACTIVE_RENTED, MAINTENANCE, BLOCKED, UNKNOWN) und `VehicleDataQualityState`.',
+      'Zentrale DTOs: `VehicleOperationalState`, `VehicleBookingReference`, `VehicleBookingContext`. Fail-closed Normalizer mappt Legacy-Strings (Available, Active Rented, Rented, …) und Prisma-Tokens; unbekannte Werte → UNKNOWN, nie AVAILABLE.',
+      'Deutsche Labels über `formatVehicleOperationalStatusLabel`; `vehicle-status.ts` ist Kompatibilitäts-Layer. `FleetStatus` = Alias von `VehicleOperationalStatus`. API-Typen `operationalState`/`bookingContext` auf `FleetMapVehicleResponse`.',
+      'Minimale Konsumenten-Anpassung (optimistic patches, fleet-map-sync, booking preflight, App). 10 Normalisierungs-/Label-Tests + bestehende Query-Tests aktualisiert.',
+    ],
+    reason:
+      'Prompt 26/43: Mehrfache lokale String-Unions und Display-Strings als interne Statuswerte verhinderten einheitliche Domain-Logik und fail-closed Semantik.',
+    previousBehavior:
+      '`FleetStatus`/`FleetStatusKey` nutzten UI-Labels (`Available`, `Active Rented`) als Typwerte; Labels verteilt in Komponenten und `fleetStatusLabelDe`.',
+    details:
+      'Neu: `frontend/src/rental/lib/vehicle-operational-state/*`. `vehicle-status.ts` re-exportiert Domain-API. Keine umfassende Store-/UI-Migration in diesem Schritt.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-15T22:46:00.000Z',
+  },
+  {
     id: 'vehicle-operational-query-invalidation-v49489-2026-07-15',
     version: '4.9.489',
     title: 'V4.9.489 — Frontend vehicle operational query invalidation (Prompt 25/43)',

@@ -1,8 +1,9 @@
 import {
-  normalizeFleetOperationalStatus,
-  type FleetDataQualityState,
-  type FleetStatusKey,
-} from '../vehicle-status';
+  VEHICLE_OPERATIONAL_STATUS,
+  normalizeVehicleOperationalStatus,
+  type VehicleDataQualityState,
+  type VehicleOperationalStatus,
+} from '../vehicle-operational-state';
 import type {
   FleetOperationalOptimisticPatch,
   VehicleOperationalBookingContext,
@@ -12,7 +13,7 @@ import type {
 export interface OptimisticFleetVehicleSource {
   id: string;
   status: string;
-  dataQualityState?: FleetDataQualityState | string | null;
+  dataQualityState?: VehicleDataQualityState | string | null;
   isReliable?: boolean | null;
   reservedBookingId?: string | null;
   reservedCustomerName?: string | null;
@@ -25,20 +26,23 @@ export interface OptimisticFleetVehicleSource {
 }
 
 function vehicleIsUnknown(vehicle: OptimisticFleetVehicleSource): boolean {
-  return normalizeFleetOperationalStatus({
+  return normalizeVehicleOperationalStatus({
     status: vehicle.status,
     dataQualityState: vehicle.dataQualityState,
     isReliable: vehicle.isReliable,
   }).isUnknown;
 }
 
-function canAssumeAvailableFrom(status: FleetStatusKey): boolean {
-  return status === 'Active Rented' || status === 'Reserved';
+function canAssumeAvailableFrom(status: VehicleOperationalStatus): boolean {
+  return (
+    status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED ||
+    status === VEHICLE_OPERATIONAL_STATUS.RESERVED
+  );
 }
 
 /**
- * Pickup: show Active Rented immediately when the current read-model is reliable
- * and Reserved/Available. Never fabricate Available from Unknown.
+ * Pickup: show ACTIVE_RENTED immediately when the current read-model is reliable
+ * and RESERVED/AVAILABLE. Never fabricate AVAILABLE from UNKNOWN.
  */
 export function derivePickupOptimisticPatch(
   vehicle: OptimisticFleetVehicleSource,
@@ -46,23 +50,29 @@ export function derivePickupOptimisticPatch(
 ): FleetOperationalOptimisticPatch | null {
   if (vehicleIsUnknown(vehicle)) return null;
 
-  const status = normalizeFleetOperationalStatus({
+  const status = normalizeVehicleOperationalStatus({
     status: vehicle.status,
     dataQualityState: vehicle.dataQualityState,
     isReliable: vehicle.isReliable,
   }).status;
 
-  if (status !== 'Reserved' && status !== 'Available') return null;
+  if (
+    status !== VEHICLE_OPERATIONAL_STATUS.RESERVED &&
+    status !== VEHICLE_OPERATIONAL_STATUS.AVAILABLE
+  ) {
+    return null;
+  }
 
   return {
-    status: 'Active Rented',
+    status: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
     reservedBookingId: null,
     reservedCustomerName: null,
     reservedPickupAt: null,
     reservedPickupStationName: null,
     reservedIsOverdue: false,
     activeBookingId: booking?.bookingId ?? vehicle.reservedBookingId ?? vehicle.activeBookingId,
-    activeCustomerName: booking?.customerName ?? vehicle.reservedCustomerName ?? vehicle.activeCustomerName,
+    activeCustomerName:
+      booking?.customerName ?? vehicle.reservedCustomerName ?? vehicle.activeCustomerName,
     activeReturnAt: booking?.returnAt ?? vehicle.activeReturnAt,
     activeReturnStationName: booking?.returnStationName ?? vehicle.activeReturnStationName,
     activeIsOverdue: false,
@@ -70,15 +80,15 @@ export function derivePickupOptimisticPatch(
 }
 
 /**
- * Return: derive Available only from a reliable Active Rented state.
- * Unknown → no optimistic Available (fail-closed).
+ * Return: derive AVAILABLE only from a reliable ACTIVE_RENTED state.
+ * UNKNOWN → no optimistic AVAILABLE (fail-closed).
  */
 export function deriveReturnOptimisticPatch(
   vehicle: OptimisticFleetVehicleSource,
 ): FleetOperationalOptimisticPatch | null {
   if (vehicleIsUnknown(vehicle)) return null;
 
-  const status = normalizeFleetOperationalStatus({
+  const status = normalizeVehicleOperationalStatus({
     status: vehicle.status,
     dataQualityState: vehicle.dataQualityState,
     isReliable: vehicle.isReliable,
@@ -87,7 +97,7 @@ export function deriveReturnOptimisticPatch(
   if (!canAssumeAvailableFrom(status)) return null;
 
   return {
-    status: 'Available',
+    status: VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
     activeBookingId: null,
     activeCustomerName: null,
     activeReturnAt: null,
@@ -104,16 +114,16 @@ export function deriveReserveOptimisticPatch(
 ): FleetOperationalOptimisticPatch | null {
   if (vehicleIsUnknown(vehicle)) return null;
 
-  const status = normalizeFleetOperationalStatus({
+  const status = normalizeVehicleOperationalStatus({
     status: vehicle.status,
     dataQualityState: vehicle.dataQualityState,
     isReliable: vehicle.isReliable,
   }).status;
 
-  if (status !== 'Available') return null;
+  if (status !== VEHICLE_OPERATIONAL_STATUS.AVAILABLE) return null;
 
   return {
-    status: 'Reserved',
+    status: VEHICLE_OPERATIONAL_STATUS.RESERVED,
     reservedBookingId: booking?.bookingId ?? null,
     reservedCustomerName: booking?.customerName ?? null,
     reservedPickupAt: booking?.pickupAt ?? null,
@@ -127,16 +137,16 @@ export function deriveReleaseOptimisticPatch(
 ): FleetOperationalOptimisticPatch | null {
   if (vehicleIsUnknown(vehicle)) return null;
 
-  const status = normalizeFleetOperationalStatus({
+  const status = normalizeVehicleOperationalStatus({
     status: vehicle.status,
     dataQualityState: vehicle.dataQualityState,
     isReliable: vehicle.isReliable,
   }).status;
 
-  if (status !== 'Reserved') return null;
+  if (status !== VEHICLE_OPERATIONAL_STATUS.RESERVED) return null;
 
   return {
-    status: 'Available',
+    status: VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
     reservedBookingId: null,
     reservedCustomerName: null,
     reservedPickupAt: null,

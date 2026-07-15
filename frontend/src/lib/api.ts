@@ -9,6 +9,10 @@ import type {
   PlaceDamageOnVehicleInput,
   UpdateVehicleDamageInput,
 } from '../rental/lib/damage.types';
+import type {
+  VehicleBookingContext,
+  VehicleOperationalState,
+} from '../rental/lib/vehicle-operational-state';
 
 export type {
   AddDamageImageInput,
@@ -27,6 +31,14 @@ export type {
   PlaceDamageOnVehicleInput,
   UpdateVehicleDamageInput,
 } from '../rental/lib/damage.types';
+
+export type {
+  VehicleBookingContext,
+  VehicleOperationalState,
+  VehicleOperationalStatus,
+  VehicleDataQualityState,
+  VehicleBookingReference,
+} from '../rental/lib/vehicle-operational-state';
 
 const BASE_URL = '/api/v1';
 
@@ -6474,6 +6486,10 @@ export interface FleetMapVehicleResponse {
   maintenanceReason: string | null;
   maintenanceReasonCode: FleetMaintenanceReasonCode | null;
   maintenanceUrgency: 'planned' | 'urgent' | null;
+  /** Canonical operational read-model (Prompt 26). Legacy `status` string remains for compatibility. */
+  operationalState?: VehicleOperationalState | null;
+  /** Booking context derived from fleet read-model (Prompt 26). */
+  bookingContext?: VehicleBookingContext | null;
 }
 
 export type FleetMaintenanceReasonCode = 'SCHEDULED_SERVICE' | 'OPERATIONAL_BLOCK';

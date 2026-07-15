@@ -1,259 +1,109 @@
 /**
- * Three-layer fleet operational status model — keep these strictly separate:
- *   • Prisma / DB truth : AVAILABLE | RENTED | IN_SERVICE | OUT_OF_SERVICE | RESERVED
- *   • UI key (this file): Available | Active Rented | Reserved | Maintenance | Unknown
- *   • UI label          : localised strings — labels only, NEVER used in filters.
+ * Compatibility layer for fleet operational status.
+ * Canonical domain types live in `vehicle-operational-state/`.
  *
- * Fail-closed rule: missing, unreliable, or unrecognised status values map to
- * `Unknown` — never silently to `Available`.
+ * @deprecated Prefer imports from `vehicle-operational-state` for new code.
  */
 
-export type FleetDataQualityState = 'RELIABLE' | 'DEGRADED' | 'UNAVAILABLE';
+import {
+  VEHICLE_DATA_QUALITY_STATE,
+  VEHICLE_OPERATIONAL_STATUS,
+  VEHICLE_OPERATIONAL_TAB_STATUSES,
+  countVehicleOperationalTab,
+  formatVehicleOperationalStatusLabel,
+  formatVehicleOperationalStatusLabelFromRaw,
+  isVehicleOperationalStatusAvailable,
+  isVehicleOperationalStatusUnknown,
+  isVehicleReadyForRent,
+  normalizeVehicleOperationalStatus,
+  normalizeVehicleOperationalStatusKey,
+  PRISMA_TO_VEHICLE_OPERATIONAL_STATUS,
+  vehicleOperationalStatusMatchesTab,
+  VEHICLE_OPERATIONAL_TAB_LABEL_KEY,
+  type NormalizedVehicleOperationalStatus,
+  type NormalizeVehicleOperationalStatusInput,
+  type VehicleDataQualityState,
+  type VehicleOperationalStatus,
+  type VehicleOperationalTabStatus,
+} from './vehicle-operational-state';
 
-export type FleetStatusKey =
-  | 'Available'
-  | 'Active Rented'
-  | 'Reserved'
-  | 'Maintenance'
-  | 'Unknown'
-  /** Master-admin hard block label (VEHICLE_STATUS_MAP OUT_OF_SERVICE). */
-  | 'Blocked'
-  /** Legacy admin-only label — rental surfaces bucket under Maintenance. */
-  | 'Unavailable';
+export {
+  VEHICLE_OPERATIONAL_STATUS,
+  VEHICLE_DATA_QUALITY_STATE,
+  VEHICLE_OPERATIONAL_TAB_STATUSES,
+  PRISMA_TO_VEHICLE_OPERATIONAL_STATUS,
+  type VehicleOperationalStatus,
+  type VehicleDataQualityState,
+  type VehicleOperationalTabStatus,
+};
+
+/** @deprecated Use `VehicleOperationalStatus`. */
+export type FleetStatusKey = VehicleOperationalStatus;
+
+/** @deprecated Use `VehicleDataQualityState`. */
+export type FleetDataQualityState = VehicleDataQualityState;
 
 export const CANONICAL_FLEET_STATUS_KEYS = [
-  'Available',
-  'Active Rented',
-  'Reserved',
-  'Maintenance',
-  'Unknown',
+  VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
+  VEHICLE_OPERATIONAL_STATUS.RESERVED,
+  VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+  VEHICLE_OPERATIONAL_STATUS.MAINTENANCE,
+  VEHICLE_OPERATIONAL_STATUS.UNKNOWN,
 ] as const satisfies readonly FleetStatusKey[];
 
-export const FLEET_STATUS_TAB_KEYS = [
-  'Available',
-  'Reserved',
-  'Active Rented',
-  'Maintenance',
-] as const;
+export const FLEET_STATUS_TAB_KEYS = VEHICLE_OPERATIONAL_TAB_STATUSES;
 
-export type FleetStatusTabKey = (typeof FLEET_STATUS_TAB_KEYS)[number];
+/** @deprecated Use `VehicleOperationalTabStatus`. */
+export type FleetStatusTabKey = VehicleOperationalTabStatus;
 
-const EXACT_FLEET_STATUS: Record<string, FleetStatusKey> = {
-  Available: 'Available',
-  'Active Rented': 'Active Rented',
-  Reserved: 'Reserved',
-  Maintenance: 'Maintenance',
-  Unknown: 'Unknown',
-  Unavailable: 'Unavailable',
-  Blocked: 'Blocked',
-};
+/** @deprecated Use `PRISMA_TO_VEHICLE_OPERATIONAL_STATUS`. */
+export const PRISMA_TO_FLEET_STATUS_KEY = PRISMA_TO_VEHICLE_OPERATIONAL_STATUS;
 
-/**
- * Prisma enum → rental fleet status key. Mirrors backend RENTAL_STATUS_MAP.
- */
-export const PRISMA_TO_FLEET_STATUS_KEY: Record<string, FleetStatusKey> = {
-  AVAILABLE: 'Available',
-  RENTED: 'Active Rented',
-  RESERVED: 'Reserved',
-  IN_SERVICE: 'Maintenance',
-  OUT_OF_SERVICE: 'Maintenance',
-  UNKNOWN: 'Unknown',
-};
+/** @deprecated Use `NormalizeVehicleOperationalStatusInput`. */
+export type NormalizeFleetStatusInput = NormalizeVehicleOperationalStatusInput;
 
-export interface NormalizeFleetStatusInput {
-  status?: string | null;
-  dataQualityState?: FleetDataQualityState | string | null;
-  isReliable?: boolean | null;
-}
+/** @deprecated Use `NormalizedVehicleOperationalStatus`. */
+export type NormalizedFleetStatus = NormalizedVehicleOperationalStatus;
 
-export interface NormalizedFleetStatus {
-  status: FleetStatusKey;
-  dataQualityState: FleetDataQualityState | null;
-  isReliable: boolean;
-  isUnknown: boolean;
-}
+/** @deprecated Use `normalizeVehicleOperationalStatus`. */
+export const normalizeFleetOperationalStatus = normalizeVehicleOperationalStatus;
 
-function normalizeDataQualityState(
-  raw: FleetDataQualityState | string | null | undefined,
-): FleetDataQualityState | null {
-  if (!raw) return null;
-  const upper = String(raw).trim().toUpperCase();
-  if (upper === 'RELIABLE' || upper === 'DEGRADED' || upper === 'UNAVAILABLE') {
-    return upper as FleetDataQualityState;
-  }
-  return null;
-}
+/** @deprecated Use `normalizeVehicleOperationalStatusKey`. */
+export const normalizeFleetStatusKey = normalizeVehicleOperationalStatusKey;
 
-function mapLegacyStatusToken(raw: string): FleetStatusKey | null {
-  const trimmed = raw.trim();
-  if (!trimmed) return null;
+/** @deprecated Use `isVehicleOperationalStatusUnknown`. */
+export const isFleetStatusUnknown = isVehicleOperationalStatusUnknown;
 
-  const exact = EXACT_FLEET_STATUS[trimmed];
-  if (exact) return exact;
+/** @deprecated Use `isVehicleOperationalStatusAvailable`. */
+export const isFleetStatusAvailableTab = isVehicleOperationalStatusAvailable;
 
-  const prisma = PRISMA_TO_FLEET_STATUS_KEY[trimmed.toUpperCase()];
-  if (prisma) return prisma;
+/** @deprecated Use `isVehicleReadyForRent`. */
+export const isFleetReadyForRent = isVehicleReadyForRent;
 
-  const lower = trimmed.toLowerCase().replace(/_/g, ' ');
-  if (lower === 'unknown' || lower === 'unk') return 'Unknown';
-  if (lower.includes('active rented') || lower === 'rented' || lower === 'active') {
-    return 'Active Rented';
-  }
-  if (lower.includes('reserved') || lower === 'reserviert') return 'Reserved';
-  if (
-    lower.includes('maintenance') ||
-    lower.includes('in service') ||
-    lower.includes('wartung') ||
-    lower === 'blocked' ||
-    lower.includes('out of service') ||
-    lower.includes('unavailable')
-  ) {
-    if (lower === 'blocked') return 'Blocked';
-    return lower.includes('unavailable') && !lower.includes('maintenance')
-      ? 'Unavailable'
-      : 'Maintenance';
-  }
-  if (lower === 'available' || lower === 'verfügbar' || lower === 'verfugbar') {
-    return 'Available';
-  }
-  return null;
-}
+/** @deprecated Use `VEHICLE_OPERATIONAL_TAB_LABEL_KEY`. */
+export const FLEET_STATUS_LABEL_KEY = VEHICLE_OPERATIONAL_TAB_LABEL_KEY;
 
-/** Canonical fail-closed normalizer for fleet operational status. */
-export function normalizeFleetOperationalStatus(
-  input: NormalizeFleetStatusInput | string | null | undefined,
-): NormalizedFleetStatus {
-  const params: NormalizeFleetStatusInput =
-    typeof input === 'string' || input == null ? { status: input } : input;
-
-  const dataQualityState = normalizeDataQualityState(params.dataQualityState);
-  const mapped = mapLegacyStatusToken(String(params.status ?? ''));
-
-  if (dataQualityState === 'UNAVAILABLE') {
-    return {
-      status: 'Unknown',
-      dataQualityState,
-      isReliable: false,
-      isUnknown: true,
-    };
-  }
-
-  if (!mapped) {
-    return {
-      status: 'Unknown',
-      dataQualityState,
-      isReliable: false,
-      isUnknown: true,
-    };
-  }
-
-  if (mapped === 'Unknown') {
-    return {
-      status: 'Unknown',
-      dataQualityState,
-      isReliable: false,
-      isUnknown: true,
-    };
-  }
-
-  const isReliable =
-    params.isReliable != null
-      ? Boolean(params.isReliable)
-      : dataQualityState == null || dataQualityState === 'RELIABLE';
-
-  if (dataQualityState === 'DEGRADED' && params.isReliable === false) {
-    return {
-      status: 'Unknown',
-      dataQualityState,
-      isReliable: false,
-      isUnknown: true,
-    };
-  }
-
-  return {
-    status: mapped,
-    dataQualityState,
-    isReliable,
-    isUnknown: false,
-  };
-}
-
-/** Shorthand when only the status string is available. */
-export function normalizeFleetStatusKey(
-  status: string | null | undefined,
-  options: Omit<NormalizeFleetStatusInput, 'status'> = {},
-): FleetStatusKey {
-  return normalizeFleetOperationalStatus({ ...options, status }).status;
-}
-
-export function isFleetStatusUnknown(status: string | null | undefined): boolean {
-  return normalizeFleetStatusKey(status) === 'Unknown';
-}
-
-export function isFleetStatusAvailableTab(status: string | null | undefined): boolean {
-  return normalizeFleetStatusKey(status) === 'Available';
-}
-
-/** Ready-to-rent eligibility — only explicit Available, never Unknown. */
-export function isFleetReadyForRent(status: string | null | undefined): boolean {
-  return isFleetStatusAvailableTab(status);
-}
-
-/** Fleet status key → i18n label key suffix (dashboard.*). */
-export const FLEET_STATUS_LABEL_KEY: Record<FleetStatusTabKey, string> = {
-  Available: 'availableTab',
-  Reserved: 'reservedTab',
-  'Active Rented': 'activeRentedTab',
-  Maintenance: 'maintenanceTab',
-};
-
+/** @deprecated Use `formatVehicleOperationalStatusLabel`. */
 export function fleetStatusDisplayLabel(
   status: FleetStatusKey,
   locale?: string,
 ): string {
-  const de = locale === 'de';
-  switch (status) {
-    case 'Available':
-      return de ? 'Verfügbar' : 'Available';
-    case 'Active Rented':
-      return de ? 'Aktiv vermietet' : 'Active Rented';
-    case 'Reserved':
-      return de ? 'Reserviert' : 'Reserved';
-    case 'Maintenance':
-    case 'Unavailable':
-      return de ? 'Wartung' : 'Maintenance';
-    case 'Blocked':
-      return de ? 'Blockiert' : 'Blocked';
-    case 'Unknown':
-    default:
-      return de ? 'Unbekannt' : 'Unknown';
-  }
+  const resolvedLocale = locale === 'de' || locale === 'en' ? locale : 'de';
+  return formatVehicleOperationalStatusLabel(status, resolvedLocale);
 }
 
-/**
- * Match a vehicle's fleet read-model status to a dashboard tab key.
- * Unknown never matches Available (or any tab).
- */
-export function fleetStatusMatchesTab(
-  vehicleStatus: string | null | undefined,
-  tab: FleetStatusTabKey,
-): boolean {
-  const normalized = normalizeFleetStatusKey(vehicleStatus);
-  if (normalized === 'Unknown') return false;
-  if (tab === 'Maintenance') {
-    return (
-      normalized === 'Maintenance' ||
-      normalized === 'Unavailable' ||
-      normalized === 'Blocked'
-    );
-  }
-  return normalized === tab;
+/** @deprecated Use `formatVehicleOperationalStatusLabelFromRaw`. */
+export function fleetStatusDisplayLabelFromRaw(
+  raw: string | null | undefined,
+  options: Omit<NormalizeFleetStatusInput, 'status'> = {},
+  locale?: string,
+): string {
+  const resolvedLocale = locale === 'de' || locale === 'en' ? locale : 'de';
+  return formatVehicleOperationalStatusLabelFromRaw(raw, options, resolvedLocale);
 }
 
-/** Count vehicles for a fleet status tab. */
-export function countFleetStatusTab(
-  vehicles: Array<{ status?: string | null }>,
-  tab: FleetStatusTabKey,
-): number {
-  return vehicles.filter((v) => fleetStatusMatchesTab(v.status, tab)).length;
-}
+/** @deprecated Use `vehicleOperationalStatusMatchesTab`. */
+export const fleetStatusMatchesTab = vehicleOperationalStatusMatchesTab;
+
+/** @deprecated Use `countVehicleOperationalTab`. */
+export const countFleetStatusTab = countVehicleOperationalTab;

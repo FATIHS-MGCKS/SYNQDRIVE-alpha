@@ -1,30 +1,24 @@
 import { resolveTelemetryFreshness, type TelemetryFreshness } from '../lib/telemetryFreshness';
+import {
+  VEHICLE_OPERATIONAL_STATUS,
+  type VehicleDataQualityState,
+  type VehicleOperationalStatus,
+} from '../lib/vehicle-operational-state';
 
 export type VehicleDisplayState = 'MOVING' | 'IDLE' | 'PARKED';
 export type VehicleOnlineStatus = 'ONLINE' | 'STANDBY' | 'OFFLINE';
 export type VehicleDisplayIgnition = 'ON' | 'OFF' | 'UNKNOWN';
 export type FleetMaintenanceReasonCode = 'SCHEDULED_SERVICE' | 'OPERATIONAL_BLOCK';
 
-// V4.6.86 — Canonical fleet-status union. Every surface (rental dashboard,
-// master/admin tables, booking flow, CSV exports) must compare against
-// these exact labels. Introduced after audit showed master views were
-// silently comparing against a legacy `'Rented'` literal the backend no
-// longer emits, producing dead branches. Keep this type as the single
-// source of truth and let TypeScript fail the build the next time
-// someone drifts the label.
-export type FleetStatus =
-  | 'Available'
-  | 'Active Rented'
-  | 'Reserved'
-  | 'Maintenance'
-  | 'Unknown';
+/** Canonical fleet operational status — alias of `VehicleOperationalStatus`. */
+export type FleetStatus = VehicleOperationalStatus;
 
 export const FLEET_STATUSES: readonly FleetStatus[] = [
-  'Available',
-  'Reserved',
-  'Active Rented',
-  'Maintenance',
-  'Unknown',
+  VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
+  VEHICLE_OPERATIONAL_STATUS.RESERVED,
+  VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+  VEHICLE_OPERATIONAL_STATUS.MAINTENANCE,
+  VEHICLE_OPERATIONAL_STATUS.UNKNOWN,
 ] as const;
 
 export interface VehicleData {
@@ -48,7 +42,7 @@ export interface VehicleData {
   expectedStationId?: string | null;
   fuelType: 'Petrol' | 'Diesel' | 'Electric' | 'Hybrid' | 'PHEV';
   status: FleetStatus;
-  dataQualityState?: 'RELIABLE' | 'DEGRADED' | 'UNAVAILABLE' | null;
+  dataQualityState?: VehicleDataQualityState | null;
   isReliable?: boolean | null;
   cleaningStatus: 'Clean' | 'Needs Cleaning';
   healthStatus: 'Good Health' | 'Warning' | 'Critical';

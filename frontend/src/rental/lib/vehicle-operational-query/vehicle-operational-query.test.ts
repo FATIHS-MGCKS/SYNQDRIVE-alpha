@@ -16,6 +16,7 @@ import {
   resetVehicleOperationalInvalidationHandlers,
 } from './registry';
 import { vehicleOperationalQueryKeys } from './keys';
+import { VEHICLE_OPERATIONAL_STATUS } from '../vehicle-operational-state';
 
 function makeVehicle(overrides: Partial<FleetMapVehicle> = {}): FleetMapVehicle {
   return {
@@ -29,7 +30,7 @@ function makeVehicle(overrides: Partial<FleetMapVehicle> = {}): FleetMapVehicle 
     currentStationId: 'st-1',
     expectedStationId: null,
     fuelType: 'Petrol',
-    status: 'Reserved',
+    status: VEHICLE_OPERATIONAL_STATUS.RESERVED,
     dataQualityState: 'RELIABLE',
     isReliable: true,
     cleaningStatus: 'Clean',
@@ -85,43 +86,62 @@ describe('vehicle-operational-query optimistic patches', () => {
       bookingId: 'bk-1',
       customerName: 'Max',
     });
-    expect(patch?.status).toBe('Active Rented');
+    expect(patch?.status).toBe(VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED);
     expect(patch?.activeBookingId).toBe('bk-1');
   });
 
   it('pickup does not patch Unknown vehicles', () => {
     const patch = derivePickupOptimisticPatch(
-      makeVehicle({ status: 'Unknown', dataQualityState: 'UNAVAILABLE', isReliable: false }),
+      makeVehicle({
+        status: VEHICLE_OPERATIONAL_STATUS.UNKNOWN,
+        dataQualityState: 'UNAVAILABLE',
+        isReliable: false,
+      }),
     );
     expect(patch).toBeNull();
   });
 
   it('return derives Available from Active Rented only', () => {
     const patch = deriveReturnOptimisticPatch(
-      makeVehicle({ status: 'Active Rented', activeBookingId: 'bk-1' }),
+      makeVehicle({
+        status: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+        activeBookingId: 'bk-1',
+      }),
     );
-    expect(patch?.status).toBe('Available');
+    expect(patch?.status).toBe(VEHICLE_OPERATIONAL_STATUS.AVAILABLE);
     expect(patch?.activeBookingId).toBeNull();
   });
 
   it('return never assumes Available from Unknown', () => {
     const patch = deriveReturnOptimisticPatch(
-      makeVehicle({ status: 'Unknown', dataQualityState: 'UNAVAILABLE', isReliable: false }),
+      makeVehicle({
+        status: VEHICLE_OPERATIONAL_STATUS.UNKNOWN,
+        dataQualityState: 'UNAVAILABLE',
+        isReliable: false,
+      }),
     );
     expect(patch).toBeNull();
   });
 
   it('reserve patches only reliable Available', () => {
-    expect(deriveReserveOptimisticPatch(makeVehicle({ status: 'Available' }))?.status).toBe(
-      'Reserved',
-    );
-    expect(deriveReserveOptimisticPatch(makeVehicle({ status: 'Unknown' }))).toBeNull();
+    expect(
+      deriveReserveOptimisticPatch(
+        makeVehicle({ status: VEHICLE_OPERATIONAL_STATUS.AVAILABLE }),
+      )?.status,
+    ).toBe(VEHICLE_OPERATIONAL_STATUS.RESERVED);
+    expect(
+      deriveReserveOptimisticPatch(
+        makeVehicle({ status: VEHICLE_OPERATIONAL_STATUS.UNKNOWN }),
+      ),
+    ).toBeNull();
   });
 
   it('release patches Reserved to Available', () => {
-    expect(deriveReleaseOptimisticPatch(makeVehicle({ status: 'Reserved' }))?.status).toBe(
-      'Available',
-    );
+    expect(
+      deriveReleaseOptimisticPatch(
+        makeVehicle({ status: VEHICLE_OPERATIONAL_STATUS.RESERVED }),
+      )?.status,
+    ).toBe(VEHICLE_OPERATIONAL_STATUS.AVAILABLE);
   });
 });
 
@@ -151,13 +171,20 @@ describe('invalidateVehicleOperationalState', () => {
       bookingContext: { bookingId: 'bk-1', customerName: 'Max' },
     });
 
-    expect(useFleetMapStore.getState().vehicles[0]?.status).toBe('Active Rented');
+    expect(useFleetMapStore.getState().vehicles[0]?.status).toBe(
+      VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+    );
     expect(fleetRefetch).toHaveBeenCalledTimes(1);
   });
 
   it('return applies optimistic Available when reliable Active Rented', async () => {
     useFleetMapStore.setState({
-      vehicles: [makeVehicle({ status: 'Active Rented', activeBookingId: 'bk-1' })],
+      vehicles: [
+        makeVehicle({
+          status: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+          activeBookingId: 'bk-1',
+        }),
+      ],
     });
 
     await invalidateVehicleOperationalState({
@@ -167,7 +194,9 @@ describe('invalidateVehicleOperationalState', () => {
       optimistic: 'return',
     });
 
-    expect(useFleetMapStore.getState().vehicles[0]?.status).toBe('Available');
+    expect(useFleetMapStore.getState().vehicles[0]?.status).toBe(
+      VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
+    );
   });
 
   it('cancel releases Reserved vehicles optimistically', async () => {
@@ -177,7 +206,9 @@ describe('invalidateVehicleOperationalState', () => {
       reason: 'booking-cancelled',
     });
 
-    expect(useFleetMapStore.getState().vehicles[0]?.status).toBe('Available');
+    expect(useFleetMapStore.getState().vehicles[0]?.status).toBe(
+      VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
+    );
   });
 
   it('vehicle swap invalidates both previous and next vehicle detail keys', async () => {
@@ -214,7 +245,9 @@ describe('invalidateVehicleOperationalState', () => {
       optimistic: 'pickup',
     });
 
-    expect(useFleetMapStore.getState().vehicles[0]?.status).toBe('Reserved');
+    expect(useFleetMapStore.getState().vehicles[0]?.status).toBe(
+      VEHICLE_OPERATIONAL_STATUS.RESERVED,
+    );
   });
 
   it('fans out to fleet and dashboard handlers in parallel', async () => {

@@ -40,6 +40,7 @@ import { VehicleBookingsView } from './components/VehicleBookingsView';
 import { VehicleTasksView } from './components/VehicleTasksView';
 import { VehicleData } from './data/vehicles';
 import { normalizeFleetStatusKey } from './lib/vehicle-status';
+import { VEHICLE_OPERATIONAL_STATUS } from './lib/vehicle-operational-state';
 import {
   invalidateVehicleOperationalAfterBookingChange,
   invalidateVehicleOperationalState,
@@ -301,9 +302,9 @@ function RentalAppContent() {
     setSelectedVehicle((prev) => (prev ? { ...prev, ...fresh } : prev));
     const normalized = normalizeFleetStatusKey(fresh.status);
     setVehicleStatus(
-      normalized === 'Available'
+      normalized === VEHICLE_OPERATIONAL_STATUS.AVAILABLE
         ? 'Available'
-        : normalized === 'Maintenance'
+        : normalized === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE
           ? 'Maintenance'
           : 'Manual Block',
     );
