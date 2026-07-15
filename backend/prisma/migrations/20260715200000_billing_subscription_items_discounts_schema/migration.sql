@@ -101,12 +101,13 @@ CREATE INDEX "billing_subscription_items_billing_product_id_idx"
 CREATE INDEX "billing_subscription_items_price_version_id_idx"
   ON "billing_subscription_items"("price_version_id");
 
--- At most one active base plan per organization (historical ENDED/CANCELLED excluded)
+-- At most one active base plan per organization (historical ENDED/CANCELLED excluded).
+-- Note: valid_to windowing is enforced in billing_validate_subscription_item trigger;
+-- partial indexes cannot use CURRENT_TIMESTAMP (not IMMUTABLE in PostgreSQL).
 CREATE UNIQUE INDEX "billing_subscription_items_one_active_base_plan_per_org"
   ON "billing_subscription_items"("organization_id")
   WHERE "item_role" = 'BASE_PLAN'
-    AND "status" IN ('ACTIVE', 'TRIALING')
-    AND ("valid_to" IS NULL OR "valid_to" > CURRENT_TIMESTAMP);
+    AND "status" IN ('ACTIVE', 'TRIALING');
 
 ALTER TABLE "billing_subscription_items"
   ADD CONSTRAINT "billing_subscription_items_subscription_id_fkey"
