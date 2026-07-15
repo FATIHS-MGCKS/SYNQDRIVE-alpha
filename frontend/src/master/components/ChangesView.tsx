@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-operational-state-engine-io-v49473-2026-07-15',
+    version: '4.9.473',
+    title: 'V4.9.473 — Fleet Status: V2 Engine Input/Output-Modell (Prompt 7/43)',
+    summary: [
+      'Typisiertes `VehicleStateEngineInput` / `VehicleStateEngineOutput` gemäß `vehicle-operational-state-v2.md` §16.',
+      'Neue Domain-Dateien: `vehicle-operational-state.engine.types.ts`, `vehicle-operational-state.input-mapper.ts`, `vehicle-operational-state.engine.spec.ts`.',
+      '`buildVehicleOperationalStateFromEngineInput` strukturiert Output; Ableitung bleibt V1 (Reserved-Verhalten unverändert).',
+      '`VehiclesService` baut Engine-Input inkl. expliziter `organizationTimezone` (Org-Setting, Fallback Europe/Berlin).',
+    ],
+    reason:
+      'Prompt 7/43: Eingabemodell der zentralen State Engine erweitern, bevor V2-Semantik in Prompt 8+ umgesetzt wird.',
+    previousBehavior:
+      'Nur flaches `VehicleOperationalStateInput` mit `bookingCtx`-DTO; kein separates maintenance/blocking/bookingState-Modell.',
+    details:
+      'Input: vehicle, bookingState, maintenanceState, blockingState, context (now + timezone). Output: operationalState, bookingContext, rawVehicleStatus, diagnosticReasons + legacy V1 projection.',
+    affectsArchitecture: true,
+    module: 'Vehicles',
+    createdAt: '2026-07-15T21:20:00.000Z',
+  },
+  {
     id: 'vehicle-operational-state-domain-extract-v49472-2026-07-15',
     version: '4.9.472',
     title: 'V4.9.472 — Fleet Status: Domain-Extraktion `buildVehicleOperationalState` (Prompt 6/43)',
