@@ -7,9 +7,9 @@ import { FleetCommandPanel } from './FleetCommandPanel';
 import {
   type FleetCommandTab,
   type FleetVehicleContext,
+  applyFleetCommandFilters,
   buildFleetVehicleContexts,
   filterFleetBySearch,
-  filterFleetByTab,
   resolveCanonicalCriticalVehicleIds,
   resolveCanonicalFleetAlertCounts,
   resolveOperatorTabForVehicle,
@@ -61,6 +61,7 @@ export function FleetCommandView({
 }: FleetCommandViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState<FleetCommandTab>('Available');
+  const [futureBookingOnly, setFutureBookingOnly] = useState(false);
   const [selectedVehicleId, setSelectedVehicleId] = useState<string | null>(null);
   const rowRefs = useRef<Map<string, HTMLDivElement>>(new Map());
 
@@ -75,9 +76,12 @@ export function FleetCommandView({
   );
 
   const visibleIds = useMemo(() => {
-    const tabbed = filterFleetByTab(searchContexts, activeTab);
-    return new Set(tabbed.map((c) => c.vehicle.id));
-  }, [searchContexts, activeTab]);
+    const filtered = applyFleetCommandFilters(searchContexts, {
+      tab: activeTab,
+      futureBookingOnly,
+    });
+    return new Set(filtered.map((c) => c.vehicle.id));
+  }, [searchContexts, activeTab, futureBookingOnly]);
 
   const hiddenSelectedVehicle = useMemo(() => {
     if (!selectedVehicleId || visibleIds.has(selectedVehicleId)) return null;
@@ -144,6 +148,8 @@ export function FleetCommandView({
       canonicalAlertCounts={canonicalAlertCounts}
       canonicalCriticalVehicleIds={canonicalCriticalVehicleIds}
       canonicalTabCounts={canonicalTabCounts}
+      futureBookingOnly={futureBookingOnly}
+      onFutureBookingOnlyChange={setFutureBookingOnly}
       onRowClick={openVehicle}
       onDetailClick={(ctx, e) => {
         e.stopPropagation();

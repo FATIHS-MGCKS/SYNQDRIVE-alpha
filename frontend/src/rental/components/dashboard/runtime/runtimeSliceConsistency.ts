@@ -1,13 +1,18 @@
-import type { FleetCommandTab } from '../../../lib/fleet-operator-panel';
+import type { FleetCommandTab } from '../../../lib/fleet-command-filters';
 import type { VehicleData } from '../../../data/vehicles';
 import { mapCanonicalOperationalStatusToRuntime } from '../../../lib/fleet-map-vehicle-selectors';
 import {
+  computeCommandTabCounts,
+  resolveFleetCommandTabForVehicle,
+  selectHasFutureBooking,
+} from '../../../lib/fleet-command-filters';
+import {
   selectIsCurrentlyAvailable,
-  selectIsCurrentlyRented,
   selectIsInPickupReservationWindow,
   selectOperationalStatus,
   VEHICLE_OPERATIONAL_STATUS,
 } from '../../../lib/vehicle-operational-state';
+import { buildFleetVehicleContexts } from '../../../lib/fleet-operator-panel';
 import {
   resolveReadyForRentingKpiCounts,
   resolveTodaysOperationsKpiCounts,
@@ -60,20 +65,28 @@ export function resolveFleetTabCountsFromRuntime(
     ? runtime.vehicleStates.filter((state) => scopeVehicleIds.has(state.vehicleId))
     : runtime.vehicleStates;
   return {
+    All: states.length,
     Available: states.filter((state) => state.operationalStatus === 'available').length,
     Active: states.filter((state) => state.operationalStatus === 'active_rented').length,
     Reserved: states.filter((state) => state.operationalStatus === 'reserved').length,
+    Maintenance: states.filter(
+      (state) =>
+        state.operationalStatus === 'maintenance' || state.operationalStatus === 'unavailable',
+    ).length,
+    Unknown: states.filter((state) => state.operationalStatus === 'unknown').length,
   };
 }
 
 export function countFleetVehiclesBySelector(
   vehicles: VehicleData[],
 ): Record<FleetCommandTab, number> {
-  return {
-    Available: vehicles.filter((vehicle) => selectIsCurrentlyAvailable(vehicle)).length,
-    Active: vehicles.filter((vehicle) => selectIsCurrentlyRented(vehicle)).length,
-    Reserved: vehicles.filter((vehicle) => selectIsInPickupReservationWindow(vehicle)).length,
-  };
+  const contexts = buildFleetVehicleContexts(vehicles, () => null);
+  return computeCommandTabCounts(contexts);
+}
+
+/** Tab bucket for a single vehicle — same selector as fleet tabs. */
+export function fleetTabForVehicle(vehicle: VehicleData): Exclude<FleetCommandTab, 'All'> {
+  return resolveFleetCommandTabForVehicle(vehicle);
 }
 
 /** Dashboard runtime state must match canonical selector on the same fleet vehicle. */
@@ -164,8 +177,9 @@ export function verifyUnknownExcludedFromAvailable(runtime: DashboardRuntimeMode
 }
 
 export function vehicleHasNextBookingOnlyNotReserved(vehicle: VehicleData): boolean {
-  const ctx = vehicle.bookingContext;
-  const hasNext = Boolean(ctx?.nextBooking?.bookingId ?? vehicle.reservedBookingId);
-  const inWindow = selectIsInPickupReservationWindow(vehicle);
-  return hasNext && !inWindow && selectOperationalStatus(vehicle) !== VEHICLE_OPERATIONAL_STATUS.RESERVED;
+  return (
+    selectHasFutureBooking(vehicle) &&
+    !selectIsInPickupReservationWindow(vehicle) &&
+    selectOperationalStatus(vehicle) === VEHICLE_OPERATIONAL_STATUS.AVAILABLE
+  );
 }

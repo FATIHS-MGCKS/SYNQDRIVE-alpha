@@ -21,12 +21,38 @@ import {
 
 import type { DashboardRuntimeModel } from '../components/dashboard/runtime/dashboardRuntimeTypes';
 import {
-  selectIsCurrentlyAvailable,
-  selectIsCurrentlyRented,
-  selectIsInPickupReservationWindow,
   selectOperationalStatus,
   VEHICLE_OPERATIONAL_STATUS,
 } from './vehicle-operational-state';
+import {
+  applyFleetCommandFilters,
+  computeCommandTabCounts,
+  filterFleetByTab,
+  fleetCommandTabEmptyMessage,
+  fleetContextsToVehicles,
+  resolveFleetCommandTabForVehicle,
+  resolveOperatorTabForVehicle,
+  selectHasFutureBooking,
+  vehicleMatchesFleetCommandTab,
+  type FleetCommandFilterState,
+  type FleetCommandTab,
+  FLEET_COMMAND_TABS,
+} from './fleet-command-filters';
+
+export {
+  applyFleetCommandFilters,
+  computeCommandTabCounts,
+  filterFleetByTab,
+  fleetCommandTabEmptyMessage,
+  fleetContextsToVehicles,
+  resolveFleetCommandTabForVehicle,
+  resolveOperatorTabForVehicle,
+  selectHasFutureBooking,
+  vehicleMatchesFleetCommandTab,
+  type FleetCommandFilterState,
+  type FleetCommandTab,
+  FLEET_COMMAND_TABS,
+};
 
 export function resolveCanonicalFleetAlertCounts(
   runtime: DashboardRuntimeModel,
@@ -150,7 +176,13 @@ export function computeFleetCommandAttentionCounts(
   return { critical, warning };
 }
 
-export type FleetCommandTab = 'Available' | 'Active' | 'Reserved';
+/** @deprecated Use vehicleMatchesFleetCommandTab */
+export function vehicleMatchesCommandTab(
+  ctx: FleetVehicleContext,
+  tab: FleetCommandTab,
+): boolean {
+  return vehicleMatchesFleetCommandTab(ctx.vehicle, tab);
+}
 
 export interface FleetVehicleContext {
   vehicle: VehicleData;
@@ -164,20 +196,6 @@ export interface StationFilterOption {
   total: number;
   ready: number;
   attention: number;
-}
-
-const TAB_EMPTY_MESSAGES: Record<FleetCommandTab, string> = {
-  Available: 'No available vehicles in this filter',
-  Active: 'No active rentals',
-  Reserved: 'No upcoming reservations',
-};
-
-export function fleetCommandTabEmptyMessage(
-  tab: FleetCommandTab,
-  hasSearch: boolean,
-): string {
-  if (hasSearch) return 'No vehicles match your search';
-  return TAB_EMPTY_MESSAGES[tab];
 }
 
 export function hasCriticalOrWarningDtc(
@@ -280,30 +298,6 @@ export function filterFleetBySearch(
   return contexts.filter((ctx) => searchableHaystack(ctx).includes(q));
 }
 
-export function vehicleMatchesCommandTab(
-  ctx: FleetVehicleContext,
-  tab: FleetCommandTab,
-): boolean {
-  const { vehicle } = ctx;
-  switch (tab) {
-    case 'Available':
-      return selectIsCurrentlyAvailable(vehicle);
-    case 'Active':
-      return selectIsCurrentlyRented(vehicle);
-    case 'Reserved':
-      return selectIsInPickupReservationWindow(vehicle);
-    default:
-      return false;
-  }
-}
-
-export function filterFleetByTab(
-  contexts: FleetVehicleContext[],
-  tab: FleetCommandTab,
-): FleetVehicleContext[] {
-  return contexts.filter((ctx) => vehicleMatchesCommandTab(ctx, tab));
-}
-
 function vehicleStationLabel(v: VehicleData): string {
   const named = (v as { stationName?: string | null }).stationName;
   return named ?? v.station ?? '';
@@ -376,30 +370,6 @@ export function sortFleetContexts(
   });
 
   return scored.map((s) => s.ctx);
-}
-
-export function computeCommandTabCounts(
-  contexts: FleetVehicleContext[],
-): Record<FleetCommandTab, number> {
-  const counts: Record<FleetCommandTab, number> = {
-    Available: 0,
-    Active: 0,
-    Reserved: 0,
-  };
-  for (const ctx of contexts) {
-    if (vehicleMatchesCommandTab(ctx, 'Available')) counts.Available += 1;
-    if (vehicleMatchesCommandTab(ctx, 'Active')) counts.Active += 1;
-    if (vehicleMatchesCommandTab(ctx, 'Reserved')) counts.Reserved += 1;
-  }
-  return counts;
-}
-
-export function resolveOperatorTabForVehicle(
-  ctx: FleetVehicleContext,
-): FleetCommandTab {
-  if (selectIsCurrentlyRented(ctx.vehicle)) return 'Active';
-  if (selectIsInPickupReservationWindow(ctx.vehicle)) return 'Reserved';
-  return 'Available';
 }
 
 export function buildStationFilterOptions(
