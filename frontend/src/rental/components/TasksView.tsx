@@ -7,6 +7,11 @@ import { useRentalOrg } from '../RentalContext';
 import { api } from '../../lib/api';
 import type { ApiTask, ApiTaskSummary, CreateTaskPayload, Station } from '../../lib/api';
 import { getStoredUser } from '../../lib/auth';
+import {
+  matchesTaskDetailInvalidation,
+  matchesTaskListInvalidation,
+  subscribeTaskQueryInvalidation,
+} from '../../lib/tasks';
 import { checklistPreviewForType } from '../lib/task-templates';
 import {
   CATEGORY_TO_TASK_TYPE,
@@ -271,10 +276,16 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
     }
   };
 
-  const reloadTaskDetail = () => {
-    if (!orgId || !selectedTask) return;
-    api.tasks.get(orgId, selectedTask.id).then(setDetailFull).catch(() => setDetailFull(null));
-  };
+  useEffect(() => {
+    return subscribeTaskQueryInvalidation((detail) => {
+      if (matchesTaskListInvalidation(detail, orgId)) {
+        loadTasks.current();
+      }
+      if (matchesTaskDetailInvalidation(detail, orgId, selectedTask?.id ?? null) && orgId && selectedTask) {
+        api.tasks.get(orgId, selectedTask.id).then(setDetailFull).catch(() => setDetailFull(null));
+      }
+    });
+  }, [orgId, selectedTask?.id]);
 
   const currentUserLabel = useMemo(() => {
     const user = getStoredUser();
@@ -849,7 +860,6 @@ export function TasksView({ autoOpenNewTask, onAutoOpenConsumed, highlightedTask
         canManageTasks={hasPermission('tasks', 'manage')}
         canWriteTasks={hasPermission('tasks', 'write')}
         mutating={mutating}
-        onReloadDetail={reloadTaskDetail}
         onTaskUpdated={setDetailFull}
         runTaskAction={async (fn) => {
           await runTaskAction(fn);

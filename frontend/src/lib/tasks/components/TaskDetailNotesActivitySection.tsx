@@ -16,6 +16,8 @@ export interface TaskDetailNotesActivitySectionProps {
   showCommentForm?: boolean;
   focusComment?: boolean;
   commentPending?: boolean;
+  activeTab?: TaskNotesActivityTab;
+  onActiveTabChange?: (tab: TaskNotesActivityTab) => void;
 }
 
 export function TaskDetailNotesActivitySection({
@@ -28,9 +30,18 @@ export function TaskDetailNotesActivitySection({
   showCommentForm,
   focusComment = false,
   commentPending = false,
+  activeTab: controlledTab,
+  onActiveTabChange,
 }: TaskDetailNotesActivitySectionProps) {
   const canComment = showCommentForm ?? model.flags.canAddComment;
   const [activeTab, setActiveTab] = useState<TaskNotesActivityTab>('notes');
+  const isControlledTab = controlledTab != null;
+  const currentTab = isControlledTab ? controlledTab : activeTab;
+
+  const setTab = (tab: TaskNotesActivityTab) => {
+    if (!isControlledTab) setActiveTab(tab);
+    onActiveTabChange?.(tab);
+  };
 
   const hasNotes = model.comments.length > 0;
   const hasActivity =
@@ -73,11 +84,11 @@ export function TaskDetailNotesActivitySection({
             <button
               type="button"
               role="tab"
-              aria-selected={activeTab === 'notes'}
-              onClick={() => setActiveTab('notes')}
+              aria-selected={currentTab === 'notes'}
+              onClick={() => setTab('notes')}
               className={cn(
                 'sq-press min-h-[40px] flex-1 rounded-lg px-3 text-sm font-semibold transition-colors',
-                activeTab === 'notes'
+                currentTab === 'notes'
                   ? 'surface-premium text-foreground'
                   : 'text-muted-foreground hover:text-foreground',
               )}
@@ -87,11 +98,11 @@ export function TaskDetailNotesActivitySection({
             <button
               type="button"
               role="tab"
-              aria-selected={activeTab === 'activity'}
-              onClick={() => setActiveTab('activity')}
+              aria-selected={currentTab === 'activity'}
+              onClick={() => setTab('activity')}
               className={cn(
                 'sq-press min-h-[40px] flex-1 rounded-lg px-3 text-sm font-semibold transition-colors',
-                activeTab === 'activity'
+                currentTab === 'activity'
                   ? 'surface-premium text-foreground'
                   : 'text-muted-foreground hover:text-foreground',
               )}
@@ -100,9 +111,9 @@ export function TaskDetailNotesActivitySection({
             </button>
           </div>
           <div role="tabpanel">
-            {activeTab === 'notes' ? notesPanel : activityPanel}
+            {currentTab === 'notes' ? notesPanel : activityPanel}
           </div>
-          {!hasNotes && !hasActivity && activeTab === 'notes' && (
+          {!hasNotes && !hasActivity && currentTab === 'notes' && (
             <p className={cn('mt-2 text-muted-foreground', mobile ? 'text-xs' : 'text-[12px]')}>
               Noch keine Einträge in diesem Bereich.
             </p>

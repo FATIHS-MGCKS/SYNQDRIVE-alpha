@@ -74,7 +74,7 @@ function resolveReasonLabel(meta: Record<string, unknown>): string | null {
     if (mapped) return mapped;
   }
   if (typeof meta.reason === 'string' && meta.reason.trim()) {
-    return humanizeReason(meta.reason.trim());
+    return humanizeResolutionReason(meta.reason.trim());
   }
   if (typeof meta.resolutionCode === 'string' && meta.resolutionCode.trim()) {
     return humanizeResolutionCode(meta.resolutionCode.trim());
@@ -82,7 +82,7 @@ function resolveReasonLabel(meta: Record<string, unknown>): string | null {
   return null;
 }
 
-function humanizeReason(reason: string): string {
+export function humanizeResolutionReason(reason: string): string {
   const cleaned = reason
     .replace(/^\[(Auto-resolved|Superseded)\]\s*/i, '')
     .replace(/^Booking\s+/i, 'Buchung ')

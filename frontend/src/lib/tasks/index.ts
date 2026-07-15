@@ -20,4 +20,14 @@ export { TaskDetailBody, TaskDetailCompactHeader, TaskDetailLoadingSkeleton } fr
 export { TaskDetailChecklistSection } from './components/TaskDetailChecklistSection';
 export { TaskDetailChecklistOverrideDialog } from './components/TaskDetailChecklistOverrideDialog';
 export { TaskDetailNotesActivitySection } from './components/TaskDetailNotesActivitySection';
+export type { TaskNotesActivityTab } from './components/TaskDetailNotesActivitySection';
 export { TaskDetailShell } from './components/TaskDetailShell';
+export { TaskDetailActionsHost } from './components/TaskDetailActionsHost';
+export { TaskDetailActionBar } from './components/TaskDetailActionBar';
+export type { TaskDetailActionBarVariant } from './components/TaskDetailActionBar';
+export { TaskDetailCompleteDialog } from './components/TaskDetailCompleteDialog';
+export { TaskDetailCompletionSummary } from './components/TaskDetailCompletionSummary';
+export { useTaskDetailActions } from './hooks/useTaskDetailActions';
+export * from './taskDetailActions.utils';
+export * from './taskCompleteForm.utils';
+export * from './taskResolution.utils';

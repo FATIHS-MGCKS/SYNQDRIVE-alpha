@@ -16,7 +16,7 @@ import { PriorityBadge, SectionHeader, StatusChip } from '../../../components/pa
 import { cn } from '../../../components/ui/utils';
 import type { TaskDetailLinkedObjectModel, TaskDetailViewModel } from '../taskDetailView.utils';
 import { TaskDetailChecklistSection } from './TaskDetailChecklistSection';
-import { TaskDetailNotesActivitySection } from './TaskDetailNotesActivitySection';
+import { TaskDetailNotesActivitySection, type TaskNotesActivityTab } from './TaskDetailNotesActivitySection';
 
 export interface TaskDetailBodyProps {
   model: TaskDetailViewModel;
@@ -40,6 +40,8 @@ export interface TaskDetailBodyProps {
   showCommentForm?: boolean;
   focusComment?: boolean;
   commentPending?: boolean;
+  notesActivityTab?: TaskNotesActivityTab;
+  onNotesActivityTabChange?: (tab: TaskNotesActivityTab) => void;
 }
 
 export function TaskDetailBody({
@@ -64,6 +66,8 @@ export function TaskDetailBody({
   showCommentForm,
   focusComment = false,
   commentPending = false,
+  notesActivityTab,
+  onNotesActivityTabChange,
 }: TaskDetailBodyProps) {
   const mobile = density === 'mobile';
   const canComment = showCommentForm ?? model.flags.canAddComment;
@@ -116,6 +120,8 @@ export function TaskDetailBody({
           showCommentForm={canComment}
           focusComment={focusComment}
           commentPending={commentPending}
+          activeTab={notesActivityTab}
+          onActiveTabChange={onNotesActivityTabChange}
         />
         <TaskDetailTechnicalSection
           model={model}

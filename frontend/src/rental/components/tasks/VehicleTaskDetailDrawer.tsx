@@ -1,8 +1,19 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { ConfirmDialog } from '../../../components/patterns';
 import { api, type ApiTask } from '../../../lib/api';
-import { buildTaskCompletionControlModel, buildTaskDetailViewModel, isNormalizedTaskDetail, TaskDetailChecklistOverrideDialog, TaskDetailShell, useRentalTaskLinkedObjectNavigation, useTaskChecklistMutation, useTaskCommentMutation, useTaskLinkedObjectNavigator } from '../../../lib/tasks';
+import {
+  buildTaskDetailViewModel,
+  isNormalizedTaskDetail,
+  matchesTaskDetailInvalidation,
+  subscribeTaskQueryInvalidation,
+  TaskDetailActionsHost,
+  TaskDetailShell,
+  type TaskNotesActivityTab,
+  useRentalTaskLinkedObjectNavigation,
+  useTaskChecklistMutation,
+  useTaskCommentMutation,
+  useTaskLinkedObjectNavigator,
+} from '../../../lib/tasks';
 import { getStoredUser } from '../../../lib/auth';
 import type { VehicleData } from '../../data/vehicles';
 import {
@@ -10,7 +21,6 @@ import {
   formatTaskDateTime,
   isActiveTaskStatus,
   isTerminalTaskStatus,
-  taskRequiresResolutionNote,
   toDateInputValue,
 } from '../../lib/task-detail.utils';
 import { mapApiPriority, vehicleTaskPriorityLabel } from '../../lib/task-display.utils';
@@ -50,19 +60,14 @@ export function VehicleTaskDetailDrawer({
   const [mutating, setMutating] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
-  const [completeOpen, setCompleteOpen] = useState(false);
-  const [overrideOpen, setOverrideOpen] = useState(false);
-  const [resolutionNote, setResolutionNote] = useState('');
-  const [resolutionError, setResolutionError] = useState<string | null>(null);
-
-  const [cancelOpen, setCancelOpen] = useState(false);
-
   const [assignDraft, setAssignDraft] = useState('');
   const [dueDraft, setDueDraft] = useState('');
   const [editingMeta, setEditingMeta] = useState(false);
 
   const [commentDraft, setCommentDraft] = useState('');
   const [commentError, setCommentError] = useState<string | null>(null);
+  const [notesActivityTab, setNotesActivityTab] = useState<TaskNotesActivityTab>('notes');
+  const [focusComment, setFocusComment] = useState(false);
 
   const loadDetail = useCallback(async () => {
     if (!orgId || !taskId || !open) {
@@ -90,41 +95,22 @@ export function VehicleTaskDetailDrawer({
   }, [loadDetail]);
 
   useEffect(() => {
+    return subscribeTaskQueryInvalidation((detail) => {
+      if (!matchesTaskDetailInvalidation(detail, orgId, taskId)) return;
+      void loadDetail();
+    });
+  }, [orgId, taskId, loadDetail]);
+
+  useEffect(() => {
     if (!open) {
-      setCompleteOpen(false);
-      setOverrideOpen(false);
-      setCancelOpen(false);
-      setResolutionNote('');
-      setResolutionError(null);
       setActionError(null);
       setCommentDraft('');
       setCommentError(null);
       setEditingMeta(false);
+      setNotesActivityTab('notes');
+      setFocusComment(false);
     }
   }, [open]);
-
-  const runAction = async (
-    fn: () => Promise<ApiTask>,
-    successMessage: string,
-  ): Promise<ApiTask | null> => {
-    if (!orgId || mutating) return null;
-    setMutating(true);
-    setActionError(null);
-    try {
-      const updated = await fn();
-      setDetail(updated);
-      onTaskUpdated(updated);
-      toast.success(successMessage);
-      return updated;
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Aktion fehlgeschlagen';
-      setActionError(message);
-      toast.error(message);
-      return null;
-    } finally {
-      setMutating(false);
-    }
-  };
 
   const assigneeName = useMemo(() => {
     if (!detail?.assignedUserId) return 'Nicht zugewiesen';
@@ -169,66 +155,6 @@ export function VehicleTaskDetailDrawer({
     authorUserId: getStoredUser()?.id ?? null,
     onTaskUpdated: handleDetailUpdated,
   });
-
-  const completionControl = useMemo(
-    () => (normalizedDetail ? buildTaskCompletionControlModel(normalizedDetail) : null),
-    [normalizedDetail],
-  );
-
-  const handleStart = () => {
-    if (!orgId || !detail) return;
-    void runAction(() => api.tasks.start(orgId, detail.id), 'Aufgabe gestartet');
-  };
-
-  const handleWaiting = () => {
-    if (!orgId || !detail) return;
-    void runAction(() => api.tasks.waiting(orgId, detail.id), 'Aufgabe auf Wartend gesetzt');
-  };
-
-  const handleCompleteClick = () => {
-    if (!detail || !completionControl?.enabled) return;
-    if (taskRequiresResolutionNote(detail.type)) {
-      setResolutionNote(detail.resolutionNote ?? '');
-      setResolutionError(null);
-      setCompleteOpen(true);
-      return;
-    }
-    void runAction(() => api.tasks.complete(orgId!, detail.id), 'Aufgabe abgeschlossen');
-  };
-
-  const handleOverrideConfirm = async (overrideReason: string) => {
-    if (!orgId || !detail) return;
-    const updated = await runAction(
-      () =>
-        api.tasks.complete(orgId, detail.id, {
-          overrideIncompleteChecklist: true,
-          overrideReason,
-          ...(resolutionNote.trim() ? { resolutionNote: resolutionNote.trim() } : {}),
-        }),
-      'Aufgabe mit Override abgeschlossen',
-    );
-    if (updated) setOverrideOpen(false);
-  };
-
-  const handleCompleteConfirm = async () => {
-    if (!orgId || !detail) return;
-    const note = resolutionNote.trim();
-    if (taskRequiresResolutionNote(detail.type) && !note) {
-      setResolutionError('Abschluss-Notiz ist für diesen Aufgabentyp erforderlich.');
-      return;
-    }
-    const updated = await runAction(
-      () => api.tasks.complete(orgId, detail.id, note ? { resolutionNote: note } : undefined),
-      'Aufgabe abgeschlossen',
-    );
-    if (updated) setCompleteOpen(false);
-  };
-
-  const handleCancelConfirm = async () => {
-    if (!orgId || !detail) return;
-    const updated = await runAction(() => api.tasks.cancel(orgId, detail.id), 'Aufgabe storniert');
-    if (updated) setCancelOpen(false);
-  };
 
   const handleSaveMeta = async () => {
     if (!orgId || !detail || isTerminalTaskStatus(detail.status)) return;
@@ -275,93 +201,22 @@ export function VehicleTaskDetailDrawer({
     }
   };
 
-  const handlePrimaryAction = () => {
-    if (!detail || mutating) return;
-    if (detail.status === 'OPEN' || detail.status === 'WAITING') {
-      handleStart();
-      return;
-    }
-    if (detail.status === 'IN_PROGRESS') {
-      handleCompleteClick();
-    }
+  const handleCommentFromBar = () => {
+    setNotesActivityTab('notes');
+    setFocusComment(true);
   };
 
   const renderFooter = () => {
-    if (!detail || loading) return null;
-    if (isTerminalTaskStatus(detail.status)) {
-      return (
-        <div className="flex w-full flex-wrap items-center justify-between gap-2">
-          <span className="text-[10px] text-muted-foreground">
-            {detail.status === 'DONE' ? 'Abgeschlossen' : 'Storniert'} — keine weiteren Aktionen
-          </span>
-          {onOpenInGlobalTasks && (
-            <button
-              type="button"
-              onClick={() => onOpenInGlobalTasks(detail.id)}
-              className="sq-press text-[10px] font-semibold text-[color:var(--brand)]"
-            >
-              In Tasks öffnen
-            </button>
-          )}
-        </div>
-      );
-    }
-
+    if (!normalizedDetail || loading) return null;
     return (
-      <div className="flex w-full flex-wrap items-center gap-2">
-        {(detail.status === 'OPEN' || detail.status === 'WAITING') && (
-          <button
-            type="button"
-            disabled={mutating}
-            onClick={handleStart}
-            className="sq-cta inline-flex items-center gap-1.5 px-3 py-2 text-[11px] font-semibold disabled:opacity-60"
-          >
-            <Icon name="play" className="w-3.5 h-3.5" />
-            {detail.status === 'WAITING' ? 'Fortsetzen' : 'Starten'}
-          </button>
-        )}
-        {detail.status === 'IN_PROGRESS' && (
-          <button
-            type="button"
-            disabled={mutating}
-            onClick={handleWaiting}
-            className="sq-press inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-[11px] font-semibold disabled:opacity-60"
-          >
-            <Icon name="pause" className="w-3.5 h-3.5" />
-            Wartend
-          </button>
-        )}
-        {isActiveTaskStatus(detail.status) && (
-          <button
-            type="button"
-            disabled={mutating || !completionControl?.enabled}
-            title={completionControl?.disabledReason ?? undefined}
-            onClick={handleCompleteClick}
-            className="sq-press inline-flex items-center gap-1.5 rounded-lg border border-[color:var(--status-positive)]/30 bg-[color:var(--status-positive-soft)] px-3 py-2 text-[11px] font-semibold text-[color:var(--status-positive)] disabled:opacity-60"
-          >
-            <Icon name="check-circle" className="w-3.5 h-3.5" />
-            Abschließen
-          </button>
-        )}
-        {completionControl && !completionControl.enabled && completionControl.blockerSummary && (
-          <span
-            className="w-full text-[10px] text-[color:var(--status-watch)]"
-            role="status"
-            title={completionControl.disabledReason ?? undefined}
-          >
-            {completionControl.blockerSummary}
-          </span>
-        )}
-        <button
-          type="button"
-          disabled={mutating || detail.status === 'DONE'}
-          onClick={() => setCancelOpen(true)}
-          className="sq-press ml-auto inline-flex items-center gap-1.5 rounded-lg border border-[color:var(--status-critical)]/30 px-3 py-2 text-[11px] font-semibold text-[color:var(--status-critical)] disabled:opacity-60"
-        >
-          <Icon name="x" className="w-3.5 h-3.5" />
-          Stornieren
-        </button>
-      </div>
+      <TaskDetailActionsHost
+        detail={normalizedDetail}
+        orgId={orgId}
+        variant="desktop-footer"
+        onTaskUpdated={handleDetailUpdated}
+        onComment={handleCommentFromBar}
+        onOpenSuccessorTask={onOpenInGlobalTasks}
+      />
     );
   };
 
@@ -480,17 +335,18 @@ export function VehicleTaskDetailDrawer({
         widthClassName="sm:max-w-xl"
         footer={renderFooter()}
         bodyProps={{
-          onPrimaryAction: handlePrimaryAction,
           onLinkedObjectClick: navigateLinkedObject,
           pendingChecklistItemIds: pendingItemIds,
           onChecklistToggle: (itemId, isDone) => void toggleItem(itemId, isDone),
-          onChecklistOverride: completionControl?.canOverride ? () => setOverrideOpen(true) : undefined,
           commentDraft,
           onCommentDraftChange: setCommentDraft,
           onAddComment: () => void handleAddComment(),
           commentError,
           commentPending,
           showCommentForm: Boolean(detail && isActiveTaskStatus(detail.status)),
+          focusComment,
+          notesActivityTab,
+          onNotesActivityTabChange: setNotesActivityTab,
           beforeSections: vehicleContextSlot,
         }}
       >
@@ -510,59 +366,6 @@ export function VehicleTaskDetailDrawer({
           </div>
         )}
       </TaskDetailShell>
-
-      <ConfirmDialog
-        open={completeOpen}
-        onOpenChange={setCompleteOpen}
-        title="Aufgabe abschließen"
-        description={
-          taskRequiresResolutionNote(detail?.type ?? 'CUSTOM')
-            ? 'Für diesen Aufgabentyp ist eine Abschluss-Notiz erforderlich.'
-            : 'Optional können Sie eine Abschluss-Notiz hinterlegen.'
-        }
-        confirmLabel="Abschließen"
-        cancelLabel="Abbrechen"
-        loading={mutating}
-        onConfirm={() => void handleCompleteConfirm()}
-      >
-        <label className="mt-3 block text-[11px] font-semibold text-muted-foreground">
-          Abschluss-Notiz
-          {detail && taskRequiresResolutionNote(detail.type) ? ' *' : ''}
-          <textarea
-            value={resolutionNote}
-            onChange={(e) => {
-              setResolutionNote(e.target.value);
-              setResolutionError(null);
-            }}
-            disabled={mutating}
-            className="mt-1.5 min-h-[80px] w-full resize-y rounded-lg border border-border surface-premium px-3 py-2 text-xs text-foreground"
-            placeholder="Ergebnis / durchgeführte Maßnahmen dokumentieren"
-          />
-        </label>
-        {resolutionError && (
-          <p className="mt-1 text-[10px] font-medium text-red-600 dark:text-red-400">{resolutionError}</p>
-        )}
-      </ConfirmDialog>
-
-      <TaskDetailChecklistOverrideDialog
-        open={overrideOpen}
-        onOpenChange={setOverrideOpen}
-        loading={mutating}
-        openRequiredTitles={completionControl?.openRequiredTitles ?? []}
-        onConfirm={handleOverrideConfirm}
-      />
-
-      <ConfirmDialog
-        open={cancelOpen}
-        onOpenChange={setCancelOpen}
-        title="Aufgabe stornieren?"
-        description="Die Aufgabe wird als storniert markiert und kann nicht mehr bearbeitet werden."
-        confirmLabel="Stornieren"
-        cancelLabel="Abbrechen"
-        loading={mutating}
-        tone="critical"
-        onConfirm={() => void handleCancelConfirm()}
-      />
     </>
   );
 }
