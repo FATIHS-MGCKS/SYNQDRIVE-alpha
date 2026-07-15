@@ -4,15 +4,15 @@ import type { VehicleHealthResponse, RentalHealthModule } from '../../lib/api';
 import { isVehicleOffline } from '../data/vehicles';
 import {
   selectFleetActiveIsOverdue,
-  selectFleetOperationalStatus,
   selectFleetReservedIsOverdue,
 } from './fleet-map-vehicle-selectors';
-import { resolveTelemetryFreshness } from './telemetryFreshness';
 import {
   formatVehicleOperationalStatusLabel,
+  selectOperationalStatus,
   VEHICLE_OPERATIONAL_STATUS,
   type VehicleOperationalStatus,
 } from './vehicle-operational-state';
+import { resolveTelemetryFreshness } from './telemetryFreshness';
 
 export type FleetVisualStatus =
   | 'ready'
@@ -185,7 +185,7 @@ function operationalStatusToRentalStatus(
 }
 
 function deriveRentalStatus(vehicle: FleetVisualStateVehicle): FleetRentalStatus {
-  return operationalStatusToRentalStatus(selectFleetOperationalStatus(vehicle));
+  return operationalStatusToRentalStatus(selectOperationalStatus(vehicle));
 }
 
 function hasNonServiceCriticalModule(
@@ -365,8 +365,8 @@ export function deriveFleetVisualState(
   const isBlocked = rentalBlocked;
   const isMaintenance =
     rentalStatus === 'maintenance' ||
-    selectFleetOperationalStatus(vehicle) === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE ||
-    selectFleetOperationalStatus(vehicle) === VEHICLE_OPERATIONAL_STATUS.BLOCKED;
+    selectOperationalStatus(vehicle) === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE ||
+    selectOperationalStatus(vehicle) === VEHICLE_OPERATIONAL_STATUS.BLOCKED;
   const maintenanceCritical =
     isMaintenance && vehicle.maintenanceUrgency === 'urgent';
   const isOffline = isVehicleOffline(vehicle);
@@ -519,7 +519,7 @@ export function buildFleetMapGeoJson(
       properties: {
         vehicleId: vehicle.id,
         label: vehicle.license || vehicle.model,
-        status: selectFleetOperationalStatus(vehicle),
+        status: selectOperationalStatus(vehicle),
         mapTone: visual.mapTone,
         visualStatus: visual.visualStatus,
         shortLabel: visual.shortLabel,

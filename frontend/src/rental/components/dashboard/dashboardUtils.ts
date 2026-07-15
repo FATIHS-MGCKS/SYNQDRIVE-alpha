@@ -9,7 +9,11 @@ import type { DashboardInsight } from '../../DashboardInsightsContext';
 import { countFleetStatusTab } from '../../lib/vehicle-status';
 import { bookingRef } from '../bookings/bookingUtils';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
-import { VEHICLE_OPERATIONAL_STATUS } from '../../lib/vehicle-operational-state';
+import {
+  selectCanBeConsideredForRentalReadiness,
+  selectOperationalStatus,
+  VEHICLE_OPERATIONAL_STATUS,
+} from '../../lib/vehicle-operational-state';
 import type {
   ControlCenterKpi,
   ControlCenterStatus,
@@ -299,7 +303,7 @@ export function isVehicleReadyToRent(
   v: VehicleData,
   options?: ReadyToRentOptions,
 ): boolean {
-  if (v.status !== VEHICLE_OPERATIONAL_STATUS.AVAILABLE) return false;
+  if (!selectCanBeConsideredForRentalReadiness(v)) return false;
   if (v.cleaningStatus !== 'Clean') return false;
   if (options?.blockedVehicleIds?.has(v.id)) return false;
   if (options?.healthRiskVehicleIds?.has(v.id)) return false;
@@ -310,7 +314,9 @@ export function isVehicleReadyToRent(
  * @deprecated Deprecated: use dashboard runtime/slices instead. Must not be used for active Dashboard KPI/Drawer/Board/Business state.
  */
 export function countMaintenanceVehicles(vehicles: VehicleData[]): number {
-  return vehicles.filter((v) => v.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE).length;
+  return vehicles.filter(
+    (v) => selectOperationalStatus(v) === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE,
+  ).length;
 }
 
 export function parseEventTime(iso: string | undefined): number | null {

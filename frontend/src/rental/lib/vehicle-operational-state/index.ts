@@ -30,3 +30,21 @@ export {
   VEHICLE_OPERATIONAL_TAB_LABEL_KEY,
   type VehicleOperationalDisplayLocale,
 } from './display';
+
+export {
+  selectOperationalStatus,
+  selectOperationalStatusLabel,
+  selectOperationalStatusReason,
+  selectIsStatusReliable,
+  selectIsCurrentlyAvailable,
+  selectIsInPickupReservationWindow,
+  selectIsCurrentlyRented,
+  selectActiveBooking,
+  selectReservedBooking,
+  selectNextBooking,
+  selectFutureBookingCount,
+  selectCanBeConsideredForRentalReadiness,
+  selectOperationalState,
+  selectBookingContext,
+  type VehicleOperationalReadModel,
+} from './selectors';

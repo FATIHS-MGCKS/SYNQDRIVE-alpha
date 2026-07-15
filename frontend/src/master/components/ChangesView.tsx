@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-operational-selectors-v49493-2026-07-15',
+    version: '4.9.493',
+    title: 'V4.9.493 — Central Vehicle Operational Selectors (Prompt 29/43)',
+    summary: [
+      'Zentrale reine Selectors in `vehicle-operational-state/selectors.ts`: `selectOperationalStatus`, `selectIsCurrentlyAvailable`, `selectActiveBooking`, `selectNextBooking`, `selectCanBeConsideredForRentalReadiness` u. a.',
+      'Defensive Konsistenzprüfungen: UNKNOWN bei Konflikten (z. B. AVAILABLE + activeBooking); activeBooking nur bei ACTIVE_RENTED; reserved nur bei RESERVED; nextBooking unabhängig von Reserved-Fenster.',
+      'Fleet-, Dashboard- und Vehicle-Detail-Konsumenten migriert (`fleetVisualState`, `useDashboardViewModel`, `StatInlineDetail`, `fleet-operator-panel`, Dashboard-Builder). `fleet-map-vehicle-selectors` re-exportiert zentrale API.',
+      '23 Selector-Tests: alle Status, Bookings, UNKNOWN, inkonsistenter Legacy-Payload.',
+    ],
+    reason:
+      'Prompt 29/43: Verstreute Status-/Booking-Leselogik soll eine zentrale, testbare Selector-Schicht nutzen — ohne neue fachliche Ableitungen vom Backend.',
+    previousBehavior:
+      'Fleet-prefixed Selectors ohne Availability/Rental-Readiness-Guards; Konsumenten lasen `vehicle.status` und Flat-Booking-IDs direkt.',
+    details:
+      'Neu: `selectors.ts`, `vehicle-operational-selectors.test.ts`. Migriert: `fleetVisualState`, `fleetVehicleDisplay`, `fleetStateBuilder`, `derivePredictiveOperationsInsights`, `vehicle-booking-operator.utils`, `useDashboardViewModel`, `dashboardUtils`, `StatInlineDetail`, `operationsBuilder`, `controlSignalsBuilder`, `fleet-operator-panel`.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-15T23:25:00.000Z',
+  },
+  {
     id: 'fleet-operational-derivation-cleanup-v49492-2026-07-15',
     version: '4.9.492',
     title: 'V4.9.492 — Fleet operational derivation cleanup (Prompt 28/43)',

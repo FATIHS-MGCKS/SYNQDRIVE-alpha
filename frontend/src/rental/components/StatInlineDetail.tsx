@@ -8,7 +8,15 @@ import { RentalHealthBadge } from './rental-health/RentalHealthBadge';
 import type { Station, VehicleHealthResponse } from '../../lib/api';
 import { useAddress } from '../../lib/useAddress';
 import { HomeAwayBadge, buildStationLookup } from './HomeAwayBadge';
-import { VEHICLE_OPERATIONAL_STATUS } from '../lib/vehicle-operational-state';
+import {
+  selectActiveBooking,
+  selectIsCurrentlyAvailable,
+  selectIsCurrentlyRented,
+  selectIsInPickupReservationWindow,
+  selectOperationalStatus,
+  selectReservedBooking,
+  VEHICLE_OPERATIONAL_STATUS,
+} from '../lib/vehicle-operational-state';
 import {
   formatOdometerKmFloor,
   formatFuelPercentCeil,
@@ -431,7 +439,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
     <div className={`mt-0.5 rounded-2xl border p-5 ${borderColor} ${isDarkMode ? 'surface-premium' : 'bg-white'}`}>
       {/* Available */}
       {activePopup === VEHICLE_OPERATIONAL_STATUS.AVAILABLE && (() => {
-        const vehicles = fleetVehicles.filter(v => v.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE);
+        const vehicles = fleetVehicles.filter((v) => selectIsCurrentlyAvailable(v));
         return (
           <>
             {!hideHeader && <div className="flex items-center justify-between mb-4">
@@ -559,7 +567,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
           den Pick-Up-Today-Tab bzw. Vehicle-Detail; im Reserved-Über-
           blick verschluckt sie nur knappen Header-Platz. */}
       {activePopup === VEHICLE_OPERATIONAL_STATUS.RESERVED && (() => {
-        const vehicles = fleetVehicles.filter(v => v.status === VEHICLE_OPERATIONAL_STATUS.RESERVED);
+        const vehicles = fleetVehicles.filter((v) => selectIsInPickupReservationWindow(v));
         const overdueCount = vehicles.filter(v => v.reservedIsOverdue).length;
         return (
           <>
@@ -607,16 +615,17 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                           {customerLabel}
                         </span>
                         {(() => {
-                          const bkRef = bookingRefFromId(v.reservedBookingId);
+                          const reservedBookingId = selectReservedBooking(v)?.bookingId;
+                          const bkRef = bookingRefFromId(reservedBookingId);
                           if (!bkRef) return null;
-                          const clickable = !!onOpenBookingById && !!v.reservedBookingId;
+                          const clickable = !!onOpenBookingById && !!reservedBookingId;
                           return (
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (clickable) {
-                                  onOpenBookingById!(v.reservedBookingId!);
+                                  onOpenBookingById!(reservedBookingId!);
                                   onClose();
                                 }
                               }}
@@ -724,7 +733,7 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
           and km-progress mini-bar so dispatchers can spot at-risk
           rentals at a glance. */}
       {activePopup === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED && (() => {
-        const vehicles = fleetVehicles.filter(v => v.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED);
+        const vehicles = fleetVehicles.filter((v) => selectIsCurrentlyRented(v));
         const overdueCount = vehicles.filter(v => v.activeIsOverdue).length;
         return (
           <>
@@ -753,14 +762,15 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                 // Zeile angehängt, statt das Datum durch das redundante Wort
                 // „Überfällig" zu ersetzen.
                 const overdueShort = isOverdue ? formatOverdueShort(v.activeReturnAt) : null;
+                const activeBookingId = selectActiveBooking(v)?.bookingId;
                 return (
                   <div
                     key={v.id}
-                    onClick={bookingFirstClick(v, v.activeBookingId)}
+                    onClick={bookingFirstClick(v, activeBookingId)}
                     onMouseEnter={() => onItemHover?.(v.model)}
                     onMouseLeave={() => onItemHover?.(null)}
                     className={`rounded-xl p-3 border transition-all hover:shadow-sm cursor-pointer ${cardClass}`}
-                    title={v.activeBookingId ? 'Buchung öffnen' : undefined}
+                    title={activeBookingId ? 'Buchung öffnen' : undefined}
                   >
                     {/* Row 1: License + MMY + BlockingBadge | Health / On-Time badges + Chevron */}
                     <div className="flex items-center justify-between gap-2 mb-1.5 min-w-0">
@@ -833,16 +843,17 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
                         <span className="truncate font-medium">{v.activeCustomerName || 'Nicht zugeordnet'}</span>
                       </span>
                       {(() => {
-                        const bkRef = bookingRefFromId(v.activeBookingId);
+                        const activeBookingId = selectActiveBooking(v)?.bookingId;
+                        const bkRef = bookingRefFromId(activeBookingId);
                         if (!bkRef) return null;
-                        const clickable = !!onOpenBookingById && !!v.activeBookingId;
+                        const clickable = !!onOpenBookingById && !!activeBookingId;
                         return (
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               if (clickable) {
-                                onOpenBookingById!(v.activeBookingId!);
+                                onOpenBookingById!(activeBookingId!);
                                 onClose();
                               }
                             }}
@@ -1155,7 +1166,9 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
           the last-known address — workshop names are not yet persisted
           per the existing V4.6.84 architecture decision. */}
       {activePopup === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE && (() => {
-        const vehicles = fleetVehicles.filter(v => v.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE);
+        const vehicles = fleetVehicles.filter(
+          (v) => selectOperationalStatus(v) === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE,
+        );
         const unplannedCount = vehicles.filter(v => v.maintenanceUrgency === 'urgent').length;
         return (
           <>

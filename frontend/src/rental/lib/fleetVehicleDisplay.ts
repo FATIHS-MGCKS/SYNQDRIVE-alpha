@@ -6,11 +6,11 @@ import type { VehicleHealthAlert } from '../DashboardInsightsContext';
 import { deriveFleetVisualState, type FleetVisualState } from './fleetVisualState';
 import {
   selectFleetActiveIsOverdue,
-  selectFleetOperationalStatus,
   selectFleetReservedIsOverdue,
 } from './fleet-map-vehicle-selectors';
 import {
   formatVehicleOperationalStatusLabel,
+  selectOperationalStatus,
   VEHICLE_OPERATIONAL_STATUS,
 } from './vehicle-operational-state';
 import {
@@ -222,7 +222,7 @@ function resolveOperationalStatus(
   const rentalBlocked = hasHardRentalBlockingReasons(rentalHealth) || visual.isBlocked;
   const healthCritical = isHealthCritical(v, rentalHealth);
   const healthWarning = isHealthWarning(v, rentalHealth);
-  const status = selectFleetOperationalStatus(v);
+  const status = selectOperationalStatus(v);
 
   if (healthCritical) return 'critical';
   if (rentalBlocked || visual.isBlocked) return 'blocked';
@@ -327,7 +327,7 @@ function resolveRentalDisplay(
   visual: FleetVisualState,
   de: boolean,
 ): FleetRentalDisplay {
-  const operationalStatus = selectFleetOperationalStatus(v);
+  const operationalStatus = selectOperationalStatus(v);
   let rentalStatus: FleetRentalAvailability;
   if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) rentalStatus = 'active';
   else if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED) rentalStatus = 'reserved';

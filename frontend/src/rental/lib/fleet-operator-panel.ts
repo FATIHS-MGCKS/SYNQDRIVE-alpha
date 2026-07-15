@@ -20,7 +20,13 @@ import {
 } from './fleetVehicleDisplay';
 
 import type { DashboardRuntimeModel } from '../components/dashboard/runtime/dashboardRuntimeTypes';
-import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
+import {
+  selectIsCurrentlyAvailable,
+  selectIsCurrentlyRented,
+  selectIsInPickupReservationWindow,
+  selectOperationalStatus,
+  VEHICLE_OPERATIONAL_STATUS,
+} from './vehicle-operational-state';
 
 export function resolveCanonicalFleetAlertCounts(
   runtime: DashboardRuntimeModel,
@@ -110,11 +116,11 @@ export function resolveFleetCommandRowSeverity(
   if (visual.isStale) return 'warning';
   if (
     v.maintenanceUrgency === 'planned' ||
-    (v.maintenanceUrgency === 'urgent' && v.status !== VEHICLE_OPERATIONAL_STATUS.MAINTENANCE)
+    (v.maintenanceUrgency === 'urgent' && selectOperationalStatus(v) !== VEHICLE_OPERATIONAL_STATUS.MAINTENANCE)
   ) {
     return 'warning';
   }
-  if (!visual.hasLocation && v.status !== VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return 'warning';
+  if (!visual.hasLocation && selectOperationalStatus(v) !== VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return 'warning';
 
   return 'good';
 }
@@ -205,7 +211,7 @@ export function isFleetAttentionVehicle(
   if (vehicle.maintenanceUrgency === 'urgent' || vehicle.maintenanceUrgency === 'planned') {
     return true;
   }
-  if (!visual.hasLocation && vehicle.status !== VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return true;
+  if (!visual.hasLocation && selectOperationalStatus(vehicle) !== VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return true;
 
   // Telemetry reasons. Offline (≥48h) is a real connectivity problem; soft
   // offline / signal_delayed (24–48h, `visual.isStale`) is a low-priority hint.
@@ -281,11 +287,11 @@ export function vehicleMatchesCommandTab(
   const { vehicle } = ctx;
   switch (tab) {
     case 'Available':
-      return vehicle.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE;
+      return selectIsCurrentlyAvailable(vehicle);
     case 'Active':
-      return vehicle.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED;
+      return selectIsCurrentlyRented(vehicle);
     case 'Reserved':
-      return vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED;
+      return selectIsInPickupReservationWindow(vehicle);
     default:
       return false;
   }
@@ -391,8 +397,8 @@ export function computeCommandTabCounts(
 export function resolveOperatorTabForVehicle(
   ctx: FleetVehicleContext,
 ): FleetCommandTab {
-  if (ctx.vehicle.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) return 'Active';
-  if (ctx.vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED) return 'Reserved';
+  if (selectIsCurrentlyRented(ctx.vehicle)) return 'Active';
+  if (selectIsInPickupReservationWindow(ctx.vehicle)) return 'Reserved';
   return 'Available';
 }
 

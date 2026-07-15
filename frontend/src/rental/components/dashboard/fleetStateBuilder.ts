@@ -9,14 +9,15 @@ import { deriveFleetVisualState } from '../../lib/fleetVisualState';
 import {
   selectFleetActiveIsOverdue,
   selectFleetActiveReturnAt,
-  selectFleetOperationalStatus,
-  selectFleetReservedBooking,
   selectFleetReservedIsOverdue,
   selectFleetReservedPickupAt,
 } from '../../lib/fleet-map-vehicle-selectors';
 import { resolveTelemetryFreshness } from '../../lib/telemetryFreshness';
 import { parseEventTime } from './dashboardUtils';
-import { VEHICLE_OPERATIONAL_STATUS } from '../../lib/vehicle-operational-state';
+import {
+  selectOperationalStatus,
+  VEHICLE_OPERATIONAL_STATUS,
+} from '../../lib/vehicle-operational-state';
 import type {
   FleetBoardItem,
   FleetBoardLane,
@@ -97,7 +98,7 @@ function assignLane(
   ) {
     return 'due-soon';
   }
-  const status = selectFleetOperationalStatus(v);
+  const status = selectOperationalStatus(v);
   if (status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return 'maintenance';
   if (blocked) return 'maintenance';
   if (
@@ -141,7 +142,7 @@ function statusLabelForLane(
 
 function nextAppointment(v: VehicleData, locale: string): string | undefined {
   const intl = locale === 'de' ? 'de-DE' : 'en-US';
-  const status = selectFleetOperationalStatus(v);
+  const status = selectOperationalStatus(v);
   const reservedPickupAt = selectFleetReservedPickupAt(v);
   const activeReturnAt = selectFleetActiveReturnAt(v);
   if (status === VEHICLE_OPERATIONAL_STATUS.RESERVED && reservedPickupAt) {

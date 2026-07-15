@@ -106,7 +106,12 @@ import {
   supplementalQueueItems,
 } from '../../lib/notifications/merge-v2-with-vehicle-health';
 import { mergeNotificationPrimaryTabCounts } from './notifications/notification-panel-counts';
-import { VEHICLE_OPERATIONAL_STATUS } from '../../lib/vehicle-operational-state';
+import {
+  selectIsCurrentlyAvailable,
+  selectIsCurrentlyRented,
+  selectIsInPickupReservationWindow,
+  VEHICLE_OPERATIONAL_STATUS,
+} from '../../lib/vehicle-operational-state';
 import {
   registerVehicleOperationalInvalidationHandler,
   vehicleOperationalQueryKeys,
@@ -444,15 +449,15 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   }, [selectedStationId, stationsApi]);
 
   const availableVehicles = useMemo(
-    () => filteredFleetVehicles.filter((v) => v.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE),
+    () => filteredFleetVehicles.filter((v) => selectIsCurrentlyAvailable(v)),
     [filteredFleetVehicles],
   );
   const reservedVehicles = useMemo(
-    () => filteredFleetVehicles.filter((v) => v.status === VEHICLE_OPERATIONAL_STATUS.RESERVED),
+    () => filteredFleetVehicles.filter((v) => selectIsInPickupReservationWindow(v)),
     [filteredFleetVehicles],
   );
   const activeRentedVehicles = useMemo(
-    () => filteredFleetVehicles.filter((v) => v.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED),
+    () => filteredFleetVehicles.filter((v) => selectIsCurrentlyRented(v)),
     [filteredFleetVehicles],
   );
 

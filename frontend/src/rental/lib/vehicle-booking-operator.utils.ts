@@ -2,15 +2,17 @@ import type { StatusTone } from '../../components/patterns';
 import type { BookingUiStatus } from '../components/bookings/bookingStatus';
 import type { VehicleData } from '../data/vehicles';
 import {
-  selectFleetActiveBooking,
+  selectActiveBooking,
+  selectOperationalStatus,
+  selectReservedBooking,
+  VEHICLE_OPERATIONAL_STATUS,
+} from './vehicle-operational-state';
+import {
   selectFleetActiveIsOverdue,
   selectFleetActiveReturnAt,
-  selectFleetOperationalStatus,
-  selectFleetReservedBooking,
   selectFleetReservedIsOverdue,
   selectFleetReservedPickupAt,
 } from './fleet-map-vehicle-selectors';
-import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
 import {
   calculateUtilization,
   formatSlotDurationLabel,
@@ -62,7 +64,7 @@ const REALIZED_STATUSES: BookingUiStatus[] = ['active', 'completed'];
 
 export function isVehicleOperationallyBlocked(vehicle?: VehicleData | null): boolean {
   if (!vehicle) return false;
-  if (selectFleetOperationalStatus(vehicle) === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return true;
+  if (selectOperationalStatus(vehicle) === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return true;
   return vehicle.maintenanceReasonCode === 'OPERATIONAL_BLOCK';
 }
 
@@ -130,7 +132,7 @@ export function deriveVehicleBookingOperatorSnapshot(
 ): VehicleBookingOperatorSnapshot {
   const blocked = isVehicleOperationallyBlocked(vehicle);
   const activeBooking = findActiveBooking(bookings, now);
-  const operationalStatus = vehicle ? selectFleetOperationalStatus(vehicle) : null;
+  const operationalStatus = vehicle ? selectOperationalStatus(vehicle) : null;
   const fleetActive = operationalStatus === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED;
   const fleetReserved = operationalStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED;
   const fleetOverdue = vehicle
@@ -174,11 +176,11 @@ export function deriveVehicleBookingOperatorSnapshot(
     operatorTone = 'critical';
     operatorDetail = overdueBooking
       ? `Rückgabe überfällig · ${overdueBooking.customerName}`
-      : selectFleetActiveBooking(vehicle ?? ({} as VehicleData))?.customerName ||
-          selectFleetReservedBooking(vehicle ?? ({} as VehicleData))?.customerName
+      : selectActiveBooking(vehicle ?? ({} as VehicleData))?.customerName ||
+          selectReservedBooking(vehicle ?? ({} as VehicleData))?.customerName
         ? `Rückgabe überfällig · ${
-            selectFleetActiveBooking(vehicle!)?.customerName ??
-            selectFleetReservedBooking(vehicle!)?.customerName
+            selectActiveBooking(vehicle!)?.customerName ??
+            selectReservedBooking(vehicle!)?.customerName
           }`
         : 'Rückgabe überfällig laut Fahrzeugstatus.';
   } else if (activeBooking || fleetActive) {
@@ -190,10 +192,10 @@ export function deriveVehicleBookingOperatorSnapshot(
       operatorDetail = `${activeBooking.customerName} · Rückgabe ${formatOperatorDateTime(activeBooking.endDate)}`;
     } else if (selectFleetActiveReturnAt(vehicle ?? ({} as VehicleData))) {
       const returnAt = new Date(selectFleetActiveReturnAt(vehicle!)!);
-      operatorDetail = `${selectFleetActiveBooking(vehicle!)?.customerName ?? 'Aktiver Kunde'} · Rückgabe ${formatOperatorDateTime(returnAt)}`;
+      operatorDetail = `${selectActiveBooking(vehicle!)?.customerName ?? 'Aktiver Kunde'} · Rückgabe ${formatOperatorDateTime(returnAt)}`;
     } else {
-      operatorDetail = selectFleetActiveBooking(vehicle ?? ({} as VehicleData))?.customerName
-        ? `Aktiv vermietet · ${selectFleetActiveBooking(vehicle!)!.customerName}`
+      operatorDetail = selectActiveBooking(vehicle ?? ({} as VehicleData))?.customerName
+        ? `Aktiv vermietet · ${selectActiveBooking(vehicle!)!.customerName}`
         : 'Fahrzeug ist aktuell vermietet.';
     }
   } else if (nextPickup || fleetReserved) {
@@ -206,11 +208,11 @@ export function deriveVehicleBookingOperatorSnapshot(
     } else if (selectFleetReservedPickupAt(vehicle ?? ({} as VehicleData))) {
       const pickupAt = new Date(selectFleetReservedPickupAt(vehicle!)!);
       operatorDetail = `Nächster Pickup ${formatOperatorDateTime(pickupAt)} · ${
-        selectFleetReservedBooking(vehicle!)?.customerName ?? 'Reservierung'
+        selectReservedBooking(vehicle!)?.customerName ?? 'Reservierung'
       }`;
     } else {
-      operatorDetail = selectFleetReservedBooking(vehicle ?? ({} as VehicleData))?.customerName
-        ? `Reserviert · ${selectFleetReservedBooking(vehicle!)!.customerName}`
+      operatorDetail = selectReservedBooking(vehicle ?? ({} as VehicleData))?.customerName
+        ? `Reserviert · ${selectReservedBooking(vehicle!)!.customerName}`
         : 'Fahrzeug ist reserviert.';
     }
   }

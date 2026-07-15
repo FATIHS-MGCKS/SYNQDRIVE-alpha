@@ -13,10 +13,12 @@ import type {
 import type { VehicleTelemetryFreshness } from './controlSignalsBuilder';
 import { isVehicleReadyToRent, parseEventTime, type ReadyToRentOptions } from './dashboardUtils';
 import type { DashboardRuntimeModel, RuntimeReason, VehicleRuntimeState } from './runtime';
-import { VEHICLE_OPERATIONAL_STATUS } from '../../lib/vehicle-operational-state';
 import {
-  selectFleetOperationalStatus,
-  selectFleetReservedBooking,
+  selectOperationalStatus,
+  selectReservedBooking,
+  VEHICLE_OPERATIONAL_STATUS,
+} from '../../lib/vehicle-operational-state';
+import {
   selectFleetReservedIsOverdue,
   selectFleetReservedPickupAt,
 } from '../../lib/fleet-map-vehicle-selectors';
@@ -259,7 +261,7 @@ export function derivePredictiveOperationsInsights(input: {
           : `in ${hoursUntil}h`
         : p.time;
 
-    const vehicleOpStatus = vehicle ? selectFleetOperationalStatus(vehicle) : null;
+    const vehicleOpStatus = vehicle ? selectOperationalStatus(vehicle) : null;
     const ready = runtimeState
       ? runtimeState.isReadyToRent
       : vehicle &&
@@ -497,7 +499,7 @@ export function derivePredictiveOperationsInsights(input: {
     const blocked = runtimeState ? runtimeState.isBlocked : isRentalBlocked(v.id, input.healthMap);
     const maintenance = runtimeState
       ? runtimeState.isMaintenance
-      : selectFleetOperationalStatus(v) === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE;
+      : selectOperationalStatus(v) === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE;
     if (!blocked && !maintenance) continue;
 
     const reservedPickupAt = selectFleetReservedPickupAt(v);
@@ -523,17 +525,17 @@ export function derivePredictiveOperationsInsights(input: {
       sourceData: de
         ? reasonSummary(
             runtimeState?.blockReasons ?? [],
-            `Runtime: ${runtimeState?.rentalReadiness ?? selectFleetOperationalStatus(v)}${
-              selectFleetReservedBooking(v)?.bookingId
-                ? ` · BK ${selectFleetReservedBooking(v)!.bookingId}`
+            `Runtime: ${runtimeState?.rentalReadiness ?? selectOperationalStatus(v)}${
+              selectReservedBooking(v)?.bookingId
+                ? ` · BK ${selectReservedBooking(v)!.bookingId}`
                 : ''
             }`,
           )
         : reasonSummary(
             runtimeState?.blockReasons ?? [],
-            `Runtime: ${runtimeState?.rentalReadiness ?? selectFleetOperationalStatus(v)}${
-              selectFleetReservedBooking(v)?.bookingId
-                ? ` · BK ${selectFleetReservedBooking(v)!.bookingId}`
+            `Runtime: ${runtimeState?.rentalReadiness ?? selectOperationalStatus(v)}${
+              selectReservedBooking(v)?.bookingId
+                ? ` · BK ${selectReservedBooking(v)!.bookingId}`
                 : ''
             }`,
           ),
@@ -544,7 +546,7 @@ export function derivePredictiveOperationsInsights(input: {
       timeSortMs: startMs ?? now,
       cta: 'open-vehicle',
       vehicleId: v.id,
-      bookingId: linkedPickup?.bookingId || selectFleetReservedBooking(v)?.bookingId || undefined,
+      bookingId: linkedPickup?.bookingId || selectReservedBooking(v)?.bookingId || undefined,
       isOverdue: !!(v.reservedIsOverdue || linkedPickup?.isOverdue),
     });
   }

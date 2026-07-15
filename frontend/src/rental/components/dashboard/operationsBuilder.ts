@@ -16,7 +16,13 @@ import type {
 import type { StatusTone } from '../../../components/patterns';
 import { parseEventTime } from './dashboardUtils';
 import type { RuntimeReason, VehicleRuntimeState } from './runtime';
-import { VEHICLE_OPERATIONAL_STATUS } from '../../lib/vehicle-operational-state';
+import {
+  selectIsCurrentlyAvailable,
+  selectIsCurrentlyRented,
+  selectIsInPickupReservationWindow,
+  selectOperationalStatus,
+  VEHICLE_OPERATIONAL_STATUS,
+} from '../../lib/vehicle-operational-state';
 
 const MS_MIN = 60_000;
 const MS_HOUR = 60 * MS_MIN;
@@ -82,9 +88,14 @@ function deriveRisks(
     } else if (!runtimeState.isReadyToRent) {
       risks.push(reason?.title ?? (de ? 'Fahrzeug nicht bereit' : 'Vehicle not ready'));
     }
-  } else if (ctx.isPickup && vehicle?.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) {
+  } else if (ctx.isPickup && vehicle && selectOperationalStatus(vehicle) === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) {
     risks.push(de ? 'Fahrzeug in Wartung' : 'Vehicle in maintenance');
-  } else if (ctx.isPickup && vehicle && vehicle.status !== VEHICLE_OPERATIONAL_STATUS.AVAILABLE && vehicle.status !== VEHICLE_OPERATIONAL_STATUS.RESERVED) {
+  } else if (
+    ctx.isPickup &&
+    vehicle &&
+    !selectIsCurrentlyAvailable(vehicle) &&
+    !selectIsInPickupReservationWindow(vehicle)
+  ) {
     risks.push(de ? 'Fahrzeug nicht bereit' : 'Vehicle not ready');
   }
 
@@ -208,7 +219,10 @@ function vehicleBlockedForPickup(
     );
   }
   if (!vehicle) return false;
-  return vehicle.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED || vehicle.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE;
+  return (
+    selectIsCurrentlyRented(vehicle) ||
+    selectOperationalStatus(vehicle) === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE
+  );
 }
 
 export interface BuildOperationsInput {
@@ -365,7 +379,7 @@ function buildMaintenanceItems(
   }
 
   for (const v of input.fleetById.values()) {
-    if (v.status !== VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) continue;
+    if (selectOperationalStatus(v) !== VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) continue;
     items.push({
       id: `maint-${v.id}`,
       type: 'maintenance',

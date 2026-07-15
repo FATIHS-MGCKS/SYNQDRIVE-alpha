@@ -6,6 +6,23 @@ import {
   type VehicleOperationalState,
   type VehicleOperationalStatus,
 } from './vehicle-operational-state';
+import {
+  selectActiveBooking,
+  selectBookingContext,
+  selectCanBeConsideredForRentalReadiness,
+  selectFutureBookingCount,
+  selectIsCurrentlyAvailable,
+  selectIsCurrentlyRented,
+  selectIsInPickupReservationWindow,
+  selectIsStatusReliable,
+  selectNextBooking,
+  selectOperationalState,
+  selectOperationalStatus,
+  selectOperationalStatusLabel,
+  selectOperationalStatusReason,
+  selectReservedBooking,
+  type VehicleOperationalReadModel,
+} from './vehicle-operational-state/selectors';
 
 /** Runtime dashboard key (lowercase) — distinct from canonical `VehicleOperationalStatus`. */
 export type RuntimeOperationalStatusKey =
@@ -16,80 +33,33 @@ export type RuntimeOperationalStatusKey =
   | 'unavailable'
   | 'unknown';
 
-export type VehicleOperationalReadModel = Pick<
-  VehicleData,
-  | 'status'
-  | 'rawVehicleStatus'
-  | 'operationalState'
-  | 'bookingContext'
-  | 'dataQualityState'
-  | 'dataQualityReasons'
-  | 'isReliable'
-  | 'reservedBookingId'
-  | 'reservedCustomerName'
-  | 'reservedPickupAt'
-  | 'reservedReturnAt'
-  | 'reservedPickupStationName'
-  | 'reservedIsOverdue'
-  | 'activeBookingId'
-  | 'activeCustomerName'
-  | 'activeStartAt'
-  | 'activeReturnAt'
-  | 'activeReturnStationName'
-  | 'activeKmIncluded'
-  | 'activeKmDriven'
-  | 'activeIsOverdue'
->;
+export type { VehicleOperationalReadModel };
 
-function legacyActiveBooking(vehicle: VehicleOperationalReadModel): VehicleBookingReference | null {
-  if (!vehicle.activeBookingId) return null;
-  return {
-    bookingId: vehicle.activeBookingId,
-    customerName: vehicle.activeCustomerName ?? null,
-    pickupAt: vehicle.activeStartAt ?? null,
-    returnAt: vehicle.activeReturnAt ?? null,
-    pickupStationName: null,
-    returnStationName: vehicle.activeReturnStationName ?? null,
-    isOverdue: Boolean(vehicle.activeIsOverdue),
-  };
-}
+/** @deprecated Use `VehicleOperationalReadModel` from `vehicle-operational-state`. */
+export type FleetVehicleOperationalReadModel = VehicleOperationalReadModel &
+  Pick<
+    VehicleData,
+    | 'reservedBookingId'
+    | 'reservedCustomerName'
+    | 'reservedPickupAt'
+    | 'reservedReturnAt'
+    | 'reservedPickupStationName'
+    | 'reservedIsOverdue'
+    | 'activeBookingId'
+    | 'activeCustomerName'
+    | 'activeStartAt'
+    | 'activeReturnAt'
+    | 'activeReturnStationName'
+    | 'activeKmIncluded'
+    | 'activeKmDriven'
+    | 'activeIsOverdue'
+  >;
 
-function legacyReservedBooking(vehicle: VehicleOperationalReadModel): VehicleBookingReference | null {
-  if (!vehicle.reservedBookingId) return null;
-  return {
-    bookingId: vehicle.reservedBookingId,
-    customerName: vehicle.reservedCustomerName ?? null,
-    pickupAt: vehicle.reservedPickupAt ?? null,
-    returnAt: vehicle.reservedReturnAt ?? null,
-    pickupStationName: vehicle.reservedPickupStationName ?? null,
-    returnStationName: null,
-    isOverdue: Boolean(vehicle.reservedIsOverdue),
-  };
-}
+/** @deprecated Use `selectOperationalStatus`. */
+export const selectFleetOperationalStatus = selectOperationalStatus;
 
-/** Canonical operational status — never reads rawVehicleStatus. */
-export function selectFleetOperationalStatus(
-  vehicle: Pick<VehicleOperationalReadModel, 'operationalState' | 'status'>,
-): VehicleOperationalStatus {
-  return vehicle.operationalState?.status ?? vehicle.status;
-}
-
-export function selectFleetOperationalState(
-  vehicle: Pick<VehicleOperationalReadModel, 'operationalState' | 'status' | 'dataQualityState' | 'isReliable' | 'dataQualityReasons'>,
-): VehicleOperationalState {
-  if (vehicle.operationalState) return vehicle.operationalState;
-  return {
-    status: vehicle.status,
-    reason: null,
-    source: null,
-    effectiveFrom: null,
-    effectiveUntil: null,
-    derivedAt: null,
-    dataQualityState: vehicle.dataQualityState ?? null,
-    dataQualityReasons: vehicle.dataQualityReasons ?? [],
-    isReliable: vehicle.isReliable ?? true,
-  };
-}
+/** @deprecated Use `selectOperationalState`. */
+export const selectFleetOperationalState = selectOperationalState;
 
 export function selectFleetRawVehicleStatus(
   vehicle: Pick<VehicleOperationalReadModel, 'rawVehicleStatus' | 'status'>,
@@ -97,46 +67,27 @@ export function selectFleetRawVehicleStatus(
   return vehicle.rawVehicleStatus ?? vehicle.status;
 }
 
-export function selectFleetBookingContext(
-  vehicle: VehicleOperationalReadModel,
-): VehicleBookingContext {
-  if (vehicle.bookingContext) return vehicle.bookingContext;
-  return {
-    activeBooking: legacyActiveBooking(vehicle),
-    reservedBooking: legacyReservedBooking(vehicle),
-    nextBooking: null,
-    futureBookingCount: 0,
-  };
-}
+/** @deprecated Use `selectBookingContext`. */
+export const selectFleetBookingContext = selectBookingContext;
 
-export function selectFleetActiveBooking(
-  vehicle: VehicleOperationalReadModel,
-): VehicleBookingReference | null {
-  return selectFleetBookingContext(vehicle).activeBooking;
-}
+/** @deprecated Use `selectActiveBooking`. */
+export const selectFleetActiveBooking = selectActiveBooking;
 
-export function selectFleetReservedBooking(
-  vehicle: VehicleOperationalReadModel,
-): VehicleBookingReference | null {
-  return selectFleetBookingContext(vehicle).reservedBooking;
-}
+/** @deprecated Use `selectReservedBooking`. */
+export const selectFleetReservedBooking = selectReservedBooking;
 
-export function selectFleetNextBooking(
-  vehicle: VehicleOperationalReadModel,
-): VehicleBookingReference | null {
-  return selectFleetBookingContext(vehicle).nextBooking;
-}
+/** @deprecated Use `selectNextBooking`. */
+export const selectFleetNextBooking = selectNextBooking;
 
-export function selectFleetFutureBookingCount(vehicle: VehicleOperationalReadModel): number {
-  return selectFleetBookingContext(vehicle).futureBookingCount;
-}
+/** @deprecated Use `selectFutureBookingCount`. */
+export const selectFleetFutureBookingCount = selectFutureBookingCount;
 
 export function selectFleetActiveIsOverdue(vehicle: VehicleOperationalReadModel): boolean {
-  return selectFleetActiveBooking(vehicle)?.isOverdue ?? Boolean(vehicle.activeIsOverdue);
+  return selectActiveBooking(vehicle)?.isOverdue ?? Boolean(vehicle.activeIsOverdue);
 }
 
 export function selectFleetReservedIsOverdue(vehicle: VehicleOperationalReadModel): boolean {
-  return selectFleetReservedBooking(vehicle)?.isOverdue ?? Boolean(vehicle.reservedIsOverdue);
+  return selectReservedBooking(vehicle)?.isOverdue ?? Boolean(vehicle.reservedIsOverdue);
 }
 
 /** Maps canonical enum to dashboard runtime lowercase key. */
@@ -160,33 +111,31 @@ export function mapCanonicalOperationalStatusToRuntime(
 }
 
 export function selectFleetRuntimeOperationalStatus(
-  vehicle: Pick<VehicleOperationalReadModel, 'operationalState' | 'status'>,
+  vehicle: Pick<VehicleOperationalReadModel, 'operationalState' | 'status'> &
+    Partial<VehicleOperationalReadModel>,
 ): RuntimeOperationalStatusKey {
-  return mapCanonicalOperationalStatusToRuntime(selectFleetOperationalStatus(vehicle));
+  return mapCanonicalOperationalStatusToRuntime(selectOperationalStatus(vehicle));
 }
 
 /** Legacy flat-field accessors — backed by canonical booking context projection. */
 export function selectFleetReservedPickupAt(vehicle: VehicleOperationalReadModel): string | null {
-  return selectFleetReservedBooking(vehicle)?.pickupAt ?? vehicle.reservedPickupAt ?? null;
+  return selectReservedBooking(vehicle)?.pickupAt ?? vehicle.reservedPickupAt ?? null;
 }
 
 export function selectFleetReservedReturnAt(vehicle: VehicleOperationalReadModel): string | null {
-  return selectFleetReservedBooking(vehicle)?.returnAt ?? vehicle.reservedReturnAt ?? null;
+  return selectReservedBooking(vehicle)?.returnAt ?? vehicle.reservedReturnAt ?? null;
 }
 
 export function selectFleetActiveStartAt(vehicle: VehicleOperationalReadModel): string | null {
-  return selectFleetActiveBooking(vehicle)?.pickupAt ?? vehicle.activeStartAt ?? null;
+  return selectActiveBooking(vehicle)?.pickupAt ?? vehicle.activeStartAt ?? null;
 }
 
 export function selectFleetActiveReturnAt(vehicle: VehicleOperationalReadModel): string | null {
-  return selectFleetActiveBooking(vehicle)?.returnAt ?? vehicle.activeReturnAt ?? null;
+  return selectActiveBooking(vehicle)?.returnAt ?? vehicle.activeReturnAt ?? null;
 }
 
-export function selectFleetOperationalReason(
-  vehicle: Pick<VehicleOperationalReadModel, 'operationalState'>,
-): string | null {
-  return vehicle.operationalState?.reason ?? null;
-}
+/** @deprecated Use `selectOperationalStatusReason`. */
+export const selectFleetOperationalReason = selectOperationalStatusReason;
 
 export function selectFleetOperationalSource(
   vehicle: Pick<VehicleOperationalReadModel, 'operationalState'>,
@@ -200,8 +149,13 @@ export function selectFleetDataQualityReasons(
   return vehicle.operationalState?.dataQualityReasons ?? vehicle.dataQualityReasons ?? [];
 }
 
-export function selectFleetIsReliable(
-  vehicle: Pick<VehicleOperationalReadModel, 'operationalState' | 'isReliable'>,
-): boolean {
-  return vehicle.operationalState?.isReliable ?? Boolean(vehicle.isReliable);
-}
+/** @deprecated Use `selectIsStatusReliable`. */
+export const selectFleetIsReliable = selectIsStatusReliable;
+
+export {
+  selectCanBeConsideredForRentalReadiness,
+  selectIsCurrentlyAvailable,
+  selectIsCurrentlyRented,
+  selectIsInPickupReservationWindow,
+  selectOperationalStatusLabel,
+};
