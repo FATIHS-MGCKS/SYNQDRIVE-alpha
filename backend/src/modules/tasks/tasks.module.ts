@@ -7,11 +7,12 @@ import { VehicleCleaningTaskService } from './vehicle-cleaning-task.service';
 import { TaskLinkedObjectResolverService } from './task-linked-object-resolver.service';
 import { TaskAutomationOutboxCoreModule } from './outbox/task-automation-outbox-core.module';
 import { TaskDataDiagnosticService } from './diagnostic/task-data-diagnostic.service';
+import { TaskDataRepairService } from './diagnostic/task-data-repair.service';
 
 @Module({
   imports: [ActivityLogModule, TaskAutomationOutboxCoreModule],
   controllers: [TasksController],
-  providers: [TasksService, TaskAutomationService, VehicleCleaningTaskService, TaskLinkedObjectResolverService, TaskDataDiagnosticService],
-  exports: [TasksService, TaskAutomationService, VehicleCleaningTaskService, TaskLinkedObjectResolverService, TaskAutomationOutboxCoreModule, TaskDataDiagnosticService],
+  providers: [TasksService, TaskAutomationService, VehicleCleaningTaskService, TaskLinkedObjectResolverService, TaskDataDiagnosticService, TaskDataRepairService],
+  exports: [TasksService, TaskAutomationService, VehicleCleaningTaskService, TaskLinkedObjectResolverService, TaskAutomationOutboxCoreModule, TaskDataDiagnosticService, TaskDataRepairService],
 })
 export class TasksModule {}

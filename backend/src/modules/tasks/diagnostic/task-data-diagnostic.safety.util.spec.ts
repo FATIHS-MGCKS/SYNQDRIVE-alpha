@@ -1,4 +1,7 @@
-import { assertSafeDiagnosticDatabaseTarget } from './task-data-diagnostic.safety.util';
+import {
+  assertSafeDiagnosticDatabaseTarget,
+  assertSafeRepairDatabaseTarget,
+} from './task-data-diagnostic.safety.util';
 
 describe('assertSafeDiagnosticDatabaseTarget', () => {
   const originalEnv = { ...process.env };
@@ -29,5 +32,15 @@ describe('assertSafeDiagnosticDatabaseTarget', () => {
         databaseUrl: 'postgresql://user:pass@10.0.0.5:5432/synqdrive',
       }),
     ).toThrow(/local\/test/i);
+  });
+});
+
+describe('assertSafeRepairDatabaseTarget', () => {
+  it('blocks production-looking database urls for repair mode', () => {
+    expect(() =>
+      assertSafeRepairDatabaseTarget({
+        databaseUrl: 'postgresql://user:pass@db.synqdrive.eu:5432/synqdrive',
+      }),
+    ).toThrow(/production/i);
   });
 });
