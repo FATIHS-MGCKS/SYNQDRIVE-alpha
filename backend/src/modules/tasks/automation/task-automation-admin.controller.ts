@@ -5,6 +5,7 @@ import {
   Get,
   Param,
   Patch,
+  Post,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -13,6 +14,7 @@ import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 import {
   ResetTaskAutomationRuleOverrideDto,
+  SimulateTaskAutomationRuleDto,
   UpsertTaskAutomationRuleOverrideDto,
 } from '../dto/task-automation-admin.dto';
 import { TaskAutomationAdminService } from './task-automation-admin.service';
@@ -32,6 +34,28 @@ export class TaskAutomationAdminController {
   @RequirePermission('workflow-automation', 'read')
   getRule(@Param('orgId') orgId: string, @Param('ruleId') ruleId: string) {
     return this.admin.getRule(orgId, ruleId);
+  }
+
+  @Post('rules/:ruleId/simulate')
+  @RequirePermission('workflow-automation', 'read')
+  simulateRule(
+    @Param('orgId') orgId: string,
+    @Param('ruleId') ruleId: string,
+    @Body() body: SimulateTaskAutomationRuleDto,
+  ) {
+    const payload = body.proposedConfig
+      ? {
+          ...body.proposedConfig,
+          checklistOverrides: body.proposedConfig.checklistOverrides as
+            | Record<string, unknown>
+            | null
+            | undefined,
+        }
+      : null;
+    return this.admin.simulateRule(orgId, ruleId, {
+      proposedConfig: payload,
+      periodDays: body.periodDays,
+    });
   }
 
   @Patch('rules/:ruleId/override')
@@ -57,6 +81,6 @@ export class TaskAutomationAdminController {
     @Body() body: ResetTaskAutomationRuleOverrideDto,
     @Req() req: { user?: { id?: string } },
   ) {
-    return this.admin.resetOverride(orgId, ruleId, req.user?.id, body.expectedVersion);
+    return this.admin.resetOverride(orgId, ruleId, req.user?.id, body.expectedVersion, body.reason);
   }
 }

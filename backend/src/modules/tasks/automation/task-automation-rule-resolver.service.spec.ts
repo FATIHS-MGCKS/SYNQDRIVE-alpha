@@ -154,6 +154,26 @@ describe('TaskAutomationRuleResolverService', () => {
 describe('TaskAutomationRuleOverrideService', () => {
   const bookingPrepRule = getAutomationRuleByCatalogKey('BOOKING_PREPARATION');
   const audit = { record: jest.fn().mockResolvedValue('audit-1') };
+  const resolver = {
+    resolveTaskAutomationRule: jest.fn().mockResolvedValue({
+      ruleId: bookingPrepRule.ruleId,
+      effectivelyEnabled: true,
+      effective: {
+        enabled: true,
+        activationOffsetMinutes: 0,
+        dueOffsetMinutes: 0,
+        priority: 'NORMAL',
+        assignmentStrategy: 'STATION_FROM_BOOKING',
+        assignedUserId: null,
+        assignedRoleKey: null,
+        stationScope: null,
+        escalationConfig: null,
+        notificationConfig: null,
+        checklistOverrides: null,
+        ruleConfig: {},
+      },
+    }),
+  };
 
   const prisma = {
     orgTaskAutomationRuleOverride: {
@@ -176,7 +196,7 @@ describe('TaskAutomationRuleOverrideService', () => {
     },
   };
 
-  const service = new TaskAutomationRuleOverrideService(prisma as any, audit as any);
+  const service = new TaskAutomationRuleOverrideService(prisma as any, audit as any, resolver as any);
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -287,6 +307,15 @@ describe('TaskAutomationRuleOverrideService', () => {
     );
 
     expect(prisma.orgTaskAutomationRuleOverrideRevision.create).toHaveBeenCalled();
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metaJson: expect.objectContaining({
+          ruleId: bookingPrepRule.ruleId,
+          previousEffective: expect.any(Object),
+          newEffective: expect.any(Object),
+        }),
+      }),
+    );
     expect(prisma.orgTaskAutomationRuleOverride.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -330,6 +359,16 @@ describe('TaskAutomationRuleOverrideService', () => {
       previousVersion: 2,
     });
     expect(prisma.orgTaskAutomationRuleOverride.delete).toHaveBeenCalledWith({ where: { id: 'ov-1' } });
+    expect(audit.record).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'RESET',
+        metaJson: expect.objectContaining({
+          changeType: 'RESET',
+          previousEffective: expect.any(Object),
+          newEffective: expect.any(Object),
+        }),
+      }),
+    );
   });
 
   it('throws when resetting a missing override', async () => {

@@ -15,6 +15,8 @@ import { AuditService } from '@modules/activity-log/audit.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { requireAutomationRuleById } from './task-automation-rule.util';
 import { getOrgOverridableFieldKeys } from './task-automation-effective-rule.util';
+import { buildRuleChangeAuditMeta } from './task-automation-audit.util';
+import { TaskAutomationRuleResolverService } from './task-automation-rule-resolver.service';
 import type { TaskAutomationAssignmentStrategy } from './task-automation-rule.types';
 
 export const MIN_TASK_AUTOMATION_OFFSET_MINUTES = -10_080; // -7 days
@@ -44,6 +46,8 @@ export interface UpsertTaskAutomationRuleOverrideInput {
   notificationConfig?: Record<string, unknown> | null;
   checklistOverrides?: Record<string, unknown> | null;
   expectedVersion?: number;
+  /** Optional human reason stored in audit metadata (not persisted on override row). */
+  reason?: string | null;
 }
 
 @Injectable()
@@ -51,6 +55,7 @@ export class TaskAutomationRuleOverrideService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly resolver: TaskAutomationRuleResolverService,
   ) {}
 
   async upsertOverride(
@@ -68,6 +73,8 @@ export class TaskAutomationRuleOverrideService {
     this.assertOnlyAllowedFields(input, allowedFields);
     await this.validateTenantReferences(orgId, input, allowedFields);
     this.validateFieldValues(input, allowedFields);
+
+    const previousResolved = await this.resolver.resolveTaskAutomationRule(orgId, ruleId);
 
     const existing = await this.prisma.orgTaskAutomationRuleOverride.findUnique({
       where: { organizationId_ruleId: { organizationId: orgId, ruleId } },
@@ -130,7 +137,16 @@ export class TaskAutomationRuleOverrideService {
       entity: ActivityEntity.TASK_AUTOMATION_RULE,
       entityId: row.id,
       description: `${existing ? 'Updated' : 'Created'} task automation override for ${ruleId}`,
-      metaJson: { ruleId, version: row.version },
+      metaJson: buildRuleChangeAuditMeta({
+        ruleId,
+        version: row.version,
+        previousEffective: previousResolved.effective,
+        newEffective: (
+          await this.resolver.resolveTaskAutomationRule(orgId, ruleId)
+        ).effective,
+        reason: input.reason,
+        changeType: existing ? 'UPDATE' : 'CREATE',
+      }),
     });
 
     return row;
@@ -141,6 +157,7 @@ export class TaskAutomationRuleOverrideService {
     ruleId: string,
     actorUserId?: string,
     expectedVersion?: number,
+    reason?: string | null,
   ) {
     const existing = await this.prisma.orgTaskAutomationRuleOverride.findUnique({
       where: { organizationId_ruleId: { organizationId: orgId, ruleId } },
@@ -153,6 +170,8 @@ export class TaskAutomationRuleOverrideService {
         `Override version conflict for ${ruleId}: expected ${expectedVersion}, actual ${existing.version}`,
       );
     }
+
+    const previousResolved = await this.resolver.resolveTaskAutomationRule(orgId, ruleId);
 
     await this.recordRevision({
       overrideId: existing.id,
@@ -173,7 +192,14 @@ export class TaskAutomationRuleOverrideService {
       entity: ActivityEntity.TASK_AUTOMATION_RULE,
       entityId: existing.id,
       description: `Reset task automation override for ${ruleId}`,
-      metaJson: { ruleId, version: existing.version },
+      metaJson: buildRuleChangeAuditMeta({
+        ruleId,
+        version: existing.version,
+        previousEffective: previousResolved.effective,
+        newEffective: (await this.resolver.resolveTaskAutomationRule(orgId, ruleId)).effective,
+        reason: null,
+        changeType: 'RESET',
+      }),
     });
 
     return { ruleId, reset: true, previousVersion: existing.version };

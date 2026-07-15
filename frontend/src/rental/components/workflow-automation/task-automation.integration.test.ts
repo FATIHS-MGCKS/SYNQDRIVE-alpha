@@ -14,7 +14,7 @@ describe('task automation workflow integration', () => {
     expect(appSource).toContain("hasPermission('workflow-automation', 'read')");
     expect(appSource).toContain("hasPermission('workflow-automation', 'write')");
     expect(workflowSource).toContain('Aufgaben-Automationen');
-    expect(workflowSource).toContain('TaskAutomationRulesSection');
+    expect(workflowSource).toContain('TaskAutomationSimulationPanel');
     expect(sidebarSource).toContain("hasPermission('workflow-automation', 'read')");
   });
 
@@ -22,5 +22,6 @@ describe('task automation workflow integration', () => {
     const apiSource = readFileSync(resolve(rentalDir, '../lib/api.ts'), 'utf8');
     expect(apiSource).toContain('taskAutomation:');
     expect(apiSource).toContain('/task-automation/rules');
+    expect(apiSource).toContain('/simulate');
   });
 });

@@ -19,6 +19,7 @@ import {
 } from './task-automation-display.util';
 import { getOrgOverridableFieldKeys } from './task-automation-effective-rule.util';
 import { TaskAutomationRuleOverrideService } from './task-automation-rule-override.service';
+import { TaskAutomationSimulationService } from './task-automation-simulation.service';
 import { TaskAutomationRuleResolverService } from './task-automation-rule-resolver.service';
 import { listMaterializationAutomationRules } from './task-automation-rule.util';
 import type {
@@ -99,6 +100,7 @@ export class TaskAutomationAdminService {
     private readonly prisma: PrismaService,
     private readonly resolver: TaskAutomationRuleResolverService,
     private readonly overrideService: TaskAutomationRuleOverrideService,
+    private readonly simulation: TaskAutomationSimulationService,
   ) {}
 
   async listRules(orgId: string): Promise<TaskAutomationRulesOverviewDto> {
@@ -174,9 +176,21 @@ export class TaskAutomationAdminService {
     ruleId: string,
     actorUserId?: string,
     expectedVersion?: number,
+    reason?: string | null,
   ) {
-    await this.overrideService.resetOverride(orgId, ruleId, actorUserId, expectedVersion);
+    await this.overrideService.resetOverride(orgId, ruleId, actorUserId, expectedVersion, reason);
     return this.getRule(orgId, ruleId);
+  }
+
+  simulateRule(
+    orgId: string,
+    ruleId: string,
+    input: {
+      proposedConfig?: Parameters<TaskAutomationRuleOverrideService['upsertOverride']>[2] | null;
+      periodDays?: number;
+    },
+  ) {
+    return this.simulation.simulate(orgId, ruleId, input);
   }
 
   private toAdminDto(

@@ -21,12 +21,16 @@ describe('TaskAutomationAdminController security', () => {
     expect(guards).toEqual(expect.arrayContaining([OrgScopingGuard, PermissionsGuard]));
   });
 
-  it('requires workflow-automation read for list/get', () => {
+  it('requires workflow-automation read for list/get/simulate', () => {
     expect(permissionOf(TaskAutomationAdminController.prototype, 'listRules')).toEqual({
       module: 'workflow-automation',
       level: 'read',
     });
     expect(permissionOf(TaskAutomationAdminController.prototype, 'getRule')).toEqual({
+      module: 'workflow-automation',
+      level: 'read',
+    });
+    expect(permissionOf(TaskAutomationAdminController.prototype, 'simulateRule')).toEqual({
       module: 'workflow-automation',
       level: 'read',
     });
@@ -54,6 +58,7 @@ describe('TaskAutomationAdminController', () => {
     getRule: jest.fn(),
     upsertOverride: jest.fn(),
     resetOverride: jest.fn(),
+    simulateRule: jest.fn(),
   };
 
   const controller = new TaskAutomationAdminController(admin as any);
@@ -89,6 +94,21 @@ describe('TaskAutomationAdminController', () => {
     expect(admin.upsertOverride).toHaveBeenCalledWith(orgId, ruleId, body, actor.id);
   });
 
+  it('runs read-only simulation without persisting overrides', async () => {
+    const payload = { summaryDe: 'Schätzung' };
+    admin.simulateRule.mockResolvedValue(payload);
+
+    await expect(
+      controller.simulateRule(orgId, ruleId, { proposedConfig: { priority: 'HIGH' }, periodDays: 30 }),
+    ).resolves.toEqual(payload);
+
+    expect(admin.simulateRule).toHaveBeenCalledWith(orgId, ruleId, {
+      proposedConfig: { priority: 'HIGH' },
+      periodDays: 30,
+    });
+    expect(admin.upsertOverride).not.toHaveBeenCalled();
+  });
+
   it('resets override with actor user id', async () => {
     const body = { expectedVersion: 3 };
     const payload = { ruleId, hasOrgOverride: false };
@@ -97,6 +117,6 @@ describe('TaskAutomationAdminController', () => {
     await expect(controller.resetOverride(orgId, ruleId, body, { user: actor })).resolves.toEqual(
       payload,
     );
-    expect(admin.resetOverride).toHaveBeenCalledWith(orgId, ruleId, actor.id, 3);
+    expect(admin.resetOverride).toHaveBeenCalledWith(orgId, ruleId, actor.id, 3, undefined);
   });
 });

@@ -118,4 +118,35 @@ export type TaskAutomationOverridePayload = Partial<{
   stationScope: string | null;
   checklistOverrides: TaskAutomationChecklistOverrideForm | null;
   expectedVersion: number;
+  reason?: string | null;
 }>;
+
+export interface TaskAutomationSimulationExample {
+  labelDe: string;
+  contextDe?: string;
+  outcomeDe: 'created' | 'deduplicated' | 'active' | 'auto_resolved' | 'skipped' | 'trigger_only';
+}
+
+export interface TaskAutomationSimulationResult {
+  ruleId: string;
+  catalogKey: string;
+  nameDe: string;
+  disclaimerDe: string;
+  period: { from: string; to: string; days: number };
+  proposedEffectivelyEnabled: boolean;
+  dataQuality: {
+    complete: boolean;
+    warningsDe: string[];
+    entitiesScanned: number;
+    entitiesTruncated: boolean;
+  };
+  estimates: {
+    triggerEvents: number;
+    tasksWouldBeCreated: number;
+    deduplicatedMerges: number;
+    currentlyActive: number;
+    autoResolved: number;
+  };
+  summaryDe: string;
+  examples: TaskAutomationSimulationExample[];
+};

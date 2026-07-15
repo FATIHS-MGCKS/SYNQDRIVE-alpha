@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ClipboardList, RefreshCw, RotateCcw, Save } from 'lucide-react';
+import { AlertTriangle, ClipboardList, RotateCcw, Save } from 'lucide-react';
 import { toast } from 'sonner';
+import { api } from '../../../lib/api';
 import { Button } from '../../../components/ui/button';
 import { DetailDrawer } from '../../../components/patterns';
+import { useRentalOrg } from '../../RentalContext';
 import { RuleValueTile } from '../../shared/rental-requirements-ui';
-import type { TaskAutomationOverrideFormState, TaskAutomationRuleDto } from './task-automation.types';
+import { TaskAutomationSimulationPanel } from './TaskAutomationSimulationPanel';
+import type {
+  TaskAutomationOverrideFormState,
+  TaskAutomationRuleDto,
+  TaskAutomationSimulationResult,
+} from './task-automation.types';
 import {
   buildFormStateFromRule,
   buildOverridePayload,
@@ -14,6 +21,7 @@ import {
   labelAssignmentDe,
   labelPriorityDe,
   labelTaskAutomationSourceDe,
+  parseApiError,
   summarizeChecklistState,
 } from './task-automation.utils';
 
@@ -176,15 +184,51 @@ export function TaskAutomationRuleDrawer({
   onSave,
   onReset,
 }: TaskAutomationRuleDrawerProps) {
+  const { orgId } = useRentalOrg();
   const [form, setForm] = useState<TaskAutomationOverrideFormState | null>(null);
   const [disableWarningAck, setDisableWarningAck] = useState(false);
+  const [changeReason, setChangeReason] = useState('');
+  const [simulation, setSimulation] = useState<TaskAutomationSimulationResult | null>(null);
+  const [simulationLoading, setSimulationLoading] = useState(false);
+  const [simulationError, setSimulationError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && rule) {
       setForm(buildFormStateFromRule(rule));
       setDisableWarningAck(false);
+      setChangeReason('');
     }
   }, [open, rule]);
+
+  const simulationPayload = useMemo(() => {
+    if (!rule || !form) return null;
+    return buildOverridePayload(rule, form);
+  }, [rule, form]);
+
+  useEffect(() => {
+    if (!open || !orgId || !rule || !form) {
+      setSimulation(null);
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      setSimulationLoading(true);
+      setSimulationError(null);
+      void api.taskAutomation
+        .simulateRule(orgId, rule.ruleId, {
+          proposedConfig: simulationPayload ?? undefined,
+          periodDays: 30,
+        })
+        .then((result) => setSimulation(result))
+        .catch((error: unknown) => {
+          setSimulation(null);
+          setSimulationError(parseApiError(error));
+        })
+        .finally(() => setSimulationLoading(false));
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+  }, [open, orgId, rule, form, simulationPayload]);
 
   const changedFields = useMemo(() => {
     if (!rule || !form) return new Set<string>();
@@ -217,7 +261,10 @@ export function TaskAutomationRuleDrawer({
       return;
     }
     try {
-      const payload = buildOverridePayload(rule, form);
+      const payload = {
+        ...buildOverridePayload(rule, form),
+        ...(changeReason.trim() ? { reason: changeReason.trim() } : {}),
+      };
       await onSave(rule.ruleId, payload);
       toast.success('Aufgaben-Automation gespeichert');
       onOpenChange(false);
@@ -356,6 +403,28 @@ export function TaskAutomationRuleDrawer({
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Konfiguration
           </h3>
+
+          <TaskAutomationSimulationPanel
+            simulation={simulation}
+            loading={simulationLoading}
+            error={simulationError}
+          />
+
+          {canWrite && (
+            <div className="rounded-lg border border-border/60 px-3 py-2.5">
+              <label className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Änderungsgrund (optional)
+              </label>
+              <textarea
+                value={changeReason}
+                onChange={(e) => setChangeReason(e.target.value)}
+                rows={2}
+                maxLength={500}
+                placeholder="z. B. Pickup-Fenster für Station Nord verkürzen"
+                className="mt-1.5 w-full rounded-md border border-border bg-background px-2.5 py-2 text-sm"
+              />
+            </div>
+          )}
 
           {allowed.has('enabled') && (
             <ToggleField

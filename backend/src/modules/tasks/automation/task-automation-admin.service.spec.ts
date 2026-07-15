@@ -22,7 +22,14 @@ describe('TaskAutomationAdminService', () => {
     resetOverride: jest.fn(),
   };
 
-  const service = new TaskAutomationAdminService(prisma as any, resolver as any, overrideService as any);
+  const simulation = { simulate: jest.fn() };
+
+  const service = new TaskAutomationAdminService(
+    prisma as any,
+    resolver as any,
+    overrideService as any,
+    simulation as any,
+  );
 
   const baseResolved = {
     ruleId: bookingPrepRule.ruleId,

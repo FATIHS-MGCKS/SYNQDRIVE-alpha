@@ -94,6 +94,11 @@ export class UpsertTaskAutomationRuleOverrideDto {
   @IsInt()
   @Min(1)
   expectedVersion?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string | null;
 }
 
 export class ResetTaskAutomationRuleOverrideDto {
@@ -101,4 +106,21 @@ export class ResetTaskAutomationRuleOverrideDto {
   @IsInt()
   @Min(1)
   expectedVersion?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  reason?: string | null;
+}
+
+export class SimulateTaskAutomationRuleDto {
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpsertTaskAutomationRuleOverrideDto)
+  proposedConfig?: UpsertTaskAutomationRuleOverrideDto | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  periodDays?: number;
 }

@@ -3753,13 +3753,33 @@ export const api = {
         `/organizations/${orgId}/task-automation/rules/${encodeURIComponent(ruleId)}/override`,
         data,
       ),
-    resetOverride: (orgId: string, ruleId: string, expectedVersion?: number) =>
+    resetOverride: (
+      orgId: string,
+      ruleId: string,
+      expectedVersion?: number,
+      reason?: string | null,
+    ) =>
       request<import('../rental/components/workflow-automation/task-automation.types').TaskAutomationRuleDto>(
         `/organizations/${orgId}/task-automation/rules/${encodeURIComponent(ruleId)}/override`,
         {
           method: 'DELETE',
-          body: JSON.stringify(expectedVersion != null ? { expectedVersion } : {}),
+          body: JSON.stringify({
+            ...(expectedVersion != null ? { expectedVersion } : {}),
+            ...(reason ? { reason } : {}),
+          }),
         },
+      ),
+    simulateRule: (
+      orgId: string,
+      ruleId: string,
+      data?: {
+        proposedConfig?: import('../rental/components/workflow-automation/task-automation.types').TaskAutomationOverridePayload | null;
+        periodDays?: number;
+      },
+    ) =>
+      post<import('../rental/components/workflow-automation/task-automation.types').TaskAutomationSimulationResult>(
+        `/organizations/${orgId}/task-automation/rules/${encodeURIComponent(ruleId)}/simulate`,
+        data ?? {},
       ),
   },
   workflows: {
