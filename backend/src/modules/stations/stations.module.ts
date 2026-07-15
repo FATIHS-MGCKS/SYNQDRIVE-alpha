@@ -3,8 +3,10 @@ import { StationsController } from './stations.controller';
 import { StationsService } from './stations.service';
 import { StationValidationService } from './station-validation.service';
 import { StationMapboxService } from './station-mapbox.service';
+import { VehiclesModule } from '../vehicles/vehicles.module';
 
 @Module({
+  imports: [VehiclesModule],
   controllers: [StationsController],
   providers: [StationsService, StationValidationService, StationMapboxService],
   exports: [StationsService, StationValidationService],

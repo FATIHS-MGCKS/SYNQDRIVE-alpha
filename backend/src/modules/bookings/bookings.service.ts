@@ -52,6 +52,12 @@ import {
 } from './booking-day-window.util';
 import { BookingPaymentCardService } from '@modules/payments/booking-payment-card.service';
 import { VehicleRawStatusWriteService } from '@modules/vehicles/vehicle-raw-status-write.service';
+import { VehiclesService } from '@modules/vehicles/vehicles.service';
+import type { FleetBookingContextDto } from '@modules/vehicles/domain/vehicle-booking-context.serializer';
+import type {
+  FleetOperationalStateDto,
+  FleetRawVehicleStatusDto,
+} from '@modules/vehicles/domain/vehicle-operational-state.serializer';
 
 const BOOKING_STATUS_DISPLAY: Record<string, string> = {
   PENDING: 'Pending',
@@ -95,6 +101,7 @@ export class BookingsService {
     @Inject(forwardRef(() => BookingPaymentCardService))
     private readonly bookingPaymentCardService: BookingPaymentCardService,
     private readonly vehicleRawStatusWrite: VehicleRawStatusWriteService,
+    private readonly vehiclesService: VehiclesService,
   ) {}
 
   /**
@@ -799,7 +806,7 @@ export class BookingsService {
   async findDetail(orgId: string, id: string): Promise<BookingDetailDto | null> {
     const b = await this.prisma.booking.findFirst({
       where: { id, organizationId: orgId },
-      include: { customer: true, vehicle: true },
+      include: { customer: true, vehicle: { include: { latestState: true } } },
     });
     if (!b) return null;
 
@@ -824,7 +831,32 @@ export class BookingsService {
       status: string | null;
       vehicleName: string | null;
       mileageKm: number | null;
+      tankCapacityLiters: number | null;
+      latestState: {
+        odometerKm?: number | null;
+        evSoc?: number | null;
+        fuelLevelRelative?: number | null;
+        fuelLevelAbsolute?: number | null;
+        rawPayloadJson?: unknown;
+      } | null;
     };
+
+    const fleetBundle = await this.vehiclesService.loadFleetOperationalContext(
+      orgId,
+      [vehicle.id],
+    );
+    const vehicleFleetCtx = this.vehiclesService.projectFleetOperationalForVehicle(
+      {
+        id: vehicle.id,
+        organizationId: orgId,
+        status: vehicle.status,
+        licensePlate: vehicle.licensePlate,
+        tankCapacityLiters: vehicle.tankCapacityLiters,
+        latestState: vehicle.latestState,
+      },
+      fleetBundle,
+      { includeRawVehicleStatus: true },
+    );
 
     const stationIds = [
       b.pickupStationId,
@@ -1137,7 +1169,12 @@ export class BookingsService {
         make: vehicle.make,
         model: vehicle.model,
         year: vehicle.year,
-        vehicleStatus: vehicle.status,
+        vehicleStatus: vehicleFleetCtx.status,
+        operationalState: vehicleFleetCtx.operationalState,
+        bookingContext: vehicleFleetCtx.bookingContext,
+        ...(vehicleFleetCtx.rawVehicleStatus
+          ? { rawVehicleStatus: vehicleFleetCtx.rawVehicleStatus }
+          : {}),
         rentalBlocked: rentalHealth?.rental_blocked ?? false,
         blockingReasons: rentalHealth?.blocking_reasons ?? [],
         odometerKm: vehicle.mileageKm,

@@ -38,7 +38,11 @@ describe('RentalRulesService', () => {
   beforeEach(() => {
     prisma = makePrisma();
     effective = new RentalEffectiveRulesService(prisma as any);
-    svc = new RentalRulesService(prisma as any, effective);
+    const vehiclesService = {
+      loadFleetOperationalContext: jest.fn(),
+      mapToCompactOperationalVehicle: jest.fn(),
+    } as unknown as import('../vehicles/vehicles.service').VehiclesService;
+    svc = new RentalRulesService(prisma as any, effective, vehiclesService);
   });
 
   it('blocks access to foreign organization category', async () => {

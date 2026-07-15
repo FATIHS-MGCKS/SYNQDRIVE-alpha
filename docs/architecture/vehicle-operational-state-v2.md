@@ -1388,7 +1388,8 @@ Jede Statusänderung erzeugt einen **ActivityLog**-Eintrag (`AuditService`) mit 
 | 2.3 | 2026-07-15 | §17 Domänen-Verantwortlichkeit + `VehicleRawStatusWriteService` (Prompt 19/43) |
 | 2.4 | 2026-07-15 | §16 API-Transport: `operationalState`-Serializer in Fleet-Read-Models (Prompt 20/43) |
 | 2.5 | 2026-07-15 | §16 API-Transport: `bookingContext`-Serializer + Legacy-Projektion aus kanonischen Refs (Prompt 21/43) |
+| 2.6 | 2026-07-15 | Unified fleet read-model projectors + legacy-endpoint inventory (Prompt 22/43) |
 
 ---
 
-*Spezifikation §1–§16 normativ; §17 Schreibgrenzen (Prompt 19); Fleet-API liefert `operationalState` via `vehicle-operational-state.serializer.ts` (Prompt 20) und `bookingContext` via `vehicle-booking-context.serializer.ts` (Prompt 21).*
+*Spezifikation §1–§16 normativ; §17 Schreibgrenzen (Prompt 19); Fleet-API liefert `operationalState` via `vehicle-operational-state.serializer.ts` (Prompt 20) und `bookingContext` via `vehicle-booking-context.serializer.ts` (Prompt 21). Alle migrierten Fleet-Reads nutzen `loadFleetOperationalContext` + `vehicle-fleet-read-model.projector.ts` (Prompt 22). Verbleibende Legacy-Endpunkte: `docs/architecture/vehicle-operational-state-legacy-endpoints.md`.*

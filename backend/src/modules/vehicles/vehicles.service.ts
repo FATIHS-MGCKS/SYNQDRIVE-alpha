@@ -92,6 +92,18 @@ import {
 } from './domain/vehicle-booking-context.serializer';
 import { serializeFleetOperationalStateProjection } from './domain/vehicle-operational-state.serializer';
 import {
+  buildCompactOperationalVehicleDto,
+  buildFleetMapVehicleDto,
+  interpretFleetVehicleTelemetry,
+  type FleetMapVehicleSource,
+  type FleetOperationalProjection,
+} from './domain/vehicle-fleet-read-model.projector';
+import type {
+  CompactOperationalVehicleDto,
+  FleetOperationalContextBundle,
+  FleetOperationalContextMultiOrgBundle,
+} from './domain/vehicle-fleet-read-model.types';
+import {
   buildRawStatusGuardLogEvent,
   isLegacyRentalRawStatus,
 } from './domain/vehicle-raw-status.guard';
@@ -201,6 +213,9 @@ export interface FleetMapVehicleDto
   cleaningStatus: string;
   stationId: string | null;
   stationName: string | null;
+  homeStationId: string | null;
+  currentStationId: string | null;
+  expectedStationId: string | null;
   latitude: number | null;
   longitude: number | null;
   lastSeenAt: string | null;
@@ -268,6 +283,175 @@ export class VehiclesService {
       })
       .catch(() => [] as { vehicleId: string; state: any }[]);
     return new Map(rows.map((r) => [r.vehicleId, { state: r.state }]));
+  }
+
+  /**
+   * Batched fleet operational context — single booking query per org scope.
+   * All fleet read endpoints MUST use this (or the multi-org variant) to avoid N+1.
+   */
+  async loadFleetOperationalContext(
+    organizationId: string,
+    vehicleIds: string[],
+  ): Promise<FleetOperationalContextBundle> {
+    const organizationTimezone =
+      await this.resolveOrganizationTimezone(organizationId);
+    const uniqueIds = Array.from(new Set(vehicleIds));
+    const [tripStateMap, bookingContextMap] = await Promise.all([
+      this.buildTripStateMap(uniqueIds),
+      this.buildBookingContextMap(
+        organizationId,
+        uniqueIds,
+        organizationTimezone,
+      ),
+    ]);
+    const activeBookingIds = Array.from(bookingContextMap.values())
+      .map((ctx) => ctx.activeBooking?.id ?? null)
+      .filter((id): id is string => !!id);
+    const pickupOdoByBooking = await this.fetchPickupOdometerMap(
+      organizationId,
+      activeBookingIds,
+    );
+    return {
+      organizationId,
+      organizationTimezone,
+      tripStateMap,
+      bookingContextMap,
+      pickupOdoByBooking,
+    };
+  }
+
+  /** Platform-admin paths — groups vehicles by org, one batched load per tenant. */
+  async loadFleetOperationalContextMultiOrg(
+    vehicles: Array<{ id: string; organizationId: string }>,
+  ): Promise<FleetOperationalContextMultiOrgBundle> {
+    const tripStateMap = await this.buildTripStateMap(
+      vehicles.map((v) => v.id),
+    );
+    const bookingContextMap = new Map<
+      string,
+      VehicleStateEngineBookingStateInput
+    >();
+    const pickupOdoByBooking = new Map<string, number>();
+    const organizationTimezoneByVehicleId = new Map<string, string>();
+    const organizationIdByVehicleId = new Map<string, string>();
+
+    const byOrg = new Map<string, string[]>();
+    for (const v of vehicles) {
+      organizationIdByVehicleId.set(v.id, v.organizationId);
+      const list = byOrg.get(v.organizationId) ?? [];
+      list.push(v.id);
+      byOrg.set(v.organizationId, list);
+    }
+
+    for (const [organizationId, vehicleIds] of byOrg) {
+      const bundle = await this.loadFleetOperationalContext(
+        organizationId,
+        vehicleIds,
+      );
+      for (const [vehicleId, state] of bundle.bookingContextMap) {
+        bookingContextMap.set(vehicleId, state);
+      }
+      for (const [bookingId, odo] of bundle.pickupOdoByBooking) {
+        pickupOdoByBooking.set(bookingId, odo);
+      }
+      for (const vehicleId of vehicleIds) {
+        organizationTimezoneByVehicleId.set(
+          vehicleId,
+          bundle.organizationTimezone,
+        );
+      }
+    }
+
+    return {
+      tripStateMap,
+      bookingContextMap,
+      pickupOdoByBooking,
+      organizationTimezoneByVehicleId,
+      organizationIdByVehicleId,
+    };
+  }
+
+  projectFleetOperationalForVehicle(
+    vehicle: {
+      id: string;
+      organizationId?: string;
+      status: VehicleStatus | string | null | undefined;
+      licensePlate?: string | null;
+      tankCapacityLiters?: number | null;
+      latestState?: FleetMapVehicleSource['latestState'];
+    },
+    bundle: FleetOperationalContextBundle,
+    options?: { includeRawVehicleStatus?: boolean },
+  ): FleetOperationalProjection {
+    const bookingState = resolveBookingStateForVehicle(
+      bundle.bookingContextMap,
+      vehicle.id,
+    );
+    return this.deriveFleetStatusContext(
+      {
+        vehicle,
+        state: vehicle.latestState ?? null,
+        bookingState,
+        pickupOdoByBooking: bundle.pickupOdoByBooking,
+        organizationId: bundle.organizationId,
+        organizationTimezone: bundle.organizationTimezone,
+      },
+      options,
+    );
+  }
+
+  mapToFleetMapVehicle(
+    vehicle: FleetMapVehicleSource,
+    bundle: FleetOperationalContextBundle,
+  ): FleetMapVehicleDto {
+    const tripState = bundle.tripStateMap.get(vehicle.id) ?? null;
+    const interpreted = interpretFleetVehicleTelemetry(
+      vehicle.latestState,
+      tripState,
+    );
+    const fleetCtx = this.projectFleetOperationalForVehicle(
+      {
+        id: vehicle.id,
+        organizationId: bundle.organizationId,
+        status: (vehicle as { status?: VehicleStatus }).status,
+        licensePlate: vehicle.licensePlate,
+        tankCapacityLiters: vehicle.tankCapacityLiters,
+        latestState: vehicle.latestState,
+      },
+      bundle,
+    );
+    return buildFleetMapVehicleDto({
+      vehicle: { ...vehicle, organizationId: bundle.organizationId },
+      fleetCtx,
+      interpreted,
+      heading: this.extractHeading(vehicle.latestState?.rawPayloadJson),
+    });
+  }
+
+  mapToCompactOperationalVehicle(
+    vehicle: {
+      id: string;
+      vehicleName?: string | null;
+      make?: string | null;
+      model: string;
+      licensePlate?: string | null;
+      status: VehicleStatus | string | null | undefined;
+      tankCapacityLiters?: number | null;
+      latestState?: FleetMapVehicleSource['latestState'];
+    },
+    bundle: FleetOperationalContextBundle,
+  ): CompactOperationalVehicleDto {
+    const fleetCtx = this.projectFleetOperationalForVehicle(vehicle, bundle);
+    const displayName =
+      vehicle.vehicleName?.trim() ||
+      [vehicle.make, vehicle.model].filter(Boolean).join(' ').trim() ||
+      vehicle.model;
+    return buildCompactOperationalVehicleDto({
+      id: vehicle.id,
+      displayName,
+      licensePlate: vehicle.licensePlate ?? null,
+      fleetCtx,
+    });
   }
 
   /**
@@ -509,6 +693,7 @@ export class VehiclesService {
   mapToRegisteredVehicle(
     v: any,
     tripStateMap?: Map<string, { state: any }>,
+    fleetBundle?: FleetOperationalContextMultiOrgBundle | FleetOperationalContextBundle,
   ) {
     const battery = v.batterySpecs?.[0];
     const tireSetup = v.tireSetups?.[0];
@@ -540,6 +725,47 @@ export class VehiclesService {
       tripState,
     );
 
+    let status =
+      VEHICLE_STATUS_MAP[v.status as VehicleStatus] ?? 'Available';
+    let operationalState: FleetOperationalStateDto | undefined;
+    let bookingContext: FleetBookingContextDto | undefined;
+    let rawVehicleStatus: FleetRawVehicleStatusDto | undefined;
+
+    if (fleetBundle) {
+      const organizationId =
+        'organizationId' in fleetBundle
+          ? fleetBundle.organizationId
+          : fleetBundle.organizationIdByVehicleId.get(v.id) ?? v.organizationId;
+      const organizationTimezone =
+        'organizationTimezone' in fleetBundle
+          ? fleetBundle.organizationTimezone
+          : fleetBundle.organizationTimezoneByVehicleId.get(v.id) ??
+            DEFAULT_ORGANIZATION_TIMEZONE;
+      const scopedBundle: FleetOperationalContextBundle = {
+        organizationId,
+        organizationTimezone,
+        tripStateMap: fleetBundle.tripStateMap,
+        bookingContextMap: fleetBundle.bookingContextMap,
+        pickupOdoByBooking: fleetBundle.pickupOdoByBooking,
+      };
+      const fleetCtx = this.projectFleetOperationalForVehicle(
+        {
+          id: v.id,
+          organizationId,
+          status: v.status,
+          licensePlate: v.licensePlate,
+          tankCapacityLiters: v.tankCapacityLiters,
+          latestState: state,
+        },
+        scopedBundle,
+        { includeRawVehicleStatus: true },
+      );
+      status = fleetCtx.status;
+      operationalState = fleetCtx.operationalState;
+      bookingContext = fleetCtx.bookingContext;
+      rawVehicleStatus = fleetCtx.rawVehicleStatus;
+    }
+
     return {
       id: v.id,
       vehicleName: v.vehicleName ?? `${v.make} ${v.model}`,
@@ -550,7 +776,10 @@ export class VehiclesService {
       organizationId: v.organizationId,
       organizationName: v.organization?.companyName ?? '',
       station: v.homeStation?.name ?? '',
-      status: VEHICLE_STATUS_MAP[v.status as VehicleStatus] ?? 'Available',
+      status,
+      ...(operationalState ? { operationalState } : {}),
+      ...(bookingContext ? { bookingContext } : {}),
+      ...(rawVehicleStatus ? { rawVehicleStatus } : {}),
       health: HEALTH_STATUS_MAP[v.healthStatus as HealthStatus] ?? 'Good',
       lastSignal: interpreted.lastSignal,
       online: interpreted.isFresh,
@@ -605,7 +834,7 @@ export class VehiclesService {
         v.serviceIntervalManufacturerMonths?.toString() ?? '',
       oilChangeIntervalKm: v.oilChangeIntervalKm?.toString() ?? '',
       oilChangeIntervalMonths: v.oilChangeIntervalMonths?.toString() ?? '',
-      operationalStatus: '',
+      operationalStatus: operationalState?.status ?? '',
       lastTuev: v.lastTuvDate?.toISOString() ?? '',
       lastBokraft: v.lastBokraftDate?.toISOString() ?? '',
       lastInspection: lastInspection?.eventDate?.toISOString() ?? '',
@@ -1005,27 +1234,22 @@ export class VehiclesService {
     ]);
 
     const vehicleIds = data.map((v) => v.id);
-    const orgTimezone = await this.resolveOrganizationTimezone(organizationId);
-    const [tripStateMap, bookingContextMap] = await Promise.all([
-      this.buildTripStateMap(vehicleIds),
-      this.buildBookingContextMap(organizationId, vehicleIds, orgTimezone),
-    ]);
-    const activeBookingIds = Array.from(bookingContextMap.values())
-      .map((ctx) => ctx.activeBooking?.id ?? null)
-      .filter((id): id is string => !!id);
-    const pickupOdoByBooking = await this.fetchPickupOdometerMap(
+    const fleetBundle = await this.loadFleetOperationalContext(
       organizationId,
-      activeBookingIds,
+      vehicleIds,
     );
 
     return buildPaginatedResult(
       data.map((v) =>
         this.mapToVehicleData(
           v,
-          tripStateMap,
-          bookingContextMap,
-          pickupOdoByBooking,
-          { organizationId, organizationTimezone: orgTimezone },
+          fleetBundle.tripStateMap,
+          fleetBundle.bookingContextMap,
+          fleetBundle.pickupOdoByBooking,
+          {
+            organizationId,
+            organizationTimezone: fleetBundle.organizationTimezone,
+          },
         ),
       ),
       total,
@@ -1105,102 +1329,14 @@ export class VehiclesService {
     });
 
     const vehicleIdsForMap = vehicles.map((v) => v.id);
-    const organizationTimezone =
-      await this.resolveOrganizationTimezone(organizationId);
-    const [tripStateMap, bookingContextMap] = await Promise.all([
-      this.buildTripStateMap(vehicleIdsForMap),
-      this.buildBookingContextMap(
-        organizationId,
-        vehicleIdsForMap,
-        organizationTimezone,
-      ),
-    ]);
-
-    const activeBookingIds = Array.from(bookingContextMap.values())
-      .map((ctx) => ctx.activeBooking?.id ?? null)
-      .filter((id): id is string => !!id);
-    const pickupOdoByBooking = await this.fetchPickupOdometerMap(
+    const fleetBundle = await this.loadFleetOperationalContext(
       organizationId,
-      activeBookingIds,
+      vehicleIdsForMap,
     );
 
-    const result: FleetMapVehicleDto[] = vehicles.map((vehicle) => {
-      const state = vehicle.latestState;
-      const tripState = tripStateMap.get(vehicle.id) ?? null;
-      const interpreted = interpretVehicleState(
-        {
-          lastSeenAt: state?.lastSeenAt ?? null,
-          speedKmh: state?.speedKmh ?? null,
-          isIgnitionOn: state?.isIgnitionOn ?? null,
-          engineLoad: state?.engineLoad ?? null,
-          tractionBatteryPowerKw: state?.tractionBatteryPowerKw ?? null,
-          coolantTempC: state?.coolantTempC ?? null,
-          odometerKm: state?.odometerKm ?? null,
-        },
-        tripState,
-      );
-
-      const bookingState = resolveBookingStateForVehicle(
-        bookingContextMap,
-        vehicle.id,
-      );
-      const fleetCtx = this.deriveFleetStatusContext({
-        vehicle: { ...vehicle, organizationId },
-        state,
-        bookingState,
-        pickupOdoByBooking,
-        organizationId,
-        organizationTimezone,
-      });
-      const isElectric =
-        vehicle.fuelType === FuelType.ELECTRIC ||
-        vehicle.fuelType === FuelType.PLUGIN_HYBRID;
-
-      return {
-        id: vehicle.id,
-        licensePlate: vehicle.licensePlate ?? null,
-        displayName:
-          vehicle.vehicleName ??
-          [vehicle.make, vehicle.model].filter(Boolean).join(' ').trim(),
-        make: vehicle.make ?? null,
-        model: vehicle.model,
-        year: vehicle.year ?? null,
-        status: fleetCtx.status,
-        operationalState: fleetCtx.operationalState,
-        bookingContext: fleetCtx.bookingContext,
-        fuelType: FUEL_TYPE_LABEL[vehicle.fuelType as FuelType] ?? 'Other',
-        healthStatus:
-          RENTAL_HEALTH_MAP[vehicle.healthStatus as HealthStatus] ?? 'Good Health',
-        cleaningStatus:
-          CLEANING_STATUS_MAP[vehicle.cleaningStatus as CleaningStatus] ?? 'Clean',
-        stationId: vehicle.homeStation?.id ?? null,
-        stationName: vehicle.homeStation?.name ?? null,
-        homeStationId: vehicle.homeStation?.id ?? null,
-        currentStationId: vehicle.currentStationId ?? null,
-        expectedStationId: vehicle.expectedStationId ?? null,
-        latitude: state?.latitude ?? null,
-        longitude: state?.longitude ?? null,
-        lastSeenAt: state?.lastSeenAt?.toISOString() ?? null,
-        signalAgeMs: interpreted.signalAgeMs,
-        isFresh: interpreted.isFresh,
-        onlineStatus: interpreted.onlineStatus,
-        telemetryFreshness: interpreted.telemetryFreshness,
-        displayState: interpreted.displayState,
-        displayIgnition: interpreted.displayIgnition,
-        isLiveTracking: interpreted.isLiveTracking,
-        heading: this.extractHeading(state?.rawPayloadJson),
-        imageUrl: vehicle.imageUrl ?? null,
-        odometerKm: fleetCtx.odometerKm,
-        fuelPercent: fleetCtx.fuelPercent,
-        evSoc: fleetCtx.evSoc,
-        isElectric,
-        ...fleetCtx.bookingDto,
-        activeKmDriven: fleetCtx.liveKmDriven,
-        nextBooking: fleetCtx.nextBooking,
-        futureBookingCount: fleetCtx.futureBookingCount,
-        ...fleetCtx.maintenanceCtx,
-      };
-    });
+    const result: FleetMapVehicleDto[] = vehicles.map((vehicle) =>
+      this.mapToFleetMapVehicle(vehicle, fleetBundle),
+    );
 
     try {
       await this.redis.set(
@@ -1222,8 +1358,11 @@ export class VehiclesService {
       include: FULL_VEHICLE_WITH_ORG_INCLUDE,
     });
     if (!vehicle) return null;
+    const fleetBundle = await this.loadFleetOperationalContextMultiOrg([
+      { id: vehicle.id, organizationId: vehicle.organizationId },
+    ]);
     const tripStateMap = await this.buildTripStateMap([vehicle.id]);
-    return this.mapToRegisteredVehicle(vehicle, tripStateMap);
+    return this.mapToRegisteredVehicle(vehicle, tripStateMap, fleetBundle);
   }
 
   async findOne(organizationId: string, id: string) {
@@ -1232,31 +1371,18 @@ export class VehiclesService {
       include: FULL_VEHICLE_INCLUDE,
     });
     if (!vehicle) return null;
-    const organizationTimezone =
-      await this.resolveOrganizationTimezone(organizationId);
-    const [tripStateMap, bookingContextMap] = await Promise.all([
-      this.buildTripStateMap([vehicle.id]),
-      this.buildBookingContextMap(
-        organizationId,
-        [vehicle.id],
-        organizationTimezone,
-      ),
-    ]);
-    const activeBookingIds = Array.from(bookingContextMap.values())
-      .map((ctx) => ctx.activeBooking?.id ?? null)
-      .filter((id): id is string => !!id);
-    const pickupOdoByBooking = await this.fetchPickupOdometerMap(
+    const fleetBundle = await this.loadFleetOperationalContext(
       organizationId,
-      activeBookingIds,
+      [vehicle.id],
     );
     return this.mapToVehicleData(
       vehicle,
-      tripStateMap,
-      bookingContextMap,
-      pickupOdoByBooking,
+      fleetBundle.tripStateMap,
+      fleetBundle.bookingContextMap,
+      fleetBundle.pickupOdoByBooking,
       {
         organizationId,
-        organizationTimezone,
+        organizationTimezone: fleetBundle.organizationTimezone,
         includeFutureBookings: true,
       },
     );
@@ -1278,8 +1404,11 @@ export class VehiclesService {
     const tripStateMap = await this.buildTripStateMap(
       data.map((v) => v.id),
     );
+    const fleetBundle = await this.loadFleetOperationalContextMultiOrg(
+      data.map((v) => ({ id: v.id, organizationId: v.organizationId })),
+    );
     return buildPaginatedResult(
-      data.map((v) => this.mapToRegisteredVehicle(v, tripStateMap)),
+      data.map((v) => this.mapToRegisteredVehicle(v, tripStateMap, fleetBundle)),
       total,
       params || {},
     );

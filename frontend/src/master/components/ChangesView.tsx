@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-read-model-unification-v49487-2026-07-15',
+    version: '4.9.487',
+    title: 'V4.9.487 — Fleet Read-Models: einheitlicher Operational-State-Pfad (Prompt 22/43)',
+    summary: [
+      '`loadFleetOperationalContext` / `loadFleetOperationalContextMultiOrg` — zentrale Batch-Ladung (Booking-Map, Trip-State, Pickup-Odo) ohne N+1.',
+      '`vehicle-fleet-read-model.projector.ts` — gemeinsame Projektion für Fleet-Map, Liste, Detail, Admin, Station-Fleet, Rental-Rules-Picker.',
+      'Migriert: `getFleetMapData` (kein Inline-DTO mehr), `findAllPlatform`/`findById` (Admin), `stations/:id/fleet`, `rental-rules/fleet-vehicles`, Booking-Detail `vehicle`-Block.',
+      'Contract-Tests: identisches `operationalState.status/reason/dataQualityState` über alle Read-Model-Formen. Legacy-Inventar dokumentiert.',
+    ],
+    reason:
+      'Prompt 22/43: Keine Endpunkt-spezifische Reserved-Ableitung; Fleet-Map und Vehicle-Detail müssen dieselbe kanonische Engine nutzen.',
+    previousBehavior:
+      'Fleet-Map baute DTO inline (Drift-Risiko); Admin/Station/Rental-Rules lieferten Roh-`Vehicle.status`; Booking-Detail `vehicleStatus` war Prisma-Rohwert.',
+    details:
+      'Tests: `vehicle-fleet-read-model.contract.spec.ts`. Docs: `vehicle-operational-state-legacy-endpoints.md`. Dashboard/Operator nutzen weiterhin Fleet-Map/Liste aus kanonischem Pfad.',
+    affectsArchitecture: true,
+    module: 'Vehicles',
+    createdAt: '2026-07-16T04:00:00.000Z',
+  },
+  {
     id: 'fleet-booking-context-dto-v49486-2026-07-15',
     version: '4.9.486',
     title: 'V4.9.486 — Fleet API: normalisierter bookingContext-Block (Prompt 21/43)',

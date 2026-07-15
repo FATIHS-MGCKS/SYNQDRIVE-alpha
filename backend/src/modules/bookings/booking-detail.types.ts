@@ -83,7 +83,11 @@ export type BookingDetailDto = {
     make: string | null;
     model: string | null;
     year: number | null;
+    /** @deprecated Legacy label — derived from `operationalState` */
     vehicleStatus: string | null;
+    operationalState: FleetOperationalStateDto;
+    bookingContext: FleetBookingContextDto;
+    rawVehicleStatus?: FleetRawVehicleStatusDto;
     rentalBlocked: boolean;
     blockingReasons: string[];
     odometerKm: number | null;

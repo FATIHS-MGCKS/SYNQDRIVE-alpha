@@ -24,12 +24,14 @@ import {
   hasActiveRuleOverrides,
 } from './rental-rules.mapper';
 import { RENTAL_RULE_FIELD_KEYS } from './rental-rules.types';
+import { VehiclesService } from '../vehicles/vehicles.service';
 
 @Injectable()
 export class RentalRulesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly effectiveRules: RentalEffectiveRulesService,
+    private readonly vehiclesService: VehiclesService,
   ) {}
 
   private async assertOrgExists(orgId: string) {
@@ -435,6 +437,7 @@ export class RentalRulesService {
         model: true,
         licensePlate: true,
         status: true,
+        tankCapacityLiters: true,
         rentalCategoryId: true,
         rentalCategory: { select: { id: true, name: true } },
         rentalRequirementOverride: {
@@ -457,16 +460,29 @@ export class RentalRulesService {
       orderBy: [{ licensePlate: 'asc' }, { make: 'asc' }],
     });
 
-    return vehicles.map((v) => ({
-      id: v.id,
-      displayName: vehicleDisplayName(v),
-      licensePlate: v.licensePlate,
-      status: v.status,
-      rentalCategoryId: v.rentalCategoryId,
-      rentalCategoryName: v.rentalCategory?.name ?? null,
-      hasOverride: v.rentalRequirementOverride
-        ? hasActiveRuleOverrides(extractRuleFields(v.rentalRequirementOverride))
-        : false,
-    }));
+    const fleetBundle = await this.vehiclesService.loadFleetOperationalContext(
+      orgId,
+      vehicles.map((v) => v.id),
+    );
+
+    return vehicles.map((v) => {
+      const operational = this.vehiclesService.mapToCompactOperationalVehicle(
+        v,
+        fleetBundle,
+      );
+      return {
+        id: v.id,
+        displayName: vehicleDisplayName(v),
+        licensePlate: v.licensePlate,
+        status: operational.status,
+        operationalState: operational.operationalState,
+        bookingContext: operational.bookingContext,
+        rentalCategoryId: v.rentalCategoryId,
+        rentalCategoryName: v.rentalCategory?.name ?? null,
+        hasOverride: v.rentalRequirementOverride
+          ? hasActiveRuleOverrides(extractRuleFields(v.rentalRequirementOverride))
+          : false,
+      };
+    });
   }
 }

@@ -13,6 +13,7 @@ import { CreateStationDto } from './dto/create-station.dto';
 import { UpdateStationDto } from './dto/update-station.dto';
 import { ListStationsQueryDto } from './dto/list-stations-query.dto';
 import { mapboxAccessToken, resolveGeocodeCountryFilter } from './station-geocode.util';
+import { VehiclesService } from '../vehicles/vehicles.service';
 
 const STATION_STATUS_VALUES: StationStatus[] = ['ACTIVE', 'INACTIVE', 'ARCHIVED'];
 
@@ -136,6 +137,7 @@ export class StationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stationValidation: StationValidationService,
+    private readonly vehiclesService: VehiclesService,
   ) {}
 
   private stationIncludeCount() {
@@ -536,7 +538,7 @@ export class StationsService {
 
   async getStationFleet(organizationId: string, stationId: string) {
     await this.findOne(organizationId, stationId);
-    return this.prisma.vehicle.findMany({
+    const vehicles = await this.prisma.vehicle.findMany({
       where: {
         organizationId,
         OR: [{ homeStationId: stationId }, { currentStationId: stationId }],
@@ -548,11 +550,37 @@ export class StationsService {
         model: true,
         licensePlate: true,
         status: true,
+        tankCapacityLiters: true,
         homeStationId: true,
         currentStationId: true,
         expectedStationId: true,
       },
       orderBy: [{ status: 'asc' }, { licensePlate: 'asc' }],
+    });
+
+    const fleetBundle = await this.vehiclesService.loadFleetOperationalContext(
+      organizationId,
+      vehicles.map((v) => v.id),
+    );
+
+    return vehicles.map((v) => {
+      const operational = this.vehiclesService.mapToCompactOperationalVehicle(
+        v,
+        fleetBundle,
+      );
+      return {
+        id: v.id,
+        vehicleName: v.vehicleName,
+        make: v.make,
+        model: v.model,
+        licensePlate: v.licensePlate,
+        status: operational.status,
+        operationalState: operational.operationalState,
+        bookingContext: operational.bookingContext,
+        homeStationId: v.homeStationId,
+        currentStationId: v.currentStationId,
+        expectedStationId: v.expectedStationId,
+      };
     });
   }
 

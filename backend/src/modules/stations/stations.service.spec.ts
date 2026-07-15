@@ -108,7 +108,12 @@ describe('StationsService', () => {
     validateBookingStations: jest.fn(),
   } as unknown as StationValidationService;
 
-  const service = new StationsService(prisma, stationValidation);
+  const vehiclesService = {
+    loadFleetOperationalContext: jest.fn(),
+    mapToCompactOperationalVehicle: jest.fn(),
+  } as unknown as import('../vehicles/vehicles.service').VehiclesService;
+
+  const service = new StationsService(prisma, stationValidation, vehiclesService);
 
   beforeEach(() => jest.clearAllMocks());
 
