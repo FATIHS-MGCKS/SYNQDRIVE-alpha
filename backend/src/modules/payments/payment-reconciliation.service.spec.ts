@@ -100,6 +100,9 @@ describe('PaymentReconciliationService', () => {
       findUnique: jest.fn(),
       update: jest.fn(),
     },
+    bookingPaymentRequest: {
+      findUnique: jest.fn(),
+    },
     organizationPaymentAccount: {
       update: jest.fn(),
     },
@@ -139,6 +142,10 @@ describe('PaymentReconciliationService', () => {
     getSafePayoutSummary: jest.fn(),
   };
 
+  const invoicePaymentTasks = {
+    resolveOnFullPayment: jest.fn().mockResolvedValue(0),
+  };
+
   let service: PaymentReconciliationService;
 
   beforeEach(() => {
@@ -150,6 +157,7 @@ describe('PaymentReconciliationService', () => {
       paymentDisputeNotifier as unknown as PaymentDisputeNotifierService,
       bookingPaymentRefundService as unknown as BookingPaymentRefundService,
       paymentFeeService as unknown as PaymentFeeService,
+      invoicePaymentTasks as never,
       stripeConnectAdapter as unknown as StripeConnectAdapter,
     );
 
@@ -210,6 +218,9 @@ describe('PaymentReconciliationService', () => {
         payment_intent: 'pi_1',
         metadata,
       },
+    });
+    prisma.bookingPaymentRequest.findUnique.mockResolvedValue({
+      invoiceId,
     });
   });
 

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { PrismaService } from '@shared/database/prisma.service';
+import { InvoicePaymentTaskService } from './invoice-payment-task.service';
 
 /**
  * Persists overdue invoice status so eligibility queries and notifications
@@ -10,7 +11,10 @@ import { PrismaService } from '@shared/database/prisma.service';
 export class InvoiceOverdueSchedulerService {
   private readonly logger = new Logger(InvoiceOverdueSchedulerService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly invoicePaymentTasks: InvoicePaymentTaskService,
+  ) {}
 
   /** Daily at 01:15 UTC — transition open invoices past due date to OVERDUE. */
   @Cron('15 1 * * *')
@@ -26,6 +30,7 @@ export class InvoiceOverdueSchedulerService {
     });
     if (result.count > 0) {
       this.logger.log(`Marked ${result.count} invoice(s) as OVERDUE`);
+      await this.invoicePaymentTasks.refreshOpenPaymentCheckTasks({ now });
     }
   }
 

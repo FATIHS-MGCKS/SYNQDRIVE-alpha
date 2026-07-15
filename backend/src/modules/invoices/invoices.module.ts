@@ -11,6 +11,7 @@ import { InvoiceListReadService } from './invoice-list-read.service';
 import { InvoiceTimelineService } from './invoice-timeline.service';
 import { InvoiceOverdueSchedulerService } from './invoice-overdue-scheduler.service';
 import { InvoiceAttachmentsService } from './invoice-attachments.service';
+import { InvoicePaymentTaskService } from './invoice-payment-task.service';
 import { TasksModule } from '@modules/tasks/tasks.module';
 
 @Module({
@@ -26,7 +27,8 @@ import { TasksModule } from '@modules/tasks/tasks.module';
     InvoiceListReadService,
     InvoiceOverdueSchedulerService,
     InvoiceAttachmentsService,
+    InvoicePaymentTaskService,
   ],
-  exports: [InvoicesService, BookingInvoiceLifecycleService, FakePaidCardAuditService, InvoiceDocumentsService, InvoiceTimelineService, InvoiceListReadService],
+  exports: [InvoicesService, BookingInvoiceLifecycleService, FakePaidCardAuditService, InvoiceDocumentsService, InvoiceTimelineService, InvoiceListReadService, InvoicePaymentTaskService],
 })
 export class InvoicesModule {}

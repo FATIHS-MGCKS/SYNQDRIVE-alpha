@@ -6,6 +6,7 @@ import { DocumentNumberingService } from '@modules/documents/document-numbering.
 import { GeneratedDocumentsService } from '@modules/documents/generated-documents.service';
 import { DOCUMENT_RENDERER } from '@modules/documents/renderers/render-model';
 import { DOCUMENTS_STORAGE } from '@modules/documents/storage/document-storage.interface';
+import { TaskLinkedObjectResolverService } from '@modules/tasks/task-linked-object-resolver.service';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { InvoiceDocumentEmailService } from '@modules/outbound-email/invoice-document-email.service';
 import { OutboundEmailPolicyService } from '@modules/outbound-email/outbound-email-policy.service';
@@ -15,8 +16,9 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { BookingInvoiceLifecycleService } from './booking-invoice-lifecycle.service';
 import { InvoiceDocumentsService } from './invoice-documents.service';
 import { InvoiceNumberService } from './invoice-number.service';
-import { InvoicesService } from './invoices.service';
+import { InvoicePaymentTaskService } from './invoice-payment-task.service';
 import { createInvoiceTestStore, type InvoiceTestStore } from './invoices-test-store';
+import { InvoicesService } from './invoices.service';
 
 export type EmailProviderMockResult = {
   provider: string;
@@ -106,43 +108,13 @@ export function createInvoicePipelineHarness(): InvoicePipelineHarness {
     regenerate: jest.fn().mockResolvedValue(undefined),
   };
 
-  const tasksService = {
-    upsertByDedup: jest.fn(async (_orgId: string, dedupKey: string, data: Record<string, unknown>) => {
-      const existing = store.tables.orgTasks.find((t) => t.dedupKey === dedupKey);
-      if (existing) {
-        Object.assign(existing, data);
-        return existing;
-      }
-      return store.seedTask({
-        organizationId: _orgId,
-        invoiceId: data.invoiceId as string,
-        dedupKey,
-        title: data.title as string,
-        status: 'OPEN',
-        priority: data.priority ?? 'NORMAL',
-      });
-    }),
-    closeInvoiceLinkedTasks: jest.fn(async (orgId: string, invoiceId: string) => {
-      let closed = 0;
-      for (const task of store.tables.orgTasks) {
-        if (
-          task.organizationId === orgId &&
-          task.invoiceId === invoiceId &&
-          task.status !== 'DONE' &&
-          task.status !== 'CANCELLED'
-        ) {
-          task.status = 'DONE';
-          task.completionMode = 'AUTO_RESOLVED';
-          task.completedAt = new Date();
-          closed++;
-        }
-      }
-      return closed;
-    }),
-  };
-
+  const linkedObjectResolver = {
+    resolveForTask: jest.fn().mockResolvedValue([]),
+  } as unknown as TaskLinkedObjectResolverService;
+  const tasks = new TasksService(prisma, activityLog as unknown as ActivityLogService, linkedObjectResolver);
+  const invoicePaymentTasks = new InvoicePaymentTaskService(prisma, tasks);
   const invoiceNumbers = new InvoiceNumberService(prisma);
-  const invoices = new InvoicesService(prisma, tasksService as unknown as TasksService, invoiceNumbers);
+  const invoices = new InvoicesService(prisma, invoiceNumbers, invoicePaymentTasks);
   const lifecycle = new BookingInvoiceLifecycleService(prisma, invoices);
   const outboundEmail = new OutboundEmailService(prisma);
 

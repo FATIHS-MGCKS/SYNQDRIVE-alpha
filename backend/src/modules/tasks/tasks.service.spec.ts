@@ -1240,7 +1240,7 @@ describe('TasksService', () => {
 
   describe('autoResolveTask', () => {
     const autoInput = {
-      resolutionCode: 'INVOICE_PAID',
+      resolutionCode: 'PAYMENT_RECEIVED',
       reason: 'Invoice fully paid',
       metadata: { ruleId: 'invoice.paid' },
     };
@@ -1252,7 +1252,7 @@ describe('TasksService', () => {
           baseTask({
             status: 'DONE',
             completionMode: 'AUTO_RESOLVED',
-            resolutionCode: 'INVOICE_PAID',
+            resolutionCode: 'PAYMENT_RECEIVED',
             resolutionNote: '[Auto-resolved] Invoice fully paid',
             completedByUserId: null,
           }),
@@ -1267,7 +1267,7 @@ describe('TasksService', () => {
         data: {
           status: 'DONE',
           completionMode: 'AUTO_RESOLVED',
-          resolutionCode: 'INVOICE_PAID',
+          resolutionCode: 'PAYMENT_RECEIVED',
           resolutionNote: '[Auto-resolved] Invoice fully paid',
           completedAt: expect.any(Date),
           completedByUserId: null,
@@ -1281,7 +1281,7 @@ describe('TasksService', () => {
           oldValue: 'OPEN',
           newValue: 'DONE',
           metadata: {
-            resolutionCode: 'INVOICE_PAID',
+            resolutionCode: 'PAYMENT_RECEIVED',
             reason: 'Invoice fully paid',
             resolutionKind: 'AUTO_RESOLVED',
             ruleId: 'invoice.paid',
@@ -1300,7 +1300,7 @@ describe('TasksService', () => {
           baseTask({
             status: 'DONE',
             completionMode: 'AUTO_RESOLVED',
-            resolutionCode: 'INVOICE_PAID',
+            resolutionCode: 'PAYMENT_RECEIVED',
           }),
         );
       prisma.orgTask.update.mockResolvedValue(baseTask({ status: 'DONE' }));
@@ -1322,7 +1322,7 @@ describe('TasksService', () => {
 
     it('is idempotent when task is already DONE with AUTO_RESOLVED', async () => {
       prisma.orgTask.findFirst.mockResolvedValue(
-        baseTask({ status: 'DONE', completionMode: 'AUTO_RESOLVED', resolutionCode: 'INVOICE_PAID' }),
+        baseTask({ status: 'DONE', completionMode: 'AUTO_RESOLVED', resolutionCode: 'PAYMENT_RECEIVED' }),
       );
 
       const res = await svc.autoResolveTask('org1', 't1', autoInput);
@@ -1526,17 +1526,22 @@ describe('TasksService', () => {
     });
 
     it('closeInvoiceLinkedTasks auto-resolves active invoice-linked tasks', async () => {
-      prisma.orgTask.findMany.mockResolvedValue([{ id: 't-inv' }]);
-      const autoResolveTasks = jest.spyOn(svc, 'autoResolveTasks').mockResolvedValue(1);
+      const autoResolve = jest
+        .spyOn(svc, 'autoResolveInvoicePaymentCheckTasks')
+        .mockResolvedValue(1);
 
       const count = await svc.closeInvoiceLinkedTasks('org1', 'inv-1');
 
       expect(count).toBe(1);
-      expect(autoResolveTasks).toHaveBeenCalledWith('org1', ['t-inv'], expect.objectContaining({
-        resolutionCode: 'INVOICE_PAID',
-        metadata: expect.objectContaining({ invoiceId: 'inv-1' }),
-      }));
-      autoResolveTasks.mockRestore();
+      expect(autoResolve).toHaveBeenCalledWith(
+        'org1',
+        'inv-1',
+        expect.objectContaining({
+          resolutionCode: 'PAYMENT_RECEIVED',
+          metadata: expect.objectContaining({ invoiceId: 'inv-1' }),
+        }),
+      );
+      autoResolve.mockRestore();
     });
 
     it('updateTaskTiming records TIMING_CHANGED for active tasks', async () => {

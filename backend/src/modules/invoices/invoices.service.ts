@@ -9,10 +9,8 @@ import {
   OrgInvoiceStatus,
   OrgInvoiceType,
   Prisma,
-  TaskPriority,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { TasksService } from '@modules/tasks/tasks.service';
 import { CreateInvoiceDto, RecordInvoicePaymentDto, UpdateInvoiceDto } from './dto';
 import {
   canRecordPayment,
@@ -34,6 +32,7 @@ import {
   parseLegacyLineItems,
 } from './invoice-line-items.util';
 import { InvoiceNumberService } from './invoice-number.service';
+import { InvoicePaymentTaskService } from './invoice-payment-task.service';
 import { invoiceBookingRef } from './utils/invoice-booking-ref.util';
 import { userDisplayName } from './invoice-documents.labels';
 import { presentInvoicePayment } from './invoice-payments.presentation';
@@ -44,8 +43,8 @@ export class InvoicesService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly tasksService: TasksService,
     private readonly invoiceNumbers: InvoiceNumberService,
+    private readonly invoicePaymentTasks: InvoicePaymentTaskService,
   ) {}
 
   private format(inv: Record<string, unknown>) {
@@ -251,15 +250,23 @@ export class InvoicesService {
     if (isOutgoingInvoiceType(data.type) && status === 'DRAFT') {
       // no unpaid task until issued
     } else if (isIncomingInvoiceType(data.type) && ['NEEDS_REVIEW', 'APPROVED', 'ISSUED', 'SENT'].includes(status)) {
-      await this.createUnpaidTask(
-        orgId,
-        invoice.id,
-        data.title,
-        totals.totalCents,
-        data.currency || 'EUR',
-        data.type,
-        data.dueDate,
-      );
+      await this.invoicePaymentTasks.syncPaymentCheckTask(orgId, {
+        id: invoice.id,
+        organizationId: orgId,
+        type: data.type,
+        status,
+        title: data.title,
+        invoiceNumberDisplay: null,
+        totalCents: totals.totalCents,
+        paidCents: 0,
+        outstandingCents: totals.totalCents,
+        currency: data.currency || 'EUR',
+        invoiceDate: data.invoiceDate ? new Date(data.invoiceDate) : new Date(),
+        dueDate: data.dueDate ? new Date(data.dueDate) : null,
+        bookingId: data.bookingId ?? null,
+        customerId: data.customerId ?? null,
+        vehicleId: data.vehicleId ?? null,
+      });
     }
 
     return this.findById(invoice.id, orgId);
@@ -324,6 +331,9 @@ export class InvoicesService {
     }
 
     await this.prisma.orgInvoice.update({ where: { id }, data: updateData });
+    if (data.dueDate !== undefined) {
+      await this.invoicePaymentTasks.syncPaymentCheckTaskById(orgId, id);
+    }
     return this.findById(id, orgId);
   }
 
@@ -352,15 +362,35 @@ export class InvoicesService {
       },
     });
 
-    await this.createUnpaidTask(
-      orgId,
-      id,
-      inv.title,
-      inv.totalCents,
-      inv.currency,
-      inv.type,
-      inv.dueDate?.toISOString(),
-    );
+    const issued = await this.requireInvoice(id, orgId);
+    await this.invoicePaymentTasks.syncPaymentCheckTask(orgId, {
+      id: issued.id,
+      organizationId: orgId,
+      type: issued.type,
+      status: 'ISSUED',
+      title: issued.title,
+      invoiceNumberDisplay: displayInvoiceNumber({
+        invoiceNumberDisplay: issued.invoiceNumberDisplay,
+        legacyInvoiceNumber: issued.legacyInvoiceNumber,
+        invoiceNumber: issued.invoiceNumber,
+        sequenceYear: issued.sequenceYear,
+        sequenceNumber: issued.sequenceNumber,
+        status: 'ISSUED',
+      }),
+      invoiceNumber: issued.invoiceNumber,
+      legacyInvoiceNumber: issued.legacyInvoiceNumber,
+      sequenceYear: issued.sequenceYear,
+      sequenceNumber: issued.sequenceNumber,
+      totalCents: issued.totalCents,
+      paidCents: issued.paidCents,
+      outstandingCents: Math.max(0, issued.totalCents - issued.paidCents),
+      currency: issued.currency,
+      invoiceDate: issued.invoiceDate,
+      dueDate: issued.dueDate,
+      bookingId: issued.bookingId,
+      customerId: issued.customerId,
+      vehicleId: issued.vehicleId,
+    });
 
     return this.findById(id, orgId);
   }
@@ -453,7 +483,9 @@ export class InvoicesService {
     });
 
     if (newOutstanding === 0) {
-      await this.tasksService.closeInvoiceLinkedTasks(orgId, id);
+      await this.invoicePaymentTasks.resolveOnFullPayment(orgId, id);
+    } else {
+      await this.invoicePaymentTasks.syncPaymentCheckTaskById(orgId, id);
     }
 
     return this.findById(id, orgId);
@@ -747,13 +779,6 @@ export class InvoicesService {
     return vendorName ?? vendor.name;
   }
 
-  private resolveUnpaidTaskPriority(totalCents: number, dueDate?: string): TaskPriority {
-    const dueMs = dueDate ? new Date(dueDate).getTime() : NaN;
-    const isOverdue = Number.isFinite(dueMs) && dueMs < Date.now();
-    if (isOverdue) return totalCents >= 50000 ? 'CRITICAL' : 'HIGH';
-    return totalCents >= 50000 ? 'HIGH' : 'NORMAL';
-  }
-
   private async presentPayments(
     orgId: string,
     payments: Array<{
@@ -784,30 +809,4 @@ export class InvoicesService {
       ),
     );
   }
-
-  private async createUnpaidTask(
-    orgId: string,
-    invoiceId: string,
-    title: string,
-    totalCents: number,
-    currency: string,
-    type: string,
-    dueDate?: string,
-  ) {
-    const isIncoming = type.startsWith('INCOMING');
-    await this.tasksService.upsertByDedup(orgId, `invoice:unpaid:${invoiceId}`, {
-      title: isIncoming
-        ? `Eingangsrechnung bezahlen: ${title}`
-        : `Zahlungseingang prüfen: ${title}`,
-      description: `Rechnung "${title}" (${(totalCents / 100).toFixed(2)} ${currency}) ist noch unbezahlt.`,
-      category: 'invoice',
-      type: 'INVOICE_REQUIRED',
-      source: 'INVOICE',
-      sourceType: 'SYSTEM',
-      priority: this.resolveUnpaidTaskPriority(totalCents, dueDate),
-      invoiceId,
-      dueDate: dueDate ? new Date(dueDate) : undefined,
-    });
-  }
-
 }

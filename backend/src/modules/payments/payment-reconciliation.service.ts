@@ -13,6 +13,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { derivePaymentStatus, canRecordPayment, isOutgoingInvoiceType } from '@modules/invoices/invoice-domain.util';
+import { InvoicePaymentTaskService } from '@modules/invoices/invoice-payment-task.service';
 import { OrganizationPaymentAccountService } from './organization-payment-account.service';
 import { PaymentConfirmationNotifierService } from './payment-confirmation-notifier.service';
 import { PaymentDisputeNotifierService } from './payment-dispute-notifier.service';
@@ -68,6 +69,7 @@ export class PaymentReconciliationService {
     private readonly paymentDisputeNotifier: PaymentDisputeNotifierService,
     private readonly bookingPaymentRefundService: BookingPaymentRefundService,
     private readonly paymentFeeService: PaymentFeeService,
+    private readonly invoicePaymentTasks: InvoicePaymentTaskService,
     @Inject(STRIPE_CONNECT_ADAPTER)
     private readonly stripeConnectAdapter: StripeConnectAdapter,
   ) {}
@@ -135,6 +137,20 @@ export class PaymentReconciliationService {
         result.paymentRequestId,
         pending.organizationId,
       );
+      const request = await this.prisma.bookingPaymentRequest.findUnique({
+        where: { id: result.paymentRequestId },
+        select: { invoiceId: true },
+      });
+      if (request?.invoiceId) {
+        void this.invoicePaymentTasks
+          .resolveOnFullPayment(pending.organizationId, request.invoiceId)
+          .catch((err: unknown) => {
+            const message = err instanceof Error ? err.message : String(err);
+            this.logger.warn(
+              `resolveOnFullPayment after Stripe webhook (${request.invoiceId}) failed: ${message}`,
+            );
+          });
+      }
     }
 
     if (

@@ -32,9 +32,12 @@ function matchesScalar(field: unknown, expected: unknown): boolean {
     if ('notIn' in obj && Array.isArray(obj.notIn)) {
       return !(obj.notIn as unknown[]).includes(field);
     }
+    if ('startsWith' in obj) {
+      return typeof field === 'string' && field.startsWith(obj.startsWith as string);
+    }
     if ('not' in obj) {
-      if (typeof obj.not === 'object' && obj.not !== null && 'in' in (obj.not as object)) {
-        return !(obj.not as { in: unknown[] }).in.includes(field);
+      if (typeof obj.not === 'object' && obj.not !== null) {
+        return !matchesScalar(field, obj.not);
       }
       return field !== obj.not;
     }
@@ -245,6 +248,8 @@ export function createInvoiceTestStore(options?: InvoiceTestStoreOptions) {
   const outboundEmailAttachments: Row[] = [];
   const outboundEmailEvents: Row[] = [];
   const orgTasks: Row[] = [];
+  const taskEvents: Row[] = [];
+  const organizationMemberships: Row[] = [];
 
   const tableFor = (model: string): Row[] => {
     switch (model) {
@@ -278,6 +283,10 @@ export function createInvoiceTestStore(options?: InvoiceTestStoreOptions) {
         return outboundEmailEvents;
       case 'orgTask':
         return orgTasks;
+      case 'taskEvent':
+        return taskEvents;
+      case 'organizationMembership':
+        return organizationMemberships;
       default:
         throw new Error(`Unknown model ${model}`);
     }
@@ -317,6 +326,19 @@ export function createInvoiceTestStore(options?: InvoiceTestStoreOptions) {
         let events = outboundEmailEvents.filter((e) => e.outboundEmailId === row.id);
         const orderBy = (include.events as { orderBy?: Record<string, string> })?.orderBy;
         if (orderBy?.occurredAt) events = sortRows(events, { occurredAt: orderBy.occurredAt as 'asc' | 'desc' });
+        out.events = events;
+      }
+    }
+    if (model === 'orgTask') {
+      if (include.checklistItems) {
+        out.checklistItems = [];
+      }
+      if (include.events) {
+        let events = taskEvents.filter((e) => e.taskId === row.id);
+        const orderBy = (include.events as { orderBy?: Record<string, string> })?.orderBy;
+        if (orderBy?.createdAt) {
+          events = sortRows(events, { createdAt: orderBy.createdAt as 'asc' | 'desc' });
+        }
         out.events = events;
       }
     }
@@ -399,6 +421,20 @@ export function createInvoiceTestStore(options?: InvoiceTestStoreOptions) {
         occurredAt: data.occurredAt ?? (model === 'outboundEmailEvent' ? nowFn() : undefined),
         ...data,
       };
+
+      if (model === 'orgTask') {
+        if (!row.status) row.status = 'OPEN';
+        delete row.checklistItems;
+        delete row.events;
+        tableFor(model).push(row);
+        return clone(row);
+      }
+
+      if (model === 'taskEvent') {
+        tableFor(model).push(row);
+        return clone(row);
+      }
+
       delete row.attachments;
       delete row.events;
       tableFor(model).push(row);
@@ -479,6 +515,8 @@ export function createInvoiceTestStore(options?: InvoiceTestStoreOptions) {
     outboundEmailEvent: modelApi('outboundEmailEvent'),
     outboundEmailAttachment: modelApi('outboundEmailAttachment'),
     orgTask: modelApi('orgTask'),
+    taskEvent: modelApi('taskEvent'),
+    organizationMembership: modelApi('organizationMembership'),
     $transaction: async <T>(
       arg: ((tx: typeof prisma) => Promise<T> | T) | Array<Promise<unknown>>,
     ): Promise<T> => {
@@ -547,12 +585,18 @@ export function createInvoiceTestStore(options?: InvoiceTestStoreOptions) {
         id: task.id ?? nextId('task'),
         title: 'Offene Zahlung',
         status: 'OPEN',
-        dedupKey: `invoice:unpaid:${task.invoiceId}`,
+        type: 'INVOICE_REQUIRED',
+        source: 'INVOICE',
+        sourceType: 'SYSTEM',
+        createdAt: nowFn(),
+        updatedAt: nowFn(),
+        dedupKey: `invoice:payment-check:${task.invoiceId}`,
         ...task,
       };
       orgTasks.push(row);
       return row;
     },
+    eventsForTask: (taskId: string) => taskEvents.filter((e) => e.taskId === taskId),
   };
 }
 

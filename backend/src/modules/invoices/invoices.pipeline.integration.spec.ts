@@ -516,15 +516,10 @@ describe('Invoice process pipeline (integration matrix)', () => {
 
     it('35 — Zahlungsaufgabe wird bei Vollzahlung geschlossen', async () => {
       const id = await issuedInvoice();
-      h.store.seedTask({
-        organizationId: h.store.ids.orgA,
-        invoiceId: id,
-        status: 'OPEN',
-        title: 'Zahlung prüfen',
-      });
       await h.invoices.markPaid(id, h.store.ids.orgA);
       const tasks = h.store.tables.orgTasks.filter((t) => t.invoiceId === id);
       expect(tasks.every((t) => t.status === 'DONE')).toBe(true);
+      expect(tasks.some((t) => t.resolutionCode === 'PAYMENT_RECEIVED')).toBe(true);
     });
   });
 

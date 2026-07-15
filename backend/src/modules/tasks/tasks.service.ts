@@ -1890,21 +1890,115 @@ export class TasksService {
 
   /** Auto-resolves all active tasks linked to a fully paid invoice. */
   async closeInvoiceLinkedTasks(orgId: string, invoiceId: string): Promise<number> {
+    return this.autoResolveInvoicePaymentCheckTasks(orgId, invoiceId, {
+      resolutionCode: 'PAYMENT_RECEIVED',
+      reason: `Invoice ${invoiceId} fully paid`,
+      metadata: { ruleId: 'invoice.payment.received', invoiceId },
+    });
+  }
+
+  /** Auto-resolves canonical invoice payment-check tasks (`invoice:payment-check:*`). */
+  async autoResolveInvoicePaymentCheckTasks(
+    orgId: string,
+    invoiceId: string,
+    input: { resolutionCode: string; reason: string; metadata?: Prisma.InputJsonValue },
+  ): Promise<number> {
     const tasks = await this.prisma.orgTask.findMany({
       where: {
         organizationId: orgId,
         invoiceId,
+        type: 'INVOICE_REQUIRED',
+        source: 'INVOICE',
+        status: { in: ACTIVE_TASK_STATUSES },
+        OR: [
+          { dedupKey: { startsWith: 'invoice:payment-check:' } },
+          { dedupKey: { startsWith: 'invoice:unpaid:' } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (tasks.length === 0) return 0;
+
+    for (const batch of this.chunkItems(tasks, TasksService.TERMINAL_TRANSITION_BATCH_SIZE)) {
+      await Promise.all(
+        batch.map((task) =>
+          this.autoResolveTask(orgId, task.id, {
+            resolutionCode: input.resolutionCode,
+            reason: input.reason,
+            metadata: input.metadata,
+          }),
+        ),
+      );
+    }
+    return tasks.length;
+  }
+
+  /** Supersedes canonical invoice payment-check tasks when the invoice is voided/cancelled. */
+  async supersedeInvoicePaymentCheckTasks(
+    orgId: string,
+    invoiceId: string,
+    input: { resolutionCode: string; reason: string; metadata?: Prisma.InputJsonValue },
+  ): Promise<number> {
+    const tasks = await this.prisma.orgTask.findMany({
+      where: {
+        organizationId: orgId,
+        invoiceId,
+        type: 'INVOICE_REQUIRED',
+        source: 'INVOICE',
+        status: { in: ACTIVE_TASK_STATUSES },
+        OR: [
+          { dedupKey: { startsWith: 'invoice:payment-check:' } },
+          { dedupKey: { startsWith: 'invoice:unpaid:' } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (tasks.length === 0) return 0;
+
+    for (const batch of this.chunkItems(tasks, TasksService.TERMINAL_TRANSITION_BATCH_SIZE)) {
+      await Promise.all(
+        batch.map((task) =>
+          this.supersedeTask(orgId, task.id, {
+            resolutionCode: input.resolutionCode,
+            reason: input.reason,
+            metadata: input.metadata,
+          }),
+        ),
+      );
+    }
+    return tasks.length;
+  }
+
+  /** Supersedes legacy `invoice:unpaid:{invoiceId}` rows after package-task migration. */
+  async supersedeLegacyInvoicePaymentCheckTasks(orgId: string, invoiceId: string): Promise<number> {
+    const legacyKey = `invoice:unpaid:${invoiceId}`;
+    const tasks = await this.prisma.orgTask.findMany({
+      where: {
+        organizationId: orgId,
+        invoiceId,
+        dedupKey: legacyKey,
         status: { in: ACTIVE_TASK_STATUSES },
       },
       select: { id: true },
     });
     if (tasks.length === 0) return 0;
 
-    return this.autoResolveTasks(orgId, tasks.map((t) => t.id), {
-      resolutionCode: 'INVOICE_PAID',
-      reason: 'Invoice fully paid',
-      metadata: { ruleId: 'invoice.paid_close', invoiceId },
-    });
+    for (const batch of this.chunkItems(tasks, TasksService.TERMINAL_TRANSITION_BATCH_SIZE)) {
+      await Promise.all(
+        batch.map((task) =>
+          this.supersedeTask(orgId, task.id, {
+            resolutionCode: 'INVOICE_TASK_SUPERSEDED',
+            reason: `Legacy invoice unpaid task superseded by payment-check task for invoice ${invoiceId}`,
+            metadata: {
+              ruleId: 'invoice.payment.migrate',
+              invoiceId,
+              dedupKey: legacyKey,
+            },
+          }),
+        ),
+      );
+    }
+    return tasks.length;
   }
 
   /**

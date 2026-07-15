@@ -7,11 +7,19 @@ describe('InvoiceOverdueSchedulerService', () => {
     },
   };
 
+  const invoicePaymentTasks = {
+    resolveOnFullPayment: jest.fn().mockResolvedValue(0),
+    refreshOpenPaymentCheckTasks: jest.fn().mockResolvedValue(0),
+  };
+
   let service: InvoiceOverdueSchedulerService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new InvoiceOverdueSchedulerService(prisma as never);
+    service = new InvoiceOverdueSchedulerService(
+      prisma as never,
+      invoicePaymentTasks as never,
+    );
   });
 
   it('marks open past-due invoices as OVERDUE', async () => {
@@ -28,6 +36,7 @@ describe('InvoiceOverdueSchedulerService', () => {
         data: { status: 'OVERDUE' },
       }),
     );
+    expect(invoicePaymentTasks.refreshOpenPaymentCheckTasks).toHaveBeenCalled();
   });
 
   it('reconciles fully paid OVERDUE invoices to PAID', async () => {
