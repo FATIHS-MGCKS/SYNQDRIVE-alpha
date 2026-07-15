@@ -245,9 +245,7 @@ function detectBookingInconsistency(
   const active = bookingState.activeBooking ?? null;
   const reserved = bookingState.reservationWindowBooking ?? null;
 
-  if (active && reserved) {
-    return 'BOOKING_STATE_INCONSISTENT';
-  }
+  // active + reserved together is resolved by priority 4 > 5 (§15.4), not UNKNOWN.
   if (active && !isActiveRentalConsistent(active)) {
     return 'BOOKING_STATE_INCONSISTENT';
   }

@@ -170,7 +170,7 @@ describe('deriveCanonicalOperationalState (V2 characterization)', () => {
       expect(output.legacy.bookingDto.reservedBookingId).toBe('b-reserved-1');
     });
 
-    it('prefers ACTIVE_RENTED over RESERVED when both refs are inconsistent with BC-1', () => {
+    it('prefers ACTIVE_RENTED over RESERVED when both refs are set (§15.4 prio 4 > 5)', () => {
       const output = buildVehicleOperationalStateFromEngineInput(
         fullEngineInput({
           bookingState: {
@@ -184,8 +184,10 @@ describe('deriveCanonicalOperationalState (V2 characterization)', () => {
         }),
       );
 
-      expect(output.operationalState.status).toBe('UNKNOWN');
-      expect(output.operationalState.reason).toBe('BOOKING_STATE_INCONSISTENT');
+      expect(output.operationalState.status).toBe('ACTIVE_RENTED');
+      expect(output.operationalState.reason).toBe('ACTIVE_BOOKING');
+      expect(output.bookingContext.activeBooking?.id).toBe('b-active-1');
+      expect(output.bookingContext.reservedBooking?.id).toBe('b-reserved-1');
     });
 
     it('returns AVAILABLE when no booking slots are set', () => {
