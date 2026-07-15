@@ -105,6 +105,6 @@ export interface VehicleOperationalStateResult {
   odometerKm: number | null;
   fuelPercent: number | null;
   evSoc: number | null;
-  /** Set when a ghost RENTED/RESERVED DB row is demoted to Available. */
+  /** Set when raw Vehicle.status conflicts with booking-derived operational state. */
   ghostStateWarning: string | null;
 }

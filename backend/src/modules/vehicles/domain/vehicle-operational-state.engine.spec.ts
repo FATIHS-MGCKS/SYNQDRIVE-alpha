@@ -102,13 +102,15 @@ describe('VehicleStateEngine input/output model (Prompt 7)', () => {
 
       expect(output.operationalState.status).toBe('ACTIVE_RENTED');
       expect(output.operationalState.reason).toBe('ACTIVE_BOOKING');
-      expect(output.operationalState.isReliable).toBe(true);
+      expect(output.operationalState.dataQualityState).toBe('DEGRADED');
+      expect(output.operationalState.isReliable).toBe(false);
       expect(output.bookingContext.activeBooking?.bookingNumber).toBe(
         'BK-000101',
       );
       expect(output.rawVehicleStatus.value).toBe(VehicleStatus.AVAILABLE);
-      expect(output.diagnosticReasons).toEqual([]);
+      expect(output.diagnosticReasons).toContain('RAW_STATUS_INCONSISTENT');
       expect(output.legacy.status).toBe('Active Rented');
+      expect(output.legacy.ghostStateWarning).toMatch(/Raw AVAILABLE mismatch/);
     });
   });
 

@@ -284,8 +284,38 @@ describe('deriveCanonicalOperationalState (V2 characterization)', () => {
       expect(output.operationalState.status).toBe('UNKNOWN');
       expect(output.operationalState.reason).toBe('RAW_STATUS_INCONSISTENT');
       expect(output.legacy.status).toBe('Unknown');
-      expect(output.legacy.ghostStateWarning).toContain('Ghost Active Rented');
-      expect(output.legacy.ghostStateWarning).toContain('Unknown');
+      expect(output.legacy.ghostStateWarning).toContain('no demotion to Available');
+      expect(output.diagnosticReasons).toEqual(
+        expect.arrayContaining([
+          'RAW_STATUS_LEGACY_RENTED',
+          'RAW_STATUS_INCONSISTENT',
+        ]),
+      );
+    });
+
+    it('raw RENTED with matching ACTIVE booking yields ACTIVE_RENTED without ghost warning', () => {
+      const output = buildVehicleOperationalStateFromEngineInput(
+        fullEngineInput({
+          vehicle: {
+            id: 'v-ok-rented',
+            organizationId: 'org-1',
+            rawStatus: VehicleStatus.RENTED,
+          },
+          bookingState: {
+            activeBooking: ACTIVE_BOOKING_REF,
+            reservationWindowBooking: null,
+            nextBooking: null,
+            futureBookingCount: 0,
+            dataQualityState: 'RELIABLE',
+            dataQualityReasons: [],
+          },
+        }),
+      );
+
+      expect(output.operationalState.status).toBe('ACTIVE_RENTED');
+      expect(output.operationalState.reason).toBe('ACTIVE_BOOKING');
+      expect(output.legacy.status).toBe('Active Rented');
+      expect(output.legacy.ghostStateWarning).toBeNull();
     });
 
     it('raw RESERVED without reservation window yields UNKNOWN', () => {
@@ -304,14 +334,58 @@ describe('deriveCanonicalOperationalState (V2 characterization)', () => {
       expect(output.legacy.status).toBe('Unknown');
     });
 
-    it('does NOT warn when RENTED has a matching ACTIVE booking', () => {
+    it('raw RESERVED with reservation window yields RESERVED without ghost warning', () => {
       const output = buildVehicleOperationalStateFromEngineInput(
         fullEngineInput({
           vehicle: {
-            id: 'v-legit',
+            id: 'v-ok-reserved',
+            organizationId: 'org-1',
+            rawStatus: VehicleStatus.RESERVED,
+          },
+          bookingState: {
+            activeBooking: null,
+            reservationWindowBooking: RESERVATION_WINDOW_REF,
+            nextBooking: null,
+            futureBookingCount: 0,
+            dataQualityState: 'RELIABLE',
+            dataQualityReasons: [],
+          },
+        }),
+      );
+
+      expect(output.operationalState.status).toBe('RESERVED');
+      expect(output.legacy.status).toBe('Reserved');
+      expect(output.legacy.ghostStateWarning).toBeNull();
+    });
+
+    it('raw RENTED with DEGRADED booking data yields UNKNOWN with BOOKING_DATA_UNAVAILABLE', () => {
+      const output = buildVehicleOperationalStateFromEngineInput(
+        fullEngineInput({
+          vehicle: {
+            id: 'v-degraded-rented',
             organizationId: 'org-1',
             rawStatus: VehicleStatus.RENTED,
           },
+          bookingState: {
+            activeBooking: null,
+            reservationWindowBooking: null,
+            nextBooking: null,
+            futureBookingCount: 0,
+            dataQualityState: 'DEGRADED',
+            dataQualityReasons: ['BOOKING_PARTIAL_RESULT'],
+          },
+        }),
+      );
+
+      expect(output.operationalState.status).toBe('UNKNOWN');
+      expect(output.operationalState.reason).toBe('BOOKING_DATA_UNAVAILABLE');
+      expect(output.legacy.status).toBe('Unknown');
+      expect(output.legacy.ghostStateWarning).toBeNull();
+    });
+
+    it('raw AVAILABLE with active booking keeps ACTIVE_RENTED and warns mismatch', () => {
+      const output = buildVehicleOperationalStateFromEngineInput(
+        fullEngineInput({
           bookingState: {
             activeBooking: ACTIVE_BOOKING_REF,
             reservationWindowBooking: null,
@@ -324,7 +398,32 @@ describe('deriveCanonicalOperationalState (V2 characterization)', () => {
       );
 
       expect(output.operationalState.status).toBe('ACTIVE_RENTED');
-      expect(output.legacy.ghostStateWarning).toBeNull();
+      expect(output.legacy.status).toBe('Active Rented');
+      expect(output.legacy.ghostStateWarning).toMatch(/Raw AVAILABLE mismatch/);
+      expect(output.diagnosticReasons).toContain('RAW_STATUS_INCONSISTENT');
+      expect(output.rawVehicleStatus.diagnosticCodes).toContain(
+        'CONFLICTS_WITH_OPERATIONAL_STATE',
+      );
+    });
+
+    it('raw AVAILABLE with reservation window keeps RESERVED and warns mismatch', () => {
+      const output = buildVehicleOperationalStateFromEngineInput(
+        fullEngineInput({
+          bookingState: {
+            activeBooking: null,
+            reservationWindowBooking: RESERVATION_WINDOW_REF,
+            nextBooking: null,
+            futureBookingCount: 0,
+            dataQualityState: 'RELIABLE',
+            dataQualityReasons: [],
+          },
+        }),
+      );
+
+      expect(output.operationalState.status).toBe('RESERVED');
+      expect(output.legacy.status).toBe('Reserved');
+      expect(output.legacy.ghostStateWarning).toMatch(/Raw AVAILABLE mismatch/);
+      expect(output.diagnosticReasons).toContain('RAW_STATUS_INCONSISTENT');
     });
   });
 
@@ -332,6 +431,11 @@ describe('deriveCanonicalOperationalState (V2 characterization)', () => {
     it('fills reason, source, derivedAt, dataQualityState and isReliable', () => {
       const output = buildVehicleOperationalStateFromEngineInput(
         fullEngineInput({
+          vehicle: {
+            id: 'v-1',
+            organizationId: 'org-1',
+            rawStatus: VehicleStatus.RESERVED,
+          },
           bookingState: {
             activeBooking: null,
             reservationWindowBooking: RESERVATION_WINDOW_REF,

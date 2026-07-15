@@ -133,6 +133,7 @@ export interface EngineMatrixExpectation {
   diagnosticIncludes?: string[];
   diagnosticExcludes?: string[];
   ghostWarning?: boolean;
+  mismatchWarning?: boolean;
 }
 
 export interface EngineMatrixCase {

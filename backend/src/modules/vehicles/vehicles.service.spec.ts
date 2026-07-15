@@ -69,7 +69,7 @@ describe('VehiclesService.deriveFleetStatusContext (delegation)', () => {
     expect(result.futureBookingCount).toBe(2);
   });
 
-  it('logs ghost-state warning via service logger for raw RENTED inconsistency', () => {
+  it('logs ghost-state warning via structured guard event for raw RENTED inconsistency', () => {
     const warnSpy = jest
       .spyOn((service as any).logger, 'warn')
       .mockImplementation(() => undefined);
@@ -91,7 +91,44 @@ describe('VehiclesService.deriveFleetStatusContext (delegation)', () => {
 
     expect(result.status).toBe('Unknown');
     expect(warnSpy).toHaveBeenCalledWith(
-      expect.stringContaining('Ghost Active Rented'),
+      expect.objectContaining({
+        kind: 'ghost_legacy_persisted',
+        vehicleId: 'v-ghost',
+        rawStatus: 'RENTED',
+        operationalStatus: 'Unknown',
+        reasonCode: 'RAW_STATUS_INCONSISTENT',
+      }),
+    );
+    warnSpy.mockRestore();
+  });
+
+  it('logs legacy_raw_unreliable_booking when raw RENTED and booking UNAVAILABLE', () => {
+    const warnSpy = jest
+      .spyOn((service as any).logger, 'warn')
+      .mockImplementation(() => undefined);
+
+    const result = service.deriveFleetStatusContext({
+      vehicle: { id: 'v-unavail', status: VehicleStatus.RENTED },
+      state: null,
+      bookingState: {
+        activeBooking: null,
+        reservationWindowBooking: null,
+        nextBooking: null,
+        futureBookingCount: 0,
+        futureBookings: [],
+        dataQualityState: 'UNAVAILABLE',
+        dataQualityReasons: ['BOOKING_QUERY_FAILED'],
+      },
+      pickupOdoByBooking: new Map(),
+    });
+
+    expect(result.status).toBe('Unknown');
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'legacy_raw_unreliable_booking',
+        vehicleId: 'v-unavail',
+        reasonCode: 'BOOKING_DATA_UNAVAILABLE',
+      }),
     );
     warnSpy.mockRestore();
   });

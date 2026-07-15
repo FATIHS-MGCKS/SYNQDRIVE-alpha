@@ -81,6 +81,10 @@ import {
   serializeFleetBookingRef,
   serializeFleetBookingRefs,
 } from './domain/vehicle-booking-ref.serializer';
+import {
+  buildRawStatusGuardLogEvent,
+  isLegacyRentalRawStatus,
+} from './domain/vehicle-raw-status.guard';
 export { EMPTY_BOOKING_CONTEXT } from './domain/vehicle-operational-state.builder';
 
 const DIMO_FUEL_TYPE_MAP: Record<string, FuelType> = {
@@ -836,8 +840,40 @@ export class VehiclesService {
     });
     const engineOutput =
       buildVehicleOperationalStateFromEngineInput(engineInput);
+    const organizationId =
+      input.organizationId ?? input.vehicle.organizationId ?? 'unknown';
+    const vehicleId = input.vehicle.id ?? 'unknown';
+    const rawStatus = String(input.vehicle.status ?? VehicleStatus.AVAILABLE);
+
     if (engineOutput.legacy.ghostStateWarning) {
-      this.logger.warn(engineOutput.legacy.ghostStateWarning);
+      this.logger.warn(
+        buildRawStatusGuardLogEvent({
+          kind:
+            engineOutput.operationalState.reason === 'RAW_STATUS_INCONSISTENT'
+              ? 'ghost_legacy_persisted'
+              : 'raw_available_mismatch',
+          organizationId,
+          vehicleId,
+          rawStatus,
+          operationalStatus: engineOutput.legacy.status,
+          reasonCode: engineOutput.operationalState.reason,
+        }),
+      );
+    } else if (
+      engineOutput.operationalState.status === 'UNKNOWN' &&
+      engineOutput.operationalState.reason === 'BOOKING_DATA_UNAVAILABLE' &&
+      isLegacyRentalRawStatus(rawStatus)
+    ) {
+      this.logger.warn(
+        buildRawStatusGuardLogEvent({
+          kind: 'legacy_raw_unreliable_booking',
+          organizationId,
+          vehicleId,
+          rawStatus,
+          operationalStatus: 'Unknown',
+          reasonCode: 'BOOKING_DATA_UNAVAILABLE',
+        }),
+      );
     }
     const { ghostStateWarning: _ghost, ...fleetCtx } = engineOutput.legacy;
     const bookingState = input.bookingState;

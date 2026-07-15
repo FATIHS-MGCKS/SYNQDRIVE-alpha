@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-raw-status-guard-v49481-2026-07-15',
+    version: '4.9.481',
+    title: 'V4.9.481 — Fleet Status: Ghost-State-Guard raw RENTED/RESERVED (Prompt 15/43)',
+    summary: [
+      '`vehicle-raw-status.guard.ts` — Ghost-Guard für legacy raw RENTED/RESERVED: kein stilles Herabstufen zu Available.',
+      'RELIABLE + fehlende Buchungswahrheit → UNKNOWN + `RAW_STATUS_INCONSISTENT`; DEGRADED/UNAVAILABLE → `BOOKING_DATA_UNAVAILABLE`.',
+      'raw AVAILABLE + aktive Buchung/Fenster → ACTIVE_RENTED/RESERVED mit `RAW_STATUS_INCONSISTENT`-Diagnose (Booking gewinnt).',
+      'Strukturierte `diagnosticReasons`, `buildRawStatusGuardLogEvent` (kind/reasonCode) in `deriveFleetStatusContext`; kein DB-Write.',
+    ],
+    reason:
+      'Prompt 15/43: fehlender Booking-Kontext darf raw RENTED/RESERVED nicht zu Available demoten — fail-closed UNKNOWN statt Selbstheilung.',
+    previousBehavior:
+      'Ghost RENTED/RESERVED ohne Buchung → Available + Warn-Log; keine strukturierten Reason-Codes für raw AVAILABLE-Mismatch.',
+    details:
+      'Diagnose-Vertrag: `docs/architecture/vehicle-raw-status-diagnosis.md`. Tests: `vehicle-raw-status.guard.spec.ts`, erweitert builder + vehicles.service.spec.',
+    affectsArchitecture: true,
+    module: 'Vehicles',
+    createdAt: '2026-07-16T01:00:00.000Z',
+  },
+  {
     id: 'vehicle-booking-context-fail-closed-v49480-2026-07-15',
     version: '4.9.480',
     title: 'V4.9.480 — Fleet Status: fail-closed Booking-Context-Queries (Prompt 14/43)',

@@ -28,6 +28,14 @@ import {
   buildVehicleStateEngineInput,
   mapBookingStateToLegacyDto,
 } from './vehicle-operational-state.input-mapper';
+import {
+  appendUniqueReason,
+  buildGhostLegacyRawWarning,
+  detectLegacyRawStatusInconsistency,
+  detectRawAvailableMismatch,
+  legacyRawQualityTags,
+  resolveLegacyRawWithUnreliableBooking,
+} from './vehicle-raw-status.guard';
 import { DEFAULT_ORGANIZATION_TIMEZONE } from './vehicle-operational-state.engine.types';
 
 export {
@@ -198,16 +206,6 @@ const FAIL_CLOSED_QUALITY_CODES: DataQualityReasonCode[] = [
   'MULTIPLE_RESERVATION_WINDOW_BOOKINGS',
 ];
 
-function buildGhostStateWarning(
-  vehicle: Pick<VehicleStateEngineVehicleInput, 'id' | 'licensePlate'>,
-  ghostLabel: string,
-  rawStatus: string,
-): string {
-  return `[fleet-status] Ghost ${ghostLabel} state on vehicle ${
-    vehicle.id ?? vehicle.licensePlate ?? '<unknown>'
-  }: Vehicle.status is ${rawStatus} but no matching booking truth. Operational state is Unknown.`;
-}
-
 function isKnownRawStatus(raw: VehicleStatus | string): boolean {
   return KNOWN_RAW_STATUSES.has(String(raw));
 }
@@ -245,7 +243,7 @@ function isReservationWindowConsistent(
 function detectBookingInconsistency(
   input: VehicleStateEngineInput,
 ): OperationalReasonCode | null {
-  const { bookingState, vehicle } = input;
+  const { bookingState } = input;
   const active = bookingState.activeBooking ?? null;
   const reserved = bookingState.reservationWindowBooking ?? null;
 
@@ -255,19 +253,6 @@ function detectBookingInconsistency(
   }
   if (reserved && !isReservationWindowConsistent(reserved)) {
     return 'BOOKING_STATE_INCONSISTENT';
-  }
-  if (vehicle.rawStatus === VehicleStatus.RENTED && !active) {
-    return 'RAW_STATUS_INCONSISTENT';
-  }
-  if (
-    vehicle.rawStatus === VehicleStatus.RESERVED &&
-    !reserved &&
-    !active
-  ) {
-    return 'RAW_STATUS_INCONSISTENT';
-  }
-  if (!isKnownRawStatus(vehicle.rawStatus)) {
-    return 'UNKNOWN_STATUS_VALUE';
   }
   return null;
 }
@@ -283,6 +268,12 @@ function resolvePriorityOneReason(
   if (bookingState.dataQualityState === 'UNAVAILABLE') {
     return 'BOOKING_DATA_UNAVAILABLE';
   }
+
+  const legacyRawUnreliable = resolveLegacyRawWithUnreliableBooking(input);
+  if (legacyRawUnreliable) {
+    return legacyRawUnreliable;
+  }
+
   if (bookingState.dataQualityState === 'DEGRADED') {
     return 'BOOKING_STATE_INCONSISTENT';
   }
@@ -307,6 +298,16 @@ function resolvePriorityOneReason(
       return 'BOOKING_DATA_UNAVAILABLE';
     }
   }
+
+  const legacyGhost = detectLegacyRawStatusInconsistency(input);
+  if (legacyGhost) {
+    return legacyGhost;
+  }
+
+  if (!isKnownRawStatus(input.vehicle.rawStatus)) {
+    return 'UNKNOWN_STATUS_VALUE';
+  }
+
   return detectBookingInconsistency(input);
 }
 
@@ -380,6 +381,32 @@ interface CanonicalDerivation {
   outputDataQualityReasons: DataQualityReasonCode[];
 }
 
+function applyRawAvailableMismatchDiagnostics(
+  input: VehicleStateEngineInput,
+  derivation: CanonicalDerivation,
+): CanonicalDerivation {
+  const mismatch = detectRawAvailableMismatch(input, derivation.status);
+  if (!mismatch.warning) {
+    return derivation;
+  }
+
+  let outputDataQualityReasons = [...derivation.outputDataQualityReasons];
+  for (const code of mismatch.extraQualityReasons) {
+    outputDataQualityReasons = appendUniqueReason(outputDataQualityReasons, code);
+  }
+  let outputDataQualityState = derivation.outputDataQualityState;
+  if (outputDataQualityState === 'RELIABLE') {
+    outputDataQualityState = 'DEGRADED';
+  }
+
+  return {
+    ...derivation,
+    ghostStateWarning: mismatch.warning,
+    outputDataQualityState,
+    outputDataQualityReasons,
+  };
+}
+
 /**
  * Kanonische V2-Prioritätskette — §15.1 vehicle-operational-state-v2.md
  */
@@ -388,7 +415,7 @@ export function deriveCanonicalOperationalState(
 ): CanonicalDerivation {
   const { bookingState, maintenanceState, blockingState, vehicle } = input;
   let ghostStateWarning: string | null = null;
-  const outputDataQualityReasons = [...bookingState.dataQualityReasons];
+  let outputDataQualityReasons = [...bookingState.dataQualityReasons];
   let outputDataQualityState = bookingState.dataQualityState;
 
   const priorityOneReason = resolvePriorityOneReason(input);
@@ -396,22 +423,18 @@ export function deriveCanonicalOperationalState(
     if (priorityOneReason === 'RAW_STATUS_INCONSISTENT') {
       const ghostLabel =
         vehicle.rawStatus === VehicleStatus.RENTED
-          ? 'Active Rented'
-          : 'Reserved';
-      ghostStateWarning = buildGhostStateWarning(
+          ? ('Active Rented' as const)
+          : ('Reserved' as const);
+      ghostStateWarning = buildGhostLegacyRawWarning(
         vehicle,
         ghostLabel,
         String(vehicle.rawStatus),
       );
-      if (vehicle.rawStatus === VehicleStatus.RENTED) {
-        if (!outputDataQualityReasons.includes('RAW_STATUS_LEGACY_RENTED')) {
-          outputDataQualityReasons.push('RAW_STATUS_LEGACY_RENTED');
-        }
-      }
-      if (vehicle.rawStatus === VehicleStatus.RESERVED) {
-        if (!outputDataQualityReasons.includes('RAW_STATUS_LEGACY_RESERVED')) {
-          outputDataQualityReasons.push('RAW_STATUS_LEGACY_RESERVED');
-        }
+      for (const tag of legacyRawQualityTags(vehicle.rawStatus)) {
+        outputDataQualityReasons = appendUniqueReason(
+          outputDataQualityReasons,
+          tag,
+        );
       }
       if (outputDataQualityState === 'RELIABLE') {
         outputDataQualityState = 'DEGRADED';
@@ -456,23 +479,23 @@ export function deriveCanonicalOperationalState(
   }
 
   if (isActiveRentalConsistent(bookingState.activeBooking)) {
-    return {
+    return applyRawAvailableMismatchDiagnostics(input, {
       status: 'ACTIVE_RENTED',
       reason: 'ACTIVE_BOOKING',
       ghostStateWarning: null,
       outputDataQualityState,
       outputDataQualityReasons,
-    };
+    });
   }
 
   if (isReservationWindowConsistent(bookingState.reservationWindowBooking)) {
-    return {
+    return applyRawAvailableMismatchDiagnostics(input, {
       status: 'RESERVED',
       reason: 'PICKUP_WINDOW_ACTIVE',
       ghostStateWarning: null,
       outputDataQualityState,
       outputDataQualityReasons,
-    };
+    });
   }
 
   return {
@@ -611,6 +634,12 @@ function buildRawVehicleStatusDiagnostic(
     diagnosticCodes.push('UNKNOWN_ENUM_VALUE');
   }
   if (derivation.reason === 'RAW_STATUS_INCONSISTENT') {
+    diagnosticCodes.push('CONFLICTS_WITH_OPERATIONAL_STATE');
+  }
+  if (
+    derivation.outputDataQualityReasons.includes('RAW_STATUS_INCONSISTENT') &&
+    derivation.status !== 'UNKNOWN'
+  ) {
     diagnosticCodes.push('CONFLICTS_WITH_OPERATIONAL_STATE');
   }
 

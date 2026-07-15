@@ -77,6 +77,12 @@ const ENGINE_MATRIX: EngineMatrixCase[] = [
     id: 4,
     name: 'pickup day reached, handover still open → RESERVED',
     input: matrixEngineInput({
+      vehicle: {
+        id: 'v-matrix-1',
+        organizationId: 'org-matrix',
+        rawStatus: VehicleStatus.RESERVED,
+        persistedAt: MATRIX_VEHICLE_PERSISTED_AT,
+      },
       bookingState: {
         activeBooking: null,
         reservationWindowBooking: MATRIX_BOOKINGS.reservationWindow,
@@ -100,6 +106,12 @@ const ENGINE_MATRIX: EngineMatrixCase[] = [
     id: 5,
     name: 'active booking → ACTIVE_RENTED',
     input: matrixEngineInput({
+      vehicle: {
+        id: 'v-matrix-1',
+        organizationId: 'org-matrix',
+        rawStatus: VehicleStatus.RENTED,
+        persistedAt: MATRIX_VEHICLE_PERSISTED_AT,
+      },
       bookingState: {
         activeBooking: MATRIX_BOOKINGS.activeRental,
         reservationWindowBooking: null,
@@ -123,6 +135,12 @@ const ENGINE_MATRIX: EngineMatrixCase[] = [
     id: 6,
     name: 'ACTIVE and reservation window simultaneously → ACTIVE_RENTED (prio 4 > 5)',
     input: matrixEngineInput({
+      vehicle: {
+        id: 'v-matrix-1',
+        organizationId: 'org-matrix',
+        rawStatus: VehicleStatus.RENTED,
+        persistedAt: MATRIX_VEHICLE_PERSISTED_AT,
+      },
       bookingState: {
         activeBooking: MATRIX_BOOKINGS.activeRental,
         reservationWindowBooking: MATRIX_BOOKINGS.reservationWindow,
@@ -268,6 +286,12 @@ const ENGINE_MATRIX: EngineMatrixCase[] = [
     id: 12,
     name: 'active rented plus soft technical warning → ACTIVE_RENTED with extra reasons',
     input: matrixEngineInput({
+      vehicle: {
+        id: 'v-matrix-1',
+        organizationId: 'org-matrix',
+        rawStatus: VehicleStatus.RENTED,
+        persistedAt: MATRIX_VEHICLE_PERSISTED_AT,
+      },
       bookingState: {
         activeBooking: MATRIX_BOOKINGS.activeRental,
         reservationWindowBooking: null,
@@ -430,6 +454,12 @@ const ENGINE_MATRIX: EngineMatrixCase[] = [
     id: 19,
     name: 'effectiveFrom/effectiveUntil for ACTIVE_RENTED',
     input: matrixEngineInput({
+      vehicle: {
+        id: 'v-matrix-1',
+        organizationId: 'org-matrix',
+        rawStatus: VehicleStatus.RENTED,
+        persistedAt: MATRIX_VEHICLE_PERSISTED_AT,
+      },
       bookingState: {
         activeBooking: MATRIX_BOOKINGS.activeRental,
         reservationWindowBooking: null,
@@ -451,6 +481,12 @@ const ENGINE_MATRIX: EngineMatrixCase[] = [
     id: 20,
     name: 'isReliable consistent with dataQualityState (RELIABLE path)',
     input: matrixEngineInput({
+      vehicle: {
+        id: 'v-matrix-1',
+        organizationId: 'org-matrix',
+        rawStatus: VehicleStatus.RESERVED,
+        persistedAt: MATRIX_VEHICLE_PERSISTED_AT,
+      },
       bookingState: {
         activeBooking: null,
         reservationWindowBooking: MATRIX_BOOKINGS.reservationWindow,
@@ -465,6 +501,52 @@ const ENGINE_MATRIX: EngineMatrixCase[] = [
       reason: 'PICKUP_WINDOW_ACTIVE',
       dataQualityState: 'RELIABLE',
       isReliable: true,
+    },
+  },
+  {
+    id: 21,
+    name: 'raw AVAILABLE + active booking → ACTIVE_RENTED with mismatch diagnostic',
+    input: matrixEngineInput({
+      bookingState: {
+        activeBooking: MATRIX_BOOKINGS.activeRental,
+        reservationWindowBooking: null,
+        nextBooking: null,
+        futureBookingCount: 0,
+        dataQualityState: 'RELIABLE',
+        dataQualityReasons: [],
+      },
+    }),
+    expect: {
+      status: 'ACTIVE_RENTED',
+      reason: 'ACTIVE_BOOKING',
+      legacyStatus: 'Active Rented',
+      dataQualityState: 'DEGRADED',
+      isReliable: false,
+      mismatchWarning: true,
+      diagnosticIncludes: ['RAW_STATUS_INCONSISTENT'],
+    },
+  },
+  {
+    id: 22,
+    name: 'raw AVAILABLE + reservation window → RESERVED with mismatch diagnostic',
+    input: matrixEngineInput({
+      bookingState: {
+        activeBooking: null,
+        reservationWindowBooking: MATRIX_BOOKINGS.reservationWindow,
+        nextBooking: null,
+        futureBookingCount: 0,
+        dataQualityState: 'RELIABLE',
+        dataQualityReasons: [],
+      },
+    }),
+    expect: {
+      status: 'RESERVED',
+      reason: 'PICKUP_WINDOW_ACTIVE',
+      legacyStatus: 'Reserved',
+      dataQualityState: 'DEGRADED',
+      isReliable: false,
+      mismatchWarning: true,
+      diagnosticIncludes: ['RAW_STATUS_INCONSISTENT'],
     },
   },
 ];
@@ -534,6 +616,11 @@ function assertMatrixCase(testCase: EngineMatrixCase): void {
     expect(legacy.ghostStateWarning).toMatch(/Ghost/);
   } else if (exp.ghostWarning === false) {
     expect(legacy.ghostStateWarning).toBeNull();
+  }
+  if (exp.mismatchWarning === true) {
+    expect(legacy.ghostStateWarning).toMatch(/Raw AVAILABLE mismatch/);
+  } else if (exp.mismatchWarning === false) {
+    expect(legacy.ghostStateWarning).not.toMatch(/Raw AVAILABLE mismatch/);
   }
 }
 
