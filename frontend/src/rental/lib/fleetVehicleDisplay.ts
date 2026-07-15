@@ -9,10 +9,11 @@ import {
   isOperativeRentalHealthModule,
   sanitizeUserFacingIssueText,
 } from './operational-issues';
+import { resolveTelemetryFreshness } from './telemetryFreshness';
 import {
-  resolveTelemetryFreshness,
-  type TelemetryFreshness,
-} from './telemetryFreshness';
+  isFleetStatusAvailableTab,
+  isFleetStatusUnknown,
+} from './vehicle-status';
 
 /**
  * Shared display layer for fleet vehicle rows (Dashboard Fleet State Board +
@@ -217,10 +218,11 @@ function resolveOperationalStatus(
   if (healthCritical) return 'critical';
   if (rentalBlocked || visual.isBlocked) return 'blocked';
   if (v.status === 'Maintenance') return 'maintenance';
+  if (v.status === 'Unknown' || isFleetStatusUnknown(v.status)) return 'unknown';
   if (v.status === 'Active Rented') return v.activeIsOverdue ? 'warning' : 'active';
   if (v.status === 'Reserved') return 'reserved';
   if (v.activeIsOverdue || healthWarning) return 'warning';
-  if (v.status === 'Available') return 'ready';
+  if (isFleetStatusAvailableTab(v.status)) return 'ready';
   return 'unknown';
 }
 
@@ -314,10 +316,12 @@ function resolveRentalDisplay(
   de: boolean,
 ): FleetRentalDisplay {
   let status: FleetRentalAvailability;
-  if (v.status === 'Active Rented') status = 'active';
+  if (isFleetStatusUnknown(v.status)) {
+    status = 'not_ready';
+  } else if (v.status === 'Active Rented') status = 'active';
   else if (v.status === 'Reserved') status = 'reserved';
   else if (v.status === 'Maintenance') status = 'maintenance';
-  else if (v.status === 'Available') {
+  else if (isFleetStatusAvailableTab(v.status)) {
     const blocked = hasHardRentalBlockingReasons(rentalHealth) || visual.isBlocked;
     if (blocked) status = 'blocked';
     else if (visual.isOffline) status = 'not_ready';

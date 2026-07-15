@@ -1,3 +1,4 @@
+import { normalizeFleetStatusKey } from './vehicle-status';
 import type { FleetStatus } from '../data/vehicles';
 import type { FleetCommandTab } from './fleet-operator-panel';
 import { resolveOperatorTabForVehicle, type FleetVehicleContext } from './fleet-operator-panel';
@@ -6,10 +7,11 @@ export type FleetOperatorTab = FleetStatus;
 
 /** @deprecated Use resolveOperatorTabForVehicle with full vehicle context. */
 export function fleetStatusToOperatorTab(status: string): FleetOperatorTab {
-  if (status === 'Active Rented') return 'Active Rented';
-  if (status === 'Reserved') return 'Reserved';
-  if (status === 'Maintenance') return 'Maintenance';
-  return 'Available';
+  const normalized = normalizeFleetStatusKey(status);
+  if (normalized === 'Blocked' || normalized === 'Unavailable') {
+    return 'Maintenance';
+  }
+  return normalized as FleetOperatorTab;
 }
 
 export function fleetContextToCommandTab(ctx: FleetVehicleContext): FleetCommandTab {

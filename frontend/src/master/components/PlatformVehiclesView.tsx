@@ -277,13 +277,14 @@ export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehic
 
       {/* Summary */}
       {activeTab === 'registered' && (
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-6">
           {[
             { label: 'Available', count: registeredVehicles.filter((v) => v.status === 'Available').length, tone: 'success' as const },
             { label: 'Active Rented', count: registeredVehicles.filter((v) => v.status === 'Active Rented').length, tone: 'info' as const },
             { label: 'Maintenance', count: registeredVehicles.filter((v) => v.status === 'Maintenance').length, tone: 'warning' as const },
             { label: 'Blocked', count: registeredVehicles.filter((v) => v.status === 'Blocked').length, tone: 'critical' as const },
             { label: 'Reserved', count: registeredVehicles.filter((v) => v.status === 'Reserved').length, tone: 'watch' as const },
+            { label: 'Unknown', count: registeredVehicles.filter((v) => v.status === 'Unknown').length, tone: 'neutral' as const },
           ].map((s) => (
             <MetricCard key={s.label} label={s.label} value={s.count} status={s.tone} />
           ))}
@@ -305,7 +306,7 @@ export function PlatformVehiclesView({ isDarkMode, registeredVehicles, dimoVehic
           {activeTab === 'registered' && (
             <>
               <select value={filterOrg} onChange={e => setFilterOrg(e.target.value)} className={`px-3 py-2 rounded-md border text-sm font-semibold appearance-none cursor-pointer bg-muted border-border text-foreground`}><option value="all">All Organizations</option>{uniqueOrgs.map(o => <option key={o} value={o}>{o}</option>)}</select>
-              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={`px-3 py-2 rounded-md border text-sm font-semibold appearance-none cursor-pointer bg-muted border-border text-foreground`}><option value="all">All Status</option><option>Available</option><option>Rented</option><option>Maintenance</option><option>Blocked</option><option>Reserved</option></select>
+              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={`px-3 py-2 rounded-md border text-sm font-semibold appearance-none cursor-pointer bg-muted border-border text-foreground`}><option value="all">All Status</option><option>Available</option><option>Rented</option><option>Maintenance</option><option>Blocked</option><option>Reserved</option><option>Unknown</option></select>
             </>
           )}
         </div>

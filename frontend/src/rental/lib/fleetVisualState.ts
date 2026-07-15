@@ -159,13 +159,15 @@ export function vehicleHasFleetLocation(
 function deriveRentalStatus(vehicle: FleetVisualStateVehicle): FleetRentalStatus {
   switch (vehicle.status) {
     case 'Active Rented':
-      return vehicle.activeBookingId ? 'active_rented' : 'available';
+      return vehicle.activeBookingId ? 'active_rented' : 'unknown';
     case 'Reserved':
-      return vehicle.reservedBookingId ? 'reserved' : 'available';
+      return vehicle.reservedBookingId ? 'reserved' : 'unknown';
     case 'Maintenance':
       return 'maintenance';
     case 'Available':
       return 'available';
+    case 'Unknown':
+      return 'unknown';
     default:
       return 'unknown';
   }

@@ -6,7 +6,7 @@ import {
 } from '../../lib/fleet-station-filter';
 import type { VehicleData } from '../../data/vehicles';
 import type { DashboardInsight } from '../../DashboardInsightsContext';
-import { countFleetStatusTab } from '../../lib/vehicle-status';
+import { countFleetStatusTab, isFleetReadyForRent } from '../../lib/vehicle-status';
 import { bookingRef } from '../bookings/bookingUtils';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
 import type {
@@ -298,7 +298,7 @@ export function isVehicleReadyToRent(
   v: VehicleData,
   options?: ReadyToRentOptions,
 ): boolean {
-  if (v.status !== 'Available') return false;
+  if (!isFleetReadyForRent(v.status)) return false;
   if (v.cleaningStatus !== 'Clean') return false;
   if (options?.blockedVehicleIds?.has(v.id)) return false;
   if (options?.healthRiskVehicleIds?.has(v.id)) return false;

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-status-fail-closed-normalizer-v49482-2026-07-15',
+    version: '4.9.482',
+    title: 'V4.9.482 — Fleet Status: fail-closed Frontend-Normalizer (Prompt 16/43)',
+    summary: [
+      '`vehicle-status.ts` — `normalizeFleetOperationalStatus`: fehlend/unbekannt/UNAVAILABLE → `Unknown`, nie `Available`.',
+      'Fleet Map Store, Master Admin, Map-Marker, Fleet Display, Operator-Tabs, Booking-Preflight, Dashboard-Filter auf zentralen Normalizer umgestellt.',
+      '`Unknown` erscheint nicht im Available-Tab, ist nicht Ready-to-rent, neutraler Badge-Ton (kein Grün).',
+      'Legacy RENTED/RESERVED/Prisma-Enums weiter korrekt gemappt; unklare Strings → Unknown.',
+    ],
+    reason:
+      'Prompt 16/43: Frontend-Fallbacks dürfen fehlende oder unzuverlässige Statuswerte nicht still zu Available demoten.',
+    previousBehavior:
+      'Fleet Map `normalizeStatus` defaultete auf Available; Map-Marker `?? STATUS_COLORS.Available`; Master `v.status ?? Available`; Active Rented ohne Booking → available in fleetVisualState.',
+    details:
+      'Tests: `vehicle-status.test.ts`, erweitert `booking-vehicle-preflight.test.ts`. Keine Store-Migration — nur gefährliche Fallbacks zentralisiert.',
+    affectsArchitecture: true,
+    module: 'Vehicles',
+    createdAt: '2026-07-16T01:30:00.000Z',
+  },
+  {
     id: 'vehicle-raw-status-guard-v49481-2026-07-15',
     version: '4.9.481',
     title: 'V4.9.481 — Fleet Status: Ghost-State-Guard raw RENTED/RESERVED (Prompt 15/43)',

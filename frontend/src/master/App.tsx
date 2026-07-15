@@ -27,7 +27,7 @@ import VehicleLogbookView from './components/VehicleLogbookView';
 import { HighMobilityDataView } from './components/HighMobilityDataView';
 import { HighMobilityCompatibilityView } from './components/HighMobilityCompatibilityView';
 import { PlatformHealthView } from './components/PlatformHealthView';
-import { Toaster, toast } from 'sonner';
+import { normalizeFleetStatusKey } from '../rental/lib/vehicle-status';
 import type { Organization, PlatformUser, RegisteredVehicle, DimoVehicle } from './data/platform-data';
 import { api } from '../lib/api';
 import { AppShell } from '../components/shell';
@@ -80,7 +80,7 @@ function mapApiRegisteredVehicle(v: any): RegisteredVehicle {
     organizationId: v.organizationId ?? v.organization_id ?? '',
     organizationName: v.organizationName ?? v.organization?.companyName ?? '',
     station: v.station ?? v.stationName ?? '',
-    status: (v.status ?? 'Available') as any,
+    status: normalizeFleetStatusKey(v.status ?? null) as RegisteredVehicle['status'],
     health: (v.health ?? 'Good') as any,
     lastSignal: v.lastSignal ?? v.last_signal ?? '',
     online: v.online ?? false,

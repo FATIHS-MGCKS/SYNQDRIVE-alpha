@@ -9,7 +9,12 @@
  *   Maintenance  → Red    (#ef4444)
  */
 
-export type VehicleStatusKey = 'Available' | 'Active Rented' | 'Reserved' | 'Maintenance';
+export type VehicleStatusKey =
+  | 'Available'
+  | 'Active Rented'
+  | 'Reserved'
+  | 'Maintenance'
+  | 'Unknown';
 
 export interface StatusColor {
   primary: string;
@@ -68,10 +73,21 @@ const STATUS_COLORS: Record<VehicleStatusKey, StatusColor> = {
     ring: 'ring-red-500/40',
     label: 'Maintenance',
   },
+  Unknown: {
+    primary: '#94a3b8',
+    glow: 'rgba(148,163,184,0.35)',
+    bg: 'bg-slate-100',
+    darkBg: 'bg-slate-500/15',
+    text: 'text-slate-700',
+    darkText: 'text-slate-400',
+    badge: 'bg-slate-500',
+    ring: 'ring-slate-500/40',
+    label: 'Unknown',
+  },
 };
 
 export function getStatusColor(status: string): StatusColor {
-  return STATUS_COLORS[status as VehicleStatusKey] ?? STATUS_COLORS.Available;
+  return STATUS_COLORS[status as VehicleStatusKey] ?? STATUS_COLORS.Unknown;
 }
 
 export function getStatusHex(status: string): string {

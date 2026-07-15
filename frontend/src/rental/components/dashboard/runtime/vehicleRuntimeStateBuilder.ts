@@ -148,6 +148,8 @@ function mapOperationalStatus(status: RuntimeVehicleStatus): VehicleOperationalS
       return 'active_rented';
     case 'Maintenance':
       return 'maintenance';
+    case 'Unknown':
+      return 'unknown';
     case 'Unavailable':
       return 'unavailable';
     default:

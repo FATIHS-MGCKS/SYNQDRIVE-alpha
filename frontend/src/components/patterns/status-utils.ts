@@ -157,6 +157,7 @@ export function userAccountStatusTone(status: string): StatusTone {
 
 export function fleetVehicleStatusTone(status: string): StatusTone {
   const s = String(status).toLowerCase().replace(/_/g, ' ');
+  if (s === 'unknown') return 'neutral';
   if (s === 'available') return 'success';
   if (s === 'rented' || s === 'active rented') return 'info';
   if (s === 'maintenance') return 'warning';

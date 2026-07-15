@@ -22,7 +22,8 @@ export type VehicleStatus =
   | 'Reserved'
   | 'Active Rented'
   | 'Maintenance'
-  | 'Blocked';
+  | 'Blocked'
+  | 'Unknown';
 export type DimoConnectionStatus = 'Connected' | 'Disconnected' | 'Error';
 export type StripeConnectionStatus = 'Connected' | 'Disconnected';
 

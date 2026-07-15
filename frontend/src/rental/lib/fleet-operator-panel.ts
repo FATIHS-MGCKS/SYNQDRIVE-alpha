@@ -18,6 +18,7 @@ import {
   fleetSignalAgeMs,
   resolveFleetVehicleDisplayState,
 } from './fleetVehicleDisplay';
+import { fleetStatusMatchesTab, normalizeFleetStatusKey } from './vehicle-status';
 
 import type { DashboardRuntimeModel } from '../components/dashboard/runtime/dashboardRuntimeTypes';
 
@@ -280,11 +281,11 @@ export function vehicleMatchesCommandTab(
   const { vehicle } = ctx;
   switch (tab) {
     case 'Available':
-      return vehicle.status === 'Available';
+      return fleetStatusMatchesTab(vehicle.status, 'Available');
     case 'Active':
-      return vehicle.status === 'Active Rented';
+      return fleetStatusMatchesTab(vehicle.status, 'Active Rented');
     case 'Reserved':
-      return vehicle.status === 'Reserved';
+      return fleetStatusMatchesTab(vehicle.status, 'Reserved');
     default:
       return false;
   }
@@ -390,8 +391,9 @@ export function computeCommandTabCounts(
 export function resolveOperatorTabForVehicle(
   ctx: FleetVehicleContext,
 ): FleetCommandTab {
-  if (ctx.vehicle.status === 'Active Rented') return 'Active';
-  if (ctx.vehicle.status === 'Reserved') return 'Reserved';
+  const status = normalizeFleetStatusKey(ctx.vehicle.status);
+  if (status === 'Active Rented') return 'Active';
+  if (status === 'Reserved') return 'Reserved';
   return 'Available';
 }
 

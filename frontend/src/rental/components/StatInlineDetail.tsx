@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { BrandLogoMark, getBrandFromModel } from './BrandLogo';
 
 import { VehicleData, isVehicleOffline, VEHICLE_OFFLINE_LABEL } from '../data/vehicles';
+import { fleetStatusMatchesTab } from '../lib/vehicle-status';
 import { useFleetVehicles, useEffectiveHealth } from '../FleetContext';
 import { RentalHealthBadge } from './rental-health/RentalHealthBadge';
 import type { Station, VehicleHealthResponse } from '../../lib/api';
@@ -430,7 +431,9 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
     <div className={`mt-0.5 rounded-2xl border p-5 ${borderColor} ${isDarkMode ? 'surface-premium' : 'bg-white'}`}>
       {/* Available */}
       {activePopup === 'Available' && (() => {
-        const vehicles = fleetVehicles.filter(v => v.status === 'Available');
+        const vehicles = fleetVehicles.filter((v) =>
+          fleetStatusMatchesTab(v.status, 'Available'),
+        );
         return (
           <>
             {!hideHeader && <div className="flex items-center justify-between mb-4">

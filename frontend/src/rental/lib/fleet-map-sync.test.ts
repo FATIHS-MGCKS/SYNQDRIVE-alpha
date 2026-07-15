@@ -10,7 +10,7 @@ describe('fleet-map-sync', () => {
     expect(fleetStatusToOperatorTab('Active Rented')).toBe('Active Rented');
     expect(fleetStatusToOperatorTab('Reserved')).toBe('Reserved');
     expect(fleetStatusToOperatorTab('Maintenance')).toBe('Maintenance');
-    expect(fleetStatusToOperatorTab('Unknown')).toBe('Available');
+    expect(fleetStatusToOperatorTab('Unknown')).toBe('Unknown');
   });
 
   it('formats refresh ago labels', () => {

@@ -40,6 +40,7 @@ import { CustomerDetailView } from './components/CustomerDetailView';
 import { VehicleBookingsView } from './components/VehicleBookingsView';
 import { VehicleTasksView } from './components/VehicleTasksView';
 import { VehicleData } from './data/vehicles';
+import { normalizeFleetStatusKey } from './lib/vehicle-status';
 import { RentalProvider, useRentalOrg } from './RentalContext';
 import { FleetProvider, useFleetVehicles } from './FleetContext';
 import { DashboardInsightsProvider } from './DashboardInsightsContext';
@@ -456,7 +457,14 @@ function RentalAppContent() {
   // Handle vehicle selection from Fleet
   const handleVehicleSelect = (vehicle: VehicleData) => {
     setSelectedVehicle(vehicle);
-    setVehicleStatus(vehicle.status === 'Available' ? 'Available' : vehicle.status === 'Maintenance' ? 'Maintenance' : 'Available');
+    const normalized = normalizeFleetStatusKey(vehicle.status);
+    setVehicleStatus(
+      normalized === 'Available'
+        ? 'Available'
+        : normalized === 'Maintenance'
+          ? 'Maintenance'
+          : 'Manual Block',
+    );
     setCleaningStatus(vehicle.cleaningStatus);
     setCurrentStation(vehicle.station);
     setCurrentView('overview');

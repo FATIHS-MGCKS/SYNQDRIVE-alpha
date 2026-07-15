@@ -11,10 +11,15 @@ import {
   type FleetStatus,
   type VehicleData,
 } from '../data/vehicles';
+import { isFleetStatusUnknown } from './vehicle-status';
 
 export const UNCATEGORIZED_VEHICLE_LABEL = 'Nicht kategorisiert';
 
-export type BookingVehicleHardBlockReason = 'offline' | 'rental_blocked' | 'no_tariff';
+export type BookingVehicleHardBlockReason =
+  | 'offline'
+  | 'rental_blocked'
+  | 'no_tariff'
+  | 'unknown_status';
 
 export interface BookingVehiclePreflight {
   fleetStatus: FleetStatus;
@@ -78,6 +83,7 @@ export function resolveBookingVehiclePreflight(
     (health?.overall_state === 'warning' || health?.overall_state === 'critical');
   const noTariff = !hasTariff && !catalogLoading;
 
+  const isUnknownStatus = isFleetStatusUnknown(vehicle.status);
   const isMaintenance = vehicle.status === 'Maintenance';
   const isRented = vehicle.status === 'Active Rented';
   const isReserved = vehicle.status === 'Reserved';
@@ -86,7 +92,10 @@ export function resolveBookingVehiclePreflight(
   let blockingReason: string | null = null;
   let cautionReason: string | null = null;
 
-  if (offline) {
+  if (isUnknownStatus) {
+    hardBlockReason = 'unknown_status';
+    blockingReason = 'Status unbekannt — Buchung nicht möglich';
+  } else if (offline) {
     hardBlockReason = 'offline';
     blockingReason = VEHICLE_OFFLINE_LABEL;
   } else if (rentalBlocked) {
@@ -114,11 +123,11 @@ export function resolveBookingVehiclePreflight(
     rentalBlocked,
     healthWarningOnly,
     noTariff,
-    isSelectable: !offline && !rentalBlocked && !noTariff,
+    isSelectable: !isUnknownStatus && !offline && !rentalBlocked && !noTariff,
     hardBlockReason,
     blockingReason,
     cautionReason,
-    muted: offline || rentalBlocked || isMaintenance || isRented,
+    muted: isUnknownStatus || offline || rentalBlocked || isMaintenance || isRented,
   };
 }
 
@@ -141,6 +150,8 @@ export function fleetStatusLabelDe(status: FleetStatus): string {
       return 'Aktuell vermietet';
     case 'Maintenance':
       return 'Wartung';
+    case 'Unknown':
+      return 'Unbekannt';
     default:
       return status;
   }

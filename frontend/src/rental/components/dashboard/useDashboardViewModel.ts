@@ -23,6 +23,7 @@ import {
   stationFilterToDashboardId,
 } from '../../lib/fleet-station-filter';
 import { useFleetMapStore } from '../../stores/useFleetMapStore';
+import { fleetStatusMatchesTab } from '../../lib/vehicle-status';
 import {
   type DashboardInvoice,
   type DashboardViewModel,
@@ -416,15 +417,15 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   }, [selectedStationId, stationsApi]);
 
   const availableVehicles = useMemo(
-    () => filteredFleetVehicles.filter((v) => v.status === 'Available'),
+    () => filteredFleetVehicles.filter((v) => fleetStatusMatchesTab(v.status, 'Available')),
     [filteredFleetVehicles],
   );
   const reservedVehicles = useMemo(
-    () => filteredFleetVehicles.filter((v) => v.status === 'Reserved'),
+    () => filteredFleetVehicles.filter((v) => fleetStatusMatchesTab(v.status, 'Reserved')),
     [filteredFleetVehicles],
   );
   const activeRentedVehicles = useMemo(
-    () => filteredFleetVehicles.filter((v) => v.status === 'Active Rented'),
+    () => filteredFleetVehicles.filter((v) => fleetStatusMatchesTab(v.status, 'Active Rented')),
     [filteredFleetVehicles],
   );
 

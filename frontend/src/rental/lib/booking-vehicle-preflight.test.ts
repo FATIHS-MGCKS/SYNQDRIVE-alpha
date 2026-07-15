@@ -98,6 +98,17 @@ describe('booking-vehicle-preflight', () => {
     expect(result.noTariff).toBe(false);
   });
 
+  it('blocks unknown fleet status in booking picker', () => {
+    const result = resolveBookingVehiclePreflight(
+      baseVehicle({ status: 'Unknown' }),
+      null,
+      true,
+      false,
+    );
+    expect(result.isSelectable).toBe(false);
+    expect(result.hardBlockReason).toBe('unknown_status');
+  });
+
   it('resolves station id from homeStationId', () => {
     expect(vehicleStationId(baseVehicle({ homeStationId: 'st-9', stationId: 'st-1' }))).toBe('st-9');
   });

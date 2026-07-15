@@ -11,6 +11,10 @@ import {
   type FleetMapFeatureVisualProperties,
   type FleetMapVisualGeoJson,
 } from '../lib/fleetVisualState';
+import {
+  normalizeFleetOperationalStatus,
+  type FleetStatusKey,
+} from '../lib/vehicle-status';
 import type {
   VehicleData,
   VehicleDisplayIgnition,
@@ -74,15 +78,9 @@ function normalizeFuelType(raw: string | null | undefined): VehicleData['fuelTyp
   return 'Petrol';
 }
 
-function normalizeStatus(raw: string | null | undefined): VehicleData['status'] {
-  const value = (raw ?? '').toLowerCase();
-  if (value.includes('rented')) return 'Active Rented';
-  if (value.includes('reserved')) return 'Reserved';
-  if (value.includes('maintenance') || value.includes('service')) return 'Maintenance';
-  return 'Available';
-}
-
-function normalizeHealthStatus(raw: string | null | undefined): VehicleData['healthStatus'] {
+function normalizeHealthStatus(
+  raw: string | null | undefined,
+): VehicleData['healthStatus'] {
   const value = (raw ?? '').toLowerCase();
   if (value.includes('critical')) return 'Critical';
   if (value.includes('warning')) return 'Warning';
@@ -128,7 +126,12 @@ function normalizeTelemetryFreshness(
 
 function mapFleetVehicle(raw: FleetMapVehicleResponse): FleetMapVehicle {
   const fuelType = normalizeFuelType(raw.fuelType);
-  const status = normalizeStatus(raw.status);
+  const normalizedStatus = normalizeFleetOperationalStatus({
+    status: raw.status,
+    dataQualityState: (raw as { dataQualityState?: string | null }).dataQualityState,
+    isReliable: (raw as { isReliable?: boolean | null }).isReliable,
+  });
+  const status = normalizedStatus.status;
   const healthStatus = normalizeHealthStatus(raw.healthStatus);
   const cleaningStatus = normalizeCleaningStatus(raw.cleaningStatus);
   const isElectric =
@@ -165,6 +168,8 @@ function mapFleetVehicle(raw: FleetMapVehicleResponse): FleetMapVehicle {
     expectedStationId: raw.expectedStationId ?? null,
     fuelType,
     status,
+    dataQualityState: normalizedStatus.dataQualityState,
+    isReliable: normalizedStatus.isReliable,
     cleaningStatus,
     healthStatus,
     online: raw.isFresh,
