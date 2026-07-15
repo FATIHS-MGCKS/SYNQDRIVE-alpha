@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'rental-readiness-derivation-v49495-2026-07-15',
+    version: '4.9.495',
+    title: 'V4.9.495 — Ready-for-Renting derivation refactor (Prompt 31/43)',
+    summary: [
+      'Zentrale Ableitung `deriveIsReadyForRenting` in `rentalReadiness.ts` — aktuelle operative Einsatzbereitschaft, nicht zukünftige Zeitraumbuchbarkeit.',
+      'Ready nur bei AVAILABLE + backend `dataQualityState === RELIABLE`, Clean, kein Hard Block, kein Telemetry-Offline, keine Compliance/Damage/Rental-Blockade.',
+      '`nextBooking` wird als Info-Reason angezeigt (`vehicle-runtime:next-booking-info`), blockiert Readiness nicht. Reserved/Active Rented/UNKNOWN → nicht Ready.',
+      '7 neue Readiness-Tests + 44 Runtime-Tests grün.',
+    ],
+    reason:
+      'Prompt 31/43: Eine zukünftige Buchung allein darf ein aktuell verfügbares Fahrzeug nicht „Not Ready for Renting“ machen.',
+    previousBehavior:
+      'Readiness inline in `buildRuntimeState` ohne explizite nextBooking-Info-Regel und ohne strikte RELIABLE-Prüfung.',
+    details:
+      'Neu: `rentalReadiness.ts`, `rentalReadiness.test.ts`. `vehicleRuntimeStateBuilder` nutzt `deriveIsReadyForRenting`. Buchungskonfliktprüfung für konkrete Zeiträume bleibt separat.',
+    affectsArchitecture: true,
+    module: 'Dashboard',
+    createdAt: '2026-07-15T23:32:00.000Z',
+  },
+  {
     id: 'vehicle-runtime-state-builder-v49494-2026-07-15',
     version: '4.9.494',
     title: 'V4.9.494 — Vehicle Runtime State Builder canonical backend block (Prompt 30/43)',

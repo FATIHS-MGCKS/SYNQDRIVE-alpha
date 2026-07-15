@@ -21,6 +21,11 @@ import {
   type VehicleOperationalStatus as CanonicalOperationalStatus,
 } from '../../../lib/vehicle-operational-state';
 import {
+  buildNextBookingInfoReason,
+  deriveIsReadyForRenting,
+  RENTAL_READINESS_NEXT_BOOKING_INFO_SOURCE,
+} from './rentalReadiness';
+import {
   categoryFromHealthModule,
   categoryFromInsightType,
   createRuntimeReason,
@@ -380,19 +385,6 @@ function reasonBlocksRenting(reason: RuntimeReason): boolean {
   return reason.blocking === true;
 }
 
-/**
- * A reason prevents Ready-to-Rent when it is explicitly marked `preventsReady`
- * or when it is a hard `blocking` reason. The decision is never derived from the
- * reason category — warnings alone (health, tires, brakes, battery, dtc,
- * service due-soon, …) stay visible but must not prevent readiness on their own.
- * Only the reason producer sets `preventsReady` (e.g. cleaning, hard offline).
- */
-function reasonPreventsReady(reason: RuntimeReason): boolean {
-  if (reason.preventsReady === true) return true;
-  if (reason.blocking === true) return true;
-  return false;
-}
-
 function addReason(target: RuntimeReason[], reason: RuntimeReason): void {
   target.push(reason);
 }
@@ -746,7 +738,6 @@ function buildRuntimeState(input: {
   const criticalReasons = reasons.filter((reason) => reason.severity === 'critical');
   const warningReasons = reasons.filter((reason) => reason.severity === 'warning');
   const blockReasons = reasons.filter(reasonBlocksRenting);
-  const readinessBlockingReasons = reasons.filter(reasonPreventsReady);
 
   const hasHardBlock = blockReasons.some((reason) => input.hardBlockReasonIds.has(reason.id));
   const blockLevel: RentalBlockLevel = hasHardBlock
@@ -757,13 +748,21 @@ function buildRuntimeState(input: {
 
   const operationallyAvailable = selectIsCurrentlyAvailable(toOperationalReadModel(input.vehicle));
 
-  const isReadyToRent =
-    operationallyAvailable &&
-    input.vehicle.cleaningStatus === 'Clean' &&
-    blockLevel === 'none' &&
-    readinessBlockingReasons.length === 0;
+  const isReadyToRent = deriveIsReadyForRenting({
+    operationalBlock: input.operationalBlock,
+    operationalStatus: input.operationalBlock.operationalStatus,
+    cleaningStatus: input.vehicle.cleaningStatus,
+    blockLevel,
+    reasons,
+    telemetryState: input.telemetryState,
+    nextBooking: input.operationalBlock.bookingContext.nextBooking,
+  });
 
   const rentalReadiness = isReadyToRent ? 'ready' : blockLevel !== 'none' ? 'blocked' : 'not_ready';
+
+  const nextBookingInfoReasons = reasons.filter(
+    (reason) => reason.source === RENTAL_READINESS_NEXT_BOOKING_INFO_SOURCE,
+  );
 
   return {
     vehicleId: input.vehicle.id,
@@ -783,7 +782,9 @@ function buildRuntimeState(input: {
       isReliable: input.operationalBlock.isReliable,
     }),
     bookingState: input.bookingState,
-    readyReasons: isReadyToRent ? buildReadyReasons(input.locale) : [],
+    readyReasons: isReadyToRent
+      ? [...buildReadyReasons(input.locale), ...nextBookingInfoReasons]
+      : [],
     notReadyReasons: isReadyToRent ? [] : reasons.filter((reason) => reason.severity !== 'info' || reason.blocking),
     blockReasons,
     warningReasons,
@@ -905,6 +906,11 @@ export function buildVehicleRuntimeStates(input: BuildVehicleRuntimeStatesInput)
       offlineBlockLevel: telemetryOfflineBlockLevel,
     });
     addBookingReasons({ target: reasons, bookingState, locale });
+
+    const nextBooking = operationalBlock.bookingContext.nextBooking;
+    if (nextBooking && operationalStatus === 'available') {
+      addReason(reasons, buildNextBookingInfoReason(nextBooking, locale));
+    }
 
     for (const reason of reasons) {
       if (
