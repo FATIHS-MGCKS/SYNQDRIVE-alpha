@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { PageHeader } from '../../../components/patterns';
 import { Button } from '../../../components/ui/button';
 import { api } from '../../../lib/api';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { Icon } from '../ui/Icon';
 import { CreateInvoiceDialog } from './CreateInvoiceDialog';
@@ -34,6 +35,7 @@ export function InvoicesPage({
   onConsumeInitialInvoiceId,
 }: InvoicesPageProps) {
   const { orgId, hasPermission } = useRentalOrg();
+  const { t } = useLanguage();
   const canWriteInvoices = hasPermission('invoices', 'write');
   const theme = useMemo(() => getInvoiceThemeClasses(isDarkMode), [isDarkMode]);
 
@@ -133,7 +135,7 @@ export function InvoicesPage({
   return (
     <div className="max-w-[1600px] mx-auto space-y-5">
       <PageHeader
-        title="Rechnungen"
+        title={t('nav.customerInvoices')}
         className="mb-4 flex-row items-center justify-between gap-2 sm:mb-5 sm:items-start sm:gap-4"
         actions={(
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">

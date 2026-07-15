@@ -18,8 +18,8 @@ describe('tenant billing navigation', () => {
       'Übersicht',
       'Tarif & Fahrzeuge',
       'Zusatzmodule',
-      'Rechnungen',
-      'Zahlungsmethode',
+      'SynqDrive-Rechnungen',
+      'Zahlungsmethode (SynqDrive)',
     ]);
   });
 
@@ -37,8 +37,8 @@ describe('tenant billing navigation', () => {
 
   it('builds deep links preserving other query params', () => {
     expect(
-      buildTenantBillingSubTabSearch('tariff-vehicles', '?settingsTab=billing&billingSection=subscription'),
-    ).toBe('?settingsTab=billing&billingSection=subscription&billingSubTab=tariff-vehicles');
+      buildTenantBillingSubTabSearch('tariff-vehicles', '?settingsTab=billing'),
+    ).toBe('?settingsTab=billing&billingSubTab=tariff-vehicles');
   });
 
   it('uses scrollable tab bar layout for mobile', () => {

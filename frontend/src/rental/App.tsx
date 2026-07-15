@@ -32,7 +32,11 @@ import { StationsView } from './components/stations/StationsView';
 import { StationDetailView } from './components/stations/StationDetailView';
 import { NewBookingView } from './components/NewBookingView';
 import { FinanceView } from './components/FinanceView';
-import type { FinanceTab } from './components/FinanceView';
+import type { FinanceTab } from './components/finance-navigation';
+import {
+  parseFinanceViewFromUrl,
+  stripLegacyBillingCustomerPaymentsParams,
+} from './components/finance-navigation';
 import { TasksView } from './components/TasksView';
 import { VendorDetailView } from './components/VendorDetailView';
 import { CustomerDetailView } from './components/CustomerDetailView';
@@ -183,9 +187,11 @@ function RentalAppContent() {
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [isCleaningDropdownOpen, setIsCleaningDropdownOpen] = useState(false);
   const [autoOpenNewTask, setAutoOpenNewTask] = useState(false);
-  const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'price-tariffs' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'vehicle-bookings' | 'vehicle-tasks' | 'vehicle-requirements' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'data-analyse' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant'>(() =>
-    readPersistedSettingsView() ? 'settings' : 'dashboard',
-  );
+  const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'price-tariffs' | 'customer-payments' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'vehicle-bookings' | 'vehicle-tasks' | 'vehicle-requirements' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'data-analyse' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant'>(() => {
+    const financeView = typeof window !== 'undefined' ? parseFinanceViewFromUrl(window.location.search) : null;
+    if (financeView) return financeView;
+    return readPersistedSettingsView() ? 'settings' : 'dashboard';
+  });
   const [detailCustomer, setDetailCustomer] = useState<any>(null);
   const [detailStation, setDetailStation] = useState<import('../lib/api').Station | null>(null);
   const [detailVendorId, setDetailVendorId] = useState<string | null>(null);
@@ -237,10 +243,27 @@ function RentalAppContent() {
     if (!consumeFleetConnectivityRedirectFlag()) return;
     openFleetConnectivity();
   }, [openFleetConnectivity]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const cleanedSearch = stripLegacyBillingCustomerPaymentsParams(window.location.search);
+    if (cleanedSearch !== window.location.search) {
+      const nextUrl = `${window.location.pathname}${cleanedSearch}`;
+      window.history.replaceState(null, '', nextUrl);
+      try {
+        sessionStorage.removeItem(RENTAL_SETTINGS_VIEW_KEY);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, []);
   const [fleetHealthServiceSubTab, setFleetHealthServiceSubTab] =
     useState<FleetHealthServiceTab>('overview');
   const [serviceCenterNav, setServiceCenterNav] = useState<ServiceCenterNavState | null>(null);
-  const [financeTab, setFinanceTab] = useState<FinanceTab>('invoices');
+  const [financeTab, setFinanceTab] = useState<FinanceTab>(() => {
+    const financeView = typeof window !== 'undefined' ? parseFinanceViewFromUrl(window.location.search) : null;
+    return financeView ?? 'invoices';
+  });
   const [selectedVehicle, setSelectedVehicle] = useState<VehicleData | null>(null);
   // Poll live telemetry on every vehicle-detail tab that shows the header badge
   // (Overview, Trips, Health, Damages, Documents, Bookings, Task List). Before
@@ -552,6 +575,9 @@ function RentalAppContent() {
       return;
     }
     if (view === 'fines') return;
+    if (view === 'customer-payments' || view === 'invoices' || view === 'price-tariffs') {
+      setFinanceTab(view as FinanceTab);
+    }
     if (view === 'fleet') {
       setFleetTab('status');
     }
@@ -993,7 +1019,7 @@ function RentalAppContent() {
               setCurrentView('invoices');
             }}
           />
-        ) : currentView === 'invoices' || currentView === 'price-tariffs' ? (
+        ) : currentView === 'invoices' || currentView === 'price-tariffs' || currentView === 'customer-payments' ? (
           <FinanceView
             isDarkMode={isDarkMode}
             activeTab={currentView as FinanceTab}

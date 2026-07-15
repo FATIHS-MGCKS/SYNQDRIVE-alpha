@@ -93,7 +93,7 @@ describe('formatRequirementLabel', () => {
 });
 
 describe('formatConnectReturnUrl', () => {
-  it('includes billing customer-payments section param', () => {
+  it('includes finance customer-payments view param', () => {
     vi.stubGlobal('window', {
       location: {
         origin: 'https://app.synqdrive.eu',
@@ -101,8 +101,9 @@ describe('formatConnectReturnUrl', () => {
       },
     });
     const url = formatConnectReturnUrl();
-    expect(url).toContain('billingSection=customer-payments');
-    expect(url).toContain('settingsTab=billing');
+    expect(url).toContain('view=customer-payments');
+    expect(url).not.toContain('billingSection=customer-payments');
+    expect(url).not.toContain('settingsTab=billing');
     vi.unstubAllGlobals();
   });
 });
@@ -147,7 +148,7 @@ describe('CustomerPaymentsTab layout', () => {
 });
 
 describe('BillingTab subscription section', () => {
-  it('renders tenant subscription sub-tabs and overview', () => {
+  it('renders tenant subscription sub-tabs without customer payments', () => {
     const source = readFileSync(resolve(billingDir, 'BillingTab.tsx'), 'utf8');
     expect(source).toContain('TenantSubscriptionTabBar');
     expect(source).toContain('TenantBillingOverviewTab');
@@ -157,8 +158,9 @@ describe('BillingTab subscription section', () => {
     expect(source).toContain('TenantBillingInvoicesTab');
     expect(source).toContain('TenantBillingPaymentMethodTab');
     expect(source).toContain('TenantBillingProblemPanel');
-    expect(source).toContain("section === 'customer-payments'");
-    expect(source).toContain('CustomerPaymentsTab');
+    expect(source).not.toContain('CustomerPaymentsTab');
+    expect(source).not.toContain('BillingSectionTabBar');
+    expect(source).toContain('billing.saasOnlyHint');
 
     const invoicesTabSource = readFileSync(
       resolve(billingDir, 'TenantBillingInvoicesTab.tsx'),

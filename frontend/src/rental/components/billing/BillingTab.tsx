@@ -2,12 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '../../../components/patterns/page-header';
 import { Button } from '../../../components/ui/button';
 import { EmptyState, SkeletonCard } from '../../../components/patterns/states';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { useRentalOrg } from '../../RentalContext';
 import { getBillingStripeUiState } from './billing-stripe-ui';
 import { useBillingStripeActions } from './useBillingStripeActions';
 import { Icon } from '../ui/Icon';
-import { BillingSectionTabBar, type BillingSectionTab } from './BillingSectionTabBar';
-import { CustomerPaymentsTab } from './CustomerPaymentsTab';
 import { useBillingSubscriptionOverview } from './useBillingSubscriptionOverview';
 import { useBillingTariffVehicles } from './useBillingTariffVehicles';
 import { useBillingInvoices } from './useBillingInvoices';
@@ -26,24 +25,16 @@ import { TenantBillingInvoicesTab } from './TenantBillingInvoicesTab';
 import { TenantBillingPaymentMethodTab } from './TenantBillingPaymentMethodTab';
 import { TenantBillingProblemPanel } from './TenantBillingProblemPanel';
 
-function readInitialBillingSection(): BillingSectionTab {
-  if (typeof window === 'undefined') return 'subscription';
-  const params = new URLSearchParams(window.location.search);
-  return params.get('billingSection') === 'customer-payments'
-    ? 'customer-payments'
-    : 'subscription';
-}
-
 function syncBillingSubTabUrl(subTab: TenantSubscriptionSubTab) {
   const nextUrl = `${window.location.pathname}${buildTenantBillingSubTabSearch(subTab, window.location.search)}`;
   window.history.replaceState(null, '', nextUrl);
 }
 
 export function BillingTab() {
+  const { t } = useLanguage();
   const { orgId, hasPermission, loading: orgLoading } = useRentalOrg();
   const canRead = hasPermission('billing', 'read');
   const canWrite = hasPermission('billing', 'write');
-  const [section, setSection] = useState<BillingSectionTab>(readInitialBillingSection);
   const [subTab, setSubTab] = useState<TenantSubscriptionSubTab>(() =>
     readTenantBillingSubTab(window.location.search),
   );
@@ -75,10 +66,8 @@ export function BillingTab() {
   };
 
   useEffect(() => {
-    if (section === 'subscription') {
-      syncBillingSubTabUrl(subTab);
-    }
-  }, [section, subTab]);
+    syncBillingSubTabUrl(subTab);
+  }, [subTab]);
 
   const headerBadge = overviewHeaderBadge(overview);
 
@@ -141,89 +130,85 @@ export function BillingTab() {
         }
       />
 
-      <BillingSectionTabBar activeTab={section} onTabChange={setSection} />
+      <p className="text-[12px] text-muted-foreground leading-relaxed max-w-3xl -mt-2">
+        {t('billing.saasOnlyHint')}
+      </p>
 
-      {section === 'customer-payments' ? (
-        <CustomerPaymentsTab />
-      ) : (
-        <>
-          <TenantSubscriptionTabBar activeTab={subTab} onTabChange={navigateSubTab} />
+      <TenantSubscriptionTabBar activeTab={subTab} onTabChange={navigateSubTab} />
 
-          {(subTab === 'invoices' || subTab === 'payment-method' || subTab === 'overview') &&
-          (overview?.contract?.status === 'PAST_DUE' ||
-            overview?.warnings.some((warning) => warning.severity === 'critical')) ? (
-            <TenantBillingProblemPanel
-              overview={overview}
-              canWrite={canWrite}
-              onViewInvoices={() => navigateSubTab('invoices')}
-              onManagePaymentMethod={() => navigateSubTab('payment-method')}
-              onOpenPortal={canWrite ? () => void stripeActions.openCustomerPortal() : undefined}
-              portalLoading={stripeActions.loading}
-            />
-          ) : null}
+      {(subTab === 'invoices' || subTab === 'payment-method' || subTab === 'overview') &&
+      (overview?.contract?.status === 'PAST_DUE' ||
+        overview?.warnings.some((warning) => warning.severity === 'critical')) ? (
+        <TenantBillingProblemPanel
+          overview={overview}
+          canWrite={canWrite}
+          onViewInvoices={() => navigateSubTab('invoices')}
+          onManagePaymentMethod={() => navigateSubTab('payment-method')}
+          onOpenPortal={canWrite ? () => void stripeActions.openCustomerPortal() : undefined}
+          portalLoading={stripeActions.loading}
+        />
+      ) : null}
 
-          {subTab === 'overview' ? (
-            <TenantBillingOverviewTab
-              overview={overview}
-              loading={overviewQuery.loading}
-              error={overviewQuery.error}
-              onRetry={overviewQuery.reload}
-              lastPaidInvoice={lastPaidInvoices.invoices[0] ?? null}
-              lastPaidInvoiceLoading={lastPaidInvoices.loading}
-              lastPaidInvoiceError={lastPaidInvoices.error}
-              canWrite={canWrite}
-              onManagePaymentMethod={() => navigateSubTab('payment-method')}
-              onViewInvoices={() => navigateSubTab('invoices')}
-              onOpenPortal={canWrite ? () => void stripeActions.openCustomerPortal() : undefined}
-            />
-          ) : null}
+      {subTab === 'overview' ? (
+        <TenantBillingOverviewTab
+          overview={overview}
+          loading={overviewQuery.loading}
+          error={overviewQuery.error}
+          onRetry={overviewQuery.reload}
+          lastPaidInvoice={lastPaidInvoices.invoices[0] ?? null}
+          lastPaidInvoiceLoading={lastPaidInvoices.loading}
+          lastPaidInvoiceError={lastPaidInvoices.error}
+          canWrite={canWrite}
+          onManagePaymentMethod={() => navigateSubTab('payment-method')}
+          onViewInvoices={() => navigateSubTab('invoices')}
+          onOpenPortal={canWrite ? () => void stripeActions.openCustomerPortal() : undefined}
+        />
+      ) : null}
 
-          {subTab === 'tariff-vehicles' ? (
-            <TenantBillingTariffVehiclesTab data={tariffVehicles} />
-          ) : null}
+      {subTab === 'tariff-vehicles' ? (
+        <TenantBillingTariffVehiclesTab data={tariffVehicles} />
+      ) : null}
 
-          {subTab === 'addons' ? (
-            <TenantBillingAddOnsTab
-              overview={overview}
-              loading={overviewQuery.loading}
-              error={overviewQuery.error}
-              onRetry={overviewQuery.reload}
-            />
-          ) : null}
+      {subTab === 'addons' ? (
+        <TenantBillingAddOnsTab
+          overview={overview}
+          loading={overviewQuery.loading}
+          error={overviewQuery.error}
+          onRetry={overviewQuery.reload}
+        />
+      ) : null}
 
-          {subTab === 'invoices' ? (
-            <TenantBillingInvoicesTab
-              orgId={orgId}
-              invoices={invoices.invoices}
-              loading={invoices.loading}
-              error={invoices.error}
-              meta={invoices.meta}
-              query={invoices.query}
-              onQueryChange={invoices.setQuery}
-              onRetry={invoices.reload}
-              canWrite={canWrite}
-              onManagePaymentMethod={() => navigateSubTab('payment-method')}
-            />
-          ) : null}
+      {subTab === 'invoices' ? (
+        <TenantBillingInvoicesTab
+          orgId={orgId}
+          invoices={invoices.invoices}
+          loading={invoices.loading}
+          error={invoices.error}
+          meta={invoices.meta}
+          query={invoices.query}
+          onQueryChange={invoices.setQuery}
+          onRetry={invoices.reload}
+          canWrite={canWrite}
+          onManagePaymentMethod={() => navigateSubTab('payment-method')}
+        />
+      ) : null}
 
-          {subTab === 'payment-method' ? (
-            <TenantBillingPaymentMethodTab
-              orgId={orgId}
-              paymentMethods={paymentMethodList}
-              stripeState={stripeState}
-              canUseStripePayments={stripeActions.canUseStripePayments}
-              canWrite={canWrite}
-              loading={paymentMethods.loading}
-              error={paymentMethods.error}
-              onRetry={paymentMethods.reload}
-              onOpenPortal={() => void stripeActions.openCustomerPortal()}
-              portalLoading={stripeActions.loading}
-              portalError={stripeActions.error}
-              onChanged={() => void paymentMethods.reload()}
-            />
-          ) : null}
-        </>
-      )}
+      {subTab === 'payment-method' ? (
+        <TenantBillingPaymentMethodTab
+          orgId={orgId}
+          paymentMethods={paymentMethodList}
+          stripeState={stripeState}
+          canUseStripePayments={stripeActions.canUseStripePayments}
+          canWrite={canWrite}
+          loading={paymentMethods.loading}
+          error={paymentMethods.error}
+          onRetry={paymentMethods.reload}
+          onOpenPortal={() => void stripeActions.openCustomerPortal()}
+          portalLoading={stripeActions.loading}
+          portalError={stripeActions.error}
+          onChanged={() => void paymentMethods.reload()}
+        />
+      ) : null}
     </div>
   );
 }

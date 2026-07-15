@@ -13,6 +13,8 @@ export const de: Record<TranslationKey, string> = {
   'nav.financialInsights': 'Auswertungen',
   'nav.finance': 'Finanzen',
   'nav.invoices': 'Rechnungen',
+  'nav.customerInvoices': 'Kundenrechnungen',
+  'nav.customerPayments': 'Kundenzahlungen',
   'nav.fines': 'Bussen',
   'nav.pricingTariffs': 'Preise & Tarife',
   'nav.tasks': 'Aufgaben',
@@ -253,6 +255,11 @@ export const de: Record<TranslationKey, string> = {
     'SynqDrive-Abonnement und Kundenzahlungen/Auszahlungen sind getrennt. Ihre Abo-Zahlungsmethode ist nicht dasselbe wie Ihr Auszahlungskonto.',
   'billing.section.subscription': 'SynqDrive-Abonnement',
   'billing.section.customerPayments': 'Kundenzahlungen & Auszahlungen',
+  'billing.saasOnlyHint':
+    'SynqDrive-Abonnement, SynqDrive-Rechnungen und Ihre Zahlungsmethode gegenüber SynqDrive. Kundenzahlungen und Auszahlungen finden Sie unter Finanzen.',
+  'finance.separationHint':
+    'Kundenzahlungen und Auszahlungen sind getrennt von Ihrem SynqDrive-Abonnement. Ihre Abo-Zahlungsmethode ist nicht dasselbe wie Ihr Auszahlungskonto.',
+  'finance.customerPayments.pageTitle': 'Kundenzahlungen & Auszahlungen',
 
   'billing.customerPayments.title': 'Kundenzahlungen & Auszahlungen',
   'billing.customerPayments.subtitle':

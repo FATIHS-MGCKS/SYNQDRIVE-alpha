@@ -1,4 +1,4 @@
-import { LayoutDashboard, DollarSign, Calendar, Car, Users, CheckSquare, FileText, Tag, Settings, Building2, MapPin, UserCog, CreditCard, Plus, Upload, Menu, X, Shield, ShieldCheck, Package, Lock, HelpCircle, Zap, Phone, Truck, Headphones, ChevronRight, User, PanelLeftClose, PanelLeftOpen, ListTodo, MessageSquare, Activity, Mail } from 'lucide-react';
+import { LayoutDashboard, DollarSign, Calendar, Car, Users, CheckSquare, FileText, Tag, Settings, Building2, MapPin, UserCog, CreditCard, Plus, Upload, Menu, X, Shield, ShieldCheck, Package, Lock, HelpCircle, Zap, Phone, Truck, Headphones, ChevronRight, User, PanelLeftClose, PanelLeftOpen, ListTodo, MessageSquare, Activity, Mail, Wallet } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../i18n/LanguageContext';
 import { useRentalOrg } from '../RentalContext';
@@ -36,13 +36,14 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
   const { hasPermission } = useRentalOrg();
   const canDataAnalyse = hasPermission('data-analyse', 'read');
   const canWorkflowAutomation = hasPermission('workflow-automation', 'read');
+  const canCustomerPayments = hasPermission('payments-connect', 'read');
   const isFleetActive =
     currentView === 'fleet' ||
     currentView === 'fleet-condition-detail' ||
     currentView === 'vendor-detail';
 
   const sectionForView = (view?: string): string | null => {
-    if (view === 'financial-insights' || view === 'invoices' || view === 'price-tariffs') return 'finance';
+    if (view === 'financial-insights' || view === 'invoices' || view === 'price-tariffs' || view === 'customer-payments') return 'finance';
     if (view === 'workflow-automation' || view === 'ai-voice-assistant' || view === 'whatsapp-business') return 'automation';
     if (view === 'insurances' || view === 'parts-accessories') return 'integrations';
     if (view === 'settings') return 'administration';
@@ -160,8 +161,13 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
             <DollarSign className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.financialInsights')}</span>
           </button>
           <button onClick={() => handleViewChange('invoices')} className={subNavBtnClass(currentView === 'invoices')}>
-            <FileText className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.invoices')}</span>
+            <FileText className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.customerInvoices')}</span>
           </button>
+          {canCustomerPayments && (
+          <button onClick={() => handleViewChange('customer-payments')} className={subNavBtnClass(currentView === 'customer-payments')}>
+            <Wallet className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.customerPayments')}</span>
+          </button>
+          )}
           <button onClick={() => handleViewChange('price-tariffs')} className={subNavBtnClass(currentView === 'price-tariffs')}>
             <Tag className="w-[14px] h-[14px] shrink-0" /><span>{t('nav.pricingTariffs')}</span>
           </button>
@@ -418,8 +424,14 @@ export function Sidebar({ onNewTaskClick, onNewBookingClick, currentView, onView
               </button>
               <button onClick={() => handleViewChange('invoices')} className={collapsedBtnClass(currentView === 'invoices')}>
                 <FileText className="w-[14px] h-[14px]" />
-                <CollapsedTooltip label={t('nav.invoices')} />
+                <CollapsedTooltip label={t('nav.customerInvoices')} />
               </button>
+              {canCustomerPayments && (
+              <button onClick={() => handleViewChange('customer-payments')} className={collapsedBtnClass(currentView === 'customer-payments')}>
+                <Wallet className="w-[14px] h-[14px]" />
+                <CollapsedTooltip label={t('nav.customerPayments')} />
+              </button>
+              )}
               <button onClick={() => handleViewChange('price-tariffs')} className={collapsedBtnClass(currentView === 'price-tariffs')}>
                 <Tag className="w-[14px] h-[14px]" />
                 <CollapsedTooltip label={t('nav.pricingTariffs')} />

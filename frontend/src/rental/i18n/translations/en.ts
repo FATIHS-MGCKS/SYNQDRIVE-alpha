@@ -11,6 +11,8 @@ export const en = {
   'nav.financialInsights': 'Insights',
   'nav.finance': 'Finance',
   'nav.invoices': 'Invoices',
+  'nav.customerInvoices': 'Customer invoices',
+  'nav.customerPayments': 'Customer payments',
   'nav.fines': 'Fines',
   'nav.pricingTariffs': 'Pricing & Tariffs',
   'nav.tasks': 'Tasks',
@@ -181,6 +183,11 @@ export const en = {
     'SynqDrive subscription billing and customer payment payouts are separate. Your subscription card is not the same as your payout bank account.',
   'billing.section.subscription': 'SynqDrive subscription',
   'billing.section.customerPayments': 'Customer payments & payouts',
+  'billing.saasOnlyHint':
+    'SynqDrive subscription, SynqDrive invoices, and your payment method to SynqDrive. Customer payments and payouts live under Finance.',
+  'finance.separationHint':
+    'Customer payments and payouts are separate from your SynqDrive subscription. Your subscription card is not the same as your payout bank account.',
+  'finance.customerPayments.pageTitle': 'Customer payments & payouts',
 
   'billing.customerPayments.title': 'Customer payments & payouts',
   'billing.customerPayments.subtitle':

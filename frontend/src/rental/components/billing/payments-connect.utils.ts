@@ -55,11 +55,7 @@ export function mapConnectStatusToUiState(
   }
 }
 
-export function formatConnectReturnUrl(): string | undefined {
-  if (typeof window === 'undefined') return undefined;
-  const base = `${window.location.origin}${window.location.pathname}`;
-  return `${base}?settingsTab=billing&billingSection=customer-payments`;
-}
+export { buildCustomerPaymentsReturnUrl as formatConnectReturnUrl } from '../finance-navigation';
 
 export function formatRequirementLabel(requirement: string): string {
   return requirement

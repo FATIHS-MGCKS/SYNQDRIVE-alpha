@@ -41,7 +41,8 @@ export const PERMISSION_MODULES: PermissionModuleDef[] = [
   { key: 'fleet-condition', label: 'Fahrzeugzustand', icon: Activity, group: 'Health' },
   { key: 'vendor-management', label: 'Service & Werkstatt', icon: Briefcase, group: 'Service' },
   { key: 'tasks', label: 'Aufgaben', icon: ListTodo, group: 'Aufgaben' },
-  { key: 'invoices', label: 'Rechnungen', icon: FileText, group: 'Finanzen' },
+  { key: 'invoices', label: 'Kundenrechnungen', icon: FileText, group: 'Finanzen' },
+  { key: 'payments-connect', label: 'Kundenzahlungen', icon: CreditCard, group: 'Finanzen' },
   { key: 'fines', label: 'Bußgelder', icon: AlertCircle, group: 'Finanzen' },
   { key: 'price-tariffs', label: 'Preise & Tarife', icon: Tag, group: 'Preise & Tarife' },
   { key: 'ai-assistant', label: 'Insights & KI', icon: MessageSquare, group: 'Insights' },
@@ -53,7 +54,7 @@ export const PERMISSION_MODULES: PermissionModuleDef[] = [
   { key: 'fleet-connectivity', label: 'Flotten-Konnektivität', icon: Wifi, group: 'Integrationen' },
   { key: 'data-analyse', label: 'Data Analyse', icon: Activity, group: 'Integrationen' },
   { key: 'data-authorization', label: 'Datenfreigaben', icon: Lock, group: 'Integrationen' },
-  { key: 'billing', label: 'Abrechnung', icon: CreditCard, group: 'Administration' },
+  { key: 'billing', label: 'SynqDrive-Abrechnung', icon: CreditCard, group: 'Administration' },
   { key: 'support', label: 'Hilfe-Center', icon: Headphones, group: 'Administration' },
 ];
 

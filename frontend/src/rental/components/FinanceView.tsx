@@ -1,9 +1,13 @@
 
+import { PageHeader } from '../../components/patterns/page-header';
+import { useLanguage } from '../i18n/LanguageContext';
+import { CustomerPaymentsTab } from './billing/CustomerPaymentsTab';
 import { InvoicesPage } from './invoices/InvoicesPage';
 import { PriceTariffsView } from './PriceTariffsView';
+import type { FinanceTab } from './finance-navigation';
 import type { InvoiceRelationNavigation } from './invoices/InvoiceRelations';
 
-export type FinanceTab = 'invoices' | 'price-tariffs';
+export type { FinanceTab } from './finance-navigation';
 
 interface FinanceViewProps {
   isDarkMode: boolean;
@@ -21,6 +25,20 @@ export function FinanceView({
   onConsumeInitialInvoiceId,
   invoiceNavigation,
 }: FinanceViewProps) {
+  const { t } = useLanguage();
+
+  if (activeTab === 'customer-payments') {
+    return (
+      <div className="max-w-[1200px] mx-auto space-y-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+        <PageHeader title={t('finance.customerPayments.pageTitle')} />
+        <p className="text-[12px] text-muted-foreground leading-relaxed max-w-3xl -mt-2">
+          {t('finance.separationHint')}
+        </p>
+        <CustomerPaymentsTab />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-[1600px] mx-auto space-y-5">
       {activeTab === 'invoices' && (
