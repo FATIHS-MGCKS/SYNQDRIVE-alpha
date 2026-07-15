@@ -1413,9 +1413,15 @@ export class TasksService {
 
   async addComment(orgId: string, taskId: string, body: string, userId?: string) {
     await this.loadTaskOrThrow(taskId, orgId);
-    if (!body?.trim()) throw new BadRequestException('Comment body is required');
-    await this.prisma.taskComment.create({ data: { taskId, body: body.trim(), userId: userId ?? null } });
-    await this.recordEvent(taskId, 'COMMENT_ADDED', userId);
+    const trimmed = body?.trim();
+    if (!trimmed) throw new BadRequestException('Comment body is required');
+    const comment = await this.prisma.taskComment.create({
+      data: { taskId, body: trimmed, userId: userId ?? null },
+    });
+    await this.recordEvent(taskId, 'COMMENT_ADDED', userId, null, null, {
+      commentId: comment.id,
+      bodyPreview: trimmed.length > 160 ? `${trimmed.slice(0, 157)}…` : trimmed,
+    });
     return this.getTaskById(taskId, orgId);
   }
 
@@ -1429,7 +1435,7 @@ export class TasksService {
     this.assertChecklistMutable(task);
     if (!item.title?.trim()) throw new BadRequestException('Checklist item title is required');
     const count = await this.prisma.taskChecklistItem.count({ where: { taskId } });
-    await this.prisma.taskChecklistItem.create({
+    const created = await this.prisma.taskChecklistItem.create({
       data: {
         taskId,
         title: item.title.trim(),
@@ -1438,7 +1444,10 @@ export class TasksService {
         isRequired: item.isRequired ?? false,
       },
     });
-    await this.recordEvent(taskId, 'CHECKLIST_ITEM_ADDED', actorUserId);
+    await this.recordEvent(taskId, 'CHECKLIST_ITEM_ADDED', actorUserId, null, created.title, {
+      itemId: created.id,
+      isRequired: created.isRequired,
+    });
     return this.getTaskById(taskId, orgId);
   }
 
@@ -1451,7 +1460,10 @@ export class TasksService {
   ) {
     const task = await this.loadTaskOrThrow(taskId, orgId);
     this.assertChecklistMutable(task);
-    const item = await this.prisma.taskChecklistItem.findFirst({ where: { id: itemId, taskId }, select: { id: true } });
+    const item = await this.prisma.taskChecklistItem.findFirst({
+      where: { id: itemId, taskId },
+      select: { id: true, title: true, isDone: true, isRequired: true },
+    });
     if (!item) throw new NotFoundException('Checklist item not found');
     const data: Prisma.TaskChecklistItemUpdateInput = {};
     if (patch.title !== undefined) data.title = patch.title;
@@ -1463,7 +1475,29 @@ export class TasksService {
       data.completedAt = patch.isDone ? new Date() : null;
       data.completedByUserId = patch.isDone ? actorUserId ?? null : null;
     }
-    await this.prisma.taskChecklistItem.update({ where: { id: itemId }, data });
+
+    const checklistDoneChanged = patch.isDone !== undefined && patch.isDone !== item.isDone;
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.taskChecklistItem.update({ where: { id: itemId }, data });
+      if (checklistDoneChanged) {
+        await tx.taskEvent.create({
+          data: {
+            taskId,
+            type: 'CHECKLIST_ITEM_UPDATED',
+            actorUserId: actorUserId ?? null,
+            oldValue: item.isDone ? 'true' : 'false',
+            newValue: patch.isDone ? 'true' : 'false',
+            metadata: {
+              itemId: item.id,
+              title: patch.title?.trim() || item.title,
+              field: 'isDone',
+              isRequired: item.isRequired,
+            },
+          },
+        });
+      }
+    });
     return this.getTaskById(taskId, orgId);
   }
 

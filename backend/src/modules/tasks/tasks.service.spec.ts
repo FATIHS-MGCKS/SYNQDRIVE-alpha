@@ -787,6 +787,35 @@ describe('TasksService', () => {
     expect(prisma.taskChecklistItem.update).not.toHaveBeenCalled();
   });
 
+  it('records CHECKLIST_ITEM_UPDATED when toggling checklist completion', async () => {
+    prisma.orgTask.findFirst.mockResolvedValue(baseTask({ status: 'IN_PROGRESS' }));
+    prisma.taskChecklistItem.findFirst.mockResolvedValue({
+      id: 'ci1',
+      title: 'Reifen prüfen',
+      isDone: false,
+      isRequired: true,
+    });
+    prisma.$transaction.mockImplementation(async (fn: (tx: typeof prisma) => Promise<void>) => fn(prisma));
+
+    await svc.updateChecklistItem('org1', 't1', 'ci1', { isDone: true }, 'u1');
+
+    expect(prisma.taskChecklistItem.update).toHaveBeenCalled();
+    expect(prisma.taskEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        taskId: 't1',
+        type: 'CHECKLIST_ITEM_UPDATED',
+        actorUserId: 'u1',
+        oldValue: 'false',
+        newValue: 'true',
+        metadata: expect.objectContaining({
+          itemId: 'ci1',
+          title: 'Reifen prüfen',
+          field: 'isDone',
+        }),
+      }),
+    });
+  });
+
   it('rejects adding checklist items to cancelled tasks', async () => {
     prisma.orgTask.findFirst.mockResolvedValue(baseTask({ status: 'CANCELLED' }));
 

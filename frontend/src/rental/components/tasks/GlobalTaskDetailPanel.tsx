@@ -12,6 +12,7 @@ import {
   TaskDetailShell,
   useRentalTaskLinkedObjectNavigation,
   useTaskChecklistMutation,
+  useTaskCommentMutation,
   useTaskLinkedObjectNavigator,
 } from '../../../lib/tasks';
 import {
@@ -125,6 +126,13 @@ export function GlobalTaskDetailPanel({
     onTaskUpdated,
   });
 
+  const { pending: commentPending, addComment: addTaskComment } = useTaskCommentMutation({
+    orgId,
+    task: normalizedDetail,
+    authorUserId: currentUserId,
+    onTaskUpdated,
+  });
+
   const completionControl = useMemo(
     () => (normalizedDetail ? buildTaskCompletionControlModel(normalizedDetail) : null),
     [normalizedDetail],
@@ -178,16 +186,18 @@ export function GlobalTaskDetailPanel({
   };
 
   const handleAddComment = async () => {
-    if (!orgId || !detail) return;
+    if (!detail) return;
     const body = commentDraft.trim();
     if (!body) {
       setCommentError('Notiz darf nicht leer sein.');
       return;
     }
     setCommentError(null);
-    await runTaskAction(() => api.tasks.addComment(orgId, detail.id, body));
-    setCommentDraft('');
-    toast.success('Notiz gespeichert');
+    const saved = await addTaskComment(body);
+    if (saved) {
+      setCommentDraft('');
+      toast.success('Notiz gespeichert');
+    }
   };
 
   const handlePrimaryAction = () => {
@@ -285,6 +295,7 @@ export function GlobalTaskDetailPanel({
           onCommentDraftChange: setCommentDraft,
           onAddComment: () => void handleAddComment(),
           commentError,
+          commentPending,
           showCommentForm: Boolean(detail && isActiveTaskStatus(detail.status)),
           afterSections: detail ? (
             <div className="mt-4 space-y-3 border-t border-border/60 pt-4">

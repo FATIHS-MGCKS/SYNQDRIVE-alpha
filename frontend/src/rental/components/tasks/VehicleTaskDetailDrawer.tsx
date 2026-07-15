@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../../../components/patterns';
 import { api, type ApiTask } from '../../../lib/api';
-import { buildTaskCompletionControlModel, buildTaskDetailViewModel, isNormalizedTaskDetail, TaskDetailChecklistOverrideDialog, TaskDetailShell, useRentalTaskLinkedObjectNavigation, useTaskChecklistMutation, useTaskLinkedObjectNavigator } from '../../../lib/tasks';
+import { buildTaskCompletionControlModel, buildTaskDetailViewModel, isNormalizedTaskDetail, TaskDetailChecklistOverrideDialog, TaskDetailShell, useRentalTaskLinkedObjectNavigation, useTaskChecklistMutation, useTaskCommentMutation, useTaskLinkedObjectNavigator } from '../../../lib/tasks';
+import { getStoredUser } from '../../../lib/auth';
 import type { VehicleData } from '../../data/vehicles';
 import {
   formatTaskDate,
@@ -162,6 +163,13 @@ export function VehicleTaskDetailDrawer({
     onTaskUpdated: handleDetailUpdated,
   });
 
+  const { pending: commentPending, addComment: addTaskComment } = useTaskCommentMutation({
+    orgId,
+    task: normalizedDetail,
+    authorUserId: getStoredUser()?.id ?? null,
+    onTaskUpdated: handleDetailUpdated,
+  });
+
   const completionControl = useMemo(
     () => (normalizedDetail ? buildTaskCompletionControlModel(normalizedDetail) : null),
     [normalizedDetail],
@@ -253,18 +261,18 @@ export function VehicleTaskDetailDrawer({
   };
 
   const handleAddComment = async () => {
-    if (!orgId || !detail) return;
+    if (!detail) return;
     const body = commentDraft.trim();
     if (!body) {
       setCommentError('Kommentar darf nicht leer sein.');
       return;
     }
     setCommentError(null);
-    const updated = await runAction(
-      () => api.tasks.addComment(orgId, detail.id, body),
-      'Kommentar hinzugefügt',
-    );
-    if (updated) setCommentDraft('');
+    const saved = await addTaskComment(body);
+    if (saved) {
+      setCommentDraft('');
+      toast.success('Kommentar hinzugefügt');
+    }
   };
 
   const handlePrimaryAction = () => {
@@ -481,6 +489,7 @@ export function VehicleTaskDetailDrawer({
           onCommentDraftChange: setCommentDraft,
           onAddComment: () => void handleAddComment(),
           commentError,
+          commentPending,
           showCommentForm: Boolean(detail && isActiveTaskStatus(detail.status)),
           beforeSections: vehicleContextSlot,
         }}

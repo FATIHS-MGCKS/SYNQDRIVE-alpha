@@ -139,7 +139,7 @@ describe('task-detail-view.builder', () => {
     expect(detail.timing.bucket).toBe('COMPLETED');
     expect(detail.nextAction.enabled).toBe(false);
     expect(detail.availableActions.complete.enabled).toBe(false);
-    expect(detail.timeline[0]?.label).toContain('invoice.paid_close');
+    expect(detail.timeline[0]?.label).toContain('Automatisch aufgelöst');
   });
 
   it('builds superseded task with successor reference', () => {
@@ -170,7 +170,7 @@ describe('task-detail-view.builder', () => {
 
     expect(detail.completion.completionMode).toBe('SUPERSEDED');
     expect(detail.completion.supersededByTaskId).toBe('t-successor');
-    expect(detail.timeline[0]?.label).toBe('Durch Nachfolge-Aufgabe ersetzt');
+    expect(detail.timeline[0]?.label).toContain('Automatisch beendet');
   });
 
   it('surfaces unavailable linked object without uuid label fallback', () => {

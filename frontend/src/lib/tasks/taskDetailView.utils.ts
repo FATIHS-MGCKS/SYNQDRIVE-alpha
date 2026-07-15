@@ -8,10 +8,11 @@ import {
   taskStatusLabelDe,
   taskStatusTone,
 } from '../../rental/lib/task-detail.utils';
-import { resolveUserName, shortTaskId } from '../../rental/lib/task-list.utils';
+import { shortTaskId } from '../../rental/lib/task-list.utils';
 import { mapApiPriority, vehicleTaskPriorityLabel } from '../../rental/lib/task-display.utils';
 import { formatOperatorTaskDue } from '../../operator/tasks/operatorTask.utils';
 import { buildTaskDetailChecklistModel, type TaskDetailChecklistModel } from './taskDetailChecklist.utils';
+import { buildTaskCommentAuthorLabel, buildTaskTimelineItems } from './taskTimeline.utils';
 import type {
   ApiTask,
   ApiTaskDetail,
@@ -87,6 +88,7 @@ export interface TaskDetailCommentModel {
   id: string;
   body: string;
   authorLabel: string;
+  createdAt: string;
   createdAtLabel: string;
 }
 
@@ -280,13 +282,13 @@ function buildReason(detail: ApiTaskDetail): TaskDetailReasonModel {
   };
 }
 
-function buildTimeline(detail: ApiTaskDetail): TimelineItem[] {
-  return (detail.timeline ?? []).map((event) => ({
-    id: event.id,
-    title: event.label,
-    time: formatTaskDateTime(event.createdAt),
-    description: event.actor?.displayName ? `von ${event.actor.displayName}` : undefined,
-  }));
+function buildTimeline(
+  detail: ApiTaskDetail,
+  options: TaskDetailViewModelOptions,
+): TimelineItem[] {
+  return buildTaskTimelineItems(detail.timeline ?? [], {
+    formatDateTime: (iso) => formatTaskDateTime(iso),
+  });
 }
 
 function buildTechnicalRows(
@@ -370,9 +372,8 @@ export function buildTaskDetailViewModel(
   const comments = (detail.comments ?? []).map((comment) => ({
     id: comment.id,
     body: comment.body,
-    authorLabel: comment.userId
-      ? resolveUserName(comment.userId, members, 'Unbekannter Nutzer')
-      : 'Unbekannter Nutzer',
+    authorLabel: buildTaskCommentAuthorLabel(comment.userId, members),
+    createdAt: comment.createdAt,
     createdAtLabel: formatTaskDateTime(comment.createdAt),
   }));
 
@@ -397,7 +398,7 @@ export function buildTaskDetailViewModel(
     checklist,
     linkedObjects: sortLinkedObjects(detail.linkedObjects).map(mapLinkedObject),
     comments,
-    timeline: buildTimeline(detail),
+    timeline: buildTimeline(detail, options),
     attachments: detail.attachments ?? [],
     resolutionNote: detail.completion.resolutionNote ?? detail.resolutionNote,
     technical: buildTechnicalRows(detail, options),

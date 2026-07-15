@@ -7,16 +7,16 @@ import {
   ChevronRight,
   File,
   FileText,
-  Paperclip,
   Receipt,
   User,
   Wrench,
   X,
 } from 'lucide-react';
-import { PriorityBadge, SectionHeader, StatusChip, Timeline } from '../../../components/patterns';
+import { PriorityBadge, SectionHeader, StatusChip } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import type { TaskDetailLinkedObjectModel, TaskDetailViewModel } from '../taskDetailView.utils';
 import { TaskDetailChecklistSection } from './TaskDetailChecklistSection';
+import { TaskDetailNotesActivitySection } from './TaskDetailNotesActivitySection';
 
 export interface TaskDetailBodyProps {
   model: TaskDetailViewModel;
@@ -39,6 +39,7 @@ export interface TaskDetailBodyProps {
   commentError?: string | null;
   showCommentForm?: boolean;
   focusComment?: boolean;
+  commentPending?: boolean;
 }
 
 export function TaskDetailBody({
@@ -62,6 +63,7 @@ export function TaskDetailBody({
   commentError,
   showCommentForm,
   focusComment = false,
+  commentPending = false,
 }: TaskDetailBodyProps) {
   const mobile = density === 'mobile';
   const canComment = showCommentForm ?? model.flags.canAddComment;
@@ -113,6 +115,7 @@ export function TaskDetailBody({
           commentError={commentError}
           showCommentForm={canComment}
           focusComment={focusComment}
+          commentPending={commentPending}
         />
         <TaskDetailTechnicalSection
           model={model}
@@ -390,133 +393,6 @@ function TaskDetailLinkedObjectsSection({
             );
           })}
         </ul>
-      )}
-    </section>
-  );
-}
-
-function TaskDetailNotesActivitySection({
-  model,
-  mobile,
-  commentDraft,
-  onCommentDraftChange,
-  onAddComment,
-  commentError,
-  showCommentForm,
-  focusComment,
-}: {
-  model: TaskDetailViewModel;
-  mobile: boolean;
-  commentDraft?: string;
-  onCommentDraftChange?: (value: string) => void;
-  onAddComment?: () => void;
-  commentError?: string | null;
-  showCommentForm?: boolean;
-  focusComment?: boolean;
-}) {
-  const { comments, timeline, attachments, resolutionNote } = model;
-
-  return (
-    <section className="py-4" data-section="notes-activity">
-      <SectionHeader as="label" title="Notizen und Aktivität" className="mb-2.5" />
-
-      {resolutionNote && (
-        <div className="mb-3 rounded-lg border border-[color:var(--status-positive)]/25 bg-[color:var(--status-positive)]/[0.05] px-3 py-2.5">
-          <p className={cn('font-medium text-foreground', mobile ? 'text-xs' : 'text-[11px]')}>
-            Abschluss-Notiz
-          </p>
-          <p className={cn('mt-1 text-foreground/90', mobile ? 'text-sm' : 'text-[12px]')}>
-            {resolutionNote}
-          </p>
-        </div>
-      )}
-
-      {comments.length > 0 ? (
-        <div className="mb-3 space-y-2">
-          {comments.map((comment) => (
-            <div
-              key={comment.id}
-              className="rounded-lg border border-border/60 bg-muted/15 px-3 py-2.5"
-            >
-              <p className={cn('text-foreground', mobile ? 'text-sm' : 'text-[12px]')}>
-                {comment.body}
-              </p>
-              <p className={cn('mt-1 text-muted-foreground', mobile ? 'text-[10px]' : 'text-[10px]')}>
-                {comment.authorLabel} · {comment.createdAtLabel}
-              </p>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <p className={cn('mb-3 text-muted-foreground', mobile ? 'text-sm' : 'text-[12px]')}>
-          Noch keine Notizen.
-        </p>
-      )}
-
-      {showCommentForm && onCommentDraftChange && onAddComment && (
-        <div className="mb-4 space-y-2">
-          <textarea
-            value={commentDraft}
-            onChange={(event) => onCommentDraftChange(event.target.value)}
-            disabled={!model.flags.canAddComment}
-            autoFocus={focusComment}
-            placeholder="Notiz hinzufügen …"
-            className={cn(
-              'w-full resize-y rounded-lg border border-border surface-premium px-3 py-2',
-              mobile ? 'min-h-[88px] text-sm' : 'min-h-[72px] text-[12px]',
-            )}
-          />
-          {commentError && (
-            <p className={cn('font-medium text-[color:var(--status-critical)]', mobile ? 'text-xs' : 'text-[10px]')}>
-              {commentError}
-            </p>
-          )}
-          <button
-            type="button"
-            disabled={!commentDraft?.trim()}
-            onClick={onAddComment}
-            className={cn(
-              'sq-press rounded-lg border border-border font-semibold disabled:opacity-50',
-              mobile ? 'min-h-[44px] w-full px-4 text-sm' : 'px-3 py-2 text-[11px]',
-            )}
-          >
-            Notiz speichern
-          </button>
-        </div>
-      )}
-
-      {attachments.length > 0 && (
-        <div className="mb-4">
-          <p className={cn('mb-2 font-medium text-muted-foreground', mobile ? 'text-xs' : 'text-[11px]')}>
-            Anhänge
-          </p>
-          <div className="space-y-1.5">
-            {attachments.map((attachment) => (
-              <a
-                key={attachment.id}
-                href={attachment.fileUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={cn(
-                  'flex items-center gap-2 rounded-lg border border-border/60 px-3 py-2 font-medium text-[color:var(--brand)] underline',
-                  mobile ? 'text-sm' : 'text-[12px]',
-                )}
-              >
-                <Paperclip className="h-4 w-4 shrink-0" />
-                <span className="truncate">{attachment.fileName ?? attachment.fileUrl}</span>
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {timeline.length > 0 && (
-        <div>
-          <p className={cn('mb-2 font-medium text-muted-foreground', mobile ? 'text-xs' : 'text-[11px]')}>
-            Verlauf
-          </p>
-          <Timeline items={timeline} />
-        </div>
       )}
     </section>
   );

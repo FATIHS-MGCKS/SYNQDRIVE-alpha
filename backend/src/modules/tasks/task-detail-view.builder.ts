@@ -68,9 +68,12 @@ const TIMELINE_TYPE_LABEL_DE: Record<string, string> = {
   CHECKLIST_ITEM_UPDATED: 'Checklistenpunkt aktualisiert',
   ATTACHMENT_ADDED: 'Anhang hinzugefügt',
   AUTO_RESOLVED: 'Automatisch erledigt',
+  SUPERSEDED: 'Automatisch beendet',
   CHECKLIST_COMPLETION_OVERRIDDEN: 'Checklisten-Override',
+  TIMING_CHANGED: 'Zeitplan geändert',
   ESCALATED: 'Eskaliert',
   LINKS_UPDATED: 'Verknüpfungen geändert',
+  UPDATED: 'Aufgabe aktualisiert',
 };
 
 const STATUS_LABEL_DE: Record<TaskStatus, string> = {
@@ -589,22 +592,74 @@ function resolveTimelineLabel(event: {
 }): string {
   const meta = readMetadata(event.metadata);
 
-  if (meta.resolutionKind === TaskCompletionMode.SUPERSEDED) {
-    return 'Durch Nachfolge-Aufgabe ersetzt';
+  if (meta.resolutionKind === TaskCompletionMode.SUPERSEDED || event.type === 'SUPERSEDED') {
+    const reason = resolveEventReasonLabel(meta);
+    return reason ? `Automatisch beendet: ${reason}` : 'Automatisch beendet';
   }
 
   if (event.type === 'AUTO_RESOLVED' || meta.resolutionKind === TaskCompletionMode.AUTO_RESOLVED) {
-    const ruleId = typeof meta.ruleId === 'string' ? meta.ruleId : null;
-    return ruleId ? `Automatisch erledigt (${ruleId})` : 'Automatisch erledigt';
+    const reason = resolveEventReasonLabel(meta);
+    return reason ? `Automatisch aufgelöst: ${reason}` : 'Automatisch aufgelöst';
+  }
+
+  if (event.type === 'CHECKLIST_ITEM_UPDATED' && meta.field === 'isDone') {
+    const title = typeof meta.title === 'string' ? meta.title : 'Checklistenpunkt';
+    if (event.newValue === 'true') return `Checklistenpunkt erledigt: ${title}`;
+    if (event.newValue === 'false') return `Checklistenpunkt wieder geöffnet: ${title}`;
   }
 
   if (event.type === 'STATUS_CHANGED') {
     const target = event.newValue ?? '';
     const statusLabel = STATUS_LABEL_DE[target as TaskStatus];
+    if (target === 'DONE' && meta.resolutionKind === TaskCompletionMode.MANUAL) {
+      return 'Als erledigt markiert';
+    }
     if (statusLabel) return `Status: ${statusLabel}`;
   }
 
   return TIMELINE_TYPE_LABEL_DE[event.type] ?? event.type.replace(/_/g, ' ');
+}
+
+function resolveEventReasonLabel(meta: Record<string, unknown>): string | null {
+  if (typeof meta.resolutionCode === 'string' && meta.resolutionCode.trim()) {
+    const mapped = humanizeResolutionCode(meta.resolutionCode.trim());
+    if (mapped !== meta.resolutionCode.trim().replace(/_/g, ' ').toLowerCase()) {
+      return mapped;
+    }
+  }
+  if (typeof meta.reason === 'string' && meta.reason.trim()) {
+    return humanizeResolutionReason(meta.reason.trim());
+  }
+  if (typeof meta.resolutionCode === 'string' && meta.resolutionCode.trim()) {
+    return humanizeResolutionCode(meta.resolutionCode.trim());
+  }
+  return null;
+}
+
+function humanizeResolutionReason(reason: string): string {
+  const cleaned = reason
+    .replace(/^\[(Auto-resolved|Superseded)\]\s*/i, '')
+    .replace(/^Booking\s+/i, 'Buchung ')
+    .replace(/^Invoice\s+/i, 'Rechnung ')
+    .trim();
+  if (!cleaned) return reason;
+  if (/[äöüß]/i.test(cleaned) || /\b(wurde|wurden|ist|sind)\b/i.test(cleaned)) {
+    return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+  }
+  return cleaned;
+}
+
+function humanizeResolutionCode(code: string): string {
+  const map: Record<string, string> = {
+    INVOICE_PAID: 'Rechnung wurde bezahlt',
+    BOOKING_CANCELLED: 'Buchung wurde storniert',
+    BOOKING_PHASE_SUPERSEDED: 'Buchungsphase wurde ersetzt',
+    INVOICE_TASK_SUPERSEDED: 'Rechnungsaufgabe wurde ersetzt',
+    DOCUMENT_TASK_SUPERSEDED: 'Dokumentenaufgabe wurde ersetzt',
+    CLEANING_TASK_SUPERSEDED: 'Reinigungsaufgabe wurde ersetzt',
+    DOCUMENT_PHASE_SUPERSEDED: 'Dokumentenphase wurde ersetzt',
+  };
+  return map[code] ?? code.replace(/_/g, ' ').toLowerCase();
 }
 
 function extractControlledEventMetadata(metadata: unknown): Record<string, unknown> | null {
@@ -622,6 +677,12 @@ function extractControlledEventMetadata(metadata: unknown): Record<string, unkno
     'openRequiredItems',
     'remainingRequiredItems',
     'transition',
+    'itemId',
+    'title',
+    'field',
+    'isRequired',
+    'bodyPreview',
+    'auto',
   ];
   const out: Record<string, unknown> = {};
   for (const key of allowed) {

@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { api, type ApiTask } from '../../lib/api';
-import { buildTaskCompletionControlModel, buildTaskDetailViewModel, isNormalizedTaskDetail, TaskDetailChecklistOverrideDialog, TaskDetailShell, useOperatorTaskLinkedObjectNavigation, useTaskChecklistMutation, useTaskLinkedObjectNavigator } from '../../lib/tasks';
+import { buildTaskCompletionControlModel, buildTaskDetailViewModel, isNormalizedTaskDetail, TaskDetailChecklistOverrideDialog, TaskDetailShell, useOperatorTaskLinkedObjectNavigation, useTaskChecklistMutation, useTaskCommentMutation, useTaskLinkedObjectNavigator } from '../../lib/tasks';
+import { getStoredUser } from '../../lib/auth';
 import { useRentalOrg } from '../../rental/RentalContext';
 import {
   isActiveTaskStatus,
@@ -38,7 +39,7 @@ export function OperatorTaskDetail({ taskId, initialTask, onTaskUpdated, focusCo
     [onTaskUpdated],
   );
 
-  const { mutating, start, waiting, complete, addComment } =
+  const { mutating, start, waiting, complete } =
     useOperatorTaskActions(handleChanged);
 
   const normalizedTask = task && isNormalizedTaskDetail(task) ? task : null;
@@ -46,6 +47,13 @@ export function OperatorTaskDetail({ taskId, initialTask, onTaskUpdated, focusCo
   const { pendingItemIds, toggleItem } = useTaskChecklistMutation({
     orgId,
     task: normalizedTask,
+    onTaskUpdated: handleChanged,
+  });
+
+  const { pending: commentPending, addComment: addTaskComment } = useTaskCommentMutation({
+    orgId,
+    task: normalizedTask,
+    authorUserId: getStoredUser()?.id ?? null,
     onTaskUpdated: handleChanged,
   });
 
@@ -123,8 +131,8 @@ export function OperatorTaskDetail({ taskId, initialTask, onTaskUpdated, focusCo
       return;
     }
     setCommentError(null);
-    const updated = await addComment(task.id, body);
-    if (updated) setCommentDraft('');
+    const saved = await addTaskComment(body);
+    if (saved) setCommentDraft('');
   };
 
   const handlePrimaryAction = () => {
@@ -224,6 +232,7 @@ export function OperatorTaskDetail({ taskId, initialTask, onTaskUpdated, focusCo
             onCommentDraftChange: setCommentDraft,
             onAddComment: () => void handleAddComment(),
             commentError,
+            commentPending,
             showCommentForm: active,
             focusComment,
             afterSections: showCompleteNote && active ? (
