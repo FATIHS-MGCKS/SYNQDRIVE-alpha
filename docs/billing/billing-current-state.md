@@ -1,6 +1,6 @@
 # Billing — Technische Bestandsaufnahme (Current State)
 
-**Stand:** Code-Inventur Prompt 1/44 · … · Service Boundaries Prompt 5/44 · Product/Price Schema Prompt 6/44  
+**Stand:** Code-Inventur Prompt 1/44 · … · Product/Price Schema Prompt 6/44 · Subscription Items Prompt 7/44  
 **Repository:** `SYNQDRIVE-alpha`  
 **Scope:** Verwaltung → Abrechnung & Abo → SynqDrive-Abonnement (Platform-SaaS-Billing)
 

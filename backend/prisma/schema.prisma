@@ -499,6 +499,37 @@ enum BillingStripeMappingStatus {
   DRIFTED
 }
 
+enum BillingSubscriptionItemStatus {
+  DRAFT
+  TRIALING
+  ACTIVE
+  PAUSED
+  CANCELLED
+  ENDED
+}
+
+enum BillingSubscriptionItemRole {
+  BASE_PLAN
+  ADDON
+}
+
+enum BillingProrationBehavior {
+  CREATE_PRORATIONS
+  NONE
+  ALWAYS_INVOICE
+}
+
+enum BillingDiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+enum BillingDiscountStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
 enum BillingPriceVersionStatus {
   DRAFT
   ACTIVE
@@ -1067,6 +1098,7 @@ model Organization {
   vehicleDrivingAssessmentQualities VehicleDrivingAssessmentQuality[]
   orgIntegrations                   OrganizationIntegration[]
   subscriptions                     BillingSubscription[]
+  billingSubscriptionItems          BillingSubscriptionItem[]
   billingUsageSnapshots             BillingUsageSnapshot[]
   billingPaymentMethods             BillingPaymentMethod[]
   billingOrgPriceOverrides          BillingOrganizationPriceOverride[]
@@ -1179,6 +1211,9 @@ model User {
   organizationRolesCreated    OrganizationRole[]           @relation("RolesCreated")
   billingPriceVersionsCreated BillingPriceVersion[]        @relation("BillingPriceVersionsCreated")
   billingPriceVersionsPublished BillingPriceVersion[]      @relation("BillingPriceVersionsPublished")
+  billingSubscriptionsCreated   BillingSubscription[]      @relation("BillingSubscriptionsCreated")
+  billingSubscriptionsUpdated   BillingSubscription[]      @relation("BillingSubscriptionsUpdated")
+  billingDiscountsCreated       BillingDiscount[]            @relation("BillingDiscountsCreated")
   outboundEmailsSent          OutboundEmail[]              @relation("OutboundEmailSentBy")
   pricingQuotesCreated        PricingQuote[]               @relation("PricingQuotesCreated")
   notificationReceipts        NotificationReceipt[]
@@ -2508,13 +2543,15 @@ model BillingCatalogProduct {
   description String?
   productRole BillingProductRole   @map("product_role")
   status      BillingCatalogStatus @default(ACTIVE)
-  sortOrder   Int                  @default(0) @map("sort_order")
-  metadata    Json?
-  createdAt   DateTime             @default(now()) @map("created_at")
-  updatedAt   DateTime             @updatedAt @map("updated_at")
+  sortOrder           Int                  @default(0) @map("sort_order")
+  allowMultipleItems  Boolean              @default(false) @map("allow_multiple_items")
+  metadata            Json?
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
 
-  priceBooks      BillingPriceBook[]
-  stripeMappings  BillingStripePriceMapping[]
+  priceBooks         BillingPriceBook[]
+  stripeMappings     BillingStripePriceMapping[]
+  subscriptionItems  BillingSubscriptionItem[]
 
   @@index([status, sortOrder])
   @@map("billing_catalog_products")
@@ -2539,6 +2576,7 @@ model BillingPriceBook {
   usageSnapshots    BillingUsageSnapshot[]
   orgPriceOverrides BillingOrganizationPriceOverride[]
   subscriptions     BillingSubscription[]
+  subscriptionItems BillingSubscriptionItem[]
   stripeMappings    BillingStripePriceMapping[]
 
   @@index([productKey])
@@ -2570,6 +2608,7 @@ model BillingPriceVersion {
   usageSnapshots    BillingUsageSnapshot[]
   orgPriceOverrides BillingOrganizationPriceOverride[]
   subscriptions     BillingSubscription[]
+  subscriptionItems BillingSubscriptionItem[]
 
   @@unique([priceBookId, versionNumber])
   @@index([priceBookId, status])
@@ -2590,6 +2629,7 @@ model BillingPriceTier {
 
   priceVersion   BillingPriceVersion    @relation(fields: [priceVersionId], references: [id], onDelete: Cascade)
   usageSnapshots BillingUsageSnapshot[]
+  subscriptionItems BillingSubscriptionItem[]
 
   @@index([priceVersionId, sortOrder])
   @@map("billing_price_tiers")
@@ -2621,27 +2661,113 @@ model BillingStripePriceMapping {
 }
 
 model BillingSubscription {
-  id                   String        @id @default(uuid())
-  organizationId       String        @map("organization_id")
-  stripeSubscriptionId String?       @unique @map("stripe_subscription_id")
-  stripeCustomerId     String?       @map("stripe_customer_id")
-  status               BillingStatus @default(ACTIVE)
-  currentPeriodStart   DateTime?     @map("current_period_start")
-  currentPeriodEnd     DateTime?     @map("current_period_end")
-  cancelAtPeriodEnd    Boolean       @default(false) @map("cancel_at_period_end")
-  priceBookId          String?       @map("price_book_id")
-  priceVersionId       String?       @map("price_version_id")
-  createdAt            DateTime      @default(now()) @map("created_at")
-  updatedAt            DateTime      @updatedAt @map("updated_at")
+  id                   String             @id @default(uuid())
+  organizationId       String             @map("organization_id")
+  stripeSubscriptionId String?            @map("stripe_subscription_id")
+  stripeCustomerId     String?            @map("stripe_customer_id")
+  stripeMode           BillingStripeMode? @map("stripe_mode")
+  status               BillingStatus      @default(ACTIVE)
+  trialStartAt         DateTime?          @map("trial_start_at")
+  trialEndAt           DateTime?          @map("trial_end_at")
+  startedAt            DateTime?          @map("started_at")
+  endedAt              DateTime?          @map("ended_at")
+  cancelAt             DateTime?          @map("cancel_at")
+  currentPeriodStart   DateTime?          @map("current_period_start")
+  currentPeriodEnd     DateTime?          @map("current_period_end")
+  cancelAtPeriodEnd    Boolean            @default(false) @map("cancel_at_period_end")
+  billingAnchorDay     Int?               @map("billing_anchor_day")
+  currency             String             @default("EUR") @db.Char(3)
+  priceBookId          String?            @map("price_book_id")
+  priceVersionId       String?            @map("price_version_id")
+  lockVersion          Int                @default(0) @map("lock_version")
+  createdByUserId      String?            @map("created_by_user_id")
+  updatedByUserId      String?            @map("updated_by_user_id")
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
 
-  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  priceBook    BillingPriceBook?    @relation(fields: [priceBookId], references: [id], onDelete: SetNull)
-  priceVersion BillingPriceVersion? @relation(fields: [priceVersionId], references: [id], onDelete: SetNull)
-  invoices     BillingInvoice[]
+  organization  Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  priceBook     BillingPriceBook?         @relation(fields: [priceBookId], references: [id], onDelete: SetNull)
+  priceVersion  BillingPriceVersion?      @relation(fields: [priceVersionId], references: [id], onDelete: SetNull)
+  createdByUser User?                     @relation("BillingSubscriptionsCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUser User?                     @relation("BillingSubscriptionsUpdated", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  invoices      BillingInvoice[]
+  items         BillingSubscriptionItem[]
+  discounts     BillingDiscount[]
 
+  @@unique([stripeSubscriptionId, stripeMode])
+  @@unique([stripeCustomerId, stripeMode])
   @@index([organizationId])
+  @@index([organizationId, status])
   @@index([priceBookId])
   @@map("billing_subscriptions")
+}
+
+/// Contract line item — base plan (Rental/Fleet) or add-on. Historical ENDED items do not block new tariffs.
+model BillingSubscriptionItem {
+  id                     String                      @id @default(uuid())
+  subscriptionId         String                      @map("subscription_id")
+  organizationId         String                      @map("organization_id")
+  billingProductId       String                      @map("billing_product_id")
+  itemRole               BillingSubscriptionItemRole @map("item_role")
+  priceBookId            String?                     @map("price_book_id")
+  priceVersionId         String?                     @map("price_version_id")
+  priceTierId            String?                     @map("price_tier_id")
+  quantity               Int                         @default(0)
+  validFrom              DateTime                    @map("valid_from")
+  validTo                DateTime?                   @map("valid_to")
+  status                 BillingSubscriptionItemStatus @default(DRAFT)
+  stripeSubscriptionItemId String?                   @map("stripe_subscription_item_id")
+  stripeMode             BillingStripeMode?          @map("stripe_mode")
+  prorationBehavior      BillingProrationBehavior    @default(CREATE_PRORATIONS) @map("proration_behavior")
+  metadata               Json?
+  createdAt              DateTime                    @default(now()) @map("created_at")
+  updatedAt              DateTime                    @updatedAt @map("updated_at")
+
+  subscription   BillingSubscription   @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  billingProduct BillingCatalogProduct @relation(fields: [billingProductId], references: [id], onDelete: Restrict)
+  priceBook      BillingPriceBook?     @relation(fields: [priceBookId], references: [id], onDelete: SetNull)
+  priceVersion   BillingPriceVersion?  @relation(fields: [priceVersionId], references: [id], onDelete: SetNull)
+  priceTier      BillingPriceTier?     @relation(fields: [priceTierId], references: [id], onDelete: SetNull)
+  discounts      BillingDiscount[]
+
+  @@unique([stripeSubscriptionItemId, stripeMode])
+  @@index([subscriptionId, status])
+  @@index([organizationId, itemRole, status])
+  @@index([billingProductId])
+  @@index([priceVersionId])
+  @@map("billing_subscription_items")
+}
+
+/// Subscription-level discount (replaces ad-hoc overrides over time; legacy overrides remain).
+model BillingDiscount {
+  id                     String                @id @default(uuid())
+  subscriptionId         String                @map("subscription_id")
+  subscriptionItemId     String?               @map("subscription_item_id")
+  discountType           BillingDiscountType   @map("discount_type")
+  percentBps             Int?                  @map("percent_bps")
+  fixedAmountCents       Int?                  @map("fixed_amount_cents")
+  currency               String?               @db.Char(3)
+  validFrom              DateTime              @map("valid_from")
+  validTo                DateTime?             @map("valid_to")
+  reason                 String?
+  status                 BillingDiscountStatus @default(ACTIVE)
+  stripeMode             BillingStripeMode?    @map("stripe_mode")
+  stripeCouponId         String?               @map("stripe_coupon_id")
+  stripePromotionCodeId  String?               @map("stripe_promotion_code_id")
+  createdByUserId        String?               @map("created_by_user_id")
+  createdAt              DateTime              @default(now()) @map("created_at")
+  updatedAt              DateTime              @updatedAt @map("updated_at")
+
+  subscription     BillingSubscription      @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  subscriptionItem BillingSubscriptionItem? @relation(fields: [subscriptionItemId], references: [id], onDelete: SetNull)
+  createdByUser    User?                    @relation("BillingDiscountsCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([stripeCouponId, stripeMode])
+  @@unique([stripePromotionCodeId, stripeMode])
+  @@index([subscriptionId, status])
+  @@index([subscriptionItemId])
+  @@map("billing_discounts")
 }
 
 model BillingInvoice {

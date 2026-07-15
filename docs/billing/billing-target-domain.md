@@ -1,6 +1,6 @@
 # Billing Target Domain
 
-**Stand:** Prompt 6/44 — Persistenz Produkt & Preis  
+**Stand:** Prompt 7/44 — Subscription Items & Discounts  
 **Bezug:** `docs/billing/billing-current-state.md` (Ist-Zustand)  
 **Typen & Mapper:** `backend/src/modules/billing/domain/`, `frontend/src/lib/billing-domain.ts`
 
@@ -644,6 +644,32 @@ Additive Erweiterung des Prisma-Modells. Bestehende `billing_price_*`-Tabellen b
 **Backfill (in Migration):** Seed RENTAL/FLEET/Add-ons; `billing_price_books.billing_product_id` aus `product_key`.
 
 **Offen:** Application-Layer auf `BillingCatalogProduct` umstellen; Stripe-Mapping befüllen (Prompt 15).
+
+---
+
+## Persistenz — Subscription, Items & Discounts (Prompt 7)
+
+Erweiterung von `BillingSubscription` (kein Duplikat). Neue Tabellen für Vertragspositionen und Rabatte.
+
+| Fachlich | Prisma | Tabelle |
+|----------|--------|---------|
+| Organization Subscription | `BillingSubscription` *(erweitert)* | `billing_subscriptions` |
+| Subscription Item | `BillingSubscriptionItem` | `billing_subscription_items` |
+| Discount | `BillingDiscount` | `billing_discounts` |
+| Legacy Override | `BillingOrganizationPriceOverride` | *(unverändert)* |
+
+**Migration:** `20260715200000_billing_subscription_items_discounts_schema`
+
+**Subscription-Felder (neu):** `trialStartAt`/`trialEndAt`, `startedAt`/`endedAt`, `cancelAt`, `billingAnchorDay`, `currency`, `lockVersion`, `createdByUserId`/`updatedByUserId`, `stripeMode`
+
+**Constraints:**
+- Max. **ein aktiver Grundtarif** je Organisation (partial unique index; `ENDED` blockiert nicht)
+- Grundtarif nur `RENTAL` oder `FLEET` (Trigger)
+- Add-on-Mehrfach nur wenn `allowMultipleItems` (Trigger)
+- `quantity >= 0`, `percent_bps` 0–10000, `fixed_amount_cents >= 0`
+- Stripe IDs unique per `(id, stripeMode)` auf Subscription, Item, Discount
+
+**Backfill:** `stripe_mode = LIVE` für bestehende Stripe-verknüpfte Subscriptions.
 
 ---
 
