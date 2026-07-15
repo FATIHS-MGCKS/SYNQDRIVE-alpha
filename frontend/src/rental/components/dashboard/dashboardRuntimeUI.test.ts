@@ -337,7 +337,7 @@ describe('dashboard runtime-only UI contracts', () => {
     const activeFocused = buildDashboardGroups(slice, 'en', { focusedGroupId: 'active-rentals' });
     expect(activeFocused.some((group) => group.id === 'pickups-today')).toBe(false);
     expect(activeFocused.some((group) => group.id === 'returns-today')).toBe(false);
-    expect(activeFocused.some((group) => group.id === 'on-time')).toBe(true);
+    expect(activeFocused.some((group) => group.id === 'active-rented-now')).toBe(true);
   });
 
   it('shapes pickup drawer rows with time, customer, station, and timing label', () => {
@@ -410,12 +410,15 @@ describe('dashboard runtime-only UI contracts', () => {
       now: NOW,
     });
     const deRow = deRuntime.slices['active-rented'].groups
-      ?.find((group) => group.id === 'pickups-today')
+      ?.find((group) => group.id === 'overdue-pickups')
       ?.rows[0];
     expect(deRow?.statusLabel).toBe('Seit 5 Std. 17 Min.');
     expect(deRow?.readinessLabel).toBe('Reserviert');
     expect(deRow?.readinessTone).toBe('info');
     expect(resolveTodaysOperationsKpiCounts(deRuntime.slices['active-rented']).hasOverduePickups).toBe(true);
+    expect(
+      deRuntime.slices['active-rented'].groups?.find((group) => group.id === 'pickups-today')?.rows,
+    ).toHaveLength(0);
 
     const enRuntime = buildDashboardRuntimeModel({
       locale: 'en',

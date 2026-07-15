@@ -1,14 +1,19 @@
 import type { DashboardSlice, DashboardSliceRow } from './runtime';
+import { TODAYS_OPERATIONAL_GROUP_IDS } from './runtime/todaysOperationalSlice';
 import { buildReadyToRentDrawerGroups } from './dashboardDrilldownRowDisplay';
 import { normalizeDashboardDrawerGroups } from './dashboardDrawerNormalize';
 import type { TodaysOperationsDrilldownGroupId } from './dashboardDrilldownTypes';
 
-const ACTIVE_RENTED_VEHICLE_GROUP_IDS = new Set([
-  'on-time',
-  'return-due-soon',
-  'return-overdue',
-  'critical-during-rental',
-]);
+const ACTIVE_RENTED_VEHICLE_GROUP_IDS = new Set<string>([TODAYS_OPERATIONAL_GROUP_IDS.ACTIVE_RENTED_NOW]);
+
+const TODAYS_OPERATIONS_DRAWER_ORDER = [
+  TODAYS_OPERATIONAL_GROUP_IDS.ACTIVE_RENTED_NOW,
+  TODAYS_OPERATIONAL_GROUP_IDS.RESERVED_PICKUP_TODAY,
+  TODAYS_OPERATIONAL_GROUP_IDS.PICKUPS_TODAY,
+  TODAYS_OPERATIONAL_GROUP_IDS.RETURNS_TODAY,
+  TODAYS_OPERATIONAL_GROUP_IDS.OVERDUE_PICKUPS,
+  TODAYS_OPERATIONAL_GROUP_IDS.OVERDUE_RETURNS,
+] as const;
 
 export interface DashboardDrawerGroup {
   id: string;
@@ -33,15 +38,10 @@ function buildTodaysOperationsDrawerGroups(
   if (focusedGroupId === 'active-rentals') {
     return nonEmpty.filter((group) => ACTIVE_RENTED_VEHICLE_GROUP_IDS.has(group.id));
   }
-  const order = [
-    'pickups-today',
-    'returns-today',
-    'on-time',
-    'return-due-soon',
-    'return-overdue',
-    'critical-during-rental',
-  ];
-  return [...nonEmpty].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+  return [...nonEmpty].sort(
+    (a, b) => TODAYS_OPERATIONS_DRAWER_ORDER.indexOf(a.id as (typeof TODAYS_OPERATIONS_DRAWER_ORDER)[number])
+      - TODAYS_OPERATIONS_DRAWER_ORDER.indexOf(b.id as (typeof TODAYS_OPERATIONS_DRAWER_ORDER)[number]),
+  );
 }
 
 export function buildDashboardGroups(
