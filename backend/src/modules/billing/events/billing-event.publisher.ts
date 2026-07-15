@@ -71,6 +71,22 @@ export class BillingEventPublisher {
     });
   }
 
+  async publishPaymentMethodSynced(
+    organizationId: string,
+    payload: Record<string, unknown>,
+    correlationId?: string,
+    actorUserId?: string | null,
+  ): Promise<void> {
+    await this.publish({
+      type: BillingDomainEventType.PAYMENT_METHOD_SYNCED,
+      organizationId,
+      occurredAt: new Date(),
+      payload,
+      correlationId,
+      actorUserId,
+    });
+  }
+
   async publishInvoiceMirrored(
     organizationId: string,
     payload: Record<string, unknown>,

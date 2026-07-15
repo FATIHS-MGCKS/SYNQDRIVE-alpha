@@ -19,10 +19,19 @@ describe('StripePreparedService', () => {
     syncOrganizationStripe: jest.fn(),
   } as unknown as StripeBillingService;
 
+  const paymentMethods = {
+    getDefaultPaymentMethodView: jest.fn(),
+    listOrganizationPaymentMethods: jest.fn(),
+    createSetupIntent: jest.fn(),
+    syncPaymentMethods: jest.fn(),
+    setDefaultPaymentMethod: jest.fn(),
+    detachPaymentMethod: jest.fn(),
+  };
+
   let service: StripePreparedService;
 
   beforeEach(() => {
-    service = new StripePreparedService(prisma, stripeBilling);
+    service = new StripePreparedService(prisma, stripeBilling, paymentMethods as never);
     jest.clearAllMocks();
     (stripeBilling.isStripeConfigured as jest.Mock).mockReturnValue(false);
   });
@@ -34,7 +43,11 @@ describe('StripePreparedService', () => {
   });
 
   it('returns exists=false when no payment method', async () => {
-    prisma.billingPaymentMethod.findFirst.mockResolvedValue(null);
+    paymentMethods.getDefaultPaymentMethodView.mockResolvedValue({
+      exists: false,
+      billingState: 'MISSING',
+      paymentMethod: null,
+    });
     const result = await service.getDefaultPaymentMethod('org-1');
     expect(result.exists).toBe(false);
     expect(result.paymentMethod).toBeNull();

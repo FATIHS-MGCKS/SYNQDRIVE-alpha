@@ -98,6 +98,12 @@ export class CreateSubscriptionDto {
   stripeSubscriptionId!: string;
 }
 
+export class CreateSetupIntentDto {
+  @IsOptional()
+  @IsIn(['card', 'sepa_debit'])
+  paymentMethodType?: 'card' | 'sepa_debit';
+}
+
 export class StripeCustomerPortalDto {
   @IsOptional()
   @IsString()

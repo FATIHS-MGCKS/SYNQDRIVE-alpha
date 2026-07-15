@@ -58,6 +58,19 @@ describe('BillingController security characterization', () => {
         level: 'write',
       });
     });
+
+    const writeHandlers = [
+      'syncPaymentMethods',
+      'setDefaultPaymentMethod',
+      'detachPaymentMethod',
+    ] as const;
+
+    it.each(writeHandlers)('%s requires billing.write', (method) => {
+      expect(permissionOf(BillingController.prototype, method)).toEqual({
+        module: 'billing',
+        level: 'write',
+      });
+    });
   });
 
   describe('master admin endpoints', () => {
@@ -80,6 +93,9 @@ describe('BillingController security characterization', () => {
       'publishPriceVersion',
       'archivePriceVersion',
       'listAdminPaymentMethods',
+      'syncOrganizationPaymentMethods',
+      'adminSetDefaultPaymentMethod',
+      'adminDetachPaymentMethod',
       'getStripeStatus',
       'listWebhookEvents',
       'createSubscription',

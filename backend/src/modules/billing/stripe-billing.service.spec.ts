@@ -62,6 +62,12 @@ describe('StripeBillingService', () => {
     syncOrganizationSubscription: jest.fn(),
   };
 
+  const paymentMethods = {
+    createCustomerPortalSession: jest.fn(),
+    createSetupIntent: jest.fn(),
+    syncPaymentMethods: jest.fn(),
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     service = new StripeBillingService(
@@ -70,6 +76,7 @@ describe('StripeBillingService', () => {
       billableVehiclesService as never,
       catalogMappings as never,
       subscriptionOrchestrator as never,
+      paymentMethods as never,
     );
     jest.spyOn(stripeClientUtil, 'getStripeClient').mockReturnValue(stripeMock as never);
   });
@@ -126,26 +133,30 @@ describe('StripeBillingService', () => {
     });
   });
 
-  it('createCustomerPortalSession returns portal URL', async () => {
-    jest.spyOn(service, 'ensureCustomerForOrganization').mockResolvedValue('cus_1');
-    stripeMock.billingPortal.sessions.create.mockResolvedValue({
+  it('createCustomerPortalSession delegates to payment method service', async () => {
+    paymentMethods.createCustomerPortalSession.mockResolvedValue({
       url: 'https://billing.stripe.com/session/test',
+      customerId: 'cus_1',
+      returnUrl: 'http://localhost:5173/rental/settings',
     });
 
     const result = await service.createCustomerPortalSession('org-1');
     expect(result.url).toBe('https://billing.stripe.com/session/test');
-    expect(stripeMock.billingPortal.sessions.create).toHaveBeenCalled();
+    expect(paymentMethods.createCustomerPortalSession).toHaveBeenCalledWith('org-1', undefined);
   });
 
-  it('createSetupIntent returns client secret', async () => {
-    jest.spyOn(service, 'ensureCustomerForOrganization').mockResolvedValue('cus_1');
-    stripeMock.setupIntents.create.mockResolvedValue({
-      id: 'seti_1',
-      client_secret: 'seti_secret_123',
+  it('createSetupIntent delegates to payment method service', async () => {
+    paymentMethods.createSetupIntent.mockResolvedValue({
+      clientSecret: 'seti_secret_123',
+      customerId: 'cus_1',
+      setupIntentId: 'seti_1',
+      paymentMethodType: 'card',
+      stripeMode: 'TEST',
     });
 
     const result = await service.createSetupIntent('org-1');
     expect(result.clientSecret).toBe('seti_secret_123');
+    expect(paymentMethods.createSetupIntent).toHaveBeenCalledWith('org-1');
   });
 
   it('rejects invalid returnUrl origin', () => {

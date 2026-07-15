@@ -33,6 +33,14 @@ describe('StripeWebhookService', () => {
     mirrorStripeInvoice: jest.fn(),
   };
 
+  const paymentMethods = {
+    syncPaymentMethods: jest.fn().mockResolvedValue({ synced: 0 }),
+    handlePaymentMethodDetached: jest.fn().mockResolvedValue(undefined),
+    handlePaymentMethodUpdated: jest.fn().mockResolvedValue(undefined),
+    handleSetupIntentSucceeded: jest.fn().mockResolvedValue(undefined),
+    handleSetupIntentFailed: jest.fn().mockResolvedValue(undefined),
+  };
+
   const configService = {
     get: jest.fn((key: string) => {
       if (key === 'stripe.webhookSecret') return 'whsec_test';
@@ -61,6 +69,7 @@ describe('StripeWebhookService', () => {
       stripeAdapter as never,
       invoiceMirror as never,
       billingEvents as never,
+      paymentMethods as never,
     );
     jest.spyOn(stripeClientUtil, 'getStripeClient').mockReturnValue(stripeMock as never);
   });

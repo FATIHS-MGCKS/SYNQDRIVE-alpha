@@ -1,22 +1,12 @@
-import {
-  BadRequestException,
-  HttpException,
-  HttpStatus,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { BadRequestException, forwardRef, Inject, Injectable, Logger, NotFoundException, HttpException, HttpStatus } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  BillingPaymentMethodStatus,
-  BillingPaymentMethodType,
-  BillingStatus,
-} from '@prisma/client';
+import { BillingStatus } from '@prisma/client';
 import Stripe from 'stripe';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BillableVehiclesService } from './billable-vehicles.service';
 import { StripeCatalogMappingService } from './stripe-catalog-mapping.service';
 import { StripeSubscriptionOrchestratorService } from './stripe-subscription-orchestrator.service';
+import { StripePaymentMethodService } from './stripe-payment-method.service';
 import { getStripeClient } from './stripe-client.util';
 import { mapStripeSubscriptionStatus } from './stripe-status.mapper';
 
@@ -36,6 +26,8 @@ export class StripeBillingService {
     private readonly billableVehiclesService: BillableVehiclesService,
     private readonly catalogMappings: StripeCatalogMappingService,
     private readonly subscriptionOrchestrator: StripeSubscriptionOrchestratorService,
+    @Inject(forwardRef(() => StripePaymentMethodService))
+    private readonly paymentMethods: StripePaymentMethodService,
   ) {}
 
   isStripeConfigured(): boolean {
@@ -176,124 +168,20 @@ export class StripeBillingService {
   }
 
   async createCustomerPortalSession(organizationId: string, returnUrl?: string) {
-    const stripe = this.requireStripe();
-    const customerId = await this.ensureCustomerForOrganization(organizationId);
-    const resolvedReturnUrl = this.resolvePortalReturnUrl(returnUrl);
-
-    const session = await stripe.billingPortal.sessions.create({
-      customer: customerId,
-      return_url: resolvedReturnUrl,
-    });
-
-    return {
-      url: session.url,
-      customerId,
-      returnUrl: resolvedReturnUrl,
-    };
+    return this.paymentMethods.createCustomerPortalSession(organizationId, returnUrl);
   }
 
   async createSetupIntent(organizationId: string) {
-    const stripe = this.requireStripe();
-    const customerId = await this.ensureCustomerForOrganization(organizationId);
-
-    const intent = await stripe.setupIntents.create({
-      customer: customerId,
-      usage: 'off_session',
-      payment_method_types: ['card'],
-      metadata: {
-        organizationId,
-      },
-    });
-
-    if (!intent.client_secret) {
-      throw new BadRequestException('Stripe did not return a setup intent client secret');
-    }
-
-    return {
-      clientSecret: intent.client_secret,
-      customerId,
-      setupIntentId: intent.id,
-    };
-  }
-
-  private mapPaymentMethodType(type: string | undefined): BillingPaymentMethodType {
-    if (type === 'card') return BillingPaymentMethodType.CARD;
-    if (type === 'sepa_debit') return BillingPaymentMethodType.SEPA_DEBIT;
-    return BillingPaymentMethodType.UNKNOWN;
+    return this.paymentMethods.createSetupIntent(organizationId);
   }
 
   async syncPaymentMethods(organizationId: string) {
-    const stripe = this.requireStripe();
-    const customerId = await this.findStripeCustomerId(organizationId);
-    if (!customerId) {
-      return { synced: 0, customerId: null };
-    }
-
-    const customer = (await stripe.customers.retrieve(customerId)) as Stripe.Customer;
-    const defaultPmRef = customer.invoice_settings?.default_payment_method;
-    const defaultPmId =
-      typeof defaultPmRef === 'string' ? defaultPmRef : defaultPmRef?.id ?? null;
-
-    const paymentMethods = await stripe.paymentMethods.list({
-      customer: customerId,
-      type: 'card',
-    });
-
-    const seen = new Set<string>();
-    let synced = 0;
-
-    for (const pm of paymentMethods.data) {
-      seen.add(pm.id);
-      const card = pm.card;
-      await this.prisma.billingPaymentMethod.upsert({
-        where: { stripePaymentMethodId: pm.id },
-        create: {
-          organizationId,
-          stripePaymentMethodId: pm.id,
-          type: this.mapPaymentMethodType(pm.type),
-          brand: card?.brand ?? null,
-          last4: card?.last4 ?? null,
-          expMonth: card?.exp_month ?? null,
-          expYear: card?.exp_year ?? null,
-          isDefault: pm.id === defaultPmId,
-          status: BillingPaymentMethodStatus.ACTIVE,
-        },
-        update: {
-          type: this.mapPaymentMethodType(pm.type),
-          brand: card?.brand ?? null,
-          last4: card?.last4 ?? null,
-          expMonth: card?.exp_month ?? null,
-          expYear: card?.exp_year ?? null,
-          isDefault: pm.id === defaultPmId,
-          status: BillingPaymentMethodStatus.ACTIVE,
-        },
-      });
-      synced++;
-    }
-
-    await this.prisma.billingPaymentMethod.updateMany({
-      where: {
-        organizationId,
-        stripePaymentMethodId: { notIn: [...seen] },
-      },
-      data: {
-        isDefault: false,
-        status: BillingPaymentMethodStatus.DETACHED,
-      },
-    });
-
-    if (defaultPmId) {
-      await this.prisma.billingPaymentMethod.updateMany({
-        where: { organizationId },
-        data: { isDefault: false },
-      });
-      await this.prisma.billingPaymentMethod.updateMany({
-        where: { organizationId, stripePaymentMethodId: defaultPmId },
-        data: { isDefault: true },
-      });
-    }
-
-    return { synced, customerId, defaultPaymentMethodId: defaultPmId };
+    const result = await this.paymentMethods.syncPaymentMethods(organizationId);
+    return {
+      synced: result.synced,
+      customerId: result.customerId,
+      defaultPaymentMethodId: result.defaultPaymentMethodId,
+    };
   }
 
   async syncSubscriptionFromStripe(organizationId: string) {

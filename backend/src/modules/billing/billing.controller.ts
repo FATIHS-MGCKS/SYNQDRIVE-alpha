@@ -10,6 +10,8 @@ import {
 
   Patch,
 
+  Delete,
+
   Body,
 
   Param,
@@ -45,6 +47,8 @@ import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
 
 import { Roles } from '@shared/decorators/roles.decorator';
+import { MasterBillingGuard } from '@shared/auth/master-billing.guard';
+import { RequireMasterBilling } from '@shared/decorators/require-master-billing.decorator';
 
 import { PaginationParams } from '@shared/utils/pagination';
 
@@ -69,6 +73,8 @@ import {
   ReplaceTiersDto,
 
   StripeCustomerPortalDto,
+
+  CreateSetupIntentDto,
 
 } from './dto/billing.dto';
 
@@ -342,7 +348,7 @@ export class BillingController {
 
     const scoped = resolveOrgScope(req?.user, orgId);
 
-    return this.billingService.findPaymentMethods(scoped);
+    return this.stripePreparedService.listPaymentMethods(scoped);
 
   }
 
@@ -398,13 +404,79 @@ export class BillingController {
 
     @Query('orgId') orgId: string | undefined,
 
+    @Body() body: CreateSetupIntentDto,
+
     @Req() req: any,
 
   ) {
 
     const scoped = resolveOrgScope(req?.user, orgId);
 
-    return this.stripePreparedService.createSetupIntent(scoped);
+    return this.stripePreparedService.createSetupIntent(scoped, body?.paymentMethodType);
+
+  }
+
+
+
+  @Post('billing/stripe/sync-payment-methods')
+
+  @RequirePermission('billing', 'write')
+
+  async syncPaymentMethods(
+
+    @Query('orgId') orgId: string | undefined,
+
+    @Req() req: any,
+
+  ) {
+
+    const scoped = resolveOrgScope(req?.user, orgId);
+
+    return this.stripePreparedService.syncPaymentMethods(scoped);
+
+  }
+
+
+
+  @Post('billing/payment-methods/:paymentMethodId/set-default')
+
+  @RequirePermission('billing', 'write')
+
+  async setDefaultPaymentMethod(
+
+    @Param('paymentMethodId') paymentMethodId: string,
+
+    @Query('orgId') orgId: string | undefined,
+
+    @Req() req: any,
+
+  ) {
+
+    const scoped = resolveOrgScope(req?.user, orgId);
+
+    return this.stripePreparedService.setDefaultPaymentMethod(scoped, paymentMethodId);
+
+  }
+
+
+
+  @Delete('billing/payment-methods/:paymentMethodId')
+
+  @RequirePermission('billing', 'write')
+
+  async detachPaymentMethod(
+
+    @Param('paymentMethodId') paymentMethodId: string,
+
+    @Query('orgId') orgId: string | undefined,
+
+    @Req() req: any,
+
+  ) {
+
+    const scoped = resolveOrgScope(req?.user, orgId);
+
+    return this.stripePreparedService.detachPaymentMethod(scoped, paymentMethodId);
 
   }
 
@@ -442,9 +514,73 @@ export class BillingController {
 
   @Roles('MASTER_ADMIN')
 
+  @UseGuards(MasterBillingGuard)
+
+  @RequireMasterBilling()
+
   async syncOrganizationStripe(@Param('orgId') orgId: string) {
 
     return this.stripePreparedService.syncOrganizationStripe(orgId);
+
+  }
+
+
+
+  @Post('admin/billing/organizations/:orgId/sync-payment-methods')
+
+  @Roles('MASTER_ADMIN')
+
+  @UseGuards(MasterBillingGuard)
+
+  @RequireMasterBilling()
+
+  async syncOrganizationPaymentMethods(@Param('orgId') orgId: string) {
+
+    return this.stripePreparedService.syncPaymentMethods(orgId);
+
+  }
+
+
+
+  @Post('admin/billing/organizations/:orgId/payment-methods/:paymentMethodId/set-default')
+
+  @Roles('MASTER_ADMIN')
+
+  @UseGuards(MasterBillingGuard)
+
+  @RequireMasterBilling()
+
+  async adminSetDefaultPaymentMethod(
+
+    @Param('orgId') orgId: string,
+
+    @Param('paymentMethodId') paymentMethodId: string,
+
+  ) {
+
+    return this.stripePreparedService.setDefaultPaymentMethod(orgId, paymentMethodId);
+
+  }
+
+
+
+  @Delete('admin/billing/organizations/:orgId/payment-methods/:paymentMethodId')
+
+  @Roles('MASTER_ADMIN')
+
+  @UseGuards(MasterBillingGuard)
+
+  @RequireMasterBilling()
+
+  async adminDetachPaymentMethod(
+
+    @Param('orgId') orgId: string,
+
+    @Param('paymentMethodId') paymentMethodId: string,
+
+  ) {
+
+    return this.stripePreparedService.detachPaymentMethod(orgId, paymentMethodId);
 
   }
 

@@ -3189,11 +3189,16 @@ model BillingPaymentMethod {
   id                    String                     @id @default(uuid())
   organizationId        String                     @map("organization_id")
   stripePaymentMethodId String?                    @unique @map("stripe_payment_method_id")
+  stripeMode            BillingStripeMode?         @map("stripe_mode")
   type                  BillingPaymentMethodType   @default(UNKNOWN)
   brand                 String?
   last4                 String?
   expMonth              Int?                       @map("exp_month")
   expYear               Int?                       @map("exp_year")
+  country               String?                    @db.Char(2)
+  billingName           String?                    @map("billing_name")
+  sepaMandateStatus     String?                    @map("sepa_mandate_status")
+  sepaBankCode          String?                    @map("sepa_bank_code")
   isDefault             Boolean                    @default(false) @map("is_default")
   status                BillingPaymentMethodStatus @default(ACTIVE)
   createdAt             DateTime                   @default(now()) @map("created_at")
@@ -3202,6 +3207,8 @@ model BillingPaymentMethod {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
+  @@index([organizationId, isDefault])
+  @@index([organizationId, status])
   @@map("billing_payment_methods")
 }
 

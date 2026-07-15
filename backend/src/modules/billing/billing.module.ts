@@ -40,6 +40,7 @@ import { StripeCatalogMappingService } from './stripe-catalog-mapping.service';
 import { StripeCatalogMappingController } from './stripe-catalog-mapping.controller';
 import { StripeCatalogSyncService } from './stripe-catalog-sync.service';
 import { StripeSubscriptionOrchestratorService } from './stripe-subscription-orchestrator.service';
+import { StripePaymentMethodService } from './stripe-payment-method.service';
 
 @Module({
   controllers: [BillingController, StripeWebhookController, MasterSubscriptionController, StripeCatalogMappingController],
@@ -79,6 +80,7 @@ import { StripeSubscriptionOrchestratorService } from './stripe-subscription-orc
     StripeCatalogMappingService,
     StripeCatalogSyncService,
     StripeSubscriptionOrchestratorService,
+    StripePaymentMethodService,
   ],
   exports: [
     BillingService,
@@ -116,6 +118,7 @@ import { StripeSubscriptionOrchestratorService } from './stripe-subscription-orc
     StripeCatalogMappingService,
     StripeCatalogSyncService,
     StripeSubscriptionOrchestratorService,
+    StripePaymentMethodService,
   ],
 })
 export class BillingModule {}

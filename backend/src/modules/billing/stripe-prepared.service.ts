@@ -4,9 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { BillingPaymentMethodStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { StripeBillingService } from './stripe-billing.service';
+import { StripePaymentMethodService } from './stripe-payment-method.service';
 
 export interface StripePreparedStatusDto {
   configured: boolean;
@@ -26,6 +26,7 @@ export class StripePreparedService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly stripeBilling: StripeBillingService,
+    private readonly paymentMethods: StripePaymentMethodService,
   ) {}
 
   isStripeConfigured(): boolean {
@@ -57,35 +58,24 @@ export class StripePreparedService {
   }
 
   async getDefaultPaymentMethod(organizationId: string) {
-    const pm = await this.prisma.billingPaymentMethod.findFirst({
-      where: { organizationId, isDefault: true },
-      orderBy: { createdAt: 'desc' },
-    });
-
     const stripe = this.getPreparedStatus();
-
-    if (!pm) {
-      return {
-        exists: false,
-        stripe,
-        paymentMethod: null,
-      };
-    }
-
+    const result = await this.paymentMethods.getDefaultPaymentMethodView(organizationId);
     return {
-      exists: true,
+      exists: result.exists,
       stripe,
-      paymentMethod: {
-        id: pm.id,
-        type: pm.type,
-        brand: pm.brand,
-        last4: pm.last4,
-        expMonth: pm.expMonth,
-        expYear: pm.expYear,
-        status: pm.status,
-        isDefault: pm.isDefault,
-        isActive: pm.status === BillingPaymentMethodStatus.ACTIVE,
-      },
+      billingState: result.billingState,
+      paymentMethod: result.paymentMethod,
+    };
+  }
+
+  async listPaymentMethods(organizationId: string) {
+    if (!this.isStripeConfigured()) {
+      const methods = await this.paymentMethods.listOrganizationPaymentMethods(organizationId);
+      return { configured: false, paymentMethods: methods };
+    }
+    return {
+      configured: true,
+      paymentMethods: await this.paymentMethods.listOrganizationPaymentMethods(organizationId),
     };
   }
 
@@ -99,14 +89,44 @@ export class StripePreparedService {
     return this.stripeBilling.createCustomerPortalSession(organizationId, returnUrl);
   }
 
-  async createSetupIntent(organizationId: string) {
+  async createSetupIntent(organizationId: string, paymentMethodType?: 'card' | 'sepa_debit') {
     if (!this.isStripeConfigured()) {
       throw new HttpException(
         this.notConfiguredPayload('Setup intent'),
         HttpStatus.NOT_IMPLEMENTED,
       );
     }
-    return this.stripeBilling.createSetupIntent(organizationId);
+    return this.paymentMethods.createSetupIntent(organizationId, paymentMethodType ?? 'card');
+  }
+
+  async syncPaymentMethods(organizationId: string) {
+    if (!this.isStripeConfigured()) {
+      throw new HttpException(
+        this.notConfiguredPayload('Payment method sync'),
+        HttpStatus.NOT_IMPLEMENTED,
+      );
+    }
+    return this.paymentMethods.syncPaymentMethods(organizationId);
+  }
+
+  async setDefaultPaymentMethod(organizationId: string, paymentMethodId: string) {
+    if (!this.isStripeConfigured()) {
+      throw new HttpException(
+        this.notConfiguredPayload('Set default payment method'),
+        HttpStatus.NOT_IMPLEMENTED,
+      );
+    }
+    return this.paymentMethods.setDefaultPaymentMethod(organizationId, paymentMethodId);
+  }
+
+  async detachPaymentMethod(organizationId: string, paymentMethodId: string) {
+    if (!this.isStripeConfigured()) {
+      throw new HttpException(
+        this.notConfiguredPayload('Detach payment method'),
+        HttpStatus.NOT_IMPLEMENTED,
+      );
+    }
+    return this.paymentMethods.detachPaymentMethod(organizationId, paymentMethodId);
   }
 
   async syncOrganizationStripe(organizationId: string) {

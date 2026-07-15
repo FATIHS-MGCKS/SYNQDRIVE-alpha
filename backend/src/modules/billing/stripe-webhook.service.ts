@@ -13,6 +13,7 @@ import { StripeBillingService } from './stripe-billing.service';
 import { StripeInvoiceMirrorService } from './stripe-invoice-mirror.service';
 import { StripeBillingAdapter } from './adapters/stripe-billing.adapter';
 import { BillingEventPublisher } from './events/billing-event.publisher';
+import { StripePaymentMethodService } from './stripe-payment-method.service';
 
 @Injectable()
 export class StripeWebhookService {
@@ -25,6 +26,7 @@ export class StripeWebhookService {
     private readonly stripeAdapter: StripeBillingAdapter,
     private readonly invoiceMirror: StripeInvoiceMirrorService,
     private readonly billingEvents: BillingEventPublisher,
+    private readonly paymentMethods: StripePaymentMethodService,
   ) {}
 
   constructEvent(rawBody: Buffer, signature: string | undefined): Stripe.Event {
@@ -124,6 +126,19 @@ export class StripeWebhookService {
       case 'payment_method.attached':
         await this.handlePaymentMethodAttached(event.data.object as Stripe.PaymentMethod);
         return false;
+      case 'payment_method.detached':
+        await this.handlePaymentMethodDetached(event.data.object as Stripe.PaymentMethod);
+        return false;
+      case 'payment_method.updated':
+      case 'payment_method.automatically_updated':
+        await this.handlePaymentMethodUpdated(event.data.object as Stripe.PaymentMethod);
+        return false;
+      case 'setup_intent.succeeded':
+        await this.handleSetupIntentSucceeded(event.data.object as Stripe.SetupIntent);
+        return false;
+      case 'setup_intent.setup_failed':
+        await this.handleSetupIntentFailed(event.data.object as Stripe.SetupIntent);
+        return false;
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted':
@@ -163,7 +178,23 @@ export class StripeWebhookService {
   private async handlePaymentMethodAttached(paymentMethod: Stripe.PaymentMethod) {
     const orgId = await this.resolveOrgIdFromCustomer(paymentMethod.customer ?? null);
     if (!orgId) return;
-    await this.stripeBilling.syncPaymentMethods(orgId);
+    await this.paymentMethods.syncPaymentMethods(orgId);
+  }
+
+  private async handlePaymentMethodDetached(paymentMethod: Stripe.PaymentMethod) {
+    await this.paymentMethods.handlePaymentMethodDetached(paymentMethod);
+  }
+
+  private async handlePaymentMethodUpdated(paymentMethod: Stripe.PaymentMethod) {
+    await this.paymentMethods.handlePaymentMethodUpdated(paymentMethod);
+  }
+
+  private async handleSetupIntentSucceeded(setupIntent: Stripe.SetupIntent) {
+    await this.paymentMethods.handleSetupIntentSucceeded(setupIntent);
+  }
+
+  private async handleSetupIntentFailed(setupIntent: Stripe.SetupIntent) {
+    await this.paymentMethods.handleSetupIntentFailed(setupIntent);
   }
 
   private async handleSubscriptionEvent(subscription: Stripe.Subscription) {
