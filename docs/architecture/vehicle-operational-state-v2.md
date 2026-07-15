@@ -1,6 +1,6 @@
 # Vehicle Operational State V2 — Verbindliche Fach- und Technikspezifikation
 
-**Version:** 2.0 (Spezifikation)  
+**Version:** 2.1 (Spezifikation)  
 **Date:** 2026-07-15  
 **Status:** Normativ für zukünftige Implementierung — **keine produktive Umsetzung in diesem Dokument**  
 **Basis:**  
@@ -196,15 +196,15 @@ AND NOT exists(PICKUP protocol)
 
 ### 3.5 Ableitungspräzedenz (operativer Zustand)
 
-Strikt in dieser Reihenfolge; erste zutreffende Regel gewinnt:
+Strikt in dieser Reihenfolge; erste zutreffende Regel gewinnt den **Hauptstatus** (`operationalState`). Details, parallele Signale und Übergänge: **§15**.
 
 ```
-1. UNKNOWN          (Ableitungsfehler / widersprüchliche Daten)
-2. BLOCKED          (Hard-Blockade)
-3. MAINTENANCE      (IN_SERVICE)
+1. UNKNOWN          (Statusdaten nicht belastbar)
+2. MAINTENANCE      (IN_SERVICE / Maintenance-Policy)
+3. BLOCKED          (Hard-Blockade)
 4. ACTIVE_RENTED    (ACTIVE + Pickup abgeschlossen)
-5. RESERVED         (im Reservierungsfenster, Pickup offen)
-6. AVAILABLE        (Default bei belastbarer Datenlage)
+5. RESERVED         (verbindliche Buchung im Reservierungsfenster)
+6. AVAILABLE        (Sonstfall bei belastbarer Datenlage)
 ```
 
 ### 3.6 Fail-Closed zu UNKNOWN
@@ -514,9 +514,9 @@ interface VehicleOperationalSnapshot {
 
 ---
 
-## 14. Implementierungsreihenfolge (Vorschlag für Prompts 4+)
+## 14. Implementierungsreihenfolge (Vorschlag für Prompts 5+)
 
-1. `VehicleOperationalStateService` + Unit-Tests (reine Ableitung)  
+1. `VehicleOperationalStateService` + Unit-Tests (reine Ableitung gemäß §15)  
 2. Fleet-API DTO + Ersetzung `deriveFleetStatusContext`  
 3. Frontend: Store ohne `normalizeStatus`-Fallback; Tabs aus `operationalState`  
 4. Dashboard Runtime: Readiness entkoppeln  
@@ -525,11 +525,327 @@ interface VehicleOperationalSnapshot {
 
 ---
 
+## 15. Prioritäts- und Übergangsmatrix (verbindlich)
+
+Dieses Kapitel ist die **normative Ableitungs- und Zustandsmaschine** für `operationalState`. Es präzisiert §3.5 und definiert, wie parallele Signale (Belegung + Blockade) transportiert werden.
+
+### 15.1 Kanonische Prioritätskette (Hauptstatus)
+
+Die Ableitung läuft **top-down**; die erste zutreffende Zeile bestimmt `operationalState`:
+
+| Prio | Bedingung (alle tenant-scoped, `evaluationAt`) | `operationalState` | Primärer `op:*`-Reason |
+|------|-----------------------------------------------|--------------------|-------------------------|
+| **1** | Statusdaten **nicht belastbar** (§3.6, §15.6) | `UNKNOWN` | `op:unknown:*` |
+| **2** | Maintenance aktiv (`persistedRawStatus = IN_SERVICE` oder `maintenanceBlock.level = maintenance`) | `MAINTENANCE` | `op:maintenance:scheduled` |
+| **3** | Hard-Block aktiv (`persistedRawStatus = OUT_OF_SERVICE` oder `maintenanceBlock.level = hard`) | `BLOCKED` | `op:blocked:*` |
+| **4** | Aktive Vermietung (`Booking.status = ACTIVE` + Pickup-Protokoll + Return offen) | `ACTIVE_RENTED` | `op:active_rented:*` |
+| **5** | Verbindliche Buchung im **Pickup-Reservierungsfenster** (`PENDING`/`CONFIRMED`, Fenster aktiv, kein Pickup) | `RESERVED` | `op:reserved:*` |
+| **6** | Sonst (belastbare Datenlage, keine höherwertige Regel) | `AVAILABLE` | `op:available:idle` |
+
+**Entscheidungsbaum (kompakt):**
+
+```
+evaluate(vehicle, evaluationAt):
+  if !dataReliable           → UNKNOWN
+  else if maintenanceActive  → MAINTENANCE
+  else if hardBlockActive    → BLOCKED
+  else if activeRental       → ACTIVE_RENTED
+  else if inReservationWindow→ RESERVED
+  else                       → AVAILABLE
+```
+
+### 15.2 Hauptstatus vs. Zusatz-Reasons vs. parallele Signale
+
+#### 15.2.1 Begriffe
+
+| Begriff | Feld | Regel |
+|---------|------|-------|
+| **Hauptstatus** | `operationalState` | Genau **ein** Wert aus der Prioritätskette §15.1 — steuert Fleet-Tabs, operative KPI-Buckets, Map-Operational-Tone |
+| **Primärer Reason** | erstes Element in `operationalReasonCodes` | Begründet den Hauptstatus (`op:*`) |
+| **Zusatz-Reasons** | weitere Einträge in `operationalReasonCodes`, `readinessReasonCodes`, `occ:*` | Parallele Signale; **ändern den Hauptstatus nicht** |
+| **Parallele Belegung** | `currentOccupancy` | Kann von Hauptstatus **abweichen**, wenn Prio 2/3 über Prio 4/5 siegen (s. §15.3) |
+| **Parallele Blockade** | `maintenanceBlock` | Wird **immer** vollständig befüllt, auch wenn nicht Hauptstatus |
+
+#### 15.2.2 Transport im Snapshot
+
+Erweiterung des Ziel-Modells (§10) — **additive** Felder:
+
+```typescript
+interface VehicleOperationalSnapshot {
+  // … bestehende Felder …
+
+  /** Signale, die fachlich parallel zum Hauptstatus bestehen. */
+  parallelSignals: {
+    /** true, wenn unabhängig vom Hauptstatus eine aktive/active-nahe Belegung existiert */
+    hasActiveOrReservedOccupancy: boolean;
+    /** Roh-Belegung — auch bei Hauptstatus MAINTENANCE/BLOCKED */
+    occupancyKind: 'none' | 'pickup_reservation' | 'active_rental';
+    occupancyBookingId: string | null;
+    /** Hard/Maintenance-Block unabhängig vom Hauptstatus (für Badges) */
+    blockLevel: 'none' | 'soft' | 'maintenance' | 'hard';
+  };
+}
+```
+
+**UI-Regel:** Ein Badge zeigt **immer** den Hauptstatus. Zusätzliche Chips zeigen Zusatz-Reasons (max. 2 sichtbar + Tooltip für Rest). Parallele Belegung bei `MAINTENANCE`/`BLOCKED` wird als **sekundärer Chip** dargestellt (z. B. „Aktive Vermietung läuft“), nicht als Tab-Wechsel.
+
+### 15.3 Maintenance während aktiver Vermietung
+
+**Szenario:** `Booking.status = ACTIVE`, Pickup abgeschlossen; Operator setzt `persistedRawStatus = IN_SERVICE` während der Miete.
+
+| Dimension | Wert | Begründung |
+|-----------|------|------------|
+| **Hauptstatus (Anzeige)** | `MAINTENANCE` | Prio **2** schlägt Prio **4** (`ACTIVE_RENTED`) |
+| **Primärer Reason** | `op:maintenance:scheduled` | |
+| **Zusatz-Reason** | `op:active_rented:in_contract` + `occ:active_rental` | Aktive Vermietung bleibt fachlich bestehen |
+| **`currentOccupancy.kind`** | `active_rental` | Belegung wird **nicht** gelöscht |
+| **`currentOccupancy.bookingId`** | `<active booking id>` | |
+| **Rental Readiness** | `NOT_READY` oder `BLOCKED` (je nach Policy) | Readiness folgt **eigener** Kette §15.5 |
+| **Neue Buchung (§5)** | **blockiert** | Maintenance blockiert Intervalle |
+| **Pickup an laufender ACTIVE-Buchung** | **verboten** (bereits aktiv) | |
+| **Workflow `vehicle.status.update` → IN_SERVICE** | erlaubt | Hauptstatus wechselt bei nächster Ableitung zu `MAINTENANCE` |
+
+**Gleiches Muster für Hard-Block während ACTIVE:**
+
+| Dimension | Wert |
+|-----------|------|
+| **Hauptstatus** | `BLOCKED` (Prio 3 > 4) |
+| **Zusatz-Reason** | `op:active_rented:in_contract` |
+| **`currentOccupancy`** | bleibt `active_rental` |
+
+**Wichtig:** Der Kunde hat das Fahrzeug weiterhin; die UI kommuniziert „In Wartung / Gesperrt **bei laufender Vermietung**“, nicht „Verfügbar“.
+
+### 15.4 Blockade und aktive Vermietung gleichzeitig
+
+| Signal | Transport | Beeinflusst Hauptstatus? |
+|--------|-----------|-------------------------|
+| Aktive Vermietung (ACTIVE + Pickup) | `currentOccupancy.kind = active_rental`, `occ:active_rental`, ggf. `op:active_rented:*` als Zusatz-Reason | Nur wenn Prio 4 **höchste** ist |
+| Hard-Block | `maintenanceBlock.level = hard`, `op:blocked:*` | Ja → `BLOCKED`, wenn Prio 3 höchste |
+| Maintenance | `maintenanceBlock.level = maintenance`, `op:maintenance:*` | Ja → `MAINTENANCE`, wenn Prio 2 höchste |
+| Soft-Block (Cleaning, Warning) | `readinessReasonCodes`, `maintenanceBlock.level = soft` | **Nein** für Hauptstatus; Readiness §15.5 |
+
+**Konkurrenz-Matrix (Hauptstatus bei gleichzeitigem Vorliegen):**
+
+| Maintenance | Hard-Block | Active Rental | Reservation Window | **Hauptstatus** |
+|-------------|------------|---------------|-------------------|-----------------|
+| ja | — | ja | — | `MAINTENANCE` |
+| — | ja | ja | — | `BLOCKED` |
+| ja | ja | ja | — | `MAINTENANCE` (Prio 2 > 3) |
+| — | — | ja | ja | `ACTIVE_RENTED` (Prio 4 > 5) |
+| — | — | — | ja | `RESERVED` |
+| — | — | — | — | `AVAILABLE` |
+
+### 15.5 Priorität für Anzeige, Rental Readiness und Workflow
+
+Drei **getrennte** Ableitungsketten — dürfen nicht vermischt werden:
+
+| Domäne | Primäre Quelle | Prioritätslogik | Fail-Closed |
+|--------|----------------|-----------------|-------------|
+| **Anzeige** (Tabs, Map-Tone, operative KPIs) | `operationalState` §15.1 | Streng 1→6 | `UNKNOWN` eigener Tab/Style; **nie** als `AVAILABLE` zählen |
+| **Rental Readiness** | §7 + Health/Cleaning/Telemetry | 1) `UNKNOWN` wenn Health-Query fail; 2) `BLOCKED` bei Hard-Block; 3) `NOT_READY` bei Soft-Gründen; 4) `READY` | `UNKNOWN` ≠ `READY` |
+| **Workflow / Automation** | Snapshot gesamt | **Hard-Block** und **UNKNOWN** stoppen vermietungsauslösende Actions; Maintenance stoppt **neue** Buchungen, nicht zwingend laufende ACTIVE-Prozesse; ACTIVE_RENTED erlaubt Return-Workflow | Keine Silent-Fallbacks |
+
+**Readiness bei parallelen Signalen:**
+
+| `operationalState` | Typische `rentalReadiness` | Anzeige-Kopplung |
+|--------------------|----------------------------|------------------|
+| `AVAILABLE` | `READY` / `NOT_READY` | KPI „Ready for Renting“ nur bei beiden |
+| `RESERVED` | `NOT_READY` (default Policy) | Pickup-KPI separat |
+| `ACTIVE_RENTED` | n/a (nicht „ready“) | Today's Operations |
+| `MAINTENANCE` | `BLOCKED` oder `NOT_READY` | Wartungs-KPI |
+| `BLOCKED` | `BLOCKED` | Sperr-KPI |
+| `UNKNOWN` | `UNKNOWN` | Warn-KPI |
+
+**Workflow-Beispiele:**
+
+| Trigger | Reagiert auf | Aktion |
+|---------|--------------|--------|
+| `vehicle.status.update` → `IN_SERVICE` | `persistedRawStatus` | Nächste Ableitung → `MAINTENANCE`; laufende ACTIVE bleibt in `currentOccupancy` |
+| Handover Pickup | Buchung + Protokoll | → `ACTIVE_RENTED` (wenn nicht Prio 2/3) |
+| Handover Return | Buchung COMPLETED | → `AVAILABLE` (wenn keine weiteren Signale) |
+| Booking Cancel im Fenster | Buchung terminal | → `AVAILABLE` |
+| Booking-Query error | `dataReliable = false` | → `UNKNOWN`; Workflow **pausiert** Auto-Zuweisungen |
+
+### 15.6 Verbotene Annahmen (normativ)
+
+Die folgenden Implikationen sind **unzulässig** in Ableitung, UI-Fallbacks, Tests und Migrationsskripten:
+
+| # | Verbotene Annahme | Korrekte V2-Regel |
+|---|-------------------|-------------------|
+| V1 | Keine Booking-Daten ⇒ `AVAILABLE` | Keine Daten ⇒ `UNKNOWN` (`op:unknown:derivation_failed`) oder expliziter leerer Satz **nach erfolgreicher** Query |
+| V2 | Unbekannter Status-String ⇒ `AVAILABLE` | Unbekannter String ⇒ `UNKNOWN` (`op:unknown:data_conflict`) |
+| V3 | Zukünftige CONFIRMED-Buchung ⇒ sofort `RESERVED` | Nur im Reservierungsfenster ⇒ `RESERVED`; sonst `AVAILABLE` + `occ:future:next` |
+| V4 | `persistedRawStatus = RESERVED` ⇒ kanonisch `RESERVED` | Rohstatus ignorieren für §2; aus Fenster + Buchung ableiten; Widerspruch ⇒ `UNKNOWN` |
+| V5 | `persistedRawStatus = RENTED` ⇒ kanonisch `ACTIVE_RENTED` | Nur bei ACTIVE + Pickup-Protokoll; sonst `UNKNOWN` (`op:unknown:data_conflict`) |
+| V6 | `UNKNOWN` in Counts/UI wie `AVAILABLE` behandeln | Eigene Kategorie; Intervalle §5 ⇒ `INTERVAL_UNKNOWN` |
+| V7 | Ghost-Demotion V1: RENTED ohne Booking ⇒ Available | ⇒ `UNKNOWN` mit Reason |
+
+### 15.7 Übergangsmatrix (Zustandsautomat)
+
+Notation: **E** = Ereignis, **B** = Bedingung, **H** = Hauptstatus nach Ableitung.
+
+#### 15.7.1 Erlaubte Übergänge (Hauptstatus)
+
+| Von | Nach | Auslöser (E) | Bedingungen (B) |
+|-----|------|--------------|-----------------|
+| `AVAILABLE` | `RESERVED` | Kalender: Reservierungsfenster beginnt | CONFIRMED/PENDING im Fenster, kein Pickup, Prio 2/3/1 nicht aktiv |
+| `AVAILABLE` | `MAINTENANCE` | Admin/Workflow: `IN_SERVICE` | `dataReliable` |
+| `AVAILABLE` | `BLOCKED` | Admin/Workflow: `OUT_OF_SERVICE` oder Hard-Block | `dataReliable` |
+| `AVAILABLE` | `UNKNOWN` | Ableitungsfehler / Datenkonflikt | §3.6 |
+| `RESERVED` | `ACTIVE_RENTED` | Pickup-Handover abgeschlossen | `Booking → ACTIVE`, Pickup-Protokoll, Prio 2/3 nicht aktiv |
+| `RESERVED` | `AVAILABLE` | **Stornierung** / No-Show / Fenster endet ohne Pickup | Kein anderes Fenster aktiv; keine Prio 2/3 |
+| `RESERVED` | `UNKNOWN` | Inkonsistente Daten | z. B. CONFIRMED + Pickup-Protokoll ohne ACTIVE |
+| `ACTIVE_RENTED` | `AVAILABLE` | Return-Handover / COMPLETED | Keine ACTIVE-Buchung, keine Prio 2/3 |
+| `ACTIVE_RENTED` | `MAINTENANCE` | `IN_SERVICE` während ACTIVE | Prio 2 > 4; Belegung parallel |
+| `ACTIVE_RENTED` | `BLOCKED` | `OUT_OF_SERVICE` / Hard-Block während ACTIVE | Prio 3 > 4; Belegung parallel |
+| `ACTIVE_RENTED` | `UNKNOWN` | Widersprüchliche Booking-/Handover-Daten | z. B. ACTIVE ohne Pickup-Protokoll |
+| `MAINTENANCE` | `AVAILABLE` | `IN_SERVICE` aufgehoben + erfolgreiche Neu-Ableitung | Keine höherwertige Regel |
+| `BLOCKED` | `AVAILABLE` | Sperre aufgehoben + erfolgreiche Neu-Ableitung | Keine höherwertige Regel |
+| `UNKNOWN` | *jeder* | Daten repariert / Query OK + konsistente Inputs | Nach **erfolgreicher** erneuter Ableitung §15.1 |
+
+#### 15.7.2 Verbotene Übergänge (ohne Zwischenereignis)
+
+| Von | Nach | Warum verboten |
+|-----|------|----------------|
+| `AVAILABLE` | `ACTIVE_RENTED` | Pickup-Handover Pflicht — kein direkter Sprung |
+| `RESERVED` | `AVAILABLE` (still) | Nur durch Cancel/Fenster-Ende/Neu-Ableitung — nie durch fehlende Query |
+| `ACTIVE_RENTED` | `RESERVED` | Rückwärts unmöglich ohne Datenkorruption |
+| `UNKNOWN` | `AVAILABLE` | Nur nach expliziter erfolgreicher Ableitung, nicht als Default-Fallback |
+| *jeder* | `AVAILABLE` | Wenn `dataReliable = false` |
+
+#### 15.7.3 Übergang bei Stornierung (explizit)
+
+**`RESERVED` → `AVAILABLE` bei Stornierung:**
+
+1. `Booking.status` → `CANCELLED` oder `NO_SHOW`
+2. Kein anderes Buchungsfenster aktiv für `evaluationAt`
+3. Neu-Ableitung: Prio 1–3 negativ → Prio 5 negativ → **`AVAILABLE`**
+4. `futureOccupancy` aktualisiert (nextBooking entfernt oder nachfolger)
+5. `persistedRawStatus` bleibt unverändert außer Cancel-Handler (nur `AVAILABLE` wenn nicht IN_SERVICE/OUT_OF_SERVICE)
+
+### 15.8 Beispieltabellen (konkret)
+
+Annahmen für alle Tabellen: Org-TZ `Europe/Berlin`; `evaluationAt` wie angegeben; `dataReliable = true` außer letzte Zeile.
+
+#### Tabelle A — Buchung in zwei Wochen
+
+| Feld | Wert |
+|------|------|
+| Kontext | CONFIRMED 1.8. 10:00 – 6.8. 18:00, erstellt am 15.7. |
+| `evaluationAt` | 15.7.2026 12:00 |
+| `persistedRawStatus` | `AVAILABLE` |
+| **Hauptstatus** | **`AVAILABLE`** |
+| Primärer Reason | `op:available:idle` |
+| Zusatz-Reasons | `occ:future:next` |
+| `currentOccupancy.kind` | `none` |
+| `futureOccupancy.nextBooking` | gesetzt (1.8.–6.8.) |
+| Intervall 1.8.–6.8. (§5) | **blockiert** (`INTERVAL_BOOKING_OVERLAP`) |
+| Rental Readiness | `READY` (wenn Health OK) |
+| Fleet-Tab | Verfügbar |
+
+#### Tabelle B — Pickup heute (im Fenster, vor Handover)
+
+| Feld | Wert |
+|------|------|
+| Kontext | CONFIRMED, `startDate` = heute 10:00, kein Pickup-Protokoll |
+| `evaluationAt` | heute 08:00 |
+| **Hauptstatus** | **`RESERVED`** |
+| Primärer Reason | `op:reserved:pickup_window` |
+| `currentOccupancy.kind` | `pickup_reservation` |
+| `futureOccupancy.nextBooking` | `null` (ist aktuelles Fenster) |
+| Rental Readiness | `NOT_READY` (Policy: Pickup vorbereiten) |
+| Fleet-Tab | Reserviert |
+
+#### Tabelle C — Aktiver Mietvertrag
+
+| Feld | Wert |
+|------|------|
+| Kontext | ACTIVE, Pickup-Protokoll vorhanden, Return offen |
+| `persistedRawStatus` | `AVAILABLE` (V2: kein RENTED in DB) |
+| **Hauptstatus** | **`ACTIVE_RENTED`** |
+| Primärer Reason | `op:active_rented:in_contract` |
+| `currentOccupancy.kind` | `active_rental` |
+| Rental Readiness | n/a |
+| Fleet-Tab | Aktiv vermietet |
+
+#### Tabelle D — Abgeschlossener Return
+
+| Feld | Wert |
+|------|------|
+| Kontext | Booking `COMPLETED`, Return-Protokoll vorhanden |
+| `evaluationAt` | nach Return |
+| **Hauptstatus** | **`AVAILABLE`** |
+| Primärer Reason | `op:available:idle` |
+| `currentOccupancy.kind` | `none` |
+| Vorheriger Zustand | `ACTIVE_RENTED` → `AVAILABLE` (§15.7.1) |
+
+#### Tabelle E — Stornierung
+
+| Feld | Wert |
+|------|------|
+| Kontext | RESERVED (im Fenster), dann `CANCELLED` |
+| `evaluationAt` | nach Cancel |
+| **Hauptstatus** | **`AVAILABLE`** |
+| Primärer Reason | `op:available:idle` |
+| `currentOccupancy.kind` | `none` |
+| Zusatz-Reasons | keine `occ:future:next`, sofern keine weitere Buchung |
+| Übergang | `RESERVED` → `AVAILABLE` (§15.7.3) |
+
+#### Tabelle F — Maintenance
+
+| Feld | Wert |
+|------|------|
+| Kontext | `IN_SERVICE`, keine ACTIVE-Buchung |
+| **Hauptstatus** | **`MAINTENANCE`** |
+| Primärer Reason | `op:maintenance:scheduled` |
+| `maintenanceBlock.level` | `maintenance` |
+| Intervall neu (§5) | blockiert |
+| Rental Readiness | `BLOCKED` oder `NOT_READY` (Policy) |
+| Fleet-Tab | In Wartung |
+
+#### Tabelle F2 — Maintenance **während** ACTIVE (parallele Signale)
+
+| Feld | Wert |
+|------|------|
+| Kontext | ACTIVE + Pickup OK; Admin setzt `IN_SERVICE` |
+| **Hauptstatus** | **`MAINTENANCE`** |
+| Primärer Reason | `op:maintenance:scheduled` |
+| Zusatz-Reasons | `op:active_rented:in_contract`, `occ:active_rental` |
+| `currentOccupancy.kind` | `active_rental` (parallel) |
+| UI | Tab „In Wartung“ + Chip „Aktive Vermietung“ |
+
+#### Tabelle G — Booking-Abfragefehler
+
+| Feld | Wert |
+|------|------|
+| Kontext | DB/Query für Bookings schlägt fehl |
+| `dataReliable` | `false` |
+| **Hauptstatus** | **`UNKNOWN`** |
+| Primärer Reason | `op:unknown:derivation_failed` |
+| `currentOccupancy` | **nicht** `none` als Fallback — `kind` unset / null |
+| Rental Readiness | `UNKNOWN` |
+| Intervall §5 | `INTERVAL_UNKNOWN` |
+| Verbotene Annahme | ~~AVAILABLE~~ (V1) |
+
+### 15.9 Konsistenz mit Akzeptanzkriterien
+
+| AC | §15-Bezug |
+|----|-----------|
+| AC-1 | Tabelle A |
+| AC-2 | Tabelle B |
+| AC-3 | Tabelle C |
+| AC-4 | Tabelle A (Intervall blockiert, Hauptstatus AVAILABLE) |
+| AC-5 | Tabelle G |
+| AC-8 | Jede Zeile mit nicht-trivialem Zustand hat `op:*` |
+
+---
+
 ## Änderungshistorie
 
 | Version | Datum | Änderung |
 |---------|-------|----------|
 | 2.0 | 2026-07-15 | Erstfassung Spezifikation (Prompt 3/43) |
+| 2.1 | 2026-07-15 | §15 Prioritäts- und Übergangsmatrix; §3.5 Prio-Reihenfolge MAINTENANCE vor BLOCKED (Prompt 4/43) |
 
 ---
 
