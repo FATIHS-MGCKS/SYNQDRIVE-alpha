@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigType } from '@nestjs/config';
 import {
   OutboundEmailEventType,
@@ -10,11 +10,12 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { PlatformEmailSettingsService } from '@modules/outbound-email/platform-email-settings.service';
 import { OutboundEmailService } from '@modules/outbound-email/outbound-email.service';
 import { EmailProviderRegistry } from '@modules/outbound-email/providers/email-provider.registry';
-import { OutboundEmailPolicyService } from '@modules/outbound-email/outbound-email-policy.service';
 import { buildBillingEmailIdempotencyKey } from '../domain/billing-outbox';
 import { BillingEmailContextService } from './billing-email-context.service';
 import { composeBillingEmail } from './billing-email-templates.util';
 import { fetchBillingPdfAttachment } from './billing-email.util';
+import { BillingEmailRecipientService } from './billing-email-recipient.service';
+import { sanitizeBillingEmailLogDetail } from './billing-email-delivery.util';
 
 export interface BillingEmailSendResult {
   success: boolean;
@@ -28,15 +29,17 @@ export interface BillingEmailSendResult {
 
 @Injectable()
 export class BillingEmailSenderService {
+  private readonly logger = new Logger(BillingEmailSenderService.name);
+
   constructor(
     @Inject(billingEmailConfig.KEY)
     private readonly config: ConfigType<typeof billingEmailConfig>,
     private readonly prisma: PrismaService,
     private readonly contextService: BillingEmailContextService,
+    private readonly recipientService: BillingEmailRecipientService,
     private readonly platformEmail: PlatformEmailSettingsService,
     private readonly outboundEmail: OutboundEmailService,
     private readonly providers: EmailProviderRegistry,
-    private readonly policy: OutboundEmailPolicyService,
   ) {}
 
   async sendFromOutboxDelivery(input: {
@@ -44,7 +47,10 @@ export class BillingEmailSenderService {
     eventType: string;
     organizationId: string | null;
     outboxIdempotencyKey: string;
+    outboxEventId?: string;
     payload: Record<string, unknown>;
+    manual?: boolean;
+    excludeRecipientEmails?: string[];
   }): Promise<BillingEmailSendResult> {
     if (!this.config.enabled) {
       return {
@@ -56,8 +62,11 @@ export class BillingEmailSenderService {
     }
 
     const idempotencyKey = buildBillingEmailIdempotencyKey(input.outboxIdempotencyKey);
-    const existing = await this.findExistingSend(idempotencyKey);
-    if (existing) {
+    const existing = await this.prisma.outboundEmail.findFirst({
+      where: { billingOutboxIdempotencyKey: input.outboxIdempotencyKey },
+      include: { events: true },
+    });
+    if (existing && !input.manual) {
       return {
         success: true,
         outboundEmailId: existing.id,
@@ -71,22 +80,14 @@ export class BillingEmailSenderService {
       eventType: input.eventType,
       organizationId: input.organizationId,
       payload: input.payload,
+      excludeRecipientEmails: input.excludeRecipientEmails,
     });
 
-    if (!hydrated.context || !hydrated.recipientEmail) {
+    if (!hydrated.context || !hydrated.recipientEmail || !input.organizationId) {
       return {
         success: true,
         skipped: true,
         skipReason: hydrated.skipReason ?? 'not_sendable',
-        retryable: false,
-      };
-    }
-
-    if (!this.policy.isValidEmail(hydrated.recipientEmail)) {
-      return {
-        success: true,
-        skipped: true,
-        skipReason: 'invalid_recipient',
         retryable: false,
       };
     }
@@ -104,14 +105,12 @@ export class BillingEmailSenderService {
           ? `Rechnung-${hydrated.context.invoiceNumber}.pdf`
           : 'Rechnung.pdf',
       });
-      if (attachment) {
-        attachments.push(attachment);
-      }
+      if (attachment) attachments.push(attachment);
     }
 
     const outbound = await this.prisma.outboundEmail.create({
       data: {
-        organizationId: input.organizationId!,
+        organizationId: input.organizationId,
         sourceType: OutboundEmailSourceType.BILLING_EMAIL,
         status: OutboundEmailStatus.QUEUED,
         fromEmail: platform.defaultFromEmail,
@@ -121,6 +120,11 @@ export class BillingEmailSenderService {
         subject: composed.subject,
         bodyText: composed.bodyText,
         bodyHtml: composed.bodyHtml,
+        billingInvoiceId: hydrated.billingInvoiceId ?? null,
+        billingSubscriptionId: hydrated.billingSubscriptionId ?? null,
+        billingOutboxDeliveryId: input.deliveryId,
+        billingOutboxEventId: input.outboxEventId ?? null,
+        billingOutboxIdempotencyKey: input.outboxIdempotencyKey,
         events: {
           create: {
             eventType: OutboundEmailEventType.QUEUED,
@@ -128,6 +132,7 @@ export class BillingEmailSenderService {
               billingOutboxDeliveryId: input.deliveryId,
               billingOutboxIdempotencyKey: input.outboxIdempotencyKey,
               billingEventType: input.eventType,
+              recipientSource: hydrated.recipientSource ?? null,
             },
           },
         },
@@ -176,24 +181,32 @@ export class BillingEmailSenderService {
       },
     });
 
-    await this.outboundEmail.recordEvent(
-      outbound.id,
-      finalStatus === OutboundEmailStatus.FAILED
-        ? OutboundEmailEventType.FAILED
-        : OutboundEmailEventType.SENT,
-      {
+    if (finalStatus === OutboundEmailStatus.SENT || finalStatus === OutboundEmailStatus.SENT_SIMULATED) {
+      await this.outboundEmail.recordEvent(outbound.id, OutboundEmailEventType.SENT, {
+        provider: result.provider,
+        providerMessageId: result.providerMessageId,
+      });
+      await this.outboundEmail.recordEvent(outbound.id, OutboundEmailEventType.ACCEPTED, {
+        provider: result.provider,
+        providerMessageId: result.providerMessageId,
+      });
+    } else {
+      await this.outboundEmail.recordEvent(outbound.id, OutboundEmailEventType.FAILED, {
         provider: result.provider,
         providerMessageId: result.providerMessageId,
         errorCode: result.errorCode,
         errorMessage: result.errorMessage,
-      },
-    );
+      });
+    }
 
     const success =
       finalStatus === OutboundEmailStatus.SENT
       || finalStatus === OutboundEmailStatus.SENT_SIMULATED;
 
     if (!success) {
+      this.logger.warn(
+        `Billing email send failed for delivery ${input.deliveryId}: ${sanitizeBillingEmailLogDetail(result.errorMessage) ?? result.errorCode ?? 'unknown'}`,
+      );
       const retryable =
         result.errorCode === 'NOT_CONFIGURED'
         || result.errorCode === '429'
@@ -215,25 +228,5 @@ export class BillingEmailSenderService {
       outboundEmailId: outbound.id,
       retryable: false,
     };
-  }
-
-  private async findExistingSend(outboxIdempotencyKey: string) {
-    const rows = await this.prisma.outboundEmail.findMany({
-      where: {
-        sourceType: OutboundEmailSourceType.BILLING_EMAIL,
-        status: { in: [OutboundEmailStatus.SENT, OutboundEmailStatus.SENT_SIMULATED] },
-      },
-      include: { events: true },
-      orderBy: { createdAt: 'desc' },
-      take: 25,
-    });
-    return (
-      rows.find((row) =>
-        row.events.some((event) => {
-          const payload = event.payload as Record<string, unknown> | null;
-          return payload?.billingOutboxIdempotencyKey === outboxIdempotencyKey;
-        }),
-      ) ?? null
-    );
   }
 }

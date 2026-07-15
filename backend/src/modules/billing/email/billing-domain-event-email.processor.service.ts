@@ -63,6 +63,7 @@ export class BillingDomainEventEmailProcessorService {
         eventType: delivery.outboxEvent.eventType,
         organizationId: delivery.outboxEvent.organizationId,
         outboxIdempotencyKey: delivery.outboxEvent.idempotencyKey,
+        outboxEventId: delivery.outboxEventId,
         payload,
       });
 
@@ -72,9 +73,12 @@ export class BillingDomainEventEmailProcessorService {
       }
 
       if (!result.success) {
+        if (!result.retryable || result.skipReason === 'missing_recipient') {
+          await this.repository.markDeliveryDelivered(delivery.id, delivery.outboxEventId);
+          return 'skipped';
+        }
         throw new Error(result.errorMessage ?? result.errorCode ?? 'billing_email_send_failed');
       }
-
       await this.repository.markDeliveryDelivered(delivery.id, delivery.outboxEventId);
       return 'delivered';
     } catch (error) {

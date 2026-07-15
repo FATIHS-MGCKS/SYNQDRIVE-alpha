@@ -1309,6 +1309,7 @@ model Organization {
   orgEmailSettings                  OrgEmailSettings?
   orgEmailDomains                   OrgEmailDomain[]
   outboundEmails                    OutboundEmail[]
+  billingEmailSuppressions          BillingEmailSuppression[]
   notifications                     Notification[]
   notificationOccurrences           NotificationOccurrence[]
   notificationReceipts              NotificationReceipt[]
@@ -2886,6 +2887,7 @@ model BillingSubscription {
   items         BillingSubscriptionItem[]
   discounts     BillingDiscount[]
   quantityEvents BillingQuantityEvent[]
+  outboundEmails OutboundEmail[]
 
   reconciliationDrifts BillingReconciliationDrift[]
 
@@ -3007,6 +3009,7 @@ model BillingInvoice {
   refunds      BillingRefund[]
   creditNotes  BillingCreditNote[]
   disputes     BillingDispute[]
+  outboundEmails OutboundEmail[]
 
   @@unique([stripeInvoiceId, stripeMode])
   @@index([subscriptionId])
@@ -3346,7 +3349,8 @@ model BillingDomainEventOutboxDelivery {
   createdAt     DateTime                             @default(now()) @map("created_at")
   updatedAt     DateTime                             @updatedAt @map("updated_at")
 
-  outboxEvent BillingDomainEventOutbox @relation(fields: [outboxEventId], references: [id], onDelete: Cascade)
+  outboxEvent    BillingDomainEventOutbox @relation(fields: [outboxEventId], references: [id], onDelete: Cascade)
+  outboundEmails OutboundEmail[]
 
   @@unique([outboxEventId, consumerId])
   @@index([status, nextRetryAt])
@@ -7265,10 +7269,17 @@ enum OutboundEmailEventType {
   SENDING
   SENT
   FAILED
+  ACCEPTED
   DELIVERED
+  DEFERRED
   BOUNCED
   COMPLAINED
   OPENED
+}
+
+enum BillingEmailSuppressionReason {
+  BOUNCED
+  COMPLAINED
 }
 
 model PlatformEmailSettings {
@@ -7329,6 +7340,11 @@ model OutboundEmail {
   customerId              String?                 @map("customer_id")
   invoiceId               String?                 @map("invoice_id")
   bookingPaymentRequestId String?                 @map("booking_payment_request_id")
+  billingInvoiceId        String?                 @map("billing_invoice_id")
+  billingSubscriptionId   String?                 @map("billing_subscription_id")
+  billingOutboxDeliveryId String?                 @map("billing_outbox_delivery_id")
+  billingOutboxEventId    String?                 @map("billing_outbox_event_id")
+  billingOutboxIdempotencyKey String?             @unique @map("billing_outbox_idempotency_key")
   sourceType              OutboundEmailSourceType @map("source_type")
   status                  OutboundEmailStatus     @default(QUEUED)
   fromEmail               String                  @map("from_email")
@@ -7354,15 +7370,22 @@ model OutboundEmail {
   customer              Customer?                 @relation(fields: [customerId], references: [id], onDelete: SetNull)
   invoice               OrgInvoice?               @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
   bookingPaymentRequest BookingPaymentRequest?    @relation(fields: [bookingPaymentRequestId], references: [id], onDelete: SetNull)
+  billingInvoice        BillingInvoice?           @relation(fields: [billingInvoiceId], references: [id], onDelete: SetNull)
+  billingSubscription   BillingSubscription?      @relation(fields: [billingSubscriptionId], references: [id], onDelete: SetNull)
+  billingOutboxDelivery BillingDomainEventOutboxDelivery? @relation(fields: [billingOutboxDeliveryId], references: [id], onDelete: SetNull)
   sentByUser            User?                     @relation("OutboundEmailSentBy", fields: [sentByUserId], references: [id], onDelete: SetNull)
   attachments           OutboundEmailAttachment[]
   events                OutboundEmailEvent[]
   paymentEmailOutbox    PaymentEmailOutbox[]
+  billingEmailSuppressions BillingEmailSuppression[]
 
   @@index([organizationId])
   @@index([organizationId, bookingId])
   @@index([organizationId, customerId])
   @@index([organizationId, invoiceId])
+  @@index([billingInvoiceId])
+  @@index([billingSubscriptionId])
+  @@index([billingOutboxDeliveryId])
   @@index([bookingPaymentRequestId])
   @@index([status])
   @@index([createdAt])
@@ -7388,17 +7411,37 @@ model OutboundEmailAttachment {
 }
 
 model OutboundEmailEvent {
-  id              String                 @id @default(uuid())
-  outboundEmailId String                 @map("outbound_email_id")
-  eventType       OutboundEmailEventType @map("event_type")
-  payload         Json?
-  occurredAt      DateTime               @default(now()) @map("occurred_at")
+  id                    String                 @id @default(uuid())
+  outboundEmailId       String                 @map("outbound_email_id")
+  eventType             OutboundEmailEventType @map("event_type")
+  payload               Json?
+  webhookIdempotencyKey String?                @map("webhook_idempotency_key")
+  occurredAt            DateTime               @default(now()) @map("occurred_at")
 
   outboundEmail OutboundEmail @relation(fields: [outboundEmailId], references: [id], onDelete: Cascade)
 
+  @@unique([outboundEmailId, webhookIdempotencyKey])
   @@index([outboundEmailId])
   @@index([eventType])
   @@map("outbound_email_events")
+}
+
+/// Suppressed billing notification addresses — no automatic retries after bounce/complaint.
+model BillingEmailSuppression {
+  id              String                      @id @default(uuid())
+  organizationId  String                      @map("organization_id")
+  email           String
+  reason          BillingEmailSuppressionReason
+  outboundEmailId String?                     @map("outbound_email_id")
+  suppressedAt    DateTime                    @default(now()) @map("suppressed_at")
+  createdAt       DateTime                    @default(now()) @map("created_at")
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  outboundEmail OutboundEmail? @relation(fields: [outboundEmailId], references: [id], onDelete: SetNull)
+
+  @@unique([organizationId, email])
+  @@index([organizationId])
+  @@map("billing_email_suppressions")
 }
 
 // ------------------------------------------------

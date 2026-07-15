@@ -43,6 +43,11 @@ import { BillingEmailContextService } from './email/billing-email-context.servic
 import { BillingEmailSenderService } from './email/billing-email-sender.service';
 import { BillingDomainEventEmailProcessorService } from './email/billing-domain-event-email.processor.service';
 import { BillingDomainEventEmailWorkerService } from './email/billing-domain-event-email.worker.service';
+import { BillingEmailRecipientService } from './email/billing-email-recipient.service';
+import { BillingEmailSuppressionService } from './email/billing-email-suppression.service';
+import { BillingEmailDeliveryAuditService } from './email/billing-email-delivery-audit.service';
+import { BillingEmailResendService } from './email/billing-email-resend.service';
+import { BillingEmailDeliveryController } from './email/billing-email-delivery.controller';
 import { BillingEntitlementResolver } from './billing-entitlement-resolver.service';
 import { StripeCatalogMappingService } from './stripe-catalog-mapping.service';
 import { StripeCatalogMappingController } from './stripe-catalog-mapping.controller';
@@ -58,7 +63,7 @@ import { StripeWebhookProcessorService } from './stripe-webhook.processor';
 
 @Module({
   imports: [OutboundEmailModule],
-  controllers: [BillingController, StripeWebhookController, MasterSubscriptionController, StripeCatalogMappingController],
+  controllers: [BillingController, StripeWebhookController, MasterSubscriptionController, StripeCatalogMappingController, BillingEmailDeliveryController],
   providers: [
     BillingService,
     PricebookService,
@@ -96,6 +101,10 @@ import { StripeWebhookProcessorService } from './stripe-webhook.processor';
     BillingDomainEventOutboxWorkerService,
     BillingEmailContextService,
     BillingEmailSenderService,
+    BillingEmailRecipientService,
+    BillingEmailSuppressionService,
+    BillingEmailDeliveryAuditService,
+    BillingEmailResendService,
     BillingDomainEventEmailProcessorService,
     BillingDomainEventEmailWorkerService,
     BillingEntitlementResolver,
@@ -147,6 +156,10 @@ import { StripeWebhookProcessorService } from './stripe-webhook.processor';
     BillingDomainEventOutboxWorkerService,
     BillingEmailContextService,
     BillingEmailSenderService,
+    BillingEmailRecipientService,
+    BillingEmailSuppressionService,
+    BillingEmailDeliveryAuditService,
+    BillingEmailResendService,
     BillingDomainEventEmailProcessorService,
     BillingDomainEventEmailWorkerService,
     BillingEntitlementResolver,

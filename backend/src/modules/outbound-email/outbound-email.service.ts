@@ -115,16 +115,27 @@ export class OutboundEmailService {
     providerMessageId: string,
     eventType: OutboundEmailEventType,
     payload?: Record<string, unknown>,
+    webhookIdempotencyKey?: string | null,
   ) {
     const email = await this.prisma.outboundEmail.findFirst({
       where: { providerMessageId },
     });
     if (!email) return null;
 
-    const duplicate = await this.prisma.outboundEmailEvent.findFirst({
-      where: { outboundEmailId: email.id, eventType },
-    });
-    if (duplicate) return email.id;
+    if (webhookIdempotencyKey) {
+      const duplicate = await this.prisma.outboundEmailEvent.findFirst({
+        where: {
+          outboundEmailId: email.id,
+          webhookIdempotencyKey,
+        },
+      });
+      if (duplicate) return email.id;
+    } else {
+      const duplicate = await this.prisma.outboundEmailEvent.findFirst({
+        where: { outboundEmailId: email.id, eventType },
+      });
+      if (duplicate) return email.id;
+    }
 
     const statusPatch = this.resolveStatusPatch(eventType, email.status, payload);
 
@@ -134,6 +145,7 @@ export class OutboundEmailService {
           outboundEmailId: email.id,
           eventType,
           payload: payload as object,
+          webhookIdempotencyKey: webhookIdempotencyKey ?? null,
         },
       }),
       ...(statusPatch

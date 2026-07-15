@@ -7,27 +7,32 @@ import {
   formatBillingDate,
   formatBillingMoney,
   resolveBillingPlanLabel,
-  resolveBillingRecipientEmail,
   resolveBillingSettingsUrl,
 } from './billing-email.util';
 import { BillingEmailTemplateContext } from './billing-email-templates.util';
+import { BillingEmailRecipientService } from './billing-email-recipient.service';
 
 @Injectable()
 export class BillingEmailContextService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
+    private readonly recipientService: BillingEmailRecipientService,
   ) {}
 
   async buildTemplateContext(input: {
     eventType: string;
     organizationId: string | null;
     payload: Record<string, unknown>;
+    excludeRecipientEmails?: string[];
   }): Promise<{
     context: BillingEmailTemplateContext | null;
     recipientEmail: string | null;
+    recipientSource?: string | null;
     skipReason?: string;
     invoicePdfUrl?: string | null;
+    billingInvoiceId?: string | null;
+    billingSubscriptionId?: string | null;
   }> {
     const organizationId =
       input.organizationId
@@ -52,8 +57,12 @@ export class BillingEmailContextService {
       return { context: null, recipientEmail: null, skipReason: 'organization_not_found' };
     }
 
-    const recipientEmail = resolveBillingRecipientEmail(org);
-    if (!recipientEmail) {
+    const recipient = await this.recipientService.resolveRecipient(
+      organizationId,
+      org,
+      { excludeEmails: input.excludeRecipientEmails },
+    );
+    if (!recipient) {
       return { context: null, recipientEmail: null, skipReason: 'missing_recipient' };
     }
 
@@ -107,8 +116,11 @@ export class BillingEmailContextService {
 
     return {
       context,
-      recipientEmail,
+      recipientEmail: recipient.email,
+      recipientSource: recipient.source,
       invoicePdfUrl: invoice?.invoicePdfUrl ?? null,
+      billingInvoiceId: invoice?.id ?? null,
+      billingSubscriptionId: subscription?.id ?? null,
     };
   }
 

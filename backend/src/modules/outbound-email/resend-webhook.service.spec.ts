@@ -2,12 +2,17 @@ import { createHmac } from 'crypto';
 import { UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '@shared/database/prisma.service';
 import { ResendWebhookService } from './resend-webhook.service';
 import { OutboundEmailService } from './outbound-email.service';
 
 describe('ResendWebhookService', () => {
   let service: ResendWebhookService;
   const outboundEmail = { applyWebhookEvent: jest.fn() };
+  const prisma = {
+    outboundEmail: { findUnique: jest.fn() },
+    billingEmailSuppression: { upsert: jest.fn() },
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -19,6 +24,7 @@ describe('ResendWebhookService', () => {
           provide: ConfigService,
           useValue: { get: jest.fn(() => 'whsec_' + Buffer.from('test-secret').toString('base64')) },
         },
+        { provide: PrismaService, useValue: prisma },
       ],
     }).compile();
     service = module.get(ResendWebhookService);
@@ -65,6 +71,7 @@ describe('ResendWebhookService', () => {
           ResendWebhookService,
           { provide: OutboundEmailService, useValue: outboundEmail },
           { provide: ConfigService, useValue: { get: jest.fn(() => '') } },
+          { provide: PrismaService, useValue: prisma },
         ],
       }).compile();
       const prodService = moduleRef.get(ResendWebhookService);

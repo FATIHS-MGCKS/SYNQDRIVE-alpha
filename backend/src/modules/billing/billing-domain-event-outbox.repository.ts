@@ -8,6 +8,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import {
   BILLING_OUTBOX_BATCH_SIZE,
   BILLING_OUTBOX_DEFAULT_CONSUMER_ID,
+  BILLING_OUTBOX_EMAIL_CONSUMER_ID,
   BILLING_OUTBOX_MAX_RETRIES,
   computeBillingOutboxNextRetryAt,
   truncateBillingOutboxError,
@@ -155,6 +156,83 @@ export class BillingDomainEventOutboxRepository {
     });
 
     return { outcome: 'retry' as const, retryCount: nextRetryCount, nextRetryAt };
+  }
+
+  async findEmailDeliveryById(deliveryId: string) {
+    const row = await this.prisma.billingDomainEventOutboxDelivery.findFirst({
+      where: { id: deliveryId, consumerId: BILLING_OUTBOX_EMAIL_CONSUMER_ID },
+      include: {
+        outboxEvent: true,
+        outboundEmails: {
+          include: {
+            attachments: true,
+            events: { orderBy: { occurredAt: 'asc' } },
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    });
+    if (!row) return null;
+    return {
+      ...row,
+      outboundEmail: row.outboundEmails[0] ?? null,
+    };
+  }
+
+  async listEmailDeliveries(params: {
+    organizationId?: string;
+    status?: BillingDomainEventOutboxDeliveryStatus;
+    skip: number;
+    take: number;
+  }) {
+    const where = {
+      consumerId: BILLING_OUTBOX_EMAIL_CONSUMER_ID,
+      ...(params.status ? { status: params.status } : {}),
+      ...(params.organizationId
+        ? { outboxEvent: { organizationId: params.organizationId } }
+        : {}),
+    };
+    const [rows, total] = await Promise.all([
+      this.prisma.billingDomainEventOutboxDelivery.findMany({
+        where,
+        include: {
+          outboxEvent: true,
+          outboundEmails: {
+            include: {
+              attachments: true,
+              events: { orderBy: { occurredAt: 'asc' } },
+            },
+            orderBy: { createdAt: 'desc' },
+            take: 1,
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: params.skip,
+        take: params.take,
+      }),
+      this.prisma.billingDomainEventOutboxDelivery.count({ where }),
+    ]);
+    return { rows: rows.map((row) => ({ ...row, outboundEmail: row.outboundEmails[0] ?? null })), total };
+  }
+
+  async requeueDeadLetterDelivery(deliveryId: string) {
+    const result = await this.prisma.billingDomainEventOutboxDelivery.updateMany({
+      where: {
+        id: deliveryId,
+        consumerId: BILLING_OUTBOX_EMAIL_CONSUMER_ID,
+        status: BillingDomainEventOutboxDeliveryStatus.DEAD_LETTER,
+      },
+      data: {
+        status: BillingDomainEventOutboxDeliveryStatus.PENDING,
+        retryCount: 0,
+        nextRetryAt: new Date(),
+        lastError: null,
+        lockOwner: null,
+        lockedAt: null,
+        deliveredAt: null,
+      },
+    });
+    return result.count > 0;
   }
 
   private async syncOutboxStatusFromDeliveries(

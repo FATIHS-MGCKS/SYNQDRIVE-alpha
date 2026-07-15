@@ -1,7 +1,12 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { OutboundEmailEventType } from '@prisma/client';
+import {
+  BillingEmailSuppressionReason,
+  OutboundEmailEventType,
+  OutboundEmailSourceType,
+} from '@prisma/client';
+import { PrismaService } from '@shared/database/prisma.service';
 import { OutboundEmailService } from './outbound-email.service';
 
 const SVIX_TOLERANCE_SECONDS = 5 * 60;
@@ -13,6 +18,7 @@ export class ResendWebhookService {
   constructor(
     private readonly outboundEmail: OutboundEmailService,
     private readonly config: ConfigService,
+    private readonly prisma: PrismaService,
   ) {}
 
   async handle(
@@ -39,8 +45,62 @@ export class ResendWebhookService {
     const mapped = this.mapEventType(type);
     if (!mapped) return { ok: true };
 
-    await this.outboundEmail.applyWebhookEvent(emailId, mapped, body.data as Record<string, unknown>);
+    const webhookId = headers['svix-id'] ?? null;
+    const outboundEmailId = await this.outboundEmail.applyWebhookEvent(
+      emailId,
+      mapped,
+      body.data as Record<string, unknown>,
+      webhookId,
+    );
+
+    if (outboundEmailId && (mapped === OutboundEmailEventType.BOUNCED || mapped === OutboundEmailEventType.COMPLAINED)) {
+      await this.handleBillingSuppression(outboundEmailId, mapped);
+    }
+
     return { ok: true };
+  }
+
+  private async handleBillingSuppression(
+    outboundEmailId: string,
+    eventType: OutboundEmailEventType,
+  ) {
+    const email = await this.prisma.outboundEmail.findUnique({
+      where: { id: outboundEmailId },
+      select: {
+        id: true,
+        organizationId: true,
+        toEmail: true,
+        sourceType: true,
+      },
+    });
+    if (!email || email.sourceType !== OutboundEmailSourceType.BILLING_EMAIL) {
+      return;
+    }
+    await this.prisma.billingEmailSuppression.upsert({
+      where: {
+        organizationId_email: {
+          organizationId: email.organizationId,
+          email: email.toEmail.trim().toLowerCase(),
+        },
+      },
+      create: {
+        organizationId: email.organizationId,
+        email: email.toEmail.trim().toLowerCase(),
+        reason:
+          eventType === OutboundEmailEventType.COMPLAINED
+            ? BillingEmailSuppressionReason.COMPLAINED
+            : BillingEmailSuppressionReason.BOUNCED,
+        outboundEmailId: email.id,
+      },
+      update: {
+        reason:
+          eventType === OutboundEmailEventType.COMPLAINED
+            ? BillingEmailSuppressionReason.COMPLAINED
+            : BillingEmailSuppressionReason.BOUNCED,
+        outboundEmailId: email.id,
+        suppressedAt: new Date(),
+      },
+    });
   }
 
   private verifySvixSignature(
@@ -93,8 +153,12 @@ export class ResendWebhookService {
 
   private mapEventType(type: string): OutboundEmailEventType | null {
     switch (type) {
+      case 'email.sent':
+        return OutboundEmailEventType.ACCEPTED;
       case 'email.delivered':
         return OutboundEmailEventType.DELIVERED;
+      case 'email.delivery_delayed':
+        return OutboundEmailEventType.DEFERRED;
       case 'email.bounced':
         return OutboundEmailEventType.BOUNCED;
       case 'email.complained':
