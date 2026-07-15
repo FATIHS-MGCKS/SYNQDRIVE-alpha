@@ -55,6 +55,9 @@ describe('Billing usage ledger & outbox schema (Prompt 08)', () => {
     expect(schema).toMatch(/model BillingUsageSnapshot[\s\S]*?calculationBasis/);
     expect(schema).toMatch(/model BillingUsageSnapshot[\s\S]*?lockedAt/);
     expect(schema).toMatch(/model BillingUsageSnapshot[\s\S]*?sourceHash/);
+    expect(schema).toMatch(/model BillingUsageSnapshot[\s\S]*?idempotencyKey/);
+    expect(schema).toMatch(/model BillingUsageSnapshot[\s\S]*?discountSnapshotJson/);
+    expect(schema).toMatch(/model BillingUsageSnapshot[\s\S]*?prorationDetailsJson/);
     expect(schema).toMatch(/model BillingUsageSnapshot[\s\S]*?createdByUserId/);
   });
 

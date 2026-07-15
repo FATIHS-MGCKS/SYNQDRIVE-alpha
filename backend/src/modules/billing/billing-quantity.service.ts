@@ -70,7 +70,7 @@ export class BillingQuantityService {
   async recordEvent(input: RecordQuantityEventInput): Promise<RecordQuantityEventResult> {
     const recordedAt = input.recordedAt ?? new Date();
 
-    if (input.delta === 0) {
+    if (input.delta === 0 && input.eventType !== BillingQuantityEventType.SNAPSHOT_LOCK) {
       throw new BadRequestException({
         code: BillingQuantityErrorCode.INVALID_DELTA,
         message: BillingQuantityErrorCode.INVALID_DELTA,

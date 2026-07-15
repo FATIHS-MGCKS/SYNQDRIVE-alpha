@@ -27,6 +27,8 @@ import { BillingLegacyBackfillService } from './migration/billing-legacy-backfil
 import { SubscriptionPricePreviewService } from './subscription-price-preview.service';
 import { BillingQuantityService } from './billing-quantity.service';
 import { BillingQuantityVehicleIntegration } from './billing-quantity-vehicle.integration';
+import { BillingPeriodResolverService } from './billing-period-resolver.service';
+import { UsageSnapshotService } from './usage-snapshot.service';
 
 @Module({
   controllers: [BillingController, StripeWebhookController],
@@ -55,6 +57,8 @@ import { BillingQuantityVehicleIntegration } from './billing-quantity-vehicle.in
     SubscriptionPricePreviewService,
     BillingQuantityService,
     BillingQuantityVehicleIntegration,
+    BillingPeriodResolverService,
+    UsageSnapshotService,
   ],
   exports: [
     BillingService,
@@ -81,6 +85,8 @@ import { BillingQuantityVehicleIntegration } from './billing-quantity-vehicle.in
     SubscriptionPricePreviewService,
     BillingQuantityService,
     BillingQuantityVehicleIntegration,
+    BillingPeriodResolverService,
+    UsageSnapshotService,
   ],
 })
 export class BillingModule {}

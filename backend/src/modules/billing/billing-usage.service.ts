@@ -9,6 +9,7 @@ import {
   QuantityResolverService,
 } from './resolvers';
 import { SubscriptionPricePreviewService } from './subscription-price-preview.service';
+import { UsageSnapshotService } from './usage-snapshot.service';
 
 export interface UsagePeriod {
   periodStart: Date;
@@ -47,6 +48,7 @@ export class BillingUsageService {
     private readonly quantityResolver: QuantityResolverService,
     private readonly discountResolver: DiscountResolverService,
     private readonly pricePreview: SubscriptionPricePreviewService,
+    private readonly usageSnapshots: UsageSnapshotService,
   ) {}
 
   async resolveBillableVehicles(organizationId: string) {
@@ -120,33 +122,25 @@ export class BillingUsageService {
     };
   }
 
-  async createUsageSnapshot(organizationId: string, period: UsagePeriod) {
-    const preview = await this.previewUsage(organizationId);
+  async createUsageSnapshot(
+    organizationId: string,
+    period: UsagePeriod,
+    opts?: { idempotencyKey?: string; createdByUserId?: string | null; lock?: boolean },
+  ) {
+    const idempotencyKey =
+      opts?.idempotencyKey ??
+      `usage:${organizationId}:${period.periodStart.toISOString()}:${period.periodEnd.toISOString()}`;
 
-    return this.prisma.billingUsageSnapshot.create({
-      data: {
-        organizationId,
-        periodStart: period.periodStart,
-        periodEnd: period.periodEnd,
-        connectedVehicleCount: preview.connectedVehicleCount,
-        billableVehicleCount: preview.billableVehicleCount,
-        billableVehicleIds: preview.billableVehicleIds,
-        excludedVehicleIds: preview.excludedVehicleIds,
-        excludedReasonSummary:
-          preview.excludedVehicleIds.length > 0
-            ? { reason: 'EXCLUDED_VEHICLES', count: preview.excludedVehicleIds.length }
-            : undefined,
-        priceBookId: preview.priceBookId,
-        priceVersionId: preview.priceVersionId,
-        priceTierId: preview.priceTierId,
-        unitPriceCents: preview.unitPriceCents,
-        subtotalCents: preview.subtotalCents,
-        taxCents: preview.taxCents,
-        totalCents: preview.totalCents,
-        currency: preview.currency ?? 'EUR',
-        calculationStatus: preview.calculationStatus,
-      },
+    const result = await this.usageSnapshots.createSnapshot({
+      organizationId,
+      idempotencyKey,
+      periodStart: period.periodStart,
+      periodEnd: period.periodEnd,
+      createdByUserId: opts?.createdByUserId,
+      lock: opts?.lock,
     });
+
+    return result.snapshot;
   }
 
   async listUsageSnapshots(organizationId: string, limit = 12) {
