@@ -2,6 +2,7 @@ export * from './billing-domain.types';
 export * from './billing-domain.utils';
 export * from './billing-resolver.types';
 export * from './billing-domain.events';
+export * from './billing-pricing.errors';
 export * from './mappers/stripe-subscription-status.mapper';
 export * from './mappers/stripe-invoice-status.mapper';
 export * from './mappers/stripe-payment-status.mapper';

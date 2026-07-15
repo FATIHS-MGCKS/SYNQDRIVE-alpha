@@ -1,4 +1,7 @@
 import {
+  BillingUsageCalculationStatus,
+} from '@prisma/client';
+import {
   BillingProductKind,
   BillingAddonKey,
   DiscountKind,
@@ -7,7 +10,10 @@ import {
   SubscriptionStatus,
   SyncStatus,
 } from './billing-domain.types';
-import { BillingUsageCalculationStatus } from '@prisma/client';
+import {
+  BillingPriceResolutionSource,
+  BillingPricingErrorCode,
+} from './billing-pricing.errors';
 
 /** Billing period resolved from subscription or calendar fallback. */
 export interface ResolvedBillingPeriod {
@@ -65,6 +71,23 @@ export interface ResolvedItemPricing {
   totalCents: number | null;
   calculationStatus: BillingUsageCalculationStatus;
   quantity: number;
+  resolvedAt: Date;
+  /** How the price book/version was chosen — never silent global default for modern contracts. */
+  priceResolutionSource?: BillingPriceResolutionSource | null;
+  pricingErrorCode?: BillingPricingErrorCode | null;
+  legacyFallbackUsed?: boolean;
+}
+
+/** Explicit price assignment before tier calculation. */
+export interface ResolvedPriceAssignment {
+  organizationId: string;
+  subscriptionId: string | null;
+  subscriptionItemId: string | null;
+  priceBookId: string | null;
+  priceVersionId: string | null;
+  source: BillingPriceResolutionSource;
+  legacyFallbackUsed: boolean;
+  pricingErrorCode: BillingPricingErrorCode | null;
   resolvedAt: Date;
 }
 

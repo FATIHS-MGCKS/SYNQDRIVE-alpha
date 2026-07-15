@@ -16,9 +16,17 @@ describe('BillingSummaryService characterization', () => {
   };
   const subscriptionResolver = { resolveContract: jest.fn() };
   const quantityResolver = { resolveQuantity: jest.fn() };
-  const pricingResolver = { resolveItemPricing: jest.fn() };
+  const pricingResolver = {
+    resolveItemPricing: jest.fn(),
+    resolveItemPricingForOrganization: jest.fn(),
+    resolvePriceAssignment: jest.fn(),
+  };
   const discountResolver = { resolveDiscounts: jest.fn() };
-  const pricebook = { getPricingConfiguration: jest.fn() };
+  const pricebook = {
+    getPricingConfiguration: jest.fn(),
+    getPriceBook: jest.fn(),
+    getVersionWithTiers: jest.fn(),
+  };
   const stripePrepared = { getPreparedStatus: jest.fn() };
 
   let service: BillingSummaryService;
@@ -83,7 +91,36 @@ describe('BillingSummaryService characterization', () => {
       excludedVehicleIds: [],
     });
     discountResolver.resolveDiscounts.mockResolvedValue([]);
-    pricingResolver.resolveItemPricing.mockResolvedValue(basePricing);
+    pricingResolver.resolveItemPricingForOrganization.mockResolvedValue(basePricing);
+    pricingResolver.resolvePriceAssignment.mockResolvedValue({
+      organizationId: 'org-a',
+      subscriptionId: 'sub-1',
+      subscriptionItemId: 'item-1',
+      priceBookId: 'book-1',
+      priceVersionId: 'ver-1',
+      source: 'SUBSCRIPTION_ITEM_VERSION',
+      legacyFallbackUsed: false,
+      pricingErrorCode: null,
+      resolvedAt: new Date(),
+    });
+    pricebook.getPriceBook.mockResolvedValue({
+      id: 'book-1',
+      name: 'Rental',
+      currency: 'EUR',
+      interval: 'MONTHLY',
+      productKey: 'RENTAL',
+      versions: [],
+    });
+    pricebook.getVersionWithTiers.mockResolvedValue({
+      id: 'ver-1',
+      versionNumber: 1,
+      versionLabel: 'v1',
+      status: 'ACTIVE',
+      effectiveFrom: new Date('2026-01-01'),
+      tiers: [
+        { id: 'tier-1', minVehicles: 1, maxVehicles: 10, unitPriceCents: 1500, sortOrder: 0 },
+      ],
+    });
     prisma.billingSubscription.findUnique.mockResolvedValue({
       id: 'sub-1',
       status: BillingStatus.ACTIVE,
@@ -147,8 +184,7 @@ describe('BillingSummaryService characterization', () => {
     expect(summary.paymentMethod.exists).toBe(true);
   });
 
-  it('uses global default pricebook — not subscription-specific price version', async () => {
-    // legacy behavior – subscription priceVersionId ignored; to be corrected in prompt 10
+  it('uses org-scoped price assignment — not global default pricebook', async () => {
     subscriptionResolver.resolveContract.mockResolvedValue({
       ...baseContract,
       priceBookId: 'book-1',
@@ -157,14 +193,15 @@ describe('BillingSummaryService characterization', () => {
 
     await service.getSummary('org-a');
 
-    expect(subscriptionResolver.resolveContract).toHaveBeenCalled();
-    expect(pricingResolver.resolveItemPricing).toHaveBeenCalledWith(
+    expect(pricingResolver.resolvePriceAssignment).toHaveBeenCalledWith('org-a');
+    expect(pricingResolver.resolveItemPricingForOrganization).toHaveBeenCalledWith(
       expect.objectContaining({
+        organizationId: 'org-a',
         billableQuantity: 2,
-        priceBookId: 'book-1',
         discounts: [],
       }),
     );
+    expect(pricebook.getPricingConfiguration).not.toHaveBeenCalled();
   });
 
   it('applies org price override when resolving preview amounts', async () => {
@@ -185,7 +222,7 @@ describe('BillingSummaryService characterization', () => {
 
     await service.getSummary('org-a');
 
-    expect(pricingResolver.resolveItemPricing).toHaveBeenCalledWith(
+    expect(pricingResolver.resolveItemPricingForOrganization).toHaveBeenCalledWith(
       expect.objectContaining({
         discounts: expect.arrayContaining([
           expect.objectContaining({ customUnitPriceCents: 1200 }),
@@ -196,7 +233,7 @@ describe('BillingSummaryService characterization', () => {
 
   it('surfaces warnings for missing payment method and unconfigured price', async () => {
     prisma.billingPaymentMethod.findFirst.mockResolvedValue(null);
-    pricingResolver.resolveItemPricing.mockResolvedValue({
+    pricingResolver.resolveItemPricingForOrganization.mockResolvedValue({
       ...basePricing,
       calculationStatus: BillingUsageCalculationStatus.NO_ACTIVE_PRICE_VERSION,
       tier: null,
@@ -227,7 +264,7 @@ describe('BillingSummaryService characterization', () => {
         sortOrder: 0,
       },
     ]);
-    pricingResolver.resolveItemPricing.mockResolvedValue({
+    pricingResolver.resolveItemPricingForOrganization.mockResolvedValue({
       ...basePricing,
       tier: null,
       unitPriceCents: 999,

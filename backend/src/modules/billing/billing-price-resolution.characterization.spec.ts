@@ -32,12 +32,14 @@ describe('Billing price resolution characterization', () => {
     },
   };
 
-  it('resolves global default pricebook and active version for pricing', async () => {
-    pricebook.getPricingConfiguration.mockResolvedValue(activeConfig);
+  it('resolves explicit price book and active version when priceBookId is provided', async () => {
+    pricebook.getPriceBook.mockResolvedValue({ id: 'book-default', currency: 'EUR', name: 'Default', isDefault: true });
+    pricebook.findActiveVersion.mockResolvedValue(activeConfig.activeVersion);
 
-    const result = await service.calculateVolumePrice(7);
+    const result = await service.calculateVolumePrice(7, { priceBookId: 'book-default' });
 
-    expect(pricebook.getPricingConfiguration).toHaveBeenCalled();
+    expect(pricebook.getPriceBook).toHaveBeenCalledWith('book-default');
+    expect(pricebook.findActiveVersion).toHaveBeenCalledWith('book-default', expect.any(Date));
     expect(result.calculationStatus).toBe(BillingUsageCalculationStatus.OK);
     expect(result.priceBookId).toBe('book-default');
     expect(result.priceVersionId).toBe('ver-active');
@@ -46,47 +48,52 @@ describe('Billing price resolution characterization', () => {
     expect(result.tier?.id).toBe('t2');
   });
 
-  it('returns NO_ACTIVE_PRICE_VERSION when default pricebook has no active version', async () => {
-    pricebook.getPricingConfiguration.mockResolvedValue({
-      configured: false,
-      reason: 'NO_ACTIVE_PRICE_VERSION',
-      priceBook: { id: 'book-default', currency: 'EUR' },
-      activeVersion: null,
-    });
-
+  it('returns NO_ACTIVE_PRICE_VERSION when no price book or version is provided', async () => {
     const result = await service.calculateVolumePrice(5);
+
+    expect(pricebook.getPricingConfiguration).not.toHaveBeenCalled();
+    expect(result.calculationStatus).toBe(BillingUsageCalculationStatus.NO_ACTIVE_PRICE_VERSION);
+    expect(result.unitPriceCents).toBeNull();
+  });
+
+  it('returns NO_ACTIVE_PRICE_VERSION when explicit price book has no active version', async () => {
+    pricebook.getPriceBook.mockResolvedValue({ id: 'book-default', currency: 'EUR' });
+    pricebook.findActiveVersion.mockResolvedValue(null);
+
+    const result = await service.calculateVolumePrice(5, { priceBookId: 'book-default' });
 
     expect(result.calculationStatus).toBe(BillingUsageCalculationStatus.NO_ACTIVE_PRICE_VERSION);
     expect(result.unitPriceCents).toBeNull();
   });
 
   it('returns NO_BILLABLE_VEHICLES when count is zero but version exists', async () => {
-    pricebook.getPricingConfiguration.mockResolvedValue(activeConfig);
+    pricebook.getPriceBook.mockResolvedValue(activeConfig.priceBook);
+    pricebook.findActiveVersion.mockResolvedValue(activeConfig.activeVersion);
 
-    const result = await service.calculateVolumePrice(0);
+    const result = await service.calculateVolumePrice(0, { priceBookId: 'book-default' });
 
     expect(result.calculationStatus).toBe(BillingUsageCalculationStatus.NO_BILLABLE_VEHICLES);
     expect(result.priceVersionId).toBe('ver-active');
   });
 
   it('returns PRICE_NOT_CONFIGURED when tier has null unit price', async () => {
-    pricebook.getPricingConfiguration.mockResolvedValue({
-      ...activeConfig,
-      activeVersion: {
-        ...activeConfig.activeVersion,
-        tiers: [{ id: 't0', minVehicles: 1, maxVehicles: null, unitPriceCents: null, sortOrder: 0 }],
-      },
+    pricebook.getPriceBook.mockResolvedValue(activeConfig.priceBook);
+    pricebook.findActiveVersion.mockResolvedValue({
+      ...activeConfig.activeVersion,
+      tiers: [{ id: 't0', minVehicles: 1, maxVehicles: null, unitPriceCents: null, sortOrder: 0 }],
     });
 
-    const result = await service.calculateVolumePrice(3);
+    const result = await service.calculateVolumePrice(3, { priceBookId: 'book-default' });
 
     expect(result.calculationStatus).toBe(BillingUsageCalculationStatus.PRICE_NOT_CONFIGURED);
   });
 
   it('applies custom unit price and monthly minimum overrides', async () => {
-    pricebook.getPricingConfiguration.mockResolvedValue(activeConfig);
+    pricebook.getPriceBook.mockResolvedValue(activeConfig.priceBook);
+    pricebook.findActiveVersion.mockResolvedValue(activeConfig.activeVersion);
 
     const result = await service.calculateVolumePrice(2, {
+      priceBookId: 'book-default',
       customUnitPriceCents: 2500,
       customMonthlyMinimumCents: 6000,
     });
@@ -109,21 +116,22 @@ describe('Billing price resolution characterization', () => {
     expect(tier?.status).toBe('CONFIGURED');
   });
 
-  it('legacy behavior – explicit priceBookId uses book but still global active version lookup', async () => {
-    // Subscription-specific version is not modeled; calculateVolumePrice with priceBookId
-    // resolves via getPriceBook + findActiveVersion — not subscription.priceVersionId.
-  // to be corrected in prompt 10
-    pricebook.getPriceBook.mockResolvedValue({ id: 'book-fleet', currency: 'EUR' });
-    pricebook.findActiveVersion.mockResolvedValue({
-      id: 'ver-fleet',
+  it('explicit priceVersionId uses pinned version instead of active lookup', async () => {
+    pricebook.getVersionWithTiers.mockResolvedValue({
+      id: 'ver-pinned',
+      priceBookId: 'book-fleet',
       tiers: [{ id: 'tf', minVehicles: 1, maxVehicles: null, unitPriceCents: 1100, sortOrder: 0 }],
     });
+    pricebook.getPriceBook.mockResolvedValue({ id: 'book-fleet', currency: 'EUR' });
 
-    const result = await service.calculateVolumePrice(3, { priceBookId: 'book-fleet' });
+    const result = await service.calculateVolumePrice(3, {
+      priceBookId: 'book-fleet',
+      priceVersionId: 'ver-pinned',
+    });
 
-    expect(pricebook.getPriceBook).toHaveBeenCalledWith('book-fleet');
-    expect(pricebook.findActiveVersion).toHaveBeenCalledWith('book-fleet', expect.any(Date));
-    expect(result.priceVersionId).toBe('ver-fleet');
+    expect(pricebook.getVersionWithTiers).toHaveBeenCalledWith('ver-pinned');
+    expect(pricebook.findActiveVersion).not.toHaveBeenCalled();
+    expect(result.priceVersionId).toBe('ver-pinned');
     expect(result.subtotalCents).toBe(3300);
   });
 });

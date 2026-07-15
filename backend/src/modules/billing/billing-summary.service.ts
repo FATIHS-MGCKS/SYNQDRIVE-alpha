@@ -35,10 +35,9 @@ export class BillingSummaryService {
   ) {}
 
   async getSummary(organizationId: string) {
-    const [quantity, discounts, pricingConfig, defaultPm, orgProducts] = await Promise.all([
+    const [quantity, discounts, defaultPm, orgProducts] = await Promise.all([
       this.quantityResolver.resolveQuantity(organizationId),
       this.discountResolver.resolveDiscounts(organizationId),
-      this.pricebook.getPricingConfiguration(),
       this.prisma.billingPaymentMethod.findFirst({
         where: { organizationId: organizationId, isDefault: true },
         orderBy: { createdAt: 'desc' },
@@ -53,11 +52,21 @@ export class BillingSummaryService {
       baseItemQuantity: quantity.billableVehicleCount,
     });
 
-    const priceResult = await this.pricingResolver.resolveItemPricing({
-      billableQuantity: quantity.billableVehicleCount,
-      priceBookId: contract.priceBookId,
-      discounts,
-    });
+    const [priceAssignment, priceResult] = await Promise.all([
+      this.pricingResolver.resolvePriceAssignment(organizationId),
+      this.pricingResolver.resolveItemPricingForOrganization({
+        organizationId,
+        billableQuantity: quantity.billableVehicleCount,
+        discounts,
+      }),
+    ]);
+
+    const resolvedPriceBook = priceAssignment.priceBookId
+      ? await this.pricebook.getPriceBook(priceAssignment.priceBookId).catch(() => null)
+      : null;
+    const resolvedPriceVersion = priceAssignment.priceVersionId
+      ? await this.pricebook.getVersionWithTiers(priceAssignment.priceVersionId).catch(() => null)
+      : null;
 
     const sub = contract.subscriptionId
       ? await this.prisma.billingSubscription.findUnique({
@@ -67,7 +76,13 @@ export class BillingSummaryService {
 
     const period = contract.currentPeriod;
     const stripeStatus = this.stripePrepared.getPreparedStatus();
-    const warnings = this.buildWarnings(sub, priceResult.calculationStatus, defaultPm);
+    const warnings = this.buildWarnings(
+      sub,
+      priceResult.calculationStatus,
+      defaultPm,
+      priceResult.pricingErrorCode,
+      priceResult.legacyFallbackUsed,
+    );
 
     const activeProducts = orgProducts.filter(
       (p) => p.status === 'ACTIVE' || p.status === 'TRIAL',
@@ -106,25 +121,26 @@ export class BillingSummaryService {
             status: priceResult.tier.status,
           }
         : null,
-      priceBook: pricingConfig.priceBook
+      priceBook: resolvedPriceBook
         ? {
-            id: pricingConfig.priceBook.id,
-            name: pricingConfig.priceBook.name,
-            currency: pricingConfig.priceBook.currency,
-            interval: pricingConfig.priceBook.interval,
+            id: resolvedPriceBook.id,
+            name: resolvedPriceBook.name,
+            currency: resolvedPriceBook.currency,
+            interval: resolvedPriceBook.interval,
+            productKey: resolvedPriceBook.productKey,
           }
         : null,
-      activePriceVersion: pricingConfig.activeVersion
+      activePriceVersion: resolvedPriceVersion
         ? {
-            id: pricingConfig.activeVersion.id,
-            versionNumber: pricingConfig.activeVersion.versionNumber,
-            versionLabel: pricingConfig.activeVersion.versionLabel,
-            status: pricingConfig.activeVersion.status,
+            id: resolvedPriceVersion.id,
+            versionNumber: resolvedPriceVersion.versionNumber,
+            versionLabel: resolvedPriceVersion.versionLabel,
+            status: resolvedPriceVersion.status,
             effectiveFrom:
-              pricingConfig.activeVersion.effectiveFrom?.toISOString() ?? null,
+              resolvedPriceVersion.effectiveFrom?.toISOString() ?? null,
           }
         : null,
-      priceTiers: (pricingConfig.activeVersion?.tiers ?? []).map((t) => ({
+      priceTiers: (resolvedPriceVersion?.tiers ?? []).map((t) => ({
         id: t.id,
         minVehicles: t.minVehicles,
         maxVehicles: t.maxVehicles,
@@ -134,6 +150,9 @@ export class BillingSummaryService {
       stripePortalPrepared: stripeStatus.portalPrepared,
       stripeConfigured: stripeStatus.configured,
       calculationStatus: priceResult.calculationStatus,
+      priceResolutionSource: priceResult.priceResolutionSource ?? null,
+      pricingErrorCode: priceResult.pricingErrorCode ?? null,
+      legacyFallbackUsed: priceResult.legacyFallbackUsed ?? false,
       nextInvoicePreview: {
         subtotalCents: priceResult.subtotalCents,
         taxCents: null as number | null,
@@ -168,9 +187,9 @@ export class BillingSummaryService {
       this.subscriptionResolver.resolveContract(organizationId),
     ]);
 
-    const priceResult = await this.pricingResolver.resolveItemPricing({
+    const priceResult = await this.pricingResolver.resolveItemPricingForOrganization({
+      organizationId,
       billableQuantity: quantity.billableVehicleCount,
-      priceBookId: contract.priceBookId,
       discounts,
     });
 
@@ -203,6 +222,8 @@ export class BillingSummaryService {
     } | null,
     calculationStatus: BillingUsageCalculationStatus,
     paymentMethod: { status: BillingPaymentMethodStatus } | null,
+    pricingErrorCode?: string | null,
+    legacyFallbackUsed?: boolean,
   ): string[] {
     const warnings: string[] = [];
     if (!sub) {
@@ -227,6 +248,18 @@ export class BillingSummaryService {
     }
     if (calculationStatus === BillingUsageCalculationStatus.NO_BILLABLE_VEHICLES) {
       warnings.push('NO_BILLABLE_VEHICLES');
+    }
+    if (pricingErrorCode === 'BILLING_PRICE_NOT_ASSIGNED') {
+      warnings.push('BILLING_PRICE_NOT_ASSIGNED');
+    }
+    if (pricingErrorCode === 'BILLING_PRICE_VERSION_INVALID') {
+      warnings.push('BILLING_PRICE_VERSION_INVALID');
+    }
+    if (pricingErrorCode === 'BILLING_SUBSCRIPTION_NOT_FOUND') {
+      warnings.push('BILLING_SUBSCRIPTION_NOT_FOUND');
+    }
+    if (legacyFallbackUsed || pricingErrorCode === 'BILLING_LEGACY_FALLBACK_USED') {
+      warnings.push('BILLING_LEGACY_FALLBACK_USED');
     }
     return warnings;
   }

@@ -84,41 +84,29 @@ export class BillingUsageService {
   }
 
   async previewUsage(organizationId: string): Promise<UsageCalculationPreview> {
-    const [vehicleData, pricing, discounts] = await Promise.all([
+    const [vehicleData, discounts] = await Promise.all([
       this.resolveBillableVehicles(organizationId),
-      this.pricebook.getPricingConfiguration(),
       this.discountResolver.resolveDiscounts(organizationId),
     ]);
 
-    const base: UsageCalculationPreview = {
-      configured: pricing.configured,
-      calculationStatus: BillingUsageCalculationStatus.NO_ACTIVE_PRICE_VERSION,
-      connectedVehicleCount: vehicleData.connectedVehicleCount,
-      billableVehicleCount: vehicleData.billableVehicleCount,
-      billableVehicleIds: vehicleData.billableVehicleIds,
-      excludedVehicleIds: vehicleData.excludedVehicleIds,
-      unitPriceCents: null,
-      subtotalCents: null,
-      totalCents: null,
-      currency: pricing.priceBook?.currency ?? null,
-      priceBookId: pricing.priceBook?.id ?? null,
-      priceVersionId: null,
-      priceTierId: null,
-    };
-
-    const priceResult = await this.pricingResolver.resolveItemPricing({
+    const priceResult = await this.pricingResolver.resolveItemPricingForOrganization({
+      organizationId,
       billableQuantity: vehicleData.billableVehicleCount,
-      priceBookId: pricing.priceBook?.id ?? null,
       discounts,
     });
 
     return {
-      ...base,
-      configured: pricing.configured,
+      configured: priceResult.priceVersionId != null,
       calculationStatus: priceResult.calculationStatus as BillingUsageCalculationStatus,
+      connectedVehicleCount: vehicleData.connectedVehicleCount,
+      billableVehicleCount: vehicleData.billableVehicleCount,
+      billableVehicleIds: vehicleData.billableVehicleIds,
+      excludedVehicleIds: vehicleData.excludedVehicleIds,
       unitPriceCents: priceResult.unitPriceCents,
       subtotalCents: priceResult.subtotalCents,
       totalCents: priceResult.totalCents,
+      currency: priceResult.currency,
+      priceBookId: priceResult.priceBookId,
       priceVersionId: priceResult.priceVersionId,
       priceTierId: priceResult.tier?.id ?? null,
     };

@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { ProductSlug } from '@prisma/client';
+import {
+  BillingSubscriptionItemRole,
+  BillingSubscriptionItemStatus,
+  ProductSlug,
+} from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   BillingProductKind,
@@ -37,12 +41,8 @@ export class SubscriptionResolverService {
       orderBy: { createdAt: 'desc' },
     });
 
-    const pricingConfig = await this.pricebook.getPricingConfiguration();
-    const fallbackPriceBookId = pricingConfig.priceBook?.id ?? null;
-    const fallbackPriceVersionId = pricingConfig.activeVersion?.id ?? null;
-
-    const priceBookId = sub?.priceBookId ?? fallbackPriceBookId;
-    const priceVersionId = sub?.priceVersionId ?? fallbackPriceVersionId;
+    const priceBookId = sub?.priceBookId ?? null;
+    const priceVersionId = sub?.priceVersionId ?? null;
 
     const status = sub
       ? mapPrismaBillingStatusToDomain(sub.status, {
@@ -51,7 +51,7 @@ export class SubscriptionResolverService {
       : SubscriptionStatus.DRAFT;
 
     const currentPeriod = this.resolveBillingPeriod(sub);
-    const items = await this.buildSyntheticItems(
+    const items = await this.buildContractItems(
       organizationId,
       sub?.id ?? null,
       priceBookId,
@@ -93,13 +93,42 @@ export class SubscriptionResolverService {
     return { start, end, source: 'CALENDAR_FALLBACK' };
   }
 
-  private async buildSyntheticItems(
+  private async buildContractItems(
     organizationId: string,
     subscriptionId: string | null,
     priceBookId: string | null,
     priceVersionId: string | null,
     quantity: number,
   ): Promise<ResolvedSubscriptionItem[]> {
+    if (subscriptionId) {
+      const persisted = await this.prisma.billingSubscriptionItem.findMany({
+        where: {
+          organizationId,
+          subscriptionId,
+          status: {
+            in: [BillingSubscriptionItemStatus.ACTIVE, BillingSubscriptionItemStatus.TRIALING],
+          },
+        },
+        include: {
+          billingProduct: { select: { key: true } },
+        },
+        orderBy: { validFrom: 'desc' },
+      });
+
+      if (persisted.length > 0) {
+        return persisted.map((item) => ({
+          id: item.id,
+          productKind: mapProductSlugToBillingProductKind(item.billingProduct.key),
+          addonKey: item.itemRole === BillingSubscriptionItemRole.ADDON
+            ? (item.billingProduct.key as ResolvedSubscriptionItem['addonKey'])
+            : null,
+          priceBookId: item.priceBookId ?? priceBookId,
+          priceVersionId: item.priceVersionId ?? priceVersionId,
+          quantity: item.quantity,
+        }));
+      }
+    }
+
     const orgProducts = await this.prisma.organizationProduct.findMany({
       where: {
         organizationId,
@@ -118,7 +147,7 @@ export class SubscriptionResolverService {
         : await this.inferProductKindFromPriceBook(priceBookId);
 
     const subKey = subscriptionId ?? 'none';
-    const items: ResolvedSubscriptionItem[] = [
+    return [
       {
         id: `${subKey}:base`,
         productKind,
@@ -128,8 +157,6 @@ export class SubscriptionResolverService {
         quantity,
       },
     ];
-
-    return items;
   }
 
   private async inferProductKindFromPriceBook(

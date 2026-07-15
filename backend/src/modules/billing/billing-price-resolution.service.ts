@@ -67,19 +67,108 @@ export class BillingPriceResolutionService {
     billableVehicleCount: number,
     opts?: {
       priceBookId?: string;
+      priceVersionId?: string;
       asOf?: Date;
       customUnitPriceCents?: number | null;
       customMonthlyMinimumCents?: number | null;
     },
   ): Promise<PriceResolutionResult> {
     const asOf = opts?.asOf ?? new Date();
-    const config = opts?.priceBookId
-      ? await this.resolvePriceBookConfig(opts.priceBookId, asOf)
-      : await this.pricebook.getPricingConfiguration();
 
-    const priceBook = config.priceBook;
-    const activeVersion = config.activeVersion;
+    if (opts?.priceVersionId) {
+      return this.calculateVolumePriceForVersion(
+        opts.priceVersionId,
+        billableVehicleCount,
+        {
+          asOf,
+          customUnitPriceCents: opts.customUnitPriceCents,
+          customMonthlyMinimumCents: opts.customMonthlyMinimumCents,
+          priceBookId: opts.priceBookId,
+        },
+      );
+    }
 
+    if (!opts?.priceBookId) {
+      return {
+        calculationStatus: BillingUsageCalculationStatus.NO_ACTIVE_PRICE_VERSION,
+        priceBookId: null,
+        priceVersionId: null,
+        currency: null,
+        tier: null,
+        unitPriceCents: null,
+        subtotalCents: null,
+        totalCents: null,
+      };
+    }
+
+    const config = await this.resolvePriceBookConfig(opts.priceBookId, asOf);
+    return this.calculateFromBookAndVersion(
+      billableVehicleCount,
+      config.priceBook,
+      config.activeVersion,
+      asOf,
+      opts,
+    );
+  }
+
+  async calculateVolumePriceForVersion(
+    priceVersionId: string,
+    billableVehicleCount: number,
+    opts?: {
+      asOf?: Date;
+      priceBookId?: string | null;
+      customUnitPriceCents?: number | null;
+      customMonthlyMinimumCents?: number | null;
+    },
+  ): Promise<PriceResolutionResult> {
+    const asOf = opts?.asOf ?? new Date();
+    const version = await this.pricebook.getVersionWithTiers(priceVersionId);
+    if (!version) {
+      return {
+        calculationStatus: BillingUsageCalculationStatus.NO_ACTIVE_PRICE_VERSION,
+        priceBookId: opts?.priceBookId ?? null,
+        priceVersionId: null,
+        currency: null,
+        tier: null,
+        unitPriceCents: null,
+        subtotalCents: null,
+        totalCents: null,
+      };
+    }
+
+    const priceBook =
+      opts?.priceBookId != null
+        ? await this.pricebook.getPriceBook(opts.priceBookId)
+        : await this.pricebook.getPriceBook(version.priceBookId);
+
+    return this.calculateFromBookAndVersion(
+      billableVehicleCount,
+      priceBook,
+      version,
+      asOf,
+      opts,
+    );
+  }
+
+  private async calculateFromBookAndVersion(
+    billableVehicleCount: number,
+    priceBook: { id: string; currency: string } | null,
+    activeVersion: {
+      id: string;
+      tiers: Array<{
+        id: string;
+        minVehicles: number;
+        maxVehicles: number | null;
+        unitPriceCents: number | null;
+        sortOrder: number;
+      }>;
+    } | null,
+    asOf: Date,
+    opts?: {
+      customUnitPriceCents?: number | null;
+      customMonthlyMinimumCents?: number | null;
+    },
+  ): Promise<PriceResolutionResult> {
     const empty: PriceResolutionResult = {
       calculationStatus: BillingUsageCalculationStatus.NO_ACTIVE_PRICE_VERSION,
       priceBookId: priceBook?.id ?? null,

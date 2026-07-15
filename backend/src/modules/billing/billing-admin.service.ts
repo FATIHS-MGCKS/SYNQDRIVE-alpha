@@ -43,7 +43,6 @@ export class BillingAdminService {
       missingPaymentMethods,
       stripeSyncErrors,
       orgs,
-      pricingConfig,
     ] = await Promise.all([
       this.prisma.billingSubscription.findMany({
         include: {
@@ -66,7 +65,6 @@ export class BillingAdminService {
         where: { status: 'ACTIVE' },
         select: { id: true },
       }),
-      this.pricebook.getPricingConfiguration(),
     ]);
 
     let mrrCents = 0;
@@ -99,6 +97,7 @@ export class BillingAdminService {
 
       const preview = await this.usageService.previewUsage(org.id);
       if (
+        !preview.configured ||
         preview.calculationStatus === BillingUsageCalculationStatus.PRICE_NOT_CONFIGURED ||
         preview.calculationStatus === BillingUsageCalculationStatus.NO_ACTIVE_PRICE_VERSION
       ) {
@@ -106,17 +105,12 @@ export class BillingAdminService {
       }
     }
 
-    if (!pricingConfig.configured) {
-      organizationsWithPriceNotConfigured = orgs.length;
-    }
-
     return {
       mrr: mrrCents / 100,
       arr: (mrrCents * 12) / 100,
-      mrrIncomplete: !pricingConfig.configured,
-      mrrIncompleteReason: !pricingConfig.configured
-        ? (pricingConfig.reason ?? 'PRICE_NOT_CONFIGURED')
-        : null,
+      mrrIncomplete: organizationsWithPriceNotConfigured > 0,
+      mrrIncompleteReason:
+        organizationsWithPriceNotConfigured > 0 ? 'PER_ORG_PRICE_NOT_ASSIGNED' : null,
       activeSubscriptions,
       trialingSubscriptions,
       pastDueSubscriptions,
@@ -126,7 +120,7 @@ export class BillingAdminService {
       billableConnectedVehicles,
       organizationsWithPriceNotConfigured,
       stripeSyncErrors,
-      pricingConfigured: pricingConfig.configured,
+      pricingConfigured: organizationsWithPriceNotConfigured === 0,
     };
   }
 

@@ -115,12 +115,14 @@ export class BillingService {
     if (!sub) return null;
     const formatted = this.formatSubscription(sub);
     const usagePreview = await this.usageService.previewUsage(orgId);
-    const pricingConfig = await this.pricebookService.getPricingConfiguration();
     return {
       ...formatted,
       usagePreview,
-      pricingConfigured: pricingConfig.configured,
-      pricingNotConfiguredReason: pricingConfig.reason,
+      pricingConfigured: usagePreview.configured,
+      pricingNotConfiguredReason: usagePreview.configured
+        ? null
+        : 'BILLING_PRICE_NOT_ASSIGNED',
+      pricingErrorCode: usagePreview.priceVersionId ? null : 'BILLING_PRICE_NOT_ASSIGNED',
     };
   }
 

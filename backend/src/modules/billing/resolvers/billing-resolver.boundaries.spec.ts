@@ -57,6 +57,16 @@ describe('Billing resolver service boundaries', () => {
     billingOrganizationPriceOverride: {
       findMany: jest.fn(),
     },
+    billingSubscriptionItem: {
+      findFirst: jest.fn(),
+      findMany: jest.fn(),
+    },
+    billingPriceVersion: {
+      findUnique: jest.fn(),
+    },
+    billingQuantityEvent: {
+      findFirst: jest.fn(),
+    },
     organizationProduct: {
       findMany: jest.fn(),
     },
@@ -71,6 +81,8 @@ describe('Billing resolver service boundaries', () => {
   const pricebook = {
     getPricingConfiguration: jest.fn(),
     getPriceBook: jest.fn(),
+    findActiveVersion: jest.fn(),
+    getVersionWithTiers: jest.fn(),
   };
 
   const billableVehicles = {
@@ -79,6 +91,7 @@ describe('Billing resolver service boundaries', () => {
 
   const priceResolution = {
     calculateVolumePrice: jest.fn(),
+    calculateVolumePriceForVersion: jest.fn(),
   };
 
   beforeEach(() => {
@@ -92,11 +105,25 @@ describe('Billing resolver service boundaries', () => {
       cancelAtPeriodEnd: false,
       currentPeriodStart: new Date('2026-07-01'),
       currentPeriodEnd: new Date('2026-07-31'),
-      priceBookId: null,
-      priceVersionId: null,
+      priceBookId: 'book-1',
+      priceVersionId: 'ver-1',
       stripeSubscriptionId: 'sub_stripe_1',
       stripeCustomerId: 'cus_1',
     });
+    prisma.billingSubscriptionItem.findMany.mockResolvedValue([]);
+    prisma.billingSubscriptionItem.findFirst.mockResolvedValue({
+      id: 'item-1',
+      priceBookId: 'book-1',
+      priceVersionId: 'ver-1',
+    });
+    prisma.billingPriceVersion.findUnique.mockResolvedValue({
+      id: 'ver-1',
+      priceBookId: 'book-1',
+      status: 'ACTIVE',
+      effectiveFrom: new Date('2026-01-01'),
+      effectiveTo: null,
+    });
+    prisma.billingQuantityEvent.findFirst.mockResolvedValue(null);
     prisma.organizationProduct.findMany.mockResolvedValue([
       { status: 'ACTIVE', product: { slug: 'FLEET', name: 'Fleet' } },
     ]);
@@ -106,7 +133,7 @@ describe('Billing resolver service boundaries', () => {
       billableVehicles: [{ id: 'v1' }, { id: 'v2' }],
       excludedVehicles: [{ id: 'v3' }],
     });
-    priceResolution.calculateVolumePrice.mockResolvedValue({
+    priceResolution.calculateVolumePriceForVersion.mockResolvedValue({
       calculationStatus: 'OK',
       priceBookId: 'book-1',
       priceVersionId: 'ver-1',
@@ -176,11 +203,15 @@ describe('Billing resolver service boundaries', () => {
     assertNoStripeTypes(discounts);
   });
 
-  it('PricingResolver applies discounts via price resolution service', async () => {
-    const service = new PricingResolverService(priceResolution as never);
-    const pricing = await service.resolveItemPricing({
+  it('PricingResolver resolves org-scoped assignment via subscription item version', async () => {
+    const service = new PricingResolverService(
+      prisma as never,
+      pricebook as never,
+      priceResolution as never,
+    );
+    const pricing = await service.resolveItemPricingForOrganization({
+      organizationId: 'org-1',
       billableQuantity: 2,
-      priceBookId: 'book-1',
       discounts: [
         {
           id: 'd1',
@@ -197,12 +228,14 @@ describe('Billing resolver service boundaries', () => {
       ],
     });
 
-    expect(priceResolution.calculateVolumePrice).toHaveBeenCalledWith(2, {
-      priceBookId: 'book-1',
-      asOf: expect.any(Date),
-      customUnitPriceCents: 900,
-      customMonthlyMinimumCents: null,
-    });
+    expect(priceResolution.calculateVolumePriceForVersion).toHaveBeenCalledWith(
+      'ver-1',
+      2,
+      expect.objectContaining({
+        customUnitPriceCents: 900,
+        priceBookId: 'book-1',
+      }),
+    );
     expect(pricing.totalCents).toBe(2000);
     assertNoStripeTypes(pricing);
   });
