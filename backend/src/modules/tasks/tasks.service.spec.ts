@@ -1703,4 +1703,105 @@ describe('TasksService', () => {
       );
     });
   });
+
+  it('listTasks applies invoice, station and activation filters', async () => {
+    prisma.orgTask.findMany.mockResolvedValue([]);
+
+    await svc.listTasks('org1', {
+      invoiceId: 'inv-1',
+      stationId: 'station-1',
+      activatesFrom: '2026-07-01T00:00:00.000Z',
+      activatesTo: '2026-07-31T23:59:59.000Z',
+    });
+
+    expect(prisma.orgTask.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            expect.objectContaining({ organizationId: 'org1', invoiceId: 'inv-1' }),
+            expect.objectContaining({
+              metadata: { path: ['stationId'], equals: 'station-1' },
+            }),
+            expect.objectContaining({
+              OR: [
+                {
+                  activatesAt: {
+                    gte: new Date('2026-07-01T00:00:00.000Z'),
+                    lte: new Date('2026-07-31T23:59:59.000Z'),
+                  },
+                },
+                {
+                  activatesAt: null,
+                  createdAt: {
+                    gte: new Date('2026-07-01T00:00:00.000Z'),
+                    lte: new Date('2026-07-31T23:59:59.000Z'),
+                  },
+                },
+              ],
+            }),
+          ]),
+        }),
+      }),
+    );
+  });
+
+  describe('bulkTaskActions', () => {
+    it('returns partial results and reuses audited single-task services', async () => {
+      const assignSpy = jest
+        .spyOn(svc, 'assignTask')
+        .mockResolvedValueOnce({ id: 't1' } as any)
+        .mockRejectedValueOnce(new NotFoundException('Task not found'));
+      const waitingSpy = jest.spyOn(svc, 'moveTaskToWaiting');
+
+      const result = await svc.bulkTaskActions(
+        'org1',
+        { taskIds: ['t1', 't-missing'], action: 'assign', assignedUserId: 'u2' },
+        'actor-1',
+      );
+
+      expect(result.succeeded).toBe(1);
+      expect(result.failed).toBe(1);
+      expect(result.results).toEqual([
+        { taskId: 't1', success: true },
+        { taskId: 't-missing', success: false, error: 'Task not found' },
+      ]);
+      expect(assignSpy).toHaveBeenCalledTimes(2);
+      expect(assignSpy).toHaveBeenCalledWith('org1', 't1', 'u2', 'actor-1');
+      expect(waitingSpy).not.toHaveBeenCalled();
+
+      assignSpy.mockRestore();
+      waitingSpy.mockRestore();
+    });
+
+    it('does not use updateMany for bulk waiting transitions', async () => {
+      const updateManySpy = jest.fn();
+      const waitingSpy = jest
+        .spyOn(svc, 'moveTaskToWaiting')
+        .mockResolvedValue({ id: 't1' } as any);
+
+      await svc.bulkTaskActions('org1', { taskIds: ['t1'], action: 'set_waiting' }, 'actor-1');
+
+      expect(waitingSpy).toHaveBeenCalledWith('org1', 't1', 'actor-1');
+      expect(updateManySpy).not.toHaveBeenCalled();
+
+      waitingSpy.mockRestore();
+    });
+
+    it('isolates bulk actions per organization via loadTaskOrThrow', async () => {
+      const cancelSpy = jest
+        .spyOn(svc, 'cancelTask')
+        .mockRejectedValueOnce(new NotFoundException('Task not found'));
+
+      const result = await svc.bulkTaskActions(
+        'org2',
+        { taskIds: ['t-other-org'], action: 'cancel' },
+        'actor-1',
+      );
+
+      expect(result.failed).toBe(1);
+      expect(cancelSpy).toHaveBeenCalledWith('org2', 't-other-org', 'actor-1');
+
+      cancelSpy.mockRestore();
+    });
+  });
 });

@@ -357,6 +357,10 @@ export interface TaskListFilters {
   alertId?: string;
   documentId?: string;
   serviceCaseId?: string;
+  invoiceId?: string;
+  stationId?: string;
+  activatesFrom?: string;
+  activatesTo?: string;
   dueFrom?: string;
   dueTo?: string;
   overdue?: boolean;
@@ -405,4 +409,32 @@ export interface UpdateChecklistItemPayload {
   sortOrder?: number;
   isDone?: boolean;
   isRequired?: boolean;
+}
+
+export type BulkTaskActionType =
+  | 'assign'
+  | 'set_priority'
+  | 'shift_due_date'
+  | 'set_waiting'
+  | 'cancel';
+
+export interface BulkTaskActionPayload {
+  taskIds: string[];
+  action: BulkTaskActionType;
+  assignedUserId?: string | null;
+  priority?: ApiTaskPriority;
+  dueDate?: string;
+  dueDateShiftDays?: number;
+}
+
+export interface BulkTaskActionItemResult {
+  taskId: string;
+  success: boolean;
+  error?: string;
+}
+
+export interface BulkTaskActionResponse {
+  results: BulkTaskActionItemResult[];
+  succeeded: number;
+  failed: number;
 }

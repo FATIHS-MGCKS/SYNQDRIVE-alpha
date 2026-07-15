@@ -1,5 +1,7 @@
 import { Transform, Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
   IsArray,
   IsBoolean,
   IsEnum,
@@ -355,6 +357,25 @@ export class ListTasksQueryDto {
   serviceCaseId?: string;
 
   @IsOptional()
+  @Transform(trimEmptyToUndefined)
+  @IsString()
+  invoiceId?: string;
+
+  /** Operational station reference stored in task metadata.stationId. */
+  @IsOptional()
+  @Transform(trimEmptyToUndefined)
+  @IsString()
+  stationId?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  activatesFrom?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  activatesTo?: string;
+
+  @IsOptional()
   @IsISO8601()
   dueFrom?: string;
 
@@ -383,4 +404,45 @@ export class ListTasksQueryDto {
   @Transform(({ value }) => value === true || value === 'true' || value === '1')
   @IsBoolean()
   includeCancelled?: boolean;
+}
+
+export const BULK_TASK_ACTION_TYPES = [
+  'assign',
+  'set_priority',
+  'shift_due_date',
+  'set_waiting',
+  'cancel',
+] as const;
+
+export type BulkTaskActionType = (typeof BULK_TASK_ACTION_TYPES)[number];
+
+export class BulkTaskActionDto {
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(100)
+  @IsString({ each: true })
+  taskIds!: string[];
+
+  @IsIn([...BULK_TASK_ACTION_TYPES])
+  action!: BulkTaskActionType;
+
+  /** Used with action=assign — omit or null to clear assignment. */
+  @IsOptional()
+  @IsString()
+  assignedUserId?: string | null;
+
+  /** Used with action=set_priority. */
+  @IsOptional()
+  @IsEnum(TaskPriority)
+  priority?: TaskPriority;
+
+  /** Used with action=shift_due_date — sets an absolute due date. */
+  @IsOptional()
+  @IsISO8601()
+  dueDate?: string;
+
+  /** Used with action=shift_due_date — shifts existing due date by N days. */
+  @IsOptional()
+  @IsInt()
+  dueDateShiftDays?: number;
 }

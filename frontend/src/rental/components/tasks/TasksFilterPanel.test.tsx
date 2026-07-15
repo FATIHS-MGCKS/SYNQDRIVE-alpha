@@ -1,58 +1,38 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {
-  applyClientTaskFilters,
   DEFAULT_TASKS_FILTER_STATE,
   hasActiveTaskFilters,
 } from './TasksFilterPanel';
 
-describe('TasksFilterPanel utils', () => {
-  it('detects active filters and applies client-side refinements', () => {
-    const rows = [
-      {
-        id: '1',
-        title: 'Reifen',
-        vehicleLicense: 'M-AB 1234',
-        vehicleModel: 'Golf',
-        assignedUserName: 'Alex',
-        createdByUserName: 'System',
-        priority: 'High' as const,
-        category: 'Maintenance' as const,
-      },
-      {
-        id: '2',
-        title: 'HU',
-        vehicleLicense: 'B-XY 99',
-        vehicleModel: 'BMW',
-        assignedUserName: 'Maria',
-        createdByUserName: 'System',
-        priority: 'Medium' as const,
-        category: 'Inspection' as const,
-      },
-    ];
-
-    const filtered = applyClientTaskFilters(rows, {
-      ...DEFAULT_TASKS_FILTER_STATE,
-      search: 'reifen',
-      priority: 'High',
-    });
-
-    expect(filtered).toHaveLength(1);
-    expect(filtered[0]?.id).toBe('1');
-    expect(hasActiveTaskFilters({ ...DEFAULT_TASKS_FILTER_STATE, category: 'Maintenance' })).toBe(true);
-  });
-});
-
 describe('TasksFilterPanel', () => {
+  it('detects active server-side filters', () => {
+    expect(hasActiveTaskFilters(DEFAULT_TASKS_FILTER_STATE, '')).toBe(false);
+    expect(
+      hasActiveTaskFilters(
+        { ...DEFAULT_TASKS_FILTER_STATE, bookingId: 'booking-1' },
+        '',
+      ),
+    ).toBe(true);
+    expect(hasActiveTaskFilters(DEFAULT_TASKS_FILTER_STATE, 'hu')).toBe(true);
+  });
+
   it('renders mobile filter sheet trigger only on small screens', async () => {
     const { TasksFilterPanel } = await import('./TasksFilterPanel');
     const html = renderToStaticMarkup(
       <TasksFilterPanel
         filters={DEFAULT_TASKS_FILTER_STATE}
+        searchDraft=""
+        onSearchDraftChange={() => undefined}
         onChange={() => undefined}
         onClear={() => undefined}
-        vehicleOptions={[]}
+        stationOptions={[]}
         assigneeOptions={[]}
+        vehicleOptions={[]}
+        bookingOptions={[]}
+        customerOptions={[]}
+        invoiceOptions={[]}
+        serviceCaseOptions={[]}
         hasActiveFilters={false}
         resultLabel="Offen · 3 Aufgaben"
       />,

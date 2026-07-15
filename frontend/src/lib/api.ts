@@ -538,6 +538,8 @@ import type {
   ApiTaskStatus,
   ApiTaskPriority,
   ApiTaskType,
+  BulkTaskActionPayload,
+  BulkTaskActionResponse,
   CompleteTaskPayload,
   CreateTaskPayload,
   TaskBucket,
@@ -562,6 +564,8 @@ export type {
   CreateTaskPayload,
   CompleteTaskPayload,
   UpdateChecklistItemPayload,
+  BulkTaskActionPayload,
+  BulkTaskActionResponse,
   TaskCompletionMode,
   TaskBucket,
   TaskBucketSummaryCounts,
@@ -4051,6 +4055,8 @@ export const api = {
       patch<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}/complete`, data ?? {}),
     cancel: (orgId: string, id: string) =>
       patch<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}/cancel`, {}),
+    bulk: (orgId: string, data: BulkTaskActionPayload) =>
+      post<BulkTaskActionResponse>(`/organizations/${orgId}/tasks/bulk`, data),
     addComment: (orgId: string, id: string, body: string) =>
       post<ApiTaskDetail>(`/organizations/${orgId}/tasks/${id}/comments`, { body }),
     addChecklistItem: (

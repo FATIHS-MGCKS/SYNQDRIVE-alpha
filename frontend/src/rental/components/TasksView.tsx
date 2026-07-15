@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ListTodo } from 'lucide-react';
 import { PageHeader, EmptyState, ErrorState } from '../../components/patterns';
 import { Button } from '../../components/ui/button';
@@ -10,12 +10,11 @@ import {
   useTaskList,
   useTaskSummary,
 } from '../../lib/tasks';
+import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useFleetVehicles } from '../FleetContext';
 import { useRentalOrg } from '../RentalContext';
-import { VIEW_PRIORITY_TO_API } from '../lib/task-create.utils';
 import {
   buildTasksPageKpis,
-  buildTasksPageListFilters,
   bucketCountFromSummary,
   canViewUnassignedTasksBucket,
   getVisibleTasksPageViews,
@@ -29,12 +28,24 @@ import {
   type OrgMemberRef,
   type TaskListRow,
 } from '../lib/task-list.utils';
+import { isActiveApiTask } from '../lib/taskBulkActions.utils';
 import { GlobalTaskDetailPanel } from './tasks/GlobalTaskDetailPanel';
 import { TaskWorkItemCard } from './tasks/TaskWorkItemCard';
-import { TasksFilterPanel, applyClientTaskFilters, DEFAULT_TASKS_FILTER_STATE, hasActiveTaskFilters, type TasksFilterState } from './tasks/TasksFilterPanel';
+import {
+  DEFAULT_TASKS_FILTER_STATE,
+  hasActiveTaskFilters,
+  TasksFilterPanel,
+} from './tasks/TasksFilterPanel';
+import { TasksBulkActionBar } from './tasks/TasksBulkActionBar';
 import { TasksKpiStrip } from './tasks/TasksKpiStrip';
 import { TasksNewTaskDialog } from './tasks/TasksNewTaskDialog';
 import { TasksPageViews } from './tasks/TasksPageViews';
+import {
+  buildTasksListApiParams,
+  readTasksListFiltersFromUrl,
+  syncTasksListFiltersToUrl,
+  type TasksListFilters,
+} from './tasks/tasksListState';
 import { Icon } from './ui/Icon';
 
 interface TasksViewProps {
@@ -46,6 +57,20 @@ interface TasksViewProps {
 
 type Task = TaskListRow;
 
+interface EntityLookupState {
+  bookings: Array<{ id: string; label: string }>;
+  customers: Array<{ id: string; label: string }>;
+  invoices: Array<{ id: string; label: string }>;
+  serviceCases: Array<{ id: string; label: string }>;
+}
+
+const EMPTY_LOOKUP: EntityLookupState = {
+  bookings: [],
+  customers: [],
+  invoices: [],
+  serviceCases: [],
+};
+
 export function TasksView({
   autoOpenNewTask,
   onAutoOpenConsumed,
@@ -56,9 +81,17 @@ export function TasksView({
   const { orgId, userRole, hasPermission } = useRentalOrg();
   const currentUserId = getStoredUser()?.id ?? null;
   const canViewUnassigned = canViewUnassignedTasksBucket({ userRole, hasPermission });
+  const canWriteTasks = hasPermission('tasks', 'write');
 
-  const [activeView, setActiveView] = useState<TasksPageView>('open');
-  const [filters, setFilters] = useState<TasksFilterState>(DEFAULT_TASKS_FILTER_STATE);
+  const [filters, setFilters] = useState<TasksListFilters>(() => ({
+    ...DEFAULT_TASKS_FILTER_STATE,
+    ...readTasksListFiltersFromUrl(),
+  }));
+  const [searchDraft, setSearchDraft] = useState(() => filters.search);
+  const debouncedSearch = useDebouncedValue(searchDraft, 350);
+
+  const activeView = filters.view;
+
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [detailFull, setDetailFull] = useState<ApiTask | null>(null);
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
@@ -66,7 +99,14 @@ export function TasksView({
   const [flashingTaskId, setFlashingTaskId] = useState<string | null>(null);
   const [orgMembers, setOrgMembers] = useState<OrgMemberRef[]>([]);
   const [orgStations, setOrgStations] = useState<Station[]>([]);
+  const [entityLookup, setEntityLookup] = useState<EntityLookupState>(EMPTY_LOOKUP);
+  const [lookupLoaded, setLookupLoaded] = useState(false);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<string[]>([]);
   const taskRowRefs = useRef<Record<string, HTMLElement | null>>({});
+
+  const setActiveView = useCallback((view: TasksPageView) => {
+    setFilters((current) => ({ ...current, view }));
+  }, []);
 
   useEffect(() => {
     if (!orgId) {
@@ -119,22 +159,57 @@ export function TasksView({
     };
   }, [orgId]);
 
-  const vehicleIdForFilter = useMemo(() => {
-    if (filters.vehicleLicense === 'all') return undefined;
-    return fleetVehicles.find((vehicle) => vehicle.license === filters.vehicleLicense)?.id;
-  }, [filters.vehicleLicense, fleetVehicles]);
+  useEffect(() => {
+    if (!orgId || lookupLoaded) return;
+    let cancelled = false;
+    Promise.all([
+      api.bookings.list(orgId, { limit: 100 }).catch(() => ({ data: [] })),
+      api.customers.list(orgId, { limit: 100 }).catch(() => ({ data: [] })),
+      api.invoices.list(orgId).catch(() => []),
+      api.serviceCases.list(orgId).catch(() => []),
+    ])
+      .then(([bookingsRes, customersRes, invoicesRes, serviceCasesRes]) => {
+        if (cancelled) return;
+        const bookings = Array.isArray(bookingsRes)
+          ? bookingsRes
+          : (bookingsRes as { data?: Array<Record<string, unknown>> })?.data ?? [];
+        const customers = Array.isArray(customersRes)
+          ? customersRes
+          : (customersRes as { data?: Array<Record<string, unknown>> })?.data ?? [];
+        const invoices = Array.isArray(invoicesRes) ? invoicesRes : [];
+        const serviceCases = Array.isArray(serviceCasesRes) ? serviceCasesRes : [];
+
+        setEntityLookup({
+          bookings: bookings.map((row) => ({
+            id: String(row.id ?? ''),
+            label: String(row.bookingNumber ?? row.id ?? 'Buchung'),
+          })),
+          customers: customers.map((row) => ({
+            id: String(row.id ?? ''),
+            label: String(row.name ?? row.companyName ?? row.email ?? row.id ?? 'Kunde'),
+          })),
+          invoices: invoices.map((row) => ({
+            id: String(row.id ?? ''),
+            label: String(row.invoiceNumber ?? row.id ?? 'Rechnung'),
+          })),
+          serviceCases: serviceCases.map((row) => ({
+            id: String(row.id ?? ''),
+            label: String(row.title ?? row.id ?? 'Servicefall'),
+          })),
+        });
+        setLookupLoaded(true);
+      })
+      .catch(() => {
+        if (!cancelled) setLookupLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [lookupLoaded, orgId]);
 
   const apiFilters = useMemo(
-    () =>
-      buildTasksPageListFilters(activeView, currentUserId, {
-        search: filters.search.trim() || undefined,
-        priority:
-          filters.priority !== 'all'
-            ? VIEW_PRIORITY_TO_API[filters.priority as keyof typeof VIEW_PRIORITY_TO_API]
-            : undefined,
-        vehicleId: vehicleIdForFilter,
-      }),
-    [activeView, currentUserId, filters.priority, filters.search, vehicleIdForFilter],
+    () => buildTasksListApiParams(filters, debouncedSearch, currentUserId),
+    [filters, debouncedSearch, currentUserId],
   );
 
   const listEnabled = Boolean(orgId) && (activeView !== 'unassigned' || canViewUnassigned);
@@ -171,15 +246,23 @@ export function TasksView({
     [rawTasks, rowContext],
   );
 
-  const filteredTasks = useMemo(
-    () => applyClientTaskFilters(tasks, filters),
-    [tasks, filters],
+  const sortedTasks = useMemo(
+    () => sortTaskListRows(tasks, filters.sortBy),
+    [tasks, filters.sortBy],
   );
 
-  const sortedTasks = useMemo(
-    () => sortTaskListRows(filteredTasks, filters.sortBy),
-    [filteredTasks, filters.sortBy],
+  const selectableTaskIds = useMemo(
+    () => rawTasks.filter(isActiveApiTask).map((task) => task.id),
+    [rawTasks],
   );
+
+  useEffect(() => {
+    setSelectedTaskIds((current) => current.filter((id) => selectableTaskIds.includes(id)));
+  }, [selectableTaskIds]);
+
+  useEffect(() => {
+    syncTasksListFiltersToUrl(filters, debouncedSearch);
+  }, [filters, debouncedSearch]);
 
   const viewCounts = useMemo(() => {
     const counts: Partial<Record<TasksPageView, number>> = {};
@@ -200,23 +283,36 @@ export function TasksView({
     [canViewUnassigned, taskSummary],
   );
 
+  const stationOptions = useMemo(
+    () => orgStations.map((station) => ({ value: station.id, label: station.name })),
+    [orgStations],
+  );
+
+  const assigneeOptions = useMemo(
+    () => orgMembers.map((member) => ({ value: member.id, label: member.name })),
+    [orgMembers],
+  );
+
   const vehicleOptions = useMemo(
     () =>
       fleetVehicles.map((vehicle) => ({
-        value: vehicle.license,
+        value: vehicle.id,
         label: `${vehicle.license} – ${vehicle.model}`,
       })),
     [fleetVehicles],
   );
 
-  const assigneeOptions = useMemo(() => {
-    const names = new Set(tasks.map((task) => task.assignedUserName).filter(Boolean));
-    return [...names].map((name) => ({ value: name, label: name }));
-  }, [tasks]);
-
-  const hasActiveFilters = hasActiveTaskFilters(filters);
+  const hasActiveFilters = hasActiveTaskFilters(filters, debouncedSearch);
   const emptyCopy = tasksPageEmptyState(activeView, hasActiveFilters);
   const resultLabel = tasksPageViewCountLabel(activeView, sortedTasks.length);
+
+  const clearFilters = useCallback(() => {
+    setFilters((current) => ({
+      ...DEFAULT_TASKS_FILTER_STATE,
+      view: current.view,
+    }));
+    setSearchDraft('');
+  }, []);
 
   const openTaskDetail = (task: Task) => {
     setSelectedTask(task);
@@ -252,6 +348,13 @@ export function TasksView({
     }
   };
 
+  const toggleTaskSelection = (taskId: string, selected: boolean) => {
+    setSelectedTaskIds((current) => {
+      if (selected) return current.includes(taskId) ? current : [...current, taskId];
+      return current.filter((id) => id !== taskId);
+    });
+  };
+
   useEffect(() => {
     if (autoOpenNewTask) {
       setIsNewTaskOpen(true);
@@ -261,8 +364,6 @@ export function TasksView({
 
   useEffect(() => {
     if (!highlightedTaskId || tasksLoading) return;
-    setActiveView('open');
-    setFilters(DEFAULT_TASKS_FILTER_STATE);
     setFlashingTaskId(highlightedTaskId);
 
     const scrollTimer = setTimeout(() => {
@@ -319,10 +420,17 @@ export function TasksView({
       <div className="surface-premium rounded-2xl border border-border/50 p-3 shadow-[var(--shadow-1)] md:p-4">
         <TasksFilterPanel
           filters={filters}
+          searchDraft={searchDraft}
+          onSearchDraftChange={setSearchDraft}
           onChange={(patch) => setFilters((current) => ({ ...current, ...patch }))}
-          onClear={() => setFilters(DEFAULT_TASKS_FILTER_STATE)}
-          vehicleOptions={vehicleOptions}
+          onClear={clearFilters}
+          stationOptions={stationOptions}
           assigneeOptions={assigneeOptions}
+          vehicleOptions={vehicleOptions}
+          bookingOptions={entityLookup.bookings}
+          customerOptions={entityLookup.customers}
+          invoiceOptions={entityLookup.invoices}
+          serviceCaseOptions={entityLookup.serviceCases}
           hasActiveFilters={hasActiveFilters}
           resultLabel={resultLabel}
         />
@@ -350,12 +458,7 @@ export function TasksView({
           description={emptyCopy.description}
           action={
             hasActiveFilters ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setFilters(DEFAULT_TASKS_FILTER_STATE)}
-              >
+              <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
                 Filter zurücksetzen
               </Button>
             ) : activeView !== 'open' ? (
@@ -381,6 +484,9 @@ export function TasksView({
               task={task}
               isFlashing={flashingTaskId === task.id}
               onClick={() => openTaskDetail(task)}
+              selectable={canWriteTasks}
+              selected={selectedTaskIds.includes(task.id)}
+              onSelectedChange={(selected) => toggleTaskSelection(task.id, selected)}
               rowRef={(element) => {
                 taskRowRefs.current[task.id] = element;
               }}
@@ -388,6 +494,17 @@ export function TasksView({
           ))}
         </div>
       )}
+
+      {orgId && selectedTaskIds.length > 0 ? (
+        <TasksBulkActionBar
+          orgId={orgId}
+          selectedTaskIds={selectedTaskIds}
+          canWriteTasks={canWriteTasks}
+          assigneeOptions={assigneeOptions}
+          onClearSelection={() => setSelectedTaskIds([])}
+          onCompleted={() => void reloadTasks()}
+        />
+      ) : null}
 
       <GlobalTaskDetailPanel
         open={!!selectedTask}
@@ -401,7 +518,7 @@ export function TasksView({
         orgMembers={orgMembers}
         userRole={userRole}
         canManageTasks={hasPermission('tasks', 'manage')}
-        canWriteTasks={hasPermission('tasks', 'write')}
+        canWriteTasks={canWriteTasks}
         mutating={mutating}
         onTaskUpdated={setDetailFull}
         runTaskAction={async (fn) => {

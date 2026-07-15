@@ -13,9 +13,20 @@ export interface TaskWorkItemCardProps {
   isFlashing?: boolean;
   onClick: () => void;
   rowRef?: (el: HTMLButtonElement | null) => void;
+  selectable?: boolean;
+  selected?: boolean;
+  onSelectedChange?: (selected: boolean) => void;
 }
 
-export function TaskWorkItemCard({ task, isFlashing, onClick, rowRef }: TaskWorkItemCardProps) {
+export function TaskWorkItemCard({
+  task,
+  isFlashing,
+  onClick,
+  rowRef,
+  selectable = false,
+  selected = false,
+  onSelectedChange,
+}: TaskWorkItemCardProps) {
   const terminal = task.status === 'Completed';
   const cardTone = isFlashing
     ? 'ring-1 ring-[color:var(--brand-soft)] bg-[color:var(--brand-soft)]'
@@ -24,13 +35,27 @@ export function TaskWorkItemCard({ task, isFlashing, onClick, rowRef }: TaskWork
       : 'border-border surface-premium';
 
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      ref={rowRef}
-      data-testid="task-work-item-card"
-      className={`surface-premium sq-press w-full rounded-2xl border p-3 text-left shadow-[var(--shadow-1)] transition-all md:p-3.5 ${cardTone}`}
-    >
+    <div className="flex items-stretch gap-2">
+      {selectable && !terminal ? (
+        <label className="flex items-center px-1">
+          <input
+            type="checkbox"
+            checked={selected}
+            onChange={(event) => onSelectedChange?.(event.target.checked)}
+            onClick={(event) => event.stopPropagation()}
+            aria-label={`${task.title} auswählen`}
+            data-testid="task-select-checkbox"
+            className="h-4 w-4 rounded border-border"
+          />
+        </label>
+      ) : null}
+      <button
+        type="button"
+        onClick={onClick}
+        ref={rowRef}
+        data-testid="task-work-item-card"
+        className={`surface-premium sq-press min-w-0 flex-1 rounded-2xl border p-3 text-left shadow-[var(--shadow-1)] transition-all md:p-3.5 ${cardTone}`}
+      >
       <div className="flex items-stretch gap-3">
         <div
           className={`w-1 shrink-0 rounded-full ${priorityStripClass(task.priority)}`}
@@ -124,6 +149,7 @@ export function TaskWorkItemCard({ task, isFlashing, onClick, rowRef }: TaskWork
         />
       </div>
     </button>
+    </div>
   );
 }
 

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ActivityAction, ActivityEntity, Prisma, TaskCompletionMode, TaskPriority, TaskSource, TaskStatus, TaskType } from '@prisma/client';
 import { ActivityLogService } from '@modules/activity-log/activity-log.service';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -126,12 +126,37 @@ export interface ListTasksFilters {
   alertId?: string;
   documentId?: string;
   serviceCaseId?: string;
+  invoiceId?: string;
+  stationId?: string;
+  activatesFrom?: string;
+  activatesTo?: string;
   dueFrom?: string;
   dueTo?: string;
   overdue?: boolean;
   search?: string;
   bucket?: TaskOperatorBucket;
   includeCancelled?: boolean;
+}
+
+export interface BulkTaskActionInput {
+  taskIds: string[];
+  action: 'assign' | 'set_priority' | 'shift_due_date' | 'set_waiting' | 'cancel';
+  assignedUserId?: string | null;
+  priority?: TaskPriority;
+  dueDate?: string;
+  dueDateShiftDays?: number;
+}
+
+export interface BulkTaskActionItemResult {
+  taskId: string;
+  success: boolean;
+  error?: string;
+}
+
+export interface BulkTaskActionResult {
+  results: BulkTaskActionItemResult[];
+  succeeded: number;
+  failed: number;
 }
 
 type OrgTaskDetail = Prisma.OrgTaskGetPayload<{
@@ -647,6 +672,8 @@ export class TasksService {
     const alertId = filters.alertId?.trim() || undefined;
     const documentId = filters.documentId?.trim() || undefined;
     const serviceCaseId = filters.serviceCaseId?.trim() || undefined;
+    const invoiceId = filters.invoiceId?.trim() || undefined;
+    const stationId = filters.stationId?.trim() || undefined;
     const search = filters.search?.trim() || undefined;
 
     if (filters.status) where.status = Array.isArray(filters.status) ? { in: filters.status } : filters.status;
@@ -661,6 +688,28 @@ export class TasksService {
     if (alertId) where.alertId = alertId;
     if (documentId) where.documentId = documentId;
     if (serviceCaseId) where.serviceCaseId = serviceCaseId;
+    if (invoiceId) where.invoiceId = invoiceId;
+
+    if (stationId) {
+      andFilters.push({
+        metadata: {
+          path: ['stationId'],
+          equals: stationId,
+        },
+      });
+    }
+
+    if (filters.activatesFrom || filters.activatesTo) {
+      const activatesRange: Prisma.DateTimeFilter = {};
+      if (filters.activatesFrom) activatesRange.gte = new Date(filters.activatesFrom);
+      if (filters.activatesTo) activatesRange.lte = new Date(filters.activatesTo);
+      andFilters.push({
+        OR: [
+          { activatesAt: activatesRange },
+          { activatesAt: null, createdAt: activatesRange },
+        ],
+      });
+    }
 
     if (filters.dueFrom || filters.dueTo) {
       where.dueDate = {};
@@ -1250,6 +1299,86 @@ export class TasksService {
 
   async cancelTask(orgId: string, id: string, actorUserId?: string) {
     return this.changeStatus(orgId, id, 'CANCELLED', undefined, actorUserId ? { id: actorUserId } : undefined);
+  }
+
+  /**
+   * Tenant-scoped bulk mutations — each task is processed through the existing
+   * single-task services so status transitions emit TaskEvents (no blind updateMany).
+   */
+  async bulkTaskActions(
+    orgId: string,
+    input: BulkTaskActionInput,
+    actorUserId?: string,
+  ): Promise<BulkTaskActionResult> {
+    const uniqueIds = [...new Set(input.taskIds.map((id) => id.trim()).filter(Boolean))];
+    if (uniqueIds.length === 0) {
+      throw new BadRequestException('At least one task id is required');
+    }
+
+    const results: BulkTaskActionItemResult[] = [];
+
+    for (const taskId of uniqueIds) {
+      try {
+        switch (input.action) {
+          case 'assign':
+            await this.assignTask(orgId, taskId, input.assignedUserId ?? null, actorUserId);
+            break;
+          case 'set_priority': {
+            if (!input.priority) {
+              throw new BadRequestException('priority is required for set_priority');
+            }
+            await this.updateTask(orgId, taskId, { priority: input.priority }, actorUserId);
+            break;
+          }
+          case 'shift_due_date': {
+            const task = await this.loadTaskOrThrow(taskId, orgId);
+            if (task.status === 'DONE' || task.status === 'CANCELLED') {
+              throw new BadRequestException('A completed or cancelled task can no longer be edited');
+            }
+            let nextDue: Date | null;
+            if (input.dueDate) {
+              nextDue = new Date(input.dueDate);
+            } else if (input.dueDateShiftDays !== undefined) {
+              const base = task.dueDate ?? new Date();
+              nextDue = new Date(base);
+              nextDue.setUTCDate(nextDue.getUTCDate() + input.dueDateShiftDays);
+            } else {
+              throw new BadRequestException('dueDate or dueDateShiftDays is required for shift_due_date');
+            }
+            await this.updateTask(orgId, taskId, { dueDate: nextDue.toISOString() }, actorUserId);
+            break;
+          }
+          case 'set_waiting':
+            await this.moveTaskToWaiting(orgId, taskId, actorUserId);
+            break;
+          case 'cancel':
+            await this.cancelTask(orgId, taskId, actorUserId);
+            break;
+          default:
+            throw new BadRequestException(`Unsupported bulk action: ${input.action as string}`);
+        }
+        results.push({ taskId, success: true });
+      } catch (err: unknown) {
+        const message =
+          err instanceof BadRequestException || err instanceof NotFoundException || err instanceof ForbiddenException
+            ? (err as { message?: string | string[] }).message
+            : err instanceof Error
+              ? err.message
+              : 'Bulk action failed';
+        results.push({
+          taskId,
+          success: false,
+          error: Array.isArray(message) ? message.join(', ') : String(message ?? 'Bulk action failed'),
+        });
+      }
+    }
+
+    const succeeded = results.filter((r) => r.success).length;
+    return {
+      results,
+      succeeded,
+      failed: results.length - succeeded,
+    };
   }
 
   /**

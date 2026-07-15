@@ -21,6 +21,7 @@ import {
   AddAttachmentDto,
   AddCommentDto,
   AssignTaskDto,
+  BulkTaskActionDto,
   ChecklistItemDto,
   CompleteTaskDto,
   CreateTaskDto,
@@ -55,6 +56,10 @@ export class TasksController {
       alertId: query.alertId,
       documentId: query.documentId,
       serviceCaseId: query.serviceCaseId,
+      invoiceId: query.invoiceId,
+      stationId: query.stationId,
+      activatesFrom: query.activatesFrom,
+      activatesTo: query.activatesTo,
       dueFrom: query.dueFrom,
       dueTo: query.dueTo,
       overdue: query.overdue,
@@ -186,6 +191,26 @@ export class TasksController {
   @Patch('organizations/:orgId/tasks/:id/cancel')
   async cancel(@Param('orgId') orgId: string, @Param('id') id: string, @Req() req: TaskAuthRequest) {
     return this.tasksService.cancelTask(orgId, id, req.user?.id);
+  }
+
+  @Post('organizations/:orgId/tasks/bulk')
+  async bulkActions(
+    @Param('orgId') orgId: string,
+    @Req() req: TaskAuthRequest,
+    @Body() body: BulkTaskActionDto,
+  ) {
+    return this.tasksService.bulkTaskActions(
+      orgId,
+      {
+        taskIds: body.taskIds,
+        action: body.action,
+        assignedUserId: body.assignedUserId,
+        priority: body.priority,
+        dueDate: body.dueDate,
+        dueDateShiftDays: body.dueDateShiftDays,
+      },
+      req.user?.id,
+    );
   }
 
   // ─── Child resources ──────────────────────────────────────────────────────
