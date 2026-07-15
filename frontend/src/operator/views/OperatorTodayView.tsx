@@ -4,8 +4,11 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Car,
+  CalendarClock,
+  Clock,
   ListTodo,
   Plus,
+  UserX,
 } from 'lucide-react';
 import { EmptyState, ErrorState, SkeletonRows } from '../../components/patterns';
 import { useFleetVehicles } from '../../rental/FleetContext';
@@ -13,6 +16,7 @@ import { taskRequiresResolutionNote } from '../../rental/lib/task-detail.utils';
 import type { ApiTask } from '../../lib/api';
 import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
 import { useOperatorToday } from '../hooks/useOperatorToday';
+import type { OperatorTodayBucketSlice } from '../hooks/operatorTodayFeed.utils';
 import { useOperatorOperationalAlerts } from '../hooks/useOperatorOperationalAlerts';
 import { OperatorBookingCard } from '../components/OperatorBookingCard';
 import { OperatorBookingDetailSheet } from '../components/OperatorBookingDetailSheet';
@@ -20,26 +24,77 @@ import { OperatorBookingTaskGroupCard } from '../components/OperatorBookingTaskG
 import { OperatorListCard } from '../components/OperatorListCard';
 import { OperatorTodaySection } from '../components/OperatorTodaySection';
 import { OperatorTabletFrame } from '../components/OperatorTabletFrame';
-import { useOperatorData } from '../context/OperatorDataContext';
 import { useOperatorShell } from '../context/OperatorShellContext';
 import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
-import type { OperatorTodayBookingItem } from '../lib/operatorData';
+import type { OperatorTodayBookingItem, OperatorTodayTaskEntry } from '../lib/operatorData';
 import { toHandoverBookingSeed } from '../lib/operatorData';
 import { OperatorTaskCard } from '../tasks/OperatorTaskCard';
 import { useOperatorTaskActions } from '../tasks/useOperatorTaskActions';
 
+const TASK_BUCKET_SECTIONS: Array<{
+  bucket: 'NOW' | 'TODAY' | 'UPCOMING' | 'PLANNED' | 'UNASSIGNED';
+  title: string;
+  emptyTitle: string;
+  emptyDescription: string;
+  icon: ReactNode;
+}> = [
+  {
+    bucket: 'NOW',
+    title: 'Jetzt erforderlich',
+    emptyTitle: 'Nichts Dringendes',
+    emptyDescription: 'Keine überfälligen oder priorisierten Aufgaben.',
+    icon: <AlertTriangle className="h-5 w-5" />,
+  },
+  {
+    bucket: 'TODAY',
+    title: 'Heute fällig',
+    emptyTitle: 'Heute nichts offen',
+    emptyDescription: 'Keine Aufgaben mit Fälligkeit im heutigen Org-Tagesfenster.',
+    icon: <ListTodo className="h-5 w-5" />,
+  },
+  {
+    bucket: 'UPCOMING',
+    title: 'Demnächst',
+    emptyTitle: 'Keine anstehenden Aufgaben',
+    emptyDescription: 'Nichts in den nächsten 72 Stunden.',
+    icon: <Clock className="h-5 w-5" />,
+  },
+  {
+    bucket: 'PLANNED',
+    title: 'Geplant',
+    emptyTitle: 'Keine geplanten Aufgaben',
+    emptyDescription: 'Keine Tasks mit zukünftiger Aktivierung.',
+    icon: <CalendarClock className="h-5 w-5" />,
+  },
+  {
+    bucket: 'UNASSIGNED',
+    title: 'Unzugewiesen',
+    emptyTitle: 'Alles zugewiesen',
+    emptyDescription: 'Keine offenen Tasks ohne Bearbeiter.',
+    icon: <UserX className="h-5 w-5" />,
+  },
+];
+
 export function OperatorTodayView() {
-  const { orgId, orgLoading, snapshot, loading, error, reload } = useOperatorToday('de');
+  const {
+    orgId,
+    orgLoading,
+    snapshot,
+    loading,
+    bookingsLoading,
+    error,
+    bookingsError,
+    reload,
+  } = useOperatorToday('de');
   const { openHandover } = useOperatorHandover();
   const { openSheet, setActiveTab, setPendingTasksBookingId, setSelectedVehicleId } = useOperatorShell();
   const { fleetVehicles } = useFleetVehicles();
-  const { reloadTasks } = useOperatorData();
   const { alerts: operationalAlerts } = useOperatorOperationalAlerts(5);
   const isTablet = useOperatorTabletLayout();
   const [detailItem, setDetailItem] = useState<OperatorTodayBookingItem | null>(null);
 
   const { mutating, start, complete } = useOperatorTaskActions(() => {
-    void reloadTasks();
+    void reload();
   });
 
   const vehicleMap = useMemo(() => {
@@ -57,10 +112,10 @@ export function OperatorTodayView() {
         taskId: task.id,
         task,
         focusComment,
-        onUpdated: () => void reloadTasks(),
+        onUpdated: () => void reload(),
       });
     },
-    [openSheet, reloadTasks],
+    [openSheet, reload],
   );
 
   const openBookingTaskGroup = useCallback(
@@ -91,6 +146,70 @@ export function OperatorTodayView() {
       });
     },
     [openHandover],
+  );
+
+  const renderTaskEntry = useCallback(
+    (entry: OperatorTodayTaskEntry) => {
+      if (entry.kind === 'booking-group') {
+        return (
+          <OperatorBookingTaskGroupCard
+            key={`group-${entry.bookingId}`}
+            bookingId={entry.bookingId}
+            tasks={entry.tasks}
+            vehicleLabel={entry.vehicleId ? vehicleMap.get(entry.vehicleId) ?? null : null}
+            bookingLabel={`Buchung ${entry.bookingId.slice(0, 8)}…`}
+            disabled={mutating}
+            onOpen={() => openBookingTaskGroup(entry.bookingId)}
+          />
+        );
+      }
+      return (
+        <OperatorTaskCard
+          key={entry.task.id}
+          task={entry.task}
+          vehicleLabel={entry.task.vehicleId ? vehicleMap.get(entry.task.vehicleId) ?? null : null}
+          bookingLabel={
+            entry.task.bookingId ? `Buchung ${entry.task.bookingId.slice(0, 8)}…` : null
+          }
+          disabled={mutating}
+          onOpen={() => openTask(entry.task)}
+          onStart={() => void start(entry.task.id)}
+          onComplete={() => void handleQuickComplete(entry.task)}
+          onComment={() => openTask(entry.task, true)}
+        />
+      );
+    },
+    [handleQuickComplete, mutating, openBookingTaskGroup, openTask, start, vehicleMap],
+  );
+
+  const renderBucketSection = useCallback(
+    (slice: OperatorTodayBucketSlice | undefined, meta: (typeof TASK_BUCKET_SECTIONS)[number]) => {
+      if (!slice) return null;
+      if (meta.bucket === 'UNASSIGNED' && !snapshot.taskFeed.canViewUnassigned) return null;
+
+      const sectionEmpty = (
+        <EmptyState compact icon={meta.icon} title={meta.emptyTitle} description={meta.emptyDescription} />
+      );
+
+      return (
+        <OperatorTodaySection
+          key={meta.bucket}
+          title={meta.title}
+          count={slice.count}
+          isEmpty={!slice.loading && !slice.error && slice.entries.length === 0}
+          empty={sectionEmpty}
+        >
+          {slice.loading && <SkeletonRows rows={2} />}
+          {!slice.loading && slice.error && (
+            <ErrorState compact title={`${meta.title} nicht verfügbar`} error={slice.error} onRetry={() => void reload()} />
+          )}
+          {!slice.loading && !slice.error && (
+            <div className="space-y-2">{slice.entries.map((entry) => renderTaskEntry(entry))}</div>
+          )}
+        </OperatorTodaySection>
+      );
+    },
+    [reload, renderTaskEntry, snapshot.taskFeed.canViewUnassigned],
   );
 
   if (!orgLoading && !orgId) {
@@ -138,12 +257,15 @@ export function OperatorTodayView() {
         Buchung aufnehmen
       </button>
 
-      {loading && <SkeletonRows rows={6} />}
+      {loading && !bookingsLoading && bookingsError == null && <SkeletonRows rows={4} />}
       {!loading && error && (
         <ErrorState compact title="Heute-Daten nicht verfügbar" error={error} onRetry={() => void reload()} />
       )}
+      {bookingsError && !bookingsLoading && (
+        <ErrorState compact title="Buchungen nicht verfügbar" error={bookingsError} onRetry={() => void reload()} />
+      )}
 
-      {!loading && !error && (
+      {!bookingsLoading && !bookingsError && (
         <>
           {operationalAlerts.length > 0 && (
             <OperatorTodaySection title="Operative Hinweise" count={operationalAlerts.length}>
@@ -243,44 +365,10 @@ export function OperatorTodayView() {
             </div>
           </OperatorTodaySection>
 
-          <OperatorTodaySection
-            title="Offene Aufgaben"
-            count={snapshot.totalOpenTasksCount}
-            action={showAllTasksAction}
-            isEmpty={snapshot.openTaskEntries.length === 0}
-            empty={sectionEmpty(
-              <ListTodo className="h-5 w-5" />,
-              'Keine offenen Aufgaben',
-              'Alle operativen Tasks erledigt.',
-            )}
-          >
-            <div className="space-y-2">
-              {snapshot.openTaskEntries.map((entry) =>
-                entry.kind === 'booking-group' ? (
-                  <OperatorBookingTaskGroupCard
-                    key={`group-${entry.bookingId}`}
-                    bookingId={entry.bookingId}
-                    tasks={entry.tasks}
-                    vehicleLabel={entry.vehicleId ? vehicleMap.get(entry.vehicleId) ?? null : null}
-                    bookingLabel={`Buchung ${entry.bookingId.slice(0, 8)}…`}
-                    disabled={mutating}
-                    onOpen={() => openBookingTaskGroup(entry.bookingId)}
-                  />
-                ) : (
-                  <OperatorTaskCard
-                    key={entry.task.id}
-                    task={entry.task}
-                    vehicleLabel={entry.task.vehicleId ? vehicleMap.get(entry.task.vehicleId) ?? null : null}
-                    bookingLabel={
-                      entry.task.bookingId ? `Buchung ${entry.task.bookingId.slice(0, 8)}…` : null
-                    }
-                    disabled={mutating}
-                    onOpen={() => openTask(entry.task)}
-                    onStart={() => void start(entry.task.id)}
-                    onComplete={() => void handleQuickComplete(entry.task)}
-                    onComment={() => openTask(entry.task, true)}
-                  />
-                ),
+          <OperatorTodaySection title="Aufgaben — Übersicht" count={snapshot.totalOpenTasksCount} action={showAllTasksAction}>
+            <div className="space-y-6">
+              {TASK_BUCKET_SECTIONS.map((meta) =>
+                renderBucketSection(snapshot.taskFeed.buckets[meta.bucket], meta),
               )}
             </div>
           </OperatorTodaySection>

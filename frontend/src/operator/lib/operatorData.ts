@@ -6,7 +6,8 @@ import {
   isVehicleCheckTask,
   type OperatorTodayTaskEntry,
 } from '../tasks/operatorTodayTasks';
-import { sortOperatorTasks } from '../tasks/operatorTask.utils';
+import type { OperatorTodayFeedState } from '../hooks/operatorTodayFeed.utils';
+import { bucketCount, mergeOperatorTodayActionableTasks, OPERATOR_TASKS_ALL_OPEN_BUCKET } from '../hooks/operatorTodayFeed.utils';
 import {
   bookingStatusLabel,
   normalizeBookingStatus,
@@ -61,10 +62,12 @@ export interface OperatorTodaySnapshot {
   dueNow: OperatorTodayBookingItem[];
   pickupsToday: OperatorTodayBookingItem[];
   returnsToday: OperatorTodayBookingItem[];
+  /** Legacy combined preview (NOW + TODAY + UPCOMING, deduped). */
   openTaskEntries: OperatorTodayTaskEntry[];
   totalOpenTasksCount: number;
   vehicleCheckTasks: ApiTask[];
   blockedVehicles: OperatorBlockedVehicleItem[];
+  taskFeed: OperatorTodayFeedState;
 }
 
 export type { OperatorTodayTaskEntry };
@@ -180,7 +183,7 @@ export function mapReturnRow(
 export function buildOperatorTodaySnapshot(input: {
   pickups: TodayBookingApiRow[];
   returns: TodayBookingApiRow[];
-  tasks: ApiTask[];
+  taskFeed: OperatorTodayFeedState;
   fleetVehicles: VehicleData[];
   healthMap: Map<string, VehicleHealthResponse>;
   locale?: string;
@@ -200,9 +203,18 @@ export function buildOperatorTodaySnapshot(input: {
     .filter((item) => !item.isDone && item.isDueNow)
     .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime());
 
-  const sortedOpenTasks = sortOperatorTasks(input.tasks);
-  const openTaskEntries = buildOperatorTodayTaskEntries(sortedOpenTasks);
-  const vehicleCheckTasks = sortedOpenTasks.filter(isVehicleCheckTask);
+  const actionableTasks = mergeOperatorTodayActionableTasks({
+    NOW: input.taskFeed.buckets.NOW?.tasks,
+    TODAY: input.taskFeed.buckets.TODAY?.tasks,
+    UPCOMING: input.taskFeed.buckets.UPCOMING?.tasks,
+  });
+  const openTaskEntries = buildOperatorTodayTaskEntries(actionableTasks).slice(0, 8);
+  const vehicleCheckTasks = (input.taskFeed.buckets.NOW?.tasks ?? []).filter(isVehicleCheckTask).slice(0, 6);
+  const totalOpenTasksCount = bucketCount(
+    input.taskFeed.summary,
+    OPERATOR_TASKS_ALL_OPEN_BUCKET,
+    actionableTasks.length,
+  );
 
   const blockedVehicles: OperatorBlockedVehicleItem[] = [];
   for (const v of input.fleetVehicles) {
@@ -221,10 +233,11 @@ export function buildOperatorTodaySnapshot(input: {
     dueNow,
     pickupsToday,
     returnsToday,
-    openTaskEntries: openTaskEntries.slice(0, 8),
-    totalOpenTasksCount: sortedOpenTasks.length,
-    vehicleCheckTasks: vehicleCheckTasks.slice(0, 6),
+    openTaskEntries,
+    totalOpenTasksCount,
+    vehicleCheckTasks,
     blockedVehicles,
+    taskFeed: input.taskFeed,
   };
 }
 

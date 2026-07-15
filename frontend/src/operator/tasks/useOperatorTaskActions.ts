@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { api, type ApiTaskDetail, type CompleteTaskPayload } from '../../lib/api';
 import { invalidateTaskQueries } from '../../lib/tasks/invalidate';
+import { bucketsAffectedByTaskMutation } from '../hooks/operatorTodayFeed.utils';
 import { useRentalOrg } from '../../rental/RentalContext';
 import { useOperatorData } from '../context/OperatorDataContext';
 import { dispatchOperatorTaskUpdated } from './operatorTask.utils';
@@ -22,10 +23,7 @@ export function useOperatorTaskActions(onTaskChanged?: (task: ApiTaskDetail) => 
           taskId: task.id,
           vehicleId: task.vehicleId,
           bookingId: task.bookingId,
-          buckets: (() => {
-            const bucket = task.bucket ?? task.timing?.bucket;
-            return bucket ? [bucket] : undefined;
-          })(),
+          buckets: bucketsAffectedByTaskMutation(task),
           lists: true,
           summary: true,
           detail: true,

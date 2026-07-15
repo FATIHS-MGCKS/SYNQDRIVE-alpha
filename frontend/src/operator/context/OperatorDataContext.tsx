@@ -14,8 +14,6 @@ import { useRentalOrg } from '../../rental/RentalContext';
 import { normalizeTodayRows } from '../lib/operatorData';
 import { useOperatorShell } from './OperatorShellContext';
 
-const OPEN_STATUSES = new Set(['OPEN', 'IN_PROGRESS', 'WAITING']);
-
 interface OperatorDataContextValue {
   pickups: TodayBookingApiRow[];
   returns: TodayBookingApiRow[];
@@ -82,10 +80,10 @@ export function OperatorDataProvider({ children }: { children: ReactNode }) {
     setTasksError(null);
     try {
       const [taskList, sum] = await Promise.all([
-        api.tasks.list(orgId),
+        api.tasks.list(orgId, { bucket: 'ALL_OPEN' }),
         api.tasks.summary(orgId).catch(() => null),
       ]);
-      setTasks(taskList.filter((t) => OPEN_STATUSES.has(t.status)));
+      setTasks(taskList);
       setTaskSummary(sum);
       return true;
     } catch (e) {
