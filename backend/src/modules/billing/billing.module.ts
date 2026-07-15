@@ -36,9 +36,11 @@ import { BillingCommandService } from './billing-command.service';
 import { BillingCommandOrchestratorService } from './billing-command-orchestrator.service';
 import { BillingDomainEventOutboxService } from './billing-domain-event-outbox.service';
 import { BillingEntitlementResolver } from './billing-entitlement-resolver.service';
+import { StripeCatalogMappingService } from './stripe-catalog-mapping.service';
+import { StripeCatalogMappingController } from './stripe-catalog-mapping.controller';
 
 @Module({
-  controllers: [BillingController, StripeWebhookController, MasterSubscriptionController],
+  controllers: [BillingController, StripeWebhookController, MasterSubscriptionController, StripeCatalogMappingController],
   providers: [
     BillingService,
     PricebookService,
@@ -72,6 +74,7 @@ import { BillingEntitlementResolver } from './billing-entitlement-resolver.servi
     BillingCommandOrchestratorService,
     BillingDomainEventOutboxService,
     BillingEntitlementResolver,
+    StripeCatalogMappingService,
   ],
   exports: [
     BillingService,
@@ -106,6 +109,7 @@ import { BillingEntitlementResolver } from './billing-entitlement-resolver.servi
     BillingCommandOrchestratorService,
     BillingDomainEventOutboxService,
     BillingEntitlementResolver,
+    StripeCatalogMappingService,
   ],
 })
 export class BillingModule {}

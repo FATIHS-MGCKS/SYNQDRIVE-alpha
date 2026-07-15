@@ -497,6 +497,7 @@ enum BillingStripeMappingStatus {
   SYNCED
   FAILED
   DRIFTED
+  DISABLED
 }
 
 enum BillingSubscriptionItemStatus {
@@ -2643,6 +2644,7 @@ model BillingCatalogProduct {
 
   priceBooks         BillingPriceBook[]
   stripeMappings     BillingStripePriceMapping[]
+  stripeCatalogMappings BillingStripeCatalogMapping[]
   subscriptionItems  BillingSubscriptionItem[]
 
   @@index([status, sortOrder])
@@ -2670,6 +2672,7 @@ model BillingPriceBook {
   subscriptions     BillingSubscription[]
   subscriptionItems BillingSubscriptionItem[]
   stripeMappings    BillingStripePriceMapping[]
+  stripeCatalogMappings BillingStripeCatalogMapping[]
 
   @@index([productKey])
   @@index([billingProductId])
@@ -2701,6 +2704,7 @@ model BillingPriceVersion {
   orgPriceOverrides BillingOrganizationPriceOverride[]
   subscriptions     BillingSubscription[]
   subscriptionItems BillingSubscriptionItem[]
+  stripeCatalogMappings BillingStripeCatalogMapping[]
 
   @@unique([priceBookId, versionNumber])
   @@index([priceBookId, status])
@@ -2750,6 +2754,38 @@ model BillingStripePriceMapping {
   @@index([mappingStatus])
   @@index([stripeProductId, stripeMode])
   @@map("billing_stripe_price_mappings")
+}
+
+/// Explicit Stripe catalog mapping per billing product + published price version and mode.
+model BillingStripeCatalogMapping {
+  id                String                     @id @default(uuid())
+  billingProductId  String                     @map("billing_product_id")
+  priceVersionId    String                     @map("price_version_id")
+  priceBookId       String                     @map("price_book_id")
+  stripeMode        BillingStripeMode          @map("stripe_mode")
+  stripeProductId   String                     @map("stripe_product_id")
+  stripePriceId     String                     @map("stripe_price_id")
+  currency          String                     @db.Char(3)
+  billingInterval   BillingInterval            @map("billing_interval")
+  billingModel      BillingModel               @default(PER_CONNECTED_VEHICLE) @map("billing_model")
+  stripePresentation String                    @default("recurring_per_unit") @map("stripe_presentation")
+  mappingStatus     BillingStripeMappingStatus @default(PENDING) @map("mapping_status")
+  lastVerifiedAt    DateTime?                  @map("last_verified_at")
+  lastError         String?                    @map("last_error")
+  disabledAt        DateTime?                  @map("disabled_at")
+  createdAt         DateTime                   @default(now()) @map("created_at")
+  updatedAt         DateTime                   @updatedAt @map("updated_at")
+
+  billingProduct BillingCatalogProduct @relation(fields: [billingProductId], references: [id], onDelete: Restrict)
+  priceVersion   BillingPriceVersion   @relation(fields: [priceVersionId], references: [id], onDelete: Cascade)
+  priceBook      BillingPriceBook      @relation(fields: [priceBookId], references: [id], onDelete: Cascade)
+
+  @@unique([priceVersionId, stripeMode])
+  @@unique([stripePriceId, stripeMode])
+  @@index([billingProductId, stripeMode])
+  @@index([priceBookId, stripeMode])
+  @@index([mappingStatus])
+  @@map("billing_stripe_catalog_mappings")
 }
 
 model BillingSubscription {

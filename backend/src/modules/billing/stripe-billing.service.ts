@@ -15,6 +15,7 @@ import {
 import Stripe from 'stripe';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BillableVehiclesService } from './billable-vehicles.service';
+import { StripeCatalogMappingService } from './stripe-catalog-mapping.service';
 import { getStripeClient } from './stripe-client.util';
 import { mapStripeSubscriptionStatus } from './stripe-status.mapper';
 
@@ -32,6 +33,7 @@ export class StripeBillingService {
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
     private readonly billableVehiclesService: BillableVehiclesService,
+    private readonly catalogMappings: StripeCatalogMappingService,
   ) {}
 
   isStripeConfigured(): boolean {
@@ -357,14 +359,51 @@ export class StripeBillingService {
   }
 
   async createOrUpdateSubscriptionForOrg(organizationId: string) {
-    const priceId = this.configService.get<string>('stripe.defaultPriceId');
-    if (!priceId) {
-      return {
-        prepared: true,
-        created: false,
-        message:
-          'Stripe subscription creation requires STRIPE_DEFAULT_PRICE_ID. SynqDrive pricebook mapping to Stripe Prices is not yet configured.',
-      };
+    const localSub = await this.findPrimarySubscription(organizationId);
+    const baseItem = localSub
+      ? await this.prisma.billingSubscriptionItem.findFirst({
+          where: {
+            organizationId,
+            subscriptionId: localSub.id,
+            itemRole: 'BASE_PLAN',
+          },
+          orderBy: { validFrom: 'desc' },
+          select: { priceVersionId: true },
+        })
+      : null;
+
+    const priceVersionId = localSub?.priceVersionId ?? baseItem?.priceVersionId ?? null;
+
+    let resolvedPriceId: string;
+    try {
+      if (!priceVersionId) {
+        const legacy = await this.catalogMappings.resolveStripePrice({
+          organizationId,
+          priceVersionId: 'legacy-unversioned',
+          allowLegacyFallback: true,
+        });
+        resolvedPriceId = legacy.stripePriceId;
+      } else {
+        const resolved = await this.catalogMappings.resolveStripePrice({
+          organizationId,
+          priceVersionId,
+          subscriptionPriceVersionId: localSub?.priceVersionId ?? null,
+          subscriptionItemPriceVersionId: baseItem?.priceVersionId ?? null,
+          allowLegacyFallback: !localSub?.priceVersionId && !baseItem?.priceVersionId,
+        });
+        resolvedPriceId = resolved.stripePriceId;
+      }
+    } catch (error) {
+      const legacyPriceId = this.configService.get<string>('stripe.defaultPriceId');
+      if (!legacyPriceId) {
+        return {
+          prepared: true,
+          created: false,
+          message:
+            'Stripe subscription creation requires an explicit catalog mapping for the assigned price version.',
+        };
+      }
+      throw error;
     }
 
     const stripe = this.requireStripe();
@@ -375,23 +414,23 @@ export class StripeBillingService {
       );
     const quantity = Math.max(billable.billableVehicleCount, 1);
 
-    const localSub = await this.findPrimarySubscription(organizationId);
+    const localSubRecord = localSub ?? (await this.findPrimarySubscription(organizationId));
     let stripeSub: Stripe.Subscription;
 
-    if (localSub?.stripeSubscriptionId) {
-      const existing = await stripe.subscriptions.retrieve(localSub.stripeSubscriptionId);
+    if (localSubRecord?.stripeSubscriptionId) {
+      const existing = await stripe.subscriptions.retrieve(localSubRecord.stripeSubscriptionId);
       const itemId = existing.items.data[0]?.id;
       if (!itemId) {
         throw new BadRequestException('Stripe subscription has no line items');
       }
-      stripeSub = await stripe.subscriptions.update(localSub.stripeSubscriptionId, {
+      stripeSub = await stripe.subscriptions.update(localSubRecord.stripeSubscriptionId, {
         items: [{ id: itemId, quantity }],
         metadata: { organizationId },
       });
     } else {
       stripeSub = await stripe.subscriptions.create({
         customer: customerId,
-        items: [{ price: priceId, quantity }],
+        items: [{ price: resolvedPriceId, quantity }],
         metadata: { organizationId },
       });
     }
@@ -401,7 +440,7 @@ export class StripeBillingService {
       prepared: false,
       created: true,
       quantity,
-      priceId,
+      priceId: resolvedPriceId,
       ...result,
     };
   }

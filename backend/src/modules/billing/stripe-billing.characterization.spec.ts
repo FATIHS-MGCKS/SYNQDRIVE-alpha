@@ -41,6 +41,7 @@ describe('StripeBillingService payment sync characterization', () => {
       prisma as never,
       configService,
       billableVehiclesService as never,
+      { resolveStripePrice: jest.fn() } as never,
     );
     jest.spyOn(stripeClientUtil, 'getStripeClient').mockReturnValue(stripeMock as never);
   });

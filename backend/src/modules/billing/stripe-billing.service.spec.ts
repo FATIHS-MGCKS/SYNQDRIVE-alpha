@@ -54,12 +54,17 @@ describe('StripeBillingService', () => {
     },
   };
 
+  const catalogMappings = {
+    resolveStripePrice: jest.fn(),
+  };
+
   beforeEach(() => {
     jest.clearAllMocks();
     service = new StripeBillingService(
       prisma as never,
       configService,
       billableVehiclesService as never,
+      catalogMappings as never,
     );
     jest.spyOn(stripeClientUtil, 'getStripeClient').mockReturnValue(stripeMock as never);
   });
