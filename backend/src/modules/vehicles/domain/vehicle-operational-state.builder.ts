@@ -37,6 +37,7 @@ import {
   resolveLegacyRawWithUnreliableBooking,
 } from './vehicle-raw-status.guard';
 import { DEFAULT_ORGANIZATION_TIMEZONE } from './vehicle-operational-state.engine.types';
+import { canonicalOperationalStatusToLegacyLabel } from './vehicle-operational-state.serializer';
 
 export {
   EMPTY_BOOKING_CONTEXT,
@@ -69,6 +70,12 @@ export type {
   VehicleStateEngineOutput,
   VehicleStateEngineVehicleInput,
 } from './vehicle-operational-state.engine.types';
+export {
+  canonicalOperationalStatusToLegacyLabel,
+  serializeFleetOperationalStateProjection,
+  serializeOperationalStateBlock,
+  serializeRawVehicleStatusDiagnostic,
+} from './vehicle-operational-state.serializer';
 export {
   DEFAULT_ORGANIZATION_TIMEZONE,
   EMPTY_BOOKING_STATE_INPUT,
@@ -186,14 +193,19 @@ const KNOWN_RAW_STATUSES = new Set<string>([
   VehicleStatus.RESERVED,
 ]);
 
-const CANONICAL_TO_LEGACY_STATUS: Record<CanonicalOperationalStatus, string> = {
+const CANONICAL_TO_LEGACY_STATUS = {
   AVAILABLE: 'Available',
   RESERVED: 'Reserved',
   ACTIVE_RENTED: 'Active Rented',
   MAINTENANCE: 'Maintenance',
-  BLOCKED: 'Maintenance',
+  BLOCKED: 'Blocked',
   UNKNOWN: 'Unknown',
-};
+} as const satisfies Record<CanonicalOperationalStatus, string>;
+
+/** @deprecated Use `canonicalOperationalStatusToLegacyLabel` from serializer. */
+function legacyLabelFromCanonical(status: CanonicalOperationalStatus): string {
+  return canonicalOperationalStatusToLegacyLabel(status);
+}
 
 const FAIL_CLOSED_QUALITY_CODES: DataQualityReasonCode[] = [
   'BOOKING_QUERY_FAILED',
@@ -578,7 +590,7 @@ function buildLegacyProjection(
   derivation: CanonicalDerivation,
 ): VehicleOperationalStateResult {
   const { vehicle, telemetry, pickupOdoByBooking } = input;
-  const legacyStatus = CANONICAL_TO_LEGACY_STATUS[derivation.status];
+  const legacyStatus = legacyLabelFromCanonical(derivation.status);
   const bookingDto = buildLegacyBookingDto(derivation.status, input);
   const maintenanceCtx = buildLegacyMaintenanceContext(
     derivation.status,

@@ -507,7 +507,7 @@ describe('deriveCanonicalOperationalState (V2 characterization)', () => {
       );
 
       expect(output.operationalState.status).toBe('BLOCKED');
-      expect(output.legacy.status).toBe('Maintenance');
+      expect(output.legacy.status).toBe('Blocked');
       expect(output.legacy.maintenanceCtx.maintenanceReasonCode).toBe(
         'OPERATIONAL_BLOCK',
       );

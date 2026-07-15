@@ -77,10 +77,15 @@ import type {
   FleetVehicleFutureBookingDto,
   FleetVehicleMaintenanceContextDto,
 } from './domain/vehicle-operational-state.types';
+import type {
+  FleetOperationalStateDto,
+  FleetRawVehicleStatusDto,
+} from './domain/vehicle-operational-state.serializer';
 import {
   serializeFleetBookingRef,
   serializeFleetBookingRefs,
 } from './domain/vehicle-booking-ref.serializer';
+import { serializeFleetOperationalStateProjection } from './domain/vehicle-operational-state.serializer';
 import {
   buildRawStatusGuardLogEvent,
   isLegacyRentalRawStatus,
@@ -182,7 +187,9 @@ export interface FleetMapVehicleDto
   make: string | null;
   model: string;
   year: number | null;
+  /** @deprecated Use `operationalState.status` — legacy V1 label derived from canonical status */
   status: string;
+  operationalState: FleetOperationalStateDto;
   fuelType: string;
   healthStatus: string;
   cleaningStatus: string;
@@ -671,6 +678,8 @@ export class VehiclesService {
       organizationTimezone:
         fleetContextOptions?.organizationTimezone ??
         DEFAULT_ORGANIZATION_TIMEZONE,
+    }, {
+      includeRawVehicleStatus: fleetContextOptions?.includeFutureBookings === true,
     });
 
     // Legacy numeric fallbacks for existing consumers (RentalVehicleTable
@@ -699,11 +708,12 @@ export class VehiclesService {
       currentStationId: v.currentStationId ?? null,
       expectedStationId: v.expectedStationId ?? null,
       fuelType: FUEL_TYPE_LABEL[v.fuelType as FuelType] ?? 'Other',
-      // Rental status is derived from open bookings first, then falls back
-      // to the admin-managed DB column. Maintenance wins over booking
-      // state — a vehicle physically in service is never reported as
-      // Rented or Reserved even if a booking row exists for it.
+      // Rental status — legacy V1 label; canonical truth in operationalState.
       status: fleetCtx.status,
+      operationalState: fleetCtx.operationalState,
+      ...(fleetCtx.rawVehicleStatus
+        ? { rawVehicleStatus: fleetCtx.rawVehicleStatus }
+        : {}),
       cleaningStatus:
         CLEANING_STATUS_MAP[v.cleaningStatus as CleaningStatus] ?? 'Clean',
       healthStatus:
@@ -812,8 +822,11 @@ export class VehiclesService {
     pickupOdoByBooking: Map<string, number>;
     organizationId?: string;
     organizationTimezone?: string;
-  }): {
+  }, options?: { includeRawVehicleStatus?: boolean }): {
+    /** @deprecated Use `operationalState.status` */
     status: string;
+    operationalState: FleetOperationalStateDto;
+    rawVehicleStatus?: FleetRawVehicleStatusDto;
     maintenanceCtx: FleetVehicleMaintenanceContextDto;
     bookingDto: FleetVehicleBookingContextDto;
     nextBooking: FleetVehicleFutureBookingDto | null;
@@ -842,6 +855,10 @@ export class VehiclesService {
     });
     const engineOutput =
       buildVehicleOperationalStateFromEngineInput(engineInput);
+    const operationalProjection = serializeFleetOperationalStateProjection(
+      engineOutput,
+      { includeRawVehicleStatus: options?.includeRawVehicleStatus },
+    );
     const organizationId =
       input.organizationId ?? input.vehicle.organizationId ?? 'unknown';
     const vehicleId = input.vehicle.id ?? 'unknown';
@@ -857,7 +874,7 @@ export class VehiclesService {
           organizationId,
           vehicleId,
           rawStatus,
-          operationalStatus: engineOutput.legacy.status,
+          operationalStatus: operationalProjection.status,
           reasonCode: engineOutput.operationalState.reason,
         }),
       );
@@ -881,6 +898,11 @@ export class VehiclesService {
     const bookingState = input.bookingState;
     return {
       ...fleetCtx,
+      status: operationalProjection.status,
+      operationalState: operationalProjection.operationalState,
+      ...(operationalProjection.rawVehicleStatus
+        ? { rawVehicleStatus: operationalProjection.rawVehicleStatus }
+        : {}),
       nextBooking: serializeFleetBookingRef(bookingState?.nextBooking),
       futureBookingCount: bookingState?.futureBookingCount ?? 0,
       futureBookings: serializeFleetBookingRefs(bookingState?.futureBookings),
@@ -1121,6 +1143,7 @@ export class VehiclesService {
         model: vehicle.model,
         year: vehicle.year ?? null,
         status: fleetCtx.status,
+        operationalState: fleetCtx.operationalState,
         fuelType: FUEL_TYPE_LABEL[vehicle.fuelType as FuelType] ?? 'Other',
         healthStatus:
           RENTAL_HEALTH_MAP[vehicle.healthStatus as HealthStatus] ?? 'Good Health',

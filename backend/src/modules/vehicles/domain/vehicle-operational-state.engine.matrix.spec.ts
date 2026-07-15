@@ -242,7 +242,7 @@ const ENGINE_MATRIX: EngineMatrixCase[] = [
     expect: {
       status: 'BLOCKED',
       reason: 'HARD_BLOCK_ACTIVE',
-      legacyStatus: 'Maintenance',
+      legacyStatus: 'Blocked',
       effectiveFrom: MATRIX_VEHICLE_PERSISTED_AT,
       effectiveUntil: null,
       diagnosticIncludes: ['OPERATIONAL_BLOCK'],

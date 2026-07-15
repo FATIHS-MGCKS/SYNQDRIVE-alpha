@@ -1,5 +1,6 @@
 import { VehicleStatus } from '@prisma/client';
 import { VehiclesService } from './vehicles.service';
+import { canonicalOperationalStatusToLegacyLabel } from './domain/vehicle-operational-state.serializer';
 import type { VehicleStateEngineBookingStateInput } from './domain/vehicle-operational-state.engine.types';
 
 function makeService(): VehiclesService {
@@ -64,6 +65,11 @@ describe('VehiclesService.deriveFleetStatusContext (delegation)', () => {
     });
 
     expect(result.status).toBe('Active Rented');
+    expect(result.operationalState.status).toBe('ACTIVE_RENTED');
+    expect(result.operationalState.reason).toBe('ACTIVE_BOOKING');
+    expect(result.status).toBe(
+      canonicalOperationalStatusToLegacyLabel(result.operationalState.status),
+    );
     expect(result.bookingDto.activeBookingId).toBe('b-active-1');
     expect(result.nextBooking?.bookingNumber).toBe('BK-FUTURE');
     expect(result.futureBookingCount).toBe(2);
