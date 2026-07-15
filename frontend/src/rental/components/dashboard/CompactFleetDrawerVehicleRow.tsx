@@ -94,11 +94,22 @@ export function CompactFleetDrawerVehicleRow({
     : runtimeState
       ? runtimeHealthLabel(runtimeState, de)
       : null;
-  const rentalChip = fleetDisplay
-    ? { label: fleetDisplay.rentalDisplay.label, tone: fleetDisplay.rentalDisplay.tone }
+  const statusChip = fleetDisplay
+    ? {
+        label: fleetDisplay.statusBadge.label,
+        tone: fleetDisplay.statusBadge.tone,
+        title:
+          fleetDisplay.bookingSupplement?.detail ??
+          fleetDisplay.statusBadge.dataQualityHint ??
+          fleetDisplay.statusBadge.label,
+      }
     : runtimeState
-      ? runtimeReadinessLabel(runtimeState, de)
+      ? {
+          ...runtimeReadinessLabel(runtimeState, de),
+          title: runtimeReadinessLabel(runtimeState, de).label,
+        }
       : null;
+  const bookingSupplement = fleetDisplay?.bookingSupplement ?? null;
   const reasonBadge = resolveDrawerVehicleReasonBadge(
     row,
     locale,
@@ -147,6 +158,23 @@ export function CompactFleetDrawerVehicleRow({
               <Icon name="map-pin" className="h-3 w-3 shrink-0 text-muted-foreground/80" />
               <span className="truncate">{station}</span>
             </div>
+          ) : null}
+
+          {bookingSupplement ? (
+            <div
+              className="flex min-w-0 items-center gap-1 text-[10px] text-muted-foreground"
+              title={bookingSupplement.detail}
+            >
+              <Icon name="calendar" className="h-3 w-3 shrink-0 text-muted-foreground/70" />
+              <span className="truncate">{bookingSupplement.short}</span>
+            </div>
+          ) : fleetDisplay?.statusBadge.dataQualityHint ? (
+            <p
+              className="truncate text-[10px] text-muted-foreground"
+              title={fleetDisplay.statusBadge.dataQualityHint}
+            >
+              {fleetDisplay.statusBadge.dataQualityHint}
+            </p>
           ) : null}
 
           {showOpsMeta ? (
@@ -208,9 +236,13 @@ export function CompactFleetDrawerVehicleRow({
                 {healthChip.label}
               </StatusChip>
             ) : null}
-            {rentalChip ? (
-              <StatusChip tone={rentalChip.tone} className="px-1.5 py-0.5 text-[9.5px] font-semibold">
-                {rentalChip.label}
+            {statusChip ? (
+              <StatusChip
+                tone={statusChip.tone}
+                className="px-1.5 py-0.5 text-[9.5px] font-semibold"
+                title={statusChip.title}
+              >
+                {statusChip.label}
               </StatusChip>
             ) : null}
           </div>

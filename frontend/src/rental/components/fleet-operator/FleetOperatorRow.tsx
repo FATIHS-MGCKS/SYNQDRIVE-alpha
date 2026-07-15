@@ -5,7 +5,6 @@ import { StatusChip, type StatusTone } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import { VehicleData } from '../../data/vehicles';
 import { getShortModel } from '../../data/vehicles';
-import { formatFleetDateTime } from '../../../lib/formatVehicleDisplay';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { useAddress } from '../../../lib/useAddress';
 import { FleetEnergyIndicator } from '../fleet/FleetEnergyIndicator';
@@ -15,11 +14,7 @@ import type {
   FleetVehicleContext,
 } from '../../lib/fleet-operator-panel';
 import { fleetCommandReasonChipClass, fleetCommandRowSurfaceClass } from './fleetOperatorUi';
-import {
-  selectIsCurrentlyAvailable,
-  selectIsCurrentlyRented,
-  selectIsInPickupReservationWindow,
-} from '../../lib/vehicle-operational-state';
+import { selectIsCurrentlyAvailable } from '../../lib/vehicle-operational-state';
 
 function fleetVehicleTitle(v: VehicleData): string {
   const model = typeof v.model === 'string' ? v.model : '';
@@ -30,16 +25,6 @@ function fleetVehicleTitle(v: VehicleData): string {
 function vehicleStationLabel(v: VehicleData): string {
   const named = (v as { stationName?: string | null }).stationName;
   return named ?? v.station ?? '';
-}
-
-function appointmentFragment(v: VehicleData): string | null {
-  if (selectIsCurrentlyRented(v) && v.activeReturnAt) {
-    return `Return ${formatFleetDateTime(v.activeReturnAt)}`;
-  }
-  if (selectIsInPickupReservationWindow(v) && v.reservedPickupAt) {
-    return `Pickup ${formatFleetDateTime(v.reservedPickupAt)}`;
-  }
-  return null;
 }
 
 function MetaDot() {
@@ -76,10 +61,10 @@ export function FleetOperatorRow({
     rentalHealth: health,
     visual,
     locale,
+    compact: true,
   });
-  const { healthDisplay, rentalDisplay, reasonBadge } = display;
+  const { healthDisplay, statusBadge, bookingSupplement, reasonBadge } = display;
   const rowHealth = healthDisplay;
-  const rowRental = rentalDisplay;
 
   const dimmed = display.showTelemetryWarning && selectIsCurrentlyAvailable(v);
 
@@ -87,8 +72,7 @@ export function FleetOperatorRow({
   const { address } = useAddress(v.lat, v.lng);
   const lastKnownLocation =
     address && address.formatted && address.formatted !== '—' ? address.formatted : null;
-  const appointment = appointmentFragment(v);
-  const locationParts = [station, lastKnownLocation, appointment].filter(Boolean) as string[];
+  const locationParts = [station, lastKnownLocation].filter(Boolean) as string[];
   const locationLine = locationParts.length > 0 ? locationParts.join(' · ') : '—';
 
   const hasEnergy = display.energy.percent != null;
@@ -153,6 +137,26 @@ export function FleetOperatorRow({
           </span>
         </div>
 
+        {/* Line 2b — booking supplement from bookingContext */}
+        {bookingSupplement ? (
+          <div className="mt-0.5 flex min-w-0 items-center gap-1">
+            <Icon name="calendar" className="h-3 w-3 shrink-0 text-muted-foreground/70" />
+            <span
+              className="min-w-0 truncate text-[10px] text-muted-foreground"
+              title={bookingSupplement.detail}
+            >
+              {bookingSupplement.short}
+            </span>
+          </div>
+        ) : statusBadge.dataQualityHint ? (
+          <p
+            className="mt-0.5 truncate text-[10px] text-muted-foreground"
+            title={statusBadge.dataQualityHint}
+          >
+            {statusBadge.dataQualityHint}
+          </p>
+        ) : null}
+
         {/* Line 3 — fuel · telemetry · odometer (left-aligned, km directly after signal) */}
         <div className="mt-0.5 flex min-w-0 items-center gap-x-1 overflow-hidden text-[10px] tabular-nums text-muted-foreground">
           {hasEnergy && (
@@ -209,10 +213,11 @@ export function FleetOperatorRow({
             {rowHealth.label}
           </StatusChip>
           <StatusChip
-            tone={rowRental.tone}
+            tone={statusBadge.tone}
             className="px-1.5 py-0.5 text-[9.5px] font-semibold"
+            title={bookingSupplement?.detail ?? statusBadge.dataQualityHint ?? statusBadge.label}
           >
-            {rentalDisplay.label}
+            {statusBadge.label}
           </StatusChip>
         </div>
         <button
