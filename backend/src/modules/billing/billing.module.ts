@@ -38,6 +38,7 @@ import { BillingDomainEventOutboxService } from './billing-domain-event-outbox.s
 import { BillingEntitlementResolver } from './billing-entitlement-resolver.service';
 import { StripeCatalogMappingService } from './stripe-catalog-mapping.service';
 import { StripeCatalogMappingController } from './stripe-catalog-mapping.controller';
+import { StripeCatalogSyncService } from './stripe-catalog-sync.service';
 
 @Module({
   controllers: [BillingController, StripeWebhookController, MasterSubscriptionController, StripeCatalogMappingController],
@@ -75,6 +76,7 @@ import { StripeCatalogMappingController } from './stripe-catalog-mapping.control
     BillingDomainEventOutboxService,
     BillingEntitlementResolver,
     StripeCatalogMappingService,
+    StripeCatalogSyncService,
   ],
   exports: [
     BillingService,
@@ -110,6 +112,7 @@ import { StripeCatalogMappingController } from './stripe-catalog-mapping.control
     BillingDomainEventOutboxService,
     BillingEntitlementResolver,
     StripeCatalogMappingService,
+    StripeCatalogSyncService,
   ],
 })
 export class BillingModule {}

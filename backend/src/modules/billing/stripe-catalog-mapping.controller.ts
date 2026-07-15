@@ -14,12 +14,17 @@ import { MasterBillingGuard } from '@shared/auth/master-billing.guard';
 import { RequireMasterBilling } from '@shared/decorators/require-master-billing.decorator';
 import { StripeCatalogMappingService } from './stripe-catalog-mapping.service';
 import { ConnectStripeCatalogMappingDto } from './dto/stripe-catalog-mapping.dto';
+import { StripeCatalogSyncService } from './stripe-catalog-sync.service';
+import { SyncStripeCatalogDto } from './dto/stripe-catalog-sync.dto';
 
 @Controller('admin/billing')
 @UseGuards(RolesGuard, PermissionsGuard, MasterBillingGuard)
 @RequireMasterBilling()
 export class StripeCatalogMappingController {
-  constructor(private readonly catalogMappings: StripeCatalogMappingService) {}
+  constructor(
+    private readonly catalogMappings: StripeCatalogMappingService,
+    private readonly catalogSync: StripeCatalogSyncService,
+  ) {}
 
   @Get('stripe-catalog-mappings')
   async listMappings(
@@ -80,5 +85,26 @@ export class StripeCatalogMappingController {
   @Post('stripe-catalog-mappings/:mappingId/deactivate')
   async deactivateMapping(@Param('mappingId') mappingId: string) {
     return this.catalogMappings.deactivateMapping(mappingId);
+  }
+
+  @Post('price-versions/:versionId/stripe-sync')
+  async syncPriceVersion(
+    @Param('versionId') versionId: string,
+    @Body() body: SyncStripeCatalogDto,
+  ) {
+    return this.catalogSync.syncPriceVersion({
+      priceVersionId: versionId,
+      stripeMode: body.stripeMode,
+    });
+  }
+
+  @Post('stripe-catalog-mappings/:mappingId/sync')
+  async retrySyncMapping(@Param('mappingId') mappingId: string) {
+    return this.catalogSync.retrySyncMapping(mappingId);
+  }
+
+  @Post('stripe-catalog-sync/scan-stale')
+  async scanStaleMappings() {
+    return this.catalogSync.scanStaleMappings();
   }
 }

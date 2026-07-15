@@ -10,6 +10,7 @@ export * from './subscription-lifecycle';
 export * from './billing-command';
 export * from './billing-entitlements';
 export * from './stripe-catalog-mapping';
+export * from './stripe-catalog-sync';
 export * from './billing-domain.utils';
 export * from './billing-resolver.types';
 export * from './billing-domain.events';
