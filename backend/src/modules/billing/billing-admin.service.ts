@@ -17,6 +17,7 @@ import { BillingPriceResolutionService } from './billing-price-resolution.servic
 import { BillingUsageService } from './billing-usage.service';
 import { PricebookService } from './pricebook.service';
 import { BillingAuditService } from './billing-audit.service';
+import { BillingEntitlementResolver } from './billing-entitlement-resolver.service';
 import { AdminInvoiceQueryDto, AuditLogQueryDto } from './dto/billing.dto';
 import { BillingService } from './billing.service';
 
@@ -30,6 +31,7 @@ export class BillingAdminService {
     private readonly pricebook: PricebookService,
     private readonly audit: BillingAuditService,
     private readonly billingService: BillingService,
+    private readonly entitlementResolver: BillingEntitlementResolver,
   ) {}
 
   async getOverview() {
@@ -169,6 +171,8 @@ export class BillingAdminService {
           warnings.push('NO_BILLABLE_VEHICLES');
         }
 
+        const entitlements = await this.entitlementResolver.resolve(org.id);
+
         return {
           organization: {
             id: org.id,
@@ -184,6 +188,7 @@ export class BillingAdminService {
               }
             : null,
           products: org.organizationProducts,
+          entitlements,
           connectedVehicleCount: vehicles.connectedVehicleCount,
           billableVehicleCount: vehicles.billableVehicleCount,
           currentTier: preview.priceTierId

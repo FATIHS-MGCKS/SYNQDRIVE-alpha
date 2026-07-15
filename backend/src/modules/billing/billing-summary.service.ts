@@ -13,6 +13,7 @@ import {
   SubscriptionResolverService,
 } from './resolvers';
 import { SubscriptionPricePreviewService } from './subscription-price-preview.service';
+import { BillingEntitlementResolver } from './billing-entitlement-resolver.service';
 
 const PLAN_DISPLAY: Record<string, string> = {
   STARTER: 'Starter',
@@ -32,10 +33,11 @@ export class BillingSummaryService {
     private readonly pricebook: PricebookService,
     private readonly stripePrepared: StripePreparedService,
     private readonly pricePreview: SubscriptionPricePreviewService,
+    private readonly entitlementResolver: BillingEntitlementResolver,
   ) {}
 
   async getSummary(organizationId: string) {
-    const [quantity, defaultPm, orgProducts, pricePreview] = await Promise.all([
+    const [quantity, defaultPm, orgProducts, pricePreview, entitlements] = await Promise.all([
       this.quantityResolver.resolveQuantity(organizationId),
       this.prisma.billingPaymentMethod.findFirst({
         where: { organizationId: organizationId, isDefault: true },
@@ -46,6 +48,7 @@ export class BillingSummaryService {
         include: { product: { select: { slug: true, name: true } } },
       }),
       this.pricePreview.preview(organizationId),
+      this.entitlementResolver.resolve(organizationId),
     ]);
 
     const contract = await this.subscriptionResolver.resolveContract(organizationId, {
@@ -177,6 +180,7 @@ export class BillingSummaryService {
             status: defaultPm.status,
           }
         : { exists: false },
+      entitlements,
       warnings,
     };
   }

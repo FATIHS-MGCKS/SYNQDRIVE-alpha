@@ -26,6 +26,7 @@ describe('BillingSummaryService characterization', () => {
   };
   const stripePrepared = { getPreparedStatus: jest.fn() };
   const pricePreview = { preview: jest.fn() };
+  const entitlementResolver = { resolve: jest.fn() };
 
   let service: BillingSummaryService;
 
@@ -105,6 +106,7 @@ describe('BillingSummaryService characterization', () => {
       pricebook as never,
       stripePrepared as never,
       pricePreview as never,
+      entitlementResolver as never,
     );
 
     subscriptionResolver.resolveContract.mockResolvedValue(baseContract);
@@ -171,6 +173,24 @@ describe('BillingSummaryService characterization', () => {
       webhookConfigured: false,
       portalPrepared: true,
       message: 'Stripe integration is prepared but not yet active.',
+    });
+    entitlementResolver.resolve.mockResolvedValue({
+      organizationId: 'org-a',
+      baseProduct: 'RENTAL',
+      addonKeys: [],
+      activeAddonKeys: [],
+      status: 'ACTIVE',
+      subscriptionStatus: 'ACTIVE',
+      active: true,
+      validFrom: '2026-01-01T00:00:00.000Z',
+      validTo: null,
+      limits: { maxVehicles: null, maxUsers: null, maxStations: null, features: [] },
+      source: 'BILLING_CONTRACT',
+      lastUpdatedAt: '2026-07-01T00:00:00.000Z',
+      resolvedAt: '2026-07-15T00:00:00.000Z',
+      addons: [],
+      gracePeriodEndsAt: null,
+      inGracePeriod: false,
     });
   });
 
