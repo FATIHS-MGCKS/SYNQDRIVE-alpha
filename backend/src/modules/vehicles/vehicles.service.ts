@@ -85,6 +85,11 @@ import {
   serializeFleetBookingRef,
   serializeFleetBookingRefs,
 } from './domain/vehicle-booking-ref.serializer';
+import {
+  projectLegacyBookingDtoFromRefs,
+  serializeFleetBookingContextBlock,
+  type FleetBookingContextDto,
+} from './domain/vehicle-booking-context.serializer';
 import { serializeFleetOperationalStateProjection } from './domain/vehicle-operational-state.serializer';
 import {
   buildRawStatusGuardLogEvent,
@@ -190,6 +195,7 @@ export interface FleetMapVehicleDto
   /** @deprecated Use `operationalState.status` — legacy V1 label derived from canonical status */
   status: string;
   operationalState: FleetOperationalStateDto;
+  bookingContext: FleetBookingContextDto;
   fuelType: string;
   healthStatus: string;
   cleaningStatus: string;
@@ -711,6 +717,7 @@ export class VehiclesService {
       // Rental status — legacy V1 label; canonical truth in operationalState.
       status: fleetCtx.status,
       operationalState: fleetCtx.operationalState,
+      bookingContext: fleetCtx.bookingContext,
       ...(fleetCtx.rawVehicleStatus
         ? { rawVehicleStatus: fleetCtx.rawVehicleStatus }
         : {}),
@@ -827,7 +834,9 @@ export class VehiclesService {
     status: string;
     operationalState: FleetOperationalStateDto;
     rawVehicleStatus?: FleetRawVehicleStatusDto;
+    bookingContext: FleetBookingContextDto;
     maintenanceCtx: FleetVehicleMaintenanceContextDto;
+    /** @deprecated Use `bookingContext` — flat V1 fields projected from same refs */
     bookingDto: FleetVehicleBookingContextDto;
     nextBooking: FleetVehicleFutureBookingDto | null;
     futureBookingCount: number;
@@ -896,15 +905,29 @@ export class VehiclesService {
     }
     const { ghostStateWarning: _ghost, ...fleetCtx } = engineOutput.legacy;
     const bookingState = input.bookingState;
+    const bookingContext = serializeFleetBookingContextBlock(
+      engineOutput.bookingContext,
+      bookingState?.futureBookingCount ?? 0,
+    );
+    const bookingDto = projectLegacyBookingDtoFromRefs(
+      engineOutput.bookingContext.activeBooking,
+      engineOutput.bookingContext.reservedBooking,
+    );
     return {
       ...fleetCtx,
       status: operationalProjection.status,
       operationalState: operationalProjection.operationalState,
+      bookingContext,
+      bookingDto,
       ...(operationalProjection.rawVehicleStatus
         ? { rawVehicleStatus: operationalProjection.rawVehicleStatus }
         : {}),
-      nextBooking: serializeFleetBookingRef(bookingState?.nextBooking),
-      futureBookingCount: bookingState?.futureBookingCount ?? 0,
+      nextBooking: bookingContext.nextBooking
+        ? serializeFleetBookingRef(
+            engineOutput.bookingContext.nextBooking ?? undefined,
+          )
+        : null,
+      futureBookingCount: bookingContext.futureBookingCount,
       futureBookings: serializeFleetBookingRefs(bookingState?.futureBookings),
     };
   }
@@ -1144,6 +1167,7 @@ export class VehiclesService {
         year: vehicle.year ?? null,
         status: fleetCtx.status,
         operationalState: fleetCtx.operationalState,
+        bookingContext: fleetCtx.bookingContext,
         fuelType: FUEL_TYPE_LABEL[vehicle.fuelType as FuelType] ?? 'Other',
         healthStatus:
           RENTAL_HEALTH_MAP[vehicle.healthStatus as HealthStatus] ?? 'Good Health',

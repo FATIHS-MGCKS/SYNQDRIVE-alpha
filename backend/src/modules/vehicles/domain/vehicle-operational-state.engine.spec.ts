@@ -192,7 +192,7 @@ describe('VehicleStateEngine input/output model (Prompt 7)', () => {
       expect(output.legacy.status).toBe('Maintenance');
     });
 
-    it('carries hard block input alongside legacy Maintenance fleet label', () => {
+    it('carries hard block input alongside legacy Blocked fleet label', () => {
       const output = buildVehicleOperationalStateFromEngineInput(
         fullEngineInput({
           vehicle: {
@@ -208,7 +208,7 @@ describe('VehicleStateEngine input/output model (Prompt 7)', () => {
 
       expect(output.operationalState.status).toBe('BLOCKED');
       expect(output.operationalState.reason).toBe('HARD_BLOCK_ACTIVE');
-      expect(output.legacy.status).toBe('Maintenance');
+      expect(output.legacy.status).toBe('Blocked');
       expect(output.diagnosticReasons).toContain('OPERATIONAL_BLOCK');
       expect(output.rawVehicleStatus.value).toBe(VehicleStatus.OUT_OF_SERVICE);
     });

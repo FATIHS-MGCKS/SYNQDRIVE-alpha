@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-booking-context-dto-v49486-2026-07-15',
+    version: '4.9.486',
+    title: 'V4.9.486 — Fleet API: normalisierter bookingContext-Block (Prompt 21/43)',
+    summary: [
+      '`vehicle-booking-context.serializer.ts` — `FleetBookingContextDto` mit `activeBooking`, `reservedBooking`, `nextBooking`, `futureBookingCount`; kompakte Refs inkl. `phase`, `status`, Zeiten, optionalem `customerLabel`.',
+      'Legacy-Felder (`activeBookingId`, `reservedPickupAt`, `reservedReturnAt`, `activeStartAt`, …) werden via `projectLegacyBookingDtoFromRefs` aus denselben kanonischen Refs projiziert — kein Mapping-Drift mehr.',
+      'Keine UUID-Suffix-Fallbacks als `bookingNumber`: neutrales Label `Booking` + `bookingNumberDiagnostic: MISSING_DISPLAY_REF` wenn `displayRef` fehlt.',
+      'Fleet-Liste, Fleet-Map und Vehicle-Detail liefern `bookingContext`; Tests für aktiv, reserviert, zukünftig, active+next, reserved+next, fehlende Buchungsnummer.',
+    ],
+    reason:
+      'Prompt 21/43: §16.4 Buchungskontext als strukturierter DTO-Block transportieren; Legacy-Flat-Felder nur noch als Projektion.',
+    previousBehavior:
+      'Nur flache V1-Buchungsfelder ohne `bookingContext`-Block; `bookingNumber` nutzte teils `BK-{uuid-last6}`; `reservedReturnAt`/`activeStartAt` konnten vom Engine-Ref abweichen.',
+    details:
+      'Tests: `vehicle-booking-context.serializer.spec.ts`, erweitert `vehicle-booking-ref.serializer.spec.ts`, `vehicles.service.spec.ts`. `displayRef` auf `VehicleBookingQueryRow`. Engine-Spec: BLOCKED → Legacy `Blocked`.',
+    affectsArchitecture: true,
+    module: 'Vehicles',
+    createdAt: '2026-07-16T03:30:00.000Z',
+  },
+  {
     id: 'fleet-operational-state-dto-v49485-2026-07-15',
     version: '4.9.485',
     title: 'V4.9.485 — Fleet API: kanonischer operationalState-DTO-Block (Prompt 20/43)',

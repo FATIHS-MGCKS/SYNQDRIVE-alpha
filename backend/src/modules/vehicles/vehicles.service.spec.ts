@@ -20,7 +20,7 @@ function makeService(): VehiclesService {
 const ACTIVE_BOOKING_STATE: VehicleStateEngineBookingStateInput = {
   activeBooking: {
     id: 'b-active-1',
-    bookingNumber: '',
+    bookingNumber: 'BK-ACTIVE-1',
     status: 'ACTIVE',
     pickupAt: '2026-07-15T08:00:00.000Z',
     returnAt: '2026-07-20T18:00:00.000Z',
@@ -71,6 +71,11 @@ describe('VehiclesService.deriveFleetStatusContext (delegation)', () => {
       canonicalOperationalStatusToLegacyLabel(result.operationalState.status),
     );
     expect(result.bookingDto.activeBookingId).toBe('b-active-1');
+    expect(result.bookingContext.activeBooking?.id).toBe('b-active-1');
+    expect(result.bookingContext.activeBooking?.phase).toBe('active_rental');
+    expect(result.bookingDto.activeStartAt).toBe(
+      result.bookingContext.activeBooking?.pickupAt ?? null,
+    );
     expect(result.nextBooking?.bookingNumber).toBe('BK-FUTURE');
     expect(result.futureBookingCount).toBe(2);
   });

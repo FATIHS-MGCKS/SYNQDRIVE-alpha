@@ -1,4 +1,5 @@
 import type { BookingStatus } from '@prisma/client';
+import type { FleetBookingNumberDiagnostic } from './vehicle-operational-state.engine.types';
 
 /** Handover signals loaded alongside booking rows (no UI labels). */
 export interface VehicleBookingHandoverSignals {
@@ -37,6 +38,8 @@ export interface VehicleBookingQueryRow {
   returnStationId: string | null;
   /** Used to exclude ephemeral wizard checkout drafts from binding PENDING. */
   notes: string | null;
+  /** Optional human booking reference when persisted (not derived from UUID). */
+  displayRef?: string | null;
   customerLabel: string;
   pickupStationName: string | null;
   returnStationName: string | null;
@@ -71,9 +74,36 @@ export function formatBookingCustomerLabel(customer: {
   return personal || customer.company || '';
 }
 
-/** Display ref for fleet/API — never expose raw UUID as user-visible label. */
-export function formatBookingDisplayNumber(bookingId: string): string {
-  return `BK-${bookingId.slice(-6).toUpperCase()}`;
+/** Diagnostic when no persisted display reference exists for a booking. */
+export type { FleetBookingNumberDiagnostic } from './vehicle-operational-state.engine.types';
+
+export const NEUTRAL_BOOKING_DISPLAY_LABEL = 'Booking';
+
+/**
+ * Resolves operator-visible booking number.
+ * Never exposes raw UUID fragments (no BK-{uuid-suffix} fallback).
+ */
+export function resolveFleetBookingDisplayNumber(input: {
+  explicitRef?: string | null;
+}): {
+  bookingNumber: string;
+  bookingNumberDiagnostic: FleetBookingNumberDiagnostic | null;
+} {
+  const ref = input.explicitRef?.trim();
+  if (ref) {
+    return { bookingNumber: ref, bookingNumberDiagnostic: null };
+  }
+  return {
+    bookingNumber: NEUTRAL_BOOKING_DISPLAY_LABEL,
+    bookingNumberDiagnostic: 'MISSING_DISPLAY_REF',
+  };
+}
+
+/**
+ * @deprecated Use {@link resolveFleetBookingDisplayNumber} — UUID suffix refs are forbidden.
+ */
+export function formatBookingDisplayNumber(_bookingId: string): string {
+  return NEUTRAL_BOOKING_DISPLAY_LABEL;
 }
 
 export function compareBookingsByPickupStable(

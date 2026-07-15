@@ -1,6 +1,7 @@
 import { toDomainBookingRef, serializeFleetBookingRef } from './vehicle-booking-ref.serializer';
 import {
   EMPTY_HANDOVER_SIGNALS,
+  NEUTRAL_BOOKING_DISPLAY_LABEL,
   type VehicleBookingQueryRow,
 } from './vehicle-booking-context.types';
 
@@ -27,20 +28,33 @@ function row(
 }
 
 describe('vehicle-booking-ref.serializer', () => {
-  it('uses BK display number, not raw UUID', () => {
+  it('uses persisted displayRef when provided', () => {
     const ref = toDomainBookingRef(
-      row({ id: 'booking-abc123def456' }),
+      row({ id: 'booking-abc123def456', displayRef: 'BK-000142' }),
       'future',
       new Date('2026-07-15T12:00:00.000Z'),
     );
 
-    expect(ref.bookingNumber).toBe('BK-DEF456');
+    expect(ref.bookingNumber).toBe('BK-000142');
+    expect(ref.bookingNumberDiagnostic).toBeNull();
     expect(ref.bookingNumber).not.toContain('booking-abc');
+  });
+
+  it('falls back to neutral label with diagnostic when displayRef missing', () => {
+    const ref = toDomainBookingRef(
+      row({ id: 'b-future-1' }),
+      'future',
+      new Date('2026-07-15T12:00:00.000Z'),
+    );
+
+    expect(ref.bookingNumber).toBe(NEUTRAL_BOOKING_DISPLAY_LABEL);
+    expect(ref.bookingNumberDiagnostic).toBe('MISSING_DISPLAY_REF');
+    expect(ref.bookingNumber).not.toMatch(/def456/i);
   });
 
   it('serializes planned pickup/return instants for future phase', () => {
     const ref = toDomainBookingRef(
-      row({ id: 'b-future-1' }),
+      row({ id: 'b-future-1', displayRef: 'BK-000201' }),
       'future',
       new Date('2026-07-15T12:00:00.000Z'),
     );
@@ -53,7 +67,7 @@ describe('vehicle-booking-ref.serializer', () => {
   it('projects compact fleet DTO with required fields', () => {
     const dto = serializeFleetBookingRef(
       toDomainBookingRef(
-        row({ id: 'b-serialize-99' }),
+        row({ id: 'b-serialize-99', displayRef: 'BK-000099' }),
         'future',
         new Date('2026-07-15T12:00:00.000Z'),
       ),
@@ -61,7 +75,7 @@ describe('vehicle-booking-ref.serializer', () => {
 
     expect(dto).toMatchObject({
       id: 'b-serialize-99',
-      bookingNumber: 'BK-IZE-99',
+      bookingNumber: 'BK-000099',
       status: 'CONFIRMED',
       pickupAt: '2026-08-01T08:00:00.000Z',
       returnAt: '2026-08-06T18:00:00.000Z',

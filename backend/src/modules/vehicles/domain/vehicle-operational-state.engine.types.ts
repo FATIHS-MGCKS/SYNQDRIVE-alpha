@@ -57,6 +57,9 @@ export type BookingPhase =
   | 'active_rental'
   | 'terminal';
 
+/** Diagnostic when API uses neutral booking label instead of persisted display ref. */
+export type FleetBookingNumberDiagnostic = 'MISSING_DISPLAY_REF';
+
 export type MaintenanceStateSource =
   | 'ADMIN_PERSISTED'
   | 'RENTAL_HEALTH'
@@ -83,6 +86,8 @@ export type RawStatusDiagnosticCode =
 export interface DomainBookingRef {
   id: string;
   bookingNumber: string;
+  /** Set when `bookingNumber` is a neutral fallback label, not a persisted ref. */
+  bookingNumberDiagnostic?: FleetBookingNumberDiagnostic | null;
   status: string;
   pickupAt: string;
   returnAt: string;

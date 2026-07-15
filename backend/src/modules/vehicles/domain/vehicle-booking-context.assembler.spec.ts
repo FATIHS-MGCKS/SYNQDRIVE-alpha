@@ -470,10 +470,11 @@ describe('vehicle-booking-context.assembler', () => {
           status: 'CONFIRMED',
           startDate: new Date('2026-08-01T08:00:00.000Z'),
           endDate: new Date('2026-08-06T18:00:00.000Z'),
+          displayRef: 'BK-000142',
         }),
       ]);
 
-      expect(state.nextBooking?.bookingNumber).toBe('BK-DEF456');
+      expect(state.nextBooking?.bookingNumber).toBe('BK-000142');
       expect(state.nextBooking?.pickupAt).toBe('2026-08-01T08:00:00.000Z');
       expect(state.nextBooking?.returnAt).toBe('2026-08-06T18:00:00.000Z');
       expect(state.nextBooking?.phase).toBe('future');

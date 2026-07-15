@@ -1,6 +1,9 @@
 import { VehicleStatus } from '@prisma/client';
 import type { FleetVehicleBookingContextDto } from './vehicle-operational-state.types';
 import {
+  NEUTRAL_BOOKING_DISPLAY_LABEL,
+} from './vehicle-booking-context.types';
+import {
   DEFAULT_ORGANIZATION_TIMEZONE,
   EMPTY_BOOKING_STATE_INPUT,
   type BuildVehicleStateEngineInputParams,
@@ -37,7 +40,8 @@ function activeRefFromLegacyDto(
   if (!dto.activeBookingId) return null;
   return {
     id: dto.activeBookingId,
-    bookingNumber: '',
+    bookingNumber: NEUTRAL_BOOKING_DISPLAY_LABEL,
+    bookingNumberDiagnostic: 'MISSING_DISPLAY_REF',
     status: 'ACTIVE',
     pickupAt: dto.activeStartAt ?? '',
     returnAt: dto.activeReturnAt ?? '',
@@ -58,7 +62,8 @@ function reservationRefFromLegacyDto(
   if (!dto.reservedBookingId) return null;
   return {
     id: dto.reservedBookingId,
-    bookingNumber: '',
+    bookingNumber: NEUTRAL_BOOKING_DISPLAY_LABEL,
+    bookingNumberDiagnostic: 'MISSING_DISPLAY_REF',
     status: 'CONFIRMED',
     pickupAt: dto.reservedPickupAt ?? '',
     returnAt: dto.reservedReturnAt ?? '',
