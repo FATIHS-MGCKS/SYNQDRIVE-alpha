@@ -1,6 +1,6 @@
 # Billing — Technische Bestandsaufnahme (Current State)
 
-**Stand:** Code-Inventur Prompt 1/44 · **keine funktionalen Änderungen**  
+**Stand:** Code-Inventur Prompt 1/44 · Characterization Tests Prompt 2/44  
 **Repository:** `SYNQDRIVE-alpha`  
 **Scope:** Verwaltung → Abrechnung & Abo → SynqDrive-Abonnement (Platform-SaaS-Billing)
 
@@ -656,16 +656,71 @@ frontend/src/lib/api.ts
 | Bereich | Lücke |
 |---------|-------|
 | `billing-admin.service` | Keine Spec |
-| `billing-price-resolution.service` | Keine dedizierte Spec |
-| `stripe-invoice-mirror.service` | Keine Spec |
-| `billing.controller` | Keine Integration/E2E-Tests |
+| `billing-price-resolution.service` | Characterization in `billing-price-resolution.characterization.spec.ts` |
+| `stripe-invoice-mirror.service` | Characterization in `stripe-invoice-mirror.characterization.spec.ts` |
+| `billing.controller` | Security/isolation in `billing.controller.security.characterization.spec.ts` |
 | Pricebook ↔ Stripe Mapping | Nicht testbar (nicht implementiert) |
 | `createUsageSnapshot` + Scheduler | Kein Test, kein Scheduler |
 | `BillingOrganizationPriceOverride` API | Kein API → keine Tests |
 | SaaS-Billing E2E | Keine Playwright/Cypress-Suite |
-| Webhook `invoice.payment_failed` End-to-End | Nur Unit-Dispatch |
+| Webhook `invoice.payment_failed` End-to-End | Unit + characterization dispatch |
 | Master Admin Pricing Tab | Keine Component-Tests |
-| Resend + SaaS Billing | Keine Verbindung → keine Tests |
+| Resend + SaaS Billing | Characterization: bewusst getrennt dokumentiert |
+
+---
+
+## Characterization test coverage (Prompt 2)
+
+**Commit:** `billing: prompt 02 characterization tests`  
+**Ausführung:** `cd backend && npm test -- --testPathPattern="billing|outbound-email-infrastructure"`
+
+Alle Characterization-Tests mocken **Stripe** (`stripe-client.util`, Stripe SDK-Methoden) und **Resend** (`global.fetch`) vollständig — keine echten Provider-Aufrufe.
+
+### Getestete Bereiche
+
+| Bereich | Testdatei(en) | Abgedeckte Szenarien |
+|---------|---------------|----------------------|
+| Controller-Security & Permissions | `billing.controller.security.characterization.spec.ts`, `billing.permissions.characterization.spec.ts` | Guards, `billing.read`/`billing.write`, MASTER_ADMIN-Routen |
+| Organisationsisolation | `billing.controller.security.characterization.spec.ts`, `billing-multi-tenant.access.characterization.spec.ts`, `billing-scope.util.spec.ts` | Org-Scope, Cross-Org-Ablehnung, Invoice/PM-Query-Scoping |
+| Billing Summary | `billing-summary.characterization.spec.ts` | Produkte, Fahrzeuge, Tier, Preview, Warnings, Overrides |
+| Tarif-/Preisauflösung | `billing-price-resolution.characterization.spec.ts`, `billing-calculation.util.spec.ts` | Default-Pricebook, Version, Tiers, Overrides, NO_*-Status |
+| Abrechenbare Fahrzeuge | `billable-vehicles.characterization.spec.ts`, `billable-vehicles.service.spec.ts` | Connectivity, Status, DEMO, billingExcluded, Org inactive |
+| Rechnungsstatus | `billing-invoice-status.characterization.spec.ts`, `stripe-status.mapper.spec.ts` | PAID/OPEN/VOID/UNCOLLECTIBLE, Stripe→lokal |
+| Stripe Webhooks | `stripe-webhook.characterization.spec.ts`, `stripe-webhook.service.spec.ts` | Signatur, Idempotenz, Duplikate, invoice.*, charge.refunded |
+| Zahlungsmethoden-Sync | `stripe-billing.characterization.spec.ts`, `stripe-billing.service.spec.ts` | upsert/detach, default PM, kein Customer |
+| Customer Portal | `stripe-billing.characterization.spec.ts`, `stripe-billing.service.spec.ts` | Portal-Session, returnUrl |
+| Invoice Mirror | `stripe-invoice-mirror.characterization.spec.ts` | create/update, kein Mapping, Line-Replace |
+| Resend / Outbound Email | `outbound-email-infrastructure.characterization.spec.ts` | Provider-Auswahl, mocked fetch, Billing-Entkopplung |
+| Master vs Tenant | `billing.controller.security.characterization.spec.ts`, `billing.permissions.characterization.spec.ts` | MASTER_ADMIN bypass, Tenant org-bound |
+
+**Teststand Prompt 2:** 21 Suites, 151 Tests (billing + outbound-email-infrastructure), alle grün.
+
+### Bewusst festgehaltenes Legacy-Verhalten
+
+| Test | Aktuelles Verhalten | Problem | Korrektur geplant |
+|------|---------------------|---------|-------------------|
+| `billing-invoice-status` — VOID → Paid | `displayStatus: 'Paid'` für `InvoiceStatus.VOID` | Stornierte Rechnung wirkt bezahlt | Prompt 25 |
+| `billing-summary` / `billing-price-resolution` — subscription priceVersionId | Globaler Default-Pricebook, nicht `BillingSubscription.priceVersionId` | Org-/Vertragsspezifische Preise ignoriert | Prompt 10 |
+| `stripe-webhook` — charge.refunded | Nur `syncPaymentMethods`, kein Refund-Record | Keine lokale Refund-Historie | Prompt 25 |
+| `stripe-invoice-mirror` — usageSnapshotId | Mirror-Lines ohne Usage-Snapshot-Link | Keine lokale Abrechnungs-Nachvollziehbarkeit pro Periode | Prompt 25 |
+| `outbound-email` — billing boundary | SaaS-Billing importiert keine Resend-Services | Keine Plattform-Rechnungs-E-Mails | Prompt 30+ |
+
+### Testability-Anpassungen
+
+**Keine Produktionslogik geändert.** Alle Tests nutzen bestehende öffentliche APIs (`formatInvoiceForApi`, Controller-Methoden, Services mit gemocktem Prisma/Stripe).
+
+### Verbleibende Testlücken (nach Prompt 2)
+
+| Bereich | Status |
+|---------|--------|
+| `billing-admin.service` | Ungetestet |
+| `createOrUpdateSubscriptionForOrg` End-to-End | Ungetestet (Methode nicht verdrahtet) |
+| HTTP E2E (supertest) für `/billing/*` | Ungetestet |
+| Frontend Billing Characterization | Nur bestehende 4 Frontend-Tests |
+| `BillingUsageService.createUsageSnapshot` | Ungetestet |
+| Stripe Connect (separate Domäne) | Eigene Specs in `payments/`, nicht Teil dieses Prompts |
+| Resend Webhook (`resend-webhook.service.spec.ts`) | Vorhanden, nicht billing-gekoppelt |
+
 
 ---
 
