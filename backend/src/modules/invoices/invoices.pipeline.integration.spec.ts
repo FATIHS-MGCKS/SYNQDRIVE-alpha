@@ -598,6 +598,15 @@ describe('Invoice process pipeline (integration matrix)', () => {
       });
       expect(full.status).toBe('PAID');
     });
+
+    it('40b — stornieren setzt CANCELLED und schließt offene Zahlungsaufgabe', async () => {
+      const id = (await createOutgoing(h, 'Cancel me')).id;
+      await h.invoices.issue(id, h.store.ids.orgA);
+      const cancelled = await h.invoices.cancel(id, h.store.ids.orgA);
+      expect(cancelled.status).toBe('CANCELLED');
+      expect(cancelled.cancelledAt).toBeTruthy();
+      await expect(h.invoices.issue(id, h.store.ids.orgA)).rejects.toBeInstanceOf(BadRequestException);
+    });
   });
 
   // ─── Sicherheit (41–46) ──────────────────────────────────────────────────

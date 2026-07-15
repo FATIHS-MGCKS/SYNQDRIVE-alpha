@@ -25,6 +25,7 @@ export function DashboardView({
   onOpenBookingById,
   onOpenCustomerById,
   onOpenFinanceView,
+  onOpenInvoiceById,
   onOpenPriceTariffs,
 }: DashboardViewProps) {
   const vm = useDashboardViewModel({
@@ -43,6 +44,7 @@ export function DashboardView({
     onOpenBookingById,
     onOpenCustomerById,
     onOpenRentalView,
+    onOpenInvoiceById,
     onOpenPriceTariffs,
   };
   const leftColumnRef = useRef<HTMLDivElement>(null);
@@ -96,7 +98,13 @@ export function DashboardView({
           onClose={vm.closeDrilldown}
           onOpenVehicle={onOpenVehicleById}
           onOpenBooking={onOpenBookingById}
-          onOpenInvoice={() => onOpenFinanceView?.('invoices')}
+          onOpenInvoice={(invoiceId) => {
+            if (invoiceId && onOpenInvoiceById) {
+              onOpenInvoiceById(invoiceId);
+              return;
+            }
+            onOpenFinanceView?.('invoices');
+          }}
           onOpenBilling={() => onOpenFinanceView?.('invoices')}
         />
       </>
@@ -152,7 +160,13 @@ export function DashboardView({
         onClose={vm.closeDrilldown}
         onOpenVehicle={onOpenVehicleById}
         onOpenBooking={onOpenBookingById}
-        onOpenInvoice={() => onOpenFinanceView?.('invoices')}
+        onOpenInvoice={(invoiceId) => {
+          if (invoiceId && onOpenInvoiceById) {
+            onOpenInvoiceById(invoiceId);
+            return;
+          }
+          onOpenFinanceView?.('invoices');
+        }}
         onOpenBilling={() => onOpenFinanceView?.('invoices')}
       />
     </>

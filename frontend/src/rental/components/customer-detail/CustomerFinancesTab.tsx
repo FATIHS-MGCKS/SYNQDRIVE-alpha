@@ -16,6 +16,7 @@ interface CustomerFinancesTabProps {
   fines: any[];
   invoicesError?: string | null;
   finesError?: string | null;
+  onOpenInvoice?: (invoiceId: string) => void;
 }
 
 export function CustomerFinancesTab({
@@ -23,6 +24,7 @@ export function CustomerFinancesTab({
   fines,
   invoicesError,
   finesError,
+  onOpenInvoice,
 }: CustomerFinancesTabProps) {
   const openInvoices = invoices.filter((i) => (i.status ?? '').toUpperCase() !== 'PAID');
   const overdueInvoices = invoices.filter((i) => (i.status ?? '').toUpperCase() === 'OVERDUE');
@@ -102,7 +104,23 @@ export function CustomerFinancesTab({
               </thead>
               <tbody className="divide-y divide-border">
                 {invoices.map((inv) => (
-                  <tr key={inv.id} className="text-xs hover:bg-muted/20">
+                  <tr
+                    key={inv.id}
+                    className={`text-xs hover:bg-muted/20 ${onOpenInvoice ? 'cursor-pointer' : ''}`}
+                    onClick={onOpenInvoice ? () => onOpenInvoice(inv.id) : undefined}
+                    onKeyDown={
+                      onOpenInvoice
+                        ? (e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              onOpenInvoice(inv.id);
+                            }
+                          }
+                        : undefined
+                    }
+                    tabIndex={onOpenInvoice ? 0 : undefined}
+                    role={onOpenInvoice ? 'button' : undefined}
+                  >
                     <td className="px-3 py-2 font-semibold">#{inv.invoiceNumber}</td>
                     <td className="px-3 py-2 text-muted-foreground">{formatDate(inv.invoiceDate)}</td>
                     <td className="px-3 py-2">{inv.title || EM_DASH}</td>

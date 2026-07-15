@@ -33,7 +33,8 @@ export function InvoicesPage({
   initialInvoiceId,
   onConsumeInitialInvoiceId,
 }: InvoicesPageProps) {
-  const { orgId } = useRentalOrg();
+  const { orgId, hasPermission } = useRentalOrg();
+  const canWriteInvoices = hasPermission('invoices', 'write');
   const theme = useMemo(() => getInvoiceThemeClasses(isDarkMode), [isDarkMode]);
 
   const invoicesState = useInvoices(orgId);
@@ -41,16 +42,20 @@ export function InvoicesPage({
 
   const [view, setView] = useState<InvoicePageView>('list');
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [openingDetail, setOpeningDetail] = useState(false);
 
   const handleOpenDetail = (item: InvoiceListItem) => {
+    setOpeningDetail(true);
     void openDetail(item, (full) => {
       setSelectedInvoice(full);
       setView('detail');
-    });
+      setOpeningDetail(false);
+    }).finally(() => setOpeningDetail(false));
   };
 
   useEffect(() => {
     if (!orgId || !initialInvoiceId) return;
+    setOpeningDetail(true);
     void (async () => {
       try {
         const full = await api.invoices.get(orgId, initialInvoiceId);
@@ -59,10 +64,19 @@ export function InvoicesPage({
       } catch {
         toast.error('Rechnung konnte nicht geöffnet werden.');
       } finally {
+        setOpeningDetail(false);
         onConsumeInitialInvoiceId?.();
       }
     })();
   }, [initialInvoiceId, onConsumeInitialInvoiceId, orgId]);
+
+  if (openingDetail) {
+    return (
+      <div className="max-w-[1600px] mx-auto py-16 text-center text-sm text-muted-foreground">
+        Rechnung wird geladen…
+      </div>
+    );
+  }
 
   if (view === 'detail' && selectedInvoice) {
     return (
@@ -123,15 +137,19 @@ export function InvoicesPage({
         className="mb-4 flex-row items-center justify-between gap-2 sm:mb-5 sm:items-start sm:gap-4"
         actions={(
           <div className="flex shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2">
-            <Button type="button" variant="ai" size="sm" onClick={() => { void invoicesState.loadLookup(); setView('upload'); }}>
-              <Icon name="sparkles" className="size-3.5" />
-              KI-Upload
-            </Button>
-            <Button type="button" variant="primary" size="sm" onClick={() => { void invoicesState.loadLookup(); setView('create'); }}>
-              <Icon name="plus" className="size-3.5" />
-              <span className="hidden min-[420px]:inline">Rechnung erstellen</span>
-              <span className="min-[420px]:hidden">Neu</span>
-            </Button>
+            {canWriteInvoices ? (
+              <>
+                <Button type="button" variant="ai" size="sm" onClick={() => { void invoicesState.loadLookup(); setView('upload'); }}>
+                  <Icon name="sparkles" className="size-3.5" />
+                  KI-Upload
+                </Button>
+                <Button type="button" variant="primary" size="sm" onClick={() => { void invoicesState.loadLookup(); setView('create'); }}>
+                  <Icon name="plus" className="size-3.5" />
+                  <span className="hidden min-[420px]:inline">Rechnung erstellen</span>
+                  <span className="min-[420px]:hidden">Neu</span>
+                </Button>
+              </>
+            ) : null}
           </div>
         )}
       />

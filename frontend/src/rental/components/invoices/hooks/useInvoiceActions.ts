@@ -7,6 +7,7 @@ import type { Invoice } from '../invoiceTypes';
 
 export function useInvoiceActions(orgId: string, invoice: Invoice, onUpdate: (inv: Invoice) => void) {
   const [issuing, setIssuing] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [markingSent, setMarkingSent] = useState(false);
   const [markingPaid, setMarkingPaid] = useState(false);
   const [recordingPayment, setRecordingPayment] = useState(false);
@@ -36,6 +37,19 @@ export function useInvoiceActions(orgId: string, invoice: Invoice, onUpdate: (in
       toast.error(e instanceof Error ? e.message : 'Ausstellen fehlgeschlagen');
     } finally {
       setIssuing(false);
+    }
+  }, [orgId, invoice.id, onUpdate]);
+
+  const handleCancel = useCallback(async () => {
+    setCancelling(true);
+    try {
+      const updated = await api.invoices.cancel(orgId, invoice.id);
+      onUpdate(updated);
+      toast.success('Rechnung storniert');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Stornierung fehlgeschlagen');
+    } finally {
+      setCancelling(false);
     }
   }, [orgId, invoice.id, onUpdate]);
 
@@ -110,12 +124,14 @@ export function useInvoiceActions(orgId: string, invoice: Invoice, onUpdate: (in
 
   return {
     issuing,
+    cancelling,
     markingSent,
     markingPaid,
     recordingPayment,
     refreshing,
     refreshInvoice,
     handleIssue,
+    handleCancel,
     handleMarkSent,
     handleMarkPaid,
     handleRecordPayment,

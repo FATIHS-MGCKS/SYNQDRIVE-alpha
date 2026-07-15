@@ -1,35 +1,30 @@
 /**
- * Characterization: BookingsService.create verschluckt Invoice-Bootstrap-Fehler
- * per .catch() — Buchung entsteht, Rechnung evtl. fehlend (Audit-Punkt 12).
- * Keine Produktivlogik-Änderung; dokumentiert Ist-Verhalten für spätere Härtung.
+ * Booking create must not leave orphan bookings when invoice bootstrap fails.
  */
-describe('Booking invoice bootstrap fire-and-forget (characterization)', () => {
-  it('audit-12c — simuliertes bookings.create-Muster: Bootstrap-Fehler wird geloggt, Promise resolved null', async () => {
+describe('Booking invoice bootstrap hardening', () => {
+  it('propagates bootstrap failure after compensating booking rollback', async () => {
     const logger = { error: jest.fn() };
     const bootstrapBookingInvoice = jest.fn().mockRejectedValue(new Error('invoice bootstrap failed'));
+    const deleteMany = jest.fn().mockResolvedValue({ count: 1 });
 
-    const invoicePromise = bootstrapBookingInvoice('org-1', { id: 'bk-1' }).catch((err: unknown) => {
-      logger.error(
-        'Booking bk-1 created but invoice bootstrap failed',
-        err instanceof Error ? err.stack : String(err),
-      );
-      return null;
-    });
+    const booking = { id: 'bk-1', organizationId: 'org-1' };
 
-    const result = await invoicePromise;
-    expect(result).toBeNull();
-    expect(logger.error).toHaveBeenCalledWith(
-      expect.stringContaining('bk-1'),
-      expect.any(String),
-    );
-    expect(bootstrapBookingInvoice).toHaveBeenCalled();
-  });
+    await expect(
+      (async () => {
+        try {
+          await bootstrapBookingInvoice('org-1', { id: booking.id });
+        } catch (err) {
+          logger.error(
+            `Booking ${booking.id} created but invoice bootstrap failed — rolling back booking`,
+            err instanceof Error ? err.stack : String(err),
+          );
+          await deleteMany({ where: { id: booking.id, organizationId: 'org-1' } });
+          throw err;
+        }
+      })(),
+    ).rejects.toThrow('invoice bootstrap failed');
 
-  it('audit-12d — Bundle-Kette startet auch wenn Invoice-Bootstrap null liefert', async () => {
-    const generateInitialBundle = jest.fn().mockResolvedValue({ bundle: { status: 'PENDING' } });
-    const invoicePromise = Promise.resolve(null);
-
-    await invoicePromise.then(() => generateInitialBundle('org-1', 'bk-1'));
-    expect(generateInitialBundle).toHaveBeenCalledWith('org-1', 'bk-1');
+    expect(deleteMany).toHaveBeenCalledWith({ where: { id: 'bk-1', organizationId: 'org-1' } });
+    expect(logger.error).toHaveBeenCalled();
   });
 });

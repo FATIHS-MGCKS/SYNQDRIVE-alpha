@@ -56,8 +56,9 @@ export function InvoiceDetail({
   ts,
   inputCls,
 }: InvoiceDetailProps) {
-  const { userRole } = useRentalOrg();
+  const { userRole, hasPermission } = useRentalOrg();
   const canManageEmail = userRole === 'ORG_ADMIN' || userRole === 'MASTER_ADMIN';
+  const canManageFinance = hasPermission('invoices', 'write');
   const relationsPermissions = useInvoiceRelationsPermissions();
   const { enrichment } = useInvoiceRelationsEnrichment(orgId, invoice);
   const viewportWidth = useViewportWidth();
@@ -81,11 +82,12 @@ export function InvoiceDetail({
     () =>
       buildInvoiceDetailDto(invoice, {
         canManageEmail,
+        canManageFinance,
         relationsEnrichment: enrichment,
         relationsPermissions,
         documentsPanel: documents.panel,
       }),
-    [invoice, canManageEmail, enrichment, relationsPermissions, documents.panel],
+    [invoice, canManageEmail, canManageFinance, enrichment, relationsPermissions, documents.panel],
   );
 
   const paymentsHook = useInvoicePayments(orgId, invoice, onUpdate, detail.actions.record_payment);
@@ -151,7 +153,13 @@ export function InvoiceDetail({
         onMarkSentExternally={() => void actions.handleMarkSent()}
         onRecordPayment={paymentsHook.openRecordDialog}
         onEdit={handleEdit}
-        onCancel={() => toast.message(detail.actions.cancel.reason ?? 'Stornierung nicht verfügbar')}
+        onCancel={() => {
+          if (!detail.actions.cancel.allowed) {
+            toast.message(detail.actions.cancel.reason ?? 'Stornierung nicht verfügbar');
+            return;
+          }
+          void actions.handleCancel();
+        }}
         isDarkMode={isDarkMode}
         card={card}
         tp={tp}

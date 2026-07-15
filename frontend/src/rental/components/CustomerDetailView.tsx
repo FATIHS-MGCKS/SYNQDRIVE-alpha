@@ -136,6 +136,8 @@ interface CustomerDetailViewProps {
 
   onOpenBooking?: (bookingId: string) => void;
 
+  onOpenInvoice?: (invoiceId: string) => void;
+
 }
 
 
@@ -169,6 +171,8 @@ export function CustomerDetailView({
   onCreateBooking,
 
   onOpenBooking,
+
+  onOpenInvoice,
 
 }: CustomerDetailViewProps) {
 
@@ -786,6 +790,8 @@ export function CustomerDetailView({
             invoicesError={invoicesError}
 
             finesError={finesError}
+
+            onOpenInvoice={onOpenInvoice}
 
           />
 

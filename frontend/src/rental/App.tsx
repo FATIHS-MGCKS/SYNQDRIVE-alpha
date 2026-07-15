@@ -832,6 +832,11 @@ function RentalAppContent() {
             }}
             onOpenRentalView={(view) => handleViewChange(view)}
             onOpenFinanceView={(view) => handleViewChange(view)}
+            onOpenInvoiceById={(invoiceId) => {
+              setPendingInvoiceDetailId(invoiceId);
+              setFinanceTab('invoices');
+              setCurrentView('invoices');
+            }}
             onOpenPriceTariffs={() => handleViewChange('price-tariffs')}
             onOpenBookingById={(bookingId) => {
               setPendingBookingDetailId(bookingId);
@@ -981,6 +986,11 @@ function RentalAppContent() {
                 setNewBookingPrefill({ customerId: detailCustomer.id, returnView: 'customer-detail' });
               }
               setCurrentView('new-booking');
+            }}
+            onOpenInvoice={(invoiceId) => {
+              setPendingInvoiceDetailId(invoiceId);
+              setFinanceTab('invoices');
+              setCurrentView('invoices');
             }}
           />
         ) : currentView === 'invoices' || currentView === 'price-tariffs' ? (

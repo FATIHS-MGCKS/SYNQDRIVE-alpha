@@ -7,4 +7,5 @@ export {
   canIssue,
   canMarkSent,
   canRecordPayment,
+  canCancelInvoice,
 } from './invoiceUtils';

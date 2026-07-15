@@ -87,6 +87,30 @@ describe('buildInvoiceDetailDto', () => {
     expect(dto.primary.generatePdf.reason).toContain('ausstellen');
     expect(dto.actions.issue.allowed).toBe(true);
   });
+
+  it('allows PDF generate for manual outgoing when issued', () => {
+    const dto = buildInvoiceDetailDto(
+      sampleInvoice({ type: 'OUTGOING_MANUAL', bookingId: null, status: 'ISSUED' }),
+      { canManageEmail: true, canManageFinance: true },
+    );
+    expect(dto.primary.generatePdf.allowed).toBe(true);
+  });
+
+  it('allows cancel when finance permission granted', () => {
+    const dto = buildInvoiceDetailDto(sampleInvoice({ status: 'ISSUED' }), {
+      canManageEmail: true,
+      canManageFinance: true,
+    });
+    expect(dto.actions.cancel.allowed).toBe(true);
+  });
+
+  it('blocks cancel without finance permission', () => {
+    const dto = buildInvoiceDetailDto(sampleInvoice({ status: 'ISSUED' }), {
+      canManageEmail: true,
+      canManageFinance: false,
+    });
+    expect(dto.actions.cancel.allowed).toBe(false);
+  });
 });
 
 describe('invoice detail header responsive layout', () => {

@@ -1,6 +1,7 @@
 import { INVOICE_TYPE_MAP } from './invoiceConstants';
 import {
   STATUS_MAP,
+  canCancelInvoice,
   canIssue,
   canMarkSent,
   canRecordPayment,
@@ -44,8 +45,13 @@ export function buildInvoiceDetailDto(
   const hasAttachment = ctx.documentsPanel?.hasIncomingAttachment ?? Boolean(invoice.imageUrl);
   const hasPdf = hasGeneratedPdf || hasAttachment;
   const bookingId = invoice.bookingId;
+  const supportsPdfGeneration =
+    outgoing &&
+    (invoice.type === 'OUTGOING_BOOKING' ||
+      invoice.type === 'OUTGOING_MANUAL' ||
+      invoice.type === 'OUTGOING_FINAL');
   const regenerateDocumentType =
-    bookingId && invoice.type === 'OUTGOING_BOOKING' ? 'BOOKING_INVOICE' : null;
+    bookingId && invoice.type === 'OUTGOING_BOOKING' ? 'BOOKING_INVOICE' : supportsPdfGeneration ? 'INVOICE' : null;
   const terminal = ['CANCELLED', 'VOID', 'CREDITED', 'REJECTED'].includes(invoice.status);
   const isDraft = invoice.status === 'DRAFT';
   const canFinance =
@@ -78,7 +84,7 @@ export function buildInvoiceDetailDto(
   } else if (terminal) {
     generateReason = 'Für stornierte oder abgeschlossene Sonderfälle nicht verfügbar';
   } else if (!regenerateDocumentType) {
-    generateReason = 'PDF-Generierung ist derzeit nur für Buchungsrechnungen verfügbar';
+    generateReason = 'PDF-Generierung ist derzeit nur für Ausgangsrechnungen verfügbar';
   }
 
   const generatePdfGate = gate(
@@ -138,7 +144,13 @@ export function buildInvoiceDetailDto(
     'Bearbeiten nur für Entwürfe oder Rechnungen in Prüfung',
   );
 
-  const cancelGate = gate(false, 'Stornierung ist in dieser Version noch nicht freigeschaltet');
+  const cancelGate = gate(
+    (ctx.canManageFinance !== false) &&
+      canCancelInvoice(invoice.status, paidCents, invoice.totalCents),
+    ctx.canManageFinance === false
+      ? 'Keine Berechtigung zum Stornieren'
+      : 'Stornierung für diesen Status nicht möglich',
+  );
 
   const copyIdGate = gate(true);
 

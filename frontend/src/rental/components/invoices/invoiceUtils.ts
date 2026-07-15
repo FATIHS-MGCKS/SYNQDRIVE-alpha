@@ -49,6 +49,16 @@ export function canRecordPayment(status: OrgInvoiceStatus | string): boolean {
   return !['CANCELLED', 'VOID', 'CREDITED', 'REJECTED', 'DRAFT'].includes(status);
 }
 
+export function canCancelInvoice(
+  status: OrgInvoiceStatus | string,
+  paidCents: number,
+  totalCents: number,
+): boolean {
+  if (['CANCELLED', 'VOID', 'CREDITED', 'REJECTED', 'PAID'].includes(status)) return false;
+  if (totalCents > 0 && paidCents >= totalCents) return false;
+  return true;
+}
+
 export const INVOICE_EXTRACTION_FIELDS = [
   { key: 'title', label: 'Titel' },
   { key: 'vendorName', label: 'Lieferant' },

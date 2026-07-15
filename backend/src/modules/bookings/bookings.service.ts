@@ -268,8 +268,8 @@ export class BookingsService {
       return created;
     });
 
-    const invoicePromise = this.invoicesService
-      .bootstrapBookingInvoice(orgId, {
+    try {
+      await this.invoicesService.bootstrapBookingInvoice(orgId, {
         id: booking.id,
         customerId: booking.customerId,
         vehicleId: booking.vehicleId,
@@ -279,21 +279,29 @@ export class BookingsService {
         endDate: booking.endDate,
         currency: booking.currency,
         kmIncluded: booking.kmIncluded,
-      })
-      .catch((err) => {
-        this.logger.error(
-          `Booking ${booking.id} created but invoice bootstrap failed`,
-          err instanceof Error ? err.stack : String(err),
-        );
-        return null;
       });
+    } catch (err) {
+      this.logger.error(
+        `Booking ${booking.id} created but invoice bootstrap failed — rolling back booking`,
+        err instanceof Error ? err.stack : String(err),
+      );
+      await this.prisma.booking
+        .deleteMany({ where: { id: booking.id, organizationId: orgId } })
+        .catch((deleteErr) => {
+          this.logger.error(
+            `Failed to roll back booking ${booking.id} after invoice bootstrap failure`,
+            deleteErr instanceof Error ? deleteErr.stack : String(deleteErr),
+          );
+        });
+      throw err;
+    }
 
     // Generate the initial document bundle for operator/rental bookings once
     // created (PENDING or CONFIRMED). Wizard checkout drafts call generate
     // explicitly as well — the bundle service is idempotent.
     if (booking.status === 'CONFIRMED' || booking.status === 'PENDING') {
-      void invoicePromise
-        .then(() => this.bookingDocumentBundleService.generateInitialBundle(orgId, booking.id))
+      void this.bookingDocumentBundleService
+        .generateInitialBundle(orgId, booking.id)
         .then(() => {
           if (booking.status === 'CONFIRMED') {
             return this.bookingDocumentEmailService.maybeAutoSendBookingDocuments(

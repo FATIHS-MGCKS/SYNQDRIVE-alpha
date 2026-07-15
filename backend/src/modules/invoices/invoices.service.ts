@@ -13,6 +13,7 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { CreateInvoiceDto, RecordInvoicePaymentDto, UpdateInvoiceDto } from './dto';
 import {
+  canCancelInvoice,
   canRecordPayment,
   defaultStatusForCreate,
   derivePaymentStatus,
@@ -392,6 +393,29 @@ export class InvoicesService {
       vehicleId: issued.vehicleId,
     });
 
+    return this.findById(id, orgId);
+  }
+
+  async cancel(id: string, orgId: string) {
+    const inv = await this.requireInvoice(id, orgId);
+    if (!canCancelInvoice(inv.status, inv.paidCents, inv.totalCents)) {
+      throw new BadRequestException('Rechnung kann in diesem Status nicht storniert werden');
+    }
+
+    const nextStatus = inv.type === 'INCOMING_VENDOR' || inv.type === 'INCOMING_UPLOADED'
+      ? 'REJECTED'
+      : 'CANCELLED';
+
+    await this.prisma.orgInvoice.update({
+      where: { id },
+      data: {
+        status: nextStatus,
+        cancelledAt: new Date(),
+        outstandingCents: 0,
+      },
+    });
+
+    await this.invoicePaymentTasks.closeOnTerminalInvoiceStatus(orgId, id, nextStatus);
     return this.findById(id, orgId);
   }
 

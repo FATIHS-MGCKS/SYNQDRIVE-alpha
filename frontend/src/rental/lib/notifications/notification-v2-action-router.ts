@@ -59,6 +59,7 @@ export function isKnownApiActionType(type: string): type is ApiNotificationActio
 export interface NotificationV2NavigationHandlers {
   onOpenVehicleById?: (vehicleId: string) => void;
   onOpenBookingById?: (bookingId: string) => void;
+  onOpenInvoiceById?: (invoiceId: string) => void;
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
   onStartHandoverPickup?: (bookingId: string) => void;
   onStartHandoverReturn?: (bookingId: string) => void;
@@ -102,9 +103,13 @@ export function navigateNotificationV2Action(
       handlers.onOpenRentalView?.('stations');
       return true;
     case 'open-billing':
-    case 'open-rental':
+      if (target.invoiceId && handlers.onOpenInvoiceById) {
+        handlers.onOpenInvoiceById(target.invoiceId);
+        return true;
+      }
       handlers.onOpenRentalView?.('bookings');
       return true;
+    case 'open-rental':
     default:
       handlers.onOpenRentalView?.('bookings');
       return true;

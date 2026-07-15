@@ -66,6 +66,17 @@ export function canRecordPayment(status: OrgInvoiceStatus): boolean {
   return !['CANCELLED', 'VOID', 'CREDITED', 'REJECTED'].includes(status);
 }
 
+/** Whether an invoice may be cancelled/rejected via the cancel endpoint. */
+export function canCancelInvoice(
+  status: OrgInvoiceStatus,
+  paidCents: number,
+  totalCents: number,
+): boolean {
+  if (['CANCELLED', 'VOID', 'CREDITED', 'REJECTED', 'PAID'].includes(status)) return false;
+  if (totalCents > 0 && paidCents >= totalCents) return false;
+  return true;
+}
+
 export function displayInvoiceNumber(inv: {
   invoiceNumberDisplay?: string | null;
   legacyInvoiceNumber?: number | null;

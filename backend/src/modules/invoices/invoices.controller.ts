@@ -107,6 +107,12 @@ export class InvoicesController {
     return this.invoicesService.issue(id, orgId);
   }
 
+  @Post('organizations/:orgId/invoices/:id/cancel')
+  @UseGuards(OrgScopingGuard, RolesGuard)
+  async cancel(@Param('orgId') orgId: string, @Param('id') id: string) {
+    return this.invoicesService.cancel(id, orgId);
+  }
+
   /** @deprecated Prefer `POST …/documents/send-email` for PDF delivery; retained for external/manual send marking. */
   @Post('organizations/:orgId/invoices/:id/mark-sent')
   @UseGuards(OrgScopingGuard, RolesGuard)

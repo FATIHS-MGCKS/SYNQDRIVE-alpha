@@ -4260,6 +4260,11 @@ export const api = {
         `/organizations/${orgId}/invoices/${id}/issue`,
         {},
       ),
+    cancel: (orgId: string, id: string) =>
+      post<import('../rental/components/invoices/invoiceTypes').Invoice>(
+        `/organizations/${orgId}/invoices/${id}/cancel`,
+        {},
+      ),
     markSent: (orgId: string, id: string) =>
       post<import('../rental/components/invoices/invoiceTypes').Invoice>(
         `/organizations/${orgId}/invoices/${id}/mark-sent`,

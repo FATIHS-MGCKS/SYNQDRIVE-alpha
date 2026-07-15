@@ -48,6 +48,7 @@ interface ActionQueueHandlers {
   onOpenVehicleById?: (vehicleId: string) => void;
   onOpenBookingById?: (bookingId: string) => void;
   onOpenCustomerById?: (customerId: string) => void;
+  onOpenInvoiceById?: (invoiceId: string) => void;
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
   onOpenPriceTariffs?: () => void;
 }
@@ -57,6 +58,7 @@ interface ActionQueueProps {
   onOpenVehicleById?: (vehicleId: string) => void;
   onOpenBookingById?: (bookingId: string) => void;
   onOpenCustomerById?: (customerId: string) => void;
+  onOpenInvoiceById?: (invoiceId: string) => void;
   onOpenRentalView?: (view: 'bookings' | 'stations') => void;
   onOpenPriceTariffs?: () => void;
   layout?: NotificationPanelLayout;
@@ -116,6 +118,7 @@ function runCta(
     navigateNotificationV2Action(item, {
       onOpenVehicleById,
       onOpenBookingById,
+      onOpenInvoiceById: handlers.onOpenInvoiceById,
       onOpenRentalView,
       onStartHandoverPickup: (bookingId) => {
         const pickup = vm.pickupItems.find((p) => p.bookingId === bookingId);
@@ -608,6 +611,7 @@ export function ActionQueue({
   onOpenVehicleById,
   onOpenBookingById,
   onOpenCustomerById,
+  onOpenInvoiceById,
   onOpenRentalView,
   onOpenPriceTariffs,
   layout = 'default',
@@ -701,7 +705,14 @@ export function ActionQueue({
   } = renderModel;
 
   const hiddenAtomicCount = isSidebar ? 0 : Math.max(0, atomicCount - visibleAtomicCount);
-  const handlers = { onOpenVehicleById, onOpenBookingById, onOpenCustomerById, onOpenRentalView, onOpenPriceTariffs };
+  const handlers = {
+    onOpenVehicleById,
+    onOpenBookingById,
+    onOpenCustomerById,
+    onOpenInvoiceById,
+    onOpenRentalView,
+    onOpenPriceTariffs,
+  };
   const hasItems = atomicCount > 0;
   const showEmpty = !actionQueueLoading && !hasItems;
 

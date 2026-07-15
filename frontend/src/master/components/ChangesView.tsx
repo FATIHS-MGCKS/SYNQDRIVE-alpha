@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-production-ready-v49475-2026-07-15',
+    version: '4.9.475',
+    title: 'V4.9.475 — Rechnungsmodul production-ready: P1-Fixes + Merge-Vorbereitung',
+    summary: [
+      'Booking-Bootstrap: Invoice-Fehler rollt Buchung zurück (kein Silent-Fail mehr).',
+      '`POST …/invoices/:id/cancel` + UI-Stornierung mit `invoices.write`-Gate.',
+      'Manuelle Ausgangsrechnungen: PDF-Generierung im Frontend freigeschaltet (OUTGOING_MANUAL/FINAL).',
+      'Navigation: Dashboard-Drilldown, Kunden-Finanzen und Notifications öffnen Rechnungsdetail per ID.',
+      'Detail-Loading-Spinner; Create-Buttons nur mit `invoices.write`.',
+      'Checklist: `docs/audits/invoice-production-readiness.md`.',
+    ],
+    reason:
+      'Abschluss des Rechnungs-Umbaus (V4.9.457–474): verbleibende P1-Lücken aus Production-Readiness-Audit schließen vor Merge nach main.',
+    previousBehavior:
+      'Bootstrap-Fehler verschluckt; Storno deaktiviert; Dashboard ignorierte invoiceId; manuelle PDF nur Backend-seitig; keine Permission-Gates in Invoice-UI.',
+    details:
+      'Siehe `docs/audits/invoice-production-readiness.md`. Ops-Pflicht unverändert: `audit-invoice-document-links.ts` pro Org.',
+    affectsArchitecture: true,
+    module: 'Invoices',
+    createdAt: '2026-07-15T20:30:00.000Z',
+  },
+  {
     id: 'invoice-module-forwardref-hotfix-v49471-2026-07-15',
     version: '4.9.471',
     title: 'V4.9.471 — Produktions-Hotfix: DocumentsModule ↔ InvoicesModule forwardRef',
