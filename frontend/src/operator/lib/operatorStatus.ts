@@ -1,6 +1,7 @@
 import type { StatusTone } from '../../components/patterns';
 import type { VehicleHealthResponse } from '../../lib/api';
 import type { VehicleData } from '../../rental/data/vehicles';
+import { VEHICLE_OPERATIONAL_STATUS } from '../../rental/lib/vehicle-operational-state';
 
 export type OperatorStatusKind =
   | 'ready'
@@ -53,11 +54,11 @@ export function deriveVehicleOperatorStatuses(
     badges.push(badge('cleaning', 'watch'));
   }
 
-  if (vehicle.status === 'Maintenance' || (vehicle.status as string) === 'Unavailable') {
+  if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE || (vehicle.status as string) === 'Unavailable') {
     badges.push(badge('maintenance', 'watch'));
-  } else if (vehicle.status === 'Active Rented') {
+  } else if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) {
     badges.push(badge('rented', 'info'));
-  } else if (vehicle.status === 'Reserved') {
+  } else if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED) {
     badges.push(badge('reserved', 'info'));
   }
 
@@ -83,7 +84,7 @@ export function deriveVehicleOperatorStatuses(
 
   if (
     badges.length === 0 &&
-    vehicle.status === 'Available' &&
+    vehicle.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE &&
     !health?.rental_blocked &&
     vehicle.cleaningStatus === 'Clean'
   ) {

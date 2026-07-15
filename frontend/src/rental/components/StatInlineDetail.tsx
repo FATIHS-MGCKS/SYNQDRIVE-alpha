@@ -8,6 +8,7 @@ import { RentalHealthBadge } from './rental-health/RentalHealthBadge';
 import type { Station, VehicleHealthResponse } from '../../lib/api';
 import { useAddress } from '../../lib/useAddress';
 import { HomeAwayBadge, buildStationLookup } from './HomeAwayBadge';
+import { VEHICLE_OPERATIONAL_STATUS } from '../lib/vehicle-operational-state';
 import {
   formatOdometerKmFloor,
   formatFuelPercentCeil,
@@ -429,8 +430,8 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
   return (
     <div className={`mt-0.5 rounded-2xl border p-5 ${borderColor} ${isDarkMode ? 'surface-premium' : 'bg-white'}`}>
       {/* Available */}
-      {activePopup === 'Available' && (() => {
-        const vehicles = fleetVehicles.filter(v => v.status === 'Available');
+      {activePopup === VEHICLE_OPERATIONAL_STATUS.AVAILABLE && (() => {
+        const vehicles = fleetVehicles.filter(v => v.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE);
         return (
           <>
             {!hideHeader && <div className="flex items-center justify-between mb-4">
@@ -557,8 +558,8 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
           committedten Pickups checkt der Operator die Reinigung über
           den Pick-Up-Today-Tab bzw. Vehicle-Detail; im Reserved-Über-
           blick verschluckt sie nur knappen Header-Platz. */}
-      {activePopup === 'Reserved' && (() => {
-        const vehicles = fleetVehicles.filter(v => v.status === 'Reserved');
+      {activePopup === VEHICLE_OPERATIONAL_STATUS.RESERVED && (() => {
+        const vehicles = fleetVehicles.filter(v => v.status === VEHICLE_OPERATIONAL_STATUS.RESERVED);
         const overdueCount = vehicles.filter(v => v.reservedIsOverdue).length;
         return (
           <>
@@ -722,8 +723,8 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
           rental is in flight). The middle row exposes a time-progress
           and km-progress mini-bar so dispatchers can spot at-risk
           rentals at a glance. */}
-      {activePopup === 'Active Rented' && (() => {
-        const vehicles = fleetVehicles.filter(v => v.status === 'Active Rented');
+      {activePopup === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED && (() => {
+        const vehicles = fleetVehicles.filter(v => v.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED);
         const overdueCount = vehicles.filter(v => v.activeIsOverdue).length;
         return (
           <>
@@ -1153,8 +1154,8 @@ export function StatInlineDetail({ activePopup, isDarkMode, onClose, onVehicleSe
           OPERATIONAL_BLOCK label). Workshop "where" is approximated by
           the last-known address — workshop names are not yet persisted
           per the existing V4.6.84 architecture decision. */}
-      {activePopup === 'Maintenance' && (() => {
-        const vehicles = fleetVehicles.filter(v => v.status === 'Maintenance');
+      {activePopup === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE && (() => {
+        const vehicles = fleetVehicles.filter(v => v.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE);
         const unplannedCount = vehicles.filter(v => v.maintenanceUrgency === 'urgent').length;
         return (
           <>

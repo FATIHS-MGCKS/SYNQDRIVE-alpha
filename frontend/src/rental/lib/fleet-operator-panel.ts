@@ -20,6 +20,7 @@ import {
 } from './fleetVehicleDisplay';
 
 import type { DashboardRuntimeModel } from '../components/dashboard/runtime/dashboardRuntimeTypes';
+import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
 
 export function resolveCanonicalFleetAlertCounts(
   runtime: DashboardRuntimeModel,
@@ -109,11 +110,11 @@ export function resolveFleetCommandRowSeverity(
   if (visual.isStale) return 'warning';
   if (
     v.maintenanceUrgency === 'planned' ||
-    (v.maintenanceUrgency === 'urgent' && v.status !== 'Maintenance')
+    (v.maintenanceUrgency === 'urgent' && v.status !== VEHICLE_OPERATIONAL_STATUS.MAINTENANCE)
   ) {
     return 'warning';
   }
-  if (!visual.hasLocation && v.status !== 'Maintenance') return 'warning';
+  if (!visual.hasLocation && v.status !== VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return 'warning';
 
   return 'good';
 }
@@ -204,7 +205,7 @@ export function isFleetAttentionVehicle(
   if (vehicle.maintenanceUrgency === 'urgent' || vehicle.maintenanceUrgency === 'planned') {
     return true;
   }
-  if (!visual.hasLocation && vehicle.status !== 'Maintenance') return true;
+  if (!visual.hasLocation && vehicle.status !== VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return true;
 
   // Telemetry reasons. Offline (≥48h) is a real connectivity problem; soft
   // offline / signal_delayed (24–48h, `visual.isStale`) is a low-priority hint.
@@ -280,11 +281,11 @@ export function vehicleMatchesCommandTab(
   const { vehicle } = ctx;
   switch (tab) {
     case 'Available':
-      return vehicle.status === 'Available';
+      return vehicle.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE;
     case 'Active':
-      return vehicle.status === 'Active Rented';
+      return vehicle.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED;
     case 'Reserved':
-      return vehicle.status === 'Reserved';
+      return vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED;
     default:
       return false;
   }
@@ -390,8 +391,8 @@ export function computeCommandTabCounts(
 export function resolveOperatorTabForVehicle(
   ctx: FleetVehicleContext,
 ): FleetCommandTab {
-  if (ctx.vehicle.status === 'Active Rented') return 'Active';
-  if (ctx.vehicle.status === 'Reserved') return 'Reserved';
+  if (ctx.vehicle.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) return 'Active';
+  if (ctx.vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED) return 'Reserved';
   return 'Available';
 }
 

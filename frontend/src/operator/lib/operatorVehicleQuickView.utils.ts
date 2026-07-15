@@ -3,6 +3,7 @@ import type { VehicleHealthResponse, RentalHealthModule, RentalHealthState } fro
 import type { VehicleData } from '../../rental/data/vehicles';
 import { derivePickupGate, deriveReturnGate } from './operatorData';
 import type { TodayBookingApiRow } from '../../rental/components/dashboard/dashboardTypes';
+import { VEHICLE_OPERATIONAL_STATUS } from '../../rental/lib/vehicle-operational-state';
 
 export type OperatorVehicleFilter =
   | 'all'
@@ -95,16 +96,16 @@ export function detectOperatorStatusContradictions(
   const issues: string[] = [];
   if (!health) return issues;
 
-  if (vehicle.status === 'Available' && health.rental_blocked) {
+  if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE && health.rental_blocked) {
     issues.push('Fahrzeugstatus „Verfügbar“, Rental Health meldet Block.');
   }
-  if (vehicle.status === 'Active Rented' && !vehicle.activeBookingId && !vehicle.activeCustomerName) {
+  if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED && !vehicle.activeBookingId && !vehicle.activeCustomerName) {
     issues.push('Status „Aktiv vermietet“ ohne aktive Buchungsreferenz.');
   }
-  if (vehicle.status === 'Reserved' && !vehicle.reservedBookingId && !vehicle.reservedCustomerName) {
+  if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED && !vehicle.reservedBookingId && !vehicle.reservedCustomerName) {
     issues.push('Status „Reserviert“ ohne Reservierungsreferenz.');
   }
-  if (vehicle.status === 'Maintenance' && vehicle.maintenanceReasonCode === 'OPERATIONAL_BLOCK' && !health.rental_blocked) {
+  if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE && vehicle.maintenanceReasonCode === 'OPERATIONAL_BLOCK' && !health.rental_blocked) {
     issues.push('Operativer Wartungsblock ohne rental_blocked in Rental Health.');
   }
 
@@ -157,7 +158,7 @@ export function deriveOperatorVehicleStatusSnapshot(
     };
   }
 
-  if (vehicle.status === 'Maintenance') {
+  if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) {
     const outOfService = vehicle.maintenanceReasonCode === 'OPERATIONAL_BLOCK';
     return {
       primaryStatus: outOfService ? 'out_of_service' : 'in_service',
@@ -171,20 +172,20 @@ export function deriveOperatorVehicleStatusSnapshot(
     };
   }
 
-  if (vehicle.status === 'Active Rented' || vehicle.status === 'Reserved') {
+  if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED || vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED) {
     return {
       primaryStatus: 'rented',
       primaryLabel: PRIMARY_STATUS_LABELS.rented,
       primaryTone: 'info',
-      releaseDecision: vehicle.status === 'Reserved' ? 'review' : 'no',
-      releaseLabel: vehicle.status === 'Reserved' ? RELEASE_LABELS.review : RELEASE_LABELS.no,
-      releaseTone: vehicle.status === 'Reserved' ? 'watch' : 'info',
+      releaseDecision: vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED ? 'review' : 'no',
+      releaseLabel: vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED ? RELEASE_LABELS.review : RELEASE_LABELS.no,
+      releaseTone: vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED ? 'watch' : 'info',
       contradictions,
       healthAvailable: true,
     };
   }
 
-  if (vehicle.status === 'Available') {
+  if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE) {
     return {
       primaryStatus: 'ready',
       primaryLabel: PRIMARY_STATUS_LABELS.ready,
@@ -219,15 +220,15 @@ export function vehicleMatchesOperatorFilter(
   if (filter === 'all') return true;
   if (filter === 'blocked') return Boolean(health?.rental_blocked);
   if (filter === 'rented') {
-    return vehicle.status === 'Active Rented' || vehicle.status === 'Reserved';
+    return vehicle.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED || vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED;
   }
-  if (filter === 'service') return vehicle.status === 'Maintenance';
+  if (filter === 'service') return vehicle.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE;
   if (filter === 'open_work') {
     return openTaskCount > 0 || vehicle.cleaningStatus === 'Needs Cleaning';
   }
   if (filter === 'ready') {
     if (!healthKnown || health?.rental_blocked) return false;
-    if (vehicle.status !== 'Available') return false;
+    if (vehicle.status !== VEHICLE_OPERATIONAL_STATUS.AVAILABLE) return false;
     if (vehicle.cleaningStatus !== 'Clean') return false;
     return detectOperatorStatusContradictions(vehicle, health).length === 0;
   }

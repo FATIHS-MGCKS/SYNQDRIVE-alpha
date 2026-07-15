@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-store-canonical-dto-v49491-2026-07-15',
+    version: '4.9.491',
+    title: 'V4.9.491 — Fleet Store canonical operational DTO mapping (Prompt 27/43)',
+    summary: [
+      'Zentrale Aufbereitung `fleet-map-vehicle-mapper.ts`: übernimmt `operationalState`, `rawVehicleStatus`, `bookingContext` (active/reserved/next, futureBookingCount) vom Backend — nur Validierung/Normalisierung, keine Store-Businesslogik.',
+      '`useFleetMapStore` nutzt Mapper; kanonische Felder `operationalState`/`bookingContext` auf `FleetMapVehicle`. Legacy-Flat-Felder (`reservedReturnAt`, `activeStartAt`, …) als Projektion für bestehende UI.',
+      'Kompatible Selectors in `fleet-map-vehicle-selectors.ts`. Optimistic Patches synchronisieren kanonische + Legacy-Felder. UNKNOWN fail-closed. 6 Mapper-Tests + bestehende Query-Tests.',
+      'Status-Vergleiche in Fleet-Konsumenten auf `VEHICLE_OPERATIONAL_STATUS`-Enums umgestellt (Typecheck).',
+    ],
+    reason:
+      'Prompt 27/43: Der Fleet Store leitete Status aus Raw-Strings ab und verworf Kontext — Backend soll alleinige Source of Truth sein.',
+    previousBehavior:
+      '`mapFleetVehicle` normalisierte nur `raw.status`; fehlende Werte konnten als Available erscheinen; `bookingContext`/`operationalState` nicht im Store.',
+    details:
+      'Neu: `fleet-map-vehicle-mapper.ts`, `fleet-map-vehicle-selectors.ts`, `fleet-map-vehicle-store.utils.ts`. Entfernt Store-Derivationslogik. API: `rawVehicleStatus`, `dataQualityState` auf `FleetMapVehicleResponse`.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-15T23:08:00.000Z',
+  },
+  {
     id: 'vehicle-operational-domain-types-v49490-2026-07-15',
     version: '4.9.490',
     title: 'V4.9.490 — Frontend Vehicle Operational State Domain Types (Prompt 26/43)',

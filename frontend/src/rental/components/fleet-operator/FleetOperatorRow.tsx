@@ -15,6 +15,7 @@ import type {
   FleetVehicleContext,
 } from '../../lib/fleet-operator-panel';
 import { fleetCommandReasonChipClass, fleetCommandRowSurfaceClass } from './fleetOperatorUi';
+import { VEHICLE_OPERATIONAL_STATUS } from '../../lib/vehicle-operational-state';
 
 function fleetVehicleTitle(v: VehicleData): string {
   const model = typeof v.model === 'string' ? v.model : '';
@@ -28,10 +29,10 @@ function vehicleStationLabel(v: VehicleData): string {
 }
 
 function appointmentFragment(v: VehicleData): string | null {
-  if (v.status === 'Active Rented' && v.activeReturnAt) {
+  if (v.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED && v.activeReturnAt) {
     return `Return ${formatFleetDateTime(v.activeReturnAt)}`;
   }
-  if (v.status === 'Reserved' && v.reservedPickupAt) {
+  if (v.status === VEHICLE_OPERATIONAL_STATUS.RESERVED && v.reservedPickupAt) {
     return `Pickup ${formatFleetDateTime(v.reservedPickupAt)}`;
   }
   return null;
@@ -76,7 +77,7 @@ export function FleetOperatorRow({
   const rowHealth = healthDisplay;
   const rowRental = rentalDisplay;
 
-  const dimmed = display.showTelemetryWarning && v.status === 'Available';
+  const dimmed = display.showTelemetryWarning && v.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE;
 
   const station = vehicleStationLabel(v);
   const { address } = useAddress(v.lat, v.lng);

@@ -498,7 +498,7 @@ function RentalAppContent() {
   // Handle vehicle selection from Fleet
   const handleVehicleSelect = (vehicle: VehicleData) => {
     setSelectedVehicle(vehicle);
-    setVehicleStatus(vehicle.status === 'Available' ? 'Available' : vehicle.status === 'Maintenance' ? 'Maintenance' : 'Available');
+    setVehicleStatus(vehicle.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE ? 'Available' : vehicle.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE ? 'Maintenance' : 'Available');
     setCleaningStatus(vehicle.cleaningStatus);
     setCurrentStation(vehicle.station);
     setCurrentView('overview');

@@ -11,6 +11,7 @@ import type {
 } from '../rental/lib/damage.types';
 import type {
   VehicleBookingContext,
+  VehicleDataQualityState,
   VehicleOperationalState,
 } from '../rental/lib/vehicle-operational-state';
 
@@ -6438,7 +6439,10 @@ export interface FleetMapVehicleResponse {
   make: string | null;
   model: string;
   year: number | null;
+  /** Legacy display status from backend — never use as operational status without normalization. */
   status: string;
+  /** Raw vehicle.status column / source token before operational derivation. */
+  rawVehicleStatus?: string | null;
   fuelType: string;
   healthStatus: string;
   cleaningStatus: string;
@@ -6486,6 +6490,8 @@ export interface FleetMapVehicleResponse {
   maintenanceReason: string | null;
   maintenanceReasonCode: FleetMaintenanceReasonCode | null;
   maintenanceUrgency: 'planned' | 'urgent' | null;
+  dataQualityState?: VehicleDataQualityState | null;
+  isReliable?: boolean | null;
   /** Canonical operational read-model (Prompt 26). Legacy `status` string remains for compatibility. */
   operationalState?: VehicleOperationalState | null;
   /** Booking context derived from fleet read-model (Prompt 26). */

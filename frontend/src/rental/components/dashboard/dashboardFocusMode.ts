@@ -10,6 +10,7 @@ import type { DataTrustLayer } from './dataTrustBuilder';
 import type { VehicleTelemetryFreshness } from './controlSignalsBuilder';
 import { isVehicleReadyToRent, parseEventTime, type ReadyToRentOptions } from './dashboardUtils';
 import type { RuntimeReason, VehicleRuntimeState } from './runtime';
+import { VEHICLE_OPERATIONAL_STATUS } from '../../lib/vehicle-operational-state';
 
 export function readOperatorFocusModePreference(): boolean {
   try {
@@ -31,11 +32,11 @@ export function persistOperatorFocusModePreference(enabled: boolean): void {
 
 function notReadyReason(v: VehicleData, locale: string, readyOptions: ReadyToRentOptions): string {
   const de = locale === 'de';
-  if (v.status === 'Maintenance') return de ? 'Wartung' : 'Maintenance';
+  if (v.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return de ? 'Wartung' : 'Maintenance';
   if (v.cleaningStatus !== 'Clean') return de ? 'Reinigung ausstehend' : 'Cleaning pending';
   if (readyOptions.blockedVehicleIds?.has(v.id)) return de ? 'Vermietblockiert' : 'Rental blocked';
   if (readyOptions.healthRiskVehicleIds?.has(v.id)) return de ? 'Health-Risiko' : 'Health risk';
-  if (v.status === 'Reserved') return de ? 'Reserviert · nicht bereit' : 'Reserved · not ready';
+  if (v.status === VEHICLE_OPERATIONAL_STATUS.RESERVED) return de ? 'Reserviert · nicht bereit' : 'Reserved · not ready';
   return de ? 'Nicht vermietbereit' : 'Not rent-ready';
 }
 
@@ -86,10 +87,10 @@ export function getFocusNotReadyVehicles(
   const items: FocusNotReadyVehicle[] = [];
 
   for (const v of vehicles) {
-    if (v.status === 'Active Rented') continue;
-    if (v.status === 'Available' && isVehicleReadyToRent(v, readyOptions)) continue;
+    if (v.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) continue;
+    if (v.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE && isVehicleReadyToRent(v, readyOptions)) continue;
     if (
-      v.status === 'Reserved' &&
+      v.status === VEHICLE_OPERATIONAL_STATUS.RESERVED &&
       v.cleaningStatus === 'Clean' &&
       !readyOptions.blockedVehicleIds?.has(v.id) &&
       !readyOptions.healthRiskVehicleIds?.has(v.id)

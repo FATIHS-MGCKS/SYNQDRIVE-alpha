@@ -13,6 +13,7 @@ import type {
 } from './dashboardTypes';
 import { isVehicleReadyToRent, parseEventTime, type ReadyToRentOptions } from './dashboardUtils';
 import type { VehicleRuntimeState } from './runtime';
+import { VEHICLE_OPERATIONAL_STATUS } from '../../lib/vehicle-operational-state';
 
 const MS_HOUR = 60 * 60_000;
 const TIMELINE_WINDOW_MS = 24 * MS_HOUR;
@@ -52,7 +53,7 @@ function isBlockedVehicle(
   v: VehicleData,
   healthMap: Map<string, VehicleHealthResponse>,
 ): boolean {
-  if (v.status === 'Maintenance') return true;
+  if (v.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return true;
   return healthMap.get(v.id)?.rental_blocked === true;
 }
 
@@ -143,7 +144,7 @@ export function buildStationCommandDetail(input: {
         .map((v) =>
           vehicleChip(
             v,
-            v.status === 'Maintenance'
+            v.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE
               ? 'Maintenance'
               : 'Blocked',
           ),
@@ -194,10 +195,10 @@ export function buildFallbackStationSummary(input: {
     stationId: input.stationId,
     stationName: input.stationName ?? (de ? 'Unbekannte Station' : 'Unknown station'),
     vehicleCount: useRuntime ? stationStates.length : atStation.length,
-    availableCount: useRuntime ? stationStates.filter((state) => state.operationalStatus === 'available').length : atStation.filter((v) => v.status === 'Available').length,
-    rentedCount: useRuntime ? stationStates.filter((state) => state.operationalStatus === 'active_rented').length : atStation.filter((v) => v.status === 'Active Rented').length,
-    reservedCount: useRuntime ? stationStates.filter((state) => state.operationalStatus === 'reserved').length : atStation.filter((v) => v.status === 'Reserved').length,
-    maintenanceCount: useRuntime ? stationStates.filter((state) => state.isMaintenance).length : atStation.filter((v) => v.status === 'Maintenance').length,
+    availableCount: useRuntime ? stationStates.filter((state) => state.operationalStatus === 'available').length : atStation.filter((v) => v.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE).length,
+    rentedCount: useRuntime ? stationStates.filter((state) => state.operationalStatus === 'active_rented').length : atStation.filter((v) => v.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED).length,
+    reservedCount: useRuntime ? stationStates.filter((state) => state.operationalStatus === 'reserved').length : atStation.filter((v) => v.status === VEHICLE_OPERATIONAL_STATUS.RESERVED).length,
+    maintenanceCount: useRuntime ? stationStates.filter((state) => state.isMaintenance).length : atStation.filter((v) => v.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE).length,
     needsCleaningCount: useRuntime ? stationStates.filter((state) => state.warningReasons.some((reason) => reason.category === 'cleaning')).length : atStation.filter((v) => v.cleaningStatus !== 'Clean').length,
     availableNotReadyCount: useRuntime ? stationStates.filter((state) => state.operationalStatus === 'available' && !state.isReadyToRent).length : undefined,
     warningCount: useRuntime ? stationStates.filter((state) => state.isWarning && !state.isCritical).length : undefined,

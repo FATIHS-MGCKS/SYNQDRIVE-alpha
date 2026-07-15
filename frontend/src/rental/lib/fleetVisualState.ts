@@ -3,6 +3,7 @@ import type { VehicleData } from '../data/vehicles';
 import type { VehicleHealthResponse, RentalHealthModule } from '../../lib/api';
 import { isVehicleOffline } from '../data/vehicles';
 import { resolveTelemetryFreshness } from './telemetryFreshness';
+import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
 
 export type FleetVisualStatus =
   | 'ready'
@@ -158,13 +159,13 @@ export function vehicleHasFleetLocation(
 
 function deriveRentalStatus(vehicle: FleetVisualStateVehicle): FleetRentalStatus {
   switch (vehicle.status) {
-    case 'Active Rented':
+    case VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED:
       return vehicle.activeBookingId ? 'active_rented' : 'available';
-    case 'Reserved':
+    case VEHICLE_OPERATIONAL_STATUS.RESERVED:
       return vehicle.reservedBookingId ? 'reserved' : 'available';
-    case 'Maintenance':
+    case VEHICLE_OPERATIONAL_STATUS.MAINTENANCE:
       return 'maintenance';
-    case 'Available':
+    case VEHICLE_OPERATIONAL_STATUS.AVAILABLE:
       return 'available';
     default:
       return 'unknown';
@@ -270,13 +271,13 @@ function labelForVisualStatus(
 ): { label: string; shortLabel: string } {
   switch (visualStatus) {
     case 'ready':
-      return { label: 'Available', shortLabel: 'Avail.' };
+      return { label: VEHICLE_OPERATIONAL_STATUS.AVAILABLE, shortLabel: 'Avail.' };
     case 'active':
-      return { label: 'Active Rented', shortLabel: 'Active' };
+      return { label: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED, shortLabel: 'Active' };
     case 'reserved':
-      return { label: 'Reserved', shortLabel: 'Reserved' };
+      return { label: VEHICLE_OPERATIONAL_STATUS.RESERVED, shortLabel: 'Reserved' };
     case 'maintenance':
-      return { label: 'Maintenance', shortLabel: 'Service' };
+      return { label: VEHICLE_OPERATIONAL_STATUS.MAINTENANCE, shortLabel: 'Service' };
     case 'blocked':
       return { label: 'Blocked', shortLabel: 'Blocked' };
     case 'offline':
@@ -290,7 +291,7 @@ function labelForVisualStatus(
     default:
       return {
         label: rentalStatus === 'unknown' ? 'Unknown' : 'Unavailable',
-        shortLabel: 'Unknown',
+        shortLabel: VEHICLE_OPERATIONAL_STATUS.UNKNOWN,
       };
   }
 }
@@ -333,7 +334,7 @@ export function deriveFleetVisualState(
   const isBlocked = rentalBlocked;
   const isMaintenance =
     rentalStatus === 'maintenance' ||
-    vehicle.status === 'Maintenance';
+    vehicle.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE;
   const maintenanceCritical =
     isMaintenance && vehicle.maintenanceUrgency === 'urgent';
   const isOffline = isVehicleOffline(vehicle);

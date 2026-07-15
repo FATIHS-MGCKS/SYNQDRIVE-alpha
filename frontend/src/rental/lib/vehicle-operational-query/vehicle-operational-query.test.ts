@@ -16,9 +16,44 @@ import {
   resetVehicleOperationalInvalidationHandlers,
 } from './registry';
 import { vehicleOperationalQueryKeys } from './keys';
-import { VEHICLE_OPERATIONAL_STATUS } from '../vehicle-operational-state';
+import { VEHICLE_DATA_QUALITY_STATE, VEHICLE_OPERATIONAL_STATUS } from '../vehicle-operational-state';
 
 function makeVehicle(overrides: Partial<FleetMapVehicle> = {}): FleetMapVehicle {
+  const status = overrides.status ?? VEHICLE_OPERATIONAL_STATUS.RESERVED;
+  const operationalState =
+    overrides.operationalState ??
+    ({
+      status,
+      reason: null,
+      source: null,
+      effectiveFrom: null,
+      effectiveUntil: null,
+      derivedAt: null,
+      dataQualityState:
+        overrides.dataQualityState ?? VEHICLE_DATA_QUALITY_STATE.RELIABLE,
+      dataQualityReasons: overrides.dataQualityReasons ?? [],
+      isReliable: overrides.isReliable ?? true,
+    } as FleetMapVehicle['operationalState']);
+
+  const bookingContext =
+    overrides.bookingContext ??
+    ({
+      activeBooking: null,
+      reservedBooking: overrides.reservedBookingId
+        ? {
+            bookingId: overrides.reservedBookingId ?? 'bk-1',
+            customerName: overrides.reservedCustomerName ?? 'Max',
+            pickupAt: overrides.reservedPickupAt ?? '2026-07-15T10:00:00.000Z',
+            returnAt: overrides.reservedReturnAt ?? null,
+            pickupStationName: overrides.reservedPickupStationName ?? 'Berlin',
+            returnStationName: null,
+            isOverdue: overrides.reservedIsOverdue ?? false,
+          }
+        : null,
+      nextBooking: null,
+      futureBookingCount: 0,
+    } as FleetMapVehicle['bookingContext']);
+
   return {
     id: 'veh-1',
     license: 'M-AB 123',
@@ -30,9 +65,13 @@ function makeVehicle(overrides: Partial<FleetMapVehicle> = {}): FleetMapVehicle 
     currentStationId: 'st-1',
     expectedStationId: null,
     fuelType: 'Petrol',
-    status: VEHICLE_OPERATIONAL_STATUS.RESERVED,
-    dataQualityState: 'RELIABLE',
-    isReliable: true,
+    status,
+    rawVehicleStatus: overrides.rawVehicleStatus ?? 'Reserved',
+    operationalState,
+    bookingContext,
+    dataQualityReasons: operationalState.dataQualityReasons,
+    dataQualityState: operationalState.dataQualityState,
+    isReliable: operationalState.isReliable,
     cleaningStatus: 'Clean',
     healthStatus: 'Good Health',
     online: true,

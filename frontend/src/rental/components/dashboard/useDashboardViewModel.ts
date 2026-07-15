@@ -106,6 +106,7 @@ import {
   supplementalQueueItems,
 } from '../../lib/notifications/merge-v2-with-vehicle-health';
 import { mergeNotificationPrimaryTabCounts } from './notifications/notification-panel-counts';
+import { VEHICLE_OPERATIONAL_STATUS } from '../../lib/vehicle-operational-state';
 import {
   registerVehicleOperationalInvalidationHandler,
   vehicleOperationalQueryKeys,
@@ -443,15 +444,15 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   }, [selectedStationId, stationsApi]);
 
   const availableVehicles = useMemo(
-    () => filteredFleetVehicles.filter((v) => v.status === 'Available'),
+    () => filteredFleetVehicles.filter((v) => v.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE),
     [filteredFleetVehicles],
   );
   const reservedVehicles = useMemo(
-    () => filteredFleetVehicles.filter((v) => v.status === 'Reserved'),
+    () => filteredFleetVehicles.filter((v) => v.status === VEHICLE_OPERATIONAL_STATUS.RESERVED),
     [filteredFleetVehicles],
   );
   const activeRentedVehicles = useMemo(
-    () => filteredFleetVehicles.filter((v) => v.status === 'Active Rented'),
+    () => filteredFleetVehicles.filter((v) => v.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED),
     [filteredFleetVehicles],
   );
 

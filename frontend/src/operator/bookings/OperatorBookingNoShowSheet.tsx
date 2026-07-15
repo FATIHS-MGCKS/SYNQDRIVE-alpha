@@ -58,7 +58,7 @@ export function OperatorBookingNoShowSheet({ action }: OperatorBookingNoShowShee
   const handleConfirm = async () => {
     if (!bookingId || !noShowGate.allowed) return;
     clearError();
-    await markNoShow(bookingId, detail.vehicle.vehicleId, reason.trim() || undefined, () => {
+    await markNoShow(bookingId, detail?.vehicle.vehicleId, reason.trim() || undefined, () => {
       action.onSuccess?.();
       closeSheet();
     });

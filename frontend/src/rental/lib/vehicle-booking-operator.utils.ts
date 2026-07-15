@@ -1,6 +1,7 @@
 import type { StatusTone } from '../../components/patterns';
 import type { BookingUiStatus } from '../components/bookings/bookingStatus';
 import type { VehicleData } from '../data/vehicles';
+import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
 import {
   calculateUtilization,
   formatSlotDurationLabel,
@@ -52,7 +53,7 @@ const REALIZED_STATUSES: BookingUiStatus[] = ['active', 'completed'];
 
 export function isVehicleOperationallyBlocked(vehicle?: VehicleData | null): boolean {
   if (!vehicle) return false;
-  if (vehicle.status === 'Maintenance') return true;
+  if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return true;
   return vehicle.maintenanceReasonCode === 'OPERATIONAL_BLOCK';
 }
 
@@ -121,8 +122,8 @@ export function deriveVehicleBookingOperatorSnapshot(
   const blocked = isVehicleOperationallyBlocked(vehicle);
   const activeBooking = findActiveBooking(bookings, now);
   const fleetActive =
-    vehicle?.status === 'Active Rented' || Boolean(vehicle?.activeBookingId);
-  const fleetReserved = vehicle?.status === 'Reserved';
+    vehicle?.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED || Boolean(vehicle?.activeBookingId);
+  const fleetReserved = vehicle?.status === VEHICLE_OPERATIONAL_STATUS.RESERVED;
   const fleetOverdue =
     vehicle?.activeIsOverdue === true || vehicle?.reservedIsOverdue === true;
 

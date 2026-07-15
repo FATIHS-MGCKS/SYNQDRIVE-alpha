@@ -13,6 +13,7 @@ import type {
 import type { VehicleTelemetryFreshness } from './controlSignalsBuilder';
 import { isVehicleReadyToRent, parseEventTime, type ReadyToRentOptions } from './dashboardUtils';
 import type { DashboardRuntimeModel, RuntimeReason, VehicleRuntimeState } from './runtime';
+import { VEHICLE_OPERATIONAL_STATUS } from '../../lib/vehicle-operational-state';
 
 export type PredictiveRiskType =
   | 'RETURN_OVERDUE_THREATENS_FOLLOWUP'
@@ -256,9 +257,9 @@ export function derivePredictiveOperationsInsights(input: {
       ? runtimeState.isReadyToRent
       : vehicle &&
         isVehicleReadyToRent(vehicle, input.readyOptions) &&
-        (vehicle.status === 'Available' || vehicle.status === 'Reserved');
+        (vehicle.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE || vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED);
 
-    if (vehicle && !ready && runtimeState?.operationalStatus !== 'maintenance' && vehicle.status !== 'Maintenance') {
+    if (vehicle && !ready && runtimeState?.operationalStatus !== 'maintenance' && vehicle.status !== VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) {
       const healthAlert = p.vehicleId ? healthAlerts.get(p.vehicleId) : undefined;
       const onlyCleaningIssue =
         (runtimeState
@@ -481,7 +482,7 @@ export function derivePredictiveOperationsInsights(input: {
   for (const v of input.vehicles) {
     const runtimeState = runtimeByVehicleId.get(v.id);
     const blocked = runtimeState ? runtimeState.isBlocked : isRentalBlocked(v.id, input.healthMap);
-    const maintenance = runtimeState ? runtimeState.isMaintenance : v.status === 'Maintenance';
+    const maintenance = runtimeState ? runtimeState.isMaintenance : v.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE;
     if (!blocked && !maintenance) continue;
 
     const reservedMs = parseEventTime(v.reservedPickupAt ?? undefined);

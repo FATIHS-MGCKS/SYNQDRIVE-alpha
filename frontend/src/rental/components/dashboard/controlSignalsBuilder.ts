@@ -20,6 +20,7 @@ import type {
   VehicleRuntimeState,
 } from './runtime/dashboardRuntimeTypes';
 import { readyToRentNotReadyRows } from './dashboardSliceAccess';
+import { VEHICLE_OPERATIONAL_STATUS } from '../../lib/vehicle-operational-state';
 
 export type VehicleTelemetryBucket = 'live' | 'standby' | 'soft_offline' | 'offline' | 'unknown';
 
@@ -146,7 +147,7 @@ function isBlockedVehicle(
   v: VehicleData,
   healthMap: Map<string, VehicleHealthResponse>,
 ): boolean {
-  if (v.status === 'Maintenance') return true;
+  if (v.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return true;
   const h = healthMap.get(v.id);
   return h?.rental_blocked === true;
 }
@@ -401,7 +402,7 @@ export function buildEnhancedStationHealth(input: {
     ).length : atStation.filter((v) => v.cleaningStatus !== 'Clean').length;
     const maintenanceCount = runtimeStates.length > 0 ? runtimeStates.filter(
       (state) => state.isMaintenance,
-    ).length : atStation.filter((v) => v.status === 'Maintenance').length;
+    ).length : atStation.filter((v) => v.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE).length;
     const availableNotReadyCount = runtimeStates.filter(
       (state) => state.operationalStatus === 'available' && !state.isReadyToRent,
     ).length;
@@ -421,13 +422,13 @@ export function buildEnhancedStationHealth(input: {
       vehicleCount: runtimeStates.length || atStation.length,
       availableCount: runtimeStates.length > 0
         ? runtimeStates.filter((state) => state.operationalStatus === 'available').length
-        : atStation.filter((v) => v.status === 'Available').length,
+        : atStation.filter((v) => v.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE).length,
       rentedCount: runtimeStates.length > 0
         ? runtimeStates.filter((state) => state.operationalStatus === 'active_rented').length
-        : atStation.filter((v) => v.status === 'Active Rented').length,
+        : atStation.filter((v) => v.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED).length,
       reservedCount: runtimeStates.length > 0
         ? runtimeStates.filter((state) => state.operationalStatus === 'reserved').length
-        : atStation.filter((v) => v.status === 'Reserved').length,
+        : atStation.filter((v) => v.status === VEHICLE_OPERATIONAL_STATUS.RESERVED).length,
       maintenanceCount,
       needsCleaningCount,
       availableNotReadyCount,

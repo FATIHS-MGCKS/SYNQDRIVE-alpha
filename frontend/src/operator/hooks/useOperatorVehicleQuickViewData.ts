@@ -14,6 +14,7 @@ import {
 import { toHandoverBookingSeed } from '../lib/operatorData';
 import type { OperatorTodayBookingItem } from '../lib/operatorData';
 import { normalizeBookingStatus } from '../../rental/components/bookings/bookingStatus';
+import { VEHICLE_OPERATIONAL_STATUS } from '../../rental/lib/vehicle-operational-state';
 
 interface DocumentExtractionRow {
   id: string;
@@ -181,7 +182,7 @@ export function useOperatorVehicleQuickViewData(vehicleId: string) {
       };
     }
 
-    if (vehicle.activeBookingId || vehicle.status === 'Active Rented') {
+    if (vehicle.activeBookingId || vehicle.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) {
       return {
         kind: 'active' as const,
         label: 'Aktive Buchung',
@@ -193,7 +194,7 @@ export function useOperatorVehicleQuickViewData(vehicleId: string) {
       };
     }
 
-    if (vehicle.reservedBookingId || vehicle.status === 'Reserved') {
+    if (vehicle.reservedBookingId || vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED) {
       return {
         kind: 'reserved' as const,
         label: 'Nächste Reservierung',

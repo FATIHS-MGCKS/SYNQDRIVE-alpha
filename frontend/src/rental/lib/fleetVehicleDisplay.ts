@@ -4,6 +4,7 @@ import { isLegalComplianceBlockingText } from '../components/dashboard/runtime/d
 import type { VehicleData } from '../data/vehicles';
 import type { VehicleHealthAlert } from '../DashboardInsightsContext';
 import { deriveFleetVisualState, type FleetVisualState } from './fleetVisualState';
+import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
 import {
   formatUserFacingReasonLabel,
   isOperativeRentalHealthModule,
@@ -216,11 +217,11 @@ function resolveOperationalStatus(
 
   if (healthCritical) return 'critical';
   if (rentalBlocked || visual.isBlocked) return 'blocked';
-  if (v.status === 'Maintenance') return 'maintenance';
-  if (v.status === 'Active Rented') return v.activeIsOverdue ? 'warning' : 'active';
-  if (v.status === 'Reserved') return 'reserved';
+  if (v.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return 'maintenance';
+  if (v.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) return v.activeIsOverdue ? 'warning' : 'active';
+  if (v.status === VEHICLE_OPERATIONAL_STATUS.RESERVED) return 'reserved';
   if (v.activeIsOverdue || healthWarning) return 'warning';
-  if (v.status === 'Available') return 'ready';
+  if (v.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE) return 'ready';
   return 'unknown';
 }
 
@@ -290,7 +291,7 @@ function resolveHealthDisplay(
     good: ['Good', 'Gut'],
     warning: ['Warning', 'Warnung'],
     critical: ['Critical', 'Kritisch'],
-    unknown: ['Unknown', 'Unbekannt'],
+    unknown: [VEHICLE_OPERATIONAL_STATUS.UNKNOWN, 'Unbekannt'],
   };
   const tones: Record<FleetHealthStatus, StatusTone> = {
     good: 'success',
@@ -314,10 +315,10 @@ function resolveRentalDisplay(
   de: boolean,
 ): FleetRentalDisplay {
   let status: FleetRentalAvailability;
-  if (v.status === 'Active Rented') status = 'active';
-  else if (v.status === 'Reserved') status = 'reserved';
-  else if (v.status === 'Maintenance') status = 'maintenance';
-  else if (v.status === 'Available') {
+  if (v.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) status = 'active';
+  else if (v.status === VEHICLE_OPERATIONAL_STATUS.RESERVED) status = 'reserved';
+  else if (v.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) status = 'maintenance';
+  else if (v.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE) {
     const blocked = hasHardRentalBlockingReasons(rentalHealth) || visual.isBlocked;
     if (blocked) status = 'blocked';
     else if (visual.isOffline) status = 'not_ready';
@@ -330,8 +331,8 @@ function resolveRentalDisplay(
     ready: ['Ready', 'Bereit'],
     not_ready: ['Not Ready', 'Nicht bereit'],
     active: ['Active', 'Aktiv'],
-    reserved: ['Reserved', 'Reserviert'],
-    maintenance: ['Maintenance', 'Wartung'],
+    reserved: [VEHICLE_OPERATIONAL_STATUS.RESERVED, 'Reserviert'],
+    maintenance: [VEHICLE_OPERATIONAL_STATUS.MAINTENANCE, 'Wartung'],
     blocked: ['Blocked', 'Blockiert'],
   };
   const tones: Record<FleetRentalAvailability, StatusTone> = {
