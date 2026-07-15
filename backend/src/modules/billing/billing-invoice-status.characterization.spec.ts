@@ -10,6 +10,7 @@ describe('Billing invoice status mapping characterization', () => {
     id: 'inv-1',
     subscriptionId: 'sub-1',
     stripeInvoiceId: 'in_test',
+    stripeMode: null,
     amountCents: 9900,
     currency: 'eur',
     invoiceDate: new Date('2026-06-01T00:00:00.000Z'),

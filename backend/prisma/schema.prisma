@@ -530,6 +530,78 @@ enum BillingDiscountStatus {
   CANCELLED
 }
 
+enum BillingBillableVehicleAssignmentStatus {
+  ACTIVE
+  EXCLUDED
+  ENDED
+}
+
+enum BillingQuantityEventType {
+  VEHICLE_CONNECTED
+  VEHICLE_DISCONNECTED
+  VEHICLE_EXCLUDED
+  VEHICLE_INCLUDED
+  MANUAL_ADJUSTMENT
+  SNAPSHOT_LOCK
+  SUBSCRIPTION_SYNC
+}
+
+enum BillingQuantityEventSource {
+  SYSTEM
+  STRIPE_WEBHOOK
+  ADMIN
+  SCHEDULER
+  API
+}
+
+enum BillingUsageSnapshotBasis {
+  BILLABLE_VEHICLES
+  SUBSCRIPTION_ITEM_QUANTITY
+  MANUAL
+}
+
+enum BillingPaymentProvider {
+  STRIPE
+  MANUAL
+}
+
+enum BillingPaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+enum BillingPaymentAttemptStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+}
+
+enum BillingRefundStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+}
+
+enum BillingCreditNoteStatus {
+  DRAFT
+  ISSUED
+  VOID
+  APPLIED
+}
+
+enum BillingDomainEventOutboxStatus {
+  PENDING
+  PUBLISHED
+  FAILED
+}
+
 enum BillingPriceVersionStatus {
   DRAFT
   ACTIVE
@@ -1100,6 +1172,8 @@ model Organization {
   subscriptions                     BillingSubscription[]
   billingSubscriptionItems          BillingSubscriptionItem[]
   billingUsageSnapshots             BillingUsageSnapshot[]
+  billingBillableVehicleAssignments BillingBillableVehicleAssignment[]
+  billingQuantityEvents             BillingQuantityEvent[]
   billingPaymentMethods             BillingPaymentMethod[]
   billingOrgPriceOverrides          BillingOrganizationPriceOverride[]
   billingAuditLogs                  BillingAuditLog[]
@@ -1214,6 +1288,9 @@ model User {
   billingSubscriptionsCreated   BillingSubscription[]      @relation("BillingSubscriptionsCreated")
   billingSubscriptionsUpdated   BillingSubscription[]      @relation("BillingSubscriptionsUpdated")
   billingDiscountsCreated       BillingDiscount[]            @relation("BillingDiscountsCreated")
+  billingQuantityEventsActed    BillingQuantityEvent[]       @relation("BillingQuantityEventsActed")
+  billingUsageSnapshotsCreated  BillingUsageSnapshot[]       @relation("BillingUsageSnapshotsCreated")
+  billingVehicleAssignmentsApproved BillingBillableVehicleAssignment[] @relation("BillingVehicleAssignmentsApproved")
   outboundEmailsSent          OutboundEmail[]              @relation("OutboundEmailSentBy")
   pricingQuotesCreated        PricingQuote[]               @relation("PricingQuotesCreated")
   notificationReceipts        NotificationReceipt[]
@@ -1616,6 +1693,7 @@ model Vehicle {
   rentalCategory             RentalVehicleCategory?            @relation(fields: [rentalCategoryId], references: [id], onDelete: SetNull)
   rentalRequirementOverride  VehicleRentalRequirementOverride?
   whatsappConversations      WhatsAppConversation[]
+  billingBillableVehicleAssignments BillingBillableVehicleAssignment[]
 
   @@unique([vin, organizationId])
   @@index([organizationId])
@@ -2730,6 +2808,10 @@ model BillingSubscriptionItem {
   priceVersion   BillingPriceVersion?  @relation(fields: [priceVersionId], references: [id], onDelete: SetNull)
   priceTier      BillingPriceTier?     @relation(fields: [priceTierId], references: [id], onDelete: SetNull)
   discounts      BillingDiscount[]
+  quantityEvents BillingQuantityEvent[]
+  usageSnapshots BillingUsageSnapshot[]
+  billableVehicleAssignments BillingBillableVehicleAssignment[]
+  invoiceLines   BillingInvoiceLine[]
 
   @@unique([stripeSubscriptionItemId, stripeMode])
   @@index([subscriptionId, status])
@@ -2771,56 +2853,76 @@ model BillingDiscount {
 }
 
 model BillingInvoice {
-  id              String        @id @default(uuid())
-  subscriptionId  String        @map("subscription_id")
-  stripeInvoiceId String?       @unique @map("stripe_invoice_id")
-  amountCents     Int           @map("amount_cents")
-  currency        String        @default("eur")
-  status          InvoiceStatus @default(DRAFT)
-  invoiceDate     DateTime      @map("invoice_date")
-  dueDate         DateTime?     @map("due_date")
-  paidAt          DateTime?     @map("paid_at")
-  invoicePdfUrl   String?       @map("invoice_pdf_url")
-  createdAt       DateTime      @default(now()) @map("created_at")
-  updatedAt       DateTime      @updatedAt @map("updated_at")
+  id              String             @id @default(uuid())
+  subscriptionId  String             @map("subscription_id")
+  stripeInvoiceId String?            @map("stripe_invoice_id")
+  stripeMode      BillingStripeMode? @map("stripe_mode")
+  amountCents     Int                @map("amount_cents")
+  currency        String             @default("EUR") @db.Char(3)
+  status          InvoiceStatus      @default(DRAFT)
+  invoiceDate     DateTime           @map("invoice_date")
+  dueDate         DateTime?          @map("due_date")
+  paidAt          DateTime?          @map("paid_at")
+  invoicePdfUrl   String?            @map("invoice_pdf_url")
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
 
   subscription BillingSubscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   lines        BillingInvoiceLine[]
+  payments     BillingPayment[]
+  refunds      BillingRefund[]
+  creditNotes  BillingCreditNote[]
 
+  @@unique([stripeInvoiceId, stripeMode])
   @@index([subscriptionId])
   @@map("billing_invoices")
 }
 
+/// Immutable invoice line once created (financial snapshot).
 model BillingInvoiceLine {
-  id              String    @id @default(uuid())
-  invoiceId       String    @map("invoice_id")
-  usageSnapshotId String?   @map("usage_snapshot_id")
-  description     String
-  quantity        Int
-  unitAmountCents Int?      @map("unit_amount_cents")
-  subtotalCents   Int       @map("subtotal_cents")
-  taxRateBps      Int?      @map("tax_rate_bps")
-  taxCents        Int?      @map("tax_cents")
-  totalCents      Int       @map("total_cents")
-  periodStart     DateTime? @map("period_start")
-  periodEnd       DateTime? @map("period_end")
-  createdAt       DateTime  @default(now()) @map("created_at")
+  id                   String             @id @default(uuid())
+  invoiceId            String             @map("invoice_id")
+  subscriptionItemId   String?            @map("subscription_item_id")
+  usageSnapshotId      String?            @map("usage_snapshot_id")
+  description          String
+  quantity             Int
+  unitAmountCents      Int?               @map("unit_amount_cents")
+  discountCents        Int?               @default(0) @map("discount_cents")
+  subtotalCents        Int                @map("subtotal_cents")
+  netCents             Int?               @map("net_cents")
+  taxRateBps           Int?               @map("tax_rate_bps")
+  taxCents             Int?               @map("tax_cents")
+  totalCents           Int                @map("total_cents")
+  productSnapshotJson  Json?              @map("product_snapshot_json")
+  priceSnapshotJson    Json?              @map("price_snapshot_json")
+  stripeInvoiceLineId  String?            @map("stripe_invoice_line_id")
+  stripeMode           BillingStripeMode? @map("stripe_mode")
+  periodStart          DateTime?          @map("period_start")
+  periodEnd            DateTime?          @map("period_end")
+  createdAt            DateTime           @default(now()) @map("created_at")
 
-  invoice       BillingInvoice        @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  usageSnapshot BillingUsageSnapshot? @relation(fields: [usageSnapshotId], references: [id], onDelete: SetNull)
+  invoice          BillingInvoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  subscriptionItem BillingSubscriptionItem? @relation(fields: [subscriptionItemId], references: [id], onDelete: SetNull)
+  usageSnapshot    BillingUsageSnapshot?  @relation(fields: [usageSnapshotId], references: [id], onDelete: SetNull)
 
+  @@unique([stripeInvoiceLineId, stripeMode])
   @@index([invoiceId])
+  @@index([subscriptionItemId])
   @@index([usageSnapshotId])
   @@map("billing_invoice_lines")
 }
 
+/// Usage snapshot for a billing period — locked rows are immutable.
 model BillingUsageSnapshot {
   id                    String                        @id @default(uuid())
   organizationId        String                        @map("organization_id")
+  subscriptionItemId    String?                       @map("subscription_item_id")
   periodStart           DateTime                      @map("period_start")
   periodEnd             DateTime                      @map("period_end")
   connectedVehicleCount Int                           @map("connected_vehicle_count")
   billableVehicleCount  Int                           @map("billable_vehicle_count")
+  calculatedQuantity    Int?                          @map("calculated_quantity")
+  calculationBasis      BillingUsageSnapshotBasis?    @map("calculation_basis")
   billableVehicleIds    Json                          @map("billable_vehicle_ids")
   excludedVehicleIds    Json                          @default("[]") @map("excluded_vehicle_ids")
   excludedReasonSummary Json?                         @map("excluded_reason_summary")
@@ -2831,19 +2933,193 @@ model BillingUsageSnapshot {
   subtotalCents         Int?                          @map("subtotal_cents")
   taxCents              Int?                          @map("tax_cents")
   totalCents            Int?                          @map("total_cents")
-  currency              String                        @default("EUR")
+  currency              String                        @default("EUR") @db.Char(3)
   calculationStatus     BillingUsageCalculationStatus @map("calculation_status")
+  sourceHash            String?                       @map("source_hash")
+  sourceRevision        Int?                          @map("source_revision")
+  lockedAt              DateTime?                     @map("locked_at")
+  createdByUserId       String?                       @map("created_by_user_id")
   createdAt             DateTime                      @default(now()) @map("created_at")
 
-  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  priceBook    BillingPriceBook?    @relation(fields: [priceBookId], references: [id], onDelete: SetNull)
-  priceVersion BillingPriceVersion? @relation(fields: [priceVersionId], references: [id], onDelete: SetNull)
-  priceTier    BillingPriceTier?    @relation(fields: [priceTierId], references: [id], onDelete: SetNull)
-  invoiceLines BillingInvoiceLine[]
+  organization     Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscriptionItem BillingSubscriptionItem? @relation(fields: [subscriptionItemId], references: [id], onDelete: SetNull)
+  priceBook        BillingPriceBook?     @relation(fields: [priceBookId], references: [id], onDelete: SetNull)
+  priceVersion     BillingPriceVersion?  @relation(fields: [priceVersionId], references: [id], onDelete: SetNull)
+  priceTier        BillingPriceTier?     @relation(fields: [priceTierId], references: [id], onDelete: SetNull)
+  createdByUser    User?                 @relation("BillingUsageSnapshotsCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  invoiceLines     BillingInvoiceLine[]
 
   @@index([organizationId, periodStart])
+  @@index([subscriptionItemId, periodStart])
   @@index([priceVersionId])
+  @@index([lockedAt])
   @@map("billing_usage_snapshots")
+}
+
+/// Append-only assignment of a vehicle to a subscription item for billing.
+model BillingBillableVehicleAssignment {
+  id                 String                               @id @default(uuid())
+  organizationId     String                               @map("organization_id")
+  vehicleId          String                               @map("vehicle_id")
+  subscriptionItemId String                               @map("subscription_item_id")
+  billableFrom       DateTime                             @map("billable_from")
+  billableUntil      DateTime?                            @map("billable_until")
+  status             BillingBillableVehicleAssignmentStatus @default(ACTIVE)
+  reasonCode         String?                              @map("reason_code")
+  reasonNote         String?                              @map("reason_note")
+  approvedByUserId   String?                              @map("approved_by_user_id")
+  createdAt          DateTime                             @default(now()) @map("created_at")
+
+  organization     Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle          Vehicle               @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  subscriptionItem BillingSubscriptionItem @relation(fields: [subscriptionItemId], references: [id], onDelete: Cascade)
+  approvedByUser   User?                 @relation("BillingVehicleAssignmentsApproved", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, vehicleId, status])
+  @@index([subscriptionItemId, billableFrom])
+  @@index([vehicleId, billableFrom])
+  @@map("billing_billable_vehicle_assignments")
+}
+
+/// Append-only quantity ledger per subscription item.
+model BillingQuantityEvent {
+  id                 String                   @id @default(uuid())
+  organizationId     String                   @map("organization_id")
+  subscriptionItemId String                   @map("subscription_item_id")
+  eventType          BillingQuantityEventType @map("event_type")
+  delta              Int
+  quantityBefore     Int                      @map("quantity_before")
+  quantityAfter      Int                      @map("quantity_after")
+  effectiveAt        DateTime                 @map("effective_at")
+  source             BillingQuantityEventSource
+  actorUserId        String?                  @map("actor_user_id")
+  reason             String?
+  idempotencyKey     String                   @unique @map("idempotency_key")
+  createdAt          DateTime                 @default(now()) @map("created_at")
+
+  organization     Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscriptionItem BillingSubscriptionItem @relation(fields: [subscriptionItemId], references: [id], onDelete: Cascade)
+  actorUser        User?                 @relation("BillingQuantityEventsActed", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, effectiveAt])
+  @@index([subscriptionItemId, effectiveAt])
+  @@index([eventType, effectiveAt])
+  @@map("billing_quantity_events")
+}
+
+/// SaaS payment aggregate for a billing invoice.
+model BillingPayment {
+  id                    String               @id @default(uuid())
+  invoiceId             String               @map("invoice_id")
+  amountCents           Int                  @map("amount_cents")
+  currency              String               @default("EUR") @db.Char(3)
+  status                BillingPaymentStatus @default(PENDING)
+  provider              BillingPaymentProvider @default(STRIPE)
+  stripePaymentIntentId String?              @map("stripe_payment_intent_id")
+  stripeChargeId        String?              @map("stripe_charge_id")
+  stripeMode            BillingStripeMode?   @map("stripe_mode")
+  attemptCount          Int                  @default(0) @map("attempt_count")
+  createdAt             DateTime             @default(now()) @map("created_at")
+  updatedAt             DateTime             @updatedAt @map("updated_at")
+
+  invoice  BillingInvoice          @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  attempts BillingPaymentAttempt[]
+  refunds  BillingRefund[]
+
+  @@unique([stripePaymentIntentId, stripeMode])
+  @@unique([stripeChargeId, stripeMode])
+  @@index([invoiceId, status])
+  @@map("billing_payments")
+}
+
+/// Append-only payment attempt log.
+model BillingPaymentAttempt {
+  id              String                    @id @default(uuid())
+  paymentId       String                    @map("payment_id")
+  attemptNumber   Int                       @map("attempt_number")
+  amountCents     Int                       @map("amount_cents")
+  status          BillingPaymentAttemptStatus @default(PENDING)
+  provider        BillingPaymentProvider    @default(STRIPE)
+  stripeChargeId  String?                   @map("stripe_charge_id")
+  stripeMode      BillingStripeMode?        @map("stripe_mode")
+  errorCode       String?                   @map("error_code")
+  errorMessage    String?                   @map("error_message")
+  attemptedAt     DateTime                  @default(now()) @map("attempted_at")
+  createdAt       DateTime                  @default(now()) @map("created_at")
+
+  payment BillingPayment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@unique([paymentId, attemptNumber])
+  @@unique([stripeChargeId, stripeMode])
+  @@index([paymentId, attemptedAt])
+  @@map("billing_payment_attempts")
+}
+
+/// Append-only refund record.
+model BillingRefund {
+  id             String            @id @default(uuid())
+  paymentId      String            @map("payment_id")
+  invoiceId      String?           @map("invoice_id")
+  amountCents    Int               @map("amount_cents")
+  currency       String            @default("EUR") @db.Char(3)
+  status         BillingRefundStatus @default(PENDING)
+  reason         String?
+  stripeRefundId String?           @map("stripe_refund_id")
+  stripeMode     BillingStripeMode? @map("stripe_mode")
+  createdAt      DateTime          @default(now()) @map("created_at")
+
+  payment     BillingPayment      @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoice     BillingInvoice?     @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  creditNotes BillingCreditNote[]
+
+  @@unique([stripeRefundId, stripeMode])
+  @@index([paymentId, createdAt])
+  @@index([invoiceId])
+  @@map("billing_refunds")
+}
+
+/// Append-only credit note linked to invoice/refund.
+model BillingCreditNote {
+  id                   String                @id @default(uuid())
+  invoiceId            String                @map("invoice_id")
+  refundId             String?               @map("refund_id")
+  amountCents          Int                   @map("amount_cents")
+  currency             String                @default("EUR") @db.Char(3)
+  status               BillingCreditNoteStatus @default(DRAFT)
+  reason               String?
+  stripeCreditNoteId   String?               @map("stripe_credit_note_id")
+  stripeMode           BillingStripeMode?    @map("stripe_mode")
+  createdAt            DateTime              @default(now()) @map("created_at")
+
+  invoice BillingInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  refund  BillingRefund? @relation(fields: [refundId], references: [id], onDelete: SetNull)
+
+  @@unique([stripeCreditNoteId, stripeMode])
+  @@index([invoiceId, status])
+  @@index([refundId])
+  @@map("billing_credit_notes")
+}
+
+/// Billing domain event outbox — payload immutable after insert; delivery state may advance.
+model BillingDomainEventOutbox {
+  id             String                       @id @default(uuid())
+  eventType      String                       @map("event_type")
+  aggregateType  String                       @map("aggregate_type")
+  aggregateId    String                       @map("aggregate_id")
+  payloadVersion Int                          @default(1) @map("payload_version")
+  payload        Json
+  occurredAt     DateTime                     @map("occurred_at")
+  publishedAt    DateTime?                    @map("published_at")
+  status         BillingDomainEventOutboxStatus @default(PENDING)
+  retryCount     Int                          @default(0) @map("retry_count")
+  lastError      String?                      @map("last_error")
+  idempotencyKey String                       @unique @map("idempotency_key")
+  createdAt      DateTime                     @default(now()) @map("created_at")
+
+  @@index([status, occurredAt])
+  @@index([aggregateType, aggregateId])
+  @@index([eventType, occurredAt])
+  @@map("billing_domain_event_outbox")
 }
 
 model BillingPaymentMethod {

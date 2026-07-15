@@ -16,6 +16,7 @@ describe('StripeInvoiceMirrorService characterization', () => {
     id: 'in_mirror_1',
     customer: 'cus_org_a',
     subscription: 'sub_stripe_1',
+    livemode: true,
     status: 'paid',
     total: 4500,
     currency: 'eur',
@@ -28,6 +29,7 @@ describe('StripeInvoiceMirrorService characterization', () => {
     lines: {
       data: [
         {
+          id: 'il_mirror_1',
           description: 'SynqDrive per vehicle',
           quantity: 3,
           amount: 4500,
@@ -77,15 +79,18 @@ describe('StripeInvoiceMirrorService characterization', () => {
     expect(prisma.$transaction).toHaveBeenCalled();
   });
 
-  it('updates existing invoice and replaces line items on duplicate mirror', async () => {
+  it('updates existing invoice header without replacing mirrored line items', async () => {
     prisma.billingInvoice.findUnique.mockResolvedValue({ id: 'local-inv-existing' });
     const txUpdate = jest.fn().mockResolvedValue({});
-    const txDeleteLines = jest.fn().mockResolvedValue({});
-    const txCreateLines = jest.fn().mockResolvedValue({ count: 1 });
+    const txFindLine = jest.fn().mockResolvedValue({ id: 'line-existing' });
+    const txCreateLine = jest.fn().mockResolvedValue({ id: 'line-new' });
     prisma.$transaction.mockImplementation(async (fn: (tx: unknown) => Promise<unknown>) =>
       fn({
         billingInvoice: { update: txUpdate },
-        billingInvoiceLine: { deleteMany: txDeleteLines, createMany: txCreateLines },
+        billingInvoiceLine: {
+          findUnique: txFindLine,
+          create: txCreateLine,
+        },
       }),
     );
 
@@ -96,17 +101,27 @@ describe('StripeInvoiceMirrorService characterization', () => {
     } as Stripe.Invoice);
 
     expect(id).toBe('local-inv-existing');
+    expect(prisma.billingInvoice.findUnique).toHaveBeenCalledWith({
+      where: {
+        stripeInvoiceId_stripeMode: {
+          stripeInvoiceId: 'in_mirror_1',
+          stripeMode: 'LIVE',
+        },
+      },
+      select: { id: true },
+    });
     expect(txUpdate).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'local-inv-existing' },
         data: expect.objectContaining({
           amountCents: 5000,
           status: InvoiceStatus.OPEN,
+          stripeMode: 'LIVE',
         }),
       }),
     );
-    expect(txDeleteLines).toHaveBeenCalledWith({ where: { invoiceId: 'local-inv-existing' } });
-    expect(txCreateLines).toHaveBeenCalled();
+    expect(txFindLine).toHaveBeenCalled();
+    expect(txCreateLine).not.toHaveBeenCalled();
   });
 
   it('returns null when no local subscription mapping exists', async () => {

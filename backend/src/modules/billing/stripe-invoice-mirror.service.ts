@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { BillingSubscription, InvoiceStatus } from '@prisma/client';
+import { BillingStripeMode, BillingSubscription, InvoiceStatus } from '@prisma/client';
 import Stripe from 'stripe';
 import { PrismaService } from '@shared/database/prisma.service';
 import { mapStripeInvoiceStatus } from './stripe-status.mapper';
@@ -9,6 +9,15 @@ export class StripeInvoiceMirrorService {
   private readonly logger = new Logger(StripeInvoiceMirrorService.name);
 
   constructor(private readonly prisma: PrismaService) {}
+
+  private resolveStripeMode(
+    invoice: Stripe.Invoice,
+    subscription: BillingSubscription,
+  ): BillingStripeMode {
+    if (subscription.stripeMode) return subscription.stripeMode;
+    if (invoice.livemode === false) return 'TEST';
+    return 'LIVE';
+  }
 
   async findSubscriptionForStripeInvoice(
     invoice: Stripe.Invoice,
@@ -61,6 +70,7 @@ export class StripeInvoiceMirrorService {
     const periodEnd = invoice.period_end ? new Date(invoice.period_end * 1000) : null;
 
     const lines = (invoice.lines?.data ?? []).map((line) => ({
+      stripeInvoiceLineId: line.id ?? null,
       description: line.description || line.plan?.nickname || 'Subscription',
       quantity: line.quantity ?? 1,
       unitAmountCents: line.price?.unit_amount ?? null,
@@ -68,12 +78,21 @@ export class StripeInvoiceMirrorService {
       taxRateBps: null,
       taxCents: null,
       totalCents: line.amount ?? 0,
-      periodStart,
-      periodEnd,
+      periodStart: line.period?.start
+        ? new Date(line.period.start * 1000)
+        : periodStart,
+      periodEnd: line.period?.end ? new Date(line.period.end * 1000) : periodEnd,
     }));
 
+    const stripeMode = this.resolveStripeMode(invoice, subscription);
+
     const existing = await this.prisma.billingInvoice.findUnique({
-      where: { stripeInvoiceId: invoice.id },
+      where: {
+        stripeInvoiceId_stripeMode: {
+          stripeInvoiceId: invoice.id,
+          stripeMode,
+        },
+      },
       select: { id: true },
     });
 
@@ -89,12 +108,23 @@ export class StripeInvoiceMirrorService {
             dueDate,
             paidAt,
             invoicePdfUrl: invoice.invoice_pdf ?? null,
+            stripeMode,
           },
         });
-        await tx.billingInvoiceLine.deleteMany({ where: { invoiceId: existing.id } });
-        if (lines.length) {
-          await tx.billingInvoiceLine.createMany({
-            data: lines.map((line) => ({
+        for (const line of lines) {
+          if (!line.stripeInvoiceLineId) continue;
+          const lineExists = await tx.billingInvoiceLine.findUnique({
+            where: {
+              stripeInvoiceLineId_stripeMode: {
+                stripeInvoiceLineId: line.stripeInvoiceLineId,
+                stripeMode,
+              },
+            },
+            select: { id: true },
+          });
+          if (lineExists) continue;
+          await tx.billingInvoiceLine.create({
+            data: {
               invoiceId: existing.id,
               description: line.description,
               quantity: line.quantity,
@@ -105,7 +135,9 @@ export class StripeInvoiceMirrorService {
               totalCents: line.totalCents,
               periodStart: line.periodStart,
               periodEnd: line.periodEnd,
-            })),
+              stripeInvoiceLineId: line.stripeInvoiceLineId,
+              stripeMode,
+            },
           });
         }
       });
@@ -117,6 +149,7 @@ export class StripeInvoiceMirrorService {
         data: {
           subscriptionId: subscription.id,
           stripeInvoiceId: invoice.id,
+          stripeMode,
           amountCents,
           currency,
           status,
@@ -139,6 +172,8 @@ export class StripeInvoiceMirrorService {
             totalCents: line.totalCents,
             periodStart: line.periodStart,
             periodEnd: line.periodEnd,
+            stripeInvoiceLineId: line.stripeInvoiceLineId,
+            stripeMode: line.stripeInvoiceLineId ? stripeMode : null,
           })),
         });
       }
