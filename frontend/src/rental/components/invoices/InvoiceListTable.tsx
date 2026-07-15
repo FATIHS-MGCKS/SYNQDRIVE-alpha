@@ -126,6 +126,7 @@ export function InvoiceListTable({ items, loading, onSelect }: InvoiceListTableP
         columns={columns}
         rows={items}
         getRowKey={(item) => item.id}
+        getRowTestId={(item) => `invoice-list-item-${item.invoiceNumber}`}
         loading={loading}
         skeletonRows={8}
         dense

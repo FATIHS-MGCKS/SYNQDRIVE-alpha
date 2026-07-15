@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-frontend-e2e-v49469-2026-07-14',
+    version: '4.9.469',
+    title: 'V4.9.469 — Rechnungs-Frontend: E2E- & Responsive-Abnahme (24 Flows)',
+    summary: [
+      'Playwright-Suite `invoices-flow.spec.ts` + `invoices-responsive.spec.ts` mit stateful Mocks in `invoice-fixtures.ts`.',
+      '24 funktionale Flows: Liste/Filter, Relationen, PDF, E-Mail, Versandhistorie, Zahlungen, Timeline, Edge Cases.',
+      'Responsive auf 320–1280px: Overflow, Themes, A11y, Mobile Cards vs. Desktop-Tabelle.',
+      'Stabile `data-testid`/`aria-label` an Liste, Detail, Dokumente, Zahlungen; Screenshot-Artefakte unter `e2e/artifacts/invoices/`.',
+    ],
+    reason:
+      'Rechnungsübersicht und -detail brauchten eine vollständige E2E- und Responsive-Abnahme im vorhandenen Playwright-Framework.',
+    previousBehavior:
+      'Keine invoice-spezifischen E2E-Tests; manuelle Abnahme der 24 Kernflows und Mobile-Layouts.',
+    details:
+      'Siehe `architecture/INVOICE_FRONTEND_E2E_2026-07-14.md`. Run: `npx playwright test -c e2e/playwright.config.ts e2e/invoices-flow.spec.ts e2e/invoices-responsive.spec.ts`.',
+    affectsArchitecture: true,
+    module: 'Invoices',
+    createdAt: '2026-07-15T00:25:00.000Z',
+  },
+  {
     id: 'invoice-process-integration-tests-v49468-2026-07-14',
     version: '4.9.468',
     title: 'V4.9.468 — Backend-Integrationstestmatrix Rechnungsprozess (51 Szenarien)',

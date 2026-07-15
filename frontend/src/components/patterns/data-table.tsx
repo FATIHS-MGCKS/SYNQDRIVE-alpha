@@ -39,6 +39,8 @@ export interface DataTableProps<T> {
   className?: string;
   /** Optional per-row class (e.g. overdue highlight). */
   getRowClassName?: (row: T, index: number) => string | undefined;
+  /** Optional stable Playwright selector per row. */
+  getRowTestId?: (row: T, index: number) => string | undefined;
   /** Optional per-row ref (e.g. scroll-into-view on deep link). */
   rowRef?: (row: T, el: HTMLTableRowElement | null) => void;
 }
@@ -63,6 +65,7 @@ export function DataTable<T>({
   stickyHeader,
   className,
   getRowClassName,
+  getRowTestId,
   rowRef,
 }: DataTableProps<T>) {
   const cellPad = dense ? 'px-3 py-2' : 'px-3 py-2.5';
@@ -117,6 +120,7 @@ export function DataTable<T>({
               <tr
                 key={getRowKey(row, index)}
                 ref={rowRef ? (el) => rowRef(row, el) : undefined}
+                data-testid={getRowTestId?.(row, index)}
                 className={cn(
                   'sq-table-row border-b border-border/60 last:border-0',
                   onRowClick && 'cursor-pointer',

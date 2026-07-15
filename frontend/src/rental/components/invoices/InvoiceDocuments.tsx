@@ -314,7 +314,7 @@ export function InvoiceDocuments({
   const previousVersions = panel ? olderVersions(panel) : [];
 
   return (
-    <div className={`${card} p-5 space-y-4`}>
+    <div className={`${card} p-5 space-y-4`} data-testid="invoice-documents-section">
       <h3 className={`text-xs font-bold ${tp} uppercase tracking-wider`}>Dokumente</h3>
 
       {loading && !panel ? (

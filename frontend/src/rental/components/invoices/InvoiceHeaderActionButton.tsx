@@ -30,6 +30,7 @@ export function HeaderActionButton({
         type="button"
         disabled={disabled || loading || !onClick}
         onClick={onClick}
+        aria-label={label}
         aria-disabled={disabled || loading}
         className={cn(
           'sq-press inline-flex min-h-9 max-w-full items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold transition-colors',

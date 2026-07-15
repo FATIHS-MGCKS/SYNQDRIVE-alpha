@@ -131,7 +131,7 @@ export function InvoiceDetail({
   }, [detail.document.hasPdf, documents]);
 
   return (
-    <div className="max-w-3xl mx-auto space-y-3 md:space-y-4">
+    <div className="max-w-3xl mx-auto space-y-3 md:space-y-4" data-testid="invoice-detail">
       <button type="button" onClick={onBack} className={`flex items-center gap-1 text-xs font-medium ${ts}`}>
         <Icon name="chevron-left" className="w-4 h-4" /> Zurück
       </button>

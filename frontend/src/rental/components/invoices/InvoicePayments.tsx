@@ -253,6 +253,7 @@ export function InvoicePayments({
           type="button"
           disabled={!canRecord}
           title={!canRecord && recordGate.reason ? recordGate.reason : undefined}
+          aria-label={t('invoicePayment.action.record')}
           onClick={onOpenRecordDialog}
           className={canRecord ? INVOICE_ACTION_BTN : INVOICE_DISABLED_BTN}
         >

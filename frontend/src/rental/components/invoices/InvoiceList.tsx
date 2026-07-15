@@ -44,7 +44,7 @@ export function InvoiceList({
   onClearFilters,
 }: InvoiceListProps) {
   return (
-    <div className="surface-premium overflow-hidden rounded-2xl shadow-[var(--shadow-1)]">
+    <div className="surface-premium overflow-hidden rounded-2xl shadow-[var(--shadow-1)]" data-testid="invoice-list">
       {error && !loading ? (
         <ErrorState
           title="Rechnungen konnten nicht geladen werden"

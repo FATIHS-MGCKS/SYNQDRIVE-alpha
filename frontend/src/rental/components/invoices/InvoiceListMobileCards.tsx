@@ -31,6 +31,7 @@ export function InvoiceListMobileCards({ items, onSelect, className }: InvoiceLi
           <button
             key={item.id}
             type="button"
+            data-testid={`invoice-list-item-${item.invoiceNumber}`}
             onClick={() => onSelect(item)}
             className={cn(
               'surface-premium w-full rounded-xl p-3.5 text-left shadow-[var(--shadow-1)] transition-colors',
