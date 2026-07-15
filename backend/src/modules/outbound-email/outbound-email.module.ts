@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { DocumentsModule } from '@modules/documents/documents.module';
 import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { OrgEmailController } from './org-email.controller';
@@ -17,7 +17,7 @@ import { ResendEmailProvider } from './providers/resend-email.provider';
 import { EmailProviderRegistry } from './providers/email-provider.registry';
 
 @Module({
-  imports: [DocumentsModule, ActivityLogModule],
+  imports: [forwardRef(() => DocumentsModule), ActivityLogModule],
   controllers: [OrgEmailController, PlatformEmailController, BookingDocumentsEmailController, ResendWebhookController],
   providers: [
     PlatformEmailSettingsService,

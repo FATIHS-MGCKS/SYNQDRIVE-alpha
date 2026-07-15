@@ -1,9 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, forwardRef } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 import { Cron } from '@nestjs/schedule';
 import { ConfigType } from '@nestjs/config';
-import { Inject } from '@nestjs/common';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import taskAutomationOutboxConfig from '@config/task-automation-outbox.config';
 import { TaskAutomationOutboxRepository } from './task-automation-outbox.repository';
@@ -22,6 +21,7 @@ export class TaskAutomationOutboxSchedulerService {
     private readonly queue: Queue,
     @Inject(taskAutomationOutboxConfig.KEY)
     private readonly config: ConfigType<typeof taskAutomationOutboxConfig>,
+    @Inject(forwardRef(() => TaskAutomationOutboxEnqueueService))
     private readonly enqueueService: TaskAutomationOutboxEnqueueService,
     private readonly outboxRepo: TaskAutomationOutboxRepository,
     private readonly observability: TaskAutomationOutboxObservabilityService,
