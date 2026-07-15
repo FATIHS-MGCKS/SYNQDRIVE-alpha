@@ -109,10 +109,12 @@ describe('SubscriptionLifecycleService', () => {
   };
 
   const audit = { log: jest.fn(async (entry: any) => auditLogs.push(entry)) };
-  const events = {
-    publish: jest.fn(async (event: any) => {
-      publishedEvents.push(event);
-    }),
+  const outbox = {
+    enqueue: jest.fn(async (_tx: any, input: any) => ({
+      id: `outbox-${publishedEvents.length + 1}`,
+      ...input,
+      deliveries: [],
+    })),
   };
   const quantityLedger = {
     recordSubscriptionActivated: jest.fn(async () => ({ created: true })),
@@ -156,7 +158,7 @@ describe('SubscriptionLifecycleService', () => {
     service = new SubscriptionLifecycleService(
       prisma as never,
       audit as never,
-      events as never,
+      outbox as never,
       quantityLedger as never,
     );
   });
@@ -282,7 +284,7 @@ describe('SubscriptionLifecycleService', () => {
     const history = await service.getContractHistory(orgId);
     expect(history.items.length).toBeGreaterThan(0);
     expect(history.auditEntries.length).toBeGreaterThan(0);
-    expect(publishedEvents.some((event) => event.type.includes('status_changed'))).toBe(true);
+    expect(outbox.enqueue).toHaveBeenCalled();
   });
 
   it('rejects unknown subscriptions', async () => {

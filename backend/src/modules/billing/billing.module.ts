@@ -35,6 +35,9 @@ import { BillingSubscriptionAdminService } from './billing-subscription-admin.se
 import { BillingCommandService } from './billing-command.service';
 import { BillingCommandOrchestratorService } from './billing-command-orchestrator.service';
 import { BillingDomainEventOutboxService } from './billing-domain-event-outbox.service';
+import { BillingDomainEventOutboxRepository } from './billing-domain-event-outbox.repository';
+import { BillingDomainEventOutboxProcessorService } from './billing-domain-event-outbox.processor.service';
+import { BillingDomainEventOutboxWorkerService } from './billing-domain-event-outbox.worker.service';
 import { BillingEntitlementResolver } from './billing-entitlement-resolver.service';
 import { StripeCatalogMappingService } from './stripe-catalog-mapping.service';
 import { StripeCatalogMappingController } from './stripe-catalog-mapping.controller';
@@ -82,6 +85,9 @@ import { StripeWebhookProcessorService } from './stripe-webhook.processor';
     BillingCommandService,
     BillingCommandOrchestratorService,
     BillingDomainEventOutboxService,
+    BillingDomainEventOutboxRepository,
+    BillingDomainEventOutboxProcessorService,
+    BillingDomainEventOutboxWorkerService,
     BillingEntitlementResolver,
     StripeCatalogMappingService,
     StripeCatalogSyncService,
@@ -126,6 +132,9 @@ import { StripeWebhookProcessorService } from './stripe-webhook.processor';
     BillingCommandService,
     BillingCommandOrchestratorService,
     BillingDomainEventOutboxService,
+    BillingDomainEventOutboxRepository,
+    BillingDomainEventOutboxProcessorService,
+    BillingDomainEventOutboxWorkerService,
     BillingEntitlementResolver,
     StripeCatalogMappingService,
     StripeCatalogSyncService,

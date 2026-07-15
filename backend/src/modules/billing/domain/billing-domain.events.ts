@@ -4,6 +4,19 @@
  */
 
 export const BillingDomainEventType = {
+  SUBSCRIPTION_CREATED: 'billing.subscription.created',
+  SUBSCRIPTION_ACTIVATED: 'billing.subscription.activated',
+  SUBSCRIPTION_CHANGED: 'billing.subscription.changed',
+  SUBSCRIPTION_CANCEL_SCHEDULED: 'billing.subscription.cancel_scheduled',
+  SUBSCRIPTION_CANCELLED: 'billing.subscription.cancelled',
+  TRIAL_ENDING: 'billing.subscription.trial_ending',
+  PAYMENT_METHOD_MISSING: 'billing.payment_method.missing',
+  INVOICE_FINALIZED: 'billing.invoice.finalized',
+  PAYMENT_SUCCEEDED: 'billing.payment.succeeded',
+  PAYMENT_FAILED: 'billing.payment.failed',
+  INVOICE_OVERDUE: 'billing.invoice.overdue',
+  REFUND_CREATED: 'billing.refund.created',
+  CREDIT_NOTE_CREATED: 'billing.credit_note.created',
   SUBSCRIPTION_SYNCED: 'billing.subscription.synced',
   SUBSCRIPTION_STATUS_CHANGED: 'billing.subscription.status_changed',
   INVOICE_MIRRORED: 'billing.invoice.mirrored',

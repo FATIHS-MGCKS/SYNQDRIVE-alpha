@@ -75,6 +75,7 @@ describe('StripePaymentMethodService', () => {
           if (where.organizationId && row.organizationId !== where.organizationId) return false;
           if (where.stripeCustomerId?.not === null && !row.stripeCustomerId) return false;
           if (where.stripeSubscriptionId?.not === null && !row.stripeSubscriptionId) return false;
+          if (where.status?.in && !where.status.in.includes(row.status)) return false;
           return true;
         }) ?? null,
       ),
@@ -98,8 +99,8 @@ describe('StripePaymentMethodService', () => {
     resolvePortalReturnUrl: jest.fn((url?: string) => url ?? 'http://localhost:5173/rental/settings'),
   } as unknown as StripeBillingService;
 
-  const events = {
-    publishPaymentMethodSynced: jest.fn(async () => undefined),
+  const outbox = {
+    enqueue: jest.fn(async () => ({ id: 'outbox-1', deliveries: [] })),
   };
 
   let stripeMock: any;
@@ -217,7 +218,7 @@ describe('StripePaymentMethodService', () => {
     };
 
     jest.spyOn(stripeClientUtil, 'getStripeClient').mockReturnValue(stripeMock);
-    service = new StripePaymentMethodService(prisma, configService as never, stripeBilling, events as never);
+    service = new StripePaymentMethodService(prisma, configService as never, stripeBilling, outbox as never);
   });
 
   afterEach(() => {
@@ -239,7 +240,7 @@ describe('StripePaymentMethodService', () => {
     expect(methods.find((row) => row.stripePaymentMethodId === 'pm_sepa_1')?.sepaMandateStatus).toBe(
       'active',
     );
-    expect(events.publishPaymentMethodSynced).toHaveBeenCalled();
+    expect(outbox.enqueue).toHaveBeenCalled();
   });
 
   it('creates setup intent for card and sepa with organization metadata', async () => {

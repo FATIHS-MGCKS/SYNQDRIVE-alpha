@@ -193,7 +193,7 @@ describe('BillingPaymentLedgerService', () => {
     expect(payment.amountCents).toBe(5355);
     expect(payment.remainingAmountCents).toBe(5355);
     expect(outbox).toHaveLength(1);
-    expect(outbox[0].eventType).toBe(BillingDomainEventType.PAYMENT_RECORDED);
+    expect(outbox[0].eventType).toBe(BillingDomainEventType.PAYMENT_SUCCEEDED);
   });
 
   it('appends multiple failed attempts without deleting prior rows', async () => {

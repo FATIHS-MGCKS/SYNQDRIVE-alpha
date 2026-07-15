@@ -1,0 +1,188 @@
+import { Injectable } from '@nestjs/common';
+import {
+  BillingDomainEventOutboxDeliveryStatus,
+  BillingDomainEventOutboxStatus,
+  Prisma,
+} from '@prisma/client';
+import { PrismaService } from '@shared/database/prisma.service';
+import {
+  BILLING_OUTBOX_BATCH_SIZE,
+  BILLING_OUTBOX_DEFAULT_CONSUMER_ID,
+  BILLING_OUTBOX_MAX_RETRIES,
+  computeBillingOutboxNextRetryAt,
+  truncateBillingOutboxError,
+} from './domain/billing-outbox';
+
+export interface ClaimedBillingOutboxDelivery {
+  id: string;
+  consumerId: string;
+  outboxEventId: string;
+  retryCount: number;
+  outboxEvent: {
+    id: string;
+    eventType: string;
+    aggregateType: string;
+    aggregateId: string;
+    organizationId: string | null;
+    payload: Prisma.JsonValue;
+    payloadVersion: number;
+    occurredAt: Date;
+    status: BillingDomainEventOutboxStatus;
+    idempotencyKey: string;
+  };
+}
+
+@Injectable()
+export class BillingDomainEventOutboxRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async claimPendingDeliveries(
+    limit = BILLING_OUTBOX_BATCH_SIZE,
+    workerId: string,
+    consumerId = BILLING_OUTBOX_DEFAULT_CONSUMER_ID,
+    now = new Date(),
+  ): Promise<ClaimedBillingOutboxDelivery[]> {
+    const candidates = await this.prisma.billingDomainEventOutboxDelivery.findMany({
+      where: {
+        consumerId,
+        status: BillingDomainEventOutboxDeliveryStatus.PENDING,
+        OR: [{ nextRetryAt: null }, { nextRetryAt: { lte: now } }],
+        outboxEvent: {
+          status: {
+            in: [
+              BillingDomainEventOutboxStatus.PENDING,
+              BillingDomainEventOutboxStatus.FAILED,
+            ],
+          },
+        },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: limit,
+      include: { outboxEvent: true },
+    });
+
+    const claimed: ClaimedBillingOutboxDelivery[] = [];
+    for (const candidate of candidates) {
+      const result = await this.prisma.billingDomainEventOutboxDelivery.updateMany({
+        where: {
+          id: candidate.id,
+          status: BillingDomainEventOutboxDeliveryStatus.PENDING,
+        },
+        data: {
+          status: BillingDomainEventOutboxDeliveryStatus.PROCESSING,
+          lockOwner: workerId,
+          lockedAt: now,
+        },
+      });
+      if (result.count > 0) {
+        claimed.push(candidate as ClaimedBillingOutboxDelivery);
+      }
+    }
+    return claimed;
+  }
+
+  async markDeliveryDelivered(deliveryId: string, outboxEventId: string) {
+    const now = new Date();
+    return this.prisma.$transaction(async (tx) => {
+      await tx.billingDomainEventOutboxDelivery.update({
+        where: { id: deliveryId },
+        data: {
+          status: BillingDomainEventOutboxDeliveryStatus.DELIVERED,
+          deliveredAt: now,
+          lockOwner: null,
+          lockedAt: null,
+          lastError: null,
+        },
+      });
+
+      const remaining = await tx.billingDomainEventOutboxDelivery.count({
+        where: {
+          outboxEventId,
+          status: { not: BillingDomainEventOutboxDeliveryStatus.DELIVERED },
+        },
+      });
+
+      if (remaining === 0) {
+        await tx.billingDomainEventOutbox.update({
+          where: { id: outboxEventId },
+          data: {
+            status: BillingDomainEventOutboxStatus.PUBLISHED,
+            publishedAt: now,
+            lastError: null,
+            nextRetryAt: null,
+            lockOwner: null,
+            lockedAt: null,
+          },
+        });
+      }
+
+      return remaining === 0;
+    });
+  }
+
+  async markDeliveryRetry(deliveryId: string, outboxEventId: string, error: string) {
+    const delivery = await this.prisma.billingDomainEventOutboxDelivery.findUnique({
+      where: { id: deliveryId },
+    });
+    if (!delivery) {
+      return { outcome: 'missing' as const };
+    }
+
+    const nextRetryCount = (delivery.retryCount ?? 0) + 1;
+    const safeError = truncateBillingOutboxError(error);
+
+    if (nextRetryCount >= BILLING_OUTBOX_MAX_RETRIES) {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.billingDomainEventOutboxDelivery.update({
+          where: { id: deliveryId },
+          data: {
+            status: BillingDomainEventOutboxDeliveryStatus.DEAD_LETTER,
+            retryCount: nextRetryCount,
+            lastError: safeError,
+            lockOwner: null,
+            lockedAt: null,
+          },
+        });
+        await tx.billingDomainEventOutbox.update({
+          where: { id: outboxEventId },
+          data: {
+            status: BillingDomainEventOutboxStatus.DEAD_LETTER,
+            retryCount: nextRetryCount,
+            lastError: safeError,
+            lockOwner: null,
+            lockedAt: null,
+          },
+        });
+      });
+      return { outcome: 'dead_letter' as const, retryCount: nextRetryCount };
+    }
+
+    const nextRetryAt = computeBillingOutboxNextRetryAt(nextRetryCount);
+    await this.prisma.$transaction(async (tx) => {
+      await tx.billingDomainEventOutboxDelivery.update({
+        where: { id: deliveryId },
+        data: {
+          status: BillingDomainEventOutboxDeliveryStatus.PENDING,
+          retryCount: nextRetryCount,
+          nextRetryAt,
+          lastError: safeError,
+          lockOwner: null,
+          lockedAt: null,
+        },
+      });
+      await tx.billingDomainEventOutbox.update({
+        where: { id: outboxEventId },
+        data: {
+          status: BillingDomainEventOutboxStatus.FAILED,
+          retryCount: nextRetryCount,
+          nextRetryAt,
+          lastError: safeError,
+          lockOwner: null,
+          lockedAt: null,
+        },
+      });
+    });
+
+    return { outcome: 'retry' as const, retryCount: nextRetryCount, nextRetryAt };
+  }
+}

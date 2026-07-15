@@ -6,11 +6,11 @@ import { getStripeClient } from './stripe-client.util';
 import { StripeBillingService } from './stripe-billing.service';
 import { StripeInvoiceMirrorService } from './stripe-invoice-mirror.service';
 import { StripeBillingAdapter } from './adapters/stripe-billing.adapter';
-import { BillingEventPublisher } from './events/billing-event.publisher';
 import { StripePaymentMethodService } from './stripe-payment-method.service';
 import { StripePaymentLedgerService } from './stripe-payment-ledger.service';
 import { BillingDomainEventOutboxService } from './billing-domain-event-outbox.service';
 import { BillingDomainEventType } from './domain/billing-domain.events';
+import { buildBillingOutboxIdempotencyKey } from './domain/billing-outbox';
 import {
   requiresOrganizationMapping,
   StripeWebhookDispatchResult,
@@ -32,7 +32,6 @@ export class StripeWebhookDispatcherService {
     private readonly stripeBilling: StripeBillingService,
     private readonly stripeAdapter: StripeBillingAdapter,
     private readonly invoiceMirror: StripeInvoiceMirrorService,
-    private readonly billingEvents: BillingEventPublisher,
     private readonly paymentMethods: StripePaymentMethodService,
     private readonly paymentLedger: StripePaymentLedgerService,
     private readonly outbox: BillingDomainEventOutboxService,
@@ -81,6 +80,12 @@ export class StripeWebhookDispatcherService {
       case 'setup_intent.setup_failed':
         await this.paymentMethods.handleSetupIntentFailed(event.data.object as Stripe.SetupIntent);
         return { outcome: 'processed', organizationId };
+      case 'customer.subscription.trial_will_end':
+        return this.handleTrialWillEndEvent(
+          event.data.object as Stripe.Subscription,
+          organizationId!,
+          event,
+        );
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
       case 'customer.subscription.deleted':
@@ -163,17 +168,13 @@ export class StripeWebhookDispatcherService {
         eventType: BillingDomainEventType.WEBHOOK_UNRESOLVED,
         aggregateType: 'StripeWebhookEvent',
         aggregateId: event.id,
-        idempotencyKey: `stripe-webhook:${event.id}:unresolved`,
+        idempotencyKey: buildBillingOutboxIdempotencyKey([
+          'stripe-webhook',
+          event.id,
+          'unresolved',
+        ]),
         payload: safePayload as unknown as Record<string, unknown>,
       });
-    });
-
-    await this.billingEvents.publish({
-      type: BillingDomainEventType.WEBHOOK_UNRESOLVED,
-      organizationId: null,
-      occurredAt: new Date(),
-      payload: safePayload as unknown as Record<string, unknown>,
-      correlationId: event.id,
     });
   }
 
@@ -189,25 +190,64 @@ export class StripeWebhookDispatcherService {
     await this.stripeAdapter.applyStripeSubscription(organizationId, subscription);
     await this.stripeAdapter.syncPaymentMethods(organizationId);
 
+    const subscriptionEventType =
+      event.type === 'customer.subscription.created'
+        ? BillingDomainEventType.SUBSCRIPTION_CREATED
+        : event.type === 'customer.subscription.deleted'
+          ? BillingDomainEventType.SUBSCRIPTION_CANCELLED
+          : subscription.cancel_at_period_end
+            ? BillingDomainEventType.SUBSCRIPTION_CANCEL_SCHEDULED
+            : BillingDomainEventType.SUBSCRIPTION_CHANGED;
+
     await this.prisma.$transaction(async (tx) => {
       await this.outbox.enqueue(tx, {
-        eventType: BillingDomainEventType.SUBSCRIPTION_SYNCED,
+        eventType: subscriptionEventType,
         aggregateType: 'BillingSubscription',
         aggregateId: subscription.id,
-        idempotencyKey: `stripe-webhook:${event.id}:subscription:${subscription.id}`,
+        organizationId,
+        idempotencyKey: buildBillingOutboxIdempotencyKey([
+          'stripe-webhook',
+          event.id,
+          'subscription',
+          subscription.id,
+        ]),
         payload: {
           organizationId,
           stripeSubscriptionId: subscription.id,
           stripeStatus: subscription.status,
+          source: event.type,
         },
       });
     });
 
-    await this.billingEvents.publishSubscriptionSynced(organizationId, {
-      stripeSubscriptionId: subscription.id,
-      stripeStatus: subscription.status,
-      source: event.type,
-    }, event.id);
+    return { outcome: 'processed', organizationId };
+  }
+
+  private async handleTrialWillEndEvent(
+    subscription: Stripe.Subscription,
+    organizationId: string,
+    event: Stripe.Event,
+  ): Promise<StripeWebhookDispatchResult> {
+    await this.prisma.$transaction(async (tx) => {
+      await this.outbox.enqueue(tx, {
+        eventType: BillingDomainEventType.TRIAL_ENDING,
+        aggregateType: 'BillingSubscription',
+        aggregateId: subscription.id,
+        organizationId,
+        idempotencyKey: buildBillingOutboxIdempotencyKey([
+          'stripe-webhook',
+          event.id,
+          'trial-ending',
+          subscription.id,
+        ]),
+        payload: {
+          organizationId,
+          stripeSubscriptionId: subscription.id,
+          trialEnd: subscription.trial_end ?? null,
+          source: event.type,
+        },
+      });
+    });
 
     return { outcome: 'processed', organizationId };
   }
@@ -228,38 +268,63 @@ export class StripeWebhookDispatcherService {
       if (stripe) {
         const sub = await stripe.subscriptions.retrieve(subscriptionId);
         await this.stripeAdapter.applyStripeSubscription(organizationId, sub);
-        await this.billingEvents.publishSubscriptionSynced(organizationId, {
-          stripeSubscriptionId: sub.id,
-          stripeStatus: sub.status,
-          source: event.type,
-        }, event.id);
       }
     }
 
     await this.stripeAdapter.syncPaymentMethods(organizationId);
 
     if (localInvoiceId) {
+      const invoiceEventType =
+        event.type === 'invoice.finalized'
+          ? BillingDomainEventType.INVOICE_FINALIZED
+          : event.type === 'invoice.payment_failed'
+            ? BillingDomainEventType.PAYMENT_FAILED
+            : event.type === 'invoice.marked_uncollectible'
+              ? BillingDomainEventType.INVOICE_OVERDUE
+              : BillingDomainEventType.INVOICE_MIRRORED;
+
       await this.prisma.$transaction(async (tx) => {
         await this.outbox.enqueue(tx, {
-          eventType: BillingDomainEventType.INVOICE_MIRRORED,
+          eventType: invoiceEventType,
           aggregateType: 'BillingInvoice',
           aggregateId: localInvoiceId,
-          idempotencyKey: `stripe-webhook:${event.id}:invoice:${invoice.id}`,
+          organizationId,
+          idempotencyKey: buildBillingOutboxIdempotencyKey([
+            'stripe-webhook',
+            event.id,
+            'invoice',
+            invoice.id ?? localInvoiceId,
+          ]),
           payload: {
             organizationId,
             invoiceId: localInvoiceId,
             stripeInvoiceId: invoice.id,
             status: invoice.status,
+            source: event.type,
           },
         });
-      });
 
-      await this.billingEvents.publishInvoiceMirrored(organizationId, {
-        invoiceId: localInvoiceId,
-        stripeInvoiceId: invoice.id,
-        status: invoice.status,
-        source: event.type,
-      }, event.id);
+        if (event.type === 'invoice.payment_failed') {
+          await this.outbox.enqueue(tx, {
+            eventType: BillingDomainEventType.INVOICE_OVERDUE,
+            aggregateType: 'BillingInvoice',
+            aggregateId: localInvoiceId,
+            organizationId,
+            idempotencyKey: buildBillingOutboxIdempotencyKey([
+              'stripe-webhook',
+              event.id,
+              'invoice-overdue',
+              invoice.id ?? localInvoiceId,
+            ]),
+            payload: {
+              organizationId,
+              invoiceId: localInvoiceId,
+              stripeInvoiceId: invoice.id,
+              source: event.type,
+            },
+          });
+        }
+      });
     }
 
     return { outcome: 'processed', organizationId };

@@ -17,6 +17,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { BillingAuditService } from './billing-audit.service';
 import { BillingDomainEventOutboxService } from './billing-domain-event-outbox.service';
 import { BillingDomainEventType } from './domain/billing-domain.events';
+import { buildBillingOutboxIdempotencyKey } from './domain/billing-outbox';
 import {
   BillingPaymentLedgerErrorCode,
   computeRefundedTotal,
@@ -202,14 +203,25 @@ export class BillingPaymentLedgerService {
         });
       }
 
+      const paymentEventType =
+        provider === BillingPaymentProvider.MANUAL
+          ? BillingDomainEventType.MANUAL_PAYMENT_RECORDED
+          : input.status === BillingPaymentStatus.SUCCEEDED
+            ? BillingDomainEventType.PAYMENT_SUCCEEDED
+            : input.status === BillingPaymentStatus.FAILED
+              ? BillingDomainEventType.PAYMENT_FAILED
+              : BillingDomainEventType.PAYMENT_RECORDED;
+
       await this.outbox.enqueue(tx, {
-        eventType:
-          provider === BillingPaymentProvider.MANUAL
-            ? BillingDomainEventType.MANUAL_PAYMENT_RECORDED
-            : BillingDomainEventType.PAYMENT_RECORDED,
+        eventType: paymentEventType,
         aggregateType: 'BillingPayment',
         aggregateId: payment.id,
-        idempotencyKey: `${input.idempotencyKey}:event`,
+        organizationId: input.organizationId,
+        idempotencyKey: buildBillingOutboxIdempotencyKey([
+          input.idempotencyKey,
+          'event',
+          paymentEventType,
+        ]),
         payload: {
           organizationId: input.organizationId,
           paymentId: payment.id,
@@ -313,10 +325,15 @@ export class BillingPaymentLedgerService {
       });
 
       await this.outbox.enqueue(tx, {
-        eventType: BillingDomainEventType.REFUND_RECORDED,
+        eventType: BillingDomainEventType.REFUND_CREATED,
         aggregateType: 'BillingRefund',
         aggregateId: row.id,
-        idempotencyKey: `${input.idempotencyKey}:event`,
+        organizationId: input.organizationId,
+        idempotencyKey: buildBillingOutboxIdempotencyKey([
+          input.idempotencyKey,
+          'event',
+          BillingDomainEventType.REFUND_CREATED,
+        ]),
         payload: {
           organizationId: input.organizationId,
           refundId: row.id,
@@ -375,10 +392,15 @@ export class BillingPaymentLedgerService {
       });
 
       await this.outbox.enqueue(tx, {
-        eventType: BillingDomainEventType.CREDIT_NOTE_RECORDED,
+        eventType: BillingDomainEventType.CREDIT_NOTE_CREATED,
         aggregateType: 'BillingCreditNote',
         aggregateId: row.id,
-        idempotencyKey: `${input.idempotencyKey}:event`,
+        organizationId: input.organizationId,
+        idempotencyKey: buildBillingOutboxIdempotencyKey([
+          input.idempotencyKey,
+          'event',
+          BillingDomainEventType.CREDIT_NOTE_CREATED,
+        ]),
         payload: {
           organizationId: input.organizationId,
           creditNoteId: row.id,

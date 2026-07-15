@@ -31,12 +31,6 @@ describe('StripeWebhookDispatcherService matrix', () => {
     mirrorStripeInvoice: jest.fn().mockResolvedValue('inv-local-1'),
   };
 
-  const billingEvents = {
-    publishSubscriptionSynced: jest.fn(),
-    publishInvoiceMirrored: jest.fn(),
-    publish: jest.fn(),
-  };
-
   const paymentMethods = {
     syncPaymentMethods: jest.fn(),
     handlePaymentMethodDetached: jest.fn(),
@@ -70,7 +64,6 @@ describe('StripeWebhookDispatcherService matrix', () => {
       stripeBilling as never,
       stripeAdapter as never,
       invoiceMirror as never,
-      billingEvents as never,
       paymentMethods as never,
       paymentLedger as never,
       outbox as never,
@@ -234,7 +227,6 @@ describe('StripeWebhookDispatcherService matrix', () => {
 
     expect(result.outcome).toBe('unresolved_mapping');
     expect(outbox.enqueue).toHaveBeenCalled();
-    expect(billingEvents.publish).toHaveBeenCalled();
     expect(stripeAdapter.applyStripeSubscription).not.toHaveBeenCalled();
   });
 

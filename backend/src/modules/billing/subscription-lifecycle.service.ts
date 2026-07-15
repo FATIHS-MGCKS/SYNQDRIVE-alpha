@@ -14,6 +14,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BillingAuditService } from './billing-audit.service';
+import { BillingDomainEventOutboxService } from './billing-domain-event-outbox.service';
 import { BillingQuantityService } from './billing-quantity.service';
 import { SubscriptionStatus } from './domain/billing-domain.types';
 import { BillingDomainEventType } from './domain/billing-domain.events';
@@ -26,7 +27,10 @@ import {
   SubscriptionLifecycleTransitionError,
 } from './domain/subscription-lifecycle';
 import { mapSubscriptionDomainToPrismaBillingStatus } from './domain/mappers/stripe-subscription-status.mapper';
-import { BillingEventPublisher } from './events/billing-event.publisher';
+import {
+  buildBillingOutboxIdempotencyKey,
+  resolveSubscriptionLifecycleOutboxEvent,
+} from './domain/billing-outbox';
 import { buildQuantityIdempotencyKey } from './domain/billing-quantity-ledger';
 
 type BaseProductKey = 'RENTAL' | 'FLEET';
@@ -78,7 +82,7 @@ export class SubscriptionLifecycleService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: BillingAuditService,
-    private readonly events: BillingEventPublisher,
+    private readonly outbox: BillingDomainEventOutboxService,
     private readonly quantityLedger: BillingQuantityService,
   ) {}
 
@@ -106,14 +110,34 @@ export class SubscriptionLifecycleService {
       return this.loadContract(existing.id);
     }
 
-    const subscription = await this.prisma.billingSubscription.create({
-      data: {
+    const subscription = await this.prisma.$transaction(async (tx) => {
+      const row = await tx.billingSubscription.create({
+        data: {
+          organizationId: input.organizationId,
+          status: BillingStatus.TRIALING,
+          currency: input.currency ?? 'EUR',
+          createdByUserId: input.actorUserId ?? null,
+          updatedByUserId: input.actorUserId ?? null,
+        },
+      });
+
+      await this.outbox.enqueue(tx, {
+        eventType: BillingDomainEventType.SUBSCRIPTION_CREATED,
+        aggregateType: 'BillingSubscription',
+        aggregateId: row.id,
         organizationId: input.organizationId,
-        status: BillingStatus.TRIALING,
-        currency: input.currency ?? 'EUR',
-        createdByUserId: input.actorUserId ?? null,
-        updatedByUserId: input.actorUserId ?? null,
-      },
+        idempotencyKey: buildBillingOutboxIdempotencyKey([
+          'subscription-created',
+          row.id,
+        ]),
+        payload: {
+          organizationId: input.organizationId,
+          subscriptionId: row.id,
+          status: SubscriptionStatus.DRAFT,
+        },
+      });
+
+      return row;
     });
 
     await this.audit.log({
@@ -123,12 +147,6 @@ export class SubscriptionLifecycleService {
       entityType: 'BillingSubscription',
       entityId: subscription.id,
       after: subscription,
-    });
-
-    await this.publishStatusChange(input.organizationId, subscription.id, {
-      fromStatus: null,
-      toStatus: SubscriptionStatus.DRAFT,
-      actorUserId: input.actorUserId,
     });
 
     return this.loadContract(subscription.id);
@@ -723,7 +741,35 @@ export class SubscriptionLifecycleService {
         });
       }
 
-      return tx.billingSubscription.findUniqueOrThrow({ where: { id: subscription.id } });
+      const row = await tx.billingSubscription.findUniqueOrThrow({ where: { id: subscription.id } });
+
+      const eventType = resolveSubscriptionLifecycleOutboxEvent({
+        fromStatus,
+        toStatus: params.toStatus,
+      });
+      if (eventType) {
+        await this.outbox.enqueue(tx, {
+          eventType,
+          aggregateType: 'BillingSubscription',
+          aggregateId: subscription.id,
+          organizationId: subscription.organizationId,
+          idempotencyKey: buildBillingOutboxIdempotencyKey([
+            'subscription-lifecycle',
+            subscription.id,
+            eventType,
+            String(row.lockVersion),
+          ]),
+          payload: {
+            organizationId: subscription.organizationId,
+            subscriptionId: subscription.id,
+            fromStatus,
+            toStatus: params.toStatus,
+            actorUserId: params.actorUserId ?? null,
+          },
+        });
+      }
+
+      return row;
     });
 
     await this.audit.log({
@@ -734,12 +780,6 @@ export class SubscriptionLifecycleService {
       entityId: subscription.id,
       before,
       after: updated,
-    });
-
-    await this.publishStatusChange(subscription.organizationId, subscription.id, {
-      fromStatus,
-      toStatus: params.toStatus,
-      actorUserId: params.actorUserId,
     });
 
     return this.loadContract(updated.id);
@@ -917,29 +957,6 @@ export class SubscriptionLifecycleService {
       items,
       lockVersion: subscription.lockVersion,
     };
-  }
-
-  private async publishStatusChange(
-    organizationId: string,
-    subscriptionId: string,
-    payload: {
-      fromStatus: SubscriptionStatus | null;
-      toStatus: SubscriptionStatus;
-      actorUserId?: string | null;
-    },
-  ) {
-    await this.events.publish({
-      type: BillingDomainEventType.SUBSCRIPTION_STATUS_CHANGED,
-      organizationId,
-      occurredAt: new Date(),
-      actorUserId: payload.actorUserId ?? null,
-      correlationId: subscriptionId,
-      payload: {
-        subscriptionId,
-        fromStatus: payload.fromStatus,
-        toStatus: payload.toStatus,
-      },
-    });
   }
 }
 

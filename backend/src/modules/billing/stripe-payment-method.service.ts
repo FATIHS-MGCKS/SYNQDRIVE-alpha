@@ -20,7 +20,9 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@shared/database/prisma.service';
 import { getStripeClient } from './stripe-client.util';
 import { StripeBillingService } from './stripe-billing.service';
-import { BillingEventPublisher } from './events/billing-event.publisher';
+import { BillingDomainEventOutboxService } from './billing-domain-event-outbox.service';
+import { BillingDomainEventType } from './domain/billing-domain.events';
+import { buildBillingOutboxIdempotencyKey } from './domain/billing-outbox';
 import { resolveStripeModeFromSecretKey } from './migration/billing-legacy-backfill.util';
 import {
   PaymentMethodSyncResult,
@@ -41,7 +43,7 @@ export class StripePaymentMethodService {
     private readonly configService: ConfigService,
     @Inject(forwardRef(() => StripeBillingService))
     private readonly stripeBilling: StripeBillingService,
-    private readonly events: BillingEventPublisher,
+    private readonly outbox: BillingDomainEventOutboxService,
   ) {}
 
   getRuntimeStripeMode(): BillingStripeMode | null {
@@ -187,11 +189,53 @@ export class StripePaymentMethodService {
 
     await this.alignSubscriptionDefaultPaymentMethod(organizationId, customerId, defaultPmId);
 
-    await this.events.publishPaymentMethodSynced(organizationId, {
-      synced,
-      customerId,
-      defaultPaymentMethodId: defaultPmId,
-      stripeMode,
+    await this.prisma.$transaction(async (tx) => {
+      await this.outbox.enqueue(tx, {
+        eventType: BillingDomainEventType.PAYMENT_METHOD_SYNCED,
+        aggregateType: 'BillingPaymentMethod',
+        aggregateId: organizationId,
+        organizationId,
+        idempotencyKey: buildBillingOutboxIdempotencyKey([
+          'payment-method-sync',
+          organizationId,
+          String(synced),
+          defaultPmId ?? 'none',
+        ]),
+        payload: {
+          organizationId,
+          synced,
+          customerId,
+          defaultPaymentMethodId: defaultPmId,
+          stripeMode,
+        },
+      });
+
+      const activeSubscription = await tx.billingSubscription.findFirst({
+        where: {
+          organizationId,
+          status: { in: ['ACTIVE', 'PAST_DUE', 'TRIALING'] },
+        },
+        select: { id: true },
+      });
+
+      if (activeSubscription && !defaultPmId) {
+        await this.outbox.enqueue(tx, {
+          eventType: BillingDomainEventType.PAYMENT_METHOD_MISSING,
+          aggregateType: 'BillingSubscription',
+          aggregateId: activeSubscription.id,
+          organizationId,
+          idempotencyKey: buildBillingOutboxIdempotencyKey([
+            'payment-method-missing',
+            organizationId,
+            activeSubscription.id,
+          ]),
+          payload: {
+            organizationId,
+            subscriptionId: activeSubscription.id,
+            customerId,
+          },
+        });
+      }
     });
 
     return {
@@ -237,13 +281,25 @@ export class StripePaymentMethodService {
         where: { id: row.id },
         data: { isDefault: true, status: BillingPaymentMethodStatus.ACTIVE },
       });
-    });
 
-    await this.events.publishPaymentMethodSynced(organizationId, {
-      action: 'SET_DEFAULT',
-      paymentMethodId: row.id,
-      stripePaymentMethodId: row.stripePaymentMethodId,
-    }, row.id);
+      await this.outbox.enqueue(tx, {
+        eventType: BillingDomainEventType.PAYMENT_METHOD_SYNCED,
+        aggregateType: 'BillingPaymentMethod',
+        aggregateId: row.id,
+        organizationId,
+        idempotencyKey: buildBillingOutboxIdempotencyKey([
+          'payment-method-set-default',
+          row.id,
+          row.stripePaymentMethodId ?? 'none',
+        ]),
+        payload: {
+          organizationId,
+          action: 'SET_DEFAULT',
+          paymentMethodId: row.id,
+          stripePaymentMethodId: row.stripePaymentMethodId,
+        },
+      });
+    });
 
     return this.getDefaultPaymentMethodView(organizationId);
   }
@@ -276,12 +332,6 @@ export class StripePaymentMethodService {
 
     await this.syncPaymentMethods(organizationId);
 
-    await this.events.publishPaymentMethodSynced(organizationId, {
-      action: 'DETACHED',
-      paymentMethodId: row.id,
-      stripePaymentMethodId: row.stripePaymentMethodId,
-    }, row.id);
-
     return { detached: true, paymentMethodId: row.id };
   }
 
@@ -300,11 +350,24 @@ export class StripePaymentMethodService {
       return;
     }
     assertSetupIntentOrganization(setupIntent.metadata ?? {}, organizationId);
-    await this.events.publishPaymentMethodSynced(organizationId, {
-      action: 'SETUP_FAILED',
-      setupIntentId: setupIntent.id,
-      lastSetupError: setupIntent.last_setup_error?.code ?? null,
-    }, setupIntent.id);
+    await this.prisma.$transaction(async (tx) => {
+      await this.outbox.enqueue(tx, {
+        eventType: BillingDomainEventType.PAYMENT_METHOD_SYNCED,
+        aggregateType: 'BillingPaymentMethod',
+        aggregateId: setupIntent.id,
+        organizationId,
+        idempotencyKey: buildBillingOutboxIdempotencyKey([
+          'setup-intent-failed',
+          setupIntent.id,
+        ]),
+        payload: {
+          organizationId,
+          action: 'SETUP_FAILED',
+          setupIntentId: setupIntent.id,
+          lastSetupError: setupIntent.last_setup_error?.code ?? null,
+        },
+      });
+    });
   }
 
   async handlePaymentMethodDetached(paymentMethod: Stripe.PaymentMethod) {
