@@ -1,0 +1,298 @@
+SYNQDRIVE AUDIT — FLEET STATUS RESERVED (KS FH 660E)
+
+Date: 2026-07-15
+Mode: Read-only (keine Code-, Schema- oder DB-Änderungen)
+Vehicle: KS FH 660E
+Vehicle-ID (E2E-Report): 68868291-5478-42cd-b0c4-cc77b2a78e21
+Referenz: architecture/STRIPE_CONNECT_E2E_TEST_REPORT_2026-07-14.md
+
+------------------------------------------------
+1) NUTZERANFRAGE (ORIGINAL)
+------------------------------------------------
+
+Kannst du rausfinden warum das Fahrzeug KS FH 660E auf reserved steht obwohl
+eine buchung vom 1.8 bis 6.8 existiert?
+
+Das muss ein Bug sein — das Fahrzeug ist doch nicht bis dahin ausgenommen aus
+der Buchung. Es wäre nur Reserved für den Pickup-Tag und dann zu Active Rented.
+
+Bitte finde es erstmal nur heraus und sag mir welche Module und Bausteine im
+System für Available sowie Active Rented sowie Reserved Zustände sind.
+
+Nix verändern — nur auditieren.
+
+------------------------------------------------
+2) KURZFASSUNG DER AUDIT-ANTWORT
+------------------------------------------------
+
+Das beobachtete Verhalten (Reserved bei bestehender Buchung 1.8.–6.8.) passt
+zum AKTUELLEN SYSTEMDESIGN — nicht zwingend zur fachlichen Erwartung des
+Operators.
+
+| Operator-Erwartung              | Aktuelles System (Code + V4.6.70)        |
+|---------------------------------|------------------------------------------|
+| Vor 1.8.: Available             | Ab CONFIRMED/PENDING: sofort Reserved    |
+| Nur am Pickup-Tag: Reserved     | Reserved bis Pickup-Handover (ganze Zeit)|
+| Nach Übergabe: Active Rented    | Nach Handover Pickup: Active Rented      |
+
+Produktions-DB konnte im Cloud-Agent nicht abgefragt werden (Postgres nicht
+erreichbar). Analyse basiert auf Code, Architektur-Dokumentation (ChangesView
+V4.6.70) und Regression-Tests.
+
+------------------------------------------------
+3) WARUM KS FH 660E AUF „RESERVED“ STEHT
+------------------------------------------------
+
+Die Fleet-Anzeige (Dashboard, Fleet Command, Fleet Map) kommt NICHT primär aus
+der DB-Spalte Vehicle.status, sondern aus einer BUCHUNGS-ABLEITUNG zur
+Lesezeit.
+
+Kernlogik:
+  backend/src/modules/vehicles/vehicles.service.ts
+    → buildBookingContextMap()
+    → deriveFleetStatusContext()
+
+Regel für Reserved:
+  • Booking status IN (PENDING, CONFIRMED)
+  • UND endDate >= now
+  • UND kein ACTIVE-Booking für dasselbe Fahrzeug
+  → reservedBookingId wird gesetzt → UI-Status „Reserved“
+
+WICHTIG: Es gibt KEINEN Filter startDate <= heute für Reserved.
+Eine Buchung 1.8.–6.8. mit Status CONFIRMED zeigt das Fahrzeug ab sofort
+(auch Wochen vor dem 1.8.) unter Reserved — solange endDate in der Zukunft liegt.
+
+Regel für Active Rented:
+  • Booking status = ACTIVE
+  → activeBookingId wird gesetzt → UI-Status „Active Rented“
+
+Transition zu Active Rented:
+  backend/src/modules/bookings/bookings-handover.service.ts
+    PICKUP-Handover:
+      Booking CONFIRMED → ACTIVE
+      Vehicle.status → RENTED (wenn nicht IN_SERVICE/OUT_OF_SERVICE)
+
+Buchungserstellung setzt Vehicle.status NICHT auf RESERVED:
+  BookingsService.create() prüft Overlap + Rental Health, legt Booking an,
+  aktualisiert Vehicle.status aber nicht auf RESERVED.
+
+------------------------------------------------
+4) ZWEI GETRENNTE KONZEPTE (HÄUFIGE VERWECHSLUNG)
+------------------------------------------------
+
+A) Fleet-Tab / KPI „Reserved“ (operative Anzeige)
+   → Abgeleitet aus offenen PENDING/CONFIRMED-Buchungen (siehe oben)
+
+B) Kalender- / Overlap-Sperre (Buchbarkeit)
+   → backend/src/modules/bookings/booking-conflict.util.ts
+   → BLOCKING_BOOKING_STATUSES: PENDING, CONFIRMED, ACTIVE
+   → Fahrzeug ist für 1.8.–6.8. für weitere Buchungen GESPERRT,
+     unabhängig davon, ob der Fleet-Tab fachlich „Available“ zeigen soll.
+
+Die Buchung schließt das Fahrzeug im Zeitraum aus — auch wenn der Operator
+erwartet, dass es vor dem Pickup-Tag nur „Available“ angezeigt wird.
+
+------------------------------------------------
+5) STATUS-PRÄZEDENZ (KANONISCH)
+------------------------------------------------
+
+deriveFleetStatusContext() — feste Reihenfolge:
+
+  1. Maintenance (IN_SERVICE / OUT_OF_SERVICE in DB)
+  2. Active Rented (ACTIVE-Booking)
+  3. Reserved (PENDING/CONFIRMED-Booking, endDate >= now)
+  4. Available (sonst)
+  5. Ghost-State-Guard: DB sagt RENTED/RESERVED ohne passende Buchung
+     → demote zu Available + Warning-Log
+
+Tests: backend/src/modules/vehicles/vehicles.service.spec.ts (19 Fälle)
+
+------------------------------------------------
+6) MODULE UND BAUSTEINE NACH ZUSTAND
+------------------------------------------------
+
+--- 6.1 Datenmodell (Prisma) ---
+
+  backend/prisma/schema.prisma
+
+  VehicleStatus:
+    AVAILABLE | RENTED | IN_SERVICE | OUT_OF_SERVICE | RESERVED
+
+  BookingStatus:
+    PENDING | CONFIRMED | ACTIVE | COMPLETED | CANCELLED | NO_SHOW
+
+--- 6.2 AVAILABLE (operative Anzeige) ---
+
+  Backend:
+    VehiclesService.deriveFleetStatusContext()
+      → kein activeBookingId, kein reservedBookingId, nicht Maintenance
+    VehiclesService.buildBookingContextMap()
+      → keine passende offene Buchung
+    BookingsHandoverService (RETURN)
+      → Vehicle.status = AVAILABLE wenn keine andere ACTIVE-Buchung
+    BookingsService.cancel() / markNoShow()
+      → Vehicle.status = AVAILABLE (nicht bei IN_SERVICE/OUT_OF_SERVICE)
+
+  Frontend:
+    frontend/src/rental/lib/vehicle-status.ts
+      PRISMA_TO_FLEET_STATUS_KEY, fleetStatusMatchesTab()
+    frontend/src/rental/lib/fleetVisualState.ts
+      deriveRentalStatus() → 'available' → visualStatus 'ready'
+    frontend/src/rental/lib/fleetVehicleDisplay.ts
+      resolveFleetVehicleDisplayState() → primaryStatus 'ready'
+    frontend/src/rental/data/vehicles.ts
+      FleetStatus-Typ, VehicleData-Felder
+
+--- 6.3 RESERVED (operative Anzeige) ---
+
+  Backend (Kern):
+    VehiclesService.buildBookingContextMap()
+      PENDING/CONFIRMED + endDate >= now → reservedBookingId
+    VehiclesService.deriveFleetStatusContext()
+      reservedBookingId → status „Reserved“
+    RENTAL_STATUS_MAP / VEHICLE_STATUS_MAP
+      RESERVED → „Reserved“
+
+  Backend (Pickup-Overdue, nicht Reserved-Tab):
+    BookingsService.findTodaysPickups()
+      startDate im Org-Timezone-Fenster oder overdue lookback 7 Tage
+    reservedIsOverdue = startDate < now (ohne Pickup-Protokoll)
+
+  Frontend:
+    fleetVisualState.ts → deriveRentalStatus() 'reserved'
+    fleetVehicleDisplay.ts → rentalDisplay 'reserved'
+    StatInlineDetail.tsx → Reserved-Karten (Dashboard/Fleet)
+    FleetCommandView / fleet-operator-panel.ts → Tab „Reserved“
+
+  Historisch:
+    ChangesView V4.6.70 (2026-04-18)
+      „Vehicle-Status jetzt aus offenen Bookings abgeleitet“
+      Nutzer-Wunsch damals: Fahrzeug mit Buchung soll Reserved zeigen
+
+--- 6.4 ACTIVE RENTED (operative Anzeige) ---
+
+  Backend:
+    buildBookingContextMap() → status ACTIVE → activeBookingId
+    deriveFleetStatusContext() → „Active Rented“
+    BookingsHandoverService PICKUP
+      Booking CONFIRMED → ACTIVE, Vehicle.status → RENTED
+    liveKmDriven aus Pickup-Odometer + Telemetry (pickupOdoByBooking)
+
+  Frontend:
+    fleetVisualState.ts → 'active_rented' → visualStatus 'active'
+    fleetVehicleDisplay.ts → rentalDisplay 'active'
+    StatInlineDetail.tsx → Active-Rented-Karten
+    Fleet Command Tab „Active“
+
+  Booking-Lifecycle-Vertrag (seit V4.6.70):
+    NewBookingView erstellt immer status CONFIRMED (nicht auto-ACTIVE)
+    ACTIVE nur über expliziten Handover-Flow
+
+--- 6.5 DB-Spalte Vehicle.status (zweite Ebene) ---
+
+  Admin PATCH erlaubt nur:
+    AVAILABLE | IN_SERVICE | OUT_OF_SERVICE
+  (vehicles.controller.ts — RENTED/RESERVED nicht manuell setzbar)
+
+  Geschrieben durch:
+    Handover PICKUP → RENTED
+    Handover RETURN / Cancel / No-Show → AVAILABLE
+    Workflows vehicle.status.update → normalizeVehicleStatusForPrisma()
+      (vehicle-status.util.ts — kann theoretisch RESERVED setzen)
+
+  Fleet-UI ignoriert DB-RENTED/RESERVED wenn keine Buchungswahrheit:
+    Ghost-State-Guard in deriveFleetStatusContext()
+
+--- 6.6 Frontend-Dreischicht-Modell ---
+
+  frontend/src/rental/lib/vehicle-status.ts (Kommentar):
+    (A) Prisma/DB truth
+    (B) UI key: Available | Active Rented | Reserved | Maintenance
+    (C) UI label (i18n)
+
+  API liefert bereits abgeleiteten status-String vom Backend.
+
+--- 6.7 Weitere Konsumenten ---
+
+  GET /organizations/:orgId/vehicles → mapToVehicleData()
+  GET /organizations/:orgId/fleet-map → getFleetMapData()
+  organizations.service.ts → Zählung reserved/rented/available (DB-Spalte)
+  Business Insights Detectors → Vehicle.status IN (…, RESERVED)
+  deriveOperationalInsights.ts → „Reserved nicht ready“, Pickup-Hinweise
+  Dashboard: FleetStateBoard, StatInlineDetail, useDashboardViewModel
+
+------------------------------------------------
+7) IST DAS EIN BUG?
+------------------------------------------------
+
+Aus Code-Sicht: NEIN — es ist das dokumentierte Verhalten seit V4.6.70.
+
+Aus Operator-Sicht (deine Anfrage): JA — fachliche Abweichung:
+  Reserved soll nur am Pickup-Tag gelten, davor Available.
+
+Mögliche Fix-Richtung (nur zur Einordnung, NICHT umgesetzt):
+  In buildBookingContextMap() Reserved nur wenn:
+    startDate im Org-Kalendertag „heute“ (oder startDate <= now für overdue)
+  Oder separates Konzept „gebucht aber noch vermietbar bis Pickup“.
+
+Abgrenzung Kalender vs. Fleet-Tab:
+  Selbst wenn Fleet vor 1.8. wieder Available zeigt, bleibt Overlap-Sperre
+  für 1.8.–6.8. aktiv (BLOCKING_BOOKING_STATUSES).
+
+------------------------------------------------
+8) SZENARIEN ZUM GEGENCHECK IN PROD (MANUELL)
+------------------------------------------------
+
+Für KS FH 660E in der Produktions-DB prüfen:
+
+  1. SELECT status, startDate, endDate FROM booking
+     WHERE vehicleId = '68868291-5478-42cd-b0c4-cc77b2a78e21'
+     AND status NOT IN ('COMPLETED','CANCELLED','NO_SHOW');
+
+  2. SELECT status FROM vehicle WHERE id = '68868291-5478-42cd-b0c4-cc77b2a78e21';
+
+  3. SELECT kind FROM booking_handover_protocol WHERE bookingId = <id>;
+
+Interpretation:
+  • CONFIRMED + kein PICKUP-Protokoll → Reserved (by design)
+  • CONFIRMED + startDate in Vergangenheit → Reserved + reservedIsOverdue
+  • ACTIVE → Active Rented
+  • ACTIVE erwartet aber UI zeigt Reserved → Handover fehlt oder Booking-Status falsch
+
+------------------------------------------------
+9) DATEIEN-INDEX (AUDIT)
+------------------------------------------------
+
+Backend:
+  backend/prisma/schema.prisma
+  backend/src/modules/vehicles/vehicles.service.ts
+  backend/src/modules/vehicles/vehicles.service.spec.ts
+  backend/src/modules/vehicles/vehicles.controller.ts
+  backend/src/modules/bookings/bookings.service.ts
+  backend/src/modules/bookings/bookings-handover.service.ts
+  backend/src/modules/bookings/booking-conflict.util.ts
+  backend/src/modules/workflows/vehicle-status.util.ts
+  backend/src/modules/organizations/organizations.service.ts
+
+Frontend:
+  frontend/src/rental/lib/vehicle-status.ts
+  frontend/src/rental/lib/fleetVisualState.ts
+  frontend/src/rental/lib/fleetVehicleDisplay.ts
+  frontend/src/rental/data/vehicles.ts
+  frontend/src/rental/components/NewBookingView.tsx
+  frontend/src/rental/components/StatInlineDetail.tsx
+  frontend/src/rental/components/fleet-operator/*
+  frontend/src/rental/components/dashboard/deriveOperationalInsights.ts
+
+Dokumentation:
+  frontend/src/master/components/ChangesView.tsx (V4.6.70, V4.6.85, V4.6.90)
+  frontend/src/master/components/ArchitekturView.tsx (Fleet-Status-Pipeline)
+
+------------------------------------------------
+10) CHANGES / ARCHITEKTUR (DIESES DOKUMENT)
+------------------------------------------------
+
+Changes: nicht aktualisiert (reine Audit-Artefakt-Datei auf Nutzerwunsch)
+Architektur: nicht aktualisiert (keine Architektur-Änderung)
+
+Ende des Audits.
