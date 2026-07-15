@@ -510,8 +510,8 @@ function buildQuery(params?: Record<string, string | number | undefined>): strin
   return '?' + entries.map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&');
 }
 
-function get<T>(path: string) {
-  return request<T>(path);
+function get<T>(path: string, init?: RequestInit) {
+  return request<T>(path, init);
 }
 
 function post<T>(path: string, body: unknown) {
@@ -2348,12 +2348,15 @@ export interface ManualPickupCheckDto {
   notes?: string;
 }
 
-function billingTenantQuery(orgId?: string, params?: Record<string, string>): string {
+function billingTenantQuery(
+  orgId?: string,
+  params?: Record<string, string | number | undefined>,
+): string {
   const search = new URLSearchParams();
   if (orgId) search.set('orgId', orgId);
   if (params) {
     for (const [key, value] of Object.entries(params)) {
-      if (value !== undefined && value !== '') search.set(key, value);
+      if (value !== undefined && value !== '') search.set(key, String(value));
     }
   }
   const q = search.toString();
@@ -3866,21 +3869,54 @@ export const api = {
     ) => post<any>(`/admin/billing/price-versions/${versionId}/publish`, body ?? {}),
     archivePriceVersion: (versionId: string) =>
       post<any>(`/admin/billing/price-versions/${versionId}/archive`, {}),
-    orgSummary: (orgId?: string) => get<any>(`/billing/summary${billingTenantQuery(orgId)}`),
-    orgBillableVehicles: (orgId?: string) =>
-      get<any>(`/billing/billable-vehicles${billingTenantQuery(orgId)}`),
-    orgNextInvoicePreview: (orgId?: string) =>
-      get<any>(`/billing/next-invoice-preview${billingTenantQuery(orgId)}`),
-    orgSubscriptions: (orgId?: string) =>
-      get<any[]>(`/billing/subscriptions${billingTenantQuery(orgId)}`),
-    orgInvoices: (orgId?: string, params?: Record<string, string>) =>
-      get<any>(`/billing/invoices${billingTenantQuery(orgId, params)}`),
-    orgUsagePreview: (orgId?: string) =>
-      get<any>(`/billing/usage/preview${billingTenantQuery(orgId)}`),
-    orgPaymentMethods: (orgId?: string) =>
-      get<any[]>(`/billing/payment-methods${billingTenantQuery(orgId)}`),
-    orgPaymentMethod: (orgId?: string) =>
-      get<any>(`/billing/payment-method${billingTenantQuery(orgId)}`),
+    orgSummary: (orgId?: string, init?: RequestInit) =>
+      get<any>(`/billing/summary${billingTenantQuery(orgId)}`, init),
+    orgSubscriptionOverview: (orgId?: string, init?: RequestInit) =>
+      get<any>(`/billing/subscription/overview${billingTenantQuery(orgId)}`, init),
+    orgBillableVehicles: (orgId?: string, init?: RequestInit) =>
+      get<any>(`/billing/billable-vehicles${billingTenantQuery(orgId)}`, init),
+    orgNextInvoicePreview: (orgId?: string, init?: RequestInit) =>
+      get<any>(`/billing/next-invoice-preview${billingTenantQuery(orgId)}`, init),
+    orgSubscriptions: (orgId?: string, init?: RequestInit) =>
+      get<any[]>(`/billing/subscriptions${billingTenantQuery(orgId)}`, init),
+    orgInvoices: (
+      orgId?: string,
+      params?: Record<string, string | number | undefined>,
+      init?: RequestInit,
+    ) => get<any>(`/billing/invoices${billingTenantQuery(orgId, params)}`, init),
+    orgInvoiceDetail: (orgId: string | undefined, invoiceId: string, init?: RequestInit) =>
+      get<any>(`/billing/invoices/${encodeURIComponent(invoiceId)}${billingTenantQuery(orgId)}`, init),
+    orgInvoicePayments: (orgId: string | undefined, invoiceId: string, init?: RequestInit) =>
+      get<any>(
+        `/billing/invoices/${encodeURIComponent(invoiceId)}/payments${billingTenantQuery(orgId)}`,
+        init,
+      ),
+    orgPayments: (
+      orgId?: string,
+      params?: Record<string, string | number | undefined>,
+      init?: RequestInit,
+    ) => get<any>(`/billing/payments${billingTenantQuery(orgId, params)}`, init),
+    orgVehicleLicenses: (
+      orgId?: string,
+      params?: Record<string, string | number | undefined>,
+      init?: RequestInit,
+    ) => get<any>(`/billing/vehicle-licenses${billingTenantQuery(orgId, params)}`, init),
+    orgContractHistory: (
+      orgId?: string,
+      params?: Record<string, string | number | undefined>,
+      init?: RequestInit,
+    ) => get<any>(`/billing/contract/history${billingTenantQuery(orgId, params)}`, init),
+    orgBillingEmailDeliveries: (
+      orgId?: string,
+      params?: Record<string, string | number | undefined>,
+      init?: RequestInit,
+    ) => get<any>(`/billing/email-deliveries${billingTenantQuery(orgId, params)}`, init),
+    orgUsagePreview: (orgId?: string, init?: RequestInit) =>
+      get<any>(`/billing/usage/preview${billingTenantQuery(orgId)}`, init),
+    orgPaymentMethods: (orgId?: string, init?: RequestInit) =>
+      get<any>(`/billing/payment-methods${billingTenantQuery(orgId)}`, init),
+    orgPaymentMethod: (orgId?: string, init?: RequestInit) =>
+      get<any>(`/billing/payment-method${billingTenantQuery(orgId)}`, init),
     orgStripeCustomerPortal: (orgId?: string, returnUrl?: string) =>
       post<any>(`/billing/stripe/customer-portal${billingTenantQuery(orgId)}`, {
         returnUrl,

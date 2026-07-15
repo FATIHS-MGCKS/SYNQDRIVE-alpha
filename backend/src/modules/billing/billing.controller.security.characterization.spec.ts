@@ -33,6 +33,10 @@ describe('BillingController security characterization', () => {
       'getInvoiceHostedUrl',
       'getInvoicePdfUrl',
       'getInvoicePayments',
+      'listPayments',
+      'listVehicleLicenses',
+      'listContractHistory',
+      'listBillingEmailDeliveries',
       'findSubscriptions',
       'findSubscriptionById',
       'previewUsage',
@@ -127,6 +131,10 @@ describe('BillingController tenant org isolation characterization', () => {
     getInvoicePdfUrl: jest.fn(),
   };
   const tenantPaymentsService = { getInvoicePaymentHistory: jest.fn() };
+  const tenantPaymentsListService = { listPayments: jest.fn() };
+  const tenantVehicleLicensesService = { listVehicleLicenses: jest.fn() };
+  const tenantContractHistoryService = { listContractHistory: jest.fn() };
+  const tenantEmailHistoryService = { listEmailHistory: jest.fn() };
   const tenantPaymentMethodsService = {
     listPaymentMethods: jest.fn(),
     getDefaultPaymentMethod: jest.fn(),
@@ -160,6 +168,10 @@ describe('BillingController tenant org isolation characterization', () => {
       subscriptionOverviewService as never,
       tenantInvoicesService as never,
       tenantPaymentsService as never,
+      tenantPaymentsListService as never,
+      tenantVehicleLicensesService as never,
+      tenantContractHistoryService as never,
+      tenantEmailHistoryService as never,
       tenantPaymentMethodsService as never,
       billableVehiclesService as never,
       stripePreparedService as never,

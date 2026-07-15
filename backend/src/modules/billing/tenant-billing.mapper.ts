@@ -111,3 +111,66 @@ export const tenantBillingMapperInternals = {
   INVOICE_STATUS_LABELS,
   DISPLAY_STATUS_LABELS,
 };
+
+const VEHICLE_LICENSE_EVENT_LABELS: Record<string, string> = {
+  VEHICLE_CONNECTED: 'Fahrzeug abrechenbar',
+  VEHICLE_DISCONNECTED: 'Fahrzeug nicht mehr abrechenbar',
+  VEHICLE_EXCLUDED: 'Von Abrechnung ausgeschlossen',
+  VEHICLE_INCLUDED: 'Wieder abrechenbar',
+  VEHICLE_ORG_TRANSFERRED: 'Organisationswechsel',
+  SUBSCRIPTION_ACTIVATED: 'Abonnement aktiviert',
+  SUBSCRIPTION_PAUSED: 'Abonnement pausiert',
+  BASE_PLAN_CHANGED: 'Tarif geändert',
+  ORG_BILLING_DEACTIVATED: 'Abrechnung deaktiviert',
+  MANUAL_ADJUSTMENT: 'Manuelle Anpassung',
+  SNAPSHOT_LOCK: 'Abrechnungsstand gesichert',
+  SUBSCRIPTION_SYNC: 'Abonnement synchronisiert',
+};
+
+const CONTRACT_ACTION_LABELS: Record<string, string> = {
+  SUBSCRIPTION_CREATED: 'Abonnement erstellt',
+  SUBSCRIPTION_ACTIVATED: 'Abonnement aktiviert',
+  SUBSCRIPTION_TRIAL_STARTED: 'Testphase gestartet',
+  SUBSCRIPTION_CANCEL_SCHEDULED: 'Kündigung geplant',
+  SUBSCRIPTION_CANCELLED: 'Abonnement beendet',
+  SUBSCRIPTION_PAUSED: 'Abonnement pausiert',
+  SUBSCRIPTION_REACTIVATED: 'Abonnement reaktiviert',
+  PRICE_VERSION_SELECTED: 'Preisversion gewählt',
+  DISCOUNT_ADDED: 'Rabatt hinzugefügt',
+  DISCOUNT_ENDED: 'Rabatt beendet',
+};
+
+export function resolveVehicleLicenseEventLabel(eventType: string): string {
+  return VEHICLE_LICENSE_EVENT_LABELS[eventType] ?? 'Abrechnungsänderung';
+}
+
+export function resolveContractActionLabel(action: string): string {
+  return CONTRACT_ACTION_LABELS[action] ?? action.replace(/_/g, ' ');
+}
+
+export function maskEmailRecipient(email: string | null | undefined): string | null {
+  if (!email?.trim()) return null;
+  const [local, domain] = email.trim().split('@');
+  if (!domain) return '[email]';
+  const visible = local.slice(0, Math.min(2, local.length));
+  return `${visible}***@${domain}`;
+}
+
+const BILLING_EMAIL_EVENT_LABELS: Record<string, string> = {
+  'billing.subscription.activated': 'Abonnement aktiviert',
+  'billing.subscription.trial_ending': 'Testphase endet',
+  'billing.subscription.changed': 'Tarif geändert',
+  'billing.subscription.cancel_scheduled': 'Kündigung geplant',
+  'billing.subscription.cancelled': 'Abonnement beendet',
+  'billing.invoice.finalized': 'Rechnung verfügbar',
+  'billing.payment.succeeded': 'Zahlung erfolgreich',
+  'billing.payment.failed': 'Zahlung fehlgeschlagen',
+  'billing.payment_method.missing': 'Zahlungsmethode fehlt',
+  'billing.invoice.overdue': 'Rechnung überfällig',
+  'billing.refund.created': 'Rückerstattung',
+  'billing.credit_note.created': 'Gutschrift',
+};
+
+export function resolveBillingEmailEventLabel(eventType: string): string {
+  return BILLING_EMAIL_EVENT_LABELS[eventType] ?? 'Abrechnungs-E-Mail';
+}

@@ -79,6 +79,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
+    "happy-dom": "^20.10.6",
     "lucide-react": "^0.577.0",
     "react-router-dom": "^7.13.1",
     "tailwindcss": "^4.2.1",

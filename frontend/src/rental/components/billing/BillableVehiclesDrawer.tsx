@@ -3,7 +3,8 @@ import { DetailDrawer } from '../../../components/patterns/detail-drawer';
 import { EmptyState } from '../../../components/patterns/states';
 import { Button } from '../../../components/ui/button';
 import type { BillableVehiclesResponseDto } from '../../types/billing.types';
-import { exclusionReasonLabel } from './billing.utils';
+import type { BillingVehicleLicenseItem } from './useBillingVehicleBilling';
+import { exclusionReasonLabel, formatDateDe } from './billing.utils';
 import { Icon } from '../ui/Icon';
 import { cn } from '../../../components/ui/utils';
 
@@ -11,16 +12,26 @@ interface BillableVehiclesDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   data: BillableVehiclesResponseDto | null;
+  licenseHistory?: BillingVehicleLicenseItem[];
+  licenseHistoryError?: string | null;
+  onReloadLicenses?: () => void;
 }
 
-type TabKey = 'billable' | 'excluded';
+type TabKey = 'billable' | 'excluded' | 'history';
 
-export function BillableVehiclesDrawer({ open, onOpenChange, data }: BillableVehiclesDrawerProps) {
+export function BillableVehiclesDrawer({
+  open,
+  onOpenChange,
+  data,
+  licenseHistory = [],
+  licenseHistoryError = null,
+  onReloadLicenses,
+}: BillableVehiclesDrawerProps) {
   const [tab, setTab] = useState<TabKey>('billable');
 
   const billable = data?.billableVehicles ?? [];
   const excluded = data?.excludedVehicles ?? [];
-  const activeList = tab === 'billable' ? billable : excluded;
+  const activeList = tab === 'billable' ? billable : tab === 'excluded' ? excluded : [];
 
   return (
     <DetailDrawer
@@ -42,6 +53,7 @@ export function BillableVehiclesDrawer({ open, onOpenChange, data }: BillableVeh
           [
             { key: 'billable' as const, label: 'Abrechenbar', count: billable.length },
             { key: 'excluded' as const, label: 'Ausgeschlossen', count: excluded.length },
+            { key: 'history' as const, label: 'Änderungen', count: licenseHistory.length },
           ] as const
         ).map((item) => (
           <Button
@@ -64,8 +76,49 @@ export function BillableVehiclesDrawer({ open, onOpenChange, data }: BillableVeh
         </p>
       )}
 
-      {!data ? (
+      {!data && tab !== 'history' ? (
         <EmptyState compact title="Keine Fahrzeugdaten geladen" />
+      ) : tab === 'history' ? (
+        licenseHistoryError ? (
+          <EmptyState
+            compact
+            title="Änderungshistorie konnte nicht geladen werden"
+            description={licenseHistoryError}
+            action={
+              onReloadLicenses ? (
+                <Button type="button" size="sm" variant="outline" onClick={() => void onReloadLicenses()}>
+                  Erneut versuchen
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : licenseHistory.length === 0 ? (
+          <EmptyState compact title="Noch keine Fahrzeugänderungen" />
+        ) : (
+          <div className="space-y-2">
+            {licenseHistory.map((entry) => (
+              <div
+                key={entry.id}
+                className="rounded-xl border border-border/60 px-3 py-2.5 flex flex-col gap-1"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[12px] font-medium text-foreground">
+                    {entry.licensePlate ?? entry.vehicleLabel ?? 'Fahrzeug'}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {formatDateDe(entry.effectiveAt)}
+                  </span>
+                </div>
+                <div className="text-[11px] text-muted-foreground">
+                  {entry.eventTypeLabel} · {entry.billingStatusLabel}
+                </div>
+                {entry.reason ? (
+                  <div className="text-[11px] text-muted-foreground">{entry.reason}</div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )
       ) : activeList.length === 0 ? (
         <EmptyState
           compact

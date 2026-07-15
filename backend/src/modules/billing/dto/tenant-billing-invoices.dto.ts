@@ -1,53 +1,19 @@
-import { Type } from 'class-transformer';
-import {
-  IsIn,
-  IsInt,
-  IsISO8601,
-  IsOptional,
-  IsString,
-  Max,
-  Min,
-  MinLength,
-} from 'class-validator';
+import { IsIn, IsOptional } from 'class-validator';
 import { InvoiceStatus } from '@prisma/client';
+import { TenantBillingListQueryDto } from './tenant-billing-list-query.dto';
 
-export class TenantInvoiceQueryDto {
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  page?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  limit?: number;
-
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  pageSize?: number;
+export class TenantInvoiceQueryDto extends TenantBillingListQueryDto {
+  static readonly ALLOWED_SORT_FIELDS = [
+    'invoiceDate',
+    'dueDate',
+    'amount',
+    'status',
+    'invoiceNumber',
+  ] as const;
 
   @IsOptional()
   @IsIn(['DRAFT', 'OPEN', 'PAID', 'VOID', 'UNCOLLECTIBLE'])
-  status?: InvoiceStatus;
-
-  @IsOptional()
-  @IsISO8601()
-  from?: string;
-
-  @IsOptional()
-  @IsISO8601()
-  to?: string;
-
-  @IsOptional()
-  @IsString()
-  @MinLength(1)
-  search?: string;
+  declare status?: InvoiceStatus;
 }
 
 export interface TenantMoneyDto {

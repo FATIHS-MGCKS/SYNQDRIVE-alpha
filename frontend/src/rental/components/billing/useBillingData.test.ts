@@ -11,21 +11,23 @@ vi.mock('../../../lib/api', () => ({
 }));
 
 import { api } from '../../../lib/api';
-import { fetchTenantBillingData } from './useBillingData';
 
-describe('fetchTenantBillingData', () => {
+describe('tenant billing api org scoping', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(api.billing.orgSummary).mockResolvedValue({ subscriptionStatus: 'ACTIVE' });
-    vi.mocked(api.billing.orgInvoices).mockResolvedValue({ data: [] });
-    vi.mocked(api.billing.orgBillableVehicles).mockResolvedValue({ billableVehicleCount: 0 });
   });
 
-  it('passes orgId to all tenant billing api calls', async () => {
-    await fetchTenantBillingData('org-tenant-1');
+  it('passes orgId to isolated billing endpoints', async () => {
+    vi.mocked(api.billing.orgSummary).mockResolvedValue({});
+    vi.mocked(api.billing.orgInvoices).mockResolvedValue({ data: [], meta: { total: 0, page: 1, limit: 20, totalPages: 0 } });
+    vi.mocked(api.billing.orgBillableVehicles).mockResolvedValue({});
+
+    await api.billing.orgSummary('org-tenant-1');
+    await api.billing.orgInvoices('org-tenant-1', { page: 1 });
+    await api.billing.orgBillableVehicles('org-tenant-1');
 
     expect(api.billing.orgSummary).toHaveBeenCalledWith('org-tenant-1');
-    expect(api.billing.orgInvoices).toHaveBeenCalledWith('org-tenant-1');
+    expect(api.billing.orgInvoices).toHaveBeenCalledWith('org-tenant-1', { page: 1 });
     expect(api.billing.orgBillableVehicles).toHaveBeenCalledWith('org-tenant-1');
   });
 });

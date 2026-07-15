@@ -43,6 +43,10 @@ import { TenantSubscriptionOverviewService } from './tenant-subscription-overvie
 import { TenantBillingInvoicesService } from './tenant-billing-invoices.service';
 import { TenantBillingPaymentsService } from './tenant-billing-payments.service';
 import { TenantBillingPaymentMethodsService } from './tenant-billing-payment-methods.service';
+import { TenantBillingVehicleLicensesService } from './tenant-billing-vehicle-licenses.service';
+import { TenantBillingPaymentsListService } from './tenant-billing-payments-list.service';
+import { TenantBillingContractHistoryService } from './tenant-billing-contract-history.service';
+import { TenantBillingEmailHistoryService } from './tenant-billing-email-history.service';
 
 import { BillableVehiclesService } from './billable-vehicles.service';
 
@@ -103,6 +107,12 @@ import {
   TenantCreateSetupIntentDto,
   TenantCustomerPortalDto,
 } from './dto/tenant-billing-payment-methods.dto';
+import {
+  TenantBillingEmailHistoryQueryDto,
+  TenantContractHistoryQueryDto,
+  TenantPaymentListQueryDto,
+  TenantVehicleLicenseQueryDto,
+} from './dto/tenant-billing-history.dto';
 
 
 
@@ -131,6 +141,14 @@ export class BillingController {
     private readonly tenantPaymentsService: TenantBillingPaymentsService,
 
     private readonly tenantPaymentMethodsService: TenantBillingPaymentMethodsService,
+
+    private readonly tenantVehicleLicensesService: TenantBillingVehicleLicensesService,
+
+    private readonly tenantPaymentsListService: TenantBillingPaymentsListService,
+
+    private readonly tenantContractHistoryService: TenantBillingContractHistoryService,
+
+    private readonly tenantEmailHistoryService: TenantBillingEmailHistoryService,
 
     private readonly billableVehiclesService: BillableVehiclesService,
 
@@ -381,6 +399,94 @@ export class BillingController {
     const scoped = resolveOrgScope(req?.user, orgId);
 
     return this.tenantPaymentsService.getInvoicePaymentHistory(scoped, invoiceId);
+
+  }
+
+
+
+  @Get('billing/payments')
+
+  @RequirePermission('billing', 'read')
+
+  async listPayments(
+
+    @Query('orgId') orgId: string | undefined,
+
+    @Query() query: TenantPaymentListQueryDto,
+
+    @Req() req: any,
+
+  ) {
+
+    const scoped = resolveOrgScope(req?.user, orgId);
+
+    return this.tenantPaymentsListService.listPayments(scoped, query);
+
+  }
+
+
+
+  @Get('billing/vehicle-licenses')
+
+  @RequirePermission('billing', 'read')
+
+  async listVehicleLicenses(
+
+    @Query('orgId') orgId: string | undefined,
+
+    @Query() query: TenantVehicleLicenseQueryDto,
+
+    @Req() req: any,
+
+  ) {
+
+    const scoped = resolveOrgScope(req?.user, orgId);
+
+    return this.tenantVehicleLicensesService.listVehicleLicenses(scoped, query);
+
+  }
+
+
+
+  @Get('billing/contract/history')
+
+  @RequirePermission('billing', 'read')
+
+  async listContractHistory(
+
+    @Query('orgId') orgId: string | undefined,
+
+    @Query() query: TenantContractHistoryQueryDto,
+
+    @Req() req: any,
+
+  ) {
+
+    const scoped = resolveOrgScope(req?.user, orgId);
+
+    return this.tenantContractHistoryService.listContractHistory(scoped, query);
+
+  }
+
+
+
+  @Get('billing/email-deliveries')
+
+  @RequirePermission('billing', 'read')
+
+  async listBillingEmailDeliveries(
+
+    @Query('orgId') orgId: string | undefined,
+
+    @Query() query: TenantBillingEmailHistoryQueryDto,
+
+    @Req() req: any,
+
+  ) {
+
+    const scoped = resolveOrgScope(req?.user, orgId);
+
+    return this.tenantEmailHistoryService.listEmailHistory(scoped, query);
 
   }
 

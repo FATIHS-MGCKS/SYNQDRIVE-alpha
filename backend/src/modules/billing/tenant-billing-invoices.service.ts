@@ -10,6 +10,7 @@ import {
   TenantInvoiceQueryDto,
   TenantInvoiceUrlDto,
 } from './dto/tenant-billing-invoices.dto';
+import { parseTenantBillingListQuery } from './tenant-billing-list-query.util';
 import {
   requireTenantMoney,
   resolveInvoiceDisplayLabel,
@@ -31,19 +32,24 @@ export class TenantBillingInvoicesService {
     query: TenantInvoiceQueryDto = {},
   ): Promise<PaginatedResult<TenantInvoiceListItemDto>> {
     const subscriptionIds = await this.resolveSubscriptionIds(organizationId);
+    const parsed = parseTenantBillingListQuery(query, {
+      defaultSortField: 'invoiceDate',
+      defaultSortOrder: 'desc',
+      allowedSortFields: TenantInvoiceQueryDto.ALLOWED_SORT_FIELDS,
+    });
+
     if (subscriptionIds.length === 0) {
-      return buildPaginatedResult([], 0, this.paginationParams(query));
+      return buildPaginatedResult([], 0, { page: parsed.page, limit: parsed.limit });
     }
 
-    const where = this.buildInvoiceWhere(subscriptionIds, query);
-    const pagination = this.paginationParams(query);
+    const where = this.buildInvoiceWhere(subscriptionIds, query, parsed);
 
     const [rows, total] = await Promise.all([
       this.prisma.billingInvoice.findMany({
         where,
-        skip: (pagination.page - 1) * pagination.limit,
-        take: pagination.limit,
-        orderBy: { invoiceDate: 'desc' },
+        skip: parsed.skip,
+        take: parsed.take,
+        orderBy: this.buildInvoiceOrderBy(parsed),
         include: {
           lines: true,
           subscription: { select: { organizationId: true } },
@@ -55,7 +61,7 @@ export class TenantBillingInvoicesService {
     return buildPaginatedResult(
       rows.map((row) => this.mapListItem(row)),
       total,
-      pagination,
+      { page: parsed.page, limit: parsed.limit },
     );
   }
 
@@ -131,6 +137,7 @@ export class TenantBillingInvoicesService {
   private buildInvoiceWhere(
     subscriptionIds: string[],
     query: TenantInvoiceQueryDto,
+    parsed: ReturnType<typeof parseTenantBillingListQuery>,
   ): Prisma.BillingInvoiceWhereInput {
     const where: Prisma.BillingInvoiceWhereInput = {
       subscriptionId: { in: subscriptionIds },
@@ -140,29 +147,42 @@ export class TenantBillingInvoicesService {
       where.status = query.status;
     }
 
-    if (query.from || query.to) {
+    if (parsed.from || parsed.to) {
       where.invoiceDate = {};
-      if (query.from) {
-        where.invoiceDate.gte = new Date(query.from);
+      if (parsed.from) {
+        where.invoiceDate.gte = parsed.from;
       }
-      if (query.to) {
-        where.invoiceDate.lte = new Date(query.to);
+      if (parsed.to) {
+        where.invoiceDate.lte = parsed.to;
       }
     }
 
-    const search = query.search?.trim();
-    if (search) {
-      where.invoiceNumber = { contains: search, mode: 'insensitive' };
+    if (parsed.search) {
+      where.invoiceNumber = { contains: parsed.search, mode: 'insensitive' };
     }
 
     return where;
   }
 
-  private paginationParams(query: TenantInvoiceQueryDto) {
-    return {
-      page: query.page ?? 1,
-      limit: query.pageSize ?? query.limit ?? 20,
-    };
+  private buildInvoiceOrderBy(
+    parsed: ReturnType<typeof parseTenantBillingListQuery>,
+  ): Prisma.BillingInvoiceOrderByWithRelationInput[] {
+    const dir = parsed.sortOrder;
+    const stableId: Prisma.BillingInvoiceOrderByWithRelationInput = { id: dir };
+
+    switch (parsed.sortField) {
+      case 'dueDate':
+        return [{ dueDate: { sort: dir, nulls: 'last' } }, stableId];
+      case 'amount':
+        return [{ amountCents: dir }, stableId];
+      case 'status':
+        return [{ status: dir }, stableId];
+      case 'invoiceNumber':
+        return [{ invoiceNumber: { sort: dir, nulls: 'last' } }, stableId];
+      case 'invoiceDate':
+      default:
+        return [{ invoiceDate: dir }, stableId];
+    }
   }
 
   private mapListItem(invoice: InvoiceRow): TenantInvoiceListItemDto {
