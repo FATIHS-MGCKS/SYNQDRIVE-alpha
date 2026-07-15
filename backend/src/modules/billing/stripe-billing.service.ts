@@ -154,11 +154,25 @@ export class StripeBillingService {
           return false;
         }
       });
-      if (!originAllowed && configured) {
+
+      if (allowedOrigins.length > 0) {
+        if (!originAllowed) {
+          throw new BadRequestException('returnUrl origin is not allowed');
+        }
+        return url;
+      }
+
+      if (configured) {
         const configuredOrigin = new URL(configured).origin;
         if (parsed.origin !== configuredOrigin) {
           throw new BadRequestException('returnUrl origin is not allowed');
         }
+        return url;
+      }
+
+      const fallbackOrigin = new URL(fallback).origin;
+      if (parsed.origin !== fallbackOrigin) {
+        throw new BadRequestException('returnUrl origin is not allowed');
       }
       return url;
     } catch (e) {
@@ -224,11 +238,14 @@ export class StripeBillingService {
         ? stripeSub.customer
         : stripeSub.customer?.id ?? sub.stripeCustomerId;
 
+    const stripeMode = this.catalogMappings.getRuntimeStripeMode();
+
     const updated = await this.prisma.billingSubscription.update({
       where: { id: sub.id },
       data: {
         stripeSubscriptionId: stripeSub.id,
         stripeCustomerId: customerId ?? sub.stripeCustomerId,
+        ...(stripeMode ? { stripeMode } : {}),
         status: mapped.billingStatus,
         currentPeriodStart: stripeSub.current_period_start
           ? new Date(stripeSub.current_period_start * 1000)
@@ -323,16 +340,24 @@ export class StripeBillingService {
   }
 
   async findOrganizationIdByStripeCustomer(customerId: string): Promise<string | null> {
+    const stripeMode = this.catalogMappings.getRuntimeStripeMode();
     const sub = await this.prisma.billingSubscription.findFirst({
-      where: { stripeCustomerId: customerId },
+      where: {
+        stripeCustomerId: customerId,
+        ...(stripeMode ? { stripeMode } : {}),
+      },
       select: { organizationId: true },
     });
     return sub?.organizationId ?? null;
   }
 
   async findOrganizationIdByStripeSubscription(subscriptionId: string): Promise<string | null> {
+    const stripeMode = this.catalogMappings.getRuntimeStripeMode();
     const sub = await this.prisma.billingSubscription.findFirst({
-      where: { stripeSubscriptionId: subscriptionId },
+      where: {
+        stripeSubscriptionId: subscriptionId,
+        ...(stripeMode ? { stripeMode } : {}),
+      },
       select: { organizationId: true },
     });
     return sub?.organizationId ?? null;

@@ -496,7 +496,7 @@ export function detectBillingReconciliationDrift(
           stripeValue: stripeInvoice.id,
           suggestedAction:
             'Mirror invoice projection from Stripe webhook or controlled resync. Safe for technical projection only.',
-          autoFixable: true,
+          autoFixable: false,
           stripeMode: runtimeStripeMode,
           detailKey: stripeInvoice.id,
         }),
@@ -524,7 +524,7 @@ export function detectBillingReconciliationDrift(
           stripeValue: stripeInvoice.paymentIntentId,
           suggestedAction:
             'Replay payment webhook or mirror payment ledger entry. Does not mutate the original Stripe charge.',
-          autoFixable: true,
+          autoFixable: false,
           stripeMode: runtimeStripeMode,
           detailKey: stripeInvoice.paymentIntentId,
         }),

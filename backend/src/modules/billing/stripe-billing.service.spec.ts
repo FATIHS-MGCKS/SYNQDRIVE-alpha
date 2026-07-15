@@ -56,6 +56,7 @@ describe('StripeBillingService', () => {
 
   const catalogMappings = {
     resolveStripePrice: jest.fn(),
+    getRuntimeStripeMode: jest.fn(() => 'TEST'),
   };
 
   const subscriptionOrchestrator = {
@@ -163,6 +164,46 @@ describe('StripeBillingService', () => {
     expect(() =>
       service.resolvePortalReturnUrl('https://evil.example/redirect'),
     ).toThrow(BadRequestException);
+  });
+
+  it('scopes organization lookup by runtime stripe mode', async () => {
+    prisma.billingSubscription.findFirst.mockResolvedValue({ organizationId: 'org-1' });
+
+    await service.findOrganizationIdByStripeCustomer('cus_1');
+
+    expect(prisma.billingSubscription.findFirst).toHaveBeenCalledWith({
+      where: { stripeCustomerId: 'cus_1', stripeMode: 'TEST' },
+      select: { organizationId: true },
+    });
+  });
+
+  it('persists stripeMode when applying Stripe subscription', async () => {
+    prisma.billingSubscription.findFirst.mockResolvedValue({
+      id: 'sub-local-1',
+      stripeCustomerId: 'cus_1',
+    });
+    prisma.billingSubscription.update.mockResolvedValue({
+      id: 'sub-local-1',
+      stripeSubscriptionId: 'sub_stripe_1',
+    });
+
+    await service.applyStripeSubscription('org-1', {
+      id: 'sub_stripe_1',
+      customer: 'cus_1',
+      status: 'active',
+      current_period_start: 1_700_000_000,
+      current_period_end: 1_700_086_400,
+      cancel_at_period_end: false,
+    } as never);
+
+    expect(prisma.billingSubscription.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          stripeMode: 'TEST',
+          stripeSubscriptionId: 'sub_stripe_1',
+        }),
+      }),
+    );
   });
 
   it('syncOrganizationStripe throws when org missing', async () => {

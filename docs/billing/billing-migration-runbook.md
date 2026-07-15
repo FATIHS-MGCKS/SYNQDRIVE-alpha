@@ -32,7 +32,7 @@ Controlled, idempotent backfill from pre–Prompt-10 billing (`billing_subscript
 
 ## Prerequisites
 
-1. **Migrations deployed** through `20260715210000_billing_usage_ledger_outbox_schema`
+1. **Migrations deployed** through `20260715340000_billing_email_delivery_audit`
 2. **`DATABASE_URL`** pointing at the target environment
 3. **Backup** before `--execute` on production:
    ```bash

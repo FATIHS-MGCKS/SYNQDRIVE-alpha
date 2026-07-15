@@ -18,6 +18,8 @@ import {
   extractStripeObjectId,
   sanitizeSafePayload,
 } from './stripe-webhook.util';
+import { stripeLivemodeToBillingMode } from './domain/billing-reconciliation';
+import { resolveStripeModeFromSecretKey } from './migration/billing-legacy-backfill.util';
 
 export interface StripeWebhookIngestResult {
   received: boolean;
@@ -95,11 +97,27 @@ export class StripeWebhookService {
     }
   }
 
+  private assertWebhookLivemodeMatchesRuntime(event: Stripe.Event): void {
+    const runtimeMode = resolveStripeModeFromSecretKey(
+      this.configService.get<string>('stripe.secretKey'),
+    );
+    if (!runtimeMode) {
+      return;
+    }
+    const eventMode = stripeLivemodeToBillingMode(event.livemode);
+    if (eventMode !== runtimeMode) {
+      throw new BadRequestException(
+        `Stripe webhook livemode mismatch: event=${eventMode}, runtime=${runtimeMode}`,
+      );
+    }
+  }
+
   async ingestRawWebhook(
     rawBody: Buffer,
     signature: string | undefined,
   ): Promise<StripeWebhookIngestResult> {
     const event = this.constructEvent(rawBody, signature);
+    this.assertWebhookLivemodeMatchesRuntime(event);
     const payloadHash = this.hashPayload(rawBody);
     const organizationId = await this.dispatcher.resolveOrganizationId(event);
     const safePayload = sanitizeSafePayload(

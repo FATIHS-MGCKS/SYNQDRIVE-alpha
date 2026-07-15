@@ -74,6 +74,13 @@ describe('billing vs finance separation', () => {
     expect(sidebarSource).toContain("currentView === 'customer-payments'");
   });
 
+  it('gates billing subscription settings on billing.read permission', () => {
+    const sidebarSource = readFileSync(resolve(rentalDir, 'Sidebar.tsx'), 'utf8');
+    expect(sidebarSource).toContain("hasPermission('billing', 'read')");
+    expect(sidebarSource).toContain('canBillingSubscription');
+    expect(sidebarSource).toContain("settingsTab === 'billing'");
+  });
+
   it('redirects legacy billingSection customer-payments in App', () => {
     const appSource = readFileSync(resolve(rentalDir, '../App.tsx'), 'utf8');
     expect(appSource).toContain('stripLegacyBillingCustomerPaymentsParams');

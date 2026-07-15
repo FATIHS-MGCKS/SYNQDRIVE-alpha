@@ -21,7 +21,7 @@ describe('StripeWebhookService ingest', () => {
   const configService = {
     get: jest.fn((key: string) => {
       if (key === 'stripe.webhookSecret') return 'whsec_test';
-      if (key === 'stripe.secretKey') return 'sk_test';
+      if (key === 'stripe.secretKey') return 'sk_test_123';
       return undefined;
     }),
   } as unknown as ConfigService;
@@ -42,6 +42,21 @@ describe('StripeWebhookService ingest', () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  it('rejects live webhook events when runtime key is test mode', async () => {
+    stripeMock.webhooks.constructEvent.mockReturnValue({
+      id: 'evt_live',
+      type: 'invoice.paid',
+      created: 1,
+      livemode: true,
+      data: { object: { id: 'in_live' } },
+    });
+
+    await expect(service.ingestRawWebhook(Buffer.from('{}'), 'sig')).rejects.toThrow(
+      BadRequestException,
+    );
+    expect(dispatcher.dispatch).not.toHaveBeenCalled();
   });
 
   it('rejects invalid webhook signature', () => {

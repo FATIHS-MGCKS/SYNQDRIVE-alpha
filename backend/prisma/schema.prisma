@@ -2896,6 +2896,7 @@ model BillingSubscription {
   @@index([organizationId])
   @@index([organizationId, status])
   @@index([priceBookId])
+  @@index([stripeSyncStatus])
   @@map("billing_subscriptions")
 }
 

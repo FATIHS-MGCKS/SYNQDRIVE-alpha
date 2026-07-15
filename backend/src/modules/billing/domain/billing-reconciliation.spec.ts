@@ -132,7 +132,7 @@ describe('billing-reconciliation domain', () => {
         expect.objectContaining({
           driftType: BillingReconciliationDriftType.MISSING_LOCAL_INVOICE,
           stripeValue: 'in_missing_local',
-          autoFixable: true,
+          autoFixable: false,
         }),
       ]),
     );
