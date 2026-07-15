@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'todays-operational-slice-v49496-2026-07-15',
+    version: '4.9.496',
+    title: "V4.9.496 — Today's Operational booking/status slices (Prompt 32/43)",
+    summary: [
+      'Zentrale Klassifikation `classifyTodaysOperational` in `todaysOperationalSlice.ts` für den Runtime-Slice `active-rented`.',
+      'Sechs fachlich getrennte Gruppen: Active Rented jetzt, Pickups heute, Reserved for Pickup heute, Returns heute, Overdue Pickups, Overdue Returns.',
+      'Active Rented nur aus kanonischem `operationalStatus === active_rented`; Returns aus Booking-Kontext (`returnItems`); Reserved for Pickup nur bei RESERVED + Übergabe heute.',
+      'Zukünftige Buchungen (nicht heute) werden aus Today\'s Operational ausgeschlossen; Mehrfachzugehörigkeit Active Rented + Return Today dokumentiert.',
+      'i18n-Keys `dashboard.todaysOperations.*` (de/en); 8 neue Slice-Tests + bestehende Runtime-UI-Tests angepasst.',
+    ],
+    reason:
+      "Prompt 32/43: Heutige Operationen soll Buchungs- und Statusanteile getrennt und ohne Doppelzählung innerhalb eines Teilwerts aus zentralen Runtime-Slices ableiten.",
+    previousBehavior:
+      '`buildActiveRentedSlice` mischte bookingState/operationalStatus für Active Rented; überfällige Übergaben lagen in `pickups-today`; keine `reserved-pickup-today`-Gruppe.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-15T23:40:00.000Z',
+  },
+  {
     id: 'rental-readiness-derivation-v49495-2026-07-15',
     version: '4.9.495',
     title: 'V4.9.495 — Ready-for-Renting derivation refactor (Prompt 31/43)',

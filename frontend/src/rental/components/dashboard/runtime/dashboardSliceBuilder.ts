@@ -21,6 +21,11 @@ import type {
   VehicleRuntimeState,
 } from './dashboardRuntimeTypes';
 import { buildVehicleRuntimeStates } from './vehicleRuntimeStateBuilder';
+import {
+  classifyTodaysOperational,
+  TODAYS_OPERATIONAL_GROUP_IDS,
+  todaysOperationalGroupLabel,
+} from './todaysOperationalSlice';
 
 const DEFAULT_DUE_SOON_MINUTES = 60;
 const MS_MINUTE = 60_000;
@@ -58,10 +63,8 @@ type RuntimeGroupId =
   | 'ready-now'
   | 'available-but-not-ready'
   | 'blocked-excluded'
-  | 'on-time'
-  | 'return-due-soon'
-  | 'return-overdue'
-  | 'critical-during-rental'
+  | 'active-rented-now'
+  | 'reserved-pickup-today'
   | 'pickups-due-soon'
   | 'returns-due-soon'
   | 'pickups-today'
@@ -496,55 +499,40 @@ function buildActiveRentedSlice(
   now: Date,
 ): DashboardSlice {
   const nowMs = now.getTime();
-  const active = states
-    .filter(
-      (state) =>
-        state.operationalStatus === 'active_rented' ||
-        state.bookingState === 'active_rented' ||
-        state.bookingState === 'return_due_soon' ||
-        state.bookingState === 'return_overdue',
-    )
-    .sort(byVehicleLabel);
-  const rows = active.map((state) => vehicleRow({ state, slice: 'active-rented', locale }));
-  const onTimeRows = active
-    .filter((state) => state.bookingState === 'active_rented' || state.operationalStatus === 'active_rented')
-    .filter((state) => state.bookingState !== 'return_due_soon' && state.bookingState !== 'return_overdue')
-    .map((state) => vehicleRow({ state, slice: 'active-on-time', locale, severity: state.isCritical ? 'critical' : 'info' }));
-  const dueSoonRows = active
-    .filter((state) => state.bookingState === 'return_due_soon')
-    .map((state) => vehicleRow({ state, slice: 'active-return-due-soon', locale, severity: 'warning' }));
-  const overdueRows = active
-    .filter((state) => state.bookingState === 'return_overdue')
-    .map((state) => vehicleRow({ state, slice: 'active-return-overdue', locale, severity: 'critical' }));
-  const criticalRows = active
-    .filter((state) => state.isCritical)
-    .map((state) => vehicleRow({ state, slice: 'active-critical', locale, severity: 'critical', reasons: state.criticalReasons }));
+  const classified = classifyTodaysOperational({
+    vehicleStates: states,
+    pickupItems,
+    returnItems,
+    now,
+  });
 
-  const pickupsTodayRows = dedupeRows(
-    pickupItems
-      .filter((item) => !item.done)
-      .map((item) =>
-        pickupRow(
-          item,
-          findVehicleState(states, item),
-          locale,
-          nowMs,
-          item.isOverdue ? 'pickup-overdue' : 'pickup-due-soon',
-        ),
-      ),
+  const rows = classified.activeRentedNow.map((state) =>
+    vehicleRow({ state, slice: 'active-rented', locale }),
   );
-  const returnsTodayRows = dedupeRows(
-    returnItems
-      .filter((item) => !item.done)
-      .map((item) =>
-        returnRow(
-          item,
-          findVehicleState(states, item),
-          locale,
-          nowMs,
-          item.isOverdue ? 'return-overdue' : 'return-due-soon',
-        ),
-      ),
+
+  const pickupsTodayRows = classified.pickupsToday.map(({ item, state }) =>
+    pickupRow(item, state, locale, nowMs, 'pickup-due-soon'),
+  );
+  const reservedPickupTodayRows = classified.reservedPickupToday.map(({ item, state }) =>
+    pickupRow(item, state, locale, nowMs, 'pickup-due-soon'),
+  );
+  const returnsTodayRows = classified.returnsToday.map(({ item, state }) =>
+    returnRow(item, state, locale, nowMs, 'return-due-soon'),
+  );
+  const overduePickupRows = classified.overduePickups.map(({ item, state }) =>
+    pickupRow(item, state, locale, nowMs, 'pickup-overdue'),
+  );
+  const overdueReturnRows = classified.overdueReturns.map(({ item, state }) =>
+    returnRow(item, state, locale, nowMs, 'return-overdue'),
+  );
+
+  const activeRentedNowRows = classified.activeRentedNow.map((state) =>
+    vehicleRow({
+      state,
+      slice: 'active-rented-now',
+      locale,
+      severity: state.isCritical ? 'critical' : 'info',
+    }),
   );
 
   return {
@@ -553,12 +541,36 @@ function buildActiveRentedSlice(
     tone: rows.length > 0 ? 'info' : 'neutral',
     rows,
     groups: [
-      group('pickups-today', label(locale, 'Übergaben', 'Pickups'), pickupsTodayRows),
-      group('returns-today', label(locale, 'Rückgaben', 'Returns'), returnsTodayRows),
-      group('on-time', label(locale, 'Planmäßig', 'On time'), onTimeRows),
-      group('return-due-soon', label(locale, 'Rückgabe bald fällig', 'Return due soon'), dueSoonRows),
-      group('return-overdue', label(locale, 'Rückgabe überfällig', 'Return overdue'), overdueRows),
-      group('critical-during-rental', label(locale, 'Kritisch während Vermietung', 'Critical during rental'), criticalRows),
+      group(
+        TODAYS_OPERATIONAL_GROUP_IDS.ACTIVE_RENTED_NOW,
+        todaysOperationalGroupLabel(TODAYS_OPERATIONAL_GROUP_IDS.ACTIVE_RENTED_NOW, locale),
+        activeRentedNowRows,
+      ),
+      group(
+        TODAYS_OPERATIONAL_GROUP_IDS.RESERVED_PICKUP_TODAY,
+        todaysOperationalGroupLabel(TODAYS_OPERATIONAL_GROUP_IDS.RESERVED_PICKUP_TODAY, locale),
+        reservedPickupTodayRows,
+      ),
+      group(
+        TODAYS_OPERATIONAL_GROUP_IDS.PICKUPS_TODAY,
+        todaysOperationalGroupLabel(TODAYS_OPERATIONAL_GROUP_IDS.PICKUPS_TODAY, locale),
+        pickupsTodayRows,
+      ),
+      group(
+        TODAYS_OPERATIONAL_GROUP_IDS.RETURNS_TODAY,
+        todaysOperationalGroupLabel(TODAYS_OPERATIONAL_GROUP_IDS.RETURNS_TODAY, locale),
+        returnsTodayRows,
+      ),
+      group(
+        TODAYS_OPERATIONAL_GROUP_IDS.OVERDUE_PICKUPS,
+        todaysOperationalGroupLabel(TODAYS_OPERATIONAL_GROUP_IDS.OVERDUE_PICKUPS, locale),
+        overduePickupRows,
+      ),
+      group(
+        TODAYS_OPERATIONAL_GROUP_IDS.OVERDUE_RETURNS,
+        todaysOperationalGroupLabel(TODAYS_OPERATIONAL_GROUP_IDS.OVERDUE_RETURNS, locale),
+        overdueReturnRows,
+      ),
     ],
     emptyTitle: label(locale, 'Keine Operationen heute', 'No operations today'),
     emptyDescription: label(
@@ -712,10 +724,8 @@ function buildCriticalAlertsSlice(input: BuildDashboardSlicesInput): DashboardSl
     'ready-now': [],
     'available-but-not-ready': [],
     'blocked-excluded': [],
-    'on-time': [],
-    'return-due-soon': [],
-    'return-overdue': [],
-    'critical-during-rental': [],
+    'active-rented-now': [],
+    'reserved-pickup-today': [],
     'pickups-due-soon': [],
     'returns-due-soon': [],
     'pickups-today': [],
