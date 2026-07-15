@@ -155,14 +155,13 @@ test.describe('Invoice edge-case flows', () => {
     resetInvoiceMockState();
   });
 
-  test('flow 22: invoice without bookingId cannot send email with clear reason', async ({ page }) => {
+  test('flow 22: invoice without booking can send email when PDF exists', async ({ page }) => {
     await openInvoicesPage(page);
     await openInvoiceDetail(page, '2026-0150');
 
     const documents = page.getByTestId('invoice-documents-section');
     const sendBtn = documents.getByRole('button', { name: 'Per E-Mail senden' });
-    await expect(sendBtn).toBeDisabled();
-    await expect(documents.getByText('E-Mail erfordert Buchung und generiertes PDF')).toBeVisible();
+    await expect(sendBtn).toBeEnabled();
   });
 
   test('flow 23: missing customer email shows validation on send', async ({ page }) => {

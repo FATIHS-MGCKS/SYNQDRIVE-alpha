@@ -7,6 +7,7 @@ import { shouldPollDocumentsPanel } from '../invoiceDocuments.mapper';
 import {
   fetchInvoiceDocumentsPanel,
   generateInvoiceDocument,
+  openInvoiceAttachment,
   openInvoiceDocument,
   retryInvoiceDocumentEmail,
   sendInvoiceDocumentEmail,
@@ -78,8 +79,8 @@ export function useInvoiceDocuments(orgId: string, invoice: Invoice, onInvoiceRe
 
   const previewIncomingAttachment = useCallback(() => {
     if (!invoice.imageUrl) return;
-    window.open(invoice.imageUrl, '_blank', 'noopener,noreferrer');
-  }, [invoice.imageUrl]);
+    openInvoiceAttachment(orgId, invoice.id);
+  }, [invoice.imageUrl, invoice.id, orgId]);
 
   const generatePdf = useCallback(
     async (regenerate = false) => {

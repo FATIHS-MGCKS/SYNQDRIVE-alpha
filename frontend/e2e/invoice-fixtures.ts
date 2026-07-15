@@ -73,7 +73,7 @@ function emptyDocumentsPanel(): InvoiceDocumentsPanel {
     capabilities: {
       preview: cap(false, 'Noch kein PDF vorhanden'),
       download: cap(false, 'Noch kein PDF vorhanden'),
-      sendEmail: cap(false, 'E-Mail erfordert Buchung und generiertes PDF'),
+      sendEmail: cap(false, 'PDF muss zuerst erzeugt werden'),
       generate: cap(true),
       regenerate: cap(false, 'Zuerst PDF erzeugen'),
       retry: cap(false, 'Kein fehlgeschlagener Versuch'),
@@ -125,7 +125,7 @@ function failedDocumentsPanel(): InvoiceDocumentsPanel {
     capabilities: {
       preview: cap(false, 'Kein PDF vorhanden'),
       download: cap(false, 'Kein PDF vorhanden'),
-      sendEmail: cap(false, 'E-Mail erfordert Buchung und generiertes PDF'),
+      sendEmail: cap(false, 'PDF muss zuerst erzeugt werden'),
       generate: cap(true),
       regenerate: cap(false, 'Zuerst PDF erzeugen'),
       retry: cap(true),
@@ -489,7 +489,7 @@ function buildStore(): MockStore {
   documentPanels.set(
     INVOICE_NO_BOOKING_ID,
     activeDocumentsPanel([], {
-      sendEmail: cap(false, 'E-Mail erfordert Buchung und generiertes PDF'),
+      sendEmail: cap(true),
     }),
   );
   documentPanels.set(INVOICE_NO_EMAIL_ID, activeDocumentsPanel());

@@ -456,8 +456,7 @@ export class BookingDocumentBundleService {
       orderBy: { createdAt: 'asc' },
     });
     if (!invoice) {
-      await this.invoices
-        .createBookingInvoice(orgId, {
+      await this.invoices.bootstrapBookingInvoice(orgId, {
           id: booking.id,
           customerId: booking.customerId,
           vehicleId: booking.vehicleId,
@@ -467,8 +466,7 @@ export class BookingDocumentBundleService {
           endDate: booking.endDate,
           currency: booking.currency,
           kmIncluded: booking.kmIncluded,
-        })
-        .catch(() => null);
+        });
       invoice = await this.prisma.orgInvoice.findFirst({
         where: { organizationId: orgId, bookingId: booking.id, type: 'OUTGOING_BOOKING' },
         orderBy: { createdAt: 'asc' },
@@ -508,6 +506,12 @@ export class BookingDocumentBundleService {
     });
     if (existing && force) await this.generatedDocs.voidDocument(orgId, existing.id);
     await this.setBundlePointer(bundle.id, DOCUMENT_TYPE.BOOKING_INVOICE, doc.id);
+    if (invoice?.id) {
+      await this.prisma.orgInvoice.update({
+        where: { id: invoice.id },
+        data: { generatedDocumentId: doc.id },
+      });
+    }
   }
 
   private async ensureDepositReceipt(

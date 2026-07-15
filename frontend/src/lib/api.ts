@@ -2697,6 +2697,7 @@ export const api = {
     get: (id: string) => get<any>(`/admin/vehicles/${id}`),
     listByOrg: (orgId: string, params?: { page?: number; limit?: number }) =>
       get<{ data: any[]; meta?: { total: number } }>(`/organizations/${orgId}/vehicles` + (params ? `?page=${params.page ?? 1}&limit=${params.limit ?? 200}` : '?limit=200')),
+    getByOrg: (orgId: string, id: string) => get<any>(`/organizations/${orgId}/vehicles/${id}`),
     fleetMap: (orgId: string) =>
       get<FleetMapVehicleResponse[]>(`/organizations/${orgId}/fleet-map`),
     create: (orgId: string, data: any) => post<any>(`/organizations/${orgId}/vehicles`, data),
@@ -3163,6 +3164,8 @@ export const api = {
     /** Opens the stored PDF (authenticated) in a new tab. */
     open: (orgId: string, documentId: string) =>
       openAuthedDocument(`/organizations/${orgId}/documents/${documentId}/download`),
+    openInvoiceAttachment: (orgId: string, invoiceId: string) =>
+      openAuthedDocument(`/organizations/${orgId}/invoices/${invoiceId}/attachment`),
     sendBookingEmail: (
       orgId: string,
       bookingId: string,

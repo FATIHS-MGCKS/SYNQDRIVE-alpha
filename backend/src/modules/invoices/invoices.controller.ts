@@ -1,7 +1,8 @@
 import {
   Controller, Get, Post, Patch, Body, Param, Query,
-  UseGuards, UseInterceptors, UploadedFile, BadRequestException,
+  UseGuards, UseInterceptors, UploadedFile, BadRequestException, Header, Res, StreamableFile,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
@@ -11,7 +12,6 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
-import { StorageService } from '@shared/storage/storage.service';
 import {
   CreateInvoiceDto,
   InvoiceQueryDto,
@@ -24,6 +24,7 @@ import { SendInvoiceEmailDto } from './dto/send-invoice-email.dto';
 import { InvoiceDocumentsService } from './invoice-documents.service';
 import { InvoiceTimelineService } from './invoice-timeline.service';
 import { InvoiceDocumentEmailService } from '@modules/outbound-email/invoice-document-email.service';
+import { InvoiceAttachmentsService } from './invoice-attachments.service';
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads', 'invoices');
 if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -33,10 +34,10 @@ export class InvoicesController {
   constructor(
     private readonly invoicesService: InvoicesService,
     private readonly invoiceListRead: InvoiceListReadService,
-    private readonly storage: StorageService,
     private readonly invoiceDocuments: InvoiceDocumentsService,
     private readonly invoiceTimeline: InvoiceTimelineService,
     private readonly invoiceEmail: InvoiceDocumentEmailService,
+    private readonly invoiceAttachments: InvoiceAttachmentsService,
   ) {}
 
   @Get('organizations/:orgId/invoices/list')
@@ -186,6 +187,30 @@ export class InvoicesController {
     return this.invoiceEmail.retryInvoiceEmail(orgId, id, emailId, userId ?? null);
   }
 
+  @Get('organizations/:orgId/invoices/:id/attachment')
+  @UseGuards(OrgScopingGuard, RolesGuard)
+  @Header('Cache-Control', 'no-store')
+  async downloadAttachment(
+    @Param('orgId') orgId: string,
+    @Param('id') id: string,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<StreamableFile> {
+    const invoice = await this.invoicesService.findById(id, orgId);
+    const imageUrl = invoice.imageUrl as string | null;
+    if (!imageUrl) {
+      throw new BadRequestException('Kein Anhang vorhanden');
+    }
+    if (!this.invoiceAttachments.hasDownloadableAttachment(imageUrl)) {
+      throw new BadRequestException('Anhang ist nicht über einen sicheren Download erreichbar');
+    }
+    const dl = await this.invoiceAttachments.getDownload(imageUrl, String(invoice.title ?? 'attachment'));
+    res.set({
+      'Content-Type': dl.mimeType,
+      'Content-Disposition': `inline; filename="${encodeURIComponent(dl.fileName)}"`,
+    });
+    return new StreamableFile(dl.stream);
+  }
+
   /** Legacy attachment upload only — NOT for AI extraction. Use document-extraction upload. */
   @Post('organizations/:orgId/invoices/upload')
   @UseGuards(OrgScopingGuard, RolesGuard)
@@ -213,7 +238,7 @@ export class InvoicesController {
     @UploadedFile() file: Express.Multer.File,
   ) {
     if (!file) throw new BadRequestException('No file uploaded');
-    const url = await this.storage.finalizeUpload('invoices', file, orgId);
+    const url = await this.invoiceAttachments.storeUpload(orgId, file);
     return { url, purpose: 'attachment_only' };
   }
 }

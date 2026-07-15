@@ -119,26 +119,7 @@ export function InvoiceDetailHeader({
                 variant="primary"
                 className={layoutMode === 'compact' ? 'col-span-2' : undefined}
               />
-            ) : (
-              <HeaderActionButton
-                label="PDF erzeugen"
-                icon="file-check"
-                disabled={!detail.primary.generatePdf.allowed}
-                reason={detail.primary.generatePdf.reason}
-                loading={generatingPdf}
-                onClick={onGeneratePdf}
-                variant="primary"
-                className={layoutMode === 'compact' ? 'col-span-2' : undefined}
-              />
-            )}
-            <HeaderActionButton
-              label="Per E-Mail senden"
-              icon="mail"
-              disabled={!detail.primary.sendEmail.allowed}
-              reason={detail.primary.sendEmail.reason}
-              loading={loadingSendDoc}
-              onClick={onSendEmail}
-            />
+            ) : null}
             <InvoiceHeaderMoreMenu
               actions={detail.actions}
               onIssue={onIssue}

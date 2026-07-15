@@ -67,6 +67,20 @@ describe('buildInvoiceDetailDto', () => {
     expect(dto.primary.sendEmail.reason).toContain('Administratoren');
   });
 
+  it('allows email without booking when PDF exists', () => {
+    const dto = buildInvoiceDetailDto(
+      sampleInvoice({ bookingId: null, generatedDocumentId: 'doc-1' }),
+      { canManageEmail: true },
+    );
+    expect(dto.primary.sendEmail.allowed).toBe(true);
+  });
+
+  it('requires PDF before email send', () => {
+    const dto = buildInvoiceDetailDto(sampleInvoice({ bookingId: null }), { canManageEmail: true });
+    expect(dto.primary.sendEmail.allowed).toBe(false);
+    expect(dto.primary.sendEmail.reason).toContain('PDF muss zuerst erzeugt werden');
+  });
+
   it('requires issue before generate on draft booking invoices', () => {
     const dto = buildInvoiceDetailDto(sampleInvoice({ status: 'DRAFT' }), { canManageEmail: true });
     expect(dto.primary.generatePdf.allowed).toBe(false);

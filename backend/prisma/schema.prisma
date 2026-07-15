@@ -4340,7 +4340,7 @@ model OrgInvoice {
   imageUrl             String?          @map("image_url")
   extractedData        Json?            @map("extracted_data")
   documentExtractionId String?          @map("document_extraction_id")
-  generatedDocumentId  String?          @map("generated_document_id")
+  generatedDocumentId  String?          @unique @map("generated_document_id")
   notes                String?
   paidAt               DateTime?        @map("paid_at")
   issuedAt             DateTime?        @map("issued_at")
@@ -4356,6 +4356,9 @@ model OrgInvoice {
   bookingPaymentRequests BookingPaymentRequest[]
   vendor                 Vendor?                 @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   organization           Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  generatedDocument      GeneratedDocument?      @relation("InvoiceActiveDocument", fields: [generatedDocumentId], references: [id], onDelete: SetNull)
+  documents              GeneratedDocument[]     @relation("InvoiceDocuments")
+  outboundEmails         OutboundEmail[]
 
   @@unique([organizationId, sequenceYear, sequenceNumber])
   @@index([organizationId])
@@ -4420,6 +4423,8 @@ model GeneratedDocument {
   updatedAt          DateTime     @updatedAt @map("updated_at")
 
   outboundEmailAttachments OutboundEmailAttachment[]
+  activeForInvoice         OrgInvoice?               @relation("InvoiceActiveDocument")
+  invoiceRecord            OrgInvoice?               @relation("InvoiceDocuments", fields: [invoiceId], references: [id], onDelete: SetNull)
 
   @@index([organizationId])
   @@index([bookingId])
@@ -6478,6 +6483,7 @@ model OutboundEmail {
   organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
   booking      Booking?                  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   customer     Customer?                 @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  invoice      OrgInvoice?               @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
   bookingPaymentRequest BookingPaymentRequest? @relation(fields: [bookingPaymentRequestId], references: [id], onDelete: SetNull)
   sentByUser   User?                     @relation("OutboundEmailSentBy", fields: [sentByUserId], references: [id], onDelete: SetNull)
   attachments  OutboundEmailAttachment[]

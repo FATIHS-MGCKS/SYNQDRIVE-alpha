@@ -97,15 +97,12 @@ export function buildInvoiceDetailDto(
     emailReason = 'E-Mail-Versand nur für Ausgangsrechnungen';
   } else if (isDraft) {
     emailReason = 'Zuerst ausstellen';
-  } else if (!hasGeneratedPdf || !bookingId) {
-    emailReason = 'E-Mail erfordert Buchung und generiertes PDF';
+  } else if (!hasGeneratedPdf) {
+    emailReason = 'PDF muss zuerst erzeugt werden';
   }
 
   const sendEmailGate = gate(
-    ctx.canManageEmail &&
-      outgoing &&
-      !isDraft &&
-      Boolean(bookingId && hasGeneratedPdf),
+    ctx.canManageEmail && outgoing && !isDraft && hasGeneratedPdf,
     emailReason,
   );
 

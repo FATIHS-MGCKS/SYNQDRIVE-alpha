@@ -31,3 +31,7 @@ export async function retryInvoiceDocumentEmail(orgId: string, invoiceId: string
 export function openInvoiceDocument(orgId: string, documentId: string) {
   api.documents.open(orgId, documentId);
 }
+
+export function openInvoiceAttachment(orgId: string, invoiceId: string) {
+  api.documents.openInvoiceAttachment(orgId, invoiceId);
+}

@@ -35,6 +35,30 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'invoice-readonly-audit-fixes-v49470-2026-07-15',
+    version: '4.9.470',
+    title: 'V4.9.470 — Rechnungsmodul: Read-only-Audit-Fixes (B1–K4, M1–M8)',
+    summary: [
+      'Read-only-Audit `INVOICE_READONLY_AUDIT_2026-07-15.md` als V4.9.470; alle Blocker/Kritisch/Mittel-Fixes umgesetzt und Re-Audit dokumentiert.',
+      'B1: `bootstrapBookingInvoice` loggt Fehler; Bookings/Wizard/Bundle verschlucken keine stillen Invoice-Fehler mehr.',
+      'B2: `InvoiceOverdueSchedulerService` persistiert `OVERDUE` täglich; Reconcile bei vollständig bezahlt.',
+      'B3: `backfill-invoice-document-links.ts` + Auto-Link `generatedDocumentId` nach Bundle-PDF.',
+      'K1: Eingangs-Anhänge über privaten Document-Storage + `GET …/invoices/:id/attachment`.',
+      'K2: PDF-Generierungsfehler als `GeneratedDocument` FAILED persistiert.',
+      'K3: Prisma-FK `generatedDocumentId`, `invoiceId`, `OutboundEmail.invoiceId`.',
+      'K4/M3/M4/M8: Frontend-Gates, Vehicle-`getByOrg`, Header-Duplikate, Titel-Fallbacks.',
+    ],
+    reason:
+      'Das Read-only-Abschlussaudit V4.9.470 verlangte die vollständige Abarbeitung aller Befunde ohne Ausnahme vor Produktions-Rollout.',
+    previousBehavior:
+      'Stille Invoice-Bootstrap-Fehler, read-time-only Überfälligkeit, öffentliche Upload-URLs, in-memory PDF-Failures, schwache FKs, Frontend/Backend-Gate-Drift, N+1/Legacy-Pfade.',
+    details:
+      'Siehe `architecture/INVOICE_READONLY_AUDIT_2026-07-15.md` und `architecture/INVOICE_READONLY_AUDIT_REVIEW_2026-07-15.md`. Ops: `audit-invoice-document-links.ts`, `backfill-invoice-document-links.ts --org=… [--apply]`.',
+    affectsArchitecture: true,
+    module: 'Invoices',
+    createdAt: '2026-07-15T01:00:00.000Z',
+  },
+  {
     id: 'invoice-frontend-e2e-v49469-2026-07-14',
     version: '4.9.469',
     title: 'V4.9.469 — Rechnungs-Frontend: E2E- & Responsive-Abnahme (24 Flows)',

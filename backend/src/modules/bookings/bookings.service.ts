@@ -4,6 +4,7 @@ import {
   forwardRef,
   BadRequestException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 import { Booking, Prisma, BookingStatus, VehicleStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
@@ -62,6 +63,8 @@ const BOOKING_STATUS_DISPLAY: Record<string, string> = {
 
 @Injectable()
 export class BookingsService {
+  private readonly logger = new Logger(BookingsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly rentalDrivingAnalysisService: RentalDrivingAnalysisService,
@@ -264,7 +267,7 @@ export class BookingsService {
     });
 
     const invoicePromise = this.invoicesService
-      .createBookingInvoice(orgId, {
+      .bootstrapBookingInvoice(orgId, {
         id: booking.id,
         customerId: booking.customerId,
         vehicleId: booking.vehicleId,
@@ -275,7 +278,13 @@ export class BookingsService {
         currency: booking.currency,
         kmIncluded: booking.kmIncluded,
       })
-      .catch(() => null);
+      .catch((err) => {
+        this.logger.error(
+          `Booking ${booking.id} created but invoice bootstrap failed`,
+          err instanceof Error ? err.stack : String(err),
+        );
+        return null;
+      });
 
     // Generate the initial document bundle for operator/rental bookings once
     // created (PENDING or CONFIRMED). Wizard checkout drafts call generate

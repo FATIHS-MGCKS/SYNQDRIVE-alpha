@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import {
@@ -33,11 +34,14 @@ import {
   parseLegacyLineItems,
 } from './invoice-line-items.util';
 import { InvoiceNumberService } from './invoice-number.service';
+import { invoiceBookingRef } from './utils/invoice-booking-ref.util';
 import { userDisplayName } from './invoice-documents.labels';
 import { presentInvoicePayment } from './invoice-payments.presentation';
 
 @Injectable()
 export class InvoicesService {
+  private readonly logger = new Logger(InvoicesService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly tasksService: TasksService,
@@ -131,18 +135,34 @@ export class InvoicesService {
         payments: { orderBy: { paidAt: 'desc' }, take: 5 },
       },
     });
-    return Promise.all(
-      invoices.map(async (inv) => {
-        const formatted = this.format(inv as unknown as Record<string, unknown>);
-        formatted.tasks = (inv.tasks || []).map((t) => ({
-          id: t.id,
-          title: t.title,
-          status: t.status,
-        }));
-        formatted.payments = await this.presentPayments(orgId, inv.payments || []);
-        return formatted;
-      }),
-    );
+
+    const allPayments = invoices.flatMap((inv) => inv.payments ?? []);
+    const userIds = [
+      ...new Set(allPayments.map((p) => p.createdByUserId).filter(Boolean)),
+    ] as string[];
+    const users = userIds.length
+      ? await this.prisma.user.findMany({
+          where: { id: { in: userIds } },
+          select: { id: true, name: true, firstName: true, lastName: true, email: true },
+        })
+      : [];
+    const userMap = new Map(users.map((u) => [u.id, u]));
+
+    return invoices.map((inv) => {
+      const formatted = this.format(inv as unknown as Record<string, unknown>);
+      formatted.tasks = (inv.tasks || []).map((t) => ({
+        id: t.id,
+        title: t.title,
+        status: t.status,
+      }));
+      formatted.payments = (inv.payments || []).map((payment) =>
+        presentInvoicePayment(
+          payment as Parameters<typeof presentInvoicePayment>[0],
+          payment.createdByUserId ? userDisplayName(userMap.get(payment.createdByUserId)) : null,
+        ),
+      );
+      return formatted;
+    });
   }
 
   async findByCustomer(orgId: string, customerId: string) {
@@ -154,24 +174,15 @@ export class InvoicesService {
     return invoices.map((inv) => this.format(inv as unknown as Record<string, unknown>));
   }
 
-  async findById(id: string, orgId?: string) {
-    const inv = orgId
-      ? await this.prisma.orgInvoice.findFirst({
-          where: { id, organizationId: orgId },
-          include: {
-            tasks: true,
-            vendor: { select: { id: true, name: true } },
-            payments: { orderBy: { paidAt: 'desc' } },
-          },
-        })
-      : await this.prisma.orgInvoice.findUnique({
-          where: { id },
-          include: {
-            tasks: true,
-            vendor: { select: { id: true, name: true } },
-            payments: { orderBy: { paidAt: 'desc' } },
-          },
-        });
+  async findById(id: string, orgId: string) {
+    const inv = await this.prisma.orgInvoice.findFirst({
+      where: { id, organizationId: orgId },
+      include: {
+        tasks: true,
+        vendor: { select: { id: true, name: true } },
+        payments: { orderBy: { paidAt: 'desc' } },
+      },
+    });
     if (!inv) throw new NotFoundException('Invoice not found');
     const formatted = this.format(inv as unknown as Record<string, unknown>);
     formatted.tasks = (inv.tasks || []).map((t) => ({
@@ -181,16 +192,7 @@ export class InvoicesService {
       priority: t.priority,
       description: t.description,
     }));
-    formatted.payments = orgId
-      ? await this.presentPayments(orgId, inv.payments || [])
-      : (inv.payments || []).map((p) => ({
-          id: p.id,
-          amountCents: p.amountCents,
-          method: p.method,
-          paidAt: p.paidAt.toISOString(),
-          reference: p.reference,
-          note: p.note,
-        }));
+    formatted.payments = await this.presentPayments(orgId, inv.payments || []);
     return formatted;
   }
 
@@ -263,14 +265,14 @@ export class InvoicesService {
     return this.findById(invoice.id, orgId);
   }
 
-  async update(id: string, data: UpdateInvoiceDto, orgId?: string) {
+  async update(id: string, data: UpdateInvoiceDto, orgId: string) {
     const existing = await this.requireInvoice(id, orgId);
     if (!isEditableStatus(existing.status)) {
       throw new BadRequestException(`Invoice in status ${existing.status} cannot be edited`);
     }
 
     if (data.customerId || data.vendorId) {
-      await this.assertRelations(orgId!, {
+      await this.assertRelations(orgId, {
         ...data,
         type: existing.type,
         title: existing.title,
@@ -451,13 +453,13 @@ export class InvoicesService {
     });
 
     if (newOutstanding === 0) {
-      await this.closeLinkedTasks(id);
+      await this.closeLinkedTasks(orgId, id);
     }
 
     return this.findById(id, orgId);
   }
 
-  async markPaid(id: string, orgId?: string) {
+  async markPaid(id: string, orgId: string) {
     const inv = await this.requireInvoice(id, orgId);
     const outstanding = Math.max(0, inv.totalCents - inv.paidCents);
     if (outstanding <= 0) {
@@ -465,9 +467,34 @@ export class InvoicesService {
     }
     return this.recordPayment(
       id,
-      orgId!,
+      orgId,
       { amountCents: outstanding, method: InvoicePaymentMethod.BANK_TRANSFER },
     );
+  }
+
+  async bootstrapBookingInvoice(
+    orgId: string,
+    booking: {
+      id: string;
+      customerId: string;
+      vehicleId: string;
+      totalPriceCents?: number | null;
+      dailyRateCents?: number | null;
+      startDate: Date;
+      endDate: Date;
+      currency?: string;
+      kmIncluded?: number | null;
+    },
+  ) {
+    try {
+      return await this.createBookingInvoice(orgId, booking);
+    } catch (err) {
+      this.logger.error(
+        `Booking invoice bootstrap failed for booking ${booking.id} (org ${orgId})`,
+        err instanceof Error ? err.stack : String(err),
+      );
+      throw err;
+    }
   }
 
   async createBookingInvoice(orgId: string, booking: {
@@ -555,7 +582,7 @@ export class InvoicesService {
       customerId: booking.customerId,
       bookingId: booking.id,
       vehicleId: booking.vehicleId,
-      title: `Buchungsrechnung #${booking.id.slice(0, 8)}`,
+      title: `Buchungsrechnung ${invoiceBookingRef(booking.id)}`,
       description: `Mietrechnung für Buchungszeitraum ${booking.startDate.toLocaleDateString('de-DE')} – ${booking.endDate.toLocaleDateString('de-DE')}`,
       lineItems,
       totalCents,
@@ -674,10 +701,10 @@ export class InvoicesService {
     };
   }
 
-  private async requireInvoice(id: string, orgId?: string) {
-    const inv = orgId
-      ? await this.prisma.orgInvoice.findFirst({ where: { id, organizationId: orgId } })
-      : await this.prisma.orgInvoice.findUnique({ where: { id } });
+  private async requireInvoice(id: string, orgId: string) {
+    const inv = await this.prisma.orgInvoice.findFirst({
+      where: { id, organizationId: orgId },
+    });
     if (!inv) throw new NotFoundException('Invoice not found');
     return inv;
   }
@@ -783,9 +810,9 @@ export class InvoicesService {
     });
   }
 
-  private async closeLinkedTasks(invoiceId: string) {
+  private async closeLinkedTasks(orgId: string, invoiceId: string) {
     const tasks = await this.prisma.orgTask.findMany({
-      where: { invoiceId, status: { not: 'DONE' } },
+      where: { organizationId: orgId, invoiceId, status: { not: 'DONE' } },
     });
     for (const task of tasks) {
       await this.prisma.orgTask.update({

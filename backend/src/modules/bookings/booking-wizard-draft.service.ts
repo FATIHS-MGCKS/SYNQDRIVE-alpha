@@ -297,8 +297,7 @@ export class BookingWizardDraftService {
         where: { id: bookingId, organizationId: orgId },
       }));
 
-    await this.invoicesService
-      .createBookingInvoice(orgId, {
+    await this.invoicesService.bootstrapBookingInvoice(orgId, {
         id: row.id,
         customerId: row.customerId,
         vehicleId: row.vehicleId,
@@ -308,8 +307,7 @@ export class BookingWizardDraftService {
         endDate: row.endDate,
         currency: row.currency,
         kmIncluded: row.kmIncluded,
-      })
-      .catch(() => null);
+      });
 
     const bundle = await this.bundleService.generateInitialBundle(orgId, bookingId, userId);
     return { booking: row, bundle };

@@ -67,19 +67,13 @@ export function useInvoiceRelationsEnrichment(
       if (invoice.vehicleId) {
         tasks.push(
           api.vehicles
-            .listByOrg(orgId)
-            .then((res) => {
-              const list = (Array.isArray(res) ? res : res?.data || []) as InvoiceLookupVehicle[];
-              const vehicle = list.find((v) => v.id === invoice.vehicleId) ?? null;
-              if (vehicle) {
-                next.vehicle = vehicle;
-                next.vehicleFetchState = 'ok';
-              } else {
-                next.vehicleFetchState = 'not_found';
-              }
+            .getByOrg(orgId, invoice.vehicleId)
+            .then((vehicle) => {
+              next.vehicle = vehicle as InvoiceLookupVehicle;
+              next.vehicleFetchState = 'ok';
             })
-            .catch(() => {
-              next.vehicleFetchState = 'error';
+            .catch((err) => {
+              next.vehicleFetchState = isNotFoundError(err) ? 'not_found' : 'error';
             }),
         );
       }

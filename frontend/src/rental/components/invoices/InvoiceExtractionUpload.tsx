@@ -39,7 +39,8 @@ export function InvoiceExtractionUpload({
   const fileRef = useRef<HTMLInputElement>(null);
 
   const vehicleLabel = (v: (typeof vehicles)[0]) =>
-    [v.make, v.model, v.licensePlate || v.license].filter(Boolean).join(' · ') || v.id.slice(0, 8);
+    [v.make, v.model, v.licensePlate || v.license].filter(Boolean).join(' · ') ||
+    'Fahrzeug ohne Bezeichnung';
 
   const stopPoll = () => {
     if (pollRef.current) {

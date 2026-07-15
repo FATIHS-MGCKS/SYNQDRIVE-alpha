@@ -1,5 +1,5 @@
 
-import { InvoicesView } from './InvoicesView';
+import { InvoicesPage } from './invoices/InvoicesPage';
 import { PriceTariffsView } from './PriceTariffsView';
 import type { InvoiceRelationNavigation } from './invoices/InvoiceRelations';
 
@@ -16,7 +16,7 @@ export function FinanceView({ isDarkMode, activeTab, invoiceNavigation }: Financ
   return (
     <div className="max-w-[1600px] mx-auto space-y-5">
       {activeTab === 'invoices' && (
-        <InvoicesView isDarkMode={isDarkMode} navigation={invoiceNavigation} />
+        <InvoicesPage isDarkMode={isDarkMode} navigation={invoiceNavigation} />
       )}
       {activeTab === 'price-tariffs' && <PriceTariffsView isDarkMode={isDarkMode} />}
     </div>

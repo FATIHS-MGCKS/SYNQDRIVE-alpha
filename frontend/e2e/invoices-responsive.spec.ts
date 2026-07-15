@@ -61,10 +61,9 @@ test.describe('Invoice responsive acceptance', () => {
     const documents = page.getByTestId('invoice-documents-section');
     const payments = page.getByTestId('invoice-payments-section');
     await expect(documents.getByRole('button', { name: 'PDF erzeugen' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Per E-Mail senden' }).first()).toBeVisible();
     await expect(payments.getByRole('button', { name: 'Zahlung erfassen' })).toBeVisible();
 
-    await expect(page.getByText('E-Mail erfordert Buchung und generiertes PDF').first()).toBeVisible();
+    await expect(documents.getByText('Für diese Rechnung wurde noch kein PDF erzeugt.')).toBeVisible();
 
     if (VIEWPORTS_FOR_ARTIFACTS.includes(testInfo.project.name as (typeof VIEWPORTS_FOR_ARTIFACTS)[number])) {
       await saveInvoiceScreenshot(page, `invoices-detail-${testInfo.project.name}`, testInfo);

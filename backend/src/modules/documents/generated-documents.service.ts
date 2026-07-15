@@ -7,7 +7,7 @@ import {
   DOCUMENTS_STORAGE,
   DocumentStoragePort,
 } from './storage/document-storage.interface';
-import { DOCUMENT_ORIGIN, DOCUMENT_STATUS } from './documents.constants';
+import { DOCUMENT_ORIGIN, DOCUMENT_STATUS, DOCUMENT_TYPE } from './documents.constants';
 import { dedupeDocumentsByType } from './document-list-dedupe.util';
 
 export interface CreateGeneratedDocumentInput {
@@ -170,6 +170,49 @@ export class GeneratedDocumentsService {
     return this.prisma.generatedDocument.update({
       where: { id: documentId },
       data: { status: DOCUMENT_STATUS.VOID, voidedAt: new Date() },
+    });
+  }
+
+  /** Persists a failed PDF generation attempt for invoice document panels. */
+  async recordInvoiceGenerationFailure(input: {
+    organizationId: string;
+    invoiceId: string;
+    bookingId?: string | null;
+    customerId?: string | null;
+    vehicleId?: string | null;
+    errorMessage: string;
+    generatedByUserId?: string | null;
+  }): Promise<GeneratedDocument> {
+    const placeholder = Buffer.from('PDF generation failed', 'utf8');
+    const stored = await this.storage.putObject({
+      organizationId: input.organizationId,
+      bookingId: input.bookingId ?? null,
+      documentType: 'INVOICE_GENERATION_FAILED',
+      originalName: `failed-${input.invoiceId}.txt`,
+      buffer: placeholder,
+      mimeType: 'text/plain',
+    });
+
+    return this.prisma.generatedDocument.create({
+      data: {
+        organizationId: input.organizationId,
+        documentType: DOCUMENT_TYPE.BOOKING_INVOICE,
+        origin: DOCUMENT_ORIGIN.GENERATED,
+        status: DOCUMENT_STATUS.FAILED,
+        bookingId: input.bookingId ?? null,
+        customerId: input.customerId ?? null,
+        vehicleId: input.vehicleId ?? null,
+        invoiceId: input.invoiceId,
+        title: 'PDF-Erzeugung fehlgeschlagen',
+        fileName: `failed-${input.invoiceId}.txt`,
+        mimeType: 'text/plain',
+        storageProvider: stored.storageProvider,
+        objectKey: stored.objectKey,
+        sizeBytes: stored.sizeBytes,
+        generatedAt: new Date(),
+        generatedByUserId: input.generatedByUserId ?? null,
+        metadata: { errorMessage: input.errorMessage },
+      },
     });
   }
 

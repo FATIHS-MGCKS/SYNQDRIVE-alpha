@@ -149,7 +149,19 @@ export class InvoiceDocumentsService {
     const hasSendableDocument = docs.some((d) => isSendableDocumentStatus(d.status));
     const hasIncomingAttachment = Boolean(invoice.imageUrl);
     const isGenerating = this.isGenerating(invoiceId);
-    const failure = this.failures.get(invoiceId) ?? null;
+    const inMemoryFailure = this.failures.get(invoiceId) ?? null;
+    const persistedFailureDoc = docs
+      .filter((d) => d.status === DOCUMENT_STATUS.FAILED)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+    const persistedFailureMeta = persistedFailureDoc?.metadata as { errorMessage?: string } | null;
+    const failure =
+      inMemoryFailure ??
+      (persistedFailureDoc
+        ? {
+            at: persistedFailureDoc.createdAt,
+            message: persistedFailureMeta?.errorMessage ?? 'PDF-Erzeugung fehlgeschlagen',
+          }
+        : null);
     const lastGenerationFailed = Boolean(failure && !hasActiveDocument);
 
     const capabilities = buildInvoiceDocumentCapabilities({
@@ -222,6 +234,15 @@ export class InvoiceDocumentsService {
     } catch (err) {
       const message = this.userFacingError(err);
       this.failures.set(invoiceId, { at: new Date(), message });
+      await this.generatedDocs.recordInvoiceGenerationFailure({
+        organizationId: orgId,
+        invoiceId: invoice.id,
+        bookingId: invoice.bookingId,
+        customerId: invoice.customerId,
+        vehicleId: invoice.vehicleId,
+        errorMessage: message,
+        generatedByUserId: userId,
+      });
       throw new BadRequestException(message);
     } finally {
       this.generating.delete(invoiceId);
@@ -372,7 +393,10 @@ export class InvoiceDocumentsService {
         })
       : [];
     const userMap = new Map(users.map((u) => [u.id, u]));
-    const activeId = nonVoid.find((d) => isSendableDocumentStatus(d.status))?.id ?? nonVoid[0]?.id ?? null;
+    const activeId =
+      nonVoid.find((d) => isSendableDocumentStatus(d.status))?.id ??
+      nonVoid.find((d) => isActiveDocumentStatus(d.status))?.id ??
+      null;
 
     return nonVoid.map((doc, index) => {
       const version = nonVoid.length - index;
