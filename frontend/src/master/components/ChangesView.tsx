@@ -361,7 +361,6 @@ export const FALLBACK_ENTRIES: ChangelogEntry[] = [
     module: 'Payments',
     createdAt: '2026-07-14T22:35:00.000Z',
   },
-  },
   {
     id: 'stripe-connect-e2e-blocked-v49455-2026-07-14',
     version: '4.9.455',
