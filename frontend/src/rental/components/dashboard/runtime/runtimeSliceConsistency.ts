@@ -12,7 +12,6 @@ import {
   selectOperationalStatus,
   VEHICLE_OPERATIONAL_STATUS,
 } from '../../../lib/vehicle-operational-state';
-import type { FleetVehicleContext } from '../../../lib/fleet-operator-panel';
 import { buildFleetVehicleContexts } from '../../../lib/fleet-operator-panel';
 import {
   resolveReadyForRentingKpiCounts,

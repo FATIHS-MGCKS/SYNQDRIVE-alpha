@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-tabs-status-filter-v49499-2026-07-15',
+    version: '4.9.499',
+    title: 'V4.9.499 — Canonical Fleet tabs and status filters (Prompt 35/43)',
+    summary: [
+      'Neu: `fleet-command-filters.ts` — zentrale Tab-Zuordnung über `selectOperationalStatus` (Available, Reserved, Active, Maintenance/Blocked, Unknown, All).',
+      'Zukünftige Buchungen (`nextBooking`) bleiben im Available-Tab bis Pickup-Tag; optionaler Overlay-Filter „With future booking“.',
+      'Tab-Zähler und Listen nutzen dieselben Selectors; keine `vehicle.status`- oder `reservedBookingId`-Heuristik.',
+      'Fleet Map und Fleet List teilen dieselbe gefilterte Menge (Suche + Station + Tab + optional Future Booking).',
+      'Scrollbare Tab-Leiste für Mobile/Desktop; 8 neue Filter-Tests + bestehende Konsistenztests angepasst.',
+    ],
+    reason:
+      'Prompt 35/43: Fleet-Tabs müssen strikt kanonischen operationalState widerspiegeln und Map/Liste konsistent filtern.',
+    previousBehavior:
+      'Nur drei Tabs (Available/Active/Reserved); Map zeigte alle station-gefilterten Fahrzeuge unabhängig vom aktiven Tab.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-15T23:55:00.000Z',
+  },
+  {
     id: 'fleet-status-booking-display-v49498-2026-07-15',
     version: '4.9.498',
     title: 'V4.9.498 — Fleet List/Map/Vehicle Detail status + booking supplement (Prompt 34/43)',
