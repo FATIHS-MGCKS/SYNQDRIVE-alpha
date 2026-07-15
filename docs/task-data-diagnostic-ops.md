@@ -58,3 +58,8 @@ npx ts-node -r tsconfig-paths/register scripts/ops/audit-task-data.ts --dry-run
 ## Nest integration
 
 `TaskDataDiagnosticService` is exported from `TasksModule` for programmatic use in admin tooling or tests.
+
+## Related
+
+- **Runbook (verbindlich):** [`docs/runbooks/task-data-repair.md`](../runbooks/task-data-repair.md)
+- Repair script: `scripts/ops/repair-task-data.ts`, `docs/task-data-repair-ops.md`

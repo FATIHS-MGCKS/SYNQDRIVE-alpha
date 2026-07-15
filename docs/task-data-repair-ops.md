@@ -64,5 +64,6 @@ Repeated dry-runs or applies are safe:
 
 ## Related
 
+- **Runbook (verbindlich):** [`docs/runbooks/task-data-repair.md`](../runbooks/task-data-repair.md)
 - Diagnostic (read-only): `scripts/ops/audit-task-data.ts`, `docs/task-data-diagnostic-ops.md`
 - Service: `TaskDataRepairService` in `backend/src/modules/tasks/diagnostic/`
