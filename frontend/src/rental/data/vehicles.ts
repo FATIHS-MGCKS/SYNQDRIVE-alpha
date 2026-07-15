@@ -115,6 +115,11 @@ export interface VehicleData {
   maintenanceReason?: string | null;
   maintenanceReasonCode?: FleetMaintenanceReasonCode | null;
   maintenanceUrgency?: 'planned' | 'urgent' | null;
+  /** Canonical operational read-model when loaded from fleet-map / vehicles API. */
+  rawVehicleStatus?: string;
+  operationalState?: import('../lib/vehicle-operational-state').VehicleOperationalState;
+  bookingContext?: import('../lib/vehicle-operational-state').VehicleBookingContext;
+  dataQualityReasons?: string[];
 }
 
 // Simulated data removed - loaded from API via RentalApp

@@ -5,6 +5,7 @@ import type {
 } from '../../../DashboardInsightsContext';
 import type { VehicleData } from '../../../data/vehicles';
 import type { PickupTileItem, ReturnTileItem } from '../../StatInlineDetail';
+import { selectFleetRuntimeOperationalStatus } from '../../../lib/fleet-map-vehicle-selectors';
 import {
   categoryFromHealthModule,
   categoryFromInsightType,
@@ -34,8 +35,6 @@ const DEFAULT_DUE_SOON_MINUTES = 60;
 const DEFAULT_SOFT_OFFLINE_HOURS = 24;
 const DEFAULT_HARD_OFFLINE_HOURS = 48;
 
-type RuntimeVehicleStatus = VehicleData['status'] | 'Unavailable' | string;
-
 interface VehicleTelemetryTimestampFields {
   lastSignal?: string | null;
   lastSeen?: string | null;
@@ -51,6 +50,10 @@ interface VehicleTelemetryTimestampFields {
   displayState?: string | null;
   displayIgnition?: string | null;
   speed?: number | null;
+}
+
+function mapOperationalStatus(vehicle: VehicleData): VehicleOperationalStatus {
+  return selectFleetRuntimeOperationalStatus(vehicle);
 }
 
 export interface BuildVehicleRuntimeStatesInput {
@@ -136,23 +139,6 @@ export function deriveTelemetryState(
   if (ageMs < softMs) return 'standby';
   if (ageMs < hardMs) return 'soft_offline';
   return 'offline';
-}
-
-function mapOperationalStatus(status: RuntimeVehicleStatus): VehicleOperationalStatus {
-  switch (status) {
-    case 'Available':
-      return 'available';
-    case 'Reserved':
-      return 'reserved';
-    case 'Active Rented':
-      return 'active_rented';
-    case 'Maintenance':
-      return 'maintenance';
-    case 'Unavailable':
-      return 'unavailable';
-    default:
-      return 'unknown';
-  }
 }
 
 function vehicleDisplayName(vehicle: VehicleData): string {
@@ -627,7 +613,7 @@ export function buildVehicleRuntimeStates(input: BuildVehicleRuntimeStatesInput)
   const telemetryOfflineBlockLevel = input.telemetryOfflineBlockLevel ?? 'hard_blocked';
 
   return input.fleetVehicles.map((vehicle) => {
-    const operationalStatus = mapOperationalStatus(vehicle.status);
+    const operationalStatus = mapOperationalStatus(vehicle);
     const telemetryState = deriveTelemetryState(
       vehicle,
       now,

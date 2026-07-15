@@ -11,6 +11,7 @@ import {
   isFleetSignalOutdated,
   resolveFleetVehicleDisplayState,
 } from './fleetVehicleDisplay';
+import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
 
 function mod(state: RentalHealthState, reason = ''): RentalHealthModule {
   return { state, reason, last_updated_at: null, data_stale: false };
@@ -38,6 +39,29 @@ function health(overrides: Partial<VehicleHealthResponse> = {}): VehicleHealthRe
 }
 
 function vehicle(overrides: Partial<VehicleData> = {}): VehicleData {
+  const status = overrides.status ?? VEHICLE_OPERATIONAL_STATUS.AVAILABLE;
+  const operationalState =
+    overrides.operationalState ??
+    ({
+      status,
+      reason: null,
+      source: null,
+      effectiveFrom: null,
+      effectiveUntil: null,
+      derivedAt: null,
+      dataQualityState: 'RELIABLE',
+      dataQualityReasons: [],
+      isReliable: true,
+    } as VehicleData['operationalState']);
+  const bookingContext =
+    overrides.bookingContext ??
+    ({
+      activeBooking: null,
+      reservedBooking: null,
+      nextBooking: null,
+      futureBookingCount: 0,
+    } as VehicleData['bookingContext']);
+
   return {
     id: overrides.id ?? 'v1',
     license: overrides.license ?? 'KS-FS 123',
@@ -48,7 +72,9 @@ function vehicle(overrides: Partial<VehicleData> = {}): VehicleData {
     stationId: 'st-1',
     stationName: 'Zentrale',
     fuelType: 'Petrol',
-    status: 'Available',
+    status,
+    operationalState,
+    bookingContext,
     cleaningStatus: 'Clean',
     healthStatus: 'Good Health',
     online: true,
@@ -198,7 +224,18 @@ describe('health vs rental display separation', () => {
         make: 'Mercedes-Benz',
         model: 'C 63 AMG',
         year: 2018,
-        status: 'Available',
+        status: VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
+        operationalState: {
+          status: VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
+          reason: null,
+          source: null,
+          effectiveFrom: null,
+          effectiveUntil: null,
+          derivedAt: null,
+          dataQualityState: 'RELIABLE',
+          dataQualityReasons: [],
+          isReliable: true,
+        },
       }),
       {
         locale: 'en',
@@ -308,14 +345,68 @@ describe('health vs rental display separation', () => {
 
   it('Active Rented → rental Active; Reserved → rental Reserved', () => {
     const active = resolveFleetVehicleDisplayState(
-      vehicle({ status: 'Active Rented', activeBookingId: 'b1' }),
+      vehicle({
+        status: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+        operationalState: {
+          status: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+          reason: null,
+          source: null,
+          effectiveFrom: null,
+          effectiveUntil: null,
+          derivedAt: null,
+          dataQualityState: 'RELIABLE',
+          dataQualityReasons: [],
+          isReliable: true,
+        },
+        bookingContext: {
+          activeBooking: {
+            bookingId: 'b1',
+            customerName: null,
+            pickupAt: null,
+            returnAt: null,
+            pickupStationName: null,
+            returnStationName: null,
+            isOverdue: false,
+          },
+          reservedBooking: null,
+          nextBooking: null,
+          futureBookingCount: 0,
+        },
+      }),
       { locale: 'en' },
     );
     expect(active.rentalDisplay.status).toBe('active');
     expect(active.rentalDisplay.label).toBe('Active');
 
     const reserved = resolveFleetVehicleDisplayState(
-      vehicle({ status: 'Reserved', reservedBookingId: 'r1' }),
+      vehicle({
+        status: VEHICLE_OPERATIONAL_STATUS.RESERVED,
+        operationalState: {
+          status: VEHICLE_OPERATIONAL_STATUS.RESERVED,
+          reason: null,
+          source: null,
+          effectiveFrom: null,
+          effectiveUntil: null,
+          derivedAt: null,
+          dataQualityState: 'RELIABLE',
+          dataQualityReasons: [],
+          isReliable: true,
+        },
+        bookingContext: {
+          activeBooking: null,
+          reservedBooking: {
+            bookingId: 'r1',
+            customerName: null,
+            pickupAt: null,
+            returnAt: null,
+            pickupStationName: null,
+            returnStationName: null,
+            isOverdue: false,
+          },
+          nextBooking: null,
+          futureBookingCount: 0,
+        },
+      }),
       { locale: 'en' },
     );
     expect(reserved.rentalDisplay.status).toBe('reserved');
@@ -325,8 +416,32 @@ describe('health vs rental display separation', () => {
   it('overdue pickup does not downgrade health or operational status to warning', () => {
     const d = resolveFleetVehicleDisplayState(
       vehicle({
-        status: 'Reserved',
-        reservedBookingId: 'r1',
+        status: VEHICLE_OPERATIONAL_STATUS.RESERVED,
+        operationalState: {
+          status: VEHICLE_OPERATIONAL_STATUS.RESERVED,
+          reason: null,
+          source: null,
+          effectiveFrom: null,
+          effectiveUntil: null,
+          derivedAt: null,
+          dataQualityState: 'RELIABLE',
+          dataQualityReasons: [],
+          isReliable: true,
+        },
+        bookingContext: {
+          activeBooking: null,
+          reservedBooking: {
+            bookingId: 'r1',
+            customerName: null,
+            pickupAt: null,
+            returnAt: null,
+            pickupStationName: null,
+            returnStationName: null,
+            isOverdue: true,
+          },
+          nextBooking: null,
+          futureBookingCount: 0,
+        },
         reservedIsOverdue: true,
         healthStatus: 'Good Health',
       }),

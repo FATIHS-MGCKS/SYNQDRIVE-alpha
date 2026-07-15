@@ -15,6 +15,7 @@ import {
   vehicleMatchesCommandTab,
 } from './fleet-operator-panel';
 import { deriveFleetVisualState } from './fleetVisualState';
+import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
 import {
   ALL_STATIONS_FILTER,
   NO_LOCATION_FILTER,
@@ -22,6 +23,29 @@ import {
 } from '../stores/useFleetMapStore';
 
 function vehicle(overrides: Partial<VehicleData> = {}): VehicleData {
+  const status = overrides.status ?? VEHICLE_OPERATIONAL_STATUS.AVAILABLE;
+  const operationalState =
+    overrides.operationalState ??
+    ({
+      status,
+      reason: null,
+      source: null,
+      effectiveFrom: null,
+      effectiveUntil: null,
+      derivedAt: null,
+      dataQualityState: 'RELIABLE',
+      dataQualityReasons: [],
+      isReliable: true,
+    } as VehicleData['operationalState']);
+  const bookingContext =
+    overrides.bookingContext ??
+    ({
+      activeBooking: null,
+      reservedBooking: null,
+      nextBooking: null,
+      futureBookingCount: 0,
+    } as VehicleData['bookingContext']);
+
   return {
     id: overrides.id ?? 'v1',
     license: overrides.license ?? 'KS-FS 123',
@@ -32,7 +56,9 @@ function vehicle(overrides: Partial<VehicleData> = {}): VehicleData {
     stationId: 'st-1',
     stationName: 'Kassel Station',
     fuelType: 'Petrol',
-    status: 'Available',
+    status,
+    operationalState,
+    bookingContext,
     cleaningStatus: 'Clean',
     healthStatus: 'Good Health',
     online: true,
@@ -71,7 +97,18 @@ describe('fleet-operator-panel', () => {
           license: 'M-XY 9',
           make: 'VW',
           model: 'Golf 2023',
-          status: 'Active Rented',
+          status: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+          operationalState: {
+            status: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+            reason: null,
+            source: null,
+            effectiveFrom: null,
+            effectiveUntil: null,
+            derivedAt: null,
+            dataQualityState: 'RELIABLE',
+            dataQualityReasons: [],
+            isReliable: true,
+          },
           activeCustomerName: 'Ali Yilmaz',
         }),
       ],
@@ -89,11 +126,39 @@ describe('fleet-operator-panel', () => {
   it('computeCommandTabCounts uses the same filtered base', () => {
     const contexts = buildFleetVehicleContexts(
       [
-        vehicle({ status: 'Available' }),
-        vehicle({ id: 'v2', status: 'Active Rented', activeBookingId: 'b1' }),
+        vehicle({ status: VEHICLE_OPERATIONAL_STATUS.AVAILABLE }),
+        vehicle({
+          id: 'v2',
+          status: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+          operationalState: {
+            status: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+            reason: null,
+            source: null,
+            effectiveFrom: null,
+            effectiveUntil: null,
+            derivedAt: null,
+            dataQualityState: 'RELIABLE',
+            dataQualityReasons: [],
+            isReliable: true,
+          },
+          bookingContext: {
+            activeBooking: {
+              bookingId: 'b1',
+              customerName: null,
+              pickupAt: null,
+              returnAt: null,
+              pickupStationName: null,
+              returnStationName: null,
+              isOverdue: false,
+            },
+            reservedBooking: null,
+            nextBooking: null,
+            futureBookingCount: 0,
+          },
+        }),
         vehicle({
           id: 'v3',
-          status: 'Available',
+          status: VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
           onlineStatus: 'OFFLINE',
           isFresh: false,
           lastSignal: new Date(Date.now() - 49 * 60 * 60 * 1000).toISOString(),
@@ -388,7 +453,7 @@ describe('fleet-operator-panel', () => {
     const [ctx] = buildFleetVehicleContexts(
       [
         vehicle({
-          status: 'Reserved',
+          status: VEHICLE_OPERATIONAL_STATUS.RESERVED,
           reservedBookingId: 'b1',
           reservedIsOverdue: true,
           healthStatus: 'Good Health',
@@ -468,7 +533,7 @@ describe('resolveCanonicalFleetAlertCounts', () => {
           year: 2024,
           station: 'Zentrale',
           fuelType: 'Petrol',
-          status: 'Available',
+          status: VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
           cleaningStatus: 'Clean',
           healthStatus: 'Good Health',
           online: true,

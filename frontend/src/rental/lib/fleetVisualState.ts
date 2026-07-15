@@ -2,8 +2,17 @@ import type { Feature, FeatureCollection, Point } from 'geojson';
 import type { VehicleData } from '../data/vehicles';
 import type { VehicleHealthResponse, RentalHealthModule } from '../../lib/api';
 import { isVehicleOffline } from '../data/vehicles';
+import {
+  selectFleetActiveIsOverdue,
+  selectFleetOperationalStatus,
+  selectFleetReservedIsOverdue,
+} from './fleet-map-vehicle-selectors';
 import { resolveTelemetryFreshness } from './telemetryFreshness';
-import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
+import {
+  formatVehicleOperationalStatusLabel,
+  VEHICLE_OPERATIONAL_STATUS,
+  type VehicleOperationalStatus,
+} from './vehicle-operational-state';
 
 export type FleetVisualStatus =
   | 'ready'
@@ -74,6 +83,8 @@ export interface FleetVisualState {
 export type FleetVisualStateVehicle = Pick<
   VehicleData,
   | 'status'
+  | 'operationalState'
+  | 'bookingContext'
   | 'lat'
   | 'lng'
   | 'healthStatus'
@@ -81,8 +92,6 @@ export type FleetVisualStateVehicle = Pick<
   | 'lastSignal'
   | 'signalAgeMs'
   | 'isFresh'
-  | 'activeBookingId'
-  | 'reservedBookingId'
   | 'activeIsOverdue'
   | 'reservedIsOverdue'
   | 'maintenanceUrgency'
@@ -157,19 +166,26 @@ export function vehicleHasFleetLocation(
   );
 }
 
-function deriveRentalStatus(vehicle: FleetVisualStateVehicle): FleetRentalStatus {
-  switch (vehicle.status) {
+function operationalStatusToRentalStatus(
+  status: VehicleOperationalStatus,
+): FleetRentalStatus {
+  switch (status) {
     case VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED:
-      return vehicle.activeBookingId ? 'active_rented' : 'available';
+      return 'active_rented';
     case VEHICLE_OPERATIONAL_STATUS.RESERVED:
-      return vehicle.reservedBookingId ? 'reserved' : 'available';
+      return 'reserved';
     case VEHICLE_OPERATIONAL_STATUS.MAINTENANCE:
+    case VEHICLE_OPERATIONAL_STATUS.BLOCKED:
       return 'maintenance';
     case VEHICLE_OPERATIONAL_STATUS.AVAILABLE:
       return 'available';
     default:
       return 'unknown';
   }
+}
+
+function deriveRentalStatus(vehicle: FleetVisualStateVehicle): FleetRentalStatus {
+  return operationalStatusToRentalStatus(selectFleetOperationalStatus(vehicle));
 }
 
 function hasNonServiceCriticalModule(
@@ -271,13 +287,25 @@ function labelForVisualStatus(
 ): { label: string; shortLabel: string } {
   switch (visualStatus) {
     case 'ready':
-      return { label: VEHICLE_OPERATIONAL_STATUS.AVAILABLE, shortLabel: 'Avail.' };
+      return {
+        label: formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.AVAILABLE, 'en'),
+        shortLabel: 'Avail.',
+      };
     case 'active':
-      return { label: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED, shortLabel: 'Active' };
+      return {
+        label: formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED, 'en'),
+        shortLabel: 'Active',
+      };
     case 'reserved':
-      return { label: VEHICLE_OPERATIONAL_STATUS.RESERVED, shortLabel: 'Reserved' };
+      return {
+        label: formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.RESERVED, 'en'),
+        shortLabel: 'Reserved',
+      };
     case 'maintenance':
-      return { label: VEHICLE_OPERATIONAL_STATUS.MAINTENANCE, shortLabel: 'Service' };
+      return {
+        label: formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.MAINTENANCE, 'en'),
+        shortLabel: 'Service',
+      };
     case 'blocked':
       return { label: 'Blocked', shortLabel: 'Blocked' };
     case 'offline':
@@ -290,8 +318,11 @@ function labelForVisualStatus(
       return { label: 'Needs Attention', shortLabel: 'Attention' };
     default:
       return {
-        label: rentalStatus === 'unknown' ? 'Unknown' : 'Unavailable',
-        shortLabel: VEHICLE_OPERATIONAL_STATUS.UNKNOWN,
+        label:
+          rentalStatus === 'unknown'
+            ? formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.UNKNOWN, 'en')
+            : 'Unavailable',
+        shortLabel: 'Unknown',
       };
   }
 }
@@ -311,8 +342,8 @@ function deriveReason(
     return rentalHealth.blocking_reasons.join(' · ');
   }
   if (flags.healthCritical) return 'Critical vehicle health';
-  if (vehicle.activeIsOverdue) return 'Return overdue';
-  if (vehicle.reservedIsOverdue) return 'Pickup overdue';
+  if (selectFleetActiveIsOverdue(vehicle)) return 'Return overdue';
+  if (selectFleetReservedIsOverdue(vehicle)) return 'Pickup overdue';
   if (flags.isOffline) return 'Vehicle offline — no signal for 48h+';
   if (flags.isStale) return 'Soft Offline — no signal for 24h+';
   if (flags.healthWarning) return 'Warning health status';
@@ -334,7 +365,8 @@ export function deriveFleetVisualState(
   const isBlocked = rentalBlocked;
   const isMaintenance =
     rentalStatus === 'maintenance' ||
-    vehicle.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE;
+    selectFleetOperationalStatus(vehicle) === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE ||
+    selectFleetOperationalStatus(vehicle) === VEHICLE_OPERATIONAL_STATUS.BLOCKED;
   const maintenanceCritical =
     isMaintenance && vehicle.maintenanceUrgency === 'urgent';
   const isOffline = isVehicleOffline(vehicle);
@@ -372,7 +404,7 @@ export function deriveFleetVisualState(
     isBlocked ||
     healthCritical ||
     maintenanceCritical ||
-    vehicle.activeIsOverdue
+    selectFleetActiveIsOverdue(vehicle)
   ) {
     attentionLevel = 'critical';
   } else if (
@@ -487,7 +519,7 @@ export function buildFleetMapGeoJson(
       properties: {
         vehicleId: vehicle.id,
         label: vehicle.license || vehicle.model,
-        status: vehicle.status,
+        status: selectFleetOperationalStatus(vehicle),
         mapTone: visual.mapTone,
         visualStatus: visual.visualStatus,
         shortLabel: visual.shortLabel,

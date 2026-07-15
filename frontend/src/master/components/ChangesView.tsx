@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-operational-derivation-cleanup-v49492-2026-07-15',
+    version: '4.9.492',
+    title: 'V4.9.492 — Fleet operational derivation cleanup (Prompt 28/43)',
+    summary: [
+      'Repositoryweite Entfernung frontend-seitiger Status-Ableitungen: keine Reserved/Active-Rented-Demotion bei fehlender Booking-ID, kein `activeBookingId` als Statusquelle, kein separates String-Mapping in `vehicleRuntimeStateBuilder`.',
+      '`fleetVisualState` / `fleetVehicleDisplay` / `fleetStateBuilder` / Operator-Utils lesen nur noch `selectFleetOperationalStatus` + Booking-Selectors.',
+      'Zentrale Selectors generalisiert für `VehicleData` mit Legacy-Flat-Projektion nur für Anzeige. Audit: `docs/audits/fleet-operational-derivation-cleanup-p28.md`.',
+      'Tests: `fleetVisualState.test.ts` (UNKNOWN, kein Ghost-Demotion), Build + Fleet-Tests.',
+    ],
+    reason:
+      'Prompt 28/43: Verstreute Frontend-Ableitungen widersprachen Backend Source of Truth und dem kanonischen operationalState/bookingContext-Modell.',
+    previousBehavior:
+      '`deriveRentalStatus` downgradete Active Rented/Reserved ohne Booking-ID zu Available; Runtime-Builder nutzte eigene Display-String-Map.',
+    details:
+      'Geändert: `fleetVisualState.ts`, `fleetVehicleDisplay.ts`, `fleet-map-vehicle-selectors.ts`, `vehicle-booking-operator.utils.ts`, `vehicleRuntimeStateBuilder.ts`, Dashboard-Builder. Master-Admin und Figma-Prototyp bewusst offen.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-15T23:12:00.000Z',
+  },
+  {
     id: 'fleet-store-canonical-dto-v49491-2026-07-15',
     version: '4.9.491',
     title: 'V4.9.491 — Fleet Store canonical operational DTO mapping (Prompt 27/43)',

@@ -1,18 +1,34 @@
 import { describe, expect, it } from 'vitest';
+import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
 import { deriveFleetVisualState } from './fleetVisualState';
 import type { FleetVisualStateVehicle } from './fleetVisualState';
 
 function base(overrides: Partial<FleetVisualStateVehicle> = {}): FleetVisualStateVehicle {
   return {
-    status: 'Available',
+    status: VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
+    operationalState: {
+      status: VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
+      reason: null,
+      source: null,
+      effectiveFrom: null,
+      effectiveUntil: null,
+      derivedAt: null,
+      dataQualityState: 'RELIABLE',
+      dataQualityReasons: [],
+      isReliable: true,
+    },
+    bookingContext: {
+      activeBooking: null,
+      reservedBooking: null,
+      nextBooking: null,
+      futureBookingCount: 0,
+    },
     lat: 51.31,
     lng: 9.48,
     healthStatus: 'Good Health',
     onlineStatus: 'ONLINE',
     lastSignal: new Date().toISOString(),
     isFresh: true,
-    activeBookingId: null,
-    reservedBookingId: null,
     activeIsOverdue: false,
     reservedIsOverdue: false,
     maintenanceUrgency: null,
@@ -69,8 +85,32 @@ describe('deriveFleetVisualState', () => {
   it('active booking => active', () => {
     const state = deriveFleetVisualState(
       base({
-        status: 'Active Rented',
-        activeBookingId: 'bk-1',
+        status: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+        operationalState: {
+          status: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+          reason: null,
+          source: null,
+          effectiveFrom: null,
+          effectiveUntil: null,
+          derivedAt: null,
+          dataQualityState: 'RELIABLE',
+          dataQualityReasons: [],
+          isReliable: true,
+        },
+        bookingContext: {
+          activeBooking: {
+            bookingId: 'bk-1',
+            customerName: 'Anna',
+            pickupAt: null,
+            returnAt: null,
+            pickupStationName: null,
+            returnStationName: null,
+            isOverdue: false,
+          },
+          reservedBooking: null,
+          nextBooking: null,
+          futureBookingCount: 0,
+        },
       }),
     );
     expect(state.visualStatus).toBe('active');
@@ -82,8 +122,32 @@ describe('deriveFleetVisualState', () => {
   it('reserved booking => reserved', () => {
     const state = deriveFleetVisualState(
       base({
-        status: 'Reserved',
-        reservedBookingId: 'bk-2',
+        status: VEHICLE_OPERATIONAL_STATUS.RESERVED,
+        operationalState: {
+          status: VEHICLE_OPERATIONAL_STATUS.RESERVED,
+          reason: null,
+          source: null,
+          effectiveFrom: null,
+          effectiveUntil: null,
+          derivedAt: null,
+          dataQualityState: 'RELIABLE',
+          dataQualityReasons: [],
+          isReliable: true,
+        },
+        bookingContext: {
+          activeBooking: null,
+          reservedBooking: {
+            bookingId: 'bk-2',
+            customerName: 'Max',
+            pickupAt: null,
+            returnAt: null,
+            pickupStationName: null,
+            returnStationName: null,
+            isOverdue: false,
+          },
+          nextBooking: null,
+          futureBookingCount: 0,
+        },
       }),
     );
     expect(state.visualStatus).toBe('reserved');
@@ -110,7 +174,21 @@ describe('deriveFleetVisualState', () => {
 
   it('maintenance stays maintenance; critical health without blocker is attention, not blocked', () => {
     const maintenance = deriveFleetVisualState(
-      base({ status: 'Maintenance', maintenanceUrgency: 'urgent' }),
+      base({
+        status: VEHICLE_OPERATIONAL_STATUS.MAINTENANCE,
+        operationalState: {
+          status: VEHICLE_OPERATIONAL_STATUS.MAINTENANCE,
+          reason: null,
+          source: null,
+          effectiveFrom: null,
+          effectiveUntil: null,
+          derivedAt: null,
+          dataQualityState: 'RELIABLE',
+          dataQualityReasons: [],
+          isReliable: true,
+        },
+        maintenanceUrgency: 'urgent',
+      }),
     );
     expect(maintenance.visualStatus).toBe('maintenance');
     expect(maintenance.mapTone).toBe('maintenance');
@@ -164,7 +242,6 @@ describe('deriveFleetVisualState', () => {
         lastSignal: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(),
       }),
     );
-    // Soft offline is a secondary telemetry hint — the primary stays available.
     expect(state.visualStatus).toBe('ready');
     expect(state.isOffline).toBe(false);
     expect(state.isStale).toBe(true);
@@ -172,19 +249,85 @@ describe('deriveFleetVisualState', () => {
     expect(state.reason).toContain('Soft Offline');
   });
 
-  it('ghost active without booking id demotes rental status to available', () => {
+  it('does not demote ACTIVE_RENTED when booking id missing — trusts operationalState', () => {
     const state = deriveFleetVisualState(
-      base({ status: 'Active Rented', activeBookingId: null }),
+      base({
+        status: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+        operationalState: {
+          status: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+          reason: null,
+          source: null,
+          effectiveFrom: null,
+          effectiveUntil: null,
+          derivedAt: null,
+          dataQualityState: 'RELIABLE',
+          dataQualityReasons: [],
+          isReliable: true,
+        },
+        bookingContext: {
+          activeBooking: null,
+          reservedBooking: null,
+          nextBooking: null,
+          futureBookingCount: 0,
+        },
+      }),
     );
-    expect(state.rentalStatus).toBe('available');
-    expect(state.visualStatus).toBe('ready');
+    expect(state.rentalStatus).toBe('active_rented');
+    expect(state.visualStatus).toBe('active');
+  });
+
+  it('UNKNOWN operational status stays unknown — never available', () => {
+    const state = deriveFleetVisualState(
+      base({
+        status: VEHICLE_OPERATIONAL_STATUS.UNKNOWN,
+        operationalState: {
+          status: VEHICLE_OPERATIONAL_STATUS.UNKNOWN,
+          reason: 'DATA_UNAVAILABLE',
+          source: 'fleet-read-model',
+          effectiveFrom: null,
+          effectiveUntil: null,
+          derivedAt: null,
+          dataQualityState: 'UNAVAILABLE',
+          dataQualityReasons: ['STALE'],
+          isReliable: false,
+        },
+      }),
+    );
+    expect(state.rentalStatus).toBe('unknown');
+    expect(state.visualStatus).toBe('unknown');
+    expect(state.readiness).toBe('unknown');
+    expect(state.isReady).toBe(false);
   });
 
   it('active overdue elevates attention to critical', () => {
     const state = deriveFleetVisualState(
       base({
-        status: 'Active Rented',
-        activeBookingId: 'bk-1',
+        status: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+        operationalState: {
+          status: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
+          reason: null,
+          source: null,
+          effectiveFrom: null,
+          effectiveUntil: null,
+          derivedAt: null,
+          dataQualityState: 'RELIABLE',
+          dataQualityReasons: [],
+          isReliable: true,
+        },
+        bookingContext: {
+          activeBooking: {
+            bookingId: 'bk-1',
+            customerName: 'Anna',
+            pickupAt: null,
+            returnAt: null,
+            pickupStationName: null,
+            returnStationName: null,
+            isOverdue: true,
+          },
+          reservedBooking: null,
+          nextBooking: null,
+          futureBookingCount: 0,
+        },
         activeIsOverdue: true,
       }),
     );

@@ -4,7 +4,15 @@ import { isLegalComplianceBlockingText } from '../components/dashboard/runtime/d
 import type { VehicleData } from '../data/vehicles';
 import type { VehicleHealthAlert } from '../DashboardInsightsContext';
 import { deriveFleetVisualState, type FleetVisualState } from './fleetVisualState';
-import { VEHICLE_OPERATIONAL_STATUS } from './vehicle-operational-state';
+import {
+  selectFleetActiveIsOverdue,
+  selectFleetOperationalStatus,
+  selectFleetReservedIsOverdue,
+} from './fleet-map-vehicle-selectors';
+import {
+  formatVehicleOperationalStatusLabel,
+  VEHICLE_OPERATIONAL_STATUS,
+} from './vehicle-operational-state';
 import {
   formatUserFacingReasonLabel,
   isOperativeRentalHealthModule,
@@ -214,14 +222,19 @@ function resolveOperationalStatus(
   const rentalBlocked = hasHardRentalBlockingReasons(rentalHealth) || visual.isBlocked;
   const healthCritical = isHealthCritical(v, rentalHealth);
   const healthWarning = isHealthWarning(v, rentalHealth);
+  const status = selectFleetOperationalStatus(v);
 
   if (healthCritical) return 'critical';
   if (rentalBlocked || visual.isBlocked) return 'blocked';
-  if (v.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return 'maintenance';
-  if (v.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) return v.activeIsOverdue ? 'warning' : 'active';
-  if (v.status === VEHICLE_OPERATIONAL_STATUS.RESERVED) return 'reserved';
-  if (v.activeIsOverdue || healthWarning) return 'warning';
-  if (v.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE) return 'ready';
+  if (status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return 'maintenance';
+  if (status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) {
+    return selectFleetActiveIsOverdue(v) ? 'warning' : 'active';
+  }
+  if (status === VEHICLE_OPERATIONAL_STATUS.RESERVED) return 'reserved';
+  if (selectFleetActiveIsOverdue(v) || selectFleetReservedIsOverdue(v) || healthWarning) {
+    return 'warning';
+  }
+  if (status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE) return 'ready';
   return 'unknown';
 }
 
@@ -238,8 +251,8 @@ function primaryLabelFor(
     case 'blocked':
       return de ? 'Blockiert' : 'Blocked';
     case 'warning':
-      if (v.activeIsOverdue) return de ? 'Überfällig' : 'Overdue';
-      if (v.reservedIsOverdue) return de ? 'Abholung überfällig' : 'Pickup overdue';
+      if (selectFleetActiveIsOverdue(v)) return de ? 'Überfällig' : 'Overdue';
+      if (selectFleetReservedIsOverdue(v)) return de ? 'Abholung überfällig' : 'Pickup overdue';
       return de ? 'Warnung' : 'Warning';
     case 'active':
       return de ? 'Aktiv' : 'Active';
@@ -314,25 +327,32 @@ function resolveRentalDisplay(
   visual: FleetVisualState,
   de: boolean,
 ): FleetRentalDisplay {
-  let status: FleetRentalAvailability;
-  if (v.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) status = 'active';
-  else if (v.status === VEHICLE_OPERATIONAL_STATUS.RESERVED) status = 'reserved';
-  else if (v.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) status = 'maintenance';
-  else if (v.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE) {
+  const operationalStatus = selectFleetOperationalStatus(v);
+  let rentalStatus: FleetRentalAvailability;
+  if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) rentalStatus = 'active';
+  else if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED) rentalStatus = 'reserved';
+  else if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) rentalStatus = 'maintenance';
+  else if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.AVAILABLE) {
     const blocked = hasHardRentalBlockingReasons(rentalHealth) || visual.isBlocked;
-    if (blocked) status = 'blocked';
-    else if (visual.isOffline) status = 'not_ready';
-    else status = 'ready';
+    if (blocked) rentalStatus = 'blocked';
+    else if (visual.isOffline) rentalStatus = 'not_ready';
+    else rentalStatus = 'ready';
   } else {
-    status = 'not_ready';
+    rentalStatus = 'not_ready';
   }
 
   const labels: Record<FleetRentalAvailability, [string, string]> = {
     ready: ['Ready', 'Bereit'],
     not_ready: ['Not Ready', 'Nicht bereit'],
     active: ['Active', 'Aktiv'],
-    reserved: [VEHICLE_OPERATIONAL_STATUS.RESERVED, 'Reserviert'],
-    maintenance: [VEHICLE_OPERATIONAL_STATUS.MAINTENANCE, 'Wartung'],
+    reserved: [
+      formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.RESERVED, 'en'),
+      formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.RESERVED, 'de'),
+    ],
+    maintenance: [
+      formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.MAINTENANCE, 'en'),
+      formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.MAINTENANCE, 'de'),
+    ],
     blocked: ['Blocked', 'Blockiert'],
   };
   const tones: Record<FleetRentalAvailability, StatusTone> = {
@@ -343,11 +363,11 @@ function resolveRentalDisplay(
     maintenance: 'warning',
     blocked: 'critical',
   };
-  let label = de ? labels[status][1] : labels[status][0];
-  if (status === 'ready' && isServiceOnlyOverdueCritical(rentalHealth)) {
+  let label = de ? labels[rentalStatus][1] : labels[rentalStatus][0];
+  if (rentalStatus === 'ready' && isServiceOnlyOverdueCritical(rentalHealth)) {
     label = de ? 'Bereit · Aktion nötig' : 'Ready · Action needed';
   }
-  return { status, label, tone: tones[status] };
+  return { status: rentalStatus, label, tone: tones[rentalStatus] };
 }
 
 const GENERIC_REASONS = new Set([
