@@ -609,12 +609,12 @@ Quelle: `docs/audits/task-management-inventory.md` — verifizierte Call Sites u
 | W9 | Document-Task auto-close bei Bundle `COMPLETE` | Nur `syncMissingDocumentTasks` (Erzeugung); kein Stale-Close für `source=DOCUMENT` | P1 | **behoben** (P1) |
 | W10 | `createVehicleComplaint` via `TasksService` | `vehicles.service.ts` — raw `prisma.orgTask.create`, kein `TaskEvent`/`dedupKey` | P0 | **behoben** (P1) |
 | W11 | Server-side Operator-Buckets (§I) | `TasksView`, `task-list.utils`, `OperatorDataContext` leiten teils clientseitig ab | P2 | **teilweise** — Server-Buckets primär; Client-Sort/Fallback dokumentiert |
-| W12 | `resolutionCode` strukturiert | Nur `resolutionNote` für `RESOLUTION_REQUIRED_TYPES` | P2 | offen |
-| W13 | Manager-Override + `COMPLETION_OVERRIDDEN` | Nicht implementiert; `ServiceOverviewPanel` ruft `complete` ohne Note auf | P2 | offen |
+| W12 | `resolutionCode` strukturiert | Nur `resolutionNote` für `RESOLUTION_REQUIRED_TYPES` | P2 | **behoben** — Backend validiert Template-Codes |
+| W13 | Manager-Override + `COMPLETION_OVERRIDDEN` | Nicht implementiert; `ServiceOverviewPanel` ruft `complete` ohne Note auf | P2 | **behoben** — `TaskDetailCompleteDialog` |
 | W14 | Checklisten-Events vollständig | `updateChecklistItem` ohne `TaskEvent` | P1 | **behoben** (P1) |
-| W15 | `ensureRepairTask` angebunden | Implementiert, **0 Call Sites** — Schaden/Repair nutzt `api.tasks.create` | P1 | offen |
-| W16 | Parallele Create-APIs ohne Dedup | WhatsApp, Observations, Voice, Support — `createManualTask` ohne `dedupKey` | P1 | offen |
-| W17 | `TasksView` Pflichtfeld `estimatedDuration` | UI-validiert, nicht in `CreateTaskPayload` | P2 | offen |
+| W15 | `ensureRepairTask` angebunden | Implementiert, **0 Call Sites** — Schaden/Repair nutzt `api.tasks.create` | P1 | **behoben** — `POST .../damages/:id/repair-task` + Dedup |
+| W16 | Parallele Create-APIs ohne Dedup | WhatsApp, Observations, Voice, Support — `createManualTask` ohne `dedupKey` | P1 | **behoben** — kanonische Dedup-Keys |
+| W17 | `TasksView` Pflichtfeld `estimatedDuration` | UI-validiert, nicht in `CreateTaskPayload` | P2 | **behoben** — Feld in API + List-Mapping |
 
 ---
 

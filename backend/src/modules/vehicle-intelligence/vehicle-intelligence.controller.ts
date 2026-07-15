@@ -39,6 +39,7 @@ import {
   AddDamageImageDto,
   AnalyzeExteriorPhotosDto,
   CreateDamageDto,
+  CreateDamageRepairTaskDto,
   MarkDamageRepairedDto,
   PlaceDamageOnVehicleDto,
   UpdateDamageDto,
@@ -1366,6 +1367,16 @@ export class VehicleIntelligenceController {
     @Body() body: MarkDamageRepairedDto,
   ) {
     return this.damagesService.markRepaired(vehicleId, id, body);
+  }
+
+  @Post('damages/:id/repair-task')
+  async createDamageRepairTask(
+    @Param('vehicleId') vehicleId: string,
+    @Param('id') id: string,
+    @Body() body: CreateDamageRepairTaskDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.damagesService.createRepairTask(vehicleId, id, body, req.user?.id);
   }
 
   @Post('damages/:id/images')

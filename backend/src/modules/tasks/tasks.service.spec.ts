@@ -514,7 +514,12 @@ describe('TasksService', () => {
     prisma.organizationMembership.findFirst.mockResolvedValue({ id: 'm1' });
     prisma.orgTask.update.mockResolvedValue(baseTask({ status: 'DONE' }));
 
-    const res = await svc.completeTask('org1', 't1', { resolutionNote: 'pads ok' }, { id: 'u1' });
+    const res = await svc.completeTask(
+      'org1',
+      't1',
+      { resolutionNote: 'pads ok', resolutionCode: 'BRAKE_MEASURED_OK' },
+      { id: 'u1' },
+    );
 
     expect(res.status).toBe('DONE');
     const update = prisma.orgTask.update.mock.calls[0][0].data;
@@ -1751,21 +1756,10 @@ describe('TasksService', () => {
               metadata: { path: ['stationId'], equals: 'station-1' },
             }),
             expect.objectContaining({
-              OR: [
-                {
-                  activatesAt: {
-                    gte: new Date('2026-07-01T00:00:00.000Z'),
-                    lte: new Date('2026-07-31T23:59:59.000Z'),
-                  },
-                },
-                {
-                  activatesAt: null,
-                  createdAt: {
-                    gte: new Date('2026-07-01T00:00:00.000Z'),
-                    lte: new Date('2026-07-31T23:59:59.000Z'),
-                  },
-                },
-              ],
+              activatesAt: {
+                gte: new Date('2026-07-01T00:00:00.000Z'),
+                lte: new Date('2026-07-31T23:59:59.000Z'),
+              },
             }),
           ]),
         }),

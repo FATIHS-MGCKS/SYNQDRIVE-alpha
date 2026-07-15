@@ -4642,6 +4642,15 @@ export const api = {
       patch<DamageResponse>(`/vehicles/${vehicleId}/damages/${damageId}/place`, data),
     markDamageRepaired: (vehicleId: string, damageId: string, data: MarkDamageRepairedInput = {}) =>
       patch<DamageResponse>(`/vehicles/${vehicleId}/damages/${damageId}/repair`, data),
+    createDamageRepairTask: (
+      vehicleId: string,
+      damageId: string,
+      data: { dueDate?: string; vendorId?: string; note?: string } = {},
+    ) =>
+      post<{ damage: DamageResponse; taskId: string }>(
+        `/vehicles/${vehicleId}/damages/${damageId}/repair-task`,
+        data,
+      ),
     addDamageImage: (vehicleId: string, damageId: string, data: AddDamageImageInput) =>
       post<DamageResponse>(`/vehicles/${vehicleId}/damages/${damageId}/images`, data),
     /** @deprecated Use getVehicleDamages */

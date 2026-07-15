@@ -26,6 +26,11 @@ import {
 import type { TaskDetailResponse, TaskUserRef } from './task-detail-view.types';
 import { canOverrideTaskChecklistCompletion } from './task-checklist-override.policy';
 import { RESOLUTION_REQUIRED_TYPES } from './task-resolution.constants';
+import { assertValidManualResolutionCode } from './task-resolution-policy.util';
+import {
+  supportTicketFollowupDedupKey,
+  voiceConversationTaskDedupKey,
+} from './automation/task-automation-rule.util';
 import {
   ACTIVE_TASK_STATUSES,
   assertTaskTransition,
@@ -77,6 +82,8 @@ export interface CreateManualTaskInput extends TaskLinks {
   checklist?: Array<{ title: string; description?: string; sortOrder?: number; isRequired?: boolean }>;
   blocksVehicleAvailability?: boolean;
   initialNote?: string;
+  /** When set, creation is idempotent via upsertByDedup (system/integration paths). */
+  dedupKey?: string;
 }
 
 export interface AutoResolveTaskInput {
@@ -1047,6 +1054,11 @@ export class TasksService {
     this.assertManualTaskDuration(input.estimatedDurationMinutes ?? undefined);
     await this.assertLinksBelongToOrg(orgId, input);
 
+    const dedupKey = this.resolveManualTaskDedupKey(input);
+    if (dedupKey) {
+      return this.createManualTaskByDedup(orgId, dedupKey, input, createdByUserId);
+    }
+
     const type = input.type ?? 'CUSTOM';
     const checklist = this.resolveChecklist(type, input.checklist);
     const initialNote = input.initialNote?.trim() || undefined;
@@ -1132,6 +1144,68 @@ export class TasksService {
 
     if (task.priority === 'CRITICAL') this.notify('created_critical', task);
     return this.getTaskById(task.id, orgId);
+  }
+
+  private resolveManualTaskDedupKey(input: CreateManualTaskInput): string | undefined {
+    const explicit = input.dedupKey?.trim();
+    if (explicit) return explicit;
+
+    const meta =
+      input.metadata && typeof input.metadata === 'object' && !Array.isArray(input.metadata)
+        ? (input.metadata as Record<string, unknown>)
+        : undefined;
+    if (!meta) return undefined;
+
+    if (typeof meta.voiceConversationId === 'string' && meta.voiceConversationId.trim()) {
+      return voiceConversationTaskDedupKey(meta.voiceConversationId.trim());
+    }
+    if (typeof meta.supportTicketId === 'string' && meta.supportTicketId.trim()) {
+      return supportTicketFollowupDedupKey(meta.supportTicketId.trim());
+    }
+    return undefined;
+  }
+
+  private async createManualTaskByDedup(
+    orgId: string,
+    dedupKey: string,
+    input: CreateManualTaskInput,
+    createdByUserId?: string,
+  ) {
+    const existing = await this.findActiveByDedup(orgId, dedupKey);
+    if (existing) {
+      return this.getTaskById(existing.id, orgId);
+    }
+
+    const type = input.type ?? 'CUSTOM';
+    const checklist = this.resolveChecklist(type, input.checklist);
+    const upserted = await this.upsertByDedup(orgId, dedupKey, {
+      title: input.title.trim(),
+      description: input.description,
+      category: input.category,
+      type,
+      sourceType: input.sourceType ?? 'MANUAL',
+      source: input.source ?? input.sourceType ?? 'MANUAL',
+      priority: input.priority,
+      vehicleId: input.vehicleId ?? null,
+      bookingId: input.bookingId ?? null,
+      customerId: input.customerId ?? null,
+      vendorId: input.vendorId ?? null,
+      alertId: input.alertId ?? null,
+      documentId: input.documentId ?? null,
+      fineId: input.fineId ?? null,
+      invoiceId: input.invoiceId ?? null,
+      dueDate: input.dueDate ? new Date(input.dueDate) : null,
+      activatesAt: input.activatesAt ? new Date(input.activatesAt) : new Date(),
+      metadata: input.metadata,
+      checklist,
+      blocksVehicleAvailability: input.blocksVehicleAvailability,
+    });
+
+    if (input.initialNote?.trim()) {
+      await this.addComment(orgId, upserted.id, input.initialNote.trim(), createdByUserId);
+    }
+
+    return this.getTaskById(upserted.id, orgId);
   }
 
   /**
@@ -1296,6 +1370,7 @@ export class TasksService {
       if (RESOLUTION_REQUIRED_TYPES.includes(task.type) && !extra?.resolutionNote?.trim()) {
         throw new BadRequestException(`A resolution note is required to complete a ${task.type} task`);
       }
+      assertValidManualResolutionCode(task.type, extra?.resolutionCode);
       update.completedAt = now;
       update.completionMode = TaskCompletionMode.MANUAL;
       if (extra?.resolutionNote !== undefined) update.resolutionNote = extra.resolutionNote;

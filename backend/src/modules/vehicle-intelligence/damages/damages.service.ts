@@ -7,12 +7,17 @@ import { PrismaService } from '@shared/database/prisma.service';
 import {
   DamageEvidenceStatus,
   DamageLocationView,
+  DamageRentalImpact,
   DamageSeverity,
   DamageSource,
   DamageStatus,
   Prisma,
+  TaskPriority,
 } from '@prisma/client';
+import { TasksService } from '../../tasks/tasks.service';
+import { damageRepairDedupKey } from '../../tasks/automation/task-automation-rule.util';
 import type { CreateDamageDto } from './dto/create-damage.dto';
+import type { CreateDamageRepairTaskDto } from './dto/create-damage-repair-task.dto';
 import type { UpdateDamageDto } from './dto/update-damage.dto';
 import type { MarkDamageRepairedDto } from './dto/mark-damage-repaired.dto';
 import type { PlaceDamageOnVehicleDto } from './dto/place-damage-on-vehicle.dto';
@@ -50,7 +55,10 @@ type DamageRow = Prisma.VehicleDamageGetPayload<{ include: typeof DAMAGE_INCLUDE
 
 @Injectable()
 export class DamagesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly tasks: TasksService,
+  ) {}
 
   /**
    * Validates a base64 (optionally data-URL) image before it is persisted.
@@ -337,6 +345,112 @@ export class DamagesService {
     });
 
     return mapDamageToResponse(row);
+  }
+
+  async createRepairTask(
+    vehicleId: string,
+    damageId: string,
+    dto: CreateDamageRepairTaskDto = {},
+    actorUserId?: string,
+  ): Promise<{ damage: DamageResponseDto; taskId: string }> {
+    const existing = await this.assertDamageBelongsToVehicle(vehicleId, damageId);
+    const orgId = await this.requireVehicleOrganizationId(vehicleId);
+
+    if (existing.taskId) {
+      throw new BadRequestException('This damage already has a linked repair task');
+    }
+    const status = deriveDamageStatus(existing);
+    if (status === 'REPAIRED' || status === 'ARCHIVED') {
+      throw new BadRequestException('This damage cannot receive a repair task');
+    }
+
+    const title = this.buildRepairTaskTitle(existing);
+    const description = this.buildRepairTaskDescription(existing, dto.note);
+    const priority = this.deriveRepairTaskPriority(existing);
+    const blocksVehicleAvailability =
+      existing.rentalImpact === 'BLOCK_RENTAL' || existing.rentalImpact === 'SAFETY_CRITICAL';
+
+    if (dto.vendorId) {
+      const vendor = await this.prisma.vendor.findFirst({
+        where: { id: dto.vendorId, organizationId: orgId },
+        select: { id: true },
+      });
+      if (!vendor) {
+        throw new BadRequestException('vendorId does not match organization context');
+      }
+    }
+
+    const key = damageRepairDedupKey(damageId);
+    const task = await this.tasks.upsertByDedup(orgId, key, {
+      title,
+      description,
+      category: 'Repair',
+      type: 'REPAIR',
+      source: 'MANUAL',
+      sourceType: 'MANUAL',
+      priority,
+      vehicleId,
+      vendorId: dto.vendorId ?? null,
+      dueDate: dto.dueDate ? new Date(dto.dueDate) : null,
+      blocksVehicleAvailability,
+      metadata: {
+        generatedKey: key,
+        origin: 'DAMAGE',
+        damageId,
+        rentalImpact: existing.rentalImpact,
+        createdByUserId: actorUserId ?? undefined,
+        ...(existing.estimatedCostCents != null
+          ? { estimatedCostCents: existing.estimatedCostCents }
+          : {}),
+      },
+    });
+    const taskId = task.id;
+
+    const row = await this.prisma.vehicleDamage.update({
+      where: { id: damageId },
+      data: { task: { connect: { id: taskId } } },
+      include: DAMAGE_INCLUDE,
+    });
+
+    return { damage: mapDamageToResponse(row), taskId };
+  }
+
+  private buildRepairTaskTitle(row: DamageRow): string {
+    const typeLabel = row.damageType.replace(/_/g, ' ');
+    const location =
+      row.locationLabel?.trim() ||
+      (row.locationView !== 'UNKNOWN' ? row.locationView : null);
+    return location ? `Repair: ${typeLabel} - ${location}` : `Repair: ${typeLabel}`;
+  }
+
+  private buildRepairTaskDescription(row: DamageRow, extraNote?: string): string {
+    const lines = [
+      row.description?.trim() || null,
+      `Damage ID: ${row.id}`,
+      `Severity: ${row.severity}`,
+      `Rental impact: ${row.rentalImpact}`,
+      `Evidence: ${row.evidenceStatus}`,
+      row.estimatedCostCents != null ? `Estimated cost: ${row.estimatedCostCents} cents` : null,
+      row.locationView !== 'UNKNOWN'
+        ? `Location: ${row.locationView}${row.locationLabel ? ` · ${row.locationLabel}` : ''}`
+        : null,
+      extraNote?.trim() || null,
+    ].filter((line): line is string => Boolean(line));
+    return lines.join('\n');
+  }
+
+  private deriveRepairTaskPriority(row: Pick<DamageRow, 'rentalImpact' | 'severity'>): TaskPriority {
+    switch (row.rentalImpact as DamageRentalImpact) {
+      case 'SAFETY_CRITICAL':
+        return 'CRITICAL';
+      case 'BLOCK_RENTAL':
+        return 'HIGH';
+      case 'WATCH':
+        return 'NORMAL';
+      case 'NONE':
+      default:
+        return row.severity === 'MINOR' ? 'LOW' : 'NORMAL';
+    }
   }
 
   async addImage(

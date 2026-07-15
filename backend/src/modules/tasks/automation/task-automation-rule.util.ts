@@ -193,6 +193,29 @@ export function vendorRepairDedupKey(
   return `vendor:repair:${vehicleId}:${vendorId ?? 'none'}:${reason}`;
 }
 
+export function damageRepairDedupKey(damageId: string): string {
+  return `damage:repair:${damageId}`;
+}
+
+export function technicalObservationDedupKey(observationId: string): string {
+  return `health:observation:${observationId}`;
+}
+
+export function whatsappConversationTaskDedupKey(
+  conversationId: string,
+  category: string,
+): string {
+  return `whatsapp:conversation:${conversationId}:${category}`;
+}
+
+export function supportTicketFollowupDedupKey(ticketId: string): string {
+  return `support:ticket:${ticketId}`;
+}
+
+export function voiceConversationTaskDedupKey(conversationId: string): string {
+  return `voice:conversation:${conversationId}`;
+}
+
 /** Insight bridge sources derived from catalog — no scattered string list in services. */
 export const INSIGHT_TASK_BRIDGE_SOURCES = [
   ...new Set(

@@ -8,6 +8,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { ActivityAction, ActivityEntity, TaskPriority, TaskType } from '@prisma/client';
 import { TasksService } from '@modules/tasks/tasks.service';
+import { whatsappConversationTaskDedupKey } from '@modules/tasks/automation/task-automation-rule.util';
 import { WhatsAppAiRouterService } from './whatsapp-ai-router.service';
 import { WhatsAppAiToolsService } from './whatsapp-ai-tools.service';
 import { WhatsAppAiContextService } from './whatsapp-ai-context.service';
@@ -209,6 +210,7 @@ export class WhatsAppQuickActionsService {
         bookingId: ctx.booking?.id,
         vehicleId: ctx.vehicle?.id,
         assignedUserId: convo.assignedTo ?? undefined,
+        dedupKey: whatsappConversationTaskDedupKey(conversationId, category),
         metadata: { whatsappConversationId: conversationId },
       },
       body.userId,

@@ -233,6 +233,14 @@ function resolveCompletionModeLabel(mode: TaskCompletionMode | null | undefined)
   return null;
 }
 
+function formatEstimatedDuration(minutes?: number | null): string {
+  if (!minutes || minutes < 1) return '—';
+  if (minutes < 60) return `${minutes} Min.`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest > 0 ? `${hours} Std. ${rest} Min.` : `${hours} Std.`;
+}
+
 export function mapApiTaskToTaskListRow(
   task: ApiTask,
   ctx: {
@@ -283,7 +291,7 @@ export function mapApiTaskToTaskListRow(
     dueDate: fmtTaskDate(task.dueDate),
     completedAtRaw: task.completedAt ?? null,
     completedDate: task.completedAt ? fmtTaskDate(task.completedAt) : undefined,
-    estimatedDuration: '—',
+    estimatedDuration: formatEstimatedDuration(task.estimatedDurationMinutes),
     notes: systemTask && task.source?.startsWith('INSIGHT_')
       ? 'Automatisch erzeugt durch SynqDrive Insights.'
       : undefined,

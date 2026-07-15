@@ -17,6 +17,9 @@ import { TasksService } from '../tasks/tasks.service';
 import { ServiceCasesService } from '../service-cases/service-cases.service';
 import { DamagesService } from '../vehicle-intelligence/damages/damages.service';
 import {
+  technicalObservationDedupKey,
+} from '../tasks/automation/task-automation-rule.util';
+import {
   ACTIVE_OBSERVATION_DB_STATUSES,
   mapObservationRow,
   parseAffectedArea,
@@ -274,6 +277,7 @@ export class TechnicalObservationsService {
         customerId: existing.customerId ?? undefined,
         blocksVehicleAvailability:
           body.blocksVehicleAvailability ?? existing.blocksRental,
+        dedupKey: technicalObservationDedupKey(existing.id),
         metadata: {
           technicalObservationId: existing.id,
         },

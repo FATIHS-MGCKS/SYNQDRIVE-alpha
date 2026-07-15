@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { ChevronRight } from 'lucide-react';
 import { EmptyState } from '../../../components/patterns';
-import { api, type ApiTask, type Vendor } from '../../../lib/api';
+import { api, type ApiTask, type ApiTaskDetail, type Vendor } from '../../../lib/api';
+import { TaskDetailCompleteDialog } from '../../../lib/tasks/components/TaskDetailCompleteDialog';
+import type { CompleteTaskPayload } from '../../../lib/tasks/types';
 import { useFleetVehicles } from '../../FleetContext';
 import { useRentalOrg } from '../../RentalContext';
 import { formatTaskDueDate } from '../../lib/task-display.utils';
@@ -45,6 +47,10 @@ export function ServiceOverviewPanel({
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [mutatingId, setMutatingId] = useState<string | null>(null);
+  const [completeDialogOpen, setCompleteDialogOpen] = useState(false);
+  const [completeDetail, setCompleteDetail] = useState<ApiTaskDetail | null>(null);
+  const [completeLoading, setCompleteLoading] = useState(false);
+  const [completeError, setCompleteError] = useState<string | null>(null);
 
   useEffect(() => {
     setLocalTasks(activeTasks);
@@ -131,9 +137,49 @@ export function ServiceOverviewPanel({
   const handleComplete = useCallback(
     (task: ApiTask) => {
       if (!orgId) return;
-      void runMutation(task.id, () => api.tasks.complete(orgId, task.id), 'Aufgabe abgeschlossen');
+      setCompleteError(null);
+      setCompleteLoading(true);
+      setCompleteDialogOpen(true);
+      void api.tasks
+        .get(orgId, task.id)
+        .then((detail) => setCompleteDetail(detail))
+        .catch((err) => {
+          const message = err instanceof Error ? err.message : 'Aufgabe konnte nicht geladen werden';
+          setCompleteError(message);
+          toast.error('Abschluss nicht möglich', { description: message });
+          setCompleteDialogOpen(false);
+        })
+        .finally(() => setCompleteLoading(false));
     },
-    [orgId, runMutation],
+    [orgId],
+  );
+
+  const submitComplete = useCallback(
+    async (payload: CompleteTaskPayload) => {
+      if (!orgId || !completeDetail) return;
+      setCompleteLoading(true);
+      setCompleteError(null);
+      try {
+        const updated = await api.tasks.complete(orgId, completeDetail.summary.id, payload);
+        setLocalTasks((prev) =>
+          prev.map((t) =>
+            t.id === updated.summary.id
+              ? { ...t, status: updated.summary.status, completedAt: updated.summary.completedAt ?? t.completedAt }
+              : t,
+          ),
+        );
+        toast.success('Aufgabe abgeschlossen');
+        setCompleteDialogOpen(false);
+        setCompleteDetail(null);
+        onReload?.();
+      } catch (err) {
+        setCompleteError(err instanceof Error ? err.message : 'Abschluss fehlgeschlagen');
+        throw err;
+      } finally {
+        setCompleteLoading(false);
+      }
+    },
+    [orgId, completeDetail, onReload],
   );
 
   const selectedVehicle = useMemo(() => {
@@ -337,6 +383,21 @@ export function ServiceOverviewPanel({
           setLocalTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
           onReload?.();
         }}
+      />
+
+      <TaskDetailCompleteDialog
+        open={completeDialogOpen}
+        onOpenChange={(open) => {
+          setCompleteDialogOpen(open);
+          if (!open) {
+            setCompleteDetail(null);
+            setCompleteError(null);
+          }
+        }}
+        detail={completeDetail}
+        loading={completeLoading}
+        submitError={completeError}
+        onSubmit={submitComplete}
       />
     </div>
   );

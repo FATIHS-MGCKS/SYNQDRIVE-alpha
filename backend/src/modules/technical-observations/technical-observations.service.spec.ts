@@ -147,6 +147,7 @@ describe('TechnicalObservationsService', () => {
       orgA,
       expect.objectContaining({
         metadata: { technicalObservationId: 'obs-1' },
+        dedupKey: 'health:observation:obs-1',
         vehicleId,
       }),
       'user-1',

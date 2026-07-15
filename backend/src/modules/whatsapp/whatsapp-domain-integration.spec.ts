@@ -70,6 +70,7 @@ describe('WhatsAppQuickActionsService', () => {
         customerId: 'cust-1',
         bookingId: 'bk-1',
         metadata: { whatsappConversationId: 'convo-1' },
+        dedupKey: 'whatsapp:conversation:convo-1:CUSTOMER_COMMUNICATION',
       }),
       undefined,
     );

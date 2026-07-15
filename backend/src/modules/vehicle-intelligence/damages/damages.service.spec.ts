@@ -145,11 +145,13 @@ describe('damage.mapper', () => {
 
 describe('DamagesService', () => {
   let prisma: ReturnType<typeof makePrisma>;
+  let tasks: { upsertByDedup: jest.Mock };
   let svc: DamagesService;
 
   beforeEach(() => {
     prisma = makePrisma();
-    svc = new DamagesService(prisma);
+    tasks = { upsertByDedup: jest.fn().mockResolvedValue({ id: 'task-1' }) };
+    svc = new DamagesService(prisma, tasks as any);
   });
 
   it('create persists damage with valid payload and maps response', async () => {
@@ -316,6 +318,26 @@ describe('DamagesService', () => {
         where: { vehicle: { organizationId: orgId } },
       }),
     );
+  });
+
+  it('createRepairTask links damage via deduped REPAIR task', async () => {
+    const existing = makeDamageRow();
+    prisma.vehicleDamage.findFirst.mockResolvedValue(existing);
+    prisma.vehicleDamage.update.mockResolvedValue({ ...existing, taskId: 'task-1' });
+
+    const result = await svc.createRepairTask(vehicleId, damageId, { note: 'Urgent' }, 'user-1');
+
+    expect(tasks.upsertByDedup).toHaveBeenCalledWith(
+      orgId,
+      `damage:repair:${damageId}`,
+      expect.objectContaining({
+        type: 'REPAIR',
+        vehicleId,
+        metadata: expect.objectContaining({ damageId, origin: 'DAMAGE' }),
+      }),
+    );
+    expect(result.taskId).toBe('task-1');
+    expect(prisma.vehicleDamage.update).toHaveBeenCalled();
   });
 
   it('CreateDamageDto rejects locationX/locationY outside 0-100', () => {

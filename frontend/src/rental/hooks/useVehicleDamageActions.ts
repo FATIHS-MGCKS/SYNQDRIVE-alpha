@@ -12,7 +12,6 @@ import type {
 import { formatApiError, readFileAsDataUrl } from '../lib/damage-image.utils';
 import type { VehicleExteriorViewKey } from '../../lib/api';
 import {
-  buildRepairTaskPayload,
   canCreateRepairTaskForDamage,
   type CreateRepairTaskInput,
 } from '../lib/damage-repair-task';
@@ -227,12 +226,12 @@ export function useVehicleDamageActions({
       return runMutation(
         'createTask',
         async () => {
-          const payload = buildRepairTaskPayload(damage, vehicleId!, input);
-          const task = await api.tasks.create(orgId, payload);
-          await api.vehicleIntelligence.updateVehicleDamage(vehicleId!, damage.id, {
-            taskId: task.id,
+          const result = await api.vehicleIntelligence.createDamageRepairTask(vehicleId!, damage.id, {
+            dueDate: input.dueDate,
+            vendorId: input.vendorId,
+            note: input.note,
           });
-          return task;
+          return { id: result.taskId, damage: result.damage };
         },
         'Repair task created',
         'Linked to this damage record.',
