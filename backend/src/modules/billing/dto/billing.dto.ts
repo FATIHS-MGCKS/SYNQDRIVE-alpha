@@ -72,6 +72,35 @@ export class PatchPriceVersionDto {
   @IsOptional()
   @IsISO8601()
   effectiveFrom?: string;
+
+  @IsOptional()
+  @IsIn(['VOLUME', 'GRADUATED'])
+  tierMode?: 'VOLUME' | 'GRADUATED';
+}
+
+export class SimulatePriceVersionDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  vehicleCount!: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  discountPercentBps?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  discountCents?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  taxRateBps?: number;
 }
 
 export class PublishPriceVersionDto {

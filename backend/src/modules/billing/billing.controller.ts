@@ -92,6 +92,8 @@ import {
 
   ReplaceTiersDto,
 
+  SimulatePriceVersionDto,
+
   StripeCustomerPortalDto,
 
   CreateSetupIntentDto,
@@ -1110,6 +1112,8 @@ export class BillingController {
 
         effectiveFrom: body.effectiveFrom ? new Date(body.effectiveFrom) : undefined,
 
+        tierMode: body.tierMode,
+
       },
 
       req?.user?.id,
@@ -1183,6 +1187,58 @@ export class BillingController {
   ) {
 
     return this.pricebookService.archiveVersion(versionId, req?.user?.id);
+
+  }
+
+
+
+  @Get('admin/billing/catalog-products')
+
+  @Roles('MASTER_ADMIN')
+
+  async listCatalogProducts() {
+
+    return this.pricebookService.listCatalogProducts();
+
+  }
+
+
+
+  @Get('admin/billing/price-versions/:versionId/usage')
+
+  @Roles('MASTER_ADMIN')
+
+  async getPriceVersionUsage(@Param('versionId') versionId: string) {
+
+    return this.pricebookService.getVersionUsage(versionId);
+
+  }
+
+
+
+  @Post('admin/billing/price-versions/:versionId/simulate')
+
+  @Roles('MASTER_ADMIN')
+
+  async simulatePriceVersion(
+
+    @Param('versionId') versionId: string,
+
+    @Body() body: SimulatePriceVersionDto,
+
+  ) {
+
+    return this.pricebookService.simulatePriceVersion(versionId, {
+
+      vehicleCount: body.vehicleCount,
+
+      discountPercentBps: body.discountPercentBps,
+
+      discountCents: body.discountCents,
+
+      taxRateBps: body.taxRateBps,
+
+    });
 
   }
 

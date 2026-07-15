@@ -14,6 +14,7 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { BillingAuditService } from './billing-audit.service';
 import {
+  calculateVolumePricing,
   PriceTierInput,
   validateTiersNoOverlap,
 } from './billing-calculation.util';
@@ -32,6 +33,42 @@ export interface UpsertTierInput {
   maxVehicles?: number | null;
   unitPriceCents?: number | null;
   sortOrder?: number;
+}
+
+export interface SimulatePriceVersionInput {
+  vehicleCount: number;
+  discountPercentBps?: number;
+  discountCents?: number;
+  taxRateBps?: number;
+}
+
+export interface SimulatePriceVersionResult {
+  priceVersionId: string;
+  vehicleCount: number;
+  pricingModel: string;
+  tierMode: BillingTierMode;
+  currency: string;
+  calculationStatus: string;
+  matchedTier: {
+    minVehicles: number;
+    maxVehicles: number | null;
+    unitPriceCents: number | null;
+  } | null;
+  tierLines: Array<{
+    tierId: string | null;
+    minVehicles: number;
+    maxVehicles: number | null;
+    quantity: number;
+    unitPriceCents: number;
+    subtotalCents: number;
+    sortOrder: number;
+  }>;
+  baseAmountCents: number | null;
+  discountCents: number;
+  netCents: number | null;
+  taxRateBps: number | null;
+  taxCents: number | null;
+  grossCents: number | null;
 }
 
 @Injectable()
@@ -114,11 +151,176 @@ export class PricebookService {
 
   async listVersions(priceBookId: string) {
     await this.getPriceBook(priceBookId);
-    return this.prisma.billingPriceVersion.findMany({
+    const versions = await this.prisma.billingPriceVersion.findMany({
       where: { priceBookId },
       orderBy: { versionNumber: 'desc' },
       include: { tiers: { orderBy: { sortOrder: 'asc' } } },
     });
+    const usageByVersion = await this.countVersionUsage(versions.map((version) => version.id));
+    return versions.map((version) => ({
+      ...version,
+      usageCount: usageByVersion.get(version.id) ?? 0,
+    }));
+  }
+
+  async listCatalogProducts() {
+    const products = await this.prisma.billingCatalogProduct.findMany({
+      orderBy: [{ sortOrder: 'asc' }, { key: 'asc' }],
+      include: {
+        priceBooks: {
+          select: {
+            id: true,
+            name: true,
+            productKey: true,
+            currency: true,
+            isDefault: true,
+            status: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
+        _count: {
+          select: {
+            priceBooks: true,
+            subscriptionItems: true,
+          },
+        },
+      },
+    });
+
+    return products.map((product) => ({
+      id: product.id,
+      key: product.key,
+      name: product.name,
+      description: product.description,
+      productRole: product.productRole,
+      status: product.status,
+      sortOrder: product.sortOrder,
+      priceBookCount: product._count.priceBooks,
+      subscriptionItemCount: product._count.subscriptionItems,
+      priceBooks: product.priceBooks,
+    }));
+  }
+
+  async getVersionUsage(priceVersionId: string) {
+    const version = await this.prisma.billingPriceVersion.findUnique({
+      where: { id: priceVersionId },
+      select: { id: true },
+    });
+    if (!version) throw new NotFoundException('Price version not found');
+
+    const [subscriptions, subscriptionItems] = await Promise.all([
+      this.prisma.billingSubscription.count({ where: { priceVersionId } }),
+      this.prisma.billingSubscriptionItem.count({ where: { priceVersionId } }),
+    ]);
+
+    return {
+      priceVersionId,
+      subscriptions,
+      subscriptionItems,
+      total: subscriptions + subscriptionItems,
+    };
+  }
+
+  async simulatePriceVersion(
+    priceVersionId: string,
+    input: SimulatePriceVersionInput,
+  ): Promise<SimulatePriceVersionResult> {
+    const version = await this.prisma.billingPriceVersion.findUnique({
+      where: { id: priceVersionId },
+      include: {
+        tiers: { orderBy: { sortOrder: 'asc' } },
+        priceBook: { select: { currency: true } },
+      },
+    });
+    if (!version) throw new NotFoundException('Price version not found');
+
+    const pricing = calculateVolumePricing({
+      vehicleCount: input.vehicleCount,
+      tiers: version.tiers.map((tier) => ({
+        id: tier.id,
+        minVehicles: tier.minVehicles,
+        maxVehicles: tier.maxVehicles,
+        unitPriceCents: tier.unitPriceCents,
+        sortOrder: tier.sortOrder,
+      })),
+      tierMode: version.tierMode,
+      currency: version.priceBook.currency,
+    });
+
+    const baseAmountCents = pricing.subtotalCents ?? pricing.totalCents;
+    let discountCents = input.discountCents ?? 0;
+    if (input.discountPercentBps != null && baseAmountCents != null && baseAmountCents > 0) {
+      discountCents += Math.round((baseAmountCents * input.discountPercentBps) / 10_000);
+    }
+    if (baseAmountCents != null) {
+      discountCents = Math.min(discountCents, baseAmountCents);
+    }
+
+    const netCents =
+      baseAmountCents != null ? Math.max(0, baseAmountCents - discountCents) : null;
+    const taxRateBps = input.taxRateBps ?? 1900;
+    const taxCents =
+      netCents != null ? Math.round((netCents * taxRateBps) / 10_000) : null;
+    const grossCents = netCents != null && taxCents != null ? netCents + taxCents : null;
+
+    return {
+      priceVersionId,
+      vehicleCount: input.vehicleCount,
+      pricingModel: pricing.pricingModel,
+      tierMode: version.tierMode,
+      currency: version.priceBook.currency,
+      calculationStatus: pricing.calculationStatus,
+      matchedTier: pricing.tier
+        ? {
+            minVehicles: pricing.tier.minVehicles,
+            maxVehicles: pricing.tier.maxVehicles,
+            unitPriceCents: pricing.tier.unitPriceCents,
+          }
+        : null,
+      tierLines: pricing.tierLines.map((line) => ({
+        tierId: line.tierId,
+        minVehicles: line.minVehicles,
+        maxVehicles: line.maxVehicles,
+        quantity: line.quantity,
+        unitPriceCents: line.unitPriceCents,
+        subtotalCents: line.subtotalCents,
+        sortOrder: line.sortOrder,
+      })),
+      baseAmountCents,
+      discountCents,
+      netCents,
+      taxRateBps: netCents != null ? taxRateBps : null,
+      taxCents,
+      grossCents,
+    };
+  }
+
+  private async countVersionUsage(versionIds: string[]): Promise<Map<string, number>> {
+    if (versionIds.length === 0) return new Map();
+
+    const [subscriptionRows, itemRows] = await Promise.all([
+      this.prisma.billingSubscription.groupBy({
+        by: ['priceVersionId'],
+        where: { priceVersionId: { in: versionIds } },
+        _count: { _all: true },
+      }),
+      this.prisma.billingSubscriptionItem.groupBy({
+        by: ['priceVersionId'],
+        where: { priceVersionId: { in: versionIds } },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const usage = new Map<string, number>();
+    for (const row of subscriptionRows) {
+      if (!row.priceVersionId) continue;
+      usage.set(row.priceVersionId, (usage.get(row.priceVersionId) ?? 0) + row._count._all);
+    }
+    for (const row of itemRows) {
+      if (!row.priceVersionId) continue;
+      usage.set(row.priceVersionId, (usage.get(row.priceVersionId) ?? 0) + row._count._all);
+    }
+    return usage;
   }
 
   async getVersionWithTiers(priceVersionId: string) {
@@ -130,7 +332,7 @@ export class PricebookService {
 
   async patchDraftVersion(
     priceVersionId: string,
-    patch: { versionLabel?: string; effectiveFrom?: Date },
+    patch: { versionLabel?: string; effectiveFrom?: Date; tierMode?: BillingTierMode },
     actorUserId?: string,
   ) {
     const version = await this.prisma.billingPriceVersion.findUnique({
@@ -146,6 +348,7 @@ export class PricebookService {
       data: {
         versionLabel: patch.versionLabel,
         effectiveFrom: patch.effectiveFrom,
+        tierMode: patch.tierMode,
       },
       include: { tiers: { orderBy: { sortOrder: 'asc' } } },
     });
@@ -197,6 +400,18 @@ export class PricebookService {
   }
 
   async createPriceBook(input: CreatePriceBookInput, actorUserId?: string) {
+    const catalogKey = input.productKey.trim().toUpperCase();
+    const catalogProduct = await this.prisma.billingCatalogProduct.findUnique({
+      where: { key: catalogKey },
+      select: { id: true, key: true },
+    });
+    if (!catalogProduct) {
+      throw new BadRequestException({
+        message: 'Unknown catalog product key',
+        productKey: input.productKey,
+      });
+    }
+
     if (input.isDefault) {
       await this.prisma.billingPriceBook.updateMany({
         where: { isDefault: true },
@@ -207,7 +422,8 @@ export class PricebookService {
     const book = await this.prisma.billingPriceBook.create({
       data: {
         name: input.name,
-        productKey: input.productKey,
+        productKey: catalogProduct.key,
+        billingProductId: catalogProduct.id,
         billingModel: input.billingModel ?? BillingModel.PER_CONNECTED_VEHICLE,
         interval: input.interval ?? BillingInterval.MONTHLY,
         currency: input.currency ?? 'EUR',

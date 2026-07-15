@@ -108,6 +108,7 @@ export interface AdminBillingPriceVersionDto {
   effectiveFrom: string | null;
   effectiveTo?: string | null;
   publishedAt?: string | null;
+  usageCount?: number;
   tiers?: AdminBillingPriceTierDto[];
 }
 
@@ -119,6 +120,7 @@ export interface AdminBillingPricebookDto {
   interval: string;
   currency: string;
   isDefault: boolean;
+  billingProductId?: string | null;
   versions?: Array<{
     id: string;
     versionNumber: number;
@@ -127,6 +129,91 @@ export interface AdminBillingPricebookDto {
     effectiveFrom: string | null;
     publishedAt: string | null;
   }>;
+}
+
+export interface AdminBillingCatalogProductDto {
+  id: string;
+  key: string;
+  name: string;
+  description: string | null;
+  productRole: 'BASE_PLAN' | 'ADDON' | string;
+  status: string;
+  sortOrder: number;
+  priceBookCount: number;
+  subscriptionItemCount: number;
+  priceBooks: Array<{
+    id: string;
+    name: string;
+    productKey: string;
+    currency: string;
+    isDefault: boolean;
+    status: string;
+  }>;
+}
+
+export interface AdminBillingPriceSimulationDto {
+  priceVersionId: string;
+  vehicleCount: number;
+  pricingModel: string;
+  tierMode: string;
+  currency: string;
+  calculationStatus: string;
+  matchedTier: {
+    minVehicles: number;
+    maxVehicles: number | null;
+    unitPriceCents: number | null;
+  } | null;
+  tierLines: Array<{
+    tierId: string | null;
+    minVehicles: number;
+    maxVehicles: number | null;
+    quantity: number;
+    unitPriceCents: number;
+    subtotalCents: number;
+    sortOrder: number;
+  }>;
+  baseAmountCents: number | null;
+  discountCents: number;
+  netCents: number | null;
+  taxRateBps: number | null;
+  taxCents: number | null;
+  grossCents: number | null;
+}
+
+export interface AdminBillingPriceVersionUsageDto {
+  priceVersionId: string;
+  subscriptions: number;
+  subscriptionItems: number;
+  total: number;
+}
+
+export interface AdminStripeCatalogMappingDto {
+  id: string;
+  billingProductId: string;
+  billingProductKey: string;
+  priceVersionId: string;
+  priceBookId: string;
+  stripeMode: 'TEST' | 'LIVE' | string;
+  stripeProductId: string;
+  stripePriceId: string;
+  currency: string;
+  billingInterval: string;
+  billingModel: string;
+  stripePresentation: string;
+  mappingStatus: string;
+  lastVerifiedAt: string | null;
+  lastError: string | null;
+  disabledAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminStripeCatalogMappingStatusDto {
+  priceVersionId: string;
+  stripeMode: 'TEST' | 'LIVE' | string;
+  runtimeStripeMode: 'TEST' | 'LIVE' | string | null;
+  mapping: AdminStripeCatalogMappingDto | null;
+  modeAligned: boolean | null;
 }
 
 export interface AdminBillingInvoiceDto {

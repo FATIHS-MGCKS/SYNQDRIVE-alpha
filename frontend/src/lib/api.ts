@@ -3852,7 +3852,7 @@ export const api = {
       post<any>(`/admin/billing/pricebooks/${priceBookId}/versions`, body ?? {}),
     updatePriceVersion: (
       versionId: string,
-      body: { versionLabel?: string; effectiveFrom?: string },
+      body: { versionLabel?: string; effectiveFrom?: string; tierMode?: 'VOLUME' | 'GRADUATED' },
     ) => patch<any>(`/admin/billing/price-versions/${versionId}`, body),
     replacePriceTiers: (
       versionId: string,
@@ -3869,6 +3869,51 @@ export const api = {
     ) => post<any>(`/admin/billing/price-versions/${versionId}/publish`, body ?? {}),
     archivePriceVersion: (versionId: string) =>
       post<any>(`/admin/billing/price-versions/${versionId}/archive`, {}),
+    catalogProducts: () => get<any[]>('/admin/billing/catalog-products'),
+    priceVersionUsage: (versionId: string) =>
+      get<any>(`/admin/billing/price-versions/${versionId}/usage`),
+    simulatePriceVersion: (
+      versionId: string,
+      body: {
+        vehicleCount: number;
+        discountPercentBps?: number;
+        discountCents?: number;
+        taxRateBps?: number;
+      },
+    ) => post<any>(`/admin/billing/price-versions/${versionId}/simulate`, body),
+    stripeCatalogMappings: (params?: {
+      priceVersionId?: string;
+      priceBookId?: string;
+      stripeMode?: 'TEST' | 'LIVE';
+      includeDisabled?: boolean;
+    }) => {
+      const query = new URLSearchParams();
+      if (params?.priceVersionId) query.set('priceVersionId', params.priceVersionId);
+      if (params?.priceBookId) query.set('priceBookId', params.priceBookId);
+      if (params?.stripeMode) query.set('stripeMode', params.stripeMode);
+      if (params?.includeDisabled) query.set('includeDisabled', 'true');
+      const suffix = query.toString() ? `?${query.toString()}` : '';
+      return get<any[]>(`/admin/billing/stripe-catalog-mappings${suffix}`);
+    },
+    stripeCatalogMappingStatus: (versionId: string, stripeMode: 'TEST' | 'LIVE') =>
+      get<any>(`/admin/billing/price-versions/${versionId}/stripe-mappings/${stripeMode}/status`),
+    connectStripeCatalogMapping: (
+      versionId: string,
+      body: {
+        stripeMode: 'TEST' | 'LIVE';
+        stripeProductId: string;
+        stripePriceId: string;
+        billingProductId?: string;
+        currency?: string;
+        billingInterval?: string;
+      },
+    ) => post<any>(`/admin/billing/price-versions/${versionId}/stripe-mappings/connect`, body),
+    validateStripeCatalogMapping: (mappingId: string) =>
+      post<any>(`/admin/billing/stripe-catalog-mappings/${mappingId}/validate`, {}),
+    syncStripeCatalogMapping: (mappingId: string) =>
+      post<any>(`/admin/billing/stripe-catalog-mappings/${mappingId}/sync`, {}),
+    syncStripePriceVersion: (versionId: string, body: { stripeMode: 'TEST' | 'LIVE' }) =>
+      post<any>(`/admin/billing/price-versions/${versionId}/stripe-sync`, body),
     orgSummary: (orgId?: string, init?: RequestInit) =>
       get<any>(`/billing/summary${billingTenantQuery(orgId)}`, init),
     orgSubscriptionOverview: (orgId?: string, init?: RequestInit) =>

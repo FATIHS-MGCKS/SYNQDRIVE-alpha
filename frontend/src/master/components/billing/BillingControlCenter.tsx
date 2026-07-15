@@ -20,6 +20,7 @@ import {
   sectionNeedsCoreData,
   type MasterBillingAuditTab,
   type MasterBillingInvoicesPaymentsTab,
+  type MasterBillingPricingTab,
   type MasterBillingSection,
   type MasterBillingSystemSyncTab,
 } from './master-billing-navigation';
@@ -231,10 +232,14 @@ export function BillingControlCenter({
               <div>
                 <h2 className="text-[15px] font-semibold text-foreground">Tarife & Preise</h2>
                 <p className="text-[12px] text-muted-foreground mt-1 max-w-3xl">
-                  Produkte, Pricebooks, Versionen, Staffeln und Stripe-Mapping.
+                  Produkte, Versionen, Staffeln, Simulation und Stripe-Mapping.
                 </p>
               </div>
-              <BillingPricingTab refreshToken={pricingRefresh} />
+              <BillingPricingTab
+                refreshToken={pricingRefresh}
+                activeSubTab={activeSubTab}
+                onSubTabChange={(tab: MasterBillingPricingTab) => navigateSubTab(tab)}
+              />
             </div>
           ) : null}
 

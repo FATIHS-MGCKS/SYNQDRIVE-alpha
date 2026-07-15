@@ -26,6 +26,13 @@ export type MasterBillingAuditTab =
   | 'payments'
   | 'system';
 
+export type MasterBillingPricingTab =
+  | 'products'
+  | 'versions'
+  | 'tiers'
+  | 'simulation'
+  | 'stripe';
+
 export const MASTER_BILLING_SECTION_PARAM = 'masterBilling';
 export const MASTER_BILLING_SUB_TAB_PARAM = 'masterBillingTab';
 export const MASTER_BILLING_ORG_PARAM = 'orgId';
@@ -64,6 +71,14 @@ export const MASTER_BILLING_AUDIT_TABS: Array<{ id: MasterBillingAuditTab; label
   { id: 'pricing', label: 'Preise' },
   { id: 'payments', label: 'Zahlungen' },
   { id: 'system', label: 'System' },
+];
+
+export const MASTER_BILLING_PRICING_TABS: Array<{ id: MasterBillingPricingTab; label: string }> = [
+  { id: 'products', label: 'Produkte' },
+  { id: 'versions', label: 'Versionen' },
+  { id: 'tiers', label: 'Staffeln' },
+  { id: 'simulation', label: 'Simulation' },
+  { id: 'stripe', label: 'Stripe' },
 ];
 
 const SECTION_IDS = new Set(MASTER_BILLING_SECTIONS.map((section) => section.id));
@@ -135,6 +150,8 @@ export function defaultSubTabForSection(section: MasterBillingSection): string |
       return 'stripe-api';
     case 'audit':
       return 'contracts';
+    case 'pricing':
+      return 'products';
     default:
       return null;
   }

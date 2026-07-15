@@ -7,6 +7,7 @@ import {
   readMasterBillingLocation,
   sectionNeedsCoreData,
   MASTER_BILLING_SECTIONS,
+  MASTER_BILLING_PRICING_TABS,
 } from './master-billing-navigation';
 
 describe('master billing navigation', () => {
@@ -57,7 +58,14 @@ describe('master billing navigation', () => {
     expect(defaultSubTabForSection('invoices-payments')).toBe('invoices');
     expect(defaultSubTabForSection('system-sync')).toBe('stripe-api');
     expect(defaultSubTabForSection('audit')).toBe('contracts');
+    expect(defaultSubTabForSection('pricing')).toBe('products');
     expect(defaultSubTabForSection('overview')).toBeNull();
+  });
+
+  it('parses pricing sub tabs', () => {
+    const allowed = MASTER_BILLING_PRICING_TABS.map((tab) => tab.id);
+    expect(parseMasterBillingSubTab('simulation', allowed, 'products')).toBe('simulation');
+    expect(parseMasterBillingSubTab('invalid', allowed, 'products')).toBe('products');
   });
 
   it('validates sub tab values against allowed ids', () => {

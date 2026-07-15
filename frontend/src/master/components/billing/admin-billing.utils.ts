@@ -1,4 +1,10 @@
 import type { AdminBillingPriceTierDto } from '../../types/admin-billing.types';
+import {
+  validateTierRows as validateMasterPricingTierRows,
+  type TierValidationIssue,
+} from './master-pricing.utils';
+
+export type { TierValidationIssue };
 
 export {
   formatMoneyCents,
@@ -67,50 +73,8 @@ export function formatMoneyEuros(value: number | null | undefined): string {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(value);
 }
 
-export interface TierValidationIssue {
-  tierIndex: number;
-  message: string;
-  kind: 'overlap' | 'missing_price' | 'invalid_range';
-}
-
 export function validateTierRows(tiers: AdminBillingPriceTierDto[]): TierValidationIssue[] {
-  const issues: TierValidationIssue[] = [];
-  const sorted = [...tiers].sort((a, b) => a.minVehicles - b.minVehicles);
-
-  sorted.forEach((tier, index) => {
-    if (tier.maxVehicles != null && tier.maxVehicles < tier.minVehicles) {
-      issues.push({
-        tierIndex: index,
-        message: 'Max muss ≥ Min sein',
-        kind: 'invalid_range',
-      });
-    }
-    if (tier.unitPriceCents == null) {
-      issues.push({
-        tierIndex: index,
-        message: 'Preis noch nicht konfiguriert',
-        kind: 'missing_price',
-      });
-    }
-  });
-
-  for (let i = 0; i < sorted.length; i++) {
-    for (let j = i + 1; j < sorted.length; j++) {
-      const a = sorted[i];
-      const b = sorted[j];
-      const aMax = a.maxVehicles ?? Number.POSITIVE_INFINITY;
-      const bMax = b.maxVehicles ?? Number.POSITIVE_INFINITY;
-      if (a.minVehicles <= bMax && b.minVehicles <= aMax) {
-        issues.push({
-          tierIndex: j,
-          message: `Überschneidung mit Staffel ${i + 1}`,
-          kind: 'overlap',
-        });
-      }
-    }
-  }
-
-  return issues;
+  return validateMasterPricingTierRows(tiers);
 }
 
 export function parsePaginated<T>(payload: unknown): { data: T[]; total: number } {
