@@ -180,6 +180,7 @@ describe('TaskAutomationAdminService', () => {
       bookingPrepRule.ruleId,
       'user-1',
       4,
+      undefined,
     );
     expect(resolver.resolveTaskAutomationRule).toHaveBeenCalled();
   });
