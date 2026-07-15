@@ -267,6 +267,7 @@ export class PricebookService {
   ) {
     const version = await this.prisma.billingPriceVersion.findUnique({
       where: { id: priceVersionId },
+      include: { priceBook: { select: { currency: true } } },
     });
     if (!version) throw new NotFoundException('Price version not found');
     if (version.status !== BillingPriceVersionStatus.DRAFT) {
@@ -280,7 +281,7 @@ export class PricebookService {
       sortOrder: t.sortOrder ?? i,
     }));
 
-    const errors = validateTiersNoOverlap(tierInputs);
+    const errors = validateTiersNoOverlap(tierInputs, { currency: version.priceBook.currency });
     if (errors.length > 0) {
       throw new BadRequestException({ message: 'Invalid price tiers', errors });
     }
@@ -324,7 +325,10 @@ export class PricebookService {
   ) {
     const version = await this.prisma.billingPriceVersion.findUnique({
       where: { id: priceVersionId },
-      include: { tiers: true },
+      include: {
+        tiers: true,
+        priceBook: { select: { currency: true } },
+      },
     });
     if (!version) throw new NotFoundException('Price version not found');
     if (version.status !== BillingPriceVersionStatus.DRAFT) {
@@ -342,6 +346,7 @@ export class PricebookService {
         unitPriceCents: t.unitPriceCents,
         sortOrder: t.sortOrder,
       })),
+      { currency: version.priceBook.currency },
     );
     if (overlapErrors.length > 0) {
       throw new BadRequestException({ message: 'Cannot publish overlapping tiers', overlapErrors });

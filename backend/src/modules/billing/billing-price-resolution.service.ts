@@ -2,10 +2,30 @@ import { Injectable } from '@nestjs/common';
 import { BillingUsageCalculationStatus } from '@prisma/client';
 import { PricebookService } from './pricebook.service';
 import {
-  calculateVolumePricing,
+  calculateTierPricing,
+  mapBillingTierModeToPricingModel,
   PriceTierInput,
-  resolveTierForVehicleCount,
+  resolveTierForQuantity,
 } from './billing-calculation.util';
+import { PricingModel } from './domain/billing-domain.types';
+
+function emptyPriceResolution(
+  overrides: Partial<PriceResolutionResult> = {},
+): PriceResolutionResult {
+  return {
+    calculationStatus: BillingUsageCalculationStatus.NO_ACTIVE_PRICE_VERSION,
+    priceBookId: null,
+    priceVersionId: null,
+    currency: null,
+    pricingModel: PricingModel.VOLUME,
+    tier: null,
+    tierLines: [],
+    unitPriceCents: null,
+    subtotalCents: null,
+    totalCents: null,
+    ...overrides,
+  };
+}
 
 export interface ResolvedTier {
   id: string | null;
@@ -16,12 +36,24 @@ export interface ResolvedTier {
   status: 'CONFIGURED' | 'UNPRICED';
 }
 
+export interface ResolvedTierLine {
+  tierId: string | null;
+  minVehicles: number;
+  maxVehicles: number | null;
+  quantity: number;
+  unitPriceCents: number;
+  subtotalCents: number;
+  sortOrder: number;
+}
+
 export interface PriceResolutionResult {
   calculationStatus: BillingUsageCalculationStatus;
   priceBookId: string | null;
   priceVersionId: string | null;
   currency: string | null;
+  pricingModel: ReturnType<typeof mapBillingTierModeToPricingModel>;
   tier: ResolvedTier | null;
+  tierLines: ResolvedTierLine[];
   unitPriceCents: number | null;
   subtotalCents: number | null;
   totalCents: number | null;
@@ -50,7 +82,7 @@ export class BillingPriceResolutionService {
       sortOrder: t.sortOrder,
     }));
 
-    const tier = resolveTierForVehicleCount(billableVehicleCount, tiers);
+    const tier = resolveTierForQuantity(billableVehicleCount, tiers);
     if (!tier) return null;
 
     return {
@@ -89,16 +121,7 @@ export class BillingPriceResolutionService {
     }
 
     if (!opts?.priceBookId) {
-      return {
-        calculationStatus: BillingUsageCalculationStatus.NO_ACTIVE_PRICE_VERSION,
-        priceBookId: null,
-        priceVersionId: null,
-        currency: null,
-        tier: null,
-        unitPriceCents: null,
-        subtotalCents: null,
-        totalCents: null,
-      };
+      return emptyPriceResolution();
     }
 
     const config = await this.resolvePriceBookConfig(opts.priceBookId, asOf);
@@ -124,16 +147,9 @@ export class BillingPriceResolutionService {
     const asOf = opts?.asOf ?? new Date();
     const version = await this.pricebook.getVersionWithTiers(priceVersionId);
     if (!version) {
-      return {
-        calculationStatus: BillingUsageCalculationStatus.NO_ACTIVE_PRICE_VERSION,
+      return emptyPriceResolution({
         priceBookId: opts?.priceBookId ?? null,
-        priceVersionId: null,
-        currency: null,
-        tier: null,
-        unitPriceCents: null,
-        subtotalCents: null,
-        totalCents: null,
-      };
+      });
     }
 
     const priceBook =
@@ -155,6 +171,7 @@ export class BillingPriceResolutionService {
     priceBook: { id: string; currency: string } | null,
     activeVersion: {
       id: string;
+      tierMode?: import('@prisma/client').BillingTierMode;
       tiers: Array<{
         id: string;
         minVehicles: number;
@@ -169,16 +186,11 @@ export class BillingPriceResolutionService {
       customMonthlyMinimumCents?: number | null;
     },
   ): Promise<PriceResolutionResult> {
-    const empty: PriceResolutionResult = {
-      calculationStatus: BillingUsageCalculationStatus.NO_ACTIVE_PRICE_VERSION,
+    const empty = emptyPriceResolution({
       priceBookId: priceBook?.id ?? null,
-      priceVersionId: null,
       currency: priceBook?.currency ?? null,
-      tier: null,
-      unitPriceCents: null,
-      subtotalCents: null,
-      totalCents: null,
-    };
+      pricingModel: mapBillingTierModeToPricingModel(activeVersion?.tierMode),
+    });
 
     if (!priceBook || !activeVersion) {
       return empty;
@@ -200,22 +212,33 @@ export class BillingPriceResolutionService {
       sortOrder: t.sortOrder,
     }));
 
-    const result = calculateVolumePricing({
-      vehicleCount: billableVehicleCount,
+    const result = calculateTierPricing({
+      quantity: billableVehicleCount,
       tiers,
+      pricingModel: mapBillingTierModeToPricingModel(activeVersion.tierMode),
       customUnitPriceCents: opts?.customUnitPriceCents ?? null,
       customMonthlyMinimumCents: opts?.customMonthlyMinimumCents ?? null,
       currency: priceBook.currency,
     });
 
-    const resolvedTier = result.tier
+    const matched = result.matchedTier ?? (result.tierLines.length === 1
       ? {
-          id: result.tier.id ?? null,
-          minVehicles: result.tier.minVehicles,
-          maxVehicles: result.tier.maxVehicles,
-          unitPriceCents: result.tier.unitPriceCents,
-          sortOrder: result.tier.sortOrder ?? 0,
-          status: (result.tier.unitPriceCents != null ? 'CONFIGURED' : 'UNPRICED') as
+          id: result.tierLines[0].tierId ?? undefined,
+          minVehicles: result.tierLines[0].minVehicles,
+          maxVehicles: result.tierLines[0].maxVehicles,
+          unitPriceCents: result.tierLines[0].unitPriceCents,
+          sortOrder: result.tierLines[0].sortOrder,
+        }
+      : null);
+
+    const resolvedTier = matched
+      ? {
+          id: matched.id ?? null,
+          minVehicles: matched.minVehicles,
+          maxVehicles: matched.maxVehicles,
+          unitPriceCents: matched.unitPriceCents ?? result.unitPriceCents,
+          sortOrder: matched.sortOrder ?? 0,
+          status: ((matched.unitPriceCents ?? result.unitPriceCents) != null ? 'CONFIGURED' : 'UNPRICED') as
             | 'CONFIGURED'
             | 'UNPRICED',
         }
@@ -226,7 +249,9 @@ export class BillingPriceResolutionService {
       priceBookId: priceBook.id,
       priceVersionId: activeVersion.id,
       currency: priceBook.currency,
+      pricingModel: result.pricingModel,
       tier: resolvedTier,
+      tierLines: result.tierLines,
       unitPriceCents: result.unitPriceCents,
       subtotalCents: result.subtotalCents,
       totalCents: result.totalCents,

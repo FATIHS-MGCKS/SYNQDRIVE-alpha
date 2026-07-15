@@ -1,4 +1,15 @@
 import { BillingTierMode, BillingUsageCalculationStatus } from '@prisma/client';
+import {
+  calculateTierPricing,
+  mapBillingTierModeToPricingModel,
+  resolveTierForQuantity,
+  sortTiersForSchedule,
+  TierScheduleTier,
+  TierValidationError,
+  TierValidationErrorCode,
+  validateTierSchedule,
+} from './domain/tier-pricing-calculator';
+import { PricingModel } from './domain/billing-domain.types';
 
 export interface PriceTierInput {
   id?: string;
@@ -8,7 +19,7 @@ export interface PriceTierInput {
   sortOrder?: number;
 }
 
-export interface TierValidationError {
+export interface TierValidationErrorLegacy {
   code: string;
   message: string;
   tierIndex?: number;
@@ -29,144 +40,116 @@ export interface VolumePricingResult {
   unitPriceCents: number | null;
   subtotalCents: number | null;
   totalCents: number | null;
+  pricingModel: typeof PricingModel.VOLUME | typeof PricingModel.GRADUATED;
+  tierLines: ReturnType<typeof calculateTierPricing>['tierLines'];
 }
 
-/**
- * Validate a single tier row.
- */
+function toScheduleTier(tier: PriceTierInput): TierScheduleTier {
+  return {
+    id: tier.id,
+    minVehicles: tier.minVehicles,
+    maxVehicles: tier.maxVehicles,
+    unitPriceCents: tier.unitPriceCents,
+    sortOrder: tier.sortOrder,
+  };
+}
+
+function mapValidationError(error: TierValidationError): TierValidationErrorLegacy {
+  return {
+    code: error.code,
+    message: error.code,
+    tierIndex: error.tierIndex,
+  };
+}
+
 export function validateTierRow(
   tier: PriceTierInput,
   index: number,
-): TierValidationError | null {
+): TierValidationErrorLegacy | null {
   if (tier.minVehicles <= 0) {
-    return {
-      code: 'MIN_VEHICLES_INVALID',
-      message: `Tier ${index + 1}: minVehicles must be > 0`,
-      tierIndex: index,
-    };
+    return { code: TierValidationErrorCode.MIN_VEHICLES_INVALID, message: TierValidationErrorCode.MIN_VEHICLES_INVALID, tierIndex: index };
   }
   if (tier.maxVehicles != null && tier.maxVehicles < tier.minVehicles) {
-    return {
-      code: 'MAX_BELOW_MIN',
-      message: `Tier ${index + 1}: maxVehicles must be >= minVehicles`,
-      tierIndex: index,
-    };
+    return { code: TierValidationErrorCode.MAX_BELOW_MIN, message: TierValidationErrorCode.MAX_BELOW_MIN, tierIndex: index };
+  }
+  if (tier.unitPriceCents != null && tier.unitPriceCents < 0) {
+    return { code: TierValidationErrorCode.NEGATIVE_UNIT_PRICE, message: TierValidationErrorCode.NEGATIVE_UNIT_PRICE, tierIndex: index };
   }
   return null;
 }
 
-/**
- * Returns true when two tier ranges overlap (inclusive bounds).
- */
 export function tiersOverlap(a: PriceTierInput, b: PriceTierInput): boolean {
   const aMax = a.maxVehicles ?? Number.POSITIVE_INFINITY;
   const bMax = b.maxVehicles ?? Number.POSITIVE_INFINITY;
   return a.minVehicles <= bMax && b.minVehicles <= aMax;
 }
 
-/**
- * Validate that tiers do not overlap within a version.
- */
-export function validateTiersNoOverlap(tiers: PriceTierInput[]): TierValidationError[] {
-  const errors: TierValidationError[] = [];
-  const sorted = [...tiers].sort((x, y) => x.minVehicles - y.minVehicles);
-
-  for (let i = 0; i < sorted.length; i++) {
-    const rowError = validateTierRow(sorted[i], i);
-    if (rowError) errors.push(rowError);
-  }
-
-  for (let i = 0; i < sorted.length; i++) {
-    for (let j = i + 1; j < sorted.length; j++) {
-      if (tiersOverlap(sorted[i], sorted[j])) {
-        errors.push({
-          code: 'TIERS_OVERLAP',
-          message: `Tiers ${i + 1} and ${j + 1} overlap (${sorted[i].minVehicles}–${sorted[i].maxVehicles ?? '∞'} vs ${sorted[j].minVehicles}–${sorted[j].maxVehicles ?? '∞'})`,
-          tierIndex: j,
-        });
-      }
-    }
-  }
-
-  return errors;
+export function validateTiersNoOverlap(
+  tiers: PriceTierInput[],
+  opts?: { currency?: string | null },
+): TierValidationErrorLegacy[] {
+  return validateTierSchedule(tiers.map(toScheduleTier), opts).map(mapValidationError);
 }
 
-/**
- * Resolve the applicable tier for a vehicle count (VOLUME mode).
- * The entire fleet is priced at the matching tier's unit price.
- */
 export function resolveTierForVehicleCount(
   vehicleCount: number,
   tiers: PriceTierInput[],
 ): PriceTierInput | null {
-  if (vehicleCount <= 0 || tiers.length === 0) return null;
-
-  const sorted = [...tiers].sort((a, b) => {
-    const orderDiff = (a.sortOrder ?? 0) - (b.sortOrder ?? 0);
-    if (orderDiff !== 0) return orderDiff;
-    return a.minVehicles - b.minVehicles;
-  });
-
-  for (const tier of sorted) {
-    const withinMin = vehicleCount >= tier.minVehicles;
-    const withinMax = tier.maxVehicles == null || vehicleCount <= tier.maxVehicles;
-    if (withinMin && withinMax) return tier;
-  }
-
-  return null;
-}
-
-/**
- * VOLUME pricing: billableCount × unitPrice (optionally overridden).
- * GRADUATED is reserved for future use — currently falls back to VOLUME behaviour.
- */
-export function calculateVolumePricing(input: VolumePricingInput): VolumePricingResult {
-  const { vehicleCount, tiers, customUnitPriceCents, customMonthlyMinimumCents } = input;
-
-  if (vehicleCount <= 0) {
-    return {
-      calculationStatus: BillingUsageCalculationStatus.NO_BILLABLE_VEHICLES,
-      tier: null,
-      unitPriceCents: null,
-      subtotalCents: null,
-      totalCents: null,
-    };
-  }
-
-  const tier = resolveTierForVehicleCount(vehicleCount, tiers);
-  if (!tier) {
-    return {
-      calculationStatus: BillingUsageCalculationStatus.PRICE_NOT_CONFIGURED,
-      tier: null,
-      unitPriceCents: null,
-      subtotalCents: null,
-      totalCents: null,
-    };
-  }
-
-  const unitPriceCents =
-    customUnitPriceCents != null ? customUnitPriceCents : tier.unitPriceCents;
-
-  if (unitPriceCents == null) {
-    return {
-      calculationStatus: BillingUsageCalculationStatus.PRICE_NOT_CONFIGURED,
-      tier,
-      unitPriceCents: null,
-      subtotalCents: null,
-      totalCents: null,
-    };
-  }
-
-  let subtotalCents = vehicleCount * unitPriceCents;
-  if (customMonthlyMinimumCents != null && subtotalCents < customMonthlyMinimumCents) {
-    subtotalCents = customMonthlyMinimumCents;
-  }
-
+  const matched = resolveTierForQuantity(vehicleCount, tiers.map(toScheduleTier));
+  if (!matched) return null;
   return {
-    calculationStatus: BillingUsageCalculationStatus.OK,
-    tier,
-    unitPriceCents,
-    subtotalCents,
-    totalCents: subtotalCents,
+    id: matched.id,
+    minVehicles: matched.minVehicles,
+    maxVehicles: matched.maxVehicles,
+    unitPriceCents: matched.unitPriceCents,
+    sortOrder: matched.sortOrder,
   };
 }
+
+export function calculateVolumePricing(input: VolumePricingInput): VolumePricingResult {
+  const result = calculateTierPricing({
+    quantity: input.vehicleCount,
+    tiers: input.tiers.map(toScheduleTier),
+    pricingModel: mapBillingTierModeToPricingModel(input.tierMode),
+    currency: input.currency ?? null,
+    customUnitPriceCents: input.customUnitPriceCents,
+    customMonthlyMinimumCents: input.customMonthlyMinimumCents,
+  });
+
+  const matchedTier = result.matchedTier
+    ? {
+        id: result.matchedTier.id,
+        minVehicles: result.matchedTier.minVehicles,
+        maxVehicles: result.matchedTier.maxVehicles,
+        unitPriceCents: result.matchedTier.unitPriceCents,
+        sortOrder: result.matchedTier.sortOrder,
+      }
+    : result.tierLines.length === 1
+      ? {
+          id: result.tierLines[0].tierId ?? undefined,
+          minVehicles: result.tierLines[0].minVehicles,
+          maxVehicles: result.tierLines[0].maxVehicles,
+          unitPriceCents: result.tierLines[0].unitPriceCents,
+          sortOrder: result.tierLines[0].sortOrder,
+        }
+      : null;
+
+  return {
+    calculationStatus: result.calculationStatus,
+    tier: matchedTier,
+    unitPriceCents: result.unitPriceCents,
+    subtotalCents: result.subtotalCents,
+    totalCents: result.totalCents,
+    pricingModel: result.pricingModel,
+    tierLines: result.tierLines,
+  };
+}
+
+export {
+  calculateTierPricing,
+  mapBillingTierModeToPricingModel,
+  resolveTierForQuantity,
+  sortTiersForSchedule,
+  TierValidationErrorCode,
+  validateTierSchedule,
+};

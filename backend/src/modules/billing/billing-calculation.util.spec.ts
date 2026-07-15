@@ -1,6 +1,8 @@
 import {
+  BillingTierMode,
   BillingUsageCalculationStatus,
 } from '@prisma/client';
+import { PricingModel } from './domain/billing-domain.types';
 import {
   calculateVolumePricing,
   PriceTierInput,
@@ -50,6 +52,22 @@ describe('billing-calculation.util', () => {
       expect(errors.some((e) => e.code === 'TIERS_OVERLAP')).toBe(true);
     });
 
+    it('rejects gaps between tiers', () => {
+      const gapped: PriceTierInput[] = [
+        { minVehicles: 1, maxVehicles: 5, unitPriceCents: 1000 },
+        { minVehicles: 7, maxVehicles: null, unitPriceCents: 900 },
+      ];
+      const errors = validateTiersNoOverlap(gapped);
+      expect(errors.some((e) => e.code === 'TIER_GAP')).toBe(true);
+    });
+
+    it('rejects schedule not starting at 1', () => {
+      const errors = validateTiersNoOverlap([
+        { minVehicles: 2, maxVehicles: 10, unitPriceCents: 1000 },
+      ]);
+      expect(errors.some((e) => e.code === 'FIRST_TIER_NOT_ONE')).toBe(true);
+    });
+
     it('rejects minVehicles <= 0', () => {
       expect(validateTierRow({ minVehicles: 0, maxVehicles: 5, unitPriceCents: 100 }, 0)).toMatchObject({
         code: 'MIN_VEHICLES_INVALID',
@@ -86,12 +104,24 @@ describe('billing-calculation.util', () => {
       expect(result.calculationStatus).toBe(BillingUsageCalculationStatus.NO_BILLABLE_VEHICLES);
     });
 
-    it('returns PRICE_NOT_CONFIGURED when no tier matches', () => {
+    it('returns PRICE_NOT_CONFIGURED when quantity exceeds capped last tier', () => {
       const tiers: PriceTierInput[] = [
-        { minVehicles: 10, maxVehicles: 15, unitPriceCents: 500 },
+        { minVehicles: 1, maxVehicles: 5, unitPriceCents: 500 },
       ];
-      const result = calculateVolumePricing({ vehicleCount: 5, tiers });
+      const result = calculateVolumePricing({ vehicleCount: 10, tiers });
       expect(result.calculationStatus).toBe(BillingUsageCalculationStatus.PRICE_NOT_CONFIGURED);
+    });
+
+    it('calculates graduated pricing with tier lines', () => {
+      const result = calculateVolumePricing({
+        vehicleCount: 12,
+        tiers: sampleTiers,
+        tierMode: BillingTierMode.GRADUATED,
+      });
+      expect(result.pricingModel).toBe(PricingModel.GRADUATED);
+      expect(result.calculationStatus).toBe(BillingUsageCalculationStatus.OK);
+      expect(result.subtotalCents).toBe(11_600);
+      expect(result.tierLines).toHaveLength(2);
     });
 
     it('applies org custom unit price override', () => {

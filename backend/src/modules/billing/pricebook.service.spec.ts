@@ -25,6 +25,7 @@ describe('PricebookService publish rules', () => {
     prisma.billingPriceVersion.findUnique.mockResolvedValue({
       id: 'v1',
       status: BillingPriceVersionStatus.ACTIVE,
+      priceBook: { currency: 'EUR' },
     });
 
     await expect(
@@ -37,6 +38,7 @@ describe('PricebookService publish rules', () => {
       id: 'v1',
       status: BillingPriceVersionStatus.DRAFT,
       priceBookId: 'book-1',
+      priceBook: { currency: 'EUR' },
       tiers: [{ minVehicles: 1, maxVehicles: null, unitPriceCents: null, sortOrder: 0 }],
     });
 
@@ -48,6 +50,7 @@ describe('PricebookService publish rules', () => {
       id: 'v1',
       status: BillingPriceVersionStatus.DRAFT,
       priceBookId: 'book-1',
+      priceBook: { currency: 'EUR' },
       tiers: [
         { minVehicles: 1, maxVehicles: 10, unitPriceCents: 100, sortOrder: 0 },
         { minVehicles: 8, maxVehicles: 20, unitPriceCents: 90, sortOrder: 1 },
