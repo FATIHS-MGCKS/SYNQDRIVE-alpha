@@ -304,8 +304,14 @@ export function derivePredictiveOperationsInsights(input: {
             label,
           },
           sourceData: de
-            ? reasonSummary(notReadyReasons, `Runtime: ${runtimeState?.rentalReadiness ?? vehicle.status}`)
-            : reasonSummary(notReadyReasons, `Runtime: ${runtimeState?.rentalReadiness ?? vehicle.status}`),
+            ? reasonSummary(
+                notReadyReasons,
+                `Runtime: ${runtimeState?.rentalReadiness ?? selectOperationalStatus(vehicle)}`,
+              )
+            : reasonSummary(
+                notReadyReasons,
+                `Runtime: ${runtimeState?.rentalReadiness ?? selectOperationalStatus(vehicle)}`,
+              ),
           recommendedAction: de
             ? 'Fahrzeugstatus prüfen und vor Pickup bereitstellen.'
             : 'Review vehicle status and make it ready before pickup.',

@@ -2,6 +2,7 @@ import {
   formatVehicleOperationalStatusLabel,
   type VehicleOperationalDisplayLocale,
 } from './display';
+import { normalizeVehicleOperationalStatusKey } from './normalize';
 import {
   VEHICLE_DATA_QUALITY_STATE,
   VEHICLE_OPERATIONAL_STATUS,
@@ -43,10 +44,14 @@ function isCanonicalStatus(value: unknown): value is VehicleOperationalStatus {
 }
 
 function baseOperationalStatus(
-  vehicle: Pick<VehicleOperationalReadModel, 'operationalState' | 'status'>,
+  vehicle: Pick<VehicleOperationalReadModel, 'operationalState' | 'status' | 'rawVehicleStatus'>,
 ): VehicleOperationalStatus {
-  const raw = vehicle.operationalState?.status ?? vehicle.status;
-  return isCanonicalStatus(raw) ? raw : VEHICLE_OPERATIONAL_STATUS.UNKNOWN;
+  if (vehicle.operationalState?.status && isCanonicalStatus(vehicle.operationalState.status)) {
+    return vehicle.operationalState.status;
+  }
+  const flat = vehicle.status ?? vehicle.rawVehicleStatus;
+  if (isCanonicalStatus(flat)) return flat;
+  return normalizeVehicleOperationalStatusKey(String(flat ?? ''));
 }
 
 function legacyActiveBooking(vehicle: VehicleOperationalReadModel): VehicleBookingReference | null {
