@@ -32,6 +32,9 @@ import { UsageSnapshotService } from './usage-snapshot.service';
 import { SubscriptionLifecycleService } from './subscription-lifecycle.service';
 import { MasterSubscriptionController } from './master-subscription.controller';
 import { BillingSubscriptionAdminService } from './billing-subscription-admin.service';
+import { BillingCommandService } from './billing-command.service';
+import { BillingCommandOrchestratorService } from './billing-command-orchestrator.service';
+import { BillingDomainEventOutboxService } from './billing-domain-event-outbox.service';
 
 @Module({
   controllers: [BillingController, StripeWebhookController, MasterSubscriptionController],
@@ -64,6 +67,9 @@ import { BillingSubscriptionAdminService } from './billing-subscription-admin.se
     UsageSnapshotService,
     SubscriptionLifecycleService,
     BillingSubscriptionAdminService,
+    BillingCommandService,
+    BillingCommandOrchestratorService,
+    BillingDomainEventOutboxService,
   ],
   exports: [
     BillingService,
@@ -94,6 +100,9 @@ import { BillingSubscriptionAdminService } from './billing-subscription-admin.se
     UsageSnapshotService,
     SubscriptionLifecycleService,
     BillingSubscriptionAdminService,
+    BillingCommandService,
+    BillingCommandOrchestratorService,
+    BillingDomainEventOutboxService,
   ],
 })
 export class BillingModule {}

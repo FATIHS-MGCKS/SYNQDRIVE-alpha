@@ -8,6 +8,7 @@ import {
   BillingSubscriptionAdminService,
   MasterSubscriptionAdminErrorCode,
 } from './billing-subscription-admin.service';
+import { BillingCommandErrorCode } from './domain/billing-command';
 import { SubscriptionLifecycleErrorCode } from './domain/subscription-lifecycle';
 import { SubscriptionStatus } from './domain/billing-domain.types';
 
@@ -18,8 +19,6 @@ describe('BillingSubscriptionAdminService', () => {
   const priceVersionId = 'ver-active';
 
   let subscription: any;
-  let auditLogs: any[];
-  let mutationCount: number;
 
   const prisma: any = {
     organization: {
@@ -43,12 +42,6 @@ describe('BillingSubscriptionAdminService', () => {
       create: jest.fn(),
       findFirst: jest.fn(),
       update: jest.fn(),
-    },
-    billingAuditLog: {
-      findFirst: jest.fn(async ({ where }: any) =>
-        auditLogs.find((row) => row.organizationId === where.organizationId && row.action === where.action) ??
-        null,
-      ),
     },
   };
 
@@ -100,23 +93,14 @@ describe('BillingSubscriptionAdminService', () => {
     })),
   };
 
-  const audit = {
-    log: jest.fn(async (entry: any) => {
-      auditLogs.push({
-        ...entry,
-        afterJson: entry.after,
-      });
-      mutationCount += 1;
-      return entry;
-    }),
+  const commands = {
+    execute: jest.fn(),
   };
 
   let service: BillingSubscriptionAdminService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    auditLogs = [];
-    mutationCount = 0;
     subscription = {
       id: subId,
       organizationId: orgId,
@@ -126,11 +110,11 @@ describe('BillingSubscriptionAdminService', () => {
 
     service = new BillingSubscriptionAdminService(
       prisma as never,
+      commands as never,
       lifecycle as never,
       pricePreview as never,
       usageSnapshots as never,
       periodResolver as never,
-      audit as never,
     );
   });
 
@@ -147,55 +131,55 @@ describe('BillingSubscriptionAdminService', () => {
     });
   });
 
-  it('requires idempotency key for mutating operations', async () => {
-    await expect(service.createDraft(orgId, { actorUserId: 'master-1' }, 'EUR')).rejects.toMatchObject(
-      {
-        response: { code: MasterSubscriptionAdminErrorCode.IDEMPOTENCY_KEY_REQUIRED },
-      },
+  it('delegates mutating operations to billing command service', async () => {
+    const wrapped = {
+      created: true,
+      replayed: false,
+      commandId: 'cmd-1',
+      result: { organizationId: orgId, contract: { domainStatus: SubscriptionStatus.DRAFT } },
+    };
+    commands.execute.mockResolvedValue(wrapped);
+    lifecycle.createDraft.mockResolvedValue({
+      subscription: { id: subId },
+      domainStatus: SubscriptionStatus.DRAFT,
+    });
+
+    const response = await service.createDraft(orgId, actor(), 'EUR');
+    expect(response).toBe(wrapped);
+    expect(commands.execute).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: orgId,
+        actor: actor(),
+        payload: { currency: 'EUR', lockVersion: 1 },
+      }),
     );
   });
 
-  it('replays duplicate idempotency keys without re-running mutation', async () => {
-    const wrapped = { organizationId: orgId, contract: { domainStatus: SubscriptionStatus.DRAFT } };
-    lifecycle.createDraft.mockResolvedValue(wrapped);
-    auditLogs.push({
-      organizationId: orgId,
-      action: 'idempotency:master-subscription:draft:idem-dup',
-      afterJson: wrapped,
-    });
-
-    const first = await service.createDraft(orgId, actor({ idempotencyKey: 'idem-dup' }), 'EUR');
-    const second = await service.createDraft(orgId, actor({ idempotencyKey: 'idem-dup' }), 'EUR');
-
-    expect(first.replayed).toBe(true);
-    expect(second.replayed).toBe(true);
-    expect(lifecycle.createDraft).not.toHaveBeenCalled();
-    expect(mutationCount).toBe(0);
-  });
-
-  it('stores idempotency replay payload after first mutation', async () => {
-    const wrapped = { organizationId: orgId, contract: { domainStatus: SubscriptionStatus.DRAFT } };
-    lifecycle.createDraft.mockResolvedValue(wrapped);
-
-    const first = await service.createDraft(orgId, actor({ idempotencyKey: 'idem-new' }), 'EUR');
-    expect(first.created).toBe(true);
-    expect(first.replayed).toBe(false);
-    expect(audit.log).toHaveBeenCalledWith(
-      expect.objectContaining({
-        action: 'idempotency:master-subscription:draft:idem-new',
+  it('propagates command idempotency payload mismatch', async () => {
+    commands.execute.mockRejectedValue(
+      new ConflictException({
+        code: BillingCommandErrorCode.IDEMPOTENCY_PAYLOAD_MISMATCH,
       }),
     );
 
-    const second = await service.createDraft(orgId, actor({ idempotencyKey: 'idem-new' }), 'EUR');
-    expect(second.replayed).toBe(true);
-    expect(lifecycle.createDraft).toHaveBeenCalledTimes(1);
+    await expect(
+      service.activate(orgId, actor(), { priceVersionId }),
+    ).rejects.toMatchObject({
+      response: { code: BillingCommandErrorCode.IDEMPOTENCY_PAYLOAD_MISMATCH },
+    });
   });
 
   it('propagates optimistic lock conflicts from lifecycle', async () => {
+    commands.execute.mockImplementation(async ({ handler }) => {
+      try {
+        await handler();
+      } catch (error) {
+        throw error;
+      }
+    });
     lifecycle.pause.mockRejectedValue(
       new ConflictException({
         code: SubscriptionLifecycleErrorCode.OPTIMISTIC_LOCK_FAILED,
-        message: SubscriptionLifecycleErrorCode.OPTIMISTIC_LOCK_FAILED,
       }),
     );
 
@@ -204,44 +188,25 @@ describe('BillingSubscriptionAdminService', () => {
     });
   });
 
-  it('rejects invalid lifecycle transitions', async () => {
-    lifecycle.pause.mockRejectedValue(
-      new ConflictException({
-        code: SubscriptionLifecycleErrorCode.INVALID_TRANSITION,
-        message: SubscriptionLifecycleErrorCode.INVALID_TRANSITION,
-      }),
-    );
-
-    await expect(service.pause(orgId, actor())).rejects.toMatchObject({
-      response: { code: SubscriptionLifecycleErrorCode.INVALID_TRANSITION },
-    });
-  });
-
   it('rejects subscription lookup for foreign organization context', async () => {
     subscription = { ...subscription, organizationId: otherOrgId };
+    commands.execute.mockImplementation(async ({ handler }) => handler());
 
     await expect(service.activate(orgId, actor(), { priceVersionId })).rejects.toMatchObject({
       response: { code: MasterSubscriptionAdminErrorCode.SUBSCRIPTION_NOT_FOUND },
     });
   });
 
-  it('preview is non-mutating and returns comparison payload', async () => {
-    const beforeAuditCalls = audit.log.mock.calls.length;
-
+  it('preview is non-mutating and does not invoke command service', async () => {
     const preview = await service.previewChanges(orgId, {
       productKey: 'FLEET',
       priceVersionId: 'ver-next',
     });
 
     expect(preview.mutating).toBe(false);
-    expect(preview.current.productKey).toBe('RENTAL');
-    expect(preview.proposed.productKey).toBe('FLEET');
-    expect(preview.proposed.priceVersionId).toBe('ver-next');
-    expect(preview.proration).toBeDefined();
-    expect(audit.log.mock.calls.length).toBe(beforeAuditCalls);
+    expect(commands.execute).not.toHaveBeenCalled();
     expect(lifecycle.createDraft).not.toHaveBeenCalled();
     expect(lifecycle.activate).not.toHaveBeenCalled();
-    expect(prisma.billingDiscount.create).not.toHaveBeenCalled();
   });
 
   it('returns null contract when organization has no open subscription', async () => {

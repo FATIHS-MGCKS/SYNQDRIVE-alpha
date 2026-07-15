@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -9,14 +8,14 @@ import {
   BillingDiscountType,
   BillingSubscriptionItemRole,
   BillingSubscriptionItemStatus,
-  Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
-import { BillingAuditService } from './billing-audit.service';
+import { BillingCommandService } from './billing-command.service';
 import { BillingPeriodResolverService } from './billing-period-resolver.service';
 import { SubscriptionLifecycleService } from './subscription-lifecycle.service';
 import { SubscriptionPricePreviewService } from './subscription-price-preview.service';
 import { UsageSnapshotService } from './usage-snapshot.service';
+import { BillingCommandType } from './domain/billing-command';
 import { SubscriptionLifecycleErrorCode } from './domain/subscription-lifecycle';
 import { calculateProration } from './domain/proration-calculator';
 
@@ -31,17 +30,18 @@ export interface MasterSubscriptionActor {
   actorUserId?: string | null;
   idempotencyKey?: string;
   lockVersion?: number;
+  requestId?: string | null;
 }
 
 @Injectable()
 export class BillingSubscriptionAdminService {
   constructor(
     private readonly prisma: PrismaService,
+    private readonly commands: BillingCommandService,
     private readonly lifecycle: SubscriptionLifecycleService,
     private readonly pricePreview: SubscriptionPricePreviewService,
     private readonly usageSnapshots: UsageSnapshotService,
     private readonly periodResolver: BillingPeriodResolverService,
-    private readonly audit: BillingAuditService,
   ) {}
 
   async getContract(organizationId: string) {
@@ -59,14 +59,32 @@ export class BillingSubscriptionAdminService {
     actor: MasterSubscriptionActor,
     currency?: string,
   ) {
-    return this.withIdempotency(organizationId, actor, 'draft', async () => {
-      await this.ensureOrganization(organizationId);
-      const contract = await this.lifecycle.createDraft({
-        organizationId,
-        currency,
-        actorUserId: actor.actorUserId,
-      });
-      return this.wrapContract(organizationId, contract);
+    const payload = { currency: currency ?? null, lockVersion: actor.lockVersion ?? null };
+    return this.commands.execute({
+      organizationId,
+      commandType: BillingCommandType.MASTER_SUBSCRIPTION_DRAFT,
+      actor,
+      payload,
+      audit: {
+        action: 'MASTER_SUBSCRIPTION_DRAFT_CREATED',
+        entityType: 'BillingSubscription',
+        changedFields: ['currency'],
+      },
+      handler: async () => {
+        await this.ensureOrganization(organizationId);
+        const contract = await this.lifecycle.createDraft({
+          organizationId,
+          currency,
+          actorUserId: actor.actorUserId,
+        });
+        const result = this.wrapContract(organizationId, contract);
+        return {
+          result,
+          after: result,
+          aggregateId: contract.subscription.id,
+          resultReference: contract.subscription.id,
+        };
+      },
     });
   }
 
@@ -84,39 +102,53 @@ export class BillingSubscriptionAdminService {
     priceVersionId: string,
     priceBookId?: string,
   ) {
-    return this.withIdempotency(organizationId, actor, 'select-price-version', async () => {
-      const subscription = await this.requireSubscriptionForOrg(organizationId);
-      const baseItem = await this.requireMutableBaseItem(organizationId);
-
-      const version = await this.prisma.billingPriceVersion.findUnique({
-        where: { id: priceVersionId },
-        select: { id: true, priceBookId: true, status: true },
-      });
-      if (!version || version.status === 'ARCHIVED') {
-        throw new ConflictException({
-          code: SubscriptionLifecycleErrorCode.PRICE_VERSION_ARCHIVED,
-          message: SubscriptionLifecycleErrorCode.PRICE_VERSION_ARCHIVED,
-        });
-      }
-
-      await this.prisma.billingSubscriptionItem.update({
-        where: { id: baseItem.id },
-        data: {
-          priceVersionId: version.id,
-          priceBookId: priceBookId ?? version.priceBookId ?? baseItem.priceBookId,
-        },
-      });
-
-      await this.audit.log({
-        organizationId,
-        actorUserId: actor.actorUserId,
+    const payload = { priceVersionId, priceBookId: priceBookId ?? null, lockVersion: actor.lockVersion ?? null };
+    return this.commands.execute({
+      organizationId,
+      commandType: BillingCommandType.MASTER_SUBSCRIPTION_SELECT_PRICE_VERSION,
+      actor,
+      payload,
+      audit: {
         action: 'MASTER_SUBSCRIPTION_PRICE_VERSION_SELECTED',
         entityType: 'BillingSubscriptionItem',
-        entityId: baseItem.id,
-        after: { priceVersionId: version.id },
-      });
+        changedFields: ['priceVersionId', 'priceBookId'],
+      },
+      handler: async () => {
+        const subscription = await this.requireSubscriptionForOrg(organizationId);
+        const baseItem = await this.requireMutableBaseItem(organizationId);
+        const before = { priceVersionId: baseItem.priceVersionId, priceBookId: baseItem.priceBookId };
 
-      return this.wrapContract(organizationId, await this.lifecycle.getContractState(subscription.id));
+        const version = await this.prisma.billingPriceVersion.findUnique({
+          where: { id: priceVersionId },
+          select: { id: true, priceBookId: true, status: true },
+        });
+        if (!version || version.status === 'ARCHIVED') {
+          throw new ConflictException({
+            code: SubscriptionLifecycleErrorCode.PRICE_VERSION_ARCHIVED,
+            message: SubscriptionLifecycleErrorCode.PRICE_VERSION_ARCHIVED,
+          });
+        }
+
+        await this.prisma.billingSubscriptionItem.update({
+          where: { id: baseItem.id },
+          data: {
+            priceVersionId: version.id,
+            priceBookId: priceBookId ?? version.priceBookId ?? baseItem.priceBookId,
+          },
+        });
+
+        const result = this.wrapContract(
+          organizationId,
+          await this.lifecycle.getContractState(subscription.id),
+        );
+        return {
+          result,
+          after: { priceVersionId: version.id },
+          before,
+          aggregateId: subscription.id,
+          resultReference: subscription.id,
+        };
+      },
     });
   }
 
@@ -125,16 +157,39 @@ export class BillingSubscriptionAdminService {
     actor: MasterSubscriptionActor,
     input: { priceVersionId: string; trialEndAt: Date; priceBookId?: string },
   ) {
-    return this.withIdempotency(organizationId, actor, 'configure-trial', async () => {
-      const subscription = await this.requireSubscriptionForOrg(organizationId);
-      const contract = await this.lifecycle.startTrial({
-        subscriptionId: subscription.id,
-        priceVersionId: input.priceVersionId,
-        trialEndAt: input.trialEndAt,
-        actorUserId: actor.actorUserId,
-        lockVersion: actor.lockVersion ?? subscription.lockVersion,
-      });
-      return this.wrapContract(organizationId, contract);
+    const payload = {
+      priceVersionId: input.priceVersionId,
+      trialEndAt: input.trialEndAt.toISOString(),
+      priceBookId: input.priceBookId ?? null,
+      lockVersion: actor.lockVersion ?? null,
+    };
+    return this.commands.execute({
+      organizationId,
+      commandType: BillingCommandType.MASTER_SUBSCRIPTION_CONFIGURE_TRIAL,
+      actor,
+      payload,
+      audit: {
+        action: 'MASTER_SUBSCRIPTION_TRIAL_CONFIGURED',
+        entityType: 'BillingSubscription',
+        changedFields: ['trialEndAt', 'priceVersionId'],
+      },
+      handler: async () => {
+        const subscription = await this.requireSubscriptionForOrg(organizationId);
+        const contract = await this.lifecycle.startTrial({
+          subscriptionId: subscription.id,
+          priceVersionId: input.priceVersionId,
+          trialEndAt: input.trialEndAt,
+          actorUserId: actor.actorUserId,
+          lockVersion: actor.lockVersion ?? subscription.lockVersion,
+        });
+        const result = this.wrapContract(organizationId, contract);
+        return {
+          result,
+          after: result,
+          aggregateId: subscription.id,
+          resultReference: subscription.id,
+        };
+      },
     });
   }
 
@@ -143,15 +198,33 @@ export class BillingSubscriptionAdminService {
     actor: MasterSubscriptionActor,
     anchorDay: number,
   ) {
-    return this.withIdempotency(organizationId, actor, 'billing-anchor', async () => {
-      const subscription = await this.requireSubscriptionForOrg(organizationId);
-      const contract = await this.lifecycle.changeBillingAnchor({
-        subscriptionId: subscription.id,
-        anchorDay,
-        actorUserId: actor.actorUserId,
-        lockVersion: actor.lockVersion ?? subscription.lockVersion,
-      });
-      return this.wrapContract(organizationId, contract);
+    const payload = { anchorDay, lockVersion: actor.lockVersion ?? null };
+    return this.commands.execute({
+      organizationId,
+      commandType: BillingCommandType.MASTER_SUBSCRIPTION_BILLING_ANCHOR,
+      actor,
+      payload,
+      audit: {
+        action: 'MASTER_SUBSCRIPTION_BILLING_ANCHOR_CHANGED',
+        entityType: 'BillingSubscription',
+        changedFields: ['anchorDay'],
+      },
+      handler: async () => {
+        const subscription = await this.requireSubscriptionForOrg(organizationId);
+        const contract = await this.lifecycle.changeBillingAnchor({
+          subscriptionId: subscription.id,
+          anchorDay,
+          actorUserId: actor.actorUserId,
+          lockVersion: actor.lockVersion ?? subscription.lockVersion,
+        });
+        const result = this.wrapContract(organizationId, contract);
+        return {
+          result,
+          after: result,
+          aggregateId: subscription.id,
+          resultReference: subscription.id,
+        };
+      },
     });
   }
 
@@ -165,7 +238,6 @@ export class BillingSubscriptionAdminService {
     },
   ) {
     await this.ensureOrganization(organizationId);
-    const subscription = await this.findOpenSubscription(organizationId);
     const currentPreview = await this.pricePreview.preview(organizationId);
     const warnings: string[] = [];
 
@@ -269,57 +341,114 @@ export class BillingSubscriptionAdminService {
     actor: MasterSubscriptionActor,
     input: { priceVersionId: string; priceBookId?: string },
   ) {
-    return this.withIdempotency(organizationId, actor, 'activate', async () => {
-      const subscription = await this.requireSubscriptionForOrg(organizationId);
-      const contract = await this.lifecycle.activate({
-        subscriptionId: subscription.id,
-        priceVersionId: input.priceVersionId,
-        priceBookId: input.priceBookId,
-        actorUserId: actor.actorUserId,
-        lockVersion: actor.lockVersion ?? subscription.lockVersion,
-      });
-      return this.wrapContract(organizationId, contract);
+    const payload = {
+      priceVersionId: input.priceVersionId,
+      priceBookId: input.priceBookId ?? null,
+      lockVersion: actor.lockVersion ?? null,
+    };
+    return this.commands.execute({
+      organizationId,
+      commandType: BillingCommandType.MASTER_SUBSCRIPTION_ACTIVATE,
+      actor,
+      payload,
+      audit: {
+        action: 'MASTER_SUBSCRIPTION_ACTIVATED',
+        entityType: 'BillingSubscription',
+        changedFields: ['status', 'priceVersionId'],
+      },
+      handler: async () => {
+        const subscription = await this.requireSubscriptionForOrg(organizationId);
+        const contract = await this.lifecycle.activate({
+          subscriptionId: subscription.id,
+          priceVersionId: input.priceVersionId,
+          priceBookId: input.priceBookId,
+          actorUserId: actor.actorUserId,
+          lockVersion: actor.lockVersion ?? subscription.lockVersion,
+        });
+        const result = this.wrapContract(organizationId, contract);
+        return {
+          result,
+          after: result,
+          aggregateId: subscription.id,
+          resultReference: subscription.id,
+        };
+      },
     });
   }
 
   async pause(organizationId: string, actor: MasterSubscriptionActor) {
-    return this.mutateLifecycle(organizationId, actor, 'pause', (subscription) =>
-      this.lifecycle.pause({
-        subscriptionId: subscription.id,
-        actorUserId: actor.actorUserId,
-        lockVersion: actor.lockVersion ?? subscription.lockVersion,
-      }),
+    return this.mutateLifecycle(
+      organizationId,
+      actor,
+      BillingCommandType.MASTER_SUBSCRIPTION_PAUSE,
+      'MASTER_SUBSCRIPTION_PAUSED',
+      (subscription) =>
+        this.lifecycle.pause({
+          subscriptionId: subscription.id,
+          actorUserId: actor.actorUserId,
+          lockVersion: actor.lockVersion ?? subscription.lockVersion,
+        }),
     );
   }
 
   async reactivate(organizationId: string, actor: MasterSubscriptionActor) {
-    return this.mutateLifecycle(organizationId, actor, 'reactivate', (subscription) =>
-      this.lifecycle.reactivate({
-        subscriptionId: subscription.id,
-        actorUserId: actor.actorUserId,
-        lockVersion: actor.lockVersion ?? subscription.lockVersion,
-      }),
+    return this.mutateLifecycle(
+      organizationId,
+      actor,
+      BillingCommandType.MASTER_SUBSCRIPTION_REACTIVATE,
+      'MASTER_SUBSCRIPTION_REACTIVATED',
+      (subscription) =>
+        this.lifecycle.reactivate({
+          subscriptionId: subscription.id,
+          actorUserId: actor.actorUserId,
+          lockVersion: actor.lockVersion ?? subscription.lockVersion,
+        }),
     );
   }
 
   async scheduleCancel(organizationId: string, actor: MasterSubscriptionActor, cancelAt?: Date) {
-    return this.mutateLifecycle(organizationId, actor, 'schedule-cancel', (subscription) =>
-      this.lifecycle.scheduleCancelAtPeriodEnd({
-        subscriptionId: subscription.id,
-        cancelAt,
-        actorUserId: actor.actorUserId,
-        lockVersion: actor.lockVersion ?? subscription.lockVersion,
-      }),
-    );
+    const payload = { cancelAt: cancelAt?.toISOString() ?? null, lockVersion: actor.lockVersion ?? null };
+    return this.commands.execute({
+      organizationId,
+      commandType: BillingCommandType.MASTER_SUBSCRIPTION_SCHEDULE_CANCEL,
+      actor,
+      payload,
+      audit: {
+        action: 'MASTER_SUBSCRIPTION_CANCEL_SCHEDULED',
+        entityType: 'BillingSubscription',
+        changedFields: ['cancelAtPeriodEnd', 'cancelAt'],
+      },
+      handler: async () => {
+        const subscription = await this.requireSubscriptionForOrg(organizationId);
+        const contract = await this.lifecycle.scheduleCancelAtPeriodEnd({
+          subscriptionId: subscription.id,
+          cancelAt,
+          actorUserId: actor.actorUserId,
+          lockVersion: actor.lockVersion ?? subscription.lockVersion,
+        });
+        const result = this.wrapContract(organizationId, contract);
+        return {
+          result,
+          after: result,
+          aggregateId: subscription.id,
+          resultReference: subscription.id,
+        };
+      },
+    });
   }
 
   async revokeCancel(organizationId: string, actor: MasterSubscriptionActor) {
-    return this.mutateLifecycle(organizationId, actor, 'revoke-cancel', (subscription) =>
-      this.lifecycle.revokeCancellation({
-        subscriptionId: subscription.id,
-        actorUserId: actor.actorUserId,
-        lockVersion: actor.lockVersion ?? subscription.lockVersion,
-      }),
+    return this.mutateLifecycle(
+      organizationId,
+      actor,
+      BillingCommandType.MASTER_SUBSCRIPTION_REVOKE_CANCEL,
+      'MASTER_SUBSCRIPTION_CANCEL_REVOKED',
+      (subscription) =>
+        this.lifecycle.revokeCancellation({
+          subscriptionId: subscription.id,
+          actorUserId: actor.actorUserId,
+          lockVersion: actor.lockVersion ?? subscription.lockVersion,
+        }),
     );
   }
 
@@ -328,16 +457,38 @@ export class BillingSubscriptionAdminService {
     actor: MasterSubscriptionActor,
     input: { productKey: 'RENTAL' | 'FLEET'; effectiveAt: Date },
   ) {
-    return this.withIdempotency(organizationId, actor, 'schedule-tariff', async () => {
-      const subscription = await this.requireSubscriptionForOrg(organizationId);
-      const contract = await this.lifecycle.scheduleTariffChange({
-        subscriptionId: subscription.id,
-        productKey: input.productKey,
-        effectiveAt: input.effectiveAt,
-        actorUserId: actor.actorUserId,
-        lockVersion: actor.lockVersion ?? subscription.lockVersion,
-      });
-      return this.wrapContract(organizationId, contract);
+    const payload = {
+      productKey: input.productKey,
+      effectiveAt: input.effectiveAt.toISOString(),
+      lockVersion: actor.lockVersion ?? null,
+    };
+    return this.commands.execute({
+      organizationId,
+      commandType: BillingCommandType.MASTER_SUBSCRIPTION_SCHEDULE_TARIFF_CHANGE,
+      actor,
+      payload,
+      audit: {
+        action: 'MASTER_SUBSCRIPTION_TARIFF_CHANGE_SCHEDULED',
+        entityType: 'BillingSubscription',
+        changedFields: ['productKey', 'effectiveAt'],
+      },
+      handler: async () => {
+        const subscription = await this.requireSubscriptionForOrg(organizationId);
+        const contract = await this.lifecycle.scheduleTariffChange({
+          subscriptionId: subscription.id,
+          productKey: input.productKey,
+          effectiveAt: input.effectiveAt,
+          actorUserId: actor.actorUserId,
+          lockVersion: actor.lockVersion ?? subscription.lockVersion,
+        });
+        const result = this.wrapContract(organizationId, contract);
+        return {
+          result,
+          after: result,
+          aggregateId: subscription.id,
+          resultReference: subscription.id,
+        };
+      },
     });
   }
 
@@ -346,16 +497,38 @@ export class BillingSubscriptionAdminService {
     actor: MasterSubscriptionActor,
     input: { priceVersionId: string; effectiveAt: Date },
   ) {
-    return this.withIdempotency(organizationId, actor, 'schedule-price-version', async () => {
-      const subscription = await this.requireSubscriptionForOrg(organizationId);
-      const contract = await this.lifecycle.schedulePriceVersionChange({
-        subscriptionId: subscription.id,
-        priceVersionId: input.priceVersionId,
-        effectiveAt: input.effectiveAt,
-        actorUserId: actor.actorUserId,
-        lockVersion: actor.lockVersion ?? subscription.lockVersion,
-      });
-      return this.wrapContract(organizationId, contract);
+    const payload = {
+      priceVersionId: input.priceVersionId,
+      effectiveAt: input.effectiveAt.toISOString(),
+      lockVersion: actor.lockVersion ?? null,
+    };
+    return this.commands.execute({
+      organizationId,
+      commandType: BillingCommandType.MASTER_SUBSCRIPTION_SCHEDULE_PRICE_VERSION_CHANGE,
+      actor,
+      payload,
+      audit: {
+        action: 'MASTER_SUBSCRIPTION_PRICE_VERSION_CHANGE_SCHEDULED',
+        entityType: 'BillingSubscription',
+        changedFields: ['priceVersionId', 'effectiveAt'],
+      },
+      handler: async () => {
+        const subscription = await this.requireSubscriptionForOrg(organizationId);
+        const contract = await this.lifecycle.schedulePriceVersionChange({
+          subscriptionId: subscription.id,
+          priceVersionId: input.priceVersionId,
+          effectiveAt: input.effectiveAt,
+          actorUserId: actor.actorUserId,
+          lockVersion: actor.lockVersion ?? subscription.lockVersion,
+        });
+        const result = this.wrapContract(organizationId, contract);
+        return {
+          result,
+          after: result,
+          aggregateId: subscription.id,
+          resultReference: subscription.id,
+        };
+      },
     });
   }
 
@@ -373,38 +546,57 @@ export class BillingSubscriptionAdminService {
       subscriptionItemId?: string;
     },
   ) {
-    return this.withIdempotency(organizationId, actor, 'add-discount', async () => {
-      const subscription = await this.requireSubscriptionForOrg(organizationId);
-      const discount = await this.prisma.billingDiscount.create({
-        data: {
-          subscriptionId: subscription.id,
-          subscriptionItemId: input.subscriptionItemId ?? null,
-          discountType: input.discountType,
-          percentBps: input.discountType === BillingDiscountType.PERCENTAGE ? input.percentBps : null,
-          fixedAmountCents:
-            input.discountType === BillingDiscountType.FIXED_AMOUNT
-              ? input.fixedAmountCents
-              : null,
-          currency:
-            input.discountType === BillingDiscountType.FIXED_AMOUNT ? input.currency ?? 'EUR' : null,
-          validFrom: input.validFrom,
-          validTo: input.validTo ?? null,
-          reason: input.reason ?? null,
-          status: BillingDiscountStatus.ACTIVE,
-          createdByUserId: actor.actorUserId ?? null,
-        },
-      });
-
-      await this.audit.log({
-        organizationId,
-        actorUserId: actor.actorUserId,
+    const payload = {
+      discountType: input.discountType,
+      percentBps: input.percentBps ?? null,
+      fixedAmountCents: input.fixedAmountCents ?? null,
+      currency: input.currency ?? null,
+      validFrom: input.validFrom.toISOString(),
+      validTo: input.validTo?.toISOString() ?? null,
+      reason: input.reason ?? null,
+      subscriptionItemId: input.subscriptionItemId ?? null,
+      lockVersion: actor.lockVersion ?? null,
+    };
+    return this.commands.execute({
+      organizationId,
+      commandType: BillingCommandType.MASTER_SUBSCRIPTION_ADD_DISCOUNT,
+      actor,
+      payload,
+      audit: {
         action: 'MASTER_SUBSCRIPTION_DISCOUNT_ADDED',
         entityType: 'BillingDiscount',
-        entityId: discount.id,
-        after: discount,
-      });
-
-      return { organizationId, discount };
+        reason: input.reason,
+        changedFields: ['discountType', 'percentBps', 'fixedAmountCents', 'validFrom', 'validTo'],
+      },
+      handler: async () => {
+        const subscription = await this.requireSubscriptionForOrg(organizationId);
+        const discount = await this.prisma.billingDiscount.create({
+          data: {
+            subscriptionId: subscription.id,
+            subscriptionItemId: input.subscriptionItemId ?? null,
+            discountType: input.discountType,
+            percentBps: input.discountType === BillingDiscountType.PERCENTAGE ? input.percentBps : null,
+            fixedAmountCents:
+              input.discountType === BillingDiscountType.FIXED_AMOUNT
+                ? input.fixedAmountCents
+                : null,
+            currency:
+              input.discountType === BillingDiscountType.FIXED_AMOUNT ? input.currency ?? 'EUR' : null,
+            validFrom: input.validFrom,
+            validTo: input.validTo ?? null,
+            reason: input.reason ?? null,
+            status: BillingDiscountStatus.ACTIVE,
+            createdByUserId: actor.actorUserId ?? null,
+          },
+        });
+        const result = { organizationId, discount };
+        return {
+          result,
+          after: discount,
+          aggregateId: subscription.id,
+          resultReference: discount.id,
+        };
+      },
     });
   }
 
@@ -414,36 +606,53 @@ export class BillingSubscriptionAdminService {
     actor: MasterSubscriptionActor,
     input: { percentBps?: number; fixedAmountCents?: number; validTo?: Date; reason?: string },
   ) {
-    return this.withIdempotency(organizationId, actor, `update-discount:${discountId}`, async () => {
-      const subscription = await this.requireSubscriptionForOrg(organizationId);
-      const existing = await this.prisma.billingDiscount.findFirst({
-        where: { id: discountId, subscriptionId: subscription.id },
-      });
-      if (!existing) {
-        throw new NotFoundException('Discount not found');
-      }
-
-      const updated = await this.prisma.billingDiscount.update({
-        where: { id: discountId },
-        data: {
-          percentBps: input.percentBps ?? undefined,
-          fixedAmountCents: input.fixedAmountCents ?? undefined,
-          validTo: input.validTo ?? undefined,
-          reason: input.reason ?? undefined,
-        },
-      });
-
-      await this.audit.log({
-        organizationId,
-        actorUserId: actor.actorUserId,
+    const payload = {
+      discountId,
+      percentBps: input.percentBps ?? null,
+      fixedAmountCents: input.fixedAmountCents ?? null,
+      validTo: input.validTo?.toISOString() ?? null,
+      reason: input.reason ?? null,
+      lockVersion: actor.lockVersion ?? null,
+    };
+    return this.commands.execute({
+      organizationId,
+      commandType: BillingCommandType.MASTER_SUBSCRIPTION_UPDATE_DISCOUNT,
+      actor,
+      payload,
+      audit: {
         action: 'MASTER_SUBSCRIPTION_DISCOUNT_UPDATED',
         entityType: 'BillingDiscount',
         entityId: discountId,
-        before: existing,
-        after: updated,
-      });
+        reason: input.reason,
+        changedFields: ['percentBps', 'fixedAmountCents', 'validTo', 'reason'],
+      },
+      handler: async () => {
+        const subscription = await this.requireSubscriptionForOrg(organizationId);
+        const existing = await this.prisma.billingDiscount.findFirst({
+          where: { id: discountId, subscriptionId: subscription.id },
+        });
+        if (!existing) {
+          throw new NotFoundException('Discount not found');
+        }
 
-      return { organizationId, discount: updated };
+        const updated = await this.prisma.billingDiscount.update({
+          where: { id: discountId },
+          data: {
+            percentBps: input.percentBps ?? undefined,
+            fixedAmountCents: input.fixedAmountCents ?? undefined,
+            validTo: input.validTo ?? undefined,
+            reason: input.reason ?? undefined,
+          },
+        });
+        const result = { organizationId, discount: updated };
+        return {
+          result,
+          before: existing,
+          after: updated,
+          aggregateId: subscription.id,
+          resultReference: discountId,
+        };
+      },
     });
   }
 
@@ -453,35 +662,50 @@ export class BillingSubscriptionAdminService {
     actor: MasterSubscriptionActor,
     input?: { validTo?: Date; reason?: string },
   ) {
-    return this.withIdempotency(organizationId, actor, `end-discount:${discountId}`, async () => {
-      const subscription = await this.requireSubscriptionForOrg(organizationId);
-      const existing = await this.prisma.billingDiscount.findFirst({
-        where: { id: discountId, subscriptionId: subscription.id },
-      });
-      if (!existing) {
-        throw new NotFoundException('Discount not found');
-      }
-
-      const updated = await this.prisma.billingDiscount.update({
-        where: { id: discountId },
-        data: {
-          validTo: input?.validTo ?? new Date(),
-          status: BillingDiscountStatus.CANCELLED,
-          reason: input?.reason ?? existing.reason,
-        },
-      });
-
-      await this.audit.log({
-        organizationId,
-        actorUserId: actor.actorUserId,
+    const payload = {
+      discountId,
+      validTo: input?.validTo?.toISOString() ?? null,
+      reason: input?.reason ?? null,
+      lockVersion: actor.lockVersion ?? null,
+    };
+    return this.commands.execute({
+      organizationId,
+      commandType: BillingCommandType.MASTER_SUBSCRIPTION_END_DISCOUNT,
+      actor,
+      payload,
+      audit: {
         action: 'MASTER_SUBSCRIPTION_DISCOUNT_ENDED',
         entityType: 'BillingDiscount',
         entityId: discountId,
-        before: existing,
-        after: updated,
-      });
+        reason: input?.reason,
+        changedFields: ['validTo', 'status'],
+      },
+      handler: async () => {
+        const subscription = await this.requireSubscriptionForOrg(organizationId);
+        const existing = await this.prisma.billingDiscount.findFirst({
+          where: { id: discountId, subscriptionId: subscription.id },
+        });
+        if (!existing) {
+          throw new NotFoundException('Discount not found');
+        }
 
-      return { organizationId, discount: updated };
+        const updated = await this.prisma.billingDiscount.update({
+          where: { id: discountId },
+          data: {
+            validTo: input?.validTo ?? new Date(),
+            status: BillingDiscountStatus.CANCELLED,
+            reason: input?.reason ?? existing.reason,
+          },
+        });
+        const result = { organizationId, discount: updated };
+        return {
+          result,
+          before: existing,
+          after: updated,
+          aggregateId: subscription.id,
+          resultReference: discountId,
+        };
+      },
     });
   }
 
@@ -496,73 +720,75 @@ export class BillingSubscriptionAdminService {
     productKey: 'RENTAL' | 'FLEET',
     priceBookId?: string,
   ) {
-    return this.withIdempotency(organizationId, actor, `assign-${productKey.toLowerCase()}`, async () => {
-      const subscription = await this.requireSubscriptionForOrg(organizationId, { createIfMissing: true });
-      const assign =
-        productKey === 'RENTAL'
-          ? this.lifecycle.assignRental.bind(this.lifecycle)
-          : this.lifecycle.assignFleet.bind(this.lifecycle);
-      const contract = await assign({
-        subscriptionId: subscription.id,
-        priceBookId,
-        actorUserId: actor.actorUserId,
-        lockVersion: actor.lockVersion ?? subscription.lockVersion,
-      });
-      return this.wrapContract(organizationId, contract);
+    const commandType =
+      productKey === 'RENTAL'
+        ? BillingCommandType.MASTER_SUBSCRIPTION_ASSIGN_RENTAL
+        : BillingCommandType.MASTER_SUBSCRIPTION_ASSIGN_FLEET;
+    const payload = { priceBookId: priceBookId ?? null, lockVersion: actor.lockVersion ?? null };
+
+    return this.commands.execute({
+      organizationId,
+      commandType,
+      actor,
+      payload,
+      audit: {
+        action: `MASTER_SUBSCRIPTION_${productKey}_ASSIGNED`,
+        entityType: 'BillingSubscription',
+        changedFields: ['productKey', 'priceBookId'],
+      },
+      handler: async () => {
+        const subscription = await this.requireSubscriptionForOrg(organizationId, { createIfMissing: true });
+        const assign =
+          productKey === 'RENTAL'
+            ? this.lifecycle.assignRental.bind(this.lifecycle)
+            : this.lifecycle.assignFleet.bind(this.lifecycle);
+        const contract = await assign({
+          subscriptionId: subscription.id,
+          priceBookId,
+          actorUserId: actor.actorUserId,
+          lockVersion: actor.lockVersion ?? subscription.lockVersion,
+        });
+        const result = this.wrapContract(organizationId, contract);
+        return {
+          result,
+          after: result,
+          aggregateId: subscription.id,
+          resultReference: subscription.id,
+        };
+      },
     });
   }
 
   private async mutateLifecycle(
     organizationId: string,
     actor: MasterSubscriptionActor,
-    action: string,
+    commandType: BillingCommandType,
+    auditAction: string,
     fn: (subscription: { id: string; lockVersion: number }) => Promise<unknown>,
   ) {
-    return this.withIdempotency(organizationId, actor, action, async () => {
-      const subscription = await this.requireSubscriptionForOrg(organizationId);
-      const contract = await fn(subscription);
-      return this.wrapContract(organizationId, contract);
-    });
-  }
-
-  private async withIdempotency<T>(
-    organizationId: string,
-    actor: MasterSubscriptionActor,
-    actionSuffix: string,
-    fn: () => Promise<T>,
-  ): Promise<{ created: boolean; replayed: boolean; result: T }> {
-    if (!actor.idempotencyKey?.trim()) {
-      throw new BadRequestException({
-        code: MasterSubscriptionAdminErrorCode.IDEMPOTENCY_KEY_REQUIRED,
-        message: MasterSubscriptionAdminErrorCode.IDEMPOTENCY_KEY_REQUIRED,
-      });
-    }
-
-    const action = `idempotency:master-subscription:${actionSuffix}:${actor.idempotencyKey}`;
-    const existing = await this.prisma.billingAuditLog.findFirst({
-      where: { organizationId, action },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    if (existing?.afterJson) {
-      return {
-        created: false,
-        replayed: true,
-        result: existing.afterJson as T,
-      };
-    }
-
-    const result = await fn();
-
-    await this.audit.log({
+    const payload = { lockVersion: actor.lockVersion ?? null };
+    return this.commands.execute({
       organizationId,
-      actorUserId: actor.actorUserId,
-      action,
-      entityType: 'MasterSubscriptionMutation',
-      after: result as Prisma.InputJsonValue,
+      commandType,
+      actor,
+      payload,
+      audit: {
+        action: auditAction,
+        entityType: 'BillingSubscription',
+        changedFields: ['status'],
+      },
+      handler: async () => {
+        const subscription = await this.requireSubscriptionForOrg(organizationId);
+        const contract = await fn(subscription);
+        const result = this.wrapContract(organizationId, contract);
+        return {
+          result,
+          after: result,
+          aggregateId: subscription.id,
+          resultReference: subscription.id,
+        };
+      },
     });
-
-    return { created: true, replayed: false, result };
   }
 
   private async ensureOrganization(organizationId: string) {

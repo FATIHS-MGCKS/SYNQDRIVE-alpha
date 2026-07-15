@@ -607,6 +607,13 @@ enum BillingDomainEventOutboxStatus {
   FAILED
 }
 
+enum BillingCommandStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 enum BillingPriceVersionStatus {
   DRAFT
   ACTIVE
@@ -1182,6 +1189,7 @@ model Organization {
   billingPaymentMethods             BillingPaymentMethod[]
   billingOrgPriceOverrides          BillingOrganizationPriceOverride[]
   billingAuditLogs                  BillingAuditLog[]
+  billingCommands                   BillingCommand[]
   customers                         Customer[]
   customerDocuments                 CustomerDocument[]
   customerVerificationChecks        CustomerVerificationCheck[]
@@ -3173,21 +3181,56 @@ model StripeWebhookEvent {
 }
 
 model BillingAuditLog {
-  id             String   @id @default(uuid())
-  organizationId String?  @map("organization_id")
-  actorUserId    String?  @map("actor_user_id")
-  action         String
-  entityType     String   @map("entity_type")
-  entityId       String?  @map("entity_id")
-  beforeJson     Json?    @map("before_json")
-  afterJson      Json?    @map("after_json")
-  createdAt      DateTime @default(now()) @map("created_at")
+  id                String   @id @default(uuid())
+  organizationId    String?  @map("organization_id")
+  actorUserId       String?  @map("actor_user_id")
+  action            String
+  entityType        String   @map("entity_type")
+  entityId          String?  @map("entity_id")
+  beforeJson        Json?    @map("before_json")
+  afterJson         Json?    @map("after_json")
+  requestId         String?  @map("request_id")
+  idempotencyKey    String?  @map("idempotency_key")
+  reason            String?
+  changedFieldsJson Json?    @map("changed_fields_json")
+  createdAt         DateTime @default(now()) @map("created_at")
 
   organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, createdAt])
   @@index([entityType, entityId])
+  @@index([idempotencyKey])
   @@map("billing_audit_logs")
+}
+
+/// Billing command inbox — idempotent mutation tracking for master subscription API.
+model BillingCommand {
+  id              String               @id @default(uuid())
+  organizationId  String               @map("organization_id")
+  commandType     String               @map("command_type")
+  idempotencyKey  String               @map("idempotency_key")
+  requestHash     String               @map("request_hash")
+  requestPayload  Json                 @map("request_payload")
+  actorUserId     String?              @map("actor_user_id")
+  requestId       String?              @map("request_id")
+  status          BillingCommandStatus @default(PENDING)
+  resultReference String?              @map("result_reference")
+  resultJson      Json?                @map("result_json")
+  errorCode       String?              @map("error_code")
+  errorMessage    String?              @map("error_message")
+  aggregateId     String?              @map("aggregate_id")
+  lockVersion     Int?                 @map("lock_version")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  completedAt     DateTime?            @map("completed_at")
+  failedAt        DateTime?            @map("failed_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, idempotencyKey])
+  @@index([organizationId, commandType, createdAt])
+  @@index([status, createdAt])
+  @@index([aggregateId])
+  @@map("billing_commands")
 }
 
 model BillingOrganizationPriceOverride {
