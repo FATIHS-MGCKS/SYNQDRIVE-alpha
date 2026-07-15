@@ -1,13 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { TaskPriority, TaskSource, TaskType } from '@prisma/client';
+import { TaskSource, TaskType } from '@prisma/client';
 import { TasksService } from '../../tasks/tasks.service';
 import { checklistForType } from '../../tasks/task-templates';
+import { ServiceOverdueTaskService } from './service-overdue-task.service';
 import { ServiceComplianceService } from './service-compliance.service';
 import type { ComplianceTaskSignalDto } from './service-compliance.types';
-
-function priorityFromSignalSeverity(severity: 'WARNING' | 'CRITICAL'): TaskPriority {
-  return severity === 'CRITICAL' ? 'CRITICAL' : 'HIGH';
-}
 
 const SOURCE_BY_CATEGORY: Record<string, { source: string; sourceType: TaskSource }> = {
   Maintenance: { source: 'INSIGHT_SERVICE', sourceType: 'ALERT' },
@@ -20,6 +17,7 @@ export class ComplianceTaskMaterializeService {
   constructor(
     private readonly serviceCompliance: ServiceComplianceService,
     private readonly tasks: TasksService,
+    private readonly serviceOverdueTasks: ServiceOverdueTaskService,
   ) {}
 
   async materializeSignal(
@@ -40,11 +38,15 @@ export class ComplianceTaskMaterializeService {
     vehicleId: string,
     signal: ComplianceTaskSignalDto,
   ) {
+    if (signal.taskType === 'VEHICLE_SERVICE' && signal.serviceOverdueContext) {
+      return this.serviceOverdueTasks.materializeFromSignal(organizationId, vehicleId, signal);
+    }
+
     const src = SOURCE_BY_CATEGORY[signal.category] ?? {
       source: 'INSIGHT_SERVICE',
       sourceType: 'ALERT' as TaskSource,
     };
-    const priority = priorityFromSignalSeverity(signal.severity);
+    const priority = signal.severity === 'CRITICAL' ? 'CRITICAL' : 'HIGH';
 
     return this.tasks.upsertByDedup(organizationId, signal.dedupeKey, {
       title: signal.title,
@@ -63,6 +65,7 @@ export class ComplianceTaskMaterializeService {
         insightSeverity: signal.severity,
         suggestionOnly: signal.suggestionOnly,
         complianceSignalKind: signal.kind,
+        allowAutoResolve: true,
       },
       checklist: checklistForType(signal.taskType as TaskType),
     });

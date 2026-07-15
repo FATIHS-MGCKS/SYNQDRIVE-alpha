@@ -39,6 +39,8 @@ export interface ServiceComplianceEvaluation {
   tuvBokraft: TuvBokraftComplianceDto;
 }
 
+import type { ServiceOverdueTaskContext } from './service-overdue-task.util';
+
 export type ComplianceTaskSignalKind =
   | 'SERVICE_SCHEDULE'
   | 'SERVICE_URGENT'
@@ -62,4 +64,6 @@ export interface ComplianceTaskSignalDto {
   dueDate: string | null;
   category: string;
   taskType: string;
+  /** Structured overdue context for task materialization — single source with insights. */
+  serviceOverdueContext?: ServiceOverdueTaskContext | null;
 }

@@ -283,6 +283,14 @@ function summarizeEvidenceBasis(meta: Record<string, unknown>, source: string | 
     }
   }
 
+  const serviceOverdue = meta.serviceOverdue;
+  if (serviceOverdue && typeof serviceOverdue === 'object' && !Array.isArray(serviceOverdue)) {
+    const intervalExceeded = (serviceOverdue as Record<string, unknown>).intervalExceeded;
+    if (typeof intervalExceeded === 'string' && intervalExceeded.trim()) {
+      parts.push(intervalExceeded.trim());
+    }
+  }
+
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 

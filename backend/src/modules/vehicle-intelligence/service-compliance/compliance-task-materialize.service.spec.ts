@@ -24,40 +24,29 @@ describe('ComplianceTaskMaterializeService deduplication', () => {
   const serviceCompliance = {
     buildServiceInfoStatus: jest.fn(),
   };
+  const serviceOverdueTasks = {
+    materializeFromSignal: jest.fn().mockResolvedValue({ id: 't1' }),
+  };
 
-  const svc = new ComplianceTaskMaterializeService(serviceCompliance as any, tasks as any);
+  const svc = new ComplianceTaskMaterializeService(
+    serviceCompliance as any,
+    tasks as any,
+    serviceOverdueTasks as any,
+  );
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
   it('reuses dedupeKey on repeated materialize calls', async () => {
-    await svc.upsertFromSignal('org1', 'v1', signal);
-    await svc.upsertFromSignal('org1', 'v1', signal);
+    await svc.upsertFromSignal('org1', 'v1', { ...signal, serviceOverdueContext: { overdue: true } as any });
+    await svc.upsertFromSignal('org1', 'v1', { ...signal, serviceOverdueContext: { overdue: true } as any });
 
-    expect(tasks.upsertByDedup).toHaveBeenCalledTimes(2);
-    expect(tasks.upsertByDedup).toHaveBeenNthCalledWith(
-      1,
-      'org1',
-      'service_overdue:v1',
-      expect.objectContaining({ title: signal.title }),
-    );
-    expect(tasks.upsertByDedup).toHaveBeenNthCalledWith(
-      2,
-      'org1',
-      'service_overdue:v1',
-      expect.objectContaining({ title: signal.title }),
-    );
+    expect(serviceOverdueTasks.materializeFromSignal).toHaveBeenCalledTimes(2);
   });
 
-  it('due-soon signals are marked suggestionOnly in metadata', async () => {
-    await svc.upsertFromSignal('org1', 'v1', { ...signal, severity: 'WARNING', suggestionOnly: true });
-    expect(tasks.upsertByDedup).toHaveBeenCalledWith(
-      'org1',
-      signal.dedupeKey,
-      expect.objectContaining({
-        metadata: expect.objectContaining({ suggestionOnly: true }),
-      }),
-    );
+  it('delegates VEHICLE_SERVICE signals to ServiceOverdueTaskService', async () => {
+    await svc.upsertFromSignal('org1', 'v1', { ...signal, serviceOverdueContext: { overdue: true } as any });
+    expect(serviceOverdueTasks.materializeFromSignal).toHaveBeenCalledWith('org1', 'v1', expect.objectContaining({ dedupeKey: signal.dedupeKey }));
   });
 });

@@ -11,6 +11,7 @@ import {
   PaginationParams,
   PaginatedResult,
 } from '@shared/utils/pagination';
+import { ServiceOverdueTaskService } from '../service-compliance/service-overdue-task.service';
 import { CreateVehicleServiceEventDto } from './dto/create-vehicle-service-event.dto';
 import { UpdateVehicleServiceEventDto } from './dto/update-vehicle-service-event.dto';
 import {
@@ -26,7 +27,10 @@ export interface ServiceEventMutationContext {
 
 @Injectable()
 export class ServiceEventsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly serviceOverdueTasks: ServiceOverdueTaskService,
+  ) {}
 
   async findByVehicle(
     vehicleId: string,
@@ -70,6 +74,7 @@ export class ServiceEventsService {
     });
 
     await this.refreshVehicleHistoryDenorm(vehicleId);
+    await this.notifyServiceOverdueAfterHistoryChange(vehicleId, dto.eventType);
     return created;
   }
 
@@ -104,6 +109,7 @@ export class ServiceEventsService {
     });
 
     await this.refreshVehicleHistoryDenorm(vehicleId);
+    await this.notifyServiceOverdueAfterHistoryChange(vehicleId, updated.eventType);
     return updated;
   }
 
@@ -158,5 +164,47 @@ export class ServiceEventsService {
       },
     });
     return count > 0;
+  }
+
+  private async notifyServiceOverdueAfterHistoryChange(
+    vehicleId: string,
+    eventType: ServiceEventType,
+  ): Promise<void> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: {
+        id: true,
+        organizationId: true,
+        make: true,
+        model: true,
+        licensePlate: true,
+        homeStationId: true,
+        mileageKm: true,
+        lastServiceDate: true,
+        lastServiceOdometerKm: true,
+        serviceIntervalManufacturerKm: true,
+        serviceIntervalManufacturerMonths: true,
+      },
+    });
+    if (!vehicle) return;
+
+    void this.serviceOverdueTasks
+      .onServiceHistoryChanged(
+        vehicle.organizationId,
+        {
+          id: vehicle.id,
+          make: vehicle.make,
+          model: vehicle.model,
+          licensePlate: vehicle.licensePlate,
+          homeStationId: vehicle.homeStationId,
+          mileageKm: vehicle.mileageKm,
+          lastServiceDate: vehicle.lastServiceDate,
+          lastServiceOdometerKm: vehicle.lastServiceOdometerKm,
+          serviceIntervalManufacturerKm: vehicle.serviceIntervalManufacturerKm,
+          serviceIntervalManufacturerMonths: vehicle.serviceIntervalManufacturerMonths,
+        },
+        eventType,
+      )
+      .catch(() => {});
   }
 }

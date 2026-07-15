@@ -170,14 +170,20 @@ export const TASK_TYPE_CHECKLIST_TEMPLATES: Partial<Record<TaskType, TaskTypeChe
   VEHICLE_SERVICE: {
     metadata: {
       requiresResolutionNote: true,
-      resolutionCodes: ['SERVICE_SCHEDULED', 'SERVICE_COMPLETED', 'OTHER'],
-      defaultNextAction: 'Servicefälligkeit prüfen und Termin planen',
+      resolutionCodes: [
+        'SERVICE_SCHEDULED',
+        'SERVICE_ALREADY_COMPLETED',
+        'SERVICE_DUE_DATE_CORRECTED',
+        'FALSE_POSITIVE',
+        'SERVICE_CASE_COMPLETED',
+      ],
+      defaultNextAction:
+        'Servicehistorie prüfen, Fälligkeit bestätigen, ServiceCase oder Werkstatttermin anlegen',
     },
     items: [
       templateItem('Servicehistorie prüfen', 0),
-      templateItem('Fälligkeit / Kilometerstand prüfen', 1),
-      templateItem('Werkstatttermin planen', 2),
-      resolutionOrientationItem('Ergebnis dokumentieren', 3),
+      templateItem('Fälligkeit bestätigen', 1),
+      templateItem('ServiceCase oder Werkstatttermin anlegen', 2),
     ],
   },
   VEHICLE_INSPECTION: {

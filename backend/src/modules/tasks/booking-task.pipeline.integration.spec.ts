@@ -342,7 +342,7 @@ describe('Booking task pipeline integration', () => {
         'Real Postgres / testcontainers lifecycle',
         'HTTP e2e via supertest',
         'W1–W4 insight-gated materialization',
-        'Legacy booking:clean rows backfill migration',
+        'Legacy booking:clean rows runtime migration (canonical in-place, no mass DB backfill)',
       ];
       expect(gaps.length).toBeGreaterThan(0);
     });

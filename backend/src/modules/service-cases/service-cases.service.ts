@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import {
   Prisma,
   ServiceCaseCategory,
@@ -7,6 +7,7 @@ import {
   TaskPriority,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { ServiceOverdueTaskService } from '@modules/vehicle-intelligence/service-compliance/service-overdue-task.service';
 
 const STATUS_TRANSITIONS: Record<ServiceCaseStatus, ServiceCaseStatus[]> = {
   OPEN: ['SCHEDULED', 'IN_PROGRESS', 'WAITING_VENDOR', 'WAITING_PARTS', 'CANCELLED'],
@@ -38,7 +39,11 @@ type ServiceCaseRow = Prisma.ServiceCaseGetPayload<{
 
 @Injectable()
 export class ServiceCasesService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => ServiceOverdueTaskService))
+    private readonly serviceOverdueTasks: ServiceOverdueTaskService,
+  ) {}
 
   private format(row: ServiceCaseRow) {
     return {
@@ -231,6 +236,13 @@ export class ServiceCasesService {
       },
       include: this.detailInclude(),
     });
+
+    if (input.category === 'SERVICE' || input.category === 'INSPECTION') {
+      void this.serviceOverdueTasks
+        .linkServiceCase(orgId, vehicleId, row.id)
+        .catch(() => {});
+    }
+
     return this.format(row);
   }
 
@@ -311,6 +323,11 @@ export class ServiceCasesService {
       },
       include: this.detailInclude(),
     });
+
+    void this.serviceOverdueTasks
+      .onServiceCaseCompleted(orgId, row.vehicleId, row.id)
+      .catch(() => {});
+
     return this.format(row);
   }
 

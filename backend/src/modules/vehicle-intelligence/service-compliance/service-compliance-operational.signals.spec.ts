@@ -12,6 +12,11 @@ const vehicle = {
   model: 'ID.4',
   licensePlate: 'B-XY 100',
   homeStationId: 'st1',
+  mileageKm: 42000,
+  lastServiceDate: new Date('2025-01-10'),
+  lastServiceOdometerKm: 35000,
+  serviceIntervalManufacturerKm: 30000,
+  serviceIntervalManufacturerMonths: 24,
 };
 
 const enabledTypes = [
@@ -77,7 +82,7 @@ describe('service-compliance-operational.signals', () => {
       },
     });
 
-    const signals = buildComplianceTaskSignals('v1', ev);
+    const signals = buildComplianceTaskSignals(vehicle, ev);
     expect(signals).toHaveLength(1);
     expect(signals[0].suggestionOnly).toBe(true);
     expect(signals[0].dedupeKey).toBe('service_overdue:v1');
@@ -109,14 +114,14 @@ describe('service-compliance-operational.signals', () => {
       },
     });
 
-    const signals = buildComplianceTaskSignals('v1', ev);
+    const signals = buildComplianceTaskSignals(vehicle, ev);
     expect(signals[0].severity).toBe('CRITICAL');
     expect(signals[0].suggestionOnly).toBe(false);
   });
 
   it('HM NO_TRACKING produces info insight only — no task signal', () => {
     const ev = evaluation({});
-    const signals = buildComplianceTaskSignals('v1', ev);
+    const signals = buildComplianceTaskSignals(vehicle, ev);
     expect(signals).toHaveLength(0);
 
     const insights = buildComplianceInsightCandidates(vehicle, ev, {
@@ -149,7 +154,7 @@ describe('service-compliance-operational.signals', () => {
       },
     });
 
-    expect(buildComplianceTaskSignals('v1', ev)).toHaveLength(0);
+    expect(buildComplianceTaskSignals(vehicle, ev)).toHaveLength(0);
     expect(
       buildComplianceInsightCandidates(vehicle, ev, { now: new Date(), enabledTypes }),
     ).toHaveLength(0);
@@ -170,7 +175,7 @@ describe('service-compliance-operational.signals', () => {
         bokraftLastDate: null,
       },
     });
-    const soonSignals = buildComplianceTaskSignals('v1', dueSoon);
+    const soonSignals = buildComplianceTaskSignals(vehicle, dueSoon);
     expect(soonSignals.find((s) => s.kind === 'TUV_SCHEDULE')?.suggestionOnly).toBe(true);
 
     const overdue = evaluation({
@@ -187,7 +192,7 @@ describe('service-compliance-operational.signals', () => {
         bokraftLastDate: null,
       },
     });
-    const overdueSignal = buildComplianceTaskSignals('v1', overdue)[0];
+    const overdueSignal = buildComplianceTaskSignals(vehicle, overdue)[0];
     expect(overdueSignal.blocksRental).toBe(true);
     expect(overdueSignal.severity).toBe('CRITICAL');
   });
@@ -207,7 +212,7 @@ describe('service-compliance-operational.signals', () => {
         bokraftLastDate: null,
       },
     });
-    expect(buildComplianceTaskSignals('v1', dueSoon).some((s) => s.kind === 'BOKRAFT_SCHEDULE')).toBe(true);
+    expect(buildComplianceTaskSignals(vehicle, dueSoon).some((s) => s.kind === 'BOKRAFT_SCHEDULE')).toBe(true);
 
     const overdue = evaluation({
       tuvBokraft: {
@@ -223,7 +228,7 @@ describe('service-compliance-operational.signals', () => {
         bokraftLastDate: null,
       },
     });
-    const sig = buildComplianceTaskSignals('v1', overdue)[0];
+    const sig = buildComplianceTaskSignals(vehicle, overdue)[0];
     expect(sig.kind).toBe('BOKRAFT_URGENT');
     expect(sig.blocksRental).toBe(true);
   });
@@ -247,9 +252,10 @@ describe('service-compliance-operational.signals', () => {
         hmDerivedDueDate: null,
       },
     });
-    const a = buildComplianceTaskSignals('v1', ev)[0].dedupeKey;
-    const b = buildComplianceTaskSignals('v1', ev)[0].dedupeKey;
-    const c = buildComplianceTaskSignals('v2', ev)[0].dedupeKey;
+    const vehicle2 = { ...vehicle, id: 'v2' };
+    const a = buildComplianceTaskSignals(vehicle, ev)[0].dedupeKey;
+    const b = buildComplianceTaskSignals(vehicle, ev)[0].dedupeKey;
+    const c = buildComplianceTaskSignals(vehicle2, ev)[0].dedupeKey;
     expect(a).toBe(b);
     expect(a).toBe('service_overdue:v1');
     expect(c).toBe('service_overdue:v2');

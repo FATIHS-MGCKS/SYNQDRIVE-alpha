@@ -9,6 +9,11 @@ import type {
   ComplianceTaskSignalDto,
   ServiceComplianceEvaluation,
 } from './service-compliance.types';
+import {
+  buildServiceOverdueTaskContext,
+  buildServiceOverdueTaskDescription,
+  buildServiceOverdueTaskTitle,
+} from './service-overdue-task.util';
 
 export interface ComplianceOperationalVehicle {
   id: string;
@@ -16,6 +21,11 @@ export interface ComplianceOperationalVehicle {
   model: string;
   licensePlate: string | null;
   homeStationId: string | null;
+  mileageKm?: number | null;
+  lastServiceDate?: Date | null;
+  lastServiceOdometerKm?: number | null;
+  serviceIntervalManufacturerKm?: number | null;
+  serviceIntervalManufacturerMonths?: number | null;
 }
 
 const NO_TRACKING_INFO_TITLE = 'Kein HM/OEM Service-Tracking verfügbar';
@@ -28,19 +38,31 @@ function vehicleLabel(v: ComplianceOperationalVehicle): string {
 
 /** Task / action signals for Health UI — derived only from canonical compliance evaluation. */
 export function buildComplianceTaskSignals(
-  vehicleId: string,
+  vehicle: ComplianceOperationalVehicle,
   evaluation: ServiceComplianceEvaluation,
 ): ComplianceTaskSignalDto[] {
+  const vehicleId = vehicle.id;
   const signals: ComplianceTaskSignalDto[] = [];
   const { nextService, tuvBokraft } = evaluation;
+  const label = vehicleLabel(vehicle);
 
-  const push = (partial: Omit<ComplianceTaskSignalDto, 'signalKey' | 'dedupeKey'> & { dedupeBase: string }) => {
+  const push = (
+    partial: Omit<ComplianceTaskSignalDto, 'signalKey' | 'dedupeKey' | 'serviceOverdueContext'> & {
+      dedupeBase: string;
+      serviceOverdueContext?: ComplianceTaskSignalDto['serviceOverdueContext'];
+    },
+  ) => {
     const dedupeKey = `${partial.dedupeBase}:${vehicleId}`;
     const { dedupeBase: _, ...rest } = partial;
     signals.push({ ...rest, signalKey: dedupeKey, dedupeKey });
   };
 
   if (nextService.trackingStatus === 'TRACKED') {
+    const serviceCtx = buildServiceOverdueTaskContext({
+      vehicleLabel: label,
+      nextService,
+      vehicle,
+    });
     const overdue = nextService.severity === 'CRITICAL';
     const dueSoon =
       nextService.severity === 'WARNING' &&
@@ -52,13 +74,13 @@ export function buildComplianceTaskSignals(
           nextService.distanceToNextServiceKm >= 0 &&
           nextService.distanceToNextServiceKm <= NEXT_SERVICE_WARNING_KM));
 
-    if (overdue) {
+    if (overdue && serviceCtx) {
       push({
         dedupeBase: 'service_overdue',
         kind: 'SERVICE_URGENT',
         insightType: InsightType.SERVICE_OVERDUE,
-        title: 'Service dringend prüfen',
-        message: nextService.message,
+        title: buildServiceOverdueTaskTitle(serviceCtx),
+        message: buildServiceOverdueTaskDescription(serviceCtx),
         actionLabel: 'Service terminieren',
         severity: 'CRITICAL',
         suggestionOnly: false,
@@ -66,14 +88,15 @@ export function buildComplianceTaskSignals(
         dueDate: nextService.hmDerivedDueDate,
         category: 'Maintenance',
         taskType: 'VEHICLE_SERVICE',
+        serviceOverdueContext: serviceCtx,
       });
-    } else if (dueSoon) {
+    } else if (dueSoon && serviceCtx) {
       push({
         dedupeBase: 'service_overdue',
         kind: 'SERVICE_SCHEDULE',
         insightType: InsightType.SERVICE_OVERDUE,
-        title: 'Service terminieren',
-        message: nextService.message,
+        title: buildServiceOverdueTaskTitle(serviceCtx),
+        message: buildServiceOverdueTaskDescription(serviceCtx),
         actionLabel: 'Service terminieren',
         severity: 'WARNING',
         suggestionOnly: true,
@@ -81,6 +104,7 @@ export function buildComplianceTaskSignals(
         dueDate: nextService.hmDerivedDueDate,
         category: 'Maintenance',
         taskType: 'VEHICLE_SERVICE',
+        serviceOverdueContext: serviceCtx,
       });
     }
   }
@@ -195,7 +219,14 @@ export function buildComplianceInsightCandidates(
       if (overdue) {
         severity = InsightSeverity.CRITICAL;
         title = 'Service überfällig';
-        message = `${label}: ${nextService.message} — Service sofort vereinbaren.`;
+        const serviceCtx = buildServiceOverdueTaskContext({
+          vehicleLabel: label,
+          nextService,
+          vehicle,
+        });
+        message = serviceCtx
+          ? buildServiceOverdueTaskDescription(serviceCtx)
+          : `${label}: ${nextService.message} — Service sofort vereinbaren.`;
         priority = 85;
         if (remainingDays != null && remainingDays < 0) {
           reasons.push(`Überfällig seit ${Math.abs(remainingDays)} Tagen`);
@@ -236,6 +267,12 @@ export function buildComplianceInsightCandidates(
           remainingDays: remainingDays ?? 'unknown',
           remainingKm: remainingKm ?? 'unknown',
           trackingStatus: nextService.trackingStatus,
+          suggestionOnly: !overdue,
+          serviceOverdue: buildServiceOverdueTaskContext({
+            vehicleLabel: label,
+            nextService,
+            vehicle,
+          }),
         },
         reasons,
         confidence: 0.9,

@@ -53,6 +53,7 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
 import { DashboardWarningLightsService } from './dashboard-warning-lights/dashboard-warning-lights.service';
 import { ServiceComplianceService } from './service-compliance/service-compliance.service';
 import { ComplianceTaskMaterializeService } from './service-compliance/compliance-task-materialize.service';
+import { ServiceOverdueTaskService } from './service-compliance/service-overdue-task.service';
 import { VehicleFileSummaryService } from './vehicle-file/vehicle-file-summary.service';
 import { TasksModule } from '../tasks/tasks.module';
 import { DrivingImpactService } from './driving-impact/driving-impact.service';
@@ -158,6 +159,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     DashboardWarningLightsService,
     ServiceComplianceService,
     ComplianceTaskMaterializeService,
+    ServiceOverdueTaskService,
     VehicleFileSummaryService,
     DrivingImpactService,
     EnergyEventsService,
@@ -216,6 +218,8 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     BatteryEvidenceService,
     CanonicalBatteryHealthService,
     ServiceComplianceService,
+    ComplianceTaskMaterializeService,
+    ServiceOverdueTaskService,
     DrivingImpactService,
     EnergyEventsService,
     TripDecisionEngine,

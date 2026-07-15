@@ -19,6 +19,7 @@ import type {
   TuvBokraftComplianceDto,
 } from './service-compliance.types';
 import { buildComplianceTaskSignals } from './service-compliance-operational.signals';
+import type { ComplianceOperationalVehicle } from './service-compliance-operational.signals';
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 const DAYS_PER_MONTH = 30.44;
@@ -266,10 +267,10 @@ export class ServiceComplianceService {
 
   /** Task/action signals for Health UI and insight→task bridge — no duplicate interval math. */
   buildTaskSignals(
-    vehicleId: string,
+    vehicle: ComplianceOperationalVehicle,
     evaluation: ServiceComplianceEvaluation,
   ): ComplianceTaskSignalDto[] {
-    return buildComplianceTaskSignals(vehicleId, evaluation);
+    return buildComplianceTaskSignals(vehicle, evaluation);
   }
 
   toRentalModuleHealth(
@@ -384,6 +385,12 @@ export class ServiceComplianceService {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
       select: {
+        id: true,
+        make: true,
+        model: true,
+        licensePlate: true,
+        homeStationId: true,
+        mileageKm: true,
         serviceIntervalManufacturerKm: true,
         serviceIntervalManufacturerMonths: true,
         lastServiceDate: true,
@@ -521,7 +528,21 @@ export class ServiceComplianceService {
       hmLastUpdatedAt: nextService.lastUpdatedAt,
       hmDistanceFromOem: nextService.hmDistanceFromOem,
       hmTimeFromOem: nextService.hmTimeFromOem,
-      taskSignals: this.buildTaskSignals(vehicleId, compliance),
+      taskSignals: this.buildTaskSignals(
+        {
+          id: vehicleId,
+          make: vehicle?.make ?? '',
+          model: vehicle?.model ?? '',
+          licensePlate: vehicle?.licensePlate ?? null,
+          homeStationId: vehicle?.homeStationId ?? null,
+          mileageKm: vehicle?.mileageKm ?? null,
+          lastServiceDate: vehicle?.lastServiceDate ?? null,
+          lastServiceOdometerKm: vehicle?.lastServiceOdometerKm ?? null,
+          serviceIntervalManufacturerKm: vehicle?.serviceIntervalManufacturerKm ?? null,
+          serviceIntervalManufacturerMonths: vehicle?.serviceIntervalManufacturerMonths ?? null,
+        } satisfies ComplianceOperationalVehicle,
+        compliance,
+      ),
     };
   }
 

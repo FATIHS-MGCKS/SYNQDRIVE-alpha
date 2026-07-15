@@ -18,6 +18,19 @@ function makePrisma() {
     },
     vehicle: {
       update: jest.fn().mockResolvedValue({}),
+      findUnique: jest.fn().mockResolvedValue({
+        id: vehicleId,
+        organizationId: 'org-1',
+        make: 'VW',
+        model: 'Golf',
+        licensePlate: 'B-1',
+        homeStationId: null,
+        mileageKm: 10000,
+        lastServiceDate: null,
+        lastServiceOdometerKm: null,
+        serviceIntervalManufacturerKm: null,
+        serviceIntervalManufacturerMonths: null,
+      }),
     },
   } as any;
 }
@@ -26,7 +39,8 @@ describe('ServiceEventsService', () => {
   it('update rejects when event belongs to another vehicle', async () => {
     const prisma = makePrisma();
     prisma.vehicleServiceEvent.findFirst.mockResolvedValue(null);
-    const svc = new ServiceEventsService(prisma);
+    const serviceOverdueTasks = { onServiceHistoryChanged: jest.fn().mockResolvedValue(undefined) };
+    const svc = new ServiceEventsService(prisma, serviceOverdueTasks as any);
 
     await expect(
       svc.update(vehicleId, eventId, { notes: 'x' }),
@@ -54,7 +68,8 @@ describe('ServiceEventsService', () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce(null);
 
-    const svc = new ServiceEventsService(prisma);
+    const serviceOverdueTasks = { onServiceHistoryChanged: jest.fn().mockResolvedValue(undefined) };
+    const svc = new ServiceEventsService(prisma, serviceOverdueTasks as any);
     const result = await svc.update(vehicleId, eventId, { notes: 'fixed' }, { userId: 'u1' });
 
     expect(result.notes).toBe('fixed');
@@ -69,7 +84,8 @@ describe('ServiceEventsService', () => {
   it('delete uses deleteMany with vehicleId scope', async () => {
     const prisma = makePrisma();
     prisma.vehicleServiceEvent.deleteMany.mockResolvedValue({ count: 0 });
-    const svc = new ServiceEventsService(prisma);
+    const serviceOverdueTasks = { onServiceHistoryChanged: jest.fn().mockResolvedValue(undefined) };
+    const svc = new ServiceEventsService(prisma, serviceOverdueTasks as any);
 
     await expect(svc.remove(vehicleId, eventId)).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.vehicleServiceEvent.deleteMany).toHaveBeenCalledWith({
@@ -82,7 +98,8 @@ describe('ServiceEventsService', () => {
     prisma.vehicleServiceEvent.create.mockResolvedValue({ id: eventId, vehicleId });
     prisma.vehicleServiceEvent.findFirst.mockResolvedValue(null);
 
-    const svc = new ServiceEventsService(prisma);
+    const serviceOverdueTasks = { onServiceHistoryChanged: jest.fn().mockResolvedValue(undefined) };
+    const svc = new ServiceEventsService(prisma, serviceOverdueTasks as any);
     await svc.create(
       vehicleId,
       {
@@ -112,7 +129,8 @@ describe('ServiceEventsService', () => {
       })
       .mockResolvedValueOnce(null);
 
-    const svc = new ServiceEventsService(prisma);
+    const serviceOverdueTasks = { onServiceHistoryChanged: jest.fn().mockResolvedValue(undefined) };
+    const svc = new ServiceEventsService(prisma, serviceOverdueTasks as any);
     await svc.refreshVehicleHistoryDenorm(vehicleId);
 
     expect(prisma.vehicleServiceEvent.findFirst).toHaveBeenNthCalledWith(

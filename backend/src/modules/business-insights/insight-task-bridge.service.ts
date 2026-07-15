@@ -1,6 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TaskSource, TaskType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { ServiceOverdueTaskService } from '@modules/vehicle-intelligence/service-compliance/service-overdue-task.service';
+import {
+  shouldAutoMaterializeServiceOverdueTask,
+  type ServiceOverdueTaskContext,
+} from '@modules/vehicle-intelligence/service-compliance/service-overdue-task.util';
 import { TasksService } from '../tasks/tasks.service';
 import { checklistForType } from '../tasks/task-templates';
 import {
@@ -40,7 +45,27 @@ export class InsightTaskBridgeService {
   constructor(
     private readonly tasks: TasksService,
     private readonly prisma: PrismaService,
+    private readonly serviceOverdueTasks: ServiceOverdueTaskService,
   ) {}
+
+  private shouldMaterializeTask(candidate: InsightCandidate): boolean {
+    if (candidate.type !== InsightType.SERVICE_OVERDUE) return true;
+
+    const metrics = (candidate.metrics ?? {}) as {
+      suggestionOnly?: boolean;
+      serviceOverdue?: ServiceOverdueTaskContext | null;
+    };
+    if (metrics.suggestionOnly) return false;
+
+    const ctx = metrics.serviceOverdue;
+    if (!ctx) return candidate.severity === 'CRITICAL';
+
+    return shouldAutoMaterializeServiceOverdueTask({
+      ctx,
+      severity: candidate.severity === 'CRITICAL' ? 'CRITICAL' : 'WARNING',
+      suggestionOnly: false,
+    });
+  }
 
   async materialize(
     organizationId: string,
@@ -64,14 +89,12 @@ export class InsightTaskBridgeService {
     let upserted = 0;
 
     for (const c of byKey.values()) {
+      if (!this.shouldMaterializeTask(c)) continue;
+
       const cfg = InsightTaskBridgeService.TASK_TYPE_CONFIG[c.type]!;
       const vehicleId = c.entityIds[0];
       const dedupKey = c.dedupeKey;
       seenKeys.push(dedupKey);
-
-      const priority = mapInsightSeverityToTaskPriority(c.severity);
-      const dueRaw = c.timeContext?.dueDate;
-      const dueDate = dueRaw ? new Date(dueRaw) : null;
 
       const alert = await this.prisma.dashboardInsight.findFirst({
         where: { organizationId, dedupeKey: dedupKey, isActive: true },
@@ -80,25 +103,54 @@ export class InsightTaskBridgeService {
       });
 
       try {
-        await this.tasks.upsertByDedup(organizationId, dedupKey, {
-          title: c.title,
-          description: c.message,
-          category: cfg.category,
-          type: cfg.taskType,
-          sourceType: cfg.sourceType,
-          priority,
-          vehicleId,
-          alertId: alert?.id ?? null,
-          source: cfg.source,
-          dueDate,
-          metadata: {
-            generatedKey: dedupKey,
+        if (c.type === InsightType.SERVICE_OVERDUE) {
+          const metrics = (c.metrics ?? {}) as {
+            serviceOverdue?: ServiceOverdueTaskContext | null;
+          };
+          const ctx = metrics.serviceOverdue;
+          if (!ctx) continue;
+
+          await this.serviceOverdueTasks.materializeFromContext(organizationId, {
+            vehicleId,
+            dedupKey,
+            ctx,
             insightType: c.type,
             insightSeverity: c.severity,
-            suggestionOnly: c.severity === 'WARNING',
-          },
-          checklist: checklistForType(cfg.taskType),
-        });
+            alertId: alert?.id ?? null,
+            dueDate: c.timeContext?.dueDate ? new Date(c.timeContext.dueDate) : null,
+            priority: mapInsightSeverityToTaskPriority(c.severity),
+          });
+        } else {
+          const priority = mapInsightSeverityToTaskPriority(c.severity);
+          const dueRaw = c.timeContext?.dueDate;
+          const dueDate = dueRaw ? new Date(dueRaw) : null;
+          const blocksRental =
+            c.type === InsightType.TUV_OVERDUE || c.type === InsightType.BOKRAFT_OVERDUE
+              ? c.severity === 'CRITICAL'
+              : false;
+
+          await this.tasks.upsertByDedup(organizationId, dedupKey, {
+            title: c.title,
+            description: c.message,
+            category: cfg.category,
+            type: cfg.taskType,
+            sourceType: cfg.sourceType,
+            priority,
+            vehicleId,
+            alertId: alert?.id ?? null,
+            source: cfg.source,
+            dueDate,
+            blocksVehicleAvailability: blocksRental,
+            metadata: {
+              generatedKey: dedupKey,
+              insightType: c.type,
+              insightSeverity: c.severity,
+              suggestionOnly: c.severity === 'WARNING',
+              allowAutoResolve: true,
+            },
+            checklist: checklistForType(cfg.taskType),
+          });
+        }
         upserted++;
       } catch (err: any) {
         this.logger.warn(

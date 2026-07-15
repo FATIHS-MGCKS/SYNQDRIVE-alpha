@@ -55,10 +55,15 @@ function makePrisma() {
 describe('ServiceCasesService', () => {
   let prisma: ReturnType<typeof makePrisma>;
   let svc: ServiceCasesService;
+  const serviceOverdueTasks = {
+    linkServiceCase: jest.fn().mockResolvedValue(undefined),
+    onServiceCaseCompleted: jest.fn().mockResolvedValue(undefined),
+  };
 
   beforeEach(() => {
     prisma = makePrisma();
-    svc = new ServiceCasesService(prisma as any);
+    jest.clearAllMocks();
+    svc = new ServiceCasesService(prisma as any, serviceOverdueTasks as any);
   });
 
   it('creates a case with vehicle org validation', async () => {

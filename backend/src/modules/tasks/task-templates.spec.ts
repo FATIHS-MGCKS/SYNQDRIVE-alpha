@@ -55,12 +55,27 @@ describe('task-templates', () => {
     });
 
     it('marks service/repair result documentation as optional orientation', () => {
-      for (const type of ['VEHICLE_SERVICE', 'VEHICLE_INSPECTION', 'REPAIR', 'TIRE_CHECK', 'BRAKE_CHECK'] as const) {
+      for (const type of ['VEHICLE_INSPECTION', 'REPAIR', 'TIRE_CHECK', 'BRAKE_CHECK'] as const) {
         const resultItem = checklistForType(type).find((i) => i.title === 'Ergebnis dokumentieren');
         expect(resultItem).toBeDefined();
         expect(resultItem!.isRequired).toBe(false);
         expect(resultItem!.description).toMatch(/Abschluss-Code/);
       }
+    });
+
+    it('uses concrete human steps for VEHICLE_SERVICE without result-documentation checklist row', () => {
+      expect(checklistForType('VEHICLE_SERVICE').map((i) => i.title)).toEqual([
+        'Servicehistorie prüfen',
+        'Fälligkeit bestätigen',
+        'ServiceCase oder Werkstatttermin anlegen',
+      ]);
+      expect(getTaskTypeChecklistTemplate('VEHICLE_SERVICE')?.metadata.resolutionCodes).toEqual([
+        'SERVICE_SCHEDULED',
+        'SERVICE_ALREADY_COMPLETED',
+        'SERVICE_DUE_DATE_CORRECTED',
+        'FALSE_POSITIVE',
+        'SERVICE_CASE_COMPLETED',
+      ]);
     });
 
     it('keeps concrete operative steps required on brake checks', () => {
