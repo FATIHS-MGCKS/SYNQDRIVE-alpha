@@ -121,6 +121,7 @@ describe('BillingController tenant org isolation characterization', () => {
   const stripePreparedService = {};
   const paymentLedgerService = { getInvoicePaymentLedger: jest.fn() };
   const manualPaymentService = { recordManualPayment: jest.fn() };
+  const reconciliationService = { runBatch: jest.fn(), listOpenDrifts: jest.fn() };
   const prisma = {
     billingInvoice: { findUnique: jest.fn() },
   };
@@ -139,6 +140,7 @@ describe('BillingController tenant org isolation characterization', () => {
       stripePreparedService as never,
       paymentLedgerService as never,
       manualPaymentService as never,
+      reconciliationService as never,
       prisma as never,
     );
   });

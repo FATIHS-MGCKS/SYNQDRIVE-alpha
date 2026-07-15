@@ -169,6 +169,26 @@ export class RecordManualPaymentDto {
   receiptNote?: string;
 }
 
+export class RunBillingReconciliationDto {
+  @IsOptional()
+  @IsString()
+  organizationId?: string;
+
+  @IsOptional()
+  @IsString()
+  runId?: string;
+
+  @IsOptional()
+  @IsString()
+  cursor?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  batchSize?: number;
+}
+
 export class AuditLogQueryDto {
   @IsOptional()
   @IsString()

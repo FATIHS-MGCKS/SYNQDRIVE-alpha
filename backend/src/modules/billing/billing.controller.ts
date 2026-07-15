@@ -48,6 +48,8 @@ import { BillingPaymentLedgerService } from './billing-payment-ledger.service';
 
 import { BillingManualPaymentService } from './billing-manual-payment.service';
 
+import { BillingReconciliationService } from './billing-reconciliation.service';
+
 import { PrismaService } from '@shared/database/prisma.service';
 
 import { RolesGuard } from '@shared/auth/roles.guard';
@@ -88,6 +90,8 @@ import {
 
   RecordManualPaymentDto,
 
+  RunBillingReconciliationDto,
+
 } from './dto/billing.dto';
 
 
@@ -117,6 +121,8 @@ export class BillingController {
     private readonly paymentLedgerService: BillingPaymentLedgerService,
 
     private readonly manualPaymentService: BillingManualPaymentService,
+
+    private readonly reconciliationService: BillingReconciliationService,
 
     private readonly prisma: PrismaService,
 
@@ -697,6 +703,64 @@ export class BillingController {
       actorUserId: req?.user?.id,
 
       idempotencyKey,
+
+    });
+
+  }
+
+
+
+  @Post('admin/billing/reconciliation/run')
+
+  @Roles('MASTER_ADMIN')
+
+  @UseGuards(MasterBillingGuard)
+
+  @RequireMasterBilling()
+
+  async runBillingReconciliation(
+
+    @Body() body: RunBillingReconciliationDto,
+
+    @Req() req: any,
+
+  ) {
+
+    return this.reconciliationService.runBatch({
+
+      organizationId: body.organizationId,
+
+      runId: body.runId,
+
+      cursor: body.cursor ?? null,
+
+      batchSize: body.batchSize,
+
+      actorUserId: req?.user?.id,
+
+    });
+
+  }
+
+
+
+  @Get('admin/billing/reconciliation/drifts')
+
+  @Roles('MASTER_ADMIN')
+
+  async listBillingReconciliationDrifts(
+
+    @Query('organizationId') organizationId?: string,
+
+    @Query('subscriptionId') subscriptionId?: string,
+
+  ) {
+
+    return this.reconciliationService.listOpenDrifts({
+
+      organizationId,
+
+      subscriptionId,
 
     });
 

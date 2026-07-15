@@ -622,6 +622,37 @@ enum BillingCommandStatus {
   FAILED
 }
 
+enum BillingReconciliationDriftType {
+  LOCAL_SUBSCRIPTION_WITHOUT_STRIPE
+  STRIPE_SUBSCRIPTION_WITHOUT_LOCAL
+  STATUS_MISMATCH
+  WRONG_PRICE_ID
+  MISSING_ITEM
+  EXTRA_ITEM
+  QUANTITY_MISMATCH
+  BILLING_ANCHOR_MISMATCH
+  MISSING_DISCOUNT
+  MISSING_DEFAULT_PAYMENT_METHOD
+  MISSING_LOCAL_INVOICE
+  MISSING_LOCAL_PAYMENT
+  STUCK_WEBHOOK
+  TEST_LIVE_MODE_CONFLICT
+}
+
+enum BillingReconciliationDriftSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum BillingReconciliationRunStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  PARTIAL
+  FAILED
+}
+
 enum BillingPriceVersionStatus {
   DRAFT
   ACTIVE
@@ -1208,6 +1239,8 @@ model Organization {
   billingOrgPriceOverrides          BillingOrganizationPriceOverride[]
   billingAuditLogs                  BillingAuditLog[]
   billingCommands                   BillingCommand[]
+  billingReconciliationDrifts       BillingReconciliationDrift[]
+  billingReconciliationRuns         BillingReconciliationRun[]
   customers                         Customer[]
   customerDocuments                 CustomerDocument[]
   customerVerificationChecks        CustomerVerificationCheck[]
@@ -1321,6 +1354,7 @@ model User {
   billingDiscountsCreated       BillingDiscount[]            @relation("BillingDiscountsCreated")
   billingQuantityEventsActed    BillingQuantityEvent[]       @relation("BillingQuantityEventsActed")
   billingPaymentsRecorded     BillingPayment[]             @relation("BillingPaymentsRecorded")
+  billingReconciliationDriftsResolved BillingReconciliationDrift[] @relation("BillingReconciliationDriftsResolved")
   billingUsageSnapshotsCreated  BillingUsageSnapshot[]       @relation("BillingUsageSnapshotsCreated")
   billingVehicleAssignmentsApproved BillingBillableVehicleAssignment[] @relation("BillingVehicleAssignmentsApproved")
   outboundEmailsSent          OutboundEmail[]              @relation("OutboundEmailSentBy")
@@ -2844,6 +2878,8 @@ model BillingSubscription {
   discounts     BillingDiscount[]
   quantityEvents BillingQuantityEvent[]
 
+  reconciliationDrifts BillingReconciliationDrift[]
+
   @@unique([stripeSubscriptionId, stripeMode])
   @@unique([stripeCustomerId, stripeMode])
   @@index([organizationId])
@@ -3346,6 +3382,60 @@ model BillingAuditLog {
   @@index([entityType, entityId])
   @@index([idempotencyKey])
   @@map("billing_audit_logs")
+}
+
+model BillingReconciliationRun {
+  id           String                         @id @default(uuid())
+  stripeMode   BillingStripeMode              @map("stripe_mode")
+  status       BillingReconciliationRunStatus @default(PENDING)
+  cursor       String?
+  totalScanned Int                            @default(0) @map("total_scanned")
+  driftCount   Int                            @default(0) @map("drift_count")
+  errorCount   Int                            @default(0) @map("error_count")
+  batchSize    Int                            @default(25) @map("batch_size")
+  startedAt    DateTime?                      @map("started_at")
+  completedAt  DateTime?                      @map("completed_at")
+  lastError    String?                        @map("last_error")
+  createdAt    DateTime                       @default(now()) @map("created_at")
+  updatedAt    DateTime                       @updatedAt @map("updated_at")
+
+  organizationId String?       @map("organization_id")
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  drifts         BillingReconciliationDrift[]
+
+  @@index([status, createdAt])
+  @@index([organizationId, createdAt])
+  @@map("billing_reconciliation_runs")
+}
+
+model BillingReconciliationDrift {
+  id               String                           @id @default(uuid())
+  runId            String?                          @map("run_id")
+  organizationId   String                           @map("organization_id")
+  subscriptionId   String?                          @map("subscription_id")
+  driftType        BillingReconciliationDriftType   @map("drift_type")
+  severity         BillingReconciliationDriftSeverity
+  localValue       String?                          @map("local_value")
+  stripeValue      String?                          @map("stripe_value")
+  suggestedAction  String                           @map("suggested_action")
+  autoFixable      Boolean                          @default(false) @map("auto_fixable")
+  detectedAt       DateTime                         @default(now()) @map("detected_at")
+  resolvedAt       DateTime?                        @map("resolved_at")
+  resolvedByUserId String?                          @map("resolved_by_user_id")
+  stripeMode       BillingStripeMode?               @map("stripe_mode")
+  idempotencyKey   String?                          @unique @map("idempotency_key")
+  createdAt        DateTime                         @default(now()) @map("created_at")
+  updatedAt        DateTime                         @updatedAt @map("updated_at")
+
+  run          BillingReconciliationRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscription BillingSubscription?      @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  resolvedBy   User?                     @relation("BillingReconciliationDriftsResolved", fields: [resolvedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, resolvedAt, detectedAt])
+  @@index([subscriptionId, resolvedAt])
+  @@index([driftType, severity])
+  @@map("billing_reconciliation_drifts")
 }
 
 /// Billing command inbox — idempotent mutation tracking for master subscription API.

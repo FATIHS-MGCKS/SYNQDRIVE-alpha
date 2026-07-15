@@ -16,6 +16,7 @@ export * from './stripe-payment-methods';
 export * from './stripe-webhook-matrix';
 export * from './stripe-invoice-mirror';
 export * from './billing-payment-ledger';
+export * from './billing-reconciliation';
 export * from './billing-domain.utils';
 export * from './billing-resolver.types';
 export * from './billing-domain.events';
