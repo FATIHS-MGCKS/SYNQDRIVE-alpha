@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-operational-state-domain-extract-v49472-2026-07-15',
+    version: '4.9.472',
+    title: 'V4.9.472 — Fleet Status: Domain-Extraktion `buildVehicleOperationalState` (Prompt 6/43)',
+    summary: [
+      'Reine Fleet-Status-Ableitung aus `VehiclesService.deriveFleetStatusContext` in `backend/src/modules/vehicles/domain/vehicle-operational-state.builder.ts` extrahiert.',
+      '`VehiclesService` delegiert an `buildVehicleOperationalState`; Ghost-Warnung bleibt im Service-Logger.',
+      'Characterization-Tests in `vehicle-operational-state.builder.spec.ts` (V1-Verhalten inkl. `@v2-behavior-change` für zukünftige CONFIRMED→Reserved-Änderung).',
+      'Keine fachliche Semantik-Änderung — V2-Spec (Prompts 3–5) noch nicht umgesetzt.',
+    ],
+    reason:
+      'Prompt 6/43: zentrale Domain-Komponente vor V2-Umsetzung; eine Ableitung ohne parallele Logik in Service/Map/Liste.',
+    previousBehavior:
+      'Status-Präzedenz, Ghost-Guard, Maintenance-Context und Telemetrie lagen inline in `vehicles.service.ts#deriveFleetStatusContext`.',
+    details:
+      'Neu: `domain/vehicle-operational-state.types.ts`, `domain/vehicle-operational-state.builder.ts`, `domain/vehicle-operational-state.builder.spec.ts`. `vehicles.service.spec.ts` auf Delegations-Tests reduziert. Spec: `docs/architecture/vehicle-operational-state-v2.md`.',
+    affectsArchitecture: true,
+    module: 'Vehicles',
+    createdAt: '2026-07-15T21:10:00.000Z',
+  },
+  {
     id: 'invoice-module-forwardref-hotfix-v49471-2026-07-15',
     version: '4.9.471',
     title: 'V4.9.471 — Produktions-Hotfix: DocumentsModule ↔ InvoicesModule forwardRef',

@@ -49,6 +49,23 @@ import { DataAuthorizationsService } from '@modules/data-authorizations/data-aut
 import { DataAuthorizationEnforcementService } from '@modules/data-authorizations/data-authorization-enforcement.service';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { buildFleetDeviceConnectionFields } from '@modules/dimo/device-connection-read-model';
+import {
+  buildVehicleOperationalState,
+  EMPTY_BOOKING_CONTEXT,
+  resolveFleetFuelPercent,
+} from './domain/vehicle-operational-state.builder';
+import type {
+  FleetMaintenanceReasonCode,
+  FleetVehicleBookingContextDto,
+  FleetVehicleMaintenanceContextDto,
+} from './domain/vehicle-operational-state.types';
+
+export type {
+  FleetMaintenanceReasonCode,
+  FleetVehicleBookingContextDto,
+  FleetVehicleMaintenanceContextDto,
+} from './domain/vehicle-operational-state.types';
+export { EMPTY_BOOKING_CONTEXT } from './domain/vehicle-operational-state.builder';
 
 const DIMO_FUEL_TYPE_MAP: Record<string, FuelType> = {
   GASOLINE: FuelType.GASOLINE,
@@ -77,18 +94,8 @@ const VEHICLE_STATUS_MAP: Record<VehicleStatus, string> = {
   RESERVED: 'Reserved',
 };
 
-// Rental Fleet/Dashboard status keys. Deliberately collapses BOTH IN_SERVICE
-// and OUT_OF_SERVICE into a single `Maintenance` bucket — the rental UI does
-// not distinguish "scheduled service" from "operational block" at the tab
-// level. Must stay in sync with the frontend `PRISMA_TO_FLEET_STATUS_KEY`
-// (frontend/src/rental/lib/vehicle-status.ts), which mirrors this mapping.
-const RENTAL_STATUS_MAP: Record<VehicleStatus, string> = {
-  AVAILABLE: 'Available',
-  RENTED: 'Active Rented',
-  RESERVED: 'Reserved',
-  IN_SERVICE: 'Maintenance',
-  OUT_OF_SERVICE: 'Maintenance',
-};
+// Rental Fleet/Dashboard status keys — see domain/vehicle-operational-state.types.ts
+// `RENTAL_STATUS_MAP` for the canonical fleet derivation builder.
 
 const HEALTH_STATUS_MAP: Record<HealthStatus, string> = {
   GOOD: 'Good',
@@ -142,53 +149,7 @@ const FULL_VEHICLE_WITH_ORG_INCLUDE = {
   organization: true,
 } satisfies Prisma.VehicleInclude;
 
-// V4.6.84 — Fleet-status context that every vehicle-status surface
-// (Fleet page, Dashboard tabs, Business widgets) must be able to render
-// without inventing data. Nullable everywhere so legacy API consumers
-// keep working unchanged.
-export interface FleetVehicleBookingContextDto {
-  // Reserved bucket (PENDING/CONFIRMED booking with start in the future
-  // or within the booking window).
-  reservedBookingId: string | null;
-  reservedCustomerName: string | null;
-  reservedPickupAt: string | null;
-  // V4.6.94 — Planned end-of-rental for the reserved booking. Surfaces
-  // the booked rental duration on the Dashboard fleet-status popup so
-  // dispatchers see "for how long" without opening the booking.
-  reservedReturnAt: string | null;
-  reservedPickupStationName: string | null;
-  // V4.6.85 — True when the planned pickup time has passed but the
-  // handover has not been recorded yet (no-show risk / backlog).
-  reservedIsOverdue: boolean;
-  // Active rented bucket (ACTIVE booking, including overdue ones).
-  activeBookingId: string | null;
-  activeCustomerName: string | null;
-  // V4.6.94 — Effective rental start (= booking startDate, NOT the
-  // pickup-protocol timestamp). Combined with `activeReturnAt` this
-  // lets the frontend render a time-progress bar without a second API
-  // round-trip into the bookings/handover service.
-  activeStartAt: string | null;
-  activeReturnAt: string | null;
-  activeReturnStationName: string | null;
-  activeKmIncluded: number | null;
-  activeKmDriven: number | null;
-  activeIsOverdue: boolean;
-}
-
-// V4.6.84 — Declarative maintenance context derived from Vehicle.status
-// and Vehicle.healthStatus. No free-form reason is fabricated — we only
-// surface the canonical operational reason. Health problems are surfaced
-// via the RentalHealthBadge, not via this field.
-// V4.6.85 — The frontend now drives its own localized label from the
-// enum code; `maintenanceReason` stays for legacy API consumers that
-// render a ready-to-use English string.
-export type FleetMaintenanceReasonCode = 'SCHEDULED_SERVICE' | 'OPERATIONAL_BLOCK';
-
-export interface FleetVehicleMaintenanceContextDto {
-  maintenanceReason: string | null;
-  maintenanceReasonCode: FleetMaintenanceReasonCode | null;
-  maintenanceUrgency: 'planned' | 'urgent' | null;
-}
+// Fleet booking/maintenance DTOs — domain/vehicle-operational-state.types.ts
 
 export interface FleetMapVehicleDto
   extends FleetVehicleBookingContextDto,
@@ -229,6 +190,9 @@ export interface FleetMapVehicleDto
 @Injectable()
 export class VehiclesService {
   private readonly logger = new Logger(VehiclesService.name);
+
+  /** @deprecated Prefer `EMPTY_BOOKING_CONTEXT` import from domain module. */
+  static readonly EMPTY_BOOKING_CONTEXT = EMPTY_BOOKING_CONTEXT;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -383,20 +347,7 @@ export class VehiclesService {
     };
 
     const empty = (): FleetVehicleBookingContextDto => ({
-      reservedBookingId: null,
-      reservedCustomerName: null,
-      reservedPickupAt: null,
-      reservedReturnAt: null,
-      reservedPickupStationName: null,
-      reservedIsOverdue: false,
-      activeBookingId: null,
-      activeCustomerName: null,
-      activeStartAt: null,
-      activeReturnAt: null,
-      activeReturnStationName: null,
-      activeKmIncluded: null,
-      activeKmDriven: null,
-      activeIsOverdue: false,
+      ...EMPTY_BOOKING_CONTEXT,
     });
 
     for (const r of rows) {
@@ -447,11 +398,6 @@ export class VehiclesService {
   }
 
   /**
-   * V4.6.84 — Maintenance reason is derived from `Vehicle.status` only.
-   * We intentionally do NOT fabricate reasons from health state — health
-   * warnings already surface via the RentalHealthBadge on every card.
-   */
-  /**
    * V4.6.84 — Resolve the odometer recorded at booking handover (PICKUP).
    * Used to compute a live "kmDriven so far" for ACTIVE bookings by
    * subtracting this value from the current `VehicleLatestState.odometerKm`.
@@ -482,30 +428,6 @@ export class VehiclesService {
       }
     }
     return map;
-  }
-
-  private deriveMaintenanceContext(
-    status: VehicleStatus | string | null | undefined,
-  ): FleetVehicleMaintenanceContextDto {
-    if (status === VehicleStatus.IN_SERVICE) {
-      return {
-        maintenanceReason: 'Scheduled service',
-        maintenanceReasonCode: 'SCHEDULED_SERVICE',
-        maintenanceUrgency: 'planned',
-      };
-    }
-    if (status === VehicleStatus.OUT_OF_SERVICE) {
-      return {
-        maintenanceReason: 'Operationally blocked',
-        maintenanceReasonCode: 'OPERATIONAL_BLOCK',
-        maintenanceUrgency: 'urgent',
-      };
-    }
-    return {
-      maintenanceReason: null,
-      maintenanceReasonCode: null,
-      maintenanceUrgency: null,
-    };
   }
 
   // ── Mapping: RegisteredVehicle (Master Admin) ─────────────────────
@@ -782,43 +704,13 @@ export class VehiclesService {
    * and `pickupOdoByBooking` via `fetchPickupOdometerMap`. Passing an
    * empty map for vehicles without active bookings is correct and safe.
    */
-  static readonly EMPTY_BOOKING_CONTEXT: FleetVehicleBookingContextDto = {
-    reservedBookingId: null,
-    reservedCustomerName: null,
-    reservedPickupAt: null,
-    reservedReturnAt: null,
-    reservedPickupStationName: null,
-    reservedIsOverdue: false,
-    activeBookingId: null,
-    activeCustomerName: null,
-    activeStartAt: null,
-    activeReturnAt: null,
-    activeReturnStationName: null,
-    activeKmIncluded: null,
-    activeKmDriven: null,
-    activeIsOverdue: false,
-  };
-
   /**
-   * V4.6.85 — Canonical fleet-status context resolver. Returns the
-   * derived rental status, the normalized maintenance context, a
-   * booking DTO safe to spread, the live `kmDriven` (telemetry-aware
-   * for in-flight ACTIVE bookings) and the null-preserving telemetry
-   * fields used by every fleet-status surface. Shared between the
-   * rental dashboard (`/vehicles`) and the map (`/fleet-map`) so the
-   * two endpoints cannot drift.
+   * V4.6.85 — Canonical fleet-status context resolver. Delegates to the
+   * pure domain builder (`buildVehicleOperationalState`). Shared between
+   * the rental dashboard (`/vehicles`) and the map (`/fleet-map`).
    *
-   * V4.6.90 — Hardened against two regression vectors:
-   *  1. **Ghost operational states**: when the raw DB `Vehicle.status`
-   *     column is `RENTED` / `RESERVED` but no matching booking row
-   *     exists (either because an admin mutated the column directly or
-   *     because a booking was deleted without resetting the column),
-   *     the derivation falls back to `Available` instead of rendering a
-   *     hollow "Active Rented" / "Reserved" card with null customer /
-   *     pickup / return data. A warning is emitted so ops can trace the
-   *     stale row.
-   *  2. **Silent optional footgun**: see the dedicated interface above —
-   *     `pickupOdoByBooking` is now a required argument.
+   * V4.6.90 — Ghost-state guard emits `ghostStateWarning` from the builder;
+   * this wrapper logs it once per derivation for ops traceability.
    */
   // Visible for tests.
   public deriveFleetStatusContext(input: {
@@ -833,11 +725,6 @@ export class VehiclesService {
       evSoc?: number | null;
       fuelLevelRelative?: number | null;
       fuelLevelAbsolute?: number | null;
-      // Prisma types `rawPayloadJson` as `JsonValue` (string | number |
-      // boolean | null | object | array). We only ever read it as an
-      // optional object / unknown, so the relaxed `unknown` matches the
-      // Prisma row shape while still keeping the rest of the contract
-      // tight.
       rawPayloadJson?: unknown;
     } | null;
     bookingCtx: FleetVehicleBookingContextDto | null;
@@ -851,179 +738,12 @@ export class VehiclesService {
     fuelPercent: number | null;
     evSoc: number | null;
   } {
-    const { vehicle, state, bookingCtx, pickupOdoByBooking } = input;
-    const dbStatus =
-      RENTAL_STATUS_MAP[vehicle.status as VehicleStatus] ?? 'Available';
-    const bookingDerived: 'Active Rented' | 'Reserved' | null =
-      bookingCtx && bookingCtx.activeBookingId
-        ? 'Active Rented'
-        : bookingCtx && bookingCtx.reservedBookingId
-          ? 'Reserved'
-          : null;
-
-    // V4.6.90 — Ghost-state guard. `Maintenance` always wins (true
-    // operational block). Otherwise the booking-derived bucket wins.
-    // If the DB column says `RENTED` / `RESERVED` but no booking truth
-    // backs it, demote to `Available` and log once per vehicle — we
-    // never render an operational state from a db-only row.
-    let status: string;
-    if (dbStatus === 'Maintenance') {
-      status = 'Maintenance';
-    } else if (bookingDerived) {
-      status = bookingDerived;
-    } else if (dbStatus === 'Active Rented' || dbStatus === 'Reserved') {
-      status = 'Available';
-      this.logger.warn(
-        `[fleet-status] Ghost ${dbStatus} state on vehicle ${
-          vehicle.id ?? vehicle.licensePlate ?? '<unknown>'
-        }: Vehicle.status is ${String(vehicle.status)} but no matching booking truth. Treating as Available.`,
-      );
-    } else {
-      status = dbStatus;
+    const result = buildVehicleOperationalState(input);
+    if (result.ghostStateWarning) {
+      this.logger.warn(result.ghostStateWarning);
     }
-    const maintenanceCtx: FleetVehicleMaintenanceContextDto =
-      status === 'Maintenance'
-        ? this.deriveMaintenanceContext(vehicle.status)
-        : {
-            maintenanceReason: null,
-            maintenanceReasonCode: null,
-            maintenanceUrgency: null,
-          };
-
-    // When we demoted a ghost RENTED/RESERVED to Available, also drop
-    // the (necessarily null) booking context — otherwise the frontend
-    // could still try to render e.g. a reservedPickupAt timestamp that
-    // has no matching booking row.
-    const bookingDto: FleetVehicleBookingContextDto =
-      status === 'Active Rented' || status === 'Reserved'
-        ? bookingCtx ?? VehiclesService.EMPTY_BOOKING_CONTEXT
-        : VehiclesService.EMPTY_BOOKING_CONTEXT;
-
-    const liveKmDriven: number | null = (() => {
-      if (!bookingDto.activeBookingId) {
-        return bookingDto.activeKmDriven ?? null;
-      }
-      if (bookingDto.activeKmDriven != null) return bookingDto.activeKmDriven;
-      const pickupOdo = pickupOdoByBooking.get(bookingDto.activeBookingId);
-      const currentOdo =
-        typeof state?.odometerKm === 'number' ? state.odometerKm : null;
-      if (pickupOdo == null || currentOdo == null) return null;
-      return Math.max(0, Math.floor(currentOdo - pickupOdo));
-    })();
-
-    const odometerKm =
-      typeof state?.odometerKm === 'number' && Number.isFinite(state.odometerKm)
-        ? Math.floor(state.odometerKm)
-        : null;
-
-    const fuelPercent = this.resolveFuelPercentOrNull(
-      state,
-      vehicle.tankCapacityLiters,
-    );
-
-    const evSoc =
-      typeof state?.evSoc === 'number' && Number.isFinite(state.evSoc)
-        ? Math.min(100, Math.max(0, Math.ceil(state.evSoc)))
-        : null;
-
-    return {
-      status,
-      maintenanceCtx,
-      bookingDto,
-      liveKmDriven,
-      odometerKm,
-      fuelPercent,
-      evSoc,
-    };
-  }
-
-  /**
-   * Resolve the best fuel percentage from VehicleLatestState.
-   *
-   * DIMO provides two fuel signals that update independently:
-   *   - powertrainFuelSystemRelativeLevel  (percentage, not all vehicles report it)
-   *   - powertrainFuelSystemAbsoluteLevel  (liters, often more current or the only signal)
-   *
-   * Strategy:
-   *  1. If relative % exists and is at least as fresh as absolute → use it.
-   *  2. If absolute is newer, try to infer tank capacity from the last known pair.
-   *  3. If relative is never reported (null), calculate % from absolute using
-   *     the vehicle's stored tankCapacityLiters or a 50 L default.
-   */
-  private resolveFuelPercent(
-    state: any,
-    tankCapacityLiters?: number | null,
-  ): number {
-    if (!state) return 0;
-
-    const relPct = state.fuelLevelRelative as number | null;
-    const absLiters = state.fuelLevelAbsolute as number | null;
-
-    if (relPct == null && absLiters == null) return 0;
-    if (absLiters == null) return relPct ?? 0;
-
-    const raw = state.rawPayloadJson as Record<string, any> | null;
-
-    if (relPct != null && relPct > 0 && raw) {
-      const relTs = this.signalTimestamp(raw.powertrainFuelSystemRelativeLevel);
-      const absTs = this.signalTimestamp(raw.powertrainFuelSystemAbsoluteLevel);
-
-      if (!absTs || !relTs || absTs <= relTs) return relPct;
-
-      const relVal = this.signalValue(raw.powertrainFuelSystemRelativeLevel);
-      const absVal = this.signalValue(raw.powertrainFuelSystemAbsoluteLevel);
-      if (relVal != null && absVal != null && relVal > 0 && absVal > 0) {
-        const timeDiffMs = absTs.getTime() - relTs.getTime();
-        if (timeDiffMs < 6 * 60 * 60 * 1000) {
-          const inferredCapacity = absVal / (relVal / 100);
-          if (inferredCapacity > 10 && inferredCapacity < 200) {
-            return Math.round(
-              Math.min(100, (absLiters / inferredCapacity) * 100) * 10,
-            ) / 10;
-          }
-        }
-      }
-    }
-
-    const DEFAULT_TANK_LITERS = 50;
-    const capacity =
-      tankCapacityLiters != null && tankCapacityLiters > 0
-        ? tankCapacityLiters
-        : DEFAULT_TANK_LITERS;
-    return Math.round(Math.min(100, (absLiters / capacity) * 100) * 10) / 10;
-  }
-
-  /**
-   * V4.6.85 — Null-preserving variant of `resolveFuelPercent` used by the
-   * fleet-status layer. Returns `null` (not `0`) when no fuel signal has
-   * ever been reported, so the UI can show "—" instead of a misleading
-   * "0%" for vehicles that simply lack a fuel sensor or fresh telemetry.
-   * EV-only vehicles (no fuel tank, no fuel signal) naturally resolve to
-   * `null`, and the rendering layer falls back to `evSoc`.
-   */
-  private resolveFuelPercentOrNull(
-    state: any,
-    tankCapacityLiters?: number | null,
-  ): number | null {
-    if (!state) return null;
-    const relPct = state.fuelLevelRelative as number | null;
-    const absLiters = state.fuelLevelAbsolute as number | null;
-    if (relPct == null && absLiters == null) return null;
-    const value = this.resolveFuelPercent(state, tankCapacityLiters);
-    return Math.min(100, Math.max(0, Math.ceil(value)));
-  }
-
-  private signalTimestamp(signal: unknown): Date | null {
-    if (!signal || typeof signal !== 'object') return null;
-    const t = (signal as Record<string, unknown>).timestamp;
-    if (typeof t === 'string') return new Date(t);
-    return null;
-  }
-
-  private signalValue(signal: unknown): number | null {
-    if (!signal || typeof signal !== 'object') return null;
-    const v = (signal as Record<string, unknown>).value;
-    return typeof v === 'number' && !Number.isNaN(v) ? v : null;
+    const { ghostStateWarning: _ghost, ...fleetCtx } = result;
+    return fleetCtx;
   }
 
   private extractHeading(rawPayload: unknown): number | null {
@@ -1428,7 +1148,7 @@ export class VehiclesService {
       lastSignal: interpreted.lastSignal,
       speed: state?.speedKmh ?? 0,
       odometer: state?.odometerKm ?? vehicle.mileageKm ?? 0,
-      fuel: this.resolveFuelPercent(state, vehicle.tankCapacityLiters),
+      fuel: resolveFleetFuelPercent(state, vehicle.tankCapacityLiters),
       battery: state?.evSoc ?? 0,
       coolant: state?.coolantTempC ?? 0,
       brakes: state?.brakePadPercent ?? 0,
