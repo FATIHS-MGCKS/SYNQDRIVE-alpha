@@ -52,6 +52,7 @@ import {
 } from './booking-day-window.util';
 import { BookingPaymentCardService } from '@modules/payments/booking-payment-card.service';
 import { VehicleRawStatusWriteService } from '@modules/vehicles/vehicle-raw-status-write.service';
+import { FleetOperationalReadModelCacheService } from '@modules/vehicles/cache/fleet-operational-read-model-cache.service';
 import { VehiclesService } from '@modules/vehicles/vehicles.service';
 import type { FleetBookingContextDto } from '@modules/vehicles/domain/vehicle-booking-context.serializer';
 import type {
@@ -101,6 +102,7 @@ export class BookingsService {
     @Inject(forwardRef(() => BookingPaymentCardService))
     private readonly bookingPaymentCardService: BookingPaymentCardService,
     private readonly vehicleRawStatusWrite: VehicleRawStatusWriteService,
+    private readonly fleetOperationalCache: FleetOperationalReadModelCacheService,
     private readonly vehiclesService: VehiclesService,
   ) {}
 
@@ -273,6 +275,11 @@ export class BookingsService {
       );
 
       return created;
+    });
+
+    await this.fleetOperationalCache.invalidateVehicles({
+      organizationId: orgId,
+      vehicleIds: [booking.vehicleId],
     });
 
     const invoicePromise = this.invoicesService
@@ -1773,6 +1780,16 @@ export class BookingsService {
         })
         .catch(() => {});
     }
+    if (vehicleOrDatesChanged || statusChanged) {
+      const vehicleIds = [existing.vehicleId];
+      if (updated.vehicleId !== existing.vehicleId) {
+        vehicleIds.push(updated.vehicleId);
+      }
+      await this.fleetOperationalCache.invalidateVehicles({
+        organizationId: orgId,
+        vehicleIds,
+      });
+    }
     return updated;
   }
 
@@ -1802,6 +1819,11 @@ export class BookingsService {
         tx,
       );
       return bookingRow;
+    });
+
+    await this.fleetOperationalCache.invalidateVehicles({
+      organizationId: orgId,
+      vehicleIds: [booking.vehicleId],
     });
 
     return updated;
@@ -1883,6 +1905,11 @@ export class BookingsService {
         tx,
       );
       return bookingRow;
+    });
+
+    await this.fleetOperationalCache.invalidateVehicles({
+      organizationId: orgId,
+      vehicleIds: [booking.vehicleId],
     });
 
     return updated;

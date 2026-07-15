@@ -33,6 +33,7 @@ import { VehicleGenericPatchDto } from './dto/vehicle-generic-patch.dto';
 import { UpdateVehicleStatusDto } from './dto/update-vehicle-status.dto';
 import { ADMIN_WRITABLE_VEHICLE_STATUSES } from './vehicle-operational-status.constants';
 import { VehicleRawStatusWriteService } from './vehicle-raw-status-write.service';
+import { FleetOperationalReadModelCacheService } from './cache/fleet-operational-read-model-cache.service';
 import { VehicleCleaningTaskService } from '../tasks/vehicle-cleaning-task.service';
 
 interface VehicleStatusAuthRequest {
@@ -68,6 +69,7 @@ export class VehiclesController {
     private readonly exteriorImagesService: VehicleExteriorImagesService,
     private readonly vehicleCleaningTasks: VehicleCleaningTaskService,
     private readonly vehicleRawStatusWrite: VehicleRawStatusWriteService,
+    private readonly fleetOperationalCache: FleetOperationalReadModelCacheService,
   ) {}
 
   // ── Admin (platform-wide) ─────────────────────────────────────────
@@ -287,6 +289,11 @@ export class VehiclesController {
         req.user?.id,
       );
     }
+
+    await this.fleetOperationalCache.invalidateVehicles({
+      organizationId: orgId,
+      vehicleIds: [vehicleId],
+    });
 
     return { vehicle, cleaningTask };
   }

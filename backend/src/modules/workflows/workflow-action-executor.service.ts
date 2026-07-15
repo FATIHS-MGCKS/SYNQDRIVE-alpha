@@ -11,6 +11,7 @@ import {
 import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { VehicleRawStatusWriteService } from '@modules/vehicles/vehicle-raw-status-write.service';
+import { FleetOperationalReadModelCacheService } from '@modules/vehicles/cache/fleet-operational-read-model-cache.service';
 import { normalizeTaskPriority } from '@modules/tasks/task-priority.util';
 import { normalizeVehicleStatusForPrisma } from './vehicle-status.util';
 import { WORKFLOW_WRITABLE_VEHICLE_STATUSES } from '@modules/vehicles/vehicle-operational-status.constants';
@@ -35,6 +36,7 @@ export class WorkflowActionExecutorService {
     private readonly prisma: PrismaService,
     private readonly tasksService: TasksService,
     private readonly vehicleRawStatusWrite: VehicleRawStatusWriteService,
+    private readonly fleetOperationalCache: FleetOperationalReadModelCacheService,
   ) {}
 
   async execute(
@@ -203,6 +205,10 @@ export class WorkflowActionExecutorService {
         workflowRunId: ctx.workflowRunId,
         actionRunId: ctx.actionRunId,
       },
+    });
+    await this.fleetOperationalCache.invalidateVehicles({
+      organizationId: ctx.organizationId,
+      vehicleIds: [vehicleId],
     });
     return { vehicleId, status: result.nextStatus };
   }

@@ -73,6 +73,8 @@ rg 'onBookingChange|onVehicleChange|BusinessInsightsTrigger' --glob '*.ts' backe
 | **Error behavior** | Read failure: debug log, fall through to Postgres rebuild. Write failure: debug log, response still returned uncached. Fleet-map must not 500 on Redis outage. |
 | **Risk A/R/AR** | **High** — canonical `status`, `operationalState`, `bookingContext` served from stale JSON until TTL |
 
+**Update (V4.9.488 / Prompt 24):** `FleetOperationalReadModelCacheService` invalidates `fleet-map:{orgId}:v1` and `vehicle-operational:{orgId}:{vehicleId}:v1` after booking/handover/status writes. Stale window on explicit refresh is now **0 s** (cache miss) unless Redis `DEL` fails.
+
 ---
 
 ### 2. Backend — Vehicle list (`GET /vehicles`)

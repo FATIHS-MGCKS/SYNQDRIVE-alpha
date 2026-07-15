@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-operational-cache-invalidation-v49488-2026-07-15',
+    version: '4.9.488',
+    title: 'V4.9.488 — Fleet operational read-model cache invalidation (Prompt 24/43)',
+    summary: [
+      '`FleetOperationalReadModelCacheService` — gezieltes `DEL` für `fleet-map:{orgId}:v1` + `vehicle-operational:{orgId}:{vehicleId}:v1` nach erfolgreichen Writes.',
+      'Verdrahtet in: Booking create/update/cancel/no-show, Handover pickup/return, Admin/Workflow Vehicle-Status (Maintenance/Block), Cleaning/Health PATCH.',
+      'Fahrzeugwechsel invalidiert altes + neues Fahrzeug; fehlgeschlagene Transaktionen rufen keine Invalidierung auf. TTL bleibt Safety-Net.',
+      'Tests: Pickup/Return/Cancel/Reschedule/Vehicle-Swap + fehlgeschlagener Pickup ohne Invalidierung.',
+    ],
+    reason:
+      'Prompt 24/43: Redis fleet-map (5s TTL) hatte keine Event-Invalidierung — `refreshFleet()` konnte bis zu 5s stale Operational State liefern.',
+    previousBehavior:
+      'Nur TTL-Ablauf auf `fleet-map:{orgId}:v1`; Booking-/Handover-/Status-Writes busteten den Cache nicht.',
+    details:
+      'Neu: `backend/src/modules/vehicles/cache/fleet-operational-read-model-cache.{keys,service}.ts`. Keys zentralisiert; `VehiclesService.getFleetMapData` nutzt shared key builder. Keine Frontend-Änderung.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-15T22:35:00.000Z',
+  },
+  {
     id: 'fleet-read-model-unification-v49487-2026-07-15',
     version: '4.9.487',
     title: 'V4.9.487 — Fleet Read-Models: einheitlicher Operational-State-Pfad (Prompt 22/43)',

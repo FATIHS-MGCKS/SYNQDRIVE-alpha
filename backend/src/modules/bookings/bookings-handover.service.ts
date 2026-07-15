@@ -21,6 +21,7 @@ import {
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
 import { WorkflowEventService } from '@modules/workflows/workflow-event.service';
 import { VehicleRawStatusWriteService } from '@modules/vehicles/vehicle-raw-status-write.service';
+import { FleetOperationalReadModelCacheService } from '@modules/vehicles/cache/fleet-operational-read-model-cache.service';
 import {
   parseAffectedArea,
   parseCategory,
@@ -48,6 +49,7 @@ export class BookingsHandoverService {
     private readonly bookingDocumentBundleService: BookingDocumentBundleService,
     private readonly workflowEvents: WorkflowEventService,
     private readonly vehicleRawStatusWrite: VehicleRawStatusWriteService,
+    private readonly fleetOperationalCache: FleetOperationalReadModelCacheService,
   ) {}
 
   async createHandover(
@@ -303,6 +305,11 @@ export class BookingsHandoverService {
         return [created, booking2] as const;
       },
     );
+
+    await this.fleetOperationalCache.invalidateVehicles({
+      organizationId: orgId,
+      vehicleIds: [booking.vehicleId],
+    });
 
     // After a successful handover, generate the protocol PDF (and, on return,
     // the final invoice + PDF). Fire-and-forget: existing handover behaviour and
