@@ -10,8 +10,10 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
+import { VehicleRawStatusWriteService } from '@modules/vehicles/vehicle-raw-status-write.service';
 import { normalizeTaskPriority } from '@modules/tasks/task-priority.util';
 import { normalizeVehicleStatusForPrisma } from './vehicle-status.util';
+import { WORKFLOW_WRITABLE_VEHICLE_STATUSES } from '@modules/vehicles/vehicle-operational-status.constants';
 import type { WorkflowActionDef } from './workflow-definition.validator';
 
 export interface ActionExecutionContext {
@@ -32,6 +34,7 @@ export class WorkflowActionExecutorService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tasksService: TasksService,
+    private readonly vehicleRawStatusWrite: VehicleRawStatusWriteService,
   ) {}
 
   async execute(
@@ -179,6 +182,11 @@ export class WorkflowActionExecutorService {
     // UI labels ("Maintenance", "In Wartung", …). Normalise defensively so only
     // valid enum values reach Prisma; invalid input fails the action cleanly.
     const status = normalizeVehicleStatusForPrisma(action.config?.status);
+    if (!WORKFLOW_WRITABLE_VEHICLE_STATUSES.has(status)) {
+      throw new BadRequestException(
+        `vehicle.status.update may only set admin-writable base states (AVAILABLE, IN_SERVICE, OUT_OF_SERVICE) — got: ${status}`,
+      );
+    }
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: vehicleId, organizationId: ctx.organizationId },
       select: { id: true },
@@ -186,11 +194,17 @@ export class WorkflowActionExecutorService {
     if (!vehicle) {
       throw new NotFoundException('Vehicle not found in organization');
     }
-    await this.prisma.vehicle.update({
-      where: { id: vehicleId },
-      data: { status },
+    const result = await this.vehicleRawStatusWrite.applyWorkflowMaintenanceStatus({
+      organizationId: ctx.organizationId,
+      vehicleId,
+      status,
+      meta: {
+        workflowId: ctx.workflowId,
+        workflowRunId: ctx.workflowRunId,
+        actionRunId: ctx.actionRunId,
+      },
     });
-    return { vehicleId, status };
+    return { vehicleId, status: result.nextStatus };
   }
 
   private async execNotificationPrepare(

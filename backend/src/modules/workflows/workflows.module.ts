@@ -5,9 +5,10 @@ import { WorkflowEngineService } from './workflow-engine.service';
 import { WorkflowEventService } from './workflow-event.service';
 import { WorkflowActionExecutorService } from './workflow-action-executor.service';
 import { TasksModule } from '@modules/tasks/tasks.module';
+import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 
 @Module({
-  imports: [TasksModule],
+  imports: [TasksModule, VehiclesModule],
   controllers: [WorkflowsController],
   providers: [
     WorkflowsService,

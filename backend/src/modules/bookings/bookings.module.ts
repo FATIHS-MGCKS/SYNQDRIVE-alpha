@@ -15,6 +15,7 @@ import { RentalRulesModule } from '@modules/rental-rules/rental-rules.module';
 import { OutboundEmailModule } from '@modules/outbound-email/outbound-email.module';
 import { CustomerVerificationModule } from '@modules/customer-verification/customer-verification.module';
 import { PaymentsModule } from '@modules/payments/payments.module';
+import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 import { BookingRentalEligibilityService } from './booking-rental-eligibility.service';
 import { BookingWizardDraftService } from './booking-wizard-draft.service';
 import { BookingWizardCheckoutContextService } from './booking-wizard-checkout-context.service';
@@ -35,6 +36,7 @@ import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.s
     RentalRulesModule,
     OutboundEmailModule,
     forwardRef(() => PaymentsModule),
+    VehiclesModule,
   ],
   controllers: [BookingsController],
   providers: [

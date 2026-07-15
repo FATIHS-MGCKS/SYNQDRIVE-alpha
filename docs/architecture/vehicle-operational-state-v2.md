@@ -1326,6 +1326,58 @@ V1-Mapper im Frontend **lesen V2-Blöcke** und projizieren in flache Felder — 
 
 ---
 
+## 17. Domänen-Verantwortlichkeit und Schreibgrenzen (implementiert Prompt 19/43)
+
+Operative Fahrzeugzustände dürfen **nur** über definierte Domänenpfade geschrieben werden. Alle legitimen Rohstatus-Änderungen laufen zentral durch `VehicleRawStatusWriteService` — keine parallele zweite Engine, keine direkten `prisma.vehicle.update({ data: { status } })` in Feature-Modulen.
+
+### 17.1 Domänen-Zuordnung (verbindlich)
+
+| Domäne | Verantwortung | Persistierte Rohstatus-Werte | Kanonischer operativer Zustand |
+|--------|---------------|------------------------------|--------------------------------|
+| **Booking / Handover** | Pickup erfolgreich (`Booking → ACTIVE`), Return abgeschlossen, Cancel/No-Show-Freigabe | Pickup: **`RENTED`** (Kompatibilitätshinweis), Return/Cancel/No-Show: **`AVAILABLE`** (wenn nicht IN_SERVICE/OUT_OF_SERVICE) | **`ACTIVE_RENTED`** wird **ausschließlich** aus ACTIVE-Buchung + Pickup-Protokoll abgeleitet — nicht aus Roh-`RENTED` allein |
+| **Vehicle Operational State Engine** | Einzige kanonische Ableitung von `AVAILABLE`, `RESERVED`, `ACTIVE_RENTED`, `UNKNOWN` | **Schreibt nicht** | Read-Model für Fleet/UI |
+| **Maintenance / Service** | `IN_SERVICE`, `OUT_OF_SERVICE` (admin + Workflow) | `IN_SERVICE`, `OUT_OF_SERVICE` | `MAINTENANCE`, `BLOCKED` |
+| **Blocking / Readiness** | Hard Blocks, Rental Readiness | Kein direkter `Vehicle.status`-Write | Readiness/Block-Level separat |
+| **Manuelle Vehicle-Verwaltung** | Grundzustände freigeben/sperren | Nur `AVAILABLE`, `IN_SERVICE`, `OUT_OF_SERVICE` | Nie `RESERVED` / `ACTIVE_RENTED` direkt |
+
+### 17.2 `VehicleRawStatusWriteService` — Methoden
+
+| Methode | Domäne | Erlaubte Werte |
+|---------|--------|----------------|
+| `applyHandoverPickup` | `BOOKING_HANDOVER` | `RENTED` (+ Station) |
+| `applyHandoverReturn` | `BOOKING_HANDOVER` | `AVAILABLE` (bedingt) |
+| `applyBookingLifecycleRelease` | `BOOKING_LIFECYCLE` | `AVAILABLE` (bedingt) |
+| `applyAdminOperationalStatus` | `ADMIN_MANUAL` | `AVAILABLE`, `IN_SERVICE`, `OUT_OF_SERVICE` |
+| `applyWorkflowMaintenanceStatus` | `WORKFLOW_MAINTENANCE` | `AVAILABLE`, `IN_SERVICE`, `OUT_OF_SERVICE` |
+
+Jede Statusänderung erzeugt einen **ActivityLog**-Eintrag (`AuditService`) mit `domain`, `previousStatus`, `nextStatus`.
+
+### 17.3 RESERVED — nur abgeleitet
+
+- **`RESERVED` wird in keinem Domänenpfad persistiert.**
+- Bestehende DB-Zeilen mit `RESERVED` sind **diagnostisch** (`rawVehicleStatus.isLegacyOrInconsistent`).
+- Kanonisches `RESERVED` entsteht ausschließlich im Pickup-Reservierungsfenster via Operational State Engine.
+
+### 17.4 RENTED — Kompatibilität vs. Kanon
+
+**Ist (Übergang):** Pickup-Handover schreibt weiterhin Roh-`RENTED` als Legacy-Kompatibilitätshinweis für Leser, die noch die DB-Spalte prüfen.
+
+**Kanon:** `operationalState.status = ACTIVE_RENTED` folgt **immer** aus `Booking.status = ACTIVE` + Pickup-Protokoll. Roh-`RENTED` ohne passende Buchung → `UNKNOWN` (Ghost-Guard, §15.6 V5).
+
+**Ziel (später):** Roh-`RENTED` vollständig aus Schreibpfaden entfernen, sobald alle Consumer nur noch `operationalState` lesen (§2.3).
+
+### 17.5 Verbotene Schreibpfade
+
+| Pfad | Status |
+|------|--------|
+| Generischer Vehicle-PATCH `status` | Blockiert (Prompt 18) |
+| Admin-PATCH `RESERVED` / `RENTED` | Blockiert |
+| Workflow `vehicle.status.update` → `RENTED`/`RESERVED` | Blockiert |
+| `VehiclesService.update({ status })` | Blockiert — nur Write-Service |
+| Beliebige Feature-Module | Verboten — nur Write-Service |
+
+---
+
 ## Änderungshistorie
 
 | Version | Datum | Änderung |
@@ -1333,7 +1385,8 @@ V1-Mapper im Frontend **lesen V2-Blöcke** und projizieren in flache Felder — 
 | 2.0 | 2026-07-15 | Erstfassung Spezifikation (Prompt 3/43) |
 | 2.1 | 2026-07-15 | §15 Prioritäts- und Übergangsmatrix; §3.5 Prio-Reihenfolge MAINTENANCE vor BLOCKED (Prompt 4/43) |
 | 2.2 | 2026-07-15 | §16 Backend-/Frontend-Datenvertrag; §9.5 OperationalReasonCode; AC-9–AC-16, DC-1–DC-14 (Prompt 5/43) |
+| 2.3 | 2026-07-15 | §17 Domänen-Verantwortlichkeit + `VehicleRawStatusWriteService` (Prompt 19/43) |
 
 ---
 
-*Ende der Spezifikation — keine produktive Implementierung in diesem Schritt.*
+*Spezifikation §1–§16 normativ; §17 beschreibt implementierte Schreibgrenzen (Prompt 19/43).*

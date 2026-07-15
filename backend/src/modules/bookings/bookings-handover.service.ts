@@ -20,6 +20,7 @@ import {
 } from './handover.types';
 import { BookingDocumentBundleService } from '@modules/documents/booking-document-bundle.service';
 import { WorkflowEventService } from '@modules/workflows/workflow-event.service';
+import { VehicleRawStatusWriteService } from '@modules/vehicles/vehicle-raw-status-write.service';
 import {
   parseAffectedArea,
   parseCategory,
@@ -46,6 +47,7 @@ export class BookingsHandoverService {
     @Inject(forwardRef(() => BookingDocumentBundleService))
     private readonly bookingDocumentBundleService: BookingDocumentBundleService,
     private readonly workflowEvents: WorkflowEventService,
+    private readonly vehicleRawStatusWrite: VehicleRawStatusWriteService,
   ) {}
 
   async createHandover(
@@ -215,20 +217,18 @@ export class BookingsHandoverService {
               id: { not: bookingId },
             },
           });
-          if (!blockedStatus && otherActive === 0) {
-            await tx.vehicle.update({
-              where: { id: booking.vehicleId },
-              data: {
-                status: VehicleStatus.AVAILABLE,
-                ...(actualStationId ? { currentStationId: actualStationId } : {}),
-              },
-            });
-          } else if (actualStationId) {
-            await tx.vehicle.update({
-              where: { id: booking.vehicleId },
-              data: { currentStationId: actualStationId },
-            });
-          }
+          await this.vehicleRawStatusWrite.applyHandoverReturn(
+            {
+              organizationId: orgId,
+              vehicleId: booking.vehicleId,
+              bookingId,
+              currentStationId: actualStationId ?? null,
+              blockedByMaintenance: blockedStatus,
+              otherActiveBookings: otherActive,
+              meta: { handoverProtocolKind: kind },
+            },
+            tx,
+          );
         } else if (kind === 'PICKUP') {
           // A vehicle in maintenance / out-of-service must never be handed out.
           // Fail with a controlled conflict — the surrounding $transaction rolls
@@ -243,13 +243,16 @@ export class BookingsHandoverService {
               vehicleStatus: vehicleRow?.status ?? null,
             });
           }
-          await tx.vehicle.update({
-            where: { id: booking.vehicleId },
-            data: {
-              status: VehicleStatus.RENTED,
-              ...(actualStationId ? { currentStationId: actualStationId } : {}),
+          await this.vehicleRawStatusWrite.applyHandoverPickup(
+            {
+              organizationId: orgId,
+              vehicleId: booking.vehicleId,
+              bookingId,
+              currentStationId: actualStationId ?? null,
+              meta: { handoverProtocolKind: kind },
             },
-          });
+            tx,
+          );
         }
 
         if (damageIds.length > 0) {

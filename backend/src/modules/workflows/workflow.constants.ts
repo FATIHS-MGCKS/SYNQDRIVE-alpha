@@ -66,7 +66,12 @@ export const LEGACY_ACTION_TO_CANONICAL: Record<string, WorkflowActionType> = {
   request_approval: 'workflow.approval.request',
 };
 
-export const ALLOWED_VEHICLE_STATUSES = new Set<string>(Object.values(VehicleStatus));
+/** Admin / workflow writable base states only (not RENTED/RESERVED). */
+export const ALLOWED_VEHICLE_STATUSES = new Set<string>([
+  VehicleStatus.AVAILABLE,
+  VehicleStatus.IN_SERVICE,
+  VehicleStatus.OUT_OF_SERVICE,
+]);
 
 export const CONDITION_OPERATORS = [
   'equals',

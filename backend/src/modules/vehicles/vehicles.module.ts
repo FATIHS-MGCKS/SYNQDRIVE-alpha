@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import dimoConfig from '@config/dimo.config';
 import { VehiclesController } from './vehicles.controller';
 import { VehiclesService } from './vehicles.service';
+import { VehicleRawStatusWriteService } from './vehicle-raw-status-write.service';
 import { VehicleProviderConsentService } from './vehicle-provider-consent.service';
 import { VehicleExteriorImagesService } from './vehicle-exterior-images.service';
 import { DimoModule } from '../dimo/dimo.module';
@@ -21,11 +22,13 @@ import { TasksModule } from '../tasks/tasks.module';
   controllers: [VehiclesController],
   providers: [
     VehiclesService,
+    VehicleRawStatusWriteService,
     VehicleProviderConsentService,
     VehicleExteriorImagesService,
   ],
   exports: [
     VehiclesService,
+    VehicleRawStatusWriteService,
     VehicleProviderConsentService,
     VehicleExteriorImagesService,
   ],

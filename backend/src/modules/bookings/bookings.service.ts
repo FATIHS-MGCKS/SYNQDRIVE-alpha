@@ -6,7 +6,7 @@ import {
   ConflictException,
   Logger,
 } from '@nestjs/common';
-import { Booking, Prisma, BookingStatus, VehicleStatus } from '@prisma/client';
+import { Booking, Prisma, BookingStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { RentalDrivingAnalysisService } from '../rental-driving-analysis/rental-driving-analysis.service';
 import { InvoicesService } from '@modules/invoices/invoices.service';
@@ -51,6 +51,7 @@ import {
   zonedLookbackStart,
 } from './booking-day-window.util';
 import { BookingPaymentCardService } from '@modules/payments/booking-payment-card.service';
+import { VehicleRawStatusWriteService } from '@modules/vehicles/vehicle-raw-status-write.service';
 
 const BOOKING_STATUS_DISPLAY: Record<string, string> = {
   PENDING: 'Pending',
@@ -93,6 +94,7 @@ export class BookingsService {
     private readonly stationValidation: StationValidationService,
     @Inject(forwardRef(() => BookingPaymentCardService))
     private readonly bookingPaymentCardService: BookingPaymentCardService,
+    private readonly vehicleRawStatusWrite: VehicleRawStatusWriteService,
   ) {}
 
   /**
@@ -1745,28 +1747,25 @@ export class BookingsService {
 
     await this.generatedDocumentsService.voidAllForBooking(orgId, id).catch(() => {});
 
-    const [updated] = await this.prisma.$transaction([
-      this.prisma.booking.update({
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const bookingRow = await tx.booking.update({
         where: { id },
         data: {
           status: 'CANCELLED' as BookingStatus,
           cancelledAt: new Date(),
         },
-      }),
-      // Release the car for a replacement booking — but NEVER overwrite a
-      // maintenance / out-of-service state (same invariant the handover
-      // service enforces). `updateMany` + notIn applies the AVAILABLE flip
-      // only when the vehicle is not IN_SERVICE / OUT_OF_SERVICE.
-      this.prisma.vehicle.updateMany({
-        where: {
-          id: booking.vehicleId,
-          status: {
-            notIn: [VehicleStatus.IN_SERVICE, VehicleStatus.OUT_OF_SERVICE],
-          },
+      });
+      await this.vehicleRawStatusWrite.applyBookingLifecycleRelease(
+        {
+          organizationId: orgId,
+          vehicleId: booking.vehicleId,
+          bookingId: id,
+          reason: 'CANCEL',
         },
-        data: { status: VehicleStatus.AVAILABLE },
-      }),
-    ]);
+        tx,
+      );
+      return bookingRow;
+    });
 
     return updated;
   }
@@ -1828,28 +1827,26 @@ export class BookingsService {
       ? (booking.notes ? `${booking.notes}\n${notesAddendum}` : notesAddendum)
       : booking.notes;
 
-    const [updated] = await this.prisma.$transaction([
-      this.prisma.booking.update({
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const bookingRow = await tx.booking.update({
         where: { id },
         data: {
           status: 'NO_SHOW' as BookingStatus,
           cancelledAt: new Date(),
           notes: nextNotes,
         },
-      }),
-      // Reopen the car for a replacement booking without clobbering a
-      // maintenance / out-of-service state (mirrors cancel() + the handover
-      // invariant). Only flips to AVAILABLE when not IN_SERVICE/OUT_OF_SERVICE.
-      this.prisma.vehicle.updateMany({
-        where: {
-          id: booking.vehicleId,
-          status: {
-            notIn: [VehicleStatus.IN_SERVICE, VehicleStatus.OUT_OF_SERVICE],
-          },
+      });
+      await this.vehicleRawStatusWrite.applyBookingLifecycleRelease(
+        {
+          organizationId: orgId,
+          vehicleId: booking.vehicleId,
+          bookingId: id,
+          reason: 'NO_SHOW',
         },
-        data: { status: VehicleStatus.AVAILABLE },
-      }),
-    ]);
+        tx,
+      );
+      return bookingRow;
+    });
 
     return updated;
   }

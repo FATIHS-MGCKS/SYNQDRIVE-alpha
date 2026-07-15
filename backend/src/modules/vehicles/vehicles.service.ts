@@ -1450,6 +1450,12 @@ export class VehiclesService {
     data: Prisma.VehicleUpdateInput,
     organizationId?: string,
   ): Promise<Vehicle> {
+    if (data.status !== undefined) {
+      throw new BadRequestException(
+        'Vehicle.status must be changed via domain write service (admin status PATCH, booking handover, or workflow maintenance).',
+      );
+    }
+
     const where: Prisma.VehicleWhereUniqueInput = { id };
     if (organizationId) {
       const existing = await this.prisma.vehicle.findFirst({

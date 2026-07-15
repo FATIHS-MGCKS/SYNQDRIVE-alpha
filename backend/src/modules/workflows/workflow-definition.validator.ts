@@ -10,6 +10,7 @@ import {
   type WorkflowEventType,
 } from './workflow.constants';
 import { normalizeVehicleStatusInput } from './vehicle-status.util';
+import { WORKFLOW_WRITABLE_VEHICLE_STATUSES } from '@modules/vehicles/vehicle-operational-status.constants';
 
 export interface WorkflowTriggerDef {
   type: string;
@@ -119,9 +120,9 @@ export function validateWorkflowDefinition(input: {
       const status = action.config?.status;
       const normalized =
         typeof status === 'string' ? normalizeVehicleStatusInput(status) : undefined;
-      if (!normalized) {
+      if (!normalized || !WORKFLOW_WRITABLE_VEHICLE_STATUSES.has(normalized)) {
         throw new BadRequestException(
-          `vehicle.status.update requires a valid VehicleStatus (got: ${String(status)})`,
+          `vehicle.status.update requires an admin-writable VehicleStatus (AVAILABLE, IN_SERVICE, OUT_OF_SERVICE) — got: ${String(status)}`,
         );
       }
       config = { ...config, status: normalized };

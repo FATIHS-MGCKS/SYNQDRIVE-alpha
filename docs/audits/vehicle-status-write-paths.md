@@ -12,10 +12,10 @@
 | Finding | Detail |
 |---------|--------|
 | **Canonical operational truth** | Since Prompts 11–16, fleet **read** truth is `vehicle-operational-state.builder` (booking context + maintenance + ghost guard). `Vehicle.status` is a **persisted raw column**, not the sole source of truth. |
-| **RENTED writes** | **Yes — still written** on pickup handover (`BookingsHandoverService`). Also writable via workflows and unguarded generic PATCH. |
-| **RESERVED writes** | **Not written** by booking create/cancel/handover in current code. Writable via **workflows** and **unguarded generic PATCH**. Legacy DB rows may still hold `RESERVED`. |
-| **Booking create** | Writes **only** `Booking.status` — **never** flips `Vehicle.status` to `RESERVED`. |
-| **Dangerous paths** | ~~`PATCH .../vehicles/:vehicleId` (org + global) accept full `Prisma.VehicleUpdateInput`~~ **Fixed Prompt 18** — `VehicleGenericPatchDto` whitelist; status/relations rejected with 400. |
+| **RENTED writes** | **Yes — only via** `VehicleRawStatusWriteService.applyHandoverPickup` (booking handover). **Fixed Prompt 19** — no workflow/generic/admin path. |
+| **RESERVED writes** | **Blocked** in all domains. **Fixed Prompt 19** — derived only; existing DB rows diagnostic. |
+| **Central write boundary** | **Fixed Prompt 19** — `VehicleRawStatusWriteService` + ActivityLog audit for all legitimate raw status changes. |
+| **Dangerous paths** | ~~`PATCH .../vehicles/:vehicleId` (org + global) accept full `Prisma.VehicleUpdateInput`~~ **Fixed Prompt 18** — `VehicleGenericPatchDto` whitelist; status/relations rejected with 400. ~~Workflow/generic direct writes~~ **Fixed Prompt 19**. |
 | **Raw SQL (runtime)** | **None found** that UPDATE `vehicles.status`. Migrations set `@default(AVAILABLE)` only. |
 
 ### Prisma enum (`Vehicle.status`)

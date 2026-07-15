@@ -23,6 +23,7 @@ describe('VehiclesController generic PATCH security', () => {
       vehiclesService as unknown as VehiclesService,
       {} as VehicleExteriorImagesService,
       {} as VehicleCleaningTaskService,
+      { applyAdminOperationalStatus: jest.fn() } as any,
     );
   });
 

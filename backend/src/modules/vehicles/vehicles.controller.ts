@@ -24,6 +24,7 @@ import { Roles } from '@shared/decorators/roles.decorator';
 import { PaginationParams } from '@shared/utils/pagination';
 import {
   Prisma,
+  Vehicle,
   VehicleType,
   FuelType,
 } from '@prisma/client';
@@ -31,6 +32,7 @@ import { FleetConnectivityQueryDto } from './dto/fleet-connectivity-query.dto';
 import { VehicleGenericPatchDto } from './dto/vehicle-generic-patch.dto';
 import { UpdateVehicleStatusDto } from './dto/update-vehicle-status.dto';
 import { ADMIN_WRITABLE_VEHICLE_STATUSES } from './vehicle-operational-status.constants';
+import { VehicleRawStatusWriteService } from './vehicle-raw-status-write.service';
 import { VehicleCleaningTaskService } from '../tasks/vehicle-cleaning-task.service';
 
 interface VehicleStatusAuthRequest {
@@ -65,6 +67,7 @@ export class VehiclesController {
     private readonly vehiclesService: VehiclesService,
     private readonly exteriorImagesService: VehicleExteriorImagesService,
     private readonly vehicleCleaningTasks: VehicleCleaningTaskService,
+    private readonly vehicleRawStatusWrite: VehicleRawStatusWriteService,
   ) {}
 
   // ── Admin (platform-wide) ─────────────────────────────────────────
@@ -240,19 +243,36 @@ export class VehiclesController {
     @Req() req: VehicleStatusAuthRequest,
     @Body() body: UpdateVehicleStatusDto,
   ) {
-    const data: Prisma.VehicleUpdateInput = {};
+    let vehicle: Vehicle | undefined;
+
     if (body.status) {
       if (!ADMIN_WRITABLE_VEHICLE_STATUSES.has(body.status)) {
         throw new BadRequestException(
           `Vehicle status '${body.status}' cannot be set via the admin status endpoint. RENTED / RESERVED are derived from booking and handover events; create/cancel the booking instead.`,
         );
       }
-      data.status = body.status;
+      const writeResult = await this.vehicleRawStatusWrite.applyAdminOperationalStatus({
+        organizationId: orgId,
+        vehicleId,
+        actorUserId: req.user?.id ?? null,
+        route: 'PATCH /organizations/:orgId/vehicles/:vehicleId/status',
+        status: body.status,
+      });
+      vehicle = writeResult.vehicle;
     }
-    if (body.cleaningStatus) data.cleaningStatus = body.cleaningStatus;
-    if (body.healthStatus) data.healthStatus = body.healthStatus;
 
-    const vehicle = await this.vehiclesService.update(vehicleId, data, orgId);
+    const ancillary: Prisma.VehicleUpdateInput = {};
+    if (body.cleaningStatus) ancillary.cleaningStatus = body.cleaningStatus;
+    if (body.healthStatus) ancillary.healthStatus = body.healthStatus;
+    if (Object.keys(ancillary).length > 0) {
+      vehicle = await this.vehiclesService.update(vehicleId, ancillary, orgId);
+    }
+
+    if (!vehicle) {
+      throw new BadRequestException(
+        'At least one of status, cleaningStatus, or healthStatus must be provided',
+      );
+    }
 
     let cleaningTask: Awaited<
       ReturnType<VehicleCleaningTaskService['ensureCleaningTask']>

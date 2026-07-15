@@ -55,6 +55,36 @@ describe('validateWorkflowDefinition', () => {
     expect(result.actions[0].type).toBe('vehicle.status.update');
   });
 
+  it('rejects RENTED and RESERVED for vehicle.status.update', () => {
+    expect(() =>
+      validateWorkflowDefinition({
+        name: 'Vehicle',
+        category: 'maintenance',
+        trigger: { type: 'vehicle.health.critical' },
+        actions: [
+          {
+            type: 'vehicle.status.update',
+            config: { status: 'RENTED' },
+          },
+        ],
+      }),
+    ).toThrow(BadRequestException);
+
+    expect(() =>
+      validateWorkflowDefinition({
+        name: 'Vehicle',
+        category: 'maintenance',
+        trigger: { type: 'vehicle.health.critical' },
+        actions: [
+          {
+            type: 'vehicle.status.update',
+            config: { status: 'Reserviert' },
+          },
+        ],
+      }),
+    ).toThrow(BadRequestException);
+  });
+
   it('normalizes legacy create_task to task.create', () => {
     const result = validateWorkflowDefinition({
       name: 'Task',

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-raw-status-write-boundaries-v49484-2026-07-15',
+    version: '4.9.484',
+    title: 'V4.9.484 — Vehicle Status: Domänen-Schreibgrenzen + Audit (Prompt 19/43)',
+    summary: [
+      'Zentraler `VehicleRawStatusWriteService` — einziger Pfad für legitime Rohstatus-Änderungen mit ActivityLog-Audit.',
+      'Booking/Handover: Pickup → RENTED (Kompatibilität), Return/Cancel/No-Show → AVAILABLE; kanonisches ACTIVE_RENTED bleibt Engine-Ableitung.',
+      'Admin + Workflow nur AVAILABLE/IN_SERVICE/OUT_OF_SERVICE; RESERVED nie persistieren; `VehiclesService.update` blockiert status-Feld.',
+      'Handover, Cancel, No-Show, Admin-Status-PATCH und Workflow auf Write-Service umgestellt.',
+    ],
+    reason:
+      'Prompt 19/43: Operative Fahrzeugzustände dürfen nicht beliebig gesetzt werden — verbindliche Domänen-Verantwortlichkeit statt direkter Prisma-Writes.',
+    previousBehavior:
+      'Handover, Bookings, Workflow und Controller schrieben `Vehicle.status` direkt via Prisma; Workflow erlaubte RENTED/RESERVED.',
+    details:
+      'Neu: `vehicle-raw-status-write.service.ts`, erweiterte `vehicle-operational-status.constants.ts`. Docs: `vehicle-operational-state-v2.md` §17. Tests: `vehicle-raw-status-write.service.spec.ts`, Workflow-Validator.',
+    affectsArchitecture: true,
+    module: 'Vehicles',
+    createdAt: '2026-07-16T02:30:00.000Z',
+  },
+  {
     id: 'vehicle-generic-patch-guard-v49483-2026-07-15',
     version: '4.9.483',
     title: 'V4.9.483 — Vehicle PATCH: Whitelist-DTO blockiert Status-Mass-Assignment (Prompt 18/43)',
