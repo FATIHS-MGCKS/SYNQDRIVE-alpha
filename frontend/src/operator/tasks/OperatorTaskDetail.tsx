@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { api, type ApiTask } from '../../lib/api';
-import { buildTaskDetailViewModel, isNormalizedTaskDetail, TaskDetailShell, useOperatorTaskLinkedObjectNavigation, useTaskLinkedObjectNavigator } from '../../lib/tasks';
+import { buildTaskCompletionControlModel, buildTaskDetailViewModel, isNormalizedTaskDetail, TaskDetailChecklistOverrideDialog, TaskDetailShell, useOperatorTaskLinkedObjectNavigation, useTaskChecklistMutation, useTaskLinkedObjectNavigator } from '../../lib/tasks';
 import { useRentalOrg } from '../../rental/RentalContext';
 import {
   isActiveTaskStatus,
@@ -28,6 +28,7 @@ export function OperatorTaskDetail({ taskId, initialTask, onTaskUpdated, focusCo
   const [commentError, setCommentError] = useState<string | null>(null);
   const [completeNote, setCompleteNote] = useState('');
   const [showCompleteNote, setShowCompleteNote] = useState(false);
+  const [overrideOpen, setOverrideOpen] = useState(false);
 
   const handleChanged = useCallback(
     (updated: ApiTask) => {
@@ -37,8 +38,21 @@ export function OperatorTaskDetail({ taskId, initialTask, onTaskUpdated, focusCo
     [onTaskUpdated],
   );
 
-  const { mutating, start, waiting, complete, addComment, toggleChecklist } =
+  const { mutating, start, waiting, complete, addComment } =
     useOperatorTaskActions(handleChanged);
+
+  const normalizedTask = task && isNormalizedTaskDetail(task) ? task : null;
+
+  const { pendingItemIds, toggleItem } = useTaskChecklistMutation({
+    orgId,
+    task: normalizedTask,
+    onTaskUpdated: handleChanged,
+  });
+
+  const completionControl = useMemo(
+    () => (normalizedTask ? buildTaskCompletionControlModel(normalizedTask) : null),
+    [normalizedTask],
+  );
 
   const load = useCallback(async () => {
     if (!orgId) return;
@@ -76,7 +90,7 @@ export function OperatorTaskDetail({ taskId, initialTask, onTaskUpdated, focusCo
   }, [task]);
 
   const handleComplete = async () => {
-    if (!task) return;
+    if (!task || !completionControl?.enabled) return;
     if (taskRequiresResolutionNote(task.type) && !completeNote.trim()) {
       setShowCompleteNote(true);
       return;
@@ -89,6 +103,16 @@ export function OperatorTaskDetail({ taskId, initialTask, onTaskUpdated, focusCo
       setShowCompleteNote(false);
       setCompleteNote('');
     }
+  };
+
+  const handleOverrideConfirm = async (overrideReason: string) => {
+    if (!task) return;
+    const updated = await complete(task.id, {
+      overrideIncompleteChecklist: true,
+      overrideReason,
+      ...(completeNote.trim() ? { resolutionNote: completeNote.trim() } : {}),
+    });
+    if (updated) setOverrideOpen(false);
   };
 
   const handleAddComment = async () => {
@@ -166,13 +190,19 @@ export function OperatorTaskDetail({ taskId, initialTask, onTaskUpdated, focusCo
         )}
         <button
           type="button"
-          disabled={mutating || terminal}
+          disabled={mutating || terminal || !completionControl?.enabled}
+          title={completionControl?.disabledReason ?? undefined}
           onClick={() => void handleComplete()}
           className="sq-press min-h-[52px] flex-[2] rounded-2xl bg-[color:var(--status-success)] text-sm font-bold text-white disabled:opacity-50"
         >
           {mutating ? <Loader2 className="mx-auto h-5 w-5 animate-spin" /> : 'Erledigt markieren'}
         </button>
       </div>
+      {completionControl && !completionControl.enabled && completionControl.blockerSummary && (
+        <p className="mx-auto mt-2 max-w-lg px-1 text-center text-xs text-[color:var(--status-watch)]" role="status">
+          {completionControl.blockerSummary}
+        </p>
+      )}
     </div>
   ) : null;
 
@@ -187,8 +217,9 @@ export function OperatorTaskDetail({ taskId, initialTask, onTaskUpdated, focusCo
           bodyProps={{
             onPrimaryAction: handlePrimaryAction,
             onLinkedObjectClick: navigateLinkedObject,
-            checklistDisabled: !active || mutating,
-            onChecklistToggle: (itemId, isDone) => void toggleChecklist(task.id, itemId, isDone),
+            pendingChecklistItemIds: pendingItemIds,
+            onChecklistToggle: (itemId, isDone) => void toggleItem(itemId, isDone),
+            onChecklistOverride: completionControl?.canOverride ? () => setOverrideOpen(true) : undefined,
             commentDraft,
             onCommentDraftChange: setCommentDraft,
             onAddComment: () => void handleAddComment(),
@@ -212,6 +243,14 @@ export function OperatorTaskDetail({ taskId, initialTask, onTaskUpdated, focusCo
       </div>
 
       {actionFooter}
+
+      <TaskDetailChecklistOverrideDialog
+        open={overrideOpen}
+        onOpenChange={setOverrideOpen}
+        loading={mutating}
+        openRequiredTitles={completionControl?.openRequiredTitles ?? []}
+        onConfirm={handleOverrideConfirm}
+      />
 
       {terminal && (
         <p className="pb-4 text-center text-xs text-muted-foreground">

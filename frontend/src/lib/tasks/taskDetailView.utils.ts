@@ -11,9 +11,9 @@ import {
 import { resolveUserName, shortTaskId } from '../../rental/lib/task-list.utils';
 import { mapApiPriority, vehicleTaskPriorityLabel } from '../../rental/lib/task-display.utils';
 import { formatOperatorTaskDue } from '../../operator/tasks/operatorTask.utils';
+import { buildTaskDetailChecklistModel, type TaskDetailChecklistModel } from './taskDetailChecklist.utils';
 import type {
   ApiTask,
-  ApiTaskChecklistItem,
   ApiTaskDetail,
   ApiTaskPriority,
   ApiTaskStatus,
@@ -21,6 +21,8 @@ import type {
   TaskLinkedObject,
   TaskNextActionType,
 } from './types';
+
+export type { TaskDetailChecklistModel } from './taskDetailChecklist.utils';
 
 export interface TaskDetailViewMember {
   id: string;
@@ -67,13 +69,6 @@ export interface TaskDetailNextStepModel {
   enabled: boolean;
   disabledReason: string | null;
   primaryActionLabel: string | null;
-}
-
-export interface TaskDetailChecklistModel {
-  progress: TaskChecklistProgress;
-  items: ApiTaskChecklistItem[];
-  blocked: boolean;
-  blockerLabel: string | null;
 }
 
 export interface TaskDetailLinkedObjectModel {
@@ -364,27 +359,12 @@ export function buildTaskDetailViewModel(
   options: TaskDetailViewModelOptions = {},
 ): TaskDetailViewModel {
   const now = options.now ?? new Date();
-  const progress = detail.checklistProgress ?? inferTaskChecklistProgress(detail);
   const timing = resolveTimingLabel(detail, now);
   const priorityLabel =
     options.priorityLabel ??
     vehicleTaskPriorityLabel(mapApiPriority(detail.summary.priority));
 
-  const checklistItems = [...(detail.checklist ?? [])].sort(
-    (a, b) => a.sortOrder - b.sortOrder || a.title.localeCompare(b.title, 'de'),
-  );
-
-  const checklist =
-    progress.hasChecklist && checklistItems.length > 0
-      ? {
-          progress,
-          items: checklistItems,
-          blocked: !progress.canCompleteByChecklist && isActiveTaskStatus(detail.summary.status),
-          blockerLabel: progress.canCompleteByChecklist
-            ? null
-            : 'Offene Pflichtpunkte vor Abschluss',
-        }
-      : null;
+  const checklist = buildTaskDetailChecklistModel(detail, now);
 
   const members = options.orgMembers ?? [];
   const comments = (detail.comments ?? []).map((comment) => ({

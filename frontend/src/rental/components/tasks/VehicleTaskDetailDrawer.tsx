@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import { toast } from 'sonner';
 import { ConfirmDialog } from '../../../components/patterns';
 import { api, type ApiTask } from '../../../lib/api';
-import { buildTaskDetailViewModel, isNormalizedTaskDetail, TaskDetailShell, useRentalTaskLinkedObjectNavigation, useTaskLinkedObjectNavigator } from '../../../lib/tasks';
+import { buildTaskCompletionControlModel, buildTaskDetailViewModel, isNormalizedTaskDetail, TaskDetailChecklistOverrideDialog, TaskDetailShell, useRentalTaskLinkedObjectNavigation, useTaskChecklistMutation, useTaskLinkedObjectNavigator } from '../../../lib/tasks';
 import type { VehicleData } from '../../data/vehicles';
 import {
   formatTaskDate,
@@ -50,6 +50,7 @@ export function VehicleTaskDetailDrawer({
   const [actionError, setActionError] = useState<string | null>(null);
 
   const [completeOpen, setCompleteOpen] = useState(false);
+  const [overrideOpen, setOverrideOpen] = useState(false);
   const [resolutionNote, setResolutionNote] = useState('');
   const [resolutionError, setResolutionError] = useState<string | null>(null);
 
@@ -90,6 +91,7 @@ export function VehicleTaskDetailDrawer({
   useEffect(() => {
     if (!open) {
       setCompleteOpen(false);
+      setOverrideOpen(false);
       setCancelOpen(false);
       setResolutionNote('');
       setResolutionError(null);
@@ -144,6 +146,27 @@ export function VehicleTaskDetailDrawer({
     });
   }, [detail, orgMembers, vehicle]);
 
+  const normalizedDetail = detail && isNormalizedTaskDetail(detail) ? detail : null;
+
+  const handleDetailUpdated = useCallback(
+    (updated: ApiTask) => {
+      setDetail(updated);
+      onTaskUpdated(updated);
+    },
+    [onTaskUpdated],
+  );
+
+  const { pendingItemIds, toggleItem } = useTaskChecklistMutation({
+    orgId,
+    task: normalizedDetail,
+    onTaskUpdated: handleDetailUpdated,
+  });
+
+  const completionControl = useMemo(
+    () => (normalizedDetail ? buildTaskCompletionControlModel(normalizedDetail) : null),
+    [normalizedDetail],
+  );
+
   const handleStart = () => {
     if (!orgId || !detail) return;
     void runAction(() => api.tasks.start(orgId, detail.id), 'Aufgabe gestartet');
@@ -155,7 +178,7 @@ export function VehicleTaskDetailDrawer({
   };
 
   const handleCompleteClick = () => {
-    if (!detail) return;
+    if (!detail || !completionControl?.enabled) return;
     if (taskRequiresResolutionNote(detail.type)) {
       setResolutionNote(detail.resolutionNote ?? '');
       setResolutionError(null);
@@ -163,6 +186,20 @@ export function VehicleTaskDetailDrawer({
       return;
     }
     void runAction(() => api.tasks.complete(orgId!, detail.id), 'Aufgabe abgeschlossen');
+  };
+
+  const handleOverrideConfirm = async (overrideReason: string) => {
+    if (!orgId || !detail) return;
+    const updated = await runAction(
+      () =>
+        api.tasks.complete(orgId, detail.id, {
+          overrideIncompleteChecklist: true,
+          overrideReason,
+          ...(resolutionNote.trim() ? { resolutionNote: resolutionNote.trim() } : {}),
+        }),
+      'Aufgabe mit Override abgeschlossen',
+    );
+    if (updated) setOverrideOpen(false);
   };
 
   const handleCompleteConfirm = async () => {
@@ -183,14 +220,6 @@ export function VehicleTaskDetailDrawer({
     if (!orgId || !detail) return;
     const updated = await runAction(() => api.tasks.cancel(orgId, detail.id), 'Aufgabe storniert');
     if (updated) setCancelOpen(false);
-  };
-
-  const handleChecklistToggle = (itemId: string, isDone: boolean) => {
-    if (!orgId || !detail || isTerminalTaskStatus(detail.status)) return;
-    void runAction(
-      () => api.tasks.updateChecklistItem(orgId, detail.id, itemId, { isDone }),
-      isDone ? 'Checklistenpunkt erledigt' : 'Checklistenpunkt zurückgesetzt',
-    );
   };
 
   const handleSaveMeta = async () => {
@@ -297,13 +326,23 @@ export function VehicleTaskDetailDrawer({
         {isActiveTaskStatus(detail.status) && (
           <button
             type="button"
-            disabled={mutating}
+            disabled={mutating || !completionControl?.enabled}
+            title={completionControl?.disabledReason ?? undefined}
             onClick={handleCompleteClick}
             className="sq-press inline-flex items-center gap-1.5 rounded-lg border border-[color:var(--status-positive)]/30 bg-[color:var(--status-positive-soft)] px-3 py-2 text-[11px] font-semibold text-[color:var(--status-positive)] disabled:opacity-60"
           >
             <Icon name="check-circle" className="w-3.5 h-3.5" />
             Abschließen
           </button>
+        )}
+        {completionControl && !completionControl.enabled && completionControl.blockerSummary && (
+          <span
+            className="w-full text-[10px] text-[color:var(--status-watch)]"
+            role="status"
+            title={completionControl.disabledReason ?? undefined}
+          >
+            {completionControl.blockerSummary}
+          </span>
         )}
         <button
           type="button"
@@ -435,8 +474,9 @@ export function VehicleTaskDetailDrawer({
         bodyProps={{
           onPrimaryAction: handlePrimaryAction,
           onLinkedObjectClick: navigateLinkedObject,
-          checklistDisabled: mutating || !detail || isTerminalTaskStatus(detail?.status ?? 'DONE'),
-          onChecklistToggle: handleChecklistToggle,
+          pendingChecklistItemIds: pendingItemIds,
+          onChecklistToggle: (itemId, isDone) => void toggleItem(itemId, isDone),
+          onChecklistOverride: completionControl?.canOverride ? () => setOverrideOpen(true) : undefined,
           commentDraft,
           onCommentDraftChange: setCommentDraft,
           onAddComment: () => void handleAddComment(),
@@ -494,6 +534,14 @@ export function VehicleTaskDetailDrawer({
           <p className="mt-1 text-[10px] font-medium text-red-600 dark:text-red-400">{resolutionError}</p>
         )}
       </ConfirmDialog>
+
+      <TaskDetailChecklistOverrideDialog
+        open={overrideOpen}
+        onOpenChange={setOverrideOpen}
+        loading={mutating}
+        openRequiredTitles={completionControl?.openRequiredTitles ?? []}
+        onConfirm={handleOverrideConfirm}
+      />
 
       <ConfirmDialog
         open={cancelOpen}

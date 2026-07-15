@@ -5,10 +5,13 @@ import { Button } from '../../../components/ui/button';
 import { api, type ApiTask } from '../../../lib/api';
 import { getStoredUser } from '../../../lib/auth';
 import {
+  buildTaskCompletionControlModel,
   buildTaskDetailViewModel,
   isNormalizedTaskDetail,
+  TaskDetailChecklistOverrideDialog,
   TaskDetailShell,
   useRentalTaskLinkedObjectNavigation,
+  useTaskChecklistMutation,
   useTaskLinkedObjectNavigator,
 } from '../../../lib/tasks';
 import {
@@ -59,6 +62,7 @@ export function GlobalTaskDetailPanel({
   runTaskAction,
 }: GlobalTaskDetailPanelProps) {
   const [completeOpen, setCompleteOpen] = useState(false);
+  const [overrideOpen, setOverrideOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
   const [resolutionNote, setResolutionNote] = useState('');
@@ -70,6 +74,7 @@ export function GlobalTaskDetailPanel({
   useEffect(() => {
     if (!open) {
       setCompleteOpen(false);
+      setOverrideOpen(false);
       setCancelOpen(false);
       setAssignOpen(false);
       setResolutionNote('');
@@ -112,8 +117,21 @@ export function GlobalTaskDetailPanel({
     });
   }, [detail, orgMembers, taskRow]);
 
+  const normalizedDetail = detail && isNormalizedTaskDetail(detail) ? detail : null;
+
+  const { pendingItemIds, toggleItem } = useTaskChecklistMutation({
+    orgId,
+    task: normalizedDetail,
+    onTaskUpdated,
+  });
+
+  const completionControl = useMemo(
+    () => (normalizedDetail ? buildTaskCompletionControlModel(normalizedDetail) : null),
+    [normalizedDetail],
+  );
+
   const handleCompleteClick = () => {
-    if (!detail) return;
+    if (!detail || !completionControl?.enabled) return;
     if (taskRequiresResolutionNote(detail.type)) {
       setResolutionNote(detail.resolutionNote ?? '');
       setResolutionError(null);
@@ -123,6 +141,19 @@ export function GlobalTaskDetailPanel({
     void runTaskAction(() => api.tasks.complete(orgId!, detail.id)).then(() => {
       toast.success('Aufgabe abgeschlossen');
     });
+  };
+
+  const handleOverrideConfirm = async (overrideReason: string) => {
+    if (!orgId || !detail) return;
+    await runTaskAction(() =>
+      api.tasks.complete(orgId, detail.id, {
+        overrideIncompleteChecklist: true,
+        overrideReason,
+        ...(resolutionNote.trim() ? { resolutionNote: resolutionNote.trim() } : {}),
+      }),
+    );
+    setOverrideOpen(false);
+    toast.success('Aufgabe mit Override abgeschlossen');
   };
 
   const handleCompleteConfirm = async () => {
@@ -198,10 +229,26 @@ export function GlobalTaskDetailPanel({
           </Button>
         )}
         {isActiveTaskStatus(detail.status) && (
-          <Button type="button" variant="success" size="sm" disabled={mutating} onClick={handleCompleteClick}>
+          <Button
+            type="button"
+            variant="success"
+            size="sm"
+            disabled={mutating || !completionControl?.enabled}
+            title={completionControl?.disabledReason ?? undefined}
+            onClick={handleCompleteClick}
+          >
             <Icon name="check-circle" className="h-3.5 w-3.5" />
             Abschließen
           </Button>
+        )}
+        {completionControl && !completionControl.enabled && completionControl.blockerSummary && (
+          <span
+            className="w-full text-[10px] text-[color:var(--status-watch)]"
+            role="status"
+            title={completionControl.disabledReason ?? undefined}
+          >
+            {completionControl.blockerSummary}
+          </span>
         )}
         <Button
           type="button"
@@ -231,13 +278,9 @@ export function GlobalTaskDetailPanel({
         bodyProps={{
           onPrimaryAction: handlePrimaryAction,
           onLinkedObjectClick: navigateLinkedObject,
-          checklistDisabled: mutating || !detail || isTerminalTaskStatus(detail.status),
-          onChecklistToggle: (itemId, isDone) => {
-            if (!orgId || !detail) return;
-            void runTaskAction(() =>
-              api.tasks.updateChecklistItem(orgId, detail.id, itemId, { isDone }),
-            );
-          },
+          pendingChecklistItemIds: pendingItemIds,
+          onChecklistToggle: (itemId, isDone) => void toggleItem(itemId, isDone),
+          onChecklistOverride: completionControl?.canOverride ? () => setOverrideOpen(true) : undefined,
           commentDraft,
           onCommentDraftChange: setCommentDraft,
           onAddComment: () => void handleAddComment(),
@@ -304,6 +347,14 @@ export function GlobalTaskDetailPanel({
           <p className="mt-1 text-[10px] font-medium text-[color:var(--status-critical)]">{resolutionError}</p>
         ) : null}
       </ConfirmDialog>
+
+      <TaskDetailChecklistOverrideDialog
+        open={overrideOpen}
+        onOpenChange={setOverrideOpen}
+        loading={mutating}
+        openRequiredTitles={completionControl?.openRequiredTitles ?? []}
+        onConfirm={handleOverrideConfirm}
+      />
 
       <ConfirmDialog
         open={cancelOpen}

@@ -16,6 +16,7 @@ import {
 import { PriorityBadge, SectionHeader, StatusChip, Timeline } from '../../../components/patterns';
 import { cn } from '../../../components/ui/utils';
 import type { TaskDetailLinkedObjectModel, TaskDetailViewModel } from '../taskDetailView.utils';
+import { TaskDetailChecklistSection } from './TaskDetailChecklistSection';
 
 export interface TaskDetailBodyProps {
   model: TaskDetailViewModel;
@@ -29,6 +30,8 @@ export interface TaskDetailBodyProps {
   onPrimaryAction?: () => void;
   onLinkedObjectClick?: (object: TaskDetailLinkedObjectModel) => void;
   onChecklistToggle?: (itemId: string, isDone: boolean) => void;
+  pendingChecklistItemIds?: ReadonlySet<string>;
+  onChecklistOverride?: () => void;
   checklistDisabled?: boolean;
   commentDraft?: string;
   onCommentDraftChange?: (value: string) => void;
@@ -50,6 +53,8 @@ export function TaskDetailBody({
   onPrimaryAction,
   onLinkedObjectClick,
   onChecklistToggle,
+  pendingChecklistItemIds,
+  onChecklistOverride,
   checklistDisabled = false,
   commentDraft = '',
   onCommentDraftChange,
@@ -87,10 +92,11 @@ export function TaskDetailBody({
         />
         {model.checklist && (
           <TaskDetailChecklistSection
-            model={model}
+            checklist={model.checklist}
             mobile={mobile}
-            disabled={checklistDisabled}
-            onToggle={onChecklistToggle}
+            pendingItemIds={pendingChecklistItemIds}
+            onToggle={checklistDisabled ? undefined : onChecklistToggle}
+            onRequestOverride={onChecklistOverride}
           />
         )}
         <TaskDetailLinkedObjectsSection
@@ -305,108 +311,6 @@ function TaskDetailNextStepSection({
             )}
           </div>
         )}
-      </div>
-    </section>
-  );
-}
-
-function TaskDetailChecklistSection({
-  model,
-  mobile,
-  disabled,
-  onToggle,
-}: {
-  model: TaskDetailViewModel;
-  mobile: boolean;
-  disabled?: boolean;
-  onToggle?: (itemId: string, isDone: boolean) => void;
-}) {
-  const checklist = model.checklist;
-  if (!checklist) return null;
-
-  const { progress, items, blocked, blockerLabel } = checklist;
-  const requiredOpen = progress.remainingRequiredItems;
-
-  return (
-    <section className="py-4" data-section="checklist">
-      <SectionHeader
-        as="label"
-        title="Checkliste"
-        description={
-          progress.requiredItems > 0
-            ? `${progress.completedRequiredItems} von ${progress.requiredItems} Pflichtpunkten erledigt`
-            : `${progress.completedItems} von ${progress.totalItems} Punkten erledigt`
-        }
-        className="mb-2.5"
-      />
-
-      {progress.requiredItems > 0 && (
-        <div className="mb-3">
-          <div className="mb-1 flex items-center justify-between text-[11px] text-muted-foreground">
-            <span>Fortschritt</span>
-            <span>{progress.progressPercent ?? 0}%</span>
-          </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-muted">
-            <div
-              className="h-full rounded-full bg-[color:var(--status-positive)] transition-all"
-              style={{ width: `${progress.progressPercent ?? 0}%` }}
-            />
-          </div>
-        </div>
-      )}
-
-      {blocked && blockerLabel && (
-        <p
-          className={cn(
-            'mb-3 rounded-lg border border-[color:var(--status-watch)]/30 bg-[color:var(--status-watch)]/[0.06] px-3 py-2 text-[color:var(--status-watch)]',
-            mobile ? 'text-xs' : 'text-[11px]',
-          )}
-        >
-          {blockerLabel}
-          {requiredOpen > 0 ? ` (${requiredOpen} offen)` : ''}
-        </p>
-      )}
-
-      <div className="space-y-1.5">
-        {items.map((item) => (
-          <label
-            key={item.id}
-            className={cn(
-              'flex items-start gap-2.5 rounded-lg border px-3 py-2.5 transition-colors',
-              item.isDone
-                ? 'border-border/50 bg-muted/20'
-                : 'border-border bg-muted/10',
-              disabled || !onToggle ? 'opacity-70' : 'cursor-pointer',
-            )}
-          >
-            <input
-              type="checkbox"
-              checked={item.isDone}
-              disabled={disabled || !onToggle}
-              onChange={(event) => onToggle?.(item.id, event.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-[color:var(--status-positive)]"
-            />
-            <span className="min-w-0 flex-1">
-              <span
-                className={cn(
-                  'block font-medium',
-                  mobile ? 'text-sm' : 'text-[12px]',
-                  item.isDone ? 'text-muted-foreground line-through' : 'text-foreground',
-                )}
-              >
-                {item.title}
-              </span>
-              {item.description?.trim() && (
-                <span className={cn('mt-0.5 block text-muted-foreground', mobile ? 'text-xs' : 'text-[11px]')}>
-                  {item.description}
-                </span>
-              )}
-              <span className={cn('mt-1 inline-block text-muted-foreground', mobile ? 'text-[10px]' : 'text-[10px]')}>
-                {item.isRequired ? 'Pflicht' : 'Optional'}
-              </span>
-            </span>
-          </label>
-        ))}
       </div>
     </section>
   );
