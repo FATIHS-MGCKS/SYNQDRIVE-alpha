@@ -20,7 +20,6 @@ import type { OperatorTodayBucketSlice } from '../hooks/operatorTodayFeed.utils'
 import { useOperatorOperationalAlerts } from '../hooks/useOperatorOperationalAlerts';
 import { OperatorBookingCard } from '../components/OperatorBookingCard';
 import { OperatorBookingDetailSheet } from '../components/OperatorBookingDetailSheet';
-import { OperatorBookingTaskGroupCard } from '../components/OperatorBookingTaskGroupCard';
 import { OperatorListCard } from '../components/OperatorListCard';
 import { OperatorTodaySection } from '../components/OperatorTodaySection';
 import { OperatorTabletFrame } from '../components/OperatorTabletFrame';
@@ -29,6 +28,7 @@ import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
 import type { OperatorTodayBookingItem, OperatorTodayTaskEntry } from '../lib/operatorData';
 import { toHandoverBookingSeed } from '../lib/operatorData';
 import { OperatorTaskCard } from '../tasks/OperatorTaskCard';
+import { buildFleetVehicleById } from '../tasks/operatorTaskDisplay.utils';
 import { useOperatorTaskActions } from '../tasks/useOperatorTaskActions';
 
 const TASK_BUCKET_SECTIONS: Array<{
@@ -97,13 +97,7 @@ export function OperatorTodayView() {
     void reload();
   });
 
-  const vehicleMap = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const vehicle of fleetVehicles) {
-      map.set(vehicle.id, vehicle.license || vehicle.model);
-    }
-    return map;
-  }, [fleetVehicles]);
+  const vehicleById = useMemo(() => buildFleetVehicleById(fleetVehicles), [fleetVehicles]);
 
   const openTask = useCallback(
     (task: ApiTask, focusComment = false) => {
@@ -116,14 +110,6 @@ export function OperatorTodayView() {
       });
     },
     [openSheet, reload],
-  );
-
-  const openBookingTaskGroup = useCallback(
-    (bookingId: string) => {
-      setPendingTasksBookingId(bookingId);
-      setActiveTab('tasks');
-    },
-    [setActiveTab, setPendingTasksBookingId],
   );
 
   const handleQuickComplete = useCallback(
@@ -149,37 +135,19 @@ export function OperatorTodayView() {
   );
 
   const renderTaskEntry = useCallback(
-    (entry: OperatorTodayTaskEntry) => {
-      if (entry.kind === 'booking-group') {
-        return (
-          <OperatorBookingTaskGroupCard
-            key={`group-${entry.bookingId}`}
-            bookingId={entry.bookingId}
-            tasks={entry.tasks}
-            vehicleLabel={entry.vehicleId ? vehicleMap.get(entry.vehicleId) ?? null : null}
-            bookingLabel={`Buchung ${entry.bookingId.slice(0, 8)}…`}
-            disabled={mutating}
-            onOpen={() => openBookingTaskGroup(entry.bookingId)}
-          />
-        );
-      }
-      return (
-        <OperatorTaskCard
-          key={entry.task.id}
-          task={entry.task}
-          vehicleLabel={entry.task.vehicleId ? vehicleMap.get(entry.task.vehicleId) ?? null : null}
-          bookingLabel={
-            entry.task.bookingId ? `Buchung ${entry.task.bookingId.slice(0, 8)}…` : null
-          }
-          disabled={mutating}
-          onOpen={() => openTask(entry.task)}
-          onStart={() => void start(entry.task.id)}
-          onComplete={() => void handleQuickComplete(entry.task)}
-          onComment={() => openTask(entry.task, true)}
-        />
-      );
-    },
-    [handleQuickComplete, mutating, openBookingTaskGroup, openTask, start, vehicleMap],
+    (entry: OperatorTodayTaskEntry) => (
+      <OperatorTaskCard
+        key={entry.task.id}
+        task={entry.task}
+        vehicleById={vehicleById}
+        disabled={mutating}
+        onOpen={() => openTask(entry.task)}
+        onStart={() => void start(entry.task.id)}
+        onComplete={() => void handleQuickComplete(entry.task)}
+        onComment={() => openTask(entry.task, true)}
+      />
+    ),
+    [handleQuickComplete, mutating, openTask, start, vehicleById],
   );
 
   const renderBucketSection = useCallback(
@@ -380,7 +348,7 @@ export function OperatorTodayView() {
                   <OperatorTaskCard
                     key={`check-${task.id}`}
                     task={task}
-                    vehicleLabel={task.vehicleId ? vehicleMap.get(task.vehicleId) ?? null : null}
+                    vehicleById={vehicleById}
                     disabled={mutating}
                     onOpen={() => openTask(task)}
                     onStart={() => void start(task.id)}

@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { ApiTask } from '../../lib/api';
-import { buildOperatorTodayTaskEntries } from './operatorTodayTasks';
+import {
+  buildOperatorTodayTaskEntries,
+  filterCanonicalOperatorTasks,
+} from './operatorTodayTasks';
 
 function task(partial: Partial<ApiTask> & Pick<ApiTask, 'id' | 'title' | 'type'>): ApiTask {
   return {
@@ -39,18 +42,21 @@ function task(partial: Partial<ApiTask> & Pick<ApiTask, 'id' | 'title' | 'type'>
 }
 
 describe('buildOperatorTodayTaskEntries', () => {
-  it('groups booking lifecycle triplets by bookingId', () => {
+  it('renders one card per backend task without booking-level grouping', () => {
     const entries = buildOperatorTodayTaskEntries([
       task({ id: '1', title: 'Buchung vorbereiten', type: 'BOOKING_PREPARATION', bookingId: 'b1' }),
       task({ id: '2', title: 'Fahrzeug reinigen', type: 'VEHICLE_CLEANING', bookingId: 'b1' }),
-      task({ id: '3', title: 'Buchungsdokumente prüfen', type: 'DOCUMENT_REVIEW', bookingId: 'b1' }),
+      task({
+        id: '3',
+        title: 'Buchungsdokumente prüfen',
+        type: 'DOCUMENT_REVIEW',
+        bookingId: 'b1',
+        dedupKey: 'document:package:CONFIRMED:b1',
+      }),
     ]);
 
-    expect(entries).toHaveLength(1);
-    expect(entries[0]?.kind).toBe('booking-group');
-    if (entries[0]?.kind === 'booking-group') {
-      expect(entries[0].tasks).toHaveLength(3);
-    }
+    expect(entries).toHaveLength(3);
+    expect(entries.every((entry) => entry.kind === 'task')).toBe(true);
   });
 
   it('keeps standalone tasks separate', () => {
@@ -59,5 +65,28 @@ describe('buildOperatorTodayTaskEntries', () => {
     ]);
     expect(entries).toHaveLength(1);
     expect(entries[0]?.kind).toBe('task');
+  });
+});
+
+describe('filterCanonicalOperatorTasks', () => {
+  it('hides legacy per-type document tasks when a package task exists', () => {
+    const filtered = filterCanonicalOperatorTasks([
+      task({
+        id: 'package',
+        title: 'Buchungsdokumente prüfen',
+        type: 'DOCUMENT_REVIEW',
+        bookingId: 'b1',
+        dedupKey: 'document:package:CONFIRMED:b1',
+      }),
+      task({
+        id: 'legacy',
+        title: 'Mietvertrag prüfen',
+        type: 'DOCUMENT_REVIEW',
+        bookingId: 'b1',
+        dedupKey: 'document:RENTAL_CONTRACT:b1',
+      }),
+    ]);
+
+    expect(filtered.map((row) => row.id)).toEqual(['package']);
   });
 });

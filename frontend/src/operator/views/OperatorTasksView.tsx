@@ -3,6 +3,7 @@ import { ListTodo, Plus } from 'lucide-react';
 import type { ApiTask, ApiTaskPriority } from '../../lib/api';
 import { api } from '../../lib/api';
 import { EmptyState, ErrorState, SkeletonRows } from '../../components/patterns';
+import { bookingRef } from '../../rental/components/bookings/bookingUtils';
 import { useFleetVehicles } from '../../rental/FleetContext';
 import { useRentalOrg } from '../../rental/RentalContext';
 import { useOperatorData } from '../context/OperatorDataContext';
@@ -11,6 +12,11 @@ import { OperatorTabletFrame } from '../components/OperatorTabletFrame';
 import { useOperatorTabletLayout } from '../hooks/useOperatorTabletLayout';
 import { OperatorTaskCard } from '../tasks/OperatorTaskCard';
 import { OperatorTaskDetail } from '../tasks/OperatorTaskDetail';
+import { filterCanonicalOperatorTasks } from '../tasks/operatorTodayTasks';
+import {
+  buildFleetVehicleById,
+  formatFleetVehicleLabel,
+} from '../tasks/operatorTaskDisplay.utils';
 import {
   buildTaskListApiFilters,
   DEFAULT_OPERATOR_TASK_FILTERS,
@@ -80,29 +86,32 @@ export function OperatorTasksView() {
     void fetchRemoteTasks();
   }, [fetchRemoteTasks]);
 
-  const vehicleMap = useMemo(() => {
-    const m = new Map<string, string>();
-    for (const v of fleetVehicles) m.set(v.id, v.license || v.model);
-    return m;
-  }, [fleetVehicles]);
+  const vehicleById = useMemo(() => buildFleetVehicleById(fleetVehicles), [fleetVehicles]);
 
   const sourceTasks = remoteTasks ?? tasks;
+  const canonicalTasks = useMemo(
+    () => filterCanonicalOperatorTasks(sourceTasks),
+    [sourceTasks],
+  );
 
   const vehicleOptions = useMemo(() => {
     const ids = new Set<string>();
-    for (const t of sourceTasks) if (t.vehicleId) ids.add(t.vehicleId);
-    return [...ids].map((id) => ({ id, label: vehicleMap.get(id) ?? id.slice(0, 8) }));
-  }, [sourceTasks, vehicleMap]);
+    for (const t of canonicalTasks) if (t.vehicleId) ids.add(t.vehicleId);
+    return [...ids].map((id) => ({
+      id,
+      label: formatFleetVehicleLabel(vehicleById.get(id)) ?? 'Fahrzeug',
+    }));
+  }, [canonicalTasks, vehicleById]);
 
   const bookingOptions = useMemo(() => {
     const ids = new Set<string>();
-    for (const t of sourceTasks) if (t.bookingId) ids.add(t.bookingId);
+    for (const t of canonicalTasks) if (t.bookingId) ids.add(t.bookingId);
     return [...ids];
-  }, [sourceTasks]);
+  }, [canonicalTasks]);
 
   const filtered = useMemo(
-    () => filterOperatorTasks(sourceTasks, filters, userId),
-    [sourceTasks, filters, userId],
+    () => filterOperatorTasks(canonicalTasks, filters, userId),
+    [canonicalTasks, filters, userId],
   );
 
   const selectedTask =
@@ -176,7 +185,7 @@ export function OperatorTasksView() {
       {filters.bookingId && (
         <div className="flex items-center justify-between gap-2 rounded-xl border border-border surface-premium px-3 py-2">
           <p className="text-xs text-foreground">
-            Buchung <span className="font-mono">{filters.bookingId.slice(0, 8)}…</span>
+            Buchung <span className="font-mono">{bookingRef(filters.bookingId)}</span>
           </p>
           <button
             type="button"
@@ -198,7 +207,7 @@ export function OperatorTasksView() {
             today: 'Heute',
             overdue: 'Überfällig',
             vehicle: filters.vehicleId
-              ? vehicleMap.get(filters.vehicleId) ?? 'Fahrzeug'
+              ? formatFleetVehicleLabel(vehicleById.get(filters.vehicleId)) ?? 'Fahrzeug'
               : 'Fahrzeug',
             booking: filters.bookingId ? 'Buchung ✓' : 'Buchung',
           };
@@ -288,8 +297,7 @@ export function OperatorTasksView() {
             <OperatorTaskCard
               key={task.id}
               task={task}
-              vehicleLabel={task.vehicleId ? vehicleMap.get(task.vehicleId) : null}
-              bookingLabel={task.bookingId ? `Buchung ${task.bookingId.slice(0, 8)}…` : null}
+              vehicleById={vehicleById}
               disabled={mutating}
               onOpen={() => {
                 setFocusComment(false);

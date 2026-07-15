@@ -1,12 +1,6 @@
 import type { ApiTask } from '../../lib/api';
 import { sortOperatorTasks } from './operatorTask.utils';
 
-export const BOOKING_LIFECYCLE_TASK_TYPES = new Set<ApiTask['type']>([
-  'BOOKING_PREPARATION',
-  'VEHICLE_CLEANING',
-  'DOCUMENT_REVIEW',
-]);
-
 export const VEHICLE_CHECK_TASK_TYPES = new Set<ApiTask['type']>([
   'VEHICLE_INSPECTION',
   'TIRE_CHECK',
@@ -14,65 +8,51 @@ export const VEHICLE_CHECK_TASK_TYPES = new Set<ApiTask['type']>([
   'BATTERY_CHECK',
 ]);
 
-export type OperatorTodayTaskEntry =
-  | { kind: 'task'; task: ApiTask }
-  | { kind: 'booking-group'; bookingId: string; tasks: ApiTask[]; vehicleId: string | null };
+export type OperatorTodayTaskEntry = { kind: 'task'; task: ApiTask };
 
-const LIFECYCLE_STEP_LABEL: Partial<Record<ApiTask['type'], string>> = {
-  BOOKING_PREPARATION: 'Vorbereiten',
-  VEHICLE_CLEANING: 'Reinigen',
-  DOCUMENT_REVIEW: 'Dokumente',
-};
-
-export function bookingLifecycleStepLabel(type: ApiTask['type']): string {
-  return LIFECYCLE_STEP_LABEL[type] ?? type;
+export function isAggregatedDocumentPackageTask(task: ApiTask): boolean {
+  return task.type === 'DOCUMENT_REVIEW' && Boolean(task.dedupKey?.startsWith('document:package:'));
 }
 
-export function buildOperatorTodayTaskEntries(tasks: ApiTask[]): OperatorTodayTaskEntry[] {
-  const sorted = sortOperatorTasks(tasks);
-  const groupsByBooking = new Map<string, ApiTask[]>();
+export function isLegacyPerTypeDocumentTask(task: ApiTask): boolean {
+  if (!task.dedupKey || task.dedupKey.startsWith('document:package:')) return false;
+  return /^document:[^:]+:/.test(task.dedupKey);
+}
 
-  for (const task of sorted) {
-    if (!task.bookingId || !BOOKING_LIFECYCLE_TASK_TYPES.has(task.type)) continue;
-    const group = groupsByBooking.get(task.bookingId) ?? [];
-    group.push(task);
-    groupsByBooking.set(task.bookingId, group);
-  }
-
-  const entries: OperatorTodayTaskEntry[] = [];
-  const emittedBookings = new Set<string>();
-
-  for (const task of sorted) {
-    const bookingId = task.bookingId;
-    if (bookingId && BOOKING_LIFECYCLE_TASK_TYPES.has(task.type)) {
-      if (emittedBookings.has(bookingId)) continue;
-      emittedBookings.add(bookingId);
-      const group = sortOperatorTasks(groupsByBooking.get(bookingId) ?? [task]);
-      if (group.length >= 2) {
-        entries.push({
-          kind: 'booking-group',
-          bookingId,
-          tasks: group,
-          vehicleId: group.find((row) => row.vehicleId)?.vehicleId ?? null,
-        });
-      } else if (group[0]) {
-        entries.push({ kind: 'task', task: group[0] });
-      }
-      continue;
+/** Hide legacy per-type document tasks when a canonical package task exists for the booking. */
+export function filterCanonicalOperatorTasks(tasks: ApiTask[]): ApiTask[] {
+  const bookingsWithPackageTask = new Set<string>();
+  for (const task of tasks) {
+    if (isAggregatedDocumentPackageTask(task) && task.bookingId) {
+      bookingsWithPackageTask.add(task.bookingId);
     }
-    entries.push({ kind: 'task', task });
   }
 
-  return entries;
+  return tasks.filter((task) => {
+    if (
+      isLegacyPerTypeDocumentTask(task) &&
+      task.bookingId &&
+      bookingsWithPackageTask.has(task.bookingId)
+    ) {
+      return false;
+    }
+    return true;
+  });
 }
 
-export function summarizeBookingTaskGroup(tasks: ApiTask[]): string {
-  return tasks.map((task) => bookingLifecycleStepLabel(task.type)).join(' · ');
+/** One card per backend task — no booking-level UI grouping. */
+export function buildOperatorTodayTaskEntries(tasks: ApiTask[]): OperatorTodayTaskEntry[] {
+  return sortOperatorTasks(filterCanonicalOperatorTasks(tasks)).map((task) => ({
+    kind: 'task',
+    task,
+  }));
 }
 
 export function isVehicleCheckTask(task: ApiTask): boolean {
   return (
     (VEHICLE_CHECK_TASK_TYPES.has(task.type) || task.blocksVehicleAvailability) &&
-    !BOOKING_LIFECYCLE_TASK_TYPES.has(task.type)
+    task.type !== 'BOOKING_PREPARATION' &&
+    task.type !== 'DOCUMENT_REVIEW' &&
+    task.type !== 'VEHICLE_CLEANING'
   );
 }

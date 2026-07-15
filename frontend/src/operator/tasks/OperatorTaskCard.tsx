@@ -8,11 +8,16 @@ import {
 } from '../../rental/lib/task-detail.utils';
 import { OperatorGlassCard } from '../components/OperatorGlassCard';
 import { formatOperatorTaskDue } from './operatorTask.utils';
+import {
+  buildOperatorTaskDisplayModel,
+  type FleetVehicleLookup,
+  type OperatorTaskDisplayModel,
+} from './operatorTaskDisplay.utils';
 
 interface Props {
   task: ApiTask;
-  vehicleLabel?: string | null;
-  bookingLabel?: string | null;
+  vehicleById?: Map<string, FleetVehicleLookup>;
+  display?: OperatorTaskDisplayModel;
   onOpen: () => void;
   onStart?: () => void;
   onComplete?: () => void;
@@ -22,17 +27,19 @@ interface Props {
 
 export function OperatorTaskCard({
   task,
-  vehicleLabel,
-  bookingLabel,
+  vehicleById,
+  display: displayOverride,
   onOpen,
   onStart,
   onComplete,
   onComment,
   disabled,
 }: Props) {
+  const display = displayOverride ?? buildOperatorTaskDisplayModel(task, { vehicleById });
   const terminal = isTerminalTaskStatus(task.status);
   const canStart = !terminal && (task.status === 'OPEN' || task.status === 'WAITING');
   const canComplete = !terminal && task.status !== 'DONE';
+  const contextLine = [display.vehicleLine, display.bookingLine].filter(Boolean).join(' · ');
 
   return (
     <OperatorGlassCard className="overflow-hidden p-0">
@@ -56,10 +63,20 @@ export function OperatorTaskCard({
             </span>
           )}
         </div>
-        {(vehicleLabel || bookingLabel) && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            {[vehicleLabel, bookingLabel].filter(Boolean).join(' · ')}
-          </p>
+        {contextLine && <p className="mt-2 text-xs text-muted-foreground">{contextLine}</p>}
+        {display.subpoints.length > 0 && (
+          <ul className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+            {display.subpoints.map((label) => (
+              <li key={label} className="line-clamp-1">
+                · {label}
+              </li>
+            ))}
+            {display.overflowCount > 0 && (
+              <li className="text-[11px] font-medium text-muted-foreground/90">
+                + {display.overflowCount} weitere
+              </li>
+            )}
+          </ul>
         )}
       </button>
 

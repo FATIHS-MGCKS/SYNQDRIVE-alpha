@@ -7,6 +7,7 @@ import {
   mergeOperatorTodayActionableTasks,
   bucketCount,
 } from './operatorTodayFeed.utils';
+import { matchesTaskListInvalidation } from '../../lib/tasks/invalidate';
 
 function task(partial: Partial<ApiTask> & Pick<ApiTask, 'id'>): ApiTask {
   return {
@@ -105,6 +106,12 @@ describe('operatorTodayFeed.utils', () => {
     expect(buckets).toContain('PLANNED');
     expect(buckets).toContain('ALL_OPEN');
     expect(buckets).toContain('NOW');
+    expect(
+      matchesTaskListInvalidation({ orgId: 'org-1', buckets, lists: true }, 'org-1', 'PLANNED'),
+    ).toBe(true);
+    expect(
+      matchesTaskListInvalidation({ orgId: 'org-1', buckets, lists: true }, 'org-1', 'COMPLETED'),
+    ).toBe(false);
   });
 });
 
