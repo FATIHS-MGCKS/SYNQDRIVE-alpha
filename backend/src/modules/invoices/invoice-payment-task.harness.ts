@@ -8,6 +8,7 @@ import { TasksService } from '@modules/tasks/tasks.service';
 import { createInvoiceTestStore, type InvoiceTestStore } from './invoices-test-store';
 import { InvoiceNumberService } from './invoice-number.service';
 import { InvoicePaymentTaskService } from './invoice-payment-task.service';
+import { createNoopTaskAutomationOutboxDeps } from '@modules/tasks/outbox/task-automation-outbox-test.util';
 import { InvoicesService } from './invoices.service';
 import { invoicePaymentCheckDedupKey } from './invoice-payment-task.util';
 
@@ -28,7 +29,13 @@ export function createInvoicePaymentTaskHarness(): InvoicePaymentTaskHarness {
   } as unknown as TaskLinkedObjectResolverService;
 
   const tasks = new TasksService(prisma, activityLog, linkedObjectResolver);
-  const invoicePaymentTasks = new InvoicePaymentTaskService(prisma, tasks);
+  const { outboxEnqueue, outboxContext } = createNoopTaskAutomationOutboxDeps();
+  const invoicePaymentTasks = new InvoicePaymentTaskService(
+    prisma,
+    tasks,
+    outboxEnqueue,
+    outboxContext,
+  );
   const invoiceNumbers = new InvoiceNumberService(prisma);
   const invoices = new InvoicesService(prisma, invoiceNumbers, invoicePaymentTasks);
 

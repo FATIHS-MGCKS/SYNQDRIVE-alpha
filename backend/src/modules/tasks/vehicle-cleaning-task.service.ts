@@ -5,6 +5,10 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from './tasks.service';
 import { checklistForType } from './task-templates';
 import type { BookingLifecycleTaskInput } from './task-automation.service';
+import { TaskAutomationOutboxEnqueueService } from './outbox/task-automation-outbox-enqueue.service';
+import { TaskAutomationOutboxExecutionContext } from './outbox/task-automation-outbox-execution.context';
+import { buildOutboxMeta } from './outbox/task-automation-outbox-meta.util';
+import { sanitizeAutomationError } from './outbox/task-automation-outbox-error.util';
 import { computeBookingPreparationTiming } from './booking-preparation-timing.util';
 import {
   buildVehicleCleaningMetadata,
@@ -35,7 +39,21 @@ export class VehicleCleaningTaskService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tasks: TasksService,
+    private readonly outboxEnqueue: TaskAutomationOutboxEnqueueService,
+    private readonly outboxContext: TaskAutomationOutboxExecutionContext,
   ) {}
+
+  private async handleAutomationFailure(
+    meta: Parameters<TaskAutomationOutboxEnqueueService['enqueueFailure']>[0],
+    err: unknown,
+    logMessage: string,
+  ): Promise<void> {
+    if (this.outboxContext.fromOutbox) {
+      throw err instanceof Error ? err : new Error(sanitizeAutomationError(err));
+    }
+    await this.outboxEnqueue.enqueueFailure(meta, err);
+    this.logger.warn(logMessage);
+  }
 
   /**
    * Ensures exactly one active cleaning task exists when the vehicle is marked
@@ -71,8 +89,19 @@ export class VehicleCleaningTaskService {
         now: options?.now,
       });
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.warn(`syncBookingPreparationContext(${booking.id}) failed: ${message}`);
+      await this.handleAutomationFailure(
+        buildOutboxMeta({
+          organizationId: booking.organizationId,
+          ruleId: 'vehicle.cleaning.booking.sync',
+          ruleVersion: 1,
+          entityType: 'VEHICLE',
+          entityId: booking.vehicleId,
+          operation: 'SYNC_VEHICLE_CLEANING_BOOKING',
+          payload: { bookingId: booking.id, vehicleId: booking.vehicleId },
+        }),
+        err,
+        `syncBookingPreparationContext(${booking.id}) failed: ${sanitizeAutomationError(err)}`,
+      );
       return { action: 'none' };
     }
   }
@@ -114,8 +143,19 @@ export class VehicleCleaningTaskService {
         }
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.warn(`onBookingCancelled(${bookingId}) failed: ${message}`);
+      await this.handleAutomationFailure(
+        buildOutboxMeta({
+          organizationId: orgId,
+          ruleId: 'vehicle.cleaning.cancel',
+          ruleVersion: 1,
+          entityType: 'VEHICLE',
+          entityId: vehicleId,
+          operation: 'VEHICLE_CLEANING_ON_CANCEL',
+          payload: { bookingId, vehicleId },
+        }),
+        err,
+        `onBookingCancelled(${bookingId}) failed: ${sanitizeAutomationError(err)}`,
+      );
     }
   }
 
@@ -165,8 +205,23 @@ export class VehicleCleaningTaskService {
         await this.syncBookingPreparationContext(booking, options);
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.warn(`onBookingVehicleChanged(${booking.id}) failed: ${message}`);
+      await this.handleAutomationFailure(
+        buildOutboxMeta({
+          organizationId: booking.organizationId,
+          ruleId: 'vehicle.cleaning.vehicle_change',
+          ruleVersion: 1,
+          entityType: 'VEHICLE',
+          entityId: booking.vehicleId,
+          operation: 'VEHICLE_CLEANING_ON_VEHICLE_CHANGE',
+          payload: {
+            bookingId: booking.id,
+            vehicleId: booking.vehicleId,
+            previousVehicleId: previousVehicleId,
+          },
+        }),
+        err,
+        `onBookingVehicleChanged(${booking.id}) failed: ${sanitizeAutomationError(err)}`,
+      );
     }
   }
 

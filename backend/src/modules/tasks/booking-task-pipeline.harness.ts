@@ -5,6 +5,7 @@ import { TaskAutomationService } from './task-automation.service';
 import { VehicleCleaningTaskService } from './vehicle-cleaning-task.service';
 import { TasksService } from './tasks.service';
 import { createBookingTaskTestStore, type BookingTaskTestStore } from './booking-task-test-store';
+import { createNoopTaskAutomationOutboxDeps } from './outbox/task-automation-outbox-test.util';
 
 export interface BookingTaskPipelineHarness {
   store: BookingTaskTestStore;
@@ -25,8 +26,20 @@ export function createBookingTaskPipelineHarness(options?: {
   } as unknown as TaskLinkedObjectResolverService;
 
   const tasks = new TasksService(prisma, activityLog, linkedObjectResolver);
-  const vehicleCleaningTasks = new VehicleCleaningTaskService(prisma, tasks);
-  const automation = new TaskAutomationService(tasks, prisma, vehicleCleaningTasks);
+  const { outboxEnqueue, outboxContext } = createNoopTaskAutomationOutboxDeps();
+  const vehicleCleaningTasks = new VehicleCleaningTaskService(
+    prisma,
+    tasks,
+    outboxEnqueue,
+    outboxContext,
+  );
+  const automation = new TaskAutomationService(
+    tasks,
+    prisma,
+    vehicleCleaningTasks,
+    outboxEnqueue,
+    outboxContext,
+  );
 
   return { store, tasks, automation, vehicleCleaningTasks };
 }

@@ -36,6 +36,10 @@ import { TasksService } from './tasks.service';
 import { checklistForType } from './task-templates';
 import { isActiveTaskStatus } from './task-transition.policy';
 import { VehicleCleaningTaskService } from './vehicle-cleaning-task.service';
+import { TaskAutomationOutboxEnqueueService } from './outbox/task-automation-outbox-enqueue.service';
+import { TaskAutomationOutboxExecutionContext } from './outbox/task-automation-outbox-execution.context';
+import { buildOutboxMeta } from './outbox/task-automation-outbox-meta.util';
+import { sanitizeAutomationError } from './outbox/task-automation-outbox-error.util';
 
 export interface BookingLifecycleTaskInput {
   id: string;
@@ -71,8 +75,9 @@ export interface SyncBookingReturnOptions {
  * insight run + auto-close). This service covers the non-insight operational
  * sources. Every task carries a stable `generatedKey` (stored as `dedupKey` +
  * in metadata) so re-running a lifecycle hook escalates a single task instead
- * of duplicating it. Failures are swallowed and logged — task automation must
- * never break the booking/vendor/document write that triggered it.
+ * of duplicating it. Failures are persisted to `task_automation_outbox` for
+ * durable worker retry — task automation must never break the booking/vendor/
+ * document write that triggered it.
  */
 @Injectable()
 export class TaskAutomationService {
@@ -82,7 +87,25 @@ export class TaskAutomationService {
     private readonly tasks: TasksService,
     private readonly prisma: PrismaService,
     private readonly vehicleCleaningTasks: VehicleCleaningTaskService,
+    private readonly outboxEnqueue: TaskAutomationOutboxEnqueueService,
+    private readonly outboxContext: TaskAutomationOutboxExecutionContext,
   ) {}
+
+  private shouldPropagateError(): boolean {
+    return this.outboxContext.fromOutbox;
+  }
+
+  private async handleAutomationFailure(
+    meta: Parameters<TaskAutomationOutboxEnqueueService['enqueueFailure']>[0],
+    err: unknown,
+    logMessage: string,
+  ): Promise<void> {
+    if (this.shouldPropagateError()) {
+      throw err instanceof Error ? err : new Error(sanitizeAutomationError(err));
+    }
+    await this.outboxEnqueue.enqueueFailure(meta, err);
+    this.logger.warn(logMessage);
+  }
 
   private async resolveOrgTimezone(orgId: string): Promise<string> {
     const org = await this.prisma.organization.findUnique({
@@ -192,30 +215,26 @@ export class TaskAutomationService {
       metadata?: Prisma.InputJsonValue;
     },
   ): Promise<void> {
-    try {
-      await this.tasks.upsertByDedup(orgId, generatedKey, {
-        title: payload.title,
-        description: payload.description,
-        category: payload.category,
-        type: payload.type,
-        sourceType: payload.sourceType,
-        priority: payload.priority ?? 'NORMAL',
-        vehicleId: payload.vehicleId ?? null,
-        bookingId: payload.bookingId ?? null,
-        customerId: payload.customerId ?? null,
-        vendorId: payload.vendorId ?? null,
-        documentId: payload.documentId ?? null,
-        source: payload.source,
-        dueDate: payload.dueDate ?? null,
-        activatesAt: payload.activatesAt ?? null,
-        metadata: payload.metadata ?? { generatedKey },
-        checklist: payload.withChecklist
-          ? checklistForType(payload.type)
-          : payload.checklist,
-      });
-    } catch (err: any) {
-      this.logger.warn(`Auto-task ${generatedKey} (org ${orgId}) failed: ${err?.message ?? err}`);
-    }
+    await this.tasks.upsertByDedup(orgId, generatedKey, {
+      title: payload.title,
+      description: payload.description,
+      category: payload.category,
+      type: payload.type,
+      sourceType: payload.sourceType,
+      priority: payload.priority ?? 'NORMAL',
+      vehicleId: payload.vehicleId ?? null,
+      bookingId: payload.bookingId ?? null,
+      customerId: payload.customerId ?? null,
+      vendorId: payload.vendorId ?? null,
+      documentId: payload.documentId ?? null,
+      source: payload.source,
+      dueDate: payload.dueDate ?? null,
+      activatesAt: payload.activatesAt ?? null,
+      metadata: payload.metadata ?? { generatedKey },
+      checklist: payload.withChecklist
+        ? checklistForType(payload.type)
+        : payload.checklist,
+    });
   }
 
   /**
@@ -280,9 +299,22 @@ export class TaskAutomationService {
       }
 
       await this.materializeBookingPreparationTask(booking, timing, dedupKey);
-    } catch (err: any) {
-      this.logger.warn(
-        `syncBookingPreparationTiming(${booking.id}) failed: ${err?.message ?? err}`,
+    } catch (err: unknown) {
+      await this.handleAutomationFailure(
+        buildOutboxMeta({
+          organizationId: booking.organizationId,
+          ruleId: BOOKING_PREPARATION_RULE_ID,
+          ruleVersion: BOOKING_PREPARATION_RULE_VERSION,
+          entityType: 'BOOKING',
+          entityId: booking.id,
+          operation: 'SYNC_BOOKING_PREPARATION',
+          payload: {
+            bookingId: booking.id,
+            previousStartDate: options?.previousStartDate?.toISOString(),
+          },
+        }),
+        err,
+        `syncBookingPreparationTiming(${booking.id}) failed: ${sanitizeAutomationError(err)}`,
       );
     }
   }
@@ -336,8 +368,23 @@ export class TaskAutomationService {
       if (!existing || existing.status !== 'DONE') {
         await this.materializeBookingPickupTask(booking, timing, dedupKey);
       }
-    } catch (err: any) {
-      this.logger.warn(`syncBookingPickupTiming(${booking.id}) failed: ${err?.message ?? err}`);
+    } catch (err: unknown) {
+      await this.handleAutomationFailure(
+        buildOutboxMeta({
+          organizationId: booking.organizationId,
+          ruleId: BOOKING_PICKUP_RULE_ID,
+          ruleVersion: BOOKING_PICKUP_RULE_VERSION,
+          entityType: 'BOOKING',
+          entityId: booking.id,
+          operation: 'SYNC_BOOKING_PICKUP',
+          payload: {
+            bookingId: booking.id,
+            previousStartDate: options?.previousStartDate?.toISOString(),
+          },
+        }),
+        err,
+        `syncBookingPickupTiming(${booking.id}) failed: ${sanitizeAutomationError(err)}`,
+      );
     }
   }
 
@@ -390,8 +437,23 @@ export class TaskAutomationService {
       if (!existing || existing.status !== 'DONE') {
         await this.materializeBookingReturnTask(booking, timing, dedupKey);
       }
-    } catch (err: any) {
-      this.logger.warn(`syncBookingReturnTiming(${booking.id}) failed: ${err?.message ?? err}`);
+    } catch (err: unknown) {
+      await this.handleAutomationFailure(
+        buildOutboxMeta({
+          organizationId: booking.organizationId,
+          ruleId: BOOKING_RETURN_RULE_ID,
+          ruleVersion: BOOKING_RETURN_RULE_VERSION,
+          entityType: 'BOOKING',
+          entityId: booking.id,
+          operation: 'SYNC_BOOKING_RETURN',
+          payload: {
+            bookingId: booking.id,
+            previousEndDate: options?.previousEndDate?.toISOString(),
+          },
+        }),
+        err,
+        `syncBookingReturnTiming(${booking.id}) failed: ${sanitizeAutomationError(err)}`,
+      );
     }
   }
 
@@ -403,9 +465,19 @@ export class TaskAutomationService {
         reason: `Booking ${bookingId} cancelled — lifecycle tasks superseded`,
         ruleId: 'booking.lifecycle.cancelled',
       });
-    } catch (err: any) {
-      this.logger.warn(
-        `supersedeBookingLifecycleOnCancellation(${bookingId}) failed: ${err?.message ?? err}`,
+    } catch (err: unknown) {
+      await this.handleAutomationFailure(
+        buildOutboxMeta({
+          organizationId: orgId,
+          ruleId: 'booking.lifecycle.cancelled',
+          ruleVersion: 1,
+          entityType: 'BOOKING',
+          entityId: bookingId,
+          operation: 'SUPERSEDE_BOOKING_LIFECYCLE',
+          payload: { bookingId },
+        }),
+        err,
+        `supersedeBookingLifecycleOnCancellation(${bookingId}) failed: ${sanitizeAutomationError(err)}`,
       );
     }
   }
@@ -433,8 +505,20 @@ export class TaskAutomationService {
         reason: `Booking ${bookingId} marked no-show — lifecycle tasks superseded`,
         ruleId: 'booking.lifecycle.cancelled.noshow',
       });
-    } catch (err: any) {
-      this.logger.warn(`handleBookingNoShow(${bookingId}) failed: ${err?.message ?? err}`);
+    } catch (err: unknown) {
+      await this.handleAutomationFailure(
+        buildOutboxMeta({
+          organizationId: orgId,
+          ruleId: 'booking.lifecycle.cancelled.noshow',
+          ruleVersion: 1,
+          entityType: 'BOOKING',
+          entityId: bookingId,
+          operation: 'HANDLE_BOOKING_NO_SHOW',
+          payload: { bookingId },
+        }),
+        err,
+        `handleBookingNoShow(${bookingId}) failed: ${sanitizeAutomationError(err)}`,
+      );
     }
   }
 
@@ -456,8 +540,20 @@ export class TaskAutomationService {
         },
       );
       await this.ensureBookingLifecycleTasks({ ...booking, status: 'ACTIVE' });
-    } catch (err: any) {
-      this.logger.warn(`onPickupHandoverCompleted(${booking.id}) failed: ${err?.message ?? err}`);
+    } catch (err: unknown) {
+      await this.handleAutomationFailure(
+        buildOutboxMeta({
+          organizationId: booking.organizationId,
+          ruleId: 'booking.handover.pickup.completed',
+          ruleVersion: 1,
+          entityType: 'BOOKING',
+          entityId: booking.id,
+          operation: 'ON_PICKUP_HANDOVER_COMPLETED',
+          payload: { bookingId: booking.id },
+        }),
+        err,
+        `onPickupHandoverCompleted(${booking.id}) failed: ${sanitizeAutomationError(err)}`,
+      );
     }
   }
 
@@ -479,8 +575,20 @@ export class TaskAutomationService {
         },
       );
       await this.ensureBookingLifecycleTasks({ ...booking, status: 'COMPLETED' });
-    } catch (err: any) {
-      this.logger.warn(`onReturnHandoverCompleted(${booking.id}) failed: ${err?.message ?? err}`);
+    } catch (err: unknown) {
+      await this.handleAutomationFailure(
+        buildOutboxMeta({
+          organizationId: booking.organizationId,
+          ruleId: 'booking.handover.return.completed',
+          ruleVersion: 1,
+          entityType: 'BOOKING',
+          entityId: booking.id,
+          operation: 'ON_RETURN_HANDOVER_COMPLETED',
+          payload: { bookingId: booking.id },
+        }),
+        err,
+        `onReturnHandoverCompleted(${booking.id}) failed: ${sanitizeAutomationError(err)}`,
+      );
     }
   }
 
@@ -656,17 +764,33 @@ export class TaskAutomationService {
     const { id, organizationId: orgId, status } = booking;
     const activeDedupKeys = this.activeBookingLifecycleDedupKeys(id, status);
 
-    if (status === 'CONFIRMED') {
-      await this.syncBookingPreparationTiming(booking);
-      await this.syncBookingPickupTiming(booking);
-      await this.vehicleCleaningTasks.syncBookingPreparationContext(booking);
-    }
+    try {
+      if (status === 'CONFIRMED') {
+        await this.syncBookingPreparationTiming(booking);
+        await this.syncBookingPickupTiming(booking);
+        await this.vehicleCleaningTasks.syncBookingPreparationContext(booking);
+      }
 
-    if (status === 'ACTIVE') {
-      await this.syncBookingReturnTiming(booking);
-    }
+      if (status === 'ACTIVE') {
+        await this.syncBookingReturnTiming(booking);
+      }
 
-    await this.tasks.closeStaleBookingLifecycleTasks(orgId, id, activeDedupKeys);
+      await this.tasks.closeStaleBookingLifecycleTasks(orgId, id, activeDedupKeys);
+    } catch (err: unknown) {
+      await this.handleAutomationFailure(
+        buildOutboxMeta({
+          organizationId: orgId,
+          ruleId: 'booking.lifecycle.ensure',
+          ruleVersion: 1,
+          entityType: 'BOOKING',
+          entityId: id,
+          operation: 'ENSURE_BOOKING_LIFECYCLE',
+          payload: { bookingId: id },
+        }),
+        err,
+        `ensureBookingLifecycleTasks(${id}) failed: ${sanitizeAutomationError(err)}`,
+      );
+    }
   }
 
   /** Dedup keys that remain open for the booking's current lifecycle phase. */
@@ -698,18 +822,38 @@ export class TaskAutomationService {
     },
   ): Promise<void> {
     const key = `vendor:repair:${input.vehicleId}:${input.vendorId ?? 'none'}:${input.reason}`;
-    await this.safeUpsert(orgId, key, {
-      title: input.title,
-      description: input.description,
-      category: 'Repair',
-      type: 'REPAIR',
-      priority: input.priority ?? 'HIGH',
-      source: 'VENDOR',
-      sourceType: 'VENDOR',
-      vehicleId: input.vehicleId,
-      vendorId: input.vendorId ?? null,
-      metadata: { generatedKey: key },
-    });
+    try {
+      await this.safeUpsert(orgId, key, {
+        title: input.title,
+        description: input.description,
+        category: 'Repair',
+        type: 'REPAIR',
+        priority: input.priority ?? 'HIGH',
+        source: 'VENDOR',
+        sourceType: 'VENDOR',
+        vehicleId: input.vehicleId,
+        vendorId: input.vendorId ?? null,
+        metadata: { generatedKey: key },
+      });
+    } catch (err: unknown) {
+      await this.handleAutomationFailure(
+        buildOutboxMeta({
+          organizationId: orgId,
+          ruleId: 'vendor.repair.ensure',
+          ruleVersion: 1,
+          entityType: 'VENDOR',
+          entityId: input.vendorId ?? input.vehicleId,
+          operation: 'ENSURE_REPAIR_TASK',
+          payload: {
+            vehicleId: input.vehicleId,
+            vendorId: input.vendorId ?? undefined,
+            repairReason: input.reason,
+          },
+        }),
+        err,
+        `ensureRepairTask(${input.vehicleId}) failed: ${sanitizeAutomationError(err)}`,
+      );
+    }
   }
 
   /**
@@ -795,9 +939,19 @@ export class TaskAutomationService {
           })),
         );
       }
-    } catch (err: any) {
-      this.logger.warn(
-        `syncBookingDocumentPackageTask(${input.bookingId}/${input.phase}) failed: ${err?.message ?? err}`,
+    } catch (err: unknown) {
+      await this.handleAutomationFailure(
+        buildOutboxMeta({
+          organizationId: orgId,
+          ruleId: 'booking.document.package.review',
+          ruleVersion: 1,
+          entityType: 'DOCUMENT',
+          entityId: input.bookingId,
+          operation: 'SYNC_DOCUMENT_PACKAGES',
+          payload: { bookingId: input.bookingId, phase: input.phase, dedupKey: input.dedupKey },
+        }),
+        err,
+        `syncBookingDocumentPackageTask(${input.bookingId}/${input.phase}) failed: ${sanitizeAutomationError(err)}`,
       );
     }
   }
@@ -811,9 +965,19 @@ export class TaskAutomationService {
   async supersedeBookingDocumentPackageTasks(orgId: string, bookingId: string): Promise<void> {
     try {
       await this.tasks.supersedeActiveDocumentPackageTasks(orgId, bookingId);
-    } catch (err: any) {
-      this.logger.warn(
-        `supersedeBookingDocumentPackageTasks(${bookingId}) failed: ${err?.message ?? err}`,
+    } catch (err: unknown) {
+      await this.handleAutomationFailure(
+        buildOutboxMeta({
+          organizationId: orgId,
+          ruleId: 'booking.document.package.supersede',
+          ruleVersion: 1,
+          entityType: 'DOCUMENT',
+          entityId: bookingId,
+          operation: 'SUPERSEDE_DOCUMENT_PACKAGES',
+          payload: { bookingId },
+        }),
+        err,
+        `supersedeBookingDocumentPackageTasks(${bookingId}) failed: ${sanitizeAutomationError(err)}`,
       );
     }
   }
@@ -825,9 +989,19 @@ export class TaskAutomationService {
   ): Promise<void> {
     try {
       await this.tasks.closeStaleDocumentPackageTasks(orgId, bookingId, activeDedupKeys);
-    } catch (err: any) {
-      this.logger.warn(
-        `closeStaleDocumentPackageTasksForBooking(${bookingId}) failed: ${err?.message ?? err}`,
+    } catch (err: unknown) {
+      await this.handleAutomationFailure(
+        buildOutboxMeta({
+          organizationId: orgId,
+          ruleId: 'booking.document.package.close_stale',
+          ruleVersion: 1,
+          entityType: 'DOCUMENT',
+          entityId: bookingId,
+          operation: 'CLOSE_STALE_DOCUMENT_PACKAGES',
+          payload: { bookingId, dedupKey: activeDedupKeys[0] },
+        }),
+        err,
+        `closeStaleDocumentPackageTasksForBooking(${bookingId}) failed: ${sanitizeAutomationError(err)}`,
       );
     }
   }

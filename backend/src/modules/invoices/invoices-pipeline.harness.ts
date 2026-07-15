@@ -17,6 +17,7 @@ import { BookingInvoiceLifecycleService } from './booking-invoice-lifecycle.serv
 import { InvoiceDocumentsService } from './invoice-documents.service';
 import { InvoiceNumberService } from './invoice-number.service';
 import { InvoicePaymentTaskService } from './invoice-payment-task.service';
+import { createNoopTaskAutomationOutboxDeps } from '@modules/tasks/outbox/task-automation-outbox-test.util';
 import { createInvoiceTestStore, type InvoiceTestStore } from './invoices-test-store';
 import { InvoicesService } from './invoices.service';
 
@@ -112,7 +113,13 @@ export function createInvoicePipelineHarness(): InvoicePipelineHarness {
     resolveForTask: jest.fn().mockResolvedValue([]),
   } as unknown as TaskLinkedObjectResolverService;
   const tasks = new TasksService(prisma, activityLog as unknown as ActivityLogService, linkedObjectResolver);
-  const invoicePaymentTasks = new InvoicePaymentTaskService(prisma, tasks);
+  const { outboxEnqueue, outboxContext } = createNoopTaskAutomationOutboxDeps();
+  const invoicePaymentTasks = new InvoicePaymentTaskService(
+    prisma,
+    tasks,
+    outboxEnqueue,
+    outboxContext,
+  );
   const invoiceNumbers = new InvoiceNumberService(prisma);
   const invoices = new InvoicesService(prisma, invoiceNumbers, invoicePaymentTasks);
   const lifecycle = new BookingInvoiceLifecycleService(prisma, invoices);

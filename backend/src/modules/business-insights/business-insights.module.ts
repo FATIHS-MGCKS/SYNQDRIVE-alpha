@@ -60,6 +60,6 @@ import { RentalHealthModule } from '../rental-health/rental-health.module';
     PickupOverdueDetector,
     DrivingAssessmentDeviceQualityDetector,
   ],
-  exports: [BusinessInsightsService, BusinessInsightsTriggerService],
+  exports: [BusinessInsightsService, BusinessInsightsTriggerService, InsightTaskBridgeService],
 })
 export class BusinessInsightsModule {}

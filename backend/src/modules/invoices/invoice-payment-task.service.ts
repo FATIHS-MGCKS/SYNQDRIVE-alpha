@@ -7,6 +7,10 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
+import { TaskAutomationOutboxEnqueueService } from '@modules/tasks/outbox/task-automation-outbox-enqueue.service';
+import { TaskAutomationOutboxExecutionContext } from '@modules/tasks/outbox/task-automation-outbox-execution.context';
+import { buildOutboxMeta } from '@modules/tasks/outbox/task-automation-outbox-meta.util';
+import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
 import { DEFAULT_TARIFF_TIMEZONE } from '@modules/pricing/tariff-instant.util';
 import {
   canRecordPayment,
@@ -67,7 +71,32 @@ export class InvoicePaymentTaskService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly tasks: TasksService,
+    private readonly outboxEnqueue: TaskAutomationOutboxEnqueueService,
+    private readonly outboxContext: TaskAutomationOutboxExecutionContext,
   ) {}
+
+  private async handleAutomationFailure(
+    orgId: string,
+    invoiceId: string,
+    err: unknown,
+  ): Promise<void> {
+    if (this.outboxContext.fromOutbox) {
+      throw err instanceof Error ? err : new Error(sanitizeAutomationError(err));
+    }
+    await this.outboxEnqueue.enqueueFailure(
+      buildOutboxMeta({
+        organizationId: orgId,
+        ruleId: INVOICE_PAYMENT_CHECK_RULE_ID,
+        ruleVersion: INVOICE_PAYMENT_CHECK_RULE_VERSION,
+        entityType: 'INVOICE',
+        entityId: invoiceId,
+        operation: 'SYNC_INVOICE_PAYMENT_CHECK',
+        payload: { invoiceId },
+      }),
+      err,
+    );
+    this.logger.warn(`syncPaymentCheckTask(${invoiceId}) failed: ${sanitizeAutomationError(err)}`);
+  }
 
   /** Materialises or refreshes the canonical payment-check task for an open invoice. */
   async syncPaymentCheckTask(
@@ -143,8 +172,7 @@ export class InvoicePaymentTaskService {
         );
       }
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.warn(`syncPaymentCheckTask(${invoice.id}) failed: ${message}`);
+      await this.handleAutomationFailure(orgId, invoice.id, err);
     }
   }
 

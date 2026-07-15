@@ -2,6 +2,7 @@ import { TaskCompletionMode } from '@prisma/client';
 import { InsightEntityScope, InsightSeverity, InsightType } from '@prisma/client';
 import type { InsightCandidate } from '@modules/business-insights/insight.types';
 import { InsightTaskBridgeService } from '@modules/business-insights/insight-task-bridge.service';
+import { createNoopTaskAutomationOutboxDeps } from '@modules/tasks/outbox/task-automation-outbox-test.util';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { ServiceOverdueTaskService } from './service-overdue-task.service';
 import { buildServiceOverdueTaskContext } from './service-overdue-task.util';
@@ -76,7 +77,14 @@ describe('Service overdue task automation', () => {
       closeStaleInsightTasks: jest.fn().mockResolvedValue(0),
     };
     const serviceOverdueTasks = new ServiceOverdueTaskService(prisma as any, tasks as any, {} as any);
-    const bridge = new InsightTaskBridgeService(tasks as any, prisma as any, serviceOverdueTasks);
+    const { outboxEnqueue, outboxContext } = createNoopTaskAutomationOutboxDeps();
+    const bridge = new InsightTaskBridgeService(
+      tasks as any,
+      prisma as any,
+      serviceOverdueTasks,
+      outboxEnqueue,
+      outboxContext,
+    );
 
     await bridge.materialize(orgId, [overdueCandidate()]);
 
@@ -109,7 +117,14 @@ describe('Service overdue task automation', () => {
       closeStaleInsightTasks: jest.fn().mockResolvedValue(0),
     };
     const serviceOverdueTasks = new ServiceOverdueTaskService(prisma as any, tasks as any, {} as any);
-    const bridge = new InsightTaskBridgeService(tasks as any, prisma as any, serviceOverdueTasks);
+    const { outboxEnqueue, outboxContext } = createNoopTaskAutomationOutboxDeps();
+    const bridge = new InsightTaskBridgeService(
+      tasks as any,
+      prisma as any,
+      serviceOverdueTasks,
+      outboxEnqueue,
+      outboxContext,
+    );
 
     await bridge.materialize(orgId, [overdueCandidate(true)]);
 

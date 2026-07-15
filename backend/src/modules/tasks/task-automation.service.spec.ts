@@ -17,6 +17,8 @@ import { TaskAutomationService } from './task-automation.service';
 import { TasksService } from './tasks.service';
 import { VehicleCleaningTaskService } from './vehicle-cleaning-task.service';
 import { checklistForType } from './task-templates';
+import { TaskAutomationOutboxEnqueueService } from './outbox/task-automation-outbox-enqueue.service';
+import { TaskAutomationOutboxExecutionContext } from './outbox/task-automation-outbox-execution.context';
 
 describe('TaskAutomationService — booking lifecycle tasks', () => {
   let service: TaskAutomationService;
@@ -77,10 +79,38 @@ describe('TaskAutomationService — booking lifecycle tasks', () => {
             syncBookingPreparationContext: jest.fn().mockResolvedValue({ action: 'none' }),
           },
         },
+        {
+          provide: TaskAutomationOutboxEnqueueService,
+          useValue: { isEnabled: () => false, enqueueFailure: jest.fn() },
+        },
+        { provide: TaskAutomationOutboxExecutionContext, useValue: { fromOutbox: false } },
       ],
     }).compile();
 
     service = module.get(TaskAutomationService);
+  });
+
+  describe('outbox reliability', () => {
+    it('enqueues outbox row when task upsert fails without throwing', async () => {
+      const enqueue = { isEnabled: () => true, enqueueFailure: jest.fn().mockResolvedValue('out-1') };
+      const module: TestingModule = await Test.createTestingModule({
+        providers: [
+          TaskAutomationService,
+          { provide: TasksService, useValue: { ...tasks, upsertByDedup: jest.fn().mockRejectedValue(new Error('db down')) } },
+          { provide: PrismaService, useValue: prisma },
+          {
+            provide: VehicleCleaningTaskService,
+            useValue: { syncBookingPreparationContext: jest.fn().mockResolvedValue({ action: 'none' }) },
+          },
+          { provide: TaskAutomationOutboxEnqueueService, useValue: enqueue },
+          { provide: TaskAutomationOutboxExecutionContext, useValue: { fromOutbox: false } },
+        ],
+      }).compile();
+
+      const svc = module.get(TaskAutomationService);
+      await expect(svc.syncBookingPreparationTiming(booking, { now })).resolves.toBeUndefined();
+      expect(enqueue.enqueueFailure).toHaveBeenCalled();
+    });
   });
 
   describe('BOOKING_PREPARATION', () => {

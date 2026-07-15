@@ -77,6 +77,13 @@ export class TripMetricsService implements OnModuleInit {
   readonly notificationDeliveryRetry: Counter<string>;
   readonly notificationDuplicateConstraintViolation: Counter<string>;
 
+  /** Task automation outbox — low-cardinality labels only. */
+  readonly taskAutomationOutboxEnqueued: Counter<string>;
+  readonly taskAutomationOutboxCompleted: Counter<string>;
+  readonly taskAutomationOutboxFailed: Counter<string>;
+  readonly taskAutomationOutboxRetry: Counter<string>;
+  readonly taskAutomationOutboxRefreshed: Counter<string>;
+
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
   // ═══════════════════════════════════════════════════════════════
@@ -94,6 +101,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly clickHouseTableRows: Gauge<string>;
   readonly queueFailedJobs: Gauge<string>;
   readonly notificationQueueBacklog: Gauge<string>;
+  readonly taskAutomationOutboxBacklog: Gauge<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  HISTOGRAMS
@@ -109,6 +117,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly notificationProcessingDuration: Histogram<string>;
   readonly notificationRunDuration: Histogram<string>;
   readonly notificationOpenAge: Histogram<string>;
+  readonly taskAutomationOutboxProcessingDuration: Histogram<string>;
 
   constructor() {
     this.registry = new Registry();
@@ -541,6 +550,53 @@ export class TripMetricsService implements OnModuleInit {
     this.notificationQueueBacklog = new Gauge({
       name: 'synqdrive_notification_queue_backlog',
       help: 'Pending or retryable notification delivery outbox rows',
+      registers: [this.registry],
+    });
+
+    this.taskAutomationOutboxEnqueued = new Counter({
+      name: 'synqdrive_task_automation_outbox_enqueued_total',
+      help: 'Task automation outbox rows enqueued',
+      labelNames: ['rule_id'],
+      registers: [this.registry],
+    });
+
+    this.taskAutomationOutboxCompleted = new Counter({
+      name: 'synqdrive_task_automation_outbox_completed_total',
+      help: 'Successful task automation outbox executions',
+      labelNames: ['rule_id'],
+      registers: [this.registry],
+    });
+
+    this.taskAutomationOutboxFailed = new Counter({
+      name: 'synqdrive_task_automation_outbox_failed_total',
+      help: 'Failed task automation outbox execution attempts',
+      labelNames: ['rule_id', 'error_code'],
+      registers: [this.registry],
+    });
+
+    this.taskAutomationOutboxRetry = new Counter({
+      name: 'synqdrive_task_automation_outbox_retry_total',
+      help: 'Task automation outbox retries scheduled',
+      labelNames: ['rule_id'],
+      registers: [this.registry],
+    });
+
+    this.taskAutomationOutboxRefreshed = new Counter({
+      name: 'synqdrive_task_automation_outbox_refreshed_total',
+      help: 'Existing task automation outbox rows refreshed after repeat failure',
+      registers: [this.registry],
+    });
+
+    this.taskAutomationOutboxBacklog = new Gauge({
+      name: 'synqdrive_task_automation_outbox_backlog',
+      help: 'Pending or dead-letter task automation outbox rows',
+      registers: [this.registry],
+    });
+
+    this.taskAutomationOutboxProcessingDuration = new Histogram({
+      name: 'synqdrive_task_automation_outbox_processing_duration_seconds',
+      help: 'Single task automation outbox processing duration',
+      buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 15, 30],
       registers: [this.registry],
     });
   }

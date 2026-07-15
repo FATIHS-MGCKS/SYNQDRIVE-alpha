@@ -2,6 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { TaskSource, TaskType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { ServiceOverdueTaskService } from '@modules/vehicle-intelligence/service-compliance/service-overdue-task.service';
+import { TaskAutomationOutboxEnqueueService } from '@modules/tasks/outbox/task-automation-outbox-enqueue.service';
+import { TaskAutomationOutboxExecutionContext } from '@modules/tasks/outbox/task-automation-outbox-execution.context';
+import { buildOutboxMeta } from '@modules/tasks/outbox/task-automation-outbox-meta.util';
+import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
 import {
   shouldAutoMaterializeServiceOverdueTask,
   type ServiceOverdueTaskContext,
@@ -46,6 +50,8 @@ export class InsightTaskBridgeService {
     private readonly tasks: TasksService,
     private readonly prisma: PrismaService,
     private readonly serviceOverdueTasks: ServiceOverdueTaskService,
+    private readonly outboxEnqueue: TaskAutomationOutboxEnqueueService,
+    private readonly outboxContext: TaskAutomationOutboxExecutionContext,
   ) {}
 
   private shouldMaterializeTask(candidate: InsightCandidate): boolean {
@@ -152,9 +158,28 @@ export class InsightTaskBridgeService {
           });
         }
         upserted++;
-      } catch (err: any) {
+      } catch (err: unknown) {
+        if (this.outboxContext.fromOutbox) {
+          throw err instanceof Error ? err : new Error(sanitizeAutomationError(err));
+        }
+        await this.outboxEnqueue.enqueueFailure(
+          buildOutboxMeta({
+            organizationId,
+            ruleId: `insight.task.${c.type}`,
+            ruleVersion: 1,
+            entityType: 'INSIGHT',
+            entityId: vehicleId,
+            operation: 'MATERIALIZE_INSIGHT_TASK',
+            payload: {
+              insightDedupKey: dedupKey,
+              insightType: c.type,
+              vehicleId,
+            },
+          }),
+          err,
+        );
         this.logger.warn(
-          `upsertByDedup failed for ${dedupKey} (org ${organizationId}): ${err?.message ?? err}`,
+          `upsertByDedup failed for ${dedupKey} (org ${organizationId}): ${sanitizeAutomationError(err)}`,
         );
       }
     }
@@ -172,5 +197,43 @@ export class InsightTaskBridgeService {
       );
     }
     return { upserted, closed };
+  }
+
+  /** Replays a single insight→task materialization from outbox (reloads active insight). */
+  async rematerializeFromOutbox(organizationId: string, insightDedupKey: string): Promise<void> {
+    const insight = await this.prisma.dashboardInsight.findFirst({
+      where: { organizationId, dedupeKey: insightDedupKey, isActive: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    if (!insight) {
+      throw new Error(`Active insight ${insightDedupKey} not found for org ${organizationId}`);
+    }
+
+    const metrics = (insight.metrics ?? {}) as Record<string, unknown>;
+    const entityIds = Array.isArray(insight.entityIds)
+      ? (insight.entityIds as string[])
+      : [];
+    const reasons = Array.isArray(insight.reasons) ? (insight.reasons as string[]) : [];
+    const timeContext =
+      insight.timeContext && typeof insight.timeContext === 'object'
+        ? (insight.timeContext as Record<string, string>)
+        : undefined;
+
+    await this.materialize(organizationId, [
+      {
+        type: insight.type,
+        dedupeKey: insight.dedupeKey,
+        title: insight.title,
+        message: insight.message,
+        severity: insight.severity,
+        priority: insight.priority,
+        entityScope: insight.entityScope,
+        entityIds,
+        metrics,
+        reasons,
+        confidence: insight.confidence,
+        timeContext,
+      },
+    ]);
   }
 }

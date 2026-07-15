@@ -757,6 +757,18 @@ export class BookingDocumentBundleService {
     );
   }
 
+  /** Outbox/worker replay — reloads bundle state and syncs document-package tasks. */
+  async resyncBookingDocumentTasks(orgId: string, bookingId: string): Promise<void> {
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: bookingId, organizationId: orgId },
+      select: { status: true },
+    });
+    if (!booking) {
+      throw new Error(`Booking ${bookingId} not found for org ${orgId}`);
+    }
+    await this.syncMissingDocumentTasks(orgId, bookingId, booking.status);
+  }
+
   /** Materialize a single DOCUMENT_REVIEW task per booking document phase. */
   private async syncMissingDocumentTasks(
     orgId: string,

@@ -1,5 +1,6 @@
 import { VehicleCleaningTaskService } from './vehicle-cleaning-task.service';
 import { TasksService } from './tasks.service';
+import { createNoopTaskAutomationOutboxDeps } from './outbox/task-automation-outbox-test.util';
 
 describe('VehicleCleaningTaskService', () => {
   const prisma = {
@@ -21,7 +22,13 @@ describe('VehicleCleaningTaskService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    svc = new VehicleCleaningTaskService(prisma as any, tasks as unknown as TasksService);
+    const { outboxEnqueue, outboxContext } = createNoopTaskAutomationOutboxDeps();
+    svc = new VehicleCleaningTaskService(
+      prisma as any,
+      tasks as unknown as TasksService,
+      outboxEnqueue,
+      outboxContext,
+    );
     prisma.vehicle.findFirst.mockResolvedValue({
       id: 'v1',
       licensePlate: 'M-AB 123',

@@ -161,6 +161,22 @@ enum NotificationDeliveryOutboxStatus {
   SUPPRESSED
 }
 
+enum TaskAutomationOutboxStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  DEAD_LETTER
+}
+
+enum TaskAutomationEntityType {
+  BOOKING
+  INVOICE
+  VEHICLE
+  DOCUMENT
+  VENDOR
+  INSIGHT
+}
+
 enum UserPlatformRole {
   MASTER_ADMIN
   USER
@@ -1088,6 +1104,7 @@ model Organization {
   notificationOccurrences           NotificationOccurrence[]
   notificationReceipts              NotificationReceipt[]
   notificationDeliveryOutbox        NotificationDeliveryOutbox[]
+  taskAutomationOutbox              TaskAutomationOutbox[]
 
   @@index([status])
   @@map("organizations")
@@ -7666,6 +7683,31 @@ model NotificationDeliveryOutbox {
   @@index([organizationId, status])
   @@index([notificationId])
   @@map("notification_delivery_outbox")
+}
+
+/// Durable retry queue for optional task automation side-effects (booking, invoice, document, insight).
+model TaskAutomationOutbox {
+  id             String                     @id @default(uuid())
+  organizationId String                     @map("organization_id")
+  ruleId         String                     @map("rule_id")
+  ruleVersion    Int                        @map("rule_version")
+  entityType     TaskAutomationEntityType   @map("entity_type")
+  entityId       String                     @map("entity_id")
+  idempotencyKey String                     @unique @map("idempotency_key")
+  payload        Json
+  status         TaskAutomationOutboxStatus @default(PENDING)
+  attempts       Int                        @default(0)
+  availableAt    DateTime                   @default(now()) @map("available_at")
+  lastError      String?                    @map("last_error")
+  createdAt      DateTime                   @default(now()) @map("created_at")
+  updatedAt      DateTime                   @updatedAt @map("updated_at")
+  processedAt    DateTime?                  @map("processed_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([status, availableAt])
+  @@map("task_automation_outbox")
 }
 
 // ── AI Tire Spec Job (persisted job lifecycle for AI tire intelligence fetch) ──
