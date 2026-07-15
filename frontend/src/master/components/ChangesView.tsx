@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-operational-state-dto-v49485-2026-07-15',
+    version: '4.9.485',
+    title: 'V4.9.485 — Fleet API: kanonischer operationalState-DTO-Block (Prompt 20/43)',
+    summary: [
+      '`vehicle-operational-state.serializer.ts` — zentrale Projektion: `operationalState` (status, reason, source, effectiveFrom/Until, derivedAt, dataQuality*) + optional `rawVehicleStatus`.',
+      'Fleet-Liste, Fleet-Map und Vehicle-Detail liefern `operationalState`; Detail zusätzlich diagnostisches `rawVehicleStatus`.',
+      'Legacy-Feld `status` bleibt für aktive Clients — wird ausschließlich aus `operationalState.status` abgeleitet (`canonicalOperationalStatusToLegacyLabel`).',
+      'BLOCKED → Legacy-Label `Blocked` (nicht mehr `Maintenance`); eine Ableitungsquelle, keine parallele Status-Logik.',
+    ],
+    reason:
+      'Prompt 20/43: Backend-Datenvertrag §16 — operative Wahrheit als strukturierter DTO-Block transportieren, Rohstatus diagnostisch trennen.',
+    previousBehavior:
+      'Fleet-APIs lieferten nur Legacy-String `status` ohne `operationalState`-Block; BLOCKED und OUT_OF_SERVICE wurden als `Maintenance` projiziert.',
+    details:
+      'Tests: `vehicle-operational-state.serializer.spec.ts` (Available, Reserved, Active Rented, Maintenance, Blocked, Unknown, Legacy-Match). `deriveFleetStatusContext` + `FleetMapVehicleDto` erweitert.',
+    affectsArchitecture: true,
+    module: 'Vehicles',
+    createdAt: '2026-07-16T03:00:00.000Z',
+  },
+  {
     id: 'vehicle-raw-status-write-boundaries-v49484-2026-07-15',
     version: '4.9.484',
     title: 'V4.9.484 — Vehicle Status: Domänen-Schreibgrenzen + Audit (Prompt 19/43)',

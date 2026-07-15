@@ -1386,7 +1386,8 @@ Jede Statusänderung erzeugt einen **ActivityLog**-Eintrag (`AuditService`) mit 
 | 2.1 | 2026-07-15 | §15 Prioritäts- und Übergangsmatrix; §3.5 Prio-Reihenfolge MAINTENANCE vor BLOCKED (Prompt 4/43) |
 | 2.2 | 2026-07-15 | §16 Backend-/Frontend-Datenvertrag; §9.5 OperationalReasonCode; AC-9–AC-16, DC-1–DC-14 (Prompt 5/43) |
 | 2.3 | 2026-07-15 | §17 Domänen-Verantwortlichkeit + `VehicleRawStatusWriteService` (Prompt 19/43) |
+| 2.4 | 2026-07-15 | §16 API-Transport: `operationalState`-Serializer in Fleet-Read-Models (Prompt 20/43) |
 
 ---
 
-*Spezifikation §1–§16 normativ; §17 beschreibt implementierte Schreibgrenzen (Prompt 19/43).*
+*Spezifikation §1–§16 normativ; §17 Schreibgrenzen (Prompt 19); Fleet-API liefert `operationalState` via `vehicle-operational-state.serializer.ts` (Prompt 20).*
