@@ -2,6 +2,9 @@ import { Injectable, Logger } from '@nestjs/common';
 import { CleaningStatus, Prisma, TaskPriority, TaskType } from '@prisma/client';
 import { DEFAULT_TARIFF_TIMEZONE } from '@modules/pricing/tariff-instant.util';
 import { PrismaService } from '@shared/database/prisma.service';
+import { TaskAutomationRuleResolverService } from './automation/task-automation-rule-resolver.service';
+import { shouldMaterializeFromResolvedRule } from './automation/task-automation-effective-rule.util';
+import { getAutomationRuleByCatalogKey } from './automation/task-automation-rule.util';
 import { TasksService } from './tasks.service';
 import { checklistForType } from './task-templates';
 import type { BookingLifecycleTaskInput } from './task-automation.service';
@@ -31,6 +34,7 @@ export interface CleaningTaskMaterializeResult {
 }
 
 const ACTIVE_STATUSES = ['OPEN', 'IN_PROGRESS', 'WAITING'] as const;
+const vehicleCleaningRule = getAutomationRuleByCatalogKey('VEHICLE_CLEANING_REQUIRED');
 
 @Injectable()
 export class VehicleCleaningTaskService {
@@ -41,6 +45,7 @@ export class VehicleCleaningTaskService {
     private readonly tasks: TasksService,
     private readonly outboxEnqueue: TaskAutomationOutboxEnqueueService,
     private readonly outboxContext: TaskAutomationOutboxExecutionContext,
+    private readonly ruleResolver: TaskAutomationRuleResolverService,
   ) {}
 
   private async handleAutomationFailure(
@@ -53,6 +58,14 @@ export class VehicleCleaningTaskService {
     }
     await this.outboxEnqueue.enqueueFailure(meta, err);
     this.logger.warn(logMessage);
+  }
+
+  private async isCleaningAutomationEnabled(orgId: string): Promise<boolean> {
+    const resolved = await this.ruleResolver.resolveTaskAutomationRule(
+      orgId,
+      vehicleCleaningRule.ruleId,
+    );
+    return shouldMaterializeFromResolvedRule(resolved);
   }
 
   /**
@@ -71,6 +84,10 @@ export class VehicleCleaningTaskService {
     booking: BookingLifecycleTaskInput,
     options?: { now?: Date },
   ): Promise<CleaningTaskMaterializeResult> {
+    if (!(await this.isCleaningAutomationEnabled(booking.organizationId))) {
+      return { action: 'none' };
+    }
+
     if (booking.status !== 'CONFIRMED') {
       return { action: 'none' };
     }
@@ -265,6 +282,10 @@ export class VehicleCleaningTaskService {
       now?: Date;
     },
   ): Promise<CleaningTaskMaterializeResult> {
+    if (!(await this.isCleaningAutomationEnabled(orgId))) {
+      return { action: 'none' };
+    }
+
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: vehicleId, organizationId: orgId },
       select: {

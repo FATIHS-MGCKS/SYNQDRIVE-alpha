@@ -90,9 +90,9 @@ const CATEGORIES = [
 ] as const;
 
 const TRIGGER_TYPES = [
-  { key: 'booking.returned', label: 'Booking returned', category: 'vehicle_return' },
+  { key: 'booking.returned', label: 'Booking returned (canonical)', category: 'vehicle_return' },
   { key: 'booking.completed', label: 'Booking completed', category: 'vehicle_return' },
-  { key: 'vehicle_returned', label: 'Vehicle returned (legacy)', category: 'vehicle_return' },
+  { key: 'vehicle_returned', label: 'Vehicle returned (legacy — deprecated)', category: 'vehicle_return' },
   { key: 'vehicle.health.warning', label: 'Vehicle health warning', category: 'maintenance' },
   { key: 'vehicle.health.critical', label: 'Vehicle health critical', category: 'maintenance' },
   { key: 'health_threshold', label: 'Health threshold reached', category: 'maintenance' },
@@ -165,7 +165,7 @@ const STARTER_TEMPLATES: StarterTemplate[] = [
     name: 'Return Damage Check',
     description: 'Create a damage inspection task for every vehicle return.',
     category: 'vehicle_return',
-    trigger: { type: 'vehicle_returned' },
+    trigger: { type: 'booking.returned' },
     conditions: [],
     actions: [{ type: 'create_task', config: { title: 'Damage inspection required', priority: 'HIGH', category: 'inspection' } }],
     scope: { type: 'organization' },
@@ -174,7 +174,7 @@ const STARTER_TEMPLATES: StarterTemplate[] = [
     name: 'Return Admin Notification',
     description: 'Prepare an internal notification draft when a booking is returned.',
     category: 'vehicle_return',
-    trigger: { type: 'vehicle_returned' },
+    trigger: { type: 'booking.returned' },
     conditions: [],
     actions: [{ type: 'send_notification', config: { target: 'admin', message: 'Vehicle returned — review readiness' } }],
     scope: { type: 'organization' },
@@ -398,7 +398,7 @@ export function WorkflowAutomationView({ isDarkMode, canWrite = true, canRead = 
         name: '',
         description: '',
         category: 'vehicle_return',
-        trigger: { type: 'vehicle_returned' },
+        trigger: { type: 'booking.returned' },
         conditions: [],
         actions: [{ type: 'create_task', config: {} }],
         scope: { type: 'organization' },
@@ -1214,7 +1214,7 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
               <p className={`text-xs font-semibold ${textPrimary}`}>Trigger</p>
             </div>
             <select
-              value={(data.trigger as TriggerDef)?.type || 'vehicle_returned'}
+              value={(data.trigger as TriggerDef)?.type || 'booking.returned'}
               onChange={(e) => update({ trigger: { type: e.target.value, config: (data.trigger as TriggerDef)?.config || {} } })}
               className={`w-full px-3 py-1.5 text-xs rounded-lg border ${inputBg} focus:outline-none`}
             >
@@ -1223,7 +1223,7 @@ function BuilderView({ data, setData, isDarkMode, saving, onSave, onCancel }: {
               ))}
             </select>
             <TriggerConfigEditor
-              trigger={(data.trigger as TriggerDef) || { type: 'vehicle_returned' }}
+              trigger={(data.trigger as TriggerDef) || { type: 'booking.returned' }}
               onChange={(t) => update({ trigger: t })}
               isDarkMode={isDarkMode}
             />

@@ -305,7 +305,7 @@ Zeilen = Von, Spalten = Nach. `✓` = erlaubt, `—` = verboten.
 | Feld | Semantik | Pflicht | Ist |
 |------|----------|---------|-----|
 | `createdAt` | Technischer Erstellzeitpunkt des Datensatzes | Ja (DB) | ✓ |
-| `activatesAt` | Zeitpunkt, ab dem der Task **sichtbar und bearbeitbar** ist | Ja (Ziel) | **✗** — fehlt; Default = `createdAt` |
+| `activatesAt` | Zeitpunkt, ab dem der Task **sichtbar und bearbeitbar** ist | Ja (Ziel) | ✓ — `NOT NULL` + Backfill (`20260715181000`); CB4 enforced in `TasksService` |
 | `dueDate` | Frist für fachliche Überfälligkeit | Optional | ✓ |
 | `startedAt` | Erster Übergang nach `IN_PROGRESS` | Gesetzt bei `start` | ✓ |
 | `completedAt` | Zeitpunkt `DONE` | Gesetzt bei Terminal `DONE` | ✓ |
@@ -453,11 +453,9 @@ Ziel: **Ein offener Task pro fachlichem Vorgang** — unabhängig vom technische
 |--------------------|----------------------------|---------------------|
 | Fahrzeug muss gereinigt werden | `vehicle:cleaning:{vehicleId}` | **Zwei Keys:** `booking:clean:{bookingId}` **und** `vehicle:cleaning:{vehicleId}` |
 | Rechnung offen | `invoice:unpaid:{invoiceId}` | **Zwei Keys:** `booking:invoice:{bookingId}` **und** `invoice:unpaid:{invoiceId}` |
-| Dokument fehlt (Bundle) | `document:{docType}:{bookingId}` | Zusätzlich `booking:document:{bookingId}` (generisch) |
-| Service überfällig | `service_overdue:{vehicleId}` | Konsistent (Bridge + Compliance) |
-| TÜV überfällig | `tuv_overdue:{vehicleId}` | Konsistent |
-| Bußgeld offen | `fine:{fineId}` | Konsistent |
-| Booking Pickup | `booking:pickup:{bookingId}` | Konsistent |
+| Booking Pickup | `booking:pickup:{bookingId}` | Konsistent — Regel `booking.lifecycle.confirmed.pickup` |
+| Booking Return | `booking:return:{bookingId}` | Konsistent — Regel `booking.lifecycle.active.return` |
+| Dokument fehlt (Bundle) | `document:package:{phase}:{bookingId}` | Legacy `booking:document:{bookingId}` nur noch Supersede-Alias |
 | Insight Health | `{kind}:{vehicleId}` | Konsistent |
 
 **V2-Norm:** Produzenten müssen den **kanonischen Key** verwenden. Abweichende Legacy-Keys werden per Migrations-/Runtime-Alias aufgelöst.
@@ -598,25 +596,25 @@ Automation-Fehler **dürfen** den auslösenden Domain-Write nicht abbrechen (bes
 
 Quelle: `docs/audits/task-management-inventory.md` — verifizierte Call Sites und Producer-Registry.
 
-| # | Soll (V2) | Ist (belegt) | Priorität |
-|---|-----------|--------------|-----------|
-| W1 | Booking-Lifecycle nur als Task wenn W1–W4 (§1.2) | `TaskAutomationService.ensureBookingLifecycleTasks` materialisiert bei `CONFIRMED`/`ACTIVE`/`COMPLETED` immer bis zu 6 Task-Typen | P1 |
-| W2 | Ein kanonischer Cleaning-Key `vehicle:cleaning:{vehicleId}` | Zusätzlich `booking:clean:{bookingId}` — zwei offene `VEHICLE_CLEANING` möglich | P0 |
-| W3 | Ein kanonischer Invoice-Key `invoice:unpaid:{invoiceId}` | Zusätzlich `booking:invoice:{bookingId}` bei `COMPLETED` | P0 |
-| W4 | Alle Statusänderungen via `TasksService` + `TaskEvent` | `invoices.closeLinkedTasks`, `closeStaleInsightTasks`, `closeStaleBookingLifecycleTasks` — direktes `prisma.orgTask.update` ohne Event | P0 |
-| W5 | `resolutionKind` bei Terminalstatus | Feld fehlt im Schema; nur `status` | P1 |
-| W6 | `activatesAt` für geplante Tasks | Feld fehlt; Default = `createdAt` | P2 |
-| W7 | Booking `cancel` / `NO_SHOW` → lifecycle `SUPERSEDED` | `bookings.service.cancel` / `markNoShow` ohne Task-Hook | P0 |
-| W8 | Payment reconciliation → Invoice-Task `AUTO_RESOLVED` | `payment-reconciliation.service` ohne OrgTask; Test 51 dokumentiert offene Task bei PAID | P0 |
-| W9 | Document-Task auto-close bei Bundle `COMPLETE` | Nur `syncMissingDocumentTasks` (Erzeugung); kein Stale-Close für `source=DOCUMENT` | P1 |
-| W10 | `createVehicleComplaint` via `TasksService` | `vehicles.service.ts` — raw `prisma.orgTask.create`, kein `TaskEvent`/`dedupKey` | P0 |
-| W11 | Server-side Operator-Buckets (§I) | `TasksView`, `task-list.utils`, `OperatorDataContext` leiten teils clientseitig ab | P2 |
-| W12 | `resolutionCode` strukturiert | Nur `resolutionNote` für `RESOLUTION_REQUIRED_TYPES` | P2 |
-| W13 | Manager-Override + `COMPLETION_OVERRIDDEN` | Nicht implementiert; `ServiceOverviewPanel` ruft `complete` ohne Note auf | P2 |
-| W14 | Checklisten-Events vollständig | `updateChecklistItem` ohne `TaskEvent` | P1 |
-| W15 | `ensureRepairTask` angebunden | Implementiert, **0 Call Sites** — Schaden/Repair nutzt `api.tasks.create` | P1 |
-| W16 | Parallele Create-APIs ohne Dedup | WhatsApp, Observations, Voice, Support — `createManualTask` ohne `dedupKey` | P1 |
-| W17 | `TasksView` Pflichtfeld `estimatedDuration` | UI-validiert, nicht in `CreateTaskPayload` | P2 |
+| # | Soll (V2) | Ist (belegt) | Priorität | Stand 2026-07-15 |
+|---|-----------|--------------|-----------|------------------|
+| W1 | Booking-Lifecycle nur als Task wenn W1–W4 (§1.2) | `TaskAutomationService.ensureBookingLifecycleTasks` materialisiert bei `CONFIRMED`/`ACTIVE`/`COMPLETED` immer bis zu 6 Task-Typen | P1 | **behoben** (P1) — Guards + Outbox |
+| W2 | Ein kanonischer Cleaning-Key `vehicle:cleaning:{vehicleId}` | Zusätzlich `booking:clean:{bookingId}` — zwei offene `VEHICLE_CLEANING` möglich | P0 | **behoben** (P1) |
+| W3 | Ein kanonischer Invoice-Key `invoice:unpaid:{invoiceId}` | Zusätzlich `booking:invoice:{bookingId}` bei `COMPLETED` | P0 | **behoben** (P1) |
+| W4 | Alle Statusänderungen via `TasksService` + `TaskEvent` | `invoices.closeLinkedTasks`, `closeStaleInsightTasks`, `closeStaleBookingLifecycleTasks` — direktes `prisma.orgTask.update` ohne Event | P0 | **behoben** (P1) |
+| W5 | `completionMode` bei Terminalstatus | Feld in Schema + Events (`completionMode` + Legacy `resolutionKind` in Metadata) | P1 | **behoben** — `AUTO_RESOLVED`/`SUPERSEDED` via `TasksService` |
+| W6 | `activatesAt` für geplante Tasks | `NOT NULL` + Backfill-Migration | P2 | **behoben** — `20260715181000` |
+| W7 | Booking `cancel` / `NO_SHOW` → lifecycle `SUPERSEDED` | `bookings.service.cancel` / `markNoShow` ohne Task-Hook | P0 | **behoben** (P1) |
+| W8 | Payment reconciliation → Invoice-Task `AUTO_RESOLVED` | `payment-reconciliation.service` ohne OrgTask; Test 51 dokumentiert offene Task bei PAID | P0 | **behoben** (P1) |
+| W9 | Document-Task auto-close bei Bundle `COMPLETE` | Nur `syncMissingDocumentTasks` (Erzeugung); kein Stale-Close für `source=DOCUMENT` | P1 | **behoben** (P1) |
+| W10 | `createVehicleComplaint` via `TasksService` | `vehicles.service.ts` — raw `prisma.orgTask.create`, kein `TaskEvent`/`dedupKey` | P0 | **behoben** (P1) |
+| W11 | Server-side Operator-Buckets (§I) | `TasksView`, `task-list.utils`, `OperatorDataContext` leiten teils clientseitig ab | P2 | **teilweise** — Server-Buckets primär; Client-Sort/Fallback dokumentiert |
+| W12 | `resolutionCode` strukturiert | Nur `resolutionNote` für `RESOLUTION_REQUIRED_TYPES` | P2 | offen |
+| W13 | Manager-Override + `COMPLETION_OVERRIDDEN` | Nicht implementiert; `ServiceOverviewPanel` ruft `complete` ohne Note auf | P2 | offen |
+| W14 | Checklisten-Events vollständig | `updateChecklistItem` ohne `TaskEvent` | P1 | **behoben** (P1) |
+| W15 | `ensureRepairTask` angebunden | Implementiert, **0 Call Sites** — Schaden/Repair nutzt `api.tasks.create` | P1 | offen |
+| W16 | Parallele Create-APIs ohne Dedup | WhatsApp, Observations, Voice, Support — `createManualTask` ohne `dedupKey` | P1 | offen |
+| W17 | `TasksView` Pflichtfeld `estimatedDuration` | UI-validiert, nicht in `CreateTaskPayload` | P2 | offen |
 
 ---
 

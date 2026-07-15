@@ -83,4 +83,16 @@ export class TaskAutomationAdminController {
   ) {
     return this.admin.resetOverride(orgId, ruleId, req.user?.id, body.expectedVersion, body.reason);
   }
+
+  @Get('rules/:ruleId/revisions')
+  @RequirePermission('workflow-automation', 'read')
+  listRuleRevisions(@Param('orgId') orgId: string, @Param('ruleId') ruleId: string) {
+    return this.admin.listRuleRevisions(orgId, ruleId);
+  }
+
+  @Post('outbox/:outboxId/replay')
+  @RequirePermission('workflow-automation', 'manage')
+  replayDeadLetterOutbox(@Param('orgId') orgId: string, @Param('outboxId') outboxId: string) {
+    return this.admin.replayDeadLetterOutbox(orgId, outboxId);
+  }
 }

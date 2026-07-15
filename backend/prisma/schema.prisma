@@ -3731,6 +3731,7 @@ model OrgTask {
   organizationId            String              @map("organization_id")
   title                     String
   description               String?
+  /// Legacy free-form category string — prefer `type` for new code.
   category                  String?
   type                      TaskType            @default(CUSTOM)
   status                    TaskStatus          @default(OPEN)
@@ -3767,13 +3768,14 @@ model OrgTask {
   // bridge uses to upsert/escalate a single task per (vehicle, condition)
   // instead of duplicating it on every insight run. `sourceType` is the
   // coarse origin domain (V4.8.3).
+  /// Legacy provenance string (e.g. INSIGHT_SERVICE) — prefer `sourceType` for filters.
   source                    String?             @map("source")
   sourceType                TaskSource          @default(MANUAL) @map("source_type")
   dedupKey                  String?             @map("dedup_key")
   serviceCaseId             String?             @map("service_case_id")
   // Task Domain V2 — additive lifecycle / completion columns (nullable for
   // legacy rows; business rules enforced in TasksService, not DB constraints).
-  activatesAt               DateTime?           @map("activates_at")
+  activatesAt               DateTime            @map("activates_at")
   completionMode            TaskCompletionMode? @map("completion_mode")
   resolutionCode            String?             @map("resolution_code")
   completedByUserId         String?             @map("completed_by_user_id")

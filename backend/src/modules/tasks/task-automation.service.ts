@@ -1055,35 +1055,4 @@ export class TaskAutomationService {
       );
     }
   }
-
-  /** @deprecated Use {@link syncBookingDocumentPackageTask} — per-type tasks are superseded. */
-  async ensureDocumentTask(
-    orgId: string,
-    input: {
-      kind: string;
-      documentId?: string | null;
-      bookingId?: string | null;
-      vehicleId?: string | null;
-      title: string;
-      description?: string;
-      type?: Extract<TaskType, 'DOCUMENT_REVIEW' | 'INVOICE_REQUIRED'>;
-      priority?: TaskPriority;
-    },
-  ): Promise<void> {
-    const ref = input.documentId ?? input.bookingId ?? input.vehicleId ?? 'unknown';
-    const key = `document:${input.kind}:${ref}`;
-    await this.safeUpsert(orgId, key, {
-      title: input.title,
-      description: input.description,
-      category: 'Documents',
-      type: input.type ?? 'DOCUMENT_REVIEW',
-      priority: input.priority ?? 'NORMAL',
-      source: 'DOCUMENT',
-      sourceType: 'DOCUMENT',
-      documentId: input.documentId ?? null,
-      bookingId: input.bookingId ?? null,
-      vehicleId: input.vehicleId ?? null,
-      metadata: { generatedKey: key },
-    });
-  }
 }

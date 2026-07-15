@@ -402,9 +402,6 @@ function resolveStatusPrimaryAction(
   }
 
   if (task.status === 'IN_PROGRESS') {
-    if (available.complete.enabled) {
-      return action('complete', 'Erledigen', true, 'primary');
-    }
     return action('open-task', 'Aufgabe öffnen', true, 'primary');
   }
 
@@ -435,11 +432,10 @@ export function buildOperatorTaskCardActionPlan(
   if (primary?.kind !== 'complete') {
     addSecondary(
       action(
-        'complete',
-        'Erledigen',
-        available.complete.enabled,
+        'open-task',
+        'Aufgabe öffnen',
+        true,
         'secondary',
-        available.complete.disabledReason,
       ),
     );
   }

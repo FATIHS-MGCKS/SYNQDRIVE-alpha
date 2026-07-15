@@ -503,7 +503,7 @@ describe('TasksService', () => {
   it('requires a resolution note to complete a BRAKE_CHECK', async () => {
     prisma.orgTask.findFirst.mockResolvedValue(baseTask({ status: 'IN_PROGRESS', type: 'BRAKE_CHECK' }));
 
-    await expect(svc.completeTask('org1', 't1')).rejects.toBeInstanceOf(BadRequestException);
+    await expect(svc.completeTask('org1', 't1', {}, { id: 'u1' })).rejects.toBeInstanceOf(BadRequestException);
     expect(prisma.orgTask.update).not.toHaveBeenCalled();
   });
 
@@ -529,7 +529,7 @@ describe('TasksService', () => {
         actorUserId: 'u1',
         oldValue: 'IN_PROGRESS',
         newValue: 'DONE',
-        metadata: { resolutionKind: 'MANUAL' },
+        metadata: { completionMode: 'MANUAL', resolutionKind: 'MANUAL' },
       }),
     });
   });
@@ -538,10 +538,36 @@ describe('TasksService', () => {
     prisma.orgTask.findFirst
       .mockResolvedValueOnce(baseTask({ status: 'IN_PROGRESS', type: 'CUSTOM' }))
       .mockResolvedValueOnce(baseTask({ status: 'DONE', type: 'CUSTOM' }));
+    prisma.organizationMembership.findFirst.mockResolvedValue({ id: 'm1' });
     prisma.orgTask.update.mockResolvedValue(baseTask({ status: 'DONE' }));
 
-    const res = await svc.completeTask('org1', 't1');
+    const res = await svc.completeTask('org1', 't1', {}, { id: 'u1' });
     expect(res.status).toBe('DONE');
+  });
+
+  it('requires an authenticated actor to complete a task', async () => {
+    prisma.orgTask.findFirst.mockResolvedValue(baseTask({ status: 'IN_PROGRESS', type: 'CUSTOM' }));
+
+    await expect(svc.completeTask('org1', 't1')).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.orgTask.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects completion before activatesAt (CB4)', async () => {
+    prisma.orgTask.findFirst.mockResolvedValue(
+      baseTask({
+        status: 'OPEN',
+        type: 'CUSTOM',
+        activatesAt: new Date('2099-01-01T00:00:00.000Z'),
+        createdAt: new Date('2026-01-01T00:00:00.000Z'),
+      }),
+    );
+
+    await expect(
+      svc.completeTask('org1', 't1', {}, { id: 'u1' }),
+    ).rejects.toMatchObject({
+      message: expect.stringContaining('activation time'),
+    });
+    expect(prisma.orgTask.update).not.toHaveBeenCalled();
   });
 
   it('derives isOverdue from dueDate + status (active overdue=true, terminal=false)', async () => {
@@ -943,15 +969,15 @@ describe('TasksService', () => {
     expect(prisma.taskEvent.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         type: 'STATUS_CHANGED',
-        metadata: { resolutionKind: 'MANUAL' },
+        metadata: { completionMode: 'MANUAL', resolutionKind: 'MANUAL' },
       }),
     });
   });
 
-  it('sets completionMode MANUAL when cancelling a task', async () => {
+  it('sets cancelledAt when cancelling a task without completionMode', async () => {
     prisma.orgTask.findFirst
       .mockResolvedValueOnce(baseTask({ status: 'OPEN' }))
-      .mockResolvedValueOnce(baseTask({ status: 'CANCELLED', completionMode: 'MANUAL' }));
+      .mockResolvedValueOnce(baseTask({ status: 'CANCELLED', completionMode: null }));
     prisma.organizationMembership.findFirst.mockResolvedValue({ id: 'm1' });
     prisma.orgTask.update.mockResolvedValue(baseTask({ status: 'CANCELLED' }));
 
@@ -959,7 +985,7 @@ describe('TasksService', () => {
 
     const update = prisma.orgTask.update.mock.calls[0][0].data;
     expect(update.cancelledAt).toBeInstanceOf(Date);
-    expect(update.completionMode).toBe('MANUAL');
+    expect(update.completionMode).toBeUndefined();
     expect(update.completedByUserId).toBe('u1');
     expect(update.updatedByUserId).toBe('u1');
     expect(prisma.$transaction).toHaveBeenCalledTimes(1);
@@ -1014,7 +1040,7 @@ describe('TasksService', () => {
         { id: 'ci2', title: 'Fotos (optional)', isDone: false, isRequired: false },
       ]);
 
-      await expect(svc.completeTask('org1', 't1')).rejects.toMatchObject({
+      await expect(svc.completeTask('org1', 't1', {}, { id: 'u1' })).rejects.toMatchObject({
         response: {
           statusCode: 400,
           code: 'TASK_REQUIRED_CHECKLIST_INCOMPLETE',
@@ -1312,6 +1338,7 @@ describe('TasksService', () => {
           metadata: {
             resolutionCode: 'PAYMENT_RECEIVED',
             reason: 'Invoice fully paid',
+            completionMode: 'AUTO_RESOLVED',
             resolutionKind: 'AUTO_RESOLVED',
             ruleId: 'invoice.paid',
           },
@@ -1440,6 +1467,7 @@ describe('TasksService', () => {
           metadata: {
             resolutionCode: 'BOOKING_PHASE_ADVANCED',
             reason: 'Booking moved to next lifecycle phase',
+            completionMode: 'SUPERSEDED',
             resolutionKind: 'SUPERSEDED',
             supersededByTaskId: 't-successor',
             bookingId: 'b1',

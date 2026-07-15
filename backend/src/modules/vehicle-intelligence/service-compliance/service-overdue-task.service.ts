@@ -1,8 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Prisma, TaskPriority, TaskType } from '@prisma/client';
+import { InsightType, Prisma, TaskPriority, TaskType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TasksService } from '@modules/tasks/tasks.service';
 import { checklistForType } from '@modules/tasks/task-templates';
+import { TaskAutomationRuleResolverService } from '@modules/tasks/automation/task-automation-rule-resolver.service';
+import { shouldMaterializeFromResolvedRule } from '@modules/tasks/automation/task-automation-effective-rule.util';
+import { TaskAutomationOutboxEnqueueService } from '@modules/tasks/outbox/task-automation-outbox-enqueue.service';
+import { TaskAutomationOutboxExecutionContext } from '@modules/tasks/outbox/task-automation-outbox-execution.context';
+import { buildOutboxMeta } from '@modules/tasks/outbox/task-automation-outbox-meta.util';
+import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
 import { ServiceComplianceService } from './service-compliance.service';
 import type { ComplianceTaskSignalDto } from './service-compliance.types';
 import type { ComplianceOperationalVehicle } from './service-compliance-operational.signals';
@@ -13,7 +19,10 @@ import {
   serviceOverdueDedupKey,
   type ServiceOverdueTaskContext,
 } from './service-overdue-task.util';
-import { SERVICE_OVERDUE_TASK_RULE_ID } from './service-overdue-task.rules';
+import {
+  SERVICE_OVERDUE_TASK_RULE_ID,
+  SERVICE_OVERDUE_TASK_RULE_VERSION,
+} from './service-overdue-task.rules';
 import { FULL_SERVICE_BASELINE_EVENT_TYPES } from '../service-events/service-events.constants';
 
 const ACTIVE_STATUSES = ['OPEN', 'IN_PROGRESS', 'WAITING'] as const;
@@ -26,7 +35,36 @@ export class ServiceOverdueTaskService {
     private readonly prisma: PrismaService,
     private readonly tasks: TasksService,
     private readonly serviceCompliance: ServiceComplianceService,
+    private readonly ruleResolver: TaskAutomationRuleResolverService,
+    private readonly outboxEnqueue: TaskAutomationOutboxEnqueueService,
+    private readonly outboxContext: TaskAutomationOutboxExecutionContext,
   ) {}
+
+  private async handleAutomationFailure(
+    organizationId: string,
+    vehicleId: string,
+    err: unknown,
+    payload?: Record<string, unknown>,
+  ): Promise<void> {
+    if (this.outboxContext.fromOutbox) {
+      throw err instanceof Error ? err : new Error(sanitizeAutomationError(err));
+    }
+    await this.outboxEnqueue.enqueueFailure(
+      buildOutboxMeta({
+        organizationId,
+        ruleId: SERVICE_OVERDUE_TASK_RULE_ID,
+        ruleVersion: SERVICE_OVERDUE_TASK_RULE_VERSION,
+        entityType: 'VEHICLE',
+        entityId: vehicleId,
+        operation: 'MATERIALIZE_INSIGHT_TASK',
+        payload: { vehicleId, insightType: 'SERVICE_OVERDUE', ...payload },
+      }),
+      err,
+    );
+    this.logger.warn(
+      `materializeFromSignal(${vehicleId}) failed: ${sanitizeAutomationError(err)}`,
+    );
+  }
 
   buildUpsertPayload(input: {
     vehicleId: string;
@@ -102,25 +140,43 @@ export class ServiceOverdueTaskService {
     signal: ComplianceTaskSignalDto,
     alertId?: string | null,
   ): Promise<unknown> {
-    const ctx = signal.serviceOverdueContext;
-    if (!ctx) {
-      throw new Error('Compliance signal missing serviceOverdueContext');
+    try {
+      const resolved = await this.ruleResolver.resolveTaskAutomationRule(
+        organizationId,
+        SERVICE_OVERDUE_TASK_RULE_ID,
+      );
+      if (!shouldMaterializeFromResolvedRule(resolved)) {
+        return null;
+      }
+
+      const ctx = signal.serviceOverdueContext;
+      if (!ctx) {
+        throw new Error('Compliance signal missing serviceOverdueContext');
+      }
+
+      const payload = this.buildUpsertPayload({
+        vehicleId,
+        dedupKey: signal.dedupeKey,
+        ctx,
+        insightType: signal.insightType,
+        insightSeverity: signal.severity,
+        alertId,
+        suggestionOnly: signal.suggestionOnly,
+        complianceSignalKind: signal.kind,
+        dueDate: signal.dueDate ? new Date(signal.dueDate) : null,
+        priority: signal.severity === 'CRITICAL' ? 'CRITICAL' : 'HIGH',
+      });
+
+      return await this.tasks.upsertByDedup(organizationId, signal.dedupeKey, payload);
+    } catch (err: unknown) {
+      await this.handleAutomationFailure(
+        organizationId,
+        vehicleId,
+        err,
+        { insightDedupKey: signal.dedupeKey, insightType: signal.insightType },
+      );
+      return null;
     }
-
-    const payload = this.buildUpsertPayload({
-      vehicleId,
-      dedupKey: signal.dedupeKey,
-      ctx,
-      insightType: signal.insightType,
-      insightSeverity: signal.severity,
-      alertId,
-      suggestionOnly: signal.suggestionOnly,
-      complianceSignalKind: signal.kind,
-      dueDate: signal.dueDate ? new Date(signal.dueDate) : null,
-      priority: signal.severity === 'CRITICAL' ? 'CRITICAL' : 'HIGH',
-    });
-
-    return this.tasks.upsertByDedup(organizationId, signal.dedupeKey, payload);
   }
 
   async linkServiceCase(

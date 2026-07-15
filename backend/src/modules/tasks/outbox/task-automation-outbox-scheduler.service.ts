@@ -54,6 +54,12 @@ export class TaskAutomationOutboxSchedulerService {
   async pollPendingOutbox(): Promise<void> {
     if (!this.enqueueService.isEnabled()) return;
 
+    const staleBefore = new Date(Date.now() - this.config.processingStaleMs);
+    const recovered = await this.outboxRepo.recoverStaleProcessing(staleBefore);
+    if (recovered.length > 0) {
+      await this.scheduleOutboxIds(recovered);
+    }
+
     const pending = await this.outboxRepo.findPendingBatch(this.config.pollBatchSize);
     const backlog = await this.outboxRepo.countBacklog();
     this.observability.setQueueBacklog(backlog);

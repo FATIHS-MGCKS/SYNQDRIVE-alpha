@@ -11,7 +11,6 @@ import { api } from '../lib/api';
 import { useAppTheme } from '../context/AppThemeContext';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
-import { NewTaskModal } from './components/NewTaskModal';
 import { TripsView } from './components/TripsView';
 import { DashboardView } from './components/DashboardView';
 import { BookingsView } from './components/BookingsView';
@@ -183,7 +182,6 @@ function RentalAppContent() {
   const [vehicleStatus, setVehicleStatus] = useState<'Available' | 'Manual Block' | 'Maintenance'>('Available');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const [isCleaningDropdownOpen, setIsCleaningDropdownOpen] = useState(false);
-  const [isNewTaskModalOpen, setIsNewTaskModalOpen] = useState(false);
   const [autoOpenNewTask, setAutoOpenNewTask] = useState(false);
   const [currentView, setCurrentView] = useState<'overview' | 'trips' | 'dashboard' | 'bookings' | 'health-errors' | 'fleet' | 'damages' | 'documents' | 'customers' | 'customer-detail' | 'tasks' | 'vendor-detail' | 'invoices' | 'price-tariffs' | 'financial-insights' | 'settings' | 'new-booking' | 'stations' | 'station-detail' | 'vehicle-bookings' | 'vehicle-tasks' | 'vehicle-requirements' | 'document-upload' | 'ai-assistant' | 'support' | 'help-center' | 'data-analyse' | 'workflow-automation' | 'whatsapp-business' | 'parts-accessories' | 'insurances' | 'ai-voice-assistant'>(() =>
     readPersistedSettingsView() ? 'settings' : 'dashboard',
@@ -1111,14 +1109,6 @@ function RentalAppContent() {
             tasksRefreshToken={vehicleTasksRefreshToken}
           />
         ) : null}
-
-      {/* New Task Modal */}
-      <NewTaskModal 
-        isOpen={isNewTaskModalOpen} 
-        onClose={() => setIsNewTaskModalOpen(false)} 
-        isDarkMode={isDarkMode}
-      />
-
       {/* Cleaning Status Warning Modal */}
       {showCleaningWarning && (
         <div className="fixed inset-0 sq-backdrop flex items-center justify-center z-[100]">

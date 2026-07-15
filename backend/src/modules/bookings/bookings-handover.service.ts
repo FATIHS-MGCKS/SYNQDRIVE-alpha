@@ -5,6 +5,7 @@ import {
   BadRequestException,
   NotFoundException,
   ConflictException,
+  Logger,
 } from '@nestjs/common';
 import {
   BookingStatus,
@@ -27,6 +28,7 @@ import {
   parseSeverity,
 } from '@modules/technical-observations/technical-observations.mapper';
 import type { HandoverTechnicalObservationDraft } from './handover.types';
+import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
 
 // V4.6.75 — Booking handover (pickup + return) lifecycle + protocol persistence.
 // V4.8.47 — Vehicle.status is updated explicitly on handover (Option A):
@@ -40,6 +42,8 @@ import type { HandoverTechnicalObservationDraft } from './handover.types';
 // Fleet read-models still derive rental state from open bookings as a safety net.
 @Injectable()
 export class BookingsHandoverService {
+  private readonly logger = new Logger(BookingsHandoverService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     // Booking Document Lifecycle — generates handover protocol PDFs (and, on
@@ -49,6 +53,12 @@ export class BookingsHandoverService {
     private readonly workflowEvents: WorkflowEventService,
     private readonly taskAutomation: TaskAutomationService,
   ) {}
+
+  private runBackgroundTask(label: string, work: Promise<void>): void {
+    void work.catch((err: unknown) => {
+      this.logger.error(`${label}: ${sanitizeAutomationError(err)}`);
+    });
+  }
 
   async createHandover(
     orgId: string,
@@ -311,8 +321,9 @@ export class BookingsHandoverService {
       this.bookingDocumentBundleService
         .generatePickupProtocolDocument(orgId, bookingId, protocol.id, payload.performedByUserId ?? null)
         .catch(() => {});
-      void this.taskAutomation
-        .onPickupHandoverCompleted({
+      this.runBackgroundTask(
+        `taskAutomation.onPickupHandoverCompleted(${bookingId})`,
+        this.taskAutomation.onPickupHandoverCompleted({
           id: bookingId,
           organizationId: orgId,
           vehicleId: booking.vehicleId,
@@ -322,8 +333,8 @@ export class BookingsHandoverService {
           endDate: booking.endDate,
           pickupStationId: booking.pickupStationId,
           returnStationId: booking.returnStationId,
-        })
-        .catch(() => {});
+        }),
+      );
     } else {
       this.bookingDocumentBundleService
         .generateReturnProtocolDocument(orgId, bookingId, protocol.id, payload.performedByUserId ?? null)
@@ -352,8 +363,9 @@ export class BookingsHandoverService {
         type: 'booking.completed',
         idempotencyKey: `booking.completed:${bookingId}`,
       });
-      void this.taskAutomation
-        .onReturnHandoverCompleted({
+      this.runBackgroundTask(
+        `taskAutomation.onReturnHandoverCompleted(${bookingId})`,
+        this.taskAutomation.onReturnHandoverCompleted({
           id: bookingId,
           organizationId: orgId,
           vehicleId: booking.vehicleId,
@@ -363,8 +375,8 @@ export class BookingsHandoverService {
           endDate: booking.endDate,
           pickupStationId: booking.pickupStationId,
           returnStationId: booking.returnStationId,
-        })
-        .catch(() => {});
+        }),
+      );
     }
 
     return {

@@ -191,6 +191,11 @@ export function TaskAutomationRuleDrawer({
   const [simulation, setSimulation] = useState<TaskAutomationSimulationResult | null>(null);
   const [simulationLoading, setSimulationLoading] = useState(false);
   const [simulationError, setSimulationError] = useState<string | null>(null);
+  const [revisions, setRevisions] = useState<
+    import('./task-automation.types').TaskAutomationRuleRevisionDto[]
+  >([]);
+  const [revisionsLoading, setRevisionsLoading] = useState(false);
+  const [revisionsError, setRevisionsError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open && rule) {
@@ -199,6 +204,36 @@ export function TaskAutomationRuleDrawer({
       setChangeReason('');
     }
   }, [open, rule]);
+
+  useEffect(() => {
+    if (!open || !orgId || !rule) {
+      setRevisions([]);
+      setRevisionsError(null);
+      return;
+    }
+
+    let cancelled = false;
+    setRevisionsLoading(true);
+    setRevisionsError(null);
+    void api.taskAutomation
+      .listRuleRevisions(orgId, rule.ruleId)
+      .then((rows) => {
+        if (!cancelled) setRevisions(rows);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) {
+          setRevisions([]);
+          setRevisionsError(parseApiError(error));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setRevisionsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, orgId, rule?.ruleId]);
 
   const simulationPayload = useMemo(() => {
     if (!rule || !form) return null;
@@ -398,6 +433,48 @@ export function TaskAutomationRuleDrawer({
             {rule.audit.updatedByName ? ` · ${rule.audit.updatedByName}` : ''}
           </section>
         )}
+
+        <section className="space-y-2">
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Änderungshistorie
+          </h3>
+          {revisionsLoading && (
+            <p className="text-xs text-muted-foreground">Revisionen werden geladen…</p>
+          )}
+          {revisionsError && (
+            <p className="text-xs text-destructive">{revisionsError}</p>
+          )}
+          {!revisionsLoading && !revisionsError && revisions.length === 0 && (
+            <p className="text-xs text-muted-foreground">
+              Noch keine org-spezifischen Anpassungen protokolliert.
+            </p>
+          )}
+          {!revisionsLoading && revisions.length > 0 && (
+            <div className="space-y-2">
+              {revisions.map((revision) => (
+                <div
+                  key={revision.id}
+                  className="rounded-lg border border-border/50 px-3 py-2 text-xs"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-semibold text-foreground">
+                      Version {revision.version} · {revision.changeType}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {formatAuditTimestamp(revision.changedAt)}
+                    </span>
+                  </div>
+                  {(revision.changedByName || revision.reason) && (
+                    <p className="mt-1 text-muted-foreground">
+                      {revision.changedByName ? revision.changedByName : 'System'}
+                      {revision.reason ? ` · ${revision.reason}` : ''}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         <section className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">

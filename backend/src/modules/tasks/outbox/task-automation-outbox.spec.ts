@@ -48,6 +48,29 @@ describe('TaskAutomationOutboxRepository', () => {
     expect(second.status).toBe(TaskAutomationOutboxStatus.PENDING);
   });
 
+  it('recoverStaleProcessing resets PROCESSING rows older than threshold', async () => {
+    const prisma = {
+      taskAutomationOutbox: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'out-stale' }]),
+        updateMany: jest.fn().mockResolvedValue({ count: 1 }),
+      },
+    };
+    const repo = new TaskAutomationOutboxRepository(prisma as any);
+    const staleBefore = new Date('2026-01-01T00:00:00.000Z');
+
+    const recovered = await repo.recoverStaleProcessing(staleBefore);
+
+    expect(recovered).toEqual(['out-stale']);
+    expect(prisma.taskAutomationOutbox.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['out-stale'] } },
+      data: {
+        status: TaskAutomationOutboxStatus.PENDING,
+        availableAt: expect.any(Date),
+        processedAt: null,
+      },
+    });
+  });
+
   it('claimForProcessing is idempotent under concurrent claims', async () => {
     const row = {
       id: 'out-1',

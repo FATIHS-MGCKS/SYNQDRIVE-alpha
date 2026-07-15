@@ -77,8 +77,15 @@ describe('Service overdue task automation', () => {
       upsertByDedup: jest.fn().mockResolvedValue({ id: 'task-1' }),
       closeStaleInsightTasks: jest.fn().mockResolvedValue(0),
     };
-    const serviceOverdueTasks = new ServiceOverdueTaskService(prisma as any, tasks as any, {} as any);
     const { outboxEnqueue, outboxContext } = createNoopTaskAutomationOutboxDeps();
+    const serviceOverdueTasks = new ServiceOverdueTaskService(
+      prisma as any,
+      tasks as any,
+      {} as any,
+      createDefaultTaskAutomationRuleResolverMock(),
+      outboxEnqueue,
+      outboxContext,
+    );
     const bridge = new InsightTaskBridgeService(
       tasks as any,
       prisma as any,
@@ -118,8 +125,15 @@ describe('Service overdue task automation', () => {
       upsertByDedup: jest.fn(),
       closeStaleInsightTasks: jest.fn().mockResolvedValue(0),
     };
-    const serviceOverdueTasks = new ServiceOverdueTaskService(prisma as any, tasks as any, {} as any);
     const { outboxEnqueue, outboxContext } = createNoopTaskAutomationOutboxDeps();
+    const serviceOverdueTasks = new ServiceOverdueTaskService(
+      prisma as any,
+      tasks as any,
+      {} as any,
+      createDefaultTaskAutomationRuleResolverMock(),
+      outboxEnqueue,
+      outboxContext,
+    );
     const bridge = new InsightTaskBridgeService(
       tasks as any,
       prisma as any,

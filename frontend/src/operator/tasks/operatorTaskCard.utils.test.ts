@@ -125,7 +125,7 @@ describe('operatorTaskCard.utils', () => {
       buildOperatorTaskCardActionPlan(
         task({ id: 'progress', title: 'Laufend', type: 'TIRE_CHECK', status: 'IN_PROGRESS' }),
       ).primary,
-    ).toMatchObject({ kind: 'complete', label: 'Erledigen' });
+    ).toMatchObject({ kind: 'open-task', label: 'Aufgabe öffnen' });
   });
 
   it('uses type-specific primary actions', () => {

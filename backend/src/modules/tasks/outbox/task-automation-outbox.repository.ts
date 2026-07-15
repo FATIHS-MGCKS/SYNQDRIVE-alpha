@@ -101,6 +101,28 @@ export class TaskAutomationOutboxRepository {
     return this.findById(id);
   }
 
+  async recoverStaleProcessing(staleBefore: Date): Promise<string[]> {
+    const stale = await this.prisma.taskAutomationOutbox.findMany({
+      where: {
+        status: TaskAutomationOutboxStatus.PROCESSING,
+        updatedAt: { lt: staleBefore },
+      },
+      select: { id: true },
+    });
+    if (stale.length === 0) return [];
+
+    const ids = stale.map((row) => row.id);
+    await this.prisma.taskAutomationOutbox.updateMany({
+      where: { id: { in: ids } },
+      data: {
+        status: TaskAutomationOutboxStatus.PENDING,
+        availableAt: new Date(),
+        processedAt: null,
+      },
+    });
+    return ids;
+  }
+
   markCompleted(id: string) {
     return this.prisma.taskAutomationOutbox.update({
       where: { id },
@@ -132,5 +154,31 @@ export class TaskAutomationOutboxRepository {
         lastError: sanitizeAutomationError(error),
       },
     });
+  }
+
+  findDeadLetterBatch(limit: number) {
+    return this.prisma.taskAutomationOutbox.findMany({
+      where: { status: TaskAutomationOutboxStatus.DEAD_LETTER },
+      orderBy: { updatedAt: 'desc' },
+      take: limit,
+    });
+  }
+
+  async requeueDeadLetter(id: string, organizationId: string) {
+    const result = await this.prisma.taskAutomationOutbox.updateMany({
+      where: {
+        id,
+        organizationId,
+        status: TaskAutomationOutboxStatus.DEAD_LETTER,
+      },
+      data: {
+        status: TaskAutomationOutboxStatus.PENDING,
+        availableAt: new Date(),
+        processedAt: null,
+        attempts: 0,
+        lastError: null,
+      },
+    });
+    return result.count > 0;
   }
 }

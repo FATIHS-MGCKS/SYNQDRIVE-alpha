@@ -1,4 +1,5 @@
 import type { InsightType } from '@prisma/client';
+import { bookingDocumentPackageDedupKey } from '@modules/documents/booking-document-phase.util';
 import type { Prisma } from '@prisma/client';
 import {
   MATERIALIZATION_AUTOMATION_RULES,
@@ -148,7 +149,7 @@ export function confirmedPhaseActiveDedupKeys(bookingId: string): string[] {
   return [
     bookingPreparationDedupKey(bookingId),
     bookingPickupDedupKey(bookingId),
-    ...legacyConfirmedBookingDedupKeys(bookingId),
+    bookingDocumentPackageDedupKey('CONFIRMED', bookingId),
   ];
 }
 

@@ -170,15 +170,19 @@ describe('Booking task pipeline integration', () => {
 
     it('does not reopen manually completed preparation on minor reschedule', async () => {
       const { store, automation, tasks } = createBookingTaskPipelineHarness();
-      const booking = bookingConfirmed();
+      const nearPickupStart = new Date('2026-07-16T10:00:00.000Z');
+      const booking = bookingConfirmed({
+        startDate: nearPickupStart,
+        endDate: new Date('2026-07-18T10:00:00.000Z'),
+      });
       await automation.syncBookingPreparationTiming(booking, { now: BOOKING_TASK_FIXED_NOW });
       const prep = store.tasksByDedupKey(ids.orgA, bookingPreparationDedupKey(ids.bookingA))[0]!;
 
       await tasks.completeTask(ids.orgA, prep.id as string, {}, { id: 'operator-1' });
 
       await automation.syncBookingPreparationTiming(
-        { ...booking, startDate: new Date('2026-07-25T12:00:00.000Z') },
-        { previousStartDate: booking.startDate, now: BOOKING_TASK_FIXED_NOW },
+        { ...booking, startDate: new Date('2026-07-16T12:00:00.000Z') },
+        { previousStartDate: nearPickupStart, now: BOOKING_TASK_FIXED_NOW },
       );
 
       const rows = store.tasksByDedupKey(ids.orgA, bookingPreparationDedupKey(ids.bookingA));

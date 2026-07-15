@@ -16,6 +16,7 @@ import { useRentalOrg } from '../../RentalContext';
 import { Icon } from '../ui/Icon';
 import type { Invoice } from '../invoices/invoiceTypes';
 import { ManualTaskCreateForm } from './ManualTaskCreateForm';
+import { taskEntityOptionLabel } from '../../../lib/tasks/entity-label.utils';
 
 interface TasksNewTaskDialogProps {
   open: boolean;
@@ -95,23 +96,38 @@ export function TasksNewTaskDialog({
         setLookup({
           bookings: (bookings as Array<Record<string, unknown>>).map((row) => ({
             value: String(row.id ?? ''),
-            label: String(row.bookingNumber ?? row.id ?? 'Buchung'),
+            label: taskEntityOptionLabel(
+              row.bookingNumber != null ? String(row.bookingNumber) : null,
+              'Buchung',
+            ),
           })),
           customers: (customers as Array<Record<string, unknown>>).map((row) => ({
             value: String(row.id ?? ''),
-            label: String(row.name ?? row.companyName ?? row.email ?? row.id ?? 'Kunde'),
+            label: taskEntityOptionLabel(
+              row.name != null
+                ? String(row.name)
+                : row.companyName != null
+                  ? String(row.companyName)
+                  : row.email != null
+                    ? String(row.email)
+                    : null,
+              'Kunde',
+            ),
           })),
           invoices: (invoices as Invoice[]).map((row) => ({
             value: String(row.id ?? ''),
-            label: String(row.invoiceNumber ?? row.id ?? 'Rechnung'),
+            label: taskEntityOptionLabel(
+              row.invoiceNumber != null ? String(row.invoiceNumber) : null,
+              'Rechnung',
+            ),
           })),
           vendors: (vendors as Vendor[]).map((row) => ({
             value: String(row.id ?? ''),
-            label: String(row.name ?? row.id ?? 'Lieferant'),
+            label: taskEntityOptionLabel(row.name, 'Lieferant'),
           })),
           serviceCases: (serviceCases as ApiServiceCase[]).map((row) => ({
             value: String(row.id ?? ''),
-            label: String(row.title ?? row.id ?? 'Servicefall'),
+            label: taskEntityOptionLabel(row.title, 'Servicefall'),
           })),
         });
       })

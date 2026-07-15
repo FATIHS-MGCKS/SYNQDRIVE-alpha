@@ -33,6 +33,7 @@ export function createBookingTaskPipelineHarness(options?: {
     tasks,
     outboxEnqueue,
     outboxContext,
+    createDefaultTaskAutomationRuleResolverMock(),
   );
   const automation = new TaskAutomationService(
     tasks,

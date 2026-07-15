@@ -34,6 +34,10 @@ describe('TaskAutomationAdminController security', () => {
       module: 'workflow-automation',
       level: 'read',
     });
+    expect(permissionOf(TaskAutomationAdminController.prototype, 'listRuleRevisions')).toEqual({
+      module: 'workflow-automation',
+      level: 'read',
+    });
   });
 
   it('requires workflow-automation write for override mutations', () => {
@@ -59,6 +63,8 @@ describe('TaskAutomationAdminController', () => {
     upsertOverride: jest.fn(),
     resetOverride: jest.fn(),
     simulateRule: jest.fn(),
+    listRuleRevisions: jest.fn(),
+    replayDeadLetterOutbox: jest.fn(),
   };
 
   const controller = new TaskAutomationAdminController(admin as any);
@@ -118,5 +124,21 @@ describe('TaskAutomationAdminController', () => {
       payload,
     );
     expect(admin.resetOverride).toHaveBeenCalledWith(orgId, ruleId, actor.id, 3, undefined);
+  });
+
+  it('lists rule revisions', async () => {
+    const payload = [{ id: 'rev-1', version: 2 }];
+    admin.listRuleRevisions.mockResolvedValue(payload);
+
+    await expect(controller.listRuleRevisions(orgId, ruleId)).resolves.toEqual(payload);
+    expect(admin.listRuleRevisions).toHaveBeenCalledWith(orgId, ruleId);
+  });
+
+  it('replays dead-letter outbox rows', async () => {
+    const payload = { outboxId: 'outbox-1', status: 'PENDING' };
+    admin.replayDeadLetterOutbox.mockResolvedValue(payload);
+
+    await expect(controller.replayDeadLetterOutbox(orgId, 'outbox-1')).resolves.toEqual(payload);
+    expect(admin.replayDeadLetterOutbox).toHaveBeenCalledWith(orgId, 'outbox-1');
   });
 });

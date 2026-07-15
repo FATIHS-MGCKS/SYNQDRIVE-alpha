@@ -306,19 +306,21 @@ export class BookingsService {
         .catch(() => {});
     }
 
-    void this.taskAutomationService
-      .ensureBookingLifecycleTasks({
-        id: booking.id,
-        organizationId: orgId,
-        vehicleId: booking.vehicleId,
-        customerId: booking.customerId,
-        status: booking.status,
-        startDate: booking.startDate,
-        endDate: booking.endDate,
-        pickupStationId: booking.pickupStationId,
-        returnStationId: booking.returnStationId,
-      })
-      .catch(() => {});
+    if (booking.status === 'CONFIRMED' || booking.status === 'ACTIVE') {
+      void this.taskAutomationService
+        .ensureBookingLifecycleTasks({
+          id: booking.id,
+          organizationId: orgId,
+          vehicleId: booking.vehicleId,
+          customerId: booking.customerId,
+          status: booking.status,
+          startDate: booking.startDate,
+          endDate: booking.endDate,
+          pickupStationId: booking.pickupStationId,
+          returnStationId: booking.returnStationId,
+        })
+        .catch(() => {});
+    }
 
     return {
       ...booking,

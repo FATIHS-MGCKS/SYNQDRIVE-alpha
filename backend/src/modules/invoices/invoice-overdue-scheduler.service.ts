@@ -48,4 +48,13 @@ export class InvoiceOverdueSchedulerService {
       this.logger.log(`Reconciled ${result.count} fully paid OVERDUE invoice(s) to PAID`);
     }
   }
+
+  /** Hourly refresh of open payment-check task timing/priority (due-today escalation). */
+  @Cron('15 * * * *')
+  async refreshOpenPaymentCheckTasks(): Promise<void> {
+    const count = await this.invoicePaymentTasks.refreshOpenPaymentCheckTasks();
+    if (count > 0) {
+      this.logger.log(`Refreshed ${count} invoice payment-check task(s)`);
+    }
+  }
 }

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ListTodo, Plus } from 'lucide-react';
-import type { ApiTask, ApiTaskPriority } from '../../lib/api';
-import { api } from '../../lib/api';
+import { apiTaskPriorityLabelDe } from '../../lib/tasks/task-labels';
+import { api, type ApiTask, type ApiTaskPriority } from '../../lib/api';
 import { EmptyState, ErrorState, SkeletonRows } from '../../components/patterns';
 import { bookingRef } from '../../rental/components/bookings/bookingUtils';
 import { useFleetVehicles } from '../../rental/FleetContext';
@@ -32,7 +32,7 @@ const PRIORITY_OPTIONS: Array<ApiTaskPriority | 'all'> = ['all', 'CRITICAL', 'HI
 
 export function OperatorTasksView() {
   const { orgId } = useRentalOrg();
-  const { tasks, taskSummary, tasksLoading, tasksError, reloadTasks } = useOperatorData();
+  const { taskSummary, tasksLoading, tasksError, reloadTasks } = useOperatorData();
   const { fleetVehicles } = useFleetVehicles();
   const { openSheet, pendingTasksBookingId, setPendingTasksBookingId } = useOperatorShell();
   const isTablet = useOperatorTabletLayout();
@@ -42,26 +42,31 @@ export function OperatorTasksView() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [focusComment, setFocusComment] = useState(false);
   const [vehiclePickerOpen, setVehiclePickerOpen] = useState(false);
-  const [remoteTasks, setRemoteTasks] = useState<ApiTask[] | null>(null);
+  const [remoteTasks, setRemoteTasks] = useState<ApiTask[]>([]);
   const [remoteLoading, setRemoteLoading] = useState(false);
 
   const apiFilters = useMemo(() => buildTaskListApiFilters(filters, userId), [filters, userId]);
 
+  const listFilters = useMemo(
+    () => ({ bucket: 'ALL_OPEN' as const, ...apiFilters }),
+    [apiFilters],
+  );
+
   const fetchRemoteTasks = useCallback(async () => {
-    if (!orgId || !apiFilters) {
-      setRemoteTasks(null);
+    if (!orgId) {
+      setRemoteTasks([]);
       return;
     }
     setRemoteLoading(true);
     try {
-      const response = await api.tasks.list(orgId, apiFilters);
+      const response = await api.tasks.list(orgId, listFilters);
       setRemoteTasks(sortOperatorTasks(response));
     } catch {
-      setRemoteTasks(null);
+      setRemoteTasks([]);
     } finally {
       setRemoteLoading(false);
     }
-  }, [apiFilters, orgId]);
+  }, [listFilters, orgId]);
 
   const reloadTaskLists = useCallback(async () => {
     await Promise.all([reloadTasks(), fetchRemoteTasks()]);
@@ -85,7 +90,7 @@ export function OperatorTasksView() {
 
   const vehicleById = useMemo(() => buildFleetVehicleById(fleetVehicles), [fleetVehicles]);
 
-  const sourceTasks = remoteTasks ?? tasks;
+  const sourceTasks = remoteTasks;
   const canonicalTasks = useMemo(
     () => filterCanonicalOperatorTasks(sourceTasks),
     [sourceTasks],
@@ -232,7 +237,7 @@ export function OperatorTasksView() {
                 : 'border-border surface-premium text-muted-foreground'
             }`}
           >
-            {p === 'all' ? 'Priorität' : p}
+            {p === 'all' ? 'Priorität' : apiTaskPriorityLabelDe(p)}
           </button>
         ))}
       </div>

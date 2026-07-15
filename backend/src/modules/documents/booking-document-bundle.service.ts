@@ -49,6 +49,7 @@ import {
 } from './booking-document-phase.util';
 import { computeMissingDocumentSlots } from './booking-document-missing-slots.util';
 import { BookingDocumentOrgLegalNotificationService } from './booking-document-org-legal-notification.service';
+import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
 
 const TEMPLATE_VERSION = '1';
 
@@ -112,6 +113,12 @@ export class BookingDocumentBundleService {
 
   private get generationEnabled(): boolean {
     return this.config.get<boolean>('documents.generationEnabled', true);
+  }
+
+  private runBackgroundTask(label: string, work: Promise<void>): void {
+    void work.catch((err: unknown) => {
+      this.logger.error(`${label}: ${sanitizeAutomationError(err)}`);
+    });
   }
 
   // ── bundle lifecycle ───────────────────────────────────────────────────
@@ -788,7 +795,10 @@ export class BookingDocumentBundleService {
     void this.orgLegalNotification.syncFromOrgLegalState(orgId, orgActiveLegal).catch(() => {});
 
     if (!documentPhaseForBookingStatus(bookingStatus)) {
-      void this.taskAutomation.supersedeBookingDocumentPackageTasks(orgId, bookingId).catch(() => {});
+      this.runBackgroundTask(
+        `taskAutomation.supersedeBookingDocumentPackageTasks(${bookingId})`,
+        this.taskAutomation.supersedeBookingDocumentPackageTasks(orgId, bookingId),
+      );
       return;
     }
 
@@ -815,9 +825,10 @@ export class BookingDocumentBundleService {
       });
     }
 
-    void this.taskAutomation
-      .closeStaleDocumentPackageTasksForBooking(orgId, bookingId, activeKeys)
-      .catch(() => {});
+    this.runBackgroundTask(
+      `taskAutomation.closeStaleDocumentPackageTasksForBooking(${bookingId})`,
+      this.taskAutomation.closeStaleDocumentPackageTasksForBooking(orgId, bookingId, activeKeys),
+    );
   }
 
   // ── helpers ───────────────────────────────────────────────────────────

@@ -117,8 +117,7 @@ export function hasOperatorTodaySecondaryContent(snapshot: OperatorTodaySnapshot
     snapshot.dueNow.length > 0 ||
     snapshot.pickupsToday.length > 0 ||
     snapshot.returnsToday.length > 0 ||
-    snapshot.blockedVehicles.length > 0 ||
-    snapshot.vehicleCheckTasks.length > 0
+    snapshot.blockedVehicles.length > 0
   );
 }
 

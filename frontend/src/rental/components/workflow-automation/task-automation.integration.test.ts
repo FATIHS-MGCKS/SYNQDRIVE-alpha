@@ -25,5 +25,6 @@ describe('task automation workflow integration', () => {
     expect(apiSource).toContain('taskAutomation:');
     expect(apiSource).toContain('/task-automation/rules');
     expect(apiSource).toContain('/simulate');
+    expect(apiSource).toContain('/revisions');
   });
 });

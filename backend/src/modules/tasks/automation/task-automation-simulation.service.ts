@@ -77,7 +77,7 @@ interface TaskSample {
 }
 
 const DEDUP_PREFIXES: Record<TaskAutomationCatalogKey, string[]> = {
-  BOOKING_PREPARATION: ['booking:prep:', 'booking:document:'],
+  BOOKING_PREPARATION: ['booking:prep:', 'document:package:CONFIRMED:'],
   BOOKING_PICKUP: ['booking:pickup:'],
   BOOKING_RETURN: ['booking:return:'],
   DOCUMENT_PACKAGE_INCOMPLETE: ['document:package:'],

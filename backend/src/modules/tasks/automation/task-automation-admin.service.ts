@@ -1,5 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { TaskAutomationOutboxRepository } from '../outbox/task-automation-outbox.repository';
+import { TaskAutomationOutboxSchedulerService } from '../outbox/task-automation-outbox-scheduler.service';
 import {
   buildEffectiveChecklistItems,
   validateChecklistOverridePayload,
@@ -101,6 +103,8 @@ export class TaskAutomationAdminService {
     private readonly resolver: TaskAutomationRuleResolverService,
     private readonly overrideService: TaskAutomationRuleOverrideService,
     private readonly simulation: TaskAutomationSimulationService,
+    private readonly outboxRepo: TaskAutomationOutboxRepository,
+    private readonly outboxScheduler: TaskAutomationOutboxSchedulerService,
   ) {}
 
   async listRules(orgId: string): Promise<TaskAutomationRulesOverviewDto> {
@@ -191,6 +195,46 @@ export class TaskAutomationAdminService {
     },
   ) {
     return this.simulation.simulate(orgId, ruleId, input);
+  }
+
+  async listRuleRevisions(orgId: string, ruleId: string, limit = 20) {
+    const override = await this.prisma.orgTaskAutomationRuleOverride.findUnique({
+      where: { organizationId_ruleId: { organizationId: orgId, ruleId } },
+      select: { id: true },
+    });
+    if (!override) return [];
+
+    const rows = await this.prisma.orgTaskAutomationRuleOverrideRevision.findMany({
+      where: { overrideId: override.id },
+      orderBy: { overrideVersion: 'desc' },
+      take: limit,
+      include: {
+        changedBy: { select: { id: true, firstName: true, lastName: true, email: true } },
+      },
+    });
+
+    return rows.map((row) => ({
+      id: row.id,
+      version: row.overrideVersion,
+      changeType: row.changeType,
+      reason: null,
+      snapshot: row.snapshot as Record<string, unknown>,
+      changedAt: row.createdAt.toISOString(),
+      changedByUserId: row.changedByUserId,
+      changedByName: row.changedBy
+        ? [row.changedBy.firstName, row.changedBy.lastName].filter(Boolean).join(' ').trim() ||
+          row.changedBy.email
+        : null,
+    }));
+  }
+
+  async replayDeadLetterOutbox(orgId: string, outboxId: string) {
+    const requeued = await this.outboxRepo.requeueDeadLetter(outboxId, orgId);
+    if (!requeued) {
+      throw new NotFoundException(`Dead-letter outbox row ${outboxId} not found for organization`);
+    }
+    await this.outboxScheduler.scheduleOutboxIds([outboxId]);
+    return { outboxId, status: 'PENDING' as const };
   }
 
   private toAdminDto(

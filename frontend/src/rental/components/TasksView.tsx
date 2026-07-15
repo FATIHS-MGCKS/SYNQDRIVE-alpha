@@ -10,6 +10,7 @@ import {
   useTaskList,
   useTaskSummary,
 } from '../../lib/tasks';
+import { taskEntityOptionLabel } from '../../lib/tasks/entity-label.utils';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { useFleetVehicles } from '../FleetContext';
 import { useRentalOrg } from '../RentalContext';
@@ -183,19 +184,34 @@ export function TasksView({
         setEntityLookup({
           bookings: (bookings as Array<Record<string, unknown>>).map((row) => ({
             value: String(row.id ?? ''),
-            label: String(row.bookingNumber ?? row.id ?? 'Buchung'),
+            label: taskEntityOptionLabel(
+              row.bookingNumber != null ? String(row.bookingNumber) : null,
+              'Buchung',
+            ),
           })),
           customers: (customers as Array<Record<string, unknown>>).map((row) => ({
             value: String(row.id ?? ''),
-            label: String(row.name ?? row.companyName ?? row.email ?? row.id ?? 'Kunde'),
+            label: taskEntityOptionLabel(
+              row.name != null
+                ? String(row.name)
+                : row.companyName != null
+                  ? String(row.companyName)
+                  : row.email != null
+                    ? String(row.email)
+                    : null,
+              'Kunde',
+            ),
           })),
           invoices: (invoices as Invoice[]).map((row) => ({
             value: String(row.id ?? ''),
-            label: String(row.invoiceNumber ?? row.id ?? 'Rechnung'),
+            label: taskEntityOptionLabel(
+              row.invoiceNumber != null ? String(row.invoiceNumber) : null,
+              'Rechnung',
+            ),
           })),
           serviceCases: (serviceCases as ApiServiceCase[]).map((row) => ({
             value: String(row.id ?? ''),
-            label: String(row.title ?? row.id ?? 'Servicefall'),
+            label: taskEntityOptionLabel(row.title, 'Servicefall'),
           })),
         });
         setLookupLoaded(true);
@@ -248,6 +264,7 @@ export function TasksView({
   );
 
   const sortedTasks = useMemo(
+    // Client-side sort applies to the current server page only (no cross-page ordering).
     () => sortTaskListRows(tasks, filters.sortBy),
     [tasks, filters.sortBy],
   );

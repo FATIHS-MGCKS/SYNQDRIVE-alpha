@@ -1,5 +1,7 @@
 import { ComplianceTaskMaterializeService } from './compliance-task-materialize.service';
 import type { ComplianceTaskSignalDto } from './service-compliance.types';
+import { createNoopTaskAutomationOutboxDeps } from '@modules/tasks/outbox/task-automation-outbox-test.util';
+import { createDefaultTaskAutomationRuleResolverMock } from '@modules/tasks/automation/task-automation-rule-resolver.test.util';
 
 describe('ComplianceTaskMaterializeService deduplication', () => {
   const signal: ComplianceTaskSignalDto = {
@@ -28,10 +30,15 @@ describe('ComplianceTaskMaterializeService deduplication', () => {
     materializeFromSignal: jest.fn().mockResolvedValue({ id: 't1' }),
   };
 
+  const { outboxEnqueue, outboxContext } = createNoopTaskAutomationOutboxDeps();
+
   const svc = new ComplianceTaskMaterializeService(
     serviceCompliance as any,
     tasks as any,
     serviceOverdueTasks as any,
+    createDefaultTaskAutomationRuleResolverMock(),
+    outboxEnqueue,
+    outboxContext,
   );
 
   beforeEach(() => {

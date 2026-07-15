@@ -49,6 +49,7 @@ import { DataAuthorizationsService } from '@modules/data-authorizations/data-aut
 import { DataAuthorizationEnforcementService } from '@modules/data-authorizations/data-authorization-enforcement.service';
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { buildFleetDeviceConnectionFields } from '@modules/dimo/device-connection-read-model';
+import { TasksService } from '@modules/tasks/tasks.service';
 
 const DIMO_FUEL_TYPE_MAP: Record<string, FuelType> = {
   GASOLINE: FuelType.GASOLINE,
@@ -244,6 +245,7 @@ export class VehiclesService {
     private readonly dataAuthEnforcement: DataAuthorizationEnforcementService,
     private readonly deviceConnectionQuery: DeviceConnectionQueryService,
     @Inject(dimoConfig.KEY) private readonly dimoConf: ConfigType<typeof dimoConfig>,
+    private readonly tasksService: TasksService,
   ) {}
 
   // Short-lived cache for the fleet-map endpoint. The UI polls every few
@@ -2114,17 +2116,18 @@ export class VehiclesService {
             : 'NORMAL';
 
     try {
-      await this.prisma.orgTask.create({
-        data: {
-          organizationId,
-          vehicleId,
+      await this.tasksService.createManualTask(
+        organizationId,
+        {
           title: `Complaint: ${body.description.slice(0, 72)}${body.description.length > 72 ? '…' : ''}`,
           description: body.description,
           category: 'VEHICLE_COMPLAINT',
-          status: 'OPEN',
+          type: 'CUSTOM',
           priority: taskPriority,
+          vehicleId,
         },
-      });
+        createdByUserId,
+      );
     } catch (err: any) {
       this.logger.warn(`Could not create OrgTask for complaint: ${err?.message ?? err}`);
     }

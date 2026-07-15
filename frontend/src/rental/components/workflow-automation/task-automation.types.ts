@@ -76,6 +76,17 @@ export interface TaskAutomationRuleDto {
   };
 }
 
+export interface TaskAutomationRuleRevisionDto {
+  id: string;
+  version: number;
+  changeType: string;
+  reason: string | null;
+  snapshot: Record<string, unknown>;
+  changedAt: string;
+  changedByUserId: string | null;
+  changedByName: string | null;
+}
+
 export interface TaskAutomationRulesOverviewDto {
   rules: TaskAutomationRuleDto[];
   summary: {

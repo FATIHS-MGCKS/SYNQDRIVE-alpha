@@ -1,4 +1,5 @@
 import type { ApiTaskStatus, ApiTaskType } from '../../lib/api';
+import { apiTaskStatusLabelDe } from '../../lib/tasks/task-labels';
 import type { StatusTone } from '../../components/patterns';
 
 /** Mirrors backend `RESOLUTION_REQUIRED_TYPES` in tasks.service.ts */
@@ -24,19 +25,7 @@ export function isActiveTaskStatus(status: ApiTaskStatus): boolean {
 }
 
 export function taskStatusLabelDe(status: ApiTaskStatus): string {
-  switch (status) {
-    case 'IN_PROGRESS':
-      return 'In Arbeit';
-    case 'WAITING':
-      return 'Wartend';
-    case 'DONE':
-      return 'Erledigt';
-    case 'CANCELLED':
-      return 'Storniert';
-    case 'OPEN':
-    default:
-      return 'Offen';
-  }
+  return apiTaskStatusLabelDe(status);
 }
 
 export function taskStatusTone(status: ApiTaskStatus, isOverdue?: boolean): StatusTone {

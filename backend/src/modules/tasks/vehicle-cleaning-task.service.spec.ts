@@ -1,6 +1,7 @@
 import { VehicleCleaningTaskService } from './vehicle-cleaning-task.service';
 import { TasksService } from './tasks.service';
 import { createNoopTaskAutomationOutboxDeps } from './outbox/task-automation-outbox-test.util';
+import { createDefaultTaskAutomationRuleResolverMock } from './automation/task-automation-rule-resolver.test.util';
 
 describe('VehicleCleaningTaskService', () => {
   const prisma = {
@@ -28,6 +29,7 @@ describe('VehicleCleaningTaskService', () => {
       tasks as unknown as TasksService,
       outboxEnqueue,
       outboxContext,
+      createDefaultTaskAutomationRuleResolverMock(),
     );
     prisma.vehicle.findFirst.mockResolvedValue({
       id: 'v1',

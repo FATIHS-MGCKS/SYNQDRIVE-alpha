@@ -402,13 +402,9 @@ export class TasksService {
     newValue?: string | null,
     metadata?: Prisma.InputJsonValue,
   ): Promise<void> {
-    try {
-      await this.prisma.taskEvent.create({
-        data: { taskId, type, actorUserId: actorUserId ?? null, oldValue: oldValue ?? null, newValue: newValue ?? null, metadata },
-      });
-    } catch (err: any) {
-      this.logger.warn(`Failed to record task event ${type} for ${taskId}: ${err?.message ?? err}`);
-    }
+    await this.prisma.taskEvent.create({
+      data: { taskId, type, actorUserId: actorUserId ?? null, oldValue: oldValue ?? null, newValue: newValue ?? null, metadata },
+    });
   }
 
   /** Status transitions only — must run inside a transaction; failures propagate. */
@@ -437,7 +433,10 @@ export class TasksService {
     checklistGate?: ResolvedManualCompletionChecklistGate,
   ): Prisma.InputJsonValue | undefined {
     if (to === 'DONE' || to === 'CANCELLED') {
-      const metadata: Record<string, unknown> = { resolutionKind: TaskCompletionMode.MANUAL };
+      const metadata: Record<string, unknown> = {
+        completionMode: to === 'DONE' ? TaskCompletionMode.MANUAL : null,
+        resolutionKind: to === 'DONE' ? TaskCompletionMode.MANUAL : null,
+      };
       if (checklistGate?.checklistOverridden) {
         metadata.overriddenBlockers = ['CHECKLIST'];
         metadata.checklistOverride = true;
@@ -474,6 +473,7 @@ export class TasksService {
     const base: Record<string, unknown> = {
       resolutionCode,
       reason,
+      completionMode: TaskCompletionMode.AUTO_RESOLVED,
       resolutionKind: TaskCompletionMode.AUTO_RESOLVED,
     };
     if (metadata && typeof metadata === 'object' && !Array.isArray(metadata)) {
@@ -511,6 +511,7 @@ export class TasksService {
     const base: Record<string, unknown> = {
       resolutionCode,
       reason,
+      completionMode: TaskCompletionMode.SUPERSEDED,
       resolutionKind: TaskCompletionMode.SUPERSEDED,
       supersededByTaskId,
     };
@@ -1288,6 +1289,15 @@ export class TasksService {
 
     if (to === 'IN_PROGRESS' && !task.startedAt) update.startedAt = now;
     if (to === 'DONE') {
+      if (!actorUserId) {
+        throw new BadRequestException('An authenticated user is required to complete a task');
+      }
+      const effectiveActivation = this.effectiveActivatesAt(task);
+      if (effectiveActivation > now) {
+        throw new BadRequestException(
+          'Task cannot be completed before its activation time (activatesAt)',
+        );
+      }
       checklistGate = await this.resolveManualCompletionChecklistGate(orgId, id, actor, {
         overrideIncompleteChecklist: extra?.overrideIncompleteChecklist,
         overrideReason: extra?.overrideReason,
@@ -1307,7 +1317,6 @@ export class TasksService {
     }
     if (to === 'CANCELLED') {
       update.cancelledAt = now;
-      update.completionMode = TaskCompletionMode.MANUAL;
       if (actorUserId) {
         await this.assertOrgMember(orgId, actorUserId);
         update.completedByUserId = actorUserId;
@@ -1585,23 +1594,23 @@ export class TasksService {
   async autoResolveTasks(orgId: string, taskIds: string[], input: AutoResolveTaskInput): Promise<number> {
     if (taskIds.length === 0) return 0;
     let resolved = 0;
-    for (const batch of this.chunkItems(taskIds, TasksService.TERMINAL_TRANSITION_BATCH_SIZE)) {
-      await Promise.all(batch.map((taskId) => this.autoResolveTask(orgId, taskId, input)));
-      resolved += batch.length;
+    for (const taskId of taskIds) {
+      await this.autoResolveTask(orgId, taskId, input);
+      resolved += 1;
     }
     return resolved;
   }
 
   /**
-   * Batch wrapper around {@link supersedeTask}. Processes tasks in controlled
-   * parallel chunks; each task still receives its own atomic update + event.
+   * Batch wrapper around {@link supersedeTask}. Processes tasks sequentially so
+   * partial batch failures surface immediately.
    */
   async supersedeTasks(orgId: string, taskIds: string[], input: SupersedeTaskInput): Promise<number> {
     if (taskIds.length === 0) return 0;
     let superseded = 0;
-    for (const batch of this.chunkItems(taskIds, TasksService.TERMINAL_TRANSITION_BATCH_SIZE)) {
-      await Promise.all(batch.map((taskId) => this.supersedeTask(orgId, taskId, input)));
-      superseded += batch.length;
+    for (const taskId of taskIds) {
+      await this.supersedeTask(orgId, taskId, input);
+      superseded += 1;
     }
     return superseded;
   }

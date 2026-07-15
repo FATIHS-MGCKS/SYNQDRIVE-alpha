@@ -181,8 +181,8 @@ export class InvoicePaymentTaskService {
           orgId,
           existing.id,
           {
-            activatesAt: timing.activatesAt,
-            dueDate: timing.dueDate,
+            activatesAt: adjustedTiming.activatesAt,
+            dueDate: adjustedTiming.dueDate,
             priority: timing.priority,
           },
           {

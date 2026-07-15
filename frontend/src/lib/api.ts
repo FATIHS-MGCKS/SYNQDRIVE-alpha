@@ -3781,6 +3781,15 @@ export const api = {
         `/organizations/${orgId}/task-automation/rules/${encodeURIComponent(ruleId)}/simulate`,
         data ?? {},
       ),
+    listRuleRevisions: (orgId: string, ruleId: string) =>
+      get<
+        import('../rental/components/workflow-automation/task-automation.types').TaskAutomationRuleRevisionDto[]
+      >(`/organizations/${orgId}/task-automation/rules/${encodeURIComponent(ruleId)}/revisions`),
+    replayDeadLetterOutbox: (orgId: string, outboxId: string) =>
+      post<{ outboxId: string; status: 'PENDING' }>(
+        `/organizations/${orgId}/task-automation/outbox/${encodeURIComponent(outboxId)}/replay`,
+        {},
+      ),
   },
   workflows: {
     list: (orgId: string, params?: { status?: string; category?: string }) => {

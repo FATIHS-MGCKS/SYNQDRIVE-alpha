@@ -18,7 +18,6 @@ export {
 } from './hooks/useTaskLinkedObjectNavigation';
 export { TaskDetailBody, TaskDetailCompactHeader, TaskDetailLoadingSkeleton } from './components/TaskDetailBody';
 export { TaskDetailChecklistSection } from './components/TaskDetailChecklistSection';
-export { TaskDetailChecklistOverrideDialog } from './components/TaskDetailChecklistOverrideDialog';
 export { TaskDetailNotesActivitySection } from './components/TaskDetailNotesActivitySection';
 export type { TaskNotesActivityTab } from './components/TaskDetailNotesActivitySection';
 export { TaskDetailShell } from './components/TaskDetailShell';

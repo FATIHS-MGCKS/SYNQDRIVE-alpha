@@ -11,6 +11,9 @@ describe('TaskAutomationAdminService', () => {
       findMany: jest.fn(),
       findUnique: jest.fn(),
     },
+    orgTaskAutomationRuleOverrideRevision: {
+      findMany: jest.fn(),
+    },
   };
 
   const resolver = {
@@ -24,11 +27,21 @@ describe('TaskAutomationAdminService', () => {
 
   const simulation = { simulate: jest.fn() };
 
+  const outboxRepo = {
+    requeueDeadLetter: jest.fn(),
+  };
+
+  const outboxScheduler = {
+    scheduleOutboxIds: jest.fn(),
+  };
+
   const service = new TaskAutomationAdminService(
     prisma as any,
     resolver as any,
     overrideService as any,
     simulation as any,
+    outboxRepo as any,
+    outboxScheduler as any,
   );
 
   const baseResolved = {
@@ -187,5 +200,36 @@ describe('TaskAutomationAdminService', () => {
 
   it('throws when rule id is unknown', async () => {
     await expect(service.getRule(orgId, 'unknown.rule.id')).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('lists override revisions for a rule', async () => {
+    prisma.orgTaskAutomationRuleOverride.findUnique.mockResolvedValue({ id: 'ov-1' });
+    prisma.orgTaskAutomationRuleOverrideRevision.findMany.mockResolvedValue([
+      {
+        id: 'rev-1',
+        overrideVersion: 2,
+        changeType: 'UPDATE',
+        snapshot: { priority: 'HIGH' },
+        createdAt: new Date('2026-07-15T12:00:00.000Z'),
+        changedByUserId: 'user-1',
+        changedBy: { id: 'user-1', firstName: 'Anna', lastName: 'Admin', email: 'anna@example.com' },
+      },
+    ]);
+
+    const revisions = await service.listRuleRevisions(orgId, bookingPrepRule.ruleId);
+
+    expect(revisions).toHaveLength(1);
+    expect(revisions[0]?.version).toBe(2);
+    expect(revisions[0]?.changedByName).toBe('Anna Admin');
+  });
+
+  it('replays a dead-letter outbox row', async () => {
+    outboxRepo.requeueDeadLetter.mockResolvedValue(true);
+
+    const result = await service.replayDeadLetterOutbox(orgId, 'outbox-1');
+
+    expect(outboxRepo.requeueDeadLetter).toHaveBeenCalledWith('outbox-1', orgId);
+    expect(outboxScheduler.scheduleOutboxIds).toHaveBeenCalledWith(['outbox-1']);
+    expect(result).toEqual({ outboxId: 'outbox-1', status: 'PENDING' });
   });
 });
