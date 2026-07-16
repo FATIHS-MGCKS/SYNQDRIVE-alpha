@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-dimo-signal-mapping-v49517-2026-07-16',
+    version: '4.9.517',
+    title: 'V4.9.517 — DIMO Battery Signal Mapping Audit (Prompt 15/78)',
+    summary: [
+      'Neuer zentraler Mapper `dimo-battery-signal.mapper.ts` mit dokumentierten DIMO-Signalnamen, expliziter Einheiten-Normalisierung und per-Signal `observedAt`.',
+      'Korrektur: `ChargingPower` bleibt kW (kein /1000); `CurrentPower` W→kW; Current Energy als verbleibende Pack-Energie (`tractionBatteryCurrentEnergyKwh`), nicht verbrauchte Energie.',
+      'Snapshot-Query ergänzt `powertrainTractionBatteryChargingChargeLimit`; VLS-Spalte `tractionBatteryChargeLimitPercent`.',
+      'Root-Query `availableSignals` als `buildAvailableSignalsQuery` + `fetchAvailableSignals`.',
+      'HvBatteryHealthService: `currentEnergyKwh` + per-Signal-Timestamps für Evidence; `energyUsedKwh` nur Kompatibilitätsalias.',
+      'Mapper-Unit-Tests mit sanitisierten Tesla-Audit-Payloads.',
+    ],
+    reason: 'Prompt 15/78: DIMO-Signalmapping für Battery-relevante Signale auditieren und korrigieren — keine neue Kapazitätsberechnung.',
+    previousBehavior: 'Inline-Mapping im Snapshot-Processor; ChargingPower fälschlich /1000; ein gemeinsames lastSeen für alle HV-Evidence-Zeilen.',
+    details:
+      'dimo-battery-signal.mapper.ts, dimo-snapshot.processor.ts, hv-battery-health.service.ts, latest-vehicle-snapshot.query.ts, available-signals.query.ts, migration vls_hv_charge_limit.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T15:35:00.000Z',
+  },
+  {
     id: 'battery-health-v2-remaining-models-v49516-2026-07-16',
     version: '4.9.516',
     title: 'V4.9.516 — Battery V2 remaining Prisma models (Prompt 14/78)',

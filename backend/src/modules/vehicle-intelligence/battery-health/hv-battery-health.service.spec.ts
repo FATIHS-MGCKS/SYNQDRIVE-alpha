@@ -113,6 +113,57 @@ describe('HvBatteryHealthService legacy pairwise capacity deprecation', () => {
     expect(upsertSpy).not.toHaveBeenCalled();
   });
 
+  it('uses per-signal provider timestamps for evidence instead of a single fetch time', async () => {
+    process.env[BATTERY_V2_HV_LEGACY_PAIRWISE_CAPACITY_ENV] = 'false';
+    const { svc, prisma, batteryEvidence } = buildService();
+
+    prisma.vehicle.findUnique.mockResolvedValue({
+      fuelType: 'ELECTRIC',
+      hvBatteryCapacityKwh: 57,
+    });
+    prisma.hvBatteryHealthSnapshot.findFirst.mockResolvedValue(null);
+    prisma.hvBatteryHealthSnapshot.create.mockImplementation(async ({ data }: any) => ({
+      id: 'snap-ts',
+      ...data,
+    }));
+
+    const socAt = new Date('2026-07-16T12:59:35.000Z');
+    const energyAt = new Date('2026-07-16T12:59:14.000Z');
+
+    await svc.recordSnapshot({
+      vehicleId,
+      socPercent: 73.82,
+      currentEnergyKwh: 41.38,
+      collectionObservedAt: new Date('2026-07-16T13:00:08.000Z'),
+      signalObservedAt: {
+        soc: socAt,
+        currentEnergyKwh: energyAt,
+      },
+    });
+
+    expect(batteryEvidence.recordMany).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.objectContaining({
+          valueType: BatteryEvidenceValueType.SOC_PERCENT,
+          observedAt: socAt,
+        }),
+        expect.objectContaining({
+          valueType: BatteryEvidenceValueType.CURRENT_ENERGY_KWH,
+          numericValue: 41.38,
+          observedAt: energyAt,
+        }),
+      ]),
+    );
+    expect(prisma.hvBatteryHealthSnapshot.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          recordedAt: socAt,
+          energyUsedKwh: 41.38,
+        }),
+      }),
+    );
+  });
+
   it('keeps provider SOH and live telemetry in status read when legacy pairwise is disabled', async () => {
     process.env[BATTERY_V2_HV_LEGACY_PAIRWISE_CAPACITY_ENV] = 'false';
     const { svc, prisma, batteryEvidence } = buildService();
@@ -133,6 +184,7 @@ describe('HvBatteryHealthService legacy pairwise capacity deprecation', () => {
       tractionBatteryGrossCapacityKwh: 76,
       tractionBatteryCurrentEnergyKwh: 50,
       tractionBatteryAddedEnergyKwh: 6,
+      tractionBatteryChargeLimitPercent: 100,
       lastSeenAt: now,
     });
     prisma.hvBatteryHealthSnapshot.findMany.mockResolvedValue([
