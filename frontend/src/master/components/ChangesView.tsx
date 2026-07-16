@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p27-event-context-quality-2026-07-16',
+    version: '4.9.528',
+    title: 'Driving Intelligence V2 P27 — traceable Event Context quality metadata',
+    summary: [
+      'Neues `contextQuality`-Block in `metadataJson.contextAssessment` (Schema v3).',
+      'Speichert: angefordertes Intervall (1s), effektive Median-/P95-Kadenz, Samplezahl, Coverage vor/nach Anker, Provider-Delay, verfügbare/fehlende Signale, Context Confidence, Capability Version.',
+      'UI-fähige `qualityReasons` — z. B. HF_INTERVAL_REQUESTED_NOT_EFFECTIVE, EFFECTIVE_CADENCE_SPARSE/INSUFFICIENT, WINDOW_GAPS.',
+      'Regel: angefordertes 1s wird nie als echtes 1 Hz behauptet; Kontextsignale erklären, ersetzen aber nicht den Provider-Trigger.',
+      'Capability Version aus VehicleDrivingCapabilityResolver bei Enrichment.',
+      'Frontend: `contextQuality` DTO + deutsche Labels in event-context-ui.ts.',
+    ],
+    reason:
+      'Prompt 27/76: Event Context um nachvollziehbare Qualitätsinformationen erweitern — transparente Kadenz-/Coverage-Diagnostik für UI und Ops.',
+    previousBehavior:
+      'contextAssessment enthielt dataQuality und reasonCodes, aber kein strukturiertes contextQuality mit expliziter requested-vs-effective Kadenz und UI-Gründen.',
+    details:
+      'Neues Modul event-context-quality.ts; CONTEXT_ASSESSMENT_VERSION=3. Tests: 1s-, 5s-, 20s- und lückenhafte Daten. Keine neue Misuse-Logik. Trip-FSM unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T06:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p26-event-context-enrich-job-2026-07-16',
     version: '4.9.527',
     title: 'Driving Intelligence V2 P26 — Event Context Enrichment via DRIVING_EVENT_CONTEXT_ENRICH jobs',

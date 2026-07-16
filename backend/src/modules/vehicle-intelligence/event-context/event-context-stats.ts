@@ -66,6 +66,8 @@ export interface SignalStatsResult {
   dataQuality: ContextWindowDataQuality;
   signalCoverage: SignalCoverage[];
   reasonCodes: ContextReasonCode[];
+  coverageBeforeAnchor: number;
+  coverageAfterAnchor: number;
 }
 
 function round2(n: number): number {
@@ -217,7 +219,21 @@ export function computeSignalStats(
     reasonCodes.add(speedBefore <= STANDSTILL_KMH ? 'STANDSTILL_BEFORE_EVENT' : 'MOVING_BEFORE_EVENT');
   }
 
-  return { perSignal, dataQuality, signalCoverage, reasonCodes: [...reasonCodes] };
+  let coverageBeforeAnchor = 0;
+  let coverageAfterAnchor = 0;
+  for (const ts of allTs) {
+    if (ts <= anchorTs) coverageBeforeAnchor += 1;
+    if (ts >= anchorTs) coverageAfterAnchor += 1;
+  }
+
+  return {
+    perSignal,
+    dataQuality,
+    signalCoverage,
+    reasonCodes: [...reasonCodes],
+    coverageBeforeAnchor,
+    coverageAfterAnchor,
+  };
 }
 
 /** Split signal coverage into used (GOOD/SPARSE) vs missing (MISSING) lists. */

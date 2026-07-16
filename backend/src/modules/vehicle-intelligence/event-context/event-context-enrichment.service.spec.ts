@@ -16,10 +16,16 @@ function reading(offsetS: number, over: Partial<HighFrequencyReading> = {}): Hig
   };
 }
 
-function denseReadings(): HighFrequencyReading[] {
+function intervalReadings(intervalS: number, fromS: number, toS: number): HighFrequencyReading[] {
   const out: HighFrequencyReading[] = [];
-  for (let s = -10; s <= 10; s++) out.push(reading(s));
+  for (let s = fromS; s <= toS; s += intervalS) {
+    out.push(reading(s));
+  }
   return out;
+}
+
+function denseReadings(): HighFrequencyReading[] {
+  return intervalReadings(1, -10, 10);
 }
 
 interface MockPrisma {
@@ -45,6 +51,8 @@ function makeService(opts: {
         return (
           opts.event ?? {
             id: 'ev-1',
+            organizationId: 'org-1',
+            vehicleId: 'veh-1',
             recordedAt: ANCHOR,
             metadataJson: opts.existingMetadata ?? null,
             vehicle: {
@@ -259,6 +267,20 @@ describe('EventContextEnrichmentService', () => {
       evidenceGrade: 'C' as const,
       usedSignals: ['speed'] as const,
       missingSignals: [] as const,
+      contextQuality: {
+        requestedInterval: '1s' as const,
+        effectiveMedianCadenceMs: null,
+        effectiveP95CadenceMs: null,
+        sampleCount: 0,
+        coverageBeforeAnchor: 0,
+        coverageAfterAnchor: 0,
+        providerDelayMs: null,
+        availableSignals: ['speed'] as const,
+        missingSignals: [] as const,
+        contextConfidence: 'LOW' as const,
+        capabilityVersion: null,
+        qualityReasons: ['NATIVE_EVENT_ANCHOR_PRESERVED'] as const,
+      },
       generatedAt: ANCHOR.toISOString(),
       error: null,
     } as import('./event-context-assessment.types').EventContextAssessment;
@@ -338,6 +360,82 @@ describe('EventContextEnrichmentService', () => {
     const assessment = await service.enrichDrivingEventContext('ev-extreme');
     expect(assessment.anchorEvent?.extreme).toBe(true);
     expect(assessment.preliminaryClassifications).toContain('LAUNCH_LIKE_START');
+  });
+
+  it('persists contextQuality with traceable cadence metadata', async () => {
+    const { service } = makeService({ hf: denseReadings() });
+    const assessment = await service.enrichAnchorContext({
+      anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT',
+      anchorTimestamp: ANCHOR,
+      tokenId: 4242,
+      engineSignalsApplicable: true,
+      capabilityVersion: 'cap-probe-v1',
+    });
+
+    expect(assessment.contextQuality).toBeDefined();
+    expect(assessment.contextQuality.requestedInterval).toBe('1s');
+    expect(assessment.contextQuality.effectiveMedianCadenceMs).toBe(1000);
+    expect(assessment.contextQuality.sampleCount).toBe(21);
+    expect(assessment.contextQuality.capabilityVersion).toBe('cap-probe-v1');
+    expect(assessment.contextQuality.qualityReasons).toContain('NATIVE_EVENT_ANCHOR_PRESERVED');
+  });
+
+  describe('contextQuality cadence scenarios', () => {
+    it('1s dense data → SUCCESS with effective ~1s cadence', async () => {
+      const { service } = makeService({ hf: denseReadings() });
+      const assessment = await service.enrichAnchorContext({
+        anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT',
+        anchorTimestamp: ANCHOR,
+        tokenId: 4242,
+        engineSignalsApplicable: true,
+      });
+      expect(assessment.status).toBe('SUCCESS');
+      expect(assessment.contextQuality.effectiveMedianCadenceMs).toBe(1000);
+      expect(assessment.contextQuality.qualityReasons).not.toContain(
+        'HF_INTERVAL_REQUESTED_NOT_EFFECTIVE',
+      );
+    });
+
+    it('5s cadence → sparse quality reasons (requested 1s ≠ effective cadence)', async () => {
+      const { service } = makeService({ hf: intervalReadings(5, -25, 25) });
+      const assessment = await service.enrichAnchorContext({
+        anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT',
+        anchorTimestamp: ANCHOR,
+        tokenId: 4242,
+        engineSignalsApplicable: true,
+      });
+      expect(assessment.contextQuality.effectiveMedianCadenceMs).toBe(5000);
+      expect(assessment.contextQuality.qualityReasons).toContain('HF_INTERVAL_REQUESTED_NOT_EFFECTIVE');
+      expect(assessment.contextQuality.qualityReasons).toContain('EFFECTIVE_CADENCE_SPARSE');
+      expect(['SUCCESS', 'LIMITED']).toContain(assessment.status);
+    });
+
+    it('20s cadence → INSUFFICIENT_CADENCE', async () => {
+      const { service } = makeService({ hf: intervalReadings(20, -20, 20) });
+      const assessment = await service.enrichAnchorContext({
+        anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT',
+        anchorTimestamp: ANCHOR,
+        tokenId: 4242,
+        engineSignalsApplicable: true,
+      });
+      expect(assessment.status).toBe('INSUFFICIENT_CADENCE');
+      expect(assessment.contextQuality.effectiveMedianCadenceMs).toBe(20_000);
+      expect(assessment.contextQuality.qualityReasons).toContain('EFFECTIVE_CADENCE_INSUFFICIENT');
+    });
+
+    it('gappy 1s data → window gap quality reason', async () => {
+      const gappy: HighFrequencyReading[] = [];
+      for (let s = -10; s <= -6; s++) gappy.push(reading(s));
+      gappy.push(reading(10));
+      const { service } = makeService({ hf: gappy });
+      const assessment = await service.enrichAnchorContext({
+        anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT',
+        anchorTimestamp: ANCHOR,
+        tokenId: 4242,
+        engineSignalsApplicable: true,
+      });
+      expect(assessment.contextQuality.qualityReasons).toContain('WINDOW_GAPS');
+    });
   });
 
   it('skips non-LTE_R1 hardware (e.g. SMART5) for ICE context', async () => {

@@ -67,6 +67,7 @@ export interface TripBehaviorEventContextAssessmentDto {
   missingSignals: EventContextAssessment['missingSignals'];
   signalCoverage: EventContextAssessment['signalCoverage'];
   dataQuality: EventContextAssessment['dataQuality'];
+  contextQuality?: EventContextAssessment['contextQuality'];
   speedContext: TripBehaviorEventContextSignalStatsDto;
   rpmContext: TripBehaviorEventContextSignalStatsDto;
   throttleContext: TripBehaviorEventContextSignalStatsDto;
@@ -225,6 +226,9 @@ export function normalizeContextAssessmentForDto(
           nearestSampleToAnchorMs: null,
           coverage: [],
         },
+    contextQuality: isRecord(raw.contextQuality)
+      ? (raw.contextQuality as unknown as EventContextAssessment['contextQuality'])
+      : undefined,
     speedContext,
     rpmContext,
     throttleContext,

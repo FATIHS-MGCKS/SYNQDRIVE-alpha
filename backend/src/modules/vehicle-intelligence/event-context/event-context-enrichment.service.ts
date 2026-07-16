@@ -12,7 +12,7 @@
  *   - Legacy callers: best-effort, never throws.
  *   - Job handler path: throws retryable provider errors; dead-letters persist PROVIDER_ERROR.
  */
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
@@ -47,6 +47,11 @@ import {
   isTerminalEventContextStatus,
   normalizeEventContextStatus,
 } from './event-context-status';
+import { VehicleDrivingCapabilityResolverService } from '../driving-capability/vehicle-driving-capability-resolver.service';
+import {
+  buildEventContextQuality,
+  resolveContextCapabilityVersion,
+} from './event-context-quality';
 
 export interface EnrichAnchorContextInput {
   anchorType: AnchorType;
@@ -67,6 +72,7 @@ export interface BuildContextAssessmentInput {
   anchorEvent?: AnchorEventInfo | null;
   fetchError?: string | null;
   skipped?: boolean;
+  capabilityVersion?: string | null;
 }
 
 /** DrivingEventType → behaviour category for behaviour-aware classification. */
@@ -100,6 +106,8 @@ export class EventContextEnrichmentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly segments: DimoSegmentsService,
+    @Optional()
+    private readonly capabilityResolver?: VehicleDrivingCapabilityResolverService,
   ) {}
 
   /**
@@ -178,6 +186,8 @@ export class EventContextEnrichmentService {
       where: { id: drivingEventId },
       select: {
         id: true,
+        organizationId: true,
+        vehicleId: true,
         recordedAt: true,
         eventType: true,
         metadataJson: true,
@@ -252,6 +262,11 @@ export class EventContextEnrichmentService {
       return assessment;
     }
 
+    const capabilityVersion = await this.resolveCapabilityVersionForEvent(
+      event.organizationId,
+      event.vehicleId,
+    );
+
     const assessment = await this.enrichAnchorContext({
       anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT',
       anchorTimestamp,
@@ -260,13 +275,17 @@ export class EventContextEnrichmentService {
       anchorEvent,
       throwOnProviderError: opts.throwOnProviderError,
       contextModelVersion,
+      capabilityVersion,
     });
     await this.persistContextAssessment(drivingEventId, assessment);
     return assessment;
   }
 
   async enrichAnchorContext(
-    input: EnrichAnchorContextInput & { contextModelVersion?: string },
+    input: EnrichAnchorContextInput & {
+      contextModelVersion?: string;
+      capabilityVersion?: string | null;
+    },
   ): Promise<EventContextAssessment> {
     const window = this.buildContextWindow(input.anchorType, input.anchorTimestamp);
 
@@ -297,6 +316,7 @@ export class EventContextEnrichmentService {
       anchorEvent: input.anchorEvent,
       fetchError,
       contextModelVersion: input.contextModelVersion,
+      capabilityVersion: input.capabilityVersion ?? null,
     });
   }
 
@@ -349,6 +369,20 @@ export class EventContextEnrichmentService {
     const engineOnHint = rpmNear != null ? rpmNear > 0 : null;
     const { usedSignals, missingSignals } = deriveUsedAndMissingSignals(stats.signalCoverage);
 
+    const contextQuality = buildEventContextQuality({
+      dataQuality: stats.dataQuality,
+      signalCoverage: stats.signalCoverage,
+      usedSignals,
+      missingSignals,
+      contextConfidence: classification.confidence,
+      capabilityVersion: input.capabilityVersion ?? null,
+      status,
+      anchorCoverage: {
+        coverageBeforeAnchor: stats.coverageBeforeAnchor,
+        coverageAfterAnchor: stats.coverageAfterAnchor,
+      },
+    });
+
     return {
       version: CONTEXT_ASSESSMENT_VERSION,
       contextModelVersion: input.contextModelVersion ?? EVENT_CONTEXT_MODEL_VERSION,
@@ -374,9 +408,30 @@ export class EventContextEnrichmentService {
       evidenceGrade: classification.evidenceGrade,
       usedSignals,
       missingSignals,
+      contextQuality,
       generatedAt: new Date().toISOString(),
       error: input.fetchError ?? null,
     };
+  }
+
+  private async resolveCapabilityVersionForEvent(
+    organizationId: string | null | undefined,
+    vehicleId: string,
+  ): Promise<string | null> {
+    if (!organizationId || !this.capabilityResolver) return null;
+    try {
+      const snapshot = await this.capabilityResolver.resolveForVehicle(
+        organizationId,
+        vehicleId,
+      );
+      return resolveContextCapabilityVersion(snapshot.capabilities);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.debug(
+        `Context enrich: capability version lookup failed for vehicle ${vehicleId}: ${message}`,
+      );
+      return null;
+    }
   }
 
   async persistContextAssessment(
