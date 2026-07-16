@@ -198,14 +198,19 @@ function buildMocks() {
     }),
   } as any;
 
+  const tireHealthAlertService = {
+    resolveOpenAlertsForSetup: jest.fn().mockResolvedValue(0),
+  };
+
   const svc = new TireLifecycleService(
     prisma,
     wearModel as unknown as TireWearModelService,
     tireHealthService as unknown as TireHealthService,
+    tireHealthAlertService as never,
     tireIdentity as unknown as TireIdentityService,
   );
 
-  return { svc, prisma, wearModel, tireHealthService, tireIdentity };
+  return { svc, prisma, wearModel, tireHealthService, tireIdentity, tireHealthAlertService };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

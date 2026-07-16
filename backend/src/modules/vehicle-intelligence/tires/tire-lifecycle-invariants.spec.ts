@@ -157,14 +157,19 @@ function buildHarness() {
     }),
   } as any;
 
+  const tireHealthAlertService = {
+    resolveOpenAlertsForSetup: jest.fn().mockResolvedValue(0),
+  };
+
   const svc = new TireLifecycleService(
     prisma,
     wearModel as unknown as TireWearModelService,
     tireHealthService as unknown as TireHealthService,
+    tireHealthAlertService as never,
     tireIdentity as unknown as TireIdentityService,
   );
 
-  return { svc, prisma, tireIdentity, tireHealthService, wearModel, state };
+  return { svc, prisma, tireIdentity, tireHealthService, wearModel, state, tireHealthAlertService };
 }
 
 describe('tire lifecycle invariants', () => {

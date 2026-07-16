@@ -6,6 +6,7 @@ import { BatteryService } from './battery/battery.service';
 import { TiresService } from './tires/tires.service';
 import { TireWearModelService } from './tires/tire-wear-model.service';
 import { TireHealthService } from './tires/tire-health.service';
+import { TireHealthAlertService } from './tires/tire-health-alert.service';
 import { TireLifecycleService } from './tires/tire-lifecycle.service';
 import { TireIdentityService } from './tires/tire-identity.service';
 import { BrakesService } from './brakes/brakes.service';
@@ -115,6 +116,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     TiresService,
     TireWearModelService,
     TireHealthService,
+    TireHealthAlertService,
     TirePredictionValidationService,
     TireHealthReplayService,
     TireLifecycleService,
@@ -198,6 +200,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     TiresService,
     TireWearModelService,
     TireHealthService,
+    TireHealthAlertService,
     TirePredictionValidationService,
     TireHealthReplayService,
     TireLifecycleService,

@@ -1317,6 +1317,7 @@ model Organization {
   rentalVehicleCategories           RentalVehicleCategory[]
   vehicleRentalRequirementOverrides VehicleRentalRequirementOverride[]
   tireRentalHealthReviewOverrides   TireRentalHealthReviewOverride[]
+  tireHealthAlerts                  TireHealthAlert[]
   bookings                          Booking[]
   bookingHandoverProtocols          BookingHandoverProtocol[]
   activityLogs                      ActivityLog[]
@@ -1830,6 +1831,7 @@ model Vehicle {
   rentalCategory                    RentalVehicleCategory?             @relation(fields: [rentalCategoryId], references: [id], onDelete: SetNull)
   rentalRequirementOverride         VehicleRentalRequirementOverride?
   tireRentalHealthReviewOverrides   TireRentalHealthReviewOverride[]
+  tireHealthAlerts                  TireHealthAlert[]
   whatsappConversations             WhatsAppConversation[]
   billingBillableVehicleAssignments BillingBillableVehicleAssignment[]
   billingQuantityEvents             BillingQuantityEvent[]
@@ -2217,6 +2219,7 @@ model VehicleTireSetup {
   tripUsageLedger      TireTripUsageLedger[]
   mountPeriods         VehicleTireSetupMountPeriod[]
   rentalHealthReviews  TireRentalHealthReviewOverride[]
+  healthAlerts         TireHealthAlert[]
   initialTreadEvidence VehicleTireTreadMeasurement?  @relation("SetupInitialTreadEvidence", fields: [initialTreadEvidenceId], references: [id], onDelete: SetNull)
 
   @@index([vehicleId])
@@ -4098,6 +4101,57 @@ model TireRentalHealthReviewOverride {
   @@index([vehicleId])
   @@index([expiresAt])
   @@map("tire_rental_health_review_overrides")
+}
+
+enum TireHealthAlertStatus {
+  OPEN
+  RESOLVED
+}
+
+enum TireHealthAlertResolutionReason {
+  MEASUREMENT_CORRECTED
+  TIRE_REPLACED
+  SETUP_STORED
+  SETUP_CHANGED
+  PRESSURE_NORMALIZED
+  TPMS_CLEARED
+  SEASON_POLICY_CHANGED
+  EVIDENCE_CLEARED
+  SUPERSEDED
+}
+
+model TireHealthAlert {
+  id                      String                          @id @default(uuid())
+  organizationId          String                          @map("organization_id")
+  vehicleId               String                          @map("vehicle_id")
+  tireSetupId             String                          @map("tire_setup_id")
+  alertType               String                          @map("alert_type")
+  reasonCode              String                          @map("reason_code")
+  severity                String
+  wheelPosition           String?                         @map("wheel_position")
+  displayMode             String                          @map("display_mode")
+  evidenceFingerprint     String                          @map("evidence_fingerprint")
+  dedupeKey               String                          @map("dedupe_key")
+  status                  TireHealthAlertStatus           @default(OPEN)
+  resolutionReason        TireHealthAlertResolutionReason? @map("resolution_reason")
+  resolvedAt              DateTime?                       @map("resolved_at")
+  openedAt                DateTime                        @default(now()) @map("opened_at")
+  lastSeenAt              DateTime                        @default(now()) @map("last_seen_at")
+  inputFingerprint        String?                         @map("input_fingerprint")
+  lastNotifiedFingerprint String?                         @map("last_notified_fingerprint")
+  pressureSource          String?                         @map("pressure_source")
+  pressureTimestamp       DateTime?                       @map("pressure_timestamp")
+  pressureFreshness       String?                         @map("pressure_freshness")
+  templateParamsJson      Json?                           @map("template_params_json")
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  tireSetup    VehicleTireSetup  @relation(fields: [tireSetupId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, status])
+  @@index([vehicleId, tireSetupId, status])
+  @@index([dedupeKey, status])
+  @@map("tire_health_alerts")
 }
 
 // ------------------------------------------------

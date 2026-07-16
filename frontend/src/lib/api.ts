@@ -5647,6 +5647,9 @@ export interface TireAlert {
   message: string;
   position?: string;
   value?: number;
+  reasonCode?: string;
+  displayMode?: TireDisplayMode;
+  dedupeKey?: string;
 }
 
 export type TireActionState =

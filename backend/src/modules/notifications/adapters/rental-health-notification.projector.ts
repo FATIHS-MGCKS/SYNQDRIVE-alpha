@@ -16,7 +16,6 @@ export type VehicleHealthNotificationEventType =
 
 const MODULE_EVENT_MAP = {
   battery: 'BATTERY_CRITICAL',
-  tires: 'TIRE_CRITICAL',
   brakes: 'BRAKE_CRITICAL',
 } as const satisfies Record<string, VehicleHealthNotificationEventType>;
 
@@ -30,7 +29,8 @@ function healthStateToSeverity(state: HealthState): 'warning' | 'critical' {
 
 /**
  * Maps Rental Health V1 aggregate + active DTC rows to V2 notification adapter sources.
- * DTCs are emitted per code; battery/tires/brakes are one notification per vehicle per type.
+ * DTCs are emitted per code; battery/brakes are one notification per vehicle per type.
+ * Tire alerts are emitted per open {@link TireHealthAlert} row (see business-insights sync).
  */
 export function projectVehicleHealthWarnings(
   vehicleId: string,

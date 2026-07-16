@@ -4,6 +4,7 @@ import { NotificationProducerIngestService } from '@modules/notifications/adapte
 import { projectVehicleHealthWarnings } from '@modules/notifications/adapters/rental-health-notification.projector';
 import { RentalHealthService } from '@modules/rental-health/rental-health.service';
 import { DtcService } from '@modules/vehicle-intelligence/dtc/dtc.service';
+import { TireHealthAlertService } from '@modules/vehicle-intelligence/tires/tire-health-alert.service';
 import { TenantInsightPolicyService } from './tenant-insight-policy.service';
 import { InsightRankingService } from './insight-ranking.service';
 import { InsightGroupingService } from './insight-grouping.service';
@@ -64,6 +65,7 @@ export class BusinessInsightsService {
     @Optional() private readonly notificationIngest?: NotificationProducerIngestService,
     @Optional() private readonly rentalHealth?: RentalHealthService,
     @Optional() private readonly dtcService?: DtcService,
+    @Optional() private readonly tireHealthAlerts?: TireHealthAlertService,
   ) {
     this.detectors = [
       tightHandover,
@@ -379,7 +381,20 @@ export class BusinessInsightsService {
               this.rentalHealth!.getVehicleHealth(organizationId, vehicle.id),
               this.dtcService!.findActive(vehicle.id),
             ]);
-            return projectVehicleHealthWarnings(vehicle.id, label, health, activeDtcs);
+            const rentalSources = projectVehicleHealthWarnings(
+              vehicle.id,
+              label,
+              health,
+              activeDtcs,
+            );
+            const tireSources = this.tireHealthAlerts
+              ? await this.tireHealthAlerts.listOpenAlertNotificationSources({
+                  organizationId,
+                  vehicleId: vehicle.id,
+                  label,
+                })
+              : [];
+            return [...rentalSources, ...tireSources];
           } catch (err) {
             this.logger.warn(
               `Vehicle health notification projection failed for ${vehicle.id}: ${(err as Error).message}`,

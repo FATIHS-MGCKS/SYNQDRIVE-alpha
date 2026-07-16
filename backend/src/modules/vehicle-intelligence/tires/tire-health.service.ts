@@ -27,11 +27,9 @@ import {
   classifyTireAgeYears,
   dotAgeYears,
   aggregateTireStatus,
-  alertTypeToCode,
 } from './tire-status';
 import {
   TireHealthStatus,
-  TireChangeType,
   TireEventType,
   TireEvidenceSource,
   TireSetupStatus,
@@ -74,6 +72,13 @@ import type {
 } from './tire-pressure-context.types';
 import { resolveRecommendedTirePressure } from './tire-recommended-pressure';
 import type { HmTirePressureSignals } from '../../high-mobility/high-mobility-signal-usage.service';
+import {
+  buildTireHealthAlerts,
+  resolveKmSinceLastRotation,
+  structuredAlertsToApiAlerts,
+} from './tire-health-alert.builder';
+import { TireHealthAlertService } from './tire-health-alert.service';
+import type { TireHealthAlertReasonCode } from './tire-health-alert.types';
 
 // ── Public interfaces ─────────────────────────────────────────────────────────
 
@@ -206,6 +211,10 @@ export interface TireAlert {
   message: string;
   position?: string;
   value?: number;
+  /** Structured reason code — replaces free-text business logic. */
+  reasonCode?: TireHealthAlertReasonCode;
+  displayMode?: TireDisplayMode;
+  dedupeKey?: string;
 }
 
 export interface RotationHistoryEntry {
@@ -272,6 +281,7 @@ export class TireHealthService {
     private readonly wearModel: TireWearModelService,
     private readonly drivingImpactService: DrivingImpactService,
     private readonly predictionValidation: TirePredictionValidationService,
+    private readonly tireHealthAlertService: TireHealthAlertService,
   ) {}
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -312,7 +322,8 @@ export class TireHealthService {
       baseConfidence,
       pressureContext,
     );
-    const alerts = await this.detectAlerts(
+    const alerts = await this.buildAlertsForSetup(
+      setup.organizationId ?? (await this.resolveOrganizationId(vehicleId)),
       vehicleId,
       setup,
       wearAnalysis,
@@ -320,6 +331,7 @@ export class TireHealthService {
         setup,
         this.resolveMeasurementState(wearAnalysis.explainability.currentTreadSource),
       ).score,
+      pressureContext,
     );
 
     return this.buildSummaryPayload(
@@ -357,7 +369,8 @@ export class TireHealthService {
       pressureContext,
     );
     const alerts = wearAnalysis
-      ? await this.detectAlerts(
+      ? await this.buildAlertsForSetup(
+          setup.organizationId ?? (await this.resolveOrganizationId(vehicleId)),
           vehicleId,
           setup,
           wearAnalysis,
@@ -365,6 +378,7 @@ export class TireHealthService {
             setup,
             this.resolveMeasurementState(wearAnalysis.explainability.currentTreadSource),
           ).score,
+          pressureContext,
         )
       : [];
 
@@ -674,6 +688,23 @@ export class TireHealthService {
           skippedWearDataPoints: options.force ?? false,
         },
       },
+    });
+
+    const pressureContext = await this.resolvePressureContext(vehicleId, null, setup);
+    const alertCandidates = await this.buildAlertCandidates(
+      vehicle!.organizationId,
+      vehicleId,
+      setup,
+      wearAnalysis,
+      unifiedScore,
+      pressureContext,
+    );
+    await this.tireHealthAlertService.syncAlerts({
+      organizationId: vehicle!.organizationId,
+      vehicleId,
+      tireSetupId: setup.id,
+      candidates: alertCandidates,
+      inputFingerprint: fingerprint.inputFingerprint,
     });
 
     return {
@@ -1080,148 +1111,66 @@ export class TireHealthService {
   //  ALERTS
   // ═══════════════════════════════════════════════════════════════════════════
 
-  private async detectAlerts(
-    vehicleId: string,
-    setup: any,
-    wearAnalysis: any,
-    confidenceScore: number,
-  ): Promise<TireAlert[]> {
-    const alerts: TireAlert[] = [];
-    const a = this.cfg.alerts;
-    const r = this.cfg.rotationReview;
+  private async resolveOrganizationId(vehicleId: string): Promise<string> {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    return vehicle?.organizationId ?? '';
+  }
 
-    const operationalReplace = wearAnalysis.operationalReplacementMm ?? this.cfg.defaultReplaceThresholdMm;
-
-    const wheels = [
-      { pos: 'FL', mm: wearAnalysis.frontLeftMm },
-      { pos: 'FR', mm: wearAnalysis.frontRightMm },
-      { pos: 'RL', mm: wearAnalysis.rearLeftMm },
-      { pos: 'RR', mm: wearAnalysis.rearRightMm },
-    ];
-
-    for (const w of wheels) {
-      const treadStatus = classifyTreadStatus(w.mm, setup.tireSeason);
-      if (treadStatus === 'CRITICAL') {
-        alerts.push({
-          type: 'CRITICAL_TREAD',
-          severity: 'critical',
-          message: `${w.pos}: Tread at or below legal minimum (${w.mm.toFixed(1)} mm)`,
-          position: w.pos,
-          value: w.mm,
-        });
-      } else if (treadStatus === 'WARNING') {
-        alerts.push({
-          type: 'LOW_TREAD',
-          severity: 'warning',
-          message: `${w.pos}: Tread low — plan replacement (${w.mm.toFixed(1)} mm)`,
-          position: w.pos,
-          value: w.mm,
-        });
-      } else if (w.mm <= operationalReplace + 0.3) {
-        alerts.push({
-          type: 'LOW_TREAD',
-          severity: 'warning',
-          message: `${w.pos}: Tread approaching operational limit (${w.mm.toFixed(1)} mm)`,
-          position: w.pos,
-          value: w.mm,
-        });
-      }
-    }
-
-    if (wearAnalysis.estimatedRemainingKm <= a.criticalRemainingKm) {
-      alerts.push({ type: 'CRITICAL_REMAINING_KM', severity: 'critical', message: `Replacement imminent (${wearAnalysis.estimatedRemainingKm.toLocaleString()} km remaining)`, value: wearAnalysis.estimatedRemainingKm });
-    } else if (wearAnalysis.estimatedRemainingKm <= a.lowRemainingKm) {
-      alerts.push({ type: 'LOW_REMAINING_KM', severity: 'warning', message: `Plan replacement soon (${wearAnalysis.estimatedRemainingKm.toLocaleString()} km remaining)`, value: wearAnalysis.estimatedRemainingKm });
-    }
-
-    const sideDeltaFront = Math.abs(wearAnalysis.frontLeftMm - wearAnalysis.frontRightMm);
-    const sideDeltaRear = Math.abs(wearAnalysis.rearLeftMm - wearAnalysis.rearRightMm);
-    for (const [label, delta] of [['Front', sideDeltaFront], ['Rear', sideDeltaRear]] as const) {
-      if (delta >= a.unevenWearCriticalMm) {
-        alerts.push({ type: 'UNEVEN_WEAR_CRITICAL', severity: 'critical', message: `${label}: Critical side wear imbalance (${delta.toFixed(1)} mm)`, value: delta });
-      } else if (delta >= a.unevenWearAttentionMm) {
-        alerts.push({ type: 'UNEVEN_WEAR_ATTENTION', severity: 'warning', message: `${label}: Side wear imbalance detected (${delta.toFixed(1)} mm)`, value: delta });
-      }
-    }
-
-    const frontAvg = (wearAnalysis.frontLeftMm + wearAnalysis.frontRightMm) / 2;
-    const rearAvg = (wearAnalysis.rearLeftMm + wearAnalysis.rearRightMm) / 2;
-    const axleDelta = Math.abs(frontAvg - rearAvg);
-
-    const staggered = isStaggeredSetup(setup);
-
-    if (!staggered) {
-      const lastRotation = await this.prisma.tirePositionHistory.findFirst({
-        where: { vehicleId, changeType: TireChangeType.ROTATE },
-        orderBy: { changedAt: 'desc' },
-      });
-      const kmSinceLastRotation = lastRotation?.odometerKm != null
-        ? (setup.totalKmOnSet - (lastRotation.odometerKm - (setup.installedOdometerKm ?? 0)))
-        : setup.totalKmOnSet;
-
-      if (kmSinceLastRotation >= r.overdueKm) {
-        alerts.push({ type: 'ROTATION_OVERDUE', severity: 'warning', message: `Tire rotation overdue review (${Math.round(kmSinceLastRotation).toLocaleString()} km since last rotation)` });
-      } else if (
-        kmSinceLastRotation >= r.normalReviewKm &&
-        axleDelta >= r.wearImbalanceThresholdMm
-      ) {
-        alerts.push({ type: 'ROTATION_RECOMMENDED', severity: 'info', message: `Rotation recommended: ${axleDelta.toFixed(1)} mm front/rear delta after ${Math.round(kmSinceLastRotation).toLocaleString()} km` });
-      }
-
-      if (axleDelta >= a.frontRearRotationDeltaMm) {
-        alerts.push({ type: 'AXLE_WEAR_IMBALANCE', severity: 'warning', message: `Front/rear wear imbalance: ${axleDelta.toFixed(1)} mm difference`, value: axleDelta });
-      }
-    }
-
-    if (confidenceScore < a.lowConfidenceThreshold) {
-      alerts.push({ type: 'LOW_CONFIDENCE', severity: 'info', message: 'Estimate quality low — manual tread measurement recommended' });
-    }
-
-    // Pressure alerts from explainability (only when there is a real pressure feed)
-    if (wearAnalysis.factors?.pressureFactorFront > 1.06 || wearAnalysis.factors?.pressureFactorRear > 1.06) {
-      alerts.push({ type: 'PRESSURE_IMPACT', severity: 'warning', message: 'Tire pressure deviation detected — check and correct pressures' });
-    }
-
-    // ── Season suitability (calendar-based; weather can replace later) ────────
-    const seasonResult = classifySeasonStatus(setup.tireSeason);
-    if (seasonResult.mismatch && seasonResult.status === 'WARNING') {
-      alerts.push({ type: 'SEASON_MISMATCH', severity: 'warning', message: 'Summer tires fitted during the winter season — reduced grip in cold, wet or snow. Switch to winter/all-season tires.' });
-    } else if (seasonResult.mismatch && seasonResult.status === 'WATCH') {
-      alerts.push({ type: 'SEASON_MISMATCH', severity: 'info', message: 'Winter tires fitted during summer — increased wear and longer braking distance. Consider switching to summer tires.' });
-    }
-
-    // ── Measurement overdue ───────────────────────────────────────────────────
-    const latestMeas = setup.measurements?.[0] ?? null;
-    const measAgeDays = latestMeas?.measuredAt
-      ? Math.floor((Date.now() - new Date(latestMeas.measuredAt).getTime()) / 86400000)
-      : null;
-    if (classifyMeasurementOverdue(measAgeDays)) {
-      alerts.push({ type: 'MEASUREMENT_OVERDUE', severity: 'warning', message: `No tread measurement in ${measAgeDays} days — re-measure to keep the estimate reliable.` });
-    }
-
-    // ── Tire age from DOT ─────────────────────────────────────────────────────
-    const dotAges = [dotAgeYears(setup.dotCodeFront), dotAgeYears(setup.dotCodeRear)].filter(
-      (v): v is number => v != null,
+  private resolveAlertDisplayMode(
+    setup: { measurements?: Array<{ measuredAt: Date | string }> | null },
+    wearAnalysis: { explainability?: { currentTreadSource?: string | null } },
+  ): TireDisplayMode {
+    const measurementState = this.resolveMeasurementState(
+      wearAnalysis.explainability?.currentTreadSource,
     );
-    const maxAgeYears = dotAges.length > 0 ? Math.max(...dotAges) : null;
-    const ageStatus = classifyTireAgeYears(maxAgeYears);
-    if (ageStatus === 'WARNING') {
-      alerts.push({ type: 'TIRE_AGE_WARNING', severity: 'warning', message: `Tires are ~${Math.round(maxAgeYears!)} years old (DOT) — rubber ageing means replacement is recommended regardless of tread.` });
-    } else if (ageStatus === 'WATCH') {
-      alerts.push({ type: 'TIRE_AGE_WARNING', severity: 'info', message: `Tires are ~${Math.round(maxAgeYears!)} years old (DOT) — inspect rubber condition periodically.` });
-    }
+    return resolveDisplayMode(measurementState, (setup.measurements?.length ?? 0) > 0);
+  }
 
-    // No manual measurement warning for used tires
-    if (setup.tireCondition === 'ALREADY_MOUNTED' && (!setup.measurements || setup.measurements.length === 0)) {
-      alerts.push({ type: 'USED_TIRE_NO_MEASUREMENT', severity: 'warning', message: 'Used tires mounted without manual tread measurement — estimates may be inaccurate. Measure tread depth promptly.' });
-    }
+  private async buildAlertCandidates(
+    organizationId: string,
+    vehicleId: string,
+    setup: NonNullable<Awaited<ReturnType<TireHealthService['getActiveSetup']>>>,
+    wearAnalysis: NonNullable<Awaited<ReturnType<TireWearModelService['computeWearAnalysis']>>>,
+    confidenceScore: number,
+    pressureContext: TirePressureContext,
+  ) {
+    const kmSinceLastRotation = await resolveKmSinceLastRotation(
+      this.prisma,
+      vehicleId,
+      setup,
+    );
+    return buildTireHealthAlerts({
+      organizationId,
+      vehicleId,
+      setup,
+      wearAnalysis,
+      displayMode: this.resolveAlertDisplayMode(setup, wearAnalysis),
+      confidenceScore,
+      pressureContext,
+      kmSinceLastRotation,
+    });
+  }
 
-    // Stamp every alert with its canonical, stable code.
-    for (const alert of alerts) {
-      if (!alert.code) alert.code = alertTypeToCode(alert.type);
-    }
-
-    return alerts;
+  private async buildAlertsForSetup(
+    organizationId: string,
+    vehicleId: string,
+    setup: NonNullable<Awaited<ReturnType<TireHealthService['getActiveSetup']>>>,
+    wearAnalysis: NonNullable<Awaited<ReturnType<TireWearModelService['computeWearAnalysis']>>>,
+    confidenceScore: number,
+    pressureContext: TirePressureContext,
+  ): Promise<TireAlert[]> {
+    const candidates = await this.buildAlertCandidates(
+      organizationId,
+      vehicleId,
+      setup,
+      wearAnalysis,
+      confidenceScore,
+      pressureContext,
+    );
+    return structuredAlertsToApiAlerts(candidates);
   }
 
   private buildSummaryPayload(

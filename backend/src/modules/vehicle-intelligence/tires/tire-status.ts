@@ -38,6 +38,8 @@ export type TireAlertCode =
   | 'TIRE_REMAINING_KM_LOW'
   | 'TIRE_LOW_CONFIDENCE'
   | 'TIRE_USED_NO_MEASUREMENT'
+  | 'TIRE_TPMS_WARNING'
+  | 'TIRE_ODOMETER_ANCHOR_REQUIRED'
   | 'TIRE_GENERIC';
 
 const STATUS_RANK: Record<TireStatus, number> = {
@@ -339,6 +341,10 @@ export function alertTypeToCode(type: string): TireAlertCode {
       return 'TIRE_MEASUREMENT_OVERDUE';
     case 'USED_TIRE_NO_MEASUREMENT':
       return 'TIRE_USED_NO_MEASUREMENT';
+    case 'TPMS_WARNING':
+      return 'TIRE_TPMS_WARNING';
+    case 'ODOMETER_ANCHOR_REQUIRED':
+      return 'TIRE_ODOMETER_ANCHOR_REQUIRED';
     default:
       return 'TIRE_GENERIC';
   }

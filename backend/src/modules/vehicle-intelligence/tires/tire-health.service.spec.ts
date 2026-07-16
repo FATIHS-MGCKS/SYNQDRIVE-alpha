@@ -173,6 +173,9 @@ function createRecalculateHarness(measurement: Record<string, unknown> | null) {
       findMany: jest.fn().mockResolvedValue([]),
     },
     tireEvent: { create: eventCreate },
+    tirePositionHistory: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
   };
 
   const wearModel = {
@@ -187,11 +190,21 @@ function createRecalculateHarness(measurement: Record<string, unknown> | null) {
     linkPendingValidationDataPoints: jest.fn().mockResolvedValue([]),
   };
 
+  const tireHealthAlertService = {
+    syncAlerts: jest.fn().mockResolvedValue({
+      openAlerts: [],
+      newlyOpened: [],
+      resolved: [],
+      notificationsToEmit: [],
+    }),
+  };
+
   const service = new TireHealthService(
     prisma as never,
     wearModel as unknown as TireWearModelService,
     drivingImpact as never,
     predictionValidation as never,
+    tireHealthAlertService as never,
   );
 
   return {

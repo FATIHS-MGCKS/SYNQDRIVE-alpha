@@ -7,10 +7,12 @@ import {
   TireSeason,
   TireSetupStatus,
   TireSetupCondition,
+  TireHealthAlertResolutionReason,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TireWearModelService } from './tire-wear-model.service';
 import { TireHealthService } from './tire-health.service';
+import { TireHealthAlertService } from './tire-health-alert.service';
 import {
   TireIdentityService,
   dbPosToWheel,
@@ -239,6 +241,7 @@ export class TireLifecycleService {
     private readonly prisma: PrismaService,
     private readonly wearModel: TireWearModelService,
     private readonly tireHealthService: TireHealthService,
+    private readonly tireHealthAlertService: TireHealthAlertService,
     private readonly tireIdentity: TireIdentityService,
   ) {}
 
@@ -1022,6 +1025,11 @@ export class TireLifecycleService {
         },
       });
     });
+
+    await this.tireHealthAlertService.resolveOpenAlertsForSetup(
+      setup.id,
+      TireHealthAlertResolutionReason.SETUP_STORED,
+    );
 
     return { success: true, storedSetupId: setup.id };
   }
