@@ -76,6 +76,10 @@ function batteryCondition(
   battery: BatteryHealthSummary | null,
 ): 'good' | 'watch' | 'attention' | 'calibrating' | 'unknown' | null {
   if (!battery) return null;
+  const status = battery.lv?.healthStatus;
+  if (status === 'CRITICAL' || status === 'WARNING') return 'attention';
+  if (status === 'WATCH') return 'watch';
+  if (status === 'GOOD') return 'good';
   return battery.lv?.condition ?? battery.condition ?? null;
 }
 

@@ -28,15 +28,16 @@ import {
 } from '../../lib/health-tab-summary-ui';
 import {
   estimatedBatteryHealthLabel,
-  hasBatteryStartProblemEvidence,
-  isCriticalRestingVoltageStatus,
-  isEstimatedBatteryHealthSevere,
-  isEstimatedBatteryHealthWatch,
-  isLowRestingVoltageStatus,
   formatBatteryVoltage,
   resolveOverviewBatteryVoltage,
   restingVoltageStatusLabel,
 } from '../../lib/battery-display.utils';
+import {
+  isCanonicalBatteryTracked,
+  mapCanonicalBatteryUiSeverityToScore,
+  resolveCanonicalBatteryUiSeverity,
+  resolveCanonicalEstimatedHealthScore,
+} from '../../lib/canonical-battery-ui.adapter';
 import { batteryDataQualityDetailNoteDe } from '../../lib/battery-data-quality.utils';
 import {
   segmentFromHealthState,
@@ -423,15 +424,7 @@ export function buildVehicleHealthBoxViewModel(params: {
 
   const tiresVal = tires?.overallPercent ?? vehicleTiresFallback ?? 0;
   const batteryPubState = battery?.lv?.publicationState ?? battery?.currentState?.publicationState ?? 'INITIAL_CALIBRATION';
-  const lvHealthScore =
-    battery?.lv?.estimatedLvHealthScore?.value ??
-    battery?.lv?.estimatedHealth?.scorePct ??
-    (batteryPubState === 'INITIAL_CALIBRATION'
-      ? null
-      : (battery?.lv?.estimatedHealthPercent ??
-        battery?.currentState?.estimatedLvHealthScore ??
-        battery?.currentState?.estimatedSohPct ??
-        null));
+  const lvHealthScore = resolveCanonicalEstimatedHealthScore(battery);
   const legacyHealthScore =
     batteryPubState === 'INITIAL_CALIBRATION'
       ? null
@@ -439,38 +432,18 @@ export function buildVehicleHealthBoxViewModel(params: {
         battery?.currentState?.publishedSohPct ??
         battery?.currentState?.sohPercent ??
         null);
-  const estimatedSoh = battery?.lv?.estimatedHealthPercent ?? battery?.currentState?.estimatedSohPct ?? null;
   const batteryVoltage = resolveOverviewBatteryVoltage(battery, lvBatteryVoltage);
-  const hasStartProblemEvidence = hasBatteryStartProblemEvidence(battery);
-  const hasLowRestingVoltage = isLowRestingVoltageStatus(batteryVoltage.status);
-  const hasCriticalRestingVoltage = isCriticalRestingVoltageStatus(batteryVoltage.status);
-  const hasEstimatedWatch = isEstimatedBatteryHealthWatch(battery);
-  const hasEstimatedSevere = isEstimatedBatteryHealthSevere(battery);
   const hasBackendCriticalBattery = rentalHealth?.modules.battery?.state === 'critical';
-  const hasHardBatteryWarning = hasStartProblemEvidence || hasLowRestingVoltage || hasBackendCriticalBattery;
-  const batteryScore = lvHealthScore ?? legacyHealthScore ?? estimatedSoh ?? null;
-  const batterySeverity: 'good' | 'watch' | 'warning' | 'critical' | 'unknown' = (() => {
-    if (hasBackendCriticalBattery || hasCriticalRestingVoltage) return 'critical';
-    if (hasStartProblemEvidence || hasLowRestingVoltage) return 'warning';
-    if (
-      hasEstimatedWatch ||
-      hasEstimatedSevere ||
-      battery?.lv?.condition === 'watch' ||
-      battery?.condition === 'watch' ||
-      battery?.lv?.condition === 'attention' ||
-      battery?.condition === 'attention'
-    ) {
-      return 'watch';
-    }
-    if (batteryVoltage.kind === 'resting' && batteryVoltage.status === 'GOOD') return 'good';
-    if (battery?.lv?.condition === 'good' || battery?.condition === 'good') return 'good';
-    return batteryVoltage.kind === 'unavailable' && batteryScore == null ? 'unknown' : 'good';
-  })();
-  const batteryVal = batteryScore ?? (batterySeverity === 'critical' ? 15 : batterySeverity === 'warning' ? 45 : batterySeverity === 'watch' ? 65 : batteryVoltage.kind === 'unavailable' ? 0 : 85);
+  const batterySeverity = resolveCanonicalBatteryUiSeverity(
+    battery,
+    rentalHealth?.modules.battery?.state,
+  );
+  const batteryScore = lvHealthScore ?? legacyHealthScore ?? null;
+  const batteryVal = mapCanonicalBatteryUiSeverityToScore(batterySeverity, batteryScore);
 
   const brakesTracked = brakes?.overallCondition != null && brakes.overallCondition !== 'UNKNOWN';
   const tiresTracked = tires?.overallPercent != null || vehicleTiresFallback > 0;
-  const batteryTracked = batteryScore != null || batteryVoltage.kind !== 'unavailable';
+  const batteryTracked = isCanonicalBatteryTracked(battery);
   const trackedFlags = [brakesTracked, tiresTracked, batteryTracked];
   const untrackedCount = 3 - trackedFlags.filter(Boolean).length;
   const trackedCount = trackedFlags.filter(Boolean).length;
@@ -609,7 +582,7 @@ export function buildVehicleHealthBoxViewModel(params: {
       rowStyle: resolveBatteryRowStyle(
         rentalHealth?.modules.battery,
         getBatteryLocalStyle(batteryVal, batteryTracked, batterySeverity),
-        hasHardBatteryWarning,
+        batterySeverity === 'warning' || batterySeverity === 'critical',
       ),
       showBadge: batterySeverity === 'critical' || batterySeverity === 'warning' || batterySeverity === 'watch',
       isCalibrating: batteryPubState === 'INITIAL_CALIBRATION',

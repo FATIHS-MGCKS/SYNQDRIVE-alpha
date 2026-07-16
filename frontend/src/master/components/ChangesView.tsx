@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-consumer-migration-v49561-2026-07-17',
+    version: '4.9.561',
+    title: 'V4.9.561 — Battery Consumer Migration (Prompt 61/78)',
+    summary: [
+      'Alle Battery-Produktconsumer auf kanonischen Resolver migriert (Rental Health, Alerts, Health Summary, Vehicle Detail, Admin-Diagnose).',
+      'Shared read adapter: canonical-battery-read.adapter (Backend) + canonical-battery-ui.adapter (Frontend).',
+      'Keine Consumer-Spannungsgrenzen, keine eigene Freshness, keine Legacy-Publication als sichere Wahrheit.',
+      'battery-critical.detector liest CanonicalBatteryHealthService statt paralleler Prisma-Klassifikation.',
+      'Compat-Endpunkte battery-health/latest und hv-battery-status markiert; canonical Feld exponiert.',
+    ],
+    reason: 'Prompt 61/78: ein Resolver-Pfad für alle Battery-Consumer.',
+    previousBehavior: 'Parallele Prisma-/Score-Band-Ableitungen in Detector, Health Summary und UI.',
+    details:
+      'canonical-battery-read.adapter.*, rental-health.service.ts, battery-critical.detector.ts, health-summary.service.ts, data-analyse.service.ts, vehicle-health-box.mapper.ts, docs/architecture/battery-consumer-migration-audit.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T20:00:00.000Z',
+  },
+  {
     id: 'battery-signal-freshness-contract-v49560-2026-07-17',
     version: '4.9.560',
     title: 'V4.9.560 — Battery Signal Freshness & Error Contract (Prompt 60/78)',

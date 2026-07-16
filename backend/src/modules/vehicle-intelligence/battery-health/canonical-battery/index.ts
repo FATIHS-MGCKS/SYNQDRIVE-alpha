@@ -18,3 +18,15 @@ export {
   type CanonicalBatteryBuildInput,
   type CanonicalBatteryHvChargeSessionInput,
 } from './canonical-battery.builder';
+export {
+  mapHealthSummaryBatteryModule,
+  mapHealthSummaryBatteryNarrative,
+  mapRentalBatteryModule,
+  resolveBatteryAlertCandidate,
+  requireCanonicalBattery,
+  type BatteryAlertCandidate,
+  type BatteryAlertVehicleMeta,
+  type CanonicalBatteryHealthSummary,
+  type HealthSummaryBatteryModule,
+  type RentalBatteryEvaluationInput,
+} from './canonical-battery-read.adapter';

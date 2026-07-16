@@ -5968,6 +5968,41 @@ export interface BatteryCurrentTelemetrySection {
   genericEnergyPercent: number | null;
 }
 
+export interface CanonicalBatteryLiveValues {
+  voltageV: number | null;
+  restingVoltageV: number | null;
+  socPercent?: number | null;
+  providerSohPercent?: number | null;
+}
+
+export interface CanonicalBatteryDto {
+  resolverVersion: string;
+  organizationId?: string;
+  vehicleId: string;
+  resolvedAt: string;
+  isEv: boolean;
+  liveState: {
+    lv: { observedAt: string | null; values: CanonicalBatteryLiveValues };
+    hv?: { observedAt: string | null; values: CanonicalBatteryLiveValues };
+  };
+  lv: {
+    assessment?: { estimatedHealthScore: number | null } | null;
+    publication?: { maturity: string | null } | null;
+  };
+  hv?: {
+    supported: boolean;
+    providerSoh: { percent: number | null; decisionFresh: boolean };
+    sohAssessment?: {
+      estimatedSohPercent: number | null;
+      sohGatePassed: boolean;
+    } | null;
+  } | null;
+  dataQuality?: {
+    aggregate: BatteryDataQualityPresentation;
+    errors?: Array<{ code: string; messageDe?: string }>;
+  };
+}
+
 export interface BatteryHealthSummary {
   vehicleId: string;
   generatedAt: string;
@@ -6021,6 +6056,8 @@ export interface BatteryHealthSummary {
     workshopName?: string | null;
     odometerKm?: number | null;
   }>;
+  /** Canonical resolver output — preferred read model for new consumers. */
+  canonical?: CanonicalBatteryDto | null;
 }
 
 export interface BatteryEvidenceItem {
