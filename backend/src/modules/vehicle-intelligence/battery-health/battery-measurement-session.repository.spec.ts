@@ -9,6 +9,7 @@ import {
 } from '@prisma/client';
 import { BatteryMeasurementSessionRepository } from './battery-measurement-session.repository';
 import { BatteryMeasurementSessionService } from './battery-measurement-session.service';
+import { DriveProfileResolverService } from '../drive-profile/drive-profile-resolver.service';
 
 const ORG_A = 'org-a';
 const ORG_B = 'org-b';
@@ -193,7 +194,20 @@ describe('BatteryMeasurementSessionService (mocked Prisma)', () => {
   };
 
   const repository = new BatteryMeasurementSessionRepository(prisma as any);
-  const service = new BatteryMeasurementSessionService(prisma as any, repository);
+  const driveProfileResolver = {
+    resolveForVehicle: jest.fn(async () => ({
+      profile: BatteryDriveProfile.ICE,
+      source: 'VEHICLE_MASTER',
+      confidence: 'HIGH',
+      telemetryFallback: false,
+      evidence: ['master:fuel_type:DIESEL'],
+    })),
+  } as unknown as jest.Mocked<Pick<DriveProfileResolverService, 'resolveForVehicle'>>;
+  const service = new BatteryMeasurementSessionService(
+    prisma as any,
+    repository,
+    driveProfileResolver as unknown as DriveProfileResolverService,
+  );
 
   beforeEach(() => {
     sessions.clear();
@@ -236,7 +250,29 @@ describe('BatteryMeasurementSessionService (mocked Prisma)', () => {
 
     expect(second.id).toBe(first.id);
     expect(first.metadata).toEqual({ targetMessarts: ['START_DIP_PROXY'] });
+    expect(first.driveProfile).toBe(BatteryDriveProfile.ICE);
     expect(sessions.size).toBe(1);
+  });
+
+  it('auto-resolves driveProfile when omitted', async () => {
+    driveProfileResolver.resolveForVehicle.mockResolvedValueOnce({
+      profile: BatteryDriveProfile.PHEV,
+      source: 'VEHICLE_MASTER',
+      confidence: 'HIGH',
+      telemetryFallback: false,
+      evidence: ['master:fuel_type:PLUGIN_HYBRID'],
+    });
+
+    const created = await service.create({
+      organizationId: ORG_A,
+      vehicleId: VEHICLE_A,
+      type: BatteryMeasurementSessionType.LV_REST_WINDOW,
+      startedAt: new Date(),
+      idempotencyKey: 'auto-profile:1',
+    });
+
+    expect(driveProfileResolver.resolveForVehicle).toHaveBeenCalledWith(VEHICLE_A);
+    expect(created.driveProfile).toBe(BatteryDriveProfile.PHEV);
   });
 
   it('does not return sessions across organizations on getById', async () => {
