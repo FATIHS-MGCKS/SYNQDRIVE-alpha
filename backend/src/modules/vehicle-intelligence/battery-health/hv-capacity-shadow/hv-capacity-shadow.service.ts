@@ -7,6 +7,7 @@ import {
   HvCapacityObservationRepository,
 } from './hv-capacity-observation.repository';
 import { HvCapacityM2SampleProviderService } from './hv-capacity-m2-sample-provider.service';
+import { HvCapacityCrossSessionAssessmentService } from './hv-capacity-cross-session-assessment.service';
 import { HvCapacityM3ValidationService } from './hv-capacity-m3-validation.service';
 import { HvCapacitySessionSummaryService } from './hv-capacity-session-summary.service';
 import {
@@ -24,6 +25,7 @@ import {
   type HvCapacityM2SessionResult,
 } from './hv-capacity-m2.types';
 import type { HvCapacitySessionSummaryInputObservation } from './hv-capacity-session-summary.types';
+import type { HvCrossSessionAssessmentResult } from './hv-capacity-cross-session.types';
 import type { HvCapacityM3ValidationResult } from './hv-capacity-m3.types';
 import { withHvCapacityShadowMetadata } from './hv-capacity-shadow.policy';
 
@@ -46,6 +48,7 @@ export class HvCapacityShadowService {
     private readonly observations: HvCapacityObservationRepository,
     private readonly sessionSummary: HvCapacitySessionSummaryService,
     private readonly m3Validation: HvCapacityM3ValidationService,
+    private readonly crossSessionAssessment: HvCapacityCrossSessionAssessmentService,
   ) {}
 
   async recomputeM2ForSession(
@@ -204,6 +207,17 @@ export class HvCapacityShadowService {
       );
     }
 
+    const crossSessionResult = await this.crossSessionAssessment.recomputeForVehicle({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+    });
+
+    if (crossSessionResult?.persisted) {
+      this.logger.debug(
+        `HV cross-session assessment vehicle=${input.vehicleId} capacity=${crossSessionResult.assessment.estimatedUsableCapacityKwh?.toFixed(2) ?? 'n/a'} kWh sessions=${crossSessionResult.assessment.sessionCount}`,
+      );
+    }
+
     return {
       sessionId: session.id,
       method: HV_M2_CAPACITY_METHOD,
@@ -214,6 +228,7 @@ export class HvCapacityShadowService {
       skippedCount,
       summary,
       m3Validation: m3Result,
+      crossSessionAssessment: crossSessionResult,
     };
   }
 
@@ -228,6 +243,7 @@ export class HvCapacityShadowService {
       skippedCount: 0,
       summary: null,
       m3Validation: null,
+      crossSessionAssessment: null,
     };
   }
 }

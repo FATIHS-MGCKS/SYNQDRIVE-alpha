@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'hv-capacity-cross-session-assessment-v49555-2026-07-17',
+    version: '4.9.555',
+    title: 'V4.9.555 — HV Cross-Session Shadow BatteryAssessment (Prompt 55/78)',
+    summary: [
+      'Cross-Session `BatteryAssessment` type `HV_CAPACITY_SHADOW` für geschätzte nutzbare HV-Kapazität im Shadow Mode.',
+      'Input: qualifizierte M2-Sessionmediane (`STABLE_SHADOW`), M3 nur Validierung, gleiche Referenzkapazität/Modellversion, 31d Freshness.',
+      'Output: estimatedUsableCapacityKWh, sessionCount, observationCount, Cross-Session-Median, robuste Streuung, methodAgreement, confidence, maturity SHADOW.',
+      'Gates v1: ≥3 Sessions, keine dominante Session, akzeptable Intra-/Cross-Session-Streuung, kein M3-Konflikt.',
+      'Keine Kundenpublication, kein Readiness-Effekt, kein SOH. Tests: 4 stabile Tesla-Sessions + widersprüchliche Fälle.',
+    ],
+    reason: 'Prompt 55/78: vehicle-level Shadow-Assessment vor Publication-Pipeline.',
+    previousBehavior: 'Nur per-Session M2/M3 ohne Cross-Session BatteryAssessment.',
+    details:
+      'hv-capacity-cross-session.*, battery-assessment.repository.ts, hv-capacity-shadow.service.ts, docs/architecture/hv-capacity-cross-session-assessment.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T14:00:00.000Z',
+  },
+  {
     id: 'hv-capacity-m3-validation-v49554-2026-07-17',
     version: '4.9.554',
     title: 'V4.9.554 — HV M3 Validation SEGMENT_ADDED_ENERGY_OVER_SOC (Prompt 54/78)',

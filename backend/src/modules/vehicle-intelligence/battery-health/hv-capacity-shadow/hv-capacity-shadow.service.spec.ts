@@ -32,6 +32,7 @@ describe('HvCapacityShadowService', () => {
 
   const sessionSummary = { summarizeSession: jest.fn() };
   const m3Validation = { validateSession: jest.fn() };
+  const crossSessionAssessment = { recomputeForVehicle: jest.fn() };
 
   let service: HvCapacityShadowService;
 
@@ -43,6 +44,7 @@ describe('HvCapacityShadowService', () => {
       observations as any,
       sessionSummary as any,
       m3Validation as any,
+      crossSessionAssessment as any,
     );
 
     prisma.hvChargeSession.findFirst.mockResolvedValue({
@@ -78,6 +80,7 @@ describe('HvCapacityShadowService', () => {
       estimate: null,
       persisted: false,
     });
+    crossSessionAssessment.recomputeForVehicle.mockResolvedValue(null);
   });
 
   it('persists shadow observations for qualified session with audit samples', async () => {
@@ -116,6 +119,7 @@ describe('HvCapacityShadowService', () => {
     expect(result.summary).not.toBeNull();
     expect(sessionSummary.summarizeSession).toHaveBeenCalled();
     expect(m3Validation.validateSession).toHaveBeenCalled();
+    expect(crossSessionAssessment.recomputeForVehicle).toHaveBeenCalled();
   });
 
   it('skips ineligible sessions', async () => {
