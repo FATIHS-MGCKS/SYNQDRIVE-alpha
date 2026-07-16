@@ -8,4 +8,6 @@ export * from './shadow-detector.persistence';
 export * from './shadow-detector.orchestrator.service';
 export * from './shadow-detector-enrichment.service';
 export * from './detectors/cold-engine-shadow.policy';
-export * from './detectors/cold-engine-load.shadow-detector';
+export * from './shadow-detector-gates';
+export * from './detectors/sustained-high-load-shadow.policy';
+export * from './detectors/sustained-high-load.shadow-detector';

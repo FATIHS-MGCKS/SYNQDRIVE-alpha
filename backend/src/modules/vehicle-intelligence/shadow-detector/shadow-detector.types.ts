@@ -51,6 +51,8 @@ export type ShadowDetectorHfSample = {
   torquePct: number | null;
   exteriorTempC: number | null;
   tractionBatteryPowerKw: number | null;
+  /** Optional post-trip altitude context (m) — never proves abuse alone. */
+  altitudeM: number | null;
 };
 
 export type ShadowMisuseCaseRef = {
@@ -72,6 +74,14 @@ export type ShadowDetectorExecutionContext = {
   coolantSampleCount: number;
   exteriorTempSampleCount: number;
   misuseCases: readonly ShadowMisuseCaseRef[];
+};
+
+export type ShadowDetectorCapabilitySnapshot = {
+  status: DrivingDetectorSupportStatus;
+  missingRequirements: readonly string[];
+  effectiveCadenceMs: number | null;
+  p95CadenceMs: number | null;
+  coverage: number | null;
 };
 
 /** Canonical per-detector shadow output — never written to DrivingEvent. */
@@ -104,6 +114,7 @@ export type ShadowDetectorRunInput = ShadowDetectorTripWindow & {
   frameworkVersion: string;
   resolvedAt: string;
   executionContext?: ShadowDetectorExecutionContext | null;
+  activeDetectorCapability?: ShadowDetectorCapabilitySnapshot | null;
 };
 
 export type ShadowDetectorRunOutcome = {

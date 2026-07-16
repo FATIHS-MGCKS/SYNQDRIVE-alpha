@@ -44,7 +44,10 @@ export class ShadowDetectorEnrichmentService {
           vehicleId: input.vehicleId,
           tripId: input.tripId,
           type: {
-            in: [MisuseCaseType.COLD_ENGINE_ABUSE],
+            in: [
+              MisuseCaseType.COLD_ENGINE_ABUSE,
+              MisuseCaseType.OVERHEATING_DAMAGE_RISK,
+            ],
           },
         },
         select: {
@@ -108,5 +111,6 @@ function mapHfReadingToShadowSample(reading: HighFrequencyReading): ShadowDetect
     torquePct: reading.engineTorquePct ?? null,
     exteriorTempC: reading.exteriorAirTempC ?? null,
     tractionBatteryPowerKw: reading.tractionBatteryPowerKw,
+    altitudeM: reading.altitudeM ?? null,
   };
 }

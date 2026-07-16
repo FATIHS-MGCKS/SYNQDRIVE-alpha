@@ -23,6 +23,7 @@ function hf(
     torquePct: null,
     exteriorTempC: 2,
     tractionBatteryPowerKw: null,
+    altitudeM: null,
     ...over,
   };
 }

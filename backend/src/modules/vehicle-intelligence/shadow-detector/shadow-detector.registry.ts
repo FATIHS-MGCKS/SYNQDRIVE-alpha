@@ -1,5 +1,6 @@
 import type { DrivingDetectorKey } from '../driving-detector-capability/driving-detector-capability.types';
 import { coldEngineLoadShadowDetector } from './detectors/cold-engine-load.shadow-detector';
+import { sustainedHighLoadShadowDetector } from './detectors/sustained-high-load.shadow-detector';
 import type { ShadowDetectorImplementation } from './shadow-detector.port';
 import type { ShadowDetectorResult, ShadowDetectorRunInput } from './shadow-detector.types';
 
@@ -35,6 +36,7 @@ function stubDetector(detectorId: DrivingDetectorKey): ShadowDetectorImplementat
 /** Registered shadow detector implementations. */
 export const SHADOW_DETECTOR_IMPLEMENTATIONS: readonly ShadowDetectorImplementation[] = [
   coldEngineLoadShadowDetector,
+  sustainedHighLoadShadowDetector,
   stubDetector('brake_intensity'),
 ];
 
