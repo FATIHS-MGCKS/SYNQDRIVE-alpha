@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'hv-capacity-shadow-m2-v49552-2026-07-17',
+    version: '4.9.552',
+    title: 'V4.9.552 — HV Shadow Capacity M2 CURRENT_ENERGY_OVER_SOC (Prompt 52/78)',
+    summary: [
+      'M2 Shadow-Kapazität innerhalb qualifizierter `HvChargeSession` — `currentEnergyKWh / (socPercent / 100)`.',
+      'Gates: SOC>0, bevorzugt 10–90 %, Sync-Fenster, neue Providerobservations, keine stale Wiederholung, capacityShadowEligible, Einheits-/Kapazitätsband, Outlier-Markierung.',
+      'Persistenz `HvCapacityObservation` mit method `CURRENT_ENERGY_OVER_SOC`, metadata (SOC, Energy, timestampDelta), modelVersion 1.',
+      'Keine Publication, kein SOH. Feature-Flag `BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED`.',
+      'Tests mit Tesla-Auditwerten ~55,5 kWh Median.',
+    ],
+    reason: 'Prompt 52/78: erste belastbare Shadow-Kapazitätspipeline auf qualifizierten Ladesessions.',
+    previousBehavior: 'HvCapacityShadowRecomputeHandler war Stub; keine HvCapacityObservation-Writes.',
+    details:
+      'hv-capacity-shadow/*, hv-capacity-shadow-recompute.handler.ts, hv-charge-session-persist.service.ts, docs/architecture/hv-capacity-shadow-m2.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T00:00:00.000Z',
+  },
+  {
     id: 'hv-charge-session-quality-v49551-2026-07-17',
     version: '4.9.551',
     title: 'V4.9.551 — HV Charge Session Quality Assessment (Prompt 51/78)',

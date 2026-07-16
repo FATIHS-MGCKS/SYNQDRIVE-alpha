@@ -235,6 +235,9 @@ describe('HvChargeSessionPersistService', () => {
     findById: jest.fn(),
   };
   const observability = { log: jest.fn() };
+  const capacityShadowProducer = {
+    maybeEnqueueAfterSessionPersist: jest.fn().mockResolvedValue(null),
+  };
 
   beforeEach(() => {
     jest.resetAllMocks();
@@ -248,6 +251,7 @@ describe('HvChargeSessionPersistService', () => {
     const service = new HvChargeSessionPersistService(
       repository as never,
       observability as never,
+      capacityShadowProducer as never,
     );
 
     const segment = completedSegment();
@@ -286,6 +290,7 @@ describe('HvChargeSessionPersistService', () => {
     const service = new HvChargeSessionPersistService(
       repository as never,
       observability as never,
+      capacityShadowProducer as never,
     );
 
     const result = await service.persistRechargeSegment({

@@ -338,6 +338,7 @@ export const BATTERY_EVIDENCE_STRENGTHS = Object.values(
 // ── HV capacity observation method ───────────────────────────────────────────
 
 export const HvCapacityMethod = {
+  CURRENT_ENERGY_OVER_SOC: 'CURRENT_ENERGY_OVER_SOC',
   SESSION_DELTA_ENERGY_SOC: 'SESSION_DELTA_ENERGY_SOC',
   SHADOW_ROLLING_MEDIAN: 'SHADOW_ROLLING_MEDIAN',
   PROVIDER_GROSS_CAPACITY: 'PROVIDER_GROSS_CAPACITY',

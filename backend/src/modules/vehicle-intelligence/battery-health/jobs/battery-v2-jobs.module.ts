@@ -15,6 +15,9 @@ import { BatteryPublicationUpdateHandler } from './handlers/battery-publication-
 import { HvCapabilityRefreshHandler } from './handlers/hv-capability-refresh.handler';
 import { HvRechargeSessionReconcileHandler } from './handlers/hv-recharge-session-reconcile.handler';
 import { HvCapacityShadowRecomputeHandler } from './handlers/hv-capacity-shadow-recompute.handler';
+import { HvCapacityShadowService } from '../hv-capacity-shadow/hv-capacity-shadow.service';
+import { HvCapacityM2SampleProviderService } from '../hv-capacity-shadow/hv-capacity-m2-sample-provider.service';
+import { HvCapacityObservationRepository } from '../hv-capacity-shadow/hv-capacity-observation.repository';
 import { BatteryStartProxyExtractService } from '../lv-start-proxy/battery-start-proxy-extract.service';
 import { VehicleIntelligenceModule } from '../../vehicle-intelligence.module';
 
@@ -44,6 +47,9 @@ const BATTERY_V2_JOB_HANDLERS = [
     BatteryStartProxyExtractService,
     BatteryAssessmentService,
     BatteryPublicationService,
+    HvCapacityShadowService,
+    HvCapacityM2SampleProviderService,
+    HvCapacityObservationRepository,
   ],
   exports: [
     ...BATTERY_V2_JOB_HANDLERS,

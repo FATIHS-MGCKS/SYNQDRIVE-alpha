@@ -120,8 +120,18 @@ export class BatteryV2IdempotentExecutionService {
         // Allow re-runs for ongoing completion and late provider updates.
         return false;
       case 'HV_CAPACITY_SHADOW_RECOMPUTE': {
-        const existing = await this.prisma.hvCapacityObservation.findUnique({
-          where: { vehicleId_idempotencyKey: { vehicleId, idempotencyKey } },
+        const capPayload = payload as BatteryV2JobPayload<'HV_CAPACITY_SHADOW_RECOMPUTE'>;
+        if (!capPayload.chargeSessionId) return false;
+        const existing = await this.prisma.hvCapacityObservation.findFirst({
+          where: {
+            vehicleId,
+            chargeSessionId: capPayload.chargeSessionId,
+            method: capPayload.method ?? 'CURRENT_ENERGY_OVER_SOC',
+            modelVersion:
+              typeof capPayload.capacityModelVersion === 'number'
+                ? capPayload.capacityModelVersion
+                : Number(capPayload.capacityModelVersion ?? 1),
+          },
           select: { id: true },
         });
         return existing != null;
