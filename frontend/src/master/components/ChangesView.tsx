@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-lv-publication-policy-v49544-2026-07-17',
+    version: '4.9.544',
+    title: 'V4.9.544 — LV Publication Policy (Prompt 44/78)',
+    summary: [
+      '`evaluateLvPublicationPolicy()` mit Maturity FSM: UNAVAILABLE, CALIBRATING, SHADOW, PROVISIONAL, STABLE, STALE, SUPERSEDED.',
+      'Publication nur bei unterstütztem Profil, valider Evidence, kompatiblen Messzyklen, Confidence, Assessment-Freshness, stabiler Wiederholung und ohne Kontaminationsdominanz.',
+      'Feature Flag `batteryV2PublicationEnabled` / `BATTERY_V2_PUBLICATION_ENABLED` default OFF; Shadow nicht user-facing; Hysterese verhindert Flattern.',
+      'Neue Publication superseded alte auditierbar in `battery_publications`; Live-Spannung aktualisiert Publication-Freshness nicht.',
+    ],
+    reason: 'Prompt 44/78: LV Battery Health V2 Publication Policy vor Readiness-Wiring.',
+    previousBehavior: '`BATTERY_PUBLICATION_UPDATE` war Stub; keine V2-Maturity-FSM oder idempotente `battery_publications`-Writes.',
+    details:
+      'lv-publication.policy.ts, lv-publication-thresholds.ts, battery-publication.service.ts, battery-publication.repository.ts, battery-publication-update.handler.ts, docs/architecture/battery-lv-publication-policy.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T06:00:00.000Z',
+  },
+  {
     id: 'battery-lv-estimated-health-assessment-v49543-2026-07-17',
     version: '4.9.543',
     title: 'V4.9.543 — LV Estimated Health Assessment (Prompt 43/78)',

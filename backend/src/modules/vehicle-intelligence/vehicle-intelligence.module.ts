@@ -52,6 +52,8 @@ import { BatteryMeasurementRepository } from './battery-health/battery-measureme
 import { BatteryMeasurementService } from './battery-health/battery-measurement.service';
 import { BatteryAssessmentRepository } from './battery-health/battery-assessment.repository';
 import { BatteryAssessmentService } from './battery-health/battery-assessment.service';
+import { BatteryPublicationRepository } from './battery-health/battery-publication.repository';
+import { BatteryPublicationService } from './battery-health/battery-publication.service';
 import { HealthSummaryService } from './health-summary/health-summary.service';
 import { AiHealthCareAggregationService } from './health-summary/ai-health-care-aggregation.service';
 import { VehicleHealthTabSummaryService } from './health-summary/vehicle-health-tab-summary.service';
@@ -180,6 +182,8 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     BatteryMeasurementService,
     BatteryAssessmentRepository,
     BatteryAssessmentService,
+    BatteryPublicationRepository,
+    BatteryPublicationService,
     DriveProfileResolverService,
     LvBatteryChemistryResolverService,
     BatteryPolicyProfileService,
@@ -262,6 +266,8 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     BatteryMeasurementService,
     BatteryAssessmentRepository,
     BatteryAssessmentService,
+    BatteryPublicationRepository,
+    BatteryPublicationService,
     DriveProfileResolverService,
     LvBatteryChemistryResolverService,
     BatteryPolicyProfileService,

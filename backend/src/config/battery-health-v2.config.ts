@@ -28,6 +28,9 @@ export const BATTERY_V2_HV_LEGACY_PAIRWISE_CAPACITY_ENV =
 /** Prompt 35 flag — REST_60M/REST_6H shadow capture only (default OFF). */
 export const BATTERY_V2_REST_SHADOW_ENABLED_ENV = 'BATTERY_V2_REST_SHADOW_ENABLED';
 
+/** Prompt 44 flag — LV Battery Health V2 publication pipeline (default OFF). */
+export const BATTERY_V2_PUBLICATION_ENABLED_ENV = 'BATTERY_V2_PUBLICATION_ENABLED';
+
 /** DIMO crank query uses 5 s aggregation — no sub-second precision claims. */
 export const BATTERY_CRANK_SIGNAL_CADENCE_MS = 5_000;
 
@@ -122,6 +125,10 @@ export function isBatteryV2RestShadowEnabled(): boolean {
   return parseBooleanEnv(process.env[BATTERY_V2_REST_SHADOW_ENABLED_ENV], false);
 }
 
+export function isBatteryV2PublicationEnabled(): boolean {
+  return parseBooleanEnv(process.env[BATTERY_V2_PUBLICATION_ENABLED_ENV], false);
+}
+
 /** Delay before REST_60M target evaluation after rest window anchor. */
 export const BATTERY_REST_60M_MS_ENV = 'BATTERY_REST_60M_MS';
 
@@ -195,4 +202,5 @@ export default registerAs('batteryHealthV2', () => ({
   rest60mDelayMs: getBatteryRest60mDelayMs(),
   rest6hDelayMs: getBatteryRest6hDelayMs(),
   restShadowEnabled: isBatteryV2RestShadowEnabled(),
+  publicationEnabled: isBatteryV2PublicationEnabled(),
 }));
