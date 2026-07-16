@@ -112,6 +112,23 @@ export function isLegacyHvPairwiseCapacityAssessmentEnabled(): boolean {
   return parseBooleanEnv(process.env[BATTERY_V2_HV_LEGACY_PAIRWISE_CAPACITY_ENV], false);
 }
 
+/** Delay before REST_60M target evaluation after rest window anchor. */
+export const BATTERY_REST_60M_MS_ENV = 'BATTERY_REST_60M_MS';
+
+const DEFAULT_REST_60M_MS = 60 * 60_000;
+
+export function getBatteryRest60mDelayMs(): number {
+  return parsePositiveIntEnv(process.env[BATTERY_REST_60M_MS_ENV], DEFAULT_REST_60M_MS);
+}
+
+export function computeBatteryRestTargetDelayMs(
+  restWindowStartedAt: Date,
+  now: Date = new Date(),
+): number {
+  const targetAtMs = restWindowStartedAt.getTime() + getBatteryRest60mDelayMs();
+  return Math.max(0, targetAtMs - now.getTime());
+}
+
 export function getBatteryV2StartProxyDelayMs(): number {
   const raw = process.env[BATTERY_V2_START_PROXY_DELAY_MS_ENV];
   if (raw == null || raw.trim() === '') return DEFAULT_START_PROXY_DELAY_MS;
@@ -135,4 +152,5 @@ export default registerAs('batteryHealthV2', () => ({
   capabilitySignalLossRecheckMs: getBatteryCapabilitySignalLossRecheckMs(),
   capabilityLossThreshold: getBatteryCapabilityLossThreshold(),
   capabilityDegradedGraceMs: getBatteryCapabilityDegradedGraceMs(),
+  rest60mDelayMs: getBatteryRest60mDelayMs(),
 }));

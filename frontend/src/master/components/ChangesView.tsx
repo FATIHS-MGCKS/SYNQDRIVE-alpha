@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'lv-rest-60m-target-job-v49532-2026-07-16',
+    version: '4.9.532',
+    title: 'V4.9.532 — LV REST_60M Target Job Scheduling (Prompt 31/78)',
+    summary: [
+      'Pro bestätigtem Ruhefenster (RESTING) genau ein idempotenter `BATTERY_REST_TARGET_EVALUATE`-Job.',
+      'Job-ID: `battery-rest:{vehicleId}:{restWindowId}:60m`; Delay = `restWindow.startedAt + 60m`.',
+      '`BatteryV2RestTargetProducer` + Session-Metadata `scheduledTargets.REST_60M` (Status nachvollziehbar).',
+      'Handler prüft Org/Fahrzeug/Session; invalidiertes Fenster ohne Measurement → `CANCELLED`; Providerfehler retrybar.',
+      'Reconciliation backfill für LV_REST_WINDOW-Sessions ohne Duplikat bei bereits geplantem Job.',
+      'Historische Observation-Auswertung bewusst im nächsten Prompt — Handler setzt `PENDING_EVALUATION`.',
+      'Tests: Delay, Stornierung, Duplikat, invalidiertes Fenster.',
+    ],
+    reason: 'Prompt 31/78: verzögerte REST_60M-Zieljobs pro bestätigtem LV-Ruhefenster.',
+    previousBehavior: 'Nur Legacy-Reconciliation über `battery_features.restWindowStartedAt`; REST-Target-Handler war Stub.',
+    details:
+      'battery-v2-rest-target.producer.ts, battery-rest-target-evaluate.handler.ts, lv-rest-window-target.metadata.ts, lv-rest-window.service.ts, battery-v2-reconciliation.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T22:00:00.000Z',
+  },
+  {
     id: 'lv-rest-window-state-machine-v49531-2026-07-16',
     version: '4.9.531',
     title: 'V4.9.531 — LV Ruhefenster State Machine (Prompt 30/78)',

@@ -4,6 +4,7 @@ import {
   getBatteryV2ObservationStaleMs,
   getBatteryV2ReconciliationBatchSize,
   getBatteryV2StartProxyDelayMs,
+  getBatteryRest60mDelayMs,
   isLegacyCrankAssessmentEnabled,
   isStartWindowCollectionEnabled,
 } from '@config/battery-health-v2.config';
@@ -17,10 +18,20 @@ import {
 import { BATTERY_V2_JOB_MODEL_VERSION_DEFAULT } from './battery-v2-job.types';
 import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.service';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
+import { BatteryV2RestTargetProducer } from './battery-v2-rest-target.producer';
 import { BatteryV2SnapshotObservationProducer } from './battery-v2-snapshot-observation.producer';
 import { BatteryCapabilityRefreshService } from '../capability-preflight/battery-capability-refresh.service';
-
-const REST_60M_MS = 60 * 60_000;
+import {
+  isLvRestTargetAlreadyScheduled,
+  LV_REST_TARGET_TYPES,
+  readLvRestWindowSessionMetadata,
+} from '../lv-rest-window/lv-rest-window-target.metadata';
+import {
+  BatteryMeasurementSessionStatus,
+  BatteryMeasurementSessionType,
+  BatteryMeasurementType,
+} from '@prisma/client';
+import { LvRestWindowState } from '../battery-v2-domain';
 const REST_6H_MS = 6 * 60 * 60_000;
 const TRIP_LOOKBACK_MS = 7 * 24 * 3600_000;
 const ASSESSMENT_STALE_MS = 6 * 3600_000;
@@ -45,6 +56,7 @@ export class BatteryV2ReconciliationService {
     private readonly observationProducer: BatteryV2SnapshotObservationProducer,
     private readonly deadLetters: BatteryV2JobDeadLetterService,
     private readonly capabilityRefresh: BatteryCapabilityRefreshService,
+    private readonly restTargetProducer: BatteryV2RestTargetProducer,
   ) {}
 
   async reconcileAll(): Promise<BatteryV2ReconciliationResult> {
@@ -216,7 +228,82 @@ export class BatteryV2ReconciliationService {
   }
 
   private async reconcileRestTargets(batch: number): Promise<number> {
+    const lvSessions = await this.reconcileLvRestWindowTargets(batch);
+    const legacy = await this.reconcileLegacyRestTargets(batch);
+    return lvSessions + legacy;
+  }
+
+  private async reconcileLvRestWindowTargets(batch: number): Promise<number> {
     const now = Date.now();
+    const dueBefore = new Date(now - getBatteryRest60mDelayMs());
+
+    const sessions = await this.prisma.batteryMeasurementSession.findMany({
+      where: {
+        type: BatteryMeasurementSessionType.LV_REST_WINDOW,
+        status: {
+          in: [
+            BatteryMeasurementSessionStatus.ACTIVE,
+            BatteryMeasurementSessionStatus.COMPLETED,
+          ],
+        },
+        startedAt: { lte: dueBefore },
+      },
+      take: batch,
+      select: {
+        id: true,
+        organizationId: true,
+        vehicleId: true,
+        startedAt: true,
+        idempotencyKey: true,
+        metadata: true,
+        status: true,
+      },
+    });
+
+    let enqueued = 0;
+    for (const session of sessions) {
+      const metadata = readLvRestWindowSessionMetadata(session.metadata);
+      const fsmState = metadata.lvRestWindowState;
+      if (
+        fsmState === LvRestWindowState.INVALIDATED ||
+        fsmState === LvRestWindowState.EXPIRED
+      ) {
+        continue;
+      }
+      if (isLvRestTargetAlreadyScheduled(session.metadata, LV_REST_TARGET_TYPES.REST_60M)) {
+        continue;
+      }
+
+      const hasMeasurement = await this.prisma.batteryMeasurement.findFirst({
+        where: {
+          organizationId: session.organizationId,
+          sessionId: session.id,
+          type: BatteryMeasurementType.REST_60M,
+        },
+        select: { id: true },
+      });
+      if (hasMeasurement) continue;
+
+      const scheduleResult = await this.restTargetProducer.scheduleRest60m({
+        organizationId: session.organizationId,
+        vehicleId: session.vehicleId,
+        sessionId: session.id,
+        restWindowId: session.idempotencyKey,
+        restWindowStartedAt: session.startedAt,
+        now: new Date(now),
+      });
+      if (scheduleResult.scheduled || scheduleResult.bullJobId) {
+        enqueued += 1;
+      }
+    }
+
+    return enqueued;
+  }
+
+  private async reconcileLegacyRestTargets(batch: number): Promise<number> {
+    const now = Date.now();
+    const REST_60M_MS = getBatteryRest60mDelayMs();
+    const REST_6H_MS = 6 * 60 * 60_000;
     const features = await this.prisma.batteryFeatures.findMany({
       where: { restWindowStartedAt: { not: null } },
       take: batch,

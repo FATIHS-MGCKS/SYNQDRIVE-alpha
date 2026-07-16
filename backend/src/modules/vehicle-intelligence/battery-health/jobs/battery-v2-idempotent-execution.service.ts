@@ -125,6 +125,50 @@ export class BatteryV2IdempotentExecutionService {
         });
         return existing != null;
       }
+      case 'BATTERY_REST_TARGET_EVALUATE': {
+        const restPayload = payload as BatteryV2JobPayload<'BATTERY_REST_TARGET_EVALUATE'>;
+        const restTargetType = restPayload.restTargetType ?? 'REST_60M';
+        const measurementType =
+          restTargetType === 'REST_6H' ? 'REST_6H' : 'REST_60M';
+
+        if (restPayload.sourceEntityId) {
+          const measurement = await this.prisma.batteryMeasurement.findFirst({
+            where: {
+              organizationId,
+              sessionId: restPayload.sourceEntityId,
+              type: measurementType,
+            },
+            select: { id: true },
+          });
+          if (measurement) return true;
+        }
+
+        const session = restPayload.restWindowId
+          ? await this.prisma.batteryMeasurementSession.findFirst({
+              where: {
+                organizationId,
+                vehicleId,
+                idempotencyKey: restPayload.restWindowId,
+              },
+              select: { metadata: true },
+            })
+          : null;
+
+        if (session?.metadata && typeof session.metadata === 'object') {
+          const meta = session.metadata as Record<string, unknown>;
+          const targets = meta.scheduledTargets as Record<string, { status?: string }> | undefined;
+          const entry = targets?.[restTargetType === 'REST_6H' ? 'REST_6H' : 'REST_60M'];
+          if (
+            entry?.status === 'COMPLETED' ||
+            entry?.status === 'CANCELLED' ||
+            entry?.status === 'PENDING_EVALUATION'
+          ) {
+            return true;
+          }
+        }
+
+        return false;
+      }
       default:
         return false;
     }

@@ -26,14 +26,19 @@ export function validateBatteryV2JobIdempotencyKey(
         );
       }
       return;
-    case 'BATTERY_REST_TARGET_EVALUATE':
-      if (!key.startsWith(`${BATTERY_V2_JOB_IDENTITY_PREFIX.restTarget}:`)) {
+    case 'BATTERY_REST_TARGET_EVALUATE': {
+      const restPrefixes = [
+        `${BATTERY_V2_JOB_IDENTITY_PREFIX.restTarget}:`,
+        `${BATTERY_V2_JOB_IDENTITY_PREFIX.batteryRest}:`,
+      ];
+      if (!restPrefixes.some((prefix) => key.startsWith(prefix))) {
         throw new BatteryV2JobValidationError(
-          `idempotencyKey must start with ${BATTERY_V2_JOB_IDENTITY_PREFIX.restTarget}:`,
+          `idempotencyKey must start with ${restPrefixes.join(' or ')}`,
           'idempotencyKey',
         );
       }
       return;
+    }
     case 'BATTERY_START_PROXY_EXTRACT':
       if (!key.startsWith(`${BATTERY_V2_JOB_IDENTITY_PREFIX.startProxy}:`)) {
         throw new BatteryV2JobValidationError(

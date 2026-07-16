@@ -190,6 +190,6 @@ describe('BatteryV2IdempotentExecutionService', () => {
         payload: basePayload({ idempotencyKey: 'hv-snap:wrong' }),
         handler: jest.fn(),
       }),
-    ).rejects.toThrow(/idempotencyKey must start with rest-target:/);
+    ).rejects.toThrow(/idempotencyKey must start with rest-target:|battery-rest:/);
   });
 });

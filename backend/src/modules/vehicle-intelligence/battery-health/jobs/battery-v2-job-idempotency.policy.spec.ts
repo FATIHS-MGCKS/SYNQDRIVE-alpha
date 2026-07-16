@@ -6,6 +6,7 @@ import {
   buildObservationJobIdempotencyKey,
   buildPublicationJobIdempotencyKey,
   buildRestTargetJobIdempotencyKey,
+  buildBatteryRestTargetJobIdempotencyKey,
   buildStartProxyJobIdempotencyKey,
 } from './battery-v2-job-idempotency.policy';
 
@@ -31,6 +32,15 @@ describe('battery-v2-job-idempotency.policy', () => {
     expect(key).toContain(VEH);
     expect(key).toContain(String(observedAt.getTime()));
     expect(key).toContain('12.4');
+  });
+
+  it('builds battery-rest identity from vehicle + rest window + suffix', () => {
+    const key = buildBatteryRestTargetJobIdempotencyKey({
+      vehicleId: VEH,
+      restWindowId: 'lv-rest:veh:123',
+      targetSuffix: '60m',
+    });
+    expect(key).toBe('battery-rest:clveh1234567890123456789012:lv-rest:veh:123:60m');
   });
 
   it('builds rest target identity from vehicle + window + target type', () => {

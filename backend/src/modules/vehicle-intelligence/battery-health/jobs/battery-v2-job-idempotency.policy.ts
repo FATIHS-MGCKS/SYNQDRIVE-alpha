@@ -15,6 +15,7 @@ export const BATTERY_V2_JOB_IDENTITY_PREFIX = {
   observation: 'battery-obs',
   hvSnapshot: 'hv-snap',
   restTarget: 'rest-target',
+  batteryRest: 'battery-rest',
   startProxy: 'start-proxy',
   assessment: 'assess',
   publication: 'pub',
@@ -37,7 +38,7 @@ export function buildObservationJobIdempotencyKey(input: {
   return buildBatteryProviderObservationIdempotencyKey(input);
 }
 
-/** Rest: vehicle + rest window + target type */
+/** Rest: vehicle + rest window + target type (legacy reconciliation key). */
 export function buildRestTargetJobIdempotencyKey(input: {
   vehicleId: string;
   restWindowStartedAt: Date;
@@ -49,6 +50,26 @@ export function buildRestTargetJobIdempotencyKey(input: {
     input.restTargetType,
     String(input.restWindowStartedAt.getTime()),
   ].join(':');
+}
+
+/** LV rest window target job: battery-rest:{vehicleId}:{restWindowId}:60m|6h */
+export function buildBatteryRestTargetJobIdempotencyKey(input: {
+  vehicleId: string;
+  restWindowId: string;
+  targetSuffix: '60m' | '6h';
+}): string {
+  return [
+    BATTERY_V2_JOB_IDENTITY_PREFIX.batteryRest,
+    input.vehicleId,
+    input.restWindowId,
+    input.targetSuffix,
+  ].join(':');
+}
+
+export function targetSuffixForRestType(
+  restTargetType: Extract<BatteryRestTargetType, 'REST_60M' | 'REST_6H'>,
+): '60m' | '6h' {
+  return restTargetType === 'REST_60M' ? '60m' : '6h';
 }
 
 /** Start proxy: trip ID + model version */
