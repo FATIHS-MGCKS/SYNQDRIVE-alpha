@@ -11,6 +11,7 @@ describe('TireIdentityService', () => {
         update: jest.fn(),
         updateMany: jest.fn(),
       },
+      vehicleTireSetup: { update: jest.fn().mockResolvedValue({}) },
       tirePositionHistory: { create: jest.fn() },
       tireMeasurement: { create: jest.fn() },
       $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),

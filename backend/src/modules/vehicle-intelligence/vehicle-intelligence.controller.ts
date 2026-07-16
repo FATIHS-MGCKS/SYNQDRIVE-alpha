@@ -74,6 +74,7 @@ import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-qu
 import { RpmWebhookQueryService } from '@modules/dimo/rpm-webhook-query.service';
 import { DrivingAssessmentDeviceQualityService } from './trips/driving-assessment-device-quality.service';
 import { normalizeAiTireSpecResult, buildPersistedAiTireSpec, validateAiTireSpec } from './tires/ai-tire-spec-normalizer';
+import { buildSetupBaselineFields } from './tires/tire-evidence-provenance';
 import {
   CreateTireSetupDto,
   AddTireMeasurementDto,
@@ -341,11 +342,20 @@ export class VehicleIntelligenceController {
         confidenceScore: normalized.confidenceScore ?? null,
         completedAt: null,
         specSourceType: 'ai_agent',
+        userConfirmedSpec: body.userConfirmedSpec ?? false,
       });
 
       await this.prisma.vehicleTireSetup.update({
         where: { id: setup.id },
-        data: { aiTireSpec: persisted as any },
+        data: {
+          aiTireSpec: persisted as any,
+          ...buildSetupBaselineFields({
+            aiTireSpec: persisted,
+            userConfirmedSpec: persisted.userConfirmedSpec,
+            treadMm: normalized.newTreadDepthMm,
+            confirmedAt: persisted.userConfirmedSpec ? new Date() : null,
+          }),
+        },
       });
 
       try {

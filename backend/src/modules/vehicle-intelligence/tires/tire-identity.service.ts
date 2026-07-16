@@ -1,8 +1,20 @@
 import { Injectable } from '@nestjs/common';
-import { Tire, TireChangeType, TirePosition, TireSeason } from '@prisma/client';
+import {
+  Tire,
+  TireChangeType,
+  TireEvidenceSource,
+  TirePosition,
+  TireSeason,
+} from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import {
+  buildSetupBaselineFields,
+  resolveInitialTreadEvidence,
+  resolveWheelTreadMm,
+  type WheelPos,
+} from './tire-evidence-provenance';
 
-export type WheelPos = 'FL' | 'FR' | 'RL' | 'RR';
+export type { WheelPos };
 
 const WHEEL_ORDER: WheelPos[] = ['FL', 'FR', 'RL', 'RR'];
 
@@ -26,6 +38,12 @@ export interface CreateTireAtPositionInput {
   tireSetId: string;
   position: WheelPos;
   initialTreadDepthMm: number;
+  initialTreadEvidenceSource?: TireEvidenceSource | null;
+  initialTreadMeasuredAt?: Date | null;
+  initialTreadConfirmedAt?: Date | null;
+  initialTreadEvidenceId?: string | null;
+  baselineConfidence?: number | null;
+  baselineStatus?: import('@prisma/client').TireBaselineStatus | null;
   brand?: string | null;
   tireModel?: string | null;
   dotCode?: string | null;
@@ -49,6 +67,7 @@ export interface ReplaceTireAtPositionInput extends CreateTireAtPositionInput {
   odometerKm?: number | null;
   notes?: string | null;
   userId?: string | null;
+  workshopName?: string | null;
 }
 
 @Injectable()
@@ -78,9 +97,16 @@ export class TireIdentityService {
       initialTreadFrontMm?: number | null;
       initialTreadRearMm?: number | null;
       initialTreadDepthMm?: number | null;
+      initialTreadEvidenceSource?: TireEvidenceSource | null;
+      baselineConfidence?: number | null;
+      baselineStatus?: import('@prisma/client').TireBaselineStatus | null;
     };
     treadByPosition?: Partial<Record<WheelPos, number>>;
+    treadEvidenceByPosition?: Partial<Record<WheelPos, TireEvidenceSource>>;
     mountedAt?: Date;
+    legacySource?: string | null;
+    measuredAt?: Date | null;
+    evidenceId?: string | null;
   }): Promise<Tire[]> {
     const existing = await this.getActiveTiresForSetup(args.setup.id);
     if (existing.length >= 4) return existing;
@@ -88,19 +114,17 @@ export class TireIdentityService {
     const orgId = args.setup.organizationId;
     if (!orgId) return existing;
 
-    const mountedAt = args.mountedAt ?? new Date();
-    const frontTread =
-      args.treadByPosition?.FL ??
-      args.treadByPosition?.FR ??
-      args.setup.initialTreadFrontMm ??
-      args.setup.initialTreadDepthMm ??
-      8;
-    const rearTread =
-      args.treadByPosition?.RL ??
-      args.treadByPosition?.RR ??
-      args.setup.initialTreadRearMm ??
-      args.setup.initialTreadDepthMm ??
-      frontTread;
+    const mountedAt = args.mountedAt ?? args.measuredAt ?? new Date();
+    const setupBaseline = buildSetupBaselineFields({
+      treadByPosition: args.treadByPosition,
+      setupInitialTreadFrontMm: args.setup.initialTreadFrontMm,
+      setupInitialTreadRearMm: args.setup.initialTreadRearMm,
+      setupInitialTreadDepthMm: args.setup.initialTreadDepthMm,
+      setupBaselineEvidenceSource: args.setup.initialTreadEvidenceSource,
+      legacySource: args.legacySource,
+      measuredAt: args.measuredAt ?? mountedAt,
+      evidenceId: args.evidenceId,
+    });
 
     const occupied = new Set(existing.map((t) => t.currentPosition));
     const created: Tire[] = [...existing];
@@ -108,12 +132,39 @@ export class TireIdentityService {
     for (const pos of WHEEL_ORDER) {
       if (occupied.has(wheelPosToDb(pos))) continue;
       const isFront = pos.startsWith('F');
+      const { treadMm, usedDefaultFallback } = resolveWheelTreadMm(pos, {
+        treadByPosition: args.treadByPosition,
+        setupInitialTreadFrontMm: args.setup.initialTreadFrontMm,
+        setupInitialTreadRearMm: args.setup.initialTreadRearMm,
+        setupInitialTreadDepthMm: args.setup.initialTreadDepthMm,
+      });
+      const wheelEvidence = resolveInitialTreadEvidence({
+          treadMm,
+          treadByPosition: args.treadByPosition,
+          setupInitialTreadFrontMm: args.setup.initialTreadFrontMm,
+          setupInitialTreadRearMm: args.setup.initialTreadRearMm,
+          setupInitialTreadDepthMm: args.setup.initialTreadDepthMm,
+          setupBaselineEvidenceSource: args.setup.initialTreadEvidenceSource,
+          legacySource: args.legacySource,
+          measuredAt: args.measuredAt ?? mountedAt,
+          evidenceId: args.evidenceId,
+          usedDefaultFallback,
+        });
+      const wheelEvidenceSource =
+        args.treadEvidenceByPosition?.[pos] ?? wheelEvidence.evidenceSource;
+
       const tire = await this.createTireAtPosition({
         organizationId: orgId,
         vehicleId: args.setup.vehicleId,
         tireSetId: args.setup.id,
         position: pos,
-        initialTreadDepthMm: args.treadByPosition?.[pos] ?? (isFront ? frontTread : rearTread),
+        initialTreadDepthMm: treadMm,
+        initialTreadEvidenceSource: wheelEvidenceSource,
+        initialTreadMeasuredAt: wheelEvidence.measuredAt,
+        initialTreadConfirmedAt: wheelEvidence.confirmedAt,
+        initialTreadEvidenceId: wheelEvidence.evidenceId,
+        baselineConfidence: wheelEvidence.baselineConfidence,
+        baselineStatus: wheelEvidence.baselineStatus,
         brand: isFront ? args.setup.brandModelFront : args.setup.brandModelRear,
         tireModel: isFront ? args.setup.brandModelFront : args.setup.brandModelRear,
         dotCode: isFront ? args.setup.dotCodeFront : args.setup.dotCodeRear,
@@ -121,6 +172,13 @@ export class TireIdentityService {
         mountedAt,
       });
       created.push(tire);
+    }
+
+    if (existing.length === 0 && created.length > 0) {
+      await this.prisma.vehicleTireSetup.update({
+        where: { id: args.setup.id },
+        data: setupBaseline,
+      });
     }
 
     return created;
@@ -168,6 +226,12 @@ export class TireIdentityService {
         installedPosition: dbPos,
         currentPosition: dbPos,
         initialTreadDepthMm: input.initialTreadDepthMm,
+        initialTreadEvidenceSource: input.initialTreadEvidenceSource ?? null,
+        initialTreadMeasuredAt: input.initialTreadMeasuredAt ?? null,
+        initialTreadConfirmedAt: input.initialTreadConfirmedAt ?? null,
+        initialTreadEvidenceId: input.initialTreadEvidenceId ?? null,
+        baselineConfidence: input.baselineConfidence ?? null,
+        baselineStatus: input.baselineStatus ?? null,
         estimatedTreadMm: input.initialTreadDepthMm,
         mountedAt,
         active: true,
@@ -264,7 +328,21 @@ export class TireIdentityService {
       });
     }
 
-    const created = await this.createTireAtPosition(input);
+    const replacementEvidence = resolveInitialTreadEvidence({
+      treadMm: input.initialTreadDepthMm,
+      legacySource: 'replacement',
+      workshopName: input.workshopName,
+      measuredAt: now,
+    });
+
+    const created = await this.createTireAtPosition({
+      ...input,
+      initialTreadEvidenceSource: replacementEvidence.evidenceSource,
+      initialTreadMeasuredAt: replacementEvidence.measuredAt,
+      initialTreadConfirmedAt: replacementEvidence.confirmedAt,
+      baselineConfidence: replacementEvidence.baselineConfidence,
+      baselineStatus: replacementEvidence.baselineStatus,
+    });
     await this.prisma.tirePositionHistory.create({
       data: {
         organizationId: input.organizationId,

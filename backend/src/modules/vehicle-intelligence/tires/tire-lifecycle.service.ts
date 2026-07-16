@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from '@nestjs/common';
 import {
   TireChangeType,
   TireEventType,
+  TireEvidenceSource,
   TireSeason,
   TireSetupStatus,
   TireSetupCondition,
@@ -14,6 +15,12 @@ import {
   dbPosToWheel,
 } from './tire-identity.service';
 import { isStaggeredSetup } from './tire-health.config';
+import {
+  buildSetupBaselineFields,
+  resolveEvidenceFromLegacySource,
+  resolveInitialTreadEvidence,
+  type WheelPos,
+} from './tire-evidence-provenance';
 
 export type TireMeasurementSource =
   | 'manual'
@@ -22,8 +29,6 @@ export type TireMeasurementSource =
   | 'calibration';
 
 export type TireReplacementScope = 'single' | 'axle' | 'full_set';
-
-type WheelPos = 'FL' | 'FR' | 'RL' | 'RR';
 
 export interface RecordTireMeasurementCommand {
   vehicleId: string;
@@ -201,6 +206,11 @@ export class TireLifecycleService {
     const resolvedOdometer = await this.resolveOdometer(command.vehicleId, command.odometerKm);
     const shouldCalibrate = command.shouldCalibrate ?? true;
     const triggerRecalculate = command.triggerRecalculate ?? true;
+    const evidenceSource = resolveEvidenceFromLegacySource(command.source ?? source, {
+      linkedDocumentUrl: command.linkedDocumentUrl,
+      workshopName: command.workshopName,
+      modelProjected: source === 'calibration',
+    });
 
     const measurement = await this.prisma.vehicleTireTreadMeasurement.create({
       data: {
@@ -215,6 +225,29 @@ export class TireLifecycleService {
         workshopName: command.workshopName ?? null,
         isCalibrationPoint: shouldCalibrate,
         measuredAt,
+        evidenceSource,
+      },
+    });
+
+    const baselineFields = buildSetupBaselineFields({
+      treadByPosition: {
+        FL: values.frontLeftMm,
+        FR: values.frontRightMm,
+        RL: values.rearLeftMm,
+        RR: values.rearRightMm,
+      },
+      legacySource: command.source ?? source,
+      linkedDocumentUrl: command.linkedDocumentUrl,
+      workshopName: command.workshopName,
+      measuredAt,
+      evidenceId: measurement.id,
+      modelProjected: source === 'calibration',
+    });
+    await this.prisma.vehicleTireSetup.update({
+      where: { id: setup.id },
+      data: {
+        ...baselineFields,
+        initialTreadEvidenceId: measurement.id,
       },
     });
 
@@ -335,6 +368,19 @@ export class TireLifecycleService {
         dotCodeFront: fallback?.dotCodeFront ?? null,
         dotCodeRear: fallback?.dotCodeRear ?? null,
         aiTireSpec: fallback?.aiTireSpec ?? undefined,
+        ...buildSetupBaselineFields({
+          treadByPosition: {
+            FL: data.initialTreadFrontMm ?? data.initialTreadDepthMm ?? undefined,
+            FR: data.initialTreadFrontMm ?? data.initialTreadDepthMm ?? undefined,
+            RL: data.initialTreadRearMm ?? data.initialTreadDepthMm ?? undefined,
+            RR: data.initialTreadRearMm ?? data.initialTreadDepthMm ?? undefined,
+          },
+          setupInitialTreadFrontMm: data.initialTreadFrontMm ?? fallback?.initialTreadFrontMm,
+          setupInitialTreadRearMm: data.initialTreadRearMm ?? fallback?.initialTreadRearMm,
+          setupInitialTreadDepthMm: data.initialTreadDepthMm ?? fallback?.initialTreadDepthMm,
+          aiTireSpec: fallback?.aiTireSpec as any,
+          userConfirmedSpec: (fallback?.aiTireSpec as any)?.userConfirmedSpec,
+        }),
       },
     });
 
@@ -595,6 +641,7 @@ export class TireLifecycleService {
         notes: command.notes ?? null,
         userId: command.userId ?? null,
         mountedAt: now,
+        workshopName: command.workshopName ?? null,
       });
     }
 
@@ -830,6 +877,20 @@ export class TireLifecycleService {
       if (setup.initialTreadFrontMm == null && frontAvg != null) patch.initialTreadFrontMm = frontAvg;
       if (setup.initialTreadRearMm == null && rearAvg != null) patch.initialTreadRearMm = rearAvg;
       if (setup.initialTreadDepthMm == null && overallAvg != null) patch.initialTreadDepthMm = overallAvg;
+      if (hasMeasurement) {
+        Object.assign(
+          patch,
+          buildSetupBaselineFields({
+            treadByPosition: {
+              FL: input.treadFL,
+              FR: input.treadFR,
+              RL: input.treadBL,
+              RR: input.treadBR,
+            },
+            legacySource: input.source ?? 'manual_registration',
+          }),
+        );
+      }
       if (Object.keys(patch).length > 0) {
         await this.prisma.vehicleTireSetup.update({
           where: { id: setup.id },
@@ -851,7 +912,7 @@ export class TireLifecycleService {
         frontRightMm: input.treadFR ?? undefined,
         rearLeftMm: input.treadBL ?? undefined,
         rearRightMm: input.treadBR ?? undefined,
-        source: input.source ?? 'manual',
+        source: input.source ?? 'manual_registration',
         quality: 'measured',
         shouldCalibrate: true,
         triggerRecalculate: true,

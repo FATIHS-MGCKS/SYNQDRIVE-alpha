@@ -18,7 +18,7 @@ import {
   ReplacementThresholdSource,
 } from './tire-health.config';
 import { DrivingImpactService, VehicleImpactForTire } from '../driving-impact/driving-impact.service';
-import { TireSetupStatus } from '@prisma/client';
+import { TireSetupStatus, TireEvidenceSource } from '@prisma/client';
 
 // ── Public interfaces ─────────────────────────────────────────────────────────
 
@@ -885,7 +885,12 @@ export class TireWearModelService {
       }
     } else {
       fl = initialFront; fr = initialFront; rl = initialRear; rr = initialRear;
-      currentTreadSource = 'initial_manual_plus_wear';
+      const baselineEvidence = setup.initialTreadEvidenceSource as TireEvidenceSource | null | undefined;
+      if (baselineEvidence === TireEvidenceSource.DEFAULT_ASSUMPTION) {
+        currentTreadSource = 'fallback_estimate';
+      } else {
+        currentTreadSource = 'initial_manual_plus_wear';
+      }
       if (setup.installedOdometerKm != null && currentOdometer != null) {
         const kmDriven = currentOdometer - setup.installedOdometerKm;
         if (kmDriven > 0) {

@@ -232,4 +232,7 @@ export class ApplyAiTireSpecDto {
 
   @IsOptional() @IsObject()
   aiTireSpec?: Record<string, unknown>;
+
+  @IsOptional() @IsBoolean()
+  userConfirmedSpec?: boolean;
 }

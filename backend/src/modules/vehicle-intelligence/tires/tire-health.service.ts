@@ -33,13 +33,25 @@ import {
   TireHealthStatus,
   TireChangeType,
   TireEventType,
+  TireEvidenceSource,
   TireSetupStatus,
+  Prisma,
 } from '@prisma/client';
 import {
   hasValidGroundTruthMeasurement,
   resolveAxleGroundTruthTreadMm,
   type TireAxle,
 } from './tire-ground-truth.util';
+import {
+  buildSnapshotEvidenceSummary,
+  mapTreadSourceToEvidence,
+  resolveSummaryProvenanceFlags,
+} from './tire-evidence-provenance';
+import {
+  buildSnapshotProvenance,
+  buildWearDataPointProvenance,
+} from './tire-provenance.repository';
+import { mapLegacyMeasurementSourceToEvidence } from './tire-evidence-source';
 
 // ── Public interfaces ─────────────────────────────────────────────────────────
 
@@ -107,6 +119,13 @@ export interface TireHealthSummary {
   referenceNewTreadSource: string | null;
   replacementThresholdSource: string | null;
   currentTreadSource: string | null;
+  currentTreadValue: number | null;
+  currentTreadEvidenceSource: TireEvidenceSource | null;
+  isMeasured: boolean;
+  isEstimated: boolean;
+  isDefaultAssumption: boolean;
+  lastActualMeasurementAt: string | null;
+  baselineSource: TireEvidenceSource | null;
   operationalReplacementMm: number | null;
   topWearDrivers: string[];
   actionState: TireActionState;
@@ -200,6 +219,7 @@ export interface ConfidenceDimensions {
 export class TireHealthService {
   private readonly logger = new Logger(TireHealthService.name);
   private readonly cfg = TIRE_HEALTH_CONFIG;
+  private readonly modelVersion = 'tire-wear-v2';
 
   constructor(
     private readonly prisma: PrismaService,
@@ -400,9 +420,27 @@ export class TireHealthService {
     });
 
     const vehicle = await this.prisma.vehicle.findUnique({ where: { id: vehicleId }, select: { organizationId: true } });
-    const latestState = await this.prisma.vehicleLatestState.findUnique({ where: { vehicleId }, select: { odometerKm: true } });
+    const latestState = await this.prisma.vehicleLatestState.findUnique({ where: { id: vehicleId }, select: { odometerKm: true } });
 
-    await this.prisma.tireHealthSnapshot.create({
+    const latestMeas = setup.measurements?.[0] ?? null;
+    const evidenceSummary = buildSnapshotEvidenceSummary({
+      currentTreadMm: lowestTread,
+      treadSource: wearAnalysis.explainability.currentTreadSource,
+      baselineSource: setup.initialTreadEvidenceSource ?? null,
+      lastMeasurementAt: latestMeas?.measuredAt ?? null,
+      measurementEvidenceSource:
+        latestMeas?.evidenceSource ??
+        mapLegacyMeasurementSourceToEvidence(latestMeas?.source) ??
+        null,
+    });
+
+    const snapshotProvenance = buildSnapshotProvenance({
+      modelVersion: this.modelVersion,
+      baselineSource: evidenceSummary.baselineSource,
+      evidenceSummary: { ...evidenceSummary },
+    });
+
+    const snapshot = await this.prisma.tireHealthSnapshot.create({
       data: {
         organizationId: vehicle!.organizationId,
         vehicleId,
@@ -417,6 +455,11 @@ export class TireHealthService {
         ruralSharePercent: setup.totalKmOnSet > 0 ? Math.round(setup.ruralKm / setup.totalKmOnSet * 100) : null,
         confidenceScore: unified.score,
         wearRateMmPer1000km,
+        modelVersion: snapshotProvenance.modelVersion ?? undefined,
+        modelConfigHash: snapshotProvenance.modelConfigHash ?? undefined,
+        inputFingerprint: snapshotProvenance.inputFingerprint ?? undefined,
+        baselineSource: snapshotProvenance.baselineSource ?? undefined,
+        evidenceSummary: (snapshotProvenance.evidenceSummary ?? undefined) as Prisma.InputJsonValue | undefined,
       },
     });
 
@@ -500,14 +543,30 @@ export class TireHealthService {
       if (wearRows.length > 0) {
         await this.prisma.tireWearDataPoint
           .createMany({
-            data: wearRows.map((row) => ({
-              ...baseDataPoint,
-              axle: row.axle,
-              predictedTreadMm: row.predictedTreadMm,
-              actualTreadMm: row.actualTreadMm,
-              initialTreadMm: row.initialTreadMm,
-              tireWidthMm: row.tireWidthMm,
-            })),
+            data: wearRows.map((row) => {
+              const provenance = buildWearDataPointProvenance({
+                predictedTreadMm: row.predictedTreadMm,
+                actualTreadMm: row.actualTreadMm,
+                measurementId: latestMeas!.id,
+                measurementSource: latestMeas!.source,
+                evidenceSource:
+                  latestMeas!.evidenceSource ??
+                  mapLegacyMeasurementSourceToEvidence(latestMeas!.source),
+                measuredAt: latestMeas!.measuredAt,
+                predictionGeneratedAt: recalcAsOf,
+                modelVersion: this.modelVersion,
+                predictionSnapshotId: snapshot.id,
+              });
+              return {
+                ...baseDataPoint,
+                axle: row.axle,
+                predictedTreadMm: row.predictedTreadMm,
+                actualTreadMm: row.actualTreadMm,
+                initialTreadMm: row.initialTreadMm,
+                tireWidthMm: row.tireWidthMm,
+                ...provenance,
+              };
+            }),
           })
           .catch((e) => this.logger.warn(`Failed to write wear data points: ${e.message}`));
       }
@@ -933,6 +992,12 @@ export class TireHealthService {
       pressureContext,
     });
 
+    const currentTreadEvidenceSource = mapTreadSourceToEvidence(
+      wearAnalysis.explainability.currentTreadSource,
+      setup.initialTreadEvidenceSource ?? null,
+    );
+    const provenanceFlags = resolveSummaryProvenanceFlags(currentTreadEvidenceSource);
+
     return {
       overallPercent: setLevelPercent,
       overallRemainingKm: adjustedRemainingKm,
@@ -964,6 +1029,11 @@ export class TireHealthService {
       replacementThresholdSource:
         wearAnalysis.explainability.replacementThresholdSource,
       currentTreadSource: wearAnalysis.explainability.currentTreadSource,
+      currentTreadValue: this.round1(worst.mm),
+      currentTreadEvidenceSource,
+      ...provenanceFlags,
+      lastActualMeasurementAt: latestMeasurement?.measuredAt?.toISOString() ?? null,
+      baselineSource: setup.initialTreadEvidenceSource ?? null,
       operationalReplacementMm: wearAnalysis.operationalReplacementMm,
       topWearDrivers: wearAnalysis.explainability.topWearDrivers,
       actionState: action.state,
@@ -1240,9 +1310,14 @@ export class TireHealthService {
 
   private resolveMeasurementState(
     currentTreadSource: string | null | undefined,
+    evidenceSource?: TireEvidenceSource | null,
   ): 'measured' | 'estimated' | 'mixed' {
+    if (evidenceSource && resolveSummaryProvenanceFlags(evidenceSource).isMeasured) {
+      return 'measured';
+    }
     if (currentTreadSource === 'manual_measurement') return 'measured';
     if (currentTreadSource === 'calibration_projection') return 'mixed';
+    if (currentTreadSource === 'fallback_estimate') return 'estimated';
     return 'estimated';
   }
 
@@ -1622,6 +1697,11 @@ export class TireHealthService {
       referenceNewTreadSource: null,
       replacementThresholdSource: null,
       currentTreadSource: null,
+      currentTreadValue: measuredTreadMm,
+      currentTreadEvidenceSource: setup.initialTreadEvidenceSource ?? null,
+      ...resolveSummaryProvenanceFlags(setup.initialTreadEvidenceSource),
+      lastActualMeasurementAt: latestMeasurement?.measuredAt?.toISOString() ?? null,
+      baselineSource: setup.initialTreadEvidenceSource ?? null,
       operationalReplacementMm: null,
       topWearDrivers: [],
       actionState: 'CHECK_SOON',

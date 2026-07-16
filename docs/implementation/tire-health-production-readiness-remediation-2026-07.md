@@ -139,7 +139,7 @@ Vollständige Inventur: Abschnitt **Code-Landkarte** unten.
 |---|------|-------|--------------|-----------|-----|------|--------|--------|
 | **1** | Implementierungsbaseline, Branch, Fortschrittsdatei, Baseline-Tests | Docs only | Audit `5280a83` | Nein | Nein | Nein | **DONE** | `94a1049` |
 | **2** | P0-TH-04: Kein synthetisches GT in `TireWearDataPoint` | `tire-health.service.ts`, `tire-ground-truth.util.ts` | — | Nein | Nein | Nein | **DONE** | `0da74af` |
-| **3** | Evidence Source + Provenance Schema | `schema.prisma`, migration, evidence modules | 2 | **Ja** (nicht auf Prod) | Nein | Nein | **DONE** | `40f767b` |
+| **3** | Evidence Source + Provenance Schema | `schema.prisma`, migration, evidence modules | 2 | **Ja** (nicht auf Prod) | Nein | Nein | **DONE** | `5b0571f` |
 | **4** | P1-TH-08: Trip-Ledger + Finalize→Usage | trips + `updateTireUsageFromTrip` | 3 | Ja (ledger table) | Ja | Nein | PENDING | — |
 | **5** | P0-TH-01: 8-mm-Fallback entfernen/absichern | `tire-identity.service.ts` | — | Nein | Ja | Nein | PENDING | — |
 | **6** | P0-TH-02: Partial unique ACTIVE setup | `schema.prisma` + lifecycle | — | **Ja** | Ja | Nein | PENDING | — |
@@ -255,6 +255,91 @@ Neue Testdateien: `tire-evidence-source.spec.ts`, `tire-provenance.repository.sp
 
 ---
 
+## Prompt 4 — Evidence Provenance Write Paths (2026-07-16)
+
+### Ziel
+
+Alle Tire-Schreibpfade setzen `TireEvidenceSource` und Baseline-Provenance korrekt. Der 8-mm-Fallback bleibt numerischer Modellstart, erscheint aber nie als Messung.
+
+### Neue zentrale Helper (`tire-evidence-provenance.ts`)
+
+| Helper | Zweck |
+|--------|-------|
+| `resolveInitialTreadEvidence(...)` | Einheitliche Auflösung von Baseline-Evidenz inkl. 8-mm-Fallback |
+| `deriveBaselineConfidence(...)` | Confidence nach Evidenzquelle (`DEFAULT_ASSUMPTION` ≤ 20) |
+| `isMeasuredEvidence(...)` | `MANUAL` / `WORKSHOP` / `DOCUMENT` |
+| `isConfirmedEvidence(...)` | `MANUFACTURER_CONFIRMED` / `USER_CONFIRMED` |
+| `buildSnapshotEvidenceSummary(...)` | Snapshot-`evidenceSummary`-Payload |
+| `buildSetupBaselineFields(...)` | Setup/Tire-Baseline-Spalten für Prisma-Writes |
+
+### Verdrahtete Schreibpfade
+
+| Pfad | Datei | Evidence-Verhalten |
+|------|-------|-------------------|
+| Tire Setup Creation | `tire-lifecycle.service.ts` → `installTireSet` | `buildSetupBaselineFields` auf Setup-Create |
+| `ensureTiresForSetup` | `tire-identity.service.ts` | Per-Rad `DEFAULT_ASSUMPTION` bei 8-mm-Fallback; Setup-Baseline-Update |
+| Fahrzeugregistrierung | `tire-lifecycle.service.ts` → `upsertSetupAndMeasurement` | `manual_registration` → `DOCUMENT_MEASUREMENT`; Baseline-Patch |
+| Manuelle Messung | `recordMeasurement` | `evidenceSource` auf Measurement + Setup-Baseline |
+| Werkstatt / Dokument | `recordMeasurement` | `WORKSHOP_MEASUREMENT` / `DOCUMENT_MEASUREMENT` via Legacy-Source |
+| AI Tire Spec (Job) | `ai-tire-spec-job.service.ts` | `AI_ESTIMATED` beim Fetch; `USER_CONFIRMED` bei `applyResult` |
+| AI Tire Spec (Direct) | `vehicle-intelligence.controller.ts` | `userConfirmedSpec` aus DTO (default `false`) |
+| `userConfirmedSpec` | `ai-tire-spec-normalizer.ts` | **Fix:** default `false`, nicht mehr auto-`true` |
+| Teilersatz / Vollersatz | `replaceAtPosition` / `replaceTires` | Replacement → `MANUAL`/`WORKSHOP`; keine GT ohne Messung |
+| Rotation | `rotateTires` → `recordMeasurement` | `calibration` → `MODEL_ESTIMATED` |
+| Stored Set Reactivation | `activateStoredSet` | Erbt gespeicherte Setup-Provenance (kein Reset) |
+| Recalculation | `tire-health.service.ts` | Snapshot + Wear-Data-Point-Provenance |
+| Snapshot Creation | `recalculate()` | `evidenceSummary` mit `isMeasured` / `isDefaultAssumption` |
+| Validation Data Point | `recalculate()` | `buildWearDataPointProvenance`; `isGroundTruth` nur bei echter Messung |
+
+### Wear-Model-Anpassung
+
+`fallback_estimate` wenn `setup.initialTreadEvidenceSource === DEFAULT_ASSUMPTION` (statt `initial_manual_plus_wear`).
+
+### API — `TireHealthSummary` (additiv)
+
+Neue Felder (Backend-DTO, keine UI-Umbauten):
+
+- `currentTreadValue`
+- `currentTreadEvidenceSource` (`TireEvidenceSource`)
+- `isMeasured`, `isEstimated`, `isDefaultAssumption`
+- `lastActualMeasurementAt`
+- `baselineSource`
+
+Legacy `currentTreadSource` (String / `TreadSource`) bleibt für Abwärtskompatibilität.
+
+### 8-mm-Fallback-Invariante
+
+| Regel | Status |
+|-------|--------|
+| Numerischer Startwert erlaubt | ✅ |
+| `isGroundTruth = true` | ❌ nie |
+| `actualMeasurementId` | ❌ nie |
+| Hohe Baseline-Confidence | ❌ max ~20 |
+| Als „gemessen“ in API/UI | ❌ `isMeasured: false`, `isDefaultAssumption: true` |
+
+### Tests
+
+```bash
+cd backend && npm test -- tire
+# 11 suites, 188 passed (+15 neue Provenance-Tests)
+```
+
+Neue/erweiterte Testdateien:
+
+- `tire-evidence-provenance.spec.ts` — 8-mm-Fallback, Messung, AI Spec, User Confirmation, Dokument, Stored Set, Teilersatz, partielle Räder, AI-Spec-default
+- `tire-health.service.spec.ts` — Snapshot-Provenance, Wear-Data-Point-Provenance
+
+### Bestätigung Prompt 4
+
+- ✅ Jeder neue Tire-Wert besitzt nachvollziehbare Provenance
+- ✅ 8 mm ist eindeutig `DEFAULT_ASSUMPTION`
+- ✅ Kein Default wird als Messung ausgegeben
+- ✅ Keine Prediction wird Ground Truth
+- ✅ API kann Evidence eindeutig transportieren
+- ✅ Keine UI-Umbauten, keine Produktionsdatenänderung
+
+---
+
 ## Prompt 2 — P0-TH-04 Ground-Truth-Leak (2026-07-16)
 
 ### Root Cause
@@ -285,9 +370,15 @@ cd backend && npm test -- tire
 # 7 suites, 158 passed
 ```
 
-### Verbleibende Schema-Defizite (nach Prompt 3)
+### Verbleibende Schema-Defizite (nach Prompt 4)
 
-- Provenance-Felder noch nicht in `recalculate()` befüllt (Prompt 4+)
+- Legacy-Zeilen ohne `evidenceSource` — kein Backfill (bewusst)
+- `inputFingerprint` / `modelConfigHash` auf Snapshots noch nicht befüllt (Prompt 13)
+- Frontend-Typen in `api.ts` noch nicht um neue Summary-Felder erweitert (API-Vertrag vorbereitet)
+
+### Verbleibende Schema-Defizite (nach Prompt 3) — erledigt in Prompt 4
+
+- ~~Provenance-Felder noch nicht in `recalculate()` befüllt~~ → **erledigt Prompt 4**
 - `installed_odometer_km` weiterhin oft null → Wear-Data-Points werden selten geschrieben
 - Legacy-Zeilen in DB nicht bereinigt — nur Read-Filter in Regression
 
@@ -388,7 +479,8 @@ Blocker bleiben bis Abnahme Prompt 24:
 |-------|--------|--------|--------|
 | 2026-07-16 | 1 | Baseline: Branch, Fortschrittsdatei, Tests dokumentiert | `94a1049` |
 | 2026-07-16 | 2 | P0-TH-04: Ground-truth leak fix + 22 neue Tests | `0da74af` |
-| 2026-07-16 | 3 | Evidence/provenance schema + migration (additive) | `40f767b` |
+| 2026-07-16 | 3 | Evidence/provenance schema + migration (additive) | `5b0571f` |
+| 2026-07-16 | 4 | Evidence provenance across all tire write paths | *(dieser Commit)* |
 
 ---
 

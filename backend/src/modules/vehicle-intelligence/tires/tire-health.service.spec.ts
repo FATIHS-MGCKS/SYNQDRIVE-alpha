@@ -1,6 +1,6 @@
 import { TireHealthService } from './tire-health.service';
 import { TireWearModelService } from './tire-wear-model.service';
-import { TireEventType } from '@prisma/client';
+import { TireEventType, TireEvidenceSource } from '@prisma/client';
 
 const VEHICLE_ID = 'veh-1';
 const SETUP_ID = 'setup-1';
@@ -257,6 +257,52 @@ describe('TireHealthService.recalculate — ground truth invariant', () => {
 
     expect(harness.snapshotCreate).toHaveBeenCalledTimes(2);
     expect(harness.wearDataPointCreateMany).not.toHaveBeenCalled();
+  });
+
+  it('persists snapshot provenance with explicit default-assumption flags', async () => {
+    const harness = createRecalculateHarness(null);
+    harness.wearModel.computeWearAnalysis.mockResolvedValue({
+      ...wearAnalysisFixture(),
+      explainability: {
+        ...wearAnalysisFixture().explainability,
+        currentTreadSource: 'fallback_estimate',
+      },
+    });
+
+    await harness.service.recalculate(VEHICLE_ID);
+
+    expect(harness.snapshotCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          evidenceSummary: expect.objectContaining({
+            currentTreadSource: TireEvidenceSource.DEFAULT_ASSUMPTION,
+            isDefaultAssumption: true,
+            isMeasured: false,
+            baselineSource: null,
+          }),
+        }),
+      }),
+    );
+  });
+
+  it('persists wear data point provenance with ground-truth flags for measured axles', async () => {
+    const harness = createRecalculateHarness(
+      buildMeasurement({ evidenceSource: TireEvidenceSource.MANUAL_MEASUREMENT }),
+    );
+
+    await harness.service.recalculate(VEHICLE_ID);
+
+    const payload = harness.wearDataPointCreateMany.mock.calls[0][0].data as Array<{
+      isGroundTruth: boolean;
+      actualSource: TireEvidenceSource;
+      actualMeasurementId: string;
+      predictionSnapshotId: string;
+    }>;
+
+    expect(payload[0].isGroundTruth).toBe(true);
+    expect(payload[0].actualSource).toBe(TireEvidenceSource.MANUAL_MEASUREMENT);
+    expect(payload[0].actualMeasurementId).toBe('meas-1');
+    expect(payload[0].predictionSnapshotId).toBe('snap-1');
   });
 });
 
