@@ -147,6 +147,18 @@ export function computeBatteryRestTargetDelayMs(
   return Math.max(0, targetAtMs - now.getTime());
 }
 
+/** Grace after the VALID quality window before REST targets become MISSED (provider delay). */
+export const BATTERY_REST_TARGET_RETRY_GRACE_MS_ENV = 'BATTERY_REST_TARGET_RETRY_GRACE_MS';
+
+const DEFAULT_REST_TARGET_RETRY_GRACE_MS = 30 * 60_000;
+
+export function getBatteryRestTargetRetryGraceMs(): number {
+  return parsePositiveIntEnv(
+    process.env[BATTERY_REST_TARGET_RETRY_GRACE_MS_ENV],
+    DEFAULT_REST_TARGET_RETRY_GRACE_MS,
+  );
+}
+
 export function getBatteryV2StartProxyDelayMs(): number {
   const raw = process.env[BATTERY_V2_START_PROXY_DELAY_MS_ENV];
   if (raw == null || raw.trim() === '') return DEFAULT_START_PROXY_DELAY_MS;

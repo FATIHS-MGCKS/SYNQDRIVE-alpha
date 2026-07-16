@@ -17,6 +17,7 @@ export const LV_REST_TARGET_JOB_STATUS = {
   CANCELLED: 'CANCELLED',
   SKIPPED: 'SKIPPED',
   FAILED: 'FAILED',
+  MISSED: 'MISSED',
 } as const;
 
 export type LvRestTargetJobStatus =
@@ -97,6 +98,7 @@ export function isLvRestTargetAlreadyScheduled(
     entry.status === LV_REST_TARGET_JOB_STATUS.ENQUEUED ||
     entry.status === LV_REST_TARGET_JOB_STATUS.RUNNING ||
     entry.status === LV_REST_TARGET_JOB_STATUS.PENDING_EVALUATION ||
-    entry.status === LV_REST_TARGET_JOB_STATUS.COMPLETED
+    entry.status === LV_REST_TARGET_JOB_STATUS.COMPLETED ||
+    entry.status === LV_REST_TARGET_JOB_STATUS.MISSED
   );
 }

@@ -95,6 +95,17 @@ export class BatteryRestTargetEvaluateHandler
           { retryable: true, jobType: this.jobType },
         );
       }
+      if (result.missed) {
+        await this.updateTargetMetadata(session, restTargetType, {
+          status: LV_REST_TARGET_JOB_STATUS.MISSED,
+          completedAt: new Date().toISOString(),
+          cancelReason: result.reason,
+        });
+        this.logger.debug(
+          `REST target missed: vehicle=${payload.vehicleId} window=${restWindowId} type=${restTargetType} reason=${result.reason}`,
+        );
+        return;
+      }
       await this.updateTargetMetadata(session, restTargetType, {
         status: LV_REST_TARGET_JOB_STATUS.FAILED,
         completedAt: new Date().toISOString(),
@@ -157,7 +168,7 @@ export class BatteryRestTargetEvaluateHandler
         sessionId,
         type: measurementTypeForRestTarget(restTargetType),
       },
-      select: { id: true },
+      select: { id: true, quality: true },
     });
     return existing != null;
   }

@@ -127,10 +127,44 @@ describe('BatteryRestTargetEvaluateHandler', () => {
       ok: false,
       reason: 'no_eligible_observation_in_target_window',
       retryable: true,
+      missed: false,
     });
 
     await expect(handler.handle(basePayload('REST_60M'))).rejects.toMatchObject({
       retryable: true,
     });
+  });
+
+  it('marks target MISSED when retry window is exhausted', async () => {
+    prisma.batteryMeasurementSession.findFirst.mockResolvedValue({
+      id: SESSION,
+      organizationId: ORG,
+      status: BatteryMeasurementSessionStatus.ACTIVE,
+      startedAt: new Date('2026-07-16T10:00:00.000Z'),
+      metadata: { lvRestWindowState: LvRestWindowState.RESTING },
+    });
+    evaluation.evaluateAndPersist.mockResolvedValue({
+      ok: false,
+      reason: 'no_eligible_observation_in_target_window',
+      retryable: false,
+      missed: true,
+      measurementId: 'meas-missed',
+    });
+
+    await handler.handle(basePayload('REST_60M'));
+
+    expect(prisma.batteryMeasurementSession.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          metadata: expect.objectContaining({
+            scheduledTargets: expect.objectContaining({
+              REST_60M: expect.objectContaining({
+                status: LV_REST_TARGET_JOB_STATUS.MISSED,
+              }),
+            }),
+          }),
+        }),
+      }),
+    );
   });
 });

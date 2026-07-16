@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'lv-rest-historical-observation-v49534-2026-07-16',
+    version: '4.9.534',
+    title: 'V4.9.534 — LV REST Historical Provider Observation Selection (Prompt 33/78)',
+    summary: [
+      'Qualitätsfenster gemäß Architekturvertrag: REST_60M ±15 min, REST_6H ±30 min.',
+      'Historische LIVE_VOLTAGE-Auswahl: echter Provider-Timestamp, Ruhekontext (kein Trip/Speed/Ignition/Laden), Wake-Flanke, kein Tripstart danach, profilkompatibel, engster Wert zum Ziel.',
+      'Provider-Delay: kontrolliertes Retry bis Retry-Grace (default 30 min nach Qualitätsfenster); danach MISSED-Messung mit vollem Context/Provenance.',
+      'Handler setzt Job-Status MISSED; getrennte Source-Observations für 60m vs 6h bleiben erhalten.',
+      'Tests: Wake-Flanke, stale Provider-Delay, Trip-nach-Observation, differenzierte Fenster.',
+    ],
+    reason: 'Prompt 33/78: verbindliche historische Provider-Observation-Auswahl für REST_60M/REST_6H.',
+    previousBehavior: 'Beide Targets ±15m; einfache Spannungs-/Zeitfilter ohne Wake-Flanke, Tripstart-Gate oder MISSED-Persistenz.',
+    details:
+      'battery-rest-target-evaluation.ts, battery-rest-target-evaluation.service.ts, battery-rest-target-evaluate.handler.ts, lv-rest-window-target.metadata.ts, battery-health-v2.config.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T23:30:00.000Z',
+  },
+  {
     id: 'lv-rest-6h-target-job-v49533-2026-07-16',
     version: '4.9.533',
     title: 'V4.9.533 — LV REST_6H Target Job + Historical Evaluation (Prompt 32/78)',
