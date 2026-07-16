@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p7-trip-analysis-status-resolver-2026-07-16',
+    version: '4.9.509',
+    title: 'Driving Intelligence V2 P7 — TripAnalysisStatusResolver',
+    summary: [
+      'Zentraler `TripAnalysisStatusResolver`: 7 Stages (behavior, nativeEvents, route, eventContext, drivingImpact, misuse, attribution) → kanonische Status NOT_STARTED | IN_PROGRESS | PARTIAL | COMPLETED | FAILED | SKIPPED | NOT_ASSESSABLE.',
+      'Nicht-kritische Stage-Fehler (route, misuse, …) → PARTIAL statt globalem FAILED; behavior failed bleibt FAILED.',
+      'Legacy `tripAnalysisStatus` spiegelbar: NOT_STARTED→PENDING, NOT_ASSESSABLE→SKIPPED.',
+      'TripAnalysisCoordinatorService nutzt Resolver in `markStage` / `onBehaviorSkipped`; keine Trip-FSM-Änderung.',
+      'Unit-Tests für alle Ausgabestatus und Stage-Kombinationen.',
+    ],
+    reason:
+      'Prompt 7/76: Eine zentrale Ableitung für Analysezustände bereits persistierter Trips — ohne verteilte Statusregeln.',
+    previousBehavior:
+      'Coordinator setzte bei jedem Stage-Failure sofort FAILED; 4-Stage-JSON ohne nativeEvents/eventContext/attribution; Completion-Logik verteilt in areAnalysisStagesComplete.',
+    details:
+      'Backend: trip-analysis-status-resolver.ts, trip-analysis-status-resolver.types.ts, trip-analysis-status-resolver.spec.ts; trip-analysis-status.ts (7-Stage-JSON, resolveTripAnalysisStatusFromStages); trip-analysis-coordinator.service.ts. Keine Trip-Detection-Änderung.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T12:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p6-pruefhinweis-reason-categories-2026-07-16',
     version: '4.9.508',
     title: 'Driving Intelligence V2 P6 — PRUEFHINWEIS Reason-Kategorien',
