@@ -20,6 +20,13 @@ function createAnalysisFixture(
       providerFetchedAt: Date | null;
       lastSeenAt: Date | null;
     }>;
+    setup?: Partial<{
+      recommendedPressureFrontBar: number | null;
+      recommendedPressureRearBar: number | null;
+      pressureSpecSource: string;
+      isStaggered: boolean;
+      aiTireSpec: { maxInflationKpa: number } | null;
+    }>;
   },
 ) {
   const now = new Date();
@@ -37,7 +44,7 @@ function createAnalysisFixture(
       findFirst: jest.fn().mockResolvedValue({
         id: 'setup-1',
         vehicleId: 'veh-1',
-        aiTireSpec: null,
+        aiTireSpec: overrides?.setup?.aiTireSpec ?? null,
         tireSeason: 'SUMMER',
         initialTreadFrontMm: 8.0,
         initialTreadRearMm: 8.0,
@@ -45,13 +52,18 @@ function createAnalysisFixture(
         expectedLifeKm: 40000,
         expectedLifeKmFront: null,
         expectedLifeKmRear: null,
-        isStaggered: false,
+        isStaggered: overrides?.setup?.isStaggered ?? false,
         frontTireWidthMm: null,
         rearTireWidthMm: null,
         kFactorFront: 1.0,
         kFactorRear: 1.0,
         kFactorCalibrationCount: 0,
         installedOdometerKm: 10000,
+        recommendedPressureFrontBar:
+          overrides?.setup?.recommendedPressureFrontBar ?? 2.5,
+        recommendedPressureRearBar:
+          overrides?.setup?.recommendedPressureRearBar ?? 2.5,
+        pressureSpecSource: overrides?.setup?.pressureSpecSource ?? 'DOOR_PLACARD',
         measurements: [],
       }),
     },
@@ -546,6 +558,11 @@ describe('computeWearAnalysis pressure freshness gating', () => {
         tirePressureRr: 1.7,
         sourceTimestamp: new Date(),
       },
+      setup: {
+        recommendedPressureFrontBar: 2.5,
+        recommendedPressureRearBar: 2.5,
+        pressureSpecSource: 'DOOR_PLACARD',
+      },
     });
 
     const result = await model.computeWearAnalysis('veh-1');
@@ -554,6 +571,28 @@ describe('computeWearAnalysis pressure freshness gating', () => {
     expect(result?.factors.pressureFactorRear).toBeGreaterThan(1);
     expect(result?.explainability.pressureDataFreshness).toBe('fresh');
     expect(result?.explainability.pressureReadingsUsed).toBe(4);
+  });
+
+  it('keeps neutral pressure factors when only maxInflationKpa is on aiTireSpec', async () => {
+    const { model } = createAnalysisFixture({
+      latestState: {
+        tirePressureFl: 1.6,
+        tirePressureFr: 1.6,
+        tirePressureRl: 1.6,
+        tirePressureRr: 1.6,
+        sourceTimestamp: new Date(),
+      },
+      setup: {
+        aiTireSpec: { maxInflationKpa: 350 },
+        pressureSpecSource: 'UNKNOWN',
+        recommendedPressureFrontBar: null,
+        recommendedPressureRearBar: null,
+      },
+    });
+
+    const result = await model.computeWearAnalysis('veh-1');
+    expect(result?.factors.pressureFactorFront).toBe(1);
+    expect(result?.factors.pressureFactorRear).toBe(1);
   });
 
   it('queries only the ACTIVE tire setup status', async () => {

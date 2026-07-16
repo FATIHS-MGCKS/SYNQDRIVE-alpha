@@ -964,6 +964,55 @@ Pro Rad: **neuerer `sourceTimestamp` gewinnt**; Tie → `HIGH_MOBILITY`.
 
 ---
 
+## Prompt 18 — Evidence-based Recommended Tire Pressure (2026-07-16)
+
+### Ziel
+
+Unsichere Ableitung des Solldrucks aus `maxInflationKpa` (Reifen-Maximalwert) entfernen. Wear-Faktor nur bei bestätigtem Fahrzeugsolldruck; UI/API zeigt fehlende Spec transparent.
+
+### Schema / Migration
+
+| Feld | Rolle |
+|------|-------|
+| `recommendedPressureFrontBar` / `recommendedPressureRearBar` | Achs-Solldruck (bar) |
+| `recommendedPressureLoadedFrontBar` / `recommendedPressureLoadedRearBar` | Beladungsvariante |
+| `pressureSpecSource` | `VEHICLE_MANUFACTURER` … `UNKNOWN` |
+| `pressureSpecConfirmedAt` | Zeitpunkt der Bestätigung |
+| `pressureSpecConfidence` | Quellenabhängige Confidence |
+
+Migration: `20260716260000_tire_recommended_pressure`
+
+### Neue / geänderte Dateien
+
+| Datei | Änderung |
+|-------|----------|
+| `tire-recommended-pressure.ts` | Resolver — **liest nie `maxInflationKpa`** |
+| `tire-recommended-pressure.spec.ts` | Quellen, Achsen, loaded, AI vs. confirmed |
+| `tire-pressure-context.builder.ts` | `recommendedPressure` + Wear-Gate |
+| `tire-wear-model.service.ts` | `computePressureFactor(recommendedBar)` ohne Max-Inflation-Fallback |
+| `tire-health.service.ts` | Summary: `recommendedPressure`, `pressureSpecMissingLabel` |
+| `tire-lifecycle.service.ts` | Persist bei Install + `updateRecommendedPressure()` |
+| `vehicle-intelligence.controller.ts` | `PATCH …/recommended-pressure` |
+| `dto/tire-mutation.dto.ts` | `UpdateRecommendedPressureDto` |
+| `frontend/src/lib/api.ts` | `RecommendedTirePressureSpec` auf Summary/Context |
+
+### Invarianten
+
+- `AI_ESTIMATED` → niedrigere Confidence (42), **nicht** wear-eligible
+- `USER_CONFIRMED` erfordert `confirmPressureSpec=true` (keine Auto-Bestätigung)
+- Unbekannter Solldruck → `pressureFactor = 1`, Label **„Solldruck nicht hinterlegt“**
+- TPMS-Warnung bleibt unabhängig vom Solldruck nutzbar
+- Staggered: Hinterachse explizit erforderlich
+
+### Bestätigung Prompt 18
+
+- ✅ Kein Maximaldruck als Sollwert im Wear-Pfad
+- ✅ Source + Confidence im Read Model sichtbar
+- ✅ Front/Rear und loaded getrennt
+- ✅ API zur Erfassung (POST setup + PATCH recommended-pressure)
+
+---
+
 ### Root Cause
 
 `TireHealthService.recalculate()` (Z.428–429) setzte `actualTreadMm` auf Achsenmittel der **Prediction**, wenn keine Messwerte vorhanden waren (`actualFrontAvg = frontAvgPredicted`). Dadurch entstanden bei aktiviertem Odometer-Guard synthetische Validierungsdaten mit Null-Residual — Regression und Accuracy würden sich selbst bestätigen.
@@ -1110,6 +1159,7 @@ Blocker bleiben bis Abnahme Prompt 24:
 | 2026-07-16 | 13 | Controlled ledger backfill + aggregate reconciliation | *(dieser Commit)* |
 | 2026-07-16 | 16 | DIMO tire pressure kPa → bar at provider boundary + read compat | *(dieser Commit)* |
 | 2026-07-16 | 17 | Canonical TirePressureContext read model | *(dieser Commit)* |
+| 2026-07-16 | 18 | Evidence-based recommended tire pressure (no maxInflationKpa as nominal) | *(dieser Commit)* |
 
 ---
 

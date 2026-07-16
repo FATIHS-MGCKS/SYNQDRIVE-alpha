@@ -19,6 +19,11 @@ import type {
   TirePressureWheelReading,
 } from './tire-pressure-context.types';
 import { TIRE_HEALTH_CONFIG } from './tire-health.config';
+import {
+  PRESSURE_SPEC_MISSING_LABEL,
+  resolveRecommendedTirePressure,
+  type RecommendedTirePressureSpec,
+} from './tire-recommended-pressure';
 
 const WHEEL_POSITIONS: TirePressureWheelPosition[] = [
   'frontLeft',
@@ -306,7 +311,7 @@ export function resolvePressureWearEligibility(args: {
   wheels: Record<TirePressureWheelPosition, TirePressureWheelReading>;
   overallFreshness: TirePressureFreshness;
   sourceType: TirePressureSourceType;
-  nominalPressureBar: number | null;
+  recommendedPressure: RecommendedTirePressureSpec;
   minWheelsForWear: number;
   continuousExposureEligible: boolean;
 }): TirePressureWearEligibility {
@@ -329,9 +334,9 @@ export function resolvePressureWearEligibility(args: {
     };
   }
 
-  if (!args.nominalPressureBar || args.nominalPressureBar <= 0) {
-    reasons.push('Nominal tire pressure unknown for this setup.');
-    confidencePenalty += 4;
+  if (!args.recommendedPressure.wearFactorEligible) {
+    reasons.push(PRESSURE_SPEC_MISSING_LABEL);
+    confidencePenalty += 6;
   }
 
   if (args.overallFreshness === 'stale') {
@@ -364,8 +369,7 @@ export function resolvePressureWearEligibility(args: {
   const eligible =
     usable.length >= args.minWheelsForWear &&
     args.overallFreshness !== 'stale' &&
-    args.nominalPressureBar != null &&
-    args.nominalPressureBar > 0 &&
+    args.recommendedPressure.wearFactorEligible &&
     args.continuousExposureEligible &&
     !unknownSource;
 
@@ -476,9 +480,8 @@ export function buildTirePressureContext(
     input.minWheelsForWear ??
     TIRE_HEALTH_CONFIG.pressure.minReadingsForActive ??
     3;
-  const nominalPressureBar =
-    input.nominalPressureBar ??
-    TIRE_HEALTH_CONFIG.pressure.nominalPressureBar;
+  const recommendedPressure =
+    input.recommendedPressure ?? resolveRecommendedTirePressure({});
 
   const wheels = {} as Record<TirePressureWheelPosition, TirePressureWheelReading>;
 
@@ -527,7 +530,7 @@ export function buildTirePressureContext(
     overallFreshness:
       overallFreshness === 'no_data' ? 'no_data' : overallFreshness,
     sourceType,
-    nominalPressureBar,
+    recommendedPressure,
     minWheelsForWear,
     continuousExposureEligible,
   });
@@ -585,7 +588,8 @@ export function buildTirePressureContext(
     coverage,
     tpmsWarning,
     tpmsWarningSource,
-    nominalPressureBar,
+    recommendedPressure,
+    pressureSpecMissingLabel: recommendedPressure.pressureSpecMissingLabel,
     qualityWarnings,
     wearEligibility,
     overallStatus,

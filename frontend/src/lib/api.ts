@@ -5610,6 +5610,27 @@ export interface TirePressureWearEligibility {
   measurementHint: string | null;
 }
 
+export type TirePressureSpecSource =
+  | 'VEHICLE_MANUFACTURER'
+  | 'DOOR_PLACARD'
+  | 'OWNER_MANUAL'
+  | 'WORKSHOP'
+  | 'USER_CONFIRMED'
+  | 'AI_ESTIMATED'
+  | 'UNKNOWN';
+
+export interface RecommendedTirePressureSpec {
+  recommendedPressureFrontBar: number | null;
+  recommendedPressureRearBar: number | null;
+  recommendedPressureLoadedFrontBar: number | null;
+  recommendedPressureLoadedRearBar: number | null;
+  pressureSpecSource: TirePressureSpecSource;
+  pressureSpecConfirmedAt: string | null;
+  pressureSpecConfidence: number;
+  wearFactorEligible: boolean;
+  pressureSpecMissingLabel: string | null;
+}
+
 export interface TirePressureContext {
   frontLeft: number | null;
   frontRight: number | null;
@@ -5627,7 +5648,8 @@ export interface TirePressureContext {
   coverage: TirePressureCoverage;
   tpmsWarning: boolean | null;
   tpmsWarningSource: 'DIMO' | 'HIGH_MOBILITY' | 'MIXED' | null;
-  nominalPressureBar: number | null;
+  recommendedPressure: RecommendedTirePressureSpec;
+  pressureSpecMissingLabel: string | null;
   qualityWarnings: string[];
   wearEligibility: TirePressureWearEligibility;
   overallStatus: 'OK' | 'ISSUE' | 'STALE' | 'UNKNOWN';
@@ -5675,6 +5697,8 @@ export interface TireHealthSummaryResponse {
   measurementState?: 'measured' | 'estimated' | 'mixed';
   dataQualityWarnings?: string[];
   pressureContext?: TirePressureContext;
+  recommendedPressure?: RecommendedTirePressureSpec;
+  pressureSpecMissingLabel?: string | null;
   latestMeasurementAt?: string | null;
   // ── Canonical read model (single source of truth, mm-based) ────────────────
   overallStatus?: TireCanonicalStatus;

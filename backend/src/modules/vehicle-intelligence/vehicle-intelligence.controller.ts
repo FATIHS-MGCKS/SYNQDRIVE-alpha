@@ -89,6 +89,7 @@ import {
   RetireTireDto,
   ApplyAiTireSpecDto,
   TireRecalculateDto,
+  UpdateRecommendedPressureDto,
 } from './tires/dto/tire-mutation.dto';
 import {
   InitializeBrakeHealthDto,
@@ -262,7 +263,31 @@ export class VehicleIntelligenceController {
       odometerKm: body.installedOdometerKm,
       manualConfirmOdometer: body.confirmOdometerKm,
       notes: body.notes,
+      recommendedPressureFrontBar: body.recommendedPressureFrontBar,
+      recommendedPressureRearBar: body.recommendedPressureRearBar,
+      recommendedPressureLoadedFrontBar: body.recommendedPressureLoadedFrontBar,
+      recommendedPressureLoadedRearBar: body.recommendedPressureLoadedRearBar,
+      pressureSpecSource: body.pressureSpecSource,
+      confirmPressureSpec: body.confirmPressureSpec,
       archiveCurrent: false,
+    });
+  }
+
+  @Patch('tires/:tireSetupId/recommended-pressure')
+  async updateRecommendedPressure(
+    @Param('vehicleId') vehicleId: string,
+    @Param('tireSetupId') tireSetupId: string,
+    @Body() body: UpdateRecommendedPressureDto,
+  ) {
+    return this.tireLifecycleService.updateRecommendedPressure({
+      vehicleId,
+      tireSetupId,
+      recommendedPressureFrontBar: body.recommendedPressureFrontBar,
+      recommendedPressureRearBar: body.recommendedPressureRearBar,
+      recommendedPressureLoadedFrontBar: body.recommendedPressureLoadedFrontBar,
+      recommendedPressureLoadedRearBar: body.recommendedPressureLoadedRearBar,
+      pressureSpecSource: body.pressureSpecSource,
+      confirmPressureSpec: body.confirmPressureSpec,
     });
   }
 

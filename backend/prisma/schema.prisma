@@ -349,6 +349,17 @@ enum TireBaselineStatus {
   DOCUMENTED
 }
 
+/// Provenance of recommended cold tire pressure on a setup.
+enum TirePressureSpecSource {
+  VEHICLE_MANUFACTURER
+  DOOR_PLACARD
+  OWNER_MANUAL
+  WORKSHOP
+  USER_CONFIRMED
+  AI_ESTIMATED
+  UNKNOWN
+}
+
 /// Provenance of the odometer reading used as a tire-setup install anchor.
 enum TireOdometerAnchorSource {
   MANUAL_CONFIRMED
@@ -2156,6 +2167,15 @@ model VehicleTireSetup {
 
   // ── AI tire spec (structured JSON blob) ─────────────────────────────────────
   aiTireSpec Json? @map("ai_tire_spec")
+
+  // ── Evidence-based recommended cold tire pressure (bar) ─────────────────────
+  recommendedPressureFrontBar       Float?                  @map("recommended_pressure_front_bar")
+  recommendedPressureRearBar        Float?                  @map("recommended_pressure_rear_bar")
+  recommendedPressureLoadedFrontBar Float?                  @map("recommended_pressure_loaded_front_bar")
+  recommendedPressureLoadedRearBar  Float?                  @map("recommended_pressure_loaded_rear_bar")
+  pressureSpecSource                TirePressureSpecSource  @default(UNKNOWN) @map("pressure_spec_source")
+  pressureSpecConfirmedAt           DateTime?               @map("pressure_spec_confirmed_at")
+  pressureSpecConfidence            Float?                  @map("pressure_spec_confidence")
 
   // ── Reference / threshold fields resolved from spec + manual ────────────────
   referenceNewTreadMm      Float? @map("reference_new_tread_mm")

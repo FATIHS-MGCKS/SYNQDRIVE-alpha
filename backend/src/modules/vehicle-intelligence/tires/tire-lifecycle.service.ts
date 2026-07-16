@@ -36,6 +36,11 @@ import {
   type ResolvedOdometerAnchor,
   type VehicleOdometerContext,
 } from './tire-odometer-anchor';
+import {
+  buildRecommendedPressurePersistData,
+  normalizeTirePressureSpecSource,
+  type TirePressureSpecSource,
+} from './tire-recommended-pressure';
 
 export type TireMeasurementSource =
   | 'manual'
@@ -359,6 +364,12 @@ export class TireLifecycleService {
       userId?: string;
       archiveCurrent?: boolean;
       archiveStatus?: TireSetupStatus;
+      recommendedPressureFrontBar?: number;
+      recommendedPressureRearBar?: number;
+      recommendedPressureLoadedFrontBar?: number;
+      recommendedPressureLoadedRearBar?: number;
+      pressureSpecSource?: string;
+      confirmPressureSpec?: boolean;
     },
   ) {
     const vehicle = await this.prisma.vehicle.findUnique({
@@ -410,6 +421,25 @@ export class TireLifecycleService {
           vehicle.driveType ?? null,
         );
 
+        let pressurePersist: ReturnType<typeof buildRecommendedPressurePersistData> | null =
+          null;
+        if (data.pressureSpecSource) {
+          try {
+            pressurePersist = buildRecommendedPressurePersistData({
+              recommendedPressureFrontBar: data.recommendedPressureFrontBar,
+              recommendedPressureRearBar: data.recommendedPressureRearBar,
+              recommendedPressureLoadedFrontBar: data.recommendedPressureLoadedFrontBar,
+              recommendedPressureLoadedRearBar: data.recommendedPressureLoadedRearBar,
+              pressureSpecSource: normalizeTirePressureSpecSource(
+                data.pressureSpecSource,
+              ) as TirePressureSpecSource,
+              confirmPressureSpec: data.confirmPressureSpec,
+            });
+          } catch (err: any) {
+            throw new BadRequestException(err?.message ?? 'Invalid pressure spec');
+          }
+        }
+
         const newSetup = await tx.vehicleTireSetup.create({
           data: {
             organizationId: vehicle.organizationId,
@@ -454,6 +484,7 @@ export class TireLifecycleService {
               aiTireSpec: fallback?.aiTireSpec as any,
               userConfirmedSpec: (fallback?.aiTireSpec as any)?.userConfirmedSpec,
             }),
+            ...(pressurePersist ?? {}),
           },
         });
 
@@ -1493,5 +1524,59 @@ export class TireLifecycleService {
     }
 
     return patch;
+  }
+
+  async updateRecommendedPressure(command: {
+    vehicleId: string;
+    tireSetupId: string;
+    recommendedPressureFrontBar?: number;
+    recommendedPressureRearBar?: number;
+    recommendedPressureLoadedFrontBar?: number;
+    recommendedPressureLoadedRearBar?: number;
+    pressureSpecSource: string;
+    confirmPressureSpec?: boolean;
+    userId?: string;
+    triggerRecalculate?: boolean;
+  }) {
+    const setup = await this.prisma.vehicleTireSetup.findFirst({
+      where: {
+        id: command.tireSetupId,
+        vehicleId: command.vehicleId,
+        removedAt: null,
+      },
+    });
+    if (!setup) {
+      throw new BadRequestException('Active tire setup not found.');
+    }
+
+    let persist: ReturnType<typeof buildRecommendedPressurePersistData>;
+    try {
+      persist = buildRecommendedPressurePersistData({
+        recommendedPressureFrontBar: command.recommendedPressureFrontBar,
+        recommendedPressureRearBar: command.recommendedPressureRearBar,
+        recommendedPressureLoadedFrontBar: command.recommendedPressureLoadedFrontBar,
+        recommendedPressureLoadedRearBar: command.recommendedPressureLoadedRearBar,
+        pressureSpecSource: normalizeTirePressureSpecSource(
+          command.pressureSpecSource,
+        ) as TirePressureSpecSource,
+        confirmPressureSpec: command.confirmPressureSpec,
+      });
+    } catch (err: any) {
+      throw new BadRequestException(err?.message ?? 'Invalid pressure spec');
+    }
+
+    const updated = await this.prisma.vehicleTireSetup.update({
+      where: { id: setup.id },
+      data: {
+        ...persist,
+        updatedBy: command.userId ?? null,
+      },
+    });
+
+    if (command.triggerRecalculate !== false) {
+      await this.tireHealthService.recalculate(command.vehicleId);
+    }
+
+    return updated;
   }
 }

@@ -24,6 +24,10 @@ import {
   extractDimoTpmsWarningFromPayload,
 } from './tire-pressure-context.builder';
 import type { TirePressureContext } from './tire-pressure-context.types';
+import {
+  resolveAxleRecommendedPressureBar,
+  resolveRecommendedTirePressure,
+} from './tire-recommended-pressure';
 import { TireSetupStatus, TireEvidenceSource } from '@prisma/client';
 
 // ── Public interfaces ─────────────────────────────────────────────────────────
@@ -122,19 +126,6 @@ function factorLabel(v: number): string {
   if (v <= 1.06) return 'mild';
   if (v <= 1.12) return 'moderate';
   return 'significant';
-}
-
-function resolvePressureFreshness(
-  timestamp: Date | null | undefined,
-  hasData: boolean,
-  asOf: Date = new Date(),
-): 'fresh' | 'aging' | 'stale' | 'no_data' {
-  if (!hasData) return 'no_data';
-  if (!timestamp) return 'aging';
-  const ageMs = asOf.getTime() - timestamp.getTime();
-  if (ageMs < 2 * 60 * 60 * 1000) return 'fresh';
-  if (ageMs < 12 * 60 * 60 * 1000) return 'aging';
-  return 'stale';
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -342,14 +333,14 @@ export class TireWearModelService {
     axle: 'front' | 'rear',
     pressureLeft: number | null,
     pressureRight: number | null,
+    recommendedBar: number | null,
     spec: AiTireSpec | null,
   ): number {
     const p = this.cfg.pressure;
     if (pressureLeft == null && pressureRight == null) return 1.0;
+    if (recommendedBar == null || recommendedBar <= 0) return 1.0;
 
-    const nominal = (spec?.maxInflationKpa != null)
-      ? spec.maxInflationKpa / 100 * 0.9
-      : p.nominalPressureBar;
+    const nominal = recommendedBar;
 
     const vals = [pressureLeft, pressureRight].filter((v): v is number => v != null);
     const avgPressure = vals.reduce((a, b) => a + b, 0) / vals.length;
@@ -733,16 +724,21 @@ export class TireWearModelService {
 
     // ── AI spec + archetype resolution ──────────────────────────────────────
     const spec = parseAiTireSpec(setup.aiTireSpec);
-    const nominalPressureBar =
-      spec?.maxInflationKpa != null
-        ? (spec.maxInflationKpa / 100) * 0.9
-        : this.cfg.pressure.nominalPressureBar;
+    const recommendedPressure = resolveRecommendedTirePressure(setup);
+    const recommendedFront = resolveAxleRecommendedPressureBar(
+      'front',
+      recommendedPressure,
+    );
+    const recommendedRear = resolveAxleRecommendedPressureBar(
+      'rear',
+      recommendedPressure,
+    );
 
     const pressureContext =
       options.pressureContext ??
       buildTirePressureContext({
         asOf,
-        nominalPressureBar,
+        recommendedPressure,
         dimo: latestState
           ? {
               tirePressureFl: latestState.tirePressureFl,
@@ -827,12 +823,14 @@ export class TireWearModelService {
       'front',
       pressureInputsActive ? (pressureContext.frontLeft ?? null) : null,
       pressureInputsActive ? (pressureContext.frontRight ?? null) : null,
+      pressureInputsActive ? recommendedFront : null,
       spec,
     );
     const pressureFactorRear = this.computePressureFactor(
       'rear',
       pressureInputsActive ? (pressureContext.rearLeft ?? null) : null,
       pressureInputsActive ? (pressureContext.rearRight ?? null) : null,
+      pressureInputsActive ? recommendedRear : null,
       spec,
     );
 

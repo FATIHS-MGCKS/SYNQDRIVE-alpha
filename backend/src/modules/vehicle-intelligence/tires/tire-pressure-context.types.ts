@@ -1,4 +1,5 @@
 import type { DimoTirePressurePlausibility } from '@modules/dimo/dimo-tire-pressure.normalizer';
+import type { RecommendedTirePressureSpec } from './tire-recommended-pressure';
 
 export type TirePressureFreshness = 'fresh' | 'aging' | 'stale' | 'no_data';
 
@@ -92,8 +93,9 @@ export interface TirePressureContext {
    */
   tpmsWarning: boolean | null;
   tpmsWarningSource: TirePressureTpmsWarningSource;
-  /** Nominal cold pressure used for deviation checks (bar). */
-  nominalPressureBar: number | null;
+  recommendedPressure: RecommendedTirePressureSpec;
+  /** Localized label when recommended pressure is not confirmed for wear. */
+  pressureSpecMissingLabel: string | null;
   qualityWarnings: string[];
   wearEligibility: TirePressureWearEligibility;
   overallStatus: TirePressureOverallStatus;
@@ -153,6 +155,6 @@ export interface BuildTirePressureContextInput {
   asOf?: Date;
   dimo?: DimoPressureSnapshotInput | null;
   hm?: HmPressureSnapshotInput | null;
-  nominalPressureBar?: number | null;
+  recommendedPressure?: RecommendedTirePressureSpec | null;
   minWheelsForWear?: number;
 }

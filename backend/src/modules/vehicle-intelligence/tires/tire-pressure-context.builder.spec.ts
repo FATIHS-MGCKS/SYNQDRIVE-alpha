@@ -320,4 +320,44 @@ describe('tire-pressure-context.builder', () => {
     expect(isHmStatusIssueToken('LOW')).toBe(true);
     expect(isHmStatusIssueToken('OK')).toBe(false);
   });
+
+  it('disables wear eligibility when recommended pressure is not confirmed', () => {
+    const ctx = buildTirePressureContext({
+      ...dimoOnly({ fl: 2.5, fr: 2.5, rl: 2.5, rr: 2.5 }),
+      asOf: AS_OF,
+      recommendedPressure: {
+        recommendedPressureFrontBar: 2.5,
+        recommendedPressureRearBar: 2.5,
+        recommendedPressureLoadedFrontBar: null,
+        recommendedPressureLoadedRearBar: null,
+        pressureSpecSource: 'AI_ESTIMATED',
+        pressureSpecConfirmedAt: null,
+        pressureSpecConfidence: 42,
+        wearFactorEligible: false,
+        pressureSpecMissingLabel: 'Solldruck nicht hinterlegt',
+      },
+    });
+    expect(ctx.wearEligibility.eligible).toBe(false);
+    expect(ctx.pressureSpecMissingLabel).toBe('Solldruck nicht hinterlegt');
+  });
+
+  it('enables wear eligibility with confirmed door-placard spec', () => {
+    const ctx = buildTirePressureContext({
+      ...dimoOnly({ fl: 2.4, fr: 2.4, rl: 2.6, rr: 2.6 }),
+      asOf: AS_OF,
+      recommendedPressure: {
+        recommendedPressureFrontBar: 2.4,
+        recommendedPressureRearBar: 2.6,
+        recommendedPressureLoadedFrontBar: null,
+        recommendedPressureLoadedRearBar: null,
+        pressureSpecSource: 'DOOR_PLACARD',
+        pressureSpecConfirmedAt: '2026-07-01T00:00:00.000Z',
+        pressureSpecConfidence: 98,
+        wearFactorEligible: true,
+        pressureSpecMissingLabel: null,
+      },
+    });
+    expect(ctx.wearEligibility.eligible).toBe(true);
+    expect(ctx.recommendedPressure.pressureSpecSource).toBe('DOOR_PLACARD');
+  });
 });

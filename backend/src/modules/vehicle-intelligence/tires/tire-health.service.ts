@@ -72,6 +72,7 @@ import type {
   TirePressureContext,
   TirePressureFreshness,
 } from './tire-pressure-context.types';
+import { resolveRecommendedTirePressure } from './tire-recommended-pressure';
 import type { HmTirePressureSignals } from '../../high-mobility/high-mobility-signal-usage.service';
 
 // ── Public interfaces ─────────────────────────────────────────────────────────
@@ -147,6 +148,8 @@ export interface TireHealthSummary {
   measurementState: 'measured' | 'estimated' | 'mixed';
   dataQualityWarnings: string[];
   pressureContext: TirePressureContext;
+  recommendedPressure: import('./tire-recommended-pressure').RecommendedTirePressureSpec;
+  pressureSpecMissingLabel: string | null;
   latestMeasurementAt: string | null;
 
   // ── Canonical read model (single honest tire truth) ────────────────────────
@@ -1368,6 +1371,8 @@ export class TireHealthService {
       measurementState,
       dataQualityWarnings,
       pressureContext,
+      recommendedPressure: pressureContext.recommendedPressure,
+      pressureSpecMissingLabel: pressureContext.pressureSpecMissingLabel,
       latestMeasurementAt: latestMeasurement?.measuredAt?.toISOString() ?? null,
       predictionCapable: anchorProjection.predictionCapable,
       odometerAnchorStatus: setup.odometerAnchorStatus ?? null,
@@ -1696,7 +1701,17 @@ export class TireHealthService {
   private async resolvePressureContext(
     vehicleId: string,
     hmTirePressure: HmTirePressureSignals | null,
-    setup?: { aiTireSpec?: unknown } | null,
+    setup?: {
+      aiTireSpec?: unknown;
+      recommendedPressureFrontBar?: number | null;
+      recommendedPressureRearBar?: number | null;
+      recommendedPressureLoadedFrontBar?: number | null;
+      recommendedPressureLoadedRearBar?: number | null;
+      pressureSpecSource?: string | null;
+      pressureSpecConfirmedAt?: Date | null;
+      pressureSpecConfidence?: number | null;
+      isStaggered?: boolean | null;
+    } | null,
   ): Promise<TirePressureContext> {
     const latestState = await this.prisma.vehicleLatestState.findUnique({
       where: { vehicleId },
@@ -1713,13 +1728,10 @@ export class TireHealthService {
       },
     });
 
-    const spec = setup ? parseAiTireSpec(setup.aiTireSpec) : null;
-    const nominalPressureBar =
-      spec?.maxInflationKpa != null
-        ? (spec.maxInflationKpa / 100) * 0.9
-        : this.cfg.pressure.nominalPressureBar;
+    const recommendedPressure = resolveRecommendedTirePressure(setup ?? {});
 
     return buildTirePressureContext({
+      recommendedPressure,
       dimo: latestState
         ? {
             tirePressureFl: latestState.tirePressureFl,
@@ -1754,7 +1766,6 @@ export class TireHealthService {
             freshnessStatus: hmTirePressure.freshnessStatus,
           }
         : null,
-      nominalPressureBar,
     });
   }
 
@@ -2032,6 +2043,8 @@ export class TireHealthService {
       measurementState: 'estimated',
       dataQualityWarnings: ['No tire wear baseline measurement available.'],
       pressureContext: resolvedPressure,
+      recommendedPressure: resolvedPressure.recommendedPressure,
+      pressureSpecMissingLabel: resolvedPressure.pressureSpecMissingLabel,
       latestMeasurementAt: latestMeasurement?.measuredAt?.toISOString() ?? null,
 
       // ── Canonical read model ──
