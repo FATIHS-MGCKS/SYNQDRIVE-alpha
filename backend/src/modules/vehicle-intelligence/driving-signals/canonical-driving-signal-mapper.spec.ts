@@ -28,8 +28,8 @@ const OBSERVED = '2026-07-16T14:22:10.000Z';
 const RECEIVED = '2026-07-16T14:22:12.500Z';
 
 describe('mapDimoProviderSignalToCanonical', () => {
-  it('exports canonical-signal-v1 mapping version', () => {
-    expect(CANONICAL_DRIVING_SIGNAL_MAPPING_VERSION).toBe('canonical-signal-v1');
+  it('exports canonical-signal-v2 mapping version', () => {
+    expect(CANONICAL_DRIVING_SIGNAL_MAPPING_VERSION).toBe('canonical-signal-v2');
   });
 
   describe('LTE_R1 ICE — sanitized payloads', () => {

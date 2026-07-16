@@ -4,6 +4,7 @@
  *
  * docs/audits/dimo-driving-signals-capability.md §3.2
  */
+import { CHASSIS_SIGNAL_CATALOG } from './chassis-signal-catalog';
 import type { CanonicalDrivingSignalKey, CanonicalSignalUnit } from './canonical-driving-signal-mapper.types';
 
 export type CanonicalSignalDefinition = {
@@ -122,8 +123,13 @@ export const CANONICAL_DRIVING_SIGNAL_CATALOG: readonly CanonicalSignalDefinitio
   },
 ] as const;
 
+export const CANONICAL_DRIVING_SIGNAL_CATALOG_ALL: readonly CanonicalSignalDefinition[] = [
+  ...CANONICAL_DRIVING_SIGNAL_CATALOG,
+  ...CHASSIS_SIGNAL_CATALOG,
+];
+
 const BY_DIMO_SIGNAL = new Map<string, CanonicalSignalDefinition>(
-  CANONICAL_DRIVING_SIGNAL_CATALOG.map((def) => [def.dimoSignalName, def]),
+  CANONICAL_DRIVING_SIGNAL_CATALOG_ALL.map((def) => [def.dimoSignalName, def]),
 );
 
 export function findCanonicalSignalDefinition(
