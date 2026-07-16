@@ -1,0 +1,38 @@
+{
+  "auditId": "tire-health-production-readiness-2026-07",
+  "phase": 3,
+  "completedAt": "2026-07-16T20:57:14.066Z",
+  "mode": "read-only",
+  "writesPerformed": false,
+  "summary": "Phase 3 VPS integrity analysis (60d): 6 vehicles, 1338 snapshots, 0 wear points.",
+  "artifacts": [
+    "docs/audits/data/tire-health-fleet-coverage-2026-07.csv",
+    "docs/audits/data/tire-health-ground-truth-classification-2026-07.csv",
+    "docs/audits/data/tire-health-integrity-findings-2026-07.json",
+    "scripts/audits/tire-health-phase3-readonly.sql"
+  ],
+  "notes": [
+    "Phase 3 uses read-only SQL via psql; no Prisma writes.",
+    "Ground-truth classification requires tire_wear_data_points rows; skip regression if empty.",
+    "No organization filter (full fleet)."
+  ],
+  "data": {
+    "aggregates": {
+      "days": 60,
+      "window_end_utc": "2026-07-16T20:57:14.005491",
+      "active_setups": 6,
+      "vehicles_with_active": 6,
+      "snapshots": 1338,
+      "wear_points": 0,
+      "wear_points_all_time": 0,
+      "synthetic_points": 0,
+      "ground_truth_points": 0,
+      "recalc_events": 1338,
+      "null_installed_odo_setups": 1,
+      "trip_km_sum": 2947.1,
+      "setup_km_sum": 450.7
+    },
+    "vehiclesWithKmDeviation": 6,
+    "fleetRowCount": 6
+  }
+}

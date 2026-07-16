@@ -98,7 +98,7 @@ export async function acquireTripUsageAdvisoryLock(
   tireSetupId: string,
 ): Promise<void> {
   const [k1, k2] = pgAdvisoryLockKeys(advisoryLockSeed(tripId, tireSetupId));
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(${k1}, ${k2})`;
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock((${k1})::int, (${k2})::int)`;
 }
 
 type LedgerAggregateClient = {

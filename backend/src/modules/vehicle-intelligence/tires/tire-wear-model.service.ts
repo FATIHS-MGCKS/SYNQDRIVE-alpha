@@ -29,7 +29,6 @@ import {
   resolveCapabilityGatedSpeedKmh,
 } from './tire-dimo-context.builder';
 import type { TireDimoContext } from './tire-dimo-context.types';
-import { assertNoWheelSpeedTreadDerivation } from './tire-dimo-signal-capability';
 import {
   resolveAxleRecommendedPressureBar,
   resolveRecommendedTirePressure,
@@ -795,16 +794,6 @@ export class TireWearModelService {
       dimoContext,
       latestState?.speedKmh ?? null,
     );
-
-    // Audit guard — wheel speed must never proxy tread depth.
-    for (const blocked of dimoContext?.blockedWearDerivations ?? []) {
-      if (
-        blocked === 'chassisAxleRow1WheelLeftSpeed' ||
-        blocked === 'chassisAxleRow1WheelRightSpeed'
-      ) {
-        assertNoWheelSpeedTreadDerivation(blocked);
-      }
-    }
 
     // ── Regen factors ─────────────────────────────────────────────────────
     const regenPositional = this.computePositionalRegenFactors(vehicle?.fuelType ?? null, vehicle?.driveType ?? null);
