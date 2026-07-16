@@ -35,6 +35,43 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'dimo-recharge-segments-client-v49547-2026-07-17',
+    version: '4.9.547',
+    title: 'V4.9.547 — DIMO Recharge Segments Client (Prompt 47/78)',
+    summary: [
+      '`DimoRechargeSegmentsClient` — robuster DIMO GraphQL-Client für `segments(mechanism: recharge)`.',
+      '31-Tage-Fenster-Splitting, Pagination (`after: Time`), optionaler Provider-Source-Filter mit Fallback, Retry/Rate-Limit-Backoff.',
+      'Normalisiert startAt/endAt/ongoing, SOC-, Energy-, Added-Energy-Aggregate, IsCharging/Cable, Odometer, source timestamps.',
+      'Provider-Segment-ID oder stabiler Fingerprint; tenant-sichere `fetchForVehicle(org, vehicle)`; keine Tokens in Logs.',
+      'KS FH 660E Audit-Fixtures: 10/10 Tests; `DimoSegmentsService.fetchEnergyEventSegments` delegiert recharge.',
+    ],
+    reason: 'Prompt 47/78: kanonische HV-Ladesession-Grenzen aus DIMO recharge segments vor Charge-Session-Pipeline.',
+    previousBehavior: 'Recharge-Segmente ohne Pagination, ohne Added-Energy-Aggregate, ohne 31d-Window-Splitting, ohne Retry.',
+    details:
+      'backend/src/modules/dimo/recharge-segments/*, docs/architecture/dimo-recharge-segments-client.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T09:00:00.000Z',
+  },
+  {
+    id: 'battery-hv-method-profile-v49546-2026-07-17',
+    version: '4.9.546',
+    title: 'V4.9.546 — HV Method Profile from Capabilities (Prompt 46/78)',
+    summary: [
+      '`resolveHvMethodProfile()` erzeugt kanonisches HV-Methodenprofil je Fahrzeug aus `VehicleBatteryCapability`.',
+      'Output: soc/currentEnergy/addedEnergy/rechargeSegments/providerSoh/grossCapacity/packTemperature/chargingPower/currentPower Availability, supportedCapacityMethods, unsupportedReasons, lastCheckedAt, dataQuality.',
+      'Keine Kapazitätsberechnung — nur Methoden- und Signal-Eligibility.',
+      'KS FH 660E auditierbar: Segments, SOC, Energy, Charging/Cable ja; Provider-SOH, Pack-Temp, Gross Capacity, Charging Power nein.',
+    ],
+    reason: 'Prompt 46/78: kanonisches HV-Methodenprofil vor Capacity-Shadow/Publication-Pipeline.',
+    previousBehavior: 'HV-Capabilities als einzelne Preflight-Rows ohne aggregiertes Methodenprofil pro Fahrzeug.',
+    details:
+      'hv-method-profile.resolver.ts, hv-method-profile.service.ts, docs/architecture/battery-hv-method-profile.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T08:00:00.000Z',
+  },
+  {
     id: 'battery-lv-canonical-resolver-v49545-2026-07-17',
     version: '4.9.545',
     title: 'V4.9.545 — LV Canonical Battery Resolver (Prompt 45/78)',

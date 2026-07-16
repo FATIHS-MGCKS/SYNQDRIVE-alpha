@@ -18,6 +18,8 @@ import {
   type DimoDetectionMechanism,
 } from './queries/trip-segments.query';
 import { buildEnergyEventSegmentsQuery } from './queries/energy-event-segments.query';
+import { DimoRechargeSegmentsClient } from './recharge-segments/dimo-recharge-segments.client';
+import { mapRechargeSegmentToEnergyEvent } from './recharge-segments/dimo-recharge-segments.mapper';
 
 // ── V3 LTE_R1: native DIMO driving event record ────────────────────────────
 // Re-exported for downstream consumers. Historically this interface was
@@ -220,6 +222,7 @@ export class DimoSegmentsService {
   constructor(
     private readonly auth: DimoAuthService,
     private readonly telemetry: DimoTelemetryService,
+    private readonly rechargeSegmentsClient: DimoRechargeSegmentsClient,
   ) {}
 
   // V1 trip detection (fetchAndDetectTrips, detectTrips, finalizeTrip) REMOVED.
@@ -270,6 +273,18 @@ export class DimoSegmentsService {
 
     const collected: DimoEnergyEventSegment[] = [];
     for (const mechanism of mechanisms) {
+      if (mechanism === 'recharge') {
+        const result = await this.rechargeSegmentsClient.fetchForToken(
+          tokenId,
+          from,
+          to,
+        );
+        collected.push(
+          ...result.segments.map(mapRechargeSegmentToEnergyEvent),
+        );
+        continue;
+      }
+
       const segments = await this.fetchEnergyEventSegmentsWithJwt(
         jwt,
         tokenId,
