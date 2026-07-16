@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-provider-observation-policy-v49518-2026-07-16',
+    version: '4.9.518',
+    title: 'V4.9.518 — Battery Provider Observation Policy (Prompt 16/78)',
+    summary: [
+      'Neue reine Domain-Policy `battery-provider-observation.policy.ts` entscheidet, ob ein Poll eine neue Provider-Observation ist.',
+      'Outcomes: NEW_OBSERVATION, DUPLICATE_OBSERVATION, OUT_OF_ORDER, INVALID_TIMESTAMP, VALUE_CHANGED_WITHOUT_NEW_TIMESTAMP, STALE_REPLAY.',
+      'Idempotency-Key: organizationId + vehicleId + signalName + providerSource + observedAt + normalisierter Wert.',
+      'Pollzeit allein erzeugt keine neue Observation; per-Signal Provider-Timestamps steuern Dedup.',
+      '12 tabellengetriebene Unit-Tests — keine UI-, keine Persistenz-Logik.',
+    ],
+    reason: 'Prompt 16/78: Zentrale Observation-Dedup-Policy vor Measurement-Ingestion.',
+    previousBehavior: 'Jeder Poll konnte implizit als neue Messung behandelt werden (HV 93,7 % TS-Duplikate).',
+    details:
+      'battery-provider-observation.policy.ts, battery-provider-observation.policy.spec.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T15:50:00.000Z',
+  },
+  {
     id: 'battery-dimo-signal-mapping-v49517-2026-07-16',
     version: '4.9.517',
     title: 'V4.9.517 — DIMO Battery Signal Mapping Audit (Prompt 15/78)',
