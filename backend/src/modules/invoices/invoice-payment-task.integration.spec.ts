@@ -28,6 +28,9 @@ describe('Invoice payment-check task automation', () => {
       dueDate: opts?.dueDate,
     });
     await h.invoices.issue(String(inv.id), orgId);
+    await h.invoicePaymentTasks.syncPaymentCheckTaskById(orgId, String(inv.id), {
+      now: FIXED_NOW,
+    });
     return { orgId, invoiceId: String(inv.id) };
   }
 

@@ -160,7 +160,7 @@ export class InvoicePaymentTaskService {
         type: invoicePaymentRule.taskType!,
         source: invoicePaymentRule.source,
         sourceType: invoicePaymentRule.sourceType,
-        priority: timing.priority === 'CRITICAL' ? timing.priority : resolved.effective.priority,
+        priority: timing.priority,
         invoiceId: invoice.id,
         bookingId: invoice.bookingId ?? null,
         customerId: invoice.customerId ?? null,
