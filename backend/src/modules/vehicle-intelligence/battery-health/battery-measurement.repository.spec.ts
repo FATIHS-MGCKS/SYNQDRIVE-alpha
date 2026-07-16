@@ -59,11 +59,19 @@ describe('BatteryMeasurementRepository (mocked Prisma)', () => {
         return row;
       }),
       findUnique: jest.fn(async ({ where }: any) => {
-        const compound = where.organizationId_vehicleId_idempotencyKey;
-        if (!compound) return null;
-        const key = `${compound.organizationId}|${compound.vehicleId}|${compound.idempotencyKey}`;
-        const id = tenantIdempotencyIndex.get(key);
-        return id ? measurements.get(id) : null;
+        const idempotencyCompound = where.organizationId_vehicleId_idempotencyKey;
+        if (idempotencyCompound) {
+          const key = `${idempotencyCompound.organizationId}|${idempotencyCompound.vehicleId}|${idempotencyCompound.idempotencyKey}`;
+          const id = tenantIdempotencyIndex.get(key);
+          return id ? measurements.get(id) : null;
+        }
+        const dedupCompound = where.vehicleId_type_observedAt;
+        if (dedupCompound) {
+          const key = `${dedupCompound.vehicleId}|${dedupCompound.type}|${dedupCompound.observedAt.toISOString()}`;
+          const id = dedupIndex.get(key);
+          return id ? measurements.get(id) : null;
+        }
+        return null;
       }),
       findUniqueOrThrow: jest.fn(async ({ where }: any) => {
         const compound = where.vehicleId_type_observedAt;
@@ -170,10 +178,19 @@ describe('BatteryMeasurementService (mocked Prisma)', () => {
         return row;
       }),
       findUnique: jest.fn(async ({ where }: any) => {
-        const compound = where.organizationId_vehicleId_idempotencyKey;
-        const key = `${compound.organizationId}|${compound.vehicleId}|${compound.idempotencyKey}`;
-        const id = tenantIdempotencyIndex.get(key);
-        return id ? measurements.get(id) : null;
+        const idempotencyCompound = where.organizationId_vehicleId_idempotencyKey;
+        if (idempotencyCompound) {
+          const key = `${idempotencyCompound.organizationId}|${idempotencyCompound.vehicleId}|${idempotencyCompound.idempotencyKey}`;
+          const id = tenantIdempotencyIndex.get(key);
+          return id ? measurements.get(id) : null;
+        }
+        const dedupCompound = where.vehicleId_type_observedAt;
+        if (dedupCompound) {
+          const key = `${dedupCompound.vehicleId}|${dedupCompound.type}|${dedupCompound.observedAt.toISOString()}`;
+          const id = dedupIndex.get(key);
+          return id ? measurements.get(id) : null;
+        }
+        return null;
       }),
       findUniqueOrThrow: jest.fn(async ({ where }: any) => {
         const compound = where.vehicleId_type_observedAt;

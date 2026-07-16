@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { HvCapacityMethod } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { buildStartProxySessionIdempotencyKey } from '../lv-start-proxy/battery-start-proxy.policy';
 import type { BatteryV2JobPayload, BatteryV2JobType } from './battery-v2-job.types';
@@ -122,11 +123,14 @@ export class BatteryV2IdempotentExecutionService {
       case 'HV_CAPACITY_SHADOW_RECOMPUTE': {
         const capPayload = payload as BatteryV2JobPayload<'HV_CAPACITY_SHADOW_RECOMPUTE'>;
         if (!capPayload.chargeSessionId) return false;
+        const method =
+          (capPayload.method as HvCapacityMethod | null | undefined) ??
+          HvCapacityMethod.CURRENT_ENERGY_OVER_SOC;
         const existing = await this.prisma.hvCapacityObservation.findFirst({
           where: {
             vehicleId,
             chargeSessionId: capPayload.chargeSessionId,
-            method: capPayload.method ?? 'CURRENT_ENERGY_OVER_SOC',
+            method,
             modelVersion:
               typeof capPayload.capacityModelVersion === 'number'
                 ? capPayload.capacityModelVersion

@@ -10,6 +10,7 @@ import { CanonicalBatteryHealthService } from '../battery-health/canonical-batte
 import {
   mapHealthSummaryBatteryModule,
   mapHealthSummaryBatteryNarrative,
+  type HealthSummaryBatteryModule,
 } from '../battery-health/canonical-battery';
 import { ServiceComplianceService } from '../service-compliance/service-compliance.service';
 import { FULL_SERVICE_BASELINE_EVENT_TYPES } from '../service-events/service-events.constants';
@@ -30,18 +31,7 @@ export interface HealthSummaryAgentInput {
     fuelType?: string | null;
   };
   healthModules: {
-    battery: {
-      status: string;
-      sohPercent: number | null;
-      sohPercentSemantic: string | null;
-      estimatedLvHealthScore: number | null;
-      estimatedLvHealthScoreSemantic: string | null;
-      voltageV: number | null;
-      hasData: boolean;
-      aggregateHealthStatus?: string | null;
-      hvHealthStatus?: string | null;
-      hvSohPercent?: number | null;
-    } | null;
+    battery: HealthSummaryBatteryModule | null;
     errorCodes: { activeCount: number; totalRecent: number; lastCheckedAt: string | null; hasData: boolean } | null;
     brakes: {
       stateClass: string | null;
@@ -380,7 +370,7 @@ export class HealthSummaryService {
     const preventive: string[] = [];
     const maintenanceFocus: Array<{ area: string; priority: 'low' | 'medium' | 'high'; reason: string }> = [];
 
-    const batteryNarrative = mapHealthSummaryBatteryNarrative(m.battery ?? {
+    const batteryFallback: HealthSummaryBatteryModule = {
       status: 'unknown',
       sohPercent: null,
       sohPercentSemantic: null,
@@ -391,7 +381,8 @@ export class HealthSummaryService {
       aggregateHealthStatus: null,
       hvHealthStatus: null,
       hvSohPercent: null,
-    });
+    };
+    const batteryNarrative = mapHealthSummaryBatteryNarrative(m.battery ?? batteryFallback);
     if (batteryNarrative.positive) positives.push(batteryNarrative.positive);
     if (batteryNarrative.watchpoint) {
       watchpoints.push(batteryNarrative.watchpoint);

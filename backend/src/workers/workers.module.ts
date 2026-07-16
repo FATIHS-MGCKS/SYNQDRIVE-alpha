@@ -40,6 +40,7 @@ import { HmHealthPollingScheduler } from './schedulers/hm-health-polling.schedul
 import { DataRetentionScheduler } from './schedulers/data-retention.scheduler';
 import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.scheduler';
 import { BatteryV2RetentionScheduler } from './schedulers/battery-v2-retention.scheduler';
+import { BatteryV2ReconciliationScheduler } from './schedulers/battery-v2-reconciliation.scheduler';
 
 @Module({
   imports: [

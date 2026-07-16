@@ -749,11 +749,34 @@ Erfordert **separates** Ticket nach ≥ 2 erfolgreichen Dry-Runs auf Staging:
 
 ```bash
 cd backend
+npm run test:battery:v2:verify
+# oder granular:
 npm test -- battery-v2
+npm test -- battery-data-diagnostic
+npm test -- battery-data-repair
 npm test -- battery-v2-retention
 npm test -- battery-v2-prometheus
 # Optional mit DB:
 BATTERY_V2_RETENTION_INTEGRATION=1 npm test -- battery-v2-retention.integration
+```
+
+Siehe auch: `docs/testing/battery-health-v2-backend-coverage.md`
+
+### 18.1b Battery-Daten-Repair (nur nach Diagnostic + Freigabe)
+
+```bash
+cd backend
+# 1) Diagnostic
+npx ts-node -r tsconfig-paths/register scripts/ops/audit-battery-data.ts \
+  --organization-id=<canary-org> --include-findings --format=console
+
+# 2) Dry-run Repair
+npx ts-node -r tsconfig-paths/register scripts/ops/repair-battery-data.ts \
+  --organization-id=<canary-org> --output=./tmp/battery-repair-dry.json
+
+# 3) Apply (nur nach Ticket-Freigabe)
+npx ts-node -r tsconfig-paths/register scripts/ops/repair-battery-data.ts \
+  --organization-id=<canary-org> --apply --batch-size=20
 ```
 
 ### 18.2 Produktions-Smoke nach jeder Phase

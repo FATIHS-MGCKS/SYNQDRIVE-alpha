@@ -10,7 +10,7 @@ import {
 import {
   BatteryReferenceCapacitySource,
   BatteryReferenceCapacityType,
-} from '../battery-v2-domain';
+} from '../../battery-v2-domain';
 
 export class CreateVehicleBatteryReferenceCapacityDto {
   @IsNumber()

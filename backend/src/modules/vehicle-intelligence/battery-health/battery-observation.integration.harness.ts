@@ -83,6 +83,9 @@ export class BatteryObservationIntegrationHarness {
         this.discardCounts.set(reason, (this.discardCounts.get(reason) ?? 0) + 1);
       }),
     },
+    batteryProviderDuplicateTotal: {
+      inc: jest.fn(),
+    },
   } as unknown as TripMetricsService;
 
   reset(): void {

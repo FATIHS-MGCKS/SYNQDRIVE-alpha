@@ -35,6 +35,42 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-backend-test-package-v49574-2026-07-16',
+    version: '4.9.574',
+    title: 'V4.9.574 — Battery V2 Backend Test Package (Prompt 74/78)',
+    summary: [
+      'Einheitliche npm-Scripts: `test:battery:v2`, `test:battery:v2:integration`, `test:battery:v2:verify` + Shell `scripts/test/battery-health-v2-verify.sh`.',
+      'Abdeckungsmatrix für 27 Bereiche (DIMO, Observation, Dedup, Freshness, Queue/DLQ, REST FSM, Wake/MISSED, Start-Proxy, ICE/PHEV/BEV, Chemistry, LV/HV Assessment, Capability, Recharge, M2/M3, SOH Gate, Readiness, Alerts/Tasks, Retention, Tenant, Races).',
+      'Letzter Verify-Lauf: 97 Unit-Suites / 725 Tests + 12 Integration-Tests grün; Prisma validate, tsc, Build grün.',
+      'Test-Fixes: Measurement-Repository-Mock (Dedup-Lookup), Integration-Harness Prometheus-Duplicate, Jobs-Module-Spec, TS/Import-Korrekturen.',
+    ],
+    reason: 'Prompt 74/78: nachvollziehbares Backend-Testpaket und CI-tauglicher Verify-Pfad für Battery Health V2.',
+    previousBehavior: 'Verteilte Specs ohne zentrale Coverage-Doku und ohne einheitlichen Verify-Befehl.',
+    details:
+      'docs/testing/battery-health-v2-backend-coverage.md, backend/package.json, backend/scripts/test/battery-health-v2-verify.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T20:30:00.000Z',
+  },
+  {
+    id: 'battery-data-repair-v49573-2026-07-17',
+    version: '4.9.573',
+    title: 'V4.9.573 — Battery Data Repair Script (Prompt 73/78)',
+    summary: [
+      'Read-only default `BatteryDataRepairService` + `scripts/ops/repair-battery-data.ts` (Writes nur mit `--apply`).',
+      'Erlaubte Maßnahmen: LV SOH_PERCENT → LEGACY_ESTIMATED/superseded, REST unverified, unsafe Publication reset, Crank-Readiness-Felder löschen, identische HV-Dedupe, Reference Capacity UNVERIFIED.',
+      'Kontrollierte Batches, idempotent via `batteryDataRepair`-Metadata, vollständiger Audit-Trail, diagnosticBefore/After.',
+      '10 Unit-Tests mit Fixtures.',
+    ],
+    reason: 'Prompt 73/78: kontrollierte Remediation bestehender Battery-Daten ohne Rekonstruktion.',
+    previousBehavior: 'Nur read-only Diagnostic (P72), kein Repair-Pfad.',
+    details:
+      'battery-health/diagnostic/battery-data-repair.*, scripts/ops/repair-battery-data.ts — keine Messwerte erfinden, keine Auto-Prod-Ausführung.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T08:00:00.000Z',
+  },
+  {
     id: 'battery-data-diagnostic-v49572-2026-07-17',
     version: '4.9.572',
     title: 'V4.9.572 — Battery Data Diagnostic (Prompt 72/78)',
