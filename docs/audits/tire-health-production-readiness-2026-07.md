@@ -5,10 +5,16 @@
 | **Audit ID** | `tire-health-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/tire-health-production-readiness-2026-07` |
-| **Phase** | 6 of 7 — Consumer Wiring, Blocking & Tests |
-| **Status** | Phases 1–6 complete; Phase 7 pending |
+| **Phase** | **7 of 7 — Final Synthesis (COMPLETE)** |
+| **Status** | **All phases complete** |
+| **Production-Readiness verdict** | **`NOT_READY`** |
 | **Production data modified** | **No** — all VPS/DB/DIMO access was read-only |
-| **Last VPS runtime probe** | 2026-07-16 (read-only SSH + DIMO Telemetry API) |
+| **Analysis window (VPS)** | 2026-05-17 → 2026-07-16 UTC (60 days) |
+| **Fleet scope** | 6 vehicles (anonymized `VEHICLE_001`–`VEHICLE_006`) |
+| **DIMO fleet** | 6 connected vehicles; 339 read-only Telemetry API queries |
+| **Ground-truth measurements** | 5 manual/documented; 0 synthetic wear data points in DB |
+| **Backtest** | n=4 reproducible wheels; MAE 0.213 mm — **NOT_ENOUGH_DATA** |
+| **Findings** | P0: 5 · P1: 17 · P2: 9 · P3: 0 |
 
 ---
 
@@ -72,7 +78,385 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 
 ---
 
-## Full audit outline (Phases 1–7)
+# Final Production-Readiness Synthesis
+
+> Self-contained verdict document synthesizing Prompts 1–6. Detailed phase evidence follows in appendices below.
+
+## 1. Executive Summary
+
+### Production-Readiness Verdict: **`NOT_READY`**
+
+| Question | Answer |
+|----------|--------|
+| **Funktioniert die Kalkulation technisch?** | **Ja, bedingt** — Pipeline läuft (1 320 Recalcs/60d); Formel V2 implementiert; aber `installed_odometer_km` null → keine Wear-Data-Points; Trip-km nicht angewendet |
+| **Ist sie fachlich plausibel?** | **Teilweise** — Architektur solide; Druck-Einheit kPa/bar-Mismatch; 8-mm-Fallback auf 2/6 Fahrzeugen; Confidence nicht kalibriert |
+| **Empirisch validiert?** | **Nein** — 5 GT-Messungen; 1 reproduzierbarer Backtest (n=4 Räder); **NOT_ENOUGH_DATA** |
+| **Größte Risiken** | Prediction-as-GT-Codepfad; Rental-Gate ohne HM; kPa/bar; Trip-Doppelzählung; keine Modellversion |
+| **Sofortmaßnahmen** | (1) Data-Point-Leak fixen (2) kPa→bar (3) HM in Rental Health (4) `installed_odometer_km` setzen (5) Trip-Ledger |
+
+### Go-Live-Blocker (CONFIRMED)
+
+1. **P0-TH-04** — `actualTreadMm = predicted` wenn keine Messung
+2. **P0-TH-21** — Booking Gate ohne HM-Druckkontext
+3. **P0-TH-03** — Keine Regression/Validierung ohne Odometer-Anker
+4. **P1-TH-12** — DIMO kPa als bar interpretiert
+5. **NOT_ENOUGH_DATA** — Keine belastbare Modellvalidierung
+
+---
+
+## 2. Scope und Methodik
+
+| Dimension | Detail |
+|-----------|--------|
+| **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha), Branch `audit/tire-health-production-readiness-2026-07` |
+| **VPS** | Read-only SSH + PostgreSQL aggregates (`mein-vps.internal`); keine Writes |
+| **Zeitraum** | 60 Tage UTC: 2026-05-17 → 2026-07-16 |
+| **Datenquellen** | PostgreSQL (canonical), ClickHouse (down at probe), DIMO Telemetry API, HM cache tables |
+| **DIMO MCP** | **Nicht verfügbar** — offizielle Docs + live API |
+| **Historische Zeitreihen** | 339 DIMO-Queries; 7-Tage-Fenster; keine GPS |
+| **As-of-Backtesting** | `audit-tire-health-backtest.ts`; keine Recalculate-Writes |
+| **Anonymisierung** | `VEHICLE_001`–`006` by sorted UUID; Mapping nicht in Git |
+| **Grenzen** | 6-Fahrzeug-Flotte; CH offline; Driving-Impact nicht historisiert; DIMO MCP fehlend |
+
+---
+
+## 3. Ist-Architektur
+
+```
+DIMO/HM → Ingestion → vehicle_latest_states / hm_signal_group_states
+       → TireWearModelService (V2 formula) → TireHealthService (canonical read model)
+       → Consumers: RentalHealth, Alerts, UI, Notifications, Booking Gate
+```
+
+| Component | Role |
+|-----------|------|
+| **Source of Truth** | PostgreSQL: setups, measurements, snapshots, events |
+| **Triggers** | Hourly `TireRecalculationScheduler`; manual API; lifecycle mutations |
+| **Runtime** | Single PM2 `synqdrive` (API + BullMQ workers in-process) |
+| **Canonical read model** | `TireHealthService.getSummary()` / `getDetail()` + `tire-status.ts` |
+
+Full topology: Phase 1 appendix. Consumer matrix: `tire-health-consumer-wiring-2026-07.csv`.
+
+---
+
+## 4. Datenmodell und Tire Lifecycle
+
+- **17 Prisma audit questions answered** — see Phase 2 appendix
+- **Risk:** No DB unique constraint on one ACTIVE setup per vehicle (P0-TH-02)
+- **Risk:** `ensureTiresForSetup` 8 mm fallback (P0-TH-01)
+- **Stored-set reactivation** resets `installedAt` but keeps `totalKmOnSet` (P1-TH-01)
+
+---
+
+## 5. Tire-Spec-Bewertung
+
+Priority chain: manual → AI spec → archetype → **8 mm season fallback**.  
+`urbanBias`/`highwayBias` in AI spec **unused** (P1-TH-03).  
+Artifact: `tire-health-spec-source-map-2026-07.csv`.
+
+---
+
+## 6. Formeln, Faktoren und Einheiten
+
+**V2 formula:** `effectiveWear = base × axle × usage × behavior × temperature × pressure × load × season × k × regen × interaction`
+
+| Factor | Range | Unit issue |
+|--------|-------|------------|
+| Pressure | 1.0–1.18 | Assumes **bar**; DIMO stores **kPa** |
+| Usage/Behavior | From DrivingImpact | Trip km under-reported |
+| k-Factor | EMA calibration | No version tag |
+
+Artifact: `tire-health-formula-factor-map-2026-07.csv`.
+
+---
+
+## 7. Ausgangsprofiltiefe und Evidence Hierarchy
+
+| Level | Source | Production today |
+|-------|--------|------------------|
+| 1 | Manual/workshop measurement | 4/6 vehicles (5 measurements total) |
+| 2 | Calibration projection | VEHICLE_004 |
+| 3 | Initial + wear model | Blocked (no `installed_odometer_km`) |
+| 4 | 8 mm default | VEHICLE_003, VEHICLE_006 |
+
+`displayMode` distinguishes MEASURED/ESTIMATED — **not always propagated to Rental Health evidence**.
+
+---
+
+## 8. Data Leakage und synthetische Ground Truth
+
+| Check | Result | Evidence |
+|-------|--------|----------|
+| Synthetic data points in DB | **0 rows** | CONFIRMED — VPS query |
+| Leakage code path | **CONFIRMED** | `tire-health.service.ts:428-429` |
+| Distinguishable in DB | **No** | No `source` column on `TireWearDataPoint` |
+
+**Verdict:** Latent P0 — will activate when `installed_odometer_km` populated.
+
+---
+
+## 9. Idempotenz und Doppelzählung
+
+| Path | Idempotent? | Evidence |
+|------|-------------|----------|
+| Trip → `updateTireUsageFromTrip` | **No** | Prisma `increment`; no trip ledger |
+| Hourly recalc | **Partial** | BullMQ hour-bucket `jobId` |
+| Snapshots/events | **No** | 2 duplicate snapshot groups; 3 event groups |
+| Wear data points | N/A | 0 rows written |
+
+---
+
+## 10. VPS Fleet Coverage
+
+| Class | Count | Vehicles |
+|-------|-------|----------|
+| VALIDATION_READY | **0** | — |
+| ESTIMATION_ONLY | 1 | VEHICLE_004 |
+| SETUP_INCOMPLETE | 2 | VEHICLE_003, 006 |
+| DATA_INCONSISTENT | 3 | VEHICLE_001, 002, 005 |
+
+Trip km 2 882 vs setup km 282 on all 6. Artifact: `tire-health-fleet-coverage-2026-07.csv`.
+
+---
+
+## 11. DIMO Capability Matrix
+
+| Signal | Documented | Fleet listed | Usable series |
+|--------|------------|--------------|---------------|
+| 4× tire pressure (kPa) | ✅ | **1/6** (V002) | 1/6 (~1.3% cov.) |
+| TPMS warning | ✅ | **0/6** | 0/6 |
+| Wheel speed | ✅ (FL/FR only) | 0/6 | 0/6 |
+| Exterior temp | ✅ | 6/6 | 2/6 USABLE |
+| Yaw rate | ✅ | 0/6 | 0/6 |
+
+Artifact: `tire-health-dimo-signal-capability-2026-07.csv`.
+
+---
+
+## 12. DIMO Historical Timeseries Coverage
+
+- **339 queries** across 6 vehicles × 14 signals
+- Pressure historical: V002 only (~371 samples/60d, median cadence ~96 min)
+- `isIgnitionOn`/`obdBarometricPressure`: high `dataSummary` count but **no retrievable buckets**
+
+Artifact: `tire-health-dimo-timeseries-coverage-2026-07.csv`.
+
+---
+
+## 13. Pressure und TPMS
+
+| Path | Unit | Fleet coverage |
+|------|------|----------------|
+| DIMO → `vehicle_latest_states` | kPa stored, catalog says bar | 1/6 |
+| HM → `hm_signal_group_states` | bar (normalized) | Not wired to wear model |
+| Wear model | bar assumption | Reads DIMO columns only |
+| Rental Health | Partial | **No HM injection** (P0-TH-21) |
+
+VPS VEHICLE_002: FL 294, FR 301, RL 274, RR 289 (kPa-scale). TPMS warning signal not ingested from DIMO.
+
+---
+
+## 14. Historisches Backtesting
+
+| Metric | Value |
+|--------|-------|
+| GT measurements | 5 |
+| Reproducible backtests | 1 (VEHICLE_004 M2) |
+| n (wheels) | 4 |
+| MAE | 0.213 mm |
+| RMSE | 0.214 mm |
+| Bias | −0.213 mm (over-wear) |
+| Verdict | **NOT_ENOUGH_DATA** |
+
+Artifact: `tire-health-backtest-summary-2026-07.csv`.
+
+---
+
+## 15. Confidence Calibration
+
+| Check | Result |
+|-------|--------|
+| High more accurate than Low? | **NOT_EVALUABLE** (n=4, Medium bucket only) |
+| High without baseline? | **Yes** — UI shows High with null odometer |
+| Pressure overweighted? | No evidence |
+| Measurement age gates | **Work** — M2 correctly Medium at 81 d |
+
+---
+
+## 16. Rental Health und Rental Blocking
+
+- **Blocks only** `tires.state === 'critical'`
+- **Regex** for pressure severity (P1-TH-22)
+- **`evidence_type=measured`** even when ESTIMATED (P1-TH-23)
+- **`source: hm_oem`** when DIMO pressure present (mislabel)
+- **Target policy deviation:** estimated CRITICAL blocks without review path
+
+---
+
+## 17. Frontend/API-Verdrahtung
+
+| API | HM context | Canonical |
+|-----|------------|-----------|
+| `/tires/summary` | ✅ | ✅ |
+| `/rental-health` | ❌ | Partial |
+| HealthErrorsView | ✅ | ⚠️ legacy fallback |
+| Vehicle insights | Partial | ⚠️ local thresholds |
+
+Artifact: `tire-health-consumer-wiring-2026-07.csv`.
+
+---
+
+## 18. Alerts und Notifications
+
+- **15 internal alert types** in `detectAlerts`; no `TPMS_WARNING` type
+- Notifications via **rental module state**, not raw alerts
+- `PRESSURE_IMPACT` may not notify if rental state not escalated
+
+---
+
+## 19. Performance und Observability
+
+| Metric | Value |
+|--------|-------|
+| Recalc frequency | Hourly |
+| Snapshots 60d | 1 320 (~1104 kB) |
+| Wear data points | 0 |
+| `tire_*` Prometheus metrics | **All MISSING** |
+| `dimo.tire.recalculation` monitored | **No** |
+
+---
+
+## 20. Test Coverage
+
+- **165 tests passed** (136 backend + 29 frontend)
+- **22/30 audit scenarios MISSING**
+- No `TireHealthService` or `evaluateTires` unit tests
+
+Artifact: `tire-health-test-coverage-2026-07.csv`.
+
+---
+
+## 21. Findings P0–P3
+
+Full register: `tire-health-integrity-findings-2026-07.json` + Phase appendices.
+
+| Severity | Count | Production blockers |
+|----------|-------|-------------------|
+| **P0** | 5 | 4 confirmed blockers |
+| **P1** | 17 | 6 high-priority pre-GA |
+| **P2** | 9 | Quality/observability |
+| **P3** | 0 | — |
+
+### P0 Register (CONFIRMED unless noted)
+
+| ID | Title | Blocker |
+|----|-------|---------|
+| P0-TH-01 | 8 mm `ensureTiresForSetup` fallback | Yes |
+| P0-TH-02 | No DB unique ACTIVE setup | Yes |
+| P0-TH-03 | `installed_odometer_km` null → 0 data points | Yes |
+| P0-TH-04 | Predicted as actualTreadMm | **Yes** |
+| P0-TH-21 | Rental Health ohne HM-Kontext | **Yes** |
+
+---
+
+## 22. DIMO-Erweiterungsempfehlungen
+
+> Trennung: **DIMO dokumentiert** ≠ **Fahrzeug meldet in `availableSignals`** ≠ **historische Zeitreihe** ≠ **SynqDrive speichert** ≠ **SynqDrive nutzt** ≠ **fachlich brauchbar**.
+
+| Signal | Dokumentiert | Fzg. mit Signal | Fzg. brauchbare Serie | Median Coverage | Cadence | SynqDrive speichert | SynqDrive nutzt | Tire-Health-Nutzen | Aufwand | Risiko | Priorität |
+|--------|--------------|-----------------|----------------------|-----------------|---------|---------------------|-----------------|-------------------|---------|--------|-----------|
+| 4× `chassisAxleRow*Wheel*TirePressure` (kPa) | ✅ | **1/6** | **1/6** (~1.3%) | 1.3% (V002) | ~96 min | ✅ raw kPa | ⚠️ als bar | Druckfaktor — **Einheit falsch** | Niedrig | Hoch | **P0** (Unit-Fix zuerst) |
+| `exteriorAirTemperature` | ✅ | 6/6 | **2/6** USABLE | 5.8–29.8% | 15m agg | ❌ | indirekt | Temperatur-/Saisonkontext | Mittel | Niedrig | **P1** |
+| `chassisTireSystemIsWarningOn` | ✅ | **0/6** | **0/6** | — | — | ❌ | ❌ | TPMS-Warnlampe | Mittel | Mittel | **P2** (wenn Flotte meldet) |
+| `powertrainTransmissionTravelledDistance` | ✅ | 6/6 | **6/6** | 1.6–28.6% | 15m | ✅ | ✅ | Odometer-Anker | — | Niedrig | **MVP** (beibehalten) |
+| `speed` | ✅ | 6/6 | **6/6** | 0.8–17.3% | 1m | ✅ | via DrivingImpact | Fahrverhalten | — | Niedrig | **LATER** |
+| `obdBarometricPressure` | ✅ | 5/6 ICE | **0/6** Serie | latest-only | — | ❌ | ❌ | Höhen-/Wetterproxy | Mittel | Niedrig | **P2** |
+| `isIgnitionOn` | ✅ | 6/6 | **0/6** Serie | latest-only | — | teilweise | ❌ | Fahrt-/Stand-Erkennung | Mittel | Niedrig | **P2** |
+| Wheel speed FL/FR | ✅ | **0/6** | **0/6** | — | — | ❌ | ❌ | Kein Profiltiefenersatz | — | Hoch (falscher GT) | **nicht verwenden** |
+| Tire temp / tread / slip | ❌ NOT_DOCUMENTED | — | — | — | — | — | — | — | — | — | **nicht verwenden** |
+
+---
+
+## 23. Production-Readiness-Verdict (Kategorien)
+
+| Category | Verdict |
+|----------|---------|
+| **A. Correctness** | NOT_READY — unit mismatch; leakage code |
+| **B. Data Quality** | NOT_READY — odometer null; trip km gap |
+| **C. Model Validity** | NOT_ENOUGH_DATA — n=4 backtest |
+| **D. Safety** | CONDITIONALLY_READY — blocking works but evidence gaps |
+| **E. Reliability** | CONDITIONALLY_READY — recalc runs; no idempotency |
+| **F. Observability** | NOT_READY — zero tire metrics |
+| **G. User Experience** | CONDITIONALLY_READY — display modes exist; inconsistencies |
+| **H. DIMO Signal Readiness** | NOT_READY — 1/6 pressure; no TPMS |
+| **I. Test Readiness** | NOT_READY — 22/30 scenarios missing |
+
+### **Gesamturteil: `NOT_READY`**
+
+---
+
+## 24. Umsetzungsplan (empfohlene Cursor-Prompts)
+
+| Phase | Prompts | Ziel | Abhängigkeit | Abnahme | Migration | VPS | DIMO |
+|-------|---------|------|--------------|---------|-----------|-----|------|
+| **A** | 1–2 | Data-integrity fixes: no synthetic GT; trip ledger; odometer on install | — | 0 synthetic points; trip ledger tests | Ja | Ja | Nein |
+| **B** | 3–4 | kPa→bar normalization + catalog alignment | A | V002 pressure factor plausible | Nein | Ja | Nein |
+| **C** | 5–6 | Rental Health HM injection + structured evidence model | B | Gate matches `/tires/summary` | Nein | Ja | Nein |
+| **D** | 7–8 | `modelVersion` persistence + snapshot dedupe | A | Replayable backtest | Ja | Ja | Nein |
+| **E** | 9–10 | Prometheus tire metrics + queue monitoring | — | Dashboards show recalc lag | Nein | Ja | Nein |
+| **F** | 11–12 | `TireHealthService` + `evaluateTires` test suite | C | 30/30 scenarios covered | Nein | Nein | Nein |
+| **G** | 13–14 | DIMO `exteriorAirTemperature` persist; TPMS ingest when available | B | 2+ vehicles season context | Nein | Ja | Ja read-only |
+| **H** | 15 | Re-run backtest after A–D | A,B,D | VALIDATED or PARTIALLY_VALIDATED | Nein | Ja | Nein |
+
+**Empfohlen: 8 Phasen, ~15 Cursor-Prompts**, jeweils ein Bounded-Fix mit Tests.
+
+---
+
+## 25. Audit-Grenzen
+
+- 6-Fahrzeug-Flotte; keine statistische Generalisierung
+- ClickHouse offline bei Phase 3
+- DIMO MCP nicht verfügbar
+- Driving-Impact nicht historisiert für Backtest
+- Keine GPS-/Rohtelemetrie in Artefakten
+- EN-UI-Vollständigkeit nicht runtime-geprüft
+- Phase-Detail in Appendices unten — bei Widerspruch gilt VPS-Datenbeleg + JSON-Findings
+
+---
+
+## 26. Bestätigung Read-only-Modus
+
+- ✅ **Keine Produktionsdaten verändert** (Phasen 1–7)
+- ✅ **Keine DIMO Trigger/Subscriptions angelegt**
+- ✅ **Keine Infrastruktur verändert**
+- ✅ **Datenschutz-Scan:** keine VIN, Kennzeichen, GPS, Secrets, Token-IDs in Audit-Artefakten
+- ✅ **Alle 15 Pflichtdateien vorhanden** (siehe Document Map)
+
+### Datei-Vollständigkeit (Teil 1)
+
+| Datei | Status |
+|-------|--------|
+| `docs/audits/tire-health-production-readiness-2026-07.md` | ✅ |
+| `docs/audits/data/tire-health-code-map-2026-07.csv` | ✅ |
+| `docs/audits/data/tire-health-formula-factor-map-2026-07.csv` | ✅ |
+| `docs/audits/data/tire-health-spec-source-map-2026-07.csv` | ✅ |
+| `docs/audits/data/tire-health-fleet-coverage-2026-07.csv` | ✅ |
+| `docs/audits/data/tire-health-ground-truth-classification-2026-07.csv` | ✅ |
+| `docs/audits/data/tire-health-integrity-findings-2026-07.json` | ✅ |
+| `docs/audits/data/tire-health-dimo-signal-capability-2026-07.csv` | ✅ |
+| `docs/audits/data/tire-health-dimo-timeseries-coverage-2026-07.csv` | ✅ |
+| `docs/audits/data/tire-health-backtest-summary-2026-07.csv` | ✅ |
+| `docs/audits/data/tire-health-consumer-wiring-2026-07.csv` | ✅ |
+| `docs/audits/data/tire-health-test-coverage-2026-07.csv` | ✅ |
+| `scripts/audits/audit-tire-health-production-readiness.ts` | ✅ |
+| `scripts/audits/audit-tire-health-dimo-signals.ts` | ✅ |
+| `scripts/audits/audit-tire-health-backtest.ts` | ✅ |
+
+**Nicht erzeugt:** Keine — alle Pflichtartefakte vorhanden. `tire-health-phase3-readonly.sql` existiert zusätzlich als Hilfsskript.
+
+---
+
+## Executive summary (Phase 1 — historical)
 
 ### Phase 1 — Architecture & Code Map ✅ (this document)
 
@@ -1441,9 +1825,17 @@ cd frontend && npm test -- --run tire-health-detail-ui operationalIssueTireTaxon
 
 ---
 
-## Phase 7 placeholder
+## Phase 7 — Final synthesis ✅
 
-> Final production-readiness verdict — _pending Prompt 7_.
+**Completed 2026-07-16.** Sections **1–26** above (`# Final Production-Readiness Synthesis`) are the authoritative self-contained verdict. This appendix records phase completion only.
+
+| Deliverable | Status |
+|-------------|--------|
+| File completeness (15/15) | ✅ All required artifacts present |
+| Findings register JSON | ✅ 31 findings with evidence levels + blockers |
+| Privacy / secret scan | ✅ No VIN, plates, GPS, secrets, PII in committed artifacts |
+| Production-Readiness verdict | **`NOT_READY`** |
+| Read-only confirmation | ✅ No prod writes, no DIMO triggers, no infra changes |
 
 ---
 
@@ -1486,12 +1878,15 @@ cd backend && TIRE_HEALTH_AUDIT_ALLOW_PROD=1 \
 | 2026-07-16 | 4 | DIMO signal audit (339 queries, 6 vehicles), capability + timeseries CSVs, unit/mapping findings |
 | 2026-07-16 | 5 | Historical backtest (5 GT measurements, n=4 reproducible), MAE 0.21 mm, NOT_ENOUGH_DATA verdict |
 | 2026-07-16 | 6 | Consumer wiring audit, rental blocking gaps, test matrix, 165 tests passed |
+| 2026-07-16 | 7 | Final synthesis: sections 1–26, complete findings JSON (31), DIMO plan, NOT_READY verdict, privacy scan |
 
 ---
 
 ## Confirmation
 
-- ✅ No production data was modified during Phases 1–6.
-- ✅ No secrets, VINs, license plates, token IDs, or GPS coordinates are stored in committed audit artifacts.
-- ✅ VPS PostgreSQL access was **read-only**; existing unit tests executed locally without production mutations.
-- ✅ Phase 6 complete; Phase 7 not started per audit plan.
+- ✅ No production data was modified during Phases 1–7.
+- ✅ No DIMO triggers or subscriptions were created.
+- ✅ No infrastructure was changed (PM2, nginx, Redis, ClickHouse, workers).
+- ✅ No secrets, VINs, license plates, token IDs, GPS coordinates, customer PII, or raw telemetry are stored in committed audit artifacts.
+- ✅ VPS PostgreSQL and DIMO Telemetry API access was **read-only** throughout.
+- ✅ **Phase 7 complete** — Production-Readiness verdict: **`NOT_READY`**.
