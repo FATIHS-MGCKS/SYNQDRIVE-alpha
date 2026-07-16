@@ -39,14 +39,19 @@ function makeJobRepository() {
   };
 }
 
-function makeDimoPreflight() {
+function makeCapabilityLifecycle() {
   return {
-    runPreflightIfStale: jest.fn().mockResolvedValue({
+    refreshAfterTripInit: jest.fn().mockResolvedValue({
       ran: false,
+      trigger: 'POST_TRIP_INIT',
       skippedReason: 'preflight_not_stale',
       probesWritten: 0,
       capabilityVersion: 'cap-preflight-v1',
       checkedAt: new Date().toISOString(),
+      transitions: [],
+      detectorCapabilityChanged: false,
+      detectorCapabilityFingerprint: null,
+      previousDetectorCapabilityFingerprint: null,
     }),
   };
 }
@@ -57,7 +62,7 @@ describe('DrivingAnalysisInitService', () => {
   let stageOrchestrator: ReturnType<typeof makeStageOrchestrator>;
   let jobDispatcher: ReturnType<typeof makeJobDispatcher>;
   let jobRepository: ReturnType<typeof makeJobRepository>;
-  let dimoPreflight: ReturnType<typeof makeDimoPreflight>;
+  let capabilityLifecycle: ReturnType<typeof makeCapabilityLifecycle>;
   let service: DrivingAnalysisInitService;
 
   const baseInput = {
@@ -73,14 +78,15 @@ describe('DrivingAnalysisInitService', () => {
     stageOrchestrator = makeStageOrchestrator();
     jobDispatcher = makeJobDispatcher();
     jobRepository = makeJobRepository();
-    dimoPreflight = makeDimoPreflight();
+    capabilityLifecycle = makeCapabilityLifecycle();
     service = new DrivingAnalysisInitService(
       prisma,
       analysisRunService as any,
       stageOrchestrator as any,
       jobDispatcher as any,
       jobRepository as any,
-      dimoPreflight as any,
+      { runPreflightIfStale: jest.fn() } as any,
+      capabilityLifecycle as any,
     );
 
     prisma.vehicleTrip.findFirst.mockResolvedValue({
@@ -173,7 +179,7 @@ describe('DrivingAnalysisInitService', () => {
       }),
     );
 
-    expect(dimoPreflight.runPreflightIfStale).toHaveBeenCalledWith('org-1', 'vehicle-1');
+    expect(capabilityLifecycle.refreshAfterTripInit).toHaveBeenCalledWith('org-1', 'vehicle-1');
   });
 
   it('deduplicates duplicate finalize events — second init does not enqueue again', async () => {

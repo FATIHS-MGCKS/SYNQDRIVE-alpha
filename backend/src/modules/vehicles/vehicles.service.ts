@@ -36,6 +36,7 @@ import {
   type FleetVehicleOperationalStateDto,
 } from './operational/fleet-operational-state.util';
 import { FleetMapCacheService } from './fleet-map-cache.service';
+import { VehicleDrivingCapabilityLifecycleService } from '../vehicle-intelligence/driving-capability/vehicle-driving-capability-lifecycle.service';
 import type { FleetConnectivityQueryDto } from './dto/fleet-connectivity-query.dto';
 import {
   buildFleetConnectivitySummary,
@@ -288,6 +289,9 @@ export class VehiclesService {
     private readonly fleetMapCache: FleetMapCacheService,
     @Optional()
     private readonly billingQuantity?: BillingQuantityVehicleIntegration,
+    @Optional()
+    @Inject(forwardRef(() => VehicleDrivingCapabilityLifecycleService))
+    private readonly capabilityLifecycle?: VehicleDrivingCapabilityLifecycleService,
   ) {}
 
   /** Invalidate cached fleet-map payload after booking/handover/status mutations. */
@@ -2092,6 +2096,8 @@ export class VehiclesService {
       grantedByUserId: createdByUserId ?? null,
       metadataJson: { registeredVin: vehicle.vin, dimoVehicleId },
     });
+
+    this.capabilityLifecycle?.refreshOnNewIntegration(orgId, vehicle.id);
 
     if (manualSpecs?.battery) {
       const b = manualSpecs.battery;
