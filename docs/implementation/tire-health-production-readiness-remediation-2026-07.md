@@ -746,6 +746,48 @@ cd backend && npm test -- tire-trip-usage
 
 ---
 
+## Prompt 12 — Historical Tire Trip Usage Backfill Dry Run (2026-07-16)
+
+### Ziel
+
+Read-only Dry-Run für den historischen Aufbau des `TireTripUsageLedger` aus vorhandenen Trips — **keine Produktionsdaten schreiben**.
+
+### Geänderte / neue Dateien
+
+| Datei | Änderung |
+|-------|----------|
+| `tire-trip-usage-backfill-audit.ts` | Attribution, Distanz-Verifikation, Setup-Rollups, Fixtures, Markdown |
+| `tire-trip-usage-backfill-audit.safety.ts` | Prod/Remote-Guards |
+| `tire-trip-usage-backfill-audit.spec.ts` | 13 Szenarien (single, conflict, odometer, stored, …) |
+| `audit-tire-trip-usage-backfill.ts` | Ops-CLI (60 Tage default, Filter, Batch) |
+| `scripts/ops/audit-tire-trip-usage-backfill.sh` | Repo-Root-Wrapper |
+| `tire-trip-usage-backfill-dry-run-2026-07.md` | Anonymisierter Fixture-Bericht |
+
+### CLI
+
+```bash
+cd backend && npx ts-node -r tsconfig-paths/register scripts/ops/audit-tire-trip-usage-backfill.ts --fixtures-only
+
+# DB (read-only, guarded):
+npx ts-node -r tsconfig-paths/register scripts/ops/audit-tire-trip-usage-backfill.ts \
+  --organization-id=<uuid> --days=60 --batch-size=200 --full-setup-history
+```
+
+### Tests
+
+```bash
+cd backend && npm test -- tire-trip-usage-backfill
+```
+
+### Bestätigung Prompt 12
+
+- ✅ Vollständige Wirkung vor Apply sichtbar (Kandidaten, Konflikte, km-Abweichungen)
+- ✅ Konflikte werden nicht automatisch geraten
+- ✅ Kilometerabweichungen nachvollziehbar (authoritative vs ledger vs totalKmOnSet)
+- ✅ Script strikt read-only
+
+---
+
 ## Prompt 2 — P0-TH-04 Ground-Truth-Leak (2026-07-16)
 
 ### Root Cause
@@ -888,7 +930,8 @@ Blocker bleiben bis Abnahme Prompt 24:
 | 2026-07-16 | 3 | Evidence/provenance schema + migration (additive) | `5b0571f` |
 | 2026-07-16 | 4 | Evidence provenance across all tire write paths | `b28f91a` |
 | 2026-07-16 | 10 | Canonical trip finalization → tire usage integration | `850e230` |
-| 2026-07-16 | 11 | Replay & concurrency safety for tire trip usage ledger | *(dieser Commit)* |
+| 2026-07-16 | 11 | Replay & concurrency safety for tire trip usage ledger | `df9f2ee` |
+| 2026-07-16 | 12 | Historical tire trip usage backfill dry-run audit | *(dieser Commit)* |
 
 ---
 
