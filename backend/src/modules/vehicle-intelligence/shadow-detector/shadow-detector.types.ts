@@ -51,6 +51,10 @@ export type ShadowDetectorHfSample = {
   torquePct: number | null;
   exteriorTempC: number | null;
   tractionBatteryPowerKw: number | null;
+  /** Traction battery SoC (%) — EV context only. */
+  socPct: number | null;
+  /** Traction battery temperature (°C) when available — never substitutes exterior temp. */
+  tractionBatteryTemperatureC: number | null;
   /** Optional post-trip altitude context (m) — never proves abuse alone. */
   altitudeM: number | null;
   /** Optional transmission gear — kickdown-like context only. */
@@ -99,6 +103,9 @@ export type ShadowDetectorExecutionContext = {
   rpmSampleCount: number;
   speedSampleCount: number;
   engineRuntimeSampleCount: number;
+  tractionBatteryPowerSampleCount: number;
+  socSampleCount: number;
+  tractionBatteryTemperatureSampleCount: number;
   providerGaps: readonly string[];
 };
 

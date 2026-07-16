@@ -22,6 +22,8 @@ function sample(
     torquePct: 72,
     exteriorTempC: 18,
     tractionBatteryPowerKw: null,
+    socPct: null,
+    tractionBatteryTemperatureC: null,
     altitudeM: 400,
     gear: null,
     ignitionOn: null,
