@@ -35,6 +35,30 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p35-shadow-detector-framework-2026-07-16',
+    version: '4.9.536',
+    title: 'Driving Intelligence V2 P35 — shared HF/signal shadow detector framework',
+    summary: [
+      'Neues `shadow-detector` Framework (`shadow-detector-framework-v1`) für HF-/Signal-Detektoren im Shadow Mode.',
+      'Detector-Output: detectorId, modelVersion, capabilityStatus, assessability, candidateEvents, context, confidence, coverage, rejectionReasons, comparisonWithNativeEvents.',
+      'Keine Candidate Events in produktive DrivingEvents — nur append-only `DrivingEvidence` (ESTIMATED_PROXY, publicationBlocked).',
+      'Keine Misuse Cases, keine Readiness-/Customer-Wirkung; Ergebnisse an Analysis Run gebunden.',
+      'Deterministisch/idempotent via `shadow-detector:{tripId}:{detectorId}:{modelVersion}`.',
+      'Keine Ausführung bei UNSUPPORTED oder PRODUCTION (native path).',
+      'Flags: `DRIVING_V2_ENGINE_DETECTOR_SHADOW_ENABLED`, `DRIVING_V2_HF_DETECTOR_SHADOW_ENABLED`.',
+      'Prometheus-Metriken für Runs, Skips, Candidates; Tests für Shadow-Isolation.',
+    ],
+    reason:
+      'Prompt 35/76: Gemeinsames Shadow-Framework für neue HF-/Signal-Detektoren ohne produktive Seiteneffekte.',
+    previousBehavior:
+      'P32 Capability-Resolver ohne Shadow-Execution-Framework; HF-Detektoren schrieben legacy in TripBehaviorEvent.',
+    details:
+      '`ShadowDetectorOrchestratorService` wired in `DrivingAnalysisInitService`. Trip-FSM unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T14:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p34-capability-lifecycle-2026-07-16',
     version: '4.9.535',
     title: 'Driving Intelligence V2 P34 — driving capability lifecycle and refresh',

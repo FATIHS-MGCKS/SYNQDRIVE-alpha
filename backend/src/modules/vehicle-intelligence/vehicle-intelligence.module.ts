@@ -63,6 +63,7 @@ import { VehicleDrivingCapabilityRepository } from './driving-capability/vehicle
 import { VehicleDrivingCapabilityResolverService } from './driving-capability/vehicle-driving-capability-resolver.service';
 import { DrivingDetectorCapabilityResolverService } from './driving-detector-capability/driving-detector-capability.service';
 import { VehicleDrivingCapabilityLifecycleService } from './driving-capability/vehicle-driving-capability-lifecycle.service';
+import { ShadowDetectorOrchestratorService } from './shadow-detector/shadow-detector.orchestrator.service';
 import { DrivingIntelligenceV2Config } from './driving-intelligence-v2/driving-intelligence-v2.config';
 import { DimoTripSegmentValidationService } from './dimo-trip-segment-validation/dimo-trip-segment-validation.service';
 import { DimoTripSegmentValidateJobHandler } from './dimo-trip-segment-validation/dimo-trip-segment-validation.handler';
@@ -195,6 +196,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     VehicleDrivingCapabilityResolverService,
     DrivingDetectorCapabilityResolverService,
     VehicleDrivingCapabilityLifecycleService,
+    ShadowDetectorOrchestratorService,
     DrivingIntelligenceV2Config,
     DimoTripSegmentValidationService,
     DimoTripSegmentValidateJobHandler,
@@ -280,6 +282,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     VehicleDrivingCapabilityResolverService,
     DrivingDetectorCapabilityResolverService,
     VehicleDrivingCapabilityLifecycleService,
+    ShadowDetectorOrchestratorService,
     DrivingIntelligenceV2Config,
     DimoTripSegmentValidationService,
     TripAssessabilityRepository,

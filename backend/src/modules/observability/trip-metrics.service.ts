@@ -92,6 +92,10 @@ export class TripMetricsService implements OnModuleInit {
   readonly drivingCapabilityRefresh: Counter<string>;
   readonly drivingCapabilityTransition: Counter<string>;
   readonly drivingCapabilityDetectorChanged: Counter<string>;
+  readonly shadowDetectorRun: Counter<string>;
+  readonly shadowDetectorSkipped: Counter<string>;
+  readonly shadowDetectorCandidates: Counter<string>;
+  readonly shadowDetectorFrameworkSkipped: Counter<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
@@ -663,6 +667,34 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_driving_capability_detector_changed_total',
       help: 'Detector capability fingerprint changes after refresh',
       labelNames: ['trigger'],
+      registers: [this.registry],
+    });
+
+    this.shadowDetectorRun = new Counter({
+      name: 'synqdrive_shadow_detector_run_total',
+      help: 'Shadow detector executions completed',
+      labelNames: ['detector_id', 'result'],
+      registers: [this.registry],
+    });
+
+    this.shadowDetectorSkipped = new Counter({
+      name: 'synqdrive_shadow_detector_skipped_total',
+      help: 'Shadow detector executions skipped',
+      labelNames: ['detector_id', 'reason'],
+      registers: [this.registry],
+    });
+
+    this.shadowDetectorCandidates = new Counter({
+      name: 'synqdrive_shadow_detector_candidates_total',
+      help: 'Shadow candidate events produced (not persisted as DrivingEvent)',
+      labelNames: ['detector_id'],
+      registers: [this.registry],
+    });
+
+    this.shadowDetectorFrameworkSkipped = new Counter({
+      name: 'synqdrive_shadow_detector_framework_skipped_total',
+      help: 'Shadow detector framework skipped entirely',
+      labelNames: ['reason'],
       registers: [this.registry],
     });
   }

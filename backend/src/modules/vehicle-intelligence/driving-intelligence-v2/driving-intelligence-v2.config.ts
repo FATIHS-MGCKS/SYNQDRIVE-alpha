@@ -22,4 +22,14 @@ export class DrivingIntelligenceV2Config {
     if (!this.isMasterEnabled()) return false;
     return this.config.get<boolean>('drivingIntelligenceV2.dimoSegmentValidationEnabled', false);
   }
+
+  isEngineDetectorShadowEnabled(): boolean {
+    if (!this.isMasterEnabled()) return false;
+    return this.config.get<boolean>('drivingIntelligenceV2.engineDetectorShadowEnabled', true);
+  }
+
+  isHfDetectorShadowEnabled(): boolean {
+    if (!this.isMasterEnabled()) return false;
+    return this.config.get<boolean>('drivingIntelligenceV2.hfDetectorShadowEnabled', true);
+  }
 }
