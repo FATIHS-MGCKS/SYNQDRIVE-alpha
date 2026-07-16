@@ -177,7 +177,16 @@ export async function runShadowDetectorFramework(
       continue;
     }
 
-    const raw = await impl.detect(input.trip);
+    const raw = await impl.detect({
+      ...input.trip,
+      activeDetectorCapability: {
+        status: capability.status,
+        missingRequirements: capability.missingRequirements,
+        effectiveCadenceMs: capability.effectiveCadenceMs,
+        p95CadenceMs: capability.p95CadenceMs,
+        coverage: capability.coverage,
+      },
+    });
     results.push(
       finalizeResult(
         {

@@ -198,6 +198,8 @@ export interface HighFrequencyReading {
   engineTorquePct?: number | null;
   /** °C from exteriorAirTemperature — never a coolant substitute */
   exteriorAirTempC?: number | null;
+  /** Meters from currentLocationAltitude — optional post-trip context */
+  altitudeM?: number | null;
   /** kW from powertrainTractionBatteryCurrentPower (W → kW) */
   tractionBatteryPowerKw: number | null;
 }
@@ -829,6 +831,10 @@ export class DimoSegmentsService {
             exteriorAirTempC:
               typeof s.exteriorAirTemperature === 'number'
                 ? s.exteriorAirTemperature
+                : null,
+            altitudeM:
+              typeof s.currentLocationAltitude === 'number'
+                ? s.currentLocationAltitude
                 : null,
             tractionBatteryPowerKw: w != null ? w / 1000 : null,
           };

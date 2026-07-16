@@ -25,6 +25,7 @@ function sample(
     torquePct: null,
     exteriorTempC: 5,
     tractionBatteryPowerKw: null,
+    altitudeM: null,
     ...over,
   };
 }
