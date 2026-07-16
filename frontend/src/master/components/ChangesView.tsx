@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'fleet-unknown-status-ux-v49500-2026-07-15',
+    version: '4.9.500',
+    title: 'V4.9.500 — UNKNOWN / unreliable operational status UX (Prompt 36/43)',
+    summary: [
+      'Neu: `vehicle-operational-unknown-display.ts` — einheitliche Copy („Status nicht verfügbar“), Erklärung, Admin-Diagnosefelder (reason, dataQualityState, derivedAt, diagnosticReasons).',
+      'Shared UI: `VehicleOperationalStatusCallout` + Inline-Hint — Refresh für Nutzer, eingeklappte technische Details nur für ORG_ADMIN / `data-analyse.read`.',
+      'Fleet List, Map HUD, Vehicle Detail, Dashboard Drawer, Operator App: neutrales Badge, keine grüne Available-/Ready-Darstellung, keine irreführenden Booking-Supplements bei UNKNOWN.',
+      'Map-Marker bleiben sichtbar (`mapTone: unknown`); `deriveFleetVisualState` fail-closed ohne Ready-Readiness.',
+      '12 neue Tests (DEGRADED, UNAVAILABLE, Permissions, Booking-Suppress).',
+    ],
+    reason:
+      'Prompt 36/43: Nicht belastbare operative Statusdaten brauchen klare, neutrale UX statt Available-/Reserved-Annahmen.',
+    previousBehavior:
+      'UNKNOWN als „Unbekannt“ ohne einheitliche Erklärung; Booking-Supplements konnten trotz UNKNOWN erscheinen; Operator zeigte Roh-`vehicle.status`.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T00:05:00.000Z',
+  },
+  {
     id: 'fleet-tabs-status-filter-v49499-2026-07-15',
     version: '4.9.499',
     title: 'V4.9.499 — Canonical Fleet tabs and status filters (Prompt 35/43)',

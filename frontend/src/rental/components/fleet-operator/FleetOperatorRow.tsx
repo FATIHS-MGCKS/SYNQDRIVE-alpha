@@ -15,6 +15,7 @@ import type {
 } from '../../lib/fleet-operator-panel';
 import { fleetCommandReasonChipClass, fleetCommandRowSurfaceClass } from './fleetOperatorUi';
 import { selectIsCurrentlyAvailable } from '../../lib/vehicle-operational-state';
+import { VehicleOperationalStatusInlineHint } from '../fleet/VehicleOperationalStatusCallout';
 
 function fleetVehicleTitle(v: VehicleData): string {
   const model = typeof v.model === 'string' ? v.model : '';
@@ -148,6 +149,8 @@ export function FleetOperatorRow({
               {bookingSupplement.short}
             </span>
           </div>
+        ) : statusBadge.showUnreliableCallout ? (
+          <VehicleOperationalStatusInlineHint statusBadge={statusBadge} className="mt-0.5" />
         ) : statusBadge.dataQualityHint ? (
           <p
             className="mt-0.5 truncate text-[10px] text-muted-foreground"

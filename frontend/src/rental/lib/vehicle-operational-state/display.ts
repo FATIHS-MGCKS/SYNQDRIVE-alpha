@@ -16,7 +16,7 @@ const LABELS_DE: Record<VehicleOperationalStatus, string> = {
   [VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED]: 'Aktiv vermietet',
   [VEHICLE_OPERATIONAL_STATUS.MAINTENANCE]: 'Wartung',
   [VEHICLE_OPERATIONAL_STATUS.BLOCKED]: 'Blockiert',
-  [VEHICLE_OPERATIONAL_STATUS.UNKNOWN]: 'Unbekannt',
+  [VEHICLE_OPERATIONAL_STATUS.UNKNOWN]: 'Status nicht verfügbar',
 };
 
 const LABELS_EN: Record<VehicleOperationalStatus, string> = {
@@ -25,7 +25,7 @@ const LABELS_EN: Record<VehicleOperationalStatus, string> = {
   [VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED]: 'Active Rented',
   [VEHICLE_OPERATIONAL_STATUS.MAINTENANCE]: 'Maintenance',
   [VEHICLE_OPERATIONAL_STATUS.BLOCKED]: 'Blocked',
-  [VEHICLE_OPERATIONAL_STATUS.UNKNOWN]: 'Unknown',
+  [VEHICLE_OPERATIONAL_STATUS.UNKNOWN]: 'Status unavailable',
 };
 
 /** Central display utility — German labels by default for rental surfaces. */

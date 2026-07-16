@@ -1,7 +1,11 @@
 import type { StatusTone } from '../../components/patterns';
 import type { VehicleHealthResponse } from '../../lib/api';
 import type { VehicleData } from '../../rental/data/vehicles';
-import { VEHICLE_OPERATIONAL_STATUS } from '../../rental/lib/vehicle-operational-state';
+import {
+  selectOperationalStatus,
+  VEHICLE_OPERATIONAL_STATUS,
+} from '../../rental/lib/vehicle-operational-state';
+import { isOperationalStatusUnreliable } from '../../rental/lib/vehicle-operational-unknown-display';
 
 export type OperatorStatusKind =
   | 'ready'
@@ -45,6 +49,13 @@ export function deriveVehicleOperatorStatuses(
   openTaskCount = 0,
 ): OperatorStatusBadge[] {
   const badges: OperatorStatusBadge[] = [];
+  const operationalStatus = selectOperationalStatus(vehicle);
+  const unreliable = isOperationalStatusUnreliable(vehicle);
+
+  if (unreliable) {
+    badges.push(badge('maintenance', 'neutral', 'Status nicht verfügbar'));
+    return badges;
+  }
 
   if (health?.rental_blocked) {
     badges.push(badge('blocked', 'critical'));
@@ -54,11 +65,11 @@ export function deriveVehicleOperatorStatuses(
     badges.push(badge('cleaning', 'watch'));
   }
 
-  if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE || (vehicle.status as string) === 'Unavailable') {
+  if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) {
     badges.push(badge('maintenance', 'watch'));
-  } else if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) {
+  } else if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) {
     badges.push(badge('rented', 'info'));
-  } else if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED) {
+  } else if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED) {
     badges.push(badge('reserved', 'info'));
   }
 
@@ -84,7 +95,7 @@ export function deriveVehicleOperatorStatuses(
 
   if (
     badges.length === 0 &&
-    vehicle.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE &&
+    operationalStatus === VEHICLE_OPERATIONAL_STATUS.AVAILABLE &&
     !health?.rental_blocked &&
     vehicle.cleaningStatus === 'Clean'
   ) {

@@ -272,7 +272,7 @@ function primaryLabelFor(
     case 'maintenance':
       return de ? 'Wartung' : 'Maintenance';
     default:
-      return de ? 'Unbekannt' : 'Unknown';
+      return de ? 'Status nicht verfügbar' : 'Status unavailable';
   }
 }
 

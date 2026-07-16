@@ -13,6 +13,10 @@ import {
   type VehicleOperationalDisplayLocale,
   type VehicleOperationalStatus,
 } from './vehicle-operational-state';
+import {
+  isOperationalStatusUnreliable,
+  resolveUnreliableOperationalStatusDisplay,
+} from './vehicle-operational-unknown-display';
 
 export const DEFAULT_FLEET_DISPLAY_TIMEZONE = 'Europe/Berlin';
 
@@ -31,6 +35,9 @@ export interface OperationalStatusBadgeDisplay {
   isUnknown: boolean;
   /** Shown when status is UNKNOWN or data is not reliable. */
   dataQualityHint: string | null;
+  /** User-facing explanation for unreliable operational status. */
+  unreliableExplanation: string | null;
+  showUnreliableCallout: boolean;
 }
 
 export interface BookingSupplementDisplay {
@@ -243,15 +250,10 @@ function dataQualityHintFor(
   locale: VehicleOperationalDisplayLocale,
 ): string | null {
   const de = locale === 'de';
-  if (status === VEHICLE_OPERATIONAL_STATUS.UNKNOWN) {
+  if (status === VEHICLE_OPERATIONAL_STATUS.UNKNOWN || !reliable) {
     return de
-      ? 'Status nicht belastbar — Datenlage unvollständig'
-      : 'Status unavailable — data may be incomplete';
-  }
-  if (!reliable) {
-    return de
-      ? 'Operativer Status nicht belastbar'
-      : 'Operational status may be unreliable';
+      ? 'Der aktuelle Buchungszustand konnte nicht zuverlässig ermittelt werden.'
+      : 'The current booking state could not be determined reliably.';
   }
   return null;
 }
@@ -263,9 +265,14 @@ export function resolveOperationalStatusBadge(
   const locale = options.locale ?? 'de';
   const status = selectOperationalStatus(vehicle);
   const reliable = selectIsStatusReliable(vehicle);
-  const isUnknown = status === VEHICLE_OPERATIONAL_STATUS.UNKNOWN;
-  const label = formatVehicleOperationalStatusLabel(status, locale);
-  const tone = isUnknown ? 'neutral' : operationalToneForStatus(status);
+  const unreliable = resolveUnreliableOperationalStatusDisplay(vehicle, { locale });
+  const isUnknown = isOperationalStatusUnreliable(vehicle);
+  const label = unreliable?.badgeLabel ?? formatVehicleOperationalStatusLabel(status, locale);
+  const tone: StatusTone = isUnknown
+    ? unreliable?.tone === 'watch'
+      ? 'watch'
+      : 'neutral'
+    : operationalToneForStatus(status);
   const dataQualityHint = dataQualityHintFor(status, reliable, locale);
 
   return {
@@ -274,6 +281,8 @@ export function resolveOperationalStatusBadge(
     tone,
     isUnknown,
     dataQualityHint,
+    unreliableExplanation: unreliable?.explanation ?? null,
+    showUnreliableCallout: isUnknown,
   };
 }
 
@@ -376,6 +385,8 @@ export function resolveBookingSupplement(
   vehicle: VehicleOperationalReadModel,
   options: FleetDisplayTimeOptions = {},
 ): BookingSupplementDisplay | null {
+  if (isOperationalStatusUnreliable(vehicle)) return null;
+
   const status = selectOperationalStatus(vehicle);
   const active = selectActiveBooking(vehicle);
   const reserved = selectReservedBooking(vehicle);
