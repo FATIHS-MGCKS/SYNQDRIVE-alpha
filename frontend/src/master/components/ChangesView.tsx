@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-retention-v49570-2026-07-17',
+    version: '4.9.570',
+    title: 'V4.9.570 — Battery V2 Retention & Aggregation (Prompt 70/78)',
+    summary: [
+      'Domain-aware `BatteryV2RetentionService` mit sicheren Defaults (disabled + dry-run).',
+      'Session-/Tagesaggregate (`battery_retention_aggregates`) vor Rohdatenlöschung.',
+      'Phasenweise Batch-Retention: Shadow-Evidence, Measurements (nur ohne qualifizierte Referenz), Sessions, Assessments, Provider-Snapshots.',
+      'Schreibseitige Duplikat-Vermeidung: Measurement-Repository pre-check vor Insert.',
+      'Metriken: retention runs/deleted/aggregated, duplicate skip.',
+      'Cron 04:00 — kein Lauf beim Deployment. Integrationstests mit Testdatenbank.',
+    ],
+    reason: 'Prompt 70/78: sichere Retention- und Aggregationsstrategie für Battery V2.',
+    previousBehavior: 'Nur generischer DataRetentionScheduler ohne V2-Business-Guards; keine Aggregate-before-Delete.',
+    details:
+      'retention/battery-v2-retention.service.ts, battery-v2-retention-aggregate.service.ts, config/battery-v2-retention.config.ts, migration battery_retention_aggregates, docs/architecture/battery-v2-retention.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T05:00:00.000Z',
+  },
+  {
     id: 'battery-v2-grafana-prometheus-ops-v49569-2026-07-17',
     version: '4.9.569',
     title: 'V4.9.569 — Battery V2 Grafana/Prometheus Ops (Prompt 69/78)',

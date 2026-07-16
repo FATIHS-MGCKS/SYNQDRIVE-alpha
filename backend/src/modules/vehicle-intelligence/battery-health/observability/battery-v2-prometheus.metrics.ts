@@ -251,3 +251,26 @@ export function recordHvCapacityMethodConflict(
     outcome: input.conflict ? 'conflict' : 'agree',
   });
 }
+
+export function recordBatteryRetentionRun(
+  metrics: TripMetricsService,
+  input: {
+    dryRun: boolean;
+    deleted: number;
+    aggregated: number;
+  },
+): void {
+  metrics.batteryRetentionRunsTotal.inc({
+    dry_run: input.dryRun ? 'true' : 'false',
+  });
+  if (input.deleted > 0) {
+    metrics.batteryRetentionRowsDeletedTotal.inc(input.deleted);
+  }
+  if (input.aggregated > 0) {
+    metrics.batteryRetentionRowsAggregatedTotal.inc(input.aggregated);
+  }
+}
+
+export function recordBatteryMeasurementDuplicateSkip(metrics: TripMetricsService): void {
+  metrics.batteryMeasurementDuplicateSkipTotal.inc();
+}

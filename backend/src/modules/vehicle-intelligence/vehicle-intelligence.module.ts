@@ -132,6 +132,8 @@ import { BatteryRestTargetEvaluationService } from './battery-health/lv-rest-win
 import { LvRestShadowSummaryService } from './battery-health/lv-rest-window/lv-rest-shadow-summary.service';
 import { LvStartProxyDiagnosticService } from './battery-health/lv-start-proxy/lv-start-proxy-diagnostic.service';
 import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy/battery-start-proxy-extract.service';
+import { BatteryV2RetentionAggregateService } from './battery-health/retention/battery-v2-retention-aggregate.service';
+import { BatteryV2RetentionService } from './battery-health/retention/battery-v2-retention.service';
 
 @Module({
   imports: [
@@ -243,6 +245,8 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     LvRestShadowSummaryService,
     LvStartProxyDiagnosticService,
     BatteryStartProxyExtractService,
+    BatteryV2RetentionAggregateService,
+    BatteryV2RetentionService,
     HealthSummaryService,
     AiHealthCareAggregationService,
     VehicleHealthTabSummaryService,
@@ -347,6 +351,7 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     LvRestShadowSummaryService,
     LvStartProxyDiagnosticService,
     BatteryStartProxyExtractService,
+    BatteryV2RetentionService,
     ServiceComplianceService,
     ComplianceTaskMaterializeService,
     ServiceOverdueTaskService,

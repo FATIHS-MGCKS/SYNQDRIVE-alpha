@@ -23,6 +23,7 @@ export { default as billingReconciliationConfig } from './billing-reconciliation
 export { default as billingStripeSyncConfig } from './billing-stripe-sync.config';
 export { default as taskAutomationOutboxConfig } from './task-automation-outbox.config';
 export { default as batteryHealthV2Config } from './battery-health-v2.config';
+export { default as batteryV2RetentionConfig } from './battery-v2-retention.config';
 export {
   BATTERY_CRANK_SIGNAL_CADENCE_MS,
   BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENV,

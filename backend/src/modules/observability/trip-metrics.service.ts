@@ -110,6 +110,10 @@ export class TripMetricsService implements OnModuleInit {
   readonly batteryCapabilitySignalsTotal: Counter<string>;
   readonly hvCapacityMethodConflictTotal: Counter<string>;
   readonly hvCapacityM2SessionCv: Histogram<string>;
+  readonly batteryRetentionRunsTotal: Counter<string>;
+  readonly batteryRetentionRowsDeletedTotal: Counter<string>;
+  readonly batteryRetentionRowsAggregatedTotal: Counter<string>;
+  readonly batteryMeasurementDuplicateSkipTotal: Counter<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
@@ -815,6 +819,31 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_battery_postgres_table_rows',
       help: 'Battery V2 PostgreSQL table row counts',
       labelNames: ['table'],
+      registers: [this.registry],
+    });
+
+    this.batteryRetentionRunsTotal = new Counter({
+      name: 'synqdrive_battery_retention_runs_total',
+      help: 'Battery V2 retention runs completed',
+      labelNames: ['dry_run'],
+      registers: [this.registry],
+    });
+
+    this.batteryRetentionRowsDeletedTotal = new Counter({
+      name: 'synqdrive_battery_retention_rows_deleted_total',
+      help: 'Battery V2 retention rows deleted',
+      registers: [this.registry],
+    });
+
+    this.batteryRetentionRowsAggregatedTotal = new Counter({
+      name: 'synqdrive_battery_retention_rows_aggregated_total',
+      help: 'Battery V2 retention aggregates created',
+      registers: [this.registry],
+    });
+
+    this.batteryMeasurementDuplicateSkipTotal = new Counter({
+      name: 'synqdrive_battery_measurement_duplicate_skip_total',
+      help: 'Battery measurement writes skipped as duplicates before insert',
       registers: [this.registry],
     });
   }
