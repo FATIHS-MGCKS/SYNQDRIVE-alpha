@@ -259,6 +259,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Vehicle Operational State V2 Backend Tests (V4.9.504)', icon: FileText,
+    endpoint: 'Keine HTTP-Route. Jest-Suites unter `backend/src/modules/vehicles/operational/` + `vehicles.controller.status-patch.spec.ts` + `bookings.service.overlap.spec.ts`.',
+    service: '**Coverage:** 53 neue Tests (10 Suites) für A–J: `deriveFleetStatusContext`, `buildBookingContextMap`, kanonisches vs. legacy Reservierungsfenster, API-Konsistenz fleet-map/list/detail, Status-PATCH-Write-Guard, Overlap-Gate, Fleet-Map-Redis-Cache (TTL). Ergänzt bestehende `vehicles.service.spec.ts` + VBH-Diagnostic/Repair.',
+    dataSource: 'Doku: `docs/testing/vehicle-operational-state-v2-backend-coverage.md`. Ausführung: `npm test -- --testPathPattern=vehicle-operational-state-v2`. Bekannte Lücke: Backend-Cache-Bust nach Mutationen noch TTL-only (Frontend-Invalidation kompensiert).' },
   { name: 'Vehicle Operational Status Ops Runbook (V4.9.503)', icon: FileText,
     endpoint: 'Keine HTTP-Route. Verbindliches Betriebs-Runbook: `docs/runbooks/vehicle-operational-status-repair.md`.',
     service: '**Runbook:** End-to-End-Verfahren für VBH-Diagnose (read-only) und kontrollierte Reparatur (Dry-Run default, `--apply`). Deckt Voraussetzungen (Code ≥ V4.9.502, Migrationen, Env-Safety), Backup/Restore-Test, Lokal→Staging→Prod mit org-scoped Batches, Rollback (DB + Deployment), Audit-Spur (`activity_logs`, Booking-Notes), Abnahmekriterien (keine RESERVED/RENTED-Ghosts, Pickup/Return-Sollzustände, UNKNOWN bei unzuverlässiger Datenlage) und Ergebnisbericht-Vorlagen.',
