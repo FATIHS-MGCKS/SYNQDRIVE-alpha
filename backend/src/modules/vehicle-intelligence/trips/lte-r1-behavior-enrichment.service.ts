@@ -31,6 +31,16 @@ import { DrivingEventType, DrivingEventSource } from '@prisma/client';
 import { preprocessHighFrequency, type CleanHfPoint } from './hf-preprocessing';
 import { EventContextEnrichmentService } from '../event-context/event-context-enrichment.service';
 import { shouldRunIceEventContextEnrichment } from '../event-context/engine-context.guards';
+import {
+  assessZeroNativeEventsConduct,
+  mapDimoNativeDrivingEvent,
+  resolveDimoNativeEventSeverity,
+  type DimoNativeDrivingEventMapping,
+  type DimoNativeEventClassification,
+  type ZeroNativeEventsConductAssessment,
+} from '../dimo-native-driving-events';
+import { VehicleDrivingCapabilityResolverService } from '../driving-capability/vehicle-driving-capability-resolver.service';
+import { DRIVING_CAPABILITY_PROVIDER } from '../driving-capability/vehicle-driving-capability.types';
 
 // ── Cold-engine badge threshold ────────────────────────────────────────────────
 // Events occurring when coolant < this value get a coldEngineContext badge.
@@ -40,33 +50,31 @@ const COLD_ENGINE_TEMP_C = 60;
 const HF_CONTEXT_WINDOW_MS = 5_000;
 const MIN_TRIP_DURATION_MS = 60_000;
 
-// ── Severity scores per event type (0–1 scale, used for DrivingEvent.severity) ─
-const EVENT_SEVERITY: Record<DrivingEventType, number> = {
-  HARSH_BRAKING: 0.6,
-  EXTREME_BRAKING: 0.9,
-  HARSH_ACCELERATION: 0.6,
-  HARSH_CORNERING: 0.5,
-  SPEEDING: 0.4,
-  IDLE_EXCESSIVE: 0.2,
-};
+/** @deprecated Import from `dimo-native-driving-events` — kept for existing spec imports. */
+export type NativeEventClassification = DimoNativeEventClassification;
 
-// Severity floor applied to events DIMO classifies as "extreme" but that we
-// persist under a non-extreme enum value (currently only extreme acceleration,
-// which has no dedicated DrivingEventType — see mapDimoEventName).
-const EXTREME_SEVERITY_FLOOR = 0.9;
-
-/**
- * Native-event classification carried in DrivingEvent.metadataJson.
- * Values are a subset of Prisma's BehaviorEventClassification and match the
- * controller's DRIVING_EVENT_CLASSIFICATION_MAP so surfacing the stored value
- * is a no-op for every existing event type — only extreme acceleration changes
- * (HARD → EXTREME), which is exactly the distinction we want.
- */
-export type NativeEventClassification = 'MODERATE' | 'HARD' | 'EXTREME';
-
+/** @deprecated Import `DimoNativeDrivingEventMapping` from `dimo-native-driving-events`. */
 export interface MappedDimoEvent {
   eventType: DrivingEventType;
   classification: NativeEventClassification;
+}
+
+/** @deprecated Use `mapDimoNativeDrivingEvent` from `dimo-native-driving-events`. */
+export function mapDimoEventName(raw: string): MappedDimoEvent | null {
+  const mapped = mapDimoNativeDrivingEvent(raw);
+  if (!mapped.isKnownMapping) return null;
+  return {
+    eventType: mapped.canonicalEventType,
+    classification: mapped.classification,
+  };
+}
+
+/** @deprecated Use `resolveDimoNativeEventSeverity` from `dimo-native-driving-events`. */
+export function resolveNativeSeverity(
+  eventType: DrivingEventType,
+  classification: NativeEventClassification,
+): number {
+  return resolveDimoNativeEventSeverity(eventType, classification);
 }
 
 interface EventCounters {
@@ -74,56 +82,8 @@ interface EventCounters {
   extremeBraking: number;
   harshAcceleration: number;
   harshCornering: number;
-}
-
-/**
- * DIMO-name → SynqDrive DrivingEventType + classification. Matching is
- * case-insensitive and prefix-tolerant so DIMO variants (e.g.
- * `behavior.harsh_braking`, `Behavior.HarshBraking`, `behavior.extreme-acceleration`)
- * still map correctly.
- *
- * IMPORTANT — extreme acceleration: there is no `EXTREME_ACCELERATION` value in
- * the `DrivingEventType` enum (only `EXTREME_BRAKING` exists). To stay
- * migration-free and fully backward-compatible, `behavior.extremeAcceleration`
- * is persisted as `HARSH_ACCELERATION` but tagged `classification: 'EXTREME'`
- * with an elevated severity, so it is never mistaken for a normal harsh
- * acceleration event.
- */
-export function mapDimoEventName(raw: string): MappedDimoEvent | null {
-  const base = raw
-    .trim()
-    .toLowerCase()
-    .replace(/^behavior\./, '')
-    .replace(/[\s_\-]+/g, '');
-  switch (base) {
-    case 'harshbraking':
-      return { eventType: DrivingEventType.HARSH_BRAKING, classification: 'HARD' };
-    case 'extremebraking':
-    case 'extremeemergency':
-    case 'extremeemergencybraking':
-      return { eventType: DrivingEventType.EXTREME_BRAKING, classification: 'EXTREME' };
-    case 'harshacceleration':
-      return { eventType: DrivingEventType.HARSH_ACCELERATION, classification: 'HARD' };
-    case 'extremeacceleration':
-      return { eventType: DrivingEventType.HARSH_ACCELERATION, classification: 'EXTREME' };
-    case 'harshcornering':
-      return { eventType: DrivingEventType.HARSH_CORNERING, classification: 'MODERATE' };
-    default:
-      return null;
-  }
-}
-
-/**
- * DrivingEvent.severity for a mapped native event. Events DIMO reports as
- * extreme are floored to EXTREME_SEVERITY_FLOOR so extreme acceleration
- * (persisted as HARSH_ACCELERATION) outranks normal harsh acceleration.
- */
-export function resolveNativeSeverity(
-  eventType: DrivingEventType,
-  classification: NativeEventClassification,
-): number {
-  const base = EVENT_SEVERITY[eventType];
-  return classification === 'EXTREME' ? Math.max(base, EXTREME_SEVERITY_FLOOR) : base;
+  safetyCollision: number;
+  unmapped: number;
 }
 
 interface LteR1EnrichmentResult {
@@ -133,6 +93,7 @@ interface LteR1EnrichmentResult {
   harshAccelerationCount: number;
   harshCorneringCount: number;
   coldEngineAnnotations: number;
+  zeroNativeEventsConduct: ZeroNativeEventsConductAssessment;
 }
 
 @Injectable()
@@ -143,6 +104,7 @@ export class LteR1BehaviorEnrichmentService {
     private readonly prisma: PrismaService,
     private readonly segments: DimoSegmentsService,
     private readonly eventContext: EventContextEnrichmentService,
+    private readonly capabilityResolver: VehicleDrivingCapabilityResolverService,
   ) {}
 
   /**
@@ -200,6 +162,16 @@ export class LteR1BehaviorEnrichmentService {
     const normalized = this.mapToNormalizedEvents(nativeSamples, vehicleId, organizationId, tripId, hfContext);
     const counters = this.countByType(normalized);
     const coldEngineAnnotations = normalized.filter((e) => e.coldEngineContext).length;
+    const nativeCapability = await this.resolveNativeCapabilityContext(
+      organizationId,
+      vehicleId,
+      trip.vehicle.fuelType,
+    );
+    const zeroNativeEventsConduct = assessZeroNativeEventsConduct({
+      ...nativeCapability,
+      nativeQuerySucceeded: true,
+      nativeEventCount: normalized.length,
+    });
 
     // ── 4. Persist events (transaction-safe, idempotent) ─────────────────────
     const hardBraking = counters.harshBraking + counters.extremeBraking;
@@ -228,16 +200,16 @@ export class LteR1BehaviorEnrichmentService {
               rpm: e.contextRpm,
               throttlePct: e.contextThrottlePct,
               hardwareSource: 'LTE_R1',
-              // DIMO-native event provenance (replaces legacy safetySystem signal mapping)
               dimoEventName: e.rawName,
               dimoEventSource: e.dimoSource,
               dimoCounterValue: e.counterValue,
-              // Severity classification — distinguishes extreme acceleration
-              // (persisted as HARSH_ACCELERATION) from normal harsh acceleration.
               classification: e.classification,
-              // Explicit native provenance for the unified read-model.
               provider: 'DIMO',
               detectionMethod: 'NATIVE_TELEMETRY_EVENT',
+              providerSource: e.mapping.providerSource,
+              evidenceSourceType: e.mapping.evidenceSourceType,
+              mappingVersion: e.mapping.mappingVersion,
+              isKnownMapping: e.mapping.isKnownMapping,
             },
           })),
         });
@@ -301,10 +273,37 @@ export class LteR1BehaviorEnrichmentService {
       harshAccelerationCount: counters.harshAcceleration,
       harshCorneringCount: counters.harshCornering,
       coldEngineAnnotations,
+      zeroNativeEventsConduct,
     };
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────
+
+  private async resolveNativeCapabilityContext(
+    organizationId: string,
+    vehicleId: string,
+    fuelType: string | null,
+  ): Promise<Pick<
+    import('../dimo-native-driving-events').NativeEventsCapabilityContext,
+    'nativeBehaviorSupported' | 'nativeEventAvailable' | 'isEvPowertrain'
+  >> {
+    const isEvPowertrain = fuelType === 'ELECTRIC' || fuelType === 'BEV';
+    const snapshot = await this.capabilityResolver.resolveForVehicle(organizationId, vehicleId);
+    const dimoNative = snapshot.capabilities.filter(
+      (c) => c.providerSource === DRIVING_CAPABILITY_PROVIDER.DIMO_TELEMETRY,
+    );
+    const supported = dimoNative.some(
+      (c) => c.capabilityStatus === 'SUPPORTED' && c.nativeEventAvailable === true,
+    );
+    const unsupported = dimoNative.some(
+      (c) => c.capabilityStatus === 'UNSUPPORTED' || c.nativeEventAvailable === false,
+    );
+    return {
+      isEvPowertrain,
+      nativeBehaviorSupported: supported ? true : unsupported ? false : null,
+      nativeEventAvailable: supported ? true : unsupported ? false : null,
+    };
+  }
 
   /**
    * Best-effort: for each persisted native DrivingEvent of this trip, run Event
@@ -428,6 +427,7 @@ export class LteR1BehaviorEnrichmentService {
     tripId: string;
     eventType: DrivingEventType;
     classification: NativeEventClassification;
+    mapping: DimoNativeDrivingEventMapping;
     recordedAt: Date;
     speedKmh: number | null;
     severity: number;
@@ -442,14 +442,13 @@ export class LteR1BehaviorEnrichmentService {
     const events: ReturnType<typeof this.mapToNormalizedEvents> = [];
 
     for (const s of samples) {
-      const mapped = mapDimoEventName(s.name);
-      if (!mapped) {
+      const mapping = mapDimoNativeDrivingEvent(s.name);
+      if (!mapping.isKnownMapping) {
         this.logger.debug(
-          `LTE_R1 enrich: ignoring unmapped DIMO event name "${s.name}"`,
+          `LTE_R1 enrich: persisting unmapped DIMO event name "${s.name}" as UNMAPPED_PROVIDER_EVENT`,
         );
-        continue;
       }
-      const { eventType, classification } = mapped;
+      const { canonicalEventType: eventType, classification } = mapping;
 
       const ts = new Date(s.timestamp).getTime();
       const ctx = this.findClosestHfContext(ts, hfContext);
@@ -471,11 +470,10 @@ export class LteR1BehaviorEnrichmentService {
         tripId,
         eventType,
         classification,
+        mapping,
         recordedAt: new Date(s.timestamp),
-        // DIMO events don't carry speed. HF context (1-s interval during the
-        // trip) is the best alignment we have; null when HF is sparse.
         speedKmh: ctx.speedKmh,
-        severity: resolveNativeSeverity(eventType, classification),
+        severity: mapping.severity,
         coldEngineContext: coldEngine,
         contextCoolantC: ctx.coolantC,
         contextRpm: ctx.rpm,
@@ -516,6 +514,8 @@ export class LteR1BehaviorEnrichmentService {
       extremeBraking: events.filter((e) => e.eventType === DrivingEventType.EXTREME_BRAKING).length,
       harshAcceleration: events.filter((e) => e.eventType === DrivingEventType.HARSH_ACCELERATION).length,
       harshCornering: events.filter((e) => e.eventType === DrivingEventType.HARSH_CORNERING).length,
+      safetyCollision: events.filter((e) => e.eventType === DrivingEventType.SAFETY_COLLISION).length,
+      unmapped: events.filter((e) => e.eventType === DrivingEventType.UNMAPPED_PROVIDER_EVENT).length,
     };
   }
 }

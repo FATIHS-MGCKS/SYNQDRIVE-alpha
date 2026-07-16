@@ -19,6 +19,10 @@ describe('buildDrivingEventsQuery', () => {
     expect(query).toContain('behavior.extremeEmergencyBraking');
   });
 
+  it('includes safety.collision for the versioned native event mapper (P23)', () => {
+    expect(query).toContain('safety.collision');
+  });
+
   it('embeds the token id and ISO time window', () => {
     expect(query).toContain('tokenId: 189118');
     expect(query).toContain('2026-01-01T00:00:00.000Z');

@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p23-dimo-native-event-mapper-2026-07-16',
+    version: '4.9.524',
+    title: 'Driving Intelligence V2 P23 — central versioned DIMO native event mapper',
+    summary: [
+      'Neues Modul `dimo-native-driving-events/`: versionierter Mapper für DIMO-native Driving Events.',
+      'Unterstützt Audit-Namen: harsh/extreme Braking/Acceleration/Cornering, safety.collision; Unbekanntes → `UNMAPPED_PROVIDER_EVENT` (nicht verwerfen).',
+      'Pro Mapping: Provider Event Name, kanonischer Typ, Classification, Severity, Provider Source, Evidence `PROVIDER_CLASSIFIED_EVENT`, Mapping Version.',
+      'Capability-Gate: `assessZeroNativeEventsConduct` — Tesla/EV ohne Events nicht als unauffällig.',
+      'LTE_R1-Ingest nutzt Mapper; `safety.collision` im Events-Query-Filter; Prisma `UNMAPPED_PROVIDER_EVENT` + `SAFETY_COLLISION`.',
+    ],
+    reason:
+      'Prompt 23/76: zentraler, versionierter Mapper für DIMO-native Driving Events — ohne Trip-FSM-Änderung.',
+    previousBehavior:
+      'Inline-Mapper in `lte-r1-behavior-enrichment.service.ts` verworf unbekannte Events; safety.collision separat ohne DrivingEvent-Persistenz.',
+    details:
+      'Migration `20260716230000`; Tests mit realen Audit-Namen aus `dimo-driving-signals-capability.md`. Trip-FSM unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T02:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p22-clickhouse-hardening-2026-07-16',
     version: '4.9.523',
     title: 'Driving Intelligence V2 P22 — ClickHouse outage hardening for trip analysis',
