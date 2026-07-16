@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-shadow-validation-v49576-2026-07-16',
+    version: '4.9.576',
+    title: 'V4.9.576 — Battery V2 Shadow Validation Report (Prompt 76/78)',
+    summary: [
+      'Read-only Shadow-Validierung: `BatteryShadowValidationService` aggregiert LV/HV-Metriken über 4–8-Wochen-Fenster mit Gate-Auswertung — ohne Publication/Readiness-Freigabe.',
+      'Endpoints: `GET /admin/battery-shadow-validation-report` (MASTER_ADMIN), `GET .../data-analyse/battery-shadow-validation-report` (data-analyse read).',
+      'CLI: `scripts/ops/battery-shadow-validation-report.ts` (JSON/Markdown/Console).',
+      'Runbook: `docs/runbooks/battery-health-v2-shadow-validation.md`. Tests: `battery-shadow-validation.policy.spec.ts`.',
+    ],
+    reason: 'Prompt 76/78: technische Shadow-Validierung und Auswertungsreport vor manuellem Go/No-Go — kein Auto-Publish.',
+    previousBehavior: 'Shadow-Metriken nur per Fahrzeug-API/Grafana; kein strukturierter Fleet-Report mit Gates.',
+    details:
+      'backend/src/modules/vehicle-intelligence/battery-health/shadow-validation/*, backend/scripts/ops/battery-shadow-validation-report.ts, docs/runbooks/battery-health-v2-shadow-validation.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T22:00:00.000Z',
+  },
+  {
     id: 'battery-v2-frontend-e2e-v49575-2026-07-16',
     version: '4.9.575',
     title: 'V4.9.575 — Battery V2 Frontend & E2E Tests (Prompt 75/78)',

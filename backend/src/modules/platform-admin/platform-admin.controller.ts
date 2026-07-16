@@ -11,6 +11,7 @@ import { ActivityAction, ActivityEntity } from '@prisma/client';
 import { BatteryCapabilityRefreshService } from '../vehicle-intelligence/battery-health/capability-preflight/battery-capability-refresh.service';
 import { BatteryCapabilityPreflightRepository } from '../vehicle-intelligence/battery-health/capability-preflight/battery-capability-preflight.repository';
 import { BatteryCapabilityRefreshTrigger } from '../vehicle-intelligence/battery-health/capability-preflight/battery-capability-lifecycle.policy';
+import { BatteryShadowValidationService } from '../vehicle-intelligence/battery-health/shadow-validation/battery-shadow-validation.service';
 
 @Controller('admin')
 @UseGuards(RolesGuard)
@@ -25,6 +26,7 @@ export class PlatformAdminController {
     private readonly audit: AuditService,
     private readonly batteryCapabilityRefresh: BatteryCapabilityRefreshService,
     private readonly batteryCapabilityRepository: BatteryCapabilityPreflightRepository,
+    private readonly batteryShadowValidation: BatteryShadowValidationService,
   ) {}
 
   @Get('changelogs')
@@ -292,5 +294,43 @@ export class PlatformAdminController {
       ...result,
       message: `Backfill complete: ${result.enqueued} trips enqueued for enrichment`,
     };
+  }
+
+  // GET /admin/battery-shadow-validation-report
+  // Read-only internal shadow evaluation — never enables publication/readiness.
+  @Get('battery-shadow-validation-report')
+  async getBatteryShadowValidationReport(
+    @Query('organizationId') organizationId?: string,
+    @Query('vehicleId') vehicleId?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('observationDays') observationDays?: string,
+    @Query('vehicleSampleLimit') vehicleSampleLimit?: string,
+    @Req() req?: any,
+  ) {
+    const days = observationDays ? Number(observationDays) : undefined;
+    const report = await this.batteryShadowValidation.runReport({
+      organizationId: organizationId || undefined,
+      vehicleId: vehicleId || undefined,
+      observationStartAt: from ? new Date(from) : undefined,
+      referenceNow: to ? new Date(to) : new Date(),
+      observationDays: Number.isFinite(days) ? days : undefined,
+      vehicleSampleLimit: vehicleSampleLimit ? Number(vehicleSampleLimit) : 10,
+    });
+
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.ADMIN_OVERRIDE,
+      entity: ActivityEntity.ADMIN_OPERATION,
+      description: 'Admin generated Battery V2 shadow validation report',
+      metaJson: {
+        organizationId: organizationId ?? null,
+        vehicleId: vehicleId ?? null,
+        recommendation: report.overallRecommendation,
+        observationDays: report.observationPeriod.durationDays,
+      },
+    });
+
+    return report;
   }
 }

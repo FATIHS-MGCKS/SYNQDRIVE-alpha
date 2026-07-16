@@ -136,6 +136,10 @@ import { BatteryV2RetentionAggregateService } from './battery-health/retention/b
 import { BatteryV2RetentionService } from './battery-health/retention/battery-v2-retention.service';
 import { BatteryDataDiagnosticService } from './battery-health/diagnostic/battery-data-diagnostic.service';
 import { BatteryDataRepairService } from './battery-health/diagnostic/battery-data-repair.service';
+import {
+  BatteryShadowValidationController,
+  BatteryShadowValidationService,
+} from './battery-health/shadow-validation';
 
 @Module({
   imports: [
@@ -158,7 +162,7 @@ import { BatteryDataRepairService } from './battery-health/diagnostic/battery-da
       { name: QUEUE_NAMES.BATTERY_V2 },
     ),
   ],
-  controllers: [VehicleIntelligenceController, DamagesOrgController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController],
+  controllers: [VehicleIntelligenceController, DamagesOrgController, VehicleBatteryReferenceCapacityController, HvCapacityShadowEvaluationController, BatteryShadowValidationController],
   providers: [
     BatteryService,
     TiresService,
@@ -251,6 +255,7 @@ import { BatteryDataRepairService } from './battery-health/diagnostic/battery-da
     BatteryV2RetentionService,
     BatteryDataDiagnosticService,
     BatteryDataRepairService,
+    BatteryShadowValidationService,
     HealthSummaryService,
     AiHealthCareAggregationService,
     VehicleHealthTabSummaryService,
@@ -358,6 +363,7 @@ import { BatteryDataRepairService } from './battery-health/diagnostic/battery-da
     BatteryV2RetentionService,
     BatteryDataDiagnosticService,
     BatteryDataRepairService,
+    BatteryShadowValidationService,
     ServiceComplianceService,
     ComplianceTaskMaterializeService,
     ServiceOverdueTaskService,
