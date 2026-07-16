@@ -1292,6 +1292,7 @@ model Organization {
   vehicleDrivingCapabilities        VehicleDrivingCapability[]
   tripAssessabilities               TripAssessability[]
   drivingEvidence                   DrivingEvidence[]
+  drivingAnalysisRuns               DrivingAnalysisRun[]
   orgInvoices                       OrgInvoice[]
   userAccountPreferences            UserAccountPreference[]
   userNotificationPreferences       UserNotificationPreference[]
@@ -1777,6 +1778,7 @@ model Vehicle {
   vehicleDrivingCapabilities        VehicleDrivingCapability[]
   tripAssessabilities               TripAssessability[]
   drivingEvidence                   DrivingEvidence[]
+  drivingAnalysisRuns               DrivingAnalysisRun[]
 
   @@unique([vin, organizationId])
   @@index([organizationId])
@@ -6305,6 +6307,7 @@ model VehicleTrip {
   misuseCases          MisuseCase[]
   tripAssessabilities  TripAssessability[]
   drivingEvidence      DrivingEvidence[]
+  drivingAnalysisRuns  DrivingAnalysisRun[]
   repairs              TripRepair[]
   rpmWebhookCandidates RpmWebhookCandidate[]
 
@@ -6705,9 +6708,10 @@ model TripAssessability {
   createdAt          DateTime                         @default(now()) @map("created_at")
   updatedAt          DateTime                         @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  trip         VehicleTrip  @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip         VehicleTrip         @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  analysisRun  DrivingAnalysisRun? @relation(fields: [analysisRunId], references: [id], onDelete: SetNull)
 
   @@unique([organizationId, tripId, dimension])
   @@index([organizationId])
@@ -6715,6 +6719,62 @@ model TripAssessability {
   @@index([tripId, dimension])
   @@index([tripId, status])
   @@map("trip_assessabilities")
+}
+
+/// Trip-scoped analysis pipeline type (Driving Intelligence V2 P16).
+enum DrivingAnalysisType {
+  TRIP_ENRICHMENT
+  TRIP_ASSESSABILITY
+  TRIP_DECISION_SUMMARY
+  DRIVING_IMPACT
+  MISUSE_DETECTION
+}
+
+/// Deterministic run lifecycle status — distinct from `DrivingAnalysisMaturity`.
+enum DrivingAnalysisRunStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  SUPERSEDED
+}
+
+/// Deterministic provenance envelope for V2 analysis outputs (P16).
+model DrivingAnalysisRun {
+  id                String                   @id @default(uuid())
+  organizationId    String                   @map("organization_id")
+  vehicleId         String                   @map("vehicle_id")
+  tripId            String                   @map("trip_id")
+  analysisType      DrivingAnalysisType      @map("analysis_type")
+  modelVersion      String                   @map("model_version")
+  inputFingerprint  String                   @map("input_fingerprint")
+  capabilityVersion String                   @map("capability_version")
+  startedAt         DateTime                 @map("started_at")
+  completedAt       DateTime?                @map("completed_at")
+  maturity          DrivingAnalysisMaturity  @default(SHADOW)
+  status            DrivingAnalysisRunStatus @default(PENDING)
+  stageSummaryJson  Json?                    @map("stage_summary_json")
+  recomputeReason   String?                  @map("recompute_reason")
+  supersedesRunId   String?                  @map("supersedes_run_id")
+  errorCode         String?                  @map("error_code")
+  errorMessage      String?                  @map("error_message")
+  createdAt         DateTime                 @default(now()) @map("created_at")
+  updatedAt         DateTime                 @updatedAt @map("updated_at")
+
+  organization        Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle             Vehicle              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip                VehicleTrip          @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  supersedesRun       DrivingAnalysisRun?  @relation("DrivingAnalysisRunSupersedes", fields: [supersedesRunId], references: [id], onDelete: SetNull)
+  supersededByRuns    DrivingAnalysisRun[] @relation("DrivingAnalysisRunSupersedes")
+  tripAssessabilities TripAssessability[]
+  drivingEvidence     DrivingEvidence[]
+
+  @@index([organizationId, startedAt])
+  @@index([tripId, analysisType, status])
+  @@index([vehicleId, startedAt])
+  @@index([inputFingerprint])
+  @@index([supersedesRunId])
+  @@map("driving_analysis_runs")
 }
 
 /// Immutable normalized evidence index — references source rows, never full provider payloads (P15).
@@ -6750,9 +6810,10 @@ model DrivingEvidence {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  trip         VehicleTrip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  organization Organization        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip         VehicleTrip?        @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  analysisRun  DrivingAnalysisRun? @relation(fields: [analysisRunId], references: [id], onDelete: SetNull)
 
   @@unique([organizationId, idempotencyKey])
   @@index([organizationId])

@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p16-driving-analysis-run-2026-07-16',
+    version: '4.9.518',
+    title: 'Driving Intelligence V2 P16 — DrivingAnalysisRun',
+    summary: [
+      'Neue Tabelle `driving_analysis_runs` — deterministischer Provenance-Envelope pro Trip×analysisType.',
+      'Enums: `DrivingAnalysisType`, `DrivingAnalysisRunStatus`; Felder inkl. inputFingerprint, capabilityVersion, stageSummary, recomputeReason, supersedesRunId, errorCode.',
+      'SHA-256-Fingerprint aus stabilen Input-Identitäten (keine Secrets); Partial-Unique auf completed Runs.',
+      '`DrivingAnalysisRunRepository.resolveOrBeginRun` dedupliziert identische Runs; superseded bei Input/Modell-Änderung.',
+      'FK von `trip_assessabilities` und `driving_evidence` auf `analysis_run_id`.',
+    ],
+    reason:
+      'Prompt 16/76: Deterministische Run-Wahrheit — gleicher Input+Modell erzeugt kein zweites Ergebnis; alte Runs auditierbar.',
+    previousBehavior:
+      'Analyse-Provenance nur in `analysisStagesJson` / Timestamps auf `VehicleTrip` ohne materialisierten Run-Envelope.',
+    details:
+      'Migration 20260716203000; Module unter `driving-analysis-run/`; 7 Unit-Tests. Keine Trip-FSM-Änderung.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T22:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p15-driving-evidence-2026-07-16',
     version: '4.9.517',
     title: 'Driving Intelligence V2 P15 — DrivingEvidence contract',

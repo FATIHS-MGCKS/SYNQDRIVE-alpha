@@ -142,6 +142,8 @@ Kanonische **Misuse Evidence** (Ebene 9). `DrivingEvidence` verweist auf diese R
 
 > **Migrationshinweis:** Jeder Enum in **eigener** Migration vor erster Spaltennutzung (PostgreSQL-Pattern wie `TaskStatus.WAITING`).
 
+**Implementierungsstand (P16, 2026-07-16):** Migration `20260716203000_driving_analysis_runs` — `DrivingAnalysisRun` mit Fingerprint-Dedup, Supersede-Kette, FK auf `trip_assessabilities`/`driving_evidence.analysis_run_id`. Module unter `driving-analysis-run/`.
+
 **Implementierungsstand (P15, 2026-07-16):** Migration `20260716200000_driving_evidence` — `DrivingEvidence`-Modell + 7-wertiges `DrivingEvidenceSourceType` (ersetzt ungenutzte P12-Placeholder). Immutables Repository/Service unter `driving-evidence/`; Contract `validateDrivingEvidenceContract`.
 
 **Implementierungsstand (P14, 2026-07-16):** Migration `20260716194500_trip_assessabilities` — per-Dimension-Modell `TripAssessability` mit `TripAssessabilityDimension` + `TripAssessabilityDimensionStatus` (6 Werte, getrennt von Legacy `DrivingAssessabilityStatus`). Pure Policy `evaluateTripAssessability`, Repository/Service unter `trip-assessability/`. Legacy `deriveAnalysisAssessability` bleibt unverändert.

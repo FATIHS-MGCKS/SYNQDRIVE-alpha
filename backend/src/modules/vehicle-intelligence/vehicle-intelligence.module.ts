@@ -63,6 +63,8 @@ import { TripAssessabilityRepository } from './trip-assessability/trip-assessabi
 import { TripAssessabilityService } from './trip-assessability/trip-assessability.service';
 import { DrivingEvidenceRepository } from './driving-evidence/driving-evidence.repository';
 import { DrivingEvidenceService } from './driving-evidence/driving-evidence.service';
+import { DrivingAnalysisRunRepository } from './driving-analysis-run/driving-analysis-run.repository';
+import { DrivingAnalysisRunService } from './driving-analysis-run/driving-analysis-run.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
 import { DimoModule } from '../dimo/dimo.module';
 import { AiModule } from '../ai/ai.module';
@@ -174,6 +176,8 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     TripAssessabilityService,
     DrivingEvidenceRepository,
     DrivingEvidenceService,
+    DrivingAnalysisRunRepository,
+    DrivingAnalysisRunService,
     EnergyEventsService,
     // ── New refactored providers ──
     TripDecisionEngine,
@@ -239,6 +243,8 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     TripAssessabilityService,
     DrivingEvidenceRepository,
     DrivingEvidenceService,
+    DrivingAnalysisRunRepository,
+    DrivingAnalysisRunService,
     EnergyEventsService,
     TripDecisionEngine,
     TripDetectionPolicyResolver,
