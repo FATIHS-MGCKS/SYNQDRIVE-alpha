@@ -1289,6 +1289,7 @@ model Organization {
   stripeConnectWebhookEvents        StripeConnectWebhookEvent[]
   rentalContracts                   RentalContract[]
   misuseCases                       MisuseCase[]
+  vehicleDrivingCapabilities        VehicleDrivingCapability[]
   orgInvoices                       OrgInvoice[]
   userAccountPreferences            UserAccountPreference[]
   userNotificationPreferences       UserNotificationPreference[]
@@ -1771,6 +1772,7 @@ model Vehicle {
   whatsappConversations             WhatsAppConversation[]
   billingBillableVehicleAssignments BillingBillableVehicleAssignment[]
   billingQuantityEvents             BillingQuantityEvent[]
+  vehicleDrivingCapabilities        VehicleDrivingCapability[]
 
   @@unique([vin, organizationId])
   @@index([organizationId])
@@ -6614,6 +6616,42 @@ enum MisuseEvidenceLevel {
   MEHRERE_BELASTBARE_HINWEISE
   STARKER_VERDACHT
   SCHADENSPRUEFUNG
+}
+
+/// Per-vehicle empirical capability probe (signal or detector) — Driving Intelligence V2 P13.
+model VehicleDrivingCapability {
+  id                   String                  @id @default(uuid())
+  organizationId       String                  @map("organization_id")
+  vehicleId            String                  @map("vehicle_id")
+  /// Hardware class at last probe — informational; does not alone imply availability.
+  hardwareProfile      HardwareType            @map("hardware_profile")
+  providerSource       String                  @map("provider_source")
+  signalName           String?                 @map("signal_name")
+  detectorName         String?                 @map("detector_name")
+  /// Stable key: `signalName` or `detectorName` (exactly one required at write time).
+  capabilityKey        String                  @map("capability_key")
+  capabilityStatus     DrivingCapabilityStatus @default(UNKNOWN) @map("capability_status")
+  firstSeenAt          DateTime                @map("first_seen_at")
+  lastSeenAt           DateTime                @map("last_seen_at")
+  checkedAt            DateTime                @map("checked_at")
+  effectiveCadenceMs   Int?                    @map("effective_cadence_ms")
+  p95CadenceMs         Int?                    @map("p95_cadence_ms")
+  coverage             Float?                  @map("coverage")
+  nativeEventAvailable Boolean                 @default(false) @map("native_event_available")
+  metadata             Json?                   @map("metadata")
+  capabilityVersion    String                  @map("capability_version")
+  createdAt            DateTime                @default(now()) @map("created_at")
+  updatedAt            DateTime                @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, vehicleId, providerSource, capabilityKey])
+  @@index([organizationId])
+  @@index([vehicleId, capabilityStatus])
+  @@index([vehicleId, checkedAt])
+  @@index([providerSource, capabilityKey])
+  @@map("vehicle_driving_capabilities")
 }
 
 model MisuseCase {

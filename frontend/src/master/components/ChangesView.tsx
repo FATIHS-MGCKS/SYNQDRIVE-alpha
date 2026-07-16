@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p13-vehicle-driving-capability-2026-07-16',
+    version: '4.9.515',
+    title: 'Driving Intelligence V2 P13 — VehicleDrivingCapability',
+    summary: [
+      'Neue Tabelle `vehicle_driving_capabilities` (pro Fahrzeug × Provider × Signal/Detector).',
+      'Felder: hardwareProfile, providerSource, signalName/detectorName, capabilityStatus, Cadence/Coverage, nativeEventAvailable, metadata, capabilityVersion, first/last/checkedAt.',
+      'Tenant-Unique: `(organizationId, vehicleId, providerSource, capabilityKey)`.',
+      '`VehicleDrivingCapabilityRepository` (upsertProbe) + read-only `VehicleDrivingCapabilityResolverService`.',
+      'Regeln: kein Hardware→SUPPORTED-Fallback; Providerfehler ≠ UNSUPPORTED (→ DEGRADED). Keine Trip-Detection-Änderung.',
+    ],
+    reason:
+      'Prompt 13/76: Empirische, fahrzeugbezogene Capability-Wahrheit materialisieren — Hardware allein beweist keine Eventverfügbarkeit.',
+    previousBehavior:
+      'Nur statische `getVehicleCapabilities(hardwareType)` Matrix; keine per-Fahrzeug/Provider-Probe-Persistenz.',
+    details:
+      'Prisma migration 20260716193000; Module unter `driving-capability/`; 14 Unit-Tests (LTE vs SMART5, DIMO vs HF, Provider-Fehler).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T20:30:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p12-enums-2026-07-16',
     version: '4.9.514',
     title: 'Driving Intelligence V2 P12 — Additive Prisma Enums',
