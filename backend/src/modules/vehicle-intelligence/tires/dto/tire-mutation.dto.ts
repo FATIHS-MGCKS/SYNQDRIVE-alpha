@@ -83,6 +83,10 @@ export class CreateTireSetupDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(ODO_MAX)
   installedOdometerKm?: number;
 
+  /** Required when supplying installedOdometerKm — prevents silent client override. */
+  @IsOptional() @IsBoolean()
+  confirmOdometerKm?: boolean;
+
   @IsOptional() @Matches(DOT_REGEX, { message: 'dotCodeFront must be a 4-digit DOT WWYY code' })
   dotCodeFront?: string;
 
@@ -204,6 +208,9 @@ export class ChangeTiresDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(ODO_MAX)
   odometerKm?: number;
 
+  @IsOptional() @IsBoolean()
+  confirmOdometerKm?: boolean;
+
   @IsOptional() @IsString() @MaxLength(500)
   notes?: string;
 
@@ -220,6 +227,9 @@ export class ActivateStoredSetDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(ODO_MAX)
   odometerKm?: number;
 
+  @IsOptional() @IsBoolean()
+  confirmOdometerKm?: boolean;
+
   @IsOptional() @IsString() @MaxLength(500)
   notes?: string;
 }
@@ -230,6 +240,9 @@ export class StoreTireSetDto {
 
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(ODO_MAX)
   odometerKm?: number;
+
+  @IsOptional() @IsBoolean()
+  confirmOdometerKm?: boolean;
 
   @IsOptional() @IsString() @MaxLength(500)
   notes?: string;
@@ -242,6 +255,9 @@ export class RemoveTireSetDto {
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(ODO_MAX)
   odometerKm?: number;
 
+  @IsOptional() @IsBoolean()
+  confirmOdometerKm?: boolean;
+
   @IsOptional() @IsString() @MaxLength(500)
   notes?: string;
 }
@@ -252,6 +268,9 @@ export class RetireTireDto {
 
   @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(ODO_MAX)
   odometerKm?: number;
+
+  @IsOptional() @IsBoolean()
+  confirmOdometerKm?: boolean;
 
   @IsOptional() @IsString() @MaxLength(500)
   notes?: string;

@@ -22,6 +22,24 @@ describe('tire evidence schema contracts', () => {
     expect(Object.values(TireEvidenceSource)).toHaveLength(10);
   });
 
+  it('exposes TireOdometerAnchorSource enum with audit-aligned values', () => {
+    const { TireOdometerAnchorSource, TireOdometerAnchorStatus } = require('@prisma/client');
+    expect(Object.values(TireOdometerAnchorSource)).toEqual(
+      expect.arrayContaining([
+        'MANUAL_CONFIRMED',
+        'PROVIDER_DIMO',
+        'PROVIDER_HIGH_MOBILITY',
+        'VEHICLE_LATEST_STATE',
+        'DOCUMENTED',
+        'HISTORICAL_INFERRED',
+        'UNKNOWN',
+      ]),
+    );
+    expect(Object.values(TireOdometerAnchorStatus)).toEqual(
+      expect.arrayContaining(['ANCHORED', 'ANCHOR_REQUIRED', 'MEASUREMENT_REQUIRED']),
+    );
+  });
+
   it('exposes TireBaselineStatus enum for setup/tire baseline lifecycle', () => {
     expect(Object.values(TireBaselineStatus)).toEqual(
       expect.arrayContaining([

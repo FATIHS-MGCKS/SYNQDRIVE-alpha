@@ -52,6 +52,10 @@ import {
   buildWearDataPointProvenance,
 } from './tire-provenance.repository';
 import { mapLegacyMeasurementSourceToEvidence } from './tire-evidence-source';
+import {
+  applyAnchorToRemainingKmProjection,
+  isPredictionCapable,
+} from './tire-odometer-anchor';
 
 // ── Public interfaces ─────────────────────────────────────────────────────────
 
@@ -154,6 +158,12 @@ export interface TireHealthSummary {
   seasonStatus: TireStatus;
   unevenWearStatus: TireStatus;
   recommendations: string[];
+
+  /** Whether the active setup has a traceable odometer anchor for km projection. */
+  predictionCapable: boolean;
+  odometerAnchorStatus: string | null;
+  odometerAnchorConfidence: number | null;
+  installedOdometerSource: string | null;
 
   /** Whether the vehicle has an ACTIVE tire setup (canonical data-quality flag). */
   hasActiveSet: boolean;
@@ -396,15 +406,22 @@ export class TireHealthService {
     const unified = this.resolveUnifiedConfidence(setup, measurementState);
     const confDiscount =
       this.cfg.remainingKmConfidenceDiscount[unified.label.toLowerCase()] ?? 0.85;
-    const adjustedRemainingKm = Math.round(wearAnalysis.estimatedRemainingKm * confDiscount);
+    const rawAdjustedRemainingKm = Math.round(wearAnalysis.estimatedRemainingKm * confDiscount);
+    const anchorProjection = applyAnchorToRemainingKmProjection({
+      anchorStatus: setup.odometerAnchorStatus,
+      adjustedRemainingKm: rawAdjustedRemainingKm,
+      confidenceScore: unified.score,
+    });
+    const adjustedRemainingKm = anchorProjection.adjustedRemainingKm;
+    const unifiedScore = anchorProjection.confidenceScore;
 
     await this.prisma.vehicleTireSetup.update({
       where: { id: setup.id },
       data: {
         overallHealthPercent: setLevelPercent,
-        overallRemainingKm: adjustedRemainingKm,
+        overallRemainingKm: adjustedRemainingKm ?? 0,
         healthStatus,
-        confidenceScore: unified.score,
+        confidenceScore: unifiedScore,
         confidenceLabel: unified.label,
         tireSpecConfidence: confidence.tireSpecConfidence,
         dataCompletenessConfidence: confidence.dataCompletenessConfidence,
@@ -965,21 +982,29 @@ export class TireHealthService {
     const unified = this.resolveUnifiedConfidence(setup, measurementState);
     const confDiscount =
       this.cfg.remainingKmConfidenceDiscount[unified.label.toLowerCase()] ?? 0.85;
-    const adjustedRemainingKm = Math.round(
+    const rawAdjustedRemainingKm = Math.round(
       wearAnalysis.estimatedRemainingKm * confDiscount,
     );
+    const anchorProjection = applyAnchorToRemainingKmProjection({
+      anchorStatus: setup.odometerAnchorStatus,
+      adjustedRemainingKm: rawAdjustedRemainingKm,
+      confidenceScore: unified.score,
+    });
+    const adjustedRemainingKm = anchorProjection.adjustedRemainingKm ?? 0;
+    const unifiedScore = anchorProjection.confidenceScore;
 
     const action = this.resolveActionState(
-      adjustedRemainingKm,
+      anchorProjection.adjustedRemainingKm ?? 0,
       alerts,
-      unified.score,
+      unifiedScore,
     );
     const dataQualityWarnings = this.resolveDataQualityWarnings({
       setup,
-      confidenceScore: unified.score,
+      confidenceScore: unifiedScore,
       measurementState,
       pressureContext,
       alerts,
+      anchorWarnings: anchorProjection.warnings,
     });
 
     const canonical = this.buildCanonicalReadModel({
@@ -988,8 +1013,9 @@ export class TireHealthService {
       worst,
       measurementState,
       latestMeasurement,
-      adjustedRemainingKm,
+      adjustedRemainingKm: anchorProjection.adjustedRemainingKm ?? 0,
       pressureContext,
+      predictionCapable: anchorProjection.predictionCapable,
     });
 
     const currentTreadEvidenceSource = mapTreadSourceToEvidence(
@@ -1002,7 +1028,7 @@ export class TireHealthService {
       overallPercent: setLevelPercent,
       overallRemainingKm: adjustedRemainingKm,
       healthStatus,
-      confidenceScore: unified.score,
+      confidenceScore: unifiedScore,
       confidenceLabel: unified.label,
       worstTirePosition: worst.pos,
       worstTirePercent: this.computeWheelPercentV2(
@@ -1042,6 +1068,10 @@ export class TireHealthService {
       dataQualityWarnings,
       pressureContext,
       latestMeasurementAt: latestMeasurement?.measuredAt?.toISOString() ?? null,
+      predictionCapable: anchorProjection.predictionCapable,
+      odometerAnchorStatus: setup.odometerAnchorStatus ?? null,
+      odometerAnchorConfidence: setup.odometerAnchorConfidence ?? null,
+      installedOdometerSource: setup.installedOdometerSource ?? null,
       ...canonical,
       ...inventoryFlags,
     };
@@ -1066,6 +1096,7 @@ export class TireHealthService {
     latestMeasurement: any | null;
     adjustedRemainingKm: number;
     pressureContext: TirePressureContext;
+    predictionCapable?: boolean;
   }): {
     overallStatus: TireStatus;
     displayMode: TireDisplayMode;
@@ -1083,7 +1114,7 @@ export class TireHealthService {
     unevenWearStatus: TireStatus;
     recommendations: string[];
   } {
-    const { setup, wearAnalysis, worst, measurementState, latestMeasurement, adjustedRemainingKm, pressureContext } = args;
+    const { setup, wearAnalysis, worst, measurementState, latestMeasurement, adjustedRemainingKm, pressureContext, predictionCapable = true } = args;
 
     const estimatedTreadMm = this.round1(worst.mm);
     const lowestTreadPosition = this.positionLabel(worst.pos);
@@ -1113,7 +1144,9 @@ export class TireHealthService {
 
     // ── Sub-statuses ──
     const treadStatus = classifyTreadStatus(lowestTreadMm, setup.tireSeason);
-    const remainingKmStatus = classifyRemainingKmStatus(adjustedRemainingKm);
+    const remainingKmStatus = predictionCapable
+      ? classifyRemainingKmStatus(adjustedRemainingKm)
+      : 'UNKNOWN';
     const seasonResult = classifySeasonStatus(setup.tireSeason);
     const seasonStatus = seasonResult.status;
 
@@ -1165,7 +1198,7 @@ export class TireHealthService {
       displayTreadMm,
       lastMeasurementAt: latestMeasurement?.measuredAt?.toISOString() ?? null,
       measurementAgeDays,
-      estimatedRemainingKm: adjustedRemainingKm,
+      estimatedRemainingKm: predictionCapable ? adjustedRemainingKm : null,
       pressureStatus,
       seasonStatus,
       unevenWearStatus,
@@ -1327,8 +1360,12 @@ export class TireHealthService {
     measurementState: 'measured' | 'estimated' | 'mixed';
     pressureContext: TirePressureContext;
     alerts: TireAlert[];
+    anchorWarnings?: string[];
   }): string[] {
-    const warnings: string[] = [];
+    const warnings: string[] = [...(args.anchorWarnings ?? [])];
+    if (!isPredictionCapable(args.setup.odometerAnchorStatus)) {
+      warnings.push('Odometer anchor missing or unvalidated for this setup.');
+    }
     if (args.confidenceScore < this.cfg.alerts.lowConfidenceThreshold) {
       warnings.push('Low confidence: add workshop or manual measurements for stronger anchors.');
     }
@@ -1727,6 +1764,10 @@ export class TireHealthService {
       seasonStatus: seasonResult.status,
       unevenWearStatus: 'UNKNOWN',
       recommendations,
+      predictionCapable: isPredictionCapable(setup.odometerAnchorStatus),
+      odometerAnchorStatus: setup.odometerAnchorStatus ?? null,
+      odometerAnchorConfidence: setup.odometerAnchorConfidence ?? null,
+      installedOdometerSource: setup.installedOdometerSource ?? null,
       ...inventoryFlags,
     };
   }

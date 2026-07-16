@@ -257,6 +257,7 @@ export class VehicleIntelligenceController {
       initialTreadRearMm: body.initialTreadRearMm,
       tireCondition: body.tireCondition,
       odometerKm: body.installedOdometerKm,
+      manualConfirmOdometer: body.confirmOdometerKm,
       notes: body.notes,
       archiveCurrent: false,
     });
@@ -407,7 +408,11 @@ export class VehicleIntelligenceController {
     @Param('vehicleId') vehicleId: string,
     @Body() body: ChangeTiresDto,
   ) {
-    return this.tireLifecycleService.replaceTires({ vehicleId, ...body });
+    return this.tireLifecycleService.replaceTires({
+      vehicleId,
+      ...body,
+      manualConfirmOdometer: body.confirmOdometerKm,
+    });
   }
 
   @Post('tires/activate-stored-set')
@@ -415,7 +420,11 @@ export class VehicleIntelligenceController {
     @Param('vehicleId') vehicleId: string,
     @Body() body: ActivateStoredSetDto,
   ) {
-    return this.tireLifecycleService.activateStoredSet({ vehicleId, ...body });
+    return this.tireLifecycleService.activateStoredSet({
+      vehicleId,
+      ...body,
+      manualConfirmOdometer: body.confirmOdometerKm,
+    });
   }
 
   @Post('tires/store-set')
@@ -423,7 +432,11 @@ export class VehicleIntelligenceController {
     @Param('vehicleId') vehicleId: string,
     @Body() body: StoreTireSetDto,
   ) {
-    return this.tireLifecycleService.storeTireSet({ vehicleId, ...body });
+    return this.tireLifecycleService.storeTireSet({
+      vehicleId,
+      ...body,
+      manualConfirmOdometer: body.confirmOdometerKm,
+    });
   }
 
   @Post('tires/remove-set')
@@ -431,7 +444,11 @@ export class VehicleIntelligenceController {
     @Param('vehicleId') vehicleId: string,
     @Body() body: RemoveTireSetDto,
   ) {
-    return this.tireLifecycleService.removeTireSet({ vehicleId, ...body });
+    return this.tireLifecycleService.removeTireSet({
+      vehicleId,
+      ...body,
+      manualConfirmOdometer: body.confirmOdometerKm,
+    });
   }
 
   @Post('tires/retire')
@@ -439,7 +456,11 @@ export class VehicleIntelligenceController {
     @Param('vehicleId') vehicleId: string,
     @Body() body: RetireTireDto,
   ) {
-    return this.tireLifecycleService.retireTire({ vehicleId, ...body });
+    return this.tireLifecycleService.retireTire({
+      vehicleId,
+      ...body,
+      manualConfirmOdometer: body.confirmOdometerKm,
+    });
   }
 
   @Post('tires/measurement')

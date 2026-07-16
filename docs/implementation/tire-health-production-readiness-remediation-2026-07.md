@@ -182,8 +182,9 @@ Vollständige Inventur: Abschnitt **Code-Landkarte** unten.
 | Prompt | Migration | Beschreibung |
 |--------|-----------|--------------|
 | 4 | `trip_tire_usage_ledger` (o.ä.) | Idempotente Trip→Setup-Zuordnung |
-| 6 | Partial unique index | `(vehicle_id) WHERE status = 'ACTIVE'` |
+| 6 | Partial unique index | `(vehicle_id) WHERE status = 'ACTIVE'` | **Erledigt Prompt 5** |
 | 3 | `20260716180000_tire_evidence_ground_truth_provenance` | Evidence enums + provenance columns (additive) |
+| 5 | `20260716183000_tire_lifecycle_invariants` | Lifecycle enum + partial unique indexes (nicht auf Prod) |
 | 13 | `model_version` auf `tire_health_snapshots` | **Teilweise in Prompt 3** — Spalte vorhanden, Writes folgen Prompt 13 |
 | 3b | Optional data backfill | `installed_odometer_km` — **nicht** im Audit-Scope automatisch |
 

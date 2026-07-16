@@ -84,7 +84,7 @@ function buildHarness() {
     vehicle: {
       findUnique: jest.fn().mockImplementation(async ({ where }: any) => {
         if (where.id !== VEHICLE_ID) return null;
-        return { organizationId: ORG_A };
+        return { organizationId: ORG_A, mileageKm: 28000 };
       }),
       findFirst: jest.fn(),
     },
@@ -118,13 +118,25 @@ function buildHarness() {
       }),
     },
     vehicleLatestState: {
-      findUnique: jest.fn().mockResolvedValue({ odometerKm: 30000 }),
+      findUnique: jest.fn().mockResolvedValue({
+        odometerKm: 30000,
+        providerSource: 'DIMO',
+        providerFetchedAt: new Date(),
+        sourceTimestamp: new Date(),
+        lastSeenAt: new Date(),
+        source: 'dimo',
+      }),
     },
     tireEvent: {
       create: jest.fn().mockImplementation(async ({ data }: any) => {
         state.events.push(data);
         return { id: `event-${state.events.length}` };
       }),
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    vehicleTireSetupMountPeriod: {
+      create: jest.fn().mockImplementation(async ({ data }: any) => ({ id: 'period-1', ...data })),
+      updateMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
     vehicleTireTreadMeasurement: {
       create: jest.fn().mockResolvedValue({ id: 'meas-1' }),
@@ -137,6 +149,7 @@ function buildHarness() {
           tireEvent: prisma.tireEvent,
           tire: prisma.tire,
           vehicleTireTreadMeasurement: prisma.vehicleTireTreadMeasurement,
+          vehicleTireSetupMountPeriod: prisma.vehicleTireSetupMountPeriod,
         };
         return arg(tx);
       }
@@ -173,17 +186,20 @@ describe('tire lifecycle invariants', () => {
   });
 
   it('activates stored set transactionally and preserves cumulative km', async () => {
-    const { svc, tireIdentity, state } = buildHarness();
+    const { svc, tireIdentity, state, prisma } = buildHarness();
 
     const result = await svc.activateStoredSet({
       vehicleId: VEHICLE_ID,
       storedSetupId: SETUP_STORED,
       odometerKm: 30500,
+      manualConfirmOdometer: true,
     });
 
     expect(result.preservedKm?.totalKmOnSet).toBe(18000);
     expect(state.setups.get(SETUP_STORED)?.status).toBe(TireSetupStatus.ACTIVE);
     expect(state.setups.get(SETUP_STORED)?.totalKmOnSet).toBe(18000);
+    expect(state.setups.get(SETUP_STORED)?.installedOdometerKm).toBe(30500);
+    expect(state.setups.get(SETUP_STORED)?.odometerAnchorStatus).toBe('ANCHORED');
     expect(state.setups.get(SETUP_ACTIVE)?.status).toBe(TireSetupStatus.STORED);
     expect(tireIdentity.dismountAllForSetup).toHaveBeenCalledWith(
       SETUP_ACTIVE,
@@ -191,7 +207,21 @@ describe('tire lifecycle invariants', () => {
       expect.anything(),
     );
     expect(tireIdentity.remountStoredSetupTires).toHaveBeenCalled();
+    expect(prisma.vehicleTireSetupMountPeriod.create).toHaveBeenCalled();
     expect(state.events.some((e) => e.payload?.command === 'activateStoredSet')).toBe(true);
+  });
+
+  it('ignores unconfirmed client odometer on stored set reactivation', async () => {
+    const { svc, state } = buildHarness();
+
+    await svc.activateStoredSet({
+      vehicleId: VEHICLE_ID,
+      storedSetupId: SETUP_STORED,
+      odometerKm: 999999,
+    });
+
+    expect(state.setups.get(SETUP_STORED)?.installedOdometerKm).toBe(30000);
+    expect(state.setups.get(SETUP_STORED)?.installedOdometerSource).toBe('PROVIDER_DIMO');
   });
 
   it('storeTireSet transitions ACTIVE to STORED without losing cumulative km', async () => {

@@ -346,6 +346,24 @@ enum TireBaselineStatus {
   DOCUMENTED
 }
 
+/// Provenance of the odometer reading used as a tire-setup install anchor.
+enum TireOdometerAnchorSource {
+  MANUAL_CONFIRMED
+  PROVIDER_DIMO
+  PROVIDER_HIGH_MOBILITY
+  VEHICLE_LATEST_STATE
+  DOCUMENTED
+  HISTORICAL_INFERRED
+  UNKNOWN
+}
+
+/// Whether a setup has a traceable odometer anchor for wear projection.
+enum TireOdometerAnchorStatus {
+  ANCHORED
+  ANCHOR_REQUIRED
+  MEASUREMENT_REQUIRED
+}
+
 enum ServiceEventType {
   OIL_CHANGE
   TIRE_ROTATION
@@ -2093,6 +2111,11 @@ model VehicleTireSetup {
   installedAt             DateTime?       @map("installed_at")
   removedAt               DateTime?       @map("removed_at")
   installedOdometerKm     Float?          @map("installed_odometer_km")
+  installedOdometerSource TireOdometerAnchorSource? @map("installed_odometer_source")
+  installedOdometerCapturedAt DateTime?   @map("installed_odometer_captured_at")
+  installedOdometerEvidenceId String?     @map("installed_odometer_evidence_id")
+  odometerAnchorStatus    TireOdometerAnchorStatus? @map("odometer_anchor_status")
+  odometerAnchorConfidence Float?         @map("odometer_anchor_confidence")
   removedOdometerKm       Float?          @map("removed_odometer_km")
   status                  TireSetupStatus @default(ACTIVE)
   notes                   String?
@@ -2164,13 +2187,39 @@ model VehicleTireSetup {
   events               TireEvent[]
   snapshots            TireHealthSnapshot[]
   wearDataPoints       TireWearDataPoint[]
+  mountPeriods         VehicleTireSetupMountPeriod[]
   initialTreadEvidence VehicleTireTreadMeasurement?  @relation("SetupInitialTreadEvidence", fields: [initialTreadEvidenceId], references: [id], onDelete: SetNull)
 
   @@index([vehicleId])
   @@index([organizationId, vehicleId])
   @@index([status])
   @@index([initialTreadEvidenceId])
+  @@index([odometerAnchorStatus])
   @@map("vehicle_tire_setups")
+}
+
+/// Revision-safe mount/install periods for a tire setup (preserves historical anchors).
+model VehicleTireSetupMountPeriod {
+  id                          String                    @id @default(uuid())
+  organizationId              String?                   @map("organization_id")
+  tireSetupId                 String                    @map("tire_setup_id")
+  installedAt                 DateTime                  @map("installed_at")
+  removedAt                   DateTime?                 @map("removed_at")
+  installedOdometerKm         Float?                    @map("installed_odometer_km")
+  installedOdometerSource     TireOdometerAnchorSource? @map("installed_odometer_source")
+  installedOdometerCapturedAt DateTime?                 @map("installed_odometer_captured_at")
+  installedOdometerEvidenceId String?                   @map("installed_odometer_evidence_id")
+  removedOdometerKm           Float?                    @map("removed_odometer_km")
+  odometerAnchorStatus        TireOdometerAnchorStatus? @map("odometer_anchor_status")
+  odometerAnchorConfidence    Float?                    @map("odometer_anchor_confidence")
+  createdAt                   DateTime                  @default(now()) @map("created_at")
+
+  tireSetup VehicleTireSetup @relation(fields: [tireSetupId], references: [id], onDelete: Cascade)
+
+  @@index([tireSetupId])
+  @@index([organizationId, tireSetupId])
+  @@index([installedAt])
+  @@map("vehicle_tire_setup_mount_periods")
 }
 
 model VehicleTireTreadMeasurement {
