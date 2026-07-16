@@ -18,6 +18,7 @@ import {
 
 export const TRIP_USAGE_BACKFILL_AUDIT_ID = 'tire-trip-usage-backfill-2026-07';
 export const TRIP_USAGE_BACKFILL_AUDIT_VERSION = 'tire-trip-usage-backfill-audit-2026-07-v1';
+export const TRIP_USAGE_BACKFILL_SCHEMA_VERSION = '20260716230000_tire_trip_usage_replay_safety';
 export const DEFAULT_BACKFILL_LOOKBACK_DAYS = 60;
 
 export type TripUsageBackfillAttributionClass =
@@ -175,6 +176,30 @@ const KM_DEVIATION_TOLERANCE_PCT = 0.02;
 export function anonymizeEntityId(rawId: string, auditSalt: string, prefix: string): string {
   const digest = createHash('sha256').update(`${auditSalt}:${rawId}`).digest('hex');
   return `${prefix}_${digest.slice(0, 12)}`;
+}
+
+/** Deterministic hash of auto-applicable trip rows for apply confirmation. */
+export function computeTripUsageBackfillReportHash(
+  trips: Array<{
+    tripId: string;
+    attributionClass: TripUsageBackfillAttributionClass;
+    eligibleForLedger: boolean;
+    projectedFingerprint: string | null;
+    distance: Pick<TripDistanceAudit, 'odometerConflict'>;
+  }>,
+): string {
+  const applicable = trips
+    .filter(
+      (t) =>
+        t.attributionClass === 'SINGLE_SETUP' &&
+        t.eligibleForLedger &&
+        !t.distance.odometerConflict &&
+        t.projectedFingerprint,
+    )
+    .sort((a, b) => a.tripId.localeCompare(b.tripId))
+    .map((t) => `${t.tripId}:${t.projectedFingerprint}`)
+    .join('|');
+  return createHash('sha256').update(applicable).digest('hex').slice(0, 16);
 }
 
 function roundKm(value: number): number {

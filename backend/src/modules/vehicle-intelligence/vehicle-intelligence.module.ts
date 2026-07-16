@@ -14,6 +14,8 @@ import { BrakeEvidenceService } from './brakes/brake-evidence.service';
 import { BrakeLifecycleService } from './brakes/brake-lifecycle.service';
 import { BrakeRegistrationBackfillService } from './brakes/brake-registration-backfill.service';
 import { TireOdometerAnchorBackfillService } from './tires/tire-odometer-anchor-backfill.service';
+import { TireTripUsageBackfillService } from './tires/tire-trip-usage-backfill.service';
+import { TireTripUsageLedgerReconciliationService } from './tires/tire-trip-usage-ledger-reconciliation.service';
 import { TireTripUsageService } from './tires/tire-trip-usage.service';
 import { ServiceEventsService } from './service-events/service-events.service';
 import { EnrichmentJobsService } from './enrichment-jobs/enrichment-jobs.service';
@@ -119,6 +121,8 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     BrakeLifecycleService,
     BrakeRegistrationBackfillService,
     TireOdometerAnchorBackfillService,
+    TireTripUsageBackfillService,
+    TireTripUsageLedgerReconciliationService,
     TireTripUsageService,
     ServiceEventsService,
     EnrichmentJobsService,
@@ -198,6 +202,8 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     BrakeLifecycleService,
     BrakeRegistrationBackfillService,
     TireOdometerAnchorBackfillService,
+    TireTripUsageBackfillService,
+    TireTripUsageLedgerReconciliationService,
     TireTripUsageService,
     ServiceEventsService,
     EnrichmentJobsService,

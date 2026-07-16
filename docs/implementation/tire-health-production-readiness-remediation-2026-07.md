@@ -788,6 +788,46 @@ cd backend && npm test -- tire-trip-usage-backfill
 
 ---
 
+## Prompt 13 — Controlled Ledger Backfill & Reconciliation (2026-07-16)
+
+### Ziel
+
+Kontrollierter historischer Ledger-Backfill + deterministische Aggregate-Reconciliation. **Nicht gegen Produktion ausführen.**
+
+### Geänderte / neue Dateien
+
+| Datei | Änderung |
+|-------|----------|
+| `tire-trip-usage-backfill-apply.ts` | Apply-Plan, Report-Hash, Guards, Audit-Log |
+| `tire-trip-usage-backfill-apply.safety.ts` | Prod/Remote-Apply-Guards |
+| `tire-trip-usage-backfill.service.ts` | Orchestrierung: Apply + Reconcile + optional Recalc |
+| `tire-trip-usage-ledger-reconciliation.service.ts` | Dry-run/Repair aus Ledger |
+| `tire-trip-usage-backfill-apply.spec.ts` | Guards, Hash, Konflikt, Reconcile, Batch |
+| `audit-tire-trip-usage-backfill.ts` | `--apply` Pfad + Nest-Service |
+| `tire-trip-usage-ledger-backfill.md` | **Neu** — Runbook |
+
+### Apply-Vertrag
+
+- Nur `SINGLE_SETUP` ohne Odometer-Konflikt
+- `--expected-report-hash` + `--confirm-backup` + Scope (org/vehicle/trip)
+- Post-Batch: Aggregate-Rebuild aus Ledger
+- Optional: `TireHealthService.recalculate` batch-limitiert
+
+### Tests
+
+```bash
+cd backend && npm test -- tire-trip-usage-backfill
+```
+
+### Bestätigung Prompt 13
+
+- ✅ Ledger sicher historisch aufbaubar (guarded apply)
+- ✅ Aggregate aus Ledger reproduzierbar (reconciliation service)
+- ✅ Unsichere Trips unberührt (manual review queue)
+- ✅ Apply geschützt und idempotent
+
+---
+
 ## Prompt 2 — P0-TH-04 Ground-Truth-Leak (2026-07-16)
 
 ### Root Cause
@@ -931,7 +971,8 @@ Blocker bleiben bis Abnahme Prompt 24:
 | 2026-07-16 | 4 | Evidence provenance across all tire write paths | `b28f91a` |
 | 2026-07-16 | 10 | Canonical trip finalization → tire usage integration | `850e230` |
 | 2026-07-16 | 11 | Replay & concurrency safety for tire trip usage ledger | `df9f2ee` |
-| 2026-07-16 | 12 | Historical tire trip usage backfill dry-run audit | *(dieser Commit)* |
+| 2026-07-16 | 12 | Historical tire trip usage backfill dry-run audit | `f065a08` |
+| 2026-07-16 | 13 | Controlled ledger backfill + aggregate reconciliation | *(dieser Commit)* |
 
 ---
 

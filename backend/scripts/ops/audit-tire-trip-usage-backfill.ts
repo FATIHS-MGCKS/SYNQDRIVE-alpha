@@ -1,36 +1,57 @@
 /**
- * Read-only dry-run audit for historical TireTripUsageLedger backfill (Prompt 12).
+ * Read-only dry-run + controlled apply for historical TireTripUsageLedger backfill (Prompts 12–13).
  *
- * Default: last 60 days, read-only, anonymized markdown + JSON report.
+ * Default: last 60 days, read-only audit report.
+ * With --organization-id or --vehicle-id: outputs apply plan (DRY RUN unless --apply).
  *
  * Usage (fixtures — no DB):
  *   cd backend
  *   npx ts-node -r tsconfig-paths/register scripts/ops/audit-tire-trip-usage-backfill.ts --fixtures-only
  *
- * Usage (database):
+ * Usage (dry-run apply plan):
  *   npx ts-node -r tsconfig-paths/register scripts/ops/audit-tire-trip-usage-backfill.ts \
- *     --organization-id=<uuid> --days=60 --batch-size=200 --full-setup-history
+ *     --organization-id=<uuid> --days=60 --batch-size=50 --full-setup-history \
+ *     --confirm-git-ref=$(git rev-parse HEAD) \
+ *     --confirm-schema-version=20260716230000_tire_trip_usage_replay_safety \
+ *     --operator=ops@example --reason=staging-validation --max-batch-size=25 \
+ *     --expected-audit-version=tire-trip-usage-backfill-audit-2026-07-v1
+ *
+ * Usage (controlled apply — never run against production without explicit override):
+ *   ...same flags... --confirm-backup --apply --expected-report-hash=<from-plan>
  *
  * Environment:
  *   TIRE_TRIP_USAGE_BACKFILL_AUDIT_ALLOW_REMOTE=1
  *   TIRE_TRIP_USAGE_BACKFILL_AUDIT_ALLOW_PROD=1
+ *   TIRE_TRIP_USAGE_BACKFILL_APPLY_ALLOW_REMOTE=1
+ *   TIRE_TRIP_USAGE_BACKFILL_APPLY_ALLOW_PROD=1
  */
 import { execFileSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from '../../src/app.module';
 import {
   auditTripBackfillCandidate,
   auditTripUsageBackfill,
   buildSetupKmRollups,
+  buildSyntheticTripUsageBackfillFixtures,
   buildSyntheticTripUsageBackfillReport,
   DEFAULT_BACKFILL_LOOKBACK_DAYS,
   renderTripUsageBackfillAuditMarkdown,
   sanitizeTripUsageBackfillReportForExport,
   sumWaypointPlausibilityKm,
   TRIP_USAGE_BACKFILL_AUDIT_ID,
+  TRIP_USAGE_BACKFILL_AUDIT_VERSION,
+  TRIP_USAGE_BACKFILL_SCHEMA_VERSION,
   type TripBackfillAuditInput,
+  type TripBackfillAuditResult,
 } from '../../src/modules/vehicle-intelligence/tires/tire-trip-usage-backfill-audit';
+import {
+  DEFAULT_MAX_BACKFILL_BATCH_SIZE,
+  type TripUsageBackfillApplyRequest,
+} from '../../src/modules/vehicle-intelligence/tires/tire-trip-usage-backfill-apply';
 import { assertSafeTireTripUsageBackfillAuditTarget } from '../../src/modules/vehicle-intelligence/tires/tire-trip-usage-backfill-audit.safety';
+import { TireTripUsageBackfillService } from '../../src/modules/vehicle-intelligence/tires/tire-trip-usage-backfill.service';
 
 function parseArg(prefix: string): string | undefined {
   const arg = process.argv.find((a) => a.startsWith(`${prefix}=`));
@@ -39,6 +60,49 @@ function parseArg(prefix: string): string | undefined {
 
 function hasFlag(flag: string): boolean {
   return process.argv.includes(flag);
+}
+
+function currentGitRef(): string | undefined {
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  } catch {
+    return undefined;
+  }
+}
+
+function parseTripIds(): string[] {
+  return process.argv
+    .filter((a) => a.startsWith('--trip-id='))
+    .map((a) => a.split('=').slice(1).join('=').trim())
+    .filter(Boolean);
+}
+
+function hasApplyScope(): boolean {
+  return Boolean(parseArg('--organization-id') || parseArg('--vehicle-id') || parseTripIds().length > 0);
+}
+
+function buildApplyRequest(): TripUsageBackfillApplyRequest {
+  const maxBatchRaw = parseArg('--max-batch-size');
+  const maxBatchSize = maxBatchRaw ? Number(maxBatchRaw) : DEFAULT_MAX_BACKFILL_BATCH_SIZE;
+  const recalcMaxRaw = parseArg('--recalculate-max-setups');
+  const tripIds = parseTripIds();
+
+  return {
+    apply: hasFlag('--apply'),
+    organizationId: parseArg('--organization-id'),
+    vehicleId: parseArg('--vehicle-id'),
+    tripIds: tripIds.length > 0 ? tripIds : undefined,
+    expectedAuditVersion: parseArg('--expected-audit-version') ?? TRIP_USAGE_BACKFILL_AUDIT_VERSION,
+    expectedReportHash: parseArg('--expected-report-hash'),
+    confirmGitRef: parseArg('--confirm-git-ref') ?? '',
+    confirmSchemaVersion: parseArg('--confirm-schema-version') ?? TRIP_USAGE_BACKFILL_SCHEMA_VERSION,
+    confirmBackup: hasFlag('--confirm-backup'),
+    operator: parseArg('--operator') ?? '',
+    reason: parseArg('--reason') ?? '',
+    maxBatchSize,
+    recalculate: hasFlag('--recalculate'),
+    recalculateMaxSetups: recalcMaxRaw ? Number(recalcMaxRaw) : undefined,
+  };
 }
 
 function loadEnv(): void {
@@ -431,12 +495,18 @@ function writeOutputs(report: ReturnType<typeof auditTripUsageBackfill>): void {
   );
 }
 
-function runFixturesAudit(): void {
+function runFixturesAuditOnly(): void {
   const report = buildSyntheticTripUsageBackfillReport(TRIP_USAGE_BACKFILL_AUDIT_ID);
   writeOutputs(report);
 }
 
-function runDatabaseAudit(): void {
+function auditTripsFromFixtures(): TripBackfillAuditResult[] {
+  return buildSyntheticTripUsageBackfillFixtures().map((input) =>
+    auditTripBackfillCandidate(input, TRIP_USAGE_BACKFILL_AUDIT_ID),
+  );
+}
+
+function runDatabaseAudit(): TripBackfillAuditResult[] {
   assertSafeTireTripUsageBackfillAuditTarget({
     allowRemote: hasFlag('--allow-remote-db'),
     allowProd: hasFlag('--allow-prod-db'),
@@ -502,15 +572,68 @@ function runDatabaseAudit(): void {
   });
 
   writeOutputs(report);
+  return tripAudits;
 }
 
-function main(): void {
+async function runBackfillWorkflow(auditTrips: TripBackfillAuditResult[]): Promise<void> {
+  const request = buildApplyRequest();
+  const app = await NestFactory.createApplicationContext(AppModule, {
+    logger: ['error', 'warn', 'log'],
+  });
+
+  try {
+    const service = app.get(TireTripUsageBackfillService);
+    const { plan, result } = await service.run({
+      request,
+      auditTrips,
+      actualGitRef: currentGitRef(),
+      allowRemote: hasFlag('--allow-remote-db'),
+      allowProd: process.env.TIRE_TRIP_USAGE_BACKFILL_APPLY_ALLOW_PROD === '1',
+    });
+
+    console.log(
+      JSON.stringify(
+        {
+          mode: request.apply ? 'apply' : 'dry-run',
+          auditVersion: plan.auditVersion,
+          reportHash: plan.reportHash,
+          plan: {
+            autoApplicable: plan.autoApplicable.length,
+            manualReview: plan.manualReview.length,
+            skipped: plan.skipped.length,
+          },
+          result,
+          manualReviewTripIds: plan.manualReview.map((i) => i.tripId),
+        },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    await app.close();
+  }
+}
+
+async function main(): Promise<void> {
   loadEnv();
-  if (hasFlag('--fixtures-only')) {
-    runFixturesAudit();
+
+  if (hasFlag('--fixtures-only') && !hasApplyScope()) {
+    runFixturesAuditOnly();
     return;
   }
+
+  if (hasApplyScope()) {
+    const auditTrips = hasFlag('--fixtures-only')
+      ? auditTripsFromFixtures()
+      : runDatabaseAudit();
+    await runBackfillWorkflow(auditTrips);
+    return;
+  }
+
   runDatabaseAudit();
 }
 
-main();
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
