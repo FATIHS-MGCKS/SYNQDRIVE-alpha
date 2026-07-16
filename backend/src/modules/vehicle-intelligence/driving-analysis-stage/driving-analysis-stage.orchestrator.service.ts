@@ -1,5 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import type { DrivingAnalysisRunStatus } from '@prisma/client';
+import { ClickHouseAnalysisHealthService } from '@modules/clickhouse/clickhouse-analysis-health.service';
+import { canProceedAnalysisStage } from '@modules/clickhouse/clickhouse-analysis-degradation';
 import { DrivingAnalysisRunRepository } from '../driving-analysis-run/driving-analysis-run.repository';
 import { DrivingIntelligenceJobDispatcherService } from '../driving-intelligence-jobs/driving-intelligence-jobs.dispatcher.service';
 import {
@@ -28,6 +30,7 @@ export class DrivingAnalysisStageOrchestratorService {
     private readonly stageRepository: DrivingAnalysisStageRepository,
     private readonly runRepository: DrivingAnalysisRunRepository,
     private readonly jobDispatcher: DrivingIntelligenceJobDispatcherService,
+    @Optional() private readonly clickHouseHealth?: ClickHouseAnalysisHealthService,
   ) {}
 
   initializeStagesForRun(
@@ -45,12 +48,23 @@ export class DrivingAnalysisStageOrchestratorService {
     );
     const statusMap = buildStageStatusMap(stages);
     const readyStageKeys = resolveReadyStageKeys(statusMap);
+    const analysisHealth = this.clickHouseHealth?.getAnalysisHealth();
 
     const enqueued: EnqueueReadyStagesResult['enqueued'] = [];
 
     for (const stageKey of readyStageKeys) {
       const stage = stages.find((s) => s.stageKey === stageKey);
       if (!stage || stage.status !== 'PENDING') continue;
+
+      if (analysisHealth) {
+        const gate = canProceedAnalysisStage(stageKey, analysisHealth);
+        if (gate.degradation) {
+          this.logger.warn(
+            `Stage ${stageKey} proceeds with ClickHouse degradation ` +
+              `(${gate.degradation.limitReason}) run=${input.analysisRunId}`,
+          );
+        }
+      }
 
       const jobType = stageKeyToJobType(stageKey);
       const idempotencyKey = buildStageJobIdempotencyKey(

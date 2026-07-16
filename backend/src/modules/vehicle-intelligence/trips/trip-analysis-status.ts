@@ -388,7 +388,25 @@ export function buildAssessabilityForLteR1Completed(params: {
   hfPointsTotal: number;
   hfPointsCleaned: number;
   hardwareType?: string;
+  clickHouseHfUnavailable?: boolean;
+  clickHouseProviderError?: boolean;
 }): AnalysisAssessabilityContext {
+  if (params.clickHouseHfUnavailable) {
+    return {
+      analysisAssessability: params.clickHouseProviderError ? 'NOT_ASSESSABLE' : 'LIMITED',
+      analysisLimitReason: params.clickHouseProviderError
+        ? 'CLICKHOUSE_UNAVAILABLE'
+        : 'INSUFFICIENT_HF',
+      shortTermMisuseAssessable: false,
+      nativeBehaviorEventsAvailable: params.nativeEventCount > 0,
+      hfInsufficientForAbuse: true,
+      nativeEventCount: params.nativeEventCount,
+      hfPointsTotal: params.hfPointsTotal,
+      hfPointsCleaned: params.hfPointsCleaned,
+      hardwareType: params.hardwareType,
+    };
+  }
+
   const nativeBehaviorEventsAvailable = params.nativeEventCount > 0;
 
   if (nativeBehaviorEventsAvailable) {

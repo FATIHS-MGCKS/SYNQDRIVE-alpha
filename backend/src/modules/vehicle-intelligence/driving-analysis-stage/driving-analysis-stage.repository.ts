@@ -222,6 +222,47 @@ export class DrivingAnalysisStageRepository {
       },
     });
   }
+
+  findFailedClickHouseStages(
+    organizationId: string,
+    lookbackFrom: Date,
+    limit: number,
+  ) {
+    return this.prisma.drivingAnalysisStage.findMany({
+      where: {
+        organizationId,
+        status: 'FAILED',
+        updatedAt: { gte: lookbackFrom },
+        OR: [
+          { errorCode: 'CLICKHOUSE_UNAVAILABLE' },
+          { errorCode: 'STAGE_FAILURE', errorMessage: { contains: 'ClickHouse' } },
+        ],
+      },
+      orderBy: { updatedAt: 'asc' },
+      take: limit,
+      select: {
+        id: true,
+        analysisRunId: true,
+        stageKey: true,
+        analysisRun: {
+          select: { tripId: true, vehicleId: true, modelVersion: true },
+        },
+      },
+    });
+  }
+
+  resetStageToPending(stageId: string) {
+    return this.prisma.drivingAnalysisStage.update({
+      where: { id: stageId },
+      data: {
+        status: 'PENDING',
+        startedAt: null,
+        completedAt: null,
+        errorCode: null,
+        errorMessage: null,
+      },
+    });
+  }
 }
 
 function toSnapshot(row: {

@@ -366,9 +366,11 @@ export class ClickHouseHfService {
       return { ...base, degradedReason: 'clickhouse_unavailable' };
     }
 
-    try {
-      const result = await this.ch.getClient().query({
-        query: `
+    const rows = await this.ch.runGuardedAnalysisQuery(
+      'hf_trip_windows',
+      async () => {
+        const result = await this.ch.getClient().query({
+          query: `
           SELECT
             org_id,
             vehicle_id,
@@ -397,35 +399,42 @@ export class ClickHouseHfService {
             AND trip_id = {tripId: String}
           ORDER BY window_start, signal_group
         `,
-        query_params: { vehicleId, tripId },
-        format: 'JSONEachRow',
-        clickhouse_settings: { max_execution_time: 10 },
-      });
+          query_params: { vehicleId, tripId },
+          format: 'JSONEachRow',
+          clickhouse_settings: { max_execution_time: 10 },
+        });
+        return result.json<{
+          org_id: string;
+          vehicle_id: string;
+          trip_id: string | null;
+          booking_id: string | null;
+          window_start: string;
+          window_end: string;
+          signal_group: string;
+          point_count: number;
+          sample_interval_min_ms: number | null;
+          sample_interval_max_ms: number | null;
+          sample_interval_avg_ms: number | null;
+          max_speed_kmh: number | null;
+          max_accel_mps2: number | null;
+          min_accel_mps2: number | null;
+          max_traction_kw: number | null;
+          min_traction_kw: number | null;
+          soc_delta_pct: number | null;
+          gps_point_count: number;
+          missing_gap_count: number;
+          largest_gap_ms: number | null;
+          coverage: string | null;
+          stats_json: string | null;
+        }>();
+      },
+    );
 
-      const rows = await result.json<{
-        org_id: string;
-        vehicle_id: string;
-        trip_id: string | null;
-        booking_id: string | null;
-        window_start: string;
-        window_end: string;
-        signal_group: string;
-        point_count: number;
-        sample_interval_min_ms: number | null;
-        sample_interval_max_ms: number | null;
-        sample_interval_avg_ms: number | null;
-        max_speed_kmh: number | null;
-        max_accel_mps2: number | null;
-        min_accel_mps2: number | null;
-        max_traction_kw: number | null;
-        min_traction_kw: number | null;
-        soc_delta_pct: number | null;
-        gps_point_count: number;
-        missing_gap_count: number;
-        largest_gap_ms: number | null;
-        coverage: string | null;
-        stats_json: string | null;
-      }>();
+    if (!rows) {
+      return { ...base, degradedReason: 'clickhouse_unavailable' };
+    }
+
+    try {
 
       this.metrics?.clickHouseAnalyticsQueries.inc({
         query: 'hf_trip_windows',

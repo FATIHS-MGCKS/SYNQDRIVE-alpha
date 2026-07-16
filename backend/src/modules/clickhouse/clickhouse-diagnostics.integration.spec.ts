@@ -31,6 +31,9 @@ describe('ClickHouseDiagnosticsService (integration wiring)', () => {
           appliedMigrationCount: null,
           pendingMigrationCount: null,
           lastError: 'CLICKHOUSE_URL not configured',
+          circuitState: 'closed',
+          consecutiveFailures: 0,
+          circuitOpenedAt: null,
         },
       ),
     };
@@ -77,6 +80,9 @@ describe('ClickHouseDiagnosticsService (integration wiring)', () => {
           appliedMigrationCount: null,
           pendingMigrationCount: null,
           lastError: 'ping failed',
+          circuitState: 'open',
+          consecutiveFailures: 3,
+          circuitOpenedAt: '2026-07-08T10:00:00.000Z',
         },
       }),
     );
@@ -101,6 +107,9 @@ describe('ClickHouseDiagnosticsService (integration wiring)', () => {
           appliedMigrationCount: 4,
           pendingMigrationCount: 0,
           lastError: null,
+          circuitState: 'closed',
+          consecutiveFailures: 0,
+          circuitOpenedAt: null,
         },
         storage: {
           tableCount: 2,

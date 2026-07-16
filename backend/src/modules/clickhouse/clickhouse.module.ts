@@ -9,6 +9,7 @@ import { TripEvidenceReadService } from './trip-evidence-read.service';
 import { ClickHouseWaypointsService } from './clickhouse-waypoints.service';
 import { ClickHouseActivityWindowsService } from './clickhouse-activity-windows.service';
 import { ClickHouseDiagnosticsService } from './clickhouse-diagnostics.service';
+import { ClickHouseAnalysisHealthService } from './clickhouse-analysis-health.service';
 
 /**
  * ClickHouseModule
@@ -32,6 +33,7 @@ import { ClickHouseDiagnosticsService } from './clickhouse-diagnostics.service';
     ClickHouseWaypointsService,
     ClickHouseActivityWindowsService,
     ClickHouseDiagnosticsService,
+    ClickHouseAnalysisHealthService,
   ],
   exports: [
     ClickHouseService,
@@ -43,6 +45,7 @@ import { ClickHouseDiagnosticsService } from './clickhouse-diagnostics.service';
     ClickHouseWaypointsService,
     ClickHouseActivityWindowsService,
     ClickHouseDiagnosticsService,
+    ClickHouseAnalysisHealthService,
     // ClickHouseSchemaService is not exported — it only needs to run on init
   ],
 })

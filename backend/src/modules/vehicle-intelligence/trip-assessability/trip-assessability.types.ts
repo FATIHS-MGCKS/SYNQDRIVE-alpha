@@ -36,6 +36,9 @@ export type TripAssessabilityReasonCode =
   | 'NO_HF_POINTS'
   | 'HF_INSUFFICIENT'
   | 'HF_PROVIDER_ERROR'
+  | 'CLICKHOUSE_UNAVAILABLE'
+  | 'CLICKHOUSE_CIRCUIT_OPEN'
+  | 'CLICKHOUSE_TIMEOUT'
   | 'NO_NATIVE_EVENTS'
   | 'NATIVE_QUERY_FAILED'
   | 'NATIVE_CAPABILITY_UNSUPPORTED'
@@ -124,6 +127,11 @@ export type TripAssessabilityPolicyInput = {
     distanceKm: number | null;
     durationMinutes: number | null;
   };
+  clickHouse?: {
+    hfUnavailable: boolean;
+    providerError: boolean;
+    limitReason?: string | null;
+  } | null;
   capabilities?: TripAssessabilityCapabilitySnapshot | null;
 };
 

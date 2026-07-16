@@ -119,6 +119,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly detectorLatency: Histogram<string>;
   readonly queueLag: Histogram<string>;
   readonly clickHouseQueryDuration: Histogram<string>;
+  readonly clickHouseAnalysisGuard: Counter<string>;
   readonly documentExtractionDuration: Histogram<string>;
   readonly notificationProcessingDuration: Histogram<string>;
   readonly notificationRunDuration: Histogram<string>;
@@ -440,6 +441,13 @@ export class TripMetricsService implements OnModuleInit {
       help: 'ClickHouse query execution duration in seconds',
       buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 5, 15],
       labelNames: ['query_type'],
+      registers: [this.registry],
+    });
+
+    this.clickHouseAnalysisGuard = new Counter({
+      name: 'synqdrive_clickhouse_analysis_guard_total',
+      help: 'ClickHouse analysis guard outcomes for trip analysis hardening',
+      labelNames: ['outcome', 'scope'],
       registers: [this.registry],
     });
 
