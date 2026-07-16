@@ -1,6 +1,7 @@
 import { buildTirePressureContext } from '../vehicle-intelligence/tires/tire-pressure-context.builder';
 import { resolveRecommendedTirePressure } from '../vehicle-intelligence/tires/tire-recommended-pressure';
 import type { TireHealthSummary } from '../vehicle-intelligence/tires/tire-health.service';
+import { buildTireEvidencePresentation } from '../vehicle-intelligence/tires/tire-health-presentation';
 import {
   buildTireRentalHealthReadModel,
   isTireRentalHardBlocked,
@@ -37,7 +38,8 @@ function baseSummary(
     },
   });
 
-  return {
+  const { evidencePresentation: overridePresentation, ...restOverrides } = overrides;
+  const core: Omit<TireHealthSummary, 'evidencePresentation'> = {
     overallPercent: 70,
     overallRemainingKm: 12000,
     healthStatus: 'GOOD',
@@ -100,7 +102,12 @@ function baseSummary(
     hasActiveSet: true,
     hasSetups: true,
     hasMeasurements: true,
-    ...overrides,
+    ...restOverrides,
+  };
+  return {
+    ...core,
+    evidencePresentation:
+      overridePresentation ?? buildTireEvidencePresentation({ summary: core }),
   };
 }
 

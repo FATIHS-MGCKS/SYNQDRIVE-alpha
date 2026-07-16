@@ -38,8 +38,20 @@ import {
   formatTireQuickNextMeasurementLabel,
   formatWheelLastMeasured,
   resolveWheelByPosition,
+  tireDefaultAssumptionWarning,
   tireForecastBadgeLabel,
+  tireHasTrackableData,
+  tireLowestTreadLabel,
+  tireModelEvidenceLine,
+  tirePressureEvidenceLine,
+  tireRemainingKmLabel,
+  tireSpecEvidenceLine,
+  tireStatusToSegment,
+  tireStructuredActions,
+  tireUiStatus,
+  tireUiStatusLabel,
   treadMmColorClass,
+  uiStatusAccentClass,
   wheelMeasurementBadge,
 } from '../lib/tire-health-detail-ui';
 import { segmentFromHealthState } from '../lib/health-segment-display';
@@ -111,6 +123,12 @@ function tireStatusStyle(
       return { dot: 'sq-dot-warning', pill: 'sq-chip-warning', label: 'Warning' };
     case 'CRITICAL':
       return { dot: 'sq-dot-critical', pill: 'sq-chip-critical', label: 'Critical' };
+    case 'MEASUREMENT_REQUIRED':
+      return { dot: 'sq-dot-warning', pill: 'sq-chip-warning', label: 'Measurement required' };
+    case 'REVIEW_REQUIRED':
+      return { dot: 'sq-dot-watch', pill: 'sq-chip-watch', label: 'Review required' };
+    case 'LIMITED_DATA':
+      return { dot: 'sq-dot-nodata', pill: 'sq-tone-ai', label: 'Limited data' };
     default:
       return { dot: 'sq-dot-nodata', pill: 'sq-chip-nodata', label: 'Unknown' };
   }
@@ -1642,17 +1660,11 @@ export function HealthErrorsView({
         {/* ─── Tires — health % + estimated lifetime km ─── */}
         {(() => {
           const th = tireHealth;
-          const hasTireData = (th != null && th.overallPercent != null) || (tireWear != null && tireWear.overallPercent != null);
-          const pct = th?.overallPercent ?? tireWear?.overallPercent ?? null;
-          const remKm = th?.overallRemainingKm ?? tireWear?.estimatedRemainingKm ?? null;
-          const hasAlerts = (th?.alerts?.length ?? 0) > 0;
+          const hasTireData = tireHasTrackableData(th);
           const activeSetup = resolveActiveSetup(tiresData);
-          const canonStatus = th?.overallStatus ?? null;
-          const displayMode = th?.displayMode ?? (th?.measurementState === 'measured' ? 'MEASURED' : th?.measurementState ? 'ESTIMATED' : null);
-          const lastMeasuredAt = th?.lastMeasurementAt ?? th?.latestMeasurementAt ?? null;
-          const estRemKm = th?.estimatedRemainingKm ?? remKm;
+          const uiStatus = tireUiStatus(th);
+          const tireSeg = tireStatusToSegment(uiStatus);
           const nextMeasurementLabel = formatTireQuickNextMeasurementLabel(th);
-          const tireSegment = segmentFromHealthState(canonStatus ?? th?.overallStatus, pct);
           const tireAccent = quickCardAccentFromRentalState(rentalHealth?.modules.tires.state);
           return (
             <div onClick={() => { setTireActionError(null); openModal(setShowTires); loadTireDetail(); }} className={`${quickCardClass} order-5 ${!hasTireData ? 'opacity-60' : ''}`}>
@@ -1664,34 +1676,43 @@ export function HealthErrorsView({
                     <Icon name="circle" className="w-3.5 h-3.5" />
                   </div>
                   <h3 className={quickCardTitleClass}>Tires</h3>
-                  {hasTireData && displayMode && (
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest sq-tone-ai shadow-sm">
-                      {tireForecastBadgeLabel(displayMode)}
+                  {hasTireData && (
+                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest shadow-sm ${uiStatusAccentClass(uiStatus)}`}>
+                      {tireForecastBadgeLabel(th)}
                     </span>
                   )}
-                  {hasAlerts && <span className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)] animate-pulse" />}
+                  {(th?.alerts?.length ?? 0) > 0 && <span className="w-2 h-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.8)] animate-pulse" />}
                 </div>
                 <Icon name="chevron-right" className={`w-4 h-4 text-muted-foreground transition-transform group-hover:translate-x-0.5`} />
               </div>
-              {hasTireData && pct != null ? (
+              {hasTireData ? (
                 <div className={quickCardBodyClass}>
                   <p className="text-[10px] uppercase tracking-wider font-semibold mb-1 text-muted-foreground">
-                    Tire Health
+                    {tireUiStatusLabel(th)}
                   </p>
                   <div className="mb-2 flex items-center gap-2">
                     <SegmentedHealthIndicator
-                      level={tireSegment.level}
-                      tone={tireSegment.tone}
-                      label={tireSegment.label}
-                      ariaLabel={`Tires: ${tireSegment.label}`}
+                      level={tireSeg.level}
+                      tone={tireSeg.tone}
+                      label={tireUiStatusLabel(th)}
+                      ariaLabel={`Tires: ${tireUiStatusLabel(th)}`}
                     />
                   </div>
                   <p className="text-[10px] font-medium text-muted-foreground">
-                    Lifetime:{' '}
+                    Profiltiefe:{' '}
+                    <span className="font-bold text-foreground">{tireLowestTreadLabel(th)}</span>
+                  </p>
+                  <p className="text-[10px] font-medium text-muted-foreground">
+                    Restlaufzeit:{' '}
                     <span className="font-bold text-foreground tabular-nums">
-                      {estRemKm != null ? `${Math.floor(estRemKm).toLocaleString('de-DE')} km` : '—'}
+                      {tireRemainingKmLabel(th)}
                     </span>
                   </p>
+                  {tireDefaultAssumptionWarning(th) && (
+                    <p className="text-[10px] mt-1 font-medium text-[color:var(--status-watch)]">
+                      {tireDefaultAssumptionWarning(th)}
+                    </p>
+                  )}
                   <p className="text-[10px] mt-1 font-medium text-muted-foreground">
                     Nächste Messung:{' '}
                     <span className="font-semibold text-foreground">{nextMeasurementLabel}</span>
@@ -2897,7 +2918,7 @@ export function HealthErrorsView({
             <div className="flex items-center gap-3 mb-4">
               <h2 className={`text-sm font-semibold tracking-tight text-foreground`}>Tire Health</h2>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider sq-tone-ai">
-                {tireForecastBadgeLabel(tireDetail?.summary?.displayMode ?? tireHealth?.displayMode)}
+                {tireForecastBadgeLabel(tireDetail?.summary ?? tireHealth)}
               </span>
               {tireDetail?.factors.regressionActive && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${'sq-chip-info'}`}>Regression</span>}
               {tireDetail?.factors.isStaggered && <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${'sq-chip-watch'}`}>Staggered</span>}
@@ -2908,51 +2929,45 @@ export function HealthErrorsView({
             {/* Canonical Tire Status (single source of truth) */}
             {(() => {
               const cs = tireDetail?.summary ?? tireHealth;
-              if (!cs?.overallStatus) return null;
-              const style = tireStatusStyle(cs.overallStatus);
-              const mm = cs.displayTreadMm ?? cs.lowestTreadMm ?? null;
-              const mode = cs.displayMode ?? null;
+              if (!cs) return null;
+              const style = tireStatusStyle(tireUiStatus(cs));
+              const defaultWarning = tireDefaultAssumptionWarning(cs);
+              const actions = tireStructuredActions(cs);
               return (
                 <div className={`rounded-xl p-3 mb-3 border ${'bg-muted/50 border border-border'}`}>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${style.pill}`}>{style.label}</span>
-                    {mm != null && (() => {
-                      const treadLine = formatLowestTreadLine(mm, cs.lowestTreadPosition, mode);
-                      return (
-                        <span className="text-xs text-foreground">
-                          {treadLine.prefix}{' '}
-                          <span className="font-bold tabular-nums">{treadLine.value}</span>
-                          {treadLine.suffix ? <span className="text-muted-foreground">{treadLine.suffix}</span> : null}
-                        </span>
-                      );
-                    })()}
-                    {mode && (
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${
-                        mode === 'MEASURED'
-                          ? ('sq-chip-info')
-                          : ('sq-tone-ai')
-                      }`}>
-                        {mode === 'MEASURED' ? 'Measured' : mode === 'ESTIMATED' ? 'Estimated' : 'Unknown'}
-                      </span>
-                    )}
+                    <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider ${style.pill}`}>
+                      {tireUiStatusLabel(cs)}
+                    </span>
+                    <span className="text-xs text-foreground font-medium">{tireLowestTreadLabel(cs)}</span>
                     {cs.confidence && (
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold ${'sq-chip-neutral'}`}>
                         Confidence: {cs.confidence}
                       </span>
                     )}
-                    {cs.estimatedRemainingKm != null && (
-                      <span className="text-[10px] text-muted-foreground ml-auto">~{Math.floor(cs.estimatedRemainingKm).toLocaleString('de-DE')} km remaining</span>
-                    )}
+                    <span className="text-[10px] text-muted-foreground ml-auto">
+                      Restlaufzeit: {tireRemainingKmLabel(cs)}
+                    </span>
+                  </div>
+                  {defaultWarning && (
+                    <p className="text-[11px] mt-2 text-[color:var(--status-watch)]">{defaultWarning}</p>
+                  )}
+                  <div className="mt-2 grid gap-1 text-[10px] text-muted-foreground">
+                    {tirePressureEvidenceLine(cs) && <p>{tirePressureEvidenceLine(cs)}</p>}
+                    {tireModelEvidenceLine(cs) && <p>{tireModelEvidenceLine(cs)}</p>}
+                    {tireSpecEvidenceLine(cs) && <p>Spec: {tireSpecEvidenceLine(cs)}</p>}
                   </div>
                   {(cs.lastMeasurementAt ?? cs.latestMeasurementAt) && (
-                    <p className="text-[10px] mt-2 text-muted-foreground">Last measured: {formatMeasuredAgo(cs.lastMeasurementAt ?? cs.latestMeasurementAt) ?? '—'}</p>
+                    <p className="text-[10px] mt-2 text-muted-foreground">
+                      Letzte Profilmessung: {formatMeasuredAgo(cs.lastMeasurementAt ?? cs.latestMeasurementAt) ?? '—'}
+                    </p>
                   )}
-                  {(cs.recommendations ?? []).length > 0 && (
+                  {actions.length > 0 && (
                     <ul className="mt-2 space-y-1">
-                      {(cs.recommendations ?? []).slice(0, 3).map((rec, i) => (
-                        <li key={i} className="text-[11px] flex items-start gap-2 text-muted-foreground">
+                      {actions.slice(0, 4).map((action) => (
+                        <li key={action.code} className="text-[11px] flex items-start gap-2 text-muted-foreground">
                           <span className={`mt-1.5 w-1 h-1 rounded-full shrink-0 ${'bg-[color:var(--status-info)]'}`} />
-                          {rec}
+                          {action.label}
                         </li>
                       ))}
                     </ul>

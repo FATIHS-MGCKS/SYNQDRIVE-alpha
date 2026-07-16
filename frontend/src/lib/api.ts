@@ -5745,10 +5745,89 @@ export interface TirePressureContext {
   warningHints: string[];
 }
 
-/** Canonical tire status taxonomy (see backend tire-status.ts). */
 export type TireCanonicalStatus = 'GOOD' | 'WATCH' | 'WARNING' | 'CRITICAL' | 'UNKNOWN';
 export type TireDisplayMode = 'MEASURED' | 'ESTIMATED' | 'UNKNOWN';
 export type TireConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
+
+export type TireUiStatus =
+  | 'GOOD'
+  | 'WARNING'
+  | 'CRITICAL'
+  | 'UNKNOWN'
+  | 'MEASUREMENT_REQUIRED'
+  | 'REVIEW_REQUIRED'
+  | 'LIMITED_DATA';
+
+export type TireTreadProvenance =
+  | 'MEASURED'
+  | 'ESTIMATED'
+  | 'DEFAULT_ASSUMPTION'
+  | 'MODEL'
+  | 'DOCUMENTED'
+  | 'UNKNOWN';
+
+export type TireStructuredActionCode =
+  | 'MEASURE_TREAD'
+  | 'CAPTURE_ODOMETER_ANCHOR'
+  | 'CONFIRM_TIRE_SPEC'
+  | 'SET_RECOMMENDED_PRESSURE'
+  | 'CHECK_PRESSURE'
+  | 'REPLACE_TIRES'
+  | 'REVIEW_ROTATION';
+
+export interface TireTreadEvidenceLine {
+  position: string;
+  axle: 'front' | 'rear';
+  valueMm: number | null;
+  provenance: TireTreadProvenance;
+  sourceCode: string | null;
+  sourceLabelDe: string;
+  sourceLabelEn: string;
+  measuredAt: string | null;
+  confidence: TireConfidenceLevel;
+  isDefaultAssumption: boolean;
+  displayLabelDe: string;
+  displayLabelEn: string;
+}
+
+export interface TireRemainingKmPresentation {
+  reliable: boolean;
+  displayDe: string;
+  displayEn: string;
+  exactKm: number | null;
+  bandMinKm: number | null;
+  bandMaxKm: number | null;
+  reasonDe: string | null;
+  reasonEn: string | null;
+}
+
+export interface TireStructuredAction {
+  code: TireStructuredActionCode;
+  labelDe: string;
+  labelEn: string;
+  priority: number;
+}
+
+export interface TireEvidencePresentation {
+  uiStatus: TireUiStatus;
+  uiStatusLabelDe: string;
+  uiStatusLabelEn: string;
+  treadLines: TireTreadEvidenceLine[];
+  lowestTread: TireTreadEvidenceLine | null;
+  remainingKm: TireRemainingKmPresentation;
+  lastTreadMeasurementAt: string | null;
+  lastPressureValueBar: number | null;
+  lastPressureSource: string | null;
+  pressureFreshness: string;
+  modelVersion: string;
+  modelCalculatedAt: string | null;
+  tireSpecSource: string | null;
+  tireSpecSourceLabelDe: string;
+  tireSpecSourceLabelEn: string;
+  structuredActions: TireStructuredAction[];
+  defaultAssumptionWarningDe: string | null;
+  defaultAssumptionWarningEn: string | null;
+}
 
 export interface TireHealthSummaryResponse {
   overallPercent: number;
@@ -5774,6 +5853,21 @@ export interface TireHealthSummaryResponse {
   referenceNewTreadSource?: string | null;
   replacementThresholdSource?: string | null;
   currentTreadSource?: string | null;
+  currentTreadValue?: number | null;
+  currentTreadEvidenceSource?: string | null;
+  isMeasured?: boolean;
+  isEstimated?: boolean;
+  isDefaultAssumption?: boolean;
+  lastActualMeasurementAt?: string | null;
+  baselineSource?: string | null;
+  predictionCapable?: boolean;
+  odometerAnchorStatus?: string | null;
+  odometerAnchorConfidence?: number | null;
+  installedOdometerSource?: string | null;
+  hasActiveSet?: boolean;
+  hasSetups?: boolean;
+  hasMeasurements?: boolean;
+  evidencePresentation?: TireEvidencePresentation;
   operationalReplacementMm?: number | null;
   topWearDrivers?: string[];
   actionState?: TireActionState;

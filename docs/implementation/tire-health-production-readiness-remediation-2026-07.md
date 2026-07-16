@@ -1208,6 +1208,7 @@ Blocker bleiben bis Abnahme Prompt 24:
 | 2026-07-16 | 18 | Evidence-based recommended tire pressure (no maxInflationKpa as nominal) | *(dieser Commit)* |
 | 2026-07-16 | 19 | Evidence-aware rental health blocking policy | *(dieser Commit)* |
 | 2026-07-16 | 20 | Structured tire health alerts with dedupe + revision-safe resolution | *(dieser Commit)* |
+| 2026-07-16 | 21 | Honest tire health evidence in API + UI | *(dieser Commit)* |
 
 ---
 

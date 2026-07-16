@@ -79,6 +79,11 @@ import {
 } from './tire-health-alert.builder';
 import { TireHealthAlertService } from './tire-health-alert.service';
 import type { TireHealthAlertReasonCode } from './tire-health-alert.types';
+import {
+  buildTireEvidencePresentation,
+  type TireEvidencePresentation,
+  type TireHealthSummaryForPresentation,
+} from './tire-health-presentation';
 
 // ── Public interfaces ─────────────────────────────────────────────────────────
 
@@ -189,6 +194,9 @@ export interface TireHealthSummary {
   hasSetups: boolean;
   /** Whether tread measurements exist for this vehicle. */
   hasMeasurements: boolean;
+
+  /** UI-ready honest evidence presentation — single source for all consumers. */
+  evidencePresentation: TireEvidencePresentation;
 }
 
 export interface TireHealthDetail {
@@ -398,6 +406,14 @@ export class TireHealthService {
           inventoryFlags,
         )
       : this.buildEmptySummary(setup, pressureContext, inventoryFlags);
+
+    if (wheels.length > 0) {
+      summary.evidencePresentation = buildTireEvidencePresentation({
+        summary,
+        wheels,
+        modelCalculatedAt: setup.lastRecalculatedAt?.toISOString() ?? null,
+      });
+    }
 
     return {
       summary,
@@ -1277,7 +1293,7 @@ export class TireHealthService {
     );
     const provenanceFlags = resolveSummaryProvenanceFlags(currentTreadEvidenceSource);
 
-    return {
+    const summaryCore = {
       overallPercent: setLevelPercent,
       overallRemainingKm: adjustedRemainingKm,
       healthStatus,
@@ -1329,6 +1345,14 @@ export class TireHealthService {
       installedOdometerSource: setup.installedOdometerSource ?? null,
       ...canonical,
       ...inventoryFlags,
+    } satisfies TireHealthSummaryForPresentation;
+
+    return {
+      ...summaryCore,
+      evidencePresentation: buildTireEvidencePresentation({
+        summary: summaryCore,
+        modelCalculatedAt: setup.lastRecalculatedAt?.toISOString() ?? null,
+      }),
     };
   }
 
@@ -1956,7 +1980,7 @@ export class TireHealthService {
       recommendations.unshift('Switch to summer tires to reduce wear.');
     }
 
-    return {
+    const summaryCore = {
       overallPercent: 100,
       overallRemainingKm: setup.expectedLifeKm ?? 35000,
       healthStatus: 'EXCELLENT',
@@ -1987,9 +2011,9 @@ export class TireHealthService {
       baselineSource: setup.initialTreadEvidenceSource ?? null,
       operationalReplacementMm: null,
       topWearDrivers: [],
-      actionState: 'CHECK_SOON',
+      actionState: 'CHECK_SOON' as TireActionState,
       actionReasons: ['No calibrated wear baseline yet. Record first tread measurement.'],
-      measurementState: 'estimated',
+      measurementState: 'estimated' as const,
       dataQualityWarnings: ['No tire wear baseline measurement available.'],
       pressureContext: resolvedPressure,
       recommendedPressure: resolvedPressure.recommendedPressure,
@@ -1998,8 +2022,8 @@ export class TireHealthService {
 
       // ── Canonical read model ──
       overallStatus,
-      displayMode: measuredTreadMm != null ? 'MEASURED' : 'UNKNOWN',
-      confidence: measuredTreadMm != null ? 'LOW' : 'UNKNOWN',
+      displayMode: (measuredTreadMm != null ? 'MEASURED' : 'UNKNOWN') as TireDisplayMode,
+      confidence: (measuredTreadMm != null ? 'LOW' : 'UNKNOWN') as TireConfidenceLevel,
       lowestTreadMm: measuredTreadMm,
       lowestTreadPosition: null,
       measuredTreadMm,
@@ -2010,13 +2034,21 @@ export class TireHealthService {
       estimatedRemainingKm: null,
       pressureStatus,
       seasonStatus: seasonResult.status,
-      unevenWearStatus: 'UNKNOWN',
+      unevenWearStatus: 'UNKNOWN' as TireStatus,
       recommendations,
       predictionCapable: isPredictionCapable(setup.odometerAnchorStatus),
       odometerAnchorStatus: setup.odometerAnchorStatus ?? null,
       odometerAnchorConfidence: setup.odometerAnchorConfidence ?? null,
       installedOdometerSource: setup.installedOdometerSource ?? null,
       ...inventoryFlags,
+    } satisfies TireHealthSummaryForPresentation;
+
+    return {
+      ...summaryCore,
+      evidencePresentation: buildTireEvidencePresentation({
+        summary: summaryCore,
+        modelCalculatedAt: setup.lastRecalculatedAt?.toISOString() ?? null,
+      }),
     };
   }
 }
