@@ -416,6 +416,146 @@ Neue Testdateien:
 
 ---
 
+## Prompt 6 — Traceable Odometer Anchors (2026-07-16)
+
+### Ziel
+
+Neue oder reaktivierte Tire Setups dürfen nur mit nachvollziehbarem Odometer-Anker prognosefähig werden. Kein erfundener Odometer.
+
+### Schema (Migration `20260716190000_tire_odometer_anchor`)
+
+**Neue Enums**
+
+| Enum | Werte |
+|------|-------|
+| `TireOdometerAnchorSource` | `MANUAL_CONFIRMED`, `PROVIDER_DIMO`, `PROVIDER_HIGH_MOBILITY`, `VEHICLE_LATEST_STATE`, `DOCUMENTED`, `HISTORICAL_INFERRED`, `UNKNOWN` |
+| `TireOdometerAnchorStatus` | `ANCHORED`, `ANCHOR_REQUIRED`, `MEASUREMENT_REQUIRED` |
+
+**Additive Felder auf `VehicleTireSetup`**
+
+- `installedOdometerSource`
+- `installedOdometerCapturedAt`
+- `installedOdometerEvidenceId`
+- `odometerAnchorStatus`
+- `odometerAnchorConfidence`
+
+**Neue Tabelle `VehicleTireSetupMountPeriod`**
+
+Revisionssichere Montageperioden — historische `installedOdometerKm`-Werte werden bei Stored-Set-Reactivation nicht still überschrieben; neue Periode als eigene Zeile.
+
+### Kernmodul (`tire-odometer-anchor.ts`)
+
+| Funktion | Zweck |
+|----------|-------|
+| `resolveOdometerAnchor()` | Serverseitig `VehicleLatestState` + Provider-Source lesen; Client-Wert nur mit `manualConfirmed` |
+| `assessOdometerPlausibility()` | Rollback- und Sprung-Erkennung vs. letztem bekannten Wert |
+| `deriveOdometerAnchorStatus()` | `ANCHORED` / `ANCHOR_REQUIRED` / `MEASUREMENT_REQUIRED` |
+| `isPredictionCapable()` | Prognose nur bei `ANCHORED` |
+| `applyAnchorToRemainingKmProjection()` | Unterdrückt präzise Rest-km + cappt Confidence |
+
+### Verdrahtete Pfade
+
+| Pfad | Anker-Verhalten |
+|------|-----------------|
+| `installTireSet` | Anker auflösen + Mount-Period anlegen |
+| `activateStoredSet` | Neue Mount-Period; kumulativ km erhalten; alter Anker in History |
+| `storeTireSet` / `removeTireSet` | Offene Mount-Period schließen |
+| `replaceTires` (full_set) | via `installTireSet` |
+| `replaceTires` (partial) | Setup-Anker unverändert; Event-Odometer serverseitig |
+| `upsertSetupAndMeasurement` / Fahrzeugregistrierung | via `installTireSet` |
+| API `POST /tires` | `confirmOdometerKm` erforderlich für Client-Odometer |
+
+### API / DTO (additiv)
+
+- `confirmOdometerKm?: boolean` auf Setup-/Change-/Activate-DTOs
+- Summary-Felder: `predictionCapable`, `odometerAnchorStatus`, `odometerAnchorConfidence`, `installedOdometerSource`
+
+### Tests
+
+```bash
+cd backend && npm test -- tire
+# 14 suites, 222 passed (+16 neue Odometer-Anker-Tests)
+```
+
+Neue/erweiterte Testdateien:
+
+- `tire-odometer-anchor.spec.ts` — DIMO, HM, manuell, kein Odometer, Rollback, Sprung, API-Manipulation
+- `tire-lifecycle-invariants.spec.ts` — Stored-Set-Reactivation + unbestätigter Client-Odometer
+- `tire-schema.spec.ts` — Enum-Verträge
+
+### Bestätigung Prompt 6
+
+- ✅ Neue Setups besitzen nachweisbaren Anker oder klaren `ANCHOR_REQUIRED`/`MEASUREMENT_REQUIRED`-Status
+- ✅ Keine unbekannte Zahl wird erfunden
+- ✅ Confidence und Prognosefähigkeit reagieren korrekt (`predictionCapable`)
+- ✅ Montagehistorie revisionssicher via `VehicleTireSetupMountPeriod`
+- ✅ Migration **nicht** auf Produktion ausgeführt
+
+---
+
+## Prompt 7 — Read-only Odometer Anchor Backfill Audit (2026-07-16)
+
+### Ziel
+
+Read-only Audit für bestehende Setups ohne belastbaren `installedOdometerKm`-Anker. Keine Produktionsdaten verändern.
+
+### Deliverables
+
+| Artefakt | Pfad |
+|----------|------|
+| Audit-Logik | `tire-odometer-anchor-backfill-audit.ts` |
+| DB-Loader (read-only SQL) | `tire-odometer-anchor-backfill-audit.loader.ts` |
+| Safety guard | `tire-odometer-anchor-backfill-audit.safety.ts` |
+| Ops CLI | `backend/scripts/ops/audit-tire-odometer-anchor-candidates.ts` |
+| Repo wrapper | `scripts/ops/audit-tire-odometer-anchor-candidates.sh` |
+| Bericht | `docs/audits/tire-odometer-anchor-backfill-candidates-2026-07.md` |
+| JSON Export | `docs/audits/data/tire-odometer-anchor-backfill-candidates-2026-07.json` |
+
+### Kandidaten-Priorität (A→F)
+
+1. Dokumentierte Installations-/Registrierungsmessung (`vehicle_tire_tread_measurements`)
+2. Historischer DIMO-Odometer (`tire_health_snapshots` + `provider_source`)
+3. Historischer HM-Odometer (`hm_signal_group_states`)
+4. Snapshot-Historie (persistierte Snapshots — **nicht** live `vehicle_latest_states` allein)
+5. Werkstatt-/Reifendokument (`vehicle_document_extractions` TIRE)
+6. Explizite Trip-/Energy-Event-Odometer-Grenzen (`vehicle_energy_events.odometer_end_km`)
+
+**Ausgeschlossen:** pauschale Rückrechnung vom heutigen Odometer minus Trip-km.
+
+### Confidence-Klassen
+
+`EXACT` | `HIGH_CONFIDENCE` | `MEDIUM_CONFIDENCE` | `LOW_CONFIDENCE` | `NO_SAFE_CANDIDATE` | `CONFLICTING_DATA`
+
+### Ausführung
+
+```bash
+# Synthetic fixtures (kein DB-Zugriff)
+cd backend && npx ts-node -r tsconfig-paths/register scripts/ops/audit-tire-odometer-anchor-candidates.ts --fixtures-only
+
+# Read-only DB (supervised)
+TIRE_ODOMETER_ANCHOR_AUDIT_ALLOW_PROD=1 cd backend && \
+  npx ts-node -r tsconfig-paths/register scripts/ops/audit-tire-odometer-anchor-candidates.ts \
+  --output-dir=../docs/audits/data \
+  --report=../docs/audits/tire-odometer-anchor-backfill-candidates-2026-07.md
+```
+
+### Tests
+
+```bash
+cd backend && npm test -- tire-odometer-anchor-backfill
+# 11 passed (alle Confidence-Klassen via Synthetic Fixtures)
+```
+
+### Bestätigung Prompt 7
+
+- ✅ Read-only — kein Apply-Modus, keine Updates, keine Recalculation, keine Tire Events
+- ✅ Kandidaten nachvollziehbar mit `supportingSignals` / `conflicts`
+- ✅ Unsichere Fälle bleiben unsicher (`NO_SAFE_CANDIDATE`, `CONFLICTING_DATA`)
+- ✅ Kein historischer Anker erfunden
+- ✅ Anonymisierte Setup-IDs, keine VIN/Kennzeichen/GPS/Secrets im Bericht
+
+---
+
 ## Prompt 2 — P0-TH-04 Ground-Truth-Leak (2026-07-16)
 
 ### Root Cause
