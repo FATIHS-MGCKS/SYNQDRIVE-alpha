@@ -76,9 +76,14 @@ export interface AnchorBackfillCandidate {
 }
 
 export interface SetupBackfillAuditResult {
+  setupId: string;
+  vehicleId: string;
+  organizationId: string | null;
   anonymizedSetupId: string;
   installedAt: string | null;
   candidateOdometerKm: number | null;
+  candidateObservedAt: string | null;
+  candidateHash: string;
   source: AnchorBackfillCandidateSource | null;
   timeDistanceToInstallationHours: number | null;
   confidence: AnchorBackfillConfidenceClass;
@@ -121,6 +126,37 @@ const MEDIUM_WINDOW_HOURS = 72;
 const LOW_WINDOW_HOURS = 168;
 const CONFLICT_TOLERANCE_KM = 500;
 const ROLLBACK_TOLERANCE_KM = 50;
+
+export const BACKFILL_CANDIDATE_VERSION = 'tire-odometer-anchor-backfill-2026-07-v1';
+export const BACKFILL_SCHEMA_VERSION = '20260716190000_tire_odometer_anchor';
+
+export function computeCandidateHash(args: {
+  setupId: string;
+  candidateOdometerKm: number | null;
+  source: AnchorBackfillCandidateSource | null;
+  confidence: AnchorBackfillConfidenceClass;
+  candidateObservedAt: string | null;
+}): string {
+  const payload = JSON.stringify({
+    setupId: args.setupId,
+    candidateOdometerKm: args.candidateOdometerKm,
+    source: args.source,
+    confidence: args.confidence,
+    candidateObservedAt: args.candidateObservedAt,
+    version: BACKFILL_CANDIDATE_VERSION,
+  });
+  return createHash('sha256').update(payload).digest('hex').slice(0, 16);
+}
+
+export function computeManifestHash(
+  rows: Array<{ setupId: string; candidateHash: string }>,
+): string {
+  const canonical = [...rows]
+    .sort((a, b) => a.setupId.localeCompare(b.setupId))
+    .map((r) => `${r.setupId}:${r.candidateHash}`)
+    .join('|');
+  return createHash('sha256').update(canonical).digest('hex').slice(0, 16);
+}
 
 export function anonymizeSetupId(setupId: string, auditSalt: string): string {
   const digest = createHash('sha256').update(`${auditSalt}:${setupId}`).digest('hex');
@@ -372,25 +408,26 @@ export function auditSetupBackfillCandidate(
   }
 
   if (!best) {
-    return {
-      anonymizedSetupId: anonymizeSetupId(input.setupId, auditSalt),
+    const confidence: AnchorBackfillConfidenceClass = 'NO_SAFE_CANDIDATE';
+    return buildAuditResult(input, auditSalt, {
       installedAt: input.installedAt,
       candidateOdometerKm: null,
+      candidateObservedAt: null,
       source: null,
       timeDistanceToInstallationHours: null,
-      confidence: 'NO_SAFE_CANDIDATE',
+      confidence,
       supportingSignals: ['no_historical_candidate_found'],
       conflicts: [],
-      recommendedAction: recommendAction('NO_SAFE_CANDIDATE', []),
+      recommendedAction: recommendAction(confidence, []),
       candidatesReviewed: 0,
       rejectedRetroactiveInference: true,
-    };
+    });
   }
 
-  return {
-    anonymizedSetupId: anonymizeSetupId(input.setupId, auditSalt),
+  return buildAuditResult(input, auditSalt, {
     installedAt: input.installedAt,
     candidateOdometerKm: best.odometerKm,
+    candidateObservedAt: best.observedAt,
     source: best.source,
     timeDistanceToInstallationHours: best.timeDistanceToInstallationHours,
     confidence,
@@ -399,6 +436,35 @@ export function auditSetupBackfillCandidate(
     recommendedAction: recommendAction(confidence, conflicts),
     candidatesReviewed: candidates.length,
     rejectedRetroactiveInference: true,
+  });
+}
+
+function buildAuditResult(
+  input: SetupBackfillAuditInput,
+  auditSalt: string,
+  row: Omit<
+    SetupBackfillAuditResult,
+    | 'setupId'
+    | 'vehicleId'
+    | 'organizationId'
+    | 'anonymizedSetupId'
+    | 'candidateHash'
+  >,
+): SetupBackfillAuditResult {
+  const candidateHash = computeCandidateHash({
+    setupId: input.setupId,
+    candidateOdometerKm: row.candidateOdometerKm,
+    source: row.source,
+    confidence: row.confidence,
+    candidateObservedAt: row.candidateObservedAt,
+  });
+  return {
+    setupId: input.setupId,
+    vehicleId: input.vehicleId,
+    organizationId: input.organizationId,
+    anonymizedSetupId: anonymizeSetupId(input.setupId, auditSalt),
+    candidateHash,
+    ...row,
   };
 }
 

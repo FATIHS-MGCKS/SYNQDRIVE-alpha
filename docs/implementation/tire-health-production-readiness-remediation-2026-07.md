@@ -556,6 +556,50 @@ cd backend && npm test -- tire-odometer-anchor-backfill
 
 ---
 
+## Prompt 8 — Controlled Odometer Anchor Backfill Apply (2026-07-16)
+
+### Ziel
+
+Kontrolliertes, standardmäßig sicheres Apply-Werkzeug für Bestandssetups — strikt getrennt vom Read-only-Audit. **In diesem Prompt nicht gegen Produktion ausgeführt.**
+
+### Geänderte / neue Dateien
+
+| Datei | Änderung |
+|-------|----------|
+| `tire-odometer-anchor-backfill-apply.ts` | **Neu** — Plan, Validierung, Payload-Builder, Batch-Limit |
+| `tire-odometer-anchor-backfill-apply.safety.ts` | **Neu** — Prod/Remote-Guards für Apply |
+| `tire-odometer-anchor-backfill.service.ts` | **Neu** — Nest-Service: Plan + transaktionale Writes |
+| `tire-odometer-anchor-backfill-apply.spec.ts` | **Neu** — Dry-run, Apply-Guards, Klassifikation, Idempotenz, Cross-Tenant, Batch |
+| `tire-odometer-anchor-backfill-audit.ts` | `candidateHash`, `setupId`, Manifest-Hash |
+| `audit-tire-odometer-anchor-candidates.ts` | Dry-run Plan + guarded `--apply` Pfad |
+| `20260716200000_tire_odometer_anchor_backfill_event` | `ODOMETER_ANCHOR_BACKFILLED` Event-Typ |
+| `docs/runbooks/tire-odometer-anchor-backfill.md` | **Neu** — Betriebs-Runbook |
+
+### Apply-Schutz
+
+- Default: **DRY RUN** (`apply: false`)
+- `--apply` erfordert: Org/Setup-Scope, Candidate-Version, Manifest-Hash, Git-Ref, Schema-Version, Backup, Operator, Reason, Batch-Limit
+- Auto-Apply nur `EXACT` + `HIGH_CONFIDENCE`
+- `MEDIUM` / `LOW` / `CONFLICTING` → nur Manual-Review-Liste
+- `NO_SAFE_CANDIDATE` → optional `MEASUREMENT_REQUIRED` (kein erfundenes km)
+- Recalculation: separat via `--recalculate`, batch-limitiert
+
+### Tests
+
+```bash
+cd backend && npm test -- tire-odometer-anchor-backfill
+```
+
+### Bestätigung Prompt 8
+
+- ✅ Kein unbeabsichtigter Produktions-Apply (Safety-Guards + explizite Flags)
+- ✅ Unsichere Historie bleibt Unknown / Manual Review
+- ✅ Sichere Kandidaten revisionssicher (Candidate-Hash, TireEvent, Mount Period)
+- ✅ Wiederholung erzeugt keine Doppeländerung (Idempotenz via Event-Hash)
+- ✅ Runbook unter `docs/runbooks/tire-odometer-anchor-backfill.md`
+
+---
+
 ## Prompt 2 — P0-TH-04 Ground-Truth-Leak (2026-07-16)
 
 ### Root Cause

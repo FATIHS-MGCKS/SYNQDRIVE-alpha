@@ -13,6 +13,7 @@ import { BrakeHealthService } from './brakes/brake-health.service';
 import { BrakeEvidenceService } from './brakes/brake-evidence.service';
 import { BrakeLifecycleService } from './brakes/brake-lifecycle.service';
 import { BrakeRegistrationBackfillService } from './brakes/brake-registration-backfill.service';
+import { TireOdometerAnchorBackfillService } from './tires/tire-odometer-anchor-backfill.service';
 import { ServiceEventsService } from './service-events/service-events.service';
 import { EnrichmentJobsService } from './enrichment-jobs/enrichment-jobs.service';
 import { DtcService } from './dtc/dtc.service';
@@ -116,6 +117,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     BrakeEvidenceService,
     BrakeLifecycleService,
     BrakeRegistrationBackfillService,
+    TireOdometerAnchorBackfillService,
     ServiceEventsService,
     EnrichmentJobsService,
     DtcService,
@@ -193,6 +195,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     BrakeEvidenceService,
     BrakeLifecycleService,
     BrakeRegistrationBackfillService,
+    TireOdometerAnchorBackfillService,
     ServiceEventsService,
     EnrichmentJobsService,
     DtcService,

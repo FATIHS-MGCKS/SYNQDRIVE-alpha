@@ -321,6 +321,7 @@ enum TireEventType {
   ALERT
   INSTALL
   REMOVE
+  ODOMETER_ANCHOR_BACKFILLED
 }
 
 /// Canonical provenance for tread depth, baseline, and validation evidence.

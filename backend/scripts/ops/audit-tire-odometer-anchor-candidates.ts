@@ -1,23 +1,38 @@
 /**
- * Read-only audit: tire setup odometer anchor backfill candidates (Prompt 7).
+ * Tire odometer anchor backfill audit + controlled apply (Prompts 7–8).
  *
- * NO writes. NO apply mode. NO recalculation. NO tire events.
+ * Default: read-only audit report (DRY RUN).
+ * With --organization-id or --setup-id: outputs apply plan (still DRY RUN unless --apply).
  *
- * Usage:
+ * Usage (audit report):
  *   cd backend
  *   npx ts-node -r tsconfig-paths/register scripts/ops/audit-tire-odometer-anchor-candidates.ts --fixtures-only
+ *
+ * Usage (dry-run apply plan):
  *   npx ts-node -r tsconfig-paths/register scripts/ops/audit-tire-odometer-anchor-candidates.ts \
- *     --output-dir=../docs/audits/data --report=../docs/audits/tire-odometer-anchor-backfill-candidates-2026-07.md
+ *     --organization-id=<uuid> --confirm-git-ref=$(git rev-parse HEAD) \
+ *     --confirm-schema-version=20260716190000_tire_odometer_anchor \
+ *     --operator=ops@example --reason=staging-validation --max-batch-size=25 \
+ *     --expected-candidate-version=tire-odometer-anchor-backfill-2026-07-v1
+ *
+ * Usage (controlled apply — never run against production without explicit override):
+ *   ...same flags... --confirm-backup --apply --expected-manifest-hash=<from-plan>
  *
  * Environment:
- *   TIRE_ODOMETER_ANCHOR_AUDIT_ALLOW_REMOTE=1  allow non-local DATABASE_URL
- *   TIRE_ODOMETER_ANCHOR_AUDIT_ALLOW_PROD=1    supervised production read-only only
+ *   TIRE_ODOMETER_ANCHOR_AUDIT_ALLOW_REMOTE=1   read-only audit on remote DB
+ *   TIRE_ODOMETER_ANCHOR_AUDIT_ALLOW_PROD=1     read-only audit on prod-like DB
+ *   TIRE_ODOMETER_ANCHOR_APPLY_ALLOW_REMOTE=1   apply on remote DB
+ *   TIRE_ODOMETER_ANCHOR_APPLY_ALLOW_PROD=1     apply on prod-like DB (supervised only)
  */
 import { execFileSync } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from '../../src/app.module';
 import {
   auditBackfillCandidates,
+  BACKFILL_CANDIDATE_VERSION,
+  BACKFILL_SCHEMA_VERSION,
   buildSyntheticBackfillFixtures,
   renderBackfillAuditMarkdown,
 } from '../../src/modules/vehicle-intelligence/tires/tire-odometer-anchor-backfill-audit';
@@ -33,6 +48,8 @@ import {
   type RawWorkshopDocRow,
 } from '../../src/modules/vehicle-intelligence/tires/tire-odometer-anchor-backfill-audit.loader';
 import { assertSafeTireOdometerAnchorAuditTarget } from '../../src/modules/vehicle-intelligence/tires/tire-odometer-anchor-backfill-audit.safety';
+import type { BackfillApplyRequest } from '../../src/modules/vehicle-intelligence/tires/tire-odometer-anchor-backfill-apply';
+import { TireOdometerAnchorBackfillService } from '../../src/modules/vehicle-intelligence/tires/tire-odometer-anchor-backfill.service';
 
 const AUDIT_ID = 'tire-odometer-anchor-backfill-2026-07';
 
@@ -41,12 +58,27 @@ function parseArg(prefix: string): string | undefined {
   return arg?.split('=').slice(1).join('=').trim() || undefined;
 }
 
+function parseSetupIds(): string[] {
+  return process.argv
+    .filter((a) => a.startsWith('--setup-id='))
+    .map((a) => a.split('=').slice(1).join('=').trim())
+    .filter(Boolean);
+}
+
 function loadEnv(): void {
   const envPath = path.resolve(__dirname, '..', '..', '.env');
   if (!fs.existsSync(envPath)) return;
   for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
     const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
     if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^"(.*)"$/, '$1');
+  }
+}
+
+function currentGitRef(): string | undefined {
+  try {
+    return execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  } catch {
+    return undefined;
   }
 }
 
@@ -249,7 +281,7 @@ function loadTripsAfterInstallKm(setup: RawSetupRow): number | undefined {
   }
 }
 
-function writeOutputs(report: ReturnType<typeof auditBackfillCandidates>): void {
+function writeAuditOutputs(report: ReturnType<typeof auditBackfillCandidates>): void {
   const repoRoot = path.resolve(__dirname, '..', '..', '..');
   const outputDir = parseArg('--output-dir') ?? path.join(repoRoot, 'docs', 'audits', 'data');
   const reportPath =
@@ -265,7 +297,7 @@ function writeOutputs(report: ReturnType<typeof auditBackfillCandidates>): void 
 }
 
 function runFixturesAudit(): void {
-  writeOutputs(
+  writeAuditOutputs(
     auditBackfillCandidates(buildSyntheticBackfillFixtures(), {
       auditId: AUDIT_ID,
       mode: 'fixtures',
@@ -297,20 +329,90 @@ function runDatabaseAudit(limit?: number): void {
     }),
   );
 
-  writeOutputs(auditBackfillCandidates(inputs, { auditId: AUDIT_ID, mode: 'database' }));
+  writeAuditOutputs(auditBackfillCandidates(inputs, { auditId: AUDIT_ID, mode: 'database' }));
 }
 
-function main(): void {
-  loadEnv();
+function buildApplyRequest(): BackfillApplyRequest {
+  const apply = process.argv.includes('--apply');
+  const maxBatchRaw = parseArg('--max-batch-size');
+  const maxBatchSize = maxBatchRaw ? Number(maxBatchRaw) : 25;
+  const recalcMaxRaw = parseArg('--recalculate-max-vehicles');
+  const setupIds = parseSetupIds();
 
-  if (process.argv.includes('--apply')) {
-    throw new Error('Apply mode is intentionally unsupported — this audit is read-only.');
+  return {
+    apply,
+    organizationId: parseArg('--organization-id'),
+    setupIds: setupIds.length > 0 ? setupIds : undefined,
+    expectedCandidateVersion:
+      parseArg('--expected-candidate-version') ?? BACKFILL_CANDIDATE_VERSION,
+    expectedManifestHash: parseArg('--expected-manifest-hash'),
+    confirmGitRef: parseArg('--confirm-git-ref') ?? '',
+    confirmSchemaVersion: parseArg('--confirm-schema-version') ?? BACKFILL_SCHEMA_VERSION,
+    confirmBackup: process.argv.includes('--confirm-backup'),
+    operator: parseArg('--operator') ?? '',
+    reason: parseArg('--reason') ?? '',
+    maxBatchSize,
+    applyMeasurementRequiredStatus: process.argv.includes('--apply-measurement-required-status'),
+    recalculate: process.argv.includes('--recalculate'),
+    recalculateMaxVehicles: recalcMaxRaw ? Number(recalcMaxRaw) : undefined,
+  };
+}
+
+function hasApplyScope(): boolean {
+  return Boolean(parseArg('--organization-id') || parseSetupIds().length > 0);
+}
+
+async function runBackfillWorkflow(): Promise<void> {
+  const request = buildApplyRequest();
+  const app = await NestFactory.createApplicationContext(AppModule, {
+    logger: ['error', 'warn', 'log'],
+  });
+
+  try {
+    const service = app.get(TireOdometerAnchorBackfillService);
+    const { plan, result } = await service.run({
+      request,
+      actualGitRef: currentGitRef(),
+      allowRemote: process.argv.includes('--allow-remote-db'),
+      allowProd: process.env.TIRE_ODOMETER_ANCHOR_APPLY_ALLOW_PROD === '1',
+    });
+
+    console.log(
+      JSON.stringify(
+        {
+          mode: request.apply ? 'apply' : 'dry-run',
+          candidateVersion: plan.candidateVersion,
+          manifestHash: plan.manifestHash,
+          plan: {
+            autoApplicable: plan.autoApplicable.length,
+            manualReview: plan.manualReview.length,
+            measurementRequired: plan.measurementRequired.length,
+            skipped: plan.skipped.length,
+          },
+          result,
+          manualReviewSetupIds: plan.manualReview.map((i) => i.setupId),
+        },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    await app.close();
   }
+}
+
+async function main(): Promise<void> {
+  loadEnv();
 
   const limitRaw = parseArg('--limit');
   const limit = limitRaw ? Number(limitRaw) : undefined;
   if (limit != null && (!Number.isFinite(limit) || limit < 1)) {
     throw new Error('--limit must be a positive number');
+  }
+
+  if (hasApplyScope()) {
+    await runBackfillWorkflow();
+    return;
   }
 
   if (process.argv.includes('--fixtures-only') || !process.env.DATABASE_URL) {
@@ -321,4 +423,7 @@ function main(): void {
   runDatabaseAudit(limit);
 }
 
-main();
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
