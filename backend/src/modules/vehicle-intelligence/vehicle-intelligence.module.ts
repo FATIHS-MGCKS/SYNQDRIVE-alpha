@@ -58,6 +58,7 @@ import { ServiceOverdueTaskService } from './service-compliance/service-overdue-
 import { VehicleFileSummaryService } from './vehicle-file/vehicle-file-summary.service';
 import { TasksModule } from '../tasks/tasks.module';
 import { DrivingImpactService } from './driving-impact/driving-impact.service';
+import { DimoAvailableSignalsPreflightService } from './driving-capability/dimo-available-signals-preflight.service';
 import { VehicleDrivingCapabilityRepository } from './driving-capability/vehicle-driving-capability.repository';
 import { VehicleDrivingCapabilityResolverService } from './driving-capability/vehicle-driving-capability-resolver.service';
 import { TripAssessabilityRepository } from './trip-assessability/trip-assessability.repository';
@@ -184,6 +185,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     ServiceOverdueTaskService,
     VehicleFileSummaryService,
     DrivingImpactService,
+    DimoAvailableSignalsPreflightService,
     VehicleDrivingCapabilityRepository,
     VehicleDrivingCapabilityResolverService,
     TripAssessabilityRepository,
@@ -263,6 +265,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     ComplianceTaskMaterializeService,
     ServiceOverdueTaskService,
     DrivingImpactService,
+    DimoAvailableSignalsPreflightService,
     VehicleDrivingCapabilityRepository,
     VehicleDrivingCapabilityResolverService,
     TripAssessabilityRepository,

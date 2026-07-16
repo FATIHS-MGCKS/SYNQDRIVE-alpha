@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p29-dimo-signals-preflight-2026-07-16',
+    version: '4.9.530',
+    title: 'Driving Intelligence V2 P29 — vehicle-scoped DIMO Available-Signals Preflight',
+    summary: [
+      'Neuer `DimoAvailableSignalsPreflightService` — DIMO `availableSignals` + `dataSummary` pro Fahrzeug, Klassifikation und Persistenz in `vehicle_driving_capabilities`.',
+      'Prüft mindestens RPM, Throttle, Engine Load, Torque, Coolant, Engine Runtime, Oil Temp, Gear, Transmission Temp, Brake Pedal/Pressure, Wheel Speeds, Yaw Rate, Altitude, Heading, EV Battery Power, native Driving Events und DIMO Segments.',
+      'Persistiert Status, lastSeenAt, Source, effektive Kadenz-Felder, Coverage und `cap-preflight-v1` Capability Version.',
+      'Kein 30-Sekunden-Poller — automatischer Lauf nur bei Trip-Analysis-Init und min. 7-Tage-Intervall (`runPreflightIfStale`).',
+      'Detektoren werden nicht aus Dokumentation aktiviert — nur `availableSignals`-Listing und beobachtete `eventDataSummary`.',
+      'Tests für LTE_R1 ICE, LTE_R1 EV (Tesla) und hypothetisches SMART5 HF-Profil.',
+    ],
+    reason:
+      'Prompt 29/76: Fahrzeugbezogene Capability-Wahrheit vor Detector-Gates — empirische DIMO-Preflight-Daten statt Hardware- oder Doc-Annahmen.',
+    previousBehavior:
+      'VehicleDrivingCapability-Schema und Repository existierten (P13), aber kein Produktions-Writer für DIMO availableSignals/dataSummary-Preflight.',
+    details:
+      'Trigger: fire-and-forget in `DrivingAnalysisInitService.initializeForCompletedTrip`. Provider-Fehler → DEGRADED (nicht UNSUPPORTED). Trip-FSM unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T08:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p28-damage-incident-canonical-2026-07-16',
     version: '4.9.529',
     title: 'Driving Intelligence V2 P28 — canonical Provider Collision / Impact Proxy / Inspection path',
