@@ -17,6 +17,7 @@ import { TireRecalculationProcessor } from './processors/tire-recalculation.proc
 import { TripTrackingProcessor } from './processors/trip-tracking.processor';
 import { TripBehaviorEnrichmentProcessor } from './processors/trip-behavior-enrichment.processor';
 import { DrivingImpactProcessor } from './processors/driving-impact.processor';
+import { DrivingIntelligenceJobProcessor } from './processors/driving-intelligence-job.processor';
 import { DtcKnowledgeProcessor } from './processors/dtc-knowledge.processor';
 import { NotificationEvaluationProcessor } from './processors/notification-evaluation.processor';
 import { NotificationDeliveryProcessor } from './processors/notification-delivery.processor';
@@ -47,6 +48,7 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
       { name: QUEUE_NAMES.TRIP_TRACKING },
       { name: QUEUE_NAMES.TRIP_BEHAVIOR_ENRICHMENT },
       { name: QUEUE_NAMES.DRIVING_IMPACT_COMPUTE },
+      { name: QUEUE_NAMES.DRIVING_INTELLIGENCE },
       { name: QUEUE_NAMES.DTC_KNOWLEDGE_ENRICHMENT },
       { name: QUEUE_NAMES.NOTIFICATION_EVALUATION },
       { name: QUEUE_NAMES.NOTIFICATION_DELIVERY },
@@ -70,6 +72,7 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
     TripTrackingProcessor,
     TripBehaviorEnrichmentProcessor,
     DrivingImpactProcessor,
+    DrivingIntelligenceJobProcessor,
     DtcKnowledgeProcessor,
     NotificationEvaluationProcessor,
     NotificationDeliveryProcessor,

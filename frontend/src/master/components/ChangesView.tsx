@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p18-typed-jobs-2026-07-16',
+    version: '4.9.519',
+    title: 'Driving Intelligence V2 P18 — Typed persistent job types',
+    summary: [
+      'Neue Tabelle `driving_intelligence_jobs` — typisierte, dauerhafte Job-Envelope für V2-Queue-Umbau.',
+      '11 Jobtypen: Native Events Ingest, Event Context, Route, Impact, Misuse, Assessability, Attribution, Decision Summary, Rental Recompute, Health Impact Publish, DIMO Segment Validate.',
+      'Gemeinsamer Payload: organizationId, vehicleId, optional tripId/bookingId, analysisRunId, modelVersion, idempotencyKey, correlationId, requestedAt.',
+      'BullMQ-Queue `driving.intelligence.jobs` + `DrivingIntelligenceJobDispatcherService` (persist → enqueue) + Stub-Handler-Registry.',
+      'Tenant-Unique `(organizationId, idempotencyKey)`; Status-Lifecycle PENDING→ENQUEUED→IN_PROGRESS→COMPLETED/FAILED.',
+    ],
+    reason:
+      'Prompt 18/76: Typisierte persistente Jobs als Fundament für schrittweisen Pipeline-Umbau — ohne Legacy-Orchestrator-Migration.',
+    previousBehavior:
+      'Post-Trip-Pipeline nur über `trip.behavior.enrichment` + `trip.driving-impact.compute` ohne materialisierte V2-Job-Envelope.',
+    details:
+      'Migration 20260716210000; Module unter `driving-intelligence-jobs/`; Processor `DrivingIntelligenceJobProcessor` (Stub-Routing). Legacy `TripEnrichmentOrchestratorService` unverändert. 15 Unit-Tests.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T22:30:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p16-driving-analysis-run-2026-07-16',
     version: '4.9.518',
     title: 'Driving Intelligence V2 P16 — DrivingAnalysisRun',
