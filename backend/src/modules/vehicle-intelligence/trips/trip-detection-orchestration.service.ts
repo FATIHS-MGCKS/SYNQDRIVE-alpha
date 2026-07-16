@@ -10,6 +10,7 @@ import {
 } from '../../dimo/dimo-segments.service';
 import { BatteryV2Service } from '../battery-health/battery-v2.service';
 import { TripEnrichmentOrchestratorService } from './trip-enrichment-orchestrator.service';
+import { TripPostFinalizeAnalysisProducer } from '../driving-analysis-init/trip-post-finalize-analysis.producer';
 import {
   TripDetectionState,
   TripTrackingRunType,
@@ -135,6 +136,7 @@ export class TripDetectionOrchestrationService {
     @InjectQueue(QUEUE_NAMES.TRIP_BEHAVIOR_ENRICHMENT)
     private readonly behaviorQueue: Queue,
     private readonly enrichmentOrchestrator: TripEnrichmentOrchestratorService,
+    private readonly postFinalizeAnalysisProducer: TripPostFinalizeAnalysisProducer,
     private readonly decisionEngine: TripDecisionEngine,
     private readonly policyResolver: TripDetectionPolicyResolver,
     private readonly detectorRegistry: DetectorRegistry,
@@ -1282,7 +1284,13 @@ export class TripDetectionOrchestrationService {
                 },
               );
 
-              // Enqueue enrichment for the finalized first trip.
+              // Durable V2 analysis init (awaited) + legacy enrichment (unchanged).
+              await this.postFinalizeAnalysisProducer.produceAfterPersistedCompletion({
+                tripId: splitResult.firstTripId,
+                vehicleId,
+                organizationId,
+                source: 'MID_GAP_SPLIT',
+              });
               this.enrichmentOrchestrator
                 .enqueueBehaviorEnrichment(
                   splitResult.firstTripId,
@@ -2396,7 +2404,15 @@ export class TripDetectionOrchestrationService {
                   : null,
             });
 
-            // V2 finalize: enqueue enrichment through canonical orchestrator
+            // Durable V2 analysis init (awaited) after persisted finalize.
+            await this.postFinalizeAnalysisProducer.produceAfterPersistedCompletion({
+              tripId,
+              vehicleId,
+              organizationId,
+              source: 'LIVE_FINALIZE',
+            });
+
+            // Legacy enrichment path — retained until V2 pipeline fully replaces it.
             this.enrichmentOrchestrator
               .enqueueBehaviorEnrichment(tripId, vehicleId, organizationId)
               .catch((e) => this.logger.error(`V2 finalize: failed to enqueue enrichment for trip ${tripId}: ${e}`));

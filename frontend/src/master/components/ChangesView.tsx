@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p19-trip-analysis-init-2026-07-16',
+    version: '4.9.520',
+    title: 'Driving Intelligence V2 P19 — Trip analysis init after finalize',
+    summary: [
+      '`DrivingAnalysisInitService` + `TripPostFinalizeAnalysisProducer` — verdrahtet COMPLETED Trips mit dauerhaften V2-Jobs.',
+      'Genau eine `TRIP_ENRICHMENT`-Run-Initialisierung pro Trip×`di-v2-pipeline-v1` via `resolveOrBeginRun` + stabile Idempotency-Keys.',
+      'Producer nur nach persistiertem `tripStatus=COMPLETED` (awaited, kein Fire-and-forget für V2).',
+      'Hooks: Live-`processFinalize`, MID_GAP_SPLIT, Repair-Finalize (stale/missing-end/missing-trip/gap-split).',
+      'Queue-Fehler sichtbar (`queueErrors` + Warn-Logs); PENDING-Jobs via `retryPendingJobsForTrip` retrybar.',
+      'Legacy `enqueueBehaviorEnrichment` bleibt unverändert bis vollständiger V2-Ersatz.',
+    ],
+    reason:
+      'Prompt 19/76: Post-Finalize-Produktion der V2-Analysepipeline — ohne Trip-FSM-Änderung, ohne Live-Latenz durch schwere Berechnungen.',
+    previousBehavior:
+      'Nach Finalize nur Legacy-BullMQ `trip.behavior.enrichment` (teils fire-and-forget); keine materialisierte V2-Init.',
+    details:
+      'Module `driving-analysis-init/`; Pipeline-Startjob `DIMO_TRIP_SEGMENT_VALIDATE`; 7 Unit-Tests (Dedup, Queue-Fehler, Retry). TripDecisionEngine unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T23:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p18-typed-jobs-2026-07-16',
     version: '4.9.519',
     title: 'Driving Intelligence V2 P18 — Typed persistent job types',
