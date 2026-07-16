@@ -2,53 +2,67 @@
 
 | Feld | Wert |
 |------|------|
-| **Audit-Datum** | 2026-07-16 |
-| **Scope** | Repositoryweiter Read-only-Abschlussaudit — keine produktiven Code-Änderungen |
-| **Methodik** | Code-Inspektion, Grep, bestehende Audit-/Test-Docs, Jest/Vitest/Playwright, `tsc`, Vite-Build |
+| **Audit-Datum** | 2026-07-16 (Prompt 77 Read-only) · **Remediation** 2026-07-16 (Prompt 78) |
+| **Scope** | Prompt 77: Read-only-Abschlussaudit. Prompt 78: P0/P1-Remediation + vollständige Validierung |
+| **Methodik** | Code-Inspektion, Grep, Jest/Vitest/Playwright, `tsc`, Vite/Nest-Build, Prisma validate |
 | **Verwandte Docs** | [`../testing/battery-health-v2-frontend-e2e-coverage.md`](../testing/battery-health-v2-frontend-e2e-coverage.md), [`../testing/battery-health-v2-backend-coverage.md`](../testing/battery-health-v2-backend-coverage.md), [`../runbooks/battery-health-v2-shadow-validation.md`](../runbooks/battery-health-v2-shadow-validation.md), [`../runbooks/battery-health-v2-deployment.md`](../runbooks/battery-health-v2-deployment.md) |
 
 ## Executive Summary
 
-Battery Health V2 ist **architektonisch weitgehend geschlossen**: kanonische Read-Model-Pipeline (`CanonicalBatteryHealthService` + `canonical`), durable BullMQ-Jobs für Snapshot/Trip-Start, Data-Quality-Gates, Shadow-Validation ohne Auto-Publication, umfangreiche Tests (729 Backend + 78 Frontend Unit + 11 E2E) und grüne Builds.
+Battery Health V2 ist **architektonisch geschlossen** für Shadow-Betrieb: kanonische Read-Model-Pipeline (`CanonicalBatteryHealthService` + `canonical`), durable BullMQ-Jobs, Data-Quality-Gates, Shadow-Validation ohne Auto-Publication, umfangreiche Tests und grüne Builds.
 
-**Kein P0-Blocker** für Staging/Shadow-Betrieb mit Default-Flags (Readiness OFF, Legacy-Crank OFF, Legacy-Pairwise OFF, Rest-Shadow OFF).
+**Prompt 78:** Beide **P1-Funde (B-01, B-02) behoben** — Legacy `BatteryV2Service` schreibt keine parallelen `SOH_PERCENT`-Evidence mehr; Rest-Capture triggert kanonisches `BATTERY_ASSESSMENT_RECOMPUTE`; Lead-Acid-Kurve nur noch chemistry-gated.
 
-**Verbleibende Risiken** konzentrieren sich auf:
-1. **Parallele Legacy-Pfade** (`BatteryV2Service` Lead-Acid-Scoring + `SOH_PERCENT`-Evidence vs. neuer `lv-estimated-health-assessment`)
-2. **Compat-API-Oberfläche** (`battery-health/v2`, `hv-battery-status`, Feldname `estimatedSohPct`)
-3. **Stille Fehlerbehandlung** bei Summary-Fetches in Health-Summary / Task-Automation
-4. **Historische DB-Belast** (Wake-as-Rest, Crank-Coverage, HV-Duplikate) — Diagnose/Repair vorhanden, aber nicht automatisch ausgeführt
+**Kein P0-Blocker** identifiziert (weder Prompt 77 noch 78).
 
-**Empfehlung:** Shadow-Validierung 4–8 Wochen fortsetzen; vor Readiness-Flag `BATTERY_V2_READINESS_ENABLED=true` die P1-Funde adressieren und `audit-battery-data.ts` / `repair-battery-data.ts` auf Produktionsflotte (Dry-Run → Apply) fahren.
+**Finale Bewertung: `READY_FOR_SHADOW_ONLY`**
+
+| Status | Bedeutung |
+|--------|-----------|
+| **READY** | Nein — Readiness/Publication weiterhin blockiert; historische DB-Belast + P2-Compat/UI offen |
+| **READY_FOR_SHADOW_ONLY** | **Ja** — Default-Flags, Pipeline, Tests und P1-Fixes erlauben Shadow-Validierung 4–8 Wochen |
+| **NOT_READY** | Nein |
+
+**Verbleibende Risiken (P2, kein Shadow-Blocker):** Compat-API-Oberfläche, UI-Legacy-Fallbacks, stille `.catch()` in Summary-Konsumenten, historische DB-Belast bis Repair-Lauf, Retention-Storage bei Aktivierung.
 
 ---
 
-## Test- und Build-Evidenz
+## Test- und Build-Evidenz (Prompt 78 — nach P1-Remediation)
 
 | Prüfung | Befehl | Ergebnis |
 |---------|--------|----------|
-| Backend Battery V2 | `cd backend && npm run test:battery:v2` | **729/729 grün** (98 Suites) |
-| Frontend Unit | `cd frontend && npm run test:battery:v2` | **78/78 grün** (21 Dateien) |
-| Frontend E2E | `cd frontend && npm run test:battery:v2:e2e` | **11/11 grün** |
-| Frontend Build | `cd frontend && npm run build` | **grün** |
-| Backend Typecheck | `cd backend && npx tsc --noEmit` | **grün** |
+| Prisma format/validate | `npx prisma format && npx prisma validate` | **grün** (bestehende SetNull-Warnung) |
+| Migrationen destructive SQL | Grep `DROP\|DELETE FROM\|TRUNCATE` in `202607*.sql` | **keine Treffer** |
+| Backend Battery V2 Unit | `npm run test:battery:v2` | **733/733 grün** (99 Suites) |
+| Backend Integration | `npm run test:battery:v2:verify` (integration) | **12/12 grün** (provider-observation); Retention-Integration übersprungen (kein Docker) |
+| Frontend Unit + E2E + Build | `npm run test:battery:v2:verify` | **78 Unit + 11 E2E + Build grün** |
+| Backend Typecheck + Build | `npm run test:battery:v2:verify` | **grün** |
+| Queue-Smoke / Retry-DL | `battery-v2-pipeline-hardening.spec`, `battery-v2-job-error.util.spec` | **grün** |
+| Recharge-Reconciliation | `hv-recharge-session-reconcile.service.spec` | **grün** |
+| M2/M3 Shadow | `hv-capacity-m2.policy.spec`, `hv-capacity-cross-session.policy.spec`, `hv-soh-gate.policy.spec` | **grün** |
+| Legacy-Diagnose | `battery-data-diagnostic.service.spec` | **grün** |
+| Remediation Dry-Run (CLI) | `scripts/ops/repair-battery-data.ts` (default dry-run) | **nicht ausführbar** in Cloud-Agent (kein DB/JWT/AppModule-Bootstrap); Logik via Diagnostic-Unit-Tests abgedeckt |
+| Retention Dry-Run | `battery-v2-retention.service.spec` (`dryRun=true`, `deleted=0`) | **grün** |
+| Prometheus | `battery-v2-prometheus.metrics.spec` | **grün** (15+ Counter) |
+| KS FH 660E HV-Shadow | `hv-capacity-m2.policy.spec`, `vehicle-battery-reference-capacity.policy.spec`, `hv-method-profile.resolver.spec`, `dimo-recharge-segments.client.spec` | **grün** |
+| ICE Rest/Wake | `lv-rest-measurement-quality.spec`, `battery-rest-target-evaluation.spec` | **grün** |
 
 ---
 
-## Risiko-Register (kompakt)
+## Risiko-Register (kompakt) — Remediation-Status Prompt 78
 
-| ID | Priorität | Kategorie | Kurzbeschreibung |
-|----|-----------|-----------|------------------|
-| B-01 | **P1** | LV Score als SOH | `BatteryV2Service` schreibt weiterhin `SOH_PERCENT`-Evidence und Lead-Acid-Score parallel zum kanonischen LV-Assessment |
-| B-02 | **P1** | Lead-Acid-Kurve | `BatteryV2Service.computeHealth` nutzt `VOLTAGE_SOC` ohne Chemistry-Gate |
-| B-03 | **P2** | Parallele APIs | Mehrere Compat-Endpunkte + `battery-health/v2` exponiert `estimatedSohPct` |
-| B-04 | **P2** | UI / Legacy-Fallback | `vehicle-health-box.mapper` fällt auf `healthPercent`/`sohPercent` zurück |
-| B-05 | **P2** | UI / HealthErrors | SOH-Trend-Chart und `!`-Assertions in Diagnose-UI |
-| B-06 | **P2** | Fire-and-forget | Reference-Capacity-Task-Callback + stille `.catch()` in Summary-Konsumenten |
-| B-07 | **P2** | Poll als Measurement | `TELEMETRY_POLL_FALLBACK` (flag-gated) erzeugt Ladesessions aus Poll-Übergängen |
-| B-08 | **P2** | Historische Daten | Wake-as-Rest / Crank ohne Coverage / HV-Duplikate in Bestand bis Repair-Lauf |
-| B-09 | **P2** | Migrationen | Zwei Migrationen mit identischem Timestamp `20260716170000` |
-| B-10 | **P2** | Retention / Storage | Lange HV-Retention-Fenster (bis 1095 Tage) — Wachstum bei aktivem Pruning |
+| ID | Priorität | Status | Kurzbeschreibung |
+|----|-----------|--------|------------------|
+| B-01 | **P1** | **behoben** | Paralleles Legacy-LV-Scoring + `SOH_PERCENT`-Evidence — Rest-Capture → `BATTERY_ASSESSMENT_RECOMPUTE`; keine Evidence-Writes mehr |
+| B-02 | **P1** | **behoben** | Lead-Acid `VOLTAGE_SOC` ohne Chemistry-Gate — `resolveLeadAcidCurveAllowed()` + `estimateLeadAcidSocPercent()` |
+| B-03 | P2 | offen | Parallele Compat-APIs + `estimatedSohPct` Feldname |
+| B-04 | P2 | offen | UI Legacy-Fallback in `vehicle-health-box.mapper` |
+| B-05 | P2 | offen | SOH-Trend-Chart / `!`-Assertions in HealthErrorsView |
+| B-06 | P2 | offen | Fire-and-forget `.catch()` in Summary/Task-Pfaden |
+| B-07 | P2 | offen (by design) | `TELEMETRY_POLL_FALLBACK` Ladesessions (flag-gated) |
+| B-08 | P2 | offen (Ops) | Historische Wake-as-Rest / Crank / HV-Duplikate — Repair-Skripte vorhanden |
+| B-09 | P2 | offen | Doppelter Migrations-Timestamp `20260716170000` |
+| B-10 | P2 | offen | Retention-Storage-Wachstum bei aktivem Pruning |
 
 Alle übrigen geprüften Kategorien: **kein Problem** (siehe Detailabschnitte).
 
@@ -251,15 +265,15 @@ Alle übrigen geprüften Kategorien: **kein Problem** (siehe Detailabschnitte).
 | **Beweis** | `lv-chemistry-assessment-context.policy.spec.ts` — Lithium/Unknown: `chemicalSocEstimationAllowed=false`, `UNSUPPORTED` |
 | **Empfohlene Korrektur** | — |
 
-### 8.2 Legacy BatteryV2Service Lead-Acid-Scoring — **P1 (B-02)**
+### 8.2 Legacy BatteryV2Service Lead-Acid-Scoring — **P1 (B-02) — behoben (Prompt 78)**
 
 | Feld | Wert |
 |------|------|
 | **Datei** | `backend/src/modules/vehicle-intelligence/battery-health/battery-v2.service.ts` |
-| **Codepfad** | `VOLTAGE_SOC` (L31–35), `voltageToSoc()` in `computeHealth()` (L364–382), aufgerufen via `onSnapshot` → `recomputeHealth` (L220–227) |
-| **Auswirkung** | Bei Fahrzeugen mit Lithium/Unknown-Chemistry kann der **Legacy-Pfad** weiterhin Lead-Acid-SOC/Score aus Ruhespannung ableiten und in `battery_features` / `SOH_PERCENT`-Evidence persistieren |
-| **Beweis** | Kein `BatteryChemistry`-Check in `computeHealth`; Chemistry-Gate existiert nur im neuen `lv-estimated-health-assessment.policy` |
-| **Empfohlene Korrektur** | Chemistry-aware Gate in `BatteryV2Service.computeHealth` (gleiche Policy wie `lv-chemistry-assessment-context`) **oder** `onSnapshot`/`recomputeHealth` durch `BATTERY_ASSESSMENT_RECOMPUTE`-only-Pfad ersetzen und Legacy-Scoring deprecaten |
+| **Fix** | `resolveLeadAcidCurveAllowed()` via `resolveLvBatteryChemistry` + `isLeadAcidCurveApplicable`; `computeHealth(..., { leadAcidCurveAllowed })` → `insufficient_data` wenn Lithium/Unknown |
+| **Fix** | Shared `estimateLeadAcidSocPercent()` aus `lv-assessment-thresholds.ts` statt inline `VOLTAGE_SOC` |
+| **Tests** | `battery-v2.service.spec.ts` — Chemistry-Gate + insufficient_data für Nicht-Lead-Acid |
+| **Status** | **behoben** |
 
 ---
 
@@ -273,15 +287,17 @@ Alle übrigen geprüften Kategorien: **kein Problem** (siehe Detailabschnitte).
 | **Beweis** | Primärlabel „Geschätzter 12V-Batteriezustand“; Tests verbieten SOH-Wording auf LV |
 | **Empfohlene Korrektur** | — |
 
-### 9.2 Parallele Legacy-Evidence SOH_PERCENT — **P1 (B-01)**
+### 9.2 Parallele Legacy-Evidence SOH_PERCENT — **P1 (B-01) — behoben (Prompt 78)**
 
 | Feld | Wert |
 |------|------|
-| **Datei** | `backend/src/modules/vehicle-intelligence/battery-health/battery-v2.service.ts` |
-| **Codepfad** | `recomputeHealth` → `batteryEvidence.recordMany` mit `valueType: SOH_PERCENT` (L549–572); Felder `estimatedSohPct`, `publishedSohPct` |
-| **Auswirkung** | Zwei konkurrierende LV-Wahrheiten: Legacy `battery_features` + neues `battery_assessments` (via `BatteryAssessmentService.recomputeLvEstimatedHealth`) |
-| **Beweis** | `canonical-battery-health.service.ts` L445–456 liest noch `v2?.publishedSohPct` / `estimatedSohPct`; Diagnostic `lv_soh_percent_evidence` |
-| **Empfohlene Korrektur** | Canonical auf `lv-canonical-battery.resolver` + `battery_assessments` umstellen; Legacy `SOH_PERCENT`-Writes stoppen; bestehende Evidence via Repair reklassifizieren (`LEGACY_ESTIMATED`) |
+| **Datei** | `battery-v2.service.ts`, `battery-v2-snapshot-ingestion.service.ts` |
+| **Fix B-01a** | `onSnapshot()` führt **kein** `recomputeHealth()` mehr aus — nur Rest-Capture + `BatteryHealthService.recordSnapshot` |
+| **Fix B-01b** | `recomputeHealth()` schreibt **keine** `batteryEvidence.recordMany` mit `SOH_PERCENT` mehr; `BatteryEvidenceService`-Dependency entfernt |
+| **Fix B-01c** | Nach Rest-Capture: `BatteryV2SnapshotIngestionService.enqueueLvAssessmentRecompute()` → durable `BATTERY_ASSESSMENT_RECOMPUTE` Job |
+| **Tests** | `battery-v2.service.spec.ts`, `battery-v2-snapshot-ingestion.service.spec.ts` |
+| **Status** | **behoben** (kanonischer LV-Write-Pfad: `BatteryAssessmentService.recomputeLvEstimatedHealth`) |
+| **Hinweis** | `recomputeHealth()` bleibt für expliziten Legacy-Crank-Pfad (`BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENABLED=true`, Default OFF) |
 
 ### 9.3 API-Feldname `estimatedSohPct` — **P2 (B-03)**
 
@@ -342,15 +358,15 @@ Alle übrigen geprüften Kategorien: **kein Problem** (siehe Detailabschnitte).
 
 **Empfohlene Korrektur:** Consumer-Migrations-Audit (`docs/architecture/battery-consumer-migration-audit.md`) abschließen; Compat-Routen terminieren.
 
-### 12.3 Parallele LV-Scoring-Services — **P1 (B-01)**
+### 12.3 Parallele LV-Scoring-Services — **P1 (B-01) — behoben (Prompt 78)**
 
-| Service | Rolle |
-|---------|-------|
-| `BatteryV2Service` | Legacy Rest-Capture + Lead-Acid-Score + SOH_PERCENT Evidence |
-| `BatteryAssessmentService` | Kanonisches `lv-estimated-health-assessment` |
+| Service | Rolle nach Fix |
+|---------|----------------|
+| `BatteryV2Service` | Rest-Capture only (+ optional Legacy-Crank wenn Flag ON) |
+| `BatteryAssessmentService` | **Kanonischer** LV-Assessment-Write via Queue |
 | `LvCanonicalBatteryResolver` | Prioritäts-Resolver für UI/Readiness |
 
-**Empfohlene Korrektur:** Einen Write-Pfad für LV-Assessment; `BatteryV2Service` auf Rest-Capture ohne Score reduzieren.
+**Status:** Ein Write-Pfad für operative LV-Assessment — Legacy-Scoring nicht mehr aus Snapshot-Hook.
 
 ---
 
@@ -562,10 +578,81 @@ Abdeckung und Verify-Skripte sind vorhanden und grün (siehe Evidenz-Tabelle obe
 | Gate | Kriterium | Status |
 |------|-----------|--------|
 | Shadow-Mindestdauer | ≥ 28 Tage (`SHADOW_OBSERVATION_MIN_DAYS`) | **Ops** |
-| P1-Funde | B-01, B-02 adressiert oder explizit akzeptiert | **Offen** |
-| Daten-Reparatur | `audit-battery-data` Dry-Run → Review → optional Apply | **Ops** |
+| P1-Funde | B-01, B-02 adressiert | **behoben** (Prompt 78) |
+| Daten-Reparatur | `audit-battery-data` Dry-Run → Review → optional Apply | **Ops** (CLI auf VPS mit DB) |
 | Readiness-Flag | Erst nach Shadow-Report `gates_ready_for_manual_review` | **Blockiert** |
 | Publication | `publicationBlocked` in Shadow-Report | **Blockiert** |
+
+---
+
+## Prompt 78 — P1-Remediation (Implementierung)
+
+| Fund | Änderung | Dateien |
+|------|----------|---------|
+| **B-01** | Rest-Capture entkoppelt von Legacy-Scoring; Assessment-Enqueue nach Capture | `battery-v2.service.ts`, `battery-v2-snapshot-ingestion.service.ts`, Specs |
+| **B-02** | Chemistry-Gate + shared Lead-Acid-Kurve | `battery-v2.service.ts`, `battery-v2.service.spec.ts` |
+
+**Signalfluss nach Fix:**
+
+```mermaid
+flowchart LR
+  SNAP[Snapshot Poll] --> OBS[BATTERY_OBSERVATION_CLASSIFY]
+  OBS --> CAP[BatteryV2Service.onSnapshot Rest-Capture]
+  CAP -->|restCaptured| JOB[BATTERY_ASSESSMENT_RECOMPUTE]
+  JOB --> ASM[BatteryAssessmentService.recomputeLvEstimatedHealth]
+  ASM --> CAN[lv-canonical-battery.resolver / Canonical Summary]
+```
+
+---
+
+## Finale Bewertung und Deployment
+
+### Verdict: **READY_FOR_SHADOW_ONLY**
+
+| Kriterium | Erfüllt |
+|-----------|---------|
+| Keine P0-Blocker | Ja |
+| P1 behoben | Ja (B-01, B-02) |
+| Tests/Builds grün | Ja (733 Backend + 78 Frontend + 11 E2E) |
+| Shadow-Safety (`publicationBlocked`, `readinessBlocked`) | Ja |
+| Readiness/Publication für Kunden | **Nein — weiter verboten** |
+
+### Empfohlene Deployment-Reihenfolge
+
+1. **Merge + VPS-Deploy** dieses Branches (Backend-only Änderungen, keine neue Migration)
+2. **Flags unverändert lassen** (siehe Matrix) — insbesondere Readiness/Publication OFF
+3. **Shadow-Validierung fortsetzen** — wöchentlicher `battery-shadow-validation-report.ts`
+4. **Ops: `audit-battery-data.ts`** auf Staging/Prod-DB (Dry-Run only zuerst)
+5. **Nach ≥28 Tagen Shadow + Gate-Review:** manuelles Go für `BATTERY_V2_READINESS_ENABLED` (nicht in diesem Release)
+6. **Repair `--apply`** erst nach Dry-Run-Review und expliziter Ops-Freigabe
+
+### Aktive Flags (Default — unverändert)
+
+| Flag | Default | Shadow-Release |
+|------|---------|----------------|
+| `BATTERY_V2_READINESS_ENABLED` | **false** | Bleibt OFF |
+| `BATTERY_V2_REST_SHADOW_ENABLED` | **false** | Optional Phase 2 — nicht in diesem Deploy |
+| `BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENABLED` | **false** | Bleibt OFF |
+| `BATTERY_V2_HV_LEGACY_PAIRWISE_CAPACITY_ENABLED` | **false** | Bleibt OFF |
+| `BATTERY_V2_RETENTION_ENABLED` | **false** | Bleibt OFF (`DRY_RUN=true`) |
+| `BATTERY_V2_HV_FALLBACK_CHARGE_SESSION_ENABLED` | prüfen Runbook | Nur wenn Segments dauerhaft fehlen |
+
+### Verbleibende Risiken
+
+| Risiko | Schwere | Mitigation |
+|--------|---------|------------|
+| Historische `SOH_PERCENT`-Evidence / Wake-as-Rest in DB | Mittel | `audit-battery-data` → `repair-battery-data` (Dry-Run first) |
+| Compat-API `estimatedSohPct` Semantik | Niedrig | Consumer-Migration; Canonical-Feld bevorzugen |
+| Summary `.catch(() => null)` | Niedrig | P2 — transient vs. fehlend unterscheiden |
+| Retention-Storage bei Aktivierung | Niedrig | Shadow-Report `storage_growth`; Pruning erst nach Gate |
+
+### Noch verbotene Publications
+
+- **Kein** `BATTERY_V2_READINESS_ENABLED=true` ohne manuelles Shadow-Go
+- **Kein** automatisches Publication-Update für Kunden-Readiness
+- **Kein** `repair-battery-data.ts --apply` ohne Dry-Run-Review
+- **Kein** `BATTERY_V2_RETENTION_ENABLED=true` ohne Storage-Gate-Freigabe
+- **Kein** `BATTERY_V2_HV_LEGACY_PAIRWISE_CAPACITY_ENABLED=true` in Produktion
 
 ---
 
@@ -574,7 +661,8 @@ Abdeckung und Verify-Skripte sind vorhanden und grün (siehe Evidenz-Tabelle obe
 | Version | Datum | Autor | Notiz |
 |---------|-------|-------|-------|
 | 1.0 | 2026-07-16 | Cloud Agent (Prompt 77/78) | Initialer Read-only-Abschlussaudit |
+| 1.1 | 2026-07-16 | Cloud Agent (Prompt 78/78) | P1-Remediation B-01/B-02; Validierung; Verdict `READY_FOR_SHADOW_ONLY` |
 
 ---
 
-**Changes / Architektur:** Nicht aktualisiert (Read-only-Audit, keine Implementierungsänderung).
+**Changes / Architektur:** Aktualisiert (V4.9.577 — P1-Remediation LV Legacy-Pfad).

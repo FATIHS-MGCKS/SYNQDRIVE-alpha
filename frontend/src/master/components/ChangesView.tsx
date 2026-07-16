@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-p1-remediation-v49577-2026-07-16',
+    version: '4.9.577',
+    title: 'V4.9.577 — Battery V2 P1 Remediation (Prompt 78/78)',
+    summary: [
+      'B-01: `BatteryV2Service.onSnapshot` nur noch Rest-Capture — kein paralleles `recomputeHealth` / keine `SOH_PERCENT`-Evidence-Writes.',
+      'Nach Rest-Capture: `BatteryV2SnapshotIngestionService` enqueued `BATTERY_ASSESSMENT_RECOMPUTE` → kanonischer LV-Assessment-Pfad.',
+      'B-02: Lead-Acid-Kurve chemistry-gated via `resolveLeadAcidCurveAllowed()` + `estimateLeadAcidSocPercent()`; Lithium/Unknown → `insufficient_data`.',
+      'Audit: `docs/audits/battery-health-v2-final-audit.md` v1.1 — Verdict `READY_FOR_SHADOW_ONLY`. Tests: 733 Backend + 78 Frontend + 11 E2E grün.',
+    ],
+    reason: 'Prompt 78/78: belegte P1-Mängel aus Final-Audit schließen — ein kanonischer LV-Write-Pfad ohne parallele Legacy-SOH-Evidence.',
+    previousBehavior: 'Snapshot-Hook triggerte Legacy Lead-Acid-Scoring + SOH_PERCENT-Evidence parallel zu `BatteryAssessmentService`.',
+    details:
+      'battery-v2.service.ts, battery-v2-snapshot-ingestion.service.ts, battery-v2.service.spec.ts, battery-v2-snapshot-ingestion.service.spec.ts, docs/audits/battery-health-v2-final-audit.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T22:10:00.000Z',
+  },
+  {
     id: 'battery-v2-shadow-validation-v49576-2026-07-16',
     version: '4.9.576',
     title: 'V4.9.576 — Battery V2 Shadow Validation Report (Prompt 76/78)',

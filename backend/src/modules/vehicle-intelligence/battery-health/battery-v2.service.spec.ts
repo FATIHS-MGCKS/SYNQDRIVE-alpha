@@ -26,10 +26,9 @@ describe('BatteryV2Service crank deprecation', () => {
     } as any;
 
     const batteryHealth = { recordSnapshot: jest.fn() } as any;
-    const batteryEvidence = { recordMany: jest.fn() } as any;
 
-    const svc = new BatteryV2Service(prisma, segments, batteryHealth, batteryEvidence);
-    return { svc, prisma, segments, batteryEvidence };
+    const svc = new BatteryV2Service(prisma, segments, batteryHealth);
+    return { svc, prisma, segments };
   };
 
   const originalLegacy = process.env[BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENV];
@@ -56,7 +55,7 @@ describe('BatteryV2Service crank deprecation', () => {
   it('collects start window diagnostically without crank health effect when proxy flag is on', async () => {
     process.env[BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENV] = 'false';
     process.env[BATTERY_V2_START_PROXY_ENV] = 'true';
-    const { svc, prisma, batteryEvidence } = buildService();
+    const { svc, prisma } = buildService();
     prisma.batteryFeatures.upsert.mockResolvedValue({
       vehicleId: 'veh-1',
       crankTripId: 'trip-1',
@@ -81,7 +80,6 @@ describe('BatteryV2Service crank deprecation', () => {
       }),
     );
     expect(recomputeSpy).not.toHaveBeenCalled();
-    expect(batteryEvidence.recordMany).not.toHaveBeenCalled();
   });
 
   it('still runs legacy crank assessment only when explicitly enabled', async () => {
@@ -113,6 +111,11 @@ describe('BatteryV2Service crank deprecation', () => {
       lastPublishedAt: null,
       firstUsableMeasurementAt: null,
     });
+    prisma.vehicleBatterySpec = {
+      findMany: jest.fn().mockResolvedValue([
+        { batteryType: 'LEAD_ACID', batteryVolt: 12, sourceConfidence: 0.9 },
+      ]),
+    };
     prisma.batteryFeatures.update.mockResolvedValue({});
 
     const recomputeSpy = jest.spyOn(svc as any, 'recomputeHealth').mockResolvedValue(undefined);
@@ -129,26 +132,82 @@ describe('BatteryV2Service crank deprecation', () => {
   it('computeHealth ignores crank weight when legacy assessment is disabled', () => {
     process.env[BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENV] = 'false';
     const { svc } = buildService();
-    const withCrank = (svc as any).computeHealth({
-      vOff60m: 12.6,
-      vOff6h: null,
-      deltaVRest: null,
-      vPreCrank: 12.5,
-      vMinCrank: 9.8,
-      crankDrop: 2.7,
-      vRecovery5s: 12.4,
-      vRecovery30s: null,
-    });
-    const restOnly = (svc as any).computeHealth({
-      vOff60m: 12.6,
-      vOff6h: null,
-      deltaVRest: null,
-      vPreCrank: null,
-      vMinCrank: null,
-      crankDrop: null,
-      vRecovery5s: null,
-      vRecovery30s: null,
-    });
+    const leadAcid = { leadAcidCurveAllowed: true };
+    const withCrank = (svc as any).computeHealth(
+      {
+        vOff60m: 12.6,
+        vOff6h: null,
+        deltaVRest: null,
+        vPreCrank: 12.5,
+        vMinCrank: 9.8,
+        crankDrop: 2.7,
+        vRecovery5s: 12.4,
+        vRecovery30s: null,
+      },
+      leadAcid,
+    );
+    const restOnly = (svc as any).computeHealth(
+      {
+        vOff60m: 12.6,
+        vOff6h: null,
+        deltaVRest: null,
+        vPreCrank: null,
+        vMinCrank: null,
+        crankDrop: null,
+        vRecovery5s: null,
+        vRecovery30s: null,
+      },
+      leadAcid,
+    );
     expect(withCrank.soh).toBe(restOnly.soh);
+  });
+
+  it('computeHealth returns insufficient_data when lead-acid curve is not applicable', () => {
+    const { svc } = buildService();
+    const result = (svc as any).computeHealth(
+      {
+        vOff60m: 12.6,
+        vOff6h: null,
+        deltaVRest: null,
+        vPreCrank: null,
+        vMinCrank: null,
+        crankDrop: null,
+        vRecovery5s: null,
+        vRecovery30s: null,
+      },
+      { leadAcidCurveAllowed: false },
+    );
+    expect(result.soh).toBeNull();
+    expect(result.confidence).toBe('insufficient_data');
+  });
+
+  it('onSnapshot captures rest without legacy scoring', async () => {
+    const { svc, prisma } = buildService();
+    const now = Date.now();
+    const restStart = new Date(now - 70 * 60_000);
+    const sampleAt = new Date(now - 5_000);
+
+    prisma.vehicleTripDetectionState.findUnique.mockResolvedValue({
+      state: 'RESTING',
+      lastActivityAt: restStart,
+    });
+    prisma.batteryFeatures.findUnique.mockResolvedValue({
+      restWindowStartedAt: restStart,
+      rest60mCapturedAt: null,
+      rest6hCapturedAt: null,
+      vOff60m: null,
+    });
+    prisma.batteryFeatures.update.mockResolvedValue({
+      vOff60m: 12.55,
+      vOff6h: null,
+    });
+
+    const recomputeSpy = jest.spyOn(svc as any, 'recomputeHealth');
+
+    const result = await svc.onSnapshot('veh-1', 12.55, sampleAt);
+
+    expect(result.restCaptured).toBe(true);
+    expect(result.capturedAt).toEqual(sampleAt);
+    expect(recomputeSpy).not.toHaveBeenCalled();
   });
 });

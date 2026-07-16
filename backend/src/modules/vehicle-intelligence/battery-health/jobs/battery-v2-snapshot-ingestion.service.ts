@@ -7,7 +7,10 @@ import { HvFallbackChargeSessionDetectorService } from '../hv-charge-session/hv-
 import { HvRechargeSessionReconcileProducerService } from '../hv-charge-session/hv-recharge-session-reconcile-producer.service';
 import { HvMethodProfileService } from '../hv-method-profile/hv-method-profile.service';
 import { HvBatteryHealthService } from '../hv-battery-health.service';
+import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
+import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.service';
 import { BatteryV2ProviderError } from './battery-v2-job.errors';
+import { buildAssessmentJobIdempotencyKey } from './battery-v2-job-idempotency.policy';
 import type { BatteryObservationClassifyPayload } from './battery-v2-job.types';
 import type { BatteryObservationSnapshotContext } from './battery-v2-snapshot-context.types';
 
@@ -50,6 +53,8 @@ export class BatteryV2SnapshotIngestionService {
     private readonly rechargeReconcileProducer: HvRechargeSessionReconcileProducerService,
     private readonly hvMethodProfile: HvMethodProfileService,
     private readonly fallbackDetector: HvFallbackChargeSessionDetectorService,
+    private readonly jobProducer: BatteryV2JobProducerService,
+    private readonly deadLetters: BatteryV2JobDeadLetterService,
   ) {}
 
   async ingestObservationClassify(payload: BatteryObservationClassifyPayload): Promise<void> {
@@ -68,11 +73,18 @@ export class BatteryV2SnapshotIngestionService {
     });
 
     if (ctx.lvBatteryVoltage != null) {
-      await this.batteryV2.onSnapshot(
+      const capture = await this.batteryV2.onSnapshot(
         payload.vehicleId,
         ctx.lvBatteryVoltage,
         parseIso(ctx.lvBatteryObservedAt) ?? null,
       );
+      if (capture.restCaptured && capture.capturedAt) {
+        await this.enqueueLvAssessmentRecompute({
+          organizationId: payload.organizationId,
+          vehicleId: payload.vehicleId,
+          inputVersion: capture.capturedAt.getTime(),
+        });
+      }
     }
 
     if (ctx.evSoc != null) {
@@ -132,5 +144,40 @@ export class BatteryV2SnapshotIngestionService {
     this.logger.debug(
       `Battery observation classify ingested vehicle=${payload.vehicleId} key=${payload.idempotencyKey}`,
     );
+  }
+
+  private async enqueueLvAssessmentRecompute(input: {
+    organizationId: string;
+    vehicleId: string;
+    inputVersion: number;
+  }): Promise<void> {
+    const idempotencyKey = buildAssessmentJobIdempotencyKey({
+      vehicleId: input.vehicleId,
+      assessmentType: 'LV_HEALTH',
+      inputVersion: input.inputVersion,
+    });
+    if (
+      await this.deadLetters.isDeadLetter(
+        'BATTERY_ASSESSMENT_RECOMPUTE',
+        idempotencyKey,
+      )
+    ) {
+      return;
+    }
+
+    const jobId = await this.jobProducer.enqueue('BATTERY_ASSESSMENT_RECOMPUTE', {
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      idempotencyKey,
+      assessmentType: 'LV_HEALTH',
+      inputVersion: input.inputVersion,
+      correlationId: `snapshot-rest:${input.vehicleId}:${input.inputVersion}`,
+    });
+
+    if (jobId) {
+      this.logger.debug(
+        `Enqueued LV assessment recompute after rest capture vehicle=${input.vehicleId} job=${jobId}`,
+      );
+    }
   }
 }
