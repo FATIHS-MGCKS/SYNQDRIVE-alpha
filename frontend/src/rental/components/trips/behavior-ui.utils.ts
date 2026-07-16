@@ -6,7 +6,6 @@ import type {
   TripEvidenceConfidence,
   TripEvidenceLevel,
 } from '../../../lib/api';
-import { getStressLevel, resolveDrivingStressScore } from '../../lib/scoreFormat';
 import type { TripTimelineTrip } from './timeline.types';
 import { formatTripTimeWithSeconds } from './utils/tripFormatters';
 import { shouldRenderContextBlock } from './event-context-ui';
@@ -312,20 +311,13 @@ export function deriveBehaviorOverallStatus(
 
   if (worst === 'critical') return 'critical';
   if (worst === 'notable' || worst === 'abuse') return 'notable';
-
-  // Fahrbelastungs-Score only informs Fahrverhalten when a score actually exists.
-  const stressScore = resolveDrivingStressScore(trip);
-  const stress =
-    stressScore != null ? (trip.stressLevel ?? getStressLevel(stressScore)) : null;
-  if (stress === 'critical' || stress === 'high') return 'notable';
-  if (stress === 'moderate' || worst === 'watch') return 'watch';
+  if (worst === 'watch') return 'watch';
 
   if (events.length === 0) {
-    if (options && options.assessable === false) return 'not_assessable';
-    return 'unremarkable';
+    return 'not_assessable';
   }
 
-  // Loaded behavior events are a valid source — never "nicht belastbar".
+  // Loaded behavior events with no concerning severity — conduct unremarkable.
   return 'unremarkable';
 }
 

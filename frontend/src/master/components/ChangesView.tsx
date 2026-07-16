@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p5-load-conduct-separation-2026-07-16',
+    version: '4.9.507',
+    title: 'Driving Intelligence V2 P5 — Fahrzeugbelastung vs. Fahrverhalten getrennt',
+    summary: [
+      '`assessTrip` v1.2.0: Fahrverhaltens-Status (UNAUFFAELLIG/AUFFAELLIG/…) nur noch aus Ereignissen/Evidenz — `drivingStressScore` bleibt reines Belastungssignal in `signals`.',
+      'Frontend `deriveBehaviorOverallStatus`: kein Stress→Conduct-Fallback mehr; UI-Labels „Fahrzeugbelastung“ statt „Fahrbewertung“ für Score-Spalten.',
+      'Legacy-Felder `drivingScore`, `drivingStyleScore`, `avgDrivingScore` in DTOs/API als deprecated dokumentiert (DB-Spalten unverändert).',
+      'Tests: hoher Stress ohne Events ≠ auffälliges Fahrverhalten; niedriger Stress ohne Events ≠ unauffälliges Fahrverhalten.',
+    ],
+    reason:
+      'Prompt 5/76: Semantische Trennung Vehicle Load / Driver Conduct — ohne Scoreformel- oder Trip-Erkennungsänderung.',
+    previousBehavior:
+      'Trip-Assessment und Frontend-Fallback leiteten BEOBACHTEN/KRITISCH/UNAUFFAELLIG teils allein aus Fahrbelastung ab; UI nannte Stress-Scores „Fahrbewertung“.',
+    details:
+      'Backend: trip-assessment.service.ts (v1.2.0), trip-assessment.types.ts, trip-api.mapper.ts, trip-analytics-canonical.service.ts, customers.service.ts, trips.service.ts. Frontend: behavior-ui.utils.ts, scoreFormat.ts, VehicleStressPanel, CustomerDrivingTab, i18n de/en, api.ts JSDoc. Keine Trip-Detection-Änderung.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T00:00:00.000Z',
+  },
+  {
     id: 'vehicle-operational-state-v2-p1-fixes-v49506-2026-07-16',
     version: '4.9.506',
     title: 'V4.9.506 — Vehicle Operational State V2 P1 remediation (Prompt 43/43)',
