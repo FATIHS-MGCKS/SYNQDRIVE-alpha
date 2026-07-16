@@ -3,6 +3,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { DimoSegmentsService } from '../../dimo/dimo-segments.service';
 import { MisuseCaseRulesService } from './misuse-case-rules.service';
 import { MisuseCasePersistenceHelper } from './misuse-case-persistence.helper';
+import { gateMisuseCandidatesByCategoryEvidenceStrength } from './misuse-case-category-evidence-strength/misuse-case-category-evidence-strength.gate';
 import {
   resolveAttribution,
   type ContextAnchor,
@@ -90,8 +91,12 @@ export class MisuseCaseAggregatorService {
       contextAnchors,
     };
 
-    const candidates = this.rules.evaluate(context);
     const attribution = resolveAttribution(context.trip);
+
+    const candidates = gateMisuseCandidatesByCategoryEvidenceStrength(
+      this.rules.evaluate(context),
+      attribution,
+    );
 
     const analysisRun = await this.prisma.drivingAnalysisRun.findFirst({
       where: {
@@ -114,7 +119,7 @@ export class MisuseCaseAggregatorService {
     };
 
     let written = 0;
-    for (const candidate of candidates) {
+    for (const { candidate } of candidates) {
       await this.persistence.upsertCandidate(
         organizationId,
         trip.vehicleId,
