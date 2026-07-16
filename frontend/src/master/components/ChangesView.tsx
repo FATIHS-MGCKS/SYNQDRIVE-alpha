@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p28-damage-incident-canonical-2026-07-16',
+    version: '4.9.529',
+    title: 'Driving Intelligence V2 P28 — canonical Provider Collision / Impact Proxy / Inspection path',
+    summary: [
+      'Neues Modul `damage-incident-canonical.ts` — einheitlicher Pfad für Provider Collision, Possible Impact Proxy und Damage Inspection Recommendation.',
+      '`safety.collision` / SAFETY_COLLISION = Provider-Evidenz; POSSIBLE_IMPACT bleibt HF-Proxy.',
+      'Kollision erzeugt keinen bestätigten Schaden (`damageConfirmed: false`); Schadens-/Fahrzeugprüfung kann empfohlen werden.',
+      'Semantische Dedupe: Provider + Proxy im selben Fenster → ein DIMO_COLLISION_REPORTED Case (kein doppelter Impact-Case).',
+      'Persistierte SAFETY_COLLISION bevorzugt gegenüber DIMO safety-fetch; Privacy-Gates für Zeit/Ort; Kunden-Attribution nur bei ausreichender Confidence.',
+      'Unified read-model: SAFETY_COLLISION + POSSIBLE_IMPACT teilen `damage:collision_or_impact` Dedupe-Bucket (native bevorzugt).',
+    ],
+    reason:
+      'Prompt 28/76: Klaren kanonischen Pfad für Kollision, Impact-Proxy und Inspektionsempfehlung schaffen — ohne Schadensbestätigung oder dauerhaften Kundenblock.',
+    previousBehavior:
+      'Getrennte Misuse-Regeln für POSSIBLE_IMPACT und DIMO fetch; parallele Cases bei kombinierter Evidenz; kein strukturiertes inspectionRecommendation-Objekt.',
+    details:
+      'MisuseCaseRulesService nutzt `evaluateCanonicalDamageIncidents`. Tests: Collision, Proxy, kombinierte Evidenz, Privacy/Attribution. Trip-FSM unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T07:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p27-event-context-quality-2026-07-16',
     version: '4.9.528',
     title: 'Driving Intelligence V2 P27 — traceable Event Context quality metadata',

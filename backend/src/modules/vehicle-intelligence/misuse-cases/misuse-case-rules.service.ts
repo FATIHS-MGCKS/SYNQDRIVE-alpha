@@ -15,6 +15,8 @@ import type {
 import { maxConfidence, maxSeverity } from './misuse-case.types';
 import { evaluateContextAnchors } from './context-misuse-rules';
 import { enrichCaseWithEvidence } from '../trips/trip-evidence-case.builder';
+import { evaluateCanonicalDamageIncidents } from '../damage-incidents/damage-incident-canonical';
+import { resolveAttribution } from './misuse-case.types';
 
 const MS_15_MIN = 15 * 60 * 1000;
 const MS_30_MIN = 30 * 60 * 1000;
@@ -44,11 +46,8 @@ export class MisuseCaseRulesService {
     const brake = this.ruleBrakeAbuse(context, abuse);
     if (brake) candidates.push(brake);
 
-    const impact = this.rulePossibleImpact(abuse);
-    if (impact) candidates.push(impact);
-
-    const dimoCollision = this.ruleDimoCollision(context);
-    if (dimoCollision) candidates.push(dimoCollision);
+    const attribution = resolveAttribution(context.trip);
+    candidates.push(...evaluateCanonicalDamageIncidents(context, attribution));
 
     const overheat = this.ruleOverheating(abuse);
     if (overheat) candidates.push(overheat);
@@ -60,9 +59,7 @@ export class MisuseCaseRulesService {
     // Merged by type with behavior-event candidates above.
     candidates.push(...evaluateContextAnchors(context.contextAnchors ?? []));
 
-    return this.mergeCollisionConfidence(
-      this.mergeSameType(candidates).map((candidate) => enrichCaseWithEvidence(candidate)),
-    );
+    return this.mergeSameType(candidates).map((candidate) => enrichCaseWithEvidence(candidate));
   }
 
   /**
@@ -147,22 +144,6 @@ export class MisuseCaseRulesService {
       out.push(e);
     }
     return out;
-  }
-
-  private mergeCollisionConfidence(candidates: CaseCandidate[]): CaseCandidate[] {
-    const hasImpact = candidates.some(
-      (c) => c.type === MisuseCaseType.POSSIBLE_COLLISION_OR_IMPACT,
-    );
-    const dimoIdx = candidates.findIndex(
-      (c) => c.type === MisuseCaseType.DIMO_COLLISION_REPORTED,
-    );
-    if (dimoIdx >= 0 && hasImpact) {
-      const dimo = candidates[dimoIdx];
-      dimo.confidence = MisuseCaseConfidence.HIGH;
-      dimo.description +=
-        ' Zusätzlich wurde ein lokales Aufprall-Signal (POSSIBLE_IMPACT) erkannt.';
-    }
-    return candidates;
   }
 
   private maxEventsInSlidingWindow(times: Date[], windowMs: number): number {
@@ -359,69 +340,6 @@ export class MisuseCaseRulesService {
       recommendedAction: 'Bremsverhalten und Bremsenverschleiß prüfen.',
       evidence,
       eventCount: evidence.length,
-      firstDetectedAt: new Date(Math.min(...times)),
-      lastDetectedAt: new Date(Math.max(...times)),
-    };
-  }
-
-  private rulePossibleImpact(abuse: TripBehaviorEvent[]): CaseCandidate | null {
-    const impacts = abuse.filter((e) => e.eventType === 'POSSIBLE_IMPACT');
-    if (impacts.length === 0) return null;
-
-    const evidence = impacts.map((e) => this.behaviorEvidence(e));
-    const times = evidence.map((e) => e.occurredAt.getTime());
-
-    return {
-      type: MisuseCaseType.POSSIBLE_COLLISION_OR_IMPACT,
-      category: MisuseCaseCategory.DAMAGE_SUSPICION,
-      severity: MisuseCaseSeverity.SEVERE,
-      confidence: MisuseCaseConfidence.MEDIUM,
-      title: 'Schadenverdacht',
-      description:
-        'Abrupte Verzögerung (POSSIBLE_IMPACT) erkannt. Technisches Risiko — kein automatisierter Unfallnachweis.',
-      recommendedAction: 'Fahrzeug auf sichtbare Schäden und Fehlercodes prüfen.',
-      evidence,
-      eventCount: impacts.length,
-      firstDetectedAt: new Date(Math.min(...times)),
-      lastDetectedAt: new Date(Math.max(...times)),
-    };
-  }
-
-  private ruleDimoCollision(context: TripEvaluationContext): CaseCandidate | null {
-    const collisions = context.dimoSafetyEvents.filter((e) =>
-      e.name.toLowerCase().includes('collision'),
-    );
-    if (collisions.length === 0) return null;
-
-    const evidence: EvidenceCandidate[] = collisions.map((e) => ({
-      sourceType: MisuseEvidenceSourceType.DIMO_EVENT,
-      sourceId: `${e.timestamp}:${e.name}`,
-      eventType: e.name,
-      severity: MisuseCaseSeverity.CRITICAL,
-      confidence: MisuseCaseConfidence.MEDIUM,
-      occurredAt: new Date(e.timestamp),
-      snapshotJson: {
-        source: e.source,
-        durationNs: e.durationNs,
-        metadata: e.metadata,
-      },
-    }));
-
-    const times = evidence.map((e) => e.occurredAt.getTime());
-    let confidence: MisuseCaseConfidence = MisuseCaseConfidence.MEDIUM;
-    if (collisions.length > 1) confidence = MisuseCaseConfidence.HIGH;
-
-    return {
-      type: MisuseCaseType.DIMO_COLLISION_REPORTED,
-      category: MisuseCaseCategory.DAMAGE_SUSPICION,
-      severity: MisuseCaseSeverity.CRITICAL,
-      confidence,
-      title: 'DIMO-Kollision gemeldet',
-      description:
-        'Das Fahrzeug hat ein safety.collision-Ereignis über DIMO gemeldet. Prüfung empfohlen.',
-      recommendedAction: 'Schadensaufnahme und Fehlercodes prüfen.',
-      evidence,
-      eventCount: collisions.length,
       firstDetectedAt: new Date(Math.min(...times)),
       lastDetectedAt: new Date(Math.max(...times)),
     };

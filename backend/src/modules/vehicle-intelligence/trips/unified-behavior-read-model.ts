@@ -375,6 +375,8 @@ export function normalizeDedupeEventType(event: UnifiedBehaviorEvent): string {
         return 'abuse:speeding';
       case 'IDLE_EXCESSIVE':
         return 'abuse:idle';
+      case 'SAFETY_COLLISION':
+        return 'damage:collision_or_impact';
       default:
         return `native:${event.eventType.toLowerCase()}`;
     }
@@ -382,6 +384,7 @@ export function normalizeDedupeEventType(event: UnifiedBehaviorEvent): string {
   if (event.eventCategory === 'BRAKING') return 'braking';
   if (event.eventCategory === 'ACCELERATION') return 'acceleration';
   if (event.eventCategory === 'ABUSE') {
+    if (event.eventType === 'POSSIBLE_IMPACT') return 'damage:collision_or_impact';
     return `abuse:${event.eventType.toLowerCase()}`;
   }
   return `derived:${event.eventCategory}:${event.eventType}`.toLowerCase();
