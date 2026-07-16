@@ -39,6 +39,7 @@ import { BillingReconciliationScheduler } from './schedulers/billing-reconciliat
 import { HmHealthPollingScheduler } from './schedulers/hm-health-polling.scheduler';
 import { DataRetentionScheduler } from './schedulers/data-retention.scheduler';
 import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.scheduler';
+import { BatteryV2ReconciliationScheduler } from './schedulers/battery-v2-reconciliation.scheduler';
 
 @Module({
   imports: [
@@ -97,6 +98,7 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
     HmHealthPollingScheduler,
     DataRetentionScheduler,
     StorageOrphanSweepScheduler,
+    BatteryV2ReconciliationScheduler,
   ],
 })
 export class WorkersModule {}

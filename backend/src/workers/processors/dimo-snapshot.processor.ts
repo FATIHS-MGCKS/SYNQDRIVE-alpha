@@ -150,7 +150,8 @@ export class DimoSnapshotProcessor extends WorkerHost {
       }
 
       // Battery V2: classify provider observations and enqueue durable job (awaited).
-      await this.batteryObservationProducer.classifyAndEnqueue({
+      // Snapshot may complete once follow-up job is durably enqueued — handler failures are isolated.
+      const batteryFollowUpJobId = await this.batteryObservationProducer.classifyAndEnqueue({
         organizationId: vehicle.organizationId,
         vehicleId,
         receivedAt: fetchedAt,
@@ -175,6 +176,12 @@ export class DimoSnapshotProcessor extends WorkerHost {
         lvBatteryObservedAt,
         correlationId: `snapshot:${vehicleId}:${fetchedAt.toISOString()}`,
       });
+
+      if (batteryFollowUpJobId) {
+        this.logger.debug(
+          `Battery V2 follow-up enqueued for vehicle ${vehicleId}: ${batteryFollowUpJobId}`,
+        );
+      }
 
       // V2 Trip Detection: evaluate snapshot for possible trip start
       await this.evaluateTripStart(

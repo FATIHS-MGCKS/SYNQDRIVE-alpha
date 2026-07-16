@@ -11,6 +11,14 @@ const ORG = 'clorg1234567890123456789012';
 const VEH = 'clveh1234567890123456789012';
 const TRIP = 'cltrip123456789012345678901';
 
+function mockDeadLetters() {
+  return { isDeadLetter: jest.fn().mockResolvedValue(false) };
+}
+
+function createJobProducer(queue: { add: jest.Mock; getJob: jest.Mock }) {
+  return new BatteryV2JobProducerService(queue as any, mockDeadLetters() as any);
+}
+
 function baseBatteryMap() {
   const observedAt = new Date('2026-07-16T12:00:00.000Z');
   const field = (value: number) => ({
@@ -68,7 +76,7 @@ describe('BatteryV2SnapshotObservationProducer', () => {
   });
 
   it('enqueues classify job for first HV observation', async () => {
-    const producerSvc = new BatteryV2JobProducerService({
+    const producerSvc = createJobProducer({
       add: queueAdd,
       getJob: jest.fn().mockResolvedValue(null),
     } as any);
@@ -131,7 +139,7 @@ describe('BatteryV2SnapshotObservationProducer', () => {
       voltageV: 12.5,
     });
 
-    const producerSvc = new BatteryV2JobProducerService({
+    const producerSvc = createJobProducer({
       add: queueAdd,
       getJob: jest.fn().mockResolvedValue(null),
     } as any);
@@ -182,7 +190,7 @@ describe('BatteryV2SnapshotObservationProducer', () => {
       }),
       add: queueAdd,
     };
-    const producerSvc = new BatteryV2JobProducerService(queue as any);
+    const producerSvc = createJobProducer(queue as any);
     const producer = new BatteryV2SnapshotObservationProducer(prisma as any, producerSvc);
 
     const receivedAt = new Date('2026-07-16T12:00:00.000Z');
@@ -255,7 +263,7 @@ describe('BatteryV2SnapshotObservationProducer', () => {
       }),
       add: queueAdd,
     };
-    const producerSvc = new BatteryV2JobProducerService(queue as any);
+    const producerSvc = createJobProducer(queue as any);
     const producer = new BatteryV2SnapshotObservationProducer(prisma as any, producerSvc);
 
     const receivedAt = new Date('2026-07-16T12:00:00.000Z');
@@ -312,7 +320,7 @@ describe('BatteryV2TripStartProducer', () => {
       }),
       add: queueAdd,
     };
-    const jobProducer = new BatteryV2JobProducerService(queue as any);
+    const jobProducer = createJobProducer(queue as any);
     const tripProducer = new BatteryV2TripStartProducer(jobProducer);
 
     const prev = process.env.BATTERY_V2_START_PROXY_ENABLED;

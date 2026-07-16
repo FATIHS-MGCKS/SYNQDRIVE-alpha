@@ -87,6 +87,10 @@ export function buildPublicationJobIdempotencyKey(input: {
 }
 
 /** HV session: provider segment fingerprint (scoped per vehicle) */
+export function buildRechargeSegmentFingerprint(dimoSegmentId: string): string {
+  return `dimo-seg:${dimoSegmentId}`;
+}
+
 export function buildHvSessionJobIdempotencyKey(input: {
   vehicleId: string;
   segmentFingerprint: string;

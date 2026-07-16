@@ -3,6 +3,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import type { HvBatterySignalObservedAt } from '../../../dimo/mappers/dimo-battery-signal.mapper';
 import { BatteryV2Service } from '../battery-v2.service';
 import { HvBatteryHealthService } from '../hv-battery-health.service';
+import { BatteryV2ProviderError } from './battery-v2-job.errors';
 import type { BatteryObservationClassifyPayload } from './battery-v2-job.types';
 import type { BatteryObservationSnapshotContext } from './battery-v2-snapshot-context.types';
 
@@ -47,7 +48,10 @@ export class BatteryV2SnapshotIngestionService {
   async ingestObservationClassify(payload: BatteryObservationClassifyPayload): Promise<void> {
     const ctx = payload.snapshotContext;
     if (!ctx) {
-      throw new Error('BATTERY_OBSERVATION_CLASSIFY missing snapshotContext');
+      throw new BatteryV2ProviderError(
+        'BATTERY_OBSERVATION_CLASSIFY missing snapshotContext — provider payload required',
+        { retryable: false, jobType: 'BATTERY_OBSERVATION_CLASSIFY' },
+      );
     }
 
     const receivedAt = parseIso(ctx.providerFetchedAt) ?? new Date();

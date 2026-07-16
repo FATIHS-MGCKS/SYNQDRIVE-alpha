@@ -16,6 +16,7 @@ import {
 import { validateBatteryV2JobIdempotencyKey } from './battery-v2-job-idempotency.validation';
 import { buildBatteryV2JobId, buildBatteryV2JobOptions } from './battery-v2-job-queue.util';
 import { getBatteryV2JobRetryPolicy } from './battery-v2-job.retry-policy';
+import { BatteryV2JobDeadLetterService } from './battery-v2-job-dead-letter.service';
 
 export type BatteryV2JobEnqueueInput<T extends BatteryV2JobType> = Omit<
   BatteryV2JobPayload<T>,
@@ -38,7 +39,10 @@ export function isDuplicateBatteryV2JobError(err: unknown): boolean {
 export class BatteryV2JobProducerService {
   private readonly logger = new Logger(BatteryV2JobProducerService.name);
 
-  constructor(@InjectQueue(QUEUE_NAMES.BATTERY_V2) private readonly queue: Queue) {}
+  constructor(
+    @InjectQueue(QUEUE_NAMES.BATTERY_V2) private readonly queue: Queue,
+    private readonly deadLetters: BatteryV2JobDeadLetterService,
+  ) {}
 
   async enqueue<T extends BatteryV2JobType>(
     jobType: T,
@@ -61,6 +65,13 @@ export class BatteryV2JobProducerService {
     });
     validateBatteryV2JobIdempotencyKey(jobType, payload.idempotencyKey);
 
+    if (await this.deadLetters.isDeadLetter(jobType, payload.idempotencyKey)) {
+      this.logger.debug(
+        `Battery V2 enqueue skipped (dead letter): ${jobType} key=${payload.idempotencyKey}`,
+      );
+      return null;
+    }
+
     const jobId = buildBatteryV2JobId(payload.idempotencyKey);
     return this.addIdempotent(jobType, payload, jobId, {
       ...buildBatteryV2JobOptions(jobType),
@@ -77,9 +88,17 @@ export class BatteryV2JobProducerService {
     const existing = await this.queue.getJob(jobId);
     if (existing) {
       const state = await existing.getState();
-      if (state === 'waiting' || state === 'delayed' || state === 'active' || state === 'prioritized') {
+      if (
+        state === 'waiting' ||
+        state === 'delayed' ||
+        state === 'active' ||
+        state === 'prioritized'
+      ) {
         this.logger.debug(`Battery V2 job already queued: ${jobId} (${state})`);
         return jobId;
+      }
+      if (state === 'completed' || state === 'failed') {
+        await existing.remove();
       }
     }
 

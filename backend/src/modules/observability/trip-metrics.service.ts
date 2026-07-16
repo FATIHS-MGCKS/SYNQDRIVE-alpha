@@ -85,6 +85,13 @@ export class TripMetricsService implements OnModuleInit {
   readonly taskAutomationOutboxRetry: Counter<string>;
   readonly taskAutomationOutboxRefreshed: Counter<string>;
 
+  /** Battery V2 job pipeline — low-cardinality labels only. */
+  readonly batteryV2JobsCompleted: Counter<string>;
+  readonly batteryV2JobsFailed: Counter<string>;
+  readonly batteryV2JobsRetry: Counter<string>;
+  readonly batteryV2JobsDeadLetter: Counter<string>;
+  readonly batteryV2JobProcessingDuration: Histogram<string>;
+
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
   // ═══════════════════════════════════════════════════════════════
@@ -103,6 +110,7 @@ export class TripMetricsService implements OnModuleInit {
   readonly queueFailedJobs: Gauge<string>;
   readonly notificationQueueBacklog: Gauge<string>;
   readonly taskAutomationOutboxBacklog: Gauge<string>;
+  readonly batteryV2DeadLetterBacklog: Gauge<string>;
 
   // ═══════════════════════════════════════════════════════════════
   //  HISTOGRAMS
@@ -605,6 +613,48 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_task_automation_outbox_processing_duration_seconds',
       help: 'Single task automation outbox processing duration',
       buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 15, 30],
+      registers: [this.registry],
+    });
+
+    this.batteryV2JobsCompleted = new Counter({
+      name: 'synqdrive_battery_v2_jobs_completed_total',
+      help: 'Successful Battery V2 job executions',
+      labelNames: ['job_type'],
+      registers: [this.registry],
+    });
+
+    this.batteryV2JobsFailed = new Counter({
+      name: 'synqdrive_battery_v2_jobs_failed_total',
+      help: 'Failed Battery V2 job attempts',
+      labelNames: ['job_type', 'error_code'],
+      registers: [this.registry],
+    });
+
+    this.batteryV2JobsRetry = new Counter({
+      name: 'synqdrive_battery_v2_jobs_retry_total',
+      help: 'Battery V2 job retries scheduled',
+      labelNames: ['job_type', 'error_code'],
+      registers: [this.registry],
+    });
+
+    this.batteryV2JobsDeadLetter = new Counter({
+      name: 'synqdrive_battery_v2_jobs_dead_letter_total',
+      help: 'Battery V2 jobs moved to dead-letter after exhausted retries',
+      labelNames: ['job_type', 'error_code'],
+      registers: [this.registry],
+    });
+
+    this.batteryV2DeadLetterBacklog = new Gauge({
+      name: 'synqdrive_battery_v2_dead_letter_backlog',
+      help: 'Battery V2 dead-letter rows awaiting operator review',
+      registers: [this.registry],
+    });
+
+    this.batteryV2JobProcessingDuration = new Histogram({
+      name: 'synqdrive_battery_v2_job_processing_duration_seconds',
+      help: 'Battery V2 job handler processing duration',
+      labelNames: ['job_type'],
+      buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 15, 30, 60],
       registers: [this.registry],
     });
   }
