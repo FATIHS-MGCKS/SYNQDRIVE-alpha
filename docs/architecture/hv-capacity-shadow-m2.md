@@ -69,3 +69,4 @@ HvChargeSessionPersist (completed/eligible)
 
 - `hv-capacity-m2.policy.spec.ts` — formula, gates, Tesla audit medians ~55.5 kWh
 - `hv-capacity-shadow.service.spec.ts` — persistence contract, eligibility skips
+- `hv-capacity-session-summary.aggregator.spec.ts` — stable/unstable session aggregation (Prompt 53)

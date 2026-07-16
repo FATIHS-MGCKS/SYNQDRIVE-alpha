@@ -69,6 +69,7 @@ import {
   HvCapacityObservationRepository,
   HvCapacityShadowProducerService,
   HvCapacityShadowService,
+  HvCapacitySessionSummaryService,
 } from './battery-health/hv-capacity-shadow';
 import { HealthSummaryService } from './health-summary/health-summary.service';
 import { AiHealthCareAggregationService } from './health-summary/ai-health-care-aggregation.service';
@@ -212,6 +213,7 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     HvCapacityM2SampleProviderService,
     HvCapacityShadowService,
     HvCapacityShadowProducerService,
+    HvCapacitySessionSummaryService,
     DriveProfileResolverService,
     LvBatteryChemistryResolverService,
     BatteryPolicyProfileService,
@@ -308,6 +310,7 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     HvCapacityM2SampleProviderService,
     HvCapacityShadowService,
     HvCapacityShadowProducerService,
+    HvCapacitySessionSummaryService,
     DriveProfileResolverService,
     LvBatteryChemistryResolverService,
     BatteryPolicyProfileService,

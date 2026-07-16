@@ -7,6 +7,7 @@ import {
   HvCapacityObservationRepository,
 } from './hv-capacity-observation.repository';
 import { HvCapacityM2SampleProviderService } from './hv-capacity-m2-sample-provider.service';
+import { HvCapacitySessionSummaryService } from './hv-capacity-session-summary.service';
 import {
   buildHvM2PointEstimates,
   medianHvM2Estimates,
@@ -18,8 +19,10 @@ import {
   HV_M2_GATE_REASONS,
   HV_M2_MODEL_VERSION,
   type HvCapacityM2Sample,
+  type HvCapacityM2PointEstimate,
   type HvCapacityM2SessionResult,
 } from './hv-capacity-m2.types';
+import type { HvCapacitySessionSummaryInputObservation } from './hv-capacity-session-summary.types';
 import { withHvCapacityShadowMetadata } from './hv-capacity-shadow.policy';
 
 export interface RecomputeHvM2ShadowInput {
@@ -39,6 +42,7 @@ export class HvCapacityShadowService {
     private readonly prisma: PrismaService,
     private readonly sampleProvider: HvCapacityM2SampleProviderService,
     private readonly observations: HvCapacityObservationRepository,
+    private readonly sessionSummary: HvCapacitySessionSummaryService,
   ) {}
 
   async recomputeM2ForSession(
@@ -81,77 +85,106 @@ export class HvCapacityShadowService {
       method: HV_M2_CAPACITY_METHOD,
       modelVersion: HV_M2_MODEL_VERSION,
     });
-    if (alreadyProcessed) {
-      this.logger.debug(`M2 shadow skipped — already processed id=${session.id}`);
-      return this.emptyResult(session.id);
-    }
 
-    const reference = await this.prisma.vehicleBatteryReferenceCapacity.findFirst({
-      where: {
-        organizationId: input.organizationId,
-        vehicleId: input.vehicleId,
-        isActive: true,
-      },
-      orderBy: { effectiveFrom: 'desc' },
-      select: { capacityKwh: true },
-    });
+    let estimates: HvCapacityM2PointEstimate[] = [];
+    let persistedCount = 0;
+    let skippedCount = 0;
+    let sessionMedianKwh: number | null = null;
+    let summaryObservations: HvCapacitySessionSummaryInputObservation[] | undefined;
 
-    const capacityBand = resolveHvM2CapacityBand({
-      referenceCapacityKwh: reference?.capacityKwh ?? null,
-    });
+    if (!alreadyProcessed) {
+      const reference = await this.prisma.vehicleBatteryReferenceCapacity.findFirst({
+        where: {
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          isActive: true,
+        },
+        orderBy: { effectiveFrom: 'desc' },
+        select: { capacityKwh: true },
+      });
 
-    const samples =
-      input.samplesOverride ??
-      (await this.sampleProvider.loadSessionSamples({
-        vehicleId: input.vehicleId,
-        startAt: session.startAt,
-        endAt: session.endAt,
+      const capacityBand = resolveHvM2CapacityBand({
+        referenceCapacityKwh: reference?.capacityKwh ?? null,
+      });
+
+      const samples =
+        input.samplesOverride ??
+        (await this.sampleProvider.loadSessionSamples({
+          vehicleId: input.vehicleId,
+          startAt: session.startAt,
+          endAt: session.endAt,
+        }));
+
+      estimates = buildHvM2PointEstimates({
+        samples,
+        capacityBand,
+      });
+      sessionMedianKwh = medianHvM2Estimates(estimates);
+
+      for (const estimate of estimates) {
+        const quality = resolveHvM2ObservationQuality(estimate);
+        await this.observations.createIdempotent({
+          organizationId: input.organizationId,
+          vehicleId: input.vehicleId,
+          chargeSessionId: session.id,
+          method: HV_M2_CAPACITY_METHOD,
+          estimatedCapacityKwh: estimate.valueKwh,
+          referenceCapacityKwh: capacityBand.referenceCapacityKwh,
+          quality,
+          modelVersion: HV_M2_MODEL_VERSION,
+          observedAt: estimate.sample.observedAt,
+          metadata: withHvCapacityShadowMetadata({
+            socPercent: estimate.sample.socPercent,
+            currentEnergyKwh: estimate.sample.currentEnergyKwh,
+            timestampDeltaMs: estimate.gate.timestampDeltaMs,
+            preferredSocBand: estimate.gate.preferredSocBand,
+            outlier: estimate.outlier,
+            gateReasonCodes: estimate.gate.reasonCodes,
+            sessionMedianKwh,
+          }),
+          idempotencyKey: buildHvCapacityObservationIdempotencyKey({
+            chargeSessionId: session.id,
+            observedAt: estimate.sample.observedAt,
+          }),
+        });
+        persistedCount += 1;
+      }
+
+      skippedCount = Math.max(0, samples.length - persistedCount);
+      summaryObservations = estimates.map((estimate) => ({
+        observedAt: estimate.sample.observedAt,
+        estimatedCapacityKwh: estimate.valueKwh,
+        socPercent: estimate.sample.socPercent,
+        preferredSocBand: estimate.gate.preferredSocBand,
+        outlier: estimate.outlier,
+        quality: resolveHvM2ObservationQuality(estimate),
       }));
 
-    const estimates = buildHvM2PointEstimates({
-      samples,
-      capacityBand,
-    });
-    const sessionMedianKwh = medianHvM2Estimates(estimates);
-
-    let persistedCount = 0;
-    for (const estimate of estimates) {
-      const quality = resolveHvM2ObservationQuality(estimate);
-      await this.observations.createIdempotent({
-        organizationId: input.organizationId,
-        vehicleId: input.vehicleId,
-        chargeSessionId: session.id,
-        method: HV_M2_CAPACITY_METHOD,
-        estimatedCapacityKwh: estimate.valueKwh,
-        referenceCapacityKwh: capacityBand.referenceCapacityKwh,
-        quality,
-        modelVersion: HV_M2_MODEL_VERSION,
-        observedAt: estimate.sample.observedAt,
-        metadata: withHvCapacityShadowMetadata({
-          socPercent: estimate.sample.socPercent,
-          currentEnergyKwh: estimate.sample.currentEnergyKwh,
-          timestampDeltaMs: estimate.gate.timestampDeltaMs,
-          preferredSocBand: estimate.gate.preferredSocBand,
-          outlier: estimate.outlier,
-          gateReasonCodes: estimate.gate.reasonCodes,
-          sessionMedianKwh,
-        }),
-        idempotencyKey: buildHvCapacityObservationIdempotencyKey({
-          chargeSessionId: session.id,
-          observedAt: estimate.sample.observedAt,
-        }),
-      });
-      persistedCount += 1;
+      if (persistedCount > 0) {
+        this.logger.debug(
+          `M2 shadow persisted ${persistedCount} observations session=${session.id} median=${sessionMedianKwh?.toFixed(2) ?? 'n/a'} kWh`,
+        );
+      } else if (samples.length === 0) {
+        this.logger.debug(
+          `M2 shadow no samples session=${session.id} reason=${HV_M2_GATE_REASONS.MISSING_ENERGY}`,
+        );
+      }
+    } else {
+      this.logger.debug(
+        `M2 shadow observations already present — aggregating summary session=${session.id}`,
+      );
     }
 
-    const skippedCount = Math.max(0, samples.length - persistedCount);
-    if (persistedCount > 0) {
+    const summary = await this.sessionSummary.summarizeSession({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      chargeSessionId: session.id,
+      observationsOverride: summaryObservations,
+    });
+
+    if (summary) {
       this.logger.debug(
-        `M2 shadow persisted ${persistedCount} observations session=${session.id} median=${sessionMedianKwh?.toFixed(2) ?? 'n/a'} kWh`,
-      );
-    } else if (samples.length === 0) {
-      this.logger.debug(
-        `M2 shadow no samples session=${session.id} reason=${HV_M2_GATE_REASONS.MISSING_ENERGY}`,
+        `M2 session summary session=${session.id} status=${summary.status} median=${summary.stats.medianCapacityKwh?.toFixed(2) ?? 'n/a'} cv=${summary.stats.coefficientOfVariation?.toFixed(4) ?? 'n/a'}`,
       );
     }
 
@@ -160,9 +193,10 @@ export class HvCapacityShadowService {
       method: HV_M2_CAPACITY_METHOD,
       modelVersion: HV_M2_MODEL_VERSION,
       estimates,
-      sessionMedianKwh,
+      sessionMedianKwh: summary?.stats.medianCapacityKwh ?? sessionMedianKwh,
       persistedCount,
       skippedCount,
+      summary,
     };
   }
 
@@ -175,6 +209,7 @@ export class HvCapacityShadowService {
       sessionMedianKwh: null,
       persistedCount: 0,
       skippedCount: 0,
+      summary: null,
     };
   }
 }

@@ -1,5 +1,6 @@
 import type { BatteryMeasurementQuality, HvChargeSession } from '@prisma/client';
 import type { BatteryEvidenceStrength } from '../battery-v2-domain';
+import type { HvCapacitySessionSummary } from '../hv-capacity-shadow/hv-capacity-session-summary.types';
 import type { HvFallbackDetectionTier } from './hv-fallback-charge-session.types';
 import type { HvChargeSessionQualityReasonCode, HvChargeSessionQualityStatus } from './hv-charge-session-quality.status';
 
@@ -43,6 +44,7 @@ export interface HvChargeSessionMetadata {
   qualityReasonCodes?: HvChargeSessionQualityReasonCode[];
   capacityShadowEligible?: boolean;
   capacityValidationEligible?: boolean;
+  m2CapacitySummary?: HvCapacitySessionSummary;
   changeHistory?: Array<{
     at: string;
     kind: HvChargeSessionChangeKind;

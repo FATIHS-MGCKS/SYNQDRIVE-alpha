@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'hv-capacity-session-summary-v49553-2026-07-17',
+    version: '4.9.553',
+    title: 'V4.9.553 — HV M2 Session-Capacity-Summary Aggregation (Prompt 53/78)',
+    summary: [
+      'Robuste Aggregation von M2-`HvCapacityObservation` pro `HvChargeSession`.',
+      'Stats: validSampleCount, Median, P10/P90, MAD, robustSpread, CV, SOC-/zeitliche Coverage, Outlier-/Provider-Gap-Zähler.',
+      'Versionierte Shadow-Gates v1: Samplezahl, SOC-Verteilung, CV ≤ 2 %, keine dominanten Duplikate, Session final+qualifiziert.',
+      'Output `metadata.m2CapacitySummary` — STABLE_SHADOW / UNSTABLE_SHADOW / INSUFFICIENT / DISQUALIFIED.',
+      'Kein Cross-Session-Publish, kein Mittelwert bei Ausreißern. Tests für stabile und instabile Sessions.',
+    ],
+    reason: 'Prompt 53/78: Session-Level Shadow-Zusammenfassung vor Rolling-Median/Publication.',
+    previousBehavior: 'Nur pointwise M2-Observations ohne Session-Aggregat.',
+    details:
+      'hv-capacity-session-summary.*, hv-capacity-shadow.service.ts, docs/architecture/hv-capacity-session-summary.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T00:00:00.000Z',
+  },
+  {
     id: 'hv-capacity-shadow-m2-v49552-2026-07-17',
     version: '4.9.552',
     title: 'V4.9.552 — HV Shadow Capacity M2 CURRENT_ENERGY_OVER_SOC (Prompt 52/78)',
