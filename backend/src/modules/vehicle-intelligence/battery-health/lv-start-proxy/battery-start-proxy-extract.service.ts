@@ -1,9 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   BatteryMeasurementSessionStatus,
   BatteryMeasurementSessionType,
+  BatteryMeasurementQuality,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { DimoSegmentsService } from '../../../dimo/dimo-segments.service';
 import { BatteryPolicyProfileService } from '../../battery-policy-profile/battery-policy-profile.service';
 import { isStartProxyAllowedForPolicy } from '../../battery-policy-profile/battery-policy-profile.resolver';
@@ -30,6 +32,10 @@ import {
   detectConfirmedIceStart,
   type BatteryStartProxyCrankPoint,
 } from './battery-start-proxy.policy';
+import {
+  recordBatteryStartInsufficientCoverage,
+  recordBatteryStartProxy,
+} from '../observability/battery-v2-prometheus.metrics';
 
 export type BatteryStartProxyExtractResult =
   | { ok: true; measurementIds: string[]; skipped: false }
@@ -46,6 +52,7 @@ export class BatteryStartProxyExtractService {
     private readonly policyProfiles: BatteryPolicyProfileService,
     private readonly sessions: BatteryMeasurementSessionService,
     private readonly measurements: BatteryMeasurementService,
+    @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
   async extractAndPersist(input: {
@@ -116,6 +123,7 @@ export class BatteryStartProxyExtractService {
     );
 
     if (!gate.ok) {
+      this.recordStartProxyMetrics('skipped', gate);
       return {
         ok: true,
         skipped: true,
@@ -123,6 +131,7 @@ export class BatteryStartProxyExtractService {
       };
     }
 
+    this.recordStartProxyMetrics('persisted', gate);
     return {
       ok: true,
       skipped: false,
@@ -212,6 +221,21 @@ export class BatteryStartProxyExtractService {
     }
 
     return measurementIds;
+  }
+
+  private recordStartProxyMetrics(
+    outcome: 'persisted' | 'skipped' | 'failed',
+    gate?: StartProxyCadenceGateResult,
+  ): void {
+    if (!this.metrics) return;
+    recordBatteryStartProxy(this.metrics, { outcome });
+    if (
+      gate &&
+      (gate.reasonCode === 'insufficient_cadence' ||
+        gate.quality === BatteryMeasurementQuality.INSUFFICIENT_COVERAGE)
+    ) {
+      recordBatteryStartInsufficientCoverage(this.metrics);
+    }
   }
 
   private async fetchCrankWindowStrict(

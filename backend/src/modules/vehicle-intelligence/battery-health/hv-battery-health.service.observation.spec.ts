@@ -23,6 +23,7 @@ describe('HvBatteryHealthService observation dedup persistence', () => {
     } as any;
     const tripMetrics = {
       hvSnapshotDuplicatesDiscarded: { inc: jest.fn() },
+      batteryProviderDuplicateTotal: { inc: jest.fn() },
     } as unknown as TripMetricsService;
     const svc = new HvBatteryHealthService(prisma, batteryEvidence, tripMetrics);
     return { svc, prisma, batteryEvidence, tripMetrics };

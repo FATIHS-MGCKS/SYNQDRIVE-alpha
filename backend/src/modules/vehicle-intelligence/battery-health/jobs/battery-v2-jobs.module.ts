@@ -22,6 +22,9 @@ import { HvCapacityShadowService } from '../hv-capacity-shadow/hv-capacity-shado
 import { HvCapacityM2SampleProviderService } from '../hv-capacity-shadow/hv-capacity-m2-sample-provider.service';
 import { HvCapacitySessionSummaryService } from '../hv-capacity-shadow/hv-capacity-session-summary.service';
 import { BatteryStartProxyExtractService } from '../lv-start-proxy/battery-start-proxy-extract.service';
+import { BatteryAssessmentService } from '../battery-assessment.service';
+import { BatteryPublicationService } from '../battery-publication.service';
+import { HvCapacityObservationRepository } from '../hv-capacity-shadow/hv-capacity-observation.repository';
 import { VehicleIntelligenceModule } from '../../vehicle-intelligence.module';
 
 const BATTERY_V2_JOB_HANDLERS = [

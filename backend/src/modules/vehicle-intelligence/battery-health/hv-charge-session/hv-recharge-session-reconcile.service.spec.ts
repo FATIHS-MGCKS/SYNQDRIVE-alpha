@@ -81,8 +81,8 @@ describe('HvRechargeSessionReconcileService', () => {
     detectAndPersistForVehicle: jest.fn(),
   };
   const metrics = {
-    batteryV2HvRechargeSegmentsTotal: { inc: jest.fn() },
-    batteryV2HvRechargeSessionsPersisted: { inc: jest.fn() },
+    hvRechargeSegmentsTotal: { inc: jest.fn() },
+    hvChargeSessionsTotal: { inc: jest.fn() },
     batteryV2HvRechargeReconcileErrors: { inc: jest.fn() },
     batteryV2HvRechargeProviderDelay: { observe: jest.fn() },
   };
@@ -189,7 +189,7 @@ describe('HvRechargeSessionReconcileService', () => {
         to: expect.any(Date),
       }),
     );
-    expect(metrics.batteryV2HvRechargeSessionsPersisted.inc).toHaveBeenCalledWith(
+    expect(metrics.hvChargeSessionsTotal.inc).toHaveBeenCalledWith(
       { trigger: 'PERIODIC', change: 'updated' },
       1,
     );
@@ -226,7 +226,7 @@ describe('HvRechargeSessionReconcileService', () => {
 
     expect(first.ingest?.unchanged).toBe(1);
     expect(second.ingest?.unchanged).toBe(1);
-    expect(metrics.batteryV2HvRechargeSessionsPersisted.inc).toHaveBeenCalledWith(
+    expect(metrics.hvChargeSessionsTotal.inc).toHaveBeenCalledWith(
       { trigger: 'PERIODIC', change: 'unchanged' },
       1,
     );

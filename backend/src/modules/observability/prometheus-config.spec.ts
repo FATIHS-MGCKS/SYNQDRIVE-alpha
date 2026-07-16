@@ -41,6 +41,9 @@ describe('TripMetricsService label cardinality', () => {
     expect(text).toContain('synqdrive_document_extraction_duration_seconds');
     expect(text).toContain('synqdrive_document_extraction_queue_age_seconds');
     expect(text).toContain('synqdrive_document_extraction_active_jobs');
+    expect(text).toContain('synqdrive_battery_provider_observation_total');
+    expect(text).toContain('synqdrive_battery_jobs_total');
+    expect(text).toContain('synqdrive_battery_publications_total');
   });
 });
 

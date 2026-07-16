@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import {
   type DimoBatterySignalMap,
   toHvBatterySignalObservedAt,
@@ -14,6 +15,10 @@ import {
 } from '../hv-snapshot-observation.policy';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
 import type { BatteryObservationSnapshotContext } from './battery-v2-snapshot-context.types';
+import {
+  recordBatteryProviderDuplicate,
+  recordBatteryProviderObservation,
+} from '../observability/battery-v2-prometheus.metrics';
 
 const LV_BATTERY_SIGNAL = 'lowVoltageBatteryCurrentVoltage';
 
@@ -108,6 +113,7 @@ export class BatteryV2SnapshotObservationProducer {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jobProducer: BatteryV2JobProducerService,
+    @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
   async classify(
@@ -185,6 +191,39 @@ export class BatteryV2SnapshotObservationProducer {
           : null;
 
     const shouldEnqueue = idempotencyKey != null;
+
+    if (this.metrics) {
+      if (hvDecision) {
+        const hvOutcome =
+          hvDecision.signalOutcomes.soc ??
+          (hvDecision.shouldPersist ? 'NEW_OBSERVATION' : hvDecision.skipReason ?? 'UNKNOWN');
+        recordBatteryProviderObservation(this.metrics, {
+          signal: 'hv',
+          outcome: hvOutcome,
+        });
+        if (hvOutcome === 'DUPLICATE_OBSERVATION' || hvOutcome === 'STALE_REPLAY') {
+          recordBatteryProviderDuplicate(this.metrics, {
+            signal: 'hv',
+            reason: hvOutcome,
+          });
+        }
+      }
+      if (lvDecision) {
+        recordBatteryProviderObservation(this.metrics, {
+          signal: 'lv',
+          outcome: lvDecision.outcome,
+        });
+        if (
+          lvDecision.outcome === 'DUPLICATE_OBSERVATION' ||
+          lvDecision.outcome === 'STALE_REPLAY'
+        ) {
+          recordBatteryProviderDuplicate(this.metrics, {
+            signal: 'lv',
+            reason: lvDecision.outcome,
+          });
+        }
+      }
+    }
 
     return {
       shouldEnqueue,

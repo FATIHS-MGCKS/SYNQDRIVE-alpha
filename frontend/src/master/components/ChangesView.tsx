@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-prometheus-metrics-v49568-2026-07-17',
+    version: '4.9.568',
+    title: 'V4.9.568 — Battery V2 Prometheus Metrics (Prompt 68/78)',
+    summary: [
+      '17 kanonische Battery-V2-Counter im bestehenden `TripMetricsService`-Registry.',
+      'Provider-Observation/Duplicate, Jobs, REST-Windows/Measurements, Start-Proxy, HV-Recharge/Capacity, Assessments, Publications.',
+      'Zentrale Record-Helper in `battery-v2-prometheus.metrics.ts`.',
+      'Sparsame Labels (`signal`, `outcome`, `job_type`, `window`, `quality`, `trigger`) — keine Vehicle-ID/Kennzeichen.',
+      'Pipeline-Hooks: Snapshot-Producer, Job-Producer/Observability, Rest-Window-FSM, Start-Proxy, HV-Reconcile/Shadow, Assessment, Publication.',
+      'Tests für Metrikinkrementierung und Cardinality-Guard.',
+    ],
+    reason: 'Prompt 68/78: belastbare Battery-V2-Observability für Prometheus/Grafana.',
+    previousBehavior: 'Teilweise ad-hoc Battery-Metriken mit inkonsistenten Namen; mehrere Pipeline-Stufen ohne Counter.',
+    details:
+      'trip-metrics.service.ts, observability/battery-v2-prometheus.metrics.ts, Pipeline-Hooks, docs/architecture/battery-v2-prometheus-metrics.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T03:00:00.000Z',
+  },
+  {
     id: 'battery-task-policy-v49567-2026-07-17',
     version: '4.9.567',
     title: 'V4.9.567 — Battery Task Policy (Prompt 67/78)',

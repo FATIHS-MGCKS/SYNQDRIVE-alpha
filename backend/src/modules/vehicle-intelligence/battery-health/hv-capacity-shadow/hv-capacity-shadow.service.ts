@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { isBatteryV2HvCapacityShadowEnabled } from '@config/battery-health-v2.config';
 import { PrismaService } from '@shared/database/prisma.service';
+import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import type { HvChargeSessionMetadata } from '../hv-charge-session/hv-charge-session.types';
 import {
   buildHvCapacityObservationIdempotencyKey,
@@ -30,6 +31,10 @@ import type { HvCrossSessionAssessmentResult } from './hv-capacity-cross-session
 import type { HvSohGateAssessmentResult } from './hv-soh-gate.types';
 import type { HvCapacityM3ValidationResult } from './hv-capacity-m3.types';
 import { withHvCapacityShadowMetadata } from './hv-capacity-shadow.policy';
+import {
+  recordHvCapacityObservation,
+  recordHvCapacitySessionQualified,
+} from '../observability/battery-v2-prometheus.metrics';
 
 export interface RecomputeHvM2ShadowInput {
   organizationId: string;
@@ -52,6 +57,7 @@ export class HvCapacityShadowService {
     private readonly m3Validation: HvCapacityM3ValidationService,
     private readonly crossSessionAssessment: HvCapacityCrossSessionAssessmentService,
     private readonly sohGateAssessment: HvSohGateAssessmentService,
+    @Optional() private readonly metrics?: TripMetricsService,
   ) {}
 
   async recomputeM2ForSession(
@@ -77,7 +83,11 @@ export class HvCapacityShadowService {
     }
 
     const metadata = (session.metadata ?? {}) as unknown as HvChargeSessionMetadata;
-    if (metadata.capacityShadowEligible !== true) {
+    const eligible = metadata.capacityShadowEligible === true;
+    if (this.metrics) {
+      recordHvCapacitySessionQualified(this.metrics, { qualified: eligible });
+    }
+    if (!eligible) {
       this.logger.debug(
         `M2 shadow skipped — session not eligible id=${session.id} status=${metadata.qualityStatus ?? 'unknown'}`,
       );
@@ -156,6 +166,9 @@ export class HvCapacityShadowService {
             observedAt: estimate.sample.observedAt,
           }),
         });
+        if (this.metrics) {
+          recordHvCapacityObservation(this.metrics, { quality });
+        }
         persistedCount += 1;
       }
 

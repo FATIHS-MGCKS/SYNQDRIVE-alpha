@@ -1,0 +1,36 @@
+# Battery V2 Prometheus Metrics (V4.9.568)
+
+Low-cardinality Battery V2 counters registered on the shared `TripMetricsService` registry (`GET /api/v1/metrics`). No vehicle IDs, license plates, org IDs, or other high-cardinality labels.
+
+## Metric catalog
+
+| Prometheus name | Labels | Emitted from |
+|-----------------|--------|--------------|
+| `synqdrive_battery_provider_observation_total` | `signal`, `outcome` | Snapshot observation classify |
+| `synqdrive_battery_provider_duplicate_total` | `signal`, `reason` | LV/HV duplicate observation skips |
+| `synqdrive_battery_jobs_total` | `job_type`, `outcome` | Job enqueue + completion |
+| `synqdrive_battery_jobs_failed_total` | `job_type`, `error_code` | Job processor failures |
+| `synqdrive_battery_jobs_dead_letter_total` | `job_type`, `error_code` | Dead-letter moves |
+| `synqdrive_battery_rest_windows_total` | `window`, `outcome` | LV rest window FSM |
+| `synqdrive_battery_rest_measurements_total` | `window`, `quality` | REST target evaluation |
+| `synqdrive_battery_rest_missed_total` | `window` | REST MISSED quality |
+| `synqdrive_battery_rest_contaminated_total` | `window` | REST contamination quality |
+| `synqdrive_battery_start_proxy_total` | `outcome` | Start proxy extraction |
+| `synqdrive_battery_start_insufficient_coverage_total` | — | Cadence gate insufficient coverage |
+| `synqdrive_hv_recharge_segments_total` | `trigger`, `outcome` | HV recharge reconcile |
+| `synqdrive_hv_charge_sessions_total` | `trigger`, `change` | HV session persist |
+| `synqdrive_hv_capacity_observations_total` | `quality` | HV M2 shadow observations |
+| `synqdrive_hv_capacity_sessions_qualified_total` | `qualified` | HV shadow session eligibility |
+| `synqdrive_battery_assessments_total` | `scope`, `mode`, `outcome` | LV assessment recompute |
+| `synqdrive_battery_publications_total` | `maturity`, `outcome` | LV publication update |
+
+## Integration
+
+- Definitions: `trip-metrics.service.ts`
+- Record helpers: `observability/battery-v2-prometheus.metrics.ts`
+- Job metrics: `battery-v2-job-observability.service.ts`, `battery-v2-job-producer.service.ts`
+- Pipeline hooks: snapshot producer, rest window FSM, start proxy, HV reconcile/shadow, assessment, publication
+
+Supplementary metrics retained: job retry, processing duration histogram, dead-letter backlog gauge, HV reconcile errors, provider delay histogram, legacy `synqdrive_hv_snapshot_duplicates_discarded_total`.
+
+Tests: `battery-v2-prometheus.metrics.spec.ts`, `lv-rest-shadow-metrics.spec.ts`, `prometheus-config.spec.ts`.

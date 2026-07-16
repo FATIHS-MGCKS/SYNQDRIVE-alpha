@@ -1,6 +1,10 @@
 import type { BatteryMeasurementQuality } from '@prisma/client';
 import type { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import {
+  recordBatteryRestMeasurement,
+  toBatteryRestWindowLabel,
+} from '../observability/battery-v2-prometheus.metrics';
+import {
   isLvRestShadowContaminationQuality,
   isLvRestShadowModeActive,
 } from './lv-rest-shadow.policy';
@@ -18,23 +22,15 @@ export function recordLvRestShadowMeasurementMetrics(
     return;
   }
 
-  const window = input.targetType === 'REST_6H' ? '6h' : '60m';
-  metrics.batteryV2RestShadowTotal.inc({
-    window,
+  recordBatteryRestMeasurement(metrics, {
+    window: toBatteryRestWindowLabel(input.targetType),
     quality: input.quality,
   });
 
-  if (input.quality === 'MISSED') {
-    metrics.batteryV2RestMissedTotal.inc({ window });
-    return;
-  }
-
-  metrics.batteryV2RestCaptureTotal.inc({ window });
-
-  if (isLvRestShadowContaminationQuality(input.quality)) {
-    metrics.batteryV2RestContaminationTotal.inc({
-      window,
-      quality: input.quality,
-    });
+  if (
+    input.quality !== 'MISSED' &&
+    isLvRestShadowContaminationQuality(input.quality)
+  ) {
+    // contamination counter incremented inside recordBatteryRestMeasurement
   }
 }
