@@ -76,6 +76,7 @@ export interface HvCapacityM2PointEstimate {
 
 import type { HvCrossSessionAssessmentResult } from './hv-capacity-cross-session.types';
 import type { HvCapacityM3ValidationResult } from './hv-capacity-m3.types';
+import type { HvSohGateAssessmentResult } from './hv-soh-gate.types';
 
 export interface HvCapacityM2SessionResult {
   sessionId: string;
@@ -88,6 +89,7 @@ export interface HvCapacityM2SessionResult {
   summary: HvCapacitySessionSummary | null;
   m3Validation?: HvCapacityM3ValidationResult | null;
   crossSessionAssessment?: HvCrossSessionAssessmentResult | null;
+  sohGateAssessment?: HvSohGateAssessmentResult | null;
 }
 
 export interface HvCapacityObservationMetadata {

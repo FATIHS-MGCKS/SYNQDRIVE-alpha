@@ -232,6 +232,7 @@ export const BatteryAssessmentType = {
   HV_SOH_PROVIDER: 'HV_SOH_PROVIDER',
   HV_CAPACITY_SESSION: 'HV_CAPACITY_SESSION',
   HV_CAPACITY_SHADOW: 'HV_CAPACITY_SHADOW',
+  HV_SOH_CAPACITY_ESTIMATE: 'HV_SOH_CAPACITY_ESTIMATE',
 } as const;
 
 export type BatteryAssessmentType =

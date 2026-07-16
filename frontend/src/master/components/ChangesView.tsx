@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'hv-soh-gate-policy-v49557-2026-07-17',
+    version: '4.9.557',
+    title: 'V4.9.557 — HV SOH Gate Policy (internal, Prompt 57/78)',
+    summary: [
+      'Fachliche SOH-Gate-Policy als internes `BatteryAssessment` type `HV_SOH_CAPACITY_ESTIMATE`.',
+      'Formel: estimatedSohPercent = estimatedUsableCapacityKWh / verifiedReferenceCapacityKWh * 100.',
+      'Gates: stabiles HV-Capacity-Shadow, VERIFIED Referenz, kompatibler Typ, ≥3 Sessions, Freshness, Capability unverändert, kein M3-Konflikt, freigegebene Modellversion, plausible Bandbreite ohne Clamp.',
+      'Output maturity SHADOW/PROVISIONAL, sohAvailability UNAVAILABLE/GATED/COMPUTED_INTERNAL.',
+      'Keine Kundenpublication (`hvSohPublicationEnabled` default false), kein Readiness-/Alert-/Task-Effekt. Tests für alle Gate-Gründe.',
+    ],
+    reason: 'Prompt 57/78: internes SOH-Assessment vor Publication ohne Kundenfreigabe.',
+    previousBehavior: 'Cross-Session-Kapazität ohne SOH-Gate-Assessment.',
+    details:
+      'hv-soh-gate.*, battery-assessment.repository.ts, hv-capacity-shadow.service.ts, battery-health-v2.config.ts, docs/architecture/hv-soh-gate-policy.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T18:00:00.000Z',
+  },
+  {
     id: 'vehicle-battery-reference-capacity-v49556-2026-07-17',
     version: '4.9.556',
     title: 'V4.9.556 — VehicleBatteryReferenceCapacity Service + API (Prompt 56/78)',

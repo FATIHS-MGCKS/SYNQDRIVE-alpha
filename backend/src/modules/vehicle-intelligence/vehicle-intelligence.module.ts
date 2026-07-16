@@ -71,6 +71,7 @@ import {
   HvCapacityObservationRepository,
   HvCapacityShadowProducerService,
   HvCapacityShadowService,
+  HvSohGateAssessmentService,
   HvCapacitySessionSummaryService,
 } from './battery-health/hv-capacity-shadow';
 import {
@@ -223,6 +224,7 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     HvCapacitySessionSummaryService,
     HvCapacityM3ValidationService,
     HvCapacityCrossSessionAssessmentService,
+    HvSohGateAssessmentService,
     VehicleBatteryReferenceCapacityRepository,
     VehicleBatteryReferenceCapacityService,
     DriveProfileResolverService,
@@ -324,6 +326,7 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     HvCapacitySessionSummaryService,
     HvCapacityM3ValidationService,
     HvCapacityCrossSessionAssessmentService,
+    HvSohGateAssessmentService,
     VehicleBatteryReferenceCapacityRepository,
     VehicleBatteryReferenceCapacityService,
     DriveProfileResolverService,

@@ -8,6 +8,7 @@ import {
 } from './hv-capacity-observation.repository';
 import { HvCapacityM2SampleProviderService } from './hv-capacity-m2-sample-provider.service';
 import { HvCapacityCrossSessionAssessmentService } from './hv-capacity-cross-session-assessment.service';
+import { HvSohGateAssessmentService } from './hv-soh-gate-assessment.service';
 import { HvCapacityM3ValidationService } from './hv-capacity-m3-validation.service';
 import { HvCapacitySessionSummaryService } from './hv-capacity-session-summary.service';
 import {
@@ -26,6 +27,7 @@ import {
 } from './hv-capacity-m2.types';
 import type { HvCapacitySessionSummaryInputObservation } from './hv-capacity-session-summary.types';
 import type { HvCrossSessionAssessmentResult } from './hv-capacity-cross-session.types';
+import type { HvSohGateAssessmentResult } from './hv-soh-gate.types';
 import type { HvCapacityM3ValidationResult } from './hv-capacity-m3.types';
 import { withHvCapacityShadowMetadata } from './hv-capacity-shadow.policy';
 
@@ -49,6 +51,7 @@ export class HvCapacityShadowService {
     private readonly sessionSummary: HvCapacitySessionSummaryService,
     private readonly m3Validation: HvCapacityM3ValidationService,
     private readonly crossSessionAssessment: HvCapacityCrossSessionAssessmentService,
+    private readonly sohGateAssessment: HvSohGateAssessmentService,
   ) {}
 
   async recomputeM2ForSession(
@@ -218,6 +221,18 @@ export class HvCapacityShadowService {
       );
     }
 
+    const sohGateResult = await this.sohGateAssessment.recomputeForVehicle({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      crossSessionAssessment: crossSessionResult?.assessment ?? null,
+    });
+
+    if (sohGateResult?.persisted) {
+      this.logger.debug(
+        `HV SOH gate assessment vehicle=${input.vehicleId} soh=${sohGateResult.assessment.estimatedSohPercent?.toFixed(2) ?? 'n/a'} % availability=${sohGateResult.assessment.sohAvailability}`,
+      );
+    }
+
     return {
       sessionId: session.id,
       method: HV_M2_CAPACITY_METHOD,
@@ -229,6 +244,7 @@ export class HvCapacityShadowService {
       summary,
       m3Validation: m3Result,
       crossSessionAssessment: crossSessionResult,
+      sohGateAssessment: sohGateResult,
     };
   }
 
@@ -244,6 +260,7 @@ export class HvCapacityShadowService {
       summary: null,
       m3Validation: null,
       crossSessionAssessment: null,
+      sohGateAssessment: null,
     };
   }
 }

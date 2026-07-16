@@ -16,6 +16,7 @@ import { HvCapabilityRefreshHandler } from './handlers/hv-capability-refresh.han
 import { HvRechargeSessionReconcileHandler } from './handlers/hv-recharge-session-reconcile.handler';
 import { HvCapacityShadowRecomputeHandler } from './handlers/hv-capacity-shadow-recompute.handler';
 import { HvCapacityCrossSessionAssessmentService } from '../hv-capacity-shadow/hv-capacity-cross-session-assessment.service';
+import { HvSohGateAssessmentService } from '../hv-capacity-shadow/hv-soh-gate-assessment.service';
 import { HvCapacityM3ValidationService } from '../hv-capacity-shadow/hv-capacity-m3-validation.service';
 import { HvCapacityShadowService } from '../hv-capacity-shadow/hv-capacity-shadow.service';
 import { HvCapacityM2SampleProviderService } from '../hv-capacity-shadow/hv-capacity-m2-sample-provider.service';
@@ -55,6 +56,7 @@ const BATTERY_V2_JOB_HANDLERS = [
     HvCapacitySessionSummaryService,
     HvCapacityM3ValidationService,
     HvCapacityCrossSessionAssessmentService,
+    HvSohGateAssessmentService,
   ],
   exports: [
     ...BATTERY_V2_JOB_HANDLERS,

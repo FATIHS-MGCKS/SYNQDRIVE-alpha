@@ -5680,6 +5680,7 @@ enum BatteryAssessmentType {
   HV_SOH_PROVIDER
   HV_CAPACITY_SESSION
   HV_CAPACITY_SHADOW
+  HV_SOH_CAPACITY_ESTIMATE
 }
 
 enum BatteryAssessmentMaturity {
