@@ -202,6 +202,8 @@ export interface HighFrequencyReading {
   altitudeM?: number | null;
   /** Current gear from powertrainTransmissionCurrentGear */
   currentGear?: number | null;
+  /** Ignition on from isIgnitionOn (AVG ≥ 0.5) */
+  ignitionOn?: boolean | null;
   /** kW from powertrainTractionBatteryCurrentPower (W → kW) */
   tractionBatteryPowerKw: number | null;
 }
@@ -842,6 +844,8 @@ export class DimoSegmentsService {
               typeof s.powertrainTransmissionCurrentGear === 'number'
                 ? s.powertrainTransmissionCurrentGear
                 : null,
+            ignitionOn:
+              typeof s.isIgnitionOn === 'number' ? s.isIgnitionOn >= 0.5 : null,
             tractionBatteryPowerKw: w != null ? w / 1000 : null,
           };
         })

@@ -55,6 +55,8 @@ export type ShadowDetectorHfSample = {
   altitudeM: number | null;
   /** Optional transmission gear — kickdown-like context only. */
   gear: number | null;
+  /** Ignition on (0/1 AVG) — nullable for BEV without signal. */
+  ignitionOn: boolean | null;
 };
 
 export type ShadowMisuseCaseRef = {
@@ -62,6 +64,20 @@ export type ShadowMisuseCaseRef = {
   firstDetectedAt: Date;
   lastDetectedAt: Date;
   eventCount: number;
+};
+
+export type ShadowDimoIdlingSegmentRef = {
+  segmentId: string;
+  startTime: string;
+  endTime: string | null;
+  durationSeconds: number;
+  maxSpeedKmh: number | null;
+};
+
+export type ShadowTripContext = {
+  tripStartTime: string;
+  tripEndTime: string | null;
+  tripDurationMs: number;
 };
 
 export type ShadowDetectorExecutionContext = {
@@ -76,6 +92,14 @@ export type ShadowDetectorExecutionContext = {
   coolantSampleCount: number;
   exteriorTempSampleCount: number;
   misuseCases: readonly ShadowMisuseCaseRef[];
+  tripContext: ShadowTripContext;
+  dimoIdlingSegments: readonly ShadowDimoIdlingSegmentRef[];
+  dimoIdlingProviderError: string | null;
+  ignitionSampleCount: number;
+  rpmSampleCount: number;
+  speedSampleCount: number;
+  engineRuntimeSampleCount: number;
+  providerGaps: readonly string[];
 };
 
 export type ShadowDetectorCapabilitySnapshot = {

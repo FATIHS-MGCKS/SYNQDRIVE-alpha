@@ -1,5 +1,7 @@
 import type { DrivingDetectorKey } from '../driving-detector-capability/driving-detector-capability.types';
 import { coldEngineLoadShadowDetector } from './detectors/cold-engine-load.shadow-detector';
+import { excessiveIdlingShadowDetector } from './detectors/excessive-idling.shadow-detector';
+import { highRpmStationaryShadowDetector } from './detectors/high-rpm-stationary.shadow-detector';
 import { kickdownLikeShadowDetector } from './detectors/kickdown-like.shadow-detector';
 import { sustainedHighLoadShadowDetector } from './detectors/sustained-high-load.shadow-detector';
 import type { ShadowDetectorImplementation } from './shadow-detector.port';
@@ -39,6 +41,8 @@ export const SHADOW_DETECTOR_IMPLEMENTATIONS: readonly ShadowDetectorImplementat
   coldEngineLoadShadowDetector,
   sustainedHighLoadShadowDetector,
   kickdownLikeShadowDetector,
+  highRpmStationaryShadowDetector,
+  excessiveIdlingShadowDetector,
   stubDetector('brake_intensity'),
 ];
 

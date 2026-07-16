@@ -96,6 +96,18 @@ describe('ShadowDetectorOrchestratorService shadow isolation', () => {
         coolantSampleCount: 0,
         exteriorTempSampleCount: 0,
         misuseCases: [],
+        tripContext: {
+          tripStartTime: '2026-07-16T10:00:00.000Z',
+          tripEndTime: '2026-07-16T10:30:00.000Z',
+          tripDurationMs: 1_800_000,
+        },
+        dimoIdlingSegments: [],
+        dimoIdlingProviderError: null,
+        ignitionSampleCount: 0,
+        rpmSampleCount: 0,
+        speedSampleCount: 0,
+        engineRuntimeSampleCount: 0,
+        providerGaps: ['DIMO_IDLING_SEGMENTS_UNAVAILABLE'],
       }),
     };
 

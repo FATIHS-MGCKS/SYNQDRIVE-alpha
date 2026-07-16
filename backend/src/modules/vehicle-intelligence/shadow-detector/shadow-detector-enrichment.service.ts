@@ -11,7 +11,9 @@ import {
 import type {
   ShadowDetectorExecutionContext,
   ShadowDetectorHfSample,
+  ShadowDimoIdlingSegmentRef,
   ShadowMisuseCaseRef,
+  ShadowTripContext,
 } from './shadow-detector.types';
 
 @Injectable()
@@ -29,6 +31,12 @@ export class ShadowDetectorEnrichmentService {
     endTime: Date | null;
   }): Promise<ShadowDetectorExecutionContext> {
     const endTime = input.endTime ?? input.startTime;
+    const tripDurationMs = Math.max(0, endTime.getTime() - input.startTime.getTime());
+    const tripContext: ShadowTripContext = {
+      tripStartTime: input.startTime.toISOString(),
+      tripEndTime: input.endTime?.toISOString() ?? null,
+      tripDurationMs,
+    };
 
     const [vehicle, misuseRows] = await Promise.all([
       this.prisma.vehicle.findFirst({
@@ -62,18 +70,41 @@ export class ShadowDetectorEnrichmentService {
     const fuelType = vehicle?.fuelType ?? null;
     const isEv = isEvPowertrain(fuelType);
     const isPhev = isPhevFuelType(fuelType);
+    const tokenId = vehicle?.dimoVehicle?.tokenId;
 
     let hfSamples: ShadowDetectorHfSample[] = [];
-    const tokenId = vehicle?.dimoVehicle?.tokenId;
-    if (tokenId != null && !isEv) {
-      const raw = await this.segments.fetchHighFrequency(tokenId, input.startTime, endTime);
-      hfSamples = raw.map(mapHfReadingToShadowSample);
+    let dimoIdlingSegments: ShadowDimoIdlingSegmentRef[] = [];
+    let dimoIdlingProviderError: string | null = null;
+
+    if (tokenId != null) {
+      const [rawHf, idlingResult] = await Promise.all([
+        this.segments.fetchHighFrequency(tokenId, input.startTime, endTime),
+        this.segments.fetchTripSegmentsForMechanism(
+          tokenId,
+          input.startTime,
+          endTime,
+          'idling',
+        ),
+      ]);
+      hfSamples = rawHf.map(mapHfReadingToShadowSample);
+      dimoIdlingProviderError = idlingResult.providerError;
+      dimoIdlingSegments = idlingResult.segments.map((segment) => ({
+        segmentId: segment.segmentId,
+        startTime: segment.startTime,
+        endTime: segment.endTime,
+        durationSeconds: segment.durationSeconds,
+        maxSpeedKmh: segment.maxSpeedKmh,
+      }));
     }
 
-    const coolantSampleCount = hfSamples.filter((s) => s.coolantC != null).length;
-    const exteriorTempSampleCount = hfSamples.filter((s) => s.exteriorTempC != null).length;
     const cadence = computeHfCadenceCoverage(hfSamples);
     const ice = confirmIceOperation(hfSamples);
+    const ignitionSampleCount = hfSamples.filter((s) => s.ignitionOn != null).length;
+    const rpmSampleCount = hfSamples.filter((s) => s.rpm != null).length;
+    const speedSampleCount = hfSamples.filter((s) => s.speedKmh != null).length;
+    const engineRuntimeSampleCount = hfSamples.filter(
+      (s) => s.engineRuntimeSec != null,
+    ).length;
 
     const misuseCases: ShadowMisuseCaseRef[] = misuseRows.map((row) => ({
       type: row.type,
@@ -91,9 +122,25 @@ export class ShadowDetectorEnrichmentService {
       effectiveCadenceMs: cadence.effectiveCadenceMs,
       p95CadenceMs: cadence.p95CadenceMs,
       hfCoverage: cadence.coverage,
-      coolantSampleCount,
-      exteriorTempSampleCount,
+      coolantSampleCount: hfSamples.filter((s) => s.coolantC != null).length,
+      exteriorTempSampleCount: hfSamples.filter((s) => s.exteriorTempC != null).length,
       misuseCases,
+      tripContext,
+      dimoIdlingSegments,
+      dimoIdlingProviderError,
+      ignitionSampleCount,
+      rpmSampleCount,
+      speedSampleCount,
+      engineRuntimeSampleCount,
+      providerGaps: buildProviderGaps({
+        ignitionSampleCount,
+        rpmSampleCount,
+        speedSampleCount,
+        engineRuntimeSampleCount,
+        dimoIdlingSegments,
+        dimoIdlingProviderError,
+        isEvPowertrain: isEv,
+      }),
     };
   }
 }
@@ -113,5 +160,30 @@ function mapHfReadingToShadowSample(reading: HighFrequencyReading): ShadowDetect
     tractionBatteryPowerKw: reading.tractionBatteryPowerKw,
     altitudeM: reading.altitudeM ?? null,
     gear: reading.currentGear ?? null,
+    ignitionOn: reading.ignitionOn ?? null,
   };
+}
+
+function buildProviderGaps(input: {
+  ignitionSampleCount: number;
+  rpmSampleCount: number;
+  speedSampleCount: number;
+  engineRuntimeSampleCount: number;
+  dimoIdlingSegments: readonly ShadowDimoIdlingSegmentRef[];
+  dimoIdlingProviderError: string | null;
+  isEvPowertrain: boolean;
+}): string[] {
+  const gaps: string[] = [];
+  if (input.speedSampleCount === 0) gaps.push('MISSING_SPEED');
+  if (!input.isEvPowertrain && input.rpmSampleCount === 0) gaps.push('MISSING_RPM');
+  if (input.ignitionSampleCount === 0) gaps.push('MISSING_IGNITION');
+  if (!input.isEvPowertrain && input.engineRuntimeSampleCount === 0) {
+    gaps.push('MISSING_ENGINE_RUNTIME');
+  }
+  if (input.dimoIdlingProviderError) {
+    gaps.push('DIMO_IDLING_PROVIDER_ERROR');
+  } else if (input.dimoIdlingSegments.length === 0) {
+    gaps.push('DIMO_IDLING_SEGMENTS_UNAVAILABLE');
+  }
+  return gaps;
 }

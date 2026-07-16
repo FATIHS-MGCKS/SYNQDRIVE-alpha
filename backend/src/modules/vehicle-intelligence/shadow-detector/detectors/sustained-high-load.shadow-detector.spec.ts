@@ -1,4 +1,5 @@
 import { sustainedHighLoadShadowDetector } from './sustained-high-load.shadow-detector';
+import { baseShadowExecutionContext } from './shadow-detector-test-context';
 import { SHADOW_DETECTOR_FRAMEWORK_VERSION } from '../shadow-detector.types';
 import type {
   ShadowDetectorCapabilitySnapshot,
@@ -26,6 +27,7 @@ function hf(
     tractionBatteryPowerKw: null,
     altitudeM: 300,
     gear: null,
+    ignitionOn: null,
     ...over,
   };
 }
@@ -45,20 +47,16 @@ function makeContext(
     over.hfSamples ??
     Array.from({ length: 25 }, (_, i) => hf(i));
 
-  return {
-    fuelType: 'PETROL',
-    isEvPowertrain: false,
-    isPhev: false,
-    iceOperationConfirmed: true,
+  return baseShadowExecutionContext({
     hfSamples,
-    effectiveCadenceMs: 4_000,
-    p95CadenceMs: 6_000,
-    hfCoverage: 0.85,
     coolantSampleCount: hfSamples.filter((s) => s.coolantC != null).length,
     exteriorTempSampleCount: 10,
-    misuseCases: [],
+    rpmSampleCount: hfSamples.filter((s) => s.rpm != null).length,
+    speedSampleCount: hfSamples.filter((s) => s.speedKmh != null).length,
+    ignitionSampleCount: hfSamples.filter((s) => s.ignitionOn != null).length,
+    engineRuntimeSampleCount: hfSamples.filter((s) => s.engineRuntimeSec != null).length,
     ...over,
-  };
+  });
 }
 
 const tripInput = {
