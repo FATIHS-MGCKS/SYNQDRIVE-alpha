@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
-  BatteryMeasurementQuality,
   BatteryMeasurementSessionStatus,
   BatteryMeasurementSessionType,
   BatteryMeasurementType,
@@ -14,11 +13,15 @@ import { BatteryMeasurementService } from '../battery-measurement.service';
 import { START_DIP_PROXY_MEASUREMENT_KIND } from '../battery-crank-policy';
 import { BatteryV2ProviderError } from '../jobs/battery-v2-job.errors';
 import {
+  evaluateStartProxyCadenceGate,
+  START_PROXY_CADENCE_GATE_VERSION,
+  type StartProxyCadenceGateResult,
+} from './battery-start-proxy-cadence-gate';
+import {
   buildStartProxyMeasurementIdempotencyKey,
   buildStartProxySessionIdempotencyKey,
   computeStartProxyWindow,
   detectConfirmedIceStart,
-  extractStartDipProxyValues,
   sanitizeStartProxyVoltages,
   type BatteryStartProxyCrankPoint,
 } from './battery-start-proxy.policy';
@@ -76,15 +79,6 @@ export class BatteryStartProxyExtractService {
     const { from, to } = computeStartProxyWindow(input.tripStartedAt);
     const points = await this.fetchCrankWindowStrict(dimoTokenId, from, to);
 
-    if (points.length === 0) {
-      await this.persistMissed(input, 'no_provider_points_in_window');
-      return {
-        ok: true,
-        skipped: true,
-        skipReason: 'no_provider_points_in_window',
-      };
-    }
-
     const confirmedIceStart = detectConfirmedIceStart(points, input.tripStartedAt);
     const policy = await this.policyProfiles.resolveForVehicle(input.vehicleId, {
       confirmedIceStart,
@@ -98,9 +92,53 @@ export class BatteryStartProxyExtractService {
       };
     }
 
-    const extracted = sanitizeStartProxyVoltages(
-      extractStartDipProxyValues(points, input.tripStartedAt),
+    const gate = evaluateStartProxyCadenceGate({
+      points,
+      tripStartAt: input.tripStartedAt,
+    });
+
+    const measurementId = await this.persistGateOutcome({
+      input,
+      from,
+      to,
+      confirmedIceStart,
+      pointCount: points.length,
+      gate,
+    });
+
+    this.logger.debug(
+      `START_DIP_PROXY persisted vehicle=${input.vehicleId} trip=${input.tripId} measurement=${measurementId} quality=${gate.quality}`,
     );
+
+    if (!gate.ok) {
+      return {
+        ok: true,
+        skipped: true,
+        skipReason: gate.reasonCode,
+      };
+    }
+
+    return {
+      ok: true,
+      skipped: false,
+      measurementId,
+    };
+  }
+
+  private async persistGateOutcome(params: {
+    input: {
+      organizationId: string;
+      vehicleId: string;
+      tripId: string;
+      tripStartedAt: Date;
+    };
+    from: Date;
+    to: Date;
+    confirmedIceStart: boolean;
+    pointCount: number;
+    gate: StartProxyCadenceGateResult;
+  }): Promise<string> {
+    const { input, from, to, confirmedIceStart, pointCount, gate } = params;
 
     const session = await this.sessions.create({
       organizationId: input.organizationId,
@@ -118,17 +156,31 @@ export class BatteryStartProxyExtractService {
         confirmedIceStart,
         windowFrom: from.toISOString(),
         windowTo: to.toISOString(),
-        pointCount: points.length,
+        pointCount,
+        cadenceGateVersion: START_PROXY_CADENCE_GATE_VERSION,
+        cadenceGate: gate.metrics,
       },
     });
 
-    const primaryValue = extracted.vMinCrank ?? extracted.vPreCrank;
+    const values =
+      gate.ok && gate.values
+        ? sanitizeStartProxyVoltages({
+            vPreCrank: gate.values.vPreCrank,
+            vMinCrank: gate.values.vMinCrank,
+            vRecovery5s: gate.values.vRecovery5s,
+            vRecovery30s: gate.values.vRecovery30s,
+          })
+        : null;
+
+    const primaryValue =
+      values != null ? values.vMinCrank ?? values.vPreCrank : null;
+
     const measurement = await this.measurements.create({
       organizationId: input.organizationId,
       vehicleId: input.vehicleId,
       sessionId: session.id,
       type: BatteryMeasurementType.START_DIP_PROXY,
-      quality: BatteryMeasurementQuality.SHADOW,
+      quality: gate.quality,
       observedAt: input.tripStartedAt,
       numericValue: primaryValue,
       unit: primaryValue != null ? 'V' : null,
@@ -138,75 +190,39 @@ export class BatteryStartProxyExtractService {
       context: {
         confirmedIceStart,
         tripId: input.tripId,
-        vPreCrank: extracted.vPreCrank,
-        vMinCrank: extracted.vMinCrank,
-        vRecovery5s: extracted.vRecovery5s,
-        vRecovery30s: extracted.vRecovery30s,
         diagnosticOnly: true,
+        cadenceGateVersion: START_PROXY_CADENCE_GATE_VERSION,
+        cadenceGate: gate.metrics,
+        reasonCode: gate.reasonCode,
+        reasonLabel: gate.reasonLabel,
+        ...(values && gate.ok && gate.values
+          ? {
+              vPreCrank: values.vPreCrank,
+              vMinCrank: values.vMinCrank,
+              vRecovery5s: values.vRecovery5s,
+              vRecovery30s: values.vRecovery30s,
+              recovery5sLabel: gate.values.recovery5sLabel,
+              recovery30sLabel: gate.values.recovery30sLabel,
+            }
+          : {}),
       },
       provenance: {
         selectionMethod: 'historical_provider_timeseries',
         tripId: input.tripId,
         windowFrom: from.toISOString(),
         windowTo: to.toISOString(),
-        pointCount: points.length,
+        pointCount,
+        cadenceGateVersion: START_PROXY_CADENCE_GATE_VERSION,
+        cadenceGate: gate.metrics,
+        reasonCode: gate.reasonCode,
+        reasonLabel: gate.reasonLabel,
         evidenceEligible: false,
         publicationEligible: false,
         scoreEffect: false,
       },
     });
 
-    this.logger.debug(
-      `START_DIP_PROXY persisted vehicle=${input.vehicleId} trip=${input.tripId} measurement=${measurement.id}`,
-    );
-
-    return {
-      ok: true,
-      skipped: false,
-      measurementId: measurement.id,
-    };
-  }
-
-  private async persistMissed(
-    input: {
-      organizationId: string;
-      vehicleId: string;
-      tripId: string;
-      tripStartedAt: Date;
-    },
-    reasonCode: string,
-  ): Promise<void> {
-    const session = await this.sessions.create({
-      organizationId: input.organizationId,
-      vehicleId: input.vehicleId,
-      type: BatteryMeasurementSessionType.ICE_START_PROXY,
-      startedAt: input.tripStartedAt,
-      tripId: input.tripId,
-      idempotencyKey: buildStartProxySessionIdempotencyKey(input.tripId),
-      status: BatteryMeasurementSessionStatus.MISSED,
-      providerSource: 'DIMO',
-      sourceEntityType: 'trip',
-      sourceEntityId: input.tripId,
-      metadata: { skipReason: reasonCode },
-    });
-
-    await this.measurements.create({
-      organizationId: input.organizationId,
-      vehicleId: input.vehicleId,
-      sessionId: session.id,
-      type: BatteryMeasurementType.START_DIP_PROXY,
-      quality: BatteryMeasurementQuality.MISSED,
-      observedAt: input.tripStartedAt,
-      idempotencyKey: buildStartProxyMeasurementIdempotencyKey(input.tripId),
-      context: { tripId: input.tripId, reasonCode },
-      provenance: {
-        selectionMethod: 'historical_provider_timeseries',
-        reasonCode,
-        evidenceEligible: false,
-        publicationEligible: false,
-        scoreEffect: false,
-      },
-    });
+    return measurement.id;
   }
 
   private async fetchCrankWindowStrict(

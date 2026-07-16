@@ -1,11 +1,25 @@
+import { BatteryMeasurementQuality } from '@prisma/client';
 import { BatteryDriveProfile } from '../battery-v2-domain';
 import { BatteryStartProxyExtractService } from './battery-start-proxy-extract.service';
 import { BatteryV2ProviderError } from '../jobs/battery-v2-job.errors';
+import { START_PROXY_CADENCE_GATE_VERSION } from './battery-start-proxy-cadence-gate';
 
 const ORG = 'clorg1234567890123456789012';
 const VEH = 'clveh1234567890123456789012';
 const TRIP = 'cltrip123456789012345678901';
-const TRIP_START = new Date('2026-07-16T12:00:00.000Z');
+const TRIP_START = new Date(Date.now() - 3 * 60_000);
+
+function seriesEvery5s(count: number, voltage = 12.4) {
+  const startMs = TRIP_START.getTime() - 25_000;
+  return Array.from({ length: count }, (_, index) => {
+    const ms = startMs + index * 5_000;
+    return {
+      timestamp: new Date(ms).toISOString(),
+      voltage,
+      rpm: ms >= TRIP_START.getTime() ? 600 : 0,
+    };
+  });
+}
 
 describe('BatteryStartProxyExtractService', () => {
   const prisma = {
@@ -99,25 +113,16 @@ describe('BatteryStartProxyExtractService', () => {
     expect(measurements.create).not.toHaveBeenCalled();
   });
 
-  it('persists START_DIP_PROXY for ICE with provider points', async () => {
+  it('persists VALID_PROXY START_DIP_PROXY after cadence gate passes', async () => {
     policyProfiles.resolveForVehicle.mockResolvedValue({
       startProxyAllowed: true,
       startProxyRequiresConfirmedIceStart: false,
       driveProfile: BatteryDriveProfile.ICE,
     });
 
-    dimoSegments.fetchCrankWindow.mockResolvedValue([
-      {
-        timestamp: new Date(TRIP_START.getTime() - 5_000).toISOString(),
-        voltage: 12.5,
-        rpm: 0,
-      },
-      {
-        timestamp: new Date(TRIP_START.getTime() + 5_000).toISOString(),
-        voltage: 11.9,
-        rpm: 500,
-      },
-    ]);
+    const points = seriesEvery5s(35, 12.4);
+    points[7].voltage = 11.8;
+    dimoSegments.fetchCrankWindow.mockResolvedValue(points);
 
     const result = await service.extractAndPersist({
       organizationId: ORG,
@@ -134,8 +139,85 @@ describe('BatteryStartProxyExtractService', () => {
     expect(measurements.create).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'START_DIP_PROXY',
-        context: expect.objectContaining({ diagnosticOnly: true }),
-        provenance: expect.objectContaining({ scoreEffect: false }),
+        quality: BatteryMeasurementQuality.VALID_PROXY,
+        numericValue: 11.8,
+        context: expect.objectContaining({
+          diagnosticOnly: true,
+          cadenceGateVersion: START_PROXY_CADENCE_GATE_VERSION,
+          recovery5sLabel: 'RECOVERY_5S',
+        }),
+        provenance: expect.objectContaining({
+          scoreEffect: false,
+          cadenceGateVersion: START_PROXY_CADENCE_GATE_VERSION,
+        }),
+      }),
+    );
+  });
+
+  it('persists NO_DATA without numeric values when provider returns no points', async () => {
+    policyProfiles.resolveForVehicle.mockResolvedValue({
+      startProxyAllowed: true,
+      startProxyRequiresConfirmedIceStart: false,
+      driveProfile: BatteryDriveProfile.ICE,
+    });
+    dimoSegments.fetchCrankWindow.mockResolvedValue([]);
+
+    const result = await service.extractAndPersist({
+      organizationId: ORG,
+      vehicleId: VEH,
+      tripId: TRIP,
+      tripStartedAt: TRIP_START,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      skipped: true,
+      skipReason: 'no_data',
+    });
+    expect(measurements.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        quality: BatteryMeasurementQuality.NO_DATA,
+        numericValue: null,
+        unit: null,
+        context: expect.objectContaining({
+          reasonCode: 'no_data',
+        }),
+      }),
+    );
+  });
+
+  it('persists INSUFFICIENT_CADENCE without numeric values', async () => {
+    policyProfiles.resolveForVehicle.mockResolvedValue({
+      startProxyAllowed: true,
+      startProxyRequiresConfirmedIceStart: false,
+      driveProfile: BatteryDriveProfile.ICE,
+    });
+
+    const startMs = TRIP_START.getTime();
+    dimoSegments.fetchCrankWindow.mockResolvedValue(
+      Array.from({ length: 9 }, (_, index) => ({
+        timestamp: new Date(startMs - 20_000 + index * 20_000).toISOString(),
+        voltage: 12.3,
+        rpm: 600,
+      })),
+    );
+
+    const result = await service.extractAndPersist({
+      organizationId: ORG,
+      vehicleId: VEH,
+      tripId: TRIP,
+      tripStartedAt: TRIP_START,
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      skipped: true,
+      skipReason: 'insufficient_cadence',
+    });
+    expect(measurements.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        quality: BatteryMeasurementQuality.INSUFFICIENT_CADENCE,
+        numericValue: null,
       }),
     );
   });

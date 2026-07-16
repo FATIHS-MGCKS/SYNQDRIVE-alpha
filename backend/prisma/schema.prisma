@@ -5645,6 +5645,7 @@ enum BatteryMeasurementQuality {
   UNSUPPORTED_PROFILE
   PROVIDER_DELAY
   PROVIDER_ERROR
+  NO_DATA
 }
 
 enum BatteryMeasurementSessionType {

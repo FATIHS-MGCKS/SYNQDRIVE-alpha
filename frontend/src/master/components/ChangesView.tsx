@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-start-proxy-cadence-gate-v49538-2026-07-17',
+    version: '4.9.538',
+    title: 'V4.9.538 — Start-Proxy Cadence & Coverage Gate (Prompt 38/78)',
+    summary: [
+      'Verbindliches Kadenz-/Coverage-Gate (`START_PROXY_CADENCE_GATE_VERSION` 1.0.0) vor jeder START_DIP_PROXY-Auswertung.',
+      'Metriken: Punkte vor/nach Start, Median-/Max-Intervall, Coverage, nearest pre-start, Recovery-Punkte, Provider-Delay, Duplikatanteil.',
+      'Qualitäten: VALID_PROXY, INSUFFICIENT_CADENCE, INSUFFICIENT_COVERAGE, PROVIDER_DELAY, NO_DATA, TIMESTAMP_INCONSISTENT.',
+      'Kein numerischer Wert ohne Gate; RECOVERY_5S/30S nur bei ±5s Toleranz, sonst RECOVERY_PROXY; kein CRANK_MIN.',
+      'Prisma: `BatteryMeasurementQuality.NO_DATA`; Extract-Service persistiert Gate-Ergebnis inkl. Metriken in Context/Provenance.',
+    ],
+    reason: 'Prompt 38/78: belastbare Startdip-Diagnostik nur nach nachweisbarer Provider-Kadenz und Fensterabdeckung.',
+    previousBehavior: 'Extract-Service wertete Rohpunkte direkt aus (`extractStartDipProxyValues`) und persistierte SHADOW ohne Kadenzprüfung.',
+    details:
+      'battery-start-proxy-cadence-gate.ts, battery-start-proxy-extract.service.ts, prisma migration NO_DATA, docs/architecture/battery-start-proxy-cadence-gate.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T01:00:00.000Z',
+  },
+  {
     id: 'battery-start-proxy-extract-v49537-2026-07-17',
     version: '4.9.537',
     title: 'V4.9.537 — BATTERY_START_PROXY_EXTRACT Delayed Job (Prompt 36/78)',
