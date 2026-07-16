@@ -95,10 +95,15 @@ describe('meanBrakeEnergyPerKm', () => {
 
   it('computes kinetic energy factor correctly', () => {
     // v1 = 100/3.6 ≈ 27.78 m/s, v2 = 0 m/s
-    // 0.5 × (27.78² - 0) ≈ 0.5 × 771.6 ≈ 385.8 over 1 km → 385.8
+    // 0.5 × (27.78² - 0) ≈ 385.8 total over 10 km → ~38.58 per km
+    const result = meanBrakeEnergyPerKm([{ startSpeedKmh: 100, endSpeedKmh: 0 }], 10);
+    expect(result).toBeGreaterThan(30);
+    expect(result).toBeLessThan(45);
+  });
+
+  it('does not inflate energy rate for below-minimum distance', () => {
     const result = meanBrakeEnergyPerKm([{ startSpeedKmh: 100, endSpeedKmh: 0 }], 1);
-    expect(result).toBeGreaterThan(300);
-    expect(result).toBeLessThan(450);
+    expect(result).toBe(0);
   });
 
   it('ignores events where end speed is higher than start speed (wrong direction)', () => {
@@ -484,6 +489,24 @@ describe('DrivingImpactService.computeForTrip', () => {
         where: { id: 'trip-1' },
         data: expect.objectContaining({ drivingScore: expect.any(Number) }),
       }),
+    );
+  });
+
+  it('persists metricNormalization manifest in sourceSummaryJson', async () => {
+    prisma.vehicleTrip.findUnique.mockResolvedValue(makeBaseTripRow());
+    mockProvenancePrereqs(prisma, { nativeEventCount: 4, hfEventCount: 0 });
+    prisma.tripBehaviorEvent.findMany.mockResolvedValue([]);
+    prisma.tripDrivingImpact.upsert.mockResolvedValue({});
+    prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
+    prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
+
+    await service.computeForTrip('trip-1', 'vehicle-1');
+
+    const createArg = prisma.tripDrivingImpact.upsert.mock.calls[0][0].create;
+    expect(createArg.modelVersion).toBe('v1.2.0');
+    expect(createArg.sourceSummaryJson.metricNormalization.version).toBe('metric-norm-v1');
+    expect(createArg.sourceSummaryJson.metricNormalization.strategies.eventRates).toBe(
+      'EVENTS_PER_100KM',
     );
   });
 

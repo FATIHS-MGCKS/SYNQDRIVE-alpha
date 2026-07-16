@@ -10,7 +10,7 @@
 
 export const DRIVING_IMPACT_CONFIG = {
   /** Bump this string whenever any formula weight or reference max changes. */
-  MODEL_VERSION: 'v1.1.0',
+  MODEL_VERSION: 'v1.2.0',
 
   /** Rolling window used when computing VehicleDrivingImpactCurrent. */
   ROLLING_WINDOW_DAYS: 30,

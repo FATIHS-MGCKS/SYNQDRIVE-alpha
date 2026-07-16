@@ -7,9 +7,16 @@
 
 import { DrivingEventType } from '@prisma/client';
 import {
-  meanBrakeEnergyPerKm as computeMeanBrakeEnergyPerKm,
   percentile95,
+  sumBrakeEnergy,
 } from './driving-impact-scorer';
+import {
+  metricValueOrZero,
+  normalizeEnergyPerKm,
+  normalizeEventShare,
+  normalizeStopDensityPerKm,
+} from '../driving-metric-normalization/driving-metric-normalization';
+import type { TripNormalizationContext } from '../driving-metric-normalization/driving-metric-normalization.types';
 import type { DrivingImpactHealthEligibility } from './driving-impact-provenance';
 
 export const BRAKING_PROVENANCE_VERSION = 'braking-provenance-v1';
@@ -53,6 +60,8 @@ export type BrakingStatistics = {
   p95NegativeDecelProxy: number;
   meanBrakeEnergyPerKm: number;
   meanBrakeEnergyProxyPerKm: number;
+  measuredEnergyTotal: number;
+  proxyEnergyTotal: number;
   stopDensity: number;
   highSpeedBrakeShare: number;
   reconstructedKinematicCount: number;
@@ -172,6 +181,7 @@ export function computeBrakingStatistics(
   options: {
     stopSpeedThresholdKmh: number;
     highSpeedBrakeThresholdKmh: number;
+    durationHours?: number | null;
   },
 ): BrakingStatistics {
   const reconstructedKinematicCount = rows.filter(
@@ -207,26 +217,28 @@ export function computeBrakingStatistics(
   const highSpeedBrakeCount = rows.filter(
     (row) => (row.startSpeedKmh ?? 0) >= options.highSpeedBrakeThresholdKmh,
   ).length;
-  const highSpeedBrakeShare =
-    rows.length > 0
-      ? Math.round((highSpeedBrakeCount / rows.length) * 100) / 100
-      : 0;
+  const context: TripNormalizationContext = {
+    distanceKm,
+    durationHours: options.durationHours ?? null,
+  };
+  const highSpeedBrakeShare = metricValueOrZero(
+    normalizeEventShare(highSpeedBrakeCount, rows.length, false),
+  );
 
   const stopCount = rows.filter(
     (row) =>
       hasTrustworthyEndSpeed(row) &&
       (row.endSpeedKmh ?? 99) < options.stopSpeedThresholdKmh,
   ).length;
-  const stopDensity =
-    distanceKm > 0 ? Math.round((stopCount / distanceKm) * 100) / 100 : 0;
+  const stopDensity = metricValueOrZero(normalizeStopDensityPerKm(stopCount, context));
 
-  const meanBrakeEnergyPerKm = computeMeanBrakeEnergyPerKm(
-    energyEligibleRows(rows),
-    distanceKm,
+  const measuredEnergyTotal = sumBrakeEnergy(energyEligibleRows(rows));
+  const proxyEnergyTotal = sumBrakeEnergy(proxyEnergyEligibleRows(rows));
+  const meanBrakeEnergyPerKm = metricValueOrZero(
+    normalizeEnergyPerKm(measuredEnergyTotal, context),
   );
-  const meanBrakeEnergyProxyPerKm = computeMeanBrakeEnergyPerKm(
-    proxyEnergyEligibleRows(rows),
-    distanceKm,
+  const meanBrakeEnergyProxyPerKm = metricValueOrZero(
+    normalizeEnergyPerKm(proxyEnergyTotal, context),
   );
 
   return {
@@ -235,6 +247,8 @@ export function computeBrakingStatistics(
     p95NegativeDecelProxy,
     meanBrakeEnergyPerKm,
     meanBrakeEnergyProxyPerKm,
+    measuredEnergyTotal,
+    proxyEnergyTotal,
     stopDensity,
     highSpeedBrakeShare,
     reconstructedKinematicCount,

@@ -30,9 +30,9 @@ import {
   buildDrivingImpactLoadComponents,
   resolvePowertrainIsEv,
 } from './driving-impact-load-components';
+import { buildDrivingImpactNormalizedTripMetrics } from '../driving-metric-normalization/driving-impact-metrics.normalizer';
+import { resolveTripDurationHours } from '../driving-metric-normalization/driving-metric-normalization';
 import {
-  capLinear,
-  per100Km,
   computeLongitudinalStressScore,
   computeBrakingStressScore,
   computeStopGoStressScore,
@@ -304,9 +304,27 @@ export class DrivingImpactService {
       ).map((row) => mapHfBrakingRow(row));
     }
 
+    const tripDurationHours = resolveTripDurationHours(trip.startTime, trip.endTime);
+
+    const hardAccelCount = trip.hardAccelerationCount ?? 0;
+    const hardBrakeCount = trip.hardBrakingCount ?? 0;
+    const fullBrakingCount = trip.fullBrakingCount ?? 0;
+    const kickdownCount = trip.kickdownCount ?? 0;
+    const brakesTotal = trip.totalBrakingEvents ?? trip.brakingEventCount ?? 0;
+
+    const highSpeedBrakeCount = classifiedBrakingRows.filter(
+      (e) => (e.startSpeedKmh ?? 0) >= C.HIGH_SPEED_BRAKE_THRESHOLD_KMH,
+    ).length;
+    const stopCount = classifiedBrakingRows.filter(
+      (e) =>
+        (e.endSpeedSource === 'RECONSTRUCTED' || e.endSpeedSource === 'MEASURED_DELTA') &&
+        (e.endSpeedKmh ?? 99) < C.STOP_SPEED_THRESHOLD_KMH,
+    ).length;
+
     const brakingStats = computeBrakingStatistics(classifiedBrakingRows, distanceKm, {
       stopSpeedThresholdKmh: C.STOP_SPEED_THRESHOLD_KMH,
       highSpeedBrakeThresholdKmh: C.HIGH_SPEED_BRAKE_THRESHOLD_KMH,
+      durationHours: tripDurationHours,
     });
     const brakingProvenance = buildBrakingProvenanceSummary(brakingStats);
 
@@ -331,49 +349,58 @@ export class DrivingImpactService {
       ),
     };
 
-    // ── Compute per-100 km rates ─────────────────────────────────────────────
+    const citySharePct = trip.citySharePercent ?? null;
+    const highwaySharePct = trip.highwaySharePercent ?? null;
+    const countryRoadSharePct = trip.countrySharePercent ?? null;
 
-    const hardAccelCount = trip.hardAccelerationCount ?? 0;
-    const hardBrakeCount = trip.hardBrakingCount ?? 0;
-    const fullBrakingCount = trip.fullBrakingCount ?? 0;
-    const kickdownCount = trip.kickdownCount ?? 0;
-    const brakesTotal = trip.totalBrakingEvents ?? trip.brakingEventCount ?? 0;
+    const normalizedMetrics = buildDrivingImpactNormalizedTripMetrics({
+      distanceKm,
+      tripStartedAt: trip.startTime,
+      tripEndedAt: trip.endTime ?? null,
+      counts: {
+        hardAccel: hardAccelCount,
+        extremeAccel: extremeAccelCount,
+        hardBrake: hardBrakeCount,
+        extremeBrake: extremeBrakeCount,
+        fullBraking: fullBrakingCount,
+        kickdown: kickdownCount,
+        launchLike: launchLikeCount,
+        brakesTotal,
+        stopCount,
+        highSpeedBrakeCount,
+        totalBrakingRows: classifiedBrakingRows.length,
+      },
+      usageSplit: {
+        citySharePct,
+        highwaySharePct,
+        countryRoadSharePct,
+      },
+      brakeEnergy: {
+        measuredEnergyTotal: brakingStats.measuredEnergyTotal,
+        proxyEnergyTotal: brakingStats.proxyEnergyTotal,
+      },
+    });
 
-    const hardAccelPer100Km = per100Km(hardAccelCount, distanceKm);
-    const extremeAccelPer100Km = per100Km(extremeAccelCount, distanceKm);
-    const hardBrakePer100Km = per100Km(hardBrakeCount, distanceKm);
-    const extremeBrakePer100Km = per100Km(extremeBrakeCount, distanceKm);
-    const fullBrakingPer100Km = per100Km(fullBrakingCount, distanceKm);
-    const kickdownPer100Km = per100Km(kickdownCount, distanceKm);
-    const launchLikePer100Km = per100Km(launchLikeCount, distanceKm);
-    const brakesPer100Km = per100Km(brakesTotal, distanceKm);
-
-    // ── Braking statistics (P42: measured/reconstructed vs ESTIMATED_PROXY) ─
+    const {
+      hardAccelPer100Km,
+      extremeAccelPer100Km,
+      hardBrakePer100Km,
+      extremeBrakePer100Km,
+      fullBrakingPer100Km,
+      kickdownPer100Km,
+      launchLikePer100Km,
+      brakesPer100Km,
+      stopDensity,
+      highSpeedBrakeShare,
+      meanBrakeEnergyPerKm: mbe,
+      meanBrakeEnergyProxyPerKm,
+    } = normalizedMetrics.flat;
 
     const {
       p95NegativeDecel,
       p95NegativeDecelMeasured,
       p95NegativeDecelProxy,
-      meanBrakeEnergyPerKm: mbe,
-      meanBrakeEnergyProxyPerKm,
-      stopDensity,
-      highSpeedBrakeShare,
     } = brakingStats;
-
-    const highSpeedBrakeCount = classifiedBrakingRows.filter(
-      (e) => (e.startSpeedKmh ?? 0) >= C.HIGH_SPEED_BRAKE_THRESHOLD_KMH,
-    ).length;
-    const stopCount = classifiedBrakingRows.filter(
-      (e) =>
-        (e.endSpeedSource === 'RECONSTRUCTED' || e.endSpeedSource === 'MEASURED_DELTA') &&
-        (e.endSpeedKmh ?? 99) < C.STOP_SPEED_THRESHOLD_KMH,
-    ).length;
-
-    // ── Usage split ───────────────────────────────────────────────────────────
-
-    const citySharePct = trip.citySharePercent ?? null;
-    const highwaySharePct = trip.highwaySharePercent ?? null;
-    const countryRoadSharePct = trip.countrySharePercent ?? null;
 
     // ── Compute stress scores ─────────────────────────────────────────────────
 
@@ -529,6 +556,17 @@ export class DrivingImpactService {
           provenanceVersion: provenance.provenanceVersion,
           brakingProvenance,
           loadComponents,
+          metricNormalization: {
+            version: normalizedMetrics.normalizationVersion,
+            context: normalizedMetrics.context,
+            strategies: {
+              eventRates: 'EVENTS_PER_100KM',
+              hourlyRates: 'EVENTS_PER_DRIVING_HOUR',
+              routeShares: 'DISTANCE_SHARE',
+              brakeEventShare: 'EVENT_SHARE',
+              brakeEnergy: 'ENERGY_PER_KM',
+            },
+          },
         },
         loadComponentsJson: loadComponents as unknown as object,
         ...provenanceFields(provenance),
@@ -589,6 +627,17 @@ export class DrivingImpactService {
           provenanceVersion: provenance.provenanceVersion,
           brakingProvenance,
           loadComponents,
+          metricNormalization: {
+            version: normalizedMetrics.normalizationVersion,
+            context: normalizedMetrics.context,
+            strategies: {
+              eventRates: 'EVENTS_PER_100KM',
+              hourlyRates: 'EVENTS_PER_DRIVING_HOUR',
+              routeShares: 'DISTANCE_SHARE',
+              brakeEventShare: 'EVENT_SHARE',
+              brakeEnergy: 'ENERGY_PER_KM',
+            },
+          },
         },
         loadComponentsJson: loadComponents as unknown as object,
         ...provenanceFields(provenance),

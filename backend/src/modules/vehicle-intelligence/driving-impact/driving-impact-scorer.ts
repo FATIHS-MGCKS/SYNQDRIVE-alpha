@@ -8,6 +8,12 @@
  * Each score is rounded to one decimal place.
  */
 
+import {
+  metricValueOrZero,
+  normalizeEnergyPerKm,
+  normalizeEventsPer100Km,
+} from '../driving-metric-normalization/driving-metric-normalization';
+
 import { DRIVING_IMPACT_CONFIG as C } from './driving-impact.config';
 
 // ── Shared helpers ────────────────────────────────────────────────────────────
@@ -280,10 +286,40 @@ export function safetyDataConfidenceFromTrip(
 
 /**
  * Per-100 km normalization. Returns null if distanceKm is too small to be reliable.
- * Caller is responsible for checking the reliability threshold before calling.
+ * @deprecated Prefer `normalizeEventsPer100Km` from driving-metric-normalization (P44).
  */
 export function per100Km(count: number, distanceKm: number): number {
-  return Math.round((count / distanceKm) * 100 * 100) / 100;
+  return normalizeEventsPer100Km(count, { distanceKm, durationHours: null }).value ?? 0;
+}
+
+/**
+ * Sum kinetic energy factor across braking events (m²/s²) without distance division.
+ */
+export function sumBrakeEnergy(
+  events: { startSpeedKmh: number; endSpeedKmh: number }[],
+): number {
+  if (events.length === 0) return 0;
+  const kmhToMs = 1 / 3.6;
+  const total = events.reduce((sum, e) => {
+    const v1 = e.startSpeedKmh * kmhToMs;
+    const v2 = e.endSpeedKmh * kmhToMs;
+    const delta = 0.5 * (v1 * v1 - v2 * v2);
+    return sum + (delta > 0 ? delta : 0);
+  }, 0);
+  return Math.round(total * 100) / 100;
+}
+
+/**
+ * Mean kinetic energy factor per km across all braking events.
+ * @deprecated Prefer `normalizeEnergyPerKm` from driving-metric-normalization (P44).
+ */
+export function meanBrakeEnergyPerKm(
+  events: { startSpeedKmh: number; endSpeedKmh: number }[],
+  distanceKm: number,
+): number {
+  return metricValueOrZero(
+    normalizeEnergyPerKm(sumBrakeEnergy(events), { distanceKm, durationHours: null }),
+  );
 }
 
 /**
@@ -295,24 +331,4 @@ export function percentile95(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b);
   const idx = Math.floor(sorted.length * 0.95);
   return Math.round((sorted[Math.min(idx, sorted.length - 1)] ?? 0) * 100) / 100;
-}
-
-/**
- * Mean kinetic energy factor per km across all braking events.
- * Computes 0.5 × (v1² − v2²) per event in m²/s², sums, divides by distanceKm.
- * This is relative energy per unit mass — no vehicle mass needed.
- */
-export function meanBrakeEnergyPerKm(
-  events: { startSpeedKmh: number; endSpeedKmh: number }[],
-  distanceKm: number,
-): number {
-  if (events.length === 0 || distanceKm <= 0) return 0;
-  const kmhToMs = 1 / 3.6;
-  const total = events.reduce((sum, e) => {
-    const v1 = e.startSpeedKmh * kmhToMs;
-    const v2 = e.endSpeedKmh * kmhToMs;
-    const delta = 0.5 * (v1 * v1 - v2 * v2);
-    return sum + (delta > 0 ? delta : 0);
-  }, 0);
-  return Math.round((total / distanceKm) * 100) / 100;
 }
