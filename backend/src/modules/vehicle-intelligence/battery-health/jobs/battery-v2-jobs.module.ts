@@ -43,6 +43,7 @@ const BATTERY_V2_JOB_HANDLERS = [
     BatteryRestTargetEvaluationService,
     BatteryStartProxyExtractService,
     BatteryAssessmentService,
+    BatteryPublicationService,
   ],
   exports: [
     ...BATTERY_V2_JOB_HANDLERS,
