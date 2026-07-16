@@ -292,7 +292,6 @@ export function HealthVehicleDetailPanel({
             tireDefaultAssumptionWarning(s) ?? '',
             s?.confidence ? `Confidence: ${s.confidence}` : '',
           ].filter(Boolean)}
-          ].filter(Boolean)}
           onOpenServiceCenter={onOpenServiceCenter}
           onOpenExistingTask={onOpenExistingTask}
         />

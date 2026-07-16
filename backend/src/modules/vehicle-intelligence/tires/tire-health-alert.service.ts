@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   Prisma,
   TireHealthAlertResolutionReason,
@@ -11,12 +11,16 @@ import type {
   TireAlertSyncResult,
 } from './tire-health-alert.types';
 import { buildTireAlertNotificationCode } from './tire-health-alert.registry';
+import { TireHealthObservabilityService } from './tire-health-observability.service';
 
 @Injectable()
 export class TireHealthAlertService {
   private readonly logger = new Logger(TireHealthAlertService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly observability?: TireHealthObservabilityService,
+  ) {}
 
   async syncAlerts(args: {
     organizationId: string;
@@ -61,6 +65,10 @@ export class TireHealthAlertService {
           },
         });
         resolved.push(row.dedupeKey);
+        this.observability?.recordAlert({
+          action: 'resolved',
+          alertType: row.alertType,
+        });
       }
     }
 
@@ -159,11 +167,19 @@ export class TireHealthAlertService {
             ? error.code
             : (error as { code?: string } | null)?.code;
         if (code === 'P2002') {
+          this.observability?.recordAlert({
+            action: 'deduplicated',
+            alertType: candidate.alertType,
+          });
           continue;
         }
         throw error;
       }
       newlyOpened.push(candidate.dedupeKey);
+      this.observability?.recordAlert({
+        action: 'created',
+        alertType: candidate.alertType,
+      });
       if (args.emitNotifications !== false && candidate.notifyEligible) {
         notificationsToEmit.push(candidate);
       }

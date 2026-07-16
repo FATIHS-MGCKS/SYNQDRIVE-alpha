@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, Optional } from '@nestjs/common';
 import {
   Prisma,
   TireChangeType,
@@ -13,6 +13,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { TireWearModelService } from './tire-wear-model.service';
 import { TireHealthService } from './tire-health.service';
 import { TireHealthAlertService } from './tire-health-alert.service';
+import { TireHealthObservabilityService } from './tire-health-observability.service';
 import {
   TireIdentityService,
   dbPosToWheel,
@@ -243,6 +244,7 @@ export class TireLifecycleService {
     private readonly tireHealthService: TireHealthService,
     private readonly tireHealthAlertService: TireHealthAlertService,
     private readonly tireIdentity: TireIdentityService,
+    @Optional() private readonly observability?: TireHealthObservabilityService,
   ) {}
 
   async recordMeasurement(command: RecordTireMeasurementCommand) {
@@ -353,6 +355,8 @@ export class TireLifecycleService {
     if (triggerRecalculate) {
       await this.tireHealthService.recalculate(command.vehicleId);
     }
+
+    this.observability?.recordMeasurement({ source });
 
     return { measurement, kFactors, source };
   }

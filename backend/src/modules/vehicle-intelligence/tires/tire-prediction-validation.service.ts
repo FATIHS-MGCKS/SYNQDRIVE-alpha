@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TireEvidenceSource } from '@prisma/client';
 import {
@@ -11,6 +11,7 @@ import { mapLegacyMeasurementSourceToEvidence } from './tire-evidence-source';
 import {
   readSnapshotPredictionPayload,
 } from './tire-wear-model-version';
+import { TireHealthObservabilityService } from './tire-health-observability.service';
 
 export interface ValidationLinkResult {
   measurementId: string;
@@ -30,7 +31,10 @@ export interface ValidationLinkResult {
 export class TirePredictionValidationService {
   private readonly logger = new Logger(TirePredictionValidationService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly observability?: TireHealthObservabilityService,
+  ) {}
 
   /**
    * Find the latest prediction snapshot strictly before `measuredAt`.
@@ -125,6 +129,8 @@ export class TirePredictionValidationService {
       orderBy: { measuredAt: 'asc' },
     });
 
+    const linkedResults: ValidationLinkResult[] = [];
+
     for (const measurement of measurements) {
       const gtInput = {
         tireSetupId: args.tireSetupId,
@@ -150,6 +156,10 @@ export class TirePredictionValidationService {
           actualTreadMm: 0,
           skipped: true,
           skipReason: 'no_pre_measurement_snapshot',
+        });
+        this.observability?.recordPredictionValidation({
+          errorMm: 0,
+          linked: false,
         });
         continue;
       }
@@ -249,14 +259,29 @@ export class TirePredictionValidationService {
             ),
           );
 
-        results.push({
+        const linked = {
           measurementId: measurement.id,
           axle,
           predictionSnapshotId: predictionSnapshot.id,
           predictedTreadMm,
           actualTreadMm,
+        };
+        results.push(linked);
+        linkedResults.push(linked);
+        this.observability?.recordPredictionValidation({
+          errorMm: predictedTreadMm - actualTreadMm,
+          linked: true,
         });
       }
+    }
+
+    if (linkedResults.length > 0) {
+      const mae =
+        linkedResults.reduce(
+          (sum, r) => sum + Math.abs(r.predictedTreadMm - r.actualTreadMm),
+          0,
+        ) / linkedResults.length;
+      this.observability?.recordPredictionMae(mae);
     }
 
     return results;

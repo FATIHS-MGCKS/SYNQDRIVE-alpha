@@ -249,6 +249,7 @@ function createBrakeRegistrationHarness(input?: {
     { getSummary: jest.fn() } as any,
     { getAiHealthCareSignals: jest.fn() } as any,
     { evaluateCompliance: jest.fn(), toRentalModuleHealth: jest.fn() } as any,
+    { getActiveOverride: jest.fn().mockResolvedValue(null) } as any,
   );
 
   const evaluateBrakes = (summary: any) => (rentalHealth as any).evaluateBrakes(summary);

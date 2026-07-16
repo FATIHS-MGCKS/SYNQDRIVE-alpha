@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TireWearModelService, WearExplainability } from './tire-wear-model.service';
 import { DrivingImpactService } from '../driving-impact/driving-impact.service';
@@ -89,6 +89,7 @@ import {
   type TireEvidencePresentation,
   type TireHealthSummaryForPresentation,
 } from './tire-health-presentation';
+import { TireHealthObservabilityService } from './tire-health-observability.service';
 
 // ── Public interfaces ─────────────────────────────────────────────────────────
 
@@ -298,6 +299,7 @@ export class TireHealthService {
     private readonly drivingImpactService: DrivingImpactService,
     private readonly predictionValidation: TirePredictionValidationService,
     private readonly tireHealthAlertService: TireHealthAlertService,
+    @Optional() private readonly observability?: TireHealthObservabilityService,
   ) {}
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -496,6 +498,10 @@ export class TireHealthService {
       this.logger.debug(
         `Skipping tire recalculation for vehicle=${vehicleId} setup=${setup.id} — identical input fingerprint`,
       );
+      this.observability?.recordRecalculation({
+        result: 'deduplicated',
+        skipReason: 'identical_input_fingerprint',
+      });
       return {
         overallPercent: setup.overallHealthPercent ?? 0,
         remainingKm: setup.overallRemainingKm ?? null,
@@ -516,17 +522,32 @@ export class TireHealthService {
     }
 
     const dimoContext = await this.resolveDimoTireContext(vehicleId, recalcAsOf);
+    this.observeDimoOdometerAnchor(dimoContext);
     const pressureContextForWear = await this.resolvePressureContext(
       vehicleId,
       null,
       setup,
       dimoContext,
     );
+    this.observability?.recordPressureContext(pressureContextForWear);
+    this.observePressureInvalidWheels(pressureContextForWear);
+    const recalcStartedAt = Date.now();
     const wearAnalysis = await this.wearModel.computeWearAnalysis(vehicleId, {
       pressureContext: pressureContextForWear,
       dimoContext,
     });
-    if (!wearAnalysis) return null;
+    if (!wearAnalysis) {
+      this.observability?.recordRecalculation({
+        result: 'skipped',
+        durationMs: Date.now() - recalcStartedAt,
+        skipReason: 'no_wear_analysis',
+      });
+      return null;
+    }
+
+    if (setup.initialTreadEvidenceSource === TireEvidenceSource.DEFAULT_ASSUMPTION) {
+      this.observability?.recordDefaultBaseline('8mm_default_setup');
+    }
 
     const confidence = await this.computeConfidence(vehicleId, setup);
     const wheels = [
@@ -755,6 +776,12 @@ export class TireHealthService {
       tireSetupId: setup.id,
       candidates: alertCandidates,
       inputFingerprint: fingerprint.inputFingerprint,
+    });
+
+    this.observability?.recordSnapshotCreated('created');
+    this.observability?.recordRecalculation({
+      result: 'success',
+      durationMs: Date.now() - recalcStartedAt,
     });
 
     return {
@@ -1801,6 +1828,37 @@ export class TireHealthService {
             freshnessStatus: hmTirePressure.freshnessStatus,
           }
         : null,
+    });
+  }
+
+  private observePressureInvalidWheels(context: TirePressureContext): void {
+    const positions = ['frontLeft', 'frontRight', 'rearLeft', 'rearRight'] as const;
+    for (const position of positions) {
+      const wheel = context.wheels[position];
+      if (wheel.plausibility === 'valid' || wheel.plausibility === 'missing') {
+        continue;
+      }
+      this.observability?.recordPressureNormalization({
+        plausibility: wheel.plausibility,
+        invalid: true,
+        source: wheel.sourceProvider,
+      });
+    }
+  }
+
+  private observeDimoOdometerAnchor(dimoContext: TireDimoContext): void {
+    const odometer = dimoContext.odometer;
+    const status =
+      odometer.usable
+        ? 'anchored'
+        : odometer.valueKm != null &&
+            odometer.reasons.some((reason) => reason.includes('plausibility'))
+          ? 'plausibility_issue'
+          : 'required';
+    this.observability?.recordOdometerAnchor({
+      status,
+      source: odometer.source,
+      issue: odometer.reasons[0] ?? null,
     });
   }
 

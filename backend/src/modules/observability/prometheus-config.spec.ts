@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { TripMetricsService } from './trip-metrics.service';
+import { TireMetricsService } from '@modules/vehicle-intelligence/tires/tire-metrics.service';
 
 const FORBIDDEN_LABELS = [
   'vehicle_id',
@@ -17,6 +18,7 @@ describe('TripMetricsService label cardinality', () => {
 
   beforeEach(() => {
     metrics = new TripMetricsService();
+    new TireMetricsService(metrics);
   });
 
   it('does not register forbidden high-cardinality labels', async () => {
@@ -41,6 +43,11 @@ describe('TripMetricsService label cardinality', () => {
     expect(text).toContain('synqdrive_document_extraction_duration_seconds');
     expect(text).toContain('synqdrive_document_extraction_queue_age_seconds');
     expect(text).toContain('synqdrive_document_extraction_active_jobs');
+    expect(text).toContain('synqdrive_tire_recalculation_total');
+    expect(text).toContain('synqdrive_tire_usage_processed_total');
+    expect(text).toContain('synqdrive_tire_alert_total');
+    expect(text).toContain('synqdrive_tire_rental_block_total');
+    expect(text).toContain('synqdrive_tire_snapshot_created_total');
   });
 });
 

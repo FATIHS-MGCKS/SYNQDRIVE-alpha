@@ -28,6 +28,7 @@ import {
   type TireTripUsageMetricName,
   withTripUsageReplayRetry,
 } from './tire-trip-usage-replay';
+import { TireHealthObservabilityService } from './tire-health-observability.service';
 
 export interface TireTripUsageProcessResult {
   tripId: string;
@@ -51,7 +52,7 @@ export class TireTripUsageService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Optional() private readonly metrics?: TireTripUsageMetricHook,
+    @Optional() private readonly observability?: TireHealthObservabilityService,
   ) {}
 
   /**
@@ -330,7 +331,7 @@ export class TireTripUsageService {
         }),
       );
 
-      this.metrics?.recordTripUsageProcessed(result);
+      this.observability?.recordTripUsageProcessed(result);
       this.logger.log(
         JSON.stringify({
           event: 'tire_trip_usage_processed',
@@ -477,7 +478,7 @@ export class TireTripUsageService {
         }),
       );
 
-      this.metrics?.recordTripUsageProcessed(result);
+      this.observability?.recordTripUsageProcessed(result);
       this.logger.log(
         JSON.stringify({
           event: 'tire_trip_usage_invalidated',
@@ -499,7 +500,7 @@ export class TireTripUsageService {
   }
 
   private emitMetric(name: TireTripUsageMetricName, labels?: Record<string, string>): void {
-    this.metrics?.recordMetric?.(name, labels);
+    this.observability?.recordMetric?.(name, labels);
   }
 
   private async persistSkippedStatus(
@@ -526,7 +527,7 @@ export class TireTripUsageService {
         : undefined,
     };
 
-    this.metrics?.recordTripUsageProcessed(result);
+    this.observability?.recordTripUsageProcessed(result);
     this.logger.debug(
       JSON.stringify({
         event: 'tire_trip_usage_skipped',

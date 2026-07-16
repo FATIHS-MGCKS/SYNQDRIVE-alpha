@@ -1,7 +1,8 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { CanonicalBatteryHealthService } from '../vehicle-intelligence/battery-health/canonical-battery-health.service';
 import { TireHealthService, TireHealthSummary } from '../vehicle-intelligence/tires/tire-health.service';
+import { TireHealthObservabilityService } from '../vehicle-intelligence/tires/tire-health-observability.service';
 import { BrakeHealthService, BrakeHealthSummaryDto } from '../vehicle-intelligence/brakes/brake-health.service';
 import { strongerDataBasis, type BrakeDataBasis } from '../vehicle-intelligence/brakes/brake-status';
 import { DtcService } from '../vehicle-intelligence/dtc/dtc.service';
@@ -74,6 +75,7 @@ export class RentalHealthService {
     private readonly hm: HmSignalUsageService,
     private readonly serviceCompliance: ServiceComplianceService,
     private readonly tireRentalReview: TireRentalHealthReviewService,
+    @Optional() private readonly tireObservability?: TireHealthObservabilityService,
   ) {}
 
   /**
@@ -367,10 +369,18 @@ export class RentalHealthService {
     summary: TireHealthSummary | null,
     activeReviewOverride: import('./tire-rental-health.types').TireRentalReviewOverrideSummary | null,
   ): TireRentalHealthModuleHealth {
-    return buildTireModuleHealth({
+    const moduleHealth = buildTireModuleHealth({
       summary,
       activeReviewOverride,
     });
+    const block = moduleHealth.tire_read_model?.rentalBlockingEvidence;
+    if (block) {
+      this.tireObservability?.recordRentalBlock({
+        level: block.action,
+        reasonCode: block.reasonCode,
+      });
+    }
+    return moduleHealth;
   }
 
   /**

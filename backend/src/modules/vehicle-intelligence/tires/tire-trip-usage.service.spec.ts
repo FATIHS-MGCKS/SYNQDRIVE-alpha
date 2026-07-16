@@ -63,7 +63,7 @@ describe('TireTripUsageService', () => {
     recordTripUsageProcessed: jest.fn(),
     recordMetric: jest.fn(),
   };
-  const svc = new TireTripUsageService(mockPrisma, metrics);
+  const svc = new TireTripUsageService(mockPrisma, metrics as never);
 
   beforeEach(() => {
     jest.clearAllMocks();

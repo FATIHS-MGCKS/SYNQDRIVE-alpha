@@ -1240,6 +1240,74 @@ Nur audit-bewährte DIMO-Signale nutzen; fachlich unzulässige Ableitungen verhi
 
 ---
 
+## Prompt 23 — Observability & regression matrix (2026-07-16)
+
+### Ziel
+
+Tire Health operativ beobachtbar machen (strukturierte Logs + Prometheus) und kritische Audit-Testlücken (TC01–TC36) mit Regressionstests schließen.
+
+### Neue Dateien
+
+| Datei | Rolle |
+|-------|-------|
+| `tire-health-observability.util.ts` | JSON-Logs ohne PII (`vehicleId`/`tripId`/`vin` ausgeschlossen) |
+| `tire-metrics.service.ts` | `synqdrive_tire_*` Counter/Gauge/Histogram auf `TripMetricsService.registry` |
+| `tire-health-observability.service.ts` | Log + Metrik-Fassade; implementiert `TireTripUsageMetricHook` |
+| `tire-health-observability.service.spec.ts` | Log-Format + Registry-Exposure |
+| `tire-health-regression-matrix.spec.ts` | TC01–TC36 Audit-Matrix als Unit-Regression |
+| `tire-recalculation.processor.spec.ts` | Queue-Metadaten: `concurrency: 2`, `lockDuration: 120s` |
+
+### Geänderte Dateien
+
+| Datei | Änderung |
+|-------|----------|
+| `tire-health.service.ts` | Recalc/Snapshot/Pressure/Odometer/Default-Baseline Observability |
+| `tire-trip-usage.service.ts` | Ledger/Dedupe/Mapping-Conflict Metriken |
+| `tire-health-alert.service.ts` | Alert created/resolved/deduped |
+| `tire-prediction-validation.service.ts` | Ground-truth validation error + MAE |
+| `tire-lifecycle.service.ts` | Measurement events |
+| `rental-health.service.ts` | Rental-block Metriken |
+| `tire-recalculation.processor.ts` | Async worker, `observeQueueLag`, bounded concurrency |
+| `metrics-refresh.service.ts` | `TIRE_RECALCULATION` in `MONITORED_QUEUES` |
+| `prometheus-config.spec.ts` | Tire-Metriken registriert via `TireMetricsService` |
+| `vehicle-intelligence.module.ts` | Provider/Export `TireMetricsService`, `TireHealthObservabilityService` |
+| `frontend/src/lib/api.ts` | `TireDimoContextResponse`, `WATCH` in `TireUiStatus` |
+
+### Prometheus-Metriken (low-cardinality)
+
+`synqdrive_tire_recalculation_total`, `_failed_total`, `_deduplicated_total`, `_duration_seconds`, `synqdrive_tire_usage_processed_total`, `_duplicate_prevented_total`, `_mapping_conflict_total`, `synqdrive_tire_measurement_total`, `synqdrive_tire_prediction_error_mm`, `synqdrive_tire_prediction_mae_mm`, `synqdrive_tire_pressure_coverage_ratio`, `_pressure_invalid_total`, `_signal_stale_total`, `synqdrive_tire_default_baseline_total`, `synqdrive_tire_ground_truth_total`, `synqdrive_tire_alert_total`, `synqdrive_tire_rental_block_total`, `synqdrive_tire_snapshot_created_total`
+
+### Worker/Queue-Verhalten
+
+- **Async:** Stunden-Scheduler → `dimo.tire.recalculation` (BullMQ); interaktive Lifecycle-Pfade rufen `recalculate` synchron (bounded, deduped via Fingerprint)
+- **Retry:** Global `defaultJobOptions`: `attempts: 3`, exponential backoff 5s
+- **DLQ:** `removeOnFail: { count: 5000, age: 7d }` (kein separates DLQ-Topic — failed jobs in Redis)
+- **Lock:** Processor `lockDuration: 120_000`, `concurrency: 2`
+- **Backlog/Lag:** `observeQueueLag` + `synqdrive_queue_*` via `MetricsRefreshService`
+
+### Testergebnisse Prompt 23
+
+| Suite | Ergebnis |
+|-------|----------|
+| `prisma validate` | ✅ |
+| Backend `tsc --noEmit` | ✅ |
+| Tire Backend Tests (41 Suites) | ✅ **519** passed |
+| Full Backend Tests | ⚠️ **3** nicht-Tire-Suites fehlgeschlagen (Invoice-Payment-Task — vorbestehend) |
+| Frontend `vitest` | ✅ **1461** passed |
+| Frontend `tsc -b` | ⚠️ vorbestehende Prompt-21 UI-Typen (`SegmentLevel`, `HealthErrorsView`) |
+| Backend `npm run build` | ✅ |
+| Frontend `npm run build` | ⚠️ blockiert durch vorbestehende `tsc -b` UI-Fehler |
+| Migration Test (leer + Fixture) | ⚠️ extern — kein Postgres in CI-Agent-Umgebung |
+| Tire E2E (Playwright) | ⚠️ keine dedizierten Tire-E2E-Specs im Repo |
+
+### Bestätigung Prompt 23
+
+- ✅ Kritische Pfade (Dedupe, Ledger, Pressure, Blocking, Ground Truth) mit Regressionstests
+- ✅ Tire Health metrisch + strukturiert loggbar ohne PII
+- ✅ Worker-Queue async mit Retry/Lock/Lag-Metriken
+
+---
+
 ## Change Log
 
 | Datum | Prompt | Aktion | Commit |
@@ -1258,7 +1326,8 @@ Nur audit-bewährte DIMO-Signale nutzen; fachlich unzulässige Ableitungen verhi
 | 2026-07-16 | 19 | Evidence-aware rental health blocking policy | *(dieser Commit)* |
 | 2026-07-16 | 20 | Structured tire health alerts with dedupe + revision-safe resolution | *(dieser Commit)* |
 | 2026-07-16 | 21 | Honest tire health evidence in API + UI | *(dieser Commit)* |
-| 2026-07-16 | 22 | Capability-gated DIMO tire context signals | *(dieser Commit)* |
+| 2026-07-16 | 22 | Capability-gated DIMO tire context signals | `9ba78b4` |
+| 2026-07-16 | 23 | Observability + TC01–TC36 regression matrix | *(dieser Commit)* |
 
 ---
 

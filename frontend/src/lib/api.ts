@@ -5751,6 +5751,7 @@ export type TireConfidenceLevel = 'HIGH' | 'MEDIUM' | 'LOW' | 'UNKNOWN';
 
 export type TireUiStatus =
   | 'GOOD'
+  | 'WATCH'
   | 'WARNING'
   | 'CRITICAL'
   | 'UNKNOWN'
@@ -5829,6 +5830,30 @@ export interface TireEvidencePresentation {
   defaultAssumptionWarningEn: string | null;
 }
 
+export interface TireDimoContextResponse {
+  asOf: string;
+  ambient: {
+    usable: boolean;
+    weightedAvgTempC: number | null;
+    seasonBand: 'COLD' | 'MILD' | 'WARM' | null;
+    stale: boolean;
+    pressureContextHintEn: string | null;
+  };
+  odometer: {
+    usable: boolean;
+    valueKm: number | null;
+    source: 'DIMO' | 'HIGH_MOBILITY' | 'VEHICLE_LATEST_STATE' | null;
+    plausibilityOnly: boolean;
+  };
+  tpms: {
+    architecturePrepared: boolean;
+    usable: boolean;
+    signalPresent: boolean;
+    warningActive: boolean | null;
+  };
+  blockedWearDerivations: string[];
+}
+
 export interface TireHealthSummaryResponse {
   overallPercent: number;
   overallRemainingKm: number;
@@ -5868,6 +5893,7 @@ export interface TireHealthSummaryResponse {
   hasSetups?: boolean;
   hasMeasurements?: boolean;
   evidencePresentation?: TireEvidencePresentation;
+  dimoContext?: TireDimoContextResponse;
   operationalReplacementMm?: number | null;
   topWearDrivers?: string[];
   actionState?: TireActionState;

@@ -2,6 +2,7 @@ import { buildTirePressureContext } from '../vehicle-intelligence/tires/tire-pre
 import { resolveRecommendedTirePressure } from '../vehicle-intelligence/tires/tire-recommended-pressure';
 import type { TireHealthSummary } from '../vehicle-intelligence/tires/tire-health.service';
 import { buildTireEvidencePresentation } from '../vehicle-intelligence/tires/tire-health-presentation';
+import { buildTireDimoContext } from '../vehicle-intelligence/tires/tire-dimo-context.builder';
 import {
   buildTireRentalHealthReadModel,
   isTireRentalHardBlocked,
@@ -102,6 +103,7 @@ function baseSummary(
     hasActiveSet: true,
     hasSetups: true,
     hasMeasurements: true,
+    dimoContext: buildTireDimoContext({ asOf: new Date('2026-07-16T12:00:00.000Z'), ambientSamples: [] }),
     ...restOverrides,
   };
   return {
