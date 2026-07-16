@@ -388,7 +388,13 @@ function resolveTpmsWarning(args: {
   hm?: HmPressureSnapshotInput | null;
   wheels: Record<TirePressureWheelPosition, TirePressureWheelReading>;
 }): { warning: boolean | null; source: TirePressureTpmsWarningSource } {
-  const dimoPresent = args.dimo?.tpmsWarning?.signalPresent === true;
+  const tpmsCapability = args.dimo?.capability?.tpms;
+  const dimoTpmsGated =
+    tpmsCapability != null
+      ? tpmsCapability.usable && args.dimo?.tpmsWarning?.signalPresent === true
+      : args.dimo?.tpmsWarning?.signalPresent === true;
+
+  const dimoPresent = dimoTpmsGated;
   const dimoActive =
     dimoPresent && args.dimo?.tpmsWarning?.value === true;
 
@@ -455,6 +461,7 @@ function buildQualityWarnings(args: {
   }
   if (
     args.tpmsWarning === null &&
+    args.dimo?.capability?.tpms?.usable !== true &&
     args.dimo?.tpmsWarning?.signalPresent !== true &&
     args.coverage.wheelsAvailable === 0 &&
     args.hm == null
@@ -463,7 +470,8 @@ function buildQualityWarnings(args: {
   }
   if (
     args.tpmsWarning === null &&
-    args.dimo?.capability?.tpmsWarningSignalListed === false &&
+    args.dimo?.capability?.tpms?.architecturePrepared === true &&
+    args.dimo?.capability?.tpms?.usable !== true &&
     args.coverage.wheelsAvailable === 0
   ) {
     warnings.push('TPMS warning capability not confirmed for this vehicle.');

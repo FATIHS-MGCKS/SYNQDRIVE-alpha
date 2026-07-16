@@ -1191,6 +1191,55 @@ Blocker bleiben bis Abnahme Prompt 24:
 
 ---
 
+## Prompt 22 — Capability-gated DIMO tire context signals (2026-07-16)
+
+### Ziel
+
+Nur audit-bewährte DIMO-Signale nutzen; fachlich unzulässige Ableitungen verhindern (Wheel Speed → Tread, Yaw-Doppelbelastung, Barometrik ohne Semantik, Außentemperatur als Reifentemperatur).
+
+### Audit-Quellen
+
+- `docs/audits/data/tire-health-dimo-signal-capability-2026-07.csv`
+- `docs/audits/data/tire-health-dimo-timeseries-coverage-2026-07.csv`
+
+### Neue Dateien
+
+| Datei | Rolle |
+|-------|-------|
+| `tire-dimo-signal-capability.ts` | Signal-Registry + Capability-Gates (documented, listed, historical, coverage, stale, SynqDrive persist/use) |
+| `tire-dimo-context.types.ts` | Read Model: ambient, odometer plausibility, TPMS capability |
+| `tire-ambient-context.ts` | Mehrtägige zeitgewichtete Außentemperatur, Spike-Rejection, Druck-Kontexthinweise |
+| `tire-dimo-context.builder.ts` | Orchestrierung + gated TPMS/Odometer/Speed Resolver |
+| `*.spec.ts` | Szenarien: available/unavailable, coverage, multi-day ambient, spike, stale, calendar fallback, TPMS 0 %, no wheel-speed tread, no double driving factor |
+
+### Geänderte Dateien
+
+| Datei | Änderung |
+|-------|----------|
+| `tire-status.ts` | `classifySeasonStatus` mit optionalem Ambient-Assist; Kalender-Fallback; advisory-only Hinweise |
+| `tire-pressure-context.builder.ts` | TPMS nur bei Capability `usable` |
+| `tire-wear-model.service.ts` | Gated Odometer/Speed; Ambient für Season-Mismatch; Heat-Stress ohne doppelte Driving-Last |
+| `tire-health.service.ts` | `resolveDimoTireContext`, `dimoContext` auf Summary, Trip-basierte Ambient-Samples |
+| `tire-health-alert.builder.ts` | Season-Alerts mit Ambient-Assist wenn capability-gated |
+
+### Invarianten
+
+- **Außentemperatur** = Umgebungskontext (nie Reifentemperatur); ≥2 Samples über mehrere Tage
+- **Saison** = Kalender bleibt Fallback; Ambient verbessert Hinweisqualität; keine gesetzliche Aussage
+- **Odometer** = Plausibilität/Anchor/Backfill; nicht additiv zu Trip-`totalKmOnSet`
+- **TPMS** = Architektur vorbereitet; 0 % Audit-Abdeckung → `usable=false`, HM/Druck unverändert
+- **DO_NOT_USE** = Wheel Speed, Yaw, Barometrik — explizit blockiert
+
+### Bestätigung Prompt 22
+
+- ✅ Neue Signale nur bei echter Capability
+- ✅ Außentemperatur bleibt Kontext
+- ✅ Keine nicht belegbare Profiltiefenableitung
+- ✅ Keine doppelte Fahrbelastung (Driving Impact → Heat-Stress drivingWeight=0)
+- ✅ **446** tire backend tests grün
+
+---
+
 ## Change Log
 
 | Datum | Prompt | Aktion | Commit |
@@ -1209,6 +1258,7 @@ Blocker bleiben bis Abnahme Prompt 24:
 | 2026-07-16 | 19 | Evidence-aware rental health blocking policy | *(dieser Commit)* |
 | 2026-07-16 | 20 | Structured tire health alerts with dedupe + revision-safe resolution | *(dieser Commit)* |
 | 2026-07-16 | 21 | Honest tire health evidence in API + UI | *(dieser Commit)* |
+| 2026-07-16 | 22 | Capability-gated DIMO tire context signals | *(dieser Commit)* |
 
 ---
 

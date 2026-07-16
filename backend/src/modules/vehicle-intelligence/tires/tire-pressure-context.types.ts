@@ -1,5 +1,6 @@
 import type { DimoTirePressurePlausibility } from '@modules/dimo/dimo-tire-pressure.normalizer';
 import type { RecommendedTirePressureSpec } from './tire-recommended-pressure';
+import type { TireDimoTpmsCapabilityContext } from './tire-dimo-context.types';
 
 export type TirePressureFreshness = 'fresh' | 'aging' | 'stale' | 'no_data';
 
@@ -132,6 +133,7 @@ export interface DimoPressureSnapshotInput {
   capability?: {
     tirePressureSignalsListed?: boolean;
     tpmsWarningSignalListed?: boolean;
+    tpms?: TireDimoTpmsCapabilityContext | null;
   };
 }
 

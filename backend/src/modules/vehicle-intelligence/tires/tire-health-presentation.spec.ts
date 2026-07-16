@@ -6,6 +6,7 @@ import {
 } from './tire-health-presentation';
 import type { TireHealthSummary } from './tire-health.service';
 import { emptyTirePressureContext } from './tire-pressure-context.builder';
+import { buildTireDimoContext } from './tire-dimo-context.builder';
 import { TireEvidenceSource } from '@prisma/client';
 
 function baseSummary(overrides: Partial<TireHealthSummary> = {}): TireHealthSummary {
@@ -74,10 +75,11 @@ function baseSummary(overrides: Partial<TireHealthSummary> = {}): TireHealthSumm
     hasSetups: true,
     hasMeasurements: false,
     ...overrides,
-  } satisfies Omit<TireHealthSummary, 'evidencePresentation'>;
+  } satisfies Omit<TireHealthSummary, 'evidencePresentation' | 'dimoContext'>;
 
   return {
     ...core,
+    dimoContext: buildTireDimoContext({ asOf: new Date(), ambientSamples: [] }),
     evidencePresentation: buildTireEvidencePresentation({ summary: core as TireHealthSummary }),
   };
 }

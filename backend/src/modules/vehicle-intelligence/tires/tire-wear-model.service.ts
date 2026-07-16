@@ -25,6 +25,12 @@ import {
 } from './tire-pressure-context.builder';
 import type { TirePressureContext } from './tire-pressure-context.types';
 import {
+  resolveCapabilityGatedOdometerKm,
+  resolveCapabilityGatedSpeedKmh,
+} from './tire-dimo-context.builder';
+import type { TireDimoContext } from './tire-dimo-context.types';
+import { assertNoWheelSpeedTreadDerivation } from './tire-dimo-signal-capability';
+import {
   resolveAxleRecommendedPressureBar,
   resolveRecommendedTirePressure,
 } from './tire-recommended-pressure';
@@ -109,6 +115,8 @@ export interface WearAnalysisOptions {
   tireSetupId?: string;
   /** Canonical pressure read model — when omitted, built from DIMO latest state only. */
   pressureContext?: TirePressureContext;
+  /** Capability-gated DIMO tire context (ambient, odometer plausibility, TPMS). */
+  dimoContext?: import('./tire-dimo-context.types').TireDimoContext | null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -298,6 +306,7 @@ export class TireWearModelService {
     pressureFactor: number,
     behaviorFactor: number,
     spec: AiTireSpec | null,
+    options?: { drivingImpactAvailable?: boolean },
   ): number {
     const hs = this.cfg.heatStress;
 
@@ -306,7 +315,10 @@ export class TireWearModelService {
       ? hs.highSpeedExposureBonus * ((avgSpeedKmh - hs.highSpeedThresholdKmh) / 30)
       : 0;
     const pressureComponent = (pressureFactor - 1.0) * 0.5;
-    const drivingComponent = (behaviorFactor - 1.0) * 0.3;
+    const drivingComponent =
+      options?.drivingImpactAvailable === true
+        ? 0
+        : (behaviorFactor - 1.0) * 0.3;
 
     const composite =
       hs.ambientWeight * ambientComponent +
@@ -707,6 +719,8 @@ export class TireWearModelService {
 
     if (!setup) return null;
 
+    const dimoContext: TireDimoContext | null = options.dimoContext ?? null;
+
     const latestState = await this.prisma.vehicleLatestState.findUnique({
       where: { vehicleId },
       select: {
@@ -773,7 +787,24 @@ export class TireWearModelService {
     const initialFront = refNewTread.front;
     const initialRear = refNewTread.rear;
     const isStaggered = isStaggeredSetup(setup);
-    const currentOdometer = latestState?.odometerKm ?? null;
+    const currentOdometer = resolveCapabilityGatedOdometerKm(
+      dimoContext,
+      latestState?.odometerKm ?? null,
+    );
+    const gatedSpeedKmh = resolveCapabilityGatedSpeedKmh(
+      dimoContext,
+      latestState?.speedKmh ?? null,
+    );
+
+    // Audit guard — wheel speed must never proxy tread depth.
+    for (const blocked of dimoContext?.blockedWearDerivations ?? []) {
+      if (
+        blocked === 'chassisAxleRow1WheelLeftSpeed' ||
+        blocked === 'chassisAxleRow1WheelRightSpeed'
+      ) {
+        assertNoWheelSpeedTreadDerivation(blocked);
+      }
+    }
 
     // ── Regen factors ─────────────────────────────────────────────────────
     const regenPositional = this.computePositionalRegenFactors(vehicle?.fuelType ?? null, vehicle?.driveType ?? null);
@@ -810,6 +841,11 @@ export class TireWearModelService {
     });
     const baseTemperatureFactor = this.computeWeightedTemperatureFactor(recentTrips);
 
+    const ambientAvgForSeason =
+      dimoContext?.ambient.usable && dimoContext.ambient.weightedAvgTempC != null
+        ? dimoContext.ambient.weightedAvgTempC
+        : null;
+
     // ── Pressure factor (staleness + minimum readings aware) ────────────────
     const pressureReadings = [
       pressureContext.frontLeft,
@@ -837,22 +873,28 @@ export class TireWearModelService {
     // ── Heat stress factor (upgraded temperature) ─────────────────────────
     const avgPressureFactor = (pressureFactorFront + pressureFactorRear) / 2;
     const temperatureFactor = this.computeHeatStressFactor(
-      baseTemperatureFactor, latestState?.speedKmh ?? null, avgPressureFactor, behaviorFactor, spec,
+      baseTemperatureFactor,
+      gatedSpeedKmh,
+      avgPressureFactor,
+      behaviorFactor,
+      spec,
+      { drivingImpactAvailable: impact != null },
     );
 
     // ── Load factor ───────────────────────────────────────────────────────
     const loadFactor = this.computeLoadFactor(vehicle?.curbWeightKg ?? null, vehicle?.driveType ?? null, spec);
 
     // ── Season mismatch ───────────────────────────────────────────────────
-    const avgTemp = recentTrips.length > 0
+    const tripAvgTemp = recentTrips.length > 0
       ? recentTrips.filter(t => t.outsideTemperatureStartC != null).reduce((s, t) => s + (t.outsideTemperatureStartC ?? 0), 0) / Math.max(1, recentTrips.filter(t => t.outsideTemperatureStartC != null).length)
       : null;
+    const avgTemp = ambientAvgForSeason ?? tripAvgTemp;
     const highwayPct = impact?.highwaySharePct ?? null;
     const seasonMismatchFactor = this.computeSeasonMismatchFactor(season, avgTemp, highwayPct);
 
     // ── Interaction penalty ───────────────────────────────────────────────
     const interactionPenalty = this.computeInteractionPenalty(
-      behaviorFactor, avgPressureFactor, temperatureFactor, seasonMismatchFactor, latestState?.speedKmh ?? null,
+      behaviorFactor, avgPressureFactor, temperatureFactor, seasonMismatchFactor, gatedSpeedKmh,
     );
 
     // ── Model-aware expected life ─────────────────────────────────────────

@@ -112,39 +112,160 @@ export function classifyUnevenWear(
   return 'GOOD';
 }
 
+export type SeasonHintSource = 'CALENDAR' | 'AMBIENT_ASSISTED' | 'CALENDAR_FALLBACK';
+
+export interface AmbientSeasonAssistInput {
+  /** Multi-day weighted ambient average — never tire temperature. */
+  weightedAvgTempC: number;
+  sampleCount: number;
+  /** True when capability gating passed for exteriorAirTemperature. */
+  capabilityUsable: boolean;
+}
+
 export interface SeasonStatusResult {
   status: TireStatus;
   mismatch: boolean;
   /** Season currently expected on the road, given the month. */
   expectedSeason: 'WINTER' | 'SUMMER' | 'TRANSITION';
+  /** How the expected season was derived. */
+  hintSource: SeasonHintSource;
+  /**
+   * Advisory only — never a legal tire-change mandate.
+   * A single ambient spike must not trigger this.
+   */
+  ambientAssisted: boolean;
+  advisoryNoteEn: string | null;
+  advisoryNoteDe: string | null;
+}
+
+function calendarExpectedSeason(
+  date: Date,
+): 'WINTER' | 'SUMMER' | 'TRANSITION' {
+  const month = date.getMonth() + 1;
+  const isWinterMonth = (cfg.seasonCalendar.winterMonths as readonly number[]).includes(month);
+  const isSummerMonth = (cfg.seasonCalendar.summerMonths as readonly number[]).includes(month);
+  return isWinterMonth ? 'WINTER' : isSummerMonth ? 'SUMMER' : 'TRANSITION';
+}
+
+function refineExpectedSeasonWithAmbient(
+  calendarSeason: 'WINTER' | 'SUMMER' | 'TRANSITION',
+  ambient: AmbientSeasonAssistInput,
+): {
+  expectedSeason: 'WINTER' | 'SUMMER' | 'TRANSITION';
+  hintSource: SeasonHintSource;
+  ambientAssisted: boolean;
+} {
+  if (!ambient.capabilityUsable || ambient.sampleCount < 2) {
+    return {
+      expectedSeason: calendarSeason,
+      hintSource: 'CALENDAR_FALLBACK',
+      ambientAssisted: false,
+    };
+  }
+
+  const avg = ambient.weightedAvgTempC;
+  let assisted = calendarSeason;
+  if (avg < 3) assisted = 'WINTER';
+  else if (avg > 20) assisted = 'SUMMER';
+  else assisted = 'TRANSITION';
+
+  if (assisted === calendarSeason) {
+    return {
+      expectedSeason: calendarSeason,
+      hintSource: 'CALENDAR',
+      ambientAssisted: false,
+    };
+  }
+
+  return {
+    expectedSeason: assisted,
+    hintSource: 'AMBIENT_ASSISTED',
+    ambientAssisted: true,
+  };
 }
 
 /**
- * Month-based season suitability. Summer tires in winter are unsafe (WARNING);
- * winter tires in summer wear faster (WATCH). All-Season is always neutral.
- * Encapsulated so weather/temperature can later replace the month windows.
+ * Month-based season suitability with optional multi-day ambient assist.
+ * Summer tires in sustained cold are flagged (WARNING); winter tires in sustained
+ * warmth wear faster (WATCH). All-Season is always neutral.
+ * Ambient data improves hint quality but never mandates a legal tire change.
  */
 export function classifySeasonStatus(
   tireSeason: string | null | undefined,
   date: Date = new Date(),
+  ambient?: AmbientSeasonAssistInput | null,
 ): SeasonStatusResult {
-  const month = date.getMonth() + 1; // 1-based
-  const isWinterMonth = (cfg.seasonCalendar.winterMonths as readonly number[]).includes(month);
-  const isSummerMonth = (cfg.seasonCalendar.summerMonths as readonly number[]).includes(month);
-  const expectedSeason = isWinterMonth ? 'WINTER' : isSummerMonth ? 'SUMMER' : 'TRANSITION';
+  const calendarSeason = calendarExpectedSeason(date);
+  const refined = ambient
+    ? refineExpectedSeasonWithAmbient(calendarSeason, ambient)
+    : {
+        expectedSeason: calendarSeason,
+        hintSource: 'CALENDAR' as SeasonHintSource,
+        ambientAssisted: false,
+      };
+  const expectedSeason = refined.expectedSeason;
 
   const season = (tireSeason ?? '').toUpperCase();
-  if (season === 'ALL_SEASON') return { status: 'GOOD', mismatch: false, expectedSeason };
-  if (season === 'SUMMER' && isWinterMonth) {
-    return { status: 'WARNING', mismatch: true, expectedSeason };
+  const advisoryBase =
+    'Advisory only — calendar and multi-day ambient context; not a legal requirement.';
+
+  if (season === 'ALL_SEASON') {
+    return {
+      status: 'GOOD',
+      mismatch: false,
+      expectedSeason,
+      hintSource: refined.hintSource,
+      ambientAssisted: refined.ambientAssisted,
+      advisoryNoteEn: null,
+      advisoryNoteDe: null,
+    };
   }
-  if (season === 'WINTER' && isSummerMonth) {
-    return { status: 'WATCH', mismatch: true, expectedSeason };
+
+  const isWinterExpected = expectedSeason === 'WINTER';
+  const isSummerExpected = expectedSeason === 'SUMMER';
+
+  if (season === 'SUMMER' && isWinterExpected) {
+    return {
+      status: 'WARNING',
+      mismatch: true,
+      expectedSeason,
+      hintSource: refined.hintSource,
+      ambientAssisted: refined.ambientAssisted,
+      advisoryNoteEn: `${advisoryBase} Conditions suggest winter or all-season tires may be more suitable.`,
+      advisoryNoteDe: `${advisoryBase} Bedingungen sprechen für Winter- oder Ganzjahresreifen.`,
+    };
+  }
+  if (season === 'WINTER' && isSummerExpected) {
+    return {
+      status: 'WATCH',
+      mismatch: true,
+      expectedSeason,
+      hintSource: refined.hintSource,
+      ambientAssisted: refined.ambientAssisted,
+      advisoryNoteEn: `${advisoryBase} Sustained warmth may increase winter-tire wear — consider summer tires.`,
+      advisoryNoteDe: `${advisoryBase} Anhaltende Wärme kann Winterreifenverschleiß erhöhen — Sommerreifen prüfen.`,
+    };
   }
   if (season === 'SUMMER' || season === 'WINTER' || season === 'TRACK') {
-    return { status: 'GOOD', mismatch: false, expectedSeason };
+    return {
+      status: 'GOOD',
+      mismatch: false,
+      expectedSeason,
+      hintSource: refined.hintSource,
+      ambientAssisted: refined.ambientAssisted,
+      advisoryNoteEn: null,
+      advisoryNoteDe: null,
+    };
   }
-  return { status: 'UNKNOWN', mismatch: false, expectedSeason };
+  return {
+    status: 'UNKNOWN',
+    mismatch: false,
+    expectedSeason,
+    hintSource: refined.hintSource,
+    ambientAssisted: refined.ambientAssisted,
+    advisoryNoteEn: null,
+    advisoryNoteDe: null,
+  };
 }
 
 /**

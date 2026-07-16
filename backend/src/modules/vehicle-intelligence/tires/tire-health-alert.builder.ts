@@ -1,5 +1,6 @@
 import { TireChangeType } from '@prisma/client';
 import { isPredictionCapable } from './tire-odometer-anchor';
+import type { TireDimoContext } from './tire-dimo-context.types';
 import type { TirePressureContext } from './tire-pressure-context.types';
 import {
   alertTypeToCode,
@@ -53,6 +54,7 @@ export interface BuildTireHealthAlertsInput {
   confidenceScore: number;
   pressureContext: TirePressureContext;
   kmSinceLastRotation?: number | null;
+  dimoContext?: TireDimoContext | null;
 }
 
 function finalizeCandidate(
@@ -295,7 +297,17 @@ export function buildTireHealthAlerts(
     );
   }
 
-  const seasonResult = classifySeasonStatus(input.setup.tireSeason);
+  const seasonResult = classifySeasonStatus(
+    input.setup.tireSeason,
+    new Date(),
+    input.dimoContext?.ambient.usable
+      ? {
+          weightedAvgTempC: input.dimoContext.ambient.weightedAvgTempC ?? 0,
+          sampleCount: input.dimoContext.ambient.sampleCount,
+          capabilityUsable: true,
+        }
+      : null,
+  );
   if (seasonResult.mismatch && seasonResult.status === 'WARNING') {
     alerts.push(
       finalizeCandidate(input, {

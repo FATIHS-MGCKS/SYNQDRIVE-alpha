@@ -64,7 +64,7 @@ export interface TireStructuredAction {
   priority: number;
 }
 
-export type TireHealthSummaryForPresentation = Omit<TireHealthSummary, 'evidencePresentation'>;
+export type TireHealthSummaryForPresentation = Omit<TireHealthSummary, 'evidencePresentation' | 'dimoContext'>;
 
 interface WheelEstimateForPresentation {
   position: string;
