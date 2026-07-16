@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-health-v2-legacy-crank-deprecation-v49509-2026-07-16',
+    version: '4.9.509',
+    title: 'V4.9.509 — Battery legacy CRANK_MIN path deprecated (Prompt 7/78)',
+    summary: [
+      'Zentrale Policy `battery-crank-policy` + Config-Flags (`BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENABLED=false`, `BATTERY_V2_START_PROXY_ENABLED`) gemäß Prompt 3.',
+      '`BatteryV2Service.onTripStart`: kein CRANK_MIN/Score/Counter/Evidence-Effekt standardmäßig; optional nur diagnostische Startfenster-Sammlung (START_DIP_PROXY).',
+      'Legacy-Crank-Werte bleiben lesbar als `LEGACY_UNVERIFIED`; Alerts/Readiness/Score ignorieren Crank; BEV-Tripstarts überspringen Crank-Hook.',
+      'API/Canonical exponieren `presentLegacyCrankFeatures` (5-s-Kadenz, keine Sub-Sekunden-Behauptung).',
+    ],
+    reason: 'Prompt 7/78: Alter echter Crank-/Startereinbruch-Pfad ist fachlich nicht production-ready und darf keine operativen Effekte mehr erzeugen.',
+    previousBehavior: 'Trip-Start extrahierte crankDrop, erhöhte crankObservationCount, wog 35 % in den LV-Score ein und konnte Alerts/Readiness beeinflussen.',
+    details:
+      'backend: battery-health-v2.config.ts, battery-crank-policy.ts, battery-v2.service.ts, battery-legacy-publication-safety.ts, canonical-battery-health.service.ts, battery-critical.detector.ts, trip-detection-orchestration.service.ts, vehicle-intelligence.controller.ts (+specs).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T14:10:00.000Z',
+  },
+  {
     id: 'battery-health-v2-legacy-publication-safety-v49508-2026-07-16',
     version: '4.9.508',
     title: 'V4.9.508 — Battery LV legacy publication safety gate (Prompt 6/78)',

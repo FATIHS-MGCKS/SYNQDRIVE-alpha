@@ -33,6 +33,10 @@ import {
   effectiveLvEstimatedHealthStatusForDecisions,
   evaluateLegacyPublicationSafety,
 } from './battery-legacy-publication-safety';
+import {
+  effectiveCrankObservationCountForMaturity,
+  presentLegacyCrankFeatures,
+} from './battery-crank-policy';
 
 export type BatteryStatus =
   | 'ready'
@@ -325,7 +329,19 @@ export class CanonicalBatteryHealthService {
         new Date(),
       ),
       restObservationCount: v2?.restObservationCount ?? 0,
+      crankObservationCount: effectiveCrankObservationCountForMaturity(
+        v2?.crankObservationCount ?? 0,
+      ),
+    });
+    const legacyCrank = presentLegacyCrankFeatures({
+      crankDrop: parseNum(v2?.crankDrop),
       crankObservationCount: v2?.crankObservationCount ?? 0,
+      vPreCrank: parseNum(v2?.vPreCrank),
+      vMinCrank: parseNum(v2?.vMinCrank),
+      vRecovery5s: parseNum(v2?.vRecovery5s),
+      vRecovery30s: parseNum(v2?.vRecovery30s),
+      crankAt: (v2?.crankAt as Date | null | undefined) ?? null,
+      crankTripId: (v2?.crankTripId as string | null | undefined) ?? null,
     });
 
     const trendDirection = this.computeTrendDirection(trend30);
@@ -575,6 +591,7 @@ export class CanonicalBatteryHealthService {
           chargingVoltage: parseNum(latestLvSnapshot?.chargingVoltage),
           temperatureC: parseNum(latestLvSnapshot?.temperatureC),
           engineRunning: latestLvSnapshot?.engineRunning ?? null,
+          crank: legacyCrank,
         },
         calibrationProgress: {
           ...lvCalibrationProgress,

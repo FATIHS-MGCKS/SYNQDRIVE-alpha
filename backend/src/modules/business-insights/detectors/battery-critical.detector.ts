@@ -6,7 +6,6 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
-  classifyCrankDrop,
   classifyHvSoh,
   classifyLvEstimatedHealth,
   classifyRestingVoltage,
@@ -18,6 +17,7 @@ import {
   effectiveLvEstimatedHealthStatusForDecisions,
   evaluateLegacyPublicationSafety,
 } from '../../vehicle-intelligence/battery-health/battery-legacy-publication-safety';
+import { effectiveCrankStatusForDecisions } from '../../vehicle-intelligence/battery-health/battery-crank-policy';
 import { isLegacyHvDegradationModel } from '../../vehicle-intelligence/battery-health/soh-publication';
 import {
   DetectorContext,
@@ -378,8 +378,8 @@ export class BatteryCriticalDetector implements InsightDetector {
         );
       }
 
-      // ── LV crank drop ─────────────────────────────────────────────────────
-      const crankStatus = classifyCrankDrop(features?.crankDrop ?? null);
+      // ── LV crank drop (legacy path — disabled by default) ─────────────────
+      const crankStatus = effectiveCrankStatusForDecisions(features?.crankDrop ?? null);
       const crankBad = crankStatus === 'WARNING' || crankStatus === 'CRITICAL';
 
       // ── LV severity decision ──────────────────────────────────────────────

@@ -925,14 +925,16 @@ export class TripDetectionOrchestrationService {
             ),
           );
 
-          // Battery V2: extract crank features from LV battery time series
-          this.batteryV2
-            .onTripStart(vehicleId, dimoTokenId, trip.id, effectiveStartAt)
-            .catch((e) =>
-              this.logger.warn(
-                `Battery V2 crank capture failed for trip ${trip.id}: ${e}`,
-              ),
-            );
+          // Battery V2: optional start-window capture for ICE only (never BEV crank).
+          if (profile !== VehicleDetectionProfile.EV) {
+            this.batteryV2
+              .onTripStart(vehicleId, dimoTokenId, trip.id, effectiveStartAt)
+              .catch((e) =>
+                this.logger.warn(
+                  `Battery V2 crank capture failed for trip ${trip.id}: ${e}`,
+                ),
+              );
+          }
 
           await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);
           this.logger.log(

@@ -47,6 +47,7 @@ import {
 import { BatteryHealthService } from './battery-health/battery-health.service';
 import { HvBatteryHealthService } from './battery-health/hv-battery-health.service';
 import { BatteryV2Service } from './battery-health/battery-v2.service';
+import { presentLegacyCrankFeatures } from './battery-health/battery-crank-policy';
 import { CanonicalBatteryHealthService } from './battery-health/canonical-battery-health.service';
 import { BatteryEvidenceService } from './battery-health/battery-evidence.service';
 import { AiHealthCareAggregationService } from './health-summary/ai-health-care-aggregation.service';
@@ -1440,14 +1441,15 @@ export class VehicleIntelligenceController {
               rest60mCapturedAt: v2.rest60mCapturedAt,
               rest6hCapturedAt: v2.rest6hCapturedAt,
             },
-            crankFeatures: {
+            crankFeatures: presentLegacyCrankFeatures({
               vPreCrank: v2.vPreCrank,
               vMinCrank: v2.vMinCrank,
               crankDrop: v2.crankDrop,
               vRecovery5s: v2.vRecovery5s,
               vRecovery30s: v2.vRecovery30s,
               crankAt: v2.crankAt,
-            },
+              crankTripId: v2.crankTripId,
+            }),
           }
         : null,
     };
@@ -1463,6 +1465,18 @@ export class VehicleIntelligenceController {
       }),
     ]);
 
+    const crankPresentation = v2
+      ? presentLegacyCrankFeatures({
+          vPreCrank: v2.vPreCrank,
+          vMinCrank: v2.vMinCrank,
+          crankDrop: v2.crankDrop,
+          vRecovery5s: v2.vRecovery5s,
+          vRecovery30s: v2.vRecovery30s,
+          crankAt: v2.crankAt,
+          crankTripId: v2.crankTripId,
+        })
+      : null;
+
     return {
       latestVoltage: latestState?.lvBatteryVoltage ?? null,
       estimatedSocPct: v2?.estimatedSocPct ?? null,
@@ -1472,7 +1486,7 @@ export class VehicleIntelligenceController {
       scoredAt: v2?.scoredAt ?? null,
       dataAvailability: {
         hasRestData: v2?.vOff60m != null || v2?.vOff6h != null,
-        hasCrankData: v2?.crankDrop != null,
+        hasCrankData: crankPresentation?.diagnosticCrankDrop != null,
         hasRecoveryData: v2?.vRecovery5s != null,
       },
       rest: v2
@@ -1485,15 +1499,15 @@ export class VehicleIntelligenceController {
             rest6hCapturedAt: v2.rest6hCapturedAt,
           }
         : null,
-      crank: v2
+      crank: crankPresentation
         ? {
-            vPreCrank: v2.vPreCrank,
-            vMinCrank: v2.vMinCrank,
-            crankDrop: v2.crankDrop,
-            vRecovery5s: v2.vRecovery5s,
-            vRecovery30s: v2.vRecovery30s,
-            crankAt: v2.crankAt,
-            tripId: v2.crankTripId,
+            ...crankPresentation,
+            vPreCrank: v2!.vPreCrank,
+            vMinCrank: v2!.vMinCrank,
+            vRecovery5s: v2!.vRecovery5s,
+            vRecovery30s: v2!.vRecovery30s,
+            crankAt: v2!.crankAt,
+            tripId: v2!.crankTripId,
           }
         : null,
     };

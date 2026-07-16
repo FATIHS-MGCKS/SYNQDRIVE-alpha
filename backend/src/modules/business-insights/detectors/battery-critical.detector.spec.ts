@@ -12,8 +12,8 @@ describe('BatteryCriticalDetector', () => {
     vOff6h: 12.58,
     rest60mCapturedAt: new Date('2026-06-13T07:00:00.000Z'),
     rest6hCapturedAt: new Date('2026-06-13T08:30:00.000Z'),
-    crankDrop: 1.0,
-    crankObservationCount: 2,
+    crankDrop: null,
+    crankObservationCount: 0,
     crankAt: new Date('2026-06-13T06:55:00.000Z'),
     scoredAt: fresh,
     lastPublishedAt: fresh,
@@ -238,5 +238,14 @@ describe('BatteryCriticalDetector', () => {
     expect(result).toHaveLength(1);
     expect(result[0].severity).toBe(InsightSeverity.CRITICAL);
     expect(result[0].reasons?.[0]).toMatch(/Ruhespannung/i);
+  });
+
+  it('does not alert on bad legacy crank drop when crank assessment is disabled', async () => {
+    const prisma = buildPrisma({
+      batteryType: 'AGM',
+      features: { ...safePublicationFeatures, crankDrop: 3.0, crankObservationCount: 3 },
+    });
+    const result = await new BatteryCriticalDetector(prisma).detect(buildCtx());
+    expect(result).toHaveLength(0);
   });
 });

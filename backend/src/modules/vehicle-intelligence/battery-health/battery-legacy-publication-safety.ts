@@ -4,6 +4,7 @@ import {
   SohPublicationState,
 } from '@prisma/client';
 import { normalizeBatteryType } from './battery-status';
+import { isLegacyCrankAssessmentEnabled } from '../../../config/battery-health-v2.config';
 
 /** REST above this open-circuit ceiling is likely wake/charging contaminated. */
 export const LV_REST_CONTAMINATION_THRESHOLD_V = 13.2;
@@ -15,6 +16,7 @@ export type LegacyPublicationSafetyReason =
   | 'MEASUREMENT_QUALITY_UNKNOWN'
   | 'REST_LIKELY_CONTAMINATED'
   | 'CRANK_PATH_UNRELIABLE'
+  | 'LEGACY_CRANK_DEPRECATED'
   | 'CHEMISTRY_UNKNOWN_OR_UNSUPPORTED'
   | 'TEMPORALLY_INCOMPATIBLE_EVIDENCE'
   | 'SEMANTICALLY_MISLABELED_SOH'
@@ -134,7 +136,11 @@ export function evaluateLegacyPublicationSafety(
   }
 
   const crankObs = input.crankObservationCount ?? 0;
-  if (crankObs > 0 && !isFiniteNumber(input.crankDrop)) {
+  if (!isLegacyCrankAssessmentEnabled()) {
+    if (crankObs > 0 || isFiniteNumber(input.crankDrop)) {
+      reasons.push('LEGACY_CRANK_DEPRECATED');
+    }
+  } else if (crankObs > 0 && !isFiniteNumber(input.crankDrop)) {
     reasons.push('CRANK_PATH_UNRELIABLE');
   }
 

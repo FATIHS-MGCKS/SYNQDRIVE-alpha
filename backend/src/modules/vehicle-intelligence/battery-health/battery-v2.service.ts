@@ -18,6 +18,14 @@ import {
   daysBetween,
   type PublicationState,
 } from './soh-publication';
+import {
+  effectiveCrankObservationCountForMaturity,
+  START_DIP_PROXY_MEASUREMENT_KIND,
+} from './battery-crank-policy';
+import {
+  isLegacyCrankAssessmentEnabled,
+  isStartWindowCollectionEnabled,
+} from '../../../config/battery-health-v2.config';
 
 // ── Voltage → SOC lookup (standard 12V lead-acid / AGM) ──
 const VOLTAGE_SOC: [number, number][] = [
@@ -243,6 +251,16 @@ export class BatteryV2Service {
     tripId: string,
     tripStartAt: Date,
   ): Promise<void> {
+    const legacyCrankAssessment = isLegacyCrankAssessmentEnabled();
+    const collectStartWindow = isStartWindowCollectionEnabled();
+
+    if (!legacyCrankAssessment && !collectStartWindow) {
+      this.logger.debug(
+        `Crank capture skipped (legacy assessment off, start-window collection off): vehicle=${vehicleId}`,
+      );
+      return;
+    }
+
     const from = new Date(tripStartAt.getTime() - 30_000);
     const to = new Date(tripStartAt.getTime() + 120_000);
 
@@ -256,7 +274,6 @@ export class BatteryV2Service {
 
     const startMs = tripStartAt.getTime();
 
-    // Pre-crank: last voltage reading before trip start
     const preCrankPoints = points.filter(
       (p) => new Date(p.timestamp).getTime() <= startMs,
     );
@@ -265,7 +282,6 @@ export class BatteryV2Service {
         ? preCrankPoints[preCrankPoints.length - 1].voltage
         : null;
 
-    // Min voltage in ±30 s window around crank
     const crankZonePoints = points.filter((p) => {
       const t = new Date(p.timestamp).getTime();
       return t >= startMs - 30_000 && t <= startMs + 30_000;
@@ -277,34 +293,45 @@ export class BatteryV2Service {
       crankVoltages.length > 0 ? Math.min(...crankVoltages) : null;
 
     const crankDrop =
-      vPreCrank != null && vMinCrank != null ? vPreCrank - vMinCrank : null;
+      legacyCrankAssessment &&
+      vPreCrank != null &&
+      vMinCrank != null
+        ? vPreCrank - vMinCrank
+        : null;
 
-    // 5 s recovery
     const t5 = startMs + 5_000;
-    const p5s = points.find(
-      (p) => new Date(p.timestamp).getTime() >= t5,
-    );
+    const p5s = points.find((p) => new Date(p.timestamp).getTime() >= t5);
     const vRecovery5s = p5s?.voltage ?? null;
 
-    // 30 s recovery
     const t30 = startMs + 30_000;
-    const p30s = points.find(
-      (p) => new Date(p.timestamp).getTime() >= t30,
-    );
+    const p30s = points.find((p) => new Date(p.timestamp).getTime() >= t30);
     const vRecovery30s = p30s?.voltage ?? null;
 
-    const crankUpdate = {
+    const crankUpdate: Record<string, unknown> = {
       crankTripId: tripId,
       crankAt: tripStartAt,
-      vPreCrank: isPlausibleVoltage(vPreCrank) ? vPreCrank : null,
-      vMinCrank: isPlausibleVoltage(vMinCrank) ? vMinCrank : null,
-      crankDrop:
-        crankDrop != null && crankDrop >= 0 && crankDrop <= 6.0
-          ? crankDrop
-          : null,
-      vRecovery5s: isPlausibleVoltage(vRecovery5s) ? vRecovery5s : null,
-      vRecovery30s: isPlausibleVoltage(vRecovery30s) ? vRecovery30s : null,
     };
+
+    if (legacyCrankAssessment) {
+      Object.assign(crankUpdate, {
+        vPreCrank: isPlausibleVoltage(vPreCrank) ? vPreCrank : null,
+        vMinCrank: isPlausibleVoltage(vMinCrank) ? vMinCrank : null,
+        crankDrop:
+          crankDrop != null && crankDrop >= 0 && crankDrop <= 6.0
+            ? crankDrop
+            : null,
+        vRecovery5s: isPlausibleVoltage(vRecovery5s) ? vRecovery5s : null,
+        vRecovery30s: isPlausibleVoltage(vRecovery30s) ? vRecovery30s : null,
+      });
+    } else if (collectStartWindow) {
+      // Diagnostic start-window capture only — never classify as CRANK_MIN.
+      Object.assign(crankUpdate, {
+        vPreCrank: isPlausibleVoltage(vPreCrank) ? vPreCrank : null,
+        vMinCrank: isPlausibleVoltage(vMinCrank) ? vMinCrank : null,
+        vRecovery5s: isPlausibleVoltage(vRecovery5s) ? vRecovery5s : null,
+        vRecovery30s: isPlausibleVoltage(vRecovery30s) ? vRecovery30s : null,
+      });
+    }
 
     const updated = await this.prisma.batteryFeatures.upsert({
       where: { vehicleId },
@@ -312,19 +339,21 @@ export class BatteryV2Service {
       update: crankUpdate,
     });
 
-    await this.recomputeHealth(
-      vehicleId,
-      updated as BatteryFeaturesLike,
-      {
-        newCrankObservation: crankUpdate.crankDrop != null,
-        observedAt: tripStartAt,
-      },
-    );
-
-    this.logger.log(
-      `Crank features captured: vehicle=${vehicleId} trip=${tripId}` +
-        ` vPre=${vPreCrank?.toFixed(2) ?? '—'} drop=${crankDrop?.toFixed(2) ?? '—'}V`,
-    );
+    if (legacyCrankAssessment) {
+      await this.recomputeHealth(
+        vehicleId,
+        updated as BatteryFeaturesLike,
+        {
+          newCrankObservation: crankUpdate.crankDrop != null,
+          observedAt: tripStartAt,
+        },
+      );
+    } else {
+      this.logger.log(
+        `Start window captured (diagnostic ${START_DIP_PROXY_MEASUREMENT_KIND}): vehicle=${vehicleId} trip=${tripId}` +
+          ` points=${points.length} vPre=${vPreCrank?.toFixed(2) ?? '—'} vMin=${vMinCrank?.toFixed(2) ?? '—'}`,
+      );
+    }
   }
 
   // ══════════════════════════════════════════════════════════
@@ -351,15 +380,20 @@ export class BatteryV2Service {
       }
     }
 
-    // 35 % — Crank drop (0.3 V → 100, ≥ 2.5 V → 0)
-    if (f.crankDrop != null) {
+    // 35 % — Crank drop (legacy path only; disabled by default — Prompt 7/78)
+    if (isLegacyCrankAssessmentEnabled() && f.crankDrop != null) {
       const s = Math.min(100, Math.max(0, ((2.5 - f.crankDrop) / 2.2) * 100));
       scoreSum += s * 0.35;
       weightSum += 0.35;
     }
 
-    // 20 % — 5 s voltage recovery relative to pre-crank (80 % ratio → 0, 100 % → 100)
-    if (f.vRecovery5s != null && f.vPreCrank != null && f.vPreCrank > 0) {
+    // 20 % — 5 s voltage recovery relative to pre-crank (legacy crank path only)
+    if (
+      isLegacyCrankAssessmentEnabled() &&
+      f.vRecovery5s != null &&
+      f.vPreCrank != null &&
+      f.vPreCrank > 0
+    ) {
       const ratio = f.vRecovery5s / f.vPreCrank;
       const s = Math.min(100, Math.max(0, ((ratio - 0.80) / 0.20) * 100));
       scoreSum += s * 0.20;
@@ -421,7 +455,8 @@ export class BatteryV2Service {
     let crankObservationCount = current.crankObservationCount;
     let firstUsable = current.firstUsableMeasurementAt;
     const hasNewRestObservation = observation?.newRestObservation === true;
-    const hasNewCrankObservation = observation?.newCrankObservation === true;
+    const hasNewCrankObservation =
+      isLegacyCrankAssessmentEnabled() && observation?.newCrankObservation === true;
     const hasNewQualifiedObservation =
       hasNewRestObservation || hasNewCrankObservation;
 
@@ -454,7 +489,9 @@ export class BatteryV2Service {
       qualifiedEventCount,
       daysSinceFirstMeasurement: days,
       restObservationCount,
-      crankObservationCount,
+      crankObservationCount: effectiveCrankObservationCountForMaturity(
+        crankObservationCount,
+      ),
     });
 
     // Combined confidence

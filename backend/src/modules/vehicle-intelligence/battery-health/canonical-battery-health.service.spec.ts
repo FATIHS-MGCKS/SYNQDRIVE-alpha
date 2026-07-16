@@ -95,13 +95,13 @@ describe('CanonicalBatteryHealthService', () => {
       maturityConfidence: 'high',
       qualifiedEventCount: 8,
       restObservationCount: 4,
-      crankObservationCount: 3,
+      crankObservationCount: 0,
       firstUsableMeasurementAt: new Date('2026-03-15T10:00:00.000Z'),
       vOff60m: 12.62,
       vOff6h: 12.6,
       rest60mCapturedAt: new Date('2026-04-13T06:00:00.000Z'),
       rest6hCapturedAt: new Date('2026-04-13T09:00:00.000Z'),
-      crankDrop: 1.1,
+      crankDrop: null,
       crankAt: new Date('2026-04-13T05:55:00.000Z'),
       scoredAt: now,
       lastPublishedAt: now,
@@ -285,6 +285,33 @@ describe('CanonicalBatteryHealthService', () => {
     expect(summary?.lv.telemetry.voltageSource).toBe('resting_snapshot');
   });
 
+  it('exposes legacy crank diagnostically without operational effect by default', async () => {
+    const { svc, batteryV2Service } = buildService();
+    batteryV2Service.getV2Health.mockResolvedValue({
+      publicationState: SohPublicationState.STABLE,
+      publishedSohPct: 80,
+      maturityConfidence: 'high',
+      qualifiedEventCount: 8,
+      restObservationCount: 4,
+      crankObservationCount: 0,
+      firstUsableMeasurementAt: new Date('2026-03-15T10:00:00.000Z'),
+      vOff60m: 12.62,
+      vOff6h: 12.6,
+      rest60mCapturedAt: new Date('2026-04-13T06:00:00.000Z'),
+      rest6hCapturedAt: new Date('2026-04-13T09:00:00.000Z'),
+      crankDrop: 2.4,
+      crankAt: new Date('2026-04-13T05:55:00.000Z'),
+      scoredAt: now,
+      lastPublishedAt: now,
+    });
+
+    const summary = await svc.getSummary('veh-1');
+    expect(summary?.lv.telemetry.crank?.diagnosticCrankDrop).toBe(2.4);
+    expect(summary?.lv.telemetry.crank?.displayMode).toBe('LEGACY_UNVERIFIED');
+    expect(summary?.lv.telemetry.crank?.decisionCapable).toBe(false);
+    expect(summary?.lv.telemetry.crank?.operationalStatus).toBe('UNKNOWN');
+  });
+
   it('exposes LV estimated health score semantics (no SOH label)', async () => {
     const { svc } = buildService();
     const summary = await svc.getSummary('veh-1');
@@ -312,7 +339,7 @@ describe('CanonicalBatteryHealthService', () => {
       maturityConfidence: 'high',
       qualifiedEventCount: 8,
       restObservationCount: 4,
-      crankObservationCount: 3,
+      crankObservationCount: 0,
       firstUsableMeasurementAt: new Date('2026-03-15T10:00:00.000Z'),
       vOff60m: 14.43,
       vOff6h: 12.6,

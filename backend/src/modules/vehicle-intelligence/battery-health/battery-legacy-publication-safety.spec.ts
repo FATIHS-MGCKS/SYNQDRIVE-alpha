@@ -9,6 +9,7 @@ import {
   hasMislabeledLvSohPercentEvidence,
   LV_REST_CONTAMINATION_THRESHOLD_V,
 } from './battery-legacy-publication-safety';
+import { BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENV } from '../../../config/battery-health-v2.config';
 
 const safeBase = {
   publicationState: SohPublicationState.STABLE,
@@ -18,8 +19,8 @@ const safeBase = {
   vOff6h: 12.62,
   rest60mCapturedAt: new Date('2026-07-15T08:00:00.000Z'),
   rest6hCapturedAt: new Date('2026-07-15T14:00:00.000Z'),
-  crankDrop: 1.2,
-  crankObservationCount: 3,
+  crankDrop: null,
+  crankObservationCount: 0,
   crankAt: new Date('2026-07-15T07:55:00.000Z'),
   scoredAt: new Date('2026-07-15T14:05:00.000Z'),
   lastPublishedAt: new Date('2026-07-15T14:05:00.000Z'),
@@ -28,6 +29,16 @@ const safeBase = {
 };
 
 describe('battery-legacy-publication-safety', () => {
+  const originalLegacyCrank = process.env[BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENV];
+
+  afterEach(() => {
+    if (originalLegacyCrank === undefined) {
+      delete process.env[BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENV];
+    } else {
+      process.env[BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENV] = originalLegacyCrank;
+    }
+  });
+
   it('marks a clean legacy publication as decision-capable', () => {
     const result = evaluateLegacyPublicationSafety(safeBase);
     expect(result.decisionCapable).toBe(true);
@@ -53,7 +64,19 @@ describe('battery-legacy-publication-safety', () => {
     expect(result.reasons).toContain('REST_LIKELY_CONTAMINATED');
   });
 
-  it('disqualifies unreliable crank path with observations but no drop', () => {
+  it('disqualifies legacy crank evidence when assessment is disabled', () => {
+    process.env[BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENV] = 'false';
+    const result = evaluateLegacyPublicationSafety({
+      ...safeBase,
+      crankDrop: 2.1,
+      crankObservationCount: 4,
+    });
+    expect(result.decisionCapable).toBe(false);
+    expect(result.reasons).toContain('LEGACY_CRANK_DEPRECATED');
+  });
+
+  it('disqualifies unreliable crank path with observations but no drop when legacy assessment enabled', () => {
+    process.env[BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENV] = 'true';
     const result = evaluateLegacyPublicationSafety({
       ...safeBase,
       crankObservationCount: 5,
