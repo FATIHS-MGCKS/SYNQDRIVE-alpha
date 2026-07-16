@@ -8,6 +8,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
+import { isNativeExtremeAcceleration } from '../dimo-native-driving-events';
 import { DRIVING_IMPACT_CONFIG as C } from './driving-impact.config';
 import {
   capLinear,
@@ -174,14 +175,13 @@ export class DrivingImpactService {
     if (useTelemetryDrivingEvents) {
       const drivingEvents = await this.prisma.drivingEvent.findMany({
         where: { tripId, source: DrivingEventSource.TELEMETRY_EVENTS },
-        select: { eventType: true, speedKmh: true, severity: true, deltaKmh: true },
+        select: { eventType: true, speedKmh: true, severity: true, deltaKmh: true, metadataJson: true },
       });
 
       extremeBrakeCount = drivingEvents.filter(
         (e) => e.eventType === DrivingEventType.EXTREME_BRAKING,
       ).length;
-      // DIMO native path exposes harsh acceleration only (no separate EXTREME type).
-      extremeAccelCount = 0;
+      extremeAccelCount = drivingEvents.filter((e) => isNativeExtremeAcceleration(e)).length;
 
       launchLikeCount = await this.prisma.tripBehaviorEvent.count({
         where: {

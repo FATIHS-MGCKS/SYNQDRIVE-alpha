@@ -35,6 +35,48 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p25-extreme-accel-classification-2026-07-16',
+    version: '4.9.526',
+    title: 'Driving Intelligence V2 P25 — native extreme acceleration classification preserved',
+    summary: [
+      'behavior.extremeAcceleration bleibt HARSH_ACCELERATION + metadataJson.classification=EXTREME — kein zweiter Provider-Eventtyp.',
+      'Neues Modul `dimo-native-event-classification`: liest Provider-Klassifikation aus metadataJson; trennt harsh vs extreme.',
+      'LTE_R1 Trip-Counter: hardAccelerationCount = harsh + extreme (Legacy-kompatibel); getrennte interne Zähler.',
+      'Driving Impact (LTE_R1): extremeAccelCount aus eventType + classification statt hardcoded 0.',
+      'Keine künstliche Severity-Erhöhung ohne Provider-Klassifikation.',
+    ],
+    reason:
+      'Prompt 25/76: EXTREME-Klassifikation bei nativen Beschleunigungsereignissen ging in Driving Impact verloren (extremeAccelCount=0).',
+    previousBehavior:
+      'Driving Impact setzte für LTE_R1 extremeAccelCount hart auf 0; nur harsh acceleration wurde gezählt — extreme Beschleunigung floss nicht in longitudinalStress ein.',
+    details:
+      'Tests: harshAcceleration, extremeAcceleration, gemischte Trips, Rolling Window. Trip-FSM unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T04:00:00.000Z',
+  },
+  {
+    id: 'driving-intelligence-v2-p24-dimo-native-event-identity-2026-07-16',
+    version: '4.9.525',
+    title: 'Driving Intelligence V2 P24 — deterministic identity for native DIMO events',
+    summary: [
+      'Fingerprint aus organizationId, vehicleId, provider, providerEventName, observedAt, durationNs/providerSourceId, counterValue-Metadata.',
+      'Tenant-sicherer Unique Constraint `(organizationId, providerFingerprint)`.',
+      'Upsert statt delete/create: Re-Fetch und Reprocess duplizieren nicht; Trip-Zuordnung änderbar ohne neue Row.',
+      'Events außerhalb Tripgrenze → `UNASSIGNED`; `reconcileUnassignedEvents` ordnet verspätet zu.',
+      'LTE_R1-Ingest nutzt `DimoNativeDrivingEventPersistenceService`.',
+    ],
+    reason:
+      'Prompt 24/76: deterministische Identität für native DIMO Events — idempotente Persistenz und verspätete Trip-Zuordnung.',
+    previousBehavior:
+      'LTE_R1 löschte alle TELEMETRY_EVENTS pro Trip und legte sie blind neu an — Re-Fetch erzeugte Duplikat-Risiko und verlor Identität.',
+    details:
+      'Migration `20260716240000`; Enum `DrivingEventTripAssignment`; Tests für Duplikat-Upsert und delayed reconciliation. Trip-FSM unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T03:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p23-dimo-native-event-mapper-2026-07-16',
     version: '4.9.524',
     title: 'Driving Intelligence V2 P23 — central versioned DIMO native event mapper',
