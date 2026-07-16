@@ -75,6 +75,87 @@ export interface RentalHealthModule {
     | 'sensor'
     | 'complaint'
     | 'unknown';
+  tire_read_model?: TireRentalHealthReadModel;
+}
+
+export type TireRentalReviewRequirement =
+  | 'NONE'
+  | 'MEASUREMENT_REQUIRED'
+  | 'REVIEW_REQUIRED';
+
+export type TireRentalReasonCode =
+  | 'TREAD_MEASURED_BELOW_LEGAL_MIN'
+  | 'TREAD_MEASURED_CRITICAL'
+  | 'TREAD_ESTIMATED_CRITICAL_HIGH_CONF'
+  | 'TREAD_ESTIMATED_CRITICAL_LOW_CONF'
+  | 'TREAD_DEFAULT_ASSUMPTION'
+  | 'TREAD_UNKNOWN'
+  | 'TREAD_STALE'
+  | 'PRESSURE_TPMS_CRITICAL'
+  | 'PRESSURE_PROVIDER_CRITICAL'
+  | 'PRESSURE_WARNING'
+  | 'PRESSURE_STALE'
+  | 'PRESSURE_UNKNOWN'
+  | 'NO_TIRE_DATA'
+  | 'DATA_STALE'
+  | 'REVIEW_OVERRIDE_ACTIVE';
+
+export interface TireRentalBlockingEvidence {
+  action: 'NONE' | 'HARD_BLOCK';
+  reasonCode: TireRentalReasonCode;
+  source: string;
+  value: number | string | null;
+  threshold: number | string | null;
+  timestamp: string | null;
+  setupId: string | null;
+  message: string;
+}
+
+export interface TireRentalHealthReadModel {
+  wearEvidence: {
+    displayMode: string;
+    lowestTreadMm: number | null;
+    lowestTreadPosition: string | null;
+    overallWearStatus: string;
+    measuredAt: string | null;
+    freshness: string;
+    isDefaultAssumption: boolean;
+    confidence: string;
+  };
+  pressureEvidence: {
+    sourceType: string;
+    sourceLabel: string;
+    overallPressureStatus: string;
+    tpmsWarning: boolean | null;
+    freshness: string;
+    lastUpdatedAt: string | null;
+    perWheelIssue: boolean;
+  };
+  specEvidence: {
+    pressureSpecSource: string;
+    pressureSpecConfidence: number;
+    wearFactorEligible: boolean;
+    pressureSpecMissingLabel: string | null;
+  };
+  measurementFreshness: string;
+  pressureFreshness: string;
+  overallStatus: RentalHealthState;
+  confidence: string;
+  reviewRequirement: TireRentalReviewRequirement;
+  rentalBlockingEvidence: TireRentalBlockingEvidence | null;
+  structuredReasonCodes: TireRentalReasonCode[];
+  activeReviewOverride: {
+    id: string;
+    reason: string;
+    grantedByUserId: string;
+    expiresAt: string;
+    createdAt: string;
+  } | null;
+  primaryReason: string;
+  lastUpdatedAt: string | null;
+  dataStale: boolean;
+  source: string;
+  evidenceType: string;
 }
 
 export interface VehicleHealthResponse {

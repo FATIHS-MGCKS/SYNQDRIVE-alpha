@@ -22,6 +22,12 @@ import {
   isStale,
   toIso,
 } from './rental-health.types';
+import {
+  buildTireModuleHealth,
+  isTireRentalHardBlocked,
+} from './tire-rental-health.policy';
+import { TireRentalHealthReviewService } from './tire-rental-health-review.service';
+import type { TireRentalHealthModuleHealth } from './tire-rental-health.types';
 
 export type RentalHealthGateStatus = 'OK' | 'BLOCKED' | 'UNAVAILABLE' | 'UNKNOWN';
 
@@ -67,6 +73,7 @@ export class RentalHealthService {
     private readonly dtc: DtcService,
     private readonly hm: HmSignalUsageService,
     private readonly serviceCompliance: ServiceComplianceService,
+    private readonly tireRentalReview: TireRentalHealthReviewService,
   ) {}
 
   /**
@@ -100,15 +107,19 @@ export class RentalHealthService {
       brakesRes,
       dtcRes,
       hmAiRes,
+      tireReviewOverrideRes,
       currentOdoRes,
       complaintsRes,
       complianceRes,
     ] = await Promise.allSettled([
       this.battery.getSummary(vehicleId),
-      this.tires.getSummary(vehicleId),
+      this.hm.getTirePressureSignals(vehicleId).then((hmTirePressure) =>
+        this.tires.getSummary(vehicleId, { hmTirePressure }),
+      ),
       this.brakes.getSummary(vehicleId),
       this.dtc.getSummary(vehicleId),
       this.hm.getAiHealthCareSignals(vehicleId).catch(() => null),
+      this.tireRentalReview.findActiveOverride(orgId, vehicleId),
       this.prisma.vehicleLatestState.findUnique({
         where: { vehicleId },
         select: { odometerKm: true },
@@ -132,6 +143,7 @@ export class RentalHealthService {
 
     const batterySummary = unwrap(batteryRes);
     const tireSummary = unwrap(tiresRes) as TireHealthSummary | null;
+    const tireReviewOverride = unwrap(tireReviewOverrideRes);
     const brakeSummary = unwrap(brakesRes) as BrakeHealthSummaryDto | null;
     const dtcSummary = unwrap(dtcRes);
     const hmAi = unwrap(hmAiRes);
@@ -158,7 +170,7 @@ export class RentalHealthService {
 
     const modules = {
       battery: this.evaluateBattery(batterySummary, hmAi),
-      tires: this.evaluateTires(tireSummary),
+      tires: this.evaluateTires(tireSummary, tireReviewOverride),
       brakes: this.evaluateBrakes(brakeSummary),
       error_codes: this.evaluateErrorCodes(dtcSummary),
       service_compliance: {
@@ -348,97 +360,17 @@ export class RentalHealthService {
   }
 
   /**
-   * Tires — reads {@link TireHealthService.getSummary}. Wear-state is
-   * derived from `overallPercent` (remaining usability, NOT worn percent).
-   * Pressure-state is read from `pressureContext.overallStatus` plus any
-   * TPMS-related warning hints. The final state is the higher severity
-   * of the two; TPMS `n_a` only applies when there's truly no pressure
-   * data of any kind.
+   * Tires — evidence-aware policy via {@link buildTireModuleHealth}.
+   * Estimated tread never hard-blocks; measured tread ≤ legal minimum does.
    */
-  private evaluateTires(summary: TireHealthSummary | null): ModuleHealth {
-    if (!summary) {
-      return {
-        state: 'unknown',
-        reason: 'Keine Reifendaten verfügbar',
-        last_updated_at: null,
-        data_stale: true,
-        source: 'tire_health',
-        evidence_type: 'unknown',
-      };
-    }
-
-    // Wear state — canonical overallStatus only (no parallel percent buckets).
-    const canonicalWear = this.mapTireStatusToHealth(summary.overallStatus);
-    const wearState: HealthState = canonicalWear?.state ?? 'unknown';
-    const wearReason: string =
-      canonicalWear?.reason ??
-      (summary.overallStatus === 'UNKNOWN'
-        ? 'Kein Reifenverschleiß-Signal'
-        : `Reifenzustand ${summary.overallStatus}`);
-
-    // Pressure state — structured canonical context only (no text-regex severity).
-    const pressure = summary.pressureContext;
-    let pressureState: HealthState;
-    let pressureReason: string;
-    switch (pressure.overallStatus) {
-      case 'OK':
-        pressureState = 'good';
-        pressureReason = 'Reifendruck normal';
-        break;
-      case 'ISSUE':
-        pressureState =
-          pressure.tpmsWarning === true ||
-          Object.values(pressure.wheels).some((w) => w.statusIssue)
-            ? 'critical'
-            : 'warning';
-        pressureReason =
-          pressure.qualityWarnings[0] ?? 'Druckanomalie erkannt';
-        break;
-      case 'STALE':
-        pressureState = 'unknown';
-        pressureReason = 'Reifendruck-Daten veraltet';
-        break;
-      case 'UNKNOWN':
-      default:
-        pressureState = pressure.sourceType === 'NONE' ? 'n_a' : 'unknown';
-        pressureReason =
-          pressureState === 'n_a'
-            ? 'Kein TPMS-Signal verfügbar'
-            : 'Kein Reifendruck-Signal verfügbar';
-        break;
-    }
-
-    const criticalTpmsAlert = summary.alerts.some(
-      (a) =>
-        a.severity === 'critical' &&
-        (a.type === 'PRESSURE_IMPACT' || a.code === 'TIRE_PRESSURE_ISSUE'),
-    );
-    if (criticalTpmsAlert) {
-      pressureState = 'critical';
-      pressureReason =
-        summary.alerts.find((a) => a.severity === 'critical')?.message ??
-        pressureReason;
-    }
-
-    const state = maxSeverity(wearState, pressureState);
-    const reason = state === wearState ? wearReason : pressureReason;
-
-    return {
-      state,
-      reason,
-      last_updated_at: toIso(summary.latestMeasurementAt),
-      data_stale: isStale(summary.latestMeasurementAt),
-      source:
-        pressure.sourceType === 'NONE'
-          ? 'tire_health'
-          : pressure.sourceType === 'HIGH_MOBILITY'
-            ? 'hm_oem'
-            : pressure.sourceType === 'DIMO'
-              ? 'dimo'
-              : 'tire_health',
-      evidence_type:
-        summary.latestMeasurementAt != null ? 'measured' : 'estimated',
-    };
+  private evaluateTires(
+    summary: TireHealthSummary | null,
+    activeReviewOverride: import('./tire-rental-health.types').TireRentalReviewOverrideSummary | null,
+  ): TireRentalHealthModuleHealth {
+    return buildTireModuleHealth({
+      summary,
+      activeReviewOverride,
+    });
   }
 
   /**
@@ -837,8 +769,13 @@ export class RentalHealthService {
       reasons.push(`Bremsen: ${modules.brakes.reason}`);
     }
 
-    if (modules.tires.state === 'critical') {
-      reasons.push(`Reifen: ${modules.tires.reason}`);
+    const tireModule = modules.tires as TireRentalHealthModuleHealth;
+    if (
+      tireModule.tire_read_model &&
+      isTireRentalHardBlocked(tireModule.tire_read_model)
+    ) {
+      const evidence = tireModule.tire_read_model.rentalBlockingEvidence!;
+      reasons.push(`Reifen: ${evidence.message}`);
     }
 
     const dtcBand = dtcSummary?.worstSeverityBand;
@@ -855,26 +792,6 @@ export class RentalHealthService {
     }
 
     return reasons;
-  }
-
-  /** Maps canonical TireStatus → Rental-Health HealthState. */
-  private mapTireStatusToHealth(
-    status: string | null | undefined,
-  ): { state: HealthState; reason: string } | null {
-    switch (status) {
-      case 'CRITICAL':
-        return { state: 'critical', reason: 'Reifenverschleiß kritisch' };
-      case 'WARNING':
-        return { state: 'warning', reason: 'Reifenverschleiß Warnung' };
-      case 'WATCH':
-        return { state: 'warning', reason: 'Reifen beobachten' };
-      case 'GOOD':
-        return { state: 'good', reason: 'Reifen in Ordnung' };
-      case 'UNKNOWN':
-        return { state: 'unknown', reason: 'Reifenstatus unbekannt' };
-      default:
-        return null;
-    }
   }
 }
 

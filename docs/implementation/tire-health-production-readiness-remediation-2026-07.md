@@ -1013,6 +1013,52 @@ Migration: `20260716260000_tire_recommended_pressure`
 
 ---
 
+## Prompt 19 — Evidence-aware Rental Health & Blocking (2026-07-16)
+
+### Ziel
+
+Rental Health und Booking Gate behandeln geschätzte Profiltiefe nicht mehr wie gemessene Sicherheitswahrheit. Hard Blocks nur mit strukturierter Evidenz.
+
+### Neue Dateien
+
+| Datei | Rolle |
+|-------|-------|
+| `tire-rental-health.types.ts` | Kanonisches Read Model (wear/pressure/spec evidence, blocking, reason codes) |
+| `tire-rental-health.policy.ts` | Zentrale Policy A–F (gemessen ≤1.6 → HARD_BLOCK; geschätzt kritisch → REVIEW/MEASUREMENT) |
+| `tire-rental-health.policy.spec.ts` | 12+ Policy-Szenarien |
+| `tire-rental-health-review.service.ts` | Zeitlich begrenzte Override + Audit |
+
+### Geänderte Dateien
+
+| Datei | Änderung |
+|-------|----------|
+| `rental-health.service.ts` | HM-Druck injiziert; `buildTireModuleHealth`; blocking nur bei `HARD_BLOCK` + Evidenz |
+| `rental-health.controller.ts` | `POST/DELETE …/tire-rental-health/review-override` |
+| `rental-health.service.spec.ts` | Tire blocking, TPMS, estimated vs measured |
+| `frontend/.../tire-rental-health-ui.ts` | UI-Summary aus `tire_read_model` (keine Parallel-Policy) |
+| `frontend/src/lib/api.ts` | `TireRentalHealthReadModel` auf `modules.tires` |
+
+### Policy (Kurz)
+
+| Situation | Aktion |
+|-----------|--------|
+| Gemessen ≤ 1.6 mm | HARD_BLOCK |
+| TPMS / Provider-Issue (frisch) | HARD_BLOCK |
+| Geschätzt kritisch (hohe Conf.) | REVIEW_REQUIRED — kein Block |
+| Geschätzt kritisch (niedrige Conf.) | MEASUREMENT_REQUIRED |
+| Default 8 mm / stale / unknown | Nie GOOD |
+| Override aktiv | Block unterdrückt bis `expiresAt` |
+
+### Bestätigung Prompt 19
+
+- ✅ Hard Blocks nur mit Evidenz + Reason Code
+- ✅ `displayMode` / `evidence_type` ehrlich (measured ≠ estimated)
+- ✅ DIMO/MIXED nicht als `hm_oem` gelabelt
+- ✅ Booking Gate = `rental_blocked` aus derselben Policy
+- ✅ Override: Permission, Reason, Expiry, ActivityLog
+
+---
+
 ### Root Cause
 
 `TireHealthService.recalculate()` (Z.428–429) setzte `actualTreadMm` auf Achsenmittel der **Prediction**, wenn keine Messwerte vorhanden waren (`actualFrontAvg = frontAvgPredicted`). Dadurch entstanden bei aktiviertem Odometer-Guard synthetische Validierungsdaten mit Null-Residual — Regression und Accuracy würden sich selbst bestätigen.
@@ -1160,6 +1206,7 @@ Blocker bleiben bis Abnahme Prompt 24:
 | 2026-07-16 | 16 | DIMO tire pressure kPa → bar at provider boundary + read compat | *(dieser Commit)* |
 | 2026-07-16 | 17 | Canonical TirePressureContext read model | *(dieser Commit)* |
 | 2026-07-16 | 18 | Evidence-based recommended tire pressure (no maxInflationKpa as nominal) | *(dieser Commit)* |
+| 2026-07-16 | 19 | Evidence-aware rental health blocking policy | *(dieser Commit)* |
 
 ---
 

@@ -1316,6 +1316,7 @@ model Organization {
   organizationRentalRules           OrganizationRentalRules?
   rentalVehicleCategories           RentalVehicleCategory[]
   vehicleRentalRequirementOverrides VehicleRentalRequirementOverride[]
+  tireRentalHealthReviewOverrides   TireRentalHealthReviewOverride[]
   bookings                          Booking[]
   bookingHandoverProtocols          BookingHandoverProtocol[]
   activityLogs                      ActivityLog[]
@@ -1431,6 +1432,7 @@ model User {
   taskAutomationRuleOverridesCreated  OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideCreated")
   taskAutomationRuleOverridesUpdated  OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideUpdated")
   taskAutomationRuleOverrideRevisions OrgTaskAutomationRuleOverrideRevision[] @relation("TaskAutomationRuleOverrideRevisionChanged")
+  tireRentalHealthReviewGrants        TireRentalHealthReviewOverride[]        @relation("TireRentalHealthReviewGrants")
 
   @@map("users")
 }
@@ -1827,6 +1829,7 @@ model Vehicle {
   rentalCategoryId                  String?                            @map("rental_category_id")
   rentalCategory                    RentalVehicleCategory?             @relation(fields: [rentalCategoryId], references: [id], onDelete: SetNull)
   rentalRequirementOverride         VehicleRentalRequirementOverride?
+  tireRentalHealthReviewOverrides   TireRentalHealthReviewOverride[]
   whatsappConversations             WhatsAppConversation[]
   billingBillableVehicleAssignments BillingBillableVehicleAssignment[]
   billingQuantityEvents             BillingQuantityEvent[]
@@ -2213,6 +2216,7 @@ model VehicleTireSetup {
   wearDataPoints       TireWearDataPoint[]
   tripUsageLedger      TireTripUsageLedger[]
   mountPeriods         VehicleTireSetupMountPeriod[]
+  rentalHealthReviews  TireRentalHealthReviewOverride[]
   initialTreadEvidence VehicleTireTreadMeasurement?  @relation("SetupInitialTreadEvidence", fields: [initialTreadEvidenceId], references: [id], onDelete: SetNull)
 
   @@index([vehicleId])
@@ -4071,6 +4075,29 @@ model VehicleRentalRequirementOverride {
 
   @@index([organizationId])
   @@map("vehicle_rental_requirement_overrides")
+}
+
+model TireRentalHealthReviewOverride {
+  id              String    @id @default(uuid())
+  organizationId  String    @map("organization_id")
+  vehicleId       String    @map("vehicle_id")
+  tireSetupId     String?   @map("tire_setup_id")
+  reason          String
+  grantedByUserId String    @map("granted_by_user_id")
+  expiresAt       DateTime  @map("expires_at")
+  revokedAt       DateTime? @map("revoked_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  tireSetup    VehicleTireSetup? @relation(fields: [tireSetupId], references: [id], onDelete: SetNull)
+  grantedBy    User         @relation("TireRentalHealthReviewGrants", fields: [grantedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@index([expiresAt])
+  @@map("tire_rental_health_review_overrides")
 }
 
 // ------------------------------------------------
