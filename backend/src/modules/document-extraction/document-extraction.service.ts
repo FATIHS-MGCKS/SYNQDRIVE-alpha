@@ -876,7 +876,7 @@ export class DocumentExtractionService implements OnModuleInit {
         ? (record.extractedData as Record<string, unknown>)
         : {};
 
-    let plausibilityPayload = record.plausibility;
+    let plausibilityPayload: unknown = record.plausibility;
     if (applyDocumentType) {
       const plausibility = await this.runConfirmPlausibility(
         newVehicleId,
@@ -901,8 +901,10 @@ export class DocumentExtractionService implements OnModuleInit {
           action: 'reassign_vehicle',
           at: new Date().toISOString(),
           userId: userId ?? null,
-          fromVehicleId: record.vehicleId,
-          toVehicleId: newVehicleId,
+          details: {
+            fromVehicleId: record.vehicleId,
+            toVehicleId: newVehicleId,
+          },
         }) as Prisma.InputJsonValue,
       },
     });
