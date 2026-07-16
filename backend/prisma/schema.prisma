@@ -6104,11 +6104,23 @@ model HvBatteryHealthSnapshot {
   isCharging           Boolean  @default(false) @map("is_charging")
   odometerKm           Float?   @map("odometer_km")
   temperatureC         Float?   @map("temperature_c")
-  recordedAt           DateTime @map("recorded_at")
-  createdAt            DateTime @default(now()) @map("created_at")
+  /// Provider SOC observation timestamp (anchor for dedup).
+  recordedAt           DateTime  @map("recorded_at")
+  /// Poll receive time when this snapshot row was accepted.
+  providerReceivedAt     DateTime? @map("provider_received_at")
+  /// Current-energy provider observation timestamp when distinct from SOC anchor.
+  energyObservedAt       DateTime? @map("energy_observed_at")
+  /// Idempotency key for concurrent-safe deduplicated inserts.
+  idempotencyKey         String?   @map("idempotency_key")
+  /// Provider-reported SOH captured on this snapshot row.
+  providerSohPercent     Float?    @map("provider_soh_percent")
+  /// Charging cable connected at observation time.
+  chargingCableConnected Boolean?  @map("charging_cable_connected")
+  createdAt              DateTime  @default(now()) @map("created_at")
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
 
+  @@unique([vehicleId, idempotencyKey], map: "hv_battery_health_snapshots_idempotency_key")
   @@index([vehicleId])
   @@index([recordedAt])
   @@map("hv_battery_health_snapshots")

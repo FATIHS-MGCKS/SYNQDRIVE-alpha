@@ -46,13 +46,20 @@ describe('HvBatteryHealthService legacy pairwise capacity deprecation', () => {
     const { svc, prisma, batteryEvidence } = buildService();
 
     prisma.vehicle.findUnique.mockResolvedValue({
+      organizationId: 'org-1',
       fuelType: 'ELECTRIC',
       hvBatteryCapacityKwh: 75,
     });
     prisma.hvBatteryHealthSnapshot.findFirst.mockResolvedValue({
       socPercent: 40,
       energyUsedKwh: 20,
+      energyObservedAt: new Date('2026-07-15T09:59:30.000Z'),
+      isCharging: false,
+      chargingCableConnected: false,
+      providerSohPercent: null,
       recordedAt: new Date('2026-07-15T09:59:30.000Z'),
+      providerReceivedAt: new Date('2026-07-15T09:59:00.000Z'),
+      idempotencyKey: 'hv-snap:prev',
     });
     prisma.hvBatteryHealthSnapshot.create.mockImplementation(async ({ data }: any) => ({
       id: 'snap-1',
@@ -118,6 +125,7 @@ describe('HvBatteryHealthService legacy pairwise capacity deprecation', () => {
     const { svc, prisma, batteryEvidence } = buildService();
 
     prisma.vehicle.findUnique.mockResolvedValue({
+      organizationId: 'org-1',
       fuelType: 'ELECTRIC',
       hvBatteryCapacityKwh: 57,
     });
@@ -169,6 +177,7 @@ describe('HvBatteryHealthService legacy pairwise capacity deprecation', () => {
     const { svc, prisma, batteryEvidence } = buildService();
 
     prisma.vehicle.findUnique.mockResolvedValue({
+      organizationId: 'org-1',
       fuelType: 'ELECTRIC',
       hvBatteryCapacityKwh: 75,
     });

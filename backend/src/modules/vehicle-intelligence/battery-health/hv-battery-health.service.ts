@@ -1,8 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import {
   BatteryEvidenceScope,
   BatteryEvidenceSourceType,
   BatteryEvidenceValueType,
+  HvBatteryHealthSnapshot,
+  Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
@@ -21,6 +23,11 @@ import {
 } from './hv-capacity-policy';
 import { isLegacyHvPairwiseCapacityAssessmentEnabled } from '../../../config/battery-health-v2.config';
 import type { HvBatterySignalObservedAt } from '../../dimo/mappers/dimo-battery-signal.mapper';
+import { TripMetricsService } from '../../observability/trip-metrics.service';
+import {
+  evaluateHvSnapshotObservation,
+  type HvSnapshotSkipReason,
+} from './hv-snapshot-observation.policy';
 
 /**
  * HV (High-Voltage) Battery Health Service for EV traction batteries.
@@ -36,6 +43,7 @@ export class HvBatteryHealthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly batteryEvidence: BatteryEvidenceService,
+    @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {}
 
   async getHvBatteryStatus(vehicleId: string) {
@@ -495,6 +503,7 @@ export class HvBatteryHealthService {
 
   async recordSnapshot(data: {
     vehicleId: string;
+    organizationId?: string;
     socPercent: number;
     /** Remaining pack energy (kWh) — preferred over legacy `energyUsedKwh`. */
     currentEnergyKwh?: number;
@@ -511,20 +520,79 @@ export class HvBatteryHealthService {
     nominalCapacityKwh?: number;
     providerReportedSohPercent?: number;
     providerSource?: string;
+    /** Poll receive time — never used as provider observation timestamp. */
+    receivedAt?: Date;
     /** Collection-level DIMO `lastSeen` — fallback only, never fetch time. */
     collectionObservedAt?: Date;
     signalObservedAt?: HvBatterySignalObservedAt;
     /** @deprecated Prefer `signalObservedAt.soc` / `collectionObservedAt`. */
     observedAt?: Date;
-  }) {
-    const legacyPairwiseEnabled = isLegacyHvPairwiseCapacityAssessmentEnabled();
+  }): Promise<HvBatteryHealthSnapshot | null> {
+    const receivedAt = data.receivedAt ?? new Date();
+    const providerSource = data.providerSource ?? 'DIMO';
     const currentEnergyKwh = data.currentEnergyKwh ?? data.energyUsedKwh;
+
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: data.vehicleId },
+      select: { organizationId: true },
+    });
+    const organizationId = data.organizationId ?? vehicle?.organizationId;
+    if (!organizationId) {
+      this.logger.warn(
+        `HV snapshot skipped — missing organizationId for vehicle=${data.vehicleId}`,
+      );
+      return null;
+    }
+
+    const lastSnapshot = await this.prisma.hvBatteryHealthSnapshot.findFirst({
+      where: { vehicleId: data.vehicleId },
+      orderBy: { recordedAt: 'desc' },
+      select: {
+        socPercent: true,
+        energyUsedKwh: true,
+        energyObservedAt: true,
+        isCharging: true,
+        chargingCableConnected: true,
+        providerSohPercent: true,
+        recordedAt: true,
+        providerReceivedAt: true,
+        idempotencyKey: true,
+      },
+    });
+
+    const observationDecision = evaluateHvSnapshotObservation({
+      organizationId,
+      vehicleId: data.vehicleId,
+      providerSource,
+      receivedAt,
+      socPercent: data.socPercent,
+      currentEnergyKwh,
+      isCharging: data.isCharging,
+      cableConnected: data.cableConnected,
+      providerReportedSohPercent: data.providerReportedSohPercent,
+      signalObservedAt: data.signalObservedAt,
+      lastSnapshot,
+    });
+
+    if (!observationDecision.shouldPersist || !observationDecision.idempotencyKey) {
+      this.recordHvSnapshotDuplicateDiscarded(
+        observationDecision.skipReason ?? 'UNCHANGED_POLL',
+      );
+      this.logger.debug(
+        `HV snapshot dedup skip: vehicle=${data.vehicleId} reason=${observationDecision.skipReason ?? 'UNCHANGED_POLL'} outcomes=${JSON.stringify(observationDecision.signalOutcomes)}`,
+      );
+      return null;
+    }
+
+    const legacyPairwiseEnabled = isLegacyHvPairwiseCapacityAssessmentEnabled();
     const resolveObservedAt = (
       perSignal?: Date,
       fallback?: Date,
     ): Date | undefined => perSignal ?? fallback ?? data.collectionObservedAt ?? data.observedAt;
     const snapshotRecordedAt =
-      resolveObservedAt(data.signalObservedAt?.soc, data.observedAt);
+      observationDecision.anchorObservedAt
+      ?? resolveObservedAt(data.signalObservedAt?.soc, data.observedAt)
+      ?? receivedAt;
     let estimatedCapacity: number | null = null;
     let soh: number | null = null;
 
@@ -560,20 +628,23 @@ export class HvBatteryHealthService {
       );
     }
 
-    const snapshot = await this.prisma.hvBatteryHealthSnapshot.create({
-      data: {
-        vehicle: { connect: { id: data.vehicleId } },
-        socPercent: data.socPercent,
-        energyUsedKwh: currentEnergyKwh ?? null,
-        estimatedCapacityKwh: estimatedCapacity,
-        sohPercent: soh,
-        rangeKm: data.rangeKm ?? null,
-        chargingPowerKw: data.chargingPowerKw ?? null,
-        isCharging: data.isCharging ?? false,
-        odometerKm: data.odometerKm ?? null,
-        temperatureC: data.temperatureC ?? null,
-        recordedAt: snapshotRecordedAt ?? new Date(),
-      },
+    const snapshot = await this.createSnapshotIdempotent({
+      vehicleId: data.vehicleId,
+      idempotencyKey: observationDecision.idempotencyKey,
+      socPercent: data.socPercent,
+      energyUsedKwh: currentEnergyKwh ?? null,
+      estimatedCapacityKwh: estimatedCapacity,
+      sohPercent: soh,
+      rangeKm: data.rangeKm ?? null,
+      chargingPowerKw: data.chargingPowerKw ?? null,
+      isCharging: data.isCharging ?? false,
+      chargingCableConnected: data.cableConnected ?? null,
+      providerSohPercent: data.providerReportedSohPercent ?? null,
+      odometerKm: data.odometerKm ?? null,
+      temperatureC: data.temperatureC ?? null,
+      recordedAt: snapshotRecordedAt,
+      providerReceivedAt: receivedAt,
+      energyObservedAt: data.signalObservedAt?.currentEnergyKwh ?? null,
     });
 
     const evidenceRows = [
@@ -673,5 +744,38 @@ export class HvBatteryHealthService {
     }
 
     return snapshot;
+  }
+
+  private recordHvSnapshotDuplicateDiscarded(reason: HvSnapshotSkipReason): void {
+    this.tripMetrics?.hvSnapshotDuplicatesDiscarded.inc({ reason });
+  }
+
+  private async createSnapshotIdempotent(
+    data: Prisma.HvBatteryHealthSnapshotUncheckedCreateInput,
+  ): Promise<HvBatteryHealthSnapshot> {
+    try {
+      return await this.prisma.hvBatteryHealthSnapshot.create({ data });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002' &&
+        data.vehicleId &&
+        data.idempotencyKey
+      ) {
+        const existing = await this.prisma.hvBatteryHealthSnapshot.findUnique({
+          where: {
+            vehicleId_idempotencyKey: {
+              vehicleId: data.vehicleId,
+              idempotencyKey: data.idempotencyKey,
+            },
+          },
+        });
+        if (existing) {
+          this.recordHvSnapshotDuplicateDiscarded('DUPLICATE_OBSERVATION');
+          return existing;
+        }
+      }
+      throw error;
+    }
   }
 }

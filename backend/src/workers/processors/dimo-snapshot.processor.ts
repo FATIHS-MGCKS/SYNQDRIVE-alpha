@@ -178,6 +178,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
             providerReportedSohPercent:
               normalized.tractionBatterySohPercent ?? undefined,
             providerSource: 'DIMO',
+            receivedAt: fetchedAt,
             collectionObservedAt: batteryMap.collectionLastSeenAt ?? undefined,
             signalObservedAt,
             observedAt:
