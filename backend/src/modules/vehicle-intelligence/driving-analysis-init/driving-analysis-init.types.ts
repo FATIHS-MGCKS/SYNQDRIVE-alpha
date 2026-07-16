@@ -29,6 +29,7 @@ export type TripAnalysisInitJobResult = {
   enqueued: boolean;
   deduplicated: boolean;
   queueError?: string;
+  stageKey?: string;
 };
 
 export type TripAnalysisInitResult = {

@@ -1293,6 +1293,7 @@ model Organization {
   tripAssessabilities               TripAssessability[]
   drivingEvidence                   DrivingEvidence[]
   drivingAnalysisRuns               DrivingAnalysisRun[]
+  drivingAnalysisStages             DrivingAnalysisStage[]
   drivingIntelligenceJobs           DrivingIntelligenceJob[]
   orgInvoices                       OrgInvoice[]
   userAccountPreferences            UserAccountPreference[]
@@ -6773,6 +6774,7 @@ model DrivingAnalysisRun {
   tripAssessabilities TripAssessability[]
   drivingEvidence     DrivingEvidence[]
   intelligenceJobs    DrivingIntelligenceJob[]
+  stages              DrivingAnalysisStage[]
 
   @@index([organizationId, startedAt])
   @@index([tripId, analysisType, status])
@@ -6780,6 +6782,58 @@ model DrivingAnalysisRun {
   @@index([inputFingerprint])
   @@index([supersedesRunId])
   @@map("driving_analysis_runs")
+}
+
+/// Canonical V2 pipeline stage keys — one row per run×stage (P21).
+enum DrivingAnalysisStageKey {
+  SEGMENT_VALIDATE
+  NATIVE_EVENTS
+  ROUTE
+  EVENT_CONTEXT
+  DRIVING_IMPACT
+  MISUSE_RECONCILE
+  ASSESSABILITY
+  ATTRIBUTION
+  DECISION_SUMMARY
+  HEALTH_IMPACT_PUBLISH
+}
+
+enum DrivingAnalysisStageStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  FAILED
+  SKIPPED
+}
+
+/// Per-stage lifecycle within an Analysis Run — fingerprint dedup + explicit deps (P21).
+model DrivingAnalysisStage {
+  id                 String                     @id @default(uuid())
+  organizationId     String                     @map("organization_id")
+  analysisRunId      String                     @map("analysis_run_id")
+  stageKey           DrivingAnalysisStageKey    @map("stage_key")
+  modelVersion       String                     @map("model_version")
+  inputFingerprint   String                     @map("input_fingerprint")
+  status             DrivingAnalysisStageStatus @default(PENDING)
+  attemptCount       Int                        @default(0) @map("attempt_count")
+  startedAt          DateTime?                  @map("started_at")
+  completedAt        DateTime?                  @map("completed_at")
+  errorCode          String?                    @map("error_code")
+  errorMessage       String?                    @map("error_message")
+  preservedFromStageId String?                  @map("preserved_from_stage_id")
+  createdAt          DateTime                   @default(now()) @map("created_at")
+  updatedAt          DateTime                   @updatedAt @map("updated_at")
+
+  organization     Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  analysisRun      DrivingAnalysisRun      @relation(fields: [analysisRunId], references: [id], onDelete: Cascade)
+  preservedFromStage DrivingAnalysisStage? @relation("DrivingAnalysisStagePreserved", fields: [preservedFromStageId], references: [id], onDelete: SetNull)
+  preservedStages    DrivingAnalysisStage[]  @relation("DrivingAnalysisStagePreserved")
+
+  @@unique([analysisRunId, stageKey])
+  @@index([organizationId, stageKey, status])
+  @@index([analysisRunId, status])
+  @@index([stageKey, modelVersion, inputFingerprint, status])
+  @@map("driving_analysis_stages")
 }
 
 /// Typed persistent job envelope for Driving Intelligence V2 queue refactor (P18).

@@ -65,6 +65,8 @@ import { DrivingEvidenceRepository } from './driving-evidence/driving-evidence.r
 import { DrivingEvidenceService } from './driving-evidence/driving-evidence.service';
 import { DrivingAnalysisRunRepository } from './driving-analysis-run/driving-analysis-run.repository';
 import { DrivingAnalysisRunService } from './driving-analysis-run/driving-analysis-run.service';
+import { DrivingAnalysisStageRepository } from './driving-analysis-stage/driving-analysis-stage.repository';
+import { DrivingAnalysisStageOrchestratorService } from './driving-analysis-stage/driving-analysis-stage.orchestrator.service';
 import { DrivingIntelligenceJobRepository } from './driving-intelligence-jobs/driving-intelligence-jobs.repository';
 import { DrivingIntelligenceJobDispatcherService } from './driving-intelligence-jobs/driving-intelligence-jobs.dispatcher.service';
 import { DrivingIntelligenceJobHandlerRegistry } from './driving-intelligence-jobs/driving-intelligence-jobs.handler.registry';
@@ -186,6 +188,8 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     DrivingEvidenceService,
     DrivingAnalysisRunRepository,
     DrivingAnalysisRunService,
+    DrivingAnalysisStageRepository,
+    DrivingAnalysisStageOrchestratorService,
     DrivingIntelligenceJobRepository,
     DrivingIntelligenceJobDispatcherService,
     DrivingIntelligenceJobHandlerRegistry,
@@ -260,6 +264,8 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     DrivingEvidenceService,
     DrivingAnalysisRunRepository,
     DrivingAnalysisRunService,
+    DrivingAnalysisStageRepository,
+    DrivingAnalysisStageOrchestratorService,
     DrivingIntelligenceJobRepository,
     DrivingIntelligenceJobDispatcherService,
     DrivingIntelligenceJobProcessorService,

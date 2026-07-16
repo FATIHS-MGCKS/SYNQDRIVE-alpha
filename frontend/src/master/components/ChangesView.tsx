@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p21-stage-orchestration-2026-07-16',
+    version: '4.9.522',
+    title: 'Driving Intelligence V2 P21 — Stage orchestration on Run / Fingerprint',
+    summary: [
+      'Neue Tabelle `driving_analysis_stages` — pro Run×Stage: Status, Attempts, startedAt, completedAt, Error, Input-Fingerprint.',
+      '`DrivingAnalysisStageOrchestratorService`: explizite Stage-Abhängigkeiten, Ready-Resolution, Job-Enqueue, Run-Status-Ableitung.',
+      'Native Events + Route parallel nach Segment Validate; Misuse wartet nur auf Event Context (nicht Route).',
+      'Gleiche Stage + gleicher Fingerprint → kein Recompute; Supersede-Run → partielle Ergebnisse via `preservedFromStageId`.',
+      'Init-Service initialisiert Stages statt einzelnem Pipeline-Startjob; Job-Processor synchronisiert Stage-Lifecycle.',
+    ],
+    reason:
+      'Prompt 21/76: Analysis-Orchestrierung auf Analysis Run, Stage Status und Input Fingerprint — ohne Trip-FSM-Änderung.',
+    previousBehavior:
+      'Post-Finalize nur ein `DIMO_TRIP_SEGMENT_VALIDATE`-Job; keine materialisierten Stage-Rows, keine Fingerprint-Dedup pro Stage.',
+    details:
+      'Migration 20260716220000; Module `driving-analysis-stage/`; 16 neue/angepasste Tests inkl. Integration. Trip-FSM unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T00:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p20-job-retry-reconciliation-2026-07-16',
     version: '4.9.521',
     title: 'Driving Intelligence V2 P20 — Job retry, dead-letter & reconciliation',

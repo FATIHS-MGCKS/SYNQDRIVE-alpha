@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
+import { DrivingAnalysisStageOrchestratorService } from '../driving-analysis-stage/driving-analysis-stage.orchestrator.service';
 import {
   DRIVING_INTELLIGENCE_JOB_ERROR_CODES,
   DrivingIntelligenceJobRetryableError,
@@ -25,6 +26,7 @@ export class DrivingIntelligenceJobProcessorService {
   constructor(
     private readonly repository: DrivingIntelligenceJobRepository,
     private readonly handlerRegistry: DrivingIntelligenceJobHandlerRegistry,
+    @Optional() private readonly stageOrchestrator?: DrivingAnalysisStageOrchestratorService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {}
 
@@ -51,6 +53,11 @@ export class DrivingIntelligenceJobProcessorService {
     try {
       await this.handlerRegistry.dispatch(inProgress);
       await this.repository.markCompleted(persistentJobId);
+      await this.stageOrchestrator?.onJobCompleted(
+        organizationId,
+        inProgress.analysisRunId,
+        inProgress.jobType,
+      );
       this.tripMetrics?.drivingIntelligenceJobCompleted.inc({ job_type: inProgress.jobType });
       this.logger.log(
         `Driving intelligence job completed: id=${persistentJobId} type=${inProgress.jobType}`,
@@ -91,6 +98,13 @@ export class DrivingIntelligenceJobProcessorService {
         : classified.code;
 
       await this.repository.markDeadLetter(persistentJobId, deadLetterCode, classified.message);
+      await this.stageOrchestrator?.onJobFailed(
+        organizationId,
+        inProgress.analysisRunId,
+        inProgress.jobType,
+        deadLetterCode,
+        classified.message,
+      );
       this.tripMetrics?.drivingIntelligenceJobDeadLetter.inc({
         job_type: inProgress.jobType,
         error_code: deadLetterCode,

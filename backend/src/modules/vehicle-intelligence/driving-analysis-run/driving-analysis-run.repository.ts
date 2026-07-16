@@ -234,4 +234,32 @@ export class DrivingAnalysisRunRepository {
       orderBy: { startedAt: 'asc' },
     });
   }
+
+  async syncStatusFromStages(
+    organizationId: string,
+    runId: string,
+    data: {
+      status: import('@prisma/client').DrivingAnalysisRunStatus;
+      stageSummary: Record<string, string>;
+      failedStageCount: number;
+    },
+  ) {
+    const existing = await this.findById(organizationId, runId);
+    if (!existing) return null;
+
+    const isTerminal = data.status === 'COMPLETED' || data.status === 'FAILED';
+    return this.prisma.drivingAnalysisRun.update({
+      where: { id: runId },
+      data: {
+        status: data.status,
+        completedAt: isTerminal ? new Date() : existing.completedAt,
+        stageSummaryJson: data.stageSummary as Prisma.InputJsonValue,
+        errorCode: data.status === 'FAILED' ? 'STAGE_FAILURE' : null,
+        errorMessage:
+          data.status === 'FAILED'
+            ? `${data.failedStageCount} stage(s) failed`
+            : null,
+      },
+    });
+  }
 }
