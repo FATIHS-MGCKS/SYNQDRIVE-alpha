@@ -38,18 +38,12 @@ import {
   Prisma,
 } from '@prisma/client';
 import {
-  hasValidGroundTruthMeasurement,
-  resolveAxleGroundTruthTreadMm,
-  type TireAxle,
-} from './tire-ground-truth.util';
-import {
   buildSnapshotEvidenceSummary,
   mapTreadSourceToEvidence,
   resolveSummaryProvenanceFlags,
 } from './tire-evidence-provenance';
 import {
   buildSnapshotProvenance,
-  buildWearDataPointProvenance,
 } from './tire-provenance.repository';
 import { mapLegacyMeasurementSourceToEvidence } from './tire-evidence-source';
 import {
@@ -57,8 +51,12 @@ import {
   isPredictionCapable,
 } from './tire-odometer-anchor';
 import {
-  TIRE_RECALCULATION_MODEL_VERSION,
-  computeTireHealthConfigHash,
+  TIRE_WEAR_MODEL_VERSION,
+  computeTireWearModelConfigHash,
+  buildSnapshotPredictionPayload,
+} from './tire-wear-model-version';
+import { TirePredictionValidationService } from './tire-prediction-validation.service';
+import {
   computeTireRecalculationInputFingerprint,
   resolvePressureFreshnessBucket,
   type TireRecalculationInputContext,
@@ -258,13 +256,14 @@ export interface TireRecalculationResult {
 export class TireHealthService {
   private readonly logger = new Logger(TireHealthService.name);
   private readonly cfg = TIRE_HEALTH_CONFIG;
-  private readonly modelVersion = TIRE_RECALCULATION_MODEL_VERSION;
-  private readonly modelConfigHash = computeTireHealthConfigHash();
+  private readonly modelVersion = TIRE_WEAR_MODEL_VERSION;
+  private readonly modelConfigHash = computeTireWearModelConfigHash();
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly wearModel: TireWearModelService,
     private readonly drivingImpactService: DrivingImpactService,
+    private readonly predictionValidation: TirePredictionValidationService,
   ) {}
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -539,6 +538,16 @@ export class TireHealthService {
         null,
     });
 
+    const predictionPayload = buildSnapshotPredictionPayload({
+      modelVersion: fingerprint.modelVersion,
+      modelConfigHash: fingerprint.modelConfigHash,
+      predictionGeneratedAt: recalcAsOf,
+      frontLeftMm: wearAnalysis.frontLeftMm,
+      frontRightMm: wearAnalysis.frontRightMm,
+      rearLeftMm: wearAnalysis.rearLeftMm,
+      rearRightMm: wearAnalysis.rearRightMm,
+    });
+
     const snapshotProvenance = buildSnapshotProvenance({
       modelVersion: fingerprint.modelVersion,
       modelConfigHash: fingerprint.modelConfigHash,
@@ -546,6 +555,7 @@ export class TireHealthService {
       baselineSource: evidenceSummary.baselineSource,
       evidenceSummary: {
         ...evidenceSummary,
+        ...predictionPayload,
         timePolicyBucket: fingerprint.timePolicyBucket,
       },
     });
@@ -555,6 +565,7 @@ export class TireHealthService {
       vehicleId,
       tireSetId: setup.id,
       snapshotDate: recalcAsOf,
+      predictionGeneratedAt: recalcAsOf,
       odometerKm: latestState?.odometerKm ?? null,
       estimatedTreadMm: lowestTread,
       estimatedWearPercent: 100 - setLevelPercent,
@@ -573,11 +584,8 @@ export class TireHealthService {
 
     let snapshot: { id: string };
     if (lastSnapshot && options.force) {
-      snapshot = await this.prisma.tireHealthSnapshot.update({
-        where: { id: lastSnapshot.id },
-        data: snapshotData,
-        select: { id: true },
-      });
+      // Snapshots are immutable historical records — force refresh never rewrites them.
+      snapshot = lastSnapshot;
     } else {
       try {
         snapshot = await this.prisma.tireHealthSnapshot.create({
@@ -606,117 +614,30 @@ export class TireHealthService {
       }
     }
 
-    // ── Persist regression data points (ground-truth only; never predicted-as-actual) ──
-    const currentOdo = latestState?.odometerKm ?? null;
-    const installedOdo = setup.installedOdometerKm ?? null;
+    // ── Validation data points: link measurements to pre-measurement snapshots only ──
     const allowWearDataPoints = !options.force;
-    if (
-      allowWearDataPoints &&
-      currentOdo != null &&
-      installedOdo != null &&
-      currentOdo > installedOdo
-    ) {
-      const distanceKm = currentOdo - installedOdo;
-      const frontAvgPredicted = (wearAnalysis.frontLeftMm + wearAnalysis.frontRightMm) / 2;
-      const rearAvgPredicted = (wearAnalysis.rearLeftMm + wearAnalysis.rearRightMm) / 2;
-      const latestMeas = setup.measurements?.[0] ?? null;
-      const baseDataPoint = {
+    if (allowWearDataPoints) {
+      const regenFactor =
+        (wearAnalysis.factors.regenBrakingFactorFront +
+          wearAnalysis.factors.regenBrakingFactorRear) /
+        2;
+      await this.predictionValidation.linkPendingValidationDataPoints({
         organizationId: vehicle!.organizationId,
         vehicleId,
-        tireSetId: setup.id,
-        distanceKm,
-        climateFactor: wearAnalysis.factors.temperatureFactor,
-        roadSurfaceFactor: 1.0,
-        roadTypeFactor: wearAnalysis.factors.usageFactor,
-        drivingStyleFactor: wearAnalysis.factors.behaviorFactor,
-        regenFactor:
-          (wearAnalysis.factors.regenBrakingFactorFront +
-            wearAnalysis.factors.regenBrakingFactorRear) /
-          2,
-        curbWeightKg: null as number | null,
+        tireSetupId: setup.id,
         tireSeason: setup.tireSeason,
-      };
-
-      const gtInput = latestMeas
-        ? {
-            tireSetupId: setup.id,
-            source: latestMeas.source,
-            measuredAt: latestMeas.measuredAt,
-            frontLeftMm: latestMeas.frontLeftMm,
-            frontRightMm: latestMeas.frontRightMm,
-            rearLeftMm: latestMeas.rearLeftMm,
-            rearRightMm: latestMeas.rearRightMm,
-          }
-        : null;
-
-      const wearRows: Array<{
-        axle: TireAxle;
-        predictedTreadMm: number;
-        actualTreadMm: number;
-        initialTreadMm: number;
-        tireWidthMm: number | null;
-      }> = [];
-
-      for (const axle of ['front', 'rear'] as const) {
-        if (
-          !gtInput ||
-          !hasValidGroundTruthMeasurement({
-            measurement: gtInput,
-            tireSetupId: setup.id,
-            axle,
-            asOf: recalcAsOf,
-          })
-        ) {
-          continue;
-        }
-        const actualTreadMm = resolveAxleGroundTruthTreadMm(gtInput, axle);
-        if (actualTreadMm == null) continue;
-
-        wearRows.push({
-          axle,
-          predictedTreadMm: axle === 'front' ? frontAvgPredicted : rearAvgPredicted,
-          actualTreadMm,
-          initialTreadMm:
-            axle === 'front'
-              ? wearAnalysis.referenceNewTreadFront
-              : wearAnalysis.referenceNewTreadRear,
-          tireWidthMm:
-            axle === 'front'
-              ? setup.frontTireWidthMm ?? null
-              : setup.rearTireWidthMm ?? null,
-        });
-      }
-
-      if (wearRows.length > 0) {
-        await this.prisma.tireWearDataPoint
-          .createMany({
-            data: wearRows.map((row) => {
-              const provenance = buildWearDataPointProvenance({
-                predictedTreadMm: row.predictedTreadMm,
-                actualTreadMm: row.actualTreadMm,
-                measurementId: latestMeas!.id,
-                measurementSource: latestMeas!.source,
-                evidenceSource:
-                  latestMeas!.evidenceSource ??
-                  mapLegacyMeasurementSourceToEvidence(latestMeas!.source),
-                measuredAt: latestMeas!.measuredAt,
-                predictionGeneratedAt: recalcAsOf,
-                modelVersion: this.modelVersion,
-                predictionSnapshotId: snapshot.id,
-              });
-              return {
-                ...baseDataPoint,
-                axle: row.axle,
-                predictedTreadMm: row.predictedTreadMm,
-                actualTreadMm: row.actualTreadMm,
-                initialTreadMm: row.initialTreadMm,
-                tireWidthMm: row.tireWidthMm,
-                ...provenance,
-              };
-            }),
-          })
-          .catch((e) => this.logger.warn(`Failed to write wear data points: ${e.message}`));
-      }
+        installedOdometerKm: setup.installedOdometerKm,
+        currentOdometerKm: latestState?.odometerKm ?? null,
+        referenceNewTreadFront: wearAnalysis.referenceNewTreadFront,
+        referenceNewTreadRear: wearAnalysis.referenceNewTreadRear,
+        frontTireWidthMm: setup.frontTireWidthMm ?? null,
+        rearTireWidthMm: setup.rearTireWidthMm ?? null,
+        climateFactor: wearAnalysis.factors.temperatureFactor,
+        usageFactor: wearAnalysis.factors.usageFactor,
+        behaviorFactor: wearAnalysis.factors.behaviorFactor,
+        regenFactor,
+        asOf: recalcAsOf,
+      });
     }
 
     await this.prisma.tireEvent.create({

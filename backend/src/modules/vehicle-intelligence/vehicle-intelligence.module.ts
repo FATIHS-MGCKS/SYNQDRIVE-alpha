@@ -17,6 +17,8 @@ import { TireOdometerAnchorBackfillService } from './tires/tire-odometer-anchor-
 import { TireTripUsageBackfillService } from './tires/tire-trip-usage-backfill.service';
 import { TireTripUsageLedgerReconciliationService } from './tires/tire-trip-usage-ledger-reconciliation.service';
 import { TireTripUsageService } from './tires/tire-trip-usage.service';
+import { TirePredictionValidationService } from './tires/tire-prediction-validation.service';
+import { TireHealthReplayService } from './tires/tire-health-replay.service';
 import { ServiceEventsService } from './service-events/service-events.service';
 import { EnrichmentJobsService } from './enrichment-jobs/enrichment-jobs.service';
 import { DtcService } from './dtc/dtc.service';
@@ -113,6 +115,8 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     TiresService,
     TireWearModelService,
     TireHealthService,
+    TirePredictionValidationService,
+    TireHealthReplayService,
     TireLifecycleService,
     TireIdentityService,
     BrakesService,
@@ -194,6 +198,8 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     TiresService,
     TireWearModelService,
     TireHealthService,
+    TirePredictionValidationService,
+    TireHealthReplayService,
     TireLifecycleService,
     TireIdentityService,
     BrakesService,

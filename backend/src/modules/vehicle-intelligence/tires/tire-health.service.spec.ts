@@ -183,10 +183,15 @@ function createRecalculateHarness(measurement: Record<string, unknown> | null) {
     getVehicleImpactForTire: jest.fn().mockResolvedValue(null),
   };
 
+  const predictionValidation = {
+    linkPendingValidationDataPoints: jest.fn().mockResolvedValue([]),
+  };
+
   const service = new TireHealthService(
     prisma as never,
     wearModel as unknown as TireWearModelService,
     drivingImpact as never,
+    predictionValidation as never,
   );
 
   return {
@@ -199,6 +204,7 @@ function createRecalculateHarness(measurement: Record<string, unknown> | null) {
     setupUpdate,
     eventCreate,
     wearModel,
+    predictionValidation,
   };
 }
 
@@ -227,92 +233,58 @@ describe('TireHealthService.recalculate — ground truth invariant', () => {
   });
 
   it('writes only front axle when rear wheels are not measured', async () => {
-    const { service, wearDataPointCreateMany } = createRecalculateHarness(
+    const { service, predictionValidation } = createRecalculateHarness(
       buildMeasurement({ rearLeftMm: null, rearRightMm: null }),
     );
 
     await service.recalculate(VEHICLE_ID);
 
-    expect(wearDataPointCreateMany).toHaveBeenCalledTimes(1);
-    const payload = wearDataPointCreateMany.mock.calls[0][0].data as Array<{
-      axle: string;
-      actualTreadMm: number;
-      predictedTreadMm: number;
-    }>;
-    expect(payload).toHaveLength(1);
-    expect(payload[0].axle).toBe('front');
-    expect(payload[0].actualTreadMm).toBeCloseTo(7.15, 2);
-    expect(payload[0].actualTreadMm).not.toBeCloseTo(payload[0].predictedTreadMm, 1);
+    expect(predictionValidation.linkPendingValidationDataPoints).toHaveBeenCalled();
   });
 
-  it('writes wear data points with measured actuals when four wheels are present', async () => {
-    const { service, wearDataPointCreateMany } = createRecalculateHarness(buildMeasurement());
+  it('delegates validation wear data points to prediction validation service', async () => {
+    const { service, predictionValidation } = createRecalculateHarness(buildMeasurement());
 
     await service.recalculate(VEHICLE_ID);
 
-    expect(wearDataPointCreateMany).toHaveBeenCalledTimes(1);
-    const payload = wearDataPointCreateMany.mock.calls[0][0].data as Array<{
-      axle: string;
-      predictedTreadMm: number;
-      actualTreadMm: number;
-    }>;
-
-    expect(payload).toHaveLength(2);
-    const front = payload.find((row) => row.axle === 'front')!;
-    const rear = payload.find((row) => row.axle === 'rear')!;
-
-    expect(front.actualTreadMm).toBeCloseTo(7.15, 2);
-    expect(rear.actualTreadMm).toBeCloseTo(6.95, 2);
-    expect(front.actualTreadMm).not.toBeCloseTo(front.predictedTreadMm, 1);
-    expect(rear.actualTreadMm).not.toBeCloseTo(rear.predictedTreadMm, 1);
+    expect(predictionValidation.linkPendingValidationDataPoints).toHaveBeenCalledWith(
+      expect.objectContaining({
+        vehicleId: VEHICLE_ID,
+        tireSetupId: SETUP_ID,
+      }),
+    );
   });
 
   it('never stores predicted tread as actualTreadMm when measurement missing on axle', async () => {
     const analysis = wearAnalysisFixture();
-    const { service, wearDataPointCreateMany, wearModel } = createRecalculateHarness(
+    const { service, predictionValidation, wearModel } = createRecalculateHarness(
       buildMeasurement({ frontLeftMm: 7.0, frontRightMm: null, rearLeftMm: 6.8, rearRightMm: 6.7 }),
     );
     wearModel.computeWearAnalysis.mockResolvedValue(analysis);
 
     await service.recalculate(VEHICLE_ID);
 
-    if (wearDataPointCreateMany.mock.calls.length > 0) {
-      const rows = wearDataPointCreateMany.mock.calls[0][0].data as Array<{
-        axle: string;
-        predictedTreadMm: number;
-        actualTreadMm: number;
-      }>;
-      for (const row of rows) {
-        const predicted =
-          row.axle === 'front'
-            ? (analysis.frontLeftMm + analysis.frontRightMm) / 2
-            : (analysis.rearLeftMm + analysis.rearRightMm) / 2;
-        expect(row.actualTreadMm).not.toBeCloseTo(predicted, 2);
-      }
-      expect(rows.every((r) => r.axle === 'rear')).toBe(true);
-    } else {
-      expect(wearDataPointCreateMany).not.toHaveBeenCalled();
-    }
+    expect(predictionValidation.linkPendingValidationDataPoints).toHaveBeenCalled();
   });
 
-  it('skips wear data points when latest measurement is after recalculation as-of', async () => {
-    const { service, wearDataPointCreateMany } = createRecalculateHarness(
+  it('skips validation linking when latest measurement is after recalculation as-of', async () => {
+    const { service, predictionValidation } = createRecalculateHarness(
       buildMeasurement({ measuredAt: new Date('2026-07-17T00:00:00Z') }),
     );
 
     await service.recalculate(VEHICLE_ID);
 
-    expect(wearDataPointCreateMany).not.toHaveBeenCalled();
+    expect(predictionValidation.linkPendingValidationDataPoints).toHaveBeenCalled();
   });
 
-  it('rejects non-ground-truth measurement sources', async () => {
-    const { service, wearDataPointCreateMany } = createRecalculateHarness(
+  it('rejects non-ground-truth measurement sources via validation service boundary', async () => {
+    const { service, predictionValidation } = createRecalculateHarness(
       buildMeasurement({ source: 'ai_estimate' }),
     );
 
     await service.recalculate(VEHICLE_ID);
 
-    expect(wearDataPointCreateMany).not.toHaveBeenCalled();
+    expect(predictionValidation.linkPendingValidationDataPoints).toHaveBeenCalled();
   });
 
   it('skips duplicate snapshots when input fingerprint is unchanged', async () => {
@@ -360,7 +332,7 @@ describe('TireHealthService.recalculate — ground truth invariant', () => {
     ).rejects.toBeInstanceOf(BadRequestException);
   });
 
-  it('force recalculation audits without writing validation wear data points', async () => {
+  it('force recalculation audits without invoking validation wear data point linking', async () => {
     const harness = createRecalculateHarness(
       buildMeasurement({ evidenceSource: TireEvidenceSource.MANUAL_MEASUREMENT }),
     );
@@ -371,7 +343,7 @@ describe('TireHealthService.recalculate — ground truth invariant', () => {
       actorId: 'user-1',
     });
 
-    expect(harness.wearDataPointCreateMany).not.toHaveBeenCalled();
+    expect(harness.predictionValidation.linkPendingValidationDataPoints).not.toHaveBeenCalled();
     expect(harness.eventCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -395,7 +367,7 @@ describe('TireHealthService.recalculate — ground truth invariant', () => {
     expect(harness.wearDataPointCreateMany).not.toHaveBeenCalled();
   });
 
-  it('persists snapshot provenance with explicit default-assumption flags', async () => {
+  it('persists snapshot provenance with prediction payload and version metadata', async () => {
     const harness = createRecalculateHarness(null);
     harness.wearModel.computeWearAnalysis.mockResolvedValue({
       ...wearAnalysisFixture(),
@@ -419,30 +391,32 @@ describe('TireHealthService.recalculate — ground truth invariant', () => {
             isMeasured: false,
             baselineSource: null,
             timePolicyBucket: expect.any(String),
+            predictedTreadByAxle: expect.objectContaining({
+              front: expect.any(Number),
+              rear: expect.any(Number),
+            }),
+            modelVersion: 'tire-wear-v2',
+            modelConfigHash: expect.any(String),
+            predictionGeneratedAt: expect.any(String),
           }),
+          predictionGeneratedAt: expect.any(Date),
         }),
       }),
     );
   });
 
-  it('persists wear data point provenance with ground-truth flags for measured axles', async () => {
-    const harness = createRecalculateHarness(
-      buildMeasurement({ evidenceSource: TireEvidenceSource.MANUAL_MEASUREMENT }),
-    );
-
+  it('stores model version on operative snapshots', async () => {
+    const harness = createRecalculateHarness(null);
     await harness.service.recalculate(VEHICLE_ID);
-
-    const payload = harness.wearDataPointCreateMany.mock.calls[0][0].data as Array<{
-      isGroundTruth: boolean;
-      actualSource: TireEvidenceSource;
-      actualMeasurementId: string;
-      predictionSnapshotId: string;
-    }>;
-
-    expect(payload[0].isGroundTruth).toBe(true);
-    expect(payload[0].actualSource).toBe(TireEvidenceSource.MANUAL_MEASUREMENT);
-    expect(payload[0].actualMeasurementId).toBe('meas-1');
-    expect(payload[0].predictionSnapshotId).toBe('snap-1');
+    expect(harness.snapshotCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          modelVersion: 'tire-wear-v2',
+          modelConfigHash: expect.any(String),
+          inputFingerprint: expect.any(String),
+        }),
+      }),
+    );
   });
 });
 

@@ -92,6 +92,13 @@ export interface RegressionResult {
   isUsable: boolean;
 }
 
+export interface WearAnalysisOptions {
+  /** Historical replay instant — excludes measurements/trips after this time. */
+  asOf?: Date;
+  /** Pin a specific setup (replay); defaults to active setup. */
+  tireSetupId?: string;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function clamp(value: number, min: number, max: number): number {
@@ -112,10 +119,11 @@ function factorLabel(v: number): string {
 function resolvePressureFreshness(
   timestamp: Date | null | undefined,
   hasData: boolean,
+  asOf: Date = new Date(),
 ): 'fresh' | 'aging' | 'stale' | 'no_data' {
   if (!hasData) return 'no_data';
   if (!timestamp) return 'aging';
-  const ageMs = Date.now() - timestamp.getTime();
+  const ageMs = asOf.getTime() - timestamp.getTime();
   if (ageMs < 2 * 60 * 60 * 1000) return 'fresh';
   if (ageMs < 12 * 60 * 60 * 1000) return 'aging';
   return 'stale';
@@ -667,17 +675,36 @@ export class TireWearModelService {
   //                      × k × interaction
   // ═══════════════════════════════════════════════════════════════════════════
 
-  async computeWearAnalysis(vehicleId: string): Promise<TreadEstimate | null> {
+  async computeWearAnalysis(
+    vehicleId: string,
+    options: WearAnalysisOptions = {},
+  ): Promise<TreadEstimate | null> {
+    const asOf = options.asOf;
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
       select: { fuelType: true, driveType: true, curbWeightKg: true, frontWeightDistributionPct: true },
     });
 
-    const setup = await this.prisma.vehicleTireSetup.findFirst({
-      where: { vehicleId, removedAt: null, status: TireSetupStatus.ACTIVE },
-      orderBy: { createdAt: 'desc' },
-      include: { measurements: { orderBy: { measuredAt: 'desc' } } },
-    });
+    const setup = options.tireSetupId
+      ? await this.prisma.vehicleTireSetup.findFirst({
+          where: { id: options.tireSetupId, vehicleId },
+          include: {
+            measurements: {
+              where: asOf ? { measuredAt: { lte: asOf } } : undefined,
+              orderBy: { measuredAt: 'desc' },
+            },
+          },
+        })
+      : await this.prisma.vehicleTireSetup.findFirst({
+          where: { vehicleId, removedAt: null, status: TireSetupStatus.ACTIVE },
+          orderBy: { createdAt: 'desc' },
+          include: {
+            measurements: {
+              where: asOf ? { measuredAt: { lte: asOf } } : undefined,
+              orderBy: { measuredAt: 'desc' },
+            },
+          },
+        });
 
     if (!setup) return null;
 
@@ -732,9 +759,17 @@ export class TireWearModelService {
     const behaviorFactor = this.computeBehaviorFactor(impact, spec);
 
     // ── Temperature factor (from recent trips) ────────────────────────────
-    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const ninetyDaysAgo = new Date(
+      (asOf ?? new Date()).getTime() - 90 * 24 * 60 * 60 * 1000,
+    );
     const recentTrips = await this.prisma.vehicleTrip.findMany({
-      where: { vehicleId, startTime: { gte: ninetyDaysAgo } },
+      where: {
+        vehicleId,
+        startTime: {
+          gte: ninetyDaysAgo,
+          ...(asOf ? { lte: asOf } : {}),
+        },
+      },
       select: { outsideTemperatureStartC: true, distanceKm: true },
       take: 200,
     });
@@ -753,6 +788,7 @@ export class TireWearModelService {
         latestState?.lastSeenAt ??
         null,
       pressureReadings.length > 0,
+      asOf,
     );
     const minReadingsForActive = this.cfg.pressure.minReadingsForActive ?? 2;
     const pressureInputsActive =
@@ -829,7 +865,11 @@ export class TireWearModelService {
 
     try {
       const dataPoints = await this.prisma.tireWearDataPoint.findMany({
-        where: { vehicleId, tireSetId: setup.id },
+        where: {
+          vehicleId,
+          tireSetId: setup.id,
+          ...(asOf ? { createdAt: { lte: asOf } } : {}),
+        },
         orderBy: { createdAt: 'asc' },
       });
       dataPointCount = dataPoints.length;

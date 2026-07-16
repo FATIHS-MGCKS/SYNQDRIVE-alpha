@@ -2,14 +2,22 @@ import { createHash } from 'crypto';
 import { TireEvidenceSource } from '@prisma/client';
 import { TIRE_HEALTH_CONFIG, parseAiTireSpec } from './tire-health.config';
 import {
+  TIRE_WEAR_MODEL_VERSION,
+  TIRE_RECALCULATION_MODEL_VERSION,
+  computeTireWearModelConfigHash,
+} from './tire-wear-model-version';
+import {
   classifySeasonStatus,
   classifyTireAgeYears,
   dotAgeYears,
 } from './tire-status';
 import type { VehicleImpactForTire } from '../driving-impact/driving-impact.service';
 
-/** Canonical wear-model version stamped on snapshots. */
-export const TIRE_RECALCULATION_MODEL_VERSION = 'tire-wear-v2';
+export {
+  TIRE_WEAR_MODEL_VERSION,
+  TIRE_RECALCULATION_MODEL_VERSION,
+  computeTireWearModelConfigHash,
+};
 
 export type PressureFreshnessBucket = 'fresh' | 'aging' | 'stale' | 'no_data';
 
@@ -160,7 +168,7 @@ function canonicalJson(value: unknown): string {
 export function computeTireHealthConfigHash(
   config: typeof TIRE_HEALTH_CONFIG = TIRE_HEALTH_CONFIG,
 ): string {
-  return createHash('sha256').update(canonicalJson(config)).digest('hex');
+  return computeTireWearModelConfigHash(config);
 }
 
 /** Pressure freshness bucket — excludes raw provider timestamps from the hash. */

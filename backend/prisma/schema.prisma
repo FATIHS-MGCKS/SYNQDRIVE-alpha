@@ -2408,6 +2408,7 @@ model TireHealthSnapshot {
   modelVersion         String?             @map("model_version")
   modelConfigHash      String?             @map("model_config_hash")
   inputFingerprint     String?             @map("input_fingerprint")
+  predictionGeneratedAt DateTime?          @map("prediction_generated_at")
   baselineSource       TireEvidenceSource? @map("baseline_source")
   evidenceSummary      Json?               @map("evidence_summary")
 
