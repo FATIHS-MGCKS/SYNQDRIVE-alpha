@@ -765,6 +765,17 @@ flowchart TB
 | Duplikate | Kein Queue-Dedup | `jobId = battery-v2:{idempotencyKey}` |
 | Consumer | — | Brücke → bestehende Ingestion-Services (übergang) |
 
+### 11.3 Idempotenz & Concurrency (Prompt 23/78)
+
+| Attribut | Regel |
+|----------|-------|
+| **Job-Identitäten** | Observation: Fahrzeug+Signal+Provider+observedAt+Wert; Rest: Fahrzeug+Restfenster+Zieltyp; Start Proxy: Trip-ID+Modellversion; Assessment: Fahrzeug+Typ+Inputversion; Publication: Assessment-ID+Publicationversion; HV Session: Segment-Fingerprint; HV Capacity: Session-ID+Methode+Modellversion |
+| **BullMQ** | Deterministische `jobId` aus `idempotencyKey` (SHA-256-Hash bei Länge >128) |
+| **DB** | Prisma-Unique-Constraints (`vehicleId_idempotencyKey`, tenant-scoped keys) + `createOrFindByUnique` bei P2002 |
+| **Concurrency** | Redis-Fahrzeugsperre pro Scope (`ingest` / `assess` / `publish` / `hv`) — kein Lost Update |
+| **Worker** | `BatteryV2IdempotentExecutionService`: Pre-Check → Lock → Handler; Crash-Retry idempotent |
+| **Start Proxy** | `start-proxy:{modelVersion}:trip:{tripId}` |
+
 ---
 
 ## 12. Referenzen

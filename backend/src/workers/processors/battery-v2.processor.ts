@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Job } from 'bullmq';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
+import { BatteryV2IdempotentExecutionService } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-idempotent-execution.service';
 import { BatteryV2JobHandlerRegistry } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-job-handler.registry';
 import {
   isBatteryV2JobType,
@@ -18,7 +19,10 @@ import type { BatteryV2JobPayload, BatteryV2JobType } from '@modules/vehicle-int
 export class BatteryV2Processor extends WorkerHost {
   private readonly logger = new Logger(BatteryV2Processor.name);
 
-  constructor(private readonly handlerRegistry: BatteryV2JobHandlerRegistry) {
+  constructor(
+    private readonly handlerRegistry: BatteryV2JobHandlerRegistry,
+    private readonly idempotentExecution: BatteryV2IdempotentExecutionService,
+  ) {
     super();
   }
 
@@ -32,7 +36,16 @@ export class BatteryV2Processor extends WorkerHost {
     const attempt = job.attemptsMade + 1;
 
     try {
-      await this.handlerRegistry.dispatch(jobType as BatteryV2JobType, payload);
+      const result = await this.idempotentExecution.execute({
+        jobType: jobType as BatteryV2JobType,
+        payload,
+        handler: () => this.handlerRegistry.dispatch(jobType as BatteryV2JobType, payload),
+      });
+      if (result.skipped) {
+        this.logger.debug(
+          `Battery V2 job skipped (already completed): ${jobType} key=${payload.idempotencyKey}`,
+        );
+      }
     } catch (err) {
       const message = (err as Error).message ?? String(err);
       if (attempt < (job.opts.attempts ?? 1)) {

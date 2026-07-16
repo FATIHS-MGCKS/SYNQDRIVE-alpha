@@ -53,6 +53,7 @@ export interface BatteryObservationClassifyPayload extends BatteryV2JobPayloadBa
 export interface BatteryRestTargetEvaluatePayload extends BatteryV2JobPayloadBase {
   /** Optional rest-window anchor (ISO) — classification input, not PII. */
   restWindowStartedAt?: string | null;
+  restTargetType?: 'REST_60M' | 'REST_6H' | 'REST_TARGET' | null;
 }
 
 export interface BatteryStartProxyExtractPayload extends BatteryV2JobPayloadBase {
@@ -60,15 +61,30 @@ export interface BatteryStartProxyExtractPayload extends BatteryV2JobPayloadBase
   tripStartedAt: string;
 }
 
-export type BatteryAssessmentRecomputePayload = BatteryV2JobPayloadBase;
+export interface BatteryAssessmentRecomputePayload extends BatteryV2JobPayloadBase {
+  assessmentType?: string | null;
+  inputVersion?: string | number | null;
+}
 
-export type BatteryPublicationUpdatePayload = BatteryV2JobPayloadBase;
+export interface BatteryPublicationUpdatePayload extends BatteryV2JobPayloadBase {
+  assessmentId?: string | null;
+  publicationVersion?: string | number | null;
+}
 
-export type HvCapabilityRefreshPayload = BatteryV2JobPayloadBase;
+export interface HvCapabilityRefreshPayload extends BatteryV2JobPayloadBase {
+  signalScope?: string | null;
+  providerSource?: string | null;
+}
 
-export type HvRechargeSessionReconcilePayload = BatteryV2JobPayloadBase;
+export interface HvRechargeSessionReconcilePayload extends BatteryV2JobPayloadBase {
+  segmentFingerprint?: string | null;
+}
 
-export type HvCapacityShadowRecomputePayload = BatteryV2JobPayloadBase;
+export interface HvCapacityShadowRecomputePayload extends BatteryV2JobPayloadBase {
+  chargeSessionId?: string | null;
+  method?: string | null;
+  capacityModelVersion?: string | number | null;
+}
 
 export type BatteryV2JobPayloadByType = {
   BATTERY_OBSERVATION_CLASSIFY: BatteryObservationClassifyPayload;

@@ -13,6 +13,7 @@ import {
   buildBatteryV2AttemptContext,
   validateBatteryV2JobPayload,
 } from './battery-v2-job.validation';
+import { validateBatteryV2JobIdempotencyKey } from './battery-v2-job-idempotency.validation';
 import { buildBatteryV2JobId, buildBatteryV2JobOptions } from './battery-v2-job-queue.util';
 import { getBatteryV2JobRetryPolicy } from './battery-v2-job.retry-policy';
 
@@ -58,6 +59,7 @@ export class BatteryV2JobProducerService {
         maxAttempts: policy.attempts,
       }),
     });
+    validateBatteryV2JobIdempotencyKey(jobType, payload.idempotencyKey);
 
     const jobId = buildBatteryV2JobId(payload.idempotencyKey);
     return this.addIdempotent(jobType, payload, jobId, {

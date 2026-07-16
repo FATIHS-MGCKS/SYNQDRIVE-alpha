@@ -312,7 +312,22 @@ export function validateBatteryV2JobPayload<T extends BatteryV2JobType>(
           'restWindowStartedAt',
         );
       }
-      return { ...base, restWindowStartedAt: restWindowStartedAt ?? null } as BatteryV2JobPayload<T>;
+      let restTargetType: 'REST_60M' | 'REST_6H' | 'REST_TARGET' | null | undefined;
+      if (data.restTargetType !== undefined && data.restTargetType !== null) {
+        const rt = data.restTargetType;
+        if (rt !== 'REST_60M' && rt !== 'REST_6H' && rt !== 'REST_TARGET') {
+          throw new BatteryV2JobValidationError(
+            'restTargetType must be REST_60M, REST_6H, or REST_TARGET',
+            'restTargetType',
+          );
+        }
+        restTargetType = rt;
+      }
+      return {
+        ...base,
+        restWindowStartedAt: restWindowStartedAt ?? null,
+        restTargetType: restTargetType ?? null,
+      } as BatteryV2JobPayload<T>;
     }
     case 'BATTERY_START_PROXY_EXTRACT': {
       if (!isEntityId(data.tripId)) {

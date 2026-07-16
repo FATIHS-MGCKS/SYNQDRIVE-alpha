@@ -4,6 +4,8 @@ import {
   isLegacyCrankAssessmentEnabled,
   isStartWindowCollectionEnabled,
 } from '../../../../config/battery-health-v2.config';
+import { BATTERY_V2_JOB_MODEL_VERSION_DEFAULT } from './battery-v2-job.types';
+import { buildStartProxyJobIdempotencyKey } from './battery-v2-job-idempotency.policy';
 import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
 
 @Injectable()
@@ -31,7 +33,10 @@ export class BatteryV2TripStartProducer {
         vehicleId: input.vehicleId,
         tripId: input.tripId,
         tripStartedAt: input.tripStartedAt.toISOString(),
-        idempotencyKey: `start-proxy:trip:${input.tripId}`,
+        idempotencyKey: buildStartProxyJobIdempotencyKey({
+          tripId: input.tripId,
+          modelVersion: BATTERY_V2_JOB_MODEL_VERSION_DEFAULT,
+        }),
         sourceEntityId: input.tripId,
       },
       { delayMs: getBatteryV2StartProxyDelayMs() },
