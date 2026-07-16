@@ -259,6 +259,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Vehicle / Booking / Handover Ops Diagnostic (V4.9.501)', icon: FileText,
+    endpoint: 'Keine HTTP-Route. Read-only Ops-CLI: `backend/scripts/ops/audit-vehicle-booking-handover-data.ts` (Nest ApplicationContext + `VehicleBookingHandoverDiagnosticService`).',
+    service: '**Service:** `backend/src/modules/vehicles/diagnostic/*` — 12 Checks über Raw-`Vehicle.status`, Booking-Lifecycle, `BookingHandoverProtocol`, Reservierungsfenster (`buildBookingContextMap`-Semantik vs kanonischer Pickup-Tag), `deriveFleetStatusContext`-Drift (via `FLEET_STATUS_DERIVATION` → `VehiclesService`), Cross-Org-Links, `startDate`/`endDate`-Inkonsistenzen, `Organization.timezone`. **Safety:** `assertSafeVbhDiagnosticDatabaseTarget` blockiert Prod/Remote-DBs (wie Task-Diagnostic). **Output:** JSON + Markdown/Console, `byOrganization`, maskierte Sample-IDs, optional `--include-findings`.',
+    dataSource: 'CLI-Filter: `--organization-id`, `--vehicle-id`, `--license-plate`, `--limit`, `--output`, `--format`. Tests: `vehicle-booking-handover-diagnostic.service.spec.ts`, `vehicle-booking-handover-diagnostic.util.spec.ts`. Keine Mutation — Repair bewusst nicht Teil dieses Prompts.' },
   { name: 'Vehicle Health Segmented Indicators (V4.9.26)', icon: Activity,
     endpoint: 'Keine neuen Endpoints. Konsumiert unverändert bestehende TireHealthSummary, BrakeHealthSummary, BatteryHealthSummary und RentalHealthModule-Daten.',
     service: '`frontend/src/rental/components/health/SegmentedHealthIndicator.tsx` ist die gemeinsame 3-Balken-UI für Health-Module. `health-segment-display.ts` übersetzt vorhandene States/Conditions/Labels rein präsentational in 3/2/1/0 Balken; Percent wird nur als visueller Fallback genutzt, wenn kein State vorhanden ist.',
