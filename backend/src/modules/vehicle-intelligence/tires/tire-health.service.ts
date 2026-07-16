@@ -61,6 +61,7 @@ import {
   resolvePressureFreshnessBucket,
   type TireRecalculationInputContext,
 } from './tire-recalculation-fingerprint';
+import { resolveCanonicalVehicleTirePressuresBar } from './tire-pressure-canonical.util';
 
 // ── Public interfaces ─────────────────────────────────────────────────────────
 
@@ -708,6 +709,7 @@ export class TireHealthService {
           tirePressureRl: true,
           tirePressureRr: true,
           speedKmh: true,
+          providerSource: true,
           sourceTimestamp: true,
           providerFetchedAt: true,
           lastSeenAt: true,
@@ -761,11 +763,24 @@ export class TireHealthService {
       this.drivingImpactService.getVehicleImpactForTire(vehicleId),
     ]);
 
+    const canonicalPressures = resolveCanonicalVehicleTirePressuresBar({
+      providerSource: latestState?.providerSource,
+      tirePressureFl: latestState?.tirePressureFl,
+      tirePressureFr: latestState?.tirePressureFr,
+      tirePressureRl: latestState?.tirePressureRl,
+      tirePressureRr: latestState?.tirePressureRr,
+      sourceTimestamp:
+        latestState?.sourceTimestamp ??
+        latestState?.providerFetchedAt ??
+        latestState?.lastSeenAt ??
+        null,
+    });
+
     const pressureValues = [
-      latestState?.tirePressureFl,
-      latestState?.tirePressureFr,
-      latestState?.tirePressureRl,
-      latestState?.tirePressureRr,
+      canonicalPressures.tirePressureFl,
+      canonicalPressures.tirePressureFr,
+      canonicalPressures.tirePressureRl,
+      canonicalPressures.tirePressureRr,
     ].filter((v): v is number => v != null);
 
     return {
@@ -848,10 +863,10 @@ export class TireHealthService {
       })),
       latestState: {
         odometerKm: latestState?.odometerKm ?? null,
-        tirePressureFl: latestState?.tirePressureFl ?? null,
-        tirePressureFr: latestState?.tirePressureFr ?? null,
-        tirePressureRl: latestState?.tirePressureRl ?? null,
-        tirePressureRr: latestState?.tirePressureRr ?? null,
+        tirePressureFl: canonicalPressures.tirePressureFl,
+        tirePressureFr: canonicalPressures.tirePressureFr,
+        tirePressureRl: canonicalPressures.tirePressureRl,
+        tirePressureRr: canonicalPressures.tirePressureRr,
         speedKmh: latestState?.speedKmh ?? null,
         pressureFreshness: resolvePressureFreshnessBucket(
           latestState?.sourceTimestamp ??
@@ -959,17 +974,31 @@ export class TireHealthService {
         tirePressureFr: true,
         tirePressureRl: true,
         tirePressureRr: true,
+        providerSource: true,
         sourceTimestamp: true,
         providerFetchedAt: true,
         lastSeenAt: true,
       },
     });
     if (latestState?.odometerKm != null) { dataScore += 12; legacyScore += c.odometerConsistent; }
+    const canonicalPressures = resolveCanonicalVehicleTirePressuresBar({
+      providerSource: latestState?.providerSource,
+      tirePressureFl: latestState?.tirePressureFl,
+      tirePressureFr: latestState?.tirePressureFr,
+      tirePressureRl: latestState?.tirePressureRl,
+      tirePressureRr: latestState?.tirePressureRr,
+      sourceTimestamp:
+        latestState?.sourceTimestamp ??
+        latestState?.providerFetchedAt ??
+        latestState?.lastSeenAt ??
+        null,
+    });
+
     const pressureValues = [
-      latestState?.tirePressureFl,
-      latestState?.tirePressureFr,
-      latestState?.tirePressureRl,
-      latestState?.tirePressureRr,
+      canonicalPressures.tirePressureFl,
+      canonicalPressures.tirePressureFr,
+      canonicalPressures.tirePressureRl,
+      canonicalPressures.tirePressureRr,
     ].filter((v): v is number => v != null);
     const pressureFreshness = this.resolveFreshness(
       latestState?.sourceTimestamp ??
@@ -1665,17 +1694,31 @@ export class TireHealthService {
         tirePressureFr: true,
         tirePressureRl: true,
         tirePressureRr: true,
+        providerSource: true,
         providerFetchedAt: true,
         sourceTimestamp: true,
         lastSeenAt: true,
       },
     });
 
+    const canonicalPressures = resolveCanonicalVehicleTirePressuresBar({
+      providerSource: latestState?.providerSource,
+      tirePressureFl: latestState?.tirePressureFl,
+      tirePressureFr: latestState?.tirePressureFr,
+      tirePressureRl: latestState?.tirePressureRl,
+      tirePressureRr: latestState?.tirePressureRr,
+      sourceTimestamp:
+        latestState?.sourceTimestamp ??
+        latestState?.providerFetchedAt ??
+        latestState?.lastSeenAt ??
+        null,
+    });
+
     const dimoValues = [
-      latestState?.tirePressureFl,
-      latestState?.tirePressureFr,
-      latestState?.tirePressureRl,
-      latestState?.tirePressureRr,
+      canonicalPressures.tirePressureFl,
+      canonicalPressures.tirePressureFr,
+      canonicalPressures.tirePressureRl,
+      canonicalPressures.tirePressureRr,
     ].filter((v): v is number => v != null);
     const dimoFreshness = this.resolveFreshness(
       latestState?.sourceTimestamp ??

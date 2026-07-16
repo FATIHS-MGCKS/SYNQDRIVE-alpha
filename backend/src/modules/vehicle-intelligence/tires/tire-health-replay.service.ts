@@ -14,6 +14,7 @@ import {
   TIRE_WEAR_MODEL_VERSION,
   computeTireWearModelConfigHash,
 } from './tire-wear-model-version';
+import { resolveCanonicalVehicleTirePressuresBar } from './tire-pressure-canonical.util';
 
 export type TireHealthReplayStatus =
   | 'REPRODUCED_FROM_SNAPSHOT'
@@ -274,6 +275,7 @@ export class TireHealthReplayService {
           tirePressureRl: true,
           tirePressureRr: true,
           speedKmh: true,
+          providerSource: true,
           sourceTimestamp: true,
           providerFetchedAt: true,
           lastSeenAt: true,
@@ -337,11 +339,24 @@ export class TireHealthReplayService {
       }),
     ]);
 
+    const canonicalPressures = resolveCanonicalVehicleTirePressuresBar({
+      providerSource: latestState?.providerSource,
+      tirePressureFl: latestState?.tirePressureFl,
+      tirePressureFr: latestState?.tirePressureFr,
+      tirePressureRl: latestState?.tirePressureRl,
+      tirePressureRr: latestState?.tirePressureRr,
+      sourceTimestamp:
+        latestState?.sourceTimestamp ??
+        latestState?.providerFetchedAt ??
+        latestState?.lastSeenAt ??
+        null,
+    });
+
     const pressureValues = [
-      latestState?.tirePressureFl,
-      latestState?.tirePressureFr,
-      latestState?.tirePressureRl,
-      latestState?.tirePressureRr,
+      canonicalPressures.tirePressureFl,
+      canonicalPressures.tirePressureFr,
+      canonicalPressures.tirePressureRl,
+      canonicalPressures.tirePressureRr,
     ].filter((v): v is number => v != null);
 
     return {
@@ -424,10 +439,10 @@ export class TireHealthReplayService {
       })),
       latestState: {
         odometerKm: latestState?.odometerKm ?? null,
-        tirePressureFl: latestState?.tirePressureFl ?? null,
-        tirePressureFr: latestState?.tirePressureFr ?? null,
-        tirePressureRl: latestState?.tirePressureRl ?? null,
-        tirePressureRr: latestState?.tirePressureRr ?? null,
+        tirePressureFl: canonicalPressures.tirePressureFl,
+        tirePressureFr: canonicalPressures.tirePressureFr,
+        tirePressureRl: canonicalPressures.tirePressureRl,
+        tirePressureRr: canonicalPressures.tirePressureRr,
         speedKmh: latestState?.speedKmh ?? null,
         pressureFreshness: resolvePressureFreshnessBucket(
           latestState?.sourceTimestamp ??

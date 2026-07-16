@@ -828,7 +828,96 @@ cd backend && npm test -- tire-trip-usage-backfill
 
 ---
 
-## Prompt 2 — P0-TH-04 Ground-Truth-Leak (2026-07-16)
+## Prompt 16 — DIMO Reifendruck kPa → bar (2026-07-16)
+
+### Root Cause
+
+`DimoSnapshotProcessor.normalizeSnapshot()` schrieb DIMO-Rohwerte (offiziell **kPa**) unverändert in `vehicle_latest_states.tire_pressure_*`. Der Wear-Model-Druckfaktor (`computePressureFactor`, nominal **2.5 bar**) interpretierte diese Werte als bar → z. B. VEHICLE_002 mit 274–301 kPa wirkte wie massive Überdruckung.
+
+**Offizielle Semantik (verifiziert):**
+
+| DIMO-Signal | Rad | Einheit |
+|-------------|-----|---------|
+| `chassisAxleRow1WheelLeftTirePressure` | FL | kPa |
+| `chassisAxleRow1WheelRightTirePressure` | FR | kPa |
+| `chassisAxleRow2WheelLeftTirePressure` | RL | kPa |
+| `chassisAxleRow2WheelRightTirePressure` | RR | kPa |
+
+Quellen: `scripts/audits/audit-tire-health-dimo-signals.ts`, Audit-Report P1-TH-12, `data-analyse-signal-catalog.ts` (intern **bar**).
+
+**High Mobility:** unverändert — Konvertierung bleibt in `high-mobility-mqtt-payload.util.ts` (`normalizeHmTirePressures`) mit expliziter `unit`-Angabe; keine blinden HM-Änderungen in diesem Prompt.
+
+### Geänderte Dateien
+
+| Datei | Änderung |
+|-------|----------|
+| `dimo-tire-pressure.normalizer.ts` | **Neu** — Provider-Grenze: kPa `/100` → bar, Plausibilität, Source-Metadaten |
+| `dimo-tire-pressure.normalizer.spec.ts` | **Neu** — Ingest-/Metadaten-Tests |
+| `tire-pressure-canonical.util.ts` | **Neu** — Read-Compat für Legacy-DIMO-Zeilen (provider-scoped) |
+| `tire-pressure-canonical.util.spec.ts` | **Neu** — Legacy/HM/getrennt, keine Doppelkonvertierung |
+| `dimo-snapshot.processor.ts` | Normalisierung aller 4 Räder; `_synqdrive.tirePressure` in `rawPayloadJson` |
+| `dimo-segments.service.ts` | `fetchTirePressureHistory` normalisiert kPa → bar |
+| `tire-wear-model.service.ts` | Kanonische bar-Werte vor `computePressureFactor` |
+| `tire-health.service.ts` | Recalc-Fingerprint, Confidence, `resolvePressureContext` mit bar |
+| `tire-health-replay.service.ts` | Replay-Kontext mit kanonischen Druckwerten |
+
+### Kanonisches Datenmodell (intern)
+
+Pro Signal / Rad:
+
+- `normalizedValue` — bar (für Wear-Modell und DB-Spalten ab Ingest-Fix)
+- `normalizedUnit` = `BAR`
+- `sourceValue` — Rohwert vom Provider
+- `sourceUnit` = `KPA` (DIMO) bzw. `BAR` (post-fix / HM)
+- `sourceProvider` = `DIMO`
+- `sourceTimestamp`
+
+Implausible Werte (`missing`, `0`, negativ, zu niedrig/hoch) → `normalizedValue = null` → kein Druckfaktor.
+
+### Historische Daten — kein blindes Prod-Backfill
+
+| Aspekt | Entscheidung |
+|--------|--------------|
+| DB-Spalten | Weiterhin `tire_pressure_*` (Float), semantisch **bar** |
+| Legacy DIMO (kPa roh) | Read-Compat: nur wenn `providerSource = DIMO` und Wert in Legacy-kPa-Band (50–650) |
+| Neue Ingests | Speichern bereits normalisierte bar-Werte |
+| Prod-Backfill | **Nicht** in diesem Prompt — separates guarded Script empfohlen |
+
+**Empfohlenes Backfill (späterer Prompt / Ops):**
+
+```sql
+-- Dry-run: Fahrzeuge mit DIMO-Legacy-kPa in bar-Spalten
+SELECT vehicle_id, tire_pressure_fl, tire_pressure_fr, tire_pressure_rl, tire_pressure_rr
+FROM vehicle_latest_states
+WHERE provider_source = 'DIMO'
+  AND (
+    tire_pressure_fl BETWEEN 50 AND 650 OR
+    tire_pressure_fr BETWEEN 50 AND 650 OR
+    tire_pressure_rl BETWEEN 50 AND 650 OR
+    tire_pressure_rr BETWEEN 50 AND 650
+  );
+```
+
+Apply nur nach Review: `UPDATE … SET tire_pressure_* = tire_pressure_* / 100` mit Guard + Audit-Log; bis dahin reicht Read-Compat.
+
+### Tests
+
+- 274 kPa → 2.74 bar; 301 kPa → 3.01 bar
+- fehlend / 0 / negativ / zu hoch → `normalizedValue = null`
+- vier Radpositionen (`normalizeDimoSnapshotTirePressures`)
+- Source-Metadaten (`toSynqDriveTirePressureMeta`)
+- DIMO vs HM getrennt (keine HM-kPa-Heuristik auf Read-Pfad)
+- keine Doppelkonvertierung (post-fix bar + Legacy-Read-Compat)
+
+### Bestätigung Prompt 16
+
+- ✅ DIMO-Druck wird **exakt einmal** an der Provider-Grenze normalisiert
+- ✅ Interne Einheit eindeutig **bar**
+- ✅ Provider-Herkunft in Metadaten / `_synqdrive` nachvollziehbar
+- ✅ Wear-Modell erhält keine kPa-Werte als bar
+- ✅ Keine blinden Produktions-DB-Updates
+
+---
 
 ### Root Cause
 
@@ -895,7 +984,7 @@ cd backend && npm test -- tire
 | Risiko | Severity | Mitigation |
 |--------|----------|------------|
 | Prediction-as-GT aktiviert sobald Odometer gesetzt | P0 | **Mitigiert Prompt 2** — Code schreibt nur echte GT; Prompt 3 dennoch erst nach Review |
-| kPa/bar falsch auf einzigem TPMS-Fahrzeug | P1 | Prompt 9 vor Rental-Gate-Fix |
+| kPa/bar falsch auf einzigem TPMS-Fahrzeug | P1 | **Mitigiert Prompt 16** — Ingest + Read-Compat; DB-Backfill optional später |
 | Backfill `installed_odometer_km` falsch | P1 | Explizites Backfill-Prompt + VPS-Review |
 | ClickHouse weiter offline | P2 | PG als kanonische Trip-Quelle beibehalten |
 | 3 failing Backend-Tests (non-tire) | P2 | Nicht abschwächen; separat fixen wenn CI blockiert |
@@ -910,7 +999,7 @@ Blocker bleiben bis Abnahme Prompt 24:
 1. P0-TH-04 — synthetisches GT
 2. P0-TH-21 — Rental ohne HM
 3. P0-TH-03 — keine Validierung ohne Odometer
-4. P1-TH-12 — Einheitenfehler
+4. ~~P1-TH-12 — Einheitenfehler~~ → **Mitigiert Prompt 16** (DB-Backfill optional)
 5. NOT_ENOUGH_DATA — Backtest n zu klein
 
 ---
@@ -936,7 +1025,8 @@ Blocker bleiben bis Abnahme Prompt 24:
 | Modul | Datei | Tire-Rolle |
 |-------|-------|------------|
 | rental-health | `rental-health.service.ts` | `getSummary` **ohne HM**; `evaluateTires` |
-| dimo | `dimo-snapshot.processor.ts` | Rohdruck → `vehicle_latest_states` |
+| dimo | `dimo-snapshot.processor.ts` | DIMO kPa → bar an Provider-Grenze → `vehicle_latest_states` |
+| dimo | `dimo-tire-pressure.normalizer.ts` | Kanonische Normalisierung + Source-Metadaten |
 | high-mobility | `high-mobility-signal-usage.service.ts` | `getTirePressureSignals` |
 | driving-impact | `driving-impact.service.ts` | `getVehicleImpactForTire` |
 | trips | `vehicle-intelligence.controller.ts` | `enrichTrip` → `updateTireUsageFromTrip` |
@@ -973,6 +1063,7 @@ Blocker bleiben bis Abnahme Prompt 24:
 | 2026-07-16 | 11 | Replay & concurrency safety for tire trip usage ledger | `df9f2ee` |
 | 2026-07-16 | 12 | Historical tire trip usage backfill dry-run audit | `f065a08` |
 | 2026-07-16 | 13 | Controlled ledger backfill + aggregate reconciliation | *(dieser Commit)* |
+| 2026-07-16 | 16 | DIMO tire pressure kPa → bar at provider boundary + read compat | *(dieser Commit)* |
 
 ---
 

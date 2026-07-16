@@ -18,6 +18,7 @@ import {
   ReplacementThresholdSource,
 } from './tire-health.config';
 import { DrivingImpactService, VehicleImpactForTire } from '../driving-impact/driving-impact.service';
+import { resolveCanonicalVehicleTirePressuresBar } from './tire-pressure-canonical.util';
 import { TireSetupStatus, TireEvidenceSource } from '@prisma/client';
 
 // ── Public interfaces ─────────────────────────────────────────────────────────
@@ -715,10 +716,24 @@ export class TireWearModelService {
         tirePressureFl: true, tirePressureFr: true,
         tirePressureRl: true, tirePressureRr: true,
         speedKmh: true,
+        providerSource: true,
         sourceTimestamp: true,
         providerFetchedAt: true,
         lastSeenAt: true,
       },
+    });
+
+    const canonicalPressures = resolveCanonicalVehicleTirePressuresBar({
+      providerSource: latestState?.providerSource,
+      tirePressureFl: latestState?.tirePressureFl,
+      tirePressureFr: latestState?.tirePressureFr,
+      tirePressureRl: latestState?.tirePressureRl,
+      tirePressureRr: latestState?.tirePressureRr,
+      sourceTimestamp:
+        latestState?.sourceTimestamp ??
+        latestState?.providerFetchedAt ??
+        latestState?.lastSeenAt ??
+        null,
     });
 
     // ── AI spec + archetype resolution ──────────────────────────────────────
@@ -777,10 +792,10 @@ export class TireWearModelService {
 
     // ── Pressure factor (staleness + minimum readings aware) ────────────────
     const pressureReadings = [
-      latestState?.tirePressureFl,
-      latestState?.tirePressureFr,
-      latestState?.tirePressureRl,
-      latestState?.tirePressureRr,
+      canonicalPressures.tirePressureFl,
+      canonicalPressures.tirePressureFr,
+      canonicalPressures.tirePressureRl,
+      canonicalPressures.tirePressureRr,
     ].filter((v): v is number => v != null);
     const pressureFreshness = resolvePressureFreshness(
       latestState?.sourceTimestamp ??
@@ -796,14 +811,14 @@ export class TireWearModelService {
       pressureReadings.length >= minReadingsForActive;
     const pressureFactorFront = this.computePressureFactor(
       'front',
-      pressureInputsActive ? (latestState?.tirePressureFl ?? null) : null,
-      pressureInputsActive ? (latestState?.tirePressureFr ?? null) : null,
+      pressureInputsActive ? (canonicalPressures.tirePressureFl ?? null) : null,
+      pressureInputsActive ? (canonicalPressures.tirePressureFr ?? null) : null,
       spec,
     );
     const pressureFactorRear = this.computePressureFactor(
       'rear',
-      pressureInputsActive ? (latestState?.tirePressureRl ?? null) : null,
-      pressureInputsActive ? (latestState?.tirePressureRr ?? null) : null,
+      pressureInputsActive ? (canonicalPressures.tirePressureRl ?? null) : null,
+      pressureInputsActive ? (canonicalPressures.tirePressureRr ?? null) : null,
       spec,
     );
 
