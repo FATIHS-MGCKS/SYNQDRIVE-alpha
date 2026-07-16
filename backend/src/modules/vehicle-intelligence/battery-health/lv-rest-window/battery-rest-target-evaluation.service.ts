@@ -17,13 +17,18 @@ import { BatteryMeasurementService } from '../battery-measurement.service';
 import {
   buildRestMeasurementIdempotencyKey,
   buildRestMissedMeasurementIdempotencyKey,
-  evaluateRestTargetOutcome,
   getRestTargetQualityWindowMs,
   measurementTypeForRestTarget,
   parseRestTargetObservationContext,
   restTargetAt,
   type RestTargetObservationCandidate,
 } from './battery-rest-target-evaluation';
+import {
+  classifyLvRestSessionOutcome,
+  evaluateClassifiedRestTargetOutcome,
+  isLvRestMeasurementEvidenceEligible,
+  isLvRestMeasurementPublicationEligible,
+} from './lv-rest-measurement-quality';
 import {
   LV_REST_TARGET_TYPES,
   type LvRestTargetType,
@@ -138,13 +143,20 @@ export class BatteryRestTargetEvaluationService {
     restTargetType: Extract<LvRestTargetType, 'REST_60M' | 'REST_6H'>;
     now?: Date;
   }): Promise<
-    | { ok: true; measurementId: string; sourceObservationId: string }
+    | {
+        ok: true;
+        measurementId: string;
+        sourceObservationId: string;
+        quality: BatteryMeasurementQuality;
+        evidenceEligible: boolean;
+      }
     | {
         ok: false;
         reason: string;
         retryable: boolean;
         missed: boolean;
         measurementId?: string;
+        quality?: BatteryMeasurementQuality;
       }
   > {
     const policyProfile = buildLvRestWindowPolicyContext(
@@ -156,11 +168,31 @@ export class BatteryRestTargetEvaluationService {
     const measurementType = measurementTypeForRestTarget(input.restTargetType);
 
     if (!isMeasurementAllowedForPolicy(resolvedPolicy, measurementType)) {
+      const unsupported = classifyLvRestSessionOutcome({ unsupportedProfile: true });
+      const measurement = await this.persistStatusMeasurement({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        session: input.session,
+        restTargetType: input.restTargetType,
+        targetAt: restTargetAt(
+          input.session.startedAt,
+          input.restTargetType,
+          getBatteryRest60mDelayMs(),
+          getBatteryRest6hDelayMs(),
+        ),
+        quality: unsupported.quality,
+        reasonCode: unsupported.reasonCode,
+        reasonLabel: unsupported.reasonLabel,
+        driveProfile: resolvedPolicy.driveProfile,
+        chemistry: resolvedPolicy.chemistry,
+      });
       return {
         ok: false,
-        reason: 'rest_target_not_supported_for_profile',
+        reason: unsupported.reasonCode,
         retryable: false,
         missed: false,
+        measurementId: measurement.id,
+        quality: unsupported.quality,
       };
     }
 
@@ -200,7 +232,7 @@ export class BatteryRestTargetEvaluationService {
       restRequiresEngineOff: policyProfile.restRequiresEngineOff,
     };
 
-    const outcome = evaluateRestTargetOutcome({
+    const outcome = evaluateClassifiedRestTargetOutcome({
       candidates,
       policy,
       constraints: {
@@ -213,15 +245,16 @@ export class BatteryRestTargetEvaluationService {
 
     if (outcome.ok) {
       const selected = outcome.selected;
+      const includeNumeric = outcome.quality !== BatteryMeasurementQuality.MISSED;
       const measurement = await this.measurements.create({
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
         sessionId: input.session.id,
         type: measurementType,
-        quality: BatteryMeasurementQuality.VALID,
+        quality: outcome.quality,
         observedAt: selected.observedAt,
-        numericValue: selected.numericValue,
-        unit: 'V',
+        numericValue: includeNumeric ? selected.numericValue : null,
+        unit: includeNumeric ? 'V' : null,
         providerTimestamp: selected.providerTimestamp,
         providerSource: 'DIMO',
         signalName: 'lowVoltageBatteryCurrentVoltage',
@@ -236,6 +269,10 @@ export class BatteryRestTargetEvaluationService {
           restTargetType: input.restTargetType,
           targetAt: targetAt.toISOString(),
           qualityWindowMs,
+          qualityReasonCode: outcome.reasonCode,
+          qualityReasonLabel: outcome.reasonLabel,
+          evidenceEligible: outcome.evidenceEligible,
+          publicationEligible: isLvRestMeasurementPublicationEligible(),
           distanceToTargetMs: Math.abs(
             selected.observedAt.getTime() - targetAt.getTime(),
           ),
@@ -246,6 +283,8 @@ export class BatteryRestTargetEvaluationService {
           restTargetType: input.restTargetType,
           targetAt: targetAt.toISOString(),
           restWindowStartedAt: input.session.startedAt.toISOString(),
+          qualityReasonCode: outcome.reasonCode,
+          qualityReasonLabel: outcome.reasonLabel,
           sourceObservationContext: selected.context ?? {},
           tripStartsAfterAnchor: tripStartsAfterAnchor.map((d) => d.toISOString()),
         },
@@ -255,6 +294,8 @@ export class BatteryRestTargetEvaluationService {
         ok: true,
         measurementId: measurement.id,
         sourceObservationId: selected.measurementId,
+        quality: outcome.quality,
+        evidenceEligible: outcome.evidenceEligible,
       };
     }
 
@@ -267,7 +308,8 @@ export class BatteryRestTargetEvaluationService {
         targetAt,
         qualityWindowMs,
         retryGraceMs,
-        reason: outcome.reason,
+        reasonCode: outcome.reasonCode ?? 'missed_no_valid_observation',
+        reasonLabel: outcome.reasonLabel ?? 'Keine gültige Ruhemessung im Zielzeitfenster',
         driveProfile: resolvedPolicy.driveProfile,
         chemistry: resolvedPolicy.chemistry,
         candidateCount: candidates.length,
@@ -279,6 +321,7 @@ export class BatteryRestTargetEvaluationService {
         retryable: false,
         missed: true,
         measurementId: missed.id,
+        quality: BatteryMeasurementQuality.MISSED,
       };
     }
 
@@ -287,7 +330,52 @@ export class BatteryRestTargetEvaluationService {
       reason: outcome.reason,
       retryable: outcome.retryable,
       missed: false,
+      quality: outcome.sessionQuality,
     };
+  }
+
+  private async persistStatusMeasurement(input: {
+    organizationId: string;
+    vehicleId: string;
+    session: BatteryMeasurementSession;
+    restTargetType: Extract<LvRestTargetType, 'REST_60M' | 'REST_6H'>;
+    targetAt: Date;
+    quality: BatteryMeasurementQuality;
+    reasonCode: string;
+    reasonLabel: string;
+    driveProfile: string;
+    chemistry: string;
+  }) {
+    return this.measurements.create({
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      sessionId: input.session.id,
+      type: measurementTypeForRestTarget(input.restTargetType),
+      quality: input.quality,
+      observedAt: input.targetAt,
+      idempotencyKey: buildRestMissedMeasurementIdempotencyKey({
+        sessionId: input.session.id,
+        restTargetType: input.restTargetType,
+      }),
+      provenance: {
+        selectionMethod: 'historical_provider_observation',
+        restTargetType: input.restTargetType,
+        targetAt: input.targetAt.toISOString(),
+        qualityReasonCode: input.reasonCode,
+        qualityReasonLabel: input.reasonLabel,
+        evidenceEligible: isLvRestMeasurementEvidenceEligible(input.quality),
+        publicationEligible: isLvRestMeasurementPublicationEligible(),
+        driveProfile: input.driveProfile,
+        chemistry: input.chemistry,
+      },
+      context: {
+        restTargetType: input.restTargetType,
+        targetAt: input.targetAt.toISOString(),
+        restWindowStartedAt: input.session.startedAt.toISOString(),
+        qualityReasonCode: input.reasonCode,
+        qualityReasonLabel: input.reasonLabel,
+      },
+    });
   }
 
   private async persistMissedMeasurement(input: {
@@ -298,7 +386,8 @@ export class BatteryRestTargetEvaluationService {
     targetAt: Date;
     qualityWindowMs: number;
     retryGraceMs: number;
-    reason: string;
+    reasonCode: string;
+    reasonLabel: string;
     driveProfile: string;
     chemistry: string;
     candidateCount: number;
@@ -321,7 +410,10 @@ export class BatteryRestTargetEvaluationService {
         targetAt: input.targetAt.toISOString(),
         qualityWindowMs: input.qualityWindowMs,
         retryGraceMs: input.retryGraceMs,
-        missReason: input.reason,
+        qualityReasonCode: input.reasonCode,
+        qualityReasonLabel: input.reasonLabel,
+        evidenceEligible: false,
+        publicationEligible: false,
         driveProfile: input.driveProfile,
         chemistry: input.chemistry,
         candidateCount: input.candidateCount,
@@ -330,7 +422,8 @@ export class BatteryRestTargetEvaluationService {
         restTargetType: input.restTargetType,
         targetAt: input.targetAt.toISOString(),
         restWindowStartedAt: input.session.startedAt.toISOString(),
-        missReason: input.reason,
+        qualityReasonCode: input.reasonCode,
+        qualityReasonLabel: input.reasonLabel,
         tripStartsAfterAnchor: input.tripStartsAfterAnchor.map((d) =>
           d.toISOString(),
         ),

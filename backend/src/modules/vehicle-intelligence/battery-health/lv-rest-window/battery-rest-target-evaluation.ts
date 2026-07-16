@@ -25,6 +25,7 @@ export interface RestTargetObservationContext {
   lvVoltage?: number | null;
   tripId?: string | null;
   providerObservationOutcome?: string | null;
+  providerError?: boolean;
 }
 
 export interface RestTargetObservationCandidate {
@@ -51,12 +52,23 @@ export interface RestTargetEvaluationConstraints {
 }
 
 export type RestTargetEvaluationResult =
-  | { ok: true; reason: 'observation_selected'; selected: RestTargetObservationCandidate }
+  | {
+      ok: true;
+      reason: 'observation_selected';
+      selected: RestTargetObservationCandidate;
+      quality: import('@prisma/client').BatteryMeasurementQuality;
+      reasonCode: string;
+      reasonLabel: string;
+      evidenceEligible: boolean;
+    }
   | {
       ok: false;
       reason: string;
       retryable: boolean;
       missed: boolean;
+      sessionQuality?: import('@prisma/client').BatteryMeasurementQuality;
+      reasonCode?: string;
+      reasonLabel?: string;
     };
 
 export function getRestTargetQualityWindowMs(
@@ -351,6 +363,10 @@ export function evaluateRestTargetOutcome(input: {
       ok: true,
       reason: 'observation_selected',
       selected: selection.selected,
+      quality: 'VALID' as import('@prisma/client').BatteryMeasurementQuality,
+      reasonCode: 'valid_rest_observation',
+      reasonLabel: 'Ruhemessung gültig',
+      evidenceEligible: true,
     };
   }
 
@@ -394,6 +410,7 @@ export function parseRestTargetObservationContext(
         : typeof merged.observationOutcome === 'string'
           ? merged.observationOutcome
           : null,
+    providerError: merged.providerError === true,
   };
 }
 

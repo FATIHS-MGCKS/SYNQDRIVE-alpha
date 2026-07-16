@@ -3,6 +3,8 @@ import { BatteryMeasurementQuality } from '@prisma/client';
 const STATUS_ONLY_QUALITIES = new Set<BatteryMeasurementQuality>([
   BatteryMeasurementQuality.MISSED,
   BatteryMeasurementQuality.PROVIDER_ERROR,
+  BatteryMeasurementQuality.PROVIDER_DELAY,
+  BatteryMeasurementQuality.MISSING_CONTEXT,
 ]);
 
 export interface BatteryMeasurementValueInput {
