@@ -7,7 +7,7 @@
  * - No detectors; altitude/heading are post-trip analysis context only.
  */
 import {
-  CANONICAL_DRIVING_SIGNAL_CATALOG,
+  CANONICAL_DRIVING_SIGNAL_CATALOG_ALL,
   findCanonicalSignalDefinition,
   isSignalApplicableForFuelType,
 } from './canonical-driving-signal-mapper.config';
@@ -50,6 +50,10 @@ function resolveCanonicalUnit(
     return { unit: defUnit, providerUnit: null };
   }
 
+  if (accepted.length === 0) {
+    return { error: 'UNIT_UNKNOWN' };
+  }
+
   const acceptedKeys = new Set(accepted.map(unitKey));
   if (!acceptedKeys.has(unitKey(providerUnit))) {
     return { error: 'UNIT_UNKNOWN' };
@@ -81,6 +85,26 @@ function parseNumericValue(value: unknown): number | null {
     return Number.isFinite(parsed) ? parsed : null;
   }
   return null;
+}
+
+function isProviderNullValue(value: unknown): boolean {
+  return value === null || value === undefined;
+}
+
+function isObservationStale(
+  observedAt: Date,
+  context: CanonicalSignalMappingContext,
+): { stale: true; ageMs: number; staleAfterMs: number } | { stale: false } {
+  const staleAfterMs = context.staleAfterMs;
+  if (staleAfterMs == null || staleAfterMs <= 0) {
+    return { stale: false };
+  }
+  const reference = context.referenceTime ?? context.batchReceivedAt ?? new Date();
+  const ageMs = reference.getTime() - observedAt.getTime();
+  if (ageMs > staleAfterMs) {
+    return { stale: true, ageMs, staleAfterMs };
+  }
+  return { stale: false };
 }
 
 function buildFailure(
@@ -157,6 +181,17 @@ export function mapDimoProviderSignalToCanonical(
     });
   }
 
+  if (isProviderNullValue(sample.value)) {
+    return buildFailure({
+      status: 'NULL_SAMPLE',
+      canonicalKey: def.key,
+      dimoSignalName,
+      reason: 'provider_null_not_observation',
+      usageScope,
+      observedAt: parseDate(sample.observedAt),
+    });
+  }
+
   const observedAt = parseDate(sample.observedAt);
   if (!observedAt) {
     return buildFailure({
@@ -170,6 +205,21 @@ export function mapDimoProviderSignalToCanonical(
 
   const receivedAt =
     parseDate(sample.receivedAt) ?? context.batchReceivedAt ?? observedAt;
+
+  const stale = isObservationStale(observedAt, context);
+  if (stale.stale) {
+    return buildFailure({
+      status: 'STALE',
+      canonicalKey: def.key,
+      dimoSignalName,
+      reason: 'observation_stale',
+      usageScope,
+      observedAt,
+      receivedAt,
+      ageMs: stale.ageMs,
+      staleAfterMs: stale.staleAfterMs,
+    });
+  }
 
   const numericValue = parseNumericValue(sample.value);
   if (numericValue == null) {
@@ -225,5 +275,5 @@ export function mapDimoProviderSignalBatch(
 
 /** Catalog keys covered by this mapper version (for tests / diagnostics). */
 export function listCanonicalDrivingSignalKeys(): readonly string[] {
-  return CANONICAL_DRIVING_SIGNAL_CATALOG.map((def) => def.key);
+  return CANONICAL_DRIVING_SIGNAL_CATALOG_ALL.map((def) => def.key);
 }
