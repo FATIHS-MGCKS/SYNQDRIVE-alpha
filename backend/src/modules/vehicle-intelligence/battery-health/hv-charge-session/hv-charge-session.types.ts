@@ -1,6 +1,7 @@
 import type { BatteryMeasurementQuality, HvChargeSession } from '@prisma/client';
 import type { BatteryEvidenceStrength } from '../battery-v2-domain';
 import type { HvFallbackDetectionTier } from './hv-fallback-charge-session.types';
+import type { HvChargeSessionQualityReasonCode, HvChargeSessionQualityStatus } from './hv-charge-session-quality.status';
 
 export const HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE = 'DIMO_RECHARGE_SEGMENT' as const;
 export const HV_CHARGE_SESSION_SOURCE_TELEMETRY_POLL_FALLBACK =
@@ -38,6 +39,10 @@ export interface HvChargeSessionMetadata {
   fallbackEndReason?: string | null;
   supersededBySegmentFingerprint?: string | null;
   supersededAt?: string | null;
+  qualityStatus?: HvChargeSessionQualityStatus | null;
+  qualityReasonCodes?: HvChargeSessionQualityReasonCode[];
+  capacityShadowEligible?: boolean;
+  capacityValidationEligible?: boolean;
   changeHistory?: Array<{
     at: string;
     kind: HvChargeSessionChangeKind;

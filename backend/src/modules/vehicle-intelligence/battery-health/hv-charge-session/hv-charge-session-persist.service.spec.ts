@@ -31,10 +31,12 @@ function ongoingSegment() {
 describe('hv-charge-session mapper', () => {
   it('maps normalized recharge segment to HvChargeSession draft', () => {
     const segment = completedSegment();
+    const reconciledAt = new Date('2026-07-16T12:00:00.000Z');
     const draft = mapRechargeSegmentToHvChargeSessionDraft({
       organizationId: ORG,
       vehicleId: VEH,
       segment,
+      reconciledAt,
     });
 
     expect(draft.source).toBe('DIMO_RECHARGE_SEGMENT');
@@ -45,17 +47,21 @@ describe('hv-charge-session mapper', () => {
     expect(draft.deltaSocPercent).toBeCloseTo(7.3, 1);
     expect(draft.energyAddedKwh).toBeCloseTo(13.92, 2);
     expect(draft.isOngoing).toBe(false);
-    expect(draft.quality).toBe(BatteryMeasurementQuality.VALID);
+    expect(draft.quality).toBe(BatteryMeasurementQuality.SHADOW);
+    expect(draft.metadata.qualityStatus).toBe('PARTIAL');
+    expect(draft.metadata.capacityShadowEligible).toBe(true);
   });
 });
 
 describe('hv-charge-session merge', () => {
   it('creates merge no-op for identical completed session', () => {
     const segment = completedSegment();
+    const reconciledAt = new Date('2026-07-16T12:00:00.000Z');
     const draft = mapRechargeSegmentToHvChargeSessionDraft({
       organizationId: ORG,
       vehicleId: VEH,
       segment,
+      reconciledAt,
     });
     const existing: HvChargeSessionRow = {
       id: 'session-1',
@@ -79,7 +85,7 @@ describe('hv-charge-session merge', () => {
       metadata: draft.metadata as object,
     };
 
-    const merged = mergeHvChargeSessionUpdate({ existing, incoming: draft });
+    const merged = mergeHvChargeSessionUpdate({ existing, incoming: draft, reconciledAt });
     expect(merged.changed).toBe(false);
     expect(merged.changeKind).toBe('no_op');
   });
@@ -142,10 +148,12 @@ describe('hv-charge-session merge', () => {
 
   it('rejects regressing completed session with weaker provider data', () => {
     const segment = completedSegment();
+    const reconciledAt = new Date('2026-07-16T12:00:00.000Z');
     const draft = mapRechargeSegmentToHvChargeSessionDraft({
       organizationId: ORG,
       vehicleId: VEH,
       segment,
+      reconciledAt,
     });
 
     const existing: HvChargeSessionRow = {
@@ -167,11 +175,13 @@ describe('hv-charge-session merge', () => {
         endAt: segment.endAt,
         ongoing: false,
       },
+      reconciledAt,
     });
 
     const merged = mergeHvChargeSessionUpdate({
       existing,
       incoming: weakerDraft,
+      reconciledAt,
     });
 
     expect(merged.changed).toBe(false);
@@ -179,28 +189,40 @@ describe('hv-charge-session merge', () => {
 
   it('accepts better provider data for completed session', () => {
     const segment = completedSegment();
+    const reconciledAt = new Date('2026-07-16T12:00:00.000Z');
     const draft = mapRechargeSegmentToHvChargeSessionDraft({
       organizationId: ORG,
       vehicleId: VEH,
       segment,
+      reconciledAt,
     });
 
     const existing: HvChargeSessionRow = {
-      ...draft,
       id: 'session-complete',
+      organizationId: ORG,
+      vehicleId: VEH,
+      segmentFingerprint: draft.segmentFingerprint,
+      dimoSegmentId: draft.dimoSegmentId,
+      source: draft.source,
+      startAt: draft.startAt,
+      endAt: draft.endAt,
+      startSocPercent: draft.startSocPercent,
       endSocPercent: 45,
-      endEnergyKwh: 30,
-      energyAddedKwh: 10,
+      startEnergyKwh: draft.startEnergyKwh,
+      endEnergyKwh: null,
+      energyAddedKwh: null,
       deltaSocPercent: 5,
-      quality: BatteryMeasurementQuality.SHADOW,
       isOngoing: false,
+      quality: BatteryMeasurementQuality.INSUFFICIENT_COVERAGE,
+      idempotencyKey: draft.idempotencyKey,
+      providerObservedAt: draft.providerObservedAt,
       metadata: draft.metadata as object,
     };
 
-    const merged = mergeHvChargeSessionUpdate({ existing, incoming: draft });
+    const merged = mergeHvChargeSessionUpdate({ existing, incoming: draft, reconciledAt });
     expect(merged.changed).toBe(true);
     expect(merged.update?.endSocPercent).toBe(draft.endSocPercent);
-    expect(merged.update?.quality).toBe(BatteryMeasurementQuality.VALID);
+    expect(merged.update?.quality).toBe(BatteryMeasurementQuality.SHADOW);
   });
 });
 
@@ -243,10 +265,12 @@ describe('HvChargeSessionPersistService', () => {
 
   it('updates ongoing session when provider completes segment', async () => {
     const segment = ongoingSegment();
+    const reconciledAt = new Date('2026-07-16T12:00:00.000Z');
     const draft = mapRechargeSegmentToHvChargeSessionDraft({
       organizationId: ORG,
       vehicleId: VEH,
       segment,
+      reconciledAt,
     });
 
     repository.findByFingerprint.mockResolvedValue({
@@ -283,9 +307,9 @@ describe('HvChargeSessionPersistService', () => {
 });
 
 describe('assessHvChargeSessionQuality', () => {
-  it('marks audit segment as VALID', () => {
+  it('marks audit session 1 as PARTIAL shadow quality', () => {
     const quality = assessHvChargeSessionQuality(completedSegment());
-    expect(quality).toBe(BatteryMeasurementQuality.VALID);
+    expect(quality).toBe(BatteryMeasurementQuality.SHADOW);
   });
 
   it('marks ongoing segment as SHADOW', () => {

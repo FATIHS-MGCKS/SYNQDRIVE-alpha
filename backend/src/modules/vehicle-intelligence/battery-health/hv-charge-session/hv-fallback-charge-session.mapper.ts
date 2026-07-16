@@ -4,30 +4,18 @@ import {
   buildFallbackSegmentFingerprint,
 } from './hv-fallback-charge-session.policy';
 import type { HvFallbackChargeSessionCandidate } from './hv-fallback-charge-session.types';
+import { assessHvChargeSessionQualityFromFallbackCandidate } from './hv-charge-session-quality.assessor';
 import {
   HV_CHARGE_SESSION_SOURCE_TELEMETRY_POLL_FALLBACK,
   type HvChargeSessionDraft,
   type HvChargeSessionMetadata,
 } from './hv-charge-session.types';
 
+/** @deprecated Use assessHvChargeSessionQualityFromFallbackCandidate */
 export function assessFallbackChargeSessionQuality(
   candidate: HvFallbackChargeSessionCandidate,
 ): BatteryMeasurementQuality {
-  if (candidate.providerStale) {
-    return BatteryMeasurementQuality.STALE;
-  }
-  if (candidate.isOngoing) {
-    return BatteryMeasurementQuality.SHADOW;
-  }
-  if (
-    candidate.deltaSocPercent != null &&
-    candidate.deltaSocPercent >= 5 &&
-    candidate.endAt != null &&
-    candidate.endAt.getTime() - candidate.startAt.getTime() >= 5 * 60 * 1000
-  ) {
-    return BatteryMeasurementQuality.SHADOW;
-  }
-  return BatteryMeasurementQuality.INSUFFICIENT_COVERAGE;
+  return assessHvChargeSessionQualityFromFallbackCandidate(candidate).measurementQuality;
 }
 
 export function mapFallbackCandidateToHvChargeSessionDraft(input: {
@@ -51,6 +39,11 @@ export function mapFallbackCandidateToHvChargeSessionDraft(input: {
       )
     : null;
 
+  const qualityAssessment = assessHvChargeSessionQualityFromFallbackCandidate(
+    candidate,
+    reconciledAt,
+  );
+
   const metadata: HvChargeSessionMetadata = {
     providerSegmentFingerprint: segmentFingerprint,
     durationSeconds,
@@ -60,6 +53,10 @@ export function mapFallbackCandidateToHvChargeSessionDraft(input: {
     fallbackCorroboratingTiers: candidate.corroboratingTiers,
     fallbackEvidenceStrength: candidate.evidenceStrength,
     fallbackEndReason: candidate.endReason,
+    qualityStatus: qualityAssessment.status,
+    qualityReasonCodes: qualityAssessment.reasonCodes,
+    capacityShadowEligible: qualityAssessment.capacityShadowEligible,
+    capacityValidationEligible: qualityAssessment.capacityValidationEligible,
   };
 
   return {
@@ -77,7 +74,7 @@ export function mapFallbackCandidateToHvChargeSessionDraft(input: {
     energyAddedKwh: candidate.energyAddedKwh,
     deltaSocPercent: candidate.deltaSocPercent,
     isOngoing: candidate.isOngoing,
-    quality: assessFallbackChargeSessionQuality(candidate),
+    quality: qualityAssessment.measurementQuality,
     idempotencyKey: buildHvSessionJobIdempotencyKey({
       vehicleId,
       segmentFingerprint,

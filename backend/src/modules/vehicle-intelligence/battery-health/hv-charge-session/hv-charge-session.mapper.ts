@@ -1,6 +1,6 @@
 import type { NormalizedDimoRechargeSegment } from '@modules/dimo/recharge-segments/dimo-recharge-segments.types';
 import { buildHvSessionJobIdempotencyKey } from '../jobs/battery-v2-job-idempotency.policy';
-import { assessHvChargeSessionQuality } from './hv-charge-session.quality';
+import { assessHvChargeSessionQualityFromDimoSegment } from './hv-charge-session-quality.assessor';
 import {
   HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE,
   type HvChargeSessionDraft,
@@ -16,7 +16,10 @@ export function mapRechargeSegmentToHvChargeSessionDraft(input: {
   const { organizationId, vehicleId, segment } = input;
   const reconciledAt = input.reconciledAt ?? new Date();
   const segmentFingerprint = segment.fingerprint;
-  const quality = assessHvChargeSessionQuality(segment);
+  const qualityAssessment = assessHvChargeSessionQualityFromDimoSegment(
+    segment,
+    reconciledAt,
+  );
 
   const metadata: HvChargeSessionMetadata = {
     providerSegmentFingerprint: segmentFingerprint,
@@ -32,6 +35,10 @@ export function mapRechargeSegmentToHvChargeSessionDraft(input: {
     odometerEndKm: segment.odometerKm.max,
     dimoTokenId: segment.tokenId,
     providerSegmentId: segment.providerSegmentId,
+    qualityStatus: qualityAssessment.status,
+    qualityReasonCodes: qualityAssessment.reasonCodes,
+    capacityShadowEligible: qualityAssessment.capacityShadowEligible,
+    capacityValidationEligible: qualityAssessment.capacityValidationEligible,
   };
 
   return {
@@ -49,7 +56,7 @@ export function mapRechargeSegmentToHvChargeSessionDraft(input: {
     energyAddedKwh: segment.addedEnergyKwh.delta,
     deltaSocPercent: segment.soc.delta,
     isOngoing: segment.ongoing,
-    quality,
+    quality: qualityAssessment.measurementQuality,
     idempotencyKey: buildHvSessionJobIdempotencyKey({
       vehicleId,
       segmentFingerprint,

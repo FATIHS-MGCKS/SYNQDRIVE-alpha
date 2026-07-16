@@ -1,41 +1,52 @@
 import { BatteryMeasurementQuality } from '@prisma/client';
 import type { NormalizedDimoRechargeSegment } from '@modules/dimo/recharge-segments/dimo-recharge-segments.types';
+import {
+  assessHvChargeSessionQualityFromDimoSegment,
+  type HvChargeSessionQualityAssessment,
+} from './hv-charge-session-quality.assessor';
+import { HV_CHARGE_SESSION_QUALITY_STATUS } from './hv-charge-session-quality.status';
 
-const MIN_RELIABLE_DURATION_SECONDS = 5 * 60;
-const MIN_RELIABLE_SOC_DELTA = 5;
+export type { HvChargeSessionQualityAssessment } from './hv-charge-session-quality.assessor';
+export {
+  assessHvChargeSessionQualityFromDimoSegment,
+  assessHvChargeSessionQualityFromFallbackCandidate,
+  assessHvChargeSessionQualityFromInput,
+  isHvChargeSessionCapacityShadowEligible,
+  HV_SESSION_MIN_DURATION_SECONDS,
+  HV_SESSION_MIN_SOC_DELTA_M2,
+  HV_SESSION_MIN_SOC_DELTA_M3,
+} from './hv-charge-session-quality.assessor';
+export {
+  HV_CHARGE_SESSION_QUALITY_STATUS,
+  HV_CHARGE_SESSION_QUALITY_REASONS,
+  type HvChargeSessionQualityStatus,
+  type HvChargeSessionQualityReasonCode,
+} from './hv-charge-session-quality.status';
 
-/** Segment quality for HV charge session — no capacity calculation. */
+/** Segment quality for HV charge session — delegates to central assessor. */
 export function assessHvChargeSessionQuality(
   segment: NormalizedDimoRechargeSegment,
 ): BatteryMeasurementQuality {
-  const socDelta = segment.soc.delta;
-  const durationSeconds = segment.durationSeconds;
-
-  if (segment.soc.min == null && segment.soc.max == null) {
-    return BatteryMeasurementQuality.NO_DATA;
-  }
-
-  if (segment.ongoing) {
-    if (segment.soc.min != null || segment.soc.max != null) {
-      return BatteryMeasurementQuality.SHADOW;
-    }
-    return BatteryMeasurementQuality.PROVIDER_DELAY;
-  }
-
-  if (
-    durationSeconds >= MIN_RELIABLE_DURATION_SECONDS &&
-    socDelta != null &&
-    socDelta >= MIN_RELIABLE_SOC_DELTA
-  ) {
-    return BatteryMeasurementQuality.VALID;
-  }
-
-  if (socDelta != null && socDelta > 0) {
-    return BatteryMeasurementQuality.SHADOW;
-  }
-
-  return BatteryMeasurementQuality.INSUFFICIENT_COVERAGE;
+  return assessHvChargeSessionQualityFromDimoSegment(segment).measurementQuality;
 }
+
+export function assessHvChargeSessionQualityDetailed(
+  segment: NormalizedDimoRechargeSegment,
+): HvChargeSessionQualityAssessment {
+  return assessHvChargeSessionQualityFromDimoSegment(segment);
+}
+
+const QUALITY_STATUS_RANK: Record<string, number> = {
+  [HV_CHARGE_SESSION_QUALITY_STATUS.QUALIFIED]: 6,
+  [HV_CHARGE_SESSION_QUALITY_STATUS.PARTIAL]: 5,
+  [HV_CHARGE_SESSION_QUALITY_STATUS.ONGOING]: 4,
+  [HV_CHARGE_SESSION_QUALITY_STATUS.PROVIDER_GAPS]: 3,
+  [HV_CHARGE_SESSION_QUALITY_STATUS.INSUFFICIENT_SOC_DELTA]: 2,
+  [HV_CHARGE_SESSION_QUALITY_STATUS.INSUFFICIENT_COVERAGE]: 1,
+  [HV_CHARGE_SESSION_QUALITY_STATUS.ADDED_ENERGY_RESET]: 0,
+  [HV_CHARGE_SESSION_QUALITY_STATUS.CONFLICTING_SOURCES]: 0,
+  [HV_CHARGE_SESSION_QUALITY_STATUS.INVALID]: 0,
+};
 
 export function isBetterSessionQuality(
   incoming: BatteryMeasurementQuality | null,
@@ -64,4 +75,11 @@ export function isBetterSessionQuality(
   const incomingRank = incoming ? rank[incoming] ?? 0 : 0;
   const existingRank = existing ? rank[existing] ?? 0 : 0;
   return incomingRank > existingRank;
+}
+
+export function isBetterHvChargeSessionQualityStatus(
+  incoming: string,
+  existing: string,
+): boolean {
+  return (QUALITY_STATUS_RANK[incoming] ?? 0) > (QUALITY_STATUS_RANK[existing] ?? 0);
 }
