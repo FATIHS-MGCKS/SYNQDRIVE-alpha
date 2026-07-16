@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-operational-state-v2-frontend-e2e-tests-v49505-2026-07-16',
+    version: '4.9.505',
+    title: 'V4.9.505 — Vehicle Operational State V2 frontend & E2E tests (Prompt 41/43)',
+    summary: [
+      'Neu: Vitest-Suites für Cross-Surface-Konsistenz, Fleet-Map-Optimistic-Patches, Operator-Status, Period-Availability, FleetCommandPanel und VehicleOperationalStatusCallout.',
+      'Neu: Playwright E2E `fleet-operational-flow.spec.ts` + `fleet-operational-responsive.spec.ts` mit `fleet-operational-fixtures.ts` (Fleet List/Map, Dashboard KPI/Drawer, Cache Pickup/Return, Operator).',
+      'Fix: UNKNOWN-Label-Drift in bestehenden Vitest-Dateien (`Status nicht verfügbar` statt `Unbekannt`).',
+      'Doku: `docs/testing/vehicle-operational-state-v2-frontend-e2e-coverage.md` — Matrix Bereiche 1–9, Ausführungsbefehle.',
+      'Keine Produktfunktionen geändert — reines Testpaket.',
+    ],
+    reason:
+      'Prompt 41/43: Regression-Gate für Vehicle Operational State V2 auf Frontend- und E2E-Seite — analog Backend V4.9.504 und Task-Domain-V2-Coverage.',
+    previousBehavior:
+      'Einzelne Operational-State-Unit-Tests (~225), aber keine systematische 9-Bereiche-Matrix, kein Playwright-Fleet-Operational-Paket, 4 failing Tests wegen V4.9.500-Label.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T01:15:00.000Z',
+  },
+  {
     id: 'vehicle-operational-state-v2-backend-tests-v49504-2026-07-16',
     version: '4.9.504',
     title: 'V4.9.504 — Vehicle Operational State V2 backend test package (Prompt 40/43)',

@@ -95,7 +95,7 @@ describe('formatVehicleOperationalStatusLabel', () => {
       'Blockiert',
     );
     expect(formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.UNKNOWN, 'de')).toBe(
-      'Unbekannt',
+      'Status nicht verfügbar',
     );
   });
 
@@ -104,7 +104,7 @@ describe('formatVehicleOperationalStatusLabel', () => {
       'Available',
     );
     expect(formatVehicleOperationalStatusLabel(VEHICLE_OPERATIONAL_STATUS.UNKNOWN, 'en')).toBe(
-      'Unknown',
+      'Status unavailable',
     );
   });
 
@@ -112,7 +112,9 @@ describe('formatVehicleOperationalStatusLabel', () => {
     expect(formatVehicleOperationalStatusLabelFromRaw('Active Rented', {}, 'de')).toBe(
       'Aktiv vermietet',
     );
-    expect(formatVehicleOperationalStatusLabelFromRaw('???', {}, 'de')).toBe('Unbekannt');
+    expect(formatVehicleOperationalStatusLabelFromRaw('???', {}, 'de')).toBe(
+      'Status nicht verfügbar',
+    );
   });
 });
 

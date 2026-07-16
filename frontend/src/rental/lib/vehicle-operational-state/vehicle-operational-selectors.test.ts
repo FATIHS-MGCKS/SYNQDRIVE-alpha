@@ -162,7 +162,7 @@ describe('selectOperationalStatusLabel', () => {
         vehicle({ status: VEHICLE_OPERATIONAL_STATUS.UNKNOWN }),
         'en',
       ),
-    ).toBe('Unknown');
+    ).toBe('Status unavailable');
   });
 });
 

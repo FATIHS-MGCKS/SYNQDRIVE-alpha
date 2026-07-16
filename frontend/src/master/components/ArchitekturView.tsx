@@ -259,6 +259,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Vehicle Operational State V2 Frontend & E2E Tests (V4.9.505)', icon: FileText,
+    endpoint: 'Keine HTTP-Route. Vitest unter `frontend/src/rental/lib/vehicle-operational-*`, `fleet-map-vehicle-store.utils.test.ts`, `FleetCommandPanel.test.tsx`, `operatorStatus.test.ts`; Playwright `frontend/e2e/fleet-operational-*.spec.ts`.',
+    service: '**Coverage (9 Bereiche):** Fleet List/Map Tabs+Counts, Dashboard KPI/Drawer-Parität, Vehicle-Detail-Callout (UNKNOWN neutral, keine UUIDs), Operator-Status-Badges, Cache-Invalidation Pickup/Return, Safe-Fallback (null/UNKNOWN/DEGRADED/UNAVAILABLE), Responsive/Dark, Period-Availability vs Overlap. Fixtures: `fleet-operational-fixtures.ts` (AVL-1/RSV-1/ACT-1/UNK-1).',
+    dataSource: 'Doku: `docs/testing/vehicle-operational-state-v2-frontend-e2e-coverage.md`. Ausführung: `npm test --` (Vitest-Fokus-Pfade), `npx playwright test fleet-operational-*.spec.ts`. Ergänzt Backend V4.9.504; kein paralleles Testframework.' },
   { name: 'Vehicle Operational State V2 Backend Tests (V4.9.504)', icon: FileText,
     endpoint: 'Keine HTTP-Route. Jest-Suites unter `backend/src/modules/vehicles/operational/` + `vehicles.controller.status-patch.spec.ts` + `bookings.service.overlap.spec.ts`.',
     service: '**Coverage:** 53 neue Tests (10 Suites) für A–J: `deriveFleetStatusContext`, `buildBookingContextMap`, kanonisches vs. legacy Reservierungsfenster, API-Konsistenz fleet-map/list/detail, Status-PATCH-Write-Guard, Overlap-Gate, Fleet-Map-Redis-Cache (TTL). Ergänzt bestehende `vehicles.service.spec.ts` + VBH-Diagnostic/Repair.',
