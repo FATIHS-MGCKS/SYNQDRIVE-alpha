@@ -722,4 +722,4 @@ Writes in Snapshots werden per Feature-Flag gestoppt, Tabelle bleibt für Trend.
 
 ---
 
-*Implementierungsstatus: **Dokumentation only** (Prompt 10/78). Nächster Schritt: Prisma-Schema-PR nach Feature-Flag Phase P0.*
+*Implementierungsstatus: **P0 Enums implementiert** (Prompt 11/78 — `20260716143000_battery_v2_enums`, `battery-v2-domain.ts`). Nächster Schritt: Prisma-Modelle Phase P1.*

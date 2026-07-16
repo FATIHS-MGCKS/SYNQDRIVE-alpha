@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-health-v2-enums-p49513-2026-07-16',
+    version: '4.9.513',
+    title: 'V4.9.513 — Battery Health V2 shared Prisma enums + domain types (Prompt 11/78)',
+    summary: [
+      'Additive P0-Migration `20260716143000_battery_v2_enums`: gemeinsame Battery-V2-Enums (Messart, Qualität, Session, Assessment, Capability, Profile, Evidence-Stärke, HV-Kapazitätsmethode, Referenzkapazität).',
+      '`BatteryPublicationStatus` und Scope wiederverwenden bestehende Enums (`SohPublicationState`, `BatteryEvidenceScope`) — keine Duplikate.',
+      'TypeScript-Domainmodul `battery-v2-domain.ts` mit const-Objekten, Typen und Legacy-Mapping (`normalizeBatteryAssessmentMaturity`).',
+      'Keine neuen Modelle, keine Businesslogik, keine Produktionsmigration ausgeführt.',
+    ],
+    reason: 'Prompt 11/78: Additive gemeinsame V2-Enums als Grundlage für Sessions/Measurements/Assessments in späteren Prompts.',
+    previousBehavior: 'Nur Legacy-Battery-Enums (`SohPublicationState`, `BatteryEvidenceScope`, …); V2-Messarten/Qualität nur in Architektur-Dokumenten.',
+    details:
+      'backend/prisma/schema.prisma, migrations/20260716143000_battery_v2_enums/migration.sql, battery-v2-domain.ts. Validiert: prisma format/validate/generate, Migration-SQL ohne DROP/ALTER destructive, tsc --noEmit.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T14:35:00.000Z',
+  },
+  {
     id: 'battery-health-v2-prisma-plan-v49512-2026-07-16',
     version: '4.9.512',
     title: 'V4.9.512 — Battery Health V2 additive Prisma migration plan (Prompt 10/78)',
