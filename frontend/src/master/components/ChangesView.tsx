@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-booking-handover-repair-v49502-2026-07-16',
+    version: '4.9.502',
+    title: 'V4.9.502 — Controlled vehicle/booking/handover repair (Prompt 38/43)',
+    summary: [
+      'Neu: `VehicleBookingHandoverRepairService` + Ops-Skript `repair-vehicle-booking-handover-data.ts` (Default Dry-Run, `--apply` für Writes).',
+      'Sichere Reparaturen: stale RESERVED→AVAILABLE, RENTED nach abgeschlossenem RETURN, ACTIVE→COMPLETED bei RETURN-Protokoll, CONFIRMED→ACTIVE bei PICKUP-Protokoll.',
+      'Unklare Fälle → `unresolved`/`skipped`; idempotente Re-Runs; Batch-Größe; vollständiger Audit-Report + ActivityLog.',
+      'CLI: `--organization-id`, `--vehicle-id`, `--batch-size`, `--output`, `--apply`.',
+      '11 neue Tests (Util + Service Fixtures).',
+    ],
+    reason:
+      'Prompt 38/43: Eindeutig belegte Statusinkonsistenzen sollen kontrolliert reparierbar sein — ohne pauschale updateMany-Writes oder Löschung historischer Daten.',
+    previousBehavior:
+      'Nur read-only Diagnose (`audit-vehicle-booking-handover-data.ts`); keine kontrollierte Reparatur für Vehicle-/Booking-/Handover-Drift.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T00:25:00.000Z',
+  },
+  {
     id: 'vehicle-booking-handover-diagnostic-v49501-2026-07-16',
     version: '4.9.501',
     title: 'V4.9.501 — Read-only vehicle/booking/handover diagnostic (Prompt 37/43)',

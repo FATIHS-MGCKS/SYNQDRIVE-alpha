@@ -23,41 +23,47 @@ export function maskDiagnosticId(id: string): string {
   return `${trimmed.slice(0, 4)}…${trimmed.slice(-4)}`;
 }
 
-function assertSafeDatabaseTarget(options: {
+function assertSafeVbhDatabaseTarget(options: {
   databaseUrl: string;
   allowRemote?: boolean;
+  mode: 'diagnostic' | 'repair';
 }): void {
-  const { databaseUrl, allowRemote } = options;
+  const { databaseUrl, allowRemote, mode } = options;
+  const prodEnvVar =
+    mode === 'repair'
+      ? 'VEHICLE_BOOKING_HANDOVER_REPAIR_ALLOW_PROD'
+      : 'VEHICLE_BOOKING_HANDOVER_DIAGNOSTIC_ALLOW_PROD';
+  const remoteEnvVar =
+    mode === 'repair'
+      ? 'VEHICLE_BOOKING_HANDOVER_REPAIR_ALLOW_REMOTE'
+      : 'VEHICLE_BOOKING_HANDOVER_DIAGNOSTIC_ALLOW_REMOTE';
+  const modeLabel =
+    mode === 'repair'
+      ? 'vehicle/booking/handover repair'
+      : 'vehicle/booking/handover diagnostics';
 
   if (!databaseUrl.trim()) {
     throw new Error('DATABASE_URL is not set — configure a local or test database first.');
   }
 
-  if (
-    process.env.NODE_ENV === 'production' &&
-    process.env.VEHICLE_BOOKING_HANDOVER_DIAGNOSTIC_ALLOW_PROD !== '1'
-  ) {
+  if (process.env.NODE_ENV === 'production' && process.env[prodEnvVar] !== '1') {
     throw new Error(
-      'Refusing to run vehicle/booking/handover diagnostics with NODE_ENV=production. Use a local/test shell or set VEHICLE_BOOKING_HANDOVER_DIAGNOSTIC_ALLOW_PROD=1 only when explicitly intended.',
+      `Refusing to run ${modeLabel} with NODE_ENV=production. Use a local/test shell or set ${prodEnvVar}=1 only when explicitly intended.`,
     );
   }
 
   const looksProduction = PRODUCTION_DB_PATTERNS.some((pattern) => pattern.test(databaseUrl));
   const looksLocal = LOCAL_DB_PATTERNS.some((pattern) => pattern.test(databaseUrl));
 
-  if (looksProduction && process.env.VEHICLE_BOOKING_HANDOVER_DIAGNOSTIC_ALLOW_PROD !== '1') {
+  if (looksProduction && process.env[prodEnvVar] !== '1') {
     throw new Error(
-      'DATABASE_URL looks like production. Vehicle/booking/handover diagnostics must only run against local/test databases. Set VEHICLE_BOOKING_HANDOVER_DIAGNOSTIC_ALLOW_PROD=1 to override (not recommended).',
+      `DATABASE_URL looks like production. ${modeLabel} must only run against local/test databases. Set ${prodEnvVar}=1 to override (not recommended).`,
     );
   }
 
-  if (
-    !looksLocal &&
-    !allowRemote &&
-    process.env.VEHICLE_BOOKING_HANDOVER_DIAGNOSTIC_ALLOW_REMOTE !== '1'
-  ) {
+  if (!looksLocal && !allowRemote && process.env[remoteEnvVar] !== '1') {
     throw new Error(
-      'DATABASE_URL does not look local/test. Pass --allow-remote-db or set VEHICLE_BOOKING_HANDOVER_DIAGNOSTIC_ALLOW_REMOTE=1 after confirming this is not production.',
+      `DATABASE_URL does not look local/test. Pass --allow-remote-db or set ${remoteEnvVar}=1 after confirming this is not production.`,
     );
   }
 }
@@ -66,8 +72,20 @@ export function assertSafeVbhDiagnosticDatabaseTarget(options?: {
   databaseUrl?: string;
   allowRemote?: boolean;
 }): void {
-  assertSafeDatabaseTarget({
+  assertSafeVbhDatabaseTarget({
     databaseUrl: options?.databaseUrl ?? process.env.DATABASE_URL ?? '',
     allowRemote: options?.allowRemote,
+    mode: 'diagnostic',
+  });
+}
+
+export function assertSafeVbhRepairDatabaseTarget(options?: {
+  databaseUrl?: string;
+  allowRemote?: boolean;
+}): void {
+  assertSafeVbhDatabaseTarget({
+    databaseUrl: options?.databaseUrl ?? process.env.DATABASE_URL ?? '',
+    allowRemote: options?.allowRemote,
+    mode: 'repair',
   });
 }
