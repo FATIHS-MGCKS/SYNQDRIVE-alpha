@@ -137,8 +137,8 @@ Vollständige Inventur: Abschnitt **Code-Landkarte** unten.
 
 | # | Ziel | Scope | Abhängigkeit | Migration | VPS | DIMO | Status | Commit |
 |---|------|-------|--------------|-----------|-----|------|--------|--------|
-| **1** | Implementierungsbaseline, Branch, Fortschrittsdatei, Baseline-Tests | Docs only | Audit `5280a83` | Nein | Nein | Nein | **DONE** | `5c01f20` |
-| **2** | P0-TH-04: Kein synthetisches GT in `TireWearDataPoint` | `tire-health.service.ts` | — | Nein | Nein | Nein | PENDING | — |
+| **1** | Implementierungsbaseline, Branch, Fortschrittsdatei, Baseline-Tests | Docs only | Audit `5280a83` | Nein | Nein | Nein | **DONE** | `94a1049` |
+| **2** | P0-TH-04: Kein synthetisches GT in `TireWearDataPoint` | `tire-health.service.ts`, `tire-ground-truth.util.ts` | — | Nein | Nein | Nein | **DONE** | *(this commit)* |
 | **3** | P0-TH-03: `installed_odometer_km` bei Install/Aktivierung | `tire-lifecycle.service.ts` | — | Optional Backfill-Skript | Ja | Nein | PENDING | — |
 | **4** | P1-TH-08: Trip-Ledger + Finalize→Usage | trips + `updateTireUsageFromTrip` | 3 | Ja (ledger table) | Ja | Nein | PENDING | — |
 | **5** | P0-TH-01: 8-mm-Fallback entfernen/absichern | `tire-identity.service.ts` | — | Nein | Ja | Nein | PENDING | — |
@@ -153,8 +153,8 @@ Vollständige Inventur: Abschnitt **Code-Landkarte** unten.
 | **14** | P1-TH-09/10: Snapshot/Event-Dedupe | recalculate + processor | 13 | Nein | Ja | Nein | PENDING | — |
 | **15** | P2-TH-24: Prometheus Tire-Metriken | observability | — | Nein | Ja | Nein | PENDING | — |
 | **16** | Recalc-Queue-Monitoring | `MONITORED_QUEUES` | 15 | Nein | Ja | Nein | PENDING | — |
-| **17** | `TireHealthService`-Orchestrierungstests | `tire-health.service.spec.ts` | 2, 11 | Nein | Nein | Nein | PENDING | — |
-| **18** | Regression/Leakage-Tests recalculate | tire-health.spec | 2, 7 | Nein | Nein | Nein | PENDING | — |
+| **17** | `TireHealthService`-Orchestrierungstests | `tire-health.service.spec.ts` | 2, 11 | Nein | Nein | Nein | **PARTIAL** (recalc GT Prompt 2) | — |
+| **18** | Regression/Leakage-Tests recalculate | tire-health.spec | 2, 7 | Nein | Nein | Nein | **PARTIAL** (GT + regression filter Prompt 2) | — |
 | **19** | `evaluateTires` Blocking-Tests | rental-health.spec | 11, 12 | Nein | Nein | Nein | PENDING | — |
 | **20** | 30/30 Consumer-Wiring-Szenarien | test matrix CSV | 11–19 | Nein | Nein | Nein | PENDING | — |
 | **21** | P2-TH-14: `exteriorAirTemperature` persistieren | dimo-snapshot | 9 | Nein | Ja | Ja (read-only) | PENDING | — |
@@ -186,7 +186,53 @@ Vollständige Inventur: Abschnitt **Code-Landkarte** unten.
 | 13 | `model_version` auf `tire_health_snapshots` | Formel-Version persistieren |
 | 3 | Optional data backfill | `installed_odometer_km` — **nicht** im Audit-Scope automatisch |
 
-**Bis Prompt 1:** Keine Migration ausgeführt.
+**Bis Prompt 2:** Keine Migration ausgeführt.
+
+---
+
+## Prompt 2 — P0-TH-04 Ground-Truth-Leak (2026-07-16)
+
+### Root Cause
+
+`TireHealthService.recalculate()` (Z.428–429) setzte `actualTreadMm` auf Achsenmittel der **Prediction**, wenn keine Messwerte vorhanden waren (`actualFrontAvg = frontAvgPredicted`). Dadurch entstanden bei aktiviertem Odometer-Guard synthetische Validierungsdaten mit Null-Residual — Regression und Accuracy würden sich selbst bestätigen.
+
+### Geänderte Dateien
+
+| Datei | Änderung |
+|-------|----------|
+| `tire-ground-truth.util.ts` | **Neu** — `hasValidGroundTruthMeasurement`, `resolveAxleGroundTruthTreadMm`, Source-Whitelist, Synthetic-Leak-Detector |
+| `tire-ground-truth.util.spec.ts` | **Neu** — 13 Unit-Tests |
+| `tire-health.service.ts` | `recalculate()` schreibt Wear-Data-Points nur bei validem GT pro Achse |
+| `tire-wear-model.service.ts` | `filterRegressionDataPoints` filtert `actual ≈ predicted` (Legacy-Schutz) |
+| `tire-health.service.spec.ts` | **Neu** — 8 Recalculate-Regressionstests |
+| `tire-health.spec.ts` | +1 Calibration-ohne-GT-Test, Regression-Filter-Test |
+
+### Neue Invariante
+
+> **Kein `TireWearDataPoint` ohne vollständige, zulässige Achsen-Messung (beide Räder).**  
+> `actualTreadMm` stammt ausschließlich aus `resolveAxleGroundTruthTreadMm()` — niemals aus Prediction.  
+> Snapshots und `predictedTreadMm` bleiben unverändert erlaubt.
+
+### Tests (158 tire-related, alle grün)
+
+```bash
+cd backend && npm test -- tire
+# 7 suites, 158 passed
+```
+
+### Verbleibende Schema-Defizite (Prompt 3+)
+
+- Kein `source` / `measurement_id` auf `TireWearDataPoint` (Provenance nicht persistiert)
+- `installed_odometer_km` weiterhin oft null → Wear-Data-Points werden selten geschrieben
+- Kein `modelVersion` auf Snapshots (Prompt 13)
+- Legacy-Zeilen in DB (falls jemals geschrieben) nicht bereinigt — nur Read-Filter in Regression
+
+### Bestätigung
+
+- ✅ Keine Produktionsdaten geändert
+- ✅ Keine Migration
+- ✅ Recalculation/Snapshots funktionieren weiter
+- ✅ P0-TH-04 Codepfad behoben
 
 ---
 
@@ -205,7 +251,7 @@ Vollständige Inventur: Abschnitt **Code-Landkarte** unten.
 
 | Risiko | Severity | Mitigation |
 |--------|----------|------------|
-| Prediction-as-GT aktiviert sobald Odometer gesetzt | P0 | Prompt 2 vor Prompt 3-Produktivierung |
+| Prediction-as-GT aktiviert sobald Odometer gesetzt | P0 | **Mitigiert Prompt 2** — Code schreibt nur echte GT; Prompt 3 dennoch erst nach Review |
 | kPa/bar falsch auf einzigem TPMS-Fahrzeug | P1 | Prompt 9 vor Rental-Gate-Fix |
 | Backfill `installed_odometer_km` falsch | P1 | Explizites Backfill-Prompt + VPS-Review |
 | ClickHouse weiter offline | P2 | PG als kanonische Trip-Quelle beibehalten |
@@ -276,7 +322,8 @@ Blocker bleiben bis Abnahme Prompt 24:
 
 | Datum | Prompt | Aktion | Commit |
 |-------|--------|--------|--------|
-| 2026-07-16 | 1 | Baseline: Branch, Fortschrittsdatei, Tests dokumentiert | `5c01f20` |
+| 2026-07-16 | 1 | Baseline: Branch, Fortschrittsdatei, Tests dokumentiert | `94a1049` |
+| 2026-07-16 | 2 | P0-TH-04: Ground-truth leak fix + 22 neue Tests | *(this commit)* |
 
 ---
 

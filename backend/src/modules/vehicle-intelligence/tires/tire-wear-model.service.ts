@@ -1,4 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
+import {
+  isSyntheticPredictedGroundTruthLeak,
+} from './tire-ground-truth.util';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   TIRE_HEALTH_CONFIG,
@@ -636,6 +639,7 @@ export class TireWearModelService {
     for (const p of sorted) {
       if (p.distanceKm <= 0) continue;
       if (p.actualTreadMm <= 0 || p.actualTreadMm > p.initialTreadMm + 1) continue;
+      if (isSyntheticPredictedGroundTruthLeak(p.actualTreadMm, p.predictedTreadMm)) continue;
       if (p.distanceKm - prevDist < reg.minDistanceKmBetweenPoints) continue;
       if (prevTread < Infinity && p.actualTreadMm - prevTread > reg.maxTreadJumpMm) continue;
 

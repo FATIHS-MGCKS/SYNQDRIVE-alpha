@@ -469,6 +469,48 @@ describe('computeWeightedTemperatureFactor', () => {
   });
 });
 
+describe('calibrateFromMeasurement without ground-truth wheel readings', () => {
+  it('returns unchanged k-factors when measurement object has no tread values', async () => {
+    const prisma = {
+      vehicleTireSetup: {
+        findUniqueOrThrow: jest.fn().mockResolvedValue({
+          id: 'setup-1',
+          vehicleId: 'veh-1',
+          initialTreadFrontMm: 8,
+          initialTreadRearMm: 8,
+          initialTreadDepthMm: 8,
+          kFactorFront: 1.0,
+          kFactorRear: 1.0,
+          kFactorCalibrationCount: 2,
+        }),
+        update: jest.fn(),
+      },
+    };
+    const drivingImpact = { getVehicleImpactForTire: jest.fn().mockResolvedValue(null) };
+    const model = new TireWearModelService(prisma as never, drivingImpact as never);
+    jest.spyOn(model, 'computeWearAnalysis').mockResolvedValue({
+      frontLeftMm: 6.5,
+      frontRightMm: 6.5,
+      rearLeftMm: 6.4,
+      rearRightMm: 6.4,
+    } as never);
+
+    const result = await model.calibrateFromMeasurement('setup-1', {});
+
+    expect(result.kFactorFront).toBe(1.0);
+    expect(result.kFactorRear).toBe(1.0);
+    expect(prisma.vehicleTireSetup.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          kFactorFront: 1.0,
+          kFactorRear: 1.0,
+          kFactorCalibrationCount: 3,
+        }),
+      }),
+    );
+  });
+});
+
 describe('computeWearAnalysis pressure freshness gating', () => {
   it('falls back to neutral pressure factors when pressure data is stale', async () => {
     const staleTimestamp = new Date(Date.now() - 14 * 60 * 60 * 1000);

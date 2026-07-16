@@ -35,6 +35,11 @@ import {
   TireEventType,
   TireSetupStatus,
 } from '@prisma/client';
+import {
+  hasValidGroundTruthMeasurement,
+  resolveAxleGroundTruthTreadMm,
+  type TireAxle,
+} from './tire-ground-truth.util';
 
 // ── Public interfaces ─────────────────────────────────────────────────────────
 
@@ -415,7 +420,7 @@ export class TireHealthService {
       },
     });
 
-    // ── Persist regression data points ──
+    // ── Persist regression data points (ground-truth only; never predicted-as-actual) ──
     const currentOdo = latestState?.odometerKm ?? null;
     const installedOdo = setup.installedOdometerKm ?? null;
     if (currentOdo != null && installedOdo != null && currentOdo > installedOdo) {
@@ -423,10 +428,7 @@ export class TireHealthService {
       const frontAvgPredicted = (wearAnalysis.frontLeftMm + wearAnalysis.frontRightMm) / 2;
       const rearAvgPredicted = (wearAnalysis.rearLeftMm + wearAnalysis.rearRightMm) / 2;
       const latestMeas = setup.measurements?.[0] ?? null;
-      const measFrontVals = [latestMeas?.frontLeftMm, latestMeas?.frontRightMm].filter((v): v is number => v != null);
-      const measRearVals = [latestMeas?.rearLeftMm, latestMeas?.rearRightMm].filter((v): v is number => v != null);
-      const actualFrontAvg = measFrontVals.length > 0 ? measFrontVals.reduce((a, b) => a + b, 0) / measFrontVals.length : frontAvgPredicted;
-      const actualRearAvg = measRearVals.length > 0 ? measRearVals.reduce((a, b) => a + b, 0) / measRearVals.length : rearAvgPredicted;
+      const recalcAsOf = new Date();
 
       const baseDataPoint = {
         organizationId: vehicle!.organizationId,
@@ -437,31 +439,78 @@ export class TireHealthService {
         roadSurfaceFactor: 1.0,
         roadTypeFactor: wearAnalysis.factors.usageFactor,
         drivingStyleFactor: wearAnalysis.factors.behaviorFactor,
-        regenFactor: (wearAnalysis.factors.regenBrakingFactorFront + wearAnalysis.factors.regenBrakingFactorRear) / 2,
+        regenFactor:
+          (wearAnalysis.factors.regenBrakingFactorFront +
+            wearAnalysis.factors.regenBrakingFactorRear) /
+          2,
         curbWeightKg: null as number | null,
         tireSeason: setup.tireSeason,
       };
 
-      await this.prisma.tireWearDataPoint.createMany({
-        data: [
-          {
-            ...baseDataPoint,
-            axle: 'front',
-            predictedTreadMm: frontAvgPredicted,
-            actualTreadMm: actualFrontAvg,
-            initialTreadMm: wearAnalysis.referenceNewTreadFront,
-            tireWidthMm: setup.frontTireWidthMm ?? null,
-          },
-          {
-            ...baseDataPoint,
-            axle: 'rear',
-            predictedTreadMm: rearAvgPredicted,
-            actualTreadMm: actualRearAvg,
-            initialTreadMm: wearAnalysis.referenceNewTreadRear,
-            tireWidthMm: setup.rearTireWidthMm ?? null,
-          },
-        ],
-      }).catch((e) => this.logger.warn(`Failed to write wear data points: ${e.message}`));
+      const gtInput = latestMeas
+        ? {
+            tireSetupId: setup.id,
+            source: latestMeas.source,
+            measuredAt: latestMeas.measuredAt,
+            frontLeftMm: latestMeas.frontLeftMm,
+            frontRightMm: latestMeas.frontRightMm,
+            rearLeftMm: latestMeas.rearLeftMm,
+            rearRightMm: latestMeas.rearRightMm,
+          }
+        : null;
+
+      const wearRows: Array<{
+        axle: TireAxle;
+        predictedTreadMm: number;
+        actualTreadMm: number;
+        initialTreadMm: number;
+        tireWidthMm: number | null;
+      }> = [];
+
+      for (const axle of ['front', 'rear'] as const) {
+        if (
+          !gtInput ||
+          !hasValidGroundTruthMeasurement({
+            measurement: gtInput,
+            tireSetupId: setup.id,
+            axle,
+            asOf: recalcAsOf,
+          })
+        ) {
+          continue;
+        }
+        const actualTreadMm = resolveAxleGroundTruthTreadMm(gtInput, axle);
+        if (actualTreadMm == null) continue;
+
+        wearRows.push({
+          axle,
+          predictedTreadMm: axle === 'front' ? frontAvgPredicted : rearAvgPredicted,
+          actualTreadMm,
+          initialTreadMm:
+            axle === 'front'
+              ? wearAnalysis.referenceNewTreadFront
+              : wearAnalysis.referenceNewTreadRear,
+          tireWidthMm:
+            axle === 'front'
+              ? setup.frontTireWidthMm ?? null
+              : setup.rearTireWidthMm ?? null,
+        });
+      }
+
+      if (wearRows.length > 0) {
+        await this.prisma.tireWearDataPoint
+          .createMany({
+            data: wearRows.map((row) => ({
+              ...baseDataPoint,
+              axle: row.axle,
+              predictedTreadMm: row.predictedTreadMm,
+              actualTreadMm: row.actualTreadMm,
+              initialTreadMm: row.initialTreadMm,
+              tireWidthMm: row.tireWidthMm,
+            })),
+          })
+          .catch((e) => this.logger.warn(`Failed to write wear data points: ${e.message}`));
+      }
     }
 
     await this.prisma.tireEvent.create({
