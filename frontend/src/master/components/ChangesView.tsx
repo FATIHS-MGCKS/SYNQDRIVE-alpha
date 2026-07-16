@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-booking-handover-diagnostic-v49501-2026-07-16',
+    version: '4.9.501',
+    title: 'V4.9.501 — Read-only vehicle/booking/handover diagnostic (Prompt 37/43)',
+    summary: [
+      'Neu: `VehicleBookingHandoverDiagnosticService` + Ops-Skript `audit-vehicle-booking-handover-data.ts` (read-only, local/test DB guards).',
+      '12 Checks: raw RESERVED/RENTED vs Booking-Truth, Handover↔Booking-Status, Mehrfach-ACTIVE/Reservierungsfenster, Legacy-vs-kanonisches Reserved (Pickup-Tag), Ableitungs-Drift, Cross-Org-Links, Datums-Inkonsistenzen, Org-timezone.',
+      'Ausgabe: JSON + Markdown/Console, Zähler je Check, maskierte Sample-IDs, Gruppierung nach Organisation, keine Kundennamen.',
+      'CLI: `--organization-id`, `--vehicle-id`, `--license-plate`, `--limit`, `--output`, `--format`, `--include-findings`.',
+      '16 Jest-Tests (Service + Util).',
+    ],
+    reason:
+      'Prompt 37/43: Ops brauchen ein sicheres Diagnosewerkzeug für Vehicle-, Booking- und Handover-Inkonsistenzen ohne Datenänderung.',
+    previousBehavior:
+      'Kein dediziertes Audit für Raw-`Vehicle.status` vs Booking-/Handover-Wahrheit; nur Task-Diagnostic (`audit-task-data.ts`) als Ops-Muster.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T00:15:00.000Z',
+  },
+  {
     id: 'fleet-unknown-status-ux-v49500-2026-07-15',
     version: '4.9.500',
     title: 'V4.9.500 — UNKNOWN / unreliable operational status UX (Prompt 36/43)',

@@ -10,6 +10,8 @@ import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intel
 import { DataAuthorizationsModule } from '../data-authorizations/data-authorizations.module';
 import { TasksModule } from '../tasks/tasks.module';
 import { BillingModule } from '../billing/billing.module';
+import { VehicleBookingHandoverDiagnosticService } from './diagnostic/vehicle-booking-handover-diagnostic.service';
+import { FLEET_STATUS_DERIVATION } from './diagnostic/fleet-status-derivation.port';
 
 @Module({
   imports: [
@@ -25,11 +27,17 @@ import { BillingModule } from '../billing/billing.module';
     VehiclesService,
     VehicleProviderConsentService,
     VehicleExteriorImagesService,
+    VehicleBookingHandoverDiagnosticService,
+    {
+      provide: FLEET_STATUS_DERIVATION,
+      useExisting: VehiclesService,
+    },
   ],
   exports: [
     VehiclesService,
     VehicleProviderConsentService,
     VehicleExteriorImagesService,
+    VehicleBookingHandoverDiagnosticService,
   ],
 })
 export class VehiclesModule {}
