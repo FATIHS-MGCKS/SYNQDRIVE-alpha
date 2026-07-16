@@ -67,7 +67,7 @@ interface BookingsViewProps {
   onCreateNewBooking?: () => void;
   additionalBookings?: any[];
   onBookingUpdated?: (updatedBooking: any) => void;
-  onBookingCancelled?: (bookingId: string) => void;
+  onBookingCancelled?: (bookingId: string, meta?: { vehicleId?: string | null }) => void;
   // V4.6.99 — Cross-View-Deep-Link auf eine konkrete Booking-Detail-Seite.
   // Wird vom App-Container gesetzt, wenn z.B. der BK-Chip im Dashboard
   // (StatInlineDetail) geklickt wird; BookingsView konsumiert die Id
@@ -574,7 +574,15 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
     try {
       await api.bookings.update(orgId, booking.id, patch);
       await loadBookings();
-      onBookingUpdated?.({ ...booking, ...cleanEdit });
+      onBookingUpdated?.({
+        ...booking,
+        ...cleanEdit,
+        vehicleId: selectedVehicle?.id ?? booking.vehicleId,
+        previousVehicleId:
+          selectedVehicle && selectedVehicle.id !== booking.vehicleId
+            ? booking.vehicleId
+            : undefined,
+      });
       toast.success('Buchung gespeichert', {
         description: `${cleanEdit.vehicle || booking.vehicle} · ${cleanEdit.customer || booking.customer}`,
       });
@@ -775,7 +783,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
     try {
       setNoShowSubmitting(true);
       await api.bookings.markNoShow(orgId, noShowConfirmId, noShowReason.trim() || null);
-      onBookingCancelled?.(noShowConfirmId);
+      onBookingCancelled?.(noShowConfirmId, { vehicleId: booking?.vehicleId ?? null });
       toast.success('Als No-Show markiert', {
         description: booking ? `${booking.vehicle} • ${booking.customer}` : undefined,
         duration: 3000,
@@ -804,7 +812,7 @@ export function BookingsView({ onActiveBookingRefChange, onNavigateToVehicle, on
         await api.bookings.cancel(orgId, cancelConfirmId);
       }
       setLocalCancelled(prev => [...prev, cancelConfirmId]);
-      onBookingCancelled?.(cancelConfirmId);
+      onBookingCancelled?.(cancelConfirmId, { vehicleId: booking?.vehicleId ?? null });
       toast.success('Buchung storniert', {
         description: booking ? `${booking.vehicle} • ${booking.customer}` : undefined,
         duration: 3000,

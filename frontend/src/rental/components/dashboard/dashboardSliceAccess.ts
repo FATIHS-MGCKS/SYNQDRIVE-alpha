@@ -1,4 +1,5 @@
 import type { DashboardSlice, DashboardSliceRow } from './runtime';
+import { TODAYS_OPERATIONAL_GROUP_IDS } from './runtime/todaysOperationalSlice';
 
 /**
  * Canonical not-ready rows for ready-to-rent.
@@ -24,9 +25,8 @@ export interface TodaysOperationsKpiCounts {
   hasOverdueReturns: boolean;
 }
 
-function groupHasCriticalRows(slice: DashboardSlice, groupId: string): boolean {
-  const rows = slice.groups?.find((group) => group.id === groupId)?.rows ?? [];
-  return rows.some((row) => row.severity === 'critical');
+function groupCount(slice: DashboardSlice, groupId: string): number {
+  return slice.groups?.find((group) => group.id === groupId)?.count ?? 0;
 }
 
 /** KPI counts for Today's Operations card — reads runtime slice groups only. */
@@ -41,16 +41,17 @@ export function resolveTodaysOperationsKpiCounts(slice: DashboardSlice): TodaysO
     };
   }
 
-  const activeRentalsCount = slice.count ?? slice.rows.length;
-  const pickupsToday = slice.groups?.find((group) => group.id === 'pickups-today')?.count ?? 0;
-  const returnsToday = slice.groups?.find((group) => group.id === 'returns-today')?.count ?? 0;
+  const activeRentalsCount =
+    groupCount(slice, TODAYS_OPERATIONAL_GROUP_IDS.ACTIVE_RENTED_NOW) || slice.count || slice.rows.length;
+  const pickupsToday = groupCount(slice, TODAYS_OPERATIONAL_GROUP_IDS.PICKUPS_TODAY);
+  const returnsToday = groupCount(slice, TODAYS_OPERATIONAL_GROUP_IDS.RETURNS_TODAY);
 
   return {
     activeRentalsCount,
     pickupsToday,
     returnsToday,
-    hasOverduePickups: groupHasCriticalRows(slice, 'pickups-today'),
-    hasOverdueReturns: groupHasCriticalRows(slice, 'returns-today'),
+    hasOverduePickups: groupCount(slice, TODAYS_OPERATIONAL_GROUP_IDS.OVERDUE_PICKUPS) > 0,
+    hasOverdueReturns: groupCount(slice, TODAYS_OPERATIONAL_GROUP_IDS.OVERDUE_RETURNS) > 0,
   };
 }
 

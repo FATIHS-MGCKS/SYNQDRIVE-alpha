@@ -28,6 +28,7 @@ import {
   requireQuoteId,
 } from '@modules/pricing/pricing-quote.service';
 import { StationValidationService } from '@modules/stations/station-validation.service';
+import { FleetMapCacheService } from '@modules/vehicles/fleet-map-cache.service';
 import {
   assertValidBookingWindow,
   buildOverlapWhere,
@@ -95,6 +96,7 @@ export class BookingsService {
     private readonly stationValidation: StationValidationService,
     @Inject(forwardRef(() => BookingPaymentCardService))
     private readonly bookingPaymentCardService: BookingPaymentCardService,
+    private readonly fleetMapCache: FleetMapCacheService,
   ) {}
 
   /**
@@ -329,6 +331,8 @@ export class BookingsService {
         })
         .catch(() => {});
     }
+
+    await this.fleetMapCache.invalidate(orgId);
 
     return {
       ...booking,
@@ -1815,6 +1819,7 @@ export class BookingsService {
         void this.taskAutomationService.ensureBookingLifecycleTasks(lifecycleInput).catch(() => {});
       }
     }
+    await this.fleetMapCache.invalidate(orgId);
     return updated;
   }
 
@@ -1855,6 +1860,8 @@ export class BookingsService {
     void this.vehicleCleaningTasks
       .onBookingCancelled(orgId, id, booking.vehicleId)
       .catch(() => {});
+
+    await this.fleetMapCache.invalidate(orgId);
 
     return updated;
   }
@@ -1940,6 +1947,8 @@ export class BookingsService {
     ]);
 
     void this.taskAutomationService.handleBookingNoShow(orgId, id).catch(() => {});
+
+    await this.fleetMapCache.invalidate(orgId);
 
     return updated;
   }

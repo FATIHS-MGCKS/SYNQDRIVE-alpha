@@ -20,6 +20,7 @@ import {
   PaginationParams,
   PaginatedResult,
 } from '@shared/utils/pagination';
+import { VehiclesService } from '@modules/vehicles/vehicles.service';
 import { UpdateTenantOrganizationProfileDto } from './dto/update-tenant-organization-profile.dto';
 import {
   TENANT_PROFILE_CRITICAL_FIELDS,
@@ -96,6 +97,7 @@ export class OrganizationsService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly organizationRoles: OrganizationRoleService,
+    private readonly vehiclesService: VehiclesService,
   ) {}
 
   private toBusinessTypeEnum(value: string): BusinessType {
@@ -548,17 +550,13 @@ export class OrganizationsService {
     if (!org) throw new NotFoundException('Organization not found');
 
     const [
-      vehicleCounts,
+      derivedFleetCounts,
       totalBookings,
       activeBookings,
       completedBookings,
       subscriptions,
     ] = await Promise.all([
-      this.prisma.vehicle.groupBy({
-        by: ['status'],
-        where: { organizationId: orgId },
-        _count: true,
-      }),
+      this.vehiclesService.aggregateDerivedFleetStatusCounts(orgId),
       this.prisma.booking.count({ where: { organizationId: orgId } }),
       this.prisma.booking.count({
         where: { organizationId: orgId, status: BookingStatus.ACTIVE },
@@ -578,16 +576,6 @@ export class OrganizationsService {
       }),
     ]);
 
-    const byStatus = vehicleCounts.reduce(
-      (acc, v) => ({ ...acc, [v.status]: v._count }),
-      {} as Record<string, number>,
-    );
-
-    const totalVehicles = Object.values(byStatus).reduce(
-      (a: number, b: number) => a + b,
-      0,
-    );
-
     const mrr = subscriptions.reduce((sum, sub) => {
       const latest = sub.invoices[0];
       return sum + (latest ? latest.amountCents / 100 : 0);
@@ -595,12 +583,14 @@ export class OrganizationsService {
 
     return {
       vehicles: {
-        total: totalVehicles,
-        available: byStatus[VehicleStatus.AVAILABLE] || 0,
-        rented: byStatus[VehicleStatus.RENTED] || 0,
-        inService: byStatus[VehicleStatus.IN_SERVICE] || 0,
-        outOfService: byStatus[VehicleStatus.OUT_OF_SERVICE] || 0,
-        reserved: byStatus[VehicleStatus.RESERVED] || 0,
+        total: derivedFleetCounts.total,
+        available: derivedFleetCounts.available,
+        rented: derivedFleetCounts.rented,
+        inService: derivedFleetCounts.maintenance,
+        outOfService: 0,
+        reserved: derivedFleetCounts.reserved,
+        unknown: derivedFleetCounts.unknown,
+        source: 'derived_fleet_status' as const,
       },
       bookings: {
         total: totalBookings,

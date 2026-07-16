@@ -43,6 +43,12 @@ import { CustomerDetailView } from './components/CustomerDetailView';
 import { VehicleBookingsView } from './components/VehicleBookingsView';
 import { VehicleTasksView } from './components/VehicleTasksView';
 import { VehicleData } from './data/vehicles';
+import { normalizeFleetStatusKey } from './lib/vehicle-status';
+import { VEHICLE_OPERATIONAL_STATUS } from './lib/vehicle-operational-state';
+import {
+  invalidateVehicleOperationalAfterBookingChange,
+  invalidateVehicleOperationalState,
+} from './lib/vehicle-operational-query';
 import { RentalProvider, useRentalOrg } from './RentalContext';
 import { FleetProvider, useFleetVehicles } from './FleetContext';
 import { DashboardInsightsProvider } from './DashboardInsightsContext';
@@ -165,7 +171,7 @@ function readPersistedSettingsView(): boolean {
 
 function RentalAppContent() {
   const { orgId, hasPermission } = useRentalOrg();
-  const { fleetVehicles, loading: fleetLoading, refresh: refreshFleet } = useFleetVehicles();
+  const { fleetVehicles, loading: fleetLoading, refresh: refreshFleetVehicles } = useFleetVehicles();
 
   useEffect(() => {
     if (!orgId) return;
@@ -306,6 +312,28 @@ function RentalAppContent() {
     }
   }, [fleetLoading, fleetVehicles, selectedVehicle]);
 
+  useEffect(() => {
+    if (!selectedVehicle?.id) return;
+    const fresh = fleetVehicles.find((v) => v.id === selectedVehicle.id);
+    if (!fresh) return;
+    if (
+      fresh.status === selectedVehicle.status &&
+      fresh.cleaningStatus === selectedVehicle.cleaningStatus
+    ) {
+      return;
+    }
+    setSelectedVehicle((prev) => (prev ? { ...prev, ...fresh } : prev));
+    const normalized = normalizeFleetStatusKey(fresh.status);
+    setVehicleStatus(
+      normalized === VEHICLE_OPERATIONAL_STATUS.AVAILABLE
+        ? 'Available'
+        : normalized === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE
+          ? 'Maintenance'
+          : 'Manual Block',
+    );
+    setCleaningStatus(fresh.cleaningStatus);
+  }, [fleetVehicles, selectedVehicle?.id, selectedVehicle?.status, selectedVehicle?.cleaningStatus]);
+
   // Shared new customers (created in NewBookingView, shown in CustomersView)
   const [newlyCreatedCustomers, setNewlyCreatedCustomers] = useState<any[]>([]);
   const [newBookingPrefill, setNewBookingPrefill] = useState<{
@@ -316,25 +344,31 @@ function RentalAppContent() {
   // Shared new bookings (created in NewBookingView, shown in BookingsView)
   const [createdBookings, setCreatedBookings] = useState<any[]>([]);
 
-  // Triggers a FleetContext refresh whenever bookings are created / updated /
-  // cancelled so the backend-derived vehicle status (Available/Reserved/
-  // Active Rented) reflects the new commitment state inside the next render
-  // instead of waiting up to 30s for the scheduled fleet poll to pick it up.
-  const bumpBookingsVersion = () => {
-    refreshFleet().catch(() => {});
+  const bumpBookingsVersion = (args?: {
+    vehicleId?: string | null;
+    previousVehicleId?: string | null;
+    reason?: 'booking-created' | 'booking-updated' | 'booking-cancelled';
+  }) => {
+    if (!orgId) return;
+    const vehicleId = args?.vehicleId;
+    if (vehicleId) {
+      void invalidateVehicleOperationalAfterBookingChange({
+        orgId,
+        vehicleId,
+        previousVehicleId: args?.previousVehicleId,
+        reason: args?.reason ?? 'booking-updated',
+      });
+      return;
+    }
+    void invalidateVehicleOperationalState({
+      orgId,
+      vehicleIds: [],
+      reason: args?.reason ?? 'booking-updated',
+      optimistic: 'none',
+    });
   };
 
-  // V4.6.75 — HandoverProvider broadcasts `handover:completed` after the
-  // pickup or return protocol has been written. Refresh fleet so BookingsView
-  // and DashboardView reflect the new booking status + vehicle availability
-  // immediately.
-  useEffect(() => {
-    const onHandover = () => {
-      refreshFleet().catch(() => {});
-    };
-    window.addEventListener('handover:completed', onHandover as EventListener);
-    return () => window.removeEventListener('handover:completed', onHandover as EventListener);
-  }, [refreshFleet]);
+  // Handover + booking operational sync is centralized in vehicle-operational-query.
 
   // Station state
   const [isMapExpanded, setIsMapExpanded] = useState(false);
@@ -394,7 +428,12 @@ function RentalAppContent() {
         setCleaningStatus(uiStatus);
         setSelectedVehicle((prev) => (prev ? { ...prev, cleaningStatus: uiStatus } : prev));
         setVehicleTasksRefreshToken((t) => t + 1);
-        void refreshFleet();
+        void invalidateVehicleOperationalState({
+          orgId,
+          vehicleIds: [selectedVehicle.id],
+          reason: 'vehicle-status-patch',
+          optimistic: 'none',
+        });
 
         const action = res.cleaningTask?.action;
         if (apiStatus === 'NEEDS_CLEANING') {
@@ -438,7 +477,7 @@ function RentalAppContent() {
         setCleaningStatusBusy(false);
       }
     },
-    [cleaningStatusBusy, orgId, refreshFleet, selectedVehicle?.id],
+    [cleaningStatusBusy, orgId, selectedVehicle?.id],
   );
 
   const handleCleaningStatusChange = (newStatus: 'Clean' | 'Needs Cleaning') => {
@@ -482,7 +521,7 @@ function RentalAppContent() {
   // Handle vehicle selection from Fleet
   const handleVehicleSelect = (vehicle: VehicleData) => {
     setSelectedVehicle(vehicle);
-    setVehicleStatus(vehicle.status === 'Available' ? 'Available' : vehicle.status === 'Maintenance' ? 'Maintenance' : 'Available');
+    setVehicleStatus(vehicle.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE ? 'Available' : vehicle.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE ? 'Maintenance' : 'Available');
     setCleaningStatus(vehicle.cleaningStatus);
     setCurrentStation(vehicle.station);
     setCurrentView('overview');
@@ -676,6 +715,9 @@ function RentalAppContent() {
             onVehicleStatusChange={handleVehicleStatusChange}
             onCleaningStatusChange={handleCleaningStatusChange}
             onBack={handleBackToFleet}
+            onRefreshOperationalStatus={() => {
+              void refreshFleetVehicles();
+            }}
           />
         )}
 
@@ -883,10 +925,17 @@ function RentalAppContent() {
             if (vehicle) { handleVehicleSelect(vehicle); }
           }} onCreateNewBooking={() => setCurrentView('new-booking')} additionalBookings={createdBookings} onBookingUpdated={(updatedBooking) => {
             setCreatedBookings(prev => prev.map(b => b.id === updatedBooking.id ? updatedBooking : b));
-            bumpBookingsVersion();
-          }} onBookingCancelled={(bookingId) => {
+            bumpBookingsVersion({
+              vehicleId: updatedBooking.vehicleId ?? null,
+              previousVehicleId: updatedBooking.previousVehicleId ?? null,
+              reason: 'booking-updated',
+            });
+          }} onBookingCancelled={(bookingId, meta) => {
             setCreatedBookings(prev => prev.filter(b => b.id !== bookingId));
-            bumpBookingsVersion();
+            bumpBookingsVersion({
+              vehicleId: meta?.vehicleId ?? null,
+              reason: 'booking-cancelled',
+            });
           }} initialDetailBookingId={pendingBookingDetailId} onConsumeInitialDetailBookingId={() => setPendingBookingDetailId(null)} />
         ) : currentView === 'health-errors' ? (
           <HealthErrorsView
@@ -1121,7 +1170,7 @@ function RentalAppContent() {
               setCurrentView(returnView);
             }}
             onCustomerCreated={(c) => setNewlyCreatedCustomers(prev => [c, ...prev])}
-            onBookingCreated={(b) => { setCreatedBookings(prev => [b, ...prev]); bumpBookingsVersion(); }}
+            onBookingCreated={(b) => { setCreatedBookings(prev => [b, ...prev]); bumpBookingsVersion({ vehicleId: b.vehicleId ?? null, reason: 'booking-created' }); }}
             onViewBooking={(bookingId) => {
               setPendingBookingDetailId(bookingId);
               setCurrentView('bookings');

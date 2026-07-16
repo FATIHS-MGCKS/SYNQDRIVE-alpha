@@ -13,6 +13,15 @@ import type {
 import type { VehicleTelemetryFreshness } from './controlSignalsBuilder';
 import { isVehicleReadyToRent, parseEventTime, type ReadyToRentOptions } from './dashboardUtils';
 import type { DashboardRuntimeModel, RuntimeReason, VehicleRuntimeState } from './runtime';
+import {
+  selectOperationalStatus,
+  selectReservedBooking,
+  VEHICLE_OPERATIONAL_STATUS,
+} from '../../lib/vehicle-operational-state';
+import {
+  selectFleetReservedIsOverdue,
+  selectFleetReservedPickupAt,
+} from '../../lib/fleet-map-vehicle-selectors';
 
 export type PredictiveRiskType =
   | 'RETURN_OVERDUE_THREATENS_FOLLOWUP'
@@ -252,13 +261,20 @@ export function derivePredictiveOperationsInsights(input: {
           : `in ${hoursUntil}h`
         : p.time;
 
+    const vehicleOpStatus = vehicle ? selectOperationalStatus(vehicle) : null;
     const ready = runtimeState
       ? runtimeState.isReadyToRent
       : vehicle &&
         isVehicleReadyToRent(vehicle, input.readyOptions) &&
-        (vehicle.status === 'Available' || vehicle.status === 'Reserved');
+        (vehicleOpStatus === VEHICLE_OPERATIONAL_STATUS.AVAILABLE ||
+          vehicleOpStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED);
 
-    if (vehicle && !ready && runtimeState?.operationalStatus !== 'maintenance' && vehicle.status !== 'Maintenance') {
+    if (
+      vehicle &&
+      !ready &&
+      runtimeState?.operationalStatus !== 'maintenance' &&
+      vehicleOpStatus !== VEHICLE_OPERATIONAL_STATUS.MAINTENANCE
+    ) {
       const healthAlert = p.vehicleId ? healthAlerts.get(p.vehicleId) : undefined;
       const onlyCleaningIssue =
         (runtimeState
@@ -288,8 +304,14 @@ export function derivePredictiveOperationsInsights(input: {
             label,
           },
           sourceData: de
-            ? reasonSummary(notReadyReasons, `Runtime: ${runtimeState?.rentalReadiness ?? vehicle.status}`)
-            : reasonSummary(notReadyReasons, `Runtime: ${runtimeState?.rentalReadiness ?? vehicle.status}`),
+            ? reasonSummary(
+                notReadyReasons,
+                `Runtime: ${runtimeState?.rentalReadiness ?? selectOperationalStatus(vehicle)}`,
+              )
+            : reasonSummary(
+                notReadyReasons,
+                `Runtime: ${runtimeState?.rentalReadiness ?? selectOperationalStatus(vehicle)}`,
+              ),
           recommendedAction: de
             ? 'Fahrzeugstatus prüfen und vor Pickup bereitstellen.'
             : 'Review vehicle status and make it ready before pickup.',
@@ -481,10 +503,13 @@ export function derivePredictiveOperationsInsights(input: {
   for (const v of input.vehicles) {
     const runtimeState = runtimeByVehicleId.get(v.id);
     const blocked = runtimeState ? runtimeState.isBlocked : isRentalBlocked(v.id, input.healthMap);
-    const maintenance = runtimeState ? runtimeState.isMaintenance : v.status === 'Maintenance';
+    const maintenance = runtimeState
+      ? runtimeState.isMaintenance
+      : selectOperationalStatus(v) === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE;
     if (!blocked && !maintenance) continue;
 
-    const reservedMs = parseEventTime(v.reservedPickupAt ?? undefined);
+    const reservedPickupAt = selectFleetReservedPickupAt(v);
+    const reservedMs = parseEventTime(reservedPickupAt ?? undefined);
     const hasReservedWindow = reservedMs != null && reservedMs - now <= PICKUP_WINDOW_MS && reservedMs >= now;
     const linkedPickup = pendingPickups.find((p) => p.vehicleId === v.id && !p.done);
     if (!hasReservedWindow && !linkedPickup) continue;
@@ -495,7 +520,7 @@ export function derivePredictiveOperationsInsights(input: {
     push({
       id: `predictive-blocked-future-${v.id}`,
       type: 'BLOCKED_VEHICLE_FUTURE_BOOKING',
-      severity: v.reservedIsOverdue || linkedPickup?.isOverdue ? 'critical' : 'warning',
+      severity: selectFleetReservedIsOverdue(v) || linkedPickup?.isOverdue ? 'critical' : 'warning',
       title: de
         ? 'Operatives Risiko · blockiertes Fahrzeug gebucht'
         : 'Operational risk · blocked vehicle booked',
@@ -504,8 +529,22 @@ export function derivePredictiveOperationsInsights(input: {
         : `${label} is ${maintenance ? 'in maintenance' : 'rental-blocked'} but has a future booking.`,
       affectedEntity: { kind: 'vehicle', vehicleId: v.id, label },
       sourceData: de
-        ? reasonSummary(runtimeState?.blockReasons ?? [], `Runtime: ${runtimeState?.rentalReadiness ?? v.status}${v.reservedBookingId ? ` · BK ${v.reservedBookingId}` : ''}`)
-        : reasonSummary(runtimeState?.blockReasons ?? [], `Runtime: ${runtimeState?.rentalReadiness ?? v.status}${v.reservedBookingId ? ` · BK ${v.reservedBookingId}` : ''}`),
+        ? reasonSummary(
+            runtimeState?.blockReasons ?? [],
+            `Runtime: ${runtimeState?.rentalReadiness ?? selectOperationalStatus(v)}${
+              selectReservedBooking(v)?.bookingId
+                ? ` · BK ${selectReservedBooking(v)!.bookingId}`
+                : ''
+            }`,
+          )
+        : reasonSummary(
+            runtimeState?.blockReasons ?? [],
+            `Runtime: ${runtimeState?.rentalReadiness ?? selectOperationalStatus(v)}${
+              selectReservedBooking(v)?.bookingId
+                ? ` · BK ${selectReservedBooking(v)!.bookingId}`
+                : ''
+            }`,
+          ),
       recommendedAction: de
         ? 'Buchung prüfen, Fahrzeug freigeben oder Ersatzfahrzeug zuweisen.'
         : 'Review booking, release vehicle, or assign a replacement.',
@@ -513,7 +552,7 @@ export function derivePredictiveOperationsInsights(input: {
       timeSortMs: startMs ?? now,
       cta: 'open-vehicle',
       vehicleId: v.id,
-      bookingId: linkedPickup?.bookingId || v.reservedBookingId || undefined,
+      bookingId: linkedPickup?.bookingId || selectReservedBooking(v)?.bookingId || undefined,
       isOverdue: !!(v.reservedIsOverdue || linkedPickup?.isOverdue),
     });
   }

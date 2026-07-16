@@ -9,6 +9,11 @@ import type { DashboardInsight } from '../../DashboardInsightsContext';
 import { countFleetStatusTab } from '../../lib/vehicle-status';
 import { bookingRef } from '../bookings/bookingUtils';
 import type { PickupTileItem, ReturnTileItem } from '../StatInlineDetail';
+import {
+  selectCanBeConsideredForRentalReadiness,
+  selectOperationalStatus,
+  VEHICLE_OPERATIONAL_STATUS,
+} from '../../lib/vehicle-operational-state';
 import type {
   ControlCenterKpi,
   ControlCenterStatus,
@@ -194,30 +199,30 @@ export function buildFleetStateTabs(
   const activeRentedOverKm = countActiveRentedOverKm(activeRentedVehicles);
   return [
     {
-      key: 'Available',
+      key: VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
       label: labels.available,
       count: availableVehicles.length,
       tone: 'success',
       warn: 0,
     },
     {
-      key: 'Reserved',
+      key: VEHICLE_OPERATIONAL_STATUS.RESERVED,
       label: labels.reserved,
       count: reservedVehicles.length,
       tone: 'warning',
       warn: reservedVehicles.filter((v) => v.reservedIsOverdue).length,
     },
     {
-      key: 'Active Rented',
+      key: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED,
       label: labels.rented,
       count: activeRentedVehicles.length,
       tone: 'brand',
       warn: activeRentedOverKm,
     },
     {
-      key: 'Maintenance',
+      key: VEHICLE_OPERATIONAL_STATUS.MAINTENANCE,
       label: labels.maintenance,
-      count: countFleetStatusTab(filteredFleetVehicles, 'Maintenance'),
+      count: countFleetStatusTab(filteredFleetVehicles, VEHICLE_OPERATIONAL_STATUS.MAINTENANCE),
       tone: 'critical',
       warn: 0,
     },
@@ -298,7 +303,7 @@ export function isVehicleReadyToRent(
   v: VehicleData,
   options?: ReadyToRentOptions,
 ): boolean {
-  if (v.status !== 'Available') return false;
+  if (!selectCanBeConsideredForRentalReadiness(v)) return false;
   if (v.cleaningStatus !== 'Clean') return false;
   if (options?.blockedVehicleIds?.has(v.id)) return false;
   if (options?.healthRiskVehicleIds?.has(v.id)) return false;
@@ -309,7 +314,9 @@ export function isVehicleReadyToRent(
  * @deprecated Deprecated: use dashboard runtime/slices instead. Must not be used for active Dashboard KPI/Drawer/Board/Business state.
  */
 export function countMaintenanceVehicles(vehicles: VehicleData[]): number {
-  return vehicles.filter((v) => v.status === 'Maintenance').length;
+  return vehicles.filter(
+    (v) => selectOperationalStatus(v) === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE,
+  ).length;
 }
 
 export function parseEventTime(iso: string | undefined): number | null {

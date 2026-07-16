@@ -13,6 +13,7 @@ import { buildMMY } from '../../lib/vehicleMmy';
 import { BrandLogoMark, getBrandFromModel } from '../BrandLogo';
 import { RentalHealthBadge } from '../rental-health/RentalHealthBadge';
 import { Icon } from '../ui/Icon';
+import { VEHICLE_OPERATIONAL_STATUS, selectOperationalStatus } from '../../lib/vehicle-operational-state';
 
 export interface VehiclePickerStationOption {
   id: string;
@@ -46,10 +47,10 @@ export interface VehiclePickerStepProps {
 
 const STATUS_TABS = [
   { label: 'Alle', value: 'all' },
-  { label: 'Verfügbar', value: 'Available' },
-  { label: 'Reserviert', value: 'Reserved' },
-  { label: 'Vermietet', value: 'Active Rented' },
-  { label: 'Wartung', value: 'Maintenance' },
+  { label: 'Verfügbar', value: VEHICLE_OPERATIONAL_STATUS.AVAILABLE },
+  { label: 'Reserviert', value: VEHICLE_OPERATIONAL_STATUS.RESERVED },
+  { label: 'Vermietet', value: VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED },
+  { label: 'Wartung', value: VEHICLE_OPERATIONAL_STATUS.MAINTENANCE },
 ] as const;
 
 function fuelChipClass(fuelType: string): string {
@@ -123,11 +124,12 @@ function VehiclePickerCard({
     vehicleHasTariff(vehicle.id),
     catalogLoading,
   );
+  const operationalStatus = selectOperationalStatus(vehicle);
   const brandKey = getBrandFromModel({ make: vehicle.make, model: vehicle.model });
   const mmy = buildMMY(vehicle);
   const priceLabel = dailyLabel ?? 'Kein Tarif';
   const stationLabel = vehicleStationDisplay(vehicle);
-  const fleetLabel = fleetStatusLabelDe(vehicle.status);
+  const fleetLabel = fleetStatusLabelDe(preflight.fleetStatus);
 
   return (
     <button
@@ -198,13 +200,14 @@ function VehiclePickerCard({
           </div>
 
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 pt-0.5">
-            {vehicle.status !== 'Available' ? (
+            {operationalStatus !== VEHICLE_OPERATIONAL_STATUS.AVAILABLE ? (
               <span
                 className={cn(
                   'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px]',
-                  vehicle.status === 'Maintenance' && 'sq-tone-critical',
-                  vehicle.status === 'Active Rented' && 'bg-orange-500/15 text-orange-600 dark:text-orange-400',
-                  vehicle.status === 'Reserved' && 'sq-tone-watch',
+                  operationalStatus === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE && 'sq-tone-critical',
+                  operationalStatus === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED && 'bg-orange-500/15 text-orange-600 dark:text-orange-400',
+                  operationalStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED && 'sq-tone-watch',
+                  operationalStatus === VEHICLE_OPERATIONAL_STATUS.UNKNOWN && 'sq-chip-neutral',
                 )}
               >
                 {fleetLabel}
@@ -232,7 +235,7 @@ function VehiclePickerCard({
             !preflight.offline &&
             !preflight.rentalBlocked &&
             !preflight.noTariff &&
-            vehicle.status === 'Available' ? (
+            operationalStatus === VEHICLE_OPERATIONAL_STATUS.AVAILABLE ? (
               <span className="truncate text-[10px] text-muted-foreground">{preflight.cautionReason}</span>
             ) : null}
           </div>
@@ -256,7 +259,7 @@ function VehiclePickerCard({
           <SelectionIndicator
             selected={selected}
             disabled={!preflight.isSelectable}
-            caution={vehicle.status === 'Maintenance'}
+            caution={operationalStatus === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE}
           />
         </div>
       </div>
@@ -300,13 +303,18 @@ export function VehiclePickerStep({
     const counts: Record<string, number> = { all: vehicles.length };
     for (const tab of STATUS_TABS) {
       if (tab.value === 'all') continue;
-      counts[tab.value] = vehicles.filter((v) => v.status === tab.value).length;
+      counts[tab.value] = vehicles.filter(
+        (v) => selectOperationalStatus(v) === tab.value,
+      ).length;
     }
     return counts;
   }, [vehicles]);
 
   const visibleVehicles = useMemo(
-    () => vehicles.filter((v) => statusFilter === 'all' || v.status === statusFilter),
+    () =>
+      vehicles.filter(
+        (v) => statusFilter === 'all' || selectOperationalStatus(v) === statusFilter,
+      ),
     [vehicles, statusFilter],
   );
 

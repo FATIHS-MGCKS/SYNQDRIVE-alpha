@@ -695,6 +695,15 @@ export const en = {
   'dashboard.costsBreakdown': 'Costs Breakdown',
   'dashboard.pickUpToday': 'Pick Up Today',
   'dashboard.returnToday': 'Return Today',
+  'dashboard.todaysOperations.activeRentedNow': 'Active rented',
+  'dashboard.todaysOperations.pickupsToday': 'Pickups today',
+  'dashboard.todaysOperations.reservedPickupToday': 'Reserved for pickup',
+  'dashboard.todaysOperations.returnsToday': 'Returns today',
+  'dashboard.todaysOperations.overduePickups': 'Overdue pickups',
+  'dashboard.todaysOperations.overdueReturns': 'Overdue returns',
+  'dashboard.todaysOperations.activeRentalsKpi': 'active rentals',
+  'dashboard.todaysOperations.pickupsKpi': 'Pickups',
+  'dashboard.todaysOperations.returnsKpi': 'Returns',
 
   // ─── Fleet ───
   'fleet.title': 'Fleet Overview',

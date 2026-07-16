@@ -4,10 +4,10 @@ import { SkeletonCard } from '../../../components/patterns';
 import {
   type FleetCommandTab,
   type FleetVehicleContext,
+  applyFleetCommandFilters,
   computeFleetCommandAttentionCounts,
   fleetCommandTabEmptyMessage,
   computeCommandTabCounts,
-  filterFleetByTab,
   resolveFleetCommandRowSeverity,
   sortFleetContexts,
   type ResolveFleetCommandRowSeverityOptions,
@@ -18,11 +18,15 @@ import { CommandCountBadge, PanelStatusChip } from './fleetOperatorUi';
 const COMMAND_TABS: Array<{
   key: FleetCommandTab;
   label: string;
+  shortLabel?: string;
   tone?: 'success' | 'brand' | 'warning' | 'critical' | 'neutral';
 }> = [
-  { key: 'Available', label: 'Available', tone: 'success' },
-  { key: 'Active', label: 'Active', tone: 'brand' },
-  { key: 'Reserved', label: 'Reserved', tone: 'warning' },
+  { key: 'All', label: 'All', shortLabel: 'All', tone: 'neutral' },
+  { key: 'Available', label: 'Available', shortLabel: 'Avail.', tone: 'success' },
+  { key: 'Reserved', label: 'Reserved', shortLabel: 'Res.', tone: 'warning' },
+  { key: 'Active', label: 'Active Rented', shortLabel: 'Active', tone: 'brand' },
+  { key: 'Maintenance', label: 'Maint./Blocked', shortLabel: 'Maint.', tone: 'critical' },
+  { key: 'Unknown', label: 'Unknown', shortLabel: 'Unk.', tone: 'neutral' },
 ];
 
 export interface FleetCommandPanelProps {
@@ -51,6 +55,10 @@ export interface FleetCommandPanelProps {
   canonicalAlertCounts?: { critical: number; warning: number };
   /** Vehicle IDs from the canonical Critical Alerts slice (Dashboard). */
   canonicalCriticalVehicleIds?: ReadonlySet<string>;
+  /** Tab badge counts from dashboard runtime vehicle states (same scope as contexts). */
+  canonicalTabCounts?: Record<FleetCommandTab, number>;
+  futureBookingOnly?: boolean;
+  onFutureBookingOnlyChange?: (value: boolean) => void;
 }
 
 export function FleetCommandPanel({
@@ -77,13 +85,21 @@ export function FleetCommandPanel({
   listPanelRef,
   canonicalAlertCounts,
   canonicalCriticalVehicleIds,
+  canonicalTabCounts,
+  futureBookingOnly = false,
+  onFutureBookingOnlyChange,
 }: FleetCommandPanelProps) {
   const severityOptions = useMemo<ResolveFleetCommandRowSeverityOptions>(
     () => ({ canonicalCriticalVehicleIds }),
     [canonicalCriticalVehicleIds],
   );
 
-  const tabCounts = useMemo(() => computeCommandTabCounts(contexts), [contexts]);
+  const tabCounts = useMemo(
+    () =>
+      canonicalTabCounts ??
+      computeCommandTabCounts(contexts, { futureBookingOnly }),
+    [canonicalTabCounts, contexts, futureBookingOnly],
+  );
 
   const attentionStats = useMemo(() => {
     if (canonicalAlertCounts) return canonicalAlertCounts;
@@ -91,8 +107,12 @@ export function FleetCommandPanel({
   }, [contexts, canonicalAlertCounts, severityOptions]);
 
   const visibleContexts = useMemo(
-    () => sortFleetContexts(filterFleetByTab(contexts, activeTab), severityOptions),
-    [contexts, activeTab, severityOptions],
+    () =>
+      sortFleetContexts(
+        applyFleetCommandFilters(contexts, { tab: activeTab, futureBookingOnly }),
+        severityOptions,
+      ),
+    [contexts, activeTab, futureBookingOnly, severityOptions],
   );
 
   const hasSearch = searchQuery.trim().length > 0;
@@ -146,8 +166,8 @@ export function FleetCommandPanel({
           />
         </div>
 
-        <div className="sq-tab-bar mb-2 w-full p-1">
-          <div className="flex w-full items-stretch gap-0.5">
+        <div className="sq-tab-bar mb-2 w-full overflow-x-auto p-1">
+          <div className="flex min-w-max items-stretch gap-0.5 pr-1">
           {COMMAND_TABS.map((tab) => {
             const isActive = activeTab === tab.key;
             const count = tabCounts[tab.key];
@@ -156,19 +176,32 @@ export function FleetCommandPanel({
                 key={tab.key}
                 type="button"
                 onClick={() => onTabChange(tab.key)}
-                className={`flex min-w-0 flex-1 items-center justify-center gap-1 rounded-[calc(var(--radius-md)-2px)] px-2 py-1.5 text-[11px] font-semibold whitespace-nowrap transition-all duration-200 ${
+                className={`flex shrink-0 items-center justify-center gap-1 rounded-[calc(var(--radius-md)-2px)] px-2 py-1.5 text-[10.5px] sm:text-[11px] font-semibold whitespace-nowrap transition-all duration-200 ${
                   isActive
                     ? 'surface-premium text-foreground ring-1 ring-[color:color-mix(in_srgb,var(--brand)_12%,transparent)]'
                     : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                <span className="truncate">{tab.label}</span>
+                <span className="sm:hidden">{tab.shortLabel ?? tab.label}</span>
+                <span className="hidden sm:inline">{tab.label}</span>
                 <CommandCountBadge count={count} tone={tab.tone} active={isActive} />
               </button>
             );
           })}
           </div>
         </div>
+
+        {onFutureBookingOnlyChange ? (
+          <label className="mb-2 flex cursor-pointer items-center gap-2 px-0.5 text-[10px] text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={futureBookingOnly}
+              onChange={(e) => onFutureBookingOnlyChange(e.target.checked)}
+              className="h-3.5 w-3.5 rounded border-border accent-[color:var(--brand)]"
+            />
+            <span>With future booking</span>
+          </label>
+        ) : null}
       </div>
 
       <div ref={listPanelRef} className="flex-1 py-1.5 lg:overflow-y-auto">
@@ -208,7 +241,7 @@ export function FleetCommandPanel({
           </div>
         ) : visibleContexts.length === 0 ? (
           <p className="text-center text-[10.5px] text-muted-foreground py-8">
-            {fleetCommandTabEmptyMessage(activeTab, hasSearch)}
+            {fleetCommandTabEmptyMessage(activeTab, hasSearch, futureBookingOnly)}
           </p>
         ) : (
           <div className="flex flex-col gap-1">

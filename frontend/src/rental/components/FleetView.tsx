@@ -19,13 +19,15 @@ import {
 } from '../stores/useFleetMapStore';
 import { buildFleetMapGeoJson, vehicleHasFleetLocation } from '../lib/fleetVisualState';
 import { FleetMapControls } from './FleetMapControls';
+import { FleetMapVehicleStatusHud } from './fleet-operator/FleetMapVehicleStatusHud';
 import { FleetCommandPanel } from './fleet-operator/FleetCommandPanel';
 import {
   buildFleetVehicleContexts,
   buildStationFilterOptions,
   filterFleetBySearch,
   filterFleetByStation,
-  filterFleetByTab,
+  applyFleetCommandFilters,
+  fleetContextsToVehicles,
   resolveOperatorTabForVehicle,
   type FleetCommandTab,
   type FleetVehicleContext,
@@ -140,6 +142,7 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
   );
 
   const [activeTab, setActiveTab] = useState<FleetCommandTab>('Available');
+  const [futureBookingOnly, setFutureBookingOnly] = useState(false);
   const userPickedTabRef = useRef(false);
 
   const [isStationOpen, setIsStationOpen] = useState(false);
@@ -156,12 +159,22 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
     [stationsApi, vehicles, getHealth],
   );
 
+  const filteredContexts = useMemo(
+    () => applyFleetCommandFilters(searchContexts, { tab: activeTab, futureBookingOnly }),
+    [searchContexts, activeTab, futureBookingOnly],
+  );
+
+  const filteredVehicles = useMemo(
+    () => fleetContextsToVehicles(filteredContexts),
+    [filteredContexts],
+  );
+
   const fleetGeoJson = useMemo(
     () =>
-      buildFleetMapGeoJson(stationFiltered, {
+      buildFleetMapGeoJson(filteredVehicles, {
         getRentalHealth: (id) => healthMap.get(id) ?? null,
       }),
-    [stationFiltered, healthMap],
+    [filteredVehicles, healthMap],
   );
 
   const scrollRowIntoView = useCallback((vehicleId: string) => {
@@ -217,8 +230,8 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
     return () => clearInterval(timer);
   }, [lastFetchedAt, refreshIntervalMs]);
 
-  const vehiclesWithCoords = stationFiltered.filter(vehicleHasFleetLocation);
-  const noLocationCount = stationFiltered.length - vehiclesWithCoords.length;
+  const vehiclesWithCoords = filteredVehicles.filter(vehicleHasFleetLocation);
+  const noLocationCount = filteredVehicles.length - vehiclesWithCoords.length;
 
   const mapCenter: [number, number] =
     vehiclesWithCoords.length > 0
@@ -228,15 +241,21 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
         ]
       : KASSEL_CENTER;
 
-  const visibleIds = useMemo(() => {
-    const tabbed = filterFleetByTab(searchContexts, activeTab);
-    return new Set(tabbed.map((c) => c.vehicle.id));
-  }, [searchContexts, activeTab]);
+  const visibleIds = useMemo(
+    () => new Set(filteredContexts.map((c) => c.vehicle.id)),
+    [filteredContexts],
+  );
 
   const hiddenSelectedContext = useMemo(() => {
     if (!selectedVehicleId || visibleIds.has(selectedVehicleId)) return null;
     return baseContexts.find((c) => c.vehicle.id === selectedVehicleId) ?? null;
   }, [selectedVehicleId, visibleIds, baseContexts]);
+
+  const mapHudContext = useMemo(() => {
+    const id = hoveredVehicleId ?? selectedVehicleId;
+    if (!id) return null;
+    return baseContexts.find((c) => c.vehicle.id === id) ?? null;
+  }, [baseContexts, hoveredVehicleId, selectedVehicleId]);
 
   const handleTabChange = useCallback((tab: FleetCommandTab) => {
     userPickedTabRef.current = true;
@@ -363,7 +382,7 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
             lastFetchedAt={lastFetchedAt}
             loading={loading}
             countdownSec={countdown}
-            vehicleCount={stationFiltered.length}
+            vehicleCount={filteredVehicles.length}
             locatedCount={vehiclesWithCoords.length}
             noLocationCount={noLocationCount}
             selectedVehicleId={selectedVehicleId}
@@ -373,7 +392,12 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
             onLocateSelected={() => setFocusNonce((n) => n + 1)}
             onToggleStations={() => setShowStationsOnMap((v) => !v)}
           />
-          {stationFiltered.length === 0 && !loading && (
+          <FleetMapVehicleStatusHud
+            ctx={mapHudContext}
+            locale="de"
+            onRefresh={handleRefreshNow}
+          />
+          {filteredVehicles.length === 0 && !loading && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[5]">
               <div className="sq-map-liquid-empty px-5 py-4 rounded-2xl max-w-[280px] text-center">
                 <p className="text-[12px] font-semibold text-foreground">No vehicles in filter</p>
@@ -408,6 +432,8 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
             onRefresh={handleRefreshNow}
             refreshing={loading}
             headerAction={stationFilterControl}
+            futureBookingOnly={futureBookingOnly}
+            onFutureBookingOnlyChange={setFutureBookingOnly}
             onRowClick={handleRowClick}
             onDetailClick={handleDetailClick}
             registerRowRef={registerRowRef}

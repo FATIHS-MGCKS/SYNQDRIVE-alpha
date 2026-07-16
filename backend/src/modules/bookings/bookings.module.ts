@@ -19,6 +19,7 @@ import { BookingRentalEligibilityService } from './booking-rental-eligibility.se
 import { BookingWizardDraftService } from './booking-wizard-draft.service';
 import { BookingWizardCheckoutContextService } from './booking-wizard-checkout-context.service';
 import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.service';
+import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { BookingWizardPaymentFlowService } from './booking-wizard-payment-flow.s
     RentalRulesModule,
     OutboundEmailModule,
     forwardRef(() => PaymentsModule),
+    VehiclesModule,
   ],
   controllers: [BookingsController],
   providers: [

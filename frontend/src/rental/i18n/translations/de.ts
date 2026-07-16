@@ -767,6 +767,15 @@ export const de: Record<TranslationKey, string> = {
   'dashboard.costsBreakdown': 'Kostenaufschluesselung',
   'dashboard.pickUpToday': 'Abholung heute',
   'dashboard.returnToday': 'Rueckgabe heute',
+  'dashboard.todaysOperations.activeRentedNow': 'Aktiv vermietet',
+  'dashboard.todaysOperations.pickupsToday': 'Übergaben heute',
+  'dashboard.todaysOperations.reservedPickupToday': 'Reserviert zur Übergabe',
+  'dashboard.todaysOperations.returnsToday': 'Rückgaben heute',
+  'dashboard.todaysOperations.overduePickups': 'Überfällige Übergaben',
+  'dashboard.todaysOperations.overdueReturns': 'Überfällige Rückgaben',
+  'dashboard.todaysOperations.activeRentalsKpi': 'aktive Vermietungen',
+  'dashboard.todaysOperations.pickupsKpi': 'Übergaben',
+  'dashboard.todaysOperations.returnsKpi': 'Rückgaben',
 
   // ─── Fleet ───
   'fleet.title': 'Flottenuebersicht',

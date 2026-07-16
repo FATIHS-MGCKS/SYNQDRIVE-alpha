@@ -53,6 +53,7 @@ describe('OrganizationsService — tenant company profile', () => {
   };
   let audit: { record: jest.Mock };
   let roleService: { ensureDefaultRoles: jest.Mock };
+  let vehiclesService: { aggregateDerivedFleetStatusCounts: jest.Mock };
   let service: OrganizationsService;
 
   beforeEach(() => {
@@ -64,10 +65,21 @@ describe('OrganizationsService — tenant company profile', () => {
     };
     audit = { record: jest.fn().mockResolvedValue('log-1') };
     roleService = { ensureDefaultRoles: jest.fn().mockResolvedValue(undefined) };
+    vehiclesService = {
+      aggregateDerivedFleetStatusCounts: jest.fn().mockResolvedValue({
+        total: 0,
+        available: 0,
+        rented: 0,
+        reserved: 0,
+        maintenance: 0,
+        unknown: 0,
+      }),
+    };
     service = new OrganizationsService(
       prisma as unknown as PrismaService,
       audit as unknown as AuditService,
       roleService as never,
+      vehiclesService as never,
     );
   });
 

@@ -9,6 +9,7 @@ import type { DashboardNotificationItem } from './dashboardNotificationTypes';
 import type { BuildActionQueueInput } from './actionQueueBuilder';
 import type { DashboardRuntimeModel, RuntimeReason, VehicleRuntimeState } from './runtime';
 import type { PredictiveOperationsInsight } from './derivePredictiveOperationsInsights';
+import { VEHICLE_OPERATIONAL_STATUS } from '../../lib/vehicle-operational-state';
 
 /** Fixed reference instant for all notification-engine tests (2026-07-10 12:00 UTC). */
 export const NOTIFICATION_TEST_NOW_ISO = '2026-07-10T12:00:00.000Z';
@@ -34,7 +35,7 @@ export function wobVehicle(overrides: Partial<VehicleData> = {}): VehicleData {
     station: overrides.station ?? 'Wolfsburg Zentrale',
     stationId: overrides.stationId ?? 'st-wob',
     fuelType: overrides.fuelType ?? 'Petrol',
-    status: overrides.status ?? 'Available',
+    status: overrides.status ?? VEHICLE_OPERATIONAL_STATUS.AVAILABLE,
     cleaningStatus: overrides.cleaningStatus ?? 'Clean',
     healthStatus: overrides.healthStatus ?? 'Warning',
     online: overrides.online ?? true,

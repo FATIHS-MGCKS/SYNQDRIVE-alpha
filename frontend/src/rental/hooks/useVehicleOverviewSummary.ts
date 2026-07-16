@@ -1,5 +1,5 @@
 import { useShallow } from 'zustand/react/shallow';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { api } from '../../lib/api';
 import type { ApiTask, VehicleTripAnalytics } from '../../lib/api';
 import { useEffectiveHealth } from '../FleetContext';
@@ -20,6 +20,10 @@ import {
 import type { VehicleOverviewSummary } from '../lib/vehicle-overview.types';
 import { useVehicleLiveMapStore } from '../stores/useVehicleLiveMapStore';
 import { deriveLocationOverviewSnapshot } from '../lib/vehicle-overview-summary.utils';
+import {
+  registerVehicleOperationalInvalidationHandler,
+  vehicleOperationalQueryKeys,
+} from '../lib/vehicle-operational-query';
 
 export interface UseVehicleOverviewSummaryOptions {
   orgId: string | null | undefined;
@@ -100,6 +104,18 @@ export function useVehicleOverviewSummary(
   }, [vehicleId, boundVehicleId, liveMap]);
 
   const [reloadToken, setReloadToken] = useState(0);
+  const reload = useCallback(() => setReloadToken((value) => value + 1), []);
+
+  useEffect(() => {
+    if (!orgId || !vehicleId) return;
+    return registerVehicleOperationalInvalidationHandler(
+      vehicleOperationalQueryKeys.vehicleDetail(orgId, vehicleId),
+      () => {
+        reload();
+      },
+    );
+  }, [orgId, vehicleId, reload]);
+
   const [bookingsLoading, setBookingsLoading] = useState(false);
   const [bookingsError, setBookingsError] = useState(false);
   const [tasksLoading, setTasksLoading] = useState(false);
@@ -291,6 +307,6 @@ export function useVehicleOverviewSummary(
 
   return {
     summary,
-    reload: () => setReloadToken((value) => value + 1),
+    reload,
   };
 }

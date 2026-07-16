@@ -12,6 +12,10 @@ import {
   FLEET_MAP_REFRESH_MS,
   useFleetMapStore,
 } from './stores/useFleetMapStore';
+import {
+  registerVehicleOperationalInvalidationHandler,
+  vehicleOperationalQueryKeys,
+} from './lib/vehicle-operational-query';
 
 export type EffectiveHealthStatus = 'Critical' | 'Warning' | 'Good Health' | 'Unknown';
 
@@ -74,6 +78,29 @@ export function FleetProvider({ children }: { children: ReactNode }) {
     },
     [fetchFleetMap, orgId],
   );
+
+  useEffect(() => {
+    if (!orgId) return;
+
+    const unregisterFleet = registerVehicleOperationalInvalidationHandler(
+      vehicleOperationalQueryKeys.fleetMap(orgId),
+      async () => {
+        await fetchFleetMap(orgId);
+      },
+    );
+
+    const unregisterHealth = registerVehicleOperationalInvalidationHandler(
+      vehicleOperationalQueryKeys.fleetHealth(orgId),
+      () => {
+        reloadHealth();
+      },
+    );
+
+    return () => {
+      unregisterFleet();
+      unregisterHealth();
+    };
+  }, [orgId, fetchFleetMap, reloadHealth]);
 
   useEffect(() => {
     if (stationHydratedRef.current) return;

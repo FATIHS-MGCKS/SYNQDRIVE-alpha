@@ -20,6 +20,39 @@ import {
 } from './fleetVehicleDisplay';
 
 import type { DashboardRuntimeModel } from '../components/dashboard/runtime/dashboardRuntimeTypes';
+import {
+  selectOperationalStatus,
+  VEHICLE_OPERATIONAL_STATUS,
+} from './vehicle-operational-state';
+import {
+  applyFleetCommandFilters,
+  computeCommandTabCounts,
+  filterFleetByTab,
+  fleetCommandTabEmptyMessage,
+  fleetContextsToVehicles,
+  resolveFleetCommandTabForVehicle,
+  resolveOperatorTabForVehicle,
+  selectHasFutureBooking,
+  vehicleMatchesFleetCommandTab,
+  type FleetCommandFilterState,
+  type FleetCommandTab,
+  FLEET_COMMAND_TABS,
+} from './fleet-command-filters';
+
+export {
+  applyFleetCommandFilters,
+  computeCommandTabCounts,
+  filterFleetByTab,
+  fleetCommandTabEmptyMessage,
+  fleetContextsToVehicles,
+  resolveFleetCommandTabForVehicle,
+  resolveOperatorTabForVehicle,
+  selectHasFutureBooking,
+  vehicleMatchesFleetCommandTab,
+  type FleetCommandFilterState,
+  type FleetCommandTab,
+  FLEET_COMMAND_TABS,
+};
 
 export function resolveCanonicalFleetAlertCounts(
   runtime: DashboardRuntimeModel,
@@ -109,11 +142,11 @@ export function resolveFleetCommandRowSeverity(
   if (visual.isStale) return 'warning';
   if (
     v.maintenanceUrgency === 'planned' ||
-    (v.maintenanceUrgency === 'urgent' && v.status !== 'Maintenance')
+    (v.maintenanceUrgency === 'urgent' && selectOperationalStatus(v) !== VEHICLE_OPERATIONAL_STATUS.MAINTENANCE)
   ) {
     return 'warning';
   }
-  if (!visual.hasLocation && v.status !== 'Maintenance') return 'warning';
+  if (!visual.hasLocation && selectOperationalStatus(v) !== VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return 'warning';
 
   return 'good';
 }
@@ -143,7 +176,13 @@ export function computeFleetCommandAttentionCounts(
   return { critical, warning };
 }
 
-export type FleetCommandTab = 'Available' | 'Active' | 'Reserved';
+/** @deprecated Use vehicleMatchesFleetCommandTab */
+export function vehicleMatchesCommandTab(
+  ctx: FleetVehicleContext,
+  tab: FleetCommandTab,
+): boolean {
+  return vehicleMatchesFleetCommandTab(ctx.vehicle, tab);
+}
 
 export interface FleetVehicleContext {
   vehicle: VehicleData;
@@ -157,20 +196,6 @@ export interface StationFilterOption {
   total: number;
   ready: number;
   attention: number;
-}
-
-const TAB_EMPTY_MESSAGES: Record<FleetCommandTab, string> = {
-  Available: 'No available vehicles in this filter',
-  Active: 'No active rentals',
-  Reserved: 'No upcoming reservations',
-};
-
-export function fleetCommandTabEmptyMessage(
-  tab: FleetCommandTab,
-  hasSearch: boolean,
-): string {
-  if (hasSearch) return 'No vehicles match your search';
-  return TAB_EMPTY_MESSAGES[tab];
 }
 
 export function hasCriticalOrWarningDtc(
@@ -204,7 +229,7 @@ export function isFleetAttentionVehicle(
   if (vehicle.maintenanceUrgency === 'urgent' || vehicle.maintenanceUrgency === 'planned') {
     return true;
   }
-  if (!visual.hasLocation && vehicle.status !== 'Maintenance') return true;
+  if (!visual.hasLocation && selectOperationalStatus(vehicle) !== VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return true;
 
   // Telemetry reasons. Offline (≥48h) is a real connectivity problem; soft
   // offline / signal_delayed (24–48h, `visual.isStale`) is a low-priority hint.
@@ -271,30 +296,6 @@ export function filterFleetBySearch(
   const q = query.trim().toLowerCase();
   if (!q) return contexts;
   return contexts.filter((ctx) => searchableHaystack(ctx).includes(q));
-}
-
-export function vehicleMatchesCommandTab(
-  ctx: FleetVehicleContext,
-  tab: FleetCommandTab,
-): boolean {
-  const { vehicle } = ctx;
-  switch (tab) {
-    case 'Available':
-      return vehicle.status === 'Available';
-    case 'Active':
-      return vehicle.status === 'Active Rented';
-    case 'Reserved':
-      return vehicle.status === 'Reserved';
-    default:
-      return false;
-  }
-}
-
-export function filterFleetByTab(
-  contexts: FleetVehicleContext[],
-  tab: FleetCommandTab,
-): FleetVehicleContext[] {
-  return contexts.filter((ctx) => vehicleMatchesCommandTab(ctx, tab));
 }
 
 function vehicleStationLabel(v: VehicleData): string {
@@ -369,30 +370,6 @@ export function sortFleetContexts(
   });
 
   return scored.map((s) => s.ctx);
-}
-
-export function computeCommandTabCounts(
-  contexts: FleetVehicleContext[],
-): Record<FleetCommandTab, number> {
-  const counts: Record<FleetCommandTab, number> = {
-    Available: 0,
-    Active: 0,
-    Reserved: 0,
-  };
-  for (const ctx of contexts) {
-    if (vehicleMatchesCommandTab(ctx, 'Available')) counts.Available += 1;
-    if (vehicleMatchesCommandTab(ctx, 'Active')) counts.Active += 1;
-    if (vehicleMatchesCommandTab(ctx, 'Reserved')) counts.Reserved += 1;
-  }
-  return counts;
-}
-
-export function resolveOperatorTabForVehicle(
-  ctx: FleetVehicleContext,
-): FleetCommandTab {
-  if (ctx.vehicle.status === 'Active Rented') return 'Active';
-  if (ctx.vehicle.status === 'Reserved') return 'Reserved';
-  return 'Available';
 }
 
 export function buildStationFilterOptions(

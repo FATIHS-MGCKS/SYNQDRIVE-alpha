@@ -106,6 +106,16 @@ import {
   supplementalQueueItems,
 } from '../../lib/notifications/merge-v2-with-vehicle-health';
 import { mergeNotificationPrimaryTabCounts } from './notifications/notification-panel-counts';
+import {
+  selectIsCurrentlyAvailable,
+  selectIsCurrentlyRented,
+  selectIsInPickupReservationWindow,
+  VEHICLE_OPERATIONAL_STATUS,
+} from '../../lib/vehicle-operational-state';
+import {
+  registerVehicleOperationalInvalidationHandler,
+  vehicleOperationalQueryKeys,
+} from '../../lib/vehicle-operational-query';
 
 const BUSINESS_METRIC_IDS: ReadonlySet<string> = new Set<BusinessMetricId>([
   'revenue',
@@ -306,6 +316,29 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   }, [refreshFleet, refreshInsights, loadTodayBookings, loadInvoices, notificationsV2.refresh]);
 
   useEffect(() => {
+    if (!orgId) return;
+
+    const unregisterToday = registerVehicleOperationalInvalidationHandler(
+      vehicleOperationalQueryKeys.dashboardTodayBookings(orgId),
+      () => {
+        void loadTodayBookings();
+      },
+    );
+
+    const unregisterRuntime = registerVehicleOperationalInvalidationHandler(
+      vehicleOperationalQueryKeys.dashboardRuntime(orgId),
+      () => {
+        setDashboardNow(new Date());
+      },
+    );
+
+    return () => {
+      unregisterToday();
+      unregisterRuntime();
+    };
+  }, [orgId, loadTodayBookings]);
+
+  useEffect(() => {
     const onHandover = () => {
       void loadTodayBookings();
     };
@@ -416,15 +449,15 @@ export function useDashboardViewModel(_props: DashboardViewProps): DashboardView
   }, [selectedStationId, stationsApi]);
 
   const availableVehicles = useMemo(
-    () => filteredFleetVehicles.filter((v) => v.status === 'Available'),
+    () => filteredFleetVehicles.filter((v) => selectIsCurrentlyAvailable(v)),
     [filteredFleetVehicles],
   );
   const reservedVehicles = useMemo(
-    () => filteredFleetVehicles.filter((v) => v.status === 'Reserved'),
+    () => filteredFleetVehicles.filter((v) => selectIsInPickupReservationWindow(v)),
     [filteredFleetVehicles],
   );
   const activeRentedVehicles = useMemo(
-    () => filteredFleetVehicles.filter((v) => v.status === 'Active Rented'),
+    () => filteredFleetVehicles.filter((v) => selectIsCurrentlyRented(v)),
     [filteredFleetVehicles],
   );
 

@@ -6,6 +6,8 @@ import {
   DASHBOARD_KPI_NUMBER_CLASS,
   DASHBOARD_KPI_TITLE_CLASS,
 } from './dashboardShell';
+import { de } from '../../i18n/translations/de';
+import { en } from '../../i18n/translations/en';
 import { resolveReadyForRentingKpiCounts, resolveTodaysOperationsKpiCounts } from './dashboardSliceAccess';
 import {
   getKpiCardSurfaceClass,
@@ -95,11 +97,11 @@ function readyKpiLabels(locale?: string) {
 }
 
 function operationsKpiLabels(locale?: string) {
-  const de = locale === 'de';
+  const dict = locale === 'de' ? de : en;
   return {
-    activeRentals: de ? 'aktive Vermietungen' : 'active rentals',
-    pickupsToday: de ? 'Übergaben' : 'Pickups',
-    returnsToday: de ? 'Rückgaben' : 'Returns',
+    activeRentals: dict['dashboard.todaysOperations.activeRentalsKpi'],
+    pickupsToday: dict['dashboard.todaysOperations.pickupsKpi'],
+    returnsToday: dict['dashboard.todaysOperations.returnsKpi'],
   };
 }
 

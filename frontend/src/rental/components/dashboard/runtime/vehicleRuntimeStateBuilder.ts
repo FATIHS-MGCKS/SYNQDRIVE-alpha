@@ -5,6 +5,26 @@ import type {
 } from '../../../DashboardInsightsContext';
 import type { VehicleData } from '../../../data/vehicles';
 import type { PickupTileItem, ReturnTileItem } from '../../StatInlineDetail';
+import { mapCanonicalOperationalStatusToRuntime } from '../../../lib/fleet-map-vehicle-selectors';
+import {
+  normalizeVehicleOperationalStatusKey,
+  selectBookingContext,
+  selectIsCurrentlyAvailable,
+  selectIsStatusReliable,
+  selectOperationalStatus,
+  selectOperationalStatusReason,
+  VEHICLE_DATA_QUALITY_STATE,
+  VEHICLE_OPERATIONAL_STATUS,
+  type VehicleBookingContext,
+  type VehicleDataQualityState,
+  type VehicleOperationalReadModel,
+  type VehicleOperationalStatus as CanonicalOperationalStatus,
+} from '../../../lib/vehicle-operational-state';
+import {
+  buildNextBookingInfoReason,
+  deriveIsReadyForRenting,
+  RENTAL_READINESS_NEXT_BOOKING_INFO_SOURCE,
+} from './rentalReadiness';
 import {
   categoryFromHealthModule,
   categoryFromInsightType,
@@ -34,7 +54,91 @@ const DEFAULT_DUE_SOON_MINUTES = 60;
 const DEFAULT_SOFT_OFFLINE_HOURS = 24;
 const DEFAULT_HARD_OFFLINE_HOURS = 48;
 
-type RuntimeVehicleStatus = VehicleData['status'] | 'Unavailable' | string;
+/** Canonical backend operational read-model consumed by the runtime builder. */
+export interface VehicleRuntimeOperationalBlock {
+  operationalStatus: VehicleOperationalStatus;
+  canonicalStatus: CanonicalOperationalStatus;
+  operationalReason: string | null;
+  backendDataQualityState: VehicleDataQualityState | null;
+  dataQualityReasons: string[];
+  isReliable: boolean;
+  bookingContext: VehicleBookingContext;
+  rawVehicleStatus: string | null;
+  payloadInconsistent: boolean;
+}
+
+function toOperationalReadModel(vehicle: VehicleData): VehicleOperationalReadModel {
+  const normalizedFlat = normalizeVehicleOperationalStatusKey(String(vehicle.status ?? ''));
+  return {
+    ...vehicle,
+    status: vehicle.operationalState?.status ?? normalizedFlat,
+  };
+}
+
+function readBackendCanonicalStatus(vehicle: VehicleData): CanonicalOperationalStatus {
+  if (vehicle.operationalState?.status) {
+    const raw = vehicle.operationalState.status;
+    if (
+      raw === VEHICLE_OPERATIONAL_STATUS.AVAILABLE ||
+      raw === VEHICLE_OPERATIONAL_STATUS.RESERVED ||
+      raw === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED ||
+      raw === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE ||
+      raw === VEHICLE_OPERATIONAL_STATUS.BLOCKED ||
+      raw === VEHICLE_OPERATIONAL_STATUS.UNKNOWN
+    ) {
+      return raw;
+    }
+    return VEHICLE_OPERATIONAL_STATUS.UNKNOWN;
+  }
+  return normalizeVehicleOperationalStatusKey(String(vehicle.status ?? ''));
+}
+
+function hasConflictingBookingSignals(vehicle: VehicleData): boolean {
+  const ctx = vehicle.bookingContext ?? {
+    activeBooking: vehicle.activeBookingId
+      ? { bookingId: vehicle.activeBookingId, customerName: null, pickupAt: null, returnAt: null, pickupStationName: null, returnStationName: null, isOverdue: false }
+      : null,
+    reservedBooking: vehicle.reservedBookingId
+      ? { bookingId: vehicle.reservedBookingId, customerName: null, pickupAt: null, returnAt: null, pickupStationName: null, returnStationName: null, isOverdue: false }
+      : null,
+    nextBooking: null,
+    futureBookingCount: 0,
+  };
+  const backendStatus = readBackendCanonicalStatus(vehicle);
+  if (backendStatus === VEHICLE_OPERATIONAL_STATUS.AVAILABLE) {
+    return Boolean(ctx.activeBooking?.bookingId || vehicle.activeBookingId || ctx.reservedBooking?.bookingId || vehicle.reservedBookingId);
+  }
+  if (backendStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED) {
+    return Boolean(ctx.activeBooking?.bookingId || vehicle.activeBookingId);
+  }
+  return false;
+}
+
+export function resolveVehicleRuntimeOperationalBlock(
+  vehicle: VehicleData,
+): VehicleRuntimeOperationalBlock {
+  const readModel = toOperationalReadModel(vehicle);
+  const canonicalStatus = selectOperationalStatus(readModel);
+  const backendCanonicalStatus = readBackendCanonicalStatus(vehicle);
+  const payloadInconsistent =
+    canonicalStatus === VEHICLE_OPERATIONAL_STATUS.UNKNOWN &&
+    backendCanonicalStatus !== VEHICLE_OPERATIONAL_STATUS.UNKNOWN &&
+    hasConflictingBookingSignals(vehicle);
+
+  return {
+    operationalStatus: mapCanonicalOperationalStatusToRuntime(canonicalStatus),
+    canonicalStatus,
+    operationalReason: selectOperationalStatusReason(readModel),
+    backendDataQualityState:
+      vehicle.operationalState?.dataQualityState ?? vehicle.dataQualityState ?? null,
+    dataQualityReasons:
+      vehicle.operationalState?.dataQualityReasons ?? vehicle.dataQualityReasons ?? [],
+    isReliable: selectIsStatusReliable(readModel),
+    bookingContext: selectBookingContext(readModel),
+    rawVehicleStatus: vehicle.rawVehicleStatus ?? null,
+    payloadInconsistent,
+  };
+}
 
 interface VehicleTelemetryTimestampFields {
   lastSignal?: string | null;
@@ -136,23 +240,6 @@ export function deriveTelemetryState(
   if (ageMs < softMs) return 'standby';
   if (ageMs < hardMs) return 'soft_offline';
   return 'offline';
-}
-
-function mapOperationalStatus(status: RuntimeVehicleStatus): VehicleOperationalStatus {
-  switch (status) {
-    case 'Available':
-      return 'available';
-    case 'Reserved':
-      return 'reserved';
-    case 'Active Rented':
-      return 'active_rented';
-    case 'Maintenance':
-      return 'maintenance';
-    case 'Unavailable':
-      return 'unavailable';
-    default:
-      return 'unknown';
-  }
 }
 
 function vehicleDisplayName(vehicle: VehicleData): string {
@@ -296,19 +383,6 @@ function categoryFromBlockingReason(reason: string): RuntimeReasonCategory {
  */
 function reasonBlocksRenting(reason: RuntimeReason): boolean {
   return reason.blocking === true;
-}
-
-/**
- * A reason prevents Ready-to-Rent when it is explicitly marked `preventsReady`
- * or when it is a hard `blocking` reason. The decision is never derived from the
- * reason category — warnings alone (health, tires, brakes, battery, dtc,
- * service due-soon, …) stay visible but must not prevent readiness on their own.
- * Only the reason producer sets `preventsReady` (e.g. cleaning, hard offline).
- */
-function reasonPreventsReady(reason: RuntimeReason): boolean {
-  if (reason.preventsReady === true) return true;
-  if (reason.blocking === true) return true;
-  return false;
 }
 
 function addReason(target: RuntimeReason[], reason: RuntimeReason): void {
@@ -536,11 +610,106 @@ function deriveComplianceSeverity(reasons: RuntimeReason[]): ComplianceSeverity 
   return complianceReasons.length > 0 ? 'ok' : 'unknown';
 }
 
-function deriveDataQualityState(telemetryState: TelemetryConnectionState): DataQualityState {
+function deriveTelemetryDataQualityState(telemetryState: TelemetryConnectionState): DataQualityState {
   if (telemetryState === 'live' || telemetryState === 'standby') return 'fresh';
   if (telemetryState === 'soft_offline') return 'limited';
   if (telemetryState === 'offline') return 'outdated';
   return 'missing';
+}
+
+function deriveRuntimeDataQualityState(input: {
+  telemetryState: TelemetryConnectionState;
+  backendDataQualityState: VehicleDataQualityState | null;
+  isReliable: boolean;
+}): DataQualityState {
+  if (
+    !input.isReliable ||
+    input.backendDataQualityState === VEHICLE_DATA_QUALITY_STATE.UNAVAILABLE
+  ) {
+    return 'missing';
+  }
+
+  const telemetryQuality = deriveTelemetryDataQualityState(input.telemetryState);
+
+  if (input.backendDataQualityState === VEHICLE_DATA_QUALITY_STATE.DEGRADED) {
+    if (telemetryQuality === 'outdated' || telemetryQuality === 'missing') return telemetryQuality;
+    return 'limited';
+  }
+
+  return telemetryQuality;
+}
+
+function addOperationalDiagnosticReasons(input: {
+  target: RuntimeReason[];
+  block: VehicleRuntimeOperationalBlock;
+  locale: string;
+}): void {
+  const de = input.locale === 'de';
+
+  if (input.block.payloadInconsistent) {
+    addReason(
+      input.target,
+      createRuntimeReason({
+        category: 'data_quality',
+        severity: 'warning',
+        title: de ? 'Operativer Payload widersprüchlich' : 'Operational payload inconsistent',
+        description: de
+          ? 'Backend-Status und Buchungskontext widersprechen sich — Status fail-closed auf UNKNOWN.'
+          : 'Backend status and booking context conflict — status fail-closed to UNKNOWN.',
+        source: 'vehicle-runtime:payload-inconsistent',
+        blocking: false,
+        preventsReady: true,
+      }),
+    );
+  }
+
+  if (input.block.canonicalStatus === VEHICLE_OPERATIONAL_STATUS.UNKNOWN && !input.block.payloadInconsistent) {
+    addReason(
+      input.target,
+      createRuntimeReason({
+        category: 'data_quality',
+        severity: 'warning',
+        title: de ? 'Operativer Status unbekannt' : 'Operational status unknown',
+        source: 'vehicle-runtime:operational-unknown',
+        blocking: false,
+        preventsReady: true,
+      }),
+    );
+  }
+
+  if (
+    input.block.rawVehicleStatus &&
+    input.block.canonicalStatus !== VEHICLE_OPERATIONAL_STATUS.UNKNOWN &&
+    input.block.rawVehicleStatus !== input.block.canonicalStatus
+  ) {
+    addReason(
+      input.target,
+      createRuntimeReason({
+        category: 'data_quality',
+        severity: 'warning',
+        title: de ? 'Rohstatus weicht ab' : 'Raw status differs',
+        description: `rawVehicleStatus=${input.block.rawVehicleStatus}`,
+        source: 'vehicle-runtime:raw-status-diagnostic',
+        blocking: false,
+        preventsReady: false,
+      }),
+    );
+  }
+
+  if (input.block.backendDataQualityState === VEHICLE_DATA_QUALITY_STATE.DEGRADED) {
+    addReason(
+      input.target,
+      createRuntimeReason({
+        category: 'data_quality',
+        severity: 'warning',
+        title: de ? 'Operative Datenqualität eingeschränkt' : 'Operational data quality degraded',
+        description: input.block.dataQualityReasons.join(' · ') || undefined,
+        source: 'vehicle-runtime:backend-data-quality-degraded',
+        blocking: false,
+        preventsReady: !input.block.isReliable,
+      }),
+    );
+  }
 }
 
 function buildReadyReasons(locale: string): RuntimeReason[] {
@@ -558,7 +727,7 @@ function buildReadyReasons(locale: string): RuntimeReason[] {
 function buildRuntimeState(input: {
   vehicle: VehicleData;
   allReasons: RuntimeReason[];
-  operationalStatus: VehicleOperationalStatus;
+  operationalBlock: VehicleRuntimeOperationalBlock;
   telemetryState: TelemetryConnectionState;
   bookingState: BookingRuntimeState;
   health: VehicleHealthResponse | null;
@@ -569,7 +738,6 @@ function buildRuntimeState(input: {
   const criticalReasons = reasons.filter((reason) => reason.severity === 'critical');
   const warningReasons = reasons.filter((reason) => reason.severity === 'warning');
   const blockReasons = reasons.filter(reasonBlocksRenting);
-  const readinessBlockingReasons = reasons.filter(reasonPreventsReady);
 
   const hasHardBlock = blockReasons.some((reason) => input.hardBlockReasonIds.has(reason.id));
   const blockLevel: RentalBlockLevel = hasHardBlock
@@ -578,13 +746,23 @@ function buildRuntimeState(input: {
       ? 'soft_blocked'
       : 'none';
 
-  const isReadyToRent =
-    input.operationalStatus === 'available' &&
-    input.vehicle.cleaningStatus === 'Clean' &&
-    blockLevel === 'none' &&
-    readinessBlockingReasons.length === 0;
+  const operationallyAvailable = selectIsCurrentlyAvailable(toOperationalReadModel(input.vehicle));
+
+  const isReadyToRent = deriveIsReadyForRenting({
+    operationalBlock: input.operationalBlock,
+    operationalStatus: input.operationalBlock.operationalStatus,
+    cleaningStatus: input.vehicle.cleaningStatus,
+    blockLevel,
+    reasons,
+    telemetryState: input.telemetryState,
+    nextBooking: input.operationalBlock.bookingContext.nextBooking,
+  });
 
   const rentalReadiness = isReadyToRent ? 'ready' : blockLevel !== 'none' ? 'blocked' : 'not_ready';
+
+  const nextBookingInfoReasons = reasons.filter(
+    (reason) => reason.source === RENTAL_READINESS_NEXT_BOOKING_INFO_SOURCE,
+  );
 
   return {
     vehicleId: input.vehicle.id,
@@ -592,23 +770,29 @@ function buildRuntimeState(input: {
     displayName: vehicleDisplayName(input.vehicle),
     stationId: input.vehicle.stationId ?? input.vehicle.homeStationId ?? input.vehicle.currentStationId ?? null,
     stationLabel: input.vehicle.station || null,
-    operationalStatus: input.operationalStatus,
+    operationalStatus: input.operationalBlock.operationalStatus,
     rentalReadiness,
     blockLevel,
     healthSeverity: deriveHealthSeverity(reasons, input.health),
     complianceSeverity: deriveComplianceSeverity(reasons),
     telemetryState: input.telemetryState,
-    dataQualityState: deriveDataQualityState(input.telemetryState),
+    dataQualityState: deriveRuntimeDataQualityState({
+      telemetryState: input.telemetryState,
+      backendDataQualityState: input.operationalBlock.backendDataQualityState,
+      isReliable: input.operationalBlock.isReliable,
+    }),
     bookingState: input.bookingState,
-    readyReasons: isReadyToRent ? buildReadyReasons(input.locale) : [],
+    readyReasons: isReadyToRent
+      ? [...buildReadyReasons(input.locale), ...nextBookingInfoReasons]
+      : [],
     notReadyReasons: isReadyToRent ? [] : reasons.filter((reason) => reason.severity !== 'info' || reason.blocking),
     blockReasons,
     warningReasons,
     criticalReasons,
-    isAvailable: input.operationalStatus === 'available',
+    isAvailable: operationallyAvailable,
     isReadyToRent,
     isBlocked: rentalReadiness === 'blocked' || blockLevel !== 'none',
-    isMaintenance: input.operationalStatus === 'maintenance',
+    isMaintenance: input.operationalBlock.operationalStatus === 'maintenance',
     isCritical: criticalReasons.length > 0 || blockLevel === 'hard_blocked',
     isWarning: criticalReasons.length === 0 && blockLevel !== 'hard_blocked' && warningReasons.length > 0,
   };
@@ -627,7 +811,8 @@ export function buildVehicleRuntimeStates(input: BuildVehicleRuntimeStatesInput)
   const telemetryOfflineBlockLevel = input.telemetryOfflineBlockLevel ?? 'hard_blocked';
 
   return input.fleetVehicles.map((vehicle) => {
-    const operationalStatus = mapOperationalStatus(vehicle.status);
+    const operationalBlock = resolveVehicleRuntimeOperationalBlock(vehicle);
+    const operationalStatus = operationalBlock.operationalStatus;
     const telemetryState = deriveTelemetryState(
       vehicle,
       now,
@@ -651,12 +836,17 @@ export function buildVehicleRuntimeStates(input: BuildVehicleRuntimeStatesInput)
       hardBlockReasonIds.add(reason.id);
     };
 
+    addOperationalDiagnosticReasons({ target: reasons, block: operationalBlock, locale });
+
     if (operationalStatus === 'maintenance') {
       registerHardReason(
         createRuntimeReason({
           category: 'operational',
           severity: 'critical',
-          title: vehicle.maintenanceReason || 'Maintenance',
+          title:
+            vehicle.maintenanceReason ||
+            operationalBlock.operationalReason ||
+            'Maintenance',
           source: 'vehicle-status:maintenance',
           blocking: true,
         }),
@@ -668,7 +858,7 @@ export function buildVehicleRuntimeStates(input: BuildVehicleRuntimeStatesInput)
         createRuntimeReason({
           category: 'operational',
           severity: 'critical',
-          title: 'Unavailable',
+          title: operationalBlock.operationalReason || 'Unavailable',
           source: 'vehicle-status:unavailable',
           blocking: true,
         }),
@@ -717,6 +907,11 @@ export function buildVehicleRuntimeStates(input: BuildVehicleRuntimeStatesInput)
     });
     addBookingReasons({ target: reasons, bookingState, locale });
 
+    const nextBooking = operationalBlock.bookingContext.nextBooking;
+    if (nextBooking && operationalStatus === 'available') {
+      addReason(reasons, buildNextBookingInfoReason(nextBooking, locale));
+    }
+
     for (const reason of reasons) {
       if (
         reason.blocking === true &&
@@ -731,7 +926,7 @@ export function buildVehicleRuntimeStates(input: BuildVehicleRuntimeStatesInput)
     return buildRuntimeState({
       vehicle,
       allReasons: reasons,
-      operationalStatus,
+      operationalBlock,
       telemetryState,
       bookingState,
       health,

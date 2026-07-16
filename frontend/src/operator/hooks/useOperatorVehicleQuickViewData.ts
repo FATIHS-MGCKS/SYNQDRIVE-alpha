@@ -14,6 +14,12 @@ import {
 import { toHandoverBookingSeed } from '../lib/operatorData';
 import type { OperatorTodayBookingItem } from '../lib/operatorData';
 import { normalizeBookingStatus } from '../../rental/components/bookings/bookingStatus';
+import {
+  selectActiveBooking,
+  selectReservedBooking,
+  selectIsCurrentlyRented,
+  selectIsInPickupReservationWindow,
+} from '../../rental/lib/vehicle-operational-state';
 
 interface DocumentExtractionRow {
   id: string;
@@ -181,26 +187,28 @@ export function useOperatorVehicleQuickViewData(vehicleId: string) {
       };
     }
 
-    if (vehicle.activeBookingId || vehicle.status === 'Active Rented') {
+    const activeBooking = selectActiveBooking(vehicle);
+    if (selectIsCurrentlyRented(vehicle) && activeBooking) {
       return {
         kind: 'active' as const,
         label: 'Aktive Buchung',
-        customerName: vehicle.activeCustomerName ?? '—',
-        when: vehicle.activeReturnAt ?? vehicle.activeStartAt ?? '',
-        station: vehicle.activeReturnStationName ?? vehicle.station ?? '',
-        bookingId: vehicle.activeBookingId ?? null,
+        customerName: activeBooking.customerName ?? '—',
+        when: activeBooking.returnAt ?? activeBooking.pickupAt ?? '',
+        station: activeBooking.returnStationName ?? vehicle.station ?? '',
+        bookingId: activeBooking.bookingId,
         status: 'active' as const,
       };
     }
 
-    if (vehicle.reservedBookingId || vehicle.status === 'Reserved') {
+    const reservedBooking = selectReservedBooking(vehicle);
+    if (selectIsInPickupReservationWindow(vehicle) && reservedBooking) {
       return {
         kind: 'reserved' as const,
         label: 'Nächste Reservierung',
-        customerName: vehicle.reservedCustomerName ?? '—',
-        when: vehicle.reservedPickupAt ?? vehicle.reservedReturnAt ?? '',
-        station: vehicle.reservedPickupStationName ?? vehicle.station ?? '',
-        bookingId: vehicle.reservedBookingId ?? null,
+        customerName: reservedBooking.customerName ?? '—',
+        when: reservedBooking.pickupAt ?? reservedBooking.returnAt ?? '',
+        station: reservedBooking.pickupStationName ?? vehicle.station ?? '',
+        bookingId: reservedBooking.bookingId,
         status: 'confirmed' as const,
       };
     }

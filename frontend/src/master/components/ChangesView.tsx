@@ -35,6 +35,365 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-operational-state-v2-p1-fixes-v49506-2026-07-16',
+    version: '4.9.506',
+    title: 'V4.9.506 — Vehicle Operational State V2 P1 remediation (Prompt 43/43)',
+    summary: [
+      'Fix R-01: Kanonisches Pickup-Tag-Reservierungsfenster in produktiver `buildBookingContextMap` (`fleet-booking-context.util.ts`); Fernbuchungen → `nextBooking`-Supplement, nicht Reserved.',
+      'Fix R-02/R-03: Org-Stats (`aggregateDerivedFleetStatusCounts`) und Master-Admin-Listen (`findAllPlatform`) nutzen abgeleiteten Fleet-Status statt Raw-DB.',
+      'Fix R-04/R-05: Booking-Picker/Preflight und Operator Quick-View auf `selectOperationalStatus` / Selector-Gates.',
+      'Fix R-06: Backend emittiert `operationalState` + `bookingContext`; Booking-Ladefehler → UNKNOWN (nie Available).',
+      'Fix R-07/R-08: Optimistic-Patch-Merge im Fleet-Store; `FleetMapCacheService.invalidate` bei Handover/Booking/Status-PATCH.',
+      'Audit: `docs/audits/vehicle-operational-state-v2-final-audit.md` — alle P1 als behoben; Smoke-Matrix A–E; READY für Staging.',
+    ],
+    reason:
+      'Prompt 43/43: Alle belegten P1-Mängel aus dem Final Wiring Audit (R-01–R-08) beheben — ohne neue Features oder unrelated Refactors.',
+    previousBehavior:
+      'Legacy-Reservierungsfenster in produktiver API; Org-Stats/Master-Admin Raw-Status; Frontend-Picker/Operator-Bypass; kein Backend-UNKNOWN; Fleet-Map Cache TTL-only; Optimistic Patches verworfen.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T01:30:00.000Z',
+  },
+  {
+    id: 'vehicle-operational-state-v2-frontend-e2e-tests-v49505-2026-07-16',
+    version: '4.9.505',
+    title: 'V4.9.505 — Vehicle Operational State V2 frontend & E2E tests (Prompt 41/43)',
+    summary: [
+      'Neu: Vitest-Suites für Cross-Surface-Konsistenz, Fleet-Map-Optimistic-Patches, Operator-Status, Period-Availability, FleetCommandPanel und VehicleOperationalStatusCallout.',
+      'Neu: Playwright E2E `fleet-operational-flow.spec.ts` + `fleet-operational-responsive.spec.ts` mit `fleet-operational-fixtures.ts` (Fleet List/Map, Dashboard KPI/Drawer, Cache Pickup/Return, Operator).',
+      'Fix: UNKNOWN-Label-Drift in bestehenden Vitest-Dateien (`Status nicht verfügbar` statt `Unbekannt`).',
+      'Doku: `docs/testing/vehicle-operational-state-v2-frontend-e2e-coverage.md` — Matrix Bereiche 1–9, Ausführungsbefehle.',
+      'Keine Produktfunktionen geändert — reines Testpaket.',
+    ],
+    reason:
+      'Prompt 41/43: Regression-Gate für Vehicle Operational State V2 auf Frontend- und E2E-Seite — analog Backend V4.9.504 und Task-Domain-V2-Coverage.',
+    previousBehavior:
+      'Einzelne Operational-State-Unit-Tests (~225), aber keine systematische 9-Bereiche-Matrix, kein Playwright-Fleet-Operational-Paket, 4 failing Tests wegen V4.9.500-Label.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T01:15:00.000Z',
+  },
+  {
+    id: 'vehicle-operational-state-v2-backend-tests-v49504-2026-07-16',
+    version: '4.9.504',
+    title: 'V4.9.504 — Vehicle Operational State V2 backend test package (Prompt 40/43)',
+    summary: [
+      'Neu: 10 Backend-Spec-Suites (53 Tests) unter `backend/src/modules/vehicles/operational/` + Controller/Overlap-Specs.',
+      'Abdeckung A–J: State Engine, Zukunftsbelegung, Reservierungsfenster, Active Rental, Data Quality, Raw Status, API-Konsistenz, Schreibschutz, Booking-Konflikte, Fleet-Map-Cache.',
+      'Doku: `docs/testing/vehicle-operational-state-v2-backend-coverage.md` mit Matrix, Ausführungsbefehlen und bekannter Cache-Lücke (TTL-only).',
+      'Keine Produktfunktionen geändert — reines Testpaket.',
+    ],
+    reason:
+      'Prompt 40/43: Regression-Gate für Vehicle Operational State V2 auf Backend-Seite — analog zum Task-Domain-V2-Coverage-Dokument.',
+    previousBehavior:
+      'Nur `vehicles.service.spec.ts` (deriveFleetStatusContext) und VBH-Diagnostic/Repair-Suites; keine systematische A–J-Matrix.',
+    details: null,
+    affectsArchitecture: false,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T00:45:00.000Z',
+  },
+  {
+    id: 'vehicle-operational-status-repair-runbook-v49503-2026-07-16',
+    version: '4.9.503',
+    title: 'V4.9.503 — Vehicle operational status repair runbook (Prompt 39/43)',
+    summary: [
+      'Neu: verbindliches Ops-Runbook `docs/runbooks/vehicle-operational-status-repair.md` für VBH-Diagnose und -Reparatur.',
+      'Abschnitte: Voraussetzungen, Backup/Restore, Lokal/Staging/Produktion, Rollback, Abnahmekriterien, Ergebnisbericht.',
+      'Verlinkt echte CLI-Kommandos (`audit-vehicle-booking-handover-data.ts`, `repair-vehicle-booking-handover-data.ts`) inkl. KS-FH-660E-Staging-Fälle und Fleet-API-Smoke-Tests.',
+      'Prod-Regeln: zuerst Diagnose, org-scoped Apply, kleine Batches, Abbruchkriterien, keine globale unkontrollierte Reparatur.',
+    ],
+    reason:
+      'Prompt 39/43: Ops brauchen ein verbindliches Betriebsverfahren für Vehicle-/Booking-/Handover-Status-Reparatur — analog zum Task-Data-Runbook.',
+    previousBehavior:
+      'Nur Skripte und Code (V4.9.501/502); kein dokumentiertes End-to-End-Verfahren für Backup, Staging, Produktion und Abnahme.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T00:35:00.000Z',
+  },
+  {
+    id: 'vehicle-booking-handover-repair-v49502-2026-07-16',
+    version: '4.9.502',
+    title: 'V4.9.502 — Controlled vehicle/booking/handover repair (Prompt 38/43)',
+    summary: [
+      'Neu: `VehicleBookingHandoverRepairService` + Ops-Skript `repair-vehicle-booking-handover-data.ts` (Default Dry-Run, `--apply` für Writes).',
+      'Sichere Reparaturen: stale RESERVED→AVAILABLE, RENTED nach abgeschlossenem RETURN, ACTIVE→COMPLETED bei RETURN-Protokoll, CONFIRMED→ACTIVE bei PICKUP-Protokoll.',
+      'Unklare Fälle → `unresolved`/`skipped`; idempotente Re-Runs; Batch-Größe; vollständiger Audit-Report + ActivityLog.',
+      'CLI: `--organization-id`, `--vehicle-id`, `--batch-size`, `--output`, `--apply`.',
+      '11 neue Tests (Util + Service Fixtures).',
+    ],
+    reason:
+      'Prompt 38/43: Eindeutig belegte Statusinkonsistenzen sollen kontrolliert reparierbar sein — ohne pauschale updateMany-Writes oder Löschung historischer Daten.',
+    previousBehavior:
+      'Nur read-only Diagnose (`audit-vehicle-booking-handover-data.ts`); keine kontrollierte Reparatur für Vehicle-/Booking-/Handover-Drift.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T00:25:00.000Z',
+  },
+  {
+    id: 'vehicle-booking-handover-diagnostic-v49501-2026-07-16',
+    version: '4.9.501',
+    title: 'V4.9.501 — Read-only vehicle/booking/handover diagnostic (Prompt 37/43)',
+    summary: [
+      'Neu: `VehicleBookingHandoverDiagnosticService` + Ops-Skript `audit-vehicle-booking-handover-data.ts` (read-only, local/test DB guards).',
+      '12 Checks: raw RESERVED/RENTED vs Booking-Truth, Handover↔Booking-Status, Mehrfach-ACTIVE/Reservierungsfenster, Legacy-vs-kanonisches Reserved (Pickup-Tag), Ableitungs-Drift, Cross-Org-Links, Datums-Inkonsistenzen, Org-timezone.',
+      'Ausgabe: JSON + Markdown/Console, Zähler je Check, maskierte Sample-IDs, Gruppierung nach Organisation, keine Kundennamen.',
+      'CLI: `--organization-id`, `--vehicle-id`, `--license-plate`, `--limit`, `--output`, `--format`, `--include-findings`.',
+      '16 Jest-Tests (Service + Util).',
+    ],
+    reason:
+      'Prompt 37/43: Ops brauchen ein sicheres Diagnosewerkzeug für Vehicle-, Booking- und Handover-Inkonsistenzen ohne Datenänderung.',
+    previousBehavior:
+      'Kein dediziertes Audit für Raw-`Vehicle.status` vs Booking-/Handover-Wahrheit; nur Task-Diagnostic (`audit-task-data.ts`) als Ops-Muster.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T00:15:00.000Z',
+  },
+  {
+    id: 'fleet-unknown-status-ux-v49500-2026-07-15',
+    version: '4.9.500',
+    title: 'V4.9.500 — UNKNOWN / unreliable operational status UX (Prompt 36/43)',
+    summary: [
+      'Neu: `vehicle-operational-unknown-display.ts` — einheitliche Copy („Status nicht verfügbar“), Erklärung, Admin-Diagnosefelder (reason, dataQualityState, derivedAt, diagnosticReasons).',
+      'Shared UI: `VehicleOperationalStatusCallout` + Inline-Hint — Refresh für Nutzer, eingeklappte technische Details nur für ORG_ADMIN / `data-analyse.read`.',
+      'Fleet List, Map HUD, Vehicle Detail, Dashboard Drawer, Operator App: neutrales Badge, keine grüne Available-/Ready-Darstellung, keine irreführenden Booking-Supplements bei UNKNOWN.',
+      'Map-Marker bleiben sichtbar (`mapTone: unknown`); `deriveFleetVisualState` fail-closed ohne Ready-Readiness.',
+      '12 neue Tests (DEGRADED, UNAVAILABLE, Permissions, Booking-Suppress).',
+    ],
+    reason:
+      'Prompt 36/43: Nicht belastbare operative Statusdaten brauchen klare, neutrale UX statt Available-/Reserved-Annahmen.',
+    previousBehavior:
+      'UNKNOWN als „Unbekannt“ ohne einheitliche Erklärung; Booking-Supplements konnten trotz UNKNOWN erscheinen; Operator zeigte Roh-`vehicle.status`.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T00:05:00.000Z',
+  },
+  {
+    id: 'fleet-tabs-status-filter-v49499-2026-07-15',
+    version: '4.9.499',
+    title: 'V4.9.499 — Canonical Fleet tabs and status filters (Prompt 35/43)',
+    summary: [
+      'Neu: `fleet-command-filters.ts` — zentrale Tab-Zuordnung über `selectOperationalStatus` (Available, Reserved, Active, Maintenance/Blocked, Unknown, All).',
+      'Zukünftige Buchungen (`nextBooking`) bleiben im Available-Tab bis Pickup-Tag; optionaler Overlay-Filter „With future booking“.',
+      'Tab-Zähler und Listen nutzen dieselben Selectors; keine `vehicle.status`- oder `reservedBookingId`-Heuristik.',
+      'Fleet Map und Fleet List teilen dieselbe gefilterte Menge (Suche + Station + Tab + optional Future Booking).',
+      'Scrollbare Tab-Leiste für Mobile/Desktop; 8 neue Filter-Tests + bestehende Konsistenztests angepasst.',
+    ],
+    reason:
+      'Prompt 35/43: Fleet-Tabs müssen strikt kanonischen operationalState widerspiegeln und Map/Liste konsistent filtern.',
+    previousBehavior:
+      'Nur drei Tabs (Available/Active/Reserved); Map zeigte alle station-gefilterten Fahrzeuge unabhängig vom aktiven Tab.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-15T23:55:00.000Z',
+  },
+  {
+    id: 'fleet-status-booking-display-v49498-2026-07-15',
+    version: '4.9.498',
+    title: 'V4.9.498 — Fleet List/Map/Vehicle Detail status + booking supplement (Prompt 34/43)',
+    summary: [
+      'Neu: `vehicle-operational-booking-display.ts` — Statusbadge nur aus `operationalState`, Zusatzzeile aus `bookingContext` (nextBooking/Reserved/Active).',
+      'UNKNOWN neutral ohne grüne Available-Darstellung; Datenqualitäts-Hinweis bei nicht belastbarem Status.',
+      'Zeitzone-aware Formatierung (IANA, Default Europe/Berlin); keine UUIDs in UI; lange Kundennamen per `truncateMiddle`.',
+      'Fleet List (`FleetOperatorRow`), Map HUD (`FleetMapVehicleStatusHud`), Vehicle Detail Header und Compact Drawer nutzen `statusBadge` + `bookingSupplement`.',
+      '12 Display-Tests + erweiterte `fleetVehicleDisplay`-Tests; Build grün.',
+    ],
+    reason:
+      'Prompt 34/43: Status und Buchungskontext in Fleet-Flächen klar trennen — operationalStatus als Badge, bookingContext als kompakte Zusatzzeile mit voller Info im Tooltip.',
+    previousBehavior:
+      'Fleet-Rows mischten Ready/Not-Ready-Readiness mit Status; Buchungstermine kamen aus Legacy-Flat-Feldern (`activeReturnAt`/`reservedPickupAt`), nextBooking fehlte als Zusatz.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-15T23:50:00.000Z',
+  },
+  {
+    id: 'canonical-slice-consistency-v49497-2026-07-15',
+    version: '4.9.497',
+    title: 'V4.9.497 — Canonical status source for all Dashboard/Fleet slices (Prompt 33/43)',
+    summary: [
+      'Neu: `runtimeSliceConsistency.ts` — zentrale KPI/Drawer/Fleet-Tab-Konsistenzprüfungen aus derselben `DashboardRuntimeModel`-Instanz.',
+      '`selectOperationalStatus` normalisiert Legacy-Flat-Status (`Available`, `Active Rented`, …) wie der Runtime-Builder — kein UNKNOWN-Fehlgriff mehr.',
+      'Fleet Command nutzt `canonicalTabCounts` aus Runtime; `operationReadiness` nur noch kanonischer `operationalStatus`.',
+      'Migration: `stationCommandBuilder`, `dashboardFocusMode`, `FleetOperatorRow`, `CompactFleetDrawerVehicleRow`, `derivePredictiveOperationsInsights` weg von `vehicle.status`.',
+      '8 Konsistenztests + 24 Selector-Tests grün; Build grün.',
+    ],
+    reason:
+      'Prompt 33/43: Dashboard-Slices, Fleet-Tabs, KPI-Counts und Drilldown-Drawer müssen dieselbe kanonische Statusquelle nutzen — ohne parallele Berechnung pro Komponente.',
+    previousBehavior:
+      'Legacy `vehicle.status`-Strings und Runtime-Builder wichen auseinander; Fleet-Tab-Badges wurden lokal aus Kontexten gezählt ohne Runtime-Scope.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-15T23:45:00.000Z',
+  },
+  {
+    id: 'todays-operational-slice-v49496-2026-07-15',
+    version: '4.9.496',
+    title: "V4.9.496 — Today's Operational booking/status slices (Prompt 32/43)",
+    summary: [
+      'Zentrale Klassifikation `classifyTodaysOperational` in `todaysOperationalSlice.ts` für den Runtime-Slice `active-rented`.',
+      'Sechs fachlich getrennte Gruppen: Active Rented jetzt, Pickups heute, Reserved for Pickup heute, Returns heute, Overdue Pickups, Overdue Returns.',
+      'Active Rented nur aus kanonischem `operationalStatus === active_rented`; Returns aus Booking-Kontext (`returnItems`); Reserved for Pickup nur bei RESERVED + Übergabe heute.',
+      'Zukünftige Buchungen (nicht heute) werden aus Today\'s Operational ausgeschlossen; Mehrfachzugehörigkeit Active Rented + Return Today dokumentiert.',
+      'i18n-Keys `dashboard.todaysOperations.*` (de/en); 8 neue Slice-Tests + bestehende Runtime-UI-Tests angepasst.',
+    ],
+    reason:
+      "Prompt 32/43: Heutige Operationen soll Buchungs- und Statusanteile getrennt und ohne Doppelzählung innerhalb eines Teilwerts aus zentralen Runtime-Slices ableiten.",
+    previousBehavior:
+      '`buildActiveRentedSlice` mischte bookingState/operationalStatus für Active Rented; überfällige Übergaben lagen in `pickups-today`; keine `reserved-pickup-today`-Gruppe.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-15T23:40:00.000Z',
+  },
+  {
+    id: 'rental-readiness-derivation-v49495-2026-07-15',
+    version: '4.9.495',
+    title: 'V4.9.495 — Ready-for-Renting derivation refactor (Prompt 31/43)',
+    summary: [
+      'Zentrale Ableitung `deriveIsReadyForRenting` in `rentalReadiness.ts` — aktuelle operative Einsatzbereitschaft, nicht zukünftige Zeitraumbuchbarkeit.',
+      'Ready nur bei AVAILABLE + backend `dataQualityState === RELIABLE`, Clean, kein Hard Block, kein Telemetry-Offline, keine Compliance/Damage/Rental-Blockade.',
+      '`nextBooking` wird als Info-Reason angezeigt (`vehicle-runtime:next-booking-info`), blockiert Readiness nicht. Reserved/Active Rented/UNKNOWN → nicht Ready.',
+      '7 neue Readiness-Tests + 44 Runtime-Tests grün.',
+    ],
+    reason:
+      'Prompt 31/43: Eine zukünftige Buchung allein darf ein aktuell verfügbares Fahrzeug nicht „Not Ready for Renting“ machen.',
+    previousBehavior:
+      'Readiness inline in `buildRuntimeState` ohne explizite nextBooking-Info-Regel und ohne strikte RELIABLE-Prüfung.',
+    details:
+      'Neu: `rentalReadiness.ts`, `rentalReadiness.test.ts`. `vehicleRuntimeStateBuilder` nutzt `deriveIsReadyForRenting`. Buchungskonfliktprüfung für konkrete Zeiträume bleibt separat.',
+    affectsArchitecture: true,
+    module: 'Dashboard',
+    createdAt: '2026-07-15T23:32:00.000Z',
+  },
+  {
+    id: 'vehicle-runtime-state-builder-v49494-2026-07-15',
+    version: '4.9.494',
+    title: 'V4.9.494 — Vehicle Runtime State Builder canonical backend block (Prompt 30/43)',
+    summary: [
+      '`vehicleRuntimeStateBuilder` übernimmt den kanonischen Backend-Block (`operationalState.status/reason`, `dataQualityState`, `bookingContext`) über zentrale Selectors — keine eigenständige Ableitung von Available/Reserved/Active Rented.',
+      '`resolveVehicleRuntimeOperationalBlock` kapselt Runtime-Operational-Read-Model; `rawVehicleStatus` nur diagnostisch.',
+      'Diagnose-Reasons bei widersprüchlichem Payload (fail-closed UNKNOWN), Backend-DEGRADED und Rohstatus-Abweichung — ohne Available-Annahme.',
+      'Rental Readiness, Block Level, Health/Compliance/Cleaning/Booking-Reasons unverändert erhalten. 10 neue Runtime-Builder-Tests + 27 bestehende Runtime-Tests grün.',
+    ],
+    reason:
+      'Prompt 30/43: Der Dashboard-Runtime-Builder soll operative Status nicht erneut ableiten, sondern den Backend-Source-of-Truth-Block konsumieren.',
+    previousBehavior:
+      '`selectFleetRuntimeOperationalStatus` ohne expliziten Backend-Block; `dataQualityState` nur aus Telemetrie; keine Payload-Inkonsistenz-Diagnose.',
+    details:
+      'Geändert: `vehicleRuntimeStateBuilder.ts`, neu `vehicleRuntimeStateBuilder.test.ts`. Nutzt `resolveVehicleRuntimeOperationalBlock`, `selectIsCurrentlyAvailable`, `selectBookingContext`.',
+    affectsArchitecture: true,
+    module: 'Dashboard',
+    createdAt: '2026-07-15T23:29:00.000Z',
+  },
+  {
+    id: 'vehicle-operational-selectors-v49493-2026-07-15',
+    version: '4.9.493',
+    title: 'V4.9.493 — Central Vehicle Operational Selectors (Prompt 29/43)',
+    summary: [
+      'Zentrale reine Selectors in `vehicle-operational-state/selectors.ts`: `selectOperationalStatus`, `selectIsCurrentlyAvailable`, `selectActiveBooking`, `selectNextBooking`, `selectCanBeConsideredForRentalReadiness` u. a.',
+      'Defensive Konsistenzprüfungen: UNKNOWN bei Konflikten (z. B. AVAILABLE + activeBooking); activeBooking nur bei ACTIVE_RENTED; reserved nur bei RESERVED; nextBooking unabhängig von Reserved-Fenster.',
+      'Fleet-, Dashboard- und Vehicle-Detail-Konsumenten migriert (`fleetVisualState`, `useDashboardViewModel`, `StatInlineDetail`, `fleet-operator-panel`, Dashboard-Builder). `fleet-map-vehicle-selectors` re-exportiert zentrale API.',
+      '23 Selector-Tests: alle Status, Bookings, UNKNOWN, inkonsistenter Legacy-Payload.',
+    ],
+    reason:
+      'Prompt 29/43: Verstreute Status-/Booking-Leselogik soll eine zentrale, testbare Selector-Schicht nutzen — ohne neue fachliche Ableitungen vom Backend.',
+    previousBehavior:
+      'Fleet-prefixed Selectors ohne Availability/Rental-Readiness-Guards; Konsumenten lasen `vehicle.status` und Flat-Booking-IDs direkt.',
+    details:
+      'Neu: `selectors.ts`, `vehicle-operational-selectors.test.ts`. Migriert: `fleetVisualState`, `fleetVehicleDisplay`, `fleetStateBuilder`, `derivePredictiveOperationsInsights`, `vehicle-booking-operator.utils`, `useDashboardViewModel`, `dashboardUtils`, `StatInlineDetail`, `operationsBuilder`, `controlSignalsBuilder`, `fleet-operator-panel`.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-15T23:25:00.000Z',
+  },
+  {
+    id: 'fleet-operational-derivation-cleanup-v49492-2026-07-15',
+    version: '4.9.492',
+    title: 'V4.9.492 — Fleet operational derivation cleanup (Prompt 28/43)',
+    summary: [
+      'Repositoryweite Entfernung frontend-seitiger Status-Ableitungen: keine Reserved/Active-Rented-Demotion bei fehlender Booking-ID, kein `activeBookingId` als Statusquelle, kein separates String-Mapping in `vehicleRuntimeStateBuilder`.',
+      '`fleetVisualState` / `fleetVehicleDisplay` / `fleetStateBuilder` / Operator-Utils lesen nur noch `selectFleetOperationalStatus` + Booking-Selectors.',
+      'Zentrale Selectors generalisiert für `VehicleData` mit Legacy-Flat-Projektion nur für Anzeige. Audit: `docs/audits/fleet-operational-derivation-cleanup-p28.md`.',
+      'Tests: `fleetVisualState.test.ts` (UNKNOWN, kein Ghost-Demotion), Build + Fleet-Tests.',
+    ],
+    reason:
+      'Prompt 28/43: Verstreute Frontend-Ableitungen widersprachen Backend Source of Truth und dem kanonischen operationalState/bookingContext-Modell.',
+    previousBehavior:
+      '`deriveRentalStatus` downgradete Active Rented/Reserved ohne Booking-ID zu Available; Runtime-Builder nutzte eigene Display-String-Map.',
+    details:
+      'Geändert: `fleetVisualState.ts`, `fleetVehicleDisplay.ts`, `fleet-map-vehicle-selectors.ts`, `vehicle-booking-operator.utils.ts`, `vehicleRuntimeStateBuilder.ts`, Dashboard-Builder. Master-Admin und Figma-Prototyp bewusst offen.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-15T23:12:00.000Z',
+  },
+  {
+    id: 'fleet-store-canonical-dto-v49491-2026-07-15',
+    version: '4.9.491',
+    title: 'V4.9.491 — Fleet Store canonical operational DTO mapping (Prompt 27/43)',
+    summary: [
+      'Zentrale Aufbereitung `fleet-map-vehicle-mapper.ts`: übernimmt `operationalState`, `rawVehicleStatus`, `bookingContext` (active/reserved/next, futureBookingCount) vom Backend — nur Validierung/Normalisierung, keine Store-Businesslogik.',
+      '`useFleetMapStore` nutzt Mapper; kanonische Felder `operationalState`/`bookingContext` auf `FleetMapVehicle`. Legacy-Flat-Felder (`reservedReturnAt`, `activeStartAt`, …) als Projektion für bestehende UI.',
+      'Kompatible Selectors in `fleet-map-vehicle-selectors.ts`. Optimistic Patches synchronisieren kanonische + Legacy-Felder. UNKNOWN fail-closed. 6 Mapper-Tests + bestehende Query-Tests.',
+      'Status-Vergleiche in Fleet-Konsumenten auf `VEHICLE_OPERATIONAL_STATUS`-Enums umgestellt (Typecheck).',
+    ],
+    reason:
+      'Prompt 27/43: Der Fleet Store leitete Status aus Raw-Strings ab und verworf Kontext — Backend soll alleinige Source of Truth sein.',
+    previousBehavior:
+      '`mapFleetVehicle` normalisierte nur `raw.status`; fehlende Werte konnten als Available erscheinen; `bookingContext`/`operationalState` nicht im Store.',
+    details:
+      'Neu: `fleet-map-vehicle-mapper.ts`, `fleet-map-vehicle-selectors.ts`, `fleet-map-vehicle-store.utils.ts`. Entfernt Store-Derivationslogik. API: `rawVehicleStatus`, `dataQualityState` auf `FleetMapVehicleResponse`.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-15T23:08:00.000Z',
+  },
+  {
+    id: 'vehicle-operational-domain-types-v49490-2026-07-15',
+    version: '4.9.490',
+    title: 'V4.9.490 — Frontend Vehicle Operational State Domain Types (Prompt 26/43)',
+    summary: [
+      'Neues Modul `vehicle-operational-state/` — kanonische Enums `VehicleOperationalStatus` (AVAILABLE, RESERVED, ACTIVE_RENTED, MAINTENANCE, BLOCKED, UNKNOWN) und `VehicleDataQualityState`.',
+      'Zentrale DTOs: `VehicleOperationalState`, `VehicleBookingReference`, `VehicleBookingContext`. Fail-closed Normalizer mappt Legacy-Strings (Available, Active Rented, Rented, …) und Prisma-Tokens; unbekannte Werte → UNKNOWN, nie AVAILABLE.',
+      'Deutsche Labels über `formatVehicleOperationalStatusLabel`; `vehicle-status.ts` ist Kompatibilitäts-Layer. `FleetStatus` = Alias von `VehicleOperationalStatus`. API-Typen `operationalState`/`bookingContext` auf `FleetMapVehicleResponse`.',
+      'Minimale Konsumenten-Anpassung (optimistic patches, fleet-map-sync, booking preflight, App). 10 Normalisierungs-/Label-Tests + bestehende Query-Tests aktualisiert.',
+    ],
+    reason:
+      'Prompt 26/43: Mehrfache lokale String-Unions und Display-Strings als interne Statuswerte verhinderten einheitliche Domain-Logik und fail-closed Semantik.',
+    previousBehavior:
+      '`FleetStatus`/`FleetStatusKey` nutzten UI-Labels (`Available`, `Active Rented`) als Typwerte; Labels verteilt in Komponenten und `fleetStatusLabelDe`.',
+    details:
+      'Neu: `frontend/src/rental/lib/vehicle-operational-state/*`. `vehicle-status.ts` re-exportiert Domain-API. Keine umfassende Store-/UI-Migration in diesem Schritt.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-15T22:46:00.000Z',
+  },
+  {
+    id: 'vehicle-operational-query-invalidation-v49489-2026-07-15',
+    version: '4.9.489',
+    title: 'V4.9.489 — Frontend vehicle operational query invalidation (Prompt 25/43)',
+    summary: [
+      'Neues Modul `vehicle-operational-query/` — TanStack-kompatible Query-Key-Fabrik, Invalidierungs-Registry und zentraler Bus `invalidateVehicleOperationalState`.',
+      'Gezielte Invalidierung nach Pickup/Return, Booking create/update/cancel/no-show, Cleaning/Status-PATCH — Fleet Map, Fleet Health, Dashboard Today/Runtime, Operator Today/Tasks, Vehicle Detail.',
+      'Optimistische Fleet-Patches mit Rollback: Pickup → Active Rented, Return/Release → Available nur bei zuverlässigem Status; Unknown → keine Available-Annahme.',
+      'Fahrzeugwechsel bustet alte + neue Vehicle ID. Kein globaler Query-Cache-Clear. 13 Vitest-Fälle.',
+    ],
+    reason:
+      'Prompt 25/43: Frontend-Caches hatten verstreute `refreshFleet()`-Hooks ohne einheitliche Keys, ohne Vehicle-Swap-Dual-Bust und ohne fail-closed Optimistic Updates.',
+    previousBehavior:
+      'Ad-hoc `refreshFleet()` / `handover:completed`-Listener; Dashboard lud nach Handover nur teilweise nach; Rental-Handover ohne `reloadHealth`; kein zentraler Query-Key-Layer.',
+    details:
+      'Neu: `frontend/src/rental/lib/vehicle-operational-query/*`. FleetProvider/Dashboard/Operator/Overview registrieren Handler. HandoverProvider + OperatorHandoverProvider rufen Invalidierung vor Event. `vehicle-status.ts` fail-closed normalizer + `Unknown` in FleetStatus.',
+    affectsArchitecture: true,
+    module: 'Fleet',
+    createdAt: '2026-07-15T22:42:00.000Z',
+  },
+  {
     id: 'invoice-production-ready-v49475-2026-07-15',
     version: '4.9.475',
     title: 'V4.9.475 — Rechnungsmodul production-ready: P1-Fixes + Merge-Vorbereitung',

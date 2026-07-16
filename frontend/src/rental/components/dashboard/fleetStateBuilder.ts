@@ -6,8 +6,18 @@ import {
   formatFuelPercentCeil,
 } from '../../../lib/formatVehicleDisplay';
 import { deriveFleetVisualState } from '../../lib/fleetVisualState';
+import {
+  selectFleetActiveIsOverdue,
+  selectFleetActiveReturnAt,
+  selectFleetReservedIsOverdue,
+  selectFleetReservedPickupAt,
+} from '../../lib/fleet-map-vehicle-selectors';
 import { resolveTelemetryFreshness } from '../../lib/telemetryFreshness';
 import { parseEventTime } from './dashboardUtils';
+import {
+  selectOperationalStatus,
+  VEHICLE_OPERATIONAL_STATUS,
+} from '../../lib/vehicle-operational-state';
 import type {
   FleetBoardItem,
   FleetBoardLane,
@@ -81,21 +91,25 @@ function assignLane(
     healthAlert?.severity === 'critical' || rentalHealth?.overall_state === 'critical';
 
   if (healthCritical || blocked) return 'critical';
-  if (v.activeIsOverdue || v.reservedIsOverdue) return 'overdue';
+  if (selectFleetActiveIsOverdue(v) || selectFleetReservedIsOverdue(v)) return 'overdue';
   if (
-    isDueSoon(v.reservedPickupAt, now) ||
-    isDueSoon(v.activeReturnAt, now)
+    isDueSoon(selectFleetReservedPickupAt(v) ?? undefined, now) ||
+    isDueSoon(selectFleetActiveReturnAt(v) ?? undefined, now)
   ) {
     return 'due-soon';
   }
-  if (v.status === 'Maintenance') return 'maintenance';
+  const status = selectOperationalStatus(v);
+  if (status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) return 'maintenance';
   if (blocked) return 'maintenance';
-  if (v.cleaningStatus !== 'Clean' && (v.status === 'Available' || v.status === 'Reserved')) {
+  if (
+    v.cleaningStatus !== 'Clean' &&
+    (status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE || status === VEHICLE_OPERATIONAL_STATUS.RESERVED)
+  ) {
     return 'cleaning';
   }
-  if (v.status === 'Active Rented') return 'rented';
-  if (v.status === 'Reserved') return 'reserved';
-  if (v.status === 'Available') {
+  if (status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED) return 'rented';
+  if (status === VEHICLE_OPERATIONAL_STATUS.RESERVED) return 'reserved';
+  if (status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE) {
     // Telemetry freshness (offline / signal_delayed / standby) never changes the
     // operational lane — an Available vehicle stays in the Ready lane regardless.
     return 'ready';
@@ -115,11 +129,11 @@ function statusLabelForLane(
     overdue: ['Overdue', 'Überfällig'],
     'due-soon': ['Due soon', 'Bald fällig'],
     attention: ['Attention', 'Hinweise'],
-    maintenance: ['Maintenance', 'Wartung'],
+    maintenance: [VEHICLE_OPERATIONAL_STATUS.MAINTENANCE, 'Wartung'],
     cleaning: ['Cleaning', 'Reinigung'],
     ready: ['Ready', 'Bereit'],
     rented: ['Active', 'Aktiv'],
-    reserved: ['Reserved', 'Reserviert'],
+    reserved: [VEHICLE_OPERATIONAL_STATUS.RESERVED, 'Reserviert'],
   };
   const pair = map[lane];
   if (pair) return de ? pair[1] : pair[0];
@@ -128,11 +142,14 @@ function statusLabelForLane(
 
 function nextAppointment(v: VehicleData, locale: string): string | undefined {
   const intl = locale === 'de' ? 'de-DE' : 'en-US';
-  if (v.status === 'Reserved' && v.reservedPickupAt) {
-    return formatFleetDateTime(v.reservedPickupAt, intl);
+  const status = selectOperationalStatus(v);
+  const reservedPickupAt = selectFleetReservedPickupAt(v);
+  const activeReturnAt = selectFleetActiveReturnAt(v);
+  if (status === VEHICLE_OPERATIONAL_STATUS.RESERVED && reservedPickupAt) {
+    return formatFleetDateTime(reservedPickupAt, intl);
   }
-  if (v.status === 'Active Rented' && v.activeReturnAt) {
-    return formatFleetDateTime(v.activeReturnAt, intl);
+  if (status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED && activeReturnAt) {
+    return formatFleetDateTime(activeReturnAt, intl);
   }
   return undefined;
 }
@@ -194,11 +211,11 @@ export function laneLabel(lane: FleetBoardLane, locale: string): string {
     overdue: ['Overdue', 'Überfällig'],
     'due-soon': ['Due soon', 'Bald fällig'],
     attention: ['Attention', 'Hinweise'],
-    maintenance: ['Maintenance', 'Wartung'],
+    maintenance: [VEHICLE_OPERATIONAL_STATUS.MAINTENANCE, 'Wartung'],
     cleaning: ['Cleaning', 'Reinigung'],
     ready: ['Ready', 'Bereit'],
     rented: ['Rented', 'Vermietet'],
-    reserved: ['Reserved', 'Reserviert'],
+    reserved: [VEHICLE_OPERATIONAL_STATUS.RESERVED, 'Reserviert'],
   };
   return de ? labels[lane][1] : labels[lane][0];
 }
