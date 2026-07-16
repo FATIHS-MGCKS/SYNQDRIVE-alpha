@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import type { VehicleBatteryReferenceCapacity } from '@prisma/client';
 import {
@@ -22,6 +23,7 @@ import type {
   VerifyVehicleBatteryReferenceCapacityDto,
 } from './dto/vehicle-battery-reference-capacity.dto';
 import { VehicleBatteryReferenceCapacityRepository } from './vehicle-battery-reference-capacity.repository';
+import { BatteryTaskService } from '../battery-task.service';
 
 export interface VehicleBatteryReferenceCapacityDto {
   id: string;
@@ -48,6 +50,7 @@ export interface VehicleBatteryReferenceCapacityDto {
 export class VehicleBatteryReferenceCapacityService {
   constructor(
     private readonly repository: VehicleBatteryReferenceCapacityRepository,
+    @Optional() private readonly batteryTasks?: BatteryTaskService,
   ) {}
 
   async getActive(
@@ -189,6 +192,10 @@ export class VehicleBatteryReferenceCapacityService {
         verifiedAt: verifiedAt.toISOString(),
       },
     });
+
+    await this.batteryTasks
+      ?.onReferenceCapacityVerified(organizationId, vehicleId, row.id)
+      .catch(() => undefined);
 
     return this.toDto(updated);
   }

@@ -69,7 +69,7 @@ Alerts on `battery.alert.lv_publication_stable` require:
 | `battery-critical.detector.ts` | One `InsightCandidate` per alert with semantic `dedupeKey` |
 | `canonical-battery-read.adapter.ts` | Re-exports alert resolver for module state |
 
-Task catalog bridge retains `legacyDedupeKey: battery_critical:{vehicleId}` in detector metrics for existing `BATTERY_CHECK` task dedup.
+Task catalog bridge retains `legacyDedupeKey: battery_critical:{vehicleId}` in detector metrics for existing task migration; runtime tasks use `battery_task:{vehicleId}:{taskIntent}` (P67).
 
 ## API
 

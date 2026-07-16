@@ -690,11 +690,13 @@ Backup-Tabellen vor jeder Migration.
 
 > **V4.9.566 (Prompt 66/78):** Zentrale `BatteryAlertPolicy` in `battery-alert.policy.ts`. Siehe [`battery-alert-policy.md`](./battery-alert-policy.md).
 
+> **V4.9.567 (Prompt 67/78):** Automatische Battery-Tasks in `battery-task.policy.ts` / `battery-task.service.ts`. Siehe [`battery-task-policy.md`](./battery-task-policy.md).
+
 - `BatteryCriticalDetector` ruft `evaluateBatteryAlerts()` — ein Insight pro `ruleId` mit semantischem `dedupeKey` `battery_alert:{vehicleId}:{ruleId}`
-- Belastbare Quellen: Warnleuchte, sicherheitsrelevanter DTC, stabile qualifizierte LV-Publikation, Werkstattbefund, bestätigte manuelle Messung
-- Kein Alert aus Start-Proxy, REST/HV-Shadow, Legacy-Scores, fehlenden Daten oder HV-SOH allein
-- `shouldAutoResolveBatteryAlert()` prüft Rule-Abwesenheit für STATE-Auto-Resolve
-- Task-Materialisierung: `BATTERY_CRITICAL_HEALTH` → `BATTERY_CHECK` (bestehend; `legacyDedupeKey` im Detector-Metrics)
+- `BatteryTaskService` materialisiert semantische Tasks `battery_task:{vehicleId}:{taskIntent}` (12V-Prüfung, Warnleuchte, BMS-Bericht, Referenzkapazität)
+- Belastbare Quellen: Warnleuchte, sicherheitsrelevanter DTC, stabile qualifizierte LV-Publikation, Werkstattbefund
+- Kein Task aus Shadow, experimentellen Messungen oder HV-Shadow-Kapazität allein
+- Auto-Resolve via `shouldAutoResolveBatteryTask()` + Referenzkapazität-Verify-Hook
 
 ---
 

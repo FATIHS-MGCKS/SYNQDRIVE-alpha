@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-task-policy-v49567-2026-07-17',
+    version: '4.9.567',
+    title: 'V4.9.567 — Battery Task Policy (Prompt 67/78)',
+    summary: [
+      'Zentrale `BatteryTaskPolicy` für automatische Task-Erzeugung über Task Domain V2.',
+      'Tasks: 12V-Batterie professionell prüfen, Warnleuchte diagnostizieren, BMS-/Werkstattbericht hinterlegen, Referenzkapazität bestätigen.',
+      'Nur aus handlungsfähigem Alert oder bestätigter Evidence — kein Task aus experimenteller Messung oder HV-Shadow-Kapazität.',
+      'Semantischer Dedup-Key `battery_task:{vehicleId}:{taskIntent}`; Auto-Resolve bei verschwundener Bedingung oder bestätigtem Ergebnis.',
+      'Verknüpfung: Fahrzeug, Alert, ServiceCase, Dokument; verständlicher Reason und Next Action.',
+      'Integration: `BatteryTaskService`, `InsightTaskBridgeService`, Referenzkapazität-Verify-Hook.',
+    ],
+    reason: 'Prompt 67/78: Battery-Task-Automatisierung auf belastbare Evidenz und semantische Deduplizierung.',
+    previousBehavior: 'Ein generischer `BATTERY_CHECK`-Task pro Fahrzeug ohne Ursachen-Dedup oder Intent-spezifische Titel.',
+    details:
+      'backend/.../battery-task.policy.ts, battery-task.service.ts, insight-task-bridge.service.ts, docs/architecture/battery-task-policy.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T02:00:00.000Z',
+  },
+  {
     id: 'battery-alert-policy-v49566-2026-07-17',
     version: '4.9.566',
     title: 'V4.9.566 — Battery Alert Policy (Prompt 66/78)',

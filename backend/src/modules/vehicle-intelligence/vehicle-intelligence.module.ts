@@ -89,6 +89,7 @@ import { DashboardWarningLightsService } from './dashboard-warning-lights/dashbo
 import { ServiceComplianceService } from './service-compliance/service-compliance.service';
 import { ComplianceTaskMaterializeService } from './service-compliance/compliance-task-materialize.service';
 import { ServiceOverdueTaskService } from './service-compliance/service-overdue-task.service';
+import { BatteryTaskService } from './battery-health/battery-task.service';
 import { VehicleFileSummaryService } from './vehicle-file/vehicle-file-summary.service';
 import { TasksModule } from '../tasks/tasks.module';
 import { DrivingImpactService } from './driving-impact/driving-impact.service';
@@ -249,6 +250,7 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     ServiceComplianceService,
     ComplianceTaskMaterializeService,
     ServiceOverdueTaskService,
+    BatteryTaskService,
     VehicleFileSummaryService,
     DrivingImpactService,
     EnergyEventsService,
@@ -348,6 +350,7 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     ServiceComplianceService,
     ComplianceTaskMaterializeService,
     ServiceOverdueTaskService,
+    BatteryTaskService,
     DrivingImpactService,
     EnergyEventsService,
     TripDecisionEngine,
