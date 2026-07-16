@@ -223,6 +223,8 @@ export const BatteryCapabilityStatus = {
   NOT_LISTED: 'NOT_LISTED',
   QUERY_ERROR: 'QUERY_ERROR',
   UNSUPPORTED: 'UNSUPPORTED',
+  DEGRADED: 'DEGRADED',
+  UNAVAILABLE: 'UNAVAILABLE',
 } as const;
 
 export type BatteryCapabilityStatus =

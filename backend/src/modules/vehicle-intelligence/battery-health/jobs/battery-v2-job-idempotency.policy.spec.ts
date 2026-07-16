@@ -82,12 +82,14 @@ describe('battery-v2-job-idempotency.policy', () => {
     expect(key).toBe(`hv-cap:${SESSION}:DELTA_SOC:m1.0.0`);
   });
 
-  it('builds capability refresh identity from vehicle + provider + signal scope', () => {
+  it('builds capability refresh identity from vehicle + provider + signal scope + trigger', () => {
     const key = buildCapabilityRefreshJobIdempotencyKey({
       vehicleId: VEH,
       providerSource: 'DIMO',
       signalScope: 'HV_TELEMETRY',
+      trigger: 'PERIODIC',
+      periodBucket: '42',
     });
-    expect(key).toBe(`cap-refresh:${VEH}:DIMO:HV_TELEMETRY`);
+    expect(key).toBe(`cap-refresh:${VEH}:DIMO:HV_TELEMETRY:PERIODIC:42`);
   });
 });

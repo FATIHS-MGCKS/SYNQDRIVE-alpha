@@ -8,8 +8,14 @@ import {
 } from './battery-capability-preflight.assess';
 import { BatteryCapabilityPreflightRepository } from './battery-capability-preflight.repository';
 import type { BatteryCapabilityPreflightResult } from './battery-capability-preflight.types';
+import type { BatteryCapabilityRefreshTrigger } from './battery-capability-lifecycle.policy';
 
 const RECHARGE_PROBE_LOOKBACK_DAYS = 31;
+
+export interface RunBatteryCapabilityPreflightOptions {
+  refreshTrigger?: BatteryCapabilityRefreshTrigger | null;
+  correlationId?: string | null;
+}
 
 @Injectable()
 export class BatteryCapabilityPreflightService {
@@ -25,6 +31,7 @@ export class BatteryCapabilityPreflightService {
   async runForVehicle(
     organizationId: string,
     vehicleId: string,
+    options?: RunBatteryCapabilityPreflightOptions,
   ): Promise<BatteryCapabilityPreflightResult | null> {
     const vehicle = await this.prisma.vehicle.findFirst({
       where: { id: vehicleId, organizationId },
@@ -83,6 +90,10 @@ export class BatteryCapabilityPreflightService {
       vehicleId,
       checkedAt,
       assessedSignals,
+      {
+        refreshTrigger: options?.refreshTrigger,
+        correlationId: options?.correlationId,
+      },
     );
 
     return {

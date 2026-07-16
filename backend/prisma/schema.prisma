@@ -1321,6 +1321,7 @@ model Organization {
   batteryAssessments                BatteryAssessment[]
   batteryPublications               BatteryPublication[]
   vehicleBatteryCapabilities        VehicleBatteryCapability[]
+  vehicleBatteryCapabilityChanges   VehicleBatteryCapabilityChange[]
   vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
   hvChargeSessions                  HvChargeSession[]
   hvCapacityObservations            HvCapacityObservation[]
@@ -1752,6 +1753,7 @@ model Vehicle {
   batteryAssessments                BatteryAssessment[]
   batteryPublications               BatteryPublication[]
   vehicleBatteryCapabilities        VehicleBatteryCapability[]
+  vehicleBatteryCapabilityChanges   VehicleBatteryCapabilityChange[]
   vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
   hvChargeSessions                  HvChargeSession[]
   hvCapacityObservations            HvCapacityObservation[]
@@ -5689,6 +5691,8 @@ enum BatteryCapabilityStatus {
   NOT_LISTED
   QUERY_ERROR
   UNSUPPORTED
+  DEGRADED
+  UNAVAILABLE
 }
 
 enum BatteryDriveProfile {
@@ -5897,30 +5901,59 @@ model BatteryPublication {
 
 /// Preflight capability state per provider signal / measurement kind.
 model VehicleBatteryCapability {
-  id              String                  @id @default(uuid())
-  organizationId  String                  @map("organization_id")
-  vehicleId       String                  @map("vehicle_id")
-  signalKey       String                  @map("signal_key")
-  provider        String?                 @map("provider")
-  status          BatteryCapabilityStatus
-  measurementType BatteryMeasurementType? @map("measurement_type")
-  firstSeenAt     DateTime?               @map("first_seen_at")
-  lastSeenAt      DateTime?               @map("last_seen_at")
-  sourceTimestamp DateTime?               @map("source_timestamp")
-  lastValue       Float?                  @map("last_value")
-  metadata        Json?                   @map("metadata")
-  checkedAt       DateTime                @default(now()) @map("checked_at")
-  createdAt       DateTime                @default(now()) @map("created_at")
-  updatedAt       DateTime                @updatedAt @map("updated_at")
+  id                   String                  @id @default(uuid())
+  organizationId       String                  @map("organization_id")
+  vehicleId            String                  @map("vehicle_id")
+  signalKey            String                  @map("signal_key")
+  provider             String?                 @map("provider")
+  status               BatteryCapabilityStatus
+  measurementType      BatteryMeasurementType? @map("measurement_type")
+  capabilityVersion    Int                     @default(1) @map("capability_version")
+  consecutiveLossCount Int                     @default(0) @map("consecutive_loss_count")
+  degradedAt           DateTime?               @map("degraded_at")
+  firstSeenAt          DateTime?               @map("first_seen_at")
+  lastSeenAt           DateTime?               @map("last_seen_at")
+  sourceTimestamp      DateTime?               @map("source_timestamp")
+  lastValue            Float?                  @map("last_value")
+  metadata             Json?                   @map("metadata")
+  checkedAt            DateTime                @default(now()) @map("checked_at")
+  createdAt            DateTime                @default(now()) @map("created_at")
+  updatedAt            DateTime                @updatedAt @map("updated_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  changes      VehicleBatteryCapabilityChange[]
 
   @@unique([vehicleId, signalKey], map: "vehicle_battery_capabilities_signal_key")
   @@index([organizationId])
   @@index([vehicleId, status])
   @@index([checkedAt])
   @@map("vehicle_battery_capabilities")
+}
+
+/// Append-only audit trail for capability lifecycle transitions.
+model VehicleBatteryCapabilityChange {
+  id                String                   @id @default(uuid())
+  organizationId    String                   @map("organization_id")
+  vehicleId         String                   @map("vehicle_id")
+  capabilityId      String?                  @map("capability_id")
+  signalKey         String                   @map("signal_key")
+  capabilityVersion Int                      @map("capability_version")
+  previousStatus    BatteryCapabilityStatus? @map("previous_status")
+  newStatus         BatteryCapabilityStatus  @map("new_status")
+  refreshTrigger    String?                  @map("refresh_trigger")
+  correlationId     String?                  @map("correlation_id")
+  metadata          Json?                    @map("metadata")
+  changedAt         DateTime                 @default(now()) @map("changed_at")
+
+  organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle                   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  capability   VehicleBatteryCapability? @relation(fields: [capabilityId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([vehicleId, signalKey, changedAt(sort: Desc)])
+  @@index([capabilityId])
+  @@map("vehicle_battery_capability_changes")
 }
 
 /// Verified HV reference capacity for SOH-% and session-capacity decisions.

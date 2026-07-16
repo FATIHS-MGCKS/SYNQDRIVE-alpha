@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-capability-lifecycle-v49530-2026-07-16',
+    version: '4.9.530',
+    title: 'V4.9.530 — Battery Capability Lifecycle & Refresh (Prompt 29/78)',
+    summary: [
+      'Lifecycle für `VehicleBatteryCapability`: Signalverlust → `DEGRADED`, danach `UNAVAILABLE` (Policy: 3 Refreshes / 24 h Grace).',
+      '`capabilityVersion`, `checkedAt`, `consecutiveLossCount` + append-only Audit (`vehicle_battery_capability_changes`).',
+      'Refresh via `HV_CAPABILITY_REFRESH`: Registrierung, Provider-Consent, periodisch (6 h), Signal-Loss-Reconcile, Admin-Diagnose.',
+      '`BatteryCapabilityMeasurementGateService` deaktiviert betroffene Messarten ohne Evidence zu löschen.',
+      'Tests für neue, unveränderte, verlorene und wiederkehrende Signale.',
+    ],
+    reason: 'Prompt 29/78: Capability-Lifecycle und Refresh-Steuerung nach Preflight.',
+    previousBehavior: 'Preflight ohne DEGRADED/UNAVAILABLE-Lifecycle, ohne periodischen Refresh und ohne Audit-Trail.',
+    details:
+      'capability-preflight/*, battery-v2-reconciliation.service.ts, battery-health-v2.config.ts, platform-admin.controller.ts, vehicles.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T20:00:00.000Z',
+  },
+  {
     id: 'dimo-capability-preflight-v49529-2026-07-16',
     version: '4.9.529',
     title: 'V4.9.529 — DIMO Battery Capability Preflight (Prompt 28/78)',

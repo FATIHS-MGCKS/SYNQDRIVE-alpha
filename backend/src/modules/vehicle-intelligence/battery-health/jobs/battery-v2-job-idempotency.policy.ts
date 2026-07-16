@@ -116,18 +116,37 @@ export function buildHvCapacityJobIdempotencyKey(input: {
   ].join(':');
 }
 
-/** Capability refresh: vehicle + provider + signal scope */
+/** Capability refresh: vehicle + provider + signal scope + trigger bucket */
 export function buildCapabilityRefreshJobIdempotencyKey(input: {
   vehicleId: string;
   providerSource: string;
   signalScope: string;
+  trigger: string;
+  periodBucket?: string;
+  nonce?: string;
 }): string {
-  return [
+  const parts = [
     BATTERY_V2_JOB_IDENTITY_PREFIX.capability,
     input.vehicleId,
     input.providerSource,
     input.signalScope,
-  ].join(':');
+    input.trigger,
+  ];
+
+  if (input.trigger === 'PERIODIC') {
+    parts.push(input.periodBucket ?? '0');
+  } else {
+    parts.push(input.nonce ?? '0');
+  }
+
+  return parts.join(':');
+}
+
+export function buildCapabilityRefreshPeriodBucket(
+  at: Date,
+  intervalMs: number,
+): string {
+  return String(Math.floor(at.getTime() / intervalMs));
 }
 
 export function canonicalizeObservationValue(

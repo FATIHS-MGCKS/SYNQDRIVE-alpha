@@ -86,6 +86,10 @@ describe('BatteryV2ReconciliationService', () => {
   const jobProducer = { enqueue: jest.fn().mockResolvedValue('job-id') };
   const observationProducer = { classifyAndEnqueue: jest.fn().mockResolvedValue(null) };
   const deadLetters = mockDeadLetters();
+  const capabilityRefresh = {
+    reconcilePeriodicRefresh: jest.fn().mockResolvedValue(0),
+    reconcileSignalLossRefresh: jest.fn().mockResolvedValue(0),
+  };
 
   let service: BatteryV2ReconciliationService;
 
@@ -98,6 +102,7 @@ describe('BatteryV2ReconciliationService', () => {
       jobProducer as any,
       observationProducer as any,
       deadLetters as any,
+      capabilityRefresh as any,
     );
   });
 

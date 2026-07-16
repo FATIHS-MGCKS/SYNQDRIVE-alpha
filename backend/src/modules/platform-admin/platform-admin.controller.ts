@@ -8,6 +8,9 @@ import { RolesGuard } from '@shared/auth/roles.guard';
 import { TripEnrichmentOrchestratorService } from '../vehicle-intelligence/trips/trip-enrichment-orchestrator.service';
 import { AuditService } from '@modules/activity-log/audit.service';
 import { ActivityAction, ActivityEntity } from '@prisma/client';
+import { BatteryCapabilityRefreshService } from '../vehicle-intelligence/battery-health/capability-preflight/battery-capability-refresh.service';
+import { BatteryCapabilityPreflightRepository } from '../vehicle-intelligence/battery-health/capability-preflight/battery-capability-preflight.repository';
+import { BatteryCapabilityRefreshTrigger } from '../vehicle-intelligence/battery-health/capability-preflight/battery-capability-lifecycle.policy';
 
 @Controller('admin')
 @UseGuards(RolesGuard)
@@ -20,6 +23,8 @@ export class PlatformAdminController {
     private readonly prisma: PrismaService,
     private readonly enrichmentOrchestrator: TripEnrichmentOrchestratorService,
     private readonly audit: AuditService,
+    private readonly batteryCapabilityRefresh: BatteryCapabilityRefreshService,
+    private readonly batteryCapabilityRepository: BatteryCapabilityPreflightRepository,
   ) {}
 
   @Get('changelogs')
@@ -209,6 +214,56 @@ export class PlatformAdminController {
   @Get('vehicle-logbook/:vehicleId/detail')
   async getLogbookDetail(@Param('vehicleId') vehicleId: string) {
     return this.logbookService.getVehicleDetail(vehicleId);
+  }
+
+  // POST /admin/vehicles/:vehicleId/battery-capability-refresh
+  @Post('vehicles/:vehicleId/battery-capability-refresh')
+  async refreshBatteryCapability(
+    @Param('vehicleId') vehicleId: string,
+    @Req() req: any,
+  ) {
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { id: true, organizationId: true },
+    });
+    if (!vehicle) {
+      return { enqueued: false, message: 'Vehicle not found' };
+    }
+
+    const jobId = await this.batteryCapabilityRefresh.enqueue({
+      organizationId: vehicle.organizationId,
+      vehicleId: vehicle.id,
+      trigger: BatteryCapabilityRefreshTrigger.MANUAL_ADMIN,
+    });
+
+    void this.audit.record({
+      ...AuditService.contextFromRequest(req),
+      action: ActivityAction.ADMIN_OVERRIDE,
+      entity: ActivityEntity.VEHICLE,
+      entityId: vehicleId,
+      description: `Admin triggered battery capability refresh for vehicle ${vehicleId}`,
+      metaJson: { jobId, trigger: BatteryCapabilityRefreshTrigger.MANUAL_ADMIN },
+    });
+
+    const capabilities = await this.batteryCapabilityRepository.listForVehicle(
+      vehicle.organizationId,
+      vehicle.id,
+    );
+    const changes = await this.batteryCapabilityRepository.listChangesForVehicle(
+      vehicle.organizationId,
+      vehicle.id,
+      20,
+    );
+
+    return {
+      enqueued: jobId != null,
+      jobId,
+      capabilityCount: capabilities.length,
+      recentChanges: changes.length,
+      message: jobId
+        ? 'Battery capability refresh enqueued'
+        : 'Refresh not enqueued (no DIMO token or queue unavailable)',
+    };
   }
 
   // ── Trip Enrichment Backfill ────────────────────────────────────────────
