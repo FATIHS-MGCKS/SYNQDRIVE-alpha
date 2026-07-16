@@ -259,6 +259,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Vehicle Operational Status Ops Runbook (V4.9.503)', icon: FileText,
+    endpoint: 'Keine HTTP-Route. Verbindliches Betriebs-Runbook: `docs/runbooks/vehicle-operational-status-repair.md`.',
+    service: '**Runbook:** End-to-End-Verfahren für VBH-Diagnose (read-only) und kontrollierte Reparatur (Dry-Run default, `--apply`). Deckt Voraussetzungen (Code ≥ V4.9.502, Migrationen, Env-Safety), Backup/Restore-Test, Lokal→Staging→Prod mit org-scoped Batches, Rollback (DB + Deployment), Audit-Spur (`activity_logs`, Booking-Notes), Abnahmekriterien (keine RESERVED/RENTED-Ghosts, Pickup/Return-Sollzustände, UNKNOWN bei unzuverlässiger Datenlage) und Ergebnisbericht-Vorlagen.',
+    dataSource: 'Verlinkt `audit-vehicle-booking-handover-data.ts` und `repair-vehicle-booking-handover-data.ts`; API-Smoke über `/vehicles`, `/fleet-map`, `/vehicles/:id`; KS-FH-660E-artige Staging-Testfälle. Ergänzt V4.9.501/502; Muster analog `docs/runbooks/task-data-repair.md`.' },
   { name: 'Vehicle / Booking / Handover Ops Repair (V4.9.502)', icon: Wrench,
     endpoint: 'Keine HTTP-Route. Controlled Ops-CLI: `backend/scripts/ops/repair-vehicle-booking-handover-data.ts` (Default Dry-Run, `--apply` für Writes).',
     service: '**Service:** `VehicleBookingHandoverRepairService` plant/applied 4 sichere Regeln: stale RESERVED→AVAILABLE (ohne Fenster/ACTIVE), RENTED→AVAILABLE nur bei COMPLETED+RETURN ohne ACTIVE, ACTIVE→COMPLETED bei RETURN-Protokoll (spiegelt Handover-Return), CONFIRMED→ACTIVE bei PICKUP-Protokoll. Unklare RENTED-Fälle → `unresolved`. Idempotente Re-Checks vor Write; `ActivityLog` + append-only Booking-Notes; diagnostisches Before/After via `VehicleBookingHandoverDiagnosticService`.',
