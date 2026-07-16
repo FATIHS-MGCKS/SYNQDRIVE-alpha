@@ -98,6 +98,7 @@ import { BatteryCapabilityMeasurementGateService } from './battery-health/capabi
 import { LvRestWindowStateMachineService } from './battery-health/lv-rest-window/lv-rest-window.service';
 import { BatteryRestTargetEvaluationService } from './battery-health/lv-rest-window/battery-rest-target-evaluation.service';
 import { LvRestShadowSummaryService } from './battery-health/lv-rest-window/lv-rest-shadow-summary.service';
+import { LvStartProxyDiagnosticService } from './battery-health/lv-start-proxy/lv-start-proxy-diagnostic.service';
 import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy/battery-start-proxy-extract.service';
 
 @Module({
@@ -185,6 +186,7 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     LvRestWindowStateMachineService,
     BatteryRestTargetEvaluationService,
     LvRestShadowSummaryService,
+    LvStartProxyDiagnosticService,
     BatteryStartProxyExtractService,
     HealthSummaryService,
     AiHealthCareAggregationService,
@@ -264,6 +266,7 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     LvRestWindowStateMachineService,
     BatteryRestTargetEvaluationService,
     LvRestShadowSummaryService,
+    LvStartProxyDiagnosticService,
     BatteryStartProxyExtractService,
     ServiceComplianceService,
     ComplianceTaskMaterializeService,

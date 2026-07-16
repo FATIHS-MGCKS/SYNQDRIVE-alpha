@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-start-proxy-diagnostic-v49540-2026-07-17',
+    version: '4.9.540',
+    title: 'V4.9.540 — Start-Proxy Diagnostic Wiring (Prompt 40/78)',
+    summary: [
+      'Start-Proxy strikt diagnostisch: Scoregewicht 0 %, kein Readiness-/Alert-/Task-Effekt, keine WARNING/CRITICAL-Klassifikation aus Proxy allein.',
+      'API `lv-start-proxy-diagnostic` + `lv.telemetry.startProxy` in Canonical Summary; Klassifikation PROXY/EXPERIMENTAL.',
+      'BEV: „Nicht unterstützt“; PHEV ohne ICE-Start: „Nicht auswertbar“; UI-Label „Startverhalten (geschätzt)“ mit Datenqualität, Alter, Zielabweichung.',
+      'Feature Flag `batteryV2StartProxyEnabled` (`BATTERY_V2_START_PROXY_ENABLED`) steuert Erfassung und Anzeige.',
+    ],
+    reason: 'Prompt 40/78: operative Entkopplung der Startfenster-Proxy-Diagnostik von Score, Readiness und Alerts.',
+    previousBehavior: 'Proxy-Messungen ohne dediziertes diagnostisches Read-Model und UI-Vertrag.',
+    details:
+      'lv-start-proxy-diagnostic.policy.ts, lv-start-proxy-diagnostic.resolver.ts, canonical-battery-health.service.ts, HealthErrorsView.tsx, docs/architecture/battery-start-proxy-diagnostic.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T02:00:00.000Z',
+  },
+  {
     id: 'battery-start-proxy-measurements-v49539-2026-07-17',
     version: '4.9.539',
     title: 'V4.9.539 — Start-Proxy Multi-Measurement Plan (Prompt 39/78)',

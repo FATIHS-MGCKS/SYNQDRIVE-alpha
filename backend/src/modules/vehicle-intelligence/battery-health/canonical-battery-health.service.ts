@@ -41,6 +41,7 @@ import {
   effectiveCrankObservationCountForMaturity,
   presentLegacyCrankFeatures,
 } from './battery-crank-policy';
+import { LvStartProxyDiagnosticService } from './lv-start-proxy/lv-start-proxy-diagnostic.service';
 import {
   buildBatteryDataQualitySlices,
   presentBatteryDataQuality,
@@ -100,6 +101,7 @@ export class CanonicalBatteryHealthService {
     private readonly batteryV2Service: BatteryV2Service,
     private readonly hvBatteryHealthService: HvBatteryHealthService,
     private readonly batteryEvidenceService: BatteryEvidenceService,
+    private readonly startProxyDiagnostic: LvStartProxyDiagnosticService,
   ) {}
 
   async getSummary(vehicleId: string) {
@@ -662,6 +664,9 @@ export class CanonicalBatteryHealthService {
       observedAt?: string | Date | null,
     ) => presentBatteryDataQuality(status, observedAt);
 
+    const lvStartProxyDiagnostic =
+      await this.startProxyDiagnostic.getForVehicle(vehicleId, decisionNow);
+
     const summary = {
       vehicleId,
       generatedAt: new Date().toISOString(),
@@ -785,6 +790,7 @@ export class CanonicalBatteryHealthService {
                 (typeof v2?.crankAt === 'string' ? v2.crankAt : null),
             ),
           },
+          startProxy: lvStartProxyDiagnostic,
         },
         calibrationProgress: {
           ...lvCalibrationProgress,

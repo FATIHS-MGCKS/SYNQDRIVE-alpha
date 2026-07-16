@@ -240,6 +240,27 @@ describe('BatteryCriticalDetector', () => {
     expect(result[0].reasons?.[0]).toMatch(/Ruhespannung/i);
   });
 
+  it('does not alert on severe legacy crank drop when crank assessment is disabled', async () => {
+    const prisma = buildPrisma({
+      batteryType: 'AGM',
+      snapshots: [
+        {
+          restingVoltage: 12.5,
+          voltageV: 12.5,
+          engineRunning: false,
+          recordedAt: fresh,
+        },
+      ],
+      features: {
+        ...safePublicationFeatures,
+        crankDrop: 4.5,
+        crankObservationCount: 3,
+      },
+    });
+    const result = await new BatteryCriticalDetector(prisma).detect(buildCtx());
+    expect(result).toHaveLength(0);
+  });
+
   it('does not alert on legacy pairwise HV publication when assessment is disabled', async () => {
     const prisma = buildPrisma({
       fuelType: 'ELECTRIC',

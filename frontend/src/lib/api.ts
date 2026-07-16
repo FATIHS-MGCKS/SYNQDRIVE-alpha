@@ -5838,6 +5838,47 @@ export interface LvRestingVoltage {
   dataQuality?: BatteryDataQualityPresentation;
 }
 
+export interface LvStartProxyMeasurementDiagnostic {
+  messart: string;
+  measurementType: string;
+  classification: 'PROXY' | 'EXPERIMENTAL';
+  displayLabelDe: string;
+  quality: string;
+  dataQualityStatus: BatteryDataQualityStatus;
+  numericValue: number | null;
+  unit: string | null;
+  observedAt: string;
+  measurementAgeMs: number | null;
+  offsetFromTargetMs: number | null;
+  targetOffsetFromStartMs: number | null;
+  medianIntervalMs: number | null;
+  coverageRatio: number | null;
+  dataQuality: BatteryDataQualityPresentation;
+}
+
+export interface LvStartProxyDiagnosticView {
+  vehicleId: string;
+  diagnosticOnly: true;
+  featureEnabled: boolean;
+  uiLabelDe: string;
+  scoreWeightPercent: 0;
+  availability: 'SUPPORTED' | 'UNSUPPORTED' | 'NOT_EVALUABLE';
+  availabilityLabelDe: string;
+  operationalEffect: false;
+  readinessEffect: false;
+  alertEligible: false;
+  taskEligible: false;
+  operationalStatus: 'UNKNOWN';
+  latestSession: {
+    id: string;
+    tripId: string | null;
+    startedAt: string;
+    status: string;
+    pointCount: number | null;
+  } | null;
+  measurements: LvStartProxyMeasurementDiagnostic[];
+}
+
 export interface CanonicalLvBatterySection {
   status: BatteryRuntimeStatus;
   // Aggregated LV health on the GOOD/WATCH/WARNING/CRITICAL scale.
@@ -5870,6 +5911,7 @@ export interface CanonicalLvBatterySection {
       diagnosticCrankDrop?: number | null;
       measurementKind?: string;
     };
+    startProxy?: LvStartProxyDiagnosticView;
   };
   calibrationProgress: BatteryCalibrationProgress;
 }
