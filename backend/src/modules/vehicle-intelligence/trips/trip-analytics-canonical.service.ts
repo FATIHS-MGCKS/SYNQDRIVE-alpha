@@ -40,7 +40,7 @@ export interface CanonicalTripScoreSummary {
   /** Composite vehicle stress 0–100. Higher = more load. Not driver conduct. */
   drivingStressScore: number | null;
   stressLevel: StressLevel | null;
-  scoreSource: 'trip_driving_impact' | 'vehicle_trip_compat' | 'derived';
+  scoreSource: 'trip_driving_impact' | 'derived';
   /**
    * @deprecated Legacy alias for `drivingStressScore` (vehicle load, not driver quality).
    */
@@ -310,11 +310,10 @@ export class TripAnalyticsCanonicalService {
     };
 
     const impactHasStress = impact?.drivingStressScore != null;
-    const drivingStressScore = impactHasStress
-      ? impact!.drivingStressScore
-      : (trip.drivingScore ?? null);
-    const scoreSource: CanonicalTripScoreSummary['scoreSource'] =
-      impactHasStress ? 'trip_driving_impact' : drivingStressScore != null ? 'vehicle_trip_compat' : 'derived';
+    const drivingStressScore = impactHasStress ? impact!.drivingStressScore : null;
+    const scoreSource: CanonicalTripScoreSummary['scoreSource'] = impactHasStress
+      ? 'trip_driving_impact'
+      : 'derived';
 
     return {
       events,

@@ -86,14 +86,14 @@ export function getStressDescription(level: StressLevel | null): string {
   }
 }
 
-/** Resolve canonical stress score from API record (legacy fallbacks only). */
+/** Resolve canonical stress score from API record (V2 — no legacy fallbacks). */
 export function resolveDrivingStressScore(
   record:
     | {
         drivingStressScore?: number | null;
-        /** @deprecated legacy alias */
+        /** @deprecated legacy alias — display compat only when API already mapped */
         drivingStyleScore?: number | null;
-        /** @deprecated legacy mirror */
+        /** @deprecated legacy mirror — never read for domain/UI decisions */
         drivingScore?: number | null;
       }
     | null
@@ -101,8 +101,6 @@ export function resolveDrivingStressScore(
 ): number | null {
   if (!record) return null;
   if (typeof record.drivingStressScore === 'number') return record.drivingStressScore;
-  if (typeof record.drivingStyleScore === 'number') return record.drivingStyleScore;
-  if (typeof record.drivingScore === 'number') return record.drivingScore;
   return null;
 }
 

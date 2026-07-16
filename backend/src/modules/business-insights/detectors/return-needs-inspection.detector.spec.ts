@@ -44,7 +44,6 @@ describe('ReturnNeedsInspectionDetector', () => {
     prisma.rentalDrivingAnalysis.findUnique.mockResolvedValue({
       riskLevel: 'high_stress',
       abuseDetectionCount: 0,
-      drivingScore: 40,
       payload: {},
     });
 
@@ -69,15 +68,16 @@ describe('ReturnNeedsInspectionDetector', () => {
     prisma.rentalDrivingAnalysis.findUnique.mockResolvedValue({
       riskLevel: 'low_stress',
       abuseDetectionCount: 0,
-      drivingScore: 20,
-      payload: {},
+      payload: {
+        vehicleStressSummary: { drivingStressScore: 20, stressLevel: 'low' },
+      },
     });
 
     const candidates = await detector.detect(ctx);
     expect(candidates).toEqual([]);
   });
 
-  it('flags critical vehicle stress from drivingScore >= 76', async () => {
+  it('flags critical vehicle stress from canonical payload drivingStressScore >= 76', async () => {
     const ctx = makeContext();
     prisma.booking.findMany.mockResolvedValue([
       {
@@ -92,14 +92,37 @@ describe('ReturnNeedsInspectionDetector', () => {
     prisma.rentalDrivingAnalysis.findUnique.mockResolvedValue({
       riskLevel: 'moderate_stress',
       abuseDetectionCount: 0,
-      drivingScore: 80,
-      payload: {},
+      payload: {
+        vehicleStressSummary: { drivingStressScore: 80, stressLevel: 'critical' },
+      },
     });
 
     const candidates = await detector.detect(ctx);
 
     expect(candidates).toHaveLength(1);
     expect(candidates[0].reasons.some((r) => r.includes('Critical vehicle stress'))).toBe(true);
+  });
+
+  it('does NOT flag critical stress from legacy drivingScore column alone', async () => {
+    const ctx = makeContext();
+    prisma.booking.findMany.mockResolvedValue([
+      {
+        id: 'booking-legacy',
+        vehicleId: 'vehicle-legacy',
+        endDate: new Date('2026-04-25T20:00:00Z'),
+        startDate: new Date('2026-04-24T08:00:00Z'),
+        kmDriven: 100,
+        kmIncluded: 500,
+      },
+    ]);
+    prisma.rentalDrivingAnalysis.findUnique.mockResolvedValue({
+      riskLevel: 'moderate_stress',
+      abuseDetectionCount: 0,
+      payload: {},
+    });
+
+    const candidates = await detector.detect(ctx);
+    expect(candidates).toEqual([]);
   });
 
   it('skips returns without any reason', async () => {

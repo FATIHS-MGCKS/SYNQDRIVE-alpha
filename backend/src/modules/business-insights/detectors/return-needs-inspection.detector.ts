@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import {
+  readCanonicalDrivingStressFromRentalPayload,
+  readCanonicalStressLevelFromRentalPayload,
+} from '../../vehicle-intelligence/driving-impact/legacy-score-mirror';
 import { InsightCandidate, InsightDetector, DetectorContext, InsightType, InsightSeverity, InsightEntityScope } from '../insight.types';
 
 @Injectable()
@@ -33,19 +37,13 @@ export class ReturnNeedsInspectionDetector implements InsightDetector {
 
       const analysis = await this.prisma.rentalDrivingAnalysis.findUnique({
         where: { bookingId: b.id },
-        select: { riskLevel: true, abuseDetectionCount: true, drivingScore: true, payload: true },
+        select: { riskLevel: true, abuseDetectionCount: true, payload: true },
       });
 
       if (analysis) {
-        const payload = (analysis.payload ?? {}) as {
-          vehicleStressSummary?: {
-            drivingStressScore?: number | null;
-            stressLevel?: string | null;
-          };
-        };
-        const stressScore =
-          payload.vehicleStressSummary?.drivingStressScore ?? analysis.drivingScore ?? null;
-        const stressLevel = payload.vehicleStressSummary?.stressLevel?.toLowerCase() ?? null;
+        const stressScore = readCanonicalDrivingStressFromRentalPayload(analysis.payload);
+        const stressLevel =
+          readCanonicalStressLevelFromRentalPayload(analysis.payload)?.toLowerCase() ?? null;
 
         const riskLevel = analysis.riskLevel?.toLowerCase() ?? null;
         if (riskLevel === 'high_stress' || riskLevel === 'high') {

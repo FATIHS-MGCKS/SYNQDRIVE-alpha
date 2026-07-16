@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p10-legacy-score-deprecation-2026-07-16',
+    version: '4.9.512',
+    title: 'Driving Intelligence V2 P10 — Legacy Score Deprecation',
+    summary: [
+      'Zentrales `legacy-score-mirror.ts`: Mapping + Payload-Reader für kanonische V2-Felder; Legacy-Spiegel nur noch Write-Compat.',
+      'Domain-Logik liest ausschließlich `drivingStressScore` / `payload.vehicleStressSummary` — kein Fallback auf `VehicleTrip.drivingScore` oder `RentalDrivingAnalysis.drivingScore`.',
+      'Migriert: ReturnNeedsInspection, HealthSummary, RentalDrivingAnalysis-Aggregation, TripAnalyticsCanonical, Bookings usage, trip-api.mapper.',
+      'Frontend `resolveDrivingStressScore` ohne Legacy-Fallback; RentalStressAnalysisCard nutzt kanonische API-Felder.',
+      'Tests: hoher Legacy-`drivingScore` ohne kanonischen Wert erzeugt keine eigenständige Entscheidung.',
+    ],
+    reason:
+      'Prompt 10/76: Legacy-Felder (`drivingScore`, `drivingStyleScore`, `avgDrivingScore`) dürfen keine neuen fachlichen Entscheidungen mehr steuern.',
+    previousBehavior:
+      'Mehrere Reader fielen auf `trip.drivingScore` / `analysis.drivingScore` zurück; Frontend `resolveDrivingStressScore` las Legacy-Aliase; HealthSummary nutzte `avgDrivingScore`-Fallback.',
+    details:
+      'Backend: legacy-score-mirror.ts, return-needs-inspection.detector.ts, health-summary.service.ts, rental-driving-analysis.service.ts, trip-analytics-canonical.service.ts, bookings.service.ts, trip-api.mapper.ts + Specs. Frontend: scoreFormat.ts, RentalStressAnalysisCard.tsx, scoreFormat.test.ts. Keine Feldlösch-Migration.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T18:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p9-partial-stage-preservation-2026-07-16',
     version: '4.9.511',
     title: 'Driving Intelligence V2 P9 — Partial Stage Preservation',
