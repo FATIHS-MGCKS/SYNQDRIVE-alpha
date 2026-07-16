@@ -4,6 +4,7 @@ import { MisuseCaseEvidenceService } from './misuse-case-evidence.service';
 import { buildMisuseCaseFingerprintPair, buildMisuseCaseScope } from './misuse-case-fingerprint/misuse-case-fingerprint';
 import { MISUSE_CASE_FINGERPRINT_VERSION } from './misuse-case-fingerprint/misuse-case-fingerprint.config';
 import { MISUSE_EVENT_COUNT_VERSION } from './misuse-case-evidence-count/misuse-case-evidence-count.config';
+import { MISUSE_RATING_RECONCILIATION_VERSION } from './misuse-case-rating-reconciliation/misuse-case-rating-reconciliation.config';
 
 describe('MisuseCasePersistenceHelper idempotency', () => {
   const store = new Map<string, any>();
@@ -271,5 +272,32 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
     expect(next?.modelVersion).toBe(MISUSE_CASE_FINGERPRINT_VERSION);
     expect(next?.inputFingerprint).toBe(fingerprintsV0.logicalFingerprint);
     expect(next?.eventCount).toBe(1);
+  });
+
+  it('uses reconciled rating instead of monotonic max on update (P50)', async () => {
+    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
+
+    const inflatedCandidate = {
+      ...candidate,
+      severity: 'SEVERE' as const,
+      confidence: 'HIGH' as const,
+      evidence: [candidate.evidence[0]],
+    };
+
+    await helper.upsertCandidate(
+      'org-1',
+      'veh-1',
+      'trip-1',
+      inflatedCandidate as any,
+      attribution,
+      upsertContext,
+    );
+
+    const stored = [...store.values()][0];
+    expect(stored.severity).toBe('WARNING');
+    expect(stored.confidence).toBe('MEDIUM');
+    const summary = stored.evidenceSummary as Record<string, unknown>;
+    expect(summary.ratingReconciliationModelVersion).toBe(MISUSE_RATING_RECONCILIATION_VERSION);
+    expect(summary.ratingReconciliation).toBeDefined();
   });
 });

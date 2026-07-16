@@ -35,6 +35,30 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p50-misuse-rating-reconciliation-2026-07-16',
+    version: '4.9.551',
+    title: 'Driving Intelligence V2 P50 — Misuse severity/confidence reconciliation',
+    summary: [
+      'Neues Modul `misuse-case-rating-reconciliation` (`misuse-rating-reconciliation-v1`).',
+      'Severity/Confidence deterministisch aus qualifizierter Evidence, Source Strength, Coverage, Attribution, Cluster, Normalisierung.',
+      'Severity kann steigen oder sinken — kein monotonic maxSeverity/maxConfidence mehr auf Persistence-Writes.',
+      'Proxy-only Evidence capped (WARNING/MEDIUM, Status max CANDIDATE/REVIEW_REQUIRED).',
+      'Collision/MANUAL_VERIFICATION höherwertig → CRITICAL/HIGH möglich.',
+      'Entfallene Evidence → RESOLVED via Lifecycle (`shouldResolve`).',
+      'ratingReconciliation + ratingReconciliationHistory in evidenceSummary — kein stilles Überschreiben.',
+      'Tests: Upgrade, Downgrade, Resolution, Proxy-Cap, Audit.',
+    ],
+    reason:
+      'Prompt 50/76 — deterministische Reconciliation statt monotoner „nur nach oben“-Bewertung.',
+    previousBehavior:
+      'Persistence nutzte maxSeverity/maxConfidence — Bewertung stieg nur, entfiel nie, Proxy konnte mit starkem Kandidaten-Zähler mitziehen.',
+    details:
+      '`misuse-case-rating-reconciliation/*`, `misuse-case-persistence.helper.ts`, `misuse-case-lifecycle.transition.ts` (resolve/downgrade/proxy cap).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T23:59:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p49-misuse-event-count-2026-07-16',
     version: '4.9.550',
     title: 'Driving Intelligence V2 P49 — Misuse eventCount drift fix',

@@ -143,6 +143,99 @@ describe('misuse-case-lifecycle.transition', () => {
       expect(result.status).toBe(MisuseCaseStatus.ACTIVE);
     });
 
+    it('resolves when qualified evidence disappears (P50)', () => {
+      const result = applyTelemetryLifecycle({
+        caseType: MisuseCaseType.AGGRESSIVE_DRIVING_PATTERN,
+        evidenceLevel: 'CHECK_RECOMMENDED',
+        eventCount: 0,
+        evidenceCount: 0,
+        attributionScope: MisuseAttributionScope.BOOKING_CUSTOMER,
+        assignmentStatus: TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
+        isPrivateTrip: false,
+        inputFingerprint: 'fp-resolve',
+        modelVersion: 'misuse-case-lifecycle-v1',
+        analysisRunId: null,
+        shouldResolve: true,
+        resolutionReason: 'Evidence entfallen — automatische Auflösung',
+        existing: {
+          status: MisuseCaseStatus.ACTIVE,
+          modelVersion: 'misuse-case-lifecycle-v1',
+          inputFingerprint: 'fp-resolve',
+          analysisRunId: null,
+          evidenceCount: 2,
+          attributionConfidence: 'HIGH',
+          decisionEligibility: 'INFORMATIONAL_ONLY',
+          informationalOnly: true,
+          resolvedAt: null,
+          resolutionReason: null,
+        },
+      });
+
+      expect(result.status).toBe(MisuseCaseStatus.RESOLVED);
+      expect(result.resolvedAt).not.toBeNull();
+      expect(result.resolutionReason).toContain('Evidence entfallen');
+    });
+
+    it('caps proxy-only telemetry at CANDIDATE/REVIEW_REQUIRED (P50)', () => {
+      const result = applyTelemetryLifecycle({
+        caseType: MisuseCaseType.BRAKE_ABUSE_PATTERN,
+        evidenceLevel: 'MISUSE_SUSPECTED',
+        eventCount: 2,
+        evidenceCount: 2,
+        attributionScope: MisuseAttributionScope.BOOKING_CUSTOMER,
+        assignmentStatus: TripAssignmentStatus.ASSIGNED_BOOKING_CUSTOMER,
+        isPrivateTrip: false,
+        inputFingerprint: 'fp-proxy',
+        modelVersion: 'misuse-case-lifecycle-v1',
+        analysisRunId: null,
+        proxyOnly: true,
+        existing: {
+          status: MisuseCaseStatus.ACTIVE,
+          modelVersion: 'misuse-case-lifecycle-v1',
+          inputFingerprint: 'fp-proxy',
+          analysisRunId: null,
+          evidenceCount: 2,
+          attributionConfidence: 'HIGH',
+          decisionEligibility: 'INFORMATIONAL_ONLY',
+          informationalOnly: true,
+          resolvedAt: null,
+          resolutionReason: null,
+        },
+      });
+
+      expect(result.status).toBe(MisuseCaseStatus.REVIEW_REQUIRED);
+      expect(result.status).not.toBe(MisuseCaseStatus.ACTIVE);
+    });
+
+    it('allows downgrade when evidence count shrinks (P50)', () => {
+      const result = applyTelemetryLifecycle({
+        caseType: MisuseCaseType.COLD_ENGINE_ABUSE,
+        evidenceLevel: 'INFO',
+        eventCount: 1,
+        evidenceCount: 1,
+        attributionScope: MisuseAttributionScope.VEHICLE_ONLY,
+        assignmentStatus: null,
+        isPrivateTrip: false,
+        inputFingerprint: 'fp-down',
+        modelVersion: 'misuse-case-lifecycle-v1',
+        analysisRunId: null,
+        existing: {
+          status: MisuseCaseStatus.ACTIVE,
+          modelVersion: 'misuse-case-lifecycle-v1',
+          inputFingerprint: 'fp-down',
+          analysisRunId: null,
+          evidenceCount: 4,
+          attributionConfidence: 'MEDIUM',
+          decisionEligibility: 'INFORMATIONAL_ONLY',
+          informationalOnly: true,
+          resolvedAt: null,
+          resolutionReason: null,
+        },
+      });
+
+      expect(result.status).toBe(MisuseCaseStatus.CANDIDATE);
+    });
+
     it('maps NONE evidence to NOT_ASSESSABLE', () => {
       const result = applyTelemetryLifecycle({
         caseType: MisuseCaseType.TELEMETRY_INTEGRITY_ISSUE,

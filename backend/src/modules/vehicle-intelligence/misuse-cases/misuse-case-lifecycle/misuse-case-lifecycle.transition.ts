@@ -168,7 +168,11 @@ export function applyTelemetryLifecycle(input: TelemetryLifecycleInput): Lifecyc
   });
 
   if (!input.existing) {
-    return baseTelemetryResult(input, nextStatus);
+    let status = nextStatus;
+    if (input.proxyOnly && status === MisuseCaseStatus.ACTIVE) {
+      status = MisuseCaseStatus.CANDIDATE;
+    }
+    return baseTelemetryResult(input, status);
   }
 
   const existing = input.existing;
@@ -195,6 +199,18 @@ export function applyTelemetryLifecycle(input: TelemetryLifecycleInput): Lifecyc
     };
   }
 
+  if (input.shouldResolve || input.evidenceCount === 0) {
+    return {
+      status: MisuseCaseStatus.RESOLVED,
+      decisionEligibility: MisuseCaseDecisionEligibility.NOT_ELIGIBLE,
+      informationalOnly: true,
+      attributionConfidence,
+      resolvedAt: new Date(),
+      resolutionReason:
+        input.resolutionReason ?? 'Evidence entfallen — automatische Auflösung',
+    };
+  }
+
   const fingerprintChanged =
     existing.inputFingerprint !== input.inputFingerprint ||
     existing.modelVersion !== input.modelVersion;
@@ -217,8 +233,25 @@ export function applyTelemetryLifecycle(input: TelemetryLifecycleInput): Lifecyc
       nextStatus === MisuseCaseStatus.REVIEW_REQUIRED
         ? MisuseCaseStatus.REVIEW_REQUIRED
         : MisuseCaseStatus.ACTIVE;
-  } else if (existing.status === MisuseCaseStatus.ACTIVE && nextStatus === MisuseCaseStatus.CANDIDATE) {
-    status = MisuseCaseStatus.ACTIVE;
+  } else if (
+    input.evidenceCount < existing.evidenceCount &&
+    nextStatus !== MisuseCaseStatus.NOT_ASSESSABLE &&
+    !isManualLockedStatus(existing.status)
+  ) {
+    status = nextStatus;
+  }
+
+  if (input.proxyOnly) {
+    if (status === MisuseCaseStatus.ACTIVE) {
+      status = MisuseCaseStatus.CANDIDATE;
+    }
+    if (
+      status !== MisuseCaseStatus.REVIEW_REQUIRED &&
+      status !== MisuseCaseStatus.CANDIDATE &&
+      status !== MisuseCaseStatus.NOT_ASSESSABLE
+    ) {
+      status = MisuseCaseStatus.CANDIDATE;
+    }
   }
 
   const decisionEligibility = deriveDecisionEligibility(status, input.evidenceLevel);

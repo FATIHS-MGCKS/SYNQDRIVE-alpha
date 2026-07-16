@@ -3,11 +3,9 @@ import { MisuseCaseStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { CaseCandidate } from './misuse-case.types';
 import {
-  maxConfidence,
-  maxSeverity,
   resolveAttribution,
 } from './misuse-case.types';
-import { applyTelemetryLifecycle } from './misuse-case-lifecycle/misuse-case-lifecycle.transition';
+import { applyTelemetryLifecycle, resolveAttributionConfidence } from './misuse-case-lifecycle/misuse-case-lifecycle.transition';
 import type { TripEvidenceLevel } from '../trips/trip-evidence-level.types';
 import type { MisuseCaseLifecycleSnapshot } from './misuse-case-lifecycle/misuse-case-lifecycle.types';
 import {
@@ -23,6 +21,10 @@ import {
   buildRejectedEvidenceAudit,
   recalculateMisuseCaseEvidenceCounts,
 } from './misuse-case-evidence-count/misuse-case-evidence-count';
+import {
+  appendSupersededRatingAudit,
+  reconcileMisuseCaseRating,
+} from './misuse-case-rating-reconciliation/misuse-case-rating-reconciliation';
 
 import type { MisuseCaseUpsertContext } from './misuse-case-upsert.types';
 
@@ -75,21 +77,47 @@ export class MisuseCasePersistenceHelper {
 
     const plan = planMisuseCaseReconciliation(exactMatch, priorVersion, fingerprints);
 
+    const evidenceCaseFromCandidate = (candidate.evidenceSummary as Record<string, unknown> | undefined)
+      ?.evidenceCase as
+      | { title?: string; explanation?: string; evidenceLevel?: TripEvidenceLevel }
+      | undefined;
+    const displayTitle = evidenceCaseFromCandidate?.title ?? candidate.title;
+    const displayDescription = evidenceCaseFromCandidate?.explanation ?? candidate.description;
+    const evidenceLevel = evidenceCaseFromCandidate?.evidenceLevel ?? 'CHECK_RECOMMENDED';
+
+    const attributionConfidence = resolveAttributionConfidence({
+      attributionScope: attribution.attributionScope,
+      assignmentStatus: attribution.assignmentStatusSnapshot,
+      isPrivateTrip: attribution.isPrivateTripSnapshot,
+    });
+
+    const rating = reconcileMisuseCaseRating({
+      caseType: candidate.type,
+      qualifiedEvidence: recalc.qualifiedEvidence,
+      evidenceLevel,
+      attributionScope: attribution.attributionScope,
+      attributionConfidence,
+      clusterCount: (candidate.evidenceSummary as { clusterCount?: number } | undefined)?.clusterCount,
+      coverageQuality: (candidate.evidenceSummary as { coverageQuality?: 'NONE' | 'SPARSE' | 'GOOD' } | undefined)
+        ?.coverageQuality,
+      modelVersion: fingerprints.modelVersion,
+      existingSeverity: exactMatch?.severity ?? null,
+      existingConfidence: exactMatch?.confidence ?? null,
+    });
+
     const evidenceSummary = {
       eventTypes: [...new Set(recalc.qualifiedEvidence.map((e) => e.eventType))],
       sources: [...new Set(recalc.qualifiedEvidence.map((e) => e.sourceType))],
       qualifiedEvidenceKeys: fingerprints.qualifiedEvidenceKeys,
       eventCountModelVersion: recalc.modelVersion,
+      ratingReconciliationModelVersion: rating.modelVersion,
       ...buildRejectedEvidenceAudit(recalc),
+      ...appendSupersededRatingAudit(
+        exactMatch?.evidenceSummary as Record<string, unknown> | null | undefined,
+        rating,
+      ),
       ...(candidate.evidenceSummary ?? {}),
     };
-
-    const evidenceCase = (evidenceSummary as Record<string, unknown>).evidenceCase as
-      | { title?: string; explanation?: string; evidenceLevel?: TripEvidenceLevel }
-      | undefined;
-    const displayTitle = evidenceCase?.title ?? candidate.title;
-    const displayDescription = evidenceCase?.explanation ?? candidate.description;
-    const evidenceLevel = evidenceCase?.evidenceLevel ?? 'CHECK_RECOMMENDED';
 
     const baseLifecycleInput = {
       caseType: candidate.type,
@@ -101,6 +129,9 @@ export class MisuseCasePersistenceHelper {
       inputFingerprint: fingerprints.logicalFingerprint,
       modelVersion: fingerprints.modelVersion,
       analysisRunId: upsertContext.analysisRunId ?? null,
+      shouldResolve: rating.shouldResolve,
+      resolutionReason: rating.resolutionReason,
+      proxyOnly: rating.proxyOnly,
     };
 
     if (plan.action === 'SUPERSEDE') {
@@ -128,6 +159,7 @@ export class MisuseCasePersistenceHelper {
         baseLifecycleInput,
         plan.priorCaseId,
         recalc,
+        rating,
       );
       return;
     }
@@ -154,8 +186,8 @@ export class MisuseCasePersistenceHelper {
       await this.prisma.misuseCase.update({
         where: { id: existing.id },
         data: {
-          severity: maxSeverity(existing.severity, candidate.severity),
-          confidence: maxConfidence(existing.confidence, candidate.confidence),
+          severity: rating.severity,
+          confidence: rating.confidence,
           lastDetectedAt:
             candidate.lastDetectedAt > existing.lastDetectedAt
               ? candidate.lastDetectedAt
@@ -193,6 +225,7 @@ export class MisuseCasePersistenceHelper {
       baseLifecycleInput,
       plan.priorCaseId,
       recalc,
+      rating,
     );
   }
 
@@ -217,9 +250,13 @@ export class MisuseCasePersistenceHelper {
       inputFingerprint: string;
       modelVersion: string;
       analysisRunId: string | null;
+      shouldResolve?: boolean;
+      resolutionReason?: string | null;
+      proxyOnly?: boolean;
     },
     supersedesCaseId: string | null,
     recalc: ReturnType<typeof recalculateMisuseCaseEvidenceCounts>,
+    rating: ReturnType<typeof reconcileMisuseCaseRating>,
   ): Promise<void> {
     const lifecycle = applyTelemetryLifecycle({
       ...baseLifecycleInput,
@@ -236,8 +273,8 @@ export class MisuseCasePersistenceHelper {
         customerId: attribution.customerId,
         category: candidate.category,
         type: candidate.type,
-        severity: candidate.severity,
-        confidence: candidate.confidence,
+        severity: rating.severity,
+        confidence: rating.confidence,
         title: displayTitle,
         description: displayDescription,
         recommendedAction: candidate.recommendedAction ?? null,

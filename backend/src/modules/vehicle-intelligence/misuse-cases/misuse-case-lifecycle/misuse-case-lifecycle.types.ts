@@ -50,6 +50,11 @@ export type TelemetryLifecycleInput = {
   modelVersion: string;
   analysisRunId: string | null;
   existing: MisuseCaseLifecycleSnapshot | null;
+  /** P50 — resolve when qualified evidence disappears. */
+  shouldResolve?: boolean;
+  resolutionReason?: string | null;
+  /** P50 — proxy-only evidence caps status at CANDIDATE/REVIEW_REQUIRED. */
+  proxyOnly?: boolean;
 };
 
 export type ManualTransitionAction = 'CONFIRM' | 'DISMISS' | 'RESOLVE' | 'DOWNGRADE' | 'SUPERSEDE';
