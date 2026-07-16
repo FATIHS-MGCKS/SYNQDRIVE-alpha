@@ -1,9 +1,8 @@
 import { createHash } from 'crypto';
-import { MisuseEvidenceSourceType } from '@prisma/client';
 import type { EvidenceCandidate } from '../misuse-case.types';
+import { recalculateMisuseCaseEvidenceCounts } from '../misuse-case-evidence-count/misuse-case-evidence-count';
 import {
   MISUSE_CASE_FINGERPRINT_VERSION,
-  MISUSE_CASE_TEMPORAL_BUCKET_MS,
 } from './misuse-case-fingerprint.config';
 import type {
   MisuseCaseFingerprintInput,
@@ -21,31 +20,11 @@ function normalizePart(value: string | number | boolean | null | undefined): str
   return String(value).trim();
 }
 
-function temporalBucketKey(occurredAt: Date): string {
-  const bucket = Math.floor(occurredAt.getTime() / MISUSE_CASE_TEMPORAL_BUCKET_MS);
-  return `bucket:${bucket}`;
-}
-
 /**
- * Stable qualified evidence keys — no free text, only enums + IDs / time buckets.
+ * Stable qualified evidence keys — qualified units only (P49), no free text.
  */
 export function buildQualifiedEvidenceKeys(evidence: EvidenceCandidate[]): string[] {
-  const keys = new Set<string>();
-
-  for (const item of evidence) {
-    if (item.sourceId) {
-      keys.add(`${item.sourceType}:${item.sourceId}`);
-      continue;
-    }
-    const bucket = temporalBucketKey(item.occurredAt);
-    if (item.sourceType === MisuseEvidenceSourceType.DERIVED_PATTERN) {
-      keys.add(`${item.sourceType}:${bucket}`);
-    } else {
-      keys.add(`${item.sourceType}:${item.eventType}:${bucket}`);
-    }
-  }
-
-  return [...keys].sort();
+  return recalculateMisuseCaseEvidenceCounts(evidence).qualifiedEvidenceKeys;
 }
 
 export function buildMisuseCaseScope(input: {

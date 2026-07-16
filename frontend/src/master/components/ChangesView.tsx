@@ -35,6 +35,30 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p49-misuse-event-count-2026-07-16',
+    version: '4.9.550',
+    title: 'Driving Intelligence V2 P49 — Misuse eventCount drift fix',
+    summary: [
+      'Neues Modul `misuse-case-evidence-count` (`misuse-event-count-v1`).',
+      'eventCount = Anzahl eindeutiger qualifizierter Evidence-Einheiten (nicht Kandidaten-Zähler).',
+      'Deterministische Recalculation pro Auswertungslauf — kein Akkumulieren über Reprocessing.',
+      'Unqualifizierte Proxy-/Aggregate-Quellen (VEHICLE_TRIP_COUNTER, ohne sourceId) werden abgewiesen.',
+      'rejectedEvidenceAudit in evidenceSummary für abgelehnte Evidence.',
+      'evidenceCount aligned mit recalculated eventCount auf neuen Writes.',
+      'Kein automatisches Backfill bestehender Cases.',
+      'Tests: identische Mehrfach-Auswertung, Inflations-Ignore, Audit, Downgrade in Pure-Layer.',
+    ],
+    reason:
+      'Prompt 49/76 — behebt Drift zwischen eventCount und eindeutigen Evidence Rows.',
+    previousBehavior:
+      'eventCount kam aus Rules (z. B. harshAccel.length) und konnte von qualifizierten Evidence Rows abweichen.',
+    details:
+      '`misuse-case-evidence-count/*`, `misuse-case-persistence.helper.ts`, Fingerprint-Alignment in `misuse-case-fingerprint.ts`, Persistence-Specs.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T23:55:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p48-misuse-fingerprints-2026-07-16',
     version: '4.9.549',
     title: 'Driving Intelligence V2 P48 — Stable misuse fingerprints',

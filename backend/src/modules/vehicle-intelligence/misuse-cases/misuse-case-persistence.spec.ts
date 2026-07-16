@@ -1,8 +1,9 @@
-import { MisuseCaseType, MisuseAttributionScope, MisuseCaseStatus } from '@prisma/client';
+import { MisuseCaseType, MisuseAttributionScope, MisuseCaseStatus, MisuseEvidenceSourceType } from '@prisma/client';
 import { MisuseCasePersistenceHelper } from './misuse-case-persistence.helper';
 import { MisuseCaseEvidenceService } from './misuse-case-evidence.service';
 import { buildMisuseCaseFingerprintPair, buildMisuseCaseScope } from './misuse-case-fingerprint/misuse-case-fingerprint';
 import { MISUSE_CASE_FINGERPRINT_VERSION } from './misuse-case-fingerprint/misuse-case-fingerprint.config';
+import { MISUSE_EVENT_COUNT_VERSION } from './misuse-case-evidence-count/misuse-case-evidence-count.config';
 
 describe('MisuseCasePersistenceHelper idempotency', () => {
   const store = new Map<string, any>();
@@ -95,6 +96,11 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
         eventType: 'KICKDOWN',
         occurredAt: new Date('2026-06-01T10:05:00Z'),
       },
+      {
+        sourceType: MisuseEvidenceSourceType.VEHICLE_TRIP_COUNTER,
+        eventType: 'kickdownCount',
+        occurredAt: new Date('2026-06-01T10:05:00Z'),
+      },
     ],
     evidenceSummary: {
       evidenceCase: {
@@ -117,24 +123,64 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
 
     expect(store.size).toBe(1);
     expect(prisma.misuseCase.create).toHaveBeenCalledTimes(1);
-    expect(prisma.misuseCase.update).toHaveBeenCalledTimes(2);
+    expect(prisma.misuseCase.update).toHaveBeenCalledTimes(1);
   });
 
-  it('attaches evidence without duplicates', async () => {
+  it('attaches only qualified evidence without duplicates', async () => {
     await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
     await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
 
     expect(evidenceRows.length).toBe(1);
+    expect(evidenceRows[0]?.sourceType).toBe('TRIP_BEHAVIOR_EVENT');
   });
 
-  it('keeps eventCount idempotent when upserting the same candidate twice', async () => {
+  it('recalculates eventCount from qualified evidence, ignoring inflated candidate.eventCount', async () => {
+    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
+
+    const stored = [...store.values()][0];
+    expect(stored.eventCount).toBe(1);
+    expect(stored.evidenceCount).toBe(1);
+    expect(stored.eventCount).not.toBe(candidate.eventCount);
+  });
+
+  it('keeps eventCount stable across identical reprocessing runs', async () => {
+    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
     await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
     await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
 
     const stored = [...store.values()][0];
-    expect(stored.eventCount).toBe(5);
+    expect(stored.eventCount).toBe(1);
+    expect(stored.evidenceCount).toBe(1);
     expect(store.size).toBe(1);
-    expect(evidenceRows.length).toBe(1);
+  });
+
+  it('audits rejected unqualified evidence in evidenceSummary', async () => {
+    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
+
+    const stored = [...store.values()][0];
+    const summary = stored.evidenceSummary as Record<string, unknown>;
+    const audit = summary.rejectedEvidenceAudit as { rejected: Array<{ reason: string }> };
+    expect(summary.eventCountModelVersion).toBe(MISUSE_EVENT_COUNT_VERSION);
+    expect(audit.rejected).toHaveLength(1);
+    expect(audit.rejected[0]?.reason).toBe('AGGREGATE_SOURCE');
+  });
+
+  it('ignores inflated candidate.eventCount on repeated identical evaluations', async () => {
+    for (const inflatedCount of [5, 10, 99]) {
+      await helper.upsertCandidate(
+        'org-1',
+        'veh-1',
+        'trip-1',
+        { ...candidate, eventCount: inflatedCount } as any,
+        attribution,
+        upsertContext,
+      );
+    }
+
+    const stored = [...store.values()][0];
+    expect(stored.eventCount).toBe(1);
+    expect(store.size).toBe(1);
+    expect(prisma.misuseCase.create).toHaveBeenCalledTimes(1);
   });
 
   it('creates telemetry cases as REVIEW_REQUIRED, never CONFIRMED', async () => {
@@ -189,7 +235,7 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
       category: candidate.category,
       caseType: candidate.type,
       attributionScope: attribution.attributionScope,
-      evidence: candidate.evidence as any,
+      evidence: [candidate.evidence[0]] as any,
       modelVersion: 'misuse-fingerprint-v0',
     });
 
@@ -224,5 +270,6 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
     expect(next?.supersedesCaseId).toBe('case-old');
     expect(next?.modelVersion).toBe(MISUSE_CASE_FINGERPRINT_VERSION);
     expect(next?.inputFingerprint).toBe(fingerprintsV0.logicalFingerprint);
+    expect(next?.eventCount).toBe(1);
   });
 });

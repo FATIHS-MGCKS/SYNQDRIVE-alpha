@@ -19,6 +19,10 @@ import {
   SUPERSEDE_RESOLUTION_REASON,
 } from './misuse-case-fingerprint/misuse-case-fingerprint.reconciliation';
 import { MisuseCaseEvidenceService } from './misuse-case-evidence.service';
+import {
+  buildRejectedEvidenceAudit,
+  recalculateMisuseCaseEvidenceCounts,
+} from './misuse-case-evidence-count/misuse-case-evidence-count';
 
 import type { MisuseCaseUpsertContext } from './misuse-case-upsert.types';
 
@@ -37,6 +41,8 @@ export class MisuseCasePersistenceHelper {
     attribution: ReturnType<typeof resolveAttribution>,
     upsertContext: MisuseCaseUpsertContext,
   ): Promise<void> {
+    const recalc = recalculateMisuseCaseEvidenceCounts(candidate.evidence);
+
     const fingerprints = buildMisuseCaseFingerprintPair({
       organizationId,
       vehicleId,
@@ -47,7 +53,7 @@ export class MisuseCasePersistenceHelper {
       category: candidate.category,
       caseType: candidate.type,
       attributionScope: attribution.attributionScope,
-      evidence: candidate.evidence,
+      evidence: recalc.qualifiedEvidence,
     });
 
     const exactMatch = await this.prisma.misuseCase.findUnique({
@@ -70,9 +76,11 @@ export class MisuseCasePersistenceHelper {
     const plan = planMisuseCaseReconciliation(exactMatch, priorVersion, fingerprints);
 
     const evidenceSummary = {
-      eventTypes: [...new Set(candidate.evidence.map((e) => e.eventType))],
-      sources: [...new Set(candidate.evidence.map((e) => e.sourceType))],
+      eventTypes: [...new Set(recalc.qualifiedEvidence.map((e) => e.eventType))],
+      sources: [...new Set(recalc.qualifiedEvidence.map((e) => e.sourceType))],
       qualifiedEvidenceKeys: fingerprints.qualifiedEvidenceKeys,
+      eventCountModelVersion: recalc.modelVersion,
+      ...buildRejectedEvidenceAudit(recalc),
       ...(candidate.evidenceSummary ?? {}),
     };
 
@@ -86,7 +94,7 @@ export class MisuseCasePersistenceHelper {
     const baseLifecycleInput = {
       caseType: candidate.type,
       evidenceLevel,
-      eventCount: candidate.eventCount,
+      eventCount: recalc.eventCount,
       attributionScope: attribution.attributionScope,
       assignmentStatus: attribution.assignmentStatusSnapshot,
       isPrivateTrip: attribution.isPrivateTripSnapshot,
@@ -119,7 +127,7 @@ export class MisuseCasePersistenceHelper {
         displayDescription,
         baseLifecycleInput,
         plan.priorCaseId,
-        0,
+        recalc,
       );
       return;
     }
@@ -127,19 +135,19 @@ export class MisuseCasePersistenceHelper {
     if (plan.action === 'UPDATE') {
       const existing = exactMatch!;
       const existingSnapshot = this.toLifecycleSnapshot(existing);
-      const evidenceCount = await this.evidenceService.attachEvidence(
+      await this.evidenceService.attachEvidence(
         existing.id,
         organizationId,
         vehicleId,
         tripId,
         attribution.bookingId,
         attribution.customerId,
-        candidate.evidence,
+        recalc.qualifiedEvidence,
       );
 
       const lifecycle = applyTelemetryLifecycle({
         ...baseLifecycleInput,
-        evidenceCount,
+        evidenceCount: recalc.eventCount,
         existing: existingSnapshot,
       });
 
@@ -152,7 +160,7 @@ export class MisuseCasePersistenceHelper {
             candidate.lastDetectedAt > existing.lastDetectedAt
               ? candidate.lastDetectedAt
               : existing.lastDetectedAt,
-          eventCount: candidate.eventCount,
+          eventCount: recalc.eventCount,
           evidenceSummary: evidenceSummary as Prisma.InputJsonValue,
           description: displayDescription,
           recommendedAction: candidate.recommendedAction ?? existing.recommendedAction,
@@ -161,7 +169,7 @@ export class MisuseCasePersistenceHelper {
           modelVersion: fingerprints.modelVersion,
           inputFingerprint: fingerprints.logicalFingerprint,
           analysisRunId: upsertContext.analysisRunId ?? existing.analysisRunId,
-          evidenceCount,
+          evidenceCount: recalc.eventCount,
           attributionConfidence: lifecycle.attributionConfidence,
           decisionEligibility: lifecycle.decisionEligibility,
           resolvedAt: lifecycle.resolvedAt,
@@ -184,7 +192,7 @@ export class MisuseCasePersistenceHelper {
       displayDescription,
       baseLifecycleInput,
       plan.priorCaseId,
-      candidate.evidence.length,
+      recalc,
     );
   }
 
@@ -211,11 +219,11 @@ export class MisuseCasePersistenceHelper {
       analysisRunId: string | null;
     },
     supersedesCaseId: string | null,
-    projectedEvidenceCount: number,
+    recalc: ReturnType<typeof recalculateMisuseCaseEvidenceCounts>,
   ): Promise<void> {
     const lifecycle = applyTelemetryLifecycle({
       ...baseLifecycleInput,
-      evidenceCount: projectedEvidenceCount,
+      evidenceCount: recalc.eventCount,
       existing: null,
     });
 
@@ -241,7 +249,7 @@ export class MisuseCasePersistenceHelper {
         isPrivateTripSnapshot: attribution.isPrivateTripSnapshot,
         firstDetectedAt: candidate.firstDetectedAt,
         lastDetectedAt: candidate.lastDetectedAt,
-        eventCount: candidate.eventCount,
+        eventCount: recalc.eventCount,
         evidenceSummary: evidenceSummary as Prisma.InputJsonValue,
         fingerprint: fingerprints.caseFingerprint,
         informationalOnly: lifecycle.informationalOnly,
@@ -249,7 +257,7 @@ export class MisuseCasePersistenceHelper {
         modelVersion: fingerprints.modelVersion,
         inputFingerprint: fingerprints.logicalFingerprint,
         analysisRunId: upsertContext.analysisRunId ?? null,
-        evidenceCount: 0,
+        evidenceCount: recalc.eventCount,
         attributionConfidence: lifecycle.attributionConfidence,
         decisionEligibility: lifecycle.decisionEligibility,
         supersedesCaseId,
@@ -258,22 +266,15 @@ export class MisuseCasePersistenceHelper {
       },
     });
 
-    const evidenceCount = await this.evidenceService.attachEvidence(
+    await this.evidenceService.attachEvidence(
       created.id,
       organizationId,
       vehicleId,
       tripId,
       attribution.bookingId,
       attribution.customerId,
-      candidate.evidence,
+      recalc.qualifiedEvidence,
     );
-
-    if (evidenceCount > 0) {
-      await this.prisma.misuseCase.update({
-        where: { id: created.id },
-        data: { evidenceCount },
-      });
-    }
   }
 
   private toLifecycleSnapshot(
