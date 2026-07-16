@@ -89,6 +89,7 @@ import { BusinessInsightsModule } from '../business-insights/business-insights.m
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { BatteryV2JobsProducerModule } from './battery-health/jobs/battery-v2-jobs-producer.module';
 import { DriveProfileResolverService } from './drive-profile/drive-profile-resolver.service';
+import { LvBatteryChemistryResolverService } from './lv-battery-chemistry/lv-battery-chemistry-resolver.service';
 
 @Module({
   imports: [
@@ -166,6 +167,7 @@ import { DriveProfileResolverService } from './drive-profile/drive-profile-resol
     BatteryMeasurementRepository,
     BatteryMeasurementService,
     DriveProfileResolverService,
+    LvBatteryChemistryResolverService,
     HealthSummaryService,
     AiHealthCareAggregationService,
     VehicleHealthTabSummaryService,
@@ -235,6 +237,7 @@ import { DriveProfileResolverService } from './drive-profile/drive-profile-resol
     BatteryMeasurementRepository,
     BatteryMeasurementService,
     DriveProfileResolverService,
+    LvBatteryChemistryResolverService,
     ServiceComplianceService,
     ComplianceTaskMaterializeService,
     ServiceOverdueTaskService,
