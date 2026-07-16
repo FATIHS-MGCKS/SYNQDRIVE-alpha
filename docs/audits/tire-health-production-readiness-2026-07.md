@@ -5,8 +5,8 @@
 | **Audit ID** | `tire-health-production-readiness-2026-07` |
 | **Repository** | [SYNQDRIVE-alpha](https://github.com/FATIHS-MGCKS/SYNQDRIVE-alpha) |
 | **Branch** | `audit/tire-health-production-readiness-2026-07` |
-| **Phase** | 4 of 7 — DIMO Signal & Timeseries Audit |
-| **Status** | Phases 1–4 complete; Phases 5–7 pending |
+| **Phase** | 5 of 7 — Historical Wear-Model Backtest |
+| **Status** | Phases 1–5 complete; Phases 6–7 pending |
 | **Production data modified** | **No** — all VPS/DB/DIMO access was read-only |
 | **Last VPS runtime probe** | 2026-07-16 (read-only SSH + DIMO Telemetry API) |
 
@@ -62,9 +62,11 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 | Integrity findings JSON | `docs/audits/data/tire-health-integrity-findings-2026-07.json` |
 | DIMO signal capability CSV | `docs/audits/data/tire-health-dimo-signal-capability-2026-07.csv` |
 | DIMO timeseries coverage CSV | `docs/audits/data/tire-health-dimo-timeseries-coverage-2026-07.csv` |
+| Backtest summary CSV | `docs/audits/data/tire-health-backtest-summary-2026-07.csv` |
 | Phase 3 SQL (read-only) | `scripts/audits/tire-health-phase3-readonly.sql` |
 | Audit script (integrity) | `scripts/audits/audit-tire-health-production-readiness.ts` |
 | Audit script (DIMO signals) | `scripts/audits/audit-tire-health-dimo-signals.ts` |
+| Audit script (backtest) | `scripts/audits/audit-tire-health-backtest.ts` |
 
 ---
 
@@ -104,13 +106,12 @@ Stable public identifiers: `VEHICLE_001`, `VEHICLE_002`, … assigned by **sorte
 - DIMO vs SynqDrive persistence & Tire Health usage matrix
 - CSV artifacts + read-only audit script
 
-### Phase 5 — Production data replay (read-only)
+### Phase 5 — Historical wear-model backtest ✅
 
-- Anonymized fleet sample from VPS PostgreSQL
-- Replay wear formula in isolated audit script (no `recalculate()` calls)
-- Compare stored snapshots vs recomputed projections
-- DIMO pressure coverage per anonymized vehicle
-- Aggregated CSV/JSON in `docs/audits/data/`
+- Ground-truth-only validation against manual/documented tread measurements
+- As-of prediction reproduction (no recalculate writes, no calibration writes)
+- Error metrics, confidence calibration, model-version audit
+- CSV artifact + read-only backtest script
 
 ### Phase 6 — Integration & UX
 
@@ -1066,11 +1067,179 @@ No backward jumps detected in retrieved samples. Provider comparison to `totalKm
 
 ---
 
-## Phase 5–7 placeholders
+## Phase 5 — Historical wear-model backtest
+
+**Audit ID:** `tire-health-backtest-2026-07`  
+**Method:** Read-only PostgreSQL queries + isolated `TIRE_HEALTH_V2` formula replay via `scripts/audits/audit-tire-health-backtest.ts`. **No** `TireHealthService.recalculate()`, **no** `calibrateFromMeasurement()`, **no** production writes.
+
+**Model version:** `TIRE_HEALTH_V2` (config header in `tire-health.config.ts`). **Not persisted** on `TireHealthSnapshot` or `TireWearDataPoint` — historical replay depends on current config checkout (production-readiness risk).
+
+```bash
+cd backend && TIRE_HEALTH_AUDIT_ALLOW_PROD=1 \
+  npx ts-node -r tsconfig-paths/register ../scripts/audits/audit-tire-health-backtest.ts \
+  --output-dir=../docs/audits/data
+```
+
+---
+
+### Phase 5 — Teil 1: Ground-truth sample
+
+**Inclusion criteria:** `VehicleTireTreadMeasurement` with `source` ∈ {`manual`, `workshop`, `manual_registration`, `ai_confirmed`, `calibration`} and at least one wheel depth value.  
+**Exclusion:** 8-mm default setups without measurements (VEHICLE_003, VEHICLE_006); synthetic `TireWearDataPoint` rows (0 in DB); AI-only estimates.
+
+| Dimension | Count |
+|-----------|-------|
+| Ground-truth **measurements** | **5** |
+| **Vehicles** with ground truth | **4** (VEHICLE_001, 002, 004, 005) |
+| **Tire setups** | **4** |
+| **Wheel readings** (5 × 4) | **20** |
+| **Positions** | FL, FR, RL, RR |
+| **Km range (reproducible case)** | 1 221 km since prior anchor (VEHICLE_004) |
+| **Measurement age range** | 0 – 103 days since prior anchor |
+
+| Vehicle | Measurements | Source | Notes |
+|---------|-------------|--------|-------|
+| VEHICLE_001 | 1 | manual | Uniform 7.18 mm; calibration point |
+| VEHICLE_002 | 1 | documented_registration | Staggered EV readings |
+| VEHICLE_004 | 2 | registration + manual | Only vehicle with repeat measurement |
+| VEHICLE_005 | 1 | documented_registration | ~8.1 mm readings |
+
+---
+
+### Phase 5 — Teil 2: As-of reproduction & leakage
+
+| Case | Reproducible | Reason |
+|------|--------------|--------|
+| 4 × first measurements | **NOT_REPRODUCIBLE** | `first_measurement_no_prior_anchor_for_as_of` — no prior tread anchor; `installed_odometer_km` null on all setups |
+| VEHICLE_004 M2 (2026-06-24) | **REPRODUCIBLE** | Prior M1 anchor + odometer delta 1221 km (187 257 − 186 036 via snapshot window ±24h/48h) |
+
+**Leakage controls applied:**
+
+| Risk | Status |
+|------|--------|
+| Target measurement used as model input | **Avoided** — only prior measurement as anchor |
+| Later calibration k-factor | **Avoided** — k=1.0 as of prior state |
+| Later measurements | **Avoided** |
+| Current setup/spec replacing historical | **Mitigated** — spec fields read from setup row (time-invariant in DB) |
+| `TireWearDataPoint` synthetic actuals | **N/A** — 0 rows; regression blend inactive |
+
+**Limitations:** Historical `VehicleDrivingImpactCurrent` not snapshotted — behavior factor defaulted to **1.0** (neutral). Prior M1 odometer inferred from nearest `tire_health_snapshot` (+1.5 h after measurement) — documented proxy, not exact TPMS/odo at measure instant.
+
+---
+
+### Phase 5 — Teil 3: Error metrics (reproducible subset only)
+
+**n = 4 wheel readings** (1 measurement, VEHICLE_004, 2026-06-24) — **statistically insufficient** for fleet claims.
+
+| Metric | Value |
+|--------|-------|
+| **MAE** | **0.213 mm** |
+| **RMSE** | **0.214 mm** |
+| **Median absolute error** | **0.198 mm** |
+| **P90 absolute error** | **0.228 mm** |
+| **Bias (signed)** | **−0.213 mm** (model **underpredicts** tread → **overpredicts** wear) |
+| **Überprognose** (predicted > measured) | **0%** |
+| **Unterprognose** (predicted < measured) | **100%** |
+| **Within ±0.5 mm** | **100%** (n=4) |
+| **Within ±1.0 mm** | **100%** (n=4) |
+
+**Per-wheel (VEHICLE_004 M2):**
+
+| Wheel | Predicted | Measured | Signed error |
+|-------|-----------|----------|--------------|
+| FL | 7.812 | 8.04 | −0.228 |
+| FR | 7.762 | 7.99 | −0.228 |
+| RL | 7.452 | 7.65 | −0.198 |
+| RR | 7.452 | 7.65 | −0.198 |
+
+**Remaining-km / status classification errors:** **NOT_EVALUABLE** — n=1 measurement; measured tread unchanged from 80 days prior (0 mm observed wear) while model projected ~0.2 mm wear.
+
+---
+
+### Phase 5 — Teil 4: Segmentation
+
+Fleet too small for reliable segmented percentages. Qualitative notes:
+
+| Segment | n | Comment |
+|---------|---|---------|
+| High confidence | 0 reproducible | No reproducible case classified High at measure time |
+| Medium confidence | 4 | VEHICLE_004 M2 (81 d / 1221 km since M1) |
+| Low confidence | 16 | First-measurement rows |
+| AI spec + manual_confirmed baseline | 4 reproducible | VEHICLE_004 WINTER |
+| DIMO pressure absent | 4/4 reproducible | Pressure factor neutral |
+| ICE / WINTER / rear axle | 2 wheels each | n=2 per axle — not reportable |
+
+---
+
+### Phase 5 — Teil 5: Confidence calibration
+
+| # | Question | Finding |
+|---|----------|---------|
+| 1 | High more accurate than Low? | **Cannot verify** — 0 reproducible High-bucket predictions |
+| 2 | High without real baseline? | **Yes (UI risk)** — VEHICLE_001 shows `confidenceLabel=High` with single fresh measurement but `installed_odometer_km` null |
+| 3 | Pressure overweighted? | **No evidence** — pressure neutral on all reproducible rows |
+| 4 | Synthetic data points affect confidence? | **No rows** — but code path would inflate `modelConfidence` if points existed |
+| 5 | Legacy vs unified consistent? | **Partial** — `resolveUnifiedConfidence` uses measurement-age gates; legacy `computeConfidence` point-sum can diverge |
+| 6 | UI shows which confidence? | **Unified level** (`HIGH`/`MEDIUM`/`LOW`) via `confidenceLevelToLabel` |
+| 7 | Overall High while spec/model Low? | **Possible** — dimensions stored separately; aggregate label can mask low `modelConfidence` |
+| 8 | Measurement age reduces confidence? | **Yes** — M2 correctly classified **Medium** (81 d > 30 d High gate) |
+| 9 | Stored-set reactivation | **Not observed** in fleet |
+| 10 | Display mode vs evidence | **Mismatch risk** — VEHICLE_004 shows `CALIBRATION_PROJECTION` display with `EXCELLENT` health |
+
+**Calibration matrix (reproducible predictions only):**
+
+| confidenceBucket | predictions | vehicles | MAE | RMSE | bias | within05Mm% | within10Mm% | baselineEvidence | specEvidence | verdict |
+|------------------|-------------|----------|-----|------|------|-------------|-------------|------------------|--------------|---------|
+| Medium | 4 | 1 | 0.213 | 0.214 | −0.213 | 100 | 100 | prior_manual_measurement | ai_spec | **insufficient_n** |
+
+---
+
+### Phase 5 — Teil 6: Model version & replay risk
+
+| Check | Result |
+|-------|--------|
+| `modelVersion` in snapshots/data points | **No** |
+| Historical predictions attributable to version | **No** |
+| Formula changes can invalidate backtests | **Yes — P1 risk** |
+| Config versioned | **Implicit V2 const only** |
+| Reproducible replay | **Partial** — requires same `tire-health.config.ts` + DB snapshot; driving-impact history not stored |
+
+---
+
+### Phase 5 — Production-readiness verdict
+
+| Criterion | Assessment |
+|-----------|------------|
+| Sufficient ground truth | **No** — 5 measurements, 1 reproducible backtest |
+| Sufficient vehicles | **No** — 4/6 with any measurement |
+| Sufficient km coverage | **No** — `installed_odometer_km` null fleet-wide |
+| Errors acceptable | **Indeterminate** — n=4, all within ±0.5 mm but systematic −0.21 mm bias |
+| Systematic bias | **Suspected over-wear** (negative tread bias) — not confirmable at scale |
+| Confidence calibrated | **Not validated** |
+| Critical status reliable | **NOT_EVALUABLE** |
+| Remaining km reliable | **NOT_EVALUABLE** |
+
+### **Overall verdict: `NOT_ENOUGH_DATA`**
+
+(Not `INVALID_DUE_TO_DATA_LEAKAGE` for the reproducible subset — leakage controls held; fleet-wide accuracy claims remain **invalid** due to synthetic data-point code path and n≈0.)
+
+---
+
+### Phase 5 — New findings
+
+| ID | Severity | Finding |
+|----|----------|---------|
+| **P1-TH-17** | P1 | Only **1/5** ground-truth measurements reproducible for as-of backtest |
+| **P1-TH-18** | P1 | `modelVersion` **not persisted** — cannot audit which formula produced historical snapshots |
+| **P2-TH-19** | P2 | Systematic **−0.21 mm** bias on n=4 suggests slight over-wear projection (needs more data) |
+| **P2-TH-20** | P2 | Measured tread **unchanged** over 1221 km on VEHICLE_004 — model projected wear anyway |
+
+---
+
+## Phase 6–7 placeholders
 
 > Sections will be expanded in subsequent audit prompts.
 
-- **Phase 5:** Production data replay — _pending_
 - **Phase 6:** Integrations & UX — _pending_
 - **Phase 7:** Final verdict — _pending_
 
@@ -1096,6 +1265,11 @@ psql "$DATABASE_URL" -f scripts/audits/tire-health-phase3-readonly.sql
 cd backend && TIRE_HEALTH_DIMO_AUDIT_ALLOW_PROD=1 \
   npx ts-node -r tsconfig-paths/register ../scripts/audits/audit-tire-health-dimo-signals.ts \
   --days=60 --output-dir=../docs/audits/data
+
+# Phase 5 — Historical wear backtest (read-only, no recalculate)
+cd backend && TIRE_HEALTH_AUDIT_ALLOW_PROD=1 \
+  npx ts-node -r tsconfig-paths/register ../scripts/audits/audit-tire-health-backtest.ts \
+  --output-dir=../docs/audits/data
 ```
 
 ---
@@ -1108,12 +1282,13 @@ cd backend && TIRE_HEALTH_DIMO_AUDIT_ALLOW_PROD=1 \
 | 2026-07-16 | 2 | Data model Q&A, spec priority, formula audit, factor/spec CSVs, P0/P1 register |
 | 2026-07-16 | 3 | VPS 60d integrity probe, ground-truth audit, fleet coverage CSV, findings JSON |
 | 2026-07-16 | 4 | DIMO signal audit (339 queries, 6 vehicles), capability + timeseries CSVs, unit/mapping findings |
+| 2026-07-16 | 5 | Historical backtest (5 GT measurements, n=4 reproducible), MAE 0.21 mm, NOT_ENOUGH_DATA verdict |
 
 ---
 
 ## Confirmation
 
-- ✅ No production data was modified during Phases 1–4.
+- ✅ No production data was modified during Phases 1–5.
 - ✅ No secrets, VINs, license plates, token IDs, or GPS coordinates are stored in committed audit artifacts.
-- ✅ VPS PostgreSQL and DIMO Telemetry API access was **read-only**; no DIMO triggers or subscriptions were created.
-- ✅ Phase 4 complete; Phase 5 not started per audit plan.
+- ✅ VPS PostgreSQL and DIMO Telemetry API access was **read-only**; no recalculations or calibrations were triggered.
+- ✅ Phase 5 complete; Phase 6 not started per audit plan.
