@@ -1,4 +1,6 @@
 export * from './hv-charge-session.types';
+export * from './hv-charge-session-quality.status';
+export * from './hv-charge-session-quality.assessor';
 export * from './hv-charge-session.quality';
 export * from './hv-charge-session.mapper';
 export * from './hv-charge-session.merge';

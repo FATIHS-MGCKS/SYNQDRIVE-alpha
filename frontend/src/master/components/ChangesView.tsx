@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'hv-charge-session-quality-v49551-2026-07-17',
+    version: '4.9.551',
+    title: 'V4.9.551 — HV Charge Session Quality Assessment (Prompt 51/78)',
+    summary: [
+      'Zentraler `assessHvChargeSessionQualityFromInput` — einheitliche Bewertung für DIMO- und Fallback-Sessions.',
+      'Status: QUALIFIED, PARTIAL, INSUFFICIENT_SOC_DELTA, INSUFFICIENT_COVERAGE, PROVIDER_GAPS, ADDED_ENERGY_RESET, ONGOING, CONFLICTING_SOURCES, INVALID.',
+      'Bewertungsdimensionen: Grenzen, SOC-Delta, Coverage, Providerlücken, Added-Energy-Resets, Source Strength, Datenalter.',
+      'Capacity-Shadow-Gate: nur QUALIFIED + definiertes PARTIAL (M2) mit `capacityShadowEligible` in metadata.',
+      '11 Tests mit Tesla KS FH 660E Audit-Segmenten.',
+    ],
+    reason: 'Prompt 51/78: einheitliche Session-Qualität vor Capacity-Shadow-Pipeline.',
+    previousBehavior: 'Getrennte `assessHvChargeSessionQuality` / `assessFallbackChargeSessionQuality` ohne granularen Status.',
+    details:
+      'hv-charge-session-quality.*, hv-charge-session.mapper.ts, hv-fallback-charge-session.mapper.ts, docs/architecture/hv-charge-session-quality.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T00:00:00.000Z',
+  },
+  {
     id: 'hv-fallback-charge-session-v49550-2026-07-17',
     version: '4.9.550',
     title: 'V4.9.550 — HV Fallback Charge Session Detection (Prompt 50/78)',
