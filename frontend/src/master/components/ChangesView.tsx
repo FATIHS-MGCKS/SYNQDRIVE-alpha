@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p14-trip-assessability-2026-07-16',
+    version: '4.9.516',
+    title: 'Driving Intelligence V2 P14 — TripAssessability',
+    summary: [
+      'Neue Tabelle `trip_assessabilities`: eine Zeile pro Trip × Dimension (11 Dimensionen).',
+      'Enums: `TripAssessabilityDimension`, `TripAssessabilityDimensionStatus` (ASSESSABLE, LIMITED, INSUFFICIENT_DATA, UNSUPPORTED, PROVIDER_ERROR, NOT_APPLICABLE).',
+      'Persistiert: reasonsJson, coverage, Cadence, capabilityVersion, inputWindowStart/End, calculatedAt, policyVersion.',
+      'Pure Policy `evaluateTripAssessability` + `TripAssessabilityRepository` / `TripAssessabilityService` (evaluate + persist).',
+      'Regeln: Distanz/Dauer allein machen Dimensionen nicht bewertbar; fehlende native Events ≠ unauffällig; keine Userentscheidung.',
+    ],
+    reason:
+      'Prompt 14/76: Additives per-Dimension-Assessability-Modell materialisieren — entkoppelt von monolithischem `behaviorSummaryJson`.',
+    previousBehavior:
+      'Nur Legacy `deriveAnalysisAssessability` / Frontend `deriveTripAssessability` auf Trip-Ebene ohne dimensionale Persistenz.',
+    details:
+      'Migration 20260716194500; Module unter `trip-assessability/`; 8 Unit-Tests (gemischte Dimensionen, distance-only, native-calm-gate). Keine Trip-Detection-Änderung.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T21:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p13-vehicle-driving-capability-2026-07-16',
     version: '4.9.515',
     title: 'Driving Intelligence V2 P13 — VehicleDrivingCapability',
