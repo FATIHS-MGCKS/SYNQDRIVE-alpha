@@ -116,13 +116,9 @@ export class BatteryV2IdempotentExecutionService {
         });
         return existing != null;
       }
-      case 'HV_RECHARGE_SESSION_RECONCILE': {
-        const existing = await this.prisma.hvChargeSession.findUnique({
-          where: { vehicleId_idempotencyKey: { vehicleId, idempotencyKey } },
-          select: { id: true },
-        });
-        return existing != null;
-      }
+      case 'HV_RECHARGE_SESSION_RECONCILE':
+        // Allow re-runs for ongoing completion and late provider updates.
+        return false;
       case 'HV_CAPACITY_SHADOW_RECOMPUTE': {
         const existing = await this.prisma.hvCapacityObservation.findUnique({
           where: { vehicleId_idempotencyKey: { vehicleId, idempotencyKey } },

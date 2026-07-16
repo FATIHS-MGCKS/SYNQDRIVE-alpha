@@ -107,9 +107,13 @@ export function buildPublicationJobIdempotencyKey(input: {
   ].join(':');
 }
 
-/** HV session: provider segment fingerprint (scoped per vehicle) */
-export function buildRechargeSegmentFingerprint(dimoSegmentId: string): string {
-  return `dimo-seg:${dimoSegmentId}`;
+/** HV session fingerprint — uses normalized DIMO recharge segment fingerprint. */
+export function buildRechargeSegmentFingerprint(providerSegmentFingerprint: string): string {
+  const trimmed = providerSegmentFingerprint.trim();
+  if (trimmed.startsWith('dimo-seg:')) {
+    return trimmed.slice('dimo-seg:'.length);
+  }
+  return trimmed;
 }
 
 export function buildHvSessionJobIdempotencyKey(input: {
