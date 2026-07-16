@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-observation-integration-v49521-2026-07-16',
+    version: '4.9.521',
+    title: 'V4.9.521 — Battery Observation Integration Tests (Prompt 19/78)',
+    summary: [
+      'Fokussiertes Integrationstestpaket `battery-provider-observation.integration.spec.ts` mit In-Memory-Prisma-Harness.',
+      '12 Szenarien: gleicher Poll/Timestamp, Wertänderung ohne neuen Timestamp, neuer Timestamp/gleicher Wert, Out-of-order, 31h alter Wert + frischer Fetch, fehlendes observedAt.',
+      'Konkurrierende Snapshot-Jobs (P2002), LV/HV-Trennung, Charging-Wechsel, Evidence-Dedup, VLS Fetch/Observation-Zeit, Discard-Zähler.',
+      'Legacy-Persistenzpfade dokumentiert in `docs/architecture/battery-observation-legacy-persistence.md`.',
+      'Keine neue Produktlogik — nur Testabdeckung für Prompts 15–18.',
+    ],
+    reason: 'Prompt 19/78: Regression-Gate für Observation-Dedup und Freshness-Trennung.',
+    previousBehavior: 'Policy- und Service-Tests waren fragmentiert; kein End-to-End-Harness für Poll→Persistenz→Freshness.',
+    details:
+      'battery-observation.integration.harness.ts, battery-provider-observation.integration.spec.ts, battery-observation-legacy-persistence.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T16:35:00.000Z',
+  },
+  {
     id: 'battery-freshness-separation-v49520-2026-07-16',
     version: '4.9.520',
     title: 'V4.9.520 — Battery Fetch vs Observation Freshness (Prompt 18/78)',
