@@ -688,10 +688,13 @@ Backup-Tabellen vor jeder Migration.
 
 ### 9.5 Alert/Task-Vertrag
 
-- `BatteryCriticalDetector` liest **nur** `publishedEstimatedHealth` (LV) und `publishedSohPct` (HV) mit `maturityConfidence ≥ medium`
-- Kein Alert aus Shadow, CONTAMINATED, `INITIAL_CALIBRATION`
-- Kein Rückgriff auf `battery_health_snapshots.sohPercent`
-- Task-Materialisierung: `BATTERY_CRITICAL_HEALTH` → `BATTERY_CHECK` (bestehend)
+> **V4.9.566 (Prompt 66/78):** Zentrale `BatteryAlertPolicy` in `battery-alert.policy.ts`. Siehe [`battery-alert-policy.md`](./battery-alert-policy.md).
+
+- `BatteryCriticalDetector` ruft `evaluateBatteryAlerts()` — ein Insight pro `ruleId` mit semantischem `dedupeKey` `battery_alert:{vehicleId}:{ruleId}`
+- Belastbare Quellen: Warnleuchte, sicherheitsrelevanter DTC, stabile qualifizierte LV-Publikation, Werkstattbefund, bestätigte manuelle Messung
+- Kein Alert aus Start-Proxy, REST/HV-Shadow, Legacy-Scores, fehlenden Daten oder HV-SOH allein
+- `shouldAutoResolveBatteryAlert()` prüft Rule-Abwesenheit für STATE-Auto-Resolve
+- Task-Materialisierung: `BATTERY_CRITICAL_HEALTH` → `BATTERY_CHECK` (bestehend; `legacyDedupeKey` im Detector-Metrics)
 
 ---
 

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { CanonicalBatteryHealthService } from '../../vehicle-intelligence/battery-health/canonical-battery-health.service';
-import { resolveBatteryAlertCandidate } from '../../vehicle-intelligence/battery-health/canonical-battery';
+import { evaluateBatteryAlerts } from '../../vehicle-intelligence/battery-health/battery-alert.policy';
 import {
   DetectorContext,
   InsightCandidate,
@@ -11,10 +11,9 @@ import {
 } from '../insight.types';
 
 /**
- * Surfaces vehicles whose battery is at risk by reading
- * {@link CanonicalBatteryHealthService.getSummary} — no parallel Prisma
- * classification, voltage bands, or freshness derivation in this consumer.
- * WATCH never raises an alert; WARNING/CRITICAL on LV or HV do.
+ * Surfaces battery alerts only from reliable evidence (warning light, safety DTC,
+ * stable qualified LV publication, workshop/manual findings). Proxy, shadow,
+ * legacy scores, and missing data never alert.
  */
 @Injectable()
 export class BatteryCriticalDetector implements InsightDetector {
@@ -50,39 +49,54 @@ export class BatteryCriticalDetector implements InsightDetector {
         .catch(() => null);
       if (!summary) continue;
 
-      const alert = resolveBatteryAlertCandidate(summary, v, ctx.now);
-      if (!alert) continue;
-
-      const reasons: string[] = [alert.reason];
-      if (alert.observedAt) {
-        const ageH = Math.round(
-          (ctx.now.getTime() - alert.observedAt.getTime()) / 3_600_000,
-        );
-        reasons.push(ageH < 1 ? 'Messwert aktuell' : `Messwert ${ageH} h alt`);
-      }
-      reasons.push('Startschwierigkeiten möglich');
-
-      candidates.push({
-        type: this.type,
-        severity: alert.severity,
-        priority: alert.priority,
-        title: alert.title,
-        message: alert.message,
-        actionLabel: 'Fahrzeug prüfen',
-        actionType: 'navigate_vehicle',
-        entityScope: InsightEntityScope.VEHICLE,
-        entityIds: [v.id],
-        timeContext: alert.observedAt
-          ? { observedAt: alert.observedAt.toISOString() }
-          : undefined,
-        metrics: alert.metrics,
-        reasons,
-        confidence: alert.metrics.restingVoltageV !== 'unknown' ? 0.95 : 0.8,
-        dedupeKey: `battery_critical:${v.id}`,
-        groupKey: v.homeStationId
-          ? `battery_critical:${v.homeStationId}`
-          : 'battery_critical_fleet',
+      const alerts = evaluateBatteryAlerts({
+        summary,
+        vehicle: v,
+        now: ctx.now,
       });
+      if (alerts.length === 0) continue;
+
+      for (const alert of alerts) {
+        const reasons = [alert.cause];
+        if (alert.freshness.decisionFresh) {
+          reasons.push('Evidenz fresh');
+        } else if (alert.freshness.ageMs != null) {
+          const ageH = Math.round(alert.freshness.ageMs / 3_600_000);
+          reasons.push(ageH < 1 ? 'Messwert aktuell' : `Messwert ${ageH} h alt`);
+        }
+        reasons.push(`Evidenzstärke: ${alert.evidenceTier}`);
+
+        candidates.push({
+          type: this.type,
+          severity: alert.severity,
+          priority: alert.priority,
+          title: alert.title,
+          message: alert.message,
+          actionLabel: alert.recommendedAction,
+          actionType: 'navigate_vehicle',
+          entityScope: InsightEntityScope.VEHICLE,
+          entityIds: [v.id],
+          timeContext: alert.observedAt
+            ? { observedAt: alert.observedAt.toISOString() }
+            : undefined,
+          metrics: {
+            ...alert.metrics,
+            ruleId: alert.ruleId,
+            evidenceTier: alert.evidenceTier,
+            freshness: alert.freshness,
+            autoResolveWhen: alert.autoResolveWhen,
+            recommendedAction: alert.recommendedAction,
+            policyVersion: alert.policyVersion,
+            legacyDedupeKey: `battery_critical:${v.id}`,
+          },
+          reasons,
+          confidence: alert.freshness.decisionFresh ? 0.95 : 0.75,
+          dedupeKey: alert.dedupeKey,
+          groupKey: v.homeStationId
+            ? `battery_critical:${v.homeStationId}`
+            : 'battery_critical_fleet',
+        });
+      }
     }
 
     return candidates;

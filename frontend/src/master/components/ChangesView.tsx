@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-alert-policy-v49566-2026-07-17',
+    version: '4.9.566',
+    title: 'V4.9.566 — Battery Alert Policy (Prompt 66/78)',
+    summary: [
+      'Zentrale `BatteryAlertPolicy` mit verbindlichem Alert-Vertrag: ruleId, Ursache, Evidenzstärke, Freshness, Dedup-Key, Schweregrad, empfohlene Aktion, Auto-Resolve.',
+      'Belastbare Quellen: Warnleuchte, sicherheitsrelevanter DTC, stabile qualifizierte LV-Publikation, Werkstattbefund, bestätigte manuelle Messung.',
+      'Keine Alerts aus Start-Proxy, REST/HV-Shadow, Legacy-Scores oder fehlenden Daten.',
+      'Semantischer Dedup-Key `battery_alert:{vehicleId}:{ruleId}`; `BatteryCriticalDetector` emittiert einen Insight pro Rule.',
+      '`shouldAutoResolveBatteryAlert()` für STATE-Auto-Resolve; Task-Bridge behält `legacyDedupeKey`.',
+      'Tests: Dedup, Auto-Resolve, Ausschlüsse und alle Rule-Typen.',
+    ],
+    reason: 'Prompt 66/78: Battery-Alerts auf belastbare Evidenz und semantische Deduplizierung.',
+    previousBehavior: 'Detector nutzte Legacy estimatedHealth/crank/HV-SOH-Pfade und flachen `battery_critical:{vehicleId}`-Dedup.',
+    details:
+      'backend/.../battery-alert.policy.ts, battery-critical.detector.ts, canonical-battery-read.adapter.ts, docs/architecture/battery-alert-policy.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T01:00:00.000Z',
+  },
+  {
     id: 'battery-readiness-policy-v49565-2026-07-17',
     version: '4.9.565',
     title: 'V4.9.565 — Battery Readiness Policy (Prompt 65/78)',

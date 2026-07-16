@@ -98,16 +98,33 @@ describe('canonical-battery-read.adapter', () => {
     expect(narrative.maintenancePriority).toBe('medium');
   });
 
-  it('resolveBatteryAlertCandidate surfaces LV CRITICAL resting', () => {
+  it('resolveBatteryAlertCandidate surfaces stable qualified LV CRITICAL resting', () => {
     const alert = resolveBatteryAlertCandidate(
       baseSummary({
         lv: {
           ...baseSummary().lv,
           healthStatus: 'CRITICAL',
+          publicationState: 'STABLE',
           restingVoltage: {
             valueV: 11.2,
             status: 'CRITICAL',
             measurementContext: 'RESTING',
+            dataQuality: { observedAt: '2026-06-13T09:00:00.000Z' },
+          },
+        },
+        canonical: {
+          ...baseSummary().canonical,
+          lv: {
+            canonical: {
+              primaryTruth: {
+                source: 'V2_PUBLICATION_STABLE',
+                decisionCapable: true,
+                estimatedHealthScore: 30,
+              },
+            },
+            publication: { maturity: 'STABLE', publishedEstimatedHealth: 30 },
+            latestQualifiedRest: { quality: 'VALID' },
+            assessment: { assessmentTrack: 'TELEMETRY', assessmentMode: 'CANONICAL' },
           },
         },
       } as Partial<CanonicalBatteryHealthSummary>),
@@ -121,7 +138,8 @@ describe('canonical-battery-read.adapter', () => {
       new Date('2026-06-13T10:00:00.000Z'),
     );
     expect(alert?.severity).toBe(InsightSeverity.CRITICAL);
-    expect(alert?.reason).toContain('Ruhespannung');
+    expect(alert?.reason).toContain('Qualifizierte LV-Publikation');
+    expect(alert?.dedupeKey).toContain('battery_alert:veh-1:');
   });
 
   it('resolveBatteryAlertCandidate returns null for GOOD vehicles', () => {

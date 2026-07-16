@@ -51,6 +51,11 @@ export interface BatteryAlertCandidate {
   reason: string;
   observedAt: Date | null;
   metrics: Record<string, unknown>;
+  ruleId?: string;
+  dedupeKey?: string;
+  autoResolveWhen?: string;
+  recommendedAction?: string;
+  evidenceTier?: string;
 }
 
 function toIso(value: string | Date | null | undefined): string | null {
@@ -338,109 +343,14 @@ export function mapHealthSummaryBatteryNarrative(battery: HealthSummaryBatteryMo
   };
 }
 
-/**
- * Resolves fleet/vehicle battery alerts from the canonical summary read model.
- * No consumer-side voltage bands, freshness windows, or legacy publication truth.
- */
-export function resolveBatteryAlertCandidate(
-  summary: CanonicalBatteryHealthSummary,
-  vehicle: BatteryAlertVehicleMeta,
-  now: Date,
-): BatteryAlertCandidate | null {
-  const label = vehicle.licensePlate || `${vehicle.make} ${vehicle.model}`;
-  const restingStatus = summary.lv?.restingVoltage?.status ?? 'UNKNOWN';
-  const restingVoltage = summary.lv?.restingVoltage?.valueV ?? null;
-  const estHealthStatus = summary.lv?.estimatedHealth?.status ?? 'UNKNOWN';
-  const crankStatus =
-    summary.lv?.telemetry?.crank?.operationalStatus ??
-  summary.lv?.telemetry?.crank?.diagnosticStatus ??
-    'UNKNOWN';
-  const crankBad = crankStatus === 'WARNING' || crankStatus === 'CRITICAL';
-
-  let severity: InsightSeverity | null = null;
-  let reason: string | null = null;
-  let title = 'Batterie kritisch';
-  let message = '';
-  let priority = 60;
-
-  if (restingStatus === 'CRITICAL' || (restingStatus === 'WARNING' && crankBad)) {
-    const vtxt = restingVoltage != null ? restingVoltage.toFixed(2) : '?';
-    severity = InsightSeverity.CRITICAL;
-    reason = `Ruhespannung ${vtxt} V kritisch`;
-    title = 'Batterie kritisch — Starthilfe empfohlen';
-    message = `Ruhespannung bei ${vtxt} V — Batterie entladen, Starthilfe oder Austausch empfohlen. Startschwierigkeiten wahrscheinlich.`;
-    priority = 85;
-  } else if (estHealthStatus === 'CRITICAL') {
-    severity = InsightSeverity.CRITICAL;
-    reason = 'Geschätzte Batteriegesundheit kritisch';
-    title = 'Batterie kritisch — Gesundheit niedrig';
-    message =
-      'Geschätzte 12V-Batteriegesundheit kritisch — Austausch empfohlen. Startschwierigkeiten wahrscheinlich.';
-    priority = 80;
-  } else if (restingStatus === 'WARNING' && isAlertableStatus(restingStatus)) {
-    const vtxt = restingVoltage != null ? restingVoltage.toFixed(2) : '?';
-    severity = InsightSeverity.WARNING;
-    reason = `Ruhespannung ${vtxt} V niedrig`;
-    title = 'Batterie kritisch beobachten';
-    message = `Ruhespannung bei ${vtxt} V — Startschwierigkeiten möglich. Ladezustand und Lichtmaschine prüfen.`;
-    priority = 65;
-  } else if (estHealthStatus === 'WARNING' || crankStatus === 'CRITICAL') {
-    severity = InsightSeverity.WARNING;
-    reason =
-      crankStatus === 'CRITICAL'
-        ? 'Schlechtes Startverhalten (Crank Drop)'
-        : 'Geschätzte Batteriegesundheit niedrig';
-    title = 'Batterie kritisch beobachten';
-    message =
-      crankStatus === 'CRITICAL'
-        ? 'Hoher Spannungseinbruch beim Start — Batterie beobachten, Startschwierigkeiten möglich.'
-        : 'Geschätzte 12V-Batteriegesundheit niedrig — Batterie beobachten, Startschwierigkeiten möglich.';
-    priority = 60;
-  }
-
-  const hvStatus = summary.hv?.healthStatus ?? null;
-  const hvSoh = summary.hv?.sohPct ?? null;
-  if (!severity && summary.support?.hv && hvSoh != null && isAlertableStatus(hvStatus)) {
-    severity =
-      hvStatus === 'CRITICAL'
-        ? InsightSeverity.CRITICAL
-        : InsightSeverity.WARNING;
-    reason = `HV-SOH ${Math.round(hvSoh)} %`;
-    title =
-      hvStatus === 'CRITICAL'
-        ? 'Traktionsbatterie kritisch'
-        : 'Traktionsbatterie beobachten';
-    message = `HV-Batteriegesundheit bei ${Math.round(hvSoh)} % — Diagnose der Traktionsbatterie empfohlen.`;
-    priority = hvStatus === 'CRITICAL' ? 82 : 62;
-  }
-
-  if (!severity) return null;
-
-  const observedAtRaw =
-    summary.lv?.restingVoltage?.dataQuality?.observedAt ??
-    summary.lv?.freshness?.observedAt ??
-    summary.hv?.freshness?.observedAt ??
-    summary.currentState?.lastChecked ??
-    null;
-  const observedAt = observedAtRaw ? new Date(observedAtRaw) : null;
-
-  return {
-    severity,
-    priority,
-    title,
-    message: `${label}: ${message}`,
-    reason: reason!,
-    observedAt,
-    metrics: {
-      restingVoltageV: restingVoltage ?? 'unknown',
-      restingStatus,
-      estimatedHealthStatus: estHealthStatus,
-      crankDropStatus: crankStatus,
-      aggregateHealthStatus: summary.lv?.healthStatus ?? null,
-      hvHealthStatus: hvStatus,
-      hvSohPercent: hvSoh,
-      resolvedAt: summary.canonical?.resolvedAt ?? summary.generatedAt,
-      now: now.toISOString(),
-    },
-  };
-}
+export {
+  evaluateBatteryAlerts,
+  resolveBatteryAlertCandidate,
+  shouldAutoResolveBatteryAlert,
+  BATTERY_ALERT_POLICY_VERSION,
+  BATTERY_ALERT_RULE_IDS,
+  BATTERY_ALERT_AUTO_RESOLVE,
+  type BatteryAlertContract,
+  type BatteryAlertEvaluationInput,
+  type BatteryAlertRuleId,
+} from '../battery-alert.policy';
