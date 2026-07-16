@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-p2-remediation-v49578-2026-07-16',
+    version: '4.9.578',
+    title: 'V4.9.578 — Battery V2 P2 Remediation (Prompt 78/78)',
+    summary: [
+      'B-03: Compat-API `estimatedLvHealthScore`-Alias; `estimatedSohPct` als deprecated markiert.',
+      'B-04/B-05: UI — kanonischer Health-Box-Score only; HealthErrorsView Voltage-Formatting + HV-Trend-Label.',
+      'B-06: `fetchCanonicalBatterySummarySafe` mit Logging; Health-Summary `transientErrors`; Reference-Capacity Task-Log.',
+      'B-07/B-09/B-10: Config-Default-Tests, Migration-Timestamp-Guard, Retention-Defaults dokumentiert.',
+    ],
+    reason: 'Prompt 78/78: verbleibende P2-Audit-Funde schließen vor Shadow-Deploy.',
+    previousBehavior: 'Stille `.catch(() => null)` auf Battery-Summary; Legacy-UI-Fallbacks; SOH-Wording auf LV/HV-Charts.',
+    details:
+      'canonical-battery-summary-fetch.util.ts, health-summary.service.ts, battery-task.service.ts, vehicle-battery-reference-capacity.service.ts, vehicle-intelligence.controller.ts, vehicle-health-box.mapper.ts, HealthErrorsView.tsx, verify-prisma-migration-timestamps.sh',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T23:15:00.000Z',
+  },
+  {
     id: 'battery-v2-p1-remediation-v49577-2026-07-16',
     version: '4.9.577',
     title: 'V4.9.577 — Battery V2 P1 Remediation (Prompt 78/78)',

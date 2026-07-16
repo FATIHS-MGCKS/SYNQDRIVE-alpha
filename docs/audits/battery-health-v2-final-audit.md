@@ -55,14 +55,14 @@ Battery Health V2 ist **architektonisch geschlossen** für Shadow-Betrieb: kanon
 |----|-----------|--------|------------------|
 | B-01 | **P1** | **behoben** | Paralleles Legacy-LV-Scoring + `SOH_PERCENT`-Evidence — Rest-Capture → `BATTERY_ASSESSMENT_RECOMPUTE`; keine Evidence-Writes mehr |
 | B-02 | **P1** | **behoben** | Lead-Acid `VOLTAGE_SOC` ohne Chemistry-Gate — `resolveLeadAcidCurveAllowed()` + `estimateLeadAcidSocPercent()` |
-| B-03 | P2 | offen | Parallele Compat-APIs + `estimatedSohPct` Feldname |
-| B-04 | P2 | offen | UI Legacy-Fallback in `vehicle-health-box.mapper` |
-| B-05 | P2 | offen | SOH-Trend-Chart / `!`-Assertions in HealthErrorsView |
-| B-06 | P2 | offen | Fire-and-forget `.catch()` in Summary/Task-Pfaden |
-| B-07 | P2 | offen (by design) | `TELEMETRY_POLL_FALLBACK` Ladesessions (flag-gated) |
-| B-08 | P2 | offen (Ops) | Historische Wake-as-Rest / Crank / HV-Duplikate — Repair-Skripte vorhanden |
-| B-09 | P2 | offen | Doppelter Migrations-Timestamp `20260716170000` |
-| B-10 | P2 | offen | Retention-Storage-Wachstum bei aktivem Pruning |
+| B-03 | P2 | **behoben** (Alias) | Compat-APIs: `estimatedLvHealthScore`-Alias in `battery-health/v2` + `/latest`; `estimatedSohPct` deprecated |
+| B-04 | P2 | **behoben** | `vehicle-health-box.mapper` — nur kanonischer Score, kein Legacy-Fallback |
+| B-05 | P2 | **behoben** | HealthErrorsView: `formatBatteryVoltage`, HV-Chart „HV-Zustand Trend“, kein `!` |
+| B-06 | P2 | **behoben** | `fetchCanonicalBatterySummarySafe` + strukturiertes Logging; `transientErrors` in Health-Summary |
+| B-07 | P2 | **dokumentiert** | Default `BATTERY_V2_HV_FALLBACK_CHARGE_SESSION_ENABLED=false` + Unit-Test |
+| B-08 | P2 | **Ops** | Historische Daten — `audit-battery-data` / `repair-battery-data` (Dry-Run only, kein Auto-Apply) |
+| B-09 | P2 | **mitigiert** | CI-Guard `verify-prisma-migration-timestamps.sh`; bekannte Duplikate dokumentiert |
+| B-10 | P2 | **dokumentiert** | Retention Default OFF + `DRY_RUN=true`; Shadow-Gate `storage_growth` |
 
 Alle übrigen geprüften Kategorien: **kein Problem** (siehe Detailabschnitte).
 
@@ -662,7 +662,8 @@ flowchart LR
 |---------|-------|-------|-------|
 | 1.0 | 2026-07-16 | Cloud Agent (Prompt 77/78) | Initialer Read-only-Abschlussaudit |
 | 1.1 | 2026-07-16 | Cloud Agent (Prompt 78/78) | P1-Remediation B-01/B-02; Validierung; Verdict `READY_FOR_SHADOW_ONLY` |
+| 1.2 | 2026-07-16 | Cloud Agent (Prompt 78/78) | P2-Remediation B-03–B-07/B-09/B-10; B-08 Ops-only; Deploy auf `main` |
 
 ---
 
-**Changes / Architektur:** Aktualisiert (V4.9.577 — P1-Remediation LV Legacy-Pfad).
+**Changes / Architektur:** Aktualisiert (V4.9.577 P1 + V4.9.578 P2-Remediation).

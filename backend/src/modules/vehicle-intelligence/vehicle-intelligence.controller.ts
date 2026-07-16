@@ -1430,7 +1430,9 @@ export class VehicleIntelligenceController {
       v2: v2
         ? {
             estimatedSocPct: v2.estimatedSocPct,
+            /** @deprecated Prefer estimatedLvHealthScore — LV behaviour score, not HV SOH */
             estimatedSohPct: v2.estimatedSohPct,
+            estimatedLvHealthScore: v2.estimatedSohPct,
             confidence: v2.confidence,
             badge: v2.badge,
             scoredAt: v2.scoredAt,
@@ -1485,7 +1487,9 @@ export class VehicleIntelligenceController {
     return {
       latestVoltage: latestState?.lvBatteryVoltage ?? null,
       estimatedSocPct: v2?.estimatedSocPct ?? null,
+      /** @deprecated Prefer estimatedLvHealthScore — LV behaviour score, not HV SOH */
       estimatedSohPct: v2?.estimatedSohPct ?? null,
+      estimatedLvHealthScore: v2?.estimatedSohPct ?? null,
       confidence: v2?.confidence ?? 'insufficient_data',
       badge: v2?.badge ?? 'unknown',
       scoredAt: v2?.scoredAt ?? null,

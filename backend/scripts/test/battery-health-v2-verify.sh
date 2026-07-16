@@ -28,6 +28,9 @@ run_integration() {
 }
 
 run_prisma_validate() {
+  echo "==> Prisma migration timestamp uniqueness"
+  bash scripts/test/verify-prisma-migration-timestamps.sh
+
   echo "==> Prisma schema validate"
   npm run prisma:validate
 }

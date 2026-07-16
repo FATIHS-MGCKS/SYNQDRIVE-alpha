@@ -44,7 +44,7 @@ import {
 } from '../lib/tire-health-detail-ui';
 import { segmentFromHealthState } from '../lib/health-segment-display';
 import { SegmentedHealthIndicator } from './health/SegmentedHealthIndicator';
-import { normalizeLvBatteryVoltage } from '../lib/battery-display.utils';
+import { formatBatteryVoltage, normalizeLvBatteryVoltage } from '../lib/battery-display.utils';
 import { ESTIMATED_LV_HEALTH_SCORE_LABEL_DE } from '../lib/battery-lv-semantics';
 import { useRentalOrg } from '../RentalContext';
 import { useEffectiveHealth } from '../FleetContext';
@@ -1061,7 +1061,7 @@ export function HealthErrorsView({
   })();
   const lvRestingValue: number | null = resolveCanonicalRestingVoltage(bSummary);
   const calibrationEstimate: number | null = lvIsCalibrating
-    ? (bSummary?.lv?.estimatedHealthPercent ?? bSummary?.currentState?.estimatedSohPct ?? null)
+    ? (bSummary?.lv?.estimatedHealthPercent ?? bSummary?.currentState?.estimatedLvHealthScore ?? null)
     : null;
   const batteryCondition = bSummary?.lv?.condition ?? bSummary?.condition ?? 'good';
   // LV "Estimated Battery Health" — behaviour-derived 3-bar indicator. The 12V
@@ -2037,16 +2037,21 @@ export function HealthErrorsView({
                         .filter((m) => m.numericValue != null)
                         .map((m) => ({
                           l: m.displayLabelDe,
-                          v: `${m.numericValue!.toFixed(2)} ${m.unit ?? 'V'} · ${m.classification}${m.offsetFromTargetMs != null ? ` · Δ ${m.offsetFromTargetMs} ms` : ''}${m.measurementAgeMs != null ? ` · ${Math.round(m.measurementAgeMs / 1000)} s alt` : ''}`,
+                          v: `${formatBatteryVoltage(m.numericValue as number)} ${m.unit ?? 'V'} · ${m.classification}${m.offsetFromTargetMs != null ? ` · Δ ${m.offsetFromTargetMs} ms` : ''}${m.measurementAgeMs != null ? ` · ${Math.round(m.measurementAgeMs / 1000)} s alt` : ''}`,
                         }))
                     : []),
-                  !lvStartProxy &&
-                  normalizeLvBatteryVoltage(bSummary?.currentState?.crankingVoltage) != null
-                    ? { l: 'Startspannung / Crank Drop', v: `${normalizeLvBatteryVoltage(bSummary?.currentState?.crankingVoltage)!.toFixed(2)} V` }
-                    : null,
-                  normalizeLvBatteryVoltage(bSummary?.currentState?.chargingVoltage) != null
-                    ? { l: 'Ladespannung', v: `${normalizeLvBatteryVoltage(bSummary?.currentState?.chargingVoltage)!.toFixed(2)} V` }
-                    : null,
+                  (() => {
+                    const crankV = normalizeLvBatteryVoltage(bSummary?.currentState?.crankingVoltage);
+                    return !lvStartProxy && crankV != null
+                      ? { l: 'Startspannung / Crank Drop', v: `${formatBatteryVoltage(crankV)} V` }
+                      : null;
+                  })(),
+                  (() => {
+                    const chargingV = normalizeLvBatteryVoltage(bSummary?.currentState?.chargingVoltage);
+                    return chargingV != null
+                      ? { l: 'Ladespannung', v: `${formatBatteryVoltage(chargingV)} V` }
+                      : null;
+                  })(),
                   exteriorAmbient.valueC != null
                     ? { l: 'Außentemperatur', v: `${Math.round(exteriorAmbient.valueC * 10) / 10} °C` }
                     : { l: 'Außentemperatur', v: 'Nicht verfügbar' },
@@ -3617,7 +3622,7 @@ export function HealthErrorsView({
                 trendChartSlot={
                   (hvBatteryStatus?.recentTrend?.length ?? 0) > 0 ? (
                     <div className={`rounded-lg p-5 bg-muted`}>
-                      <h3 className={`text-sm font-semibold mb-4 text-foreground`}>SOH Trend</h3>
+                      <h3 className={`text-sm font-semibold mb-4 text-foreground`}>HV-Zustand Trend</h3>
                       <div className="h-40">
                         <ResponsiveContainer width="100%" height="100%">
                           <LineChart data={hvBatteryStatus?.recentTrend?.map((t: any) => ({
@@ -3628,7 +3633,7 @@ export function HealthErrorsView({
                             <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke='var(--muted-foreground)' />
                             <YAxis domain={[0, 100]} tick={{ fontSize: 10 }} stroke='var(--muted-foreground)' />
                             <Tooltip contentStyle={{ background: 'var(--card)', border: 'none', borderRadius: 12, fontSize: 11 }} />
-                            <Line type="monotone" dataKey="soh" stroke="#10b981" strokeWidth={2} dot={false} name="SOH %" />
+                            <Line type="monotone" dataKey="soh" stroke="#10b981" strokeWidth={2} dot={false} name="Geschätzter HV-Zustand %" />
                             <Line type="monotone" dataKey="soc" stroke="#6366f1" strokeWidth={1.5} dot={false} name="SoC %" strokeDasharray="4 2" />
                           </LineChart>
                         </ResponsiveContainer>

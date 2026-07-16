@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
   Optional,
 } from '@nestjs/common';
@@ -48,6 +49,8 @@ export interface VehicleBatteryReferenceCapacityDto {
 
 @Injectable()
 export class VehicleBatteryReferenceCapacityService {
+  private readonly logger = new Logger(VehicleBatteryReferenceCapacityService.name);
+
   constructor(
     private readonly repository: VehicleBatteryReferenceCapacityRepository,
     @Optional() private readonly batteryTasks?: BatteryTaskService,
@@ -195,7 +198,12 @@ export class VehicleBatteryReferenceCapacityService {
 
     await this.batteryTasks
       ?.onReferenceCapacityVerified(organizationId, vehicleId, row.id)
-      .catch(() => undefined);
+      .catch((err: unknown) => {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(
+          `Reference capacity task sync failed vehicle=${vehicleId} reference=${row.id}: ${message}`,
+        );
+      });
 
     return this.toDto(updated);
   }

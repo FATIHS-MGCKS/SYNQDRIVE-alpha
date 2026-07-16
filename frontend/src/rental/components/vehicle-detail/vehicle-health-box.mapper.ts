@@ -426,20 +426,13 @@ export function buildVehicleHealthBoxViewModel(params: {
   const tiresVal = tires?.overallPercent ?? vehicleTiresFallback ?? 0;
   const batteryPubState = battery?.lv?.publicationState ?? battery?.currentState?.publicationState ?? 'INITIAL_CALIBRATION';
   const lvHealthScore = resolveCanonicalEstimatedHealthScore(battery);
-  const legacyHealthScore =
-    batteryPubState === 'INITIAL_CALIBRATION'
-      ? null
-      : (battery?.lv?.healthPercent ??
-        battery?.currentState?.publishedSohPct ??
-        battery?.currentState?.sohPercent ??
-        null);
   const batteryVoltage = resolveOverviewBatteryVoltage(battery, lvBatteryVoltage);
   const hasBackendCriticalBattery = rentalHealth?.modules.battery?.state === 'critical';
   const batterySeverity = resolveCanonicalBatteryUiSeverity(
     battery,
     rentalHealth?.modules.battery?.state,
   );
-  const batteryScore = lvHealthScore ?? legacyHealthScore ?? null;
+  const batteryScore = lvHealthScore;
   const batteryVal = mapCanonicalBatteryUiSeverityToScore(batterySeverity, batteryScore);
 
   const brakesTracked = brakes?.overallCondition != null && brakes.overallCondition !== 'UNKNOWN';

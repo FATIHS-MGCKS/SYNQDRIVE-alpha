@@ -12,6 +12,7 @@ import {
   mapHealthSummaryBatteryNarrative,
   type HealthSummaryBatteryModule,
 } from '../battery-health/canonical-battery';
+import { fetchCanonicalBatterySummarySafe } from '../battery-health/canonical-battery/canonical-battery-summary-fetch.util';
 import { ServiceComplianceService } from '../service-compliance/service-compliance.service';
 import { FULL_SERVICE_BASELINE_EVENT_TYPES } from '../service-events/service-events.constants';
 import {
@@ -87,7 +88,7 @@ export interface HealthSummaryAgentInput {
   futureInputs: {
     driverFeedbackSummary: string | null;
   };
-  dataQuality: { available: string[]; missing: string[] };
+  dataQuality: { available: string[]; missing: string[]; transientErrors?: string[] };
 }
 
 /** Agent response contract (UI-ready). */
@@ -142,10 +143,20 @@ export class HealthSummaryService {
     const now = new Date();
     const ninetyDaysAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
 
+    const batteryFetch = await fetchCanonicalBatterySummarySafe(
+      this.canonicalBatteryHealthService,
+      vehicleId,
+      'health-summary.buildAgentInput',
+    );
+    const batterySummary = batteryFetch.ok ? batteryFetch.summary : null;
+    const transientErrors: string[] =
+      batteryFetch.ok === false && batteryFetch.reason === 'transient_error'
+        ? ['battery']
+        : [];
+
     const [
       dtcStats,
       dtcList,
-      batterySummary,
       brakeSummary,
       tireSummary,
       tireDataQuality,
@@ -156,7 +167,6 @@ export class HealthSummaryService {
     ] = await Promise.all([
       this.dtcService.getStats(vehicleId).catch(() => null),
       this.dtcService.findByVehicle(vehicleId).then((r) => (Array.isArray(r) ? r.slice(0, 50) : [])).catch(() => []),
-      this.canonicalBatteryHealthService.getSummary(vehicleId).catch(() => null),
       this.brakeHealthService.getSummary(vehicleId).catch(() => null),
       // Canonical tire truth — single source for tread status/percent and data-quality flags.
       this.tireHealthService.getSummary(vehicleId).catch(() => null),
@@ -242,8 +252,13 @@ export class HealthSummaryService {
 
     const available: string[] = [];
     const missing: string[] = [];
-    if (batterySummary?.lv?.status !== 'estimate_unavailable') available.push('battery');
-    else missing.push('battery');
+    if (!batteryFetch.ok && batteryFetch.reason === 'transient_error') {
+      transientErrors.push('battery');
+    } else if (batterySummary?.lv?.status !== 'estimate_unavailable') {
+      available.push('battery');
+    } else {
+      missing.push('battery');
+    }
     if (dtcStats != null) available.push('errorCodes'); else missing.push('errorCodes');
     if (brakeSummary != null) available.push('brakes'); else missing.push('brakes');
     if (tireHasSetups) available.push('tires'); else missing.push('tires');
@@ -356,7 +371,11 @@ export class HealthSummaryService {
         roadDistribution: cityPct != null || highwayPct != null || countryPct != null ? { cityPercent: cityPct, highwayPercent: highwayPct, countryRoadPercent: countryPct } : null,
       },
       futureInputs: { driverFeedbackSummary: null },
-      dataQuality: { available, missing },
+      dataQuality: {
+        available,
+        missing,
+        ...(transientErrors.length > 0 ? { transientErrors } : {}),
+      },
     };
   }
 

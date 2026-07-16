@@ -11,6 +11,7 @@ import { buildOutboxMeta } from '@modules/tasks/outbox/task-automation-outbox-me
 import { sanitizeAutomationError } from '@modules/tasks/outbox/task-automation-outbox-error.util';
 import { buildAutomationMetadataBlock } from '@modules/tasks/automation/task-automation-rule.util';
 import { CanonicalBatteryHealthService } from './canonical-battery-health.service';
+import { fetchCanonicalBatterySummarySafe } from './canonical-battery/canonical-battery-summary-fetch.util';
 import {
   type BatteryTaskContract,
   type BatteryTaskIntent,
@@ -134,9 +135,12 @@ export class BatteryTaskService {
       return { contracts: [], dedupeKeys: [] };
     }
 
-    const summary = await this.canonicalBatteryHealth
-      .getSummary(vehicleId)
-      .catch(() => null);
+    const summaryResult = await fetchCanonicalBatterySummarySafe(
+      this.canonicalBatteryHealth,
+      vehicleId,
+      'battery-task.materializeTasksFromInsight',
+    );
+    const summary = summaryResult.ok ? summaryResult.summary : null;
 
     const metrics = (candidate.metrics ?? {}) as Record<string, unknown>;
     const contracts = evaluateBatteryTasks({
@@ -199,9 +203,12 @@ export class BatteryTaskService {
 
     const seenKeys: string[] = [];
     for (const vehicle of vehicles) {
-      const summary = await this.canonicalBatteryHealth
-        .getSummary(vehicle.id)
-        .catch(() => null);
+      const summaryResult = await fetchCanonicalBatterySummarySafe(
+        this.canonicalBatteryHealth,
+        vehicle.id,
+        'battery-task.syncReferenceCapacityTasksForOrganization',
+      );
+      const summary = summaryResult.ok ? summaryResult.summary : null;
       const contracts = evaluateBatteryTasks({ summary, vehicle });
       const refContract = contracts.find(
         (contract) => contract.intent === 'battery.task.reference_capacity_confirm',
@@ -272,7 +279,12 @@ export class BatteryTaskService {
     vehicleId: string,
     referenceCapacityId: string,
   ): Promise<void> {
-    const summary = await this.canonicalBatteryHealth.getSummary(vehicleId).catch(() => null);
+    const summaryResult = await fetchCanonicalBatterySummarySafe(
+      this.canonicalBatteryHealth,
+      vehicleId,
+      'battery-task.onReferenceCapacityVerified',
+    );
+    const summary = summaryResult.ok ? summaryResult.summary : null;
     await this.autoResolveIfSatisfied(
       organizationId,
       vehicleId,
