@@ -5,6 +5,7 @@ import {
 } from '../vehicle-state-interpreter';
 import { VehiclesService } from '../vehicles.service';
 import {
+  makeOperationalPrismaMocks,
   makeOperationalVehiclesService,
 } from './vehicle-operational-state-v2.test-helpers';
 
@@ -22,15 +23,30 @@ describe('Vehicle Operational State V2 — data quality fail-closed', () => {
     expect(result.bookingDto.activeCustomerName).toBeNull();
   });
 
-  it('returns empty booking map when prisma booking query throws (degraded read)', async () => {
+  it('returns empty booking map and loadFailed when prisma booking query throws', async () => {
     const bookingFindMany = jest.fn().mockRejectedValue(new Error('timeout'));
     const service = makeOperationalVehiclesService({
-      prisma: {
+      prisma: makeOperationalPrismaMocks({
         booking: { findMany: bookingFindMany },
-      },
+      }),
     });
-    const map = await (service as any).buildBookingContextMap('org-1', ['veh-1']);
-    expect(map.size).toBe(0);
+    const bundle = await (service as any).buildBookingContextMap('org-1', ['veh-1']);
+    expect(bundle.map.size).toBe(0);
+    expect(bundle.loadFailed).toBe(true);
+  });
+
+  it('deriveFleetStatusContext returns Unknown when booking context load failed (Fall E)', () => {
+    const service = makeOperationalVehiclesService();
+    const result = service.deriveFleetStatusContext({
+      vehicle: { id: 'veh-1', status: VehicleStatus.AVAILABLE },
+      state: null,
+      bookingCtx: null,
+      pickupOdoByBooking: new Map(),
+      bookingContextLoadFailed: true,
+    });
+    expect(result.status).toBe('Unknown');
+    expect(result.operationalState.status).toBe('UNKNOWN');
+    expect(result.operationalState.isReliable).toBe(false);
   });
 
   it('classifies missing telemetry as no_signal (UNAVAILABLE path on frontend)', () => {
@@ -82,13 +98,10 @@ describe('Vehicle Operational State V2 — data quality fail-closed', () => {
     const redisSet = jest.fn().mockResolvedValue('OK');
 
     const service = makeOperationalVehiclesService({
-      prisma: {
+      prisma: makeOperationalPrismaMocks({
         vehicle: { findMany },
-        vehicleTripDetectionState: { findMany: jest.fn().mockResolvedValue([]) },
         booking: { findMany: jest.fn().mockResolvedValue([]) },
-        station: { findMany: jest.fn().mockResolvedValue([]) },
-        bookingHandoverProtocol: { findMany: jest.fn().mockResolvedValue([]) },
-      },
+      }),
       redis: { get: redisGet, set: redisSet },
     });
 

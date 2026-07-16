@@ -13,7 +13,9 @@ import {
 } from '../lib/fleetVisualState';
 import {
   applyFleetOperationalOptimisticPatch,
+  isFleetOptimisticPatchReflected,
   mapFleetMapVehicleResponse,
+  mergeFleetMapFetchWithOptimisticPatches,
   normalizeFleetMapApiResponse,
   type FleetMapVehicle,
 } from '../lib/fleet-map-vehicle-store.utils';
@@ -47,6 +49,7 @@ export interface FleetMapFilters {
 interface OptimisticOperationalEntry {
   token: string;
   snapshots: Map<string, FleetMapVehicle>;
+  patches: Map<string, FleetOperationalOptimisticPatch>;
 }
 
 interface FleetMapState {
@@ -78,24 +81,26 @@ export const useFleetMapStore = create<FleetMapState>((set) => ({
   error: null,
   lastFetchedAt: null,
   refreshIntervalMs: FLEET_MAP_REFRESH_MS,
-  applyOptimisticOperationalPatches: (patches) => {
-    if (patches.length === 0) return null;
+  applyOptimisticOperationalPatches: (patchList) => {
+    if (patchList.length === 0) return null;
 
     const token = `fleet-opt-${++optimisticTokenCounter}`;
     const snapshots = new Map<string, FleetMapVehicle>();
-    const patchById = new Map(patches.map((p) => [p.vehicleId, p.patch]));
+    const patchMap = new Map<string, FleetOperationalOptimisticPatch>();
+    const patchById = new Map(patchList.map((p) => [p.vehicleId, p.patch]));
 
     set((state) => {
       const nextVehicles = state.vehicles.map((vehicle) => {
         const patch = patchById.get(vehicle.id);
         if (!patch) return vehicle;
         snapshots.set(vehicle.id, vehicle);
+        patchMap.set(vehicle.id, patch);
         return applyFleetOperationalOptimisticPatch(vehicle, patch);
       });
       return { vehicles: nextVehicles };
     });
 
-    pendingOptimisticPatches.set(token, { token, snapshots });
+    pendingOptimisticPatches.set(token, { token, snapshots, patches: patchMap });
     return token;
   },
   rollbackOptimisticOperationalPatches: (token) => {
@@ -135,8 +140,12 @@ export const useFleetMapStore = create<FleetMapState>((set) => ({
             !!row && typeof row === 'object' && typeof (row as { id?: unknown }).id === 'string',
         )
         .map(mapFleetMapVehicleResponse);
+      const mergedVehicles = mergeFleetMapFetchWithOptimisticPatches(
+        vehicles,
+        pendingOptimisticPatches,
+      );
       const stationIds = new Set(
-        vehicles
+        mergedVehicles
           .flatMap((vehicle) => [
             vehicle.stationId,
             vehicle.homeStationId,
@@ -154,12 +163,12 @@ export const useFleetMapStore = create<FleetMapState>((set) => ({
 
         const selectedVehicleId =
           state.selectedVehicleId &&
-          vehicles.some((vehicle) => vehicle.id === state.selectedVehicleId)
+          mergedVehicles.some((vehicle) => vehicle.id === state.selectedVehicleId)
             ? state.selectedVehicleId
             : null;
 
         return {
-          vehicles,
+          vehicles: mergedVehicles,
           filters: nextFilter,
           selectedVehicleId,
           loading: false,
@@ -168,8 +177,15 @@ export const useFleetMapStore = create<FleetMapState>((set) => ({
         };
       });
 
-      for (const entry of pendingOptimisticPatches.values()) {
-        pendingOptimisticPatches.delete(entry.token);
+      for (const [token, entry] of [...pendingOptimisticPatches.entries()]) {
+        const allReflected = [...entry.patches.entries()].every(([vehicleId, patch]) => {
+          const vehicle = mergedVehicles.find((v) => v.id === vehicleId);
+          if (!vehicle) return true;
+          return isFleetOptimisticPatchReflected(vehicle, patch);
+        });
+        if (allReflected) {
+          pendingOptimisticPatches.delete(token);
+        }
       }
     } catch (error) {
       set({

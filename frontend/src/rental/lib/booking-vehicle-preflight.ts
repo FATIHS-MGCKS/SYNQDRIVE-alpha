@@ -10,6 +10,8 @@ import { isVehicleOffline, VEHICLE_OFFLINE_LABEL } from '../data/vehicles';
 import {
   VEHICLE_OPERATIONAL_STATUS,
   formatVehicleOperationalStatusLabel,
+  selectIsStatusReliable,
+  selectOperationalStatus,
 } from './vehicle-operational-state';
 
 export const UNCATEGORIZED_VEHICLE_LABEL = 'Nicht kategorisiert';
@@ -78,9 +80,13 @@ export function resolveBookingVehiclePreflight(
     (health?.overall_state === 'warning' || health?.overall_state === 'critical');
   const noTariff = !hasTariff && !catalogLoading;
 
-  const isMaintenance = vehicle.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE;
-  const isRented = vehicle.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED;
-  const isReserved = vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED;
+  const operationalStatus = selectOperationalStatus(vehicle);
+  const statusUnreliable = !selectIsStatusReliable(vehicle);
+
+  const isMaintenance = operationalStatus === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE;
+  const isRented = operationalStatus === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED;
+  const isReserved = operationalStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED;
+  const isUnknown = operationalStatus === VEHICLE_OPERATIONAL_STATUS.UNKNOWN;
 
   let hardBlockReason: BookingVehicleHardBlockReason | null = null;
   let blockingReason: string | null = null;
@@ -96,6 +102,9 @@ export function resolveBookingVehiclePreflight(
   } else if (noTariff) {
     hardBlockReason = 'no_tariff';
     blockingReason = 'Kein aktiver Tarif zugewiesen';
+  } else if (isUnknown || statusUnreliable) {
+    hardBlockReason = 'rental_blocked';
+    blockingReason = 'Status nicht verfügbar';
   } else if (isMaintenance) {
     cautionReason = 'In Wartung — Auswahl mit Vorsicht';
   } else if (isRented) {
@@ -109,16 +118,16 @@ export function resolveBookingVehiclePreflight(
   }
 
   return {
-    fleetStatus: vehicle.status,
+    fleetStatus: operationalStatus,
     offline,
     rentalBlocked,
     healthWarningOnly,
     noTariff,
-    isSelectable: !offline && !rentalBlocked && !noTariff,
+    isSelectable: !offline && !rentalBlocked && !noTariff && !isUnknown && !statusUnreliable,
     hardBlockReason,
     blockingReason,
     cautionReason,
-    muted: offline || rentalBlocked || isMaintenance || isRented,
+    muted: offline || rentalBlocked || isMaintenance || isRented || isUnknown,
   };
 }
 

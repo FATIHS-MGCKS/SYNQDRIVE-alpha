@@ -3,12 +3,11 @@ import type { VehicleHealthResponse, RentalHealthModule, RentalHealthState } fro
 import type { VehicleData } from '../../rental/data/vehicles';
 import { derivePickupGate, deriveReturnGate } from './operatorData';
 import type { TodayBookingApiRow } from '../../rental/components/dashboard/dashboardTypes';
-import { VEHICLE_OPERATIONAL_STATUS } from '../../rental/lib/vehicle-operational-state';
+import { selectOperationalStatus, VEHICLE_OPERATIONAL_STATUS } from '../../rental/lib/vehicle-operational-state';
 import {
   isOperationalStatusUnreliable,
   resolveUnreliableOperationalStatusDisplay,
 } from '../../rental/lib/vehicle-operational-unknown-display';
-import { selectOperationalStatus } from '../../rental/lib/vehicle-operational-state';
 
 export type OperatorVehicleFilter =
   | 'all'
@@ -101,16 +100,28 @@ export function detectOperatorStatusContradictions(
   const issues: string[] = [];
   if (!health) return issues;
 
-  if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE && health.rental_blocked) {
+  const operationalStatus = selectOperationalStatus(vehicle);
+
+  if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.AVAILABLE && health.rental_blocked) {
     issues.push('Fahrzeugstatus „Verfügbar“, Rental Health meldet Block.');
   }
-  if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED && !vehicle.activeBookingId && !vehicle.activeCustomerName) {
+  if (
+    operationalStatus === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED &&
+    !vehicle.bookingContext?.activeBooking?.bookingId &&
+    !vehicle.activeBookingId &&
+    !vehicle.activeCustomerName
+  ) {
     issues.push('Status „Aktiv vermietet“ ohne aktive Buchungsreferenz.');
   }
-  if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED && !vehicle.reservedBookingId && !vehicle.reservedCustomerName) {
+  if (
+    operationalStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED &&
+    !vehicle.bookingContext?.reservedBooking?.bookingId &&
+    !vehicle.reservedBookingId &&
+    !vehicle.reservedCustomerName
+  ) {
     issues.push('Status „Reserviert“ ohne Reservierungsreferenz.');
   }
-  if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE && vehicle.maintenanceReasonCode === 'OPERATIONAL_BLOCK' && !health.rental_blocked) {
+  if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE && vehicle.maintenanceReasonCode === 'OPERATIONAL_BLOCK' && !health.rental_blocked) {
     issues.push('Operativer Wartungsblock ohne rental_blocked in Rental Health.');
   }
 

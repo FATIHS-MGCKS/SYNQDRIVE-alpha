@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-operational-state-v2-p1-fixes-v49506-2026-07-16',
+    version: '4.9.506',
+    title: 'V4.9.506 — Vehicle Operational State V2 P1 remediation (Prompt 43/43)',
+    summary: [
+      'Fix R-01: Kanonisches Pickup-Tag-Reservierungsfenster in produktiver `buildBookingContextMap` (`fleet-booking-context.util.ts`); Fernbuchungen → `nextBooking`-Supplement, nicht Reserved.',
+      'Fix R-02/R-03: Org-Stats (`aggregateDerivedFleetStatusCounts`) und Master-Admin-Listen (`findAllPlatform`) nutzen abgeleiteten Fleet-Status statt Raw-DB.',
+      'Fix R-04/R-05: Booking-Picker/Preflight und Operator Quick-View auf `selectOperationalStatus` / Selector-Gates.',
+      'Fix R-06: Backend emittiert `operationalState` + `bookingContext`; Booking-Ladefehler → UNKNOWN (nie Available).',
+      'Fix R-07/R-08: Optimistic-Patch-Merge im Fleet-Store; `FleetMapCacheService.invalidate` bei Handover/Booking/Status-PATCH.',
+      'Audit: `docs/audits/vehicle-operational-state-v2-final-audit.md` — alle P1 als behoben; Smoke-Matrix A–E; READY für Staging.',
+    ],
+    reason:
+      'Prompt 43/43: Alle belegten P1-Mängel aus dem Final Wiring Audit (R-01–R-08) beheben — ohne neue Features oder unrelated Refactors.',
+    previousBehavior:
+      'Legacy-Reservierungsfenster in produktiver API; Org-Stats/Master-Admin Raw-Status; Frontend-Picker/Operator-Bypass; kein Backend-UNKNOWN; Fleet-Map Cache TTL-only; Optimistic Patches verworfen.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T01:30:00.000Z',
+  },
+  {
     id: 'vehicle-operational-state-v2-frontend-e2e-tests-v49505-2026-07-16',
     version: '4.9.505',
     title: 'V4.9.505 — Vehicle Operational State V2 frontend & E2E tests (Prompt 41/43)',

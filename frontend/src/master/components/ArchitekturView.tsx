@@ -259,6 +259,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Vehicle Operational State V2 P1 Remediation (V4.9.506)', icon: Car,
+    endpoint: 'Bestehende Tenant-Routes angereichert: `GET /organizations/:orgId/fleet-map`, `/vehicles`, `/vehicles/:id` emittieren `operationalState`, `rawVehicleStatus`, `bookingContext` (+ Legacy-Flat). Org-Stats `GET /organizations/:orgId/stats` nutzt `source: derived_fleet_status`.',
+    service: '**Backend:** `fleet-booking-context.util.ts` — kanonisches Pickup-Tag-Fenster (`isCanonicalPickupReservationDay`), `nextBooking`-Supplements für Fernbuchungen; `fleet-operational-state.util.ts` — UNKNOWN bei `loadFailed`; `FleetMapCacheService.invalidate` bei Handover/Booking CRUD/Cancel/No-show/Vehicle-PATCH. **Frontend:** Picker/Preflight/Operator Quick-View auf Selectors; `mergeFleetMapFetchWithOptimisticPatches` hält Patches bis Server-Reflexion.',
+    dataSource: 'Audit: `docs/audits/vehicle-operational-state-v2-final-audit.md` (R-01–R-08 behoben). Tests: 62 Backend operational + 104 Frontend Vitest + 42 Playwright E2E grün.' },
   { name: 'Vehicle Operational State V2 Frontend & E2E Tests (V4.9.505)', icon: FileText,
     endpoint: 'Keine HTTP-Route. Vitest unter `frontend/src/rental/lib/vehicle-operational-*`, `fleet-map-vehicle-store.utils.test.ts`, `FleetCommandPanel.test.tsx`, `operatorStatus.test.ts`; Playwright `frontend/e2e/fleet-operational-*.spec.ts`.',
     service: '**Coverage (9 Bereiche):** Fleet List/Map Tabs+Counts, Dashboard KPI/Drawer-Parität, Vehicle-Detail-Callout (UNKNOWN neutral, keine UUIDs), Operator-Status-Badges, Cache-Invalidation Pickup/Return, Safe-Fallback (null/UNKNOWN/DEGRADED/UNAVAILABLE), Responsive/Dark, Period-Availability vs Overlap. Fixtures: `fleet-operational-fixtures.ts` (AVL-1/RSV-1/ACT-1/UNK-1).',
@@ -266,7 +270,7 @@ const FRONTEND_FLOWS: FrontendFlowEntry[] = [
   { name: 'Vehicle Operational State V2 Backend Tests (V4.9.504)', icon: FileText,
     endpoint: 'Keine HTTP-Route. Jest-Suites unter `backend/src/modules/vehicles/operational/` + `vehicles.controller.status-patch.spec.ts` + `bookings.service.overlap.spec.ts`.',
     service: '**Coverage:** 53 neue Tests (10 Suites) für A–J: `deriveFleetStatusContext`, `buildBookingContextMap`, kanonisches vs. legacy Reservierungsfenster, API-Konsistenz fleet-map/list/detail, Status-PATCH-Write-Guard, Overlap-Gate, Fleet-Map-Redis-Cache (TTL). Ergänzt bestehende `vehicles.service.spec.ts` + VBH-Diagnostic/Repair.',
-    dataSource: 'Doku: `docs/testing/vehicle-operational-state-v2-backend-coverage.md`. Ausführung: `npm test -- --testPathPattern=vehicle-operational-state-v2`. Bekannte Lücke: Backend-Cache-Bust nach Mutationen noch TTL-only (Frontend-Invalidation kompensiert).' },
+    dataSource: 'Doku: `docs/testing/vehicle-operational-state-v2-backend-coverage.md`. Ausführung: `npm test -- --testPathPattern=vehicle-operational-state-v2`. Cache-Bust nach Mutationen via `FleetMapCacheService` (V4.9.506).' },
   { name: 'Vehicle Operational Status Ops Runbook (V4.9.503)', icon: FileText,
     endpoint: 'Keine HTTP-Route. Verbindliches Betriebs-Runbook: `docs/runbooks/vehicle-operational-status-repair.md`.',
     service: '**Runbook:** End-to-End-Verfahren für VBH-Diagnose (read-only) und kontrollierte Reparatur (Dry-Run default, `--apply`). Deckt Voraussetzungen (Code ≥ V4.9.502, Migrationen, Env-Safety), Backup/Restore-Test, Lokal→Staging→Prod mit org-scoped Batches, Rollback (DB + Deployment), Audit-Spur (`activity_logs`, Booking-Notes), Abnahmekriterien (keine RESERVED/RENTED-Ghosts, Pickup/Return-Sollzustände, UNKNOWN bei unzuverlässiger Datenlage) und Ergebnisbericht-Vorlagen.',

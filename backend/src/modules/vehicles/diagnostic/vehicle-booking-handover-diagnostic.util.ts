@@ -1,7 +1,18 @@
 import type { BookingStatus, HandoverKind, VehicleStatus } from '@prisma/client';
-import { resolveZonedCalendarDayWindow } from '@modules/bookings/booking-day-window.util';
-import { DEFAULT_TARIFF_TIMEZONE, zonedDateOnly } from '@modules/pricing/tariff-instant.util';
 import type { FleetVehicleBookingContextDto } from '../vehicles.service';
+import {
+  isCanonicalPickupReservationDay,
+  isLegacyReservationWindowBooking,
+  resolveOrgTimezone,
+  wouldCanonicalLogicReserveBooking,
+} from '../operational/fleet-booking-context.util';
+
+export {
+  isCanonicalPickupReservationDay,
+  isLegacyReservationWindowBooking,
+  resolveOrgTimezone,
+  wouldCanonicalLogicReserveBooking,
+};
 
 export const DEFAULT_DIAGNOSTIC_SAMPLE_LIMIT = 25;
 
@@ -36,11 +47,6 @@ export type DiagnosticVehicleRow = {
 
 const RESERVATION_BOOKING_STATUSES: BookingStatus[] = ['PENDING', 'CONFIRMED'];
 
-export function resolveOrgTimezone(timezone: string | null | undefined): string {
-  const tz = timezone?.trim();
-  return tz && tz.length > 0 ? tz : DEFAULT_TARIFF_TIMEZONE;
-}
-
 export function isValidIanaTimezone(timezone: string): boolean {
   const tz = timezone.trim();
   if (!tz) return false;
@@ -52,47 +58,7 @@ export function isValidIanaTimezone(timezone: string): boolean {
   }
 }
 
-/** Mirrors `VehiclesService.buildBookingContextMap` reservation selection. */
-export function isLegacyReservationWindowBooking(
-  booking: Pick<DiagnosticBookingRow, 'status' | 'endDate'>,
-  now: Date,
-): boolean {
-  return RESERVATION_BOOKING_STATUSES.includes(booking.status) && booking.endDate.getTime() >= now.getTime();
-}
-
-/**
- * Canonical pickup reservation day — booking start calendar day has been reached
- * in the organization timezone (matches Prompt 35 fleet-tab semantics).
- */
-export function isCanonicalPickupReservationDay(
-  booking: Pick<DiagnosticBookingRow, 'startDate'>,
-  now: Date,
-  timezone: string,
-): boolean {
-  const tz = resolveOrgTimezone(timezone);
-  const { dateOnly: todayDateOnly } = resolveZonedCalendarDayWindow(now, tz);
-  const pickupDateOnly = zonedDateOnly(booking.startDate, tz);
-  return pickupDateOnly <= todayDateOnly;
-}
-
-export function wouldLegacyLogicReserveBooking(
-  booking: DiagnosticBookingRow,
-  now: Date,
-): boolean {
-  return isLegacyReservationWindowBooking(booking, now);
-}
-
-export function wouldCanonicalLogicReserveBooking(
-  booking: DiagnosticBookingRow,
-  now: Date,
-  timezone: string,
-): boolean {
-  return (
-    isLegacyReservationWindowBooking(booking, now) &&
-    isCanonicalPickupReservationDay(booking, now, timezone)
-  );
-}
-
+/** Diagnostic-only legacy mirror — production uses `fleet-booking-context.util`. */
 export function buildDiagnosticBookingContext(
   bookings: DiagnosticBookingRow[],
   now: Date,
@@ -140,6 +106,13 @@ export function buildDiagnosticBookingContext(
   }
 
   return ctx;
+}
+
+export function wouldLegacyLogicReserveBooking(
+  booking: DiagnosticBookingRow,
+  now: Date,
+): boolean {
+  return isLegacyReservationWindowBooking(booking, now);
 }
 
 export function hasCurrentReservationWindow(

@@ -4,6 +4,7 @@ import {
 } from '../diagnostic/vehicle-booking-handover-diagnostic.util';
 import {
   makeBookingRow,
+  makeOperationalPrismaMocks,
   makeOperationalVehiclesService,
 } from './vehicle-operational-state-v2.test-helpers';
 
@@ -65,13 +66,13 @@ describe('Vehicle Operational State V2 — reservation window', () => {
       }),
     ]);
     const service = makeOperationalVehiclesService({
-      prisma: {
+      prisma: makeOperationalPrismaMocks({
         booking: { findMany: bookingFindMany },
         station: { findMany: jest.fn().mockResolvedValue([{ id: 'st-1', name: 'Kassel' }]) },
-      },
+      }),
     });
 
-    const map = await (service as any).buildBookingContextMap('org-1', ['veh-1']);
+    const { map } = await (service as any).buildBookingContextMap('org-1', ['veh-1']);
     expect(map.get('veh-1')?.reservedIsOverdue).toBe(true);
     jest.useRealTimers();
   });
@@ -82,7 +83,9 @@ describe('Vehicle Operational State V2 — reservation window', () => {
 
     const bookingFindMany = jest.fn().mockResolvedValue([]);
     const service = makeOperationalVehiclesService({
-      prisma: { booking: { findMany: bookingFindMany }, station: { findMany: jest.fn() } },
+      prisma: makeOperationalPrismaMocks({
+        booking: { findMany: bookingFindMany },
+      }),
     });
     await (service as any).buildBookingContextMap('org-1', ['veh-1']);
     expect(bookingFindMany).toHaveBeenCalledWith(
@@ -113,12 +116,12 @@ describe('Vehicle Operational State V2 — reservation window', () => {
       }),
     ]);
     const service = makeOperationalVehiclesService({
-      prisma: {
+      prisma: makeOperationalPrismaMocks({
         booking: { findMany: bookingFindMany },
         station: { findMany: jest.fn().mockResolvedValue([{ id: 'st-1', name: 'Kassel' }]) },
-      },
+      }),
     });
-    const map = await (service as any).buildBookingContextMap('org-1', ['veh-1']);
+    const { map } = await (service as any).buildBookingContextMap('org-1', ['veh-1']);
     expect(map.get('veh-1')?.reservedBookingId).toBe('bk-earlier');
     jest.useRealTimers();
   });

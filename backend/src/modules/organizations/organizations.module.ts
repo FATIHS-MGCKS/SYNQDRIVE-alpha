@@ -4,9 +4,10 @@ import { TenantOrganizationProfileController } from './tenant-organization-profi
 import { OrganizationsService } from './organizations.service';
 import { UsersModule } from '@modules/users/users.module';
 import { PaymentsModule } from '@modules/payments/payments.module';
+import { VehiclesModule } from '@modules/vehicles/vehicles.module';
 
 @Module({
-  imports: [UsersModule, PaymentsModule],
+  imports: [UsersModule, PaymentsModule, VehiclesModule],
   controllers: [OrganizationsController, TenantOrganizationProfileController],
   providers: [OrganizationsService],
   exports: [OrganizationsService],

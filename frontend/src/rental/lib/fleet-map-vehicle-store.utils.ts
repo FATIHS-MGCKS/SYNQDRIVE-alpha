@@ -113,4 +113,48 @@ export function applyFleetOperationalOptimisticPatch(
   };
 }
 
+export function isFleetOptimisticPatchReflected(
+  vehicle: FleetMapVehicleRow,
+  patch: FleetOperationalOptimisticPatch,
+): boolean {
+  if (patch.status && vehicle.operationalState.status !== patch.status) {
+    return false;
+  }
+  if (patch.activeBookingId !== undefined) {
+    const serverActive =
+      vehicle.bookingContext.activeBooking?.bookingId ?? vehicle.activeBookingId ?? null;
+    if (serverActive !== patch.activeBookingId) return false;
+  }
+  if (patch.reservedBookingId !== undefined) {
+    const serverReserved =
+      vehicle.bookingContext.reservedBooking?.bookingId ?? vehicle.reservedBookingId ?? null;
+    if (serverReserved !== patch.reservedBookingId) return false;
+  }
+  return true;
+}
+
+export function mergeFleetMapFetchWithOptimisticPatches(
+  vehicles: FleetMapVehicleRow[],
+  pending: Map<
+    string,
+    { patches: Map<string, FleetOperationalOptimisticPatch> }
+  >,
+): FleetMapVehicleRow[] {
+  if (pending.size === 0) return vehicles;
+
+  const patchByVehicle = new Map<string, FleetOperationalOptimisticPatch>();
+  for (const entry of pending.values()) {
+    for (const [vehicleId, patch] of entry.patches) {
+      patchByVehicle.set(vehicleId, patch);
+    }
+  }
+
+  return vehicles.map((vehicle) => {
+    const patch = patchByVehicle.get(vehicle.id);
+    if (!patch) return vehicle;
+    if (isFleetOptimisticPatchReflected(vehicle, patch)) return vehicle;
+    return applyFleetOperationalOptimisticPatch(vehicle, patch);
+  });
+}
+
 export { mapFleetMapVehicleResponse, normalizeFleetMapApiResponse };

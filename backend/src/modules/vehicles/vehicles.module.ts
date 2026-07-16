@@ -6,6 +6,7 @@ import { VehiclesController } from './vehicles.controller';
 import { VehiclesService } from './vehicles.service';
 import { VehicleProviderConsentService } from './vehicle-provider-consent.service';
 import { VehicleExteriorImagesService } from './vehicle-exterior-images.service';
+import { FleetMapCacheService } from './fleet-map-cache.service';
 import { DimoModule } from '../dimo/dimo.module';
 import { VehicleIntelligenceModule } from '../vehicle-intelligence/vehicle-intelligence.module';
 import { DataAuthorizationsModule } from '../data-authorizations/data-authorizations.module';
@@ -28,6 +29,7 @@ import { FLEET_STATUS_DERIVATION } from './diagnostic/fleet-status-derivation.po
   controllers: [VehiclesController],
   providers: [
     VehiclesService,
+    FleetMapCacheService,
     VehicleProviderConsentService,
     VehicleExteriorImagesService,
     VehicleBookingHandoverDiagnosticService,
@@ -39,6 +41,7 @@ import { FLEET_STATUS_DERIVATION } from './diagnostic/fleet-status-derivation.po
   ],
   exports: [
     VehiclesService,
+    FleetMapCacheService,
     VehicleProviderConsentService,
     VehicleExteriorImagesService,
     VehicleBookingHandoverDiagnosticService,

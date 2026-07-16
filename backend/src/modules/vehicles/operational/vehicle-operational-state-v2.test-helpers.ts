@@ -1,18 +1,21 @@
 import { VehicleStatus } from '@prisma/client';
 import { VehiclesService } from '../vehicles.service';
+import { FleetMapCacheService } from '../fleet-map-cache.service';
 
 /** Lean VehiclesService for operational-state unit/integration specs. */
 export function makeOperationalVehiclesService(deps: {
   prisma?: Record<string, unknown>;
-  redis?: { get?: jest.Mock; set?: jest.Mock };
+  redis?: { get?: jest.Mock; set?: jest.Mock; del?: jest.Mock };
 } = {}): VehiclesService {
   const stub = (): unknown => ({});
   const prisma = deps.prisma ?? {};
   const redis = {
     get: jest.fn().mockResolvedValue(null),
     set: jest.fn().mockResolvedValue('OK'),
+    del: jest.fn().mockResolvedValue(1),
     ...deps.redis,
   };
+  const fleetMapCache = new FleetMapCacheService(redis as never);
   return new (VehiclesService as unknown as {
     new (...args: unknown[]): VehiclesService;
   })(
@@ -25,14 +28,29 @@ export function makeOperationalVehiclesService(deps: {
     stub(),
     stub(),
     stub(),
-    { getFleetSummariesForVehicles: jest.fn().mockResolvedValue(new Map()) },
     stub(),
     stub(),
+    stub(),
+    fleetMapCache,
     undefined,
   );
 }
 
 export const EMPTY_BOOKING = VehiclesService.EMPTY_BOOKING_CONTEXT;
+
+export function makeOperationalPrismaMocks(
+  overrides: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return {
+    organization: {
+      findUnique: jest.fn().mockResolvedValue({ timezone: 'Europe/Berlin' }),
+    },
+    station: { findMany: jest.fn().mockResolvedValue([]) },
+    bookingHandoverProtocol: { findMany: jest.fn().mockResolvedValue([]) },
+    vehicleTripDetectionState: { findMany: jest.fn().mockResolvedValue([]) },
+    ...overrides,
+  };
+}
 
 export function makeVehicleRow(overrides: Record<string, unknown> = {}) {
   return {

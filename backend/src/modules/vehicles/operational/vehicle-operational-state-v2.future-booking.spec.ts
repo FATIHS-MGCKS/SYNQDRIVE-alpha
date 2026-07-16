@@ -8,6 +8,7 @@ import { VehiclesService } from '../vehicles.service';
 import {
   buildFutureBookingSupplement,
   makeBookingRow,
+  makeOperationalPrismaMocks,
   makeOperationalVehiclesService,
 } from './vehicle-operational-state-v2.test-helpers';
 
@@ -38,13 +39,13 @@ describe('Vehicle Operational State V2 — future booking supplement', () => {
     );
   });
 
-  it('legacy backend window still treats future CONFIRMED as reserved slot', () => {
+  it('legacy diagnostic helper still documents old reserved slot (diagnostic only)', () => {
     expect(isLegacyReservationWindowBooking(futureBooking, NOW)).toBe(true);
     const ctx = buildDiagnosticBookingContext([futureBooking], NOW);
     expect(ctx.reservedBookingId).toBe('bk-future');
   });
 
-  it('deriveFleetStatusContext with legacy booking ctx surfaces Reserved today', () => {
+  it('deriveFleetStatusContext with legacy booking ctx surfaces Reserved when ctx says so', () => {
     const service = makeOperationalVehiclesService();
     const legacyCtx = buildDiagnosticBookingContext([futureBooking], NOW);
     const result = service.deriveFleetStatusContext({
@@ -56,7 +57,7 @@ describe('Vehicle Operational State V2 — future booking supplement', () => {
     expect(result.status).toBe('Reserved');
   });
 
-  it('canonical target: Available when only future booking and no legacy ctx', () => {
+  it('canonical target: Available when only future booking and no reserved ctx', () => {
     const service = makeOperationalVehiclesService();
     const result = service.deriveFleetStatusContext({
       vehicle: { id: 'veh-1', status: 'AVAILABLE' },
@@ -95,8 +96,8 @@ describe('Vehicle Operational State V2 — future booking supplement', () => {
 });
 
 describe('Vehicle Operational State V2 — buildBookingContextMap future rows', () => {
-  const futureStart = new Date('2026-07-08T08:00:00.000Z');
-  const futureEnd = new Date('2026-07-12T08:00:00.000Z');
+  const futureStart = new Date('2026-08-01T08:00:00.000Z');
+  const futureEnd = new Date('2026-08-06T08:00:00.000Z');
 
   beforeEach(() => {
     jest.useFakeTimers();
@@ -107,7 +108,7 @@ describe('Vehicle Operational State V2 — buildBookingContextMap future rows', 
     jest.useRealTimers();
   });
 
-  it('loads earliest future CONFIRMED into reserved slot (legacy read path)', async () => {
+  it('keeps future CONFIRMED in nextBooking supplement, not reserved slot (Fall A)', async () => {
     const bookingFindMany = jest.fn().mockResolvedValue([
       makeBookingRow({
         id: 'bk-future',
@@ -120,17 +121,15 @@ describe('Vehicle Operational State V2 — buildBookingContextMap future rows', 
       .mockResolvedValue([{ id: 'st-1', name: 'Kassel' }]);
 
     const service = makeOperationalVehiclesService({
-      prisma: {
+      prisma: makeOperationalPrismaMocks({
         booking: { findMany: bookingFindMany },
         station: { findMany: stationFindMany },
-        bookingHandoverProtocol: { findMany: jest.fn().mockResolvedValue([]) },
-        vehicleTripDetectionState: { findMany: jest.fn().mockResolvedValue([]) },
-      },
+      }),
     });
 
-    const map = await (service as any).buildBookingContextMap('org-1', ['veh-1']);
-    const ctx = map.get('veh-1');
-    expect(ctx?.reservedBookingId).toBe('bk-future');
-    expect(ctx?.activeBookingId).toBeNull();
+    const bundle = await (service as any).buildBookingContextMap('org-1', ['veh-1']);
+    expect(bundle.map.get('veh-1')).toBeUndefined();
+    expect(bundle.supplements.get('veh-1')?.nextBookingId).toBe('bk-future');
+    expect(bundle.supplements.get('veh-1')?.futureBookingCount).toBe(1);
   });
 });

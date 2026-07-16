@@ -265,6 +265,8 @@ export class VehiclesController {
 
     const vehicle = await this.vehiclesService.update(vehicleId, data, orgId);
 
+    await this.vehiclesService.invalidateFleetMapCache(orgId);
+
     let cleaningTask: Awaited<
       ReturnType<VehicleCleaningTaskService['ensureCleaningTask']>
     > | null = null;

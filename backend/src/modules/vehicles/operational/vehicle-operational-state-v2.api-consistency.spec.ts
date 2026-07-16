@@ -2,6 +2,7 @@ import { VehicleStatus } from '@prisma/client';
 import {
   FLEET_STATUS_FIELDS,
   makeBookingRow,
+  makeOperationalPrismaMocks,
   makeOperationalVehiclesService,
   makeVehicleRow,
 } from './vehicle-operational-state-v2.test-helpers';
@@ -23,19 +24,17 @@ describe('Vehicle Operational State V2 — API consistency (fleet-map / list / d
     const vehicle = makeVehicleRow({ status: VehicleStatus.AVAILABLE });
     return {
       service: makeOperationalVehiclesService({
-        prisma: {
+        prisma: makeOperationalPrismaMocks({
           vehicle: {
             findMany: jest.fn().mockResolvedValue([vehicle]),
             findFirst: jest.fn().mockResolvedValue(vehicle),
             count: jest.fn().mockResolvedValue(1),
           },
-          vehicleTripDetectionState: { findMany: jest.fn().mockResolvedValue([]) },
           booking: { findMany: jest.fn().mockResolvedValue(bookingRows) },
           station: {
             findMany: jest.fn().mockResolvedValue([{ id: 'st-1', name: 'Kassel' }]),
           },
-          bookingHandoverProtocol: { findMany: jest.fn().mockResolvedValue([]) },
-        },
+        }),
         redis: { get: jest.fn().mockResolvedValue(null), set: jest.fn() },
       }),
       vehicle,

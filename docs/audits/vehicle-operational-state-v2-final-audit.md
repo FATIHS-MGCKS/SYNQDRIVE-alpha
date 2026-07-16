@@ -1,45 +1,46 @@
-# Vehicle Operational State V2 — Final Wiring Audit (Prompt 42)
+# Vehicle Operational State V2 — Final Wiring Audit (Prompt 42) + P1 Remediation (Prompt 43)
 
 | Feld | Wert |
 |------|------|
 | **Audit-Datum** | 2026-07-16 |
-| **Scope** | Read-only Abschlussaudit der gesamten Verdrahtung (Backend + Frontend + Ops) |
-| **Basis-Commits** | `main` + Branches V4.9.498–V4.9.505 (State Engine, UNKNOWN-UX, Tests, Runbook) |
-| **Methodik** | Code-Inspektion, gezielte Grep-Verifikation, Testläufe (keine Produktänderungen) |
+| **Remediation-Datum** | 2026-07-16 |
+| **Scope** | Prompt 42: Read-only Abschlussaudit. Prompt 43: Behebung aller belegten P1-Mängel (R-01–R-08). |
+| **Basis-Commits** | `main` + Branches V4.9.498–V4.9.506 |
+| **Methodik** | Code-Inspektion, Grep-Verifikation, Jest/Vitest/Playwright, Builds |
 | **Verwandte Docs** | [`fleet-operational-derivation-cleanup-p28.md`](./fleet-operational-derivation-cleanup-p28.md), [`../runbooks/vehicle-operational-status-repair.md`](../runbooks/vehicle-operational-status-repair.md), [`../testing/vehicle-operational-state-v2-backend-coverage.md`](../testing/vehicle-operational-state-v2-backend-coverage.md), [`../testing/vehicle-operational-state-v2-frontend-e2e-coverage.md`](../testing/vehicle-operational-state-v2-frontend-e2e-coverage.md) |
 
-## Executive Summary
+## Executive Summary (nach Prompt 43)
 
-Die **kanonische Rental-Fleet-Pipeline** (`buildBookingContextMap` → `deriveFleetStatusContext` → Fleet-Map / List / Detail) ist konsistent verdrahtet und gut getestet. Ghost-`RENTED`/`RESERVED`-Demotion, Handover-Schreibpfade, Booking-Konflikte und Admin-Write-Guards sind korrekt.
+Die **kanonische Rental-Fleet-Pipeline** (`buildBookingContextMap` → `deriveFleetStatusContext` → Fleet-Map / List / Detail) ist konsistent verdrahtet. Alle **8 P1-Funde (R-01–R-08)** wurden behoben.
 
-**Kein P0-Blocker** identifiziert.
+**Kein P0-Blocker** (unverändert).
 
-**Hauptlücke vor Produktion (P1):** Die in Diagnose/Tests definierte **Pickup-Tag-Reservierungslogik** (`isCanonicalPickupReservationDay`) ist **nicht** in die produktive `buildBookingContextMap` integriert. Fernliegende `CONFIRMED`-Buchungen erscheinen weiterhin als `Reserved` in allen Rental-APIs — widerspricht der V2-Spezifikation „Reserved nur im Pickup-Fenster“.
+**P1-Remediation (V4.9.506):** Pickup-Tag-Reservierungslogik ist in die produktive `buildBookingContextMap` integriert (`fleet-booking-context.util.ts`). Fernliegende `CONFIRMED`-Buchungen landen in `nextBooking`-Supplements, nicht im Reserved-Slot. Backend emittiert `operationalState` + `bookingContext`; Booking-Ladefehler → `UNKNOWN` (nie `Available`). Org-Stats und Master-Admin nutzen abgeleitete Fleet-Status-Zählung. Frontend Booking-Picker/Preflight und Operator Quick-View nutzen gemeinsame Selectors. Fleet-Map Redis-Cache wird bei Mutationen invalidiert; Optimistic Patches überleben Fetch bis Server-Reflexion.
 
-**Architektur-Split (P1/P2):** UNKNOWN und Data-Quality werden **frontend-seitig** abgeleitet; Backend liefert kein `operationalState`-DTO. Master-Admin und Org-Statistiken nutzen parallele Raw-`Vehicle.status`-Pfade.
+**Verbleibende P2 (bewusst offen):** R-09–R-14 — keine Build-/Sicherheits-/Integritätsblocker.
 
-**Empfehlung:** P1-Reserved-Fenster in `buildBookingContextMap` nachziehen; anschließend verbleibende Raw-Status-UI-Stellen auf gemeinsame Selectors migrieren.
+**Finale Bewertung:** **READY** für Staging-Deploy und manuelle Smoke-Matrix (siehe unten). Produktion erst nach Staging-Abnahme + optionaler VBH-Diagnose (Dry Run).
 
 ---
 
 ## Risiko-Register (kompakt)
 
-| ID | Priorität | Bereich | Kurzbeschreibung |
-|----|-----------|---------|------------------|
-| R-01 | **P1** | Reserved | Produktive API nutzt Legacy-Reservierungsfenster, nicht Pickup-Tag |
-| R-02 | **P1** | API / Admin | Org-Dashboard-Zähler aus Raw-DB, nicht abgeleitet |
-| R-03 | **P1** | API | Master-Admin `mapToRegisteredVehicle` umgeht State Engine |
-| R-04 | **P1** | Frontend | Booking-Picker + Preflight lesen `vehicle.status` direkt |
-| R-05 | **P1** | Operator | Quick-View OR-Logik: Flat-Status + Booking-IDs |
-| R-06 | **P1** | Unknown | Backend emittiert kein `operationalState` / UNKNOWN |
-| R-07 | **P1** | Cache | Optimistic Patches werden bei Fleet-Map-Fetch komplett verworfen |
-| R-08 | **P1** | Cache | Backend Fleet-Map Redis nur TTL (5s), keine Event-Invalidierung |
-| R-09 | **P2** | Frontend | `App.tsx` kollabiert Reserved/Rented in lokalem Detail-State |
-| R-10 | **P2** | Frontend | Mehrfache `handover:completed`-Listener (redundant) |
-| R-11 | **P2** | API | Fleet-Map Hard-Cap 500 Fahrzeuge |
-| R-12 | **P2** | Statuswrites | Cancel/No-show setzt DB `AVAILABLE` ohne Prüfung anderer Buchungen |
-| R-13 | **P2** | Tests | Operator-Shell E2E deferred (Unit-Coverage vorhanden) |
-| R-14 | **P2** | Frontend | Deprecated `buildFleetStateTabs` mit Raw-Maintenance-Count (toter Code) |
+| ID | Priorität | Bereich | Kurzbeschreibung | Prompt-43-Status |
+|----|-----------|---------|------------------|------------------|
+| R-01 | **P1** | Reserved | Produktive API nutzt Legacy-Reservierungsfenster, nicht Pickup-Tag | **behoben** — `fleet-booking-context.util.ts` + Org-Timezone in `buildBookingContextMap` |
+| R-02 | **P1** | API / Admin | Org-Dashboard-Zähler aus Raw-DB, nicht abgeleitet | **behoben** — `aggregateDerivedFleetStatusCounts` in `getOrganizationStats` |
+| R-03 | **P1** | API | Master-Admin `mapToRegisteredVehicle` umgeht State Engine | **behoben** — `findAllPlatform` batcht abgeleiteten Status pro Org |
+| R-04 | **P1** | Frontend | Booking-Picker + Preflight lesen `vehicle.status` direkt | **behoben** — `selectOperationalStatus` / `selectIsStatusReliable` in Picker + Preflight |
+| R-05 | **P1** | Operator | Quick-View OR-Logik: Flat-Status + Booking-IDs | **behoben** — `useOperatorVehicleQuickViewData` + Selector-Gates |
+| R-06 | **P1** | Unknown | Backend emittiert kein `operationalState` / UNKNOWN | **behoben** — `fleet-operational-state.util.ts`; `loadFailed` → UNKNOWN |
+| R-07 | **P1** | Cache | Optimistic Patches werden bei Fleet-Map-Fetch komplett verworfen | **behoben** — `mergeFleetMapFetchWithOptimisticPatches` |
+| R-08 | **P1** | Cache | Backend Fleet-Map Redis nur TTL (5s), keine Event-Invalidierung | **behoben** — `FleetMapCacheService.invalidate` bei Handover/Booking/Status-PATCH |
+| R-09 | **P2** | Frontend | `App.tsx` kollabiert Reserved/Rented in lokalem Detail-State | **bewusst offen** — kein Build-/Integritätsblocker |
+| R-10 | **P2** | Frontend | Mehrfache `handover:completed`-Listener (redundant) | **bewusst offen** |
+| R-11 | **P2** | API | Fleet-Map Hard-Cap 500 Fahrzeuge | **bewusst offen** |
+| R-12 | **P2** | Statuswrites | Cancel/No-show setzt DB `AVAILABLE` ohne Prüfung anderer Buchungen | **bewusst offen** — Handover-Pfad korrekt; Cancel-Pfad dokumentiert |
+| R-13 | **P2** | Tests | Operator-Shell E2E deferred (Unit-Coverage vorhanden) | **bewusst offen** — Operator-Unit-Tests grün |
+| R-14 | **P2** | Frontend | Deprecated `buildFleetStateTabs` mit Raw-Maintenance-Count (toter Code) | **bewusst offen** |
 
 ---
 
@@ -584,49 +585,186 @@ Siehe Abschnitt 1.3 / 1.4.
 ```mermaid
 flowchart TB
   subgraph Backend
-    BCM[buildBookingContextMap<br/>legacy window]
+    BCM[buildBookingContextMap<br/>pickup-day + supplements]
     DFS[deriveFleetStatusContext]
-    FM[getFleetMapData + Redis 5s TTL]
+    FM[getFleetMapData + Redis + invalidate]
     FO[findOne / mapToVehicleData]
     HO[bookings-handover.service]
     CAN[cancel / markNoShow]
-    ADM[mapToRegisteredVehicle<br/>Master Admin raw]
+    ADM[findAllPlatform<br/>derived per org]
+    OS[aggregateDerivedFleetStatusCounts]
   end
 
   subgraph Frontend
     MAP[fleet-map-vehicle-mapper]
     SEL[selectors.ts]
-    STORE[useFleetMapStore]
+    STORE[useFleetMapStore<br/>optimistic merge]
     DASH[dashboard runtime slices]
-    OP[operatorStatus]
-    GAP[VehiclePicker / Preflight / QuickView<br/>raw status gaps]
+    OP[operatorStatus + quick-view]
+    PICK[VehiclePicker + Preflight]
   end
 
   BCM --> DFS
   DFS --> FM
   DFS --> FO
-  HO -->|RENTED/AVAILABLE write| DB[(vehicles.status)]
-  CAN --> DB
+  HO -->|invalidate| FM
+  CAN -->|invalidate| FM
   FM --> MAP
   FO --> MAP
   MAP --> STORE
   STORE --> SEL
   SEL --> DASH
   SEL --> OP
-  STORE -.->|bypass| GAP
-  ADM -.->|parallel path| MasterUI[Master Admin UI]
+  SEL --> PICK
+  ADM --> MasterUI[Master Admin UI]
+  OS --> OrgKPI[Org Dashboard KPIs]
 ```
 
 ---
 
-## Priorisierte Korrektur-Roadmap (nur Empfehlung — nicht umgesetzt)
+## Priorisierte Korrektur-Roadmap (Prompt 43 — umgesetzt)
 
-1. **P1 — R-01:** `buildBookingContextMap` + Org-Timezone → kanonisches Pickup-Fenster; Tests von „legacy read path“ auf Zielverhalten drehen.
-2. **P1 — R-04/R-05:** Booking-Wizard, Preflight, Operator Quick-View auf gemeinsame Selectors.
-3. **P1 — R-07/R-08:** Optimistic-Patch-Merge + Redis Fleet-Map Invalidierung bei Mutationen.
-4. **P1 — R-06:** Entscheidung: Backend `operationalState`-DTO oder dokumentierte Frontend-only UNKNOWN-Schicht.
-5. **P1 — R-02/R-03:** Org-Stats / Master-Admin klar trennen oder angleichen.
-6. **P2:** Cancel/No-show DB-Flip, App.tsx Status, Fleet-Map 500-Cap, toter deprecated Code, Operator E2E.
+1. ~~**P1 — R-01:**~~ `buildBookingContextMap` + Org-Timezone → kanonisches Pickup-Fenster. **Erledigt.**
+2. ~~**P1 — R-04/R-05:**~~ Booking-Wizard, Preflight, Operator Quick-View auf gemeinsame Selectors. **Erledigt.**
+3. ~~**P1 — R-07/R-08:**~~ Optimistic-Patch-Merge + Redis Fleet-Map Invalidierung bei Mutationen. **Erledigt.**
+4. ~~**P1 — R-06:**~~ Backend `operationalState`-DTO + UNKNOWN bei Booking-Ladefehler. **Erledigt.**
+5. ~~**P1 — R-02/R-03:**~~ Org-Stats / Master-Admin abgeleitete Aggregation. **Erledigt.**
+6. **P2:** Cancel/No-show DB-Flip, App.tsx Status, Fleet-Map 500-Cap, toter deprecated Code, Operator E2E — **offen für Folge-Prompt.**
+
+---
+
+## Prompt 43 — Repositoryweite Verifikation
+
+| Prüfpunkt | Ergebnis | Nachweis |
+|-----------|----------|----------|
+| Direkte/unzulässige `Vehicle.status`-Writes außerhalb erlaubter Pfade | **OK** | Handover, Cancel/No-show, Admin-PATCH, Repair-Skript — keine neuen Schreibpfade |
+| Unbekannt → Available (Fail-open) | **behoben** | `buildBookingContextMap` `loadFailed` → `deriveFleetStatusContext` → `Unknown` + `operationalState.status: UNKNOWN` |
+| Fehlender Booking-Kontext → Available | **OK** | Leerer Kontext + AVAILABLE-Raw → `Available` (korrekt); Ladefehler → UNKNOWN |
+| Separate Reserved-Ableitungen (Legacy) | **isoliert** | `isLegacyReservationWindowBooking` nur Diagnose + explizite Legacy-Tests |
+| Raw status als operative Wahrheit in Rental-UI | **behoben** | Picker/Preflight/Operator Quick-View auf Selectors; verbleibende `vehicle.status`-Reads in Runtime-Builder/optimistic (akzeptiert — API-Flat-Feld ist abgeleitet) |
+| Verlorene Booking-Context-Felder | **behoben** | `bookingContext` + `nextBooking` supplements in Fleet-Map/List/Detail |
+| Alte Fleet-/Dashboard-Filter | **OK** | Fleet-Tabs/Dashboard nutzen `selectOperationalStatus` / Runtime-Slices |
+
+---
+
+## Prompt 43 — Validierungsläufe
+
+### Backend
+
+| Suite | Ergebnis |
+|-------|----------|
+| Operational specs (`vehicle-operational-state-v2.*`) | **62/62 passed** |
+| Bookings + Handover + `vehicles.service` | **85/85 passed** |
+| `organizations.service.spec.ts` | **passed** |
+| Prisma validate | **valid** (kein Schema-Delta in diesem Prompt) |
+| Backend `tsc` (gesamt) | **Pre-existing Fehler** in `billing.module.ts` (unrelated) — Jest-Suites kompilieren via ts-jest |
+
+### Frontend
+
+| Suite | Ergebnis |
+|-------|----------|
+| Operational Vitest (15 Dateien) | **104/104 passed** |
+| `npx tsc -b` | **OK** |
+| `npm run build` | **OK** |
+| Playwright `fleet-operational-flow.spec.ts` | **42/42 passed** (desktop/tablet/mobile) |
+
+---
+
+## Manuelle Smoke-Test-Matrix (Staging)
+
+| Fall | Setup | Erwartung | API-Prüfung |
+|------|-------|-----------|-------------|
+| **A** | Heute vor 01.08.; Buchung 01.08.–06.08. CONFIRMED | **Available**; Next Booking sichtbar; Zeitraum nicht doppelt buchbar | `GET /fleet-map` → `status: Available`, `bookingContext.nextBooking` gesetzt, kein `reservedBookingId` |
+| **B** | 01.08. vor Pickup (Pickup-Tag in Org-TZ) | **Reserved** | `reservedBookingId` + `status: Reserved` |
+| **C** | Pickup abgeschlossen (ACTIVE + PICKUP-Protokoll) | **Active Rented** | `activeBookingId` + `status: Active Rented` |
+| **D** | Return abgeschlossen | **Available**, Maintenance, Blocked oder Unknown je nach Raw/Maintenance/Booking-Lage | Kein Ghost-Rented; Maintenance > Booking |
+| **E** | Booking-Abfragefehler (DB timeout / simuliert) | **Unknown**; niemals Available | `operationalState.status: UNKNOWN`, `isStatusReliable: false` |
+
+**UI-Oberflächen pro Fall:** Fleet List Tabs, Fleet Map Marker, Dashboard KPI/Drawer, Vehicle Detail Callout, Booking Wizard Picker (Fall A/E), Operator Quick-View (Fall B/C).
+
+---
+
+## Diagnose — KS FH 660E / lokale Testumgebung
+
+**Lauf in Cloud Agent:** Nicht ausführbar — `ts-node` scheitert an pre-existing `billing.module.ts`-Compile-Fehlern; keine lokale `.env` mit erreichbarer Test-DB für Kennzeichen **KS FH 660E**.
+
+### Reproduzierbarer Prüfplan (Staging, read-only)
+
+```bash
+cd backend
+# 1) Diagnose (Dry Run / read-only)
+npx ts-node -r tsconfig-paths/register scripts/ops/audit-vehicle-booking-handover-data.ts \
+  --license-plate="KS FH 660E" --format=markdown --include-findings --output=./tmp/ks-fh-660e-audit.md
+
+# 2) API-Smoke (org-scoped Token)
+curl -s -H "Authorization: Bearer $TOKEN" \
+  "$API/organizations/$ORG_ID/fleet-map?licensePlate=KS%20FH%20660E" | jq '.[] | {id, status, operationalState, bookingContext}'
+
+# 3) SQL (read-only)
+SELECT v.id, v.license_plate, v.status AS raw_status,
+       b.id AS booking_id, b.status AS booking_status, b.start_date, b.end_date
+FROM vehicles v
+LEFT JOIN bookings b ON b.vehicle_id = v.id
+  AND b.status IN ('PENDING','CONFIRMED','ACTIVE')
+  AND b.end_date >= NOW()
+WHERE v.license_plate ILIKE '%660E%'
+ORDER BY b.start_date;
+```
+
+### Reparatur (nur Dry Run — kein Apply gegen Produktion)
+
+```bash
+npx ts-node -r tsconfig-paths/register scripts/ops/repair-vehicle-booking-handover-data.ts \
+  --license-plate="KS FH 660E" --output=./tmp/ks-fh-660e-repair-dryrun.json
+# Kein --apply ohne Staging-Freigabe und vorherige Diagnose
+```
+
+---
+
+## Prompt 43 — Abschlussbericht
+
+### Geänderte Dateien
+
+**Backend (neu):** `fleet-map-cache.service.ts`, `operational/fleet-booking-context.util.ts`, `operational/fleet-operational-state.util.ts`
+
+**Backend (geändert):** `vehicles.service.ts`, `vehicles.controller.ts`, `vehicles.module.ts`, `organizations.service.ts`, `organizations.module.ts`, `organizations.service.spec.ts`, `bookings.service.ts`, `bookings-handover.service.ts`, `bookings.module.ts`, `diagnostic/vehicle-booking-handover-diagnostic.util.ts`, operational `*.spec.ts`, `test-helpers.ts`
+
+**Frontend (geändert):** `booking-vehicle-preflight.ts`, `VehiclePickerStep.tsx`, `fleet-map-vehicle-store.utils.ts`, `useFleetMapStore.ts`, `useOperatorVehicleQuickViewData.ts`, `operatorVehicleQuickView.utils.ts`
+
+**Doku:** dieses Audit-Dokument, Changes V4.9.506, Architektur V4.9.506
+
+### Deployment-Reihenfolge
+
+1. **Backend** deployen (State-Engine + Cache-Invalidierung)
+2. **Frontend** deployen (Selectors + Optimistic-Merge)
+3. Redis Fleet-Map Keys optional manuell leeren: `DEL fleet-map:<orgId>:v1` pro betroffener Org (oder 5s TTL abwarten)
+4. Staging: Smoke-Matrix A–E
+5. Optional: VBH-Diagnose Dry Run auf Staging (KS FH 660E)
+6. Produktion nach Abnahme
+
+### Cache-Invalidierung
+
+Automatisch bei: Handover Pickup/Return, Booking Create/Update/Cancel/No-show, Vehicle Status PATCH (`invalidateFleetMapCache`). Frontend: `handover:completed` + Fleet-Store optimistic merge.
+
+### Verbleibende Risiken
+
+| Risiko | Schwere | Mitigation |
+|--------|---------|------------|
+| P2 Cancel/No-show setzt DB AVAILABLE ohne andere Buchungen | Niedrig | Kanonischer API-Status korrekt; Raw-DB kann drift — VBH-Repair Dry Run |
+| Fleet-Map 500-Cap (R-11) | Niedrig | Große Flotten >500 — Folge-Prompt |
+| `billing.module.ts` tsc-Fehler blockiert Ops-CLI | Mittel | Separater Fix; Jest/Deploy unberührt wenn CI nur Jest nutzt |
+| Master-Admin Detail `findById` weiterhin Raw für Einzelfahrzeug | Niedrig | Listen nutzen abgeleiteten Status; Detail optional nachziehen |
+
+### Finale Bewertung
+
+| Kriterium | Status |
+|-----------|--------|
+| P0 | **0 offen** |
+| P1 | **0 offen** (R-01–R-08 behoben) |
+| Tests grün (operational) | **Ja** |
+| Builds grün (Frontend) | **Ja** |
+| E2E Fleet-Operational | **Ja (42/42)** |
+| **READY / NOT READY** | **READY** (Staging + Smoke-Matrix; Produktion nach Staging-Abnahme) |
 
 ---
 
@@ -634,12 +772,12 @@ flowchart TB
 
 | Prüfpunkt | Ergebnis |
 |-----------|----------|
-| Produktive Dateien geändert | **Nein** (nur dieses Dokument) |
+| Produktive Dateien geändert (Prompt 43) | **Ja** — P1-Fixes V4.9.506 |
 | P0 Blocker | **0** |
-| P1 vor Produktion | **8** (R-01–R-08) |
-| P2 Verbesserung | **6** (R-09–R-14) |
-| Synqdrive Changes aktualisiert | **Nein** (read-only Audit) |
-| Synqdrive Architektur aktualisiert | **Nein** (read-only Audit) |
+| P1 vor Produktion | **0** (alle behoben) |
+| P2 Verbesserung | **6** (R-09–R-14 bewusst offen) |
+| Synqdrive Changes aktualisiert | **Ja** — V4.9.506 |
+| Synqdrive Architektur aktualisiert | **Ja** — V4.9.506 |
 
 ---
 

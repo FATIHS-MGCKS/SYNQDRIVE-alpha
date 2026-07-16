@@ -6,6 +6,7 @@ import { VehiclesService } from '../vehicles.service';
 import {
   EMPTY_BOOKING,
   makeBookingRow,
+  makeOperationalPrismaMocks,
   makeOperationalVehiclesService,
 } from './vehicle-operational-state-v2.test-helpers';
 
@@ -72,12 +73,11 @@ describe('Vehicle Operational State V2 — active rental lifecycle', () => {
 
     const bookingFindMany = jest.fn().mockResolvedValue([]);
     const service = makeOperationalVehiclesService({
-      prisma: {
+      prisma: makeOperationalPrismaMocks({
         booking: { findMany: bookingFindMany },
-        station: { findMany: jest.fn().mockResolvedValue([]) },
-      },
+      }),
     });
-    const map = await (service as any).buildBookingContextMap('org-1', ['veh-1']);
+    const { map } = await (service as any).buildBookingContextMap('org-1', ['veh-1']);
     expect(map.get('veh-1')).toBeUndefined();
     expect(bookingFindMany.mock.calls[0][0].where.OR).toEqual(
       expect.arrayContaining([
@@ -107,12 +107,12 @@ describe('Vehicle Operational State V2 — active rental lifecycle', () => {
       }),
     ]);
     const service = makeOperationalVehiclesService({
-      prisma: {
+      prisma: makeOperationalPrismaMocks({
         booking: { findMany: bookingFindMany },
         station: { findMany: jest.fn().mockResolvedValue([{ id: 'st-1', name: 'Kassel' }]) },
-      },
+      }),
     });
-    const map = await (service as any).buildBookingContextMap('org-1', ['veh-1']);
+    const { map } = await (service as any).buildBookingContextMap('org-1', ['veh-1']);
     expect(map.get('veh-1')?.activeBookingId).toBe('bk-active-1');
     jest.useRealTimers();
   });

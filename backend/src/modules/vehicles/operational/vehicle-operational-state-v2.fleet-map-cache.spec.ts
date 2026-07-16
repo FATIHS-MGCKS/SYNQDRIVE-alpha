@@ -1,5 +1,6 @@
 import { VehicleStatus } from '@prisma/client';
 import {
+  makeOperationalPrismaMocks,
   makeOperationalVehiclesService,
   makeVehicleRow,
 } from './vehicle-operational-state-v2.test-helpers';
@@ -27,13 +28,10 @@ describe('Vehicle Operational State V2 — fleet-map cache', () => {
     const redisGet = jest.fn().mockResolvedValue(null);
     const redisSet = jest.fn().mockResolvedValue('OK');
     const service = makeOperationalVehiclesService({
-      prisma: {
+      prisma: makeOperationalPrismaMocks({
         vehicle: { findMany: jest.fn().mockResolvedValue([vehicle]) },
-        vehicleTripDetectionState: { findMany: jest.fn().mockResolvedValue([]) },
         booking: { findMany: jest.fn().mockResolvedValue([]) },
-        station: { findMany: jest.fn().mockResolvedValue([]) },
-        bookingHandoverProtocol: { findMany: jest.fn().mockResolvedValue([]) },
-      },
+      }),
       redis: { get: redisGet, set: redisSet },
     });
 
@@ -49,13 +47,10 @@ describe('Vehicle Operational State V2 — fleet-map cache', () => {
   it('uses org-scoped cache keys (tenant isolation)', async () => {
     const redisGet = jest.fn().mockResolvedValue(null);
     const service = makeOperationalVehiclesService({
-      prisma: {
+      prisma: makeOperationalPrismaMocks({
         vehicle: { findMany: jest.fn().mockResolvedValue([]) },
-        vehicleTripDetectionState: { findMany: jest.fn().mockResolvedValue([]) },
         booking: { findMany: jest.fn().mockResolvedValue([]) },
-        station: { findMany: jest.fn().mockResolvedValue([]) },
-        bookingHandoverProtocol: { findMany: jest.fn().mockResolvedValue([]) },
-      },
+      }),
       redis: { get: redisGet, set: jest.fn() },
     });
 
@@ -67,19 +62,13 @@ describe('Vehicle Operational State V2 — fleet-map cache', () => {
     ]);
   });
 
-  it('documents TTL-only invalidation — mutations do not bust cache yet', async () => {
+  it('invalidateFleetMapCache deletes org-scoped redis key', async () => {
+    const redisDel = jest.fn().mockResolvedValue(1);
     const service = makeOperationalVehiclesService({
-      prisma: {
-        vehicle: {
-          findFirst: jest.fn().mockResolvedValue({ id: 'veh-1', organizationId: orgId }),
-          findUniqueOrThrow: jest.fn(),
-          update: jest.fn().mockResolvedValue({ id: 'veh-1', status: VehicleStatus.IN_SERVICE }),
-        },
-      },
-      redis: { get: jest.fn(), set: jest.fn() },
+      redis: { get: jest.fn(), set: jest.fn(), del: redisDel },
     });
 
-    await service.update('veh-1', { status: VehicleStatus.IN_SERVICE }, orgId);
-    expect((service as any).redis.del).toBeUndefined();
+    await service.invalidateFleetMapCache(orgId);
+    expect(redisDel).toHaveBeenCalledWith(`fleet-map:${orgId}:v1`);
   });
 });
