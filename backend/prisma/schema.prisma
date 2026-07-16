@@ -320,6 +320,29 @@ enum TireEventType {
   REMOVE
 }
 
+/// Canonical provenance for tread depth, baseline, and validation evidence.
+enum TireEvidenceSource {
+  MANUAL_MEASUREMENT
+  WORKSHOP_MEASUREMENT
+  DOCUMENT_MEASUREMENT
+  MANUFACTURER_CONFIRMED
+  USER_CONFIRMED
+  AI_ESTIMATED
+  MODEL_ESTIMATED
+  DEFAULT_ASSUMPTION
+  PROVIDER_SIGNAL
+  UNKNOWN
+}
+
+/// Lifecycle of an initial-tread baseline on setup or tire identity row.
+enum TireBaselineStatus {
+  UNKNOWN
+  INCOMPLETE
+  ESTIMATED
+  CONFIRMED
+  DOCUMENTED
+}
+
 enum ServiceEventType {
   OIL_CHANGE
   TIRE_ROTATION
@@ -1349,30 +1372,30 @@ model User {
   createdAt          DateTime         @default(now()) @map("created_at")
   updatedAt          DateTime         @updatedAt @map("updated_at")
 
-  memberships                 OrganizationMembership[]
-  activityLogs                ActivityLog[]
-  refreshTokens               RefreshToken[]
-  accountPreferences          UserAccountPreference[]
-  notificationPreferences     UserNotificationPreference[]
-  invitesSent                 OrganizationUserInvite[]     @relation("InvitesSent")
-  invitesAccepted             OrganizationUserInvite[]     @relation("InvitesAccepted")
-  organizationRolesCreated    OrganizationRole[]           @relation("RolesCreated")
-  billingPriceVersionsCreated BillingPriceVersion[]        @relation("BillingPriceVersionsCreated")
-  billingPriceVersionsPublished BillingPriceVersion[]      @relation("BillingPriceVersionsPublished")
-  billingSubscriptionsCreated   BillingSubscription[]      @relation("BillingSubscriptionsCreated")
-  billingSubscriptionsUpdated   BillingSubscription[]      @relation("BillingSubscriptionsUpdated")
-  billingDiscountsCreated       BillingDiscount[]            @relation("BillingDiscountsCreated")
-  billingQuantityEventsActed    BillingQuantityEvent[]       @relation("BillingQuantityEventsActed")
-  billingPaymentsRecorded     BillingPayment[]             @relation("BillingPaymentsRecorded")
-  billingReconciliationDriftsResolved BillingReconciliationDrift[] @relation("BillingReconciliationDriftsResolved")
-  billingUsageSnapshotsCreated  BillingUsageSnapshot[]       @relation("BillingUsageSnapshotsCreated")
-  billingVehicleAssignmentsApproved BillingBillableVehicleAssignment[] @relation("BillingVehicleAssignmentsApproved")
-  outboundEmailsSent          OutboundEmail[]              @relation("OutboundEmailSentBy")
-  pricingQuotesCreated        PricingQuote[]               @relation("PricingQuotesCreated")
-  notificationReceipts        NotificationReceipt[]
-  taskAutomationRuleOverridesCreated OrgTaskAutomationRuleOverride[] @relation("TaskAutomationRuleOverrideCreated")
-  taskAutomationRuleOverridesUpdated OrgTaskAutomationRuleOverride[] @relation("TaskAutomationRuleOverrideUpdated")
-  taskAutomationRuleOverrideRevisions  OrgTaskAutomationRuleOverrideRevision[] @relation("TaskAutomationRuleOverrideRevisionChanged")
+  memberships                         OrganizationMembership[]
+  activityLogs                        ActivityLog[]
+  refreshTokens                       RefreshToken[]
+  accountPreferences                  UserAccountPreference[]
+  notificationPreferences             UserNotificationPreference[]
+  invitesSent                         OrganizationUserInvite[]                @relation("InvitesSent")
+  invitesAccepted                     OrganizationUserInvite[]                @relation("InvitesAccepted")
+  organizationRolesCreated            OrganizationRole[]                      @relation("RolesCreated")
+  billingPriceVersionsCreated         BillingPriceVersion[]                   @relation("BillingPriceVersionsCreated")
+  billingPriceVersionsPublished       BillingPriceVersion[]                   @relation("BillingPriceVersionsPublished")
+  billingSubscriptionsCreated         BillingSubscription[]                   @relation("BillingSubscriptionsCreated")
+  billingSubscriptionsUpdated         BillingSubscription[]                   @relation("BillingSubscriptionsUpdated")
+  billingDiscountsCreated             BillingDiscount[]                       @relation("BillingDiscountsCreated")
+  billingQuantityEventsActed          BillingQuantityEvent[]                  @relation("BillingQuantityEventsActed")
+  billingPaymentsRecorded             BillingPayment[]                        @relation("BillingPaymentsRecorded")
+  billingReconciliationDriftsResolved BillingReconciliationDrift[]            @relation("BillingReconciliationDriftsResolved")
+  billingUsageSnapshotsCreated        BillingUsageSnapshot[]                  @relation("BillingUsageSnapshotsCreated")
+  billingVehicleAssignmentsApproved   BillingBillableVehicleAssignment[]      @relation("BillingVehicleAssignmentsApproved")
+  outboundEmailsSent                  OutboundEmail[]                         @relation("OutboundEmailSentBy")
+  pricingQuotesCreated                PricingQuote[]                          @relation("PricingQuotesCreated")
+  notificationReceipts                NotificationReceipt[]
+  taskAutomationRuleOverridesCreated  OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideCreated")
+  taskAutomationRuleOverridesUpdated  OrgTaskAutomationRuleOverride[]         @relation("TaskAutomationRuleOverrideUpdated")
+  taskAutomationRuleOverrideRevisions OrgTaskAutomationRuleOverrideRevision[] @relation("TaskAutomationRuleOverrideRevisionChanged")
 
   @@map("users")
 }
@@ -1710,65 +1733,65 @@ model Vehicle {
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  organization               Organization                      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  homeStation                Station?                          @relation("VehicleHomeStation", fields: [homeStationId], references: [id], onDelete: SetNull)
-  currentStation             Station?                          @relation("VehicleCurrentStation", fields: [currentStationId], references: [id], onDelete: SetNull)
-  expectedStation            Station?                          @relation("VehicleExpectedStation", fields: [expectedStationId], references: [id], onDelete: SetNull)
-  dimoVehicle                DimoVehicle?                      @relation(fields: [dimoVehicleId], references: [id], onDelete: SetNull)
-  batterySpecs               VehicleBatterySpec[]
-  tireSetups                 VehicleTireSetup[]
-  tires                      Tire[]
-  tirePositionHistory        TirePositionHistory[]
-  tireEvents                 TireEvent[]
-  tireHealthSnapshots        TireHealthSnapshot[]
-  tireWearDataPoints         TireWearDataPoint[]
-  brakeSpecs                 VehicleBrakeReferenceSpec[]
-  serviceEvents              VehicleServiceEvent[]
-  enrichmentJobs             VehicleEnrichmentJob[]
-  latestState                VehicleLatestState?
-  positionUpdates            VehiclePositionUpdate[]
-  analyticsCacheEntries      AnalyticsCache[]
-  pollLogs                   DimoPollLog[]
-  bookings                   Booking[]
-  handoverProtocols          BookingHandoverProtocol[]
-  drivingEvents              DrivingEvent[]
-  batterySnapshots           BatteryHealthSnapshot[]
-  hvBatterySnapshots         HvBatteryHealthSnapshot[]
-  hvBatteryHealthCurrent     HvBatteryHealthCurrent?
-  batteryFeatures            BatteryFeatures?
-  batteryEvidence            BatteryEvidence[]
-  brakeEvidence              BrakeEvidence[]
-  brakeTripMetrics           BrakeTripMetric[]
-  brakeHealthCurrent         BrakeHealthCurrent?
-  dtcEvents                  VehicleDtcEvent[]
-  tripDrivingImpacts         TripDrivingImpact[]
-  drivingImpactCurrent       VehicleDrivingImpactCurrent?
-  damages                    VehicleDamage[]
-  exteriorImages             VehicleExteriorImage[]
-  rentalDrivingAnalyses      RentalDrivingAnalysis[]
-  trips                      VehicleTrip[]
-  rpmWebhookCandidates       RpmWebhookCandidate[]
-  dimoDeviceConnectionEvents DimoDeviceConnectionEvent[]
-  tripDetectionState         VehicleTripDetectionState?
-  tripTrackingRuns           VehicleTripTrackingRun[]
-  tripBehaviorEvents         TripBehaviorEvent[]
-  misuseCases                MisuseCase[]
-  tripRepairs                TripRepair[]
-  energyEvents               VehicleEnergyEvent[]
-  logbookConfig              VehicleLogbookConfig?
-  documentExtractions        VehicleDocumentExtraction[]
-  vendorVehicles             VendorVehicle[]
-  complaints                 VehicleComplaint[]
-  drivingAssessmentQuality   VehicleDrivingAssessmentQuality?
-  dataSourceLinks            VehicleDataSourceLink[]
-  hmSignalGroupStates        HmSignalGroupState[]
-  providerConsents           VehicleProviderConsent[]
-  tariffAssignments          VehicleTariffAssignment[]
-  pricingQuotes              PricingQuote[]
-  rentalCategoryId           String?                           @map("rental_category_id")
-  rentalCategory             RentalVehicleCategory?            @relation(fields: [rentalCategoryId], references: [id], onDelete: SetNull)
-  rentalRequirementOverride  VehicleRentalRequirementOverride?
-  whatsappConversations      WhatsAppConversation[]
+  organization                      Organization                       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  homeStation                       Station?                           @relation("VehicleHomeStation", fields: [homeStationId], references: [id], onDelete: SetNull)
+  currentStation                    Station?                           @relation("VehicleCurrentStation", fields: [currentStationId], references: [id], onDelete: SetNull)
+  expectedStation                   Station?                           @relation("VehicleExpectedStation", fields: [expectedStationId], references: [id], onDelete: SetNull)
+  dimoVehicle                       DimoVehicle?                       @relation(fields: [dimoVehicleId], references: [id], onDelete: SetNull)
+  batterySpecs                      VehicleBatterySpec[]
+  tireSetups                        VehicleTireSetup[]
+  tires                             Tire[]
+  tirePositionHistory               TirePositionHistory[]
+  tireEvents                        TireEvent[]
+  tireHealthSnapshots               TireHealthSnapshot[]
+  tireWearDataPoints                TireWearDataPoint[]
+  brakeSpecs                        VehicleBrakeReferenceSpec[]
+  serviceEvents                     VehicleServiceEvent[]
+  enrichmentJobs                    VehicleEnrichmentJob[]
+  latestState                       VehicleLatestState?
+  positionUpdates                   VehiclePositionUpdate[]
+  analyticsCacheEntries             AnalyticsCache[]
+  pollLogs                          DimoPollLog[]
+  bookings                          Booking[]
+  handoverProtocols                 BookingHandoverProtocol[]
+  drivingEvents                     DrivingEvent[]
+  batterySnapshots                  BatteryHealthSnapshot[]
+  hvBatterySnapshots                HvBatteryHealthSnapshot[]
+  hvBatteryHealthCurrent            HvBatteryHealthCurrent?
+  batteryFeatures                   BatteryFeatures?
+  batteryEvidence                   BatteryEvidence[]
+  brakeEvidence                     BrakeEvidence[]
+  brakeTripMetrics                  BrakeTripMetric[]
+  brakeHealthCurrent                BrakeHealthCurrent?
+  dtcEvents                         VehicleDtcEvent[]
+  tripDrivingImpacts                TripDrivingImpact[]
+  drivingImpactCurrent              VehicleDrivingImpactCurrent?
+  damages                           VehicleDamage[]
+  exteriorImages                    VehicleExteriorImage[]
+  rentalDrivingAnalyses             RentalDrivingAnalysis[]
+  trips                             VehicleTrip[]
+  rpmWebhookCandidates              RpmWebhookCandidate[]
+  dimoDeviceConnectionEvents        DimoDeviceConnectionEvent[]
+  tripDetectionState                VehicleTripDetectionState?
+  tripTrackingRuns                  VehicleTripTrackingRun[]
+  tripBehaviorEvents                TripBehaviorEvent[]
+  misuseCases                       MisuseCase[]
+  tripRepairs                       TripRepair[]
+  energyEvents                      VehicleEnergyEvent[]
+  logbookConfig                     VehicleLogbookConfig?
+  documentExtractions               VehicleDocumentExtraction[]
+  vendorVehicles                    VendorVehicle[]
+  complaints                        VehicleComplaint[]
+  drivingAssessmentQuality          VehicleDrivingAssessmentQuality?
+  dataSourceLinks                   VehicleDataSourceLink[]
+  hmSignalGroupStates               HmSignalGroupState[]
+  providerConsents                  VehicleProviderConsent[]
+  tariffAssignments                 VehicleTariffAssignment[]
+  pricingQuotes                     PricingQuote[]
+  rentalCategoryId                  String?                            @map("rental_category_id")
+  rentalCategory                    RentalVehicleCategory?             @relation(fields: [rentalCategoryId], references: [id], onDelete: SetNull)
+  rentalRequirementOverride         VehicleRentalRequirementOverride?
+  whatsappConversations             WhatsAppConversation[]
   billingBillableVehicleAssignments BillingBillableVehicleAssignment[]
   billingQuantityEvents             BillingQuantityEvent[]
 
@@ -2115,6 +2138,14 @@ model VehicleTireSetup {
   referenceNewTreadSource    String? @map("reference_new_tread_source")
   replacementThresholdSource String? @map("replacement_threshold_source")
 
+  // ── Evidence / baseline provenance (additive; nullable for legacy rows) ─────
+  initialTreadEvidenceSource TireEvidenceSource? @map("initial_tread_evidence_source")
+  initialTreadMeasuredAt     DateTime?           @map("initial_tread_measured_at")
+  initialTreadConfirmedAt    DateTime?           @map("initial_tread_confirmed_at")
+  initialTreadEvidenceId     String?             @map("initial_tread_evidence_id")
+  baselineConfidence         Float?              @map("baseline_confidence")
+  baselineStatus             TireBaselineStatus? @map("baseline_status")
+
   // ── Multi-dimensional confidence ────────────────────────────────────────────
   tireSpecConfidence         Float? @map("tire_spec_confidence")
   dataCompletenessConfidence Float? @map("data_completeness_confidence")
@@ -2123,39 +2154,45 @@ model VehicleTireSetup {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  vehicle         Vehicle                       @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  measurements    VehicleTireTreadMeasurement[]
-  tires           Tire[]
-  positionHistory TirePositionHistory[]
-  events          TireEvent[]
-  snapshots       TireHealthSnapshot[]
-  wearDataPoints  TireWearDataPoint[]
+  vehicle              Vehicle                       @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  measurements         VehicleTireTreadMeasurement[]
+  tires                Tire[]
+  positionHistory      TirePositionHistory[]
+  events               TireEvent[]
+  snapshots            TireHealthSnapshot[]
+  wearDataPoints       TireWearDataPoint[]
+  initialTreadEvidence VehicleTireTreadMeasurement?  @relation("SetupInitialTreadEvidence", fields: [initialTreadEvidenceId], references: [id], onDelete: SetNull)
 
   @@index([vehicleId])
   @@index([organizationId, vehicleId])
   @@index([status])
+  @@index([initialTreadEvidenceId])
   @@map("vehicle_tire_setups")
 }
 
 model VehicleTireTreadMeasurement {
-  id                    String   @id @default(uuid())
-  vehicleId             String   @map("vehicle_id")
-  tireSetupId           String   @map("tire_setup_id")
-  frontLeftMm           Float?   @map("front_left_mm")
-  frontRightMm          Float?   @map("front_right_mm")
-  rearLeftMm            Float?   @map("rear_left_mm")
-  rearRightMm           Float?   @map("rear_right_mm")
-  odometerAtMeasurement Float?   @map("odometer_at_measurement")
-  source                String   @default("manual") @map("source")
-  workshopName          String?  @map("workshop_name")
-  isCalibrationPoint    Boolean  @default(false) @map("is_calibration_point")
-  measuredAt            DateTime @map("measured_at")
-  createdAt             DateTime @default(now()) @map("created_at")
+  id                    String              @id @default(uuid())
+  vehicleId             String              @map("vehicle_id")
+  tireSetupId           String              @map("tire_setup_id")
+  frontLeftMm           Float?              @map("front_left_mm")
+  frontRightMm          Float?              @map("front_right_mm")
+  rearLeftMm            Float?              @map("rear_left_mm")
+  rearRightMm           Float?              @map("rear_right_mm")
+  odometerAtMeasurement Float?              @map("odometer_at_measurement")
+  source                String              @default("manual") @map("source")
+  workshopName          String?             @map("workshop_name")
+  isCalibrationPoint    Boolean             @default(false) @map("is_calibration_point")
+  measuredAt            DateTime            @map("measured_at")
+  createdAt             DateTime            @default(now()) @map("created_at")
+  evidenceSource        TireEvidenceSource? @map("evidence_source")
 
-  tireSetup VehicleTireSetup @relation(fields: [tireSetupId], references: [id], onDelete: Cascade)
+  tireSetup               VehicleTireSetup    @relation(fields: [tireSetupId], references: [id], onDelete: Restrict)
+  wearDataPointsAsActual  TireWearDataPoint[] @relation("WearDataPointActualMeasurement")
+  setupsAsInitialEvidence VehicleTireSetup[]  @relation("SetupInitialTreadEvidence")
 
   @@index([vehicleId])
   @@index([tireSetupId])
+  @@index([evidenceSource])
   @@map("vehicle_tire_tread_measurements")
 }
 
@@ -2164,49 +2201,55 @@ model VehicleTireTreadMeasurement {
 // ------------------------------------------------
 
 model Tire {
-  id                   String           @id @default(uuid())
-  organizationId       String           @map("organization_id")
-  vehicleId            String           @map("vehicle_id")
-  tireSetId            String?          @map("tire_set_id")
-  brand                String?
-  tireModel            String?          @map("tire_model")
-  width                Int?
-  aspectRatio          Int?             @map("aspect_ratio")
-  rimDiameter          Int?             @map("rim_diameter")
-  loadIndex            String?          @map("load_index")
-  speedIndex           String?          @map("speed_index")
-  seasonType           TireSeason       @default(ALL_SEASON) @map("season_type")
-  runflat              Boolean          @default(false)
-  reinforced           Boolean          @default(false)
-  dotCode              String?          @map("dot_code")
-  productionWeek       Int?             @map("production_week")
-  productionYear       Int?             @map("production_year")
-  installedPosition    TirePosition     @map("installed_position")
-  currentPosition      TirePosition     @map("current_position")
-  initialTreadDepthMm  Float            @map("initial_tread_depth_mm")
-  legalMinTreadMm      Float            @default(1.6) @map("legal_min_tread_mm")
-  targetReplaceTreadMm Float            @default(3.0) @map("target_replace_tread_mm")
-  estimatedTreadMm     Float?           @map("estimated_tread_mm")
-  estimatedWearPercent Float?           @map("estimated_wear_percent")
-  estimatedRemainingKm Int?             @map("estimated_remaining_km")
-  wearRateMmPer1000km  Float?           @map("wear_rate_mm_per_1000km")
-  healthStatus         TireHealthStatus @default(EXCELLENT) @map("health_status")
-  confidenceScore      Float?           @map("confidence_score")
-  confidenceLabel      String?          @map("confidence_label")
-  totalKmOnTire        Float            @default(0) @map("total_km_on_tire")
-  cityKm               Float            @default(0) @map("city_km")
-  highwayKm            Float            @default(0) @map("highway_km")
-  ruralKm              Float            @default(0) @map("rural_km")
-  harshAccelEvents     Int              @default(0) @map("harsh_accel_events")
-  harshBrakeEvents     Int              @default(0) @map("harsh_brake_events")
-  highLateralEvents    Int              @default(0) @map("high_lateral_events")
-  burnoutEvents        Int              @default(0) @map("burnout_events")
-  lastRecalculatedAt   DateTime?        @map("last_recalculated_at")
-  active               Boolean          @default(true)
-  mountedAt            DateTime?        @map("mounted_at")
-  dismountedAt         DateTime?        @map("dismounted_at")
-  createdAt            DateTime         @default(now()) @map("created_at")
-  updatedAt            DateTime         @updatedAt @map("updated_at")
+  id                         String              @id @default(uuid())
+  organizationId             String              @map("organization_id")
+  vehicleId                  String              @map("vehicle_id")
+  tireSetId                  String?             @map("tire_set_id")
+  brand                      String?
+  tireModel                  String?             @map("tire_model")
+  width                      Int?
+  aspectRatio                Int?                @map("aspect_ratio")
+  rimDiameter                Int?                @map("rim_diameter")
+  loadIndex                  String?             @map("load_index")
+  speedIndex                 String?             @map("speed_index")
+  seasonType                 TireSeason          @default(ALL_SEASON) @map("season_type")
+  runflat                    Boolean             @default(false)
+  reinforced                 Boolean             @default(false)
+  dotCode                    String?             @map("dot_code")
+  productionWeek             Int?                @map("production_week")
+  productionYear             Int?                @map("production_year")
+  installedPosition          TirePosition        @map("installed_position")
+  currentPosition            TirePosition        @map("current_position")
+  initialTreadDepthMm        Float               @map("initial_tread_depth_mm")
+  legalMinTreadMm            Float               @default(1.6) @map("legal_min_tread_mm")
+  targetReplaceTreadMm       Float               @default(3.0) @map("target_replace_tread_mm")
+  initialTreadEvidenceSource TireEvidenceSource? @map("initial_tread_evidence_source")
+  initialTreadMeasuredAt     DateTime?           @map("initial_tread_measured_at")
+  initialTreadConfirmedAt    DateTime?           @map("initial_tread_confirmed_at")
+  initialTreadEvidenceId     String?             @map("initial_tread_evidence_id")
+  baselineConfidence         Float?              @map("baseline_confidence")
+  baselineStatus             TireBaselineStatus? @map("baseline_status")
+  estimatedTreadMm           Float?              @map("estimated_tread_mm")
+  estimatedWearPercent       Float?              @map("estimated_wear_percent")
+  estimatedRemainingKm       Int?                @map("estimated_remaining_km")
+  wearRateMmPer1000km        Float?              @map("wear_rate_mm_per_1000km")
+  healthStatus               TireHealthStatus    @default(EXCELLENT) @map("health_status")
+  confidenceScore            Float?              @map("confidence_score")
+  confidenceLabel            String?             @map("confidence_label")
+  totalKmOnTire              Float               @default(0) @map("total_km_on_tire")
+  cityKm                     Float               @default(0) @map("city_km")
+  highwayKm                  Float               @default(0) @map("highway_km")
+  ruralKm                    Float               @default(0) @map("rural_km")
+  harshAccelEvents           Int                 @default(0) @map("harsh_accel_events")
+  harshBrakeEvents           Int                 @default(0) @map("harsh_brake_events")
+  highLateralEvents          Int                 @default(0) @map("high_lateral_events")
+  burnoutEvents              Int                 @default(0) @map("burnout_events")
+  lastRecalculatedAt         DateTime?           @map("last_recalculated_at")
+  active                     Boolean             @default(true)
+  mountedAt                  DateTime?           @map("mounted_at")
+  dismountedAt               DateTime?           @map("dismounted_at")
+  createdAt                  DateTime            @default(now()) @map("created_at")
+  updatedAt                  DateTime            @updatedAt @map("updated_at")
 
   vehicle         Vehicle               @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   tireSet         VehicleTireSetup?     @relation(fields: [tireSetId], references: [id], onDelete: SetNull)
@@ -2289,26 +2332,32 @@ model TireEvent {
 }
 
 model TireHealthSnapshot {
-  id                   String   @id @default(uuid())
-  organizationId       String   @map("organization_id")
-  vehicleId            String   @map("vehicle_id")
-  tireId               String?  @map("tire_id")
-  tireSetId            String?  @map("tire_set_id")
-  snapshotDate         DateTime @map("snapshot_date")
-  odometerKm           Float?   @map("odometer_km")
-  estimatedTreadMm     Float?   @map("estimated_tread_mm")
-  estimatedWearPercent Float?   @map("estimated_wear_percent")
-  estimatedRemainingKm Int?     @map("estimated_remaining_km")
-  citySharePercent     Float?   @map("city_share_percent")
-  highwaySharePercent  Float?   @map("highway_share_percent")
-  ruralSharePercent    Float?   @map("rural_share_percent")
-  confidenceScore      Float?   @map("confidence_score")
-  wearRateMmPer1000km  Float?   @map("wear_rate_mm_per_1000km")
-  createdAt            DateTime @default(now()) @map("created_at")
+  id                   String              @id @default(uuid())
+  organizationId       String              @map("organization_id")
+  vehicleId            String              @map("vehicle_id")
+  tireId               String?             @map("tire_id")
+  tireSetId            String?             @map("tire_set_id")
+  snapshotDate         DateTime            @map("snapshot_date")
+  odometerKm           Float?              @map("odometer_km")
+  estimatedTreadMm     Float?              @map("estimated_tread_mm")
+  estimatedWearPercent Float?              @map("estimated_wear_percent")
+  estimatedRemainingKm Int?                @map("estimated_remaining_km")
+  citySharePercent     Float?              @map("city_share_percent")
+  highwaySharePercent  Float?              @map("highway_share_percent")
+  ruralSharePercent    Float?              @map("rural_share_percent")
+  confidenceScore      Float?              @map("confidence_score")
+  wearRateMmPer1000km  Float?              @map("wear_rate_mm_per_1000km")
+  createdAt            DateTime            @default(now()) @map("created_at")
+  modelVersion         String?             @map("model_version")
+  modelConfigHash      String?             @map("model_config_hash")
+  inputFingerprint     String?             @map("input_fingerprint")
+  baselineSource       TireEvidenceSource? @map("baseline_source")
+  evidenceSummary      Json?               @map("evidence_summary")
 
-  vehicle Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  tire    Tire?             @relation(fields: [tireId], references: [id], onDelete: SetNull)
-  tireSet VehicleTireSetup? @relation(fields: [tireSetId], references: [id], onDelete: SetNull)
+  vehicle                    Vehicle             @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  tire                       Tire?               @relation(fields: [tireId], references: [id], onDelete: SetNull)
+  tireSet                    VehicleTireSetup?   @relation(fields: [tireSetId], references: [id], onDelete: SetNull)
+  wearDataPointsFromSnapshot TireWearDataPoint[] @relation("WearDataPointPredictionSnapshot")
 
   @@index([vehicleId, snapshotDate])
   @@index([tireId, snapshotDate])
@@ -2317,32 +2366,45 @@ model TireHealthSnapshot {
 }
 
 model TireWearDataPoint {
-  id                 String   @id @default(uuid())
-  organizationId     String   @map("organization_id")
-  vehicleId          String   @map("vehicle_id")
-  tireSetId          String?  @map("tire_set_id")
-  axle               String
-  distanceKm         Float    @map("distance_km")
-  predictedTreadMm   Float    @map("predicted_tread_mm")
-  actualTreadMm      Float    @map("actual_tread_mm")
-  initialTreadMm     Float    @map("initial_tread_mm")
-  climateFactor      Float    @default(1.0) @map("climate_factor")
-  roadSurfaceFactor  Float    @default(1.0) @map("road_surface_factor")
-  roadTypeFactor     Float    @default(1.0) @map("road_type_factor")
-  drivingStyleFactor Float    @default(1.0) @map("driving_style_factor")
-  regenFactor        Float    @default(1.0) @map("regen_factor")
-  curbWeightKg       Float?   @map("curb_weight_kg")
-  tireWidthMm        Int?     @map("tire_width_mm")
-  tireSeason         String?  @map("tire_season")
-  residualError      Float?   @map("residual_error")
-  createdAt          DateTime @default(now()) @map("created_at")
+  id                    String              @id @default(uuid())
+  organizationId        String              @map("organization_id")
+  vehicleId             String              @map("vehicle_id")
+  tireSetId             String?             @map("tire_set_id")
+  axle                  String
+  distanceKm            Float               @map("distance_km")
+  predictedTreadMm      Float               @map("predicted_tread_mm")
+  actualTreadMm         Float               @map("actual_tread_mm")
+  initialTreadMm        Float               @map("initial_tread_mm")
+  climateFactor         Float               @default(1.0) @map("climate_factor")
+  roadSurfaceFactor     Float               @default(1.0) @map("road_surface_factor")
+  roadTypeFactor        Float               @default(1.0) @map("road_type_factor")
+  drivingStyleFactor    Float               @default(1.0) @map("driving_style_factor")
+  regenFactor           Float               @default(1.0) @map("regen_factor")
+  curbWeightKg          Float?              @map("curb_weight_kg")
+  tireWidthMm           Int?                @map("tire_width_mm")
+  tireSeason            String?             @map("tire_season")
+  residualError         Float?              @map("residual_error")
+  createdAt             DateTime            @default(now()) @map("created_at")
+  isGroundTruth         Boolean?            @map("is_ground_truth")
+  actualSource          TireEvidenceSource? @map("actual_source")
+  actualMeasurementId   String?             @map("actual_measurement_id")
+  actualMeasuredAt      DateTime?           @map("actual_measured_at")
+  predictionGeneratedAt DateTime?           @map("prediction_generated_at")
+  modelVersion          String?             @map("model_version")
+  modelConfigHash       String?             @map("model_config_hash")
+  predictionSnapshotId  String?             @map("prediction_snapshot_id")
 
-  vehicle Vehicle           @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  tireSet VehicleTireSetup? @relation(fields: [tireSetId], references: [id], onDelete: SetNull)
+  vehicle            Vehicle                      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  tireSet            VehicleTireSetup?            @relation(fields: [tireSetId], references: [id], onDelete: SetNull)
+  actualMeasurement  VehicleTireTreadMeasurement? @relation("WearDataPointActualMeasurement", fields: [actualMeasurementId], references: [id], onDelete: Restrict)
+  predictionSnapshot TireHealthSnapshot?          @relation("WearDataPointPredictionSnapshot", fields: [predictionSnapshotId], references: [id], onDelete: SetNull)
 
   @@index([vehicleId])
   @@index([tireSetId])
   @@index([organizationId])
+  @@index([actualMeasurementId])
+  @@index([predictionSnapshotId])
+  @@index([isGroundTruth])
   @@map("tire_wear_data_points")
 }
 
@@ -2692,22 +2754,22 @@ model OrganizationIntegration {
 
 /// Canonical SaaS billing product catalog (distinct from org licensing `products`).
 model BillingCatalogProduct {
-  id          String               @id @default(uuid())
-  key         String               @unique
-  name        String
-  description String?
-  productRole BillingProductRole   @map("product_role")
-  status      BillingCatalogStatus @default(ACTIVE)
-  sortOrder           Int                  @default(0) @map("sort_order")
-  allowMultipleItems  Boolean              @default(false) @map("allow_multiple_items")
-  metadata            Json?
-  createdAt           DateTime             @default(now()) @map("created_at")
-  updatedAt           DateTime             @updatedAt @map("updated_at")
+  id                 String               @id @default(uuid())
+  key                String               @unique
+  name               String
+  description        String?
+  productRole        BillingProductRole   @map("product_role")
+  status             BillingCatalogStatus @default(ACTIVE)
+  sortOrder          Int                  @default(0) @map("sort_order")
+  allowMultipleItems Boolean              @default(false) @map("allow_multiple_items")
+  metadata           Json?
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
 
-  priceBooks         BillingPriceBook[]
-  stripeMappings     BillingStripePriceMapping[]
+  priceBooks            BillingPriceBook[]
+  stripeMappings        BillingStripePriceMapping[]
   stripeCatalogMappings BillingStripeCatalogMapping[]
-  subscriptionItems  BillingSubscriptionItem[]
+  subscriptionItems     BillingSubscriptionItem[]
 
   @@index([status, sortOrder])
   @@map("billing_catalog_products")
@@ -2727,13 +2789,13 @@ model BillingPriceBook {
   createdAt        DateTime               @default(now()) @map("created_at")
   updatedAt        DateTime               @updatedAt @map("updated_at")
 
-  billingProduct    BillingCatalogProduct?           @relation(fields: [billingProductId], references: [id], onDelete: SetNull)
-  versions          BillingPriceVersion[]
-  usageSnapshots    BillingUsageSnapshot[]
-  orgPriceOverrides BillingOrganizationPriceOverride[]
-  subscriptions     BillingSubscription[]
-  subscriptionItems BillingSubscriptionItem[]
-  stripeMappings    BillingStripePriceMapping[]
+  billingProduct        BillingCatalogProduct?             @relation(fields: [billingProductId], references: [id], onDelete: SetNull)
+  versions              BillingPriceVersion[]
+  usageSnapshots        BillingUsageSnapshot[]
+  orgPriceOverrides     BillingOrganizationPriceOverride[]
+  subscriptions         BillingSubscription[]
+  subscriptionItems     BillingSubscriptionItem[]
+  stripeMappings        BillingStripePriceMapping[]
   stripeCatalogMappings BillingStripeCatalogMapping[]
 
   @@index([productKey])
@@ -2758,14 +2820,14 @@ model BillingPriceVersion {
   createdAt         DateTime                  @default(now()) @map("created_at")
   updatedAt         DateTime                  @updatedAt @map("updated_at")
 
-  priceBook         BillingPriceBook                   @relation(fields: [priceBookId], references: [id], onDelete: Cascade)
-  createdByUser     User?                              @relation("BillingPriceVersionsCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  publishedByUser   User?                              @relation("BillingPriceVersionsPublished", fields: [publishedByUserId], references: [id], onDelete: SetNull)
-  tiers             BillingPriceTier[]
-  usageSnapshots    BillingUsageSnapshot[]
-  orgPriceOverrides BillingOrganizationPriceOverride[]
-  subscriptions     BillingSubscription[]
-  subscriptionItems BillingSubscriptionItem[]
+  priceBook             BillingPriceBook                   @relation(fields: [priceBookId], references: [id], onDelete: Cascade)
+  createdByUser         User?                              @relation("BillingPriceVersionsCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  publishedByUser       User?                              @relation("BillingPriceVersionsPublished", fields: [publishedByUserId], references: [id], onDelete: SetNull)
+  tiers                 BillingPriceTier[]
+  usageSnapshots        BillingUsageSnapshot[]
+  orgPriceOverrides     BillingOrganizationPriceOverride[]
+  subscriptions         BillingSubscription[]
+  subscriptionItems     BillingSubscriptionItem[]
   stripeCatalogMappings BillingStripeCatalogMapping[]
 
   @@unique([priceBookId, versionNumber])
@@ -2785,8 +2847,8 @@ model BillingPriceTier {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  priceVersion   BillingPriceVersion    @relation(fields: [priceVersionId], references: [id], onDelete: Cascade)
-  usageSnapshots BillingUsageSnapshot[]
+  priceVersion      BillingPriceVersion       @relation(fields: [priceVersionId], references: [id], onDelete: Cascade)
+  usageSnapshots    BillingUsageSnapshot[]
   subscriptionItems BillingSubscriptionItem[]
 
   @@index([priceVersionId, sortOrder])
@@ -2795,17 +2857,17 @@ model BillingPriceTier {
 
 /// Stripe Product/Price mapping per pricebook. TEST and LIVE are strictly separated.
 model BillingStripePriceMapping {
-  id                String                     @id @default(uuid())
-  priceBookId       String                     @map("price_book_id")
-  billingProductId  String?                    @map("billing_product_id")
-  stripeMode        BillingStripeMode          @map("stripe_mode")
-  stripeProductId   String?                    @map("stripe_product_id")
-  stripePriceId     String?                    @map("stripe_price_id")
-  mappingStatus     BillingStripeMappingStatus @default(PENDING) @map("mapping_status")
-  lastSyncedAt      DateTime?                  @map("last_synced_at")
-  lastError         String?                    @map("last_error")
-  createdAt         DateTime                   @default(now()) @map("created_at")
-  updatedAt         DateTime                   @updatedAt @map("updated_at")
+  id               String                     @id @default(uuid())
+  priceBookId      String                     @map("price_book_id")
+  billingProductId String?                    @map("billing_product_id")
+  stripeMode       BillingStripeMode          @map("stripe_mode")
+  stripeProductId  String?                    @map("stripe_product_id")
+  stripePriceId    String?                    @map("stripe_price_id")
+  mappingStatus    BillingStripeMappingStatus @default(PENDING) @map("mapping_status")
+  lastSyncedAt     DateTime?                  @map("last_synced_at")
+  lastError        String?                    @map("last_error")
+  createdAt        DateTime                   @default(now()) @map("created_at")
+  updatedAt        DateTime                   @updatedAt @map("updated_at")
 
   priceBook      BillingPriceBook       @relation(fields: [priceBookId], references: [id], onDelete: Cascade)
   billingProduct BillingCatalogProduct? @relation(fields: [billingProductId], references: [id], onDelete: SetNull)
@@ -2820,23 +2882,23 @@ model BillingStripePriceMapping {
 
 /// Explicit Stripe catalog mapping per billing product + published price version and mode.
 model BillingStripeCatalogMapping {
-  id                String                     @id @default(uuid())
-  billingProductId  String                     @map("billing_product_id")
-  priceVersionId    String                     @map("price_version_id")
-  priceBookId       String                     @map("price_book_id")
-  stripeMode        BillingStripeMode          @map("stripe_mode")
-  stripeProductId   String                     @map("stripe_product_id")
-  stripePriceId     String                     @map("stripe_price_id")
-  currency          String                     @db.Char(3)
-  billingInterval   BillingInterval            @map("billing_interval")
-  billingModel      BillingModel               @default(PER_CONNECTED_VEHICLE) @map("billing_model")
-  stripePresentation String                    @default("recurring_per_unit") @map("stripe_presentation")
-  mappingStatus     BillingStripeMappingStatus @default(PENDING) @map("mapping_status")
-  lastVerifiedAt    DateTime?                  @map("last_verified_at")
-  lastError         String?                    @map("last_error")
-  disabledAt        DateTime?                  @map("disabled_at")
-  createdAt         DateTime                   @default(now()) @map("created_at")
-  updatedAt         DateTime                   @updatedAt @map("updated_at")
+  id                 String                     @id @default(uuid())
+  billingProductId   String                     @map("billing_product_id")
+  priceVersionId     String                     @map("price_version_id")
+  priceBookId        String                     @map("price_book_id")
+  stripeMode         BillingStripeMode          @map("stripe_mode")
+  stripeProductId    String                     @map("stripe_product_id")
+  stripePriceId      String                     @map("stripe_price_id")
+  currency           String                     @db.Char(3)
+  billingInterval    BillingInterval            @map("billing_interval")
+  billingModel       BillingModel               @default(PER_CONNECTED_VEHICLE) @map("billing_model")
+  stripePresentation String                     @default("recurring_per_unit") @map("stripe_presentation")
+  mappingStatus      BillingStripeMappingStatus @default(PENDING) @map("mapping_status")
+  lastVerifiedAt     DateTime?                  @map("last_verified_at")
+  lastError          String?                    @map("last_error")
+  disabledAt         DateTime?                  @map("disabled_at")
+  createdAt          DateTime                   @default(now()) @map("created_at")
+  updatedAt          DateTime                   @updatedAt @map("updated_at")
 
   billingProduct BillingCatalogProduct @relation(fields: [billingProductId], references: [id], onDelete: Restrict)
   priceVersion   BillingPriceVersion   @relation(fields: [priceVersionId], references: [id], onDelete: Cascade)
@@ -2851,41 +2913,41 @@ model BillingStripeCatalogMapping {
 }
 
 model BillingSubscription {
-  id                   String             @id @default(uuid())
-  organizationId       String             @map("organization_id")
-  stripeSubscriptionId String?            @map("stripe_subscription_id")
-  stripeCustomerId     String?            @map("stripe_customer_id")
-  stripeMode           BillingStripeMode? @map("stripe_mode")
-  status               BillingStatus      @default(ACTIVE)
-  trialStartAt         DateTime?          @map("trial_start_at")
-  trialEndAt           DateTime?          @map("trial_end_at")
-  startedAt            DateTime?          @map("started_at")
-  endedAt              DateTime?          @map("ended_at")
-  cancelAt             DateTime?          @map("cancel_at")
-  currentPeriodStart   DateTime?          @map("current_period_start")
-  currentPeriodEnd     DateTime?          @map("current_period_end")
-  cancelAtPeriodEnd    Boolean            @default(false) @map("cancel_at_period_end")
-  billingAnchorDay     Int?               @map("billing_anchor_day")
-  currency             String             @default("EUR") @db.Char(3)
-  priceBookId          String?            @map("price_book_id")
-  priceVersionId       String?            @map("price_version_id")
-  lockVersion          Int                @default(0) @map("lock_version")
+  id                   String                     @id @default(uuid())
+  organizationId       String                     @map("organization_id")
+  stripeSubscriptionId String?                    @map("stripe_subscription_id")
+  stripeCustomerId     String?                    @map("stripe_customer_id")
+  stripeMode           BillingStripeMode?         @map("stripe_mode")
+  status               BillingStatus              @default(ACTIVE)
+  trialStartAt         DateTime?                  @map("trial_start_at")
+  trialEndAt           DateTime?                  @map("trial_end_at")
+  startedAt            DateTime?                  @map("started_at")
+  endedAt              DateTime?                  @map("ended_at")
+  cancelAt             DateTime?                  @map("cancel_at")
+  currentPeriodStart   DateTime?                  @map("current_period_start")
+  currentPeriodEnd     DateTime?                  @map("current_period_end")
+  cancelAtPeriodEnd    Boolean                    @default(false) @map("cancel_at_period_end")
+  billingAnchorDay     Int?                       @map("billing_anchor_day")
+  currency             String                     @default("EUR") @db.Char(3)
+  priceBookId          String?                    @map("price_book_id")
+  priceVersionId       String?                    @map("price_version_id")
+  lockVersion          Int                        @default(0) @map("lock_version")
   stripeSyncStatus     BillingStripeMappingStatus @default(PENDING) @map("stripe_sync_status")
-  lastStripeSyncedAt   DateTime?          @map("last_stripe_synced_at")
-  lastStripeSyncError  String?            @map("last_stripe_sync_error")
-  createdByUserId      String?            @map("created_by_user_id")
-  updatedByUserId      String?            @map("updated_by_user_id")
-  createdAt            DateTime           @default(now()) @map("created_at")
-  updatedAt            DateTime           @updatedAt @map("updated_at")
+  lastStripeSyncedAt   DateTime?                  @map("last_stripe_synced_at")
+  lastStripeSyncError  String?                    @map("last_stripe_sync_error")
+  createdByUserId      String?                    @map("created_by_user_id")
+  updatedByUserId      String?                    @map("updated_by_user_id")
+  createdAt            DateTime                   @default(now()) @map("created_at")
+  updatedAt            DateTime                   @updatedAt @map("updated_at")
 
-  organization  Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  priceBook     BillingPriceBook?         @relation(fields: [priceBookId], references: [id], onDelete: SetNull)
-  priceVersion  BillingPriceVersion?      @relation(fields: [priceVersionId], references: [id], onDelete: SetNull)
-  createdByUser User?                     @relation("BillingSubscriptionsCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  updatedByUser User?                     @relation("BillingSubscriptionsUpdated", fields: [updatedByUserId], references: [id], onDelete: SetNull)
-  invoices      BillingInvoice[]
-  items         BillingSubscriptionItem[]
-  discounts     BillingDiscount[]
+  organization   Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  priceBook      BillingPriceBook?         @relation(fields: [priceBookId], references: [id], onDelete: SetNull)
+  priceVersion   BillingPriceVersion?      @relation(fields: [priceVersionId], references: [id], onDelete: SetNull)
+  createdByUser  User?                     @relation("BillingSubscriptionsCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedByUser  User?                     @relation("BillingSubscriptionsUpdated", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  invoices       BillingInvoice[]
+  items          BillingSubscriptionItem[]
+  discounts      BillingDiscount[]
   quantityEvents BillingQuantityEvent[]
   outboundEmails OutboundEmail[]
 
@@ -2902,36 +2964,36 @@ model BillingSubscription {
 
 /// Contract line item — base plan (Rental/Fleet) or add-on. Historical ENDED items do not block new tariffs.
 model BillingSubscriptionItem {
-  id                     String                      @id @default(uuid())
-  subscriptionId         String                      @map("subscription_id")
-  organizationId         String                      @map("organization_id")
-  billingProductId       String                      @map("billing_product_id")
-  itemRole               BillingSubscriptionItemRole @map("item_role")
-  priceBookId            String?                     @map("price_book_id")
-  priceVersionId         String?                     @map("price_version_id")
-  priceTierId            String?                     @map("price_tier_id")
-  quantity               Int                         @default(0)
-  validFrom              DateTime                    @map("valid_from")
-  validTo                DateTime?                   @map("valid_to")
-  status                 BillingSubscriptionItemStatus @default(DRAFT)
-  stripeSubscriptionItemId String?                   @map("stripe_subscription_item_id")
-  stripeMode             BillingStripeMode?          @map("stripe_mode")
-  prorationBehavior      BillingProrationBehavior    @default(CREATE_PRORATIONS) @map("proration_behavior")
-  metadata               Json?
-  createdAt              DateTime                    @default(now()) @map("created_at")
-  updatedAt              DateTime                    @updatedAt @map("updated_at")
+  id                       String                        @id @default(uuid())
+  subscriptionId           String                        @map("subscription_id")
+  organizationId           String                        @map("organization_id")
+  billingProductId         String                        @map("billing_product_id")
+  itemRole                 BillingSubscriptionItemRole   @map("item_role")
+  priceBookId              String?                       @map("price_book_id")
+  priceVersionId           String?                       @map("price_version_id")
+  priceTierId              String?                       @map("price_tier_id")
+  quantity                 Int                           @default(0)
+  validFrom                DateTime                      @map("valid_from")
+  validTo                  DateTime?                     @map("valid_to")
+  status                   BillingSubscriptionItemStatus @default(DRAFT)
+  stripeSubscriptionItemId String?                       @map("stripe_subscription_item_id")
+  stripeMode               BillingStripeMode?            @map("stripe_mode")
+  prorationBehavior        BillingProrationBehavior      @default(CREATE_PRORATIONS) @map("proration_behavior")
+  metadata                 Json?
+  createdAt                DateTime                      @default(now()) @map("created_at")
+  updatedAt                DateTime                      @updatedAt @map("updated_at")
 
-  subscription   BillingSubscription   @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-  organization   Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  billingProduct BillingCatalogProduct @relation(fields: [billingProductId], references: [id], onDelete: Restrict)
-  priceBook      BillingPriceBook?     @relation(fields: [priceBookId], references: [id], onDelete: SetNull)
-  priceVersion   BillingPriceVersion?  @relation(fields: [priceVersionId], references: [id], onDelete: SetNull)
-  priceTier      BillingPriceTier?     @relation(fields: [priceTierId], references: [id], onDelete: SetNull)
-  discounts      BillingDiscount[]
-  quantityEvents BillingQuantityEvent[]
-  usageSnapshots BillingUsageSnapshot[]
+  subscription               BillingSubscription                @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  organization               Organization                       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  billingProduct             BillingCatalogProduct              @relation(fields: [billingProductId], references: [id], onDelete: Restrict)
+  priceBook                  BillingPriceBook?                  @relation(fields: [priceBookId], references: [id], onDelete: SetNull)
+  priceVersion               BillingPriceVersion?               @relation(fields: [priceVersionId], references: [id], onDelete: SetNull)
+  priceTier                  BillingPriceTier?                  @relation(fields: [priceTierId], references: [id], onDelete: SetNull)
+  discounts                  BillingDiscount[]
+  quantityEvents             BillingQuantityEvent[]
+  usageSnapshots             BillingUsageSnapshot[]
   billableVehicleAssignments BillingBillableVehicleAssignment[]
-  invoiceLines   BillingInvoiceLine[]
+  invoiceLines               BillingInvoiceLine[]
 
   @@unique([stripeSubscriptionItemId, stripeMode])
   @@index([subscriptionId, status])
@@ -2943,23 +3005,23 @@ model BillingSubscriptionItem {
 
 /// Subscription-level discount (replaces ad-hoc overrides over time; legacy overrides remain).
 model BillingDiscount {
-  id                     String                @id @default(uuid())
-  subscriptionId         String                @map("subscription_id")
-  subscriptionItemId     String?               @map("subscription_item_id")
-  discountType           BillingDiscountType   @map("discount_type")
-  percentBps             Int?                  @map("percent_bps")
-  fixedAmountCents       Int?                  @map("fixed_amount_cents")
-  currency               String?               @db.Char(3)
-  validFrom              DateTime              @map("valid_from")
-  validTo                DateTime?             @map("valid_to")
-  reason                 String?
-  status                 BillingDiscountStatus @default(ACTIVE)
-  stripeMode             BillingStripeMode?    @map("stripe_mode")
-  stripeCouponId         String?               @map("stripe_coupon_id")
-  stripePromotionCodeId  String?               @map("stripe_promotion_code_id")
-  createdByUserId        String?               @map("created_by_user_id")
-  createdAt              DateTime              @default(now()) @map("created_at")
-  updatedAt              DateTime              @updatedAt @map("updated_at")
+  id                    String                @id @default(uuid())
+  subscriptionId        String                @map("subscription_id")
+  subscriptionItemId    String?               @map("subscription_item_id")
+  discountType          BillingDiscountType   @map("discount_type")
+  percentBps            Int?                  @map("percent_bps")
+  fixedAmountCents      Int?                  @map("fixed_amount_cents")
+  currency              String?               @db.Char(3)
+  validFrom             DateTime              @map("valid_from")
+  validTo               DateTime?             @map("valid_to")
+  reason                String?
+  status                BillingDiscountStatus @default(ACTIVE)
+  stripeMode            BillingStripeMode?    @map("stripe_mode")
+  stripeCouponId        String?               @map("stripe_coupon_id")
+  stripePromotionCodeId String?               @map("stripe_promotion_code_id")
+  createdByUserId       String?               @map("created_by_user_id")
+  createdAt             DateTime              @default(now()) @map("created_at")
+  updatedAt             DateTime              @updatedAt @map("updated_at")
 
   subscription     BillingSubscription      @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
   subscriptionItem BillingSubscriptionItem? @relation(fields: [subscriptionItemId], references: [id], onDelete: SetNull)
@@ -3004,12 +3066,12 @@ model BillingInvoice {
   createdAt            DateTime           @default(now()) @map("created_at")
   updatedAt            DateTime           @updatedAt @map("updated_at")
 
-  subscription BillingSubscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
-  lines        BillingInvoiceLine[]
-  payments     BillingPayment[]
-  refunds      BillingRefund[]
-  creditNotes  BillingCreditNote[]
-  disputes     BillingDispute[]
+  subscription   BillingSubscription  @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  lines          BillingInvoiceLine[]
+  payments       BillingPayment[]
+  refunds        BillingRefund[]
+  creditNotes    BillingCreditNote[]
+  disputes       BillingDispute[]
   outboundEmails OutboundEmail[]
 
   @@unique([stripeInvoiceId, stripeMode])
@@ -3020,32 +3082,32 @@ model BillingInvoice {
 
 /// Immutable invoice line once created (financial snapshot).
 model BillingInvoiceLine {
-  id                   String             @id @default(uuid())
-  invoiceId            String             @map("invoice_id")
-  subscriptionItemId   String?            @map("subscription_item_id")
-  usageSnapshotId      String?            @map("usage_snapshot_id")
-  description          String
-  quantity             Int
-  unitAmountCents      Int?               @map("unit_amount_cents")
-  discountCents        Int?               @default(0) @map("discount_cents")
-  subtotalCents        Int                @map("subtotal_cents")
-  netCents             Int?               @map("net_cents")
-  taxRateBps           Int?               @map("tax_rate_bps")
-  taxCents             Int?               @map("tax_cents")
-  totalCents           Int                @map("total_cents")
-  productSnapshotJson  Json?              @map("product_snapshot_json")
-  priceSnapshotJson    Json?              @map("price_snapshot_json")
-  discountDetailsJson  Json?              @map("discount_details_json")
-  taxDetailsJson       Json?              @map("tax_details_json")
-  stripeInvoiceLineId  String?            @map("stripe_invoice_line_id")
-  stripeMode           BillingStripeMode? @map("stripe_mode")
-  periodStart          DateTime?          @map("period_start")
-  periodEnd            DateTime?          @map("period_end")
-  createdAt            DateTime           @default(now()) @map("created_at")
+  id                  String             @id @default(uuid())
+  invoiceId           String             @map("invoice_id")
+  subscriptionItemId  String?            @map("subscription_item_id")
+  usageSnapshotId     String?            @map("usage_snapshot_id")
+  description         String
+  quantity            Int
+  unitAmountCents     Int?               @map("unit_amount_cents")
+  discountCents       Int?               @default(0) @map("discount_cents")
+  subtotalCents       Int                @map("subtotal_cents")
+  netCents            Int?               @map("net_cents")
+  taxRateBps          Int?               @map("tax_rate_bps")
+  taxCents            Int?               @map("tax_cents")
+  totalCents          Int                @map("total_cents")
+  productSnapshotJson Json?              @map("product_snapshot_json")
+  priceSnapshotJson   Json?              @map("price_snapshot_json")
+  discountDetailsJson Json?              @map("discount_details_json")
+  taxDetailsJson      Json?              @map("tax_details_json")
+  stripeInvoiceLineId String?            @map("stripe_invoice_line_id")
+  stripeMode          BillingStripeMode? @map("stripe_mode")
+  periodStart         DateTime?          @map("period_start")
+  periodEnd           DateTime?          @map("period_end")
+  createdAt           DateTime           @default(now()) @map("created_at")
 
-  invoice          BillingInvoice         @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  invoice          BillingInvoice           @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   subscriptionItem BillingSubscriptionItem? @relation(fields: [subscriptionItemId], references: [id], onDelete: SetNull)
-  usageSnapshot    BillingUsageSnapshot?  @relation(fields: [usageSnapshotId], references: [id], onDelete: SetNull)
+  usageSnapshot    BillingUsageSnapshot?    @relation(fields: [usageSnapshotId], references: [id], onDelete: SetNull)
 
   @@unique([stripeInvoiceLineId, stripeMode])
   @@index([invoiceId])
@@ -3086,12 +3148,12 @@ model BillingUsageSnapshot {
   createdByUserId       String?                       @map("created_by_user_id")
   createdAt             DateTime                      @default(now()) @map("created_at")
 
-  organization     Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization     Organization             @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   subscriptionItem BillingSubscriptionItem? @relation(fields: [subscriptionItemId], references: [id], onDelete: SetNull)
-  priceBook        BillingPriceBook?     @relation(fields: [priceBookId], references: [id], onDelete: SetNull)
-  priceVersion     BillingPriceVersion?  @relation(fields: [priceVersionId], references: [id], onDelete: SetNull)
-  priceTier        BillingPriceTier?     @relation(fields: [priceTierId], references: [id], onDelete: SetNull)
-  createdByUser    User?                 @relation("BillingUsageSnapshotsCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  priceBook        BillingPriceBook?        @relation(fields: [priceBookId], references: [id], onDelete: SetNull)
+  priceVersion     BillingPriceVersion?     @relation(fields: [priceVersionId], references: [id], onDelete: SetNull)
+  priceTier        BillingPriceTier?        @relation(fields: [priceTierId], references: [id], onDelete: SetNull)
+  createdByUser    User?                    @relation("BillingUsageSnapshotsCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
   invoiceLines     BillingInvoiceLine[]
 
   @@index([organizationId, periodStart])
@@ -3103,22 +3165,22 @@ model BillingUsageSnapshot {
 
 /// Append-only assignment of a vehicle to a subscription item for billing.
 model BillingBillableVehicleAssignment {
-  id                 String                               @id @default(uuid())
-  organizationId     String                               @map("organization_id")
-  vehicleId          String                               @map("vehicle_id")
-  subscriptionItemId String                               @map("subscription_item_id")
-  billableFrom       DateTime                             @map("billable_from")
-  billableUntil      DateTime?                            @map("billable_until")
+  id                 String                                 @id @default(uuid())
+  organizationId     String                                 @map("organization_id")
+  vehicleId          String                                 @map("vehicle_id")
+  subscriptionItemId String                                 @map("subscription_item_id")
+  billableFrom       DateTime                               @map("billable_from")
+  billableUntil      DateTime?                              @map("billable_until")
   status             BillingBillableVehicleAssignmentStatus @default(ACTIVE)
-  reasonCode         String?                              @map("reason_code")
-  reasonNote         String?                              @map("reason_note")
-  approvedByUserId   String?                              @map("approved_by_user_id")
-  createdAt          DateTime                             @default(now()) @map("created_at")
+  reasonCode         String?                                @map("reason_code")
+  reasonNote         String?                                @map("reason_note")
+  approvedByUserId   String?                                @map("approved_by_user_id")
+  createdAt          DateTime                               @default(now()) @map("created_at")
 
-  organization     Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle          Vehicle               @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  organization     Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle          Vehicle                 @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   subscriptionItem BillingSubscriptionItem @relation(fields: [subscriptionItemId], references: [id], onDelete: Cascade)
-  approvedByUser   User?                 @relation("BillingVehicleAssignmentsApproved", fields: [approvedByUserId], references: [id], onDelete: SetNull)
+  approvedByUser   User?                   @relation("BillingVehicleAssignmentsApproved", fields: [approvedByUserId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, vehicleId, status])
   @@index([subscriptionItemId, billableFrom])
@@ -3128,27 +3190,27 @@ model BillingBillableVehicleAssignment {
 
 /// Append-only quantity ledger per subscription item.
 model BillingQuantityEvent {
-  id                 String                   @id @default(uuid())
-  organizationId     String                   @map("organization_id")
-  subscriptionId     String?                  @map("subscription_id")
-  subscriptionItemId String                   @map("subscription_item_id")
-  vehicleId          String?                  @map("vehicle_id")
-  eventType          BillingQuantityEventType @map("event_type")
+  id                 String                     @id @default(uuid())
+  organizationId     String                     @map("organization_id")
+  subscriptionId     String?                    @map("subscription_id")
+  subscriptionItemId String                     @map("subscription_item_id")
+  vehicleId          String?                    @map("vehicle_id")
+  eventType          BillingQuantityEventType   @map("event_type")
   delta              Int
-  quantityBefore     Int                      @map("quantity_before")
-  quantityAfter      Int                      @map("quantity_after")
-  effectiveAt        DateTime                 @map("effective_at")
+  quantityBefore     Int                        @map("quantity_before")
+  quantityAfter      Int                        @map("quantity_after")
+  effectiveAt        DateTime                   @map("effective_at")
   source             BillingQuantityEventSource
-  actorUserId        String?                  @map("actor_user_id")
+  actorUserId        String?                    @map("actor_user_id")
   reason             String?
-  idempotencyKey     String                   @unique @map("idempotency_key")
-  createdAt          DateTime                 @default(now()) @map("created_at")
+  idempotencyKey     String                     @unique @map("idempotency_key")
+  createdAt          DateTime                   @default(now()) @map("created_at")
 
-  organization     Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  subscription     BillingSubscription?  @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  organization     Organization            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscription     BillingSubscription?    @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
   subscriptionItem BillingSubscriptionItem @relation(fields: [subscriptionItemId], references: [id], onDelete: Cascade)
-  vehicle          Vehicle?              @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  actorUser        User?                 @relation("BillingQuantityEventsActed", fields: [actorUserId], references: [id], onDelete: SetNull)
+  vehicle          Vehicle?                @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  actorUser        User?                   @relation("BillingQuantityEventsActed", fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([organizationId, effectiveAt])
   @@index([subscriptionItemId, effectiveAt])
@@ -3160,29 +3222,29 @@ model BillingQuantityEvent {
 
 /// SaaS payment aggregate for a billing invoice.
 model BillingPayment {
-  id                    String                  @id @default(uuid())
-  invoiceId             String                  @map("invoice_id")
-  amountCents           Int                     @map("amount_cents")
-  currency              String                  @default("EUR") @db.Char(3)
-  status                BillingPaymentStatus    @default(PENDING)
-  provider              BillingPaymentProvider  @default(STRIPE)
-  stripePaymentIntentId String?                 @map("stripe_payment_intent_id")
-  stripeChargeId        String?                 @map("stripe_charge_id")
-  stripePaymentMethodId String?                 @map("stripe_payment_method_id")
-  stripeMode            BillingStripeMode?      @map("stripe_mode")
-  attemptCount          Int                     @default(0) @map("attempt_count")
-  refundedAmountCents   Int                     @default(0) @map("refunded_amount_cents")
-  remainingAmountCents  Int?                    @map("remaining_amount_cents")
-  succeededAt           DateTime?               @map("succeeded_at")
-  failedAt              DateTime?               @map("failed_at")
-  cancelledAt           DateTime?               @map("cancelled_at")
+  id                    String                    @id @default(uuid())
+  invoiceId             String                    @map("invoice_id")
+  amountCents           Int                       @map("amount_cents")
+  currency              String                    @default("EUR") @db.Char(3)
+  status                BillingPaymentStatus      @default(PENDING)
+  provider              BillingPaymentProvider    @default(STRIPE)
+  stripePaymentIntentId String?                   @map("stripe_payment_intent_id")
+  stripeChargeId        String?                   @map("stripe_charge_id")
+  stripePaymentMethodId String?                   @map("stripe_payment_method_id")
+  stripeMode            BillingStripeMode?        @map("stripe_mode")
+  attemptCount          Int                       @default(0) @map("attempt_count")
+  refundedAmountCents   Int                       @default(0) @map("refunded_amount_cents")
+  remainingAmountCents  Int?                      @map("remaining_amount_cents")
+  succeededAt           DateTime?                 @map("succeeded_at")
+  failedAt              DateTime?                 @map("failed_at")
+  cancelledAt           DateTime?                 @map("cancelled_at")
   manualPaymentType     BillingManualPaymentType? @map("manual_payment_type")
-  manualReference       String?                 @map("manual_reference")
-  manualReceiptNote     String?                 @map("manual_receipt_note")
-  recordedByUserId      String?                 @map("recorded_by_user_id")
-  idempotencyKey        String?                 @unique @map("idempotency_key")
-  createdAt             DateTime                @default(now()) @map("created_at")
-  updatedAt             DateTime                @updatedAt @map("updated_at")
+  manualReference       String?                   @map("manual_reference")
+  manualReceiptNote     String?                   @map("manual_receipt_note")
+  recordedByUserId      String?                   @map("recorded_by_user_id")
+  idempotencyKey        String?                   @unique @map("idempotency_key")
+  createdAt             DateTime                  @default(now()) @map("created_at")
+  updatedAt             DateTime                  @updatedAt @map("updated_at")
 
   invoice    BillingInvoice          @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   recordedBy User?                   @relation("BillingPaymentsRecorded", fields: [recordedByUserId], references: [id], onDelete: SetNull)
@@ -3279,21 +3341,21 @@ model BillingCreditNote {
 
 /// Stripe charge dispute mirror — safe metadata only.
 model BillingDispute {
-  id              String              @id @default(uuid())
-  organizationId  String              @map("organization_id")
-  paymentId       String?             @map("payment_id")
-  invoiceId       String?             @map("invoice_id")
-  amountCents     Int                 @map("amount_cents")
-  currency        String              @default("EUR") @db.Char(3)
+  id              String               @id @default(uuid())
+  organizationId  String               @map("organization_id")
+  paymentId       String?              @map("payment_id")
+  invoiceId       String?              @map("invoice_id")
+  amountCents     Int                  @map("amount_cents")
+  currency        String               @default("EUR") @db.Char(3)
   status          BillingDisputeStatus
   reason          String?
-  stripeDisputeId String?             @map("stripe_dispute_id")
-  stripeChargeId  String?             @map("stripe_charge_id")
-  stripeMode      BillingStripeMode?  @map("stripe_mode")
-  openedAt        DateTime?           @map("opened_at")
-  closedAt        DateTime?           @map("closed_at")
-  createdAt       DateTime            @default(now()) @map("created_at")
-  updatedAt       DateTime            @updatedAt @map("updated_at")
+  stripeDisputeId String?              @map("stripe_dispute_id")
+  stripeChargeId  String?              @map("stripe_charge_id")
+  stripeMode      BillingStripeMode?   @map("stripe_mode")
+  openedAt        DateTime?            @map("opened_at")
+  closedAt        DateTime?            @map("closed_at")
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
 
   organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   payment      BillingPayment? @relation(fields: [paymentId], references: [id], onDelete: SetNull)
@@ -3307,23 +3369,23 @@ model BillingDispute {
 
 /// Billing domain event outbox — payload immutable after insert; delivery state may advance.
 model BillingDomainEventOutbox {
-  id             String                       @id @default(uuid())
-  eventType      String                       @map("event_type")
-  aggregateType  String                       @map("aggregate_type")
-  aggregateId    String                       @map("aggregate_id")
-  organizationId String?                      @map("organization_id")
-  payloadVersion Int                          @default(1) @map("payload_version")
+  id             String                         @id @default(uuid())
+  eventType      String                         @map("event_type")
+  aggregateType  String                         @map("aggregate_type")
+  aggregateId    String                         @map("aggregate_id")
+  organizationId String?                        @map("organization_id")
+  payloadVersion Int                            @default(1) @map("payload_version")
   payload        Json
-  occurredAt     DateTime                     @map("occurred_at")
-  publishedAt    DateTime?                    @map("published_at")
+  occurredAt     DateTime                       @map("occurred_at")
+  publishedAt    DateTime?                      @map("published_at")
   status         BillingDomainEventOutboxStatus @default(PENDING)
-  retryCount     Int                          @default(0) @map("retry_count")
-  nextRetryAt    DateTime?                    @map("next_retry_at")
-  lastError      String?                      @map("last_error")
-  lockedAt       DateTime?                    @map("locked_at")
-  lockOwner      String?                      @map("lock_owner")
-  idempotencyKey String                       @unique @map("idempotency_key")
-  createdAt      DateTime                     @default(now()) @map("created_at")
+  retryCount     Int                            @default(0) @map("retry_count")
+  nextRetryAt    DateTime?                      @map("next_retry_at")
+  lastError      String?                        @map("last_error")
+  lockedAt       DateTime?                      @map("locked_at")
+  lockOwner      String?                        @map("lock_owner")
+  idempotencyKey String                         @unique @map("idempotency_key")
+  createdAt      DateTime                       @default(now()) @map("created_at")
 
   deliveries BillingDomainEventOutboxDelivery[]
 
@@ -3337,18 +3399,18 @@ model BillingDomainEventOutbox {
 
 /// Per-consumer delivery state — enables multiple downstream consumers later.
 model BillingDomainEventOutboxDelivery {
-  id            String                               @id @default(uuid())
-  outboxEventId String                               @map("outbox_event_id")
-  consumerId    String                               @map("consumer_id")
+  id            String                                 @id @default(uuid())
+  outboxEventId String                                 @map("outbox_event_id")
+  consumerId    String                                 @map("consumer_id")
   status        BillingDomainEventOutboxDeliveryStatus @default(PENDING)
-  retryCount    Int                                  @default(0) @map("retry_count")
-  nextRetryAt   DateTime?                            @map("next_retry_at")
-  lastError     String?                              @map("last_error")
-  deliveredAt   DateTime?                            @map("delivered_at")
-  lockedAt      DateTime?                            @map("locked_at")
-  lockOwner     String?                              @map("lock_owner")
-  createdAt     DateTime                             @default(now()) @map("created_at")
-  updatedAt     DateTime                             @updatedAt @map("updated_at")
+  retryCount    Int                                    @default(0) @map("retry_count")
+  nextRetryAt   DateTime?                              @map("next_retry_at")
+  lastError     String?                                @map("last_error")
+  deliveredAt   DateTime?                              @map("delivered_at")
+  lockedAt      DateTime?                              @map("locked_at")
+  lockOwner     String?                                @map("lock_owner")
+  createdAt     DateTime                               @default(now()) @map("created_at")
+  updatedAt     DateTime                               @updatedAt @map("updated_at")
 
   outboxEvent    BillingDomainEventOutbox @relation(fields: [outboxEventId], references: [id], onDelete: Cascade)
   outboundEmails OutboundEmail[]
@@ -3444,8 +3506,8 @@ model BillingReconciliationRun {
   createdAt    DateTime                       @default(now()) @map("created_at")
   updatedAt    DateTime                       @updatedAt @map("updated_at")
 
-  organizationId String?       @map("organization_id")
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  organizationId String?                      @map("organization_id")
+  organization   Organization?                @relation(fields: [organizationId], references: [id], onDelete: SetNull)
   drifts         BillingReconciliationDrift[]
 
   @@index([status, createdAt])
@@ -3454,23 +3516,23 @@ model BillingReconciliationRun {
 }
 
 model BillingReconciliationDrift {
-  id               String                           @id @default(uuid())
-  runId            String?                          @map("run_id")
-  organizationId   String                           @map("organization_id")
-  subscriptionId   String?                          @map("subscription_id")
-  driftType        BillingReconciliationDriftType   @map("drift_type")
+  id               String                             @id @default(uuid())
+  runId            String?                            @map("run_id")
+  organizationId   String                             @map("organization_id")
+  subscriptionId   String?                            @map("subscription_id")
+  driftType        BillingReconciliationDriftType     @map("drift_type")
   severity         BillingReconciliationDriftSeverity
-  localValue       String?                          @map("local_value")
-  stripeValue      String?                          @map("stripe_value")
-  suggestedAction  String                           @map("suggested_action")
-  autoFixable      Boolean                          @default(false) @map("auto_fixable")
-  detectedAt       DateTime                         @default(now()) @map("detected_at")
-  resolvedAt       DateTime?                        @map("resolved_at")
-  resolvedByUserId String?                          @map("resolved_by_user_id")
-  stripeMode       BillingStripeMode?               @map("stripe_mode")
-  idempotencyKey   String?                          @unique @map("idempotency_key")
-  createdAt        DateTime                         @default(now()) @map("created_at")
-  updatedAt        DateTime                         @updatedAt @map("updated_at")
+  localValue       String?                            @map("local_value")
+  stripeValue      String?                            @map("stripe_value")
+  suggestedAction  String                             @map("suggested_action")
+  autoFixable      Boolean                            @default(false) @map("auto_fixable")
+  detectedAt       DateTime                           @default(now()) @map("detected_at")
+  resolvedAt       DateTime?                          @map("resolved_at")
+  resolvedByUserId String?                            @map("resolved_by_user_id")
+  stripeMode       BillingStripeMode?                 @map("stripe_mode")
+  idempotencyKey   String?                            @unique @map("idempotency_key")
+  createdAt        DateTime                           @default(now()) @map("created_at")
+  updatedAt        DateTime                           @updatedAt @map("updated_at")
 
   run          BillingReconciliationRun? @relation(fields: [runId], references: [id], onDelete: SetNull)
   organization Organization              @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -7335,49 +7397,49 @@ model OrgEmailDomain {
 }
 
 model OutboundEmail {
-  id                      String                  @id @default(uuid())
-  organizationId          String                  @map("organization_id")
-  bookingId               String?                 @map("booking_id")
-  customerId              String?                 @map("customer_id")
-  invoiceId               String?                 @map("invoice_id")
-  bookingPaymentRequestId String?                 @map("booking_payment_request_id")
-  billingInvoiceId        String?                 @map("billing_invoice_id")
-  billingSubscriptionId   String?                 @map("billing_subscription_id")
-  billingOutboxDeliveryId String?                 @map("billing_outbox_delivery_id")
-  billingOutboxEventId    String?                 @map("billing_outbox_event_id")
-  billingOutboxIdempotencyKey String?             @unique @map("billing_outbox_idempotency_key")
-  sourceType              OutboundEmailSourceType @map("source_type")
-  status                  OutboundEmailStatus     @default(QUEUED)
-  fromEmail               String                  @map("from_email")
-  fromName                String?                 @map("from_name")
-  replyToEmail            String?                 @map("reply_to_email")
-  toEmail                 String                  @map("to_email")
-  ccEmails                String[]                @default([]) @map("cc_emails")
-  bccEmails               String[]                @default([]) @map("bcc_emails")
-  subject                 String
-  bodyText                String?                 @map("body_text")
-  bodyHtml                String?                 @map("body_html")
-  provider                String?
-  providerMessageId       String?                 @map("provider_message_id")
-  errorCode               String?                 @map("error_code")
-  errorMessage            String?                 @map("error_message")
-  sentByUserId            String?                 @map("sent_by_user_id")
-  sentAt                  DateTime?               @map("sent_at")
-  createdAt               DateTime                @default(now()) @map("created_at")
-  updatedAt               DateTime                @updatedAt @map("updated_at")
+  id                          String                  @id @default(uuid())
+  organizationId              String                  @map("organization_id")
+  bookingId                   String?                 @map("booking_id")
+  customerId                  String?                 @map("customer_id")
+  invoiceId                   String?                 @map("invoice_id")
+  bookingPaymentRequestId     String?                 @map("booking_payment_request_id")
+  billingInvoiceId            String?                 @map("billing_invoice_id")
+  billingSubscriptionId       String?                 @map("billing_subscription_id")
+  billingOutboxDeliveryId     String?                 @map("billing_outbox_delivery_id")
+  billingOutboxEventId        String?                 @map("billing_outbox_event_id")
+  billingOutboxIdempotencyKey String?                 @unique @map("billing_outbox_idempotency_key")
+  sourceType                  OutboundEmailSourceType @map("source_type")
+  status                      OutboundEmailStatus     @default(QUEUED)
+  fromEmail                   String                  @map("from_email")
+  fromName                    String?                 @map("from_name")
+  replyToEmail                String?                 @map("reply_to_email")
+  toEmail                     String                  @map("to_email")
+  ccEmails                    String[]                @default([]) @map("cc_emails")
+  bccEmails                   String[]                @default([]) @map("bcc_emails")
+  subject                     String
+  bodyText                    String?                 @map("body_text")
+  bodyHtml                    String?                 @map("body_html")
+  provider                    String?
+  providerMessageId           String?                 @map("provider_message_id")
+  errorCode                   String?                 @map("error_code")
+  errorMessage                String?                 @map("error_message")
+  sentByUserId                String?                 @map("sent_by_user_id")
+  sentAt                      DateTime?               @map("sent_at")
+  createdAt                   DateTime                @default(now()) @map("created_at")
+  updatedAt                   DateTime                @updatedAt @map("updated_at")
 
-  organization          Organization              @relation(fields: [organizationId], references: [id], onDelete: Restrict)
-  booking               Booking?                  @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-  customer              Customer?                 @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  invoice               OrgInvoice?               @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
-  bookingPaymentRequest BookingPaymentRequest?    @relation(fields: [bookingPaymentRequestId], references: [id], onDelete: SetNull)
-  billingInvoice        BillingInvoice?           @relation(fields: [billingInvoiceId], references: [id], onDelete: SetNull)
-  billingSubscription   BillingSubscription?      @relation(fields: [billingSubscriptionId], references: [id], onDelete: SetNull)
-  billingOutboxDelivery BillingDomainEventOutboxDelivery? @relation(fields: [billingOutboxDeliveryId], references: [id], onDelete: SetNull)
-  sentByUser            User?                     @relation("OutboundEmailSentBy", fields: [sentByUserId], references: [id], onDelete: SetNull)
-  attachments           OutboundEmailAttachment[]
-  events                OutboundEmailEvent[]
-  paymentEmailOutbox    PaymentEmailOutbox[]
+  organization             Organization                      @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  booking                  Booking?                          @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  customer                 Customer?                         @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  invoice                  OrgInvoice?                       @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  bookingPaymentRequest    BookingPaymentRequest?            @relation(fields: [bookingPaymentRequestId], references: [id], onDelete: SetNull)
+  billingInvoice           BillingInvoice?                   @relation(fields: [billingInvoiceId], references: [id], onDelete: SetNull)
+  billingSubscription      BillingSubscription?              @relation(fields: [billingSubscriptionId], references: [id], onDelete: SetNull)
+  billingOutboxDelivery    BillingDomainEventOutboxDelivery? @relation(fields: [billingOutboxDeliveryId], references: [id], onDelete: SetNull)
+  sentByUser               User?                             @relation("OutboundEmailSentBy", fields: [sentByUserId], references: [id], onDelete: SetNull)
+  attachments              OutboundEmailAttachment[]
+  events                   OutboundEmailEvent[]
+  paymentEmailOutbox       PaymentEmailOutbox[]
   billingEmailSuppressions BillingEmailSuppression[]
 
   @@index([organizationId])
@@ -7429,13 +7491,13 @@ model OutboundEmailEvent {
 
 /// Suppressed billing notification addresses — no automatic retries after bounce/complaint.
 model BillingEmailSuppression {
-  id              String                      @id @default(uuid())
-  organizationId  String                      @map("organization_id")
+  id              String                        @id @default(uuid())
+  organizationId  String                        @map("organization_id")
   email           String
   reason          BillingEmailSuppressionReason
-  outboundEmailId String?                     @map("outbound_email_id")
-  suppressedAt    DateTime                    @default(now()) @map("suppressed_at")
-  createdAt       DateTime                    @default(now()) @map("created_at")
+  outboundEmailId String?                       @map("outbound_email_id")
+  suppressedAt    DateTime                      @default(now()) @map("suppressed_at")
+  createdAt       DateTime                      @default(now()) @map("created_at")
 
   organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   outboundEmail OutboundEmail? @relation(fields: [outboundEmailId], references: [id], onDelete: SetNull)
@@ -8607,9 +8669,9 @@ model OrgTaskAutomationRuleOverride {
   createdAt               DateTime      @default(now()) @map("created_at")
   updatedAt               DateTime      @updatedAt @map("updated_at")
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  createdBy    User?        @relation("TaskAutomationRuleOverrideCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  updatedBy    User?        @relation("TaskAutomationRuleOverrideUpdated", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+  organization Organization                            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User?                                   @relation("TaskAutomationRuleOverrideCreated", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  updatedBy    User?                                   @relation("TaskAutomationRuleOverrideUpdated", fields: [updatedByUserId], references: [id], onDelete: SetNull)
   revisions    OrgTaskAutomationRuleOverrideRevision[]
 
   @@unique([organizationId, ruleId])

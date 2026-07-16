@@ -138,8 +138,8 @@ Vollständige Inventur: Abschnitt **Code-Landkarte** unten.
 | # | Ziel | Scope | Abhängigkeit | Migration | VPS | DIMO | Status | Commit |
 |---|------|-------|--------------|-----------|-----|------|--------|--------|
 | **1** | Implementierungsbaseline, Branch, Fortschrittsdatei, Baseline-Tests | Docs only | Audit `5280a83` | Nein | Nein | Nein | **DONE** | `94a1049` |
-| **2** | P0-TH-04: Kein synthetisches GT in `TireWearDataPoint` | `tire-health.service.ts`, `tire-ground-truth.util.ts` | — | Nein | Nein | Nein | **DONE** | *(this commit)* |
-| **3** | P0-TH-03: `installed_odometer_km` bei Install/Aktivierung | `tire-lifecycle.service.ts` | — | Optional Backfill-Skript | Ja | Nein | PENDING | — |
+| **2** | P0-TH-04: Kein synthetisches GT in `TireWearDataPoint` | `tire-health.service.ts`, `tire-ground-truth.util.ts` | — | Nein | Nein | Nein | **DONE** | `0da74af` |
+| **3** | Evidence Source + Provenance Schema | `schema.prisma`, migration, evidence modules | 2 | **Ja** (nicht auf Prod) | Nein | Nein | **DONE** | `40f767b` |
 | **4** | P1-TH-08: Trip-Ledger + Finalize→Usage | trips + `updateTireUsageFromTrip` | 3 | Ja (ledger table) | Ja | Nein | PENDING | — |
 | **5** | P0-TH-01: 8-mm-Fallback entfernen/absichern | `tire-identity.service.ts` | — | Nein | Ja | Nein | PENDING | — |
 | **6** | P0-TH-02: Partial unique ACTIVE setup | `schema.prisma` + lifecycle | — | **Ja** | Ja | Nein | PENDING | — |
@@ -149,7 +149,7 @@ Vollständige Inventur: Abschnitt **Code-Landkarte** unten.
 | **10** | Druck-Katalog + Validierung + Tests | config + wear model | 9 | Nein | Ja | Nein | PENDING | — |
 | **11** | P0-TH-21: HM-Injection Rental Health | `rental-health.service.ts` | 10 | Nein | Ja | Nein | PENDING | — |
 | **12** | P1-TH-22/23: Strukturiertes Blocking/Evidence | rental-health + types | 11 | Nein | Ja | Nein | PENDING | — |
-| **13** | P1-TH-18: `modelVersion` auf Snapshots | schema + recalculate | 2 | **Ja** | Ja | Nein | PENDING | — |
+| **13** | P1-TH-18: `modelVersion` auf Snapshots befüllen | recalculate writes | 2, 3 | Nein (Spalte in Prompt 3) | Ja | Nein | **PARTIAL** | — |
 | **14** | P1-TH-09/10: Snapshot/Event-Dedupe | recalculate + processor | 13 | Nein | Ja | Nein | PENDING | — |
 | **15** | P2-TH-24: Prometheus Tire-Metriken | observability | — | Nein | Ja | Nein | PENDING | — |
 | **16** | Recalc-Queue-Monitoring | `MONITORED_QUEUES` | 15 | Nein | Ja | Nein | PENDING | — |
@@ -183,10 +183,75 @@ Vollständige Inventur: Abschnitt **Code-Landkarte** unten.
 |--------|-----------|--------------|
 | 4 | `trip_tire_usage_ledger` (o.ä.) | Idempotente Trip→Setup-Zuordnung |
 | 6 | Partial unique index | `(vehicle_id) WHERE status = 'ACTIVE'` |
-| 13 | `model_version` auf `tire_health_snapshots` | Formel-Version persistieren |
-| 3 | Optional data backfill | `installed_odometer_km` — **nicht** im Audit-Scope automatisch |
+| 3 | `20260716180000_tire_evidence_ground_truth_provenance` | Evidence enums + provenance columns (additive) |
+| 13 | `model_version` auf `tire_health_snapshots` | **Teilweise in Prompt 3** — Spalte vorhanden, Writes folgen Prompt 13 |
+| 3b | Optional data backfill | `installed_odometer_km` — **nicht** im Audit-Scope automatisch |
 
-**Bis Prompt 2:** Keine Migration ausgeführt.
+**Bis Prompt 3:** Migration erstellt, **nicht auf Produktion angewendet**. Keine Daten-Backfills.
+
+---
+
+## Prompt 3 — Evidence Source & Provenance Schema (2026-07-16)
+
+### Neue Enums
+
+| Enum | Werte |
+|------|-------|
+| `TireEvidenceSource` | `MANUAL_MEASUREMENT`, `WORKSHOP_MEASUREMENT`, `DOCUMENT_MEASUREMENT`, `MANUFACTURER_CONFIRMED`, `USER_CONFIRMED`, `AI_ESTIMATED`, `MODEL_ESTIMATED`, `DEFAULT_ASSUMPTION`, `PROVIDER_SIGNAL`, `UNKNOWN` |
+| `TireBaselineStatus` | `UNKNOWN`, `INCOMPLETE`, `ESTIMATED`, `CONFIRMED`, `DOCUMENTED` |
+
+Zentrale TypeScript-Module: `tire-evidence-source.ts`, `tire-provenance.repository.ts`
+
+### Neue Felder (alle nullable / ohne Backfill)
+
+| Modell | Felder |
+|--------|--------|
+| `VehicleTireSetup` | `initialTreadEvidenceSource`, `initialTreadMeasuredAt`, `initialTreadConfirmedAt`, `initialTreadEvidenceId`, `baselineConfidence`, `baselineStatus` |
+| `Tire` | dieselben Baseline-Felder |
+| `VehicleTireTreadMeasurement` | `evidenceSource` |
+| `TireWearDataPoint` | `isGroundTruth`, `actualSource`, `actualMeasurementId`, `actualMeasuredAt`, `predictionGeneratedAt`, `modelVersion`, `modelConfigHash`, `predictionSnapshotId` |
+| `TireHealthSnapshot` | `modelVersion`, `modelConfigHash`, `inputFingerprint`, `baselineSource`, `evidenceSummary` |
+
+Legacy `initialTreadSource` (String) und `source` (String) auf Measurements **unverändert**.
+
+### Migration
+
+`backend/prisma/migrations/20260716180000_tire_evidence_ground_truth_provenance/migration.sql`
+
+### FK / Delete-Constraints
+
+| Relation | onDelete | Begründung |
+|----------|----------|------------|
+| `TireWearDataPoint.actualMeasurement` → `VehicleTireTreadMeasurement` | **RESTRICT** | GT-Messung darf Validierungsdaten nicht still löschen |
+| `TireWearDataPoint.predictionSnapshot` → `TireHealthSnapshot` | **SET NULL** | Snapshot-Löschung behält Wear-Punkt |
+| `VehicleTireSetup.initialTreadEvidence` → Measurement | **SET NULL** | Evidence-Link optional |
+| `VehicleTireTreadMeasurement.tireSetup` | **RESTRICT** (war CASCADE) | Setup-Löschung erfordert explizite Measurement-Auflösung |
+
+### Tests
+
+```bash
+cd backend && npx prisma format && npm run prisma:validate && npx prisma generate
+npx tsc -p tsconfig.json --noEmit
+npm test -- tire
+# 10 suites, 173 passed (+15 neue Evidence/Provenance-Tests)
+```
+
+Neue Testdateien: `tire-evidence-source.spec.ts`, `tire-provenance.repository.spec.ts`, `tire-schema.spec.ts`
+
+### Deployment-Hinweise
+
+1. **Staging zuerst:** `npx prisma migrate deploy` auf Staging-VPS
+2. **Kein Daten-Backfill** in dieser Migration — alle neuen Spalten bleiben `NULL`
+3. **Breaking behavior:** Löschen eines `VehicleTireSetup` mit Messungen schlägt fehl (RESTRICT), bis Messungen/Wear-Punkte explizit aufgelöst sind
+4. **Prompt 4+** wird `recalculate()` anreichern, um neue Provenance-Felder bei Writes zu setzen
+5. **Produktion:** Migration erst nach Review + Staging-Deploy ausführen
+
+### Bestätigung
+
+- ✅ Additiv und rückwärtskompatibel
+- ✅ Keine Bestandsdaten klassifiziert oder überschrieben
+- ✅ `isGroundTruth` ohne DEFAULT — niemals implizit `true`
+- ✅ Keine Wear-Formel-, UI- oder Runtime-Änderung
 
 ---
 
@@ -220,12 +285,11 @@ cd backend && npm test -- tire
 # 7 suites, 158 passed
 ```
 
-### Verbleibende Schema-Defizite (Prompt 3+)
+### Verbleibende Schema-Defizite (nach Prompt 3)
 
-- Kein `source` / `measurement_id` auf `TireWearDataPoint` (Provenance nicht persistiert)
+- Provenance-Felder noch nicht in `recalculate()` befüllt (Prompt 4+)
 - `installed_odometer_km` weiterhin oft null → Wear-Data-Points werden selten geschrieben
-- Kein `modelVersion` auf Snapshots (Prompt 13)
-- Legacy-Zeilen in DB (falls jemals geschrieben) nicht bereinigt — nur Read-Filter in Regression
+- Legacy-Zeilen in DB nicht bereinigt — nur Read-Filter in Regression
 
 ### Bestätigung
 
@@ -323,7 +387,8 @@ Blocker bleiben bis Abnahme Prompt 24:
 | Datum | Prompt | Aktion | Commit |
 |-------|--------|--------|--------|
 | 2026-07-16 | 1 | Baseline: Branch, Fortschrittsdatei, Tests dokumentiert | `94a1049` |
-| 2026-07-16 | 2 | P0-TH-04: Ground-truth leak fix + 22 neue Tests | *(this commit)* |
+| 2026-07-16 | 2 | P0-TH-04: Ground-truth leak fix + 22 neue Tests | `0da74af` |
+| 2026-07-16 | 3 | Evidence/provenance schema + migration (additive) | `40f767b` |
 
 ---
 
