@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-summary-detail-ui-v49563-2026-07-17',
+    version: '4.9.563',
+    title: 'V4.9.563 — Battery Summary/Detail UI on Canonical DTO (Prompt 63/78)',
+    summary: [
+      'LV/HV View-Models (`battery-lv-view-model`, `battery-hv-view-model`) aus Canonical Battery DTO.',
+      'LV: aktuelle Spannung + Kontext (Live/Last/Laden), qualifizierte Ruhespannung, Start-Proxy, geschätzter 12V-Zustand, Datenqualität, Außentemperatur.',
+      'HV: SoC, Energieinhalt, Ladezustand, Sessions, nutzbare Kapazität nur bei Gate, Provider-SOH nur wenn vorhanden, Referenzkapazität.',
+      'Keine falsche SOH-Bezeichnung für LV; Proxy/Experimental/Unsupported sichtbar; technische Details einklappbar.',
+      'Komponenten: BatteryLv/Hv SummaryCard + DetailContent; HealthErrorsView + HealthVehicleDetailPanel migriert.',
+      'i18n de/en für Battery-LV/HV-Labels; erweiterte CanonicalBatteryDto-Typen (referenceCapacity, sessions).',
+    ],
+    reason: 'Prompt 63/78: Battery Summary/Detail UI auf Basis des Canonical Battery DTO.',
+    previousBehavior: 'Monolithische HealthErrorsView-JSX, lokale SOH-Bänder, hardcodierte DE/EN-Strings.',
+    details:
+      'battery-lv-view-model.*, battery-hv-view-model.*, battery-ui-formatters.ts, components/battery/*, HealthErrorsView.tsx, HealthVehicleDetailPanel.tsx, api.ts, i18n de/en.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T21:00:00.000Z',
+  },
+  {
     id: 'battery-health-query-cache-v49562-2026-07-17',
     version: '4.9.562',
     title: 'V4.9.562 — Battery Health Query Cache (Prompt 62/78)',

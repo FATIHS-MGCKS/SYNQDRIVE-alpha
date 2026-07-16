@@ -5977,6 +5977,38 @@ export interface CanonicalBatteryLiveValues {
   providerSohPercent?: number | null;
 }
 
+export interface CanonicalBatteryHvReferenceCapacity {
+  id: string;
+  capacityKwh: number;
+  capacityType: string;
+  source: string;
+  verificationStatus: string;
+  verifiedAt: string | null;
+}
+
+export interface CanonicalBatteryHvSohAssessment {
+  estimatedSohPercent: number | null;
+  estimatedUsableCapacityKwh: number | null;
+  sohGatePassed: boolean;
+  confidence: string | null;
+  maturity: string | null;
+}
+
+export interface CanonicalBatteryHvProviderSoh {
+  percent: number | null;
+  source: HvSohSource | null;
+  decisionFresh: boolean;
+  observedAt?: string | null;
+}
+
+export interface CanonicalBatteryHvChargeSession {
+  sessionId: string;
+  source: string;
+  startAt: string;
+  endAt: string | null;
+  isOngoing: boolean;
+}
+
 export interface CanonicalBatteryDto {
   resolverVersion: string;
   organizationId?: string;
@@ -5993,11 +6025,11 @@ export interface CanonicalBatteryDto {
   };
   hv?: {
     supported: boolean;
-    providerSoh: { percent: number | null; decisionFresh: boolean };
-    sohAssessment?: {
-      estimatedSohPercent: number | null;
-      sohGatePassed: boolean;
-    } | null;
+    providerSoh: CanonicalBatteryHvProviderSoh;
+    referenceCapacity?: CanonicalBatteryHvReferenceCapacity | null;
+    currentChargeSession?: CanonicalBatteryHvChargeSession | null;
+    lastChargeSession?: CanonicalBatteryHvChargeSession | null;
+    sohAssessment?: CanonicalBatteryHvSohAssessment | null;
   } | null;
   dataQuality?: {
     aggregate: BatteryDataQualityPresentation;
