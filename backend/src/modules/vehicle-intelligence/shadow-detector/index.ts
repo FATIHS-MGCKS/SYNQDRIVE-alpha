@@ -10,4 +10,5 @@ export * from './shadow-detector-enrichment.service';
 export * from './detectors/cold-engine-shadow.policy';
 export * from './shadow-detector-gates';
 export * from './detectors/sustained-high-load-shadow.policy';
-export * from './detectors/sustained-high-load.shadow-detector';
+export * from './detectors/kickdown-like-shadow.policy';
+export * from './detectors/kickdown-like.shadow-detector';

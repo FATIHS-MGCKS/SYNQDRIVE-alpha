@@ -35,6 +35,30 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p37-sustained-high-load-shadow-2026-07-16',
+    version: '4.9.538',
+    title: 'Driving Intelligence V2 P37 — sustained high engine load shadow detector',
+    summary: [
+      'Shadow-Detector `sustained_high_load` (`sustained-high-load-shadow-v1`) mit versionierter Policy.',
+      'Inputs: Engine Load, Torque, Throttle, RPM, Speed, Dauer, Coolant-/Altitude-Kontext.',
+      'Einzelne Peaks reichen nicht — Mindestdauer (20s) und Coverage-Gate.',
+      'Steigungskontext reduziert Confidence, beweist keinen Missbrauch.',
+      'Keine Bewertung ohne Detector-Capability (`activeDetectorCapability`).',
+      'Ergebnis bleibt fahrzeugbezogene Belastung/Kontext — kein Kundenurteil, keine Health-Wirkung.',
+      'HF-Query um `currentLocationAltitude` erweitert; Misuse-Vergleich inkl. Overheating.',
+      'Tests: Bergfahrt, Autobahnlast, kurze Peaks.',
+    ],
+    reason:
+      'Prompt 37/76: Shadow Detector für länger anhaltende hohe Motorlast auf dem P35-Framework.',
+    previousBehavior:
+      'P36 `cold_engine_load` nur für kalte Last — kein sustained-high-load Detector.',
+    details:
+      '`sustainedHighLoadShadowDetector` + `shadow-detector-gates.ts`. Trip-FSM unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T16:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p36-cold-engine-shadow-detector-2026-07-16',
     version: '4.9.537',
     title: 'Driving Intelligence V2 P36 — cold engine load shadow detector',

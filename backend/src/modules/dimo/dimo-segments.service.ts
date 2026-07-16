@@ -200,6 +200,8 @@ export interface HighFrequencyReading {
   exteriorAirTempC?: number | null;
   /** Meters from currentLocationAltitude — optional post-trip context */
   altitudeM?: number | null;
+  /** Current gear from powertrainTransmissionCurrentGear */
+  currentGear?: number | null;
   /** kW from powertrainTractionBatteryCurrentPower (W → kW) */
   tractionBatteryPowerKw: number | null;
 }
@@ -835,6 +837,10 @@ export class DimoSegmentsService {
             altitudeM:
               typeof s.currentLocationAltitude === 'number'
                 ? s.currentLocationAltitude
+                : null,
+            currentGear:
+              typeof s.powertrainTransmissionCurrentGear === 'number'
+                ? s.powertrainTransmissionCurrentGear
                 : null,
             tractionBatteryPowerKw: w != null ? w / 1000 : null,
           };
