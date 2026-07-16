@@ -28,7 +28,7 @@ function event(
 }
 
 describe('assessTrip', () => {
-  it('returns UNAUFFAELLIG for clean trip with enough data and low stress', () => {
+  it('returns NICHT_BEWERTBAR for clean trip with low stress and no conduct events', () => {
     const result = assessTrip(
       baseInput({
         drivingStressScore: 18,
@@ -37,12 +37,13 @@ describe('assessTrip', () => {
       }),
     );
 
-    expect(result.status).toBe('UNAUFFAELLIG');
-    expect(result.label).toBe('Unauffällig');
+    expect(result.status).toBe('NICHT_BEWERTBAR');
+    expect(result.status).not.toBe('UNAUFFAELLIG');
     expect(result.signals.hasEnoughData).toBe(true);
+    expect(result.signals.drivingStressScore).toBe(18);
   });
 
-  it('returns BEOBACHTEN for moderate stress without events', () => {
+  it('returns NICHT_BEWERTBAR for moderate stress without conduct events', () => {
     const result = assessTrip(
       baseInput({
         drivingStressScore: 42,
@@ -50,7 +51,8 @@ describe('assessTrip', () => {
       }),
     );
 
-    expect(result.status).toBe('BEOBACHTEN');
+    expect(result.status).toBe('NICHT_BEWERTBAR');
+    expect(result.status).not.toBe('BEOBACHTEN');
     expect(result.status).not.toBe('PRUEFHINWEIS');
   });
 
@@ -129,7 +131,7 @@ describe('assessTrip', () => {
     expect(result.status).toBe('PRUEFHINWEIS');
   });
 
-  it('returns KRITISCH for critical driving stress without stronger evidence tier', () => {
+  it('does not mark conduct KRITISCH from critical vehicle stress alone', () => {
     const result = assessTrip(
       baseInput({
         drivingStressScore: 88,
@@ -137,9 +139,36 @@ describe('assessTrip', () => {
       }),
     );
 
-    expect(result.status).toBe('KRITISCH');
-    expect(result.label).toBe('Kritisch');
-    expect(result.source).toBe('STRESS_ONLY');
+    expect(result.status).toBe('NICHT_BEWERTBAR');
+    expect(result.status).not.toBe('KRITISCH');
+    expect(result.status).not.toBe('AUFFAELLIG');
+    expect(result.signals.drivingStressLevel).toBe('critical');
+    expect(result.source).not.toBe('STRESS_ONLY');
+  });
+
+  it('high vehicle stress without events is not AUFFAELLIG conduct', () => {
+    const result = assessTrip(
+      baseInput({
+        drivingStressScore: 72,
+        drivingStressLevel: 'high',
+      }),
+    );
+
+    expect(result.status).not.toBe('AUFFAELLIG');
+    expect(result.status).not.toBe('BEOBACHTEN');
+  });
+
+  it('returns UNAUFFAELLIG when only neutral behavior events exist', () => {
+    const result = assessTrip(
+      baseInput({
+        unifiedEvents: [
+          event({ eventCategory: 'ACCELERATION', classification: 'LIGHT', eventType: 'ACCELERATION' }),
+        ],
+        nativeEventCount: 1,
+      }),
+    );
+
+    expect(result.status).toBe('UNAUFFAELLIG');
   });
 
   it('returns NICHT_BEWERTBAR when no sufficient data is available', () => {
@@ -215,7 +244,7 @@ describe('assessTrip', () => {
   });
 
   it('is versioned', () => {
-    expect(assessTrip(baseInput()).version).toBe('1.1.0');
+    expect(assessTrip(baseInput()).version).toBe('1.2.0');
   });
 });
 

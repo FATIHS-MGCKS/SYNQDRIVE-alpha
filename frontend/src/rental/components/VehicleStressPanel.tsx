@@ -89,7 +89,7 @@ function ComponentRow({
 }
 
 export function VehicleStressPanel({
-  title = 'Fahrbelastung',
+  title = 'Fahrzeugbelastung',
   stressScore,
   stressLevel,
   components,

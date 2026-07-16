@@ -2,7 +2,7 @@ import type { StressLevel } from '../driving-impact/stress-level.util';
 
 import type { TripEvidenceLevel } from './trip-evidence-level.types';
 
-export const TRIP_ASSESSMENT_VERSION = '1.1.0';
+export const TRIP_ASSESSMENT_VERSION = '1.2.0';
 
 export type TripAssessmentStatus =
   | 'UNAUFFAELLIG'
@@ -17,6 +17,7 @@ export type TripAssessmentConfidence = 'LOW' | 'MEDIUM' | 'HIGH';
 export type TripAssessmentSource =
   | 'NATIVE_EVENTS'
   | 'HF_RECONSTRUCTED'
+  /** @deprecated Vehicle load no longer drives conduct assessment status (v1.2.0). */
   | 'STRESS_ONLY'
   | 'MISUSE_EVIDENCE'
   | 'MIXED'
@@ -32,6 +33,7 @@ export interface TripAssessmentEventInput {
 
 export interface TripAssessmentInput {
   unifiedEvents: TripAssessmentEventInput[];
+  /** Vehicle load 0–100 (higher = more mechanical stress). Does not imply driver conduct. */
   drivingStressScore: number | null;
   drivingStressLevel: StressLevel | null;
   misuseCaseCount: number;
@@ -49,6 +51,7 @@ export interface TripAssessmentSignals {
   abuseRelevantEvents: number;
   misuseCases: number;
   maxEvidenceLevel: TripEvidenceLevel | null;
+  /** Vehicle load signal — separate from conduct assessment. */
   drivingStressScore: number | null;
   drivingStressLevel: string | null;
   hasEnoughData: boolean;

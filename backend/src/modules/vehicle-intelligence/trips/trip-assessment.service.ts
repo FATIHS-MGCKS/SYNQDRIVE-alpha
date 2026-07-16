@@ -72,10 +72,6 @@ function resolveSource(input: TripAssessmentInput, status: TripAssessmentStatus)
   const abuseRelevant = countAbuseRelevantEvents(input.unifiedEvents);
   const native = input.nativeEventCount;
   const reconstructed = input.reconstructedEventCount;
-  const hasStress =
-    input.drivingStressLevel != null &&
-    input.drivingStressLevel !== 'low' &&
-    input.drivingStressScore != null;
   const hasMisuse = input.misuseCaseCount > 0;
 
   const contributors: TripAssessmentSource[] = [];
@@ -84,9 +80,6 @@ function resolveSource(input: TripAssessmentInput, status: TripAssessmentStatus)
   }
   if (native > 0) contributors.push('NATIVE_EVENTS');
   if (reconstructed > 0) contributors.push('HF_RECONSTRUCTED');
-  if (hasStress && (status === 'KRITISCH' || status === 'BEOBACHTEN')) {
-    contributors.push('STRESS_ONLY');
-  }
 
   const unique = [...new Set(contributors)];
   if (unique.length === 0) {
@@ -105,7 +98,6 @@ function resolveConfidence(
   if (input.deviceQualityDegraded) return 'LOW';
   if (source === 'MISUSE_EVIDENCE' || input.nativeEventCount > 0) return 'HIGH';
   if (source === 'HF_RECONSTRUCTED' && input.hasEnoughData) return 'MEDIUM';
-  if (source === 'STRESS_ONLY') return input.hasEnoughData ? 'MEDIUM' : 'LOW';
   if (input.hasEnoughData && input.unifiedEvents.length > 0) return 'MEDIUM';
   return 'LOW';
 }
@@ -118,7 +110,10 @@ function buildPrimaryReason(
 ): string {
   switch (status) {
     case 'NICHT_BEWERTBAR':
-      return 'Für diese Fahrt liegen nicht genug belastbare Signale vor.';
+      if (input.drivingStressScore != null && input.unifiedEvents.length === 0) {
+        return 'Fahrzeugbelastung erfasst — Fahrverhalten ohne belastbare Ereignisse nicht bewertbar.';
+      }
+      return 'Für diese Fahrt liegen nicht genug belastbare Verhaltenssignale vor.';
     case 'PRUEFHINWEIS':
       if (input.deviceQualityDegraded) {
         return 'Die Fahrbewertung ist eingeschränkt — das Telematik-Gerät sendet derzeit unzuverlässige native Fahrereignisse (DIMO: Steckung/Kalibrierung prüfen). Kein automatisierter Fahrervorwurf.';
@@ -148,9 +143,6 @@ function buildPrimaryReason(
       }
       return 'Auffälliges Fahrmuster erkannt. Prüfung empfohlen — kein automatisierter Vorwurf.';
     case 'KRITISCH':
-      if (input.drivingStressLevel === 'critical') {
-        return 'Sehr hohe Fahrbelastung erkannt — operativ kritisch einstufen.';
-      }
       return 'Schwerwiegende Fahrereignisse erkannt — operativ kritisch einstufen.';
     case 'AUFFAELLIG': {
       const accelHard = input.unifiedEvents.filter(
@@ -171,10 +163,7 @@ function buildPrimaryReason(
       return 'Auffällige Fahrweise erkannt.';
     }
     case 'BEOBACHTEN':
-      if (input.drivingStressLevel === 'moderate' || input.drivingStressLevel === 'high') {
-        return 'Erhöhte Fahrbelastung oder einzelne Warnsignale — Beobachtung empfohlen.';
-      }
-      return 'Einzelne moderate Signale — Beobachtung empfohlen.';
+      return 'Einzelne moderate Fahrereignisse — Beobachtung empfohlen.';
     case 'UNAUFFAELLIG':
     default:
       return 'Keine relevanten Auffälligkeiten erkannt.';
@@ -213,18 +202,16 @@ function resolveStatus(input: TripAssessmentInput): TripAssessmentStatus {
     status = 'PRUEFHINWEIS';
   } else if (input.misuseCaseCount > 0 || abuseRelevantCount > 0) {
     status = 'PRUEFHINWEIS';
-  } else if (input.drivingStressLevel === 'critical' || verySevereCount > 0) {
+  } else if (verySevereCount > 0) {
     status = 'KRITISCH';
-  } else if (hardDrivingCount >= 2 || (hardDrivingCount >= 1 && input.drivingStressLevel === 'high')) {
+  } else if (hardDrivingCount >= 2) {
     status = 'AUFFAELLIG';
   } else if (
     hardDrivingCount === 1 ||
-    input.drivingStressLevel === 'moderate' ||
-    input.drivingStressLevel === 'high' ||
     events.some((event) => event.classification === 'MODERATE' || event.classification === 'WARNING')
   ) {
     status = 'BEOBACHTEN';
-  } else if (hasBehaviorEvents || input.drivingStressScore != null || input.hasEnoughData) {
+  } else if (hasBehaviorEvents) {
     status = 'UNAUFFAELLIG';
   } else {
     status = 'NICHT_BEWERTBAR';
