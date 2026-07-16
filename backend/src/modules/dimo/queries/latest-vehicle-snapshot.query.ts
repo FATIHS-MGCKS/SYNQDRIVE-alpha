@@ -26,6 +26,7 @@ export function buildLatestSnapshotQuery(tokenId: number): string {
         powertrainTractionBatteryChargingIsCharging { timestamp value }
         powertrainTractionBatteryChargingIsChargingCableConnected { timestamp value }
         powertrainTractionBatteryChargingPower { timestamp value }
+        powertrainTractionBatteryChargingChargeLimit { timestamp value }
         powertrainTractionBatteryChargingAddedEnergy { timestamp value }
         powertrainTractionBatteryRange { timestamp value }
         powertrainTractionBatteryGrossCapacity { timestamp value }

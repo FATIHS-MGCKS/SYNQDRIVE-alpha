@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios, { AxiosInstance } from 'axios';
+import { buildAvailableSignalsQuery } from './queries/available-signals.query';
 import { buildLatestSnapshotQuery } from './queries/latest-vehicle-snapshot.query';
 import { buildLastSeenLocationQuery } from './queries/last-seen-location.query';
 
@@ -43,6 +44,18 @@ export class DimoTelemetryService {
     const query = buildLatestSnapshotQuery(tokenId);
     const result = await this.queryGraphQL(vehicleJwt, query);
     return result?.data ?? result;
+  }
+
+  async fetchAvailableSignals(
+    vehicleJwt: string,
+    tokenId: number,
+  ): Promise<string[]> {
+    const query = buildAvailableSignalsQuery(tokenId);
+    const result = await this.queryGraphQL(vehicleJwt, query);
+    const list = result?.data?.availableSignals;
+    return Array.isArray(list)
+      ? list.filter((entry): entry is string => typeof entry === 'string')
+      : [];
   }
 
   async fetchLastSeenLocation(

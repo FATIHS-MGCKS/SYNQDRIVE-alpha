@@ -20,6 +20,7 @@ import {
   presentLegacyHvCapacity,
 } from './hv-capacity-policy';
 import { isLegacyHvPairwiseCapacityAssessmentEnabled } from '../../../config/battery-health-v2.config';
+import type { HvBatterySignalObservedAt } from '../../dimo/mappers/dimo-battery-signal.mapper';
 
 /**
  * HV (High-Voltage) Battery Health Service for EV traction batteries.
@@ -68,6 +69,7 @@ export class HvBatteryHealthService {
         tractionBatteryGrossCapacityKwh: true,
         tractionBatteryCurrentEnergyKwh: true,
         tractionBatteryAddedEnergyKwh: true,
+        tractionBatteryChargeLimitPercent: true,
         lastSeenAt: true,
       },
     });
@@ -208,6 +210,7 @@ export class HvBatteryHealthService {
         currentVoltageV: latestState?.tractionBatteryCurrentVoltage ?? null,
         currentEnergyKwh: latestState?.tractionBatteryCurrentEnergyKwh ?? null,
         addedEnergyKwh: latestState?.tractionBatteryAddedEnergyKwh ?? null,
+        chargeLimitPercent: latestState?.tractionBatteryChargeLimitPercent ?? null,
       },
       providerSohObservedAt: providerSohObservedAt?.toISOString() ?? null,
     };
@@ -493,29 +496,46 @@ export class HvBatteryHealthService {
   async recordSnapshot(data: {
     vehicleId: string;
     socPercent: number;
+    /** Remaining pack energy (kWh) — preferred over legacy `energyUsedKwh`. */
+    currentEnergyKwh?: number;
+    /** @deprecated Compatibility alias for remaining pack energy — not consumed energy. */
     energyUsedKwh?: number;
     rangeKm?: number;
     chargingPowerKw?: number;
+    addedEnergyKwh?: number;
+    chargeLimitPercent?: number;
     isCharging?: boolean;
+    cableConnected?: boolean;
     odometerKm?: number;
     temperatureC?: number;
     nominalCapacityKwh?: number;
     providerReportedSohPercent?: number;
     providerSource?: string;
+    /** Collection-level DIMO `lastSeen` — fallback only, never fetch time. */
+    collectionObservedAt?: Date;
+    signalObservedAt?: HvBatterySignalObservedAt;
+    /** @deprecated Prefer `signalObservedAt.soc` / `collectionObservedAt`. */
     observedAt?: Date;
   }) {
     const legacyPairwiseEnabled = isLegacyHvPairwiseCapacityAssessmentEnabled();
+    const currentEnergyKwh = data.currentEnergyKwh ?? data.energyUsedKwh;
+    const resolveObservedAt = (
+      perSignal?: Date,
+      fallback?: Date,
+    ): Date | undefined => perSignal ?? fallback ?? data.collectionObservedAt ?? data.observedAt;
+    const snapshotRecordedAt =
+      resolveObservedAt(data.signalObservedAt?.soc, data.observedAt);
     let estimatedCapacity: number | null = null;
     let soh: number | null = null;
 
-    if (legacyPairwiseEnabled && data.nominalCapacityKwh && data.energyUsedKwh != null) {
+    if (legacyPairwiseEnabled && data.nominalCapacityKwh && currentEnergyKwh != null) {
       const previous = await this.prisma.hvBatteryHealthSnapshot.findFirst({
         where: { vehicleId: data.vehicleId },
         orderBy: { recordedAt: 'desc' },
       });
       if (previous && previous.energyUsedKwh != null) {
         const deltaSoc = Math.abs(data.socPercent - previous.socPercent);
-        const deltaEnergy = Math.abs(data.energyUsedKwh - previous.energyUsedKwh);
+        const deltaEnergy = Math.abs(currentEnergyKwh - previous.energyUsedKwh);
         if (deltaSoc >= 5 && deltaEnergy > 0) {
           estimatedCapacity = Math.round(((deltaEnergy / deltaSoc) * 100) * 10) / 10;
           if (
@@ -534,7 +554,7 @@ export class HvBatteryHealthService {
           }
         }
       }
-    } else if (!legacyPairwiseEnabled && data.nominalCapacityKwh && data.energyUsedKwh != null) {
+    } else if (!legacyPairwiseEnabled && data.nominalCapacityKwh && currentEnergyKwh != null) {
       this.logger.debug(
         `HV legacy pairwise capacity suppressed on snapshot: vehicle=${data.vehicleId} reason=legacy_pairwise_disabled`,
       );
@@ -544,7 +564,7 @@ export class HvBatteryHealthService {
       data: {
         vehicle: { connect: { id: data.vehicleId } },
         socPercent: data.socPercent,
-        energyUsedKwh: data.energyUsedKwh ?? null,
+        energyUsedKwh: currentEnergyKwh ?? null,
         estimatedCapacityKwh: estimatedCapacity,
         sohPercent: soh,
         rangeKm: data.rangeKm ?? null,
@@ -552,11 +572,10 @@ export class HvBatteryHealthService {
         isCharging: data.isCharging ?? false,
         odometerKm: data.odometerKm ?? null,
         temperatureC: data.temperatureC ?? null,
-        recordedAt: data.observedAt ?? new Date(),
+        recordedAt: snapshotRecordedAt ?? new Date(),
       },
     });
 
-    const observedAt = data.observedAt ?? new Date();
     const evidenceRows = [
       {
         vehicleId: data.vehicleId,
@@ -565,7 +584,7 @@ export class HvBatteryHealthService {
         valueType: BatteryEvidenceValueType.SOC_PERCENT,
         numericValue: data.socPercent,
         unit: 'percent',
-        observedAt,
+        observedAt: resolveObservedAt(data.signalObservedAt?.soc),
         provider: data.providerSource ?? 'DIMO',
       },
       {
@@ -575,7 +594,7 @@ export class HvBatteryHealthService {
         valueType: BatteryEvidenceValueType.RANGE_KM,
         numericValue: data.rangeKm,
         unit: 'km',
-        observedAt,
+        observedAt: resolveObservedAt(data.signalObservedAt?.rangeKm),
         provider: data.providerSource ?? 'DIMO',
       },
       {
@@ -585,7 +604,7 @@ export class HvBatteryHealthService {
         valueType: BatteryEvidenceValueType.BATTERY_TEMPERATURE_C,
         numericValue: data.temperatureC,
         unit: 'celsius',
-        observedAt,
+        observedAt: resolveObservedAt(data.signalObservedAt?.temperatureC),
         provider: data.providerSource ?? 'DIMO',
       },
       {
@@ -595,7 +614,7 @@ export class HvBatteryHealthService {
         valueType: BatteryEvidenceValueType.CHARGING_POWER_KW,
         numericValue: data.chargingPowerKw,
         unit: 'kW',
-        observedAt,
+        observedAt: resolveObservedAt(data.signalObservedAt?.chargingPowerKw),
         provider: data.providerSource ?? 'DIMO',
       },
       {
@@ -603,9 +622,19 @@ export class HvBatteryHealthService {
         scope: BatteryEvidenceScope.HV,
         sourceType: BatteryEvidenceSourceType.TELEMETRY_DERIVED,
         valueType: BatteryEvidenceValueType.CURRENT_ENERGY_KWH,
-        numericValue: data.energyUsedKwh,
+        numericValue: currentEnergyKwh,
         unit: 'kWh',
-        observedAt,
+        observedAt: resolveObservedAt(data.signalObservedAt?.currentEnergyKwh),
+        provider: data.providerSource ?? 'DIMO',
+      },
+      {
+        vehicleId: data.vehicleId,
+        scope: BatteryEvidenceScope.HV,
+        sourceType: BatteryEvidenceSourceType.TELEMETRY_DERIVED,
+        valueType: BatteryEvidenceValueType.ADDED_ENERGY_KWH,
+        numericValue: data.addedEnergyKwh,
+        unit: 'kWh',
+        observedAt: resolveObservedAt(data.signalObservedAt?.addedEnergyKwh),
         provider: data.providerSource ?? 'DIMO',
       },
       {
@@ -615,7 +644,7 @@ export class HvBatteryHealthService {
         valueType: BatteryEvidenceValueType.SOH_PERCENT,
         numericValue: data.providerReportedSohPercent,
         unit: 'percent',
-        observedAt,
+        observedAt: resolveObservedAt(data.signalObservedAt?.providerSoh),
         provider: data.providerSource ?? 'DIMO',
       },
     ];
@@ -628,7 +657,7 @@ export class HvBatteryHealthService {
         valueType: BatteryEvidenceValueType.SOH_PERCENT,
         numericValue: soh,
         unit: 'percent',
-        observedAt,
+        observedAt: resolveObservedAt(data.signalObservedAt?.soc, data.observedAt),
         provider: 'SynqDrive',
         confidence: 'derived_from_energy',
       } as any);

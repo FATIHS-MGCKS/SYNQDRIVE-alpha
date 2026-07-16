@@ -2549,10 +2549,12 @@ model VehicleLatestState {
   tractionBatterySohPercent             Float?    @map("traction_battery_soh_percent")
   /// Average HV battery temperature in Celsius.
   tractionBatteryTemperatureC           Float?    @map("traction_battery_temperature_c")
-  /// Charging power in kW while charging.
+  /// Charging power in kW while charging. DIMO: powertrainTractionBatteryChargingPower (already kW).
   tractionBatteryChargingPowerKw        Float?    @map("traction_battery_charging_power_kw")
   /// Added charging energy for current session in kWh.
   tractionBatteryAddedEnergyKwh         Float?    @map("traction_battery_added_energy_kwh")
+  /// Provider-reported HV charge limit SOC target (%).
+  tractionBatteryChargeLimitPercent     Float?    @map("traction_battery_charge_limit_percent")
   /// Whether charging is currently active.
   tractionBatteryIsCharging             Boolean?  @map("traction_battery_is_charging")
   /// Whether charging cable is currently connected.
