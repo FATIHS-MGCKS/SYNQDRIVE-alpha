@@ -30,6 +30,7 @@ import {
   isMildColdEngineBand,
   STANDSTILL_KMH,
 } from '../event-context/event-context-stats';
+import { isContextAssessableStatus, normalizeEventContextStatus } from '../event-context/event-context-status';
 import type {
   ContextClassification,
   EvidenceGrade,
@@ -359,13 +360,16 @@ function buildCandidate(
  */
 export function evaluateContextAnchors(anchors: ContextAnchor[]): CaseCandidate[] {
   // Only trustworthy, engine-applicable, sufficiently graded windows feed misuse.
-  const usable = anchors.filter(
-    (a) =>
-      a.assessment?.status === 'COMPLETED' &&
+  const usable = anchors.filter((a) => {
+    const status = normalizeEventContextStatus(a.assessment?.status);
+    return (
+      status != null &&
+      isContextAssessableStatus(status) &&
       a.assessment.engineSignalsApplicable === true &&
       !hasClass(a, 'INSUFFICIENT_CONTEXT') &&
-      gradeAtLeast(a.assessment.evidenceGrade, 'B'),
-  );
+      gradeAtLeast(a.assessment.evidenceGrade, 'B')
+    );
+  });
   if (usable.length === 0) return [];
 
   const out: CaseCandidate[] = [];

@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p26-event-context-enrich-job-2026-07-16',
+    version: '4.9.527',
+    title: 'Driving Intelligence V2 P26 — Event Context Enrichment via DRIVING_EVENT_CONTEXT_ENRICH jobs',
+    summary: [
+      'Migration von sequentieller Inline-Anreicherung auf `DRIVING_EVENT_CONTEXT_ENRICH` — ein Job pro Event × `contextModelVersion`.',
+      'Fan-out mit kontrollierter Parallelität (`EVENT_CONTEXT_FANOUT_CONCURRENCY`); Trip wird nicht blockiert.',
+      'V2 Context-Status: SUCCESS, LIMITED, INSUFFICIENT_CADENCE, PROVIDER_ERROR, UNSUPPORTED.',
+      'Retry bei Providerfehlern (P20); Dead Letter + persistiertes PROVIDER_ERROR bei dauerhaftem Fehler.',
+      '90-Tage-Historienfenster; idempotente `metadataJson.contextAssessment`; natives Event bleibt bei Contextfehler erhalten.',
+      'EVENT_CONTEXT-Stage schließt erst, wenn alle per-Event-Jobs terminal sind.',
+    ],
+    reason:
+      'Prompt 26/76: Event Context Enrichment auf durable Jobs migrieren — keine sequentielle Trip-Blockade, Retry/DL, klare Statussemantik.',
+    previousBehavior:
+      'LteR1BehaviorEnrichmentService rief `enrichDrivingEventContext` sequentiell inline auf; `DRIVING_EVENT_CONTEXT_ENRICH` Handler war Stub.',
+    details:
+      'Neue Module: `DrivingEventContextJobService`, `DrivingEventContextEnrichJobHandler`, `event-context-status`. Tests für transient errors + sparse cadence. Trip-FSM unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T05:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p25-extreme-accel-classification-2026-07-16',
     version: '4.9.526',
     title: 'Driving Intelligence V2 P25 — native extreme acceleration classification preserved',

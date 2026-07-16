@@ -58,8 +58,9 @@ function mkAssessment(
   } = {},
 ): EventContextAssessment {
   return {
-    version: 1,
-    status: overrides.status ?? 'COMPLETED',
+    version: 2,
+    contextModelVersion: '2026-07-16.1',
+    status: overrides.status ?? 'SUCCESS',
     anchorType: overrides.anchorType ?? 'DIMO_NATIVE_BEHAVIOR_EVENT',
     anchorEvent: null,
     anchorTimestamp: '2026-06-01T10:10:00.000Z',
@@ -136,7 +137,7 @@ describe('evaluateContextAnchors', () => {
       'DRIVING_EVENT',
       'de-2',
       mkAssessment({
-        status: 'INSUFFICIENT_CONTEXT',
+        status: 'INSUFFICIENT_CADENCE',
         classifications: ['INSUFFICIENT_CONTEXT'],
         evidenceGrade: 'D',
       }),
@@ -179,7 +180,7 @@ describe('evaluateContextAnchors', () => {
       'DRIVING_EVENT',
       'de-5',
       mkAssessment({
-        status: 'SKIPPED_NOT_APPLICABLE',
+        status: 'UNSUPPORTED',
         engineSignalsApplicable: false,
         classifications: [],
         reasonCodes: ['NOT_APPLICABLE_POWERTRAIN'],
