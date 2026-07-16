@@ -5,6 +5,27 @@
  * a trip may be finished while analysis is still running.
  */
 
+import {
+  resolveTripAnalysisStatus,
+} from './trip-analysis-status-resolver';
+import type { TripAnalysisStageRuntimeState, TripAnalysisStageSnapshot } from './trip-analysis-status-resolver.types';
+import {
+  emptyAnalysisStagesDocument,
+  flattenStageStates,
+  parseAnalysisStagesDocument,
+  type AnalysisStagesDocument,
+} from './trip-analysis-stage-record';
+
+export type { AnalysisStagesDocument, AnalysisStageRecord } from './trip-analysis-stage-record';
+export {
+  emptyAnalysisStagesDocument,
+  flattenStageStates,
+  getStageRecord,
+  getStageState,
+  parseAnalysisStagesDocument,
+  updateStageRecord,
+} from './trip-analysis-stage-record';
+
 export type TripAnalysisStatus =
   | 'PENDING'
   | 'IN_PROGRESS'
@@ -13,9 +34,16 @@ export type TripAnalysisStatus =
   | 'FAILED'
   | 'SKIPPED';
 
-export type AnalysisStageName = 'behavior' | 'route' | 'misuse' | 'drivingImpact';
+export type AnalysisStageName =
+  | 'behavior'
+  | 'nativeEvents'
+  | 'route'
+  | 'eventContext'
+  | 'misuse'
+  | 'drivingImpact'
+  | 'attribution';
 
-export type AnalysisStageState = 'pending' | 'done' | 'skipped' | 'failed';
+export type AnalysisStageState = 'pending' | 'done' | 'skipped' | 'failed' | 'not_assessable';
 
 export type AnalysisAssessability = 'FULL' | 'LIMITED' | 'NOT_ASSESSABLE';
 
@@ -41,9 +69,12 @@ export interface AnalysisAssessabilityContext {
 
 export interface AnalysisStagesJson {
   behavior?: AnalysisStageState;
+  nativeEvents?: AnalysisStageState;
   route?: AnalysisStageState;
+  eventContext?: AnalysisStageState;
   misuse?: AnalysisStageState;
   drivingImpact?: AnalysisStageState;
+  attribution?: AnalysisStageState;
 }
 
 export const TRIP_ANALYSIS_DISPLAY_LABEL: Record<TripAnalysisStatus, string> = {
@@ -78,58 +109,46 @@ export function mapAnalysisStatusToLegacySummaryStatus(
 }
 
 export function emptyAnalysisStages(): AnalysisStagesJson {
-  return {
-    behavior: 'pending',
-    route: 'pending',
-    misuse: 'pending',
-    drivingImpact: 'pending',
-  };
+  return flattenStageStates(emptyAnalysisStagesDocument()) as AnalysisStagesJson;
 }
 
+const ANALYSIS_STAGE_JSON_KEYS: AnalysisStageName[] = [
+  'behavior',
+  'nativeEvents',
+  'route',
+  'eventContext',
+  'misuse',
+  'drivingImpact',
+  'attribution',
+];
+
 export function parseAnalysisStagesJson(value: unknown): AnalysisStagesJson {
-  if (!value || typeof value !== 'object') return emptyAnalysisStages();
-  const raw = value as Record<string, unknown>;
-  const stage = (key: AnalysisStageName): AnalysisStageState | undefined => {
-    const v = raw[key];
-    if (v === 'pending' || v === 'done' || v === 'skipped' || v === 'failed') return v;
-    return undefined;
-  };
-  return {
-    behavior: stage('behavior') ?? 'pending',
-    route: stage('route') ?? 'pending',
-    misuse: stage('misuse') ?? 'pending',
-    drivingImpact: stage('drivingImpact') ?? 'pending',
-  };
+  return flattenStageStates(parseAnalysisStagesDocument(value)) as AnalysisStagesJson;
 }
 
 function isStageTerminal(state: AnalysisStageState | undefined): boolean {
-  return state === 'done' || state === 'skipped' || state === 'failed';
-}
-
-/** Whether any pipeline stage failed. */
-export function hasAnalysisStageFailure(stages: AnalysisStagesJson): boolean {
   return (
-    stages.behavior === 'failed' ||
-    stages.route === 'failed' ||
-    stages.misuse === 'failed' ||
-    stages.drivingImpact === 'failed'
+    state === 'done' ||
+    state === 'skipped' ||
+    state === 'failed' ||
+    state === 'not_assessable'
   );
 }
 
 /** Whether all pipeline stages reached a terminal state suitable for COMPLETED. */
 export function areAnalysisStagesComplete(stages: AnalysisStagesJson): boolean {
-  if (hasAnalysisStageFailure(stages)) return false;
-  return (
-    isStageTerminal(stages.behavior) &&
-    isStageTerminal(stages.route) &&
-    isStageTerminal(stages.misuse) &&
-    isStageTerminal(stages.drivingImpact)
-  );
+  return resolveTripAnalysisStatusFromStages(stages).status === 'COMPLETED';
+}
+
+/** Whether any pipeline stage failed. */
+export function hasAnalysisStageFailure(stages: AnalysisStagesJson): boolean {
+  return resolveTripAnalysisStatusFromStages(stages).failedStages.length > 0;
 }
 
 /** Behavior finished with usable output — misuse + driving impact may still run. */
 export function isAnalysisPartiallyReady(stages: AnalysisStagesJson): boolean {
-  return stages.behavior === 'done' && !areAnalysisStagesComplete(stages);
+  const resolved = resolveTripAnalysisStatusFromStages(stages);
+  return resolved.status === 'PARTIAL';
 }
 
 /** Behavior stage reached a terminal state (done or skipped). */
@@ -590,4 +609,63 @@ export function shouldFullySkipAnalysis(ctx: AnalysisAssessabilityContext): bool
     !ctx.nativeBehaviorEventsAvailable &&
     ctx.hfInsufficientForAbuse
   );
+}
+
+function mapPersistedStageState(
+  state: AnalysisStageState | undefined,
+  fallback?: AnalysisStageState,
+): TripAnalysisStageRuntimeState {
+  const resolved = state ?? fallback;
+  if (!resolved) return 'not_started';
+  if (resolved === 'pending') return 'pending';
+  if (resolved === 'done') return 'done';
+  if (resolved === 'skipped' || resolved === 'not_assessable') return 'skipped';
+  return 'failed';
+}
+
+/** Build resolver input snapshot from persisted `analysisStagesJson`. */
+export function buildStageSnapshotFromJson(stages: AnalysisStagesJson): TripAnalysisStageSnapshot {
+  return {
+    behavior: mapPersistedStageState(stages.behavior),
+    nativeEvents: mapPersistedStageState(stages.nativeEvents, stages.behavior),
+    route: mapPersistedStageState(stages.route),
+    eventContext: mapPersistedStageState(stages.eventContext, stages.behavior),
+    drivingImpact: mapPersistedStageState(stages.drivingImpact),
+    misuse: mapPersistedStageState(stages.misuse),
+    attribution: mapPersistedStageState(stages.attribution),
+  };
+}
+
+/** Central status resolution from persisted stages (flat or enriched document). */
+export function resolveTripAnalysisStatusFromStages(
+  stages: AnalysisStagesJson | AnalysisStagesDocument | unknown,
+  options?: {
+    assessability?: AnalysisAssessabilityContext;
+    analysisQueued?: boolean;
+  },
+) {
+  const flat = flattenStageStates(parseAnalysisStagesDocument(stages));
+
+  const assessability =
+    options?.assessability ??
+    ({
+      analysisAssessability: 'FULL',
+      analysisLimitReason: null,
+      shortTermMisuseAssessable: true,
+      nativeBehaviorEventsAvailable: flat.behavior === 'done',
+      hfInsufficientForAbuse: false,
+    } satisfies AnalysisAssessabilityContext);
+
+  const analysisQueued =
+    options?.analysisQueued ??
+    (flat.behavior !== 'pending' ||
+      flat.route !== 'pending' ||
+      flat.misuse !== 'pending' ||
+      flat.drivingImpact !== 'pending');
+
+  return resolveTripAnalysisStatus({
+    stages: buildStageSnapshotFromJson(flat),
+    assessability,
+    analysisQueued,
+  });
 }

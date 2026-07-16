@@ -9,6 +9,8 @@ import type { CanonicalTripScoreSummary } from './trip-analytics-canonical.servi
 import type { AnalysisAssessabilityContext } from './trip-analysis-status';
 import type { UnifiedBehaviorEvent } from './unified-behavior-read-model';
 
+import type { TripAttribution } from './trip-attribution.types';
+
 export interface BuildTripAssessmentParams {
   unifiedEvents: UnifiedBehaviorEvent[];
   scores: CanonicalTripScoreSummary;
@@ -17,6 +19,7 @@ export interface BuildTripAssessmentParams {
   distanceKm: number | null;
   durationMinutes: number | null;
   assessability: AnalysisAssessabilityContext;
+  attribution?: TripAttribution | null;
 }
 
 export function buildTripAssessmentFromSignals(params: BuildTripAssessmentParams): TripAssessment {
@@ -45,7 +48,28 @@ export function buildTripAssessmentFromSignals(params: BuildTripAssessmentParams
     reconstructedEventCount,
     deviceQualityDegraded:
       params.assessability.analysisLimitReason === 'DEVICE_NATIVE_EVENT_QUALITY',
+    attributionNeedsReview: resolveAttributionNeedsReview(params.attribution),
+    vehicleLoadNeedsReview: resolveVehicleLoadNeedsReview(
+      params.scores.stressLevel,
+      params.misuseCaseCount,
+    ),
   });
+}
+
+function resolveAttributionNeedsReview(attribution?: TripAttribution | null): boolean {
+  if (!attribution) return false;
+  return (
+    attribution.scope === 'BOOKING_TIME_WINDOW_MATCH' &&
+    (attribution.customerRelevant || attribution.customerChargeable)
+  );
+}
+
+function resolveVehicleLoadNeedsReview(
+  stressLevel: CanonicalTripScoreSummary['stressLevel'],
+  misuseCaseCount: number,
+): boolean {
+  if (misuseCaseCount === 0) return false;
+  return stressLevel === 'high' || stressLevel === 'critical';
 }
 
 export function buildTripAssessmentFromEventInputs(input: {

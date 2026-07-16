@@ -519,7 +519,7 @@ export const en = {
   'dashboard.driverFeedback': 'Driver Feedback',
   'dashboard.notifications': 'Notifications',
   'dashboard.vehiclesAffected': '{count} vehicles affected',
-  'dashboard.drivingScores': 'Driving scores',
+  'dashboard.drivingScores': 'Vehicle load',
   'dashboard.newToday': '{count} new today',
   'dashboard.unread': '{count} unread',
 
@@ -715,7 +715,7 @@ export const en = {
   'fleet.mileage': 'Mileage',
   'fleet.fuelLevel': 'Fuel Level',
   'fleet.vehicleHealth': 'Vehicle Health',
-  'fleet.driverScore': 'Driver Score',
+  'fleet.driverScore': 'Vehicle load',
   'fleet.noVehicles': 'No vehicles found',
 
   // ─── Vehicle Detail ───
@@ -1277,7 +1277,7 @@ export const en = {
   'trips.distance': 'Distance',
   'trips.duration': 'Duration',
   'trips.alerts': 'Alerts',
-  'trips.drivingScore': 'Driving Score',
+  'trips.drivingScore': 'Vehicle load',
   'trips.start': 'Start',
   'trips.destination': 'Destination',
 
@@ -1323,7 +1323,7 @@ export const en = {
   'customerDetail.customerDocuments': 'Customer Documents',
   'customerDetail.customerAlerts': 'Customer Alerts',
   'customerDetail.customerNotes': 'Customer Notes',
-  'customerDetail.drivingScore': 'Driving Score',
+  'customerDetail.drivingScore': 'Vehicle load',
 
   // ─── Document Upload ───
   'docUpload.title': 'Document Upload',

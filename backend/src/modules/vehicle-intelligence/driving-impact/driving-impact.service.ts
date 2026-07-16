@@ -10,6 +10,14 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
 import { DRIVING_IMPACT_CONFIG as C } from './driving-impact.config';
 import {
+  assessDrivingImpactComputationQuality,
+  buildFailedDrivingImpactOutcome,
+  buildPersistedDrivingImpactOutcome,
+  buildSkippedDrivingImpactOutcome,
+} from './driving-impact-outcome.util';
+import type { DrivingImpactComputeResult } from './driving-impact-outcome.types';
+import { DrivingImpactStatusSyncService } from './driving-impact-status-sync.service';
+import {
   capLinear,
   per100Km,
   percentile95,
@@ -100,19 +108,18 @@ export class DrivingImpactService {
   constructor(
     private readonly prisma: PrismaService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
+    @Optional() private readonly statusSync?: DrivingImpactStatusSyncService,
   ) {}
 
   // ── Main computation entry point ────────────────────────────────────────────
 
   /**
    * Compute and persist the Driving Impact snapshot for a finalized trip.
-   * Should be called only after HF enrichment has completed for the trip.
-   *
-   * Returns true on success, false if the trip was skipped (too short,
-   * missing required data, etc).
+   * Persists impact row and trip readiness status in one transaction when sync service is wired.
    */
-  async computeForTrip(tripId: string, vehicleId: string): Promise<boolean> {
-    const trip = await this.prisma.vehicleTrip.findUnique({
+  async computeForTrip(tripId: string, vehicleId: string): Promise<DrivingImpactComputeResult> {
+    try {
+      const trip = await this.prisma.vehicleTrip.findUnique({
       where: { id: tripId },
       select: {
         id: true,
@@ -142,18 +149,25 @@ export class DrivingImpactService {
 
     if (!trip) {
       this.logger.warn(`DrivingImpact: trip ${tripId} not found`);
-      return false;
+      await this.statusSync?.applyOutcomeWithoutImpactRow(
+        tripId,
+        buildSkippedDrivingImpactOutcome('trip_not_found'),
+      );
+      return { kind: 'skipped', reason: 'trip_not_found', modelVersion: C.MODEL_VERSION };
     }
 
     const distanceKm = trip.distanceKm ?? 0;
 
-    // Guard: skip trips below the minimum reliable normalization threshold
     if (distanceKm < C.MINIMUM_RELIABLE_TRIP_KM) {
       this.logger.debug(
         `DrivingImpact: skipping trip ${tripId} — distance ${distanceKm.toFixed(2)} km < ` +
         `${C.MINIMUM_RELIABLE_TRIP_KM} km minimum`,
       );
-      return false;
+      await this.statusSync?.applyOutcomeWithoutImpactRow(
+        tripId,
+        buildSkippedDrivingImpactOutcome('distance_too_short'),
+      );
+      return { kind: 'skipped', reason: 'distance_too_short', modelVersion: C.MODEL_VERSION };
     }
 
     const organizationId = trip.vehicle?.organizationId ?? null;
@@ -360,122 +374,127 @@ export class DrivingImpactService {
     // scalar is `safetyScore` (via `computeSafetyScore`). V4.6.95 fully
     // retires the column — the migration drops it; no consumer remained.
 
-    // ── Persist TripDrivingImpact ─────────────────────────────────────────────
+    const calculatedAt = new Date();
+    const quality = assessDrivingImpactComputationQuality({
+      distanceKm,
+      citySharePct,
+      highwaySharePct,
+      countryRoadSharePct,
+      brakingEventRowCount: brakingEventRows.length,
+      useTelemetryDrivingEvents,
+    });
 
-    await this.prisma.tripDrivingImpact.upsert({
-      where: { tripId },
-      create: {
-        vehicleId,
-        organizationId,
+    const sourceSummaryJson = {
+      hardAccelCount,
+      extremeAccelCount,
+      hardBrakeCount,
+      extremeBrakeCount,
+      fullBrakingCount,
+      kickdownCount,
+      launchLikeCount,
+      brakesTotal,
+      highSpeedBrakeCount,
+      stopCount,
+      speedingExposurePct,
+      speedingSectionCount,
+      maxOverSpeedKmh,
+      avgOverSpeedKmh,
+      v3DrivingEventInput: useTelemetryDrivingEvents ? 'TELEMETRY_EVENTS' : 'HF_DERIVED',
+      vehicleHardwareType: hardwareType,
+      computationQuality: quality,
+      calculatedAt: calculatedAt.toISOString(),
+    };
+
+    const impactCreate = {
+      vehicleId,
+      organizationId,
+      tripId,
+      tripStartedAt: trip.startTime,
+      tripEndedAt: trip.endTime ?? null,
+      distanceKm,
+      citySharePct,
+      highwaySharePct,
+      countryRoadSharePct,
+      hardAccelPer100Km,
+      extremeAccelPer100Km,
+      hardBrakePer100Km,
+      extremeBrakePer100Km,
+      fullBrakingPer100Km,
+      kickdownPer100Km,
+      launchLikePer100Km,
+      brakesPer100Km,
+      stopDensity,
+      highSpeedBrakeShare,
+      meanBrakeEnergyPerKm: mbe,
+      p95NegativeDecel,
+      longitudinalStressScore,
+      brakingStressScore,
+      stopGoStressScore,
+      highSpeedStressScore,
+      thermalBrakeStressScore,
+      drivingStressScore,
+      safetyScore,
+      speedingExposurePct,
+      speedingSectionCount,
+      modelVersion: C.MODEL_VERSION,
+      sourceSummaryJson,
+    };
+
+    const impactUpdate = {
+      tripStartedAt: trip.startTime,
+      tripEndedAt: trip.endTime ?? null,
+      distanceKm,
+      citySharePct,
+      highwaySharePct,
+      countryRoadSharePct,
+      hardAccelPer100Km,
+      extremeAccelPer100Km,
+      hardBrakePer100Km,
+      extremeBrakePer100Km,
+      fullBrakingPer100Km,
+      kickdownPer100Km,
+      launchLikePer100Km,
+      brakesPer100Km,
+      stopDensity,
+      highSpeedBrakeShare,
+      meanBrakeEnergyPerKm: mbe,
+      p95NegativeDecel,
+      longitudinalStressScore,
+      brakingStressScore,
+      stopGoStressScore,
+      highSpeedStressScore,
+      thermalBrakeStressScore,
+      drivingStressScore,
+      safetyScore,
+      speedingExposurePct,
+      speedingSectionCount,
+      modelVersion: C.MODEL_VERSION,
+      sourceSummaryJson,
+    };
+
+    const outcome = buildPersistedDrivingImpactOutcome({ quality, calculatedAt });
+
+    if (this.statusSync) {
+      await this.statusSync.persistImpactWithStatus(
         tripId,
-        tripStartedAt: trip.startTime,
-        tripEndedAt: trip.endTime ?? null,
-        distanceKm,
-
-        citySharePct,
-        highwaySharePct,
-        countryRoadSharePct,
-
-        hardAccelPer100Km,
-        extremeAccelPer100Km,
-        hardBrakePer100Km,
-        extremeBrakePer100Km,
-        fullBrakingPer100Km,
-        kickdownPer100Km,
-        launchLikePer100Km,
-
-        brakesPer100Km,
-        stopDensity,
-        highSpeedBrakeShare,
-        meanBrakeEnergyPerKm: mbe,
-        p95NegativeDecel,
-
-        longitudinalStressScore,
-        brakingStressScore,
-        stopGoStressScore,
-        highSpeedStressScore,
-        thermalBrakeStressScore,
-        drivingStressScore,
-        safetyScore,
-        speedingExposurePct,
-        speedingSectionCount,
-
-        modelVersion: C.MODEL_VERSION,
-        sourceSummaryJson: {
-          hardAccelCount,
-          extremeAccelCount,
-          hardBrakeCount,
-          extremeBrakeCount,
-          fullBrakingCount,
-          kickdownCount,
-          launchLikeCount,
-          brakesTotal,
-          highSpeedBrakeCount,
-          stopCount,
-          speedingExposurePct,
-          speedingSectionCount,
-          maxOverSpeedKmh,
-          avgOverSpeedKmh,
-          v3DrivingEventInput: useTelemetryDrivingEvents ? 'TELEMETRY_EVENTS' : 'HF_DERIVED',
-          vehicleHardwareType: hardwareType,
+        {
+          create: impactCreate,
+          update: impactUpdate,
+          drivingScore: drivingStressScore,
         },
-      },
-      update: {
-        // Re-run is idempotent: update all computed fields if impact is recomputed
-        tripStartedAt: trip.startTime,
-        tripEndedAt: trip.endTime ?? null,
-        distanceKm,
-        citySharePct,
-        highwaySharePct,
-        countryRoadSharePct,
-        hardAccelPer100Km,
-        extremeAccelPer100Km,
-        hardBrakePer100Km,
-        extremeBrakePer100Km,
-        fullBrakingPer100Km,
-        kickdownPer100Km,
-        launchLikePer100Km,
-        brakesPer100Km,
-        stopDensity,
-        highSpeedBrakeShare,
-        meanBrakeEnergyPerKm: mbe,
-        p95NegativeDecel,
-        longitudinalStressScore,
-        brakingStressScore,
-        stopGoStressScore,
-        highSpeedStressScore,
-        thermalBrakeStressScore,
-        drivingStressScore,
-        safetyScore,
-        speedingExposurePct,
-        speedingSectionCount,
-        modelVersion: C.MODEL_VERSION,
-        sourceSummaryJson: {
-          hardAccelCount,
-          extremeAccelCount,
-          hardBrakeCount,
-          extremeBrakeCount,
-          fullBrakingCount,
-          kickdownCount,
-          launchLikeCount,
-          brakesTotal,
-          highSpeedBrakeCount,
-          stopCount,
-          speedingExposurePct,
-          speedingSectionCount,
-          maxOverSpeedKmh,
-          avgOverSpeedKmh,
-          v3DrivingEventInput: useTelemetryDrivingEvents ? 'TELEMETRY_EVENTS' : 'HF_DERIVED',
-          vehicleHardwareType: hardwareType,
-        },
-      },
-    });
-
-    // Compatibility mirror: VehicleTrip.drivingScore stores stress (higher = more load).
-    await this.prisma.vehicleTrip.update({
-      where: { id: tripId },
-      data: { drivingScore: drivingStressScore },
-    });
+        outcome,
+      );
+    } else {
+      await this.prisma.tripDrivingImpact.upsert({
+        where: { tripId },
+        create: impactCreate,
+        update: impactUpdate,
+      });
+      await this.prisma.vehicleTrip.update({
+        where: { id: tripId },
+        data: { drivingScore: drivingStressScore },
+      });
+    }
 
     if (trip.drivingScore != null) {
       const drift = Math.abs(trip.drivingScore - drivingStressScore);
@@ -489,14 +508,26 @@ export class DrivingImpactService {
     this.logger.log(
       `DrivingImpact persisted: trip=${tripId} vehicle=${vehicleId} ` +
       `dist=${distanceKm.toFixed(1)}km long=${longitudinalStressScore} ` +
-      `brake=${brakingStressScore} stress=${drivingStressScore}`,
+      `brake=${brakingStressScore} stress=${drivingStressScore} quality=${quality}`,
     );
-
-    // ── Update rolling current aggregate ─────────────────────────────────────
 
     await this.updateRollingCurrent(vehicleId, organizationId);
 
-    return true;
+    return {
+      kind: 'persisted',
+      quality,
+      modelVersion: C.MODEL_VERSION,
+      calculatedAt,
+    };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.error(`DrivingImpact compute failed: trip=${tripId} ${message}`);
+      await this.statusSync?.applyOutcomeWithoutImpactRow(
+        tripId,
+        buildFailedDrivingImpactOutcome(message),
+      );
+      return { kind: 'failed', error: message, modelVersion: C.MODEL_VERSION };
+    }
   }
 
   // ── Rolling aggregate ───────────────────────────────────────────────────────

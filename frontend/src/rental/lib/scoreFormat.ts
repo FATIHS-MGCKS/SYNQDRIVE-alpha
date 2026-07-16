@@ -1,4 +1,4 @@
-// V4.8.25 — Vehicle stress / Fahrbelastung visualization helpers.
+// V4.8.25 — Vehicle stress / Fahrzeugbelastung visualization helpers.
 //
 // `drivingStressScore` is 0–100 where HIGHER = MORE vehicle load (worse for
 // tires/brakes). This is NOT a positive driver-quality score.
