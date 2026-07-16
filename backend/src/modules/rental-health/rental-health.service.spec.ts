@@ -39,12 +39,30 @@ describe('RentalHealthService (unit)', () => {
     restingValueV?: number | null;
     restingStatus?: string;
     measurementContext?: string;
+    legacyPublicationUnsafe?: boolean;
   }) => ({
     generatedAt: '2026-06-24T12:00:00.000Z',
     lv: {
       healthStatus: overrides.healthStatus ?? 'GOOD',
       freshness: { observedAt: '2026-06-24T11:00:00.000Z' },
-      estimatedHealth: { displayMode: 'BARS', status: 'GOOD' },
+      estimatedHealth: {
+        displayMode: 'BARS',
+        status: 'GOOD',
+        decisionCapable: overrides.legacyPublicationUnsafe ? false : true,
+      },
+      legacyPublicationSafety: overrides.legacyPublicationUnsafe
+        ? {
+            decisionCapable: false,
+            displayMode: 'LEGACY_UNVERIFIED',
+            diagnosticLabelDe: 'Legacy / unverifiziert (nicht entscheidungsfähig)',
+            reasons: ['REST_LIKELY_CONTAMINATED'],
+          }
+        : {
+            decisionCapable: true,
+            displayMode: 'DECISION_CAPABLE',
+            diagnosticLabelDe: 'Geschätzter 12V-Zustand (entscheidungsfähig)',
+            reasons: [],
+          },
       restingVoltage: {
         valueV: overrides.restingValueV === undefined ? 12.84 : overrides.restingValueV,
         status: overrides.restingStatus ?? 'GOOD',
@@ -127,6 +145,47 @@ describe('RentalHealthService (unit)', () => {
     expect(res.state).toBe('warning');
     expect(res.reason).toMatch(/Geschätzte Batteriegesundheit/i);
     expect(res.reason).not.toMatch(/Ruhespannung 12\.84/);
+  });
+
+  it('unsafe legacy CRITICAL aggregate does not escalate rental battery alone', () => {
+    const res = evaluateBattery(
+      batterySummary({
+        healthStatus: 'CRITICAL',
+        restingValueV: 12.84,
+        restingStatus: 'GOOD',
+        legacyPublicationUnsafe: true,
+      }),
+    );
+    expect(res.state).toBe('unknown');
+    expect(res.evidence_type).toBe('legacy_unverified');
+    expect(res.reason).not.toMatch(/kritisch/i);
+  });
+
+  it('unsafe legacy does not suppress genuine resting-voltage WARNING', () => {
+    const res = evaluateBattery(
+      batterySummary({
+        healthStatus: 'WARNING',
+        restingValueV: 12.05,
+        restingStatus: 'WARNING',
+        legacyPublicationUnsafe: true,
+      }),
+    );
+    expect(res.state).toBe('warning');
+    expect(res.reason).toMatch(/Ruhespannung 12\.05 V/);
+  });
+
+  it('HM warning light still escalates when legacy publication is unsafe', () => {
+    const res = evaluateBattery(
+      batterySummary({
+        healthStatus: 'CRITICAL',
+        restingValueV: 12.84,
+        restingStatus: 'GOOD',
+        legacyPublicationUnsafe: true,
+      }),
+      { dashboardLights: { battery_low_warning: 'on' } },
+    );
+    expect(res.state).toBe('warning');
+    expect(res.reason).toMatch(/Warnleuchte/i);
   });
 
   it('critical DTC with severity critical (not only high display) => critical module', () => {

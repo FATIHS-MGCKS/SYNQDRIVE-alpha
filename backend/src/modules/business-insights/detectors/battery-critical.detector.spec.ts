@@ -4,6 +4,20 @@ import { DetectorContext, InsightSeverity } from '../insight.types';
 describe('BatteryCriticalDetector', () => {
   const now = new Date('2026-06-13T10:00:00.000Z');
   const fresh = new Date('2026-06-13T09:00:00.000Z');
+  const safePublicationFeatures = {
+    publishedSohPct: 50,
+    publicationState: 'STABLE',
+    maturityConfidence: 'high',
+    vOff60m: 12.6,
+    vOff6h: 12.58,
+    rest60mCapturedAt: new Date('2026-06-13T07:00:00.000Z'),
+    rest6hCapturedAt: new Date('2026-06-13T08:30:00.000Z'),
+    crankDrop: 1.0,
+    crankObservationCount: 2,
+    crankAt: new Date('2026-06-13T06:55:00.000Z'),
+    scoredAt: fresh,
+    lastPublishedAt: fresh,
+  };
 
   const buildCtx = (): DetectorContext =>
     ({ organizationId: 'org-1', now, policy: {} as any } as DetectorContext);
@@ -12,7 +26,20 @@ describe('BatteryCriticalDetector', () => {
     fuelType?: string;
     batteryType?: string | null;
     snapshots?: Array<{ restingVoltage: number | null; voltageV: number; engineRunning: boolean; recordedAt: Date }>;
-    features?: { publishedSohPct: number | null; publicationState: string; crankDrop: number | null } | null;
+    features?: {
+      publishedSohPct: number | null;
+      publicationState: string;
+      crankDrop: number | null;
+      maturityConfidence?: string | null;
+      vOff60m?: number | null;
+      vOff6h?: number | null;
+      rest60mCapturedAt?: Date | null;
+      rest6hCapturedAt?: Date | null;
+      crankObservationCount?: number;
+      crankAt?: Date | null;
+      scoredAt?: Date | null;
+      lastPublishedAt?: Date | null;
+    } | null;
     hvCurrent?: {
       publishedSohPct: number | null;
       publicationState: string;
@@ -146,27 +173,70 @@ describe('BatteryCriticalDetector', () => {
 
   it('does not alert on WATCH estimated battery health', async () => {
     const prisma = buildPrisma({
-      features: { publishedSohPct: 70, publicationState: 'STABLE', crankDrop: 1.0 },
+      batteryType: 'AGM',
+      features: { ...safePublicationFeatures, publishedSohPct: 70 },
     });
     const result = await new BatteryCriticalDetector(prisma).detect(buildCtx());
     expect(result).toHaveLength(0);
   });
 
-  it('alerts WARNING on low estimated battery health', async () => {
+  it('alerts WARNING on low estimated battery health when publication is safety-qualified', async () => {
     const prisma = buildPrisma({
-      features: { publishedSohPct: 50, publicationState: 'STABLE', crankDrop: 1.0 },
+      batteryType: 'AGM',
+      features: safePublicationFeatures,
     });
     const result = await new BatteryCriticalDetector(prisma).detect(buildCtx());
     expect(result).toHaveLength(1);
     expect(result[0].severity).toBe(InsightSeverity.WARNING);
   });
 
-  it('alerts CRITICAL on critical estimated battery health', async () => {
+  it('alerts CRITICAL on critical estimated battery health when publication is safety-qualified', async () => {
     const prisma = buildPrisma({
-      features: { publishedSohPct: 35, publicationState: 'STABLE', crankDrop: 1.0 },
+      batteryType: 'AGM',
+      features: { ...safePublicationFeatures, publishedSohPct: 35 },
     });
     const result = await new BatteryCriticalDetector(prisma).detect(buildCtx());
     expect(result).toHaveLength(1);
     expect(result[0].severity).toBe(InsightSeverity.CRITICAL);
+  });
+
+  it('does not alert on unsafe legacy publication score alone (contaminated REST)', async () => {
+    const prisma = buildPrisma({
+      batteryType: 'AGM',
+      features: { ...safePublicationFeatures, publishedSohPct: 35, vOff60m: 14.43 },
+    });
+    const result = await new BatteryCriticalDetector(prisma).detect(buildCtx());
+    expect(result).toHaveLength(0);
+  });
+
+  it('does not alert on unsafe legacy publication with mislabeled LV SOH evidence', async () => {
+    const prisma = buildPrisma({
+      batteryType: 'AGM',
+      features: safePublicationFeatures,
+    });
+    prisma.batteryEvidence.findMany.mockResolvedValue([
+      {
+        vehicleId: 'veh-1',
+        scope: 'LV',
+        sourceType: 'TELEMETRY_DERIVED',
+        valueType: 'SOH_PERCENT',
+        numericValue: 50,
+        observedAt: fresh,
+      },
+    ]);
+    const result = await new BatteryCriticalDetector(prisma).detect(buildCtx());
+    expect(result).toHaveLength(0);
+  });
+
+  it('still alerts CRITICAL on resting voltage when legacy publication is unsafe', async () => {
+    const prisma = buildPrisma({
+      batteryType: 'AGM',
+      snapshots: [{ restingVoltage: 11.8, voltageV: 11.8, engineRunning: false, recordedAt: fresh }],
+      features: { ...safePublicationFeatures, publishedSohPct: 35, vOff60m: 14.43 },
+    });
+    const result = await new BatteryCriticalDetector(prisma).detect(buildCtx());
+    expect(result).toHaveLength(1);
+    expect(result[0].severity).toBe(InsightSeverity.CRITICAL);
+    expect(result[0].reasons?.[0]).toMatch(/Ruhespannung/i);
   });
 });

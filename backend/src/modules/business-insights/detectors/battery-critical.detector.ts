@@ -14,6 +14,10 @@ import {
   specUsedForRestingThresholds,
   type BatteryHealthStatus,
 } from '../../vehicle-intelligence/battery-health/battery-status';
+import {
+  effectiveLvEstimatedHealthStatusForDecisions,
+  evaluateLegacyPublicationSafety,
+} from '../../vehicle-intelligence/battery-health/battery-legacy-publication-safety';
 import { isLegacyHvDegradationModel } from '../../vehicle-intelligence/battery-health/soh-publication';
 import {
   DetectorContext,
@@ -125,7 +129,16 @@ export class BatteryCriticalDetector implements InsightDetector {
           vehicleId: true,
           publishedSohPct: true,
           publicationState: true,
+          maturityConfidence: true,
+          vOff60m: true,
+          vOff6h: true,
+          rest60mCapturedAt: true,
+          rest6hCapturedAt: true,
           crankDrop: true,
+          crankObservationCount: true,
+          crankAt: true,
+          scoredAt: true,
+          lastPublishedAt: true,
         },
       }),
       // Battery specs — best spec per vehicle for chemistry-aware voltage bands.
@@ -154,19 +167,29 @@ export class BatteryCriticalDetector implements InsightDetector {
       this.prisma.batteryEvidence.findMany({
         where: {
           vehicleId: { in: vehicleIds },
-          scope: BatteryEvidenceScope.HV,
-          valueType: BatteryEvidenceValueType.SOH_PERCENT,
-          sourceType: {
-            in: [
-              BatteryEvidenceSourceType.PROVIDER_REPORTED,
-              ...BatteryCriticalDetector.HV_REPORTED_SOURCES,
-            ],
-          },
+          OR: [
+            {
+              scope: BatteryEvidenceScope.HV,
+              valueType: BatteryEvidenceValueType.SOH_PERCENT,
+              sourceType: {
+                in: [
+                  BatteryEvidenceSourceType.PROVIDER_REPORTED,
+                  ...BatteryCriticalDetector.HV_REPORTED_SOURCES,
+                ],
+              },
+            },
+            {
+              scope: BatteryEvidenceScope.LV,
+              valueType: BatteryEvidenceValueType.SOH_PERCENT,
+            },
+          ],
         },
         orderBy: { observedAt: 'desc' },
         select: {
           vehicleId: true,
+          scope: true,
           sourceType: true,
+          valueType: true,
           numericValue: true,
           observedAt: true,
         },
@@ -191,13 +214,35 @@ export class BatteryCriticalDetector implements InsightDetector {
 
     const featuresByVehicle = new Map<
       string,
-      { publishedSohPct: number | null; publicationState: string | null; crankDrop: number | null }
+      {
+        publishedSohPct: number | null;
+        publicationState: string | null;
+        maturityConfidence: string | null;
+        vOff60m: number | null;
+        vOff6h: number | null;
+        rest60mCapturedAt: Date | null;
+        rest6hCapturedAt: Date | null;
+        crankDrop: number | null;
+        crankObservationCount: number;
+        crankAt: Date | null;
+        scoredAt: Date | null;
+        lastPublishedAt: Date | null;
+      }
     >();
     for (const f of featuresRows) {
       featuresByVehicle.set(f.vehicleId, {
         publishedSohPct: f.publishedSohPct ?? null,
         publicationState: (f.publicationState as string | null) ?? null,
+        maturityConfidence: (f.maturityConfidence as string | null) ?? null,
+        vOff60m: f.vOff60m ?? null,
+        vOff6h: f.vOff6h ?? null,
+        rest60mCapturedAt: f.rest60mCapturedAt ?? null,
+        rest6hCapturedAt: f.rest6hCapturedAt ?? null,
         crankDrop: f.crankDrop ?? null,
+        crankObservationCount: f.crankObservationCount ?? 0,
+        crankAt: f.crankAt ?? null,
+        scoredAt: f.scoredAt ?? null,
+        lastPublishedAt: f.lastPublishedAt ?? null,
       });
     }
 
@@ -244,7 +289,19 @@ export class BatteryCriticalDetector implements InsightDetector {
       string,
       { numericValue: number; observedAt: Date }
     >();
+    const lvSohEvidenceByVehicle = new Map<
+      string,
+      Array<{ valueType: string; sourceType: string }>
+    >();
     for (const row of hvEvidenceRows) {
+      if (row.scope === BatteryEvidenceScope.LV) {
+        const list = lvSohEvidenceByVehicle.get(row.vehicleId) ?? [];
+        if (list.length < 25) {
+          list.push({ valueType: row.valueType, sourceType: row.sourceType });
+          lvSohEvidenceByVehicle.set(row.vehicleId, list);
+        }
+        continue;
+      }
       if (row.sourceType === BatteryEvidenceSourceType.PROVIDER_REPORTED) {
         if (!hvProviderEvidenceByVehicle.has(row.vehicleId)) {
           hvProviderEvidenceByVehicle.set(row.vehicleId, {
@@ -292,14 +349,33 @@ export class BatteryCriticalDetector implements InsightDetector {
           )
         : false;
 
-      // ── LV estimated health (only once published) ─────────────────────────
+      // ── LV estimated health (only once published and safety-qualified) ───
       let estHealthStatus: BatteryHealthStatus = 'UNKNOWN';
       if (
         features &&
         features.publicationState !== BatteryCriticalDetector.INITIAL_CALIBRATION &&
         features.publishedSohPct != null
       ) {
-        estHealthStatus = classifyLvEstimatedHealth(features.publishedSohPct);
+        const legacySafety = evaluateLegacyPublicationSafety({
+          publicationState: features.publicationState,
+          publishedSohPct: features.publishedSohPct,
+          maturityConfidence: features.maturityConfidence,
+          vOff60m: features.vOff60m,
+          vOff6h: features.vOff6h,
+          rest60mCapturedAt: features.rest60mCapturedAt,
+          rest6hCapturedAt: features.rest6hCapturedAt,
+          crankDrop: features.crankDrop,
+          crankObservationCount: features.crankObservationCount,
+          crankAt: features.crankAt,
+          scoredAt: features.scoredAt,
+          lastPublishedAt: features.lastPublishedAt,
+          batteryTypeRaw: batterySpec.batteryType,
+          lvEvidenceRecent: lvSohEvidenceByVehicle.get(v.id) ?? [],
+        });
+        estHealthStatus = effectiveLvEstimatedHealthStatusForDecisions(
+          classifyLvEstimatedHealth(features.publishedSohPct),
+          legacySafety,
+        );
       }
 
       // ── LV crank drop ─────────────────────────────────────────────────────

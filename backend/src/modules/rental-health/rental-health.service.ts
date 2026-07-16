@@ -287,6 +287,7 @@ export class RentalHealthService {
     const restingStatus = lv?.restingVoltage?.status ?? null;
     const restingIsGenuine =
       restingVoltage != null && lv?.restingVoltage?.measurementContext === 'RESTING';
+    const legacyPublicationUnsafe = lv?.legacyPublicationSafety?.decisionCapable === false;
     // A genuine resting note is only attached when the resting voltage is itself
     // the concern (WARNING/CRITICAL) or to confirm a healthy battery. It must
     // never be glued onto an alert that came from the behaviour score / warning
@@ -296,7 +297,17 @@ export class RentalHealthService {
       : '';
     const restingIsConcern = restingStatus === 'WARNING' || restingStatus === 'CRITICAL';
 
-    switch (lv?.healthStatus) {
+    let effectiveHealthStatus = lv?.healthStatus;
+    if (
+      legacyPublicationUnsafe &&
+      !restingIsConcern &&
+      (effectiveHealthStatus === 'WARNING' || effectiveHealthStatus === 'CRITICAL')
+    ) {
+      // Unsafe legacy publication must not drive rental readiness/blocking alone.
+      effectiveHealthStatus = 'UNKNOWN';
+    }
+
+    switch (effectiveHealthStatus) {
       case 'GOOD':
         state = 'good';
         reason = `Batteriezustand gut${restingNote}`;
@@ -339,11 +350,13 @@ export class RentalHealthService {
       data_stale: isStale(observedAt),
       source: warningLightActive ? 'hm_oem' : 'canonical_battery',
       evidence_type:
-        lv?.estimatedHealth?.displayMode === 'BARS' && lv?.healthStatus
-          ? 'estimated'
-          : restingVoltage != null
-            ? 'measured'
-            : 'provider',
+        legacyPublicationUnsafe
+          ? 'legacy_unverified'
+          : lv?.estimatedHealth?.displayMode === 'BARS' && lv?.healthStatus
+            ? 'estimated'
+            : restingVoltage != null
+              ? 'measured'
+              : 'provider',
     };
   }
 

@@ -63,7 +63,16 @@ describe('CanonicalBatteryHealthService', () => {
       tractionBatteryCurrentEnergyKwh: 50,
       tractionBatteryAddedEnergyKwh: 6,
     });
-    prisma.vehicleBatterySpec.findMany.mockResolvedValue([]);
+    prisma.vehicleBatterySpec.findMany.mockResolvedValue([
+      {
+        batteryType: 'AGM',
+        batteryAmpere: 70,
+        batteryVolt: 12,
+        sourceType: 'MANUAL',
+        sourceConfidence: 0.8,
+        createdAt: now,
+      },
+    ]);
     prisma.vehicleServiceEvent.findMany.mockResolvedValue([]);
 
     batteryHealthService.getLatest.mockResolvedValue({
@@ -88,6 +97,14 @@ describe('CanonicalBatteryHealthService', () => {
       restObservationCount: 4,
       crankObservationCount: 3,
       firstUsableMeasurementAt: new Date('2026-03-15T10:00:00.000Z'),
+      vOff60m: 12.62,
+      vOff6h: 12.6,
+      rest60mCapturedAt: new Date('2026-04-13T06:00:00.000Z'),
+      rest6hCapturedAt: new Date('2026-04-13T09:00:00.000Z'),
+      crankDrop: 1.1,
+      crankAt: new Date('2026-04-13T05:55:00.000Z'),
+      scoredAt: now,
+      lastPublishedAt: now,
     });
 
     hvBatteryHealthService.getHvBatteryStatus.mockResolvedValue({
@@ -271,8 +288,10 @@ describe('CanonicalBatteryHealthService', () => {
   it('exposes LV estimated health score semantics (no SOH label)', async () => {
     const { svc } = buildService();
     const summary = await svc.getSummary('veh-1');
-    // Published V2 score 80 → GOOD → 3 bars.
+    // Published V2 score 80 → GOOD → 3 bars when legacy publication is safety-qualified.
     expect(summary?.lv.estimatedHealth.status).toBe('GOOD');
+    expect(summary?.lv.estimatedHealth.decisionCapable).toBe(true);
+    expect(summary?.lv.legacyPublicationSafety?.decisionCapable).toBe(true);
     expect(summary?.lv.estimatedHealth.bars).toBe(3);
     expect(summary?.lv.estimatedHealth.displayMode).toBe('BARS');
     expect(summary?.lv.estimatedHealth.semanticType).toBe(ESTIMATED_LV_HEALTH_SCORE_SEMANTIC);
@@ -285,8 +304,37 @@ describe('CanonicalBatteryHealthService', () => {
     );
   });
 
+  it('excludes unsafe legacy publication from operational LV health status', async () => {
+    const { svc, batteryV2Service } = buildService();
+    batteryV2Service.getV2Health.mockResolvedValue({
+      publicationState: SohPublicationState.STABLE,
+      publishedSohPct: 35,
+      maturityConfidence: 'high',
+      qualifiedEventCount: 8,
+      restObservationCount: 4,
+      crankObservationCount: 3,
+      firstUsableMeasurementAt: new Date('2026-03-15T10:00:00.000Z'),
+      vOff60m: 14.43,
+      vOff6h: 12.6,
+      rest60mCapturedAt: new Date('2026-04-13T06:00:00.000Z'),
+      rest6hCapturedAt: new Date('2026-04-13T09:00:00.000Z'),
+      crankDrop: 1.1,
+      crankAt: new Date('2026-04-13T05:55:00.000Z'),
+      scoredAt: now,
+      lastPublishedAt: now,
+    });
+
+    const summary = await svc.getSummary('veh-1');
+    expect(summary?.lv.legacyPublicationSafety?.decisionCapable).toBe(false);
+    expect(summary?.lv.estimatedHealth.diagnosticStatus).toBe('CRITICAL');
+    expect(summary?.lv.estimatedHealth.status).toBe('UNKNOWN');
+    expect(summary?.lv.healthStatus).not.toBe('CRITICAL');
+  });
+
   it('classifies LV resting voltage with default (unknown battery type) bands', async () => {
     const { svc } = buildService();
+    const prisma = (svc as any).prisma;
+    prisma.vehicleBatterySpec.findMany.mockResolvedValue([]);
     // restingVoltage 12.4 with no battery spec → DEFAULT band → 12.2–12.49 = WATCH.
     const summary = await svc.getSummary('veh-1');
     expect(summary?.lv.restingVoltage.valueV).toBe(12.4);

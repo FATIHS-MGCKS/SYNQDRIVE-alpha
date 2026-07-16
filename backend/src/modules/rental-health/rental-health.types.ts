@@ -32,6 +32,7 @@ export interface ModuleHealth {
     | 'document'
     | 'sensor'
     | 'complaint'
+    | 'legacy_unverified'
     | 'unknown';
 }
 

@@ -29,6 +29,10 @@ import {
   LEGACY_ESTIMATED_LV_HEALTH_SEMANTIC,
   mapLvEvidenceValueType,
 } from './battery-lv-semantics';
+import {
+  effectiveLvEstimatedHealthStatusForDecisions,
+  evaluateLegacyPublicationSafety,
+} from './battery-legacy-publication-safety';
 
 export type BatteryStatus =
   | 'ready'
@@ -231,9 +235,33 @@ export class CanonicalBatteryHealthService {
 
     // Estimated-health status: only classify once a published score exists
     // (i.e. not during INITIAL_CALIBRATION) — otherwise it stays UNKNOWN.
-    const lvEstimatedHealthStatus: BatteryHealthStatus = lvIsCalibrating
+    const lvEstimatedHealthStatusRaw: BatteryHealthStatus = lvIsCalibrating
       ? 'UNKNOWN'
       : classifyLvEstimatedHealth(lvPublishedSoh);
+    const legacyPublicationSafety = evaluateLegacyPublicationSafety({
+      publicationState: lvPubState,
+      publishedSohPct: lvPublishedSoh,
+      maturityConfidence: (v2?.maturityConfidence as string | undefined) ?? null,
+      vOff60m: parseNum(v2?.vOff60m),
+      vOff6h: parseNum(v2?.vOff6h),
+      rest60mCapturedAt: (v2?.rest60mCapturedAt as Date | null | undefined) ?? null,
+      rest6hCapturedAt: (v2?.rest6hCapturedAt as Date | null | undefined) ?? null,
+      crankDrop: parseNum(v2?.crankDrop),
+      crankObservationCount: v2?.crankObservationCount ?? 0,
+      crankAt: (v2?.crankAt as Date | null | undefined) ?? null,
+      scoredAt: (v2?.scoredAt as Date | null | undefined) ?? null,
+      lastPublishedAt: (v2?.lastPublishedAt as Date | null | undefined) ?? null,
+      batteryTypeRaw: selectedBatterySpec?.batteryType ?? null,
+      lvEvidenceRecent: lvEvidenceRecent.map((e) => ({
+        valueType: e.valueType,
+        sourceType: e.sourceType,
+      })),
+    });
+    const lvEstimatedHealthStatus: BatteryHealthStatus =
+      effectiveLvEstimatedHealthStatusForDecisions(
+        lvEstimatedHealthStatusRaw,
+        legacyPublicationSafety,
+      );
     const lvEstimatedHealthScorePct = lvIsCalibrating
       ? lvEstimatedHealthPercent
       : lvPublishedSoh;
@@ -396,6 +424,9 @@ export class CanonicalBatteryHealthService {
       : statusToLegacyCondition(hvHealthStatus);
 
     const lvWatchpoints: string[] = [];
+    if (!legacyPublicationSafety.decisionCapable && lvEstimatedHealthStatusRaw !== 'UNKNOWN') {
+      lvWatchpoints.push(legacyPublicationSafety.diagnosticLabelDe);
+    }
     if (lvEstimatedHealthStatus === 'CRITICAL') {
       lvWatchpoints.push('Geschätzte 12V-Batteriegesundheit kritisch — Austausch prüfen');
     } else if (lvEstimatedHealthStatus === 'WARNING') {
@@ -484,14 +515,22 @@ export class CanonicalBatteryHealthService {
         // Behaviour-derived "Estimated Battery Health" — render as 3 bars.
         estimatedHealth: {
           status: lvEstimatedHealthStatus,
+          diagnosticStatus: lvEstimatedHealthStatusRaw,
           scorePct: lvEstimatedHealthScorePct,
           displayMode: 'BARS' as const,
-          bars: statusToBars(lvEstimatedHealthStatus),
+          bars: statusToBars(
+            legacyPublicationSafety.decisionCapable
+              ? lvEstimatedHealthStatus
+              : lvEstimatedHealthStatusRaw,
+          ),
           semanticType: ESTIMATED_LV_HEALTH_SCORE_SEMANTIC,
           label: ESTIMATED_LV_HEALTH_SCORE_LABEL_DE,
           confidence: (v2?.maturityConfidence as string | undefined) ?? 'none',
           calibrationStatus: lvPubState,
+          decisionCapable: legacyPublicationSafety.decisionCapable,
+          legacyPublicationSafety,
         },
+        legacyPublicationSafety,
         estimatedLvHealthScore: {
           value: lvEstimatedHealthScorePct,
           semanticType: ESTIMATED_LV_HEALTH_SCORE_SEMANTIC,

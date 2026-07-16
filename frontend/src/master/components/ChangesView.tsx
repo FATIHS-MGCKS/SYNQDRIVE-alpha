@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-health-v2-legacy-publication-safety-v49508-2026-07-16',
+    version: '4.9.508',
+    title: 'V4.9.508 — Battery LV legacy publication safety gate (Prompt 6/78)',
+    summary: [
+      'Zentrale Policy `evaluateLegacyPublicationSafety`: unsichere LV-Legacy-Publications sind nicht entscheidungsfähig (Messqualität, kontaminierte REST >13,2 V, unzuverlässiger Crank-Pfad, Chemie unknown/unsupported, zeitliche Inkonsistenz, falsch etikettierte SOH_PERCENT-Evidence, unvollständige Provenienz).',
+      '`CanonicalBatteryHealthService`: `legacyPublicationSafety` + `estimatedHealth.decisionCapable`; operatives `healthStatus` ignoriert unsicheren Verhaltensscore; diagnostischer `diagnosticStatus` bleibt sichtbar.',
+      '`RentalHealthService.evaluateBattery` + `BatteryCriticalDetector`: kein WARNING/CRITICAL/Block allein aus unsicherer Legacy-Publication; Ruhespannung, Warnleuchte, Crank, HV/Werkstatt unverändert.',
+      'Tests für sichere vs. unsichere Legacy-Fälle; keine Datenlöschung, keine UI-Heuristiken.',
+    ],
+    reason: 'Prompt 6/78: Bestehende unsichere LV-Legacy-Publications dürfen Rental Readiness, Blocking und kritische Alerts nicht beeinflussen.',
+    previousBehavior: 'Veröffentlichter LV `publishedSohPct` konnte trotz kontaminierter/kontextloser Evidence operativ WARNING/CRITICAL auslösen.',
+    details:
+      'backend: battery-legacy-publication-safety.ts (+spec), canonical-battery-health.service.ts, rental-health.service.ts, battery-critical.detector.ts, rental-health.types.ts (+spec updates).',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T14:05:00.000Z',
+  },
+  {
     id: 'battery-health-v2-lv-score-semantics-v49507-2026-07-16',
     version: '4.9.507',
     title: 'V4.9.507 — Battery Health V2 LV score semantics (Prompt 5/78)',
