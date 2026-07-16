@@ -24,6 +24,11 @@ export const BATTERY_CRANK_SIGNAL_CADENCE_MS = 5_000;
 /** HV snapshots are typically ~30 s apart — pairwise capacity is not production-grade. */
 export const HV_PAIRWISE_SNAPSHOT_CADENCE_MS = 30_000;
 
+/** Delay before BATTERY_START_PROXY_EXTRACT runs after trip confirmation (DIMO HF latency). */
+export const BATTERY_V2_START_PROXY_DELAY_MS_ENV = 'BATTERY_V2_START_PROXY_DELAY_MS';
+
+const DEFAULT_START_PROXY_DELAY_MS = 90_000;
+
 export function isLegacyCrankAssessmentEnabled(): boolean {
   return parseBooleanEnv(process.env[BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENV], false);
 }
@@ -36,10 +41,19 @@ export function isLegacyHvPairwiseCapacityAssessmentEnabled(): boolean {
   return parseBooleanEnv(process.env[BATTERY_V2_HV_LEGACY_PAIRWISE_CAPACITY_ENV], false);
 }
 
+export function getBatteryV2StartProxyDelayMs(): number {
+  const raw = process.env[BATTERY_V2_START_PROXY_DELAY_MS_ENV];
+  if (raw == null || raw.trim() === '') return DEFAULT_START_PROXY_DELAY_MS;
+  const parsed = parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) return DEFAULT_START_PROXY_DELAY_MS;
+  return parsed;
+}
+
 export default registerAs('batteryHealthV2', () => ({
   legacyCrankAssessmentEnabled: isLegacyCrankAssessmentEnabled(),
   startProxyCollectionEnabled: isStartWindowCollectionEnabled(),
   legacyHvPairwiseCapacityAssessmentEnabled: isLegacyHvPairwiseCapacityAssessmentEnabled(),
   crankSignalCadenceMs: BATTERY_CRANK_SIGNAL_CADENCE_MS,
   hvPairwiseSnapshotCadenceMs: HV_PAIRWISE_SNAPSHOT_CADENCE_MS,
+  startProxyDelayMs: getBatteryV2StartProxyDelayMs(),
 }));

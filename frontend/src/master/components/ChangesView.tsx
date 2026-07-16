@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-producer-migration-v49523-2026-07-16',
+    version: '4.9.523',
+    title: 'V4.9.523 — Battery V2 Producer Migration (Prompt 22/78)',
+    summary: [
+      'DIMO Snapshot Processor: Provider-Observation-Klassifikation (LV + HV Policies) → awaited `BATTERY_OBSERVATION_CLASSIFY` nur bei neuer Observation.',
+      'Trip-Bestätigung: genau ein delayed `BATTERY_START_PROXY_EXTRACT` pro Trip (`start-proxy:trip:{tripId}`), Delay via `BATTERY_V2_START_PROXY_DELAY_MS` (default 90s).',
+      'Keine unkontrollierten Battery-`.catch()`-Promises mehr — Enqueue-Fehler propagieren (Snapshot/Trip retryfähig).',
+      'Idempotente BullMQ-`jobId` aus Policy-`idempotencyKey`; Duplikat-Jobs unterdrückt.',
+      'Consumer delegieren vorübergehend an bestehende `onSnapshot`/`recordSnapshot`/`onTripStart` (Brücke bis vollständige Handler-Logik).',
+      'Module-Split: `BatteryV2JobsProducerModule` (VI) vs `BatteryV2JobsModule` (Workers).',
+    ],
+    reason: 'Prompt 22/78: Producer-Seite auf dauerhafte Battery-Jobs migrieren.',
+    previousBehavior: 'Fire-and-forget `onSnapshot`/`recordSnapshot`/`onTripStart` mit `.catch(warn)` — Fehler unsichtbar, nicht retryfähig.',
+    details:
+      'battery-v2-snapshot-observation.producer.ts, battery-v2-trip-start.producer.ts, battery-v2-snapshot-ingestion.service.ts, dimo-snapshot.processor.ts, trip-detection-orchestration.service.ts, battery-health-v2.config.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T15:45:00.000Z',
+  },
+  {
     id: 'battery-v2-job-types-v49522-2026-07-16',
     version: '4.9.522',
     title: 'V4.9.522 — Battery V2 Job Types + Queue Scaffold (Prompt 21/78)',

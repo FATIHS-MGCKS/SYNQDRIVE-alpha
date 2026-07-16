@@ -8,7 +8,7 @@ import {
   DimoSegmentsService,
   type DimoTripSegment,
 } from '../../dimo/dimo-segments.service';
-import { BatteryV2Service } from '../battery-health/battery-v2.service';
+import { BatteryV2TripStartProducer } from '../battery-health/jobs/battery-v2-trip-start.producer';
 import { TripEnrichmentOrchestratorService } from './trip-enrichment-orchestrator.service';
 import {
   TripDetectionState,
@@ -128,7 +128,7 @@ export class TripDetectionOrchestrationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly segments: DimoSegmentsService,
-    private readonly batteryV2: BatteryV2Service,
+    private readonly batteryTripStartProducer: BatteryV2TripStartProducer,
     private readonly configService: ConfigService,
     @InjectQueue(QUEUE_NAMES.TRIP_TRACKING)
     private readonly trackingQueue: Queue,
@@ -925,15 +925,21 @@ export class TripDetectionOrchestrationService {
             ),
           );
 
-          // Battery V2: optional start-window capture for ICE only (never BEV crank).
+          // Battery V2: durable start-proxy job (ICE/PHEV only — never BEV crank).
           if (profile !== VehicleDetectionProfile.EV) {
-            this.batteryV2
-              .onTripStart(vehicleId, dimoTokenId, trip.id, effectiveStartAt)
-              .catch((e) =>
-                this.logger.warn(
-                  `Battery V2 crank capture failed for trip ${trip.id}: ${e}`,
-                ),
+            const orgId = det.organizationId;
+            if (!orgId) {
+              this.logger.warn(
+                `Battery start-proxy skipped — missing organizationId for vehicle=${vehicleId}`,
               );
+            } else {
+              await this.batteryTripStartProducer.enqueueStartProxy({
+                organizationId: orgId,
+                vehicleId,
+                tripId: trip.id,
+                tripStartedAt: effectiveStartAt,
+              });
+            }
           }
 
           await this.scheduleActiveTick(vehicleId, organizationId, dimoTokenId);

@@ -8,8 +8,7 @@ import { DimoAuthService } from '@modules/dimo/dimo-auth.service';
 import { DimoTelemetryService } from '@modules/dimo/dimo-telemetry.service';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TripDetectionOrchestrationService } from '../../modules/vehicle-intelligence/trips/trip-detection-orchestration.service';
-import { BatteryV2Service } from '../../modules/vehicle-intelligence/battery-health/battery-v2.service';
-import { HvBatteryHealthService } from '../../modules/vehicle-intelligence/battery-health/hv-battery-health.service';
+import { BatteryV2SnapshotObservationProducer } from '../../modules/vehicle-intelligence/battery-health/jobs/battery-v2-snapshot-observation.producer';
 import { ClickHouseTelemetryService } from '../../modules/clickhouse/clickhouse-telemetry.service';
 import { TripMetricsService } from '../../modules/observability/trip-metrics.service';
 import { observeQueueLag } from '../../modules/observability/queue-lag.util';
@@ -17,7 +16,6 @@ import { capRawPayload } from '@shared/utils/json-payload.util';
 import {
   mapDimoBatterySignals,
   resolveLvBatteryObservedAt,
-  toHvBatterySignalObservedAt,
   toVlsBatteryFields,
 } from '../../modules/dimo/mappers/dimo-battery-signal.mapper';
 
@@ -48,8 +46,7 @@ export class DimoSnapshotProcessor extends WorkerHost {
     private readonly dimoTelemetry: DimoTelemetryService,
     private readonly prisma: PrismaService,
     private readonly tripOrchestration: TripDetectionOrchestrationService,
-    private readonly batteryV2: BatteryV2Service,
-    private readonly hvBattery: HvBatteryHealthService,
+    private readonly batteryObservationProducer: BatteryV2SnapshotObservationProducer,
     @Optional() private readonly chTelemetry: ClickHouseTelemetryService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {
@@ -60,6 +57,14 @@ export class DimoSnapshotProcessor extends WorkerHost {
     const { vehicleId, dimoTokenId } = job.data;
     const startedAt = new Date();
     observeQueueLag(this.tripMetrics, QUEUE_NAMES.DIMO_SNAPSHOT, job);
+
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    if (!vehicle?.organizationId) {
+      throw new Error(`Vehicle ${vehicleId} missing organizationId — cannot process snapshot`);
+    }
 
     try {
       const previousState =
@@ -144,54 +149,32 @@ export class DimoSnapshotProcessor extends WorkerHost {
           );
       }
 
-      // Battery V2 (12V): evaluate rest window before trip-start detection changes state
-      this.batteryV2
-        .onSnapshot(vehicleId, normalized.lvBatteryVoltage, lvBatteryObservedAt)
-        .catch((err) =>
-          this.logger.warn(
-            `Battery V2 onSnapshot failed for ${vehicleId}: ${err instanceof Error ? err.message : err}`,
-          ),
-        );
-
-      // HV Battery: record traction battery snapshot for EV/PHEV vehicles
-      if (normalized.evSoc != null) {
-        const signalObservedAt = toHvBatterySignalObservedAt(batteryMap);
-        this.hvBattery
-          .recordSnapshot({
-            vehicleId,
-            socPercent: normalized.evSoc,
-            currentEnergyKwh: normalized.tractionBatteryCurrentEnergyKwh ?? undefined,
-            energyUsedKwh: normalized.tractionBatteryCurrentEnergyKwh ?? undefined,
-            rangeKm: normalized.rangeKm ?? undefined,
-            chargingPowerKw:
-              normalized.tractionBatteryChargingPowerKw
-              ?? normalized.tractionBatteryPowerKw
-              ?? undefined,
-            addedEnergyKwh: normalized.tractionBatteryAddedEnergyKwh ?? undefined,
-            chargeLimitPercent: normalized.tractionBatteryChargeLimitPercent ?? undefined,
-            isCharging: normalized.tractionBatteryIsCharging ?? undefined,
-            cableConnected: normalized.tractionBatteryChargingCableConnected ?? undefined,
-            odometerKm: normalized.odometerKm ?? undefined,
-            temperatureC: normalized.tractionBatteryTemperatureC ?? undefined,
-            nominalCapacityKwh:
-              normalized.tractionBatteryGrossCapacityKwh ?? undefined,
-            providerReportedSohPercent:
-              normalized.tractionBatterySohPercent ?? undefined,
-            providerSource: 'DIMO',
-            receivedAt: fetchedAt,
-            collectionObservedAt: batteryMap.collectionLastSeenAt ?? undefined,
-            signalObservedAt,
-            observedAt:
-              signalObservedAt.soc
-              ?? batteryMap.collectionLastSeenAt
-              ?? undefined,
-          })
-          .catch((err) =>
-            this.logger.warn(
-              `HV Battery snapshot failed for ${vehicleId}: ${err instanceof Error ? err.message : err}`,
-            ),
-          );
-      }
+      // Battery V2: classify provider observations and enqueue durable job (awaited).
+      await this.batteryObservationProducer.classifyAndEnqueue({
+        organizationId: vehicle.organizationId,
+        vehicleId,
+        receivedAt: fetchedAt,
+        normalized: {
+          lvBatteryVoltage: normalized.lvBatteryVoltage,
+          evSoc: normalized.evSoc,
+          tractionBatteryCurrentEnergyKwh: normalized.tractionBatteryCurrentEnergyKwh,
+          tractionBatterySohPercent: normalized.tractionBatterySohPercent,
+          tractionBatteryPowerKw: normalized.tractionBatteryPowerKw,
+          tractionBatteryChargingPowerKw: normalized.tractionBatteryChargingPowerKw,
+          tractionBatteryAddedEnergyKwh: normalized.tractionBatteryAddedEnergyKwh,
+          tractionBatteryChargeLimitPercent: normalized.tractionBatteryChargeLimitPercent,
+          tractionBatteryIsCharging: normalized.tractionBatteryIsCharging,
+          tractionBatteryChargingCableConnected:
+            normalized.tractionBatteryChargingCableConnected,
+          tractionBatteryTemperatureC: normalized.tractionBatteryTemperatureC,
+          tractionBatteryGrossCapacityKwh: normalized.tractionBatteryGrossCapacityKwh,
+          rangeKm: normalized.rangeKm,
+          odometerKm: normalized.odometerKm,
+        },
+        batteryMap,
+        lvBatteryObservedAt,
+        correlationId: `snapshot:${vehicleId}:${fetchedAt.toISOString()}`,
+      });
 
       // V2 Trip Detection: evaluate snapshot for possible trip start
       await this.evaluateTripStart(

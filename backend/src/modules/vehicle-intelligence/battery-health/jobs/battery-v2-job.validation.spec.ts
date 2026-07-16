@@ -39,7 +39,9 @@ describe('battery-v2-job.validation', () => {
   });
 
   describe('validateBatteryV2JobPayload — base fields', () => {
-    it.each(BATTERY_V2_JOB_TYPES)('validates base payload for %s', (jobType) => {
+    it.each(
+      BATTERY_V2_JOB_TYPES.filter((t) => t !== 'BATTERY_START_PROXY_EXTRACT'),
+    )('validates base payload for %s', (jobType) => {
       const payload = validateBatteryV2JobPayload(jobType, validBase());
       expect(payload.organizationId).toBe(ORG_ID);
       expect(payload.vehicleId).toBe(VEHICLE_ID);
@@ -130,16 +132,28 @@ describe('battery-v2-job.validation', () => {
       const tripId = 'cltrip123456789012345678901';
       const payload = validateBatteryV2JobPayload(
         'BATTERY_START_PROXY_EXTRACT',
-        validBase({ tripId }),
+        validBase({
+          tripId,
+          tripStartedAt: '2026-07-16T12:00:00.000Z',
+        }),
       );
-      expect(payload).toMatchObject({ tripId });
+      expect(payload).toMatchObject({ tripId, tripStartedAt: '2026-07-16T12:00:00.000Z' });
+    });
+
+    it('rejects start proxy without tripStartedAt', () => {
+      expect(() =>
+        validateBatteryV2JobPayload(
+          'BATTERY_START_PROXY_EXTRACT',
+          validBase({ tripId: 'cltrip123456789012345678901' }),
+        ),
+      ).toThrow(/tripStartedAt/);
     });
 
     it('rejects invalid tripId', () => {
       expect(() =>
         validateBatteryV2JobPayload(
           'BATTERY_START_PROXY_EXTRACT',
-          validBase({ tripId: 'x' }),
+          validBase({ tripId: 'x', tripStartedAt: '2026-07-16T12:00:00.000Z' }),
         ),
       ).toThrow(/tripId/);
     });

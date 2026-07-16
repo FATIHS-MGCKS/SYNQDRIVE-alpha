@@ -756,6 +756,15 @@ flowchart TB
 | **Jobtypen** | `BATTERY_OBSERVATION_CLASSIFY`, `BATTERY_REST_TARGET_EVALUATE`, `BATTERY_START_PROXY_EXTRACT`, `BATTERY_ASSESSMENT_RECOMPUTE`, `BATTERY_PUBLICATION_UPDATE`, `HV_CAPABILITY_REFRESH`, `HV_RECHARGE_SESSION_RECONCILE`, `HV_CAPACITY_SHADOW_RECOMPUTE` |
 | **Status P21** | Typen, Validierung, Registry, leere Handler — **keine Migration** der inline `onSnapshot` / `recordSnapshot` / `onTripStart` Hooks |
 
+### 11.2 Producer-Migration (Prompt 22/78)
+
+| Pfad | Vorher | Nachher |
+|------|--------|---------|
+| `DimoSnapshotProcessor` | F&F `onSnapshot` + `recordSnapshot` | `await classifyAndEnqueue(BATTERY_OBSERVATION_CLASSIFY)` nach VLS-Upsert |
+| Trip-Bestätigung | F&F `onTripStart` | `await enqueueStartProxy(BATTERY_START_PROXY_EXTRACT)` mit Delay |
+| Duplikate | Kein Queue-Dedup | `jobId = battery-v2:{idempotencyKey}` |
+| Consumer | — | Brücke → bestehende Ingestion-Services (übergang) |
+
 ---
 
 ## 12. Referenzen

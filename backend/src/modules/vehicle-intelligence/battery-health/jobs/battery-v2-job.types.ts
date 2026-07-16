@@ -43,7 +43,12 @@ export interface BatteryV2JobPayloadBase {
   attemptContext: BatteryV2JobAttemptContext;
 }
 
-export type BatteryObservationClassifyPayload = BatteryV2JobPayloadBase;
+import type { BatteryObservationSnapshotContext } from './battery-v2-snapshot-context.types';
+
+export interface BatteryObservationClassifyPayload extends BatteryV2JobPayloadBase {
+  /** Poll-time telemetry needed by the consumer — no PII. */
+  snapshotContext?: BatteryObservationSnapshotContext | null;
+}
 
 export interface BatteryRestTargetEvaluatePayload extends BatteryV2JobPayloadBase {
   /** Optional rest-window anchor (ISO) — classification input, not PII. */
@@ -51,8 +56,8 @@ export interface BatteryRestTargetEvaluatePayload extends BatteryV2JobPayloadBas
 }
 
 export interface BatteryStartProxyExtractPayload extends BatteryV2JobPayloadBase {
-  /** Trip id when crank/start-window extraction is trip-scoped. */
-  tripId?: string | null;
+  tripId: string;
+  tripStartedAt: string;
 }
 
 export type BatteryAssessmentRecomputePayload = BatteryV2JobPayloadBase;

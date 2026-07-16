@@ -1,14 +1,16 @@
 import { MODULE_METADATA } from '@nestjs/common/constants';
-import { getQueueToken } from '@nestjs/bullmq';
 import { Test } from '@nestjs/testing';
-import { QUEUE_NAMES } from '@workers/queues/queue-names';
+import { PrismaService } from '@shared/database/prisma.service';
 import {
   BATTERY_V2_JOB_HANDLERS,
   BatteryV2JobsModule,
 } from './battery-v2-jobs.module';
+import { BatteryV2JobsProducerModule } from './battery-v2-jobs-producer.module';
 import { BATTERY_V2_JOB_TYPES } from './battery-v2-job.types';
 import { BatteryV2JobHandlerRegistry } from './battery-v2-job-handler.registry';
-import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
+import { BatteryV2SnapshotIngestionService } from './battery-v2-snapshot-ingestion.service';
+import { BatteryV2Service } from '../battery-v2.service';
+import { HvBatteryHealthService } from '../hv-battery-health.service';
 
 describe('BatteryV2JobsModule', () => {
   it('registers all eight job handlers as providers', () => {
@@ -20,20 +22,24 @@ describe('BatteryV2JobsModule', () => {
     expect(BATTERY_V2_JOB_HANDLERS).toHaveLength(BATTERY_V2_JOB_TYPES.length);
   });
 
-  it('exports producer and handler registry', () => {
+  it('exports handler registry and producer module', () => {
     const exports: unknown[] =
       Reflect.getMetadata(MODULE_METADATA.EXPORTS, BatteryV2JobsModule) ?? [];
-    expect(exports).toContain(BatteryV2JobProducerService);
     expect(exports).toContain(BatteryV2JobHandlerRegistry);
+    expect(exports).toContain(BatteryV2JobsProducerModule);
   });
 
   it('wires handler registry with all job types', async () => {
     const moduleRef = await Test.createTestingModule({
-      imports: [BatteryV2JobsModule],
-    })
-      .overrideProvider(getQueueToken(QUEUE_NAMES.BATTERY_V2))
-      .useValue({ add: jest.fn() })
-      .compile();
+      providers: [
+        ...BATTERY_V2_JOB_HANDLERS,
+        BatteryV2JobHandlerRegistry,
+        BatteryV2SnapshotIngestionService,
+        { provide: PrismaService, useValue: { vehicle: { findUnique: jest.fn() } } },
+        { provide: BatteryV2Service, useValue: { onSnapshot: jest.fn(), onTripStart: jest.fn() } },
+        { provide: HvBatteryHealthService, useValue: { recordSnapshot: jest.fn() } },
+      ],
+    }).compile();
 
     const registry = moduleRef.get(BatteryV2JobHandlerRegistry);
     expect(registry.registeredJobTypes().sort()).toEqual([...BATTERY_V2_JOB_TYPES].sort());

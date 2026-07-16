@@ -6,6 +6,7 @@ import {
   type BatteryV2JobPayloadBase,
   type BatteryV2JobType,
 } from './battery-v2-job.types';
+import type { BatteryObservationSnapshotContext } from './battery-v2-snapshot-context.types';
 
 export class BatteryV2JobValidationError extends Error {
   constructor(
@@ -175,6 +176,108 @@ function validateBasePayload(raw: unknown): BatteryV2JobPayloadBase {
   };
 }
 
+function validateSnapshotContext(value: unknown): BatteryObservationSnapshotContext | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    throw new BatteryV2JobValidationError('snapshotContext must be an object', 'snapshotContext');
+  }
+  assertNoForbiddenKeys(value, 'snapshotContext');
+  const data = value as Record<string, unknown>;
+  const providerFetchedAt = parseIsoDate(data.providerFetchedAt, 'snapshotContext.providerFetchedAt');
+
+  let collectionObservedAt: string | null | undefined;
+  if (data.collectionObservedAt !== undefined && data.collectionObservedAt !== null) {
+    collectionObservedAt = parseIsoDate(
+      data.collectionObservedAt,
+      'snapshotContext.collectionObservedAt',
+    );
+  }
+
+  let lvBatteryObservedAt: string | null | undefined;
+  if (data.lvBatteryObservedAt !== undefined && data.lvBatteryObservedAt !== null) {
+    lvBatteryObservedAt = parseIsoDate(
+      data.lvBatteryObservedAt,
+      'snapshotContext.lvBatteryObservedAt',
+    );
+  }
+
+  let signalObservedAt: BatteryObservationSnapshotContext['signalObservedAt'];
+  if (data.signalObservedAt !== undefined && data.signalObservedAt !== null) {
+    if (typeof data.signalObservedAt !== 'object' || Array.isArray(data.signalObservedAt)) {
+      throw new BatteryV2JobValidationError(
+        'snapshotContext.signalObservedAt must be an object',
+        'snapshotContext.signalObservedAt',
+      );
+    }
+    const sig = data.signalObservedAt as Record<string, unknown>;
+    const readSig = (key: string): string | null | undefined => {
+      if (sig[key] === undefined || sig[key] === null) return sig[key] as null | undefined;
+      return parseIsoDate(sig[key], `snapshotContext.signalObservedAt.${key}`);
+    };
+    signalObservedAt = {
+      soc: readSig('soc') ?? null,
+      currentEnergyKwh: readSig('currentEnergyKwh') ?? null,
+      chargingPowerKw: readSig('chargingPowerKw') ?? null,
+      addedEnergyKwh: readSig('addedEnergyKwh') ?? null,
+      providerSoh: readSig('providerSoh') ?? null,
+      temperatureC: readSig('temperatureC') ?? null,
+      chargeLimitPercent: readSig('chargeLimitPercent') ?? null,
+      cableConnected: readSig('cableConnected') ?? null,
+      isCharging: readSig('isCharging') ?? null,
+    };
+  }
+
+  const readOptionalNumber = (key: string): number | null | undefined => {
+    const v = data[key];
+    if (v === undefined) return undefined;
+    if (v === null) return null;
+    if (typeof v !== 'number' || Number.isNaN(v)) {
+      throw new BatteryV2JobValidationError(
+        `snapshotContext.${key} must be a number or null`,
+        `snapshotContext.${key}`,
+      );
+    }
+    return v;
+  };
+
+  const readOptionalBoolean = (key: string): boolean | null | undefined => {
+    const v = data[key];
+    if (v === undefined) return undefined;
+    if (v === null) return null;
+    if (typeof v !== 'boolean') {
+      throw new BatteryV2JobValidationError(
+        `snapshotContext.${key} must be a boolean or null`,
+        `snapshotContext.${key}`,
+      );
+    }
+    return v;
+  };
+
+  return {
+    providerFetchedAt,
+    collectionObservedAt: collectionObservedAt ?? null,
+    lvBatteryVoltage: readOptionalNumber('lvBatteryVoltage') ?? null,
+    lvBatteryObservedAt: lvBatteryObservedAt ?? null,
+    evSoc: readOptionalNumber('evSoc') ?? null,
+    tractionBatteryCurrentEnergyKwh: readOptionalNumber('tractionBatteryCurrentEnergyKwh') ?? null,
+    tractionBatterySohPercent: readOptionalNumber('tractionBatterySohPercent') ?? null,
+    tractionBatteryPowerKw: readOptionalNumber('tractionBatteryPowerKw') ?? null,
+    tractionBatteryChargingPowerKw: readOptionalNumber('tractionBatteryChargingPowerKw') ?? null,
+    tractionBatteryAddedEnergyKwh: readOptionalNumber('tractionBatteryAddedEnergyKwh') ?? null,
+    tractionBatteryChargeLimitPercent:
+      readOptionalNumber('tractionBatteryChargeLimitPercent') ?? null,
+    tractionBatteryIsCharging: readOptionalBoolean('tractionBatteryIsCharging') ?? null,
+    tractionBatteryChargingCableConnected:
+      readOptionalBoolean('tractionBatteryChargingCableConnected') ?? null,
+    tractionBatteryTemperatureC: readOptionalNumber('tractionBatteryTemperatureC') ?? null,
+    tractionBatteryGrossCapacityKwh: readOptionalNumber('tractionBatteryGrossCapacityKwh') ?? null,
+    rangeKm: readOptionalNumber('rangeKm') ?? null,
+    odometerKm: readOptionalNumber('odometerKm') ?? null,
+    signalObservedAt: signalObservedAt ?? null,
+  };
+}
+
 export function isBatteryV2JobType(value: unknown): value is BatteryV2JobType {
   return (
     typeof value === 'string' &&
@@ -194,6 +297,13 @@ export function validateBatteryV2JobPayload<T extends BatteryV2JobType>(
   const data = raw as Record<string, unknown>;
 
   switch (jobType) {
+    case 'BATTERY_OBSERVATION_CLASSIFY': {
+      const snapshotContext = validateSnapshotContext(data.snapshotContext);
+      return {
+        ...base,
+        snapshotContext: snapshotContext ?? null,
+      } as BatteryV2JobPayload<T>;
+    }
     case 'BATTERY_REST_TARGET_EVALUATE': {
       let restWindowStartedAt: string | null | undefined;
       if (data.restWindowStartedAt !== undefined && data.restWindowStartedAt !== null) {
@@ -205,14 +315,15 @@ export function validateBatteryV2JobPayload<T extends BatteryV2JobType>(
       return { ...base, restWindowStartedAt: restWindowStartedAt ?? null } as BatteryV2JobPayload<T>;
     }
     case 'BATTERY_START_PROXY_EXTRACT': {
-      let tripId: string | null | undefined;
-      if (data.tripId !== undefined && data.tripId !== null) {
-        if (!isEntityId(data.tripId)) {
-          throw new BatteryV2JobValidationError('tripId must be a valid entity id', 'tripId');
-        }
-        tripId = data.tripId;
+      if (!isEntityId(data.tripId)) {
+        throw new BatteryV2JobValidationError('tripId is required', 'tripId');
       }
-      return { ...base, tripId: tripId ?? null } as BatteryV2JobPayload<T>;
+      const tripStartedAt = parseIsoDate(data.tripStartedAt, 'tripStartedAt');
+      return {
+        ...base,
+        tripId: data.tripId,
+        tripStartedAt,
+      } as BatteryV2JobPayload<T>;
     }
     default:
       return base as BatteryV2JobPayload<T>;

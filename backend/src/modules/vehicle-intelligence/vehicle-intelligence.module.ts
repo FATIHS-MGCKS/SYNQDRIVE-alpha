@@ -87,7 +87,7 @@ import { DrivingAssessmentDeviceQualityService } from './trips/driving-assessmen
 import { TechnicalObservationsModule } from '../technical-observations/technical-observations.module';
 import { BusinessInsightsModule } from '../business-insights/business-insights.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
-import { BatteryV2JobsModule } from './battery-health/jobs/battery-v2-jobs.module';
+import { BatteryV2JobsProducerModule } from './battery-health/jobs/battery-v2-jobs-producer.module';
 
 @Module({
   imports: [
@@ -101,7 +101,7 @@ import { BatteryV2JobsModule } from './battery-health/jobs/battery-v2-jobs.modul
     forwardRef(() => BusinessInsightsModule),
     NotificationsModule,
     TasksModule,
-    BatteryV2JobsModule,
+    BatteryV2JobsProducerModule,
     BullModule.registerQueue(
       { name: QUEUE_NAMES.TRIP_TRACKING },
       { name: QUEUE_NAMES.TRIP_BEHAVIOR_ENRICHMENT },
@@ -241,7 +241,7 @@ import { BatteryV2JobsModule } from './battery-health/jobs/battery-v2-jobs.modul
     TripDetectionPolicyResolver,
     TripReconciliationService,
     DetectorRegistry,
-    BatteryV2JobsModule,
+    BatteryV2JobsProducerModule,
   ],
 })
 export class VehicleIntelligenceModule {}

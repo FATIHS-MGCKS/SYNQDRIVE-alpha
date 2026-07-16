@@ -10,6 +10,7 @@ import { PaymentsModule } from '@modules/payments/payments.module';
 import { BillingModule } from '@modules/billing/billing.module';
 import { TaskAutomationOutboxModule } from '@modules/tasks/outbox/task-automation-outbox.module';
 import { BatteryV2JobsModule } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-jobs.module';
+import { BatteryV2JobsProducerModule } from '@modules/vehicle-intelligence/battery-health/jobs/battery-v2-jobs-producer.module';
 
 import { DimoSnapshotProcessor } from './processors/dimo-snapshot.processor';
 import { DimoVehicleSyncProcessor } from './processors/dimo-vehicle-sync.processor';
@@ -63,6 +64,7 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
     PaymentsModule,
     BillingModule,
     TaskAutomationOutboxModule,
+    BatteryV2JobsProducerModule,
     BatteryV2JobsModule,
   ],
   providers: [
