@@ -2,6 +2,7 @@ import type {
   TripAssessabilityDimension,
   TripAssessabilityDimensionStatus,
 } from '@prisma/client';
+import type { DrivingDetectorCapabilityResult } from '../driving-detector-capability/driving-detector-capability.types';
 
 /** Stable policy contract version — bump when dimension rules change materially. */
 export const TRIP_ASSESSABILITY_POLICY_VERSION = 'trip-assessability-v1';
@@ -133,6 +134,8 @@ export type TripAssessabilityPolicyInput = {
     limitReason?: string | null;
   } | null;
   capabilities?: TripAssessabilityCapabilitySnapshot | null;
+  /** Central detector resolver output (P32) — used by assessability + jobs. */
+  detectorCapabilities?: DrivingDetectorCapabilityResult | null;
 };
 
 export type TripAssessabilityDimensionAssessment = {

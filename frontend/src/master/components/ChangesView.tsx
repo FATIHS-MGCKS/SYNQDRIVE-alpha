@@ -35,6 +35,51 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p32-detector-capability-resolver-2026-07-16',
+    version: '4.9.533',
+    title: 'Driving Intelligence V2 P32 — central per-vehicle detector capability resolver',
+    summary: [
+      'Neuer `DrivingDetectorCapabilityResolverService` + pure `resolveDrivingDetectorCapabilities` — bestimmt fachliche Detektor-Unterstützung pro Fahrzeug.',
+      'Detektoren: Native Harsh Events, Cold Engine Load, Start/Kickdown Proxy, Rev in Idle, Sustained High Load, Gear Stress, Brake Intensity, Wheel Slip, Yaw Cornering, EV Power Demand, Idling Segment.',
+      'Status: PRODUCTION, SHADOW, CONTEXT_ONLY, PROVIDER_DEPENDENT, UNSUPPORTED, TEMPORARILY_DEGRADED.',
+      'Capability aus Signalverfügbarkeit, Kadenz, Coverage und Profil — Hardwaretyp allein genügt nicht.',
+      'Keine automatische Hochstufung auf PRODUCTION (außer native Events empirisch beobachtet).',
+      'Resolver liefert Gründe + benötigte Signale; Bridge zu Trip-Assessability + `evaluateWithVehicleDetectorCapabilities`.',
+      'Unit-Tests für LTE_R1 ICE, LTE_R1 EV und SMART5-Profile.',
+    ],
+    reason:
+      'Prompt 32/76: Zentraler Detektor-Capability-Resolver für Assessability und Jobs — capability-first statt Hardware-Annahmen.',
+    previousBehavior:
+      'HF `assessDetectorFeasibility` nur für Abuse-Detektoren; keine zentrale DI-V2-Detektor-Matrix mit Persistenz aus VehicleDrivingCapability.',
+    details:
+      'Registry `driving-detector-cap-v1`. TripAssessabilityService nutzt Resolver zentral. Trip-FSM unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T11:00:00.000Z',
+  },
+  {
+    id: 'driving-intelligence-v2-p31-chassis-signal-domain-2026-07-16',
+    version: '4.9.532',
+    title: 'Driving Intelligence V2 P31 — transmission/brake/wheel chassis signal domain',
+    summary: [
+      'Erweiterung des kanonischen Signal-Mappings (`canonical-signal-v2`) um dokumentierte Transmission-, Brake- und Wheel-Signale.',
+      'Domaintypen `ChassisSignalObservation` mit Zuständen: available, null_sample, stale, unsupported.',
+      'Abgedeckt: Current/Selected Gear, Transmission Temperature (+ Oil-Temp-Alias), Clutch Switch, Brake Pedal/Position/Pressure, 4× Wheel Speed, Yaw Rate.',
+      'LTE_R1-Flotte bleibt realistisch UNSUPPORTED — kein Default, kein Nullwert als echte Beobachtung.',
+      '`detectorEligible` und `healthEvaluationEligible` immer false in P31 — keine Auswertung ohne Capability.',
+      'Zukünftige Provider-Signale über erweiterbaren Katalog ohne Schemaumbau.',
+    ],
+    reason:
+      'Prompt 31/76: Mapper und Domaintypen für Chassis-Signale vorbereiten, ohne nicht gelieferte Signale als verfügbar anzunehmen.',
+    previousBehavior:
+      'P30 kanonisches Mapping ohne Transmission/Brake/Wheel/Yaw; keine expliziten null/stale/unsupported Domainzustände.',
+    details:
+      '`resolveChassisSignalObservation` + `chassis-signal-catalog`. Tests: available, null, stale, unsupported. Trip-FSM unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T10:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p30-canonical-signal-mapping-2026-07-16',
     version: '4.9.531',
     title: 'Driving Intelligence V2 P30 — canonical DIMO signal mapping',
