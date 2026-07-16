@@ -100,7 +100,7 @@ export class LvRestWindowStateMachineService {
     }
 
     if (transition.reason === 'candidate_promoted_to_resting') {
-      metadata = await this.scheduleRest60mTarget({
+      metadata = await this.scheduleRestTargets({
         organizationId,
         vehicleId,
         session: persistedSession,
@@ -112,7 +112,7 @@ export class LvRestWindowStateMachineService {
       next.state === LvRestWindowState.INVALIDATED ||
       next.state === LvRestWindowState.EXPIRED
     ) {
-      metadata = await this.cancelScheduledRest60m({
+      metadata = await this.cancelScheduledRestTargets({
         organizationId,
         sessionId: persistedSession.id,
         metadata,
@@ -131,7 +131,7 @@ export class LvRestWindowStateMachineService {
     return transition;
   }
 
-  private async scheduleRest60mTarget(input: {
+  private async scheduleRestTargets(input: {
     organizationId: string;
     vehicleId: string;
     session: BatteryMeasurementSession;
@@ -139,30 +139,46 @@ export class LvRestWindowStateMachineService {
     restWindowStartedAt: Date;
     existingMetadata: Prisma.InputJsonValue;
   }): Promise<Prisma.InputJsonValue> {
-    if (isLvRestTargetAlreadyScheduled(input.existingMetadata, LV_REST_TARGET_TYPES.REST_60M)) {
-      return input.existingMetadata;
+    let metadata = input.existingMetadata;
+
+    for (const targetType of [
+      LV_REST_TARGET_TYPES.REST_60M,
+      LV_REST_TARGET_TYPES.REST_6H,
+    ] as const) {
+      if (isLvRestTargetAlreadyScheduled(metadata, targetType)) {
+        continue;
+      }
+
+      const scheduleResult =
+        targetType === LV_REST_TARGET_TYPES.REST_60M
+          ? await this.restTargetProducer.scheduleRest60m({
+              organizationId: input.organizationId,
+              vehicleId: input.vehicleId,
+              sessionId: input.session.id,
+              restWindowId: input.restWindowId,
+              restWindowStartedAt: input.restWindowStartedAt,
+            })
+          : await this.restTargetProducer.scheduleRest6h({
+              organizationId: input.organizationId,
+              vehicleId: input.vehicleId,
+              sessionId: input.session.id,
+              restWindowId: input.restWindowId,
+              restWindowStartedAt: input.restWindowStartedAt,
+            });
+
+      metadata = mergeLvRestTargetJobMetadata(
+        metadata,
+        targetType,
+        this.restTargetProducer.buildScheduledTargetMetadata(
+          scheduleResult,
+          targetType,
+        ),
+      );
     }
 
     const scheduledFor = new Date(
       input.restWindowStartedAt.getTime() + this.restTargetProducer.getRest60mDelayMs(),
     );
-    const scheduleResult = await this.restTargetProducer.scheduleRest60m({
-      organizationId: input.organizationId,
-      vehicleId: input.vehicleId,
-      sessionId: input.session.id,
-      restWindowId: input.restWindowId,
-      restWindowStartedAt: input.restWindowStartedAt,
-    });
-
-    let metadata = mergeLvRestTargetJobMetadata(
-      input.existingMetadata,
-      LV_REST_TARGET_TYPES.REST_60M,
-      this.restTargetProducer.buildScheduledTargetMetadata(
-        scheduleResult,
-        LV_REST_TARGET_TYPES.REST_60M,
-      ),
-    );
-
     await this.sessions.updateMutable({
       organizationId: input.organizationId,
       sessionId: input.session.id,
@@ -173,24 +189,30 @@ export class LvRestWindowStateMachineService {
     return metadata;
   }
 
-  private async cancelScheduledRest60m(input: {
+  private async cancelScheduledRestTargets(input: {
     organizationId: string;
     sessionId: string;
     metadata: Prisma.InputJsonValue;
     cancelReason: string;
   }): Promise<Prisma.InputJsonValue> {
-    const current = readLvRestWindowSessionMetadata(input.metadata);
-    const existing = current.scheduledTargets?.REST_60M;
-    if (!existing) return input.metadata;
-    if (existing.status === LV_REST_TARGET_JOB_STATUS.COMPLETED) {
-      return input.metadata;
+    let metadata = input.metadata;
+    for (const targetType of [
+      LV_REST_TARGET_TYPES.REST_60M,
+      LV_REST_TARGET_TYPES.REST_6H,
+    ] as const) {
+      const current = readLvRestWindowSessionMetadata(metadata);
+      const existing = current.scheduledTargets?.[targetType];
+      if (!existing) continue;
+      if (existing.status === LV_REST_TARGET_JOB_STATUS.COMPLETED) {
+        continue;
+      }
+      metadata = mergeLvRestTargetJobMetadata(metadata, targetType, {
+        status: LV_REST_TARGET_JOB_STATUS.CANCELLED,
+        completedAt: new Date().toISOString(),
+        cancelReason: input.cancelReason,
+      });
     }
-
-    return mergeLvRestTargetJobMetadata(input.metadata, LV_REST_TARGET_TYPES.REST_60M, {
-      status: LV_REST_TARGET_JOB_STATUS.CANCELLED,
-      completedAt: new Date().toISOString(),
-      cancelReason: input.cancelReason,
-    });
+    return metadata;
   }
 
   async buildSignalFromLatestState(

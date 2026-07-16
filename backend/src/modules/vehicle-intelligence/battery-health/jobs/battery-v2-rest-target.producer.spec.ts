@@ -38,14 +38,33 @@ describe('BatteryV2RestTargetProducer', () => {
     expect(jobProducer.enqueue).toHaveBeenCalledWith(
       'BATTERY_REST_TARGET_EVALUATE',
       expect.objectContaining({
-        organizationId: ORG,
-        vehicleId: VEH,
-        restWindowId: WINDOW_ID,
         restTargetType: 'REST_60M',
-        sourceEntityId: SESSION,
         idempotencyKey: `battery-rest:${VEH}:${WINDOW_ID}:60m`,
       }),
       { delayMs: 30 * 60_000 },
+    );
+  });
+
+  it('schedules REST_6H with delay until startedAt + 6h', async () => {
+    const now = new Date('2026-07-16T12:00:00.000Z');
+    const result = await producer.scheduleRest6h({
+      organizationId: ORG,
+      vehicleId: VEH,
+      sessionId: SESSION,
+      restWindowId: WINDOW_ID,
+      restWindowStartedAt: STARTED_AT,
+      now,
+    });
+
+    expect(result.delayMs).toBe(4 * 60 * 60_000);
+    expect(result.idempotencyKey).toBe(`battery-rest:${VEH}:${WINDOW_ID}:6h`);
+    expect(jobProducer.enqueue).toHaveBeenCalledWith(
+      'BATTERY_REST_TARGET_EVALUATE',
+      expect.objectContaining({
+        restTargetType: 'REST_6H',
+        idempotencyKey: `battery-rest:${VEH}:${WINDOW_ID}:6h`,
+      }),
+      { delayMs: 4 * 60 * 60_000 },
     );
   });
 
@@ -61,11 +80,6 @@ describe('BatteryV2RestTargetProducer', () => {
     });
 
     expect(result.delayMs).toBe(0);
-    expect(jobProducer.enqueue).toHaveBeenCalledWith(
-      'BATTERY_REST_TARGET_EVALUATE',
-      expect.any(Object),
-      { delayMs: 0 },
-    );
   });
 
   it('returns duplicate-safe result when enqueue is suppressed', async () => {

@@ -2,13 +2,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   BatteryMeasurementSessionStatus,
   BatteryMeasurementSessionType,
-  BatteryMeasurementType,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { BatteryV2ProviderError } from '../battery-v2-job.errors';
 import type { BatteryV2JobHandler } from '../battery-v2-job.handler';
 import type { BatteryRestTargetEvaluatePayload } from '../battery-v2-job.types';
 import { LvRestWindowState } from '../../battery-v2-domain';
+import { BatteryRestTargetEvaluationService } from '../../lv-rest-window/battery-rest-target-evaluation.service';
+import { measurementTypeForRestTarget } from '../../lv-rest-window/battery-rest-target-evaluation';
 import {
   LV_REST_TARGET_JOB_STATUS,
   LV_REST_TARGET_TYPES,
@@ -24,7 +25,10 @@ export class BatteryRestTargetEvaluateHandler
   readonly jobType = 'BATTERY_REST_TARGET_EVALUATE' as const;
   private readonly logger = new Logger(BatteryRestTargetEvaluateHandler.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly evaluation: BatteryRestTargetEvaluationService,
+  ) {}
 
   async handle(payload: BatteryRestTargetEvaluatePayload): Promise<void> {
     const restTargetType = this.normalizeRestTargetType(payload.restTargetType);
@@ -72,18 +76,39 @@ export class BatteryRestTargetEvaluateHandler
         cancelReason: metadataState.invalidatedReason ?? 'rest_window_invalidated',
       });
       this.logger.debug(
-        `REST target cancelled (invalidated window): vehicle=${payload.vehicleId} window=${restWindowId}`,
+        `REST target cancelled (invalidated window): vehicle=${payload.vehicleId} window=${restWindowId} type=${restTargetType}`,
       );
       return;
     }
 
-    await this.updateTargetMetadata(session, restTargetType, {
-      status: LV_REST_TARGET_JOB_STATUS.PENDING_EVALUATION,
-      lastAttemptAt: new Date().toISOString(),
+    const result = await this.evaluation.evaluateAndPersist({
+      organizationId: payload.organizationId,
+      vehicleId: payload.vehicleId,
+      session,
+      restTargetType,
     });
 
+    if (!result.ok) {
+      if (result.retryable) {
+        throw new BatteryV2ProviderError(
+          `REST target evaluation pending: ${result.reason}`,
+          { retryable: true, jobType: this.jobType },
+        );
+      }
+      await this.updateTargetMetadata(session, restTargetType, {
+        status: LV_REST_TARGET_JOB_STATUS.FAILED,
+        completedAt: new Date().toISOString(),
+        cancelReason: result.reason,
+      });
+      return;
+    }
+
+    await this.updateTargetMetadata(session, restTargetType, {
+      status: LV_REST_TARGET_JOB_STATUS.COMPLETED,
+      completedAt: new Date().toISOString(),
+    });
     this.logger.debug(
-      `REST target ready for historical evaluation (next prompt): vehicle=${payload.vehicleId} window=${restWindowId} type=${restTargetType}`,
+      `REST target measurement persisted: vehicle=${payload.vehicleId} window=${restWindowId} type=${restTargetType} measurement=${result.measurementId}`,
     );
   }
 
@@ -124,18 +149,13 @@ export class BatteryRestTargetEvaluateHandler
   private async hasTargetMeasurement(
     organizationId: string,
     sessionId: string,
-    restTargetType: string,
+    restTargetType: typeof LV_REST_TARGET_TYPES.REST_60M | typeof LV_REST_TARGET_TYPES.REST_6H,
   ): Promise<boolean> {
-    const measurementType =
-      restTargetType === LV_REST_TARGET_TYPES.REST_6H
-        ? BatteryMeasurementType.REST_6H
-        : BatteryMeasurementType.REST_60M;
-
     const existing = await this.prisma.batteryMeasurement.findFirst({
       where: {
         organizationId,
         sessionId,
-        type: measurementType,
+        type: measurementTypeForRestTarget(restTargetType),
       },
       select: { id: true },
     });

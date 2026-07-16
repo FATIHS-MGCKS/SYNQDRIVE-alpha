@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import {
   computeBatteryRestTargetDelayMs,
   getBatteryRest60mDelayMs,
+  getBatteryRest6hDelayMs,
+  getBatteryRestTargetDelayMs,
 } from '../../../../config/battery-health-v2.config';
 import {
   buildBatteryRestTargetJobIdempotencyKey,
@@ -13,6 +15,7 @@ import {
   LV_REST_TARGET_TYPES,
   type LvRestTargetType,
 } from '../lv-rest-window/lv-rest-window-target.metadata';
+import { restTargetAt } from '../lv-rest-window/battery-rest-target-evaluation';
 
 export interface ScheduleLvRestTargetJobInput {
   organizationId: string;
@@ -42,8 +45,16 @@ export class BatteryV2RestTargetProducer {
     return getBatteryRest60mDelayMs();
   }
 
-  computeDelayMs(restWindowStartedAt: Date, now: Date = new Date()): number {
-    return computeBatteryRestTargetDelayMs(restWindowStartedAt, now);
+  getRest6hDelayMs(): number {
+    return getBatteryRest6hDelayMs();
+  }
+
+  computeDelayMs(
+    restWindowStartedAt: Date,
+    restTargetType: Extract<LvRestTargetType, 'REST_60M' | 'REST_6H'>,
+    now: Date = new Date(),
+  ): number {
+    return computeBatteryRestTargetDelayMs(restWindowStartedAt, now, restTargetType);
   }
 
   buildIdempotencyKey(input: {
@@ -67,12 +78,26 @@ export class BatteryV2RestTargetProducer {
     });
   }
 
+  async scheduleRest6h(
+    input: Omit<ScheduleLvRestTargetJobInput, 'restTargetType'>,
+  ): Promise<ScheduleLvRestTargetJobResult> {
+    return this.scheduleTarget({
+      ...input,
+      restTargetType: LV_REST_TARGET_TYPES.REST_6H,
+    });
+  }
+
   async scheduleTarget(
     input: ScheduleLvRestTargetJobInput,
   ): Promise<ScheduleLvRestTargetJobResult> {
     const now = input.now ?? new Date();
-    const delayMs = this.computeDelayMs(input.restWindowStartedAt, now);
-    const scheduledFor = new Date(input.restWindowStartedAt.getTime() + this.getRest60mDelayMs());
+    const delayMs = this.computeDelayMs(input.restWindowStartedAt, input.restTargetType, now);
+    const scheduledFor = restTargetAt(
+      input.restWindowStartedAt,
+      input.restTargetType,
+      this.getRest60mDelayMs(),
+      this.getRest6hDelayMs(),
+    );
     const idempotencyKey = this.buildIdempotencyKey({
       vehicleId: input.vehicleId,
       restWindowId: input.restWindowId,
@@ -129,5 +154,11 @@ export class BatteryV2RestTargetProducer {
         ? LV_REST_TARGET_JOB_STATUS.ENQUEUED
         : LV_REST_TARGET_JOB_STATUS.SCHEDULED,
     };
+  }
+
+  getTargetDelayMs(
+    restTargetType: Extract<LvRestTargetType, 'REST_60M' | 'REST_6H'>,
+  ): number {
+    return getBatteryRestTargetDelayMs(restTargetType);
   }
 }

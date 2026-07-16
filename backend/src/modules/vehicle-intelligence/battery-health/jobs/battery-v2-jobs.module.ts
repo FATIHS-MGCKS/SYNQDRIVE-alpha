@@ -6,6 +6,7 @@ import { BatteryV2JobHandlerRegistry } from './battery-v2-job-handler.registry';
 import { BatteryV2JobObservabilityService } from './battery-v2-job-observability.service';
 import { BatteryV2VehicleLockService } from './battery-v2-vehicle-lock.service';
 import { BatteryV2SnapshotIngestionService } from './battery-v2-snapshot-ingestion.service';
+import { BatteryRestTargetEvaluationService } from '../lv-rest-window/battery-rest-target-evaluation.service';
 import { BatteryObservationClassifyHandler } from './handlers/battery-observation-classify.handler';
 import { BatteryRestTargetEvaluateHandler } from './handlers/battery-rest-target-evaluate.handler';
 import { BatteryStartProxyExtractHandler } from './handlers/battery-start-proxy-extract.handler';
@@ -38,6 +39,7 @@ const BATTERY_V2_JOB_HANDLERS = [
     BatteryV2JobObservabilityService,
     BatteryV2JobHandlerRegistry,
     BatteryV2SnapshotIngestionService,
+    BatteryRestTargetEvaluationService,
   ],
   exports: [
     ...BATTERY_V2_JOB_HANDLERS,
