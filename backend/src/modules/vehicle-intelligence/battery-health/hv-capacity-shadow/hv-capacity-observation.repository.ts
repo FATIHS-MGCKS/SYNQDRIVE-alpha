@@ -11,6 +11,15 @@ import {
   HV_M2_MODEL_VERSION,
   type HvCapacityObservationMetadata,
 } from './hv-capacity-m2.types';
+import {
+  HV_M3_CAPACITY_METHOD,
+  HV_M3_MODEL_VERSION,
+  type HvCapacityM3ObservationMetadata,
+} from './hv-capacity-m3.types';
+
+export type HvCapacityObservationPersistMetadata =
+  | HvCapacityObservationMetadata
+  | HvCapacityM3ObservationMetadata;
 
 export interface CreateHvCapacityObservationInput {
   organizationId: string;
@@ -24,7 +33,9 @@ export interface CreateHvCapacityObservationInput {
   observedAt: Date;
   receivedAt?: Date;
   idempotencyKey: string;
-  metadata: HvCapacityObservationMetadata;
+  deltaSocPercent?: number | null;
+  deltaEnergyKwh?: number | null;
+  metadata: HvCapacityObservationPersistMetadata;
 }
 
 @Injectable()
@@ -42,8 +53,8 @@ export class HvCapacityObservationRepository {
       estimatedCapacityKwh: input.estimatedCapacityKwh,
       estimatedSohPct: null,
       referenceCapacityKwh: input.referenceCapacityKwh ?? null,
-      deltaSocPercent: null,
-      deltaEnergyKwh: null,
+      deltaSocPercent: input.deltaSocPercent ?? null,
+      deltaEnergyKwh: input.deltaEnergyKwh ?? null,
       sampleStats: undefined,
       quality: input.quality,
       modelVersion: input.modelVersion,
@@ -117,4 +128,13 @@ export function buildHvCapacityObservationIdempotencyKey(input: {
     `m${version}`,
     String(input.observedAt.getTime()),
   ].join(':');
+}
+
+/** One M3 validation observation per qualified session (session-level, not pointwise). */
+export function buildHvM3CapacityObservationIdempotencyKey(input: {
+  chargeSessionId: string;
+  modelVersion?: number;
+}): string {
+  const version = input.modelVersion ?? HV_M3_MODEL_VERSION;
+  return ['hv-cap-m3', input.chargeSessionId, `m${version}`].join(':');
 }
