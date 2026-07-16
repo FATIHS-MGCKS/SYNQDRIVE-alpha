@@ -400,21 +400,39 @@ export class TripEnrichmentOrchestratorService {
   }
 
   /**
-   * Mark driving impact computation stage (called from DrivingImpactProcessor).
-   * Brake-health recalculation stays outside this status — non-blocking follow-up.
+   * @deprecated Status sync is performed transactionally inside DrivingImpactService.computeForTrip.
+   * Retained for legacy callers only.
    */
   async markDrivingImpactComputed(tripId: string, skipped = false): Promise<void> {
-    if (!skipped) {
-      await this.prisma.vehicleTrip.update({
-        where: { id: tripId },
-        data: { drivingImpactComputedAt: new Date() },
-      });
-    }
-    await this.analysisCoordinator?.markStage(
+    await this.analysisCoordinator?.applyDrivingImpactOutcome(
       tripId,
-      'drivingImpact',
-      skipped ? 'skipped' : 'done',
+      skipped
+        ? {
+            drivingImpactStatus: 'SKIPPED',
+            stageState: 'skipped',
+            modelVersion: 'legacy',
+            calculatedAt: null,
+            skipReason: 'capability_gap',
+          }
+        : {
+            drivingImpactStatus: 'READY',
+            stageState: 'done',
+            modelVersion: 'legacy',
+            calculatedAt: new Date(),
+            computationQuality: 'COMPLETE',
+          },
     );
+  }
+
+  /** Technical failure path when processor catches an unexpected throw. */
+  async markDrivingImpactFailed(tripId: string, error: string): Promise<void> {
+    await this.analysisCoordinator?.applyDrivingImpactOutcome(tripId, {
+      drivingImpactStatus: 'FAILED',
+      stageState: 'failed',
+      modelVersion: 'legacy',
+      calculatedAt: null,
+      failureReason: error.slice(0, 500),
+    });
   }
 
   // ─────────────────────────────────────────────────────────────────────────

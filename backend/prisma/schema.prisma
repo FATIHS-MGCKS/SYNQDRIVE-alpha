@@ -6285,7 +6285,7 @@ model VehicleTrip {
   // Simple string statuses for frontend display. Values:
   //   qualityStatus:         VERIFIED | LOW_DATA | ANOMALY
   //   behaviorSummaryStatus: PENDING | READY | SKIPPED | FAILED
-  //   drivingImpactStatus:   PENDING | READY | SKIPPED | FAILED
+  //   drivingImpactStatus:   PENDING | READY | PARTIAL | SKIPPED | FAILED
   qualityStatus         String? @map("quality_status")
   behaviorSummaryStatus String? @map("behavior_summary_status")
   drivingImpactStatus   String? @map("driving_impact_status")

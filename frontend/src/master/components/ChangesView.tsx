@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p8-driving-impact-status-sync-2026-07-16',
+    version: '4.9.510',
+    title: 'Driving Intelligence V2 P8 — Driving-Impact Status-Sync',
+    summary: [
+      'Transaktionale Statusaktualisierung bei Impact-Erstellung/Aktualisierung: `DrivingImpactStatusSyncService` + `applyDrivingImpactOutcome` im Coordinator.',
+      'READY bei vollständiger Berechnung, PARTIAL bei eingeschränkter Quelle, SKIPPED bei Capability/Mindestdistanz, FAILED nur bei technischem Fehlschlag.',
+      '`modelVersion` + `calculatedAt` in `sourceSummaryJson`; `drivingImpactComputedAt` auf VehicleTrip.',
+      'Read-only `DrivingImpactReconciliationService` erkennt Impact-Row + PENDING (kein produktiver Backfill).',
+      'Tests: Desync-Erkennung, READY/PARTIAL-Mapping, Retry ohne Statusdrift.',
+    ],
+    reason:
+      'Prompt 8/76: Impact-Datensätze existierten, während `drivingImpactStatus` auf PENDING blieb — getrennte Writes ohne Reconciliation.',
+    previousBehavior:
+      'TripDrivingImpact-Upsert und drivingImpactStatus-Update in separaten Schritten; Processor rief markDrivingImpactComputed nach Compute — Crash-Fenster → Desync.',
+    details:
+      'Backend: driving-impact-outcome.*, driving-impact-status-sync.service.ts, driving-impact-reconciliation.service.ts, driving-impact.service.ts, trip-analysis-coordinator.service.ts (applyDrivingImpactOutcome), driving-impact.processor.ts. Kein automatischer Backfill.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T14:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p7-trip-analysis-status-resolver-2026-07-16',
     version: '4.9.509',
     title: 'Driving Intelligence V2 P7 — TripAnalysisStatusResolver',

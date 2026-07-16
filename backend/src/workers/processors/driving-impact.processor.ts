@@ -33,15 +33,19 @@ export class DrivingImpactProcessor extends WorkerHost {
     this.logger.log(`DrivingImpact compute started: trip=${tripId} vehicle=${vehicleId}`);
 
     try {
-      const processed = await this.drivingImpactService.computeForTrip(tripId, vehicleId);
+      const result = await this.drivingImpactService.computeForTrip(tripId, vehicleId);
 
-      if (processed) {
-        this.logger.log(`DrivingImpact compute complete: trip=${tripId}`);
-        await this.orchestrator.markDrivingImpactComputed(tripId, false);
+      if (result.kind === 'persisted') {
+        this.logger.log(
+          `DrivingImpact compute complete: trip=${tripId} quality=${result.quality} model=${result.modelVersion}`,
+        );
+      } else if (result.kind === 'skipped') {
+        this.logger.debug(`DrivingImpact compute skipped: trip=${tripId} reason=${result.reason}`);
       } else {
-        this.logger.debug(`DrivingImpact compute skipped: trip=${tripId} (below threshold or missing data)`);
-        await this.orchestrator.markDrivingImpactComputed(tripId, true);
+        this.logger.warn(`DrivingImpact compute failed: trip=${tripId} error=${result.error}`);
       }
+
+      // Status sync is handled inside computeForTrip — no separate markDrivingImpactComputed call.
 
       // Brake-health refresh is intentionally non-blocking for trip analysis status.
       try {
@@ -54,7 +58,8 @@ export class DrivingImpactProcessor extends WorkerHost {
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.error(`DrivingImpact compute failed: trip=${tripId} ${message}`);
-      await this.orchestrator.markDrivingImpactComputed(tripId, true);
+      // computeForTrip catch path records FAILED when sync is wired; orchestrator fallback for safety.
+      await this.orchestrator.markDrivingImpactFailed(tripId, message);
     }
   }
 }

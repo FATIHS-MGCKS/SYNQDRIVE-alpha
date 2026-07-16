@@ -14,6 +14,7 @@ import {
   parseBehaviorSummaryJson,
   resolveTripAnalysisStatusFromStages,
 } from './trip-analysis-status';
+import type { DrivingImpactOutcome } from '../driving-impact/driving-impact-outcome.types';
 
 export interface AnalysisDiagnosticSnapshot {
   tripId: string;
@@ -180,6 +181,109 @@ export class TripAnalysisCoordinatorService {
     }
   }
 
+  /**
+   * Apply driving-impact terminal outcome with optional transaction client.
+   * Used by DrivingImpactStatusSyncService for atomic impact-row + status writes.
+   */
+  async applyDrivingImpactOutcome(
+    tripId: string,
+    outcome: DrivingImpactOutcome,
+    tx?: Prisma.TransactionClient,
+  ): Promise<void> {
+    const db = tx ?? this.prisma;
+    const trip = await db.vehicleTrip.findUnique({
+      where: { id: tripId },
+      select: {
+        tripAnalysisStatus: true,
+        analysisQueuedAt: true,
+        analysisPartialAt: true,
+        analysisStagesJson: true,
+        behaviorSummaryStatus: true,
+        behaviorEnrichmentStatus: true,
+        behaviorSummaryJson: true,
+      },
+    });
+    if (!trip) return;
+
+    const stages = parseAnalysisStagesJson(trip.analysisStagesJson);
+    stages.drivingImpact = outcome.stageState;
+
+    const now = outcome.calculatedAt ?? new Date();
+    const assess = this.assessabilityFromTrip(
+      trip.behaviorSummaryJson,
+      trip.behaviorEnrichmentStatus,
+    );
+
+    const resolved = resolveTripAnalysisStatusFromStages(stages, {
+      assessability: assess,
+      analysisQueued: trip.analysisQueuedAt != null,
+    });
+
+    const data: Record<string, unknown> = {
+      analysisStagesJson: stages as Prisma.InputJsonValue,
+      tripAnalysisStatus: resolved.legacyTripAnalysisStatus,
+      drivingImpactStatus: outcome.drivingImpactStatus,
+    };
+
+    if (outcome.calculatedAt) {
+      data.drivingImpactComputedAt = outcome.calculatedAt;
+    }
+
+    if (outcome.drivingImpactStatus === 'FAILED') {
+      data.analysisFailedAt = now;
+      data.analysisFailedReason = outcome.failureReason ?? 'driving_impact_failed';
+      this.tripMetrics?.enrichmentFailed.inc({ stage: 'drivingImpact' });
+    }
+
+    if (
+      resolved.status === 'COMPLETED' ||
+      resolved.status === 'SKIPPED' ||
+      resolved.status === 'NOT_ASSESSABLE'
+    ) {
+      const latencyMs = trip.analysisQueuedAt
+        ? now.getTime() - trip.analysisQueuedAt.getTime()
+        : null;
+
+      Object.assign(data, {
+        analysisCompletedAt: now,
+        analysisLatencyMs: latencyMs,
+        analysisFailedAt: outcome.drivingImpactStatus === 'FAILED' ? now : null,
+        analysisFailedReason:
+          outcome.drivingImpactStatus === 'FAILED' ? outcome.failureReason ?? null : null,
+        behaviorSummaryStatus: this.resolveBehaviorSummaryStatus(
+          stages,
+          trip.behaviorEnrichmentStatus,
+        ),
+      });
+      if (latencyMs != null && outcome.drivingImpactStatus !== 'FAILED') {
+        this.tripMetrics?.tripFinalizeLatency.observe({ profile: 'analysis' }, latencyMs / 1000);
+      }
+    } else if (resolved.status === 'PARTIAL') {
+      Object.assign(data, {
+        analysisPartialAt: trip.analysisPartialAt ?? now,
+        behaviorSummaryStatus: 'READY',
+      });
+    } else if (resolved.status === 'IN_PROGRESS') {
+      Object.assign(data, {
+        behaviorSummaryStatus:
+          stages.behavior === 'done'
+            ? 'READY'
+            : stages.behavior === 'skipped'
+              ? 'SKIPPED'
+              : trip.behaviorSummaryStatus ?? 'PENDING',
+      });
+    }
+
+    await db.vehicleTrip.update({
+      where: { id: tripId },
+      data: data as any,
+    });
+
+    if (!tx) {
+      await this.logAnalysisDiagnostics(tripId, assess);
+    }
+  }
+
   async markStage(
     tripId: string,
     stage: AnalysisStageName,
@@ -223,8 +327,14 @@ export class TripAnalysisCoordinatorService {
       tripAnalysisStatus: resolved.legacyTripAnalysisStatus,
     };
 
-    if (stage === 'drivingImpact' && (state === 'done' || state === 'skipped')) {
-      data.drivingImpactStatus = state === 'done' ? 'READY' : 'SKIPPED';
+    if (stage === 'drivingImpact') {
+      if (state === 'done') {
+        data.drivingImpactStatus = 'READY';
+      } else if (state === 'skipped') {
+        data.drivingImpactStatus = 'SKIPPED';
+      } else if (state === 'failed') {
+        data.drivingImpactStatus = 'FAILED';
+      }
     }
 
     if (
@@ -250,7 +360,9 @@ export class TripAnalysisCoordinatorService {
             ? 'READY'
             : stages.drivingImpact === 'skipped'
               ? 'SKIPPED'
-              : undefined,
+              : stages.drivingImpact === 'failed'
+                ? 'FAILED'
+                : undefined,
       });
       if (latencyMs != null) {
         this.tripMetrics?.tripFinalizeLatency.observe({ profile: 'analysis' }, latencyMs / 1000);
