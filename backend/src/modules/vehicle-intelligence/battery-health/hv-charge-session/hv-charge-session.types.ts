@@ -1,12 +1,21 @@
 import type { BatteryMeasurementQuality, HvChargeSession } from '@prisma/client';
+import type { BatteryEvidenceStrength } from '../battery-v2-domain';
+import type { HvFallbackDetectionTier } from './hv-fallback-charge-session.types';
 
 export const HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE = 'DIMO_RECHARGE_SEGMENT' as const;
+export const HV_CHARGE_SESSION_SOURCE_TELEMETRY_POLL_FALLBACK =
+  'TELEMETRY_POLL_FALLBACK' as const;
+
+export type HvChargeSessionSource =
+  | typeof HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE
+  | typeof HV_CHARGE_SESSION_SOURCE_TELEMETRY_POLL_FALLBACK;
 
 export type HvChargeSessionChangeKind =
   | 'created'
   | 'ongoing_updated'
   | 'completed'
   | 'provider_refresh'
+  | 'superseded'
   | 'no_op';
 
 export interface HvChargeSessionMetadata {
@@ -23,6 +32,12 @@ export interface HvChargeSessionMetadata {
   odometerEndKm?: number | null;
   dimoTokenId?: number;
   providerSegmentId?: string | null;
+  fallbackPrimaryTier?: HvFallbackDetectionTier | null;
+  fallbackCorroboratingTiers?: HvFallbackDetectionTier[];
+  fallbackEvidenceStrength?: BatteryEvidenceStrength | null;
+  fallbackEndReason?: string | null;
+  supersededBySegmentFingerprint?: string | null;
+  supersededAt?: string | null;
   changeHistory?: Array<{
     at: string;
     kind: HvChargeSessionChangeKind;
@@ -34,7 +49,7 @@ export interface HvChargeSessionDraft {
   vehicleId: string;
   segmentFingerprint: string;
   dimoSegmentId: string | null;
-  source: typeof HV_CHARGE_SESSION_SOURCE_DIMO_RECHARGE;
+  source: HvChargeSessionSource;
   startAt: Date;
   endAt: Date | null;
   startSocPercent: number | null;

@@ -4,6 +4,7 @@ import { isBatteryV2HvRechargeSessionEnabled } from '@config/battery-health-v2.c
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { HvMethodProfileService } from '../hv-method-profile/hv-method-profile.service';
 import { BatteryV2ProviderError } from '../jobs/battery-v2-job.errors';
+import { HvFallbackChargeSessionDetectorService } from './hv-fallback-charge-session-detector.service';
 import { HvChargeSessionIngestService } from './hv-charge-session-ingest.service';
 import {
   buildHvRechargeRollingWindow,
@@ -36,6 +37,9 @@ export interface HvRechargeSessionReconcileResult {
   skipped: boolean;
   skipReason?: HvRechargeSessionReconcileSkipReason;
   ingest?: HvChargeSessionIngestResult;
+  fallback?: Awaited<
+    ReturnType<HvFallbackChargeSessionDetectorService['detectAndPersistForVehicle']>
+  >;
 }
 
 @Injectable()
@@ -46,6 +50,7 @@ export class HvRechargeSessionReconcileService {
     private readonly prisma: PrismaService,
     private readonly hvMethodProfile: HvMethodProfileService,
     private readonly ingest: HvChargeSessionIngestService,
+    private readonly fallbackDetector: HvFallbackChargeSessionDetectorService,
     private readonly metrics: TripMetricsService,
   ) {}
 
@@ -75,9 +80,23 @@ export class HvRechargeSessionReconcileService {
 
     if (!profile.rechargeSegmentsAvailable) {
       this.logger.debug(
-        `HV recharge reconcile skipped — segments unavailable vehicle=${input.vehicleId}`,
+        `HV recharge reconcile segments unavailable — attempting fallback vehicle=${input.vehicleId}`,
       );
-      return { skipped: true, skipReason: 'capability_unavailable' };
+      const window = input.from && input.to
+        ? { from: input.from, to: input.to }
+        : buildHvRechargeRollingWindow(input.to);
+      const fallback = await this.fallbackDetector.detectAndPersistForVehicle({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        from: window.from,
+        to: window.to,
+        correlationId: input.correlationId,
+      });
+      return {
+        skipped: fallback.skipped,
+        skipReason: 'capability_unavailable',
+        fallback,
+      };
     }
 
     const window = input.from && input.to

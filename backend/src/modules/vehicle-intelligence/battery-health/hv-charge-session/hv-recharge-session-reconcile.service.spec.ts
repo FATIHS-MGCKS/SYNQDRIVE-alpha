@@ -77,6 +77,9 @@ describe('HvRechargeSessionReconcileService', () => {
     ingestForVehicle: jest.fn(),
     ingestSegmentByFingerprint: jest.fn(),
   };
+  const fallbackDetector = {
+    detectAndPersistForVehicle: jest.fn(),
+  };
   const metrics = {
     batteryV2HvRechargeSegmentsTotal: { inc: jest.fn() },
     batteryV2HvRechargeSessionsPersisted: { inc: jest.fn() },
@@ -99,6 +102,7 @@ describe('HvRechargeSessionReconcileService', () => {
       prisma as never,
       hvMethodProfile as never,
       ingest as never,
+      fallbackDetector as never,
       metrics as never,
     );
   });
@@ -115,9 +119,17 @@ describe('HvRechargeSessionReconcileService', () => {
     expect(ingest.ingestForVehicle).not.toHaveBeenCalled();
   });
 
-  it('skips when capability profile has no recharge segments', async () => {
+  it('skips fallback path when feature flag is disabled', async () => {
     hvMethodProfile.resolveForVehicle.mockResolvedValue({
       rechargeSegmentsAvailable: false,
+    });
+    fallbackDetector.detectAndPersistForVehicle.mockResolvedValue({
+      skipped: true,
+      skipReason: 'disabled',
+      detected: 0,
+      persisted: 0,
+      rejectedFalsePositives: 0,
+      results: [],
     });
 
     const result = await service.reconcile({
@@ -125,7 +137,30 @@ describe('HvRechargeSessionReconcileService', () => {
       vehicleId: VEH,
     });
 
-    expect(result).toEqual({ skipped: true, skipReason: 'capability_unavailable' });
+    expect(result.skipReason).toBe('capability_unavailable');
+    expect(fallbackDetector.detectAndPersistForVehicle).toHaveBeenCalled();
+  });
+
+  it('delegates to fallback detector when recharge segments are unavailable', async () => {
+    hvMethodProfile.resolveForVehicle.mockResolvedValue({
+      rechargeSegmentsAvailable: false,
+    });
+    fallbackDetector.detectAndPersistForVehicle.mockResolvedValue({
+      skipped: false,
+      detected: 1,
+      persisted: 1,
+      rejectedFalsePositives: 0,
+      results: [],
+    });
+
+    const result = await service.reconcile({
+      organizationId: ORG,
+      vehicleId: VEH,
+    });
+
+    expect(result.skipReason).toBe('capability_unavailable');
+    expect(result.fallback?.persisted).toBe(1);
+    expect(fallbackDetector.detectAndPersistForVehicle).toHaveBeenCalled();
     expect(ingest.ingestForVehicle).not.toHaveBeenCalled();
   });
 

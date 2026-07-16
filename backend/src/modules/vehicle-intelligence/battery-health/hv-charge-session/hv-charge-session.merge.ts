@@ -1,5 +1,6 @@
 import type { BatteryMeasurementQuality } from '@prisma/client';
 import { isBetterSessionQuality } from './hv-charge-session.quality';
+import { isDimoSourcePreferredOverFallback } from './hv-fallback-charge-session.policy';
 import type {
   HvChargeSessionChangeKind,
   HvChargeSessionDraft,
@@ -82,6 +83,10 @@ export function mergeHvChargeSessionUpdate(input: {
   const { existing, incoming } = input;
   const existingMeta = readMetadata(existing.metadata);
   const existingCompleted = !existing.isOngoing && existing.endAt != null;
+  const dimoOverridesFallback = isDimoSourcePreferredOverFallback(
+    existing.source,
+    incoming.source,
+  );
 
   const incomingScore = providerCompletenessScore(incoming);
   const existingScore = providerCompletenessScore({
@@ -95,8 +100,9 @@ export function mergeHvChargeSessionUpdate(input: {
 
   const incomingQuality = incoming.quality;
   const existingQuality = existing.quality;
-  const qualityImproved = isBetterSessionQuality(incomingQuality, existingQuality);
-  const completenessImproved = incomingScore > existingScore;
+  const qualityImproved =
+    dimoOverridesFallback || isBetterSessionQuality(incomingQuality, existingQuality);
+  const completenessImproved = dimoOverridesFallback || incomingScore > existingScore;
 
   let endAt = existing.endAt;
   if (incoming.endAt) {

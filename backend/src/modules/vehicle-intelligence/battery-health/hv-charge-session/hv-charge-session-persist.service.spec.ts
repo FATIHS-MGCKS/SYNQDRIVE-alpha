@@ -207,6 +207,7 @@ describe('hv-charge-session merge', () => {
 describe('HvChargeSessionPersistService', () => {
   const repository = {
     findByFingerprint: jest.fn(),
+    findBySource: jest.fn().mockResolvedValue([]),
     create: jest.fn(),
     update: jest.fn(),
     findById: jest.fn(),
@@ -215,6 +216,7 @@ describe('HvChargeSessionPersistService', () => {
 
   beforeEach(() => {
     jest.resetAllMocks();
+    repository.findBySource.mockResolvedValue([]);
   });
 
   it('creates new session for unseen segment', async () => {

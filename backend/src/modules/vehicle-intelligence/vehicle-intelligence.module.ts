@@ -60,6 +60,7 @@ import {
   HvChargeSessionIngestService,
   HvChargeSessionPersistService,
   HvChargeSessionRepository,
+  HvFallbackChargeSessionDetectorService,
   HvRechargeSessionReconcileProducerService,
   HvRechargeSessionReconcileService,
 } from './battery-health/hv-charge-session';
@@ -198,6 +199,7 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     HvChargeSessionRepository,
     HvChargeSessionPersistService,
     HvChargeSessionIngestService,
+    HvFallbackChargeSessionDetectorService,
     HvRechargeSessionReconcileProducerService,
     HvRechargeSessionReconcileService,
     DriveProfileResolverService,
@@ -289,6 +291,7 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     HvChargeSessionRepository,
     HvChargeSessionPersistService,
     HvChargeSessionIngestService,
+    HvFallbackChargeSessionDetectorService,
     HvRechargeSessionReconcileProducerService,
     HvRechargeSessionReconcileService,
     DriveProfileResolverService,
