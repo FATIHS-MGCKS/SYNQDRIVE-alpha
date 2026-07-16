@@ -20,6 +20,13 @@ function makeAnalysisRunService() {
   };
 }
 
+function makeStageOrchestrator() {
+  return {
+    initializeStagesForRun: jest.fn(),
+    enqueueReadyStages: jest.fn(),
+  };
+}
+
 function makeJobDispatcher() {
   return {
     enqueue: jest.fn(),
@@ -35,6 +42,7 @@ function makeJobRepository() {
 describe('DrivingAnalysisInitService', () => {
   let prisma: ReturnType<typeof makePrisma>;
   let analysisRunService: ReturnType<typeof makeAnalysisRunService>;
+  let stageOrchestrator: ReturnType<typeof makeStageOrchestrator>;
   let jobDispatcher: ReturnType<typeof makeJobDispatcher>;
   let jobRepository: ReturnType<typeof makeJobRepository>;
   let service: DrivingAnalysisInitService;
@@ -49,11 +57,13 @@ describe('DrivingAnalysisInitService', () => {
   beforeEach(() => {
     prisma = makePrisma();
     analysisRunService = makeAnalysisRunService();
+    stageOrchestrator = makeStageOrchestrator();
     jobDispatcher = makeJobDispatcher();
     jobRepository = makeJobRepository();
     service = new DrivingAnalysisInitService(
       prisma,
       analysisRunService as any,
+      stageOrchestrator as any,
       jobDispatcher as any,
       jobRepository as any,
     );
@@ -72,6 +82,24 @@ describe('DrivingAnalysisInitService', () => {
       created: true,
       deduplicated: false,
       supersededRunId: null,
+    });
+    stageOrchestrator.initializeStagesForRun.mockResolvedValue({
+      stages: [],
+      preservedCount: 0,
+      pendingCount: 1,
+    });
+    stageOrchestrator.enqueueReadyStages.mockResolvedValue({
+      readyStageKeys: ['SEGMENT_VALIDATE'],
+      enqueued: [
+        {
+          stageKey: 'SEGMENT_VALIDATE',
+          jobType: DRIVING_INTELLIGENCE_PIPELINE_START_JOB,
+          jobId: 'job-1',
+          created: true,
+          enqueued: true,
+          deduplicated: false,
+        },
+      ],
     });
     jobDispatcher.enqueue.mockResolvedValue({
       job: { id: 'job-1' },
@@ -97,13 +125,14 @@ describe('DrivingAnalysisInitService', () => {
     expect(analysisRunService.resolveOrBeginRun).not.toHaveBeenCalled();
   });
 
-  it('creates analysis run and enqueues pipeline start with stable idempotency key', async () => {
+  it('creates analysis run, initializes stages, and enqueues ready stage jobs', async () => {
     const result = await service.initializeForCompletedTrip(baseInput);
 
     expect(result.runId).toBe('run-1');
     expect(result.runCreated).toBe(true);
     expect(result.jobs).toHaveLength(1);
     expect(result.jobs[0]?.enqueued).toBe(true);
+    expect(result.jobs[0]?.stageKey).toBe('SEGMENT_VALIDATE');
     expect(result.queueErrors).toHaveLength(0);
 
     expect(analysisRunService.resolveOrBeginRun).toHaveBeenCalledWith(
@@ -114,15 +143,17 @@ describe('DrivingAnalysisInitService', () => {
       }),
     );
 
-    expect(jobDispatcher.enqueue).toHaveBeenCalledWith(
+    expect(stageOrchestrator.initializeStagesForRun).toHaveBeenCalledWith(
       expect.objectContaining({
-        jobType: DRIVING_INTELLIGENCE_PIPELINE_START_JOB,
         analysisRunId: 'run-1',
-        idempotencyKey: buildInitJobIdempotencyKey(
-          'trip-1',
-          DRIVING_INTELLIGENCE_PIPELINE_MODEL_VERSION,
-          DRIVING_INTELLIGENCE_PIPELINE_START_JOB,
-        ),
+        tripId: 'trip-1',
+        modelVersion: DRIVING_INTELLIGENCE_PIPELINE_MODEL_VERSION,
+      }),
+    );
+
+    expect(stageOrchestrator.enqueueReadyStages).toHaveBeenCalledWith(
+      expect.objectContaining({
+        analysisRunId: 'run-1',
         correlationId: 'trip-finalize:trip-1',
       }),
     );
@@ -142,14 +173,23 @@ describe('DrivingAnalysisInitService', () => {
 
     expect(second.runDeduplicated).toBe(true);
     expect(second.jobs).toHaveLength(0);
-    expect(jobDispatcher.enqueue).toHaveBeenCalledTimes(1);
+    expect(stageOrchestrator.enqueueReadyStages).toHaveBeenCalledTimes(1);
   });
 
-  it('surfaces queue errors and leaves jobs retryable via PENDING row lookup', async () => {
-    jobDispatcher.enqueue.mockRejectedValue(new Error('Redis connection refused'));
-    jobRepository.findByIdempotencyKey.mockResolvedValue({
-      id: 'job-pending-1',
-      status: 'PENDING',
+  it('surfaces queue errors from stage orchestration', async () => {
+    stageOrchestrator.enqueueReadyStages.mockResolvedValue({
+      readyStageKeys: ['SEGMENT_VALIDATE'],
+      enqueued: [
+        {
+          stageKey: 'SEGMENT_VALIDATE',
+          jobType: DRIVING_INTELLIGENCE_PIPELINE_START_JOB,
+          jobId: 'job-pending-1',
+          created: true,
+          enqueued: false,
+          deduplicated: false,
+          queueError: 'Redis connection refused',
+        },
+      ],
     });
 
     const result = await service.initializeForCompletedTrip(baseInput);

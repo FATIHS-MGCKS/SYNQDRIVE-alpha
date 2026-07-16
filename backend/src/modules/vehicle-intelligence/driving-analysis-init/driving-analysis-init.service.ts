@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import type { DrivingIntelligenceJobType } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DrivingAnalysisRunService } from '../driving-analysis-run/driving-analysis-run.service';
+import { DrivingAnalysisStageOrchestratorService } from '../driving-analysis-stage/driving-analysis-stage.orchestrator.service';
 import { DrivingIntelligenceJobDispatcherService } from '../driving-intelligence-jobs/driving-intelligence-jobs.dispatcher.service';
 import { DrivingIntelligenceJobRepository } from '../driving-intelligence-jobs/driving-intelligence-jobs.repository';
 import {
@@ -22,6 +23,7 @@ export class DrivingAnalysisInitService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly analysisRunService: DrivingAnalysisRunService,
+    private readonly stageOrchestrator: DrivingAnalysisStageOrchestratorService,
     private readonly jobDispatcher: DrivingIntelligenceJobDispatcherService,
     private readonly jobRepository: DrivingIntelligenceJobRepository,
   ) {}
@@ -89,22 +91,53 @@ export class DrivingAnalysisInitService {
     const queueErrors: string[] = [];
     const jobs: TripAnalysisInitJobResult[] = [];
 
-    const shouldEnqueuePipelineStart =
+    const shouldOrchestrateStages =
       runResult.created ||
       (runResult.run.status !== 'COMPLETED' && runResult.run.status !== 'SUPERSEDED');
 
-    if (shouldEnqueuePipelineStart) {
-      const jobResult = await this.enqueuePipelineStartJob({
+    if (shouldOrchestrateStages) {
+      const stageInit = await this.stageOrchestrator.initializeStagesForRun({
+        organizationId: input.organizationId,
+        analysisRunId: runResult.run.id,
+        tripId: input.tripId,
+        vehicleId: input.vehicleId,
+        modelVersion: DRIVING_INTELLIGENCE_PIPELINE_MODEL_VERSION,
+        capabilityVersion: DRIVING_INTELLIGENCE_INIT_CAPABILITY_VERSION,
+        tripEndTimeIso: trip.endTime?.toISOString() ?? null,
+        waypointCount,
+        behaviorEnrichmentStatus: trip.behaviorEnrichmentStatus,
+        supersededRunId: runResult.supersededRunId,
+      });
+
+      const enqueueResult = await this.stageOrchestrator.enqueueReadyStages({
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
         tripId: input.tripId,
         analysisRunId: runResult.run.id,
-        source: input.source,
+        modelVersion: DRIVING_INTELLIGENCE_PIPELINE_MODEL_VERSION,
+        correlationId: buildInitCorrelationId(input.tripId),
         requestedAt: trip.endTime ?? new Date(),
       });
-      jobs.push(jobResult);
-      if (jobResult.queueError) {
-        queueErrors.push(jobResult.queueError);
+
+      for (const item of enqueueResult.enqueued) {
+        jobs.push({
+          jobType: item.jobType,
+          jobId: item.jobId,
+          created: item.created,
+          enqueued: item.enqueued,
+          deduplicated: item.deduplicated,
+          queueError: item.queueError,
+          stageKey: item.stageKey,
+        });
+        if (item.queueError) {
+          queueErrors.push(item.queueError);
+        }
+      }
+
+      if (stageInit.preservedCount > 0) {
+        this.logger.log(
+          `Trip analysis init preserved ${stageInit.preservedCount} stage(s) trip=${input.tripId}`,
+        );
       }
     }
 
