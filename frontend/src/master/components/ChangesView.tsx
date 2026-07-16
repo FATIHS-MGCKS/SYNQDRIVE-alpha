@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'vehicle-operational-status-repair-runbook-v49503-2026-07-16',
+    version: '4.9.503',
+    title: 'V4.9.503 — Vehicle operational status repair runbook (Prompt 39/43)',
+    summary: [
+      'Neu: verbindliches Ops-Runbook `docs/runbooks/vehicle-operational-status-repair.md` für VBH-Diagnose und -Reparatur.',
+      'Abschnitte: Voraussetzungen, Backup/Restore, Lokal/Staging/Produktion, Rollback, Abnahmekriterien, Ergebnisbericht.',
+      'Verlinkt echte CLI-Kommandos (`audit-vehicle-booking-handover-data.ts`, `repair-vehicle-booking-handover-data.ts`) inkl. KS-FH-660E-Staging-Fälle und Fleet-API-Smoke-Tests.',
+      'Prod-Regeln: zuerst Diagnose, org-scoped Apply, kleine Batches, Abbruchkriterien, keine globale unkontrollierte Reparatur.',
+    ],
+    reason:
+      'Prompt 39/43: Ops brauchen ein verbindliches Betriebsverfahren für Vehicle-/Booking-/Handover-Status-Reparatur — analog zum Task-Data-Runbook.',
+    previousBehavior:
+      'Nur Skripte und Code (V4.9.501/502); kein dokumentiertes End-to-End-Verfahren für Backup, Staging, Produktion und Abnahme.',
+    details: null,
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T00:35:00.000Z',
+  },
+  {
     id: 'vehicle-booking-handover-repair-v49502-2026-07-16',
     version: '4.9.502',
     title: 'V4.9.502 — Controlled vehicle/booking/handover repair (Prompt 38/43)',
