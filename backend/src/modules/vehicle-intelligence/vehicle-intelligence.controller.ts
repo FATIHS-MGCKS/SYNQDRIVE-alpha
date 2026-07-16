@@ -73,6 +73,7 @@ import { TripEvidenceReadService } from '@modules/clickhouse/trip-evidence-read.
 import { DeviceConnectionQueryService } from '@modules/dimo/device-connection-query.service';
 import { RpmWebhookQueryService } from '@modules/dimo/rpm-webhook-query.service';
 import { DrivingAssessmentDeviceQualityService } from './trips/driving-assessment-device-quality.service';
+import { DrivingImpactService } from './driving-impact/driving-impact.service';
 import { VehicleDrivingCapabilityLifecycleService } from './driving-capability/vehicle-driving-capability-lifecycle.service';
 import { normalizeAiTireSpecResult, buildPersistedAiTireSpec, validateAiTireSpec } from './tires/ai-tire-spec-normalizer';
 import {
@@ -149,6 +150,7 @@ export class VehicleIntelligenceController {
     private readonly rpmWebhookQuery: RpmWebhookQueryService,
     private readonly tripEvidenceRead: TripEvidenceReadService,
     private readonly drivingAssessmentQuality: DrivingAssessmentDeviceQualityService,
+    private readonly drivingImpactService: DrivingImpactService,
     private readonly capabilityLifecycle: VehicleDrivingCapabilityLifecycleService,
   ) {}
 
@@ -932,6 +934,20 @@ export class VehicleIntelligenceController {
   @Get('trips/stats')
   async getTripStats(@Param('vehicleId') vehicleId: string) {
     return this.tripAnalyticsCanonicalService.getVehicleStats(vehicleId);
+  }
+
+  @Header('Cache-Control', 'no-store')
+  @Get('driving-impact/rolling')
+  async getDrivingImpactRolling(@Param('vehicleId') vehicleId: string) {
+    const [rollingWindow, current] = await Promise.all([
+      this.drivingImpactService.getVehicleRollingWindow(vehicleId),
+      this.drivingImpactService.getVehicleImpactForTire(vehicleId),
+    ]);
+    return {
+      rollingWindow,
+      drivingStressScore: current?.drivingStressScore ?? null,
+      notDriverEvaluation: true,
+    };
   }
 
   // ── Energy events (refuel / recharge) ────────────────────────────────

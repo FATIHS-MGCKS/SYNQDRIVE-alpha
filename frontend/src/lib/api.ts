@@ -1682,6 +1682,44 @@ export interface VehicleTripStats {
   assignedTripCount: number;
 }
 
+export interface DrivingImpactRollingWindow {
+  version: string;
+  windowDays: number;
+  windowStartedAt: string | null;
+  windowEndedAt: string | null;
+  tripCount: number;
+  scoredTripCount: number;
+  excludedTripCount: number;
+  distanceKmWindow: number;
+  excludedDistanceKm: number;
+  modelVersion: string;
+  modelProfileVersion: string | null;
+  modelProfile: string | null;
+  mixPolicy: string;
+  sourceQuality: {
+    measuredShare: number;
+    providerClassifiedShare: number;
+    reconstructedShare: number;
+    estimatedProxyShare: number;
+    contextOnlyShare: number;
+    measurementCoverage: number | null;
+  };
+  proxyShare: {
+    estimatedProxyShare: number;
+    brakingProxyKinematicShare: number;
+  };
+  healthEligibility: string;
+  notDriverEvaluation: true;
+  comparabilityHint: string | null;
+  recomputeDeterministic: true;
+}
+
+export interface DrivingImpactRollingResponse {
+  rollingWindow: DrivingImpactRollingWindow | null;
+  drivingStressScore: number | null;
+  notDriverEvaluation: true;
+}
+
 export interface DriverScoreSummary {
   subjectType: TripAssignmentSubjectType;
   subjectId: string;
@@ -4898,6 +4936,8 @@ export const api = {
     trips: (vehicleId: string, params?: { from?: string; to?: string; driver?: string }) =>
       get<VehicleTripAnalytics[]>(`/vehicles/${vehicleId}/trips` + buildQuery(params)),
     tripStats: (vehicleId: string) => get<VehicleTripStats>(`/vehicles/${vehicleId}/trips/stats`),
+    drivingImpactRolling: (vehicleId: string) =>
+      get<DrivingImpactRollingResponse>(`/vehicles/${vehicleId}/driving-impact/rolling`),
     tripDetail: (vehicleId: string, tripId: string) => get<VehicleTripAnalytics>(`/vehicles/${vehicleId}/trips/${tripId}`),
     energyEvents: (
       vehicleId: string,

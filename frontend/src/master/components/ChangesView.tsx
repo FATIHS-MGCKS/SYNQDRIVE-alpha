@@ -35,6 +35,31 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p46-rolling-hardening-2026-07-16',
+    version: '4.9.547',
+    title: 'Driving Intelligence V2 P46 — Rolling vehicle load hardening',
+    summary: [
+      'Neues Modul `driving-impact-rolling` (`impact-rolling-v1`) für kohortenbasierte Rolling-Aggregation.',
+      'Nur kompatible MODEL_VERSION + Modellprofil-Kohorten werden kombiniert — veraltete Trips explizit ausgeschlossen.',
+      'Modellwechsel → MODEL_CHANGE_RESET / PROFILE_PARTITION mit exclusionSummary.',
+      'Source Quality + Proxy-Anteil distanz-gewichtet aggregiert.',
+      'rollingWindowJson: Zeitraum, Tripanzahl, Distanz, scoredTripCount sichtbar.',
+      'Health Eligibility separat von Stress-Scores (healthEligibility eigene Spalte).',
+      'Deterministischer Recompute (tripStartedAt + tripId Sortierung).',
+      'API: GET `/vehicles/:id/driving-impact/rolling`.',
+      'Tests: gemischte Modellversionen, Recompute-Determinismus.',
+    ],
+    reason:
+      'Prompt 46/76: Rollierende Fahrzeugbelastung härten — keine stillen Mischungen inkompatibler Scores.',
+    previousBehavior:
+      'P45 — Rolling aggregierte alle Trips im 30-Tage-Fenster ohne Versions-/Profil-Filter.',
+    details:
+      '`driving-impact-rolling/` + `rolling_window_json` auf vehicle_driving_impact_current; refactor `updateRollingCurrent`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T23:30:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p45-model-profiles-2026-07-16',
     version: '4.9.546',
     title: 'Driving Intelligence V2 P45 — Hardware model profiles & comparability gating',

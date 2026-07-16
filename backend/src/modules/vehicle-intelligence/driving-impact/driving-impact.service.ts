@@ -10,6 +10,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { TripMetricsService } from '../../observability/trip-metrics.service';
 import { isNativeExtremeAcceleration } from '../dimo-native-driving-events';
 import { DRIVING_IMPACT_CONFIG as C } from './driving-impact.config';
+import type { DrivingImpactProvenanceMaturity } from './driving-impact-provenance';
 import {
   buildDrivingImpactSourceProvenance,
   type DrivingImpactSourceProvenance,
@@ -22,8 +23,8 @@ import {
   reduceHealthEligibilityForBrakeProxy,
   type ClassifiedBrakingRow,
 } from './driving-impact-braking-provenance';
+import { resolvePrimarySource } from './driving-impact-provenance';
 import {
-  mergeRollingProvenance,
   readTripDrivingImpactProvenance,
 } from './driving-impact-provenance.reader';
 import {
@@ -38,6 +39,17 @@ import {
   buildDrivingImpactModelProfileManifest,
   resolveDrivingImpactModelProfile,
 } from '../driving-impact-model-profile/driving-impact-model-profile';
+import {
+  buildRollingWindowManifest,
+  distanceWeightedBrakingProxyShare,
+  mergeRollingSourceQuality,
+  resolveRollingHealthEligibility,
+  rollingDistanceWeightedFieldAverage,
+  selectRollingCohort,
+  toRollingTripRow,
+} from '../driving-impact-rolling/driving-impact-rolling';
+import { readVehicleDrivingImpactRollingWindow } from '../driving-impact-rolling/driving-impact-rolling.reader';
+import type { DrivingImpactRollingWindowManifest } from '../driving-impact-rolling/driving-impact-rolling.types';
 import {
   computeLongitudinalStressScore,
   computeBrakingStressScore,
@@ -740,33 +752,70 @@ export class DrivingImpactService {
       Date.now() - C.ROLLING_WINDOW_DAYS * 24 * 60 * 60_000,
     );
 
-    const rows = await this.prisma.tripDrivingImpact.findMany({
+    const rawRows = await this.prisma.tripDrivingImpact.findMany({
       where: { vehicleId, tripStartedAt: { gte: windowStart } },
-      orderBy: { tripStartedAt: 'asc' },
+      orderBy: [{ tripStartedAt: 'asc' }, { tripId: 'asc' }],
     });
+
+    if (rawRows.length === 0) return;
+
+    const rollingRows = rawRows.map(toRollingTripRow);
+    const selection = selectRollingCohort(rollingRows, C.MODEL_VERSION);
+    const rows = rawRows.filter((row) =>
+      selection.included.some((included) => included.tripId === row.tripId),
+    );
 
     if (rows.length === 0) return;
 
     const provenanceRows = rows.map((row) => readTripDrivingImpactProvenance(row));
-    const rollingProvenance = mergeRollingProvenance(provenanceRows);
+    const distanceKmByIndex = rows.map((row) => row.distanceKm);
+    const sourceQuality = mergeRollingSourceQuality(provenanceRows, distanceKmByIndex);
+    const healthEligibility = resolveRollingHealthEligibility(
+      provenanceRows,
+      distanceKmByIndex,
+    );
+    const proxyShare = {
+      estimatedProxyShare: sourceQuality.estimatedProxyShare,
+      brakingProxyKinematicShare: distanceWeightedBrakingProxyShare(rows),
+    };
+    const rollingWindowManifest = buildRollingWindowManifest({
+      windowDays: C.ROLLING_WINDOW_DAYS,
+      targetModelVersion: C.MODEL_VERSION,
+      selection,
+      provenanceRows,
+      sourceQuality,
+      proxyShare,
+      healthEligibility,
+    });
+
+    const nativeTotal = provenanceRows.reduce((sum, row) => sum + row.nativeEventCount, 0);
+    const hfTotal = provenanceRows.reduce((sum, row) => sum + row.hfEventCount, 0);
+    const rollingProvenance = {
+      primarySource: resolvePrimarySource({
+        nativeEventCount: nativeTotal,
+        hfEventCount: hfTotal,
+        measuredShare: sourceQuality.measuredShare,
+        estimatedProxyShare: sourceQuality.estimatedProxyShare,
+      }),
+      ...sourceQuality,
+      measurementCoverage: sourceQuality.measurementCoverage,
+      hardwareProfile: provenanceRows[provenanceRows.length - 1]?.hardwareProfile ?? 'UNKNOWN',
+      capabilityVersion:
+        provenanceRows[provenanceRows.length - 1]?.capabilityVersion ?? null,
+      healthEligibility,
+      provenanceMaturity: provenanceRows.reduce<DrivingImpactProvenanceMaturity>(
+        (min, row) => {
+          const rank = { FULL: 3, PARTIAL: 2, MINIMAL: 1 } as const;
+          return rank[row.provenanceMaturity] < rank[min] ? row.provenanceMaturity : min;
+        },
+        'FULL',
+      ),
+      provenanceVersion: provenanceRows[0]?.provenanceVersion ?? 'impact-provenance-v1',
+    };
 
     const totalKm = rows.reduce((s, r) => s + r.distanceKm, 0);
-    const w = (r: typeof rows[0]) => r.distanceKm / totalKm;
-
-    const wavg = <K extends keyof typeof rows[0]>(key: K): number | null => {
-      const valid = rows.filter((r) => r[key] != null);
-      if (valid.length === 0) return null;
-      const totalValidKm = valid.reduce((s, r) => s + r.distanceKm, 0);
-      if (totalValidKm === 0) return null;
-      return (
-        Math.round(
-          valid.reduce(
-            (s, r) => s + (r[key] as number) * (r.distanceKm / totalValidKm),
-            0,
-          ) * 100,
-        ) / 100
-      );
-    };
+    const wavg = <K extends keyof typeof rows[0]>(key: K) =>
+      rollingDistanceWeightedFieldAverage(rows, key);
 
     const windowStartedAt = rows[0].tripStartedAt;
     const windowEndedAt = rows[rows.length - 1].tripEndedAt ?? rows[rows.length - 1].tripStartedAt;
@@ -792,7 +841,7 @@ export class DrivingImpactService {
       p95NegativeDecelMeasured: wavg('p95NegativeDecelMeasured') ?? 0,
       p95NegativeDecelProxy: wavg('p95NegativeDecelProxy') ?? 0,
       meanBrakeEnergyProxyPerKm: wavg('meanBrakeEnergyProxyPerKm') ?? 0,
-      proxyKinematicShare: avgBrakingProxyShare(rows),
+      proxyKinematicShare: proxyShare.brakingProxyKinematicShare,
       reconstructedKinematicCount: 0,
       measuredDeltaKinematicCount: 0,
       proxyKinematicCount: 0,
@@ -806,10 +855,21 @@ export class DrivingImpactService {
       thermalBrakeStressScore != null
         ? buildDrivingImpactLoadComponents({
             provenance: {
-              ...rollingProvenance,
-              nativeEventCount: provenanceRows.reduce((s, r) => s + r.nativeEventCount, 0),
-              hfEventCount: provenanceRows.reduce((s, r) => s + r.hfEventCount, 0),
+              primarySource: rollingProvenance.primarySource,
+              measuredShare: sourceQuality.measuredShare,
+              providerClassifiedShare: sourceQuality.providerClassifiedShare,
+              reconstructedShare: sourceQuality.reconstructedShare,
+              estimatedProxyShare: sourceQuality.estimatedProxyShare,
+              contextOnlyShare: sourceQuality.contextOnlyShare,
+              nativeEventCount: nativeTotal,
+              hfEventCount: hfTotal,
+              measurementCoverage: sourceQuality.measurementCoverage,
+              hardwareProfile: rollingProvenance.hardwareProfile,
+              capabilityVersion: rollingProvenance.capabilityVersion,
               modelVersion: C.MODEL_VERSION,
+              healthEligibility,
+              provenanceMaturity: rollingProvenance.provenanceMaturity,
+              provenanceVersion: rollingProvenance.provenanceVersion,
             },
             brakingProvenance: rollingBrakingProvenance,
             scores: {
@@ -835,8 +895,8 @@ export class DrivingImpactService {
               isEv: resolvePowertrainIsEv(fuelType),
             },
             eventCounts: {
-              nativeEventCount: provenanceRows.reduce((s, r) => s + r.nativeEventCount, 0),
-              hfEventCount: provenanceRows.reduce((s, r) => s + r.hfEventCount, 0),
+              nativeEventCount: nativeTotal,
+              hfEventCount: hfTotal,
             },
           })
         : null;
@@ -849,7 +909,7 @@ export class DrivingImpactService {
         windowDays: C.ROLLING_WINDOW_DAYS,
         windowStartedAt,
         windowEndedAt,
-        distanceKmWindow: Math.round(totalKm * 100) / 100,
+        distanceKmWindow: rollingWindowManifest.distanceKmWindow,
         citySharePct: wavg('citySharePct'),
         highwaySharePct: wavg('highwaySharePct'),
         countryRoadSharePct: wavg('countryRoadSharePct'),
@@ -868,22 +928,23 @@ export class DrivingImpactService {
         p95NegativeDecelMeasured: wavg('p95NegativeDecelMeasured'),
         p95NegativeDecelProxy: wavg('p95NegativeDecelProxy'),
         meanBrakeEnergyProxyPerKm: wavg('meanBrakeEnergyProxyPerKm'),
-        longitudinalStressScore: wavg('longitudinalStressScore'),
-        brakingStressScore: wavg('brakingStressScore'),
-        stopGoStressScore: wavg('stopGoStressScore'),
-        highSpeedStressScore: wavg('highSpeedStressScore'),
-        thermalBrakeStressScore: wavg('thermalBrakeStressScore'),
+        longitudinalStressScore,
+        brakingStressScore,
+        stopGoStressScore,
+        highSpeedStressScore,
+        thermalBrakeStressScore,
         drivingStressScore: wavg('drivingStressScore'),
         safetyScore: wavg('safetyScore'),
         modelVersion: C.MODEL_VERSION,
         loadComponentsJson: rollingLoadComponents as unknown as object,
+        rollingWindowJson: rollingWindowManifest as unknown as object,
         ...rollingProvenanceFields(rollingProvenance),
       },
       update: {
         windowDays: C.ROLLING_WINDOW_DAYS,
         windowStartedAt,
         windowEndedAt,
-        distanceKmWindow: Math.round(totalKm * 100) / 100,
+        distanceKmWindow: rollingWindowManifest.distanceKmWindow,
         citySharePct: wavg('citySharePct'),
         highwaySharePct: wavg('highwaySharePct'),
         countryRoadSharePct: wavg('countryRoadSharePct'),
@@ -902,23 +963,37 @@ export class DrivingImpactService {
         p95NegativeDecelMeasured: wavg('p95NegativeDecelMeasured'),
         p95NegativeDecelProxy: wavg('p95NegativeDecelProxy'),
         meanBrakeEnergyProxyPerKm: wavg('meanBrakeEnergyProxyPerKm'),
-        longitudinalStressScore: wavg('longitudinalStressScore'),
-        brakingStressScore: wavg('brakingStressScore'),
-        stopGoStressScore: wavg('stopGoStressScore'),
-        highSpeedStressScore: wavg('highSpeedStressScore'),
-        thermalBrakeStressScore: wavg('thermalBrakeStressScore'),
+        longitudinalStressScore,
+        brakingStressScore,
+        stopGoStressScore,
+        highSpeedStressScore,
+        thermalBrakeStressScore,
         drivingStressScore: wavg('drivingStressScore'),
         safetyScore: wavg('safetyScore'),
         modelVersion: C.MODEL_VERSION,
         loadComponentsJson: rollingLoadComponents as unknown as object,
+        rollingWindowJson: rollingWindowManifest as unknown as object,
         ...rollingProvenanceFields(rollingProvenance),
       },
     });
 
     this.logger.debug(
       `DrivingImpact rolling current updated: vehicle=${vehicleId} ` +
-      `${rows.length} trips / ${Math.round(totalKm)} km in window`,
+      `${rollingWindowManifest.tripCount} trips / ${rollingWindowManifest.distanceKmWindow} km ` +
+      `(excluded ${rollingWindowManifest.excludedTripCount})`,
     );
+  }
+
+  /** Rolling vehicle load manifest — mechanical stress only, not driver evaluation. */
+  async getVehicleRollingWindow(
+    vehicleId: string,
+  ): Promise<DrivingImpactRollingWindowManifest | null> {
+    const row = await this.prisma.vehicleDrivingImpactCurrent.findUnique({
+      where: { vehicleId },
+      select: { rollingWindowJson: true },
+    });
+    if (!row) return null;
+    return readVehicleDrivingImpactRollingWindow(row.rollingWindowJson);
   }
 
   // ── Consumer read methods — Tire Health ────────────────────────────────────
@@ -1073,7 +1148,20 @@ function provenanceFields(
 }
 
 function rollingProvenanceFields(
-  provenance: ReturnType<typeof mergeRollingProvenance>,
+  provenance: {
+    primarySource: string;
+    measuredShare: number;
+    providerClassifiedShare: number;
+    reconstructedShare: number;
+    estimatedProxyShare: number;
+    contextOnlyShare: number;
+    measurementCoverage: number | null;
+    hardwareProfile: string;
+    capabilityVersion: string | null;
+    healthEligibility: string;
+    provenanceMaturity: string;
+    provenanceVersion: string;
+  },
 ) {
   return {
     primarySource: provenance.primarySource,
@@ -1089,21 +1177,4 @@ function rollingProvenanceFields(
     provenanceMaturity: provenance.provenanceMaturity,
     provenanceVersion: provenance.provenanceVersion,
   };
-}
-
-function avgBrakingProxyShare(
-  rows: { sourceSummaryJson: unknown }[],
-): number {
-  if (rows.length === 0) return 0;
-  const shares = rows.map((row) => {
-    if (!row.sourceSummaryJson || typeof row.sourceSummaryJson !== 'object') return 0;
-    const summary = row.sourceSummaryJson as Record<string, unknown>;
-    const brakingProvenance = summary.brakingProvenance as
-      | { proxyKinematicShare?: number }
-      | undefined;
-    return typeof brakingProvenance?.proxyKinematicShare === 'number'
-      ? brakingProvenance.proxyKinematicShare
-      : 0;
-  });
-  return Math.round((shares.reduce((sum, value) => sum + value, 0) / shares.length) * 1000) / 1000;
 }

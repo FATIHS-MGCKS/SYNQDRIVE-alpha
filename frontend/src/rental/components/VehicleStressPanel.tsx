@@ -37,6 +37,7 @@ interface VehicleStressPanelProps {
   footnote?: string;
   comparabilityHint?: string | null;
   modelProfileLabel?: string | null;
+  rollingWindowFootnote?: string | null;
   stressMissingContext?: StressScoreMissingContext;
 }
 
@@ -101,6 +102,7 @@ export function VehicleStressPanel({
   footnote,
   comparabilityHint,
   modelProfileLabel,
+  rollingWindowFootnote,
   stressMissingContext,
 }: VehicleStressPanelProps) {
   const display = formatStressScore(stressScore, {
@@ -182,6 +184,12 @@ export function VehicleStressPanel({
       )}
 
       {footnote && <p className="mt-2 text-[10px] text-muted-foreground">{footnote}</p>}
+
+      {rollingWindowFootnote && (
+        <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+          {rollingWindowFootnote}
+        </p>
+      )}
 
       {comparabilityHint && (
         <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">

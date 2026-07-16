@@ -422,6 +422,63 @@ function makeBaseTripRow(overrides: Partial<any> = {}) {
   };
 }
 
+function makeRollingImpactRow(overrides: Partial<any> = {}) {
+  return {
+    tripId: 'trip-1',
+    vehicleId: 'vehicle-1',
+    distanceKm: 50,
+    modelVersion: C.MODEL_VERSION,
+    tripStartedAt: new Date('2026-07-01T08:00:00Z'),
+    tripEndedAt: new Date('2026-07-01T09:00:00Z'),
+    sourceSummaryJson: {
+      modelProfile: {
+        version: 'impact-model-profile-v1',
+        profile: 'LTE_R1_NATIVE',
+        comparabilityGroup: 'NATIVE_LTE',
+        behavioralIngestionPath: 'TELEMETRY_EVENTS',
+      },
+      brakingProvenance: { proxyKinematicShare: 0.1 },
+    },
+    primarySource: 'PROVIDER_CLASSIFIED',
+    provenanceVersion: 'impact-provenance-v1',
+    measuredShare: 0,
+    providerClassifiedShare: 1,
+    reconstructedShare: 0,
+    estimatedProxyShare: 0,
+    contextOnlyShare: 0,
+    nativeEventCount: 4,
+    hfEventCount: 0,
+    measurementCoverage: 0.9,
+    hardwareProfile: 'LTE_R1',
+    capabilityVersion: 'cap-preflight-v1',
+    healthEligibility: 'HIGH',
+    provenanceMaturity: 'FULL',
+    citySharePct: 30,
+    highwaySharePct: 60,
+    countryRoadSharePct: 10,
+    hardAccelPer100Km: 8,
+    extremeAccelPer100Km: 4,
+    hardBrakePer100Km: 12,
+    extremeBrakePer100Km: 4,
+    fullBrakingPer100Km: 4,
+    kickdownPer100Km: 2,
+    launchLikePer100Km: 0,
+    brakesPer100Km: 24,
+    stopDensity: 0.08,
+    highSpeedBrakeShare: 0.2,
+    meanBrakeEnergyPerKm: 100,
+    p95NegativeDecel: 5,
+    longitudinalStressScore: 42,
+    brakingStressScore: 55,
+    stopGoStressScore: 38,
+    highSpeedStressScore: 40,
+    thermalBrakeStressScore: 22,
+    drivingStressScore: 46,
+    safetyScore: null,
+    ...overrides,
+  };
+}
+
 describe('DrivingImpactService.computeForTrip', () => {
   let service: DrivingImpactService;
   let prisma: ReturnType<typeof makeMockPrisma>;
@@ -856,64 +913,32 @@ describe('DrivingImpactService.computeForTrip', () => {
     prisma.tripBehaviorEvent.count.mockResolvedValue(0);
     prisma.tripDrivingImpact.upsert.mockResolvedValue({});
     prisma.tripDrivingImpact.findMany.mockResolvedValue([
-      {
+      makeRollingImpactRow({
         tripId: 'trip-1',
-        vehicleId: 'vehicle-1',
-        distanceKm: 50,
-        tripStartedAt: new Date('2026-07-01T08:00:00Z'),
-        tripEndedAt: new Date('2026-07-01T09:00:00Z'),
-        citySharePct: 30,
-        highwaySharePct: 60,
-        countryRoadSharePct: 10,
         hardAccelPer100Km: 2,
         extremeAccelPer100Km: 2,
         hardBrakePer100Km: 0,
-        extremeBrakePer100Km: 0,
-        fullBrakingPer100Km: 0,
-        kickdownPer100Km: 0,
-        launchLikePer100Km: 0,
-        brakesPer100Km: 0,
-        stopDensity: 0,
-        highSpeedBrakeShare: 0,
-        meanBrakeEnergyPerKm: 0,
-        p95NegativeDecel: 0,
         longitudinalStressScore: 20,
         brakingStressScore: 0,
         stopGoStressScore: 10,
         highSpeedStressScore: 5,
         thermalBrakeStressScore: 0,
         drivingStressScore: 12,
-        safetyScore: null,
-      },
-      {
+      }),
+      makeRollingImpactRow({
         tripId: 'trip-2',
-        vehicleId: 'vehicle-1',
-        distanceKm: 50,
         tripStartedAt: new Date('2026-07-02T08:00:00Z'),
         tripEndedAt: new Date('2026-07-02T09:00:00Z'),
-        citySharePct: 20,
-        highwaySharePct: 70,
-        countryRoadSharePct: 10,
         hardAccelPer100Km: 4,
         extremeAccelPer100Km: 0,
         hardBrakePer100Km: 0,
-        extremeBrakePer100Km: 0,
-        fullBrakingPer100Km: 0,
-        kickdownPer100Km: 0,
-        launchLikePer100Km: 0,
-        brakesPer100Km: 0,
-        stopDensity: 0,
-        highSpeedBrakeShare: 0,
-        meanBrakeEnergyPerKm: 0,
-        p95NegativeDecel: 0,
         longitudinalStressScore: 15,
         brakingStressScore: 0,
         stopGoStressScore: 8,
         highSpeedStressScore: 4,
         thermalBrakeStressScore: 0,
         drivingStressScore: 10,
-        safetyScore: null,
-      },
+      }),
     ]);
     prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
 
@@ -985,19 +1010,7 @@ describe('DrivingImpactService.computeForTrip', () => {
     prisma.tripBehaviorEvent.count.mockResolvedValue(0);
     prisma.tripBehaviorEvent.findMany.mockResolvedValue([]);
     prisma.tripDrivingImpact.upsert.mockResolvedValue({});
-    prisma.tripDrivingImpact.findMany.mockResolvedValue([
-      {
-        tripId: 'trip-1', vehicleId: 'vehicle-1', distanceKm: 50,
-        tripStartedAt: new Date(), tripEndedAt: new Date(),
-        citySharePct: 30, highwaySharePct: 60, countryRoadSharePct: 10,
-        hardAccelPer100Km: 8, extremeAccelPer100Km: 4, hardBrakePer100Km: 12,
-        extremeBrakePer100Km: 4, fullBrakingPer100Km: 4, kickdownPer100Km: 2,
-        launchLikePer100Km: 0, brakesPer100Km: 24, stopDensity: 0.08,
-        highSpeedBrakeShare: 0.2, meanBrakeEnergyPerKm: 100, p95NegativeDecel: 5,
-        longitudinalStressScore: 42, brakingStressScore: 55, stopGoStressScore: 38,
-        highSpeedStressScore: 40, thermalBrakeStressScore: 22, drivingStressScore: 46,
-      },
-    ]);
+    prisma.tripDrivingImpact.findMany.mockResolvedValue([makeRollingImpactRow()]);
     prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
 
     await service.computeForTrip('trip-1', 'vehicle-1');
@@ -1007,6 +1020,84 @@ describe('DrivingImpactService.computeForTrip', () => {
     expect(upsertArg.where.vehicleId).toBe('vehicle-1');
     expect(upsertArg.create.windowDays).toBe(C.ROLLING_WINDOW_DAYS);
     expect(upsertArg.create.modelVersion).toBe(C.MODEL_VERSION);
+    expect(upsertArg.create.rollingWindowJson.version).toBe('impact-rolling-v1');
+    expect(upsertArg.create.rollingWindowJson.tripCount).toBe(1);
+    expect(upsertArg.create.rollingWindowJson.notDriverEvaluation).toBe(true);
+  });
+
+  it('rolling recompute excludes stale model versions from aggregation', async () => {
+    prisma.vehicleTrip.findUnique.mockResolvedValue(makeBaseTripRow());
+    prisma.tripBehaviorEvent.count.mockResolvedValue(0);
+    prisma.tripBehaviorEvent.findMany.mockResolvedValue([]);
+    prisma.tripDrivingImpact.upsert.mockResolvedValue({});
+    prisma.tripDrivingImpact.findMany.mockResolvedValue([
+      makeRollingImpactRow({ tripId: 'current', distanceKm: 90, drivingStressScore: 30 }),
+      makeRollingImpactRow({
+        tripId: 'legacy',
+        modelVersion: 'v1.1.0',
+        distanceKm: 10,
+        drivingStressScore: 90,
+      }),
+    ]);
+    prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
+
+    await service.computeForTrip('trip-1', 'vehicle-1');
+
+    const upsertArg = prisma.vehicleDrivingImpactCurrent.upsert.mock.calls[0][0];
+    expect(upsertArg.create.drivingStressScore).toBe(30);
+    expect(upsertArg.create.rollingWindowJson.excludedTripCount).toBe(1);
+    expect(upsertArg.create.rollingWindowJson.exclusionSummary.MODEL_VERSION_MISMATCH).toBe(1);
+    expect(upsertArg.create.rollingWindowJson.distanceKmWindow).toBe(90);
+  });
+
+  it('rolling recompute is deterministic and aggregates source quality', async () => {
+    prisma.vehicleTrip.findUnique.mockResolvedValue(makeBaseTripRow());
+    prisma.tripBehaviorEvent.count.mockResolvedValue(0);
+    prisma.tripBehaviorEvent.findMany.mockResolvedValue([]);
+    prisma.tripDrivingImpact.upsert.mockResolvedValue({});
+    prisma.tripDrivingImpact.findMany.mockResolvedValue([
+      makeRollingImpactRow({
+        tripId: 'trip-b',
+        distanceKm: 40,
+        estimatedProxyShare: 0.8,
+        healthEligibility: 'LOW',
+        sourceSummaryJson: {
+          modelProfile: {
+            version: 'impact-model-profile-v1',
+            profile: 'LTE_R1_NATIVE',
+            comparabilityGroup: 'NATIVE_LTE',
+            behavioralIngestionPath: 'TELEMETRY_EVENTS',
+          },
+          brakingProvenance: { proxyKinematicShare: 0.6 },
+        },
+      }),
+      makeRollingImpactRow({
+        tripId: 'trip-a',
+        distanceKm: 60,
+        estimatedProxyShare: 0.2,
+        healthEligibility: 'HIGH',
+        sourceSummaryJson: {
+          modelProfile: {
+            version: 'impact-model-profile-v1',
+            profile: 'LTE_R1_NATIVE',
+            comparabilityGroup: 'NATIVE_LTE',
+            behavioralIngestionPath: 'TELEMETRY_EVENTS',
+          },
+          brakingProvenance: { proxyKinematicShare: 0.2 },
+        },
+      }),
+    ]);
+    prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
+
+    await service.computeForTrip('trip-1', 'vehicle-1');
+
+    const upsertArg = prisma.vehicleDrivingImpactCurrent.upsert.mock.calls[0][0];
+    expect(upsertArg.create.rollingWindowJson.tripCount).toBe(2);
+    expect(upsertArg.create.rollingWindowJson.distanceKmWindow).toBe(100);
+    expect(upsertArg.create.rollingWindowJson.sourceQuality.estimatedProxyShare).toBe(0.44);
+    expect(upsertArg.create.rollingWindowJson.proxyShare.brakingProxyKinematicShare).toBe(0.36);
+    expect(upsertArg.create.healthEligibility).toBe('MEDIUM');
+    expect(upsertArg.create.rollingWindowJson.recomputeDeterministic).toBe(true);
   });
 
   // V4.8.24 — Safety score retired from impact persistence.
@@ -1038,30 +1129,20 @@ describe('DrivingImpactService.computeForTrip', () => {
     prisma.tripBehaviorEvent.findMany.mockResolvedValue([]);
     prisma.tripDrivingImpact.upsert.mockResolvedValue({});
     prisma.tripDrivingImpact.findMany.mockResolvedValue([
-      {
-        tripId: 'trip-1', vehicleId: 'vehicle-1', distanceKm: 50,
-        tripStartedAt: new Date(), tripEndedAt: new Date(),
-        citySharePct: 30, highwaySharePct: 60, countryRoadSharePct: 10,
-        hardAccelPer100Km: 8, extremeAccelPer100Km: 4, hardBrakePer100Km: 12,
-        extremeBrakePer100Km: 4, fullBrakingPer100Km: 4, kickdownPer100Km: 2,
-        launchLikePer100Km: 0, brakesPer100Km: 24, stopDensity: 0.08,
-        highSpeedBrakeShare: 0.2, meanBrakeEnergyPerKm: 100, p95NegativeDecel: 5,
-        longitudinalStressScore: 42, brakingStressScore: 55, stopGoStressScore: 38,
-        highSpeedStressScore: 40, thermalBrakeStressScore: 22, drivingStressScore: 46,
-        safetyScore: null,
-      },
-      {
-        tripId: 'trip-2', vehicleId: 'vehicle-1', distanceKm: 80,
-        tripStartedAt: new Date(), tripEndedAt: new Date(),
-        citySharePct: 20, highwaySharePct: 70, countryRoadSharePct: 10,
-        hardAccelPer100Km: 6, extremeAccelPer100Km: 2, hardBrakePer100Km: 10,
-        extremeBrakePer100Km: 3, fullBrakingPer100Km: 3, kickdownPer100Km: 1,
-        launchLikePer100Km: 0, brakesPer100Km: 20, stopDensity: 0.05,
-        highSpeedBrakeShare: 0.15, meanBrakeEnergyPerKm: 90, p95NegativeDecel: 4,
-        longitudinalStressScore: 38, brakingStressScore: 50, stopGoStressScore: 32,
-        highSpeedStressScore: 36, thermalBrakeStressScore: 20, drivingStressScore: 42,
-        safetyScore: null,
-      },
+      makeRollingImpactRow({ tripId: 'trip-1' }),
+      makeRollingImpactRow({
+        tripId: 'trip-2',
+        distanceKm: 80,
+        hardAccelPer100Km: 6,
+        extremeAccelPer100Km: 2,
+        hardBrakePer100Km: 10,
+        longitudinalStressScore: 38,
+        brakingStressScore: 50,
+        stopGoStressScore: 32,
+        highSpeedStressScore: 36,
+        thermalBrakeStressScore: 20,
+        drivingStressScore: 42,
+      }),
     ]);
     prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
 

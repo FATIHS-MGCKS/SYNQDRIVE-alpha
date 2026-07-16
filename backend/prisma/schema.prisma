@@ -8865,6 +8865,9 @@ model VehicleDrivingImpactCurrent {
   // P43 — rolling structured load components snapshot
   loadComponentsJson Json? @map("load_components_json")
 
+  // P46 — rolling window manifest (trip count, distance, source quality, exclusions)
+  rollingWindowJson Json? @map("rolling_window_json")
+
   updatedAt    DateTime @updatedAt @map("updated_at")
 
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
