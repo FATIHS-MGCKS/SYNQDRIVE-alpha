@@ -5,7 +5,9 @@ import {
   SHADOW_DETECTOR_FRAMEWORK_VERSION,
   type ShadowCandidateEvent,
   type ShadowDetectorResult,
+  type ShadowMisuseCaseRef,
   type ShadowNativeEventComparison,
+  type ShadowMisuseCaseComparison,
 } from './shadow-detector.types';
 
 const EXECUTABLE_SHADOW_STATUSES = new Set<DrivingDetectorSupportStatus>([
@@ -66,6 +68,42 @@ export function compareShadowCandidatesWithNativeEvents(input: {
   };
 }
 
+export function compareShadowCandidatesWithMisuseCases(input: {
+  candidateEvents: readonly ShadowCandidateEvent[];
+  misuseCases: readonly ShadowMisuseCaseRef[];
+  windowSeconds: number;
+}): ShadowMisuseCaseComparison {
+  const windowMs = input.windowSeconds * 1000;
+  const matchedMisuse = new Set<number>();
+  let matchedWithinWindow = 0;
+
+  for (const candidate of input.candidateEvents) {
+    const candidateTs = new Date(candidate.occurredAt).getTime();
+    const matchIdx = input.misuseCases.findIndex((misuse, idx) => {
+      if (matchedMisuse.has(idx)) return false;
+      const anchorTs = misuse.firstDetectedAt.getTime();
+      return Math.abs(anchorTs - candidateTs) <= windowMs;
+    });
+    if (matchIdx >= 0) {
+      matchedMisuse.add(matchIdx);
+      matchedWithinWindow += 1;
+    }
+  }
+
+  const misuseCaseCount = input.misuseCases.length;
+  const shadowCandidateCount = input.candidateEvents.length;
+
+  return {
+    misuseCaseCount,
+    shadowCandidateCount,
+    matchedWithinWindow,
+    shadowOnlyCount: shadowCandidateCount - matchedWithinWindow,
+    misuseOnlyCount: misuseCaseCount - matchedWithinWindow,
+    windowSeconds: input.windowSeconds,
+    misuseTypes: [...new Set(input.misuseCases.map((m) => m.type))],
+  };
+}
+
 export function buildSkippedShadowResult(input: {
   detectorId: ShadowDetectorResult['detectorId'];
   modelVersion: string;
@@ -84,6 +122,7 @@ export function buildSkippedShadowResult(input: {
     coverage: null,
     rejectionReasons: input.rejectionReasons ?? [input.skipReason],
     comparisonWithNativeEvents: null,
+    comparisonWithMisuseCases: null,
     skipped: true,
     skipReason: input.skipReason,
   };
@@ -114,6 +153,10 @@ export function buildShadowEvidenceContext(result: ShadowDetectorResult): Record
     shadowOnlyCount: result.comparisonWithNativeEvents?.shadowOnlyCount ?? null,
     nativeOnlyCount: result.comparisonWithNativeEvents?.nativeOnlyCount ?? null,
     matchedWithinWindow: result.comparisonWithNativeEvents?.matchedWithinWindow ?? null,
+    misuseCaseCount: result.comparisonWithMisuseCases?.misuseCaseCount ?? null,
+    misuseMatchedWithinWindow: result.comparisonWithMisuseCases?.matchedWithinWindow ?? null,
+    misuseShadowOnlyCount: result.comparisonWithMisuseCases?.shadowOnlyCount ?? null,
+    misuseOnlyCount: result.comparisonWithMisuseCases?.misuseOnlyCount ?? null,
     candidatePreview: JSON.stringify(compactCandidates),
     shadowMode: true,
     publicationBlocked: true,

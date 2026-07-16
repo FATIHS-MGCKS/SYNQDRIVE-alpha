@@ -12,6 +12,7 @@ import {
   assertShadowResultIsolation,
   buildSkippedShadowResult,
   canExecuteShadowDetector,
+  compareShadowCandidatesWithMisuseCases,
   compareShadowCandidatesWithNativeEvents,
 } from './shadow-detector.contract';
 import type { ShadowDetectorImplementation } from './shadow-detector.port';
@@ -20,6 +21,7 @@ import {
   type ShadowDetectorResult,
   type ShadowDetectorRunInput,
   type ShadowDetectorRunOutcome,
+  type ShadowMisuseCaseRef,
 } from './shadow-detector.types';
 
 export type ShadowDetectorRunnerInput = {
@@ -27,6 +29,7 @@ export type ShadowDetectorRunnerInput = {
   capabilities: readonly ResolvedDrivingDetectorCapability[];
   implementations: readonly ShadowDetectorImplementation[];
   nativeEvents: readonly { eventType: string; occurredAt: Date }[];
+  misuseCases: readonly ShadowMisuseCaseRef[];
   engineShadowEnabled: boolean;
   hfShadowEnabled: boolean;
 };
@@ -63,6 +66,7 @@ function capabilityFor(
 function finalizeResult(
   result: ShadowDetectorResult,
   nativeEvents: readonly { eventType: string; occurredAt: Date }[],
+  misuseCases: readonly ShadowMisuseCaseRef[],
 ): ShadowDetectorResult {
   const withComparison: ShadowDetectorResult = {
     ...result,
@@ -71,6 +75,13 @@ function finalizeResult(
       compareShadowCandidatesWithNativeEvents({
         candidateEvents: result.candidateEvents,
         nativeEvents,
+        windowSeconds: SHADOW_DETECTOR_NATIVE_COMPARE_WINDOW_SEC,
+      }),
+    comparisonWithMisuseCases:
+      result.comparisonWithMisuseCases ??
+      compareShadowCandidatesWithMisuseCases({
+        candidateEvents: result.candidateEvents,
+        misuseCases,
         windowSeconds: SHADOW_DETECTOR_NATIVE_COMPARE_WINDOW_SEC,
       }),
   };
@@ -176,6 +187,7 @@ export async function runShadowDetectorFramework(
           capabilityStatus: capability.status,
         },
         input.nativeEvents,
+        input.misuseCases,
       ),
     );
   }

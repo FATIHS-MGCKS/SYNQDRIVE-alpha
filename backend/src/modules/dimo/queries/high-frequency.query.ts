@@ -28,6 +28,10 @@ export function buildHighFrequencyQuery(
         powertrainCombustionEngineSpeed(agg: AVG)
         obdThrottlePosition(agg: AVG)
         obdEngineLoad(agg: AVG)
+        obdRunTime(agg: AVG)
+        powertrainCombustionEngineTorque(agg: AVG)
+        powertrainCombustionEngineTorquePercent(agg: AVG)
+        exteriorAirTemperature(agg: AVG)
         powertrainTractionBatteryCurrentPower(agg: AVG)
       }
     }

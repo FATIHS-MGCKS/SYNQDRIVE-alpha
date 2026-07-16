@@ -4,6 +4,7 @@ import { PrismaService } from '@shared/database/prisma.service';
 import { DrivingEvidenceService } from '../driving-evidence/driving-evidence.service';
 import { DrivingDetectorCapabilityResolverService } from '../driving-detector-capability/driving-detector-capability.service';
 import { DrivingIntelligenceV2Config } from '../driving-intelligence-v2/driving-intelligence-v2.config';
+import { ShadowDetectorEnrichmentService } from './shadow-detector-enrichment.service';
 import { SHADOW_DETECTOR_IMPLEMENTATIONS } from './shadow-detector.registry';
 import { ShadowDetectorPersistence } from './shadow-detector.persistence';
 import { runShadowDetectorFramework } from './shadow-detector.runner';
@@ -26,6 +27,7 @@ export class ShadowDetectorOrchestratorService {
     private readonly detectorCapabilities: DrivingDetectorCapabilityResolverService,
     private readonly evidence: DrivingEvidenceService,
     private readonly v2Config: DrivingIntelligenceV2Config,
+    private readonly enrichment: ShadowDetectorEnrichmentService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {
     this.persistence = new ShadowDetectorPersistence(evidence);
@@ -69,11 +71,18 @@ export class ShadowDetectorOrchestratorService {
       };
     }
 
-    const [capabilityResult, nativeEvents] = await Promise.all([
+    const [capabilityResult, nativeEvents, executionContext] = await Promise.all([
       this.detectorCapabilities.resolveForVehicle(input.organizationId, input.vehicleId),
       this.prisma.drivingEvent.findMany({
         where: { tripId: input.tripId, vehicleId: input.vehicleId },
         select: { eventType: true, recordedAt: true },
+      }),
+      this.enrichment.buildExecutionContext({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        tripId: input.tripId,
+        startTime: trip.startTime,
+        endTime: trip.endTime,
       }),
     ]);
 
@@ -87,6 +96,7 @@ export class ShadowDetectorOrchestratorService {
         endTime: trip.endTime,
         frameworkVersion: SHADOW_DETECTOR_FRAMEWORK_VERSION,
         resolvedAt: capabilityResult.resolvedAt,
+        executionContext,
       },
       capabilities: capabilityResult.detectors,
       implementations: SHADOW_DETECTOR_IMPLEMENTATIONS,
@@ -94,6 +104,7 @@ export class ShadowDetectorOrchestratorService {
         eventType: event.eventType,
         occurredAt: event.recordedAt,
       })),
+      misuseCases: executionContext.misuseCases,
       engineShadowEnabled: this.v2Config.isEngineDetectorShadowEnabled(),
       hfShadowEnabled: this.v2Config.isHfDetectorShadowEnabled(),
     });
