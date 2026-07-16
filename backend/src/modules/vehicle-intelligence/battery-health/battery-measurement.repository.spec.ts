@@ -1,4 +1,5 @@
 import {
+  BatteryDriveProfile,
   BatteryEvidenceScope,
   BatteryMeasurementQuality,
   BatteryMeasurementType,
@@ -6,6 +7,7 @@ import {
 } from '@prisma/client';
 import { BatteryMeasurementRepository } from './battery-measurement.repository';
 import { BatteryMeasurementService } from './battery-measurement.service';
+import { DriveProfileResolverService } from '../drive-profile/drive-profile-resolver.service';
 import {
   isBatteryMeasurementValueAllowed,
 } from './battery-measurement-value';
@@ -192,7 +194,20 @@ describe('BatteryMeasurementService (mocked Prisma)', () => {
   };
 
   const repository = new BatteryMeasurementRepository(prisma as any);
-  const service = new BatteryMeasurementService(prisma as any, repository);
+  const driveProfileResolver = {
+    resolveForVehicle: jest.fn(async () => ({
+      profile: BatteryDriveProfile.ICE,
+      source: 'VEHICLE_MASTER',
+      confidence: 'HIGH',
+      telemetryFallback: false,
+      evidence: ['master:fuel_type:DIESEL'],
+    })),
+  } as unknown as jest.Mocked<Pick<DriveProfileResolverService, 'resolveForVehicle'>>;
+  const service = new BatteryMeasurementService(
+    prisma as any,
+    repository,
+    driveProfileResolver as unknown as DriveProfileResolverService,
+  );
 
   beforeEach(() => {
     measurements.clear();
@@ -277,5 +292,27 @@ describe('BatteryMeasurementService (mocked Prisma)', () => {
     expect(second.receivedAt).toEqual(first.receivedAt);
     await expect(service.getById(ORG_A, first.id)).resolves.toEqual(first);
     await expect(service.getById(ORG_B, first.id)).resolves.toBeNull();
+  });
+
+  it('downgrades BEV REST measurements to UNSUPPORTED_PROFILE', async () => {
+    driveProfileResolver.resolveForVehicle.mockResolvedValueOnce({
+      profile: BatteryDriveProfile.BEV,
+      source: 'VEHICLE_MASTER',
+      confidence: 'HIGH',
+      telemetryFallback: false,
+      evidence: ['master:fuel_type:ELECTRIC'],
+    });
+
+    const created = await service.create({
+      organizationId: ORG_A,
+      vehicleId: VEHICLE_A,
+      type: BatteryMeasurementType.REST_60M,
+      quality: BatteryMeasurementQuality.VALID,
+      observedAt: new Date('2026-07-16T12:00:00.000Z'),
+      numericValue: 12.6,
+      idempotencyKey: 'bev-rest:1',
+    });
+
+    expect(created.quality).toBe(BatteryMeasurementQuality.UNSUPPORTED_PROFILE);
   });
 });

@@ -88,6 +88,7 @@ import { TechnicalObservationsModule } from '../technical-observations/technical
 import { BusinessInsightsModule } from '../business-insights/business-insights.module';
 import { NotificationsModule } from '@modules/notifications/notifications.module';
 import { BatteryV2JobsProducerModule } from './battery-health/jobs/battery-v2-jobs-producer.module';
+import { DriveProfileResolverService } from './drive-profile/drive-profile-resolver.service';
 
 @Module({
   imports: [
@@ -164,6 +165,7 @@ import { BatteryV2JobsProducerModule } from './battery-health/jobs/battery-v2-jo
     BatteryMeasurementSessionService,
     BatteryMeasurementRepository,
     BatteryMeasurementService,
+    DriveProfileResolverService,
     HealthSummaryService,
     AiHealthCareAggregationService,
     VehicleHealthTabSummaryService,
@@ -232,6 +234,7 @@ import { BatteryV2JobsProducerModule } from './battery-health/jobs/battery-v2-jo
     BatteryMeasurementSessionService,
     BatteryMeasurementRepository,
     BatteryMeasurementService,
+    DriveProfileResolverService,
     ServiceComplianceService,
     ComplianceTaskMaterializeService,
     ServiceOverdueTaskService,

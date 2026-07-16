@@ -35,6 +35,44 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'drive-profile-resolver-v49526-2026-07-16',
+    version: '4.9.526',
+    title: 'V4.9.526 — Central Drive Profile Resolver (Prompt 25/78)',
+    summary: [
+      'Zentraler `resolveDriveProfile()` — Ausgabe ICE/HEV/PHEV/BEV/UNKNOWN mit `source`, `confidence`, `telemetryFallback`, `evidence`.',
+      'Priorität: Fahrzeugstammdaten → Provider/VIN → kanonische Spec → Telemetrieheuristik (nur ≥2 Signalgruppen, klar markiert).',
+      'Kein Profil aus einem einzelnen Signal; Master↔Provider-Konflikte → UNKNOWN.',
+      'Integration: Capability-Profile (`engineSignalsAvailable`), Session-Auto-Resolve `driveProfile`, BEV-LV-REST-Guard → `UNSUPPORTED_PROFILE`, HV-Capability-Job skip bei ICE.',
+      'Tests: ICE, BEV, PHEV, HEV, unvollständige Daten, Widersprüche, Messungs-Guard.',
+    ],
+    reason: 'Prompt 25/78: zentraler Drive-Profile-Resolver statt verstreuter fuelType-Heuristiken.',
+    previousBehavior: 'Verstreute `isBatteryElectric`/`fuelType`-Checks; kein einheitliches `source`/`confidence`-Ergebnis.',
+    details:
+      'drive-profile/drive-profile-resolver.ts, drive-profile-resolver.service.ts, vehicle-capabilities.ts, battery-measurement-session.service.ts, battery-measurement.service.ts, hv-capability-refresh.handler.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T17:00:00.000Z',
+  },
+  {
+    id: 'battery-v2-pipeline-hardening-v49525-2026-07-16',
+    version: '4.9.525',
+    title: 'V4.9.525 — Battery V2 Pipeline Hardening (Prompt 24/78)',
+    summary: [
+      'Strukturierte Fehlercodes (`BATTERY_V2_JOB_ERROR_CODES`) + Klassifikation — Providerfehler bleiben retryable, kein Silent-Drop.',
+      'Dead-Letter-Ledger (`battery_v2_job_dead_letters`) nach ausgeschöpften Retries; Prometheus-Metriken inkl. `synqdrive_battery_v2_dead_letter_backlog`.',
+      'Processor: Retry/Observability, `UnrecoverableError` für permanente Fehler; Producer entfernt terminal failed Jobs vor Re-Enqueue.',
+      'Reconciliation-Scheduler (5 min): fehlende Observations, Restziele, Tripstarts, Recharge-Segmente, ausstehende Assessments.',
+      'DIMO-Snapshot darf abschließen, sobald Battery-Folgejob durable enqueued.',
+    ],
+    reason: 'Prompt 24/78: Battery-Jobpipeline für Providerfehler und Workerabbrüche härten.',
+    previousBehavior: 'Nur BullMQ-Retries ohne Dead-Letter-Ledger, ohne Reconciliation, Providerfehler nicht strukturiert.',
+    details:
+      'battery-v2-job.errors.ts, battery-v2-job-dead-letter.service.ts, battery-v2-reconciliation.service.ts, battery-v2-reconciliation.scheduler.ts, battery-v2.processor.ts, battery-v2-job-producer.service.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T16:35:00.000Z',
+  },
+  {
     id: 'battery-v2-idempotency-v49524-2026-07-16',
     version: '4.9.524',
     title: 'V4.9.524 — Battery V2 Idempotency & Concurrency (Prompt 23/78)',

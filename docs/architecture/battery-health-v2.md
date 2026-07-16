@@ -392,6 +392,17 @@ Auf Basis [`dimo-tesla-hv-signal-capability.md`](../audits/dimo-tesla-hv-signal-
 
 Erkennung: `fuelType` + `availableSignals` + `VehicleBatterySpec` — **kein** Raten.
 
+**Zentraler Resolver (V4.9.526, Prompt 25/78):** `resolveDriveProfile()` in `drive-profile/drive-profile-resolver.ts` — reine Domainfunktion, tenant-unabhängig.
+
+| Priorität | Quelle | `DriveProfileSource` | Confidence |
+|-----------|--------|----------------------|------------|
+| 1 | Bestätigte Fahrzeugstammdaten (`fuelType`, optional `confirmedDriveProfile`) | `VEHICLE_MASTER` | HIGH |
+| 2 | Verifizierte VIN-/Providerdaten (`DimoVehicle.fuelType` / `powertrainType`) | `PROVIDER_VIN` | HIGH |
+| 3 | Kanonische Powertrain-Spec (`hvBatteryCapacityKwh`, `tankCapacityLiters`) | `CANONICAL_SPEC` | MEDIUM |
+| 4 | Telemetrieheuristik (≥2 korroborierte Signalgruppen) | `TELEMETRY_HEURISTIC` | LOW (`telemetryFallback: true`) |
+
+Regeln: kein Profil aus einem einzelnen Signal; Widersprüche Master↔Provider → `UNKNOWN`; unbekannt bleibt `UNKNOWN`. Integration: `DriveProfileResolverService`, `deriveVehicleCapabilityProfile`, `BatteryMeasurementSessionService` (auto `driveProfile`), `BatteryMeasurementService` (BEV-LV-REST → `UNSUPPORTED_PROFILE`), `HvCapabilityRefreshHandler` (skip bei `!isHvMeasurementSupported`).
+
 ### 5.2 Batteriechemie (`BatteryChemistry`)
 
 | Profil | Ruhe-Schwellen | SOC-Kurve |
@@ -775,6 +786,17 @@ flowchart TB
 | **Concurrency** | Redis-Fahrzeugsperre pro Scope (`ingest` / `assess` / `publish` / `hv`) — kein Lost Update |
 | **Worker** | `BatteryV2IdempotentExecutionService`: Pre-Check → Lock → Handler; Crash-Retry idempotent |
 | **Start Proxy** | `start-proxy:{modelVersion}:trip:{tripId}` |
+
+### 11.4 Pipeline-Härtung (Prompt 24/78)
+
+| Attribut | Regel |
+|----------|-------|
+| **Retry** | Per Jobtyp begrenzt (`battery-v2-job.retry-policy.ts`), exponentieller Backoff via BullMQ |
+| **Fehlercodes** | `BATTERY_V2_JOB_ERROR_CODES` — Provider/Infra/Lock/Validation/Config |
+| **Dead Letter** | Prisma `battery_v2_job_dead_letters` nach ausgeschöpften Versuchen; Metrik `synqdrive_battery_v2_jobs_dead_letter_total` |
+| **Provider** | Kein Silent-Drop — Providerfehler → retryable `PROVIDER_*`, nicht „keine Daten“ |
+| **Snapshot** | DIMO-Snapshot darf abschließen, sobald Battery-Folgejob durable enqueued |
+| **Reconciliation** | `BatteryV2ReconciliationScheduler` (5 min): fehlende Observations, Restziele, Tripstarts, Recharge-Segmente, Assessments — tenant-/fahrzeug-scoped, idempotent |
 
 ---
 
