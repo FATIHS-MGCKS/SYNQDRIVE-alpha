@@ -142,7 +142,7 @@ Vollständige Inventur: Abschnitt **Code-Landkarte** unten.
 | **3** | Evidence Source + Provenance Schema | `schema.prisma`, migration, evidence modules | 2 | **Ja** (nicht auf Prod) | Nein | Nein | **DONE** | `5b0571f` |
 | **4** | P1-TH-08: Trip-Ledger + Finalize→Usage | trips + `updateTireUsageFromTrip` | 3 | Ja (ledger table) | Ja | Nein | PENDING | — |
 | **5** | P0-TH-01: 8-mm-Fallback entfernen/absichern | `tire-identity.service.ts` | — | Nein | Ja | Nein | PENDING | — |
-| **6** | P0-TH-02: Partial unique ACTIVE setup | `schema.prisma` + lifecycle | — | **Ja** | Ja | Nein | PENDING | — |
+| **6** | P0-TH-02: Partial unique ACTIVE setup | `schema.prisma` + lifecycle | — | **Ja** | Ja | Nein | **DONE** | Prompt 5 |
 | **7** | P1-TH-06: Wear-Data-Point Dedupe | `tire-health.service.ts` | 2, 3 | Nein | Ja | Nein | PENDING | — |
 | **8** | P1-TH-01/07: Lifecycle km-Konsistenz | `activateStoredSet`, per-tire km | 4 | Nein | Ja | Nein | PENDING | — |
 | **9** | P1-TH-05/12: kPa→bar DIMO-Ingest | `dimo-snapshot.processor.ts` | — | Nein | Ja | Nein | PENDING | — |
@@ -340,6 +340,81 @@ Neue/erweiterte Testdateien:
 
 ---
 
+## Prompt 5 — Tire Lifecycle Invariants (2026-07-16)
+
+### Ziel
+
+Lifecycle gegen widersprüchliche aktive Setups, doppelte Radpositionen und verlorene kumulative Laufleistung absichern.
+
+### Zustandsmaschine (`tire-lifecycle-state.ts`)
+
+| Zustand | Bedeutung |
+|---------|-----------|
+| `NEW` | Setup angelegt, noch nicht aktiv |
+| `ACTIVE` | Einziger health-berechtigter Zustand |
+| `STORED` | Ausgebaut, kumulativ km erhalten |
+| `REMOVED` | Terminal — vom Fahrzeug entfernt |
+| `RETIRED` | Terminal — verworfen/verkauft (`DISCARDED`/`SOLD` legacy) |
+
+Rotation und Reactivation bleiben **Events** (`TireEvent`, `TirePositionHistory`), keine Dauerzustände.
+
+### DB-Constraints (Migration `20260716183000_tire_lifecycle_invariants`)
+
+| Index | Regel |
+|-------|-------|
+| `vehicle_tire_setups_one_active_setup_per_vehicle` | Partial unique: `(vehicle_id) WHERE status='ACTIVE' AND removed_at IS NULL` |
+| `tires_one_active_tire_per_setup_position` | Partial unique: `(tire_set_id, current_position) WHERE active=true` |
+
+**Prisma-Hinweis:** Partial unique indexes sind nur in SQL verwaltet (nicht in `schema.prisma` deklarierbar). `prisma migrate deploy` wendet die Migration an; `prisma db pull` spiegelt sie nicht als `@@unique` wider.
+
+### Verdrahtete Lifecycle-Operationen
+
+| Operation | Datei | Transaktional | Invarianten |
+|-----------|-------|---------------|-------------|
+| `installTireSet` | `tire-lifecycle.service.ts` | ✅ `$transaction` | Archiv ACTIVE→STORED/RETIRED, dann neues ACTIVE |
+| `replaceTires` | `tire-lifecycle.service.ts` | via install/partial | Nur ACTIVE health-eligible |
+| `rotateTires` | `tire-lifecycle.service.ts` | Rotation in TX | Staggered-Guard, ACTIVE only |
+| `activateStoredSet` | `tire-lifecycle.service.ts` | ✅ `$transaction` | Kumulativ-km erhalten, Remount, History |
+| `storeTireSet` | **neu** | ✅ | ACTIVE→STORED, Dismount |
+| `removeTireSet` | **neu** | ✅ | →REMOVED terminal |
+| `retireTire` | **neu** | ✅ | Per-Rad retire, km im Event |
+| `TirePositionHistory` | `tire-identity.service.ts` | in TX | Install/Rotate/Replace/Retire |
+
+### Kumulativ-km bei Stored-Set-Reactivation
+
+- `totalKmOnSet` / `cityKm` / `highwayKm` / `ruralKm` werden **explizit beibehalten**
+- `installedAt` / `installedOdometerKm` starten neue Montageperiode
+- `TirePositionHistory` bleibt erhalten; `remountStoredSetupTires` reaktiviert Identitäten
+
+### API (additiv, keine UI-Umbauten)
+
+- `POST /vehicles/:id/tires/store-set`
+- `POST /vehicles/:id/tires/remove-set`
+- `POST /vehicles/:id/tires/retire`
+
+### Tests
+
+```bash
+cd backend && npm test -- tire
+# 13 suites, 206 passed (+18 neue Lifecycle-Invariant-Tests)
+```
+
+Neue Testdateien:
+
+- `tire-lifecycle-state.spec.ts` — Zustandsübergänge, Terminal, Conflict-Mapping
+- `tire-lifecycle-invariants.spec.ts` — zwei aktive Setups, Stored Reactivation, staggered, Teilersatz-Pfad, Rollback, Multi-Tenant
+
+### Bestätigung Prompt 5
+
+- ✅ Widersprüchliche aktive Setups technisch verhindert (App + partial unique index)
+- ✅ Lifecycle-Vorgänge atomar (`$transaction`)
+- ✅ Kumulative Reifenhistorie bleibt erhalten
+- ✅ Stored Sets nicht health-berechnet (`getActiveSetup` / `status=ACTIVE` only)
+- ✅ Concurrency via unique-index → `ConflictException` getestet
+- ✅ Migration **nicht** auf Produktion ausgeführt
+
+---
+
 ## Prompt 2 — P0-TH-04 Ground-Truth-Leak (2026-07-16)
 
 ### Root Cause
@@ -480,7 +555,8 @@ Blocker bleiben bis Abnahme Prompt 24:
 | 2026-07-16 | 1 | Baseline: Branch, Fortschrittsdatei, Tests dokumentiert | `94a1049` |
 | 2026-07-16 | 2 | P0-TH-04: Ground-truth leak fix + 22 neue Tests | `0da74af` |
 | 2026-07-16 | 3 | Evidence/provenance schema + migration (additive) | `5b0571f` |
-| 2026-07-16 | 4 | Evidence provenance across all tire write paths | *(dieser Commit)* |
+| 2026-07-16 | 4 | Evidence provenance across all tire write paths | `b28f91a` |
+| 2026-07-16 | 5 | Tire setup/position lifecycle invariants | *(dieser Commit)* |
 
 ---
 

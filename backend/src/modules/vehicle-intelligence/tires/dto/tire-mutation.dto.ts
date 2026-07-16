@@ -224,6 +224,39 @@ export class ActivateStoredSetDto {
   notes?: string;
 }
 
+export class StoreTireSetDto {
+  @IsOptional() @IsString() @MaxLength(64)
+  tireSetupId?: string;
+
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(ODO_MAX)
+  odometerKm?: number;
+
+  @IsOptional() @IsString() @MaxLength(500)
+  notes?: string;
+}
+
+export class RemoveTireSetDto {
+  @IsOptional() @IsString() @MaxLength(64)
+  tireSetupId?: string;
+
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(ODO_MAX)
+  odometerKm?: number;
+
+  @IsOptional() @IsString() @MaxLength(500)
+  notes?: string;
+}
+
+export class RetireTireDto {
+  @IsString() @MaxLength(16)
+  position!: string;
+
+  @IsOptional() @Type(() => Number) @IsNumber() @Min(0) @Max(ODO_MAX)
+  odometerKm?: number;
+
+  @IsOptional() @IsString() @MaxLength(500)
+  notes?: string;
+}
+
 // ── AI tire spec apply ───────────────────────────────────────────────────────────
 
 export class ApplyAiTireSpecDto {

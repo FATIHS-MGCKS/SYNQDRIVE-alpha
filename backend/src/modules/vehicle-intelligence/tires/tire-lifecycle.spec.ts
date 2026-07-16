@@ -176,6 +176,12 @@ function buildMocks() {
     tire: {
       update: jest.fn().mockResolvedValue({}),
     },
+    $transaction: jest.fn(async (arg: unknown) => {
+      if (typeof arg === 'function') {
+        return (arg as (tx: typeof prisma) => Promise<unknown>)(prisma);
+      }
+      return Promise.all(arg as Promise<unknown>[]);
+    }),
   } as any;
 
   const svc = new TireLifecycleService(

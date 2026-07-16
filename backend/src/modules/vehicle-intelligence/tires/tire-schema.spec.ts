@@ -1,4 +1,4 @@
-import { TireBaselineStatus, TireEvidenceSource } from '@prisma/client';
+import { TireBaselineStatus, TireEvidenceSource, TireSetupStatus } from '@prisma/client';
 
 /**
  * Prisma schema contract tests for tire evidence / provenance (no live DB).
@@ -39,5 +39,11 @@ describe('tire evidence schema contracts', () => {
     // until explicitly set at write time — verified by migration SQL (no NOT NULL, no DEFAULT).
     const nullableGroundTruth: boolean | null = null;
     expect(nullableGroundTruth).toBeNull();
+  });
+
+  it('exposes canonical tire setup lifecycle states including legacy values', () => {
+    expect(Object.values(TireSetupStatus)).toEqual(
+      expect.arrayContaining(['NEW', 'ACTIVE', 'STORED', 'REMOVED', 'RETIRED', 'DISCARDED', 'SOLD']),
+    );
   });
 });

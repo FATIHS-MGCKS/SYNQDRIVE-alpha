@@ -83,6 +83,9 @@ import {
   RotateTiresDto,
   ChangeTiresDto,
   ActivateStoredSetDto,
+  StoreTireSetDto,
+  RemoveTireSetDto,
+  RetireTireDto,
   ApplyAiTireSpecDto,
 } from './tires/dto/tire-mutation.dto';
 import {
@@ -413,6 +416,30 @@ export class VehicleIntelligenceController {
     @Body() body: ActivateStoredSetDto,
   ) {
     return this.tireLifecycleService.activateStoredSet({ vehicleId, ...body });
+  }
+
+  @Post('tires/store-set')
+  async storeTireSet(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: StoreTireSetDto,
+  ) {
+    return this.tireLifecycleService.storeTireSet({ vehicleId, ...body });
+  }
+
+  @Post('tires/remove-set')
+  async removeTireSet(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: RemoveTireSetDto,
+  ) {
+    return this.tireLifecycleService.removeTireSet({ vehicleId, ...body });
+  }
+
+  @Post('tires/retire')
+  async retireTire(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: RetireTireDto,
+  ) {
+    return this.tireLifecycleService.retireTire({ vehicleId, ...body });
   }
 
   @Post('tires/measurement')
