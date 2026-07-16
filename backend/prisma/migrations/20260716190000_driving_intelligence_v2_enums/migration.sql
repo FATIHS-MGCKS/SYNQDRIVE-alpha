@@ -1,0 +1,103 @@
+-- Driving Intelligence V2 — additive enum types only (Prompt 12/76).
+-- No tables, no columns, no DROP, no ALTER on existing enums.
+
+CREATE TYPE "DrivingCapabilityStatus" AS ENUM (
+  'UNKNOWN',
+  'SUPPORTED',
+  'LIMITED',
+  'UNSUPPORTED',
+  'DEGRADED'
+);
+
+CREATE TYPE "DrivingAnalysisDimension" AS ENUM (
+  'CAPABILITY',
+  'ASSESSABILITY',
+  'VEHICLE_LOAD',
+  'DRIVER_CONDUCT',
+  'MISUSE_EVIDENCE',
+  'ATTRIBUTION',
+  'DECISION_SUMMARY',
+  'RENTAL_AGGREGATE',
+  'HEALTH_IMPACT'
+);
+
+CREATE TYPE "DrivingAssessabilityStatus" AS ENUM (
+  'FULL',
+  'LIMITED',
+  'NOT_ASSESSABLE'
+);
+
+CREATE TYPE "DrivingEvidenceSourceType" AS ENUM (
+  'PROVIDER_TELEMETRY_EVENT',
+  'HF_BEHAVIOR_EVENT',
+  'MISUSE_CASE',
+  'MISUSE_CASE_EVIDENCE',
+  'EVENT_CONTEXT_ASSESSMENT',
+  'VEHICLE_TRIP_COUNTER',
+  'MANUAL_VERIFIED',
+  'DERIVED_PATTERN',
+  'RENTAL_PERIOD_AGGREGATE'
+);
+
+CREATE TYPE "DrivingEvidenceStrength" AS ENUM (
+  'NONE',
+  'LOW',
+  'MEDIUM',
+  'HIGH',
+  'VERIFIED'
+);
+
+CREATE TYPE "DrivingAnalysisMaturity" AS ENUM (
+  'SHADOW',
+  'CANDIDATE',
+  'PUBLISHED',
+  'SUPERSEDED',
+  'FAILED'
+);
+
+CREATE TYPE "DrivingAttributionType" AS ENUM (
+  'CONFIRMED_DRIVER',
+  'BOOKING_CUSTOMER',
+  'ASSIGNED_DRIVER',
+  'VEHICLE_ONLY',
+  'PRIVATE_UNASSIGNED',
+  'UNKNOWN'
+);
+
+CREATE TYPE "DrivingAttributionConfidence" AS ENUM (
+  'HIGH',
+  'MEDIUM',
+  'LOW'
+);
+
+CREATE TYPE "DrivingDecisionRecommendation" AS ENUM (
+  'KEINE_MASSNAHME',
+  'BEOBACHTEN',
+  'KUNDENGESPRAECH',
+  'MANUELLE_MIETFREIGABE',
+  'FAHRZEUGPRUEFUNG',
+  'TECHNISCHE_DATENPRUEFUNG'
+);
+
+CREATE TYPE "VehicleLoadLevel" AS ENUM (
+  'SCHONEND',
+  'NORMAL',
+  'ERHOHT',
+  'STARK_ERHOHT'
+);
+
+CREATE TYPE "DriverConductLevel" AS ENUM (
+  'UNAUFFAELLIG',
+  'DYNAMISCH',
+  'AUFFAELLIG',
+  'STARK_AUFFAELLIG',
+  'NICHT_BEWERTBAR'
+);
+
+CREATE TYPE "MisuseEvidenceLevel" AS ENUM (
+  'KEINE',
+  'EINZELNER_HINWEIS',
+  'MEHRERE_BELASTBARE_HINWEISE',
+  'STARKER_VERDACHT',
+  'SCHADENSPRUEFUNG'
+);

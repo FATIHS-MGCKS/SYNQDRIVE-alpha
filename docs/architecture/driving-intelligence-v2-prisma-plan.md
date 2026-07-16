@@ -142,6 +142,8 @@ Kanonische **Misuse Evidence** (Ebene 9). `DrivingEvidence` verweist auf diese R
 
 > **Migrationshinweis:** Jeder Enum in **eigener** Migration vor erster Spaltennutzung (PostgreSQL-Pattern wie `TaskStatus.WAITING`).
 
+**Implementierungsstand (P12, 2026-07-16):** Migration `20260716190000_driving_intelligence_v2_enums` — alle unten genannten Enum-Typen sind in `schema.prisma` deklariert. `TripAssessabilityStatus` heißt im Schema **`DrivingAssessabilityStatus`**; `DriverAttributionType` → **`DrivingAttributionType`**; `DriverAttributionConfidence` → **`DrivingAttributionConfidence`**. Zusätzlich: `VehicleLoadLevel`, `DriverConductLevel`, `MisuseEvidenceLevel`. Noch **keine** Modelle/Spalten.
+
 ### 3.1 `DrivingCapabilityStatus`
 
 Fahrzeugbezogener Gate-Status einer einzelnen Capability-Dimension.
@@ -191,12 +193,12 @@ enum DrivingAnalysisDimension {
 
 ---
 
-### 3.3 `TripAssessabilityStatus`
+### 3.3 `DrivingAssessabilityStatus` (Schema-Name; Plan: TripAssessabilityStatus)
 
 Ob / wie weit eine Trip-Analyse belastbar ist (Ebene 6).
 
 ```prisma
-enum TripAssessabilityStatus {
+enum DrivingAssessabilityStatus {
   FULL
   LIMITED
   NOT_ASSESSABLE
@@ -281,12 +283,12 @@ enum DrivingAnalysisMaturity {
 
 ---
 
-### 3.7 `DriverAttributionType`
+### 3.7 `DrivingAttributionType` (Schema-Name; Plan: DriverAttributionType)
 
 Zuordnungsebene (Ebene 10 / UX Dimension E).
 
 ```prisma
-enum DriverAttributionType {
+enum DrivingAttributionType {
   CONFIRMED_DRIVER          // EXPLICIT assignment, scoreEligible
   BOOKING_CUSTOMER          // ASSIGNED_BOOKING_CUSTOMER
   ASSIGNED_DRIVER           // ASSIGNED_DRIVER (non-customer)
@@ -303,10 +305,10 @@ enum DriverAttributionType {
 
 ---
 
-### 3.8 `DriverAttributionConfidence`
+### 3.8 `DrivingAttributionConfidence` (Schema-Name; Plan: DriverAttributionConfidence)
 
 ```prisma
-enum DriverAttributionConfidence {
+enum DrivingAttributionConfidence {
   HIGH
   MEDIUM
   LOW
@@ -339,6 +341,62 @@ enum DrivingDecisionRecommendation {
 |--------|------|
 | Legacy-Mapping | `tripAssessment.status` / `recommendedAction` → Recommendation (deterministisch) |
 | Verboten | Auto-Blacklist / Auto-Rental-Block |
+
+---
+
+### 3.10 `VehicleLoadLevel` (Dimension B)
+
+```prisma
+enum VehicleLoadLevel {
+  SCHONEND
+  NORMAL
+  ERHOHT
+  STARK_ERHOHT
+}
+```
+
+| Aspekt | Plan |
+|--------|------|
+| Legacy-Mapping | `classifyStressLevel` / `drivingStressScore` bands |
+| Implementiert | P12 migration |
+
+---
+
+### 3.11 `DriverConductLevel` (Dimension C)
+
+```prisma
+enum DriverConductLevel {
+  UNAUFFAELLIG
+  DYNAMISCH
+  AUFFAELLIG
+  STARK_AUFFAELLIG
+  NICHT_BEWERTBAR
+}
+```
+
+| Aspekt | Plan |
+|--------|------|
+| Legacy-Mapping | `TripAssessmentStatus` (subset; `PRUEFHINWEIS` → app-layer reasonCategory) |
+| Implementiert | P12 migration |
+
+---
+
+### 3.12 `MisuseEvidenceLevel` (Dimension D)
+
+```prisma
+enum MisuseEvidenceLevel {
+  KEINE
+  EINZELNER_HINWEIS
+  MEHRERE_BELASTBARE_HINWEISE
+  STARKER_VERDACHT
+  SCHADENSPRUEFUNG
+}
+```
+
+| Aspekt | Plan |
+|--------|------|
+| Legacy-Mapping | `misuse_cases` count + severity aggregation |
+| Implementiert | P12 migration |
 
 ---
 

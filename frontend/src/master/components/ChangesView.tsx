@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p12-enums-2026-07-16',
+    version: '4.9.514',
+    title: 'Driving Intelligence V2 P12 — Additive Prisma Enums',
+    summary: [
+      'Migration `20260716190000_driving_intelligence_v2_enums`: 12 neue PostgreSQL-ENUM-Typen, keine Tabellen/Spalten.',
+      'Enums: DrivingCapabilityStatus, DrivingAnalysisDimension, DrivingAssessabilityStatus, DrivingEvidenceSourceType, DrivingEvidenceStrength, DrivingAnalysisMaturity, DrivingAttributionType, DrivingAttributionConfidence, DrivingDecisionRecommendation, VehicleLoadLevel, DriverConductLevel, MisuseEvidenceLevel.',
+      'Bestehende Enums unverändert (`MisuseEvidenceSourceType`, `DetectionConfidence`, Trip-Detection-Enums).',
+      'Prisma Client regeneriert; keine Businesslogik in diesem Prompt.',
+    ],
+    reason:
+      'Prompt 12/76: Enum-first DDL gemäß bestätigtem Prisma-Plan (P11) — Voraussetzung für materialisierte V2-Tabellen.',
+    previousBehavior:
+      'V2-Dimensionen nur als TypeScript-Strings / JSON (`behaviorSummaryJson`, `tripAssessment`).',
+    details:
+      'backend/prisma/schema.prisma + migration SQL (nur CREATE TYPE). Validierung: prisma format/validate/generate; SQL ohne DROP/ALTER bestehender Enums.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T20:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p11-prisma-plan-2026-07-16',
     version: '4.9.513',
     title: 'Driving Intelligence V2 P11 — Additiver Prisma-Plan (Fahrzeug-Capabilities)',
