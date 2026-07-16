@@ -1500,6 +1500,14 @@ export type TripAssessmentStatus =
   | 'PRUEFHINWEIS'
   | 'NICHT_BEWERTBAR';
 
+export type TripAssessmentReasonCategory =
+  | 'DATA_QUALITY_REVIEW'
+  | 'DRIVER_CONDUCT_REVIEW'
+  | 'VEHICLE_LOAD_REVIEW'
+  | 'MISUSE_REVIEW'
+  | 'DAMAGE_INSPECTION'
+  | 'ATTRIBUTION_REVIEW';
+
 export type TripEvidenceLevel =
   | 'NONE'
   | 'INFO'
@@ -1552,6 +1560,8 @@ export interface TripAssessment {
   status: TripAssessmentStatus;
   label: string;
   primaryReason: string;
+  /** Disambiguates PRUEFHINWEIS — null for other statuses. */
+  reasonCategory: TripAssessmentReasonCategory | null;
   confidence: TripAssessmentConfidence;
   source: TripAssessmentSource;
   version: string;

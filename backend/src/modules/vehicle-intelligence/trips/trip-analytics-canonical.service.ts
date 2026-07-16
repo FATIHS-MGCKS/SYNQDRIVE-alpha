@@ -228,6 +228,7 @@ export class TripAnalyticsCanonicalService {
       distanceKm: trip.distanceKm ?? null,
       durationMinutes: trip.durationMinutes ?? null,
       assessability,
+      attribution: canonicalSummary.attribution ?? null,
     });
   }
 

@@ -1,4 +1,5 @@
 import type {
+  TripAssessmentReasonCategory,
   TripAssessmentStatus,
   TripBehaviorEvent,
   TripEvidenceCase,
@@ -7,6 +8,7 @@ import type {
   TripEvidenceLevel,
 } from '../../../lib/api';
 import type { TripTimelineTrip } from './timeline.types';
+import { formatTripAssessmentReviewHint } from './trip-assessment-reason-copy';
 import { formatTripTimeWithSeconds } from './utils/tripFormatters';
 import { shouldRenderContextBlock } from './event-context-ui';
 
@@ -380,6 +382,7 @@ export function sortBehaviorEvents(events: TripBehaviorEvent[]): TripBehaviorEve
 export interface GesamtbewertungDisplay {
   label: string;
   primaryReason: string | null;
+  reasonCategory: TripAssessmentReasonCategory | null;
   /** True when served from backend tripAssessment (Phase 1 canonical truth). */
   fromBackend: boolean;
 }
@@ -394,6 +397,7 @@ export function resolveGesamtbewertungDisplay(
     return {
       label: trip.tripAssessment.label,
       primaryReason: trip.tripAssessment.primaryReason,
+      reasonCategory: trip.tripAssessment.reasonCategory ?? null,
       fromBackend: true,
     };
   }
@@ -402,6 +406,7 @@ export function resolveGesamtbewertungDisplay(
   return {
     label: GESAMTBEWERTUNG_FALLBACK_LABEL[status],
     primaryReason: null,
+    reasonCategory: null,
     fromBackend: false,
   };
 }
@@ -435,13 +440,16 @@ export function deriveReviewHintSummary(
   events: TripBehaviorEvent[],
 ): string | null {
   if (trip.tripAssessment?.status === 'PRUEFHINWEIS') {
-    return trip.tripAssessment.primaryReason;
+    return formatTripAssessmentReviewHint(
+      trip.tripAssessment.reasonCategory,
+      trip.tripAssessment.primaryReason,
+    );
   }
 
   const misuseCases = trip.tripAssessment?.signals.misuseCases ?? 0;
   const abuseRelevant = events.filter((event) => event.abuseRelevant).length;
   if (misuseCases > 0 || abuseRelevant > 0) {
-    return 'Prüfung empfohlen';
+    return 'Prüfung empfohlen — kein automatisierter Vorwurf';
   }
 
   return null;

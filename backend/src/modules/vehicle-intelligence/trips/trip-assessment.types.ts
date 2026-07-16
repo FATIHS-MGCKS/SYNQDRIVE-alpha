@@ -2,7 +2,7 @@ import type { StressLevel } from '../driving-impact/stress-level.util';
 
 import type { TripEvidenceLevel } from './trip-evidence-level.types';
 
-export const TRIP_ASSESSMENT_VERSION = '1.2.0';
+export const TRIP_ASSESSMENT_VERSION = '1.3.0';
 
 export type TripAssessmentStatus =
   | 'UNAUFFAELLIG'
@@ -11,6 +11,15 @@ export type TripAssessmentStatus =
   | 'KRITISCH'
   | 'PRUEFHINWEIS'
   | 'NICHT_BEWERTBAR';
+
+/** Disambiguates PRUEFHINWEIS causes — additive to legacy status. */
+export type TripAssessmentReasonCategory =
+  | 'DATA_QUALITY_REVIEW'
+  | 'DRIVER_CONDUCT_REVIEW'
+  | 'VEHICLE_LOAD_REVIEW'
+  | 'MISUSE_REVIEW'
+  | 'DAMAGE_INSPECTION'
+  | 'ATTRIBUTION_REVIEW';
 
 export type TripAssessmentConfidence = 'LOW' | 'MEDIUM' | 'HIGH';
 
@@ -44,6 +53,10 @@ export interface TripAssessmentInput {
   nativeEventCount: number;
   reconstructedEventCount: number;
   deviceQualityDegraded?: boolean;
+  /** Trip/booking attribution uncertain — operator should verify before customer action. */
+  attributionNeedsReview?: boolean;
+  /** Elevated vehicle mechanical load warrants inspection (not driver conduct). */
+  vehicleLoadNeedsReview?: boolean;
 }
 
 export interface TripAssessmentSignals {
@@ -61,6 +74,8 @@ export interface TripAssessment {
   status: TripAssessmentStatus;
   label: string;
   primaryReason: string;
+  /** Set when status is PRUEFHINWEIS — disambiguates review cause. */
+  reasonCategory: TripAssessmentReasonCategory | null;
   confidence: TripAssessmentConfidence;
   source: TripAssessmentSource;
   version: string;

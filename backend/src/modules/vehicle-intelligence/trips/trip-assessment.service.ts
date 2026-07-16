@@ -1,12 +1,14 @@
 import type { StressLevel } from '../driving-impact/stress-level.util';
+import { resolveTripAssessmentReasonCategory } from './trip-assessment-reason-category';
 import { tripAssessmentStatusFromEvidenceLevel } from './trip-evidence-case.builder';
-import { EVIDENCE_LEVEL_RANK, type TripEvidenceLevel } from './trip-evidence-level.types';
+import type { TripEvidenceLevel } from './trip-evidence-level.types';
 import {
   TRIP_ASSESSMENT_VERSION,
   type TripAssessment,
   type TripAssessmentConfidence,
   type TripAssessmentEventInput,
   type TripAssessmentInput,
+  type TripAssessmentReasonCategory,
   type TripAssessmentSource,
   type TripAssessmentStatus,
 } from './trip-assessment.types';
@@ -107,6 +109,7 @@ function buildPrimaryReason(
   input: TripAssessmentInput,
   hardDrivingCount: number,
   abuseRelevantCount: number,
+  reasonCategory: TripAssessmentReasonCategory | null,
 ): string {
   switch (status) {
     case 'NICHT_BEWERTBAR':
@@ -115,33 +118,43 @@ function buildPrimaryReason(
       }
       return 'Für diese Fahrt liegen nicht genug belastbare Verhaltenssignale vor.';
     case 'PRUEFHINWEIS':
-      if (input.deviceQualityDegraded) {
-        return 'Die Fahrbewertung ist eingeschränkt — das Telematik-Gerät sendet derzeit unzuverlässige native Fahrereignisse (DIMO: Steckung/Kalibrierung prüfen). Kein automatisierter Fahrervorwurf.';
+      if (reasonCategory === 'DATA_QUALITY_REVIEW') {
+        return 'Telematik-Datenqualität eingeschränkt — native Fahrereignisse derzeit unzuverlässig (DIMO: Steckung/Kalibrierung prüfen). Keine Fahrerbewertung.';
       }
-      if (input.maxEvidenceLevel && EVIDENCE_LEVEL_RANK[input.maxEvidenceLevel] >= EVIDENCE_LEVEL_RANK.CHECK_RECOMMENDED) {
+      if (reasonCategory === 'ATTRIBUTION_REVIEW') {
+        return 'Fahrer- oder Buchungszuordnung unklar — vor Kundenmaßnahmen manuell prüfen. Kein automatisierter Vorwurf.';
+      }
+      if (reasonCategory === 'VEHICLE_LOAD_REVIEW') {
+        return 'Erhöhte Fahrzeugbelastung — technische Fahrzeugprüfung empfohlen. Kein automatisierter Vorwurf.';
+      }
+      if (reasonCategory === 'DAMAGE_INSPECTION') {
+        return 'Technisches Schadensrisiko erkannt — Inspektion empfohlen, kein automatisierter Schadensnachweis.';
+      }
+      if (reasonCategory === 'MISUSE_REVIEW') {
         if (input.maxEvidenceLevel === 'MISUSE_SUSPECTED') {
           return 'Mehrere belastbare Hinweise auf Fehlgebrauch — Prüfung empfohlen, kein automatisierter Vorwurf.';
         }
-        if (
-          input.maxEvidenceLevel === 'DAMAGE_RISK' ||
-          input.maxEvidenceLevel === 'CRITICAL_DAMAGE_RISK'
-        ) {
-          return 'Technisches Risiko erkannt — Prüfung empfohlen, kein automatisierter Schadensnachweis.';
+        if (input.misuseCaseCount > 0) {
+          return 'Missbrauchsverdacht — manuelle Prüfung empfohlen, kein automatisierter Vorwurf.';
         }
-      }
-      if (input.misuseCaseCount > 0) {
-        return 'Auffälliges Fahrmuster erkannt. Prüfung empfohlen — kein automatisierter Vorwurf.';
-      }
-      if (abuseRelevantCount === 1) {
-        const abuseEvent = input.unifiedEvents.find((event) => event.abuseRelevant);
-        if (abuseEvent?.eventType === 'EXTREME_BRAKING') {
-          return 'Natives Extrembremsereignis erkannt — Prüfung empfohlen, kein automatisierter Vorwurf.';
-        }
-        if (abuseEvent?.eventCategory === 'ABUSE') {
+        const abuseEvent = input.unifiedEvents.find(
+          (event) => event.abuseRelevant && event.eventCategory === 'ABUSE',
+        );
+        if (abuseEvent) {
           return 'Rekonstruiertes Missbrauchsereignis erkannt — Prüfung empfohlen, kein automatisierter Vorwurf.';
         }
+        return 'Missbrauchsverdacht — manuelle Prüfung empfohlen, kein automatisierter Vorwurf.';
       }
-      return 'Auffälliges Fahrmuster erkannt. Prüfung empfohlen — kein automatisierter Vorwurf.';
+      if (reasonCategory === 'DRIVER_CONDUCT_REVIEW') {
+        if (abuseRelevantCount === 1) {
+          const abuseEvent = input.unifiedEvents.find((event) => event.abuseRelevant);
+          if (abuseEvent?.eventType === 'EXTREME_BRAKING') {
+            return 'Natives Extrembremsereignis erkannt — Prüfung empfohlen, kein automatisierter Vorwurf.';
+          }
+        }
+        return 'Auffälliges Fahrverhalten erkannt — Prüfung empfohlen, kein automatisierter Fahrervorwurf.';
+      }
+      return 'Operativer Prüfhinweis — kein automatisierter Vorwurf.';
     case 'KRITISCH':
       return 'Schwerwiegende Fahrereignisse erkannt — operativ kritisch einstufen.';
     case 'AUFFAELLIG': {
@@ -217,6 +230,14 @@ function resolveStatus(input: TripAssessmentInput): TripAssessmentStatus {
     status = 'NICHT_BEWERTBAR';
   }
 
+  if (
+    status === 'NICHT_BEWERTBAR' &&
+    !input.deviceQualityDegraded &&
+    (input.attributionNeedsReview || input.vehicleLoadNeedsReview)
+  ) {
+    status = 'PRUEFHINWEIS';
+  }
+
   if (input.deviceQualityDegraded) {
     if (
       status === 'KRITISCH' ||
@@ -257,13 +278,21 @@ export function assessTrip(input: TripAssessmentInput): TripAssessment {
   const hardDrivingCount = countHardDrivingEvents(input.unifiedEvents);
   const abuseRelevantCount = countAbuseRelevantEvents(input.unifiedEvents);
   const status = resolveStatus(input);
+  const reasonCategory = resolveTripAssessmentReasonCategory(input, status, abuseRelevantCount);
   const source = resolveSource(input, status);
   const confidence = resolveConfidence(input, status, source);
 
   return {
     status,
     label: STATUS_LABEL[status],
-    primaryReason: buildPrimaryReason(status, input, hardDrivingCount, abuseRelevantCount),
+    primaryReason: buildPrimaryReason(
+      status,
+      input,
+      hardDrivingCount,
+      abuseRelevantCount,
+      reasonCategory,
+    ),
+    reasonCategory,
     confidence,
     source,
     version: TRIP_ASSESSMENT_VERSION,

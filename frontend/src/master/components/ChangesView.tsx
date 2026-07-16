@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p6-pruefhinweis-reason-categories-2026-07-16',
+    version: '4.9.508',
+    title: 'Driving Intelligence V2 P6 — PRUEFHINWEIS Reason-Kategorien',
+    summary: [
+      'Additive `reasonCategory` auf `tripAssessment` (v1.3.0): DATA_QUALITY_REVIEW, DRIVER_CONDUCT_REVIEW, VEHICLE_LOAD_REVIEW, MISUSE_REVIEW, DAMAGE_INSPECTION, ATTRIBUTION_REVIEW.',
+      'Legacy-Status `PRUEFHINWEIS` bleibt API-kompatibel; schlechte Gerätequalität erzeugt ausschließlich DATA_QUALITY_REVIEW.',
+      'Frontend: kurze Kategorie-Labels in Prüfhinweis-Zeile (`trip-assessment-reason-copy.ts`).',
+      'Tests für jede Ursache in Backend + Frontend.',
+    ],
+    reason:
+      'Prompt 6/76: PRUEFHINWEIS darf nicht mehr verschiedene Ursachen ohne Kontext zusammenfassen.',
+    previousBehavior:
+      'Ein Prüfhinweis-Badge deckte Datenqualität, Fahrverhalten, Missbrauch, Schaden und Zuordnung ohne maschinenlesbare Unterscheidung ab.',
+    details:
+      'Backend: trip-assessment-reason-category.ts, trip-assessment.service.ts v1.3.0, trip-assessment.builder.ts (Attribution/Zuordnung + Vehicle-Load-Flags). Frontend: api.ts, behavior-ui.utils.ts, trip-assessment-reason-copy.ts. Keine vollständige UX-Neugestaltung.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T00:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p5-load-conduct-separation-2026-07-16',
     version: '4.9.507',
     title: 'Driving Intelligence V2 P5 — Fahrzeugbelastung vs. Fahrverhalten getrennt',

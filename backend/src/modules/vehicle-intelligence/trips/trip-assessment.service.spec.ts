@@ -108,6 +108,7 @@ describe('assessTrip', () => {
     );
 
     expect(result.status).toBe('PRUEFHINWEIS');
+    expect(result.reasonCategory).toBe('MISUSE_REVIEW');
     expect(result.label).toBe('Prüfhinweis');
     expect(result.primaryReason).toContain('kein automatisierter Vorwurf');
   });
@@ -239,12 +240,13 @@ describe('assessTrip', () => {
     );
 
     expect(result.status).toBe('PRUEFHINWEIS');
+    expect(result.reasonCategory).toBe('DATA_QUALITY_REVIEW');
     expect(result.confidence).toBe('LOW');
-    expect(result.primaryReason).toMatch(/Telematik-Gerät/i);
+    expect(result.primaryReason).toMatch(/Datenqualität|Telematik/i);
   });
 
   it('is versioned', () => {
-    expect(assessTrip(baseInput()).version).toBe('1.2.0');
+    expect(assessTrip(baseInput()).version).toBe('1.3.0');
   });
 });
 
