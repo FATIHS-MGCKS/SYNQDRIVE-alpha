@@ -11,6 +11,14 @@ import { TripMetricsService } from '../../observability/trip-metrics.service';
 import { isNativeExtremeAcceleration } from '../dimo-native-driving-events';
 import { DRIVING_IMPACT_CONFIG as C } from './driving-impact.config';
 import {
+  buildDrivingImpactSourceProvenance,
+  type DrivingImpactSourceProvenance,
+} from './driving-impact-provenance';
+import {
+  mergeRollingProvenance,
+  readTripDrivingImpactProvenance,
+} from './driving-impact-provenance.reader';
+import {
   capLinear,
   per100Km,
   percentile95,
@@ -138,6 +146,7 @@ export class DrivingImpactService {
         avgOverSpeedKmh: true,
         maxOverSpeedKmh: true,
         drivingScore: true,
+        behaviorSummaryJson: true,
       },
     });
 
@@ -160,6 +169,69 @@ export class DrivingImpactService {
     const organizationId = trip.vehicle?.organizationId ?? null;
     const hardwareType = trip.vehicle?.hardwareType ?? HardwareType.UNKNOWN;
     const useTelemetryDrivingEvents = hardwareType === HardwareType.LTE_R1;
+
+    const [
+      nativeEventCount,
+      hfEventCount,
+      evidenceBySource,
+      capabilityRow,
+    ] = await Promise.all([
+      this.prisma.drivingEvent.count({
+        where: {
+          tripId,
+          source: DrivingEventSource.TELEMETRY_EVENTS,
+        },
+      }),
+      this.prisma.tripBehaviorEvent.count({ where: { tripId } }),
+      this.prisma.drivingEvidence.groupBy({
+        by: ['sourceType'],
+        where: { tripId },
+        _count: { _all: true },
+      }),
+      organizationId
+        ? this.prisma.vehicleDrivingCapability.findFirst({
+            where: {
+              organizationId,
+              vehicleId,
+              providerSource: 'DIMO_TELEMETRY',
+            },
+            orderBy: { checkedAt: 'desc' },
+            select: { capabilityVersion: true },
+          })
+        : Promise.resolve(null),
+    ]);
+
+    const behaviorSummary = parseBehaviorSummaryJson(trip.behaviorSummaryJson);
+    const hfPointsTotal =
+      typeof behaviorSummary.hfPointsTotal === 'number'
+        ? behaviorSummary.hfPointsTotal
+        : null;
+    const hfPointsCleaned =
+      typeof behaviorSummary.hfPointsCleaned === 'number'
+        ? behaviorSummary.hfPointsCleaned
+        : null;
+    const measurementCoverage =
+      hfPointsTotal != null && hfPointsTotal > 0 && hfPointsCleaned != null
+        ? Math.round((hfPointsCleaned / hfPointsTotal) * 1000) / 1000
+        : null;
+
+    const estimatedProxyEventCount =
+      evidenceBySource.find((row) => row.sourceType === 'ESTIMATED_PROXY')?._count._all ?? 0;
+    const contextOnlyEventCount =
+      evidenceBySource.find((row) => row.sourceType === 'CONTEXT_SIGNAL')?._count._all ?? 0;
+
+    const provenance = buildDrivingImpactSourceProvenance({
+      hardwareProfile: hardwareType,
+      capabilityVersion: capabilityRow?.capabilityVersion ?? null,
+      modelVersion: C.MODEL_VERSION,
+      nativeEventCount,
+      hfEventCount,
+      estimatedProxyEventCount,
+      contextOnlyEventCount,
+      hasMeasuredRouteContext:
+        trip.citySharePercent != null && trip.highwaySharePercent != null,
+      measurementCoverage,
+    });
 
     // ── V3: LTE_R1 — normalized DrivingEvent rows (TELEMETRY_EVENTS source) ──
     // SMART5/UNKNOWN — HF-derived TripBehaviorEvent ACCELERATION/BRAKING rows.
@@ -418,7 +490,12 @@ export class DrivingImpactService {
           avgOverSpeedKmh,
           v3DrivingEventInput: useTelemetryDrivingEvents ? 'TELEMETRY_EVENTS' : 'HF_DERIVED',
           vehicleHardwareType: hardwareType,
+          primarySource: provenance.primarySource,
+          nativeEventCount: provenance.nativeEventCount,
+          hfEventCount: provenance.hfEventCount,
+          provenanceVersion: provenance.provenanceVersion,
         },
+        ...provenanceFields(provenance),
       },
       update: {
         // Re-run is idempotent: update all computed fields if impact is recomputed
@@ -467,7 +544,12 @@ export class DrivingImpactService {
           avgOverSpeedKmh,
           v3DrivingEventInput: useTelemetryDrivingEvents ? 'TELEMETRY_EVENTS' : 'HF_DERIVED',
           vehicleHardwareType: hardwareType,
+          primarySource: provenance.primarySource,
+          nativeEventCount: provenance.nativeEventCount,
+          hfEventCount: provenance.hfEventCount,
+          provenanceVersion: provenance.provenanceVersion,
         },
+        ...provenanceFields(provenance),
       },
     });
 
@@ -522,6 +604,9 @@ export class DrivingImpactService {
 
     if (rows.length === 0) return;
 
+    const provenanceRows = rows.map((row) => readTripDrivingImpactProvenance(row));
+    const rollingProvenance = mergeRollingProvenance(provenanceRows);
+
     const totalKm = rows.reduce((s, r) => s + r.distanceKm, 0);
     const w = (r: typeof rows[0]) => r.distanceKm / totalKm;
 
@@ -575,6 +660,7 @@ export class DrivingImpactService {
         drivingStressScore: wavg('drivingStressScore'),
         safetyScore: wavg('safetyScore'),
         modelVersion: C.MODEL_VERSION,
+        ...rollingProvenanceFields(rollingProvenance),
       },
       update: {
         windowDays: C.ROLLING_WINDOW_DAYS,
@@ -604,6 +690,7 @@ export class DrivingImpactService {
         drivingStressScore: wavg('drivingStressScore'),
         safetyScore: wavg('safetyScore'),
         modelVersion: C.MODEL_VERSION,
+        ...rollingProvenanceFields(rollingProvenance),
       },
     });
 
@@ -707,4 +794,78 @@ export class DrivingImpactService {
     });
     return row;
   }
+
+  /** Full source provenance for a trip impact row (legacy-safe reader). */
+  async getTripSourceProvenance(
+    tripId: string,
+  ): Promise<DrivingImpactSourceProvenance | null> {
+    const row = await this.prisma.tripDrivingImpact.findUnique({
+      where: { tripId },
+      select: {
+        modelVersion: true,
+        sourceSummaryJson: true,
+        primarySource: true,
+        measuredShare: true,
+        providerClassifiedShare: true,
+        reconstructedShare: true,
+        estimatedProxyShare: true,
+        contextOnlyShare: true,
+        nativeEventCount: true,
+        hfEventCount: true,
+        measurementCoverage: true,
+        hardwareProfile: true,
+        capabilityVersion: true,
+        healthEligibility: true,
+        provenanceMaturity: true,
+        provenanceVersion: true,
+      },
+    });
+    if (!row) return null;
+    return readTripDrivingImpactProvenance(row);
+  }
+}
+
+function parseBehaviorSummaryJson(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return value as Record<string, unknown>;
+}
+
+function provenanceFields(
+  provenance: DrivingImpactSourceProvenance,
+) {
+  return {
+    primarySource: provenance.primarySource,
+    measuredShare: provenance.measuredShare,
+    providerClassifiedShare: provenance.providerClassifiedShare,
+    reconstructedShare: provenance.reconstructedShare,
+    estimatedProxyShare: provenance.estimatedProxyShare,
+    contextOnlyShare: provenance.contextOnlyShare,
+    nativeEventCount: provenance.nativeEventCount,
+    hfEventCount: provenance.hfEventCount,
+    measurementCoverage: provenance.measurementCoverage,
+    hardwareProfile: provenance.hardwareProfile,
+    capabilityVersion: provenance.capabilityVersion,
+    healthEligibility: provenance.healthEligibility,
+    provenanceMaturity: provenance.provenanceMaturity,
+    provenanceVersion: provenance.provenanceVersion,
+  };
+}
+
+function rollingProvenanceFields(
+  provenance: ReturnType<typeof mergeRollingProvenance>,
+) {
+  return {
+    primarySource: provenance.primarySource,
+    measuredShare: provenance.measuredShare,
+    providerClassifiedShare: provenance.providerClassifiedShare,
+    reconstructedShare: provenance.reconstructedShare,
+    estimatedProxyShare: provenance.estimatedProxyShare,
+    contextOnlyShare: provenance.contextOnlyShare,
+    measurementCoverage: provenance.measurementCoverage,
+    hardwareProfile: provenance.hardwareProfile,
+    capabilityVersion: provenance.capabilityVersion,
+    healthEligibility: provenance.healthEligibility,
+    provenanceMaturity: provenance.provenanceMaturity,
+    provenanceVersion: provenance.provenanceVersion,
+  };
 }
