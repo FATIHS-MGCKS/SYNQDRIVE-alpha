@@ -1,14 +1,12 @@
-import { BatteryDriveProfile } from '../../battery-v2-domain';
-import { DriveProfileResolverService } from '../../../drive-profile/drive-profile-resolver.service';
 import type { HvCapabilityRefreshPayload } from '../battery-v2-job.types';
 import { HvCapabilityRefreshHandler } from './hv-capability-refresh.handler';
 
 describe('HvCapabilityRefreshHandler', () => {
-  const driveProfileResolver = {
-    resolveForVehicle: jest.fn(),
+  const capabilityPreflight = {
+    runForVehicle: jest.fn(),
   };
   const handler = new HvCapabilityRefreshHandler(
-    driveProfileResolver as unknown as DriveProfileResolverService,
+    capabilityPreflight as never,
   );
 
   const payload: HvCapabilityRefreshPayload = {
@@ -29,28 +27,35 @@ describe('HvCapabilityRefreshHandler', () => {
     jest.clearAllMocks();
   });
 
-  it('skips when drive profile does not support HV measurement', async () => {
-    driveProfileResolver.resolveForVehicle.mockResolvedValue({
-      profile: BatteryDriveProfile.ICE,
-      source: 'VEHICLE_MASTER',
-      confidence: 'HIGH',
-      telemetryFallback: false,
-      evidence: ['master:fuel_type:DIESEL'],
+  it('runs capability preflight for vehicles with DIMO token', async () => {
+    capabilityPreflight.runForVehicle.mockResolvedValue({
+      organizationId: 'org-1',
+      vehicleId: 'veh-1',
+      provider: 'DIMO',
+      checkedAt: new Date('2026-07-16T10:00:00.000Z'),
+      queryError: null,
+      signals: [
+        {
+          signalKey: 'hv.soc',
+          preflightStatus: 'AVAILABLE_WITH_DATA',
+        },
+      ],
     });
 
     await expect(handler.handle(payload)).resolves.toBeUndefined();
-    expect(driveProfileResolver.resolveForVehicle).toHaveBeenCalledWith('veh-1');
+    expect(capabilityPreflight.runForVehicle).toHaveBeenCalledWith(
+      'org-1',
+      'veh-1',
+    );
   });
 
-  it('continues for BEV profile', async () => {
-    driveProfileResolver.resolveForVehicle.mockResolvedValue({
-      profile: BatteryDriveProfile.BEV,
-      source: 'VEHICLE_MASTER',
-      confidence: 'HIGH',
-      telemetryFallback: false,
-      evidence: ['master:fuel_type:ELECTRIC'],
-    });
+  it('skips when preflight returns null (no DIMO token)', async () => {
+    capabilityPreflight.runForVehicle.mockResolvedValue(null);
 
     await expect(handler.handle(payload)).resolves.toBeUndefined();
+    expect(capabilityPreflight.runForVehicle).toHaveBeenCalledWith(
+      'org-1',
+      'veh-1',
+    );
   });
 });
