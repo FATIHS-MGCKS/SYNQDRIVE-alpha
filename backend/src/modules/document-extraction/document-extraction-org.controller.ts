@@ -3,6 +3,8 @@ import {
   Get,
   Header,
   Param,
+  Patch,
+  Body,
   Query,
   Res,
   StreamableFile,
@@ -13,8 +15,10 @@ import { OrgScopingGuard } from '@shared/auth/org-scoping.guard';
 import { RolesGuard } from '@shared/auth/roles.guard';
 import { PermissionsGuard } from '@shared/auth/permissions.guard';
 import { RequirePermission } from '@shared/decorators/require-permission.decorator';
+import { CurrentUser } from '@shared/decorators/current-user.decorator';
 import { DocumentExtractionService } from './document-extraction.service';
 import { ListDocumentExtractionsQueryDto } from './dto/list-document-extractions-query.dto';
+import { ReassignExtractionVehicleDto } from './dto/reassign-extraction-vehicle.dto';
 import { DOCUMENT_UPLOAD_MODULE } from './document-extraction.constants';
 import { buildContentDisposition } from './document-extraction-download.util';
 
@@ -54,5 +58,16 @@ export class DocumentExtractionOrgController {
   @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'read')
   getOne(@Param('orgId') orgId: string, @Param('extractionId') extractionId: string) {
     return this.service.getPublicForOrg(orgId, extractionId);
+  }
+
+  @Patch(':extractionId/vehicle')
+  @RequirePermission(DOCUMENT_UPLOAD_MODULE, 'write')
+  reassignVehicle(
+    @Param('orgId') orgId: string,
+    @Param('extractionId') extractionId: string,
+    @Body() body: ReassignExtractionVehicleDto,
+    @CurrentUser('id') userId: string | undefined,
+  ) {
+    return this.service.reassignVehicleForOrg(orgId, extractionId, body.vehicleId, userId ?? null);
   }
 }

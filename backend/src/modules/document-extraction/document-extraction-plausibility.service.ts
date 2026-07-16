@@ -70,11 +70,14 @@ export class DocumentExtractionPlausibilityService {
       });
     }
     const docPlate = this.toStr(fields['licensePlate']);
-    if (docPlate && context.licensePlate && this.normId(docPlate) !== this.normId(context.licensePlate)) {
+    if (docPlate && context.licensePlate && this.normPlate(docPlate) !== this.normPlate(context.licensePlate)) {
+      const isFine = documentType === 'FINE';
       checks.push({
         code: 'PLATE_MISMATCH',
-        status: 'WARNING',
-        message: 'License plate on the document does not match the selected vehicle.',
+        status: isFine ? 'BLOCKER' : 'WARNING',
+        message: isFine
+          ? `Kennzeichen auf dem Dokument (${docPlate}) stimmt nicht mit dem zugeordneten Fahrzeug (${context.licensePlate}) überein.`
+          : 'License plate on the document does not match the selected vehicle.',
         source: 'DOCUMENT',
       });
     }
@@ -255,5 +258,9 @@ export class DocumentExtractionPlausibilityService {
 
   private normId(v: string): string {
     return v.replace(/[\s-]/g, '').toUpperCase();
+  }
+
+  private normPlate(v: string): string {
+    return this.normId(v);
   }
 }

@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'document-fine-extraction-v49507-2026-07-16',
+    version: '4.9.507',
+    title: 'V4.9.507 — Bußgeld (FINE) document extraction quality + apply wiring',
+    summary: [
+      'FINE schema: Kennzeichen, Verstoßart, Ort, Behörde, Gebührenaufstellung, Zahlungsfrist.',
+      'Plausibilität: Kennzeichen-Mismatch bei FINE → BLOCKER (Bestätigen blockiert).',
+      'Apply: Bestätigtes Bußgeld erzeugt Datensatz in Bußgelder-Modul (`FinesService.create`).',
+      'API: `PATCH /organizations/:orgId/document-extractions/:id/vehicle` für Fahrzeug-Neuzuordnung vor Bestätigung.',
+      'Frontend: Datum de-DE, Betrag als €, strukturierte Gebühren; Auto-Match per Kennzeichen; Fahrzeug-Dropdown in Prüfung.',
+    ],
+    reason:
+      'Bußgeld-Upload ordnete falschem Fahrzeug zu, zeigte ISO-Datum und Cent-Betrag, legte nach Bestätigen keinen Bußgeld-Datensatz an.',
+    previousBehavior:
+      'Fahrzeug nur aus UI-Dropdown (Erstes auto-vorausgewählt); FINE apply no-op; Review zeigte 1750 statt 17,50 €.',
+    details: 'architecture/DOCUMENT_FINE_EXTRACTION_2026-07-16.md',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T20:50:00.000Z',
+  },
+  {
     id: 'vehicle-operational-state-v2-p1-fixes-v49506-2026-07-16',
     version: '4.9.506',
     title: 'V4.9.506 — Vehicle Operational State V2 P1 remediation (Prompt 43/43)',

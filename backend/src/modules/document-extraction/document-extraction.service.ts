@@ -840,6 +840,76 @@ export class DocumentExtractionService implements OnModuleInit {
     }
   }
 
+  async reassignVehicleForOrg(
+    orgId: string,
+    extractionId: string,
+    newVehicleId: string,
+    userId?: string | null,
+  ) {
+    const record = await this.prisma.vehicleDocumentExtraction.findFirst({
+      where: { id: extractionId, organizationId: orgId },
+      include: { vehicle: { select: { id: true, licensePlate: true, make: true, model: true, year: true } } },
+    });
+    if (!record) {
+      throw new NotFoundException('Document extraction not found');
+    }
+    if (!['READY_FOR_REVIEW', 'AWAITING_DOCUMENT_TYPE'].includes(record.status)) {
+      throw new BadRequestException(
+        `Cannot reassign vehicle while extraction is in status ${record.status}`,
+      );
+    }
+
+    const targetVehicle = await this.prisma.vehicle.findFirst({
+      where: { id: newVehicleId, organizationId: orgId },
+      select: { id: true, licensePlate: true, make: true, model: true, year: true },
+    });
+    if (!targetVehicle) {
+      throw new NotFoundException('Target vehicle not found in organization');
+    }
+    if (targetVehicle.id === record.vehicleId) {
+      return this.getPublicForOrg(orgId, extractionId);
+    }
+
+    const applyDocumentType = resolveEffectiveDocumentType(record);
+    const extractedFields =
+      record.extractedData && typeof record.extractedData === 'object' && !Array.isArray(record.extractedData)
+        ? (record.extractedData as Record<string, unknown>)
+        : {};
+
+    let plausibilityPayload = record.plausibility;
+    if (applyDocumentType) {
+      const plausibility = await this.runConfirmPlausibility(
+        newVehicleId,
+        applyDocumentType,
+        extractedFields,
+      );
+      plausibilityPayload = {
+        ...(typeof record.plausibility === 'object' &&
+        record.plausibility &&
+        !Array.isArray(record.plausibility)
+          ? (record.plausibility as Record<string, unknown>)
+          : {}),
+        ...(plausibility as unknown as Record<string, unknown>),
+      };
+    }
+
+    await this.prisma.vehicleDocumentExtraction.update({
+      where: { id: extractionId },
+      data: {
+        vehicleId: newVehicleId,
+        plausibility: appendExtractionActionAudit(plausibilityPayload, {
+          action: 'reassign_vehicle',
+          at: new Date().toISOString(),
+          userId: userId ?? null,
+          fromVehicleId: record.vehicleId,
+          toVehicleId: newVehicleId,
+        }) as Prisma.InputJsonValue,
+      },
+    });
+
+    return this.getPublicForOrg(orgId, extractionId);
+  }
+
   async cancel(vehicleId: string, extractionId: string, userId?: string | null) {
     const record = await this.getForVehicle(vehicleId, extractionId);
     if (['APPLIED', 'CONFIRMED', 'CANCELLED'].includes(record.status)) {
