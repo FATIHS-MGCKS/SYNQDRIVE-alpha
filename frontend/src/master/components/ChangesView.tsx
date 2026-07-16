@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-evidence-strength-policy-v49564-2026-07-17',
+    version: '4.9.564',
+    title: 'V4.9.564 — Battery Evidence Strength Policy (Prompt 64/78)',
+    summary: [
+      'Zentrale `BatteryEvidenceStrengthPolicy` mit 9-stufiger Tier-Hierarchie (WORKSHOP_OR_BMS_VERIFIED → UNKNOWN).',
+      'Capability-Matrix: Assessment, Publication, Readiness, Alert, Task; Proxy/Shadow `neverHardBlock`.',
+      'Konfliktauflösung mit Freshness + Scope; Werkstattbefunde bleiben supplementary/traceable.',
+      'Warnleuchte/DTC als eigener `BatteryDiagnosticEvidenceKind` (parallele Spur).',
+      'Integration: LV Evidence Selection, HV Fallback Charge Session, Canonical HV SOH Resolution.',
+      'Unit-Tests für Konflikte (stale vs fresh, scope, proxy, DTC, workshop traceability).',
+    ],
+    reason: 'Prompt 64/78: zentrale Evidence-Strength-Policy für Assessment, Publication, Readiness und Alerts.',
+    previousBehavior: 'Fragmentierte `BatteryEvidenceStrength` (OVERRIDE/PRIMARY/…) ohne zentrale Capability- und Konfliktregeln.',
+    details:
+      'backend/.../battery-evidence-strength.policy.ts, battery-v2-domain.ts (Tier enum), docs/architecture/battery-evidence-strength-policy.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T00:00:00.000Z',
+  },
+  {
     id: 'battery-summary-detail-ui-v49563-2026-07-17',
     version: '4.9.563',
     title: 'V4.9.563 — Battery Summary/Detail UI on Canonical DTO (Prompt 63/78)',

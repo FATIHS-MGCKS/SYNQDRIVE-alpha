@@ -528,6 +528,8 @@ Preflight über DIMO `availableSignals(tokenId)` + `signalsLatest` — nicht dok
 
 ## 7. Evidence-Priorität
 
+> **V4.9.564 (Prompt 64/78):** Zentrale Implementierung in `battery-evidence-strength.policy.ts` mit `BatteryEvidenceStrengthTier`-Hierarchie, Capability-Matrix und `resolveEvidenceConflict()`. Siehe [`battery-evidence-strength-policy.md`](./battery-evidence-strength-policy.md).
+
 ### 7.1 LV — Assessment-Input-Priorität
 
 | Rang | Quelle | `sourceType` | Override |

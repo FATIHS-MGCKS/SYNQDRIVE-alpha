@@ -68,7 +68,11 @@ import { BatteryPolicyProfile } from '../battery-policy-profile/battery-policy-p
 import {
   BatteryChemistry,
   BatteryDriveProfile,
+  BatteryEvidenceStrengthTier,
 } from './battery-v2-domain';
+import {
+  resolveHvSohEvidenceConflict,
+} from './battery-evidence-strength.policy';
 import type { CanonicalLvBatteryResponse } from './lv-canonical/lv-canonical-battery.types';
 import { LV_CANONICAL_RESOLVER_VERSION } from './lv-canonical/lv-canonical-battery.types';
 import { HvMethodProfileService } from './hv-method-profile/hv-method-profile.service';
@@ -668,33 +672,78 @@ export class CanonicalBatteryHealthService {
       publicationMethod: hvStatusAny?.publicationMethod as string | undefined,
       publishedSohPct: parseNum(hvStatusAny?.publishedSohPercent),
     });
+    const hvMeasuredObservedAt = hvStatusAny?.lastRecordedAt
+      ? new Date(hvStatusAny.lastRecordedAt)
+      : null;
+
+    const hvSohConflict = resolveHvSohEvidenceConflict({
+      now: decisionNow,
+      providerSoh:
+        providerSoh != null
+          ? {
+              id: 'provider-soh',
+              tier: BatteryEvidenceStrengthTier.PROVIDER_OEM_SOH,
+              scope: BatteryEvidenceScope.HV,
+              observedAt: providerSohObservedAt,
+              freshnessMaxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.providerSohObservation,
+            }
+          : null,
+      reportedSoh:
+        reportedSoh != null
+          ? {
+              id: 'reported-soh',
+              tier:
+                hvReportedSohEvidence?.sourceType ===
+                BatteryEvidenceSourceType.WORKSHOP_MEASUREMENT
+                  ? BatteryEvidenceStrengthTier.WORKSHOP_OR_BMS_VERIFIED
+                  : BatteryEvidenceStrengthTier.DOCUMENT_VERIFIED,
+              scope: BatteryEvidenceScope.HV,
+              observedAt: hvReportedSohEvidence?.observedAt ?? null,
+              freshnessMaxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.reportedSohObservation,
+              traceability: {
+                sourceType: hvReportedSohEvidence?.sourceType ?? null,
+                serviceEventId: hvReportedSohEvidence?.serviceEventId ?? null,
+                documentExtractionId:
+                  hvReportedSohEvidence?.documentExtractionId ?? null,
+              },
+            }
+          : null,
+      capacityEstimate:
+        hvMeasuredSoh != null
+          ? {
+              id: 'capacity-estimate',
+              tier: BatteryEvidenceStrengthTier.ESTIMATED,
+              scope: BatteryEvidenceScope.HV,
+              observedAt: hvMeasuredObservedAt,
+              freshnessMaxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.hvTelemetryObservation,
+            }
+          : null,
+    });
 
     let hvHealthPercent: number | null = null;
     let hvSohSource: HvSohSource | null = null;
     let hvSourceType: string | null = null;
     let hvMethod: string | null = null;
 
-    if (providerSohUsable) {
+    const hvSohWinner = hvSohConflict.winner;
+    if (hvSohWinner?.id === 'provider-soh' && providerSohUsable) {
       hvHealthPercent = providerSoh;
       hvSohSource = 'PROVIDER';
       hvSourceType = 'provider_reported';
       hvMethod = 'provider_reported_soh';
-    } else if (reportedSohUsable) {
+    } else if (hvSohWinner?.id === 'reported-soh' && reportedSohUsable) {
       hvHealthPercent = reportedSoh;
       hvSohSource = reportedSohSource;
       hvSourceType =
         mapEvidenceSource(hvReportedSohEvidence?.sourceType ?? null) ?? 'document_confirmed';
       hvMethod = 'reported_soh';
-    } else if (hvMeasuredSoh != null) {
+    } else if (hvSohWinner?.id === 'capacity-estimate' && hvMeasuredSoh != null) {
       hvHealthPercent = hvMeasuredSoh;
       hvSohSource = 'CAPACITY_ESTIMATE';
       hvSourceType = 'telemetry_derived';
       hvMethod = hvMeasuredMethod ?? 'capacity_measurement';
     }
 
-    const hvMeasuredObservedAt = hvStatusAny?.lastRecordedAt
-      ? new Date(hvStatusAny.lastRecordedAt)
-      : null;
     const hvLastObservedAt = providerSohUsable
       ? providerSohObservedAt
       : reportedSohUsable

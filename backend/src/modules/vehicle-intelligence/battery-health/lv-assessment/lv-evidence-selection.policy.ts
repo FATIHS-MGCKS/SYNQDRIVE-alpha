@@ -27,6 +27,11 @@ import {
 } from '../battery-v2-domain';
 import { CRANK_MIN_MEASUREMENT_KIND } from '../battery-crank-policy';
 import { isLvRestMeasurementContaminated } from '../lv-rest-window/lv-rest-measurement-quality';
+import {
+  aggregateEvidenceStrengthTier,
+  mapTierToLegacyEvidenceStrength,
+  resolveLvMeasurementEvidenceTier,
+} from '../battery-evidence-strength.policy';
 
 /** Documented evidence-selection contract — bump when combine rules change. */
 export const LV_EVIDENCE_SELECTION_POLICY_VERSION = '1.0.0';
@@ -154,13 +159,22 @@ export interface LvEvidenceSelectionResult {
   dataQuality: BatteryDataQualityStatus;
 }
 
-const STRENGTH_RANK: Record<BatteryEvidenceStrength, number> = {
-  [BatteryEvidenceStrength.OVERRIDE]: 4,
-  [BatteryEvidenceStrength.PRIMARY]: 3,
-  [BatteryEvidenceStrength.SUPPLEMENTARY]: 2,
-  [BatteryEvidenceStrength.DIAGNOSTIC]: 1,
-  [BatteryEvidenceStrength.NONE]: 0,
-};
+function aggregateEvidenceStrength(
+  selected: SelectedLvAssessmentEvidence[],
+): BatteryEvidenceStrength {
+  if (selected.length === 0) {
+    return BatteryEvidenceStrength.NONE;
+  }
+  const tier = aggregateEvidenceStrengthTier(
+    selected.map((row) =>
+      resolveLvMeasurementEvidenceTier({
+        type: row.type,
+        quality: row.quality,
+      }),
+    ),
+  );
+  return mapTierToLegacyEvidenceStrength(tier);
+}
 
 const WORKSHOP_TYPES = new Set<BatteryMeasurementType>(LV_WORKSHOP_MEASUREMENT_TYPES);
 
@@ -289,22 +303,13 @@ function isFreshMeasurement(
 function resolveCandidateStrength(
   candidate: LvAssessmentEvidenceCandidate,
 ): BatteryEvidenceStrength {
-  if (isWorkshopMeasurement(candidate.type)) {
-    return BatteryEvidenceStrength.OVERRIDE;
-  }
-  if (isStartProxyMeasurement(candidate)) {
-    return BatteryEvidenceStrength.DIAGNOSTIC;
-  }
-  if (
-    isRestMeasurement(candidate) &&
-    candidate.quality === BatteryMeasurementQuality.VALID
-  ) {
-    return BatteryEvidenceStrength.PRIMARY;
-  }
-  if (candidate.quality === BatteryMeasurementQuality.VALID_PROXY) {
-    return BatteryEvidenceStrength.SUPPLEMENTARY;
-  }
-  return BatteryEvidenceStrength.NONE;
+  const tier = resolveLvMeasurementEvidenceTier({
+    type: candidate.type,
+    quality: candidate.quality,
+    sourceType: candidate.provenance?.sourceType ?? null,
+    bmsVerified: candidate.provenance?.sourceType === 'bms_verified',
+  });
+  return mapTierToLegacyEvidenceStrength(tier);
 }
 
 function evaluateGlobalProfileGate(
@@ -539,19 +544,6 @@ function applyLifecycleCompatibility(input: {
   }
 
   return { selected, rejected };
-}
-
-function aggregateEvidenceStrength(
-  selected: SelectedLvAssessmentEvidence[],
-): BatteryEvidenceStrength {
-  if (selected.length === 0) {
-    return BatteryEvidenceStrength.NONE;
-  }
-  return selected.reduce((best, row) =>
-    STRENGTH_RANK[row.evidenceStrength] > STRENGTH_RANK[best]
-      ? row.evidenceStrength
-      : best,
-  selected[0].evidenceStrength);
 }
 
 function resolveSelectionDataQuality(input: {
