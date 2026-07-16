@@ -35,6 +35,28 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p30-canonical-signal-mapping-2026-07-16',
+    version: '4.9.531',
+    title: 'Driving Intelligence V2 P30 — canonical DIMO signal mapping',
+    summary: [
+      'Neues Modul `driving-signals/canonical-driving-signal-mapper` — versioniertes Mapping dokumentierter DIMO-Signale auf kanonische Keys.',
+      'Abgedeckt: Engine RPM, Throttle, Engine Load, Torque/Torque-Percent, Coolant, Engine Runtime, Exterior Temperature, Altitude, Heading, EV Battery Power.',
+      'Explizite Einheiten-Normalisierung; `observedAt` (Provider) und `receivedAt` (Ingest) strikt getrennt.',
+      'Unbekannte Provider-Einheiten → `UNIT_UNKNOWN` — keine stille Konvertierung.',
+      'Capability-Gate: nur preflight-/persistiert `SUPPORTED` Signale werden gemappt; fehlende bleiben `UNSUPPORTED`.',
+      'Altitude/Heading: `POST_TRIP_ANALYSIS_CONTEXT` only — kein Trip-Detection-Einsatz; keine Detektoren in diesem Prompt.',
+    ],
+    reason:
+      'Prompt 30/76: Kanonisches Signal-Mapping für dokumentierte und capability-gestützte DIMO-Telemetrie — Grundlage für spätere Analyse-Pipelines.',
+    previousBehavior:
+      'HF-Signal-Gruppen (`hf-signal-map`) und Event-Mapper existierten; kein versioniertes kanonisches DIMO-Signal-Mapping mit Einheiten- und Zeitsemantik.',
+    details:
+      'Pure Mapper + Tests mit sanitisierten ICE/EV-Payloads. `canonical-signal-v1`. Trip-FSM unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T09:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p29-dimo-signals-preflight-2026-07-16',
     version: '4.9.530',
     title: 'Driving Intelligence V2 P29 — vehicle-scoped DIMO Available-Signals Preflight',
