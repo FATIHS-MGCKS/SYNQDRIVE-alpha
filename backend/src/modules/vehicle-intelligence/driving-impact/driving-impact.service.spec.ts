@@ -510,9 +510,84 @@ describe('DrivingImpactService.computeForTrip', () => {
     );
   });
 
+  it('persists modelProfile manifest in sourceSummaryJson', async () => {
+    prisma.vehicleTrip.findUnique.mockResolvedValue(
+      makeBaseTripRow({
+        vehicle: { organizationId: 'org-1', hardwareType: 'LTE_R1', fuelType: 'PETROL' },
+      }),
+    );
+    mockProvenancePrereqs(prisma, { nativeEventCount: 4, hfEventCount: 0 });
+    prisma.tripBehaviorEvent.findMany.mockResolvedValue([]);
+    prisma.tripDrivingImpact.upsert.mockResolvedValue({});
+    prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
+    prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
+
+    await service.computeForTrip('trip-1', 'vehicle-1');
+
+    const createArg = prisma.tripDrivingImpact.upsert.mock.calls[0][0].create;
+    expect(createArg.sourceSummaryJson.modelProfile.version).toBe('impact-model-profile-v1');
+    expect(createArg.sourceSummaryJson.modelProfile.profile).toBe('LTE_R1_NATIVE');
+    expect(createArg.sourceSummaryJson.modelProfile.comparabilityHint).toContain('LTE-R1');
+    expect(createArg.sourceSummaryJson.modelProfile.gatingApplied).toBe(false);
+  });
+
+  it('SMART5_LIMITED: zero behavioral evidence gates drivingStressScore to null', async () => {
+    prisma.vehicleTrip.findUnique.mockResolvedValue(
+      makeBaseTripRow({
+        vehicle: { organizationId: 'org-1', hardwareType: 'SMART5', fuelType: 'PETROL' },
+        hardAccelerationCount: 0,
+        hardBrakingCount: 0,
+        fullBrakingCount: 0,
+        kickdownCount: 0,
+        brakingEventCount: 0,
+      }),
+    );
+    mockProvenancePrereqs(prisma, { nativeEventCount: 0, hfEventCount: 0 });
+    prisma.tripBehaviorEvent.findMany.mockResolvedValue([]);
+    prisma.tripDrivingImpact.upsert.mockResolvedValue({});
+    prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
+    prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
+
+    await service.computeForTrip('trip-1', 'vehicle-1');
+
+    const createArg = prisma.tripDrivingImpact.upsert.mock.calls[0][0].create;
+    expect(createArg.sourceSummaryJson.modelProfile.profile).toBe('SMART5_LIMITED');
+    expect(createArg.drivingStressScore).toBeNull();
+    expect(createArg.sourceSummaryJson.modelProfile.gatingApplied).toBe(true);
+    expect(createArg.sourceSummaryJson.modelProfile.reasonCodes).toContain(
+      'BEHAVIORAL_EVIDENCE_ABSENT',
+    );
+  });
+
+  it('LTE_R1_NATIVE: calm trip with zero native events stays assessable', async () => {
+    prisma.vehicleTrip.findUnique.mockResolvedValue(
+      makeBaseTripRow({
+        vehicle: { organizationId: 'org-1', hardwareType: 'LTE_R1', fuelType: 'PETROL' },
+        hardAccelerationCount: 0,
+        hardBrakingCount: 0,
+        fullBrakingCount: 0,
+        kickdownCount: 0,
+        brakingEventCount: 0,
+      }),
+    );
+    mockProvenancePrereqs(prisma, { nativeEventCount: 0, hfEventCount: 0 });
+    prisma.tripBehaviorEvent.findMany.mockResolvedValue([]);
+    prisma.tripDrivingImpact.upsert.mockResolvedValue({});
+    prisma.tripDrivingImpact.findMany.mockResolvedValue([]);
+    prisma.vehicleDrivingImpactCurrent.upsert.mockResolvedValue({});
+
+    await service.computeForTrip('trip-1', 'vehicle-1');
+
+    const createArg = prisma.tripDrivingImpact.upsert.mock.calls[0][0].create;
+    expect(createArg.sourceSummaryJson.modelProfile.profile).toBe('LTE_R1_NATIVE');
+    expect(createArg.drivingStressScore).not.toBeNull();
+    expect(createArg.sourceSummaryJson.modelProfile.gatingApplied).toBe(false);
+  });
+
   it('persists structured loadComponentsJson with vehicle load coverage', async () => {
     prisma.vehicleTrip.findUnique.mockResolvedValue(
       makeBaseTripRow({
+        vehicle: { organizationId: 'org-1', hardwareType: 'LTE_R1', fuelType: 'DIESEL' },
         avgEngineLoad: 52,
         avgRpm: 2400,
         avgThrottlePosition: 30,

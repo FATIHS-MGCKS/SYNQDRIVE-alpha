@@ -85,6 +85,8 @@ export interface TripTimelineTrip {
   bookingLinkSource?: 'EXPLICIT' | 'TIME_WINDOW' | null;
   tripAttribution?: import('../../../lib/api').TripAttribution | null;
   tripAssessment?: TripAssessment | null;
+  /** Hardware-aware driving impact profile (P45) — fleet comparability hint. */
+  drivingImpactModelProfile?: import('../../../lib/api').VehicleTripAnalytics['drivingImpactModelProfile'];
   /** Read-only ClickHouse evidence mirror — not canonical scores. */
   clickhouseEvidence?: TripClickHouseEvidence | null;
 }

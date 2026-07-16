@@ -3,6 +3,10 @@ import { Icon } from '../ui/Icon';
 import { MisuseCasesPanel } from '../MisuseCasesPanel';
 import { VehicleStressPanel } from '../VehicleStressPanel';
 import { getStressLevel, resolveDrivingStressScore } from '../../lib/scoreFormat';
+import {
+  getDrivingImpactComparabilityHint,
+  getDrivingImpactModelProfileLabel,
+} from '../../lib/driving-impact-model-profile.ui';
 import { TripBehaviorPanel } from './TripBehaviorPanel';
 import {
   deriveTripAssessability,
@@ -89,6 +93,9 @@ export function TripTimelineExpanded({
 }: TripTimelineExpandedProps) {
   const stressScore = resolveDrivingStressScore(trip);
   const stressLevel = trip.stressLevel ?? getStressLevel(stressScore);
+  const modelProfile = trip.drivingImpactModelProfile;
+  const comparabilityHint = getDrivingImpactComparabilityHint(modelProfile);
+  const modelProfileLabel = getDrivingImpactModelProfileLabel(modelProfile);
 
   const behaviorIsReady = trip.behaviorReady ?? !!trip.behaviorEnrichedAt;
   const enrichStatus = trip.behaviorEnrichmentStatus;
@@ -201,6 +208,8 @@ export function TripTimelineExpanded({
             stressLevel={stressLevel}
             hasEnoughData={stressScore != null}
             compact={false}
+            comparabilityHint={comparabilityHint}
+            modelProfileLabel={modelProfileLabel}
             stressMissingContext={{
               behaviorEventCount: resolveBehaviorEventCount(
                 behaviorEvents,

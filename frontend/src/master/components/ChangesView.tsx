@@ -35,6 +35,52 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p45-model-profiles-2026-07-16',
+    version: '4.9.546',
+    title: 'Driving Intelligence V2 P45 — Hardware model profiles & comparability gating',
+    summary: [
+      'Neues Modul `driving-impact-model-profile` mit Profilen LTE_R1_NATIVE, ICE_SIGNAL_CONTEXT, SMART5_LIMITED, TESLA_LIMITED, UNKNOWN_LIMITED.',
+      'Gleiche 0–100-Skala, aber profilabhängige verfügbare Komponenten und Behavioral-Gating.',
+      'HF-only-Profile: fehlende Events → null statt künstlich niedriger Belastung (kein „ruhige Fahrt“ aus Datenlücke).',
+      'Cross-Fleet-Vergleich nur bei kompatiblen Profilen + gleichem behavioralIngestionPath (HF ≠ native).',
+      'modelProfile-Manifest in sourceSummaryJson; Trip-API liefert drivingImpactModelProfile + comparabilityHint.',
+      'UI: VehicleStressPanel zeigt Vergleichbarkeitshinweis.',
+      'Tests: gleiche Fahrt unter unterschiedlichen Capabilities.',
+    ],
+    reason:
+      'Prompt 45/76: Inkompatible Hardwareprofile nicht direkt vergleichbar machen; native Event-Abwesenheit bei nicht fähigen Fahrzeugen nicht positiv bewerten.',
+    previousBehavior:
+      'P44 — Einheitliche Stress-Berechnung ohne profilabhängiges Gating; HF-Proxy und native Events implizit vergleichbar.',
+    details:
+      '`driving-impact-model-profile/` + Integration in `driving-impact.service.ts`; Trip-API über `trip-analytics-canonical` + `trip-api.mapper`; Frontend `driving-impact-model-profile.ui.ts`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T23:00:00.000Z',
+  },
+  {
+    id: 'driving-intelligence-v2-p44-metric-normalization-2026-07-16',
+    version: '4.9.545',
+    title: 'Driving Intelligence V2 P44 — Consolidated metric normalization',
+    summary: [
+      'Zentrales Normalisierungsmodul `driving-metric-normalization` mit versionierten Caps (`metric-norm-v1`).',
+      'Strategien je Metrik: Events/100 km, Events/Fahrstunde, Trip-Anteil, Cluster/Zeitfenster, Dauer-/Distanzanteile, Event-Shares, Energy/km.',
+      'Mindestdatenregeln: ZERO_DISTANCE und BELOW_MIN_DISTANCE → kein künstliches Hochskalieren; SHORT_TRIP → LIMITED.',
+      'Driving Impact nutzt `buildDrivingImpactNormalizedTripMetrics` im Domainservice — nicht in der UI.',
+      'MODEL_VERSION v1.2.0 (neu) — v1.1.0-Scores werden nicht still überschrieben.',
+      'sourceSummaryJson.metricNormalization für Traceability.',
+      'Tests: kurze vs. lange Fahrten, Null-Distanz, Outlier-Caps.',
+    ],
+    reason:
+      'Prompt 44/76: Belastungs- und verhaltensrelevante Metriken konsolidiert und versioniert normalisieren.',
+    previousBehavior:
+      'P43 — Ad-hoc `per100Km()` ohne Dauerkontext, keine LIMITED/UNRELIABLE-Gates, MODEL_VERSION v1.1.0.',
+    details:
+      '`driving-metric-normalization/` + `driving-impact-metrics.normalizer.ts`; Braking-Provenance + Scorer delegieren.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T22:30:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p43-load-components-2026-07-16',
     version: '4.9.544',
     title: 'Driving Intelligence V2 P43 — Structured vehicle load components',

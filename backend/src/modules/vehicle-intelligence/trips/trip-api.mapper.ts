@@ -24,6 +24,15 @@ export function mapTripForVehicleApi(
       events?: Record<string, number | undefined>;
       assignment?: Record<string, unknown>;
       attribution?: TripAttribution;
+      drivingImpactModelProfile?: {
+        version?: string;
+        profile?: string;
+        comparabilityGroup?: string;
+        behavioralIngestionPath?: string;
+        comparabilityHint?: string;
+        gatingApplied?: boolean;
+        reasonCodes?: string[];
+      } | null;
     };
     tripAssessment?: TripAssessment | null;
     drivingScore?: number | null;
@@ -87,5 +96,6 @@ export function mapTripForVehicleApi(
         ? behaviorSummary.deviceQualityVehicleStatus
         : null,
     tripAssessment: trip.tripAssessment ?? null,
+    drivingImpactModelProfile: summary?.drivingImpactModelProfile ?? null,
   };
 }

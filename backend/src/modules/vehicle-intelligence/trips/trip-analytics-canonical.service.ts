@@ -22,6 +22,10 @@ import type { TripAssessment } from './trip-assessment.types';
 import { deriveAnalysisAssessability } from './trip-analysis-status';
 import { maxEvidenceLevelFromCases } from './trip-evidence-case.builder';
 import type { TripEvidenceLevel } from './trip-evidence-level.types';
+import {
+  readTripDrivingImpactModelProfile,
+} from '../driving-impact-model-profile/driving-impact-model-profile.reader';
+import type { DrivingImpactModelProfileManifest } from '../driving-impact-model-profile/driving-impact-model-profile.types';
 
 export interface CanonicalTripEventSummary {
   totalAccelerationEvents: number;
@@ -52,6 +56,7 @@ export interface CanonicalTripSummary {
   scores: CanonicalTripScoreSummary;
   assignment: CanonicalTripAssignmentSummary;
   attribution?: TripAttribution;
+  drivingImpactModelProfile?: DrivingImpactModelProfileManifest | null;
 }
 
 export interface CanonicalTripStats {
@@ -148,7 +153,7 @@ export class TripAnalyticsCanonicalService {
   async hydrateTrip<T extends TripProjection>(trip: T): Promise<T & { canonicalTripSummary: CanonicalTripSummary }> {
     const impact = await this.prisma.tripDrivingImpact.findUnique({
       where: { tripId: trip.id },
-      select: { drivingStressScore: true },
+      select: { drivingStressScore: true, sourceSummaryJson: true },
     });
     const assignment = await this.tripAssignmentService.resolveForTrip(trip);
     const attribution = await this.tripAttributionService.resolveAttributionForTrip({
@@ -285,7 +290,7 @@ export class TripAnalyticsCanonicalService {
 
   private buildSummary(
     trip: TripProjection,
-    impact: Pick<TripDrivingImpact, 'drivingStressScore'> | null,
+    impact: Pick<TripDrivingImpact, 'drivingStressScore' | 'sourceSummaryJson'> | null,
     assignment: TripAssignmentResolution,
     attribution?: TripAttribution,
   ): CanonicalTripSummary {
@@ -308,6 +313,10 @@ export class TripAnalyticsCanonicalService {
     const scoreSource: CanonicalTripScoreSummary['scoreSource'] =
       impactHasStress ? 'trip_driving_impact' : drivingStressScore != null ? 'vehicle_trip_compat' : 'derived';
 
+    const drivingImpactModelProfile = impact?.sourceSummaryJson
+      ? readTripDrivingImpactModelProfile(impact.sourceSummaryJson)
+      : null;
+
     return {
       events,
       scores: {
@@ -318,21 +327,23 @@ export class TripAnalyticsCanonicalService {
       },
       assignment,
       attribution,
+      drivingImpactModelProfile,
     };
   }
 
   private async loadImpactMap(
     tripIds: string[],
-  ): Promise<Map<string, Pick<TripDrivingImpact, 'drivingStressScore'>>> {
+  ): Promise<Map<string, Pick<TripDrivingImpact, 'drivingStressScore' | 'sourceSummaryJson'>>> {
     if (tripIds.length === 0) return new Map();
     const rows = await this.prisma.tripDrivingImpact.findMany({
       where: { tripId: { in: tripIds } },
-      select: { tripId: true, drivingStressScore: true },
+      select: { tripId: true, drivingStressScore: true, sourceSummaryJson: true },
     });
-    const map = new Map<string, Pick<TripDrivingImpact, 'drivingStressScore'>>();
+    const map = new Map<string, Pick<TripDrivingImpact, 'drivingStressScore' | 'sourceSummaryJson'>>();
     for (const row of rows) {
       map.set(row.tripId, {
         drivingStressScore: row.drivingStressScore,
+        sourceSummaryJson: row.sourceSummaryJson,
       });
     }
     return map;

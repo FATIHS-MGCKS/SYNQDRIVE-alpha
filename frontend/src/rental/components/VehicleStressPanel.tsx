@@ -35,6 +35,8 @@ interface VehicleStressPanelProps {
   dataConfidence?: DataConfidence | string | null;
   compact?: boolean;
   footnote?: string;
+  comparabilityHint?: string | null;
+  modelProfileLabel?: string | null;
   stressMissingContext?: StressScoreMissingContext;
 }
 
@@ -97,6 +99,8 @@ export function VehicleStressPanel({
   dataConfidence,
   compact = false,
   footnote,
+  comparabilityHint,
+  modelProfileLabel,
   stressMissingContext,
 }: VehicleStressPanelProps) {
   const display = formatStressScore(stressScore, {
@@ -118,6 +122,14 @@ export function VehicleStressPanel({
         {dataConfidence && (
           <p className="mt-2 text-[10px] text-muted-foreground">
             Datenbasis: {getDataConfidenceLabel(dataConfidence as DataConfidence)}
+          </p>
+        )}
+        {comparabilityHint && (
+          <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+            {modelProfileLabel ? (
+              <span className="font-medium text-foreground/80">{modelProfileLabel}: </span>
+            ) : null}
+            {comparabilityHint}
           </p>
         )}
       </div>
@@ -170,6 +182,15 @@ export function VehicleStressPanel({
       )}
 
       {footnote && <p className="mt-2 text-[10px] text-muted-foreground">{footnote}</p>}
+
+      {comparabilityHint && (
+        <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+          {modelProfileLabel ? (
+            <span className="font-medium text-foreground/80">{modelProfileLabel}: </span>
+          ) : null}
+          {comparabilityHint}
+        </p>
+      )}
     </div>
   );
 }

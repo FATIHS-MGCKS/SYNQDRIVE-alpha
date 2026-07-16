@@ -1615,6 +1615,20 @@ export interface VehicleTripAnalytics {
   tripAttribution?: TripAttribution | null;
   tripAssessment?: TripAssessment | null;
   clickhouseEvidence?: TripClickHouseEvidence | null;
+  drivingImpactModelProfile?: {
+    version: string;
+    profile:
+      | 'LTE_R1_NATIVE'
+      | 'ICE_SIGNAL_CONTEXT'
+      | 'SMART5_LIMITED'
+      | 'TESLA_LIMITED'
+      | 'UNKNOWN_LIMITED';
+    comparabilityGroup?: string;
+    behavioralIngestionPath?: string;
+    comparabilityHint?: string;
+    gatingApplied?: boolean;
+    reasonCodes?: string[];
+  } | null;
   [key: string]: unknown;
 }
 

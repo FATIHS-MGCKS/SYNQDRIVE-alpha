@@ -43,7 +43,9 @@ export type LoadComponentReasonCode =
   | 'COMPOSITE_RENORMALIZED'
   | 'ESSENTIAL_COMPONENT_MISSING'
   | 'HIGH_NATIVE_COVERAGE'
-  | 'BRAKING_PROXY_KINEMATICS';
+  | 'BRAKING_PROXY_KINEMATICS'
+  | 'BEHAVIORAL_EVIDENCE_ABSENT'
+  | 'COMPONENT_NOT_IN_PROFILE';
 
 export type DrivingImpactLoadComponent = {
   level: StressLevel | null;

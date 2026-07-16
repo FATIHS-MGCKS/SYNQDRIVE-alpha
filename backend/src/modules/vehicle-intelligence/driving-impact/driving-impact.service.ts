@@ -33,6 +33,12 @@ import {
 import { buildDrivingImpactNormalizedTripMetrics } from '../driving-metric-normalization/driving-impact-metrics.normalizer';
 import { resolveTripDurationHours } from '../driving-metric-normalization/driving-metric-normalization';
 import {
+  applyModelProfileToStressScores,
+  applyModelProfileToLoadComponents,
+  buildDrivingImpactModelProfileManifest,
+  resolveDrivingImpactModelProfile,
+} from '../driving-impact-model-profile/driving-impact-model-profile';
+import {
   computeLongitudinalStressScore,
   computeBrakingStressScore,
   computeStopGoStressScore,
@@ -437,15 +443,56 @@ export class DrivingImpactService {
       p95NegativeDecel,
     });
 
-    const drivingStressScore = computeDrivingStressScore({
-      longitudinalStressScore,
-      brakingStressScore,
-      stopGoStressScore,
-      highSpeedStressScore,
-    });
-
     const fuelType = trip.vehicle?.fuelType ?? null;
-    const loadComponents = buildDrivingImpactLoadComponents({
+    const modelProfile = resolveDrivingImpactModelProfile({
+      hardwareType,
+      fuelType,
+      engineSignalsAvailable:
+        trip.avgEngineLoad != null ||
+        trip.avgRpm != null ||
+        trip.avgThrottlePosition != null,
+    });
+    const profileGatedScores = applyModelProfileToStressScores({
+      profile: modelProfile,
+      evidence: {
+        nativeEventCount: provenance.nativeEventCount,
+        hfEventCount: provenance.hfEventCount,
+        primarySource: provenance.primarySource,
+        counts: {
+          hardAccel: hardAccelCount,
+          extremeAccel: extremeAccelCount,
+          hardBrake: hardBrakeCount,
+          extremeBrake: extremeBrakeCount,
+          fullBraking: fullBrakingCount,
+          kickdown: kickdownCount,
+          launchLike: launchLikeCount,
+          brakesTotal,
+        },
+      },
+      scores: {
+        longitudinalStressScore,
+        brakingStressScore,
+        stopGoStressScore,
+        highSpeedStressScore,
+        thermalBrakeStressScore,
+      },
+    });
+    const modelProfileManifest = buildDrivingImpactModelProfileManifest(
+      modelProfile,
+      profileGatedScores,
+    );
+
+    const {
+      longitudinalStressScore: gatedLongitudinal,
+      brakingStressScore: gatedBraking,
+      stopGoStressScore: gatedStopGo,
+      highSpeedStressScore: gatedHighSpeed,
+      thermalBrakeStressScore: gatedThermal,
+      drivingStressScore: gatedDrivingStress,
+    } = profileGatedScores;
+
+    const loadComponents = applyModelProfileToLoadComponents(
+      buildDrivingImpactLoadComponents({
       provenance,
       brakingProvenance,
       scores: {
@@ -474,7 +521,10 @@ export class DrivingImpactService {
         nativeEventCount: provenance.nativeEventCount,
         hfEventCount: provenance.hfEventCount,
       },
-    });
+    }),
+      modelProfile,
+      profileGatedScores,
+    );
 
     // Speeding/Safety score retired from rental and new impact persistence (V4.8.24).
     // Trip-level speeding metrics remain on VehicleTrip for route enrichment traceability.
@@ -522,12 +572,12 @@ export class DrivingImpactService {
         p95NegativeDecelProxy,
         meanBrakeEnergyProxyPerKm,
 
-        longitudinalStressScore,
-        brakingStressScore,
-        stopGoStressScore,
-        highSpeedStressScore,
-        thermalBrakeStressScore,
-        drivingStressScore,
+        longitudinalStressScore: gatedLongitudinal,
+        brakingStressScore: gatedBraking,
+        stopGoStressScore: gatedStopGo,
+        highSpeedStressScore: gatedHighSpeed,
+        thermalBrakeStressScore: gatedThermal,
+        drivingStressScore: gatedDrivingStress,
         safetyScore,
         speedingExposurePct,
         speedingSectionCount,
@@ -567,6 +617,7 @@ export class DrivingImpactService {
               brakeEnergy: 'ENERGY_PER_KM',
             },
           },
+          modelProfile: modelProfileManifest,
         },
         loadComponentsJson: loadComponents as unknown as object,
         ...provenanceFields(provenance),
@@ -594,12 +645,12 @@ export class DrivingImpactService {
         p95NegativeDecelMeasured,
         p95NegativeDecelProxy,
         meanBrakeEnergyProxyPerKm,
-        longitudinalStressScore,
-        brakingStressScore,
-        stopGoStressScore,
-        highSpeedStressScore,
-        thermalBrakeStressScore,
-        drivingStressScore,
+        longitudinalStressScore: gatedLongitudinal,
+        brakingStressScore: gatedBraking,
+        stopGoStressScore: gatedStopGo,
+        highSpeedStressScore: gatedHighSpeed,
+        thermalBrakeStressScore: gatedThermal,
+        drivingStressScore: gatedDrivingStress,
         safetyScore,
         speedingExposurePct,
         speedingSectionCount,
@@ -638,6 +689,7 @@ export class DrivingImpactService {
               brakeEnergy: 'ENERGY_PER_KM',
             },
           },
+          modelProfile: modelProfileManifest,
         },
         loadComponentsJson: loadComponents as unknown as object,
         ...provenanceFields(provenance),
@@ -647,11 +699,11 @@ export class DrivingImpactService {
     // Compatibility mirror: VehicleTrip.drivingScore stores stress (higher = more load).
     await this.prisma.vehicleTrip.update({
       where: { id: tripId },
-      data: { drivingScore: drivingStressScore },
+      data: { drivingScore: gatedDrivingStress },
     });
 
-    if (trip.drivingScore != null) {
-      const drift = Math.abs(trip.drivingScore - drivingStressScore);
+    if (trip.drivingScore != null && gatedDrivingStress != null) {
+      const drift = Math.abs(trip.drivingScore - gatedDrivingStress);
       const bucket =
         drift >= 20 ? 'gte20' : drift >= 10 ? 'gte10' : drift >= 5 ? 'gte5' : null;
       if (bucket) {
@@ -661,8 +713,8 @@ export class DrivingImpactService {
 
     this.logger.log(
       `DrivingImpact persisted: trip=${tripId} vehicle=${vehicleId} ` +
-      `dist=${distanceKm.toFixed(1)}km long=${longitudinalStressScore} ` +
-      `brake=${brakingStressScore} stress=${drivingStressScore}`,
+      `dist=${distanceKm.toFixed(1)}km long=${gatedLongitudinal} ` +
+      `brake=${gatedBraking} stress=${gatedDrivingStress}`,
     );
 
     // ── Update rolling current aggregate ─────────────────────────────────────
