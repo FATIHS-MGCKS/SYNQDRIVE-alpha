@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-v2-idempotency-v49524-2026-07-16',
+    version: '4.9.524',
+    title: 'V4.9.524 — Battery V2 Idempotency & Concurrency (Prompt 23/78)',
+    summary: [
+      'Zentrale Job-Identitäts-Policy (`battery-v2-job-idempotency.policy.ts`) für alle 8 Battery-V2-Jobtypen.',
+      'Deterministische BullMQ-`jobId` mit SHA-256-Fallback bei langen Keys; Prefix-Validierung beim Enqueue.',
+      'Worker: `BatteryV2IdempotentExecutionService` — Redis-Fahrzeugsperre (ingest/assess/publish/hv) + DB-Pre-Check vor Handler.',
+      'Kein Lost Update / keine doppelte Observation: Unique-Constraints + `createOrFindByUnique` (P2002).',
+      'Start-Proxy-Key: `start-proxy:{modelVersion}:trip:{tripId}`.',
+      'Tests: parallele Enqueues, wiederholte Jobs, Lock-Serialisierung.',
+    ],
+    reason: 'Prompt 23/78: zentrale Idempotenz- und Concurrency-Regeln für Battery-Jobs.',
+    previousBehavior: 'Nur BullMQ-`jobId`-Dedup beim Enqueue; Worker ohne zentrale Lock/Pre-Check-Schicht.',
+    details:
+      'battery-v2-job-idempotency.policy.ts, battery-v2-idempotent-execution.service.ts, battery-v2-vehicle-lock.service.ts, battery-v2-idempotent-write.util.ts, battery-v2.processor.ts, battery-v2-trip-start.producer.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T16:15:00.000Z',
+  },
+  {
     id: 'battery-v2-producer-migration-v49523-2026-07-16',
     version: '4.9.523',
     title: 'V4.9.523 — Battery V2 Producer Migration (Prompt 22/78)',

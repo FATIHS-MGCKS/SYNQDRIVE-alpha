@@ -5,6 +5,7 @@ import {
 } from './battery-v2-snapshot-observation.producer';
 import { BatteryV2TripStartProducer } from './battery-v2-trip-start.producer';
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
+import { isDeterministicBatteryV2JobId } from './battery-v2-job-queue.util';
 
 const ORG = 'clorg1234567890123456789012';
 const VEH = 'clveh1234567890123456789012';
@@ -109,7 +110,7 @@ describe('BatteryV2SnapshotObservationProducer', () => {
     expect(jobType).toBe('BATTERY_OBSERVATION_CLASSIFY');
     expect(payload.organizationId).toBe(ORG);
     expect(payload.snapshotContext?.evSoc).toBe(72);
-    expect(opts.jobId).toBe(`battery-v2:${payload.idempotencyKey}`);
+    expect(isDeterministicBatteryV2JobId(payload.idempotencyKey, opts.jobId)).toBe(true);
   });
 
   it('does not enqueue duplicate snapshot observation for unchanged poll', async () => {
@@ -237,6 +238,60 @@ describe('BatteryV2SnapshotObservationProducer', () => {
     expect(second).toBe(first);
     expect(queueAdd).toHaveBeenCalledTimes(1);
   });
+
+  it('suppresses parallel duplicate enqueue for same idempotency key', async () => {
+    let seenJobId: string | null = null;
+    const queueAdd = jest.fn().mockImplementation(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+      return { id: 'job-parallel' };
+    });
+    const queue = {
+      getJob: jest.fn().mockImplementation(async (jobId: string) => {
+        if (jobId === seenJobId) {
+          return { getState: async () => 'waiting' };
+        }
+        seenJobId = jobId;
+        return null;
+      }),
+      add: queueAdd,
+    };
+    const producerSvc = new BatteryV2JobProducerService(queue as any);
+    const producer = new BatteryV2SnapshotObservationProducer(prisma as any, producerSvc);
+
+    const receivedAt = new Date('2026-07-16T12:00:00.000Z');
+    const input = {
+      organizationId: ORG,
+      vehicleId: VEH,
+      receivedAt,
+      normalized: {
+        lvBatteryVoltage: 12.5,
+        evSoc: 72,
+        tractionBatteryCurrentEnergyKwh: 40,
+        tractionBatterySohPercent: 95,
+        tractionBatteryPowerKw: 0,
+        tractionBatteryChargingPowerKw: 0,
+        tractionBatteryAddedEnergyKwh: 0,
+        tractionBatteryChargeLimitPercent: 80,
+        tractionBatteryIsCharging: false,
+        tractionBatteryChargingCableConnected: false,
+        tractionBatteryTemperatureC: 22,
+        tractionBatteryGrossCapacityKwh: 60,
+        rangeKm: 300,
+        odometerKm: 12000,
+      },
+      batteryMap: baseBatteryMap() as any,
+      lvBatteryObservedAt: receivedAt,
+    };
+
+    const results = await Promise.all([
+      producer.classifyAndEnqueue(input),
+      producer.classifyAndEnqueue(input),
+    ]);
+
+    expect(results[0]).toBeTruthy();
+    expect(results[1]).toBe(results[0]);
+    expect(queueAdd).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('BatteryV2TripStartProducer', () => {
@@ -279,11 +334,12 @@ describe('BatteryV2TripStartProducer', () => {
       tripStartedAt: startedAt,
     });
 
-    expect(first).toBe(`battery-v2:start-proxy:trip:${TRIP}`);
+    const expectedKey = `start-proxy:1.0.0:trip:${TRIP}`;
+    expect(first).toBe(`battery-v2:${expectedKey}`);
     expect(second).toBe(first);
     expect(queueAdd).toHaveBeenCalledTimes(1);
     expect(queueAdd.mock.calls[0][2].delay).toBeGreaterThan(0);
-    expect(queueAdd.mock.calls[0][1].idempotencyKey).toBe(`start-proxy:trip:${TRIP}`);
+    expect(queueAdd.mock.calls[0][1].idempotencyKey).toBe(expectedKey);
 
     process.env.BATTERY_V2_START_PROXY_ENABLED = prev;
     process.env.BATTERY_V2_LEGACY_CRANK_ASSESSMENT_ENABLED = prevCrank;

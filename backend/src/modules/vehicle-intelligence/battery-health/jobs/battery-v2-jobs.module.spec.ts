@@ -7,7 +7,9 @@ import {
 } from './battery-v2-jobs.module';
 import { BatteryV2JobsProducerModule } from './battery-v2-jobs-producer.module';
 import { BATTERY_V2_JOB_TYPES } from './battery-v2-job.types';
+import { BatteryV2IdempotentExecutionService } from './battery-v2-idempotent-execution.service';
 import { BatteryV2JobHandlerRegistry } from './battery-v2-job-handler.registry';
+import { BatteryV2VehicleLockService } from './battery-v2-vehicle-lock.service';
 import { BatteryV2SnapshotIngestionService } from './battery-v2-snapshot-ingestion.service';
 import { BatteryV2Service } from '../battery-v2.service';
 import { HvBatteryHealthService } from '../hv-battery-health.service';
@@ -26,7 +28,16 @@ describe('BatteryV2JobsModule', () => {
     const exports: unknown[] =
       Reflect.getMetadata(MODULE_METADATA.EXPORTS, BatteryV2JobsModule) ?? [];
     expect(exports).toContain(BatteryV2JobHandlerRegistry);
+    expect(exports).toContain(BatteryV2IdempotentExecutionService);
+    expect(exports).toContain(BatteryV2VehicleLockService);
     expect(exports).toContain(BatteryV2JobsProducerModule);
+  });
+
+  it('registers idempotency services as providers', () => {
+    const providers: unknown[] =
+      Reflect.getMetadata(MODULE_METADATA.PROVIDERS, BatteryV2JobsModule) ?? [];
+    expect(providers).toContain(BatteryV2IdempotentExecutionService);
+    expect(providers).toContain(BatteryV2VehicleLockService);
   });
 
   it('wires handler registry with all job types', async () => {
