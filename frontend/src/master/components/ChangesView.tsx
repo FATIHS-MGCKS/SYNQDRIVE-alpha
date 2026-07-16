@@ -35,6 +35,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p43-load-components-2026-07-16',
+    version: '4.9.544',
+    title: 'Driving Intelligence V2 P43 — Structured vehicle load components',
+    summary: [
+      'Driving Impact Output in getrennte Fahrzeugbelastungskomponenten: longitudinalLoad, brakingLoad, stopGoLoad, speedLoad, thermalLoad, engineLoad, transmissionLoad (optional), tireLoad, dataQuality.',
+      'Jede Komponente: Level, Score, Evidence Strength, Source Quality, Assessability, Reasons.',
+      'Unsupported bleibt unsupported (z. B. engineLoad/transmissionLoad bei BEV).',
+      'vehicleLoad nur aus verfügbaren Essential-Komponenten mit explizitem coverage — kein Gesamtwert bei fehlenden Essentials.',
+      'Kein Fahrerurteil — nur Fahrzeugbelastung.',
+      'Persistenz: loadComponentsJson auf trip_driving_impact + vehicle_driving_impact_current.',
+      'Tests: vollständiges ICE-Fahrzeug, eingeschränktes BEV/Proxy-Szenario, Legacy-Reader.',
+    ],
+    reason:
+      'Prompt 43/76: Driving-Impact-Output in strukturierte Belastungskomponenten mit Coverage gliedern.',
+    previousBehavior:
+      'P42 — Skalare Stress-Scores ohne strukturierte Komponenten-Metadaten (Level, Evidence, Assessability).',
+    details:
+      '`driving-impact-load-components.ts` + Migration `20260716270000_driving_impact_load_components`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T22:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p42-braking-provenance-2026-07-16',
     version: '4.9.543',
     title: 'Driving Intelligence V2 P42 — Braking kinematic provenance separation',

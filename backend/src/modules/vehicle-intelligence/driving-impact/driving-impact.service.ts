@@ -27,6 +27,10 @@ import {
   readTripDrivingImpactProvenance,
 } from './driving-impact-provenance.reader';
 import {
+  buildDrivingImpactLoadComponents,
+  resolvePowertrainIsEv,
+} from './driving-impact-load-components';
+import {
   capLinear,
   per100Km,
   computeLongitudinalStressScore,
@@ -132,13 +136,16 @@ export class DrivingImpactService {
       select: {
         id: true,
         vehicleId: true,
-        vehicle: { select: { organizationId: true, hardwareType: true } },
+        vehicle: { select: { organizationId: true, hardwareType: true, fuelType: true } },
         startTime: true,
         endTime: true,
         distanceKm: true,
         citySharePercent: true,
         highwaySharePercent: true,
         countrySharePercent: true,
+        avgEngineLoad: true,
+        avgRpm: true,
+        avgThrottlePosition: true,
         hardAccelerationCount: true,
         hardBrakingCount: true,
         fullBrakingCount: true,
@@ -410,6 +417,38 @@ export class DrivingImpactService {
       highSpeedStressScore,
     });
 
+    const fuelType = trip.vehicle?.fuelType ?? null;
+    const loadComponents = buildDrivingImpactLoadComponents({
+      provenance,
+      brakingProvenance,
+      scores: {
+        longitudinalStressScore,
+        brakingStressScore,
+        stopGoStressScore,
+        highSpeedStressScore,
+        thermalBrakeStressScore,
+      },
+      routeContext: {
+        citySharePct,
+        highwaySharePct,
+      },
+      engineSignals: {
+        avgEngineLoad: trip.avgEngineLoad ?? null,
+        avgRpm: trip.avgRpm ?? null,
+        avgThrottlePosition: trip.avgThrottlePosition ?? null,
+        kickdownPer100Km,
+        launchLikePer100Km,
+      },
+      powertrain: {
+        fuelType,
+        isEv: resolvePowertrainIsEv(fuelType),
+      },
+      eventCounts: {
+        nativeEventCount: provenance.nativeEventCount,
+        hfEventCount: provenance.hfEventCount,
+      },
+    });
+
     // Speeding/Safety score retired from rental and new impact persistence (V4.8.24).
     // Trip-level speeding metrics remain on VehicleTrip for route enrichment traceability.
     const speedingExposurePct = trip.speedingExposurePct ?? 0;
@@ -489,7 +528,9 @@ export class DrivingImpactService {
           hfEventCount: provenance.hfEventCount,
           provenanceVersion: provenance.provenanceVersion,
           brakingProvenance,
+          loadComponents,
         },
+        loadComponentsJson: loadComponents as unknown as object,
         ...provenanceFields(provenance),
       },
       update: {
@@ -547,7 +588,9 @@ export class DrivingImpactService {
           hfEventCount: provenance.hfEventCount,
           provenanceVersion: provenance.provenanceVersion,
           brakingProvenance,
+          loadComponents,
         },
+        loadComponentsJson: loadComponents as unknown as object,
         ...provenanceFields(provenance),
       },
     });
@@ -627,6 +670,76 @@ export class DrivingImpactService {
     const windowStartedAt = rows[0].tripStartedAt;
     const windowEndedAt = rows[rows.length - 1].tripEndedAt ?? rows[rows.length - 1].tripStartedAt;
 
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { fuelType: true },
+    });
+    const fuelType = vehicle?.fuelType ?? null;
+
+    const longitudinalStressScore = wavg('longitudinalStressScore');
+    const brakingStressScore = wavg('brakingStressScore');
+    const stopGoStressScore = wavg('stopGoStressScore');
+    const highSpeedStressScore = wavg('highSpeedStressScore');
+    const thermalBrakeStressScore = wavg('thermalBrakeStressScore');
+    const kickdownPer100Km = wavg('kickdownPer100Km') ?? 0;
+    const launchLikePer100Km = wavg('launchLikePer100Km') ?? 0;
+    const citySharePct = wavg('citySharePct');
+    const highwaySharePct = wavg('highwaySharePct');
+
+    const rollingBrakingProvenance = {
+      version: 'braking-provenance-v1',
+      p95NegativeDecelMeasured: wavg('p95NegativeDecelMeasured') ?? 0,
+      p95NegativeDecelProxy: wavg('p95NegativeDecelProxy') ?? 0,
+      meanBrakeEnergyProxyPerKm: wavg('meanBrakeEnergyProxyPerKm') ?? 0,
+      proxyKinematicShare: avgBrakingProxyShare(rows),
+      reconstructedKinematicCount: 0,
+      measuredDeltaKinematicCount: 0,
+      proxyKinematicCount: 0,
+    };
+
+    const rollingLoadComponents =
+      longitudinalStressScore != null &&
+      brakingStressScore != null &&
+      stopGoStressScore != null &&
+      highSpeedStressScore != null &&
+      thermalBrakeStressScore != null
+        ? buildDrivingImpactLoadComponents({
+            provenance: {
+              ...rollingProvenance,
+              nativeEventCount: provenanceRows.reduce((s, r) => s + r.nativeEventCount, 0),
+              hfEventCount: provenanceRows.reduce((s, r) => s + r.hfEventCount, 0),
+              modelVersion: C.MODEL_VERSION,
+            },
+            brakingProvenance: rollingBrakingProvenance,
+            scores: {
+              longitudinalStressScore,
+              brakingStressScore,
+              stopGoStressScore,
+              highSpeedStressScore,
+              thermalBrakeStressScore,
+            },
+            routeContext: {
+              citySharePct,
+              highwaySharePct,
+            },
+            engineSignals: {
+              avgEngineLoad: null,
+              avgRpm: null,
+              avgThrottlePosition: null,
+              kickdownPer100Km,
+              launchLikePer100Km,
+            },
+            powertrain: {
+              fuelType,
+              isEv: resolvePowertrainIsEv(fuelType),
+            },
+            eventCounts: {
+              nativeEventCount: provenanceRows.reduce((s, r) => s + r.nativeEventCount, 0),
+              hfEventCount: provenanceRows.reduce((s, r) => s + r.hfEventCount, 0),
+            },
+          })
+        : null;
+
     await this.prisma.vehicleDrivingImpactCurrent.upsert({
       where: { vehicleId },
       create: {
@@ -662,6 +775,7 @@ export class DrivingImpactService {
         drivingStressScore: wavg('drivingStressScore'),
         safetyScore: wavg('safetyScore'),
         modelVersion: C.MODEL_VERSION,
+        loadComponentsJson: rollingLoadComponents as unknown as object,
         ...rollingProvenanceFields(rollingProvenance),
       },
       update: {
@@ -695,6 +809,7 @@ export class DrivingImpactService {
         drivingStressScore: wavg('drivingStressScore'),
         safetyScore: wavg('safetyScore'),
         modelVersion: C.MODEL_VERSION,
+        loadComponentsJson: rollingLoadComponents as unknown as object,
         ...rollingProvenanceFields(rollingProvenance),
       },
     });
@@ -873,4 +988,21 @@ function rollingProvenanceFields(
     provenanceMaturity: provenance.provenanceMaturity,
     provenanceVersion: provenance.provenanceVersion,
   };
+}
+
+function avgBrakingProxyShare(
+  rows: { sourceSummaryJson: unknown }[],
+): number {
+  if (rows.length === 0) return 0;
+  const shares = rows.map((row) => {
+    if (!row.sourceSummaryJson || typeof row.sourceSummaryJson !== 'object') return 0;
+    const summary = row.sourceSummaryJson as Record<string, unknown>;
+    const brakingProvenance = summary.brakingProvenance as
+      | { proxyKinematicShare?: number }
+      | undefined;
+    return typeof brakingProvenance?.proxyKinematicShare === 'number'
+      ? brakingProvenance.proxyKinematicShare
+      : 0;
+  });
+  return Math.round((shares.reduce((sum, value) => sum + value, 0) / shares.length) * 1000) / 1000;
 }
