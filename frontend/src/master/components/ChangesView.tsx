@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-freshness-separation-v49520-2026-07-16',
+    version: '4.9.520',
+    title: 'V4.9.520 — Battery Fetch vs Observation Freshness (Prompt 18/78)',
+    summary: [
+      'Zentrale Policy `battery-freshness.policy.ts` trennt `fetchFreshness` (fetchedAt/fetchAgeMs/fetchState) von `observationFreshness` (observedAt/observationAgeMs/observationState).',
+      'Entscheidungs-„Aktuell“ basiert nur auf `observedAt`; frischer Poll mit altem Provider-Timestamp macht Werte nicht frisch.',
+      'Fehlender `observedAt` → MISSING_TIMESTAMP (mit Wertträger) bzw. UNAVAILABLE; OUT_OF_ORDER bei älterem Timestamp vs. letzter Observation.',
+      'Canonical + HV Battery Health liefern strukturierte Freshness (`fetchFreshness`, `observationFreshness`, `freshnessBundle`) — Legacy `freshness.isFresh` bleibt kompatibel.',
+      'Domain-Slots vorbereitet: restMeasurement, startProxy, assessment, publication, providerSoh, hvSession.',
+      'Tests: frischer Fetch/staler Wert, staler Fetch/frischer Wert, fehlende Timestamps, Out-of-order.',
+    ],
+    reason: 'Prompt 18/78: Fetch- und Observation-Freshness in Backend/DTOs trennen — keine UI-Magic-Numbers.',
+    previousBehavior:
+      'Freshness mischte Poll-Zeit (`lastSeenAt`) mit Beobachtungszeit; VLS-only Provider-SOH konnte als frisch gelten.',
+    details:
+      'battery-freshness.policy.ts, canonical-battery-health.service.ts, hv-battery-health.service.ts, Specs.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T16:20:00.000Z',
+  },
+  {
     id: 'hv-snapshot-observation-dedup-v49519-2026-07-16',
     version: '4.9.519',
     title: 'V4.9.519 — HV Snapshot Observation Dedup (Prompt 17/78)',

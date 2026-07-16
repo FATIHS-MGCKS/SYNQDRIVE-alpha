@@ -28,6 +28,13 @@ import {
   evaluateHvSnapshotObservation,
   type HvSnapshotSkipReason,
 } from './hv-snapshot-observation.policy';
+import {
+  BATTERY_FRESHNESS_THRESHOLDS_MS,
+  buildBatteryDomainFreshnessBundle,
+  buildFetchFreshness,
+  buildObservationFreshness,
+  observationFreshnessIsDecisionFresh,
+} from './battery-freshness.policy';
 
 /**
  * HV (High-Voltage) Battery Health Service for EV traction batteries.
@@ -79,6 +86,8 @@ export class HvBatteryHealthService {
         tractionBatteryAddedEnergyKwh: true,
         tractionBatteryChargeLimitPercent: true,
         lastSeenAt: true,
+        providerFetchedAt: true,
+        sourceTimestamp: true,
       },
     });
 
@@ -138,6 +147,22 @@ export class HvBatteryHealthService {
         : (pubCurrent?.publicationMethod ?? sohResult.method);
     const maturityConfidence = pubCurrent?.maturityConfidence ?? 'none';
 
+    const decisionNow = new Date();
+    const telemetryFetchFreshness = buildFetchFreshness({
+      fetchedAt: latestState?.providerFetchedAt ?? latestState?.lastSeenAt ?? null,
+      now: decisionNow,
+    });
+    const telemetryObservationFreshness = buildObservationFreshness({
+      observedAt: latestState?.sourceTimestamp ?? null,
+      maxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.hvTelemetryObservation,
+      now: decisionNow,
+      hasValueCarrier: latestState?.evSoc != null,
+    });
+    const telemetryFreshnessBundle = buildBatteryDomainFreshnessBundle({
+      fetch: telemetryFetchFreshness,
+      observation: telemetryObservationFreshness,
+    });
+
     const latestProviderSohEvidence = await this.batteryEvidence.getLatest(
       vehicleId,
       {
@@ -149,13 +174,21 @@ export class HvBatteryHealthService {
     const providerSohValue = latestProviderSohEvidence?.numericValue
       ?? latestState?.tractionBatterySohPercent
       ?? null;
-    const providerSohObservedAt = latestProviderSohEvidence?.observedAt
-      ?? latestState?.lastSeenAt
-      ?? null;
-    const providerSohAgeMs = providerSohObservedAt
-      ? Math.max(0, Date.now() - providerSohObservedAt.getTime())
-      : null;
-    const providerSohIsFresh = providerSohAgeMs != null && providerSohAgeMs <= 45 * 24 * 60 * 60 * 1000;
+    const providerSohObservedAt = latestProviderSohEvidence?.observedAt ?? null;
+    const providerSohObservationFreshness = buildObservationFreshness({
+      observedAt: providerSohObservedAt,
+      maxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.providerSohObservation,
+      now: decisionNow,
+      hasValueCarrier: providerSohValue != null,
+    });
+    const providerSohIsFresh = observationFreshnessIsDecisionFresh(
+      providerSohObservationFreshness,
+    );
+    const providerSohFreshnessBundle = buildBatteryDomainFreshnessBundle({
+      fetch: telemetryFetchFreshness,
+      observation: providerSohObservationFreshness,
+      providerSohFreshness: providerSohObservationFreshness,
+    });
 
     const userFacingSoh = publicationState === 'INITIAL_CALIBRATION' ? null : publishedSoh;
     const resolvedSoh =
@@ -219,8 +252,13 @@ export class HvBatteryHealthService {
         currentEnergyKwh: latestState?.tractionBatteryCurrentEnergyKwh ?? null,
         addedEnergyKwh: latestState?.tractionBatteryAddedEnergyKwh ?? null,
         chargeLimitPercent: latestState?.tractionBatteryChargeLimitPercent ?? null,
+        fetchFreshness: telemetryFetchFreshness,
+        observationFreshness: telemetryObservationFreshness,
+        freshnessBundle: telemetryFreshnessBundle,
       },
       providerSohObservedAt: providerSohObservedAt?.toISOString() ?? null,
+      providerSohObservationFreshness,
+      providerSohFreshnessBundle,
     };
   }
 

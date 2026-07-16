@@ -50,6 +50,8 @@ describe('CanonicalBatteryHealthService', () => {
     });
     prisma.vehicleLatestState.findUnique.mockResolvedValue({
       lastSeenAt: now,
+      providerFetchedAt: now,
+      sourceTimestamp: now,
       lvBatteryVoltage: 12.4,
       evSoc: 66,
       rangeKm: 278,
@@ -497,5 +499,79 @@ describe('CanonicalBatteryHealthService', () => {
     const summary = await svc.getSummary('veh-1');
     expect(summary?.specs?.batteryType).toBe('EFB');
     expect(summary?.lv.restingVoltage.thresholdSource).toBe('BATTERY_SPEC');
+  });
+
+  it('separates fresh fetch from stale provider SOH observation', async () => {
+    const { svc, batteryEvidenceService, hvBatteryHealthService } = buildService();
+    const freshFetch = new Date('2026-04-13T09:55:00.000Z');
+    const staleObservation = new Date('2026-01-01T10:00:00.000Z');
+    const prisma = (svc as any).prisma;
+    prisma.vehicleLatestState.findUnique.mockResolvedValue({
+      lastSeenAt: freshFetch,
+      providerFetchedAt: freshFetch,
+      sourceTimestamp: staleObservation,
+      lvBatteryVoltage: 12.4,
+      evSoc: 66,
+      rangeKm: 278,
+      tractionBatterySohPercent: 88,
+      tractionBatteryTemperatureC: 24,
+      tractionBatteryChargingPowerKw: 11,
+      tractionBatteryIsCharging: true,
+      tractionBatteryChargingCableConnected: true,
+      tractionBatteryCurrentVoltage: 351,
+      tractionBatteryGrossCapacityKwh: 76,
+      tractionBatteryCurrentEnergyKwh: 50,
+      tractionBatteryAddedEnergyKwh: 6,
+    });
+    batteryEvidenceService.getLatest.mockResolvedValue({
+      numericValue: 88,
+      observedAt: staleObservation,
+      sourceType: BatteryEvidenceSourceType.PROVIDER_REPORTED,
+    });
+    hvBatteryHealthService.getHvBatteryStatus.mockResolvedValue({
+      publishedSohPercent: null,
+      rawSohPercent: null,
+      sohPercent: null,
+      sohMethod: 'insufficient_data',
+      maturityConfidence: 'none',
+      publicationState: SohPublicationState.INITIAL_CALIBRATION,
+      currentSocPercent: 66,
+      estimatedRangeKm: 278,
+      snapshotCount: 1,
+      sohInterpretation: { label: 'Unknown', color: 'gray', description: '' },
+      chargingSessions: [],
+      recentTrend: [],
+    });
+
+    const summary = await svc.getSummary('veh-1');
+    expect(summary?.hv.fetchFreshness?.fetchState).toBe('FRESH');
+    expect(summary?.hv.freshnessBundle?.providerSohFreshness?.observationState).toBe(
+      'STALE',
+    );
+    expect(summary?.hv.freshness?.isFresh).toBe(false);
+    expect(summary?.hv.healthPercent).toBeNull();
+  });
+
+  it('marks VLS-only provider SOH as missing timestamp without evidence observedAt', async () => {
+    const { svc } = buildService();
+    const summary = await svc.getSummary('veh-1');
+    expect(summary?.hv.freshnessBundle?.providerSohFreshness?.observationState).toBe(
+      'MISSING_TIMESTAMP',
+    );
+    expect(summary?.hv.fetchFreshness?.fetchState).toBe('FRESH');
+  });
+
+  it('exposes structured freshness on LV and currentTelemetry', async () => {
+    const { svc } = buildService();
+    const summary = await svc.getSummary('veh-1');
+    expect(summary?.lv.fetchFreshness?.fetchState).toBe('FRESH');
+    expect(summary?.lv.observationFreshness?.observationState).toBe('FRESH');
+    expect(summary?.lv.freshnessBundle?.restMeasurementFreshness?.observationState).toBe(
+      'FRESH',
+    );
+    expect(summary?.currentTelemetry.fetchFreshness?.fetchState).toBe('FRESH');
+    expect(summary?.currentTelemetry.observationFreshness?.observationState).toBe(
+      'FRESH',
+    );
   });
 });

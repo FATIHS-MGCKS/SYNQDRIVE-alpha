@@ -51,6 +51,15 @@ import {
   resolveRestingVoltageDataQuality,
   type BatteryDataQualityStatus,
 } from './battery-data-quality';
+import {
+  BATTERY_FRESHNESS_THRESHOLDS_MS,
+  buildBatteryDomainFreshnessBundle,
+  buildFetchFreshness,
+  buildObservationFreshness,
+  observationFreshnessIsDecisionFresh,
+  toLegacyFreshnessInfo,
+  type LegacyFreshnessInfo,
+} from './battery-freshness.policy';
 
 export type BatteryStatus =
   | 'ready'
@@ -70,23 +79,8 @@ export type BatteryCondition =
 /** Source of a HV SOH value — never a model/age fallback anymore. */
 export type HvSohSource = 'PROVIDER' | 'CAPACITY_ESTIMATE' | 'DOCUMENT' | 'MANUAL';
 
-export interface FreshnessInfo {
-  observedAt: string | null;
-  ageMs: number | null;
-  isFresh: boolean;
-}
-
-function freshnessFromDate(date: Date | null | undefined, maxAgeMs: number): FreshnessInfo {
-  if (!date) {
-    return { observedAt: null, ageMs: null, isFresh: false };
-  }
-  const ageMs = Math.max(0, Date.now() - date.getTime());
-  return {
-    observedAt: date.toISOString(),
-    ageMs,
-    isFresh: ageMs <= maxAgeMs,
-  };
-}
+/** @deprecated Use structured `fetchFreshness` / `observationFreshness` from battery-freshness.policy. */
+export type FreshnessInfo = LegacyFreshnessInfo;
 
 function mapEvidenceSource(source: BatteryEvidenceSourceType | null | undefined): string | null {
   if (!source) return null;
@@ -131,6 +125,8 @@ export class CanonicalBatteryHealthService {
         where: { vehicleId },
         select: {
           lastSeenAt: true,
+          providerFetchedAt: true,
+          sourceTimestamp: true,
           lvBatteryVoltage: true,
           evSoc: true,
           rangeKm: true,
@@ -307,6 +303,14 @@ export class CanonicalBatteryHealthService {
       lvRestingClassification.status,
     );
 
+    const decisionNow = new Date();
+    const pollFetchedAt =
+      latestState?.providerFetchedAt ?? latestState?.lastSeenAt ?? null;
+    const telemetryFetchFreshness = buildFetchFreshness({
+      fetchedAt: pollFetchedAt,
+      now: decisionNow,
+    });
+
     // Freshness is anchored on the carrier that produced the displayed voltage,
     // not on the older of the two.  This keeps the "no_recent_data" label
     // honest when live telemetry is flowing but legacy snapshots are stale.
@@ -315,7 +319,50 @@ export class CanonicalBatteryHealthService {
       stateAt ??
       snapshotAt ??
       null;
-    const lvFreshness = freshnessFromDate(lvLastChecked, 48 * 60 * 60 * 1000);
+    const lvObservationFreshness = buildObservationFreshness({
+      observedAt: lvLastChecked,
+      maxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.lvLiveObservation,
+      now: decisionNow,
+      hasValueCarrier: lvVoltage != null,
+    });
+    const lvFreshness = toLegacyFreshnessInfo(lvObservationFreshness);
+    const lvFetchFreshness = telemetryFetchFreshness;
+    const lvRestMeasurementFreshness = buildObservationFreshness({
+      observedAt:
+        (v2?.rest6hCapturedAt as Date | null | undefined) ??
+        (v2?.rest60mCapturedAt as Date | null | undefined) ??
+        null,
+      maxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.restMeasurementObservation,
+      now: decisionNow,
+      hasValueCarrier:
+        parseNum(v2?.vOff6h) != null || parseNum(v2?.vOff60m) != null,
+    });
+    const lvStartProxyFreshness = buildObservationFreshness({
+      observedAt: (v2?.crankAt as Date | null | undefined) ?? null,
+      maxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.startProxyObservation,
+      now: decisionNow,
+      hasValueCarrier: parseNum(v2?.crankDrop) != null,
+    });
+    const lvAssessmentFreshness = buildObservationFreshness({
+      observedAt: (v2?.scoredAt as Date | null | undefined) ?? null,
+      maxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.assessmentObservation,
+      now: decisionNow,
+      hasValueCarrier: lvPublishedSoh != null,
+    });
+    const lvPublicationFreshness = buildObservationFreshness({
+      observedAt: (v2?.lastPublishedAt as Date | null | undefined) ?? null,
+      maxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.publicationObservation,
+      now: decisionNow,
+      hasValueCarrier: lvPublishedSoh != null,
+    });
+    const lvFreshnessBundle = buildBatteryDomainFreshnessBundle({
+      fetch: lvFetchFreshness,
+      observation: lvObservationFreshness,
+      restMeasurementFreshness: lvRestMeasurementFreshness,
+      startProxyFreshness: lvStartProxyFreshness,
+      assessmentFreshness: lvAssessmentFreshness,
+      publicationFreshness: lvPublicationFreshness,
+    });
 
     // Legacy three-state condition (good/watch/attention) for backward-compat
     // consumers. It is derived from the aggregated LV status so there is a
@@ -371,21 +418,34 @@ export class CanonicalBatteryHealthService {
     );
     const providerSohFromEvidence = parseNum(hvProviderSohEvidence?.numericValue);
     const providerSoh = providerSohFromEvidence ?? providerSohFromLatestState;
-    const providerSohFreshness = freshnessFromDate(
-      hvProviderSohEvidence?.observedAt ??
-        (latestState?.lastSeenAt ?? null),
-      45 * 24 * 60 * 60 * 1000,
+    const providerSohObservedAt =
+      hvProviderSohEvidence?.observedAt ?? null;
+    const providerSohObservationFreshness = buildObservationFreshness({
+      observedAt: providerSohObservedAt,
+      maxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.providerSohObservation,
+      now: decisionNow,
+      hasValueCarrier: providerSoh != null,
+    });
+    const providerSohFreshness = toLegacyFreshnessInfo(
+      providerSohObservationFreshness,
     );
     const providerSohUsable =
-      providerSoh != null && providerSohFreshness.isFresh;
+      providerSoh != null &&
+      observationFreshnessIsDecisionFresh(providerSohObservationFreshness);
 
     const reportedSoh = parseNum(hvReportedSohEvidence?.numericValue);
-    const reportedSohFreshness = freshnessFromDate(
-      hvReportedSohEvidence?.observedAt ?? null,
-      365 * 24 * 60 * 60 * 1000,
+    const reportedSohObservationFreshness = buildObservationFreshness({
+      observedAt: hvReportedSohEvidence?.observedAt ?? null,
+      maxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.reportedSohObservation,
+      now: decisionNow,
+      hasValueCarrier: reportedSoh != null,
+    });
+    const reportedSohFreshness = toLegacyFreshnessInfo(
+      reportedSohObservationFreshness,
     );
     const reportedSohUsable =
-      reportedSoh != null && reportedSohFreshness.isFresh;
+      reportedSoh != null &&
+      observationFreshnessIsDecisionFresh(reportedSohObservationFreshness);
     const reportedSohSource: HvSohSource =
       hvReportedSohEvidence?.sourceType ===
       BatteryEvidenceSourceType.DOCUMENT_CONFIRMED
@@ -429,16 +489,48 @@ export class CanonicalBatteryHealthService {
       hvMethod = hvMeasuredMethod ?? 'capacity_measurement';
     }
 
+    const hvMeasuredObservedAt = hvStatusAny?.lastRecordedAt
+      ? new Date(hvStatusAny.lastRecordedAt)
+      : null;
     const hvLastObservedAt = providerSohUsable
-      ? hvProviderSohEvidence?.observedAt ?? latestState?.lastSeenAt ?? null
+      ? providerSohObservedAt
       : reportedSohUsable
         ? hvReportedSohEvidence?.observedAt ?? null
-        : (hvStatusAny?.lastRecordedAt
-            ? new Date(hvStatusAny.lastRecordedAt)
-            : null) ??
-          latestState?.lastSeenAt ??
-          null;
-    const hvFreshness = freshnessFromDate(hvLastObservedAt, 7 * 24 * 60 * 60 * 1000);
+        : hvMeasuredObservedAt;
+    const hvObservationFreshness = buildObservationFreshness({
+      observedAt: hvLastObservedAt,
+      maxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.hvTelemetryObservation,
+      now: decisionNow,
+      hasValueCarrier: hvHealthPercent != null || isEv,
+    });
+    const hvFreshness = toLegacyFreshnessInfo(hvObservationFreshness);
+    const hvFetchFreshness = telemetryFetchFreshness;
+    const hvPublicationFreshness = buildObservationFreshness({
+      observedAt:
+        (hvStatusAny?.lastPublishedAt as Date | string | null | undefined) ??
+        null,
+      maxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.publicationObservation,
+      now: decisionNow,
+      hasValueCarrier: parseNum(hvStatusAny?.publishedSohPercent) != null,
+    });
+    const hvFreshnessBundle = buildBatteryDomainFreshnessBundle({
+      fetch: hvFetchFreshness,
+      observation: hvObservationFreshness,
+      providerSohFreshness: providerSohObservationFreshness,
+      publicationFreshness: hvPublicationFreshness,
+    });
+    const currentTelemetryObservationFreshness = buildObservationFreshness({
+      observedAt: latestState?.sourceTimestamp ?? null,
+      maxAgeMs: BATTERY_FRESHNESS_THRESHOLDS_MS.hvTelemetryObservation,
+      now: decisionNow,
+      hasValueCarrier:
+        parseNum(latestState?.evSoc) != null ||
+        parseNum(latestState?.lvBatteryVoltage) != null,
+    });
+    const currentTelemetryFreshnessBundle = buildBatteryDomainFreshnessBundle({
+      fetch: telemetryFetchFreshness,
+      observation: currentTelemetryObservationFreshness,
+    });
 
     const hvStatusLabel: BatteryStatus = !isEv
       ? 'unsupported'
@@ -663,6 +755,9 @@ export class CanonicalBatteryHealthService {
             : 'estimate_unavailable',
         confidence: (v2?.maturityConfidence as string | undefined) ?? 'none',
         freshness: lvFreshness,
+        fetchFreshness: lvFetchFreshness,
+        observationFreshness: lvObservationFreshness,
+        freshnessBundle: lvFreshnessBundle,
         evidenceType:
           lvIsCalibrating
             ? 'model_derived'
@@ -708,6 +803,9 @@ export class CanonicalBatteryHealthService {
         method: hvMethod,
         confidence: (hvStatusAny?.maturityConfidence as string | undefined) ?? 'none',
         freshness: hvFreshness,
+        fetchFreshness: hvFetchFreshness,
+        observationFreshness: hvObservationFreshness,
+        freshnessBundle: hvFreshnessBundle,
         evidenceType: hvSourceType,
         publicationState:
           (hvStatusAny?.publicationState as SohPublicationState | undefined) ??
@@ -760,6 +858,9 @@ export class CanonicalBatteryHealthService {
       },
       currentTelemetry: {
         observedAt: latestState?.lastSeenAt?.toISOString() ?? null,
+        fetchFreshness: telemetryFetchFreshness,
+        observationFreshness: currentTelemetryObservationFreshness,
+        freshnessBundle: currentTelemetryFreshnessBundle,
         socPercent: parseNum(latestState?.evSoc),
         rangeKm: parseNum(latestState?.rangeKm),
         chargingState:
