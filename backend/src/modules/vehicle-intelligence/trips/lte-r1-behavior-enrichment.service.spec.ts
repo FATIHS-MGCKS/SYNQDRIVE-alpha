@@ -325,6 +325,60 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
     expect(enrichDrivingEventContext).toHaveBeenCalledWith(persistedIds[0]);
   });
 
+  it('updates legacy trip counters with harsh + extreme acceleration split', async () => {
+    const { service, tx, segments } = makeEnrichTripHarness();
+    segments.fetchDrivingEvents.mockResolvedValue([
+      {
+        timestamp: eventTs,
+        name: 'behavior.harshAcceleration',
+        source: '0xDEVICE',
+        durationNs: 0,
+        metadata: '{"counterValue":1}',
+      },
+      {
+        timestamp: eventTs,
+        name: 'behavior.extremeAcceleration',
+        source: '0xDEVICE',
+        durationNs: 0,
+        metadata: '{"counterValue":2}',
+      },
+      {
+        timestamp: eventTs,
+        name: 'behavior.extremeAcceleration',
+        source: '0xDEVICE',
+        durationNs: 0,
+        metadata: '{"counterValue":3}',
+      },
+    ]);
+    tx.drivingEvent.findMany.mockResolvedValue([
+      {
+        eventType: DrivingEventType.HARSH_ACCELERATION,
+        metadataJson: { classification: 'HARD', dimoEventName: 'behavior.harshAcceleration' },
+      },
+      {
+        eventType: DrivingEventType.HARSH_ACCELERATION,
+        metadataJson: { classification: 'EXTREME', dimoEventName: 'behavior.extremeAcceleration' },
+      },
+      {
+        eventType: DrivingEventType.HARSH_ACCELERATION,
+        metadataJson: { classification: 'EXTREME', dimoEventName: 'behavior.extremeAcceleration' },
+      },
+    ] as any);
+
+    const result = await service.enrichTrip('trip-1');
+
+    expect(result?.harshAccelerationCount).toBe(3);
+    expect(tx.vehicleTrip.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          hardAccelerationCount: 3,
+          harshAccelCount: 3,
+          accelerationEventCount: 3,
+        }),
+      }),
+    );
+  });
+
   it('does not roll back native events when context enrichment fails per event', async () => {
     const { service, nativeEventPersistence, enrichDrivingEventContext } = makeEnrichTripHarness({
       contextThrows: true,

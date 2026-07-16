@@ -30,3 +30,11 @@ export {
   type PersistNativeDimoEventInput,
   type PersistNativeDimoEventResult,
 } from './dimo-native-driving-event-persistence.service';
+export {
+  countNativeAccelerationEvents,
+  isNativeExtremeAcceleration,
+  isNativeHarshAcceleration,
+  readNativeEventClassification,
+  type NativeAccelerationEventCounts,
+  type NativeDrivingEventCountInput,
+} from './dimo-native-event-classification';

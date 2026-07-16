@@ -35,6 +35,7 @@ import {
   assessZeroNativeEventsConduct,
   mapDimoNativeDrivingEvent,
   resolveDimoNativeEventSeverity,
+  countNativeAccelerationEvents,
   DimoNativeDrivingEventPersistenceService,
   type DimoNativeDrivingEventMapping,
   type DimoNativeEventClassification,
@@ -82,6 +83,7 @@ interface EventCounters {
   harshBraking: number;
   extremeBraking: number;
   harshAcceleration: number;
+  extremeAcceleration: number;
   harshCornering: number;
   safetyCollision: number;
   unmapped: number;
@@ -162,7 +164,12 @@ export class LteR1BehaviorEnrichmentService {
 
     // ── 3. Map to normalized driving events ─────────────────────────────────
     const normalized = this.mapToNormalizedEvents(nativeSamples, vehicleId, organizationId, hfContext);
-    const counters = this.countByType(normalized);
+    const counters = this.countByType(
+      normalized.map((e) => ({
+        eventType: e.eventType,
+        metadataJson: { classification: e.classification },
+      })),
+    );
     const coldEngineAnnotations = normalized.filter((e) => e.coldEngineContext).length;
     const nativeCapability = await this.resolveNativeCapabilityContext(
       organizationId,
@@ -217,11 +224,11 @@ export class LteR1BehaviorEnrichmentService {
           tripId,
           source: DrivingEventSource.TELEMETRY_EVENTS,
         },
-        select: { eventType: true },
+        select: { eventType: true, metadataJson: true },
       });
       const tripCounters = this.countByType(tripEvents);
       const hardBrakingTrip = tripCounters.harshBraking + tripCounters.extremeBraking;
-      const hardAccelTrip = tripCounters.harshAcceleration;
+      const hardAccelTrip = tripCounters.harshAcceleration + tripCounters.extremeAcceleration;
       const abuseFromDimo = tripCounters.extremeBraking;
 
       await tx.vehicleTrip.update({
@@ -229,7 +236,7 @@ export class LteR1BehaviorEnrichmentService {
         data: {
           hardBrakingCount: hardBrakingTrip,
           hardAccelerationCount: hardAccelTrip,
-          totalAccelerationEvents: tripCounters.harshAcceleration,
+          totalAccelerationEvents: tripCounters.harshAcceleration + tripCounters.extremeAcceleration,
           hardAccelerationEvents: hardAccelTrip,
           totalBrakingEvents: tripCounters.harshBraking + tripCounters.extremeBraking,
           hardBrakingEvents: hardBrakingTrip,
@@ -241,7 +248,7 @@ export class LteR1BehaviorEnrichmentService {
           harshAccelCount: hardAccelTrip,
           harshCornerCount: tripCounters.harshCornering,
           brakingEventCount: tripCounters.harshBraking + tripCounters.extremeBraking,
-          accelerationEventCount: tripCounters.harshAcceleration,
+          accelerationEventCount: tripCounters.harshAcceleration + tripCounters.extremeAcceleration,
           behaviorEnrichedAt: new Date(),
         },
       });
@@ -265,7 +272,7 @@ export class LteR1BehaviorEnrichmentService {
       drivingEventsIngested: normalized.length,
       harshBrakingCount: counters.harshBraking,
       extremeBrakingCount: counters.extremeBraking,
-      harshAccelerationCount: counters.harshAcceleration,
+      harshAccelerationCount: counters.harshAcceleration + counters.extremeAcceleration,
       harshCorneringCount: counters.harshCornering,
       coldEngineAnnotations,
       zeroNativeEventsConduct,
@@ -506,11 +513,15 @@ export class LteR1BehaviorEnrichmentService {
     return closest;
   }
 
-  private countByType(events: Array<{ eventType: DrivingEventType }>): EventCounters {
+  private countByType(
+    events: Array<{ eventType: DrivingEventType; metadataJson?: unknown }>,
+  ): EventCounters {
+    const accel = countNativeAccelerationEvents(events);
     return {
       harshBraking: events.filter((e) => e.eventType === DrivingEventType.HARSH_BRAKING).length,
       extremeBraking: events.filter((e) => e.eventType === DrivingEventType.EXTREME_BRAKING).length,
-      harshAcceleration: events.filter((e) => e.eventType === DrivingEventType.HARSH_ACCELERATION).length,
+      harshAcceleration: accel.harshAcceleration,
+      extremeAcceleration: accel.extremeAcceleration,
       harshCornering: events.filter((e) => e.eventType === DrivingEventType.HARSH_CORNERING).length,
       safetyCollision: events.filter((e) => e.eventType === DrivingEventType.SAFETY_COLLISION).length,
       unmapped: events.filter((e) => e.eventType === DrivingEventType.UNMAPPED_PROVIDER_EVENT).length,
