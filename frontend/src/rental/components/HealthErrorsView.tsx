@@ -62,6 +62,9 @@ import {
   serviceCardBorderFromRentalState,
 } from '../rental-health-ui';
 import { BatteryConditionBars, RestingVoltageBadge } from './BatteryConditionBars';
+import { BatteryDataQualityBadge } from './BatteryDataQualityBadge';
+import { useLanguage } from '../i18n/LanguageContext';
+import { batteryLoadErrorLabel } from '../lib/battery-data-quality.utils';
 import {
   SectionHeader,
   DataCard,
@@ -172,6 +175,7 @@ export function HealthErrorsView({
 }: HealthErrorsViewProps) {
   const isEv = fuelType === 'Electric' || fuelType === 'PHEV';
   const { orgId, userRole } = useRentalOrg();
+  const { t } = useLanguage();
   const { health: rentalHealth, loading: rentalHealthLoading } = useEffectiveHealth(vehicleId ?? null);
   const { reloadHealth } = useFleetVehicles();
   const [showErrorCodes, setShowErrorCodes] = useState(false);
@@ -238,6 +242,7 @@ export function HealthErrorsView({
   const [batteryLatest, setBatteryLatest] = useState<any>(null);
   const [batterySummary, setBatterySummary] = useState<BatteryHealthSummary | null>(null);
   const [batteryDetail, setBatteryDetail] = useState<BatteryHealthDetail | null>(null);
+  const [batteryLoadError, setBatteryLoadError] = useState(false);
   const [brakesData, setBrakesData] = useState<any>(null);
   const [brakeHealthSummary, setBrakeHealthSummary] = useState<BrakeHealthSummaryType | null>(null);
   const [brakeHealthDetail, setBrakeHealthDetail] = useState<BrakeHealthDetail | null>(null);
@@ -310,6 +315,7 @@ export function HealthErrorsView({
       if (s?.lastChecked) setLastDtcChecked(s.lastChecked);
     }).catch(() => null);
     api.vehicleIntelligence.dtcSummary(vehicleId).then(setDtcSummary).catch(() => null);
+    setBatteryLoadError(false);
     api.vehicleIntelligence.batteryHealthDetail(vehicleId).then((detail) => {
       if (!detail) {
         setBatteryDetail(null);
@@ -365,7 +371,13 @@ export function HealthErrorsView({
       } else {
         setHvBatteryStatus(null);
       }
-    }).catch(() => null);
+    }).catch(() => {
+      setBatteryDetail(null);
+      setBatterySummary(null);
+      setBatteryLatest(null);
+      setHvBatteryStatus(null);
+      setBatteryLoadError(true);
+    });
     api.vehicleIntelligence.brakes(vehicleId).then(setBrakesData).catch(() => null);
     api.vehicleIntelligence.brakeHealthSummary(vehicleId).then(setBrakeHealthSummary).catch(() => null);
     api.vehicleIntelligence.brakeHealthDetail(vehicleId).then(setBrakeHealthDetail).catch(() => null);
@@ -2060,6 +2072,13 @@ export function HealthErrorsView({
             {/* Header + condition badge */}
             <div className="flex items-center gap-3 mb-5">
               <h2 className={`text-sm font-semibold tracking-tight text-foreground`}>Battery Health</h2>
+              {batteryLoadError ? (
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider sq-chip-critical">
+                  {batteryLoadErrorLabel(t)}
+                </span>
+              ) : bSummary?.dataQuality?.status ? (
+                <BatteryDataQualityBadge status={bSummary.dataQuality.status} />
+              ) : null}
               {lvNoBatteryDetected ? (
                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${'sq-chip-neutral'}`}>Not detected</span>
               ) : lvIsCalibrating ? (
@@ -2084,6 +2103,12 @@ export function HealthErrorsView({
                 </span>
               )}
             </div>
+
+            {batteryLoadError && (
+              <div className="mb-4 rounded-lg border border-border bg-muted/60 px-4 py-3 text-sm text-muted-foreground">
+                {batteryLoadErrorLabel(t)}
+              </div>
+            )}
 
             {/* Current state cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
@@ -2218,7 +2243,12 @@ export function HealthErrorsView({
                 <div className={`rounded-lg px-5 py-4 mb-5 ${bgCol}`}>
                   {/* Geschätzter 12V-Batteriezustand — Verhaltenswert als 3-Balken. */}
                   <div className="flex items-center justify-between mb-2" title={lvEstimatedTooltip}>
-                    <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>{ESTIMATED_LV_HEALTH_SCORE_LABEL_DE}</p>
+                    <div className="flex items-center gap-2">
+                      <p className={`text-[10px] uppercase tracking-wider font-semibold text-muted-foreground`}>{ESTIMATED_LV_HEALTH_SCORE_LABEL_DE}</p>
+                      {lvEstimatedHealth?.dataQualityStatus && (
+                        <BatteryDataQualityBadge status={lvEstimatedHealth.dataQualityStatus} />
+                      )}
+                    </div>
                     <BatteryConditionBars status={lvEstimatedStatus} bars={lvEstimatedBars} size="md" />
                   </div>
                   {/* 12V-Ruhespannung — separate from live voltage and estimated health */}

@@ -41,6 +41,16 @@ import {
   effectiveCrankObservationCountForMaturity,
   presentLegacyCrankFeatures,
 } from './battery-crank-policy';
+import {
+  buildBatteryDataQualitySlices,
+  presentBatteryDataQuality,
+  resolveCrankDataQuality,
+  resolveHvLegacyCapacityDataQuality,
+  resolveHvSohDataQuality,
+  resolveLvEstimatedHealthDataQuality,
+  resolveRestingVoltageDataQuality,
+  type BatteryDataQualityStatus,
+} from './battery-data-quality';
 
 export type BatteryStatus =
   | 'ready'
@@ -521,9 +531,71 @@ export class CanonicalBatteryHealthService {
       .sort((a, b) => +new Date(b.date) - +new Date(a.date))
       .slice(0, 20);
 
+    const lvEstimatedHealthDataQuality = resolveLvEstimatedHealthDataQuality({
+      runtimeStatus: lvStatus,
+      hasScore: lvEstimatedHealthScorePct != null,
+      freshness: lvFreshness,
+      legacyPublicationSafety,
+      isCalibrating: lvIsCalibrating,
+      isStabilizing: lvIsStabilizing,
+    });
+    const lvRestingVoltageDataQuality = resolveRestingVoltageDataQuality({
+      valueV: lvRestingVoltageValue,
+      restingStatus: lvRestingClassification.status,
+      freshness: lvFreshness,
+      runtimeStatus: lvStatus,
+      isCalibrating: lvIsCalibrating,
+    });
+    const lvCrankDataQuality = resolveCrankDataQuality(legacyCrank);
+    const hvSohDataQuality = resolveHvSohDataQuality({
+      isEv,
+      sohSource: hvSohSource,
+      hasSoh: hvHealthPercent != null,
+      freshness: hvFreshness,
+      runtimeStatus: hvStatusLabel,
+      legacyCapacity: hvLegacyCapacity,
+    });
+    const hvLegacyCapacityDataQuality =
+      resolveHvLegacyCapacityDataQuality(hvLegacyCapacity);
+    const dataQualitySlices = buildBatteryDataQualitySlices({
+      lvEstimatedHealth: lvEstimatedHealthDataQuality,
+      lvRestingVoltage: lvRestingVoltageDataQuality,
+      lvCrank: lvCrankDataQuality,
+      hvSoh: hvSohDataQuality,
+      hvLegacyCapacity: hvLegacyCapacityDataQuality,
+      isEv,
+    });
+    const presentQuality = (
+      status: BatteryDataQualityStatus,
+      observedAt?: string | Date | null,
+    ) => presentBatteryDataQuality(status, observedAt);
+
     const summary = {
       vehicleId,
       generatedAt: new Date().toISOString(),
+      dataQuality: {
+        ...presentQuality(dataQualitySlices.aggregate, lvFreshness.observedAt),
+        slices: {
+          lvEstimatedHealth: presentQuality(
+            dataQualitySlices.lvEstimatedHealth,
+            lvFreshness.observedAt,
+          ),
+          lvRestingVoltage: presentQuality(
+            dataQualitySlices.lvRestingVoltage,
+            lvFreshness.observedAt,
+          ),
+          lvCrank: presentQuality(
+            dataQualitySlices.lvCrank,
+            (v2?.crankAt as Date | null | undefined)?.toISOString?.() ??
+              (typeof v2?.crankAt === 'string' ? v2.crankAt : null),
+          ),
+          hvSoh: presentQuality(hvSohDataQuality, hvFreshness.observedAt),
+          hvLegacyCapacity: presentQuality(
+            hvLegacyCapacityDataQuality,
+            hvFreshness.observedAt,
+          ),
+        },
+      },
       support: {
         lv: true,
         hv: isEv,
@@ -553,6 +625,11 @@ export class CanonicalBatteryHealthService {
           calibrationStatus: lvPubState,
           decisionCapable: legacyPublicationSafety.decisionCapable,
           legacyPublicationSafety,
+          dataQualityStatus: lvEstimatedHealthDataQuality,
+          dataQuality: presentQuality(
+            lvEstimatedHealthDataQuality,
+            lvFreshness.observedAt,
+          ),
         },
         legacyPublicationSafety,
         estimatedLvHealthScore: {
@@ -573,6 +650,11 @@ export class CanonicalBatteryHealthService {
           thresholdSource: lvRestingClassification.thresholdSource,
           batteryType: lvRestingClassification.batteryType,
           measurementContext: lvRestingMeasurementContext,
+          dataQualityStatus: lvRestingVoltageDataQuality,
+          dataQuality: presentQuality(
+            lvRestingVoltageDataQuality,
+            lvFreshness.observedAt,
+          ),
         },
         method: lvIsCalibrating
           ? 'model_derived'
@@ -599,7 +681,15 @@ export class CanonicalBatteryHealthService {
           chargingVoltage: parseNum(latestLvSnapshot?.chargingVoltage),
           temperatureC: parseNum(latestLvSnapshot?.temperatureC),
           engineRunning: latestLvSnapshot?.engineRunning ?? null,
-          crank: legacyCrank,
+          crank: {
+            ...legacyCrank,
+            dataQualityStatus: lvCrankDataQuality,
+            dataQuality: presentQuality(
+              lvCrankDataQuality,
+              (v2?.crankAt as Date | null | undefined)?.toISOString?.() ??
+                (typeof v2?.crankAt === 'string' ? v2.crankAt : null),
+            ),
+          },
         },
         calibrationProgress: {
           ...lvCalibrationProgress,
@@ -622,7 +712,16 @@ export class CanonicalBatteryHealthService {
         publicationState:
           (hvStatusAny?.publicationState as SohPublicationState | undefined) ??
           SohPublicationState.INITIAL_CALIBRATION,
-        legacyCapacity: hvLegacyCapacity,
+        dataQualityStatus: hvSohDataQuality,
+        dataQuality: presentQuality(hvSohDataQuality, hvFreshness.observedAt),
+        legacyCapacity: {
+          ...hvLegacyCapacity,
+          dataQualityStatus: hvLegacyCapacityDataQuality,
+          dataQuality: presentQuality(
+            hvLegacyCapacityDataQuality,
+            hvFreshness.observedAt,
+          ),
+        },
         telemetry: {
           socPercent:
             parseNum(latestState?.evSoc) ??

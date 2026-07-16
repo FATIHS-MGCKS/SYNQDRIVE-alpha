@@ -161,6 +161,8 @@ describe('CanonicalBatteryHealthService', () => {
     expect(summary?.hv.healthPercent).toBe(88);
     expect(summary?.hv.evidenceType).toBe('provider_reported');
     expect(summary?.hv.method).toBe('provider_reported_soh');
+    expect(summary?.hv.dataQualityStatus).toBe('VERIFIED');
+    expect(summary?.dataQuality?.status).toBeDefined();
   });
 
   it('does not fall back to legacy pairwise publication SOH when provider value is stale', async () => {

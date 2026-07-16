@@ -14,6 +14,7 @@ export interface VehicleHealthBoxData {
   tires: TireHealthSummaryResponse | null;
   brakes: BrakeHealthSummary | null;
   battery: BatteryHealthSummary | null;
+  batteryLoadError: boolean;
   service: ServiceInfoStatus | null;
   dtcCount: number | null;
   dtcLoadState: DtcLoadState;
@@ -27,6 +28,7 @@ const INITIAL: VehicleHealthBoxData = {
   tires: null,
   brakes: null,
   battery: null,
+  batteryLoadError: false,
   service: null,
   dtcCount: null,
   dtcLoadState: 'idle',
@@ -54,11 +56,14 @@ export function useVehicleHealthBoxData(vehicleId: string | null): VehicleHealth
     }));
 
     (async () => {
-      const [tires, brakes, battery, service, dtcResult, dashboardLights, healthTabSummary] =
+      const [tires, brakes, batteryResult, service, dtcResult, dashboardLights, healthTabSummary] =
         await Promise.all([
           api.vehicleIntelligence.tireHealthSummary(vehicleId).catch(() => null),
           api.vehicleIntelligence.brakeHealthSummary(vehicleId).catch(() => null),
-          api.vehicleIntelligence.batteryHealthSummary(vehicleId).catch(() => null),
+          api.vehicleIntelligence
+            .batteryHealthSummary(vehicleId)
+            .then((battery) => ({ ok: true as const, battery }))
+            .catch(() => ({ ok: false as const, battery: null })),
           api.vehicleIntelligence.serviceInfoStatus(vehicleId).catch(() => null),
           api.vehicleIntelligence
             .dtcActive(vehicleId)
@@ -73,7 +78,8 @@ export function useVehicleHealthBoxData(vehicleId: string | null): VehicleHealth
       setData({
         tires,
         brakes,
-        battery,
+        battery: batteryResult.battery,
+        batteryLoadError: !batteryResult.ok,
         service,
         dtcCount: dtcResult.ok ? dtcResult.count : null,
         dtcLoadState: dtcResult.ok ? 'loaded' : 'error',

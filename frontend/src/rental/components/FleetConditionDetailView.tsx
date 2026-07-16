@@ -17,6 +17,7 @@ import {
   type AiHealthCareResponse,
 } from '../../lib/api';
 import { ESTIMATED_LV_HEALTH_SCORE_LABEL_DE } from '../lib/battery-lv-semantics';
+import { BatteryDataQualityBadge } from './BatteryDataQualityBadge';
 import {
   buildBokraftComplianceDisplay,
   buildNextServiceDisplay,
@@ -763,6 +764,11 @@ function BatteryDetail({ isDark, battery: bat, ...p }: DetailProps & { battery: 
 
   return (
     <>
+      {bat?.dataQuality?.status && (
+        <div className="mb-3">
+          <BatteryDataQualityBadge status={bat.dataQuality.status} short={false} />
+        </div>
+      )}
       {isCalib && (
         <div className={`${p.cardClass} p-5`}>
           <style>{`@keyframes calibDots { 0%,20%{opacity:.2} 50%{opacity:1} 100%{opacity:.2} }`}</style>

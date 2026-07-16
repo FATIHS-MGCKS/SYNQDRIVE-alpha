@@ -37,6 +37,7 @@ import {
   resolveOverviewBatteryVoltage,
   restingVoltageStatusLabel,
 } from '../../lib/battery-display.utils';
+import { batteryDataQualityDetailNoteDe } from '../../lib/battery-data-quality.utils';
 import {
   segmentFromHealthState,
   type SegmentLevel,
@@ -543,6 +544,8 @@ export function buildVehicleHealthBoxViewModel(params: {
 
     const estimatedLabel = estimatedBatteryHealthLabel(battery);
     if (estimatedLabel) parts.push(estimatedLabel);
+    const qualityNote = batteryDataQualityDetailNoteDe(battery?.dataQuality?.status);
+    if (qualityNote) parts.push(qualityNote);
     if (hasStartProblemEvidence) parts.push('Startschwierigkeiten möglich');
 
     return parts.join(' · ');

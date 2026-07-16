@@ -5755,6 +5755,38 @@ export type BatteryRestingVoltageStatus = BatteryHealthStatus | 'UNSUPPORTED';
 export type BatteryAggregateStatus = BatteryHealthStatus | 'UNSUPPORTED';
 export type HvSohSource = 'PROVIDER' | 'CAPACITY_ESTIMATE' | 'DOCUMENT' | 'MANUAL';
 
+export type BatteryDataQualityStatus =
+  | 'VERIFIED'
+  | 'ESTIMATED'
+  | 'PROXY'
+  | 'EXPERIMENTAL'
+  | 'STALE'
+  | 'MISSED'
+  | 'UNAVAILABLE'
+  | 'UNSUPPORTED'
+  | 'LEGACY_UNVERIFIED';
+
+export interface BatteryDataQualityPresentation {
+  status: BatteryDataQualityStatus;
+  labelKey: string;
+  decisionCapable: boolean;
+  observedAt: string | null;
+}
+
+export interface BatteryDataQualitySection {
+  status: BatteryDataQualityStatus;
+  labelKey: string;
+  decisionCapable: boolean;
+  observedAt: string | null;
+  slices: {
+    lvEstimatedHealth: BatteryDataQualityPresentation;
+    lvRestingVoltage: BatteryDataQualityPresentation;
+    lvCrank: BatteryDataQualityPresentation;
+    hvSoh: BatteryDataQualityPresentation;
+    hvLegacyCapacity: BatteryDataQualityPresentation;
+  };
+}
+
 export interface BatteryFreshness {
   observedAt: string | null;
   ageMs: number | null;
@@ -5776,6 +5808,7 @@ export interface LvEstimatedHealthScoreRef {
 // presented as a workshop-verified SOH percentage.
 export interface LvEstimatedHealth {
   status: BatteryHealthStatus;
+  diagnosticStatus?: BatteryHealthStatus;
   scorePct: number | null;
   displayMode: 'BARS';
   bars: 0 | 1 | 2 | 3;
@@ -5783,6 +5816,15 @@ export interface LvEstimatedHealth {
   label: string;
   confidence: string | null;
   calibrationStatus: SohPublicationState | string | null;
+  decisionCapable?: boolean;
+  dataQualityStatus?: BatteryDataQualityStatus;
+  dataQuality?: BatteryDataQualityPresentation;
+  legacyPublicationSafety?: {
+    decisionCapable: boolean;
+    displayMode: 'DECISION_CAPABLE' | 'LEGACY_UNVERIFIED';
+    diagnosticLabelDe: string;
+    reasons: string[];
+  };
 }
 
 // LV resting-voltage state from battery-spec-aware thresholds.
@@ -5792,6 +5834,8 @@ export interface LvRestingVoltage {
   thresholdSource: 'BATTERY_SPEC' | 'DEFAULT' | 'UNSUPPORTED';
   batteryType: string | null;
   measurementContext: string | null;
+  dataQualityStatus?: BatteryDataQualityStatus;
+  dataQuality?: BatteryDataQualityPresentation;
 }
 
 export interface CanonicalLvBatterySection {
@@ -5813,10 +5857,19 @@ export interface CanonicalLvBatterySection {
   publicationState: SohPublicationState;
   telemetry: {
     voltageV: number | null;
+    voltageSource?: string | null;
+    voltageObservedAt?: string | null;
     restingVoltage: number | null;
     crankingVoltage: number | null;
     chargingVoltage: number | null;
     temperatureC: number | null;
+    crank?: {
+      dataQualityStatus?: BatteryDataQualityStatus;
+      dataQuality?: BatteryDataQualityPresentation;
+      displayMode?: 'LEGACY_UNVERIFIED' | 'DECISION_CAPABLE';
+      diagnosticCrankDrop?: number | null;
+      measurementKind?: string;
+    };
   };
   calibrationProgress: BatteryCalibrationProgress;
 }
@@ -5836,6 +5889,16 @@ export interface CanonicalHvBatterySection {
   freshness: BatteryFreshness;
   evidenceType: string | null;
   publicationState: SohPublicationState;
+  dataQualityStatus?: BatteryDataQualityStatus;
+  dataQuality?: BatteryDataQualityPresentation;
+  legacyCapacity?: {
+    displayMode: 'LEGACY_UNVERIFIED' | 'DECISION_CAPABLE';
+    decisionCapable: boolean;
+    diagnosticEstimatedCapacityKwh: number | null;
+    diagnosticSohPercent: number | null;
+    dataQualityStatus?: BatteryDataQualityStatus;
+    dataQuality?: BatteryDataQualityPresentation;
+  };
   telemetry: {
     socPercent: number | null;
     rangeKm: number | null;
@@ -5866,6 +5929,7 @@ export interface BatteryCurrentTelemetrySection {
 export interface BatteryHealthSummary {
   vehicleId: string;
   generatedAt: string;
+  dataQuality?: BatteryDataQualitySection;
   support: {
     lv: boolean;
     hv: boolean;
