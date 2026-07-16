@@ -15,6 +15,7 @@ import {
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DriveProfileResolverService } from '../drive-profile/drive-profile-resolver.service';
+import { LvBatteryChemistryResolverService } from '../lv-battery-chemistry/lv-battery-chemistry-resolver.service';
 import {
   resolveBatteryMeasurementSessionScope,
   type BatteryMeasurementSessionType as BatteryMeasurementSessionTypeDomain,
@@ -52,6 +53,7 @@ export class BatteryMeasurementSessionService {
     private readonly prisma: PrismaService,
     private readonly repository: BatteryMeasurementSessionRepository,
     private readonly driveProfileResolver: DriveProfileResolverService,
+    private readonly lvBatteryChemistryResolver: LvBatteryChemistryResolverService,
   ) {}
 
   async create(
@@ -101,6 +103,11 @@ export class BatteryMeasurementSessionService {
       (await this.driveProfileResolver.resolveForVehicle(command.vehicleId))
         .profile;
 
+    const chemistry =
+      command.chemistry ??
+      (await this.lvBatteryChemistryResolver.resolveForVehicle(command.vehicleId))
+        .chemistry;
+
     return this.repository.createIdempotent({
       organizationId: command.organizationId,
       vehicleId: command.vehicleId,
@@ -108,7 +115,7 @@ export class BatteryMeasurementSessionService {
       type: command.type,
       status: command.status,
       driveProfile,
-      chemistry: command.chemistry,
+      chemistry,
       startedAt: command.startedAt,
       targetAt: command.targetAt,
       endedAt: command.endedAt,

@@ -10,6 +10,7 @@ import {
 import { BatteryMeasurementSessionRepository } from './battery-measurement-session.repository';
 import { BatteryMeasurementSessionService } from './battery-measurement-session.service';
 import { DriveProfileResolverService } from '../drive-profile/drive-profile-resolver.service';
+import { LvBatteryChemistryResolverService } from '../lv-battery-chemistry/lv-battery-chemistry-resolver.service';
 
 const ORG_A = 'org-a';
 const ORG_B = 'org-b';
@@ -203,10 +204,20 @@ describe('BatteryMeasurementSessionService (mocked Prisma)', () => {
       evidence: ['master:fuel_type:DIESEL'],
     })),
   } as unknown as jest.Mocked<Pick<DriveProfileResolverService, 'resolveForVehicle'>>;
+  const lvBatteryChemistryResolver = {
+    resolveForVehicle: jest.fn(async () => ({
+      chemistry: BatteryChemistry.AGM,
+      source: 'BATTERY_SPEC',
+      confidence: 'HIGH',
+      verifiedAt: '2026-07-01T10:00:00.000Z',
+      evidence: ['spec:confirmed_battery_spec'],
+    })),
+  } as unknown as jest.Mocked<Pick<LvBatteryChemistryResolverService, 'resolveForVehicle'>>;
   const service = new BatteryMeasurementSessionService(
     prisma as any,
     repository,
     driveProfileResolver as unknown as DriveProfileResolverService,
+    lvBatteryChemistryResolver as unknown as LvBatteryChemistryResolverService,
   );
 
   beforeEach(() => {
@@ -251,7 +262,29 @@ describe('BatteryMeasurementSessionService (mocked Prisma)', () => {
     expect(second.id).toBe(first.id);
     expect(first.metadata).toEqual({ targetMessarts: ['START_DIP_PROXY'] });
     expect(first.driveProfile).toBe(BatteryDriveProfile.ICE);
+    expect(first.chemistry).toBe(BatteryChemistry.AGM);
     expect(sessions.size).toBe(1);
+  });
+
+  it('auto-resolves chemistry when omitted', async () => {
+    lvBatteryChemistryResolver.resolveForVehicle.mockResolvedValueOnce({
+      chemistry: BatteryChemistry.EFB,
+      source: 'WORKSHOP_DOCUMENT',
+      confidence: 'HIGH',
+      verifiedAt: '2026-06-15T08:00:00.000Z',
+      evidence: ['evidence:workshop_measurement'],
+    });
+
+    const created = await service.create({
+      organizationId: ORG_A,
+      vehicleId: VEHICLE_A,
+      type: BatteryMeasurementSessionType.LV_REST_WINDOW,
+      startedAt: new Date(),
+      idempotencyKey: 'auto-chemistry:1',
+    });
+
+    expect(lvBatteryChemistryResolver.resolveForVehicle).toHaveBeenCalledWith(VEHICLE_A);
+    expect(created.chemistry).toBe(BatteryChemistry.EFB);
   });
 
   it('auto-resolves driveProfile when omitted', async () => {
