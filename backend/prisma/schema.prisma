@@ -1324,6 +1324,7 @@ model Organization {
   vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
   hvChargeSessions                  HvChargeSession[]
   hvCapacityObservations            HvCapacityObservation[]
+  batteryV2JobDeadLetters           BatteryV2JobDeadLetter[]
 
   @@index([status])
   @@map("organizations")
@@ -1754,6 +1755,7 @@ model Vehicle {
   vehicleBatteryReferenceCapacities VehicleBatteryReferenceCapacity[]
   hvChargeSessions                  HvChargeSession[]
   hvCapacityObservations            HvCapacityObservation[]
+  batteryV2JobDeadLetters           BatteryV2JobDeadLetter[]
   brakeEvidence                     BrakeEvidence[]
   brakeTripMetrics                  BrakeTripMetric[]
   brakeHealthCurrent                BrakeHealthCurrent?
@@ -6034,6 +6036,29 @@ model HvCapacityObservation {
   @@index([assessmentId])
   @@index([method, quality])
   @@map("hv_capacity_observations")
+}
+
+/// Battery V2 jobs that exhausted retries — tenant-scoped dead-letter ledger.
+model BatteryV2JobDeadLetter {
+  id             String   @id @default(uuid())
+  organizationId String   @map("organization_id")
+  vehicleId      String   @map("vehicle_id")
+  jobType        String   @map("job_type")
+  idempotencyKey String   @map("idempotency_key")
+  correlationId  String?  @map("correlation_id")
+  errorCode      String   @map("error_code")
+  errorMessage   String?  @map("error_message")
+  attempts       Int      @map("attempts")
+  failedAt       DateTime @default(now()) @map("failed_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([jobType, idempotencyKey], map: "battery_v2_job_dead_letters_job_idempotency")
+  @@index([organizationId, vehicleId])
+  @@index([failedAt(sort: Desc)])
+  @@map("battery_v2_job_dead_letters")
 }
 
 /// Per-vehicle battery feature store for V2 health scoring.
