@@ -1,4 +1,5 @@
 import { useEffectiveHealth, useFleetVehicles } from '../../FleetContext';
+import { useRentalOrg } from '../../RentalContext';
 import { useVehicleLiveMapStore } from '../../stores/useVehicleLiveMapStore';
 import type { VehicleData } from '../../data/vehicles';
 import { VehicleHealthBox } from './VehicleHealthBox';
@@ -18,13 +19,14 @@ export function VehicleHealthBoxWired({
   onViewDetails,
   showDataBasis = true,
 }: VehicleHealthBoxWiredProps) {
+  const { orgId } = useRentalOrg();
   const vehicleId = selectedVehicle?.id ?? null;
   const { health: rentalHealth, loading: rentalHealthLoading } = useEffectiveHealth(vehicleId);
   const { healthError } = useFleetVehicles();
   const lvBatteryVoltage = useVehicleLiveMapStore((state) =>
     state.boundVehicleId === vehicleId ? state.snapshot?.lvBatteryVoltage ?? null : null,
   );
-  const boxData = useVehicleHealthBoxData(vehicleId);
+  const boxData = useVehicleHealthBoxData(vehicleId, orgId);
 
   return (
     <VehicleHealthBox

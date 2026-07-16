@@ -64,7 +64,8 @@ import {
 import { BatteryConditionBars, RestingVoltageBadge } from './BatteryConditionBars';
 import { BatteryDataQualityBadge } from './BatteryDataQualityBadge';
 import { useLanguage } from '../i18n/LanguageContext';
-import { batteryLoadErrorLabel } from '../lib/battery-data-quality.utils';
+import { useHealthTabBatteryData } from '../hooks/useHealthTabBatteryData';
+import { BatteryHealthQueryErrorPanel } from './battery/BatteryHealthQueryErrorPanel';
 import {
   SectionHeader,
   DataCard,
@@ -175,6 +176,21 @@ export function HealthErrorsView({
 }: HealthErrorsViewProps) {
   const isEv = fuelType === 'Electric' || fuelType === 'PHEV';
   const { orgId, userRole } = useRentalOrg();
+  const batteryQueryState = useHealthTabBatteryData({
+    orgId,
+    vehicleId,
+    isEv,
+    enabled: Boolean(vehicleId && orgId),
+  });
+  const {
+    batterySummary,
+    batteryDetail,
+    batteryLatest,
+    hvBatteryStatus,
+    batteryError,
+    batteryLoading,
+    retryBattery,
+  } = batteryQueryState;
   const { t } = useLanguage();
   const { health: rentalHealth, loading: rentalHealthLoading } = useEffectiveHealth(vehicleId ?? null);
   const { reloadHealth } = useFleetVehicles();
@@ -239,10 +255,6 @@ export function HealthErrorsView({
   const [dtcSummary, setDtcSummary] = useState<any>(null);
   const [dtcDetail, setDtcDetail] = useState<any>(null);
   const [dtcDetailLoading, setDtcDetailLoading] = useState(false);
-  const [batteryLatest, setBatteryLatest] = useState<any>(null);
-  const [batterySummary, setBatterySummary] = useState<BatteryHealthSummary | null>(null);
-  const [batteryDetail, setBatteryDetail] = useState<BatteryHealthDetail | null>(null);
-  const [batteryLoadError, setBatteryLoadError] = useState(false);
   const [brakesData, setBrakesData] = useState<any>(null);
   const [brakeHealthSummary, setBrakeHealthSummary] = useState<BrakeHealthSummaryType | null>(null);
   const [brakeHealthDetail, setBrakeHealthDetail] = useState<BrakeHealthDetail | null>(null);
@@ -297,8 +309,6 @@ export function HealthErrorsView({
   const [serviceInfoError, setServiceInfoError] = useState(false);
   const [hmTirePressure, setHmTirePressure] = useState<import('../../lib/api').HmTirePressureSignals | null>(null);
 
-  const [hvBatteryStatus, setHvBatteryStatus] = useState<HvBatteryStatus | null>(null);
-
   useEffect(() => {
     if (!vehicleId) return;
     void loadHealthTabSummary();
@@ -315,69 +325,6 @@ export function HealthErrorsView({
       if (s?.lastChecked) setLastDtcChecked(s.lastChecked);
     }).catch(() => null);
     api.vehicleIntelligence.dtcSummary(vehicleId).then(setDtcSummary).catch(() => null);
-    setBatteryLoadError(false);
-    api.vehicleIntelligence.batteryHealthDetail(vehicleId).then((detail) => {
-      if (!detail) {
-        setBatteryDetail(null);
-        setBatterySummary(null);
-        setBatteryLatest(null);
-        setHvBatteryStatus(null);
-        return;
-      }
-
-      setBatteryDetail(detail);
-      setBatterySummary(detail);
-      setBatteryLatest(detail.currentState ?? null);
-
-      if (detail.support?.hv && isEv) {
-        setHvBatteryStatus({
-          isEv: true,
-          nominalCapacityKwh: detail.hv?.telemetry?.grossCapacityKwh ?? null,
-          currentSocPercent: detail.hv?.telemetry?.socPercent ?? null,
-          estimatedRangeKm: detail.hv?.telemetry?.rangeKm ?? null,
-          sohPercent: detail.hv?.healthPercent ?? null,
-          rawSohPercent: detail.hv?.healthPercent ?? null,
-          publishedSohPercent: detail.hv?.healthPercent ?? null,
-          providerReportedSohPercent: detail.hv?.telemetry?.providerSohPercent ?? null,
-          sohMethod: detail.hv?.method ?? 'estimate_unavailable',
-          sohSourceType: detail.hv?.evidenceType ?? null,
-          publicationState: detail.hv?.publicationState ?? 'INITIAL_CALIBRATION',
-          publicationMethod: detail.hv?.method ?? 'estimate_unavailable',
-          maturityConfidence: detail.hv?.confidence ?? 'none',
-          validEstimateCount: 0,
-          sohInterpretation: detail.hv?.interpretation ?? {
-            label: 'Unknown',
-            color: 'gray',
-            description: 'Insufficient data.',
-          },
-          estimatedCurrentCapacityKwh: null,
-          snapshotCount: detail.hv?.snapshotCount ?? 0,
-          chargingSessions: detail.detail?.hv?.chargingSessions ?? [],
-          recentTrend: detail.detail?.hv?.recentTrend ?? [],
-          lastRecordedAt: detail.hv?.freshness?.observedAt ?? null,
-          telemetry: {
-            temperatureC: detail.hv?.telemetry?.temperatureC ?? null,
-            chargingPowerKw: detail.hv?.telemetry?.chargingPowerKw ?? null,
-            isCharging: detail.hv?.telemetry?.isCharging ?? null,
-            chargingCableConnected: detail.hv?.telemetry?.chargingCableConnected ?? null,
-            currentVoltageV: detail.hv?.telemetry?.currentVoltageV ?? null,
-            currentEnergyKwh: detail.hv?.telemetry?.currentEnergyKwh ?? null,
-            addedEnergyKwh: detail.hv?.telemetry?.addedEnergyKwh ?? null,
-          },
-          providerSohObservedAt: detail.hv?.freshness?.observedAt ?? null,
-          canonical: detail.hv,
-          currentTelemetry: detail.currentTelemetry,
-        });
-      } else {
-        setHvBatteryStatus(null);
-      }
-    }).catch(() => {
-      setBatteryDetail(null);
-      setBatterySummary(null);
-      setBatteryLatest(null);
-      setHvBatteryStatus(null);
-      setBatteryLoadError(true);
-    });
     api.vehicleIntelligence.brakes(vehicleId).then(setBrakesData).catch(() => null);
     api.vehicleIntelligence.brakeHealthSummary(vehicleId).then(setBrakeHealthSummary).catch(() => null);
     api.vehicleIntelligence.brakeHealthDetail(vehicleId).then(setBrakeHealthDetail).catch(() => null);
@@ -400,7 +347,7 @@ export function HealthErrorsView({
     api.vehicles.get(vehicleId).then((v: any) => {
       if (v?.year) setVehicleYear(v.year);
     }).catch(() => null);
-  }, [vehicleId, isEv, loadHealthTabSummary, loadDashboardLights]);
+  }, [vehicleId, loadHealthTabSummary, loadDashboardLights]);
 
   useEffect(() => {
     if (!showBattery || !vehicleId) {
@@ -1834,7 +1781,9 @@ export function HealthErrorsView({
             complaintsModule={rentalHealth?.modules.complaints}
             rentalHealthLoading={rentalHealthLoading}
             onOpenExistingTask={onOpenExistingTask}
-            onHealthRefetch={reloadHealth}
+            onHealthRefetch={async () => {
+              await Promise.all([reloadHealth(), retryBattery()]);
+            }}
             quickCardClass={quickCardClass}
             quickCardHeaderClass={quickCardHeaderClass}
             quickCardTitleClass={quickCardTitleClass}
@@ -2073,9 +2022,9 @@ export function HealthErrorsView({
             {/* Header + condition badge */}
             <div className="flex items-center gap-3 mb-5">
               <h2 className={`text-sm font-semibold tracking-tight text-foreground`}>Battery Health</h2>
-              {batteryLoadError ? (
+              {batteryError ? (
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider sq-chip-critical">
-                  {batteryLoadErrorLabel(t)}
+                  Fehler
                 </span>
               ) : bSummary?.dataQuality?.status ? (
                 <BatteryDataQualityBadge status={bSummary.dataQuality.status} />
@@ -2105,10 +2054,13 @@ export function HealthErrorsView({
               )}
             </div>
 
-            {batteryLoadError && (
-              <div className="mb-4 rounded-lg border border-border bg-muted/60 px-4 py-3 text-sm text-muted-foreground">
-                {batteryLoadErrorLabel(t)}
-              </div>
+            {batteryError && (
+              <BatteryHealthQueryErrorPanel
+                error={batteryError}
+                onRetry={retryBattery}
+                retrying={batteryLoading}
+                className="mb-4"
+              />
             )}
 
             {/* Current state cards */}

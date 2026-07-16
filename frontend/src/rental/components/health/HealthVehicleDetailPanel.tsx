@@ -40,6 +40,8 @@ import { ESTIMATED_LV_HEALTH_SCORE_LABEL_DE } from '../../lib/battery-lv-semanti
 import { DetailSection, HealthModuleCard } from './HealthModuleCard';
 import { HealthServiceActions } from './HealthServiceActions';
 import { SegmentedHealthIndicator } from './SegmentedHealthIndicator';
+import { useRentalOrg } from '../../RentalContext';
+import { BatteryHealthQueryErrorPanel } from '../battery/BatteryHealthQueryErrorPanel';
 import type { HealthActionModule } from '../../lib/health-task-bridge.utils';
 
 export interface HealthVehicleDetailPanelProps {
@@ -100,9 +102,11 @@ export function HealthVehicleDetailPanel({
   onOpenExistingTask,
   className,
 }: HealthVehicleDetailPanelProps) {
+  const { orgId } = useRentalOrg();
   const [activeTab, setActiveTab] = useState<HealthDetailTab>(initialTab);
   const { data, loading, aiLoading, triggerAiAnalysis } = useHealthVehicleDetailData(
     vehicle.id,
+    orgId,
     activeTab,
   );
 
@@ -375,6 +379,13 @@ export function HealthVehicleDetailPanel({
       );
       return (
         <div className="space-y-3">
+        {data.batteryError && (
+          <BatteryHealthQueryErrorPanel
+            error={data.batteryError}
+            onRetry={data.batteryRetry}
+            retrying={data.batteryLoading}
+          />
+        )}
         <HealthModuleCard
           title="Battery"
           icon={Battery}

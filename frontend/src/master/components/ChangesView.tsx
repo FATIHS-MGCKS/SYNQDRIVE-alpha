@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-health-query-cache-v49562-2026-07-17',
+    version: '4.9.562',
+    title: 'V4.9.562 — Battery Health Query Cache (Prompt 62/78)',
+    summary: [
+      'Neues Frontend-Modul `battery-health-query/`: zentrale Query Keys, Shared In-Memory-Cache, Invalidierungsbus.',
+      'Getrennte Live-Freshness (30s, Telemetriepolitik) vs. Health-Freshness (5min); Live-Polling merged nur Telemetry-Slices.',
+      'Gezielte Invalidierung: publication-updated, hv-session-completed, evidence-added, document-confirmed.',
+      'Fehlerzustand + Retry-Button (`BatteryHealthQueryErrorPanel`); Cache-Rollback bei Mutationen.',
+      'Consumer: Health Box, Health Tab/Detail, HealthErrorsView, VehicleInsights, Document Upload.',
+      'loadedTabs blockiert Battery-Refetch nicht mehr dauerhaft; stale Health refetch auf Battery-Tab.',
+    ],
+    reason: 'Prompt 62/78: Frontend-Queries/Cache auf Canonical Battery DTO mit moderater Live-Aktualisierung.',
+    previousBehavior: 'Ad-hoc fetch pro View, keine getrennte Live/Health-Freshness, Fehler oft als null.',
+    details:
+      'battery-health-query/*, useBatteryHealthQuery.ts, useHealthTabBatteryData.ts, useHealthVehicleDetailData.ts, useVehicleHealthBoxData.ts, BatteryHealthQueryErrorPanel.tsx, useDocumentUploadPage.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T20:30:00.000Z',
+  },
+  {
     id: 'battery-consumer-migration-v49561-2026-07-17',
     version: '4.9.561',
     title: 'V4.9.561 — Battery Consumer Migration (Prompt 61/78)',

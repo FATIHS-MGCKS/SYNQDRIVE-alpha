@@ -4995,8 +4995,10 @@ export const api = {
     batteryHealthLatest: (vehicleId: string) => get<any>(`/vehicles/${vehicleId}/battery-health/latest`),
     batteryHealthTrend: (vehicleId: string, days?: number) =>
       get<any[]>(`/vehicles/${vehicleId}/battery-health/trend` + (days ? `?days=${days}` : '')),
-    batteryHealthSummary: (vehicleId: string) => get<BatteryHealthSummary>(`/vehicles/${vehicleId}/battery-health-summary`),
-    batteryHealthDetail: (vehicleId: string) => get<BatteryHealthDetail>(`/vehicles/${vehicleId}/battery-health-detail`),
+    batteryHealthSummary: (vehicleId: string, init?: RequestInit) =>
+      get<BatteryHealthSummary>(`/vehicles/${vehicleId}/battery-health-summary`, init),
+    batteryHealthDetail: (vehicleId: string, init?: RequestInit) =>
+      get<BatteryHealthDetail>(`/vehicles/${vehicleId}/battery-health-detail`, init),
     createServiceEvent: (vehicleId: string, data: CreateVehicleServiceEventInput) =>
       post<VehicleServiceEventRecord>(`/vehicles/${vehicleId}/service-events`, data),
     updateServiceEvent: (vehicleId: string, eventId: string, data: UpdateVehicleServiceEventInput) =>

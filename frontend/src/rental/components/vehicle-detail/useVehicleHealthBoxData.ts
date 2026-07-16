@@ -1,20 +1,23 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../../lib/api';
 import type {
-  BatteryHealthSummary,
   BrakeHealthSummary,
   DashboardWarningLightsResponse,
   ServiceInfoStatus,
   TireHealthSummaryResponse,
   VehicleHealthTabSummaryDto,
 } from '../../../lib/api';
+import { useBatteryHealthQuery } from '../../lib/battery-health-query';
 import type { DtcLoadState } from './vehicle-health-box.mapper';
 
 export interface VehicleHealthBoxData {
   tires: TireHealthSummaryResponse | null;
   brakes: BrakeHealthSummary | null;
-  battery: BatteryHealthSummary | null;
-  batteryLoadError: boolean;
+  battery: ReturnType<typeof useBatteryHealthQuery<'summary'>>['data'];
+  batteryError: string | null;
+  batteryRetry: () => Promise<void>;
+  batteryLoading: boolean;
+  batteryIsLiveStale: boolean;
   service: ServiceInfoStatus | null;
   dtcCount: number | null;
   dtcLoadState: DtcLoadState;
@@ -24,31 +27,39 @@ export interface VehicleHealthBoxData {
   detailLoading: boolean;
 }
 
-const INITIAL: VehicleHealthBoxData = {
-  tires: null,
-  brakes: null,
-  battery: null,
-  batteryLoadError: false,
-  service: null,
-  dtcCount: null,
-  dtcLoadState: 'idle',
-  dashboardLights: null,
+const INITIAL_OMIT_BATTERY = {
+  tires: null as TireHealthSummaryResponse | null,
+  brakes: null as BrakeHealthSummary | null,
+  service: null as ServiceInfoStatus | null,
+  dtcCount: null as number | null,
+  dtcLoadState: 'idle' as DtcLoadState,
+  dashboardLights: null as DashboardWarningLightsResponse | null,
   dashboardLightsLoading: false,
-  healthTabSummary: null,
+  healthTabSummary: null as VehicleHealthTabSummaryDto | null,
   detailLoading: false,
 };
 
-export function useVehicleHealthBoxData(vehicleId: string | null): VehicleHealthBoxData {
-  const [data, setData] = useState<VehicleHealthBoxData>(INITIAL);
+export function useVehicleHealthBoxData(
+  vehicleId: string | null,
+  orgId: string | null | undefined,
+): VehicleHealthBoxData {
+  const batteryQuery = useBatteryHealthQuery({
+    orgId,
+    vehicleId,
+    variant: 'summary',
+    livePolling: Boolean(vehicleId && orgId),
+  });
+
+  const [rest, setRest] = useState(INITIAL_OMIT_BATTERY);
 
   useEffect(() => {
     if (!vehicleId) {
-      setData(INITIAL);
+      setRest(INITIAL_OMIT_BATTERY);
       return;
     }
 
     let cancelled = false;
-    setData((prev) => ({
+    setRest((prev) => ({
       ...prev,
       dtcLoadState: 'loading',
       dashboardLightsLoading: true,
@@ -56,14 +67,10 @@ export function useVehicleHealthBoxData(vehicleId: string | null): VehicleHealth
     }));
 
     (async () => {
-      const [tires, brakes, batteryResult, service, dtcResult, dashboardLights, healthTabSummary] =
+      const [tires, brakes, service, dtcResult, dashboardLights, healthTabSummary] =
         await Promise.all([
           api.vehicleIntelligence.tireHealthSummary(vehicleId).catch(() => null),
           api.vehicleIntelligence.brakeHealthSummary(vehicleId).catch(() => null),
-          api.vehicleIntelligence
-            .batteryHealthSummary(vehicleId)
-            .then((battery) => ({ ok: true as const, battery }))
-            .catch(() => ({ ok: false as const, battery: null })),
           api.vehicleIntelligence.serviceInfoStatus(vehicleId).catch(() => null),
           api.vehicleIntelligence
             .dtcActive(vehicleId)
@@ -75,11 +82,9 @@ export function useVehicleHealthBoxData(vehicleId: string | null): VehicleHealth
 
       if (cancelled) return;
 
-      setData({
+      setRest({
         tires,
         brakes,
-        battery: batteryResult.battery,
-        batteryLoadError: !batteryResult.ok,
         service,
         dtcCount: dtcResult.ok ? dtcResult.count : null,
         dtcLoadState: dtcResult.ok ? 'loaded' : 'error',
@@ -95,5 +100,12 @@ export function useVehicleHealthBoxData(vehicleId: string | null): VehicleHealth
     };
   }, [vehicleId]);
 
-  return data;
+  return {
+    ...rest,
+    battery: batteryQuery.data,
+    batteryError: batteryQuery.error,
+    batteryRetry: batteryQuery.retry,
+    batteryLoading: batteryQuery.loading,
+    batteryIsLiveStale: batteryQuery.isLiveStale,
+  };
 }
