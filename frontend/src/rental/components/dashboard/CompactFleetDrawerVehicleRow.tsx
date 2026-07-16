@@ -10,6 +10,7 @@ import { DrawerRowActionButton } from './dashboardDrawerRowActions';
 import { drawerRowActionStackClassName } from './dashboardDrawerRowLines';
 import type { DashboardSliceRow, VehicleRuntimeState } from './runtime';
 import { selectIsCurrentlyAvailable } from '../../lib/vehicle-operational-state';
+import { VehicleOperationalStatusInlineHint } from '../fleet/VehicleOperationalStatusCallout';
 
 function reasonChipClass(tone: StatusTone): string {
   if (tone === 'critical') {
@@ -168,6 +169,11 @@ export function CompactFleetDrawerVehicleRow({
               <Icon name="calendar" className="h-3 w-3 shrink-0 text-muted-foreground/70" />
               <span className="truncate">{bookingSupplement.short}</span>
             </div>
+          ) : fleetDisplay?.statusBadge.showUnreliableCallout ? (
+            <VehicleOperationalStatusInlineHint
+              statusBadge={fleetDisplay.statusBadge}
+              className="text-[10px]"
+            />
           ) : fleetDisplay?.statusBadge.dataQualityHint ? (
             <p
               className="truncate text-[10px] text-muted-foreground"

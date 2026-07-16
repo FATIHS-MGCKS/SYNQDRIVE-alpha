@@ -167,7 +167,7 @@ function readPersistedSettingsView(): boolean {
 
 function RentalAppContent() {
   const { orgId, hasPermission } = useRentalOrg();
-  const { fleetVehicles, loading: fleetLoading } = useFleetVehicles();
+  const { fleetVehicles, loading: fleetLoading, refresh: refreshFleetVehicles } = useFleetVehicles();
 
   useEffect(() => {
     if (!orgId) return;
@@ -689,6 +689,9 @@ function RentalAppContent() {
             onVehicleStatusChange={handleVehicleStatusChange}
             onCleaningStatusChange={handleCleaningStatusChange}
             onBack={handleBackToFleet}
+            onRefreshOperationalStatus={() => {
+              void refreshFleetVehicles();
+            }}
           />
         )}
 

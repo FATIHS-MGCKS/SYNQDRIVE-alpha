@@ -7,6 +7,8 @@ import type { VehicleData } from '../../data/vehicles';
 import { useEffectiveHealth } from '../../FleetContext';
 import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { useRentalOrg } from '../../RentalContext';
+import { VehicleOperationalStatusCallout } from '../fleet/VehicleOperationalStatusCallout';
 import {
   VehicleConnectionBadge,
   VehicleHealthChip,
@@ -26,6 +28,7 @@ export interface VehicleDetailHeaderProps {
   onVehicleStatusChange: (status: VehicleOperationalUiStatus) => void;
   onCleaningStatusChange: (status: VehicleCleaningUiStatus) => void;
   onBack: () => void;
+  onRefreshOperationalStatus?: () => void;
 }
 
 function MetaItem({ icon, children }: { icon: ReactNode; children: ReactNode }) {
@@ -47,7 +50,14 @@ function readinessChipFromDisplay(
   vehicle: VehicleData,
   rentalHealth: ReturnType<typeof useEffectiveHealth>['health'],
   locale: string,
-): { label: string; tone: StatusTone; icon: ReactNode; supplement: string | null; supplementDetail: string | null } {
+): {
+  label: string;
+  tone: StatusTone;
+  icon: ReactNode;
+  supplement: string | null;
+  supplementDetail: string | null;
+  statusBadge: ReturnType<typeof resolveFleetVehicleDisplayState>['statusBadge'];
+} {
   if (vehicleStatus === 'Manual Block') {
     return {
       label: 'Manual Block',
@@ -55,6 +65,7 @@ function readinessChipFromDisplay(
       icon: <Icon name="x-circle" className="h-3 w-3" />,
       supplement: null,
       supplementDetail: null,
+      statusBadge: resolveFleetVehicleDisplayState(vehicle, { rentalHealth, locale }).statusBadge,
     };
   }
   if (vehicleStatus === 'Maintenance') {
@@ -64,6 +75,7 @@ function readinessChipFromDisplay(
       icon: <Icon name="wrench" className="h-3 w-3" />,
       supplement: null,
       supplementDetail: null,
+      statusBadge: resolveFleetVehicleDisplayState(vehicle, { rentalHealth, locale }).statusBadge,
     };
   }
 
@@ -87,8 +99,15 @@ function readinessChipFromDisplay(
       ) : (
         <Icon name="alert-triangle" className="h-3 w-3" />
       ),
-    supplement: bookingSupplement?.short ?? statusBadge.dataQualityHint,
-    supplementDetail: bookingSupplement?.detail ?? statusBadge.dataQualityHint,
+    supplement:
+      statusBadge.unreliableExplanation ??
+      bookingSupplement?.short ??
+      statusBadge.dataQualityHint,
+    supplementDetail:
+      statusBadge.unreliableExplanation ??
+      bookingSupplement?.detail ??
+      statusBadge.dataQualityHint,
+    statusBadge,
   };
 }
 
@@ -103,9 +122,11 @@ export function VehicleDetailHeader({
   onVehicleStatusChange,
   onCleaningStatusChange,
   onBack,
+  onRefreshOperationalStatus,
 }: VehicleDetailHeaderProps) {
   const isDarkMode = useDocumentDark();
   const { locale } = useLanguage();
+  const { userRole, hasPermission } = useRentalOrg();
   const { health: rentalHealth } = useEffectiveHealth(vehicle.id ?? null);
   const readinessChip = readinessChipFromDisplay(vehicleStatus, vehicle, rentalHealth, locale);
   const title = `${vehicle.make ?? ''} ${vehicle.model} ${vehicle.year}`.trim();
@@ -254,13 +275,24 @@ export function VehicleDetailHeader({
               </div>
               </div>
 
-              {readinessChip.supplement ? (
+              {readinessChip.supplement && !readinessChip.statusBadge.showUnreliableCallout ? (
                 <p
                   className="max-w-full truncate text-[10.5px] text-muted-foreground sm:max-w-[min(100%,420px)]"
                   title={readinessChip.supplementDetail ?? readinessChip.supplement}
                 >
                   {readinessChip.supplement}
                 </p>
+              ) : null}
+
+              {readinessChip.statusBadge.showUnreliableCallout ? (
+                <VehicleOperationalStatusCallout
+                  vehicle={vehicle}
+                  statusBadge={readinessChip.statusBadge}
+                  locale={locale}
+                  access={{ userRole, hasPermission }}
+                  onRefresh={onRefreshOperationalStatus}
+                  className="w-full max-w-[min(100%,420px)]"
+                />
               ) : null}
             </div>
           </div>

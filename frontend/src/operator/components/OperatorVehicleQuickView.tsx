@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { PriorityBadge, SkeletonRows, StatusChip } from '../../components/patterns';
 import { formatDamageType } from '../../rental/lib/damage.types';
+import { resolveFleetVehicleDisplayState } from '../../rental/lib/fleetVehicleDisplay';
+import { VehicleOperationalStatusCallout } from '../../rental/components/fleet/VehicleOperationalStatusCallout';
 import { useOperatorHandover } from '../handover/OperatorHandoverProvider';
 import { useOperatorDamageCapture } from '../damages/OperatorDamageCaptureProvider';
 import { useOperatorVehicleQuickViewData } from '../hooks/useOperatorVehicleQuickViewData';
@@ -68,6 +70,10 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
 
   const vehicle = data.vehicle;
   const label = [vehicle.model, vehicle.license].filter(Boolean).join(' · ');
+  const fleetDisplay = resolveFleetVehicleDisplayState(vehicle, {
+    rentalHealth: data.health,
+    locale: 'de',
+  });
   const snapshot = data.statusSnapshot;
   const pickupItem = data.toPickupHandoverItem();
   const returnItem = data.toReturnHandoverItem();
@@ -123,11 +129,25 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
                 {snapshot.primaryLabel}
               </StatusChip>
             )}
-            <StatusChip tone="info">{vehicle.status}</StatusChip>
+            <StatusChip tone={fleetDisplay.statusBadge.tone}>
+              {fleetDisplay.statusBadge.label}
+            </StatusChip>
             {vehicle.cleaningStatus === 'Needs Cleaning' && (
               <StatusChip tone="watch">Reinigung offen</StatusChip>
             )}
           </div>
+
+          {fleetDisplay.statusBadge.showUnreliableCallout ? (
+            <div className="mt-3">
+              <VehicleOperationalStatusCallout
+                vehicle={vehicle}
+                statusBadge={fleetDisplay.statusBadge}
+                locale="de"
+                onRefresh={() => void data.reloadDetails()}
+                compact
+              />
+            </div>
+          ) : null}
 
           <div className="mt-4 rounded-2xl border border-border/60 bg-background/70 px-4 py-3">
             <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -136,6 +156,10 @@ export function OperatorVehicleQuickView({ vehicleId, onClose }: OperatorVehicle
             <div className="mt-1 flex items-baseline gap-2">
               {data.healthLoading ? (
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              ) : fleetDisplay.statusBadge.showUnreliableCallout ? (
+                <span className="text-sm font-semibold text-muted-foreground">
+                  {snapshot?.releaseLabel ?? 'Status nicht verfügbar'}
+                </span>
               ) : (
                 <>
                   <span

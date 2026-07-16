@@ -4,6 +4,11 @@ import type { VehicleData } from '../../rental/data/vehicles';
 import { derivePickupGate, deriveReturnGate } from './operatorData';
 import type { TodayBookingApiRow } from '../../rental/components/dashboard/dashboardTypes';
 import { VEHICLE_OPERATIONAL_STATUS } from '../../rental/lib/vehicle-operational-state';
+import {
+  isOperationalStatusUnreliable,
+  resolveUnreliableOperationalStatusDisplay,
+} from '../../rental/lib/vehicle-operational-unknown-display';
+import { selectOperationalStatus } from '../../rental/lib/vehicle-operational-state';
 
 export type OperatorVehicleFilter =
   | 'all'
@@ -118,6 +123,21 @@ export function deriveOperatorVehicleStatusSnapshot(
   healthKnown: boolean,
 ): OperatorVehicleStatusSnapshot {
   const contradictions = healthKnown ? detectOperatorStatusContradictions(vehicle, health) : [];
+  const unreliable = isOperationalStatusUnreliable(vehicle);
+  const unreliableDisplay = resolveUnreliableOperationalStatusDisplay(vehicle, { locale: 'de' });
+
+  if (unreliable) {
+    return {
+      primaryStatus: 'review_required',
+      primaryLabel: unreliableDisplay?.badgeLabel ?? PRIMARY_STATUS_LABELS.review_required,
+      primaryTone: 'neutral',
+      releaseDecision: 'unavailable',
+      releaseLabel: RELEASE_LABELS.unavailable,
+      releaseTone: 'neutral',
+      contradictions,
+      healthAvailable: healthKnown,
+    };
+  }
 
   if (!healthKnown) {
     return {
@@ -158,7 +178,9 @@ export function deriveOperatorVehicleStatusSnapshot(
     };
   }
 
-  if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) {
+  const operationalStatus = selectOperationalStatus(vehicle);
+
+  if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE) {
     const outOfService = vehicle.maintenanceReasonCode === 'OPERATIONAL_BLOCK';
     return {
       primaryStatus: outOfService ? 'out_of_service' : 'in_service',
@@ -172,20 +194,28 @@ export function deriveOperatorVehicleStatusSnapshot(
     };
   }
 
-  if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED || vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED) {
+  if (
+    operationalStatus === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED ||
+    operationalStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED
+  ) {
     return {
       primaryStatus: 'rented',
       primaryLabel: PRIMARY_STATUS_LABELS.rented,
       primaryTone: 'info',
-      releaseDecision: vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED ? 'review' : 'no',
-      releaseLabel: vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED ? RELEASE_LABELS.review : RELEASE_LABELS.no,
-      releaseTone: vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED ? 'watch' : 'info',
+      releaseDecision:
+        operationalStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED ? 'review' : 'no',
+      releaseLabel:
+        operationalStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED
+          ? RELEASE_LABELS.review
+          : RELEASE_LABELS.no,
+      releaseTone:
+        operationalStatus === VEHICLE_OPERATIONAL_STATUS.RESERVED ? 'watch' : 'info',
       contradictions,
       healthAvailable: true,
     };
   }
 
-  if (vehicle.status === VEHICLE_OPERATIONAL_STATUS.AVAILABLE) {
+  if (operationalStatus === VEHICLE_OPERATIONAL_STATUS.AVAILABLE) {
     return {
       primaryStatus: 'ready',
       primaryLabel: PRIMARY_STATUS_LABELS.ready,
@@ -220,15 +250,22 @@ export function vehicleMatchesOperatorFilter(
   if (filter === 'all') return true;
   if (filter === 'blocked') return Boolean(health?.rental_blocked);
   if (filter === 'rented') {
-    return vehicle.status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED || vehicle.status === VEHICLE_OPERATIONAL_STATUS.RESERVED;
+    const status = selectOperationalStatus(vehicle);
+    return (
+      status === VEHICLE_OPERATIONAL_STATUS.ACTIVE_RENTED ||
+      status === VEHICLE_OPERATIONAL_STATUS.RESERVED
+    );
   }
-  if (filter === 'service') return vehicle.status === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE;
+  if (filter === 'service') {
+    return selectOperationalStatus(vehicle) === VEHICLE_OPERATIONAL_STATUS.MAINTENANCE;
+  }
   if (filter === 'open_work') {
     return openTaskCount > 0 || vehicle.cleaningStatus === 'Needs Cleaning';
   }
   if (filter === 'ready') {
     if (!healthKnown || health?.rental_blocked) return false;
-    if (vehicle.status !== VEHICLE_OPERATIONAL_STATUS.AVAILABLE) return false;
+    if (isOperationalStatusUnreliable(vehicle)) return false;
+    if (selectOperationalStatus(vehicle) !== VEHICLE_OPERATIONAL_STATUS.AVAILABLE) return false;
     if (vehicle.cleaningStatus !== 'Clean') return false;
     return detectOperatorStatusContradictions(vehicle, health).length === 0;
   }

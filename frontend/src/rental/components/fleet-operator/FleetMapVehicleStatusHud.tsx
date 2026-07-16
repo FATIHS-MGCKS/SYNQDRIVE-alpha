@@ -2,17 +2,23 @@ import { LiquidGlassLens } from '../../../components/surface';
 import { StatusChip } from '../../../components/patterns';
 import type { FleetVehicleContext } from '../../lib/fleet-operator-panel';
 import { resolveFleetVehicleDisplayState } from '../../lib/fleetVehicleDisplay';
+import {
+  VehicleOperationalStatusInlineHint,
+} from '../fleet/VehicleOperationalStatusCallout';
+import { resolveUnreliableOperationalStatusDisplay } from '../../lib/vehicle-operational-unknown-display';
 
 export interface FleetMapVehicleStatusHudProps {
   ctx: FleetVehicleContext | null;
   locale?: string;
   timeZone?: string;
+  onRefresh?: () => void;
 }
 
 export function FleetMapVehicleStatusHud({
   ctx,
   locale = 'de',
   timeZone,
+  onRefresh,
 }: FleetMapVehicleStatusHudProps) {
   if (!ctx) return null;
 
@@ -26,9 +32,13 @@ export function FleetMapVehicleStatusHud({
 
   const { statusBadge, bookingSupplement } = display;
   const supplementText =
-    bookingSupplement?.short ?? statusBadge.dataQualityHint ?? null;
+    bookingSupplement?.short ??
+    (statusBadge.showUnreliableCallout ? null : statusBadge.dataQualityHint);
   const supplementTitle =
-    bookingSupplement?.detail ?? statusBadge.dataQualityHint ?? undefined;
+    bookingSupplement?.detail ??
+    statusBadge.unreliableExplanation ??
+    statusBadge.dataQualityHint ??
+    undefined;
 
   return (
     <div className="pointer-events-none absolute bottom-11 left-1/2 z-10 w-[min(100%-2rem,320px)] -translate-x-1/2 sm:bottom-12">
@@ -46,12 +56,32 @@ export function FleetMapVehicleStatusHud({
             <StatusChip
               tone={statusBadge.tone}
               className="shrink-0 px-1.5 py-0.5 text-[9.5px] font-semibold"
-              title={bookingSupplement?.detail ?? statusBadge.dataQualityHint ?? statusBadge.label}
+              title={
+                bookingSupplement?.detail ??
+                statusBadge.unreliableExplanation ??
+                statusBadge.dataQualityHint ??
+                statusBadge.label
+              }
             >
               {statusBadge.label}
             </StatusChip>
           </div>
-          {supplementText ? (
+          {statusBadge.showUnreliableCallout ? (
+            <div className="mt-1 space-y-1">
+              <VehicleOperationalStatusInlineHint statusBadge={statusBadge} />
+              {onRefresh ? (
+                <button
+                  type="button"
+                  onClick={onRefresh}
+                  className="sq-press text-[10px] font-medium text-foreground underline-offset-2 hover:underline"
+                >
+                  {resolveUnreliableOperationalStatusDisplay(ctx.vehicle, {
+                    locale: locale === 'en' ? 'en' : 'de',
+                  })?.refreshLabel ?? 'Refresh'}
+                </button>
+              ) : null}
+            </div>
+          ) : supplementText ? (
             <p
               className="mt-1 truncate text-[10px] text-muted-foreground"
               title={supplementTitle}

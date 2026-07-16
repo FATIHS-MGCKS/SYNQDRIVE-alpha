@@ -392,7 +392,11 @@ export function FleetView({ onVehicleSelect, embedded = false }: FleetViewProps)
             onLocateSelected={() => setFocusNonce((n) => n + 1)}
             onToggleStations={() => setShowStationsOnMap((v) => !v)}
           />
-          <FleetMapVehicleStatusHud ctx={mapHudContext} locale="de" />
+          <FleetMapVehicleStatusHud
+            ctx={mapHudContext}
+            locale="de"
+            onRefresh={handleRefreshNow}
+          />
           {filteredVehicles.length === 0 && !loading && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[5]">
               <div className="sq-map-liquid-empty px-5 py-4 rounded-2xl max-w-[280px] text-center">

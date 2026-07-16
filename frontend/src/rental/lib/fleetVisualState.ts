@@ -359,6 +359,9 @@ export function deriveFleetVisualState(
   const requireLocation = options.requireLocation === true;
   const hasLocation = vehicleHasFleetLocation(vehicle);
   const rentalStatus = deriveRentalStatus(vehicle);
+  const operationalUnknown =
+    rentalStatus === 'unknown' ||
+    selectOperationalStatus(vehicle) === VEHICLE_OPERATIONAL_STATUS.UNKNOWN;
   const rentalBlocked = hasExplicitRentalBlocker(rentalHealth);
   const healthCritical = isHealthCritical(vehicle, rentalHealth);
   const healthWarning = isHealthWarning(vehicle, rentalHealth);
@@ -376,7 +379,9 @@ export function deriveFleetVisualState(
   const isStale = isSignalDelayed(vehicle, isOffline);
 
   let visualStatus: FleetVisualStatus;
-  if (isBlocked) {
+  if (operationalUnknown) {
+    visualStatus = 'unknown';
+  } else if (isBlocked) {
     visualStatus = 'blocked';
   } else if (isMaintenance || maintenanceCritical) {
     visualStatus = 'maintenance';
@@ -413,13 +418,17 @@ export function deriveFleetVisualState(
     vehicle.maintenanceUrgency === 'planned'
   ) {
     attentionLevel = 'warning';
+  } else if (operationalUnknown) {
+    attentionLevel = 'info';
   } else if (isStale || rentalStatus === 'reserved') {
     // Soft-offline / signal delayed is only a low-priority (info) hint.
     attentionLevel = 'info';
   }
 
   let readiness: FleetReadiness;
-  if (isBlocked) {
+  if (operationalUnknown) {
+    readiness = 'unknown';
+  } else if (isBlocked) {
     readiness = 'blocked';
   } else if (isOffline) {
     readiness = 'offline';

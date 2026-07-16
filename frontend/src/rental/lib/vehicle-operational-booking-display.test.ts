@@ -109,8 +109,10 @@ describe('resolveOperationalStatusBadge', () => {
     );
     expect(badge.tone).toBe('neutral');
     expect(badge.isUnknown).toBe(true);
-    expect(badge.dataQualityHint).toMatch(/nicht belastbar/i);
-    expect(badge.label).not.toMatch(/verfügbar|available/i);
+    expect(badge.showUnreliableCallout).toBe(true);
+    expect(badge.label).toBe('Status nicht verfügbar');
+    expect(badge.dataQualityHint).toMatch(/Buchungszustand/i);
+    expect(badge.label).not.toMatch(/verfügbar.*available/i);
   });
 
   it('does not show green Available tone for unreliable AVAILABLE status', () => {
@@ -132,7 +134,32 @@ describe('resolveOperationalStatusBadge', () => {
       { locale: 'en' },
     );
     expect(badge.status).toBe(VEHICLE_OPERATIONAL_STATUS.UNKNOWN);
-    expect(badge.tone).toBe('neutral');
+    expect(badge.tone).not.toBe('success');
+    expect(badge.showUnreliableCallout).toBe(true);
+  });
+
+  it('suppresses booking supplement when status is unreliable', () => {
+    const supplement = resolveBookingSupplement(
+      vehicle({
+        status: VEHICLE_OPERATIONAL_STATUS.UNKNOWN,
+        bookingContext: {
+          activeBooking: null,
+          reservedBooking: null,
+          nextBooking: {
+            bookingId: 'bk-next',
+            customerName: 'Future',
+            pickupAt: '2026-09-01T08:00:00.000Z',
+            returnAt: '2026-09-05T10:00:00.000Z',
+            pickupStationName: null,
+            returnStationName: null,
+            isOverdue: false,
+          },
+          futureBookingCount: 1,
+        },
+      }),
+      { locale: 'de' },
+    );
+    expect(supplement).toBeNull();
   });
 });
 
