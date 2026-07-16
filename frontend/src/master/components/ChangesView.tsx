@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-readiness-policy-v49565-2026-07-17',
+    version: '4.9.565',
+    title: 'V4.9.565 — Battery Readiness Policy (Prompt 65/78)',
+    summary: [
+      'Verbindliche `BatteryReadinessPolicy` für Rental Readiness — keine zweite Blocking Engine.',
+      'Ungewöhnlicher Livewert → Hinweis; Start-Proxy/REST/HV-Shadow → kein Block.',
+      'Fehlende Daten → UNKNOWN; stabile qualifizierte LV-Kritik → Not Ready.',
+      'Warnleuchte + sicherheitsrelevanter Battery-DTC → Not Ready; Werkstattdefekt → Hard Block.',
+      'Provider-SOH allein nur unter 70 % mit medium+ Confidence und Freshness.',
+      'Integration: `RentalHealthService.collectBlockingReasons`, `mapRentalBatteryModule`.',
+      'Flag: `BATTERY_V2_READINESS_ENABLED` (default OFF). Tests pro Evidenzstärke + Konflikte.',
+    ],
+    reason: 'Prompt 65/78: zentrale Battery-Readiness-Policy über Runtime-State-Zentralisierung.',
+    previousBehavior: 'Battery blockierte Vermietung nie — nur Modul-Ampel ohne Readiness-Gate.',
+    details:
+      'backend/.../battery-readiness.policy.ts, rental-health.service.ts, battery-health-v2.config.ts, docs/architecture/battery-readiness-policy.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T00:00:00.000Z',
+  },
+  {
     id: 'battery-evidence-strength-policy-v49564-2026-07-17',
     version: '4.9.564',
     title: 'V4.9.564 — Battery Evidence Strength Policy (Prompt 64/78)',

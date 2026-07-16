@@ -672,6 +672,8 @@ Backup-Tabellen vor jeder Migration.
 
 ### 9.4 Rental Readiness-Vertrag
 
+> **V4.9.565 (Prompt 65/78):** Implementierung in `battery-readiness.policy.ts`, aktiviert via `BATTERY_V2_READINESS_ENABLED`. Siehe [`battery-readiness-policy.md`](./battery-readiness-policy.md).
+
 | Evidenz | `battery.state` | `rental_blocked` |
 |---------|-----------------|------------------|
 | Keine LV-Daten | `unknown` / `n_a` | **false** |

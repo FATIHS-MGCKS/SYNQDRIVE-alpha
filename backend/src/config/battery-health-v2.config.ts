@@ -47,6 +47,9 @@ export const BATTERY_V2_HV_CAPACITY_SHADOW_ENABLED_ENV =
 export const BATTERY_V2_HV_SOH_PUBLICATION_ENABLED_ENV =
   'BATTERY_V2_HV_SOH_PUBLICATION_ENABLED';
 
+/** Prompt 65 flag — binding battery rental readiness policy (default OFF). */
+export const BATTERY_V2_READINESS_ENABLED_ENV = 'BATTERY_V2_READINESS_ENABLED';
+
 /** DIMO crank query uses 5 s aggregation — no sub-second precision claims. */
 export const BATTERY_CRANK_SIGNAL_CADENCE_MS = 5_000;
 
@@ -164,6 +167,10 @@ export function isBatteryV2HvSohPublicationEnabled(): boolean {
   return parseBooleanEnv(process.env[BATTERY_V2_HV_SOH_PUBLICATION_ENABLED_ENV], false);
 }
 
+export function isBatteryV2ReadinessEnabled(): boolean {
+  return parseBooleanEnv(process.env[BATTERY_V2_READINESS_ENABLED_ENV], false);
+}
+
 /** Delay before REST_60M target evaluation after rest window anchor. */
 export const BATTERY_REST_60M_MS_ENV = 'BATTERY_REST_60M_MS';
 
@@ -242,4 +249,5 @@ export default registerAs('batteryHealthV2', () => ({
   hvFallbackChargeSessionEnabled: isBatteryV2HvFallbackChargeSessionEnabled(),
   hvCapacityShadowEnabled: isBatteryV2HvCapacityShadowEnabled(),
   hvSohPublicationEnabled: isBatteryV2HvSohPublicationEnabled(),
+  readinessEnabled: isBatteryV2ReadinessEnabled(),
 }));

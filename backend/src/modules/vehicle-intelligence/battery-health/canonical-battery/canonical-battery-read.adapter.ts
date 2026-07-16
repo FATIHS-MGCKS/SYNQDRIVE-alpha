@@ -1,6 +1,10 @@
 import type { ModuleHealth } from '../../../rental-health/rental-health.types';
 import type { CanonicalBatteryHealthService } from '../canonical-battery-health.service';
 import {
+  mergeBatteryReadinessHint,
+  type BatteryReadinessEvaluation,
+} from '../battery-readiness.policy';
+import {
   isAlertableStatus,
   type BatteryHealthStatus,
   type LvAggregateStatus,
@@ -15,6 +19,7 @@ export type CanonicalBatteryHealthSummary = NonNullable<
 export interface RentalBatteryEvaluationInput {
   summary: CanonicalBatteryHealthSummary | null;
   warningLightActive?: boolean;
+  readiness?: BatteryReadinessEvaluation | null;
 }
 
 export interface HealthSummaryBatteryModule {
@@ -119,11 +124,11 @@ export function requireCanonicalBattery(
 export function mapRentalBatteryModule(
   input: RentalBatteryEvaluationInput,
 ): ModuleHealth {
-  const { summary, warningLightActive = false } = input;
+  const { summary, warningLightActive = false, readiness = null } = input;
   if (!summary) {
     return {
       state: 'unknown',
-      reason: 'Keine Batterie-Daten verfügbar',
+      reason: readiness?.reason ?? 'Keine Batterie-Daten verfügbar',
       last_updated_at: null,
       data_stale: true,
       source: 'canonical_battery',
@@ -189,6 +194,21 @@ export function mapRentalBatteryModule(
   if (warningLightActive) {
     state = maxSeverity(state, 'warning');
     reason = 'Batterie-Warnleuchte aktiv';
+  }
+
+  if (readiness) {
+    if (readiness.effect === 'UNKNOWN' && !readiness.blocksRental) {
+      state = 'unknown';
+      reason = readiness.reason ?? reason;
+    } else if (readiness.effect === 'HINT' || readiness.effect === 'DIAGNOSTIC') {
+      reason = mergeBatteryReadinessHint(reason, readiness);
+      if (readiness.effect === 'DIAGNOSTIC' && state === 'good') {
+        state = 'warning';
+      }
+    } else if (readiness.blocksRental) {
+      state = readiness.hardBlock ? 'critical' : maxSeverity(state, 'critical');
+      reason = readiness.reason ?? reason;
+    }
   }
 
   return {

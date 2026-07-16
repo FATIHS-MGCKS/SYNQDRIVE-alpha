@@ -2,6 +2,12 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { CanonicalBatteryHealthService } from '../vehicle-intelligence/battery-health/canonical-battery-health.service';
 import { mapRentalBatteryModule } from '../vehicle-intelligence/battery-health/canonical-battery';
+import {
+  buildBatteryReadinessInputFromSummary,
+  evaluateBatteryReadiness,
+  hasActiveBatterySafetyDtc,
+  isBatteryBlockWorthy,
+} from '../vehicle-intelligence/battery-health/battery-readiness.policy';
 import { TireHealthService, TireHealthSummary } from '../vehicle-intelligence/tires/tire-health.service';
 import { BrakeHealthService, BrakeHealthSummaryDto } from '../vehicle-intelligence/brakes/brake-health.service';
 import { strongerDataBasis, type BrakeDataBasis } from '../vehicle-intelligence/brakes/brake-status';
@@ -158,7 +164,7 @@ export class RentalHealthService {
         };
 
     const modules = {
-      battery: this.evaluateBattery(batterySummary, hmAi),
+      battery: this.evaluateBattery(batterySummary, hmAi, dtcSummary),
       tires: this.evaluateTires(tireSummary),
       brakes: this.evaluateBrakes(brakeSummary),
       error_codes: this.evaluateErrorCodes(dtcSummary),
@@ -179,6 +185,7 @@ export class RentalHealthService {
       complianceEval,
       dtcSummary,
       brakeSummary,
+      batterySummary,
     );
 
     return {
@@ -252,10 +259,23 @@ export class RentalHealthService {
   private evaluateBattery(
     summary: Awaited<ReturnType<CanonicalBatteryHealthService['getSummary']>> | null,
     hmAi: any | null,
+    dtcSummary: Awaited<ReturnType<DtcService['getSummary']>> | null,
   ): ModuleHealth {
+    const warningLightActive = readBatteryWarningLight(hmAi);
+    const batterySafetyDtcActive = hasActiveBatterySafetyDtc(
+      dtcSummary?.activeFaultPreview,
+    );
+    const readinessInput = buildBatteryReadinessInputFromSummary({
+      summary,
+      warningLightActive,
+      batterySafetyDtcActive,
+    });
+    const readiness = evaluateBatteryReadiness(readinessInput);
+
     return mapRentalBatteryModule({
       summary,
-      warningLightActive: readBatteryWarningLight(hmAi),
+      warningLightActive,
+      readiness,
     });
   }
 
@@ -696,6 +716,23 @@ export class RentalHealthService {
     );
   }
 
+  private isBatteryRentalBlockWorthy(
+    summary: Awaited<ReturnType<CanonicalBatteryHealthService['getSummary']>> | null,
+    hmAi: any | null,
+    dtcSummary: Awaited<ReturnType<DtcService['getSummary']>> | null,
+  ): boolean {
+    const readiness = evaluateBatteryReadiness(
+      buildBatteryReadinessInputFromSummary({
+        summary,
+        warningLightActive: readBatteryWarningLight(hmAi),
+        batterySafetyDtcActive: hasActiveBatterySafetyDtc(
+          dtcSummary?.activeFaultPreview,
+        ),
+      }),
+    );
+    return isBatteryBlockWorthy(readiness);
+  }
+
   // ═══════════════════════════════════════════════════════════════════════════
   //  Rental-blocked reasons collector
   // ═══════════════════════════════════════════════════════════════════════════
@@ -712,6 +749,7 @@ export class RentalHealthService {
     complianceEval: ServiceComplianceEvaluation | null,
     dtcSummary: Awaited<ReturnType<DtcService['getSummary']>> | null,
     brakeSummary: BrakeHealthSummaryDto | null,
+    batterySummary: Awaited<ReturnType<CanonicalBatteryHealthService['getSummary']>> | null,
   ): string[] {
     const reasons: string[] = [];
 
@@ -747,6 +785,21 @@ export class RentalHealthService {
 
     if (modules.tires.state === 'critical') {
       reasons.push(`Reifen: ${modules.tires.reason}`);
+    }
+
+    if (
+      this.isBatteryRentalBlockWorthy(batterySummary, hmAi, dtcSummary)
+    ) {
+      const readiness = evaluateBatteryReadiness(
+        buildBatteryReadinessInputFromSummary({
+          summary: batterySummary,
+          warningLightActive: readBatteryWarningLight(hmAi),
+          batterySafetyDtcActive: hasActiveBatterySafetyDtc(
+            dtcSummary?.activeFaultPreview,
+          ),
+        }),
+      );
+      reasons.push(readiness.reason ?? `Batterie: ${modules.battery.reason}`);
     }
 
     const dtcBand = dtcSummary?.worstSeverityBand;
