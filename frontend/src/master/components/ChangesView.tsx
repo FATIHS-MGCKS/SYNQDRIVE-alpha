@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'hv-capacity-shadow-evaluation-v49558-2026-07-17',
+    version: '4.9.558',
+    title: 'V4.9.558 — HV Capacity Shadow Evaluation Read Model (Prompt 58/78)',
+    summary: [
+      'Internes technisches Read-Model für HV-Kapazitäts- und SOH-Shadow-Diagnose.',
+      'GET data-analyse/vehicles/:vehicleId/hv-capacity-shadow-evaluation mit Capability Profile, Recharge Sessions, Sessionqualität, M2-Observations, Session-Mediane, M3, Cross-Session, Reference Capacity, SOH-Gate, Publication-Blocker, Modellversionen, Freshness.',
+      'Permission: data-analyse read. Keine Kundenpublication, keine Readiness-Wirkung, keine rohen DIMO-Token/Payloads.',
+      'Tests: Tenant-Trennung, Berechtigungen, Sensitive-Field-Sanitization.',
+    ],
+    reason: 'Prompt 58/78: interne Admin-Diagnosefläche für Shadow-Pipeline.',
+    previousBehavior: 'Shadow-Daten nur verteilt in DB/Metadaten ohne aggregiertes Diagnose-Read-Model.',
+    details:
+      'hv-capacity-shadow-evaluation.*, docs/architecture/hv-capacity-shadow-evaluation.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T18:30:00.000Z',
+  },
+  {
     id: 'hv-soh-gate-policy-v49557-2026-07-17',
     version: '4.9.557',
     title: 'V4.9.557 — HV SOH Gate Policy (internal, Prompt 57/78)',
