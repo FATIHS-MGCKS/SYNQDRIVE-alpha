@@ -36,7 +36,7 @@ export class BatteryStartProxyExtractHandler
     }
 
     this.logger.debug(
-      `Start proxy measurement persisted vehicle=${payload.vehicleId} trip=${payload.tripId} measurement=${result.measurementId}`,
+      `Start proxy measurements persisted vehicle=${payload.vehicleId} trip=${payload.tripId} count=${result.measurementIds.length}`,
     );
   }
 }

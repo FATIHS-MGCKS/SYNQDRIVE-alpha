@@ -1,5 +1,7 @@
 import { buildStartProxyJobIdempotencyKey } from '../jobs/battery-v2-job-idempotency.policy';
 
+import { buildStartProxyMeasurementIdempotencyKey as buildStartProxyMessartIdempotencyKey } from './battery-start-proxy-measurements';
+
 export { buildStartProxyJobIdempotencyKey };
 
 /** RPM threshold — combustion engine considered running above this. */
@@ -20,7 +22,7 @@ export function buildStartProxySessionIdempotencyKey(tripId: string): string {
 }
 
 export function buildStartProxyMeasurementIdempotencyKey(tripId: string): string {
-  return `start-dip-proxy:${tripId}`;
+  return buildStartProxyMessartIdempotencyKey(tripId, 'START_DIP_PROXY');
 }
 
 export function computeStartProxyWindow(tripStartAt: Date): { from: Date; to: Date } {

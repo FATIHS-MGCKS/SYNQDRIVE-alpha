@@ -27,6 +27,7 @@ describe('BatteryV2IdempotentExecutionService', () => {
   const prisma = {
     hvBatteryHealthSnapshot: { findUnique: jest.fn() },
     batteryMeasurement: { findUnique: jest.fn(), findFirst: jest.fn() },
+    batteryMeasurementSession: { findFirst: jest.fn() },
     batteryFeatures: { findUnique: jest.fn() },
     batteryAssessment: { findUnique: jest.fn() },
     batteryPublication: { findUnique: jest.fn() },
@@ -52,6 +53,7 @@ describe('BatteryV2IdempotentExecutionService', () => {
     prisma.hvBatteryHealthSnapshot.findUnique.mockResolvedValue(null);
     prisma.batteryMeasurement.findUnique.mockResolvedValue(null);
     prisma.batteryMeasurement.findFirst.mockResolvedValue(null);
+    prisma.batteryMeasurementSession.findFirst.mockResolvedValue(null);
     prisma.batteryFeatures.findUnique.mockResolvedValue(null);
     prisma.batteryAssessment.findUnique.mockResolvedValue(null);
     prisma.batteryPublication.findUnique.mockResolvedValue(null);
@@ -102,8 +104,8 @@ describe('BatteryV2IdempotentExecutionService', () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
-  it('skips start proxy when START_DIP_PROXY measurement already exists', async () => {
-    prisma.batteryMeasurement.findFirst.mockResolvedValue({ id: 'meas-1' });
+  it('skips start proxy when ICE_START_PROXY session already exists', async () => {
+    prisma.batteryMeasurementSession.findFirst.mockResolvedValue({ id: 'session-1' });
     const handler = jest.fn();
 
     const result = await service.execute({

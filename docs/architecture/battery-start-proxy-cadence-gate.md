@@ -80,3 +80,7 @@ Grobe Recovery-Werte erhalten das Label `RECOVERY_PROXY` ohne numerische Recover
 - Schwellenwerte ändern
 - Entscheidungsreihenfolge ändert
 - Metrikdefinitionen ändern
+
+## Nachgelagerte Messarten (Prompt 39/78)
+
+Nach `VALID_PROXY` erzeugt `buildStartProxyMeasurementPlan()` die erlaubten Proxy-Messarten — siehe [`battery-start-proxy-measurements.md`](./battery-start-proxy-measurements.md).
