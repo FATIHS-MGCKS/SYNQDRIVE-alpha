@@ -242,9 +242,10 @@ export class BatteryV2Service {
   }
 
   // ══════════════════════════════════════════════════════════
-  //  TRIP-START HOOK — fire-and-forget crank feature extraction
+  //  TRIP-START HOOK — legacy direct path (superseded by BATTERY_START_PROXY_EXTRACT job)
   // ══════════════════════════════════════════════════════════
 
+  /** @deprecated Use {@link BatteryStartProxyExtractService} via BATTERY_START_PROXY_EXTRACT job. */
   async onTripStart(
     vehicleId: string,
     dimoTokenId: number,

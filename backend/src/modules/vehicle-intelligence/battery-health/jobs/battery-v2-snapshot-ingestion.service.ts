@@ -96,29 +96,4 @@ export class BatteryV2SnapshotIngestionService {
       `Battery observation classify ingested vehicle=${payload.vehicleId} key=${payload.idempotencyKey}`,
     );
   }
-
-  async ingestStartProxyExtract(input: {
-    vehicleId: string;
-    tripId: string;
-    tripStartedAt: string;
-  }): Promise<void> {
-    const vehicle = await this.prisma.vehicle.findUnique({
-      where: { id: input.vehicleId },
-      select: { dimoVehicle: { select: { tokenId: true } } },
-    });
-    const dimoTokenId = vehicle?.dimoVehicle?.tokenId;
-    if (dimoTokenId == null) {
-      this.logger.warn(
-        `Start proxy skipped — missing dimoTokenId for vehicle=${input.vehicleId}`,
-      );
-      return;
-    }
-
-    await this.batteryV2.onTripStart(
-      input.vehicleId,
-      dimoTokenId,
-      input.tripId,
-      new Date(input.tripStartedAt),
-    );
-  }
 }

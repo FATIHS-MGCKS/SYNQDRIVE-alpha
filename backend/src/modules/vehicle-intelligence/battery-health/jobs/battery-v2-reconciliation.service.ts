@@ -8,7 +8,6 @@ import {
   getBatteryV2ReconciliationBatchSize,
   getBatteryV2StartProxyDelayMs,
   isBatteryV2RestShadowEnabled,
-  isLegacyCrankAssessmentEnabled,
   isStartWindowCollectionEnabled,
 } from '@config/battery-health-v2.config';
 import {
@@ -36,6 +35,8 @@ import {
 } from '@prisma/client';
 import { LvRestWindowState } from '../battery-v2-domain';
 import { measurementTypeForRestTarget } from '../lv-rest-window/battery-rest-target-evaluation';
+import { buildStartProxyMeasurementIdempotencyKey } from '../lv-start-proxy/battery-start-proxy.policy';
+import { BatteryV2TripStartProducer } from './battery-v2-trip-start.producer';
 
 const TRIP_LOOKBACK_MS = 7 * 24 * 3600_000;
 const ASSESSMENT_STALE_MS = 6 * 3600_000;
@@ -61,6 +62,7 @@ export class BatteryV2ReconciliationService {
     private readonly deadLetters: BatteryV2JobDeadLetterService,
     private readonly capabilityRefresh: BatteryCapabilityRefreshService,
     private readonly restTargetProducer: BatteryV2RestTargetProducer,
+    private readonly tripStartProducer: BatteryV2TripStartProducer,
   ) {}
 
   async reconcileAll(): Promise<BatteryV2ReconciliationResult> {
@@ -392,7 +394,7 @@ export class BatteryV2ReconciliationService {
   }
 
   private async reconcileTripStarts(batch: number): Promise<number> {
-    if (!isLegacyCrankAssessmentEnabled() && !isStartWindowCollectionEnabled()) {
+    if (!isStartWindowCollectionEnabled()) {
       return 0;
     }
 
@@ -412,7 +414,6 @@ export class BatteryV2ReconciliationService {
         vehicle: {
           select: {
             organizationId: true,
-            batteryFeatures: { select: { crankTripId: true } },
           },
         },
       },
@@ -422,7 +423,16 @@ export class BatteryV2ReconciliationService {
     for (const trip of trips) {
       const organizationId = trip.vehicle.organizationId;
       if (!organizationId) continue;
-      if (trip.vehicle.batteryFeatures?.crankTripId === trip.id) continue;
+
+      const existingMeasurement = await this.prisma.batteryMeasurement.findFirst({
+        where: {
+          organizationId,
+          vehicleId: trip.vehicleId,
+          idempotencyKey: buildStartProxyMeasurementIdempotencyKey(trip.id),
+        },
+        select: { id: true },
+      });
+      if (existingMeasurement) continue;
 
       const idempotencyKey = buildStartProxyJobIdempotencyKey({
         tripId: trip.id,
@@ -432,19 +442,12 @@ export class BatteryV2ReconciliationService {
         continue;
       }
 
-      const jobId = await this.jobProducer.enqueue(
-        'BATTERY_START_PROXY_EXTRACT',
-        {
-          organizationId,
-          vehicleId: trip.vehicleId,
-          tripId: trip.id,
-          tripStartedAt: trip.startTime.toISOString(),
-          idempotencyKey,
-          sourceEntityId: trip.id,
-          correlationId: `reconcile:trip:${trip.id}`,
-        },
-        { delayMs: 0 },
-      );
+      const jobId = await this.tripStartProducer.enqueueStartProxy({
+        organizationId,
+        vehicleId: trip.vehicleId,
+        tripId: trip.id,
+        tripStartedAt: trip.startTime,
+      });
       if (jobId) enqueued += 1;
     }
 

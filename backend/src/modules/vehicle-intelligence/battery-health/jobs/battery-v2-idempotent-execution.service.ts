@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
+import { buildStartProxyMeasurementIdempotencyKey } from '../lv-start-proxy/battery-start-proxy.policy';
 import type { BatteryV2JobPayload, BatteryV2JobType } from './battery-v2-job.types';
 import { validateBatteryV2JobIdempotencyKey } from './battery-v2-job-idempotency.validation';
 import { BatteryV2VehicleLockService } from './battery-v2-vehicle-lock.service';
@@ -85,11 +86,15 @@ export class BatteryV2IdempotentExecutionService {
         return false;
       case 'BATTERY_START_PROXY_EXTRACT': {
         const tripId = (payload as BatteryV2JobPayload<'BATTERY_START_PROXY_EXTRACT'>).tripId;
-        const features = await this.prisma.batteryFeatures.findUnique({
-          where: { vehicleId },
-          select: { crankTripId: true },
+        const existing = await this.prisma.batteryMeasurement.findFirst({
+          where: {
+            organizationId,
+            vehicleId,
+            idempotencyKey: buildStartProxyMeasurementIdempotencyKey(tripId),
+          },
+          select: { id: true },
         });
-        return features?.crankTripId === tripId;
+        return existing != null;
       }
       case 'BATTERY_ASSESSMENT_RECOMPUTE': {
         const existing = await this.prisma.batteryAssessment.findUnique({
