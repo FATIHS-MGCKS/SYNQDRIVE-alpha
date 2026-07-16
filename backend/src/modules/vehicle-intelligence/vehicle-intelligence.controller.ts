@@ -51,6 +51,7 @@ import { presentLegacyCrankFeatures } from './battery-health/battery-crank-polic
 import { CanonicalBatteryHealthService } from './battery-health/canonical-battery-health.service';
 import { BatteryEvidenceService } from './battery-health/battery-evidence.service';
 import { LvRestShadowSummaryService } from './battery-health/lv-rest-window/lv-rest-shadow-summary.service';
+import { LvStartProxyDiagnosticService } from './battery-health/lv-start-proxy/lv-start-proxy-diagnostic.service';
 import { AiHealthCareAggregationService } from './health-summary/ai-health-care-aggregation.service';
 import { VehicleHealthTabSummaryService } from './health-summary/vehicle-health-tab-summary.service';
 import { DashboardWarningLightsService } from './dashboard-warning-lights/dashboard-warning-lights.service';
@@ -135,6 +136,7 @@ export class VehicleIntelligenceController {
     private readonly canonicalBatteryHealthService: CanonicalBatteryHealthService,
     private readonly batteryEvidenceService: BatteryEvidenceService,
     private readonly lvRestShadowSummaryService: LvRestShadowSummaryService,
+    private readonly lvStartProxyDiagnosticService: LvStartProxyDiagnosticService,
     private readonly vehicleHealthTabSummaryService: VehicleHealthTabSummaryService,
     private readonly aiHealthCareAggregationService: AiHealthCareAggregationService,
     private readonly dashboardWarningLightsService: DashboardWarningLightsService,
@@ -1519,6 +1521,12 @@ export class VehicleIntelligenceController {
   @Get('battery-health/lv-rest-shadow-summary')
   async getLvRestShadowSummary(@Param('vehicleId') vehicleId: string) {
     return this.lvRestShadowSummaryService.getSummaryForVehicle(vehicleId);
+  }
+
+  /** Internal diagnostic API — LV start-proxy measurements (no operational health impact). */
+  @Get('battery-health/lv-start-proxy-diagnostic')
+  async getLvStartProxyDiagnostic(@Param('vehicleId') vehicleId: string) {
+    return this.lvStartProxyDiagnosticService.getForVehicle(vehicleId);
   }
 
   @Get('battery-health/trend')

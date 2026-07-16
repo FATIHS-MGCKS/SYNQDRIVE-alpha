@@ -35,12 +35,32 @@ describe('CanonicalBatteryHealthService', () => {
       getLatestAmongSources: jest.fn(),
     } as any;
 
+    const startProxyDiagnostic = {
+      getForVehicle: jest.fn().mockResolvedValue({
+        vehicleId: 'veh-1',
+        diagnosticOnly: true,
+        featureEnabled: false,
+        uiLabelDe: 'Startverhalten (geschätzt)',
+        scoreWeightPercent: 0,
+        availability: 'SUPPORTED',
+        availabilityLabelDe: 'Diagnostisch verfügbar',
+        operationalEffect: false,
+        readinessEffect: false,
+        alertEligible: false,
+        taskEligible: false,
+        operationalStatus: 'UNKNOWN',
+        latestSession: null,
+        measurements: [],
+      }),
+    };
+
     const svc = new CanonicalBatteryHealthService(
       prisma,
       batteryHealthService,
       batteryV2Service,
       hvBatteryHealthService,
       batteryEvidenceService,
+      startProxyDiagnostic as any,
     );
 
     prisma.vehicle.findUnique.mockResolvedValue({

@@ -21,6 +21,10 @@ import {
   START_PROXY_TARGET_MESSARTS,
 } from './battery-start-proxy-measurements';
 import {
+  buildLvStartProxyDiagnosticProvenance,
+  withLvStartProxyDiagnosticContext,
+} from './lv-start-proxy-diagnostic.policy';
+import {
   buildStartProxySessionIdempotencyKey,
   computeStartProxyWindow,
   detectConfirmedIceStart,
@@ -186,11 +190,11 @@ export class BatteryStartProxyExtractService {
         providerSource: 'DIMO',
         signalName: 'lowVoltageBatteryCurrentVoltage',
         idempotencyKey: item.idempotencyKey,
-        context: {
+        context: withLvStartProxyDiagnosticContext({
           confirmedIceStart,
           ...item.context,
-        },
-        provenance: {
+        }),
+        provenance: buildLvStartProxyDiagnosticProvenance({
           selectionMethod: 'historical_provider_timeseries',
           tripId: input.tripId,
           messart: item.messart,
@@ -202,10 +206,7 @@ export class BatteryStartProxyExtractService {
           cadenceGate: gate.metrics,
           reasonCode: gate.reasonCode,
           reasonLabel: gate.reasonLabel,
-          evidenceEligible: false,
-          publicationEligible: false,
-          scoreEffect: false,
-        },
+        }),
       });
       measurementIds.push(measurement.id);
     }

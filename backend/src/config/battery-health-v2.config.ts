@@ -111,6 +111,9 @@ export function isStartWindowCollectionEnabled(): boolean {
   return parseBooleanEnv(process.env[BATTERY_V2_START_PROXY_ENV], false);
 }
 
+/** Alias used by API/UI — `BATTERY_V2_START_PROXY_ENABLED`. */
+export const isBatteryV2StartProxyEnabled = isStartWindowCollectionEnabled;
+
 export function isLegacyHvPairwiseCapacityAssessmentEnabled(): boolean {
   return parseBooleanEnv(process.env[BATTERY_V2_HV_LEGACY_PAIRWISE_CAPACITY_ENV], false);
 }

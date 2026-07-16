@@ -1086,6 +1086,7 @@ export function HealthErrorsView({
     : [];
 
   const bSummary = batterySummary;
+  const lvStartProxy = bSummary?.lv?.telemetry?.startProxy;
   const lvPubState = bSummary?.lv?.publicationState ?? bSummary?.currentState?.publicationState ?? 'INITIAL_CALIBRATION';
   const lvStatus = bSummary?.lv?.status ?? (lvPubState === 'INITIAL_CALIBRATION' ? 'calibrating' : lvPubState === 'STABILIZING' ? 'stabilizing' : 'ready');
   // Backend marks `status: 'estimate_unavailable'` when neither an LV voltage
@@ -2376,6 +2377,11 @@ export function HealthErrorsView({
             {/* Detailed Readings */}
             <div className={`rounded-lg p-4 mb-4 bg-muted`}>
               <p className={`text-[10px] uppercase tracking-wider font-semibold mb-3 text-muted-foreground`}>Detailed Readings</p>
+              {lvStartProxy && lvStartProxy.availability !== 'SUPPORTED' && (
+                <p className="text-xs text-muted-foreground mb-3">
+                  {lvStartProxy.uiLabelDe}: {lvStartProxy.availabilityLabelDe}
+                </p>
+              )}
               <div className={`divide-y divide-border`}>
                 {[
                   {
@@ -2386,6 +2392,15 @@ export function HealthErrorsView({
                     l: 'Aktuelle Spannung',
                     v: voltageDisplay != null ? `${voltageDisplay} V` : 'Nicht verfügbar',
                   },
+                  ...(lvStartProxy?.availability === 'SUPPORTED'
+                    ? lvStartProxy.measurements
+                        .filter((m) => m.numericValue != null)
+                        .map((m) => ({
+                          l: m.displayLabelDe,
+                          v: `${m.numericValue!.toFixed(2)} ${m.unit ?? 'V'} · ${m.classification}${m.offsetFromTargetMs != null ? ` · Δ ${m.offsetFromTargetMs} ms` : ''}${m.measurementAgeMs != null ? ` · ${Math.round(m.measurementAgeMs / 1000)} s alt` : ''}`,
+                        }))
+                    : []),
+                  !lvStartProxy &&
                   normalizeLvBatteryVoltage(bSummary?.currentState?.crankingVoltage) != null
                     ? { l: 'Startspannung / Crank Drop', v: `${normalizeLvBatteryVoltage(bSummary?.currentState?.crankingVoltage)!.toFixed(2)} V` }
                     : null,
