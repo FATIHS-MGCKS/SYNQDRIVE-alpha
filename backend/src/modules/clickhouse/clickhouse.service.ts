@@ -3,9 +3,19 @@ import { ConfigService } from '@nestjs/config';
 import { createClient, ClickHouseClient } from '@clickhouse/client';
 import { TripMetricsService } from '../observability/trip-metrics.service';
 import { clickHouseSchemaStatusCode } from '../observability/clickhouse-metrics.helper';
+import {
+  ClickHouseCircuitBreaker,
+  type ClickHouseCircuitSnapshot,
+} from './clickhouse-circuit-breaker';
+import {
+  ClickHouseCircuitOpenError,
+  ClickHouseQueryTimeoutError,
+  withQueryTimeout,
+} from './clickhouse-query-guard';
 
 /** Periodic health ping interval (ms). Keeps `isAvailable` accurate after runtime outages. */
 const HEALTH_PING_INTERVAL_MS = 60_000;
+const DEFAULT_ANALYSIS_QUERY_TIMEOUT_MS = 5_000;
 
 /**
  * ClickHouseService
@@ -32,6 +42,9 @@ export interface ClickHouseStatus {
   pendingMigrationCount: number | null;
   /** Backwards-compatible last connection error (ping/init), if any. */
   lastError: string | null;
+  circuitState: ClickHouseCircuitSnapshot['state'];
+  consecutiveFailures: number;
+  circuitOpenedAt: string | null;
 }
 
 export interface ClickHouseSchemaStatusUpdate {
@@ -58,11 +71,36 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
   private appliedMigrationCount: number | null = null;
   private pendingMigrationCount: number | null = null;
   private healthPingTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly circuitBreaker: ClickHouseCircuitBreaker;
+  private readonly analysisQueryTimeoutMs: number;
 
   constructor(
     private readonly config: ConfigService,
     @Optional() private readonly metrics?: TripMetricsService,
-  ) {}
+  ) {
+    const failureThreshold = Number(
+      this.config.get<string>('CLICKHOUSE_CIRCUIT_FAILURE_THRESHOLD') ?? 3,
+    );
+    const cooldownMs = Number(
+      this.config.get<string>('CLICKHOUSE_CIRCUIT_COOLDOWN_MS') ?? 30_000,
+    );
+    this.circuitBreaker = new ClickHouseCircuitBreaker({
+      failureThreshold:
+        Number.isFinite(failureThreshold) && failureThreshold > 0
+          ? failureThreshold
+          : 3,
+      cooldownMs:
+        Number.isFinite(cooldownMs) && cooldownMs > 0 ? cooldownMs : 30_000,
+    });
+    const timeoutMs = Number(
+      this.config.get<string>('CLICKHOUSE_ANALYSIS_QUERY_TIMEOUT_MS') ??
+        DEFAULT_ANALYSIS_QUERY_TIMEOUT_MS,
+    );
+    this.analysisQueryTimeoutMs =
+      Number.isFinite(timeoutMs) && timeoutMs > 0
+        ? timeoutMs
+        : DEFAULT_ANALYSIS_QUERY_TIMEOUT_MS;
+  }
 
   async onModuleInit(): Promise<void> {
     const url = this.config.get<string>('CLICKHOUSE_URL');
@@ -132,17 +170,87 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
    * Marks ClickHouse unavailable after a runtime write/query failure.
    * Next periodic ping may restore availability without process restart.
    */
-  markUnavailable(reason: string): void {
+  markUnavailable(reason: string, scope = 'runtime'): void {
+    this.circuitBreaker.recordFailure();
+    this.recordAnalysisGuardMetric('error', scope);
     if (!this.configured || !this.available) return;
     this.setAvailable(false, reason);
     this.logger.warn(`ClickHouse marked unavailable: ${reason}`);
   }
 
+  getCircuitSnapshot(now = Date.now()): ClickHouseCircuitSnapshot {
+    return this.circuitBreaker.getSnapshot(now);
+  }
+
+  /**
+   * Guarded analysis read — timeout + circuit breaker + structured metric.
+   * Returns null on degradation instead of throwing to callers.
+   */
+  async runGuardedAnalysisQuery<T>(
+    scope: string,
+    operation: () => Promise<T>,
+    options?: { timeoutMs?: number },
+  ): Promise<T | null> {
+    if (!this.configured) {
+      this.recordAnalysisGuardMetric('disabled', scope);
+      return null;
+    }
+
+    if (!this.circuitBreaker.canExecute()) {
+      this.recordAnalysisGuardMetric('circuit_open', scope);
+      return null;
+    }
+
+    if (!this.client || !this.available) {
+      this.recordAnalysisGuardMetric('error', scope);
+      return null;
+    }
+
+    const timeoutMs = options?.timeoutMs ?? this.analysisQueryTimeoutMs;
+    try {
+      const result = await withQueryTimeout(operation, timeoutMs);
+      this.circuitBreaker.recordSuccess();
+      this.recordAnalysisGuardMetric('reachable', scope);
+      return result;
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      if (err instanceof ClickHouseQueryTimeoutError) {
+        this.circuitBreaker.recordFailure();
+        this.recordAnalysisGuardMetric('timeout', scope);
+        this.setAvailable(false, message);
+        return null;
+      }
+      if (err instanceof ClickHouseCircuitOpenError) {
+        this.recordAnalysisGuardMetric('circuit_open', scope);
+        return null;
+      }
+      this.recordAnalysisGuardMetric('error', scope);
+      this.markUnavailable(message, scope);
+      return null;
+    }
+  }
+
+  private recordAnalysisGuardMetric(
+    outcome: 'reachable' | 'timeout' | 'error' | 'circuit_open' | 'disabled' | 'recovered',
+    scope: string,
+  ): void {
+    this.metrics?.clickHouseAnalysisGuard.inc({ outcome, scope });
+  }
+
+  recordAnalysisRecovery(scope: string): void {
+    this.recordAnalysisGuardMetric('recovered', scope);
+  }
+
   private setAvailable(available: boolean, error: string | null = null): void {
+    const wasUnavailable = !this.available;
     this.available = available;
     this.lastError = available ? null : error;
     if (available) {
       this.lastPingAt = new Date();
+      this.circuitBreaker.recordSuccess();
+      if (wasUnavailable && this.configured) {
+        this.recordAnalysisGuardMetric('recovered', 'health_ping');
+      }
     }
     this.metrics?.clickHouseAvailable.set(available ? 1 : 0);
     this.syncSchemaStatusGauge();
@@ -224,6 +332,7 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
   }
 
   getStatus(): ClickHouseStatus {
+    const circuit = this.circuitBreaker.getSnapshot();
     return {
       configured: this.configured,
       available: this.available,
@@ -237,6 +346,9 @@ export class ClickHouseService implements OnModuleInit, OnModuleDestroy {
       appliedMigrationCount: this.appliedMigrationCount,
       pendingMigrationCount: this.pendingMigrationCount,
       lastError: this.lastError,
+      circuitState: circuit.state,
+      consecutiveFailures: circuit.consecutiveFailures,
+      circuitOpenedAt: circuit.openedAt,
     };
   }
 

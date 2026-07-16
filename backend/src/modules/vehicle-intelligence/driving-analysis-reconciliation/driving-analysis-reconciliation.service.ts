@@ -1,9 +1,13 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { BookingStatus, TripStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { ClickHouseAnalysisHealthService } from '@modules/clickhouse/clickhouse-analysis-health.service';
+import { isClickHouseReachableForAnalysis } from '@modules/clickhouse/clickhouse-analysis-degradation';
 import { TripMetricsService } from '@modules/observability/trip-metrics.service';
 import { DrivingAnalysisInitService } from '../driving-analysis-init/driving-analysis-init.service';
 import { DRIVING_INTELLIGENCE_PIPELINE_MODEL_VERSION } from '../driving-analysis-init/driving-analysis-init.types';
+import { DrivingAnalysisStageOrchestratorService } from '../driving-analysis-stage/driving-analysis-stage.orchestrator.service';
+import { DrivingAnalysisStageRepository } from '../driving-analysis-stage/driving-analysis-stage.repository';
 import { DrivingIntelligenceJobDispatcherService } from '../driving-intelligence-jobs/driving-intelligence-jobs.dispatcher.service';
 import { DrivingIntelligenceJobRepository } from '../driving-intelligence-jobs/driving-intelligence-jobs.repository';
 import { DRIVING_INTELLIGENCE_JOB_ERROR_CODES } from '../driving-intelligence-jobs/driving-intelligence-jobs.errors';
@@ -24,6 +28,9 @@ export class DrivingAnalysisReconciliationService {
     private readonly analysisInit: DrivingAnalysisInitService,
     private readonly jobDispatcher: DrivingIntelligenceJobDispatcherService,
     private readonly jobRepository: DrivingIntelligenceJobRepository,
+    @Optional() private readonly clickHouseHealth?: ClickHouseAnalysisHealthService,
+    @Optional() private readonly stageRepository?: DrivingAnalysisStageRepository,
+    @Optional() private readonly stageOrchestrator?: DrivingAnalysisStageOrchestratorService,
     @Optional() private readonly tripMetrics?: TripMetricsService,
   ) {}
 
@@ -292,6 +299,29 @@ export class DrivingAnalysisReconciliationService {
       });
     }
 
+    const chHealth = this.clickHouseHealth?.getAnalysisHealth();
+    if (
+      chHealth &&
+      isClickHouseReachableForAnalysis(chHealth) &&
+      this.stageRepository
+    ) {
+      const chFailedStages = await this.stageRepository.findFailedClickHouseStages(
+        organizationId,
+        lookbackFrom,
+        limit,
+      );
+      for (const stage of chFailedStages) {
+        findings.push({
+          checkType:
+            DRIVING_ANALYSIS_RECONCILIATION_CHECK_TYPES.CLICKHOUSE_HF_ANALYSIS_RETRY,
+          organizationId,
+          entityType: 'driving_analysis_stage',
+          entityId: stage.id,
+          detail: `run=${stage.analysisRunId} stage=${stage.stageKey} trip=${stage.analysisRun.tripId}`,
+        });
+      }
+    }
+
     return findings;
   }
 
@@ -375,6 +405,43 @@ export class DrivingAnalysisReconciliationService {
           }
           this.recordReconciliation(finding.checkType, 'enqueued');
           return 'enqueued';
+        }
+
+        case DRIVING_ANALYSIS_RECONCILIATION_CHECK_TYPES.CLICKHOUSE_HF_ANALYSIS_RETRY: {
+          if (!this.stageRepository || !this.stageOrchestrator || !this.clickHouseHealth) {
+            this.recordReconciliation(finding.checkType, 'skipped');
+            return 'skipped';
+          }
+          const health = this.clickHouseHealth.getAnalysisHealth();
+          if (!isClickHouseReachableForAnalysis(health)) {
+            this.recordReconciliation(finding.checkType, 'skipped');
+            return 'skipped';
+          }
+
+          const stage = await this.prisma.drivingAnalysisStage.findFirst({
+            where: { id: finding.entityId, organizationId: finding.organizationId },
+            include: {
+              analysisRun: { select: { tripId: true, vehicleId: true, modelVersion: true } },
+            },
+          });
+          if (!stage?.analysisRun.tripId) {
+            this.recordReconciliation(finding.checkType, 'skipped');
+            return 'skipped';
+          }
+
+          await this.stageRepository.resetStageToPending(stage.id);
+          const enqueueResult = await this.stageOrchestrator.enqueueReadyStages({
+            organizationId: finding.organizationId,
+            vehicleId: stage.analysisRun.vehicleId,
+            tripId: stage.analysisRun.tripId,
+            analysisRunId: stage.analysisRunId,
+            modelVersion: stage.analysisRun.modelVersion,
+            correlationId: `reconcile-ch:${stage.analysisRunId}`,
+            requestedAt: new Date(),
+          });
+          const outcome = enqueueResult.enqueued.some((j) => j.enqueued) ? 'enqueued' : 'skipped';
+          this.recordReconciliation(finding.checkType, outcome);
+          return outcome;
         }
 
         case DRIVING_ANALYSIS_RECONCILIATION_CHECK_TYPES.DRIVING_IMPACT_STATUS_MISMATCH:

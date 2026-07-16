@@ -217,4 +217,44 @@ describe('evaluateTripAssessability', () => {
     expect(route?.effectiveCadenceMs).toBe(12000);
     expect(route?.p95CadenceMs).toBe(18000);
   });
+
+  it('ClickHouse outage maps HF dimensions to PROVIDER_ERROR without blocking route/native', () => {
+    const result = evaluateTripAssessability(
+      baseInput({
+        clickHouse: {
+          hfUnavailable: true,
+          providerError: true,
+          limitReason: 'CLICKHOUSE_UNAVAILABLE',
+        },
+      }),
+    );
+    const statuses = statusByDimension(result);
+    expect(statuses.RECONSTRUCTED_BEHAVIOR).toBe('PROVIDER_ERROR');
+    expect(statuses.ENGINE_MISUSE).toBe('PROVIDER_ERROR');
+    expect(statuses.ROUTE).toBe('ASSESSABLE');
+    expect(statuses.NATIVE_BEHAVIOR).toBe('ASSESSABLE');
+  });
+
+  it('ClickHouse disabled maps HF to INSUFFICIENT_DATA — not unremarkable', () => {
+    const result = evaluateTripAssessability(
+      baseInput({
+        clickHouse: {
+          hfUnavailable: true,
+          providerError: false,
+          limitReason: 'CLICKHOUSE_DISABLED',
+        },
+        behavior: {
+          enrichmentStatus: 'COMPLETED',
+          nativeEventCount: 0,
+          nativeQuerySucceeded: true,
+          hfPointsTotal: 0,
+          hfPointsCleaned: 0,
+          reconstructedEventCount: 0,
+          providerError: false,
+        },
+      }),
+    );
+    expect(statusByDimension(result).RECONSTRUCTED_BEHAVIOR).toBe('INSUFFICIENT_DATA');
+    expect(statusByDimension(result).NATIVE_BEHAVIOR).toBe('LIMITED');
+  });
 });

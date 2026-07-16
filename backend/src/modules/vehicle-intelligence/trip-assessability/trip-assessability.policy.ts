@@ -17,6 +17,46 @@ const MIN_HF_POINTS_FOR_RECONSTRUCTED = 30;
 const MIN_ROUTE_WAYPOINTS = 3;
 const MIN_ROUTE_COVERAGE = 0.5;
 
+function assessClickHouseHfDimension(
+  input: TripAssessabilityPolicyInput,
+  dimension: Extract<
+    TripAssessabilityDimension,
+    'RECONSTRUCTED_BEHAVIOR' | 'ENGINE_MISUSE' | 'BRAKING_INTENSITY' | 'CORNERING' | 'DAMAGE_RISK'
+  >,
+  caps: TripAssessabilityCapabilitySnapshot,
+): DimensionDraft | null {
+  const ch = input.clickHouse;
+  if (!ch?.hfUnavailable) return null;
+
+  const reasons: TripAssessabilityReasonCode[] = ['CLICKHOUSE_UNAVAILABLE', 'HF_INSUFFICIENT'];
+  if (ch.limitReason === 'CLICKHOUSE_CIRCUIT_OPEN') {
+    reasons.unshift('CLICKHOUSE_CIRCUIT_OPEN');
+  }
+  if (ch.limitReason === 'CLICKHOUSE_TIMEOUT') {
+    reasons.unshift('CLICKHOUSE_TIMEOUT');
+  }
+  if (ch.providerError) {
+    reasons.push('HF_PROVIDER_ERROR', 'PROVIDER_ERROR');
+    return {
+      dimension,
+      status: 'PROVIDER_ERROR',
+      reasons,
+      coverage: caps.coverage,
+      effectiveCadenceMs: caps.effectiveCadenceMs,
+      p95CadenceMs: caps.p95CadenceMs,
+    };
+  }
+
+  return {
+    dimension,
+    status: 'INSUFFICIENT_DATA',
+    reasons,
+    coverage: caps.coverage,
+    effectiveCadenceMs: caps.effectiveCadenceMs,
+    p95CadenceMs: caps.p95CadenceMs,
+  };
+}
+
 type DimensionDraft = {
   dimension: TripAssessabilityDimension;
   status: TripAssessabilityDimensionStatus;
@@ -228,6 +268,9 @@ function assessReconstructedBehavior(
   input: TripAssessabilityPolicyInput,
   caps: TripAssessabilityCapabilitySnapshot,
 ): DimensionDraft {
+  const chGate = assessClickHouseHfDimension(input, 'RECONSTRUCTED_BEHAVIOR', caps);
+  if (chGate) return chGate;
+
   const reasons: TripAssessabilityReasonCode[] = [];
   const { behavior } = input;
 
@@ -279,6 +322,10 @@ function assessReconstructedBehavior(
 }
 
 function assessEngineMisuse(input: TripAssessabilityPolicyInput): DimensionDraft {
+  const caps = resolveCapabilitySnapshot(input);
+  const chGate = assessClickHouseHfDimension(input, 'ENGINE_MISUSE', caps);
+  if (chGate) return chGate;
+
   const reasons: TripAssessabilityReasonCode[] = [];
   const { counters, misuse } = input;
   const misuseSignals =
@@ -303,6 +350,10 @@ function assessEngineMisuse(input: TripAssessabilityPolicyInput): DimensionDraft
 }
 
 function assessBrakingIntensity(input: TripAssessabilityPolicyInput): DimensionDraft {
+  const caps = resolveCapabilitySnapshot(input);
+  const chGate = assessClickHouseHfDimension(input, 'BRAKING_INTENSITY', caps);
+  if (chGate) return chGate;
+
   const reasons: TripAssessabilityReasonCode[] = [];
   const brakeSignals =
     input.counters.harshBrakeCount > 0 ||
@@ -325,6 +376,10 @@ function assessBrakingIntensity(input: TripAssessabilityPolicyInput): DimensionD
 }
 
 function assessCornering(input: TripAssessabilityPolicyInput): DimensionDraft {
+  const caps = resolveCapabilitySnapshot(input);
+  const chGate = assessClickHouseHfDimension(input, 'CORNERING', caps);
+  if (chGate) return chGate;
+
   const reasons: TripAssessabilityReasonCode[] = [];
   const cornerSignals =
     input.counters.harshCornerCount > 0 || input.counters.corneringEvents > 0;
@@ -345,6 +400,10 @@ function assessCornering(input: TripAssessabilityPolicyInput): DimensionDraft {
 }
 
 function assessDamageRisk(input: TripAssessabilityPolicyInput): DimensionDraft {
+  const caps = resolveCapabilitySnapshot(input);
+  const chGate = assessClickHouseHfDimension(input, 'DAMAGE_RISK', caps);
+  if (chGate) return chGate;
+
   const reasons: TripAssessabilityReasonCode[] = [];
   const { misuse } = input;
   const evidence =

@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p22-clickhouse-hardening-2026-07-16',
+    version: '4.9.523',
+    title: 'Driving Intelligence V2 P22 — ClickHouse outage hardening for trip analysis',
+    summary: [
+      'ClickHouse Runtime Guard: Circuit Breaker, Analysis-Query-Timeout, erweiterter Health-Status (`disabled|available|degraded|circuit_open|timeout`).',
+      'Strukturierte Degradation: HF-Assessability → `PROVIDER_ERROR` oder `INSUFFICIENT_DATA` — kein pauschales „unauffällig“.',
+      'Native Events + Route laufen weiter; HF-abhängige Stages tragen explizite Degradation.',
+      'Reconciliation `CLICKHOUSE_HF_ANALYSIS_RETRY` nach Wiederherstellung.',
+      'Prometheus: `synqdrive_clickhouse_analysis_guard_total{outcome,scope}`.',
+    ],
+    reason:
+      'Prompt 22/76: Fahrtenanalyse gegen nicht erreichbares ClickHouse härten — ohne Infrastrukturänderung, env-URL-only.',
+    previousBehavior:
+      'CH-Ausfall: teils stille HF-Reads, kein Circuit Breaker für Analysis-Queries, keine gezielte Reconciliation nach Recovery.',
+    details:
+      'Module `clickhouse-circuit-breaker`, `clickhouse-query-guard`, `clickhouse-analysis-degradation`, `clickhouse-analysis-health`; Policy- + Legacy-Assessability-Wiring; 10+ neue Tests.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T01:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p21-stage-orchestration-2026-07-16',
     version: '4.9.522',
     title: 'Driving Intelligence V2 P21 — Stage orchestration on Run / Fingerprint',
