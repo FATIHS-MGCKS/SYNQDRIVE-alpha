@@ -119,6 +119,13 @@ export const BatteryMeasurementSessionType = {
   HV_DIMO_RECHARGE_SEGMENT: 'HV_DIMO_RECHARGE_SEGMENT',
   HV_POLL_CHARGE_WINDOW: 'HV_POLL_CHARGE_WINDOW',
   HV_DISCHARGE_WINDOW: 'HV_DISCHARGE_WINDOW',
+  ICE_START_PROXY: 'ICE_START_PROXY',
+  PHEV_ICE_START: 'PHEV_ICE_START',
+  EV_WAKE: 'EV_WAKE',
+  HV_CHARGE: 'HV_CHARGE',
+  WORKSHOP_TEST: 'WORKSHOP_TEST',
+  DOCUMENT_MEASUREMENT: 'DOCUMENT_MEASUREMENT',
+  MANUAL_CONFIRMED: 'MANUAL_CONFIRMED',
 } as const;
 
 export type BatteryMeasurementSessionType =
@@ -143,6 +150,24 @@ export type BatteryMeasurementSessionStatus =
 export const BATTERY_MEASUREMENT_SESSION_STATUSES = Object.values(
   BatteryMeasurementSessionStatus,
 );
+
+/** Derives LV/HV scope from session type for persistence and indexing. */
+export function resolveBatteryMeasurementSessionScope(
+  type: BatteryMeasurementSessionType,
+): BatteryMeasurementScope {
+  switch (type) {
+    case BatteryMeasurementSessionType.LV_REST_WINDOW:
+    case BatteryMeasurementSessionType.LV_ICE_START:
+    case BatteryMeasurementSessionType.ICE_START_PROXY:
+    case BatteryMeasurementSessionType.PHEV_ICE_START:
+    case BatteryMeasurementSessionType.WORKSHOP_TEST:
+    case BatteryMeasurementSessionType.DOCUMENT_MEASUREMENT:
+    case BatteryMeasurementSessionType.MANUAL_CONFIRMED:
+      return BatteryMeasurementScope.LV;
+    default:
+      return BatteryMeasurementScope.HV;
+  }
+}
 
 // ── Assessment ───────────────────────────────────────────────────────────────
 

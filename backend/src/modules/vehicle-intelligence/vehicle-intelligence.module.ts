@@ -46,6 +46,8 @@ import { HvBatteryHealthService } from './battery-health/hv-battery-health.servi
 import { BatteryV2Service } from './battery-health/battery-v2.service';
 import { BatteryEvidenceService } from './battery-health/battery-evidence.service';
 import { CanonicalBatteryHealthService } from './battery-health/canonical-battery-health.service';
+import { BatteryMeasurementSessionRepository } from './battery-health/battery-measurement-session.repository';
+import { BatteryMeasurementSessionService } from './battery-health/battery-measurement-session.service';
 import { HealthSummaryService } from './health-summary/health-summary.service';
 import { AiHealthCareAggregationService } from './health-summary/ai-health-care-aggregation.service';
 import { VehicleHealthTabSummaryService } from './health-summary/vehicle-health-tab-summary.service';
@@ -153,6 +155,8 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     BatteryV2Service,
     BatteryEvidenceService,
     CanonicalBatteryHealthService,
+    BatteryMeasurementSessionRepository,
+    BatteryMeasurementSessionService,
     HealthSummaryService,
     AiHealthCareAggregationService,
     VehicleHealthTabSummaryService,
@@ -217,6 +221,8 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     BatteryV2Service,
     BatteryEvidenceService,
     CanonicalBatteryHealthService,
+    BatteryMeasurementSessionRepository,
+    BatteryMeasurementSessionService,
     ServiceComplianceService,
     ComplianceTaskMaterializeService,
     ServiceOverdueTaskService,

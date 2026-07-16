@@ -1316,6 +1316,7 @@ model Organization {
   notificationDeliveryOutbox        NotificationDeliveryOutbox[]
   taskAutomationOutbox              TaskAutomationOutbox[]
   taskAutomationRuleOverrides       OrgTaskAutomationRuleOverride[]
+  batteryMeasurementSessions        BatteryMeasurementSession[]
 
   @@index([status])
   @@map("organizations")
@@ -1737,6 +1738,7 @@ model Vehicle {
   hvBatteryHealthCurrent            HvBatteryHealthCurrent?
   batteryFeatures                   BatteryFeatures?
   batteryEvidence                   BatteryEvidence[]
+  batteryMeasurementSessions        BatteryMeasurementSession[]
   brakeEvidence                     BrakeEvidence[]
   brakeTripMetrics                  BrakeTripMetric[]
   brakeHealthCurrent                BrakeHealthCurrent?
@@ -5627,6 +5629,13 @@ enum BatteryMeasurementSessionType {
   HV_DIMO_RECHARGE_SEGMENT
   HV_POLL_CHARGE_WINDOW
   HV_DISCHARGE_WINDOW
+  ICE_START_PROXY
+  PHEV_ICE_START
+  EV_WAKE
+  HV_CHARGE
+  WORKSHOP_TEST
+  DOCUMENT_MEASUREMENT
+  MANUAL_CONFIRMED
 }
 
 enum BatteryMeasurementSessionStatus {
@@ -5706,6 +5715,45 @@ enum BatteryReferenceCapacitySource {
   PROVIDER_GROSS_NOMINAL
   VEHICLE_MASTER
   DIMO_NOMINAL_SIGNAL
+}
+
+/// Battery Health V2 — time-bounded measurement cycle (architecture layer 3).
+/// Mutable only in status, endedAt, targetAt, quality, metadata, updatedAt.
+model BatteryMeasurementSession {
+  id               String                          @id @default(uuid())
+  organizationId   String                          @map("organization_id")
+  vehicleId        String                          @map("vehicle_id")
+  scope            BatteryEvidenceScope
+  type             BatteryMeasurementSessionType   @map("type")
+  status           BatteryMeasurementSessionStatus @default(PLANNED)
+  driveProfile     BatteryDriveProfile             @default(UNKNOWN) @map("drive_profile")
+  chemistry        BatteryChemistry                @default(UNKNOWN)
+  startedAt        DateTime                        @map("started_at")
+  targetAt         DateTime?                       @map("target_at")
+  endedAt          DateTime?                       @map("ended_at")
+  quality          BatteryMeasurementQuality       @default(SHADOW)
+  providerSource   String?                         @map("provider_source")
+  sourceEntityType String?                         @map("source_entity_type")
+  sourceEntityId   String?                         @map("source_entity_id")
+  tripId           String?                         @map("trip_id")
+  idempotencyKey   String                          @map("idempotency_key")
+  metadata         Json?                           @map("metadata")
+  modelVersion     Int                             @default(1) @map("model_version")
+  createdAt        DateTime                        @default(now()) @map("created_at")
+  updatedAt        DateTime                        @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip         VehicleTrip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+
+  @@unique([vehicleId, idempotencyKey], map: "battery_measurement_sessions_idempotency_key")
+  @@index([organizationId, startedAt(sort: Desc)])
+  @@index([vehicleId, startedAt(sort: Desc)])
+  @@index([vehicleId, status])
+  @@index([vehicleId, type])
+  @@index([vehicleId, scope, type])
+  @@index([tripId])
+  @@map("battery_measurement_sessions")
 }
 
 /// Per-vehicle battery feature store for V2 health scoring.
@@ -6426,13 +6474,14 @@ model VehicleTrip {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  vehicle              Vehicle               @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  waypoints            VehicleTripWaypoint[]
-  events               DrivingEvent[]
-  behaviorEvents       TripBehaviorEvent[]
-  misuseCases          MisuseCase[]
-  repairs              TripRepair[]
-  rpmWebhookCandidates RpmWebhookCandidate[]
+  vehicle                    Vehicle                     @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  waypoints                  VehicleTripWaypoint[]
+  events                     DrivingEvent[]
+  behaviorEvents             TripBehaviorEvent[]
+  misuseCases                MisuseCase[]
+  repairs                    TripRepair[]
+  rpmWebhookCandidates       RpmWebhookCandidate[]
+  batteryMeasurementSessions BatteryMeasurementSession[]
 
   @@index([vehicleId])
   @@index([startTime])
