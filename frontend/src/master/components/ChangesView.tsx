@@ -35,6 +35,52 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p39-idle-shadow-detectors-2026-07-16',
+    version: '4.9.540',
+    title: 'Driving Intelligence V2 P39 — idle shadow detectors (high RPM stationary + excessive idling)',
+    summary: [
+      'Zwei getrennte Shadow-Detectors: `rev_in_idle` (`HIGH_RPM_WHILE_STATIONARY_PROXY`) und `idling_segment` (`EXCESSIVE_IDLING`).',
+      'Inputs: Speed, RPM, Engine Runtime, Ignition, Trip Context; DIMO Idling Segment nur ergänzend.',
+      'Hohe RPM im Stand: mehrere synchronisierte HF-Beobachtungen + Mindestdauer.',
+      'Kurze Ampelstopps (<3 min) sind kein Long Idle; echte Idle-Phasen ab 180s.',
+      'PHEV/BEV sauber: ICE/PHEV für High-RPM-Proxy; BEV excessive idling über Speed-only.',
+      'Keine Missbrauchseinstufung, keine operativen Folgen; Providerlücken in `providerGaps` sichtbar.',
+      'Tests: Ampel, Parken/Revving, lange Idle-Phase, DIMO-Segment-Fallback.',
+    ],
+    reason:
+      'Prompt 39/76: getrennte Shadow Detectors für Stationary High RPM und Excessive Idling auf dem P35-Framework.',
+    previousBehavior:
+      'P38 kickdown-like — kein dedizierter Shadow-Pfad für rev_in_idle / idling_segment.',
+    details:
+      '`highRpmStationaryShadowDetector` + `excessiveIdlingShadowDetector`; HF-Query um `ignitionOn`; DIMO `idling` segments. Trip-FSM unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T18:00:00.000Z',
+  },
+  {
+    id: 'driving-intelligence-v2-p38-kickdown-like-shadow-2026-07-16',
+    version: '4.9.539',
+    title: 'Driving Intelligence V2 P38 — kickdown-like shadow detector',
+    summary: [
+      'Shadow-Detector `start_kickdown_proxy` (`kickdown-like-shadow-v1`).',
+      'Inputs: Throttle, Engine Load, Torque, RPM-/Speed-Anstieg, optional Gear.',
+      'Ohne Gangsignal nur `KICKDOWN_LIKE_PROXY` — keine Behauptung eines echten Kickdowns.',
+      'Kadenz-/Synchronitätsgate; Cluster und Dauer im Shadow-Report dokumentiert.',
+      'Normales Beschleunigen wird nicht automatisch auffällig.',
+      'Kein Misuse, Alert oder Kundenurteil; Capability Status im Ergebnis sichtbar.',
+      'Tests mit und ohne Gangsignal.',
+    ],
+    reason:
+      'Prompt 38/76: Kickdown-like Shadow Detector auf dem P35-Framework.',
+    previousBehavior:
+      'P37 sustained_high_load — kein Kickdown-Proxy-Detector registriert.',
+    details:
+      '`kickdownLikeShadowDetector` + HF-Query um `powertrainTransmissionCurrentGear`. Trip-FSM unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T17:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p37-sustained-high-load-shadow-2026-07-16',
     version: '4.9.538',
     title: 'Driving Intelligence V2 P37 — sustained high engine load shadow detector',

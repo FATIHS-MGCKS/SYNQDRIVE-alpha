@@ -2,6 +2,7 @@ export type DimoDetectionMechanism =
   | 'ignitionDetection'
   | 'frequencyAnalysis'
   | 'changePointDetection'
+  | 'idling'
   // Native DIMO energy-segment detectors. These do NOT produce driving trips;
   // they emit stationary windows during which the fuel tank grew (refuel) or
   // the traction-battery SoC rose (recharge). Consumed by

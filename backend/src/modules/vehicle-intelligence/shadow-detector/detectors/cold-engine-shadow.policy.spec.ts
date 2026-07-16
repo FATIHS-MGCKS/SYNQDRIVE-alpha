@@ -27,6 +27,7 @@ function sample(
     tractionBatteryPowerKw: null,
     altitudeM: null,
     gear: null,
+    ignitionOn: null,
     ...over,
   };
 }
