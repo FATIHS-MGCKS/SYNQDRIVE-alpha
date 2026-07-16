@@ -35,6 +35,26 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'lv-rest-window-state-machine-v49531-2026-07-16',
+    version: '4.9.531',
+    title: 'V4.9.531 — LV Ruhefenster State Machine (Prompt 30/78)',
+    summary: [
+      'Zentrale State Machine für LV-Ruhefenster: CANDIDATE → RESTING → COMPLETED | INVALIDATED | EXPIRED.',
+      'Öffnung nur bei belastbarer Tripende-Kombination (Speed 0, Motor aus, kein aktiver Trip, kein Charging, provider `observedAt`, letzte Aktivität).',
+      'Persistenz über `BatteryMeasurementSession` Typ `LV_REST_WINDOW`; stabile ID `lv-rest:{vehicleId}:{anchorAtMs}`.',
+      'Invalidierung bei neuem Trip, Wake oder Charging; kein Wake-Snapshot als rückwirkender Restbeginn; Providerfehler ≠ Ruhe.',
+      'Nur unterstützte LV-Profile (Policy-Gate); 60m-/6h-Jobs noch nicht angebunden.',
+      'Unit-Tests: Tripende, Wake, Charging, fehlende Signale, doppelte Events.',
+    ],
+    reason: 'Prompt 30/78: zentrale Ruhefenster-FSM als Grundlage vor REST_60M/REST_6H-Auswertung.',
+    previousBehavior: 'Ruhefenster nur implizit in `BatteryV2Service.onSnapshot` über `batteryFeatures.restWindowStartedAt` ohne Session-FSM.',
+    details:
+      'lv-rest-window/*, battery-v2-domain.ts, battery-measurement-session.repository.ts, vehicle-intelligence.module.ts.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T21:00:00.000Z',
+  },
+  {
     id: 'battery-capability-lifecycle-v49530-2026-07-16',
     version: '4.9.530',
     title: 'V4.9.530 — Battery Capability Lifecycle & Refresh (Prompt 29/78)',
