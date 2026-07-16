@@ -35,6 +35,54 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p52-misuse-reconcile-2026-07-16',
+    version: '4.9.553',
+    title: 'Driving Intelligence V2 P52 — DRIVING_MISUSE_RECONCILE orchestration',
+    summary: [
+      'Neues Modul `misuse-case-reconcile` (`misuse-case-reconcile-v1`) + Job-Handler `DrivingMisuseReconcileJobHandler`.',
+      'Trip-Level Reconciliation: lädt Analysis Run, selektiert qualifizierte Evidence, berechnet Kandidaten deterministisch.',
+      'Upsert via Persistence (P47–P51): eventCount, Rating, Category Gate, Fingerprint-Idempotenz.',
+      'Stale Cases auf Trip (CANDIDATE/ACTIVE/REVIEW_REQUIRED) ohne aktuellen Fingerprint → RESOLVED.',
+      'CONFIRMED: Severity/Confidence/Status bleiben erhalten; `confirmedPreserveAudit` bei abweichender Reconciliation.',
+      'Trigger: EVENT_CONTEXT, DRIVING_IMPACT, ATTRIBUTION, MODEL_VERSION_CHANGE, PERIODIC_STUCK_TRIP.',
+      'Aggregator delegiert an ReconcileService; Registry ersetzt Stub für `DRIVING_MISUSE_RECONCILE`.',
+      'Tests: vollständiger Lifecycle, Idempotenz, Stale-Resolve, Trigger-Inferenz, CONFIRMED-Audit.',
+    ],
+    reason:
+      'Prompt 52/76 — zentrale, idempotente Misuse-Reconciliation als Pipeline-Job statt verstreuter Aggregator-Logik.',
+    previousBehavior:
+      'DRIVING_MISUSE_RECONCILE war Stub; Aggregator persistierte ohne Trip-Level Stale-Resolution und ohne CONFIRMED-Audit.',
+    details:
+      '`misuse-case-reconcile/*`, `driving-misuse-reconcile.handler.ts`, `misuse-case-aggregator.service.ts`, `misuse-case-persistence.helper.ts`, `driving-intelligence-jobs.handler.registry.ts`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T00:15:00.000Z',
+  },
+  {
+    id: 'driving-intelligence-v2-p51-misuse-category-evidence-strength-2026-07-16',
+    version: '4.9.552',
+    title: 'Driving Intelligence V2 P51 — Misuse category evidence strength profiles',
+    summary: [
+      'Neues Modul `misuse-case-category-evidence-strength` (`misuse-category-evidence-v1`).',
+      'Neun Kategorie-Profile: AGGRESSIVE_DRIVING, COLD_ENGINE, LAUNCH_LIKE_USE, BRAKE_ABUSE, REV_IN_IDLE, POSSIBLE_IMPACT, COLLISION, OVERHEATING, DTC_AFTER_ABUSE.',
+      'Pro Profil: erlaubte Source Types, Mindest-Coverage/Attribution/Repetition, Normalisierung, Shadow/Published Effect Caps.',
+      'Health- und Customer-Eligibility pro Kategorie und Maturity (SHADOW vs PUBLISHED).',
+      'Aggregator-Gate filtert nicht qualifizierte Kandidaten vor Persistenz.',
+      'Persistence wendet Category Effect Caps auf Lifecycle an; Audit in evidenceSummary.',
+      'Regeln: neue Engine-Detektoren zunächst Shadow; Proxy kein bestätigter Missbrauch; Datenproblem kein Misuse Case.',
+      'Unit-Tests je Kategorie.',
+    ],
+    reason:
+      'Prompt 51/76 — erforderliche Evidenzstärke je Misuse-Kategorie definieren.',
+    previousBehavior:
+      'Keine kategorie-spezifischen Evidence-Strength-Profile; alle Kandidaten wurden ohne Profil-Gate persistiert.',
+    details:
+      '`misuse-case-category-evidence-strength/*`, `misuse-case-aggregator.service.ts`, `misuse-case-persistence.helper.ts`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T00:05:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p50-misuse-rating-reconciliation-2026-07-16',
     version: '4.9.551',
     title: 'Driving Intelligence V2 P50 — Misuse severity/confidence reconciliation',

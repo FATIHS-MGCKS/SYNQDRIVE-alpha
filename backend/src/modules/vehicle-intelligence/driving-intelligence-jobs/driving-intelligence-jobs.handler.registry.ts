@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import type { DrivingIntelligenceJob, DrivingIntelligenceJobType } from '@prisma/client';
 import { DrivingEventContextEnrichJobHandler } from '../event-context/driving-event-context-enrich.handler';
 import { DimoTripSegmentValidateJobHandler } from '../dimo-trip-segment-validation/dimo-trip-segment-validation.handler';
+import { DrivingMisuseReconcileJobHandler } from '../misuse-cases/misuse-case-reconcile/driving-misuse-reconcile.handler';
 import { DRIVING_INTELLIGENCE_JOB_TYPES } from './driving-intelligence-jobs.types';
 
 export type DrivingIntelligenceJobHandler = (
@@ -16,6 +17,7 @@ export class DrivingIntelligenceJobHandlerRegistry implements OnModuleInit {
   constructor(
     @Optional() private readonly eventContextHandler?: DrivingEventContextEnrichJobHandler,
     @Optional() private readonly segmentValidateHandler?: DimoTripSegmentValidateJobHandler,
+    @Optional() private readonly misuseReconcileHandler?: DrivingMisuseReconcileJobHandler,
   ) {}
 
   onModuleInit(): void {
@@ -36,6 +38,12 @@ export class DrivingIntelligenceJobHandlerRegistry implements OnModuleInit {
     if (this.segmentValidateHandler) {
       this.handlers.set('DIMO_TRIP_SEGMENT_VALIDATE', (job) =>
         this.segmentValidateHandler!.handle(job),
+      );
+    }
+
+    if (this.misuseReconcileHandler) {
+      this.handlers.set('DRIVING_MISUSE_RECONCILE', (job) =>
+        this.misuseReconcileHandler!.handle(job),
       );
     }
   }

@@ -6,6 +6,8 @@ import { MisuseCaseRulesService } from './misuse-case-rules.service';
 import { MisuseCaseEvidenceService } from './misuse-case-evidence.service';
 import { MisuseCasePersistenceHelper } from './misuse-case-persistence.helper';
 import { MisuseCaseLifecycleService } from './misuse-case-lifecycle/misuse-case-lifecycle.service';
+import { MisuseCaseReconcileService } from './misuse-case-reconcile/misuse-case-reconcile.service';
+import { DrivingMisuseReconcileJobHandler } from './misuse-case-reconcile/driving-misuse-reconcile.handler';
 import { DimoModule } from '../../dimo/dimo.module';
 
 @Module({
@@ -14,11 +16,19 @@ import { DimoModule } from '../../dimo/dimo.module';
   providers: [
     MisuseCasesService,
     MisuseCaseAggregatorService,
+    MisuseCaseReconcileService,
+    DrivingMisuseReconcileJobHandler,
     MisuseCaseRulesService,
     MisuseCaseEvidenceService,
     MisuseCasePersistenceHelper,
     MisuseCaseLifecycleService,
   ],
-  exports: [MisuseCaseAggregatorService, MisuseCasesService, MisuseCaseLifecycleService],
+  exports: [
+    MisuseCaseAggregatorService,
+    MisuseCaseReconcileService,
+    DrivingMisuseReconcileJobHandler,
+    MisuseCasesService,
+    MisuseCaseLifecycleService,
+  ],
 })
 export class MisuseCasesModule {}

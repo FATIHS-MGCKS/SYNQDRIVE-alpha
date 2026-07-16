@@ -30,8 +30,17 @@ import {
   assessCandidateCategoryEvidenceStrength,
 } from './misuse-case-category-evidence-strength/misuse-case-category-evidence-strength.gate';
 import { buildCategoryEvidenceStrengthSummary } from './misuse-case-category-evidence-strength/misuse-case-category-evidence-strength';
+import {
+  appendConfirmedPreserveAudit,
+  buildConfirmedPreserveAudit,
+} from './misuse-case-reconcile/misuse-case-reconcile.confirmed-audit';
+import type { MisuseReconcileTrigger } from './misuse-case-reconcile/misuse-case-reconcile.types';
 
 import type { MisuseCaseUpsertContext } from './misuse-case-upsert.types';
+
+export type MisuseCaseUpsertOptions = {
+  trigger?: MisuseReconcileTrigger;
+};
 
 @Injectable()
 export class MisuseCasePersistenceHelper {
@@ -47,6 +56,7 @@ export class MisuseCasePersistenceHelper {
     candidate: CaseCandidate,
     attribution: ReturnType<typeof resolveAttribution>,
     upsertContext: MisuseCaseUpsertContext,
+    options?: MisuseCaseUpsertOptions,
   ): Promise<void> {
     const recalc = recalculateMisuseCaseEvidenceCounts(candidate.evidence);
 
@@ -189,7 +199,9 @@ export class MisuseCasePersistenceHelper {
         recalc.qualifiedEvidence,
       );
 
-      const lifecycle = applyCategoryEffectCaps(
+      const preserveConfirmed = existing.status === MisuseCaseStatus.CONFIRMED;
+
+      const lifecycleBase = applyCategoryEffectCaps(
         applyTelemetryLifecycle({
           ...baseLifecycleInput,
           evidenceCount: recalc.eventCount,
@@ -198,17 +210,47 @@ export class MisuseCasePersistenceHelper {
         categoryAssessment,
       );
 
+      const lifecycle = preserveConfirmed
+        ? {
+            ...lifecycleBase,
+            status: existing.status,
+            decisionEligibility: existing.decisionEligibility,
+            informationalOnly: existing.informationalOnly,
+            resolvedAt: existing.resolvedAt,
+            resolutionReason: existing.resolutionReason,
+          }
+        : lifecycleBase;
+      const confirmedAudit = preserveConfirmed
+        ? buildConfirmedPreserveAudit({
+            trigger: options?.trigger ?? 'LEGACY_AGGREGATOR',
+            existingSeverity: existing.severity,
+            existingConfidence: existing.confidence,
+            reconciledSeverity: rating.severity,
+            reconciledConfidence: rating.confidence,
+          })
+        : null;
+
+      const finalEvidenceSummary = confirmedAudit
+        ? {
+            ...evidenceSummary,
+            ...appendConfirmedPreserveAudit(
+              existing.evidenceSummary as Record<string, unknown> | null | undefined,
+              confirmedAudit,
+            ),
+          }
+        : evidenceSummary;
+
       await this.prisma.misuseCase.update({
         where: { id: existing.id },
         data: {
-          severity: rating.severity,
-          confidence: rating.confidence,
+          severity: preserveConfirmed ? existing.severity : rating.severity,
+          confidence: preserveConfirmed ? existing.confidence : rating.confidence,
           lastDetectedAt:
             candidate.lastDetectedAt > existing.lastDetectedAt
               ? candidate.lastDetectedAt
               : existing.lastDetectedAt,
           eventCount: recalc.eventCount,
-          evidenceSummary: evidenceSummary as Prisma.InputJsonValue,
+          evidenceSummary: finalEvidenceSummary as Prisma.InputJsonValue,
           description: displayDescription,
           recommendedAction: candidate.recommendedAction ?? existing.recommendedAction,
           informationalOnly: lifecycle.informationalOnly,
