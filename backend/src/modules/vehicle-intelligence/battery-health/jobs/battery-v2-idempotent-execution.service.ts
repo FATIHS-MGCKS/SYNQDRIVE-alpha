@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
-import { buildStartProxyMeasurementIdempotencyKey } from '../lv-start-proxy/battery-start-proxy.policy';
+import { buildStartProxySessionIdempotencyKey } from '../lv-start-proxy/battery-start-proxy.policy';
 import type { BatteryV2JobPayload, BatteryV2JobType } from './battery-v2-job.types';
 import { validateBatteryV2JobIdempotencyKey } from './battery-v2-job-idempotency.validation';
 import { BatteryV2VehicleLockService } from './battery-v2-vehicle-lock.service';
@@ -86,11 +86,11 @@ export class BatteryV2IdempotentExecutionService {
         return false;
       case 'BATTERY_START_PROXY_EXTRACT': {
         const tripId = (payload as BatteryV2JobPayload<'BATTERY_START_PROXY_EXTRACT'>).tripId;
-        const existing = await this.prisma.batteryMeasurement.findFirst({
+        const existing = await this.prisma.batteryMeasurementSession.findFirst({
           where: {
             organizationId,
             vehicleId,
-            idempotencyKey: buildStartProxyMeasurementIdempotencyKey(tripId),
+            idempotencyKey: buildStartProxySessionIdempotencyKey(tripId),
           },
           select: { id: true },
         });

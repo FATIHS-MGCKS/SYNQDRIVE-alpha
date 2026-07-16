@@ -3,6 +3,7 @@ import { BatteryDriveProfile } from '../battery-v2-domain';
 import { BatteryStartProxyExtractService } from './battery-start-proxy-extract.service';
 import { BatteryV2ProviderError } from '../jobs/battery-v2-job.errors';
 import { START_PROXY_CADENCE_GATE_VERSION } from './battery-start-proxy-cadence-gate';
+import { START_PROXY_MEASUREMENT_PLAN_VERSION } from './battery-start-proxy-measurements';
 
 const ORG = 'clorg1234567890123456789012';
 const VEH = 'clveh1234567890123456789012';
@@ -41,9 +42,14 @@ describe('BatteryStartProxyExtractService', () => {
   };
 
   let service: BatteryStartProxyExtractService;
+  let measurementCounter: number;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    measurementCounter = 0;
+    measurements.create.mockImplementation(async () => ({
+      id: `meas-${++measurementCounter}`,
+    }));
     service = new BatteryStartProxyExtractService(
       prisma as any,
       dimoSegments as any,
@@ -113,7 +119,7 @@ describe('BatteryStartProxyExtractService', () => {
     expect(measurements.create).not.toHaveBeenCalled();
   });
 
-  it('persists VALID_PROXY START_DIP_PROXY after cadence gate passes', async () => {
+  it('persists multiple proxy measurements after cadence gate passes', async () => {
     policyProfiles.resolveForVehicle.mockResolvedValue({
       startProxyAllowed: true,
       startProxyRequiresConfirmedIceStart: false,
@@ -121,7 +127,8 @@ describe('BatteryStartProxyExtractService', () => {
     });
 
     const points = seriesEvery5s(35, 12.4);
-    points[7].voltage = 11.8;
+    points[5].voltage = 12.5;
+    points[7].voltage = 11.7;
     dimoSegments.fetchCrankWindow.mockResolvedValue(points);
 
     const result = await service.extractAndPersist({
@@ -133,28 +140,34 @@ describe('BatteryStartProxyExtractService', () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok || result.skipped) {
-      throw new Error('expected persisted measurement');
+      throw new Error('expected persisted measurements');
     }
-    expect(result.measurementId).toBe('meas-1');
+    expect(result.measurementIds.length).toBeGreaterThanOrEqual(4);
     expect(measurements.create).toHaveBeenCalledWith(
       expect.objectContaining({
         type: 'START_DIP_PROXY',
         quality: BatteryMeasurementQuality.VALID_PROXY,
-        numericValue: 11.8,
+        numericValue: expect.any(Number),
         context: expect.objectContaining({
-          diagnosticOnly: true,
+          notCrankMinimum: true,
           cadenceGateVersion: START_PROXY_CADENCE_GATE_VERSION,
-          recovery5sLabel: 'RECOVERY_5S',
+          measurementPlanVersion: START_PROXY_MEASUREMENT_PLAN_VERSION,
         }),
         provenance: expect.objectContaining({
           scoreEffect: false,
-          cadenceGateVersion: START_PROXY_CADENCE_GATE_VERSION,
+          publicationEligible: false,
         }),
+      }),
+    );
+    expect(measurements.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'PRE_START_VOLTAGE',
+        idempotencyKey: `pre-start-voltage:${TRIP}`,
       }),
     );
   });
 
-  it('persists NO_DATA without numeric values when provider returns no points', async () => {
+  it('persists status measurements without numeric values for NO_DATA', async () => {
     policyProfiles.resolveForVehicle.mockResolvedValue({
       startProxyAllowed: true,
       startProxyRequiresConfirmedIceStart: false,
@@ -174,19 +187,18 @@ describe('BatteryStartProxyExtractService', () => {
       skipped: true,
       skipReason: 'no_data',
     });
-    expect(measurements.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        quality: BatteryMeasurementQuality.NO_DATA,
-        numericValue: null,
-        unit: null,
-        context: expect.objectContaining({
-          reasonCode: 'no_data',
+    expect(measurements.create).toHaveBeenCalledTimes(5);
+    for (const call of measurements.create.mock.calls) {
+      expect(call[0]).toEqual(
+        expect.objectContaining({
+          quality: BatteryMeasurementQuality.NO_DATA,
+          numericValue: null,
         }),
-      }),
-    );
+      );
+    }
   });
 
-  it('persists INSUFFICIENT_CADENCE without numeric values', async () => {
+  it('persists INSUFFICIENT_CADENCE status measurements without numeric values', async () => {
     policyProfiles.resolveForVehicle.mockResolvedValue({
       startProxyAllowed: true,
       startProxyRequiresConfirmedIceStart: false,
@@ -214,6 +226,7 @@ describe('BatteryStartProxyExtractService', () => {
       skipped: true,
       skipReason: 'insufficient_cadence',
     });
+    expect(measurements.create).toHaveBeenCalledTimes(5);
     expect(measurements.create).toHaveBeenCalledWith(
       expect.objectContaining({
         quality: BatteryMeasurementQuality.INSUFFICIENT_CADENCE,

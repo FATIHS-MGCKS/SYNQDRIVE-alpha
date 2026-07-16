@@ -41,11 +41,11 @@ describe('BatteryStartProxyExtractHandler', () => {
     );
   });
 
-  it('completes when extract persists measurement', async () => {
+  it('completes when extract persists measurements', async () => {
     extract.extractAndPersist.mockResolvedValue({
       ok: true,
       skipped: false,
-      measurementId: 'meas-1',
+      measurementIds: ['meas-1', 'meas-2'],
     });
 
     await expect(handler.handle(payload)).resolves.toBeUndefined();

@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   BatteryMeasurementSessionStatus,
   BatteryMeasurementSessionType,
-  BatteryMeasurementType,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { DimoSegmentsService } from '../../../dimo/dimo-segments.service';
@@ -10,7 +9,6 @@ import { BatteryPolicyProfileService } from '../../battery-policy-profile/batter
 import { isStartProxyAllowedForPolicy } from '../../battery-policy-profile/battery-policy-profile.resolver';
 import { BatteryMeasurementSessionService } from '../battery-measurement-session.service';
 import { BatteryMeasurementService } from '../battery-measurement.service';
-import { START_DIP_PROXY_MEASUREMENT_KIND } from '../battery-crank-policy';
 import { BatteryV2ProviderError } from '../jobs/battery-v2-job.errors';
 import {
   evaluateStartProxyCadenceGate,
@@ -18,16 +16,19 @@ import {
   type StartProxyCadenceGateResult,
 } from './battery-start-proxy-cadence-gate';
 import {
-  buildStartProxyMeasurementIdempotencyKey,
+  buildStartProxyMeasurementPlan,
+  START_PROXY_MEASUREMENT_PLAN_VERSION,
+  START_PROXY_TARGET_MESSARTS,
+} from './battery-start-proxy-measurements';
+import {
   buildStartProxySessionIdempotencyKey,
   computeStartProxyWindow,
   detectConfirmedIceStart,
-  sanitizeStartProxyVoltages,
   type BatteryStartProxyCrankPoint,
 } from './battery-start-proxy.policy';
 
 export type BatteryStartProxyExtractResult =
-  | { ok: true; measurementId: string; skipped: false }
+  | { ok: true; measurementIds: string[]; skipped: false }
   | { ok: true; skipped: true; skipReason: string }
   | { ok: false; retryable: boolean; reason: string };
 
@@ -97,7 +98,7 @@ export class BatteryStartProxyExtractService {
       tripStartAt: input.tripStartedAt,
     });
 
-    const measurementId = await this.persistGateOutcome({
+    const measurementIds = await this.persistGateOutcome({
       input,
       from,
       to,
@@ -107,7 +108,7 @@ export class BatteryStartProxyExtractService {
     });
 
     this.logger.debug(
-      `START_DIP_PROXY persisted vehicle=${input.vehicleId} trip=${input.tripId} measurement=${measurementId} quality=${gate.quality}`,
+      `START proxy measurements persisted vehicle=${input.vehicleId} trip=${input.tripId} count=${measurementIds.length} gateQuality=${gate.quality}`,
     );
 
     if (!gate.ok) {
@@ -121,7 +122,7 @@ export class BatteryStartProxyExtractService {
     return {
       ok: true,
       skipped: false,
-      measurementId,
+      measurementIds,
     };
   }
 
@@ -137,8 +138,14 @@ export class BatteryStartProxyExtractService {
     confirmedIceStart: boolean;
     pointCount: number;
     gate: StartProxyCadenceGateResult;
-  }): Promise<string> {
+  }): Promise<string[]> {
     const { input, from, to, confirmedIceStart, pointCount, gate } = params;
+
+    const plan = buildStartProxyMeasurementPlan({
+      tripId: input.tripId,
+      tripStartedAt: input.tripStartedAt,
+      gate,
+    });
 
     const session = await this.sessions.create({
       organizationId: input.organizationId,
@@ -152,77 +159,58 @@ export class BatteryStartProxyExtractService {
       sourceEntityType: 'trip',
       sourceEntityId: input.tripId,
       metadata: {
-        targetMessarts: [START_DIP_PROXY_MEASUREMENT_KIND],
+        targetMessarts: [...START_PROXY_TARGET_MESSARTS],
         confirmedIceStart,
         windowFrom: from.toISOString(),
         windowTo: to.toISOString(),
         pointCount,
         cadenceGateVersion: START_PROXY_CADENCE_GATE_VERSION,
+        measurementPlanVersion: START_PROXY_MEASUREMENT_PLAN_VERSION,
         cadenceGate: gate.metrics,
+        plannedMessarts: plan.map((item) => item.messart),
       },
     });
 
-    const values =
-      gate.ok && gate.values
-        ? sanitizeStartProxyVoltages({
-            vPreCrank: gate.values.vPreCrank,
-            vMinCrank: gate.values.vMinCrank,
-            vRecovery5s: gate.values.vRecovery5s,
-            vRecovery30s: gate.values.vRecovery30s,
-          })
-        : null;
+    const measurementIds: string[] = [];
+    for (const item of plan) {
+      const measurement = await this.measurements.create({
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        sessionId: session.id,
+        type: item.type,
+        quality: item.quality,
+        observedAt: item.observedAt,
+        numericValue: item.numericValue,
+        unit: item.unit,
+        providerTimestamp: item.providerTimestamp,
+        providerSource: 'DIMO',
+        signalName: 'lowVoltageBatteryCurrentVoltage',
+        idempotencyKey: item.idempotencyKey,
+        context: {
+          confirmedIceStart,
+          ...item.context,
+        },
+        provenance: {
+          selectionMethod: 'historical_provider_timeseries',
+          tripId: input.tripId,
+          messart: item.messart,
+          windowFrom: from.toISOString(),
+          windowTo: to.toISOString(),
+          pointCount,
+          cadenceGateVersion: START_PROXY_CADENCE_GATE_VERSION,
+          measurementPlanVersion: START_PROXY_MEASUREMENT_PLAN_VERSION,
+          cadenceGate: gate.metrics,
+          reasonCode: gate.reasonCode,
+          reasonLabel: gate.reasonLabel,
+          evidenceEligible: false,
+          publicationEligible: false,
+          scoreEffect: false,
+        },
+      });
+      measurementIds.push(measurement.id);
+    }
 
-    const primaryValue =
-      values != null ? values.vMinCrank ?? values.vPreCrank : null;
-
-    const measurement = await this.measurements.create({
-      organizationId: input.organizationId,
-      vehicleId: input.vehicleId,
-      sessionId: session.id,
-      type: BatteryMeasurementType.START_DIP_PROXY,
-      quality: gate.quality,
-      observedAt: input.tripStartedAt,
-      numericValue: primaryValue,
-      unit: primaryValue != null ? 'V' : null,
-      providerSource: 'DIMO',
-      signalName: 'lowVoltageBatteryCurrentVoltage',
-      idempotencyKey: buildStartProxyMeasurementIdempotencyKey(input.tripId),
-      context: {
-        confirmedIceStart,
-        tripId: input.tripId,
-        diagnosticOnly: true,
-        cadenceGateVersion: START_PROXY_CADENCE_GATE_VERSION,
-        cadenceGate: gate.metrics,
-        reasonCode: gate.reasonCode,
-        reasonLabel: gate.reasonLabel,
-        ...(values && gate.ok && gate.values
-          ? {
-              vPreCrank: values.vPreCrank,
-              vMinCrank: values.vMinCrank,
-              vRecovery5s: values.vRecovery5s,
-              vRecovery30s: values.vRecovery30s,
-              recovery5sLabel: gate.values.recovery5sLabel,
-              recovery30sLabel: gate.values.recovery30sLabel,
-            }
-          : {}),
-      },
-      provenance: {
-        selectionMethod: 'historical_provider_timeseries',
-        tripId: input.tripId,
-        windowFrom: from.toISOString(),
-        windowTo: to.toISOString(),
-        pointCount,
-        cadenceGateVersion: START_PROXY_CADENCE_GATE_VERSION,
-        cadenceGate: gate.metrics,
-        reasonCode: gate.reasonCode,
-        reasonLabel: gate.reasonLabel,
-        evidenceEligible: false,
-        publicationEligible: false,
-        scoreEffect: false,
-      },
-    });
-
-    return measurement.id;
+    return measurementIds;
   }
 
   private async fetchCrankWindowStrict(

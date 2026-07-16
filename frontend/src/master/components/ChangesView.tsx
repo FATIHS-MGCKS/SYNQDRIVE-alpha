@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-start-proxy-measurements-v49539-2026-07-17',
+    version: '4.9.539',
+    title: 'V4.9.539 — Start-Proxy Multi-Measurement Plan (Prompt 39/78)',
+    summary: [
+      'Aus qualifizierten Startfenstern werden nur erlaubte Proxy-Messarten persistiert: PRE_START, START_DIP_PROXY, RECOVERY_5S, RECOVERY_30S, RECOVERY_PROXY.',
+      'START_DIP_PROXY speichert groben Spannungsabfall (vPre−vMin), kein Starterminimum; Zielabweichung und Kadenz im Context.',
+      '5s/30s nur bei ±5s Nähe; sonst RECOVERY_PROXY; bei Gate-Fail Status-Measurements ohne Zahlenwert.',
+      'ICE_START_PROXY-Session; idempotent je Trip und Messart; keine Score-/Publication-Wirkung; keine battery_features-Zähler.',
+    ],
+    reason: 'Prompt 39/78: normkonforme Aufspaltung der Startfenster-Diagnostik in einzelne Messarten.',
+    previousBehavior: 'Ein einzelnes START_DIP_PROXY-Measurement mit gebündelten Kontextwerten.',
+    details:
+      'battery-start-proxy-measurements.ts, battery-start-proxy-extract.service.ts, battery-v2-idempotent-execution.service.ts, docs/architecture/battery-start-proxy-measurements.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T01:30:00.000Z',
+  },
+  {
     id: 'battery-start-proxy-cadence-gate-v49538-2026-07-17',
     version: '4.9.538',
     title: 'V4.9.538 — Start-Proxy Cadence & Coverage Gate (Prompt 38/78)',
