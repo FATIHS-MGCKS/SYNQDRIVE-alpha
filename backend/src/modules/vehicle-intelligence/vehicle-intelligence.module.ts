@@ -65,6 +65,10 @@ import { DrivingEvidenceRepository } from './driving-evidence/driving-evidence.r
 import { DrivingEvidenceService } from './driving-evidence/driving-evidence.service';
 import { DrivingAnalysisRunRepository } from './driving-analysis-run/driving-analysis-run.repository';
 import { DrivingAnalysisRunService } from './driving-analysis-run/driving-analysis-run.service';
+import { DrivingIntelligenceJobRepository } from './driving-intelligence-jobs/driving-intelligence-jobs.repository';
+import { DrivingIntelligenceJobDispatcherService } from './driving-intelligence-jobs/driving-intelligence-jobs.dispatcher.service';
+import { DrivingIntelligenceJobHandlerRegistry } from './driving-intelligence-jobs/driving-intelligence-jobs.handler.registry';
+import { DrivingIntelligenceJobProcessorService } from './driving-intelligence-jobs/driving-intelligence-jobs.processor.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
 import { DimoModule } from '../dimo/dimo.module';
 import { AiModule } from '../ai/ai.module';
@@ -108,6 +112,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
       { name: QUEUE_NAMES.TRIP_TRACKING },
       { name: QUEUE_NAMES.TRIP_BEHAVIOR_ENRICHMENT },
       { name: QUEUE_NAMES.DRIVING_IMPACT_COMPUTE },
+      { name: QUEUE_NAMES.DRIVING_INTELLIGENCE },
       { name: QUEUE_NAMES.DTC_KNOWLEDGE_ENRICHMENT },
     ),
   ],
@@ -178,6 +183,10 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     DrivingEvidenceService,
     DrivingAnalysisRunRepository,
     DrivingAnalysisRunService,
+    DrivingIntelligenceJobRepository,
+    DrivingIntelligenceJobDispatcherService,
+    DrivingIntelligenceJobHandlerRegistry,
+    DrivingIntelligenceJobProcessorService,
     EnergyEventsService,
     // ── New refactored providers ──
     TripDecisionEngine,
@@ -245,6 +254,9 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     DrivingEvidenceService,
     DrivingAnalysisRunRepository,
     DrivingAnalysisRunService,
+    DrivingIntelligenceJobRepository,
+    DrivingIntelligenceJobDispatcherService,
+    DrivingIntelligenceJobProcessorService,
     EnergyEventsService,
     TripDecisionEngine,
     TripDetectionPolicyResolver,

@@ -7,6 +7,8 @@ export const QUEUE_NAMES = {
   TRIP_BEHAVIOR_ENRICHMENT: 'trip.behavior.enrichment',
   /** Driving Impact Engine V1 — runs after HF enrichment completes. */
   DRIVING_IMPACT_COMPUTE: 'trip.driving-impact.compute',
+  /** Driving Intelligence V2 — typed persistent job envelope (P18). */
+  DRIVING_INTELLIGENCE: 'driving.intelligence.jobs',
   /** AI Document Upload — async text extraction + DIMO agent structuring. */
   DOCUMENT_EXTRACTION: 'document.extraction',
   /** DTC Knowledge Base — async AI enrichment of error codes (generic + vehicle). */
