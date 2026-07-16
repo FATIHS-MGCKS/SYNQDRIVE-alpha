@@ -12,8 +12,6 @@ import {
 } from '@config/battery-health-v2.config';
 import {
   buildAssessmentJobIdempotencyKey,
-  buildHvSessionJobIdempotencyKey,
-  buildRechargeSegmentFingerprint,
   buildRestTargetJobIdempotencyKey,
   buildStartProxyJobIdempotencyKey,
 } from './battery-v2-job-idempotency.policy';
@@ -23,6 +21,7 @@ import { BatteryV2JobProducerService } from './battery-v2-job-producer.service';
 import { BatteryV2RestTargetProducer } from './battery-v2-rest-target.producer';
 import { BatteryV2SnapshotObservationProducer } from './battery-v2-snapshot-observation.producer';
 import { BatteryCapabilityRefreshService } from '../capability-preflight/battery-capability-refresh.service';
+import { HvRechargeSessionReconcileProducerService } from '../hv-charge-session/hv-recharge-session-reconcile-producer.service';
 import {
   isLvRestTargetAlreadyScheduled,
   LV_REST_TARGET_TYPES,
@@ -63,6 +62,7 @@ export class BatteryV2ReconciliationService {
     private readonly capabilityRefresh: BatteryCapabilityRefreshService,
     private readonly restTargetProducer: BatteryV2RestTargetProducer,
     private readonly tripStartProducer: BatteryV2TripStartProducer,
+    private readonly rechargeReconcileProducer: HvRechargeSessionReconcileProducerService,
   ) {}
 
   async reconcileAll(): Promise<BatteryV2ReconciliationResult> {
@@ -455,55 +455,7 @@ export class BatteryV2ReconciliationService {
   }
 
   private async reconcileRechargeSegments(batch: number): Promise<number> {
-    const lookback = new Date(Date.now() - 31 * 24 * 3600_000);
-    const events = await this.prisma.vehicleEnergyEvent.findMany({
-      where: { kind: 'RECHARGE', startTime: { gte: lookback } },
-      take: batch,
-      orderBy: { startTime: 'desc' },
-      select: {
-        dimoSegmentId: true,
-        vehicleId: true,
-        vehicle: { select: { organizationId: true } },
-      },
-    });
-
-    let enqueued = 0;
-    for (const event of events) {
-      const organizationId = event.vehicle.organizationId;
-      if (!organizationId) continue;
-
-      const segmentFingerprint = buildRechargeSegmentFingerprint(event.dimoSegmentId);
-      const existing = await this.prisma.hvChargeSession.findUnique({
-        where: {
-          vehicleId_segmentFingerprint: {
-            vehicleId: event.vehicleId,
-            segmentFingerprint,
-          },
-        },
-        select: { id: true, isOngoing: true },
-      });
-      if (existing && !existing.isOngoing) continue;
-
-      const idempotencyKey = buildHvSessionJobIdempotencyKey({
-        vehicleId: event.vehicleId,
-        segmentFingerprint,
-      });
-      if (await this.deadLetters.isDeadLetter('HV_RECHARGE_SESSION_RECONCILE', idempotencyKey)) {
-        continue;
-      }
-
-      const jobId = await this.jobProducer.enqueue('HV_RECHARGE_SESSION_RECONCILE', {
-        organizationId,
-        vehicleId: event.vehicleId,
-        idempotencyKey,
-        segmentFingerprint,
-        sourceEntityId: event.dimoSegmentId,
-        correlationId: `reconcile:recharge:${event.dimoSegmentId}`,
-      });
-      if (jobId) enqueued += 1;
-    }
-
-    return enqueued;
+    return this.rechargeReconcileProducer.reconcilePeriodic(batch);
   }
 
   private async reconcilePendingAssessments(batch: number): Promise<number> {

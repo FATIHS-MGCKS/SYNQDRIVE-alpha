@@ -3,6 +3,14 @@ import { BatteryV2ReconciliationService } from './battery-v2-reconciliation.serv
 import { RuntimeStatusRegistry } from '@modules/observability/runtime-status.registry';
 import { buildRestTargetJobIdempotencyKey } from './battery-v2-job-idempotency.policy';
 
+jest.mock('@config/battery-health-v2.config', () => {
+  const actual = jest.requireActual('@config/battery-health-v2.config');
+  return {
+    ...actual,
+    isBatteryV2RestShadowEnabled: jest.fn().mockReturnValue(true),
+  };
+});
+
 const ORG = 'clorg1234567890123456789012';
 const VEH = 'clveh1234567890123456789012';
 
@@ -113,6 +121,12 @@ describe('BatteryV2ReconciliationService', () => {
     getRest6hDelayMs: jest.fn().mockReturnValue(6 * 60 * 60_000),
   };
   const tripStartProducer = { enqueueStartProxy: jest.fn().mockResolvedValue('job-id') };
+  const rechargeReconcileProducer = {
+    reconcilePeriodic: jest.fn().mockResolvedValue(0),
+    enqueue: jest.fn().mockResolvedValue('job-id'),
+    enqueueForChargingTransition: jest.fn().mockResolvedValue('job-id'),
+    enqueueAfterCapabilityRefresh: jest.fn().mockResolvedValue('job-id'),
+  };
 
   let service: BatteryV2ReconciliationService;
 
@@ -130,6 +144,7 @@ describe('BatteryV2ReconciliationService', () => {
       capabilityRefresh as any,
       restTargetProducer as any,
       tripStartProducer as any,
+      rechargeReconcileProducer as any,
     );
   });
 
@@ -239,49 +254,11 @@ describe('BatteryV2ReconciliationService', () => {
     expect(jobProducer.enqueue.mock.calls[0][1].idempotencyKey).toBe(key);
   });
 
-  it('skips completed recharge segments already persisted', async () => {
-    prisma.vehicleEnergyEvent.findMany.mockResolvedValue([
-      {
-        dimoSegmentId: 'seg-1',
-        vehicleId: VEH,
-        vehicle: { organizationId: ORG },
-      },
-    ]);
-    prisma.hvChargeSession.findUnique.mockResolvedValue({
-      id: 'session-1',
-      isOngoing: false,
-    });
+  it('delegates periodic recharge reconcile to producer', async () => {
+    rechargeReconcileProducer.reconcilePeriodic.mockResolvedValue(2);
 
     const result = await service.reconcileAll();
-    expect(result.rechargeSegments).toBe(0);
-    expect(
-      jobProducer.enqueue.mock.calls.every(
-        (call) => call[0] !== 'HV_RECHARGE_SESSION_RECONCILE',
-      ),
-    ).toBe(true);
-  });
-
-  it('re-enqueues ongoing recharge sessions for provider refresh', async () => {
-    prisma.vehicleEnergyEvent.findMany.mockResolvedValue([
-      {
-        dimoSegmentId: 'dimo-recharge-186946-123',
-        vehicleId: VEH,
-        vehicle: { organizationId: ORG },
-      },
-    ]);
-    prisma.hvChargeSession.findUnique.mockResolvedValue({
-      id: 'session-ongoing',
-      isOngoing: true,
-    });
-
-    const result = await service.reconcileAll();
-    expect(result.rechargeSegments).toBe(1);
-    expect(jobProducer.enqueue).toHaveBeenCalledWith(
-      'HV_RECHARGE_SESSION_RECONCILE',
-      expect.objectContaining({
-        vehicleId: VEH,
-        segmentFingerprint: 'dimo-recharge-186946-123',
-      }),
-    );
+    expect(result.rechargeSegments).toBe(2);
+    expect(rechargeReconcileProducer.reconcilePeriodic).toHaveBeenCalled();
   });
 });

@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'hv-recharge-session-reconcile-v49549-2026-07-17',
+    version: '4.9.549',
+    title: 'V4.9.549 — HV Recharge Session Reconcile (Prompt 49/78)',
+    summary: [
+      '`HvRechargeSessionReconcileService` — periodisches 31d-Rolling-Window je fähigem Fahrzeug; neue/ongoing/abgeschlossene Sessions via Ingest.',
+      'Keine Löschung fehlender Provider-Segmente; idempotente Jobs mit vehicle-level Keys; Capability-Gate `rechargeSegmentsAvailable`.',
+      'Trigger: PERIODIC (Reconciliation-Scheduler), CHARGING_STATE (30s Delay), CAPABILITY_REFRESH nach Preflight.',
+      'Metriken: Segmentzahl, Persist-Outcomes, Fehler, Provider-Delay.',
+      '11 Tests: verspätete Daten, doppelte Reconciliation, Providerfehler, Producer/Handler.',
+    ],
+    reason: 'Prompt 49/78: vollständige HV_RECHARGE_SESSION_RECONCILE-Orchestrierung vor Capacity-Observation-Pipeline.',
+    previousBehavior: 'Handler war auf Einzel-Segment-Fingerprint beschränkt; kein periodisches Rolling-Window-Reconcile mit Triggern/Metriken.',
+    details:
+      'hv-recharge-session-reconcile.*, hv-recharge-session-reconcile-producer.service.ts, battery-v2-reconciliation.service.ts, hv-capability-refresh.handler.ts, battery-v2-snapshot-ingestion.service.ts, trip-metrics.service.ts, docs/architecture/hv-recharge-session-reconcile.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T00:00:00.000Z',
+  },
+  {
     id: 'hv-charge-session-persist-v49548-2026-07-17',
     version: '4.9.548',
     title: 'V4.9.548 — HV Charge Session Persistence (Prompt 48/78)',

@@ -81,6 +81,9 @@ export interface HvCapabilityRefreshPayload extends BatteryV2JobPayloadBase {
 
 export interface HvRechargeSessionReconcilePayload extends BatteryV2JobPayloadBase {
   segmentFingerprint?: string | null;
+  reconcileTrigger?: string | null;
+  windowFrom?: string | null;
+  windowTo?: string | null;
 }
 
 export interface HvCapacityShadowRecomputePayload extends BatteryV2JobPayloadBase {
