@@ -299,20 +299,17 @@ describe('TripAnalysisStatusResolver', () => {
     );
   });
 
-  describe('stage state matrix', () => {
-    const terminalSuccess: TripAnalysisStageRuntimeState[] = ['done', 'skipped', 'not_required'];
-
-    it.each(terminalSuccess)(
-      'behavior=%s with all required terminals → COMPLETED or PARTIAL, never FAILED',
-      (behaviorState) => {
-        const result = resolve({
-          behavior: behaviorState === 'not_required' ? 'done' : behaviorState,
-          route: 'done',
-          misuse: 'done',
-          drivingImpact: 'done',
-        });
-        expect(result.status).not.toBe('FAILED');
-      },
-    );
+  describe('PARTIAL with behavior unavailable', () => {
+    it('returns PARTIAL when behavior skipped but route is done', () => {
+      const result = resolve({
+        behavior: 'skipped',
+        route: 'done',
+        nativeEvents: 'done',
+        misuse: 'pending',
+        drivingImpact: 'pending',
+      });
+      expect(result.status).toBe('PARTIAL');
+      expect(result.hasUsablePartialResults).toBe(true);
+    });
   });
 });

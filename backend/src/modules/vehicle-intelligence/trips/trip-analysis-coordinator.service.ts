@@ -6,13 +6,14 @@ import {
   type AnalysisAssessabilityContext,
   type AnalysisStageName,
   type AnalysisStageState,
-  type AnalysisStagesJson,
+  type AnalysisStagesDocument,
   type TripAnalysisStatus,
-  emptyAnalysisStages,
+  emptyAnalysisStagesDocument,
   mergeAssessabilityIntoSummary,
-  parseAnalysisStagesJson,
+  parseAnalysisStagesDocument,
   parseBehaviorSummaryJson,
   resolveTripAnalysisStatusFromStages,
+  updateStageRecord,
 } from './trip-analysis-status';
 import type { DrivingImpactOutcome } from '../driving-impact/driving-impact-outcome.types';
 
@@ -31,6 +32,25 @@ export interface AnalysisDiagnosticSnapshot {
   hfInsufficientForAbuse: boolean;
   nativeBehaviorEventsAvailable: boolean;
   nativeEventCount: number | null;
+}
+
+export interface MarkStageOptions {
+  errorCode?: string | null;
+  completedAt?: Date;
+  /** Defaults to true — increments attempt counter for the stage transition. */
+  incrementAttempt?: boolean;
+}
+
+interface CommitStagesContext {
+  assessability?: AnalysisAssessabilityContext;
+  analysisQueuedAt?: Date | null;
+  analysisPartialAt?: Date | null;
+  behaviorEnrichmentStatus?: string | null;
+  behaviorSummaryStatus?: string | null;
+  behaviorSummaryJson?: unknown;
+  drivingImpactStatus?: string | null;
+  globalFailure?: boolean;
+  globalFailureReason?: string;
 }
 
 @Injectable()
@@ -55,7 +75,7 @@ export class TripAnalysisCoordinatorService {
         analysisFailedAt: null,
         analysisFailedReason: null,
         analysisLatencyMs: null,
-        analysisStagesJson: emptyAnalysisStages() as Prisma.InputJsonValue,
+        analysisStagesJson: emptyAnalysisStagesDocument() as Prisma.InputJsonValue,
         behaviorSummaryStatus: 'PENDING',
         drivingImpactStatus: 'PENDING',
       },
@@ -79,10 +99,6 @@ export class TripAnalysisCoordinatorService {
     });
   }
 
-  /**
-   * Persist assessability after successful behavior enrichment and mark behavior done.
-   * Does not finalize trip analysis — downstream stages may still run.
-   */
   async onBehaviorCompleted(
     tripId: string,
     assessability: AnalysisAssessabilityContext,
@@ -92,8 +108,7 @@ export class TripAnalysisCoordinatorService {
   }
 
   /**
-   * Stage-specific behavior skip with assessability-aware terminal status.
-   * Downstream stages are skipped only when no assessable source exists.
+   * Behavior unavailable — does not cascade-skip independent stages (route, native events).
    */
   async onBehaviorSkipped(
     tripId: string,
@@ -104,87 +119,113 @@ export class TripAnalysisCoordinatorService {
 
     const trip = await this.prisma.vehicleTrip.findUnique({
       where: { id: tripId },
-      select: { analysisQueuedAt: true, analysisStagesJson: true },
+      select: {
+        analysisQueuedAt: true,
+        analysisPartialAt: true,
+        analysisStagesJson: true,
+        behaviorEnrichmentStatus: true,
+        behaviorSummaryStatus: true,
+        behaviorSummaryJson: true,
+      },
     });
     if (!trip) return;
 
-    const stages = parseAnalysisStagesJson(trip.analysisStagesJson);
-    stages.behavior = 'skipped';
-    stages.nativeEvents = 'skipped';
-    stages.route = 'skipped';
-    stages.eventContext = 'skipped';
-    stages.misuse = 'skipped';
-    stages.drivingImpact = 'skipped';
-    stages.attribution = 'skipped';
-
-    const now = new Date();
-    const latencyMs = trip.analysisQueuedAt
-      ? now.getTime() - trip.analysisQueuedAt.getTime()
-      : null;
-
-    const resolved = resolveTripAnalysisStatusFromStages(stages, {
-      assessability,
-      analysisQueued: true,
+    const stagesDoc = updateStageRecord(parseAnalysisStagesDocument(trip.analysisStagesJson), 'behavior', {
+      state: 'skipped',
+      errorCode: reason.slice(0, 120),
+      completedAt: new Date(),
     });
-    const terminalStatus = resolved.legacyTripAnalysisStatus as TripAnalysisStatus;
 
-    await this.prisma.vehicleTrip.update({
-      where: { id: tripId },
-      data: {
-        tripAnalysisStatus: terminalStatus,
-        analysisCompletedAt: now,
-        analysisLatencyMs: latencyMs,
-        analysisFailedReason: reason.slice(0, 500),
-        analysisStagesJson: stages as Prisma.InputJsonValue,
-        behaviorSummaryStatus: 'SKIPPED',
-        drivingImpactStatus: 'SKIPPED',
-      },
+    await this.commitStages(tripId, stagesDoc, {
+      assessability,
+      analysisQueuedAt: trip.analysisQueuedAt,
+      analysisPartialAt: trip.analysisPartialAt,
+      behaviorEnrichmentStatus: trip.behaviorEnrichmentStatus,
+      behaviorSummaryStatus: 'SKIPPED',
+      behaviorSummaryJson: trip.behaviorSummaryJson,
     });
 
     await this.logAnalysisDiagnostics(tripId, assessability);
     this.logger.log(
-      `Trip analysis behavior SKIPPED: trip=${tripId} status=${terminalStatus} reason=${reason} ` +
+      `Trip analysis behavior SKIPPED: trip=${tripId} reason=${reason} ` +
         `assessability=${assessability.analysisAssessability}`,
     );
   }
 
+  /**
+   * Global analysis failure — only for behavior critical failure or orchestration disruption.
+   * Preserves terminal records of other stages.
+   */
   async onAnalysisFailed(tripId: string, reason: string, stage?: AnalysisStageName): Promise<void> {
-    const now = new Date();
-    const trip = await this.prisma.vehicleTrip.findUnique({
-      where: { id: tripId },
-      select: { analysisQueuedAt: true, analysisStagesJson: true, vehicleId: true },
-    });
-    const stages = parseAnalysisStagesJson(trip?.analysisStagesJson);
-    if (stage) {
-      stages[stage] = 'failed';
+    if (stage && stage !== 'behavior') {
+      await this.markStageFailed(tripId, stage, reason);
+      return;
     }
 
-    const latencyMs = trip?.analysisQueuedAt
-      ? now.getTime() - trip.analysisQueuedAt.getTime()
-      : null;
-
-    await this.prisma.vehicleTrip.update({
+    const trip = await this.prisma.vehicleTrip.findUnique({
       where: { id: tripId },
-      data: {
-        tripAnalysisStatus: 'FAILED',
-        analysisFailedAt: now,
-        analysisFailedReason: reason.slice(0, 500),
-        analysisLatencyMs: latencyMs,
-        analysisStagesJson: stages as Prisma.InputJsonValue,
-        behaviorSummaryStatus: 'FAILED',
+      select: {
+        analysisQueuedAt: true,
+        analysisPartialAt: true,
+        analysisStagesJson: true,
+        behaviorEnrichmentStatus: true,
+        behaviorSummaryStatus: true,
+        behaviorSummaryJson: true,
+        vehicleId: true,
       },
     });
+
+    const stagesDoc = stage
+      ? updateStageRecord(parseAnalysisStagesDocument(trip?.analysisStagesJson), stage, {
+          state: 'failed',
+          errorCode: reason.slice(0, 120),
+          completedAt: new Date(),
+        })
+      : parseAnalysisStagesDocument(trip?.analysisStagesJson);
+
+    await this.commitStages(tripId, stagesDoc, {
+      analysisQueuedAt: trip?.analysisQueuedAt,
+      analysisPartialAt: trip?.analysisPartialAt,
+      behaviorEnrichmentStatus: trip?.behaviorEnrichmentStatus,
+      behaviorSummaryStatus: 'FAILED',
+      behaviorSummaryJson: trip?.behaviorSummaryJson,
+      globalFailure: true,
+      globalFailureReason: reason,
+    });
+
     this.tripMetrics?.enrichmentFailed.inc({ stage: stage ?? 'analysis_pipeline' });
-    this.logger.warn(`Trip analysis FAILED: trip=${tripId} stage=${stage ?? 'unknown'} reason=${reason}`);
+    this.logger.warn(`Trip analysis FAILED: trip=${tripId} stage=${stage ?? 'orchestration'} reason=${reason}`);
     if (trip?.vehicleId) {
       await this.logAnalysisDiagnostics(tripId);
     }
   }
 
-  /**
-   * Apply driving-impact terminal outcome with optional transaction client.
-   * Used by DrivingImpactStatusSyncService for atomic impact-row + status writes.
-   */
+  /** Stage-local failure — preserves completed stages; overall status via resolver (typically PARTIAL). */
+  async markStageFailed(
+    tripId: string,
+    stage: AnalysisStageName,
+    errorCode: string,
+  ): Promise<void> {
+    await this.markStage(tripId, stage, 'failed', undefined, {
+      errorCode: errorCode.slice(0, 120),
+      completedAt: new Date(),
+    });
+    this.tripMetrics?.enrichmentFailed.inc({ stage });
+    this.logger.warn(`Trip analysis stage FAILED: trip=${tripId} stage=${stage} error=${errorCode}`);
+  }
+
+  /** Misuse without assessable basis — capability gap, not a technical failure. */
+  async markStageNotAssessable(
+    tripId: string,
+    stage: AnalysisStageName,
+    errorCode = 'NOT_ASSESSABLE',
+  ): Promise<void> {
+    await this.markStage(tripId, stage, 'not_assessable', undefined, {
+      errorCode,
+      completedAt: new Date(),
+    });
+  }
+
   async applyDrivingImpactOutcome(
     tripId: string,
     outcome: DrivingImpactOutcome,
@@ -194,7 +235,6 @@ export class TripAnalysisCoordinatorService {
     const trip = await db.vehicleTrip.findUnique({
       where: { id: tripId },
       select: {
-        tripAnalysisStatus: true,
         analysisQueuedAt: true,
         analysisPartialAt: true,
         analysisStagesJson: true,
@@ -205,81 +245,42 @@ export class TripAnalysisCoordinatorService {
     });
     if (!trip) return;
 
-    const stages = parseAnalysisStagesJson(trip.analysisStagesJson);
-    stages.drivingImpact = outcome.stageState;
+    const stageState: AnalysisStageState =
+      outcome.drivingImpactStatus === 'FAILED'
+        ? 'failed'
+        : outcome.drivingImpactStatus === 'SKIPPED'
+          ? 'skipped'
+          : 'done';
 
-    const now = outcome.calculatedAt ?? new Date();
-    const assess = this.assessabilityFromTrip(
-      trip.behaviorSummaryJson,
-      trip.behaviorEnrichmentStatus,
+    const stagesDoc = updateStageRecord(parseAnalysisStagesDocument(trip.analysisStagesJson), 'drivingImpact', {
+      state: stageState,
+      errorCode:
+        outcome.drivingImpactStatus === 'FAILED'
+          ? outcome.failureReason ?? 'DRIVING_IMPACT_FAILED'
+          : outcome.drivingImpactStatus === 'PARTIAL'
+            ? 'PARTIAL_COMPUTATION'
+            : null,
+      completedAt: outcome.calculatedAt ?? new Date(),
+    });
+
+    await this.commitStages(
+      tripId,
+      stagesDoc,
+      {
+        analysisQueuedAt: trip.analysisQueuedAt,
+        analysisPartialAt: trip.analysisPartialAt,
+        behaviorEnrichmentStatus: trip.behaviorEnrichmentStatus,
+        behaviorSummaryStatus: trip.behaviorSummaryStatus,
+        behaviorSummaryJson: trip.behaviorSummaryJson,
+        drivingImpactStatus: outcome.drivingImpactStatus,
+        globalFailure: outcome.drivingImpactStatus === 'FAILED',
+        globalFailureReason: outcome.failureReason,
+      },
+      db,
     );
 
-    const resolved = resolveTripAnalysisStatusFromStages(stages, {
-      assessability: assess,
-      analysisQueued: trip.analysisQueuedAt != null,
-    });
-
-    const data: Record<string, unknown> = {
-      analysisStagesJson: stages as Prisma.InputJsonValue,
-      tripAnalysisStatus: resolved.legacyTripAnalysisStatus,
-      drivingImpactStatus: outcome.drivingImpactStatus,
-    };
-
-    if (outcome.calculatedAt) {
-      data.drivingImpactComputedAt = outcome.calculatedAt;
-    }
-
-    if (outcome.drivingImpactStatus === 'FAILED') {
-      data.analysisFailedAt = now;
-      data.analysisFailedReason = outcome.failureReason ?? 'driving_impact_failed';
-      this.tripMetrics?.enrichmentFailed.inc({ stage: 'drivingImpact' });
-    }
-
-    if (
-      resolved.status === 'COMPLETED' ||
-      resolved.status === 'SKIPPED' ||
-      resolved.status === 'NOT_ASSESSABLE'
-    ) {
-      const latencyMs = trip.analysisQueuedAt
-        ? now.getTime() - trip.analysisQueuedAt.getTime()
-        : null;
-
-      Object.assign(data, {
-        analysisCompletedAt: now,
-        analysisLatencyMs: latencyMs,
-        analysisFailedAt: outcome.drivingImpactStatus === 'FAILED' ? now : null,
-        analysisFailedReason:
-          outcome.drivingImpactStatus === 'FAILED' ? outcome.failureReason ?? null : null,
-        behaviorSummaryStatus: this.resolveBehaviorSummaryStatus(
-          stages,
-          trip.behaviorEnrichmentStatus,
-        ),
-      });
-      if (latencyMs != null && outcome.drivingImpactStatus !== 'FAILED') {
-        this.tripMetrics?.tripFinalizeLatency.observe({ profile: 'analysis' }, latencyMs / 1000);
-      }
-    } else if (resolved.status === 'PARTIAL') {
-      Object.assign(data, {
-        analysisPartialAt: trip.analysisPartialAt ?? now,
-        behaviorSummaryStatus: 'READY',
-      });
-    } else if (resolved.status === 'IN_PROGRESS') {
-      Object.assign(data, {
-        behaviorSummaryStatus:
-          stages.behavior === 'done'
-            ? 'READY'
-            : stages.behavior === 'skipped'
-              ? 'SKIPPED'
-              : trip.behaviorSummaryStatus ?? 'PENDING',
-      });
-    }
-
-    await db.vehicleTrip.update({
-      where: { id: tripId },
-      data: data as any,
-    });
-
     if (!tx) {
+      const assess = this.assessabilityFromTrip(trip.behaviorSummaryJson, trip.behaviorEnrichmentStatus);
       await this.logAnalysisDiagnostics(tripId, assess);
     }
   }
@@ -289,116 +290,56 @@ export class TripAnalysisCoordinatorService {
     stage: AnalysisStageName,
     state: AnalysisStageState,
     assessability?: AnalysisAssessabilityContext,
+    options?: MarkStageOptions,
   ): Promise<void> {
     const trip = await this.prisma.vehicleTrip.findUnique({
       where: { id: tripId },
       select: {
-        tripAnalysisStatus: true,
         analysisQueuedAt: true,
         analysisPartialAt: true,
         analysisStagesJson: true,
         behaviorSummaryStatus: true,
         behaviorEnrichmentStatus: true,
         behaviorSummaryJson: true,
+        drivingImpactStatus: true,
       },
     });
     if (!trip) return;
 
-    const stages = parseAnalysisStagesJson(trip.analysisStagesJson);
-    stages[stage] = state;
+    const stagesDoc = updateStageRecord(parseAnalysisStagesDocument(trip.analysisStagesJson), stage, {
+      state,
+      errorCode: options?.errorCode,
+      completedAt: options?.completedAt ?? (state === 'pending' ? null : new Date()),
+      incrementAttempt: options?.incrementAttempt,
+    });
 
-    const now = new Date();
+    const drivingImpactStatus =
+      stage === 'drivingImpact'
+        ? state === 'done'
+          ? 'READY'
+          : state === 'not_assessable' || state === 'skipped'
+            ? 'SKIPPED'
+            : state === 'failed'
+              ? 'FAILED'
+              : trip.drivingImpactStatus
+        : undefined;
+
+    await this.commitStages(tripId, stagesDoc, {
+      assessability,
+      analysisQueuedAt: trip.analysisQueuedAt,
+      analysisPartialAt: trip.analysisPartialAt,
+      behaviorEnrichmentStatus: trip.behaviorEnrichmentStatus,
+      behaviorSummaryStatus: trip.behaviorSummaryStatus,
+      behaviorSummaryJson: trip.behaviorSummaryJson,
+      drivingImpactStatus: drivingImpactStatus ?? undefined,
+    });
+
     const assess =
       assessability ??
       this.assessabilityFromTrip(trip.behaviorSummaryJson, trip.behaviorEnrichmentStatus);
-
-    const resolved = resolveTripAnalysisStatusFromStages(stages, {
-      assessability: assess,
-      analysisQueued: trip.analysisQueuedAt != null,
-    });
-
-    if (resolved.status === 'FAILED') {
-      await this.onAnalysisFailed(tripId, `${stage}_failed`, stage);
-      return;
-    }
-
-    const data: Record<string, unknown> = {
-      analysisStagesJson: stages as Prisma.InputJsonValue,
-      tripAnalysisStatus: resolved.legacyTripAnalysisStatus,
-    };
-
-    if (stage === 'drivingImpact') {
-      if (state === 'done') {
-        data.drivingImpactStatus = 'READY';
-      } else if (state === 'skipped') {
-        data.drivingImpactStatus = 'SKIPPED';
-      } else if (state === 'failed') {
-        data.drivingImpactStatus = 'FAILED';
-      }
-    }
-
-    if (
-      resolved.status === 'COMPLETED' ||
-      resolved.status === 'SKIPPED' ||
-      resolved.status === 'NOT_ASSESSABLE'
-    ) {
-      const latencyMs = trip.analysisQueuedAt
-        ? now.getTime() - trip.analysisQueuedAt.getTime()
-        : null;
-
-      Object.assign(data, {
-        analysisCompletedAt: now,
-        analysisLatencyMs: latencyMs,
-        analysisFailedAt: null,
-        analysisFailedReason: null,
-        behaviorSummaryStatus: this.resolveBehaviorSummaryStatus(
-          stages,
-          trip.behaviorEnrichmentStatus,
-        ),
-        drivingImpactStatus:
-          stages.drivingImpact === 'done'
-            ? 'READY'
-            : stages.drivingImpact === 'skipped'
-              ? 'SKIPPED'
-              : stages.drivingImpact === 'failed'
-                ? 'FAILED'
-                : undefined,
-      });
-      if (latencyMs != null) {
-        this.tripMetrics?.tripFinalizeLatency.observe({ profile: 'analysis' }, latencyMs / 1000);
-      }
-      this.logger.log(
-        `Trip analysis ${resolved.legacyTripAnalysisStatus}: trip=${tripId} latencyMs=${latencyMs ?? 'n/a'}`,
-      );
-      await this.logAnalysisDiagnostics(tripId, assess);
-    } else if (resolved.status === 'PARTIAL') {
-      Object.assign(data, {
-        analysisPartialAt: trip.analysisPartialAt ?? now,
-        behaviorSummaryStatus: 'READY',
-      });
-      this.logger.debug(`Trip analysis PARTIAL: trip=${tripId} stages=${JSON.stringify(stages)}`);
-      await this.logAnalysisDiagnostics(tripId, assessability);
-    } else if (resolved.status === 'IN_PROGRESS') {
-      Object.assign(data, {
-        behaviorSummaryStatus:
-          stages.behavior === 'done'
-            ? 'READY'
-            : stages.behavior === 'skipped'
-              ? 'SKIPPED'
-              : trip.behaviorSummaryStatus ?? 'PENDING',
-      });
-    }
-
-    await this.prisma.vehicleTrip.update({
-      where: { id: tripId },
-      data: data as any,
-    });
+    await this.logAnalysisDiagnostics(tripId, assess);
   }
 
-  /**
-   * Recover trips stuck in PARTIAL with misuse stage still pending after a process restart.
-   * Returns trip IDs that need misuse re-evaluation.
-   */
   async findStuckMisuseTrips(limit = 50, staleMinutes = 10): Promise<string[]> {
     const cutoff = new Date(Date.now() - staleMinutes * 60_000);
     const candidates = await this.prisma.vehicleTrip.findMany({
@@ -414,8 +355,8 @@ export class TripAnalysisCoordinatorService {
 
     return candidates
       .filter((t) => {
-        const stages = parseAnalysisStagesJson(t.analysisStagesJson);
-        return stages.behavior === 'done' && stages.misuse === 'pending';
+        const doc = parseAnalysisStagesDocument(t.analysisStagesJson);
+        return doc.behavior?.state === 'done' && doc.misuse?.state === 'pending';
       })
       .map((t) => t.id);
   }
@@ -472,6 +413,85 @@ export class TripAnalysisCoordinatorService {
     this.logger.log(`Trip analysis diagnostics: ${JSON.stringify(snapshot)}`);
   }
 
+  private async commitStages(
+    tripId: string,
+    stagesDoc: AnalysisStagesDocument,
+    context: CommitStagesContext,
+    db: Prisma.TransactionClient | PrismaService = this.prisma,
+  ): Promise<void> {
+    const assess =
+      context.assessability ??
+      this.assessabilityFromTrip(context.behaviorSummaryJson, context.behaviorEnrichmentStatus);
+
+    const resolved = resolveTripAnalysisStatusFromStages(stagesDoc, {
+      assessability: assess,
+      analysisQueued: context.analysisQueuedAt != null,
+    });
+
+    const now = new Date();
+    const legacyStatus = context.globalFailure
+      ? ('FAILED' as TripAnalysisStatus)
+      : (resolved.legacyTripAnalysisStatus as TripAnalysisStatus);
+
+    const data: Record<string, unknown> = {
+      analysisStagesJson: stagesDoc as Prisma.InputJsonValue,
+      tripAnalysisStatus: legacyStatus,
+    };
+
+    if (context.drivingImpactStatus) {
+      data.drivingImpactStatus = context.drivingImpactStatus;
+    }
+
+    if (context.globalFailure) {
+      const latencyMs = context.analysisQueuedAt
+        ? now.getTime() - context.analysisQueuedAt.getTime()
+        : null;
+      Object.assign(data, {
+        analysisFailedAt: now,
+        analysisFailedReason: context.globalFailureReason?.slice(0, 500) ?? null,
+        analysisLatencyMs: latencyMs,
+        behaviorSummaryStatus: context.behaviorSummaryStatus ?? 'FAILED',
+      });
+      await db.vehicleTrip.update({ where: { id: tripId }, data: data as any });
+      return;
+    }
+
+    if (
+      resolved.status === 'COMPLETED' ||
+      resolved.status === 'SKIPPED' ||
+      resolved.status === 'NOT_ASSESSABLE'
+    ) {
+      const latencyMs = context.analysisQueuedAt
+        ? now.getTime() - context.analysisQueuedAt.getTime()
+        : null;
+      Object.assign(data, {
+        analysisCompletedAt: now,
+        analysisLatencyMs: latencyMs,
+        analysisFailedAt: null,
+        analysisFailedReason: null,
+        behaviorSummaryStatus: this.resolveBehaviorSummaryStatus(stagesDoc, context.behaviorEnrichmentStatus),
+      });
+      if (latencyMs != null) {
+        this.tripMetrics?.tripFinalizeLatency.observe({ profile: 'analysis' }, latencyMs / 1000);
+      }
+      this.logger.log(`Trip analysis ${legacyStatus}: trip=${tripId} latencyMs=${latencyMs ?? 'n/a'}`);
+    } else if (resolved.status === 'PARTIAL') {
+      Object.assign(data, {
+        analysisPartialAt: context.analysisPartialAt ?? now,
+        analysisFailedAt: null,
+        analysisFailedReason: null,
+        behaviorSummaryStatus: this.resolveBehaviorSummaryStatus(stagesDoc, context.behaviorEnrichmentStatus),
+      });
+      this.logger.debug(`Trip analysis PARTIAL: trip=${tripId} stages=${JSON.stringify(stagesDoc)}`);
+    } else if (resolved.status === 'IN_PROGRESS') {
+      Object.assign(data, {
+        behaviorSummaryStatus: this.resolveBehaviorSummaryStatus(stagesDoc, context.behaviorEnrichmentStatus),
+      });
+    }
+
+    await db.vehicleTrip.update({ where: { id: tripId }, data: data as any });
+  }
+
   private async persistAssessability(
     tripId: string,
     assessability: AnalysisAssessabilityContext,
@@ -490,13 +510,13 @@ export class TripAnalysisCoordinatorService {
   }
 
   private resolveBehaviorSummaryStatus(
-    stages: AnalysisStagesJson,
+    stagesDoc: AnalysisStagesDocument,
     behaviorEnrichmentStatus: string | null | undefined,
   ): string {
-    if (stages.behavior === 'done' || behaviorEnrichmentStatus === 'COMPLETED') return 'READY';
-    if (stages.behavior === 'skipped' || behaviorEnrichmentStatus === 'SKIPPED_NO_HF_DATA') {
-      return 'SKIPPED';
-    }
+    const behavior = stagesDoc.behavior?.state;
+    if (behavior === 'done' || behaviorEnrichmentStatus === 'COMPLETED') return 'READY';
+    if (behavior === 'skipped' || behaviorEnrichmentStatus === 'SKIPPED_NO_HF_DATA') return 'SKIPPED';
+    if (behavior === 'failed') return 'FAILED';
     return 'PENDING';
   }
 

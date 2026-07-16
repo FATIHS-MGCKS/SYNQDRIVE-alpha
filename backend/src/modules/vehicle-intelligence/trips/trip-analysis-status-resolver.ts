@@ -65,7 +65,11 @@ function hasAnyStarted(stages: TripAnalysisStageSnapshot): boolean {
 }
 
 function hasUsablePartialResults(stages: TripAnalysisStageSnapshot): boolean {
-  return isDone(stages.behavior);
+  return (
+    isDone(stages.behavior) ||
+    isDone(stages.route) ||
+    isDone(stages.nativeEvents)
+  );
 }
 
 function allRequiredSuccessful(stages: TripAnalysisStageSnapshot): boolean {

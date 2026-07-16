@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p9-partial-stage-preservation-2026-07-16',
+    version: '4.9.511',
+    title: 'Driving Intelligence V2 P9 — Partial Stage Preservation',
+    summary: [
+      'TripAnalysisCoordinator erhält stage-spezifische Fehlerbehandlung: abgeschlossene Stages bleiben bei Fehlern anderer Stages erhalten.',
+      'Enriched `analysisStagesJson`: pro Stage `state`, `errorCode`, `attempts`, `completedAt` (Legacy-String-Format weiter lesbar).',
+      'Global `FAILED` nur bei Behavior-/Orchestrierungsfehler; sonst `PARTIAL` via Resolver wenn nutzbare Ergebnisse (Route/Native Events) existieren.',
+      'Neue APIs: `markStageFailed`, `markStageNotAssessable`; `onBehaviorSkipped` skippt nicht mehr kaskadierend Route/Native Events.',
+      'Resolver: nutzbare Teilresultate auch bei `behavior` skipped + `route`/`nativeEvents` done.',
+    ],
+    reason:
+      'Prompt 9/76: Kein Alles-oder-nichts mehr — gemischte Stage-Ergebnisse sollen erhalten bleiben; Event-Context-Fehler löschen keine Native Events.',
+    previousBehavior:
+      '`onAnalysisFailed` setzte global FAILED + behaviorSummaryStatus FAILED; `onBehaviorSkipped` markierte alle Stages skipped.',
+    details:
+      'Backend: trip-analysis-stage-record.ts, trip-analysis-coordinator.service.ts (commitStages), trip-analysis-status.ts, trip-analysis-status-resolver.ts, Specs. Keine Trip-FSM-/Finalisierungsänderung.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T16:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p8-driving-impact-status-sync-2026-07-16',
     version: '4.9.510',
     title: 'Driving Intelligence V2 P8 — Driving-Impact Status-Sync',
