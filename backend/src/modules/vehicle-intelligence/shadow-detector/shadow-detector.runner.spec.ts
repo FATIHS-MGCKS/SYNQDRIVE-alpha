@@ -34,6 +34,7 @@ describe('shadow-detector.runner', () => {
       coverage: 0.6,
       rejectionReasons: [],
       comparisonWithNativeEvents: null,
+      comparisonWithMisuseCases: null,
       skipped: false,
     }),
   };
@@ -67,6 +68,7 @@ describe('shadow-detector.runner', () => {
       ],
       implementations: [impl],
       nativeEvents: [],
+      misuseCases: [],
       engineShadowEnabled: true,
       hfShadowEnabled: true,
     });
@@ -98,6 +100,7 @@ describe('shadow-detector.runner', () => {
       ],
       implementations: [executingImpl],
       nativeEvents: [],
+      misuseCases: [],
       engineShadowEnabled: true,
       hfShadowEnabled: true,
     });
@@ -105,5 +108,6 @@ describe('shadow-detector.runner', () => {
     expect(outcome.results[0]?.skipped).toBe(false);
     expect(outcome.results[0]?.candidateEvents).toHaveLength(1);
     expect(outcome.results[0]?.comparisonWithNativeEvents?.shadowCandidateCount).toBe(1);
+    expect(outcome.results[0]?.comparisonWithMisuseCases?.shadowCandidateCount).toBe(1);
   });
 });

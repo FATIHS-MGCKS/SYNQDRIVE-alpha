@@ -28,6 +28,52 @@ export type ShadowNativeEventComparison = {
   windowSeconds: number;
 };
 
+export type ShadowMisuseCaseComparison = {
+  misuseCaseCount: number;
+  shadowCandidateCount: number;
+  matchedWithinWindow: number;
+  shadowOnlyCount: number;
+  misuseOnlyCount: number;
+  windowSeconds: number;
+  misuseTypes: string[];
+};
+
+/** HF sample for shadow detector policies — coolant is never substituted by exterior temp. */
+export type ShadowDetectorHfSample = {
+  timestamp: string;
+  speedKmh: number | null;
+  coolantC: number | null;
+  rpm: number | null;
+  throttlePct: number | null;
+  loadPct: number | null;
+  engineRuntimeSec: number | null;
+  torqueNm: number | null;
+  torquePct: number | null;
+  exteriorTempC: number | null;
+  tractionBatteryPowerKw: number | null;
+};
+
+export type ShadowMisuseCaseRef = {
+  type: string;
+  firstDetectedAt: Date;
+  lastDetectedAt: Date;
+  eventCount: number;
+};
+
+export type ShadowDetectorExecutionContext = {
+  fuelType: string | null;
+  isEvPowertrain: boolean;
+  isPhev: boolean;
+  iceOperationConfirmed: boolean;
+  hfSamples: readonly ShadowDetectorHfSample[];
+  effectiveCadenceMs: number | null;
+  p95CadenceMs: number | null;
+  hfCoverage: number | null;
+  coolantSampleCount: number;
+  exteriorTempSampleCount: number;
+  misuseCases: readonly ShadowMisuseCaseRef[];
+};
+
 /** Canonical per-detector shadow output — never written to DrivingEvent. */
 export type ShadowDetectorResult = {
   detectorId: DrivingDetectorKey;
@@ -40,6 +86,7 @@ export type ShadowDetectorResult = {
   coverage: number | null;
   rejectionReasons: string[];
   comparisonWithNativeEvents: ShadowNativeEventComparison | null;
+  comparisonWithMisuseCases: ShadowMisuseCaseComparison | null;
   skipped: boolean;
   skipReason?: string | null;
 };
@@ -56,6 +103,7 @@ export type ShadowDetectorTripWindow = {
 export type ShadowDetectorRunInput = ShadowDetectorTripWindow & {
   frameworkVersion: string;
   resolvedAt: string;
+  executionContext?: ShadowDetectorExecutionContext | null;
 };
 
 export type ShadowDetectorRunOutcome = {

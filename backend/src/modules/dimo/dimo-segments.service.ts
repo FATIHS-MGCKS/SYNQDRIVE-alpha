@@ -190,6 +190,14 @@ export interface HighFrequencyReading {
   rpm: number | null;
   throttlePosition: number | null;
   engineLoad: number | null;
+  /** Seconds since engine start (obdRunTime) */
+  engineRuntimeSec?: number | null;
+  /** Nm from powertrainCombustionEngineTorque */
+  engineTorqueNm?: number | null;
+  /** Percent from powertrainCombustionEngineTorquePercent */
+  engineTorquePct?: number | null;
+  /** °C from exteriorAirTemperature — never a coolant substitute */
+  exteriorAirTempC?: number | null;
   /** kW from powertrainTractionBatteryCurrentPower (W → kW) */
   tractionBatteryPowerKw: number | null;
 }
@@ -808,6 +816,20 @@ export class DimoSegmentsService {
                 : null,
             engineLoad:
               typeof s.obdEngineLoad === 'number' ? s.obdEngineLoad : null,
+            engineRuntimeSec:
+              typeof s.obdRunTime === 'number' ? s.obdRunTime : null,
+            engineTorqueNm:
+              typeof s.powertrainCombustionEngineTorque === 'number'
+                ? s.powertrainCombustionEngineTorque
+                : null,
+            engineTorquePct:
+              typeof s.powertrainCombustionEngineTorquePercent === 'number'
+                ? s.powertrainCombustionEngineTorquePercent
+                : null,
+            exteriorAirTempC:
+              typeof s.exteriorAirTemperature === 'number'
+                ? s.exteriorAirTemperature
+                : null,
             tractionBatteryPowerKw: w != null ? w / 1000 : null,
           };
         })

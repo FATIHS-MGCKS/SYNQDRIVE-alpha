@@ -35,6 +35,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p36-cold-engine-shadow-detector-2026-07-16',
+    version: '4.9.537',
+    title: 'Driving Intelligence V2 P36 — cold engine load shadow detector',
+    summary: [
+      'Echter Shadow-Detector `cold_engine_load` (`cold-engine-shadow-v1`) mit versionierter Policy.',
+      'Inputs: Kühlmittel, Laufzeit, RPM, Gas, Last, Drehmoment, Außentemperatur (HF-Query erweitert).',
+      'Nur ICE/PHEV mit bestätigtem ICE-Betrieb; fehlendes Kühlmittel wird nicht durch Außentemp. ersetzt.',
+      'Eventcluster statt Einzelpunkt; Kadenz-/Coverage-Gate aus P32-Schwellen.',
+      'Candidate Events als Shadow — kein bestätigter Missbrauch, keine operative Wirkung.',
+      'Vergleich mit nativen Events und bestehenden `COLD_ENGINE_ABUSE` Misuse Cases im Shadow Report.',
+      'Tests: kalt, warm, unzureichender Kontext, PHEV ohne ICE, Shadow-Isolation.',
+    ],
+    reason:
+      'Prompt 36/76: Shadow Detector für hohe Motorbelastung im kalten Zustand auf dem P35-Framework.',
+    previousBehavior:
+      'P35 Stub für `cold_engine_load` ohne echte Cluster-Detektion oder Misuse-Vergleich.',
+    details:
+      '`cold-engine-shadow.policy.ts` + `ShadowDetectorEnrichmentService` für HF/Misuse-Kontext. Trip-FSM unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T15:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p35-shadow-detector-framework-2026-07-16',
     version: '4.9.536',
     title: 'Driving Intelligence V2 P35 — shared HF/signal shadow detector framework',

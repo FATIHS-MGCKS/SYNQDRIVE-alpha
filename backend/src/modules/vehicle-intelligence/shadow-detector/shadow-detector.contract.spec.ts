@@ -4,6 +4,7 @@ import {
   buildSkippedShadowResult,
   canExecuteShadowDetector,
   compareShadowCandidatesWithNativeEvents,
+  compareShadowCandidatesWithMisuseCases,
 } from './shadow-detector.contract';
 
 describe('shadow-detector.contract', () => {
@@ -31,6 +32,25 @@ describe('shadow-detector.contract', () => {
     expect(comparison.matchedWithinWindow).toBe(1);
     expect(comparison.shadowOnlyCount).toBe(1);
     expect(comparison.nativeOnlyCount).toBe(0);
+  });
+
+  it('compares shadow candidates with misuse cases within window', () => {
+    const comparison = compareShadowCandidatesWithMisuseCases({
+      candidateEvents: [
+        { eventType: 'COLD_ENGINE_HIGH_LOAD', occurredAt: '2026-07-16T10:05:00.000Z' },
+      ],
+      misuseCases: [
+        {
+          type: 'COLD_ENGINE_ABUSE',
+          firstDetectedAt: new Date('2026-07-16T10:05:01.000Z'),
+          lastDetectedAt: new Date('2026-07-16T10:05:01.000Z'),
+          eventCount: 1,
+        },
+      ],
+      windowSeconds: 2,
+    });
+    expect(comparison.matchedWithinWindow).toBe(1);
+    expect(comparison.misuseTypes).toEqual(['COLD_ENGINE_ABUSE']);
   });
 
   it('rejects shadow results that target production side effects', () => {

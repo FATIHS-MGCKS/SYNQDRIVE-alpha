@@ -6,3 +6,6 @@ export * from './shadow-detector.runner';
 export * from './shadow-detector.registry';
 export * from './shadow-detector.persistence';
 export * from './shadow-detector.orchestrator.service';
+export * from './shadow-detector-enrichment.service';
+export * from './detectors/cold-engine-shadow.policy';
+export * from './detectors/cold-engine-load.shadow-detector';

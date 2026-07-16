@@ -83,6 +83,22 @@ describe('ShadowDetectorOrchestratorService shadow isolation', () => {
       isHfDetectorShadowEnabled: () => options?.frameworkEnabled ?? true,
     } as DrivingIntelligenceV2Config;
 
+    const enrichment = {
+      buildExecutionContext: jest.fn().mockResolvedValue({
+        fuelType: 'PETROL',
+        isEvPowertrain: false,
+        isPhev: false,
+        iceOperationConfirmed: true,
+        hfSamples: [],
+        effectiveCadenceMs: 5000,
+        p95CadenceMs: 8000,
+        hfCoverage: 0.8,
+        coolantSampleCount: 0,
+        exteriorTempSampleCount: 0,
+        misuseCases: [],
+      }),
+    };
+
     const tripMetrics = {
       shadowDetectorRun: { inc: jest.fn() },
       shadowDetectorSkipped: { inc: jest.fn() },
@@ -95,10 +111,11 @@ describe('ShadowDetectorOrchestratorService shadow isolation', () => {
       detectorCapabilities as any,
       evidence as any,
       v2Config,
+      enrichment as any,
       tripMetrics as any,
     );
 
-    return { service, prisma, evidence, tripMetrics };
+    return { service, prisma, evidence, tripMetrics, enrichment };
   }
 
   it('persists only DrivingEvidence and never productive DrivingEvent rows', async () => {
