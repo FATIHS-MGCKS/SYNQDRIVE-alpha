@@ -20,6 +20,7 @@ export interface ListMisuseCasesQuery extends PaginationParams {
   category?: string;
   type?: string;
   severity?: string;
+  status?: string;
 }
 
 @Injectable()
@@ -44,6 +45,7 @@ export class MisuseCasesService {
     if (query.category) where.category = query.category as any;
     if (query.type) where.type = query.type as any;
     if (query.severity) where.severity = query.severity as any;
+    if (query.status) where.status = query.status as any;
 
     const [data, total] = await Promise.all([
       this.prisma.misuseCase.findMany({
@@ -82,6 +84,19 @@ export class MisuseCasesService {
       typeLabel: CASE_TYPE_LABELS[row.type],
       attributionLabel: this.attributionLabel(row.attributionScope, row.isPrivateTripSnapshot),
       evidenceCase,
+      lifecycle: {
+        status: row.status,
+        modelVersion: row.modelVersion,
+        inputFingerprint: row.inputFingerprint,
+        analysisRunId: row.analysisRunId,
+        evidenceCount: row.evidenceCount,
+        attributionConfidence: row.attributionConfidence,
+        decisionEligibility: row.decisionEligibility,
+        supersedesCaseId: row.supersedesCaseId,
+        resolvedAt: row.resolvedAt,
+        resolutionReason: row.resolutionReason,
+        informationalOnly: row.informationalOnly,
+      },
     };
   }
 

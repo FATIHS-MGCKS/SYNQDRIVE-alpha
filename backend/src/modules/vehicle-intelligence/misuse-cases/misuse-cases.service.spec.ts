@@ -57,13 +57,15 @@ describe('MisuseCasesService', () => {
 });
 
 describe('MisuseCasesController routes', () => {
-  it('has no write endpoints in controller metadata', () => {
+  it('only exposes lifecycle POST as write endpoint', () => {
     const fs = require('fs');
     const path = require('path');
     const src = fs.readFileSync(
       path.join(__dirname, 'misuse-cases.controller.ts'),
       'utf8',
     );
-    expect(src).not.toMatch(/@(Post|Put|Patch|Delete)\(/);
+    const writeDecorators = src.match(/@(Post|Put|Patch|Delete)\(/g) ?? [];
+    expect(writeDecorators).toEqual(['@Post(']);
+    expect(src).toContain("Post(':id/lifecycle')");
   });
 });

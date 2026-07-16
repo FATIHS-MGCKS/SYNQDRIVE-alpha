@@ -7,6 +7,7 @@ import {
   MisuseCaseEvidenceService,
   MisuseCasePersistenceHelper,
 } from './misuse-case-evidence.service';
+import { MisuseCaseLifecycleService } from './misuse-case-lifecycle/misuse-case-lifecycle.service';
 import { DimoModule } from '../../dimo/dimo.module';
 
 @Module({
@@ -18,7 +19,8 @@ import { DimoModule } from '../../dimo/dimo.module';
     MisuseCaseRulesService,
     MisuseCaseEvidenceService,
     MisuseCasePersistenceHelper,
+    MisuseCaseLifecycleService,
   ],
-  exports: [MisuseCaseAggregatorService, MisuseCasesService],
+  exports: [MisuseCaseAggregatorService, MisuseCasesService, MisuseCaseLifecycleService],
 })
 export class MisuseCasesModule {}

@@ -6511,6 +6511,27 @@ enum MisuseCaseConfidence {
   HIGH
 }
 
+/// Misuse case lifecycle status (Driving Intelligence V2 P47).
+enum MisuseCaseStatus {
+  CANDIDATE
+  ACTIVE
+  REVIEW_REQUIRED
+  CONFIRMED
+  DISMISSED
+  RESOLVED
+  SUPERSEDED
+  NOT_ASSESSABLE
+}
+
+/// Gates operational/customer actions — telemetry never auto-charges (P47).
+enum MisuseCaseDecisionEligibility {
+  INFORMATIONAL_ONLY
+  REVIEW_ONLY
+  MANUAL_CONFIRMATION_ONLY
+  OPERATIONAL_ELIGIBLE
+  NOT_ELIGIBLE
+}
+
 enum MisuseAttributionScope {
   BOOKING_CUSTOMER
   ASSIGNED_DRIVER
@@ -6528,6 +6549,8 @@ enum MisuseEvidenceSourceType {
   VEHICLE_LATEST_STATE
   DERIVED_PATTERN
   EVENT_CONTEXT_ASSESSMENT
+  /// Manual operator verification — required gate for CONFIRMED status (P47).
+  MANUAL_VERIFICATION
   /// @deprecated Historical rows only — RPM webhook intake removed (V4.9.92). No new writes.
   RPM_WEBHOOK_CANDIDATE
 }
@@ -6794,6 +6817,7 @@ model DrivingAnalysisRun {
   drivingEvidence     DrivingEvidence[]
   intelligenceJobs    DrivingIntelligenceJob[]
   stages              DrivingAnalysisStage[]
+  misuseCases         MisuseCase[]
 
   @@index([organizationId, startedAt])
   @@index([tripId, analysisType, status])
@@ -7002,15 +7026,30 @@ model MisuseCase {
   fingerprint       String  @unique
   informationalOnly Boolean @default(true) @map("informational_only")
 
+  /// Lifecycle (P47) — telemetry creates CANDIDATE/REVIEW_REQUIRED only.
+  status                MisuseCaseStatus              @default(CANDIDATE) @map("status")
+  modelVersion          String                        @default("misuse-case-lifecycle-v1") @map("model_version")
+  inputFingerprint      String                        @default("") @map("input_fingerprint")
+  analysisRunId         String?                       @map("analysis_run_id")
+  evidenceCount         Int                           @default(0) @map("evidence_count")
+  attributionConfidence DrivingAttributionConfidence? @map("attribution_confidence")
+  decisionEligibility   MisuseCaseDecisionEligibility @default(INFORMATIONAL_ONLY) @map("decision_eligibility")
+  supersedesCaseId      String?                       @map("supersedes_case_id")
+  resolvedAt            DateTime?                     @map("resolved_at")
+  resolutionReason      String?                       @map("resolution_reason")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  vehicle      Vehicle              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  trip         VehicleTrip?         @relation(fields: [tripId], references: [id], onDelete: SetNull)
-  booking      Booking?             @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-  customer     Customer?            @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  evidence     MisuseCaseEvidence[]
+  organization    Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle         Vehicle              @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  trip            VehicleTrip?         @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  booking         Booking?             @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  customer        Customer?            @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  analysisRun     DrivingAnalysisRun?  @relation(fields: [analysisRunId], references: [id], onDelete: SetNull)
+  supersedesCase  MisuseCase?          @relation("MisuseCaseSupersedes", fields: [supersedesCaseId], references: [id], onDelete: SetNull)
+  supersededCases MisuseCase[]         @relation("MisuseCaseSupersedes")
+  evidence        MisuseCaseEvidence[]
 
   @@index([organizationId])
   @@index([vehicleId])
@@ -7020,7 +7059,12 @@ model MisuseCase {
   @@index([category])
   @@index([type])
   @@index([severity])
+  @@index([status])
+  @@index([decisionEligibility])
   @@index([lastDetectedAt])
+  @@index([analysisRunId])
+  @@index([inputFingerprint])
+  @@index([supersedesCaseId])
   @@map("misuse_cases")
 }
 

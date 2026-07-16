@@ -35,6 +35,29 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p47-misuse-lifecycle-2026-07-16',
+    version: '4.9.548',
+    title: 'Driving Intelligence V2 P47 — Misuse case lifecycle',
+    summary: [
+      'Neue Enums `MisuseCaseStatus` (8 Werte) und `MisuseCaseDecisionEligibility` auf `misuse_cases`.',
+      'Felder: modelVersion, inputFingerprint, analysisRunId, evidenceCount, attributionConfidence, decisionEligibility, supersedesCaseId, resolvedAt, resolutionReason.',
+      'Telemetrie erzeugt nur CANDIDATE/REVIEW_REQUIRED — nie CONFIRMED.',
+      'CONFIRMED nur mit MANUAL_VERIFICATION oder höherwertiger Provider-Evidence.',
+      'Reprocessing respektiert manuelle Terminal-Status; Herabstufung/Auflösung per API.',
+      'Keine irreversible automatische Kundenbelastung (informationalOnly bleibt Default).',
+      'Tests: Lifecycle-Transitions, Fingerprint, Persistence-Integration.',
+    ],
+    reason:
+      'Prompt 47/76 — formaler Misuse-Case-Lifecycle mit Provenance und manuellen Gates vor operativen Entscheidungen.',
+    previousBehavior:
+      'MisuseCase ohne status-Feld; nur informationalOnly=true; keine Lifecycle-Transitions oder decisionEligibility.',
+    details:
+      'Migration `20260716290000_misuse_case_lifecycle`, `misuse-case-lifecycle/*`, `misuse-case-evidence.service.ts`, `misuse-case-aggregator.service.ts`, `misuse-cases.controller.ts` (POST lifecycle), `misuse-case-lifecycle.ui.ts`, `MisuseCasesPanel.tsx`, `api.ts`.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T23:30:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p46-rolling-hardening-2026-07-16',
     version: '4.9.547',
     title: 'Driving Intelligence V2 P46 — Rolling vehicle load hardening',

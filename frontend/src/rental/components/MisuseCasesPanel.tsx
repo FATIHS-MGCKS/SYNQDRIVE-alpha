@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api } from '../../lib/api';
+import { api, type MisuseCaseRecord } from '../../lib/api';
 import { StatusChip } from '../../components/patterns';
 import type { StatusTone } from '../../components/patterns';
 import {
@@ -24,29 +24,12 @@ import {
   resolveEvidenceCardTitle,
 } from './trips/behavior-ui.utils';
 
-export type MisuseCaseRecord = {
-  id: string;
-  title: string;
-  description?: string | null;
-  category: string;
-  categoryLabel?: string;
-  type: string;
-  typeLabel?: string;
-  severity: string;
-  confidence: string;
-  eventCount: number;
-  firstDetectedAt: string;
-  lastDetectedAt: string;
-  recommendedAction?: string | null;
-  attributionLabel?: string;
-  isPrivateTripSnapshot?: boolean;
-  vehicleId?: string | null;
-  bookingId?: string | null;
-  tripId?: string | null;
-  customerId?: string | null;
-  evidenceSummary?: Record<string, unknown> | null;
-  evidenceCase?: TripEvidenceCase | null;
-};
+import {
+  misuseCaseDecisionHint,
+  misuseCaseStatusLabel,
+} from '../lib/misuse-case-lifecycle.ui';
+
+export type { MisuseCaseRecord };
 
 type MisuseCasesPanelProps = {
   orgId: string | null | undefined;
@@ -331,6 +314,8 @@ function issueForCase(
   const cardTitle = evidenceCase ? resolveEvidenceCardTitle(evidenceCase) : issue.title;
   const showReviewDisclaimer =
     evidenceCase?.requiresHumanReview !== false || !evidenceCase;
+  const lifecycleStatus = raw?.lifecycle?.status ?? raw?.status;
+  const lifecycleHint = misuseCaseDecisionHint(raw?.lifecycle?.decisionEligibility);
 
   return (
     <div
@@ -361,6 +346,11 @@ function issueForCase(
               : confidenceLabel(confidence)}
           </StatusChip>
         )}
+        {lifecycleStatus && misuseCaseStatusLabel(lifecycleStatus) && (
+          <StatusChip tone="neutral" className="text-[9px]">
+            {misuseCaseStatusLabel(lifecycleStatus)}
+          </StatusChip>
+        )}
       </div>
       {(evidenceCase?.explanation || issue.subtitle) && (
         <p className="text-[10px] leading-snug text-muted-foreground">
@@ -384,7 +374,7 @@ function issueForCase(
       )}
       {showReviewDisclaimer && (
         <p className="mt-2 text-[10px] leading-snug text-muted-foreground">
-          {RENTAL_COPY.misuseReviewDisclaimer ?? REVIEW_HINT_DEFAULT}
+          {lifecycleHint ?? RENTAL_COPY.misuseReviewDisclaimer ?? REVIEW_HINT_DEFAULT}
         </p>
       )}
       {issue.recommendedAction && !compact && !embedded && (

@@ -93,6 +93,26 @@ export class MisuseCaseAggregatorService {
     const candidates = this.rules.evaluate(context);
     const attribution = resolveAttribution(context.trip);
 
+    const analysisRun = await this.prisma.drivingAnalysisRun.findFirst({
+      where: {
+        tripId: trip.id,
+        organizationId,
+        status: 'COMPLETED',
+      },
+      orderBy: { completedAt: 'desc' },
+      select: { id: true },
+    });
+
+    const upsertContext = {
+      tripEndTime: trip.endTime,
+      behaviorEventCount: trip.behaviorEvents.length,
+      drivingEventCount: trip.events.length,
+      contextAnchorCount: contextAnchors.length,
+      dimoSafetyEventCount: dimoSafetyEvents.length,
+      dtcEventCount: dtcEvents.length,
+      analysisRunId: analysisRun?.id ?? null,
+    };
+
     let written = 0;
     for (const candidate of candidates) {
       await this.persistence.upsertCandidate(
@@ -101,6 +121,7 @@ export class MisuseCaseAggregatorService {
         trip.id,
         candidate,
         attribution,
+        upsertContext,
       );
       written++;
     }

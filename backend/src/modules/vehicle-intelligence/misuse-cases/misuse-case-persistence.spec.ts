@@ -1,4 +1,4 @@
-import { MisuseCaseType, MisuseAttributionScope } from '@prisma/client';
+import { MisuseCaseType, MisuseAttributionScope, MisuseCaseStatus } from '@prisma/client';
 import {
   MisuseCaseEvidenceService,
   MisuseCasePersistenceHelper,
@@ -12,7 +12,13 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
     misuseCase: {
       findUnique: jest.fn(async ({ where }: any) => store.get(where.fingerprint) ?? null),
       create: jest.fn(async ({ data }: any) => {
-        const row = { id: `case-${store.size + 1}`, ...data, eventCount: data.eventCount };
+        const row = {
+          id: `case-${store.size + 1}`,
+          ...data,
+          eventCount: data.eventCount,
+          status: data.status ?? MisuseCaseStatus.CANDIDATE,
+          evidenceCount: data.evidenceCount ?? 0,
+        };
         store.set(data.fingerprint, row);
         return row;
       }),
@@ -50,6 +56,16 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
     isPrivateTripSnapshot: false,
   };
 
+  const upsertContext = {
+    tripEndTime: new Date('2026-06-01T11:00:00Z'),
+    behaviorEventCount: 5,
+    drivingEventCount: 2,
+    contextAnchorCount: 0,
+    dimoSafetyEventCount: 0,
+    dtcEventCount: 0,
+    analysisRunId: null,
+  };
+
   const candidate = {
     type: MisuseCaseType.AGGRESSIVE_DRIVING_PATTERN,
     category: 'USAGE_ANOMALY' as const,
@@ -69,6 +85,13 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
         occurredAt: new Date('2026-06-01T10:05:00Z'),
       },
     ],
+    evidenceSummary: {
+      evidenceCase: {
+        evidenceLevel: 'CHECK_RECOMMENDED',
+        title: 'Test',
+        explanation: 'Test case',
+      },
+    },
   };
 
   beforeEach(() => {
@@ -78,28 +101,40 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
   });
 
   it('reprocessing does not create duplicate cases', async () => {
-    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution);
-    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution);
+    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
+    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
 
     expect(store.size).toBe(1);
     expect(prisma.misuseCase.create).toHaveBeenCalledTimes(1);
-    expect(prisma.misuseCase.update).toHaveBeenCalledTimes(1);
+    expect(prisma.misuseCase.update).toHaveBeenCalledTimes(2);
   });
 
   it('attaches evidence without duplicates', async () => {
-    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution);
-    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution);
+    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
+    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
 
     expect(evidenceRows.length).toBe(1);
   });
 
   it('keeps eventCount idempotent when upserting the same candidate twice', async () => {
-    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution);
-    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution);
+    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
+    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
 
     const stored = [...store.values()][0];
     expect(stored.eventCount).toBe(5);
     expect(store.size).toBe(1);
     expect(evidenceRows.length).toBe(1);
+  });
+
+  it('creates telemetry cases as REVIEW_REQUIRED, never CONFIRMED', async () => {
+    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
+
+    const stored = [...store.values()][0];
+    expect(stored.status).toBe(MisuseCaseStatus.REVIEW_REQUIRED);
+    expect(stored.status).not.toBe(MisuseCaseStatus.CONFIRMED);
+    expect(stored.informationalOnly).toBe(true);
+    expect(stored.decisionEligibility).toBe('REVIEW_ONLY');
+    expect(stored.modelVersion).toBe('misuse-case-lifecycle-v1');
+    expect(stored.inputFingerprint).toHaveLength(64);
   });
 });

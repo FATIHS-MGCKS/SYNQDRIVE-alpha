@@ -1537,6 +1537,62 @@ export interface TripEvidenceCase {
   source: TripEvidenceCaseSource;
 }
 
+export type MisuseCaseStatus =
+  | 'CANDIDATE'
+  | 'ACTIVE'
+  | 'REVIEW_REQUIRED'
+  | 'CONFIRMED'
+  | 'DISMISSED'
+  | 'RESOLVED'
+  | 'SUPERSEDED'
+  | 'NOT_ASSESSABLE';
+
+export type MisuseCaseDecisionEligibility =
+  | 'INFORMATIONAL_ONLY'
+  | 'REVIEW_ONLY'
+  | 'MANUAL_CONFIRMATION_ONLY'
+  | 'OPERATIONAL_ELIGIBLE'
+  | 'NOT_ELIGIBLE';
+
+export interface MisuseCaseLifecycle {
+  status: MisuseCaseStatus;
+  modelVersion: string;
+  inputFingerprint: string;
+  analysisRunId: string | null;
+  evidenceCount: number;
+  attributionConfidence: 'HIGH' | 'MEDIUM' | 'LOW' | null;
+  decisionEligibility: MisuseCaseDecisionEligibility;
+  supersedesCaseId: string | null;
+  resolvedAt: string | null;
+  resolutionReason: string | null;
+  informationalOnly: boolean;
+}
+
+export interface MisuseCaseRecord {
+  id: string;
+  title: string;
+  description?: string | null;
+  category: string;
+  categoryLabel?: string;
+  type: string;
+  typeLabel?: string;
+  severity: string;
+  confidence: string;
+  eventCount: number;
+  firstDetectedAt: string;
+  lastDetectedAt: string;
+  recommendedAction?: string | null;
+  attributionLabel?: string;
+  isPrivateTripSnapshot?: boolean;
+  vehicleId?: string | null;
+  bookingId?: string | null;
+  tripId?: string | null;
+  customerId?: string | null;
+  evidenceSummary?: Record<string, unknown> | null;
+  evidenceCase?: TripEvidenceCase | null;
+  lifecycle?: MisuseCaseLifecycle;
+}
+
 export type TripAssessmentConfidence = 'LOW' | 'MEDIUM' | 'HIGH';
 
 export type TripAssessmentSource =
@@ -3387,6 +3443,7 @@ export const api = {
         category?: string;
         type?: string;
         severity?: string;
+        status?: MisuseCaseStatus;
       },
     ) => {
       const q = new URLSearchParams();
@@ -3399,14 +3456,25 @@ export const api = {
       if (params?.category) q.set('category', params.category);
       if (params?.type) q.set('type', params.type);
       if (params?.severity) q.set('severity', params.severity);
+      if (params?.status) q.set('status', params.status);
       const suffix = q.toString() ? `?${q.toString()}` : '';
       return get<{
-        data: Array<Record<string, unknown>>;
+        data: MisuseCaseRecord[];
         meta: { total: number; page: number; limit: number; totalPages: number };
       }>(`/organizations/${orgId}/misuse-cases${suffix}`);
     },
     get: (orgId: string, id: string) =>
-      get<Record<string, unknown>>(`/organizations/${orgId}/misuse-cases/${id}`),
+      get<MisuseCaseRecord>(`/organizations/${orgId}/misuse-cases/${id}`),
+    transition: (
+      orgId: string,
+      id: string,
+      body: {
+        action: 'CONFIRM' | 'DISMISS' | 'RESOLVE' | 'DOWNGRADE' | 'SUPERSEDE';
+        resolutionReason?: string;
+        operatorNote?: string;
+      },
+    ) =>
+      post<MisuseCaseRecord>(`/organizations/${orgId}/misuse-cases/${id}/lifecycle`, body),
   },
   customers: {
     list: (
