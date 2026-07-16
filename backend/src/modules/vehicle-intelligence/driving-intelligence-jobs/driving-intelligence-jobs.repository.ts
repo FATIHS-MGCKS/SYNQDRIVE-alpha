@@ -2,12 +2,16 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import { validateEnqueueDrivingIntelligenceJobInput } from './driving-intelligence-jobs.contract';
+import {
+  DRIVING_INTELLIGENCE_JOB_DEFAULT_MAX_ATTEMPTS,
+  computeNextRetryAt,
+} from './driving-intelligence-jobs.retry-policy';
 import type {
   EnqueueDrivingIntelligenceJobInput,
   PersistDrivingIntelligenceJobInput,
 } from './driving-intelligence-jobs.types';
 
-const TERMINAL_STATUSES = new Set(['COMPLETED', 'CANCELLED']);
+const TERMINAL_STATUSES = new Set(['COMPLETED', 'CANCELLED', 'DEAD_LETTER']);
 
 @Injectable()
 export class DrivingIntelligenceJobRepository {
@@ -129,6 +133,7 @@ export class DrivingIntelligenceJobRepository {
           correlationId: input.correlationId,
           requestedAt: input.requestedAt,
           status: 'PENDING',
+          maxAttempts: DRIVING_INTELLIGENCE_JOB_DEFAULT_MAX_ATTEMPTS,
         },
       });
       return { job, created: true, deduplicated: false };
@@ -153,7 +158,11 @@ export class DrivingIntelligenceJobRepository {
   async markInProgress(jobId: string) {
     return this.prisma.drivingIntelligenceJob.update({
       where: { id: jobId },
-      data: { status: 'IN_PROGRESS' },
+      data: {
+        status: 'IN_PROGRESS',
+        lastAttemptAt: new Date(),
+        attemptCount: { increment: 1 },
+      },
     });
   }
 
@@ -163,8 +172,48 @@ export class DrivingIntelligenceJobRepository {
       data: {
         status: 'COMPLETED',
         completedAt,
+        nextRetryAt: null,
         errorCode: null,
         errorMessage: null,
+        deadLetteredAt: null,
+      },
+    });
+  }
+
+  async markRetryScheduled(
+    jobId: string,
+    attemptCount: number,
+    errorCode: string,
+    errorMessage?: string | null,
+  ) {
+    const retryAt = computeNextRetryAt(attemptCount);
+    return this.prisma.drivingIntelligenceJob.update({
+      where: { id: jobId },
+      data: {
+        status: 'PENDING',
+        bullJobId: null,
+        errorCode,
+        errorMessage: errorMessage ?? null,
+        nextRetryAt: retryAt,
+      },
+    });
+  }
+
+  async markDeadLetter(
+    jobId: string,
+    errorCode: string,
+    errorMessage?: string | null,
+    deadLetteredAt = new Date(),
+  ) {
+    return this.prisma.drivingIntelligenceJob.update({
+      where: { id: jobId },
+      data: {
+        status: 'DEAD_LETTER',
+        completedAt: deadLetteredAt,
+        deadLetteredAt,
+        nextRetryAt: null,
+        errorCode,
+        errorMessage: errorMessage ?? null,
       },
     });
   }
@@ -191,6 +240,28 @@ export class DrivingIntelligenceJobRepository {
       status === 'ENQUEUED' ||
       status === 'IN_PROGRESS'
     );
+  }
+
+  findRetryablePending(limit: number, now = new Date()) {
+    return this.prisma.drivingIntelligenceJob.findMany({
+      where: {
+        status: 'PENDING',
+        OR: [{ nextRetryAt: null }, { nextRetryAt: { lte: now } }],
+      },
+      orderBy: { nextRetryAt: 'asc' },
+      take: limit,
+    });
+  }
+
+  findStuckInProgress(staleBefore: Date, limit: number) {
+    return this.prisma.drivingIntelligenceJob.findMany({
+      where: {
+        status: 'IN_PROGRESS',
+        lastAttemptAt: { lt: staleBefore },
+      },
+      orderBy: { lastAttemptAt: 'asc' },
+      take: limit,
+    });
   }
 
   /**

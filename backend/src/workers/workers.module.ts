@@ -32,6 +32,7 @@ import { BrakeRecalculationScheduler } from './schedulers/brake-recalculation.sc
 import { TripTrackingRecoveryScheduler } from './schedulers/trip-tracking-recovery.scheduler';
 import { TripAnalysisRecoveryScheduler } from './schedulers/trip-analysis-recovery.scheduler';
 import { TripReconciliationScheduler } from './schedulers/trip-reconciliation.scheduler';
+import { DrivingAnalysisReconciliationScheduler } from './schedulers/driving-analysis-reconciliation.scheduler';
 import { PaymentConnectReconciliationScheduler } from './schedulers/payment-connect-reconciliation.scheduler';
 import { BillingReconciliationScheduler } from './schedulers/billing-reconciliation.scheduler';
 import { HmHealthPollingScheduler } from './schedulers/hm-health-polling.scheduler';
@@ -88,6 +89,7 @@ import { StorageOrphanSweepScheduler } from './schedulers/storage-orphan-sweep.s
     TripTrackingRecoveryScheduler,
     TripAnalysisRecoveryScheduler,
     TripReconciliationScheduler,
+    DrivingAnalysisReconciliationScheduler,
     PaymentConnectReconciliationScheduler,
     BillingReconciliationScheduler,
     HmHealthPollingScheduler,

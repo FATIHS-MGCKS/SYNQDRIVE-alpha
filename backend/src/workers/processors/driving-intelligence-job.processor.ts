@@ -23,9 +23,12 @@ export class DrivingIntelligenceJobProcessor extends WorkerHost {
       `Driving intelligence worker started: bullJob=${job.id} persistentJobId=${persistentJobId} type=${jobType}`,
     );
 
-    const result = await this.processorService.processPersistentJob(organizationId, persistentJobId);
+    const result = await this.processorService.processPersistentJobForWorker(
+      organizationId,
+      persistentJobId,
+    );
     this.logger.debug(
-      `Driving intelligence worker finished: persistentJobId=${persistentJobId} result=${result}`,
+      `Driving intelligence worker finished: persistentJobId=${persistentJobId}`,
     );
   }
 }

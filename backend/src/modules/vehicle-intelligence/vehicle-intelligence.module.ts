@@ -71,6 +71,7 @@ import { DrivingIntelligenceJobHandlerRegistry } from './driving-intelligence-jo
 import { DrivingIntelligenceJobProcessorService } from './driving-intelligence-jobs/driving-intelligence-jobs.processor.service';
 import { DrivingAnalysisInitService } from './driving-analysis-init/driving-analysis-init.service';
 import { TripPostFinalizeAnalysisProducer } from './driving-analysis-init/trip-post-finalize-analysis.producer';
+import { DrivingAnalysisReconciliationService } from './driving-analysis-reconciliation/driving-analysis-reconciliation.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
 import { DimoModule } from '../dimo/dimo.module';
 import { AiModule } from '../ai/ai.module';
@@ -191,6 +192,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     DrivingIntelligenceJobProcessorService,
     DrivingAnalysisInitService,
     TripPostFinalizeAnalysisProducer,
+    DrivingAnalysisReconciliationService,
     EnergyEventsService,
     // ── New refactored providers ──
     TripDecisionEngine,
@@ -263,6 +265,7 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     DrivingIntelligenceJobProcessorService,
     DrivingAnalysisInitService,
     TripPostFinalizeAnalysisProducer,
+    DrivingAnalysisReconciliationService,
     EnergyEventsService,
     TripDecisionEngine,
     TripDetectionPolicyResolver,
