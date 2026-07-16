@@ -318,4 +318,38 @@ describe('MisuseCasePersistenceHelper idempotency', () => {
     expect(summary.ratingReconciliationModelVersion).toBe(MISUSE_RATING_RECONCILIATION_VERSION);
     expect(summary.ratingReconciliation).toBeDefined();
   });
+
+  it('preserves CONFIRMED rating with audit instead of silent overwrite (P52)', async () => {
+    await helper.upsertCandidate('org-1', 'veh-1', 'trip-1', candidate as any, attribution, upsertContext);
+
+    const stored = [...store.values()][0];
+    Object.assign(stored, {
+      status: MisuseCaseStatus.CONFIRMED,
+      severity: 'SEVERE',
+      confidence: 'HIGH',
+      evidenceCount: 2,
+      decisionEligibility: 'OPERATIONAL_ELIGIBLE',
+      informationalOnly: false,
+      attributionConfidence: 'HIGH',
+      resolvedAt: null,
+      resolutionReason: 'Manuell bestätigt',
+    });
+
+    await helper.upsertCandidate(
+      'org-1',
+      'veh-1',
+      'trip-1',
+      candidate as any,
+      attribution,
+      upsertContext,
+      { trigger: 'EVENT_CONTEXT' },
+    );
+
+    const updated = [...store.values()][0];
+    expect(updated.status).toBe(MisuseCaseStatus.CONFIRMED);
+    expect(updated.severity).toBe('SEVERE');
+    expect(updated.confidence).toBe('HIGH');
+    const summary = updated.evidenceSummary as Record<string, unknown>;
+    expect(summary.confirmedPreserveAudit).toBeDefined();
+  });
 });
