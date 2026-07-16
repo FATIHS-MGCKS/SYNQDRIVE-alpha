@@ -65,6 +65,26 @@ export const LV_TELEMETRY_REST_BASE_CONFIDENCE = 0.85;
 export const LV_PROXY_DIAGNOSTIC_BASE_CONFIDENCE = 0.55;
 export const LV_UNKNOWN_CHEMISTRY_BASE_CONFIDENCE = 0.2;
 
+/** LV estimated-health score weights — bump thresholds version when changed. */
+export const LV_ESTIMATED_HEALTH_SCORE_WEIGHTS = {
+  REST_6H: 0.2,
+  REST_60M: 0.15,
+  REST_AFTER_SHUTDOWN: 0.05,
+  /** Start-proxy initially excluded from score composite (Prompt 40/43). */
+  START_DIP_PROXY: 0,
+  PRE_START_VOLTAGE: 0,
+  RECOVERY_5S_VOLTAGE: 0,
+  RECOVERY_30S_VOLTAGE: 0,
+  RECOVERY_PROXY_VOLTAGE: 0,
+  WORKSHOP_OCV: 1,
+  WORKSHOP_LOAD_TEST: 1,
+} as const;
+
+/** Shadow experimental rest inputs use reduced weight — not publication-eligible. */
+export const LV_SHADOW_REST_SCORE_WEIGHT = 0.1;
+
+export const LV_ESTIMATED_HEALTH_ASSESSMENT_MODEL_VERSION = 1;
+
 export function getVersionedRestingBandsForChemistry(
   chemistry: BatteryChemistry,
 ): ChemistryRestingBands | null {

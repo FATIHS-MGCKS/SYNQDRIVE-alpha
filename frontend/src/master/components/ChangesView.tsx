@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-lv-estimated-health-assessment-v49543-2026-07-17',
+    version: '4.9.543',
+    title: 'V4.9.543 — LV Estimated Health Assessment (Prompt 43/78)',
+    summary: [
+      '`computeLvEstimatedHealthAssessment()` liefert versioniertes `LV_ESTIMATED_HEALTH` mit Score, Confidence, evidenceStrength, dataQuality, measurementCoverage, modelVersion, validFrom/Until, reasons.',
+      'Score ist kein SOH; Confidence getrennt; kein Assessment ohne unterstütztes Profil; Start-Proxy initial 0 % Gewicht.',
+      'Shadow-REST für experimentelles Shadow-Assessment ohne Publication; separates Werkstatt-Override-Assessment.',
+      'Idempotente Persistenz in `battery_assessments`; Hysterese erst im Publication-Schritt.',
+    ],
+    reason: 'Prompt 43/78: BatteryAssessment für geschätzten LV-Batteriezustand vor Publication-Pipeline.',
+    previousBehavior: '`BATTERY_ASSESSMENT_RECOMPUTE` war Stub ohne Assessment-Berechnung oder Persistenz.',
+    details:
+      'lv-estimated-health-assessment.policy.ts, battery-assessment.service.ts, battery-assessment.repository.ts, battery-assessment-recompute.handler.ts, docs/architecture/battery-lv-estimated-health-assessment.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T05:00:00.000Z',
+  },
+  {
     id: 'battery-lv-chemistry-assessment-v49542-2026-07-17',
     version: '4.9.542',
     title: 'V4.9.542 — LV Chemistry Assessment Context (Prompt 42/78)',
