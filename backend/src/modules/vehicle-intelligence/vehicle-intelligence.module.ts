@@ -57,6 +57,8 @@ import { ServiceOverdueTaskService } from './service-compliance/service-overdue-
 import { VehicleFileSummaryService } from './vehicle-file/vehicle-file-summary.service';
 import { TasksModule } from '../tasks/tasks.module';
 import { DrivingImpactService } from './driving-impact/driving-impact.service';
+import { DrivingImpactStatusSyncService } from './driving-impact/driving-impact-status-sync.service';
+import { DrivingImpactReconciliationService } from './driving-impact/driving-impact-reconciliation.service';
 import { EnergyEventsService } from './energy-events/energy-events.service';
 import { DimoModule } from '../dimo/dimo.module';
 import { AiModule } from '../ai/ai.module';
@@ -162,6 +164,8 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     ServiceOverdueTaskService,
     VehicleFileSummaryService,
     DrivingImpactService,
+    DrivingImpactStatusSyncService,
+    DrivingImpactReconciliationService,
     EnergyEventsService,
     // ── New refactored providers ──
     TripDecisionEngine,
@@ -221,6 +225,8 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     ComplianceTaskMaterializeService,
     ServiceOverdueTaskService,
     DrivingImpactService,
+    DrivingImpactStatusSyncService,
+    DrivingImpactReconciliationService,
     EnergyEventsService,
     TripDecisionEngine,
     TripDetectionPolicyResolver,

@@ -1,4 +1,5 @@
 import type {
+  TripAssessmentReasonCategory,
   TripAssessmentStatus,
   TripBehaviorEvent,
   TripEvidenceCase,
@@ -6,8 +7,8 @@ import type {
   TripEvidenceConfidence,
   TripEvidenceLevel,
 } from '../../../lib/api';
-import { getStressLevel, resolveDrivingStressScore } from '../../lib/scoreFormat';
 import type { TripTimelineTrip } from './timeline.types';
+import { formatTripAssessmentReviewHint } from './trip-assessment-reason-copy';
 import { formatTripTimeWithSeconds } from './utils/tripFormatters';
 import { shouldRenderContextBlock } from './event-context-ui';
 
@@ -312,20 +313,13 @@ export function deriveBehaviorOverallStatus(
 
   if (worst === 'critical') return 'critical';
   if (worst === 'notable' || worst === 'abuse') return 'notable';
-
-  // Fahrbelastungs-Score only informs Fahrverhalten when a score actually exists.
-  const stressScore = resolveDrivingStressScore(trip);
-  const stress =
-    stressScore != null ? (trip.stressLevel ?? getStressLevel(stressScore)) : null;
-  if (stress === 'critical' || stress === 'high') return 'notable';
-  if (stress === 'moderate' || worst === 'watch') return 'watch';
+  if (worst === 'watch') return 'watch';
 
   if (events.length === 0) {
-    if (options && options.assessable === false) return 'not_assessable';
-    return 'unremarkable';
+    return 'not_assessable';
   }
 
-  // Loaded behavior events are a valid source — never "nicht belastbar".
+  // Loaded behavior events with no concerning severity — conduct unremarkable.
   return 'unremarkable';
 }
 
@@ -388,6 +382,7 @@ export function sortBehaviorEvents(events: TripBehaviorEvent[]): TripBehaviorEve
 export interface GesamtbewertungDisplay {
   label: string;
   primaryReason: string | null;
+  reasonCategory: TripAssessmentReasonCategory | null;
   /** True when served from backend tripAssessment (Phase 1 canonical truth). */
   fromBackend: boolean;
 }
@@ -402,6 +397,7 @@ export function resolveGesamtbewertungDisplay(
     return {
       label: trip.tripAssessment.label,
       primaryReason: trip.tripAssessment.primaryReason,
+      reasonCategory: trip.tripAssessment.reasonCategory ?? null,
       fromBackend: true,
     };
   }
@@ -410,6 +406,7 @@ export function resolveGesamtbewertungDisplay(
   return {
     label: GESAMTBEWERTUNG_FALLBACK_LABEL[status],
     primaryReason: null,
+    reasonCategory: null,
     fromBackend: false,
   };
 }
@@ -443,13 +440,16 @@ export function deriveReviewHintSummary(
   events: TripBehaviorEvent[],
 ): string | null {
   if (trip.tripAssessment?.status === 'PRUEFHINWEIS') {
-    return trip.tripAssessment.primaryReason;
+    return formatTripAssessmentReviewHint(
+      trip.tripAssessment.reasonCategory,
+      trip.tripAssessment.primaryReason,
+    );
   }
 
   const misuseCases = trip.tripAssessment?.signals.misuseCases ?? 0;
   const abuseRelevant = events.filter((event) => event.abuseRelevant).length;
   if (misuseCases > 0 || abuseRelevant > 0) {
-    return 'Prüfung empfohlen';
+    return 'Prüfung empfohlen — kein automatisierter Vorwurf';
   }
 
   return null;

@@ -7,6 +7,7 @@ import {
   resolveGesamtbewertungDisplay,
   TRIP_ASSESSMENT_STATUS_LABEL,
 } from './behavior-ui.utils';
+import { TRIP_ASSESSMENT_REASON_CATEGORY_LABEL } from './trip-assessment-reason-copy';
 import type { TripBehaviorEvent, TripTimelineTrip } from './trips.types';
 
 function trip(overrides: Partial<TripTimelineTrip> = {}): TripTimelineTrip {
@@ -45,6 +46,7 @@ describe('trip assessment UI semantics (Phase 2)', () => {
           status: 'AUFFAELLIG',
           label: 'Auffällig',
           primaryReason: '2 starke Beschleunigungsereignisse erkannt.',
+          reasonCategory: null,
           confidence: 'HIGH',
           source: 'NATIVE_EVENTS',
           version: '1.0.0',
@@ -70,7 +72,7 @@ describe('trip assessment UI semantics (Phase 2)', () => {
   it('falls back to legacy Gesamtbewertung labels when tripAssessment is missing', () => {
     const display = resolveGesamtbewertungDisplay(trip(), [], { assessable: true });
     expect(display.fromBackend).toBe(false);
-    expect(display.label).toBe(GESAMTBEWERTUNG_FALLBACK_LABEL.unremarkable);
+    expect(display.label).toBe(GESAMTBEWERTUNG_FALLBACK_LABEL.not_assessable);
   });
 
   it('separates Fahrverhalten from Gesamtbewertung for hard acceleration', () => {
@@ -82,9 +84,38 @@ describe('trip assessment UI semantics (Phase 2)', () => {
     expect(deriveReviewHintSummary(trip(), events)).toBeNull();
   });
 
+  it('surfaces categorized Prüfhinweise from backend assessment', () => {
+    const tripWithReview = trip({
+      tripAssessment: {
+        status: 'PRUEFHINWEIS',
+        label: 'Prüfhinweis',
+        primaryReason: 'Telematik-Datenqualität eingeschränkt.',
+        reasonCategory: 'DATA_QUALITY_REVIEW',
+        confidence: 'LOW',
+        source: 'NATIVE_EVENTS',
+        version: '1.3.0',
+        signals: {
+          behaviorEvents: 2,
+          abuseRelevantEvents: 0,
+          misuseCases: 0,
+          maxEvidenceLevel: null,
+          drivingStressScore: 30,
+          drivingStressLevel: 'moderate',
+          hasEnoughData: true,
+        },
+      },
+    });
+
+    const hint = deriveReviewHintSummary(tripWithReview, []);
+    expect(hint).toContain(TRIP_ASSESSMENT_REASON_CATEGORY_LABEL.DATA_QUALITY_REVIEW);
+    expect(hint).not.toMatch(/Fahrverhalten prüfen/i);
+  });
+
   it('surfaces Prüfhinweise without claiming misuse for abuse-relevant events', () => {
     const events = [event({ eventCategory: 'ABUSE', classification: 'SEVERE', abuseRelevant: true })];
-    expect(deriveReviewHintSummary(trip(), events)).toBe('Prüfung empfohlen');
+    expect(deriveReviewHintSummary(trip(), events)).toBe(
+      'Prüfung empfohlen — kein automatisierter Vorwurf',
+    );
   });
 
   it('maps evidence levels to operator-facing badges (Phase 3)', () => {

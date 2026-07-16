@@ -106,10 +106,30 @@ describe('deriveBehaviorOverallStatus — Fahrbelastung vs Fahrverhalten', () =>
     );
   });
 
-  it('returns unremarkable without events when data source is sufficient', () => {
+  it('returns not_assessable without conduct events even when data is sufficient', () => {
     expect(deriveBehaviorOverallStatus(trip(), [], { assessable: true })).toBe(
-      'unremarkable',
+      'not_assessable',
     );
+  });
+
+  it('does not infer notable Fahrverhalten from high vehicle stress alone', () => {
+    expect(
+      deriveBehaviorOverallStatus(
+        trip({ drivingStressScore: 88, stressLevel: 'critical' }),
+        [],
+        { assessable: true },
+      ),
+    ).toBe('not_assessable');
+  });
+
+  it('does not infer unremarkable Fahrverhalten from low vehicle stress alone', () => {
+    expect(
+      deriveBehaviorOverallStatus(
+        trip({ drivingStressScore: 18, stressLevel: 'low' }),
+        [],
+        { assessable: true },
+      ),
+    ).toBe('not_assessable');
   });
 
   it('returns notable when native behavior events are present', () => {
@@ -120,15 +140,5 @@ describe('deriveBehaviorOverallStatus — Fahrbelastung vs Fahrverhalten', () =>
         { assessable: true },
       ),
     ).toBe('notable');
-  });
-
-  it('does not infer notable Fahrverhalten from missing stress score alone', () => {
-    expect(
-      deriveBehaviorOverallStatus(
-        trip({ drivingStressScore: null, stressLevel: 'high' }),
-        [],
-        { assessable: true },
-      ),
-    ).toBe('unremarkable');
   });
 });

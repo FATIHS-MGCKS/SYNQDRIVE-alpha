@@ -187,8 +187,10 @@ export class CustomersService {
         bookingCount: c._count.bookings,
         drivingStressScore: score?.drivingStressScore ?? null,
         stressLevel: score?.stressLevel ?? null,
-        /** @deprecated Use drivingStressScore */
+        /** @deprecated Legacy alias — vehicle load only, not driver conduct. */
         drivingStyleScore: score?.drivingStressScore ?? null,
+        /** @deprecated Legacy alias — vehicle load only. */
+        drivingScore: score?.drivingStressScore ?? null,
         scoreEligibleTripCount: score?.tripCount ?? 0,
         scoredTripCount: score?.scoredTripCount ?? 0,
         totalDistanceKm: score?.totalDistanceKm ?? 0,
@@ -227,7 +229,10 @@ export class CustomersService {
       ...customer,
       drivingStressScore: score?.drivingStressScore ?? null,
       stressLevel: score?.stressLevel ?? null,
+      /** @deprecated Legacy alias — vehicle load only. */
       drivingStyleScore: score?.drivingStressScore ?? null,
+      /** @deprecated Legacy alias — vehicle load only. */
+      drivingScore: score?.drivingStressScore ?? null,
       scoreEligibleTripCount: score?.tripCount ?? 0,
       scoredTripCount: score?.scoredTripCount ?? 0,
       totalDistanceKm: score?.totalDistanceKm ?? 0,
