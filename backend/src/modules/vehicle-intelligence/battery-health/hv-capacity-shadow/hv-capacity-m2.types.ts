@@ -74,6 +74,7 @@ export interface HvCapacityM2PointEstimate {
   outlier: boolean;
 }
 
+import type { HvCrossSessionAssessmentResult } from './hv-capacity-cross-session.types';
 import type { HvCapacityM3ValidationResult } from './hv-capacity-m3.types';
 
 export interface HvCapacityM2SessionResult {
@@ -86,6 +87,7 @@ export interface HvCapacityM2SessionResult {
   skippedCount: number;
   summary: HvCapacitySessionSummary | null;
   m3Validation?: HvCapacityM3ValidationResult | null;
+  crossSessionAssessment?: HvCrossSessionAssessmentResult | null;
 }
 
 export interface HvCapacityObservationMetadata {

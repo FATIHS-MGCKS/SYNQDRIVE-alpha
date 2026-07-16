@@ -4,15 +4,23 @@ import {
   BatteryAssessmentMaturity,
   BatteryAssessmentType,
   BatteryEvidenceScope,
+  BatteryEvidenceStrength,
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import type { LvEstimatedHealthAssessment } from './lv-assessment/lv-estimated-health-assessment.policy';
+import type { HvCrossSessionAssessment } from './hv-capacity-shadow/hv-capacity-cross-session.types';
 
 export interface PersistLvEstimatedHealthAssessmentInput {
   organizationId: string;
   vehicleId: string;
   assessment: LvEstimatedHealthAssessment;
+}
+
+export interface PersistHvCapacityShadowAssessmentInput {
+  organizationId: string;
+  vehicleId: string;
+  assessment: HvCrossSessionAssessment;
 }
 
 function mapConfidenceToMaturity(
@@ -48,6 +56,22 @@ export class BatteryAssessmentRepository {
         vehicleId: input.vehicleId,
         scope: BatteryEvidenceScope.LV,
         type: BatteryAssessmentType.LV_ESTIMATED_HEALTH,
+        supersededById: null,
+      },
+      orderBy: { computedAt: 'desc' },
+    });
+  }
+
+  async findLatestHvCapacityShadow(input: {
+    organizationId: string;
+    vehicleId: string;
+  }): Promise<BatteryAssessment | null> {
+    return this.prisma.batteryAssessment.findFirst({
+      where: {
+        organizationId: input.organizationId,
+        vehicleId: input.vehicleId,
+        scope: BatteryEvidenceScope.HV,
+        type: BatteryAssessmentType.HV_CAPACITY_SHADOW,
         supersededById: null,
       },
       orderBy: { computedAt: 'desc' },
@@ -145,6 +169,70 @@ export class BatteryAssessmentRepository {
       } as Prisma.InputJsonValue,
       idempotencyKey: assessment.idempotencyKey,
       computedAt: new Date(),
+    };
+
+    try {
+      return await this.prisma.batteryAssessment.create({ data });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        return this.prisma.batteryAssessment.findUniqueOrThrow({
+          where: {
+            vehicleId_idempotencyKey: {
+              vehicleId: input.vehicleId,
+              idempotencyKey: assessment.idempotencyKey,
+            },
+          },
+        });
+      }
+      throw error;
+    }
+  }
+
+  async persistHvCapacityShadow(
+    input: PersistHvCapacityShadowAssessmentInput,
+  ): Promise<BatteryAssessment> {
+    const { assessment } = input;
+    const hasScore = assessment.estimatedUsableCapacityKwh != null;
+
+    const data: Prisma.BatteryAssessmentUncheckedCreateInput = {
+      organizationId: input.organizationId,
+      vehicleId: input.vehicleId,
+      scope: BatteryEvidenceScope.HV,
+      type: BatteryAssessmentType.HV_CAPACITY_SHADOW,
+      scoreValue: assessment.estimatedUsableCapacityKwh,
+      textValue: assessment.scoreSemantics,
+      confidence: assessment.confidence,
+      evidenceStrength: BatteryEvidenceStrength.SUPPLEMENTARY,
+      dataQuality: assessment.shadowGatePassed ? 'SHADOW' : 'INSUFFICIENT_COVERAGE',
+      maturity: hasScore
+        ? BatteryAssessmentMaturity.LOW
+        : BatteryAssessmentMaturity.INSUFFICIENT_DATA,
+      modelVersion: assessment.modelVersion,
+      validFrom: new Date(assessment.computedAt),
+      validUntil: null,
+      inputSummary: {
+        ...assessment.inputSummary,
+        assessmentMode: assessment.assessmentMode,
+        maturity: assessment.maturity,
+        confidence: assessment.confidence,
+        method: assessment.method,
+        sessionCount: assessment.sessionCount,
+        observationCount: assessment.observationCount,
+        crossSessionMedianKwh: assessment.crossSessionMedianKwh,
+        spread: assessment.spread,
+        methodAgreement: assessment.methodAgreement,
+        gateReasonCodes: assessment.gateReasonCodes,
+        shadowGatePassed: assessment.shadowGatePassed,
+        publicationEligible: false,
+        sohEligible: false,
+        reasons: assessment.reasons,
+        sessionIds: assessment.sessionIds,
+      } as unknown as Prisma.InputJsonValue,
+      idempotencyKey: assessment.idempotencyKey,
+      computedAt: new Date(assessment.computedAt),
     };
 
     try {
