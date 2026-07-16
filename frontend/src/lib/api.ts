@@ -6461,7 +6461,17 @@ export interface TripEventLegacyIngestEvidence {
 /** Per-event context assessment payload (mirrors backend API DTO). */
 export interface TripEventContextAssessment {
   version: number;
-  status: 'COMPLETED' | 'INSUFFICIENT_CONTEXT' | 'FAILED' | 'SKIPPED_NOT_APPLICABLE';
+  contextModelVersion?: string;
+  status:
+    | 'SUCCESS'
+    | 'LIMITED'
+    | 'INSUFFICIENT_CADENCE'
+    | 'PROVIDER_ERROR'
+    | 'UNSUPPORTED'
+    | 'COMPLETED'
+    | 'INSUFFICIENT_CONTEXT'
+    | 'FAILED'
+    | 'SKIPPED_NOT_APPLICABLE';
   anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT';
   originalEventName?: string | null;
   dimoEventName?: string | null;

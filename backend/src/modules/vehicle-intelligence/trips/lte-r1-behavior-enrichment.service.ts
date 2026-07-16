@@ -29,8 +29,8 @@ import {
 } from '../../dimo/dimo-segments.service';
 import { DrivingEventType, DrivingEventSource } from '@prisma/client';
 import { preprocessHighFrequency, type CleanHfPoint } from './hf-preprocessing';
-import { EventContextEnrichmentService } from '../event-context/event-context-enrichment.service';
-import { shouldRunIceEventContextEnrichment } from '../event-context/engine-context.guards';
+import { DrivingEventContextJobService } from '../event-context/driving-event-context-job.service';
+import { DRIVING_INTELLIGENCE_PIPELINE_MODEL_VERSION } from '../driving-analysis-init/driving-analysis-init.types';
 import {
   assessZeroNativeEventsConduct,
   mapDimoNativeDrivingEvent,
@@ -106,7 +106,7 @@ export class LteR1BehaviorEnrichmentService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly segments: DimoSegmentsService,
-    private readonly eventContext: EventContextEnrichmentService,
+    private readonly contextJobs: DrivingEventContextJobService,
     private readonly capabilityResolver: VehicleDrivingCapabilityResolverService,
     private readonly nativeEventPersistence: DimoNativeDrivingEventPersistenceService,
   ) {}
@@ -260,13 +260,8 @@ export class LteR1BehaviorEnrichmentService {
       `harsh accel=${counters.harshAcceleration}, cold-engine=${coldEngineAnnotations})`,
     );
 
-    // ── 5. Best-effort per-event Context Enrichment (Phase 3) ─────────────────
-    // Runs AFTER native events are committed, so a context failure can never
-    // roll back / lose a native event. Only for LTE_R1/ICE; Tesla/EV skipped.
-    await this.enrichNativeEventContexts(tripId, {
-      hardwareType: trip.vehicle.hardwareType,
-      fuelType: trip.vehicle.fuelType,
-    }, normalized.length);
+    // ── 5. Schedule per-event context enrichment jobs (non-blocking, P26) ─────
+    await this.scheduleNativeEventContextJobs(tripId, trip.vehicleId, organizationId, normalized.length);
 
     return {
       drivingEventsIngested: normalized.length,
@@ -308,82 +303,61 @@ export class LteR1BehaviorEnrichmentService {
   }
 
   /**
-   * Best-effort: for each persisted native DrivingEvent of this trip, run Event
-   * Context Enrichment (T±30s signal window → contextAssessment in metadataJson).
-   *
-   * Guarantees:
-   *   - Never throws (a context failure must not abort trip enrichment).
-   *   - Skips entirely for Tesla/EV and non-LTE_R1/ICE vehicles
-   *     (NOT_APPLICABLE_POWERTRAIN) — no contextAssessment written.
+   * Fan-out durable context jobs — one per event × model version.
+   * Never blocks the trip on HF fetches; native events already committed.
    */
-  private async enrichNativeEventContexts(
+  private async scheduleNativeEventContextJobs(
     tripId: string,
-    vehicle: { hardwareType: import('@prisma/client').HardwareType | null; fuelType: string | null },
+    vehicleId: string,
+    organizationId: string,
     persistedCount: number,
   ): Promise<void> {
     if (persistedCount === 0) {
       this.logger.debug(
-        `LTE_R1 enrich: no native events for trip ${tripId} — context enrichment skipped`,
+        `LTE_R1 enrich: no native events for trip ${tripId} — context jobs skipped`,
       );
       return;
     }
 
-    if (!shouldRunIceEventContextEnrichment(vehicle)) {
-      this.logger.debug(
-        `LTE_R1 enrich: context enrichment skipped for trip ${tripId} — ` +
-          `NOT_APPLICABLE_POWERTRAIN (${persistedCount} native event(s) preserved)`,
-      );
-      return;
-    }
-
-    let events: Array<{ id: string }>;
     try {
-      events = await this.prisma.drivingEvent.findMany({
-        where: { tripId, source: DrivingEventSource.TELEMETRY_EVENTS },
+      const run = await this.prisma.drivingAnalysisRun.findFirst({
+        where: {
+          organizationId,
+          tripId,
+          analysisType: 'TRIP_ENRICHMENT',
+          modelVersion: DRIVING_INTELLIGENCE_PIPELINE_MODEL_VERSION,
+        },
+        orderBy: { startedAt: 'desc' },
         select: { id: true },
-        orderBy: { recordedAt: 'asc' },
       });
-    } catch (err: any) {
-      this.logger.warn(
-        `LTE_R1 enrich: could not load events for context enrichment (trip ${tripId}): ${err?.message ?? err}`,
-      );
-      return;
-    }
 
-    if (events.length === 0) {
-      this.logger.warn(
-        `LTE_R1 enrich: context enrichment requested for trip ${tripId} but no persisted ` +
-          `TELEMETRY_EVENTS rows found after createMany`,
-      );
-      return;
-    }
-
-    this.logger.debug(
-      `LTE_R1 enrich: context enrichment requested for trip ${tripId} (${events.length} event(s))`,
-    );
-
-    let enriched = 0;
-    let failed = 0;
-    let skipped = 0;
-
-    for (const ev of events) {
-      try {
-        const assessment = await this.eventContext.enrichDrivingEventContext(ev.id);
-        if (assessment.status === 'FAILED') failed += 1;
-        else if (assessment.status === 'SKIPPED_NOT_APPLICABLE') skipped += 1;
-        else enriched += 1;
-      } catch (err: any) {
-        failed += 1;
-        this.logger.warn(
-          `LTE_R1 enrich: context enrichment failed for event ${ev.id}: ${err?.message ?? err}`,
+      if (!run) {
+        this.logger.debug(
+          `LTE_R1 enrich: no V2 analysis run for trip ${tripId} — context jobs deferred to reconciliation`,
         );
+        return;
       }
-    }
 
-    this.logger.log(
-      `LTE_R1 enrich: context enrichment trip ${tripId}: ` +
-        `enriched=${enriched} failed=${failed} skipped=${skipped} total=${events.length}`,
-    );
+      const result = await this.contextJobs.scheduleContextEnrichmentForTrip({
+        organizationId,
+        vehicleId,
+        tripId,
+        analysisRunId: run.id,
+        modelVersion: DRIVING_INTELLIGENCE_PIPELINE_MODEL_VERSION,
+        correlationId: `lte-r1:${tripId}`,
+        requestedAt: new Date(),
+      });
+
+      this.logger.log(
+        `LTE_R1 enrich: context jobs scheduled trip=${tripId} ` +
+          `eligible=${result.eligibleEvents} enqueued=${result.enqueued}`,
+      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        `LTE_R1 enrich: context job scheduling failed for trip ${tripId}: ${message}`,
+      );
+    }
   }
 
   private async buildHfContextMap(

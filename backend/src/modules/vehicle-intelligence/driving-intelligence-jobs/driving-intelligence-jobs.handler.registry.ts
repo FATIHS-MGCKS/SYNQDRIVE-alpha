@@ -1,27 +1,34 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import type { DrivingIntelligenceJob, DrivingIntelligenceJobType } from '@prisma/client';
+import { DrivingEventContextEnrichJobHandler } from '../event-context/driving-event-context-enrich.handler';
 import { DRIVING_INTELLIGENCE_JOB_TYPES } from './driving-intelligence-jobs.types';
 
 export type DrivingIntelligenceJobHandler = (
   job: DrivingIntelligenceJob,
 ) => Promise<void>;
 
-/**
- * Stub handler registry for Driving Intelligence V2 job types.
- * Business logic migration happens in later prompts — handlers are no-ops for now.
- */
 @Injectable()
-export class DrivingIntelligenceJobHandlerRegistry {
+export class DrivingIntelligenceJobHandlerRegistry implements OnModuleInit {
   private readonly logger = new Logger(DrivingIntelligenceJobHandlerRegistry.name);
   private readonly handlers = new Map<DrivingIntelligenceJobType, DrivingIntelligenceJobHandler>();
 
-  constructor() {
+  constructor(
+    @Optional() private readonly eventContextHandler?: DrivingEventContextEnrichJobHandler,
+  ) {}
+
+  onModuleInit(): void {
     for (const jobType of DRIVING_INTELLIGENCE_JOB_TYPES) {
       this.handlers.set(jobType, async (job) => {
         this.logger.debug(
           `Stub handler for ${jobType}: persistentJobId=${job.id} analysisRunId=${job.analysisRunId}`,
         );
       });
+    }
+
+    if (this.eventContextHandler) {
+      this.handlers.set('DRIVING_EVENT_CONTEXT_ENRICH', (job) =>
+        this.eventContextHandler!.handle(job),
+      );
     }
   }
 

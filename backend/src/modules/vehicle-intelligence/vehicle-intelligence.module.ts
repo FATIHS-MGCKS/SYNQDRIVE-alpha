@@ -72,6 +72,8 @@ import { DrivingIntelligenceJobRepository } from './driving-intelligence-jobs/dr
 import { DrivingIntelligenceJobDispatcherService } from './driving-intelligence-jobs/driving-intelligence-jobs.dispatcher.service';
 import { DrivingIntelligenceJobHandlerRegistry } from './driving-intelligence-jobs/driving-intelligence-jobs.handler.registry';
 import { DrivingIntelligenceJobProcessorService } from './driving-intelligence-jobs/driving-intelligence-jobs.processor.service';
+import { DrivingEventContextJobService } from './event-context/driving-event-context-job.service';
+import { DrivingEventContextEnrichJobHandler } from './event-context/driving-event-context-enrich.handler';
 import { DrivingAnalysisInitService } from './driving-analysis-init/driving-analysis-init.service';
 import { TripPostFinalizeAnalysisProducer } from './driving-analysis-init/trip-post-finalize-analysis.producer';
 import { DrivingAnalysisReconciliationService } from './driving-analysis-reconciliation/driving-analysis-reconciliation.service';
@@ -196,6 +198,8 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     DrivingIntelligenceJobDispatcherService,
     DrivingIntelligenceJobHandlerRegistry,
     DrivingIntelligenceJobProcessorService,
+    DrivingEventContextJobService,
+    DrivingEventContextEnrichJobHandler,
     DrivingAnalysisInitService,
     TripPostFinalizeAnalysisProducer,
     DrivingAnalysisReconciliationService,

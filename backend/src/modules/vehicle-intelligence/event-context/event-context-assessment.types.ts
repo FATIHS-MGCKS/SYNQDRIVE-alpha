@@ -19,7 +19,7 @@ import type {
 } from './event-context.types';
 
 /** Schema version of the persisted context assessment payload. */
-export const CONTEXT_ASSESSMENT_VERSION = 1;
+export const CONTEXT_ASSESSMENT_VERSION = 2;
 
 /**
  * High-level category of the native behaviour event a context window is anchored
@@ -41,17 +41,19 @@ export interface AnchorEventInfo {
 }
 
 /**
- * Outcome status of a single context-enrichment run.
- *   - COMPLETED              : window fetched and assessed.
- *   - INSUFFICIENT_CONTEXT   : fetched but too little/sparse data to assess.
- *   - FAILED                 : signal fetch failed (native event stays intact).
- *   - SKIPPED_NOT_APPLICABLE : powertrain/hardware not eligible (e.g. Tesla/EV).
+ * Outcome status of a single context-enrichment run (V2 — P26).
+ *   - SUCCESS               : window fetched and assessed with sufficient evidence.
+ *   - LIMITED               : partial/sparse data but some context labels apply.
+ *   - INSUFFICIENT_CADENCE  : HF cadence too sparse to assess reliably.
+ *   - PROVIDER_ERROR        : DIMO/HF fetch failed (native event stays intact).
+ *   - UNSUPPORTED           : powertrain/hardware not eligible (e.g. Tesla/EV).
  */
 export type EventContextStatus =
-  | 'COMPLETED'
-  | 'INSUFFICIENT_CONTEXT'
-  | 'FAILED'
-  | 'SKIPPED_NOT_APPLICABLE';
+  | 'SUCCESS'
+  | 'LIMITED'
+  | 'INSUFFICIENT_CADENCE'
+  | 'PROVIDER_ERROR'
+  | 'UNSUPPORTED';
 
 /** Per-signal statistics over a context window. */
 export interface ContextSignalStats {
@@ -89,6 +91,8 @@ export interface ContextSignalStats {
  */
 export interface EventContextAssessment {
   version: number;
+  /** Model version that produced this assessment (idempotent re-run guard). */
+  contextModelVersion: string;
   status: EventContextStatus;
   anchorType: AnchorType;
   /** The native DIMO behavior event the window is anchored on. */
@@ -120,6 +124,6 @@ export interface EventContextAssessment {
   /** Applicable signals with zero usable samples in the window. */
   missingSignals: EngineContextSignal[];
   generatedAt: string;
-  /** Populated when status = FAILED. */
+  /** Populated when status = PROVIDER_ERROR. */
   error?: string | null;
 }

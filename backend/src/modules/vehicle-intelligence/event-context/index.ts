@@ -12,3 +12,8 @@ export * from './event-context-window';
 export * from './event-context-stats';
 export * from './event-context-classifier';
 export * from './event-context-enrichment.service';
+export * from './event-context.config';
+export * from './event-context-status';
+export * from './driving-event-context-job.contract';
+export * from './driving-event-context-job.service';
+export * from './driving-event-context-enrich.handler';

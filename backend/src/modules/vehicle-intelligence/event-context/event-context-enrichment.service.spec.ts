@@ -81,11 +81,11 @@ describe('EventContextEnrichmentService', () => {
     expect(token).toBe(4242);
     expect(start.toISOString()).toBe('2026-06-26T11:59:30.000Z');
     expect(end.toISOString()).toBe('2026-06-26T12:00:30.000Z');
-    expect(assessment.status).toBe('COMPLETED');
+    expect(assessment.status).toBe('SUCCESS');
     expect(assessment.anchorType).toBe('DIMO_NATIVE_BEHAVIOR_EVENT');
   });
 
-  it('returns INSUFFICIENT_CONTEXT when no readings are returned', async () => {
+  it('returns LIMITED when no readings are returned', async () => {
     const { service } = makeService({ hf: [] });
     const assessment = await service.enrichAnchorContext({
       anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT',
@@ -93,12 +93,38 @@ describe('EventContextEnrichmentService', () => {
       tokenId: 4242,
       engineSignalsApplicable: true,
     });
-    expect(assessment.status).toBe('INSUFFICIENT_CONTEXT');
+    expect(assessment.status).toBe('LIMITED');
     expect(assessment.preliminaryClassifications).toContain('INSUFFICIENT_CONTEXT');
     expect(assessment.evidenceGrade).toBe('D');
   });
 
-  it('returns FAILED (and does not throw) when the HF query fails', async () => {
+  it('returns INSUFFICIENT_CADENCE for sparse HF cadence', async () => {
+    const sparse = [-15, 0, 15].map((s) => reading(s));
+    const { service } = makeService({ hf: sparse });
+    const assessment = await service.enrichAnchorContext({
+      anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT',
+      anchorTimestamp: ANCHOR,
+      tokenId: 4242,
+      engineSignalsApplicable: true,
+    });
+    expect(assessment.reasonCodes).toContain('SPARSE_SIGNAL_CADENCE');
+    expect(assessment.status).toBe('INSUFFICIENT_CADENCE');
+  });
+
+  it('rethrows retryable provider errors in job mode', async () => {
+    const { service } = makeService({ hfError: new Error('503 Service Unavailable') });
+    await expect(
+      service.enrichAnchorContext({
+        anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT',
+        anchorTimestamp: ANCHOR,
+        tokenId: 4242,
+        engineSignalsApplicable: true,
+        throwOnProviderError: true,
+      }),
+    ).rejects.toMatchObject({ code: 'PROVIDER_TRANSIENT' });
+  });
+
+  it('returns PROVIDER_ERROR (and does not throw) when the HF query fails', async () => {
     const { service } = makeService({ hfError: new Error('DIMO 500') });
     const assessment = await service.enrichAnchorContext({
       anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT',
@@ -106,7 +132,7 @@ describe('EventContextEnrichmentService', () => {
       tokenId: 4242,
       engineSignalsApplicable: true,
     });
-    expect(assessment.status).toBe('FAILED');
+    expect(assessment.status).toBe('PROVIDER_ERROR');
     expect(assessment.error).toContain('DIMO 500');
   });
 
@@ -119,7 +145,7 @@ describe('EventContextEnrichmentService', () => {
     const updateArg = prisma.drivingEvent.update.mock.calls[0][0];
     expect(updateArg.where).toEqual({ id: 'ev-1' });
     expect(updateArg.data.metadataJson.contextAssessment).toBeDefined();
-    expect(assessment.status).toBe('COMPLETED');
+    expect(assessment.status).toBe('SUCCESS');
   });
 
   it('skips ICE context for a Tesla/EV event without fetching HF', async () => {
@@ -138,7 +164,7 @@ describe('EventContextEnrichmentService', () => {
     const assessment = await service.enrichDrivingEventContext('ev-ev');
 
     expect(segments.fetchHighFrequency).not.toHaveBeenCalled();
-    expect(assessment.status).toBe('SKIPPED_NOT_APPLICABLE');
+    expect(assessment.status).toBe('UNSUPPORTED');
     expect(assessment.engineSignalsApplicable).toBe(false);
     expect(assessment.reasonCodes).toContain('NOT_APPLICABLE_POWERTRAIN');
     expect(assessment.classifications).toEqual([]);
@@ -172,8 +198,8 @@ describe('EventContextEnrichmentService', () => {
     const updateArg = prisma.drivingEvent.update.mock.calls[0][0];
     const ctx = updateArg.data.metadataJson.contextAssessment;
 
-    expect(assessment.status).toBe('COMPLETED');
-    expect(ctx.status).toBe('COMPLETED');
+    expect(assessment.status).toBe('SUCCESS');
+    expect(ctx.status).toBe('SUCCESS');
     expect(ctx.anchorType).toBe('DIMO_NATIVE_BEHAVIOR_EVENT');
     expect(ctx.anchorTimestamp).toBe(ANCHOR.toISOString());
     expect(ctx.windowStart).toBe('2026-06-26T11:59:30.000Z');
@@ -203,8 +229,9 @@ describe('EventContextEnrichmentService', () => {
     });
 
     const assessment = {
-      version: 1,
-      status: 'COMPLETED' as const,
+      version: 2,
+      contextModelVersion: '2026-07-16.1',
+      status: 'SUCCESS' as const,
       anchorType: 'DIMO_NATIVE_BEHAVIOR_EVENT' as const,
       anchorTimestamp: ANCHOR.toISOString(),
       windowStart: ANCHOR.toISOString(),
@@ -328,6 +355,6 @@ describe('EventContextEnrichmentService', () => {
     });
     const assessment = await service.enrichDrivingEventContext('ev-smart5');
     expect(segments.fetchHighFrequency).not.toHaveBeenCalled();
-    expect(assessment.status).toBe('SKIPPED_NOT_APPLICABLE');
+    expect(assessment.status).toBe('UNSUPPORTED');
   });
 });

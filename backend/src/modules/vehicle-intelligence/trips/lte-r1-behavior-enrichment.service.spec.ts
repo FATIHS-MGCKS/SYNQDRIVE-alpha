@@ -145,68 +145,60 @@ describe('LteR1BehaviorEnrichmentService.mapToNormalizedEvents', () => {
   });
 });
 
-describe('LteR1BehaviorEnrichmentService.enrichNativeEventContexts (Phase 3 wiring)', () => {
-  function makeService(eventContext?: { enrichDrivingEventContext: jest.Mock }) {
+describe('LteR1BehaviorEnrichmentService.scheduleNativeEventContextJobs (P26 job fan-out)', () => {
+  function makeService(contextJobs?: { scheduleContextEnrichmentForTrip: jest.Mock }) {
     const prisma = {
-      drivingEvent: {
-        findMany: jest.fn(async () => [{ id: 'de-1' }, { id: 'de-2' }]),
+      drivingAnalysisRun: {
+        findFirst: jest.fn(async () => ({ id: 'run-1' })),
       },
     };
     const service = new LteR1BehaviorEnrichmentService(
       prisma as any,
       {} as any,
-      eventContext as any,
+      contextJobs as any,
       {
         resolveForVehicle: jest.fn(async () => ({ capabilities: [] })),
       } as any,
       { upsertNativeEvents: jest.fn(), reconcileUnassignedEvents: jest.fn() } as any,
     );
-    return { service, prisma };
+    return { service, prisma, contextJobs };
   }
 
-  const ice = { hardwareType: 'LTE_R1' as const, fuelType: 'GASOLINE' };
-  const ev = { hardwareType: 'LTE_R1' as const, fuelType: 'ELECTRIC' };
-
-  it('runs context enrichment per native event for LTE_R1/ICE', async () => {
-    const eventContext = { enrichDrivingEventContext: jest.fn(async () => ({})) };
-    const { service, prisma } = makeService(eventContext);
-    await (service as any).enrichNativeEventContexts('trip-1', ice, 2);
-    expect(prisma.drivingEvent.findMany).toHaveBeenCalledTimes(1);
-    expect(eventContext.enrichDrivingEventContext).toHaveBeenCalledTimes(2);
-    expect(eventContext.enrichDrivingEventContext).toHaveBeenCalledWith('de-1');
-    expect(eventContext.enrichDrivingEventContext).toHaveBeenCalledWith('de-2');
-  });
-
-  it('skips Tesla/EV (NOT_APPLICABLE_POWERTRAIN) without loading or enriching', async () => {
-    const eventContext = { enrichDrivingEventContext: jest.fn(async () => ({})) };
-    const { service, prisma } = makeService(eventContext);
-    await (service as any).enrichNativeEventContexts('trip-1', ev, 2);
-    expect(prisma.drivingEvent.findMany).not.toHaveBeenCalled();
-    expect(eventContext.enrichDrivingEventContext).not.toHaveBeenCalled();
+  it('schedules durable per-event context jobs when analysis run exists', async () => {
+    const scheduleContextEnrichmentForTrip = jest.fn(async () => ({
+      eligibleEvents: 2,
+      enqueued: 2,
+      skipped: 0,
+    }));
+    const { service } = makeService({ scheduleContextEnrichmentForTrip });
+    await (service as any).scheduleNativeEventContextJobs('trip-1', 'veh-1', 'org-1', 2);
+    expect(scheduleContextEnrichmentForTrip).toHaveBeenCalledTimes(1);
   });
 
   it('does nothing when no native events were persisted', async () => {
-    const eventContext = { enrichDrivingEventContext: jest.fn(async () => ({})) };
-    const { service, prisma } = makeService(eventContext);
-    await (service as any).enrichNativeEventContexts('trip-1', ice, 0);
-    expect(prisma.drivingEvent.findMany).not.toHaveBeenCalled();
-    expect(eventContext.enrichDrivingEventContext).not.toHaveBeenCalled();
+    const scheduleContextEnrichmentForTrip = jest.fn();
+    const { service } = makeService({ scheduleContextEnrichmentForTrip });
+    await (service as any).scheduleNativeEventContextJobs('trip-1', 'veh-1', 'org-1', 0);
+    expect(scheduleContextEnrichmentForTrip).not.toHaveBeenCalled();
   });
 
-  it('is best-effort: a context enrichment error never throws', async () => {
-    const eventContext = {
-      enrichDrivingEventContext: jest.fn(async () => {
-        throw new Error('context boom');
-      }),
+  it('defers when no V2 analysis run exists yet', async () => {
+    const scheduleContextEnrichmentForTrip = jest.fn();
+    const prisma = {
+      drivingAnalysisRun: { findFirst: jest.fn(async () => null) },
     };
-    const { service } = makeService(eventContext);
-    await expect(
-      (service as any).enrichNativeEventContexts('trip-1', ice, 2),
-    ).resolves.toBeUndefined();
-    expect(eventContext.enrichDrivingEventContext).toHaveBeenCalledTimes(2);
+    const service = new LteR1BehaviorEnrichmentService(
+      prisma as any,
+      {} as any,
+      { scheduleContextEnrichmentForTrip } as any,
+      { resolveForVehicle: jest.fn(async () => ({ capabilities: [] })) } as any,
+      { upsertNativeEvents: jest.fn(), reconcileUnassignedEvents: jest.fn() } as any,
+    );
+    await (service as any).scheduleNativeEventContextJobs('trip-1', 'veh-1', 'org-1', 1);
+    expect(scheduleContextEnrichmentForTrip).not.toHaveBeenCalled();
   });
 
-  it('requires EventContextEnrichmentService in the DI graph', async () => {
+  it('requires DrivingEventContextJobService in the DI graph', async () => {
     await expect(
       Test.createTestingModule({
         providers: [
@@ -234,8 +226,7 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
 
   function makeEnrichTripHarness(opts?: {
     fuelType?: string;
-    contextThrows?: boolean;
-    contextStatus?: 'COMPLETED' | 'FAILED';
+    analysisRun?: { id: string } | null;
   }) {
     const persistedIds = ['de-native-1'];
     const tx = {
@@ -259,6 +250,11 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
       ]),
       reconcileUnassignedEvents: jest.fn(async () => ({ assigned: 0, examined: 0 })),
     };
+    const scheduleContextEnrichmentForTrip = jest.fn(async () => ({
+      eligibleEvents: 1,
+      enqueued: 1,
+      skipped: 0,
+    }));
     const prisma = {
       vehicleTrip: {
         findUnique: jest.fn(async () => ({
@@ -273,6 +269,11 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
             dimoVehicle: { tokenId: 4242 },
           },
         })),
+      },
+      drivingAnalysisRun: {
+        findFirst: jest.fn(async () =>
+          opts?.analysisRun === null ? null : (opts?.analysisRun ?? { id: 'run-1' }),
+        ),
       },
       $transaction: jest.fn(async (fn: (t: typeof tx) => Promise<void>) => fn(tx)),
       drivingEvent: {
@@ -291,24 +292,28 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
       ]),
       fetchHighFrequency: jest.fn(async () => []),
     };
-    const enrichDrivingEventContext = jest.fn(async () => {
-      if (opts?.contextThrows) throw new Error('context boom');
-      return { status: opts?.contextStatus ?? 'COMPLETED' };
-    });
     const service = new LteR1BehaviorEnrichmentService(
       prisma as any,
       segments as any,
-      { enrichDrivingEventContext } as any,
+      { scheduleContextEnrichmentForTrip } as any,
       {
         resolveForVehicle: jest.fn(async () => ({ capabilities: [] })),
       } as any,
       nativeEventPersistence as any,
     );
-    return { service, prisma, segments, tx, enrichDrivingEventContext, persistedIds, nativeEventPersistence };
+    return {
+      service,
+      prisma,
+      segments,
+      tx,
+      scheduleContextEnrichmentForTrip,
+      persistedIds,
+      nativeEventPersistence,
+    };
   }
 
-  it('persists native events via fingerprint upsert then reloads IDs for context enrichment', async () => {
-    const { service, prisma, tx, enrichDrivingEventContext, persistedIds, nativeEventPersistence } =
+  it('persists native events via fingerprint upsert then schedules context jobs', async () => {
+    const { service, tx, scheduleContextEnrichmentForTrip, nativeEventPersistence } =
       makeEnrichTripHarness();
 
     const result = await service.enrichTrip('trip-1');
@@ -321,8 +326,7 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
         where: { tripId: 'trip-1', source: 'TELEMETRY_EVENTS' },
       }),
     );
-    expect(enrichDrivingEventContext).toHaveBeenCalledTimes(1);
-    expect(enrichDrivingEventContext).toHaveBeenCalledWith(persistedIds[0]);
+    expect(scheduleContextEnrichmentForTrip).toHaveBeenCalledTimes(1);
   });
 
   it('updates legacy trip counters with harsh + extreme acceleration split', async () => {
@@ -379,22 +383,31 @@ describe('LteR1BehaviorEnrichmentService.enrichTrip — native event + context f
     );
   });
 
-  it('does not roll back native events when context enrichment fails per event', async () => {
-    const { service, nativeEventPersistence, enrichDrivingEventContext } = makeEnrichTripHarness({
-      contextThrows: true,
+  it('does not roll back native events when context job scheduling fails', async () => {
+    const scheduleContextEnrichmentForTrip = jest.fn(async () => {
+      throw new Error('queue boom');
     });
+    const harness = makeEnrichTripHarness();
+    const service = new LteR1BehaviorEnrichmentService(
+      harness.prisma as any,
+      harness.segments as any,
+      { scheduleContextEnrichmentForTrip } as any,
+      { resolveForVehicle: jest.fn(async () => ({ capabilities: [] })) } as any,
+      harness.nativeEventPersistence as any,
+    );
 
     await expect(service.enrichTrip('trip-1')).resolves.toMatchObject({
       drivingEventsIngested: 1,
     });
-    expect(nativeEventPersistence.upsertNativeEvents).toHaveBeenCalledTimes(1);
-    expect(enrichDrivingEventContext).toHaveBeenCalledTimes(1);
+    expect(harness.nativeEventPersistence.upsertNativeEvents).toHaveBeenCalledTimes(1);
   });
 
-  it('skips trip-level context enrichment for LTE_R1/EV (NOT_APPLICABLE_POWERTRAIN)', async () => {
-    const { service, enrichDrivingEventContext } = makeEnrichTripHarness({ fuelType: 'ELECTRIC' });
+  it('defers context jobs when no analysis run exists', async () => {
+    const { service, scheduleContextEnrichmentForTrip } = makeEnrichTripHarness({
+      analysisRun: null,
+    });
 
     await service.enrichTrip('trip-1');
-    expect(enrichDrivingEventContext).not.toHaveBeenCalled();
+    expect(scheduleContextEnrichmentForTrip).not.toHaveBeenCalled();
   });
 });

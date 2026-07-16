@@ -238,6 +238,10 @@ export function isContextInsufficient(
 
     ca.status === 'INSUFFICIENT_CONTEXT' ||
 
+    ca.status === 'INSUFFICIENT_CADENCE' ||
+
+    ca.status === 'LIMITED' ||
+
     ca.confidence === 'INSUFFICIENT' ||
 
     (Array.isArray(ca.classifications) &&
@@ -310,7 +314,7 @@ export function shouldRenderContextBlock(
 
   if (!ca) return false;
 
-  return ca.status !== 'SKIPPED_NOT_APPLICABLE';
+  return ca.status !== 'SKIPPED_NOT_APPLICABLE' && ca.status !== 'UNSUPPORTED';
 
 }
 
@@ -336,7 +340,7 @@ export function contextHeadline(ca: TripEventContextAssessment | null | undefine
 
   if (primary) return contextClassificationLabel(primary);
 
-  if (ca.status === 'FAILED') return 'Kontextbewertung fehlgeschlagen';
+  if (ca.status === 'FAILED' || ca.status === 'PROVIDER_ERROR') return 'Kontextbewertung fehlgeschlagen';
 
   return 'Kontext erfasst';
 

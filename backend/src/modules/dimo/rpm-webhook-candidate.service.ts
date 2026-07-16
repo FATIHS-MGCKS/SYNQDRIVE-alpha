@@ -167,12 +167,13 @@ export class RpmWebhookCandidateService {
     assessmentStatus: EventContextStatus,
   ): RpmWebhookCandidateStatus {
     switch (assessmentStatus) {
-      case 'COMPLETED':
+      case 'SUCCESS':
+      case 'LIMITED':
         return RpmWebhookCandidateStatus.CONTEXT_ENRICHED;
-      case 'INSUFFICIENT_CONTEXT':
-      case 'SKIPPED_NOT_APPLICABLE':
+      case 'INSUFFICIENT_CADENCE':
+      case 'UNSUPPORTED':
         return RpmWebhookCandidateStatus.INSUFFICIENT_CONTEXT;
-      case 'FAILED':
+      case 'PROVIDER_ERROR':
       default:
         return RpmWebhookCandidateStatus.FAILED;
     }

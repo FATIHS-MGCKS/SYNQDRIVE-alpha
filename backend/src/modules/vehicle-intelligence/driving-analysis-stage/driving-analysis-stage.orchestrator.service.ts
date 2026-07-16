@@ -140,6 +140,12 @@ export class DrivingAnalysisStageOrchestratorService {
     const stageKey = jobTypeToStageKey(jobType);
     if (!stageKey) return;
 
+    // EVENT_CONTEXT stage advances only after all per-event context jobs finish
+    // (see DrivingEventContextJobService.tryCompleteEventContextStage).
+    if (jobType === 'DRIVING_EVENT_CONTEXT_ENRICH') {
+      return;
+    }
+
     await this.stageRepository.markCompleted(organizationId, analysisRunId, stageKey);
     await this.syncRunStatusFromStages(organizationId, analysisRunId);
 
