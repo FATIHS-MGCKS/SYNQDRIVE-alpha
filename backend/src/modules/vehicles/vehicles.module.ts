@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import dimoConfig from '@config/dimo.config';
+import { ActivityLogModule } from '@modules/activity-log/activity-log.module';
 import { VehiclesController } from './vehicles.controller';
 import { VehiclesService } from './vehicles.service';
 import { VehicleProviderConsentService } from './vehicle-provider-consent.service';
@@ -11,11 +12,13 @@ import { DataAuthorizationsModule } from '../data-authorizations/data-authorizat
 import { TasksModule } from '../tasks/tasks.module';
 import { BillingModule } from '../billing/billing.module';
 import { VehicleBookingHandoverDiagnosticService } from './diagnostic/vehicle-booking-handover-diagnostic.service';
+import { VehicleBookingHandoverRepairService } from './diagnostic/vehicle-booking-handover-repair.service';
 import { FLEET_STATUS_DERIVATION } from './diagnostic/fleet-status-derivation.port';
 
 @Module({
   imports: [
     ConfigModule.forFeature(dimoConfig),
+    ActivityLogModule,
     DimoModule,
     forwardRef(() => VehicleIntelligenceModule),
     DataAuthorizationsModule,
@@ -28,6 +31,7 @@ import { FLEET_STATUS_DERIVATION } from './diagnostic/fleet-status-derivation.po
     VehicleProviderConsentService,
     VehicleExteriorImagesService,
     VehicleBookingHandoverDiagnosticService,
+    VehicleBookingHandoverRepairService,
     {
       provide: FLEET_STATUS_DERIVATION,
       useExisting: VehiclesService,
@@ -38,6 +42,7 @@ import { FLEET_STATUS_DERIVATION } from './diagnostic/fleet-status-derivation.po
     VehicleProviderConsentService,
     VehicleExteriorImagesService,
     VehicleBookingHandoverDiagnosticService,
+    VehicleBookingHandoverRepairService,
   ],
 })
 export class VehiclesModule {}

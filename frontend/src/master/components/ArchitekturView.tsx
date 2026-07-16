@@ -259,6 +259,10 @@ interface FrontendFlowEntry {
 }
 
 const FRONTEND_FLOWS: FrontendFlowEntry[] = [
+  { name: 'Vehicle / Booking / Handover Ops Repair (V4.9.502)', icon: Wrench,
+    endpoint: 'Keine HTTP-Route. Controlled Ops-CLI: `backend/scripts/ops/repair-vehicle-booking-handover-data.ts` (Default Dry-Run, `--apply` für Writes).',
+    service: '**Service:** `VehicleBookingHandoverRepairService` plant/applied 4 sichere Regeln: stale RESERVED→AVAILABLE (ohne Fenster/ACTIVE), RENTED→AVAILABLE nur bei COMPLETED+RETURN ohne ACTIVE, ACTIVE→COMPLETED bei RETURN-Protokoll (spiegelt Handover-Return), CONFIRMED→ACTIVE bei PICKUP-Protokoll. Unklare RENTED-Fälle → `unresolved`. Idempotente Re-Checks vor Write; `ActivityLog` + append-only Booking-Notes; diagnostisches Before/After via `VehicleBookingHandoverDiagnosticService`.',
+    dataSource: 'CLI: `--organization-id`, `--vehicle-id`, `--batch-size`, `--output`, `--apply`. Safety: `assertSafeVbhRepairDatabaseTarget`. Tests: `vehicle-booking-handover-repair.service.spec.ts`, `vehicle-booking-handover-repair.util.spec.ts`. Ergänzt V4.9.501 Diagnose.' },
   { name: 'Vehicle / Booking / Handover Ops Diagnostic (V4.9.501)', icon: FileText,
     endpoint: 'Keine HTTP-Route. Read-only Ops-CLI: `backend/scripts/ops/audit-vehicle-booking-handover-data.ts` (Nest ApplicationContext + `VehicleBookingHandoverDiagnosticService`).',
     service: '**Service:** `backend/src/modules/vehicles/diagnostic/*` — 12 Checks über Raw-`Vehicle.status`, Booking-Lifecycle, `BookingHandoverProtocol`, Reservierungsfenster (`buildBookingContextMap`-Semantik vs kanonischer Pickup-Tag), `deriveFleetStatusContext`-Drift (via `FLEET_STATUS_DERIVATION` → `VehiclesService`), Cross-Org-Links, `startDate`/`endDate`-Inkonsistenzen, `Organization.timezone`. **Safety:** `assertSafeVbhDiagnosticDatabaseTarget` blockiert Prod/Remote-DBs (wie Task-Diagnostic). **Output:** JSON + Markdown/Console, `byOrganization`, maskierte Sample-IDs, optional `--include-findings`.',
