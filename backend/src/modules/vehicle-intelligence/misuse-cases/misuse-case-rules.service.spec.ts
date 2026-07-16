@@ -251,7 +251,7 @@ describe('MisuseCaseRulesService', () => {
     expect(dimo?.severity).toBe(MisuseCaseSeverity.CRITICAL);
   });
 
-  it('safety.collision + possible impact increases confidence', () => {
+  it('safety.collision + possible impact increases confidence and dedupes to one case', () => {
     const result = service.evaluate(
       ctx({
         behaviorEvents: [
@@ -260,6 +260,14 @@ describe('MisuseCaseRulesService', () => {
             eventCategory: 'ABUSE',
             eventType: 'POSSIBLE_IMPACT',
             startedAt: new Date('2026-06-01T10:20:00Z'),
+          } as any,
+        ],
+        drivingEvents: [
+          {
+            id: 'de-col',
+            eventType: 'SAFETY_COLLISION',
+            recordedAt: new Date('2026-06-01T10:20:00Z'),
+            metadataJson: { dimoEventName: 'safety.collision' },
           } as any,
         ],
         dimoSafetyEvents: [
@@ -274,7 +282,12 @@ describe('MisuseCaseRulesService', () => {
       }),
     );
     const dimo = result.find((c) => c.type === MisuseCaseType.DIMO_COLLISION_REPORTED);
+    const proxy = result.find((c) => c.type === MisuseCaseType.POSSIBLE_COLLISION_OR_IMPACT);
+    expect(dimo).toBeDefined();
     expect(dimo?.confidence).toBe(MisuseCaseConfidence.HIGH);
+    expect(proxy).toBeUndefined();
+    expect(dimo?.description).toContain('POSSIBLE_IMPACT-Proxy');
+    expect(dimo?.evidenceSummary?.damageIncident).toBeDefined();
   });
 
   it('LAUNCH_LIKE_START creates LAUNCH_ABUSE_PATTERN when rule threshold met', () => {

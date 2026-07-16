@@ -5,6 +5,8 @@ import {
   deriveNativeAbuseRelevance,
   mapDrivingEventRow,
   countVisibleUnifiedBehaviorEvents,
+  normalizeDedupeEventType,
+  mapBehaviorEventRow,
   type BehaviorEventRow,
   type DrivingEventRow,
 } from './unified-behavior-read-model';
@@ -220,6 +222,26 @@ describe('buildUnifiedBehaviorEvents', () => {
     const deduped = dedupeUnifiedBehaviorEvents([moderate, hard], TRIP);
     expect(deduped).toHaveLength(1);
     expect(deduped[0].classification).toBe('HARD');
+  });
+
+  it('dedupes native SAFETY_COLLISION with HF POSSIBLE_IMPACT in the same incident bucket', () => {
+    const collision = mapDrivingEventRow(
+      nativeEvent({ eventType: 'SAFETY_COLLISION', recordedAt: T0 }),
+      TRIP,
+    );
+    const impact = mapBehaviorEventRow(
+      behaviorEvent({
+        eventCategory: 'ABUSE',
+        eventType: 'POSSIBLE_IMPACT',
+        startedAt: new Date(T0.getTime() + 1_000),
+      }),
+    );
+    expect(normalizeDedupeEventType(collision)).toBe('damage:collision_or_impact');
+    expect(normalizeDedupeEventType(impact)).toBe('damage:collision_or_impact');
+    const deduped = dedupeUnifiedBehaviorEvents([collision, impact], TRIP);
+    expect(deduped).toHaveLength(1);
+    expect(deduped[0].provenance).toBe('NATIVE');
+    expect(deduped[0].eventType).toBe('SAFETY_COLLISION');
   });
 
   it('reprocessing duplicate inputs yields stable visible count', () => {
