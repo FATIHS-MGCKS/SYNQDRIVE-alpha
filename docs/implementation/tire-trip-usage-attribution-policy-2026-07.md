@@ -63,3 +63,13 @@ Until then, integrators must **not** write fractional attribution for such trips
 - Hooked from `TripAnalysisCoordinatorService` when `tripAnalysisStatus` reaches `COMPLETED|SKIPPED` and all analysis stages are terminal
 - Manual `POST …/trips/:id/enrich` delegates to the same service (idempotent; no-op until final)
 - `updateTireUsageFromTrip` deprecated — no direct `totalKmOnSet` mutation
+
+## Replay & concurrency safety (Prompt 11)
+
+| Scenario | Behavior |
+|----------|----------|
+| Identical `sourceFingerprint` | Immediate no-op — no tire events, no aggregate rebuild, metric `duplicate_prevented` |
+| Changed fingerprint | Ledger row revised (`revisionNumber++`, `previousFingerprint`), `TRIP_USAGE_REVISED` audit event, **aggregates rebuilt from active ledger rows** (not delta increments) |
+| Cancelled / merged trip | Soft invalidation (`invalidatedAt`, zeroed usage fields retained on row), `TRIP_USAGE_REVISED` with `invalidateTripUsage` payload — **no silent deletes** |
+| Concurrent workers | `pg_advisory_xact_lock` per `(tripId, tireSetupId)` + unique constraint + retry on P2002/P2034 |
+| Historical setup | Mount-period resolution at trip interval — stored/removed setups keep historical usage without reactivation |

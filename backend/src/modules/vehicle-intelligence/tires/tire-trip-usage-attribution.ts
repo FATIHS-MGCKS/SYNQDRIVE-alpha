@@ -12,6 +12,7 @@ import { areAnalysisStagesComplete, parseAnalysisStagesJson } from '../trips/tri
 export type TireTripUsageAttributionStatus =
   | 'APPLIED'
   | 'UNCHANGED'
+  | 'INVALIDATED'
   | 'REQUIRES_REVIEW'
   | 'SKIPPED_NOT_FINAL'
   | 'SKIPPED_NO_DISTANCE'

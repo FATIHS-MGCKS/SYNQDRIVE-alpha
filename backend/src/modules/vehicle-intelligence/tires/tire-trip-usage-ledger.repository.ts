@@ -5,6 +5,7 @@ import {
   type TireTripUsageLedgerUpsertAction,
   type TripUsageLedgerEntryInput,
 } from './tire-trip-usage-ledger';
+import { TireTripUsageReplayConflictError } from './tire-trip-usage-replay';
 
 export interface TireTripUsageTenantContext {
   organizationId: string;
@@ -21,6 +22,7 @@ export interface TireTripUsageLedgerUpsertResult {
   action: TireTripUsageLedgerUpsertAction;
   entry: TireTripUsageLedger;
   sourceFingerprint: string;
+  previousFingerprint: string | null;
 }
 
 export class TireTripUsageLedgerTenantMismatchError extends Error {
@@ -30,10 +32,6 @@ export class TireTripUsageLedgerTenantMismatchError extends Error {
   }
 }
 
-/**
- * Validates org / vehicle / setup / trip alignment before any ledger write.
- * Enforces multi-tenant isolation at the application layer (DB trigger mirrors this).
- */
 export function assertTireTripUsageTenantContext(ctx: TireTripUsageTenantContext): void {
   if (ctx.vehicleOrganizationId !== ctx.organizationId) {
     throw new TireTripUsageLedgerTenantMismatchError(
@@ -102,10 +100,8 @@ type LedgerClient = {
 };
 
 /**
- * Idempotent upsert for attributed trip usage.
- * - Creates when (tripId, tireSetupId) is new
- * - Updates only when sourceFingerprint changed (trip reprocessing, late segments, etc.)
- * - Skips write when fingerprint unchanged
+ * Idempotent upsert under advisory lock.
+ * UNCHANGED → immediate no-op payload for caller (no writes).
  */
 export async function upsertTireTripUsageLedgerEntry(
   prisma: LedgerClient,
@@ -142,10 +138,19 @@ export async function upsertTireTripUsageLedgerEntry(
   });
 
   if (!existing) {
-    const entry = await prisma.tireTripUsageLedger.create({
-      data: writeData,
-    });
-    return { action: 'CREATED', entry, sourceFingerprint };
+    try {
+      const entry = await prisma.tireTripUsageLedger.create({
+        data: writeData,
+      });
+      return { action: 'CREATED', entry, sourceFingerprint, previousFingerprint: null };
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new TireTripUsageReplayConflictError(
+          `Concurrent ledger create for trip ${input.tripId}`,
+        );
+      }
+      throw err;
+    }
   }
 
   if (existing.organizationId !== input.organizationId) {
@@ -155,22 +160,100 @@ export async function upsertTireTripUsageLedgerEntry(
   }
 
   if (existing.sourceFingerprint === sourceFingerprint) {
-    return { action: 'UNCHANGED', entry: existing, sourceFingerprint };
+    return {
+      action: 'UNCHANGED',
+      entry: existing,
+      sourceFingerprint,
+      previousFingerprint: existing.sourceFingerprint,
+    };
   }
 
   const entry = await prisma.tireTripUsageLedger.update({
     where: { id: existing.id },
     data: {
       ...writeData,
+      previousFingerprint: existing.sourceFingerprint,
+      revisionNumber: (existing.revisionNumber ?? 1) + 1,
+      invalidatedAt: null,
+      invalidationReason: null,
+      supersededByTripId: null,
       updatedAt: new Date(),
     },
   });
-  return { action: 'UPDATED', entry, sourceFingerprint };
+  return {
+    action: 'UPDATED',
+    entry,
+    sourceFingerprint,
+    previousFingerprint: existing.sourceFingerprint,
+  };
 }
 
-/**
- * List ledger rows for a tire setup within an organization (tenant-scoped read).
- */
+export async function invalidateTireTripUsageLedgerEntry(
+  prisma: LedgerClient,
+  args: {
+    tripId: string;
+    tireSetupId: string;
+    organizationId: string;
+    reason: string;
+    supersededByTripId?: string | null;
+    fingerprintInput: TripUsageLedgerEntryInput;
+  },
+): Promise<TireTripUsageLedgerUpsertResult | null> {
+  const existing = await prisma.tireTripUsageLedger.findUnique({
+    where: {
+      tripId_tireSetupId: {
+        tripId: args.tripId,
+        tireSetupId: args.tireSetupId,
+      },
+    },
+  });
+  if (!existing || existing.invalidatedAt) {
+    return null;
+  }
+  if (existing.organizationId !== args.organizationId) {
+    throw new TireTripUsageLedgerTenantMismatchError(
+      `Ledger row for trip ${args.tripId} belongs to another organization.`,
+    );
+  }
+
+  const sourceFingerprint = computeTripUsageSourceFingerprint({
+    ...args.fingerprintInput,
+    sourceVersion:
+      args.fingerprintInput.sourceVersion ?? TIRE_TRIP_USAGE_LEDGER_SOURCE_VERSION,
+  });
+  const now = new Date();
+  const entry = await prisma.tireTripUsageLedger.update({
+    where: { id: existing.id },
+    data: {
+      distanceKm: 0,
+      cityKm: 0,
+      ruralKm: 0,
+      highwayKm: 0,
+      harshAccelerationCount: 0,
+      harshBrakingCount: 0,
+      harshCorneringCount: 0,
+      sourceFingerprint,
+      previousFingerprint: existing.sourceFingerprint,
+      revisionNumber: (existing.revisionNumber ?? 1) + 1,
+      invalidatedAt: now,
+      invalidationReason: args.reason,
+      supersededByTripId: args.supersededByTripId ?? null,
+      processedAt: now,
+      drivingImpactSummary: {
+        invalidated: true,
+        invalidationReason: args.reason,
+        supersededByTripId: args.supersededByTripId ?? null,
+      } as Prisma.InputJsonValue,
+    },
+  });
+  return {
+    action: 'UPDATED',
+    entry,
+    sourceFingerprint,
+    previousFingerprint: existing.sourceFingerprint,
+  };
+}
+
 export async function listTireTripUsageLedgerForSetup(
   prisma: {
     tireTripUsageLedger: {

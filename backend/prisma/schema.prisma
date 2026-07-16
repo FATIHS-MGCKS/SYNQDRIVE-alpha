@@ -323,6 +323,7 @@ enum TireEventType {
   REMOVE
   ODOMETER_ANCHOR_BACKFILLED
   TRIP_USAGE_ATTRIBUTED
+  TRIP_USAGE_REVISED
 }
 
 /// Canonical provenance for tread depth, baseline, and validation evidence.
@@ -2485,6 +2486,11 @@ model TireTripUsageLedger {
   drivingImpactSummary    Json?    @map("driving_impact_summary")
   sourceVersion           String   @map("source_version")
   sourceFingerprint       String   @map("source_fingerprint")
+  previousFingerprint     String?  @map("previous_fingerprint")
+  revisionNumber          Int      @default(1) @map("revision_number")
+  invalidatedAt           DateTime? @map("invalidated_at")
+  invalidationReason      String?  @map("invalidation_reason")
+  supersededByTripId      String?  @map("superseded_by_trip_id")
   processedAt             DateTime @map("processed_at")
   createdAt               DateTime @default(now()) @map("created_at")
   updatedAt               DateTime @updatedAt @map("updated_at")
@@ -2494,6 +2500,7 @@ model TireTripUsageLedger {
   tireSetup VehicleTireSetup @relation(fields: [tireSetupId], references: [id], onDelete: Restrict)
 
   @@unique([tripId, tireSetupId])
+  @@index([tireSetupId, invalidatedAt])
   @@index([tireSetupId, tripStartedAt])
   @@index([vehicleId, tripStartedAt])
   @@index([organizationId, vehicleId])

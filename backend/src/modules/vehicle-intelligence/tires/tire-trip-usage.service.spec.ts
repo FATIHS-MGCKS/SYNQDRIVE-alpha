@@ -24,6 +24,7 @@ function terminalTrip(overrides: Record<string, unknown> = {}) {
     harshCornerCount: 0,
     tripAnalysisStatus: 'COMPLETED',
     drivingImpactStatus: 'READY',
+    mergeParentTripId: null,
     analysisStagesJson: {
       behavior: 'done',
       route: 'done',
@@ -37,8 +38,10 @@ function terminalTrip(overrides: Record<string, unknown> = {}) {
 
 describe('TireTripUsageService', () => {
   const mockTx = {
+    $executeRaw: jest.fn().mockResolvedValue(undefined),
     tireTripUsageLedger: {
       findUnique: jest.fn(),
+      findMany: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
     },
@@ -52,10 +55,14 @@ describe('TireTripUsageService', () => {
     vehicleTireSetupMountPeriod: { findMany: jest.fn() },
     vehicleTireSetup: { findMany: jest.fn(), findUnique: jest.fn() },
     tripDrivingImpact: { findUnique: jest.fn() },
+    tireTripUsageLedger: { findFirst: jest.fn() },
     $transaction: jest.fn(async (fn: (tx: typeof mockTx) => Promise<unknown>) => fn(mockTx)),
   } as any;
 
-  const metrics = { recordTripUsageProcessed: jest.fn() };
+  const metrics = {
+    recordTripUsageProcessed: jest.fn(),
+    recordMetric: jest.fn(),
+  };
   const svc = new TireTripUsageService(mockPrisma, metrics);
 
   beforeEach(() => {
@@ -75,30 +82,60 @@ describe('TireTripUsageService', () => {
     });
     mockPrisma.tripDrivingImpact.findUnique.mockResolvedValue(null);
     mockTx.tireTripUsageLedger.findUnique.mockResolvedValue(null);
+    mockTx.tireTripUsageLedger.findMany.mockResolvedValue([]);
     mockTx.tireTripUsageLedger.create.mockImplementation(async ({ data }: any) => ({
       id: 'ledger-1',
+      invalidatedAt: null,
+      revisionNumber: 1,
       ...data,
     }));
+    mockTx.tireTripUsageLedger.findMany.mockImplementation(async () => {
+      const lastCreate = mockTx.tireTripUsageLedger.create.mock.calls.at(-1)?.[0]?.data;
+      if (!lastCreate) return [];
+      return [
+        {
+          invalidatedAt: null,
+          distanceKm: lastCreate.distanceKm,
+          cityKm: lastCreate.cityKm,
+          ruralKm: lastCreate.ruralKm,
+          highwayKm: lastCreate.highwayKm,
+          harshAccelerationCount: lastCreate.harshAccelerationCount,
+          harshBrakingCount: lastCreate.harshBrakingCount,
+          harshCorneringCount: lastCreate.harshCorneringCount,
+        },
+      ];
+    });
     mockTx.vehicleTrip.update.mockResolvedValue({});
     mockTx.vehicleTireSetup.update.mockResolvedValue({});
     mockTx.tireEvent.create.mockResolvedValue({});
     mockPrisma.vehicleTrip.update.mockResolvedValue({});
+    mockPrisma.tireTripUsageLedger.findFirst.mockResolvedValue(null);
   });
 
   it('applies usage for a normal final trip', async () => {
     const result = await svc.processCanonicalTripFinalization(tripId);
     expect(result.attributionStatus).toBe('APPLIED');
     expect(result.ledgerAction).toBe('CREATED');
+    expect(mockTx.$executeRaw).toHaveBeenCalled();
     expect(mockTx.tireTripUsageLedger.create).toHaveBeenCalled();
-    expect(mockTx.vehicleTireSetup.update).toHaveBeenCalled();
+    expect(mockTx.vehicleTireSetup.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          totalKmOnSet: 42,
+          harshBrakeEvents: 2,
+        }),
+      }),
+    );
     expect(mockTx.tireEvent.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ type: TireEventType.TRIP_USAGE_ATTRIBUTED }),
       }),
     );
+    expect(metrics.recordMetric).toHaveBeenCalledWith('ledger_created', expect.any(Object));
+    expect(metrics.recordMetric).toHaveBeenCalledWith('aggregate_rebuilt', expect.any(Object));
   });
 
-  it('is idempotent on retry (UNCHANGED)', async () => {
+  it('is strict no-op on identical fingerprint (no events, no rebuild)', async () => {
     await svc.processCanonicalTripFinalization(tripId);
     const fingerprint =
       mockTx.tireTripUsageLedger.create.mock.calls[0][0].data.sourceFingerprint;
@@ -106,6 +143,7 @@ describe('TireTripUsageService', () => {
       id: 'ledger-1',
       organizationId: orgId,
       sourceFingerprint: fingerprint,
+      invalidatedAt: null,
       distanceKm: 42,
       cityKm: 21,
       ruralKm: 8.4,
@@ -120,6 +158,12 @@ describe('TireTripUsageService', () => {
     expect(retry.ledgerAction).toBe('UNCHANGED');
     expect(mockTx.tireTripUsageLedger.create).toHaveBeenCalledTimes(1);
     expect(mockTx.vehicleTireSetup.update).toHaveBeenCalledTimes(1);
+    expect(mockTx.tireEvent.create).toHaveBeenCalledTimes(1);
+    expect(mockTx.vehicleTrip.update).toHaveBeenCalledTimes(1);
+    expect(metrics.recordMetric).toHaveBeenCalledWith('duplicate_prevented', {
+      tripId,
+      tireSetupId: setupId,
+    });
   });
 
   it('no-ops aggregate on duplicate enrichment call with unchanged fingerprint', async () => {
@@ -131,6 +175,7 @@ describe('TireTripUsageService', () => {
       id: 'ledger-1',
       organizationId: orgId,
       sourceFingerprint: fingerprint,
+      invalidatedAt: null,
       distanceKm: 42,
       cityKm: 21,
       ruralKm: 8.4,
@@ -144,6 +189,7 @@ describe('TireTripUsageService', () => {
     });
     expect(second.attributionStatus).toBe('UNCHANGED');
     expect(mockTx.vehicleTireSetup.update).toHaveBeenCalledTimes(1);
+    expect(mockTx.tireEvent.create).toHaveBeenCalledTimes(1);
   });
 
   it('skips when trip analysis is not terminal yet', async () => {
@@ -168,6 +214,29 @@ describe('TireTripUsageService', () => {
     mockPrisma.vehicleTireSetup.findMany.mockResolvedValue([]);
     const result = await svc.processCanonicalTripFinalization(tripId);
     expect(result.attributionStatus).toBe('SKIPPED_NO_SETUP');
+  });
+
+  it('uses historical setup after setup change (stored setup, not current)', async () => {
+    mockPrisma.vehicleTireSetupMountPeriod.findMany.mockResolvedValue([
+      {
+        tireSetupId: 'setup-old',
+        installedAt: new Date('2026-06-01T00:00:00.000Z'),
+        removedAt: new Date('2026-07-10T12:00:00.000Z'),
+      },
+      {
+        tireSetupId: 'setup-new',
+        installedAt: new Date('2026-07-10T12:00:00.000Z'),
+        removedAt: null,
+      },
+    ]);
+    mockPrisma.vehicleTireSetup.findUnique.mockResolvedValue({
+      id: 'setup-old',
+      vehicleId,
+      organizationId: orgId,
+    });
+    const result = await svc.processCanonicalTripFinalization(tripId);
+    expect(result.tireSetupId).toBe('setup-old');
+    expect(result.attributionStatus).toBe('APPLIED');
   });
 
   it('marks overlapping trip as REQUIRES_REVIEW', async () => {
@@ -207,12 +276,13 @@ describe('TireTripUsageService', () => {
     expect(result.attributionStatus).toBe('SKIPPED_ORG_MISMATCH');
   });
 
-  it('applies aggregate delta on reprocessing when fingerprint changes', async () => {
+  it('rebuilds aggregates from ledger when fingerprint changes (distance correction)', async () => {
     await svc.processCanonicalTripFinalization(tripId);
     mockTx.tireTripUsageLedger.findUnique.mockResolvedValue({
       id: 'ledger-1',
       organizationId: orgId,
       sourceFingerprint: 'old-fp',
+      invalidatedAt: null,
       distanceKm: 40,
       cityKm: 20,
       ruralKm: 8,
@@ -220,9 +290,24 @@ describe('TireTripUsageService', () => {
       harshAccelerationCount: 1,
       harshBrakingCount: 1,
       harshCorneringCount: 0,
+      revisionNumber: 1,
     });
+    mockTx.tireTripUsageLedger.findMany.mockResolvedValue([
+      {
+        invalidatedAt: null,
+        distanceKm: 45,
+        cityKm: 22.5,
+        ruralKm: 9,
+        highwayKm: 13.5,
+        harshAccelerationCount: 1,
+        harshBrakingCount: 3,
+        harshCorneringCount: 0,
+      },
+    ]);
     mockTx.tireTripUsageLedger.update.mockImplementation(async ({ data }: any) => ({
       id: 'ledger-1',
+      invalidatedAt: null,
+      revisionNumber: 2,
       ...data,
     }));
     mockPrisma.vehicleTrip.findUnique.mockResolvedValue(
@@ -235,11 +320,135 @@ describe('TireTripUsageService', () => {
     expect(mockTx.vehicleTireSetup.update).toHaveBeenLastCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          totalKmOnSet: { increment: 5 },
-          harshBrakeEvents: { increment: 2 },
+          totalKmOnSet: 45,
+          harshBrakeEvents: 3,
         }),
       }),
     );
+    expect(mockTx.tireEvent.create).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ type: TireEventType.TRIP_USAGE_REVISED }),
+      }),
+    );
+    expect(metrics.recordMetric).toHaveBeenCalledWith('ledger_revised', expect.any(Object));
+  });
+
+  it('invalidates ledger for cancelled trip with prior attribution', async () => {
+    mockPrisma.vehicleTrip.findUnique.mockImplementation(async (args: any) => {
+      if (args?.include?.tireTripUsageLedgers) {
+        return {
+          id: tripId,
+          vehicleId,
+          startTime: tripStart,
+          endTime: tripEnd,
+          vehicle: { id: vehicleId, organizationId: orgId },
+          tireTripUsageLedgers: [
+            {
+              id: 'ledger-1',
+              tireSetupId: setupId,
+              tripStartedAt: tripStart,
+              tripEndedAt: tripEnd,
+              organizationId: orgId,
+              sourceFingerprint: 'fp-old',
+              invalidatedAt: null,
+              revisionNumber: 1,
+            },
+          ],
+        };
+      }
+      return {
+        ...terminalTrip({ tripStatus: TripStatus.CANCELLED }),
+      };
+    });
+    mockTx.tireTripUsageLedger.findUnique.mockResolvedValue({
+      id: 'ledger-1',
+      organizationId: orgId,
+      sourceFingerprint: 'fp-old',
+      invalidatedAt: null,
+      revisionNumber: 1,
+      distanceKm: 42,
+      cityKm: 21,
+      ruralKm: 8.4,
+      highwayKm: 12.6,
+      harshAccelerationCount: 1,
+      harshBrakingCount: 2,
+      harshCorneringCount: 0,
+    });
+    mockTx.tireTripUsageLedger.update.mockImplementation(async ({ data }: any) => ({
+      id: 'ledger-1',
+      invalidatedAt: new Date(),
+      ...data,
+    }));
+    mockTx.tireTripUsageLedger.findMany.mockResolvedValue([]);
+
+    const result = await svc.invalidateTripUsageForTrip(tripId, {
+      reason: 'trip_cancelled',
+    });
+    expect(result.attributionStatus).toBe('INVALIDATED');
+    expect(mockTx.tireEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          type: TireEventType.TRIP_USAGE_REVISED,
+          payload: expect.objectContaining({ command: 'invalidateTripUsage' }),
+        }),
+      }),
+    );
+    expect(mockTx.vehicleTireSetup.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ totalKmOnSet: 0 }),
+      }),
+    );
+  });
+
+  it('invalidates merged child trip via mergeParentTripId', async () => {
+    mockPrisma.vehicleTrip.findUnique.mockImplementation(async (args: any) => {
+      if (args?.include?.tireTripUsageLedgers) {
+        return {
+          id: tripId,
+          vehicleId,
+          startTime: tripStart,
+          endTime: tripEnd,
+          vehicle: { id: vehicleId, organizationId: orgId },
+          tireTripUsageLedgers: [
+            {
+              id: 'ledger-1',
+              tireSetupId: setupId,
+              tripStartedAt: tripStart,
+              tripEndedAt: tripEnd,
+              organizationId: orgId,
+              sourceFingerprint: 'fp-old',
+              invalidatedAt: null,
+              revisionNumber: 1,
+            },
+          ],
+        };
+      }
+      return terminalTrip({ mergeParentTripId: 'parent-trip' });
+    });
+    mockTx.tireTripUsageLedger.findUnique.mockResolvedValue({
+      id: 'ledger-1',
+      organizationId: orgId,
+      sourceFingerprint: 'fp-old',
+      invalidatedAt: null,
+      revisionNumber: 1,
+      distanceKm: 42,
+      cityKm: 21,
+      ruralKm: 8.4,
+      highwayKm: 12.6,
+      harshAccelerationCount: 1,
+      harshBrakingCount: 2,
+      harshCorneringCount: 0,
+    });
+    mockTx.tireTripUsageLedger.update.mockImplementation(async ({ data }: any) => ({
+      id: 'ledger-1',
+      invalidatedAt: new Date(),
+      ...data,
+    }));
+    mockTx.tireTripUsageLedger.findMany.mockResolvedValue([]);
+
+    const result = await svc.processCanonicalTripFinalization(tripId);
+    expect(result.attributionStatus).toBe('INVALIDATED');
+    expect(result.reason).toBe('trip_merged');
   });
 
   it('records metrics hook', async () => {

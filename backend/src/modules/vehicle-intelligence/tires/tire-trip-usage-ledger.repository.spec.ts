@@ -1,6 +1,7 @@
 import {
   assertTireTripUsageTenantContext,
   buildTireTripUsageLedgerWriteData,
+  invalidateTireTripUsageLedgerEntry,
   TireTripUsageLedgerTenantMismatchError,
   upsertTireTripUsageLedgerEntry,
 } from './tire-trip-usage-ledger.repository';
@@ -166,6 +167,7 @@ describe('tire-trip-usage-ledger repository upsert', () => {
       id: 'ledger-1',
       organizationId: 'org-1',
       sourceFingerprint: 'old-fingerprint',
+      revisionNumber: 1,
     });
     mockLedger.update.mockResolvedValue({ id: 'ledger-1' });
 
@@ -176,12 +178,48 @@ describe('tire-trip-usage-ledger repository upsert', () => {
     );
 
     expect(result.action).toBe('UPDATED');
+    expect(result.previousFingerprint).toBe('old-fingerprint');
     expect(mockLedger.update).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'ledger-1' },
         data: expect.objectContaining({
           distanceKm: 99,
+          revisionNumber: 2,
+          previousFingerprint: 'old-fingerprint',
           sourceFingerprint: expect.not.stringMatching(/^old-fingerprint$/),
+        }),
+      }),
+    );
+  });
+
+  it('soft-invalidates an active ledger row without deleting it', async () => {
+    mockLedger.findUnique.mockResolvedValue({
+      id: 'ledger-1',
+      organizationId: 'org-1',
+      sourceFingerprint: computeTripUsageSourceFingerprint(baseInput),
+      invalidatedAt: null,
+      revisionNumber: 1,
+    });
+    mockLedger.update.mockImplementation(async ({ data }) => ({
+      id: 'ledger-1',
+      ...data,
+    }));
+
+    const result = await invalidateTireTripUsageLedgerEntry(prisma, {
+      tripId: baseInput.tripId,
+      tireSetupId: baseInput.tireSetupId,
+      organizationId: baseInput.organizationId,
+      reason: 'trip_cancelled',
+      fingerprintInput: baseInput,
+    });
+
+    expect(result?.action).toBe('UPDATED');
+    expect(mockLedger.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          distanceKm: 0,
+          invalidatedAt: expect.any(Date),
+          invalidationReason: 'trip_cancelled',
         }),
       }),
     );

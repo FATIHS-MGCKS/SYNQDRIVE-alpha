@@ -694,6 +694,58 @@ cd backend && npm test -- tire-trip-usage
 
 ---
 
+## Prompt 11 — Replay & Concurrency Safety (2026-07-16)
+
+### Ziel
+
+`TireTripUsageLedger` sicher gegen geänderte Trip-Ergebnisse, verspätete Telemetrie und parallele Worker.
+
+### Verhalten
+
+| Fall | Aktion |
+|------|--------|
+| Gleicher Fingerprint | Sofortiger No-op — keine Events, kein Aggregate-Rebuild, Metric `duplicate_prevented` |
+| Geänderter Fingerprint | Ledger-Revision + `TRIP_USAGE_REVISED` Audit, Aggregate **aus Ledger neu gebildet** |
+| Cancelled / merged Trip | Soft-Invalidierung (`invalidatedAt`), Audit `invalidateTripUsage`, keine stillen Löschungen |
+| Parallele Worker | Advisory xact lock + Unique + Retry (P2002/P2034) |
+
+### Geänderte / neue Dateien
+
+| Datei | Änderung |
+|-------|----------|
+| `20260716230000_tire_trip_usage_replay_safety` | `TRIP_USAGE_REVISED`, Revision/Invalidation-Spalten |
+| `tire-trip-usage-replay.ts` | Locks, Ledger-Rebuild, Retry, Audit-Payloads, Metriken |
+| `tire-trip-usage-replay.spec.ts` | Rebuild, Retry, 10 parallele Worker |
+| `tire-trip-usage.service.ts` | Rebuild statt Delta, strikter UNCHANGED-No-op, Invalidierung |
+| `tire-trip-usage-ledger.repository.ts` | Revision-Felder, `invalidateTireTripUsageLedgerEntry` |
+| `tire-trip-usage-attribution.ts` | Status `INVALIDATED` |
+| `tire-trip-usage-attribution-policy-2026-07.md` | Prompt-11-Policy |
+
+### Transaktion pro Apply (aktualisiert)
+
+1. `pg_advisory_xact_lock(tripId, tireSetupId)`
+2. Ledger upsert (fingerprint-idempotent)
+3. Bei UNCHANGED → sofort return (kein Write)
+4. Bei CREATED/UPDATED → Aggregate aus aktiven Ledger-Zeilen rebuilden
+5. `TRIP_USAGE_ATTRIBUTED` (neu) oder `TRIP_USAGE_REVISED` (Änderung)
+6. Trip-Processing-Status
+
+### Tests
+
+```bash
+cd backend && npm test -- tire-trip-usage
+```
+
+### Bestätigung Prompt 11
+
+- ✅ Keine Doppelzählung bei Retry (strikter Fingerprint-No-op)
+- ✅ Geänderte Trip-Daten → korrekte Aggregate via Ledger-Rebuild
+- ✅ Parallele Worker sicher (Lock + Retry)
+- ✅ Historische Setup-Zuordnung stabil
+- ✅ Invalidierung auditierbar, keine stillen Löschungen
+
+---
+
 ## Prompt 2 — P0-TH-04 Ground-Truth-Leak (2026-07-16)
 
 ### Root Cause
@@ -835,7 +887,8 @@ Blocker bleiben bis Abnahme Prompt 24:
 | 2026-07-16 | 2 | P0-TH-04: Ground-truth leak fix + 22 neue Tests | `0da74af` |
 | 2026-07-16 | 3 | Evidence/provenance schema + migration (additive) | `5b0571f` |
 | 2026-07-16 | 4 | Evidence provenance across all tire write paths | `b28f91a` |
-| 2026-07-16 | 5 | Tire setup/position lifecycle invariants | *(dieser Commit)* |
+| 2026-07-16 | 10 | Canonical trip finalization → tire usage integration | `850e230` |
+| 2026-07-16 | 11 | Replay & concurrency safety for tire trip usage ledger | *(dieser Commit)* |
 
 ---
 

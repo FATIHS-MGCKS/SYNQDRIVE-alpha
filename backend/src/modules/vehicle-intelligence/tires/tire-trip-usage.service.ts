@@ -3,23 +3,31 @@ import { Prisma, TireEventType, TripStatus } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
 import {
   buildSetupPeriodsFromSetups,
-  computeTripUsageAggregateDelta,
   isTripCanonicallyFinalForTireUsage,
   ledgerRowToAggregateDelta,
   resolveSetupAttributionForTrip,
   type TireTripUsageAttributionStatus,
-  type TripUsageAggregateDelta,
 } from './tire-trip-usage-attribution';
 import {
+  buildInvalidatedTripUsageFingerprintInput,
   deriveTripUsageRoadKm,
   TIRE_TRIP_USAGE_LEDGER_SOURCE_VERSION,
   type TripUsageDrivingImpactSummary,
 } from './tire-trip-usage-ledger';
 import {
+  invalidateTireTripUsageLedgerEntry,
   TireTripUsageLedgerTenantMismatchError,
   upsertTireTripUsageLedgerEntry,
   type TireTripUsageTenantContext,
 } from './tire-trip-usage-ledger.repository';
+import {
+  acquireTripUsageAdvisoryLock,
+  buildInvalidationAuditPayload,
+  buildRevisionAuditPayload,
+  rebuildSetupUsageAggregatesFromLedger,
+  type TireTripUsageMetricName,
+  withTripUsageReplayRetry,
+} from './tire-trip-usage-replay';
 
 export interface TireTripUsageProcessResult {
   tripId: string;
@@ -34,6 +42,7 @@ export interface TireTripUsageProcessResult {
 
 export interface TireTripUsageMetricHook {
   recordTripUsageProcessed(result: TireTripUsageProcessResult): void;
+  recordMetric?(name: TireTripUsageMetricName, labels?: Record<string, string>): void;
 }
 
 @Injectable()
@@ -62,6 +71,30 @@ export class TireTripUsageService {
 
     if (!trip) {
       throw new Error(`Trip ${tripId} not found.`);
+    }
+
+    if (trip.mergeParentTripId) {
+      return this.invalidateTripUsageForTrip(tripId, {
+        reason: 'trip_merged',
+        supersededByTripId: trip.mergeParentTripId,
+        trigger: opts?.trigger,
+      });
+    }
+
+    if (trip.tripStatus === TripStatus.CANCELLED) {
+      const existingLedger = await this.prisma.tireTripUsageLedger.findFirst({
+        where: { tripId: trip.id, invalidatedAt: null },
+      });
+      if (existingLedger) {
+        return this.invalidateTripUsageForTrip(tripId, {
+          reason: 'trip_cancelled',
+          trigger: opts?.trigger,
+        });
+      }
+      return this.persistSkippedStatus(trip.id, trip.vehicleId, 'SKIPPED_TRIP_NOT_COMPLETED', {
+        reason: 'trip_cancelled',
+        trigger: opts?.trigger,
+      });
     }
 
     if (trip.tripStatus !== TripStatus.COMPLETED || !trip.endTime) {
@@ -198,83 +231,104 @@ export class TireTripUsageService {
     };
 
     try {
-      const result = await this.prisma.$transaction(async (tx) => {
-        const existingLedger = await tx.tireTripUsageLedger.findUnique({
-          where: {
-            tripId_tireSetupId: { tripId: trip.id, tireSetupId: setup.id },
-          },
-        });
+      const result = await withTripUsageReplayRetry(() =>
+        this.prisma.$transaction(async (tx) => {
+          await acquireTripUsageAdvisoryLock(tx, trip.id, setup.id);
 
-        const ledgerResult = await upsertTireTripUsageLedgerEntry(tx, ledgerInput, tenant);
+          const existingLedger = await tx.tireTripUsageLedger.findUnique({
+            where: {
+              tripId_tireSetupId: { tripId: trip.id, tireSetupId: setup.id },
+            },
+          });
 
-        if (ledgerResult.action !== 'UNCHANGED') {
-          const previousDelta = existingLedger
+          const ledgerResult = await upsertTireTripUsageLedgerEntry(tx, ledgerInput, tenant);
+
+          if (ledgerResult.action === 'UNCHANGED') {
+            this.emitMetric('duplicate_prevented', {
+              tripId: trip.id,
+              tireSetupId: setup.id,
+            });
+            return {
+              tripId: trip.id,
+              vehicleId: trip.vehicleId,
+              attributionStatus: 'UNCHANGED' as const,
+              ledgerAction: 'UNCHANGED' as const,
+              tireSetupId: setup.id,
+              sourceFingerprint: ledgerResult.sourceFingerprint,
+            };
+          }
+
+          const totals = await rebuildSetupUsageAggregatesFromLedger(tx, setup.id);
+          this.emitMetric('aggregate_rebuilt', { tireSetupId: setup.id });
+          this.emitMetric(
+            ledgerResult.action === 'CREATED' ? 'ledger_created' : 'ledger_revised',
+            { tripId: trip.id, tireSetupId: setup.id },
+          );
+
+          const nextValues = ledgerRowToAggregateDelta(ledgerResult.entry);
+          const previousValues = existingLedger
             ? ledgerRowToAggregateDelta(existingLedger)
             : null;
-          const nextDelta = ledgerRowToAggregateDelta(ledgerResult.entry);
-          const aggregateDelta = computeTripUsageAggregateDelta(previousDelta, nextDelta);
 
-          if (this.hasNonZeroAggregateDelta(aggregateDelta)) {
-            await tx.vehicleTireSetup.update({
-              where: { id: setup.id },
-              data: {
-                totalKmOnSet: { increment: aggregateDelta.distanceKm },
-                cityKm: { increment: aggregateDelta.cityKm },
-                highwayKm: { increment: aggregateDelta.highwayKm },
-                ruralKm: { increment: aggregateDelta.ruralKm },
-                harshAccelEvents: { increment: aggregateDelta.harshAccelerationCount },
-                harshBrakeEvents: { increment: aggregateDelta.harshBrakingCount },
-                harshCornerEvents: { increment: aggregateDelta.harshCorneringCount },
-              },
-            });
-          }
+          const eventPayload =
+            ledgerResult.action === 'CREATED'
+              ? {
+                  command: 'attributeTripUsage',
+                  tripId: trip.id,
+                  ledgerAction: ledgerResult.action,
+                  sourceFingerprint: ledgerResult.sourceFingerprint,
+                  distanceKm,
+                  cityKm: roadKm.cityKm,
+                  ruralKm: roadKm.ruralKm,
+                  highwayKm: roadKm.highwayKm,
+                  harshAccelerationCount: trip.harshAccelCount ?? 0,
+                  harshBrakingCount: trip.harshBrakeCount ?? 0,
+                  harshCorneringCount: trip.harshCornerCount ?? 0,
+                  aggregateTotals: totals,
+                  trigger: opts?.trigger ?? 'canonical_finalization',
+                }
+              : buildRevisionAuditPayload({
+                  tripId: trip.id,
+                  tireSetupId: setup.id,
+                  previousFingerprint: ledgerResult.previousFingerprint,
+                  nextFingerprint: ledgerResult.sourceFingerprint,
+                  previousValues,
+                  nextValues,
+                  trigger: opts?.trigger ?? 'canonical_finalization',
+                });
 
           await tx.tireEvent.create({
             data: {
               organizationId,
               vehicleId: trip.vehicleId,
               tireSetId: setup.id,
-              type: TireEventType.TRIP_USAGE_ATTRIBUTED,
-              payload: {
-                command: 'attributeTripUsage',
-                tripId: trip.id,
-                ledgerAction: ledgerResult.action,
-                sourceFingerprint: ledgerResult.sourceFingerprint,
-                distanceKm,
-                cityKm: roadKm.cityKm,
-                ruralKm: roadKm.ruralKm,
-                highwayKm: roadKm.highwayKm,
-                harshAccelerationCount: trip.harshAccelCount ?? 0,
-                harshBrakingCount: trip.harshBrakeCount ?? 0,
-                harshCorneringCount: trip.harshCornerCount ?? 0,
-                aggregateDelta: { ...aggregateDelta },
-                trigger: opts?.trigger ?? 'canonical_finalization',
-              } as Prisma.InputJsonValue,
+              type:
+                ledgerResult.action === 'CREATED'
+                  ? TireEventType.TRIP_USAGE_ATTRIBUTED
+                  : TireEventType.TRIP_USAGE_REVISED,
+              payload: eventPayload as Prisma.InputJsonValue,
               createdBy: 'system:tire-trip-usage',
             },
           });
-        }
 
-        const attributionStatus: TireTripUsageAttributionStatus =
-          ledgerResult.action === 'UNCHANGED' ? 'UNCHANGED' : 'APPLIED';
+          await tx.vehicleTrip.update({
+            where: { id: trip.id },
+            data: {
+              tireUsageAttributionStatus: 'APPLIED',
+              tireUsageProcessedAt: new Date(),
+            },
+          });
 
-        await tx.vehicleTrip.update({
-          where: { id: trip.id },
-          data: {
-            tireUsageAttributionStatus: attributionStatus,
-            tireUsageProcessedAt: new Date(),
-          },
-        });
-
-        return {
-          tripId: trip.id,
-          vehicleId: trip.vehicleId,
-          attributionStatus,
-          ledgerAction: ledgerResult.action,
-          tireSetupId: setup.id,
-          sourceFingerprint: ledgerResult.sourceFingerprint,
-        } satisfies TireTripUsageProcessResult;
-      });
+          return {
+            tripId: trip.id,
+            vehicleId: trip.vehicleId,
+            attributionStatus: 'APPLIED' as const,
+            ledgerAction: ledgerResult.action,
+            tireSetupId: setup.id,
+            sourceFingerprint: ledgerResult.sourceFingerprint,
+          };
+        }),
+      );
 
       this.metrics?.recordTripUsageProcessed(result);
       this.logger.log(
@@ -299,16 +353,153 @@ export class TireTripUsageService {
     }
   }
 
-  private hasNonZeroAggregateDelta(delta: TripUsageAggregateDelta): boolean {
-    return (
-      delta.distanceKm !== 0 ||
-      delta.cityKm !== 0 ||
-      delta.ruralKm !== 0 ||
-      delta.highwayKm !== 0 ||
-      delta.harshAccelerationCount !== 0 ||
-      delta.harshBrakingCount !== 0 ||
-      delta.harshCorneringCount !== 0
-    );
+  /**
+   * Soft-invalidates ledger usage for cancelled, merged, or otherwise voided trips.
+   * Row is retained for audit; setup aggregates are rebuilt from active ledger rows.
+   */
+  async invalidateTripUsageForTrip(
+    tripId: string,
+    opts: {
+      reason: string;
+      supersededByTripId?: string | null;
+      trigger?: string;
+    },
+  ): Promise<TireTripUsageProcessResult> {
+    const trip = await this.prisma.vehicleTrip.findUnique({
+      where: { id: tripId },
+      include: {
+        vehicle: { select: { id: true, organizationId: true } },
+        tireTripUsageLedgers: {
+          where: { invalidatedAt: null },
+        },
+      },
+    });
+
+    if (!trip) {
+      throw new Error(`Trip ${tripId} not found.`);
+    }
+
+    const organizationId = trip.vehicle.organizationId;
+    if (!organizationId) {
+      return this.persistSkippedStatus(trip.id, trip.vehicleId, 'SKIPPED_ORG_MISMATCH', {
+        reason: 'vehicle_missing_organization',
+      });
+    }
+
+    const activeLedgers = trip.tireTripUsageLedgers;
+    if (activeLedgers.length === 0) {
+      return {
+        tripId: trip.id,
+        vehicleId: trip.vehicleId,
+        attributionStatus: 'UNCHANGED',
+        reason: 'no_active_ledger_to_invalidate',
+      };
+    }
+
+    try {
+      const result = await withTripUsageReplayRetry(() =>
+        this.prisma.$transaction(async (tx) => {
+          const affectedSetups = new Set<string>();
+
+          for (const row of activeLedgers) {
+            await acquireTripUsageAdvisoryLock(tx, trip.id, row.tireSetupId);
+            affectedSetups.add(row.tireSetupId);
+
+            const fingerprintInput = buildInvalidatedTripUsageFingerprintInput({
+              tripId: trip.id,
+              tireSetupId: row.tireSetupId,
+              tripStartedAt: row.tripStartedAt.toISOString(),
+              tripEndedAt: row.tripEndedAt?.toISOString() ?? null,
+              invalidationReason: opts.reason,
+            });
+
+            const invalidated = await invalidateTireTripUsageLedgerEntry(tx, {
+              tripId: trip.id,
+              tireSetupId: row.tireSetupId,
+              organizationId,
+              reason: opts.reason,
+              supersededByTripId: opts.supersededByTripId ?? null,
+              fingerprintInput: {
+                organizationId,
+                vehicleId: trip.vehicleId,
+                ...fingerprintInput,
+              },
+            });
+
+            if (!invalidated) {
+              continue;
+            }
+
+            await tx.tireEvent.create({
+              data: {
+                organizationId,
+                vehicleId: trip.vehicleId,
+                tireSetId: row.tireSetupId,
+                type: TireEventType.TRIP_USAGE_REVISED,
+                payload: buildInvalidationAuditPayload({
+                  tripId: trip.id,
+                  tireSetupId: row.tireSetupId,
+                  previousFingerprint: invalidated.previousFingerprint,
+                  reason: opts.reason,
+                  supersededByTripId: opts.supersededByTripId ?? null,
+                }) as Prisma.InputJsonValue,
+                createdBy: 'system:tire-trip-usage',
+              },
+            });
+
+            this.emitMetric('ledger_invalidated', {
+              tripId: trip.id,
+              tireSetupId: row.tireSetupId,
+            });
+          }
+
+          for (const setupId of affectedSetups) {
+            await rebuildSetupUsageAggregatesFromLedger(tx, setupId);
+            this.emitMetric('aggregate_rebuilt', { tireSetupId: setupId });
+          }
+
+          await tx.vehicleTrip.update({
+            where: { id: trip.id },
+            data: {
+              tireUsageAttributionStatus: 'INVALIDATED',
+              tireUsageProcessedAt: new Date(),
+            },
+          });
+
+          return {
+            tripId: trip.id,
+            vehicleId: trip.vehicleId,
+            attributionStatus: 'INVALIDATED' as TireTripUsageAttributionStatus,
+            ledgerAction: 'UPDATED' as const,
+            tireSetupId: activeLedgers[0]?.tireSetupId,
+            reason: opts.reason,
+          };
+        }),
+      );
+
+      this.metrics?.recordTripUsageProcessed(result);
+      this.logger.log(
+        JSON.stringify({
+          event: 'tire_trip_usage_invalidated',
+          tripId: result.tripId,
+          reason: opts.reason,
+          supersededByTripId: opts.supersededByTripId ?? null,
+          trigger: opts.trigger ?? 'invalidation',
+        }),
+      );
+      return result;
+    } catch (err) {
+      if (err instanceof TireTripUsageLedgerTenantMismatchError) {
+        return this.persistSkippedStatus(trip.id, trip.vehicleId, 'SKIPPED_ORG_MISMATCH', {
+          reason: err.message,
+        });
+      }
+      throw err;
+    }
+  }
+
+  private emitMetric(name: TireTripUsageMetricName, labels?: Record<string, string>): void {
+    this.metrics?.recordMetric?.(name, labels);
   }
 
   private async persistSkippedStatus(
