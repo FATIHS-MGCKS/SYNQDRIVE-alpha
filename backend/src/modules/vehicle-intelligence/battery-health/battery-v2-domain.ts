@@ -99,6 +99,7 @@ export const BatteryMeasurementQuality = {
   UNSUPPORTED_PROFILE: 'UNSUPPORTED_PROFILE',
   PROVIDER_DELAY: 'PROVIDER_DELAY',
   PROVIDER_ERROR: 'PROVIDER_ERROR',
+  NO_DATA: 'NO_DATA',
 } as const;
 
 export type BatteryMeasurementQuality =
