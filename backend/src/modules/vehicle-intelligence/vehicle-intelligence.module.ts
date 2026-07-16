@@ -62,6 +62,9 @@ import { DimoAvailableSignalsPreflightService } from './driving-capability/dimo-
 import { VehicleDrivingCapabilityRepository } from './driving-capability/vehicle-driving-capability.repository';
 import { VehicleDrivingCapabilityResolverService } from './driving-capability/vehicle-driving-capability-resolver.service';
 import { DrivingDetectorCapabilityResolverService } from './driving-detector-capability/driving-detector-capability.service';
+import { DrivingIntelligenceV2Config } from './driving-intelligence-v2/driving-intelligence-v2.config';
+import { DimoTripSegmentValidationService } from './dimo-trip-segment-validation/dimo-trip-segment-validation.service';
+import { DimoTripSegmentValidateJobHandler } from './dimo-trip-segment-validation/dimo-trip-segment-validation.handler';
 import { TripAssessabilityRepository } from './trip-assessability/trip-assessability.repository';
 import { TripAssessabilityService } from './trip-assessability/trip-assessability.service';
 import { DrivingEvidenceRepository } from './driving-evidence/driving-evidence.repository';
@@ -190,6 +193,9 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     VehicleDrivingCapabilityRepository,
     VehicleDrivingCapabilityResolverService,
     DrivingDetectorCapabilityResolverService,
+    DrivingIntelligenceV2Config,
+    DimoTripSegmentValidationService,
+    DimoTripSegmentValidateJobHandler,
     TripAssessabilityRepository,
     TripAssessabilityService,
     DrivingEvidenceRepository,
@@ -271,6 +277,8 @@ import { NotificationsModule } from '@modules/notifications/notifications.module
     VehicleDrivingCapabilityRepository,
     VehicleDrivingCapabilityResolverService,
     DrivingDetectorCapabilityResolverService,
+    DrivingIntelligenceV2Config,
+    DimoTripSegmentValidationService,
     TripAssessabilityRepository,
     TripAssessabilityService,
     DrivingEvidenceRepository,

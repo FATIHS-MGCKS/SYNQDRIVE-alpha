@@ -22,3 +22,4 @@ export { default as billingEmailConfig } from './billing-email.config';
 export { default as billingReconciliationConfig } from './billing-reconciliation.config';
 export { default as billingStripeSyncConfig } from './billing-stripe-sync.config';
 export { default as taskAutomationOutboxConfig } from './task-automation-outbox.config';
+export { default as drivingIntelligenceV2Config } from './driving-intelligence-v2.config';

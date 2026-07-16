@@ -35,6 +35,30 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p33-dimo-segment-validation-2026-07-16',
+    version: '4.9.534',
+    title: 'Driving Intelligence V2 P33 — post-trip DIMO segment validation service',
+    summary: [
+      'Neuer `DimoTripSegmentValidationService` — nachgelagerte read-only Validierung nach Tripabschluss.',
+      'Mechanismen: ignitionDetection, frequencyAnalysis, changePointDetection (unabhängig verglichen).',
+      'Vergleich: Segmentstart/-ende, Tripgrenzen, Dauer, Distanz, Provider Source, Datenqualität.',
+      'Status: MATCHED, MINOR_BOUNDARY_DIFFERENCE, MAJOR_BOUNDARY_DIFFERENCE, SEGMENT_MISSING, PROVIDER_ERROR.',
+      'Segmente ändern Trips nicht — Abweichungen nur diagnostisch als `DrivingEvidence` (CONTEXT_SIGNAL).',
+      'Feature Flag `DRIVING_V2_DIMO_SEGMENT_VALIDATION_ENABLED` (+ Master `DRIVING_INTELLIGENCE_V2_ENABLED`).',
+      'Job-Handler `DIMO_TRIP_SEGMENT_VALIDATE` wired; Stage SKIPPED wenn Flag aus.',
+      'Tests stellen sicher, dass Segmentdaten Tripgrenzen nicht ändern.',
+    ],
+    reason:
+      'Prompt 33/76: Nachgelagerte DIMO-Segment-Validierung ohne Live-FSM-Abhängigkeit — diagnostisch, Reconciliation später separat.',
+    previousBehavior:
+      'SEGMENT_VALIDATE Stage + Job-Typ existierten als Stub; keine DIMO-Segment-Vergleichslogik.',
+    details:
+      'Modul `dimo-trip-segment-validation` + `DrivingIntelligenceV2Config`. Trip-FSM unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T12:00:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p32-detector-capability-resolver-2026-07-16',
     version: '4.9.533',
     title: 'Driving Intelligence V2 P32 — central per-vehicle detector capability resolver',

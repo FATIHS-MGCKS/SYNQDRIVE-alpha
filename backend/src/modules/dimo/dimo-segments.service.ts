@@ -252,6 +252,33 @@ export class DimoSegmentsService {
   }
 
   /**
+   * Read-only fetch for a single DIMO detection mechanism (post-trip validation).
+   * Does not apply cross-mechanism fallback — caller compares mechanisms independently.
+   */
+  async fetchTripSegmentsForMechanism(
+    tokenId: number,
+    from: Date,
+    to: Date,
+    mechanism: DimoDetectionMechanism,
+  ): Promise<{ segments: DimoTripSegment[]; providerError: string | null }> {
+    const jwt = await this.auth.getVehicleJwt(tokenId);
+    if (!jwt) {
+      return { segments: [], providerError: 'DIMO_JWT_UNAVAILABLE' };
+    }
+
+    try {
+      const segments = await this.fetchTripSegmentsWithJwt(jwt, tokenId, from, to, mechanism);
+      return { segments, providerError: null };
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(
+        `Trip segment validation fetch failed tokenId=${tokenId} mechanism=${mechanism}: ${message}`,
+      );
+      return { segments: [], providerError: message };
+    }
+  }
+
+  /**
    * Fetch energy-event segments (refuel / recharge) from DIMO's native
    * detectors. Combines both mechanisms by default and returns a flat,
    * chronologically sorted list of segments — one row per detected event.
