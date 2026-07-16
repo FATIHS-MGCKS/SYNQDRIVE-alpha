@@ -56,6 +56,11 @@ import { BatteryPublicationRepository } from './battery-health/battery-publicati
 import { BatteryPublicationService } from './battery-health/battery-publication.service';
 import { LvCanonicalBatteryResolverService } from './battery-health/lv-canonical/lv-canonical-battery-resolver.service';
 import { HvMethodProfileService } from './battery-health/hv-method-profile/hv-method-profile.service';
+import {
+  HvChargeSessionIngestService,
+  HvChargeSessionPersistService,
+  HvChargeSessionRepository,
+} from './battery-health/hv-charge-session';
 import { HealthSummaryService } from './health-summary/health-summary.service';
 import { AiHealthCareAggregationService } from './health-summary/ai-health-care-aggregation.service';
 import { VehicleHealthTabSummaryService } from './health-summary/vehicle-health-tab-summary.service';
@@ -188,6 +193,9 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     BatteryPublicationService,
     LvCanonicalBatteryResolverService,
     HvMethodProfileService,
+    HvChargeSessionRepository,
+    HvChargeSessionPersistService,
+    HvChargeSessionIngestService,
     DriveProfileResolverService,
     LvBatteryChemistryResolverService,
     BatteryPolicyProfileService,
@@ -274,6 +282,9 @@ import { BatteryStartProxyExtractService } from './battery-health/lv-start-proxy
     BatteryPublicationService,
     LvCanonicalBatteryResolverService,
     HvMethodProfileService,
+    HvChargeSessionRepository,
+    HvChargeSessionPersistService,
+    HvChargeSessionIngestService,
     DriveProfileResolverService,
     LvBatteryChemistryResolverService,
     BatteryPolicyProfileService,

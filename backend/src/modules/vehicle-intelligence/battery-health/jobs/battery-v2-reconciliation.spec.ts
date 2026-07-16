@@ -112,6 +112,7 @@ describe('BatteryV2ReconciliationService', () => {
     getRest60mDelayMs: jest.fn().mockReturnValue(60 * 60_000),
     getRest6hDelayMs: jest.fn().mockReturnValue(6 * 60 * 60_000),
   };
+  const tripStartProducer = { enqueueStartProxy: jest.fn().mockResolvedValue('job-id') };
 
   let service: BatteryV2ReconciliationService;
 
@@ -128,6 +129,7 @@ describe('BatteryV2ReconciliationService', () => {
       deadLetters as any,
       capabilityRefresh as any,
       restTargetProducer as any,
+      tripStartProducer as any,
     );
   });
 
@@ -237,7 +239,7 @@ describe('BatteryV2ReconciliationService', () => {
     expect(jobProducer.enqueue.mock.calls[0][1].idempotencyKey).toBe(key);
   });
 
-  it('skips recharge segments already persisted', async () => {
+  it('skips completed recharge segments already persisted', async () => {
     prisma.vehicleEnergyEvent.findMany.mockResolvedValue([
       {
         dimoSegmentId: 'seg-1',
@@ -245,7 +247,10 @@ describe('BatteryV2ReconciliationService', () => {
         vehicle: { organizationId: ORG },
       },
     ]);
-    prisma.hvChargeSession.findUnique.mockResolvedValue({ id: 'session-1' });
+    prisma.hvChargeSession.findUnique.mockResolvedValue({
+      id: 'session-1',
+      isOngoing: false,
+    });
 
     const result = await service.reconcileAll();
     expect(result.rechargeSegments).toBe(0);
@@ -254,5 +259,29 @@ describe('BatteryV2ReconciliationService', () => {
         (call) => call[0] !== 'HV_RECHARGE_SESSION_RECONCILE',
       ),
     ).toBe(true);
+  });
+
+  it('re-enqueues ongoing recharge sessions for provider refresh', async () => {
+    prisma.vehicleEnergyEvent.findMany.mockResolvedValue([
+      {
+        dimoSegmentId: 'dimo-recharge-186946-123',
+        vehicleId: VEH,
+        vehicle: { organizationId: ORG },
+      },
+    ]);
+    prisma.hvChargeSession.findUnique.mockResolvedValue({
+      id: 'session-ongoing',
+      isOngoing: true,
+    });
+
+    const result = await service.reconcileAll();
+    expect(result.rechargeSegments).toBe(1);
+    expect(jobProducer.enqueue).toHaveBeenCalledWith(
+      'HV_RECHARGE_SESSION_RECONCILE',
+      expect.objectContaining({
+        vehicleId: VEH,
+        segmentFingerprint: 'dimo-recharge-186946-123',
+      }),
+    );
   });
 });

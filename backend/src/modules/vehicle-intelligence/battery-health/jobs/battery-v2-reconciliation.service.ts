@@ -480,9 +480,9 @@ export class BatteryV2ReconciliationService {
             segmentFingerprint,
           },
         },
-        select: { id: true },
+        select: { id: true, isOngoing: true },
       });
-      if (existing) continue;
+      if (existing && !existing.isOngoing) continue;
 
       const idempotencyKey = buildHvSessionJobIdempotencyKey({
         vehicleId: event.vehicleId,

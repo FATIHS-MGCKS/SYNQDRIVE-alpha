@@ -35,6 +35,25 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'hv-charge-session-persist-v49548-2026-07-17',
+    version: '4.9.548',
+    title: 'V4.9.548 — HV Charge Session Persistence (Prompt 48/78)',
+    summary: [
+      'Idempotente Persistenz von DIMO-Recharge-Segmenten als `HvChargeSession` (1 Segment = 1 Session).',
+      'Felder: source `DIMO_RECHARGE_SEGMENT`, segmentFingerprint, startAt/endAt/ongoing, SOC/Energy/Added Energy, quality, metadata mit lastReconciledAt.',
+      'Merge-Regeln: Startanker unveränderlich; abgeschlossene Sessions nur mit besserer Provider-Info; ongoing → completed.',
+      '`HvRechargeSessionReconcileHandler` wired; Reconciliation re-enqueued ongoing Sessions.',
+      '9 Tests: neu, ongoing, abgeschlossen, erneut geliefert (besser/schwächer).',
+    ],
+    reason: 'Prompt 48/78: kanonische HV-Ladesessions in DB vor Capacity-Shadow/Publication.',
+    previousBehavior: 'HV_RECHARGE_SESSION_RECONCILE Handler war Stub; keine HvChargeSession-Persistenz aus DIMO segments.',
+    details:
+      'hv-charge-session/*, hv-recharge-session-reconcile.handler.ts, docs/architecture/hv-charge-session-persistence.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T10:00:00.000Z',
+  },
+  {
     id: 'dimo-recharge-segments-client-v49547-2026-07-17',
     version: '4.9.547',
     title: 'V4.9.547 — DIMO Recharge Segments Client (Prompt 47/78)',
