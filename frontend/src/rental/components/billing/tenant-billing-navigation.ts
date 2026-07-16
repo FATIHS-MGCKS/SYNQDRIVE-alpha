@@ -10,8 +10,8 @@ export const TENANT_SUBSCRIPTION_SUB_TABS: Array<{ id: TenantSubscriptionSubTab;
     { id: 'overview', label: 'Übersicht' },
     { id: 'tariff-vehicles', label: 'Tarif & Fahrzeuge' },
     { id: 'addons', label: 'Zusatzmodule' },
-    { id: 'invoices', label: 'SynqDrive-Rechnungen' },
-    { id: 'payment-method', label: 'Zahlungsmethode (SynqDrive)' },
+    { id: 'invoices', label: 'Rechnungen' },
+    { id: 'payment-method', label: 'Zahlungsmethode' },
   ];
 
 export const TENANT_BILLING_SUB_TAB_PARAM = 'billingSubTab';

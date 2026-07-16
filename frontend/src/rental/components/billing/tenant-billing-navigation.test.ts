@@ -18,8 +18,8 @@ describe('tenant billing navigation', () => {
       'Übersicht',
       'Tarif & Fahrzeuge',
       'Zusatzmodule',
-      'SynqDrive-Rechnungen',
-      'Zahlungsmethode (SynqDrive)',
+      'Rechnungen',
+      'Zahlungsmethode',
     ]);
   });
 
@@ -46,6 +46,7 @@ describe('tenant billing navigation', () => {
     expect(source).toContain('CHROME_TAB_BAR_SCROLL_CLASS');
     expect(source).toContain('max-sm:px-3');
     expect(source).toContain('data-testid="tenant-subscription-subtab-bar"');
+    expect(source).not.toContain('truncate');
   });
 
   it('uses mobile-safe layout in BillingTab shell', () => {

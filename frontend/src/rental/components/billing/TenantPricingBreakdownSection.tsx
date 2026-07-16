@@ -13,8 +13,8 @@ export function TenantPricingBreakdownSection({
   loading = false,
   error = null,
 }: TenantPricingBreakdownSectionProps) {
-  if (loading) {
-    return <div className="surface-premium rounded-2xl border border-border/60 p-4 sm:p-5 h-48" />;
+  if (loading && !pricing) {
+    return <div className="surface-premium rounded-2xl border border-border/60 p-4 sm:p-5 h-48 animate-pulse bg-muted/20" />;
   }
 
   if (error) {

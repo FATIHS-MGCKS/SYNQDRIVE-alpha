@@ -1,5 +1,5 @@
 import { Button } from '../../../components/ui/button';
-import { EmptyState, ErrorState } from '../../../components/patterns/states';
+import { EmptyState, ErrorState, SkeletonCard } from '../../../components/patterns/states';
 import type { TenantInvoiceListItemDto, TenantSubscriptionOverviewDto } from '../../types/billing.types';
 import { formatDateDe } from './billing.utils';
 import {
@@ -49,8 +49,18 @@ export function TenantBillingOverviewTab({
   onViewInvoices,
   onOpenPortal,
 }: TenantBillingOverviewTabProps) {
-  if (loading) {
-    return <div className="space-y-3" data-testid="tenant-overview-loading" />;
+  if (loading && !overview) {
+    return (
+      <div className="space-y-3" data-testid="tenant-overview-loading">
+        <SkeletonCard className="h-24 rounded-2xl" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+          <SkeletonCard className="h-20 rounded-xl" />
+          <SkeletonCard className="h-20 rounded-xl" />
+          <SkeletonCard className="h-20 rounded-xl" />
+        </div>
+        <SkeletonCard className="h-56 rounded-2xl" />
+      </div>
+    );
   }
 
   if (error) {

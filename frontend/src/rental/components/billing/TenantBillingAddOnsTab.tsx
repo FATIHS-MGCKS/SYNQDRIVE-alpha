@@ -15,7 +15,7 @@ export function TenantBillingAddOnsTab({
   error,
   onRetry,
 }: TenantBillingAddOnsTabProps) {
-  if (loading) return <SkeletonCard className="h-48 rounded-2xl" />;
+  if (loading && !overview) return <SkeletonCard className="h-48 rounded-2xl" />;
   if (error) {
     return (
       <ErrorState

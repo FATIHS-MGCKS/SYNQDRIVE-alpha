@@ -17,6 +17,12 @@ export function useBillingQuery<T>(input: {
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const requestIdRef = useRef(0);
+  const fetcherRef = useRef(fetcher);
+  const dataRef = useRef<T | null>(null);
+  const orgIdRef = useRef(orgId);
+
+  fetcherRef.current = fetcher;
+  dataRef.current = data;
 
   const reload = useCallback(async () => {
     if (!enabled) {
@@ -27,6 +33,7 @@ export function useBillingQuery<T>(input: {
     if (!orgId) {
       abortRef.current?.abort();
       setData(null);
+      dataRef.current = null;
       setError(BILLING_ORG_MISSING_MESSAGE);
       setLoading(false);
       return;
@@ -37,15 +44,19 @@ export function useBillingQuery<T>(input: {
     abortRef.current = controller;
     const requestId = ++requestIdRef.current;
 
-    setLoading(true);
+    if (dataRef.current === null) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
-      const result = await fetcher(controller.signal);
+      const result = await fetcherRef.current(controller.signal);
       if (requestId !== requestIdRef.current) return;
+      dataRef.current = result;
       setData(result);
     } catch (err) {
       if (isAbortError(err) || requestId !== requestIdRef.current) return;
+      dataRef.current = null;
       setData(null);
       setError(mapBillingQueryError(err));
     } finally {
@@ -53,9 +64,16 @@ export function useBillingQuery<T>(input: {
         setLoading(false);
       }
     }
-  }, [enabled, fetcher, orgId]);
+  }, [enabled, orgId]);
 
   useEffect(() => {
+    if (orgIdRef.current !== orgId) {
+      orgIdRef.current = orgId;
+      dataRef.current = null;
+      setData(null);
+      setLoading(true);
+    }
+
     void reload();
     return () => {
       abortRef.current?.abort();

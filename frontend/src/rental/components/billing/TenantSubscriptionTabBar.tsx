@@ -37,7 +37,7 @@ export function TenantSubscriptionTabBar({
               onClick={() => onTabChange(tab.id)}
               className={chromeTabTriggerClass(isActive, 'max-sm:px-3')}
             >
-              <span className="truncate">{tab.label}</span>
+              {tab.label}
             </button>
           );
         })}

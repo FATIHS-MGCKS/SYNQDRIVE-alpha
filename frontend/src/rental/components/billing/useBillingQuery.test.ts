@@ -84,4 +84,30 @@ describe('useBillingQuery', () => {
 
     unmount();
   });
+
+  it('does not restart requests when fetcher identity changes between renders', async () => {
+    const fetcher = vi.fn().mockResolvedValue('stable');
+
+    const { result, rerender, unmount } = renderHook(
+      ({ fetcherVersion }: { fetcherVersion: number }) =>
+        useBillingQuery({
+          orgId: 'org-a',
+          deps: ['static'],
+          fetcher: (_signal) => fetcher(fetcherVersion),
+        }),
+      { initialProps: { fetcherVersion: 1 } },
+    );
+
+    await waitForHook(() => result.current.data === 'stable');
+    expect(fetcher).toHaveBeenCalledTimes(1);
+
+    rerender({ fetcherVersion: 2 });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(result.current.data).toBe('stable');
+    expect(result.current.loading).toBe(false);
+
+    unmount();
+  });
 });
