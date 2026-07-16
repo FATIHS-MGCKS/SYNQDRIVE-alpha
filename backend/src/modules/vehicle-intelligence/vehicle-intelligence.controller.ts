@@ -88,6 +88,7 @@ import {
   RemoveTireSetDto,
   RetireTireDto,
   ApplyAiTireSpecDto,
+  TireRecalculateDto,
 } from './tires/dto/tire-mutation.dto';
 import {
   InitializeBrakeHealthDto,
@@ -485,8 +486,16 @@ export class VehicleIntelligenceController {
   }
 
   @Post('tires/recalculate')
-  async recalculateTireHealth(@Param('vehicleId') vehicleId: string) {
-    return this.tireHealthService.recalculate(vehicleId);
+  async recalculateTireHealth(
+    @Param('vehicleId') vehicleId: string,
+    @Body() body: TireRecalculateDto,
+    @Req() req: { user?: { id?: string } },
+  ) {
+    return this.tireHealthService.recalculate(vehicleId, {
+      force: body.force,
+      reason: body.reason,
+      actorId: req.user?.id ?? null,
+    });
   }
 
   // --- Brakes ---

@@ -2419,6 +2419,8 @@ model TireHealthSnapshot {
   @@index([vehicleId, snapshotDate])
   @@index([tireId, snapshotDate])
   @@index([tireSetId])
+  /// Partial unique enforced in SQL migration (nullable legacy rows excluded).
+  @@index([tireSetId, modelVersion, inputFingerprint], map: "tire_health_snapshots_setup_model_fingerprint_idx")
   @@map("tire_health_snapshots")
 }
 

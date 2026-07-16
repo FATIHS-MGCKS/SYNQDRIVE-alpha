@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '@shared/database/prisma.service';
 import { TireWearModelService, WearExplainability } from './tire-wear-model.service';
 import { DrivingImpactService } from '../driving-impact/driving-impact.service';
@@ -56,6 +56,13 @@ import {
   applyAnchorToRemainingKmProjection,
   isPredictionCapable,
 } from './tire-odometer-anchor';
+import {
+  TIRE_RECALCULATION_MODEL_VERSION,
+  computeTireHealthConfigHash,
+  computeTireRecalculationInputFingerprint,
+  resolvePressureFreshnessBucket,
+  type TireRecalculationInputContext,
+} from './tire-recalculation-fingerprint';
 
 // ── Public interfaces ─────────────────────────────────────────────────────────
 
@@ -223,13 +230,36 @@ export interface ConfidenceDimensions {
   modelConfidence: number;
 }
 
+export interface TireRecalculateOptions {
+  /** Bypass fingerprint dedupe (authorized manual refresh only). */
+  force?: boolean;
+  /** Required when `force` is true — recorded in the audit event. */
+  reason?: string;
+  /** Actor id for force-recalculation audit trail. */
+  actorId?: string | null;
+}
+
+export interface TireRecalculationResult {
+  overallPercent: number;
+  remainingKm: number | null;
+  healthStatus: string;
+  confidence: ConfidenceDimensions;
+  skipped?: boolean;
+  skipReason?: 'identical_input_fingerprint';
+  snapshotId?: string | null;
+  forced?: boolean;
+  inputFingerprint?: string;
+  timePolicyBucket?: string;
+}
+
 // ── Service ───────────────────────────────────────────────────────────────────
 
 @Injectable()
 export class TireHealthService {
   private readonly logger = new Logger(TireHealthService.name);
   private readonly cfg = TIRE_HEALTH_CONFIG;
-  private readonly modelVersion = 'tire-wear-v2';
+  private readonly modelVersion = TIRE_RECALCULATION_MODEL_VERSION;
+  private readonly modelConfigHash = computeTireHealthConfigHash();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -362,9 +392,67 @@ export class TireHealthService {
   //  RECALCULATE
   // ═══════════════════════════════════════════════════════════════════════════
 
-  async recalculate(vehicleId: string) {
+  async recalculate(
+    vehicleId: string,
+    options: TireRecalculateOptions = {},
+  ): Promise<TireRecalculationResult | null> {
+    if (options.force && !options.reason?.trim()) {
+      throw new BadRequestException(
+        'Force tire recalculation requires a non-empty reason.',
+      );
+    }
+
     const setup = await this.getActiveSetup(vehicleId);
     if (!setup) return null;
+
+    const recalcAsOf = new Date();
+    const inputContext = await this.loadRecalculationInputContext(
+      vehicleId,
+      setup,
+      recalcAsOf,
+    );
+    const fingerprint = computeTireRecalculationInputFingerprint(inputContext, {
+      modelVersion: this.modelVersion,
+      modelConfigHash: this.modelConfigHash,
+      asOf: recalcAsOf,
+    });
+
+    const lastSnapshot = await this.prisma.tireHealthSnapshot.findFirst({
+      where: {
+        tireSetId: setup.id,
+        modelVersion: fingerprint.modelVersion,
+        inputFingerprint: fingerprint.inputFingerprint,
+      },
+      orderBy: { snapshotDate: 'desc' },
+      select: { id: true },
+    });
+
+    if (!options.force && lastSnapshot) {
+      await this.prisma.vehicleTireSetup.update({
+        where: { id: setup.id },
+        data: { lastRecalculatedAt: recalcAsOf },
+      });
+      this.logger.debug(
+        `Skipping tire recalculation for vehicle=${vehicleId} setup=${setup.id} — identical input fingerprint`,
+      );
+      return {
+        overallPercent: setup.overallHealthPercent ?? 0,
+        remainingKm: setup.overallRemainingKm ?? null,
+        healthStatus: setup.healthStatus,
+        confidence: {
+          score: setup.confidenceScore ?? 0,
+          label: setup.confidenceLabel ?? 'Low',
+          tireSpecConfidence: setup.tireSpecConfidence ?? 0,
+          dataCompletenessConfidence: setup.dataCompletenessConfidence ?? 0,
+          modelConfidence: setup.modelConfidence ?? 0,
+        },
+        skipped: true,
+        skipReason: 'identical_input_fingerprint',
+        snapshotId: lastSnapshot.id,
+        inputFingerprint: fingerprint.inputFingerprint,
+        timePolicyBucket: fingerprint.timePolicyBucket,
+      };
+    }
 
     const wearAnalysis = await this.wearModel.computeWearAnalysis(vehicleId);
     if (!wearAnalysis) return null;
@@ -452,44 +540,86 @@ export class TireHealthService {
     });
 
     const snapshotProvenance = buildSnapshotProvenance({
-      modelVersion: this.modelVersion,
+      modelVersion: fingerprint.modelVersion,
+      modelConfigHash: fingerprint.modelConfigHash,
+      inputFingerprint: fingerprint.inputFingerprint,
       baselineSource: evidenceSummary.baselineSource,
-      evidenceSummary: { ...evidenceSummary },
-    });
-
-    const snapshot = await this.prisma.tireHealthSnapshot.create({
-      data: {
-        organizationId: vehicle!.organizationId,
-        vehicleId,
-        tireSetId: setup.id,
-        snapshotDate: new Date(),
-        odometerKm: latestState?.odometerKm ?? null,
-        estimatedTreadMm: lowestTread,
-        estimatedWearPercent: 100 - setLevelPercent,
-        estimatedRemainingKm: adjustedRemainingKm,
-        citySharePercent: setup.totalKmOnSet > 0 ? Math.round(setup.cityKm / setup.totalKmOnSet * 100) : null,
-        highwaySharePercent: setup.totalKmOnSet > 0 ? Math.round(setup.highwayKm / setup.totalKmOnSet * 100) : null,
-        ruralSharePercent: setup.totalKmOnSet > 0 ? Math.round(setup.ruralKm / setup.totalKmOnSet * 100) : null,
-        confidenceScore: unified.score,
-        wearRateMmPer1000km,
-        modelVersion: snapshotProvenance.modelVersion ?? undefined,
-        modelConfigHash: snapshotProvenance.modelConfigHash ?? undefined,
-        inputFingerprint: snapshotProvenance.inputFingerprint ?? undefined,
-        baselineSource: snapshotProvenance.baselineSource ?? undefined,
-        evidenceSummary: (snapshotProvenance.evidenceSummary ?? undefined) as Prisma.InputJsonValue | undefined,
+      evidenceSummary: {
+        ...evidenceSummary,
+        timePolicyBucket: fingerprint.timePolicyBucket,
       },
     });
+
+    const snapshotData = {
+      organizationId: vehicle!.organizationId,
+      vehicleId,
+      tireSetId: setup.id,
+      snapshotDate: recalcAsOf,
+      odometerKm: latestState?.odometerKm ?? null,
+      estimatedTreadMm: lowestTread,
+      estimatedWearPercent: 100 - setLevelPercent,
+      estimatedRemainingKm: adjustedRemainingKm,
+      citySharePercent: setup.totalKmOnSet > 0 ? Math.round(setup.cityKm / setup.totalKmOnSet * 100) : null,
+      highwaySharePercent: setup.totalKmOnSet > 0 ? Math.round(setup.highwayKm / setup.totalKmOnSet * 100) : null,
+      ruralSharePercent: setup.totalKmOnSet > 0 ? Math.round(setup.ruralKm / setup.totalKmOnSet * 100) : null,
+      confidenceScore: unified.score,
+      wearRateMmPer1000km,
+      modelVersion: snapshotProvenance.modelVersion ?? undefined,
+      modelConfigHash: snapshotProvenance.modelConfigHash ?? undefined,
+      inputFingerprint: snapshotProvenance.inputFingerprint ?? undefined,
+      baselineSource: snapshotProvenance.baselineSource ?? undefined,
+      evidenceSummary: (snapshotProvenance.evidenceSummary ?? undefined) as Prisma.InputJsonValue | undefined,
+    };
+
+    let snapshot: { id: string };
+    if (lastSnapshot && options.force) {
+      snapshot = await this.prisma.tireHealthSnapshot.update({
+        where: { id: lastSnapshot.id },
+        data: snapshotData,
+        select: { id: true },
+      });
+    } else {
+      try {
+        snapshot = await this.prisma.tireHealthSnapshot.create({
+          data: snapshotData,
+          select: { id: true },
+        });
+      } catch (error) {
+        if (
+          error instanceof Prisma.PrismaClientKnownRequestError &&
+          error.code === 'P2002'
+        ) {
+          const existing = await this.prisma.tireHealthSnapshot.findFirst({
+            where: {
+              tireSetId: setup.id,
+              modelVersion: fingerprint.modelVersion,
+              inputFingerprint: fingerprint.inputFingerprint,
+            },
+            orderBy: { snapshotDate: 'desc' },
+            select: { id: true },
+          });
+          if (!existing) throw error;
+          snapshot = existing;
+        } else {
+          throw error;
+        }
+      }
+    }
 
     // ── Persist regression data points (ground-truth only; never predicted-as-actual) ──
     const currentOdo = latestState?.odometerKm ?? null;
     const installedOdo = setup.installedOdometerKm ?? null;
-    if (currentOdo != null && installedOdo != null && currentOdo > installedOdo) {
+    const allowWearDataPoints = !options.force;
+    if (
+      allowWearDataPoints &&
+      currentOdo != null &&
+      installedOdo != null &&
+      currentOdo > installedOdo
+    ) {
       const distanceKm = currentOdo - installedOdo;
       const frontAvgPredicted = (wearAnalysis.frontLeftMm + wearAnalysis.frontRightMm) / 2;
       const rearAvgPredicted = (wearAnalysis.rearLeftMm + wearAnalysis.rearRightMm) / 2;
       const latestMeas = setup.measurements?.[0] ?? null;
-      const recalcAsOf = new Date();
-
       const baseDataPoint = {
         organizationId: vehicle!.organizationId,
         vehicleId,
@@ -595,11 +725,227 @@ export class TireHealthService {
         vehicleId,
         tireSetId: setup.id,
         type: TireEventType.RECALCULATION,
-        payload: { overallPercent: setLevelPercent, remainingKm: adjustedRemainingKm, confidence: confidence.score, healthStatus },
+        createdBy: options.actorId ?? undefined,
+        payload: {
+          overallPercent: setLevelPercent,
+          remainingKm: adjustedRemainingKm,
+          confidence: confidence.score,
+          healthStatus,
+          inputFingerprint: fingerprint.inputFingerprint,
+          timePolicyBucket: fingerprint.timePolicyBucket,
+          modelVersion: fingerprint.modelVersion,
+          forced: options.force ?? false,
+          forceReason: options.force ? options.reason?.trim() ?? null : null,
+          skippedWearDataPoints: options.force ?? false,
+        },
       },
     });
 
-    return { overallPercent: setLevelPercent, remainingKm: adjustedRemainingKm, healthStatus, confidence };
+    return {
+      overallPercent: setLevelPercent,
+      remainingKm: adjustedRemainingKm,
+      healthStatus,
+      confidence,
+      snapshotId: snapshot.id,
+      forced: options.force ?? false,
+      inputFingerprint: fingerprint.inputFingerprint,
+      timePolicyBucket: fingerprint.timePolicyBucket,
+    };
+  }
+
+  private async loadRecalculationInputContext(
+    vehicleId: string,
+    setup: NonNullable<Awaited<ReturnType<TireHealthService['getActiveSetup']>>>,
+    asOf: Date,
+  ): Promise<TireRecalculationInputContext> {
+    const ninetyDaysAgo = new Date(asOf.getTime() - 90 * 24 * 60 * 60 * 1000);
+
+    const [
+      vehicle,
+      latestState,
+      tires,
+      measurements,
+      regressionPoints,
+      temperatureTrips,
+      drivingImpact,
+    ] = await Promise.all([
+      this.prisma.vehicle.findUnique({
+        where: { id: vehicleId },
+        select: {
+          fuelType: true,
+          driveType: true,
+          curbWeightKg: true,
+          frontWeightDistributionPct: true,
+        },
+      }),
+      this.prisma.vehicleLatestState.findUnique({
+        where: { vehicleId },
+        select: {
+          odometerKm: true,
+          tirePressureFl: true,
+          tirePressureFr: true,
+          tirePressureRl: true,
+          tirePressureRr: true,
+          speedKmh: true,
+          sourceTimestamp: true,
+          providerFetchedAt: true,
+          lastSeenAt: true,
+        },
+      }),
+      this.prisma.tire.findMany({
+        where: { tireSetId: setup.id, vehicleId },
+        select: {
+          id: true,
+          currentPosition: true,
+          dotCode: true,
+          initialTreadDepthMm: true,
+          estimatedTreadMm: true,
+          initialTreadEvidenceSource: true,
+        },
+      }),
+      this.prisma.vehicleTireTreadMeasurement.findMany({
+        where: { vehicleId, tireSetupId: setup.id },
+        orderBy: { measuredAt: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          createdAt: true,
+          measuredAt: true,
+          source: true,
+          evidenceSource: true,
+          odometerAtMeasurement: true,
+          frontLeftMm: true,
+          frontRightMm: true,
+          rearLeftMm: true,
+          rearRightMm: true,
+        },
+      }),
+      this.prisma.tireWearDataPoint.findMany({
+        where: { vehicleId, tireSetId: setup.id },
+        orderBy: { createdAt: 'asc' },
+        select: {
+          id: true,
+          axle: true,
+          distanceKm: true,
+          actualTreadMm: true,
+          predictedTreadMm: true,
+          actualMeasurementId: true,
+        },
+      }),
+      this.prisma.vehicleTrip.findMany({
+        where: { vehicleId, startTime: { gte: ninetyDaysAgo } },
+        select: { distanceKm: true, outsideTemperatureStartC: true },
+        take: 200,
+      }),
+      this.drivingImpactService.getVehicleImpactForTire(vehicleId),
+    ]);
+
+    const pressureValues = [
+      latestState?.tirePressureFl,
+      latestState?.tirePressureFr,
+      latestState?.tirePressureRl,
+      latestState?.tirePressureRr,
+    ].filter((v): v is number => v != null);
+
+    return {
+      setupId: setup.id,
+      setupUpdatedAt: setup.updatedAt.toISOString(),
+      vehicle: {
+        fuelType: vehicle?.fuelType ?? null,
+        driveType: vehicle?.driveType ?? null,
+        curbWeightKg: vehicle?.curbWeightKg ?? null,
+        frontWeightDistributionPct: vehicle?.frontWeightDistributionPct ?? null,
+      },
+      setup: {
+        tireSeason: setup.tireSeason,
+        tireCondition: setup.tireCondition ?? null,
+        isStaggered: setup.isStaggered,
+        frontDimension: setup.frontDimension ?? null,
+        rearDimension: setup.rearDimension ?? null,
+        brandModelFront: setup.brandModelFront ?? null,
+        brandModelRear: setup.brandModelRear ?? null,
+        initialTreadDepthMm: setup.initialTreadDepthMm,
+        initialTreadFrontMm: setup.initialTreadFrontMm,
+        initialTreadRearMm: setup.initialTreadRearMm,
+        initialTreadEvidenceSource: setup.initialTreadEvidenceSource ?? null,
+        baselineStatus: setup.baselineStatus ?? null,
+        baselineConfidence: setup.baselineConfidence ?? null,
+        referenceNewTreadMm: setup.referenceNewTreadMm,
+        operationalReplacementMm: setup.operationalReplacementMm,
+        expectedLifeKm: setup.expectedLifeKm,
+        expectedLifeKmFront: setup.expectedLifeKmFront,
+        expectedLifeKmRear: setup.expectedLifeKmRear,
+        frontTireWidthMm: setup.frontTireWidthMm,
+        rearTireWidthMm: setup.rearTireWidthMm,
+        dotCodeFront: setup.dotCodeFront ?? null,
+        dotCodeRear: setup.dotCodeRear ?? null,
+        installedOdometerKm: setup.installedOdometerKm,
+        odometerAnchorStatus: setup.odometerAnchorStatus ?? null,
+        kFactorFront: setup.kFactorFront,
+        kFactorRear: setup.kFactorRear,
+        kFactorCalibrationCount: setup.kFactorCalibrationCount,
+        regenBrakingFactorFront: setup.regenBrakingFactorFront,
+        regenBrakingFactorRear: setup.regenBrakingFactorRear,
+        aiTireSpec: setup.aiTireSpec,
+      },
+      ledgerAggregate: {
+        totalKmOnSet: setup.totalKmOnSet,
+        cityKm: setup.cityKm,
+        highwayKm: setup.highwayKm,
+        ruralKm: setup.ruralKm,
+        harshAccelEvents: setup.harshAccelEvents,
+        harshBrakeEvents: setup.harshBrakeEvents,
+        harshCornerEvents: setup.harshCornerEvents,
+      },
+      tires: tires.map((tire) => ({
+        id: tire.id,
+        currentPosition: String(tire.currentPosition),
+        dotCode: tire.dotCode,
+        initialTreadDepthMm: tire.initialTreadDepthMm,
+        estimatedTreadMm: tire.estimatedTreadMm,
+        initialTreadEvidenceSource: tire.initialTreadEvidenceSource,
+      })),
+      measurements: measurements.map((m) => ({
+        id: m.id,
+        createdAt: m.createdAt.toISOString(),
+        measuredAt: m.measuredAt.toISOString(),
+        source: m.source,
+        evidenceSource: m.evidenceSource,
+        odometerAtMeasurement: m.odometerAtMeasurement,
+        frontLeftMm: m.frontLeftMm,
+        frontRightMm: m.frontRightMm,
+        rearLeftMm: m.rearLeftMm,
+        rearRightMm: m.rearRightMm,
+      })),
+      regressionPoints: regressionPoints.map((p) => ({
+        id: p.id,
+        axle: p.axle,
+        distanceKm: p.distanceKm,
+        actualTreadMm: p.actualTreadMm,
+        predictedTreadMm: p.predictedTreadMm,
+        actualMeasurementId: p.actualMeasurementId,
+      })),
+      latestState: {
+        odometerKm: latestState?.odometerKm ?? null,
+        tirePressureFl: latestState?.tirePressureFl ?? null,
+        tirePressureFr: latestState?.tirePressureFr ?? null,
+        tirePressureRl: latestState?.tirePressureRl ?? null,
+        tirePressureRr: latestState?.tirePressureRr ?? null,
+        speedKmh: latestState?.speedKmh ?? null,
+        pressureFreshness: resolvePressureFreshnessBucket(
+          latestState?.sourceTimestamp ??
+            latestState?.providerFetchedAt ??
+            latestState?.lastSeenAt ??
+            null,
+          pressureValues.length > 0,
+          asOf,
+        ),
+      },
+      drivingImpact,
+      temperatureTrips,
+      modelVersion: this.modelVersion,
+      asOf,
+    };
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

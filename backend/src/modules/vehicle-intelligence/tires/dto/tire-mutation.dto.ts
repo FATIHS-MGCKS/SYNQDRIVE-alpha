@@ -288,3 +288,11 @@ export class ApplyAiTireSpecDto {
   @IsOptional() @IsBoolean()
   userConfirmedSpec?: boolean;
 }
+
+export class TireRecalculateDto {
+  @IsOptional() @IsBoolean()
+  force?: boolean;
+
+  @IsOptional() @IsString() @MaxLength(500)
+  reason?: string;
+}

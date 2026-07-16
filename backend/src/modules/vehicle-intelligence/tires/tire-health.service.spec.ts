@@ -1,6 +1,7 @@
 import { TireHealthService } from './tire-health.service';
 import { TireWearModelService } from './tire-wear-model.service';
-import { TireEventType, TireEvidenceSource } from '@prisma/client';
+import { Prisma, TireEventType, TireEvidenceSource } from '@prisma/client';
+import { BadRequestException } from '@nestjs/common';
 
 const VEHICLE_ID = 'veh-1';
 const SETUP_ID = 'setup-1';
@@ -54,7 +55,6 @@ function buildMeasurement(overrides: Record<string, unknown> = {}) {
 
 function createRecalculateHarness(measurement: Record<string, unknown> | null) {
   const wearDataPointCreateMany = jest.fn().mockResolvedValue({ count: 0 });
-  const snapshotCreate = jest.fn().mockResolvedValue({ id: 'snap-1' });
   const setupUpdate = jest.fn().mockResolvedValue({});
   const eventCreate = jest.fn().mockResolvedValue({ id: 'ev-1' });
 
@@ -68,9 +68,16 @@ function createRecalculateHarness(measurement: Record<string, unknown> | null) {
     cityKm: 400,
     highwayKm: 600,
     ruralKm: 200,
+    harshAccelEvents: 0,
+    harshBrakeEvents: 0,
+    harshCornerEvents: 0,
     installedOdometerKm: 10000,
     installedAt: new Date('2026-01-01'),
     tireCondition: 'NEW_INSTALLED',
+    isStaggered: false,
+    frontDimension: '225/45R17',
+    rearDimension: '225/45R17',
+    brandModelRear: 'Test',
     aiTireSpec: null,
     initialTreadDepthMm: 8.0,
     initialTreadFrontMm: 8.0,
@@ -78,9 +85,36 @@ function createRecalculateHarness(measurement: Record<string, unknown> | null) {
     frontTireWidthMm: 205,
     rearTireWidthMm: 205,
     kFactorCalibrationCount: 0,
+    kFactorFront: 1,
+    kFactorRear: 1,
+    regenBrakingFactorFront: null,
+    regenBrakingFactorRear: null,
     expectedLifeKm: 40000,
+    expectedLifeKmFront: null,
+    expectedLifeKmRear: null,
+    dotCodeFront: null,
+    dotCodeRear: null,
+    referenceNewTreadMm: 8,
+    operationalReplacementMm: 3,
+    initialTreadEvidenceSource: null,
+    baselineStatus: null,
+    baselineConfidence: null,
+    odometerAnchorStatus: 'VALIDATED',
+    overallHealthPercent: 72,
+    overallRemainingKm: 12000,
+    healthStatus: 'GOOD',
+    confidenceScore: 65,
+    confidenceLabel: 'Medium',
+    tireSpecConfidence: 30,
+    dataCompletenessConfidence: 40,
+    modelConfidence: 35,
+    updatedAt: new Date('2026-07-01T00:00:00Z'),
     measurements: measurement ? [measurement] : [],
   };
+
+  const snapshotFindFirst = jest.fn().mockResolvedValue(null);
+  const snapshotCreate = jest.fn().mockResolvedValue({ id: 'snap-1' });
+  const snapshotUpdate = jest.fn().mockResolvedValue({ id: 'snap-1' });
 
   const prisma = {
     vehicleTireSetup: {
@@ -89,7 +123,13 @@ function createRecalculateHarness(measurement: Record<string, unknown> | null) {
       count: jest.fn().mockResolvedValue(1),
     },
     vehicle: {
-      findUnique: jest.fn().mockResolvedValue({ organizationId: ORG_ID }),
+      findUnique: jest.fn().mockResolvedValue({
+        organizationId: ORG_ID,
+        fuelType: 'ELECTRIC',
+        driveType: 'RWD',
+        curbWeightKg: 2100,
+        frontWeightDistributionPct: 48,
+      }),
     },
     vehicleLatestState: {
       findUnique: jest.fn().mockImplementation(async () => ({
@@ -98,17 +138,41 @@ function createRecalculateHarness(measurement: Record<string, unknown> | null) {
         tirePressureFr: null,
         tirePressureRl: null,
         tirePressureRr: null,
+        speedKmh: null,
         sourceTimestamp: null,
         providerFetchedAt: null,
         lastSeenAt: null,
       })),
     },
-    tireHealthSnapshot: { create: snapshotCreate },
-    tireWearDataPoint: { createMany: wearDataPointCreateMany },
-    tireEvent: { create: eventCreate },
+    tire: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    vehicleTrip: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    tireHealthSnapshot: {
+      findFirst: snapshotFindFirst,
+      create: snapshotCreate,
+      update: snapshotUpdate,
+    },
     vehicleTireTreadMeasurement: {
       count: jest.fn().mockResolvedValue(measurement ? 1 : 0),
+      findMany: jest.fn().mockResolvedValue(
+        measurement
+          ? [
+              {
+                ...measurement,
+                createdAt: measurement.createdAt ?? new Date('2026-06-01T10:00:00Z'),
+              },
+            ]
+          : [],
+      ),
     },
+    tireWearDataPoint: {
+      createMany: wearDataPointCreateMany,
+      findMany: jest.fn().mockResolvedValue([]),
+    },
+    tireEvent: { create: eventCreate },
   };
 
   const wearModel = {
@@ -130,6 +194,8 @@ function createRecalculateHarness(measurement: Record<string, unknown> | null) {
     prisma,
     wearDataPointCreateMany,
     snapshotCreate,
+    snapshotFindFirst,
+    snapshotUpdate,
     setupUpdate,
     eventCreate,
     wearModel,
@@ -249,13 +315,83 @@ describe('TireHealthService.recalculate — ground truth invariant', () => {
     expect(wearDataPointCreateMany).not.toHaveBeenCalled();
   });
 
-  it('still creates snapshots on retry without inventing ground truth', async () => {
+  it('skips duplicate snapshots when input fingerprint is unchanged', async () => {
     const harness = createRecalculateHarness(null);
 
     await harness.service.recalculate(VEHICLE_ID);
+    const firstFingerprint =
+      harness.snapshotCreate.mock.calls[0][0].data.inputFingerprint;
+
+    harness.snapshotFindFirst.mockResolvedValue({
+      id: 'snap-existing',
+    });
+
+    const second = await harness.service.recalculate(VEHICLE_ID);
+
+    expect(harness.snapshotCreate).toHaveBeenCalledTimes(1);
+    expect(harness.eventCreate).toHaveBeenCalledTimes(1);
+    expect(second?.skipped).toBe(true);
+    expect(second?.skipReason).toBe('identical_input_fingerprint');
+    expect(second?.inputFingerprint).toBe(firstFingerprint);
+  });
+
+  it('handles parallel duplicate snapshot insert via unique constraint', async () => {
+    const harness = createRecalculateHarness(buildMeasurement());
+    const uniqueError = new Prisma.PrismaClientKnownRequestError(
+      'Unique constraint failed',
+      { code: 'P2002', clientVersion: 'test' },
+    );
+    harness.snapshotCreate.mockRejectedValueOnce(uniqueError);
+    harness.snapshotFindFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ id: 'snap-race' });
+
+    const result = await harness.service.recalculate(VEHICLE_ID);
+
+    expect(result?.snapshotId).toBe('snap-race');
+    expect(harness.snapshotCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('requires a reason for force recalculation', async () => {
+    const harness = createRecalculateHarness(null);
+
+    await expect(
+      harness.service.recalculate(VEHICLE_ID, { force: true }),
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('force recalculation audits without writing validation wear data points', async () => {
+    const harness = createRecalculateHarness(
+      buildMeasurement({ evidenceSource: TireEvidenceSource.MANUAL_MEASUREMENT }),
+    );
+
+    await harness.service.recalculate(VEHICLE_ID, {
+      force: true,
+      reason: 'operator refresh',
+      actorId: 'user-1',
+    });
+
+    expect(harness.wearDataPointCreateMany).not.toHaveBeenCalled();
+    expect(harness.eventCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          createdBy: 'user-1',
+          payload: expect.objectContaining({
+            forced: true,
+            forceReason: 'operator refresh',
+            skippedWearDataPoints: true,
+          }),
+        }),
+      }),
+    );
+  });
+
+  it('still creates snapshots on first run without inventing ground truth', async () => {
+    const harness = createRecalculateHarness(null);
+
     await harness.service.recalculate(VEHICLE_ID);
 
-    expect(harness.snapshotCreate).toHaveBeenCalledTimes(2);
+    expect(harness.snapshotCreate).toHaveBeenCalledTimes(1);
     expect(harness.wearDataPointCreateMany).not.toHaveBeenCalled();
   });
 
@@ -274,11 +410,15 @@ describe('TireHealthService.recalculate — ground truth invariant', () => {
     expect(harness.snapshotCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
+          inputFingerprint: expect.any(String),
+          modelConfigHash: expect.any(String),
+          modelVersion: 'tire-wear-v2',
           evidenceSummary: expect.objectContaining({
             currentTreadSource: TireEvidenceSource.DEFAULT_ASSUMPTION,
             isDefaultAssumption: true,
             isMeasured: false,
             baselineSource: null,
+            timePolicyBucket: expect.any(String),
           }),
         }),
       }),
