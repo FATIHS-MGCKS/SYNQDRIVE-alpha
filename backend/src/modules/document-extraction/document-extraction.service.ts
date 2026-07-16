@@ -890,7 +890,7 @@ export class DocumentExtractionService implements OnModuleInit {
           ? (record.plausibility as Record<string, unknown>)
           : {}),
         ...(plausibility as unknown as Record<string, unknown>),
-      };
+      } as Prisma.JsonValue;
     }
 
     await this.prisma.vehicleDocumentExtraction.update({
