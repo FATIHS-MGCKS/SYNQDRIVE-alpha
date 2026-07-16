@@ -1,4 +1,8 @@
 import { BatteryChemistry } from '../battery-health/battery-v2-domain';
+import {
+  getVersionedRestingBandsForChemistry,
+  LV_CHEMISTRY_RESTING_BANDS,
+} from '../battery-health/lv-assessment/lv-assessment-thresholds';
 import type {
   BatteryPolicyDefinition,
   ChemistryRestingBands,
@@ -17,29 +21,14 @@ import {
 
 const REST_60M_MS = 60 * 60_000;
 
-const LEAD_ACID_BANDS: ChemistryRestingBands = {
-  chemistry: BatteryChemistry.LEAD_ACID,
-  goodMinV: 12.5,
-  watchMinV: 12.2,
-  warningMinV: 12.0,
-  maxRestingV: 12.6,
-};
+const LEAD_ACID_BANDS: ChemistryRestingBands =
+  LV_CHEMISTRY_RESTING_BANDS[BatteryChemistry.LEAD_ACID];
 
-const AGM_BANDS: ChemistryRestingBands = {
-  chemistry: BatteryChemistry.AGM,
-  goodMinV: 12.6,
-  watchMinV: 12.3,
-  warningMinV: 12.1,
-  maxRestingV: 12.7,
-};
+const AGM_BANDS: ChemistryRestingBands =
+  LV_CHEMISTRY_RESTING_BANDS[BatteryChemistry.AGM];
 
-const EFB_BANDS: ChemistryRestingBands = {
-  chemistry: BatteryChemistry.EFB,
-  goodMinV: 12.6,
-  watchMinV: 12.3,
-  warningMinV: 12.1,
-  maxRestingV: 12.7,
-};
+const EFB_BANDS: ChemistryRestingBands =
+  LV_CHEMISTRY_RESTING_BANDS[BatteryChemistry.EFB];
 
 const DEFAULT_ICE_CONTEXT = {
   lvLiveRequiresProviderTimestamp: true,
@@ -203,14 +192,5 @@ export function getPolicyDefinition(
 export function resolveRestingBandsForChemistry(
   chemistry: BatteryChemistry,
 ): ChemistryRestingBands | null {
-  switch (chemistry) {
-    case BatteryChemistry.LEAD_ACID:
-      return LEAD_ACID_BANDS;
-    case BatteryChemistry.AGM:
-      return AGM_BANDS;
-    case BatteryChemistry.EFB:
-      return EFB_BANDS;
-    default:
-      return null;
-  }
+  return getVersionedRestingBandsForChemistry(chemistry);
 }

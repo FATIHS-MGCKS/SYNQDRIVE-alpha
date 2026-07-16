@@ -35,6 +35,24 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'battery-lv-chemistry-assessment-v49542-2026-07-17',
+    version: '4.9.542',
+    title: 'V4.9.542 — LV Chemistry Assessment Context (Prompt 42/78)',
+    summary: [
+      'Chemiespezifische Bewertungskontexte via `buildLvChemistryAssessmentContext()` mit versionierten Ruhebereichen für LEAD_ACID, AGM und EFB.',
+      'Keine Lead-Acid-SOC-Schätzung bei LITHIUM/UNKNOWN; Außentemperatur nur als Messkontext, nie als Batterietemperatur.',
+      'Fehlende Temperatur reduziert Confidence (−15 %), verändert Spannung/SOC nicht; extreme Außentemperaturen markieren Bewertung als temperaturbedingt unsicher.',
+      'Werkstatt-/Load-Test-Evidence höherwertig (`WORKSHOP_OVERRIDE` / `LOAD_TEST_OVERRIDE`); Schwellen zentral in `lv-assessment-thresholds.ts`.',
+    ],
+    reason: 'Prompt 42/78: chemiespezifische LV-Assessment-Kontexte ohne Magic Numbers in Services/UI.',
+    previousBehavior: 'Ruhebänder nur im Policy-Katalog dupliziert; kein zentraler Temperatur-/Confidence-Kontext für Assessments.',
+    details:
+      'lv-assessment-thresholds.ts, lv-chemistry-assessment-context.policy.ts, battery-policy-profile.catalog.ts, docs/architecture/battery-lv-chemistry-assessment-context.md.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-17T04:00:00.000Z',
+  },
+  {
     id: 'battery-lv-evidence-selection-v49541-2026-07-17',
     version: '4.9.541',
     title: 'V4.9.541 — LV Evidence Selection Policy (Prompt 41/78)',
