@@ -84,6 +84,12 @@ export class TripMetricsService implements OnModuleInit {
   readonly taskAutomationOutboxRetry: Counter<string>;
   readonly taskAutomationOutboxRefreshed: Counter<string>;
 
+  /** Driving Intelligence V2 durable jobs (P20). */
+  readonly drivingIntelligenceJobCompleted: Counter<string>;
+  readonly drivingIntelligenceJobRetry: Counter<string>;
+  readonly drivingIntelligenceJobDeadLetter: Counter<string>;
+  readonly drivingAnalysisReconciliationActions: Counter<string>;
+
   // ═══════════════════════════════════════════════════════════════
   //  GAUGES
   // ═══════════════════════════════════════════════════════════════
@@ -597,6 +603,34 @@ export class TripMetricsService implements OnModuleInit {
       name: 'synqdrive_task_automation_outbox_processing_duration_seconds',
       help: 'Single task automation outbox processing duration',
       buckets: [0.05, 0.1, 0.25, 0.5, 1, 2, 5, 15, 30],
+      registers: [this.registry],
+    });
+
+    this.drivingIntelligenceJobCompleted = new Counter({
+      name: 'synqdrive_driving_intelligence_job_completed_total',
+      help: 'Driving intelligence durable jobs completed successfully',
+      labelNames: ['job_type'],
+      registers: [this.registry],
+    });
+
+    this.drivingIntelligenceJobRetry = new Counter({
+      name: 'synqdrive_driving_intelligence_job_retry_total',
+      help: 'Driving intelligence durable job retries scheduled',
+      labelNames: ['job_type', 'error_code'],
+      registers: [this.registry],
+    });
+
+    this.drivingIntelligenceJobDeadLetter = new Counter({
+      name: 'synqdrive_driving_intelligence_job_dead_letter_total',
+      help: 'Driving intelligence durable jobs moved to dead-letter state',
+      labelNames: ['job_type', 'error_code'],
+      registers: [this.registry],
+    });
+
+    this.drivingAnalysisReconciliationActions = new Counter({
+      name: 'synqdrive_driving_analysis_reconciliation_actions_total',
+      help: 'Driving analysis reconciliation remediations',
+      labelNames: ['check_type', 'result'],
       registers: [this.registry],
     });
   }

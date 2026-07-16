@@ -4,6 +4,10 @@ import { Queue } from 'bullmq';
 import { canEnqueueQueue } from '@shared/queue/queue-producer.util';
 import { QUEUE_NAMES } from '@workers/queues/queue-names';
 import { buildBullJobId } from './driving-intelligence-jobs.contract';
+import {
+  DRIVING_INTELLIGENCE_JOB_BASE_BACKOFF_MS,
+  DRIVING_INTELLIGENCE_JOB_DEFAULT_MAX_ATTEMPTS,
+} from './driving-intelligence-jobs.retry-policy';
 import { DrivingIntelligenceJobRepository } from './driving-intelligence-jobs.repository';
 import type {
   DrivingIntelligenceBullJobData,
@@ -53,9 +57,9 @@ export class DrivingIntelligenceJobDispatcherService {
       await this.queue.add(prepared.job.jobType, bullData, {
         jobId: bullJobId,
         removeOnComplete: true,
-        removeOnFail: 5,
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 10_000 },
+        removeOnFail: 10,
+        attempts: DRIVING_INTELLIGENCE_JOB_DEFAULT_MAX_ATTEMPTS,
+        backoff: { type: 'exponential', delay: DRIVING_INTELLIGENCE_JOB_BASE_BACKOFF_MS },
       });
 
       const enqueued = await this.repository.markEnqueued(prepared.job.id, bullJobId);

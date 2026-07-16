@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p20-job-retry-reconciliation-2026-07-16',
+    version: '4.9.521',
+    title: 'Driving Intelligence V2 P20 — Job retry, dead-letter & reconciliation',
+    summary: [
+      'Driving-Analysis-Jobs: begrenzte Retries (max 3), exponentieller Backoff, strukturierte Error-Codes, `DEAD_LETTER`-Status.',
+      'Neue Felder: `attemptCount`, `maxAttempts`, `nextRetryAt`, `lastAttemptAt`, `deadLetteredAt`.',
+      'Prometheus: `synqdrive_driving_intelligence_job_{completed,retry,dead_letter}_total`, `synqdrive_driving_analysis_reconciliation_actions_total`.',
+      '`DrivingAnalysisReconciliationService` + Scheduler (10 min): Trips ohne Run, stuck Runs/Jobs, Impact-Status-Mismatch, native Events ohne Context, Misuse pending, Bookings ohne Rental Analysis, Health Impact ohne Input, PENDING-Job-Retry.',
+      'Provider-Fehler (`PROVIDER_TRANSIENT`) ≠ `INSUFFICIENT_DATA`; Reconciliation tenant-scoped + stunden-Bucket-Idempotency.',
+    ],
+    reason:
+      'Prompt 20/76: Betriebssichere V2-Job-Schicht — sichtbare Fehler, retrybare Transients, Dead-Letter für Permanents, periodische Lückenheilung ohne Trip-Detection-Eingriff.',
+    previousBehavior:
+      'Jobs: binär FAILED ohne Retry-Metadaten; keine strukturierte Fehlerklassifikation; keine V2-Reconciliation.',
+    details:
+      'Migration 20260716213000; Module `driving-intelligence-jobs.*` + `driving-analysis-reconciliation/`; 13 neue Unit-Tests. Trip-FSM unverändert.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T23:30:00.000Z',
+  },
+  {
     id: 'driving-intelligence-v2-p19-trip-analysis-init-2026-07-16',
     version: '4.9.520',
     title: 'Driving Intelligence V2 P19 — Trip analysis init after finalize',

@@ -6803,6 +6803,7 @@ enum DrivingIntelligenceJobStatus {
   IN_PROGRESS
   COMPLETED
   FAILED
+  DEAD_LETTER
   CANCELLED
 }
 
@@ -6819,10 +6820,15 @@ model DrivingIntelligenceJob {
   correlationId  String                       @map("correlation_id")
   requestedAt    DateTime                     @map("requested_at")
   status         DrivingIntelligenceJobStatus @default(PENDING)
+  attemptCount   Int                          @default(0) @map("attempt_count")
+  maxAttempts    Int                          @default(3) @map("max_attempts")
+  nextRetryAt    DateTime?                    @map("next_retry_at")
+  lastAttemptAt  DateTime?                    @map("last_attempt_at")
   bullJobId      String?                      @map("bull_job_id")
   errorCode      String?                      @map("error_code")
   errorMessage   String?                      @map("error_message")
   completedAt    DateTime?                    @map("completed_at")
+  deadLetteredAt DateTime?                    @map("dead_lettered_at")
   createdAt      DateTime                     @default(now()) @map("created_at")
   updatedAt      DateTime                     @updatedAt @map("updated_at")
 
@@ -6834,6 +6840,8 @@ model DrivingIntelligenceJob {
 
   @@unique([organizationId, idempotencyKey])
   @@index([organizationId, jobType, status])
+  @@index([status, nextRetryAt])
+  @@index([organizationId, status, updatedAt])
   @@index([vehicleId, requestedAt])
   @@index([tripId, jobType])
   @@index([bookingId, jobType])

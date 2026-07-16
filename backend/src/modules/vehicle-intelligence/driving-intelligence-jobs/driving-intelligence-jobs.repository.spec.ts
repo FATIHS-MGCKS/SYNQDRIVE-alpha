@@ -87,6 +87,7 @@ describe('DrivingIntelligenceJobRepository', () => {
 
   it('skips enqueue for terminal or in-flight statuses', () => {
     expect(repository.shouldSkipEnqueue('COMPLETED')).toBe(true);
+    expect(repository.shouldSkipEnqueue('DEAD_LETTER')).toBe(true);
     expect(repository.shouldSkipEnqueue('ENQUEUED')).toBe(true);
     expect(repository.shouldSkipEnqueue('IN_PROGRESS')).toBe(true);
     expect(repository.shouldSkipEnqueue('PENDING')).toBe(false);
