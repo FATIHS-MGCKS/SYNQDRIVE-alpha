@@ -35,6 +35,27 @@ const PRESET_MODULES = ['Insurance', 'Parts & Accessories', 'Master Admin', 'Veh
 
 export const FALLBACK_ENTRIES: ChangelogEntry[] = [
   {
+    id: 'driving-intelligence-v2-p11-prisma-plan-2026-07-16',
+    version: '4.9.513',
+    title: 'Driving Intelligence V2 P11 — Additiver Prisma-Plan (Fahrzeug-Capabilities)',
+    summary: [
+      'Neu: `docs/architecture/driving-intelligence-v2-prisma-plan.md` — exakter additiver DDL-Plan ohne Schemaänderung.',
+      '7 geplante Modelle: VehicleDrivingCapability, TripAssessability, DrivingAnalysisRun, DrivingEvidence, DrivingDecisionSummary, DriverAttribution, RentalDrivingAssessmentVersion.',
+      '9 Enum-Gruppen: Capability Status, Analysis Dimension, Assessability, Evidence Source/Strength, Analysis Maturity, Attribution Type/Confidence, Decision Recommendation.',
+      'Pro Feld: Typ, Nullability, Tenant-Scope, Index, Unique, Retention, Legacy-Mapping, Rollback.',
+      'Migrationsreihenfolge Enum-first (8 Wellen); Evidence never delete; Rental versioniert ohne DROP von `rental_driving_analyses`.',
+    ],
+    reason:
+      'Prompt 11/76: Fahrzeugbezogene Driving-Capabilities und materialisierte V2-Schichten als Prisma-Spezifikation vor DDL.',
+    previousBehavior:
+      'Architekturvertrag und Migrationsplan nannten Tabellen (`trip_decision_summaries`, `vehicle_analysis_capability_profiles`) ohne vollständige Feld-Matrix.',
+    details:
+      'Dokument only — keine `schema.prisma`-Änderung, keine Migration. Basis: driving-intelligence-v2.md, migration-rollout-plan.md, Ist-Schema VehicleTrip/TripDrivingImpact/MisuseCase/RentalDrivingAnalysis.',
+    affectsArchitecture: true,
+    module: 'Vehicle Intelligence',
+    createdAt: '2026-07-16T19:00:00.000Z',
+  },
+  {
     id: 'vehicle-operational-state-v2-p1-fixes-v49506-2026-07-16',
     version: '4.9.506',
     title: 'V4.9.506 — Vehicle Operational State V2 P1 remediation (Prompt 43/43)',
