@@ -27,12 +27,23 @@ import {
   classifyLvRestSessionOutcome,
   evaluateClassifiedRestTargetOutcome,
   isLvRestMeasurementEvidenceEligible,
-  isLvRestMeasurementPublicationEligible,
 } from './lv-rest-measurement-quality';
+import {
+  isLvRestShadowModeActive,
+  resolveLvRestShadowEvidenceEligible,
+  resolveLvRestShadowPublicationEligible,
+  withLvRestShadowContext,
+} from './lv-rest-shadow.policy';
 import {
   LV_REST_TARGET_TYPES,
   type LvRestTargetType,
 } from './lv-rest-window-target.metadata';
+
+function withLvRestShadowContextIfActive<T extends Record<string, unknown>>(
+  context: T,
+): T | (T & { shadowMode: true }) {
+  return isLvRestShadowModeActive() ? withLvRestShadowContext(context) : context;
+}
 
 @Injectable()
 export class BatteryRestTargetEvaluationService {
@@ -246,6 +257,10 @@ export class BatteryRestTargetEvaluationService {
     if (outcome.ok) {
       const selected = outcome.selected;
       const includeNumeric = outcome.quality !== BatteryMeasurementQuality.MISSED;
+      const evidenceEligible = resolveLvRestShadowEvidenceEligible(
+        outcome.evidenceEligible,
+      );
+      const publicationEligible = resolveLvRestShadowPublicationEligible();
       const measurement = await this.measurements.create({
         organizationId: input.organizationId,
         vehicleId: input.vehicleId,
@@ -271,15 +286,16 @@ export class BatteryRestTargetEvaluationService {
           qualityWindowMs,
           qualityReasonCode: outcome.reasonCode,
           qualityReasonLabel: outcome.reasonLabel,
-          evidenceEligible: outcome.evidenceEligible,
-          publicationEligible: isLvRestMeasurementPublicationEligible(),
+          evidenceEligible,
+          publicationEligible,
           distanceToTargetMs: Math.abs(
             selected.observedAt.getTime() - targetAt.getTime(),
           ),
           driveProfile: resolvedPolicy.driveProfile,
           chemistry: resolvedPolicy.chemistry,
+          ...(isLvRestShadowModeActive() ? { shadowMode: true } : {}),
         },
-        context: {
+        context: withLvRestShadowContextIfActive({
           restTargetType: input.restTargetType,
           targetAt: targetAt.toISOString(),
           restWindowStartedAt: input.session.startedAt.toISOString(),
@@ -287,7 +303,7 @@ export class BatteryRestTargetEvaluationService {
           qualityReasonLabel: outcome.reasonLabel,
           sourceObservationContext: selected.context ?? {},
           tripStartsAfterAnchor: tripStartsAfterAnchor.map((d) => d.toISOString()),
-        },
+        }),
       });
 
       return {
@@ -295,7 +311,7 @@ export class BatteryRestTargetEvaluationService {
         measurementId: measurement.id,
         sourceObservationId: selected.measurementId,
         quality: outcome.quality,
-        evidenceEligible: outcome.evidenceEligible,
+        evidenceEligible,
       };
     }
 
@@ -363,18 +379,21 @@ export class BatteryRestTargetEvaluationService {
         targetAt: input.targetAt.toISOString(),
         qualityReasonCode: input.reasonCode,
         qualityReasonLabel: input.reasonLabel,
-        evidenceEligible: isLvRestMeasurementEvidenceEligible(input.quality),
-        publicationEligible: isLvRestMeasurementPublicationEligible(),
+        evidenceEligible: resolveLvRestShadowEvidenceEligible(
+          isLvRestMeasurementEvidenceEligible(input.quality),
+        ),
+        publicationEligible: resolveLvRestShadowPublicationEligible(),
         driveProfile: input.driveProfile,
         chemistry: input.chemistry,
+        ...(isLvRestShadowModeActive() ? { shadowMode: true } : {}),
       },
-      context: {
+      context: withLvRestShadowContextIfActive({
         restTargetType: input.restTargetType,
         targetAt: input.targetAt.toISOString(),
         restWindowStartedAt: input.session.startedAt.toISOString(),
         qualityReasonCode: input.reasonCode,
         qualityReasonLabel: input.reasonLabel,
-      },
+      }),
     });
   }
 
@@ -417,8 +436,9 @@ export class BatteryRestTargetEvaluationService {
         driveProfile: input.driveProfile,
         chemistry: input.chemistry,
         candidateCount: input.candidateCount,
+        ...(isLvRestShadowModeActive() ? { shadowMode: true } : {}),
       },
-      context: {
+      context: withLvRestShadowContextIfActive({
         restTargetType: input.restTargetType,
         targetAt: input.targetAt.toISOString(),
         restWindowStartedAt: input.session.startedAt.toISOString(),
@@ -427,7 +447,7 @@ export class BatteryRestTargetEvaluationService {
         tripStartsAfterAnchor: input.tripStartsAfterAnchor.map((d) =>
           d.toISOString(),
         ),
-      },
+      }),
     });
   }
 }

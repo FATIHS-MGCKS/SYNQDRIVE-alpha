@@ -14,11 +14,21 @@ describe('BatteryV2RestTargetProducer', () => {
   };
 
   let producer: BatteryV2RestTargetProducer;
+  const originalEnv = process.env.BATTERY_V2_REST_SHADOW_ENABLED;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    process.env.BATTERY_V2_REST_SHADOW_ENABLED = 'true';
     jest.spyOn(RuntimeStatusRegistry, 'getWorkersEnabled').mockReturnValue(true);
     producer = new BatteryV2RestTargetProducer(jobProducer as unknown as BatteryV2JobProducerService);
+  });
+
+  afterEach(() => {
+    if (originalEnv === undefined) {
+      delete process.env.BATTERY_V2_REST_SHADOW_ENABLED;
+    } else {
+      process.env.BATTERY_V2_REST_SHADOW_ENABLED = originalEnv;
+    }
   });
 
   it('schedules REST_60M with delay until startedAt + 60m', async () => {
@@ -96,5 +106,23 @@ describe('BatteryV2RestTargetProducer', () => {
     expect(result.scheduled).toBe(false);
     expect(result.skipped).toBe(true);
     expect(result.skipReason).toBe('enqueue_suppressed');
+  });
+
+  it('does not enqueue when REST shadow flag is disabled', async () => {
+    process.env.BATTERY_V2_REST_SHADOW_ENABLED = 'false';
+
+    const result = await producer.scheduleRest60m({
+      organizationId: ORG,
+      vehicleId: VEH,
+      sessionId: SESSION,
+      restWindowId: WINDOW_ID,
+      restWindowStartedAt: STARTED_AT,
+      now: STARTED_AT,
+    });
+
+    expect(result.scheduled).toBe(false);
+    expect(result.skipped).toBe(true);
+    expect(result.skipReason).toBe('rest_shadow_disabled');
+    expect(jobProducer.enqueue).not.toHaveBeenCalled();
   });
 });

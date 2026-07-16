@@ -6,6 +6,7 @@ import {
   Prisma,
 } from '@prisma/client';
 import { PrismaService } from '@shared/database/prisma.service';
+import { isBatteryV2RestShadowEnabled } from '@config/battery-health-v2.config';
 import {
   mapLvRestWindowStateToSessionStatus,
   LvRestWindowState,
@@ -139,6 +140,10 @@ export class LvRestWindowStateMachineService {
     restWindowStartedAt: Date;
     existingMetadata: Prisma.InputJsonValue;
   }): Promise<Prisma.InputJsonValue> {
+    if (!isBatteryV2RestShadowEnabled()) {
+      return input.existingMetadata;
+    }
+
     let metadata = input.existingMetadata;
 
     for (const targetType of [
