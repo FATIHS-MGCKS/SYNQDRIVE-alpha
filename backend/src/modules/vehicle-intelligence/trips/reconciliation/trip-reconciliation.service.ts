@@ -33,6 +33,7 @@ import {
   type DimoTripSegment,
 } from '../../../dimo/dimo-segments.service';
 import { TripEnrichmentOrchestratorService } from '../trip-enrichment-orchestrator.service';
+import { TripPostFinalizeAnalysisProducer } from '../driving-analysis-init/trip-post-finalize-analysis.producer';
 import { EnergyEventsService } from '../../energy-events/energy-events.service';
 
 interface ReconciliationOptions {
@@ -137,6 +138,8 @@ export class TripReconciliationService {
     @Optional()
     @Inject(forwardRef(() => TripEnrichmentOrchestratorService))
     private readonly enrichmentOrchestrator?: TripEnrichmentOrchestratorService,
+    @Optional()
+    private readonly postFinalizeAnalysisProducer?: TripPostFinalizeAnalysisProducer,
     @Optional() private readonly tripMetrics?: TripMetricsService,
     @Optional() private readonly configService?: ConfigService,
     @Optional() private readonly energyEventsService?: EnergyEventsService,
@@ -319,6 +322,12 @@ export class TripReconciliationService {
   ): Promise<void> {
     const STALE_THRESHOLD_MS = 2 * 3600_000; // 2 hours
 
+    const vehicle = await this.prisma.vehicle.findUnique({
+      where: { id: vehicleId },
+      select: { organizationId: true },
+    });
+    const organizationId = vehicle?.organizationId ?? null;
+
     const staleTrips = await this.prisma.vehicleTrip.findMany({
       where: {
         vehicleId,
@@ -371,6 +380,11 @@ export class TripReconciliationService {
           endTime: estimatedEnd,
           endDetectionMode: 'STALE_ONGOING_REPAIR',
         });
+
+        const orgId = organizationId;
+        if (orgId) {
+          await this.enqueueRepairEnrichment(trip.id, vehicleId, orgId);
+        }
 
         await this.prisma.tripRepair.update({
           where: { id: repair.id },
@@ -842,6 +856,15 @@ export class TripReconciliationService {
     vehicleId: string,
     organizationId: string,
   ): Promise<void> {
+    if (this.postFinalizeAnalysisProducer) {
+      await this.postFinalizeAnalysisProducer.produceAfterPersistedCompletion({
+        tripId,
+        vehicleId,
+        organizationId,
+        source: 'REPAIR_FINALIZE',
+      });
+    }
+
     if (!this.enrichmentOrchestrator) return;
 
     try {
@@ -1267,6 +1290,7 @@ export class TripReconciliationService {
     const vehicle = await this.prisma.vehicle.findUnique({
       where: { id: vehicleId },
       select: {
+        organizationId: true,
         dimoVehicle: { select: { tokenId: true } },
       },
     });
@@ -1334,6 +1358,13 @@ export class TripReconciliationService {
           endTime: estimatedEnd,
           endDetectionMode,
         });
+        if (vehicle?.organizationId != null) {
+          await this.enqueueRepairEnrichment(
+            trip.id,
+            vehicleId,
+            vehicle.organizationId,
+          );
+        }
         await this.prisma.tripRepair.update({
           where: { id: repair.id },
           data: { status: REPAIR_STATUS.APPLIED, appliedAt: new Date() },
