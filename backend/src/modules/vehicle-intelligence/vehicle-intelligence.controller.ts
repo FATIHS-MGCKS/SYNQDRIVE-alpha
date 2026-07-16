@@ -16,6 +16,7 @@ import {
 import { BatteryService } from './battery/battery.service';
 import { TiresService } from './tires/tires.service';
 import { TireHealthService } from './tires/tire-health.service';
+import { TireTripUsageService } from './tires/tire-trip-usage.service';
 import { TireLifecycleService } from './tires/tire-lifecycle.service';
 import { BrakesService } from './brakes/brakes.service';
 import { BrakeHealthService } from './brakes/brake-health.service';
@@ -115,6 +116,7 @@ export class VehicleIntelligenceController {
     private readonly batteryService: BatteryService,
     private readonly tiresService: TiresService,
     private readonly tireHealthService: TireHealthService,
+    private readonly tireTripUsageService: TireTripUsageService,
     private readonly tireLifecycleService: TireLifecycleService,
     private readonly brakesService: BrakesService,
     private readonly brakeHealthService: BrakeHealthService,
@@ -1194,19 +1196,16 @@ export class VehicleIntelligenceController {
   ) {
     const result = await this.tripsService.enrichTrip(vehicleId, tripId);
     if (result) {
-      const trip = await this.prisma.vehicleTrip.findUnique({ where: { id: tripId } });
-      if (trip?.distanceKm) {
-        try {
-          await this.tireHealthService.updateTireUsageFromTrip(vehicleId, {
-            distanceKm: trip.distanceKm,
-            cityPercent: result.citySharePercent,
-            highwayPercent: result.highwaySharePercent,
-            ruralPercent: result.countrySharePercent,
-            harshBrakeCount: trip.harshBrakeCount ?? 0,
-            harshAccelCount: trip.harshAccelCount ?? 0,
-            harshCornerCount: trip.harshCornerCount ?? 0,
-          });
-        } catch { /* tire update is best-effort */ }
+      try {
+        await this.tireTripUsageService.processCanonicalTripFinalization(tripId, {
+          trigger: 'manual_route_enrich',
+        });
+      } catch (err) {
+        this.logger.warn(
+          `Tire usage attribution after route enrich failed for trip ${tripId}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
       }
     }
     return result;

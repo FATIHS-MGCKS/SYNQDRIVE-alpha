@@ -66,8 +66,9 @@ describe('tire evidence schema contracts', () => {
   });
 
   it('exposes TireTripUsageLedger model via Prisma client (Prompt 9)', () => {
-    const { Prisma } = require('@prisma/client');
+    const { Prisma, TireEventType } = require('@prisma/client');
     const model = Prisma.ModelName.TireTripUsageLedger;
     expect(model).toBe('TireTripUsageLedger');
+    expect(TireEventType.TRIP_USAGE_ATTRIBUTED).toBe('TRIP_USAGE_ATTRIBUTED');
   });
 });

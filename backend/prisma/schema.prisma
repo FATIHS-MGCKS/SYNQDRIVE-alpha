@@ -322,6 +322,7 @@ enum TireEventType {
   INSTALL
   REMOVE
   ODOMETER_ANCHOR_BACKFILLED
+  TRIP_USAGE_ATTRIBUTED
 }
 
 /// Canonical provenance for tread depth, baseline, and validation evidence.
@@ -6445,6 +6446,9 @@ model VehicleTrip {
   behaviorSummaryStatus String? @map("behavior_summary_status")
   drivingImpactStatus   String? @map("driving_impact_status")
 
+  tireUsageAttributionStatus String?   @map("tire_usage_attribution_status")
+  tireUsageProcessedAt       DateTime? @map("tire_usage_processed_at")
+
   createdAt DateTime @default(now()) @map("created_at")
 
   vehicle              Vehicle               @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
@@ -6465,6 +6469,7 @@ model VehicleTrip {
   @@index([assignedBookingId])
   @@index([behaviorEnrichmentStatus])
   @@index([tripAnalysisStatus])
+  @@index([tireUsageAttributionStatus])
   // Composite index for the hot "trips by vehicle ordered by startTime desc"
   // query used by trips list, rental analysis, driver score and hydration.
   // PostgreSQL can walk this index in reverse for free, so no DESC clause.

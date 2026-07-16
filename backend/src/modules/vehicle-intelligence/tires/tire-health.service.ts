@@ -638,29 +638,24 @@ export class TireHealthService {
     });
   }
 
+  /**
+   * @deprecated Use TireTripUsageService.processCanonicalTripFinalization — direct aggregate mutation removed (Prompt 10).
+   */
   async updateTireUsageFromTrip(
-    vehicleId: string,
-    tripData: {
+    _vehicleId: string,
+    _tripData: {
       distanceKm: number;
-      cityPercent: number; highwayPercent: number; ruralPercent: number;
-      harshBrakeCount: number; harshAccelCount: number; harshCornerCount: number;
+      cityPercent: number;
+      highwayPercent: number;
+      ruralPercent: number;
+      harshBrakeCount: number;
+      harshAccelCount: number;
+      harshCornerCount: number;
     },
   ) {
-    const setup = await this.getActiveSetup(vehicleId);
-    if (!setup) return;
-    const totalKm = tripData.distanceKm;
-    await this.prisma.vehicleTireSetup.update({
-      where: { id: setup.id },
-      data: {
-        totalKmOnSet: { increment: totalKm },
-        cityKm: { increment: totalKm * (tripData.cityPercent / 100) },
-        highwayKm: { increment: totalKm * (tripData.highwayPercent / 100) },
-        ruralKm: { increment: totalKm * (tripData.ruralPercent / 100) },
-        harshAccelEvents: { increment: tripData.harshAccelCount },
-        harshBrakeEvents: { increment: tripData.harshBrakeCount },
-        harshCornerEvents: { increment: tripData.harshCornerCount },
-      },
-    });
+    this.logger.warn(
+      'updateTireUsageFromTrip is deprecated — tire usage is attributed via TireTripUsageService on canonical trip finalization.',
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════

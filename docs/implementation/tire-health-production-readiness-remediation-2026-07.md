@@ -641,6 +641,59 @@ cd backend && npm test -- tire-trip-usage-ledger
 
 ---
 
+## Prompt 10 — Canonical Trip Finalization → Tire Usage (2026-07-16)
+
+### Ziel
+
+Tire Usage genau einmal an den autoritativen, finalen Trip-Abschluss binden — nicht mehr nur über den Enrichment-Endpunkt.
+
+### Kanonischer Finalisierungszeitpunkt
+
+`tripAnalysisStatus === COMPLETED|SKIPPED` **und** alle Analysis-Stages terminal (`areAnalysisStagesComplete`) — ausgelöst in `TripAnalysisCoordinatorService.markStage` / `onBehaviorSkipped`.
+
+| Phase | Bedeutung für Tire Usage |
+|-------|--------------------------|
+| Trip `COMPLETED` + `endTime` | Beendet, aber noch nicht usage-final |
+| `PARTIAL` / `IN_PROGRESS` | Analytics läuft — **kein Write** |
+| Terminal analysis + `analysisCompletedAt` | **Kanonisch final** → `TireTripUsageService` |
+| Reprocessing / Retry | Idempotent via `sourceFingerprint` |
+| Setup-Wechsel-Overlap | `REQUIRES_REVIEW` — kein Raten |
+
+### Geänderte / neue Dateien
+
+| Datei | Änderung |
+|-------|----------|
+| `tire-trip-usage-attribution.ts` | Historische Setup-Auflösung, Finalisierungs-Guards, Aggregate-Delta |
+| `tire-trip-usage.service.ts` | **Neu** — zentraler Service (Ledger + Aggregate + Event + Status) |
+| `tire-trip-usage-attribution.spec.ts` | Setup vor/nach Wechsel, Overlap, Finalisierung |
+| `tire-trip-usage.service.spec.ts` | Final trip, Retry, Enrich-Idempotenz, Review, Org, Reprocessing |
+| `trip-analysis-coordinator.service.ts` | Hook nach terminaler Analysis |
+| `vehicle-intelligence.controller.ts` | Enrich → `TireTripUsageService` (kein `updateTireUsageFromTrip`) |
+| `tire-health.service.ts` | `updateTireUsageFromTrip` deprecated |
+| `20260716220000_tire_trip_usage_attribution` | `TRIP_USAGE_ATTRIBUTED`, Trip-Processing-Status-Felder |
+
+### Transaktion pro Apply
+
+1. Ledger upsert (fingerprint-idempotent)
+2. Setup-Aggregate delta (nur bei CREATED/UPDATED)
+3. `TireEvent.TRIP_USAGE_ATTRIBUTED`
+4. `vehicle_trips.tire_usage_attribution_status` + `tire_usage_processed_at`
+
+### Tests
+
+```bash
+cd backend && npm test -- tire-trip-usage
+```
+
+### Bestätigung Prompt 10
+
+- ✅ Finaler Trip wird über kanonischen Analysis-Abschluss berücksichtigt
+- ✅ Reprocessing ohne Datenänderung = No-op (`UNCHANGED`)
+- ✅ Setup-Zuordnung historisch über Mount-Perioden / Install-Intervalle
+- ✅ Enrichment-Pfad erzeugt keine Doppelzählung mehr
+
+---
+
 ## Prompt 2 — P0-TH-04 Ground-Truth-Leak (2026-07-16)
 
 ### Root Cause

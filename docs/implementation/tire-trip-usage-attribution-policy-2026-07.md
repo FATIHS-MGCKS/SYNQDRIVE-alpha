@@ -56,3 +56,10 @@ Until then, integrators must **not** write fractional attribution for such trips
 - Schema + migration + repository only
 - **No** hook in trip finalization / enrichment orchestrator
 - **No** changes to `TireHealthService.updateTireUsageFromTrip`
+
+## Integration (Prompt 10)
+
+- `TireTripUsageService.processCanonicalTripFinalization` is the **single write path**
+- Hooked from `TripAnalysisCoordinatorService` when `tripAnalysisStatus` reaches `COMPLETED|SKIPPED` and all analysis stages are terminal
+- Manual `POST …/trips/:id/enrich` delegates to the same service (idempotent; no-op until final)
+- `updateTireUsageFromTrip` deprecated — no direct `totalKmOnSet` mutation
